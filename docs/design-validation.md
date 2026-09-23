@@ -1,0 +1,270 @@
+# Behaviour validation pass
+
+**2026-09-23, lead.** Written to be checked, not believed. Every number below
+either comes from the source (file and line named) or from arithmetic shown in
+full, so you can disagree with the inputs.
+
+The design has been validated part-by-part for a long time: overlaps, sweeps,
+walls, ceilings, beads. This asks a different question — *can the finished
+instrument DO the things a pedal steel has to do?* — and it finds gaps that
+per-part checking is structurally unable to see.
+
+Nothing here is fixed. This is a list.
+
+---
+
+## The behaviours
+
+| # | The instrument must be able to… | Verdict |
+|---|---|---|
+| B1 | Move any string to a commanded pitch, over the whole copedent's range | **Holds, on one unverified constant** |
+| B2 | Hold that pitch with the motors unpowered | **Holds, with thinner margin than stated** |
+| B3 | Store a copedent and per-string calibration, and survive a power cycle | **Not designed yet** |
+| B4 | Read every pedal and knee lever | **Holds; the COUNT disagrees across three files** |
+| B5 | Have its strings installed, tuned and replaced | **Holds by design; never walked end to end** |
+| B6 | Turn string motion into sound | **Holds** |
+| B7 | Power everything from one inlet | **Holds after the 2×22 AWG fix; one open item** |
+| B8 | Come apart completely, with one hex key, no glue | **Unverifiable today — no checker covers tool access** |
+| B9 | Be printable on the target machine | **43 of 67 prints are unchecked** |
+| B10 | Fold down and travel | **Holds** |
+| B11 | Know where each carriage IS at power-up | **Not designed yet** |
+| B12 | Fail safely (string break, stall, power loss mid-move) | **Not analysed** |
+
+---
+
+## B1 — reach every pitch the copedent asks for
+
+The travel budget rests on one global constant: `DL_OPEN = 4.0` mm, the stretch
+beyond slack at open pitch, from which
+`CARRIAGE_TRAVEL = DL_OPEN·2^(4/6) + 2.0 = 8.35` (`src/dimensions.py:159-177`).
+
+**The copedent's worst case is +4 semitones, and `PITCH_UP_ST` is exactly 4.**
+String 10 takes +2 from P1 and +2 from P2; press both and the moves sum, because
+with one motor per string nothing stops them summing. So the design assumption
+and the requirement meet with **zero headroom**. A future copedent edit stacking
+a third raise on one string silently exceeds the travel, and no check would catch
+it: `PITCH_UP_ST` is a hand-set constant in `dimensions.py`, the copedent lives
+in `tools/export_rig.py:66` (a *viewer exporter*), and the two are never compared.
+
+**`DL_OPEN` is one number for ten very different strings, and the comment above
+it says so** — *"Varies with gauge → size for the largest in the set."* It was
+never sized that way. Worked out per string (T = μ·(2fL)², ΔL = T·L/(E·A_core),
+L = 615 mm, E = 200 GPa, C6 gauges and open notes from `export_rig.py`):
+
+| Str | Note | Gauge | ΔL at open (mm) | Copedent span (mm) | Travel needed (mm) |
+|---|---|---|---|---|---|
+| 1 | D4 | .015 plain | 3.15 | 0.39 | 3.54 |
+| 2 | E4 | .014 plain | 3.97 | 0.92 | 4.89 |
+| 3 | C4 | .017 plain | 2.50 | 1.31 | 3.81 |
+| 4 | A3 | .020 plain | 1.77 | 0.92 | 2.69 |
+| **5** | **G3** | **.024 wound** | **6.54** | **0.71** | **7.26** |
+| 6 | E3 | .030 wound | 4.63 | 1.07 | 5.70 |
+| 7 | C3 | .036 wound | 2.92 | 0.76 | 3.67 |
+| 8 | A2 | .042 wound | 2.06 | 0.22 | 2.29 |
+| 9 | F2 | .054 wound | 1.30 | 0.30 | 1.60 |
+| 10 | C2 | .070 wound | 0.73 | 0.64 | 1.37 |
+
+Against 8.35 mm of travel, the worst string needs an estimated **7.26 mm**. It
+fits, but it eats the 2.0 mm break-in margin down to about 1.1 mm, and the
+modelled 4.0 is neither the largest value (6.54) nor a typical one.
+
+**Treat the wound-string numbers as indicative, not settled.** They depend on a
+core fraction I assumed (0.42 of outside diameter) and on where the plain/wound
+boundary falls — .024 could be either, and if string 5 is plain its ΔL drops to
+about 1.4 mm and the worry disappears. That sensitivity is itself the finding:
+**the travel budget turns on a string-construction detail nobody has measured.**
+`dimensions.py` already prescribes the experiment — *"measure: anchor travel from
+barely-taut to pitch"* — on the real set, per string. It is a ruler-and-an-
+afternoon test that either retires this or changes the mechanism.
+
+Note the shape of the table: **ΔL is largest on the high strings and smallest on
+the low ones.** That inverts the usual intuition, and it drives B11.
+
+## B2 — hold pitch unpowered
+
+The README's claim that "the motors are completely unpowered at rest" rests
+entirely on the Tr8×2 screw being self-locking. That is a friction argument, so:
+mean diameter 7.0 mm, lead 2 mm, lead angle **5.20°**; thread half-angle 15°, so
+self-locking needs **μ ≥ tan(5.20°)·cos(15°) = 0.088**.
+
+- Dry steel on bronze, μ ≈ 0.15–0.25 → locked, 1.7–2.8× margin.
+- Greased, μ ≈ 0.10–0.15 → locked, 1.1–1.7× margin.
+- PTFE-loaded or oiled, μ ≈ 0.08 → **not locked.**
+
+The instrument therefore holds tune *because of what is not on the screw*.
+Nothing in `BOM.md` or `INSTALL_NOTES.md` says "do not lubricate these screws",
+and the BOM states "self-locking" as a property of the part. It is a property of
+the assembly. Worth one line in the install notes.
+
+## B3 — set and save the copedent
+
+**There is no firmware, controller code or configuration format in this
+repository.** No `.c`, `.cpp`, `.ino`, no firmware directory. The behaviours the
+instrument exists for — command a pitch, store an offset, map a lever to a set of
+string moves — are all software, and none of it is written.
+
+The copedent exists in exactly one place: a Python dict in
+`tools/export_rig.py:66`, whose job is feeding the web viewer's animation. It is
+not a data file, and nothing but the viewer can read it.
+
+This is not a complaint about sequencing — CAD first is reasonable. It matters
+because **decisions that are cheap now get expensive once boards are ordered**:
+where calibration lives, what the MCU keeps in flash versus what the Pi owns,
+and B11 below.
+
+## B4 — read every control
+
+The sensing chain is sound: a diametric Ø6 magnet on the axle end, an MT6701
+reading across a **1.5 mm** air gap against a datasheet window of 0.5 / 1.0 / 2.0
+min/typ/max (`src/knee_lever.py:88-130`), absolute over 360° where the lever
+sweeps ~30°. No issue.
+
+**The number of controls disagrees across the repo:**
+
+| Source | Says |
+|---|---|
+| `BOM.md:857` (power budget, corrected 2026-09-18) | **11** sensor boards — "6 knee levers + 5 pedals" |
+| `BOM.md:560` (angle-sensor row) | **11** MT6701 |
+| `tools/export_rig.py:66` | **10** controls — 5 pedals, 5 levers (ILKL removed 2026-09-11) |
+| `docs/rig.json`, every build | **10** controls |
+| `src/build.py:832` | "The copedent needs six (user): ILKL, LKL, VKL, LKR, RKL, RKR" |
+
+ILKL left the copedent on 2026-09-11; the BOM's sensor count was corrected
+*upward* to 11 a week later, on 2026-09-18, citing six levers. One of those is
+stale. If the instrument really has five levers, the BOM over-buys one sensor
+board, one MT6701 and a connector set — trivial in money, but it means **the
+board quantity and the control list have no single source of truth**, and the
+same ambiguity reaches the firmware as "how many nodes on bus B".
+
+## B5 — string install, tune, replace
+
+Well handled, and the awkward case is explicitly designed for: strings whose
+channel is blocked by a leg get no channel at all and thread in from +X through
+the changer room's open face, with the leg slid out first
+(`src/bridge_endplate.py:91`, `legs.SERVICE_SLIDE`). The ball end anchors under
+the H-nut's +X ear, reachable through the same opening.
+
+No finding, with one caveat: the procedure has never been walked end to end —
+thread, seat the ball, take up slack, reach pitch, trim — and `INSTALL_NOTES.md`
+holds a single entry (KL-1, thread-lock the position screws). Restringing is the
+most repeated task on a steel guitar.
+
+## B6 — make sound
+
+Magnetic pickup and per-string optical pickup both land on the output + panel
+board; ADC, DAC, hub, true-bypass relay and buffers were rewired from the makers'
+datasheets on 2026-09-21, 0 unconnected nets and 0 DRC errors. The pickup sees a
+1 MΩ load, flagged in the BOM as the tone-setting choice. Nothing to add.
+
+## B7 — one power inlet
+
+The 24 V trunk analysis in `BOM.md:750-870` is the most rigorous work in the
+repo: the 2×22 AWG doubling fixes gauge, contact rating and voltage drop at once,
+and the XH/PH split keeps the high-current bus on XH. Bus B's 105 mA at 24 V
+against PH's 2 A rating is 5%. The open item is the fleet slew budget — "<5 A"
+assumes the ten motors never draw peak together, which is a **firmware**
+guarantee (B3), not a hardware one.
+
+## B8 — come apart, one key, no glue
+
+The fastener family is disciplined: M4 button heads, 2.5 mm hex, called out as
+"THE ONE DRIVER" (`BOM.md:2379`), heat-set inserts rather than tapped plastic,
+and cadkit's ScrewJoint renders screw and insert so the gate can see them.
+
+**But no checker covers tool access.** The overlap gate proves parts do not
+intersect at rest; the sweep gate proves rotating parts clear through a turn;
+`check_ceilings` proves overhangs print. Nothing proves a 2.5 mm key can reach a
+screw head, that it has swing room, or that a part can travel out along its
+install axis without fouling a neighbour — the nearest thing is the THT-connector
+install sweep, which covers connector tails only. Every "it comes apart" claim in
+this project is currently a human eyeballing the viewer.
+
+Related: `INSTALL_NOTES.md` KL-1 specifies **thread-lock** on the knee lever's
+position screws. Blue threadlocker is removable, so parts still separate, but it
+sits close enough to the no-glue rule to deserve an explicit ruling.
+
+## B9 — printability
+
+`tools/check_ceilings` covers **25 of 67** prints. Two more declare a diagonal
+build direction it cannot handle (`adjust_tenon`, `fixed_tenon`). **43 have never
+declared a print orientation at all**, so nothing checks their overhangs —
+including the three largest parts in the instrument:
+
+> `chassis_0`, `chassis_1`, `chassis_2` (and their `_light` variants),
+> `knee_housing`, `knee_lever`, `kv_housing`, `kv_lever`, `cart_base`,
+> `cart_piston`, `pedal_lever`, `pedal_lid_a/b`, `leg_foot`, `motor_pulley`,
+> `screw_pulley_hi/lo`, `tension_fork`, `coil_mandrel*`, the test coupons, and
+> every `top_plate_*_color` inlay.
+
+The declaration is one vector per part, read by the checker from the part's own
+source, so this is bookkeeping rather than analysis. It is also the cheapest
+coverage win available: the checker found a real defect the moment its coverage
+went from 5 parts to 25 — a cradle fused to nothing, printing in two pieces.
+
+## B10 — fold down and travel
+
+Legs blind-mate on pogo boards on the tenon diagonal with ScrewJoint retention
+and no flat ceilings on either tenon; the harness runs in an octagonal section
+with a volume-checked fuse per segment. Sound.
+
+## B11 — know where the carriage is at power-up
+
+**The largest undesigned behaviour, and a consequence of B1's table.**
+
+There is **no homing reference, no limit switch, no index mark and no hard stop**
+anywhere in the string drivetrain. `src/bridge_endplate.py:666-670` says the
+guide rod's upper retention and **both** travel stops are deferred ("user: ignore
+stops for now"); the rod top "rides free in the open field". Meanwhile
+`src/build.py:437` poses four strings "feet on the bottom stop" — a stop that
+does not exist in the geometry.
+
+Three consequences:
+
+1. **Nothing bounds a commanded move.** `SCREW_RUNOUT` leaves only **2.4 mm** of
+   thread above the nut at the top of travel (`dimensions.py:315`). A miscommanded
+   move a few millimetres long runs the nut off the end of its screw, with
+   100–150 N of string tension behind it. The printed thread-formed collar at the
+   bottom has the same exposure downward.
+2. **Position after power-up is a stored number, not a measurement.** The screw
+   being non-backdrivable (B2) means the carriage cannot drift while the
+   instrument is off, which is what makes a stored count plausible at all. But
+   any event that breaks the stored-to-actual correspondence — a snapped string,
+   a screw turned by hand during service, a flash write interrupted mid-move —
+   leaves the controller confidently wrong with no way to detect it.
+3. **The error is worst where it is least expected.** From B1's table, ΔL is
+   smallest on the low strings, so position error becomes pitch error fastest
+   there: at 0.01 mm of error, string 10 is out by roughly **12 cents** and
+   string 5 by about **1.3**. The bass strings hold the tight tolerance, not the
+   treble.
+
+The instrument does have a way out that a mechanical steel does not: the optical
+pickup measures per-string pitch directly, so the machine can hear where it
+actually is and re-reference itself. That closes the loop — but it is firmware
+(B3), it needs a defined startup behaviour, and it wants a mechanical stop as a
+backstop against runaway regardless.
+
+## B12 — failure modes
+
+Not analysed anywhere in the repo, and worth a pass before boards are ordered:
+
+- **String break.** ~150 N released instantly. Where does the energy go, what
+  does the carriage do, and does the controller notice the pitch has gone?
+- **Stall or jam.** The SERVO42D closes its own loop and reports following error;
+  nothing says what the system does with that.
+- **Power loss mid-move.** Self-locking holds position; the stored count is
+  mid-write. Exactly the case that de-syncs B11.
+- **Thermal.** Ten steppers, a Pi and a buck in a closed PETG-GF box, motors
+  unpowered at rest — likely fine, never checked.
+
+---
+
+## Suggested order
+
+1. **Measure ΔL per string on the real set** (B1). Cheapest test here, and it
+   either retires the travel worry or moves the mechanism.
+2. **Declare print orientations for the 43** (B9). Bookkeeping; unblocks a
+   checker that has already earned its keep.
+3. **Reconcile the control count** (B4). One number, three files.
+4. **Decide the startup and reference story** (B11 + B3) before boards are
+   ordered, and put a mechanical stop back on the list.
+5. **A tool-access check** (B8), so "it comes apart" stops being an opinion.
