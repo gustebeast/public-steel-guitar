@@ -1196,6 +1196,10 @@ def lever_bus(nodes):
     for k, (a, b) in enumerate(zip(nodes, nodes[1:])):
         (n0, _p0, l0, d0, ka0, _pa0, pins0, so0, _ca0, _cb0) = a
         (n1, _p1, _l1, d1, _ka1, _pa1, pins1, so1, ca1, cb1) = b
+        # AT THE BOTTOM OF THE COLUMN, just above the web. Tried at the top, beside the
+        # connector, on the theory that the runs would reach it more directly: measured
+        # WORSE (45 unintended against 40), because the approach then crosses the
+        # housing's top corner instead. Left low, and recorded so it is not re-tried.
         path = _coil_path(tuple(l0[i] + ka0[i] * 0.2 for i in range(3)), ka0, turns)
         c0, c1 = path.startPoint().toTuple(), path.endPoint().toTuple()
         parts.append((f"wire_canb_coil_{k}", _coil(path)))

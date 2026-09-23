@@ -1819,8 +1819,10 @@ CANB_BUNDLE_OD = 2.5                # the four of them together (BOM, Wire)
 KEEP_POST_D = 7 * D.NOZZLE_D        # 5.6 the barrel the slack winds onto
 KEEP_HEAD   = 3 * D.NOZZLE_D        # 2.4 of 45 deg flare at the top: the coil cannot
                                     # walk off, but it lifts over with a screwdriver
-KEEP_WEB_T  = D.MIN_WALL_2P         # 1.6 the web tying the post back to the cheek
-KEEP_WIND_H = 12 * D.NOZZLE_D       # 9.6 of bare post for the coil
+KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 10.6 wound OD
+KEEP_WEB_T  = KEEP_WOUND_D          # the web is as wide as the WIND it carries (user):
+                                    # a 1.6 fin under a 10.6 coil was a fin, not a base
+KEEP_WEB_H  = 6 * D.NOZZLE_D        # 4.8 -- and short, so the column is mostly winding
 KEEP_COIL_R = (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0       # wound centre line, 4.05
 # THE POST STANDS ON THE BED AND GROWS TOWARD THE INSTRUMENT (user, 2026-09-23: "for
 # the cable winding posts, they create a print overhang... align them along the Z axis
@@ -1842,9 +1844,9 @@ KEEP_COIL_R = (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0       # wound centre line, 4.
 # doesn't dangle and hit your knee"). The post's MATERIAL starts at the bed; the CABLE
 # lives at the far end of it.
 KEEP_WIND_Z1 = HOUS_Z1 - KEEP_HEAD - D.MIN_WALL_2P       # the head sits under the top
-KEEP_WIND_Z0 = KEEP_WIND_Z1 - KEEP_WIND_H
-assert KEEP_WIND_Z0 > HOUS_Z0 + 2 * D.MIN_WALL_2P, (
-    "the keeper's winding reaches the bed -- no web is left to carry the post")
+KEEP_WIND_Z0 = HOUS_Z0 + KEEP_WEB_H                      # ...and the web ends down here
+KEEP_WIND_H = KEEP_WIND_Z1 - KEEP_WIND_Z0                # whatever is left is winding
+assert KEEP_WIND_H > 0, "the keeper's web leaves no bare column to wind on"
 
 
 def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None):
@@ -1859,16 +1861,15 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None):
     z0 = HOUS_Z0 if z_bed is None else z_bed
     x0 = HOUS_X0 if x_back is None else x_back
     z1 = HOUS_Z1 if z_top is None else z_top
-    xc = x0 + KEEP_POST_D / 2.0 + D.MIN_WALL_2P
+    xc = x0 + KEEP_WEB_T / 2.0      # centred in the web, whose -X face is the housing's
     yc = y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + D.MIN_WALL   # the coil clears the cheek
     wz1 = z1 - KEEP_HEAD - D.MIN_WALL_2P                        # winding top
-    wz0 = wz1 - KEEP_WIND_H                                     # ...and its bottom
     post = cyl(KEEP_POST_D, wz1 - z0, z=z0).translate((xc, yc, 0.0))
     head = cq.Workplane("XY").add(cq.Solid.makeCone(
         KEEP_POST_D / 2.0, KEEP_POST_D / 2.0 + KEEP_HEAD, KEEP_HEAD,
         cq.Vector(xc, yc, wz1), cq.Vector(0, 0, 1)))
-    web = box_at(KEEP_WEB_T, yc - y0, wz0 - z0,
-                 x=xc, y=(y0 + yc) / 2.0, z=(z0 + wz0) / 2.0)
+    web = box_at(KEEP_WEB_T, yc - y0, KEEP_WEB_H,
+                 x=xc, y=(y0 + yc) / 2.0, z=z0 + KEEP_WEB_H / 2.0)
     return post.union(head).union(web)
 
 
@@ -1936,20 +1937,15 @@ def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):
     BARE stretch above the web. Defaults are LKL's, like cable_keeper's."""
     y0 = HOUS_HW if y_face is None else y_face
     x0 = HOUS_X0 if x_back is None else x_back
-    z1 = HOUS_Z1 if z_top is None else z_top
-    return (x0 + KEEP_POST_D / 2.0 + D.MIN_WALL_2P,
+    z0 = HOUS_Z0 if z_bed is None else z_bed
+    return (x0 + KEEP_WEB_T / 2.0,
             y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + D.MIN_WALL,
-            z1 - KEEP_HEAD - D.MIN_WALL_2P - KEEP_WIND_H)
+            z0 + KEEP_WEB_H)
 
 
 def keeper_axis():
     """The post's axis in the lever's LOCAL frame: the build direction."""
     return (0.0, 0.0, 1.0)
-
-
-def keeper_axis():
-    """The barrel's axis direction in the lever's LOCAL frame: off the cheek."""
-    return (0.0, 1.0, 0.0)
 
 
 def _housing() -> cq.Workplane:
