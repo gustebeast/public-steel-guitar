@@ -122,7 +122,6 @@ DECLARED_UP = {
     "leg_latch_slider":  ("src.leg_stack", "SLIDER_UP"),
     "bar_latch_frame":   ("src.leg_stack", "BAR_FRAME_UP"),
     "bar_latch_collar":  ("src.leg_stack", "BAR_COLLAR_UP"),
-    "latch_slider":      ("src.latch", "SLIDER_UP"),
     "pickup_zplate":     ("src.top_plate", "ZPL_UP"),
     "pedal_bar_a":       ("src.pedal_bar", "BAR_UP"),
     "pedal_bar_b":       ("src.pedal_bar", "BAR_UP"),

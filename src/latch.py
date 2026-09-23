@@ -1,8 +1,25 @@
-"""Push-to-connect / press-to-release LATCH — shared by both leg joints.
+"""Push-to-connect / press-to-release LATCH.
 
-ONE mechanism, ONE spring SKU, ONE user interface, used at:
-  * leg HEAD  -> body STUB      (you pull the LEG off the body)
-  * bar TOWER -> shaft BLOCK    (you lift the BAR off the legs)
+⚠ THE MECHANISM IS NOT INSTALLED ANYWHERE. Both joints it was drawn for have since
+been given their own latches, and NEITHER builds this one:
+
+  * leg HEAD -> body STUB, where you pull the LEG off the body, is src.leg_latch now,
+    and the old leg family this one was cut into is retired (nothing in build.PARTS
+    reaches leg_head).
+  * bar TOWER -> shaft BLOCK, where you lift the BAR off the legs, is src.bar_latch's
+    collar yoke. pedal_bar.LATCH_FOOT is None, which gates both of this module's call
+    sites there -- set it to a FEET index to put this mechanism back on a tower.
+
+WHAT STILL USES THIS FILE, and why it is not deleted: it owns the SPRING and the
+stroke that both live latches are sized against -- SPR_FREE / SPR_SOLID / SPR_RATE /
+SPR_SEAT, STROKE, and coil() -- so there is still one spring SKU and one feel across
+the instrument. leg_latch and bar_latch both import it for exactly that.
+
+Its own slider and cover were printed parts until 2026-09-23; they are out of
+build.PARTS, the fast-build map and the profiler baseline now, because a part nobody
+prints should not be exported, coloured, checked or profiled.
+
+The mechanism as drawn, for whoever turns it back on:
 
 In both, the piece you REMOVE is the MALE (spigot) half, so the mechanism lives
 in the male and the button sits on the male's own body BELOW the joint line.
@@ -48,7 +65,7 @@ button out, which is exactly why that spring is STEEL and not TPU -- a printed
 elastomer takes a compression set there and the button sinks in over years.
 
 PARTS, per joint: latch_slider + latch_cover (printed) + one steel coil. Both
-printed parts are ONE SKU across both joints -- the head and the tower differ
+printed parts were ONE SKU across both joints — the head and the tower differ
 only in what surrounds them, not in the mechanism.
 
 ASSEMBLY: slider (spring in its blind bore) enters through the male's -Y face
