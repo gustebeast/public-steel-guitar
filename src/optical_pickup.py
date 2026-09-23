@@ -439,7 +439,18 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
 # ONLY THE STRIP SECTION GROWS. PCB_X1S stays the wraps' and the tail's -X edge (and the
 # endplate pad's), so the strip steps out -X past them; STRIP_X1 is its own -X edge.
 STRIP_GROW_PX = 3.15
-STRIP_GROW_MX = 8.5   # 2.5 of measured lane (.ins/lane_use.py) + 6.0 for the ADC column
+STRIP_GROW_MX = 10.0  # 2.5 measured lane + 6.0 ADC column + 1.5 of CELL-TO-OP-AMP CORRIDOR
+# ⚠ THAT LAST 1.5 IS THE ANALOG NETS' WHOLE PROBLEM, and it took three experiments to
+# find because it is not where anyone looks. The corridor between the converter cell's east
+# edge and the op-amp column's west edge was 0.68 mm -- ONE track -- and every analog run
+# that has to travel in y between them shares it. Measured with .ins/lane.py, not guessed.
+#   8.5  -> 0.68 mm,  1 track,  139 local segments laid
+#  10.0  -> 2.18 mm,  6 tracks, 139          <- here
+#  11.5  -> 3.68 mm, 10 tracks, 134          (the pre-lay starts losing hops)
+# This is why widening the wall INSIDE the cell did nothing and measured worse (13 against
+# 10): the runs were getting through the doors and arriving in a one-lane corridor. Fixing
+# the second-narrowest thing while the narrowest is untouched buys nothing, and the two
+# looked alike from the failure list -- both present as analog nets the router drops.
 # ⚠ AND THE +X EDGE IS CAPPED BY THE GUIDE-ROD HOLES, NOT BY THE DECK BAND (user,
 # 2026-09-22). The near row of rods sits at x -20.0 (the far row is +20.0 and nowhere near
 # this board). Each hole needs a COMPLETE RING of endplate around it -- a bearing bore open
