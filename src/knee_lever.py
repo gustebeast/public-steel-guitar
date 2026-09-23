@@ -1823,6 +1823,22 @@ KEEP_WOUND_D = 2 * (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0 + CANB_BUNDLE_OD   # 10.
 KEEP_WEB_T  = KEEP_WOUND_D          # the web is as wide as the WIND it carries (user):
                                     # a 1.6 fin under a 10.6 coil was a fin, not a base
 KEEP_WEB_H  = 6 * D.NOZZLE_D        # 4.8 -- and short, so the column is mostly winding
+# ...far enough that the WOUND CABLE clears the CRADLE, not merely the cheek. The cradle
+# stands CR_Y1 off the axle and carries the board, and a coil tucked inside its shadow
+# put every run that left it straight along its own lever's PCB. Derived, so it tracks
+# the cradle rather than being a number that was once right.
+KEEP_CLR_Y  = CR_Y1 - HOUS_HW + D.MIN_WALL_2P   # 11.5: the coil's inner face clears
+                                    # the cradle's outer one. Was one wall (0.8), which left
+                                    # the wound cable almost touching the lever and nowhere
+                                    # for a finger or a screwdriver to get in (user: "move
+                                    # the columns further from the lever so we have more
+                                    # space to fit wiring") -- and, worse, put every run
+                                    # that LEFT the coil straight along its own board.
+                                    # one wall (0.8), which left the wound cable almost
+                                    # touching the lever and nowhere for a finger or a
+                                    # screwdriver to get in (user: "move the columns
+                                    # further from the lever so we have more space to
+                                    # fit wiring").
 KEEP_COIL_R = (KEEP_POST_D + CANB_BUNDLE_OD) / 2.0       # wound centre line, 4.05
 # THE POST STANDS ON THE BED AND GROWS TOWARD THE INSTRUMENT (user, 2026-09-23: "for
 # the cable winding posts, they create a print overhang... align them along the Z axis
@@ -1862,7 +1878,7 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None):
     x0 = HOUS_X0 if x_back is None else x_back
     z1 = HOUS_Z1 if z_top is None else z_top
     xc = x0 + KEEP_WEB_T / 2.0      # centred in the web, whose -X face is the housing's
-    yc = y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + D.MIN_WALL   # the coil clears the cheek
+    yc = y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y   # the coil clears the cheek
     wz1 = z1 - KEEP_HEAD - D.MIN_WALL_2P                        # winding top
     post = cyl(KEEP_POST_D, wz1 - z0, z=z0).translate((xc, yc, 0.0))
     head = cq.Workplane("XY").add(cq.Solid.makeCone(
@@ -1932,6 +1948,39 @@ def plug_standoff(x_back=None):
     return abs(plug_point()[0] - x0) + 4 * D.BEAD
 
 
+def cable_guide(x_face, y_face, z_bed, z_top):
+    """A TURN POST at a housing's front corner, on the connector side.
+
+    Only one lever needs it, and it is the vertical one. LKV is the horizontal lever
+    rotated 90 deg, so its body lies ALONG its plug's axis and its connector points down
+    that axis, away from the neighbour the bus arrives from: every straight line to the
+    plug crosses the housing, the axle or the arm. This is the alternative to bending
+    the cable round nothing -- a post the cable genuinely wraps, so the turn has
+    something making it, which is the rule the rest of this harness is drawn to.
+
+    Same shape as the keeper: a pillar along the build direction with a 45 deg head, on
+    a base in the corner it stands in. The base ties it to BOTH faces it sits against.
+    """
+    r = KEEP_POST_D / 2.0
+    xc = x_face + r + D.MIN_WALL_2P
+    yc = y_face + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y
+    z1 = z_top - KEEP_HEAD - D.MIN_WALL_2P
+    post = cyl(KEEP_POST_D, z1 - z_bed, z=z_bed).translate((xc, yc, 0.0))
+    head = cq.Workplane("XY").add(cq.Solid.makeCone(
+        r, r + KEEP_HEAD, KEEP_HEAD, cq.Vector(xc, yc, z1), cq.Vector(0, 0, 1)))
+    base = box_at(xc + r - x_face, yc - y_face, KEEP_WEB_H,
+                  x=(x_face + xc + r) / 2.0, y=(y_face + yc) / 2.0,
+                  z=z_bed + KEEP_WEB_H / 2.0)
+    return post.union(head).union(base)
+
+
+def guide_point(x_face, y_face, z_bed):
+    """Where a cable wraps the turn post: its axis, above the base."""
+    return (x_face + KEEP_POST_D / 2.0 + D.MIN_WALL_2P,
+            y_face + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y,
+            z_bed + KEEP_WEB_H)
+
+
 def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):
     """Where the slack coil starts on the keeper post: its axis, at the bottom of the
     BARE stretch above the web. Defaults are LKL's, like cable_keeper's."""
@@ -1939,7 +1988,7 @@ def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):
     x0 = HOUS_X0 if x_back is None else x_back
     z0 = HOUS_Z0 if z_bed is None else z_bed
     return (x0 + KEEP_WEB_T / 2.0,
-            y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + D.MIN_WALL,
+            y0 + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y,
             z0 + KEEP_WEB_H)
 
 

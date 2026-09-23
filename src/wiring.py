@@ -1194,8 +1194,8 @@ def lever_bus(nodes):
     parts, cuts = [], []
     turns = _coil_turns()
     for k, (a, b) in enumerate(zip(nodes, nodes[1:])):
-        (n0, _p0, l0, d0, ka0, _pa0, pins0, so0, _ca0, _cb0) = a
-        (n1, _p1, _l1, d1, _ka1, _pa1, pins1, so1, ca1, cb1) = b
+        (n0, _p0, l0, d0, ka0, _pa0, pins0, so0, _ca0, _cb0, _g0) = a
+        (n1, _p1, _l1, d1, _ka1, _pa1, pins1, so1, ca1, cb1, g1) = b
         # AT THE BOTTOM OF THE COLUMN, just above the web. Tried at the top, beside the
         # connector, on the theory that the runs would reach it more directly: measured
         # WORSE (45 unintended against 40), because the approach then crosses the
@@ -1227,9 +1227,14 @@ def lever_bus(nodes):
             # lever the cable is coming from -- so a straight line to it crossed the
             # whole body to get there, board and all. This is the leg the user drew as
             # going "around the back": out past the cradle, along, then in.
-            a1 = [tuple(stand1[m] + ca1[m] * cb1 for m in range(3)), stand1,
-                  tuple(in_pin[m] + d1[m] * CANB_LEAD for m in range(3)),
-                  in_pin]
+            # ...and where a lever carries a TURN POST, the cable wraps it on the way
+            # in. That is the contact the bend needs: on the vertical lever the bus
+            # arrives at the wrong end of a body that lies along the plug's axis, so
+            # the run comes round the front corner and back up the cheek.
+            a1 = ([g1] if g1 is not None else []) + [
+                tuple(stand1[m] + ca1[m] * cb1 for m in range(3)), stand1,
+                tuple(in_pin[m] + d1[m] * CANB_LEAD for m in range(3)),
+                in_pin]
             pts = a0 + [c0]
             pts2 = [c1] + a1
             parts.append((f"wire_canb_{net}_{k}_0", _wire(pts, CANB_WIRE_OD)))
