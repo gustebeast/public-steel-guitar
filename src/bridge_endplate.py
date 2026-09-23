@@ -254,38 +254,62 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 # carry no shoulder and nothing can be fitted to it afterwards from the side.
 #
 #   -Y stop: the -Y arm's bore is BLIND. That AXLE_END_WALL of material is the stop.
-#   +Y stop: the OPTICAL STRIP (user). Its +X head turns over the endplate at
-#            OP.HEAD_Y0, 0.75 outboard of the arm face the shaft ends flush with, and
-#            its underside is 2.34 BELOW the shaft's crown -- so with the board screwed
-#            down the shaft cannot move +Y without driving its crown into FR4. See
-#            _AXLE_STOP_PLAY / _AXLE_STOP_BITE, which is what those two asserts check.
+#   +Y:     THE OPTICAL STRIP, still -- but by COVERING the shaft, not by biting it.
 #
-# That replaces an M2 grub through the +Y arm's top. The grub worked, but it was a
-# fastener bearing on a precision shaft, reachable only with the strings off, in an arm
-# with 2.0 mm between bore crown and top face. The board has to come off for service
-# anyway and is already held by two M4 anchors -- so the retention is free.
+# ⚠ THE BOARD USED TO OVERLAP THE SHAFT AND DOES NOT ANY MORE. It sat 2.34 below the
+# crown, so it blocked +Y travel by standing in the shaft's way; _AXLE_STOP_BITE measured
+# that overlap and is gone. Raising the board to rest on the axle (OP.PLINTH_TOP 12.04
+# against a 12.00 crown) leaves nothing of it below the crown to block with.
 #
-# WHAT IT COSTS: an install PATH. Outboard of the +Y arm the board's wrap plinth fills
-# the shaft's lower half (its top is 9.501, the shaft centre 9.5), so AXLE_CHAN opens a
-# channel through it -- open upward, since there was never any plinth above the axle
-# line to keep. That channel is only reachable with the board off, which is precisely
-# why the board closes it: the escape route and the install route are the same one.
+# I read that as the retention being broken and went looking for a fastener to replace it.
+# It is not broken, and the user's ruling is the reason (2026-09-23): "the PCB can serve as
+# the axle Y axis retention. It doesn't need to be locked super tight in place." The shaft
+# has no axial load on it at all -- the string wrap pulls it DOWN and -X, and nothing in
+# the instrument pushes it along Y. Retention here means "cannot fall out", not "cannot
+# move", and the requirement that actually delivers that is CONTAINMENT:
+#
+#   * along the arms and the eleven comb fingers the bore is a full hole below and a
+#     2.50 mm slot above (the board's relief shaves the crown by 0.20, +-18 deg), so the
+#     shaft cannot lift out anywhere on that span;
+#   * outboard of the +Y arm the install channel's walls rise to the plinth top 12.04,
+#     0.04 PROUD of the crown, so it cannot lift out there either;
+#   * and the channel's mouth is the plinth's own +Y face, which is OP.PCB_YP -- the
+#     board's edge. So every millimetre the shaft could travel is under the board.
+#
+# To escape, the shaft would have to walk the full 15.15 mm of channel with no force
+# pushing it, and then still be under the board. That is enough.
+#
+# ⚠ AND IT IS WHY THE AXLE STILL GOES IN AXIALLY. I briefly had it dropping in from +Z,
+# which would have made the plinth a full-face end stop and retired the bearing fixture --
+# but a drop-in needs the bore open from 3 to 9 o'clock, i.e. every finger cut down to the
+# shaft's equator, and the user's ruling there was the opposite: "we just need the endplate
+# material to not collide with the PCB, anything under the PCB floor can stay". The relief
+# takes +-18 deg off the top. It is a shave, not an opening, and the assembly order in the
+# header stands.
+#
+# It replaced an M2 grub through the +Y arm's top. The grub worked, but it was a fastener
+# bearing on a precision shaft, reachable only with the strings off, in an arm with 2.0 mm
+# between bore crown and top face -- and it was a second hex size (0.9) in a build that
+# holds itself to one 2.5.
 AXLE_END_WALL = MIN_ADDED                             # -Y blind-bore wall (the 2-bead tier)
-AXLE_CHAN_Y1  = OP.PCB_YP + 1.0                       # channel runs out past the plinth end
-_AXLE_STOP_PLAY = OP.HEAD_Y0 - D.BRIDGE_AXLE_Y1       # 0.75 of +Y travel before it stops
-_AXLE_STOP_BITE = (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) - OP.PCB_BOT   # 2.34 of overlap
-assert 0.0 <= _AXLE_STOP_PLAY <= 1.0, (
-    f"the axle's +Y stop is the optical strip's head edge, and it is {_AXLE_STOP_PLAY:.2f} "
-    f"from the shaft end -- either the shaft rattles or it fouls the board on assembly")
+# The channel is exactly the plinth's depth: it has to be a through-cut or the shaft cannot
+# be threaded in, and it must not run PAST the board or its mouth stops being covered.
+AXLE_CHAN_Y1  = OP.PCB_YP
+_AXLE_LIFT = OP.PLINTH_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2)
+assert _AXLE_LIFT >= 0.0, (
+    f"the install channel's walls top out {-_AXLE_LIFT:.2f} BELOW the shaft's crown, so "
+    f"the shaft can lift straight out of it -- the board is above the crown now and "
+    f"cannot hold it down (OP.PLINTH_TOP {OP.PLINTH_TOP:.2f})")
+_AXLE_ESCAPE = AXLE_CHAN_Y1 - OP.PCB_YP
+assert _AXLE_ESCAPE <= 0.0, (
+    f"the axle's install channel runs {_AXLE_ESCAPE:.2f} past the board's +Y edge, so its "
+    f"mouth is uncovered -- the shaft could walk out and lift clear")
 # ...and the -Y wall has to SURVIVE every other cut in this part, not merely be drawn.
 # The comb-finger bores used to eat it whole -- see the clamp in _build's comb loop.
 _AXLE_BLIND_WALL = D.BRIDGE_AXLE_Y0 - -D.BRIDGE_ARM_OUT
 assert _AXLE_BLIND_WALL >= D.MIN_WALL_2P - 1e-9, (
     f"the axle's -Y blind wall is {_AXLE_BLIND_WALL:.2f}, under the {D.MIN_WALL_2P} floor -- "
     f"that wall is the shaft's install stop")
-assert _AXLE_STOP_BITE >= 1.0, (
-    f"the board's underside is only {_AXLE_STOP_BITE:.2f} below the axle crown; it has to "
-    f"overlap the shaft properly to stop it, or the shaft slides out under it")
 
 Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general top
 # ── GUIDE RODS: SOCKETED FROM ABOVE, HANGING DOWN (user) ────────────────────
@@ -488,9 +512,10 @@ def _axle_negative() -> cq.Workplane:
     """The shaft's whole path -- arms AND comb fingers -- as ONE bore, CUT LAST.
 
     It runs from the -Y blind floor (AXLE_END_WALL short of that arm's outer face: the
-    shaft's -Y stop) straight out through the +Y arm and on through the board's wrap
-    plinth to AXLE_CHAN_Y1. That last stretch is the INSTALL path, open upward because
-    the plinth top sits level with the axle centre; the board closes it.
+    shaft's -Y stop) out to the +Y arm's outer face and STOPS THERE. It used to carry on
+    through the board's wrap plinth as an install channel; it does not any more, because
+    the shaft drops in from +Z rather than sliding in axially, and the plinth it used to
+    pass through is now the +Y stop. See AXLE_CHAN_Y1.
 
     IT USED TO BE THREE CUTS FOR ONE HOLE: this function bored the two arms, and the comb
     loop bored each finger separately as it unioned it. They did not even agree on the
@@ -823,7 +848,9 @@ def _build() -> cq.Workplane:
                         .close().extrude((Z6 + 1.0) - _SR_TOP))
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
-    body = body.union(OP.opt_cover())
+    _cov = OP.opt_cover()                    # None once the lid was deleted
+    if _cov is not None:
+        body = body.union(_cov)
     # BEARING + STRING opening: ONE cut per string owns the whole opening (user). Constant ±BR_HW
     # width in Y over the whole rectangle, flat +X face — but a HOUSE plan (user), not a plain
     # prism: the −X end closes at 45° in plan to a ridge on the string line, because that end IS

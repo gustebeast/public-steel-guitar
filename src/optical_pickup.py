@@ -204,7 +204,7 @@ BAND_CLR   = 0.2                                              # keep off both ba
 # What removing it really costs is MECHANICAL -- it is the debris lid, and it is what
 # stands between a dropped bar and twenty photodiodes. That is the trade, and it is the
 # user's to make; nothing here is worth 10 dB if the board dies in a year.
-OPT_GAP = 3.0                                    # sensor face -> string UNDERSIDE
+# OPT_GAP is now DERIVED at the Z stack (the board rests on the axle) -- see below.
 PCB_T   = _PCB_T                                 # FR4 NOMINAL -- cadkit.pcb owns the value
                                                  # (one copy for every board). Correct for 4 layer:
                                                  # JLCPCB's standard 4-layer thickness and
@@ -359,6 +359,22 @@ for _k, (_cw, _ch) in CRTYD.items():
         "%s: courtyard is smaller than the body, which cannot be right" % _k)
 
 
+# Anything over the sensing field must still clear the strings. This WAS a round 1.5 with
+# no derivation -- "the floor on what is left above" the 1.75 op-amps -- and it was the only
+# thing standing between the board and ~11 dB. Budgeted instead, at the sensing station:
+#     string vibration  0.306   a hard 3 mm midpoint pluck x sin(pi d/L), 10.2% at d=20
+#     bar depression    0.067   1 mm at 300 mm, straight line to the bridge
+#     setup variation   0.300   string height trim at bridge/nut
+#     part + print tol  0.200   (board thickness is already handled: PLINTH_TOP is
+#                                datumed off PCB_T_MAX, not the nominal)
+#     ------------------------
+#     required          0.873
+# 1.10 is 1.3x that. The margin is smaller than it looks on paper because three of the four
+# terms are themselves conservative -- a 3 mm pluck is hard playing, and the setup term is a
+# full trim range rather than a tolerance.
+PART_STRING_CLR = 1.10
+
+
 # ── Z STACK, built UPWARD from the deck ─────────────────────────────────────
 # Datum is the LOWEST string underside. Centres are coplanar (verified), so the THICKEST
 # string hangs lowest and is the one that sets the standoff; every thinner string simply
@@ -379,8 +395,32 @@ for _k, (_cw, _ch) in CRTYD.items():
 # the same for every string, so shrinking it is balance-NEUTRAL; the thin-string deficit is
 # purely the 5x diameter, which is what the per-string R1-R10 emitter currents are for.
 STRING_BOT_MIN = D.STRING_Z
-SENSE_FACE_Z   = STRING_BOT_MIN - OPT_GAP                     # emitter faces UP
-PCB_TOP        = SENSE_FACE_Z - LED_PKG[2]
+# ⚠ THE BOARD SITS ON THE AXLE (user, 2026-09-23), so the standoff is not a choice any
+# more -- it falls out of the axle. The Ø8 shaft tops at 12.00 and the board's UNDERSIDE
+# rests there. The underside is PLINTH_TOP, NOT PCB_BOT: the plinth is datumed off
+# PCB_T_MAX so that a max-thickness board's top lands on PCB_TOP. Deriving from PCB_BOT is
+# how I first quoted 1.30 mm of part-to-string clearance when the true figure is 1.14.
+# ⚠ THE TALLEST PART UNDER THE FIELD SETS THIS, AND IT USED TO BE THE OP-AMP. SOIC-14
+# stands 1.75 against the PD15's 1.10, so while the quad TIAs sat beside their detectors
+# they -- not the photodiode -- were what ran out of room, and they pinned the board 0.61
+# below the axle. Moving them to the +X band (see COL_OPA) hands the title back to the
+# detector and is the whole reason the board can rest on the axle and carry a comb.
+# _assert_field_clear re-checks this against every placed part, so a part that creeps back
+# under the strings fails loudly rather than silently reopening the gap.
+FIELD_TALLEST  = PD_PKG[2]                                    # 1.10, the PD15s
+PCB_TOP        = STRING_BOT_MIN - PART_STRING_CLR - FIELD_TALLEST
+SENSE_FACE_Z   = PCB_TOP + LED_PKG[2]                         # emitter faces UP
+OPT_GAP        = STRING_BOT_MIN - SENSE_FACE_Z                # 2.00, was a typed 3.0
+AXLE_TOP       = D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2     # 12.00
+# ⚠ AND THIS IS WHAT STANDS BETWEEN THE BOARD AND THE COMB. Resting the board ON the axle
+# would let its hole become ten bearing slots with 4 mm strips between them, instead of one
+# 30 x 105 opening -- ten extra bridges across the middle of the board. The board's
+# underside is PLINTH_TOP, and it lands 0.61 BELOW the axle at the SOIC-14 height. Swapping
+# the quad TIAs for a shorter package is the whole difference:
+#     SOIC-14  1.75  plinth 11.39  gap 2.00   +7.3 dB   0.61 short of the axle
+#     TSSOP-14 1.20  plinth 11.94  gap 1.45  +12.3 dB   0.06 short
+#     QFN-16   0.90  plinth 12.24  gap 1.15  +15.5 dB   ON the axle
+# TSSOP missing by 0.06 is worth knowing before anyone orders one.
 PCB_BOT        = PCB_TOP - PCB_T                              # NOMINAL board underside
 # THE PLINTH IS DATUMED OFF THE WORST-CASE BOARD, NOT THE NOMINAL ONE. The printed plinth
 # is a fixed surface; the board thickness is not. Referencing the plinth to PCB_BOT (the
@@ -393,9 +433,6 @@ PCB_BOT        = PCB_TOP - PCB_T                              # NOMINAL board un
 # mechanical interference is the right way round.
 PLINTH_TOP     = PCB_TOP - PCB_T_MAX                          # what the endplate builds to
 STANDOFF       = PLINTH_TOP - DECK_TOP                        # under the board
-# Anything over the sensing field must still clear the strings. The quad op-amps (1.75)
-# are the deep ones out there; this is the floor on what is left above them.
-PART_STRING_CLR = 1.5
 
 # ── COVER -- the lid that makes up-firing viable ────────────────────────────
 # Sits in the optical gap over the sensor row only. Three jobs: an APERTURE (each string
@@ -404,10 +441,20 @@ PART_STRING_CLR = 1.5
 # It is honest about its limits: at this standoff a slot cannot collimate much -- the
 # geometric rejection is a few dB, and the heavy lifting against sun is an IR-pass
 # window (see BOM.md). What it definitely buys is the -X wall and the debris seal.
-COVER_GAP = 0.3                                  # sensor face -> cover underside
-COVER_T   = D.MIN_WALL_2P                        # two-bead floor for added material
-COVER_Z0  = SENSE_FACE_Z + COVER_GAP             # 12.284
-COVER_Z1  = COVER_Z0 + COVER_T                   # 13.884
+# ⚠ THE COVER IS GONE (user, 2026-09-23: "debris isn't a compelling enough reason"), and
+# it was costing 1.90 mm of standoff -- COVER_GAP 0.30 + COVER_T 1.60 -- for an optical
+# job it was not doing. What it actually protected was TIA HEADROOM: at Rf 1M and MID 0.33
+# the amp clips at 2.97 uA of ambient, and widening the detector's view from ~+-30 to
+# ~+-60 deg is 3.7x solid angle. Rf 1M -> 250k buys that back four-fold for ~1 dB of the
+# gain. See .ins/opt_gap.py.
+# CROSSTALK IMPROVES rather than worsening, which is the part that matters for a pitch
+# pickup: the aperture bought isolation, but so does getting closer, and faster. At the
+# old 3.00 gap a +-60 deg detector viewed +-5.20 mm against a 4.75 half-pitch -- it was
+# looking at its neighbour. At 2.00 it views +-3.46 and is clear.
+COVER_GAP = 0.0
+COVER_T   = 0.0
+COVER_Z0  = SENSE_FACE_Z
+COVER_Z1  = SENSE_FACE_Z
 SLOT_DX   = 3.0                                  # aperture over the triplet, in X
 SLOT_DY   = 7.6                                  # ...and in Y: the PD15 triplet spans
                                                  # +-3.775; the teeth left between
@@ -535,7 +582,11 @@ Y_TAIL   = -(D.BRIDGE_ARM_OUT + WRAP_CLR)
 #   THE DECK STAYS CLEAR. The tail no longer lies across the deck panel.
 # +X edge stops MIN_WALL_2P short of the endplate's outer face so the board is not flush
 # with the instrument's exterior.
-TAIL_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                    # 23.46
+# ⚠ FLUSH WITH THE ENDPLATE'S +X FACE (user, 2026-09-23), not set back from it. The
+# MIN_WALL_2P inset was there to keep a printed wall outboard of the board; there is no
+# wall there -- the endplate simply ends -- so the inset bought nothing and cost 1.60 mm
+# of the +X band, which is now where the op-amps and their feedback grids live.
+TAIL_X1 = D.BRIDGE_BASE_X1                                    # 25.06, flush
 # -X edge runs out to the STRIP's own -X edge. Sized off the LQFP144 instead (-18.40) the
 # two sections overlapped by just 1.60 in X, so the whole board hung on a 1.6 mm waist:
 # brittle, and hopeless for routing -- 20 analog channels + 10 LED drives + power all have
@@ -631,8 +682,36 @@ ROW_X0    = SENSE_X - CRTYD["0805OPT"][0] / 2                 # the row's -X edg
 #   * PART TO BOARD EDGE is a BODY rule (JLCPCB's ~1.0 mm), so EDGE_KEEP applies to PKG.
 #   * PART TO PART is a LAND rule, so it applies to CRTYD -- and two courtyards that
 #     TOUCH are already legal, because the clearance is inside the boundary.
-COL_OPA   = PCB_X1S + EDGE_KEEP + PKG["SOIC-14"][0] / 2
-PART_KEEP = ROW_X0 - (COL_OPA + CRTYD["SOIC-14"][0] / 2)      # OUTPUT: land-to-land
+# ── the comb's slot extents in X ────────────────────────────────────────────
+# Defined HERE rather than beside the slots themselves (which need _BRG_Y, ~1350 lines
+# down) because COL_OPA is measured off the +X slot edge and has to know them.
+O_SLOT_CLR = 0.25
+_FINGER_X0 = -17.20                     # measured: what stands above the board, at the arms
+_STRING_EXIT_X = 1.10                   # measured: where a .080 string crosses the board's z
+O_SLOT_X0 = _FINGER_X0 - O_SLOT_CLR
+O_SLOT_X1 = _STRING_EXIT_X + O_SLOT_CLR
+# ⚠ THE +X EDGE IS THE STRING'S, NOT THE BEARING'S (user). The bearing ends at 0.00 but the
+# string leaves over its top and descends to the changer, crossing this board's z band at
+# x 0.95 for a .070 and ~1.08 for the .080 the instrument is built to take. Ending the slot
+# at the bearing would have the board cut the string.
+
+# ⚠ THE QUAD TIAs LIVE ON THE +X BAND NOW, PAST THE BRIDGE (user, 2026-09-23). They were
+# beside the detectors, which is the textbook place for a transimpedance amp -- and it is
+# what pinned the whole board 0.61 mm below the axle, because SOIC-14 is 1.75 tall against
+# the PD15's 1.10 and BOTH sat under the strings. Past the bridge termination nothing runs
+# overhead, so height there is free, and the detector becomes the tallest part under the
+# field. That is the entire reason the board can now rest on the axle and carry a comb.
+# WHAT IT COSTS, measured rather than assumed: the summing node is the board's one high-Z
+# net and it goes from ~8 mm to ~30 mm. Over the In1 plane that is ~3.6 pF on a 25 pF Cin,
+# moving the en*2*pi*f*Cin term 0.090 -> 0.103 pA/rtHz: 0.22 dB, against ~4 dB bought by
+# the smaller gap. The twenty nets do NOT bundle -- they sit on the detectors' own 4.75 mm
+# y pitch and cross the comb's strips four to a strip, of eleven a layer can take.
+# ⚠ STILL TO CHECK: the TIA pole. More Cin wants more Cf for the same phase margin, and
+# the pole is at ~160 kHz with the carrier's sidebands at 28..68 kHz.
+COL_OPA   = O_SLOT_X1 + EDGE_KEEP + PKG["SOIC-14"][0] / 2
+# the op-amps are EAST of the slots now, so this is the gap from the slot edge to their
+# land rather than from their land to the sensor row
+PART_KEEP = (COL_OPA - CRTYD["SOIC-14"][0] / 2) - O_SLOT_X1
 assert PART_KEEP >= 0.0, (
     "the sensing strip no longer fits its two columns: the sensor row's land and the "
     "quad op-amps' land overlap by %.2f mm. The band is %.2f wide and the lands need "
@@ -1968,11 +2047,27 @@ _BRG_TOP = D.BRIDGE_BEARING_Z + D.BRIDGE_BEARING_OD / 2
 # from the seat to the bearing top does not grow outward with height, so it is not an
 # overhang. Turn this back on if a print says otherwise.
 _O_RAMP = 0.0                                          # was _BRG_TOP - PLINTH_TOP
-O_HOLE_X0 = _BRG_X0 - D.MIN_WALL_2P - _O_RAMP
-O_HOLE_X1 = _BRG_X1 + D.MIN_WALL_2P + _O_RAMP
-O_HOLE_Y = _BRG_Y + D.MIN_WALL_2P + _O_RAMP
-assert O_HOLE_X1 < TAIL_X1 - 2 * D.MIN_WALL_2P, (
-    "the O's +X band is narrower than two walls -- the ramp has eaten it")
+# ⚠ A COMB, NOT ONE OPENING (user, 2026-09-23). One 30 x 105 hole is the lazy shape and it
+# costs the board its whole middle. What actually pokes through the board's plane is:
+#   * ten BEARINGS, 5.0 wide on a 9.5 pitch, reaching z 16.0;
+#   * two ARMS at y +-48.40, 4.80 wide, which hold the axle and must stay full height;
+#   * and between the bearings the endplate's COMB FINGERS, which reach z 16.0 today but
+#     are doing retention rather than carrying load (nothing pushes the axle +Z) -- so they
+#     are cut down to the board's underside and the board's own strips take that job over.
+# That leaves 4.00 mm of PCB between adjacent slots: eleven tracks per signal layer, and
+# each strip only has to carry the four nets of its two neighbouring strings. Those strips
+# are the ONLY way the detectors reach the +X band, so the comb is not cosmetic -- with one
+# big hole the 20 summing nodes would have to detour ~100 mm round the wraps.
+O_SLOTS = ([[O_SLOT_X0, D.string_y(i) - D.BRIDGE_BEARING_W / 2 - O_SLOT_CLR,
+             O_SLOT_X1, D.string_y(i) + D.BRIDGE_BEARING_W / 2 + O_SLOT_CLR]
+            for i in range(D.N_STRINGS)]
+           + [[O_SLOT_X0, ya - BE_ARM_W / 2 - O_SLOT_CLR,
+               O_SLOT_X1, ya + BE_ARM_W / 2 + O_SLOT_CLR]
+              for ya in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y)])
+_strip = abs(D.string_y(1) - D.string_y(0)) - (D.BRIDGE_BEARING_W + 2 * O_SLOT_CLR)
+assert _strip >= 2 * D.MIN_WALL_2P, (
+    "the comb's strips are %.2f mm -- under two walls of PCB" % _strip)
+O_HOLE_X0, O_HOLE_X1, O_HOLE_Y = O_SLOT_X0, O_SLOT_X1, _BRG_Y   # kept for the endplate
 _SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),      # +Y wrap, over the endplate
              (Y_TAIL, HEAD_Y0, STRIP_X1, TAIL_X1),     # full width; _o_hole() cuts the O
              (WRAP_Y, Y_TAIL, PCB_X1S, TAIL_X1),       # -Y wrap -- the head's mirror
@@ -2039,11 +2134,11 @@ def _outline(grow=0.0, t=None, zc=None):
                      x=((x0 + grow) + (x1 - grow)) / 2, y=(a + b) / 2, z=zc)
         out = blk if out is None else out.union(blk)
     if O_SHAPE:
-        # the hole SHRINKS by `grow`, where the outline grows: a slip-fit copy of the board
-        # must stay clear of the block on the inside too
-        out = out.cut(box_at((O_HOLE_X1 - grow) - (O_HOLE_X0 + grow),
-                             2 * (O_HOLE_Y - grow), t + 2.0,
-                             x=(O_HOLE_X0 + O_HOLE_X1) / 2, y=0.0, z=zc))
+        # each slot SHRINKS by `grow` where the outline grows: a slip-fit copy of the board
+        # must stay clear of what pokes through it on the inside too
+        for sx0, sy0, sx1, sy1 in O_SLOTS:
+            out = out.cut(box_at((sx1 - grow) - (sx0 + grow), (sy1 - grow) - (sy0 + grow),
+                                 t + 2.0, x=(sx0 + sx1) / 2, y=(sy0 + sy1) / 2, z=zc))
     for fx, fy in _concave():
         out = out.edges(NearestToPointSelector((fx, fy, zc))).fillet(ROUT_R + grow)
     return out
@@ -2151,6 +2246,11 @@ def opt_cover() -> cq.Workplane:
 
     It covers the ROW ONLY, not the whole board: the quad op-amps stand 1.75 above the
     board, higher than the roof, and they need no protection -- only the optics do."""
+    # ⚠ THERE IS NO COVER ANY MORE (COVER_T 0). Return None rather than a zero-height box:
+    # OCCT raises Standard_DomainError on a 0 mm extrude, so the endplate's union of this
+    # blew up with a stack trace that says nothing about covers. Callers skip a None.
+    if COVER_T <= 0.0:
+        return None
     # +X edge runs to the DECK BAND edge, not the board edge, so the roof fuses into the
     # endplate's comb brace instead of floating 0.2 short of it.
     x0, x1 = COVER_X0, BAND_X0
@@ -2614,10 +2714,17 @@ def _assert_field_clear():
     # 4. anything over the sensing field must clear the STRINGS in Z -- they run over the
     # whole board, not just over the sensor row, so a tall package in the analog field is
     # under a string even though it is nowhere near the optics.
+    # ⚠ AND IT IS BOUNDED IN X BY THE BEARINGS, WHICH IS WHY THE OP-AMPS COULD MOVE. A
+    # string runs from the nut in -X, over its bearing, and then DOWN to the changer: past
+    # _STRING_EXIT_X it has already crossed this board's z band and is below the copper.
+    # So the +X band is the one place on the board with nothing overhead, and a SOIC-14
+    # there is free where the same part at the sensor row pins the whole assembly 0.61 mm
+    # below the axle. Bound at O_SLOT_X1 rather than at _STRING_EXIT_X so the slot's own
+    # clearance is on the safe side of the test.
     for p in PARTS:
         dz = PKG[p["pkg"]][2]
-        _, _, y0, y1 = part_span(p)
-        if y1 <= -SENSE_HL or y0 >= SENSE_HL:
+        x0, _, y0, y1 = part_span(p)
+        if y1 <= -SENSE_HL or y0 >= SENSE_HL or x0 >= O_SLOT_X1 - 1e-9:
             continue
         clr = STRING_BOT_MIN - (PCB_TOP + dz)
         if clr < PART_STRING_CLR - 1e-9:
@@ -2626,7 +2733,14 @@ def _assert_field_clear():
                 f"Z={PCB_TOP + dz:.2f} under the sensing field, leaving {clr:.2f} to the "
                 f"lowest string at {STRING_BOT_MIN:.2f} -- under PART_STRING_CLR "
                 f"{PART_STRING_CLR}")
-    # 5. the COVER must clear the strings above and the parts below it
+    # 5. the COVER must clear the strings above and the parts below it -- WHEN THERE IS ONE.
+    # ⚠ BOTH CHECKS BELOW ARE ABOUT A LID THAT NO LONGER EXISTS. With COVER_T at 0 the
+    # "cover underside" collapses onto the sensor face, so every part taller than the
+    # emitter fails a test whose subject has been deleted. Guard them rather than delete
+    # them: the cover comes back the moment someone sets COVER_T, and check 4 above already
+    # guards the thing that still matters, which is parts against the STRINGS.
+    if COVER_T <= 0.0:
+        return
     if STRING_BOT_MIN - COVER_Z1 < 1.0 - 1e-9:
         raise AssertionError(
             f"optical strip: cover top {COVER_Z1:.2f} leaves "

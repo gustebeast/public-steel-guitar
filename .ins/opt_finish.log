@@ -2,9 +2,9 @@
       stitched 141 pad(s) on GND straight to the plane
       local nets: laid 139 segment(s), 1 left to the router
           not placeable: TIA_OUT_9A: Rf51.2 -> Cf51.2 (3.10 mm)
-          placed 23 explicit via(s)
+          placed 15 explicit via(s)
     optical.kicad_pcb: 236 parts, 161 nets (+127 single-pad, not placed), 72.3 x 188.5 mm
-    exported optical.dsn (142 kB)
+    exported optical.dsn (140 kB)
       declared In1.Cu as plane layer(s) -- the router will not route on them
       froze 15 pre-laid wire(s) as (type fix) -- the declared pair(s)
       router clearance 137 um (fab rule 127 um + 10 um of rounding margin)
@@ -15,20 +15,18 @@
       ?  Every contribution helps keep this project open and active!     ?
       ????????????????????????????????????????????????????????????????????
       re-laid 30 frozen wire(s) the session file does not carry
-      ⚠ 10 stitch via(s) landed where the plane is not: GND at 67.53,27.09, GND at 68.73,27.09, GND at 68.73,45.82, GND at 68.73,83.27, GND at 69.93,102.00, GND at 69.93,27.09
-        moved 6 of them into the plane and re-poured
-      ⚠ 4 stitch via(s) landed where the plane is not: GND at 67.53,27.09, GND at 68.73,27.09, GND at 68.73,45.82, GND at 68.73,83.27
+      ⚠ 16 stitch via(s) landed where the plane is not: GND at 106.48,163.91, GND at 111.05,153.29, GND at 117.54,162.95, GND at 121.36,162.95, GND at 67.53,102.00, GND at 67.53,27.09
+        moved 8 of them into the plane and re-poured
+      ⚠ 8 stitch via(s) landed where the plane is not: GND at 111.05,153.29, GND at 117.54,162.95, GND at 121.36,162.95, GND at 67.53,27.09, GND at 68.73,102.00, GND at 68.73,27.09
         (the rest have nowhere to go: move the part or except the pad -- another routing run will not help)
-      snapped 72 hairline gap(s) shut (no copper added)
-      tidied 1 router via(s) -- dangling TIA_IN_6A
-      dropped 54 degenerate track fragment(s) from the import
-    optical.kicad_pcb: 2422 track segments + vias imported
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+      snapped 74 hairline gap(s) shut (no copper added)
+        ⚠ SAI_FS changes layer at 100.00,124.76 and a 0.6 via does not fit there
+        ⚠ SAI_FS changes layer at 100.00,124.76 and a 0.6 via does not fit there
+        ⚠ SAI_FS changes layer at 100.00,124.76 and a 0.6 via does not fit there
+        ⚠ SAI_FS changes layer at 100.00,124.76 and a 0.6 via does not fit there
+      dropped in 1 via(s) where a net changed layer with nothing to carry it
+      dropped 49 degenerate track fragment(s) from the import
+    optical.kicad_pcb: 2370 track segments + vias imported
     swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
     swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
     swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
@@ -47,20 +45,12 @@
     swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
     swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
     swig/python detected a memory leak of type 'ZONE_FILLER *', no destructor found.
-  11 DRC warning(s): silk_over_copper x5, silk_overlap x5, track_dangling x1
-  20 declared violation(s) (sensor triplets), 8 unexpected
-     UNEXPECTED shorting_items: Track [TIA_OUT_8B] on F.Cu, length 7.5007 mm + Via [GND] on F.Cu - B.Cu
-     UNEXPECTED shorting_items: Track [TIA_OUT_6B] on F.Cu, length 7.5007 mm + Via [GND] on F.Cu - B.Cu
-     UNEXPECTED shorting_items: Track [TIA_OUT_10B] on F.Cu, length 7.5010 mm + Via [GND] on F.Cu - B.Cu
-     UNEXPECTED shorting_items: Track [TIA_OUT_4B] on F.Cu, length 7.5007 mm + Via [GND] on F.Cu - B.Cu
-     UNEXPECTED clearance: Track [GND] on F.Cu, length 0.8101 mm + Track [TIA_OUT_8B] on F.Cu, length 7.5007 mm
-     UNEXPECTED clearance: Track [GND] on F.Cu, length 0.8101 mm + Track [TIA_OUT_6B] on F.Cu, length 7.5007 mm
-     UNEXPECTED clearance: Track [GND] on F.Cu, length 0.8102 mm + Track [TIA_OUT_10B] on F.Cu, length 7.5010 mm
-     UNEXPECTED clearance: Track [GND] on F.Cu, length 0.8101 mm + Track [TIA_OUT_4B] on F.Cu, length 7.5007 mm
-  pass 1: 10 unconnected, 8 violation(s)
+  10 DRC warning(s): silk_over_copper x5, silk_overlap x5
+  20 declared violation(s) (sensor triplets), 0 unexpected
+  pass 1: 10 unconnected, 0 violation(s)
     ⚠ optical has 10 unconnected item(s): the board is NOT fully routed, so the lengths below measure how far the router got, not how well matched the groups are. Finish routing before reading them as skew.
-    ok   ULPI       skew  35.81 mm (budget 80.00)  25.1..60.9 mm over 12 nets
+    ok   ULPI       skew  51.27 mm (budget 80.00)  24.4..75.7 mm over 12 nets
     ok   USB_HS     skew   0.18 mm (budget  8.30)  11.6..11.8 mm over 2 nets
     optical: 2 group(s) checked, 0 problem(s)
     optical.geom.json: 236 footprints, board 72.34 x 188.53
-optical: 10 unconnected, 8 violation(s)
+optical: 10 unconnected, 0 violation(s)
