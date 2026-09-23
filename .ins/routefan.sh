@@ -65,13 +65,19 @@ io.open(p,'w',encoding='utf-8',newline='\r\n').write(s2)" "$d/src/optical_pickup
     if ! py -3.12 elec/optical.py > gen.log 2>&1; then
       echo "$name: GENERATOR FAILED -- $(tail -1 gen.log)"; exit 1
     fi
-    # //b keeps this console (so the redirection above still captures finish.py), and the
-    # priority class is INHERITED by the java the router spawns -- which is the process
-    # that actually costs the machine something.
-    cmd //c start $NICE //b //wait "" "$KI" elec/finish.py elec/out/optical > finish.log 2>&1
-    echo "$name: $(grep -oE '[0-9]+ unconnected, [0-9]+ violation\(s\)' finish.log | tail -1) \
-| $(grep -cE 'UNEXPECTED' finish.log) unexpected \
-| $(grep -oE 'laid [0-9]+ segment' finish.log | tail -1)"
+    powershell -NoProfile -ExecutionPolicy Bypass -File "$SRC/.ins/lowrun.ps1"         -Exe "$KI" -Log finish.log elec/finish.py elec/out/optical >/dev/null 2>&1
+    # ⚠ A MISSING RESULT MUST NOT PRINT AS A RESULT. When `start` silently ran nothing,
+    # every finish.log was empty and this line still printed six well-formed rows -- the
+    # name, "0 unexpected", and two blanks where the numbers go -- which reads as six
+    # routes that found nothing wrong rather than as six routes that never ran. It is the
+    # same shape of bug as the control variant's EDIT FAILED: a harness reporting
+    # success for a non-event, in output tidy enough that nobody looks twice.
+    got=$(grep -oE '[0-9]+ unconnected, [0-9]+ violation\(s\)' finish.log | tail -1)
+    if [ -z "$got" ]; then
+      echo "$name: NO RESULT -- finish.log $(wc -c < finish.log) bytes, last line: $(tail -1 finish.log | cut -c1-60)"
+    else
+      echo "$name: $got | $(grep -cE 'UNEXPECTED' finish.log) unexpected | $(grep -oE 'laid [0-9]+ segment' finish.log | tail -1)"
+    fi
   ) &
   while [ "$(jobs -r | wc -l)" -ge "$JOBS" ]; do wait -n 2>/dev/null || sleep 5; done
 done
