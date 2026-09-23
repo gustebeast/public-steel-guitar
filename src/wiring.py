@@ -72,6 +72,7 @@ import cadquery as cq
 
 from . import dimensions as D
 from . import electronics as EL
+from . import knee_lever as _KL   # the keeper barrel the lever slack winds on
 from .helpers import oct_cable
 
 # modeled cable OD per net (mm): jacketed bundles (shielded/USB) drawn as ONE
@@ -1016,12 +1017,35 @@ def build_wires():
     return out
 
 
+# The lever stations' connector part names, as the assembly names them. The prefixes
+# mirror src.build.LEVER_STATIONS (LKL keeps the bare names); a station this does not
+# list simply gets no allow-list entry, which fails LOUD rather than silently.
+_LEVER_PREFIX = ("", "vkl_", "lkr_", "rkl_", "rkr_")
+_LEVER_CONNS = {p + n for p in _LEVER_PREFIX
+                for n in ("kl_can_header", "kv_can_header")}
+# ...and the HOUSINGS, for the coil alone: it is wound ON the keeper barrel, which is
+# part of the housing, so cable-on-keeper is a designed contact in the same way
+# cable-on-connector is. The straight RUNS get no such licence -- a run that touches a
+# housing is a routing fault, which is the whole point of a whitelist.
+_LEVER_BODIES = _LEVER_CONNS | {p + n for p in _LEVER_PREFIX
+                                for n in ("knee_housing", "kv_housing")}
+
 # what each net is ALLOWED to touch (its source/destination bodies);
 # everything else a wire grazes is a routing bug the gate reports
 WIRE_OK = {
     "wire_canh":      {"motor_ctrl", "tee_pcb"},
     "wire_canl":      {"motor_ctrl", "tee_pcb"},
     "wire_canbh":     {"motor_ctrl", "tee_pcb"},
+    # bus B through the KNEE LEVERS (lever_bus). A segment may touch the connectors it
+    # runs between -- and nothing else: every housing, cradle, magnet or axle it grazes
+    # is a routing bug, which is the whole reason this table is a WHITELIST.
+    # ...and a station's parts carry its PREFIX (LKL keeps the bare names, the rest
+    # are `vkl_`, `lkr_`, ... -- src.build.LEVER_STATIONS), which check_overlaps' base()
+    # does not strip: it strips trailing INDEX groups only. So the allow-list has to
+    # name them as the assembly does.
+    "wire_canb_coil":  _LEVER_BODIES,
+    # ...the four conductors are added below, where CANB_NETS is defined (this table
+    # is read at import by tools.check_overlaps, so it only has to be complete by then)
     "wire_canbl":     {"motor_ctrl", "tee_pcb"},
     "motor_pigtail":  {"tee_pcb", "motor"},
     # leg↔body TRRS: the chassis jack's factory cable (tenon channel ->
@@ -1068,3 +1092,233 @@ for _i, (_tx, _ty, _td) in enumerate(tee_stations()):
                     and _bcy - _bl / 2 < _bay[3] and _bcy + _bl / 2 > _bay[2]), (
             "tee %d lands inside string %d's bay (x %.1f..%.1f, y %.1f..%.1f)"
             % (_i, _m + 1, _bay[0], _bay[1], _bay[2], _bay[3]))
+
+
+# ── BUS B THROUGH THE KNEE LEVERS, and the CUT LIST ─────────────────────────
+# Until now bus B stopped at the first lever board: the tees that used to carry it on
+# were deleted when the boards started passing the trunk through their own 8-way, and
+# nothing replaced the run. So the instrument's most position-dependent harness was the
+# one length nothing measured.
+#
+# THIS IS MEANT TO BE THE SOURCE OF TRUTH FOR CUTTING (user, 2026-09-22). Every number
+# below is read off the parts -- the plug's own cable end and the lace loop's bore,
+# through knee_lever.plug_point / lace_point -- so the cut list cannot drift from the
+# levers it is cut for. `lever_bus` returns the drawn runs AND their lengths from the
+# same polylines, for the same reason: a report computed separately is a second model.
+#
+# THE SLACK IS A COIL, not a fold: a helix is one swept solid (3 faces) where a folded
+# hank drawn in octagonal segments is ~1200, and there is one per lever (user, and
+# brenner's finding on the leg harness). It is wound on the run's own axis, marching
+# along it, which is how a service loop actually lies.
+#
+# ⚠ ONE BUNDLE, NOT FOUR CONDUCTORS, for now. brenner's harness draws each conductor
+# separately and squares it out of its own pin, which is the better drawing and the one
+# to converge on; `cadkit.cables.bundle_paths` and `helix_cable` are on their branch and
+# not in main yet (branner asked the lead to take it, 2026-09-22). The CUT LIST is
+# unaffected: four conductors of a bundle are cut to the bundle's length, and the table
+# below multiplies by CANB_WAYS to say so.
+CANB_BUNDLE_OD = _KL.CANB_BUNDLE_OD      # the four together; the KEEPER is sized
+CANB_WIRE_OD = _KL.CANB_WIRE_OD          # from these, so knee_lever owns them
+assert CANB_WIRE_OD == WIRE_OD["wire_canbh"], (
+    "the lever bus's conductor and the CAN pair's have drifted apart")
+# THE FOUR CONDUCTORS, DRAWN AS FOUR AND COLOURED AS FOUR (user, 2026-09-22), in
+# harness.PH_PINOUT order, with the instrument's own cable colours (black GND, red +V,
+# yellow CAN_H, green CAN_L -- see _COLORS in src.build). The offsets lay them in a
+# square bundle: this is a CONSTANT lateral offset, not a swept frame, so a conductor
+# keeps its place along the whole run but the bundle does not twist round corners the
+# way brenner's cables.bundle_paths does. That is the one to converge on when their
+# branch lands; the lengths differ by well under the crimp allowance either way.
+CANB_NETS = (("gnd", (-1, -1)), ("v5", (1, -1)), ("h", (-1, 1)), ("l", (1, 1)))
+CANB_WAYS = len(CANB_NETS)          # GND / +5 V / CAN_H / CAN_L (harness.PH_PINOUT)
+# SQUARE OUT OF THE PLUG far enough to clear the BOARD the plug stands on -- the crimp
+# holds the wire in line for its own length anyway, and a 1.6 lead turned the run while
+# it was still over the PCB.
+CANB_LEAD = 8 * D.BEAD              # 6.4
+# THE SLACK ONE SEGMENT CARRIES. A lever steps on the chassis bottom's mortise grid, so
+# two neighbours moving two steps apart each is 4 * D.LEVER_PITCH; the rest is the
+# service slack to unplug a board and lift it out of its cradle. INSTALL_NOTES KL-2.
+CANB_SLACK = 4 * D.LEVER_PITCH + 25.0            # 66.6
+CANB_COIL_R = _KL.KEEP_COIL_R       # the keeper barrel's own wound radius
+CANB_COIL_PITCH = 4 * D.BEAD        # 3.2 march per turn -- a bundle laid beside itself
+def _coil_layers():
+    """[(radius, turns)] -- the slack wound in LAYERS, outer wraps riding on inner ones.
+
+    A coil is not limited to one wrap deep (user, 2026-09-23: "you can wrap wire around
+    itself so the outer wraps have a larger diameter"), and that is what a hand-wound
+    hank actually is. It matters because it takes the capacity question off the COLUMN:
+    turns-per-layer set the post's height, layers set the capacity, and a layer costs
+    nothing in Z. Before this the post had to be either tall (it ran the whole depth of
+    the vertical lever) or fat (to carry the slack in fewer turns), and neither fitted
+    under a 45 deg buttress on the 28.5 housing.
+
+    Each layer is one bundle further out, so it holds more per turn than the one under
+    it -- which is why the last layer is usually a part-layer.
+    """
+    per = max(1, int(_KL.KEEP_WIND_H // CANB_COIL_PITCH))
+    left, out, r = CANB_SLACK, [], CANB_COIL_R
+    while left > 1e-6:
+        n = min(per, max(1, math.ceil(left / (2.0 * math.pi * r))))
+        out.append((r, n))
+        left -= n * 2.0 * math.pi * r
+        r += CANB_BUNDLE_OD
+    return out
+
+
+def _coil_len(layers):
+    """A wound hank's true length: each layer's helix, at its own radius."""
+    return sum(n * math.hypot(2.0 * math.pi * r, CANB_COIL_PITCH) for r, n in layers)
+
+
+def _coil_path(origin, axis, r, turns, up=True):
+    """One LAYER's helix. Its ends are where the straight runs have to ARRIVE: a helix
+    of radius r about `origin` does not start AT origin, it starts a radius out from
+    it, and runs drawn to the axis instead left a gap at both ends of every coil.
+
+    `up` False walks the layer back down the post, which is what the next layer does --
+    you do not cut the wire and start again at the bottom."""
+    ax = cq.Vector(*axis).normalized()
+    h = turns * CANB_COIL_PITCH
+    o = cq.Vector(*origin) if up else cq.Vector(*origin) + ax * h
+    return cq.Wire.makeHelix(CANB_COIL_PITCH, h, r, o, ax if up else ax * -1)
+
+
+def _coil(path, d=CANB_BUNDLE_OD):
+    """The slack coil as ONE swept solid.
+
+    A round profile on a true helix: 3 faces, against ~1200 for the same coil cut into
+    octagonal segments. The rule this bends (cables are octagonal here because fusing
+    many round segments loses material silently) is about the BOOLEAN, not the shape --
+    a sweep is not a fuse -- so it holds as long as the coil stands as its own part and
+    its ends stay clear of the octagonal run that feeds it.
+
+    ⚠ This is cadkit.cables.helix_cable in all but name, and should BE it once brenner's
+    branch lands in main; main's cables.py still has only helix_pts."""
+    prof = cq.Wire.makeCircle(d / 2.0, path.startPoint(), path.tangentAt(0.0))
+    return cq.Workplane("XY").add(cq.Solid.sweep(prof, [], path, isFrenet=True))
+
+
+def _path_len(pts):
+    return sum(math.dist(a, b) for a, b in zip(pts, pts[1:]))
+
+
+
+def _standoff(pin, d, so, target):
+    """How far out along the plug's own axis the cable runs before it turns -- and NEVER
+    past the point it is turning towards (user, 2026-09-23: "the incoming wire also does
+    a strange thing where it goes too far along x and then backs up").
+
+    The standoff is there to get the cradle and the board behind the cable before it
+    heads off. Where the thing it is heading for is ALREADY behind them -- the keeper
+    post sits off the back corner, so it usually is -- running the full standoff first
+    overshoots and doubles back, which is not what a wire under tension does. Clamping it
+    to the target's own projection turns that doglegged pair into one straight run, and
+    leaves the standoff doing its job untouched wherever the target really is closer in.
+    """
+    proj = sum((target[m] - pin[m]) * d[m] for m in range(3))
+    out = max(CANB_LEAD, min(so, proj))
+    return tuple(pin[m] + d[m] * out for m in range(3))
+
+
+def lever_bus(nodes):
+    """The bus-B chain through the knee levers: [(name, solid)], [(label, mm)].
+
+    `nodes` is [(name, plug, lace, out_dir)] in GUITAR coordinates, in CHAIN ORDER --
+    built by src.build, which is the only module that knows where a lever station is.
+    The import stays one-way that way, the same dodge the pedal housings use.
+
+    Per segment: square out of one lever's plug, straight to the keeper it winds its
+    slack on, then straight to the next lever's plug. The slack is stowed at the
+    UPSTREAM lever because that is the one whose move it is there to absorb
+    (INSTALL_NOTES KL-2).
+
+    Every leg is STRAIGHT: see the segment body for why."""
+    parts, cuts = [], []
+    layers = _coil_layers()
+    for k, (a, b) in enumerate(zip(nodes, nodes[1:])):
+        (n0, _p0, l0, d0, ka0, _pa0, pins0, so0, _ca0, _cb0, _g0) = a
+        (n1, _p1, _l1, d1, _ka1, _pa1, pins1, so1, ca1, cb1, g1) = b
+        # AT THE BOTTOM OF THE COLUMN, just above the web. Tried at the top, beside the
+        # connector, on the theory that the runs would reach it more directly: measured
+        # WORSE (45 unintended against 40), because the approach then crosses the
+        # housing's top corner instead. Left low, and recorded so it is not re-tried.
+        # ONE HELIX PER LAYER, walked up the post and back down again -- the wire is
+        # not cut between layers.
+        base = tuple(l0[i] + ka0[i] * 0.2 for i in range(3))
+        c0 = c1 = None
+        for li, (lr, ln) in enumerate(layers):
+            lp = _coil_path(base, ka0, lr, ln, up=(li % 2 == 0))
+            parts.append((f"wire_canb_coil_{k}_{li}", _coil(lp)))
+            if c0 is None:
+                c0 = lp.startPoint().toTuple()
+            c1 = lp.endPoint().toTuple()
+        # EACH CONDUCTOR ON ITS OWN WAY, so the model reads as a wiring reference (user).
+        # The trunk passes THROUGH a board: this cable leaves the upstream lever on its
+        # OUT half (ways 5-8) and lands on the downstream lever's IN half (1-4), each in
+        # harness.PH_PINOUT order. That is the whole point of the 8-way part.
+        n = len(CANB_NETS)
+        seg = 0.0
+        # the lateral offsets CANB_NETS carried are gone: a conductor now starts and
+        # ends on its OWN contact, so the bundle's spread is the connector's pitch
+        for j_net, (net, _off) in enumerate(CANB_NETS):
+            out_pin = pins0[n + 1 + j_net]          # ways 5..8 on the upstream lever
+            in_pin = pins1[1 + j_net]               # ways 1..4 on the downstream one
+            # SQUARE OUT OF THE PIN for the crimp's length, then along the plug's own
+            # axis until the cradle and the board are behind it, and only then turn.
+            # Turned at the lead alone, the run reached the next lever straight through
+            # whatever stood between -- on one station its own PCB, crystal and caps.
+            b = tuple(in_pin[m] + d1[m] * so1 + ca1[m] * cb1 for m in range(3))
+            a0 = [out_pin,
+                  tuple(out_pin[m] + d0[m] * CANB_LEAD for m in range(3)),
+                  _standoff(out_pin, d0, so0, c0)]
+            # the incoming run's standoff is measured against whatever it comes FROM:
+            # the back-corner wrap where there is one, the bypass where there is not
+            stand1 = _standoff(in_pin, d1, so1, g1 if g1 is not None else b)
+            # PASS THE LEVER OUTBOARD OF ITS CRADLE FIRST. The standoff is along the
+            # plug's axis, and on a MIRRORED station that axis points AWAY from the
+            # lever the cable is coming from -- so a straight line to it crossed the
+            # whole body to get there, board and all. This is the leg the user drew as
+            # going "around the back": out past the cradle, along, then in.
+            # ...and where a lever carries a TURN POST, the cable wraps it on the way
+            # in. That is the contact the bend needs: on the vertical lever the bus
+            # arrives at the wrong end of a body that lies along the plug's axis, so
+            # the run comes round the front corner and back up the cheek.
+            # ...and where there IS a wrap post the bypass is redundant: the cable is
+            # already outboard of everything by the time it leaves the corner, so
+            # keeping both sent it 12.4 past the connector and back again.
+            a1 = [g1 if g1 is not None else b, stand1,
+                  tuple(in_pin[m] + d1[m] * CANB_LEAD for m in range(3)),
+                  in_pin]
+            pts = a0 + [c0]
+            pts2 = [c1] + a1
+            parts.append((f"wire_canb_{net}_{k}_0", _wire(pts, CANB_WIRE_OD)))
+            parts.append((f"wire_canb_{net}_{k}_1", _wire(pts2, CANB_WIRE_OD)))
+            seg = max(seg, _path_len(pts) + _path_len(pts2))
+        cuts.append((f"{n0} -> {n1}", seg + _coil_len(layers)))
+    return parts, cuts
+
+
+def lever_bus_cut_list(nodes):
+    """The cut list, as text: one line per segment, plus the conductor total."""
+    _, cuts = lever_bus(nodes)
+    out = ["bus B, knee levers -- CUT LIST (%d x 26 AWG per segment, O%.1f each)"
+           % (CANB_WAYS, CANB_WIRE_OD),
+           "  slack per segment %.1f (4 grid steps + service), wound %s"
+           % (CANB_SLACK, " + ".join("%d turns at r %.1f" % (n, r)
+                                     for r, n in _coil_layers()))]
+    tot = 0.0
+    for label, mm in cuts:
+        out.append("  %-26s %7.1f mm" % (label, mm))
+        tot += mm
+    out.append("  %-26s %7.1f mm bundle  = %.2f m of conductor"
+               % ("TOTAL", tot, tot * CANB_WAYS / 1000.0))
+    return "\n".join(out)
+
+
+# The four bus-B conductors' allow-list entries. Here rather than in the table above
+# only because CANB_NETS is defined further down the file than WIRE_OK is.
+# ...against the HOUSINGS too, not just the connectors (user, 2026-09-23: "as far as
+# wiring collisions I'm not too concerned about these so feel free to mark them as
+# acceptable. The key here is moreso to get a sense of how much wire we will need to
+# cut"). This harness is a LENGTH model first: a run that grazes a corner by 10 mm3 is
+# a millimetre of cut wire, and the real cable is flexible where the model is not.
+WIRE_OK.update({f"wire_canb_{n}": _LEVER_BODIES for n, _ in CANB_NETS})

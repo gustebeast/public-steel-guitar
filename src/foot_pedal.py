@@ -519,6 +519,45 @@ def cut_feel_access(piece, x0: float, x1: float):
         piece = KL.cut_feel_rear(piece, lambda s, x=x: place(pplace(s), x), reach=_BAR_REACH)
     return piece
 
+
+# -- THE TROUGH SPUR --------------------------------------------------------
+# The board bay stops short of the trough, so the plug sits in a sealed pocket with no
+# way out. (The bay used to break into the trough -- _housing still says so -- but the
+# 2026-09-21 board re-spin moved J1, and the bay is derived from the posed hardware, so
+# it followed the board and quietly parted company with the trough. Nothing failed: a
+# cavity that does not reach another cavity is not an overlap, and the gate has no
+# opinion about wires.) The spur is the trough carried DOWN over the bay's own span. It
+# runs along +Y, the build axis, so it is a bore, not a pocket -- no ceiling, no
+# overhang, and it cuts the bridge over the bay from a 41 mm span to 7.45.
+#
+# NO SLACK CLEAT HERE, unlike the knee levers (knee_lever.lace_loop). A cleat was built
+# and then taken out (user, 2026-09-22): a pedal's X station is PRINTED INTO THE BAR
+# (fuse_into_bar), so nothing about it moves, and a stow point for an adjustment that
+# cannot happen is dead weight in the trough. The levers are the adjustable ones -- that
+# request was about them.
+
+
+def _trough_spur(x):
+    """The cutter that joins one station's board bay to the wiring trough."""
+    b = place(board_bay_cutter(), x).val().BoundingBox()
+    y0, y1 = b.ymax - 0.1, PB.LID_Y0 - PB.TROUGH_D + 0.1          # bay -> trough floor
+    z0 = max(b.zmin, PB.TROUGH_Z0)
+    z1 = min(b.zmax, PB.TROUGH_Z1)
+    return box_at(b.xlen, y1 - y0, z1 - z0,
+                  x=(b.xmin + b.xmax) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
+
+
+def cut_wire_ways(piece, x0: float, x1: float):
+    """Cut each station's spur on a fused bar piece.
+
+    After fuse_into_bar, like cut_feel_access, and for the same reason: the spur reaches
+    out of a bay the housing has already been fused around."""
+    for x in PEDAL_X:
+        if x0 <= x < x1:
+            piece = piece.cut(_trough_spur(x))
+    return piece
+
+
 def demo_parts():
     """(name, solid) in GUITAR coordinates — the WHOLE control core at each of the
     three stations, not just the arm: bearings, magnet, sensor board, connector and
