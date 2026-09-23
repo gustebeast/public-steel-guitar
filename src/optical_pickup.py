@@ -2072,10 +2072,26 @@ _O_RAMP = 0.0                                          # was _BRG_TOP - PLINTH_T
 # each strip only has to carry the four nets of its two neighbouring strings. Those strips
 # are the ONLY way the detectors reach the +X band, so the comb is not cosmetic -- with one
 # big hole the 20 summing nodes would have to detour ~100 mm round the wraps.
-O_SLOTS = ([[O_SLOT_X0, D.string_y(i) - D.BRIDGE_BEARING_W / 2 - O_SLOT_CLR,
-             O_SLOT_X1, D.string_y(i) + D.BRIDGE_BEARING_W / 2 + O_SLOT_CLR]
+# ⚠ EACH SLOT IS AN L, NOT A RECTANGLE, because two different things pass through it and
+# they are not the same width (user: "the cuts running too far along y both at the + and -
+# ends"). Over the BEARING the slot has to be the bearing's 5.00 plus fit. Past the
+# bearing's edge the only thing left is the STRING, 2.032 at the heaviest gauge this
+# instrument is built for -- and a rectangle carried the bearing's width all the way to the
+# string exit, 1.48 mm too wide per side over 2.54 of length. 75.4 mm2 across ten slots,
+# and it came off the +X end of every comb strip, which is exactly where the four nets per
+# strip have to funnel.
+#
+# The string segment needs no vibration allowance: the speaking length ENDS at the bearing
+# top, so past x = BRIDGE_AXLE_X the string is dead and only needs a running fit.
+_BRG_EDGE = D.BRIDGE_AXLE_X + _BRG_HALF          # -1.19, where the bearing leaves the board
+_BRG_HY = D.BRIDGE_BEARING_W / 2 + O_SLOT_CLR    # 2.75
+_STR_HY = D.STRING_GAUGE_MAX / 2 + O_SLOT_CLR    # 1.27
+O_SLOTS = ([[O_SLOT_X0, D.string_y(i) - _BRG_HY,
+             _BRG_EDGE + O_SLOT_CLR, D.string_y(i) + _BRG_HY]
             for i in range(D.N_STRINGS)]
-           )
+           + [[_BRG_EDGE, D.string_y(i) - _STR_HY,
+               O_SLOT_X1, D.string_y(i) + _STR_HY]
+              for i in range(D.N_STRINGS)])
 # ⚠ NO ARM SLOTS ANY MORE. There were two, one per axle arm, because the arms stood to the
 # bearing top at 16.0 and had to pass through the board. They stop at the board's SEAT now
 # (bridge_endplate.ARM_TOP), so nothing outboard of the last bearing pokes up at all. Two
