@@ -583,6 +583,44 @@ def _pcb_pad() -> cq.Workplane:
                   z=(PCB_PAD_BOT + PCB_PAD_TOP) / 2)
 
 
+# ── THE O-BAND'S RELIEF ──────────────────────────────────────────────────────
+# The optical board is an O rather than a C now (optical_pickup.O_BAND_X0): its sensing
+# strip runs +X past the deck band and across this block, to give the digital nets a path
+# that does not cross the analog strip. Everything the band would hit comes out.
+#
+# ⚠ THE CUT RUNS TO THE SKY, NOT TO THE BOARD'S TOP. Stopping at the board would leave a
+# roof of endplate over it -- the block tops out at 13.88 across the strip and the board's
+# top is 11.13 -- and that roof is an unsupported span the printer has to bridge. Taken to
+# O_RELIEF_Z1 instead the notch is open upward, which is the only shape here that prints
+# without support (user's constraint, and the reason this is a notch and not a pocket).
+#
+# ⚠ THE FIT GAP COMES OUT OF THE BOARD, NOT THIS WALL. The relief stops at -17.6 because
+# -17.6..-16.0 is the 1.6 mm of arm that wraps the bridge bearings, and those carry string
+# tension. The board was pulled back to -18.0 to pay for its own 0.4 of air. Cutting to
+# -17.2 instead would have left 1.2 -- legal by MIN_WALL, and not what should be holding
+# a bearing under load.
+#
+# The rod bores are untouched: they are open to z 14.5 but the rods sit with their tops at
+# GUIDE_ROD_TOP = 2.80, and this floor is PLINTH_TOP = 9.37, so the cut never reaches the
+# guided length. It does open the bores' mouths sideways into the notch, which is where
+# the board's own Ø3.9 access holes then line up.
+O_RELIEF_CLR = 0.4                       # the board's fit gap, on the board's side
+O_RELIEF_Z1  = 16.5                      # clear over the block top (13.88): no roof left
+
+
+def _o_band_relief():
+    """The notch the O-band needs, or None while the board is still a C."""
+    if OP.O_BAND_X0 is None:
+        return None
+    x0, x1 = OP.STRIP_X1 - 1.0, OP.O_BAND_X0 + O_RELIEF_CLR
+    y0, y1 = OP.Y_TAIL - O_RELIEF_CLR, OP.HEAD_Y0 + O_RELIEF_CLR
+    z0 = OP.PLINTH_TOP                   # the board BEARS on this face -- do not undercut
+    assert x1 <= D.BRIDGE_AXLE_X - D.BRIDGE_BEARING_OD / 2 - D.MIN_WALL_2P + 1e-9, (
+        "the O-band relief would thin the bearing arm wall below MIN_WALL_2P")
+    return box_at(x1 - x0, y1 - y0, O_RELIEF_Z1 - z0,
+                  x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + O_RELIEF_Z1) / 2)
+
+
 def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y):
@@ -958,6 +996,16 @@ def _build() -> cq.Workplane:
                            x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
                            y=(OP.CONDUIT_Y0 + OP.CONDUIT_Y1) / 2,
                            z=CH.TP_GZ0 - LIP_DZ / 2))
+    # ── AND THE O-BAND'S NOTCH, LAST FOR THE SAME REASON THE CONDUIT IS ──────────
+    # ⚠ THIS WAS FIRST PUT WITH THE EARLY CUTS AND SILENTLY DID ALMOST NOTHING. Placed
+    # before the unions it removed 151 mm3 of the ~1100 it should, because _screw_rail,
+    # opt_cover, op_cradle and the retention lip are all unioned after it and refilled
+    # the notch. The board still collided by 1042 mm3 and the part still LOOKED built.
+    # That is the failure this file already warns about twice (see the conduit above,
+    # and the header's assembly-order note); it now has a third instance.
+    _rel = _o_band_relief()
+    if _rel is not None:
+        body = body.cut(_rel)
     return body
 
 
