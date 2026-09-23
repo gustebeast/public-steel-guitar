@@ -171,6 +171,39 @@ BAND_X0    = TP.PX0                                           # -25.06, deck's +
 BAND_X1    = TP.PICKUP_X_NOM + TP.CAVITY_X / 2                # -39.08, cavity's +X edge
 BAND_CLR   = 0.2                                              # keep off both band edges
 
+# ⚠ OPT_GAP IS THE ONE UNDERIVED NUMBER IN THIS Z STACK, AND IT IS A BIG LEVER.
+# Everything else here comes from something -- STRING_BOT_MIN from STRING_GAUGE_MAX,
+# PCB_TOP from the LED package, COVER_Z0 from COVER_GAP -- and this is a round 3.0 with a
+# comment saying what it is and not why. The four levers listed at the top of this file for
+# the thin-string problem do not include it.
+#
+# Costed in .ins/opt_gap.py against elec/optical.py's own noise budget (143 nA on the
+# thinnest string, Rf 1M, shot noise included). Signal goes as ~1/h^3 -- a LINE target,
+# between a plane's 1/h^2 and a point's 1/h^4 -- which is a model, not a measurement, so
+# read these as a ranking:
+#
+#     clearance 1.10 -> 0.70                    gap 3.44   +2.1 dB
+#     cover 1.6 -> 0.8 (1-bead: it will sag)    gap 3.04   +4.4 dB
+#     both                                      gap 2.64   +6.8 dB
+#     NO COVER, same clearance                  gap 1.94  +11.6 dB
+#     NO COVER + Rf 1M -> 250k                  gap 1.94  +10.6 dB, headroom 11.9 uA
+#
+# ⚠ AND THE STRING THAT SETS SNR IS NOT THE ONE THIS DATUM REFERENCES. STRING_BOT_MIN is
+# the THICKEST string, correctly, because it is the clearance case. The thinnest string is
+# 0.84 mm FURTHER from the sensor and returns 5.1x less light, so the worst-case gap is
+# 3.84 and not 3.00. Every dB above is quoted at 3.84.
+#
+# ⚠ THE COVER IS PROTECTING TIA HEADROOM, NOT NOISE, which is the thing to understand
+# before trading it away. At Rf = 1M and MID = 0.33 V the TIA clips at 2.97 uA of ambient
+# photocurrent; elec/optical.py calls 1 uA (a halogen wash) realistic. Widening the
+# detector's field of view from ~+-30 to ~+-60 deg is a 3.7x solid angle, so ~3.7 uA --
+# over the cliff. Dropping Rf to 250k restores four-fold headroom and costs ~1 dB of the
+# 11.6, because only the Rf thermal term moves and the signal moved further.
+# Crosstalk, which the aperture also buys, should IMPROVE rather than worsen: at 1.94 mm a
+# +-60 deg detector sees +-3.4 mm of string against a 9.5 mm pitch.
+# What removing it really costs is MECHANICAL -- it is the debris lid, and it is what
+# stands between a dropped bar and twenty photodiodes. That is the trade, and it is the
+# user's to make; nothing here is worth 10 dB if the board dies in a year.
 OPT_GAP = 3.0                                    # sensor face -> string UNDERSIDE
 PCB_T   = _PCB_T                                 # FR4 NOMINAL -- cadkit.pcb owns the value
                                                  # (one copy for every board). Correct for 4 layer:
