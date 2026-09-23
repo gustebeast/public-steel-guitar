@@ -1406,7 +1406,7 @@ def _cell_tracks():
         for dy in (0.25, -0.25):
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
-    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk()
+    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
 
 
 # ⚠ THE +3V3D CLUSTERS CANNOT BE JOINED BY LAYING EITHER (2026-09-22). _v3_trunk links
@@ -1479,6 +1479,44 @@ def _v3_trunk():
     # column at a common x, their B.Cu stubs line up and ONE track joins the lot.
     end = lambda k: _cell_pt(k, -2.85, -3.27)
     return [("+3V3D", "B.Cu", 0.3, [end(0), end(4)])]
+
+
+_I2C_SPINE_DX = -3.782          # x 64.80 on the placed board: see below
+
+
+def _i2c_spine():
+    """Lay I2C2_SCL as ONE B.Cu spine down the converter column.
+
+    ⚠ THE SAME MISSING-BUS SHAPE AS +3V3D, and it arrived with the column. Four of the
+    twelve failures after the five converters moved into the strip were SCL, and every
+    one of them was a hop between neighbouring cells -- U14->U15, U16->U15, U17->U16,
+    U17->a stub. Left to the router a five-drop bus on a shared x came back as 133.5 mm
+    of copper and 7 vias with the board TO ITSELF (.ins/solo.py); the direct run is 75 mm.
+    That is not a router that needs more passes, it is a bus nobody drew.
+
+    ⚠ IT CANNOT BE THE OBVIOUS STRAIGHT LINE, which is what makes it worth a function.
+    All five pin 17s share x = 66.619 exactly, so a single track through them looks free
+    -- and it would short pins 17 through 24, the whole side of each QFN, which sit on
+    that same x at 0.5 mm pitch. Nor can the spine simply step outboard on F.Cu: pad 17
+    ends at x 66.207, and Cm24/34/44/54 sit at 66.28, so the first clear F.Cu x is
+    already inside the caps.
+
+    So: a stub out of each pin 17 to x 64.80, a via, and the spine on B.Cu. The lane
+    works because x 62.0 .. 66.2 carries NO PAD AT ALL over the column's whole y range
+    (30 .. 115) -- checked through pcbnew, not assumed -- and because 64.80 clears the
+    +3V3D B.Cu trunk at 65.58 .. 65.88 by 0.48 mm.
+
+    SDA IS DELIBERATELY LEFT TO THE ROUTER. It failed zero times; pin 18 shares pin 17's
+    x, so a second spine beside this one would have to cross it, and the cure would cost
+    more than the disease. Lay what fails.
+    """
+    out, DX = [], _I2C_SPINE_DX
+    for k in range(5):
+        out += [("I2C2_SCL", "F.Cu", 0.2,
+                 [_cell_pt(k, -1.963, 0.75), _cell_pt(k, DX, 0.75)])]
+    out.append(("I2C2_SCL", "B.Cu", 0.25,
+                [_cell_pt(0, DX, 0.75), _cell_pt(4, DX, 0.75)]))
+    return out
 
 
 def _fan_tracks():
@@ -2027,7 +2065,9 @@ BOARD_NOTES = {
     # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
     # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
     "tracks": _cell_tracks(),
-    "vias": [("+3V3D",) + _cell_pt(k, -2.85, y) for k in range(5) for y in (0.75, -3.27)],
+    "vias": ([("+3V3D",) + _cell_pt(k, -2.85, y)
+              for k in range(5) for y in (0.75, -3.27)]
+             + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, 0.75) for k in range(5)]),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
