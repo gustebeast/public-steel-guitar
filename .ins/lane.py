@@ -191,7 +191,7 @@ def inner_seg(p0, p1, net, width=0.2, layer="In2.Cu", d=None):
     return worst
 
 
-def seg(p0, p1, net, width=0.2, d=None):
+def seg(p0, p1, net, width=0.2, d=None, layer="F.Cu"):
     """Same question for an ARBITRARY segment, not just a vertical one.
 
     The vertical form above answers "can a spine run the length of the column". This one
@@ -212,6 +212,29 @@ def seg(p0, p1, net, width=0.2, d=None):
         gap = max(abs(cx - px) - hx, abs(cy - py) - hy) - width / 2.0
         if gap - CLR < worst[0]:
             worst = (gap - CLR, "%s pad %s [%s] gap %.3f" % (ref, num, pnet or "-", gap))
+    # ⚠ AND THE VIAS, AND THE COPPER ALREADY ON THIS LAYER. This was the THIRD time the
+    # same blind spot cost a route: via_clear and inner_seg were each taught about vias
+    # after giving a confident wrong answer, and seg -- the F.Cu check, the one used most
+    # -- was left knowing only pads and the outline. It passed the ch4 haul's final stub
+    # at +0.065 against the pads while that stub ran straight through a GND stitch via,
+    # and the route came back with four shorting_items and four clearance violations.
+    # A checker that is right about three obstacle classes and silent about the fourth
+    # reads exactly like a checker that is right.
+    for vnet, vx, vy, vr in d.get("vias", ()):
+        if vnet == net:
+            continue
+        t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((vx - x0) * dx + (vy - y0) * dy) / L2))
+        gap = (((x0 + t * dx - vx) ** 2 + (y0 + t * dy - vy) ** 2) ** 0.5) - vr - width / 2.0
+        if gap - CLR < worst[0]:
+            worst = (gap - CLR, "via [%s] at %.2f,%.2f gap %.3f" % (vnet or "-", vx, vy, gap))
+    for tnet, tlayer, ax, ay, bx, by, hw in d.get("tracks", ()):
+        if tnet == net or tlayer != layer:
+            continue
+        for px, py in ((ax, ay), (bx, by), ((ax + bx) / 2.0, (ay + by) / 2.0)):
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+            gap = (((x0 + t * dx - px) ** 2 + (y0 + t * dy - py) ** 2) ** 0.5) - hw - width / 2.0
+            if gap - CLR < worst[0]:
+                worst = (gap - CLR, "%s track [%s] gap %.3f" % (tlayer, tnet or "-", gap))
     for ex1, ey1, ex2, ey2 in d["edge"]:
         for s in range(21):                       # sample the hop against every edge
             t = s / 20.0
