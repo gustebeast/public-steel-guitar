@@ -301,6 +301,18 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     # So `threads` is exposed per board to be MEASURED rather than assumed. Raising it is
     # only defensible if the result is both violation-free and reproducible, and both are
     # checkable.
+    # ⚠ MEASURED 2026-09-23: ON THE OPTICAL BOARD THE STRATEGY CHANGES NOTHING AT ALL.
+    # Five trees routed in parallel -- no strategy, -us Hybrid, -us Global, -us Greedy,
+    # -is prioritized -- on the same placement. All five returned 9 unconnected and 0
+    # violations, the same nine NETS, 1983 segments, and BYTE-IDENTICAL .ses files (one
+    # md5 across all five). The flags reach freerouting: this function prints the command
+    # and the logs show `-us Hybrid` and the rest going in. They are simply ignored by
+    # this build.
+    # That is not the old case-sensitivity bug below, which was real and is fixed -- it is
+    # the same symptom from the opposite cause, and the note under it inherited a
+    # conclusion nobody had actually tested. So: do NOT spend routes on the strategy on
+    # this board. The claim that follows is kept because a different freerouting build may
+    # honour it, but it is an expectation, not a measurement.
     # ⚠ THE OPTIMISER'S STRATEGY IS A BOARD-LEVEL CHOICE, not a global constant. It
     # changes which nets freerouting revisits and in what order, and on a board that is
     # one or two connections short that is exactly the lever that matters -- far more
