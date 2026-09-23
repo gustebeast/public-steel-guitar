@@ -1254,7 +1254,7 @@ def lever_bus_nodes():
     controller is a MID-BUS node now, and the ends close their own JP1).
 
     Each node is (name, plug, keeper, plug_dir, keeper_axis, pin_axis, pins, standoff,
-    cheek_axis, cheek_bypass),
+    cheek_axis, cheek_bypass, guide),
     where `pins` is {way: point} for all CONN_N ways of that lever's J1 -- so the model
     shows which conductor belongs in which slot (user).
 
@@ -1292,8 +1292,12 @@ def lever_bus_nodes():
         pa = _pose(kind, sx, sy, mirrored, KL.pin_axis(), vector=True)
         ca = _pose(kind, sx, sy, mirrored, KL.cheek_axis(), vector=True)
         pins = {w: _pose(kind, sx, sy, mirrored, pin(w)) for w in range(1, KL.CONN_N + 1)}
+        # the TURN POST, on the one lever whose plug the bus cannot reach straight
+        guide = (_pose(kind, sx, sy, mirrored,
+                       KL.guide_point(KV.HOUS_X1, KV.HOUS_HW_P, KV.HOUS_Z0))
+                 if kind != "kl" else None)
         out.append((name, p, l, d, ka, pa, pins, KL.plug_standoff(),
-                    ca, KL.cheek_bypass()))
+                    ca, KL.cheek_bypass(), guide))
     return out
 
 
