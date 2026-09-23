@@ -48,7 +48,7 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
-                        PH_SIDE_H, PH_SIDE_D, PH_TAB_D, PH_PLUG_RUN)
+                        PH_SIDE_H, PH_SIDE_D, PH_TAB_D, PH_PLUG_RUN, PH_PITCH)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
@@ -1872,13 +1872,63 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None):
     return post.union(head).union(web)
 
 
-def plug_point(z_bot=None, z_top=None, flip=None):
-    """Where the four conductors leave J1's plug: the plug's cable end, on the axis of
-    the mouth. The plug runs -X off the mouth, so this is PLUG_RUN past it."""
+def plug_pin(way, z_bot=None, z_top=None, flip=None):
+    """Where ONE conductor leaves J1, by WAY NUMBER (1..CONN_N) -- the plug's cable end,
+    on that contact's own line.
+
+    THIS IS MEANT TO BE READ OFF THE MODEL (user, 2026-09-23: "can you make the wires
+    enter the JST in accurate placement so we can use it as a reference when deciding
+    which slot to put each wire into?"). So the way numbers here are the harness's, not
+    a drawing convenience: harness.ph_trunk_pins() is the bus IN on ways 1-4 and OUT on
+    5-8, each group in PH_PINOUT order (GND, +5 V, CAN_H, CAN_L). A lever's ARRIVING
+    cable lands on 1-4 and its DEPARTING cable leaves from 5-8, which is what makes the
+    board pass the trunk through itself.
+
+    WAY 1 IS AT THE -Z END of the connector in this frame, and that is a CONVENTION THE
+    BOARD HAS TO MATCH -- nothing in the CAD can know which end the fab put pin 1 on.
+    docs/lever-sensor-respin.md carries it; if the routed board disagrees, this model is
+    wrong rather than the board.
+    """
     zc = CONN_ZC if z_bot is None else conn_z(z_bot, z_top, flip)
     mx = CONN_MOUTH_X if z_bot is None else conn_mouth_x(z_bot, z_top, flip)
     sx = -1.0 if mx <= 0 else 1.0
-    return (mx + sx * CONN_PLUG_RUN, PCB_Y - PH_SIDE_H / 2.0, zc)
+    return (mx + sx * CONN_PLUG_RUN, PCB_Y - PH_SIDE_H / 2.0,
+            zc + (way - 1 - (CONN_N - 1) / 2.0) * PH_PITCH)
+
+
+def plug_point(z_bot=None, z_top=None, flip=None):
+    """The plug's cable end on the connector's axis -- the middle of the pin row."""
+    return plug_pin((CONN_N + 1) / 2.0, z_bot, z_top, flip)
+
+
+def pin_axis():
+    """The direction the pin row runs, in the lever's LOCAL frame: J1 stands on end, so
+    its ways march along +Z."""
+    return (0.0, 0.0, 1.0)
+
+
+def cheek_axis():
+    """The connector cheek's outward normal, in the lever's LOCAL frame."""
+    return (0.0, 1.0, 0.0)
+
+
+def cheek_bypass():
+    """How far off the cheek a cable has to be to pass the lever LENGTHWAYS: outboard of
+    the cradle, which stands further out than the cheek does and carries the board."""
+    return CR_Y1 - HOUS_HW + CANB_BUNDLE_OD
+
+
+def plug_standoff(x_back=None):
+    """How far along the plug's own axis a cable has to come before it can turn.
+
+    The plug sits BEHIND its cradle, a board's length inside the housing, so a straight
+    run at it from the next lever goes through whatever is in between -- on one station
+    that was the board itself, its crystal and two of its capacitors. Coming in along
+    the axis from past the housing's back end is the route that exists in air, and it is
+    the one the user drew: "route it around the back".
+    """
+    x0 = HOUS_X0 if x_back is None else x_back
+    return abs(plug_point()[0] - x0) + 4 * D.BEAD
 
 
 def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):

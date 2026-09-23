@@ -1253,7 +1253,10 @@ def lever_bus_nodes():
     the far end of the chain terminates at the +X-most lever (elec/motor_ctrl: the
     controller is a MID-BUS node now, and the ends close their own JP1).
 
-    Each node is (name, plug, keeper, plug_dir, keeper_axis).
+    Each node is (name, plug, keeper, plug_dir, keeper_axis, pin_axis, pins, standoff,
+    cheek_axis, cheek_bypass),
+    where `pins` is {way: point} for all CONN_N ways of that lever's J1 -- so the model
+    shows which conductor belongs in which slot (user).
 
     """
     from . import knee_lever as KL
@@ -1274,16 +1277,23 @@ def lever_bus_nodes():
         if sy is None:
             sy = _vkl_mount_y()
         if kind == "kl":
-            plug, lace = KL.plug_point(), KL.keeper_point()
+            pin = KL.plug_pin
+            lace = KL.keeper_point()
         else:
-            plug = KL.plug_point(KV.HOUS_Z0, KV.HOUS_Z1)
+            def pin(w, _K=KV):
+                return KL.plug_pin(w, _K.HOUS_Z0, _K.HOUS_Z1)
             lace = KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P)
+        plug = pin((KL.CONN_N + 1) / 2.0)
         # the plug's wires leave along local -X (the mouth faces -X), posed the same way
         p = _pose(kind, sx, sy, mirrored, plug)
         l = _pose(kind, sx, sy, mirrored, lace)
         d = _pose(kind, sx, sy, mirrored, (-1.0, 0.0, 0.0), vector=True)
         ka = _pose(kind, sx, sy, mirrored, KL.keeper_axis(), vector=True)
-        out.append((name, p, l, d, ka))
+        pa = _pose(kind, sx, sy, mirrored, KL.pin_axis(), vector=True)
+        ca = _pose(kind, sx, sy, mirrored, KL.cheek_axis(), vector=True)
+        pins = {w: _pose(kind, sx, sy, mirrored, pin(w)) for w in range(1, KL.CONN_N + 1)}
+        out.append((name, p, l, d, ka, pa, pins, KL.plug_standoff(),
+                    ca, KL.cheek_bypass()))
     return out
 
 
