@@ -96,6 +96,48 @@ def check(x, y0, y1, net, width=0.25, d=None):
     return worst
 
 
+def seg(p0, p1, net, width=0.2, d=None):
+    """Same question for an ARBITRARY segment, not just a vertical one.
+
+    The vertical form above answers "can a spine run the length of the column". This one
+    answers "can this ONE hop be laid straight", which is what a repeated per-quad failure
+    asks: four of the five TIA_OUT_*B runs failed at an identical 10.48 mm, so the hop is
+    the unit, not the net."""
+    d = d or probe()
+    (x0, y0), (x1, y1) = p0, p1
+    dx, dy = x1 - x0, y1 - y0
+    L2 = dx * dx + dy * dy
+    worst = (1e9, "clear")
+    for ref, num, pnet, px, py, hx, hy in d["pads"]:
+        if pnet == net:
+            continue
+        t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((px - x0) * dx + (py - y0) * dy) / L2))
+        cx, cy = x0 + t * dx, y0 + t * dy
+        # rectangular pad, so the clearance is measured per axis and the worse one wins
+        gap = max(abs(cx - px) - hx, abs(cy - py) - hy) - width / 2.0
+        if gap - CLR < worst[0]:
+            worst = (gap - CLR, "%s pad %s [%s] gap %.3f" % (ref, num, pnet or "-", gap))
+    for ex1, ey1, ex2, ey2 in d["edge"]:
+        for s in range(21):                       # sample the hop against every edge
+            t = s / 20.0
+            cx, cy = x0 + t * dx, y0 + t * dy
+            ux, uy = ex2 - ex1, ey2 - ey1
+            el2 = ux * ux + uy * uy
+            u = 0.0 if el2 == 0 else max(0.0, min(1.0, ((cx - ex1) * ux + (cy - ey1) * uy) / el2))
+            gap = ((cx - ex1 - u * ux) ** 2 + (cy - ey1 - u * uy) ** 2) ** 0.5 - width / 2.0
+            if gap - EDGE < worst[0]:
+                worst = (gap - EDGE, "BOARD EDGE gap %.3f (need %.3f)" % (gap, EDGE))
+    return worst
+
+
+def pad(ref, num, d=None):
+    d = d or probe()
+    for r, n, net, px, py, hx, hy in d["pads"]:
+        if r == ref and n == str(num):
+            return (px, py, net)
+    raise SystemExit("no pad %s.%s" % (ref, num))
+
+
 if __name__ == "__main__":
     xs = [float(v) for v in sys.argv[1].split(",")]
     y0, y1 = float(sys.argv[2]), float(sys.argv[3])
