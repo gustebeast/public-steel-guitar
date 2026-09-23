@@ -365,10 +365,20 @@ for _k, (_cw, _ch) in CRTYD.items():
 # gets more gap. (The overhead version had the mirror-image of this bug: it referenced
 # D.STRING_Z, the centre line, and silently gave the thickest string 2.11 of the intended
 # 3.0.)
-# THE HEAVIEST STRING THAT CAN BE FITTED, not the demo set's: this board and the printed pad
-# and cover under it must not need changing when a heavier set goes on (dimensions.
-# STRING_GAUGE_MAX -- string 10's slot takes up to .080).
-STRING_BOT_MIN = D.STRING_Z - D.STRING_GAUGE_MAX / 2
+# ⚠ THE STRINGS' UNDERSIDES ARE COPLANAR, NOT THEIR CENTRES (user, 2026-09-23: "they all
+# rest on bearings at the same height"), and this line had it the other way round for the
+# whole life of the board. D.STRING_Z is 16.0 and dimensions.py says what it is on the same
+# line -- "speaking-length / bridge-bearing top" -- the surface the string SITS ON. So every
+# string's underside is 16.0 whatever its gauge, and subtracting half the heaviest gauge put
+# this datum at 14.984: a full 1.016 mm BELOW the bearing top, which is inside the bearing
+# and where no string has ever been.
+# It cost exactly that 1.016 mm of standoff, on every string, for nothing. Measured on the
+# built solids to be sure before changing it: string_0 (.015) tops out at 16.41 and
+# string_9 (.070) at 17.81 -- undersides identical, tops differing by the gauge.
+# AND IT RETIRES A WORRY RATHER THAN CREATING ONE. With the undersides coplanar, the gap is
+# the same for every string, so shrinking it is balance-NEUTRAL; the thin-string deficit is
+# purely the 5x diameter, which is what the per-string R1-R10 emitter currents are for.
+STRING_BOT_MIN = D.STRING_Z
 SENSE_FACE_Z   = STRING_BOT_MIN - OPT_GAP                     # emitter faces UP
 PCB_TOP        = SENSE_FACE_Z - LED_PKG[2]
 PCB_BOT        = PCB_TOP - PCB_T                              # NOMINAL board underside
