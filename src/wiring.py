@@ -1140,22 +1140,46 @@ CANB_LEAD = 8 * D.BEAD              # 6.4
 CANB_SLACK = 4 * D.LEVER_PITCH + 25.0            # 66.6
 CANB_COIL_R = _KL.KEEP_COIL_R       # the keeper barrel's own wound radius
 CANB_COIL_PITCH = 4 * D.BEAD        # 3.2 march per turn -- a bundle laid beside itself
-def _coil_turns():
-    """Whole turns, so the coil never carries LESS than the slack it is there for."""
-    return max(1, math.ceil(CANB_SLACK / (2.0 * math.pi * CANB_COIL_R)))
+def _coil_layers():
+    """[(radius, turns)] -- the slack wound in LAYERS, outer wraps riding on inner ones.
+
+    A coil is not limited to one wrap deep (user, 2026-09-23: "you can wrap wire around
+    itself so the outer wraps have a larger diameter"), and that is what a hand-wound
+    hank actually is. It matters because it takes the capacity question off the COLUMN:
+    turns-per-layer set the post's height, layers set the capacity, and a layer costs
+    nothing in Z. Before this the post had to be either tall (it ran the whole depth of
+    the vertical lever) or fat (to carry the slack in fewer turns), and neither fitted
+    under a 45 deg buttress on the 28.5 housing.
+
+    Each layer is one bundle further out, so it holds more per turn than the one under
+    it -- which is why the last layer is usually a part-layer.
+    """
+    per = max(1, int(_KL.KEEP_WIND_H // CANB_COIL_PITCH))
+    left, out, r = CANB_SLACK, [], CANB_COIL_R
+    while left > 1e-6:
+        n = min(per, max(1, math.ceil(left / (2.0 * math.pi * r))))
+        out.append((r, n))
+        left -= n * 2.0 * math.pi * r
+        r += CANB_BUNDLE_OD
+    return out
 
 
-def _coil_len(turns):
-    """A helix's true length: the circumference and the march are perpendicular."""
-    return turns * math.hypot(2.0 * math.pi * CANB_COIL_R, CANB_COIL_PITCH)
+def _coil_len(layers):
+    """A wound hank's true length: each layer's helix, at its own radius."""
+    return sum(n * math.hypot(2.0 * math.pi * r, CANB_COIL_PITCH) for r, n in layers)
 
 
-def _coil_path(origin, axis, turns):
-    """The helix itself. Its ends are where the straight runs have to ARRIVE: a helix
+def _coil_path(origin, axis, r, turns, up=True):
+    """One LAYER's helix. Its ends are where the straight runs have to ARRIVE: a helix
     of radius r about `origin` does not start AT origin, it starts a radius out from
-    it, and runs drawn to the axis instead left a 6 mm gap at both ends of every coil."""
-    return cq.Wire.makeHelix(CANB_COIL_PITCH, turns * CANB_COIL_PITCH, CANB_COIL_R,
-                             cq.Vector(*origin), cq.Vector(*axis).normalized())
+    it, and runs drawn to the axis instead left a gap at both ends of every coil.
+
+    `up` False walks the layer back down the post, which is what the next layer does --
+    you do not cut the wire and start again at the bottom."""
+    ax = cq.Vector(*axis).normalized()
+    h = turns * CANB_COIL_PITCH
+    o = cq.Vector(*origin) if up else cq.Vector(*origin) + ax * h
+    return cq.Wire.makeHelix(CANB_COIL_PITCH, h, r, o, ax if up else ax * -1)
 
 
 def _coil(path, d=CANB_BUNDLE_OD):
@@ -1192,7 +1216,7 @@ def lever_bus(nodes):
 
     Every leg is STRAIGHT: see the segment body for why."""
     parts, cuts = [], []
-    turns = _coil_turns()
+    layers = _coil_layers()
     for k, (a, b) in enumerate(zip(nodes, nodes[1:])):
         (n0, _p0, l0, d0, ka0, _pa0, pins0, so0, _ca0, _cb0, _g0) = a
         (n1, _p1, _l1, d1, _ka1, _pa1, pins1, so1, ca1, cb1, g1) = b
@@ -1200,9 +1224,16 @@ def lever_bus(nodes):
         # connector, on the theory that the runs would reach it more directly: measured
         # WORSE (45 unintended against 40), because the approach then crosses the
         # housing's top corner instead. Left low, and recorded so it is not re-tried.
-        path = _coil_path(tuple(l0[i] + ka0[i] * 0.2 for i in range(3)), ka0, turns)
-        c0, c1 = path.startPoint().toTuple(), path.endPoint().toTuple()
-        parts.append((f"wire_canb_coil_{k}", _coil(path)))
+        # ONE HELIX PER LAYER, walked up the post and back down again -- the wire is
+        # not cut between layers.
+        base = tuple(l0[i] + ka0[i] * 0.2 for i in range(3))
+        c0 = c1 = None
+        for li, (lr, ln) in enumerate(layers):
+            lp = _coil_path(base, ka0, lr, ln, up=(li % 2 == 0))
+            parts.append((f"wire_canb_coil_{k}_{li}", _coil(lp)))
+            if c0 is None:
+                c0 = lp.startPoint().toTuple()
+            c1 = lp.endPoint().toTuple()
         # EACH CONDUCTOR ON ITS OWN WAY, so the model reads as a wiring reference (user).
         # The trunk passes THROUGH a board: this cable leaves the upstream lever on its
         # OUT half (ways 5-8) and lands on the downstream lever's IN half (1-4), each in
@@ -1240,7 +1271,7 @@ def lever_bus(nodes):
             parts.append((f"wire_canb_{net}_{k}_0", _wire(pts, CANB_WIRE_OD)))
             parts.append((f"wire_canb_{net}_{k}_1", _wire(pts2, CANB_WIRE_OD)))
             seg = max(seg, _path_len(pts) + _path_len(pts2))
-        cuts.append((f"{n0} -> {n1}", seg + _coil_len(turns)))
+        cuts.append((f"{n0} -> {n1}", seg + _coil_len(layers)))
     return parts, cuts
 
 
@@ -1249,8 +1280,9 @@ def lever_bus_cut_list(nodes):
     _, cuts = lever_bus(nodes)
     out = ["bus B, knee levers -- CUT LIST (%d x 26 AWG per segment, O%.1f each)"
            % (CANB_WAYS, CANB_WIRE_OD),
-           "  slack per segment %.1f (4 grid steps + service), wound %d turns at r %.1f"
-           % (CANB_SLACK, _coil_turns(), CANB_COIL_R)]
+           "  slack per segment %.1f (4 grid steps + service), wound %s"
+           % (CANB_SLACK, " + ".join("%d turns at r %.1f" % (n, r)
+                                     for r, n in _coil_layers()))]
     tot = 0.0
     for label, mm in cuts:
         out.append("  %-26s %7.1f mm" % (label, mm))
