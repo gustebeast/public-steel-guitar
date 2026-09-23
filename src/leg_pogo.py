@@ -308,29 +308,13 @@ class Joint(object):
         self.tenon_up, self.host_up = tenon_up, host_up
         # which s face of a cavity in the TENON is its ceiling: the one the part builds
         # toward (the tenon lies on a flat, so its build direction is +-S)
-        world_up_s = 1.0 if (self.S[0] * tenon_up[0]
-                             + self.S[1] * tenon_up[1]) > 0 else -1.0
-        # THE s MAPPING, which is what lets a joint be REVERSED along t without moving
-        # anything else. Reversing T reverses S with it, so a joint on the opposite
-        # diagonal would otherwise mirror the board's s layout as well -- and that
-        # layout is not symmetric (the row sits S_C off the axis, and the roofs are
-        # sized from the row to the flat on the ceiling side). Mirroring it swings the
-        # roof headroom from 12.0 to 6.0 and the shed runs out through the tenon's flat.
-        #
-        # So local s is mapped, not used raw: world offset = ms * s + s_c along S. With
-        # ms = world_up_s and s_c = S_C * ms, BOTH joints see an identical local frame --
-        # the ceiling is always at +s, the ceiling-side flat is always 15.0 away, and
-        # every board dimension, assert and roof is written once. All that differs in
-        # the world is the direction of t, which is the whole point.
-        self.ms = world_up_s
-        self.s_c = S_C * self.ms
-        self.up_s = 1.0                 # ...so in LOCAL terms the ceiling is always +s
+        self.up_s = 1.0 if (self.S[0] * tenon_up[0] + self.S[1] * tenon_up[1]) > 0 else -1.0
         self.x, self.y = LS.LEG_X, LS.LEG_Y
 
     def p(self, t, s, d):
         """Local -> world. s is measured from the ROW's centre, which sits S_C along
         the row from the leg's axis."""
-        s = self.ms * s + self.s_c
+        s = s + S_C
         return (self.x + t * self.T[0] + s * self.S[0],
                 self.y + t * self.T[1] + s * self.S[1], self.z + self.dz * d)
 
@@ -339,9 +323,8 @@ class Joint(object):
         # d is INTO the tenon, which is -Z at the top joint: take the lower world z,
         # not the lower d, or every cavity up there comes out mirrored about the seam
         z0 = min(self.z + self.dz * d0, self.z + self.dz * d1)
-        sa, sb = self.ms * s0 + self.s_c, self.ms * s1 + self.s_c
         b = cq.Workplane("XY").add(cq.Solid.makeBox(
-            t1 - t0, abs(sb - sa), abs(d1 - d0), cq.Vector(t0, min(sa, sb), 0.0)))
+            t1 - t0, s1 - s0, abs(d1 - d0), cq.Vector(t0, s0 + S_C, 0.0)))
         return (b.rotate((0, 0, 0), (0, 0, 1), self.ang)
                 .translate((self.x, self.y, z0)))
 
@@ -367,24 +350,20 @@ class Joint(object):
         tm = (t0 + t1) / 2.0
         apex = sc + u * hw
         z0, z1 = sorted((self.z + self.dz * d0, self.z + self.dz * d1))
-        # the ceiling-side flat, in LOCAL s. It is the same number for either mapping:
-        # the flat is at world offset ms * TEN_W/2, so local s = TEN_W/2 - s_c/ms, and
-        # s_c/ms is S_C by construction. (Dividing the whole thing by ms instead put it
-        # at -9.0 and the mouth's ridge "was already outside the flat".)
-        s_flat = u * (LS.TEN_W / 2.0) - S_C
+        s_flat = u * (LS.TEN_W / 2.0) - S_C     # the tenon's flat on the ceiling side
         if shed:
             top = sc + u * (t1 - t0)            # 45 degrees across the whole span
             assert (top - s_flat) * u < 0, (
                 "the shed roof runs out through the tenon's flat")
             hi_t = t1 if shed > 0 else t0
             lo_t = t0 if shed > 0 else t1
-            pts = [(t0, sf * self.ms + self.s_c), (t1, sf * self.ms + self.s_c),
-                   (hi_t, top * self.ms + self.s_c), (lo_t, sc * self.ms + self.s_c)]
+            pts = [(t0, sf + S_C), (t1, sf + S_C),
+                   (hi_t, top + S_C), (lo_t, sc + S_C)]
             return (cq.Workplane("XY").workplane(offset=z0)
                     .polyline(pts).close().extrude(z1 - z0)
                     .rotate((0, 0, 0), (0, 0, 1), self.ang)
                     .translate((self.x, self.y, 0.0)))
-        pts = [(t0, sf * self.ms + self.s_c), (t1, sf * self.ms + self.s_c), (t1, sc * self.ms + self.s_c)]
+        pts = [(t0, sf + S_C), (t1, sf + S_C), (t1, sc + S_C)]
         if (apex - s_flat) * u > 0:
             # THE RIDGE DOES NOT FIT. The mouth is 10.6 wide and its ceiling sits 2.75
             # inside the flat, so a 45 degree ridge (5.3) runs out through the tenon's
@@ -399,11 +378,11 @@ class Joint(object):
             half = hw - abs(s_br - sc)
             assert half > 0.0, "the cavity's ceiling is already outside the flat"
             s_out = s_flat + u * 1.0
-            pts += [(tm + half, s_br * self.ms + self.s_c), (tm + half, s_out * self.ms + self.s_c),
-                    (tm - half, s_out * self.ms + self.s_c), (tm - half, s_br * self.ms + self.s_c)]
+            pts += [(tm + half, s_br + S_C), (tm + half, s_out + S_C),
+                    (tm - half, s_out + S_C), (tm - half, s_br + S_C)]
         else:
-            pts += [(tm, apex * self.ms + self.s_c)]
-        pts += [(t0, sc * self.ms + self.s_c)]
+            pts += [(tm, apex + S_C)]
+        pts += [(t0, sc + S_C)]
         return (cq.Workplane("XY").workplane(offset=z0)
                 .polyline(pts).close().extrude(z1 - z0)
                 .rotate((0, 0, 0), (0, 0, 1), self.ang)
@@ -441,35 +420,19 @@ class Joint(object):
 # +X-Y: at the bottom that points the harness's drop at the bar's trough (user), and at
 # the top it puts everything clear of the leg latch's pocket (y < -1.6 from 27.75 down).
 #
-# ⚠ THAT LAST CLAUSE IS TIED TO THE LATCH BEING ON -Y, and the user wants every latch
-# on +Y instead (2026-09-23: the instrument is taken apart upside down in its case, and
-# the bar should be the near side). Measured with leg_latch.BUTTON_SIDE = +1: the
-# run-0 wires descend at y 42..52 through the slider's y 50.75..65.95, and the PH plug
-# clips it -- 6 overlaps, 0.4 to 2.2 mm^3.
+# THE DIAGONAL IS NOT A FREE CHOICE, and neither is the side the board sits on:
 #
-# MIRRORING THIS BOARD IS NOT A ONE-LINE FLIP, and the reasons are worth writing down
-# because they are what any attempt runs into:
+#   * Only two of the tenon's four flats can carry a joint. house() needs S parallel to
+#     the tenon's build direction or its gables do not land on the cavities' ceilings,
+#     and TENON_UP is the -X-Y diagonal, so T is +-(-_D, _D).
+#   * The board's s layout is ASYMMETRIC -- the row sits S_C off the leg's axis, away
+#     from the build direction, and that offset is what gives the roofs their headroom
+#     (12.0 to the ceiling-side flat). Putting the board on the other side of the axis
+#     is therefore not a sign flip: every s dimension and assert here is written from
+#     the row toward that flat and has to be authored for the side it is on.
+#   * Which side it IS on is the same decision as leg_latch.BUTTON_SIDE. The latch takes
+#     one of the tenon's Y middles and this board's lane takes the other (see DROP_OFF).
 #
-#   1. Only TWO of the tenon's four diagonals are available. house() needs S parallel
-#      to the tenon's build direction or its gables are not on the cavities' ceilings,
-#      and TENON_UP is the -X-Y diagonal, so T must be +-(-_D, _D). The only mirror in
-#      the family is therefore reversing T, a 180 degree rotation about the leg's axis.
-#   2. Reversing T reverses S, which points S_C the wrong way. The row sits 3.0 off the
-#      axis AWAY from the build direction, and that offset is what buys the roof its
-#      headroom: 12.0 as built, 6.0 reversed. The shed roof then runs out through the
-#      tenon's flat, which is exactly the assert that fires. S_C has to become a
-#      property of the JOINT (-3.0 * up_s) rather than a module constant, and the
-#      board's own s extents have to mirror with it or the female's head breaks a flat.
-#   3. Even then the port only reaches y -0.96 off the axis, not -5.20: the board's t
-#      offset and its s offset move it in opposite directions once reversed, and they
-#      very nearly cancel.
-#   4. AND IT STILL WOULD NOT BE ENOUGH. The harness drops down the fixed tenon on
-#      leg_trrs._ax(), y 49.15 -- INSIDE the latch spring's y 45.15..57.15. That bore
-#      is inherited from the retired TRRS lead (see ROUTE_OFF, which records the same
-#      inheritance from the other end), so the +Y routing has to move whether the board
-#      mirrors or not.
-#
-# So the latch move is a routing change first and a board change second.
 # The tenon builds along -S here, so every cavity's s0 face is its ceiling: house()
 # stands a 45 degree gable on it, in the SAME profile as the cavity.
 _D = math.sqrt(0.5)
@@ -702,22 +665,15 @@ ROUTE_OFF = 9 * B               # 7.2 off the leg's axis in +Y, and NOT on the p
                                 # RETIRED TRRS bore's axis and then a jog back out to
                                 # clear the ladder -- both inherited from a part that no
                                 # longer exists (user spotted the offset in the tab).
-# ── THE FIXED TENON'S LANE, which the harness now owns too ──────────────────
-# It used to be leg_trrs._ax() at +5.6, and that module's own comment says exactly why:
-# "the latch's pocket takes the tenon's -Y middle". The lane was on +Y because the LATCH
-# was on -Y. With every latch moving to +Y (user, 2026-09-23) the two simply SWAP: the
-# latch takes the +Y middle and the harness takes the -Y one it vacates. Neither is
-# squeezed past the other -- each ends up with the room the other had.
+# ── THE FIXED TENON'S LANE ────────────────────────────────
+# The harness owns its own lane at BOTH ends -- this one and ROUTE_OFF -- rather than
+# borrowing a bore from somewhere else, which is what put a dogleg in the other end.
 #
-# Declared HERE rather than read off leg_trrs, which is the retired TRRS module: the
-# harness is leg_pogo's and its lane should be too. This was leg_stack's last import of
-# leg_trrs, and it is the same stale inheritance ROUTE_OFF already records from the
-# other end of the run.
-DROP_OFF = 7 * B                # +5.6 STILL, because the latch has not moved yet --
-                                # see the swap note above. Flipping this is one half of
-                                # that swap and it is red on its own: at -5.6 the lane
-                                # lands inside the latch spring's y 29.95..41.95.
-DROP_X = -2 * B                 # -1.6, kept: it is x that keeps this clear of the board
+# It sits in the tenon's +Y middle because the LATCH has the -Y one (leg_latch's pocket
+# and spring run the depth of this tenon). The two are one decision: whichever middle
+# the latch takes, the lane takes the other, and neither is squeezed past the other.
+DROP_OFF = 7 * B                # +5.6, the middle the latch leaves free
+DROP_X = -2 * B                 # -1.6: it is x that keeps this clear of the board
 
 
 def drop_xy(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
@@ -727,7 +683,7 @@ def drop_xy(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
 
 # how far that lane sits from the nearest of the tenon's four flats. The section is a
 # square on the diagonals, so the flats' normals are (+-_D, +-_D) at LS.TEN_W / 2.
-_DROP_WALL = min(LS.TEN_W / 2.0 - (DROP_X * nx + DROP_OFF * ny) * math.sqrt(0.5)
+_DROP_WALL = min(LS.TEN_W / 2.0 - (DROP_X * nx + DROP_OFF * ny) * _D
                  for nx in (1.0, -1.0) for ny in (1.0, -1.0))
 assert _DROP_WALL - ROUTE_D / 2.0 * math.sqrt(2) >= D.MIN_WALL_2P, (
     "the fixed tenon's lane leaves only %.2f to its nearest flat"
@@ -745,16 +701,14 @@ CHAN_D = 6 * B                  # 4.8 -- the body tenons are fused on after this
 def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     """(None, negatives) for the body adapter at the signal corner, in its own frame.
     The harness rises out of the female's connector into a groove in the top face that
-    runs out whichever Y face the port points at -- -Y, inboard, under the instrument
-    (the old lead's exit) until the board mirrored to clear the latch."""
+    runs out whichever Y face the port points at: -Y, inboard, under the instrument."""
     j = TOP
     neg = host_negatives(j)
     fc = j.p((WIRE_T0 + ZR_MOUTH - ZR_PLUG) / 2.0, 0.0, 0.0)
-    # THE GROOVE LEAVES BY WHICHEVER FACE THE PORT IS ALREADY POINTING AT. It used to
-    # be written as "-Y, inboard", which was the same thing while the board sat on that
-    # side -- but it is the port that decides, and when the board mirrored to dodge the
-    # latch a hard-coded -Y sent the groove back across the whole part, under the
-    # connector it was supposed to be leading away from.
+    # THE GROOVE LEAVES BY WHICHEVER FACE THE PORT POINTS AT, derived rather than
+    # named: a groove written to a fixed face is only right while the board is on that
+    # side, and wrong the moment it is not -- it would run back across the part, under
+    # the connector it is supposed to lead away from.
     _side = 1.0 if fc[1] > j.y else -1.0
     y_out = j.y + _side * (LS.LEG_W / 2.0 + 1.0)
     y_in = fc[1] - _side * CHAN_W

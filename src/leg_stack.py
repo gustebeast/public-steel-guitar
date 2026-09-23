@@ -430,10 +430,8 @@ def fixed_tenon():
     # THE LEG'S SIGNAL (src.leg_pogo): the MALE pogo board in a pocket at this
     # tenon's tip, and the harness's bore on down the leg at the old lead's spine
     from . import leg_pogo as PG
-    # (the lane is leg_pogo's own now -- it was leg_trrs._ax()/PASS_D, sized for a
-    #  moulded TRRS plug that had to travel it. Nothing travels this but four bare
-    #  wires, so it is ROUTE_D like the adjust tenon's, and it is on -Y because the
-    #  latch has taken the +Y middle. This was the last leg_trrs import in leg_stack.)
+    # (the lane is leg_pogo's: ROUTE_D wide, like the adjust tenon's, because nothing
+    #  travels it but four bare wires -- they are crimped after threading.)
     return t.cut(PG.tenon_negatives(PG.TOP, PG.drop_xy(), PG.ROUTE_D,
                                     Z_FIX_TEN_BOT - 1.0, TENON_UP))
 
@@ -576,38 +574,25 @@ _S2 = 1.0 / math.sqrt(2.0)
 SLEEVE_UP = (0.0, -1.0, 0.0)       # both sleeves: the bed is the +Y face (at Y 65.95
                                    # on this station) and the part builds toward -Y,
                                    # so the BUTTON face is the top (user)
-ADAPTER_UP = (0.0, -1.0, 0.0)      # +Y -> -Y, button face UP (user, 2026-09-23).
-                                   # It built -Y -> +Y until then, for the latch
-                                   # pocket: printed button-face-up the pocket's
-                                   # outer skin is a 91.8 mm^2 flat bridge over the
-                                   # hook, and button-face-down it is a floor.
-                                   #
-                                   # WHAT CHANGED THE ANSWER IS THE RIDGES, not the
-                                   # pocket. The body tenons on the top face run
-                                   # along Y and END at the +Y face, so building
-                                   # -Y -> +Y each one STARTS in mid-air: a
-                                   # 6.60 x 8.03 section laid down in one layer.
-                                   # Ramping them 45 fixes that but spends 481 mm^3
-                                   # of tenon -- about a quarter of the full-section
-                                   # engagement on two of the three ridges -- and
-                                   # that is joinery holding the leg to the
-                                   # instrument (user). This way up all three reach
-                                   # the bed on layer one and no ramp is needed.
-                                   #
-                                   # So the trade is 481 mm^3 of engagement against
-                                   # one 91.8 mm^2 bridge buried 42 mm inside a
-                                   # clearance pocket, and the engagement wins.
-                                   # ⚠ THE BRIDGE IS NOT THE END OF THE STORY: it
-                                   # goes away entirely if the latch moves to the
-                                   # +Y side (leg_latch.BUTTON_SIDE), which drops
-                                   # this part to 5 ceilings / 74.8 mm^2 / worst
-                                   # span 1.60 with no ramp either -- measured. That
-                                   # is blocked on the POGO BOARD, which is oriented
-                                   # the way it is precisely to stay clear of the
-                                   # latch pocket (leg_pogo, "clear of the leg
-                                   # latch's pocket"); moving the latch across puts
-                                   # the two in the same room (6 overlaps, 0.4-2.2
-                                   # mm^3) until the board mirrors with it.
+ADAPTER_UP = (0.0, -1.0, 0.0)      # +Y -> -Y, button face UP (user). THE RIDGES
+                                   # DECIDE THIS. The body tenons on the top face
+                                   # run along Y and END at the +Y face, so that
+                                   # face is the bed and all three reach it on
+                                   # layer one. Built the other way each ridge
+                                   # starts in mid-air -- a 6.60 x 8.03 section
+                                   # laid down in one layer -- and the 45 ramp that
+                                   # fixes it spends 481 mm^3 of tenon, about a
+                                   # quarter of the full-section engagement on two
+                                   # of the three. That is joinery holding the leg
+                                   # to the instrument (user), and it outweighs
+                                   # what this way up costs: the latch pocket's
+                                   # blind end is a 91.8 mm^2 bridge, span 6.90,
+                                   # buried 42 mm inside a clearance pocket.
+                                   # Everything else in the part is <= 1.60.
+                                   # (That bridge is not permanent -- on the +Y
+                                   #  side of the leg the same end lands near the
+                                   #  bed and is a floor: 5 ceilings / 74.8 mm^2 /
+                                   #  worst span 1.60. See leg_latch.BUTTON_SIDE.)
                                    # (The sleeve's pad recess is the mirror case --
                                    # it wants the button face UP -- which is why the
                                    # two differ.)
