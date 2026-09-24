@@ -122,7 +122,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import knee_lever as KL
 from . import pedal_bar as PB
-from .helpers import box_at, cyl_y, heal
+from .helpers import box_at, cyl_y, heal, pose_dir
 
 
 # ── throw, arm and the lobe that keeps the feel identical ────────────────────
@@ -362,9 +362,19 @@ def _to_guitar(s):
     The extra 180° about guitar Y is also what keeps this a proper rotation: the
     mapping (+X->-Z, +Y->+X, +Z->+Y) has determinant -1 — a reflection, not a
     pose. Flipping the axle's sign too makes it a rotation again."""
-    return (s.rotate((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), -90.0)
-             .rotate((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), -90.0)
-             .rotate((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), 180.0))
+    for ax, deg in POSE_ROT:
+        s = s.rotate((0.0, 0.0, 0.0), ax, deg)
+    return s
+
+
+POSE_ROT = (((1.0, 0.0, 0.0), -90.0),
+            ((0.0, 1.0, 0.0), -90.0),
+            ((0.0, 1.0, 0.0), 180.0))
+# PRINT ORIENTATION (the record, declared once per part) -- the pedal's arm IS a knee
+# lever arm (it takes its axle bore from cut_axle_bore), so it prints the way that one
+# does and arrives here through the three turns above: local +Y -> guitar -X. Derived
+# rather than written out, so the mapping and the orientation cannot drift apart.
+LEVER_UP = pose_dir(POSE_ROT, KL.LEVER_UP)
 
 
 # the bar's -Y face and top, in guitar coordinates (pedal_bar is drawn at

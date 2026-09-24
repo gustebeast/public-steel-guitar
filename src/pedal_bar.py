@@ -685,6 +685,22 @@ PIECE_SPAN = {"pedal_bar_a": (-1e9, XS1),
               "pedal_bar_c": (XS2, 1e9)}
 
 
+# PRINT ORIENTATION (the record, declared once per part) -- the lid prints TOP-FACE
+# DOWN (below), and its top face is the +Y one: the profile runs from the groove floor at
+# LID_Y0 out to BAR_Y1, the bar's outer +Y face. So it builds -Y, which is the OPPOSITE
+# of BAR_UP -- and has to be, because the 45 dovetail flanks the docstring cites are only
+# overhangs this way up. The lids are translated in Z into the assembly, never rotated.
+LID_UP = (0.0, -1.0, 0.0)
+
+
+# PRINT ORIENTATION (the record, declared once per part) -- the lid prints TOP-FACE
+# DOWN (below), and its top face is the +Y one: the profile runs from the groove floor at
+# LID_Y0 out to BAR_Y1, the bar's outer +Y face. So it builds -Y, which is the OPPOSITE
+# of BAR_UP -- and has to be, because the 45 dovetail flanks the docstring cites are only
+# overhangs this way up. The lids are translated in Z into the assembly, never rotated.
+LID_UP = (0.0, -1.0, 0.0)
+
+
 def _lid_full() -> cq.Workplane:
     """The full sliding-dovetail lid (pre-split): a 4-thick plate with 45°
     dovetail flanks riding the bar's top groove — ONE lid roofs the wiring
