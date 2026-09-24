@@ -496,12 +496,23 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
         "the ridge ramp assumes the adapter builds along Y, either way up")
     _uy = 1.0 if ADAPTER_UP[1] > 0 else -1.0
     _bed = ly - _uy * LEG_W / 2.0       # the face it lies on: -Y face when it builds +Y
+    # THE HARNESS CHANNEL MUST NOT RUN UNDER A TENON'S FOOT. It is cut in this same top
+    # face and undercuts anything it passes beneath, and a tenon undercut along its run
+    # is holding the leg on with what is left either side. Checked here because this is
+    # where the stations are known; leg_pogo.CHAN_X is where the number lives.
+    from . import leg_pogo as _PG
+    _cx0, _cx1 = (sx + _PG.CHAN_X - _PG.CHAN_W / 2.0,
+                  sx + _PG.CHAN_X + _PG.CHAN_W / 2.0)
     _rb = LG._stub_ridge(1.0).val().BoundingBox()       # the ridge's own section, measured
     for st, y0, y1 in CH.foot_tenon_runs(sx, ly, syg):
         # (keeping off the height-screw heads and the string access channels is the MORTISE's
         #  business, not the tenon's: chassis.mort_segments shortens the run and this follows it.
         #  It was duplicated here, which is two places to get the same rule wrong.)
         b = b.union(LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP)))
+        assert st + _rb.xmax + D.MIN_WALL_2P <= _cx1 or \
+            _cx0 <= st + _rb.xmin - D.MIN_WALL_2P, (
+                "the harness channel (x %.2f..%.2f) runs under the body tenon at "
+                "x %.2f..%.2f" % (_cx0, _cx1, st + _rb.xmin, st + _rb.xmax))
         # RAMP THE LEADING END. The adapter builds +Y, so a ridge whose run STARTS above the
         # bed begins in mid-air: its whole 6.60 x 8.03 section is laid down in one layer with
         # nothing under it but the 0.80 strip where it meets the top face. Two of them were the

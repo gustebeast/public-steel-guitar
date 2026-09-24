@@ -722,6 +722,26 @@ assert _ROUTE_WALL - ROUTE_D / 2.0 * math.sqrt(2) >= D.MIN_WALL_2P, (
     "the adjust tenon's lane leaves only %.2f to its nearest flat"
     % (_ROUTE_WALL - ROUTE_D / 2.0 * math.sqrt(2)))
 CHAN_W = 4 * B                  # 3.2: the harness with room
+CHAN_X = -13 * B                # -10.4 off the leg's axis: where the channel's LONG
+                                # run down the adapter's top face sits.
+                                #
+                                # IT IS OUTBOARD OF EVERY BODY TENON, and that is the
+                                # whole point of the number. The tenons stand on this
+                                # same face and run the same way, so a channel on the
+                                # connector's own line went straight under the outermost
+                                # one's foot -- 3.20 wide and 2.00 deep for 21.45 of its
+                                # 32.49 run, which is where it grabs the adapter (user
+                                # saw it in the tab). Out here the run clears that foot
+                                # by 2.26 and still leaves 10.40 to the -X face.
+                                #
+                                # The gaps BETWEEN tenons cannot take it: they are 3.80
+                                # and 3.60 against a 3.20 channel, so the best either
+                                # could leave is 0.30 a side.
+                                #
+                                # Getting there costs no dog-leg worth the name. The ZR's
+                                # mouth already faces -t, which is -X+Y, so the harness
+                                # leaves the connector heading THIS way; the channel just
+                                # carries on to the lane before turning down it.
 CHAN_D = 6 * B                  # 4.8 -- the body tenons are fused on after this is cut
                                 # and refill the groove's top ~1 mm
 
@@ -736,15 +756,21 @@ def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     # OUT THE -Y FACE (user): inboard, under the instrument. The +Y face is the rail
     # side, and it is also the one the latch now opens onto.
     #
-    # The ZR's mouth faces -t, which on this diagonal points -X+Y, so the harness
-    # leaves the connector heading +Y and the groove has to bring it back across the
-    # axis. That is why y_in is taken from the PLUG rather than from the face: the
-    # groove has to start beyond where the wire actually surfaces, not at the board.
+    # AN L, not a straight run. The long leg goes down CHAN_X, outboard of every body
+    # tenon (see CHAN_X); the short one carries the harness out to it from the plug,
+    # along the direction the ZR's mouth already points. The ZR faces -t, which on this
+    # diagonal is -X+Y, so the wire surfaces on the +Y side and heading -X -- the short
+    # leg is the run it was making anyway, and the turn happens clear of the tenons
+    # rather than under one.
+    xc = j.x + CHAN_X
     y_out = j.y - (LS.LEG_W / 2.0 + 1.0)
-    y_in = fc[1] + CHAN_W
-    neg = neg.union(cq.Workplane("XY").add(cq.Solid.makeBox(
-        CHAN_W, abs(y_in - y_out), CHAN_D + 1.0,
-        cq.Vector(fc[0] - CHAN_W / 2.0, min(y_in, y_out), LS.Z_TOP - CHAN_D))))
+    y_turn = fc[1]                                  # where the wire surfaces
+    neg = neg.union(cq.Workplane("XY").add(cq.Solid.makeBox(   # the long leg, down -Y
+        CHAN_W, (y_turn + CHAN_W / 2.0) - y_out, CHAN_D + 1.0,
+        cq.Vector(xc - CHAN_W / 2.0, y_out, LS.Z_TOP - CHAN_D))))
+    neg = neg.union(cq.Workplane("XY").add(cq.Solid.makeBox(   # ...and the short one
+        (fc[0] + CHAN_W / 2.0) - (xc - CHAN_W / 2.0), CHAN_W, CHAN_D + 1.0,
+        cq.Vector(xc - CHAN_W / 2.0, y_turn - CHAN_W / 2.0, LS.Z_TOP - CHAN_D))))
     return None, neg
 
 
@@ -847,9 +873,10 @@ def harness():
     f0 = TOP.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)     # just off the plug's end
     zc = LS.Z_TOP - CHAN_D + d / 2.0 + 0.2          # lying in the groove's bottom
     y_out = LS.LEG_Y - LS.LEG_W / 2.0
+    xc = LS.LEG_X + CHAN_X                          # the channel's long leg
     f1 = TOP.p(fr, 0.0, zd)
-    body_path = [f0, f1, (f1[0], f1[1], zc), (f1[0], y_out, zc),
-                 (f1[0], y_out - 12.0, zc)]
+    body_path = [f0, f1, (f1[0], f1[1], zc), (xc, f1[1], zc), (xc, y_out, zc),
+                 (xc, y_out - 12.0, zc)]
     g0 = BOTTOM.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)
     g0b = BOTTOM.p(fr, 0.0, zd)                    # clear of the plug first...
     g1a = BOTTOM.p(fr, -S_C, zd)                   # ...over to the leg's axis line,
