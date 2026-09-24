@@ -1922,8 +1922,13 @@ _MPN_RULES = (
                                                     "the MCU, not the front end")),
     ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.1903, "3V3 ANALOG, 40 uVrms, SOT-23-5, @10+. Low load "
                                                     "(~40 mA) so the small package is fine")),
-    ("U",    ("TLV9064IDR",      "C388176",  0.3297, "quad op-amp, SOIC-14, 10 MHz GBW, @30+ "
-                                                    "500 fA Ib -- the TIA part. 10k in stock")),
+    # ⚠ THE DUAL, NOT THE QUAD (2026-09-23). Same die, same datasheet, same 10 MHz /
+    # 10 nV/rtHz / 500 fA -- the packaging was the entire sourcing problem. JLCPCB stocks
+    # 34,405 of this against 107 of the TLV9064SIRTER, "Economic and Standard" either way,
+    # and ten duals cost $15.00 a run against the quad's $48.16. One per string; see the
+    # summing-node argument at OP_PKG for why it is also the better circuit.
+    ("U",    ("TLV9062IDGKR",    "C398356",  0.15,   "dual op-amp, VSSOP-8, 10 MHz GBW, @50+ "
+                                                    "500 fA Ib -- the TIA part. 34k in stock")),
     # ⚠ ONE "Y" RULE CANNOT COVER BOTH CRYSTALS, and the old one quietly did: it put
     # a 25 MHz part on Y2, whose job is to clock the PHY at 26. The datasheet audit fixed
     # the netlist and left this table saying "confirm vs USB3343". Per-ref now, and the

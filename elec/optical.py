@@ -122,6 +122,7 @@ FP = {
     "WQFN-24":  "Package_DFN_QFN:Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm",
     "RNX12":    "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm",
     "SOIC-14":  "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
+    "VSSOP-8":  "Package_SO:VSSOP-8_3x3mm_P0.65mm",
     "LQFP144":  "Package_QFP:LQFP-144_20x20mm_P0.5mm",
     "LQFP176":  "Package_QFP:LQFP-176_24x24mm_P0.5mm",
     "QFN-24":   "Package_DFN_QFN:HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm",
@@ -453,37 +454,43 @@ def optical():
                       pins=[Pin(num=1, name="A", func=P), Pin(num=2, name="K", func=P)])
             store[i] = pd
 
-    # ── U1-U5: the transimpedance amps, four to a quad ───────────────────────
-    # TLV9064, SOIC-14. 500 fA input bias -- which is the spec that matters, because
-    # the signal is tens of nanoamps and an op-amp's bias current adds directly to it.
-    # Channel order within a quad follows the CAD's placement so the summing node
-    # stays a few millimetres long; that node is the noise-critical point on this
-    # board and the reason the quads sit immediately -X of the sensor row.
-    quads = {}
-    for q in range(1, 6):
-        quads[q] = Part(
-            name="TLV9064", ref_prefix="U", ref="U%d" % q, dest="NETLIST",
-            tool="skidl", value="TLV9064IDR",
-            description="quad op-amp, 4x transimpedance amp (LCSC C388176)",
-            footprint="Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
-            pins=[Pin(num=n, func=P) for n in range(1, 15)])
-    # SOIC-14 quad pinout: 1 OUT_A, 2 IN-_A, 3 IN+_A, 4 V+, 5 IN+_B, 6 IN-_B,
-    # 7 OUT_B, 8 OUT_C, 9 IN-_C, 10 IN+_C, 11 V-, 12 IN+_D, 13 IN-_D, 14 OUT_D
-    # ⚠ SECTIONS BY HEIGHT, NOT IN ORDER (2026-09-21). A quad serves two strings, and its
-    # four detectors run top to bottom 1A, 1B, 2A, 2B; the SOIC's sections sit A top-left,
-    # D top-right, C bottom-right, B bottom-left. Mapped in plain order, 2B -- the lowest
-    # detector -- went to D at the TOP, and its summing node and output crossed section
-    # C's pins: the pre-laid local nets shorted there. Mapped by height, every detector
-    # meets the pins level with it.
-    SEC = {0: (1, 2, 3), 1: (14, 13, 12), 2: (8, 9, 10), 3: (7, 6, 5)}
+    # ── U21-U30: the transimpedance amps, ONE DUAL PER STRING ────────────────
+    # TLV9062, VSSOP-8 (DGK). Same die as the TLV9064 this replaced -- one datasheet, one
+    # electrical table -- so 500 fA input bias, 10 MHz GBW and 10 nV/rtHz are unchanged.
+    # WHY NOT THE QUAD. Sourcing first: JLCPCB stocks 107 of the quad against 34,405 of
+    # the dual, at a third the price. But the electrical reason is the one that would have
+    # forced it anyway. A quad serves four detectors over 14.25 mm of y, so three of its
+    # four summing nodes -- the only high-z nets on this board -- run past neighbouring
+    # stations. Every station's emitter carries the SAME 192 kHz carrier, so charge
+    # coupled into a summing node arrives IN PHASE with the demodulator and integrates up
+    # as a fixed offset that is indistinguishable from string displacement. Measured on
+    # the CAD placement: all twenty nodes are now 5.13 mm with zero spread, against three
+    # of four at ~15 mm and four different lengths.
+    # AND THE DIFFERENCED PAIR IS ON ONE DIE. Supply, substrate and temperature perturb
+    # both halves of a dual together, so they are common mode and cancel in A-B. That is
+    # the whole measurement.
+    duals = {}
+    for i in range(1, 11):
+        duals[i] = Part(
+            name="TLV9062", ref_prefix="U", ref="U%d" % (20 + i), dest="NETLIST",
+            tool="skidl", value="TLV9062IDGKR",
+            description="dual op-amp, 2x TIA for string %d (LCSC C398356)" % i,
+            footprint="Package_SO:VSSOP-8_3x3mm_P0.65mm",
+            pins=[Pin(num=n, func=P) for n in range(1, 9)])
+    # VSSOP-8 dual pinout: 1 OUT_A, 2 IN-_A, 3 IN+_A, 4 V-, 5 IN+_B, 6 IN-_B, 7 OUT_B,
+    # 8 V+.  Section A takes the +Y detector and B the -Y one, which is also how the part
+    # is rotated in the CAD (OP_ROT 270 puts A's pins on the +Y side). No height mapping
+    # needed any more -- that was a quad problem, where four sections had to be matched to
+    # four detectors spread over two strings and a naive order crossed two of them.
+    SEC = {"A": (1, 2, 3), "B": (7, 6, 5)}      # (out, in-, in+)
 
     tia_out = {}
     for ch in range(20):                       # 0..19 -> (string, side)
         i, side = ch // 2 + 1, "A" if ch % 2 == 0 else "B"
-        q, sec = quads[ch // 4 + 1], SEC[ch % 4]
-        out_p, inn_p, inp_p = sec
-        # Rf<quad><section>, the CAD's scheme: Rf11..Rf14 for quad 1, Rf21.. for quad 2.
-        n = "%d%d" % (ch // 4 + 1, ch % 4 + 1)
+        q = duals[i]
+        out_p, inn_p, inp_p = SEC[side]
+        # Rf<string><side>, the CAD's scheme: Rf1A/Rf1B for string 1's dual.
+        n = "%d%s" % (i, side)
         pd = (pd_a if side == "A" else pd_b)[i]
         summing = Net("TIA_IN_%d%s" % (i, side))
         out = Net("TIA_OUT_%d%s" % (i, side))
@@ -537,12 +544,30 @@ def optical():
         # before the output rails. The converter's PGA (0..42 dB) takes the small end up
         # to its full scale, so the gain split is Rf for headroom, PGA for level.
         # Still per string: the plain strings can take 2M if ambient allows.
-        rf = _r("Rf%s" % n, "1M", "TIA feedback, string %d%s -- tune per string" % (i, side))
+        # ⚠ 250k / 2.2 pF SINCE 2026-09-23, AND THE REASON IS PHASE, NOT NOISE. At 1M the
+        # least stable Cf is sqrt(Ct / (2 pi Rf GBW)) = 0.70 pF on a ~31 pF Ct (the PD15 at
+        # ZERO bias, ~25 pF, plus the amp's 6). You cannot buy or hold 0.70 pF: the
+        # smallest real 0402 C0G is 0.5 at +-0.25, and an 0402's own stray is a few tenths,
+        # so the feedback capacitance would be set by layout parasitics and the pole would
+        # land anywhere. That scatters the CARRIER PHASE by about +-5.8 deg part to part,
+        # and a lock-in recovers amplitude from phase: two channels of one string that do
+        # not match in phase put a spurious term straight into DIFF, which is the signal
+        # pitch detection rides on. At 250k the part is 1.40 pF minimum, a real +-10% 2.2
+        # pF holds it, and the spread is +-1.2 deg.
+        # IT COSTS 0.31 dB, because this board is SHOT-NOISE limited -- the photodiode's
+        # own shot noise is 0.80 pA/rtHz against Rf's 0.13 at 1M and 0.26 at 250k, so Rf
+        # barely enters the total. Noise was never the axis this decision turned on.
+        # 2.2 pF not 1.5: 1.5 sits 1.07x over the stability minimum, which is no margin at
+        # all. 2.2 is 1.57x, puts the pole at 289 kHz -- still 4.3x the 68 kHz sideband
+        # edge -- and leaves ~60 deg of phase margin.
+        # AND THE NEW EMITTER FORCES IT ANYWAY: the LTE-C9901 is ~6x the incumbent's flux,
+        # so 1M saturates the output outright against a 0.33 V MID.
+        rf = _r("Rf%s" % n, "250k", "TIA feedback, string %d%s -- tune per string" % (i, side))
         # ⚠ Cf IS C0G, NOT X7R: it sets the pole, and an X7R part's capacitance moves with
         # bias and temperature, so twenty channels would stop matching -- which is exactly
         # what DIFF cannot tolerate. 1 pF is at the edge of what a part sets rather than
         # the layout (an 0402's own stray is a few tenths): measure the pole at bring-up.
-        cf = _c("Cf%s" % n, "1pF", "TIA feedback cap, string %d%s -- C0G, ~160 kHz pole"
+        cf = _c("Cf%s" % n, "2.2pF", "TIA feedback cap, string %d%s -- C0G, ~289 kHz pole"
                 % (i, side))
         summing += rf[1], cf[1]
         out += rf[2], cf[2]
@@ -562,13 +587,16 @@ def optical():
     # price of exceeding the ADC's limit. On +3V3A the TIA shares the ADC's own
     # reference -- ratiometric, so reference drift cancels instead of adding.
     # TLV9064: 1.8 V to 5.5 V supply, rail-to-rail in and out, so 3.3 V is in spec.
-    for q in range(1, 6):
-        v3a += quads[q][4]
-        gnd += quads[q][11]
-        for k in (1, 2):
-            c = _c("Cd%d%d" % (q, k), "100nF", "quad %d supply bypass" % q)
-            v3a += c[1]
-            gnd += c[2]
+    # TLV9062: 1.8 to 5.5 V, RRIO, so 3.3 V is in spec -- same die as the TLV9064 the
+    # note above was written for. ONE bypass per package now instead of two per quad: ten
+    # packages each get their own 100 nF beside its own V+ pin, which is ten caps for
+    # twenty channels against the quad's ten for twenty. Same count, half the distance.
+    for i in range(1, 11):
+        v3a += duals[i][8]
+        gnd += duals[i][4]
+        c = _c("Cd%d" % i, "100nF", "string %d dual supply bypass" % i)
+        v3a += c[1]
+        gnd += c[2]
 
     sai_sck, sai_fs = Net("SAI_SCK"), Net("SAI_FS")
     sai_sd = [Net("SAI_SD%d" % (k + 1)) for k in range(5)]
