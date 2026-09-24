@@ -746,6 +746,29 @@ CHAN_D = 6 * B                  # 4.8 -- the body tenons are fused on after this
                                 # and refill the groove's top ~1 mm
 
 
+def chan_ends(j=None):
+    """The adapter channel's single diagonal: (start, end, unit, length).
+
+    ONE definition, read by the CUT and by the HARNESS, because they have to be the
+    same line -- a channel drawn from one pair of endpoints and a wire drawn from
+    another is a wire that leaves its own tunnel, and the overlap gate finds it as
+    four separate collisions rather than as the one mistake it is.
+    """
+    j = j or TOP
+    # The turn onto the diagonal comes AS SOON AS THE LEAD-IN ENDS. Every millimetre
+    # the wire travels along -t before turning is travelled across the tenon's mouth,
+    # where the tenon itself is; turning early lets the run start climbing away from it
+    # at once. Delayed by one more STUB_FAN the outer two conductors cut 1.5 mm^3 each
+    # out of the tenon, and by two, more -- it is the -t travel that costs, not the turn.
+    a = j.p(ZR_MOUTH - ZR_PLUG - 0.1 - STUB_LEAD, 0.0,
+            F_TOP + ZR_H / 2.0)                         # clear of the ZR's plug
+    b = (j.x + CHAN_X, j.y - LS.LEG_W / 2.0 - 1.0,      # ...out through the -Y face
+         LS.Z_TOP - CHAN_D + HARNESS_D / 2.0 + 0.2)
+    v = [b[k] - a[k] for k in range(3)]
+    n = math.sqrt(sum(c * c for c in v))
+    return a, b, tuple(c / n for c in v), n
+
+
 def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     """(None, negatives) for the body adapter at the signal corner, in its own frame.
     The harness rises out of the female's connector into a groove in the top face that
@@ -756,40 +779,33 @@ def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     # OUT THE -Y FACE (user): inboard, under the instrument. The +Y face is the rail
     # side, and it is also the one the latch now opens onto.
     #
-    # AN L WHOSE FIRST LEG RUNS AT 45, not square. The long leg goes down CHAN_X,
-    # outboard of every body tenon (see CHAN_X); the first leg carries the harness out
-    # to it from the plug, along the direction the ZR's mouth already points -- the ZR
-    # faces -t, which on this diagonal is -X+Y, so the wire surfaces on the +Y side and
-    # heading -X.
+    # ONE CUT, on a single 3D diagonal (user). The channel used to be an L in the top
+    # face -- a leg across X and a leg down Y -- which meant two cavities, a corner in
+    # the harness, and a first leg that had to be taken on the 45 to stop its far wall
+    # being a ceiling. A straight line from the plug to the outside face does all of it
+    # at once: it goes -X, -Y and +Z together, so the wire runs dead straight and there
+    # is nothing to turn.
     #
-    # THAT FIRST LEG IS THE ONE THAT HAS TO BE 45 (user). Run square in X it crosses
-    # the build direction, so its far side wall looks straight back at the bed: a
-    # 24 mm^2 flat ceiling, span 4.80, for nothing. Taken diagonally it covers the same
-    # X in the same Y, and BOTH its side walls stand at 45 to the build and carry
-    # themselves -- the same bargain the tenon's own cavities make.
+    # THE 45 RULE IS ABOUT THE AXIS. A swept channel's walls all contain its axis, so
+    # the steepest wall it can present is (90 - the angle between that axis and the
+    # build direction). Keep the axis within 45 of the build and no wall it sweeps can
+    # be a ceiling, whichever way the section is turned. This one runs 22.5 off the
+    # build axis, with room to spare.
     #
-    # It has to come -Y as it comes -X, which suits the run: the channel is heading for
-    # the -Y face anyway, so the diagonal is not a detour, it is the first part of the
-    # journey taken on the slant.
-    xc = j.x + CHAN_X
-    y_out = j.y - (LS.LEG_W / 2.0 + 1.0)
-    _run = fc[0] - xc                               # how far -X the channel must come
-    y_turn = fc[1] - _run                           # ...and as far -Y, which is the 45
-    neg = neg.union(cq.Workplane("XY").add(cq.Solid.makeBox(   # the long leg, down -Y
-        CHAN_W, y_turn - y_out, CHAN_D + 1.0,
-        cq.Vector(xc - CHAN_W / 2.0, y_out, LS.Z_TOP - CHAN_D))))
-    # the 45 leg, as a strip of width CHAN_W about the diagonal. It OVERSHOOTS at both
-    # ends by CHAN_W along its own axis: a strip cut square at B would only reach the
-    # long leg's centre line, leaving a nick of square wall either side of it, and a
-    # strip stopping at A would not meet the connector's own cavity.
-    _o = CHAN_W * _D                                # the overshoot, resolved on 45
-    _ax, _ay = fc[0] + _o, fc[1] + _o               # back toward the plug...
-    _bx, _by = xc - _o, y_turn - _o                 # ...and past the turn
-    _nx, _ny = -_D * CHAN_W / 2.0, _D * CHAN_W / 2.0    # normal to the diagonal
-    neg = neg.union(cq.Workplane("XY").workplane(offset=LS.Z_TOP - CHAN_D)
-                    .polyline([(_ax + _nx, _ay + _ny), (_bx + _nx, _by + _ny),
-                               (_bx - _nx, _by - _ny), (_ax - _nx, _ay - _ny)])
-                    .close().extrude(CHAN_D + 1.0))
+    # AND IT GOES UNDER THE TENONS RATHER THAN THROUGH THEM. Buried, it crosses the
+    # outermost tenon's x band 10.49 BELOW Z_TOP -- the body tenons all stand above
+    # that face -- so it takes nothing off any of them. The L clipped one by 27.0 mm3
+    # even on the 45, and by 137.0 mm3 square.
+    #
+    # It is a TUNNEL, not a groove, and that is what the install order already assumes:
+    # the harness is threaded BARE through the leg and crimped afterwards (see
+    # INSTALL_NOTES), so nothing has to be laid into an open channel from above.
+    a, b, u, n = chan_ends(j)
+    assert abs(u[1]) >= math.cos(math.radians(45.0)), (
+        "the harness channel runs %.1f deg off the adapter's build axis, so a wall it "
+        "sweeps is steeper than 45" % math.degrees(math.acos(abs(u[1]))))
+    neg = neg.union(teardrop_hole(CHAN_W, n + CHAN_W, a, u, LS.PRINT_UP["body_adapter"]))
+
     return None, neg
 
 
@@ -894,9 +910,11 @@ def harness():
     y_out = LS.LEG_Y - LS.LEG_W / 2.0
     xc = LS.LEG_X + CHAN_X                          # the channel's long leg
     f1 = TOP.p(fr, 0.0, zd)
-    _run = f1[0] - xc                               # the channel's 45 leg: as far
-    body_path = [f0, f1, (f1[0], f1[1], zc),        # -Y as it goes -X
-                 (xc, f1[1] - _run, zc), (xc, y_out, zc), (xc, y_out - 12.0, zc)]
+    # ONE straight run, down the channel's own diagonal and on out of the part
+    _a, _b, _u, _n = chan_ends()
+    # ...and it STOPS at the face rather than guessing at the body's side of the
+    # joint, the same way leg_trrs.cables stops short of the chassis
+    body_path = [f0, _a, _b]
     g0 = BOTTOM.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)
     g0b = BOTTOM.p(fr, 0.0, zd)                    # clear of the plug first...
     # ...then SLANT onto the leg's axis line on the way down, rather than stepping
