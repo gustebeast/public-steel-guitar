@@ -73,7 +73,10 @@ be swapped.
    is two pieces for exactly this reason, and the Ø23.0-bore sleeve holds every turn
    through the heat and the cool (see its BOM row).
 2. **Thread the harness down the leg, then crimp.** Both ends are crimped AFTER
-   threading: a fitted PHR-4 will not pass the bores it has to travel.
+   threading: a fitted PHR-4 will not pass the bores it has to travel. The body
+   adapter's channel is a TUNNEL on a single diagonal, not an open groove you can
+   lay a wire into from above, so it is threaded like every other bore -- which is
+   why it can run buried, under the body tenons instead of through one of them.
 3. **Plug the PHR-4 onto the male board** while the board is still in your hand. The
    PH's room is swept the whole depth of the slot, so the board can go in with its
    plug already on — and that is the easy way round, because the plug's mouth faces
