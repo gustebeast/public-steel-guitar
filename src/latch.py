@@ -74,8 +74,11 @@ bottoming on a hard stop. The cover can only come back out UPWARD, which the
 female half blocks once the joint is together -- so with the leg on the body
 (or the bar on the legs) the whole mechanism is captive with zero fasteners.
 
-FRAME: male-local, z0 = the BUTT PLANE (male body top face = female mouth),
--Y = inboard = the button side. Both joints share this frame.
+FRAME: male-local, z0 = the BUTT PLANE (male body top face = female mouth), and
++y = OUTBOARD = the button side (BUTTON_SIDE below); -y is inboard, into the joint.
+Both joints share this frame. The slider measures y 1.60..22.40 in it, which is what
+settles the question -- this line read "-Y = inboard = the button side", which says
+the opposite and disagrees with the geometry.
 """
 
 from __future__ import annotations
@@ -126,6 +129,15 @@ LOW_W = 16 * B                    # 12.8 lower band (pad + load window)
 # placed at +-LX_C.
 LX_HEAD = LX_C                    # leg head <-> body stub
 LX_TOWER = -LX_C                  # bar tower <-> shaft block (mirrored)
+
+BUTTON_SIDE = 1.0                 # the button is at +y IN THIS MODULE'S FRAME. The
+                                  # HOST decides which world side that becomes: the
+                                  # bar poses its tower through a 180 rotation, so
+                                  # there the button lands on -y of the bar's axis.
+                                  # Named because every latch in the instrument must
+                                  # face the same way (user) and this module had no
+                                  # single place saying which way it faces -- see the
+                                  # guard at pedal_bar.LATCH_FOOT.
 
 # ── Y datums (all inboard-negative) ──────────────────────────────────────────
 # The male's outer face is NOT the same on both joints: the head/stub are 44 sq
