@@ -643,8 +643,32 @@ PCB_X0  = min(BAND_X0 - BAND_CLR + STRIP_GROW_PX, _ROD_CAP)   # -23.35, strip +X
 # has to be laid out by FUNCTION (like the MCU ring now is) rather than by rows before
 # the width can come in at all. Same root cause as the decoupling row. Deferred, not
 # abandoned -- and the assert that would have hidden it is the conduit's, not this file's.
-PCB_X1S = BAND_X1 + BAND_CLR                                  # -38.88, cavity-set for now
-STRIP_X1 = PCB_X1S - STRIP_GROW_MX                            # -41.38, the strip's own -X edge
+# ⚠ WAS THE BOARD EDGE, IS NOW ONLY THE CAVITY LIMIT. This is how far -X the board MAY
+# go before it fouls the magnetic pickup cavity -- a ceiling, not a position. The board
+# stopped using all of it on 2026-09-24; the real edge is PCB_X1S below, and the assert
+# near the bottom of this file still measures the board against this.
+PCB_CAVITY_X1 = BAND_X1 + BAND_CLR                            # -38.88, the -X ceiling
+# ⚠ THE STRIP'S -X EDGE BELONGS TO V5_PRE NOW (user, 2026-09-24: "Let's make V5_PRE the
+# west most point"). It used to be PCB_X1S, the pickup cavity's edge, which left 6.8 mm of
+# board west of the detector column doing nothing but carrying the 5 V emitter rail
+# wherever the router felt like putting it. Now the rail has a DECLARED lane and the edge is pinned
+# to it, so neither can drift: the lane is the westmost copper on the board by construction.
+#
+# ⚠ ONLY THE STRIP MOVES. PCB_X1S and COMPUTE_X0 stay where they are, and that separation is
+# the whole reason this is safe -- see the long "-X EDGE CANNOT COME IN YET" note above. The
+# compute section is laid out by _block/_spread, which pack rows across the FULL width and
+# SPILL into extra rows when narrowed, converting width into length at about 1:1; the -Y end
+# has 0.11 mm before CONDUIT_Y0 breaks the endplate wall assert. Pulling PCB_X1S in measured
+# -146.26 against a -145.19 limit. The strip has no packer, so it carries none of that.
+# It also keeps the wraps wide, which the north one needs: its M4 mount hole sits at x -33.98,
+# west of this new edge and still inside PCB_X1S.
+V5_LANE_W = 0.8          # the emitter rail's own track -- 1068 mA worst case, all ten on
+V5_LANE   = 0.2 + V5_LANE_W + 0.3        # PD-land clearance + track + fab edge clearance
+# ⚠ ONE WEST EDGE FOR THE WHOLE BOARD (user, 2026-09-24: "I'd like the whole board to be
+# a prism for its outer border"). Every section shares it, so the outer border is a single
+# straight line from +Y to -Y and the billed bounding box is the board.
+PCB_X1S  = PD_X - CRTYD["PD15"][0] / 2 - V5_LANE              # -32.16, the board's -X edge
+STRIP_X1 = PCB_X1S                                            # kept: read by the endplate
 # ⚠ THESE FOUR X DATUMS ARE DERIVED FROM top_plate AND THEIR COMMENTS WENT STALE BY
 # 8.46 mm. BAND_X1, PCB_X0, PCB_X1S and COMPUTE_X0 all track TP.PICKUP_X_NOM and
 # TP.CAVITY_X, so when the pickup cavity moved they followed correctly -- the CODE was
@@ -1294,7 +1318,20 @@ def _parts():
                         ("TP2", "SWD pad -- SWCLK", "TP"),
                         ("TP3", "SWD pad -- NRST (connect under reset)", "TP"),
                         ("TP4", "SWD pad -- GND", "TP"),
-                        ("TP5", "SWD pad -- +3V3D target sense", "TP")], x0, x1)
+                        ("TP5", "SWD pad -- +3V3D target sense", "TP")]
+                     # ⚠ R36/R38 ARE HERE FOR BOARD LENGTH, NOT BECAUSE THEY BELONG HERE.
+                     # They are Q1's gate series and pull-down and they want to be beside
+                     # Q1, which is in the power row -- but trimming the board to V5_PRE
+                     # took that row's span from 61.54 to 54.81 mm and these two spilled
+                     # into a third row, 3.90 mm of parts costing 1.03 mm of board length
+                     # and breaking the conduit's exterior-wall assert by 1.07. This row
+                     # was measured 70% empty. Same trade, and the same reasoning, as
+                     # C127 in the crystal row below -- one row away instead of one row
+                     # longer. Electrically cheap: the LED row switches at the lock-in
+                     # carrier, not an edge rate where a few mm of gate lead matters.
+                     + [("R36", "LED driver gate resistor", "0402"),
+                        ("R38", "LED gate pull-down -- emitters OFF in reset", "0402")],
+                     x0, x1)
     # ⚠ THE PHY IS NO LONGER HERE. It used to sit in this row, between the MCU and the
     # connector, on the reasoning that it owns both ends -- 12 ULPI signals up to the
     # MCU, D+/D- down to the port. That balanced the two runs, and it was the wrong
@@ -1346,7 +1383,6 @@ def _parts():
                       ("R33", "USB-C CC2 pull-down 5k1", "0402"),
                       ("R34", "mid-rail divider", "0402"),
                       ("R35", "mid-rail divider", "0402"),
-                      ("R36", "LED driver gate resistor", "0402"),
                       # ⚠ THESE THREE WERE MISSING AND ARE NOT OPTIONAL. They surfaced
                       # when elec/optical.py turned this table into an actual netlist --
                       # which is the point of doing that, because a part that no net
@@ -1364,7 +1400,7 @@ def _parts():
                       #     2.2 uF and an 0402 at that value is marginal.
                       # R37 IS NOT HERE ANY MORE -- it moved to the PHY cluster at the
                       # -Y edge, where a part that sets a precision current belongs.
-                      ("R38", "LED gate pull-down -- emitters OFF in reset", "0402")],
+                      ],
                      x0, x1)
 
     # ⚠ C127 GOES IN THE CRYSTAL ROW, NOT THE POWER ROW, AND THE BOARD LENGTH IS WHY.
@@ -1678,7 +1714,10 @@ def _parts():
                    ("C167", "5 V output bulk, second", "0805C"),
                    ("R40", "feedback divider -- top, at the output node", "0402"),
                    ("R41", "feedback divider -- bottom", "0402"))
-    _BUCK_X0 = -37.10                    # the row's -X edge, unchanged from before
+    # ⚠ DERIVED, NOT TYPED. This was -37.10, a hardcoded absolute left behind when the
+    # board's -X edge moved; the row then sat 6.14 mm outside the board and only
+    # _assert_field_clear caught it. Pinned to the edge so the two cannot drift again.
+    _BUCK_X0 = COMPUTE_X0 + EDGE_KEEP    # the row's -X edge, on the board's own keep-out
     _buck, _bx = [], _BUCK_X0
     for _r, _d, _p in _buck_order:
         _w = CRTYD[_p][0]
@@ -2451,7 +2490,14 @@ def _concave():
     nothing complains. Generated from the real steps instead, so it cannot go stale."""
     corners = []
     for (ay0, ay1, ax1, ax0), (by0, by1, bx1, bx0) in zip(_SECTIONS, _SECTIONS[1:]):
-        seam = ay1                             # the two sections meet here
+        # ⚠ ay0, NOT ay1. _SECTIONS is listed TOP-DOWN, so section n meets section
+        # n+1 at n's LOW edge: ay0 == by1 for every consecutive pair. ay1 is n's far
+        # edge, a straight run of outline with no corner on it at all. This was
+        # unreachable while every section shared one -X edge (no steps -> no corners
+        # -> empty list), and trimming the strip to V5_PRE is what first generated
+        # one: both corners came out a whole section too far +Y. That is the phantom
+        # fillet this docstring warns about, arriving by the other door.
+        seam = ay0                             # the two sections meet here
         if bx0 < ax0 - 1e-9:                   # +X edge steps IN going -Y: concave
             corners.append((bx0, seam))
         if ax0 < bx0 - 1e-9:
