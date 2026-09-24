@@ -619,6 +619,17 @@ ROD_SUPPORT = D.MIN_WALL_2P                                   # 1.6, the ring's 
 _ROD_CAP = min(D.guide_rod_x(i) for i in range(D.N_STRINGS)
                if D.guide_rod_x(i) < 0) - D.GUIDE_ROD_D / 2 - ROD_SUPPORT
 PCB_X0  = min(BAND_X0 - BAND_CLR + STRIP_GROW_PX, _ROD_CAP)   # -23.35, strip +X edge
+# ⚠ MEASURED 2026-09-24: 1.20 mm IS FREE, AND THE BLOCKERS ARE NOT WHAT THIS NOTE SAYS.
+# Swept PCB_X1S in 0.2 mm steps rather than reasoning about it:
+#     +1.20  OK, board 62.74 wide      <- the most that costs nothing
+#     +1.40  C160 (the 1206 24 V bulk, x -36.46..-33.0) hits the edge keep-out
+#     +4.00  and only THEN the conduit assert below
+# So the row-packer/conduit story is the SECOND blocker, not the first: one 1206
+# capacitor sitting where _spread happened to leave it is what caps the trim at 1.20.
+# NOT TAKEN, deliberately. 1.2 mm off a 63.94 x 188.53 board does not cross a JLCPCB
+# price band, so the saving is mechanical only (a little less unsupported overhang past
+# the plinth), and applying it perturbs a routed board that is at 10 unconnected / 0
+# violations. Worth doing WITH the compute-section rework, not instead of it.
 # ⚠ THE -X EDGE CANNOT COME IN YET, AND THE REASON IS THE -Y END (tried 2026-09-23).
 # The user asked to reclaim the strip -X of the sensors now that nothing uses it: the
 # converter cells moved east, and the floor is the PD15 land plus EDGE_KEEP at -32.06,
