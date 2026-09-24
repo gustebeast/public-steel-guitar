@@ -96,7 +96,8 @@ LCSC = {
     "STM32H743IIT6": "C89597",      # LQFP176; pins re-derived from ST's CubeMX symbol
     "USB3343-CP": "C633347",        # ULPI PHY; pinout was INVENTED before this check
     "USBLC6-2SC6": "C7519",         # ESD array, SOT23-6L: 1 IO1 2 GND 3 IO2 4 IO2 5 VBUS 6 IO1
-    "TLV9064IDR": "C388176",        # quad TIA, SOIC-14 (TI SBOS839 Table 5-5)
+    "TLV9062IDGKR": "C398356",      # dual TIA, VSSOP-8 -- same die as the TLV9064 it
+                                    # replaced (TI SBOS839); 34k stock vs the quad's 107
     "TLV9061IDBVR": "C398358",      # mid-rail buffer -- DBV, NOT the DCK part once ordered
     "AMS1117-3.3": "C6186",         # 3V3 digital LDO: 1 GND 2 VOUT/tab 3 VIN
     "SPX3819M5-L-3-3/TR": "C9055",  # 3V3 analog LDO: 1 IN 2 GND 3 EN 4 BYP 5 OUT
