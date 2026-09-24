@@ -422,13 +422,23 @@ def optical():
         # 180R NOW GIVES EXACTLY 20 mA, the datasheet's own operating point: the LTE-C9901
         # drops 1.4 V typ, so (5.0 - 1.4) / 180 = 20.0 mA on the nose. The old 1.2 V part
         # made the same resistor 21 mA.
-        # ⚠ AND THE HEADROOM IS TIGHTER THAN IT WAS. This part is rated 60 mA continuous,
-        # not 65, so ten emitters flat out is 600 mA against a 600 mA buck -- no margin at
-        # all, where there used to be a little. Raising drive is still an SNR lever but it
-        # is now a SYSTEM decision with no slack: U13, C162's droop over a pulse and the
-        # trunk's gauge have to be re-checked together, and the buck is the binding one.
-        # Note the emitters are square-wave gated at 48 kHz, so mean current is half the
-        # peak; it is the peak the buck has to survive.
+        # ⚠ THE BUCK IS NOT THE CONSTRAINT AND A NOTE HERE BRIEFLY CLAIMED IT WAS. This
+        # part is rated 60 mA continuous against the old part's 65, and "ten emitters flat
+        # out is 600 mA against a 600 mA buck" was written from the 600 mA figure in the
+        # budget below -- which is the TPS560430's, kept there as HISTORY. U13 has been the
+        # 3 A LMR33630C since 2026-09-22, and the budget says so two lines above the number
+        # that got read. Ten emitters at 60 mA continuous is 600 mA, and the whole board's
+        # worst case then is 1068 mA: 36 % of the buck. There is no current problem.
+        # WHAT DOES BIND, if the drive is ever raised, is all local:
+        #   * the emitter's own 100 mW Pd -- 60 mA x 1.4 V is 84 mW, 84 % of it, and an
+        #     0603 has less copper to lose it into than the 0805 this replaced. This is
+        #     the real reason the part is rated 60 and not more.
+        #   * C162's droop over a pulse: 600 mA for a 10.4 us half-period at 48 kHz is
+        #     284 mV on 22 uF, 133 on 47, 62 on 100.
+        #   * Q1, one SOT-23 gating all ten.
+        # And the lever is smaller than it looks: 20 -> 60 mA is 3x optical = +2.4 dB of
+        # shot-limited SNR, against the +10.9 dB the emitter swap just banked. Spend it
+        # only if bring-up says the thin string needs it.
         r = _r("R%d" % i, "180R", "LED ballast, string %d -- 21 mA, tune per string" % i)
         d = Part(name="LED_IR", ref_prefix="D", ref="D%d" % i, dest="NETLIST",
                  tool="skidl", value="LTE-C9901",
