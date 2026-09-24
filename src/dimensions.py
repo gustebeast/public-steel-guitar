@@ -951,11 +951,38 @@ BRIDGE_ARM_W      = 6 * BEAD  # 4.8 bridge-endplate bearing-arm / edge-web thick
 # there but the arm itself.
 BRIDGE_AXLE_L     = 100.0                               # the Ø8 shaft, as bought
 BRIDGE_AXLE_END_W = MIN_WALL_2P                         # 1.6, the -Y blind wall = the stop
+# ⚠ AXIAL FLOAT, AT EACH END (user, 2026-09-23). The shaft used to fit its pocket EXACTLY:
+# BRIDGE_ARM_OUT was (L + END_W)/2, which put the blind floor on one end of the shaft and
+# the arm's outer face on the other with nothing between. A 100.0 shaft in a 100.0 pocket
+# is not a fit, it is an interference as soon as either the print or the shaft's own length
+# tolerance goes the wrong way -- and this pocket is PRINTED, so it owns a tolerance the
+# ground shaft does not. The shaft is also the part that must NOT be gripped: it carries
+# ten bearings and the whole point is that it turns freely.
+# The SHAFT does not move. The POCKET grows 0.15 at each end, which comes out of
+# BRIDGE_ARM_OUT, so the arms step 0.15 further out and everything referenced to their
+# faces follows. BRIDGE_AXLE_Y0/Y1 are unchanged at -49.20/+50.80.
+# ⚠ AND THE ARMS DO NOT MOVE TO PAY FOR IT -- THE SHAFT DOES. Widening BRIDGE_ARM_OUT by
+# the clearance is the obvious reading and it is wrong: every -Y datum on the optical board
+# hangs off the arm face (Y_TAIL = -(BRIDGE_ARM_OUT + WRAP_CLR)), so 0.15 there walked the
+# board's whole -Y chain out and the conduit overran the endplate's exterior wall by 0.04.
+# That end is already at its limit. Keeping ARM_OUT fixed and sliding the SHAFT +0.15
+# inside the same arms costs nothing anywhere else: the blind floor stays put, the board
+# stays put, and the shaft simply ends 0.15 PROUD of the +Y arm face, inside the plinth's
+# own bore, where there is material to spare.
+BRIDGE_AXLE_END_CLR = 0.15                              # axial float per end
 BRIDGE_ARM_OUT    = (BRIDGE_AXLE_L + BRIDGE_AXLE_END_W) / 2   # 50.80, the arms' outer faces
 BRIDGE_ARM_Y      = BRIDGE_ARM_OUT - BRIDGE_ARM_W / 2   # 48.40, the arm centres
-BRIDGE_AXLE_Y0    = -BRIDGE_ARM_OUT + BRIDGE_AXLE_END_W # -49.20, against the blind wall
-BRIDGE_AXLE_Y1    = BRIDGE_ARM_OUT                      # +50.80, flush with the arm face
-assert BRIDGE_AXLE_Y1 - BRIDGE_AXLE_Y0 == BRIDGE_AXLE_L, "the axle is not its own SKU length"
+BRIDGE_AXLE_Y0    = (-BRIDGE_ARM_OUT + BRIDGE_AXLE_END_W
+                     + BRIDGE_AXLE_END_CLR)             # -49.05, 0.15 off the blind floor
+BRIDGE_AXLE_Y1    = BRIDGE_AXLE_Y0 + BRIDGE_AXLE_L      # +50.95, 0.15 proud of the arm face
+assert abs((BRIDGE_AXLE_Y1 - BRIDGE_AXLE_Y0) - BRIDGE_AXLE_L) < 1e-9, (
+    "the axle is not its own SKU length")
+# the two clearances, stated rather than implied -- they are the reason ARM_OUT is not just
+# half the shaft plus a wall, and the next person to "simplify" that line needs to see it
+assert abs((-BRIDGE_ARM_OUT + BRIDGE_AXLE_END_W) - (BRIDGE_AXLE_Y0 - BRIDGE_AXLE_END_CLR)) < 1e-9, (
+    "the -Y blind floor is not BRIDGE_AXLE_END_CLR clear of the shaft's end")
+# the +Y end is checked in bridge_endplate, where the pocket face lives (AXLE_CHAN_Y1):
+# it is the PLINTH there, not the arm face, and the shaft now ends proud of the arm.
 assert BRIDGE_ARM_Y - BRIDGE_ARM_W / 2 > STRING_FIELD_W / 2, (
     "the bearing arms have come inboard of the string field")
 
