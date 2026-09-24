@@ -2514,7 +2514,15 @@ def _comb_lanes(board, notes, width=0.2, clr=0.15, pitch=0.50, inner="In2.Cu",
         # satisfy it measured 15 of 20 -- exactly what searching them gives -- so the
         # crossing order is NOT what stops the fourth door, and the next person should look
         # elsewhere rather than re-deriving this.
-        _cols = [sx0 - d for d in (1.0, 1.3, 0.7, 1.6, 1.9, 2.2, 2.5)]
+        # ⚠ 0.5 MM APART, NOT 0.3 -- and the 0.3 grid WAS the fourth door. Two risers
+        # 0.3 apart need 0.35 (two 0.2 tracks and 0.15 of clearance), so a column NEXT TO
+        # an occupied one is not a column at all. 2A takes sx0-1.0, which left 2B only
+        # sx0-0.7 and sx0-1.3 -- both its neighbours, both short by 0.051 mm -- and every
+        # remaining column is WEST of 2A's, where 2B's lane is already sealed by 2A's own
+        # riser crossing it on the way north. All 1145 candidates failed: 335 on the riser
+        # and 810 on the eastward leg. Set COMB_DEBUG=<net> to see that split again. The
+        # band still holds seven columns at 0.5 and no two runs share a lane boundary.
+        _cols = [sx0 - d for d in (1.0, 2.0, 1.5, 2.5, 3.0, 3.5, 4.0)]
         if pref is not None:
             _cols = [sx0 - pref] + [c for c in _cols if abs(c - (sx0 - pref)) > 1e-9]
         for x_v in _cols:
@@ -2573,6 +2581,13 @@ def _comb_lanes(board, notes, width=0.2, clr=0.15, pitch=0.50, inner="In2.Cu",
         if not run_clear(pi, net, _LAYERS[inner]):
             if _dbg:
                 _DBG_TALLY["inner crossing"] = _DBG_TALLY.get("inner crossing", 0) + 1
+                # which leg, so a blocked lane is named rather than guessed at
+                for _i in range(len(pi) - 1):
+                    if not run_clear(pi[_i:_i + 2], net, _LAYERS[inner]):
+                        _k = "  leg %d %.2f,%.2f->%.2f,%.2f" % (
+                            _i, pi[_i][0], pi[_i][1], pi[_i + 1][0], pi[_i + 1][1])
+                        _DBG_TALLY[_k] = _DBG_TALLY.get(_k, 0) + 1
+                        break
             return None
         if not run_clear(f0, net, pcbnew.F_Cu):
             if _dbg:
@@ -2729,12 +2744,33 @@ def _comb_lanes(board, notes, width=0.2, clr=0.15, pitch=0.50, inner="In2.Cu",
     if not _cells:
         _cells = [0]
     _ref = _cells[0]
+    # ⚠ THE ENTRY COLUMN IS ASSIGNED, NOT SEARCHED, AND THIS IS WHAT THE FOURTH DOOR WAS.
+    # A run enters the band, drops a via, climbs to its own lane and turns east. That climb
+    # crosses every lane BETWEEN the cap row and its own, and seals each one east of the
+    # column -- so run i's lane must start east of any run j whose riser crosses it.
+    #
+    # The four runs of a cell are 1A/1B (caps NORTH of the shared lane, climbing down) and
+    # 2A/2B (caps SOUTH, climbing up), with lanes north-to-south 1A, 1B, 2A, 2B. Only two
+    # crossings exist: 1B's riser cuts 1A's lane, and 2A's riser cuts 2B's. So 1A must
+    # enter east of 1B and 2B east of 2A, and nothing else is constrained.
+    #
+    # Searching cannot find that. Doors are solved west to east -- 1A, 1B, 2A, 2B -- and
+    # each takes the first column that clears, so 2A took sx0-1.0 and boxed 2B in: the
+    # columns east of it are 0.3 and 0.4 away, and a riser passing a VIA needs 0.55 (0.3
+    # annulus, 0.1 track, 0.15 clearance). 0.55 east of sx0-1.0 is inside the slot field.
+    # Widening the grid to 0.5 did not help either, for the same reason -- the problem was
+    # never the grid, it was 2A sitting where 2B had to be.
+    #
+    # North and south risers never overlap in y (they meet at the lane and stop), so 1A can
+    # share 2B's column and 1B can share 2A's. Two columns, 1.0 apart, assigned by role.
+    _COL_PREF = (1.0, 2.0, 2.0, 1.0)
+
     pattern = {}
-    for _door in sorted(_by_door):
+    for _di, _door in enumerate(sorted(_by_door)):
         ref = [r for r in _by_door[_door] if _cell_of(r) == _ref and r in _live]
         if not ref:
             continue
-        for cand in _cands():
+        for cand in _cands(pref=_COL_PREF[_di % len(_COL_PREF)]):
             if all(_try(r[0], lane_y_of[r[0]], cand) is not None for r in ref):
                 pattern[_door] = cand
                 for r in ref:
