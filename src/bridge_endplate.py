@@ -716,7 +716,16 @@ def _o_band_relief():
     # Run the cut down to the apex instead ("keep the 45 going instead of turning towards
     # +z") and only climb back from there, so the notch is a V that follows the bore.
     _xr = D.BRIDGE_AXLE_X - _ar * math.sqrt(2.0)     # teardrop apex, not the circle
-    _y0, _y1 = -D.BRIDGE_ARM_OUT - 1.0, AXLE_CHAN_Y1 + 1.0
+    # ⚠ CLAMPED TO THE BORE'S OWN SPAN, NOT A MILLIMETRE PAST IT. These two cutters used to
+    # run -BRIDGE_ARM_OUT-1.0 .. AXLE_CHAN_Y1+1.0, a lazy overshoot to be sure of clearing
+    # the ends. The ends are exactly what must NOT be cleared: -Y is the blind wall that
+    # stops the shaft, +Y is the plinth that stops it the other way, and the overshoot took
+    # 2.60 mm off one and 1.00 off the other -- above the axle centre, so the stops measured
+    # 92% and 96% solid instead of 100%. The user found it in the viewer twice, first as a
+    # "2.60 mm" dimension and then by handing me the corner vertex itself
+    # (-13.94, -51.80, 8.00) -- all three of those numbers are constants from this cutter.
+    # An overshoot is only safe where there is nothing at the end worth keeping.
+    _y0, _y1 = -D.BRIDGE_ARM_OUT + AXLE_END_WALL, AXLE_CHAN_Y1
     # ⚠ extrude() ON AN "XZ" WORKPLANE GOES -Y (its normal is (0,-1,0)), so a plain
     # extrude(depth) put this entire cutter at y -51.8..-169 -- clean off the part, removing
     # nothing, while the code read as though it worked. Same shape of bug as a harness
