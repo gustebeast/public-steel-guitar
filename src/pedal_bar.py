@@ -111,6 +111,17 @@ YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
 # the legs were left in when the old quick-release came out. Set to a FEET index
 # to put the mechanism back on that tower.
 LATCH_FOOT = None
+# ...and if it is ever set, this mechanism has to come back facing the same way as
+# every other latch (user): they are all worked in one pass, with the instrument
+# upside down in its case. It does NOT today -- LT is authored button-at-+y and the
+# tower poses it through a 180 rotation, so it would land on -Y while leg_latch and
+# bar_latch are both on +Y. Measured, not read off the comments: latch.py's own
+# docstring disagreed with its geometry about which side the button was on.
+assert LATCH_FOOT is None or -LT.BUTTON_SIDE == BL.PAD_SIDE, (
+    "LATCH_FOOT puts src.latch's button on %+.0fY (authored %+.0fy through the "
+    "tower's 180), but the other latches face %+.0fY -- they must all face the same "
+    "way, so flip latch.BUTTON_SIDE's frame or drop the tower's rotation"
+    % (-LT.BUTTON_SIDE, LT.BUTTON_SIDE, BL.PAD_SIDE))
 
 FEET = ((LEG_STATIONS_X[0], -1.0),     # +X leg → plain tower
         (LEG_STATIONS_X[1], +1.0))     # -X leg → wired (TRRS) tower
