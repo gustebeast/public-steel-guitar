@@ -1951,7 +1951,7 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
 
 def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                 clr=0.14, via_d=0.6, via_drill=0.3, same_part_only=False,
-                skip_nets=(), corridors=()):
+                skip_nets=(), corridors=(), holes=()):
     """Lay the SHORT, LOCAL part of repetitive nets before the autorouter sees them.
 
     ⚠ THE TIA NETS ARE TWO PROBLEMS WEARING ONE NAME, and that is why they were the
@@ -2021,7 +2021,10 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
         # board that had none -- because nothing it could see was in the way. The edge
         # rule is measured from the copper's own half width, not from the centreline, so
         # the clearance term comes out and the fab's edge keep-out goes in.
-        if not _inside(outline, x, y, margin - pcbnew.FromMM(clr) + pcbnew.FromMM(0.3)):
+        _edge_m = margin - pcbnew.FromMM(clr) + pcbnew.FromMM(0.3)
+        if not _inside(outline, x, y, _edge_m):
+            return False
+        if not _clear_of_holes(holes, x, y, _edge_m):
             return False
         for cx in range((x - margin) // CELL, (x + margin) // CELL + 1):
             for cy in range((y - margin) // CELL, (y + margin) // CELL + 1):
@@ -2312,6 +2315,67 @@ def _outline_pts(notes):
         return [tuple(pt) for pt in notes["outline_poly"]]
     w, h = notes["outline_mm"]
     return [(-w / 2.0, -h / 2.0), (w / 2.0, -h / 2.0), (w / 2.0, h / 2.0), (-w / 2.0, h / 2.0)]
+
+
+def _hole_pts(notes):
+    """Every CUTOUT in the board, as board-local mm polygons.
+
+    ⚠ THE CLEARANCE CHECK KNEW ABOUT THE BOARD EDGE AND NOT ABOUT THE HOLES, which on a
+    board whose middle is a ten-slot comb is most of the edge there is. _outline_pts
+    returns the outer polygon alone, so _inside() believed the slots were solid copper and
+    the retry pass laid 28 mm runs straight across them: 5 unconnected and THIRTY-SEVEN
+    violations, nearly all "copper_edge_clearance: Segment on Edge.Cuts + Track". The
+    keep-the-better-board rule threw that away and the board stayed at 10/0, so the retry
+    looked like it could not help when in fact it had halved the unconnected count and
+    been disqualified for driving through the holes.
+    Same shape as the CAD/fab divergence this board already produced: a check that reads
+    one part of the geometry and silently assumes the rest.
+    """
+    import math
+    out = []
+    for sl in notes.get("outline_slots", ()):
+        out.append([tuple(q) for q in sl["poly"]])
+    for h in notes.get("cutouts", ()):
+        cx, cy = h["xy"]
+        r = h["d"] / 2.0
+        out.append([(cx + r * math.cos(t * math.pi / 8.0),
+                     cy + r * math.sin(t * math.pi / 8.0)) for t in range(16)])
+    for r in notes.get("outline_holes", ()):
+        x0, y0, x1, y1 = r
+        out.append([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
+    return out
+
+
+def _clear_of_holes(holes, x, y, margin):
+    """Is (x, y) OUTSIDE every cutout by at least `margin`? (all internal units)
+
+    ⚠ NOT _inside() WITH A NEGATIVE MARGIN. That was the first version and it is wrong in
+    the direction that matters: _inside returns False as soon as the ray cast says
+    "outside", before it ever looks at the margin, so it catches only copper laid THROUGH
+    a hole and misses copper laid 0.1 mm BESIDE one -- which is exactly what
+    copper_edge_clearance flags. Both tests are needed and neither implies the other.
+    """
+    import math
+    for poly in holes:
+        pts = [_to_board(px, py) for px, py in poly]
+        n = len(pts)
+        inside = False
+        for i in range(n):
+            ax, ay = pts[i].x, pts[i].y
+            bx, by = pts[(i + 1) % n].x, pts[(i + 1) % n].y
+            if (ay > y) != (by > y) and x < (bx - ax) * (y - ay) / float(by - ay) + ax:
+                inside = not inside
+        if inside:
+            return False
+        for i in range(n):
+            ax, ay = pts[i].x, pts[i].y
+            bx, by = pts[(i + 1) % n].x, pts[(i + 1) % n].y
+            dx, dy = bx - ax, by - ay
+            L2 = dx * dx + dy * dy
+            t = 0.0 if L2 == 0 else max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / L2))
+            if math.hypot(x - (ax + t * dx), y - (ay + t * dy)) < margin:
+                return False
+    return True
 
 
 def _inside(outline, x, y, margin):
@@ -3167,7 +3231,8 @@ def build(stem):
         # 40 nets had appeared out of nowhere.
         n_laid, n_left, n_why, c_laid, c_why = _local_nets(
             board, notes["local_nets"], _outline_pts(notes),
-            inner=_local_inner(notes), corridors=notes.get("corridors", ()))
+            inner=_local_inner(notes), corridors=notes.get("corridors", ()),
+            holes=_hole_pts(notes))
         print("  local nets: laid %d segment(s)%s"
               % (n_laid, ", %d left to the router" % n_left if n_left else ""))
         for _e in n_why:
@@ -3210,7 +3275,7 @@ def build(stem):
         if want:
             n_laid, n_left, n_why, _cl, _cw = _local_nets(
                 board, [re.escape(n) for n in want], _outline_pts(notes),
-                local_mm=1e9, inner=_local_inner(notes))
+                local_mm=1e9, inner=_local_inner(notes), holes=_hole_pts(notes))
             print("  retry: laid %d segment(s) for %d net(s) the router could not finish"
                   "%s" % (n_laid, len(want),
                           ", %d edge(s) still not placeable" % n_left if n_left else ""))
