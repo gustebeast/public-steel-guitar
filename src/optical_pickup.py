@@ -1482,7 +1482,21 @@ def _parts():
     # board had a -X outcropping at all. East of the slots the cells are downstream of the
     # TIAs, the clearance question disappears (nothing overhead past the termination), and
     # STRIP_GROW_MX can go, which squares the board's outer border off (user).
-    _adc_x = O_SLOT_X1 + EDGE_KEEP + 2.8                       # 2.8 = half the measured cell
+    # ⚠ ADC_BUS_CH, NOT EDGE_KEEP -- and dropping it was a regression. The old column used
+    # a 1.8 mm BUS CHANNEL west of the cells, and its value was not a guess: it was swept by
+    # routing six placements in parallel (.ins/routefan.sh) because the corridor west of the
+    # column is what every north-south analog and I2C run shares. Moving the column east of
+    # the comb, that got rewritten as EDGE_KEEP -- which is the part-to-edge rule, 1.2, and
+    # says nothing about a bus. It cost 0.6 mm of a lane that had been measured for, and the
+    # first route showed exactly that: the I2C2_SCL spine ran at x 1.37 against a slot
+    # keepout reaching 1.50, so all five converters' SCL stubs and vias came back as
+    # items_not_allowed. Replacing a measured number with a plausible-looking one is how
+    # that kind of thing gets lost, and the name was the only thing carrying the measurement.
+    # 2.4 reproduces the corridor width the sweep liked (2.18 mm clear, 6 tracks) now that
+    # the slot keepout rather than the board edge sets the west side of it.
+    ADC_BUS_CH = 2.4
+    assert ADC_BUS_CH >= EDGE_KEEP, "the bus channel is also the part-to-edge keepout"
+    _adc_x = O_SLOT_X1 + ADC_BUS_CH + 2.8                      # 2.8 = half the measured cell
     for k in range(5):
         qx = _adc_x
         qy = (string_y_at(2 * k, SENSE_X) + string_y_at(2 * k + 1, SENSE_X)) / 2

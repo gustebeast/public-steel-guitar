@@ -1742,8 +1742,23 @@ BOARD_NOTES = {
     # the O's HOLE: the bridge bearings and the block that carries them sit inside the
     # ring, so the board has a 30 x 105 mm rectangular cutout. Edge.Cuts AND a keepout --
     # freerouting cannot see Edge.Cuts (see layout._edge_hole).
-    "outline_holes": ([[OP.O_HOLE_X0 - CX, -OP.O_HOLE_Y - CY,
-                        OP.O_HOLE_X1 - CX, OP.O_HOLE_Y - CY]] if OP.O_SHAPE else []),
+    # ⚠ THE COMB, NOT ONE BIG HOLE (2026-09-23). This emitted a SINGLE 16.41 x 101.6 mm
+    # rectangle spanning the whole slot band -- the old "O-shaped board with the bearing
+    # block inside the ring" design. The board has been a COMB since the axle redesign:
+    # ten L-shaped slots with 4.00 mm strips of copper between them, and those strips are
+    # how all twenty TIA outputs cross to the converters. The CAD had the comb and the fab
+    # data did not, so the GERBERS would have shipped a board with no comb at all -- and
+    # the router, seeing a hole where the strips are, could not connect across it. That is
+    # most of the 23 unconnected on the first route of this placement.
+    # A divergence like this is invisible to every check that reads one side only: the CAD
+    # gate was clean, ERC was clean, the netlist was clean, and BOM/CAD/netlist agreed.
+    # Nothing compares the CAD's cutouts against the board's.
+    "outline_holes": [],
+    "outline_slots": ([{"poly": [[x - CX, -y - CY] for x, y in _p],
+                        "rects": [[r[0] - CX, -r[3] - CY, r[2] - CX, -r[1] - CY]
+                                  for r in (OP.O_SLOTS[_i],
+                                            OP.O_SLOTS[len(OP.O_SLOTS) // 2 + _i])]}
+                       for _i, _p in enumerate(OP._slot_polys())] if OP.O_SHAPE else []),
     "cutouts": [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.O_ROD_HOLE_D}
                 for x, y in OP.O_ROD_HOLES],
     "layers": 4,
