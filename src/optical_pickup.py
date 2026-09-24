@@ -1556,7 +1556,20 @@ def _parts():
     _adc_x = O_SLOT_X1 + ADC_BUS_CH + 2.8                      # 2.8 = half the measured cell
     for k in range(5):
         qx = _adc_x
-        qy = (string_y_at(2 * k, SENSE_X) + string_y_at(2 * k + 1, SENSE_X)) / 2
+        # ⚠ THE CAP ROW GOES ON THE PAIR'S CENTRE, NOT THE PART'S BODY (user, 2026-09-24:
+        # "we also want component placement symmetry"). Centring the PACKAGE looks right and
+        # is not: every input pin is on this part's north edge, so its coupling caps sit
+        # CELL_NEAR above it, and a centred package puts them 3.75 mm toward the odd string.
+        # Measured on the placed board, that made the two strings of a pair profoundly
+        # unlike each other -- string 1's output reached its cap with a 0.93 mm jog and
+        # string 2's needed 8.43 -- and no routing pattern can be symmetric across a pair
+        # whose two halves are that different. Everything ELSE in the pair was already
+        # mirror-perfect: op-amp, both detectors, emitter, feedback R and C, decoupler and
+        # ballast all sit at identical offsets from their own string.
+        # Dropping the body by CELL_NEAR puts the caps on the centre line and the two climbs
+        # become +-4.68: mirror images, which is what lets one pattern serve both.
+        qy = ((string_y_at(2 * k, SENSE_X) + string_y_at(2 * k + 1, SENSE_X)) / 2
+              - CELL_NEAR)
         _s = 1.0
         t = k + 1
         add("U%d" % (14 + k), "audio ADC -- TLV320ADC3140, 4 ch, quad U%d's outputs" % t,

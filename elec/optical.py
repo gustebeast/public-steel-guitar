@@ -1567,9 +1567,24 @@ def _v3_trunk():
     # wrap and three in the annulus -- and the hop between them had no single-layer path at
     # all (searched: no straight lane, no dogleg). Since all five moved into the strip in one
     # column at a common x, their B.Cu stubs line up and ONE track joins the lot.
-    end = lambda k: _cell_pt(k, -2.85, -3.27)
+    end = lambda k: _cell_pt(k, _V3_CH_DX, -3.27)
     return [("+3V3D", "B.Cu", 0.3, [end(0), end(4)])]
 
+
+# ⚠ THE +3V3D CHANNEL, hoisted from five copies of -2.85 (the trunk's own ends, the three
+# stub legs that reach it, and the via pair). It is ONE number -- the x, in cell-relative
+# terms, of the digital rail's vertical run -- and having it written out five times meant
+# moving it was five edits and a chance to miss one.
+#
+# ⚠ AND IT MOVED 0.20 WEST, 2026-09-24, TO GIVE Cm<k>4 ITS GROUND VIA BACK. The Cm caps in
+# the FAR row sit at cell x -2.30, so at -2.85 the trunk ran 0.55 mm from them. A 0.6 via
+# beside that pad needs via/2 + trunk/2 + clearance = 0.30 + 0.15 + 0.15 = 0.60, so it
+# missed by 0.05 mm -- and the stitcher, finding nothing legal to the west, put the via on
+# the far side of the coupling cap's door and ran its connecting track straight through the
+# door. That is what blocked the comb crossing in four of the five cells: not the channel
+# width, not the door, but 0.05 mm on a rail 26 mm away. The gap to the I2C spine is 1.13,
+# so the room was already there and nothing else has to move to use it.
+_V3_CH_DX = -3.05
 
 _I2C_SPINE_DX = -3.98           # x 65.60 on the placed board: see below
 _I2C_SCL_DY = -0.75             # pin 17. ⚠ NOT +0.75 -- the cell frame's y is
@@ -1712,19 +1727,19 @@ def _sai_escape(k):
 
 
 def _shdn_tracks():
-    """Each converter's SHDNZ to its own IOVDD: pin 14 (-1.96, +0.75) -> via at (-2.85, +0.75)
-    -> In2 down the channel -> via at (-2.85, -3.27) -> the IOVDD cap Cs<k>8's rail pad at
+    """Each converter's SHDNZ to its own IOVDD: pin 14 (-1.96, +0.75) -> via at (_V3_CH_DX, +0.75)
+    -> In2 down the channel -> via at (_V3_CH_DX, -3.27) -> the IOVDD cap Cs<k>8's rail pad at
     (-1.25, -3.27). Offsets from the part's centre, part turned 180."""
     out = []
     for k in range(5):
         P = lambda dx, dy, k=k: _cell_pt(k, dx, dy)
-        out += [("+3V3D", "F.Cu", 0.15, [P(-1.96, 0.75), P(-2.85, 0.75)]),
+        out += [("+3V3D", "F.Cu", 0.15, [P(-1.96, 0.75), P(_V3_CH_DX, 0.75)]),
                 # on B.Cu, NOT In2: down the channel on In2 it fenced the one free signal
                 # layer off between every pair of cells, and the +3V3D rail itself then
                 # failed to cross from cell to cell (4 of 14 open). B.Cu is a GND pour; a
                 # 4 mm track in it costs the pour a slot, not the router a layer.
-                ("+3V3D", "B.Cu", 0.15, [P(-2.85, 0.75), P(-2.85, -3.27)]),
-                ("+3V3D", "F.Cu", 0.15, [P(-2.85, -3.27), P(-1.25, -3.27)]),
+                ("+3V3D", "B.Cu", 0.15, [P(_V3_CH_DX, 0.75), P(_V3_CH_DX, -3.27)]),
+                ("+3V3D", "F.Cu", 0.15, [P(_V3_CH_DX, -3.27), P(-1.25, -3.27)]),
                 # and IOVDD's own pin 19 straight down onto that same pad
                 ("+3V3D", "F.Cu", 0.2, [P(-1.25, -1.96), P(-1.25, -3.27)])]
     return out
@@ -2309,7 +2324,7 @@ BOARD_NOTES = {
     # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
     # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
     "tracks": _cell_tracks(),
-    "vias": ([("+3V3D",) + _cell_pt(k, -2.85, y)
+    "vias": ([("+3V3D",) + _cell_pt(k, _V3_CH_DX, y)
               for k in range(5) for y in (0.75, -3.27)]
              + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
                 for k in range(5)]),

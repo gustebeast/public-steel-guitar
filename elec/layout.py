@@ -2303,6 +2303,9 @@ def _dedupe(pts, eps=1e-6):
     return out
 
 
+_DBG_TALLY = {}
+
+
 def _comb_lanes(board, notes, width=0.2, clr=0.15, pitch=0.50, inner="In2.Cu",
                 via_d=0.6, via_drill=0.3, verbose=True):
     """THE COMB CROSSING, LAID AS ONE PATTERN AND COPIED ONCE PER STRING PAIR (user).
@@ -2489,101 +2492,238 @@ def _comb_lanes(board, notes, width=0.2, clr=0.15, pitch=0.50, inner="In2.Cu",
     # clear, the full list is tried behind it exactly as before.
     won = {}
 
-    for g in range(len(band) // 2):
-        up, dn = band[2 * g], band[2 * g + 1]
-        lane_c = (dn[3] + up[2]) / 2.0
-        for j in range(4):
-            net = "TIA_OUT_%d%s" % (2 * g + 1 + j // 2, "A" if j % 2 == 0 else "B")
-            mine = [q for q, fp in pads if q.GetNetname() == net]
-            west = [q for q in mine if _lx(q.GetPosition()) < sx0]
-            east = [q for q in mine if _lx(q.GetPosition()) > sx1]
-            if not west or not east:
-                continue
-            src = max(west, key=lambda q: _lx(q.GetPosition()))
-            dst = min(east, key=lambda q: _lx(q.GetPosition()))
-            s_x, s_y = _lx(src.GetPosition()), _ly(src.GetPosition())
-            d_x, d_y = _lx(dst.GetPosition()), _ly(dst.GetPosition())
-            lane_y = lane_c + (1.5 - j) * pitch
-            done = False
-            # ⚠ TWO ROUTE SHAPES, NOT ONE, AND THE CONVERTER PAD VIA IS WHY. The direct
-            # shape -- east along the lane at lane_y all the way to the cap's own x, then
-            # north -- lays 6 of 20 and fails the same two runs in every group: j=2 and
-            # j=3 pass the EP via at 0.296 and 0.204 mm against the 0.55 a 0.2 track
-            # needs, because their lane is the one nearest the via's y. The other shape
-            # turns north EARLY, in the empty 4.3 mm corridor between the slot ends and
-            # the cell, runs east above the Cm row and comes down from the north. Offered
-            # as candidates rather than assigned, because which one a run needs depends on
-            # its lane and on what the runs before it have already taken.
-            cands = []
-            for x_v in (sx0 - 1.0, sx0 - 1.4, sx0 - 0.7, sx0 - 1.8):
-                for dxn in (0.0, -0.10, 0.10, -0.20, 0.20, -0.30, 0.30):
-                    for up_dy in (3.6, 4.2, 4.8, 5.4, 6.0):
-                        cands.append((x_v, dxn, up_dy, None, None))
-            for x_v in (sx0 - 1.0, sx0 - 1.4):
-                for dxn in (0.0, -0.15, 0.15, -0.30, 0.30):
-                    for up_dy in (3.6, 4.2, 4.8):
-                        for x_t in (sx1 + 0.7, sx1 + 1.4, sx1 + 2.1, sx1 + 2.8, sx1 + 3.5):
-                            for y_e in (d_y + 3.6, d_y + 4.4, d_y + 5.2, d_y + 6.0):
-                                cands.append((x_v, dxn, up_dy, x_t, y_e))
-            if j in won and won[j] in cands:
-                cands.remove(won[j])
-                cands.insert(0, won[j])
-            for x_v, dxn, up_dy, x_t, y_e in cands:
-                    if True:
-                        x_n, y_up = d_x + dxn, d_y + up_dy
-                        pv0, pv1 = _to_board(x_v, s_y), _to_board(x_n, y_up)
-                        if not clear(pv0.x, pv0.y, net, via_m):
-                            blame[net]["via west of the slots"] += 1
-                            continue
-                        if not clear(pv1.x, pv1.y, net, via_m):
-                            blame[net]["via north of the cell"] += 1
-                            continue
-                        f0 = _dedupe([(s_x, s_y), (x_v, s_y)])
-                        if x_t is None:
-                            pi = [(x_v, s_y), (x_v, lane_y), (x_n, lane_y), (x_n, y_up)]
-                        else:
-                            pi = [(x_v, s_y), (x_v, lane_y), (x_t, lane_y),
-                                  (x_t, y_e), (x_n, y_e), (x_n, y_up)]
-                        pi = _dedupe(pi)
-                        f1 = _dedupe([(x_n, y_up), (x_n, d_y), (d_x, d_y)])
-                        if not run_clear(pi, net, _LAYERS[inner]):
-                            blame[net]["the %s crossing" % inner] += 1
-                            continue
-                        if not run_clear(f0, net, pcbnew.F_Cu):
-                            blame[net]["the F.Cu stub off the cap"] += 1
-                            continue
-                        if not run_clear(f1, net, pcbnew.F_Cu):
-                            blame[net]["the F.Cu drop through the Cm door"] += 1
-                            continue
-                        _add_track(board, nets[net], "F.Cu", width, f0)
-                        _add_via(board, nets[net], x_v, s_y, via_drill, via_d)
-                        _add_track(board, nets[net], inner, width, pi)
-                        _add_via(board, nets[net], x_n, y_up, via_drill, via_d)
-                        _add_track(board, nets[net], "F.Cu", width, f1)
-                        remember(pi, net, _LAYERS[inner])
-                        remember(f0, net, pcbnew.F_Cu)
-                        remember(f1, net, pcbnew.F_Cu)
-                        for vx, vy in ((x_v, s_y), (x_n, y_up)):
-                            pv = _to_board(vx, vy)
-                            add_seg(((pv.x, pv.y), (pv.x, pv.y),
-                                     pcbnew.FromMM(via_d) / 2.0, net, None))
+    def _cands():
+        """Candidate shapes, cheapest deviation first. Two topologies: straight along the
+        lane to the cap's own x, and a turn north in the empty corridor between the slot
+        ends and the converter, then east above the Cm row."""
+        out = []
+        for x_v in (sx0 - 1.0, sx0 - 1.4, sx0 - 0.7, sx0 - 1.8):
+            for dxn in (0.0, -0.10, 0.10, -0.20, 0.20, -0.30, 0.30):
+                for up_dy in (3.6, 4.2, 4.8, 5.4, 6.0):
+                    out.append((x_v, dxn, up_dy, None, None))
+        for x_v in (sx0 - 1.0, sx0 - 1.4):
+            for dxn in (0.0, -0.15, 0.15, -0.30, 0.30):
+                for up_dy in (3.6, 4.2, 4.8):
+                    for x_t in (sx1 + 0.7, sx1 + 1.4, sx1 + 2.1, sx1 + 2.8, sx1 + 3.5):
+                        for y_e in (3.6, 4.4, 5.2, 6.0):
+                            out.append((x_v, dxn, up_dy, x_t, y_e))
+        return out
+
+    def _ends(net):
+        mine = [q for q, fp in pads if q.GetNetname() == net]
+        west = [q for q in mine if _lx(q.GetPosition()) < sx0]
+        east = [q for q in mine if _lx(q.GetPosition()) > sx1]
+        if not west or not east:
+            return None
+        src = max(west, key=lambda q: _lx(q.GetPosition()))
+        dst = min(east, key=lambda q: _lx(q.GetPosition()))
+        return (_lx(src.GetPosition()), _ly(src.GetPosition()),
+                _lx(dst.GetPosition()), _ly(dst.GetPosition()))
+
+    def _try(net, lane_y, cand, lay=False):
+        """Build this run in the given shape. Returns its path, or None if anything along
+        it is not clear. EVERY offset in `cand` is relative -- to the slot field, to the
+        cap -- so one tuple means the same shape wherever it is applied."""
+        e = _ends(net)
+        if e is None:
+            return None
+        s_x, s_y, d_x, d_y = e
+        x_v, dxn, up_dy, x_t, y_e = cand
+        x_n, y_up = d_x + dxn, d_y + up_dy
+        pv0, pv1 = _to_board(x_v, s_y), _to_board(x_n, y_up)
+        if os.environ.get("COMB_DEBUG", "") == net:
+            _DBG_TALLY["_tried"] = _DBG_TALLY.get("_tried", 0) + 1
+        if not clear(pv0.x, pv0.y, net, via_m):
+            if os.environ.get("COMB_DEBUG", "") == net:
+                _DBG_TALLY["via west of the slots"] = _DBG_TALLY.get("via west of the slots", 0) + 1
+            return None
+        if not clear(pv1.x, pv1.y, net, via_m):
+            if os.environ.get("COMB_DEBUG", "") == net:
+                _DBG_TALLY["via north of the cell"] = _DBG_TALLY.get("via north of the cell", 0) + 1
+            return None
+        _dbg = os.environ.get("COMB_DEBUG", "") == net
+        f0 = _dedupe([(s_x, s_y), (x_v, s_y)])
+        if x_t is None:
+            pi = [(x_v, s_y), (x_v, lane_y), (x_n, lane_y), (x_n, y_up)]
+        else:
+            pi = [(x_v, s_y), (x_v, lane_y), (x_t, lane_y),
+                  (x_t, d_y + y_e), (x_n, d_y + y_e), (x_n, y_up)]
+        pi = _dedupe(pi)
+        f1 = _dedupe([(x_n, y_up), (x_n, d_y), (d_x, d_y)])
+        if not run_clear(pi, net, _LAYERS[inner]):
+            if _dbg:
+                _DBG_TALLY["inner crossing"] = _DBG_TALLY.get("inner crossing", 0) + 1
+            return None
+        if not run_clear(f0, net, pcbnew.F_Cu):
+            if _dbg:
+                _DBG_TALLY["stub off the cap"] = _DBG_TALLY.get("stub off the cap", 0) + 1
+            return None
+        if not run_clear(f1, net, pcbnew.F_Cu):
+            if _dbg:
+                _DBG_TALLY["drop through the door"] = _DBG_TALLY.get("drop through the door", 0) + 1
+            return None
+        if lay:
+            _add_track(board, nets[net], "F.Cu", width, f0)
+            _add_via(board, nets[net], x_v, s_y, via_drill, via_d)
+            _add_track(board, nets[net], inner, width, pi)
+            _add_via(board, nets[net], x_n, y_up, via_drill, via_d)
+            _add_track(board, nets[net], "F.Cu", width, f1)
+            remember(pi, net, _LAYERS[inner])
+            remember(f0, net, pcbnew.F_Cu)
+            remember(f1, net, pcbnew.F_Cu)
+            for vx, vy in ((x_v, s_y), (x_n, y_up)):
+                pv = _to_board(vx, vy)
+                add_seg(((pv.x, pv.y), (pv.x, pv.y),
+                         pcbnew.FromMM(via_d) / 2.0, net, None))
+        return pi
+
+    # ⚠ ONE LANE PER STRING, NOT ONE PER PAIR (user, 2026-09-24: "why are there two orange
+    # traces competing for room in a single lane when there is an empty lane next to it").
+    # The first version gave each converter group the lane between its OWN two slots, on
+    # the reasoning that a pair shares a converter so it may as well share a lane. There is
+    # no routing reason for that and it is the worst available choice: FOUR runs in every
+    # second lane, with lanes 1, 3, 5 and 7 carrying nothing -- double the congestion in
+    # the tightest part of the board while half the channel sat empty.
+    #
+    # A run belongs in a lane beside ITS OWN string -- A takes the lane above, B the lane
+    # below -- which keeps the y jog just as short and spreads 20 runs over 9 lanes instead
+    # of 5. Interior lanes carry two (string k+1's B and string k+2's A, opposite sides so
+    # they never want the same slot); the two end lanes carry three, string 1 having no
+    # lane above it and string 10 none below.
+    # ⚠ AND THE TWO END MARGINS ARE CHANNELS TOO. String 1 has no slot above it and
+    # string 10 none below, so an A-above/B-below rule with only the INTERIOR lanes pushes
+    # both of string 1's runs into one lane and both of string 10's into another -- three
+    # runs in the end lanes and the board's own margin, which is open, left empty. The
+    # board continues past the end slots (slot 1 tops at y 73.82 and the wrap is at 94),
+    # so those margins carry a run each. Eleven channels for twenty runs: exactly two per
+    # channel, none crowded, and every run still beside its own string.
+    _W = band[0][3] - band[0][2]              # a slot's own height, so a margin matches a lane
+    lanes = ([(band[0][3], band[0][3] + _W)]
+             + [(band[k + 1][3], band[k][2]) for k in range(len(band) - 1)]
+             + [(band[-1][2] - _W, band[-1][2])])
+
+    # string s: A takes the channel above it, B the channel below -- with the margins in
+    # the list those are simply s-1 and s.
+    runs = [("TIA_OUT_%d%s" % (s, side), s, side, s - 1 if side == "A" else s)
+            for s in range(1, len(band) + 1) for side in ("A", "B")]
+    share = {}
+    for r in runs:
+        share.setdefault(r[3], []).append(r)
+    lane_y_of = {}
+    for k, occ in share.items():
+        lo, hi = lanes[k]
+        c = (lo + hi) / 2.0
+        for i, r in enumerate(occ):
+            lane_y_of[r[0]] = c + ((len(occ) - 1) / 2.0 - i) * pitch
+
+    # ⚠ NARROW THE BUILD WHILE THE SHAPE IS STILL BEING FOUND (user: "you should narrow
+    # your builds so they only build the area around string 1"). COMB_STRINGS=1 lays that
+    # string's two runs and leaves every other one to the router, which turns a seven
+    # minute layout into well under one and shows the pattern on its own in the viewer.
+    _only = os.environ.get("COMB_STRINGS", "").strip()
+    _want = set(int(v) for v in _only.replace(",", " ").split()) if _only else None
+
+    # ⚠ ONE SHAPE PER RUN ROLE, CHOSEN ACROSS EVERY STRING THAT USES IT -- the difference
+    # between a pattern and a search. The first version picked each run's parameters
+    # independently and took whatever cleared first: nine runs came out with three
+    # different segment counts, two entry-via positions and four exit positions, visibly
+    # not a pattern (user: "What I can see in kicad doesn't look like a consistent
+    # repeating pattern"). That is the same improvisation this generator exists to replace,
+    # only mine instead of the router's. The remembered-tuple reuse added earlier did not
+    # prevent it: it merely REORDERED the candidates, and fell through to a different
+    # shape whenever the remembered one did not clear.
+    #
+    # A candidate is now accepted only if it clears for EVERY string in its role, and a run
+    # that cannot take the chosen shape is left to the router rather than given another.
+    # Consistent by construction: every laid run congruent to its fellows, and the ones
+    # that could not take it visibly absent rather than improvised.
+    # ⚠ ONE SHAPE PER SIDE, ACROSS ALL TEN STRINGS -- and the granularity is the whole
+    # point. What made the board look improvised was runs differing between STRINGS: nine
+    # laid with three segment counts and four exit positions. A and B differing from each
+    # other is not that. They are different roles by construction -- different op-amp
+    # output pin, different lane, different cap channel -- so one shape for both was tried
+    # (2026-09-24) and is too strict: it lays 2 of 6 on three strings where per-side lays
+    # all of string 1. Per side, repeated down the board, is the pattern; per string is
+    # the improvisation.
+    # ⚠ THE ROLE IS THE CONVERTER CHANNEL, NOT THE SIDE -- measured, after trying both.
+    # One shape for all twenty lays 7 of 20, and the failures are not scattered: every ODD
+    # string's A lays and every EVEN string's A fails. That maps exactly onto the cap row.
+    # A converter's four coupling caps sit at 1.2 mm pitch, and the assignment sends odd
+    # strings to the two WEST doors and even strings to the two EAST ones -- so a shape
+    # that clears x 10.40 does not clear x 14.00, whose door has 0.04 mm to its neighbour.
+    # Side was the wrong axis: it splits the runs across doors instead of along them.
+    #
+    # The repeating unit is the CELL. Four shapes, one per channel, each copied to all five
+    # converters -- which is the thing the hardware actually repeats, and what "define the
+    # pattern for one and copy it" means here. Keyed on the cap's own x so it is read from
+    # the geometry rather than assumed from the net name.
+    # ⚠ THE REPEATING UNIT IS THE CONVERTER CELL: TWO STRINGS, FOUR RUNS (user, 2026-09-24:
+    # "Given the ADC we can't have a pattern for a single string but I still think we should
+    # be able to have a two string pattern which gets copied"). Exactly right, and it is why
+    # the earlier attempts kept coming out uneven. A shape was chosen per DOOR, independently,
+    # across all five cells -- so the four doors competed for the same space without ever
+    # being considered together, and whichever door was solved first took what the next one
+    # needed. Choosing per side was worse still: it splits the runs ACROSS doors rather than
+    # along them.
+    #
+    # So: solve ONE cell completely -- all four runs, each laid before the next is chosen, so
+    # they see each other -- and then copy that set of four shapes to the other four cells.
+    # The cells are identical on an exact 18.72 mm pitch, so a set that works in one is
+    # geometrically valid in all; where a copy does not go clear, the difference is something
+    # ELSE on the board at that y, and that run goes to the router rather than getting a shape
+    # of its own. Every laid cell is congruent to the reference by construction.
+    _by_door = {}
+    for r in runs:
+        e = _ends(r[0])
+        if e is not None:
+            _by_door.setdefault(round(e[2], 2), []).append(r)
+
+    def _cell_of(r):
+        return (r[1] - 1) // 2
+
+    _live = [r for r in runs if _want is None or r[1] in _want]
+    _cells = sorted({_cell_of(r) for r in _live})
+    if not _cells:
+        _cells = [0]
+    _ref = _cells[0]
+    pattern = {}
+    for _door in sorted(_by_door):
+        ref = [r for r in _by_door[_door] if _cell_of(r) == _ref and r in _live]
+        if not ref:
+            continue
+        for cand in _cands():
+            if all(_try(r[0], lane_y_of[r[0]], cand) is not None for r in ref):
+                pattern[_door] = cand
+                for r in ref:
+                    if _try(r[0], lane_y_of[r[0]], cand, lay=True) is not None:
                         laid += 1
-                        done = True
-                        won[j] = (x_v, dxn, up_dy, x_t, y_e)
-                        break
-            if not done:
-                why.append(net)
+                    else:
+                        why.append(r[0])
+                break
+        else:
+            why += [r[0] for r in ref]
+    for _door in sorted(_by_door):
+        cand = pattern.get(_door)
+        for r in _by_door[_door]:
+            if _cell_of(r) == _ref or r not in _live:
+                continue
+            if cand is not None and _try(r[0], lane_y_of[r[0]], cand, lay=True) is not None:
+                laid += 1
+            else:
+                why.append(r[0])
+    if verbose and pattern:
+        print("  comb lanes: pattern solved on cell %d, %d of 4 doors, copied to %d cell(s)"
+              % (_ref + 1, len(pattern), len(_cells) - 1))
     if verbose:
         tail = ""
         if why:
             tail = ", %d left to the router (%s)" % (len(why), ", ".join(why))
+        if _DBG_TALLY:
+            print("  COMB_DEBUG %s: %s" % (os.environ.get("COMB_DEBUG"), _DBG_TALLY))
         print("  comb lanes: laid %d of %d run(s) as one repeated pattern%s"
               % (laid, 4 * (len(band) // 2), tail))
         for _n in why:
-            _top = blame[_n].most_common(1)
-            if _top:
-                print("      %-14s %d candidates, all stopped -- mostly %s"
-                      % (_n, sum(blame[_n].values()), _top[0][0]))
+            print("      %s: could not take the chosen shape" % _n)
     return laid, why
 
 
