@@ -15,6 +15,24 @@ PLATE  = 4.0              # coupon base-plate / floor thickness
 CEIL   = 3 * NOZZLE_D     # 2.4 mortise ceiling over the roof = the printed bridge
 MARGIN = 8 * NOZZLE_D     # 6.4 material each side of the joint in Y
 
+# PRINT ORIENTATION (the record, declared once per part) -- the section coupons build
+# +Z, which is the whole point of the mortise one: it "validates the one-bead roof bridge
+# at the real section size", and a roof bridge only exists if +Z is up. The COVER coupons
+# print lying, like the real sleeve they stand in for: bed on the +Y face so the rail
+# slots open at the bed and their 0.8 roof bridges, building -Y. That is SLEEVE_UP, which
+# is what a print-fit coupon is required to match. None of them is posed.
+PRINT_UP = (0.0, 0.0, 1.0)
+COVER_UP = (0.0, -1.0, 0.0)
+
+# PRINT ORIENTATION (the record, declared once per part) -- the section coupons build
+# +Z, which is the whole point of the mortise one: it "validates the one-bead roof bridge
+# at the real section size", and a roof bridge only exists if +Z is up. The COVER coupons
+# print lying, like the real sleeve they stand in for: bed on the +Y face so the rail
+# slots open at the bed and their 0.8 roof bridges, building -Y. That is SLEEVE_UP, which
+# is what a print-fit coupon is required to match. None of them is posed.
+PRINT_UP = (0.0, 0.0, 1.0)
+COVER_UP = (0.0, -1.0, 0.0)
+
 # both halves print -Z→+Z (facing 'up') → slide_joint picks the octagon family
 _UP = PrintSpec(nozzle=NOZZLE_D, material="PETG-GF", facing="up")
 

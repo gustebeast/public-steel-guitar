@@ -208,6 +208,28 @@ assert CLEAT_W < CABLE_D, "the cleat has to pinch, not clear"
 assert SLEEVE_L <= BARREL_L, "the sleeve stands proud of the barrel"
 
 
+# PRINT ORIENTATION (the record, declared once per part) -- the mandrel prints FLANGE
+# DOWN, which is stated in the builder below and is why the shank was rejected: it made
+# "the first layer O10 with everything above it wider", where standing on the flange the
+# base is O27.8. The SLEEVE is the weaker case: nothing states it, but it is drawn
+# standing on its foot and the builder records that a foot notch "was the sleeve's only
+# overhang" -- which only reads as an overhang on a sleeve built up its own axis. Both
+# are shop tools, exported but never placed, so this is their world frame.
+MANDREL_UP = (0.0, 0.0, 1.0)
+SLEEVE_UP = (0.0, 0.0, 1.0)
+
+
+# PRINT ORIENTATION (the record, declared once per part) -- the mandrel prints FLANGE
+# DOWN, which is stated in the builder below and is why the shank was rejected: it made
+# "the first layer O10 with everything above it wider", where standing on the flange the
+# base is O27.8. The SLEEVE is the weaker case: nothing states it, but it is drawn
+# standing on its foot and the builder records that a foot notch "was the sleeve's only
+# overhang" -- which only reads as an overhang on a sleeve built up its own axis. Both
+# are shop tools, exported but never placed, so this is their world frame.
+MANDREL_UP = (0.0, 0.0, 1.0)
+SLEEVE_UP = (0.0, 0.0, 1.0)
+
+
 def mandrel() -> cq.Workplane:
     """THE INNER, printed FLANGE-DOWN. Flange, then barrel: TAIL_RUN of plain barrel,
     the ribbed winding zone, TAIL_RUN of plain barrel, top cleat.

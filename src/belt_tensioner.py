@@ -231,11 +231,22 @@ def seated_lifter(bar, well_mid: float, locked: bool = True) -> cq.Workplane:
 
 
 # ── coupon: the printable set (2 identical halves + 2 identical lifters), spread in Y ────────
+COUPON_UP = (0.0, 0.0, 1.0)     # ...the assembled plate; see the note inside
+
+
 def tensioner_coupon() -> cq.Workplane:
     """TWO identical clamp_halves + TWO identical lifters, in PRINT poses. HALVES build +X: the
     belt tunnel and screw channel run along the build → clean walls + a round bore (a ceiling-
     bridge + sagging bore if built +Z), and the bearing face is the flat first layer. BARS build
     −Y→+Y (0.2 mm nozzle) so the ridge curves + concave seat land in the layer plane."""
+    # PRINT ORIENTATION: the coupon is assembled IN PRINT POSES -- each piece is rotated
+    # out of its own build direction (the halves build +X, the bars -Y->+Y) and dropped on
+    # z=0 by _on_bed, precisely so the whole plate builds +Z. So the coupon's declared
+    # direction is the plate's, not any one piece's; see COUPON_UP.
+    # PRINT ORIENTATION: the coupon is assembled IN PRINT POSES -- each piece is rotated
+    # out of its own build direction (the halves build +X, the bars -Y->+Y) and dropped on
+    # z=0 by _on_bed, precisely so the whole plate builds +Z. So the coupon's declared
+    # direction is the plate's, not any one piece's; see COUPON_UP.
     def _on_bed(w):
         return w.translate((0.0, 0.0, -w.val().BoundingBox().zmin))
     h1 = _on_bed(clamp_half().rotate((0, 0, 0), (0, 1, 0), -90)).translate((0.0, -14.0, 0.0))
