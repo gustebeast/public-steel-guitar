@@ -46,6 +46,12 @@ X_NUT    = -(D.MOUNTING_SPAN + 24.0)   # −X end, extended to carry the nut blo
 Z_TOP    = D.STRING_Z - 8 * D.BEAD     # 9.6: rail top, 6.4 under the strings (normal
                                        # action; snapped AWAY from the strings)
 Z_BOT    = MB.BED_Z                    # print bed (shared with the motor walls)
+# PRINT ORIENTATION (the record, declared once per part) -- stated in the section comment
+# below ("the chassis prints +Z, so every face that looks down must be 45 or steeper")
+# and in Z_BOT itself. Named here so tools.check_ceilings can READ it instead of carrying
+# its own copy: it had "the chassis prints Z-UP, bed at chassis.Z_BOT" written into the
+# checker, which is the transcription that file's own docstring warns against.
+PRINT_UP = (0.0, 0.0, 1.0)
 # Rail CENTRES, defined so the INNER faces stay fixed as the wall T changes (the wall
 # grows outward): +Y inner clears the bearing arm, -Y inner clears the motor PCBs.
 Y_HI     = D.BRIDGE_AXLE_Y + 4 * D.BEAD + T / 2   # +Y rail (inner face = axle_Y + 3.2)

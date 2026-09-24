@@ -99,10 +99,8 @@ def _chassis_seg(i):
 def _register_chassis():
     from src import chassis as CH
     for i in range(len(CH.SPLIT_X) + 1):
-        PARTS[f"chassis_{i}"] = (_chassis_seg(i), "z", None, -1)
-
-
-_register_chassis()
+        DECLARED_UP[f"chassis_{i}"] = ("src.chassis", "PRINT_UP")
+        BUILDERS[f"chassis_{i}"] = _chassis_seg(i)
 
 
 # ── WHICH PARTS GET CHECKED, AND WHERE THE ORIENTATION COMES FROM ─────────
@@ -138,7 +136,39 @@ DECLARED_UP = {
     "pedal_bar_c":       ("src.pedal_bar", "BAR_UP"),
     "knee_housing":      ("src.knee_lever", "PRINT_UP"),
     "kv_housing":        ("src.knee_lever_vert", "PRINT_UP"),
+    # ...the rest of the lever family, which does NOT share the housing's +Z: the arms
+    # lie on a face and build along the axle, and each is its own module's declaration
+    # carried through that module's own pose (see src.helpers.pose_dir).
+    "knee_lever":        ("src.knee_lever", "LEVER_UP"),
+    "kv_lever":          ("src.knee_lever_vert", "LEVER_UP"),
+    "pedal_lever":       ("src.foot_pedal", "LEVER_UP"),
+    "kl_axle":           ("src.knee_lever", "AXLE_UP"),
+    "kl_magnet_cap":     ("src.knee_lever", "MAGNET_CAP_UP"),
+    "cart_base":         ("src.knee_lever", "CART_UP"),
+    "pedal_lid_a":       ("src.pedal_bar", "LID_UP"),
+    "pedal_lid_b":       ("src.pedal_bar", "LID_UP"),
+    "motor_pulley":      ("src.components", "MOTOR_PULLEY_UP"),
+    "screw_pulley_hi":   ("src.components", "SCREW_PULLEY_UP"),
+    "screw_pulley_lo":   ("src.components", "SCREW_PULLEY_UP"),
+    "tension_fork":      ("src.tension_fork", "PRINT_UP"),
+    "coil_mandrel":      ("src.coil_mandrel", "MANDREL_UP"),
+    "coil_mandrel_sleeve": ("src.coil_mandrel", "SLEEVE_UP"),
+    "leg_foot":          ("src.legs", "FOOT_UP"),
+    # the print-fit coupons, which declare an orientation for the same reason the parts
+    # they stand in for do -- a coupon printed the other way up is not the same test
+    "test_section_tenon":   ("src.joint_coupon", "PRINT_UP"),
+    "test_section_mortise": ("src.joint_coupon", "PRINT_UP"),
+    "test_cover_seat":      ("src.joint_coupon", "COVER_UP"),
+    "test_cover_plate":     ("src.joint_coupon", "COVER_UP"),
+    "test_belt_tensioner":  ("src.belt_tensioner", "COUPON_UP"),
 }
+# THE OTHER THREE BODY ADAPTERS ARE THE SAME DIRECTION, and the note that used to stand
+# here saying otherwise was simply wrong: leg_stack poses the corner variants by a PURE
+# TRANSLATION and regenerates their joinery, and it cuts every corner's lock-pin holes
+# with ADAPTER_UP unconditionally. A translation does not rotate a build direction, so
+# there is nothing to transform and nothing to hand-type.
+for _c in ("mx_my", "px_my", "px_py"):
+    DECLARED_UP[f"body_adapter_{_c}"] = ("src.leg_stack", "ADAPTER_UP")
 # The deck panels print deck-DOWN on the one declaration -- each as ONE OBJECT with its colour
 # layer, so that is the unit checked, exactly as a chassis segment is checked with its light band
 # (see _chassis_seg, which learned this the same way). Checking a BASE alone is not a stricter
@@ -148,9 +178,17 @@ DECLARED_UP = {
 # bed as a single printed object.
 for _i in list(range(6)) + ["spare_0", "spare_1", "spare_2"]:
     DECLARED_UP[f"top_plate_{_i}"] = ("src.top_plate", "PIECE_UP")
-# ...and the body adapter's three other corners are the SAME part posed to another corner, so
-# their world build direction is not ADAPTER_UP and they are deliberately left out until each
-# corner's pose declares its own.
+# STILL UNDECLARED, and deliberately so -- a guess here makes the whole report meaningless,
+# which is worse than a gap the coverage line names every run:
+#   cart_piston       nothing states it, it takes no print_up, and its half-cylinder
+#                     follower nose would be a bottom overhang in the cartridge base's +Z,
+#                     so the base's direction cannot be assumed for it;
+#   latch_cover       the AXIS is determinable (it prints flat on an X-Z face, so +-Y) but
+#                     not the sign: inner-face-down puts the blind lock groove's roof up as
+#                     a ceiling, outer-face-down makes the dovetail flanks exact-45
+#                     overhangs. Both are legal here and nothing says which was meant;
+#   pedal_detent_nub  a bare O4 x 4 TPU cylinder with no orientation anywhere in the code
+#                     (and no ceiling to find in any of them).
 
 
 def _up_of(name):
@@ -178,6 +216,17 @@ def _axis_side(up, tol=1e-6):
 # parts that are printed as ONE OBJECT with another part, and so must be checked fused to it
 FUSED_WITH = {f"top_plate_{i}": f"top_plate_{i}_color"
               for i in list(range(6)) + ["spare_0", "spare_1", "spare_2"]}
+FUSED_WITH.update({f"chassis_{i}": f"chassis_{i}_light" for i in range(3)})
+# ...and the OTHER half of each of those pairs is therefore checked, as part of the object
+# it prints with. It needs no declaration of its own and reporting it as an unchecked gap
+# is just wrong: a colour layer has no independent print orientation, and neither has a
+# light band. Fifteen of the forty-one "never declared" parts were these halves and the
+# chassis segments (which were registered by hand, so they were checked AND reported
+# missing). A coverage line only means something if it counts the same way the run does.
+FUSED_INTO = {v: k for k, v in FUSED_WITH.items()}
+
+# builders for parts whose geometry is not simply src.build's PARTS entry
+BUILDERS = {}
 
 
 def _src_part(name):
@@ -196,13 +245,15 @@ def _src_part(name):
 
 
 def _register_declared():
+    _register_chassis()
     for nm in DECLARED_UP:
         up = _up_of(nm)
         got = _axis_side(up)
         if got is None:
             continue                       # listed in the report as not checkable
         ax, side = got
-        PARTS[nm] = (_src_part(nm), ax, None, side)   # None bed = derive from the part
+        build = BUILDERS.get(nm) or _src_part(nm)
+        PARTS[nm] = (build, ax, None, side)           # None bed = derive from the part
 
 
 _register_declared()
@@ -305,11 +356,13 @@ def _coverage():
     every run rather than left to be noticed."""
     from src import build as B
     printed = set(B.PARTS)
-    checked = printed & set(PARTS)
+    fused = {n for n in printed if FUSED_INTO.get(n) in PARTS}
+    checked = (printed & set(PARTS)) | fused
     diagonal = {n for n in DECLARED_UP if n in printed and _axis_side(_up_of(n)) is None}
-    undeclared = sorted(printed - set(DECLARED_UP))
+    undeclared = sorted(printed - checked - diagonal)
     print("")
-    print("coverage: %d of %d src.build prints checked" % (len(checked), len(printed)))
+    print("coverage: %d of %d src.build prints checked (%d of them as the other half of "
+          "an object they print with)" % (len(checked), len(printed), len(fused)))
     if diagonal:
         print("  %d declare a DIAGONAL build direction, which has no flat bed axis and so "
               "cannot be checked here: %s" % (len(diagonal), ", ".join(sorted(diagonal))))

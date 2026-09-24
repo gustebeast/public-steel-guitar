@@ -130,6 +130,26 @@ def _tooth_cutter(axis: str, lo: float = None, length: float = None):
 
 
 # ── Screw drive pulley (axis Z) ──────────────────────────────────────────
+# PRINT ORIENTATION (the record, declared once per part) -- both pulleys print FLANGE
+# DOWN, which the builders below already say in prose and draw: a full disc as the bed
+# face, narrowing going up, and _tooth_cutter caps the groove ends at 45 because a flat
+# one would be "unsupported in a flange-down print". The screw pulley's flange is its -Z
+# face and the motor pulley's is its -Y face (its +Y flange is the chamfered, printable
+# cone), so they build +Z and +Y respectively. Neither is posed into the assembly.
+SCREW_PULLEY_UP = (0.0, 0.0, 1.0)
+MOTOR_PULLEY_UP = (0.0, 1.0, 0.0)
+
+
+# PRINT ORIENTATION (the record, declared once per part) -- both pulleys print FLANGE
+# DOWN, which the builders below already say in prose and draw: a full disc as the bed
+# face, narrowing going up, and _tooth_cutter caps the groove ends at 45 because a flat
+# one would be "unsupported in a flange-down print". The screw pulley's flange is its -Z
+# face and the motor pulley's is its -Y face (its +Y flange is the chamfered, printable
+# cone), so they build +Z and +Y respectively. Neither is posed into the assembly.
+SCREW_PULLEY_UP = (0.0, 0.0, 1.0)
+MOTOR_PULLEY_UP = (0.0, 1.0, 0.0)
+
+
 def screw_pulley(high: bool = False) -> cq.Workplane:
     """Screw drive pulley, origin at the TOOTHED BAND'S CENTRE. An ENDCAP, in TWO SKUs.
 
