@@ -2282,6 +2282,311 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
     return laid, skipped, skipped_edges, corridor_laid, corridor_failed
 
 
+
+def _lx(p):
+    """A pcbnew point's board-local X in mm -- the frame the notes are written in."""
+    return pcbnew.ToMM(p.x) - SHEET_ORIGIN[0]
+
+
+def _ly(p):
+    return SHEET_ORIGIN[1] - pcbnew.ToMM(p.y)
+
+
+def _dedupe(pts, eps=1e-6):
+    """Drop repeated points, so a path whose jog happens to be zero does not emit a
+    zero-length track. Six of those reached the board on the first run that laid
+    anything -- harmless, but the importer counts them and they read as real copper."""
+    out = [pts[0]]
+    for q in pts[1:]:
+        if abs(q[0] - out[-1][0]) > eps or abs(q[1] - out[-1][1]) > eps:
+            out.append(q)
+    return out
+
+
+def _comb_lanes(board, notes, width=0.2, clr=0.15, pitch=0.50, inner="In2.Cu",
+                via_d=0.6, via_drill=0.3, verbose=True):
+    """THE COMB CROSSING, LAID AS ONE PATTERN AND COPIED ONCE PER STRING PAIR (user).
+
+    THIS IS THE NET THE ROUTER HAS NEVER FINISHED. Twenty TIA outputs have to get from
+    the op-amp column, across the comb, to a coupling cap in their converter cell. The
+    comb is SLOTS -- holes through the board -- so no layer crosses one; every run has to
+    thread a 4.00 mm lane between two of them. Left to freerouting this came out as
+    twenty different improvisations and seven failed, always the same way: a 5.3 mm stub
+    dying at the first slot wall with 0.00 mm of copper on the escape layer, because the
+    run never got a via down.
+
+    The hardware is ten identical string cells feeding five identical converter cells on
+    an 18.72 mm pitch, so the routing should be one pattern five times. What makes that
+    expressible is that the geometry is monotonic: the four runs of a group leave the
+    op-amp column north-to-south in the same order their caps sit west-to-east (see the
+    channel-assignment note in elec/optical.py), so the northernmost run peels out of the
+    lane first and no two of the four ever cross.
+
+    THE PATH, west to east:
+      F.Cu  out of the feedback cap, a short stub to a via west of the slot field
+      In2   down the lane between this pair's own two slots, then north past the cell
+      F.Cu  down through the Cm row's own gap onto the coupling cap's pad
+
+    The last leg looks impossible and is not: Ci sits on a 1.2 mm pitch and Cm on the same
+    pitch offset 0.8, so EVERY Ci pad sits in a door between two Cm pads -- 0.64 mm of it,
+    and a 0.2 track with clearance needs 0.50. That stagger is what the cell near/far row
+    split buys, and it is the only way in: Ci north pad has 0.52 mm to the Cm row and its
+    south pad belongs to the converter.
+
+    LAID PAD TO PAD, deliberately. This file is emphatic that pre-laid copper is an
+    obstacle the router can never renegotiate, and orphan MID-NET copper is worse: the
+    corridor generator laid stubs three times and made the board worse every time (19/5,
+    16/0, 14/3 against 10/0) because freerouting does not adopt copper that reaches no
+    pad. A COMPLETE net is a different proposition -- the router has nothing left to do
+    on it, so there is nothing to renegotiate.
+
+    The template is SEARCHED, not hand-placed, over a few offsets per run, because two
+    obstacles sit exactly where the naive path wants to be: a row of GND stitch vias at
+    the Cm x-positions, and the converter pad via, which is 0.30 mm off one approach
+    against the 0.55 a 0.2 track needs. Anything that will not go clear is SKIPPED, not
+    forced, and reaches the router exactly as it would have anyway.
+    """
+    import math
+
+    trk_m = pcbnew.FromMM(width / 2.0 + clr)
+    via_m = pcbnew.FromMM(via_d / 2.0 + clr)
+    CELL = pcbnew.FromMM(2.0)
+
+    slots = [s["poly"] for s in notes.get("outline_slots", ())]
+    if len(slots) < 2:
+        return 0, []
+    band = []
+    for p in slots:
+        xs = [q[0] for q in p]
+        ys = [q[1] for q in p]
+        band.append((min(xs), max(xs), min(ys), max(ys)))
+    band.sort(key=lambda b: -b[2])
+    sx0 = min(b[0] for b in band)
+    sx1 = max(b[1] for b in band)
+
+    pads = [(q, fp) for fp in board.GetFootprints() for q in fp.Pads()]
+    # ⚠ THE THIRD FIELD SAYS WHETHER THE PAD PIERCES EVERY LAYER, and leaving it out is
+    # what made the first version of this lay nothing at all: 0 of 20, every candidate
+    # rejected. An SMD pad has copper on ONE layer, so counting it against an In2.Cu run
+    # measures the escape layer's space using the surface's obstacles -- and the converter
+    # cell, which every run has to pass under, is nothing but surface pads. The very first
+    # diagnostic said so: blocked by ADC1_IN4M, a pad with no In2.Cu copper on it. Same
+    # field, same reason, as the one in _local_nets.
+    boxes = [(q.GetBoundingBox(), q.GetNetname(),
+              q.GetAttribute() in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH))
+             for q, _ in pads]
+    segs = [((t.GetStart().x, t.GetStart().y), (t.GetEnd().x, t.GetEnd().y),
+             t.GetWidth() / 2.0, t.GetNetname(), t.GetLayer())
+            for t in board.GetTracks() if t.GetClass() != "PCB_VIA"]
+    segs += [((t.GetPosition().x, t.GetPosition().y),
+              (t.GetPosition().x, t.GetPosition().y), _via_r(t), t.GetNetname(), None)
+             for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
+    grid = {}
+    for bb, onet, thru in boxes:
+        for cx in range(bb.GetLeft() // CELL, bb.GetRight() // CELL + 1):
+            for cy in range(bb.GetTop() // CELL, bb.GetBottom() // CELL + 1):
+                grid.setdefault((cx, cy), []).append((bb, onet, thru))
+
+    # ⚠ THE SEGMENTS ARE INDEXED, NOT SCANNED. _local_nets walks its whole track list for
+    # every sample point, which is fine when the hops are 2 mm long and there are a few
+    # hundred of them. These runs are 30 mm and the candidate search tries dozens per net,
+    # so the same linear scan is 20 nets x 140 candidates x 250 samples x 2400 segments --
+    # it did not finish. Same 2 mm cell grid the pads already use.
+    sgrid = {}
+
+    def index_seg(i):
+        (ax, ay), (bx, by), hw, _n, _l = segs[i]
+        r = int(hw) + CELL
+        for cx in range((min(ax, bx) - r) // CELL, (max(ax, bx) + r) // CELL + 1):
+            for cy in range((min(ay, by) - r) // CELL, (max(ay, by) + r) // CELL + 1):
+                sgrid.setdefault((cx, cy), []).append(i)
+
+    for _i in range(len(segs)):
+        index_seg(_i)
+
+    def add_seg(s):
+        segs.append(s)
+        index_seg(len(segs) - 1)
+
+    outline = _outline_pts(notes)
+    holes = _hole_pts(notes)
+
+    def clear(x, y, netname, margin, layer=None, thru_only=False):
+        x, y = int(x), int(y)
+        edge = margin - pcbnew.FromMM(clr) + pcbnew.FromMM(0.3)
+        if not _inside(outline, x, y, edge):
+            return False
+        if not _clear_of_holes(holes, x, y, edge):
+            return False
+        for cx in range((x - margin) // CELL, (x + margin) // CELL + 1):
+            for cy in range((y - margin) // CELL, (y + margin) // CELL + 1):
+                for bb, onet, thru in grid.get((cx, cy), ()):
+                    if onet == netname or (thru_only and not thru):
+                        continue
+                    dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+                    dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+                    if math.hypot(dx, dy) < margin:
+                        return False
+        seen = set()
+        for cx in range((x - margin) // CELL, (x + margin) // CELL + 1):
+            for cy in range((y - margin) // CELL, (y + margin) // CELL + 1):
+                for i in sgrid.get((cx, cy), ()):
+                    if i in seen:
+                        continue
+                    seen.add(i)
+                    (ax, ay), (bx, by), hw, onet, olay = segs[i]
+                    if onet == netname:
+                        continue
+                    if layer is not None and olay is not None and olay != layer:
+                        continue
+                    vx, vy = bx - ax, by - ay
+                    L2 = vx * vx + vy * vy
+                    t = (0.0 if L2 == 0 else
+                         max(0.0, min(1.0, ((x - ax) * vx + (y - ay) * vy) / L2)))
+                    if math.hypot(x - (ax + t * vx), y - (ay + t * vy)) - hw < margin:
+                        return False
+        return True
+
+    def run_clear(pts, netname, layer):
+        # an INNER run only meets pads that drill through; a surface run meets them all
+        thru_only = layer not in (pcbnew.F_Cu, pcbnew.B_Cu)
+        # ⚠ A COARSE-THEN-FINE PREFILTER WAS TRIED HERE AND REMOVED, MEASURED, not
+        # reasoned away: walking each candidate at 0.8 mm before the real 0.12 mm walk
+        # made the whole stage SLOWER, 5:00 -> 6:25. The premise was that most candidates
+        # die on something big. They do not -- the things that stop a run here are a via
+        # 0.23 mm off the centre line and a pad edge a few tenths away -- so the coarse
+        # pass almost never rejected and every candidate simply paid for both walks.
+        for a, b in zip(pts, pts[1:]):
+            pa, pb = _to_board(*a), _to_board(*b)
+            L = math.hypot(pb.x - pa.x, pb.y - pa.y)
+            n = max(4, int(pcbnew.ToMM(L) / 0.12) + 1)
+            for t in range(n + 1):
+                if not clear(pa.x + (pb.x - pa.x) * t / n,
+                             pa.y + (pb.y - pa.y) * t / n, netname, trk_m, layer,
+                             thru_only):
+                    return False
+        return True
+
+    def remember(pts, netname, layer):
+        for a, b in zip(pts, pts[1:]):
+            pa, pb = _to_board(*a), _to_board(*b)
+            add_seg(((pa.x, pa.y), (pb.x, pb.y),
+                     pcbnew.FromMM(width) / 2.0, netname, layer))
+
+    nets = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
+    laid, why = 0, []
+    # why each candidate died, AT THE TIME IT WAS TRIED. Replaying the finished board
+    # answers a different question and answers it wrongly: it reports copper laid after
+    # the attempt, so a run reads as blocked by one that was not there yet.
+    import collections
+    blame = collections.defaultdict(collections.Counter)
+    # ⚠ THE FIVE GROUPS ARE THE SAME PROBLEM. Converter cells sit on an exact 18.72 mm
+    # pitch and every candidate parameter here is already RELATIVE -- x_v to the slot
+    # field, dxn and up_dy to the cap, x_t to the slot field, y_e to the cap -- so the
+    # tuple that solved run j in one group is the first thing worth trying for run j in
+    # the next. When it works, which is the normal case, the search is one candidate
+    # instead of up to 740. It is only a reordering: if the remembered tuple does not go
+    # clear, the full list is tried behind it exactly as before.
+    won = {}
+
+    for g in range(len(band) // 2):
+        up, dn = band[2 * g], band[2 * g + 1]
+        lane_c = (dn[3] + up[2]) / 2.0
+        for j in range(4):
+            net = "TIA_OUT_%d%s" % (2 * g + 1 + j // 2, "A" if j % 2 == 0 else "B")
+            mine = [q for q, fp in pads if q.GetNetname() == net]
+            west = [q for q in mine if _lx(q.GetPosition()) < sx0]
+            east = [q for q in mine if _lx(q.GetPosition()) > sx1]
+            if not west or not east:
+                continue
+            src = max(west, key=lambda q: _lx(q.GetPosition()))
+            dst = min(east, key=lambda q: _lx(q.GetPosition()))
+            s_x, s_y = _lx(src.GetPosition()), _ly(src.GetPosition())
+            d_x, d_y = _lx(dst.GetPosition()), _ly(dst.GetPosition())
+            lane_y = lane_c + (1.5 - j) * pitch
+            done = False
+            # ⚠ TWO ROUTE SHAPES, NOT ONE, AND THE CONVERTER PAD VIA IS WHY. The direct
+            # shape -- east along the lane at lane_y all the way to the cap's own x, then
+            # north -- lays 6 of 20 and fails the same two runs in every group: j=2 and
+            # j=3 pass the EP via at 0.296 and 0.204 mm against the 0.55 a 0.2 track
+            # needs, because their lane is the one nearest the via's y. The other shape
+            # turns north EARLY, in the empty 4.3 mm corridor between the slot ends and
+            # the cell, runs east above the Cm row and comes down from the north. Offered
+            # as candidates rather than assigned, because which one a run needs depends on
+            # its lane and on what the runs before it have already taken.
+            cands = []
+            for x_v in (sx0 - 1.0, sx0 - 1.4, sx0 - 0.7, sx0 - 1.8):
+                for dxn in (0.0, -0.10, 0.10, -0.20, 0.20, -0.30, 0.30):
+                    for up_dy in (3.6, 4.2, 4.8, 5.4, 6.0):
+                        cands.append((x_v, dxn, up_dy, None, None))
+            for x_v in (sx0 - 1.0, sx0 - 1.4):
+                for dxn in (0.0, -0.15, 0.15, -0.30, 0.30):
+                    for up_dy in (3.6, 4.2, 4.8):
+                        for x_t in (sx1 + 0.7, sx1 + 1.4, sx1 + 2.1, sx1 + 2.8, sx1 + 3.5):
+                            for y_e in (d_y + 3.6, d_y + 4.4, d_y + 5.2, d_y + 6.0):
+                                cands.append((x_v, dxn, up_dy, x_t, y_e))
+            if j in won and won[j] in cands:
+                cands.remove(won[j])
+                cands.insert(0, won[j])
+            for x_v, dxn, up_dy, x_t, y_e in cands:
+                    if True:
+                        x_n, y_up = d_x + dxn, d_y + up_dy
+                        pv0, pv1 = _to_board(x_v, s_y), _to_board(x_n, y_up)
+                        if not clear(pv0.x, pv0.y, net, via_m):
+                            blame[net]["via west of the slots"] += 1
+                            continue
+                        if not clear(pv1.x, pv1.y, net, via_m):
+                            blame[net]["via north of the cell"] += 1
+                            continue
+                        f0 = _dedupe([(s_x, s_y), (x_v, s_y)])
+                        if x_t is None:
+                            pi = [(x_v, s_y), (x_v, lane_y), (x_n, lane_y), (x_n, y_up)]
+                        else:
+                            pi = [(x_v, s_y), (x_v, lane_y), (x_t, lane_y),
+                                  (x_t, y_e), (x_n, y_e), (x_n, y_up)]
+                        pi = _dedupe(pi)
+                        f1 = _dedupe([(x_n, y_up), (x_n, d_y), (d_x, d_y)])
+                        if not run_clear(pi, net, _LAYERS[inner]):
+                            blame[net]["the %s crossing" % inner] += 1
+                            continue
+                        if not run_clear(f0, net, pcbnew.F_Cu):
+                            blame[net]["the F.Cu stub off the cap"] += 1
+                            continue
+                        if not run_clear(f1, net, pcbnew.F_Cu):
+                            blame[net]["the F.Cu drop through the Cm door"] += 1
+                            continue
+                        _add_track(board, nets[net], "F.Cu", width, f0)
+                        _add_via(board, nets[net], x_v, s_y, via_drill, via_d)
+                        _add_track(board, nets[net], inner, width, pi)
+                        _add_via(board, nets[net], x_n, y_up, via_drill, via_d)
+                        _add_track(board, nets[net], "F.Cu", width, f1)
+                        remember(pi, net, _LAYERS[inner])
+                        remember(f0, net, pcbnew.F_Cu)
+                        remember(f1, net, pcbnew.F_Cu)
+                        for vx, vy in ((x_v, s_y), (x_n, y_up)):
+                            pv = _to_board(vx, vy)
+                            add_seg(((pv.x, pv.y), (pv.x, pv.y),
+                                     pcbnew.FromMM(via_d) / 2.0, net, None))
+                        laid += 1
+                        done = True
+                        won[j] = (x_v, dxn, up_dy, x_t, y_e)
+                        break
+            if not done:
+                why.append(net)
+    if verbose:
+        tail = ""
+        if why:
+            tail = ", %d left to the router (%s)" % (len(why), ", ".join(why))
+        print("  comb lanes: laid %d of %d run(s) as one repeated pattern%s"
+              % (laid, 4 * (len(band) // 2), tail))
+        for _n in why:
+            _top = blame[_n].most_common(1)
+            if _top:
+                print("      %-14s %d candidates, all stopped -- mostly %s"
+                      % (_n, sum(blame[_n].values()), _top[0][0]))
+    return laid, why
+
+
 def _edge_name(a, b, netname, math):
     """"net: REF.pad -> REF.pad (d mm)" for an edge this routine could not lay."""
     def _p(q):
@@ -2455,12 +2760,19 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
     # bounding boxes sat 0.17 mm from the ground pin's only way out. The real copper is
     # 0.86 mm away. Point-to-segment is four lines of arithmetic and it is not optional
     # on a board where the pairs are the things running at angles.
+    # ⚠ AN OBSTACLE HAS A LAYER, and this list did not carry one -- the same omission
+    # _local_nets already fixed, in the same words, for the same reason. The stitch TRACK
+    # is laid on its pad's own layer, so copper on another layer is not in its way; only
+    # the VIA, which drills through everything, meets all of it. Without the distinction
+    # the +3V3D trunk on B.Cu blocked an F.Cu stub passing over it, and four Cm caps in
+    # four different cells reported "no room to stitch" while the only obstruction was on
+    # a layer their track never touches.
     segs = [((t.GetStart().x, t.GetStart().y), (t.GetEnd().x, t.GetEnd().y),
-             t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
+             t.GetWidth() / 2.0, t.GetNetname(), t.GetLayer()) for t in board.GetTracks()
             if t.GetClass() != "PCB_VIA"]
     segs += [((t.GetPosition().x, t.GetPosition().y),
               (t.GetPosition().x, t.GetPosition().y), _via_r(t),
-              t.GetNetname()) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
+              t.GetNetname(), None) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
 
     # ⚠ HOLE-VS-HOLE ON EVERY NET WAS TRIED HERE AND REVERTED -- IT BROKE THE BUILD.
     # The idea is sound: copper on one net may touch, two DRILLS may never, and
@@ -2481,7 +2793,7 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
     # making holes obstacles, and re-measure all three boards. Left undone rather than
     # half-done, because the remaining co-located drills are warnings and a broken layout
     # is not.
-    def _clear_of(x, y, netname, margin):
+    def _clear_of(x, y, netname, margin, layer=None):
         """True if (x, y) keeps `margin` from every pad or track NOT on `netname`.
 
 """
@@ -2492,8 +2804,12 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
             if math.hypot(dx, dy) < margin:
                 return False
-        for (ax, ay), (bx, by), half_w, onet in segs:
+        for (ax, ay), (bx, by), half_w, onet, olay in segs:
             if onet == netname:
+                continue
+            # layer None means "this obstructs every layer" -- a via. Pass a layer for a
+            # track and copper elsewhere in the stack stops counting against it.
+            if layer is not None and olay is not None and olay != layer:
                 continue
             vx, vy = bx - ax, by - ay
             L2 = vx * vx + vy * vy
@@ -2625,6 +2941,13 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             # is exactly where a differential pair needs a clear run under the component
             # rows. Without a reserved corridor the two features simply cannot both
             # succeed: whichever goes first wins and the other reports failure.
+            # ⚠ THE VIA ONLY, AND DELIBERATELY. Extending this to the stitch TRACK was
+            # tried on 2026-09-24 and reverted the same hour: it cost Cm24.2, Cm34.2,
+            # Cm44.2 and Cm54.2 their ground vias outright, because their stubs cross the
+            # B.Cu spine lane on F.Cu and had nowhere else to go. These are VIA keepouts
+            # and the reason is in the note above -- a through via pierces every layer, so
+            # it turns a reserved inner-layer channel into a sieve. A surface track over a
+            # B.Cu spine does not touch it. The rule was generalised past its reason.
             if any(kx0 <= pcbnew.ToMM(x_ - _to_board(0, 0).x) <= kx1
                    and ky0 <= -pcbnew.ToMM(y_ - _to_board(0, 0).y) <= ky1
                    for kx0, ky0, kx1, ky1 in keepouts):
@@ -2639,7 +2962,7 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             trk_lim = pcbnew.FromMM(0.25 / 2.0 + 0.127)
             if not _clear_of(x_, y_, pad_.GetNetname(), via_lim):
                 return False
-            if not all(_clear_of(px, py, pad_.GetNetname(), trk_lim)
+            if not all(_clear_of(px, py, pad_.GetNetname(), trk_lim, pad_.GetLayer())
                        for px, py in samples[1:]):
                 return False
             # ...and against the vias already placed, or two neighbouring pads choose
@@ -3242,6 +3565,14 @@ def build(stem):
                   % (c_laid, len(notes["corridors"])))
             for _e in c_why:
                 print("      corridor not placeable: %s" % _e)
+
+    # ⚠ AFTER THE LOCAL CLUSTERS, BEFORE THE ROUTER. The clusters are three pads a couple
+    # of millimetres apart in the tightest part of the strip and have almost no freedom;
+    # the comb crossing has a whole lane and an inner layer. Same argument the retry got
+    # below -- the routine with fewer alternatives goes first -- and it also means the
+    # crossing sees the cluster copper it has to leave from as a real obstacle.
+    if notes.get("comb_lanes", True) and notes.get("outline_slots"):
+        _comb_lanes(board, notes)
 
     # ⚠ LOCAL NETS FIRST, RETRY SECOND, BY THE SAME ARGUMENT THE STITCHER GOT ABOVE: the
     # routine with fewer alternatives goes first. A local cluster is three pads a couple

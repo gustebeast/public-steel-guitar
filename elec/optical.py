@@ -703,7 +703,21 @@ def optical():
     # the couplings: quad q's section s -> converter q's input s+1
     for ch in range(20):
         i, side = ch // 2 + 1, "A" if ch % 2 == 0 else "B"
-        k, s_in = ch // 4, ch % 4 + 1
+        # ⚠ REVERSED WITHIN THE CONVERTER (2026-09-24), and the permutation study above is
+        # NOT the reason not to: that study is from the FIVE-QUAD era -- it cites op-amp
+        # "pin 14", which a VSSOP-8 dual does not have -- and it scored each run for a CLEAR
+        # STRAIGHT PATH past a wall of supply caps that no longer stands between the column
+        # and the converter. The criterion now is different and it is ORDER, not length.
+        #
+        # The four runs of a converter group leave the op-amp column at four different y and
+        # arrive at four caps on one row at four different x. They share the 4.00 mm lane
+        # between their own two strings' slots, and a trace peeling north out of that lane
+        # must be north of every trace still running east -- so a crossing-free assignment
+        # needs the north-to-south source order to match the west-to-east sink order.
+        # Sources run 1A,1B,2A,2B north to south; IN1..IN4's caps run EAST to west. The old
+        # mapping therefore made all four cross, in the tightest region on the board.
+        # One subtraction makes the two orders agree. Firmware channel order changes with it.
+        k, s_in = ch // 4, 4 - ch % 4
         pos = Net("ADC%d_IN%dP" % (k + 1, s_in))
         ci = _c("Ci%d%d" % (k + 1, s_in), "10nF C0G", "string %d%s -> U%d IN%dP"
                 % (i, side, 14 + k, s_in))
@@ -1612,6 +1626,40 @@ def _i2c_spine():
     return out
 
 
+def _door_keepout(pad=0.55, lo=0.50, hi=1.80):
+    """Fence the stitcher out of the coupling caps' DOORS.
+
+    Every TIA output reaches its coupling cap through the gap between two Cm pads -- Ci
+    sits on a 1.2 mm pitch and Cm on the same pitch offset 0.8, so each Ci pad has a
+    0.64 mm window straight above it and that window is the only way in (Ci's south pad
+    belongs to the converter, and its north pad has 0.52 mm to the Cm row).
+
+    The stitcher does not know that. It places a ground via 0.9 off each pad it grounds
+    and knows nothing about what the space is for, and in FOUR of the five cells it put
+    one in a door: 0.23 mm off the centre line against the 0.55 a 0.2 track needs. That
+    is the whole reason those four runs could not be laid -- 740 candidates each, all
+    stopped on the same last leg, while the one cell whose door happened to stay clear
+    laid first try.
+
+    Narrow strips at the door x, NOT a band across the row: the Cm caps' own GND vias sit
+    between the doors and are the thing being fenced off FROM, so a band would cost every
+    one of them its ground. Read back from the placed parts by reference so the fence
+    cannot drift off the door it is fencing.
+    """
+    P = _placements(CX, CY)
+    out = []
+    for k in range(1, 6):
+        for i in range(1, 5):
+            ci = P.get("Ci%d%d" % (k, i))
+            cm = P.get("Cm%d%d" % (k, i))
+            if ci is None or cm is None:
+                continue
+            out.append([round(ci[0] - pad, 4), round(min(ci[1], cm[1]) + lo, 4),
+                        round(ci[0] + pad, 4), round(max(ci[1], cm[1]) + hi, 4)])
+    assert len(out) == 20, "expected one door per channel, got %d" % len(out)
+    return out
+
+
 def _spine_keepout(via_d=0.6, clr=0.127):
     """Fence the stitcher off the B.Cu spines, sized from where the spines actually are.
 
@@ -2172,6 +2220,18 @@ BOARD_NOTES = {
     # and SCL simply came back unconnected, which reads like the spine not working rather
     # than like a keepout that had quietly stopped covering it.
     # A keepout around moving copper has to be computed FROM that copper.
+    # ⚠ _door_keepout() IS NOT IN THIS LIST, AND THAT IS THE MEASURED ANSWER, not an
+    # oversight. Fencing the stitcher out of the coupling-cap doors is the right idea --
+    # in four of five cells it puts ground copper straight through the only way into a
+    # Ci pad -- but it bought ZERO extra comb runs and cost four Cm caps their ground
+    # connection outright ("no room for a stitching via beside Cm24.2, Cm34.2, Cm44.2,
+    # Cm54.2"). Those pads are boxed between the +3V3D trunk at x 9.05 and the I2C spine
+    # at 7.92, 1.13 mm apart where a via needs 1.20, so with the door fenced there is no
+    # legal spot left in any direction. Ground through the pour alone is worse than a
+    # crossed door: routing can orphan a pour, and these are the converters' own
+    # reference caps. The function is kept because the diagnosis is sound and the fix
+    # belongs at the other end -- widening that channel, which is ADC_BUS_CH in
+    # src/optical_pickup.py and was already widened once (2.4 -> 4.2) for this column.
     "via_keepouts": [[-34.5, -101.0, -27.5, -78.0]] + _spine_keepout(),
     # ⚠ THE FEEDBACK CLUSTERS, LAID HERE RATHER THAN SEARCHED FOR. Twenty identical
     # networks -- op-amp output, feedback R, feedback C, and the photodiode on the input
