@@ -1494,7 +1494,17 @@ def _parts():
     # that kind of thing gets lost, and the name was the only thing carrying the measurement.
     # 2.4 reproduces the corridor width the sweep liked (2.18 mm clear, 6 tracks) now that
     # the slot keepout rather than the board edge sets the west side of it.
-    ADC_BUS_CH = 2.4
+    # ⚠ 4.2, BECAUSE THE CHANNEL CARRIES THE CROSSINGS TOO, NOT JUST THE SPINE. 2.4 was
+    # sized for the I2C spine alone and reproduced the corridor width the old sweep liked.
+    # It is the wrong requirement: all twenty TIA outputs have to CROSS this channel to
+    # reach their coupling caps, and once the comb crossings were assigned they all parked
+    # their east ends in it -- 1.50..3.75 wide, with corridor stubs ending at 2.55. The
+    # result was five DRC violations, two of them real shorts, every one of them a
+    # corridor track against I2C2_SCL or its vias, and the board went 12 unconnected to 19.
+    # There is no narrower answer available: the comb ends at 1.35 and the keepout at 1.50,
+    # so ANY endpoint east of the comb is either in this channel or inside a cell. The
+    # channel has to be big enough for both jobs.
+    ADC_BUS_CH = 4.2
     assert ADC_BUS_CH >= EDGE_KEEP, "the bus channel is also the part-to-edge keepout"
     _adc_x = O_SLOT_X1 + ADC_BUS_CH + 2.8                      # 2.8 = half the measured cell
     for k in range(5):

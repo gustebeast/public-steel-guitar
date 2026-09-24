@@ -1779,21 +1779,26 @@ BOARD_NOTES = {
                 + [{"xy": [round(OP.JACK_ACCESS_XY[0] - CX, 4),
                            round(OP.JACK_ACCESS_XY[1] - CY, 4)],
                     "d": OP.JACK_ACCESS_D}]),
-    # ⚠ THE TIA OUTPUTS GET ASSIGNED COMB GAPS. Measured: 13 of 20 crossed and 7 did not,
-    # and the 7 were EXACTLY the 7 the DRC reported unconnected (identical sets), all of
-    # them the B channel. The router sees twenty independent nets and has no way to know
-    # that a string's A and B are a pair needing DIFFERENT gaps, so it sends both at the
-    # cheapest strip, wins with one and strands the other. A goes +Y of its own string,
-    # B goes -Y: two nets per strip, every strip used once, by construction.
-    # The band is the slot extent; the corridor y is the midpoint between adjacent slots,
-    # off D.string_y (the BEARING spacing) and not the sensor row's fan -- the gap is cut
-    # where the bearings are.
-    "corridors": [(("TIA_OUT_%d%s" % (_i + 1, _s)),
-                   ((OP.D.string_y(_i) + OP.D.string_y(_i - 1)) / 2.0 if _s == "A" and _i > 0
-                    else (OP.D.string_y(_i) + OP.D.string_y(_i + 1)) / 2.0 if _s == "B" and _i < OP.D.N_STRINGS - 1
-                    else OP.D.string_y(_i) + (4.75 if _s == "A" else -4.75)) - CY,
-                   OP.O_SLOT_X0 - 1.2 - CX, OP.O_SLOT_X1 + 1.2 - CX)
-                  for _i in range(OP.D.N_STRINGS) for _s in ("A", "B")],
+    # ⚠ CORRIDORS ARE OFF, AND THE MEASUREMENT SAYS SO. The generator did what it was
+    # built to do -- 20 of 20 comb crossings placed on assigned gaps, A through the strip
+    # +Y of its string and B through the strip -Y -- and the BOARD GOT WORSE. Measured
+    # against the same board without it: TIA_OUT failures 7 -> 11, total unconnected
+    # 12 -> 16, and thirteen tracks left dangling.
+    # The premise was wrong. A pre-laid run that stops in open copper mid-net assumes the
+    # router will adopt it and route to both ends; it does not. route.py freezes only the
+    # DECLARED pairs (17 wires, "as (type fix)"), so an unfrozen stub is just copper in
+    # the way -- it costs the router the lane it occupies and gives nothing back. The
+    # local-net pass gets away with the same shape because its clusters are ATTACHED to
+    # the pads at one end and a few millimetres long; these were 18.8 mm and attached at
+    # neither. The loop's own standing warning -- pre-laid geometry is never connected by
+    # the router on this board -- was about vias, and I argued a track was different. It
+    # is not, and the argument cost two routing rounds.
+    # The code stays (layout._local_nets corridors=), documented and tested, because the
+    # IDEA is still right: the router cannot know that a string's A and B are a pair that
+    # must take different gaps, and that is a missing constraint no amount of search
+    # fixes. What is missing is a way to hand it a COMPLETE path, pad to pad, which needs
+    # the far end solved inside a converter cell. That is the next attempt, not this one.
+    "corridors": [],
     "layers": 4,
     "thickness_mm": 1.6,
     # FOUR LAYERS, and on this board it is the least negotiable of the five. In1.Cu
