@@ -497,9 +497,16 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     _uy = 1.0 if ADAPTER_UP[1] > 0 else -1.0
     _bed = ly - _uy * LEG_W / 2.0       # the face it lies on: -Y face when it builds +Y
     # THE HARNESS CHANNEL MUST NOT RUN UNDER A TENON'S FOOT. It is cut in this same top
-    # face and undercuts anything it passes beneath, and a tenon undercut along its run
+    # face and undercuts anything it passes beneath, and a tenon undercut ALONG ITS RUN
     # is holding the leg on with what is left either side. Checked here because this is
     # where the stations are known; leg_pogo.CHAN_X is where the number lives.
+    #
+    # This guards the channel's LONG leg, which is the one that would run the length of
+    # a tenon. Its 45 leg still clips the outermost tenon's corner -- 27.0 mm3, over
+    # about 2.6 of that tenon's 32.49 run -- and that much is unavoidable: the port
+    # surfaces at y 51.72, which is inside that tenon's x band and mid-run, so the
+    # channel has to cross it to get outboard. Measured, and check_thin sees nothing
+    # under 1.60 left behind. (Square in X it was 137.0 mm3 over 21.45.)
     from . import leg_pogo as _PG
     _cx0, _cx1 = (sx + _PG.CHAN_X - _PG.CHAN_W / 2.0,
                   sx + _PG.CHAN_X + _PG.CHAN_W / 2.0)
