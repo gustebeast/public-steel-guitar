@@ -874,6 +874,11 @@ OP_PKG    = "VSSOP-8"
 # are on opposite X flanks and one detector has to reach around the body.
 OP_ROT    = 270.0
 _OP_W     = CRTYD[OP_PKG][1] if OP_ROT % 180.0 == 90.0 else CRTYD[OP_PKG][0]
+_OP_H     = CRTYD[OP_PKG][0] if OP_ROT % 180.0 == 90.0 else CRTYD[OP_PKG][1]
+# V+ (pin 8) is the OUTERMOST pin of the -Y row: three half-pitches off the package
+# centre on a 0.65 mm VSSOP. Cd is placed against it, so this is a routing fact and
+# belongs beside the package, not inside the placement loop.
+_OP_VP_DX = 1.5 * 0.65
 COL_OPA   = (PD_X + CRTYD["PD15"][0] / 2) + PKG_CLR + _OP_W / 2
 # gap from the op-amp land to the SLOTS -- this is the room the feedback network lives in
 PART_KEEP = O_SLOT_X0 - (COL_OPA + _OP_W / 2)
@@ -1105,12 +1110,21 @@ def _parts():
         n, sy = i + 1, string_y_at(i, SENSE_X)
         add("D%d" % n, "IR emitter, 940 nm, Lite-On LTE-C9901 (65 deg FULL angle)",
             LED_PKG_NAME, SENSE_X, sy)
-        # TURNED 180: the PD15's cathode (pad 2) is its +X pair at 0 deg, i.e. on the far
-        # side from the op-amps -- every summing node, the board's noise-critical trace,
-        # had to go around the detector body, and three of them failed to route. At 180
-        # the cathode faces the quad and the anode (MID, a reference) takes the long way.
-        add("PD%dA" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), +Y", "PD15", PD_X, sy + PD_DY, 180.0)
-        add("PD%dB" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), -Y", "PD15", PD_X, sy - PD_DY, 180.0)
+        # ⚠ NOT TURNED. The cathode (pad 2) is the footprint's +1.65 pair, and +X on this
+        # board is TOWARD the op-amps -- so 0 deg already faces the summing node at the
+        # column it feeds. This carried a 180 from 2026-09-21 whose note had the
+        # direction backwards ("pad 2 ... at 0 deg, i.e. on the far side from the
+        # op-amps"); it is the near side. The rotation therefore did the exact thing it
+        # was written to prevent, and put the board's most sensitive net on the wrong
+        # side of a 3.3 mm part for three days.
+        # What it cost, measured on the routed board before the fix: the A summing node
+        # climbed 2.0 mm NORTH over the feedback row and came back, 8 segments; the B one
+        # took FOUR vias and cut diagonally across the detector lands on In2. 6.56 mm
+        # pad-to-pin either way, against 3.29 now, on a 1 MOhm node.
+        # MID takes the long way instead, which is the whole point -- it is a buffered
+        # reference, the one net up here that does not care about length.
+        add("PD%dA" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), +Y", "PD15", PD_X, sy + PD_DY, 0.0)
+        add("PD%dB" % n, "PIN photodiode, Everlight PD15-22B (daylight filter), -Y", "PD15", PD_X, sy - PD_DY, 0.0)
         # ballast rides in the gap just -Y of its own emitter, same X band: no column to
         # spare, and it keeps the high-di/dt emitter loop a couple of mm long
         # 0402 since the PD15 triplet: an 0603's courtyard reaches the detector's
@@ -1136,7 +1150,21 @@ def _parts():
                 "(per-string value)" % (n, sec), "0402", _fx0, cy + sgn * _fdy, 90.0)
             add("Cf%d%s" % (n, sec), "TIA feedback cap, string %d%s (anti-alias pole)"
                 % (n, sec), "0402", _fx1, cy + sgn * _fdy, 90.0)
-        add("Cd%d" % n, "op-amp decoupling, string %d's dual" % n, "0402", _fx1, cy, 90.0)
+        # ⚠ Cd SITS UNDER PIN 8, NOT IN THE FEEDBACK COLUMN, and the move was worth ten
+        # unconnected nets. At (_fx1, cy) it was 3.13 mm from V+ with the B channel's
+        # FEEDBACK RESISTOR squarely between the two: every straight line from the cap
+        # to the pin passes Rf<n>B's output pad 0.33 mm off the centreline against the
+        # 0.64 mm that pad and a 0.2 track need, and every elbow either runs down the
+        # Cf column through Cf<n>B or comes back along y = pin 8 and clears Rf<n>B's pad
+        # by 0.52 mm against 0.51 required. Ten microns, ten times over -- one of the
+        # four repeating unconnected nets the user marked up in the render.
+        # Directly -Y of the pin the run is 1.28 mm of straight track in an empty band,
+        # it is SHORTER than it was (a decoupling loop is the one place length is the
+        # whole point), and it is the same on every string.
+        # 270, not 90, so pad 1 (+3V3A) faces the pin and pad 2 (GND) faces the plane.
+        add("Cd%d" % n, "op-amp decoupling, string %d's dual" % n, "0402",
+            COL_OPA + _OP_VP_DX,
+            cy - (_OP_H / 2 + CRTYD_GAP + CRTYD["0402"][0] / 2), 270.0)
 
     # ---- 3. digital block, in the wide tail past the pickup cavity ----
     x0, x1 = COMPUTE_X0 + EDGE_KEEP, TAIL_X1 - EDGE_KEEP

@@ -1497,7 +1497,7 @@ def _cell_tracks():
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
     return (out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
-            + _v5_spine() + _led_row_spine())
+            + _v5_spine() + _led_row_spine() + _mid_spine())
 
 
 # ⚠ THE +3V3D CLUSTERS CANNOT BE JOINED BY LAYING EITHER (2026-09-22). _v3_trunk links
@@ -1718,7 +1718,7 @@ def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-2.94):
     return out
 
 
-_LED_VIA_DX = -1.36      # LED_ROW surfaces ON its spine, under the detector column
+_LED_VIA_DX = -0.75      # LED_ROW surfaces EAST of the MID spine (see _mid_spine)
 
 
 def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-1.36):
@@ -1779,6 +1779,112 @@ def _led_row_vias():
     P = _placements(CX, CY)
     return [("LED_ROW", P[r][0] - 0.79 + _LED_VIA_DX, P[r][1])
             for r in ("D%d" % i for i in range(1, 11)) if r in P]
+
+
+# MID's spine runs along the WEST EDGE of the anode lands, not their centres. The lands are
+# 1.2 wide at x -26.456, so a 0.3 track anywhere from -27.0 to -25.9 connects; the edge is
+# forced by what has to pass between the spine and the emitter. LED_ROW surfaces from In2
+# on a 0.6 via and crosses to D*.1 on F.Cu, and that via has to fit between them:
+#
+#     MID spine east edge  ->  D*.1 west edge      0.629 mm at the pad centres
+#     a 0.6 via needs                              0.854 mm
+#
+# So the spine moves 0.45 west onto the land edge, which opens the lane to 1.073 and lets
+# the via sit at _LED_VIA_DX = -0.75 with 0.46 to the spine and 0.01 to the pad it feeds.
+_MID_SPINE_DX = -0.45
+
+# TLV9062 land geometry, read off the placed board rather than the datasheet drawing:
+# 0.65 pitch, the two pin rows 4.225 apart. MID is pins 3 and 5, which sit on OPPOSITE
+# rows and at different x -- pin 3 shares its x with pin 6 (TIA_IN_B) and pin 5 shares its
+# x with pin 4 (GND), so neither x is a free north-south lane THROUGH a package. The chain
+# below runs at pin 3's x BETWEEN packages and jogs west before it reaches the next pin 6.
+_OP_PIN_DX, _OP_ROW_DY = 0.325, 2.1125
+
+
+def _mid_spine(spine_w=0.3, w=0.3):
+    """MID: one anode spine, one op-amp chain, and a single crossing between them.
+
+    ⚠ THIS EXISTS TO GET MID OUT OF THE SUMMING NODE'S LANE. MID used to be in local_nets,
+    where the MST linked each string's anodes to its own op-amp -- ten crossings of the gap
+    between the detector column and the op-amps. That gap is the only lane TIA_IN_*B has:
+
+        MID  -21.231 67.088 -> -21.231 68.338      the block
+        MID  -21.231 68.338 -> -20.581 72.563
+        TIA_IN_1B wants PD1B.2 -> U21.6, crossing x -21.231 at y 68.505
+
+    0.167 mm of clearance where 0.3 is needed, so the pre-lay dropped TIA_IN on ALL TEN
+    strings and handed the board's most sensitive net to the router. MID is a DC bias
+    reference feeding two op-amp inputs at picoamps; TIA_IN is a 1 Mohm summing node. The
+    wrong one had the short path.
+
+    The anodes cost nothing to join: all 40 pad-1 lands are collinear, so one F.Cu run down
+    the column is the whole trunk, no vias. The op-amp MID pins likewise chain to each
+    other up the column. That leaves ONE crossing for the whole board instead of ten, and
+    it is taken south of string 10 on In2 where there is nothing to dodge -- two vias,
+    against the two that string 10 alone was already paying as a local-net fallback.
+    """
+    P = _placements(CX, CY)
+    strings = [n for n in range(1, 11) if ("PD%dA" % n) in P and ("U%d" % (20 + n)) in P]
+    assert strings, "no detector/op-amp pairs placed -- did the refs change?"
+
+    # every anode land, both detectors of both halves, sorted north to south
+    ys = sorted((P["PD%d%s" % (n, h)][1] + dy
+                 for n in strings for h in "AB" for dy in (0.70, -0.70)), reverse=True)
+    ax = P["PD%dA" % strings[0]][0] - 1.65
+    sx = ax + _MID_SPINE_DX
+
+    op = lambda n: P["U%d" % (20 + n)]
+    pin3 = lambda n: (op(n)[0] - _OP_PIN_DX, op(n)[1] + _OP_ROW_DY)
+    pin5 = lambda n: (op(n)[0] - 3 * _OP_PIN_DX, op(n)[1] - _OP_ROW_DY)
+
+    south = min(strings, key=lambda n: op(n)[1])
+    y_br = pin5(south)[1] - 1.667          # clear of R*/V5_PRE at the board's south end
+
+    out = [("MID", "F.Cu", spine_w, [(sx, ys[0]), (sx, y_br)])]
+    for n in strings:                       # each land onto the spine
+        for h in "AB":
+            for dy in (0.70, -0.70):
+                out.append(("MID", "F.Cu", w, [(sx, P["PD%d%s" % (n, h)][1] + dy),
+                                               (ax, P["PD%d%s" % (n, h)][1] + dy)]))
+        out.append(("MID", "F.Cu", w, [pin5(n), pin3(n)]))   # under the package, no pads
+
+    for a, b in zip(sorted(strings, key=lambda n: -op(n)[1]),
+                    sorted(strings, key=lambda n: -op(n)[1])[1:]):
+        # a is north of b: b's pin 3 runs north in pin 3's lane, then jogs west into a's
+        # pin 5 from the south. It must stop short of a's pin 6, which shares that lane.
+        x3, y3 = pin3(b)
+        x5, y5 = pin5(a)
+        out.append(("MID", "F.Cu", w, [(x3, y3), (x3, y5 - 1.2)]))
+        out.append(("MID", "F.Cu", w, [(x3, y5 - 1.2), (x5, y5 - 1.2)]))
+        out.append(("MID", "F.Cu", w, [(x5, y5 - 1.2), (x5, y5)]))
+
+    # the one crossing, on In2 under the south end
+    out.append(("MID", "In2.Cu", w, [(sx, y_br), (pin5(south)[0], y_br)]))
+    out.append(("MID", "F.Cu", w, [(pin5(south)[0], y_br), pin5(south)]))
+
+    # U11 is the mid-rail buffer, wired as a follower: OUT (pin 1) back to IN- (pin 4).
+    # local_nets used to lay this and no longer sees MID, so the spine owns it. The
+    # diagonal passes 0.729 from pin 2's centre -- 0.2 more than the pad, track and
+    # clearance need -- so it goes straight rather than around.
+    # SOT-23-5, pins 1-3 on the -X side and 4-5 on the +X side: pin 1 sits at
+    # (-1.1375, +0.950) off the package centre and pin 4 diagonally opposite it.
+    if "U11" in P:
+        ux, uy = P["U11"][0], P["U11"][1]
+        out.append(("MID", "F.Cu", w,
+                    [(ux - 1.1375, uy + 0.950), (ux + 1.1375, uy - 0.950)]))
+    return out
+
+
+def _mid_vias():
+    """The two vias MID's single anode-to-op-amp crossing costs."""
+    P = _placements(CX, CY)
+    strings = [n for n in range(1, 11) if ("PD%dA" % n) in P and ("U%d" % (20 + n)) in P]
+    op = lambda n: P["U%d" % (20 + n)]
+    south = min(strings, key=lambda n: op(n)[1])
+    x5, y5 = op(south)[0] - 3 * _OP_PIN_DX, op(south)[1] - _OP_ROW_DY
+    y_br = y5 - 1.667
+    return [("MID", P["PD%dA" % strings[0]][0] - 1.65 + _MID_SPINE_DX, y_br),
+            ("MID", x5, y_br)]
 
 
 def _spine_keepout(via_d=0.6, clr=0.127):
@@ -2402,8 +2508,12 @@ BOARD_NOTES = {
     # that repetition I get suspicious"), which is a better detector for this class of
     # fault than anything automated here -- a per-cell omission looks like nothing at all
     # in a total, and like a pattern the moment you see the board.
-    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]", r"MID", r"\+3V3A",
-                   r"ADC\d+_AREG", r"ADC\d+_DREG", r"ADC\d+_VREF"),
+    # ⚠ MID IS NOT IN THIS LIST, AND MUST NOT GO BACK IN -- see _mid_spine. Its MST put a
+    # crossing through the TIA_IN lane on all ten strings.
+    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]", r"\+3V3A",
+                   r"ADC\d+_AREG", r"ADC\d+_DREG", r"ADC\d+_VREF",
+                   r"LED_A\d+"),
+    "local_mm": 6.8,
     "stitch_nets": ("GND",),
     # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
     # pair routes first and its escape vias occupy the copper beside the PHY, which
@@ -2452,7 +2562,7 @@ BOARD_NOTES = {
               for k in range(5) for y in (0.75, -3.27)]
              + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
                 for k in range(5)]
-             + _led_row_vias()),
+             + _led_row_vias() + _mid_vias()),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
