@@ -224,7 +224,14 @@ PKG = {
     "0402":     (1.00, 0.50, 0.55),   # 1005 metric; 0.55 is MLCC max
     "0603":     (1.60, 0.80, 0.95),   # 1608 metric
     "0805C":    (2.00, 1.25, 1.45),   # 2012 metric MLCC
-    "0805OPT":  (2.00, 1.25, 0.85),   # optoelectronic 0805 -- the IR17-21C emitters
+    # ⚠ THE EMITTER IS A 0603 AND IT IS TALLER THAN THE 0805 IT REPLACES (2026-09-23).
+    # Lite-On LTE-C9901, DS50-2017-0074: 1.60 x 0.80 body, 0.98 to the lens apex (+-0.1 by
+    # the drawing's general tolerance note). The instinct is that a smaller package is a
+    # shorter one and costs optical gap -- PCB_TOP is axle-set, so a lower emitter face
+    # means a LONGER throw to the string. It is the other way round here: 0.98 against
+    # 0.85 SHRINKS the gap 1.35 -> 1.22 and is worth +0.9 dB on its own.
+    "0603OPT":  (1.60, 0.80, 0.98),   # optoelectronic 0603 -- the LTE-C9901 emitters
+    "0805OPT":  (2.00, 1.25, 0.85),   # optoelectronic 0805 -- the old IR17-21C emitters
     "PD15":     (3.30, 2.80, 1.10),   # Everlight PD15-22B/TR8 photodiode (DTD-152-002 p.2)
     "WQFN-24":  (4.00, 4.00, 0.80),   # TI RTW, TLV320ADC3140 (SBAS993B mechanical)
     "SOT-23":   (2.90, 2.40, 1.30),
@@ -300,7 +307,8 @@ PKG = {
     #  of which moved to the output panel with the magnetic path. The CRTYD assertion
     #  below is what found them still sitting here -- a package with no part left.)
 }
-LED_PKG = PKG["0805OPT"]
+LED_PKG_NAME = "0603OPT"
+LED_PKG = PKG[LED_PKG_NAME]
 PD_PKG  = PKG["PD15"]
 PKG_CLR = 0.25                                   # least placement gap between packages
 EDGE_KEEP = 1.2                                  # part -> board edge: JLCPCB's 1.0 rule
@@ -337,6 +345,7 @@ CRTYD = {
     "0402":     (1.95, 1.03),
     "0603":     (3.05, 1.55),
     "0805C":    (3.49, 2.05),
+    "0603OPT":  (2.60, 1.50),   # land is 2 x 0.55x0.80 pads on a 2.00 span (DS 7)
     "0805OPT":  (3.45, 1.99),
     "PD15":     (5.00, 3.30),   # elec/footprints/Steel.pretty/Everlight_PD15-22B
     "WQFN-24":  (5.26, 5.26),   # KiCad Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm
@@ -553,7 +562,7 @@ PD_DY = LED_PKG[1] / 2 + PD_GAP + PD_PKG[1] / 2  # 2.375
 # AND IN X THE DETECTORS SIT JUST -X OF THE ROOF'S +X STRIP, not on the emitter's centre
 # line. Their 4.5 mm land would otherwise reach the board's +X edge keep-out, and set here
 # every detector body lies wholly inside its aperture notch (x1 < APER_X1): the part is
-# 1.1 tall against the emitter's 0.85, so it stands 0.25 above the emitter face and only
+# 1.1 tall against the emitter's 0.98, so it stands 0.12 above the emitter face and only
 # 0.05 under the roof's underside -- it must never pass UNDER roof material, including
 # while the board slides +X into place along the notches. 0.36 mm off the emitter's line
 # is nothing optically.
@@ -739,7 +748,7 @@ def section_at(y: float):
 # end (closest to the termination it is allowed to be); the quad op-amps sit immediately
 # -X of it so the summing node is a few mm long; the feedback R/C and the LED ballast
 # fill the Y GAPS rather than taking their own columns, because there is no X left.
-ROW_X0    = SENSE_X - CRTYD["0805OPT"][0] / 2                 # the row's -X edge, by LAND
+ROW_X0    = SENSE_X - CRTYD[LED_PKG_NAME][0] / 2              # the row's -X edge, by LAND
 # ⚠ THE OP-AMP COLUMN IS DERIVED FROM THE BOARD EDGE NOW, not from a typed gap to the
 # sensor row. It used to be `ROW_X0 - 2.0 - half a package`, which worked while the
 # spacing was in BODIES and put the quad's land 1.5 mm off the board once the spacing
@@ -1059,7 +1068,8 @@ def _parts():
     # ---- 1. sensing row, ON THE STRING FAN, + per-string ballast in the Y gaps ----
     for i in range(D.N_STRINGS):
         n, sy = i + 1, string_y_at(i, SENSE_X)
-        add("D%d" % n, "IR emitter, 940 nm, Everlight IR17-21C (~120 deg -- see note)", "0805OPT", SENSE_X, sy)
+        add("D%d" % n, "IR emitter, 940 nm, Lite-On LTE-C9901 (65 deg FULL angle)",
+            LED_PKG_NAME, SENSE_X, sy)
         # TURNED 180: the PD15's cathode (pad 2) is its +X pair at 0 deg, i.e. on the far
         # side from the op-amps -- every summing node, the board's noise-critical trace,
         # had to go around the detector body, and three of them failed to route. At 180
@@ -1991,10 +2001,26 @@ _MPN_RULES = (
     # RESOLVED. The emitter is 0805 940 nm and WIDE (~120 deg full) because narrow-beam
     # simply is not made in this package -- see the note below and BOM.md. Angle is the one
     # spec to re-confirm on the datasheet at layout; everything else is checked.
-    ("D",    ("IR17-21C/TR8",    "C131250",  0.0424, "IR emitter 940 nm, 0805, Everlight, @100+. "
-                                                    "120 deg CONFIRMED on the LCSC page -- lever 1 of the "
-                                                    "signal budget is UNAVAILABLE, not merely "
-                                                    "unchosen. CONFIRM angle at layout")),
+    # ⚠ THE IR17-21C IS UNBUYABLE: 34 in stock against a 214 MOQ, pre-order only, and both
+    # consignment listings at zero. Replaced by the Lite-On LTE-C9901, verified against the
+    # primary datasheet (DS50-2017-0074) rather than a distributor attribute line -- which
+    # mattered twice over. JLCPCB quotes "5 mW/sr@20mA" and that is the spec MINIMUM; the
+    # TYPICAL is 8 and the max 10, so the part is better than its listing. And the height
+    # is 0.98, not the "0603 parts are under 0.8" that had been assumed: it is TALLER than
+    # the 0805 it replaces, so the optical gap shrinks instead of growing.
+    # +10.9 dB optical at typ (+8.8 at spec min) = +5.4 dB of shot-limited SNR, and the
+    # 60 mA DC rating keeps the emitter-current lever that the budget's last line depends on.
+    # ⚠ 65 deg IS THE FULL ANGLE -- the datasheet's symbol is 2*theta-1/2, so the half angle
+    # is 32.5. At the 1.22 gap a 1.3 mm string subtends 28.0 deg, which leaves 0.13 mm of
+    # LATERAL margin to the half-power contour. That is the tightest thing about this part
+    # and it is a placement tolerance, not an optics one. theta-1/2 is a half-power point
+    # and not a cutoff (the pattern is still ~0.2 at 60 deg), so overrunning it costs a
+    # little signal rather than the measurement -- but check it at bring-up.
+    # MSL 3, so it needs dry-pack handling; JLC does this, but it is on the traveller.
+    ("D",    ("LTE-C9901",       "C2683614", 0.1988, "IR emitter 940 nm, 0603, Lite-On, @1. "
+                                                    "8 mW/sr TYP (5 min, 10 max) at 20 mA, 65 deg "
+                                                    "FULL angle, 0.98 tall, 60 mA DC. 1.7k in "
+                                                    "stock = ~17 runs; thinnest part on the board")),
     # RESOLVED, and the no-consignment dilemma was a false alarm: the LCSC-stocked X01
     # CARRIES THE SAME DAYLIGHT FILTER (740-1040 nm, matched to 830-950 nm emitters),
     # same 0.42 mm2 area, same 0805 2.0x1.25x0.7. It is a drop-in for the absent X02.

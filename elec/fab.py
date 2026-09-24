@@ -102,7 +102,8 @@ LCSC = {
     "AMS1117-3.3": "C6186",         # 3V3 digital LDO: 1 GND 2 VOUT/tab 3 VIN
     "SPX3819M5-L-3-3/TR": "C9055",  # 3V3 analog LDO: 1 IN 2 GND 3 EN 4 BYP 5 OUT
     "LMR33630CRNXR": "C2071783",    # 24->5 V sync buck, 2.1 MHz, 3 A, VQFN-HR RNX (optical U13)
-    "IR17-21C/TR8": "C131250",      # 940 nm emitter, 65 mA max, VF 1.2 typ
+    "LTE-C9901": "C2683614",        # 940 nm emitter, 0603, Lite-On DS50-2017-0074:
+                                    # 8 mW/sr typ @20 mA, 65 deg FULL, 0.98 tall, 60 mA DC
     "PD15-22B/TR8": "C161211",      # Everlight PIN photodiode, 940 nm peak, 11k stock (2026-09-21)
     "TLV320ADC3140IRTWT": "C1852021",  # TI 4-ch audio ADC, WQFN-24 RTW, 306 stock (2026-09-21)
     "S4B-XH-SM4-TB": "C161861",     # the (LF)(SN) form, 20,992; the bare listing is 0
