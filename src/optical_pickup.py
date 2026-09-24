@@ -2211,7 +2211,51 @@ def mount_points():
 # out with the cutter's radius whether it is drawn or not, so it is drawn: the model was
 # optimistic by ROUT_R at three places. External corners stay sharp (the mill goes round
 # the outside of those).
-ROUT_R = 1.0                                   # ~2 mm router bit
+ROUT_R = 1.0                                   # ~2 mm router bit, the OUTLINE
+# ⚠ THE SLOTS ARE MILLED WITH A DIFFERENT, SMALLER BIT AND THE MODEL HAD THEM SHARP.
+# JLCPCB routes irregular internal cutouts with a 1.0 mm bit (0.8 on request), so no slot
+# corner can be sharp -- the cutter simply cannot reach into one. The model drew 20 sharp
+# rectangles, which is the UNSAFE direction: a sharp corner shows MORE opening than the
+# fab will deliver, so anything checked against it is checked against a hole that will not
+# exist. Per slot it is 0.32 mm2 of material the model was giving away, all of it in the
+# corners, which is exactly where a bearing shoulder or a string would find it.
+# Modelled as the MORPHOLOGICAL OPENING of the nominal polygon -- erode by the bit radius,
+# dilate back -- which is literally what the tool does: the milled region is everywhere the
+# centre of a radius-R disc can reach, swept by that disc. It needs no corner bookkeeping
+# and it is right by construction in every case, including the two that catch hand-written
+# fillet lists: a CONVEX corner of the opening rounds (the tool cannot get in), a REFLEX
+# one stays sharp (the tool goes round the outside of the material that juts in), and a
+# feature narrower than the bit vanishes instead of being quietly drawn.
+MILL_D = 1.0                                   # internal-cutout bit
+MILL_R = MILL_D / 2
+assert min(_s[3] - _s[1] for _s in O_SLOTS) >= MILL_D, (
+    "a slot is narrower than the %.1f mm cutter and cannot be milled at all" % MILL_D)
+
+
+def _slot_polys():
+    """The slots as MERGED per-string polygons -- the bearing rect and the string rect of
+    one string overlap, so cutting them separately would invent two interior corners that
+    are not there. Eight vertices: six convex (the cutter rounds them) and the two at the
+    step, which are reflex and stay sharp."""
+    n = D.N_STRINGS
+    out = []
+    for i in range(n):
+        bx0, by0, bx1, by1 = O_SLOTS[i]
+        sx0, sy0, sx1, sy1 = O_SLOTS[n + i]
+        assert sx0 <= bx1 + 1e-9, "string slot %d no longer meets its bearing slot" % i
+        out.append([(bx0, by0), (bx1, by0), (bx1, sy0), (sx1, sy0),
+                    (sx1, sy1), (bx1, sy1), (bx1, by1), (bx0, by1)])
+    return out
+
+
+def _milled(poly, t, zc, grow=0.0):
+    """`poly` as the cutter actually leaves it: opened by the bit radius. `grow` shrinks
+    the opening first, for a slip-fit copy of the board."""
+    wp = cq.Workplane("XY", origin=(0.0, 0.0, zc)).polyline(poly).close()
+    if abs(grow) > 1e-9:
+        wp = wp.offset2D(-grow)
+    wp = wp.offset2D(-MILL_R).offset2D(MILL_R, kind="arc")
+    return wp.extrude(t / 2 + 1.0, both=True)
 
 
 def _concave():
@@ -2221,13 +2265,25 @@ def _concave():
     the compute section now runs -X to PCB_X1S, the same edge the wrap and the strip use, so
     that side of the board is a single straight line and there is no corner there to cut.
     Filleting a point that sits mid-edge would notch the outline rather than relieve it, so
-    the entry is generated from the geometry instead of listed."""
-    corners = [(PCB_X0, HEAD_Y0),              # head -> strip, +X side
-               (PCB_X0, Y_TAIL)]               # strip -> -Y wrap, +X side
-    if STRIP_X1 < PCB_X1S - 1e-9:              # the strip steps out -X past both wraps
-        corners += [(PCB_X1S, HEAD_Y0), (PCB_X1S, Y_TAIL)]
-    if COMPUTE_X0 > PCB_X1S + 1e-9:            # only if the compute section really steps in
-        corners.append((COMPUTE_X0, WRAP_Y))   # -Y wrap -> compute, -X side
+    the entry is generated from the geometry instead of listed.
+
+    ⚠ AND EVERY ENTRY IS NOW DERIVED FROM _SECTIONS. The +X pair used to be listed
+    unconditionally off PCB_X0, which was correct only while the strip was narrower than
+    the wraps. Squaring the board off made those two points MID-EDGE on a straight line --
+    and NearestToPointSelector does not fail on a point that is not a corner, it happily
+    returns the nearest edge and fillets it. A phantom fillet notches the outline and
+    nothing complains. Generated from the real steps instead, so it cannot go stale."""
+    corners = []
+    for (ay0, ay1, ax1, ax0), (by0, by1, bx1, bx0) in zip(_SECTIONS, _SECTIONS[1:]):
+        seam = ay1                             # the two sections meet here
+        if bx0 < ax0 - 1e-9:                   # +X edge steps IN going -Y: concave
+            corners.append((bx0, seam))
+        if ax0 < bx0 - 1e-9:
+            corners.append((ax0, seam))
+        if bx1 > ax1 + 1e-9:                   # -X edge steps IN
+            corners.append((bx1, seam))
+        if ax1 > bx1 + 1e-9:
+            corners.append((ax1, seam))
     return corners
 
 
@@ -2247,10 +2303,10 @@ def _outline(grow=0.0, t=None, zc=None):
         out = blk if out is None else out.union(blk)
     if O_SHAPE:
         # each slot SHRINKS by `grow` where the outline grows: a slip-fit copy of the board
-        # must stay clear of what pokes through it on the inside too
-        for sx0, sy0, sx1, sy1 in O_SLOTS:
-            out = out.cut(box_at((sx1 - grow) - (sx0 + grow), (sy1 - grow) - (sy0 + grow),
-                                 t + 2.0, x=(sx0 + sx1) / 2, y=(sy0 + sy1) / 2, z=zc))
+        # must stay clear of what pokes through it on the inside too. AS MILLED, not as
+        # drawn -- see MILL_D.
+        for poly in _slot_polys():
+            out = out.cut(_milled(poly, t, zc, grow))
     for fx, fy in _concave():
         out = out.edges(NearestToPointSelector((fx, fy, zc))).fillet(ROUT_R + grow)
     return out
