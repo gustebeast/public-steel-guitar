@@ -2703,6 +2703,44 @@ def _edge_hole(board, x0, y0, x1, y1, keepout=0.6):
     board.Add(z)
 
 
+def _edge_slot(board, poly, rects, keepout=0.15):
+    """ONE slot of the comb: an arbitrary closed Edge.Cuts outline for the fab, plus
+    keepout zones the router can actually see.
+
+    ⚠ TWO REPRESENTATIONS ON PURPOSE, and they are not redundant. The fab needs ONE closed
+    outline per hole -- the bearing slot and the string slot of a string OVERLAP by 0.25 mm,
+    so drawing them as two rectangles leaves two intersecting closed contours and the CAM
+    operator gets to guess. `poly` is their merged 8-point outline.
+    The ROUTER cannot read Edge.Cuts at all (see _edge_hole), so it needs a rule area --
+    and a rule area does not have to be one shape. `rects` is the two sub-rectangles, each
+    grown by `keepout`; overlapping keepouts are harmless, where overlapping Edge.Cuts is
+    not. Exact where it must be, convenient where it may be.
+    """
+    for a, b in zip(poly, poly[1:] + poly[:1]):
+        seg = pcbnew.PCB_SHAPE(board)
+        seg.SetShape(pcbnew.SHAPE_T_SEGMENT)
+        seg.SetStart(_to_board(*a))
+        seg.SetEnd(_to_board(*b))
+        seg.SetLayer(pcbnew.Edge_Cuts)
+        seg.SetWidth(pcbnew.FromMM(0.1))
+        board.Add(seg)
+    for x0, y0, x1, y1 in rects:
+        k = keepout
+        chain = pcbnew.SHAPE_LINE_CHAIN()
+        for cx, cy in ((x0 - k, y0 - k), (x1 + k, y0 - k),
+                       (x1 + k, y1 + k), (x0 - k, y1 + k)):
+            chain.Append(_to_board(cx, cy))
+        chain.SetClosed(True)
+        z = pcbnew.ZONE(board)
+        z.SetIsRuleArea(True)
+        z.SetDoNotAllowTracks(True)
+        z.SetDoNotAllowVias(True)
+        z.SetDoNotAllowZoneFills(True)
+        z.SetLayerSet(pcbnew.LSET.AllCuMask())
+        z.AddPolygon(chain)
+        board.Add(z)
+
+
 def _edge_rect(board, w, h):
     """The outline on Edge.Cuts, centred on the board origin."""
     hw, hh = w / 2.0, h / 2.0
@@ -3097,6 +3135,8 @@ def build(stem):
         _cutout(board, h["xy"][0], h["xy"][1], h["d"])
     for r in notes.get("outline_holes", ()):
         _edge_hole(board, *r)
+    for sl in notes.get("outline_slots", ()):
+        _edge_slot(board, [tuple(p) for p in sl["poly"]], sl["rects"])
 
     nets_by_name = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
     for net_name, layer, width, pts in notes.get("tracks", []):
