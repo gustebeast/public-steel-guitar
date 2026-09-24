@@ -605,7 +605,20 @@ ROD_SUPPORT = D.MIN_WALL_2P                                   # 1.6, the ring's 
 _ROD_CAP = min(D.guide_rod_x(i) for i in range(D.N_STRINGS)
                if D.guide_rod_x(i) < 0) - D.GUIDE_ROD_D / 2 - ROD_SUPPORT
 PCB_X0  = min(BAND_X0 - BAND_CLR + STRIP_GROW_PX, _ROD_CAP)   # -23.35, strip +X edge
-PCB_X1S = BAND_X1 + BAND_CLR                                  # -38.88, wraps' / tail's -X edge
+# ⚠ THE -X EDGE CANNOT COME IN YET, AND THE REASON IS THE -Y END (tried 2026-09-23).
+# The user asked to reclaim the strip -X of the sensors now that nothing uses it: the
+# converter cells moved east, and the floor is the PD15 land plus EDGE_KEEP at -32.06,
+# so 6.82 mm looks free. It is not, because of how the compute section is placed.
+# _spread and _block lay rows across the FULL width x0..x1. Narrow the board and they do
+# not shrink -- they SPILL, taking more rows, and the section grows -Y. The -Y end has
+# 0.11 mm before CONDUIT_Y0 passes the endplate's exterior-wall limit, so the board is
+# LENGTH-constrained, and the packer silently converts width into length at roughly 1:1.
+# Measured: PCB_X1S -32.06 pushed the conduit to -146.26 against a -145.19 limit.
+# So this is not a board-outline change, it is a placement change: the compute section
+# has to be laid out by FUNCTION (like the MCU ring now is) rather than by rows before
+# the width can come in at all. Same root cause as the decoupling row. Deferred, not
+# abandoned -- and the assert that would have hidden it is the conduit's, not this file's.
+PCB_X1S = BAND_X1 + BAND_CLR                                  # -38.88, cavity-set for now
 STRIP_X1 = PCB_X1S - STRIP_GROW_MX                            # -41.38, the strip's own -X edge
 # ⚠ THESE FOUR X DATUMS ARE DERIVED FROM top_plate AND THEIR COMMENTS WENT STALE BY
 # 8.46 mm. BAND_X1, PCB_X0, PCB_X1S and COMPUTE_X0 all track TP.PICKUP_X_NOM and
@@ -1336,10 +1349,15 @@ def _parts():
     _rx = _q / 2 + CRTYD_GAP + _c[1] / 2                  # the +X column, caps on end
     _left = -CELL_FAN["IN4M"] + _c[1] / 2                 # IN4M's far cap is the -X extreme
     _cw = _left + (_rx + _c[1] / 2)
+    # ⚠ THE ANNULUS IS EMPTY NOW AND ITS GUARD IS RETIRED. This asserted that three
+    # converter cells fit -X of the MCU, which was true and load-bearing while they lived
+    # there. They are east of the comb since the signal flow went west-to-east, and the
+    # only thing still positioned off this geometry was R50/R51 -- two I2C pull-ups that
+    # the move had stranded ~35 mm from the bus they pull up. With those placed at their
+    # own bus (below), nothing is left here, and the assert was blocking the -X reclaim by
+    # demanding width for cells that had moved out. A guard outliving its subject reads
+    # exactly like a real constraint; this one cost a board-narrowing before it was spotted.
     _cgap = ((_cx1 - _cx0) - 3 * _cw) / 2
-    assert _cgap >= CRTYD_GAP - 1e-9, (
-        "the converter cells need %.2f mm across and the annulus -X of U6 is %.2f"
-        % (3 * _cw + 2 * CRTYD_GAP, _cx1 - _cx0))
     _near = CELL_NEAR                                      # near input row / bottom row, |y|
     _far = _near + _c[0] + CRTYD_GAP                       # far input row
     _ch = (_far + _c[0] / 2) + (_near + _c[0] / 2)
@@ -1452,10 +1470,17 @@ def _parts():
                                  ("Cs%d5" % t, _rx, 0.90, 90.0)):
             add(ref, "ADC input AC coupling" if ref[1] in "im" else "ADC supply bypass",
                 "0402", qx + _s * dx, qy + _s * dy, rot if _s > 0 else (rot + 180.0) % 360.0)
-    qx, qy = _cell(2, 1)
+    # ⚠ AT THE BUS, NOT IN THE ANNULUS. These were placed off _cell(2, 1) -- a slot in the
+    # converter block back when that block sat -X of the MCU. The converters moved east and
+    # these did not, leaving two pull-ups ~35 mm from the only five parts on their net. A
+    # pull-up is not critical about position, which is exactly why nothing complained.
+    # Beside the middle converter, so the bus is pulled up near its electrical centre.
+    # outboard of the cell's OWN +X column (Cs?3/Cs?5 sit at _rx), not on top of it
+    _pu_x = _adc_x + _rx + _c[1] + CRTYD_GAP
+    _pu_y = _part_y("U16")
     for m, (ref, desc) in enumerate((("R50", "I2C2 SCL pull-up"), ("R51", "I2C2 SDA pull-up"))):
-        add(ref, desc, "0402", qx - 1.5 + (m % 3) * (_c[0] + CRTYD_GAP),
-            qy + _far - (m // 3) * (_c[1] + CRTYD_GAP))
+        add(ref, desc, "0402", _pu_x,
+            _pu_y + (m - 0.5) * (CRTYD["0402"][0] + CRTYD_GAP), 90.0)
 
     # ---- 3b/3b-i/3d ARE GONE: THE MAGNETIC PATH LEFT THIS BOARD (user, 2026-09-15) ----
     # This file used to carry the magnetic pickup's own ADC (U12, a PCM1808, with C150-153
