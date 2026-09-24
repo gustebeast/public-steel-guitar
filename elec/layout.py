@@ -2492,16 +2492,36 @@ def _comb_lanes(board, notes, width=0.2, clr=0.15, pitch=0.50, inner="In2.Cu",
     # clear, the full list is tried behind it exactly as before.
     won = {}
 
-    def _cands():
+    def _cands(pref=None):
         """Candidate shapes, cheapest deviation first. Two topologies: straight along the
         lane to the cap's own x, and a turn north in the empty corridor between the slot
         ends and the converter, then east above the Cm row."""
         out = []
-        for x_v in (sx0 - 1.0, sx0 - 1.4, sx0 - 0.7, sx0 - 1.8):
+        # ⚠ SEVEN ENTRY COLUMNS, NOT FOUR. A tile's four runs all leave westward through
+        # the same band and each drops a via there, so they need four DIFFERENT x or the
+        # last one has nowhere to go -- which is exactly how the fourth door failed in
+        # every tile: 2B blocked by 2A's via and 1B's track, with the geometry at its
+        # destination already solved (its climb is -0.07 mm). Four offsets for four runs
+        # left no slack once the other constraints had their say. The band between the
+        # feedback caps at -16.61 and the slot field at -11.51 is 5 mm wide, so columns
+        # every 0.3 mm cost nothing and give the search somewhere to put the last one.
+        # ⚠ FORCING THE ENTRY ORDER WAS TRIED AND CHANGED NOTHING (2026-09-24), so the
+        # column is searched. The analysis behind it still holds and is worth keeping: a
+        # tile's four runs all leave west through one band, drop a via, then turn east
+        # along their own lane, and run i's eastward leg crosses run j's vertical entry leg
+        # whenever j entered EAST of i and i's lane lies inside j's span. For this geometry
+        # that makes 1B enter west of 1A and 2A west of 2B. Pre-ordering the columns to
+        # satisfy it measured 15 of 20 -- exactly what searching them gives -- so the
+        # crossing order is NOT what stops the fourth door, and the next person should look
+        # elsewhere rather than re-deriving this.
+        _cols = [sx0 - d for d in (1.0, 1.3, 0.7, 1.6, 1.9, 2.2, 2.5)]
+        if pref is not None:
+            _cols = [sx0 - pref] + [c for c in _cols if abs(c - (sx0 - pref)) > 1e-9]
+        for x_v in _cols:
             for dxn in (0.0, -0.10, 0.10, -0.20, 0.20, -0.30, 0.30):
                 for up_dy in (3.6, 4.2, 4.8, 5.4, 6.0):
                     out.append((x_v, dxn, up_dy, None, None))
-        for x_v in (sx0 - 1.0, sx0 - 1.4):
+        for x_v in (sx0 - 1.0, sx0 - 1.6, sx0 - 2.2):
             for dxn in (0.0, -0.15, 0.15, -0.30, 0.30):
                 for up_dy in (3.6, 4.2, 4.8):
                     for x_t in (sx1 + 0.7, sx1 + 1.4, sx1 + 2.1, sx1 + 2.8, sx1 + 3.5):
