@@ -103,7 +103,7 @@ def _plates(solid, w, l):
             # an L, and its mass centre sits millimetres off the frame the geom is written in
             # (both ear boards fell from 60/60 to ~20/60 on that alone)
             found.append((cq.Vector((bb.xmin + bb.xmax) / 2, (bb.ymin + bb.ymax) / 2,
-                                    (bb.zmin + bb.zmax) / 2), f.normalAt()))
+                                    (bb.zmin + bb.zmax) / 2), f.normalAt(), f))
     if not found:
         # the CAD's plate is not the routed board's size at all -- report both, because
         # that IS the finding (the lever sensor grew 28 x 21.4 -> 34 x 28 and its CAD did not)
@@ -116,6 +116,47 @@ def _plates(solid, w, l):
     return found
 
 
+def _hole_check(board, plate, g, verbose):
+    """Does the CAD's plate have the same CUTOUTS as the routed board?
+
+    ⚠ THIS IS THE GAP THAT SHIPPED A BOARD WITH NO COMB. The footprint probe above asks
+    whether every routed PART lands on CAD material, and it cannot see a cutout that is
+    wrong in a region with no parts -- which is exactly what a cutout region is. The
+    optical board's ten slots were emitted to Edge.Cuts as ONE rectangle spanning all of
+    them, so the gerbers had a 16.41 x 101.6 mm hole where the CAD has ten slots and nine
+    copper strips. Every check was green: the CAD gate, ERC, the netlist, and the
+    CAD/netlist/BOM part reconciliation. They each read one side. The router found it, by
+    failing to route across copper that the fab data said was not there.
+
+    A plate face carries its holes as INNER WIRES, and the routed board's holes come back
+    from export_geom via SHAPE_POLY_SET.Hole(). Comparing the two counts would have caught
+    this on the first run; comparing areas catches a hole that is the right count and the
+    wrong size. Both are cheap and need no per-board bookkeeping.
+    """
+    cad_n = len(plate.innerWires())
+    routed = g.get("holes", [])
+    def _area(pts):
+        return abs(sum(pts[i][0] * pts[(i + 1) % len(pts)][1]
+                       - pts[(i + 1) % len(pts)][0] * pts[i][1]
+                       for i in range(len(pts)))) / 2.0
+    cad_a = sum(abs(cq.Face.makeFromWires(wr).Area()) for wr in plate.innerWires())
+    routed_a = sum(_area(h) for h in routed)
+    bad = 0
+    if cad_n != len(routed):
+        bad += 1
+        if verbose:
+            print("      CUTOUTS DISAGREE: the CAD plate has %d hole(s), the routed board "
+                  "%d" % (cad_n, len(routed)))
+    elif cad_a > 0 and abs(cad_a - routed_a) / max(cad_a, routed_a) > 0.05:
+        bad += 1
+        if verbose:
+            print("      CUTOUT AREA DISAGREES: CAD %.1f mm2, routed %.1f mm2 (%.0f%%)"
+                  % (cad_a, routed_a, 100 * abs(cad_a - routed_a) / max(cad_a, routed_a)))
+    elif verbose:
+        print("%-13s %3d cutout(s) match, %.1f mm2 vs %.1f" % ("", cad_n, cad_a, routed_a))
+    return bad
+
+
 def check(board, verbose=True):
     g = BG.load(board)
     w, l = g["outline_mm"]
@@ -124,7 +165,7 @@ def check(board, verbose=True):
     parts = [f for f in g["footprints"]
              if f["fab"] and not f["ref"].startswith(NO_BODY_PREFIX)]
     best = None
-    for c, down in _plates(cq.Workplane(obj=solid), w, l):
+    for c, down, plate in _plates(cq.Workplane(obj=solid), w, l):
         up = cq.Vector(-down.x, -down.y, -down.z)
         inplane = [q for q in AX.values() if abs(q.dot(up)) < 0.5]
         for a, b, sa, sb in ((a, b, sa, sb) for a, b in itertools.permutations(inplane, 2)
@@ -142,15 +183,16 @@ def check(board, verbose=True):
             # perfectly could be reported as mirrored just because that pose was tried first
             key = (len(misses), mirrored)
             if best is None or key < (len(best[0]), best[1]):
-                best = (misses, mirrored)
-    misses, mirrored = best
+                best = (misses, mirrored, plate)
+    misses, mirrored, plate = best
+    holes = _hole_check(board, plate, g, verbose)
     ok = len(parts) - len(misses)
     if verbose:
         print("%-13s %3d / %3d routed parts present in the CAD%s"
               % (board, ok, len(parts), "   !! MIRRORED" if mirrored else ""))
         for ref, name, bx, by in misses:
             print("      MISSING %-6s %-44s routed at (%.2f, %.2f)" % (ref, name[:44], bx, by))
-    return len(misses) + (1 if mirrored else 0)
+    return len(misses) + (1 if mirrored else 0) + holes
 
 
 def main(argv):
