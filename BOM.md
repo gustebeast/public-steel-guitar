@@ -1210,7 +1210,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | Y2 | **26 MHz** crystal — PHY reference, **CL 20 pF, ESR ≤ 30 Ω** | 3225 | 3.20 × 2.50 × 0.90 |
 | 1 | Q1 | N-ch MOSFET — LED row driver | SOT-23 | 2.90 × 2.40 × 1.30 |
 | 1 | U10 | USB data-line ESD array — USBLC6-2SC6 | **SOT-23-6** | 2.90 × 2.80 × 1.45 |
-| 10 | D1–D10 | IR emitter, 940 nm — `IR17-21C/TR8`, **120° view angle** (not narrow), Ie **0.2 min / 0.8 typ** mW/sr | 0805 (opto) | 2.00 × 1.25 × 0.85 |
+| 10 | D1–D10 | IR emitter, 940 nm — `LTE-C9901` (Lite-On), **65° view angle FULL (2θ½)**, Ie **5 min / 8 typ / 10 max** mW/sr @20 mA, VF 1.4, 60 mA DC, MSL 3 | 0603 (opto) | 1.60 × 0.80 × 0.98 |
 
 > ⚠ **Two corrections to this row, both from Everlight's own datasheet, 2026-09-17.**
 > It said "narrow beam"; the part is **120°**, which the MPN table has said all

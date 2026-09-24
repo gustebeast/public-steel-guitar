@@ -1112,6 +1112,22 @@ def _parts():
     # row below inherits the saving. The board's -Y end is a cantilever, so length taken off
     # here is worth more than the same length taken off anywhere else.
     # LQFP176, not LQFP144: the ZIT6 went out of stock (see U6 in elec/optical.py).
+    # ⚠ THE MCU STAYS AT THIS Y, AND THE ARGUMENT FOR MOVING IT WAS WRONG (2026-09-23).
+    # The case made for pushing it -Y was that it sits 0.15 mm off the sensing strip,
+    # jammed +Y, which shortens the SAI/TDM lanes (slow) at the expense of ULPI (60 MHz,
+    # 12 signals, 19.87 mm) -- i.e. it optimised the wrong bus. That compared two clock
+    # rates without checking whether either was stressed, and neither is:
+    #   ULPI over 19.87 mm is 0.132 ns, 0.79 % of a 16.67 ns period, against a 2-3 ns
+    #     setup/hold budget. Reflection would need ~38 mm at a 1.5 ns edge.
+    #   SAI is 8 ch x 32 bit x 48 kHz = 12.29 MHz, not "a few" -- the two buses are far
+    #     closer together than the headline numbers suggest.
+    #   and the FARTHEST converter is 89 mm away whatever the MCU does, because that run
+    #     is set by the sensing strip's length, not by this y.
+    # So there is no timing case, and moving a 176-pin part rearranges every row below it.
+    # If it moves it will be because the ROUTER says so, not because of a dimension: see
+    # .ins/routefan.sh, "reasoning about which single change to spend an hour on has been
+    # wrong more often than right, because the surface is not smooth enough to reason
+    # about locally". This file has lost that argument before.
     _MCU_PKG = "LQFP176"
     y = Y_TAIL - CRTYD_GAP
     y -= CRTYD[_MCU_PKG][1] / 2
