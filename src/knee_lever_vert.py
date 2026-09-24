@@ -63,7 +63,7 @@ from . import knee_lever as KL
 from .motor_bank import BED_Z as _BED_Z     # the chassis print-bed datum (= chassis.Z_BOT;
                                             # imported from motor_bank to stay out of the
                                             # chassis import cycle)
-from .helpers import box_at, cyl_y, heal
+from .helpers import box_at, cyl_y, heal, pose_dir
 
 
 # ── throw + the lobe that keeps the feel identical ───────────────────────────
@@ -362,9 +362,26 @@ MOUNT_Z = _Z_BOT - HOUS_Z1          # housing top flush with the chassis undersi
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 
 
+POSE_ROT = (((0, 0, 1), -90),)      # ...the rotation half of it, on its own
+
+
 def place(s):
     """Local frame -> guitar frame."""
-    return s.rotate((0, 0, 0), (0, 0, 1), -90).translate(MOUNT_POSE)
+    s = _rot(s)
+    return s.translate(MOUNT_POSE)
+
+
+def _rot(s):
+    for ax, deg in POSE_ROT:
+        s = s.rotate((0, 0, 0), ax, deg)
+    return s
+
+
+# PRINT ORIENTATION (the record, declared once per part) -- the ARM is the horizontal
+# lever's arm, so it prints the way that one does; it just arrives in the guitar frame
+# turned. Derived through this module's OWN pose rather than written out as +X, so a
+# change to `place` carries it: local +Y -> world +X.
+LEVER_UP = pose_dir(POSE_ROT, KL.LEVER_UP)
 
 
 # ── the boards must be ONE design (user) ────────────────────────────────────

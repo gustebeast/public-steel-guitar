@@ -1002,6 +1002,30 @@ HOUS_Z1 = HOUS_TOP_Z                                     # +12.0, the seat roof 
 # re-oriented brings this declaration along with it, and tools.check_ceilings reads it
 # by name (src.leg_stack's SLEEVE_UP and friends set the pattern).
 PRINT_UP = (0.0, 0.0, 1.0)
+# ...and the rest of the family, which do NOT share it:
+#
+# THE ARM lies on its -Y face and builds +Y, and that was already written down in
+# machine-readable form -- cut_axle_bore hands it to cadkit as print_up, and cadkit returns
+# a plain cylinder instead of a teardrop precisely because the bore runs ALONG it. Naming
+# it turns that argument into the declaration, so the arm, the vertical lever's arm and the
+# foot pedal's arm all read ONE fact through their own poses.
+LEVER_UP = (0.0, 1.0, 0.0)
+# THE CARTRIDGE BASE builds +Z with the housing it sits in, which is what its peaked roof
+# is drawn for ("so the housing pocket cut from it is self-supporting (no flat overhang) in
+# the -Z->+Z print"). It too was already being passed to cadkit as a print_up.
+CART_UP = (0.0, 0.0, 1.0)
+# THE AXLE builds -Y: it prints standing, POCKET-DOWN, and the blank is drawn along +Z then
+# rotated +Z -> +Y, so the collar end faces +Y and the build runs away from it.
+AXLE_UP = (0.0, -1.0, 0.0)
+# THE MAGNET CAP the same way and for the same reason: APERTURE-DOWN, drawn along +Z and
+# rotated onto the lever's +Y axis, so the flange face is the bed.
+MAGNET_CAP_UP = (0.0, -1.0, 0.0)
+#
+# NOT DECLARED: the half-stop PISTON. Nothing in the module says which way it prints, it
+# takes no print_up, and its follower nose is a half-cylinder in X-Z that would be a
+# bottom overhang in the base's +Z -- so the base's direction cannot just be assumed for
+# it. Left out deliberately: check_ceilings reports it as a gap, which is honest, where a
+# guess would make its report meaningless.
 
 HOUS_Z0 = min((HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL,   # the cartridges
               (CHIP_DROP - PCB_WZ) - 4 * D.NOZZLE_D)                      # the board + its floor
@@ -1643,7 +1667,7 @@ def _half_stop_cart_base() -> cq.Workplane:
     #   TENSION (on the axis): Ø6×5 pocket + the 0.6 web's Ø4.4 way to the seat washer.
     #   POSITION (HS_POS_DZ above): its Ø4.4 way runs on HS_POS_FWD past the wall, because the screw's
     #   point reaches that far -X into the channel roof when the socket end is flush with the face.
-    _up = (0.0, 0.0, 1.0)
+    _up = CART_UP
     base = cut_insert_bore(M4, base, (HS_BACK_X, HS_YC, HS_Z), (-1, 0, 0),
                            clr_len=HS_BACKWALL - INSERT_L + 0.2, print_up=_up,
                            reason="tension set screw: its cup pushes the spring-seat washer")
@@ -1705,7 +1729,7 @@ def cut_axle_bore(body, hw=None):
     PLAIN cylinder where the same call hands the housing a teardrop."""
     hw = LEVER_HW if hw is None else hw
     bore = printable_bore(AXLE_BORE_D, 2 * hw, (0.0, -hw, 0.0),
-                          (0.0, 1.0, 0.0), (0.0, 1.0, 0.0), overshoot=1.0)
+                          (0.0, 1.0, 0.0), LEVER_UP, overshoot=1.0)
     zhi, zlo = AXLE_FLAT_R + 0.1, -(AXLE_BORE_D / 2 + 1.0)
     body = body.cut(bore.intersect(box_at(       # flatten the +Z side -> D
         AXLE_BORE_D + 2.0, 2 * hw + 4.0, zhi - zlo,
