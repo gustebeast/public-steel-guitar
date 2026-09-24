@@ -259,6 +259,38 @@ def finish(stem, rounds=1):
     except Exception as exc:
         print("    export_geom.py did not run: %r" % (exc,))
 
+    # ...AND THEN COMPARE THE TWO SIDES, every run. Writing the geometry out is only half
+    # of it: export_geom has faithfully recorded a board whose CUTOUTS disagreed with the
+    # CAD's since the comb replaced the single big hole, and nothing compared them.
+    # ⚠ THE OPTICAL BOARD'S GERBERS WOULD HAVE SHIPPED WITH NO COMB. Ten slots were
+    # emitted to Edge.Cuts as one 16.41 x 101.6 mm rectangle, so the fab would have cut
+    # away the nine copper strips that carry all twenty TIA outputs. The CAD gate was
+    # clean, ERC was clean, the netlist was clean, and the CAD/netlist/BOM part
+    # reconciliation agreed on all 241 parts -- because every one of those reads a SINGLE
+    # SIDE. The router found it by failing to route across copper the fab data denied.
+    # cad_geom_check existed and compared the right things; it was simply never run here.
+    # A check that has to be remembered is not a guarantee, so it runs with the board.
+    # It needs CadQuery, which KiCad's bundled python does not have -- hence a different
+    # interpreter from PY, and a LOUD message if none of them works. Silence here is the
+    # failure mode this whole note is about.
+    _name = os.path.basename(stem)
+    for _cq in (["py", "-3.12"], ["python3"], ["python"]):
+        try:
+            proc = subprocess.run(_cq + [os.path.join(HERE, "cad_geom_check.py"), _name],
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                  text=True)
+        except OSError:
+            continue
+        for line in proc.stdout.splitlines():
+            if line.strip() and "memory leak" not in line:
+                print("    " + line)
+        if proc.returncode:
+            print("    !! THE CAD AND THE FAB DATA DISAGREE -- see above")
+        break
+    else:
+        print("    !! cad_geom_check DID NOT RUN: no CadQuery interpreter found. "
+              "THE CAD AND THE FAB DATA ARE UNCHECKED.")
+
     print("%s: %d unconnected, %d violation(s)"
           % (os.path.basename(stem), best_n, best_v))
     return best_n, best_v
