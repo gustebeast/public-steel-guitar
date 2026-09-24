@@ -259,6 +259,10 @@ PKG = {
     # it, so the switching node is a single point at the board's extreme -Y tail rather
     # than a rail running the length of the sense array. See the U13 block.
     "SOT-223":  (6.50, 3.50, 1.80),   # tab package, JEDEC TO-261AA
+    # TLV9062 dual, TI DGK. KiCad-native orientation: pin rows down the X sides, so the
+    # 4.90 lead span is the X extent and the 3.00 body length is Y. IT IS PLACED ROTATED
+    # (OP_ROT) so the rows face +-Y instead -- see COL_OPA.
+    "VSSOP-8":  (4.90, 3.00, 1.10),
     "WQFN-16":  (3.00, 3.00, 0.80),   # TLV9064 RTE/SIRTER quad. 0.80 tall against SOIC-14's
                                       # 1.75, which is what lets a TIA live under a string.
     "SOIC-14":  (6.00, 8.65, 1.75),   # LONG AXIS ALONG Y: 8.65 body, 6.00 across leads.
@@ -344,6 +348,7 @@ CRTYD = {
     "TP":       (2.50, 2.50),   # KiCad's own courtyard for the D1.5 test pad
     "SOT-223":  (8.89, 7.29),   # the biggest gap of the lot: a tab package's land is
                                 # nothing like its body
+    "VSSOP-8":  (5.50, 3.60),
     "WQFN-16":  (3.60, 3.60),
     "SOIC-14":  (7.49, 9.25),
     "QFN-24":   (5.35, 5.35),
@@ -805,17 +810,36 @@ O_SLOT_X1 = _STRING_EXIT_X + O_SLOT_CLR
 # ⚠ OP_PKG IS PROVISIONAL -- the channel count is still open (10 duals vs 5 quads vs 21
 # singles). The COLUMN is not provisional: it is derived off the detector land, so whichever
 # part wins keeps this x and only the Y pitch changes.
-OP_PKG    = "WQFN-16"
-COL_OPA   = (PD_X + CRTYD["PD15"][0] / 2) + PKG_CLR + CRTYD[OP_PKG][0] / 2
+# ⚠ ONE DUAL PER STRING, NOT A QUAD PER PAIR (user, 2026-09-23). The quad was never a
+# design choice, it was an assumption nobody revisited, and it was the whole sourcing
+# crisis: TLV9061/9062/9064 are the SAME DIE on one datasheet, and JLCPCB stocks 107 of
+# the quad against 34,405 of the dual at a third the price. But the reason it is also the
+# right ELECTRICAL answer is the geometry here. A quad serves four detectors spanning
+# 14.25 mm of y, so three of its four summing nodes -- the board's only high-z nets --
+# run past neighbouring stations whose emitters all carry the SAME 192 kHz carrier.
+# Coupling from those lands in the lock-in passband IN PHASE and reads as displacement.
+# A dual serves ONE string's two detectors, 4.75 mm apart, so every summing node is the
+# same short length and they are mirror images of each other.
+# AND THE MATCHED PAIR ENDS UP ON ONE DIE, which is what DIFF wants: anything that
+# perturbs both halves together -- supply, substrate, temperature -- is common mode and
+# cancels in A-B. The survey counted the shared die against the dual; for a differenced
+# pair that is backwards, and it is the single best argument for this package.
+OP_PKG    = "VSSOP-8"
+# ROTATED so the pin rows face +-Y: -INA then lands on the +Y side facing PD-A and -INB
+# on the -Y side facing PD-B, one short mirror-image run each. Unrotated the two inputs
+# are on opposite X flanks and one detector has to reach around the body.
+OP_ROT    = 270.0
+_OP_W     = CRTYD[OP_PKG][1] if OP_ROT % 180.0 == 90.0 else CRTYD[OP_PKG][0]
+COL_OPA   = (PD_X + CRTYD["PD15"][0] / 2) + PKG_CLR + _OP_W / 2
 # gap from the op-amp land to the SLOTS -- this is the room the feedback network lives in
-PART_KEEP = O_SLOT_X0 - (COL_OPA + CRTYD[OP_PKG][0] / 2)
+PART_KEEP = O_SLOT_X0 - (COL_OPA + _OP_W / 2)
 assert PART_KEEP >= 0.0, (
     "the sensing strip no longer fits its two columns: the sensor row's land and the "
     "op-amps' land overlap by %.2f mm. The band is %.2f wide and the lands need "
     "%.2f. Either the deck band grew narrower or a package changed."
     % (-PART_KEEP, O_SLOT_X0 - (PD_X + CRTYD["PD15"][0] / 2),
-       CRTYD["PD15"][0] + CRTYD[OP_PKG][0] + 2 * PKG_CLR))
-COVER_X0  = COL_OPA + PKG[OP_PKG][0] / 2 + 0.5             # lid's -X edge, -22.00
+       CRTYD["PD15"][0] + _OP_W + 2 * PKG_CLR))
+COVER_X0  = COL_OPA + _OP_W / 2 + 0.5             # lid's -X edge, -22.00
 # Lid Y half-span, sized off the OUTERMOST APERTURE rather than the sensing field: the
 # slot is wider than the triplet it serves (SLOT_DY 5.0 against 4.45 of packages), so
 # referencing SENSE_HL left only 0.1 of material outboard of the last slot -- a knife edge
@@ -1047,26 +1071,27 @@ def _parts():
         # 0402 since the PD15 triplet: an 0603's courtyard reaches the detector's
         add("R%d" % n, "LED current-set (per-string value)", "0402", SENSE_X, sy - PITCH / 2)
 
-    # ---- 2. the 20 TIAs: one QUAD per string PAIR, at that pair's centroid ----
-    for q in range(D.N_STRINGS // 2):
-        cy = (string_y_at(2 * q, SENSE_X) + string_y_at(2 * q + 1, SENSE_X)) / 2
-        add("U%d" % (q + 1), "quad op-amp -- 4x transimpedance amp", OP_PKG, COL_OPA, cy)
-        # feedback R/C + local decoupling go in the Y GAP next to their quad, at the same
-        # X -- the band has no room for a column of its own
-        items = ([("Rf%d%d" % (q + 1, k + 1), "TIA feedback resistor (per-string value)")
-                  for k in range(4)]
-                 + [("Cf%d%d" % (q + 1, k + 1), "TIA feedback cap (anti-alias pole)")
-                    for k in range(4)]
-                 + [("Cd%d%d" % (q + 1, k + 1), "op-amp decoupling") for k in range(2)])
-        # U1 ALSO uses the gap below, and pulled in -- see JACK_ACCESS_XY. The jack's
-        # access hole occupies the gap above it, which is where this cluster used to sit.
-        # ALL CLUSTERS HANG -Y OF THEIR OWN QUAD. `s` used to alternate, which put two
-        # clusters in one gap and none in the next; see FB_ROWS for what that cost.
-        s, rows = -1, FB_ROWS
-        slots = [(COL_OPA + (c - 1) * FB_PITCH, cy + s * r) for r in rows
-                 for c in range(3)]
-        for (ref, desc), (px, py) in zip(items, slots):
-            add(ref, desc, "0402", px, py)
+    # ---- 2. the 20 TIAs: one DUAL per STRING, on that string's own y ----
+    # Refs start at U21: U6-U18 are taken (MCU, PHY, LDOs, ESD, buffer, buck, converters)
+    # and renumbering those would churn the whole netlist for nothing.
+    # The feedback network sits +X of its own dual on the SAME y -- the band is 10.80 wide
+    # and the dual takes 3.60 of it, so there is a real column there now. That is new: with
+    # quads the cluster had to go in the Y GAP between pairs, because a 7.49 mm SOIC-14
+    # left no X. Rf and Cf on their channel's own side of the part, so the feedback loop
+    # closes beside the pins it belongs to instead of reaching across the package.
+    for i in range(D.N_STRINGS):
+        n, cy = i + 1, string_y_at(i, SENSE_X)
+        add("U%d" % (20 + n), "dual op-amp -- 2x TIA, string %d's A and B detectors" % n,
+            OP_PKG, COL_OPA, cy, OP_ROT)
+        _fx0 = COL_OPA + _OP_W / 2 + CRTYD_GAP + CRTYD["0402"][1] / 2
+        _fx1 = _fx0 + CRTYD["0402"][1] + CRTYD_GAP
+        _fdy = CRTYD["0402"][0] + CRTYD_GAP
+        for sec, sgn in (("A", 1.0), ("B", -1.0)):
+            add("Rf%d%s" % (n, sec), "TIA feedback resistor, string %d%s "
+                "(per-string value)" % (n, sec), "0402", _fx0, cy + sgn * _fdy, 90.0)
+            add("Cf%d%s" % (n, sec), "TIA feedback cap, string %d%s (anti-alias pole)"
+                % (n, sec), "0402", _fx1, cy + sgn * _fdy, 90.0)
+        add("Cd%d" % n, "op-amp decoupling, string %d's dual" % n, "0402", _fx1, cy, 90.0)
 
     # ---- 3. digital block, in the wide tail past the pickup cavity ----
     x0, x1 = COMPUTE_X0 + EDGE_KEEP, TAIL_X1 - EDGE_KEEP
