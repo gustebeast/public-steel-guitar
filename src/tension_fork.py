@@ -32,6 +32,20 @@ HEAD_H   = 6 * D.BEAD            # 4.8 flange height (fingernail grip; was 5.0)
 SIZES    = [round(3.0 + 0.2 * i, 1) for i in range(16)]   # 3.0 .. 6.0
 
 
+# PRINT ORIENTATION (the record, declared once per part) -- "print the plate flat", and
+# the plate is drawn in XY with every fork extruded up from z=0, so flat means this. The
+# set is exported as one STEP of separate bodies and never enters the assembly, so its
+# authoring frame IS its world frame.
+PRINT_UP = (0.0, 0.0, 1.0)
+
+
+# PRINT ORIENTATION (the record, declared once per part) -- "print the plate flat", and
+# the plate is drawn in XY with every fork extruded up from z=0, so flat means this. The
+# set is exported as one STEP of separate bodies and never enters the assembly, so its
+# authoring frame IS its world frame.
+PRINT_UP = (0.0, 0.0, 1.0)
+
+
 def _fork(L: float) -> cq.Workplane:
     body = box_at(L, BODY_D, BODY_H, x=L / 2, y=BODY_D / 2, z=BODY_H / 2)
     head = box_at(L, HEAD_T, HEAD_H, x=L / 2, y=-HEAD_T / 2, z=HEAD_H / 2)

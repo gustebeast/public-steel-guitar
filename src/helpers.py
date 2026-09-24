@@ -35,6 +35,24 @@ def cyl_x(d: float, length: float, x0: float, *, y: float = 0.0,
         d / 2, length, pnt=cq.Vector(x0, y, z), dir=cq.Vector(1, 0, 0)))
 
 
+def pose_dir(rots, v):
+    """A DIRECTION carried through the same rotations a pose applies to a SHAPE.
+
+    A part's print orientation is a fact about the part, but tools.check_ceilings wants it
+    in WORLD coordinates, and several parts are rotated on their way there -- the vertical
+    lever turns -90 about Z, the foot pedal takes three turns. Writing the rotated vector
+    out by hand is exactly the transcription that checker's own docstring warns about:
+    nothing would compare the two if a pose ever changed. So the pose hands its rotation
+    list to this, which folds the SAME rotations over a vector.
+
+    `rots` is [(axis, degrees)] about the origin, in order -- what .rotate() already takes.
+    """
+    x = cq.Vertex.makeVertex(*v)
+    for ax, deg in rots:
+        x = x.rotate(cq.Vector(0, 0, 0), cq.Vector(*ax), deg)
+    return tuple(round(c, 9) + 0.0 for c in (x.X, x.Y, x.Z))
+
+
 def box_at(dx: float, dy: float, dz: float,
            x: float = 0.0, y: float = 0.0, z: float = 0.0) -> cq.Workplane:
     """Axis-aligned box of size (dx,dy,dz) CENTRED at (x,y,z)."""
