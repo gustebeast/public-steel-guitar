@@ -61,6 +61,11 @@ from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 4 * D.BEAD                    # 3.2 printed standoff posts under each board
+# ⚠ ONE SOURCE. This was a local 0.3 inside electronics_bay(), and board_screws() has to
+# place the Pi's M4 at the SAME spot that function bores the anchor -- pcb_hold_xy() takes
+# the clearance as an argument, so two copies of the number is two places for the screw and
+# the hole it goes in to drift apart.
+CRADLE_CLR = 0.3
 BD_T = 1.6
 PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
                                        # slid 19 SOUTH (FLUSH round): the wired
@@ -307,7 +312,7 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     from cadkit.pcb import pcb_hold_xy
     from .helpers import box_at
     zb = RIB_LZ - TRAY_Z1          # cradle frame: the endplate's wall, -26.5 below the mount face
-    CLR, WALL, LIP = 0.3, D.MIN_WALL_2P, 1.2
+    CLR, WALL, LIP = CRADLE_CLR, D.MIN_WALL_2P, 1.2
     RETAIN = 1.2          # how far the 45 deg lean reaches over the board (= its rise)
     HARNESS_W = 24.0      # the -Y notch the cable leaves through
 
@@ -438,6 +443,27 @@ def board_screws():
     out.append(("board_insert_1", seated_insert(_M4, (ox + hx, oy + hy, oz), (0, 0, -1))))
     out.append(("board_screw_1", m4_button_screw(L).translate(
         (ox + hx, oy + hy, oz + _PCB_T + M4_BUTTON_HEAD_H))))
+
+    # ⚠ THE PI'S M4 IS DRAWN NOW TOO (user: "the M4 isn't using the cadkit screw helper
+    # which draws a fitted insert and screw"). electronics_bay() has always BORED its
+    # anchor -- _cut_anchor at (phx, phy, POST_H) -- but nothing ever drew the fastener
+    # that goes in it, so the render showed a bare boss and the overlap gate had no screw
+    # to check against the plastic around it.
+    #
+    # BESIDE the board, not through it, because the Pi is a PURCHASED board and its own
+    # holes are too small for M4 -- the same arrangement, and the same SKU, as the CAN tee
+    # hold-downs: the head lands on the board's top face and laps its edge, clamping it to
+    # the cradle boss. The seat plane is therefore the board top, exactly as it is for the
+    # two boards above, and the assert at the top of this function covers it unchanged.
+    from cadkit.pcb import pcb_hold_xy
+    _px0, _px1, _py0, _py1 = PI_FP
+    _phx, _phy = pcb_hold_xy(_px1 - _px0, _py1 - _py0, "+y",
+                             hold_at=0.0, clr=CRADLE_CLR, spec=_M4)
+    _pxy = (_phx + (_px0 + _px1) / 2.0, _phy + (_py0 + _py1) / 2.0)
+    out.append(("board_insert_2",
+                stand(seated_insert(_M4, (_pxy[0], _pxy[1], BOARD_Z), (0, 0, -1)))))
+    out.append(("board_screw_2", stand(m4_button_screw(L).translate(
+        (_pxy[0], _pxy[1], BOARD_Z + _PCB_T + M4_BUTTON_HEAD_H)))))
     return out
 
 
