@@ -3738,7 +3738,7 @@ def build(stem):
         n_laid, n_left, n_why, c_laid, c_why = _local_nets(
             board, notes["local_nets"], _outline_pts(notes),
             inner=_local_inner(notes), corridors=notes.get("corridors", ()),
-            holes=_hole_pts(notes))
+            holes=_hole_pts(notes), local_mm=notes.get("local_mm", 6.0))
         print("  local nets: laid %d segment(s)%s"
               % (n_laid, ", %d left to the router" % n_left if n_left else ""))
         for _e in n_why:
