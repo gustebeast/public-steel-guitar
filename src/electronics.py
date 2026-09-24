@@ -53,6 +53,7 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
                                        # under the tray
 
 
+from . import board_geom as BG      # the ROUTED boards -- see MCTRL_BOARD_X/Y below
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl, cyl_x
 from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
@@ -76,7 +77,41 @@ PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
 # corner and the buck turns with it into the strip east of it. The ADC shifted
 # 3 south to clear it; 0.5 of gap is all that is left between them, which is the
 # honest state of a 60 x 181 tray holding four boards.
-MCTRL_FP  = (-600.0, -554.0, -127.5, -69.5)   # motor controller + power, 46 x 58
+# ⚠ THE CRADLE IS PINNED TO THE ROUTED BOARD NOW (user, 2026-09-24: "we need the mounting
+# plastic to be pinned to the board shape so they can't get out of sync").
+# It was not, and the board had outgrown it: MCTRL_BOARD_X was a hand-typed 46.0 while the
+# routed outline is 54.0, so the board overhung its own cradle by 8 mm -- 4 mm each side --
+# and the cradle's border cut straight through both the board and its screw. motor_ctrl()
+# already draws the PCB from BG.load("motor_ctrl")["outline_poly"], so the BOARD tracked
+# reality and only the plastic around it did not. Nothing could have caught that: the two
+# were never compared.
+# Y was fine and shows what the right shape looks like -- MCTRL_EAR_H is already read off
+# the same polygon, and 58.00 + 8.70 = 66.70 reproduces the routed bbox exactly.
+# The rectangle's top is the highest y at which the outline is still FULL WIDTH; above it
+# is the mounting ear, which is narrower and is accounted separately.
+def _mctrl_rect():
+    _poly = BG.load("motor_ctrl")["outline_poly"]
+    _xs = [q[0] for q in _poly]
+    _x0, _x1 = min(_xs), max(_xs)
+    _ylo = min(q[1] for q in _poly)
+    _yhi = min(max(q[1] for q in _poly if abs(q[0] - _x0) < 1e-6),
+               max(q[1] for q in _poly if abs(q[0] - _x1) < 1e-6))
+    return _x1 - _x0, _yhi - _ylo
+
+
+MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()             # 54.0 x 58.0, from the routed board
+# The tray POSITION is ours; only the SIZE comes from the board.
+_MCTRL_CX, _MCTRL_CY = -577.0, -98.5
+MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
+             _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
+
+# ⚠ THE PI IS PINNED TOO, but to its DATASHEET rather than to a routed outline -- it is a
+# purchased board and there is no elec/geom for it. PI_FP is already the single source for
+# both the dummy in pi5() and the cradle in keyhead_cradles(), so those two cannot drift
+# from each other; what was missing is anything tying PI_FP to the actual Pi. A Pi 5 is
+# 85 x 56 mm (RPi mechanical drawing), long side on Y here. If someone re-sizes this to
+# make something fit, the assert is what says the board stopped being a Pi.
+assert (round(PI_FP[1] - PI_FP[0], 3), round(PI_FP[3] - PI_FP[2], 3)) == (56.0, 85.0),     "PI_FP is %.1f x %.1f; a Pi 5 is 56 x 85" % (PI_FP[1] - PI_FP[0], PI_FP[3] - PI_FP[2])
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 
@@ -719,7 +754,7 @@ def op_pt(ref: str):
 # a constant reading 46.0, 58.0. A number in prose beside the number it describes is
 # the one place nothing checks; BOM.md carried the same stale 40 x 35 for this board
 # and sized an enclosure row from it.)
-MCTRL_BOARD_X, MCTRL_BOARD_Y = 46.0, 58.0
+# MCTRL_BOARD_X/Y are derived from the routed outline at the top of this file now.
 MCTRL_ROT = 0.0                  # UNROTATED now: at 46 x 58 the board fits
                                  # the tray straight, and the ADC slot it grows
                                  # into is free (that board is deleted).
