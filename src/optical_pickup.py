@@ -1611,8 +1611,18 @@ def _parts():
     # pull-up is not critical about position, which is exactly why nothing complained.
     # Beside the middle converter, so the bus is pulled up near its electrical centre.
     # outboard of the cell's OWN +X column (Cs?3/Cs?5 sit at _rx), not on top of it
+    # ⚠ AND SOUTH OF THE LAST CELL, NOT BESIDE THE MIDDLE ONE (user, 2026-09-24). Beside
+    # U16 put two parts inside converter cell 3 that the other four cells do not have --
+    # the only asymmetry left in the array once the cap row was centred, and the user spotted
+    # it in the render before any check did. The rule it breaks is theirs: a tile has to be
+    # a self-contained thing or the copies are not copies. One pull-up pair serves the whole
+    # bus, so it belongs with the other shared analog hardware (Q1, U11, FB1), not inside
+    # one tile.
+    # The "electrical centre" argument it replaces is real and does not matter here: I2C2
+    # runs at 400 kHz open-drain, where a pull-up's position on the bus is worth nothing
+    # measurable. Being INSIDE a repeating cell costs something visible on every render.
     _pu_x = _adc_x + _rx + _c[1] + CRTYD_GAP
-    _pu_y = _part_y("U16")
+    _pu_y = _part_y("U18") - (CELL_FAR + CRTYD["0402"][0] + 2 * CRTYD_GAP)
     for m, (ref, desc) in enumerate((("R50", "I2C2 SCL pull-up"), ("R51", "I2C2 SDA pull-up"))):
         add(ref, desc, "0402", _pu_x,
             _pu_y + (m - 0.5) * (CRTYD["0402"][0] + CRTYD_GAP), 90.0)
