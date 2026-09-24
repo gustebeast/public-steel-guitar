@@ -259,6 +259,8 @@ PKG = {
     # it, so the switching node is a single point at the board's extreme -Y tail rather
     # than a rail running the length of the sense array. See the U13 block.
     "SOT-223":  (6.50, 3.50, 1.80),   # tab package, JEDEC TO-261AA
+    "WQFN-16":  (3.00, 3.00, 0.80),   # TLV9064 RTE/SIRTER quad. 0.80 tall against SOIC-14's
+                                      # 1.75, which is what lets a TIA live under a string.
     "SOIC-14":  (6.00, 8.65, 1.75),   # LONG AXIS ALONG Y: 8.65 body, 6.00 across leads.
                                       # Chosen over TSSOP-14 purely for X: 6.00 across
                                       # the leads against TSSOP's 6.40, and X is the
@@ -342,6 +344,7 @@ CRTYD = {
     "TP":       (2.50, 2.50),   # KiCad's own courtyard for the D1.5 test pad
     "SOT-223":  (8.89, 7.29),   # the biggest gap of the lot: a tab package's land is
                                 # nothing like its body
+    "WQFN-16":  (3.60, 3.60),
     "SOIC-14":  (7.49, 9.25),
     "QFN-24":   (5.35, 5.35),
     "LQFP144":  (23.39, 23.39),
@@ -372,7 +375,44 @@ for _k, (_cw, _ch) in CRTYD.items():
 # 1.10 is 1.3x that. The margin is smaller than it looks on paper because three of the four
 # terms are themselves conservative -- a 3 mm pluck is hard playing, and the setup term is a
 # full trim range rather than a tolerance.
-PART_STRING_CLR = 1.10
+#
+# ⚠ ONLY ONE OF THE FOUR TERMS VARIES WITH X, AND IT IS THE BIGGEST (user, 2026-09-23:
+# "this position is very close to the bearings so the string vibration will be minimal").
+# The vibration allowance is a midpoint pluck scaled by the MODE SHAPE, sin(pi d/L), so it
+# dies to nothing AT the termination -- a string cannot move where it is clamped. The other
+# three are geometric offsets that apply everywhere. A single global clearance therefore
+# charges every part on the board the amplitude of a string 20 mm away, and that is what
+# capped the band between the detectors and the bearings at a 1.10 mm package when the real
+# budget there is 1.2-1.4. That band is where the TIAs want to live, so the difference
+# decides which op-amp packages are even admissible.
+# d is measured from the TERMINATION and clamps at 0 going +X: past the bearing the string
+# has turned down toward the changer and is below this board's copper entirely, which is
+# what check 4's O_SLOT_X1 bound already encodes.
+PLUCK_A     = 3.0                 # peak midpoint amplitude of a hard pluck
+SPEAK_L     = D.MOUNTING_SPAN     # 615.0, the mode shape's half-wavelength
+CLR_FIXED   = 0.067 + 0.300 + 0.200   # bar depression + setup trim + part/print tol
+CLR_MARGIN  = 1.26                # what the old flat 1.10 carried at the sensing station
+
+
+def string_clr_at(x: float) -> float:
+    """Least part-to-string gap required at X, in mm. See the budget above."""
+    d = max(TERMINATION_X - x, 0.0)
+    vib = PLUCK_A * math.sin(math.pi * min(d, SPEAK_L) / SPEAK_L)
+    return CLR_MARGIN * (vib + CLR_FIXED)
+
+
+# THE Z STACK IS DATUMED AT THE FIELD'S WESTERNMOST TALL COPPER, NOT AT THE STATION CENTRE.
+# Writing the budget as a function of x turned up a small real error in the flat version: it
+# evaluated the mode shape at SENSE_X, but the tallest parts in the field are the PD15s and
+# their BODIES reach 2.01 mm further -X than that, where the string swings 0.034 wider. The
+# flat 1.10 was therefore 0.04 short at the only place it was ever binding. Datum off the
+# detector LAND's -X edge, which is 0.49 west of the body again and needs no forward
+# reference to PD_X (defined ~130 lines below, after PKG_CLR has had its say).
+# It costs 0.05 mm of OPT_GAP -- about 0.3 dB -- and buys back a term that was missing.
+FIELD_DATUM_X   = SENSE_X - CRTYD["PD15"][0] / 2              # -30.50
+PART_STRING_CLR = string_clr_at(FIELD_DATUM_X)
+assert 1.10 <= PART_STRING_CLR < 1.20, \
+    "the derived clearance has drifted away from the 1.10 it replaced"
 
 
 # ── Z STACK, built UPWARD from the deck ─────────────────────────────────────
@@ -529,7 +569,15 @@ SENSE_HL = _OUTER_Y + PD_DY                      # last sensor Y
 # ONLY THE STRIP SECTION GROWS. PCB_X1S stays the wraps' and the tail's -X edge (and the
 # endplate pad's), so the strip steps out -X past them; STRIP_X1 is its own -X edge.
 STRIP_GROW_PX = 3.15
-STRIP_GROW_MX = 10.0  # 2.5 measured lane + 6.0 ADC column + 1.5 of CELL-TO-OP-AMP CORRIDOR
+# ⚠ ZERO AS OF 2026-09-23 -- THE OUTER BORDER IS A RECTANGLE AGAIN (user: "I'd like to see
+# if we can get the PCB to be a rectangle on the outer border instead of having an
+# outcropping under the strings"). Every millimetre of this 10.0 existed to house the ADC
+# cells and the lanes feeding them, and the cells have moved EAST of the comb where they
+# belong -- downstream of the TIAs instead of upstream of them. Checked before deleting it:
+# no part's span reaches west of PCB_X1S any more. The whole board is now one rectangle,
+# -38.88..+25.06 in x. The analysis below is kept because it is the measured record of what
+# the corridor width did to routing, and the corridor still exists -- it is just east now.
+STRIP_GROW_MX = 0.0   # was 10.0 = 2.5 measured lane + 6.0 ADC column + 1.5 of CORRIDOR
 # ⚠ THAT LAST 1.5 IS THE ANALOG NETS' WHOLE PROBLEM, and it took three experiments to
 # find because it is not where anyone looks. The corridor between the converter cell's east
 # edge and the op-amp column's west edge was 0.68 mm -- ONE track -- and every analog run
@@ -722,17 +770,34 @@ O_SLOT_X1 = _STRING_EXIT_X + O_SLOT_CLR
 # y pitch and cross the comb's strips four to a strip, of eleven a layer can take.
 # ⚠ STILL TO CHECK: the TIA pole. More Cin wants more Cf for the same phase margin, and
 # the pole is at ~160 kHz with the carrier's sidebands at 28..68 kHz.
-COL_OPA   = O_SLOT_X1 + EDGE_KEEP + PKG["SOIC-14"][0] / 2
-# the op-amps are EAST of the slots now, so this is the gap from the slot edge to their
-# land rather than from their land to the sensor row
-PART_KEEP = (COL_OPA - CRTYD["SOIC-14"][0] / 2) - O_SLOT_X1
+# ⚠ AND IT GOES BACK WEST, INTO THE BAND BETWEEN THE DETECTORS AND THE SLOTS (2026-09-23).
+# Moving it +X of the slots fixed the height problem and created a worse one: the ADC cells
+# were still -X of the sensor row, so the signal crossed the comb TWICE -- detector -28.4 to
+# op-amp +5.6 to converter -44.3, forty crossings -- and the -X leg of that was the board's
+# one HIGH-Z net making a 33 mm run past ten carrier-driven emitters. Every station's emitter
+# is driven at the SAME 192 kHz, so charge coupled into a summing node lands in the lock-in's
+# passband IN PHASE with it and does not integrate away: it reads as a fixed offset that is
+# indistinguishable from string displacement. Length is the whole lever on that.
+# The band -25.86..-15.06 is 10.80 mm of empty board, and string_clr_at() says it takes a
+# 1.19 mm package at its -X edge rising to 1.40 at its +X edge -- which is why this could not
+# be done before the clearance became a function of x. SOIC-14 at 1.75 is out for good; every
+# live candidate (WQFN-16 quad 0.80, VSSOP-8 dual 1.10, SC-70-5 single 1.10) clears it.
+# So: summing nodes ~6 mm instead of 33, and the comb is crossed ONCE, by the op-amp's
+# LOW-IMPEDANCE OUTPUT, which is the one signal on the board that does not care.
+# ⚠ OP_PKG IS PROVISIONAL -- the channel count is still open (10 duals vs 5 quads vs 21
+# singles). The COLUMN is not provisional: it is derived off the detector land, so whichever
+# part wins keeps this x and only the Y pitch changes.
+OP_PKG    = "WQFN-16"
+COL_OPA   = (PD_X + CRTYD["PD15"][0] / 2) + PKG_CLR + CRTYD[OP_PKG][0] / 2
+# gap from the op-amp land to the SLOTS -- this is the room the feedback network lives in
+PART_KEEP = O_SLOT_X0 - (COL_OPA + CRTYD[OP_PKG][0] / 2)
 assert PART_KEEP >= 0.0, (
     "the sensing strip no longer fits its two columns: the sensor row's land and the "
-    "quad op-amps' land overlap by %.2f mm. The band is %.2f wide and the lands need "
+    "op-amps' land overlap by %.2f mm. The band is %.2f wide and the lands need "
     "%.2f. Either the deck band grew narrower or a package changed."
-    % (-PART_KEEP, PCB_X0 - PCB_X1S,
-       CRTYD["0805OPT"][0] + CRTYD["SOIC-14"][0] + 2 * EDGE_KEEP))
-COVER_X0  = COL_OPA + PKG["SOIC-14"][0] / 2 + 0.5             # lid's -X edge, -22.00
+    % (-PART_KEEP, O_SLOT_X0 - (PD_X + CRTYD["PD15"][0] / 2),
+       CRTYD["PD15"][0] + CRTYD[OP_PKG][0] + 2 * PKG_CLR))
+COVER_X0  = COL_OPA + PKG[OP_PKG][0] / 2 + 0.5             # lid's -X edge, -22.00
 # Lid Y half-span, sized off the OUTERMOST APERTURE rather than the sensing field: the
 # slot is wider than the triplet it serves (SLOT_DY 5.0 against 4.45 of packages), so
 # referencing SENSE_HL left only 0.1 of material outboard of the last slot -- a knife edge
@@ -967,7 +1032,7 @@ def _parts():
     # ---- 2. the 20 TIAs: one QUAD per string PAIR, at that pair's centroid ----
     for q in range(D.N_STRINGS // 2):
         cy = (string_y_at(2 * q, SENSE_X) + string_y_at(2 * q + 1, SENSE_X)) / 2
-        add("U%d" % (q + 1), "quad op-amp -- 4x transimpedance amp", "SOIC-14", COL_OPA, cy)
+        add("U%d" % (q + 1), "quad op-amp -- 4x transimpedance amp", OP_PKG, COL_OPA, cy)
         # feedback R/C + local decoupling go in the Y GAP next to their quad, at the same
         # X -- the band has no room for a column of its own
         items = ([("Rf%d%d" % (q + 1, k + 1), "TIA feedback resistor (per-string value)")
@@ -1291,7 +1356,15 @@ def _parts():
     # sample of six, and 1.8 still leaves the I2C spine its via lane.
     ADC_BUS_CH = 1.8
     assert ADC_BUS_CH >= EDGE_KEEP, "the bus channel is also the part-to-edge keepout"
-    _adc_x = STRIP_X1 + ADC_BUS_CH + 2.8                       # 2.8 = half the measured cell
+    # ⚠ EAST OF THE COMB NOW (2026-09-23), not out at the strip's -X edge. Three things
+    # were wrong with the old home and only one of them was routing. It put the converters
+    # DOWNSTREAM of nothing -- the signal had to come back west to reach them -- it sat at
+    # x -46.3 where string_clr_at() wants 1.45 mm and the WQFN-24 leaves 1.45, i.e. zero
+    # margin under the widest part of the string's swing, and it is the whole reason the
+    # board had a -X outcropping at all. East of the slots the cells are downstream of the
+    # TIAs, the clearance question disappears (nothing overhead past the termination), and
+    # STRIP_GROW_MX can go, which squares the board's outer border off (user).
+    _adc_x = O_SLOT_X1 + EDGE_KEEP + 2.8                       # 2.8 = half the measured cell
     for k in range(5):
         qx = _adc_x
         qy = (string_y_at(2 * k, SENSE_X) + string_y_at(2 * k + 1, SENSE_X)) / 2
@@ -2755,18 +2828,21 @@ def _assert_field_clear():
     # there is free where the same part at the sensor row pins the whole assembly 0.61 mm
     # below the axle. Bound at O_SLOT_X1 rather than at _STRING_EXIT_X so the slot's own
     # clearance is on the safe side of the test.
+    # ⚠ AND THE REQUIREMENT IS A FUNCTION OF X, NOT A CONSTANT -- see string_clr_at(). The
+    # part's -X edge is its worst case: that is where the string swings widest.
     for p in PARTS:
         dz = PKG[p["pkg"]][2]
         x0, _, y0, y1 = part_span(p)
         if y1 <= -SENSE_HL or y0 >= SENSE_HL or x0 >= O_SLOT_X1 - 1e-9:
             continue
+        need = string_clr_at(x0)
         clr = STRING_BOT_MIN - (PCB_TOP + dz)
-        if clr < PART_STRING_CLR - 1e-9:
+        if clr < need - 1e-9:
             raise AssertionError(
                 f"optical strip: {p['ref']} ({p['desc']}, {p['pkg']}) stands to "
                 f"Z={PCB_TOP + dz:.2f} under the sensing field, leaving {clr:.2f} to the "
-                f"lowest string at {STRING_BOT_MIN:.2f} -- under PART_STRING_CLR "
-                f"{PART_STRING_CLR}")
+                f"lowest string at {STRING_BOT_MIN:.2f} -- under the {need:.2f} required "
+                f"at x={x0:.2f}")
     # 5. the COVER must clear the strings above and the parts below it -- WHEN THERE IS ONE.
     # ⚠ BOTH CHECKS BELOW ARE ABOUT A LID THAT NO LONGER EXISTS. With COVER_T at 0 the
     # "cover underside" collapses onto the sensor face, so every part taller than the
