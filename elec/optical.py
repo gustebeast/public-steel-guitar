@@ -117,6 +117,7 @@ FP = {
     "0603":     "Resistor_SMD:R_0603_1608Metric",
     "0805C":    "Capacitor_SMD:C_0805_2012Metric",
     "1206C":    "Capacitor_SMD:C_1206_3216Metric",
+    "0603OPT":  "LED_SMD:LED_0603_1608Metric",
     "0805OPT":  "LED_SMD:LED_0805_2012Metric",
     "PD15":     "Steel:Everlight_PD15-22B",           # elec/footprints/Steel.pretty
     "WQFN-24":  "Package_DFN_QFN:Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm",
@@ -413,22 +414,26 @@ def optical():
     for i in range(1, 11):
         # THE BALLAST IS PER-STRING AND THAT IS LEVER 2 OF THE SIGNAL BUDGET. A .014
         # plain string returns ~14 dB less than a .070 wound one because the string IS
-        # the reflective target, and with narrow-beam emitters unavailable in 0805
-        # (lever 1 is gone -- see src/optical_pickup.py) drive current is the first
-        # lever left. Values are set at bring-up, per string, not here.
-        # 180R = 20 mA, WHICH IS THE DATASHEET'S OWN OPERATING POINT and deliberately
-        # conservative. (5.0 - 1.2 VF) / 0.020 = 190; 180R gives 21 mA. The IR17-21C is
-        # rated 65 mA continuous, so there is 3x of headroom -- and taking it is a SYSTEM
-        # decision, not a resistor swap: ten emitters at 65 mA is 650 mA of peak rail
-        # against a 600 mA buck, and the board's recorded 24 V draw (~85 mA, i.e. ~2 W)
-        # assumes something near this value. Raising drive is the first SNR lever this
-        # board has left, and spending it means re-checking U13, C162's droop over a
-        # pulse, and the trunk's wire gauge together.
+        # the reflective target, so values are set at bring-up, per string, not here.
+        # ⚠ LEVER 1 IS NO LONGER GONE. This note used to say narrow-beam emitters were
+        # unavailable and the beam-angle lever was unspendable. That was true of the parts
+        # surveyed at the time; the LTE-C9901 is 65 deg FULL angle against the old part's
+        # 120, and combined with its 8 mW/sr typ that is where the +10.9 dB came from.
+        # 180R NOW GIVES EXACTLY 20 mA, the datasheet's own operating point: the LTE-C9901
+        # drops 1.4 V typ, so (5.0 - 1.4) / 180 = 20.0 mA on the nose. The old 1.2 V part
+        # made the same resistor 21 mA.
+        # ⚠ AND THE HEADROOM IS TIGHTER THAN IT WAS. This part is rated 60 mA continuous,
+        # not 65, so ten emitters flat out is 600 mA against a 600 mA buck -- no margin at
+        # all, where there used to be a little. Raising drive is still an SNR lever but it
+        # is now a SYSTEM decision with no slack: U13, C162's droop over a pulse and the
+        # trunk's gauge have to be re-checked together, and the buck is the binding one.
+        # Note the emitters are square-wave gated at 48 kHz, so mean current is half the
+        # peak; it is the peak the buck has to survive.
         r = _r("R%d" % i, "180R", "LED ballast, string %d -- 21 mA, tune per string" % i)
         d = Part(name="LED_IR", ref_prefix="D", ref="D%d" % i, dest="NETLIST",
-                 tool="skidl", value="IR17-21C/TR8",
-                 description="IR emitter 940 nm, string %d (LCSC C131250)" % i,
-                 footprint="LED_SMD:LED_0805_2012Metric",
+                 tool="skidl", value="LTE-C9901",
+                 description="IR emitter 940 nm, string %d (LCSC C2683614)" % i,
+                 footprint="LED_SMD:LED_0603_1608Metric",
                  pins=[Pin(num=1, name="K", func=P), Pin(num=2, name="A", func=P)])
         v5_pre += r[1]        # BUCK side of the bead -- see FB1
         # ⚠ NAMED, BECAUSE SKiDL'S AUTO-NAMES ARE POSITION-DEPENDENT. A two-pin local
@@ -2246,7 +2251,7 @@ def _assert_matches_cad(net_path):
     # FB1 is the one genuine exception: a ferrite bead sharing the 1608 land with an
     # 0603 resistor. Exempted BY NAME rather than by loosening the rule, because the
     # rule was right to flag it -- it is the CAD's package class that is imprecise.
-    class_pkgs = ("0402", "0805OPT")
+    class_pkgs = ("0402", "0603OPT")
     by_name = {"FB1"}
     bad = [(r, want[r], got[r]) for r in sorted(want)
            if want[r] not in class_pkgs and r not in by_name and got[r] != FP[want[r]]]
