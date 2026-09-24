@@ -1779,6 +1779,21 @@ BOARD_NOTES = {
                 + [{"xy": [round(OP.JACK_ACCESS_XY[0] - CX, 4),
                            round(OP.JACK_ACCESS_XY[1] - CY, 4)],
                     "d": OP.JACK_ACCESS_D}]),
+    # ⚠ THE TIA OUTPUTS GET ASSIGNED COMB GAPS. Measured: 13 of 20 crossed and 7 did not,
+    # and the 7 were EXACTLY the 7 the DRC reported unconnected (identical sets), all of
+    # them the B channel. The router sees twenty independent nets and has no way to know
+    # that a string's A and B are a pair needing DIFFERENT gaps, so it sends both at the
+    # cheapest strip, wins with one and strands the other. A goes +Y of its own string,
+    # B goes -Y: two nets per strip, every strip used once, by construction.
+    # The band is the slot extent; the corridor y is the midpoint between adjacent slots,
+    # off D.string_y (the BEARING spacing) and not the sensor row's fan -- the gap is cut
+    # where the bearings are.
+    "corridors": [(("TIA_OUT_%d%s" % (_i + 1, _s)),
+                   ((OP.D.string_y(_i) + OP.D.string_y(_i - 1)) / 2.0 if _s == "A" and _i > 0
+                    else (OP.D.string_y(_i) + OP.D.string_y(_i + 1)) / 2.0 if _s == "B" and _i < OP.D.N_STRINGS - 1
+                    else OP.D.string_y(_i) + (4.75 if _s == "A" else -4.75)) - CY,
+                   OP.O_SLOT_X0 - 1.2 - CX, OP.O_SLOT_X1 + 1.2 - CX)
+                  for _i in range(OP.D.N_STRINGS) for _s in ("A", "B")],
     "layers": 4,
     "thickness_mm": 1.6,
     # FOUR LAYERS, and on this board it is the least negotiable of the five. In1.Cu
