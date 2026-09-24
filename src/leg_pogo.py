@@ -879,9 +879,13 @@ def harness():
                  (xc, y_out - 12.0, zc)]
     g0 = BOTTOM.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)
     g0b = BOTTOM.p(fr, 0.0, zd)                    # clear of the plug first...
-    g1a = BOTTOM.p(fr, -S_C, zd)                   # ...over to the leg's axis line,
-    g2 = BOTTOM.p(fc, -S_C, -17.0)                 # ...and down into it
-    bar_path = [g0, g0b, g1a, g2, (g2[0] + 10.0, g2[1], g2[2])]   # along the chamber,
+    # ...then SLANT onto the leg's axis line on the way down, rather than stepping
+    # across at the plug's own height and turning square into the drop. That corner
+    # was never forced: the move is 3.00 in s at a fixed t, the ZR's slot is +-4.80
+    # wide in s, so the whole diagonal lies inside the cavity that was already there.
+    # It read as a V hanging off the connector in the tab (user).
+    g2 = BOTTOM.p(fc, -S_C, -17.0)                 # ...and down into the chamber
+    bar_path = [g0, g0b, g2, (g2[0] + 10.0, g2[1], g2[2])]        # along the chamber,
                                                                   # toward the trough
     out = [("pogo_harness_coil", coil)]
     w = HARNESS_WIRE_OD
