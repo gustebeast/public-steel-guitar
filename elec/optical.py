@@ -1496,7 +1496,8 @@ def _cell_tracks():
         for dy in (0.25, -0.25):
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
-    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
+    return (out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
+            + _v5_spine())
 
 
 # ⚠ THE +3V3D CLUSTERS CANNOT BE JOINED BY LAYING EITHER (2026-09-22). _v3_trunk links
@@ -1672,6 +1673,48 @@ def _door_keepout(pad=0.55, lo=0.50, hi=1.80):
             out.append([round(ci[0] - pad, 4), round(min(ci[1], cm[1]) + lo, 4),
                         round(ci[0] + pad, 4), round(max(ci[1], cm[1]) + hi, 4)])
     assert len(out) == 20, "expected one door per channel, got %d" % len(out)
+    return out
+
+
+def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-3.30):
+    """V5_PRE's NORTH HALF, laid: one spine down the reserved lane, one tap per ballast.
+
+    ⚠ THE NORTH SIDE SHOULD NOT BE THE ROUTER'S JOB AT ALL (user, 2026-09-24: "we should
+    route V5_PRE up to the border point"). V5_PRE had ZERO pre-laid copper, so the router
+    was drawing the whole thing -- ten ballast feeds scattered the length of a 90 mm array
+    -- and its ratsnest sprawled across every string. It is a RAIL: nine pads in a straight
+    column at one x, on the string pitch. A spine and nine taps is the whole net.
+
+    WHERE IT RUNS: the lane west of the detector lands that the board's own edge was pinned
+    to (see V5_LANE in src/optical_pickup.py). That lane exists precisely because this rail
+    needs it, and until now nothing put the rail in it. 5.3 mm of clear board, and each
+    ballast sits midway between two strings with 0.88 mm to the nearest detector land, so
+    every tap crosses open board.
+
+    ⚠ IT STOPS AT THE SOUTHERNMOST BALLAST, NOT AT AN IMAGINARY LINE. The border wanted
+    here is a place the ROUTER can pick the net up from, and this file records twice that
+    it will not: _sai_escape laid exactly this shape and every part came back open ("the
+    router never connected to a pre-laid via on this board"), and the corridor generator
+    failed three times the same way. Copper that reaches no pad is not adopted. Ending on
+    R10's pad makes the whole north half one connected piece hanging off a real pad, and
+    the router's remaining job is one hop from there to the buck.
+
+    Widths: the spine carries all ten emitters (1068 mA worst case) and each tap carries
+    one (107 mA).
+    """
+    P = _placements(CX, CY)
+    rs = sorted(((r, P[r]) for r in ("R%d" % i for i in range(1, 11)) if r in P),
+                key=lambda kv: -kv[1][1])
+    if not rs:
+        return []
+    # pad 1 sits 0.51 west of the part's centre (0402 on its side); read back, not assumed
+    pad = lambda q: (q[0] - 0.51, q[1])
+    x = pad(rs[0][1])[0] + dx
+    out = [("V5_PRE", "F.Cu", spine_w,
+            [(x, pad(rs[0][1])[1]), (x, pad(rs[-1][1])[1])])]
+    for _, q in rs:
+        px, py = pad(q)
+        out.append(("V5_PRE", "F.Cu", tap_w, [(x, py), (px, py)]))
     return out
 
 
