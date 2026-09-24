@@ -1497,7 +1497,7 @@ def _cell_tracks():
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
     return (out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
-            + _v5_spine())
+            + _v5_spine() + _led_row_spine())
 
 
 # ⚠ THE +3V3D CLUSTERS CANNOT BE JOINED BY LAYING EITHER (2026-09-22). _v3_trunk links
@@ -1676,7 +1676,7 @@ def _door_keepout(pad=0.55, lo=0.50, hi=1.80):
     return out
 
 
-def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-3.30):
+def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-4.55):
     """V5_PRE's NORTH HALF, laid: one spine down the reserved lane, one tap per ballast.
 
     ⚠ THE NORTH SIDE SHOULD NOT BE THE ROUTER'S JOB AT ALL (user, 2026-09-24: "we should
@@ -1716,6 +1716,56 @@ def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-3.30):
         px, py = pad(q)
         out.append(("V5_PRE", "F.Cu", tap_w, [(x, py), (px, py)]))
     return out
+
+
+_LED_VIA_DX = -2.66      # where LED_ROW comes up, east of V5_PRE's spine
+
+
+def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-5.95):
+    """LED_ROW's north half: the emitters' switched low side, one spine and ten taps.
+
+    Same shape as _v5_spine and the same reason -- it is a rail with ten pads in a column
+    and the router was drawing all ten feeds. It carries the whole emitter string, so the
+    spine is sized like V5_PRE's.
+
+    ⚠ IT CANNOT RUN AT THE PADS' OWN x, which is the obvious thing to try since all ten are
+    collinear at -25.24: that column passes straight through the detector lands, which span
+    -27.31..-22.31. So the spine sits in its own lane WEST of the detectors, outboard of
+    V5_PRE's, and taps east to each emitter.
+
+    ⚠ AND IT RUNS ON In2, NOT F.Cu, BECAUSE THE TWO RAILS NEST. Both sit west of their own
+    pads and both tap EAST, so the outer one's taps must cross the inner one's spine -- two
+    different nets on one layer, ten times over. Putting the outer rail on the inner layer
+    and surfacing it EAST of V5_PRE's spine removes the crossing entirely: the only F.Cu
+    LED_ROW copper is the last 2.7 mm into each emitter, which starts beyond anything
+    V5_PRE owns. Ten vias, which is what a layer change costs.
+    The taps cross the detector band at the STRING's own y, where the two detectors of that
+    string (at string_y +-2.15, land half-height 1.65) leave a 1.0 mm gap -- 0.35 mm of
+    clearance either side of a 0.3 track. Tight and real; if a detector land ever grows,
+    this is the first thing that breaks.
+    """
+    P = _placements(CX, CY)
+    ds = sorted(((r, P[r]) for r in ("D%d" % i for i in range(1, 11)) if r in P),
+                key=lambda kv: -kv[1][1])
+    if not ds:
+        return []
+    # pad 1 sits 0.79 west of the emitter's centre; read back from the placement, not assumed
+    pad = lambda q: (q[0] - 0.79, q[1])
+    x = pad(ds[0][1])[0] + dx
+    out = [("LED_ROW", "In2.Cu", spine_w,
+            [(x, pad(ds[0][1])[1]), (x, pad(ds[-1][1])[1])])]
+    for _, q in ds:
+        px, py = pad(q)
+        out.append(("LED_ROW", "In2.Cu", tap_w, [(x, py), (px + _LED_VIA_DX, py)]))
+        out.append(("LED_ROW", "F.Cu", tap_w, [(px + _LED_VIA_DX, py), (px, py)]))
+    return out
+
+
+def _led_row_vias():
+    """The via per emitter where LED_ROW surfaces, east of V5_PRE's spine."""
+    P = _placements(CX, CY)
+    return [("LED_ROW", P[r][0] - 0.79 + _LED_VIA_DX, P[r][1])
+            for r in ("D%d" % i for i in range(1, 11)) if r in P]
 
 
 def _spine_keepout(via_d=0.6, clr=0.127):
@@ -2370,7 +2420,8 @@ BOARD_NOTES = {
     "vias": ([("+3V3D",) + _cell_pt(k, _V3_CH_DX, y)
               for k in range(5) for y in (0.75, -3.27)]
              + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
-                for k in range(5)]),
+                for k in range(5)]
+             + _led_row_vias()),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
