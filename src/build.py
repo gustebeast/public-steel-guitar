@@ -1411,6 +1411,13 @@ def collect_components():
     comps += _foot_pedal_components()
     comps += _electronics_components()
     comps += _lever_stations_components()      # all five, LKL/VKL included
+    # ...AND THE HARNESS THAT RUNS BETWEEN THEM. Left out when the bus-B harness landed
+    # (2026-09-23), so all 36 conductors were built by lever_harness_components() for the
+    # agent's own scratch view and by NOTHING ELSE: absent from assembly.step, from the web
+    # preview, and -- the part that matters -- from the overlap gate, which takes its model
+    # from this function. The user spotted it as missing geometry in the viewer; the gate had
+    # been reporting green on an instrument with no lever wiring in it.
+    comps += _lever_bus_components()
     comps += _wrap_rod_component()
     comps += _tensioner_coupon_components()
     for i in range(D.N_STRINGS):
