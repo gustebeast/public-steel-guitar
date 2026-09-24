@@ -2602,9 +2602,32 @@ def _comb_lanes(board, notes, width=0.2, clr=0.15, pitch=0.50, inner="In2.Cu",
              + [(band[k + 1][3], band[k][2]) for k in range(len(band) - 1)]
              + [(band[-1][2] - _W, band[-1][2])])
 
-    # string s: A takes the channel above it, B the channel below -- with the margins in
-    # the list those are simply s-1 and s.
-    runs = [("TIA_OUT_%d%s" % (s, side), s, side, s - 1 if side == "A" else s)
+    # ⚠ BOTH OF A STRING'S RUNS SHARE ONE CHANNEL, so a TILE owns its two channels
+    # outright. The user named the test that decides this: treat strings 1 and 2 as a
+    # separate PCB with no connections anywhere else, and a tile that passes copies
+    # blindly. A-above/B-below fails it -- it puts string 2's B in the channel string 3's
+    # A uses, so tiles 1 and 2 share a lane and every copy has to be checked against its
+    # neighbour rather than simply stamped down. One channel per string means nothing a
+    # tile lays can reach into the next one, which is the property that makes copying safe.
+    # Channel s (not s-1) so string 1 takes the lane below it, an ordinary inter-slot lane,
+    # and only string 10 uses a board margin.
+    # ⚠ ALL FOUR OF A TILE'S RUNS CROSS IN THE LANE BETWEEN ITS OWN TWO STRINGS, and the
+    # history here is worth keeping because two plausible alternatives are both wrong.
+    #
+    # The user saw four runs sharing a lane with empty lanes beside it and asked why; I
+    # spread them one-per-string, and later one-channel-per-string. BOTH are worse, and
+    # the reason only became visible after the cap row moved onto the pair centre: the
+    # caps now sit BETWEEN the two strings, so the lane between them is where every one of
+    # the four runs is going. Spreading them puts a run 8.95 mm from its own destination
+    # instead of alongside it -- one-channel-per-string measured 10 of 20 against 14.
+    #
+    # And the density that prompted it is not real: four runs at 0.50 mm pitch is 2.0 mm in
+    # a 3.4 mm usable lane. It looks crowded and is not. The lanes that stay empty are not
+    # wasted capacity, they are lanes nothing needs to cross.
+    #
+    # It also satisfies the user's own test better than the alternatives: a tile owns ONE
+    # lane outright, so nothing it lays can reach into its neighbour.
+    runs = [("TIA_OUT_%d%s" % (s, side), s, side, 2 * ((s - 1) // 2) + 1)
             for s in range(1, len(band) + 1) for side in ("A", "B")]
     share = {}
     for r in runs:
