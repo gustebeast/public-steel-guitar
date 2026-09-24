@@ -2372,7 +2372,16 @@ BOARD_NOTES = {
     # same strip, and 122 fixed segments through it closed the corridor they were using.
     # The rail is better off routed than helped. Third time this lever has been tried and
     # lost -- treat "add one more net to the pre-lay" as measured-negative, not untested.
-    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]"),
+    # ⚠ MID IS A LOCAL NET TEN TIMES OVER, which is why it is in this list rather than
+    # being given a spine of its own. It has 63 pads -- six per station (both MID pads of
+    # each detector, and both non-inverting inputs of the dual) plus the buffer and its
+    # bypass in the south -- and the six per station are a CLUSTER a couple of millimetres
+    # across, exactly the shape this routine exists for. Hand-laying it was started and
+    # abandoned: the op-amp's MID pins sit either side of GND on a 0.65 mm pitch, so
+    # reaching them is a fan-out, and _local_nets already solves fan-outs. Single linkage
+    # finds the ten stations on its own; what it will NOT do is join station to station,
+    # and that is the rail, below.
+    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]", r"MID"),
     "stitch_nets": ("GND",),
     # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
     # pair routes first and its escape vias occupy the copper beside the PHY, which
