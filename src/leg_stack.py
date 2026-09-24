@@ -501,12 +501,12 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # is holding the leg on with what is left either side. Checked here because this is
     # where the stations are known; leg_pogo.CHAN_X is where the number lives.
     #
-    # This guards the channel's LONG leg, which is the one that would run the length of
-    # a tenon. Its 45 leg still clips the outermost tenon's corner -- 27.0 mm3, over
-    # about 2.6 of that tenon's 32.49 run -- and that much is unavoidable: the port
-    # surfaces at y 51.72, which is inside that tenon's x band and mid-run, so the
-    # channel has to cross it to get outboard. Measured, and check_thin sees nothing
-    # under 1.60 left behind. (Square in X it was 137.0 mm3 over 21.45.)
+    # As it stands the channel takes 0.0 mm3 off all three of them, because it is a
+    # single BURIED diagonal: it dives as it goes outboard, so by the time it crosses
+    # the outermost tenon's x band it is 11.51 under this face and every tenon is above
+    # it. This assert is what keeps that true if the line is ever flattened or the
+    # stations move. (An L in the top face could not do it: 27.0 mm3 on the 45 and
+    # 137.0 mm3 square, over 21.45 of that tenon's 32.49 run.)
     from . import leg_pogo as _PG
     _cx0, _cx1 = (sx + _PG.CHAN_X - _PG.CHAN_W / 2.0,
                   sx + _PG.CHAN_X + _PG.CHAN_W / 2.0)
