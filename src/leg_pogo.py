@@ -756,21 +756,40 @@ def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     # OUT THE -Y FACE (user): inboard, under the instrument. The +Y face is the rail
     # side, and it is also the one the latch now opens onto.
     #
-    # AN L, not a straight run. The long leg goes down CHAN_X, outboard of every body
-    # tenon (see CHAN_X); the short one carries the harness out to it from the plug,
-    # along the direction the ZR's mouth already points. The ZR faces -t, which on this
-    # diagonal is -X+Y, so the wire surfaces on the +Y side and heading -X -- the short
-    # leg is the run it was making anyway, and the turn happens clear of the tenons
-    # rather than under one.
+    # AN L WHOSE FIRST LEG RUNS AT 45, not square. The long leg goes down CHAN_X,
+    # outboard of every body tenon (see CHAN_X); the first leg carries the harness out
+    # to it from the plug, along the direction the ZR's mouth already points -- the ZR
+    # faces -t, which on this diagonal is -X+Y, so the wire surfaces on the +Y side and
+    # heading -X.
+    #
+    # THAT FIRST LEG IS THE ONE THAT HAS TO BE 45 (user). Run square in X it crosses
+    # the build direction, so its far side wall looks straight back at the bed: a
+    # 24 mm^2 flat ceiling, span 4.80, for nothing. Taken diagonally it covers the same
+    # X in the same Y, and BOTH its side walls stand at 45 to the build and carry
+    # themselves -- the same bargain the tenon's own cavities make.
+    #
+    # It has to come -Y as it comes -X, which suits the run: the channel is heading for
+    # the -Y face anyway, so the diagonal is not a detour, it is the first part of the
+    # journey taken on the slant.
     xc = j.x + CHAN_X
     y_out = j.y - (LS.LEG_W / 2.0 + 1.0)
-    y_turn = fc[1]                                  # where the wire surfaces
+    _run = fc[0] - xc                               # how far -X the channel must come
+    y_turn = fc[1] - _run                           # ...and as far -Y, which is the 45
     neg = neg.union(cq.Workplane("XY").add(cq.Solid.makeBox(   # the long leg, down -Y
-        CHAN_W, (y_turn + CHAN_W / 2.0) - y_out, CHAN_D + 1.0,
+        CHAN_W, y_turn - y_out, CHAN_D + 1.0,
         cq.Vector(xc - CHAN_W / 2.0, y_out, LS.Z_TOP - CHAN_D))))
-    neg = neg.union(cq.Workplane("XY").add(cq.Solid.makeBox(   # ...and the short one
-        (fc[0] + CHAN_W / 2.0) - (xc - CHAN_W / 2.0), CHAN_W, CHAN_D + 1.0,
-        cq.Vector(xc - CHAN_W / 2.0, y_turn - CHAN_W / 2.0, LS.Z_TOP - CHAN_D))))
+    # the 45 leg, as a strip of width CHAN_W about the diagonal. It OVERSHOOTS at both
+    # ends by CHAN_W along its own axis: a strip cut square at B would only reach the
+    # long leg's centre line, leaving a nick of square wall either side of it, and a
+    # strip stopping at A would not meet the connector's own cavity.
+    _o = CHAN_W * _D                                # the overshoot, resolved on 45
+    _ax, _ay = fc[0] + _o, fc[1] + _o               # back toward the plug...
+    _bx, _by = xc - _o, y_turn - _o                 # ...and past the turn
+    _nx, _ny = -_D * CHAN_W / 2.0, _D * CHAN_W / 2.0    # normal to the diagonal
+    neg = neg.union(cq.Workplane("XY").workplane(offset=LS.Z_TOP - CHAN_D)
+                    .polyline([(_ax + _nx, _ay + _ny), (_bx + _nx, _by + _ny),
+                               (_bx - _nx, _by - _ny), (_ax - _nx, _ay - _ny)])
+                    .close().extrude(CHAN_D + 1.0))
     return None, neg
 
 
@@ -875,8 +894,9 @@ def harness():
     y_out = LS.LEG_Y - LS.LEG_W / 2.0
     xc = LS.LEG_X + CHAN_X                          # the channel's long leg
     f1 = TOP.p(fr, 0.0, zd)
-    body_path = [f0, f1, (f1[0], f1[1], zc), (xc, f1[1], zc), (xc, y_out, zc),
-                 (xc, y_out - 12.0, zc)]
+    _run = f1[0] - xc                               # the channel's 45 leg: as far
+    body_path = [f0, f1, (f1[0], f1[1], zc),        # -Y as it goes -X
+                 (xc, f1[1] - _run, zc), (xc, y_out, zc), (xc, y_out - 12.0, zc)]
     g0 = BOTTOM.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)
     g0b = BOTTOM.p(fr, 0.0, zd)                    # clear of the plug first...
     # ...then SLANT onto the leg's axis line on the way down, rather than stepping
