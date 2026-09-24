@@ -1676,7 +1676,7 @@ def _door_keepout(pad=0.55, lo=0.50, hi=1.80):
     return out
 
 
-def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-4.55):
+def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-2.94):
     """V5_PRE's NORTH HALF, laid: one spine down the reserved lane, one tap per ballast.
 
     ⚠ THE NORTH SIDE SHOULD NOT BE THE ROUTER'S JOB AT ALL (user, 2026-09-24: "we should
@@ -1718,10 +1718,10 @@ def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-4.55):
     return out
 
 
-_LED_VIA_DX = -2.66      # where LED_ROW comes up, east of V5_PRE's spine
+_LED_VIA_DX = -1.36      # LED_ROW surfaces ON its spine, under the detector column
 
 
-def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-5.95):
+def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-1.36):
     """LED_ROW's north half: the emitters' switched low side, one spine and ten taps.
 
     Same shape as _v5_spine and the same reason -- it is a rail with ten pads in a column
@@ -1733,12 +1733,25 @@ def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-5.95):
     -27.31..-22.31. So the spine sits in its own lane WEST of the detectors, outboard of
     V5_PRE's, and taps east to each emitter.
 
-    ⚠ AND IT RUNS ON In2, NOT F.Cu, BECAUSE THE TWO RAILS NEST. Both sit west of their own
-    pads and both tap EAST, so the outer one's taps must cross the inner one's spine -- two
-    different nets on one layer, ten times over. Putting the outer rail on the inner layer
-    and surfacing it EAST of V5_PRE's spine removes the crossing entirely: the only F.Cu
-    LED_ROW copper is the last 2.7 mm into each emitter, which starts beyond anything
-    V5_PRE owns. Ten vias, which is what a layer change costs.
+    ⚠ AND IT RUNS ON In2 UNDER THE DETECTOR COLUMN, WHICH IS THE ONLY PLACE IT FITS.
+    Two earlier attempts put it west of the detectors alongside V5_PRE, and BOTH were off
+    the board: the lane between the outline and the detector lands is 1.296 mm -- exactly
+    V5_LANE, sized for ONE 0.8 track -- and there was never room for a second rail there.
+    The error came from reading the west edge off GetBoardEdgesBoundingBox(), which
+    includes the jack-access notch hanging 1.8 mm past the outline, so the board looked
+    4 mm wider than it is. The user caught it in the render by toggling In2. ASK THE
+    OUTLINE SEGMENTS, not the bounding box -- the same lesson _i2c_spine records, one note
+    above, about a spine that ended up 0.22 mm off the edge.
+
+      board west edge (Edge.Cuts)      -28.606
+      V5_PRE spine, in its own lane    -27.900
+      detector lands                   -27.310 .. -22.310
+      LED_ROW spine, UNDER them        -26.600   (In2, no tracks there at all)
+
+    In2 is empty under the detectors -- every local link is F.Cu and the comb crossings all
+    begin east of the feedback caps -- and the detectors are SMD, so they obstruct nothing
+    on an inner layer. The rail surfaces on its own spine at each emitter's y and crosses
+    the last 1.36 mm on F.Cu, through the 1.0 mm gap the string's two detectors leave.
     The taps cross the detector band at the STRING's own y, where the two detectors of that
     string (at string_y +-2.15, land half-height 1.65) leave a 1.0 mm gap -- 0.35 mm of
     clearance either side of a 0.3 track. Tight and real; if a detector land ever grows,
@@ -2381,7 +2394,16 @@ BOARD_NOTES = {
     # reaching them is a fan-out, and _local_nets already solves fan-outs. Single linkage
     # finds the ten stations on its own; what it will NOT do is join station to station,
     # and that is the rail, below.
-    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]", r"MID"),
+    # ⚠ AND THE CONVERTERS' OWN REGULATOR/REFERENCE PINS, which were unconnected in every
+    # cell -- AREG, DREG and VREF, two islands each, five cells, FIFTEEN connections the
+    # router was drawing. Each is a pin and the bypass cap sitting directly beside it: the
+    # shortest connection on the board, and the most obviously local. Found by the user
+    # noticing the same short ratsnest stub repeating in all five cells ("whenever I see
+    # that repetition I get suspicious"), which is a better detector for this class of
+    # fault than anything automated here -- a per-cell omission looks like nothing at all
+    # in a total, and like a pattern the moment you see the board.
+    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]", r"MID", r"\+3V3A",
+                   r"ADC\d+_AREG", r"ADC\d+_DREG", r"ADC\d+_VREF"),
     "stitch_nets": ("GND",),
     # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
     # pair routes first and its escape vias occupy the copper beside the PHY, which
