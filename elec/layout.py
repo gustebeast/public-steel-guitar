@@ -1951,7 +1951,7 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
 
 def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                 clr=0.14, via_d=0.6, via_drill=0.3, same_part_only=False,
-                skip_nets=()):
+                skip_nets=(), corridors=()):
     """Lay the SHORT, LOCAL part of repetitive nets before the autorouter sees them.
 
     ⚠ THE TIA NETS ARE TWO PROBLEMS WEARING ONE NAME, and that is why they were the
@@ -2190,7 +2190,93 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                     skipped_edges.append(_edge_name(a, b, netname, math))
                 inside.append(b)
                 outside.remove(b)
-    return laid, skipped, skipped_edges
+    # ── CORRIDOR RUNS: cross a barrier through an ASSIGNED gap ──────────────────
+    # ⚠ THE ROUTER LOSES THIS ONE BY DESIGN, NOT BY WEAKNESS. Measured on the optical
+    # board: 13 of 20 TIA outputs cross the comb, 7 do not, and the 7 that do not are
+    # EXACTLY the 7 the DRC reports unconnected -- verified as identical sets. They are
+    # all the B channel. Capacity is not the issue: the busiest 4.00 mm strip carries 3
+    # crossings against ~13 per layer.
+    # What the router cannot know is that a string's A and B outputs are a PAIR that must
+    # take DIFFERENT gaps. It sees twenty independent nets, sends both channels of a
+    # string at whichever strip looks cheapest, wins with the first and strands the
+    # second. Nothing about searching harder fixes that; it is a missing constraint, not
+    # a missing path. Assigning the gaps is a decision, and a decision belongs in code.
+    # A goes through the strip +Y of its string, B through the strip -Y. Two nets per
+    # strip, every strip used once, by construction rather than by luck.
+    # Manhattan, three segments, each one clearance-checked against everything already on
+    # the board by the same machinery the local pass uses -- so this cannot lay copper the
+    # local pass would have refused. If no layer takes it, it is left for the router
+    # rather than forced.
+    corridor_laid, corridor_failed = 0, []
+    for netname, cy_mm, xw_mm, xe_mm in corridors:
+        group = by_net.get(netname) or []
+        if len(group) < 2:
+            corridor_failed.append("%s: fewer than two pads" % netname)
+            continue
+
+        def _mmx(q):
+            return pcbnew.ToMM(q.GetPosition().x) - SHEET_ORIGIN[0]
+
+        west = [q for q in group if _mmx(q) <= xw_mm]
+        east = [q for q in group if _mmx(q) >= xe_mm]
+        if not west or not east:
+            corridor_failed.append("%s: nothing on one side of the barrier" % netname)
+            continue
+        a = max(west, key=_mmx)                    # the east-most pad west of the gap
+        b = min(east, key=_mmx)                    # the west-most pad east of it
+        p0 = (a.GetPosition().x, a.GetPosition().y)
+        p5 = (b.GetPosition().x, b.GetPosition().y)
+        cy = _to_board(0.0, cy_mm)[1]
+        # ⚠ FIVE SEGMENTS, NOT THREE, AND THE JOG IS THE WHOLE POINT. A three-segment
+        # Manhattan path takes its vertical leg at the PAD'S OWN x -- which for these runs
+        # is inside the feedback column at one end and inside a converter cell at the
+        # other, the two densest places on the board -- and then drags a 28 mm horizontal
+        # leg through everything between. It placed 5 of 20. The run has to step into the
+        # OPEN BAND either side of the barrier first, turn there, cross, and only then go
+        # looking for its pad. Same three moves a person would make.
+        # The jog x is searched, not assumed: a millimetre either way decides whether it
+        # lands in a via field. Bounded and small -- a few offsets, three layers -- and
+        # every candidate is clearance-checked by the same machinery as the local pass,
+        # so this cannot place copper that pass would have refused.
+        done = False
+        for dw in (0.0, -1.0, -2.0, 1.0, -3.0):
+            for de in (0.0, 1.0, 2.0, -1.0, 3.0):
+                xw = _to_board(xw_mm + dw, 0.0)[0]
+                xe = _to_board(xe_mm + de, 0.0)[0]
+                # ⚠ STOP EAST OF THE BARRIER, DO NOT CHASE THE PAD. The far pad is a
+                # coupling cap deep inside a converter cell -- thirteen capacitors at 1.2
+                # mm pitch -- and driving a blind Manhattan leg in there failed 15 of 20.
+                # It also solves a problem nobody has: the router connects the east end of
+                # every one of these nets already; the ONLY thing it cannot do is pick
+                # which gap to cross. So this lays pad -> jog -> ACROSS and stops in open
+                # copper, which is the same bargain _local_nets strikes at the other end
+                # (lay the part the router is bad at, hand back the part it is good at).
+                # Freerouting takes a pre-laid trace as fixed and routes TO it -- that is
+                # the 17 "froze ... as (type fix)" wires in route.py's log. The warning
+                # about pre-laid geometry on this board is about VIAS, which it will not
+                # connect; a track is not a via.
+                p1, p2, p3 = (xw, p0[1]), (xw, cy), (xe, cy)
+                legs = ((p0, p1), (p1, p2), (p2, p3))
+                # `inner` is a layer NAME here, as _hop_via_inner takes it -- _LAYERS
+                # maps it to the id SetLayer wants.
+                for lay in (pcbnew.F_Cu,
+                            _LAYERS[inner] if inner else None, pcbnew.B_Cu):
+                    if lay is None:
+                        continue
+                    if all(seg_clear(q0, q1, netname, layer=lay) for q0, q1 in legs):
+                        for q0, q1 in legs:
+                            emit(q0, q1, a, netname, lay)
+                        corridor_laid += 1
+                        done = True
+                        break
+                if done:
+                    break
+            if done:
+                break
+        if not done:
+            corridor_failed.append("%s: no layer/jog clear through y=%.2f" % (netname, cy_mm))
+
+    return laid, skipped, skipped_edges, corridor_laid, corridor_failed
 
 
 def _edge_name(a, b, netname, math):
@@ -3079,12 +3165,18 @@ def build(stem):
         # NOT `skipped` -- that name already holds the single-pad net count this
         # function reports at the end, and shadowing it made the summary line claim
         # 40 nets had appeared out of nowhere.
-        n_laid, n_left, n_why = _local_nets(board, notes["local_nets"], _outline_pts(notes),
-                                     inner=_local_inner(notes))
+        n_laid, n_left, n_why, c_laid, c_why = _local_nets(
+            board, notes["local_nets"], _outline_pts(notes),
+            inner=_local_inner(notes), corridors=notes.get("corridors", ()))
         print("  local nets: laid %d segment(s)%s"
               % (n_laid, ", %d left to the router" % n_left if n_left else ""))
         for _e in n_why:
             print("      not placeable: %s" % _e)
+        if notes.get("corridors"):
+            print("  corridor runs: %d of %d crossed on an assigned gap"
+                  % (c_laid, len(notes["corridors"])))
+            for _e in c_why:
+                print("      corridor not placeable: %s" % _e)
 
     # ⚠ LOCAL NETS FIRST, RETRY SECOND, BY THE SAME ARGUMENT THE STITCHER GOT ABOVE: the
     # routine with fewer alternatives goes first. A local cluster is three pads a couple
@@ -3116,7 +3208,7 @@ def build(stem):
     if os.path.isfile(retry):
         want = json.load(open(retry, encoding="utf-8"))
         if want:
-            n_laid, n_left, n_why = _local_nets(
+            n_laid, n_left, n_why, _cl, _cw = _local_nets(
                 board, [re.escape(n) for n in want], _outline_pts(notes),
                 local_mm=1e9, inner=_local_inner(notes))
             print("  retry: laid %d segment(s) for %d net(s) the router could not finish"
