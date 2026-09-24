@@ -1114,7 +1114,8 @@ def _parts():
     # because there was space, and moving them would free the x C112 wants. That costs a
     # row somewhere else, which costs board length, which is the 0.11 mm above.
     # C113 is unaffected -- VCAP2 is on the +X edge, where there is a 7.6 mm strip.
-    _spread(P, y - 0.5,
+    _pwr_row_y = y - 0.5
+    _spread(P, _pwr_row_y,
             [("C%d" % (141 + k), "power-input decoupling", "0402") for k in range(3)],
             x0, x1)
     # ⚠ C113 IS PLACED BY HAND BECAUSE ITS PIN IS ON A DIFFERENT EDGE. VCAP1 and VCAP2
@@ -1163,8 +1164,51 @@ def _parts():
         _c113_x, _c113_y)
     y -= 1.0 + CRTYD_GAP
 
-    y = _block(P, y, [("C%d" % (100 + k), "MCU decoupling", "0402") for k in range(12)]
-                     + [("R30", "BOOT0 pull-down", "0402"),
+    # ⚠ THE DECOUPLING IS A RING ROUND THE PACKAGE NOW, NOT A ROW IN THE PACKER.
+    # _block fills horizontal rows spanning the whole board width, which is a PACKING
+    # strategy with no idea which pin a part serves -- so the MCU's twelve 0402s came out
+    # in one line at a fixed y, strung from x -36.7 to -2.0. Eight were more than 5 mm off
+    # the body and the farthest was 26.5. At that distance the pin-cap-return loop is
+    # 15-20 nH and the capacitor does nothing above a few MHz: they were twelve parts on
+    # the right net doing none of the job the net exists for. (The file already knew the
+    # shape of this -- see the C112/C113 notes above, 12 mm and 22.6 mm from their own
+    # VCAP pins, hand-placed out of the row for exactly this reason. Those two were the
+    # symptom that got noticed; the other twelve were the same bug, unexamined.)
+    # An LQFP176 has VDD/VSS pairs on all four sides and this board has NO back side to
+    # put caps on (Economic tier is single-sided), so they ring the package on top.
+    # Six west, six south: the +X strip is already C112/C113's, and the +Y side has 0.15 mm
+    # before the sensing strip -- and digital decoupling does not belong in the analog
+    # field anyway.
+    # ⚠ DERIVED FROM U6, NOT TYPED. The MCU wants to move -Y (ULPI is 60 MHz against the
+    # TDM lanes' few MHz, and it is currently jammed +Y against the strip, which optimises
+    # the wrong bus). Hanging these off _part_x/_part_y means that move carries them along
+    # instead of stranding them, which is how the row got stale in the first place.
+    # Even spacing, not pin-exact: the LQFP176 pin table is not in the extracted datasheet
+    # text and I will not invent pin numbers. Worst case a cap is half a side (~7 mm) from
+    # its nearest VDD pair against 26.5 now, typical 2-4. Pin-exact placement using
+    # _lqfp_pin_offset() is a further improvement once the pin list is in hand.
+    # ⚠ -X AND +X, NOT -Y, AND THE -Y BAND IS WHY. Between U6's courtyard and the power
+    # row there is 11.3 mm, and it already carries the power-input row AND the block with
+    # R30/R31 and the five SWD pads. Both collided with a -Y arm in turn, and the obvious
+    # fix -- push those rows -Y -- lengthens the board and breaks the conduit assert:
+    # CONDUIT_Y0 has 0.11 mm inside the endplate's exterior-wall limit, so nothing down
+    # here may grow -Y at all. The two X flanks are genuinely open, so the ring uses them.
+    # Eight -X (27.4 mm of clear edge) and four +X, the +X four sitting OUTBOARD of
+    # C112/C113 -- those two own the inner lane of that strip and are there because their
+    # own VCAP pins are. 4.3 mm off the package for those four, 0.7 for the other eight.
+    _dec_off = CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0402"][1] / 2
+    _dec_off_e = (CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0]
+                  + CRTYD_GAP + CRTYD["0402"][1] / 2)
+    for _k in range(8):
+        add("C%d" % (100 + _k), "MCU decoupling -- -X edge of the package", "0402",
+            _part_x("U6") - _dec_off,
+            _part_y("U6") + (_k - 3.5) / 3.5 * 11.0, 90.0)
+    for _k in range(4):
+        add("C%d" % (108 + _k), "MCU decoupling -- +X edge, outboard of C112/C113",
+            "0402", _part_x("U6") + _dec_off_e,
+            _part_y("U6") + (_k - 1.5) / 1.5 * 9.0, 90.0)
+
+    y = _block(P, y, [("R30", "BOOT0 pull-down", "0402"),
                         ("R31", "NRST pull-up", "0402")]
                      # ⚠ THE SWD PADS, WITHOUT WHICH THIS BOARD CANNOT BE PROGRAMMED
                      # AT ALL -- see the long note in elec/optical.py. They sit in the
