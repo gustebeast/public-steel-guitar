@@ -308,38 +308,70 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     from .helpers import box_at
     zb = RIB_LZ - TRAY_Z1          # cradle frame: the endplate's wall, -26.5 below the mount face
     CLR, WALL, LIP = 0.3, D.MIN_WALL_2P, 1.2
+    RETAIN = 1.2          # how far the 45 deg lean reaches over the board (= its rise)
+    HARNESS_W = 24.0      # the -Y notch the cable leaves through
 
     def _cyl_col(x, y, d, z0, z1):
         return cq.Workplane("XY").add(cq.Solid.makeCylinder(d / 2.0, z1 - z0, cq.Vector(x, y, z0)))
 
-    def _frame(bw, bl, boss_xy, slide_in_x=False):
+    def _frame(bw, bl, boss_xy, slide_in_x=False, harness_w=0.0):
         """A board cradle made ONLY of columns rising from the endplate wall (local z `zb`)
         to the board: a ring round the board -- a LIP under its edge to carry it, then on up
-        0.8 past its top as the locating wall, open above the board on -Y (the harness side)
-        -- and an M4 boss column at `boss_xy`, the insert in its top. Centred on the board."""
+        past its top as the locating wall -- and an M4 boss column at `boss_xy`, the insert
+        in its top. Centred on the board.
+
+        ⚠ ONE INSTALL DIRECTION, +Z -> -Z (user, 2026-09-24). Both boards used to have
+        more than one way in, which is a way OUT for anything the single M4 does not hold:
+        the motor controller had two (world -Y and world +X) and the Pi three. The axes are
+        worth writing down because stand() inverts one and this file has already shipped a
+        bug from getting it backwards:
+            local +X -> world -Z      local +Y -> world +Y      local +Z -> world +X
+        so world +Z, the drop-in, is local -X -- that is the mouth, and the only opening.
+        Closing the other two means:
+          * the local -Y wall comes BACK. It was cut full width for the harness; it is a
+            `harness_w` notch now, so the cable still leaves and the board no longer does.
+          * a RETAINER over the board, which is what stopped it lifting straight out --
+            the locating wall ends beside the board with nothing above it.
+        ⚠ AND THE RETAINER CANNOT BE A PLAIN LIP, because of the print direction. This
+        endplate builds along world +X = local +z, so anything reaching over the board has
+        its underside pointing DOWN the build axis: a ceiling. The wall therefore leans IN
+        at 45 above the board's top face -- self-supporting, same trick as the LED roof --
+        and the board is captured with about `RETAIN` of lift before it meets the lean.
+        The board still slides in under it along the mouth direction, so the one install
+        direction is unaffected.
+        """
         ox, oy = bw / 2 + CLR + WALL, bl / 2 + CLR + WALL
-        top = POST_H + BD_T + 0.8
+        btop = POST_H + BD_T                       # the board's top face
+        top = btop + RETAIN + 0.8                  # wall now clears the retainer too
         ring = (box_at(2 * ox, 2 * oy, POST_H - zb, x=0.0, y=0.0, z=(zb + POST_H) / 2)
                 .cut(box_at(bw - 2 * LIP, bl - 2 * LIP, 80.0, x=0.0, y=0.0, z=0.0)))
         wall = (box_at(2 * ox, 2 * oy, top - POST_H, x=0.0, y=0.0, z=(POST_H + top) / 2)
-                .cut(box_at(bw + 2 * CLR, bl + 2 * CLR, 80.0, x=0.0, y=0.0, z=0.0))
-                .cut(box_at(2 * ox + 2, 2 * WALL + 2 * CLR + 2, 80.0, x=0.0, y=-bl / 2, z=0.0)))
+                .cut(box_at(bw + 2 * CLR, bl + 2 * CLR, btop - POST_H + 0.02,
+                            x=0.0, y=0.0, z=(POST_H + btop) / 2)))
+        # the 45 deg lean: a void that opens OUT as it rises, cut from the wall above the
+        # board. At the board's top face it is the board's own clearance box; RETAIN higher
+        # it has grown by RETAIN on every side, so the material between leans inward at 45.
+        # ⚠ THE VOID SHRINKS AS IT RISES, and getting that backwards is the whole trick.
+        # Material must move INWARD going up, so each layer is carried by the one beneath
+        # it -- at RETAIN over RETAIN that is exactly 45 deg and prints unsupported. The
+        # first version lofted the void the other way: the wall receded outward as it rose
+        # and nothing ever reached over the board, which measured as 0% retainer on every
+        # edge while looking perfectly reasonable in the source.
+        lean = (cq.Workplane("XY").workplane(offset=btop)
+                .rect(bw + 2 * CLR, bl + 2 * CLR)
+                .workplane(offset=RETAIN)
+                .rect(bw + 2 * CLR - 2 * RETAIN, bl + 2 * CLR - 2 * RETAIN)
+                .loft())
+        wall = wall.cut(lean).cut(box_at(bw + 2 * CLR - 2 * RETAIN, bl + 2 * CLR - 2 * RETAIN,
+                                         80.0, x=0.0, y=0.0, z=btop + RETAIN + 40.0))
+        # THE HARNESS NOTCH, not an open side: the cable leaves, the board does not.
+        if harness_w > 0.0:
+            wall = wall.cut(box_at(harness_w, 2 * WALL + 2 * CLR + 2, 80.0,
+                                   x=0.0, y=-bl / 2, z=0.0))
         if slide_in_x:
-            # ⚠ AND AN INSTALL MOUTH (user, 2026-09-22): "slide into place from +Z to -Z
-            # rather than from +X to -X". Opening it is what lets the board be lowered into
-            # the cradle IN ITS OWN PLANE instead of being pressed face-first into the wall.
-            # ⚠ IT IS THE LOCAL -X SIDE, AND THAT IS NOT THE OBVIOUS ONE. stand() INVERTS
-            # this axis: the frame's local -x is the instrument's +Z, so the mouth the board
-            # is lowered THROUGH is the one that looks like the bottom here. Cutting +x
-            # instead left all 252 mm3 exactly where it was, which is how this was caught --
-            # the swept volume, not the picture, is what says which side opened.
-            # ⚠ IT IS THE ONLY THING IN THE WAY. Swept over the whole 66 mm stroke against
-            # the finished endplate, the board passes through 269 mm3 of material and 252 of
-            # that is this one wall -- a 2.4 x 1.6 ledge running the board's full length.
-            # The rest is ~17 mm3 of slot fins its corner grazes. So this is a mouth, not a
-            # redesign. The -Y opening STAYS: that one is the harness's, not the board's.
-            # Retention is unchanged -- the lip still carries the board, the other three
-            # walls still locate it, and the M4 through the boss is what holds it in.
+            # ⚠ THE MOUTH IS LOCAL -X, WHICH IS WORLD +Z. stand() inverts this axis, and
+            # cutting +x instead left all 252 mm3 exactly where it was -- the swept volume,
+            # not the picture, is what said which side had opened.
             wall = wall.cut(box_at(2 * WALL + 2 * CLR + 2, 2 * oy + 2, 80.0,
                                    x=-bw / 2, y=0.0, z=0.0))
         cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zb, POST_H))
@@ -360,7 +392,7 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     y1 = y1 + MCTRL_EAR_H
     bw, bl = x1 - x0, y1 - y0
     hx, hy = MCTRL_HOLE[0], MCTRL_HOLE[1] - MCTRL_EAR_H / 2.0
-    cr = _frame(bw, bl, (hx, hy))
+    cr = _frame(bw, bl, (hx, hy), slide_in_x=True, harness_w=HARNESS_W)
     cr = _cut_anchor(_M4, cr, (hx, hy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
     mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
@@ -375,7 +407,7 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     x0, x1, y0, y1 = PI_FP
     pw, pl = x1 - x0, y1 - y0
     phx, phy = pcb_hold_xy(pw, pl, "+y", hold_at=0.0, clr=CLR, spec=_M4)
-    cr = _frame(pw, pl, (phx, phy), slide_in_x=True)
+    cr = _frame(pw, pl, (phx, phy), slide_in_x=True, harness_w=HARNESS_W)
     cr = cr.cut(_cyl_col(phx, phy, M4_BUTTON_HEAD_D + 2 * CLR, POST_H, POST_H + 20.0))
     cr = _cut_anchor(_M4, cr, (phx, phy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
     pi = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
