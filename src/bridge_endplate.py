@@ -304,7 +304,14 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 AXLE_END_WALL = MIN_ADDED                             # -Y blind-bore wall (the 2-bead tier)
 # ⚠ ENDS ON THE ARM'S OUTER FACE. Do not "tidy" this back out to the plinth end: that
 # re-cuts the install channel, and the solid beyond it is the +Y stop.
-AXLE_CHAN_Y1  = D.BRIDGE_ARM_OUT
+# the pocket's +Y face, and it is the PLINTH -- the shaft ends 0.15 proud of the arm now,
+# so this is 0.30 past the arm face rather than flush with it. That is still solid plinth
+# (it runs to OP.PCB_YP), and it is the shaft's +Y stop.
+AXLE_CHAN_Y1  = D.BRIDGE_AXLE_Y1 + D.BRIDGE_AXLE_END_CLR
+_AXLE_END_PLAY = AXLE_CHAN_Y1 - D.BRIDGE_AXLE_Y1
+assert abs(_AXLE_END_PLAY - D.BRIDGE_AXLE_END_CLR) < 1e-9, (
+    f"the +Y pocket face gives the shaft {_AXLE_END_PLAY:.2f} of float, not the "
+    f"{D.BRIDGE_AXLE_END_CLR} asked for")
 _AXLE_STOP_WALL = OP.PLINTH_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2)
 assert _AXLE_STOP_WALL >= 0.0, (
     f"the +Y stop is the wrap plinth and its top is {-_AXLE_STOP_WALL:.2f} BELOW the "
@@ -315,7 +322,10 @@ assert 0.0 <= _AXLE_CAP_GAP <= 0.6, (
     f"over 0.6 it stops being a cap and the shaft can lift out of a 175 deg opening")
 # ...and the -Y wall has to SURVIVE every other cut in this part, not merely be drawn.
 # The comb-finger bores used to eat it whole -- see the clamp in _build's comb loop.
-_AXLE_BLIND_WALL = D.BRIDGE_AXLE_Y0 - -D.BRIDGE_ARM_OUT
+# measured to the BORE FLOOR, not to the shaft's end: those differ by
+# BRIDGE_AXLE_END_CLR now, and measuring to the shaft would read the wall 0.15
+# thicker than it is -- an assert that flatters itself is worse than none.
+_AXLE_BLIND_WALL = (D.BRIDGE_AXLE_Y0 - D.BRIDGE_AXLE_END_CLR) - -D.BRIDGE_ARM_OUT
 assert _AXLE_BLIND_WALL >= D.MIN_WALL_2P - 1e-9, (
     f"the axle's -Y blind wall is {_AXLE_BLIND_WALL:.2f}, under the {D.MIN_WALL_2P} floor -- "
     f"that wall is the shaft's install stop")
