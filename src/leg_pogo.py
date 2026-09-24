@@ -721,29 +721,72 @@ _ROUTE_WALL = min(LS.TEN_W / 2.0 - (ROUTE_X * nx + ROUTE_OFF * ny) * _D
 assert _ROUTE_WALL - ROUTE_D / 2.0 * math.sqrt(2) >= D.MIN_WALL_2P, (
     "the adjust tenon's lane leaves only %.2f to its nearest flat"
     % (_ROUTE_WALL - ROUTE_D / 2.0 * math.sqrt(2)))
-CHAN_W = 4 * B                  # 3.2: the harness with room
-CHAN_X = -13 * B                # -10.4 off the leg's axis: where the channel's LONG
-                                # run down the adapter's top face sits.
+CHAN_W = 3 * B                  # 2.4 across the run and 2.4 up it. The channel is a
+CHAN_H = 3 * B                  # PRISM, not a bore (user), and the point of a prism
+                                # here is that THE SECTION IS FREE: the run's axis is
+                                # 27 off the build, so every wall a sweep of it
+                                # presents stands at least 63 off the bed WHATEVER the
+                                # section's shape -- the 45 rule is about the axis (see
+                                # adapter_features). A bore bought nothing for that,
+                                # and its teardrop apex bought less than nothing: it
+                                # reaches r*sqrt(2) into the material to hold up a roof
+                                # this run does not have.
                                 #
-                                # IT IS OUTBOARD OF EVERY BODY TENON, and that is the
-                                # whole point of the number. The tenons stand on this
-                                # same face and run the same way, so a channel on the
-                                # connector's own line went straight under the outermost
-                                # one's foot -- 3.20 wide and 2.00 deep for 21.45 of its
-                                # 32.49 run, which is where it grabs the adapter (user
-                                # saw it in the tab). Out here the run clears that foot
-                                # by 2.26 and still leaves 10.40 to the -X face.
+                                # So the section is sized to the HARNESS and to the
+                                # clearances the run has to make, not to the printer.
+                                # Against the O3.2 teardropped bore it replaces it is
+                                # 1.06 narrower each side -- and sideways is the half
+                                # that matters, because what this run passes closest to
+                                # (the female's M4 insert) it passes beside. Against a
+                                # O2.4 bore of the same width it is 5.76 of room for
+                                # the 2.40 bundle rather than 4.52: the corners are
+                                # slack a circle round the same bundle does not have,
+                                # and this is a 35 mm tunnel that gets threaded bare.
+CHAN_X = -18 * B                # -14.4 off the leg's axis: where the run comes out.
                                 #
-                                # The gaps BETWEEN tenons cannot take it: they are 3.80
-                                # and 3.60 against a 3.20 channel, so the best either
-                                # could leave is 0.30 a side.
+                                # IT IS OUTBOARD OF EVERY BODY TENON. The tenons stand
+                                # on this same face and run the same way, so a channel
+                                # on the connector's own line went straight under the
+                                # outermost one's foot -- for 21.45 of its 32.49 run,
+                                # which is where it grabs the adapter (user saw it in
+                                # the tab). Out here it clears that foot by 6.66.
                                 #
-                                # Getting there costs no dog-leg worth the name. The ZR's
-                                # mouth already faces -t, which is -X+Y, so the harness
-                                # leaves the connector heading THIS way; the channel just
-                                # carries on to the lane before turning down it.
-CHAN_D = 6 * B                  # 4.8 -- the body tenons are fused on after this is cut
-                                # and refill the groove's top ~1 mm
+                                # The gaps BETWEEN tenons cannot take it either: they
+                                # are 3.80 and 3.60 against a 2.40 channel, so the best
+                                # a gap could leave is 0.60 a side.
+                                #
+                                # AND IT IS 4.00 FURTHER OUT THAN THE TENONS ALONE ASK,
+                                # because of what else the run goes past (user saw it in
+                                # the tab). The female's M4 insert is a O6 pocket
+                                # standing 10 tall in the adapter, and the run passes it
+                                # broadside: at -10.4 the two axes came within 4.35,
+                                # which with a O3.2 bore is 0.25 INSIDE the pocket --
+                                # not thin, BREACHED. A breach leaves no wall for
+                                # check_thin to measure, which is why finding it took an
+                                # eye on the tab. Out here they clear by 5.95 and the
+                                # wall between them is 1.75.
+                                #
+                                # Nothing is paid for the extra 4.00: the -X face is
+                                # still 6.80 away, and every millimetre -X is also a
+                                # millimetre further from the tenon foot. Going FURTHER
+                                # is not free, though. The line is pinned at the plug
+                                # and swings about it, so past about -15 it starts
+                                # grazing the connector's own cavity at the other end
+                                # (0.45 at -20). This is a window, not a direction.
+                                #
+                                # Getting there costs no dog-leg. The ZR's mouth already
+                                # faces -t, which is -X+Y, so the harness leaves the
+                                # connector heading THIS way and the channel simply
+                                # carries on.
+CHAN_D = 5 * B                  # 4.0 to the channel's FLOOR below the adapter's top
+                                # face, which lands its roof exactly MIN_WALL_2P under
+                                # that face. BOTH ends of that are load-bearing. A bead
+                                # deeper and the floor shaves the top corner off the
+                                # board pocket's outer wall on the way past, leaving a
+                                # 1.21 lip on it; a bead of section taller and the roof
+                                # comes up to 0.80 of the top face. 4.0 and 2.4 is the
+                                # window between them, and the part measures at its
+                                # baseline inside it -- see chan_ends
 
 
 def chan_ends(j=None):
@@ -763,10 +806,32 @@ def chan_ends(j=None):
     a = j.p(ZR_MOUTH - ZR_PLUG - 0.1 - STUB_LEAD, 0.0,
             F_TOP + ZR_H / 2.0)                         # clear of the ZR's plug
     b = (j.x + CHAN_X, j.y - LS.LEG_W / 2.0 - 1.0,      # ...out through the -Y face
-         LS.Z_TOP - CHAN_D + HARNESS_D / 2.0 + 0.2)
+         LS.Z_TOP - CHAN_D + CHAN_H / 2.0)               # ...on the channel's own axis
     v = [b[k] - a[k] for k in range(3)]
     n = math.sqrt(sum(c * c for c in v))
     return a, b, tuple(c / n for c in v), n
+
+
+def chan_cutter(j=None):
+    """The channel itself: the diagonal of chan_ends swept as a RECTANGULAR PRISM.
+
+    The section's ACROSS direction is z x u -- square to the run and as near the world's
+    x as the run allows -- so the width is spent sideways, where the female's M4 insert
+    is, and the height stands up the adapter, where there is room. A bore has no such
+    handle: it is as wide as it is tall, and a teardropped one is wider still.
+
+    It overshoots CHAN_W at both ends along its own axis. Short at the plug it would
+    stop inside the connector's cavity instead of merging with it, and short at the face
+    it would leave a film of the outside wall over its own mouth.
+    """
+    a, _b, u, n = chan_ends(j)
+    e = (-u[1], u[0], 0.0)                          # z x u: across the run, near enough x
+    m = math.sqrt(e[0] ** 2 + e[1] ** 2)
+    e = (e[0] / m, e[1] / m, 0.0)
+    o = tuple(a[k] - u[k] * CHAN_W for k in range(3))
+    return (cq.Workplane(cq.Plane(origin=cq.Vector(*o), xDir=cq.Vector(*e),
+                                  normal=cq.Vector(*u)))
+            .rect(CHAN_W, CHAN_H).extrude(n + 2 * CHAN_W))
 
 
 def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
@@ -789,13 +854,20 @@ def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     # THE 45 RULE IS ABOUT THE AXIS. A swept channel's walls all contain its axis, so
     # the steepest wall it can present is (90 - the angle between that axis and the
     # build direction). Keep the axis within 45 of the build and no wall it sweeps can
-    # be a ceiling, whichever way the section is turned. This one runs 22.5 off the
+    # be a ceiling, whichever way the section is turned. This one runs 27.0 off the
     # build axis, with room to spare.
     #
-    # AND IT GOES UNDER THE TENONS RATHER THAN THROUGH THEM. Buried, it crosses the
-    # outermost tenon's x band 10.49 BELOW Z_TOP -- the body tenons all stand above
-    # that face -- so it takes nothing off any of them. The L clipped one by 27.0 mm3
-    # even on the 45, and by 137.0 mm3 square.
+    # AND IT GOES UNDER THE TENONS RATHER THAN THROUGH THEM. Buried, it is already
+    # 11.51 BELOW Z_TOP where it leaves the outermost tenon's x band, and the body
+    # tenons all stand ABOVE that face, so it takes nothing off any of them: 0.0 mm3,
+    # measured against all three. The L clipped one by 27.0 mm3 even on the 45 and by
+    # 137.0 mm3 square, because both Ls lived in the top face, where the tenons are.
+    #
+    # AND IT IS CUT AS A PRISM, not a bore (user). Because the rule above is about the
+    # AXIS, every wall the sweep presents is 67 off the bed whatever the section is --
+    # so the section is free, and is spent on the harness and on the clearances the run
+    # actually has to make rather than on a teardrop holding up a roof that is not
+    # there. See CHAN_W / CHAN_H, and chan_cutter for which way round it is turned.
     #
     # It is a TUNNEL, not a groove, and that is what the install order already assumes:
     # the harness is threaded BARE through the leg and crimped afterwards (see
@@ -804,7 +876,7 @@ def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     assert abs(u[1]) >= math.cos(math.radians(45.0)), (
         "the harness channel runs %.1f deg off the adapter's build axis, so a wall it "
         "sweeps is steeper than 45" % math.degrees(math.acos(abs(u[1]))))
-    neg = neg.union(teardrop_hole(CHAN_W, n + CHAN_W, a, u, LS.PRINT_UP["body_adapter"]))
+    neg = neg.union(chan_cutter(j))
 
     return None, neg
 

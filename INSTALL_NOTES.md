@@ -77,6 +77,8 @@ be swapped.
    adapter's channel is a TUNNEL on a single diagonal, not an open groove you can
    lay a wire into from above, so it is threaded like every other bore -- which is
    why it can run buried, under the body tenons instead of through one of them.
+   It is SQUARE, 2.4 x 2.4 over 35 mm: feed the four conductors through it one at a
+   time rather than as a bundle, and they will lie two and two in the corners.
 3. **Plug the PHR-4 onto the male board** while the board is still in your hand. The
    PH's room is swept the whole depth of the slot, so the board can go in with its
    plug already on — and that is the easy way round, because the plug's mouth faces
