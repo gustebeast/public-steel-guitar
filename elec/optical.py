@@ -1754,13 +1754,31 @@ BOARD_NOTES = {
     # gate was clean, ERC was clean, the netlist was clean, and BOM/CAD/netlist agreed.
     # Nothing compares the CAD's cutouts against the board's.
     "outline_holes": [],
-    "outline_slots": ([{"poly": [[x - CX, -y - CY] for x, y in _p],
-                        "rects": [[r[0] - CX, -r[3] - CY, r[2] - CX, -r[1] - CY]
+    # ⚠ y - CY, NOT -y - CY. layout._to_board already flips to KiCad's y-down
+    # (SHEET_ORIGIN[1] - y), and _placements feeds it an UNnegated y, so a second negation
+    # here mirrors the cutouts against the parts. The outline_holes line this replaced had
+    # exactly that error and it never showed, because a symmetric +-Y hole maps onto
+    # itself; so does the comb, which is why the first route improved anyway. The jack
+    # access hole below is the first asymmetric cutout on this board and would have landed
+    # 91.2 mm from its screw.
+    "outline_slots": ([{"poly": [[x - CX, y - CY] for x, y in _p],
+                        "rects": [[r[0] - CX, r[1] - CY, r[2] - CX, r[3] - CY]
                                   for r in (OP.O_SLOTS[_i],
                                             OP.O_SLOTS[len(OP.O_SLOTS) // 2 + _i])]}
                        for _i, _p in enumerate(OP._slot_polys())] if OP.O_SHAPE else []),
-    "cutouts": [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.O_ROD_HOLE_D}
-                for x, y in OP.O_ROD_HOLES],
+    # ⚠ AND THE JACK'S ACCESS HOLE, WHICH THE FAB DATA DID NOT HAVE AT ALL. The CAD cuts
+    # a O4.4 clearance hole through the board so a driver can reach the pickup-height jack
+    # screw (optical_pickup line ~2501, pcb.cut(jack_access())), and nothing emitted it --
+    # "cutouts" was driven solely by O_ROD_HOLES, which is empty. The board would have
+    # shipped with no way to adjust pickup height once it was fitted.
+    # Found by the cutout comparison added to cad_geom_check on its first real run: 11
+    # holes in the CAD against 10 on the board. Same class as the comb, and the reason
+    # that check now runs with every route rather than on request.
+    "cutouts": ([{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.O_ROD_HOLE_D}
+                 for x, y in OP.O_ROD_HOLES]
+                + [{"xy": [round(OP.JACK_ACCESS_XY[0] - CX, 4),
+                           round(OP.JACK_ACCESS_XY[1] - CY, 4)],
+                    "d": OP.JACK_ACCESS_D}]),
     "layers": 4,
     "thickness_mm": 1.6,
     # FOUR LAYERS, and on this board it is the least negotiable of the five. In1.Cu
