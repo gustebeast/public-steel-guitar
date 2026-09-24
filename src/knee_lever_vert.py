@@ -63,7 +63,7 @@ from . import knee_lever as KL
 from .motor_bank import BED_Z as _BED_Z     # the chassis print-bed datum (= chassis.Z_BOT;
                                             # imported from motor_bank to stay out of the
                                             # chassis import cycle)
-from .helpers import box_at, cyl_y, heal
+from .helpers import box_at, cyl_y, heal, pose_dir
 
 
 # ── throw + the lobe that keeps the feel identical ───────────────────────────
@@ -188,6 +188,15 @@ HOUS_Z0 = min(-(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL),
 assert not KL.board_flip(HOUS_Z0, HOUS_Z1), (
     "LKV wants the board AS DRAWN so its CAN plug exits +Y, but this housing only "
     "fits it turned over — the floor must reach PCB_Z0 - CR_FLOOR_T")
+# PRINT ORIENTATION (the record, declared once per part) -- the housing goes on the bed
+# on its FLOOR and builds +Z, in world coordinates. It is written here rather than
+# transcribed into a checker because it is a design fact: every 45 in the horizontal lever is
+# drawn self-supporting AGAINST THIS, the keeper's foot is sized "on the bed" at
+# HOUS_Z0, and the buttress "grows up from the print bed". A part that is ever
+# re-oriented brings this declaration along with it, and tools.check_ceilings reads it
+# by name (src.leg_stack's SLEEVE_UP and friends set the pattern).
+PRINT_UP = (0.0, 0.0, 1.0)
+
 AXLE_DROP = HOUS_Z1 - KL.HOUS_Z1    # how much lower the axle sits than LKL's (+11.0..15.2)
 
 # ── mount tenons: slide along LOCAL X (see the docstring) ────────────────────
@@ -353,9 +362,26 @@ MOUNT_Z = _Z_BOT - HOUS_Z1          # housing top flush with the chassis undersi
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 
 
+POSE_ROT = (((0, 0, 1), -90),)      # ...the rotation half of it, on its own
+
+
 def place(s):
     """Local frame -> guitar frame."""
-    return s.rotate((0, 0, 0), (0, 0, 1), -90).translate(MOUNT_POSE)
+    s = _rot(s)
+    return s.translate(MOUNT_POSE)
+
+
+def _rot(s):
+    for ax, deg in POSE_ROT:
+        s = s.rotate((0, 0, 0), ax, deg)
+    return s
+
+
+# PRINT ORIENTATION (the record, declared once per part) -- the ARM is the horizontal
+# lever's arm, so it prints the way that one does; it just arrives in the guitar frame
+# turned. Derived through this module's OWN pose rather than written out as +X, so a
+# change to `place` carries it: local +Y -> world +X.
+LEVER_UP = pose_dir(POSE_ROT, KL.LEVER_UP)
 
 
 # ── the boards must be ONE design (user) ────────────────────────────────────
