@@ -22,11 +22,20 @@ def net_of(ref, pin):
     return pin2net.get((ref, str(pin)))
 
 
-SEC = {0: (1, 2, 3), 1: (14, 13, 12), 2: (8, 9, 10), 3: (7, 6, 5)}
+# ⚠ TEN DUALS, NOT FIVE QUADS (2026-09-24). This audited U1-U5 as TLV9064s with SOIC-14
+# pin numbers and Rf<quad><section> naming, and after the dual conversion every one of its
+# twenty channels reported five failures -- a hundred lines of false alarm. An audit that
+# is wrong about the design it audits is worse than no audit, because it teaches you to
+# scroll past it, and the next real failure scrolls past with it.
+# Same shape as the two other stale-derivative bugs this board has produced: O_HOLE_X0/X1
+# outliving the comb, and ADC_BUS_CH's measured value outliving its name.
+# VSSOP-8 dual: 1 OUT_A, 2 IN-_A, 3 IN+_A, 4 V-, 5 IN+_B, 6 IN-_B, 7 OUT_B, 8 V+.
+# One package per string, U21..U30; section A takes the +Y detector, B the -Y one.
+SEC = {"A": (1, 2, 3), "B": (7, 6, 5)}                # (out, in-, in+)
 for ch in range(20):
     i, side = ch // 2 + 1, "AB"[ch % 2]
-    q = ch // 4 + 1
-    out_p, inn_p, inp_p = SEC[ch % 4]
+    q = 20 + i                                        # U21..U30, one dual per string
+    out_p, inn_p, inp_p = SEC[side]
     k, s = ch // 4, ch % 4 + 1
     pd = "PD%d%s" % (i, side)
     summ, out = "TIA_IN_%d%s" % (i, side), "TIA_OUT_%d%s" % (i, side)
@@ -35,7 +44,7 @@ for ch in range(20):
     chk(net_of("U%d" % q, inn_p) == summ, "%s: U%d IN- %d not on summing node" % (pd, q, inn_p))
     chk(net_of("U%d" % q, inp_p) == "MID", "U%d IN+ %d not on MID" % (q, inp_p))
     chk(net_of("U%d" % q, out_p) == out, "U%d OUT %d not %s" % (q, out_p, out))
-    n = "%d%d" % (q, ch % 4 + 1)
+    n = "%d%s" % (i, side)                            # Rf1A / Cf1A, the CAD's scheme
     chk({net_of("Rf" + n, 1), net_of("Rf" + n, 2)} == {summ, out}, "Rf%s not across the TIA" % n)
     chk({net_of("Cf" + n, 1), net_of("Cf" + n, 2)} == {summ, out}, "Cf%s not across the TIA" % n)
     ci = "Ci%d%d" % (k + 1, s)
