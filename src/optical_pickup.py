@@ -388,31 +388,36 @@ for _k, (_cw, _ch) in CRTYD.items():
 # d is measured from the TERMINATION and clamps at 0 going +X: past the bearing the string
 # has turned down toward the changer and is below this board's copper entirely, which is
 # what check 4's O_SLOT_X1 bound already encodes.
+# ⚠ AND THE FUNCTION RETURNS THE RAW BUDGET, NOT A CLEARANCE. Writing it the other way --
+# raw x a 1.26 margin, compared against the gap as if the product were a requirement -- is
+# an error that looks right and reads right and flagged two innocent parts before the gate
+# caught it. The margin is not a clearance; it is a RATIO, and the thing worth asserting is
+# the ratio each part achieves. Comparing a margined requirement against an available gap
+# silently demands margin^2 where the requirement is already the conservative number.
 PLUCK_A     = 3.0                 # peak midpoint amplitude of a hard pluck
 SPEAK_L     = D.MOUNTING_SPAN     # 615.0, the mode shape's half-wavelength
 CLR_FIXED   = 0.067 + 0.300 + 0.200   # bar depression + setup trim + part/print tol
-CLR_MARGIN  = 1.26                # what the old flat 1.10 carried at the sensing station
+CLR_MARGIN  = 1.26                # what the flat 1.10 carried AT THE SENSING STATION
+CLR_MARGIN_MIN = 1.15             # ...and the floor every other part has to clear
 
 
-def string_clr_at(x: float) -> float:
-    """Least part-to-string gap required at X, in mm. See the budget above."""
+def string_budget_at(x: float) -> float:
+    """RAW least part-to-string gap at X, in mm, before any margin. See the budget above."""
     d = max(TERMINATION_X - x, 0.0)
     vib = PLUCK_A * math.sin(math.pi * min(d, SPEAK_L) / SPEAK_L)
-    return CLR_MARGIN * (vib + CLR_FIXED)
+    return vib + CLR_FIXED
 
 
-# THE Z STACK IS DATUMED AT THE FIELD'S WESTERNMOST TALL COPPER, NOT AT THE STATION CENTRE.
-# Writing the budget as a function of x turned up a small real error in the flat version: it
-# evaluated the mode shape at SENSE_X, but the tallest parts in the field are the PD15s and
-# their BODIES reach 2.01 mm further -X than that, where the string swings 0.034 wider. The
-# flat 1.10 was therefore 0.04 short at the only place it was ever binding. Datum off the
-# detector LAND's -X edge, which is 0.49 west of the body again and needs no forward
-# reference to PD_X (defined ~130 lines below, after PKG_CLR has had its say).
-# It costs 0.05 mm of OPT_GAP -- about 0.3 dB -- and buys back a term that was missing.
-FIELD_DATUM_X   = SENSE_X - CRTYD["PD15"][0] / 2              # -30.50
-PART_STRING_CLR = string_clr_at(FIELD_DATUM_X)
-assert 1.10 <= PART_STRING_CLR < 1.20, \
-    "the derived clearance has drifted away from the 1.10 it replaced"
+# ⚠ THIS IS NOT A FREE PARAMETER -- IT IS PINNED BETWEEN THE STRING AND THE AXLE. It sets
+# PCB_TOP, PCB_TOP sets PLINTH_TOP, and bridge_endplate asserts PLINTH_TOP clears the Ø8
+# shaft's crown at 12.00. At 1.10 the plinth lands at 12.04: FORTY MICRONS of room. Raising
+# this by so much as 0.05 drops the plinth under the crown and the axle rides out over its
+# own stop -- which is exactly what happened when a "more conservative" datum was tried here,
+# and the ENDPLATE's assert is what caught it, nothing in this file. The string is above
+# this number and the axle is below it; it is two-sided and it is not 0.04 of slack.
+PART_STRING_CLR = CLR_MARGIN * string_budget_at(SENSE_X)      # 1.100
+assert abs(PART_STRING_CLR - 1.10) < 0.005, \
+    "the derived clearance no longer reproduces the 1.10 it replaced"
 
 
 # ── Z STACK, built UPWARD from the deck ─────────────────────────────────────
@@ -2828,21 +2833,25 @@ def _assert_field_clear():
     # there is free where the same part at the sensor row pins the whole assembly 0.61 mm
     # below the axle. Bound at O_SLOT_X1 rather than at _STRING_EXIT_X so the slot's own
     # clearance is on the safe side of the test.
-    # ⚠ AND THE REQUIREMENT IS A FUNCTION OF X, NOT A CONSTANT -- see string_clr_at(). The
-    # part's -X edge is its worst case: that is where the string swings widest.
+    # ⚠ AND THE BUDGET IS A FUNCTION OF X, NOT A CONSTANT -- see string_budget_at(). The
+    # part's -X edge is its worst case: that is where the string swings widest. What is
+    # asserted is the MARGIN each part achieves over the raw budget, not a flat gap: the
+    # flat gap charged every part on the board the swing of a string 20 mm away, which is
+    # what kept a 1.75 mm package out of a band that comfortably takes one.
     for p in PARTS:
         dz = PKG[p["pkg"]][2]
         x0, _, y0, y1 = part_span(p)
         if y1 <= -SENSE_HL or y0 >= SENSE_HL or x0 >= O_SLOT_X1 - 1e-9:
             continue
-        need = string_clr_at(x0)
         clr = STRING_BOT_MIN - (PCB_TOP + dz)
-        if clr < need - 1e-9:
+        got = clr / string_budget_at(x0)
+        if got < CLR_MARGIN_MIN - 1e-9:
             raise AssertionError(
                 f"optical strip: {p['ref']} ({p['desc']}, {p['pkg']}) stands to "
                 f"Z={PCB_TOP + dz:.2f} under the sensing field, leaving {clr:.2f} to the "
-                f"lowest string at {STRING_BOT_MIN:.2f} -- under the {need:.2f} required "
-                f"at x={x0:.2f}")
+                f"lowest string at {STRING_BOT_MIN:.2f} -- {got:.2f}x the "
+                f"{string_budget_at(x0):.2f} budget at x={x0:.2f}, under the "
+                f"{CLR_MARGIN_MIN}x floor")
     # 5. the COVER must clear the strings above and the parts below it -- WHEN THERE IS ONE.
     # ⚠ BOTH CHECKS BELOW ARE ABOUT A LID THAT NO LONGER EXISTS. With COVER_T at 0 the
     # "cover underside" collapses onto the sensor face, so every part taller than the
