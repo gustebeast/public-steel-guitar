@@ -43,7 +43,9 @@ from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
                                         # (chassis imports knee_lever, so not chassis)
 from .helpers import box_at, cyl, cyl_y, heal
 
-from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
+from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
+                              M4_BUTTON_HEAD_H,
+                              m4_button_screw,
                        M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
@@ -704,7 +706,17 @@ def demo_parts():
     #  the lever, -Y journal = the kl_axle_insert part)
     out = axle_dummies(lambda s: s, "kl", HOUS_Z0, HOUS_Z1, axle=False)   # build adds them, swung
     out += feel_dummies(feel_place)
-    # (no travel-stop screw: the +Z-cam-era stop boss was removed -- see _housing)
+    # THE TRAVEL STOP, shown at its BACKED-OUT setting = the housing's own maximum, so
+    # the assembly reads as the full throw rather than a random adjustment. (This line
+    # used to say "no travel-stop screw: the +Z-cam-era stop boss was removed" -- it is
+    # back, under the cartridges instead of over the cam, where there is room for it.)
+    out.append(("kl_travel_stop_screw",
+                m4_button_screw(STOP_SCREW_L)
+                .rotate((0, 0, 0), (0, 1, 0), -90)          # head top -> -X, shank +X
+                # ...m4_button_screw measures its LENGTH from under the head, so the
+                # head's own 2.2 comes off the head end, not the tip
+                .translate((STOP_TIP_OUT - STOP_SCREW_L - M4_BUTTON_HEAD_H,
+                            0.0, STOP_Z))))
     # (no retention set-screw dummy: the rib-mount tenons + their M2 lock are
     #  DEFERRED with the mount -- prism round; see _housing)
     return out
@@ -2152,6 +2164,132 @@ def keeper_axis():
     return (0.0, 0.0, 1.0)
 
 
+# ── TRAVEL STOP = one M4 under the cartridge pockets (user, 2026-09-24) ──────────
+# "a screw to set the maximum lever travel... an M4 centered between the two cartridges
+# pointing +X so its head touches the lever and sets a stop point", adjustable over
+# "between 5 degrees and the maximum travel amount set by the housing".
+#
+# THE STOP IS THE HOUSING'S OWN DEFINITION OF FULL THROW. The lever room is bounded on
+# -X by the arm's face at THROW, and that plane is now a function of angle rather than
+# one lambda inlined in the cut -- so the screw's two extremes are literally the same
+# expression as the room it sits in. Back the screw all the way out and it lands ON the
+# room's own wall, which is why it can never permit more travel than the part does.
+STOP_MIN_DEG = 5.0                  # the shallowest travel the stop can be set to
+STOP_SCREW_L = 20.0                 # M4 x 20 BUTTON, an existing BOM SKU, 2.5 mm hex --
+                                    #   the instrument's one key (fastener_single_tool)
+STOP_CH_W = M4_BUTTON_HEAD_D + 2 * HS_CLR       # 8.4: the head drops in through this
+STOP_CH_SHOULDER = D.MIN_WALL_2P    # ...straight sides this far above the axis before
+                                    #   the 45 deg gable starts, so the ROUND head still
+                                    #   fits inside the gable (a gable springing from the
+                                    #   axis clears only 2.9 of the head's 3.8 radius)
+STOP_CH_RISE = STOP_CH_SHOULDER + STOP_CH_W / 2.0               # 5.8, axis -> apex
+STOP_PILOT_D = M4.selftap_d         # M4 thread-FORMING pilot in PETG-GF, as the leg lock
+                                    #   pins and the keyhead screw already do: an insert
+                                    #   cannot be set 45 mm down a blind channel with an
+                                    #   iron, and this screw is set at setup, not played.
+                                    #   cadkit's number, not 3.6: a modelled screw_d + 0.2
+                                    #   prints UNDERSIZE to about the major diameter, which
+                                    #   is what lets the screw cut its own thread
+# WHY IT SITS THIS LOW, and it is the whole cost of the feature: the two cartridge
+# POCKETS run down to HS_FLOOR_Z - HS_CLR and leave a rib between them barely 2.1 wide,
+# so "between the cartridges" means BELOW them, not beside them. The channel's apex tucks
+# one 2-bead wall under the pocket floor and everything else hangs off that.
+STOP_POCKET_Z0 = HS_FLOOR_Z - HS_CLR + _FEEL_DZ                 # the pockets' underside
+STOP_Z = STOP_POCKET_Z0 - D.MIN_WALL_2P - STOP_CH_RISE          # the screw's axis
+# ...and the floor goes FLAT at the channel's own bottom (user: "thicken the lever
+# housing towards -z along the whole bottom (needs a flat print bed)"). Flat matters more
+# than thin here: a local boss under the channel alone would be a step in the bed face,
+# i.e. a downward flat in mid air, which is the exact fault check_ceilings now hunts.
+STOP_FLOOR_Z = STOP_Z - STOP_CH_W / 2.0
+
+
+def arm_face_x(deg, z):
+    """The arm's -X face (plus clearance) at depth `z`, with the lever at `deg`.
+
+    ONE expression for two jobs that must not drift: it is the -X boundary of the lever
+    room -- the housing's own statement of full throw -- and it is where the stop screw's
+    tip has to land to allow exactly that much. Reading the second off the first is what
+    makes "the maximum travel amount set by the housing" a fact rather than a matching
+    pair of numbers."""
+    t = math.radians(deg)
+    return (math.tan(t) * z
+            - ((ARM_TX / 2 + HS_CLR) + ARM_TX / 2 * (1 / math.cos(t) - 1) + 0.4))
+
+
+STOP_TIP_OUT = arm_face_x(THROW, STOP_Z)            # fully backed out = the housing's max
+STOP_TIP_IN = arm_face_x(STOP_MIN_DEG, STOP_Z)      # ...fully in = STOP_MIN_DEG of travel
+STOP_PILOT_X1 = STOP_TIP_OUT - D.MIN_WALL           # the formed thread starts behind the
+STOP_PILOT_X0 = STOP_TIP_IN - STOP_SCREW_L          #   deepest tip and ends where the
+STOP_PILOT_L = STOP_PILOT_X1 - STOP_PILOT_X0        #   head parks at the shallow stop
+# cadkit's own bar for a formed thread: five engaged threads, 5 x pitch = 3.5 for M4
+assert STOP_PILOT_L >= 5 * M4.pitch, (
+    "the travel stop's formed thread is only %.1f long -- an M4 x %.0f cannot both reach "
+    "%.2f and keep its head clear of the thread" % (STOP_PILOT_L, STOP_SCREW_L, STOP_TIP_IN))
+
+
+def stop_screw_x(deg):
+    """Where the stop screw's TIP sits to allow `deg` of travel -- and so where its head
+    is, STOP_SCREW_L behind. Used by the dummy, so the assembly shows a real setting."""
+    return arm_face_x(deg, STOP_Z)
+
+
+def _stop_channel():
+    """The screw's way: a house profile (straight sides, 45 deg gable) along X, open out
+    the -X face AND down through the new floor.
+
+    OPEN AT THE BOTTOM because that is how the screw gets in (user: "a /\\ cut out in the
+    lever housing floor which ensures you can both install the screw and adjust its
+    rotation"). Threading a Ø7.6 head 45 mm down a blind bore would need the bore at head
+    diameter its whole length, and under the pocket floor that costs another 1.7 of part
+    depth; dropped in from below, the head only needs room where it actually parks. The
+    gable is not decoration -- a flat roof over an 8.4 channel is a bridge, and this part
+    prints -Z->+Z."""
+    zb = STOP_FLOOR_Z - 1.0
+    hw = STOP_CH_W / 2.0
+    zs = STOP_Z + STOP_CH_SHOULDER
+    pts = [(-hw, zb), (-hw, zs), (0.0, zs + hw), (hw, zs), (hw, zb)]
+    # IT STOPS WHERE THE THREAD STARTS. Run out to STOP_PILOT_X1 instead and the channel
+    # swallows the pilot whole -- the screw then passes through 7.25 mm of nothing and
+    # forms its thread in air. Measured that way first: 0.9 mm3 of bite where there
+    # should be 17.
+    face = cq.Face.makeFromWires(cq.Wire.makePolygon(
+        [cq.Vector(STOP_PILOT_X0, y, z) for y, z in pts]
+        + [cq.Vector(STOP_PILOT_X0, pts[0][0], pts[0][1])]))
+    ch = cq.Workplane("XY").add(cq.Solid.extrudeLinear(
+        face, cq.Vector(STOP_PILOT_X0 - (HOUS_X0 - 1.0), 0, 0) * -1))
+    # ...and the formed thread ahead of it, carried out into the lever room
+    return ch.union(printable_bore(STOP_PILOT_D, STOP_TIP_IN - STOP_PILOT_X0,
+                                   (STOP_PILOT_X0, 0.0, STOP_Z),
+                                   (1.0, 0.0, 0.0), PRINT_UP, overshoot=1.0))
+
+
+def _stop_skirt(w):
+    """The part's own BED FACE, carried down to the travel stop's floor.
+
+    The stop needs the housing deeper, and the naive way to get that is a deeper prism --
+    but the prism is not the whole footprint. The sensor cradle hangs off the +Y face and
+    the cable keeper stands beside it, both bottoming at HOUS_Z0, and a deeper prism left
+    the two of them 10 mm up in the air: 495 mm2 of flat ceiling over nothing, reported
+    the moment check_ceilings looked. Dropping each one by hand means teaching each one
+    the stop's floor -- and the cradle's z_bot is what the sensor BOARD's position is
+    derived from, so that particular hand would have moved the board off its magnet.
+
+    Taking the bed face itself and extruding it is the version with no hands in it. Every
+    slot and opening the part already has comes down with it, nothing needs to know why,
+    and HOUS_Z0 keeps its meaning for the cable keeper's winding datum.
+    """
+    out = w
+    for f in w.val().Faces():
+        try:
+            n = f.normalAt()
+        except Exception:
+            continue
+        if n.z < -0.99 and abs(f.Center().z - HOUS_Z0) < 1e-6:
+            out = out.union(cq.Workplane("XY").add(cq.Solid.extrudeLinear(
+                f, cq.Vector(0.0, 0.0, STOP_FLOOR_Z - HOUS_Z0))))
+    return out
+
+
 def _housing() -> cq.Workplane:
     """ONE PARAMETRIC PRISM (user simplification round): the box spanned by
     HOUS_* (every face derived from the lever / cartridge / body extents),
@@ -2219,11 +2357,11 @@ def _housing() -> cq.Workplane:
     _hw = LEVER_HW + HS_CLR
     _e = ARM_TX / 2 + HS_CLR                          # 5.4: lever half-depth + clr
     _zb = HOUS_Z0 - 1.0
-    _slant = lambda z: math.tan(_THR) * z - (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)
     # -X boundary: x = tan(30°)·z − c, the rotated arm face + clearance;
     # it crosses the hub band's -5.4 at z ≈ 1.5, so the polygon walks
     # hub-top → hub-side → slant → bottom → rest-side
     _zc = (-_e + (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)) / math.tan(_THR)
+    _slant = lambda z: arm_face_x(THROW, z)
     _zt = HOUS_Z1 + TEN_H + 1.0                       # ABOVE the tenons, so the sweep
     # +X EDGE OUT THROUGH THE +X FACE (user, 2026-09-10). The rest-side boundary used to be
     # +_e, which left the whole +X half-space open only while the prism's +X face sat
@@ -2233,12 +2371,18 @@ def _housing() -> cq.Workplane:
     # the cheeks again — there it is just the two walls. Lever Y-span only, so the cheeks
     # and the bearing seats in them are untouched; open top and bottom, so no ceiling.
     _xo = HOUS_X1 + 1.0
-    _p = [(_xo, _zt), (-_e, _zt), (-_e, _zc),         #   trims the x=0 station too
-          (_slant(_zb), _zb), (_xo, _zb)]
-    _face = cq.Face.makeFromWires(cq.Wire.makePolygon(
-        [cq.Vector(x, -_hw, z) for x, z in _p] + [cq.Vector(_p[0][0], -_hw, _p[0][1])]))
-    w = w.cut(cq.Workplane("XY").add(
-        cq.Solid.extrudeLinear(_face, cq.Vector(0, 2 * _hw, 0))))
+    def _room(zb):
+        """The room solid, to whatever depth is asked for. CUT TWICE, and it has to be:
+        the -X boundary is a 30 deg slant, so it reaches further -X the deeper it goes.
+        Cut once at HOUS_Z0 and then skirted down to the stop's floor, the skirt carries
+        that boundary STRAIGHT down and walls the arm in -- 512 mm3 of housing in the arm
+        at full throw, which is precisely the class of fault the overlap gate cannot see
+        because it only ever poses the lever at rest."""
+        pts = [(_xo, _zt), (-_e, _zt), (-_e, _zc), (_slant(zb), zb), (_xo, zb)]
+        f = cq.Face.makeFromWires(cq.Wire.makePolygon(
+            [cq.Vector(x, -_hw, z) for x, z in pts] + [cq.Vector(pts[0][0], -_hw, pts[0][1])]))
+        return cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, 2 * _hw, 0)))
+    w = w.cut(_room(_zb))
     # BEARING SEATS (user): Ø8.1 pockets for the MR85ZZ pair, opening
     # INBOARD at the lever-room walls (±BRG_Y0) and reaching 2.8 into the
     # cheeks (0.3 axial float over the 2.5 bearing — the proven old wall
@@ -2251,6 +2395,9 @@ def _housing() -> cq.Workplane:
     w = cut_feel_pockets(w, feel_place)
     w = _cradle(w)                                                  # the MT6701 board cradle (user)
     w = w.union(cable_keeper())     # ...and the bus-B keeper on the cheek
+    w = _stop_skirt(w)              # ...the bed dropped to make room for the travel stop
+    w = w.cut(_room(STOP_FLOOR_Z - 1.0))   # ...the arm's room re-cut to the NEW depth
+    w = w.cut(_stop_channel())      # ...and the stop's own way in, under the pockets
     return heal(w)                  # no printed threads any more -- the whole part heals
 
 
