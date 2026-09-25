@@ -289,21 +289,31 @@ def _housing() -> cq.Workplane:
     # swept as far as the roots allow and no further -- measured at 56 deg, against the
     # chassis's 62.6. The last 6.6 deg would cost a tenon root, and the lever is DRIVEN 20.
     _stem = min(abs(ty) - KL._JW / 4 for ty in TEN_Y if abs(ty) > 1e-9)
-    _zw = HOUS_Z1 - KL.TEN_ROOT - max(0.0, _hw - _stem)
     _x0 = -(KL.ARM_TX / 2 + KL.HS_CLR)
     _x1 = HOUS_X1 + 1.0
     _span = box_at(_x1 - _x0, 2 * _hw + 2.0, 400.0, x=(_x0 + _x1) / 2, y=0.0, z=0.0)
+    # THE SLOT IS SIZED BY THE LEVER'S OWN SECTION, not by where the lever GETS TO (user,
+    # 2026-09-25: "I'm confused why the lever would need to be that far +z during
+    # installation. It seems like it could slide in purely along Y and not need to go up in
+    # Z beyond where it is in the assembly"). Exactly right, and measured: the lever's
+    # section in this span is z -6.80..16.40 and it stays that for the whole withdrawal --
+    # a constant section, because sliding a part out does not move it in Z.
+    #
+    # Sized against the swept envelope's reach instead, the wall stood at 26.35: ten mm of
+    # opening nothing passes through, with a 45 deg roof adding another 13.2 above THAT. And
+    # it was self-defeating, because the roof then had to stay under a mount tenon's root,
+    # which is what capped the room's sweep at 56 deg. Proven by A/B, not argued: with the
+    # slot deleted entirely the lever still clears the housing at every angle to 63, and
+    # WITH it the lever slides straight out +X with zero contact. The envelope carries the
+    # sweep; the slot carries the INSTALL STROKE. They were conflated.
+    _zw = _lever_envelope().val().intersect(_span.val()).BoundingBox().zmax
+    _root = HOUS_Z1 - KL.TEN_ROOT - max(0.0, _hw - _stem)
+    assert _zw <= _root + 1e-6, (
+        "the slot's roof (%.2f) would undercut a mount tenon's root (%.2f)" % (_zw, _root))
     _env = None
-    THROW_ROOM = 0.0
     for i in range(int(THROW_MAX) + 1):
         c = swing(_lever_envelope(), float(i))
-        if c.val().intersect(_span.val()).BoundingBox().zmax > _zw:
-            break                       # any further and the slot roof eats a tenon root
         _env = c if _env is None else _env.union(c)
-        THROW_ROOM = float(i)
-    assert THROW_ROOM >= THROW_V, (
-        "the vertical lever's room stops at %.0f deg, short of its own %.0f deg throw"
-        % (THROW_ROOM, THROW_V))
     # ...CAPPED AT THE HOUSING TOP (user, 2026-09-10). The top is flush with the instrument's
     # underside, so the arm cannot swing above it: past ~15 deg it meets the body, not air.
     # Sweeping the full envelope up through it hollowed out the inner halves of both mount
@@ -319,18 +329,6 @@ def _housing() -> cq.Workplane:
     # the top face, so it opens through as a narrow slot with no flat ceiling anywhere (the
     # reason the top was opened in the first place: a flat roof over the arm's full-throw
     # position was a 53 mm2 overhang). Both mount tenons now stand on solid material.
-    # WALL HEIGHT: as high as it can go WITHOUT cutting under a tenon stem's root, so the slot
-    # still takes everything it used to over the cartridge pockets while the stems stay rooted
-    # (the roof passes the nearest stem edge exactly at the bottom of its TEN_ROOT). The arm's
-    # real reach in this span, from the swept envelope, has to stay under it.
-    _reach = (_env.intersect(box_at(_x1 - _x0, 2 * _hw + 2.0, 400.0, x=(_x0 + _x1) / 2, y=0.0, z=0.0))
-              .val().BoundingBox().zmax)
-    # ...measured against the tenons that have to stay ROOTED ACROSS THIS SPAN, which is the
-    # outer pair. The centre one stands ON the slot's own centreline and is cut away here by
-    # design (see TEN_Y), so asking the roof to stay under a root that does not exist in this
-    # span would drop the wall for nothing.
-    assert _zw >= _reach - 1e-6, (
-        f"the slot wall ({_zw:.2f}) is under the arm's reach ({_reach:.2f}) in its own span")
     _pts = [(-_hw, -HUB_D / 2), (_hw, -HUB_D / 2), (_hw, _zw), (0.0, _zw + _hw), (-_hw, _zw)]
     w = w.cut(cq.Workplane("YZ", origin=(_x0, 0.0, 0.0)).polyline(_pts).close()
               .extrude(_x1 - _x0))
@@ -350,7 +348,35 @@ def _housing() -> cq.Workplane:
     # arriving cable can turn round THAT. A turn post was added when the approach was
     # coming round the front, into the arm's sweep; once it comes round the +Y back end
     # instead, the keeper is already sitting at that end and does the job.
+    # ...AND THE SAME 45 DEG KNEE RELIEF LKL GOT (user, 2026-09-25: "I would recommend
+    # adding the same 45 cut we added to the LKL yesterday to the LKV so we can get a bit
+    # more space for the knee"). Same construction, same constant: a plane TANGENT to a
+    # circle of bearing seat + KNEE_BRG_WALL about the axle, so the material that takes the
+    # spring's force and the knee's counter-force is sized by the bearing rather than by a
+    # printing minimum. This housing is 46.6 deep, so the corner it gives back is bigger
+    # than LKL's.
+    w = w.cut(_knee_relief())
     return heal(w)                  # no printed back-stop threads any more (KL.cut_feel_rear)
+
+
+def _knee_relief():
+    """The 45 deg corner off the bottom +X end, across this housing's own width.
+
+    BOUNDED TO THE HOUSING, like LKL's, so the sensor cradle outboard of +HOUS_HW_P keeps
+    the board's grooves; and guarded around the board itself for the same reason as there
+    -- the arithmetic is about one pose of a board that has been turned over before."""
+    z0 = HOUS_Z0 - 1.0
+    xo = HOUS_X1 + 1.0
+    y0, y1 = -HOUS_HW_N, HOUS_HW_P
+    pts = [(z0 + KL.KNEE_CHAM_C, z0), (xo, z0), (xo, xo - KL.KNEE_CHAM_C)]
+    f = cq.Face.makeFromWires(cq.Wire.makePolygon(
+        [cq.Vector(x, y0, z) for x, z in pts] + [cq.Vector(pts[0][0], y0, pts[0][1])]))
+    wedge = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, y1 - y0, 0)))
+    b = KL.sensor_board().val().BoundingBox()
+    g = KL.D.MIN_WALL_2P
+    return wedge.cut(box_at(b.xlen + 2 * g, b.ylen + 2 * g, b.zlen + 2 * g,
+                            x=(b.xmin + b.xmax) / 2, y=(b.ymin + b.ymax) / 2,
+                            z=(b.zmin + b.zmax) / 2))
 
 
 def swing(s, throw=0.0):
