@@ -43,7 +43,7 @@ from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
                                         # (chassis imports knee_lever, so not chassis)
 from .helpers import box_at, cyl, cyl_y, heal
 
-from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
+from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D, cut_anchor,
                               M4_BUTTON_HEAD_H,
                               m4_button_screw,
                        M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
@@ -2175,32 +2175,58 @@ def keeper_axis():
 # expression as the room it sits in. Back the screw all the way out and it lands ON the
 # room's own wall, which is why it can never permit more travel than the part does.
 STOP_MIN_DEG = 5.0                  # the shallowest travel the stop can be set to
-STOP_SCREW_L = 20.0                 # M4 x 20 BUTTON, an existing BOM SKU, 2.5 mm hex --
-                                    #   the instrument's one key (fastener_single_tool)
+STOP_SCREW_L = 30.0                 # M4 x 30 BUTTON, an existing BOM SKU, 2.5 mm hex --
+                                    #   the instrument's one key (fastener_single_tool).
+                                    #   x20 was enough for the TRAVEL, but not to park the
+                                    #   head behind a cadkit ANCHOR: the pocket and its
+                                    #   bite need 12 of solid ahead of where the head sits
+                                    #   at the shallow stop, and x20 left 8.05
 STOP_CH_W = M4_BUTTON_HEAD_D + 2 * HS_CLR       # 8.4: the head drops in through this
 STOP_CH_SHOULDER = D.MIN_WALL_2P    # ...straight sides this far above the axis before
                                     #   the 45 deg gable starts, so the ROUND head still
                                     #   fits inside the gable (a gable springing from the
                                     #   axis clears only 2.9 of the head's 3.8 radius)
-STOP_CH_RISE = STOP_CH_SHOULDER + STOP_CH_W / 2.0               # 5.8, axis -> apex
-STOP_PILOT_D = M4.selftap_d         # M4 thread-FORMING pilot in PETG-GF, as the leg lock
-                                    #   pins and the keyhead screw already do: an insert
-                                    #   cannot be set 45 mm down a blind channel with an
-                                    #   iron, and this screw is set at setup, not played.
-                                    #   cadkit's number, not 3.6: a modelled screw_d + 0.2
-                                    #   prints UNDERSIZE to about the major diameter, which
-                                    #   is what lets the screw cut its own thread
+STOP_CH_FLAT = D.NOZZLE_D           # the gable's tip is DULLED to one bead, cadkit's
+                                    #   own teardrop tip: a printer cannot lay a point, and
+                                    #   a nozzle-wide flat bridges itself in one pass
+STOP_CH_RISE = STOP_CH_SHOULDER + STOP_CH_W / 2.0               # 5.8, axis -> virtual apex
+# THE SCREW GOES IN THROUGH cadkit's ANCHOR, not a bore of my own (user, 2026-09-24:
+# "your screw isn't using the cadkit screw hole cutter... we always want a fitted
+# insert"). cut_anchor is pocket-plus-bite: the Ø6 x 5 melt-fit pocket is cut NOW and
+# stands empty, the screw forms its own thread in the selftap below it, and when those
+# plastic threads strip a heat-set insert drops into the pocket that was always there.
+# No reprint, no redesign -- and the objection that killed the insert first time round
+# (nothing can melt one in 45 mm down a blind channel) is answered by the channel being
+# open along its whole bottom: the iron comes at it from below.
+STOP_ANCHOR_L = M4.insert_depth + 2 * 5 * M4.pitch      # 12: the pocket + 10 threads
 # WHY IT SITS THIS LOW, and it is the whole cost of the feature: the two cartridge
-# POCKETS run down to HS_FLOOR_Z - HS_CLR and leave a rib between them barely 2.1 wide,
-# so "between the cartridges" means BELOW them, not beside them. The channel's apex tucks
-# one 2-bead wall under the pocket floor and everything else hangs off that.
+# POCKETS run down to HS_FLOOR_Z - HS_CLR, so "between the cartridges" means BELOW them,
+# not beside them -- the rib they leave between them is only 2.1 wide and an M4 wants
+# seven. But that rib is REAL MATERIAL, and it is directly over the channel's peak (user,
+# 2026-09-24: "directly above it there is a wall that runs between the two cartridges so
+# that buys us a tiny bit more room to move the house cut up").
+#
+# So the wall that binds is not the vertical drop from the pocket FLOOR -- it is the
+# PERPENDICULAR distance from the pocket's inner bottom CORNER to the 45 deg gable face,
+# and a 45 deg face is only 1/sqrt(2) as far from a corner as its vertical offset makes
+# it look. Constraining the apex vertically, as this did, was both the wrong measurement
+# and the stingier one: it left 1.87 of wall where 1.6 was asked for, and paid 0.39 of
+# part depth for the difference.
+_STOP_RIB_HW = abs(HS_YC) - HS_POCKET_HW                        # 1.05: half the rib
 STOP_POCKET_Z0 = HS_FLOOR_Z - HS_CLR + _FEEL_DZ                 # the pockets' underside
-STOP_Z = STOP_POCKET_Z0 - D.MIN_WALL_2P - STOP_CH_RISE          # the screw's axis
+# the gable springs from the dulled tip, so the corner clears THAT line, not the point
+_STOP_APEX = (STOP_POCKET_Z0 + (_STOP_RIB_HW - STOP_CH_FLAT / 2.0)
+              - D.MIN_WALL_2P * math.sqrt(2.0)) + STOP_CH_FLAT / 2.0
+STOP_Z = _STOP_APEX - STOP_CH_RISE                              # the screw's axis
 # ...and the floor goes FLAT at the channel's own bottom (user: "thicken the lever
 # housing towards -z along the whole bottom (needs a flat print bed)"). Flat matters more
 # than thin here: a local boss under the channel alone would be a step in the bed face,
 # i.e. a downward flat in mid air, which is the exact fault check_ceilings now hunts.
-STOP_FLOOR_Z = STOP_Z - STOP_CH_W / 2.0
+# ...and the bed clears whichever is deeper -- the channel, or the anchor's Ø6 pocket
+# with its own 2-bead wall under it. The pocket wins by 0.4, which is very nearly the
+# 0.39 the rib bought back above: a fitted insert costs what the better measurement saved.
+STOP_FLOOR_Z = STOP_Z - max(STOP_CH_W / 2.0,
+                            M4.insert_pilot_d / 2.0 + D.MIN_WALL_2P)
 
 
 def arm_face_x(deg, z):
@@ -2218,13 +2244,21 @@ def arm_face_x(deg, z):
 
 STOP_TIP_OUT = arm_face_x(THROW, STOP_Z)            # fully backed out = the housing's max
 STOP_TIP_IN = arm_face_x(STOP_MIN_DEG, STOP_Z)      # ...fully in = STOP_MIN_DEG of travel
-STOP_PILOT_X1 = STOP_TIP_OUT - D.MIN_WALL           # the formed thread starts behind the
-STOP_PILOT_X0 = STOP_TIP_IN - STOP_SCREW_L          #   deepest tip and ends where the
-STOP_PILOT_L = STOP_PILOT_X1 - STOP_PILOT_X0        #   head parks at the shallow stop
-# cadkit's own bar for a formed thread: five engaged threads, 5 x pitch = 3.5 for M4
-assert STOP_PILOT_L >= 5 * M4.pitch, (
-    "the travel stop's formed thread is only %.1f long -- an M4 x %.0f cannot both reach "
-    "%.2f and keep its head clear of the thread" % (STOP_PILOT_L, STOP_SCREW_L, STOP_TIP_IN))
+# THE ANCHOR ENDS AT THE ROOM WALL, so its bite is as deep as the part allows, and it
+# starts a whole anchor short of that. The channel runs out to meet it.
+STOP_ANCHOR_X = STOP_TIP_OUT - STOP_ANCHOR_L        # the pocket's mouth = channel's end
+STOP_HEAD_X = STOP_TIP_IN - STOP_SCREW_L            # where the head parks, screwed fully in
+assert STOP_HEAD_X <= STOP_ANCHOR_X + 1e-9, (
+    "screwed fully in, the travel stop's head reaches %.2f -- %.2f INTO its own anchor. "
+    "It needs a longer screw, not a deeper channel" % (STOP_HEAD_X, STOP_HEAD_X - STOP_ANCHOR_X))
+
+# the wall the rib actually leaves, measured perpendicular to the gable it faces
+_STOP_WALL = ((STOP_POCKET_Z0 - (STOP_Z + STOP_CH_RISE - STOP_CH_FLAT / 2.0))
+              + (_STOP_RIB_HW - STOP_CH_FLAT / 2.0)) / math.sqrt(2.0)
+assert _STOP_WALL >= D.MIN_WALL_2P - 1e-9, (
+    "the travel stop's channel leaves only %.2f between its gable and the cartridge "
+    "pocket's inner corner" % _STOP_WALL)
+
 
 
 def stop_screw_x(deg):
@@ -2247,20 +2281,17 @@ def _stop_channel():
     zb = STOP_FLOOR_Z - 1.0
     hw = STOP_CH_W / 2.0
     zs = STOP_Z + STOP_CH_SHOULDER
-    pts = [(-hw, zb), (-hw, zs), (0.0, zs + hw), (hw, zs), (hw, zb)]
+    fw = STOP_CH_FLAT / 2.0                       # ...the dulled tip, cadkit's teardrop
+    pts = [(-hw, zb), (-hw, zs), (-fw, zs + hw - fw), (fw, zs + hw - fw), (hw, zs), (hw, zb)]
     # IT STOPS WHERE THE THREAD STARTS. Run out to STOP_PILOT_X1 instead and the channel
     # swallows the pilot whole -- the screw then passes through 7.25 mm of nothing and
     # forms its thread in air. Measured that way first: 0.9 mm3 of bite where there
     # should be 17.
     face = cq.Face.makeFromWires(cq.Wire.makePolygon(
-        [cq.Vector(STOP_PILOT_X0, y, z) for y, z in pts]
-        + [cq.Vector(STOP_PILOT_X0, pts[0][0], pts[0][1])]))
-    ch = cq.Workplane("XY").add(cq.Solid.extrudeLinear(
-        face, cq.Vector(STOP_PILOT_X0 - (HOUS_X0 - 1.0), 0, 0) * -1))
-    # ...and the formed thread ahead of it, carried out into the lever room
-    return ch.union(printable_bore(STOP_PILOT_D, STOP_TIP_IN - STOP_PILOT_X0,
-                                   (STOP_PILOT_X0, 0.0, STOP_Z),
-                                   (1.0, 0.0, 0.0), PRINT_UP, overshoot=1.0))
+        [cq.Vector(STOP_ANCHOR_X, y, z) for y, z in pts]
+        + [cq.Vector(STOP_ANCHOR_X, pts[0][0], pts[0][1])]))
+    return cq.Workplane("XY").add(cq.Solid.extrudeLinear(
+        face, cq.Vector(STOP_ANCHOR_X - (HOUS_X0 - 1.0), 0, 0) * -1))
 
 
 def _stop_skirt(w):
@@ -2398,6 +2429,8 @@ def _housing() -> cq.Workplane:
     w = _stop_skirt(w)              # ...the bed dropped to make room for the travel stop
     w = w.cut(_room(STOP_FLOOR_Z - 1.0))   # ...the arm's room re-cut to the NEW depth
     w = w.cut(_stop_channel())      # ...and the stop's own way in, under the pockets
+    w = cut_anchor(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0), STOP_ANCHOR_L,
+                   reason="knee lever travel stop", print_up=PRINT_UP)
     return heal(w)                  # no printed threads any more -- the whole part heals
 
 
