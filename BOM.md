@@ -546,6 +546,41 @@ arcmin (1.77 mm) and 16 is the floor, this panel's 0.495 pitch gives:
 
 Generous at either — rows trade against character size in firmware, at no cost in parts.
 
+⚠ **WHAT MAKES IT LOOK GOOD IS GREYSCALE, NOT BRIGHTNESS** (user asked, 2026-09-25) —
+and it is the real justification for paying $38 rather than $12. The SSD1322 is **4-bit,
+16 grey levels**, with 256-step contrast and 16-step master current. Every cheap I²C
+panel in JLC's library (SSD1309, SH1107) is **1-bit**: a pixel is on or off.
+
+That is the difference between text you can ANTIALIAS and text with hard jagged edges,
+and — the part that matters for the scrolling animation asked for — between motion that
+glides and motion that steps. **At 1 bit, 200 fps still looks like it jumps a whole
+pixel at a time; at 4 bits you can move in sixteenths of a pixel and it reads as
+smooth.** Greyscale buys more perceived quality here than frame rate does.
+
+The rest of "looks good", in order:
+  * **AMBIENT contrast, not contrast ratio.** Every OLED is effectively infinite —
+    an off pixel emits nothing — so that spec never separates two OLEDs. What separates
+    them is whether the room reflects off the glass and greys the black. A polariser or
+    AR treatment is what keeps blacks black under stage lighting.
+  * **Luminance** (~100 cd/m² typical) matters for washout, not for quality, and it
+    trades against lifetime: a PMOLED driven harder dies sooner.
+  * **Fill factor** — how much of each 0.48 cell emits. At 1 ft the grid IS visible;
+    whether it reads as deliberate or cheap is fill factor plus the font.
+  * **BURN-IN is the one to design around.** A static menu is the worst possible
+    content for an OLED. Low brightness, a dim/blank timeout, and shifting the UI a
+    pixel now and then.
+
+⚠ **AND IT HAS NO TOUCHSCREEN** — worth saying because it was assumed to (user) and it
+would be a real waste. DigiKey lists no touch field for `NHD-2.7-12864WDW3`; the touch
+version is a **separate order code, `NHD-2.7-12864WDW3-CTP`**. The price is Newhaven
+being an industrial, US-distributed module: SSD1322, the DC-DC boost an OLED needs for
+its ~12 V panel rail, a carrier PCB, low volume.
+
+⚠ **COLOUR: wanted as a bonus, and it does not exist at this size.** Colour PMOLED is
+only made small (1.5" 128×128, SSD1351); colour at 2.7" means AMOLED, which is not
+purchasable through our channels (see the AMOLED note above). Colour and this size do
+not co-exist, at any price we would pay.
+
 ⚠ **REFRESH IS ~220 Hz AND THE INTERFACE MUST BE SPI, NOT I²C.** Newhaven publishes no
 refresh figure because it is not a panel property: the SSD1322 sets it, and it is
 programmable — `F_FRM = FOSC / (D × K × MUX)` with FOSC 1.94 MHz typ, D 1, K 138 and
