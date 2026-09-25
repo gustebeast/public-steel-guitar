@@ -600,6 +600,34 @@ antialiasing and no sub-pixel scrolling. The 2.7" is bought for the greyscale an
 bandwidth (see the notes above); 38′ instead of 22′ is a *consequence*, and a welcome
 one — most eyes will never need the large font.
 
+⚠ **RAISING THE REFRESH RATE BUYS ALMOST NOTHING — THE ARTIFACT TO DESIGN AGAINST IS
+TEARING** (user asked, 2026-09-25). Two separate things get called "refresh" and the
+part already has plenty of both.
+
+**Panel scan, ~220 Hz.** Settable by B3h (oscillator level 5 of 16 at reset, headroom to
+~360 Hz; the divider only ever lowers it). Raising it shows nothing — flicker fusion is
+finished above ~100 Hz — and the datasheet is explicit: *"higher frame frequency leads to
+higher power consumption on the whole system."* The useful direction is DOWN.
+
+**Update rate, up to 305 fps**, purely SPI-bound: 60 fps is 20% of the 10 Mbit/s bus,
+120 fps is 39%. Above ~60 the returns vanish for a menu.
+
+**AND NEITHER FIXES TEARING, WHICH IS WHAT WILL ACTUALLY SPOIL A SCROLL.** These modules
+bring out no tearing-effect signal, so GDDRAM writes are asynchronous to the scan.
+Update mid-scan and the top of the panel shows the new frame while the bottom shows the
+old — a tear line crawling through the animation. More fps only moves it. What fixes it
+is writing a whole frame faster than one scan takes:
+
+| | |
+|---|---|
+| one scan at 220 Hz | **4.55 ms** |
+| 4,096 B at 10 MHz | 3.28 ms ✅ |
+| at 8 MHz | 4.10 ms ✅ |
+| at 7 MHz | 4.68 ms ❌ tears |
+
+**So the rule is SPI ≥ 7.2 MHz, not "more fps".** Alternatively drop the scan to 110 Hz,
+which doubles the window to 9.1 ms and makes it easy — and saves power at the same time.
+
 ⚠ **WHAT MAKES IT LOOK GOOD IS GREYSCALE, NOT BRIGHTNESS** (user asked, 2026-09-25) —
 and it is the real justification for paying $38 rather than $12. The SSD1322 is **4-bit,
 16 grey levels**, with 256-step contrast and 16-step master current. Every cheap I²C
