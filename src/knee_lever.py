@@ -2294,6 +2294,55 @@ def _stop_channel():
         face, cq.Vector(STOP_ANCHOR_X - (HOUS_X0 - 1.0), 0, 0) * -1))
 
 
+# ── KNEE RELIEF: the bottom +X corner comes off at 45 (user, 2026-09-24) ─────────
+# There are two zones under this housing and only one of them costs anything. Zone A --
+# the -X length of it -- is free height: the player's knee never goes there, so it only
+# matters if it out-reaches the body adapter, which sets the instrument's Z extent and
+# has headroom to spare. ZONE B is the bit beside the lever arm, and that is exactly
+# where the top of a knee arrives. So the corner comes off at 45: self-supporting from
+# below in the -Z->+Z print, and it hands the knee back everything it takes.
+#
+# WHAT STOPS IT IS THE BEARING, not a printing rule (user: "we shouldn't jeopardize the
+# strength of the bearing which will be taking the force of the spring and the counter
+# force of the player's knee... I wouldn't recommend going for our minimum bead size of
+# 1.6mm"). So this wall is NOT D.MIN_WALL_2P. It is three times it, and the cut is a
+# plane TANGENT to a circle of seat + wall about the axle -- the same construction
+# _SEAT_ROOF_Z already uses for the seat's roof, so the two faces are the same idea
+# measured the same way, one above the axle and one below it.
+KNEE_BRG_WALL = 6 * D.BEAD          # 4.8 of backing behind the race, vs 1.6 elsewhere
+KNEE_CHAM_C = (BRG_SEAT_D / 2.0 + KNEE_BRG_WALL) * math.sqrt(2.0)
+
+
+def _knee_relief():
+    """The 45 deg corner cut, across the housing's own width only.
+
+    IT RUNS PAST THE CHEEKS AND OVER THE CRADLE (user, after seeing the -Y side: "ideally
+    we could cut away material on the +y side as well in the same region, but we are
+    limited somewhat by the PCB housing... without jeopardizing the PCB retention"). The
+    measurement says the two do not actually contend: the board sits x -28..3, and at its
+    own lowest the wedge does not begin until x 6.37, so the plane misses the board
+    entirely. What it takes outboard of the cheeks -- 1212 mm3 of it -- is cradle CORNER,
+    not anything that holds a board.
+
+    The board is guarded anyway, by its own envelope grown a 2-bead wall. Not because the
+    arithmetic above is in doubt, but because it is arithmetic about ONE pose of a board
+    that has already been turned over once this year: if the board moves, the guard moves
+    with it and the cut gives way, rather than quietly shaving a groove wall.
+    """
+    z0 = STOP_FLOOR_Z - 1.0
+    xo = HOUS_X1 + 1.0
+    y0, y1 = -HOUS_HW, CR_Y1 + D.MIN_WALL_2P
+    pts = [(z0 + KNEE_CHAM_C, z0), (xo, z0), (xo, xo - KNEE_CHAM_C)]
+    f = cq.Face.makeFromWires(cq.Wire.makePolygon(
+        [cq.Vector(x, y0, z) for x, z in pts] + [cq.Vector(pts[0][0], y0, pts[0][1])]))
+    wedge = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, y1 - y0, 0)))
+    b = sensor_board().val().BoundingBox()
+    g = D.MIN_WALL_2P
+    guard = box_at(b.xlen + 2 * g, b.ylen + 2 * g, b.zlen + 2 * g,
+                   x=(b.xmin + b.xmax) / 2, y=(b.ymin + b.ymax) / 2, z=(b.zmin + b.zmax) / 2)
+    return wedge.cut(guard)
+
+
 def _stop_skirt(w):
     """The part's own BED FACE, carried down to the travel stop's floor.
 
@@ -2428,6 +2477,7 @@ def _housing() -> cq.Workplane:
     w = w.union(cable_keeper())     # ...and the bus-B keeper on the cheek
     w = _stop_skirt(w)              # ...the bed dropped to make room for the travel stop
     w = w.cut(_room(STOP_FLOOR_Z - 1.0))   # ...the arm's room re-cut to the NEW depth
+    w = w.cut(_knee_relief())       # ...the bottom +X corner off at 45, for the knee
     w = w.cut(_stop_channel())      # ...and the stop's own way in, under the pockets
     w = cut_anchor(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0), STOP_ANCHOR_L,
                    reason="knee lever travel stop", print_up=PRINT_UP)
