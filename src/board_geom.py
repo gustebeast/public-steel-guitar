@@ -32,6 +32,7 @@ from functools import lru_cache
 import cadquery as cq
 
 from .helpers import box_at
+from cadkit import pcb as _CK
 
 GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                         "elec", "geom")          # tracked: elec/out is git-ignored
@@ -121,6 +122,17 @@ _XH_MATED_H = 9.8
 # reach above it; confirm off JST's ePH drawing (the same pages cadkit's PH_SIDE_* were
 # rendered from) before a housing is cut to it.
 _PH_MATED_H = 8.0
+
+# ⚠ A SIDE-ENTRY CONNECTOR'S PLUG LEAVES THROUGH THE BOARD EDGE, and until now solid()
+# modelled none of it: the mated branch below tested for "Vertical" only, so every
+# HORIZONTAL part came out as its bare socket body. On the motor controller that is the
+# whole point of the part -- J2/J6 face the chassis floor and the plug is what a hand
+# pulls from underneath -- so the CAD showed a 5.5 mm socket where the real envelope
+# reaches 3.6 mm further out, and any hole sized off that solid would be sized to the
+# socket. It affects the horizontal XH on the optical board and pi_cap the same way.
+# The numbers are cadkit's, read off JST's drawings there rather than re-derived: the
+# mated pair is 9.6 long against a 6.0 body (PH, p.2/p.4) and 13.6 against 6.1 (XH).
+_SIDE_PLUG_RUN = {"JST_PH_": _CK.PH_PLUG_RUN, "JST_XH_": 7.5}
 
 # ── PANEL CONNECTORS: the facts a panel is cut to ───────────────────────────────────
 #   mouth   the mouth's direction in the footprint's OWN frame (KiCad's, +Y DOWN)
@@ -254,6 +266,32 @@ def solid(board: str, mated: bool = False) -> cq.Workplane:
         if h <= 0.0:
             continue
         x0, x1, y0, y1 = f["fab"]
+        # A SIDE-ENTRY PART GROWS ALONG THE BOARD, NOT UPWARD (see _SIDE_PLUG_RUN). The
+        # mating axis is whichever of X/Y the footprint is turned onto, and the mouth is
+        # the end of the body FARTHER FROM THE ORIGIN -- the pad row sits behind the
+        # mouth, so the origin is at the back. Read off the geometry rather than off
+        # `rot`, because that only has to be right about which end is which and cannot
+        # be got wrong by a rotation-sign convention.
+        _run = _SIDE_PLUG_RUN.get(fp_name(f["fpid"])[:7]) if (
+            mated and "Horizontal" in f["fpid"]) else None
+        if _run:
+            _ax = "x" if abs(round(f["rot"]) % 180 - 90) < 1e-6 else "y"
+            _lo, _hi = (x0, x1) if _ax == "x" else (y0, y1)
+            _o = f["x"] if _ax == "x" else f["y"]
+            if abs((_hi - _o) - (_o - _lo)) < 1.0:
+                raise ValueError(
+                    "%s %s: the footprint origin sits mid-body, so which end is the "
+                    "mouth cannot be read from the geometry" % (board, f["ref"]))
+            if _hi - _o > _o - _lo:
+                if _ax == "x":
+                    x1 += _run
+                else:
+                    y1 += _run
+            else:
+                if _ax == "x":
+                    x0 -= _run
+                else:
+                    y0 -= _run
         z0 = -h if f["side"] == "B" else t
         spec = PANEL.get(fp_name(f["fpid"]))
         if spec and spec.get("stub"):

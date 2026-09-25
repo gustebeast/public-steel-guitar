@@ -127,21 +127,29 @@ def _mctrl_rect():
 MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outline: the
 # board is authored in the orientation it is built in, so nothing is swapped here
 # The tray POSITION is ours; only the SIZE comes from the board.
-# ⚠ THE BOARD HANGS 12 mm LOWER THAN IT DID, AND IN THE FLAT FRAME THAT IS +X. stand()
-# maps flat +X to world -Z, so moving the board along the tray's length drops it in the
-# instrument -- which is what puts its two bus-B plugs within reach of a hand under the
-# chassis (user, 2026-09-25).
-# 12 and not more: it lands the board's own bottom EDGE at world Z -71.00, against the
-# bottom prism's top face at -71.35. So the board stops at the chassis floor and only the
-# PLUGS enter it (tips at -74.60, 3.25 mm into a 10.5 mm prism). That is two plug-sized
-# holes instead of a 66.7 mm slot for the board's whole edge, and a slot that long would
-# cost far more of the floor than the holes do.
+# ⚠ THE BOARD'S HEIGHT IS SET BY ITS BOTTOM EDGE MEETING THE FLOOR, AND IN THE FLAT FRAME
+# THAT IS X. stand() maps flat +X to world -Z, so moving the board along the tray's length
+# raises or drops it in the instrument -- and where it stops is what puts its two bus-B
+# plugs within reach of a hand under the chassis (user, 2026-09-25).
+# It lands the board's own bottom EDGE at world Z -71.00, against the bottom prism's top
+# face at -71.35, so the board stops AT the chassis floor and only the PLUGS enter it
+# (mated tips at -75.10, 3.75 mm into a 10.5 mm prism). That is two plug-sized holes
+# instead of a slot for the board's whole edge, and a slot that long would cost far more
+# of the floor than the holes do.
+# ⚠ THIS WAS WRITTEN AS "12 mm LOWER THAN IT DID" AND THE NUMBER WENT STALE THE MOMENT THE
+# BOARD WAS RE-AUTHORED IN ITS BUILT ORIENTATION. The 12 was measured when the board's
+# VERTICAL span was the 46 mm edge; making the +X edge the downward one put the 68 mm span
+# on Z instead, and the bottom edge fell to -83.60 -- 12.60 past the floor it was supposed
+# to stop at, with the bare laminate buried 7.1 mm into the bottom prism. The comment went
+# on describing the intent while the geometry did something else, and nothing compared the
+# two. State the TARGET (bottom edge at the floor) rather than an offset from a position
+# that no longer exists.
 # _MCTRL_CY moved +12 so BOTH bus-B plugs land in the free mortise band (world
 # y -97.1..-60.8, the gap between the two halves of the three split stations). At -98.5
 # the board spanned y -121.5..-75.5 and only 21.6 mm of that was inside the band -- less
 # than the pair needs. At -86.5 it spans -109.5..-63.5 and the plugs land at -94.5 and
 # -78.5, both clear.
-_MCTRL_CX, _MCTRL_CY = -560.65, -86.5
+_MCTRL_CX, _MCTRL_CY = -573.25, -86.5
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
