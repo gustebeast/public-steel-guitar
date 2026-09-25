@@ -1158,12 +1158,24 @@ def optical_work_components():
     This is the actual unit of the work: the board, the endplate whose block it cuts into,
     and the chassis it sits above. Scope it with
         scope --set src.build --attr optical_work_components --crop bridge               --replaced optical_,bridge_endplate,chassis_
-    so the cache leaves those to the live build instead of duplicating them."""
+    so the cache leaves those to the live build instead of duplicating them.
+
+    ⚠ BOTH ENDPLATE BOARDS, NOT JUST THE OPTICAL ONE (user, 2026-09-25). The instrument
+    carries a PCB at each end -- the optical strip in the bridge endplate and the motor
+    controller in the keyhead endplate's cradle -- and the work has crossed between them all
+    day (the bus-B connectors moved to the motor board's downward edge while the optical
+    board was routing). A scope holding one of them makes the other invisible exactly when
+    a change to the chassis has to suit both.
+    """
     from . import optical_pickup as OP
+    from . import electronics as EL
+    _KE = __import__("src.keyhead_endplate", fromlist=["e"])
     out = [("optical_pcb", OP.opt_pcb()),
            ("optical_cable_usb", OP.opt_cables("usb")),
            ("optical_cable_pwr", OP.opt_cables("pwr")),
-           ("bridge_endplate", PARTS["bridge_endplate"][0]())]
+           ("bridge_endplate", PARTS["bridge_endplate"][0]()),
+           ("motor_ctrl", EL.motor_ctrl()),
+           ("keyhead_endplate", _KE.keyhead_endplate)]
     out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     return out
 
