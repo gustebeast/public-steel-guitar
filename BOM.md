@@ -555,6 +555,31 @@ rows** for the large one to still show 3 items.
 Both modes clear the brief with margin, and rows trade against character size in
 firmware at no cost in parts.
 
+⚠ **THE 3 mm PER-CHARACTER FLOOR MAKES A COARSE PITCH AN ADVANTAGE** (user,
+2026-09-25) — which inverts the usual reading of a spec sheet, so it is written down.
+
+The rule: a single character must be **at least 3.0 mm wide and 3.0 mm tall**. Glyphs
+are narrower than they are tall, so **WIDTH binds**: the glyph needs `ceil(3.0 / pitch)`
+pixels across. The finer the pitch, the MORE pixels each 3 mm character costs, and the
+FEWER characters fit on the panel. Higher resolution actively hurts here.
+
+| panel | pitch | min glyph | char | cols × rows |
+|---|---|---|---|---|
+| 1.5" 128×128 | 0.210 | 15×15 | 3.15 mm | **8**×8 — unusable |
+| 1.54" 128×64 | 0.274 | 11×11 | 3.01 mm | **10**×5 — too narrow |
+| 3.12" 256×64 | 0.300 | 11×11 | 3.30 mm | 21×**5** |
+| 2.42" 128×64 | 0.430 | 7×7 | 3.01 mm | 16×8 |
+| **2.7" 128×64** *(this row)* | **0.480** | **7×7** | **3.36 mm** | **16×8** |
+
+This panel is the **coarsest available**, which under this constraint is exactly right:
+it spends the fewest pixels per 3 mm and therefore fits the most text. **16-character
+labels, 8 rows — 7 menu items plus a header**, every character 3.36 mm square, 38
+arcmin at 1 ft.
+
+⚠ **A 7×7 GLYPH HAS NO TRUE DESCENDERS** (they want 9–10 px tall), so mixed-case g/p/y
+sit on the baseline. Either use caps for labels, or a **7×9 glyph at 6 rows** — height
+is not the binding axis, so a taller glyph costs rows, not legibility.
+
 ⚠ **AND SIZE IS NOT WHY THIS PANEL WAS CHOSEN — be clear about that before anyone
 "optimises" it.** Legibility alone does NOT need 2.7". ISO 9241 wants ≥20 arcmin (1.77
 mm at 1 ft) and the brief's 3 items at 6 rows needs only **13.4 mm of active height**;
