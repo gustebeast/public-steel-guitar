@@ -346,29 +346,26 @@ DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
 # for the first time, not new faults. The user's call, today: these must not block merges.
 DEFERRED_RULES = (
     # THE LEVER FEED'S OWN CONDUCTORS WHERE ITS TWO HALVES MEET IN THE WIRING PORT --
-    # 3 pairs, 3.8 mm^3 each. OWNER brenner (src.wiring.ctrl_bus_b).
+    # 6 pairs, ~32 mm^3. OWNER bronner from 2026-09-25 (the user's call): this whole run
+    # is being redrawn, because the two outside cables will plug into 4-way sockets on
+    # the MOTOR CONTROLLER's own bottom edge instead of threading up to it.
     #
-    # This cable has a connector at BOTH ends and their pin rows are perpendicular: LKL's
-    # J1 spreads along world Z, the controller's J2 along world Y. A bundle's section can
-    # only be AIMED at one row (cadkit.cables.bundle_paths' `across`), so it is drawn as
-    # two halves, each walked from its own connector, meeting below the floor at the port.
-    # The ribbon arrives at that join FLIPPED, and a flip drawn as straight chords puts
-    # all four chords through the middle of the section, where they graze each other.
+    # A cadkit.cables.bundle_paths bug was ONE cause and is fixed (505ea15): the frame
+    # was advanced by a projection that returns noise when the old axis lies near the
+    # new direction, collapsing the bundle to a line at a vertex. It is not the whole
+    # cause -- these pairs still touch with it fixed, so the earlier note claiming the
+    # workarounds were all chasing that bug was too strong. What remains is the real
+    # thing underneath: this cable has a connector at BOTH ends with perpendicular rows,
+    # so its section must turn, and it is drawn as two halves meeting mid-air.
     #
-    # The fix is an ARC, not a chord: a ribbon rotating about its own run keeps every
-    # conductor at its own radius, so they sweep concentric paths and cannot meet however
-    # far it turns. That wants the rotation spread along the straight fan run rather than
-    # taken at a vertex. Tried at the port's rise it measured WORSE (25.1 mm^3 against
-    # 16.6), because the two end axes are not square to that rise and an XY-only rotation
-    # does not meet them. Parked at 11.4 mm^3 rather than left unrecorded, with the four
-    # things already ruled out: a different `across` seed (103 and 114 mm^3), reversing
-    # J2's way order (134, then 25), a 2x2 section instead of a ribbon (132), and widening
-    # the ribbon (114 -- it makes a collapse longer, not thinner).
+    # Ruled out already, with what each measured, so they are not re-tried: a different
+    # `across` seed (103 and 114 mm^3), reversing J2's way order (134, then 25), a 2x2
+    # section instead of a ribbon (132), widening the ribbon (114), and taking the turn
+    # at the port's rise as a chord (25.1 against 16.6).
     (re.compile(r"^wire_canb_(gnd|v5|h|l)_lkl_0$"),
      re.compile(r"^wire_canb_(gnd|v5|h|l)_lkl_0$"),
-     "the lever feed's own conductors where its two halves meet in the wiring port "
-     "(3 pairs, 11.4 mm3). OWNER brenner: wants the ribbon's turn drawn as an arc along "
-     "the fan run -- see the note in check_overlaps.DEFERRED_RULES"),
+     "the lever feed's own conductors where its two halves meet (6 pairs, ~32 mm3). "
+     "OWNER bronner: superseded by the controller-mounted 4-way sockets"),
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
