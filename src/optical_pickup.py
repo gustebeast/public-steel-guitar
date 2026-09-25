@@ -1409,15 +1409,27 @@ def _parts():
                       (("C140", "U9 input bypass -- +5V, the quiet side of FB1", "0402"),
                        ("U9", "LDO -- 3V3 analog (low noise)", "SOT-23-5"),
                        ("C132", "bulk cap -- 3V3 analog, U9's OUTPUT cap", "0805C")),
-                      ("U11", "single op-amp -- TIA mid-rail reference buffer", "SOT-23-5"),
+                      # ⚠ AND SO DOES THE MID DIVIDER, WHICH IS THE SAME DEFECT ONE ROW
+                      # LATER. R34 and R35 were loose items in this list, so the packer
+                      # spread them 23 mm from U11 -- and MID_RAW, the 4.5 k junction
+                      # between them, ran 25 mm across the board into U11 pin 3. That is a
+                      # high-impedance antenna feeding the reference ALL TWENTY TIAs sit
+                      # on: whatever it picks up arrives at every channel's non-inverting
+                      # input at once, which is the one place on this board where a common
+                      # error cannot be told from signal. It also cost the router the
+                      # +3V3A hop from U11.5 to R34.1, 21 mm, one of the six the board
+                      # still fails on.
+                      # Divider first so its junction is the pin nearest U11.
+                      (("R34", "mid-rail divider, top -- travels with U11", "0402"),
+                       ("R35", "mid-rail divider, bottom -- travels with U11", "0402"),
+                       ("U11", "single op-amp -- TIA mid-rail reference buffer",
+                        "SOT-23-5")),
                       ("Q1", "N-ch MOSFET -- LED row driver", "SOT-23"),
                       ("FB1", "ferrite bead -- analog rail isolation", "0603"),
                       ("C130", "bulk cap -- VBUS", "0805C"),
                       ("C133", "reference bypass", "0805C"),
                       ("R32", "USB-C CC1 pull-down 5k1", "0402"),
                       ("R33", "USB-C CC2 pull-down 5k1", "0402"),
-                      ("R34", "mid-rail divider", "0402"),
-                      ("R35", "mid-rail divider", "0402"),
                       # ⚠ THESE THREE WERE MISSING AND ARE NOT OPTIONAL. They surfaced
                       # when elec/optical.py turned this table into an actual netlist --
                       # which is the point of doing that, because a part that no net

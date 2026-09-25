@@ -1507,17 +1507,19 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
     cc = board.GetConnectivity()
     pads = [(q.GetBoundingBox(), q.GetNetname())
             for fp in board.GetFootprints() for q in fp.Pads()]
+    # ⚠ WITH THE LAYER, because the via hop below needs it. A track is only an obstacle
+    # on its OWN layer; a via is one on all of them, which is what None means here.
     segs = [((t.GetStart().x, t.GetStart().y), (t.GetEnd().x, t.GetEnd().y),
-             t.GetWidth() / 2.0, t.GetNetname()) for t in board.GetTracks()
+             t.GetWidth() / 2.0, t.GetNetname(), t.GetLayer()) for t in board.GetTracks()
             if t.GetClass() != "PCB_VIA"]
     segs += [((t.GetPosition().x, t.GetPosition().y),
-              (t.GetPosition().x, t.GetPosition().y), _via_r(t), t.GetNetname())
+              (t.GetPosition().x, t.GetPosition().y), _via_r(t), t.GetNetname(), None)
              for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
     margin = pcbnew.FromMM(width / 2.0 + clr)
     drills = [(t.GetPosition().x, t.GetPosition().y) for t in board.GetTracks()
               if t.GetClass() == "PCB_VIA"]
 
-    def clear(x, y, net):
+    def clear(x, y, net, layer=None):
         # ⚠ THE BOARD EDGE, AGAIN. This is the THIRD copper-laying routine in this file
         # to be written without it and caught by DRC afterwards -- the stitcher, then
         # _local_nets, now this. The edge is not in any obstacle list because it is not
@@ -1536,8 +1538,15 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
             dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
             if math.hypot(dx, dy) < margin:
                 return False
-        for (ax, ay), (bx, by), hw, onet in segs:
+        for (ax, ay), (bx, by), hw, onet, olay in segs:
             if onet == net:
+                continue
+            # ⚠ ONLY WHEN A LAYER IS ASKED FOR. Passing None keeps the old, layer-BLIND
+            # behaviour for the surface path on purpose: that path is laid on whatever layer
+            # its two terminals share, this routine does not track which, and a blind check
+            # there refuses paths it could have taken rather than laying copper it should
+            # not. The hop knows its layer and says so.
+            if layer is not None and olay is not None and olay != layer:
                 continue
             vx, vy = bx - ax, by - ay
             L2 = vx * vx + vy * vy
@@ -1623,11 +1632,19 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                         # exactly where the router gave up too. The inner layer is empty
                         # by comparison, and an SMD pad is no obstacle at all to a trace
                         # a layer below it.
-                        def _seg_ok(q0, q1, netname, thru_only=False):
+                        # ⚠ IT TAKES `layer`, AND UNTIL NOW IT DID NOT, WHICH MADE
+                        # THE HOP DEAD CODE. _hop_via_inner calls its seg_clear callback
+                        # with layer= to test the inner leg, so this signature raised
+                        # TypeError the first time a pair got that far -- and route.py was
+                        # not passing `inner` at all, so no pair ever did. Two omissions,
+                        # each hiding the other, and a repair routine that has never in its
+                        # life tried a via.
+                        def _seg_ok(q0, q1, netname, thru_only=False, layer=None):
                             L = math.hypot(q1[0] - q0[0], q1[1] - q0[1])
                             n2 = max(4, int(pcbnew.ToMM(L) / 0.15) + 1)
                             return all(clear(q0[0] + (q1[0] - q0[0]) * k / n2,
-                                             q0[1] + (q1[1] - q0[1]) * k / n2, netname)
+                                             q0[1] + (q1[1] - q0[1]) * k / n2, netname,
+                                             layer)
                                        for k in range(n2 + 1))
                         def _emit(q0, q1, pad, netname, layer, _net=net):
                             if q0 == q1:
