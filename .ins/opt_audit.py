@@ -36,7 +36,14 @@ for ch in range(20):
     i, side = ch // 2 + 1, "AB"[ch % 2]
     q = 20 + i                                        # U21..U30, one dual per string
     out_p, inn_p, inp_p = SEC[side]
-    k, s = ch // 4, ch % 4 + 1
+    # ⚠ REVERSED WITHIN THE CONVERTER, and this said ch % 4 + 1 until now. The
+    # generator flipped it on 2026-09-24 (elec/optical.py, 's_in = 4 - ch % 4') so the
+    # sources' north-to-south order matches the sinks' east-to-west order and the four
+    # runs of a group stop crossing. The audit kept the old convention and reported all
+    # TWENTY channels as 'Ci not fed from TIA_OUT' -- which is the exact failure this
+    # file's own header warns about, one design change later: an audit that is wrong
+    # about the design it audits teaches you to scroll past it.
+    k, s = ch // 4, 4 - ch % 4
     pd = "PD%d%s" % (i, side)
     summ, out = "TIA_IN_%d%s" % (i, side), "TIA_OUT_%d%s" % (i, side)
     chk(net_of(pd, 2) == summ, "%s cathode (pad 2) not on %s: %s" % (pd, summ, net_of(pd, 2)))
