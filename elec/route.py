@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import sys
 
 import pcbnew
@@ -353,6 +354,12 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
               % os.path.basename(ses))
         r = subprocess.CompletedProcess(cmd, 0, "", "")
     else:
+      # ⚠ TIME THE ROUTER. "Did that change make it faster?" came up and
+      # nothing recorded a duration -- not the finish log, not the DRC json --
+      # so the only evidence was file mtimes. It matters most for fix_prelaid:
+      # frozen copper is cheaper per evaluation (nothing to rip up) but it also
+      # removes the room the router negotiates in, so it can go either way.
+      _t0 = time.time()
       try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
       except subprocess.TimeoutExpired:
@@ -362,6 +369,8 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
             "none. Lower the pass count or raise `timeout` -- and note that passes DO "
             "buy connectivity on this board, so lowering them has its own cost."
             % (timeout, os.path.basename(stem), passes))
+      print("  freerouting: %.1f s wall, %s pass(es)"
+            % (time.time() - _t0, passes))
     tail = (r.stdout or "").strip().splitlines()[-6:]
     print("\n".join("  " + t for t in tail))
     if not os.path.isfile(ses):
