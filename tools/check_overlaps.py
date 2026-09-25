@@ -320,6 +320,13 @@ DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
             # -X/+Y corner: the patch lead 379 mm3, the plug 140 mm3. OWNER brenner --
             # body_adapter lives in leg_stack, their registered scope, so both halves of
             # this one are theirs.
+            # THE OPTICAL BOARD INTO THE BRIDGE ENDPLATE, 479.5 mm3 (deferred 2026-09-22
+            # at the USER's instruction, so bronner's motor_ctrl respin + LED strip board
+            # can land). OWNER bronner. ** THIS IS A REAL COLLISION IN WORK THE AUTHOR
+            # CALLED "in progress" ** -- the board is sunk into the endplate, not touching
+            # it. It must come out before the optical board is ordered or the endplate is
+            # printed; nothing may be designed against either surface while it stands.
+            frozenset({"bridge_endplate", "optical_pcb"}),
             frozenset({"body_adapter", "leg_trrs_patch"}),
             frozenset({"body_adapter", "leg_trrs_plug"}),
             # (the 24 V runs vs motor/chassis deferral, OWNER bronner, is UN-deferred
@@ -395,9 +402,6 @@ def intended(na, nb) -> bool:
     for w, o in ((na, nb), (nb, na)):
         if base(w) in WIRE_OK:
             return base(o) in WIRE_OK[base(w)]
-    # the electronics tray's tabs rest on their channel floors
-    if frozenset({base(na), base(nb)}) == frozenset({"electronics_tray", "chassis"}):
-        return True
     # bus tee PCBs mount flat on the chassis floor (christmas-tree boss TBD)
     if frozenset({base(na), base(nb)}) == frozenset({"tee_pcb", "chassis"}):
         return True

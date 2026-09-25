@@ -93,7 +93,6 @@ Z-ovality would eat the 0.2..0.4 fits and roughen the thread flanks):
 
 from __future__ import annotations
 
-import math
 
 import cadquery as cq
 
@@ -1416,6 +1415,15 @@ def leg_column_plug() -> cq.Workplane:
     b = b.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         3.0, 16.0, cq.Vector(0, 0, -23.4), cq.Vector(0, 0, -1))))
     return b
+
+
+# PRINT ORIENTATION (the record, declared once per part) -- INFERRED, not stated: no
+# comment in this module says how the foot prints. The geometry only works one way up
+# though. "Z0 = ground", the 44-square pad runs z 0..12 and the dovetail above it tapers
+# inward going +Z, so built +Z the tenon is self-supporting; built -Z the full pad would
+# bridge over the 29.6-wide tenon. Declared on that basis and said out loud, so a reader
+# knows this one is read off the shape rather than off the designer.
+FOOT_UP = (0.0, 0.0, 1.0)
 
 
 def leg_foot() -> cq.Workplane:

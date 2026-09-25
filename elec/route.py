@@ -86,7 +86,7 @@ def failing_nets(stem):
     return sorted(out)
 
 
-def route(stem, passes=None, timeout=3600, incremental=False, dsn_only=False):
+def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     """Route the board at `stem`.
 
     ⚠ `incremental` ROUTES FROM THE BOARD AS IT STANDS, NOT FROM A FRESH PLACEMENT, and
@@ -333,9 +333,17 @@ def route(stem, passes=None, timeout=3600, incremental=False, dsn_only=False):
     # is then left exactly as it was, PLACED AND UNROUTED. Downstream that reads as
     # "the router could not connect anything", which sent me chasing a phantom
     # regression twice. Catch it and say what actually happened.
-    try:
+    # ROUTE_REUSE_SES=1 re-imports the session file already on disk instead of routing
+    # again -- for recovering a run whose IMPORT failed after the router had finished.
+    # Only valid when the placement and netlist are unchanged since that session.
+    if os.environ.get("ROUTE_REUSE_SES") and os.path.isfile(ses):
+        print("  ROUTE_REUSE_SES: importing the existing %s, not routing"
+              % os.path.basename(ses))
+        r = subprocess.CompletedProcess(cmd, 0, "", "")
+    else:
+      try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    except subprocess.TimeoutExpired:
+      except subprocess.TimeoutExpired:
         raise SystemExit(
             "freerouting exceeded %d s on %s at %d passes and was killed. The board is "
             "UNROUTED -- it has not silently produced a bad result, it has produced "
@@ -511,13 +519,16 @@ def route(stem, passes=None, timeout=3600, incremental=False, dsn_only=False):
     # vias of its own and one of them landed 0.50 mm from an existing GND stitch: the
     # pass cannot see copper that does not exist yet, and every earlier slot in this
     # sequence has something after it that adds more. So it runs at the end.
+    # ⚠ COUNTED BEFORE tidy_router_vias, WHICH REMOVES. 2026-09-21: the count used to sit
+    # after it, and on the optical board tidy's removals left the track container in the
+    # SWIG state described below -- GetTracks() raised and threw away a 52-minute route.
+    n = len(list(board.GetTracks()))
     layout.tidy_router_vias(board, notes)
     # ⚠ COUNT BEFORE REMOVING. board.Remove() leaves the track container in a state
     # where GetTracks() raises -- the same SWIG ownership hazard that made fp.Remove()
     # corrupt the footprint IO plugin earlier in this file's history. The rule that
     # comes out of both: take every measurement you need from a board BEFORE deleting
     # anything from it, and delete last.
-    n = len(list(board.GetTracks()))
     n_junk = layout.drop_degenerate(board)
     if n_junk:
         # the Specctra round trip rounds, and rounding leaves sub-micron fragments

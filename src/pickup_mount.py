@@ -66,7 +66,6 @@ EAR_HOLES  = [(sx * EAR_HOLE_X, sy * EAR_HOLE_Y)
 
 # ── mount screws (all stocked M4) ────────────────────────────────────────────
 HSCREW_D = 4.0                                  # M4 height set-screw
-CSCREW_D = 4.0                                  # M4 X/Y clamp screw
 
 
 def pickup_demo() -> cq.Workplane:
@@ -88,7 +87,3 @@ def height_screw() -> cq.Workplane:
     short enough that its base stays above the chassis ribs at z -14."""
     return cyl(HSCREW_D, 4.0, z=-4.0)
 
-
-def clamp_screw() -> cq.Workplane:
-    """DEMO M4x12 button-head X/Y clamp screw, axis +Y: shank tip at y=0."""
-    return cyl_y(CSCREW_D, 12.0, y0=0.0).union(cyl_y(7.5, 2.2, y0=12.0))

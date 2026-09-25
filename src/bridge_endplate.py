@@ -64,7 +64,7 @@ from .screw_rail import (screw_rail as _screw_rail, seat_cutter as _seat_cutter,
                          pulley_channel as _pulley_channel)
 from .screw_rail import BOT as _SR_BOT, TOP as _SR_TOP
 from .screw_rail import PRINT_UP as _SR_PRINT_UP
-from .helpers import box_at, cyl, cyl_y
+from .helpers import box_at
 from cadkit.fasteners import M4, cut_anchor
 from cadkit.supports import printable_bore
 from cadkit.holes import house_hole
