@@ -861,9 +861,14 @@ def _mctrl_fab(ref):
 # The connectors wiring.py asks about: each lead leaves its body's centre.
 MCTRL_J = {r: ((_f := _mctrl_fab(r))[0] / 2 + _f[1] / 2, _f[2] / 2 + _f[3] / 2,
                BG.footprint("motor_ctrl", r)["rot"])
-           for r in ("J1", "J2", "J3", "J4", "J5")}
-# J1 bus A, J2 bus B (JST PH, 5 V -- the lever bus, 2026-09-21), J3 24 V, J4 the USB link to the Pi (a top-entry XH now -- the USB-C it
-# replaced faced the -Y rail 5.5 mm away and could not be plugged in), J5 5 V to the Pi
+           for r in ("J1", "J2", "J3", "J4", "J5", "J6")}
+# J1 bus A, J3 24 V, J4 the USB link to the Pi (a top-entry XH now -- the USB-C it replaced
+# faced the -Y rail 5.5 mm away and could not be plugged in), J5 5 V to the Pi.
+# ⚠ J2 AND J6 ARE THE BUS-B PAIR, AND THEY ARE SIDE ENTRY (2026-09-25). The 8-way vertical
+# PH became two 4-way S4B-PH-SM4-TB on the board's flat +X edge -- the edge stand() maps to
+# world -Z -- so each half of the lever/pedal bus unplugs DOWNWARD, through the chassis,
+# without reaching inside the instrument. mctrl_pt's mated-height lookup only knows the
+# VERTICAL parts, so what it returns for these two is the body's reach, not a seated plug.
 
 
 def motor_ctrl_pcb(mating: bool = False) -> cq.Workplane:
