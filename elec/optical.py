@@ -2665,7 +2665,29 @@ BOARD_NOTES = {
     # copper against F.Cu's 10.6% while the corridor was the thing that ran out of room.
     # A cost below 1.0 tells freerouting to prefer a layer; the bottom layer is the one
     # with headroom, so it gets 0.7. In1.Cu is absent because it is the ground plane.
-    "router_passes": 50,
+    # ⚠ TEN, NOT FIFTY, AND IT IS AN ITERATION DECISION (user, 2026-09-25: "let's try with
+    # just 10"). Fifty passes is 45 minutes and I spent six of them last night chasing the
+    # last three nets, which is the wrong use of the machine: the user's rule is that a
+    # board needing that many retries is telling you to move components, not to search
+    # harder. Ten passes is about 9 minutes, so a placement change can be MEASURED in the
+    # time it used to take to state one.
+    # ⚠ AND MEASURED RATHER THAN ASSUMED, because I guessed "about 9 minutes" twice and
+    # was wrong twice. On this board, with today's pre-lay:
+    #     10 passes   25.1 min   5 unconnected
+    #     50 passes   45.5 min   3 unconnected
+    # So the pass count is NOT most of the runtime -- five times the passes is 1.8x the
+    # wall clock, because the first route dominates and passes are the optimiser after it.
+    # Ten costs 45% less time for two nets, which is the right trade while placement is
+    # still moving and the wrong one for a board about to be ordered.
+    # (route.py's own curve -- 1 -> 105, 3 -> 50, 10 -> 13, 25 -> 6, 50 -> 3 -- is from
+    # before the pre-lay existed. Ten now lands at 5, not 13.)
+    "router_passes": 10,
+    # How far route.py's post-route repair may reach to join two ends of one net it finds
+    # in different islands. 7.0 because a route left I2C2_SDA 5.85 mm short of its own
+    # spine -- the router came the whole way from R51 and stopped just before the
+    # handover -- and the default 5.0 declined to finish it. This costs the router
+    # nothing: the repair runs after routing, on pairs that are already unconnected.
+    "repair_mm": 7.0,
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.

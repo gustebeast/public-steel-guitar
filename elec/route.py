@@ -523,8 +523,17 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     # abandoned even where a hop had room. Measured at the four +3V3D pairs this board
     # still fails on: 0.86, 1.03, 1.11 and 1.36 mm of via room against the 0.45 a 0.6 via
     # needs, and not one of them was tried.
+    # ⚠ AND HOW FAR IT MAY REACH IS A BOARD'S OWN BUSINESS. The 5 mm default is a
+    # sensible floor, not a law: the optical board came out of a route with I2C2_SDA
+    # 5.85 mm short of the spine it was heading for -- the router got that close and
+    # stopped -- and 0.85 mm of policy was the only thing between it and a finished net.
+    # Raising it is free in the way the whole routine is free: this runs AFTER routing,
+    # so the only pairs it can act on are ones already left unconnected, and there is no
+    # counterfactual route being denied. `clear()` still refuses anything that would not
+    # pass DRC, so the cap is on ambition, not on safety.
     n_link = layout.link_close_gaps(board, layout._outline_pts(notes),
                                    same_part_only=False,
+                                   max_mm=(notes or {}).get("repair_mm", 5.0),
                                    inner=layout._local_inner(notes))
     if n_link:
         print("  joined %d same-net pad pair(s) the router left in separate islands"
