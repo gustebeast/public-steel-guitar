@@ -2319,19 +2319,25 @@ BOARD_NOTES = {
                                   for r in (OP.O_SLOTS[_i],
                                             OP.O_SLOTS[len(OP.O_SLOTS) // 2 + _i])]}
                        for _i, _p in enumerate(OP._slot_polys())] if OP.O_SHAPE else []),
-    # ⚠ AND THE JACK'S ACCESS HOLE, WHICH THE FAB DATA DID NOT HAVE AT ALL. The CAD cuts
-    # a O4.4 clearance hole through the board so a driver can reach the pickup-height jack
-    # screw (optical_pickup line ~2501, pcb.cut(jack_access())), and nothing emitted it --
-    # "cutouts" was driven solely by O_ROD_HOLES, which is empty. The board would have
-    # shipped with no way to adjust pickup height once it was fitted.
-    # Found by the cutout comparison added to cad_geom_check on its first real run: 11
-    # holes in the CAD against 10 on the board. Same class as the comb, and the reason
-    # that check now runs with every route rather than on request.
-    "cutouts": ([{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.O_ROD_HOLE_D}
-                 for x, y in OP.O_ROD_HOLES]
-                + [{"xy": [round(OP.JACK_ACCESS_XY[0] - CX, 4),
-                           round(OP.JACK_ACCESS_XY[1] - CY, 4)],
-                    "d": OP.JACK_ACCESS_D}]),
+    # ⚠ AND NOT THE JACK'S ACCESS HOLE, WHICH WAS HERE AND WAS A FAB DEFECT. The CAD
+    # cut a O4.4 clearance hole for a driver to reach the pickup-height jack screw and
+    # nothing emitted it, so it was added here -- correctly, for the board that existed
+    # then. The strip has since moved -X twice and the jack is now OUTSIDE the board: its
+    # centre is 1.775 mm past the -X edge, so the circle straddles the edge instead of
+    # piercing the board.
+    #
+    # On Edge.Cuts that is not a hole, it is a broken outline. It is the "UNEXPECTED
+    # invalid_outline: Circle on Edge.Cuts + Segment on Edge.Cuts" that survived every
+    # route this week, AND the CAD/fab disagreement beside it -- the circle's rim reaches
+    # x -32.58 where the board ends at -28.61, which is how a 57.21 mm board came to
+    # export a 61.19 mm outline. I had written that off as a bounding-box quirk. It was
+    # this, and it would have been milled.
+    #
+    # The driver still reaches the screw, because the board is not in its way: 1.775 mm of
+    # air against the 1.444 a 2.5 mm hex key needs. optical_pickup.pcb() asserts that
+    # rather than trusting it, since the margin is 0.33 mm.
+    "cutouts": [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.O_ROD_HOLE_D}
+                for x, y in OP.O_ROD_HOLES],
     # ⚠ CORRIDORS ARE OFF, AND THE MEASUREMENT SAYS SO. The generator did what it was
     # built to do -- 20 of 20 comb crossings placed on assigned gaps, A through the strip
     # +Y of its string and B through the strip -Y -- and the BOARD GOT WORSE. Measured
