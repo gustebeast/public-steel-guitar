@@ -38,7 +38,6 @@ import glob
 import io
 import os
 import re
-import sys
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))

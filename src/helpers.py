@@ -13,18 +13,44 @@ def cyl(d: float, h: float, z: float = 0.0) -> cq.Workplane:
     return cq.Workplane("XY").workplane(offset=z).circle(d / 2).extrude(h)
 
 
-def cyl_y(d: float, length: float, y0: float, x: float = 0.0, z: float = 0.0) -> cq.Workplane:
+def cyl_y(d: float, length: float, y0: float, *, x: float = 0.0,
+          z: float = 0.0) -> cq.Workplane:
     """Solid cylinder with axis along +Y (the motor shaft axis), base face at y0,
-    centred on (x, z)."""
+    centred on (x, z).
+
+    The two OFF-AXIS coordinates are keyword-only on purpose. belt_tensioner kept a
+    private near-copy of cyl_x whose 4th parameter was z, not y; folding it onto this
+    module was a one-line change that silently moved 22 screw channels off axis,
+    because the call passed its z positionally. Nothing passes these positionally
+    today, so the guard costs nothing and makes that mistake impossible."""
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(
         d / 2, length, pnt=cq.Vector(x, y0, z), dir=cq.Vector(0, 1, 0)))
 
 
-def cyl_x(d: float, length: float, x0: float, y: float = 0.0, z: float = 0.0) -> cq.Workplane:
+def cyl_x(d: float, length: float, x0: float, *, y: float = 0.0,
+          z: float = 0.0) -> cq.Workplane:
     """Solid cylinder with axis along +X (the belt / screw axis), base face at x0,
-    centred on (y, z)."""
+    centred on (y, z). Off-axis coordinates keyword-only -- see cyl_y."""
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(
         d / 2, length, pnt=cq.Vector(x0, y, z), dir=cq.Vector(1, 0, 0)))
+
+
+def pose_dir(rots, v):
+    """A DIRECTION carried through the same rotations a pose applies to a SHAPE.
+
+    A part's print orientation is a fact about the part, but tools.check_ceilings wants it
+    in WORLD coordinates, and several parts are rotated on their way there -- the vertical
+    lever turns -90 about Z, the foot pedal takes three turns. Writing the rotated vector
+    out by hand is exactly the transcription that checker's own docstring warns about:
+    nothing would compare the two if a pose ever changed. So the pose hands its rotation
+    list to this, which folds the SAME rotations over a vector.
+
+    `rots` is [(axis, degrees)] about the origin, in order -- what .rotate() already takes.
+    """
+    x = cq.Vertex.makeVertex(*v)
+    for ax, deg in rots:
+        x = x.rotate(cq.Vector(0, 0, 0), cq.Vector(*ax), deg)
+    return tuple(round(c, 9) + 0.0 for c in (x.X, x.Y, x.Z))
 
 
 def box_at(dx: float, dy: float, dz: float,
@@ -33,62 +59,6 @@ def box_at(dx: float, dy: float, dz: float,
     return (cq.Workplane("XY")
             .box(dx, dy, dz, centered=(True, True, True))
             .translate((x, y, z)))
-
-
-def nema17_face_cutter_y(y_face: float, depth: float, *,
-                         x: float = 0.0, z: float = 0.0,
-                         pilot_d: float = NEMA17_PILOT_D,
-                         bolt_d: float = M3_CLR_D,
-                         slot: float = 0.0) -> cq.Workplane:
-    """Cutter for a NEMA17 mounting face in an X–Z plane (motor shaft along Y).
-    Centre pilot bore + 4 corner bolt holes, bored along +Y from y_face inward by
-    `depth`, centred on (x, z). `slot` elongates each bolt hole along X for belt
-    tensioning (0 = round).
-
-    SELF-SUPPORTING tops (the walls print standing, hole axes horizontal): the
-    bolt slots keep their stadium bottom but their top is a 45°-shouldered flat
-    (the slot-wide flat is a short bridge — printable; the arc crowns are not);
-    the big pilot bore gets a teardrop roof (45° lines from the arc's ±45°
-    tangent points), tall enough that the full Ø still passes the motor boss."""
-
-    def _prism(pts, y0, length):
-        """Extrude an XZ-plane polygon (local (x,z) points) from y0, +Y by length."""
-        wp = cq.Workplane("XZ").polyline(pts).close().extrude(-length)
-        return wp.translate((0, y0, 0))
-
-    half = NEMA17_BOLT_SQ / 2.0
-    y0 = y_face - BOOL_OVERSHOOT
-    dep = depth + BOOL_OVERSHOOT
-
-    # pilot: full bore + teardrop roof (arc is ≤45° overhang up to ±45°, then 45° lines)
-    out = cyl_y(pilot_d, dep, y0=y0, x=x, z=z)
-    rp = pilot_d / 2.0
-    t = rp * 0.7071
-    out = out.union(_prism([(x - t, z + t), (x + t, z + t), (x, z + rp * 1.4142)],
-                           y0, dep))
-
-    rb = bolt_d / 2.0
-    for sx in (-half, half):
-        for sz in (-half, half):
-            cx, cz = x + sx, z + sz
-            # stadium bottom: a bolt-round hole at each end of the ±slot/2 travel
-            hole = cyl_y(bolt_d, dep, y0=y0, x=cx, z=cz)
-            if slot > 0:
-                L = slot / 2.0
-                for ex in (-L, L):
-                    hole = hole.union(cyl_y(bolt_d, dep, y0=y0, x=cx + ex, z=cz))
-                hole = hole.union(box_at(slot, dep, bolt_d,
-                                         x=cx, y=y0 + dep / 2, z=cz))
-                # strip everything above the equator (the arc crowns exceed 45°)…
-                hole = hole.cut(box_at(2 * (L + rb) + 2, dep + 2, rb + 2,
-                                       x=cx, y=y0 - 1 + (dep + 2) / 2,
-                                       z=cz + (rb + 2) / 2))
-                # …then roof it with 45° shoulders up to a bridgeable slot-wide flat
-                hole = hole.union(_prism([(cx - L - rb, cz), (cx + L + rb, cz),
-                                          (cx + L, cz + rb), (cx - L, cz + rb)],
-                                         y0, dep))
-            out = out.union(hole)
-    return out
 
 
 def heal(wp: cq.Workplane) -> cq.Workplane:

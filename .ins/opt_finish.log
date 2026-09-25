@@ -1,44 +1,6 @@
       diff pair USB_DP: laid 28 segment(s) as a coupled pair over 2 hop(s)
-      stitched 86 pad(s) on GND straight to the plane
-      local nets: laid 90 segment(s)
-    optical.kicad_pcb: 161 parts, 96 nets (+105 single-pad, not placed), 62.3 x 188.5 mm
-    exported optical.dsn (95 kB)
-      declared In1.Cu as plane layer(s) -- the router will not route on them
-      froze 16 pre-laid wire(s) as (type fix) -- the declared pair(s)
-      router clearance 137 um (fab rule 127 um + 10 um of rounding margin)
-      ?           Thank you for using Freerouting!                       ?
-      ?                                                                  ?
-      ?  If you would like to support the project, please visit          ?
-      ?  https://www.freerouting.app/donate.html                         ?
-      ?  Every contribution helps keep this project open and active!     ?
-      ????????????????????????????????????????????????????????????????????
-      re-laid 30 frozen wire(s) the session file does not carry
-      ⚠ 2 stitch via(s) landed where the plane is not: GND at 116.36,162.95, GND at 76.32,100.81
-      ⚠ 2 stitch via(s) landed where the plane is not: GND at 116.36,162.95, GND at 76.32,100.81
-        (the rest have nowhere to go: move the part or except the pad -- another routing run will not help)
-      snapped 69 hairline gap(s) shut (no copper added)
-        ⚠ TIA_IN_5A changes layer at 72.94,71.92 and a 0.6 via does not fit there
-        ⚠ TIA_IN_5A changes layer at 72.94,71.92 and a 0.6 via does not fit there
-        ⚠ TIA_IN_5A changes layer at 72.94,71.92 and a 0.6 via does not fit there
-        ⚠ TIA_IN_5A changes layer at 72.94,71.92 and a 0.6 via does not fit there
-      laid 0 deliberate via(s) and 3 track(s) AFTER routing
-      dropped 43 degenerate track fragment(s) from the import
-    optical.kicad_pcb: 2387 track segments + vias imported
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
-    swig/python detected a memory leak of type 'ZONE_FILLER *', no destructor found.
-  20 declared violation(s) (sensor triplets), 0 unexpected
-  pass 1: 1 unconnected, 0 violation(s)
-    ⚠ optical has 1 unconnected item(s): the board is NOT fully routed, so the lengths below measure how far the router got, not how well matched the groups are. Finish routing before reading them as skew.
-    ok   ULPI       skew  56.79 mm (budget 80.00)  23.4..80.2 mm over 12 nets
-    ok   USB_HS     skew   1.08 mm (budget  8.30)  11.6..12.7 mm over 2 nets
-    optical: 2 group(s) checked, 0 problem(s)
-    optical.geom.json: 161 footprints, board 62.34 x 188.53
-optical: 1 unconnected, 0 violation(s)
+      stitched 141 pad(s) on GND straight to the plane
+      local nets: laid 134 segment(s), 1 left to the router
+          not placeable: TIA_OUT_9A: Rf51.2 -> Cf51.2 (3.10 mm)
+          placed 10 explicit via(s)
+    optical.kicad_pcb: 236 parts, 161 nets (+127 single-pad, not placed), 64.8 x 188.5 mm
