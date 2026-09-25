@@ -517,8 +517,15 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     # so finish.py's ERROR count stays at zero and nobody looks. See drop_redundant_pth_vias
     # for why removing them is safe HERE and was not before routing.
     layout.drop_redundant_pth_vias(board)
+    # ⚠ WITH THE INNER LAYER, WHICH THIS CALL LEFT OUT. link_close_gaps takes `inner` and
+    # falls back to a via hop when no surface path exists; omitting it silently disabled
+    # that half of the routine, so any pair separated by copper on its own layer was
+    # abandoned even where a hop had room. Measured at the four +3V3D pairs this board
+    # still fails on: 0.86, 1.03, 1.11 and 1.36 mm of via room against the 0.45 a 0.6 via
+    # needs, and not one of them was tried.
     n_link = layout.link_close_gaps(board, layout._outline_pts(notes),
-                                   same_part_only=False)
+                                   same_part_only=False,
+                                   inner=layout._local_inner(notes))
     if n_link:
         print("  joined %d same-net pad pair(s) the router left in separate islands"
               % n_link)

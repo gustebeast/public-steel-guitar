@@ -1630,9 +1630,12 @@ def _i2c_spine():
     column x the gaps either side of the +3V3D via column were 0.55 and 0.18 mm and a
     0.6 mm via needs 1.2: there was no lane here at all, for this net or any other.
 
-    SDA IS DELIBERATELY LEFT TO THE ROUTER. It failed zero times; pin 18 shares pin 17's
-    x, so a second spine beside this one would have to cross it, and the cure would cost
-    more than the disease. Lay what fails.
+    ⚠ SDA IS NOT LEFT TO THE ROUTER ANY MORE, AND THIS SAID IT WAS. The reasoning was
+    sound when written -- SDA had failed zero times, and pin 18 shares pin 17's x so a
+    second spine beside this one would have to cross it. It failed later, _bus_spines grew
+    an SDA spine that goes round the west face instead of crossing, and nobody came back
+    here. A note that describes a decision the code no longer implements is worse than no
+    note: it is the reason I spent a pass looking for a missing SDA spine that exists.
     """
     out, DX, DY = [], _I2C_SPINE_DX, _I2C_SCL_DY
     for k in range(5):
@@ -1713,8 +1716,17 @@ def _bus_spines(w=0.2, spine_w=0.25):
                  [_cell_pt(k, _SCK_DX, _SAI_ROW), _cell_pt(k, _SCK_DX, _SCK_JOG)]),
                 ("SAI_SCK", "F.Cu", w,
                  [_cell_pt(k, _SCK_DX, _SCK_JOG), _cell_pt(k, _SCK_SPINE, _SCK_JOG)])]
+    # ⚠ AND SDA RUNS ON TO THE BORDER, FOR THE REASON SCL'S SPINE ALREADY DOES. It used to
+    # stop at cell 4's jog, at y -14.49 -- 4.5 mm INSIDE the string array, among the comb
+    # slots and their keepouts. The router has to reach a fixed wire's open end to adopt
+    # it, and reaching that one means coming up into the array: measured, it did not. It
+    # laid SDA from R51 all the way to U6.16 on In2 and left U18.18 and the whole spine as
+    # a separate island, which is the ONE unconnected item on this net.
+    # Every other bus here already hands over AT the line (_SD_BORDER); SDA was the one
+    # that did not, because its spine was added later than the rule.
     out += [("I2C2_SDA", "F.Cu", spine_w,
-             [_cell_pt(0, _SDA_DX, _SDA_JOG), _cell_pt(4, _SDA_DX, _SDA_JOG)]),
+             [_cell_pt(0, _SDA_DX, _SDA_JOG),
+              (_cell_pt(4, _SDA_DX, _SDA_JOG)[0], _SD_BORDER)]),
             ("SAI_FS", "F.Cu", spine_w,
              [_cell_pt(0, _FS_SPINE, _FS_JOG), _cell_pt(4, _FS_SPINE, _FS_JOG)]),
             ("SAI_SCK", "B.Cu", spine_w,
