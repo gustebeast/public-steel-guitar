@@ -1578,7 +1578,11 @@ _COLORS = {
     "kl_pcb":          (0.05, 0.35, 0.15),   # MT6701 board (green)
     "kl_can_header":   (0.95, 0.95, 0.90),   # JST S4B-XH-SM4-TB + mated XHP-4 (natural white)
     "kv_housing":      (0.30, 0.36, 0.42),   # LKV housing (PETG-GF, as LKL)
-    "kv_lever":        (0.92, 0.72, 0.20),   # LKV arm (PCTG, as LKL)
+    # ...THE SAME BLUE AS LKL'S ARM, not a colour of its own (user, 2026-09-25: "the
+    # levers are blue for LKL but yellow for LKV, we should color them consistently").
+    # The comment beside it already said "as LKL" while the number said otherwise, which
+    # is how it survived: same part, same job, same material, two colours.
+    "kv_lever":        (0.27, 0.51, 0.71),   # LKV arm (PCTG, as LKL -- the same blue)
     "kv_pcb":          (0.05, 0.35, 0.15),   # LKV MT6701 board (green, as LKL)
     "kv_chip":         (0.12, 0.12, 0.14),   # LKV MT6701 package (black)
     "kv_can_header":   (0.95, 0.95, 0.90),   # LKV S4B-XH-SM4-TB + mated XHP-4
@@ -1702,10 +1706,19 @@ def _color_for(name):
     # vkl_kv_lever, ...), so they ride this rule too — the alternative was six
     # copies of the same 29 entries, and any station left out would have gone grey
     # exactly the way the pedals did.
-    _st = re.match(r"(?:pedal\d+|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", base)
-    if _st:
+    # PEEL EVERY PREFIX, not one (user, 2026-09-25: "the cartridges/pistons are yellow
+    # for the LKL but white for LKV, we should color them consistently"). A vertical
+    # lever's cartridge is DOUBLY prefixed -- vkl_kv_main_cart_piston, station then
+    # design -- so a single strip reached kv_main_cart_piston, which is in no table, and
+    # the whole feel stack came out default white beside LKL's yellow one. Peeling until
+    # something matches costs nothing and is what "the same part at another station"
+    # actually means.
+    inner = base
+    for _ in range(3):
+        _st = re.match(r"(?:pedal\d+|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", inner)
+        if not _st:
+            break
         inner = _st.group(1)
-        # a KV station is doubly prefixed (vkl_kv_housing): peel to kv_housing too
         for k in (f"kl_{inner}", inner, f"kv_{inner}"):
             if k in _COLORS:
                 return cq.Color(*_COLORS[k])
