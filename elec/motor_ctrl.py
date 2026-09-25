@@ -653,8 +653,14 @@ BOARD_NOTES = {
         # an access hole, which is the whole point of the change -- see _ph4.
         # Nothing else may live on this edge: a cable leaving any other part on it has
         # nowhere to go but into the instrument.
-        "J2": (19.05, 13.00, 90.0),
-        "J6": (19.05, -1.00, 90.0),
+        # ⚠ SPACED FOR THE CHASSIS, NOT PACKED FOR THE BOARD (user, 2026-09-25: "smaller
+        # hole means a stronger chassis ... I'd also like the hole to only be where the
+        # JSTs are"). Side by side they were 0.72 mm apart, which forces ONE opening about
+        # 39 mm long. At 30 mm centres each gets its own ~22 x 16 mm hole with an 8 mm rib
+        # of chassis left between them -- two small holes and a rib, instead of one slot.
+        # The edge is 66.7 mm and the pair needs 27, so the spacing is free.
+        "J2": (20.90, 15.00, 90.0),
+        "J6": (20.90, -15.00, 90.0),
         "J3": (15.50, -8.50, 90.0),
         # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
         "TP1": (-10.10, -12.85, 0.0),

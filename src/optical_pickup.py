@@ -962,7 +962,37 @@ def _item_h(it):
     return max(CRTYD[m[2]][1] for m in _members(it))
 
 
-def _spread(out, y, items, x0, x1):
+def _spread(out, y, items, x0, x1, reserve=None):
+    """Lay a row out evenly between x0 and x1, optionally leaving a CORRIDOR empty.
+
+    ⚠ THE CORRIDOR IS THE POINT OF `reserve` (user, 2026-09-25: "it would be useful to
+    split up the long east west wall so it can have a clear path to the MCU"). A row of
+    parts is not a wall because of the parts -- they are SMD and the inner layers pass
+    under them -- it is a wall because of their ESCAPE VIAS, which pierce every layer and
+    stand where the parts stand. Measured on the power row: 26 vias shadowing 38% of the
+    board's width on In2, and where two such rows disagree about where their gaps are,
+    only 42% of the width is clear through both.
+    Spreading the row more evenly cannot fix that; the vias just spread with it. What
+    fixes it is a band with NOTHING in it, wide enough to be worth crossing, put where the
+    crossing traffic actually is.
+    """
+    if reserve:
+        lo, hi = reserve
+        widths = [_item_w(it) for it in items]
+        # fill the wider sub-span first, in the row's own left-to-right order
+        left_cap, right_cap = lo - x0, x1 - hi
+        left, right, used = [], [], 0.0
+        for it, w in zip(items, widths):
+            if used + w <= left_cap or not right and used + w <= left_cap + CRTYD_GAP:
+                left.append(it)
+                used += w + CRTYD_GAP
+            else:
+                right.append(it)
+        if left:
+            _spread(out, y, left, x0, lo)
+        if right:
+            _spread(out, y, right, hi, x1)
+        return
     widths = [_item_w(it) for it in items]
     gap = ((x1 - x0) - sum(widths)) / max(len(items) - 1, 1)
     cx = x0
@@ -975,19 +1005,19 @@ def _spread(out, y, items, x0, x1):
         cx += w + gap
 
 
-def _block(out, y, items, x0, x1):
+def _block(out, y, items, x0, x1, reserve=None):
     """Pack parts into as many rows as they NEED, marching -Y from y; return the -Y edge.
     Rows are packed, not hand-assigned: hand-tuned rows went under the placement
     clearance every time a part was added, and the board length has to be an OUTPUT of
     the part list rather than a number parts get squeezed into."""
-    span = x1 - x0
+    span = (x1 - x0) - ((reserve[1] - reserve[0]) if reserve else 0.0)
     ws = [_item_w(it) for it in items]
 
     def flush(row, y):
         if not row:
             return y
         h = max(_item_h(it) for it in row)
-        _spread(out, y - h / 2, row, x0, x1)
+        _spread(out, y - h / 2, row, x0, x1, reserve)
         return y - h - CRTYD_GAP
 
     def pack(limit):
@@ -1458,7 +1488,6 @@ def _parts():
                         "SOT-23-5")),
                       ("Q1", "N-ch MOSFET -- LED row driver", "SOT-23"),
                       ("FB1", "ferrite bead -- analog rail isolation", "0603"),
-                      ("C130", "bulk cap -- VBUS", "0805C"),
                       ("C133", "reference bypass", "0805C"),
                       # ⚠ THESE THREE WERE MISSING AND ARE NOT OPTIONAL. They surfaced
                       # when elec/optical.py turned this table into an actual netlist --
@@ -1478,7 +1507,17 @@ def _parts():
                       # R37 IS NOT HERE ANY MORE -- it moved to the PHY cluster at the
                       # -Y edge, where a part that sets a precision current belongs.
                       ],
-                     x0, x1)
+                     x0, x1,
+                     # ⚠ A CORRIDOR THROUGH THE WALL, AT THE PHY's OWN X (user,
+                     # 2026-09-25: "it would be useful to split up the long east west wall
+                     # so it can have a clear path to the MCU"). U7 sits at x 13.18 and
+                     # every ULPI net has to climb from it to the MCU, crossing this row --
+                     # the only one of the three southern rows that reaches that far east
+                     # (the buck's stops at x +1, and the crystal row is already clear from
+                     # -1.8 to 16.3). So the split is needed HERE and only here.
+                     # 6 mm is 15 tracks at a 0.4 mm pitch, and it costs the rest of the
+                     # row about half a millimetre of spacing each.
+                     reserve=(10.25, 15.75))
 
     # ⚠ C127 GOES IN THE CRYSTAL ROW, NOT THE POWER ROW, AND THE BOARD LENGTH IS WHY.
     # It belongs beside U9 (it is the SPX3819's noise bypass, the reason that part was
@@ -2058,6 +2097,16 @@ def _parts():
             ("R39", "PHY VBUS series 20 k, device-only -- pad 17"),
             ("C121", "PHY VBAT/VDDIO bypass -- pad 16 and 9"))):
         add(_ref, _desc, "0402", _row_x0 + _r_w / 2 + _k * (_r_w + CRTYD_GAP), _row_y)
+    # ⚠ C130 LEAVES THE POWER ROW, AND IT IS BOTH A ROUTING FIX AND A CORRECTION. It is
+    # the VBUS SENSE FILTER -- the C of an RC whose R is R39's 20 k -- and it was sitting
+    # 24 mm from R39, in the middle of the wall the ULPI nets have to cross. An RC filter
+    # whose two halves are at opposite ends of the board is not a filter anybody drew; it
+    # is where the packer happened to put a part called "bulk cap". Beside R39 it does its
+    # job, and the 2.8 mm it gives back is what lets the corridor below be 5.5 mm instead
+    # of the 2.7 the row could otherwise afford.
+    add("C130", "VBUS sense filter -- the C of R39's RC; see the note", "0805C",
+        _part_x("R39") + 2.6, _part_y("R39") - 2.9)
+
 
     # +X POCKET, three columns out from the +X face.
     # col 1: R37 by RBIAS (socket end), C122 by VDD18 (MCU end). Turned 90 so the column
