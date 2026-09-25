@@ -2801,7 +2801,25 @@ BOARD_NOTES = {
     # reference caps. The function is kept because the diagnosis is sound and the fix
     # belongs at the other end -- widening that channel, which is ADC_BUS_CH in
     # src/optical_pickup.py and was already widened once (2.4 -> 4.2) for this column.
-    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0]] + _spine_keepout(),
+    # ⚠ AND ONE MORE DOOR, THIS TIME THE MCU's (user spotted it in the routed board,
+    # 2026-09-25: "there are already ground vias directly to their west where these new
+    # vias ideally would go -- do the ground vias need to be so close?").
+    # SAI_FS is U6.3 at (-6.55,-27.31) and SAI_SCK is U6.4 at (-6.55,-27.81), and both
+    # need an escape via about a millimetre west. C106's ground via sits at (-8.22,-27.92),
+    # which leaves 0.62 between centres where two 0.6 vias need 0.75. Two of the four nets
+    # this board still fails on are the two pins that via is parked in front of.
+    #
+    # The answer to the user's question is yes AND no: it ties C106.2 at 0.81 mm and a
+    # bypass capacitor's via IS its loop, so it must stay that close -- but not on that
+    # SIDE. The stitcher tries eight directions at increasing radius and takes the first
+    # that clears other PADS; it knows nothing about a neighbour's escape. Measured at the
+    # same 0.81 mm radius, WEST has 0.95 mm and NORTH-WEST 1.32, so the loop is unchanged
+    # either way.
+    # The fence is the north spot only, and it stops short of x -8.55 so the west and
+    # north-west candidates stay legal -- see _door_keepout's note for what happens when a
+    # fence leaves a pad no direction at all.
+    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0],
+                     [-8.55, -28.45, -7.00, -26.90]] + _spine_keepout(),
     # ⚠ THE FEEDBACK CLUSTERS, LAID HERE RATHER THAN SEARCHED FOR. Twenty identical
     # networks -- op-amp output, feedback R, feedback C, and the photodiode on the input
     # -- packed into the Y gaps of a 13.6 mm strip that already holds 107 parts. Nearly

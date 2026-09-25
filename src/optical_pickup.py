@@ -1404,14 +1404,25 @@ def _parts():
             "0402", _part_x("U6") + _dec_off_e,
             _part_y("U6") + (_k - 1.5) / 1.5 * 9.0, 90.0)
 
-    y = _block(P, y, [("R30", "BOOT0 pull-down", "0402"),
-                        ("R31", "NRST pull-up", "0402")]
+    # ⚠ THE TWO STRAPS GO TO THEIR PINS. They were loose items in the row below, which put
+    # R30 26 mm from the BOOT0 pin it pulls down and R31 14 mm from NRST -- so the router
+    # escaped both nets INTO the package interior and hauled them across it, through the
+    # band where ULPI_DIR, LED_GATE and I2C2_SCL are already fighting for room (the user
+    # picked that congestion out of the routed board, 2026-09-25). A pull-up or pull-down's
+    # position is not its value; it belongs at the pin, and anywhere else is a net the
+    # router has to carry for no reason.
+    # They sit in the WEST STRIP, which is 4% copper and the emptiest board on this half,
+    # rather than north of the MCU where the handover band is already at 39.5% on In2.
+    add("R30", "BOOT0 pull-down -- at the pin", "0402", -12.60, -31.00, rot=90.0)
+    add("R31", "NRST pull-up -- at the pin", "0402", -12.60, -41.31, rot=90.0)
+
+    y = _block(P, y,
                      # ⚠ THE SWD PADS, WITHOUT WHICH THIS BOARD CANNOT BE PROGRAMMED
                      # AT ALL -- see the long note in elec/optical.py. They sit in the
                      # MCU's own decoupling block because that is where SWDIO, SWCLK and
                      # NRST already are, so the pads cost three short stubs instead of
                      # three runs across the tail.
-                     + [("TP1", "SWD pad -- SWDIO", "TP"),
+                     [("TP1", "SWD pad -- SWDIO", "TP"),
                         ("TP2", "SWD pad -- SWCLK", "TP"),
                         ("TP3", "SWD pad -- NRST (connect under reset)", "TP"),
                         ("TP4", "SWD pad -- GND", "TP"),
