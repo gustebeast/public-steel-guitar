@@ -604,7 +604,26 @@ def motor_ctrl():
 # two transceivers and three headers. The tray has the room -- deleting the Teensy
 # and its audio shield freed far more than this needs -- but the tray must be
 # rebuilt around this outline rather than the other way round.
-BOARD_W, BOARD_L = 46.0, 58.0
+# ⚠ 10 mm LONGER IN +Y (user, 2026-09-25: "feel free to make the PCB larger given the need
+# for this extra space"). Reserving the -Y edge for the bus-B pair left J4 with NO legal
+# site anywhere above y -12 -- sitesearch returned 984 legal sites and not one of them
+# clear of the band the JSTs now own. The board was simply full.
+# +Y and not +X, because board +X IS the downward edge, so growing
+# there would lengthen the very edge we shortened by rotating. board +Y is world UP, which
+# costs nothing -- the bay has headroom once the board drops to the chassis floor.
+# ⚠ AUTHORED IN THE ORIENTATION IT IS BUILT IN, WITH NO ROTATION APPLIED LATER (user
+# rule, standing: "we shouldn't define one orientation and then a rotation, we should just
+# define the proper orientation from the start"). This board hangs in the keyhead endplate
+# with its +X EDGE FACING THE CHASSIS FLOOR -- electronics.stand() maps flat +X to world
+# -Z -- and that edge carries the two bus-B JSTs and nothing else, because anything on it
+# would have its cable pointing down through the service hole.
+# So the +X EDGE is the 46 mm one (the narrow edge: a shorter downward edge sterilises
+# less of the board), which makes BOARD_W the 68 mm span ACROSS the board and BOARD_L
+# the 46 mm edge itself. The ear is at the -X end, which stands at the TOP.
+# It was briefly written the other way up with electronics.MCTRL_ROT = 90 and a swap
+# branch; that is the mapping-bolted-on-the-end this rule exists to prevent, and it is
+# gone -- MCTRL_ROT with it.
+BOARD_W, BOARD_L = 68.0, 46.0
 
 # THE MOUNTING EAR (user, 2026-09-21): an M4 THROUGH the board, not beside it -- "having the
 # screw adjacent ... doesn't provide as strong of retention". A tab off the +Y edge at the +X
@@ -614,15 +633,27 @@ BOARD_W, BOARD_L = 46.0, 58.0
 # and hole as the CAN tee's and the output board's.
 EAR_W, EAR_H = 9.5, 8.7
 EAR_HOLE_D = 4.5                                   # M4 clearance
-_EAR_X0 = BOARD_W / 2 - EAR_W
-_EAR_Y1 = BOARD_L / 2 + EAR_H
-EAR_HOLE_XY = (_EAR_X0 + EAR_W / 2, BOARD_L / 2 + EAR_H / 2)
+# The ear is a tab off the -X edge, which is the end that stands UP: the mount belongs at
+# the top, away from the floor the +X edge now faces.
+_EAR_X0 = -BOARD_W / 2 - EAR_H
+_EAR_Y1 = BOARD_L / 2 - EAR_W
+EAR_HOLE_XY = (-BOARD_W / 2 - EAR_H / 2, _EAR_Y1 + EAR_W / 2)
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    # ⚠ WALK THE BODY FIRST, THEN THE EAR. This list was the PRE-ROTATION point order
+    # with the new coordinates substituted in, and it described a different shape: its
+    # third point (BOARD_W/2, _EAR_Y1) ran a line across the FULL WIDTH at y 13.50, so
+    # the body's north edge at y 23 was never drawn and the polygon self-crossed on the
+    # close. Everything above y 13.50 read as off-board -- which is why the stitcher
+    # reported "no room for a via" at D3.2 (y 16.00). It was not a clearance failure at
+    # all, and it is the only pad up there, so nothing else showed the damage.
+    # The ear is a tab past -X spanning y _EAR_Y1..+BOARD_L/2, so it is entered and left
+    # at x -BOARD_W/2 and the body is a closed rectangle apart from that notch.
     "outline_poly": [(-BOARD_W / 2, -BOARD_L / 2), (BOARD_W / 2, -BOARD_L / 2),
-                     (BOARD_W / 2, _EAR_Y1), (_EAR_X0, _EAR_Y1), (_EAR_X0, BOARD_L / 2),
-                     (-BOARD_W / 2, BOARD_L / 2)],
+                     (BOARD_W / 2, BOARD_L / 2), (-BOARD_W / 2, BOARD_L / 2),
+                     (_EAR_X0, BOARD_L / 2), (_EAR_X0, _EAR_Y1),
+                     (-BOARD_W / 2, _EAR_Y1)],
     "cutouts": [{"xy": EAR_HOLE_XY, "d": EAR_HOLE_D}],
     "mounting_hole_xy": EAR_HOLE_XY,
     # J4 going XH moved the router's first pass and OSC_OUT (Y1 -> U4) came back open at the
@@ -640,7 +671,7 @@ BOARD_NOTES = {
     # proven is disturbed as little as possible; the 5 V section lives entirely in
     # the strip the growth added.
     "placements": {
-        "J1": (-10.00, 2.50, 0.0),
+        "J1": (-2.50, -10.00, 90.0),
         # ⚠ J2 MOVED WHEN IT GREW 4-WAY -> 8-WAY (2026-09-22). At its old mid-board site the
         # 17.9 mm body overlapped J1's courtyard and put a PTH pad inside it. This site is
         # elec/sitesearch.py's top-ranked of 672 legal ones, which is the tool that exists
@@ -665,80 +696,95 @@ BOARD_NOTES = {
         # board y 8 and 22 -> world y -86.2 and -72.2, with 31.3 mm of span used of 36.3.
         # The chassis keeps ~4.7 mm between the two holes rather than the 8 I wanted, which
         # is the price of the band being 36 mm wide.
-        "J2": (20.90, 22.00, 90.0),
-        "J6": (20.90, 8.00, 90.0),
-        "J3": (15.50, -8.50, 90.0),
+        # ⚠ ON THE +X EDGE, WHICH IS THE NARROW ONE AND THE ONE THAT FACES THE FLOOR, AND THAT IS THE POINT (user,
+        # 2026-09-25: "the two JSTs don't take that much room so it seems sensible to put
+        # them on the narrower board edge so we have a smaller keep out zone"). The
+        # downward edge is sterilised -- no other connector may sit on it, because its
+        # cable would point into the chassis through the service hole -- so the cost is
+        # proportional to that edge's LENGTH. 46 mm instead of 66.7 to carry the same
+        # 24 mm of connector. The board is authored with +X as that edge; see BOARD_W.
+        #
+        # y -22.92 puts the MOUTHS on the Edge.Cuts at y -29.00: the courtyard reaches
+        # 6.08 past the origin on the mouth side, measured off the placed part rather
+        # than assumed. (At 20.90 on the +X edge they overhung the board by 3.98 mm --
+        # that placement was written against a 54 mm outline that the re-export corrected
+        # to 46, and nothing recomputed it.)
+        "J2": (22.92, -8.00, 90.0),
+        "J6": (22.92, 8.00, 90.0),
+        "J3": (8.50, 15.50, 180.0),
         # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
-        "TP1": (-10.10, -12.85, 0.0),
-        "TP2": (2.40, -15.60, 0.0),
-        "TP3": (-10.85, -3.10, 0.0),
-        "TP4": (5.40, -15.60, 0.0),
-        "TP5": (-6.85, -21.35, 0.0),
-        "J4": (3.00, -25.20, 0.0),      # XH now (see the link's note): down on the -Y edge,
-                                         # clear of Y1 / C15 / TP5
-        "U4": (-4.00, -9.50, 0.0),
-        "U2": (6.30, -5.00, 0.0),
-        "U3": (6.30, -11.50, 0.0),
-        "U1": (-16.00, -3.50, 0.0),
-        "L1": (-16.00, -8.00, 0.0),
-        "D1": (-16.00, -11.50, 0.0),
-        "C1": (-16.50, -15.00, 0.0),
+        "TP1": (12.85, -10.10, 90.0),
+        "TP2": (15.60, 2.40, 90.0),
+        "TP3": (3.10, -10.85, 90.0),
+        "TP4": (15.60, 5.40, 90.0),
+        "TP5": (21.35, -6.85, 90.0),
+        # ⚠ J4 IS OFF THE -Y EDGE NOW: that edge belongs to the bus-B pair alone (see J2).
+        # It keeps its top-entry XH and its mating direction -- world +X once standing --
+        # so the USB lead still leaves toward the bay; only its seat moved.
+        "J4": (-29.00, -13.00, 90.0),
+        "U4": (9.50, -4.00, 90.0),
+        "U2": (5.00, 6.30, 90.0),
+        "U3": (11.50, 6.30, 90.0),
+        "U1": (3.50, -16.00, 90.0),
+        "L1": (8.00, -16.00, 90.0),
+        "D1": (11.50, -16.00, 90.0),
+        "C1": (15.00, -16.50, 90.0),
         # ⚠ C23 SITS AS CLOSE TO U1's VIN PIN AS A COURTYARD ALLOWS, and that is the
         # whole specification. Vertical so it clears U1 (right edge -13.905) and TP3
         # (left edge -12.145); its pads land 1.73 mm from the VIN pad, against C1's
         # 11.50 mm through two vias.
-        "C23": (-13.20, -3.50, 90.0),
-        "C2": (-16.00, -18.00, 0.0),
-        "C3": (-12.50, -15.00, 0.0),
-        "R1": (-12.50, -17.50, 0.0),
-        "R2": (-12.50, -19.00, 0.0),
-        "C6": (-11.00, -9.50, 0.0),
-        "R7": (-11.00, -11.00, 0.0),
-        "C7": (-11.00, -6.50, 0.0),
-        "C8": (-11.00, -5.00, 0.0),
-        "C9": (-8.60, -3.00, 0.0),
-        "C10": (-6.60, -3.00, 0.0),
-        "C11": (-4.60, -3.00, 0.0),
-        "C12": (-2.60, -3.00, 0.0),
-        "C13": (-0.60, -3.00, 0.0),
-        "C14": (1.40, -3.00, 0.0),
-        "Y1": (-4.00, -16.50, 0.0),
-        "C4": (-8.00, -16.50, 0.0),
-        "C5": (0.00, -16.50, 0.0),
-        "C15": (-8.00, -19.00, 0.0),
-        "R3": (11.20, -5.00, 0.0),
-        "R4": (11.20, -11.50, 0.0),
-        "R5": (16.50, 3.50, 0.0),
-        "JP1": (16.50, -17.50, 0.0),
-        "D2": (12.30, 1.00, 0.0),
-        "D3": (15.30, 1.00, 0.0),
-        "D4": (10.00, -17.00, 0.0),
-        "D5": (13.00, -17.00, 0.0),
-        "D6": (-7.00, -24.50, 0.0),     # the USB clamps take R8/R9's old slots
-        "D7": (-10.00, -24.50, 0.0),
-        "C19": (-17.00, 9.00, 0.0),
-        "C20": (-13.00, 9.00, 0.0),
-        "R10": (-9.00, 9.00, 0.0),
-        "R11": (-5.00, 9.00, 0.0),
-        "R12": (-1.00, 9.00, 0.0),
-        "R13": (3.00, 9.00, 0.0),
-        "F1": (-18.00, 13.00, 0.0),
-        "C16": (-12.00, 13.00, 0.0),
-        "C17": (-6.00, 13.00, 0.0),
+        "C23": (3.50, -13.20, 180.0),
+        "C2": (18.00, -16.00, 90.0),
+        "C3": (15.00, -12.50, 90.0),
+        "R1": (17.50, -12.50, 90.0),
+        "R2": (19.00, -12.50, 90.0),
+        "C6": (9.50, -11.00, 90.0),
+        "R7": (11.00, -11.00, 90.0),
+        "C7": (6.50, -11.00, 90.0),
+        "C8": (5.00, -11.00, 90.0),
+        "C9": (3.00, -8.60, 90.0),
+        "C10": (3.00, -6.60, 90.0),
+        "C11": (3.00, -4.60, 90.0),
+        "C12": (3.00, -2.60, 90.0),
+        "C13": (3.00, -0.60, 90.0),
+        "C14": (3.00, 1.40, 90.0),
+        "Y1": (16.50, -4.00, 90.0),
+        "C4": (16.50, -8.00, 90.0),
+        "C5": (16.50, 0.00, 90.0),
+        "C15": (19.00, -8.00, 90.0),
+        "R3": (5.00, 11.20, 90.0),
+        "R4": (11.50, 11.20, 90.0),
+        "R5": (-3.50, 16.50, 90.0),
+        "JP1": (17.50, 16.50, 90.0),
+        "D2": (-1.00, 12.30, 90.0),
+        "D3": (-1.00, 15.30, 90.0),
+        "D4": (17.00, 10.00, 90.0),
+        "D5": (17.00, 13.00, 90.0),
+        "D6": (24.50, -7.00, 90.0),     # the USB clamps take R8/R9's old slots
+        "D7": (24.50, -10.00, 90.0),
+        "C19": (-9.00, -17.00, 90.0),
+        "C20": (-9.00, -13.00, 90.0),
+        "R10": (-9.00, -9.00, 90.0),
+        "R11": (-9.00, -5.00, 90.0),
+        "R12": (-9.00, -1.00, 90.0),
+        "R13": (-9.00, 3.00, 90.0),
+        "F1": (-13.00, -18.00, 90.0),
+        "C16": (-13.00, -12.00, 90.0),
+        "C17": (-13.00, -6.00, 90.0),
         # ⚠ C18 WAS 18.08 mm FROM THE PIN IT EXISTS TO BYPASS -- the FARTHEST of the
         # three caps on +24V_BUCK, behind the 10 uF bulk at 8.93 and C17 at 13.26. Its
         # own description says "nearest VIN/GND". Nothing checks that a placement honours
         # what a part is FOR, so it drifted and read as decoupling that was present.
         # Now north of U5's VIN pad (-18.475, 20.405), clear of the courtyard's y 21.25.
-        "C18": (-18.475, 21.90, 0.0),
-        "D8": (5.00, 13.00, 0.0),
-        "F2": (13.00, 13.00, 0.0),
-        "U5": (-16.00, 18.50, 0.0),
-        "L2": (-7.00, 18.50, 0.0),
-        "D9": (2.00, 18.50, 0.0),
-        "C21": (9.00, 18.50, 0.0),
-        "C22": (13.50, 18.50, 0.0),
-        "J5": (0.00, 26.00, 0.0),
+        "C18": (-21.90, -18.48, 90.0),
+        "D8": (-13.00, 5.00, 90.0),
+        "F2": (-13.00, 13.00, 90.0),
+        "U5": (-18.50, -16.00, 90.0),
+        "L2": (-18.50, -7.00, 90.0),
+        "D9": (-18.50, 2.00, 90.0),
+        "C21": (-18.50, 9.00, 90.0),
+        "C22": (-18.50, 13.50, 90.0),
+        "J5": (-26.00, 0.00, 90.0),
     },
     "refs_on_fab": True,
     # THE GROUND PLANE is why this is four layers, same as the lever board: the
