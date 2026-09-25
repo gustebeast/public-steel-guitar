@@ -1337,6 +1337,30 @@ def optical():
     v3a += r34[1]
     mid_raw += r34[2], r35[1]
     gnd += r35[2]
+    # ⚠ THE DIVIDER HAD NO BYPASS, AND IT IS THE ONE PATH THAT PUTS SUPPLY NOISE ON THE
+    # CARRIER, IN PHASE, ON ALL TWENTY CHANNELS AT ONCE.
+    #
+    # C133 bypasses MID -- U11's OUTPUT -- which is not the same thing and does not do this
+    # job. Inside its feedback loop the buffer forces its output to follow its input, so a
+    # capacitor there handles load transients and filters nothing that arrived at pin 3.
+    # Everything on MID_RAW is reproduced onto the reference flat to the amp's bandwidth.
+    #
+    # And MID_RAW carries a very specific noise. The LED row switches at 48 kHz, which is
+    # the carrier, drawing its current from V5_PRE; U9 feeds +3V3A from V5_PRE through FB1
+    # with perhaps 40-50 dB of PSRR at that frequency; the divider passes what is left to
+    # MID_RAW at 1k/10k09, so 20 dB. That lands on every channel's non-inverting input AT
+    # THE LOCK-IN'S OWN REFERENCE FREQUENCY AND IN PHASE WITH IT -- the one error the
+    # demodulator cannot reject, SUM cannot reject (both halves see it) and DIFF cannot
+    # reject (both halves see it equally). It reads as signal.
+    #
+    # 1 uF against the divider's 901 ohm source (9k09 || 1k) puts the pole at 177 Hz, so
+    # 48 kHz is down a further 48.6 dB -- about 69 dB total with the divider. It costs no
+    # new BOM line: 1 uF 0402 is already on this board (C127, and the converters' AVDD and
+    # VREF bulk). The 0.9 ms it adds to the reference's startup is nothing.
+    c114 = _c("C114", "1uF", "MID divider bypass -- keeps the LED's 48 kHz off the "
+              "reference all twenty channels share; see the note")
+    mid_raw += c114[1]
+    gnd += c114[2]
     r36 = _r("R36", "100R", "LED driver gate series")
     led_gate += r36[1]
     Net("LED_GATE_Q").connect(r36[2], q1[1])
