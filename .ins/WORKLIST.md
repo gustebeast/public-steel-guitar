@@ -153,3 +153,58 @@ The geometric levers are nearly exhausted: fingers are 3.70 wide because the bea
 5.0 of a 9.5 pitch, and the shaft is 8.0 because the bridge bearing is a 688ZZ. Dropping
 the bearing side clearance 0.4 -> 0.25 buys CB_W 4.00 and takes it to ~4.5 MPa. That is
 all that is free.
+
+## optical: the last three unconnected items (2026-09-25, 03:30)
+
+State: 3 unconnected, 0 violations, both SI groups pass, CAD and fab data agree.
+Board on disk = elec/out/optical.p50.kicad_pcb (elec/out/ is gitignored, so it is NOT in
+git -- regenerate with `finish.py elec/out/optical`, which reproduces it).
+
+The three, and they are two connections plus one:
+    +3V3A   the LDO's island (U9.5, U11.5, R34.1, C132.1)  ->  the array's island   31.76 mm
+    +3V3A   U6.38/39 (the H7's VDDA pair)                  ->  the LDO's island     15.84 mm
+    SAI_FS  U6.3                                           ->  the FS spine's end   20.97 mm
+
+⚠ THE ANALOG RAIL HAS NO TRUNK, AND THAT IS THE FINDING. +3V3A comes back as THREE
+islands: the LDO with its local caps at y -61, the MCU's two VDDA pins on their own, and
+all twenty channels' decoupling at y -34 and north. Nothing carries the rail from its
+regulator to its load; the router has been asked to improvise a power distribution
+network and has declined three times.
+
+What is NOT the reason:
+    room       the west strip is 23 x 30 mm at 4.3% copper on In2 and 4.1% on F.Cu, eight
+               capacitors and nothing else. B.Cu is the GND pour and In1 the plane, so
+               two layers are free there and nearly empty.
+    escape     all three pads have a via site with room over: 0.98, 1.14 and 0.60 mm
+               against the 0.45 a 0.6 via needs.
+    passes     50 -> 3, 100 -> 3, byte-for-byte the same 2072 segments. Converged.
+    a straight lane
+               there is none. Widest clear vertical lane over y -61.5..-21.0 is 0.046 mm
+               on F.Cu at x -23.75, and NEGATIVE on In2 -- the strip's 4% of copper lies
+               ACROSS it. Same on the east side over y -60..-34.5. Any trunk has to dodge.
+
+TWO WAYS, AND THE USER SHOULD PICK:
+
+  A. MOVE THE ANALOG SUPPLY NORTH. U9/U11/R34/R35/C132 sit at y -61 while everything they
+     feed is north of -34.5. An analog regulator belongs near its load, and this is the
+     same principle that just fixed MID_RAW (25 mm -> 2 mm) and the two LDOs' output caps
+     (26.2 mm -> at the pin) -- both of which were in this row for the same reason: the
+     packer spreads a row evenly and knows nothing about what serves what.
+     Knock-ons: FB1, Q1 (the LED driver) and the USB-C CC resistors share that row, and
+     V5_PRE feeds it. Costs a re-route.
+
+  B. DRAW THE TRUNK. A deliberate wide (0.5+) +3V3A run from the regulator to the border,
+     dodging as it must, picking up U6.38/39 on the way. Gives the rail a defined
+     impedance instead of whatever the router improvises. Costs a generator function and a
+     re-route, and pre-laid copper in the south has measured badly twice.
+
+⚠ AND THE RETRY MECHANISM CANNOT HELP, FOR A REASON WORTH FIXING SEPARATELY. layout.py's
+retry (and _local_nets) builds an MST over ALL PADS OF THE NET, not over what is actually
+unconnected. Handed +3V3A and SAI_FS it laid 65 segments and skipped 13, and the skipped
+ones are edges the spines ALREADY carry -- U30.8 -> Cd9.1, U18.23 -> U17.23. It is
+island-blind, so on a net that is 95% finished it spends its budget re-laying copper that
+exists and adds it as an obstacle in the tightest part of the board. That is why the
+four-net retry took 6 unconnected to 9.
+    The fix is known and small: retry the ISLAND-TO-ISLAND edges, which check_border.py
+    already computes (its islands() + ratlines()). Not done at 03:30 on a shared routine
+    every board uses, with a 45-minute verification cycle.
