@@ -100,10 +100,9 @@ WIRE_OD = {
     "wire_oled": 1.4, "wire_joy": 1.4,
     "motor_pigtail": 3.4,
 }
-# Where bus B lands at the knee station: as close to the LKL lever board's XH as the
-# chassis CAD lets the trunk reach today, clear of the packed -X corner. The last few
-# millimetres onto the board are a chassis follow-up.
-_KNEE_B = (-508.0, -110.0, -60.0)
+# (_KNEE_B is gone with the two-conductor bus-B head it served -- a landing 20 mm short
+#  of LKL's board, waiting on a chassis follow-up. That follow-up is the wiring port, and
+#  ctrl_bus_b now runs all four conductors onto the board's own ways. See bus B below.)
 CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
                       # scheme as PWR_OFF): the split pair stays inside the old
                       # single-jacket envelope (0.7 + 0.65 = 1.35 < the 2.4/2 it
@@ -949,24 +948,21 @@ def build_wires():
         # capacitance.
 
 
-    # ── bus B (inputs): motor_ctrl J2 -> the lever boards, NO TEES ────────
-    # It used to hop ifc -> tee 11 -> tee 12. Both tees are deleted (user), because both
-    # ends can now terminate themselves: the lever board passes the trunk THROUGH its own
-    # 8-way (in 1-4, out 5-8) so it needs no tap beside it, and the TRRS adapter carries
-    # the leg jack ON the board so it needs no landing. What is left is one run from the
-    # controller to the first board on the chain.
-    _ib = SP(*EL.mctrl_pt("J2"))
-    _canB_head = ([_ib, (BAY_X - 5.0, _ib[1], _ib[2]), (BAY_X - 5.0, _ib[1], BAYFLY_CANB),
-                   (BAY_X, _ib[1], BAYFLY_CANB), (BAY_X, RAIL_Y, BAYFLY_CANB)]
-                  + _floor_pts(BAY_X, _KNEE_B[0], LANE_CTRL)
-                  + [(_KNEE_B[0], RAIL_Y, LANE_CTRL), _KNEE_B])
-    for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
-        _od = WIRE_OD[f"wire_canb{_sfx}"]
-        out.append((f"wire_canb{_sfx}_0", _wire(
-            [(px + _co, py + _co, pz) for px, py, pz in _canB_head], _od)))
-    # (wire_knee_drop is gone with tee 11: the stub existed to get from that tee to the
-    #  lever board, and bus B now arrives at the board directly. The last few mm onto the
-    #  kl_pcb XH is still the chassis follow-up it always was.)
+    # ── bus B (inputs): motor_ctrl J2 -> the lever boards ─────────────────
+    # DRAWN IN ctrl_bus_b NOW, not here, and it is a different thing from what stood
+    # here. This spot carried a TWO-conductor head -- CAN-H and CAN-L at +-CAN_OFF and
+    # no GND or +5 V at all -- on a diagrammatic route out to _KNEE_B, a point 20 mm
+    # short of LKL's board that the comment there called "as close as the chassis CAD
+    # lets the trunk reach today", with the last few millimetres left as a follow-up.
+    #
+    # Bus B is a FOUR-wire bus (harness.PH_PINOUT: GND / +5 V / CAN_H / CAN_L) and the
+    # lever boards run off its 5 V, so a head carrying only the CAN pair was not a
+    # simplification, it was two missing conductors. ctrl_bus_b draws all four, onto
+    # LKL's J1 ways 1-4 by way number, through the chassis floor's wiring port -- which
+    # is also the follow-up that comment was waiting for.
+    #
+    # The two it drew are gone rather than kept alongside: they overlapped the real
+    # cable (5.2 mm^3), which is what a duplicate of a run looks like to the gate.
 
     # -- USB (blue): USB-C panel -> -Y rail corridor -> ride to the bay -> right-angle to Pi
     # It leaves the OUTPUT PANEL BOARD's own USB-A now, not a panel coupler: the
@@ -1074,7 +1070,8 @@ _POGO_ENDS = {"pogo_%s_%s_%s" % (side, body, end)
 WIRE_OK = {
     "wire_canh":      {"motor_ctrl", "tee_pcb"},
     "wire_canl":      {"motor_ctrl", "tee_pcb"},
-    "wire_canbh":     {"motor_ctrl", "tee_pcb"},
+    # (wire_canbh/l are no longer drawn -- see bus B in trunk(). WIRE_OD still carries
+    #  their gauge, which is what CANB_WIRE_OD is asserted against.)
     # bus B through the KNEE LEVERS (lever_bus). A segment may touch the connectors it
     # runs between -- and nothing else: every housing, cradle, magnet or axle it grazes
     # is a routing bug, which is the whole reason this table is a WHITELIST.
@@ -1085,7 +1082,6 @@ WIRE_OK = {
     "wire_canb_coil":  _LEVER_BODIES,
     # ...the four conductors are added below, where CANB_NETS is defined (this table
     # is read at import by tools.check_overlaps, so it only has to be complete by then)
-    "wire_canbl":     {"motor_ctrl", "tee_pcb"},
     "motor_pigtail":  {"tee_pcb", "motor"},
     # leg↔body TRRS: the chassis jack's factory cable (tenon channel ->
     # bus-B socket tee) and the column CA-354S inside the leg stack
