@@ -61,6 +61,19 @@ from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 4 * D.BEAD                    # 3.2 printed standoff posts under each board
+# ⚠ THE MOTOR CONTROLLER STANDS LOWER, AND IT BUYS CLEARANCE IN X, NOT IN Z. The tray
+# stands, so a board's standoff off the plate is a WORLD -X offset: less standoff puts the
+# board further -X. That matters because the board is about to drop into the chassis
+# bottom prism (Z -81.85..-71.35) so its two bus-B plugs can be reached from underneath,
+# and the -X-most LEVER mortise is cut in that same prism with its -X wall at x -590.50.
+# Everything entering that band has to stay 1.6 (one bead) clear of it, so at x <= -592.10.
+#   the bus-B plugs sit at x -592.00 -- 0.10 mm over
+#   1.5 mm of -X gives them 1.6 mm of bead AND leaves the access hole a real edge
+# The tall mated XH plugs reach x -590.20 but never enter the prism band; they sit high on
+# the standing board, which is why the whole-board bounding box was the wrong measurement
+# (it said 1.90 mm was needed; only what descends into the band counts).
+# The tray plate cannot move -X instead: it already bears on the endplate's inboard face.
+MCTRL_POST_H = 1.7                     # user, 2026-09-25 -- 3.2 - 1.5
 # ⚠ ONE SOURCE. This was a local 0.3 inside electronics_bay(), and board_screws() has to
 # place the Pi's M4 at the SAME spot that function bores the anchor -- pcb_hold_xy() takes
 # the clearance as an argument, so two copies of the number is two places for the screw and
@@ -119,6 +132,7 @@ MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
 assert (round(PI_FP[1] - PI_FP[0], 3), round(PI_FP[3] - PI_FP[2], 3)) == (56.0, 85.0),     "PI_FP is %.1f x %.1f; a Pi 5 is 56 x 85" % (PI_FP[1] - PI_FP[0], PI_FP[3] - PI_FP[2])
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
+MCTRL_BOARD_Z = TRAY_Z1 + MCTRL_POST_H   # ...except the motor controller, 1.5 lower
 
 # ── STANDING TRAY (user, 2026-09-11) ─────────────────────────────────────────
 # Everything above is the tray's FLAT layout -- plate, posts, boards -- and it is still
@@ -154,7 +168,7 @@ def stand_pt(x: float, y: float, z: float):
 # the dimensions datum the motor bank is packed against has to hold the real boards:
 # tallest part above the plate's underside in the flat frame = depth in X once standing
 _PI_TOP = BOARD_Z + BD_T + 14.0                # Pi 5 USB/ethernet block top (see pi5)
-_MCTRL_TOP = BOARD_Z + BD_T + 9.8              # a MATED XH on the motor controller
+_MCTRL_TOP = MCTRL_BOARD_Z + BD_T + 9.8        # a MATED XH on the motor controller
 _STACK = max(_PI_TOP, _MCTRL_TOP, BOARD_Z + BD_T + 9.0) - TRAY_Z0   # (+ buck caps)
 assert _STACK <= D.ELEC_STACK_D + 1e-6, (
     f"the electronics stack is {_STACK:.2f} deep standing, over dimensions.ELEC_STACK_D "
@@ -319,7 +333,7 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     def _cyl_col(x, y, d, z0, z1):
         return cq.Workplane("XY").add(cq.Solid.makeCylinder(d / 2.0, z1 - z0, cq.Vector(x, y, z0)))
 
-    def _frame(bw, bl, boss_xy, slide_in_x=False, harness_w=0.0):
+    def _frame(bw, bl, boss_xy, slide_in_x=False, harness_w=0.0, post_h=POST_H):
         """A board cradle made ONLY of columns rising from the endplate wall (local z `zb`)
         to the board: a ring round the board -- a LIP under its edge to carry it, then on up
         past its top as the locating wall -- and an M4 boss column at `boss_xy`, the insert
@@ -346,13 +360,13 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
         direction is unaffected.
         """
         ox, oy = bw / 2 + CLR + WALL, bl / 2 + CLR + WALL
-        btop = POST_H + BD_T                       # the board's top face
+        btop = post_h + BD_T                       # the board's top face
         top = btop + RETAIN + 0.8                  # wall now clears the retainer too
-        ring = (box_at(2 * ox, 2 * oy, POST_H - zb, x=0.0, y=0.0, z=(zb + POST_H) / 2)
+        ring = (box_at(2 * ox, 2 * oy, post_h - zb, x=0.0, y=0.0, z=(zb + post_h) / 2)
                 .cut(box_at(bw - 2 * LIP, bl - 2 * LIP, 80.0, x=0.0, y=0.0, z=0.0)))
-        wall = (box_at(2 * ox, 2 * oy, top - POST_H, x=0.0, y=0.0, z=(POST_H + top) / 2)
-                .cut(box_at(bw + 2 * CLR, bl + 2 * CLR, btop - POST_H + 0.02,
-                            x=0.0, y=0.0, z=(POST_H + btop) / 2)))
+        wall = (box_at(2 * ox, 2 * oy, top - post_h, x=0.0, y=0.0, z=(post_h + top) / 2)
+                .cut(box_at(bw + 2 * CLR, bl + 2 * CLR, btop - post_h + 0.02,
+                            x=0.0, y=0.0, z=(post_h + btop) / 2)))
         # the 45 deg lean: a void that opens OUT as it rises, cut from the wall above the
         # board. At the board's top face it is the board's own clearance box; RETAIN higher
         # it has grown by RETAIN on every side, so the material between leans inward at 45.
@@ -379,7 +393,7 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
             # not the picture, is what said which side had opened.
             wall = wall.cut(box_at(2 * WALL + 2 * CLR + 2, 2 * oy + 2, 80.0,
                                    x=-bw / 2, y=0.0, z=0.0))
-        cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zb, POST_H))
+        cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zb, post_h))
         return cr
 
     # ── BOTH BOARDS: HOLLOW FRAMES OF COLUMNS, NO PLATE (user, 2026-09-21) ────────────────
@@ -397,8 +411,9 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     y1 = y1 + MCTRL_EAR_H
     bw, bl = x1 - x0, y1 - y0
     hx, hy = MCTRL_HOLE[0], MCTRL_HOLE[1] - MCTRL_EAR_H / 2.0
-    cr = _frame(bw, bl, (hx, hy), slide_in_x=True, harness_w=HARNESS_W)
-    cr = _cut_anchor(_M4, cr, (hx, hy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
+    cr = _frame(bw, bl, (hx, hy), slide_in_x=True, harness_w=HARNESS_W,
+                post_h=MCTRL_POST_H)
+    cr = _cut_anchor(_M4, cr, (hx, hy, MCTRL_POST_H), (0, 0, -1), _M4.anchor_min_wall)
     mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
     # THE PI: a purchased board, holes too small for M4, so its M4 stands BESIDE the +Y edge
@@ -435,9 +450,9 @@ def board_screws():
     out = []
     cx, cy = _ctr(MCTRL_FP)
     tx, ty = cx + MCTRL_HOLE[0], cy + MCTRL_HOLE[1]
-    out.append(("board_insert_0", stand(seated_insert(_M4, (tx, ty, BOARD_Z), (0, 0, -1)))))
+    out.append(("board_insert_0", stand(seated_insert(_M4, (tx, ty, MCTRL_BOARD_Z), (0, 0, -1)))))
     out.append(("board_screw_0", stand(m4_button_screw(L).translate(
-        (tx, ty, BOARD_Z + BD_T + M4_BUTTON_HEAD_H)))))
+        (tx, ty, MCTRL_BOARD_Z + BD_T + M4_BUTTON_HEAD_H)))))
     ox, oy, oz = op_origin()
     (hx, hy, _hd), = BG.holes("output_panel")
     out.append(("board_insert_1", seated_insert(_M4, (ox + hx, oy + hy, oz), (0, 0, -1))))
@@ -881,7 +896,7 @@ def mctrl_pt(ref: str):
     x, y = to_tray(bx, by)
     # J2 is a PH now (the 5 V lever bus, 2026-09-21); every other lead is a mated XH
     _ph = BG.fp_name(BG.footprint("motor_ctrl", ref)["fpid"]).startswith("JST_PH_")
-    return (x, y, BOARD_Z + BD_T + (BG._PH_MATED_H if _ph else BG._XH_MATED_H))
+    return (x, y, MCTRL_BOARD_Z + BD_T + (BG._PH_MATED_H if _ph else BG._XH_MATED_H))
 
 
 def motor_ctrl() -> cq.Workplane:
@@ -889,7 +904,7 @@ def motor_ctrl() -> cq.Workplane:
     cx, cy = _ctr(MCTRL_FP)
     b = (motor_ctrl_pcb(mating=True)
          .rotate((0, 0, 0), (0, 0, 1), MCTRL_ROT)
-         .translate((cx, cy, BOARD_Z)))
+         .translate((cx, cy, MCTRL_BOARD_Z)))
     return stand(b)
 
 
