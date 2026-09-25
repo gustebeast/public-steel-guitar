@@ -1920,6 +1920,10 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
     va = spot(pa, (pb.GetPosition().x, pb.GetPosition().y))
     vb = spot(pb, (pa.GetPosition().x, pa.GetPosition().y))
     if va is None or vb is None:
+        if os.environ.get("HOP_DEBUG"):
+            _f = pa if va is None else pb
+            print("      HOP %s: no via site beside %s.%s"
+                  % (netname, _f.GetParentFootprint().GetReference(), _f.GetNumber()))
         return 0
     # the run itself only has to clear THROUGH-HOLE copper: an SMD pad lives on the
     # component layer and is no obstacle at all to a trace an layer down
@@ -1940,6 +1944,8 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
             way = sh
             break
     if way is None:
+        if os.environ.get("HOP_DEBUG"):
+            print("      HOP %s: vias placed, no run between them" % netname)
         return 0
     n = 0
     emit((pa.GetPosition().x, pa.GetPosition().y), va, pa, netname, pa.GetLayer())
