@@ -1027,6 +1027,8 @@ JACK_ACCESS_XY = TP.JACK_POS[0]                 # THE JACK'S OWN POSITION, read 
 # positional tolerance -- and it is a number this project already has rather than one
 # invented here.
 JACK_ACCESS_D  = M4.shaft_clr_d                 # 4.4
+# what actually has to fit past the board edge: the KEY, not its clearance hole
+_HEX25_R = 2.887 / 2.0
 
 
 
@@ -2626,7 +2628,27 @@ def opt_pcb() -> cq.Workplane:
     # ⚠ mount_points() STILL EXISTS and the endplate still builds anchors, inserts and
     # screws to it. Those are ORPHANED until the mounts are re-sited on real free board --
     # see WORKLIST. The board is currently held by nothing.
-    pcb = pcb.cut(jack_access())                      # see JACK_ACCESS_XY
+    # ⚠ NO JACK ACCESS HOLE, BECAUSE THE JACK IS NOT UNDER THE BOARD. This cut it, and
+    # elec/optical.py emitted the matching circle on Edge.Cuts -- where it was a FAB
+    # DEFECT, not a hole: the jack sits at x -33.93 and the board's -X edge is at -32.16,
+    # so the O4.4 circle straddles the edge. On Edge.Cuts that is "invalid_outline: Circle
+    # + Segment" (the one unexplained violation that survived every route this week) and
+    # it stretched the routed outline's bounding box to 61.19 x 188.53 against the CAD's
+    # 57.21, which is the CAD/fab disagreement cad_geom_check has been reporting. One
+    # object, both findings.
+    #
+    # The invariant is "a driver can reach the jack", and the board satisfies it by not
+    # being there: 1.775 mm of clear air from the screw centre to the board edge against
+    # the 1.444 a 2.5 mm hex key needs across corners. Asserted below rather than assumed,
+    # because the margin is 0.33 mm and the strip has moved in X twice this month.
+    _x0 = min(_s[3] for _s in _SECTIONS)          # the board's -X edge
+    gap = _x0 - JACK_ACCESS_XY[0] if JACK_ACCESS_XY[0] < _x0 else 0.0
+    assert gap >= _HEX25_R, (
+        "the pickup-height jack at x %.2f is %.2f from the board's -X edge at %.2f, and a "
+        "2.5 mm hex key needs %.3f. The board is in the driver's way: either move the "
+        "strip +X or cut jack_access() again -- and if you cut it, cut it as a NOTCH in "
+        "the outline, not as a circle on Edge.Cuts straddling the edge."
+        % (JACK_ACCESS_XY[0], gap, _x0, _HEX25_R))
     return pcb
 
 
