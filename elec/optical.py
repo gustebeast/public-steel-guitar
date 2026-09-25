@@ -1728,14 +1728,21 @@ def _bus_vias():
     return [("SAI_SCK",) + _cell_pt(k, _SCK_SPINE, _SCK_JOG) for k in range(5)]
 
 
-# +3V3A's lanes. The op-amp side vias 1.38 EAST of the Cd column, which puts it clear
+# +3V3A's lanes. The op-amp side goes 0.65 WEST of the Cd column and drops south of the
+# package before it dives, into the 1.3 mm corridor between Cd's own stitching via at
+# -19.28 and MID's pin-3 via at -20.58.
+# ⚠ IT MUST NOT GO EAST. 1.38 east puts the drop at -17.901, which is 0.11 from the
+# Rf*B.1 column -- and that is the one place TIA_IN_B's inner hop can put a via. The
+# summing node reaches its feedback resistor only through that hop, the op-amp's own
+# pin row being between them, so nine strings lost it. A power rail has the whole
+# board and the summing node has 0.97 mm; the rail yields. The older note stands:
 # of the B channel's escape vias at -18.54 rather than 0.06 from them -- 0.68 was the
 # first try and DRC caught it shorting TIA_OUT_*B on all ten strings. A via needs 0.60
 # (0.3 annulus, 0.15 spine, 0.15 rule) and the gap west of those vias is only 0.19.
 # The rest of the note stands: there is no room on the
 # 1.283 mm stub between pin 8 and Cd (0.163 mm of gap, against the 0.9 a 0.6 via needs), and
 # nothing else in the tile is clear -- the B-channel's own escape vias sit at x -18.54.
-_V3A_DX = 1.38
+_V3A_DX = -0.65
 _V3A_SPINE = 5.30           # converter side, INBOARD of SAI_FS at 7.20: see _bus_spines
 _V3A_CS_DY = -3.27          # the Cs*1 row, +3V3A's pad in each cell
 
