@@ -2198,9 +2198,61 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
         for cl in clusters:
             if len(cl) < 2:
                 continue
-            # a minimum spanning tree over the cluster: every pad connected, no loops,
-            # shortest total copper
-            inside, outside = [cl[0]], list(cl[1:])
+            # ⚠ WHAT IS ALREADY JOINED IS NOT WORK, AND THIS ROUTINE COULD NOT SEE IT.
+            # The MST below ran over the cluster's PADS, so it laid copper between pads a
+            # spine had already connected -- redundant metal, and worse than redundant,
+            # because it becomes an obstacle in the tightest part of the board.
+            #
+            # Measured: handed +3V3A and SAI_FS as retry nets it laid 65 segments and
+            # skipped 13, and the thirteen were edges the spines already carry --
+            # U30.8 -> Cd9.1 nine times over, U18.23 -> U17.23. Every one of those is a
+            # connection that EXISTS. On a net that is 95% finished the routine spent its
+            # whole budget re-laying the 95%.
+            #
+            # That is also the real mechanism behind "pre-laying failing nets makes the
+            # board worse" -- 6 unconnected to 9 on the four-net retry, which I had
+            # recorded as a general property of pre-laid copper. It is not general. It is
+            # this, and the fix is to span ISLANDS rather than pads: pre-merge whatever the
+            # board already connects, and let the MST join only what is genuinely apart.
+            #
+            # It only became possible once declared copper was laid BEFORE the searches
+            # (route/layout ordering fix, 2026-09-24). Before that there was nothing here
+            # to see.
+            _cc = board.GetConnectivity()
+            _uf = {}
+
+            def _find(k, _uf=_uf):
+                _uf.setdefault(k, k)
+                while _uf[k] != k:
+                    _uf[k] = _uf[_uf[k]]
+                    k = _uf[k]
+                return k
+
+            for _i, _a in enumerate(cl):
+                # the connectivity graph hands back fresh wrappers, so identity does not
+                # survive the call -- compare by position, as link_close_gaps does
+                _at = {(it.GetPosition().x, it.GetPosition().y)
+                       for it in _cc.GetConnectedItems(_a)}
+                for _j in range(_i + 1, len(cl)):
+                    _b = cl[_j]
+                    # ⚠ INDICES, NOT cl.index(). A pcbnew pad's __eq__ is not identity,
+                    # so index() can hand back the wrong pad of a net that has two at the
+                    # same place -- and this board has twenty of those (each photodiode
+                    # lands its cathode twice).
+                    if (_b.GetPosition().x, _b.GetPosition().y) in _at:
+                        _ra, _rb = _find(_i), _find(_j)
+                        if _ra != _rb:
+                            _uf[_ra] = _rb
+            _islands = {}
+            for _i, _q in enumerate(cl):
+                _islands.setdefault(_find(_i), []).append(_q)
+            _isl = list(_islands.values())
+            if len(_isl) < 2:
+                continue                      # the whole cluster is already one island
+            _of = {id(q): n for n, g in enumerate(_isl) for q in g}
+            # a minimum spanning tree over the cluster's ISLANDS: every island connected,
+            # no loops, shortest total copper
+            inside, outside = list(_isl[0]), [q for g in _isl[1:] for q in g]
             while outside:
                 best = min(((a, b) for a in inside for b in outside),
                            key=lambda ab: (ab[0].GetPosition() - ab[1].GetPosition())
@@ -2255,8 +2307,14 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                 else:
                     skipped += 1
                     skipped_edges.append(_edge_name(a, b, netname, math))
-                inside.append(b)
-                outside.remove(b)
+                # ⚠ THE WHOLE ISLAND CROSSES, NOT JUST THE PAD. Moving only b would leave
+                # its island-mates in `outside` and the MST would come back for them --
+                # laying a second, third and fourth edge into copper already reached.
+                _n = _of[id(b)]
+                for _q in list(outside):
+                    if _of[id(_q)] == _n:
+                        inside.append(_q)
+                        outside.remove(_q)
     # ── CORRIDOR RUNS: cross a barrier through an ASSIGNED gap ──────────────────
     # ⚠ THE ROUTER LOSES THIS ONE BY DESIGN, NOT BY WEAKNESS. Measured on the optical
     # board: 13 of 20 TIA outputs cross the comb, 7 do not, and the 7 that do not are

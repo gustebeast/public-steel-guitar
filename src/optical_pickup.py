@@ -1459,6 +1459,19 @@ def _parts():
     # instead of one row longer.
     add("C127", "analog LDO noise bypass -- 1 uF on the SPX3819's BYP pin", "0402",
         _part_x("U9"), _y1_y)
+    # ⚠ AND C114 GOES THE SAME WAY, FOR THE SAME REASON, MEASURED THE SAME WAY. Putting
+    # the MID divider's bypass in the power row beside R34 spilled the packer into a new
+    # row and broke the conduit's exterior-wall assert by 1.07 mm -- 0.62 last time, and
+    # the row has not got any emptier since. The board's -Y end is where the connectors
+    # live and it cannot grow (user), so the cap sits one row away at the DIVIDER'S own X.
+    #
+    # It costs nothing electrically, and the reason is worth stating because it is NOT true
+    # of the decoupling caps this row is full of: a supply bypass has to be at the pin
+    # because its job is set by loop inductance, and 6 mm of trace ruins it. C114's job is
+    # a POLE, set by 901 ohm and 1 uF, and 6 mm of trace against 901 ohm is nothing. Put
+    # differently: this cap filters a node, it does not decouple a pin.
+    add("C114", "MID divider bypass -- 1 uF; keeps the LED row's 48 kHz off the reference "
+        "all twenty TIAs share", "0402", _part_x("R34"), _y1_y)
 
     # ---- 3e. THE AUDIO CONVERTERS, in the escape annulus -X of the MCU (2026-09-21) ----
     # Five TLV320ADC3140s, one per quad (see elec/optical.py for why the MCU's own ADCs
