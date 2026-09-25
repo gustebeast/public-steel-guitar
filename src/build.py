@@ -1488,9 +1488,9 @@ _COLORS = {
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
     "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
-    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
-                                             #   wire returns when the optical board is
-                                             #   designed and the pickup plugs into it
+    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
+                                             #   shielded lead, coil underside -> the
+                                             #   output panel's J8 screw terminals
     "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
     "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Teensy

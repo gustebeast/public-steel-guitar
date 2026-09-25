@@ -80,10 +80,12 @@ from .helpers import oct_cable
 # wires -- black gnd, red 24 V, yellow CAN-H, green CAN-L). Nothing exceeds 2.6.
 WIRE_OD = {
     "wire_usb": 2.6,
-    "wire_pickup": 2.0,   # DORMANT, kept: the magnetic pickup's screw-terminal
-                          # run returns when the optical pickup board is designed
-                          # (see the AFE note in build_wires). The other four AFE
-                          # cables are gone for good.
+    # single-core SHIELDED instrument cable, jacket OD: centre conductor = PICKUP_HOT,
+    # braid = the return, which is why it is one cable at bundle OD and not two wires.
+    # Both ends are BARE TINNED LEADS -- the panel end lands in J8's screw terminals and
+    # the pickup end is whatever the pickup shipped with. No connector at either end, so
+    # there is no plug body to model.
+    "wire_pickup": 2.4,
     # CAN signal pairs, split into CAN-H / CAN-L discrete conductors
     "wire_canh": 1.3, "wire_canl": 1.3,       # bus A (motors)
     "wire_canbh": 1.3, "wire_canbl": 1.3,     # bus B (inputs)
@@ -672,9 +674,12 @@ def build_wires():
     # wire_audio, wire_dac and wire_relayctrl all began or ended on that board;
     # the bypass relay and the magnetic buffer now live on the optical pickup
     # board, which is 10 mm from the jack and the audio connector they feed.
-    # wire_pickup RETURNS when that board is designed -- the magnetic pickup
-    # still has to reach it -- but as ~230 mm of shielded coax to the optical
-    # board's own terminal, not 110 mm to a board at the wrong end of the run.
+    # wire_pickup IS BACK (2026-09-24), and NOT to the optical board: the magnetic
+    # path moved to the OUTPUT PANEL on 2026-09-15, which is nearer the pickup than
+    # the optical board is, so the analog run got shorter rather than longer. It
+    # lands on J8's SCREW TERMINALS (user) -- the pickup is the most likely thing
+    # anyone ever rewires, and a screw terminal takes the two bare tinned leads a
+    # pickup ships with, neither soldered nor crimped.
     # Keyhead routing (STANDING TRAY, user 2026-09-11): the boards stand against the keyhead
     # endplate and string 1's motor sits 1.6 mm off the Pi, so nothing inside that motor's
     # Y/Z band can be reached from +X. Every bay wire therefore uses ONE column, BAY_X, just
@@ -1041,6 +1046,31 @@ def build_wires():
         (EL.UI_X, EL.OLED_Y, EL.DECK_TOP + 1.0), (EL.UI_X, EL.OLED_Y, UDZ),
         (BAY_X, EL.OLED_Y, UDZ), (BAY_X, -40.0, SP(-600.0, -40.0, -57.0)[2]),
         SP(-600.0, -40.0, -57.0)], WIRE_OD["wire_oled"])))
+    # ── the magnetic pickup -> the output panel's screw terminals ────────────
+    # ⚠ THE PICKUP END MOVES AND THE PANEL END DOES NOT. The pickup rides the
+    # height plate: three M4 leadscrew jacks lift and tilt it, and it slides in X
+    # for tone. So this cable is drawn at the pose the rest of the build shows and
+    # the REAL one needs slack for the plate's travel -- that is an assembly note
+    # (INSTALL_NOTES), not geometry, because modelling a service loop would only
+    # invent a shape nobody has to build to.
+    #
+    # It leaves the coil's UNDERSIDE at the -Y end, which is both where a bar
+    # pickup's leads actually exit and the end nearest J8: the terminal sits at
+    # y -57.45 and the pickup's -Y edge at -51.5, so the two face each other.
+    # J8's wire entry is taken as +Y, matching op_pt's convention for this board;
+    # the footprint is nearly symmetric front-to-back (fab -3.85/+4.05 about the
+    # pads) so if that is ever shown to be backwards it is an 8 mm correction here
+    # and nothing else moves.
+    from . import pickup_mount as _PM, top_plate as _TP
+    _pk_x, _pk_y = _TP.PICKUP_X_NOM, _TP.PK_YM + 4.0      # coil underside, -Y end
+    _j8 = EL.op_pt("J8")
+    out.append(("wire_pickup", _wire([
+        (_pk_x, _pk_y, _PM.PK_BOT),        # leaves the coil's underside
+        (_pk_x, _pk_y, _j8[2]),            # straight down, clear of the plate
+        (_pk_x, _j8[1] + 10.0, _j8[2]),    # -Y in its own X column
+        (_j8[0], _j8[1] + 10.0, _j8[2]),   # +X to the terminal's column
+        _j8], WIRE_OD["wire_pickup"])))
+
     out.append(("wire_joy", _wire([
         (EL.JOY_X, EL.JOY_Y, EL.DECK_TOP + 1.0), (EL.JOY_X, EL.JOY_Y, UDZ),
         (BAY_X + 4, EL.JOY_Y, UDZ), (BAY_X + 4, -30.0, SP(-595.0, -30.0, -57.0)[2]),
@@ -1052,6 +1082,8 @@ def build_wires():
 # what each net is ALLOWED to touch (its source/destination bodies);
 # everything else a wire grazes is a routing bug the gate reports
 WIRE_OK = {
+    # the two bodies it terminates on, and nothing else: it crosses the bay in open air
+    "wire_pickup":    {"pickup", "output_panel"},
     "wire_canh":      {"motor_ctrl", "tee_pcb"},
     "wire_canl":      {"motor_ctrl", "tee_pcb"},
     "wire_canbh":     {"motor_ctrl", "tee_pcb"},
