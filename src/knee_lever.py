@@ -2341,6 +2341,27 @@ KNEE_BRG_WALL = 6 * D.BEAD          # 4.8 of backing behind the race, vs 1.6 els
 KNEE_CHAM_C = (BRG_SEAT_D / 2.0 + KNEE_BRG_WALL) * math.sqrt(2.0)
 
 
+def board_guard(z_bot=None, z_top=None, flip=None):
+    """The sensor board's envelope grown a 2-bead wall, AS INSTALLED in this housing.
+
+    Shared by both levers' knee reliefs. As it happens the two come out IDENTICAL today --
+    board_flip is False for both, so board_x/board_z return the same constants and a copied
+    wedge would have worked. That is not a reason to copy one: board_flip exists because
+    this board CAN be installed turned over, knee_lever_vert asserts that LKV must not be,
+    and the day either assertion moves, a guard that reads the housing follows the board
+    while a copied one silently guards the other lever's. Its Y comes off the board itself;
+    the cradle is the same part in both, so that dimension genuinely is shared.
+    """
+    z_bot = HOUS_Z0 if z_bot is None else z_bot
+    z_top = HOUS_Z1 if z_top is None else z_top
+    bx0, bx1 = board_x(z_bot, z_top, flip)
+    bz0, bz1 = board_z(z_bot, z_top, flip)
+    b = sensor_board().val().BoundingBox()
+    g = D.MIN_WALL_2P
+    return box_at(abs(bx1 - bx0) + 2 * g, b.ylen + 2 * g, abs(bz1 - bz0) + 2 * g,
+                  x=(bx0 + bx1) / 2.0, y=(b.ymin + b.ymax) / 2.0, z=(bz0 + bz1) / 2.0)
+
+
 def _knee_relief():
     """The 45 deg corner cut, across the housing's own width only.
 
@@ -2364,11 +2385,7 @@ def _knee_relief():
     f = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, y0, z) for x, z in pts] + [cq.Vector(pts[0][0], y0, pts[0][1])]))
     wedge = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, y1 - y0, 0)))
-    b = sensor_board().val().BoundingBox()
-    g = D.MIN_WALL_2P
-    guard = box_at(b.xlen + 2 * g, b.ylen + 2 * g, b.zlen + 2 * g,
-                   x=(b.xmin + b.xmax) / 2, y=(b.ymin + b.ymax) / 2, z=(b.zmin + b.zmax) / 2)
-    return wedge.cut(guard)
+    return wedge.cut(board_guard())
 
 
 def _stop_skirt(w):
