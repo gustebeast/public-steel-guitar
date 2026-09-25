@@ -242,6 +242,23 @@ def _lever_envelope() -> cq.Workplane:
     return heal(hub.union(leg).union(arm))
 
 
+# HOW FAR THE ARM CAN ACTUALLY GO -- which is NOT how far it is driven (user, 2026-09-25:
+# "LKV will have shorter travel, we just need to ensure it isn't blocked until the lever
+# tip touches the chassis. The chassis sets the limit"). THROW_V is the driven range; the
+# room has to be carved to the PHYSICAL one, or the housing becomes the stop instead of
+# the instrument. Carved to THROW_V it was: the arm fouled its own housing from 22 deg,
+# forty degrees before anything real.
+#
+# MEASURED, NOT DERIVED, and that is a weakness worth stating. The contact is between the
+# POSED arm and the chassis, and this module cannot see either -- src.build owns the pose
+# and importing it here would be a cycle. Swept in the assembly, the tip closes its 15.2 mm
+# of clearance and touches at 62.6 deg. The local HOUS_Z1 plane is NOT a stand-in for it:
+# the arm reaches out to x 80, far outboard of the housing, and out there it passes that
+# plane at 20 deg with nothing above it. Believing otherwise is what made the first attempt
+# at this stop at 21.
+THROW_MAX = 63.0                    # deg, +throw: the arm tip on the chassis underside
+
+
 def _housing() -> cq.Workplane:
     """The prism, derived from the lever + the raised cartridges exactly as LKL's
     is, minus the lever room, the two house pockets and the drag recesses, plus
@@ -258,11 +275,35 @@ def _housing() -> cq.Workplane:
     # above the arm's own rest underside and the lever fouled from 3° on. Sweeping
     # the real shape cannot make that mistake. 1° steps leave scallops well under
     # one nozzle; a closed-form polygon is the tidy-up, not a correctness fix.
+    # ...AND IT SWEEPS TO THE CHASSIS, not to THROW_V (user, 2026-09-25: "LKV will have
+    # shorter travel, we just need to ensure it isn't blocked until the lever tip touches
+    # the chassis. The chassis sets the limit"). THROW_V is how far the lever is DRIVEN;
+    # it is not how far it can go, and carving only the driven range left the housing
+    # stopping the arm 40 deg before anything physical did. The arm rises until it meets
+    # the instrument's underside, which is HOUS_Z1 -- measured at 62.6 deg, where the tip
+    # closes the 15.2 mm it starts with.
     _hw = LEVER_HW + KL.HS_CLR
+    # THE MOUNT GETS THE LAST WORD. The arm leaves through a slot in the +X face whose roof
+    # may not rise past a tenon stem's root, and the arm's reach inside that span climbs
+    # steeply once it is past ~44 deg: 17.95 at 44, 26.03 at 56, 33.73 at 63. So the room is
+    # swept as far as the roots allow and no further -- measured at 56 deg, against the
+    # chassis's 62.6. The last 6.6 deg would cost a tenon root, and the lever is DRIVEN 20.
+    _stem = min(abs(ty) - KL._JW / 4 for ty in TEN_Y if abs(ty) > 1e-9)
+    _zw = HOUS_Z1 - KL.TEN_ROOT - max(0.0, _hw - _stem)
+    _x0 = -(KL.ARM_TX / 2 + KL.HS_CLR)
+    _x1 = HOUS_X1 + 1.0
+    _span = box_at(_x1 - _x0, 2 * _hw + 2.0, 400.0, x=(_x0 + _x1) / 2, y=0.0, z=0.0)
     _env = None
-    for i in range(int(THROW_V) + 1):
+    THROW_ROOM = 0.0
+    for i in range(int(THROW_MAX) + 1):
         c = swing(_lever_envelope(), float(i))
+        if c.val().intersect(_span.val()).BoundingBox().zmax > _zw:
+            break                       # any further and the slot roof eats a tenon root
         _env = c if _env is None else _env.union(c)
+        THROW_ROOM = float(i)
+    assert THROW_ROOM >= THROW_V, (
+        "the vertical lever's room stops at %.0f deg, short of its own %.0f deg throw"
+        % (THROW_ROOM, THROW_V))
     # ...CAPPED AT THE HOUSING TOP (user, 2026-09-10). The top is flush with the instrument's
     # underside, so the arm cannot swing above it: past ~15 deg it meets the body, not air.
     # Sweeping the full envelope up through it hollowed out the inner halves of both mount
@@ -278,8 +319,6 @@ def _housing() -> cq.Workplane:
     # the top face, so it opens through as a narrow slot with no flat ceiling anywhere (the
     # reason the top was opened in the first place: a flat roof over the arm's full-throw
     # position was a 53 mm2 overhang). Both mount tenons now stand on solid material.
-    _x0 = -(KL.ARM_TX / 2 + KL.HS_CLR)
-    _x1 = HOUS_X1 + 1.0
     # WALL HEIGHT: as high as it can go WITHOUT cutting under a tenon stem's root, so the slot
     # still takes everything it used to over the cartridge pockets while the stems stay rooted
     # (the roof passes the nearest stem edge exactly at the bottom of its TEN_ROOT). The arm's
@@ -290,8 +329,6 @@ def _housing() -> cq.Workplane:
     # outer pair. The centre one stands ON the slot's own centreline and is cut away here by
     # design (see TEN_Y), so asking the roof to stay under a root that does not exist in this
     # span would drop the wall for nothing.
-    _stem = min(abs(ty) - KL._JW / 4 for ty in TEN_Y if abs(ty) > 1e-9)
-    _zw = HOUS_Z1 - KL.TEN_ROOT - max(0.0, _hw - _stem)
     assert _zw >= _reach - 1e-6, (
         f"the slot wall ({_zw:.2f}) is under the arm's reach ({_reach:.2f}) in its own span")
     _pts = [(-_hw, -HUB_D / 2), (_hw, -HUB_D / 2), (_hw, _zw), (0.0, _zw + _hw), (-_hw, _zw)]
