@@ -367,16 +367,17 @@ def _knee_relief():
     -- the arithmetic is about one pose of a board that has been turned over before."""
     z0 = HOUS_Z0 - 1.0
     xo = HOUS_X1 + 1.0
-    y0, y1 = -HOUS_HW_N, HOUS_HW_P
+    # ...AND IT RUNS OVER THE CRADLE, as LKL's does (user, 2026-09-25: "the 45 cut doesn't
+    # cut the PCB like you have it for the LKL"). Bounded at HOUS_HW_P it stopped at the
+    # cheek and left the cradle's corner standing proud of the relief on the very side the
+    # knee comes from. The board is guarded instead -- by ITS OWN installed height here,
+    # not LKL's, which is what KL.board_guard exists to get right.
+    y0, y1 = -HOUS_HW_N, KL.CR_Y1 + KL.D.MIN_WALL_2P
     pts = [(z0 + KL.KNEE_CHAM_C, z0), (xo, z0), (xo, xo - KL.KNEE_CHAM_C)]
     f = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, y0, z) for x, z in pts] + [cq.Vector(pts[0][0], y0, pts[0][1])]))
     wedge = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, y1 - y0, 0)))
-    b = KL.sensor_board().val().BoundingBox()
-    g = KL.D.MIN_WALL_2P
-    return wedge.cut(box_at(b.xlen + 2 * g, b.ylen + 2 * g, b.zlen + 2 * g,
-                            x=(b.xmin + b.xmax) / 2, y=(b.ymin + b.ymax) / 2,
-                            z=(b.zmin + b.zmax) / 2))
+    return wedge.cut(KL.board_guard(HOUS_Z0, HOUS_Z1))
 
 
 def swing(s, throw=0.0):
