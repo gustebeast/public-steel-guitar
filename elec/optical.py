@@ -2034,7 +2034,18 @@ def _led_row_vias():
 #   _MID_P3_DY     2.40 north of pin 3, clear of PIN 4's stitching via, which sits
 #                  1.313 north of pin 4 and left only 0.673 at the first value
 _MID_VIA_DX, _MID_VIA_DROP = 1.100, 0.970
-_MID_P5_DX, _MID_P3_DY = 1.744, 2.400
+_MID_P5_DX = 1.744
+# ⚠ PIN 3's VIA IS 0.9 OFF PIN 3's COLUMN, and that offset is the whole of TIA_IN_B.
+# _hop_via_inner needs a STRAIGHT stub from pad to via, and pin 6 is boxed in by
+# pins 5 and 7 on its own row -- so its only straight escape is due south, down its
+# own column. Pin 3 shares that column (both are op_x - _OP_PIN_DX), so a via sitting
+# 2.4 north of pin 3 lands 2.738 south of the NEXT string's pin 6 and corks it. Nine
+# strings lost their summing node to it. There is 1.94 mm of room down there; the
+# column was simply occupied.
+#
+# Inside the package was tried instead and is worse (9 unlaid -> 18): the interior is
+# where TIA_IN_A's escape goes, so that just moves the cork to the A channel.
+_MID_P3_DX, _MID_P3_DY, _MID_P3_MID = 0.900, 2.964, 2.014
 # the anode link rides the WEST side of its own lands, to leave LED_ROW's via room
 _MID_COL_DX = -0.394
 # ⚠ +3V3A's op-amp via DROPS clear of the feedback band before it dives. Sitting
@@ -2100,7 +2111,7 @@ def _mid_spine(spine_w=0.3, w=0.25):
     pin5 = lambda n: (op(n)[0] - 3 * _OP_PIN_DX, op(n)[1] - _OP_ROW_DY)
     pin3 = lambda n: (op(n)[0] - _OP_PIN_DX, op(n)[1] + _OP_ROW_DY)
     v5 = lambda n: (op(n)[0] - _MID_P5_DX, pin5(n)[1])
-    v3 = lambda n: (pin3(n)[0], pin3(n)[1] + _MID_P3_DY)
+    v3 = lambda n: (pin3(n)[0] - _MID_P3_DX, pin3(n)[1] + _MID_P3_DY)
 
     order = sorted(strings, key=lambda n: -op(n)[1])
     out = [("MID", "B.Cu", spine_w,
@@ -2117,7 +2128,12 @@ def _mid_spine(spine_w=0.3, w=0.25):
                 # 5's own lane, which clears it by 0.769, then east above it.
                 ("MID", "B.Cu", w, [v5(n), (v5(n)[0], v3(n)[1])]),
                 ("MID", "B.Cu", w, [(v5(n)[0], v3(n)[1]), v3(n)]),
-                ("MID", "F.Cu", w, [v3(n), pin3(n)])]
+                # down its own lane, east 0.354 clear of pin 4's land and 0.552 clear of
+                # pin 4's stitching via, then south into pin 3
+                ("MID", "F.Cu", w, [v3(n), (v3(n)[0], pin3(n)[1] + _MID_P3_MID)]),
+                ("MID", "F.Cu", w, [(v3(n)[0], pin3(n)[1] + _MID_P3_MID),
+                                    (pin3(n)[0], pin3(n)[1] + _MID_P3_MID)]),
+                ("MID", "F.Cu", w, [(pin3(n)[0], pin3(n)[1] + _MID_P3_MID), pin3(n)])]
     return out
 
 
@@ -2134,7 +2150,7 @@ def _mid_vias():
         ux, uy = P["U%d" % (20 + n)][0], P["U%d" % (20 + n)][1]
         out += [("MID", ax + _MID_VIA_DX, lo - _MID_VIA_DROP),
                 ("MID", ux - _MID_P5_DX, uy - _OP_ROW_DY),
-                ("MID", ux - _OP_PIN_DX, uy + _OP_ROW_DY + _MID_P3_DY)]
+                ("MID", ux - _OP_PIN_DX - _MID_P3_DX, uy + _OP_ROW_DY + _MID_P3_DY)]
     return out
 
 
