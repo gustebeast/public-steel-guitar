@@ -1923,9 +1923,19 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
         return 0
     # the run itself only has to clear THROUGH-HOLE copper: an SMD pad lives on the
     # component layer and is no obstacle at all to a trace an layer down
+    # ⚠ THE LAYER ARGUMENT IS AN ID, NOT A NAME, and passing the name here meant the
+    # inner layer was never checked at all. `emit` records a segment's layer as
+    # _LAYERS[inner] -- an int -- and clear() skips any segment whose olay != layer, so
+    # `layer=inner` compared 6 against "In2.Cu", which is always unequal, and every run
+    # already laid on In2 was invisible. It cost a crossing between TIA_IN_*B and
+    # TIA_OUT_*B on ALL TEN strings: a short from each B channel's summing node to its own
+    # output, which turns that TIA into a follower. They are the two nets most likely to
+    # want this fallback at the same moment, in the same 2 mm, so they found each other
+    # every time. thru_only stays: it is about PADS, which are on the component layer and
+    # genuinely no obstacle down here.
     way = None
     for sh in _centrelines(va, vb, detour_mm=2.0, step_mm=0.25):
-        if all(seg_clear(q0, q1, netname, thru_only=True, layer=inner)
+        if all(seg_clear(q0, q1, netname, thru_only=True, layer=_LAYERS[inner])
                for q0, q1 in zip(sh, sh[1:])):
             way = sh
             break
@@ -2165,8 +2175,16 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                 p0 = (a.GetPosition().x, a.GetPosition().y)
                 p1 = (b.GetPosition().x, b.GetPosition().y)
                 way = None
+                # ⚠ ASK ABOUT THE LAYER THE RUN IS ON. This tested every candidate
+                # against copper on ALL layers while emitting it on the pads' own -- so a
+                # B.Cu spine two layers away blocked a surface run. Harmless while the
+                # declared spines were laid AFTER this routine and it could not see them;
+                # the moment they were laid first (as they must be, so this can route
+                # around them) it dropped 156 segments. Through-hole copper still counts:
+                # the grid carries vias and THT pads with no layer filter at all.
                 for sh in _centrelines(p0, p1, detour_mm=3.0, step_mm=0.25):
-                    if all(seg_clear(q0, q1, netname) for q0, q1 in zip(sh, sh[1:])):
+                    if all(seg_clear(q0, q1, netname, layer=a.GetLayer())
+                           for q0, q1 in zip(sh, sh[1:])):
                         way = sh
                         break
                 if way is not None:
@@ -2180,9 +2198,21 @@ def _local_nets(board, patterns, outline, inner=None, local_mm=6.0, width=0.2,
                     # between them has no surface path and a trivial one a layer down.
                     # The surface is where the pads are and therefore where the traffic
                     # is; the free inner layer is empty by construction.
-                    hop = _hop_via_inner(board, a, b, netname, inner, clear, seg_clear,
-                                         emit, via_d, via_drill, clr, width, math,
-                                         outline, drills)
+                    # ⚠ TRY B.Cu WHEN In2 IS TAKEN. A string's TIA_IN_B and TIA_OUT_B
+                    # both want this fallback, in the same 2 mm, at the same moment --
+                    # they are the two ends of one feedback loop -- and on one layer the
+                    # second one has nowhere to go. It used to "succeed" only because the
+                    # layer check was broken and it laid straight across the first (see
+                    # _hop_via_inner). With that fixed, nine of them failed instead.
+                    # B.Cu is a pour, not a signal layer, but it already carries deliberate
+                    # spines and a 2 mm stub in the op-amp band costs the plane nothing.
+                    hop = 0
+                    for _lay in (inner, "B.Cu"):
+                        hop = _hop_via_inner(board, a, b, netname, _lay, clear, seg_clear,
+                                             emit, via_d, via_drill, clr, width, math,
+                                             outline, drills)
+                        if hop:
+                            break
                     if hop:
                         laid += hop
                     else:
@@ -3767,6 +3797,33 @@ def build(stem):
     # it, and a via is the only way there. A local net has a whole board and an inner
     # layer to find a path through, and it SKIPS what it cannot lay rather than failing.
     # The routine with no alternative goes first.
+    # ⚠ DECLARED COPPER GOES DOWN BEFORE ANYTHING SEARCHES, and it did not until
+    # 2026-09-24. notes["tracks"] and notes["vias"] were added at the END of build, after
+    # _local_nets and _comb_lanes had already run, so the two halves of the pre-lay were
+    # laid BLIND AGAINST EACH OTHER: the spines could not be seen by the routines that
+    # search, and they were then stamped down on top of whatever those routines had done.
+    # Most of a day's collisions came out of that one ordering -- a +3V3A via landing on a
+    # TIA_OUT_B run, a MID spine crossing V5_PRE's taps -- and each looked like a separate
+    # geometry mistake.
+    #
+    # The order that makes sense is the one the stitcher already argued for two blocks up:
+    # whatever has no alternative goes first. A declared spine has none -- it is a stated
+    # decision about where a rail lives -- while _local_nets skips an edge it cannot lay
+    # and _comb_lanes hands its run to the router. So: stitching, then declared copper,
+    # then the searches, which now see it.
+    nets_by_name = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
+    for net_name, layer, width, pts in notes.get("tracks", []):
+        _add_track(board, nets_by_name[net_name], layer, width, pts)
+    for _v in notes.get("vias", []):
+        _net, _vx, _vy = _v[0], _v[1], _v[2]
+        _drill = _v[3] if len(_v) > 3 else 0.3
+        _dia = _v[4] if len(_v) > 4 else 0.6
+        assert _net in nets_by_name, (
+            "vias names net %r, which this board does not have" % _net)
+        _add_via(board, nets_by_name[_net], _vx, _vy, _drill, _dia)
+    if notes.get("vias"):
+        print("      placed %d explicit via(s)" % len(notes["vias"]))
+
     if notes.get("local_nets"):
         # NOT `skipped` -- that name already holds the single-pad net count this
         # function reports at the end, and shadowing it made the summary line claim
@@ -3845,18 +3902,6 @@ def build(stem):
     for sl in notes.get("outline_slots", ()):
         _edge_slot(board, [tuple(p) for p in sl["poly"]], sl["rects"])
 
-    nets_by_name = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
-    for net_name, layer, width, pts in notes.get("tracks", []):
-        _add_track(board, nets_by_name[net_name], layer, width, pts)
-    for _v in notes.get("vias", []):
-        _net, _vx, _vy = _v[0], _v[1], _v[2]
-        _drill = _v[3] if len(_v) > 3 else 0.3
-        _dia = _v[4] if len(_v) > 4 else 0.6
-        assert _net in nets_by_name, (
-            "vias names net %r, which this board does not have" % _net)
-        _add_via(board, nets_by_name[_net], _vx, _vy, _drill, _dia)
-    if notes.get("vias"):
-        print("      placed %d explicit via(s)" % len(notes["vias"]))
     for net_name, layer, inset in notes.get("zones", []):
         _add_zone(board, nets_by_name[net_name], layer, inset, *notes["outline_mm"])
     if notes.get("zones"):
