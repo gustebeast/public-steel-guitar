@@ -539,12 +539,30 @@ gives the **same 8 rows** of 5×7 text whether it is 0.96" or 2.7" — a bigger 
 characters bigger, not the list longer. Read at **1 ft**, where ISO 9241 wants ≥20
 arcmin (1.77 mm) and 16 is the floor, this panel's 0.495 pitch gives:
 
-| font cell | rows | character | at 1 ft |
-|---|---|---|---|
-| 5×7 in 8 px | **8** | 3.36 mm | 38′ |
-| 6×9 in 10 px | 6 | 4.32 mm | 49′ |
+⚠ **THE PANEL IS SIZED FROM THE FONT, NOT THE OTHER WAY ROUND** (user, 2026-09-25),
+and the binding constraint is the **accessibility font, not the normal one**. The brief:
+good legibility at 1 ft for most people, at least 3 menu items, plus a larger option for
+impaired vision. A large font at 2× halves the rows — so the normal font must give **6+
+rows** for the large one to still show 3 items.
 
-Generous at either — rows trade against character size in firmware, at no cost in parts.
+| font cell | rows | cols | character | at 1 ft | |
+|---|---|---|---|---|---|
+| **5×7 in 8 px** | **8** | 21 | 3.36 mm | **38′** | NORMAL — 7 items + header |
+| 6×8 in 10 px | 6 | 18 | 3.84 mm | 43′ | NORMAL, roomier — 5 items + header |
+| 8×11 in 12 px | 5 | 14 | 5.28 mm | 60′ | LARGE — 4 items + header |
+| **8×14 in 16 px** | **4** | 14 | 6.72 mm | **76′** | LARGE — 3 items + header |
+
+Both modes clear the brief with margin, and rows trade against character size in
+firmware at no cost in parts.
+
+⚠ **AND SIZE IS NOT WHY THIS PANEL WAS CHOSEN — be clear about that before anyone
+"optimises" it.** Legibility alone does NOT need 2.7". ISO 9241 wants ≥20 arcmin (1.77
+mm at 1 ft) and the brief's 3 items at 6 rows needs only **13.4 mm of active height**;
+the 1.54" C7465999 hits 22′ and 8 rows in 17.52 mm for $6.57 on our own board. What the
+1.54" cannot do is **4-bit greyscale over SPI** — it is a 1-bit I²C part, so no
+antialiasing and no sub-pixel scrolling. The 2.7" is bought for the greyscale and the
+bandwidth (see the notes above); 38′ instead of 22′ is a *consequence*, and a welcome
+one — most eyes will never need the large font.
 
 ⚠ **WHAT MAKES IT LOOK GOOD IS GREYSCALE, NOT BRIGHTNESS** (user asked, 2026-09-25) —
 and it is the real justification for paying $38 rather than $12. The SSD1322 is **4-bit,
