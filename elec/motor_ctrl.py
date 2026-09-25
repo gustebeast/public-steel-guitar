@@ -653,14 +653,20 @@ BOARD_NOTES = {
         # an access hole, which is the whole point of the change -- see _ph4.
         # Nothing else may live on this edge: a cable leaving any other part on it has
         # nowhere to go but into the instrument.
-        # ⚠ SPACED FOR THE CHASSIS, NOT PACKED FOR THE BOARD (user, 2026-09-25: "smaller
-        # hole means a stronger chassis ... I'd also like the hole to only be where the
-        # JSTs are"). Side by side they were 0.72 mm apart, which forces ONE opening about
-        # 39 mm long. At 30 mm centres each gets its own ~22 x 16 mm hole with an 8 mm rib
-        # of chassis left between them -- two small holes and a rib, instead of one slot.
-        # The edge is 66.7 mm and the pair needs 27, so the spacing is free.
-        "J2": (20.90, 15.00, 90.0),
-        "J6": (20.90, -15.00, 90.0),
+        # ⚠ BOTH PLUGS MUST LAND IN THE ONE FREE BAND, AND THAT SETS THE SPACING. The
+        # three mortise stations -X of the full-length lever one are SPLIT: at x -618.10,
+        # -607.70 and -597.30 the slot runs y -151.2..-97.1 and again y ~21..67, with the
+        # middle free. Only that middle is available to cut into (user, 2026-09-25, with a
+        # diagram) -- the full-length mortise at x -586.90 runs y -151.2..46.4 unbroken and
+        # a lever has to be installable anywhere along it.
+        # The board reaches world y -60.8 at its +Y end, so the usable band is
+        # y -97.1..-60.8 = 36.3 mm. At 30 mm centres the pair needs 42 and the -Y one lands
+        # at y -109.2, straight over a body-adapter slot. 14 mm centres put both inside:
+        # board y 8 and 22 -> world y -86.2 and -72.2, with 31.3 mm of span used of 36.3.
+        # The chassis keeps ~4.7 mm between the two holes rather than the 8 I wanted, which
+        # is the price of the band being 36 mm wide.
+        "J2": (20.90, 22.00, 90.0),
+        "J6": (20.90, 8.00, 90.0),
         "J3": (15.50, -8.50, 90.0),
         # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
         "TP1": (-10.10, -12.85, 0.0),
