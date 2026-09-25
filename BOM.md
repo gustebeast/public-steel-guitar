@@ -467,7 +467,7 @@ fitted on every instrument.
 | **DC barrel jack** | B | Same Sky **PJ-102AH** (2.0 pin) — **PCB-MOUNT, on the output + panel PCB**. Replaces the PJ-005A, which was a SOLDER-LUG panel jack and carried the same hand-soldering violation the TS jack did. Same family, same vendor | **~$3** [m] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
 | ~~USB-C panel coupler~~ | — | **DELETED** ($7.50, Adafruit 4261 F↔F). ⚠ It would have caused the fault the USB panel PCB exists to prevent: a F↔F coupler passes VBUS, and with the Pi fed from its GPIO header that puts a laptop's VBUS straight onto the power board's output. On the Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the **same node**, with no polyfuse between them | — | — |
 | **Rotary encoder + 4-way** | B | Alps **RKJXT1F42001** (sole UI control) — **15 pulses / 30 detents** incremental encoder, **infinite both ways**, + 4-way directional + centre push, one 17.0×17.0×10.5 part | **$5.27** [v] (10+: $4.57) | [LCSC C160841](https://www.lcsc.com/product-detail/multi-directional-switches_alpsalpine-rkjxt1f42001_C160841.html) |
-| **OLED display** | B | **1.5" 128×128 SSD1351 serial** — Newhaven **NHD-1.5-128128UGC3**, module **45.0×52.0×5.1**, viewing **28.0×28.0**, 3.3 V | **$24.55** [v] | [DigiKey](https://www.digikey.com/en/products/detail/newhaven-display-intl/NHD-1-5-128128UGC3/4756378) |
+| **OLED display** | B | **2.7" 128×64 SSD1322 serial** — Newhaven **NHD-2.7-12864WDW3**, **WHITE on BLACK**, module 82.0×47.5×6.0, active 63.41×32.69, **dot pitch 0.48**, 3.3 V | **$38.08** [v] (2,057 in stock) | [DigiKey](https://www.digikey.com/en/products/detail/newhaven-display-intl/NHD-2-7-12864WDW3/7355953) |
 | ~~USB 2.0 hub (module)~~ | — | **DELETED as a MODULE** ($4.50, Adafruit CH334F) — but the function came back as a **chip on the output + panel PCB** (2026-09-15), for a different reason than it was first bought. It no longer shares a panel port; it puts the optical board's 480 Mbps link on a ~100 mm cable to the panel instead of an ~800 mm one to the keyhead, and it must be a **high-speed** hub or both devices behind it pay a Transaction Translator's ~1 ms | — | — |
 | **USB lead, motor controller → Pi** | B | **USB-A male → JST XH 2.54 4-pin**, stock adapter lead (e.g. Amazon [B0H9QTYT83](https://www.amazon.com/Jumper-Header-Adapter-Compatible-Extension/dp/B0H9QTYT83)) into motor_ctrl **J4** | ~$5 [m] | new 2026-09-21, replaces a USB-C lead that could not be plugged in. J4's pin order is USB's own — **1 VBUS (n/c on the board), 2 D−, 3 D+, 4 GND**. ⚠ Adapter leads do not agree on pin order: check it on arrival and re-pin the XH housing's crimps to match (a pin tool, no solder). Full speed is all the link uses |
 | **USB cable, optical board → output panel** | B | **USB-A ↔ USB-C, ~150 mm, USB 2.0 HIGH SPEED, STRAIGHT plug, overmold ≤ 17.5 mm** (mating face → cable exit) | ~$5–8 [m] | commodity. **Two changes, 2026-09-15.** *Destination*: it lands on the output panel's hub downstream port, not the Pi — which is the whole point of putting a hub there, and takes this 480 Mbps link from ~800 mm to ~100 mm, so the length drops from 1 m. *Overmold*: **20 → 17.5 mm**. Spacing the optical board's layout by land rather than by body moved its −Y face 2.58 mm further out, and that came straight off the conduit's depth budget (`PLUG_L` in `src/optical_pickup.py`, asserted against the endplate's exterior wall). Surveyed overmolds run 10–25 mm, so this rules out the long boots, not the market — but it is now a **purchasing constraint to check, not a preference** |
@@ -503,42 +503,53 @@ same shaft. That is the whole requirement — stepped, clicky, infinite, plus N/
 in one 17 mm part, which is why it is the sole UI control. Read the Alps page, not the
 distributor's filter fields.
 
-⚠ **THE DISPLAY CHANGED, and the reason is PIXEL DENSITY, not price or stock.** The
-2.42" 128×64 SSD1309 that stood here is **59 PPI** — a 5×7 character cell is **3.0 mm**
-tall and visibly blocky. "Small, with crisp text" (user) is a resolution requirement,
-and on a 128×64 panel the only way to get it is to make the panel *smaller*, not
-bigger. Measured across the sensible candidates:
+⚠ **THE DISPLAY IS LOW-RESOLUTION ON PURPOSE** (user, 2026-09-25). This row went the
+other way first, and the reasoning was wrong in a way worth keeping: I read "crisp text"
+as a *pixel-density* requirement and moved to a 1.5" 128×128 at 116 PPI. The user's
+actual position is that **low resolution looks bad with curvy fonts, not in itself** —
+with a bitmap face drawn for the grid it reads as deliberate rather than cheap. That
+inverts the goal: for a chunky retro look you want FEWER pixels spread over a LARGER
+area, which is the opposite of what density buys.
 
-| panel | active | PPI | 5×7 char |
-|---|---|---|---|
-| 0.96" 128×64 SSD1306 | 0.86×0.43" | 149 | 1.19 mm |
-| 1.3" 128×64 SH1106 | 1.16×0.58" | 110 | 1.62 mm |
-| **1.5" 128×128 SSD1351** | **1.10×1.10"** | **116** | **1.53 mm** |
-| 2.42" 128×64 SSD1309 *(was)* | 2.16×1.08" | 59 | 3.01 mm |
-| 2.8" 256×64 SSD1322 | 2.72×0.68" | 94 | 1.89 mm |
+So the panel is back to **128×64**, and bigger rather than smaller:
 
-The 1.5" 128×128 is the best of them for this job: it is **twice the density** of the
-2.42", it is *physically smaller*, and it carries **four times the pixels** (16,384 vs
-8,192), so a menu gets ~21 columns × 16 rows instead of 21 × 8. OLED throughout, so
-black is off — the self-emissive requirement rules out every TFT and every reflective
-technology (Sharp Memory LCD, e-paper) whatever their resolution.
+| panel | active | dot pitch | PPI | 5×7 char |
+|---|---|---|---|---|
+| 1.5" 128×128 *(the wrong turn)* | 28.0×28.0 | 0.22 | 116 | 1.53 mm |
+| 2.42" 128×64 | 55×27.5 | 0.43 | 59 | 3.01 mm |
+| **2.7" 128×64** | **63.41×32.69** | **0.48** | **51** | **3.36 mm** |
 
-**Still open, and worth a look before ordering:** this one is **full colour** (SSD1351,
-262 K), which we do not need — a monochrome or 16-grey 128×128 would be cheaper and
-gives better text contrast. The obvious one is the **Waveshare 1.5" SSD1327 16-grey**
-at roughly $20, but Waveshare still 403s to automated fetches and its stock is
-unconfirmed, which is exactly why the old row sat at [m] for so long. The Newhaven part
-is carried instead because it is **verified**: **316 in stock**, Active lifecycle, a real
-datasheet and a distributor link that resolves. If a greyscale part can be confirmed in
-stock at a distributor we use, it is a straight swap — same size, same 128×128, same
-SPI, and ~$10 off.
+⚠ **AND IT MUST BE EMISSIVE, which is what rules out the obvious vintage part.** The
+user's own test: *"the background to be deep black and text to be white."* A **Sharp
+Memory LCD** has exactly the look wanted and fails it — it is **reflective**, so its
+"white" is ambient light off a grey substrate and its black is a dark grey. Same for
+e-paper. An OLED's black is unlit pixels emitting nothing, which is the only way to get
+the contrast asked for. Every TFT fails it too, for the backlight. **OLED is not a
+preference here, it is the requirement.**
 
-⚠ **TAKE THE *UGC3*, NOT THE *ASC3*** — the two are easy to confuse and my first pick
-was the wrong one. The **ASC3** carries a **microSD card reader** we have no use for:
-43 in stock at **$29.15**. The **UGC3** is the plain module — same 1.5", same 128×128,
-same SSD1351, same 28.0×28.0 viewing area — at **316 in stock** and **$24.55**. Seven
-times the stock, $4.60 cheaper, and one less thing on the board. (**NHD-1.5-128128G** is
-a third sibling: the bare **glass**, no carrier PCB, so it is not this row.)
+⚠ **WHITE emission specifically** — Newhaven sells this module in yellow (`WDY3`) and
+blue as well as white (`WDW3`). White on black is what the row is for; the letter
+before the `3` is the whole difference and it is easy to order the wrong one.
+
+⚠ **The 2.42" alternative, if 2.7" is too big.** The 2.7" module is **82.0 × 47.5** and
+"fairly small" was the original brief, so this is a real trade. **Adafruit 2719** is the
+same 128×64 at 2.42" in a **56 × 29** module, in stock at **$39.95** — smaller, a pound
+dearer, and *blockier per inch* at 59 PPI rather than 51. ⚠ But it ships as a **KIT with
+headers to solder**, which is the hand-soldering step this project's assembly rules
+exist to delete, so it is the alternative rather than the line.
+
+⚠ **STILL THE CHEAPEST OPTION, STILL UNVERIFIABLE:** the Waveshare 2.42" 128×64 at
+roughly $17 — less than half either verified part. It has been on this row as **[m]**
+for months because Waveshare and RobotShop both return **HTTP 403** to automated
+fetches. It needs one manual look in a browser; if it checks out, it saves ~$21.
+
+⚠ **A DEAD END, RECORDED SO IT IS NOT RE-WALKED.** While this row was briefly a
+1.5" 128×128, the part to take was Newhaven's **UGC3** ($24.55, 316 in stock) and *not*
+the **ASC3** ($29.15, 43 in stock), which carries a **microSD card reader** with no use
+here; **NHD-1.5-128128G** is a third sibling and is the bare **glass**, no carrier PCB.
+None of them is the line now — the panel went back to 128×64 — but the three look
+identical in a parametric search, so the distinction is kept for whoever needs a small
+128×128 next.
 
 **Why the Pi dropped from a 5/8 GB to a 4/2 GB:** audio→MIDI now runs on the
 optical pickup's own MCU, so the Pi's remaining jobs are Dexed (a DX7 emulation,
@@ -2455,7 +2466,7 @@ several are unverified — re-verify the whole file before ordering.**
 | Filament (printed) | ~$81 | estimate; **spool prices verified**, masses are model estimates |
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
-| Electronics + UI (motor controller, power + USB panel boards, Pi 4, jacks, encoder, OLED) | ~$99 | **all verified** (2026-09-25: the OLED's last [m] is gone; +$8 for a display at twice the pixel density, −$4 on the encoder for sourcing it where it is actually in stock) |
+| Electronics + UI (motor controller, power + USB panel boards, Pi 4, jacks, encoder, OLED) | ~$112 | **all verified** (2026-09-25: +$21 for a display that is verified in stock rather than a 403, −$4 on the encoder for sourcing it where it is actually in stock. A cheaper Waveshare panel may claw back ~$21 if someone checks it by hand) |
 | Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$45** | parts cost **computed from the model**; all 18 lines have real MPNs |
 | Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
@@ -2497,7 +2508,7 @@ by how much money rides on each.
 | 2 | **All eight McMaster rows** — dowels, cup-tip screws, heat-set inserts, mount screws, hold-down, shafts, guide rods, M2 grubs (~$50–70) | mcmaster.com serves **no product content** to automated fetches — every part URL returns the bare catalogue navigation. This is a site-wide block, not a bad URL | Open each part number in a browser. Part numbers themselves are stable and were previously correct |
 | 3 | **Tr8×2 H-flange nut — dimensions read off the seller's drawing, not yet measured** | The drivetrain moved Ø5×1 → Tr8×2 (see the Lead screw + nut row). The listing (AliExpress 3256804704147842, SKU "Pitch 2mm Lead 2mm") is unfetchable, so all six numbers in `dimensions.py` — flange 22 × 10.5 × 4, boss Ø10.2 × 11, total 15, ear holes Ø3.5 at ±8 — were read by hand off its drawing, which itself states "a normal error of 0.5–1 mm". The **'Lead 8mm' variant on the same listing is the 4-start** — it looks identical and does not self-lock | **Order ONE first and measure it.** `NUT_FLANGE_L` sets the row spacing (asserted against the flange clearance), `NUT_HOLE_D` sets the guide rod, and `NUT_H` feeds the nut-to-ledge assert. Confirm the variant reads **Pitch 2mm / Lead 2mm** before ordering all 12 |
 | 3b | **Anything that TURNS is checked by `tools/check_sweep.py`, not `check_overlaps`** | `check_overlaps` compares parts *where they sit*, which is the wrong question for a rotating part — what must clear is its swept circle. Three real collisions hid behind that gap at once: a Ø20.8-swept retaining collar in a 9.5 mm lane, the drive pulleys buried ~1.7 mm in the endplate foot (allow-listed as an "intended contact" because where they sit they only graze), and a grub-screw lug sweeping Ø17 | Run **both** gates. `check_sweep` registers rotating parts in its `ROTATING` map — **add to it when you add a part on a shaft**, or the gate silently says nothing about it |
-| 4 | ~~**2.42" OLED module** — ~$17~~ | **RESOLVED 2026-09-25** by replacing the part, not by pricing it: 59 PPI failed the crisp-text requirement. Now Newhaven NHD-1.5-128128UGC3, **$24.55, 316 in stock, verified at DigiKey** | A greyscale 128×128 would be ~$10 cheaper and better for text — open, needs a distributor that answers a fetch |
+| 4 | **2.42" OLED module** — ~$17 | **STILL OPEN**, and now the only unverified price on the UI group. Waveshare and RobotShop both return **HTTP 403** to fetches. The row carries a **verified** part instead (Newhaven NHD-2.7-12864WDW3, $38.08, 2,057 in stock) | One manual look in a browser settles it. If the Waveshare checks out it is **less than half** the verified part — ~$21 saved |
 | 5 | **Ø3 g6/h6 precision shaft** — ~$30 | McMaster (see #2); also the row points at a **category page**, not a part | Pick an actual part number while you are there. *(2026-09-10: the guide rods are no longer this stock — they are Ø3.5 drill blanks sized to the measured nut ear hole; see the Guide rod row)* |
 | 6 | **Threadlocker, plastic-rated (e.g. Loctite 425)** — 10 joints/instrument | Price not looked up, and **compatibility with PETG-GF is untested**: the reason for choosing a plastic-rated type is that anaerobic 242/243 can craze thermoplastics, but nothing here has been tried on this filament | Put a drop on a spare printed endcap pulley: check for crazing after 24 h, and try breakaway torque by hand. Record the product and price |
 | 7 | **688ZZ screw bearings** — 10/instrument | Price TBD, and the conclusion rests on **C0r**: makers publish 474–710 N, a spread wider than the 1.6× worst-case axial margin itself | Buy a **branded** part and read its real C0r off the datasheet before ordering ten. Also confirm the inner-ring OD (~Ø10.2) and outer-ring ID (~Ø13.8): the pulley boss (Ø9.6) and the rail ledge (Ø14.4) are sized to them by rule of thumb |
