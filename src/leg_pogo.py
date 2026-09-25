@@ -823,6 +823,24 @@ def chan_cutter(j=None):
     It overshoots CHAN_W at both ends along its own axis. Short at the plug it would
     stop inside the connector's cavity instead of merging with it, and short at the face
     it would leave a film of the outside wall over its own mouth.
+
+    DO NOT ROLL THIS SECTION TO CHASE THE WHISKER AT (-623.7, 39.3, -93.1). Where this
+    channel's side wall runs out through the board pocket's wall the two meet along an
+    edge that lies only 18.8 deg off the bed -- 2.10 long, and it LOOKS like an overhang
+    in the viewer, which is how it was found (user). It is not one: both faces that meet
+    there are 18.8 and 18.6 deg from VERTICAL, and two steep faces are perfectly free to
+    meet in a shallow edge. Sliced at 0.2, the material with nothing under it comes to
+    0.10 mm^2 spread over three layers -- about one extrusion wide, which a single
+    perimeter spans. check_floating measures it and ranks it last in this part.
+
+    It is left because every way out of it costs more than it does, and all of them cost
+    it in the same place -- the M4 insert wall this channel was moved to protect:
+
+      roll the section 10 deg   1.39 each side, insert wall 1.75 -> 1.56 (under 2 beads)
+      roll it to a diamond      1.70 each side, insert wall 1.75 -> 1.25
+      move the lane to -19*B    0.45 against the connector's own cavity
+
+    A 0.10 mm^2 whisker is not worth a real wall against a heat-set insert.
     """
     a, _b, u, n = chan_ends(j)
     e = (-u[1], u[0], 0.0)                          # z x u: across the run, near enough x

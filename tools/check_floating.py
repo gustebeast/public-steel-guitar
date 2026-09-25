@@ -52,6 +52,21 @@ sense. What matters then is whether the layer below has material on BOTH SIDES:
 Sorting these three apart is the difference between a report you act on and a list
 of coordinates. They want completely different fixes.
 
+AND EVERY SITE IS MEASURED FOR AREA, because the angle alone ranks badly. The angle
+says how far the support is; it says nothing about HOW MUCH is hanging, so a 0.10
+mm^2 whisker where two walls meet in a shallow edge and a 1405 mm^2 shelf that will
+certainly droop print identically in an angle-only report. Both were in this model
+at once, both read "cantilever at 75-87 deg", and I ranked them the same and was
+wrong about both (user found the whisker by eye after the report had called much
+worse things by the same name).
+
+So the area is measured the way a slicer would see it: the site's own samples give a
+window, and inside that window the solid is SLICED at the layers the site spans. In
+each slice every cell of material is asked the same ring question, and the cells
+with no answer are the unsupported area. That is a direct measurement of the thing
+that matters -- the footprint the nozzle is asked to lay over air -- rather than an
+inference from where the geometry happened to put an edge.
+
 Points WITHIN ONE LAYER OF THE BED are skipped: the plate is under them.
 
 ADVISORY, like `check_ceilings`: a floating sample high inside a blind cavity may
@@ -150,22 +165,80 @@ def floating(part, up, bed, layer=LAYER, angle=45.0, samples=9, ring=8):
     return hits
 
 
+def unsupported_area(inside, pts, up, angle, layer, step=0.2, margin=1.0,
+                     grid=96):
+    """mm^2 of material in `pts`' neighbourhood with nothing within `angle` below it.
+
+    `pts` are one site's failing samples; they set both the window and the layers,
+    so the cost scales with the defect rather than with the part. The grid is capped
+    at `grid` cells a side and the step coarsens to suit -- a wide shelf is measured
+    roughly and a whisker finely, which is the right way round, because the whisker
+    is the one whose SIZE is the whole question.
+    """
+    fa, fb = _frame(up)
+    az = [_dot(p, fa) for p in pts]
+    bz = [_dot(p, fb) for p in pts]
+    hz = [_dot(p, up) for p in pts]
+    a0, a1 = min(az) - margin, max(az) + margin
+    b0, b1 = min(bz) - margin, max(bz) + margin
+    step = max(step, (a1 - a0) / grid, (b1 - b0) / grid)
+    ring = _ring(layer, angle, 8) + [(0.0, 0.0)]
+    na = int((a1 - a0) / step) + 1
+    nb = int((b1 - b0) / step) + 1
+    n_layers = int(round((max(hz) - min(hz)) / layer)) + 1
+    area = 0.0
+    for li in range(n_layers):
+        h = min(hz) + li * layer
+        for ia in range(na):
+            a = a0 + ia * step
+            for ib in range(nb):
+                b = b0 + ib * step
+                q = tuple(fa[k] * a + fb[k] * b + up[k] * h for k in range(3))
+                if not inside(q):
+                    continue
+                d = tuple(q[k] - up[k] * layer for k in range(3))
+                if not any(inside(tuple(d[k] + fa[k] * da + fb[k] * db
+                                        for k in range(3))) for da, db in ring):
+                    area += step * step
+    return area
+
+
 def cluster(hits, radius=2.0):
     """One entry per SITE. A floating edge yields a sample every 1/8 of its length, and
-    a V valley is one defect however many samples fall on it."""
-    out = []
+    a V valley is one defect however many samples fall on it.
+
+    SINGLE LINKAGE, and it has to be: a new sample joins a site when it is within
+    `radius` of ANY sample already in it, not just of the first one. Comparing against
+    the first alone chops a long valley into `radius`-sized pieces -- pedal_bar_a came
+    out as 102 sites that way -- and once the area is being measured that is not merely
+    untidy, it is wrong, because each piece is then measured in its own little window
+    and a wide shelf reports as a crowd of small ones.
+    """
+    sites = []          # [[pts], lo, need, kind]
     for h, p, need, kind in sorted(hits, key=lambda x: (x[0], x[1])):
-        for i, (n, q, lo, w, k) in enumerate(out):
-            if math.dist(p, q) < radius:
-                # the SITE takes its WORST sample: one floating point in a cluster is
-                # the defect, however many of its neighbours are merely steep
-                out[i] = (n + 1, q, min(lo, h),
-                          None if (w is None or need is None) else max(w, need),
-                          k if RANK[k] <= RANK[kind] else kind)
-                break
-        else:
-            out.append((1, p, h, need, kind))
-    return out
+        near = [i for i in range(len(sites))
+                if any(math.dist(p, q) < radius for q in sites[i][0])]
+        if not near:
+            sites.append([[p], h, need, kind])
+            continue
+        # the LOWEST index keeps the site, so popping the others cannot move it
+        keep = sites[near[0]]
+        keep[0].append(p)
+        for i in reversed(near[1:]):            # this sample BRIDGES sites: one now
+            o = sites.pop(i)
+            keep[0].extend(o[0])
+            keep[1] = min(keep[1], o[1])
+            keep[2] = (None if (keep[2] is None or o[2] is None)
+                       else max(keep[2], o[2]))
+            if RANK[o[3]] < RANK[keep[3]]:
+                keep[3] = o[3]
+        # the SITE takes its WORST sample: one floating point in a cluster is the
+        # defect, however many of its neighbours are merely steep
+        keep[1] = min(keep[1], h)
+        keep[2] = None if (keep[2] is None or need is None) else max(keep[2], need)
+        if RANK[kind] < RANK[keep[3]]:
+            keep[3] = kind
+    return [(pts, pts[0], lo, need, kind) for pts, lo, need, kind in sites]
 
 
 def main() -> int:
@@ -178,6 +251,10 @@ def main() -> int:
                     help="ignore sites less than this far above the bed")
     ap.add_argument("--floating-only", action="store_true",
                     help="drop the BRIDGED sites -- leave what droops or floats")
+    ap.add_argument("--min-area", type=float, default=0.0,
+                    help="ignore sites with less unsupported area than this (mm^2)")
+    ap.add_argument("--no-area", action="store_true",
+                    help="skip the area measurement (the slow half of the run)")
     a = ap.parse_args()
 
     names = list(PARTS)
@@ -196,13 +273,26 @@ def main() -> int:
         if a.floating_only:
             hits = [x for x in hits if x[3] != BRIDGED]
         sites = cluster(hits)
+        inside = _classifier(part.val() if hasattr(part, "val") else part)
+        sites = [(pts, q, lo, w, k,
+                  0.0 if a.no_area else
+                  unsupported_area(inside, pts, up, a.angle, a.layer))
+                 for pts, q, lo, w, k in sites]
+        shown = [x for x in sites if a.no_area or x[5] >= a.min_area]
         print("%-22s build up (%+.2f,%+.2f,%+.2f) : %d site(s), %d sample(s) with "
-              "nothing within %.0f deg below" % (nm, up[0], up[1], up[2], len(sites),
-                                                 len(hits), a.angle))
-        for n, p, h, need, kind in sorted(sites, key=lambda s: (RANK[s[4]], s[3] or 0)):
-            print("    %-10s %-11s %2d sample(s) at (%.2f, %.2f, %.2f)  %.2f above bed"
-                  % (kind, "" if need is None else "support at %.0f deg" % need,
-                     n, p[0], p[1], p[2], h))
+              "nothing within %.0f deg below%s"
+              % (nm, up[0], up[1], up[2], len(sites), len(hits), a.angle,
+                 "" if len(shown) == len(sites) else
+                 "   (%d under --min-area %.2f, not shown)"
+                 % (len(sites) - len(shown), a.min_area)))
+        # AREA FIRST, angle second: the area is what decides whether a site is worth
+        # touching, and the angle only says which fix it wants.
+        for pts, p, h, need, kind, ar in sorted(
+                shown, key=lambda s: (RANK[s[4]], -s[5])):
+            print("    %-10s %8.2f mm^2  %-11s %2d sample(s) at "
+                  "(%.2f, %.2f, %.2f)  %.2f above bed"
+                  % (kind, ar, "" if need is None else "support at %.0f deg" % need,
+                     len(pts), p[0], p[1], p[2], h))
         total += len(sites)
     if not total:
         print("\nno floating material: every sampled edge has support within "
