@@ -555,30 +555,41 @@ rows** for the large one to still show 3 items.
 Both modes clear the brief with margin, and rows trade against character size in
 firmware at no cost in parts.
 
-⚠ **THE 3 mm PER-CHARACTER FLOOR MAKES A COARSE PITCH AN ADVANTAGE** (user,
-2026-09-25) — which inverts the usual reading of a spec sheet, so it is written down.
+⚠ **THE PER-CHARACTER FLOOR IS 2.4 mm WIDE × 3.0 mm TALL, AND IT LANDS ON THE CLASSIC
+5×7** (user, 2026-09-25). Two things fall out, and both read backwards off a spec sheet.
 
-The rule: a single character must be **at least 3.0 mm wide and 3.0 mm tall**. Glyphs
-are narrower than they are tall, so **WIDTH binds**: the glyph needs `ceil(3.0 / pitch)`
-pixels across. The finer the pitch, the MORE pixels each 3 mm character costs, and the
-FEWER characters fit on the panel. Higher resolution actively hurts here.
+**WIDTH BINDS, NOT HEIGHT** — glyphs are narrower than they are tall, so the floor is
+reached across first: the glyph needs `ceil(2.4 / pitch)` pixels wide.
 
-| panel | pitch | min glyph | char | cols × rows |
+**AND SO A FINER PITCH IS WORSE.** Each character costs more pixels on a denser panel,
+so fewer fit. Higher resolution actively hurts under a millimetre floor:
+
+| panel | pitch | glyph | char mm | cols × rows |
 |---|---|---|---|---|
-| 1.5" 128×128 | 0.210 | 15×15 | 3.15 mm | **8**×8 — unusable |
-| 1.54" 128×64 | 0.274 | 11×11 | 3.01 mm | **10**×5 — too narrow |
-| 3.12" 256×64 | 0.300 | 11×11 | 3.30 mm | 21×**5** |
-| 2.42" 128×64 | 0.430 | 7×7 | 3.01 mm | 16×8 |
-| **2.7" 128×64** *(this row)* | **0.480** | **7×7** | **3.36 mm** | **16×8** |
+| 1.54" 128×64 | 0.274 | 9×11 | 2.46 × 3.01 | **12**×5 — too narrow |
+| 2.42" 128×64 | 0.430 | 6×7 | 2.58 × 3.01 | 18×8 |
+| **2.7" 128×64** *(this row)* | **0.480** | **5×7** | **2.40 × 3.36** | **21×8** |
+| 3.12" 256×64 | 0.300 | 8×10 | 2.40 × 3.00 | 28×**5** |
 
-This panel is the **coarsest available**, which under this constraint is exactly right:
-it spends the fewest pixels per 3 mm and therefore fits the most text. **16-character
-labels, 8 rows — 7 menu items plus a header**, every character 3.36 mm square, 38
-arcmin at 1 ft.
+This panel is the **coarsest available**, which under a millimetre floor is exactly
+right — it spends the fewest pixels per character and so fits the most text. At 0.48
+pitch, 2.4 mm **is 5 pixels exactly**, so the floor selects the canonical **5×7 font**
+and the panel's full native **21 × 8** grid: **7 menu items plus a header**, every
+character 2.40 × 3.36 mm, **38 arcmin** at 1 ft against ISO 9241's 20.
 
-⚠ **A 7×7 GLYPH HAS NO TRUE DESCENDERS** (they want 9–10 px tall), so mixed-case g/p/y
-sit on the baseline. Either use caps for labels, or a **7×9 glyph at 6 rows** — height
-is not the binding axis, so a taller glyph costs rows, not legibility.
+(Arithmetic note: at the exact 61.41/128 = 0.47977 pitch a 5 px glyph is 2.3988 mm —
+1.2 µm under, 0.05%. Newhaven's own quoted dot pitch of 0.48 gives exactly 2.40. Not a
+number to design around.)
+
+⚠ **A 7 px GLYPH HAS NO TRUE DESCENDERS** (they want 9–10 px), so mixed-case g/p/y sit
+on the baseline. Either caps for labels, or a 5×9 glyph at 6 rows — **height is not the
+binding axis**, so a taller glyph costs rows, not legibility. The earlier 3.0 mm width
+floor forced a 7×7 square glyph and only 16 columns; dropping to 2.4 buys five more
+characters per label and a properly proportioned letter.
+
+⚠ **THE LARGE-FONT OPTION still works from the same grid**: doubling to a 10×14 glyph
+in a 16 px cell gives 4 rows at 6.72 mm / 76 arcmin — **3 menu items plus a header**,
+which was the accessibility floor asked for.
 
 ⚠ **AND SIZE IS NOT WHY THIS PANEL WAS CHOSEN — be clear about that before anyone
 "optimises" it.** Legibility alone does NOT need 2.7". ISO 9241 wants ≥20 arcmin (1.77
