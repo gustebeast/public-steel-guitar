@@ -1774,9 +1774,10 @@ def _v3a_spine(w=0.2, spine_w=0.3):
     cd_y = lambda q: q[1] + 0.48
     x = cds[0][1][0] + _V3A_DX
     out = [("+3V3A", "B.Cu", spine_w,
-            [(x, cd_y(cds[0][1])), (x, cd_y(cds[-1][1]))])]
+            [(x, cd_y(cds[0][1]) - _V3A_DROP), (x, cd_y(cds[-1][1]) - _V3A_DROP)])]
     for _n, q in cds:
-        out.append(("+3V3A", "F.Cu", w, [(q[0], cd_y(q)), (x, cd_y(q))]))
+        out += [("+3V3A", "F.Cu", w, [(q[0], cd_y(q)), (x, cd_y(q))]),
+                ("+3V3A", "F.Cu", w, [(x, cd_y(q)), (x, cd_y(q) - _V3A_DROP)])]
 
     # the converter stations, same shape one lane in from SAI_FS
     for k in range(5):
@@ -1804,7 +1805,8 @@ def _v3a_spine(w=0.2, spine_w=0.3):
     # from the op-amps hits them. In2 is empty along the bottom of the comb field -- the
     # comb's own lanes all sit north of -17.2 -- so the link vias through and crosses
     # there, and the two vias are the only ones the whole east-west journey costs.
-    out += [("+3V3A", "B.Cu", spine_w, [(x, cd_y(cds[-1][1])), (x, y_lnk)]),
+    out += [("+3V3A", "B.Cu", spine_w,
+             [(x, cd_y(cds[-1][1]) - _V3A_DROP), (x, y_lnk)]),
             ("+3V3A", "In2.Cu", spine_w, [(x, y_lnk), (xe, y_lnk)]),
             ("+3V3A", "B.Cu", spine_w, [(xe, y_lnk), _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)])]
     return out
@@ -1813,7 +1815,7 @@ def _v3a_spine(w=0.2, spine_w=0.3):
 def _v3a_vias():
     """One via per +3V3A station: ten op-amps, five converters. See _v3a_spine."""
     P = _placements(CX, CY)
-    out = [("+3V3A", P["Cd%d" % n][0] + _V3A_DX, P["Cd%d" % n][1] + 0.48)
+    out = [("+3V3A", P["Cd%d" % n][0] + _V3A_DX, P["Cd%d" % n][1] + 0.48 - _V3A_DROP)
            for n in range(1, 11) if ("Cd%d" % n) in P]
     out += [("+3V3A",) + _cell_pt(k, _V3A_SPINE, _V3A_CS_DY) for k in range(5)]
     # the two ends of the In2 crossing -- see the note in _v3a_spine
@@ -2028,6 +2030,11 @@ _MID_VIA_DX, _MID_VIA_DROP = 1.100, 0.970
 _MID_P5_DX, _MID_P3_DY = 1.744, 2.400
 # the anode link rides the WEST side of its own lands, to leave LED_ROW's via room
 _MID_COL_DX = -0.394
+# ⚠ +3V3A's op-amp via DROPS clear of the feedback band before it dives. Sitting
+# at Cd's own y it lands 0.79 from where TIA_IN_B's inner hop needs ITS via, and
+# that hop is the only way the B channel's summing node reaches its feedback
+# resistor -- the pin row is between them. Nine strings lost it that way.
+_V3A_DROP = 2.55
 
 # TLV9062 land geometry, read off the placed board rather than the datasheet drawing:
 # 0.65 pitch, the two pin rows 4.225 apart. MID is pins 3 and 5, which sit on OPPOSITE
