@@ -953,6 +953,30 @@ def pin_s(pitch, k, n=RA_N):
     return (k - (n - 1) / 2.0) * pitch
 
 
+def body_path():
+    """The adapter stub's bundle centreline: off the ZR's plug, then down chan_ends'
+    diagonal and out through the -Y face.
+
+    ONE definition, for the same reason chan_ends is one: src.wiring continues this
+    cable across the instrument's underside, and a body-side run that started anywhere
+    but where this one ENDS is a cable that does not meet itself. It stops AT the face
+    rather than guessing at the body's side of the joint.
+    """
+    a, b, _u, _n = chan_ends()
+    return [TOP.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, F_TOP + ZR_H / 2.0), a, b]
+
+
+def body_stub_ends():
+    """Where those four conductors reach the adapter's -Y face, in HARNESS_WIRES order.
+
+    Built by the same bundle_paths call harness() uses, so a conductor's place in the
+    bundle -- which is what decides which way it lands on at the far connector -- is
+    not re-derived here and cannot disagree."""
+    legs = bundle_paths(body_path(), [o for _, o in HARNESS_WIRES],
+                        across=(TOP.S[0], TOP.S[1], 0.0))
+    return [tuple(q[-1]) for q in legs]
+
+
 def harness():
     """THE RUN, drawn: plug to plug down the whole leg -- over to the old lead's bore,
     down the fixed tenon, COILED through the gap between the tenons (src.coil_mandrel's
@@ -985,26 +1009,36 @@ def harness():
                (_px, _ly, LS.Z_ADJ_TEN_TOP + 4.0),
                (_px, _ly, BOTTOM.p(pt, 0.0, dm)[2]),
                BOTTOM.p(pt, 0.0, dm), BOTTOM.p(pt, 0.0, PLUG_TOP)]
-    # THE COIL STAYS ONE BODY (see helix_cable): four helices about one axis is four
-    # sweeps where the bundle reads the same, and the wind count and mean diameter --
-    # the two things it has to get right -- are the bundle's, not a conductor's.
-    coil = helix_cable(ax, ay, z_b, z_a, CM.TURNS, r, d)
+    # FOUR CONDUCTORS, NOT ONE BUNDLE (user: "should be modeled as four color coded
+    # wires not one big red one"). This was one round body at the bundle's diameter, on
+    # the reasoning that the wind count and the mean diameter are the bundle's and not a
+    # conductor's -- true, and beside the point: this model gets read as a WIRING
+    # REFERENCE, and a single red sausage in the middle of a harness whose every other
+    # run is coloured by circuit says nothing about which wire is which.
+    #
+    # Each conductor keeps its OWN PLACE in the bundle's square section the whole way
+    # round, taken from _PLACE, so the two twisted pairs stay the pairs the assert up
+    # there guards. The section is carried round the helix by giving each conductor the
+    # bundle's radius plus its own radial offset, and a start one axial offset along:
+    # the place's first axis is radial here, its second axial.
+    #
+    # The cost is four sweeps instead of one, which is what the old note was defending:
+    # 12 faces against 3 (cadkit.cables.helix_cable). A sweep is not a FUSE, though, and
+    # the fuse is what that module is actually warning about, so nothing here can lose
+    # material quietly.
+    w = HARNESS_WIRE_OD
+    coils = [("pogo_wire_%s_4" % nm,
+              helix_cable(ax, ay, z_b + pb, z_a + pb, CM.TURNS, r + pa, w))
+             for nm, (pa, pb) in HARNESS_WIRES]
     # ...and out of the ZH, where FAN_RUN does not fit: the wire cavity stops at
     # WIRE_T0 - CLR and the tenon's flat is only 1.6 beyond that, so the stub gets the
     # lead-in plus whatever is left (STUB_FAN) rather than the full 2.4.
     fr = ZR_MOUTH - ZR_PLUG - 0.1 - STUB_LEAD - STUB_FAN
     fc = fr                                          # ...and it drops there
     zd = F_TOP + ZR_H / 2.0                         # the plug's height off the host
-    f0 = TOP.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)     # just off the plug's end
-    zc = LS.Z_TOP - CHAN_D + d / 2.0 + 0.2          # lying in the groove's bottom
-    y_out = LS.LEG_Y - LS.LEG_W / 2.0
-    xc = LS.LEG_X + CHAN_X                          # the channel's long leg
-    f1 = TOP.p(fr, 0.0, zd)
-    # ONE straight run, down the channel's own diagonal and on out of the part
-    _a, _b, _u, _n = chan_ends()
-    # ...and it STOPS at the face rather than guessing at the body's side of the
-    # joint, the same way leg_trrs.cables stops short of the chassis
-    body_path = [f0, _a, _b]
+    # ONE straight run, down the channel's own diagonal and on out of the part -- and
+    # src.wiring picks the cable up from where this ends (body_path / body_stub_ends)
+    _body = body_path()
     g0 = BOTTOM.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)
     g0b = BOTTOM.p(fr, 0.0, zd)                    # clear of the plug first...
     # ...then SLANT onto the leg's axis line on the way down, rather than stepping
@@ -1015,8 +1049,7 @@ def harness():
     g2 = BOTTOM.p(fc, -S_C, -17.0)                 # ...and down into the chamber
     bar_path = [g0, g0b, g2, (g2[0] + 10.0, g2[1], g2[2])]        # along the chamber,
                                                                   # toward the trough
-    out = [("pogo_harness_coil", coil)]
-    w = HARNESS_WIRE_OD
+    out = list(coils)
     # NUMBERED, not named, per run (0 leg above the coil, 1 leg below, 2 body stub,
     # 3 bar stub): check_overlaps strips a trailing index group, so all four runs of a
     # circuit collapse to ONE base name and the wire allow-list needs four entries
@@ -1032,7 +1065,7 @@ def harness():
             (0, ZR_PITCH, TOP, (-TOP.T[0], -TOP.T[1], 0.0), STUB_LEAD),
             (0, ZR_PITCH, BOTTOM, (-BOTTOM.T[0], -BOTTOM.T[1], 0.0), STUB_LEAD))
     for k, (path, (at, pitch, j, ed, lead_l)) in enumerate(zip((up_path, lo_path,
-                                                               body_path, bar_path),
+                                                               _body, bar_path),
                                                               ends)):
         # THE BUNDLE IS AIMED AT THE PIN ROW, and the frame is seeded at the path's
         # START, so a run that ENDS at its connector is walked backwards and flipped

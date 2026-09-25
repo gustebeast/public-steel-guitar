@@ -436,6 +436,17 @@ def fixed_tenon():
                                     Z_FIX_TEN_BOT - 1.0, TENON_UP))
 
 
+def is_signal_corner(sx: float, ly: float) -> bool:
+    """Is this the corner the bus comes up? ONE statement of it.
+
+    It was a float compare written out at the cut, and the harness channel's own guard
+    further down did not share it -- so that guard ran at all four corners against a
+    channel only this one has. It passed for as long as it did by luck: move CHAN_X
+    outboard and three corners whose tenon stations fall differently begin failing a
+    check on geometry they do not contain."""
+    return abs(sx - LEG_X) < 1e-6 and abs(ly - LEG_Y) < 1e-6
+
+
 def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     """Quick-release adapter: bolts to the body, and is otherwise JUST ANOTHER
     MORTISE SECTION -- same 44.8 outer as every sleeve, so it ends FLUSH with the
@@ -469,7 +480,7 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # THE SIGNAL CORNER's female pogo board (src.leg_pogo): it lies on the mortise roof;
     # the connector's cavity above it and the harness's groove out the -Y face. Only
     # this corner carries the bus
-    if abs(sx - LEG_X) < 1e-6 and abs(ly - LEG_Y) < 1e-6:
+    if is_signal_corner(sx, ly):
         from . import leg_pogo as PG
         _ped, _neg = PG.adapter_features()
         b = (b.union(_ped) if _ped is not None else b).cut(_neg)
@@ -501,7 +512,13 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # is holding the leg on with what is left either side. Checked here because this is
     # where the stations are known; leg_pogo.CHAN_X is where the number lives.
     #
-    # As it stands the channel takes 0.0 mm3 off all three of them, because it is a
+    # ...AND ONLY AT THE CORNER THAT HAS ONE. Three of the four adapters carry no bus
+    # (is_signal_corner), and this used to assert against all four -- a check on geometry
+    # three of them do not contain, which passed only because CHAN_X happened to miss
+    # their stations as well. At -14.4 it does not, and three corners failed over a
+    # channel that was never cut in them.
+    #
+    # As it stands the channel takes 0.0 mm3 off all three tenons, because it is a
     # single BURIED diagonal: it dives as it goes outboard, so by the time it crosses
     # the outermost tenon's x band it is 11.51 under this face and every tenon is above
     # it. This assert is what keeps that true if the line is ever flattened or the
@@ -516,7 +533,8 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
         #  business, not the tenon's: chassis.mort_segments shortens the run and this follows it.
         #  It was duplicated here, which is two places to get the same rule wrong.)
         b = b.union(LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP)))
-        assert st + _rb.xmax + D.MIN_WALL_2P <= _cx1 or \
+        assert not is_signal_corner(sx, ly) or \
+            st + _rb.xmax + D.MIN_WALL_2P <= _cx1 or \
             _cx0 <= st + _rb.xmin - D.MIN_WALL_2P, (
                 "the harness channel (x %.2f..%.2f) runs under the body tenon at "
                 "x %.2f..%.2f" % (_cx0, _cx1, st + _rb.xmin, st + _rb.xmax))
