@@ -1742,7 +1742,7 @@ def _bus_vias():
 # The rest of the note stands: there is no room on the
 # 1.283 mm stub between pin 8 and Cd (0.163 mm of gap, against the 0.9 a 0.6 via needs), and
 # nothing else in the tile is clear -- the B-channel's own escape vias sit at x -18.54.
-_V3A_DX = -0.65
+_V3A_DX = -0.80
 _V3A_SPINE = 5.30           # converter side, INBOARD of SAI_FS at 7.20: see _bus_spines
 _V3A_CS_DY = -3.27          # the Cs*1 row, +3V3A's pad in each cell
 
@@ -2052,7 +2052,11 @@ _MID_COL_DX = -0.394
 # at Cd's own y it lands 0.79 from where TIA_IN_B's inner hop needs ITS via, and
 # that hop is the only way the B channel's summing node reaches its feedback
 # resistor -- the pin row is between them. Nine strings lost it that way.
-_V3A_DROP = 2.55
+# ⚠ MEASURED FROM Cd, SO IT MOVES WHEN Cd DOES. Correcting VSSOP-8's courtyard took
+# Cd 0.475 south and this drop went with it, straight onto the NEXT op-amp's A row:
+# 2.55 became 2.075 to put the via back where it was. If Cd moves again, this
+# follows it, and the thing it must stay clear of is the A row below, not Cd.
+_V3A_DROP = 1.000
 
 # TLV9062 land geometry, read off the placed board rather than the datasheet drawing:
 # 0.65 pitch, the two pin rows 4.225 apart. MID is pins 3 and 5, which sit on OPPOSITE
@@ -2790,6 +2794,23 @@ BOARD_NOTES = {
                    r"ADC\d+_AREG", r"ADC\d+_DREG", r"ADC\d+_VREF",
                    r"LED_A\d+"),
     "local_mm": 6.8,
+
+    # ⚠ THE NORTH HALF IS FROZEN, and it is only safe to freeze now (2026-09-24). This
+    # turns every pre-laid run into freerouting's `(type fix)`, so the router is left with
+    # the south half and the seven border crossings -- which is what the user asked for:
+    # "scope the auto router to only check connections south of the border".
+    #
+    # route.py's note warns that freezing pre-laid copper is a TRADE, because fixed copper
+    # stops being negotiable and this project has measured that going the wrong way. The
+    # trade only pays when the frozen half is finished, and it now is: every net with pads
+    # in the string array reaches the border under its own steam, nothing hands over more
+    # than 5 mm up, and DRC reports no routing violation anywhere in it. Freezing an
+    # UNFINISHED north half would be the mistake that note is about.
+    #
+    # If this is ever turned off again, expect the router to rip up the spines: it has no
+    # idea that MID's B.Cu run is a bias reference or that the comb pattern is congruent
+    # by construction, and it will happily trade both for a shorter total.
+    "fix_prelaid": True,
     "stitch_nets": ("GND",),
     # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
     # pair routes first and its escape vias occupy the copper beside the PHY, which
