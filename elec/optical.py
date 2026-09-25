@@ -1497,7 +1497,8 @@ def _cell_tracks():
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
     return (out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
-            + _v5_spine() + _led_row_spine() + _mid_spine())
+            + _v5_spine() + _led_row_spine() + _mid_spine()
+            + _bus_spines())
 
 
 # ⚠ THE +3V3D CLUSTERS CANNOT BE JOINED BY LAYING EITHER (2026-09-22). _v3_trunk links
@@ -1640,6 +1641,78 @@ def _i2c_spine():
     out.append(("I2C2_SCL", "B.Cu", 0.25,
                 [_cell_pt(0, DX, DY), _cell_pt(4, DX, DY)]))
     return out
+
+
+# The three broadcast nets I2C2_SCL forgot. Pin offsets read off the placed board, which
+# has all five converters at rot 180 on an 18.727 pitch, so one set of offsets serves all.
+_SDA_DY, _SDA_JOG, _SDA_DX = -1.250, -1.60, -4.91      # pin 18, west face
+_SAI_ROW = -1.9628                                     # pins 19..24, south face
+_FS_DX, _FS_JOG, _FS_SPINE = 0.750, -6.00, 7.20        # pin 23
+_SCK_DX, _SCK_JOG, _SCK_SPINE = 0.250, -6.60, 6.40     # pin 22
+
+
+def _bus_spines(w=0.2, spine_w=0.25):
+    """I2C2_SDA, SAI_FS and SAI_SCK: the three buses that should look like I2C2_SCL.
+
+    ⚠ ALL FOUR ARE THE SAME NET SHAPE -- one MCU pin driving all five converters -- and
+    only SCL had a spine. The other three were five separate islands each, so their
+    ratsnest drew as one long line from the MCU to whichever pad happened to be nearest,
+    which is what made them look like nets "reaching up to strings 1 and 2" (user,
+    2026-09-24). They were not reaching anything; there was no copper to stop anywhere.
+
+    ⚠ THEY CANNOT ALL USE SCL's LANE. SDA is SCL's neighbour on the west face and takes
+    the west strip beside it, but SAI_SCK and SAI_FS are on the SOUTH face, and getting
+    them west means crossing +3V3D's B.Cu spine at x 8.85 and SCL's at 7.92 on those
+    spines' own layer. East is empty instead -- nothing at all between x 16.4 and the
+    board edge at 28.6 over the whole north half -- so they go that way.
+
+    ⚠ SDA's STUB DROPS 0.35 BEFORE IT RUNS WEST, and that jog is not cosmetic. Straight
+    out at pin 18's own y it passes SCL's via at dy -0.75 with 0.50 of clearance where a
+    via needs 0.55 (0.3 annulus, 0.1 track, 0.15 rule). Short by 0.05.
+
+    ⚠ AND ONE OF THE TWO EAST BUSES HAS TO CHANGE LAYER, which is worth stating because
+    it looks avoidable and is not. Two parallel column spines fed by horizontals from the
+    west: the OUTER spine's feed must cross the inner spine, at every cell, and the inner
+    spine is continuous by definition so there is no gap to slip through. Whichever is
+    outer pays. SCK pays it -- one via per cell, five in total -- and runs its jog and its
+    spine on B.Cu; FS stays entirely on F.Cu. SDA costs nothing, its strip being empty.
+
+    Jog depths are set by the Cs row's own ground vias at dy -5.04: a horizontal wants
+    0.55 off those, so -6.00 is the first clear lane and the two buses take -6.00 and
+    -6.60. The deeper one turns east from the WESTERN pin, so neither vertical crosses the
+    other's horizontal -- the same ordering rule the comb lanes needed.
+    """
+    out = []
+    for k in range(5):
+        # SDA: west face, out past SCL's lane on F.Cu the whole way
+        out += [("I2C2_SDA", "F.Cu", w,
+                 [_cell_pt(k, -1.963, _SDA_DY), _cell_pt(k, -2.40, _SDA_DY)]),
+                ("I2C2_SDA", "F.Cu", w,
+                 [_cell_pt(k, -2.40, _SDA_DY), _cell_pt(k, -2.40, _SDA_JOG)]),
+                ("I2C2_SDA", "F.Cu", w,
+                 [_cell_pt(k, -2.40, _SDA_JOG), _cell_pt(k, _SDA_DX, _SDA_JOG)])]
+        # FS: south face, the INNER east spine, F.Cu throughout
+        out += [("SAI_FS", "F.Cu", w,
+                 [_cell_pt(k, _FS_DX, _SAI_ROW), _cell_pt(k, _FS_DX, _FS_JOG)]),
+                ("SAI_FS", "F.Cu", w,
+                 [_cell_pt(k, _FS_DX, _FS_JOG), _cell_pt(k, _FS_SPINE, _FS_JOG)])]
+        # SCK: south face, the OUTER east spine, so it hops to B.Cu at its own x
+        out += [("SAI_SCK", "F.Cu", w,
+                 [_cell_pt(k, _SCK_DX, _SAI_ROW), _cell_pt(k, _SCK_DX, _SCK_JOG)]),
+                ("SAI_SCK", "B.Cu", w,
+                 [_cell_pt(k, _SCK_DX, _SCK_JOG), _cell_pt(k, _SCK_SPINE, _SCK_JOG)])]
+    out += [("I2C2_SDA", "F.Cu", spine_w,
+             [_cell_pt(0, _SDA_DX, _SDA_JOG), _cell_pt(4, _SDA_DX, _SDA_JOG)]),
+            ("SAI_FS", "F.Cu", spine_w,
+             [_cell_pt(0, _FS_SPINE, _FS_JOG), _cell_pt(4, _FS_SPINE, _FS_JOG)]),
+            ("SAI_SCK", "B.Cu", spine_w,
+             [_cell_pt(0, _SCK_SPINE, _SCK_JOG), _cell_pt(4, _SCK_SPINE, _SCK_JOG)])]
+    return out
+
+
+def _bus_vias():
+    """SAI_SCK's hop to B.Cu, one per converter. See _bus_spines for why only it pays."""
+    return [("SAI_SCK",) + _cell_pt(k, _SCK_DX, _SCK_JOG) for k in range(5)]
 
 
 def _door_keepout(pad=0.55, lo=0.50, hi=1.80):
@@ -1893,14 +1966,21 @@ def _spine_keepout(via_d=0.6, clr=0.127):
     The stitcher places a ground via 0.9 off its pad and knows nothing about pre-laid
     copper; left alone it dropped one onto the +3V3D trunk at 0.100 mm. Excluding the pad
     would cost that cap its ground, so the lane is fenced and the stitch kept."""
+    # ⚠ ONE BOX PER SPINE, NOT ONE BOX OVER ALL OF THEM. The first version took the
+    # bounding box of every B.Cu run at once, which was invisible while the only two
+    # spines were 0.93 apart and became a 10 mm wall the moment SAI_SCK's spine went into
+    # the empty strip east of the converters: 28 Cs caps lost their stitching via to a
+    # fence around copper that is nowhere near them.
     runs = [t for t in _cell_tracks()
             if t[1] == "B.Cu" and abs(t[3][0][1] - t[3][1][1]) > 10.0]
     assert runs, "no B.Cu spine to fence -- did the trunks move layer?"
-    xs = [(t[3][0][0] - t[2] / 2, t[3][0][0] + t[2] / 2) for t in runs]
-    ys = [y for t in runs for y in (t[3][0][1], t[3][1][1])]
     pad = via_d / 2 + clr
-    return [[min(x0 for x0, _ in xs) - pad, min(ys) - pad,
-             max(x1 for _, x1 in xs) + pad, max(ys) + pad]]
+    out = []
+    for t in runs:
+        x0, x1 = t[3][0][0] - t[2] / 2, t[3][0][0] + t[2] / 2
+        ys = (t[3][0][1], t[3][1][1])
+        out.append([x0 - pad, min(ys) - pad, x1 + pad, max(ys) + pad])
+    return out
 
 
 def _fan_tracks():
@@ -2562,7 +2642,7 @@ BOARD_NOTES = {
               for k in range(5) for y in (0.75, -3.27)]
              + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
                 for k in range(5)]
-             + _led_row_vias() + _mid_vias()),
+             + _led_row_vias() + _mid_vias() + _bus_vias()),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
