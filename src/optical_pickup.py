@@ -980,7 +980,8 @@ def _block(out, y, items, x0, x1):
     Rows are packed, not hand-assigned: hand-tuned rows went under the placement
     clearance every time a part was added, and the board length has to be an OUTPUT of
     the part list rather than a number parts get squeezed into."""
-    span, row, used = x1 - x0, [], 0.0
+    span = x1 - x0
+    ws = [_item_w(it) for it in items]
 
     def flush(row, y):
         if not row:
@@ -989,15 +990,46 @@ def _block(out, y, items, x0, x1):
         _spread(out, y - h / 2, row, x0, x1)
         return y - h - CRTYD_GAP
 
-    for it in items:
-        w = _item_w(it)
-        need = used + w + (CRTYD_GAP if row else 0.0)
-        if row and need > span:
-            y = flush(row, y)
-            row, used, need = [], 0.0, w
-        row.append(it)
-        used = need
-    return flush(row, y)
+    def pack(limit):
+        """Rows, breaking whenever the next part would take the row past `limit`."""
+        rows, row, used = [], [], 0.0
+        for it, w in zip(items, ws):
+            need = used + w + (CRTYD_GAP if row else 0.0)
+            if row and need > limit:
+                rows.append(row)
+                row, used, need = [], 0.0, w
+            row.append(it)
+            used = need
+        if row:
+            rows.append(row)
+        return rows
+
+    # ⚠ BALANCE THE ROWS, DO NOT JUST FILL THEM. Greedy packing puts every part it can in
+    # the first row and leaves the last one short, and _spread then distributes each row
+    # over the SAME span -- so a full row lands at CRTYD_GAP, touching, while its
+    # neighbour sits at four millimetres. Measured on this board's power block: two rows
+    # at 0.15 and 0.15 mm under a row at 4.31, which is the whole clearance budget spent
+    # on one row and none of it on the others. It is also the region the user picked out
+    # of the routed board by eye as the one with no room in it (2026-09-25).
+    #
+    # The fewest rows the parts fit in does not change -- that is what `span` decides and
+    # the board length depends on it. What changes is how they are shared out: aim for
+    # equal used width, and if that needs an extra row, relax the target until it does
+    # not. Costs no board area at all.
+    n = len(pack(span))
+    rows = pack(span)
+    if n > 1:
+        total = sum(ws) + CRTYD_GAP * (len(items) - 1)
+        target = total / n
+        while target <= span:
+            cand = pack(target)
+            if len(cand) <= n:
+                rows = cand
+                break
+            target += 0.25
+    for row in rows:
+        y = flush(row, y)
+    return y
 
 
 # ── ACCESS HOLE FOR THE PICKUP'S +Y HEIGHT JACK (user) ──────────────────────
