@@ -145,6 +145,7 @@ DECLARED_UP = {
     "kl_axle":           ("src.knee_lever", "AXLE_UP"),
     "kl_magnet_cap":     ("src.knee_lever", "MAGNET_CAP_UP"),
     "cart_base":         ("src.knee_lever", "CART_UP"),
+    "cart_piston":       ("src.knee_lever", "PISTON_UP"),
     "pedal_lid_a":       ("src.pedal_bar", "LID_UP"),
     "pedal_lid_b":       ("src.pedal_bar", "LID_UP"),
     "motor_pulley":      ("src.components", "MOTOR_PULLEY_UP"),

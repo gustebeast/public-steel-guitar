@@ -1042,6 +1042,13 @@ AXLE_UP = (0.0, -1.0, 0.0)
 # THE MAGNET CAP the same way and for the same reason: APERTURE-DOWN, drawn along +Z and
 # rotated onto the lever's +Y axis, so the flange face is the bed.
 MAGNET_CAP_UP = (0.0, -1.0, 0.0)
+# THE PISTON builds -X: it stands on its +X SPRING-SEAT face, the one flat 10 x 10 end,
+# and everything after it -- body, follower tongue, rounded nose -- grows along the build
+# rather than out of a side. Printed +Z with the cartridge it would lay its tongue out
+# sideways as a flat cantilever over air. It had no declaration at all until the pilot
+# came off: with a Ø4.6 boss on the bed face there was no good answer, which is the
+# tell that the boss was the problem (user).
+PISTON_UP = (-1.0, 0.0, 0.0)
 #
 # NOT DECLARED: the half-stop PISTON. Nothing in the module says which way it prints, it
 # takes no print_up, and its follower nose is a half-cylinder in X-Z that would be a
@@ -1628,9 +1635,13 @@ def _half_stop_piston() -> cq.Workplane:
                   x=(HS_NOSE_TIPX + _nose_r + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z + FOLL_DZ)
     foll = foll.union(cyl_y(2 * _nose_r, HS_FOLLOW_WY, y0=HS_YC - HS_FOLLOW_WY / 2)
                       .translate((HS_NOSE_TIPX + _nose_r, 0, HS_Z + FOLL_DZ)))    # rounded -X tip
-    pilot = (cyl(HS_PILOT_D, HS_PILOT_LX, z=HS_BODY_BX)                    # +X boss centring the coil ID
-             .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
-    return heal(body.union(foll).union(pilot))
+    # NO SPRING PILOT. It was a Ø4.6 x 4.8 boss on the +X end nosing into the coil's ID to
+    # centre it, and it made the piston unprintable (user, 2026-09-25: "we need to remove
+    # this extra spring guide cylinder from the piston, it makes it unprintable"): the
+    # piston prints ON that end face, so the boss is the FIRST layer -- a Ø4.6 disc with
+    # the piston's whole 10 x 10 section landing on it one layer up. The coil is centred
+    # by the channel it sits in, which is what the side lips are for.
+    return heal(body.union(foll))
 
 
 HS_FLOOR_Z = HS_Z - HS_PISTON_WZ / 2               # piston underside = cartridge OPEN-bottom = housing floor
