@@ -191,11 +191,14 @@ OLED_Y    = -100.0                            # wide -Y deck band (clear of stri
 # SIZED TO BE READ AT 1 FT (user): 0.495 dot pitch gives a 3.47 mm character, 39 arcmin
 # at that distance, against ISO 9241's 20. Menu depth is the 64 PIXELS, not the size --
 # every 128x64 panel gives the same 8 rows whatever its diagonal.
+# 0.48 dot pitch x 128 = 61.44, which is what settles it: 61.41 is the ACTIVE area.
 # A MODULE on a short lead, not a bare panel: white-on-black and this size exist only as
 # a module (the one assemblable 2.42" is blue). The UI board carries the ENCODER and
 # this module's connector -- that board is not modelled yet.
-OLED_W, OLED_L, OLED_T = 47.5, 82.0, 1.6      # module PCB (Y x X)
-OLED_VIEW_X, OLED_VIEW_Y = 63.41, 32.69       # the active area
+OLED_W, OLED_L, OLED_T = 47.5, 82.0, 1.6      # module PCB (Y x X), 5.5 deep
+OLED_VIEW_X, OLED_VIEW_Y = 61.41, 30.69       # ACTIVE area (the viewing
+                                              # window is 63.41 x 32.69 -- DigiKey
+                                              # quotes that one as "active")
 JOY_X     = UI_X + 70 * D.BEAD                # -252.17: just +X of the screen
 JOY_Y     = -102 * D.BEAD                     # -81.6
 

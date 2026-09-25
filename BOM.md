@@ -467,7 +467,7 @@ fitted on every instrument.
 | **DC barrel jack** | B | Same Sky **PJ-102AH** (2.0 pin) — **PCB-MOUNT, on the output + panel PCB**. Replaces the PJ-005A, which was a SOLDER-LUG panel jack and carried the same hand-soldering violation the TS jack did. Same family, same vendor | **~$3** [m] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
 | ~~USB-C panel coupler~~ | — | **DELETED** ($7.50, Adafruit 4261 F↔F). ⚠ It would have caused the fault the USB panel PCB exists to prevent: a F↔F coupler passes VBUS, and with the Pi fed from its GPIO header that puts a laptop's VBUS straight onto the power board's output. On the Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the **same node**, with no polyfuse between them | — | — |
 | **Rotary encoder + 4-way** | B | Alps **RKJXT1F42001** (sole UI control) — **15 pulses / 30 detents** incremental encoder, **infinite both ways**, + 4-way directional + centre push, one 17.0×17.0×10.5 part | **$5.27** [v] (10+: $4.57) | [LCSC C160841](https://www.lcsc.com/product-detail/multi-directional-switches_alpsalpine-rkjxt1f42001_C160841.html) |
-| **OLED display** | B | **2.7" 128×64 SSD1322** — Newhaven **NHD-2.7-12864WDW3**, **WHITE on BLACK**, active **63.41×32.69**, 0.48 dot pitch, module 82.0×47.5×6.0, 3.3 V. A module on a short lead; the **encoder** and its connector are what go on our UI board | **$38.08** [v] (2,057 in stock) | [DigiKey](https://www.digikey.com/en/products/detail/newhaven-display-intl/NHD-2-7-12864WDW3/7355953) |
+| **OLED display** | B | **2.7" 128×64 SSD1322** — Newhaven **NHD-2.7-12864WDW3**, **WHITE on BLACK**, active **61.41×30.69** (viewing window 63.41×32.69), 0.48 dot pitch, module 82.0×47.5×5.5, 3.3 V. A module on a short lead; the **encoder** and its connector are what go on our UI board | **$38.08** [v] (2,057 in stock) | [DigiKey](https://www.digikey.com/en/products/detail/newhaven-display-intl/NHD-2-7-12864WDW3/7355953) |
 | ~~USB 2.0 hub (module)~~ | — | **DELETED as a MODULE** ($4.50, Adafruit CH334F) — but the function came back as a **chip on the output + panel PCB** (2026-09-15), for a different reason than it was first bought. It no longer shares a panel port; it puts the optical board's 480 Mbps link on a ~100 mm cable to the panel instead of an ~800 mm one to the keyhead, and it must be a **high-speed** hub or both devices behind it pay a Transaction Translator's ~1 ms | — | — |
 | **USB lead, motor controller → Pi** | B | **USB-A male → JST XH 2.54 4-pin**, stock adapter lead (e.g. Amazon [B0H9QTYT83](https://www.amazon.com/Jumper-Header-Adapter-Compatible-Extension/dp/B0H9QTYT83)) into motor_ctrl **J4** | ~$5 [m] | new 2026-09-21, replaces a USB-C lead that could not be plugged in. J4's pin order is USB's own — **1 VBUS (n/c on the board), 2 D−, 3 D+, 4 GND**. ⚠ Adapter leads do not agree on pin order: check it on arrival and re-pin the XH housing's crimps to match (a pin tool, no solder). Full speed is all the link uses |
 | **USB cable, optical board → output panel** | B | **USB-A ↔ USB-C, ~150 mm, USB 2.0 HIGH SPEED, STRAIGHT plug, overmold ≤ 17.5 mm** (mating face → cable exit) | ~$5–8 [m] | commodity. **Two changes, 2026-09-15.** *Destination*: it lands on the output panel's hub downstream port, not the Pi — which is the whole point of putting a hub there, and takes this 480 Mbps link from ~800 mm to ~100 mm, so the length drops from 1 m. *Overmold*: **20 → 17.5 mm**. Spacing the optical board's layout by land rather than by body moved its −Y face 2.58 mm further out, and that came straight off the conduit's depth budget (`PLUG_L` in `src/optical_pickup.py`, asserted against the endplate's exterior wall). Surveyed overmolds run 10–25 mm, so this rules out the long boots, not the market — but it is now a **purchasing constraint to check, not a preference** |
@@ -541,10 +541,31 @@ arcmin (1.77 mm) and 16 is the floor, this panel's 0.495 pitch gives:
 
 | font cell | rows | character | at 1 ft |
 |---|---|---|---|
-| 5×7 in 8 px | **8** | 3.47 mm | 39′ |
-| 6×9 in 10 px | 6 | 4.46 mm | 50′ |
+| 5×7 in 8 px | **8** | 3.36 mm | 38′ |
+| 6×9 in 10 px | 6 | 4.32 mm | 49′ |
 
 Generous at either — rows trade against character size in firmware, at no cost in parts.
+
+⚠ **REFRESH IS ~220 Hz AND THE INTERFACE MUST BE SPI, NOT I²C.** Newhaven publishes no
+refresh figure because it is not a panel property: the SSD1322 sets it, and it is
+programmable — `F_FRM = FOSC / (D × K × MUX)` with FOSC 1.94 MHz typ, D 1, K 138 and
+MUX 64 gives **219.7 Hz**. Flicker is a non-issue; power is the reason to lower it.
+
+What is NOT free is pushing frames. A frame is **4,096 bytes** (SSD1322 is 4-bit
+greyscale, two pixels to a byte), so 60 fps needs 246 KB/s = **1.97 Mbit/s**:
+
+| interface | full-frame rate |
+|---|---|
+| 4-wire SPI @ 10 MHz (tcycle ≥ 100 ns, the part's max) | **305 fps** |
+| 4-wire SPI @ 2 MHz | 61 fps |
+| I²C @ 400 kHz | **10.9 fps** |
+| I²C @ 1 MHz | 27 fps |
+
+So SPI reaches 60 Hz at 2 MHz with headroom over the same five signal lines, and **I²C
+cannot reach it at all**. That is a second reason to carry this part over the cheap
+JLC-assemblable panels, which are I²C: they would cap near 11 fps on full frames.
+(Menus rarely redraw whole frames — one scrolled row is ~512 bytes, which 400 kHz I²C
+does in 11 ms — so this bounds the worst case, not the normal one.)
 
 ⚠ **AND IT MUST BE EMISSIVE, which is what ruled out everything that fit the FIRST size
 asked for** (60–80 wide × 40–60 tall). **TFT** at 3.5"/320×240 is exactly that size,
