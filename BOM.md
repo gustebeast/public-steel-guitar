@@ -625,8 +625,38 @@ is writing a whole frame faster than one scan takes:
 | at 8 MHz | 4.10 ms ✅ |
 | at 7 MHz | 4.68 ms ❌ tears |
 
-**So the rule is SPI ≥ 7.2 MHz, not "more fps".** Alternatively drop the scan to 110 Hz,
-which doubles the window to 9.1 ms and makes it easy — and saves power at the same time.
+**So the rule is SPI as fast as the part allows, not "more fps"** — and on a Pi that
+ceiling is lower than it looks. The Pi divides its 250 MHz core by powers of two, giving
+**7.8 or 15.6 MHz**, and the SSD1322's `tcycle` minimum of 100 ns caps it at **10 MHz**.
+15.6 is 56% over spec, so **7.8 MHz is the ceiling** and tearing cannot be bought off
+with a faster bus.
+
+⚠ **DO NOT SET THE SCAN AND THE UPDATE TO THE SAME RATE** (user asked, 2026-09-25).
+Three reasons, and the last one picks the setting:
+
+  * **It cannot be held.** The scan is an internal RC — FOSC 1.75/1.94/2.13 MHz — so a
+    *nominal* 110 Hz part is anywhere in **99–121 Hz** and drifts with temperature, with
+    no TE output to lock onto.
+  * **It would look worse if it could.** An exact ratio (1:1, 2:1) freezes the tear in
+    one place: a standing seam through every scroll. A mismatched rate sweeps it through
+    the display fast enough to average away. Matching is the case to avoid.
+  * **What is controllable is WRITE DUTY** — the fraction of a scan period spent
+    writing, which is the only window a tear can open in:
+
+| scan / SPI | scan period | 4,096 B write | duty |
+|---|---|---|---|
+| 220 Hz / 7.8 MHz | 4.55 ms | 4.20 ms | **92%** |
+| **110 Hz / 7.8 MHz** | 9.09 ms | 4.20 ms | **46%** |
+
+**SETTLED: scan 110 Hz (B3h divider D=2), update 60 fps, SPI 7.8 MHz.** The scan halves
+the duty and saves power; 60 sits below the scan so no frame is written that cannot be
+shown; and 110/60 is not a clean ratio, so what tearing remains sweeps. Going *up* to
+120 fps would put the update above the scan — writing frames the panel physically
+cannot display.
+
+And the practical escape: **menus rarely redraw a whole frame.** An eight-row scrolling
+region is ~512 B = 0.53 ms, a **6% duty**. The full-frame figures bound the worst case,
+not the normal one — if a scroll ever tears, redraw less rather than clock faster.
 
 ⚠ **WHAT MAKES IT LOOK GOOD IS GREYSCALE, NOT BRIGHTNESS** (user asked, 2026-09-25) —
 and it is the real justification for paying $38 rather than $12. The SSD1322 is **4-bit,
