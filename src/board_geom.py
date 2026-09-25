@@ -90,6 +90,11 @@ HEIGHT = {
     # cap. src/electronics.py uses the same number to place the cap; it is written once here.
     "PinSocket_2x20_P2.54mm_Vertical": 8.5,
     "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
+    "JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H --
+                                    # motor_ctrl J2/J6, the bus-B pair on the edge
+                                    # that faces the instrument's underside. Same
+                                    # body height as the 8-way above; only the
+                                    # length differs (11.9 against 19.9).
     "Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal": 15.67,     # Neutrik's STEP: body top
     "L_0603_1608Metric": 0.95, "L_Taiyo-Yuden_NR-30xx": 1.50,
     "Relay_DPDT_FRT5_SMD": 5.10,
