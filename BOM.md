@@ -600,6 +600,48 @@ antialiasing and no sub-pixel scrolling. The 2.7" is bought for the greyscale an
 bandwidth (see the notes above); 38′ instead of 22′ is a *consequence*, and a welcome
 one — most eyes will never need the large font.
 
+⚠ **THE FRAME IS 8,192 BYTES, NOT 4,096 — every rate figure below was 2× optimistic
+until this was read off the drawing** (2026-09-25). The mechanical drawing maps
+**Column 1 → segments 366 AND 367**, Column 128 → 112,113: **two segments per visible
+dot**. The window is segments 112–367, which the drawing's `(91, 63)` corner confirms as
+column addresses 28–91. SSD1322 packs 4 segments per column address at 2 bytes each, so
+a frame is **64 addresses × 2 B × 64 rows = 8,192 B**. Counting the 128 *visible dots*
+gives 4,096 and is wrong.
+
+| | on 4,096 B | actual, 8,192 B |
+|---|---|---|
+| max full-frame @ 7.8 MHz | 238 fps | **119 fps** |
+| 60 fps bus load | 20% | **50%** |
+| write duty @ 110 Hz scan | 46% | **92%** |
+| write duty @ 220 Hz scan | 92% | **185% — exceeds the scan** |
+
+**So PARTIAL UPDATES ARE THE DESIGN, not an optimisation.** A full frame takes 8.40 ms
+against a 9.09 ms scan at 110 Hz — it nearly fills it — and at 220 Hz it cannot fit at
+all. An 8-row scroll band is 1,024 B = 1.05 ms = **12% duty**, which is comfortable. The
+110 Hz / 60 fps / 7.8 MHz settings hold **only if regions are redrawn rather than
+frames**.
+
+⚠ **THE UI BOARD'S INTERFACE TO THIS MODULE**, read off the datasheet (2026-09-25):
+
+* **Connector: 1×20 pin header, 2.54 mm pitch** (Newhaven's own recommendation, note 5
+  on the mechanical drawing). The UI board carries the mating half.
+* **4-wire SPI pinout** — 1 `VSS`, 2 `VDD` (3.3 V), 4 `D/C`, 7 `SCLK`, 8 `SDIN`,
+  16 `/RES`, 17 `/CS`, 18 `/SHDN` (boost shutdown, internally pulled high), 19 `BS1`,
+  20 `BS0`; pins 5–6 and 10–14 are `VSS`, 3/9/15 are NC.
+* **`BS1`/`BS0` select the interface and are STRAPPED ON OUR BOARD, not run to the Pi** —
+  likewise `/SHDN`. ⚠ The datasheet's selection table did not survive text extraction
+  cleanly; the standard SSD1322 mapping for **4-wire SPI is BS1=0, BS0=0**, and that
+  wants one look at the PDF before the board is fabbed.
+* So the Pi only ever sees **5 SPI signals + 3.3 V + GND**, and the encoder's 7 —
+  **14 conductors**, unchanged.
+
+⚠ **CONFIRMED FROM NEWHAVEN'S OWN INIT ROUTINE**: `0xCA 0x3F` = **MUX 64** (so the scan
+arithmetic above uses the right divisor), and `0xB3 0x91` = divide ratio 1 with the
+oscillator at **level 9**, above the reset level 5 — the stock scan is therefore somewhat
+ABOVE the 220 Hz computed at the default oscillator. And the optics are listed **"White
+Color, Anti-Glare, Full View"** — the anti-glare treatment is the thing that keeps blacks
+black under stage lighting, and this part has it.
+
 ⚠ **RAISING THE REFRESH RATE BUYS ALMOST NOTHING — THE ARTIFACT TO DESIGN AGAINST IS
 TEARING** (user asked, 2026-09-25). Two separate things get called "refresh" and the
 part already has plenty of both.
