@@ -187,7 +187,17 @@ DECK_TOP  = D.DECK_TOP_Z                      # 6.4 — THE deck datum (was a st
                                               # dummies 0.4 into the deck plate); 9.6
                                               # under the strings, bar still can't bottom
 OLED_Y    = -100.0                            # wide -Y deck band (clear of strings)
-OLED_W, OLED_L, OLED_T = 38.0, 72.0, 1.6      # 2.42" module PCB (Y x X)
+# THE 1.5" 128x128 MODULE (Newhaven NHD-1.5-128128UGC3), not the 2.42" that stood here.
+# The display changed on PIXEL DENSITY -- 59 PPI could not give crisp text (user), see
+# BOM.md -- and the new panel is physically SMALLER as well as sharper, so this band
+# shrinks rather than grows. Newhaven's own outline: 45.0 x 52.0 x 5.1 module, 28.0 x
+# 28.0 viewing area, 3.3 V.
+#   ASSUMED: the 52.0 lies along X and the 45.0 along Y, i.e. the module is mounted
+#   landscape in the deck band. Newhaven's drawing gives "L x W" without saying which
+#   way up it is read, and the panel is SQUARE, so the image does not care -- only the
+#   carrier's footprint does. Check against the drawing before a panel cutout is final.
+OLED_W, OLED_L, OLED_T = 45.0, 52.0, 1.6      # module PCB (Y x X)
+OLED_VIEW = 28.0                              # the viewing area, square
 JOY_X     = UI_X + 70 * D.BEAD                # -252.17: just +X of the screen
 JOY_Y     = -102 * D.BEAD                     # -81.6
 
@@ -195,8 +205,8 @@ JOY_Y     = -102 * D.BEAD                     # -81.6
 def oled() -> cq.Workplane:
     """2.42" 128x64 OLED module dummy: PCB + glass + header, face up."""
     b = box_at(OLED_L, OLED_W, OLED_T, x=UI_X, y=OLED_Y, z=DECK_TOP + OLED_T / 2)
-    b = b.union(box_at(62.0, 33.0, 2.0, x=UI_X, y=OLED_Y,
-                       z=DECK_TOP + OLED_T + 1.0))          # glass active area
+    b = b.union(box_at(OLED_VIEW, OLED_VIEW, 2.0, x=UI_X, y=OLED_Y,
+                       z=DECK_TOP + OLED_T + 1.0))          # glass viewing area
     b = b.union(box_at(20.0, 2.5, 5.0, x=UI_X, y=OLED_Y - OLED_W / 2 + 2.0,
                        z=DECK_TOP + OLED_T + 2.5))          # pin header (-Y edge)
     return b
