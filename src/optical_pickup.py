@@ -1649,7 +1649,12 @@ def _parts():
     # The "electrical centre" argument it replaces is real and does not matter here: I2C2
     # runs at 400 kHz open-drain, where a pull-up's position on the bus is worth nothing
     # measurable. Being INSIDE a repeating cell costs something visible on every render.
-    _pu_x = _adc_x + _rx + _c[1] + CRTYD_GAP
+    # ⚠ AND EAST OF THE ESCAPE LANES, not just east of the cell. The strip east of the
+    # converters carries every bus that has to reach the border -- +3V3A, SAI_SCK,
+    # SAI_SD1..4 and SAI_FS, the outermost at x 22.50 -- and the pull-ups sat at
+    # 16.375, right under SAI_SCK's crossing. They are 400 kHz open-drain pull-ups on
+    # a bus whose length is already irrelevant (see above), so they yield.
+    _pu_x = _adc_x + _rx + _c[1] + CRTYD_GAP + 7.70
     _pu_y = _part_y("U18") - (CELL_FAR + CRTYD["0402"][0] + 2 * CRTYD_GAP)
     for m, (ref, desc) in enumerate((("R50", "I2C2 SCL pull-up"), ("R51", "I2C2 SDA pull-up"))):
         add(ref, desc, "0402", _pu_x,

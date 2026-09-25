@@ -91,7 +91,25 @@ def _ends(g):
     return [g[1].GetPosition()]
 
 
+def _near(seg, pt):
+    """The point on a segment closest to pt -- so a pad can be tested where the track
+    actually passes it, not only at the track's ends."""
+    _, a, b, _w = seg
+    dx, dy = b.x - a.x, b.y - a.y
+    l2 = dx * dx + dy * dy
+    t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((pt.x - a.x) * dx + (pt.y - a.y) * dy) / l2))
+    return pcbnew.VECTOR2I(int(a.x + t * dx), int(a.y + t * dy))
+
+
 def _touch(gi, gj):
+    # ⚠ A TRACK CROSSING A PAD MID-SPAN COUNTS. Testing only the track's ENDS against the
+    # pad said MID's anode link touched one land of four and reported 30 ratlines that
+    # KiCad's own connectivity did not: the link rides the west side of the lands, so no
+    # end of it lands on a pad centre, and the copper overlaps all the same.
+    for a, b in ((gi, gj), (gj, gi)):
+        if a[0] == "seg" and b[0] == "pad":
+            if b[1].HitTest(_near(a, b[1].GetPosition()), TOL):
+                return True
     for pt in _ends(gj):
         if gi[0] == "seg" and _seg_hit(gi, pt):
             return True
