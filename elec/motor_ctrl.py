@@ -93,7 +93,7 @@ def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
 
 
 def _xh(tag, desc):
-    return Part(name="B4B-XH-A", ref_prefix="J", tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="B4B-XH-A", ref_prefix="J", tag=tag, ref=tag, dest="NETLIST", tool="skidl",
                 value="B4B-XH-A", description=desc, footprint=XH_FP,
                 pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(XH_PINOUT)])
 
@@ -111,6 +111,38 @@ def _xh(tag, desc):
 # PH here, and the side-entry part needs a board EDGE with its mouth off it. Placed at J2's
 # existing site the side-entry body took C10's stitching-via room and layout refused it.
 PH_FP = "Connector_JST:JST_PH_B8B-PH-K_1x08_P2.00mm_Vertical"
+# ⚠ AND THE 4-WAY SIDE-ENTRY PAIR THAT REPLACED IT (user, 2026-09-25). See _ph4.
+PH4_FP = "Connector_JST:JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal"
+
+
+def _ph4(tag, desc):
+    """Bus B's trunk, as TWO 4-way side-entry PH instead of one 8-way vertical.
+
+    ⚠ THE REASON IS SERVICE, NOT ELECTRONICS (user, 2026-09-25): "instead of having an
+    8 pin which is locked inaccessible inside the instrument I'd like to put two 4 pin
+    JSTs on the board such that we can drop the board down z, cut a hole in the instrument
+    and have access to plug (and unplug) the 4 pins in from below".
+
+    The tray STANDS: electronics.stand() rotates it +90 deg about Y, which maps the board's
+    flat +X edge to world -Z. So the flat +X edge is the one facing the instrument's
+    underside, and a SIDE-ENTRY connector there -- mouth off that edge -- mates straight
+    down. A vertical part on the same edge would mate along world +X, into the instrument,
+    which is exactly the connector nobody can reach.
+
+    Splitting is free electrically because bus B was ALREADY a pass-through: ways 1-4 in,
+    5-8 out, the same four nets on both halves. Two 4-ways are the same two harnesses with
+    the same crimps in the same order; what changes is that each can be unplugged on its
+    own. The 8-way's own note argued for one part on the grounds that a mid-bus node is a
+    pass-through by construction -- true, and it is why this costs nothing to undo.
+
+    S4B-PH-SM4-TB (LCSC C265102, 28.9k in stock) is the 4-way of the S8B-PH-SM4-TB the
+    eleven lever boards already use: same family, same PHR housing, same SPH-002T-P0.5S
+    crimps, same pin order. 11.9 mm of board edge each.
+    """
+    return Part(name="S4B-PH-SM4-TB", ref_prefix="J", tag=tag, ref=tag, dest="NETLIST", tool="skidl",
+                value="S4B-PH-SM4-TB", description=desc, footprint=PH4_FP,
+                pins=[Pin(num=i + 1, name=n, func=P)
+                      for i, n in enumerate(harness.PH_PINOUT)])
 
 
 def _ph(tag, desc):
@@ -119,7 +151,7 @@ def _ph(tag, desc):
     the whole harness, but a different FAMILY, so a lever harness cannot mate a 24 V XH
     header and vice versa -- and way 2 is +5 V here, which is why bus B has its own
     pinout name rather than borrowing the 24 V one."""
-    return Part(name="B8B-PH-K-S", ref_prefix="J", tag=tag, dest="NETLIST",
+    return Part(name="B8B-PH-K-S", ref_prefix="J", tag=tag, ref=tag, dest="NETLIST",
                 tool="skidl", value="B8B-PH-K-S", description=desc, footprint=PH_FP,
                 pins=[Pin(num=i + 1, name=n, func=P)
                       for i, n in enumerate(harness.ph_trunk_pins())])
@@ -161,13 +193,22 @@ def motor_ctrl():
     # different family from the 24 V XH motor tees so no harness can cross them. J2's +V
     # comes off this board's own +5V (the Pi rail, after F2) -- wired further down, once
     # that net exists.
-    j2 = _ph("J2", "bus B out -- the eleven lever/pedal boards, 5 V, JST PH")
+    j2 = _ph4("J2", "bus B IN -- from the pedals at the leg, 5 V, JST PH side entry")
+    # ⚠ J6, AND NOT J5, WHICH THIS BOARD ALREADY USES (the Pi's 5 V XH). Taking a
+    # ref that exists does not collide loudly -- SKiDL renumbers the OTHER part, so
+    # the Pi's two connectors silently became J8 and J9 and their placements stopped
+    # matching. The only symptom was "no placement given for: J8, J9".
+    # Every connector here now passes ref= as well as tag=, which is the fix
+    # lever_sensor.py already documents: "passing ref= makes the tag authoritative,
+    # so where a part is CREATED stops mattering."
+    j6 = _ph4("J6", "bus B OUT -- to the lever chain, 5 V, JST PH side entry")
     j3 = _xh("J3", "24 V in from the rail (2 contacts populated)")
-    gnd += j1[1], j2[1], j2[5], j3[1], j3[4]
+    gnd += j1[1], j2[1], j6[1], j3[1], j3[4]
     v24 += j1[2], j3[2], j3[3]
     a_h += j1[3]; a_l += j1[4]
-    # bus B passes THROUGH: ways 1-4 in, 5-8 out, same four nets on both halves
-    b_h += j2[3], j2[7]; b_l += j2[4], j2[8]
+    # bus B still passes THROUGH -- it is now two connectors rather than two halves of
+    # one, which is the same node with a service joint in the middle of it
+    b_h += j2[3], j6[3]; b_l += j2[4], j6[4]
     # ⚠ J3 NOW DOUBLES ITS CONTACTS, AND IT IS A RATING FIX RATHER THAN TIDINESS. This
     # is the sink end of the instrument's whole 24 V trunk. BOM.md sizes that bus at
     # under 5 A and XH is rated 3 A per contact, which is exactly why the SOURCE (the
@@ -383,7 +424,8 @@ def motor_ctrl():
     # VBUS IS DELIBERATELY UNCONNECTED, as it was on the USB-C: the board runs off the 24 V
     # rail, and taking VBUS as well would leave the Pi's supply and the instrument's
     # arguing over who holds the rail. It is a landing for a future VBUS-present sense.
-    usb = Part(name="B4B-XH-A", ref_prefix="J", tag="J4", dest="NETLIST", tool="skidl",
+    usb = Part(name="B4B-XH-A", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
+               tool="skidl",
                value="B4B-XH-A", footprint=XH_FP,
                description="USB 2.0 link to the Pi (USB-A -> XH lead): VBUS n/c, D-, D+, GND",
                pins=[Pin(num=i + 1, name=n, func=P)
@@ -513,7 +555,8 @@ def motor_ctrl():
     v5_raw += f2[1]; v5 += f2[2]
     # 5 V out on TWO contacts and GND on two: XH is rated 3 A per contact and the
     # design draw IS 3 A, so a single contact would sit exactly on its rating.
-    j5 = Part(name="B4B-XH-A", ref_prefix="J", tag="J5", dest="NETLIST", tool="skidl",
+    j5 = Part(name="B4B-XH-A", ref_prefix="J", tag="J5", ref="J5", dest="NETLIST",
+              tool="skidl",
               value="B4B-XH-A", description="5 V to the Pi's GPIO pins 2/4 + 6/9",
               footprint=XH_FP,
               pins=[Pin(num=i + 1, name=n, func=P)
@@ -527,7 +570,7 @@ def motor_ctrl():
     # are not a free expansion slot" limit F1's note already names. And a D9 crowbar
     # event now also drops the lever bus, which is the right way round: nothing senses
     # while the Pi is dark anyway.
-    v5 += j2[2], j2[6]
+    v5 += j2[2], j6[2]
 
     for tag, net in (("D6", dp), ("D7", dm)):
         d = Part(name="TVS", ref_prefix="D", tag=tag, dest="NETLIST", tool="skidl",
@@ -603,7 +646,15 @@ BOARD_NOTES = {
         # elec/sitesearch.py's top-ranked of 672 legal ones, which is the tool that exists
         # because this board "keeps being placed by eye and keeps being wrong" -- and it
         # puts bus B's trunk beside J3's 24 V inlet on the +X edge, where bus A's already is.
-        "J2": (18.25, 14.25, 90.0),
+        # ⚠ J2 AND J5 SIT ON THE +X EDGE BECAUSE THAT EDGE FACES THE FLOOR. The tray
+        # stands (electronics.stand(), +90 about Y), which maps flat +X to world -Z: the
+        # board hangs with this edge downward at Z -59.0, with 22.85 mm of air under it
+        # before the chassis floor at -81.85. Side entry here mates straight DOWN, through
+        # an access hole, which is the whole point of the change -- see _ph4.
+        # Nothing else may live on this edge: a cable leaving any other part on it has
+        # nowhere to go but into the instrument.
+        "J2": (19.05, 13.00, 90.0),
+        "J6": (19.05, -1.00, 90.0),
         "J3": (15.50, -8.50, 90.0),
         # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
         "TP1": (-10.10, -12.85, 0.0),

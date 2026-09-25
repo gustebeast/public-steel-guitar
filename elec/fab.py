@@ -81,6 +81,10 @@ LCSC = {
     "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
     "B6B-PH-K-S": "C131342",        # B6B-PH-K-S(LF)(SN) -- pi_cap J3, 5 V + SPI to the strip
     "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
+    "S4B-PH-SM4-TB": "C265102",     # 4-way side-entry PH, motor_ctrl J2/J6 (bus B,
+                                    # split so each half unplugs from under the
+                                    # instrument). Same family as the 8-way above.
+                                    # Verified 2026-09-25: 28,934 in stock.
     "B8B-PH-K-S": "C157974",        # B8B-PH-K-S(LF)(SN), stock 21,709 -- motor_ctrl J2,
                                     # the same bus-B trunk on the vertical variant
     "PJ-320D-4A": "C95562",         # TRRS 4-pole socket

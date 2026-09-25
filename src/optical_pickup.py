@@ -1460,8 +1460,6 @@ def _parts():
                       ("FB1", "ferrite bead -- analog rail isolation", "0603"),
                       ("C130", "bulk cap -- VBUS", "0805C"),
                       ("C133", "reference bypass", "0805C"),
-                      ("R32", "USB-C CC1 pull-down 5k1", "0402"),
-                      ("R33", "USB-C CC2 pull-down 5k1", "0402"),
                       # ⚠ THESE THREE WERE MISSING AND ARE NOT OPTIONAL. They surfaced
                       # when elec/optical.py turned this table into an actual netlist --
                       # which is the point of doing that, because a part that no net
@@ -1930,6 +1928,22 @@ def _parts():
     _j1_x = TAIL_X1 - EDGE_KEEP - _uc_w / 2 - _CHAIN_DX
     add("J1", "USB-C receptacle -- 10ch audio + MIDI + DFU", "USB-C",
         _j1_x, edge_y + _uc_d / 2)
+    # ⚠ THE CC RESISTORS GO TO THE SOCKET, WHICH IS BOTH WHERE THEY BELONG AND WHERE THE
+    # ROUTING NEEDS THEM GONE FROM. They were loose items in the power row -- 24 mm from
+    # J1, on a net that exists only between J1's CC pins and ground -- and that row is the
+    # BARRIER: 15 parts filling their span at the 0.15 mm courtyard minimum, whose 26
+    # escape vias shadow 38% of the board's width on EVERY layer, inner ones included.
+    # A part that has no reason to be in a wall should not be part of the wall.
+    #
+    # Taking two 0402s out gives the row back ~5 mm, and _spread hands that straight to
+    # the gaps between everything left in it. They land in the open board north-west of
+    # the socket, 5-6 mm from the pins they pull down, which for a 5k1 to ground is a
+    # distance with no job to do.
+    add("R32", "USB-C CC1 pull-down 5k1 -- at the socket", "0402",
+        _j1_x - _uc_w / 2 - 2.2, edge_y + _uc_d / 2)
+    add("R33", "USB-C CC2 pull-down 5k1 -- at the socket", "0402",
+        _j1_x - _uc_w / 2 - 4.5, edge_y + _uc_d / 2)
+
     # J2 -- POWER ONLY. 24 V FROM THE TRUNK, and NOT USB VBUS: MCU ~200-300 mA + PHY ~50
     # + 21 op-amp channels ~40 is already past a USB port before an emitter is lit.
     #
