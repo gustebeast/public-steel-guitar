@@ -210,6 +210,24 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     for spec in (notes or {}).get("diff_pairs", ()):
         frozen.update(spec.get("nets", ()))
     pair_nets = None if (notes or {}).get("fix_prelaid") else frozen
+    if (notes or {}).get("fix_prelaid"):
+        # ⚠ FREEZING AND RESTORING ARE TWO HALVES OF ONE THING, AND fix_prelaid ONLY DID
+        # THE FIRST. `pair_nets = None` fixes EVERY wire in the DSN so the router leaves
+        # the pre-lay alone -- but `frozen` was still just the declared pairs, and
+        # `frozen` is what the restore below re-lays. So the router obediently returned a
+        # session with none of the pre-laid copper in it (a session reports what the
+        # ROUTER did, and a fixed wire is not that) and the import deleted the lot.
+        #
+        # Measured on the optical board, north of the border only: 2952.6 mm of pre-laid
+        # copper and 207 vias went in, 818.7 mm and 2 vias came out. The north half --
+        # verified at 0 ratlines before the DSN was written -- came back with 127, and
+        # every one of them read as "the router failed", which is the opposite of what
+        # happened. It never touched them. We threw them away on import.
+        #
+        # So: everything that already has copper is frozen. That is exactly the set the
+        # DSN just fixed, which is the invariant that was missing -- the two halves are
+        # now derived from the same condition instead of happening to agree for pairs.
+        frozen = {t.GetNetname() for t in board.GetTracks() if t.GetNetname()}
     if incremental:
         # Everything that HAS copper is frozen except the nets still unfinished.
         free = set(failing_nets(stem))
