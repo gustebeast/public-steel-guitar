@@ -357,7 +357,12 @@ CRTYD = {
     "TP":       (2.50, 2.50),   # KiCad's own courtyard for the D1.5 test pad
     "SOT-223":  (8.89, 7.29),   # the biggest gap of the lot: a tab package's land is
                                 # nothing like its body
-    "VSSOP-8":  (5.50, 3.60),
+    # ⚠ 6.45, NOT 5.50, measured off the placed footprint rather than the datasheet
+    # body. The dual op-amp is the one part in this table whose courtyard something
+    # is placed AGAINST -- Cd sits hard against pin 8 -- and 5.50 put all ten of them
+    # 0.305 mm inside U2*'s courtyard. DRC caught it only after a full route, because
+    # a courtyard overlap is not a clearance error and the layout gate never reads it.
+    "VSSOP-8":  (6.45, 3.60),
     "WQFN-16":  (3.60, 3.60),
     "SOIC-14":  (7.49, 9.25),
     "QFN-24":   (5.35, 5.35),
