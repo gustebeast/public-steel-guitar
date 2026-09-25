@@ -1873,6 +1873,10 @@ def _canonical_uuids(path):
     open(path, "w", encoding="utf-8").write("".join(out))
 
 
+# nearest-first, so a via still lands as close to the direction of travel as it can
+_RING_ANGLES = [0.0] + [s * k * 0.15 for k in range(1, 22) for s in (1.0, -1.0)]
+
+
 def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
                    via_d, via_drill, clr, width, math, outline, drills):
     """pad -> via -> a run on `inner` -> via -> pad, or 0 if there is no room.
@@ -1892,10 +1896,17 @@ def _hop_via_inner(board, pa, pb, netname, inner, clear, seg_clear, emit,
         # available beside U1.7 and 2.82 mm beside Rf12.2 -- but at ring radii of 3.31 and
         # 2.16 mm, and the old escalation stopped at 2.0 mm with ten fixed angles. It was
         # not that there was nowhere to put a via; it was that nobody looked that far.
+        # ⚠ AND THE ANGULAR RESOLUTION IS THE LIMIT TOO -- the same lesson as the note
+        # above, one level finer. The old list stepped 0.4 rad, which at 2 mm out is a
+        # 0.8 mm stride, wider than the lanes it is hunting for. Pin 6 of every op-amp is
+        # boxed in by pins 5 and 7 on its own row, so its ONLY straight escape is due
+        # south, and due south sits between two of those samples: the nine B channels that
+        # could not place a via had 2.35 mm of clear column under them the whole time.
+        # 0.15 rad is 0.3 mm at 2 mm out, under the 0.45 a via needs, so a lane that exists
+        # is now hit rather than stepped over.
         for step in range(40):
             r = half + need + pcbnew.FromMM(0.1 * step)
-            for dth in (0, 0.4, -0.4, 0.8, -0.8, 1.2, -1.2, 1.6, -1.6, 2.0, -2.0,
-                        2.4, -2.4, 2.8, -2.8, math.pi):
+            for dth in _RING_ANGLES:
                 x = int(pc.x + r * math.cos(base + dth))
                 y = int(pc.y + r * math.sin(base + dth))
                 # ⚠ A VIA IS NOT A TRACK, and checking it as one is what made this
