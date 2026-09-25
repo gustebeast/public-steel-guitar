@@ -14,8 +14,14 @@ Three kinds of ratline, and only one of them is work:
 
   NORTH   both ends north of the border: a net that is not joined up in the string array.
           THIS IS THE LIST TO EMPTY.
-  CROSS   one end north, one south: the net's single handover to the router. Exactly one
-          per crossing net is the FINISHED state, not a fault.
+  CROSS   one end north, one south: the net's single handover to the router. One per
+          crossing net is expected -- but WHERE it hands over matters as much as that it
+          does, and the first version of this scored every crossing as finished and so
+          reported a clean board while five nets still ran the length of the array (user,
+          2026-09-24: "the rest stretch from the south, those should go to the border
+          instead"). SAI_SD1..5 are the case that exposed it: two pads each, one
+          connection each, crossing the border exactly once and starting 79 mm north of
+          it. A crossing that begins more than REACH above the line is reported as FAR.
   SOUTH   both ends south: the router's half, not ours.
 
 ⚠ THE RATSNEST IS BETWEEN ISLANDS, NOT PADS. Two pads of one net with copper between them
@@ -43,6 +49,11 @@ import pcbnew  # noqa: E402
 # Just south of R10: the ballast resistors are the southernmost thing string 10 owns, so
 # this is "as close to string 10 as we can fit" and no closer.
 BORDER = -19.0
+# How far above the border a handover may start before it counts as unfinished. The comb
+# slots end 1.8 above the line and the southernmost converter's own pads sit 4.2 above it,
+# so anything inside 5 is a net that has genuinely arrived; beyond it, the net is still
+# crossing the string array.
+REACH = 5.0
 TOL = 1000          # nm of slop, the same the island report uses
 
 
@@ -129,12 +140,22 @@ def islands(board, cu):
                 _, lj, gj, _ = lst[j]
                 if (li & lj) and _touch(gi, gj):
                     uf.union(i, j)
-        groups = collections.defaultdict(list)
+        # ⚠ TRACK ENDS COUNT, NOT JUST PADS. KiCad draws a ratline from the nearest
+        # COPPER, so a spine running down to the border shortens the line even though the
+        # island still has only one pad. Measuring pad to pad said SAI_SD1 handed over
+        # 79 mm north whether or not it had a lane, which is exactly the blindness that
+        # let this routine call the board finished.
+        groups, has_pad = collections.defaultdict(list), set()
         for i, (k, _l, g, lab) in enumerate(lst):
+            r = uf.find(i)
             if k == "pad":
                 p = g[1].GetPosition()
-                groups[uf.find(i)].append((lx(p), ly(p), lab))
-        gs = [v for v in groups.values() if v]
+                groups[r].append((lx(p), ly(p), lab))
+                has_pad.add(r)
+            else:
+                for q in _ends(g):
+                    groups[r].append((lx(q), ly(q), "copper"))
+        gs = [v for r, v in groups.items() if r in has_pad]
         if len(gs) > 1:
             out[n] = gs
     return out
@@ -167,7 +188,7 @@ def main(argv):
     cu = [l for l in board.GetEnabledLayers().Seq() if pcbnew.IsCopperLayer(l)]
 
     tally = collections.Counter()
-    rows = []
+    rows, far = [], []
     for net, isls in sorted(islands(board, cu).items()):
         if net == "GND":
             continue
@@ -182,6 +203,10 @@ def main(argv):
                     worst = (d, pa, pb)
             elif kind == "CROSS":
                 cross += 1
+                up = max(pa, pb, key=lambda q: q[1])
+                if up[1] - cut > REACH:
+                    far.append((up[1] - cut, net, up[2],
+                                min(pa, pb, key=lambda q: q[1])[2]))
         if north:
             rows.append((north, net, cross, worst))
 
@@ -189,9 +214,12 @@ def main(argv):
     for n, net, cross, w in sorted(rows, key=lambda r: (-r[0], r[1])):
         print("  %-14s %2d north  %d cross   longest %6.2f mm  %s -> %s"
               % (net, n, cross, w[0], w[1][2], w[2][2]))
-    print("%d ratline(s) north of the border over %d net(s); %d crossing, %d south only"
-          % (tally["NORTH"], len(rows), tally["CROSS"], tally["SOUTH"]))
-    return 1 if tally["NORTH"] else 0
+    for d, net, a, b in sorted(far, reverse=True):
+        print("  %-14s hands over %6.2f mm north of the border  %s -> %s" % (net, d, a, b))
+    print("%d ratline(s) north of the border over %d net(s); %d crossing (%d of them "
+          "further than %.1f mm up), %d south only"
+          % (tally["NORTH"], len(rows), tally["CROSS"], len(far), REACH, tally["SOUTH"]))
+    return 1 if (tally["NORTH"] or far) else 0
 
 
 if __name__ == "__main__":

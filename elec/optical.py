@@ -1498,7 +1498,7 @@ def _cell_tracks():
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
     return (out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
             + _v5_spine() + _led_row_spine() + _mid_spine()
-            + _bus_spines())
+            + _bus_spines() + _v3a_spine() + _sd_spines())
 
 
 # ⚠ THE +3V3D CLUSTERS CANNOT BE JOINED BY LAYING EITHER (2026-09-22). _v3_trunk links
@@ -1638,8 +1638,11 @@ def _i2c_spine():
     for k in range(5):
         out += [("I2C2_SCL", "F.Cu", 0.2,
                  [_cell_pt(k, -1.963, DY), _cell_pt(k, DX, DY)])]
+    # ⚠ THE SPINE RUNS ON PAST THE LAST CONVERTER, down to the border. Stopping at cell 5
+    # left the handover 5.36 mm up in the array, which is 5.36 mm of ratline the router
+    # draws across the strings for no reason -- the lane is empty below the cell.
     out.append(("I2C2_SCL", "B.Cu", 0.25,
-                [_cell_pt(0, DX, DY), _cell_pt(4, DX, DY)]))
+                [_cell_pt(0, DX, DY), (_cell_pt(4, DX, DY)[0], _SD_BORDER)]))
     return out
 
 
@@ -1647,7 +1650,10 @@ def _i2c_spine():
 # has all five converters at rot 180 on an 18.727 pitch, so one set of offsets serves all.
 _SDA_DY, _SDA_JOG, _SDA_DX = -1.250, -1.60, -4.91      # pin 18, west face
 _SAI_ROW = -1.9628                                     # pins 19..24, south face
-_FS_DX, _FS_JOG, _FS_SPINE = 0.750, -6.00, 7.20        # pin 23
+_FS_DX, _FS_JOG, _FS_SPINE = 0.750, -6.00, 10.60       # pin 23
+_SD_DX, _SD_JOG = -0.250, -7.20                        # pin 21, one net per cell
+_SD_SPINE = (9.80, 9.00, 8.20, 7.40)                   # cells 0..3, north cell outermost
+_SD_BORDER = -19.00                                    # where the south half takes over
 _SCK_DX, _SCK_JOG, _SCK_SPINE = 0.250, -6.60, 6.40     # pin 22
 
 
@@ -1670,12 +1676,18 @@ def _bus_spines(w=0.2, spine_w=0.25):
     out at pin 18's own y it passes SCL's via at dy -0.75 with 0.50 of clearance where a
     via needs 0.55 (0.3 annulus, 0.1 track, 0.15 rule). Short by 0.05.
 
-    ⚠ AND ONE OF THE TWO EAST BUSES HAS TO CHANGE LAYER, which is worth stating because
-    it looks avoidable and is not. Two parallel column spines fed by horizontals from the
-    west: the OUTER spine's feed must cross the inner spine, at every cell, and the inner
-    spine is continuous by definition so there is no gap to slip through. Whichever is
-    outer pays. SCK pays it -- one via per cell, five in total -- and runs its jog and its
-    spine on B.Cu; FS stays entirely on F.Cu. SDA costs nothing, its strip being empty.
+    ⚠ A FEED MUST STAY ON F.Cu UNTIL IT REACHES ITS OWN SPINE, and that one rule is what
+    lets the strip carry more than one bus. A horizontal running east at constant y
+    crosses every spine between the pin and its destination, so on ONE layer only the
+    innermost spine can be fed from the west. But a feed that stays on F.Cu and vias down
+    AT its spine never touches B.Cu at all -- which is why I2C2_SCL and +3V3D have sat in
+    the same lane for months without fouling each other, and it generalises: B.Cu holds as
+    many spines as fit, F.Cu holds one, and each feed stops west of every F.Cu spine
+    outboard of it. So FS takes the outermost lane on F.Cu and SCK and +3V3A sit inboard
+    of it on B.Cu, each fed by an F.Cu horizontal that stops at its own via.
+
+    Laying SCK's jog on B.Cu instead was tried first and is wrong for exactly this reason:
+    it put a B.Cu horizontal across the strip and nothing else could share the layer.
 
     Jog depths are set by the Cs row's own ground vias at dy -5.04: a horizontal wants
     0.55 off those, so -6.00 is the first clear lane and the two buses take -6.00 and
@@ -1699,7 +1711,7 @@ def _bus_spines(w=0.2, spine_w=0.25):
         # SCK: south face, the OUTER east spine, so it hops to B.Cu at its own x
         out += [("SAI_SCK", "F.Cu", w,
                  [_cell_pt(k, _SCK_DX, _SAI_ROW), _cell_pt(k, _SCK_DX, _SCK_JOG)]),
-                ("SAI_SCK", "B.Cu", w,
+                ("SAI_SCK", "F.Cu", w,
                  [_cell_pt(k, _SCK_DX, _SCK_JOG), _cell_pt(k, _SCK_SPINE, _SCK_JOG)])]
     out += [("I2C2_SDA", "F.Cu", spine_w,
              [_cell_pt(0, _SDA_DX, _SDA_JOG), _cell_pt(4, _SDA_DX, _SDA_JOG)]),
@@ -1711,8 +1723,134 @@ def _bus_spines(w=0.2, spine_w=0.25):
 
 
 def _bus_vias():
-    """SAI_SCK's hop to B.Cu, one per converter. See _bus_spines for why only it pays."""
-    return [("SAI_SCK",) + _cell_pt(k, _SCK_DX, _SCK_JOG) for k in range(5)]
+    """SAI_SCK's hop to B.Cu, one per converter, AT the spine and not at the pin -- the
+    feed has to stay on F.Cu the whole way across. See _bus_spines."""
+    return [("SAI_SCK",) + _cell_pt(k, _SCK_SPINE, _SCK_JOG) for k in range(5)]
+
+
+# +3V3A's lanes. The op-amp side vias 1.38 EAST of the Cd column, which puts it clear
+# of the B channel's escape vias at -18.54 rather than 0.06 from them -- 0.68 was the
+# first try and DRC caught it shorting TIA_OUT_*B on all ten strings. A via needs 0.60
+# (0.3 annulus, 0.15 spine, 0.15 rule) and the gap west of those vias is only 0.19.
+# The rest of the note stands: there is no room on the
+# 1.283 mm stub between pin 8 and Cd (0.163 mm of gap, against the 0.9 a 0.6 via needs), and
+# nothing else in the tile is clear -- the B-channel's own escape vias sit at x -18.54.
+_V3A_DX = 1.38
+_V3A_SPINE = 5.30           # converter side, INBOARD of SAI_FS at 7.20: see _bus_spines
+_V3A_CS_DY = -3.27          # the Cs*1 row, +3V3A's pad in each cell
+
+
+def _v3a_spine(w=0.2, spine_w=0.3):
+    """+3V3A: the analogue rail, ten op-amp stations and five converter stations.
+
+    ⚠ THE LAST NET REACHING NORTH OF THE BORDER, and the largest: 15 islands, 13 ratlines.
+    Every station is internally fine -- pin 8 to its own Cd, one 1.283 mm stub -- and
+    nothing joins the stations to each other. This was mis-read once as unconnected bypass
+    caps (the island report prints "Cd1.1,U21.8" as ONE island, a connected pair, and it
+    was read as two); the caps were never the problem. The rail between them was missing.
+
+    ⚠ IT HAS TO BE B.Cu, and that is measured rather than assumed. The op-amp column is
+    the obvious lane and cannot be used: pin 8 shares its x with pin 1, TIA_OUT_A, on the
+    other row, and the column between two stations is blocked by Cd's ground pad, Cd's
+    stitching via and the next op-amp's pin 1. Every neighbouring F.Cu lane is crossed
+    once per string by the A channel's own feedback:
+
+        x -18.60   the B channel's escape vias at -18.54, 0.06 away
+        x -18.90   0.131 to pin 8's pad edge, against the 0.25 a track needs
+        Rf..Cf     four crossings per string, TIA_IN and TIA_OUT, both halves
+        east of Cf the two TIA_OUT runs heading for the comb
+
+    In2 is no better: the B channel's two diagonals cross the column at every string. So
+    the rail goes under everything on B.Cu and pays a via per station, which is what a
+    power rail costs when the signal layers are full. The local bypass is unaffected --
+    each Cd still sits against its own pin 8 on F.Cu, which is the part that matters.
+    """
+    P = _placements(CX, CY)
+    strings = [n for n in range(1, 11) if ("Cd%d" % n) in P]
+    cds = sorted(((n, P["Cd%d" % n]) for n in strings), key=lambda kv: -kv[1][1])
+    assert cds, "no op-amp decoupling caps placed -- did Cd get renamed?"
+
+    # Cd's +3V3A land is its north pad; read the offset back rather than assuming it
+    cd_y = lambda q: q[1] + 0.48
+    x = cds[0][1][0] + _V3A_DX
+    out = [("+3V3A", "B.Cu", spine_w,
+            [(x, cd_y(cds[0][1])), (x, cd_y(cds[-1][1]))])]
+    for _n, q in cds:
+        out.append(("+3V3A", "F.Cu", w, [(q[0], cd_y(q)), (x, cd_y(q))]))
+
+    # the converter stations, same shape one lane in from SAI_FS
+    for k in range(5):
+        out.append(("+3V3A", "F.Cu", w,
+                    [_cell_pt(k, 3.10, _V3A_CS_DY), _cell_pt(k, _V3A_SPINE, _V3A_CS_DY)]))
+    out.append(("+3V3A", "B.Cu", spine_w,
+                [_cell_pt(0, _V3A_SPINE, _V3A_CS_DY), _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)]))
+
+    # ⚠ ONE LINK BETWEEN THE TWO GROUPS, at the SOUTH end where both already finish. The
+    # op-amp column bottoms out at string 10's Cd and the converter column at cell 5's Cs,
+    # 1.06 mm apart in y and both within 3 mm of the border, so the crossing is a single
+    # B.Cu run under the bottom of the comb field rather than a second trip up the board.
+    # ⚠ THE LINK DROPS 1.0 BELOW Cd10 BEFORE IT RUNS EAST. Straight across at Cd10's own y
+    # it clips the BOTTOM EDGE OF SLOT 10 -- the comb slots are milled openings, not just
+    # keepouts, so that is a copper-to-edge violation and not a clearance one. y -18.2 is
+    # below every slot and still 0.8 north of the border.
+    y_lnk = cd_y(cds[-1][1]) - 1.00
+    xe = _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)[0]
+    out += [("+3V3A", "B.Cu", spine_w, [(x, cd_y(cds[-1][1])), (x, y_lnk)]),
+            ("+3V3A", "B.Cu", spine_w, [(x, y_lnk), (xe, y_lnk)]),
+            ("+3V3A", "B.Cu", spine_w, [(xe, y_lnk), _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)])]
+    return out
+
+
+def _v3a_vias():
+    """One via per +3V3A station: ten op-amps, five converters. See _v3a_spine."""
+    P = _placements(CX, CY)
+    out = [("+3V3A", P["Cd%d" % n][0] + _V3A_DX, P["Cd%d" % n][1] + 0.48)
+           for n in range(1, 11) if ("Cd%d" % n) in P]
+    out += [("+3V3A",) + _cell_pt(k, _V3A_SPINE, _V3A_CS_DY) for k in range(5)]
+    return out
+
+
+def _sd_spines(w=0.2, spine_w=0.25):
+    """SAI_SD1..4: the serial data lines, each from its own converter down to the border.
+
+    ⚠ THESE WERE THE LONG DIAGONALS ACROSS THE ARRAY (user, 2026-09-24: "the rest stretch
+    from the south, those should go to the border instead"). Each SDn is point to point --
+    one converter's pin 21 to one MCU pin -- so it has exactly two pads and no reason to
+    fail a connectivity check, and it had NO north copper at all. The ratsnest therefore
+    drew it as a single line from the converter to the far south, straight over the string
+    array. Counting ratlines told us nothing about it: the net has one connection and it
+    crosses the border, which is the finished state for every OTHER crossing net. What
+    matters is WHERE it hands over, and it was handing over 79 mm too far north.
+
+    SD5 is left alone. Its converter is the southern one and its pad is already 4.15 mm
+    from the border, which is the handover.
+
+    ⚠ THE NORTHERN CELL TAKES THE OUTER LANE, which is the opposite of the intuition. Each
+    spine runs from its own cell SOUTHWARD, so at cell k's y the spines of cells k+1.. do
+    not exist yet -- only the ones from cells further north are in the way. Feeding the
+    northern cell outermost means every feed reaches its lane without meeting a spine that
+    has started. Reversed, cell 3's feed would cross all three of its neighbours.
+
+    ⚠ AND ONLY ONE SPINE IN THE STRIP CAN LIVE ON F.Cu. A feed crosses every same-layer
+    spine between the pin and its lane, so F.Cu holds exactly one and it has to be the
+    OUTERMOST -- SAI_FS, moved out to 10.60 for this. Everything else sits inboard on B.Cu
+    fed by an F.Cu horizontal that vias down at its own lane, which crosses nothing.
+    """
+    out = []
+    for k, dx in enumerate(_SD_SPINE):
+        net = "SAI_SD%d" % (k + 1)
+        x, y0 = _cell_pt(k, dx, _SD_JOG)
+        out += [(net, "F.Cu", w,
+                 [_cell_pt(k, _SD_DX, _SAI_ROW), _cell_pt(k, _SD_DX, _SD_JOG)]),
+                (net, "F.Cu", w, [_cell_pt(k, _SD_DX, _SD_JOG), (x, y0)]),
+                (net, "B.Cu", spine_w, [(x, y0), (x, _SD_BORDER)])]
+    return out
+
+
+def _sd_vias():
+    """One via per SAI_SD lane, at the lane and not at the pin. See _sd_spines."""
+    return [("SAI_SD%d" % (k + 1),) + _cell_pt(k, dx, _SD_JOG)
+            for k, dx in enumerate(_SD_SPINE)]
 
 
 def _door_keepout(pad=0.55, lo=0.50, hi=1.80):
@@ -1838,8 +1976,10 @@ def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-1.36):
     # pad 1 sits 0.79 west of the emitter's centre; read back from the placement, not assumed
     pad = lambda q: (q[0] - 0.79, q[1])
     x = pad(ds[0][1])[0] + dx
+    # the spine carries on to the border rather than stopping at D10: same reason as
+    # _i2c_spine's, and In2 is empty down there.
     out = [("LED_ROW", "In2.Cu", spine_w,
-            [(x, pad(ds[0][1])[1]), (x, pad(ds[-1][1])[1])])]
+            [(x, pad(ds[0][1])[1]), (x, _SD_BORDER)])]
     for _, q in ds:
         px, py = pad(q)
         out.append(("LED_ROW", "In2.Cu", tap_w, [(x, py), (px + _LED_VIA_DX, py)]))
@@ -1935,16 +2075,11 @@ def _mid_spine(spine_w=0.3, w=0.3):
     out.append(("MID", "In2.Cu", w, [(sx, y_br), (pin5(south)[0], y_br)]))
     out.append(("MID", "F.Cu", w, [(pin5(south)[0], y_br), pin5(south)]))
 
-    # U11 is the mid-rail buffer, wired as a follower: OUT (pin 1) back to IN- (pin 4).
-    # local_nets used to lay this and no longer sees MID, so the spine owns it. The
-    # diagonal passes 0.729 from pin 2's centre -- 0.2 more than the pad, track and
-    # clearance need -- so it goes straight rather than around.
-    # SOT-23-5, pins 1-3 on the -X side and 4-5 on the +X side: pin 1 sits at
-    # (-1.1375, +0.950) off the package centre and pin 4 diagonally opposite it.
-    if "U11" in P:
-        ux, uy = P["U11"][0], P["U11"][1]
-        out.append(("MID", "F.Cu", w,
-                    [(ux - 1.1375, uy + 0.950), (ux + 1.1375, uy - 0.950)]))
+    # ⚠ U11's OWN FOLLOWER LINK IS NOT LAID HERE, deliberately. The buffer is wired OUT
+    # (pin 1) back to IN- (pin 4), which looks like a one-line addition and was tried: the
+    # straight diagonal shorts pin 2 (it clears the pad CENTRE by 0.729 and the pad itself
+    # by much less). It is also pointless -- U11 sits at y -61, the far side of the border
+    # -- so it is the router's hop like everything else down there.
     return out
 
 
@@ -2588,8 +2723,10 @@ BOARD_NOTES = {
     # that repetition I get suspicious"), which is a better detector for this class of
     # fault than anything automated here -- a per-cell omission looks like nothing at all
     # in a total, and like a pattern the moment you see the board.
-    # ⚠ MID IS NOT IN THIS LIST, AND MUST NOT GO BACK IN -- see _mid_spine. Its MST put a
-    # crossing through the TIA_IN lane on all ten strings.
+    # ⚠ MID IS NOT IN THIS LIST, AND MUST NOT GO BACK IN -- see _mid_spine. Put back
+    # (2026-09-24) to test whether the spine had become unnecessary now that TIA_IN_B
+    # is laid first and takes a clean route: it has not. The MST went straight back to
+    # crossing the TIA_IN lane and dropped all ten B channels again.
     "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]", r"\+3V3A",
                    r"ADC\d+_AREG", r"ADC\d+_DREG", r"ADC\d+_VREF",
                    r"LED_A\d+"),
@@ -2642,7 +2779,7 @@ BOARD_NOTES = {
               for k in range(5) for y in (0.75, -3.27)]
              + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
                 for k in range(5)]
-             + _led_row_vias() + _mid_vias() + _bus_vias()),
+             + _led_row_vias() + _mid_vias() + _bus_vias() + _v3a_vias() + _sd_vias()),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
