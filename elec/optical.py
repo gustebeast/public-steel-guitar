@@ -1793,10 +1793,19 @@ def _v3a_spine(w=0.2, spine_w=0.3):
     # it clips the BOTTOM EDGE OF SLOT 10 -- the comb slots are milled openings, not just
     # keepouts, so that is a copper-to-edge violation and not a clearance one. y -18.2 is
     # below every slot and still 0.8 north of the border.
-    y_lnk = cd_y(cds[-1][1]) - 1.00
+    # ⚠ BELOW EVERY ESCAPE JOG, not between two of them. At -1.385 the east via sat
+    # 0.289 from SAI_FS's jog, and the window between that jog and the Cs row's
+    # ground vias is 0.96 where a via and a track need 1.15. There is no lane in
+    # there; going under the lot costs nothing but 3.4 mm of B.Cu.
+    y_lnk = cd_y(cds[-1][1]) - 3.385
     xe = _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)[0]
+    # ⚠ THE CROSSING IS ON In2, NOT B.Cu. B.Cu carries I2C2_SCL's and +3V3D's spines down
+    # the west of the converter column and both now run to the border, so a B.Cu run east
+    # from the op-amps hits them. In2 is empty along the bottom of the comb field -- the
+    # comb's own lanes all sit north of -17.2 -- so the link vias through and crosses
+    # there, and the two vias are the only ones the whole east-west journey costs.
     out += [("+3V3A", "B.Cu", spine_w, [(x, cd_y(cds[-1][1])), (x, y_lnk)]),
-            ("+3V3A", "B.Cu", spine_w, [(x, y_lnk), (xe, y_lnk)]),
+            ("+3V3A", "In2.Cu", spine_w, [(x, y_lnk), (xe, y_lnk)]),
             ("+3V3A", "B.Cu", spine_w, [(xe, y_lnk), _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)])]
     return out
 
@@ -1807,6 +1816,12 @@ def _v3a_vias():
     out = [("+3V3A", P["Cd%d" % n][0] + _V3A_DX, P["Cd%d" % n][1] + 0.48)
            for n in range(1, 11) if ("Cd%d" % n) in P]
     out += [("+3V3A",) + _cell_pt(k, _V3A_SPINE, _V3A_CS_DY) for k in range(5)]
+    # the two ends of the In2 crossing -- see the note in _v3a_spine
+    cd = sorted((P["Cd%d" % n] for n in range(1, 11) if ("Cd%d" % n) in P),
+                key=lambda q: q[1])[0]
+    y_lnk = cd[1] + 0.48 - 3.385
+    out += [("+3V3A", cd[0] + _V3A_DX, y_lnk),
+            ("+3V3A", _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)[0], y_lnk)]
     return out
 
 
@@ -1929,7 +1944,7 @@ def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-2.94):
     return out
 
 
-_LED_VIA_DX = -0.75      # LED_ROW surfaces EAST of the MID spine (see _mid_spine)
+_LED_VIA_DX = -0.913     # LED_ROW surfaces BETWEEN MID's anode link and D*.1
 
 
 def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-1.36):
@@ -1994,17 +2009,25 @@ def _led_row_vias():
             for r in ("D%d" % i for i in range(1, 11)) if r in P]
 
 
-# MID's spine runs along the WEST EDGE of the anode lands, not their centres. The lands are
-# 1.2 wide at x -26.456, so a 0.3 track anywhere from -27.0 to -25.9 connects; the edge is
-# forced by what has to pass between the spine and the emitter. LED_ROW surfaces from In2
-# on a 0.6 via and crosses to D*.1 on F.Cu, and that via has to fit between them:
-#
-#     MID spine east edge  ->  D*.1 west edge      0.629 mm at the pad centres
-#     a 0.6 via needs                              0.854 mm
-#
-# So the spine moves 0.45 west onto the land edge, which opens the lane to 1.073 and lets
-# the via sit at _LED_VIA_DX = -0.75 with 0.46 to the spine and 0.01 to the pad it feeds.
-_MID_SPINE_DX = -0.45
+# MID's lanes, all measured against things that are already on the board.
+#   _MID_VIA_DX    east of the anode column, clear of LED_ROW's In2 spine at -26.60 and
+#                  west of the emitter's land at -25.24
+#   _MID_VIA_DROP  below the lowest anode land, into the 0.931 window above the V5_PRE tap
+#   _MID_P5_DX     west of pin 5, clear of its land and of TIA_IN_B's run above it
+#   _MID_P3_DY     north of pin 3, above pin 4's land rather than beside it
+# ⚠ EVERY ONE OF THESE IS SET BY A VIA, not by a pad, and three of the four were wrong
+# on the first pass. Two 0.6 vias need 0.75 between centres and a via to a 0.25 track
+# needs 0.575, and the neighbourhood is dense with the stitcher's own ground vias:
+#   _MID_VIA_DX    1.10 east of the anode column, clear of LED_ROW's surfacing via
+#                  at -26.15 by 0.79 (0.756 put the B.Cu spine 0.287 from it)
+#   _MID_VIA_DROP  below the lowest anode land, into the 0.931 window above V5_PRE
+#   _MID_P5_DX     west of pin 5, under TIA_IN_B's run
+#   _MID_P3_DY     2.40 north of pin 3, clear of PIN 4's stitching via, which sits
+#                  1.313 north of pin 4 and left only 0.673 at the first value
+_MID_VIA_DX, _MID_VIA_DROP = 1.100, 0.970
+_MID_P5_DX, _MID_P3_DY = 1.744, 2.400
+# the anode link rides the WEST side of its own lands, to leave LED_ROW's via room
+_MID_COL_DX = -0.394
 
 # TLV9062 land geometry, read off the placed board rather than the datasheet drawing:
 # 0.65 pitch, the two pin rows 4.225 apart. MID is pins 3 and 5, which sit on OPPOSITE
@@ -2014,85 +2037,91 @@ _MID_SPINE_DX = -0.45
 _OP_PIN_DX, _OP_ROW_DY = 0.325, 2.1125
 
 
-def _mid_spine(spine_w=0.3, w=0.3):
-    """MID: one anode spine, one op-amp chain, and a single crossing between them.
+def _mid_spine(spine_w=0.3, w=0.25):
+    """MID: the bias reference, on B.Cu, three vias per string.
 
-    ⚠ THIS EXISTS TO GET MID OUT OF THE SUMMING NODE'S LANE. MID used to be in local_nets,
-    where the MST linked each string's anodes to its own op-amp -- ten crossings of the gap
-    between the detector column and the op-amps. That gap is the only lane TIA_IN_*B has:
+    ⚠ IT EXISTS TO GET MID OUT OF THE SUMMING NODE'S LANE. In local_nets the MST linked
+    each string's anodes to its own op-amp, ten crossings of the only lane TIA_IN_*B has,
+    clearing it by 0.167 where 0.3 is needed. A DC bias reference feeding picoamps had the
+    short path and a 1 Mohm summing node did not. Putting MID back in local_nets was tried
+    again (2026-09-24) after TIA_IN_B got a clean route and was laid first: the MST went
+    straight back to the same crossing and dropped all ten B channels. The spine stays.
 
-        MID  -21.231 67.088 -> -21.231 68.338      the block
-        MID  -21.231 68.338 -> -20.581 72.563
-        TIA_IN_1B wants PD1B.2 -> U21.6, crossing x -21.231 at y 68.505
+    ⚠ AND IT HAS TO BE B.Cu, WHICH THE FIRST VERSION OF THIS FUNCTION DENIED. That version
+    ran an F.Cu spine down the anode column and chained the op-amps on F.Cu, and it was
+    committed without a DRC run. It was wrong in three places, each of them a short:
 
-    0.167 mm of clearance where 0.3 is needed, so the pre-lay dropped TIA_IN on ALL TEN
-    strings and handed the board's most sensitive net to the router. MID is a DC bias
-    reference feeding two op-amp inputs at picoamps; TIA_IN is a 1 Mohm summing node. The
-    wrong one had the short path.
+      the anode column      crosses EVERY V5_PRE tap. The taps run from the rail at
+                            -27.90 east to each ballast at -24.96, so they cross the
+                            anode lands at -26.46 whatever x the spine takes. There is no
+                            F.Cu lane down that column, only the illusion of one.
+      pin 5 -> pin 3        crosses TIA_IN_B. The two MID pins are on OPPOSITE rows and
+                            TIA_IN_B's run to pin 6 passes between them; going round is
+                            worse, since pin 3 shares its row with pin 4 (GND) to the west
+                            and pin 2 (TIA_IN_A) to the east.
+      the inter-string run  lands 0.414 from the TIA_OUT_B escape vias, against 0.55.
 
-    The anodes cost nothing to join: all 40 pad-1 lands are collinear, so one F.Cu run down
-    the column is the whole trunk, no vias. The op-amp MID pins likewise chain to each
-    other up the column. That leaves ONE crossing for the whole board instead of ten, and
-    it is taken south of string 10 on In2 where there is nothing to dodge -- two vias,
-    against the two that string 10 alone was already paying as a local-net fallback.
+    B.Cu has none of those problems because it has no pads: V5_PRE is F.Cu, LED_ROW is
+    In2, and the op-amp's own pins obstruct nothing on the bottom layer. Only vias block,
+    and the lanes here clear every one. Three vias per string is what that costs -- the
+    anode group, pin 5 and pin 3 -- and on a DC reference it costs nothing electrically.
+    Each op-amp still has its own Cd against pin 8 on F.Cu, which is the part that matters.
+
+    ⚠ THE ANODE VIA GOES SOUTH OF THE DETECTOR, NOT BESIDE IT. The column looks like it
+    has room and has none: between LED_ROW's In2 spine at -26.60 and D*.1's land at
+    -25.24 the window is 0.523 and a 0.6 via needs 0.9, and the gaps between the detector
+    lands themselves are 0.4 and 0.475. The one opening is between the lower detector's
+    bottom land and the V5_PRE tap below it -- 0.931, which a via fits by 0.031.
     """
     P = _placements(CX, CY)
-    strings = [n for n in range(1, 11) if ("PD%dA" % n) in P and ("U%d" % (20 + n)) in P]
+    strings = [n for n in range(1, 11)
+               if ("PD%dA" % n) in P and ("PD%dB" % n) in P and ("U%d" % (20 + n)) in P]
     assert strings, "no detector/op-amp pairs placed -- did the refs change?"
 
-    # every anode land, both detectors of both halves, sorted north to south
-    ys = sorted((P["PD%d%s" % (n, h)][1] + dy
-                 for n in strings for h in "AB" for dy in (0.70, -0.70)), reverse=True)
-    ax = P["PD%dA" % strings[0]][0] - 1.65
-    sx = ax + _MID_SPINE_DX
-
+    ax = P["PD%dA" % strings[0]][0] - 1.65          # the anode lands' own column
+    vx = ax + _MID_VIA_DX
+    ys = lambda n: sorted(P["PD%d%s" % (n, h)][1] + dy for h in "AB" for dy in (0.70, -0.70))
+    via_y = lambda n: ys(n)[0] - _MID_VIA_DROP
     op = lambda n: P["U%d" % (20 + n)]
-    pin3 = lambda n: (op(n)[0] - _OP_PIN_DX, op(n)[1] + _OP_ROW_DY)
     pin5 = lambda n: (op(n)[0] - 3 * _OP_PIN_DX, op(n)[1] - _OP_ROW_DY)
+    pin3 = lambda n: (op(n)[0] - _OP_PIN_DX, op(n)[1] + _OP_ROW_DY)
+    v5 = lambda n: (op(n)[0] - _MID_P5_DX, pin5(n)[1])
+    v3 = lambda n: (pin3(n)[0], pin3(n)[1] + _MID_P3_DY)
 
-    south = min(strings, key=lambda n: op(n)[1])
-    y_br = pin5(south)[1] - 1.667          # clear of R*/V5_PRE at the board's south end
-
-    out = [("MID", "F.Cu", spine_w, [(sx, ys[0]), (sx, y_br)])]
-    for n in strings:                       # each land onto the spine
-        for h in "AB":
-            for dy in (0.70, -0.70):
-                out.append(("MID", "F.Cu", w, [(sx, P["PD%d%s" % (n, h)][1] + dy),
-                                               (ax, P["PD%d%s" % (n, h)][1] + dy)]))
-        out.append(("MID", "F.Cu", w, [pin5(n), pin3(n)]))   # under the package, no pads
-
-    for a, b in zip(sorted(strings, key=lambda n: -op(n)[1]),
-                    sorted(strings, key=lambda n: -op(n)[1])[1:]):
-        # a is north of b: b's pin 3 runs north in pin 3's lane, then jogs west into a's
-        # pin 5 from the south. It must stop short of a's pin 6, which shares that lane.
-        x3, y3 = pin3(b)
-        x5, y5 = pin5(a)
-        out.append(("MID", "F.Cu", w, [(x3, y3), (x3, y5 - 1.2)]))
-        out.append(("MID", "F.Cu", w, [(x3, y5 - 1.2), (x5, y5 - 1.2)]))
-        out.append(("MID", "F.Cu", w, [(x5, y5 - 1.2), (x5, y5)]))
-
-    # the one crossing, on In2 under the south end
-    out.append(("MID", "In2.Cu", w, [(sx, y_br), (pin5(south)[0], y_br)]))
-    out.append(("MID", "F.Cu", w, [(pin5(south)[0], y_br), pin5(south)]))
-
-    # ⚠ U11's OWN FOLLOWER LINK IS NOT LAID HERE, deliberately. The buffer is wired OUT
-    # (pin 1) back to IN- (pin 4), which looks like a one-line addition and was tried: the
-    # straight diagonal shorts pin 2 (it clears the pad CENTRE by 0.729 and the pad itself
-    # by much less). It is also pointless -- U11 sits at y -61, the far side of the border
-    # -- so it is the router's hop like everything else down there.
+    order = sorted(strings, key=lambda n: -op(n)[1])
+    out = [("MID", "B.Cu", spine_w,
+            [(vx, via_y(order[0])), (vx, via_y(order[-1]))])]
+    for n in strings:
+        col = ys(n)
+        cx = ax + _MID_COL_DX
+        out += [("MID", "F.Cu", w, [(cx, col[-1]), (cx, via_y(n))]),
+                ("MID", "F.Cu", w, [(cx, via_y(n)), (vx, via_y(n))]),
+                ("MID", "B.Cu", w, [(vx, via_y(n)), v5(n)]),
+                ("MID", "F.Cu", w, [v5(n), pin5(n)]),
+                # ⚠ AN L, NOT A DIAGONAL. Straight between the two vias the run passes
+                # 0.408 from PIN 4's stitching via, against 0.575. North first in pin
+                # 5's own lane, which clears it by 0.769, then east above it.
+                ("MID", "B.Cu", w, [v5(n), (v5(n)[0], v3(n)[1])]),
+                ("MID", "B.Cu", w, [(v5(n)[0], v3(n)[1]), v3(n)]),
+                ("MID", "F.Cu", w, [v3(n), pin3(n)])]
     return out
 
 
 def _mid_vias():
-    """The two vias MID's single anode-to-op-amp crossing costs."""
+    """Three per string: the anode group, pin 5 and pin 3. See _mid_spine for why none of
+    the three can be reached on a signal layer."""
     P = _placements(CX, CY)
-    strings = [n for n in range(1, 11) if ("PD%dA" % n) in P and ("U%d" % (20 + n)) in P]
-    op = lambda n: P["U%d" % (20 + n)]
-    south = min(strings, key=lambda n: op(n)[1])
-    x5, y5 = op(south)[0] - 3 * _OP_PIN_DX, op(south)[1] - _OP_ROW_DY
-    y_br = y5 - 1.667
-    return [("MID", P["PD%dA" % strings[0]][0] - 1.65 + _MID_SPINE_DX, y_br),
-            ("MID", x5, y_br)]
+    out = []
+    for n in range(1, 11):
+        if ("PD%dA" % n) not in P or ("U%d" % (20 + n)) not in P:
+            continue
+        ax = P["PD%dA" % n][0] - 1.65
+        lo = min(P["PD%d%s" % (n, h)][1] + dy for h in "AB" for dy in (0.70, -0.70))
+        ux, uy = P["U%d" % (20 + n)][0], P["U%d" % (20 + n)][1]
+        out += [("MID", ax + _MID_VIA_DX, lo - _MID_VIA_DROP),
+                ("MID", ux - _MID_P5_DX, uy - _OP_ROW_DY),
+                ("MID", ux - _OP_PIN_DX, uy + _OP_ROW_DY + _MID_P3_DY)]
+    return out
 
 
 def _spine_keepout(via_d=0.6, clr=0.127):
