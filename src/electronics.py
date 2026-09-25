@@ -90,7 +90,7 @@ PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
 # Teensy stack and the teensy_ifc carrier are both gone -- one board does their job.
 # (⚠ THE SIZES IN THIS PARAGRAPH WERE 40 x 35 AND A 90 DEG ROTATION, both true of the
 # board as it stood on 09-14 and neither true since: it is 46 x 58 and UNROTATED, which
-# is what MCTRL_BOARD_X/Y and MCTRL_ROT below already say. The constants moved and the
+# is what MCTRL_BOARD_X/Y below already say. The constants moved and the
 # prose above them did not.) The board sits in the -X -Y
 # corner and the buck turns with it into the strip east of it. The ADC shifted
 # 3 south to clear it; 0.5 of gap is all that is left between them, which is the
@@ -117,9 +117,31 @@ def _mctrl_rect():
     return _x1 - _x0, _yhi - _ylo
 
 
-MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()             # 54.0 x 58.0, from the routed board
+# ⚠ ROTATED 90 AGAIN (user, 2026-09-25), AND FOR A REASON THE OLD NOTE DID NOT HAVE. The
+# board's DOWNWARD edge is sterilised: nothing else may sit on it, because any other
+# connector there would have its cable pointing into the chassis through the service hole.
+# That cost is proportional to the edge's LENGTH, and the two bus-B JSTs need only ~24 mm
+# of it -- so the narrow edge is the cheaper one to spend. 46 mm instead of 66.7.
+# -Y and not +Y, because the mounting ear is on +Y and rotating THAT downward would bury
+# the mount in the chassis floor.
+MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outline: the
+# board is authored in the orientation it is built in, so nothing is swapped here
 # The tray POSITION is ours; only the SIZE comes from the board.
-_MCTRL_CX, _MCTRL_CY = -577.0, -98.5
+# ⚠ THE BOARD HANGS 12 mm LOWER THAN IT DID, AND IN THE FLAT FRAME THAT IS +X. stand()
+# maps flat +X to world -Z, so moving the board along the tray's length drops it in the
+# instrument -- which is what puts its two bus-B plugs within reach of a hand under the
+# chassis (user, 2026-09-25).
+# 12 and not more: it lands the board's own bottom EDGE at world Z -71.00, against the
+# bottom prism's top face at -71.35. So the board stops at the chassis floor and only the
+# PLUGS enter it (tips at -74.60, 3.25 mm into a 10.5 mm prism). That is two plug-sized
+# holes instead of a 66.7 mm slot for the board's whole edge, and a slot that long would
+# cost far more of the floor than the holes do.
+# _MCTRL_CY moved +12 so BOTH bus-B plugs land in the free mortise band (world
+# y -97.1..-60.8, the gap between the two halves of the three split stations). At -98.5
+# the board spanned y -121.5..-75.5 and only 21.6 mm of that was inside the band -- less
+# than the pair needs. At -86.5 it spans -109.5..-63.5 and the plugs land at -94.5 and
+# -78.5, both clear.
+_MCTRL_CX, _MCTRL_CY = -560.65, -86.5
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
@@ -822,15 +844,17 @@ def op_pt(ref: str):
 #
 # ⚠ THE OUTLINE IS AN OUTPUT, like the TRRS adapter and unlike every purchased
 # board here: 46 x 58 is what elec/motor_ctrl.py's own contents came to, and the
-# TRAY was re-laid-out around it (see MCTRL_FP). It is UNROTATED -- see MCTRL_ROT.
+# TRAY was re-laid-out around it (see MCTRL_FP). It carries no rotation at all.
 # (Said "40 x 35 ... stands 90 deg to the tray's X" until 2026-09-19, directly above
 # a constant reading 46.0, 58.0. A number in prose beside the number it describes is
 # the one place nothing checks; BOM.md carried the same stale 40 x 35 for this board
 # and sized an enclosure row from it.)
 # MCTRL_BOARD_X/Y are derived from the routed outline at the top of this file now.
-MCTRL_ROT = 0.0                  # UNROTATED now: at 46 x 58 the board fits
-                                 # the tray straight, and the ADC slot it grows
-                                 # into is free (that board is deleted).
+# ⚠ THERE IS NO MCTRL_ROT ANY MORE, AND THAT IS THE POINT (user rule): the board is
+# AUTHORED with its downward edge as +X (elec/motor_ctrl.py BOARD_W/BOARD_L), so posing it
+# is stand() and nothing else. A rotation constant here meant two orientations in the
+# codebase and a swap branch to reconcile them -- and to_tray carried a second copy of the
+# same reconciliation for connector points.
 # THE MOUNTING EAR, read off the ROUTED board (elec/geom/motor_ctrl.geom.json), moved into
 # this file's frame: the rectangle's centre, which is what MCTRL_FP is written about. The
 # geom file centres on the outline's BOX, which the ear pushes +Y by half its height.
@@ -885,20 +909,13 @@ def mctrl_pt(ref: str):
     instead of carrying a copy of the layout. Every lead, the USB link's included,
     leaves +Z off the top of a mated XH plug.
 
-    The board-local -> tray mapping IS the MCTRL_ROT turn: board +X -> tray +Y,
-    board +Y -> tray -X."""
+    ⚠ THERE IS NO MAPPING HERE ANY MORE. The board is authored in the orientation it is
+    built in (elec/motor_ctrl.py), so board-local IS tray-local up to the footprint's
+    centre. This used to hold a 90 deg turn to reconcile two frames, and then a branch to
+    decide whether to apply it -- two places to get the same fact wrong."""
     cx, cy = _ctr(MCTRL_FP)
-
-    def to_tray(bx, by):
-        """board-local -> tray, HONOURING MCTRL_ROT. This used to hardcode the 90 deg
-        turn; the board is unrotated at 46 x 58, and a hardcoded mapping would have put
-        every connector on the wrong edge with nothing to catch it."""
-        if abs(MCTRL_ROT - 90.0) < 1e-6:
-            return (cx - by, cy + bx)
-        return (cx + bx, cy + by)
-
     bx, by, _rot = MCTRL_J[ref]
-    x, y = to_tray(bx, by)
+    x, y = cx + bx, cy + by
     # J2 is a PH now (the 5 V lever bus, 2026-09-21); every other lead is a mated XH
     _ph = BG.fp_name(BG.footprint("motor_ctrl", ref)["fpid"]).startswith("JST_PH_")
     return (x, y, MCTRL_BOARD_Z + BD_T + (BG._PH_MATED_H if _ph else BG._XH_MATED_H))
@@ -907,9 +924,7 @@ def mctrl_pt(ref: str):
 def motor_ctrl() -> cq.Workplane:
     """The motor controller posed in the standing tray (see MCTRL_FP)."""
     cx, cy = _ctr(MCTRL_FP)
-    b = (motor_ctrl_pcb(mating=True)
-         .rotate((0, 0, 0), (0, 0, 1), MCTRL_ROT)
-         .translate((cx, cy, MCTRL_BOARD_Z)))
+    b = motor_ctrl_pcb(mating=True).translate((cx, cy, MCTRL_BOARD_Z))
     return stand(b)
 
 

@@ -1413,8 +1413,18 @@ def _parts():
     # router has to carry for no reason.
     # They sit in the WEST STRIP, which is 4% copper and the emptiest board on this half,
     # rather than north of the MCU where the handover band is already at 39.5% on In2.
-    add("R30", "BOOT0 pull-down -- at the pin", "0402", -12.60, -31.00, rot=90.0)
-    add("R31", "NRST pull-up -- at the pin", "0402", -12.60, -41.31, rot=90.0)
+    # ⚠ WEST OF x -16, BECAUSE THE BRIDGE BEARINGS SIT OVER THE STRIP. The band
+    # x -16..0, y -49..51 carries the bearing block from z 0 to 16, and the board's top
+    # face is at 13.80 -- so NOTHING may stand on the board there. Putting these two at
+    # x -12.60 cost 0.481 mm3 of overlap against bridge_bearings, caught by the gate.
+    # That also explains why this strip measures 4% copper and reads as "free board": it
+    # is free of COPPER because it cannot hold a component, which is not the same thing.
+    # ⚠ THESE ARE CAD COORDINATES, NOT BOARD-LOCAL ONES, and getting that wrong put both
+    # parts in the string array against Cf9A. CAD = local + (CX, CY) = local + (-3.55,
+    # -28.315). Board-local (-14.0, -31.0) and (-14.0, -41.3) -- beside the MCU's west
+    # flank, west of its courtyard at -11.10 and of the decoupling column at -8.22.
+    add("R30", "BOOT0 pull-down -- at the pin", "0402", -17.55, -59.32, rot=90.0)
+    add("R31", "NRST pull-up -- at the pin", "0402", -17.55, -69.63, rot=90.0)
 
     y = _block(P, y,
                      # ⚠ THE SWD PADS, WITHOUT WHICH THIS BOARD CANNOT BE PROGRAMMED
