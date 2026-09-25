@@ -1318,6 +1318,16 @@ def lever_bus_nodes():
     return out
 
 
+def _ctrl_bus_components():
+    """Bus B's two ARRIVALS at the motor controller, drawn. See wiring.ctrl_bus_b.
+
+    Separate from _lever_bus_components because these are not lever-to-lever segments:
+    they are the pedal bar's cable coming in off the instrument's underside and the head
+    of the lever chain, and both cross the chassis floor through the one wiring port."""
+    from . import wiring as WR
+    return WR.ctrl_bus_b(lever_bus_nodes()[0])
+
+
 def _lever_bus_components():
     """The knee levers' bus-B harness, drawn. See wiring.lever_bus."""
     from . import wiring as WR
@@ -1338,7 +1348,8 @@ def lever_harness_box():
     cannot reach (user)."""
     from . import top_plate as TP
     bbs = [w.val().BoundingBox()
-           for _, w in _lever_stations_components() + _lever_bus_components()]
+           for _, w in (_lever_stations_components() + _lever_bus_components()
+                       + _ctrl_bus_components())]
     x0, x1 = min(b.xmin for b in bbs) - 25.0, max(b.xmax for b in bbs) + 25.0
     y0, y1 = min(b.ymin for b in bbs) - 25.0, max(b.ymax for b in bbs) + 25.0
     z0, z1 = min(b.zmin for b in bbs) - 15.0, TP.BZ
@@ -1349,7 +1360,8 @@ def lever_harness_components():
     """The knee levers and the bus-B harness between them, as ONE live set. The pedals
     and the bar are OUT: they are a separate subassembly that this work does not move,
     and leaving them in made every gate rebuild 500 solids to check 200."""
-    return _lever_stations_components() + _lever_bus_components()
+    return (_lever_stations_components() + _lever_bus_components()
+            + _ctrl_bus_components())
 
 
 def bus_b_components():
@@ -1363,7 +1375,25 @@ def bus_b_components():
     cropping to the levers is what left the pedal bar looking like a bar in empty
     space."""
     return (lever_components() + _pedal_bar_components()
-            + _lever_bus_components())
+            + _lever_bus_components() + _ctrl_bus_components())
+
+
+def ctrl_bus_work_components():
+    """BUS B'S CROSSING OF THE CHASSIS FLOOR as one live set: the two cables that arrive
+    at the motor controller, and everything they have to get past to do it.
+
+    It is body_work plus the bus, and it needs to be both. The pedal cable starts inside
+    the -X/+Y LEG, comes out of the body adapter onto the instrument's UNDERSIDE, crosses
+    it, passes through a port in the CHASSIS floor slab, and lands on a connector on the
+    standing ELECTRONICS tray; the lever half comes up from the knee-lever bay below. A
+    live set holding only the harness would gate a cable against nothing it can hit, and
+    one holding only the body would not gate the cable at all."""
+    out = body_work_components()
+    have = {n for n, _ in out}
+    for n, w in lever_components() + _lever_bus_components() + _ctrl_bus_components():
+        if n not in have:
+            out.append((n, w))
+    return out
 
 
 def _tensioner_coupon_components():
@@ -1415,7 +1445,7 @@ def collect_components():
     # preview, and -- the part that matters -- from the overlap gate, which takes its model
     # from this function. The user spotted it as missing geometry in the viewer; the gate had
     # been reporting green on an instrument with no lever wiring in it.
-    comps += _lever_bus_components()
+    comps += _lever_bus_components() + _ctrl_bus_components()
     comps += _wrap_rod_component()
     comps += _tensioner_coupon_components()
     for i in range(D.N_STRINGS):
@@ -1504,12 +1534,12 @@ _COLORS = {
     "pogo_male_insert":  (0.72, 0.52, 0.20),   # the brass heat-set inserts
     "pogo_female_insert": (0.72, 0.52, 0.20),
     # the leg's harness: FOUR conductors, in the same colours src.wiring gives every
-    # CAN run (black GND / red hot / yellow CAN-H / green CAN-L), plus the slack coil,
-    # which stays one body at the BUNDLE's diameter
+    # CAN run (black GND / red hot / yellow CAN-H / green CAN-L) -- INCLUDING through
+    # the slack coil, which used to be one red body at the bundle's diameter and is now
+    # four helices carrying their own places in the bundle (user)
     # ...keyed BY PIN NUMBER off elec.harness, in wiring's colour order (return black,
     # rail red, CAN-H yellow, CAN-L green), so the colours follow the pinout instead of
     # being a fifth place the circuit names are written out
-    "pogo_harness_coil": (0.75, 0.15, 0.12),   # the slack, as one bundle
     "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
     "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
     "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
