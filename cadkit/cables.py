@@ -134,14 +134,34 @@ def bundle_paths(pts, offsets, across=None):
     frames = [(fa, dirs[0].cross(fa).normalized())]
     for u_prev, u in zip(dirs, dirs[1:]):
         a_prev, _ = frames[-1]
-        # rotate the frame by the same rotation that carries u_prev onto u: project
-        # the old axis onto the new segment's normal plane and renormalise, which IS
-        # that rotation for the axis, and is stable when the turn is small
-        a_new = (a_prev - u * a_prev.dot(u))
-        if a_new.Length < 1e-9:                 # a full reversal -- pick any normal
-            a_new = ref.cross(u)
-            if a_new.Length < 1e-9:
-                a_new = cq.Vector(1, 0, 0).cross(u)
+        # ROTATE the frame by the rotation that carries u_prev onto u -- Rodrigues about
+        # their common normal. It used to PROJECT the old axis onto the new segment's
+        # normal plane instead, which is the same thing for a small turn and is not the
+        # same thing at all for a big one: when a_prev lies near the NEW direction the
+        # projection is nearly zero, and normalising a nearly-zero vector returns noise.
+        # The guard below it was set at 1e-9, so it only caught an exact reversal and
+        # never fired for the far more common near-parallel case.
+        #
+        # What that looked like downstream: the whole bundle pinching to a point at one
+        # vertex. Offsetting a line ALONG itself does not move it, so once the frame's
+        # axis lines up with a segment every conductor's offset line for that segment is
+        # the same line, their mitres all land in the same place, and the section has no
+        # width there. Measured on three separate cables before it was understood --
+        # neighbour gaps reading 0.00 where they should have been the connector's pitch.
+        ax = u_prev.cross(u)
+        if ax.Length > 1e-9:
+            ax = ax.normalized()
+            c = max(-1.0, min(1.0, u_prev.dot(u)))
+            sn = _math.sqrt(max(0.0, 1.0 - c * c))
+            a_new = (a_prev * c + ax.cross(a_prev) * sn
+                     + ax * (ax.dot(a_prev) * (1.0 - c)))
+        else:                                   # parallel or a full reversal
+            a_new = a_prev - u * a_prev.dot(u)
+            if a_new.Length < 1e-6:
+                a_new = ref.cross(u)
+                if a_new.Length < 1e-6:
+                    a_new = cq.Vector(1, 0, 0).cross(u)
+        a_new = (a_new - u * a_new.dot(u))      # square it up against float drift
         a_new = a_new.normalized()
         frames.append((a_new, u.cross(a_new).normalized()))
     verts = [segs[0][0]] + [vb for _, vb in segs]
