@@ -43,7 +43,8 @@ from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
                                         # (chassis imports knee_lever, so not chassis)
 from .helpers import box_at, cyl, cyl_y, heal
 
-from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D, cut_anchor,
+from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
+                              seated_insert,
                               M4_BUTTON_HEAD_H,
                               m4_button_screw,
                        M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
@@ -710,6 +711,15 @@ def demo_parts():
     # the assembly reads as the full throw rather than a random adjustment. (This line
     # used to say "no travel-stop screw: the +Z-cam-era stop boss was removed" -- it is
     # back, under the cartridges instead of over the cam, where there is room for it.)
+    # ...AND THE INSERT IN IT (user: "I still don't see the fitted insert"). cut_anchor
+    # leaves the pocket empty on purpose -- its whole idea is that the first build
+    # self-taps and the insert is the REPAIR. But this screw is turned to set the lever's
+    # travel and turned again whenever the feel changes, which is not what a formed
+    # thread in PETG-GF is for, so here the insert goes in at BUILD time and the self-tap
+    # below it is just the pilot it was always going to be. Seated from the same point
+    # and direction as the anchor, so the two cannot drift.
+    out.append(("kl_travel_stop_insert",
+                seated_insert(M4, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0))))
     out.append(("kl_travel_stop_screw",
                 m4_button_screw(STOP_SCREW_L)
                 .rotate((0, 0, 0), (0, 1, 0), -90)          # head top -> -X, shank +X
@@ -2198,7 +2208,7 @@ STOP_CH_RISE = STOP_CH_SHOULDER + STOP_CH_W / 2.0               # 5.8, axis -> v
 # No reprint, no redesign -- and the objection that killed the insert first time round
 # (nothing can melt one in 45 mm down a blind channel) is answered by the channel being
 # open along its whole bottom: the iron comes at it from below.
-STOP_ANCHOR_L = M4.insert_depth + 2 * 5 * M4.pitch      # 12: the pocket + 10 threads
+STOP_ANCHOR_L = M4.insert_depth + 2 * 5 * M4.pitch      # 12: the pocket + the way out
 # WHY IT SITS THIS LOW, and it is the whole cost of the feature: the two cartridge
 # POCKETS run down to HS_FLOOR_Z - HS_CLR, so "between the cartridges" means BELOW them,
 # not beside them -- the rib they leave between them is only 2.1 wide and an M4 wants
@@ -2248,6 +2258,13 @@ STOP_TIP_IN = arm_face_x(STOP_MIN_DEG, STOP_Z)      # ...fully in = STOP_MIN_DEG
 # starts a whole anchor short of that. The channel runs out to meet it.
 STOP_ANCHOR_X = STOP_TIP_OUT - STOP_ANCHOR_L        # the pocket's mouth = channel's end
 STOP_HEAD_X = STOP_TIP_IN - STOP_SCREW_L            # where the head parks, screwed fully in
+# THE BORE HAS TO CLEAR THE ROOM WALL AT THE SCREW'S TOP EDGE, not at its axis (user:
+# "the screw cut doesn't extend far enough towards the lever, it leaves some material
+# blocking the way"). That wall is the 30 deg SLANT, so it stands further +X the higher
+# you measure it -- 3.07 further at the top of a Ø4.4 bore than on the centre line. Ending
+# the bore at the axis's wall left exactly that wedge over the hole, and the screw drove
+# into it 3.1 mm3 short of its own travel.
+STOP_BORE_END = arm_face_x(THROW, STOP_Z + M4.shaft_clr_d / 2.0)
 assert STOP_HEAD_X <= STOP_ANCHOR_X + 1e-9, (
     "screwed fully in, the travel stop's head reaches %.2f -- %.2f INTO its own anchor. "
     "It needs a longer screw, not a deeper channel" % (STOP_HEAD_X, STOP_HEAD_X - STOP_ANCHOR_X))
@@ -2479,8 +2496,16 @@ def _housing() -> cq.Workplane:
     w = w.cut(_room(STOP_FLOOR_Z - 1.0))   # ...the arm's room re-cut to the NEW depth
     w = w.cut(_knee_relief())       # ...the bottom +X corner off at 45, for the knee
     w = w.cut(_stop_channel())      # ...and the stop's own way in, under the pockets
-    w = cut_anchor(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0), STOP_ANCHOR_L,
-                   reason="knee lever travel stop", print_up=PRINT_UP)
+    # CLEARANCE AHEAD OF THE INSERT, not a self-tap (user: "the screw cut doesn't extend
+    # far enough towards the lever, it leaves some material blocking the way"). cut_anchor
+    # puts a Ø4.2 self-tapping bore beyond the pocket, which is right when the plastic IS
+    # the thread -- but the insert carries this one, so 7 mm of formed thread in front of
+    # it is just a second, tighter thread for the screw to fight through every time the
+    # travel is set. cut_insert_bore is the same pocket with the bore ahead of it opened
+    # to Ø4.4, so the screw spins free from the insert to the lever.
+    w = cut_insert_bore(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0),
+                        STOP_BORE_END - (STOP_ANCHOR_X + M4.insert_depth),
+                        reason="knee lever travel stop", print_up=PRINT_UP)
     return heal(w)                  # no printed threads any more -- the whole part heals
 
 
