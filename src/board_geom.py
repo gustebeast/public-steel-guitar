@@ -98,8 +98,8 @@ HEIGHT = {
     # lists for the 2.00 mm right-angle female (HX PM2.0-1x6P WC). Confirm both off the
     # chosen parts' drawings before anything is ordered; if they differ, the joint does not
     # close and the strip is four separate boards again.
-    "PinHeader_1x06_P2.00mm_Horizontal": 4.3,
-    "PinSocket_1x06_P2.00mm_Horizontal": 4.3,
+    "PinHeader_1x06_P2.54mm_Horizontal": 5.0,
+    "PinSocket_1x06_P2.54mm_Horizontal": 5.0,
     "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
     "JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H --
                                     # motor_ctrl J2/J6, the bus-B pair on the edge

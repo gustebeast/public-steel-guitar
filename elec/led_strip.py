@@ -63,9 +63,9 @@ SLOT_TAB = 4.0                          # blank laminate at the bottom, for chas
 # the gap cannot be the 4.0 it was: at 4.0 the pins would have to reach 9 mm to seat and
 # they cannot. 2.0 leaves 4.0 of engagement with the pads 1.25 in from the edge.
 #   BOARD_W = (568.0 - 3 * LED_JOINT_GAP) / 4
-LED_JOINT_GAP = 2.0
-LED_ENGAGE = 4.0                            # header tip inside the mating socket
-BOARD_W, BOARD_L = 140.5, 20.0 + SLOT_TAB   # X along the strip, Y = the strip's height
+LED_JOINT_GAP = 3.0
+LED_ENGAGE = 6.34                            # header tip inside the mating socket
+BOARD_W, BOARD_L = 139.75, 20.0 + SLOT_TAB   # X along the strip, Y = the strip's height
 _YO = SLOT_TAB / 2.0                    # every part shifts +Y by this as the board grows down
 SECTIONS = 4                            # 4 x 139 + 3 x JUNCTION_GAP = 580, in a 585.34 rail
 JUNCTION_GAP = 8.0                      # board end to board end: 2 x 2.6 of mated plug past
@@ -98,8 +98,14 @@ DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm
 # tails need a relief in the rail behind each connector -- the same defect the tee PCBs hit
 # (see the THT install-sweep note in src/wiring.py). Tracked in .ins/WORKLIST.md; nothing
 # here may be ordered until that relief exists and the LCSC codes are verified.
-J_FP_M = "Connector_PinHeader_2.00mm:PinHeader_1x06_P2.00mm_Horizontal"
-J_FP_F = "Connector_PinSocket_2.00mm:PinSocket_1x06_P2.00mm_Horizontal"
+# ⚠ 2.54, NOT 2.00, AND THE REASON IS SOURCING RATHER THAN GEOMETRY. A 2.00 mm
+# right-angle FEMALE is stocked (LCSC lists several 1x6), but the matching right-angle
+# MALE is not -- LCSC returns "No exact matches" for it. A joint needs BOTH halves, and
+# half a mating pair is not a joint. 2.54 right-angle headers and sockets are stocked
+# by everyone, and the row still fits: 16.33 mm of courtyard in the 20.0 mm of board
+# above the slot tab.
+J_FP_M = "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Horizontal"
+J_FP_F = "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Horizontal"
 # 6 way: 5 V and GND on TWO contacts each -- section 1's input carries all four sections
 # (2.2 A at full white). Same order in and out, so a header and a socket face to face
 # connect pin n to pin n.
@@ -139,9 +145,9 @@ def led_strip():
     j = {}
     for tag, what, mpn, fp in (
             ("J1", "strip in (from the Pi / previous section's J2)",
-             "PM2.0-1x6P-RA-F", J_FP_F),
+             "HDR-2.54-1x6-RA-F", J_FP_F),
             ("J2", "strip out -- plugs straight into the next section's J1",
-             "PM2.0-1x6P-RA-M", J_FP_M)):
+             "HDR-2.54-1x6-RA-M", J_FP_M)):
         j[tag] = Part(name=mpn, ref_prefix="J", ref=tag, tag=tag, dest="NETLIST",
                       tool="skidl", value=mpn,
                       description=what, footprint=fp,
@@ -243,11 +249,16 @@ _V5_SPINE_Y = 8.3 + _YO            # above the 5 mm LED packages (they end at 7.
 # section collided with the chassis in a thin band at its J1. Sit the body 0.5 above the
 # tab instead; the row is 10 mm of pads in a 20 mm usable height, so it fits easily once
 # it is measured against the tab rather than the board.
-_J_ROW = 5.0 * 2.0                                   # 6 pads at 2.00 mm
-_J_FAB_LO = -9.05 - (_YO - _J_ROW / 2)               # body bottom, relative to the anchor
+_J_ROW = 5.0 * 2.54                                  # 6 pads at 2.54 mm
+# ⚠ MEASURED OFF THE ROUTED FOOTPRINT, NOT GUESSED. This is the fab body's bottom edge
+# relative to the placement anchor, and it is different for every connector -- carrying the
+# 2.00 mm part's number over to the 2.54 one put the body 0.20 mm back inside the slot tab,
+# which is the same defect this constant exists to prevent. If the footprint changes again,
+# read the new value out of elec/geom/led_strip.geom.json rather than adjusting this by eye.
+_J_FAB_LO = -12.02 - (_YO - _J_ROW / 2)              # body bottom, relative to the anchor
 _J_Y = (-BOARD_L / 2 + SLOT_TAB + 0.5) - _J_FAB_LO
-_place = {"J1": (-BOARD_W / 2 + 8.14, _J_Y, 0.0),
-          "J2": (BOARD_W / 2 + LED_JOINT_GAP + LED_ENGAGE - 7.75, _J_Y, 0.0),
+_place = {"J1": (-BOARD_W / 2 + 10.60, _J_Y, 0.0),
+          "J2": (BOARD_W / 2 + LED_JOINT_GAP + LED_ENGAGE - 10.59, _J_Y, 0.0),
           "C1": (_LED_X[0], _DRV_Y, 0.0)}
 for i, x in enumerate(_LED_X):
     _place["D%d" % (i + 1)] = (x, _LED_Y, 0.0)
