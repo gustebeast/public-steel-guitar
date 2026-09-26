@@ -518,6 +518,48 @@ they will not place it. Only the **blue** 2.42" is assemblable. White on black w
 requirement, so the display stays a module and the **UI board carries the encoder plus
 the display's connector** instead of the panel itself.
 
+### The UI board — designed 2026-09-25 (`elec/ui_board.py`)
+
+One 72 × 34 two-layer board under the deck's mid panel, twelve parts, JLC-assembled,
+**0 unconnected / 0 DRC violations on the first routing pass**. It carries the encoder,
+the display's connector and one ribbon to the Pi — nothing else, because nothing else
+belongs here: all UI logic is the Pi's (see the control-architecture split).
+
+| line | part | qty | price | source | note |
+|---|---|--:|---:|---|---|
+| **UI PCB** | custom 72 × 34, 2-layer, 1.6 mm, 12 placements, one M4 through-hole | 1 | ~$2 assembled (est.) | JLCPCB | panelises with the tee/sensor boards |
+| **Display header** (on our board) | Kinghelm **KH-2.54PH180-1X20P-L11.5**, 1×20 male 2.54 | 1 | ~$0.10 | [LCSC C2905493](https://www.lcsc.com/product-detail/C2905493.html) — 1,131 in stock | **Insulation 2.5 / mating pin 6.0 / tail 3.0, all three read off the listing**: `src/ui_panel.py` builds the whole Z stack on them |
+| **Display socket** (on the MODULE) | Kinghelm **KH-2.54FH-1X20P-H8.5**, 1×20 female 2.54 | 1 | ~$0.15 | [LCSC C2905423](https://www.lcsc.com/product-detail/C2905423.html) — 7,005 in stock | ⚠ **HAND-SOLDERED, and it is the only hand-solder step in the station.** Newhaven ship the module with plated holes and no header — their drawing only *recommends* a 1×20 — so both halves are ours to pick. Male on our board and female on the module makes both halves stock parts with 6.0 mm of engagement; the other way round needs a long-pin header nobody stocks |
+| **Ribbon header** | ZHOURI **DC3-2.54-14PAL**, 2×7 right-angle shrouded IDC | 1 | ~$0.20 | [LCSC C5156673](https://www.lcsc.com/product-detail/C5156673.html) — ⚠ **154 in stock** | **The thinnest line on the board, and not a like-for-like swap.** Right-angle is forced: the board hangs under the deck with 11.70 mm of air over it and a vertical box header stands ~13.5. 2×7 rather than 2×10 is forced too — a 2×10's shroud is 33.2 long and the board is 34 deep. If it is gone, the vertical DC3-2.54-14PAS exists but wants the board re-laid for a different exit |
+| **Ribbon** | 14-way 1.27 flat cable + two 2×7 IDC sockets, ~500 mm | 1 | ~$2 | any | Crimped by pressing, not soldered. At the Pi it lands on GPIO pins; the conductor order is chosen so SCLK runs between GND and +3V3 (see `elec/ui_board.py`) |
+
+**Pull-ups, not debounce capacitors.** Seven 10 kΩ 0402, one per contact, and no cap
+across any of them. An RC debounce dumps the capacitor's charge through the switch
+contact at every make, and this contact is rated **10 mA with a 50,000-cycle life on the
+directions and 15,000 on the encoder** (Alps' own figures) — the cheapest possible way to
+spend that life. Debouncing is the Pi's, where it costs nothing and can be tuned. 10 kΩ
+external rather than the Pi's ~50 kΩ internal because the run is half a metre of ribbon
+through an instrument full of stepper drivers.
+
+**No ground pour, and it was tried.** A B.Cu plane under the SPI clock is the obvious
+thing to want. On two layers it cannot be had: leave B.Cu open to the router and it lays
+signals across the pour — that came back as two GND islands and an unconnected board —
+and close B.Cu to the router and the only remaining layer has to carry five SPI signals
+past a 20-way row that +3V3 already crosses. The plane would be perforated anyway, by
+twenty through-hole pins at 2.54 leaving 0.7 mm webs straight across it.
+
+⚠ **BS1 = 0, BS0 = 0 IS NOW READ, NOT INFERRED.** The note below this one used to flag
+the 4-wire SPI strap as the *standard* SSD1322 mapping that wanted a human's eyes on the
+PDF before the board was fabbed. It has had them: page 5, "MPU Interface Pin Selections",
+gives BS1/BS0 as 1/1, 1/0, 0/1, **0/0** for 6800, 8080, 3-wire and 4-wire. Both are
+strapped to VSS on our board, and /SHDN — internally pulled high — is strapped to VDD
+rather than run to the Pi, so it cannot float at the end of half a metre of ribbon.
+
+⚠ **ONE HEIGHT ON THIS BOARD IS AN ESTIMATE.** `src/board_geom.HEIGHT` carries **10.0 mm**
+for the right-angle ribbon header because ZHOURI publish no drawing through LCSC and the
+KiCad footprint carries no Z. There is 11.70 mm between the board's top face and the
+deck's underside. **Measure the part before the deck panel is printed.**
+
 ⚠ **AMOLED WAS INVESTIGATED AND IS A DEAD END THROUGH OUR CHANNELS** — recorded so it
 is not re-opened. At distributors it is either absent or tiny wearable panels (1.3–2.06",
 about 29×35, round, QSPI on ESP32 boards); anything 55 mm and up is phone-panel OEM
@@ -2686,7 +2728,7 @@ several are unverified — re-verify the whole file before ordering.**
 | Filament (printed) | ~$81 | estimate; **spool prices verified**, masses are model estimates |
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
-| Electronics + UI (motor controller, power + USB panel boards, Pi 4, jacks, encoder, OLED) | ~$112 | **all verified** (2026-09-25: the display is sized to be read at 1 ft, 63.4×32.7 — white-on-black and that size are only had as a module; −$4 on the encoder for sourcing it where it is actually in stock) |
+| Electronics + UI (motor controller, power + USB panel boards, Pi 4, jacks, encoder, OLED, UI board) | ~$117 | **all verified** (2026-09-25: the display is sized to be read at 1 ft, 63.4×32.7 — white-on-black and that size are only had as a module; −$4 on the encoder for sourcing it where it is actually in stock; **+$5 for the UI board, its two 1×20 headers, the ribbon header and the ribbon**) |
 | Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$45** | parts cost **computed from the model**; all 18 lines have real MPNs |
 | Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
@@ -2728,7 +2770,7 @@ by how much money rides on each.
 | 2 | **All eight McMaster rows** — dowels, cup-tip screws, heat-set inserts, mount screws, hold-down, shafts, guide rods, M2 grubs (~$50–70) | mcmaster.com serves **no product content** to automated fetches — every part URL returns the bare catalogue navigation. This is a site-wide block, not a bad URL | Open each part number in a browser. Part numbers themselves are stable and were previously correct |
 | 3 | **Tr8×2 H-flange nut — dimensions read off the seller's drawing, not yet measured** | The drivetrain moved Ø5×1 → Tr8×2 (see the Lead screw + nut row). The listing (AliExpress 3256804704147842, SKU "Pitch 2mm Lead 2mm") is unfetchable, so all six numbers in `dimensions.py` — flange 22 × 10.5 × 4, boss Ø10.2 × 11, total 15, ear holes Ø3.5 at ±8 — were read by hand off its drawing, which itself states "a normal error of 0.5–1 mm". The **'Lead 8mm' variant on the same listing is the 4-start** — it looks identical and does not self-lock | **Order ONE first and measure it.** `NUT_FLANGE_L` sets the row spacing (asserted against the flange clearance), `NUT_HOLE_D` sets the guide rod, and `NUT_H` feeds the nut-to-ledge assert. Confirm the variant reads **Pitch 2mm / Lead 2mm** before ordering all 12 |
 | 3b | **Anything that TURNS is checked by `tools/check_sweep.py`, not `check_overlaps`** | `check_overlaps` compares parts *where they sit*, which is the wrong question for a rotating part — what must clear is its swept circle. Three real collisions hid behind that gap at once: a Ø20.8-swept retaining collar in a 9.5 mm lane, the drive pulleys buried ~1.7 mm in the endplate foot (allow-listed as an "intended contact" because where they sit they only graze), and a grub-screw lug sweeping Ø17 | Run **both** gates. `check_sweep` registers rotating parts in its `ROTATING` map — **add to it when you add a part on a shaft**, or the gate silently says nothing about it |
-| 4 | ~~**2.42" OLED module** — ~$17~~ | **CLOSED 2026-09-25 — the question stopped applying.** It was "what does this module cost", and there is no module: the UI is one JLC-assembled board carrying a bare panel (**C5123566, $4.17, verified**) beside the encoder. Nothing here needs a 403-ing product page priced any more | Replaced by a live one: **stock is 29** on that panel. Check it on the day and be ready to flip to C7465999 (656 in stock) |
+| 4 | ~~**2.42" OLED module** — ~$17~~ | **CLOSED 2026-09-25, and this row's own closing note was already out of date when it was written.** It said "there is no module: the UI is one JLC-assembled board carrying a bare panel (C5123566)" — that was the 2.42" bare-panel branch, which the size requirement killed the same day. There IS a module: **NHD-2.7-12864WDW3, $38.08, 2,057 in stock, verified**, white on black at 63.41 × 32.69, because white-on-black at that size is not sold as a bare panel anyone will place. The UI board beside it is real and routed (`elec/ui_board.py`) | Nothing on price. What IS live: the ribbon header **C5156673 at 154 in stock**, and the ribbon header's 10.0 mm height, which is an estimate — see the UI board section |
 | 5 | **Ø3 g6/h6 precision shaft** — ~$30 | McMaster (see #2); also the row points at a **category page**, not a part | Pick an actual part number while you are there. *(2026-09-10: the guide rods are no longer this stock — they are Ø3.5 drill blanks sized to the measured nut ear hole; see the Guide rod row)* |
 | 6 | **Threadlocker, plastic-rated (e.g. Loctite 425)** — 10 joints/instrument | Price not looked up, and **compatibility with PETG-GF is untested**: the reason for choosing a plastic-rated type is that anaerobic 242/243 can craze thermoplastics, but nothing here has been tried on this filament | Put a drop on a spare printed endcap pulley: check for crazing after 24 h, and try breakaway torque by hand. Record the product and price |
 | 7 | **688ZZ screw bearings** — 10/instrument | Price TBD, and the conclusion rests on **C0r**: makers publish 474–710 N, a spread wider than the 1.6× worst-case axial margin itself | Buy a **branded** part and read its real C0r off the datasheet before ordering ten. Also confirm the inner-ring OD (~Ø10.2) and outer-ring ID (~Ø13.8): the pulley boss (Ø9.6) and the rail ledge (Ø14.4) are sized to them by rule of thumb |

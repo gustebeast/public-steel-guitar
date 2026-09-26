@@ -40,7 +40,7 @@ HUE = gauge bucket, SHADE = the specific wire within the bucket:
   The gauge/shade rule still governs the NON-CAN nets:
   BLUE = power pair       (superseded for the CAN power rails above)
   AMBER = 28 AWG logic    (light -> dark) wire_link (motor controller <-> Pi),
-                          wire_oled, wire_joy
+                          wire_ui (the UI board's 14-way ribbon)
   VIOLET = shielded USB-2 wire_usb: USB-C panel -> Pi 5
   GREY = factory jackets  motor_pigtail_N
 
@@ -73,6 +73,7 @@ import cadquery as cq
 from . import dimensions as D
 from elec import harness as EH            # the PCB's pin order, single-sourced
 from . import electronics as EL
+from . import ui_panel as UI
 from . import knee_lever as _KL   # the keeper barrel the lever slack winds on
 from .helpers import oct_cable
 from cadkit.cables import bundle_paths
@@ -97,7 +98,11 @@ WIRE_OD = {
     # 0.37 V and the cable may not eat it. Over this run 20 AWG spends 0.03.
     "wire_5v": 1.8,
     "wire_link": 1.4,
-    "wire_oled": 1.4, "wire_joy": 1.4,
+    # ONE RIBBON, DRAWN AS ONE ROUND RUN. The UI is a 14-way flat cable between the
+    # board's right-angle IDC header and the Pi's GPIO pins; 4.8 is the round section
+    # that swallows a 14-way 1.27 ribbon (17.8 x 0.9) folded as it has to be to turn
+    # down the bay column. The conductor colours are the ribbon's own stripe.
+    "wire_ui": 4.8,
     "motor_pigtail": 3.4,
 }
 # (_KNEE_B is gone with the two-conductor bus-B head it served -- a landing 20 mm short
@@ -1027,18 +1032,21 @@ def build_wires():
     # (wire_tdm is GONE with adc_stack: the ten-channel ADC carrier it fed is
     #  deleted, the optical pickup board having absorbed that conversion.)
 
-    # -- UI: OLED + joystick (-Y deck band) -> the PI's GPIO header (user: the OLED
-    #    and the joystick live on the Pi). Drop under the deck, run to the keyhead,
-    #    down the bay column onto the Pi.
-    UDZ = -2.0
-    out.append(("wire_oled", _wire([
-        (EL.UI_X, EL.OLED_Y, EL.DECK_TOP + 1.0), (EL.UI_X, EL.OLED_Y, UDZ),
-        (BAY_X, EL.OLED_Y, UDZ), (BAY_X, -40.0, SP(-600.0, -40.0, -57.0)[2]),
-        SP(-600.0, -40.0, -57.0)], WIRE_OD["wire_oled"])))
-    out.append(("wire_joy", _wire([
-        (EL.JOY_X, EL.JOY_Y, EL.DECK_TOP + 1.0), (EL.JOY_X, EL.JOY_Y, UDZ),
-        (BAY_X + 4, EL.JOY_Y, UDZ), (BAY_X + 4, -30.0, SP(-595.0, -30.0, -57.0)[2]),
-        SP(-595.0, -30.0, -57.0)], WIRE_OD["wire_joy"])))
+    # -- UI: the UI board's ribbon -> the Pi's GPIO header. It leaves J2's mouth at
+    #    the board's -X edge (which is why that header is a right-angle part), runs -X
+    #    under the deck to the keyhead, and drops down the bay column onto the Pi.
+    #    The two placeholder runs that stood here -- one for "the OLED" and one for
+    #    "the joystick", each from a guessed deck position -- are gone: there is one
+    #    cable, and its end is a routed connector rather than a coordinate.
+    ux, _uy = UI.board_centre()
+    umz = UI.z_stack()[4] + 4.5                  # the ribbon's axis out of the shroud
+    uy = UI.routed("J2")[1]                      # the header's own row, as routed
+    ex = ux - UI.BOARD_W / 2.0 - 2.0
+    out.append(("wire_ui", _wire([
+        (ex, uy, umz), (ex - 12.0, uy, umz),
+        (BAY_X, uy, umz),
+        (BAY_X, -40.0, SP(-600.0, -40.0, -57.0)[2]),
+        SP(-600.0, -40.0, -57.0)], WIRE_OD["wire_ui"])))
 
     return out
 
@@ -1112,8 +1120,7 @@ WIRE_OK = {
     "wire_5v":        {"motor_ctrl", "pi5"},
     "wire_usb":       {"output_panel", "pi5"},
     "wire_link":      {"motor_ctrl", "pi5"},
-    "wire_oled":      {"oled", "pi5"},
-    "wire_joy":       {"joystick", "pi5"},
+    "wire_ui":        {"ui_pcb", "pi5"},
 }
 
 # ...and the body-side run of the same cable ends on the motor controller, which is the

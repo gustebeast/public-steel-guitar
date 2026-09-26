@@ -45,6 +45,7 @@ from . import belt_tensioner as BTn
 from .chassis import segments as chassis_segments
 from .chassis import segments_light as chassis_light
 from . import nut_block as NB
+from . import ui_panel as UI
 from . import tension_fork as TF
 from . import pickup_mount as PM
 from . import legs as LG
@@ -108,6 +109,7 @@ PARTS = {
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
     # height plate lifted by 3 M4×20 button-head leadscrew jacks; a -Y M4 cup-tip grub
     # locks the pickup +Y against the plate's +Y wall. All hardware is stocked M4, all +Z.
+    "ui_knob":         (lambda: heal(__import__("src.ui_panel", fromlist=["e"]).knob()), "pctg/ui_knob.step", "PCTG - the UI cap: a O8 shank up through the deck and a O17 disc over it, bored O2.6x1.8 for the Alps shaft's tip. Prints DISC-DOWN (its own flat face on the bed), so the shank and the bore are both vertical and the bore's ceiling is the last thing printed. PCTG because it is the one part of the instrument a player touches every time they change a setting, and the deck it sits on is the same resin"),
     "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (green pickup area + nubs; 3 M4×20 button-head leadscrew jacks lift/tilt it via heat-set nuts on top, pickup rests on it and slides in X for tone; +Y retention wall + -Y cup-tip grub lock the pickup to the plate; GF keeps it flat on the point loads)"),
     # (the whole round-tube leg family — sockets, segments, thread couplers and
     #  washers — was DELETED 2026-08-01: 214 lines + 26 constants of unreachable
@@ -802,7 +804,8 @@ def _electronics_components():
     out = [("pi5", EL.pi5()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
-           ("oled", EL.oled()), ("joystick", EL.joystick())]
+           ]
+    out += UI.parts()
     out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
@@ -1139,7 +1142,7 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
     "pi5", "motor_ctrl", "tee_", "wire_",
-    "output_panel", "joystick", "oled",
+    "output_panel", "ui_",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
 
@@ -1391,6 +1394,23 @@ def ctrl_bus_work_components():
     out = body_work_components()
     have = {n for n, _ in out}
     for n, w in lever_components() + _lever_bus_components() + _ctrl_bus_components():
+        if n not in have:
+            out.append((n, w))
+    return out
+
+
+def ui_work_components():
+    """THE UI STATION as one live set: the deck panel it is cut into, the board, the
+    display, the knob, and everything under that part of the deck.
+
+    It has to be the whole body, not just the station. The UI board hangs 13 mm below a
+    deck panel that SLIDES OUT -X for service, so every part of its cradle sweeps the
+    length of the bay on the way out; and the -Y band it sits over is the band the motor
+    bank and its tee boards live under. A live set holding only the UI would gate it
+    against nothing it can reach."""
+    out = body_work_components()
+    have = {n for n, _ in out}
+    for n, w in _ctrl_bus_components():
         if n not in have:
             out.append((n, w))
     return out
@@ -1667,8 +1687,9 @@ _COLORS = {
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
     "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
-    "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
-    "joystick":        (0.15, 0.15, 0.17),   # UI control
+    "ui_pcb":          (0.05, 0.35, 0.18),   # the UI board, as fabbed
+    "ui_display":      (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
+    "ui_knob":         (0.15, 0.15, 0.17),   # the printed cap on the encoder
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
@@ -1696,8 +1717,7 @@ _COLORS = {
                                              #   designed and the pickup plugs into it
     "wire_link":       (0.95, 0.72, 0.22),   # light amber - motor controller <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
-    "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Pi
-    "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Pi
+    "wire_ui":         (0.68, 0.36, 0.08),   # brown-amber - UI board -> Pi
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)

@@ -51,6 +51,9 @@ def _cad(board):
     if board == "motor_ctrl":
         from src import electronics as EL
         return EL.motor_ctrl_pcb()
+    if board == "ui_board":
+        from src import ui_panel as UIP
+        return UIP.ui_pcb()
     if board == "can_tee":
         from src import electronics as EL
         return EL.tee_pcb(0.0, 0.0)
@@ -66,7 +69,8 @@ def _cad(board):
     raise KeyError(board)
 
 
-BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee")
+BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
+          "ui_board")
 AX = {"x": cq.Vector(1, 0, 0), "y": cq.Vector(0, 1, 0), "z": cq.Vector(0, 0, 1)}
 
 
