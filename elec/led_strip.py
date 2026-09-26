@@ -145,9 +145,9 @@ def led_strip():
     j = {}
     for tag, what, mpn, fp in (
             ("J1", "strip in (from the Pi / previous section's J2)",
-             "HDR-2.54-1x6-RA-F", J_FP_F),
+             "HX FH254-01-06-W-H8.5", J_FP_F),
             ("J2", "strip out -- plugs straight into the next section's J1",
-             "HDR-2.54-1x6-RA-M", J_FP_M)):
+             "HX PZ2.54-1x6P WZ", J_FP_M)):
         j[tag] = Part(name=mpn, ref_prefix="J", ref=tag, tag=tag, dest="NETLIST",
                       tool="skidl", value=mpn,
                       description=what, footprint=fp,
