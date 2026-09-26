@@ -240,3 +240,26 @@ measured, never chosen by eye.
 at x 17.20 from _v3a_vias() -- the converter-spine end of the In2 crossing -- and it sits
 where SAI_SCK/SD1/SD2/SD4 run diagonally. Moving it west needs the crossing's declared
 track endpoint to move with it, and the lane west must be measured empty first.
+
+## LED strip: interboard connectors are inconsistent, and the Pi lead is unmodelled
+(user, 2026-09-25) The lead has NOT taken the LED work because the interboard connectors
+do not make sense as drawn. Two things:
+ 1. BOARD-TO-BOARD, NO WIRE. The strips should mate to each other directly -- a plug on
+    one board entering a socket on the next -- rather than through a flying lead. Pick a
+    pair whose mated length matches the gap the strips already sit at, so the joint is the
+    spacing rather than something the spacing has to accommodate.
+ 2. THE PI LEAD IS NOT MODELLED. One connector leaves the chain for the Pi and there is no
+    cable in the assembly for it, so nothing checks where it runs or what it collides with.
+    Model it like the other harnesses (src/wiring.py) so the route is real geometry.
+Resubmit once both are right so the lead can take the LED work.
+
+## LED strip: connector bodies foul a chassis feature (found 2026-09-25, OPEN)
+After the board-to-board joint went in, every section overlaps the chassis in a thin band
+at y 52.05..53.65, z -40.28..-39.23 -- 0.3..1.9 mm in FRONT of the board face and about
+3 mm up from the slot floor (LED_BOARD_BOT -43.23). The patches sit at the -X end of each
+section, i.e. at J1, so the 4.3 mm socket body is the suspect; led_strip_0's overlap runs
+the board's WHOLE length, which is a different feature and may pre-date the connector work.
+Check both before submitting: (a) is the full-length one present on main without this
+change, (b) does the socket need the rail relieved, or the board's connector row raised.
+The 4.3 mm heights in board_geom are ESTIMATES -- confirm them off the chosen parts first,
+since the collision depth is the same order as the error in that guess.

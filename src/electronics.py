@@ -56,6 +56,7 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
 from . import board_geom as BG      # the ROUTED boards -- see MCTRL_BOARD_X/Y below
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl, cyl_x
+from . import board_geom as _BG
 from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
                         xh_length, xh_side_length)
 
@@ -630,7 +631,11 @@ from . import board_geom as BG
 # nothing else moves. The cap is 56 x 26 against the Pi's 85 x 56, so it lands inside the
 # Pi's outline apart from 0.37 mm at the -Y end -- real HATs sit flush, and 0.37 is the
 # difference between the cap's half-length and the header's margin, not a placement error.
-LED_SECTION_W = 139.0        # elec/led_strip.BOARD_W -- four of these fill the seat
+# ⚠ READ IT, DO NOT RESTATE IT. This was a hand-typed 139.0 beside a comment saying it was
+# elec/led_strip.BOARD_W, and the moment the joint set the section width (140.5) the two
+# would have disagreed silently -- the boards drawn 1.5 mm short each, the gap 1.5 too wide,
+# and nothing comparing them. The same defect MCTRL_BOARD_X had against its routed outline.
+LED_SECTION_W = _BG.load("led_strip")["outline_mm"][0]
 LED_SECTIONS = 4
 
 PI_HDR_X = PI_FP[0] + 3.5 + 1.27               # -598.23, between the two pin rows
@@ -681,7 +686,12 @@ def led_sections() -> list:
     w = LED_SECTION_W
     gap = (CH.LED_X1 - CH.LED_X0 - LED_SECTIONS * w) / (LED_SECTIONS - 1)
     zc = (CH.LED_BOARD_BOT + CH.LED_BOARD_TOP) / 2.0
-    return [("led_strip_%d" % i, _led_place(_BG.solid("led_strip"), i))
+    # ⚠ THE LAST SECTION'S OUTGOING HEADER IS NOT FITTED. The chain ends there, so J2 has
+    # nothing to mate with -- and modelled it reaches 5.5 mm past chassis.LED_X1 and into
+    # the chassis. DNP on that one board, which is how a chained strip is always built.
+    return [("led_strip_%d" % i,
+             _led_place(_BG.solid("led_strip",
+                                  omit=("J2",) if i == LED_SECTIONS - 1 else ()), i))
             for i in range(LED_SECTIONS)]
 
 
