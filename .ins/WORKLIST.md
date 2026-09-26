@@ -285,3 +285,17 @@ RESOLVED by that measurement. Both configurations give 5 unconnected / 0 unexpec
 identical -- so the 2.2 mm bought nothing and the corridor, the east lane and the 14.0 mm
 cable requirement all reverted together. Collision 0.00 mm3, board back to 188.53, and no
 constraint on which USB-C cable the owner may use.
+
+
+## LED strip: 2.00 mm was unsourceable, joint is 2.54 now (2026-09-25)
+The 2.00 mm right-angle FEMALE is stocked (LCSC lists several 1x6, e.g. HX PM2.0-1x6P WC,
+C22465680, 602 in stock, gold, 4.3 mm insulation height). The matching right-angle MALE is
+NOT -- LCSC answers "No exact matches". A joint needs both halves, so the pitch moved to
+2.54 where both are stocked everywhere. The row still fits: 16.33 mm of courtyard in the
+20.0 mm of board above the slot tab, gap 3.0, engagement 5.84 measured.
+STILL TO DO before the lead takes it:
+ * pick and verify actual LCSC codes for the 2.54 right-angle header AND socket, then run
+   elec/lcsc_check.py. Nothing may be ordered until that passes.
+ * confirm the 5.0 mm HEIGHT estimates in board_geom off those parts' drawings. They must
+   be EQUAL for the two halves or the contact axes do not line up and the joint does not
+   close -- the boards are coplanar, so there is no slack to absorb a difference.

@@ -28,6 +28,8 @@ the holes are print-trivial, and the inside there is empty floor band.
 
 from __future__ import annotations
 
+import re
+
 import cadquery as cq
 
 from . import dimensions as D
@@ -56,7 +58,6 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
 from . import board_geom as BG      # the ROUTED boards -- see MCTRL_BOARD_X/Y below
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl, cyl_x
-from . import board_geom as _BG
 from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
                         xh_length, xh_side_length)
 
@@ -635,7 +636,7 @@ from . import board_geom as BG
 # elec/led_strip.BOARD_W, and the moment the joint set the section width (140.5) the two
 # would have disagreed silently -- the boards drawn 1.5 mm short each, the gap 1.5 too wide,
 # and nothing comparing them. The same defect MCTRL_BOARD_X had against its routed outline.
-LED_SECTION_W = _BG.load("led_strip")["outline_mm"][0]
+LED_SECTION_W = BG.load("led_strip")["outline_mm"][0]
 LED_SECTIONS = 4
 
 PI_HDR_X = PI_FP[0] + 3.5 + 1.27               # -598.23, between the two pin rows
@@ -660,9 +661,20 @@ def _led_place(shape, i):
     return shape.rotate((0, 0, 0), (1, 0, 0), 90.0).translate((cx, CH.LED_Y0, zc))
 
 
-def led_pin(i, ref, n, count=6, pitch=2.0, at="pad"):
+def led_pin(i, ref, n, count=6, pitch=None, at="pad"):
     """World point of pin `n` on section `i`'s connector `ref`, off the ROUTED footprint."""
     f = BG.footprint("led_strip", ref)
+    # ⚠ READ THE PITCH OUT OF THE FOOTPRINT, DO NOT DEFAULT IT. This was a literal 2.0,
+    # and the joint moved to 2.54 the moment sourcing said a 2.00 mm right-angle MALE is
+    # not stocked -- at which point every conductor in the Pi lead would have been computed
+    # on the wrong spacing while still landing close enough to look right. KiCad puts the
+    # pitch in the footprint name ("..._P2.54mm_Horizontal"), which is the one place it
+    # cannot disagree with the pads.
+    if pitch is None:
+        _m = re.search(r"_P(\d+(?:\.\d+)?)mm", f["fpid"])
+        if not _m:
+            raise ValueError("led_pin: no pitch in %s -- pass one" % f["fpid"])
+        pitch = float(_m.group(1))
     x0, x1, y0, y1 = f["fab"]
     if (x1 - x0) >= (y1 - y0):                  # the row runs along whichever axis is longer
         px = (x0 + x1) / 2.0 + (n - (count + 1) / 2.0) * pitch
@@ -747,7 +759,7 @@ def led_sections() -> list:
     # nothing to mate with -- and modelled it reaches 5.5 mm past chassis.LED_X1 and into
     # the chassis. DNP on that one board, which is how a chained strip is always built.
     return [("led_strip_%d" % i,
-             _led_place(_BG.solid("led_strip",
+             _led_place(BG.solid("led_strip",
                                   omit=("J2",) if i == LED_SECTIONS - 1 else ()), i))
             for i in range(LED_SECTIONS)]
 

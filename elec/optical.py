@@ -2976,7 +2976,12 @@ BOARD_NOTES = {
     # fine. An escape via is not free: it claims a position in the same crowded fan the
     # other pins escape through. Add one only for a pin that is actually failing, and
     # measure after each.
-    "pin_escapes": ("U6.3", "U7.5", "U7.11"),
+    # U7.16 added ALONE and measured, per the rule above. The PHY's two +3V3D pins (9 and
+    # 16) were unconnected to each other AND pad 16 had an In2 track 2.6 mm away it could
+    # not reach. They cannot be linked on F.Cu -- a straight run between them crosses the
+    # QFN's thermal pad and pins 10 and 15 -- so the join has to happen on an inner layer,
+    # which is exactly what an escape via is for.
+    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16"),
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
