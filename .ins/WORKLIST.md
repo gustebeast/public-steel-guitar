@@ -300,18 +300,24 @@ STILL TO DO before the lead takes it:
    be EQUAL for the two halves or the contact axes do not line up and the joint does not
    close -- the boards are coplanar, so there is no slack to absorb a difference.
 
-## optical: SAI_FS needs its spine to leave the SCK stub's lane (2026-09-26)
-SAI_FS is the one net that has failed EVERY routing of this board, in every configuration.
-Its escape via at U6.3 is placed correctly; the gap is the ~22 mm from that via to the
-spine's open end at (12.65, -18.89), which the router will not make.
-MEASURED, with a layer-aware checker:
- * a clear F.Cu lane exists at y -20.0..-21.25 running from x 12.65 west to x -2.0, which
-   would bring the handover within ~7.5 mm of the MCU escape.
- * the DESCENT into it is blocked on F.Cu by SAI_SCK's per-cell stub (the SCK SPINE is
-   B.Cu, but its stubs are F.Cu and run parallel to the FS spine 0.5 mm away).
- * the same diagonal is CLEAR on both B.Cu and In2.Cu -- so a layer hop works, except that
-   no via fits anywhere along the FS spine: SAI_SCK's stub shadows all of it at 0.50.
-So the fix is to separate the two spines' F.Cu lanes (_FS_SPINE / _SCK_SPINE and the
-_*_JOG offsets in elec/optical.py) far enough for a via to land on the FS spine, then
-declare via -> B.Cu diagonal -> via into the y -20.6 lane. Every leg above is already
-verified against the unrouted board; only the via site is missing.
+## optical: SAI_FS -- the one net that has failed EVERY routing (re-measured 2026-09-26)
+⚠ THE EARLIER ENTRY HERE WAS WRONG. It said the FS and SCK spines had to be separated, a
+placement change, and that they were wedged between the converter's SAI_SD5 pads and GND
+copper. That came from a path checker that compared against tracks AND pads on every
+LAYER, so a B.Cu spine appeared to block an F.Cu descent and an F.Cu land appeared to block
+an inner layer. Both are fixed (see the checker in the session scratchpad, pathchk.py).
+
+WHAT IS ACTUALLY TRUE, measured with the corrected tool:
+ * MCU escape via -> the spine's open end (12.65, -18.89) is CLEAR ON B.Cu. The spines
+   never needed separating; a B.Cu run gets there directly.
+ * but no VIA fits at that end to rejoin the F.Cu spine: cell 4's SAI_SCK stub runs
+   parallel at x 12.15 over y -14.85..-19.49, leaving 0.10 mm where 0.50 is needed, and
+   SCK's horizontal leg at y -19.49 crosses any descent below it.
+ * a via DOES fit further north at (12.65, -3.00), but the run there is blocked on BOTH
+   B.Cu and In2 by the TIA output field, and a 2-leg dogleg search over the 150 shortest
+   waypoints found nothing on either layer.
+So the constraint is the VIA SITE at the spine's south end, not the spine separation. The
+promising directions, none yet tried: move cell 4's SCK jog so its vertical stops short of
+the FS spine's end; or give the FS spine its own via pad by jogging its last 1-2 mm east
+away from SCK before turning; or let SAI_FS hand over at a converter stub rather than at
+the spine end.
