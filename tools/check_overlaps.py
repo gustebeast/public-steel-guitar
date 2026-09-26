@@ -432,7 +432,7 @@ def intended(na, nb) -> bool:
     # printed as one object — designed full-face contact.
     tp = {base(na), base(nb)}
     TP_FAMILY = {"top_plate", "top_plate_color"}
-    if tp & TP_FAMILY and tp <= (TP_FAMILY | {"chassis", "oled", "joystick",
+    if tp & TP_FAMILY and tp <= (TP_FAMILY | {"chassis",
                                               # pickup_zplate is NOT here: the height plate
                                               # genuinely interpenetrates the deck (37.2 mm^3
                                               # at the demo pose) and this line was silencing

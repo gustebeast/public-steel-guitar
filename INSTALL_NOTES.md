@@ -235,3 +235,36 @@ controller.
 > from each, crimped into one shell. Two separate 4-way jacks would make each cable its
 > own assembly and let either be unplugged alone. That is a motor-controller decision,
 > not a mechanical one.
+
+## The UI station (deck mid panel) — 2026-09-25
+
+The display, the encoder and the board that carries them all hang off ONE deck panel
+(`top_plate` mid). Order matters in both directions.
+
+**Building the panel up**
+
+1. Heat-set an M4 insert into the boss on the panel's underside, from the boss's open
+   end. It is the only insert on the panel.
+2. Solder the 1×20 **female** socket (KH-2.54FH-1X20P-H8.5) to the BACK of the Newhaven
+   module, opening facing away from the glass. The module ships with plated holes and no
+   header — Newhaven's own drawing only recommends one — so this is the one hand-solder
+   step in the station, and it is on a PCB, which the project's no-solder rule allows.
+3. Drop the module face-first into the pocket in the panel's underside. It seats against
+   the 1.6 mm window ledge; that ledge is the bezel and the only thing setting its depth.
+4. Lift the UI board up into its cradle — the wall and the posts locate it — and run the
+   M4 button screw up through the board into the insert, from underneath. The board's
+   1×20 male header enters the module's socket as it goes; do not force it, the two are
+   only aligned once the board is square in the cradle.
+5. Press the printed knob onto the switch's Ø2.5 shaft through the hole in the deck.
+
+**Taking the panel out — THE UI BOARD COMES OFF FIRST.**
+
+The deck stack slides out -X, and the board passes 0.30 mm over the chassis's cable
+trough. That is clearance to sit still in, not to slide 400 mm over. Undo the one M4 from
+underneath and drop the board (and, with it, the display) out before you pull the panel.
+Everything left on the panel clears the trough; `ui_panel.deck_mount` asserts it.
+
+**Before the first panel is printed**, confirm the right-angle ribbon header's height
+against the real part. `src/board_geom.HEIGHT` carries 10.0 mm for it as an ESTIMATE —
+ZHOURI publish no drawing through LCSC — and there is 11.70 mm between the board's top
+face and the deck's underside.

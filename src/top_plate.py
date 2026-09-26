@@ -41,6 +41,7 @@ from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
+from . import ui_panel as UIP
 from .helpers import box_at, cyl, heal
 from cadkit.fasteners import M4, cut_counterbore, cut_insert_bore
 
@@ -473,13 +474,14 @@ def _band(xa, xb, *, ui=False):
     applied by _split, which turns them into the base/colour material boundary)."""
     body = _deck_body(xa, xb)
     if ui:
-        # clearance windows for the OLED glass + joystick actuator
-        body = body.cut(box_at(64.0, 35.0, TZ - BZ + 2, x=EL.UI_X, y=EL.OLED_Y,
-                               z=(BZ + TZ) / 2))
-        body = body.cut(cyl(9.0, TZ - BZ + 2, z=BZ - 1).translate(
-            (EL.JOY_X, EL.JOY_Y, 0)))
-        # (OLED: NO fasteners or retention yet -- user, 2026-09-10. The four M2 self-tap
-        #  pilots are gone; revisited later under the one-M4-beside-the-board rule.)
+        # THE UI STATION. src/ui_panel.py owns all of it and derives its geometry from
+        # the ROUTED ui_board -- the display's pocket and window hang off the header
+        # KiCad placed, and the knob's hole off the switch KiCad placed. What lands
+        # here is a cutter and a cradle; the two placeholder windows that used to be
+        # cut at guessed coordinates are gone with the guesses.
+        # ORDER MATTERS: the cradle is fused BEFORE the cutter runs, so the module's
+        # pocket also clears anything of the cradle that strayed into it.
+        body = body.union(UIP.deck_mount()).cut(UIP.deck_cutter())
     return body
 
 
