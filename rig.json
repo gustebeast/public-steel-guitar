@@ -1,0 +1,891 @@
+{
+ "build": 715,
+ "n_strings": 10,
+ "carriage_travel": 8.349604207872797,
+ "gains": {
+  "mm_per_semitone": 2.0,
+  "pulley_turns_per_mm": 0.12,
+  "belt_mm_per_mm": 1.5
+ },
+ "open_tuning": [
+  "D4",
+  "E4",
+  "C4",
+  "A3",
+  "G3",
+  "E3",
+  "C3",
+  "A2",
+  "F2",
+  "C2"
+ ],
+ "strings": [
+  {
+   "i": 0,
+   "string": 1,
+   "rest_dz": -8.349604207872797,
+   "carriage_nodes": [
+    "nut_0",
+    "string_nut_0"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_0",
+    "center": [
+     -12.0,
+     42.75,
+     -45.80000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_0",
+    "center": [
+     -562.45,
+     42.75,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_0",
+    "dir": [
+     -0.9998177037385388,
+     0.008900184845705946,
+     -0.01689218756429904
+    ]
+   }
+  },
+  {
+   "i": 1,
+   "string": 2,
+   "rest_dz": -8.349604207872797,
+   "carriage_nodes": [
+    "nut_1",
+    "string_nut_1"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_1",
+    "center": [
+     12.0,
+     33.25,
+     -54.60000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_1",
+    "center": [
+     -517.75,
+     33.25,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_1",
+    "dir": [
+     -0.9999567794077514,
+     0.009249246284281228,
+     -0.0009438006412531868
+    ]
+   }
+  },
+  {
+   "i": 2,
+   "string": 3,
+   "rest_dz": 0.0,
+   "carriage_nodes": [
+    "nut_2",
+    "string_nut_2"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_2",
+    "center": [
+     -12.0,
+     23.75,
+     -45.80000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_2",
+    "center": [
+     -473.05000000000007,
+     23.75,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_2",
+    "dir": [
+     -0.9997401833680771,
+     0.010625153233930325,
+     -0.02016610715827592
+    ]
+   }
+  },
+  {
+   "i": 3,
+   "string": 4,
+   "rest_dz": 0.0,
+   "carriage_nodes": [
+    "nut_3",
+    "string_nut_3"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_3",
+    "center": [
+     12.0,
+     14.25,
+     -54.60000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_3",
+    "center": [
+     -428.3500000000001,
+     14.25,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_3",
+    "dir": [
+     -0.9999374504700124,
+     0.011126816185541183,
+     -0.0011353894066878758
+    ]
+   }
+  },
+  {
+   "i": 4,
+   "string": 5,
+   "rest_dz": 0.0,
+   "carriage_nodes": [
+    "nut_4",
+    "string_nut_4"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_4",
+    "center": [
+     -12.0,
+     4.75,
+     -45.80000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_4",
+    "center": [
+     -383.6500000000001,
+     4.75,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_4",
+    "dir": [
+     -0.9996002361449653,
+     0.013179177067429918,
+     -0.025013540148387386
+    ]
+   }
+  },
+  {
+   "i": 5,
+   "string": 6,
+   "rest_dz": 0.0,
+   "carriage_nodes": [
+    "nut_5",
+    "string_nut_5"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_5",
+    "center": [
+     12.0,
+     -4.75,
+     -54.60000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_5",
+    "center": [
+     -338.95000000000005,
+     -4.75,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_5",
+    "dir": [
+     -0.9999015294971058,
+     0.013960728008365345,
+     -0.0014245640824862595
+    ]
+   }
+  },
+  {
+   "i": 6,
+   "string": 7,
+   "rest_dz": 0.0,
+   "carriage_nodes": [
+    "nut_6",
+    "string_nut_6"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_6",
+    "center": [
+     -12.0,
+     -14.25,
+     -45.80000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_6",
+    "center": [
+     -294.2500000000001,
+     -14.25,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_6",
+    "dir": [
+     -0.99930719203074,
+     0.017348468524182897,
+     -0.032926685158143044
+    ]
+   }
+  },
+  {
+   "i": 7,
+   "string": 8,
+   "rest_dz": 0.0,
+   "carriage_nodes": [
+    "nut_7",
+    "string_nut_7"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_7",
+    "center": [
+     12.0,
+     -23.75,
+     -54.60000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_7",
+    "center": [
+     -249.55000000000007,
+     -23.75,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_7",
+    "dir": [
+     -0.9998227297492718,
+     0.018731146533249587,
+     -0.0019113414829846523
+    ]
+   }
+  },
+  {
+   "i": 8,
+   "string": 9,
+   "rest_dz": -8.349604207872797,
+   "carriage_nodes": [
+    "nut_8",
+    "string_nut_8"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_8",
+    "center": [
+     -12.0,
+     -33.25,
+     -45.80000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_8",
+    "center": [
+     -204.85000000000008,
+     -33.25,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_8",
+    "dir": [
+     -0.998517732626607,
+     0.025370686491420123,
+     -0.04815252742249126
+    ]
+   }
+  },
+  {
+   "i": 9,
+   "string": 10,
+   "rest_dz": -8.349604207872797,
+   "carriage_nodes": [
+    "nut_9",
+    "string_nut_9"
+   ],
+   "screw_pulley": {
+    "node": "screw_pulley_9",
+    "center": [
+     12.0,
+     -42.75,
+     -54.60000000000001
+    ],
+    "axis": [
+     0,
+     0,
+     1
+    ]
+   },
+   "motor_pulley": {
+    "node": "motor_pulley_9",
+    "center": [
+     -160.1500000000001,
+     -42.75,
+     -50.20000000000001
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ]
+   },
+   "belt_clamp": {
+    "node": "belt_clamp_9",
+    "dir": [
+     -0.9995909464099347,
+     0.028451906113323707,
+     -0.002903255725849359
+    ]
+   }
+  }
+ ],
+ "pedals": [
+  {
+   "i": 0,
+   "center": [
+    -520.262741699797,
+    28.099999999999994,
+    -765.75
+   ],
+   "axis": [
+    -1,
+    0,
+    0
+   ],
+   "throw_deg": -20.0,
+   "lobe_rc": 13.2,
+   "swing_nodes": [
+    "pedal_lever_0",
+    "pedal0_magnet"
+   ],
+   "piston_nodes": [
+    "pedal0_main_cart_piston",
+    "pedal0_half_stop_cart_piston"
+   ],
+   "piston_dir": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "i": 1,
+   "center": [
+    -457.8627416997969,
+    28.099999999999994,
+    -765.75
+   ],
+   "axis": [
+    -1,
+    0,
+    0
+   ],
+   "throw_deg": -20.0,
+   "lobe_rc": 13.2,
+   "swing_nodes": [
+    "pedal_lever_1",
+    "pedal1_magnet"
+   ],
+   "piston_nodes": [
+    "pedal1_main_cart_piston",
+    "pedal1_half_stop_cart_piston"
+   ],
+   "piston_dir": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "i": 2,
+   "center": [
+    -395.4627416997969,
+    28.099999999999994,
+    -765.75
+   ],
+   "axis": [
+    -1,
+    0,
+    0
+   ],
+   "throw_deg": -20.0,
+   "lobe_rc": 13.2,
+   "swing_nodes": [
+    "pedal_lever_2",
+    "pedal2_magnet"
+   ],
+   "piston_nodes": [
+    "pedal2_main_cart_piston",
+    "pedal2_half_stop_cart_piston"
+   ],
+   "piston_dir": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "i": 3,
+   "center": [
+    -333.0627416997969,
+    28.099999999999994,
+    -765.75
+   ],
+   "axis": [
+    -1,
+    0,
+    0
+   ],
+   "throw_deg": -20.0,
+   "lobe_rc": 13.2,
+   "swing_nodes": [
+    "pedal_lever_3",
+    "pedal3_magnet"
+   ],
+   "piston_nodes": [
+    "pedal3_main_cart_piston",
+    "pedal3_half_stop_cart_piston"
+   ],
+   "piston_dir": [
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "i": 4,
+   "center": [
+    -270.6627416997969,
+    28.099999999999994,
+    -765.75
+   ],
+   "axis": [
+    -1,
+    0,
+    0
+   ],
+   "throw_deg": -20.0,
+   "lobe_rc": 13.2,
+   "swing_nodes": [
+    "pedal_lever_4",
+    "pedal4_magnet"
+   ],
+   "piston_nodes": [
+    "pedal4_main_cart_piston",
+    "pedal4_half_stop_cart_piston"
+   ],
+   "piston_dir": [
+    0,
+    0,
+    1
+   ]
+  }
+ ],
+ "copedent": [
+  {
+   "name": "P1",
+   "key": "1",
+   "raises": [
+    {
+     "i": 1,
+     "semitones": 1
+    },
+    {
+     "i": 5,
+     "semitones": 1
+    },
+    {
+     "i": 9,
+     "semitones": 2
+    }
+   ],
+   "pedal": 0
+  },
+  {
+   "name": "P2",
+   "key": "2",
+   "raises": [
+    {
+     "i": 4,
+     "semitones": -1
+    },
+    {
+     "i": 8,
+     "semitones": 1
+    },
+    {
+     "i": 9,
+     "semitones": 2
+    }
+   ],
+   "pedal": 1
+  },
+  {
+   "name": "P3",
+   "key": "3",
+   "raises": [
+    {
+     "i": 1,
+     "semitones": -1
+    },
+    {
+     "i": 5,
+     "semitones": -1
+    }
+   ],
+   "pedal": 2
+  },
+  {
+   "name": "P4",
+   "key": "4",
+   "raises": [
+    {
+     "i": 2,
+     "semitones": 2
+    },
+    {
+     "i": 3,
+     "semitones": 2
+    }
+   ],
+   "pedal": 3
+  },
+  {
+   "name": "P5",
+   "key": "5",
+   "raises": [
+    {
+     "i": 6,
+     "semitones": 1
+    },
+    {
+     "i": 8,
+     "semitones": -1
+    },
+    {
+     "i": 9,
+     "semitones": -3
+    }
+   ],
+   "pedal": 4
+  },
+  {
+   "name": "LKL",
+   "key": "q",
+   "raises": [
+    {
+     "i": 3,
+     "semitones": 1
+    }
+   ],
+   "lever": {
+    "center": [
+     -500.04045584989854,
+     -67.94999999999997,
+     -93.84716087690038
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ],
+    "throw_deg": 30.0,
+    "lobe_rc": 9.5,
+    "swing_nodes": [
+     "knee_lever",
+     "kl_axle",
+     "kl_magnet_cap",
+     "kl_magnet"
+    ],
+    "piston_nodes": [
+     "main_cart_piston",
+     "half_stop_cart_piston"
+    ],
+    "piston_dir": [
+     -0.966896,
+     -0.0,
+     0.255172
+    ],
+    "mirrored": false
+   }
+  },
+  {
+   "name": "VKL",
+   "key": "w",
+   "raises": [
+    {
+     "i": 0,
+     "semitones": 1
+    }
+   ],
+   "lever": {
+    "center": [
+     -451.70345584989855,
+     -31.34999999999998,
+     -113.45000000000002
+    ],
+    "axis": [
+     1,
+     0,
+     0
+    ],
+    "throw_deg": -20.0,
+    "lobe_rc": 13.2,
+    "swing_nodes": [
+     "vkl_kv_lever",
+     "vkl_kv_magnet"
+    ],
+    "piston_nodes": [
+     "vkl_kv_main_cart_piston",
+     "vkl_kv_half_stop_cart_piston"
+    ],
+    "piston_dir": [
+     -0.0,
+     0.966896,
+     0.255172
+    ],
+    "mirrored": false
+   }
+  },
+  {
+   "name": "LKR",
+   "key": "e",
+   "raises": [
+    {
+     "i": 3,
+     "semitones": -1
+    },
+    {
+     "i": 7,
+     "semitones": -1
+    }
+   ],
+   "lever": {
+    "center": [
+     -392.9664558498985,
+     -67.94999999999997,
+     -93.84716087690038
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ],
+    "throw_deg": -30.0,
+    "lobe_rc": 9.5,
+    "swing_nodes": [
+     "lkr_knee_lever",
+     "lkr_kl_axle",
+     "lkr_kl_magnet_cap",
+     "lkr_kl_magnet"
+    ],
+    "piston_nodes": [
+     "lkr_main_cart_piston",
+     "lkr_half_stop_cart_piston"
+    ],
+    "piston_dir": [
+     0.966896,
+     -0.0,
+     0.255172
+    ],
+    "mirrored": true
+   }
+  },
+  {
+   "name": "RKL",
+   "key": "r",
+   "raises": [
+    {
+     "i": 2,
+     "semitones": -1
+    }
+   ],
+   "lever": {
+    "center": [
+     -229.6404558498985,
+     -67.94999999999997,
+     -93.84716087690038
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ],
+    "throw_deg": 30.0,
+    "lobe_rc": 9.5,
+    "swing_nodes": [
+     "rkl_knee_lever",
+     "rkl_kl_axle",
+     "rkl_kl_magnet_cap",
+     "rkl_kl_magnet"
+    ],
+    "piston_nodes": [
+     "rkl_main_cart_piston",
+     "rkl_half_stop_cart_piston"
+    ],
+    "piston_dir": [
+     -0.966896,
+     -0.0,
+     0.255172
+    ],
+    "mirrored": false
+   }
+  },
+  {
+   "name": "RKR",
+   "key": "t",
+   "raises": [
+    {
+     "i": 2,
+     "semitones": 1
+    },
+    {
+     "i": 6,
+     "semitones": 1
+    }
+   ],
+   "lever": {
+    "center": [
+     -143.36645584989844,
+     -67.94999999999997,
+     -93.84716087690038
+    ],
+    "axis": [
+     0,
+     1,
+     0
+    ],
+    "throw_deg": -30.0,
+    "lobe_rc": 9.5,
+    "swing_nodes": [
+     "rkr_knee_lever",
+     "rkr_kl_axle",
+     "rkr_kl_magnet_cap",
+     "rkr_kl_magnet"
+    ],
+    "piston_nodes": [
+     "rkr_main_cart_piston",
+     "rkr_half_stop_cart_piston"
+    ],
+    "piston_dir": [
+     0.966896,
+     -0.0,
+     0.255172
+    ],
+    "mirrored": true
+   }
+  }
+ ]
+}
