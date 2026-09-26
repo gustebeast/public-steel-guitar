@@ -2992,7 +2992,13 @@ BOARD_NOTES = {
     # does. It is the clearest case on this board of an escape via costing more than it
     # buys: pad 9 sits in the middle of the PHY's west fan, and taking a via there pushes
     # ULPI_D0, ULPI_D5 and SAI_SD2 out of theirs.
-    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16", "U6.38"),
+    # ⚠ U7.4 IS HERE ON A RE-EXAMINATION, NOT A HUNCH. It and U7.10 were ruled out earlier
+    # as having "no legal site within 4.2 mm" -- but that came from a scan of mine that
+    # treated every PAD as blocking on every LAYER, which walls a QFN's own pad field off
+    # from the inner layers where there is nothing but via barrels. layout's stitcher does
+    # its own clearance check and does it correctly, so the honest move is to ask it rather
+    # than to trust the verdict of a tool that was wrong.
+    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16", "U6.38", "U6.45", "U7.4"),
     # ⚠ U6.38 CARRIES ITS OWN INNER RUN TO THE +3V3A SPINE. The escape via gave the MCU's
     # analog supply a local connection (27.32 mm -> 1.25) and took the board from 5
     # unconnected to 3, but the router still would not join that via to the rail: +3V3A's
