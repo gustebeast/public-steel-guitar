@@ -153,7 +153,7 @@ MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outlin
 # -82.0 puts the plug bodies at -80.0..-68.0 and -96.0..-84.0, so the nearer one clears
 # y -98 by 2.0 mm with the 1.6 bead clearance inside that. Measure the BODY against the
 # obstacle, never the centre.
-_MCTRL_CX, _MCTRL_CY = -573.25, -82.0
+_MCTRL_CX, _MCTRL_CY = -563.40, -82.0
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
@@ -946,6 +946,59 @@ def mctrl_pt(ref: str):
     # J2 is a PH now (the 5 V lever bus, 2026-09-21); every other lead is a mated XH
     _ph = BG.fp_name(BG.footprint("motor_ctrl", ref)["fpid"]).startswith("JST_PH_")
     return (x, y, MCTRL_BOARD_Z + BD_T + (BG._PH_MATED_H if _ph else BG._XH_MATED_H))
+
+
+MCTRL_PORT_CLR = 0.5                 # around whatever of the board enters the floor
+
+
+def mctrl_floor_ports():
+    """The floor openings the motor controller needs, as cutters.
+
+    ⚠ THE BOARD HANGS INTO THE FLOOR ON PURPOSE (user, 2026-09-25: "move the board -z until
+    the latch mechanism for the JST is clear of the instrument underside"). A mated PH plug
+    stands only 4.1 mm past the board's edge and the floor is 10.5 mm thick, so no amount of
+    plug reaches daylight while the board stops at the floor -- the BOARD has to come down
+    with it. It does: the plug tips sit 3.10 mm proud of the underside, which is what a hand
+    squeezes, and the laminate still stops 1.00 mm inside.
+    ⚠ A THIN SLOT, NOT A FINGER HOLE. Because the latch is reachable from OUTSIDE, none of
+    this has to admit a hand -- 287 mm2 against roughly 1000 for two finger holes, which is
+    the whole reason the downward edge was made the narrow one.
+    ⚠ THE FOOTPRINT, NOT ITS BOUNDING BOX. The plate and the two plugs TOUCH, so they come
+    back as ONE solid whose bbox is the full 8.1 x 47 mm rectangle -- five times the opening
+    needed, and the opposite of the point. Walk the board's length and take each slice's own
+    x-extent: the shape is axis-aligned, so slices recover it exactly and equal neighbours
+    merge back into runs.
+    ⚠ IT LIVES HERE AND NOT IN chassis.py. chassis builds its segments at import and
+    electronics imports chassis, so the chassis cannot ask where this board is without a
+    circular import -- it asked, and got a half-initialised module. The chassis stays
+    ignorant of its contents and the ASSEMBLY cuts these (see build.py).
+    """
+    from . import motor_bank as MB
+    z0 = CH.Z_BOT - 1.0
+    h = (MB.FLOOR_TOP - CH.Z_BOT) + 2.0
+    zc = (CH.Z_BOT + MB.FLOOR_TOP) / 2.0
+    band = box_at(1600.0, 1600.0, MB.FLOOR_TOP - CH.Z_BOT, x=-300.0, y=0.0, z=zc)
+    below = motor_ctrl().intersect(band)
+    bb = below.val().BoundingBox()
+    runs, step = [], 0.5
+    for i in range(int(round((bb.ymax - bb.ymin) / step))):
+        ya, yb = bb.ymin + i * step, bb.ymin + (i + 1) * step
+        try:
+            sb = below.intersect(
+                box_at(1600.0, yb - ya, h, x=-300.0, y=(ya + yb) / 2, z=zc)).val().BoundingBox()
+        except Exception:
+            continue
+        if sb.xlen <= 0.0:
+            continue
+        key = (round(sb.xmin, 2), round(sb.xmax, 2))
+        if runs and runs[-1][0] == key and abs(runs[-1][2] - ya) < 1e-6:
+            runs[-1][2] = yb
+        else:
+            runs.append([key, ya, yb])
+    c = MCTRL_PORT_CLR
+    return [box_at(k[1] - k[0] + 2 * c, yb - ya + 2 * c, h,
+                   x=(k[0] + k[1]) / 2, y=(ya + yb) / 2, z=z0 + h / 2)
+            for k, ya, yb in runs]
 
 
 def motor_ctrl() -> cq.Workplane:

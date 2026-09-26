@@ -200,6 +200,14 @@ for _i in range(len(_TP.spare_fillers)):         # fillers for the other pickup-
 from . import wiring as _WR_FUSE
 _seg_edges = [CH._SHELL_PX + CH.KH_DT_DEPTH + 2.0] + sorted(CH.SPLIT_X, reverse=True) + [CH.X_NUT]
 chassis_segments = list(chassis_segments)
+# ⚠ THE MOTOR CONTROLLER'S FLOOR PORTS ARE CUT HERE, NOT IN chassis.py. chassis builds its
+# segments at import and electronics imports chassis, so the chassis cannot ask where that
+# board is without a circular import. The assembly knows both, so it does it (see
+# electronics.mctrl_floor_ports).
+from . import electronics as _EL_ports
+for _mp in _EL_ports.mctrl_floor_ports():
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
 _fused_segs = set()
 for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
     for _csi in range(len(_seg_edges) - 1):
