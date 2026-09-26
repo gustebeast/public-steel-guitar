@@ -18,7 +18,8 @@
     -48.615,
     -47.515
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C101",
@@ -33,7 +34,8 @@
     -45.472,
     -44.372
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C102",
@@ -48,7 +50,8 @@
     -42.329,
     -41.229
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C103",
@@ -63,7 +66,8 @@
     -39.186,
     -38.086
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C104",
@@ -78,7 +82,8 @@
     -36.044,
     -34.944
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C105",
@@ -93,7 +98,8 @@
     -32.901,
     -31.801
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C106",
@@ -108,7 +114,8 @@
     -29.758,
     -28.658
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C107",
@@ -123,7 +130,8 @@
     -26.615,
     -25.515
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C108",
@@ -138,7 +146,8 @@
     -46.615,
     -45.515
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C109",
@@ -153,7 +162,8 @@
     -40.615,
     -39.515
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C110",
@@ -168,7 +178,8 @@
     -34.615,
     -33.515
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C111",
@@ -183,7 +194,8 @@
     -28.615,
     -27.515
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C112",
@@ -198,7 +210,8 @@
     -50.395,
     -49.045
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C113",
@@ -213,7 +226,24 @@
     -33.585,
     -32.235
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C114",
+   "fpid": "C_0402_1005Metric",
+   "x": 1.146,
+   "y": -56.49,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    0.596,
+    1.696,
+    -56.79,
+    -56.19
+   ],
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C120",
@@ -228,7 +258,8 @@
     -78.78,
     -78.18
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C121",
@@ -243,7 +274,8 @@
     -78.78,
     -78.18
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C122",
@@ -258,7 +290,8 @@
     -72.24,
     -71.14
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C123",
@@ -273,7 +306,8 @@
     -56.79,
     -56.19
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C124",
@@ -288,7 +322,8 @@
     -56.79,
     -56.19
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C125",
@@ -303,7 +338,8 @@
     -75.34,
     -74.24
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C126",
@@ -318,37 +354,40 @@
     -73.24,
     -72.14
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C127",
    "fpid": "C_0402_1005Metric",
-   "x": -6.736,
+   "x": -6.302,
    "y": -56.49,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -7.286,
-    -6.186,
+    -6.852,
+    -5.752,
     -56.79,
     -56.19
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C130",
    "fpid": "C_0805_2012Metric",
-   "x": 17.355,
-   "y": -62.08,
+   "x": 22.706,
+   "y": -81.38,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    16.305,
-    18.405,
-    -62.755,
-    -61.405
+    21.656,
+    23.756,
+    -82.055,
+    -80.705
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C131",
@@ -363,52 +402,56 @@
     -62.755,
     -61.405
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C132",
    "fpid": "C_0805_2012Metric",
-   "x": -2.746,
+   "x": -2.312,
    "y": -62.08,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -3.796,
-    -1.696,
+    -3.362,
+    -1.262,
     -62.755,
     -61.405
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C133",
    "fpid": "C_0805_2012Metric",
-   "x": 21.15,
+   "x": 25.661,
    "y": -62.08,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    20.1,
-    22.2,
+    24.611,
+    26.711,
     -62.755,
     -61.405
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C140",
    "fpid": "C_0402_1005Metric",
-   "x": -9.956,
+   "x": -9.522,
    "y": -62.08,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -10.506,
-    -9.406,
+    -10.072,
+    -8.972,
     -62.38,
     -61.78
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C141",
@@ -423,7 +466,8 @@
     -51.695,
     -51.095
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C142",
@@ -438,7 +482,8 @@
     -51.695,
     -51.095
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C143",
@@ -453,7 +498,8 @@
     -51.695,
     -51.095
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C160",
@@ -468,7 +514,8 @@
     -69.17,
     -67.47
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C161",
@@ -483,7 +530,8 @@
     -68.62,
     -68.02
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C162",
@@ -498,7 +546,8 @@
     -68.995,
     -67.645
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C163",
@@ -513,7 +562,8 @@
     -68.62,
     -68.02
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C164",
@@ -528,7 +578,8 @@
     -62.755,
     -61.405
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C165",
@@ -543,7 +594,8 @@
     -68.62,
     -68.02
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C166",
@@ -558,7 +610,8 @@
     -68.62,
     -68.02
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C167",
@@ -573,7 +626,8 @@
     -68.995,
     -67.645
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd1",
@@ -588,7 +642,8 @@
     65.55,
     66.65
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd10",
@@ -603,7 +658,8 @@
     -18.72,
     -17.62
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd2",
@@ -618,7 +674,8 @@
     56.187,
     57.287
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd3",
@@ -633,7 +690,8 @@
     46.823,
     47.923
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd4",
@@ -648,7 +706,8 @@
     37.46,
     38.56
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd5",
@@ -663,7 +722,8 @@
     28.097,
     29.197
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd6",
@@ -678,7 +738,8 @@
     18.733,
     19.833
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd7",
@@ -693,7 +754,8 @@
     9.37,
     10.47
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd8",
@@ -708,7 +770,8 @@
     0.006,
     1.106
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cd9",
@@ -723,7 +786,8 @@
     -9.357,
     -8.257
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf10A",
@@ -738,7 +802,8 @@
     -12.297,
     -11.144
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf10B",
@@ -753,7 +818,8 @@
     -16.515,
     -15.326
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf1A",
@@ -768,7 +834,8 @@
     72.0,
     73.1
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf1B",
@@ -783,7 +850,8 @@
     67.8,
     68.9
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf2A",
@@ -798,7 +866,8 @@
     62.637,
     63.737
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf2B",
@@ -813,7 +882,8 @@
     58.437,
     59.537
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf3A",
@@ -828,7 +898,8 @@
     53.273,
     54.373
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf3B",
@@ -843,7 +914,8 @@
     49.073,
     50.173
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf4A",
@@ -858,7 +930,8 @@
     43.91,
     45.01
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf4B",
@@ -873,7 +946,8 @@
     39.71,
     40.81
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf5A",
@@ -888,7 +962,8 @@
     34.547,
     35.647
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf5B",
@@ -903,7 +978,8 @@
     30.347,
     31.447
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf6A",
@@ -918,7 +994,8 @@
     25.183,
     26.283
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf6B",
@@ -933,7 +1010,8 @@
     20.983,
     22.083
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf7A",
@@ -948,7 +1026,8 @@
     15.82,
     16.92
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf7B",
@@ -963,7 +1042,8 @@
     11.62,
     12.72
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf8A",
@@ -978,7 +1058,8 @@
     6.456,
     7.556
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf8B",
@@ -993,7 +1074,8 @@
     2.256,
     3.356
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf9A",
@@ -1008,7 +1090,8 @@
     -2.907,
     -1.807
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cf9B",
@@ -1023,7 +1106,8 @@
     -7.107,
     -6.007
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci11",
@@ -1038,7 +1122,8 @@
     65.219,
     66.319
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci12",
@@ -1053,7 +1138,8 @@
     65.219,
     66.319
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci13",
@@ -1068,7 +1154,8 @@
     65.219,
     66.319
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci14",
@@ -1083,7 +1170,8 @@
     65.219,
     66.319
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci21",
@@ -1098,7 +1186,8 @@
     46.492,
     47.592
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci22",
@@ -1113,7 +1202,8 @@
     46.492,
     47.592
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci23",
@@ -1128,7 +1218,8 @@
     46.492,
     47.592
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci24",
@@ -1143,7 +1234,8 @@
     46.492,
     47.592
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci31",
@@ -1158,7 +1250,8 @@
     27.765,
     28.865
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci32",
@@ -1173,7 +1266,8 @@
     27.765,
     28.865
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci33",
@@ -1188,7 +1282,8 @@
     27.765,
     28.865
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci34",
@@ -1203,7 +1298,8 @@
     27.765,
     28.865
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci41",
@@ -1218,7 +1314,8 @@
     9.038,
     10.138
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci42",
@@ -1233,7 +1330,8 @@
     9.038,
     10.138
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci43",
@@ -1248,7 +1346,8 @@
     9.038,
     10.138
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci44",
@@ -1263,7 +1362,8 @@
     9.038,
     10.138
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci51",
@@ -1278,7 +1378,8 @@
     -9.689,
     -8.589
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci52",
@@ -1293,7 +1394,8 @@
     -9.689,
     -8.589
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci53",
@@ -1308,7 +1410,8 @@
     -9.689,
     -8.589
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Ci54",
@@ -1323,7 +1426,8 @@
     -9.689,
     -8.589
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm11",
@@ -1338,7 +1442,8 @@
     67.304,
     68.433
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm12",
@@ -1353,7 +1458,8 @@
     67.304,
     68.433
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm13",
@@ -1368,7 +1474,8 @@
     67.304,
     68.433
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm14",
@@ -1383,7 +1490,8 @@
     67.304,
     68.433
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm21",
@@ -1398,7 +1506,8 @@
     48.577,
     49.707
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm22",
@@ -1413,7 +1522,8 @@
     48.577,
     49.707
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm23",
@@ -1428,7 +1538,8 @@
     48.577,
     49.707
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm24",
@@ -1443,7 +1554,8 @@
     48.577,
     49.707
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm31",
@@ -1458,7 +1570,8 @@
     29.85,
     30.98
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm32",
@@ -1473,7 +1586,8 @@
     29.85,
     30.98
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm33",
@@ -1488,7 +1602,8 @@
     29.85,
     30.98
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm34",
@@ -1503,7 +1618,8 @@
     29.85,
     30.98
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm41",
@@ -1518,7 +1634,8 @@
     11.123,
     12.253
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm42",
@@ -1533,7 +1650,8 @@
     11.123,
     12.253
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm43",
@@ -1548,7 +1666,8 @@
     11.123,
     12.253
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm44",
@@ -1563,7 +1682,8 @@
     11.123,
     12.253
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm51",
@@ -1578,7 +1698,8 @@
     -7.603,
     -6.474
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm52",
@@ -1593,7 +1714,8 @@
     -7.603,
     -6.474
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm53",
@@ -1608,7 +1730,8 @@
     -7.603,
     -6.474
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cm54",
@@ -1623,7 +1746,8 @@
     -7.603,
     -6.474
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs11",
@@ -1638,7 +1762,8 @@
     57.719,
     58.819
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs13",
@@ -1653,7 +1778,8 @@
     60.269,
     61.369
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs15",
@@ -1668,7 +1794,8 @@
     62.369,
     63.469
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs16",
@@ -1683,7 +1810,8 @@
     57.719,
     58.819
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs18",
@@ -1698,7 +1826,8 @@
     57.719,
     58.819
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs21",
@@ -1713,7 +1842,8 @@
     38.992,
     40.092
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs23",
@@ -1728,7 +1858,8 @@
     41.542,
     42.642
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs25",
@@ -1743,7 +1874,8 @@
     43.642,
     44.742
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs26",
@@ -1758,7 +1890,8 @@
     38.992,
     40.092
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs28",
@@ -1773,7 +1906,8 @@
     38.992,
     40.092
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs31",
@@ -1788,7 +1922,8 @@
     20.265,
     21.365
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs33",
@@ -1803,7 +1938,8 @@
     22.815,
     23.915
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs35",
@@ -1818,7 +1954,8 @@
     24.915,
     26.015
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs36",
@@ -1833,7 +1970,8 @@
     20.265,
     21.365
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs38",
@@ -1848,7 +1986,8 @@
     20.265,
     21.365
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs41",
@@ -1863,7 +2002,8 @@
     1.538,
     2.638
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs43",
@@ -1878,7 +2018,8 @@
     4.088,
     5.188
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs45",
@@ -1893,7 +2034,8 @@
     6.188,
     7.288
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs46",
@@ -1908,7 +2050,8 @@
     1.538,
     2.638
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs48",
@@ -1923,7 +2066,8 @@
     1.538,
     2.638
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs51",
@@ -1938,7 +2082,8 @@
     -17.189,
     -16.089
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs53",
@@ -1953,7 +2098,8 @@
     -14.639,
     -13.539
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs55",
@@ -1968,7 +2114,8 @@
     -12.539,
     -11.439
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs56",
@@ -1983,7 +2130,8 @@
     -17.189,
     -16.089
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Cs58",
@@ -1998,7 +2146,8 @@
     -17.189,
     -16.089
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D1",
@@ -2013,7 +2162,8 @@
     69.655,
     71.245
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D10",
@@ -2028,7 +2178,8 @@
     -14.615,
     -13.025
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D2",
@@ -2043,7 +2194,8 @@
     60.292,
     61.882
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D3",
@@ -2058,7 +2210,8 @@
     50.928,
     52.518
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D4",
@@ -2073,7 +2226,8 @@
     41.565,
     43.155
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D5",
@@ -2088,7 +2242,8 @@
     32.202,
     33.792
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D6",
@@ -2103,7 +2258,8 @@
     22.838,
     24.428
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D7",
@@ -2118,7 +2274,8 @@
     13.475,
     15.065
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D8",
@@ -2133,7 +2290,8 @@
     4.111,
     5.701
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D9",
@@ -2148,22 +2306,24 @@
     -5.252,
     -3.662
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "FB1",
    "fpid": "L_0603_1608Metric",
-   "x": 13.78,
+   "x": 21.775,
    "y": -62.08,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    12.93,
-    14.63,
+    20.925,
+    22.625,
     -62.53,
     -61.63
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J1",
@@ -2178,7 +2338,13 @@
     -93.77,
     -86.37
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    10.211,
+    19.851,
+    -91.92,
+    -85.89
+   ]
   },
   {
    "ref": "J2",
@@ -2193,7 +2359,8 @@
     -93.57,
     -86.47
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "L1",
@@ -2208,7 +2375,8 @@
     -70.37,
     -66.27
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD10A",
@@ -2223,7 +2391,8 @@
     -13.18,
     -10.16
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD10B",
@@ -2238,7 +2407,8 @@
     -17.48,
     -14.46
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD1A",
@@ -2253,7 +2423,8 @@
     71.09,
     74.11
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD1B",
@@ -2268,7 +2439,8 @@
     66.79,
     69.81
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD2A",
@@ -2283,7 +2455,8 @@
     61.727,
     64.747
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD2B",
@@ -2298,7 +2471,8 @@
     57.427,
     60.447
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD3A",
@@ -2313,7 +2487,8 @@
     52.363,
     55.383
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD3B",
@@ -2328,7 +2503,8 @@
     48.063,
     51.083
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD4A",
@@ -2343,7 +2519,8 @@
     43.0,
     46.02
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD4B",
@@ -2358,7 +2535,8 @@
     38.7,
     41.72
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD5A",
@@ -2373,7 +2551,8 @@
     33.637,
     36.657
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD5B",
@@ -2388,7 +2567,8 @@
     29.337,
     32.357
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD6A",
@@ -2403,7 +2583,8 @@
     24.273,
     27.293
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD6B",
@@ -2418,7 +2599,8 @@
     19.973,
     22.993
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD7A",
@@ -2433,7 +2615,8 @@
     14.91,
     17.93
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD7B",
@@ -2448,7 +2631,8 @@
     10.61,
     13.63
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD8A",
@@ -2463,7 +2647,8 @@
     5.546,
     8.566
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD8B",
@@ -2478,7 +2663,8 @@
     1.246,
     4.266
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD9A",
@@ -2493,7 +2679,8 @@
     -3.817,
     -0.797
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "PD9B",
@@ -2508,22 +2695,24 @@
     -8.117,
     -5.097
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Q1",
    "fpid": "SOT-23",
-   "x": 9.975,
+   "x": 11.275,
    "y": -62.08,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    9.275,
-    10.675,
+    10.575,
+    11.975,
     -63.58,
     -60.58
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R1",
@@ -2538,7 +2727,8 @@
     65.449,
     66.089
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R10",
@@ -2553,7 +2743,8 @@
     -18.822,
     -18.182
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R2",
@@ -2568,7 +2759,8 @@
     56.085,
     56.725
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R3",
@@ -2583,112 +2775,120 @@
     46.722,
     47.362
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R30",
    "fpid": "R_0402_1005Metric",
-   "x": -26.431,
-   "y": -53.295,
-   "rot": 0.0,
+   "x": -14.0,
+   "y": -31.005,
+   "rot": 90.0,
    "side": "F",
    "fab": [
-    -27.006,
-    -25.856,
-    -53.615,
-    -52.975
+    -14.32,
+    -13.68,
+    -31.58,
+    -30.43
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R31",
    "fpid": "R_0402_1005Metric",
-   "x": -20.167,
-   "y": -53.295,
-   "rot": 0.0,
+   "x": -14.0,
+   "y": -41.315,
+   "rot": 90.0,
    "side": "F",
    "fab": [
-    -20.742,
-    -19.592,
-    -53.615,
-    -52.975
+    -14.32,
+    -13.68,
+    -41.89,
+    -40.74
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R32",
    "fpid": "R_0402_1005Metric",
-   "x": 24.176,
-   "y": -62.08,
+   "x": 7.466,
+   "y": -89.51,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    23.601,
-    24.751,
-    -62.4,
-    -61.76
+    6.891,
+    8.041,
+    -89.83,
+    -89.19
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R33",
    "fpid": "R_0402_1005Metric",
-   "x": 26.431,
-   "y": -62.08,
+   "x": 5.166,
+   "y": -89.51,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    25.856,
-    27.006,
-    -62.4,
-    -61.76
+    4.591,
+    5.741,
+    -89.83,
+    -89.19
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R34",
    "fpid": "R_0402_1005Metric",
-   "x": 0.28,
+   "x": 1.146,
    "y": -62.08,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -0.295,
-    0.855,
+    0.571,
+    1.721,
     -62.4,
     -61.76
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R35",
    "fpid": "R_0402_1005Metric",
-   "x": 2.38,
+   "x": 3.246,
    "y": -62.08,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    1.805,
-    2.955,
+    2.671,
+    3.821,
     -62.4,
     -61.76
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R36",
    "fpid": "R_0402_1005Metric",
-   "x": 20.167,
+   "x": 18.079,
    "y": -53.295,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    19.592,
-    20.742,
+    17.504,
+    18.654,
     -53.615,
     -52.975
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R37",
@@ -2703,7 +2903,8 @@
     -76.165,
     -75.015
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R38",
@@ -2718,7 +2919,8 @@
     -53.615,
     -52.975
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R39",
@@ -2733,7 +2935,8 @@
     -78.8,
     -78.16
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R4",
@@ -2748,7 +2951,8 @@
     37.358,
     37.998
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R40",
@@ -2763,7 +2967,8 @@
     -68.64,
     -68.0
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R41",
@@ -2778,7 +2983,8 @@
     -68.64,
     -68.0
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R5",
@@ -2793,7 +2999,8 @@
     27.995,
     28.635
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R50",
@@ -2808,7 +3015,8 @@
     -22.614,
     -21.464
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R51",
@@ -2823,7 +3031,8 @@
     -20.514,
     -19.364
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R6",
@@ -2838,7 +3047,8 @@
     18.632,
     19.272
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R7",
@@ -2853,7 +3063,8 @@
     9.268,
     9.908
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R8",
@@ -2868,7 +3079,8 @@
     -0.095,
     0.545
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R9",
@@ -2883,7 +3095,8 @@
     -9.459,
     -8.819
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf10A",
@@ -2898,7 +3111,8 @@
     -12.318,
     -11.123
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf10B",
@@ -2913,7 +3127,8 @@
     -16.536,
     -15.304
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf1A",
@@ -2928,7 +3143,8 @@
     71.975,
     73.125
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf1B",
@@ -2943,7 +3159,8 @@
     67.775,
     68.925
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf2A",
@@ -2958,7 +3175,8 @@
     62.612,
     63.762
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf2B",
@@ -2973,7 +3191,8 @@
     58.412,
     59.562
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf3A",
@@ -2988,7 +3207,8 @@
     53.248,
     54.398
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf3B",
@@ -3003,7 +3223,8 @@
     49.048,
     50.198
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf4A",
@@ -3018,7 +3239,8 @@
     43.885,
     45.035
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf4B",
@@ -3033,7 +3255,8 @@
     39.685,
     40.835
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf5A",
@@ -3048,7 +3271,8 @@
     34.522,
     35.672
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf5B",
@@ -3063,7 +3287,8 @@
     30.322,
     31.472
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf6A",
@@ -3078,7 +3303,8 @@
     25.158,
     26.308
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf6B",
@@ -3093,7 +3319,8 @@
     20.958,
     22.108
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf7A",
@@ -3108,7 +3335,8 @@
     15.795,
     16.945
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf7B",
@@ -3123,7 +3351,8 @@
     11.595,
     12.745
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf8A",
@@ -3138,7 +3367,8 @@
     6.431,
     7.581
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf8B",
@@ -3153,7 +3383,8 @@
     2.231,
     3.381
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf9A",
@@ -3168,7 +3399,8 @@
     -2.932,
     -1.782
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Rf9B",
@@ -3183,82 +3415,88 @@
     -7.132,
     -5.982
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP1",
    "fpid": "TestPoint_Pad_D1.5mm",
-   "x": -13.627,
+   "x": -26.154,
    "y": -53.295,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -15.109,
-    -12.144,
+    -27.637,
+    -24.672,
     -52.493,
     -50.797
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP2",
    "fpid": "TestPoint_Pad_D1.5mm",
-   "x": -6.813,
+   "x": -17.253,
    "y": -53.295,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -8.295,
-    -5.331,
+    -18.735,
+    -15.77,
     -52.493,
     -50.797
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP3",
    "fpid": "TestPoint_Pad_D1.5mm",
-   "x": 0.001,
+   "x": -8.351,
    "y": -53.295,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -1.481,
-    1.483,
+    -9.833,
+    -6.868,
     -52.493,
     -50.797
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP4",
    "fpid": "TestPoint_Pad_D1.5mm",
-   "x": 6.815,
+   "x": 0.551,
    "y": -53.295,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    5.333,
-    8.297,
+    -0.931,
+    2.033,
     -52.493,
     -50.797
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP5",
    "fpid": "TestPoint_Pad_D1.5mm",
-   "x": 13.629,
+   "x": 9.453,
    "y": -53.295,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    12.147,
-    15.111,
+    7.971,
+    10.935,
     -52.493,
     -50.797
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U10",
@@ -3273,22 +3511,24 @@
     -82.51,
     -80.81
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U11",
    "fpid": "SOT-23-5",
-   "x": 5.6,
+   "x": 6.466,
    "y": -62.08,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    4.75,
-    6.45,
+    5.616,
+    7.316,
     -63.58,
     -60.58
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U13",
@@ -3303,7 +3543,8 @@
     -69.87,
     -66.77
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U14",
@@ -3318,7 +3559,8 @@
     59.969,
     64.069
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U15",
@@ -3333,7 +3575,8 @@
     41.242,
     45.342
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U16",
@@ -3348,7 +3591,8 @@
     22.515,
     26.615
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U17",
@@ -3363,7 +3607,8 @@
     3.788,
     7.888
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U18",
@@ -3378,7 +3623,8 @@
     -14.939,
     -10.839
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U21",
@@ -3393,7 +3639,8 @@
     68.9,
     72.0
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U22",
@@ -3408,7 +3655,8 @@
     59.537,
     62.637
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U23",
@@ -3423,7 +3671,8 @@
     50.173,
     53.273
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U24",
@@ -3438,7 +3687,8 @@
     40.81,
     43.91
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U25",
@@ -3453,7 +3703,8 @@
     31.447,
     34.547
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U26",
@@ -3468,7 +3719,8 @@
     22.083,
     25.183
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U27",
@@ -3483,7 +3735,8 @@
     12.72,
     15.82
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U28",
@@ -3498,7 +3751,8 @@
     3.356,
     6.456
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U29",
@@ -3513,7 +3767,8 @@
     -6.007,
     -2.907
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U30",
@@ -3528,7 +3783,8 @@
     -15.37,
     -12.27
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U6",
@@ -3543,7 +3799,8 @@
     -49.115,
     -25.015
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U7",
@@ -3558,7 +3815,8 @@
     -75.34,
     -71.24
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U8",
@@ -3573,22 +3831,24 @@
     -65.48,
     -58.68
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U9",
    "fpid": "SOT-23-5",
-   "x": -6.736,
+   "x": -6.302,
    "y": -62.08,
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -7.586,
-    -5.886,
+    -7.152,
+    -5.452,
     -63.58,
     -60.58
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Y1",
@@ -3603,7 +3863,8 @@
     -57.79,
     -55.19
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Y2",
@@ -3618,7 +3879,8 @@
     -75.44,
     -72.14
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   }
  ],
  "outline_poly": [
