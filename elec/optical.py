@@ -1813,7 +1813,6 @@ _PIN_ESCAPES = (
     ("SAI_FS",  (-6.55, -27.31), (-5.40, -27.31)),   # U6.3, boxed by SD2/SD1's vias
     ("ULPI_D1", (15.98, -71.35), (15.98, -70.55)),   # U7.5, straight off the north face
     ("ULPI_D6", (14.79, -74.04), (13.99, -74.04)),   # U7.11, straight off the west face
-) (13.59, -72.73)),   # U7.10, ditto on the PHY
 )
 
 
