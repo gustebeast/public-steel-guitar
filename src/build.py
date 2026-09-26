@@ -208,6 +208,10 @@ from . import electronics as _EL_ports
 for _mp in _EL_ports.mctrl_floor_ports():
     for _csi in range(len(chassis_segments)):
         chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
+# ...and the LED strip's connector tails, for the same reason and by the same route.
+for _lr in _EL_ports.led_wall_reliefs():
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_lr)
 _fused_segs = set()
 for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
     for _csi in range(len(_seg_edges) - 1):

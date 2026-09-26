@@ -47,6 +47,20 @@ def _bbox(fp, layer, cx, cy):
     return [round(min(xs), 3), round(max(xs), 3), round(min(ys), 3), round(max(ys), 3)]
 
 
+def _tht_bbox(fp, cx, cy):
+    """Bounding box of this footprint's THROUGH-HOLE pads, or None if it is pure SMD."""
+    xs, ys = [], []
+    for p in fp.Pads():
+        if p.GetAttribute() not in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+            continue
+        b = p.GetBoundingBox()
+        xs += [b.GetLeft() / 1e6 - cx, b.GetRight() / 1e6 - cx]
+        ys += [-(b.GetTop() / 1e6 - cy), -(b.GetBottom() / 1e6 - cy)]
+    if not xs:
+        return None
+    return [round(min(xs), 3), round(max(xs), 3), round(min(ys), 3), round(max(ys), 3)]
+
+
 def export(stem):
     board = pcbnew.LoadBoard(stem + ".kicad_pcb")
     edge = board.GetBoardEdgesBoundingBox()
@@ -86,6 +100,15 @@ def export(stem):
             "side": "B" if fp.IsFlipped() else "F",
             "fab": _bbox(fp, "B.Fab" if fp.IsFlipped() else "F.Fab", cx, cy),
             "crtyd": _bbox(fp, "B.CrtYd" if fp.IsFlipped() else "F.CrtYd", cx, cy),
+            # ⚠ THROUGH-HOLE PADS, BECAUSE THEIR TAILS ARE GEOMETRY NOBODY WAS MODELLING.
+            # board_geom extrudes each part UPWARD from the board's top face and stops, so
+            # a THT connector's posts -- 3.4 mm below the board on an XH -- did not exist
+            # in the CAD at all. Every overlap check therefore passed on boards whose posts
+            # run into whatever the board is mounted against, which for the LED strip is
+            # the rail wall its back sits ON. This is the same defect the project already
+            # recorded once as "post tails collide along the INSTALL STROKE, not at rest".
+            # The extent is enough to place a tail block; the drill sizes are not needed.
+            "tht": _tht_bbox(fp, cx, cy),
         })
     out["footprints"].sort(key=lambda f: f["ref"])
     dst = os.path.join(GEOM_DIR, os.path.basename(stem) + ".geom.json")

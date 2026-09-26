@@ -18,7 +18,8 @@
     -3.275,
     -1.925
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C10",
@@ -33,7 +34,8 @@
     6.2,
     6.8
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C11",
@@ -48,7 +50,8 @@
     6.2,
     6.8
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C12",
@@ -63,7 +66,8 @@
     6.2,
     6.8
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C20",
@@ -78,7 +82,8 @@
     4.6,
     5.2
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C21",
@@ -93,7 +98,8 @@
     4.6,
     5.2
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C22",
@@ -108,7 +114,8 @@
     4.6,
     5.2
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C30",
@@ -123,7 +130,8 @@
     2.25,
     3.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C31",
@@ -138,7 +146,8 @@
     2.25,
     3.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C32",
@@ -153,7 +162,8 @@
     2.25,
     3.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D1",
@@ -168,7 +178,8 @@
     3.95,
     9.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D2",
@@ -183,7 +194,8 @@
     3.95,
     9.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D3",
@@ -198,7 +210,8 @@
     3.95,
     9.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D4",
@@ -213,7 +226,8 @@
     3.95,
     9.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D5",
@@ -228,7 +242,8 @@
     3.95,
     9.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D6",
@@ -243,7 +258,8 @@
     3.95,
     9.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D7",
@@ -258,7 +274,8 @@
     3.95,
     9.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D8",
@@ -273,7 +290,8 @@
     3.95,
     9.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D9",
@@ -288,7 +306,8 @@
     3.95,
     9.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J1",
@@ -303,7 +322,13 @@
     -7.5,
     4.6
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    -62.785,
+    -61.435,
+    -7.125,
+    4.225
+   ]
   },
   {
    "ref": "J2",
@@ -318,7 +343,13 @@
     -7.5,
     4.6
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    67.825,
+    69.175,
+    -7.125,
+    4.225
+   ]
   },
   {
    "ref": "R1",
@@ -333,7 +364,8 @@
     7.78,
     8.42
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R2",
@@ -348,7 +380,8 @@
     7.78,
     8.42
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R3",
@@ -363,7 +396,8 @@
     7.78,
     8.42
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U1",
@@ -378,7 +412,8 @@
     -5.9,
     0.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U2",
@@ -393,7 +428,8 @@
     -5.9,
     0.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U3",
@@ -408,7 +444,8 @@
     -5.9,
     0.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   }
  ],
  "outline_poly": [
