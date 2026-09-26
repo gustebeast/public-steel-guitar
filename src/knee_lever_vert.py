@@ -321,17 +321,53 @@ def _housing() -> cq.Workplane:
     _env = _env.intersect(box_at(400.0, 400.0, HOUS_Z1 - (HOUS_Z0 - 50.0),
                                  x=0.0, y=0.0, z=(HOUS_Z1 + HOUS_Z0 - 50.0) / 2))
     w = w.cut(_env)
-    # SLOT OVER THE ARM'S EXIT, out through the +X face, shaped as a HOUSE (user, 2026-09-10).
-    # It used to be a box open all the way up through the top face and the tenons. The arm
-    # meets the instrument's underside at ~15.7 deg, and inside this X span it never climbs
-    # above ~z 17.6, so the walls stop at the swept envelope's own top there (clearance is
-    # already in the envelope) and a 45 deg roof closes the rest. The roof's peak lands above
-    # the top face, so it opens through as a narrow slot with no flat ceiling anywhere (the
-    # reason the top was opened in the first place: a flat roof over the arm's full-throw
-    # position was a 53 mm2 overhang). Both mount tenons now stand on solid material.
-    _pts = [(-_hw, -HUB_D / 2), (_hw, -HUB_D / 2), (_hw, _zw), (0.0, _zw + _hw), (-_hw, _zw)]
-    w = w.cut(cq.Workplane("YZ", origin=(_x0, 0.0, 0.0)).polyline(_pts).close()
-              .extrude(_x1 - _x0))
+    # THE INSTALL ROOM = THE MOTION THAT INSTALLS IT, swept (user, 2026-09-25: "let's redo
+    # the arm exit slot based on the room we actually need for installation. That would mean
+    # moving the lever up just enough to clear the small indent it has in the floor below it
+    # and then sweeping it out towards -y").
+    #
+    # WHAT WAS THERE was a house-profile slot 26.4 wide running the full height, and it was
+    # a guess at the motion rather than the motion. Two faults followed from that, both
+    # found by the user in the viewer and neither visible to any check here:
+    #   its height was taken from the swept envelope's REACH, ten mm above anything that
+    #     passes through it, and since the roof then had to duck a mount tenon's root it
+    #     was what capped the lever's own sweep six degrees short of the chassis;
+    #   its inboard end was a vertical wall at _x0 standing on a 17 mm void -- 44.47 mm2
+    #     of face with nothing under it, and everything above it unsupported.
+    # A cut shaped like the motion cannot have either: it is bounded by the lever's own
+    # section, and it ENDS at the lever's rest pose, which is inside the room already.
+    #
+    # THE LIFT IS THE SEAT'S OWN DEPTH, read off the envelope rather than typed: the room
+    # follows the lever, so the dip the hub sits in IS the envelope's own dip, 2.78 here.
+    _at = lambda x: (_lever_envelope().val()
+                     .intersect(box_at(1.0, 400.0, 400.0, x=x, y=0.0, z=0.0).val())
+                     .BoundingBox().zmin)
+    _lift = _at(0.0) * -1 + _at(HUB_D / 2 + 2.0)      # seat bottom -> the floor outside it
+    _draw = (HOUS_X1 + 2.0) - _lever_envelope().val().BoundingBox().xmin
+    _ins = None
+    for dz in [j * 0.5 for j in range(0, int(_lift / 0.5) + 2)]:
+        c = _lever_envelope().translate((0.0, 0.0, min(dz, _lift)))
+        _ins = c if _ins is None else _ins.union(c)
+    _top = _lever_envelope().translate((0.0, 0.0, _lift))
+    for dx in [j * 2.0 for j in range(1, int(_draw / 2.0) + 2)]:
+        _ins = _ins.union(_top.translate((min(dx, _draw), 0.0, 0.0)))
+    # ...AND THE SLIVER OF RIB LEFT ABOVE IT. The strip between the two cartridge pockets
+    # is 2.1 wide; the sweep takes it from below and the lever room takes it from above,
+    # and what was left in between was 2.87 of rib standing on nothing -- a 25.7 mm2 flat
+    # ceiling and a 6 mm2 end face with no material under either. Carrying the cut on up
+    # through that band deletes it. It costs nothing structural: at 2.1 wide the rib is
+    # already the thinnest thing in the part, and over this span it is in three pieces.
+    _rib = (abs(KL.HS_YC) - KL.HS_POCKET_HW) + KL.HS_CLR
+    _ib = _ins.val().BoundingBox()
+    # ...and OUT THROUGH THE TOP, not stopping at HOUS_Z1. Stopped at the top face it left
+    # the CENTRE mount tenon roofing it -- 53.5 mm2 of new flat ceiling where the old one
+    # had been 25.7. That tenon stands on this centreline and the old slot cut it away by
+    # design; the cut has to carry on through it for the same reason.
+    _zt = HOUS_Z1 + KL.TEN_H + 1.0
+    _ins = _ins.union(box_at(_ib.xlen, 2 * _rib, _zt - _ib.zmax,
+                             x=(_ib.xmin + _ib.xmax) / 2.0, y=0.0,
+                             z=(_ib.zmax + _zt) / 2.0))
+    w = w.cut(_ins)
     w = KL.cut_axle_stack(w)       # bearing seats + contact rib + axle way
     w = KL.cut_feel_pockets(w, vplace, HOUS_X1)
     # SENSOR CRADLE — knee_lever's, parameterised by this housing's Z extents
