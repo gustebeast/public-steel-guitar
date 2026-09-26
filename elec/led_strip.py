@@ -236,9 +236,18 @@ _V5_SPINE_Y = 8.3 + _YO            # above the 5 mm LED packages (they end at 7.
 # strip chains left to right with no rotation on either. The old 270/90 pair belonged to the
 # side-entry PH, whose mouth was its footprint's +Y.
 # Origin is PAD 1, so the row is centred by dropping half its 10 mm span.
+# ⚠ THE ROW HAS TO CLEAR THE SLOT TAB, which centring it on _YO does not. The bottom
+# SLOT_TAB (4.0) of this board is blank laminate that sits DOWN IN the chassis groove
+# (chassis.LED_SLOT_D), so nothing may be fitted below y -BOARD_L/2 + SLOT_TAB = -8.0.
+# Centred, the 12.1 mm connector body reached -9.05 -- 1.05 into the groove -- and every
+# section collided with the chassis in a thin band at its J1. Sit the body 0.5 above the
+# tab instead; the row is 10 mm of pads in a 20 mm usable height, so it fits easily once
+# it is measured against the tab rather than the board.
 _J_ROW = 5.0 * 2.0                                   # 6 pads at 2.00 mm
-_place = {"J1": (-BOARD_W / 2 + 8.14, _YO - _J_ROW / 2, 0.0),
-          "J2": (BOARD_W / 2 + LED_JOINT_GAP + LED_ENGAGE - 7.75, _YO - _J_ROW / 2, 0.0),
+_J_FAB_LO = -9.05 - (_YO - _J_ROW / 2)               # body bottom, relative to the anchor
+_J_Y = (-BOARD_L / 2 + SLOT_TAB + 0.5) - _J_FAB_LO
+_place = {"J1": (-BOARD_W / 2 + 8.14, _J_Y, 0.0),
+          "J2": (BOARD_W / 2 + LED_JOINT_GAP + LED_ENGAGE - 7.75, _J_Y, 0.0),
           "C1": (_LED_X[0], _DRV_Y, 0.0)}
 for i, x in enumerate(_LED_X):
     _place["D%d" % (i + 1)] = (x, _LED_Y, 0.0)
