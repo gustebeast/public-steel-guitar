@@ -209,15 +209,23 @@ four-net retry took 6 unconnected to 9.
     already computes (its islands() + ratlines()). Not done at 03:30 on a shared routine
     every board uses, with a 45-minute verification cycle.
 
-## optical: open a north-south lane on the EAST board edge (user, 2026-09-25)
+## optical: open a north-south lane on the EAST board edge (user, 2026-09-25) -- TRIED, NO GAIN
 The crystal/oscillator column at the board's east edge -- Y1 (OSC_IN/OSC_OUT), the MID
 divider, PHY_XI/PHY_XO/PHY_RBIAS and their GND pads -- sits hard against the edge, so the
 strip between it and Edge.Cuts carries nothing. Moving that column slightly WEST opens a
 full-height routing lane along the east edge, which is exactly the direction the ULPI and
 SAI traffic wants to run. The MCU (U6) likely has to move west with it, since the column's
 x is set off the MCU's east face.
-Worth doing when a route stalls on the PHY/ULPI nets again: it is a bigger lever than
-corridor width, which is now capped at 7 mm by the endplate's conduit limit.
+TRIED 2026-09-25 and it did not pay. Two findings worth keeping:
+ * the column is anchored to the ROW BAND's east limit (x1 = TAIL_X1 - EDGE_KEEP), NOT to
+   _part_x("U6"). Backing the MCU off its mount 3.0 mm moved the MCU and the lane not at
+   all. The user's reading that the MCU would have to move was reasonable and the
+   measurement says otherwise.
+ * reserving the lane costs BOARD LENGTH, which was capped by the USB-C overmold. Freeing
+   that (see PLUG_L) let a 3 mm lane and a 9 mm corridor in, and the result was 5
+   unconnected / 0 unexpected -- exactly what the shorter board gives. No gain.
+So the lane is available if something else ever makes it worth 2.2 mm of board, but it is
+not the lever it looked like.
 
 ## optical: hand-place the vias instead of letting the router pick (user, 2026-09-25)
 "consider moving automatic via generation to manually specified positions. There are also
@@ -267,13 +275,13 @@ chassis. STILL OPEN from this item: the 4.3 mm connector heights are ESTIMATES a
 LCSC codes are unverified, so nothing may be ordered; and the parts are THROUGH-HOLE while
 the board's back sits on the rail wall, so the tails still need a relief.
 
-## optical: the USB cable now clips the endplate (2026-09-25, OPEN)
+## optical: the USB cable clipped the endplate (2026-09-25, RESOLVED)
 94.2 mm3, optical_cable_usb <-> bridge_endplate, at y -126.78..-125.30 -- the 1.5 mm band
 of endplate just +Y of the conduit mouth. NOT caused by shrinking the conduit: it is the
 BOARD GROWING. CONDUIT_Y1 = PCB_YM - 2.0, so lengthening the board (188.53 -> 190.73 for
 the 9 mm corridor + 3 mm east lane) walked the conduit mouth south with it and left
 material between the board's edge and the shaft, which the cable's horizontal run crosses.
-Decide by measurement: route 7.0/0.0 WITH the by-name escapes and compare against the
-9.0/3.0 result. If the extra 2.2 mm of board is not buying unconnected nets, revert the
-corridor, the east lane AND the 14.0 mm cable requirement together and this goes away. If
-it IS buying them, the conduit's +Y mouth has to reach the board edge instead.
+RESOLVED by that measurement. Both configurations give 5 unconnected / 0 unexpected --
+identical -- so the 2.2 mm bought nothing and the corridor, the east lane and the 14.0 mm
+cable requirement all reverted together. Collision 0.00 mm3, board back to 188.53, and no
+constraint on which USB-C cable the owner may use.
