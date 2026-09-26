@@ -2986,11 +2986,13 @@ BOARD_NOTES = {
     # 27.32 mm away, so VDDA reached its rail across the board. That is poor decoupling
     # whether or not the router ever closes it, and +3V3A has been in the failure list of
     # nearly every routing this board has had.
-    # U7.9 added alone. It was in the pair that made things worse (8 unconnected) when
-    # added alongside U18.18, which is exactly why the rule is ONE AT A TIME -- the pair's
-    # result said nothing about either member. Its nearest +3V3D via is 3.81 mm and it is
-    # the PHY's other supply pin, the one pad 16 could not reach across the thermal pad.
-    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16", "U6.38", "U7.9"),
+    # ⚠ U7.9 IS NOT HERE, AND IT WAS TESTED TWICE. In a pair with U18.18 it gave 8
+    # unconnected; alone it gave 6, against 3 without it. So the pair's bad result was not
+    # U18.18's fault -- U7.9 is simply a position the PHY's other nets need more than pad 9
+    # does. It is the clearest case on this board of an escape via costing more than it
+    # buys: pad 9 sits in the middle of the PHY's west fan, and taking a via there pushes
+    # ULPI_D0, ULPI_D5 and SAI_SD2 out of theirs.
+    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16", "U6.38"),
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
