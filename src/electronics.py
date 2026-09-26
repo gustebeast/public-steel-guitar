@@ -674,6 +674,43 @@ def led_pin(i, ref, n, count=6, pitch=2.0):
     return ((bb.xmin + bb.xmax) / 2.0, (bb.ymin + bb.ymax) / 2.0, (bb.zmin + bb.zmax) / 2.0)
 
 
+LED_RELIEF_CLR = 0.5
+
+
+def led_wall_reliefs():
+    """Pockets in the +Y rail for the LED connectors' through-hole tails.
+
+    ⚠ THE TAILS WERE NEVER MODELLED, so nothing ever saw this. board_geom extruded every
+    part UPWARD from the board's top face and stopped, and these boards sit with their BACK
+    ON the wall (LED_Y0), so 3.4 mm of post per connector ran straight into it -- 364 mm3
+    across the strip, and every overlap check passed. The project had already recorded the
+    shape of this once ("post tails collide along the INSTALL STROKE, not at rest"); what
+    was missing was the geometry to collide WITH.
+    The wall is 10.40 thick and the tails need 3.40, so a relief leaves about 6.5 mm of it.
+    ⚠ DERIVED FROM WHAT ACTUALLY PENETRATES, like the motor controller's floor ports: ask
+    the posed sections which of them is inside the wall band and pocket that, rather than
+    restating connector coordinates that would go stale the next time the joint moves.
+    """
+    from . import chassis as CH
+    band = box_at(4000.0, CH.T + 2.0, 200.0,
+                  x=0.0, y=CH.LED_Y0 + (CH.T + 2.0) / 2.0 - 1.0, z=0.0)
+    out = []
+    for _n, sec in led_sections():
+        inside = sec.intersect(band)
+        try:
+            solids = inside.val().Solids()
+        except Exception:
+            continue
+        for sol in solids:
+            bb = sol.BoundingBox()
+            c = LED_RELIEF_CLR
+            out.append(box_at(bb.xlen + 2 * c, CH.T + 2.0, bb.zlen + 2 * c,
+                              x=(bb.xmin + bb.xmax) / 2.0,
+                              y=CH.LED_Y0 + (CH.T + 2.0) / 2.0,
+                              z=(bb.zmin + bb.zmax) / 2.0))
+    return out
+
+
 def led_sections() -> list:
     """The four RGBW sections standing in the +Y rail's channel, facing -Y.
 

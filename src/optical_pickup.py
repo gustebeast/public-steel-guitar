@@ -3021,7 +3021,7 @@ CONDUIT_CLR = 1.5
 # four circuits -- carrying 1=GND 2=+24V 3=+24V 4=GND and nothing else. This constant is
 # a SIX-way housing, and by its own formula a 4-way is 12.4 rather than 17.40.
 #
-# It is not cosmetic, because _COND_PASS below takes max(_XH6_W, _USBC_W): the conduit is
+# It is not cosmetic, because _COND_PASS below takes max(_XH4_W, _USBC_W): the conduit is
 # sized to pass a plug 5 mm wider than the one that exists, through an endplate wall this
 # file already asserts is out of room. opt_cables() draws the same 6-way plug and a
 # six-conductor bundle for a four-conductor cable.
@@ -3233,7 +3233,7 @@ def opt_cables(which: str = "all") -> cq.Workplane:
     # to 40.2 -- because both leads then turned down at the same y. The offsets were the
     # actual fault.)
     for ref, w, h, od, xoff in (("J1", _USBC_W, _USBC_H, USB_OD, +2.2),
-                                ("J2", _XH6_W, _XH6_D, XH_OD, -2.2)):
+                                ("J2", _XH4_W, _XH4_D, XH_OD, -2.2)):
         if ref not in _WANT:
             continue
         p, plen = part(ref), PLUG_L[ref]
@@ -3257,7 +3257,7 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         for q in ("J1", "J2"):
             if q == ref:
                 continue
-            qx, qw = part(q)["x"], (_USBC_W if q == "J1" else _XH6_W)
+            qx, qw = part(q)["x"], (_USBC_W if q == "J1" else _XH4_W)
             if lo < qx + qw / 2 and hi > qx - qw / 2:
                 backs.append(PCB_YM - PLUG_L[q])       # crosses q: clear q's back face too
                 crosses.append(q)

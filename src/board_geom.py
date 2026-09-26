@@ -132,6 +132,14 @@ _XH_MATED_H = 9.8
 # reach above it; confirm off JST's ePH drawing (the same pages cadkit's PH_SIDE_* were
 # rendered from) before a housing is cut to it.
 _PH_MATED_H = 8.0
+# ⚠ A THROUGH-HOLE PAD HAS A TAIL, and until now the CAD modelled none of them: solid()
+# extrudes every part UPWARD from the board's top face, so a THT connector's posts simply
+# did not exist. Every overlap check therefore passed on boards whose posts run into
+# whatever they are mounted against -- for the LED strip, the rail wall its back sits ON.
+# 3.4 is cadkit.pcb.XH_POST_TAIL, the protrusion below the board on an untrimmed XH post,
+# and it is the right order for any 2.00/2.54 header. Trimming is an assembly step nobody
+# has specified, so model the untrimmed case: it is the one that has to fit.
+_THT_TAIL = 3.4
 
 # ⚠ A SIDE-ENTRY CONNECTOR'S PLUG LEAVES THROUGH THE BOARD EDGE, and until now solid()
 # modelled none of it: the mated branch below tested for "Vertical" only, so every
@@ -281,6 +289,11 @@ def solid(board: str, mated: bool = False, omit: tuple = ()) -> cq.Workplane:
             h = _PH_MATED_H
         if h <= 0.0:
             continue
+        if f.get("tht"):
+            tx0, tx1, ty0, ty1 = f["tht"]
+            out = out.union(box_at(tx1 - tx0, ty1 - ty0, _THT_TAIL,
+                                   x=(tx0 + tx1) / 2.0, y=(ty0 + ty1) / 2.0,
+                                   z=-_THT_TAIL / 2.0))
         x0, x1, y0, y1 = f["fab"]
         # A SIDE-ENTRY PART GROWS ALONG THE BOARD, NOT UPWARD (see _SIDE_PLUG_RUN). The
         # mating axis is whichever of X/Y the footprint is turned onto, and the mouth is

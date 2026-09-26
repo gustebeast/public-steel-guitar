@@ -266,3 +266,14 @@ against the TAB now, not the board, and the LED sections measure 0.00 mm3 agains
 chassis. STILL OPEN from this item: the 4.3 mm connector heights are ESTIMATES and the
 LCSC codes are unverified, so nothing may be ordered; and the parts are THROUGH-HOLE while
 the board's back sits on the rail wall, so the tails still need a relief.
+
+## optical: the USB cable now clips the endplate (2026-09-25, OPEN)
+94.2 mm3, optical_cable_usb <-> bridge_endplate, at y -126.78..-125.30 -- the 1.5 mm band
+of endplate just +Y of the conduit mouth. NOT caused by shrinking the conduit: it is the
+BOARD GROWING. CONDUIT_Y1 = PCB_YM - 2.0, so lengthening the board (188.53 -> 190.73 for
+the 9 mm corridor + 3 mm east lane) walked the conduit mouth south with it and left
+material between the board's edge and the shaft, which the cable's horizontal run crosses.
+Decide by measurement: route 7.0/0.0 WITH the by-name escapes and compare against the
+9.0/3.0 result. If the extra 2.2 mm of board is not buying unconnected nets, revert the
+corridor, the east lane AND the 14.0 mm cable requirement together and this goes away. If
+it IS buying them, the conduit's +Y mouth has to reach the board edge instead.
