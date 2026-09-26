@@ -90,6 +90,16 @@ HEIGHT = {
     # is the standoff between the Pi's top face and the cap's underside, not a bump on the
     # cap. src/electronics.py uses the same number to place the cap; it is written once here.
     "PinSocket_2x20_P2.54mm_Vertical": 8.5,
+    # The LED strip's board-to-board joint (elec/led_strip.py): a right-angle header on one
+    # section's +X end entering a right-angle socket on the next section's -X end.
+    # ⚠ ESTIMATES, NOT READ -- same standing as _PH_MATED_H below. They MUST be equal,
+    # because two connectors only mate if their contact axes are the same height above their
+    # boards, and these boards are coplanar in the rail. 4.3 is the insulation height LCSC
+    # lists for the 2.00 mm right-angle female (HX PM2.0-1x6P WC). Confirm both off the
+    # chosen parts' drawings before anything is ordered; if they differ, the joint does not
+    # close and the strip is four separate boards again.
+    "PinHeader_1x06_P2.00mm_Horizontal": 4.3,
+    "PinSocket_1x06_P2.00mm_Horizontal": 4.3,
     "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
     "JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H --
                                     # motor_ctrl J2/J6, the bus-B pair on the edge
@@ -242,7 +252,7 @@ def mouth(board: str, ref: str) -> dict:
     return dict(dir=d, front=front, across=across, axis_h=spec["axis_h"], spec=spec)
 
 
-def solid(board: str, mated: bool = False) -> cq.Workplane:
+def solid(board: str, mated: bool = False, omit: tuple = ()) -> cq.Workplane:
     """The board in its OWN frame: centred on the origin in XY, underside at z = 0, parts
     rising +Z. Every part is its routed F.Fab body extruded to its HEIGHT, and a panel
     connector with a nose gets that too. `mated=True` stands every top-entry XH at its
@@ -256,6 +266,12 @@ def solid(board: str, mated: bool = False) -> cq.Workplane:
         raise KeyError("%s: no HEIGHT for %s -- a part with no height is a part the CAD "
                        "would silently leave out" % (board, ", ".join(missing)))
     for f in g["footprints"]:
+        if f["ref"] in omit:
+            # ⚠ A REF THE BOARD CARRIES BUT THIS INSTANCE DOES NOT FIT. The LED strip's
+            # last section has no next section, so its outgoing header is DNP -- and left
+            # modelled it projects past the seat and into the chassis (16.4 mm3), which
+            # reads as a board that is too long rather than a part that is not there.
+            continue
         if not f["fab"]:
             continue                               # solder jumpers: flat copper
         h = HEIGHT[fp_name(f["fpid"])]
