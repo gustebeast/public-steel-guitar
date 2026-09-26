@@ -1002,11 +1002,17 @@ def build_wires():
     for _n, _nm in ((1, "gnd_a"), (2, "v5_a"), (3, "v5_b"), (4, "gnd_b"),
                     (5, "sck"), (6, "sdi")):
         _a = EL.pi_cap_pin("J3", _n)
-        _b = EL.led_pin(0, "J1", _n)
+        _b = EL.led_pin(0, "J1", _n, at="mouth")   # stop at the face, not the pad
         _al = (_a[0], _a[1], _a[2] - CAP_LEAD_IN)
-        _bl = (_b[0], _b[1] - CAP_LEAD_IN, _b[2])             # off the strip's mouth, -Y
+        # ⚠ THE STRIP'S MOUTH FACES -X NOW, NOT -Y. It was a side-entry PH whose mouth was
+        # its footprint's +Y; the sections mate to each other directly now (elec/led_strip
+        # J1/J2), so J1 is a right-angle SOCKET opening along the board's -X -- which
+        # _led_place carries straight through to world -X. Approaching from -Y would drive
+        # this lead through the connector body and the board behind it.
+        _bl = (_b[0] - CAP_LEAD_IN, _b[1], _b[2])             # off the strip's mouth, -X
         out.append(("wire_led_%s" % _nm, _wire(
-            [_a, _al, (_al[0], _bl[1], _al[2]), (_bl[0], _bl[1], _al[2]), _bl, _b],
+            [_a, _al, (_al[0], _al[1], _bl[2]), (_bl[0], _al[1], _bl[2]),
+             (_bl[0], _bl[1], _bl[2]), _bl, _b],
             WIRE_OD["wire_oled"])))
 
     # -- J4, the LED strip's 5 V IN. ⚠ DRAWN AS A STUB ON PURPOSE: nothing feeds it yet.
