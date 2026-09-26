@@ -3010,6 +3010,21 @@ BOARD_NOTES = {
     # So this costs the rail essentially nothing -- it is the straight line with a nudge.
     # The run is laid by layout FROM THE VIA IT PLACED, not from coordinates written here:
     # a hard-coded escape position went stale once already when the board's length changed.
+    # ⚠ ULPI_D0 IS NOT HERE, AND THE REASON IS WORTH THE SPACE, because the measurement
+    # that justified it was RIGHT and the attempt still failed. Its direct inner line is
+    # blocked by just two vias, not a wall; a bend at (10.0, -68.0) clears both at 30.1 mm
+    # against 29.5 direct; a via fits at (14.70, -70.43), 2 mm short of U7.4. Routed, it
+    # closed ULPI_D0 AND ULPI_D5 -- 2 unconnected, the best this board has measured.
+    # But it also laid a short and a clearance error, because an escape_run starts at the
+    # via LAYOUT CHOSE, 1.25 mm south of the pad, and the path was verified from the PAD.
+    # The line actually laid was a different one and it ran past a GND via; the escape via
+    # itself landed 0.075 mm from a GND stitch track (0.127 needed).
+    # 2 unconnected with 2 DRC ERRORS is worse than 3 with none -- a violation is a fab
+    # fault, an unrouted net is a known gap someone finishes by hand -- so this comes out
+    # until it can be done properly. A search for a via site that carries BOTH a clear
+    # F.Cu stub and a clear inner run found none within 2.8 mm of the pad, but the
+    # waypoint it was tested against was itself derived from the pad: the honest next step
+    # is a JOINT search over (via site, waypoint), not a sequential one.
     "escape_runs": {"U6.38": ("In2.Cu", [(-9.00, -41.00), (-20.08, -21.08)])},
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),

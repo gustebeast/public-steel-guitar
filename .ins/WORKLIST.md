@@ -365,3 +365,21 @@ plus a double-ended PHR-to-PHR cable is a perfectly ordinary joint; what is miss
 the three INTER-SECTION CABLES were never modelled -- only the Pi lead was. A chain of
 connectors with no cable drawn between them is exactly what "the connectors don't make
 sense" looks like from a render. Model those three, then resubmit.
+
+## optical: ULPI_D0 and ULPI_D5 ARE separable from SAI_FS (measured 2026-09-26)
+I had asserted all three remaining nets were one MCU-to-PHY congestion problem. Per-net
+measurement says otherwise, and the run that tested it reached 2 unconnected -- the best
+this board has managed:
+ * ULPI_D5 CLOSED on its own once ULPI_D0 stopped competing for the same lane.
+ * ULPI_D0's direct inner line is blocked by just TWO VIAS, not a wall. A bend at
+   (10.0, -68.0) clears both at 30.1 mm against 29.5 direct, and a via fits at
+   (14.70, -70.43), 2.0 mm short of U7.4 -- leaving the router a 2 mm hop, not a 29 mm one.
+ * SAI_FS remains the only one with a verified structural block.
+⚠ BUT THE RUN MUST BE VERIFIED FROM THE VIA, NOT THE PAD. layout lays an escape_run from
+the via IT chose, 1-2 mm off the pad, so a pad-to-target check measures a different line.
+Verified from the pad, ULPI_D0's run was laid past a GND via: 1 short + 1 clearance error,
+and the escape via itself landed 0.075 mm from a GND stitch track (0.127 needed) because
+_stitch_plane_pads has no knowledge of a neighbour's escape.
+So EITHER lay out once and re-verify from the via that appears, OR declare the whole
+escape -- F.Cu stub, via, inner run -- at coordinates checked together. The placement is
+stable at 188.53 now, so the second is viable; it was only unsafe when board length moved.

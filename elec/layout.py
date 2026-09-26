@@ -3351,6 +3351,14 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             # via's x/y there, and a hard-coded escape position goes stale the moment any
             # placement moves -- it already did once, leaving stubs at angles through paths
             # nobody had checked. Here the position is not a guess, it is where the via is.
+            # ⚠ VERIFY AN escape_run FROM THE VIA, NOT FROM THE PAD. The run starts HERE,
+            # at a position this search chose, which is typically 1-2 mm off the pad -- so
+            # a path measured pad-to-target is a DIFFERENT line from the one laid. ULPI_D0
+            # was verified clear from its pad and then laid from a via 1.25 mm south of it,
+            # straight past a GND via: one short and one clearance error. The via position
+            # is not knowable before layout runs, so either lay out once and re-verify from
+            # the via that appears, or declare the whole escape (stub + via + run) at
+            # coordinates checked together.
             _run = (escape_runs or {}).get("%s.%s" % (fp.GetReference(), pad.GetNumber()))
             if _run:
                 _lay_name, _pts = _run
