@@ -2968,11 +2968,15 @@ BOARD_NOTES = {
     # the stub with it, which is exactly the operation needed, so these just name the pins.
     # ⚠ BY REF.PAD, NOT BY COORDINATE -- the coordinates version went stale the moment the
     # board's length changed and every pad moved 1.1 mm out from under its declared via.
-    # Added as each one showed up as "disconnected at a pad with no via": U7.9 (+3V3D on
-    # the PHY) and U18.18 (I2C2_SDA at the last converter) are the same shape as the first
-    # three, and the first three took the board from 7 unconnected to 5 with no ULPI net
-    # failing at all.
-    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.9", "U18.18"),
+    # ⚠ MORE ESCAPES IS NOT MONOTONICALLY BETTER, and that is worth recording because the
+    # mechanism looks like it should be. These three took the board from 7 unconnected to
+    # 5 with no ULPI net failing at all. Adding U7.9 (+3V3D on the PHY) and U18.18
+    # (I2C2_SDA at the last converter) -- both the same "disconnected at a pad with no via"
+    # shape -- took it to EIGHT, and broke ULPI_NXT, SAI_SD2 and SAI_SD4, which had been
+    # fine. An escape via is not free: it claims a position in the same crowded fan the
+    # other pins escape through. Add one only for a pin that is actually failing, and
+    # measure after each.
+    "pin_escapes": ("U6.3", "U7.5", "U7.11"),
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to

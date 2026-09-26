@@ -660,7 +660,7 @@ def _led_place(shape, i):
     return shape.rotate((0, 0, 0), (1, 0, 0), 90.0).translate((cx, CH.LED_Y0, zc))
 
 
-def led_pin(i, ref, n, count=6, pitch=2.0):
+def led_pin(i, ref, n, count=6, pitch=2.0, at="pad"):
     """World point of pin `n` on section `i`'s connector `ref`, off the ROUTED footprint."""
     f = BG.footprint("led_strip", ref)
     x0, x1, y0, y1 = f["fab"]
@@ -670,7 +670,27 @@ def led_pin(i, ref, n, count=6, pitch=2.0):
     else:
         px = (x0 + x1) / 2.0
         py = (y0 + y1) / 2.0 + (n - (count + 1) / 2.0) * pitch
-    bb = _led_place(box_at(0.01, 0.01, 0.01, x=px, y=py, z=0.0), i).val().BoundingBox()
+    # ⚠ THE CONTACT, NOT THE UNDERSIDE. z=0 in the board frame is the face that ends up
+    # AGAINST THE RAIL once _led_place stands the section up, so every lead drawn to this
+    # point terminated inside the laminate -- 7.44 mm3 each, six of them, and it read as
+    # the cable being mis-routed rather than as the target being on the wrong face.
+    # Land on the connector's contact axis instead: the board's top face plus half the
+    # part's height, both read from board_geom so neither can drift from the footprint.
+    # ⚠ at="mouth" STOPS AT THE CONNECTOR'S FACE, and a lead wants that rather than the
+    # pad. Drawn to the PAD, a cable runs the whole length of the connector's body to get
+    # there, so it overlaps the very part it plugs into -- 7.26 mm3 per conductor, six of
+    # them. That is real geometry, not an artefact to declare away. The mouth is the end of
+    # the fab body furthest from the pads, which is where a plug actually stops.
+    _g = BG.load("led_strip")
+    _h = BG.HEIGHT.get(BG.fp_name(f["fpid"]), 0.0)
+    if at == "mouth":
+        # ⚠ MEASURE FROM THE PADS, NOT THE BODY'S CENTRE. px is the fab centre here, which
+        # is equidistant from both ends, so "the end furthest from px" is a coin toss and
+        # it landed on the wrong one -- the mouth came out 3.9 mm INSIDE the board. The
+        # pads are at the footprint's own origin, and the mouth is the end away from them.
+        px = x0 if abs(x0 - f["x"]) > abs(x1 - f["x"]) else x1
+    bb = _led_place(box_at(0.01, 0.01, 0.01, x=px, y=py,
+                           z=_g["thickness_mm"] + _h / 2.0), i).val().BoundingBox()
     return ((bb.xmin + bb.xmax) / 2.0, (bb.ymin + bb.ymax) / 2.0, (bb.zmin + bb.zmax) / 2.0)
 
 
