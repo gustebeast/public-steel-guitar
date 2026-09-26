@@ -253,13 +253,16 @@ do not make sense as drawn. Two things:
     Model it like the other harnesses (src/wiring.py) so the route is real geometry.
 Resubmit once both are right so the lead can take the LED work.
 
-## LED strip: connector bodies foul a chassis feature (found 2026-09-25, OPEN)
+## LED strip: connector bodies fouled the slot tab (2026-09-25, RESOLVED)
 After the board-to-board joint went in, every section overlaps the chassis in a thin band
 at y 52.05..53.65, z -40.28..-39.23 -- 0.3..1.9 mm in FRONT of the board face and about
 3 mm up from the slot floor (LED_BOARD_BOT -43.23). The patches sit at the -X end of each
 section, i.e. at J1, so the 4.3 mm socket body is the suspect; led_strip_0's overlap runs
 the board's WHOLE length, which is a different feature and may pre-date the connector work.
-Check both before submitting: (a) is the full-length one present on main without this
-change, (b) does the socket need the rail relieved, or the board's connector row raised.
-The 4.3 mm heights in board_geom are ESTIMATES -- confirm them off the chosen parts first,
-since the collision depth is the same order as the error in that guess.
+RESOLVED: it was (b), and it was mine. The bottom SLOT_TAB (4.0) is blank laminate that
+sits DOWN IN the chassis groove, so nothing may be fitted below y -8.0 -- and centring the
+12.1 mm connector body on _YO put it at -9.05, 1.05 into the groove. The row is placed
+against the TAB now, not the board, and the LED sections measure 0.00 mm3 against the
+chassis. STILL OPEN from this item: the 4.3 mm connector heights are ESTIMATES and the
+LCSC codes are unverified, so nothing may be ordered; and the parts are THROUGH-HOLE while
+the board's back sits on the rail wall, so the tails still need a relief.

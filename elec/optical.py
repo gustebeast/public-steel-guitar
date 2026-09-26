@@ -1796,10 +1796,24 @@ def _pin_escapes():
 # steps out from the pad, so it is measured rather than chosen -- the discipline every
 # declared via on this board needs, since none of them are clearance-checked when laid.
 #   pad                     via                  what it unblocks
+# ⚠ THE SITE AND THE STUB PATH BOTH HAVE TO BE CLEAR, and the first two scans checked only
+# the site. A declared escape is a via AND the short track reaching it, neither of them
+# clearance-checked when laid, so ULPI_D5's stub was run straight across U7 pad 9 -- DRC
+# came back with a short and a mask bridge between +3V3D and ULPI_D5.
+# ⚠ AND A PAD IS A RECTANGLE, NOT A CIRCLE. Scanning with max(size)/2 as a radius inflates
+# a QFP's elongated pad to a 0.75 mm disc, which walls the package in completely: the
+# corrected scan returned NO site for any pin, including the two that had already routed.
+# Measured against the true pad boxes, with the via held to 0.50 from foreign copper and the
+# 0.25 stub to 0.26 (layout._lay's own two margins -- a track is not a via).
+# ⚠ ULPI_D0 (U7.4) AND ULPI_D5 (U7.10) GET NO ENTRY, because the scan says there is nowhere
+# to put one: no position within 4.2 mm clears both the via and its stub. That is the
+# PHY's neighbourhood being full, not a margin to tune -- see the east-edge lane in
+# .ins/WORKLIST.md. Declaring them anyway is what laid the short.
 _PIN_ESCAPES = (
-    ("SAI_FS",  (-6.55, -27.31), (-5.73, -27.09)),   # U6.3, boxed by SD2/SD1's vias
-    ("ULPI_D1", (15.98, -71.35), (16.13, -70.52)),   # U7.5, the PHY's north face
-    ("ULPI_D6", (14.79, -74.04), (13.97, -73.82)),   # U7.11, the PHY's west face
+    ("SAI_FS",  (-6.55, -27.31), (-5.40, -27.31)),   # U6.3, boxed by SD2/SD1's vias
+    ("ULPI_D1", (15.98, -71.35), (15.98, -70.55)),   # U7.5, straight off the north face
+    ("ULPI_D6", (14.79, -74.04), (13.99, -74.04)),   # U7.11, straight off the west face
+) (13.59, -72.73)),   # U7.10, ditto on the PHY
 )
 
 
