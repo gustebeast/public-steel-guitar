@@ -359,22 +359,6 @@ def _housing() -> cq.Workplane:
     # already the thinnest thing in the part, and over this span it is in three pieces.
     _rib = (abs(KL.HS_YC) - KL.HS_POCKET_HW) + KL.HS_CLR
     _ib = _ins.val().BoundingBox()
-    # ...AND IT WIDENS ONCE IT IS PAST THE POCKETS. Between them only the 2.1 rib can go,
-    # but above their roof the CENTRE TENON stands on this same centreline, and a 2.9 slot
-    # up its middle leaves two 1.85 walls perched on the install void -- which is worse
-    # than no tenon (user: "there is still a mysterious 2.9mm wide cut that runs up through
-    # the middle tenon"). This module already says what should happen: that tenon "is
-    # INTERRUPTED over the arm slot's X span... What survives is the -X run, about 60 of
-    # it, which is where this lever's engagement lives anyway." The old slot was wide
-    # enough to do that; the install cut has to widen to do it too.
-    _pk = vplace(KL._hs_pocket(KL.HS_YC, -HOUS_X1 - 1.0, KL.HS_POCKET_BX)).val().BoundingBox()
-    _zt = HOUS_Z1 + KL.TEN_H + 1.0
-    _ins = _ins.union(box_at(_ib.xlen, 2 * _rib, _pk.zmax - _ib.zmax,
-                             x=(_ib.xmin + _ib.xmax) / 2.0, y=0.0,
-                             z=(_ib.zmax + _pk.zmax) / 2.0))
-    _ins = _ins.union(box_at(_ib.xlen, KL._JW + 2 * KL.HS_CLR, _zt - _pk.zmax,
-                             x=(_ib.xmin + _ib.xmax) / 2.0, y=0.0,
-                             z=(_pk.zmax + _zt) / 2.0))
     w = w.cut(_ins)
     w = KL.cut_axle_stack(w)       # bearing seats + contact rib + axle way
     w = KL.cut_feel_pockets(w, vplace, HOUS_X1)
