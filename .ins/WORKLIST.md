@@ -293,12 +293,20 @@ C22465680, 602 in stock, gold, 4.3 mm insulation height). The matching right-ang
 NOT -- LCSC answers "No exact matches". A joint needs both halves, so the pitch moved to
 2.54 where both are stocked everywhere. The row still fits: 16.33 mm of courtyard in the
 20.0 mm of board above the slot tab, gap 3.0, engagement 5.84 measured.
-STILL TO DO before the lead takes it:
- * pick and verify actual LCSC codes for the 2.54 right-angle header AND socket, then run
-   elec/lcsc_check.py. Nothing may be ordered until that passes.
- * confirm the 5.0 mm HEIGHT estimates in board_geom off those parts' drawings. They must
-   be EQUAL for the two halves or the contact axes do not line up and the joint does not
-   close -- the boards are coplanar, so there is no slack to absorb a difference.
+SOURCED 2026-09-26, both halves in stock and verified by elec/lcsc_check.py (47/47 codes
+"point at the part it claims"):
+  male    C32713265  HX PZ2.54-1x6P WZ        16451 in stock
+  female  C50878477  HX FH254-01-06-W-H8.5     1962 in stock
+Found through the LCSC JSON API that lcsc_check already talks to, not the web UI -- the UI
+would not render results for these queries at all and answered "No exact matches" for a
+part that does exist. A keyword search helper is in the session scratchpad.
+⚠ ONE THING STILL UNVERIFIED, and it is the one that decides whether the joint works: the
+MATING AXIS HEIGHT. The female states 8.5 mm; the male's is not in the catalogue. Two
+right-angle connectors mate only if their contact axes sit at the same height above their
+boards, and these sections are coplanar in the rail so nothing absorbs a difference.
+board_geom carries 8.5 for BOTH as a claim to be checked, not a measurement. Read the
+male's drawing before ordering. (The 5.0 that stood there was a guess carried over from
+the 2.00 mm part and was wrong by 3.5 mm.)
 
 ## optical: SAI_FS -- the one net that has failed EVERY routing (re-measured 2026-09-26)
 ⚠ THE EARLIER ENTRY HERE WAS WRONG. It said the FS and SCK spines had to be separated, a
@@ -321,3 +329,14 @@ promising directions, none yet tried: move cell 4's SCK jog so its vertical stop
 the FS spine's end; or give the FS spine its own via pad by jogging its last 1-2 mm east
 away from SCK before turning; or let SAI_FS hand over at a converter stub rather than at
 the spine end.
+
+## optical: the SAI_FS spine has NO reachable via site (searched 2026-09-26, CLOSED)
+Swept the entire FS spine (x 12.65, y -18.89 .. +60) at 0.5 mm steps for a point that both
+(a) has room for a 0.6 via at 0.50 clearance and (b) is reachable from SAI_FS's MCU escape
+via by a clear straight run on B.Cu or In2. NONE. So the "B.Cu run to the spine" idea is
+closed: the corridor to the spine's south END is clear, but no via can land there (cell 4's
+SCK stub), and every site that could take a via cannot be reached.
+What is left for SAI_FS, none tried: stop cell 4's SCK vertical short of the FS spine's
+end; jog the FS spine's last millimetres east away from SCK before it turns; or hand over
+at a converter STUB rather than at the spine. All three are placement changes in
+elec/optical.py's _bus_spines / _SCK_JOG / _FS_SPINE.

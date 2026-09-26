@@ -92,14 +92,18 @@ HEIGHT = {
     "PinSocket_2x20_P2.54mm_Vertical": 8.5,
     # The LED strip's board-to-board joint (elec/led_strip.py): a right-angle header on one
     # section's +X end entering a right-angle socket on the next section's -X end.
-    # ⚠ ESTIMATES, NOT READ -- same standing as _PH_MATED_H below. They MUST be equal,
-    # because two connectors only mate if their contact axes are the same height above their
-    # boards, and these boards are coplanar in the rail. 4.3 is the insulation height LCSC
-    # lists for the 2.00 mm right-angle female (HX PM2.0-1x6P WC). Confirm both off the
-    # chosen parts' drawings before anything is ordered; if they differ, the joint does not
-    # close and the strip is four separate boards again.
-    "PinHeader_1x06_P2.54mm_Horizontal": 5.0,
-    "PinSocket_1x06_P2.54mm_Horizontal": 5.0,
+    # ⚠ 8.5 IS READ, NOT ESTIMATED -- it is the insulation height LCSC states for the female
+    # half actually chosen, HX FH254-01-06-W-H8.5 (C50878477, 1962 in stock). The 5.0 that
+    # stood here was a guess carried over from the 2.00 mm part, and it was wrong by 3.5 mm.
+    # ⚠ THE MALE'S FIGURE IS STILL THE FEMALE'S, and that is deliberate rather than lazy:
+    # two right-angle connectors only mate if their CONTACT AXES sit at the same height
+    # above their boards, and these sections are coplanar in the rail so nothing absorbs a
+    # difference. The chosen male is HX PZ2.54-1x6P WZ (C32713265, 16451 in stock); its
+    # axis height is not stated in the catalogue and must be read off the drawing before
+    # anything is ordered. If it is not 8.5, the joint does not close and the strip is four
+    # separate boards -- so this number is a CLAIM to be checked, not a measurement.
+    "PinHeader_1x06_P2.54mm_Horizontal": 8.5,
+    "PinSocket_1x06_P2.54mm_Horizontal": 8.5,
     "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
     "JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H --
                                     # motor_ctrl J2/J6, the bus-B pair on the edge

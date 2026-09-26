@@ -81,6 +81,16 @@ LCSC = {
     "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
     "B6B-PH-K-S": "C131342",        # B6B-PH-K-S(LF)(SN) -- pi_cap J3, 5 V + SPI to the strip
     "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
+    # The LED strip's board-to-board joint: a right-angle header on one section's +X end
+    # entering a right-angle socket on the next section's -X end. 2.54 and not 2.00 because
+    # the 2.00 right-angle FEMALE is stocked and the matching MALE is not -- half a mating
+    # pair is not a joint.
+    # ⚠ THE MATING AXIS HEIGHT IS NOT VERIFIED. The female states 8.5 mm; the male's is not
+    # in the catalogue. Two right-angle connectors mate only if their contact axes match,
+    # and the sections are coplanar so nothing absorbs a difference. Read the male's drawing
+    # before ordering -- board_geom carries 8.5 for both as a CLAIM, not a measurement.
+    "HX FH254-01-06-W-H8.5": "C50878477",   # 1x6 right-angle female, 1962 in stock
+    "HX PZ2.54-1x6P WZ": "C32713265",       # 1x6 right-angle male, 16451 in stock
     "S4B-PH-SM4-TB": "C265102",     # 4-way side-entry PH, motor_ctrl J2/J6 (bus B,
                                     # split so each half unplugs from under the
                                     # instrument). Same family as the 8-way above.
