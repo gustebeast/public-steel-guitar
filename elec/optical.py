@@ -2993,6 +2993,17 @@ BOARD_NOTES = {
     # buys: pad 9 sits in the middle of the PHY's west fan, and taking a via there pushes
     # ULPI_D0, ULPI_D5 and SAI_SD2 out of theirs.
     "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16", "U6.38"),
+    # ⚠ U6.38 CARRIES ITS OWN INNER RUN TO THE +3V3A SPINE. The escape via gave the MCU's
+    # analog supply a local connection (27.32 mm -> 1.25) and took the board from 5
+    # unconnected to 3, but the router still would not join that via to the rail: +3V3A's
+    # In2 spine is 28 mm west at (-20.08, -21.08) and the direct line clips a GND via.
+    # MEASURED on In2 against the unrouted board, with a checker that knows an F.Cu LAND
+    # does not block an inner layer (it did not, at first, and walled off the MCU's whole
+    # pad field): one bend at (-9.0, -41.0) clears everything, 28.1 mm against 28.0 direct.
+    # So this costs the rail essentially nothing -- it is the straight line with a nudge.
+    # The run is laid by layout FROM THE VIA IT PLACED, not from coordinates written here:
+    # a hard-coded escape position went stale once already when the board's length changed.
+    "escape_runs": {"U6.38": ("In2.Cu", [(-9.00, -41.00), (-20.08, -21.08)])},
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to

@@ -3054,7 +3054,7 @@ def _inside(outline, x, y, margin):
 
 def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                        clr=0.2, max_reach=3.0, allow=(), keepouts=(),
-                       escape_pins=()):
+                       escape_pins=(), escape_runs=None):
     """Give every pad on a plane net its own via down to the plane layers.
 
     ⚠ WITHOUT THIS, A GROUND PAD'S CONNECTION DEPENDS ON THE POUR'S ISLAND TOPOLOGY,
@@ -3346,6 +3346,25 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                 t_.SetNet(net_)
                 board.Add(t_)
             done_vias.append((x_, y_))
+            # ⚠ AN ESCAPE MAY CARRY ITS OWN INNER RUN, laid FROM THE VIA THIS CALL JUST
+            # PLACED. Declaring that run in the board notes instead would mean writing the
+            # via's x/y there, and a hard-coded escape position goes stale the moment any
+            # placement moves -- it already did once, leaving stubs at angles through paths
+            # nobody had checked. Here the position is not a guess, it is where the via is.
+            _run = (escape_runs or {}).get("%s.%s" % (fp.GetReference(), pad.GetNumber()))
+            if _run:
+                _lay_name, _pts = _run
+                _prev = (x_, y_)
+                for _px, _py in _pts:
+                    _q = _to_board(_px, _py)
+                    _t = pcbnew.PCB_TRACK(board)
+                    _t.SetStart(pcbnew.VECTOR2I(int(_prev[0]), int(_prev[1])))
+                    _t.SetEnd(_q)
+                    _t.SetWidth(pcbnew.FromMM(0.25))
+                    _t.SetLayer(board.GetLayerID(_lay_name))
+                    _t.SetNet(net_)
+                    board.Add(_t)
+                    _prev = (_q.x, _q.y)
             return True
 
         fc = fp.GetCourtyard(pcbnew.F_CrtYd).BBox().GetCenter()
@@ -3892,7 +3911,8 @@ def build(stem):
         n = _stitch_plane_pads(board, stitch, _outline_pts(notes),
                                allow=set(notes.get("stitch_exceptions", ())),
                                keepouts=notes.get("via_keepouts", ()),
-                               escape_pins=set(notes.get("pin_escapes", ())))
+                               escape_pins=set(notes.get("pin_escapes", ())),
+                               escape_runs=notes.get("escape_runs"))
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
 
