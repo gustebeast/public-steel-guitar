@@ -340,3 +340,28 @@ What is left for SAI_FS, none tried: stop cell 4's SCK vertical short of the FS 
 end; jog the FS spine's last millimetres east away from SCK before it turns; or hand over
 at a converter STUB rather than at the spine. All three are placement changes in
 elec/optical.py's _bus_spines / _SCK_JOG / _FS_SPINE.
+
+## LED strip: a WIRE-FREE coplanar joint is not sourceable at 6 positions (2026-09-26)
+The user asked for connectors that "fit directly together" with no wire, IDEALLY. Chased it
+properly through LCSC's API and the answer is no, for a reason that is about parts rather
+than about this board:
+ * RIGHT-ANGLE MALE + RIGHT-ANGLE FEMALE does not mate coplanar. Every stocked 2.54 1x6
+   right-angle male has a 2.5 mm insulation height (C32713265, C2894948 and the rest);
+   every stocked 2.54 1x6 right-angle female is H8.5 (C50878477, C54876735, C51018241,
+   C2932681). There is no H2.5 female. Two right-angle connectors mate only if their
+   contact axes sit at the same height above their boards, and these sections are coplanar
+   in the rail, so nothing absorbs the difference. The H is sold in a range precisely
+   because it sets that axis -- the mismatch is the point, not an oversight.
+ * CARD EDGE does not mate coplanar either. ED06BGFBK (C5173287, 6P 2.54 gold, 35 in
+   stock) has "Height Above Board 15.6mm": the slot faces UP and takes a card inserted
+   downward, not a board butted against it in-plane.
+ * A MEZZANINE pair would be wire-free and standard, but needs the boards to OVERLAP, and
+   these lie flat in one channel.
+DECISION: go back to a socket at each end and a short stock jumper between sections -- the
+S6B-PH-SM4-TB that was already there and already in the BOM (C265405). It is sourceable and
+certain, which a joint resting on an unverifiable axis height is not.
+⚠ AND THE ORIGINAL COMPLAINT WAS PROBABLY NOT THE CONNECTOR TYPE AT ALL. Two PH sockets
+plus a double-ended PHR-to-PHR cable is a perfectly ordinary joint; what is missing is that
+the three INTER-SECTION CABLES were never modelled -- only the Pi lead was. A chain of
+connectors with no cable drawn between them is exactly what "the connectors don't make
+sense" looks like from a render. Model those three, then resubmit.

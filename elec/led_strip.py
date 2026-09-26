@@ -56,16 +56,7 @@ P = Pin.types.PASSIVE
 # keeps its distance from the TOP edge, which is where the LEDs and the roof are, via
 # SLOT_TAB / 2 added to each y below.
 SLOT_TAB = 4.0                          # blank laminate at the bottom, for chassis.LED_SLOT_D
-# ⚠ THE SECTION WIDTH IS SET BY THE JOINT NOW, not chosen. Four sections fill
-# chassis.LED_X0..LED_X1 (568.0), and what is left over between them is the gap the
-# header has to reach across. A 2.00 mm right-angle header projects only 7.75 mm from its
-# own pad row, and some of that has to stay on the board for the pads' edge clearance, so
-# the gap cannot be the 4.0 it was: at 4.0 the pins would have to reach 9 mm to seat and
-# they cannot. 2.0 leaves 4.0 of engagement with the pads 1.25 in from the edge.
-#   BOARD_W = (568.0 - 3 * LED_JOINT_GAP) / 4
-LED_JOINT_GAP = 3.0
-LED_ENGAGE = 6.34                            # header tip inside the mating socket
-BOARD_W, BOARD_L = 139.75, 20.0 + SLOT_TAB   # X along the strip, Y = the strip's height
+BOARD_W, BOARD_L = 139.0, 20.0 + SLOT_TAB   # X along the strip, Y = the strip's height
 _YO = SLOT_TAB / 2.0                    # every part shifts +Y by this as the board grows down
 SECTIONS = 4                            # 4 x 139 + 3 x JUNCTION_GAP = 580, in a 585.34 rail
 JUNCTION_GAP = 8.0                      # board end to board end: 2 x 2.6 of mated plug past
@@ -82,33 +73,9 @@ R_IREF = "3k3"
 
 LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
 DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm"
-# ⚠ THE SECTIONS MATE TO EACH OTHER DIRECTLY, WITH NO WIRE (user, 2026-09-25: "Ideally the
-# connectors don't require any wire and can fit directly together"). What stood here could
-# not: BOTH ends carried S6B-PH-SM4-TB, which is a SOCKET, and two sockets facing each other
-# across a 4 mm gap do not mate at all. JST PH is a WIRE-to-board family -- its socket takes
-# a crimped PHR housing and nothing else -- so that joint could only ever have been a cable
-# with a plug crimped on each end, which is the opposite of the intent. This is why the lead
-# has not taken the LED work.
-# So: a right-angle HEADER (male) on the outgoing end and a right-angle SOCKET (female) on
-# the incoming end, both 2.00 mm, so section i's J2 enters section i+1's J1 as the boards are
-# pushed together along the rail. The pitch is kept at 2.00 so J_PINS, the 2 A-per-contact
-# doubling and led_pin()'s default all still hold.
-# ⚠ THESE ARE THROUGH-HOLE right-angle parts, and the board's BACK SITS ON THE WALL
-# (electronics._led_place translates to chassis.LED_Y0, the wall's inner face), so their
-# tails need a relief in the rail behind each connector -- the same defect the tee PCBs hit
-# (see the THT install-sweep note in src/wiring.py). Tracked in .ins/WORKLIST.md; nothing
-# here may be ordered until that relief exists and the LCSC codes are verified.
-# ⚠ 2.54, NOT 2.00, AND THE REASON IS SOURCING RATHER THAN GEOMETRY. A 2.00 mm
-# right-angle FEMALE is stocked (LCSC lists several 1x6), but the matching right-angle
-# MALE is not -- LCSC returns "No exact matches" for it. A joint needs BOTH halves, and
-# half a mating pair is not a joint. 2.54 right-angle headers and sockets are stocked
-# by everyone, and the row still fits: 16.33 mm of courtyard in the 20.0 mm of board
-# above the slot tab.
-J_FP_M = "Connector_PinHeader_2.54mm:PinHeader_1x06_P2.54mm_Horizontal"
-J_FP_F = "Connector_PinSocket_2.54mm:PinSocket_1x06_P2.54mm_Horizontal"
-# 6 way: 5 V and GND on TWO contacts each -- section 1's input carries all four sections
-# (2.2 A at full white). Same order in and out, so a header and a socket face to face
-# connect pin n to pin n.
+J_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
+# PH, 6 way: 5 V and GND on TWO contacts each -- section 1's input carries all four sections
+# (2.2 A at full white against PH's 2 A per contact). Same order in and out.
 J_PINS = ("GND", "V5", "V5", "GND", "SCK", "SDI")
 # TLC59711 (PWP) pins, datasheet Terminal Functions: 1 IREF 2 GND 3 R0 4 G0 5 B0 6 R1 7 G1
 # 8 B1 9 SDTI 10 SCKI 11 SCKO 12 SDTO 13 R2 14 G2 15 B2 16 R3 17 G3 18 B3 19 VCC 20 VREG,
@@ -143,14 +110,11 @@ def led_strip():
     for n in (gnd, v5):
         n.drive = Pin.drives.POWER
     j = {}
-    for tag, what, mpn, fp in (
-            ("J1", "strip in (from the Pi / previous section's J2)",
-             "HX FH254-01-06-W-H8.5", J_FP_F),
-            ("J2", "strip out -- plugs straight into the next section's J1",
-             "HX PZ2.54-1x6P WZ", J_FP_M)):
-        j[tag] = Part(name=mpn, ref_prefix="J", ref=tag, tag=tag, dest="NETLIST",
-                      tool="skidl", value=mpn,
-                      description=what, footprint=fp,
+    for tag, what in (("J1", "strip in (from the Pi / previous section)"),
+                      ("J2", "strip out (to the next section)")):
+        j[tag] = Part(name="S6B-PH-SM4-TB", ref_prefix="J", ref=tag, tag=tag, dest="NETLIST",
+                      tool="skidl", value="S6B-PH-SM4-TB",
+                      description="%s, LCSC C265405" % what, footprint=J_FP,
                       pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(J_PINS)])
         gnd += j[tag][1], j[tag][4]
         v5 += j[tag][2], j[tag][3]
@@ -236,29 +200,7 @@ _LED_Y, _DRV_Y = 4.5 + _YO, -4.6 + _YO
 _J_ANCHOR = _MOUTH - 4.4 - 1.4125
 _LED_X = [(-(N_LED - 1) / 2 + i) * LED_PITCH for i in range(N_LED)]
 _V5_SPINE_Y = 8.3 + _YO            # above the 5 mm LED packages (they end at 7.0), inside the edge
-# ⚠ BOTH FOOTPRINTS RUN THEIR PADS ALONG Y, not X, and both mate at rot 0: the socket's
-# body reaches -X of its pads (courtyard -8.14) and the header's pins reach +X (+7.75). So
-# the socket goes at the -X end facing -X and the header at the +X end facing +X, and the
-# strip chains left to right with no rotation on either. The old 270/90 pair belonged to the
-# side-entry PH, whose mouth was its footprint's +Y.
-# Origin is PAD 1, so the row is centred by dropping half its 10 mm span.
-# ⚠ THE ROW HAS TO CLEAR THE SLOT TAB, which centring it on _YO does not. The bottom
-# SLOT_TAB (4.0) of this board is blank laminate that sits DOWN IN the chassis groove
-# (chassis.LED_SLOT_D), so nothing may be fitted below y -BOARD_L/2 + SLOT_TAB = -8.0.
-# Centred, the 12.1 mm connector body reached -9.05 -- 1.05 into the groove -- and every
-# section collided with the chassis in a thin band at its J1. Sit the body 0.5 above the
-# tab instead; the row is 10 mm of pads in a 20 mm usable height, so it fits easily once
-# it is measured against the tab rather than the board.
-_J_ROW = 5.0 * 2.54                                  # 6 pads at 2.54 mm
-# ⚠ MEASURED OFF THE ROUTED FOOTPRINT, NOT GUESSED. This is the fab body's bottom edge
-# relative to the placement anchor, and it is different for every connector -- carrying the
-# 2.00 mm part's number over to the 2.54 one put the body 0.20 mm back inside the slot tab,
-# which is the same defect this constant exists to prevent. If the footprint changes again,
-# read the new value out of elec/geom/led_strip.geom.json rather than adjusting this by eye.
-_J_FAB_LO = -12.02 - (_YO - _J_ROW / 2)              # body bottom, relative to the anchor
-_J_Y = (-BOARD_L / 2 + SLOT_TAB + 0.5) - _J_FAB_LO
-_place = {"J1": (-BOARD_W / 2 + 10.60, _J_Y, 0.0),
-          "J2": (BOARD_W / 2 + LED_JOINT_GAP + LED_ENGAGE - 10.59, _J_Y, 0.0),
+_place = {"J1": (-_J_ANCHOR, _YO, 270.0), "J2": (_J_ANCHOR, _YO, 90.0),
           "C1": (_LED_X[0], _DRV_Y, 0.0)}
 for i, x in enumerate(_LED_X):
     _place["D%d" % (i + 1)] = (x, _LED_Y, 0.0)

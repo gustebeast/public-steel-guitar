@@ -1015,6 +1015,37 @@ def build_wires():
              (_bl[0], _bl[1], _bl[2]), _bl, _b],
             WIRE_OD["wire_oled"])))
 
+    # -- SECTION TO SECTION: three jumpers, i's J2 into i+1's J1.
+    # ⚠ THESE WERE NEVER DRAWN, and their absence is almost certainly what the lead meant
+    # by the LED connectors not making sense: the strip is four boards in a row, every one
+    # carrying a socket at each end, and nothing between them. A chain of connectors with
+    # no cable is indistinguishable in a render from a chain that does not connect.
+    # (A wire-free joint was tried first and is not sourceable at 6 positions: every
+    # stocked 2.54 right-angle MALE is 2.5 mm insulation height and every stocked
+    # right-angle FEMALE is H8.5, so their contact axes cannot line up on coplanar boards,
+    # and card-edge sockets take a card vertically. See .ins/WORKLIST.md.)
+    # Both ends are PH sockets facing each other across the 4 mm gap, so the jumper is an
+    # ordinary double-ended PHR-to-PHR lead. Drawn conductor by conductor in J_PINS order,
+    # like the Pi lead, so which way round the plug goes stays visible.
+    for _i in range(EL.LED_SECTIONS - 1):
+        for _n, _nm in ((1, "gnd_a"), (2, "v5_a"), (3, "v5_b"), (4, "gnd_b"),
+                        (5, "sck"), (6, "sdi")):
+            _a = EL.led_pin(_i, "J2", _n, at="mouth")
+            _b = EL.led_pin(_i + 1, "J1", _n, at="mouth")
+            # ⚠ IT HAS TO BOW, and the first version did not. The two mouths face each
+            # other 4 mm apart and differ ONLY in x, so a lead drawn straight between them
+            # collapses to collinear points -- helpers.oct_cable's fuse guard rejected it
+            # outright ("no fuse tolerance returned a whole cable"), which is the right
+            # answer: a cable with a plug on each end cannot be a 4 mm rigid line.
+            # Out of each mouth along its own mating axis, then a bow away from the wall
+            # (-Y, into the open side of the channel) for the slack the plugs need.
+            _LEAD, _BOW = 1.0, 5.0
+            _ax, _bx = _a[0] + _LEAD, _b[0] - _LEAD
+            out.append(("wire_led_link%d_%s" % (_i, _nm), _wire(
+                [_a, (_ax, _a[1], _a[2]), (_ax, _a[1] - _BOW, _a[2]),
+                 (_bx, _b[1] - _BOW, _b[2]), (_bx, _b[1], _b[2]), _b],
+                WIRE_OD["wire_oled"])))
+
     # -- J4, the LED strip's 5 V IN. ⚠ DRAWN AS A STUB ON PURPOSE: nothing feeds it yet.
     #    The buck does not fit on the motor controller (see .ins/WORKLIST.md), so this cable
     #    has no source to be drawn from. The stub shows the four pins and where they face.
