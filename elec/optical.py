@@ -1513,6 +1513,43 @@ def _cell_pt(k, dx, dy):
     return (ux + sgn * dx, uy + sgn * dy)
 
 
+# ⚠ ULPI_D0's ESCAPE IS DECLARED WHOLE -- stub, via, inner run and landing via -- rather
+# than left to the stitcher plus an escape_run. The reason is the failure that came before
+# it: layout picks the escape via by ITS OWN criteria (clear of pads, nearest radius first)
+# with no idea where the run then has to go, and an escape_run is laid from THAT via. Here
+# it chose 1.25 mm SOUTH of the pad; the only site that also carries a clear inner run is
+# (-3.86, -52.48). Verified from the pad, the laid line was never the checked line -- it
+# crossed a GND via (short) and the via itself landed 0.075 mm from a GND stitch track.
+# So via site and run must be chosen TOGETHER, which means choosing the site here.
+# Found by a joint search over (via site, waypoint) -- scratchpad/joint_search.py, which
+# loads the board once and answers in memory; the per-query subprocess version could not
+# cover a nested search. Result needs NO bend at all: a straight 25.8 mm In2 run, shorter
+# than the 29.5 mm direct pad-to-pad line because the via is already along it.
+# Every leg measured against the unrouted board with the layer-aware checker (an F.Cu land
+# does not block an inner layer): 0.26 for the tracks, 0.50 for both via sites.
+# ⚠ AND THE LANDING VIA IS CHOSEN THE SAME WAY, for the same reason. Stopping the run
+# 2.0 mm short of U7.4 and leaving the router that hop does NOT work: U7.4 sits between
+# ULPI_D1 and ULPI_D2 on the PHY's north edge, so any approach from the west crosses its
+# own neighbours' pads and track. Measured: that 2 mm is blocked on F.Cu and clear on both
+# inner layers -- the stub has to come at the pad from OUTSIDE the package, not along it.
+# So the joint search was run again from the PHY end (pad U7.4, target the MCU-side via),
+# and (16.72, -68.61) is a site whose F.Cu stub to the pad is clear AND which the same
+# straight In2 run reaches. 26.1 mm, still no bend.
+# The net is now declared end to end and the router has nothing left to do on it.
+_D0_PAD  = (-3.62, -49.74)          # U6.47, the MCU
+_D0_VIA  = (-3.86, -52.48)
+_D0_LAND = (16.72, -68.61)          # 2.76 mm out from U7.4, on the package's open side
+_D0_PHY  = (16.48, -71.35)          # U7.4
+
+
+def _ulpi_d0_escape():
+    """(tracks, vias) for ULPI_D0, hand-routed end to end. See the notes above."""
+    return ([("ULPI_D0", "F.Cu", 0.25, [_D0_PAD, _D0_VIA]),
+             ("ULPI_D0", "In2.Cu", 0.25, [_D0_VIA, _D0_LAND]),
+             ("ULPI_D0", "F.Cu", 0.25, [_D0_LAND, _D0_PHY])],
+            [("ULPI_D0",) + _D0_VIA, ("ULPI_D0",) + _D0_LAND])
+
+
 def _cell_tracks():
     out = []
     for k in range(5):
@@ -3040,12 +3077,13 @@ BOARD_NOTES = {
     # AVSS -> EP, one per converter. Pin 4 sits at (+1.962, +0.25) from the EP centre with
     # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
     # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
-    "tracks": _cell_tracks(),
+    "tracks": _cell_tracks() + _ulpi_d0_escape()[0],
     "vias": ([("+3V3D",) + _cell_pt(k, _V3_CH_DX, y)
               for k in range(5) for y in (0.75, -3.27)]
              + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
                 for k in range(5)]
-             + _led_row_vias() + _mid_vias() + _bus_vias() + _v3a_vias() + _sd_vias()),
+             + _led_row_vias() + _mid_vias() + _bus_vias() + _v3a_vias() + _sd_vias()
+             + _ulpi_d0_escape()[1]),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
