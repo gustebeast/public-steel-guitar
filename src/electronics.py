@@ -144,12 +144,16 @@ MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outlin
 # on describing the intent while the geometry did something else, and nothing compared the
 # two. State the TARGET (bottom edge at the floor) rather than an offset from a position
 # that no longer exists.
-# _MCTRL_CY moved +12 so BOTH bus-B plugs land in the free mortise band (world
-# y -97.1..-60.8, the gap between the two halves of the three split stations). At -98.5
-# the board spanned y -121.5..-75.5 and only 21.6 mm of that was inside the band -- less
-# than the pair needs. At -86.5 it spans -109.5..-63.5 and the plugs land at -94.5 and
-# -78.5, both clear.
-_MCTRL_CX, _MCTRL_CY = -573.25, -86.5
+# ⚠ _MCTRL_CY IS SET BY THE MORTISES, AND IT WAS CHECKED AGAINST PLUG CENTRES RATHER
+# THAN PLUG BODIES. The body-adapter mortises are two slots at x -608 and x -598, both
+# ending at y -98 (measured off the built chassis, not off a station table). At -86.5 the
+# plug centres sat at -78.5 and -94.5, which reads as clear -- but a mated PH plug is 12 mm
+# across, so the -Y one spanned -100.5..-88.5 and clipped the x -598 slot over about
+# 2.5 x 2.5 mm (user spotted it in the render, 2026-09-25).
+# -82.0 puts the plug bodies at -80.0..-68.0 and -96.0..-84.0, so the nearer one clears
+# y -98 by 2.0 mm with the 1.6 bead clearance inside that. Measure the BODY against the
+# obstacle, never the centre.
+_MCTRL_CX, _MCTRL_CY = -573.25, -82.0
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
@@ -363,7 +367,8 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     def _cyl_col(x, y, d, z0, z1):
         return cq.Workplane("XY").add(cq.Solid.makeCylinder(d / 2.0, z1 - z0, cq.Vector(x, y, z0)))
 
-    def _frame(bw, bl, boss_xy, slide_in_x=False, harness_w=0.0, post_h=POST_H):
+    def _frame(bw, bl, boss_xy, slide_in_x=False, harness_w=0.0, post_h=POST_H,
+               open_down=False):
         """A board cradle made ONLY of columns rising from the endplate wall (local z `zb`)
         to the board: a ring round the board -- a LIP under its edge to carry it, then on up
         past its top as the locating wall -- and an M4 boss column at `boss_xy`, the insert
@@ -424,6 +429,20 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
             wall = wall.cut(box_at(2 * WALL + 2 * CLR + 2, 2 * oy + 2, 80.0,
                                    x=-bw / 2, y=0.0, z=0.0))
         cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zb, post_h))
+        # ⚠ THE -Z EDGE CARRIES CONNECTORS, NOT RETENTION (user, 2026-09-25: "we likely
+        # don't need -z retention at all since the chassis serves as -z retention and the
+        # endplate -z retention will just clip into the chassis"). local +X is world -Z,
+        # and on the motor controller that edge is the sterilised one -- the two bus-B
+        # JSTs and nothing else. The ring's lip, the locating wall and the 45 deg retainer
+        # all ran along it, so the frame closed over the very connectors a hand has to
+        # reach. Nothing is lost by opening it: the board's bottom edge sits 0.35 mm above
+        # the chassis floor, so the CHASSIS is what stops it moving -Z, and the endplate's
+        # own -Z retention clips into that chassis rather than into this frame.
+        # Everything beyond the board's +X edge goes -- lip, wall and lean together, since
+        # cutting only the wall would leave the retainer leaning over the connectors.
+        if open_down:
+            cr = cr.cut(box_at(20.0, 2 * oy + 2, 80.0,
+                               x=bw / 2 + 10.0, y=0.0, z=0.0))
         return cr
 
     # ── BOTH BOARDS: HOLLOW FRAMES OF COLUMNS, NO PLATE (user, 2026-09-21) ────────────────
@@ -442,7 +461,7 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     bw, bl = x1 - x0, y1 - y0
     hx, hy = MCTRL_HOLE[0], MCTRL_HOLE[1] - MCTRL_EAR_H / 2.0
     cr = _frame(bw, bl, (hx, hy), slide_in_x=True, harness_w=HARNESS_W,
-                post_h=MCTRL_POST_H)
+                post_h=MCTRL_POST_H, open_down=True)
     cr = _cut_anchor(_M4, cr, (hx, hy, MCTRL_POST_H), (0, 0, -1), _M4.anchor_min_wall)
     mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
