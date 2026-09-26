@@ -3053,7 +3053,8 @@ def _inside(outline, x, y, margin):
 
 
 def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
-                       clr=0.2, max_reach=3.0, allow=(), keepouts=()):
+                       clr=0.2, max_reach=3.0, allow=(), keepouts=(),
+                       escape_pins=()):
     """Give every pad on a plane net its own via down to the plane layers.
 
     ⚠ WITHOUT THIS, A GROUND PAD'S CONNECTION DEPENDS ON THE POUR'S ISLAND TOPOLOGY,
@@ -3161,7 +3162,20 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         return True
     made, failed, done_vias = 0, [], []
     for pad, fp in pads:
-        if pad.GetNetname() not in nets_wanted:
+        # ⚠ SIGNAL PINS CAN ASK FOR THE SAME THING, BY NAME. A fine-pitch pin whose
+        # neighbours took the escape positions first is left on F.Cu with no way off the
+        # layer, and the router never goes back to make room -- SAI_FS, ULPI_D1 and
+        # ULPI_D6 on the optical board, each found by eye as "disconnected AND no via".
+        # This routine already searches for a legal via beside a pad and lays the stub
+        # with it; naming a pin here is asking it to do that for a signal.
+        # ⚠ AND IT MUST BE BY REF.PAD, NOT BY COORDINATE. The first version of this put
+        # scanned x/y in the board notes, and the moment the board's length changed every
+        # pad moved ~1.1 mm while the declared vias did not -- stubs at angles through
+        # paths nobody had checked. A site is only valid for the placement it was measured
+        # against, so it has to be measured HERE, where the placement exists.
+        _key = "%s.%s" % (fp.GetReference(), pad.GetNumber())
+        _is_escape = _key in escape_pins
+        if pad.GetNetname() not in nets_wanted and not _is_escape:
             continue
         # ⚠ A PAD'S OWN DRILL IS INVISIBLE TO ITS OWN STITCH VIA, and on a THROUGH-HOLE
         # pad that means the via lands in the hole. `free()` below skips every obstacle
@@ -3194,7 +3208,11 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
         # nothing, while that millimetre is the whole difference for a signal. Threshold
         # is 0.65 mm because 0.8 mm pitch and coarser has room for both.
         pitch = _pad_pitch(fp)
-        if pitch is not None and pitch < pcbnew.FromMM(0.65):
+        if pitch is not None and pitch < pcbnew.FromMM(0.65) and not _is_escape:
+            # ...but NOT for a named signal escape. That margin exists to keep GROUND out
+            # of a fine-pitch fan, on the reasoning that ground has the plane underneath
+            # and can afford the extra millimetre while a signal cannot. An escape pin IS
+            # the signal, so pushing it out of its own fan defeats the request.
             need += pcbnew.FromMM(1.1)
         # ⚠ A BIG PAD TAKES THE VIA INSIDE ITSELF, and that is the right answer rather
         # than a concession. An exposed thermal pad -- a QFN's belly, a SOT-223's tab --
@@ -3873,7 +3891,8 @@ def build(stem):
     if stitch:
         n = _stitch_plane_pads(board, stitch, _outline_pts(notes),
                                allow=set(notes.get("stitch_exceptions", ())),
-                               keepouts=notes.get("via_keepouts", ()))
+                               keepouts=notes.get("via_keepouts", ()),
+                               escape_pins=set(notes.get("pin_escapes", ())))
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
 
