@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import re
 import sys
 
@@ -4014,6 +4015,24 @@ def build(stem):
         print("  dropped %d degenerate track fragment(s)" % n_junk)
 
     out = stem + ".kicad_pcb"
+    # ⚠ KEEP THE LAST ROUTED BOARD BEFORE CLOBBERING IT (user, 2026-09-25: "whenever a
+    # route completes it overwrites the file so my revert can grab it"). route.py already
+    # saves the routed result back to THIS path, so the file is the right one to revert
+    # to -- except between here and that save, where it is the bare placement. A route is
+    # half an hour long, so that window is most of the time the user spends looking at
+    # the board, and reverting into it shows an unrouted board that reads exactly like a
+    # route that failed. Park the previous routed copy beside it rather than losing it:
+    # a board with tracks is a result someone may still want, and regenerating one costs
+    # the same half hour.
+    if os.path.exists(out):
+        try:
+            _prev = pcbnew.LoadBoard(out)
+            if any(t.GetClass() == "PCB_TRACK" for t in _prev.GetTracks()):
+                shutil.copyfile(out, stem + ".lastrouted.kicad_pcb")
+                print("  kept the previous routed board as %s.lastrouted.kicad_pcb"
+                      % os.path.basename(stem))
+        except Exception as _e:                    # an unreadable board is not worth failing over
+            print("  could not preserve the previous board: %s" % _e)
     board.Save(out)
     _canonical_uuids(out)
     print("%s: %d parts, %d nets%s, %.1f x %.1f mm"

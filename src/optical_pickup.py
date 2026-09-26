@@ -962,6 +962,31 @@ def _item_h(it):
     return max(CRTYD[m[2]][1] for m in _members(it))
 
 
+def _reserve_split(items, left_cap, right_cap):
+    """Partition one row's items into the two sub-spans either side of a corridor.
+
+    Returns (left, right, overflow). ONE source of truth for the split: _spread uses it
+    to place a row and _block uses it to decide where the row breaks, so the packer
+    cannot believe a row fits while the placer finds it does not. Items keep the row's
+    own left-to-right order, and the left sub-span fills first.
+    """
+    left, right, over = [], [], []
+    lu = ru = 0.0
+    for it in items:
+        w = _item_w(it)
+        need_l = lu + w + (CRTYD_GAP if left else 0.0)
+        need_r = ru + w + (CRTYD_GAP if right else 0.0)
+        if need_l <= left_cap:
+            left.append(it)
+            lu = need_l
+        elif need_r <= right_cap:
+            right.append(it)
+            ru = need_r
+        else:
+            over.append(it)
+    return left, right, over
+
+
 def _spread(out, y, items, x0, x1, reserve=None):
     """Lay a row out evenly between x0 and x1, optionally leaving a CORRIDOR empty.
 
@@ -978,16 +1003,19 @@ def _spread(out, y, items, x0, x1, reserve=None):
     """
     if reserve:
         lo, hi = reserve
-        widths = [_item_w(it) for it in items]
-        # fill the wider sub-span first, in the row's own left-to-right order
-        left_cap, right_cap = lo - x0, x1 - hi
-        left, right, used = [], [], 0.0
-        for it, w in zip(items, widths):
-            if used + w <= left_cap or not right and used + w <= left_cap + CRTYD_GAP:
-                left.append(it)
-                used += w + CRTYD_GAP
-            else:
-                right.append(it)
+        left, right, over = _reserve_split(items, lo - x0, x1 - hi)
+        if over:
+            # ⚠ NEVER SILENTLY OVERFLOW. The old split put everything that did not fit
+            # on the left into `right` WITHOUT checking the right sub-span held it, and
+            # _spread then divided a span smaller than its contents -- a NEGATIVE gap,
+            # i.e. parts laid on top of each other. It surfaced as
+            # "courtyards_overlap: C133 + FB1" only after a 30 minute route, because
+            # nothing between here and DRC looks at spacing. _block packs against the
+            # same helper now, so reaching this is a bug rather than a tight board.
+            raise ValueError(
+                "row at y %.2f overflows the corridor split: %s does not fit in "
+                "%.2f + %.2f mm either side of the reserve"
+                % (y, ", ".join(_members(it)[0][0] for it in over), lo - x0, x1 - hi))
         if left:
             _spread(out, y, left, x0, lo)
         if right:
@@ -995,6 +1023,9 @@ def _spread(out, y, items, x0, x1, reserve=None):
         return
     widths = [_item_w(it) for it in items]
     gap = ((x1 - x0) - sum(widths)) / max(len(items) - 1, 1)
+    if gap < 0.0:
+        raise ValueError("row at y %.2f is %.2f mm wider than the %.2f mm it is given"
+                         % (y, sum(widths) - (x1 - x0), x1 - x0))
     cx = x0
     for it, w in zip(items, widths):
         mx = cx
@@ -1046,6 +1077,30 @@ def _block(out, y, items, x0, x1, reserve=None):
     # the board length depends on it. What changes is how they are shared out: aim for
     # equal used width, and if that needs an extra row, relax the target until it does
     # not. Costs no board area at all.
+    # ⚠ A RESERVED ROW HAS TWO CAPACITIES, NOT ONE, and packing against their SUM is
+    # what let a row be declared to fit and then overlap when it was placed. `span` says
+    # the parts fit in the width outside the corridor; it does not say they fit in the
+    # two PIECES that width comes in. Pack against the same split _spread places with.
+    if reserve:
+        _lcap, _rcap = reserve[0] - x0, x1 - reserve[1]
+        rows, row = [], []
+        for it in items:
+            _l, _r, _o = _reserve_split(row + [it], _lcap, _rcap)
+            if _o:
+                if not row:
+                    raise ValueError(
+                        "%s is wider than either side of the reserve (%.2f / %.2f mm)"
+                        % (_members(it)[0][0], _lcap, _rcap))
+                rows.append(row)
+                row = [it]
+            else:
+                row = row + [it]
+        if row:
+            rows.append(row)
+        for row in rows:
+            y = flush(row, y)
+        return y
+
     n = len(pack(span))
     rows = pack(span)
     if n > 1:
@@ -1536,9 +1591,23 @@ def _parts():
                      # the only one of the three southern rows that reaches that far east
                      # (the buck's stops at x +1, and the crystal row is already clear from
                      # -1.8 to 16.3). So the split is needed HERE and only here.
-                     # 6 mm is 15 tracks at a 0.4 mm pitch, and it costs the rest of the
-                     # row about half a millimetre of spacing each.
-                     reserve=(10.25, 15.75))
+                     # ⚠ 5.5 mm WAS NOT ENOUGH, AND THE ESTIMATE THAT SIZED IT COUNTED
+                     # THE WRONG THING. "15 tracks at a 0.4 mm pitch" is the width 12 ULPI
+                     # nets need if they arrive as bare tracks -- but they arrive off a
+                     # QFN's escape vias, and those land IN the corridor and eat about
+                     # 0.9 mm of its width each. Measured on the routed board: 6 vias
+                     # inside, 5 of them ULPI, so a third of the corridor was spent on the
+                     # vias of the very nets it exists to carry and ULPI_CK, ULPI_D0 and
+                     # ULPI_D5 never got across. Same defect as the row it was cut into:
+                     # the wall was never the parts, it was their vias.
+                     # 7 mm centred on the PHY's own x, and 7 is a CEILING rather than a
+                     # preference: at 8 the block needs another row and the board grows
+                     # past the endplate's conduit limit. 9 was tried first and appeared
+                     # to cost nothing, because _spread was silently overlapping the row
+                     # it squeezed -- it surfaced 30 minutes later as
+                     # "courtyards_overlap: C133 + FB1". _reserve_split now refuses to
+                     # overflow, so what fits here is what actually fits.
+                     reserve=(9.70, 16.70))
 
     # ⚠ C127 GOES IN THE CRYSTAL ROW, NOT THE POWER ROW, AND THE BOARD LENGTH IS WHY.
     # It belongs beside U9 (it is the SPX3819's noise bypass, the reason that part was
