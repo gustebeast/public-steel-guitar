@@ -299,3 +299,19 @@ STILL TO DO before the lead takes it:
  * confirm the 5.0 mm HEIGHT estimates in board_geom off those parts' drawings. They must
    be EQUAL for the two halves or the contact axes do not line up and the joint does not
    close -- the boards are coplanar, so there is no slack to absorb a difference.
+
+## optical: SAI_FS needs its spine to leave the SCK stub's lane (2026-09-26)
+SAI_FS is the one net that has failed EVERY routing of this board, in every configuration.
+Its escape via at U6.3 is placed correctly; the gap is the ~22 mm from that via to the
+spine's open end at (12.65, -18.89), which the router will not make.
+MEASURED, with a layer-aware checker:
+ * a clear F.Cu lane exists at y -20.0..-21.25 running from x 12.65 west to x -2.0, which
+   would bring the handover within ~7.5 mm of the MCU escape.
+ * the DESCENT into it is blocked on F.Cu by SAI_SCK's per-cell stub (the SCK SPINE is
+   B.Cu, but its stubs are F.Cu and run parallel to the FS spine 0.5 mm away).
+ * the same diagonal is CLEAR on both B.Cu and In2.Cu -- so a layer hop works, except that
+   no via fits anywhere along the FS spine: SAI_SCK's stub shadows all of it at 0.50.
+So the fix is to separate the two spines' F.Cu lanes (_FS_SPINE / _SCK_SPINE and the
+_*_JOG offsets in elec/optical.py) far enough for a via to land on the FS spine, then
+declare via -> B.Cu diagonal -> via into the y -20.6 lane. Every leg above is already
+verified against the unrouted board; only the via site is missing.
