@@ -2981,7 +2981,12 @@ BOARD_NOTES = {
     # not reach. They cannot be linked on F.Cu -- a straight run between them crosses the
     # QFN's thermal pad and pins 10 and 15 -- so the join has to happen on an inner layer,
     # which is exactly what an escape via is for.
-    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16"),
+    # U6.38 added alone, and this one is an ELECTRICAL fix as much as a routing one: the
+    # MCU's analog supply pins (38 and 39, +3V3A) had NO local via -- the nearest was
+    # 27.32 mm away, so VDDA reached its rail across the board. That is poor decoupling
+    # whether or not the router ever closes it, and +3V3A has been in the failure list of
+    # nearly every routing this board has had.
+    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16", "U6.38"),
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
