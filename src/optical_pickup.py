@@ -1036,7 +1036,7 @@ def _spread(out, y, items, x0, x1, reserve=None):
         cx += w + gap
 
 
-def _block(out, y, items, x0, x1, reserve=None):
+def _block(out, y, items, x0, x1, reserve=None, reserve_y=None):
     """Pack parts into as many rows as they NEED, marching -Y from y; return the -Y edge.
     Rows are packed, not hand-assigned: hand-tuned rows went under the placement
     clearance every time a part was added, and the board length has to be an OUTPUT of
@@ -1048,7 +1048,15 @@ def _block(out, y, items, x0, x1, reserve=None):
         if not row:
             return y
         h = max(_item_h(it) for it in row)
-        _spread(out, y - h / 2, row, x0, x1, reserve)
+        # ⚠ ONLY THE ROWS THE TRAFFIC CROSSES PAY FOR THE CORRIDOR. `reserve` used to
+        # apply to EVERY row in the block, so rows south of the PHY -- which no ULPI net
+        # ever crosses -- gave up the same 7-9 mm as the rows between the MCU and the PHY.
+        # That is what made a 9 mm corridor cost an extra row and push the board past the
+        # endplate's conduit limit. Charge it to the rows in `reserve_y` and let the rest
+        # use the full width.
+        ry = y - h / 2
+        use = reserve if (reserve_y is None or reserve_y[0] <= ry <= reserve_y[1]) else None
+        _spread(out, ry, row, x0, x1, use)
         return y - h - CRTYD_GAP
 
     def pack(limit):
@@ -1082,19 +1090,39 @@ def _block(out, y, items, x0, x1, reserve=None):
     # the parts fit in the width outside the corridor; it does not say they fit in the
     # two PIECES that width comes in. Pack against the same split _spread places with.
     if reserve:
+        # ⚠ PACK AGAINST THE CAPACITY THE ROW WILL ACTUALLY BE PLACED WITH. A row in the
+        # corridor's y-range has TWO capacities (either side of the reserve) and a row
+        # outside it has the full width, so the packer has to march y as it goes -- it
+        # cannot decide row breaks before it knows where the row lands. Packing against
+        # the sum is what let a row be declared to fit and then overlap when placed.
         _lcap, _rcap = reserve[0] - x0, x1 - reserve[1]
-        rows, row = [], []
+
+        def _reserved_at(row_):
+            ry_ = cy - max(_item_h(i) for i in row_) / 2.0
+            return reserve_y is None or reserve_y[0] <= ry_ <= reserve_y[1]
+
+        def _fits(row_):
+            if _reserved_at(row_):
+                return not _reserve_split(row_, _lcap, _rcap)[2]
+            return (sum(_item_w(i) for i in row_)
+                    + CRTYD_GAP * (len(row_) - 1)) <= (x1 - x0)
+
+        rows, row, cy = [], [], y
         for it in items:
-            _l, _r, _o = _reserve_split(row + [it], _lcap, _rcap)
-            if _o:
-                if not row:
-                    raise ValueError(
-                        "%s is wider than either side of the reserve (%.2f / %.2f mm)"
-                        % (_members(it)[0][0], _lcap, _rcap))
-                rows.append(row)
+            if not row:
                 row = [it]
-            else:
+                if not _fits(row):
+                    raise ValueError(
+                        "%s does not fit any row here (%.2f / %.2f mm either side of the "
+                        "reserve, %.2f mm full width)"
+                        % (_members(it)[0][0], _lcap, _rcap, x1 - x0))
+                continue
+            if _fits(row + [it]):
                 row = row + [it]
+            else:
+                rows.append(row)
+                cy -= max(_item_h(i) for i in row) + CRTYD_GAP
+                row = [it]
         if row:
             rows.append(row)
         for row in rows:

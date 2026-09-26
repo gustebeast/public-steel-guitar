@@ -208,3 +208,35 @@ four-net retry took 6 unconnected to 9.
     The fix is known and small: retry the ISLAND-TO-ISLAND edges, which check_border.py
     already computes (its islands() + ratlines()). Not done at 03:30 on a shared routine
     every board uses, with a 45-minute verification cycle.
+
+## optical: open a north-south lane on the EAST board edge (user, 2026-09-25)
+The crystal/oscillator column at the board's east edge -- Y1 (OSC_IN/OSC_OUT), the MID
+divider, PHY_XI/PHY_XO/PHY_RBIAS and their GND pads -- sits hard against the edge, so the
+strip between it and Edge.Cuts carries nothing. Moving that column slightly WEST opens a
+full-height routing lane along the east edge, which is exactly the direction the ULPI and
+SAI traffic wants to run. The MCU (U6) likely has to move west with it, since the column's
+x is set off the MCU's east face.
+Worth doing when a route stalls on the PHY/ULPI nets again: it is a bigger lever than
+corridor width, which is now capped at 7 mm by the endplate's conduit limit.
+
+## optical: hand-place the vias instead of letting the router pick (user, 2026-09-25)
+"consider moving automatic via generation to manually specified positions. There are also
+short F.Cu runs that connect component pads to vias that you could hard code, although some
+F.Cu runs are longer and perhaps make more sense for auto routing. Some of the via
+placements to an untrained eye seem suboptimal."
+This is the generalisation of elec/optical.py's `_PIN_ESCAPES`, which was written after the
+user found the SAME defect three times by eye -- SAI_FS, ULPI_D1 and ULPI_D6 were each
+disconnected AND had no escape via. The router spends the good positions on whichever net
+it reaches first and never goes back to make room, so the pin that loses the race is
+stranded on F.Cu in a field that is full on both sides.
+Plan: extend _PIN_ESCAPES to every fine-pitch pin that needs a layer change -- the MCU's
+west and south flanks and the whole PHY -- with each site SCANNED against the unrouted
+board (the helper in _escapes' note), and let the router keep only the long runs between
+escape vias. Declared copper is NOT clearance-checked when laid, so every site must be
+measured, never chosen by eye.
+
+## optical: the +3V3A In2-crossing via is in the SAI diagonal (user, 2026-09-25)
+"This +3V3A via looks like a bottle neck, could it move slightly west?" It is the link via
+at x 17.20 from _v3a_vias() -- the converter-spine end of the In2 crossing -- and it sits
+where SAI_SCK/SD1/SD2/SD4 run diagonally. Moving it west needs the crossing's declared
+track endpoint to move with it, and the lane west must be measured empty first.
