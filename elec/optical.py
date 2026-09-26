@@ -1796,37 +1796,6 @@ def _pin_escapes():
 # steps out from the pad, so it is measured rather than chosen -- the discipline every
 # declared via on this board needs, since none of them are clearance-checked when laid.
 #   pad                     via                  what it unblocks
-# ⚠ THE SITE AND THE STUB PATH BOTH HAVE TO BE CLEAR, and the first two scans checked only
-# the site. A declared escape is a via AND the short track reaching it, neither of them
-# clearance-checked when laid, so ULPI_D5's stub was run straight across U7 pad 9 -- DRC
-# came back with a short and a mask bridge between +3V3D and ULPI_D5.
-# ⚠ AND A PAD IS A RECTANGLE, NOT A CIRCLE. Scanning with max(size)/2 as a radius inflates
-# a QFP's elongated pad to a 0.75 mm disc, which walls the package in completely: the
-# corrected scan returned NO site for any pin, including the two that had already routed.
-# Measured against the true pad boxes, with the via held to 0.50 from foreign copper and the
-# 0.25 stub to 0.26 (layout._lay's own two margins -- a track is not a via).
-# ⚠ ULPI_D0 (U7.4) AND ULPI_D5 (U7.10) GET NO ENTRY, because the scan says there is nowhere
-# to put one: no position within 4.2 mm clears both the via and its stub. That is the
-# PHY's neighbourhood being full, not a margin to tune -- see the east-edge lane in
-# .ins/WORKLIST.md. Declaring them anyway is what laid the short.
-_PIN_ESCAPES = (
-    ("SAI_FS",  (-6.55, -27.31), (-5.40, -27.31)),   # U6.3, boxed by SD2/SD1's vias
-    ("ULPI_D1", (15.98, -71.35), (15.98, -70.55)),   # U7.5, straight off the north face
-    ("ULPI_D6", (14.79, -74.04), (13.99, -74.04)),   # U7.11, straight off the west face
-)
-
-
-def _escapes(spec):
-    """Declared pad -> stub -> via fanouts, as (tracks, vias).
-
-    The stub is laid WITH the via and not left for the router: an orphan via never gets
-    adopted on this board, so the pad reaches the via on F.Cu here and the router only has
-    to leave from the via on an inner layer. Same shape as layout's _stitch_plane_pads.
-    """
-    return ([(net, "F.Cu", 0.25, [pad, via]) for net, pad, via in spec],
-            [(net,) + via for net, pad, via in spec])
-
-
 def _bus_vias():
     """SAI_SCK's hop to B.Cu, one per converter, AT the spine and not at the pin -- the
     feed has to stay on F.Cu the whole way across. See _bus_spines."""
@@ -2991,6 +2960,15 @@ BOARD_NOTES = {
     # ...and pins 15/16 (ADDR1/ADDR0, both GND since the five parts share one address) the
     # same way, into the EP from the other side: stitched like ordinary GND pads, their vias
     # landed across the SHDNZ escape beside them and shorted it.
+    # ⚠ PINS THE ROUTER STRANDS, ESCAPED BY NAME (user found each one by eye, 2026-09-25:
+    # "this disconnected net SAI_FS doesn't have a via but seems like it needs one", then
+    # ULPI_D1, then ULPI_D6). They are fine-pitch pins whose neighbours took the escape
+    # positions first; the router spends the good spots on whichever net it reaches first
+    # and never goes back. layout's stitcher searches for a legal via beside a pad and lays
+    # the stub with it, which is exactly the operation needed, so these just name the pins.
+    # ⚠ BY REF.PAD, NOT BY COORDINATE -- the coordinates version went stale the moment the
+    # board's length changed and every pad moved 1.1 mm out from under its declared via.
+    "pin_escapes": ("U6.3", "U7.5", "U7.11"),
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
@@ -3005,13 +2983,12 @@ BOARD_NOTES = {
     # AVSS -> EP, one per converter. Pin 4 sits at (+1.962, +0.25) from the EP centre with
     # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
     # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
-    "tracks": _cell_tracks() + _pin_escapes()[0],
+    "tracks": _cell_tracks(),
     "vias": ([("+3V3D",) + _cell_pt(k, _V3_CH_DX, y)
               for k in range(5) for y in (0.75, -3.27)]
              + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
                 for k in range(5)]
-             + _led_row_vias() + _mid_vias() + _bus_vias() + _v3a_vias() + _sd_vias()
-             + _pin_escapes()[1]),
+             + _led_row_vias() + _mid_vias() + _bus_vias() + _v3a_vias() + _sd_vias()),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that

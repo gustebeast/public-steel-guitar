@@ -1319,7 +1319,19 @@ def _parts():
             cy - (_OP_H / 2 + CRTYD_GAP + CRTYD["0402"][0] / 2), 270.0)
 
     # ---- 3. digital block, in the wide tail past the pickup cavity ----
-    x0, x1 = COMPUTE_X0 + EDGE_KEEP, TAIL_X1 - EDGE_KEEP
+    # ⚠ A RESERVED ROUTING LANE ON THE EAST EDGE (user, 2026-09-25: "if there was a way to
+    # move this stuff slightly west we could open up some traces to run along the east edge
+    # of the board"). Every row here was packed out to TAIL_X1 - EDGE_KEEP, so Y1, R38,
+    # C143 and C133 ended with 1.25 mm between them and Edge.Cuts -- the board's only
+    # full-height lane, and too thin to route. Backing the row band off 3.0 opens it to
+    # 4.25 without moving any part relative to another.
+    # ⚠ THE MCU DOES NOT COME INTO IT, which is worth recording because it looks like it
+    # should. The user's reading was that the MCU would have to move west too, and the
+    # measurement says otherwise: that column is anchored to the ROW BAND's east limit
+    # (x1), not to _part_x("U6"), so the MCU's east face is 10 mm short of it. Backing the
+    # MCU off the mount by 3.0 was tried first and moved the lane not at all.
+    EAST_LANE = 3.0
+    x0, x1 = COMPUTE_X0 + EDGE_KEEP, TAIL_X1 - EDGE_KEEP - EAST_LANE
     # THE MCU CLIMBS INTO THE WRAP BAND (user). It used to start below WRAP_Y, clear of the
     # seam, which cost ~9.75 mm of board on the -Y end for nothing: the wrap band is WIDER
     # in X than the compute section, and the only thing in it is the tail screw. Tucking the
@@ -1635,7 +1647,7 @@ def _parts():
                      # it squeezed -- it surfaced 30 minutes later as
                      # "courtyards_overlap: C133 + FB1". _reserve_split now refuses to
                      # overflow, so what fits here is what actually fits.
-                     reserve=(9.70, 16.70))
+                     reserve=(8.70, 17.70))
 
     # ⚠ C127 GOES IN THE CRYSTAL ROW, NOT THE POWER ROW, AND THE BOARD LENGTH IS WHY.
     # It belongs beside U9 (it is the SPX3819's noise bypass, the reason that part was
@@ -3019,7 +3031,12 @@ CONDUIT_CLR = 1.5
 # 6-pin XH at the motors, and it ended up with USB to the panel and power-only on a 4-way.
 # Flagged rather than changed -- CONDUIT_W, _COND_PASS and the endplate wall all move
 # together, and the assertion below is what would catch a bad edit.
-_XH6_W, _XH6_D = 12.4 + 2.5 * 2, 5.75                         # 17.40 x 5.75
+# ⚠ APPLIED 2026-09-25, having been "flagged rather than changed" above since 2026-09-18.
+# J2 IS AN S4B -- four circuits -- so this was sizing the conduit to pass a plug 5 mm wider
+# than the one that exists. It stopped being cosmetic the moment board length became the
+# binding constraint: _COND_PASS was 20.40 on a six-way that is not fitted, and that number
+# is what the endplate wall is asserted against.
+_XH4_W, _XH4_D = 12.4, 5.75                                   # S4B-XH housing, 4 way
 _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overmold
 # Plug body length along the mating axis. ASSUMPTIONS, and the ones to check against real
 # cable before cutting metal -- overmolds are not standardised.
@@ -3060,7 +3077,19 @@ _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overm
 # straight off the conduit's depth budget. Nothing about the instrument changed; the
 # rule for what to buy did. Surveyed USB-C overmolds run ~10-25 mm, so <= 17.5 narrows
 # the choice without leaving it -- it rules out the long boots, not the market.
-PLUG_L = {"J1": 17.5, "J2": 14.0}                             # USB-C boot; XHP-6 + relief
+PLUG_L = {"J1": 14.0, "J2": 14.0}    # USB-C boot (SHORT -- see below); XHP-6 + relief
+# ⚠ J1's 14.0 IS A REQUIREMENT ON THE CABLE, NOT A MEASUREMENT OF AN ARBITRARY ONE. It was
+# 17.5, and that number -- through _COND_SPAN -> CONDUIT_D -> CONDUIT_Y0 -- was the single
+# thing capping this board's LENGTH, and through length its ROUTABILITY. At 17.5 neither
+# the ULPI corridor past 7 mm nor any east-edge routing lane fits at all; not 3 mm, not 1.
+# At 14.0 both fit (board 188.53 -> 190.73), and the 9 mm corridor is the one measured
+# configuration in which every ULPI net routes.
+# So the build needs a SHORT-OVERMOLD USB-C cable: 14.0 mm or less from the connector face
+# to the back of the boot. That is a common stock item, but it is a real constraint and
+# belongs in the BOM rather than in someone's head -- a standard 17.5 mm boot will not fit
+# the endplate, and the assertion at the bottom of this file is what will say so.
+# The floor is 12.4: below that _COND_PASS (getting a plug THROUGH the shaft) binds instead
+# and nothing further is won, so there is no reason to specify tighter than 14.
 # ⚠ THE -Y BUDGET IS A MEASUREMENT, NOT A DERIVATION (user, 2026-09-16). There are
 # 37.25 mm between this board's -Y edge and the instrument's -Y exterior in the model on
 # main, and that whole span is available -- to the board, the conduit, the mated plug and
@@ -3079,12 +3108,12 @@ PLUG_L = {"J1": 17.5, "J2": 14.0}                             # USB-C boot; XHP-
 YM_AT_SURVEY = -109.54                                        # PCB_YM on main when measured
 Y_BUDGET     = 37.25                                          # board -Y edge -> instrument
 _WALL_Y = YM_AT_SURVEY - Y_BUDGET + D.MIN_WALL_2P             # -145.19, conduit's -Y limit
-CONDUIT_W = max(_XH6_D, _USBC_H) + 2 * CONDUIT_CLR            #  9.50, along X (thin axis)
+CONDUIT_W = max(_XH4_D, _USBC_H) + 2 * CONDUIT_CLR            #  9.50, along X (thin axis)
 # Y answers TWO separate requirements and must satisfy the larger. Sizing it on the span
 # alone was a latent bug: it happened to be big enough only because the straight USB-C plug
 # was longer than the XH is wide, so shortening a plug would have quietly made the shaft too
 # narrow to PASS one.
-_COND_PASS = max(_XH6_W, _USBC_W) + 2 * CONDUIT_CLR           # 20.40: get a plug THROUGH
+_COND_PASS = max(_XH4_W, _USBC_W) + 2 * CONDUIT_CLR           # 20.40: get a plug THROUGH
 _COND_SPAN = max(PLUG_L.values()) + 2 * CONDUIT_CLR           # 20.50: reach past a MATED plug
 CONDUIT_D = max(_COND_PASS, _COND_SPAN)                       # 20.40, along Y
 CONDUIT_Y1 = PCB_YM - 2.0                                     # -124.58, clear of the board
