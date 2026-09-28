@@ -127,6 +127,16 @@ ENC_PINS = {
 PULLED_UP = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B")
 
 
+# THE RIBBON'S SHAPE IS THE CAD'S AND THE NETLIST'S BOTH. src/ui_panel.py draws fourteen
+# conductors at 1.27; this is the connector they come off. If a way is ever added here,
+# the drawing has to follow or it is fourteen conductors on a sixteen-way plug.
+assert len(RIBBON_PINS) == UI.RIBBON_N, (
+    "J2 has %d ways and the CAD draws a %d-way ribbon"
+    % (len(RIBBON_PINS), UI.RIBBON_N))
+assert abs(UI.RIBBON_PITCH * 2 - 2.54) < 1e-9, (
+    "the ribbon's %.2f pitch is not half the header's 2.54" % UI.RIBBON_PITCH)
+
+
 def _r(tag, value, desc):
     return Part(name="R", ref_prefix="R", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc,

@@ -1728,7 +1728,11 @@ _COLORS = {
                                              #   designed and the pickup plugs into it
     "wire_link":       (0.95, 0.72, 0.22),   # light amber - motor controller <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
-    "wire_ui":         (0.68, 0.36, 0.08),   # brown-amber - UI board -> Pi
+    # THE UI RIBBON, fourteen conductors. Grey is what 1.27 flat cable is; conductor 1
+    # is its red stripe, which is the only marking an IDC cable carries and the only
+    # thing that tells you which way round the plug goes.
+    "wire_ui":         (0.55, 0.56, 0.58),
+    "wire_ui_stripe":  (0.85, 0.12, 0.10),
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)

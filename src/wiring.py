@@ -98,11 +98,10 @@ WIRE_OD = {
     # 0.37 V and the cable may not eat it. Over this run 20 AWG spends 0.03.
     "wire_5v": 1.8,
     "wire_link": 1.4,
-    # ONE RIBBON, DRAWN AS ONE ROUND RUN. The UI is a 14-way flat cable between the
-    # board's right-angle IDC header and the Pi's GPIO pins; 4.8 is the round section
-    # that swallows a 14-way 1.27 ribbon (17.8 x 0.9) folded as it has to be to turn
-    # down the bay column. The conductor colours are the ribbon's own stripe.
-    "wire_ui": 4.8,
+    # ONE CONDUCTOR OF THE UI'S RIBBON. 0.9 is the thickness of 1.27 flat cable, which
+    # is also each conductor's pitch circle -- the insulation of neighbouring ways
+    # touches, which is what makes it a ribbon rather than fourteen wires.
+    "wire_ui": UI.RIBBON_T,
     "motor_pigtail": 3.4,
 }
 # (_KNEE_B is gone with the two-conductor bus-B head it served -- a landing 20 mm short
@@ -1038,15 +1037,33 @@ def build_wires():
     #    The two placeholder runs that stood here -- one for "the OLED" and one for
     #    "the joystick", each from a guessed deck position -- are gone: there is one
     #    cable, and its end is a routed connector rather than a coordinate.
+    #    AND IT IS DRAWN AS THE FOURTEEN CONDUCTORS IT IS. It stood here as one round
+    #    4.8 run, which is what a jacketed cable looks like and this is not one -- it is
+    #    a 1.27 flat ribbon off an IDC header, 17.8 across and 0.9 thick. A round stand-in
+    #    hides the only thing about it that constrains anything: its WIDTH, and which way
+    #    that width is turned. (user asked what the thick wire was, 2026-09-28)
     ux, _uy = UI.board_centre()
     umz = UI.z_stack()[4] + 4.5                  # the ribbon's axis out of the shroud
     uy = UI.routed("J2")[1]                      # the header's own row, as routed
     ex = ux - UI.BOARD_W / 2.0 - 2.0
-    out.append(("wire_ui", _wire([
-        (ex, uy, umz), (ex - 12.0, uy, umz),
-        (BAY_X, uy, umz),
-        (BAY_X, -40.0, SP(-600.0, -40.0, -57.0)[2]),
-        SP(-600.0, -40.0, -57.0)], WIRE_OD["wire_ui"])))
+    #    THE WIDTH LIES ALONG Y, which is what lets it make the one turn it has to. The
+    #    run goes -X under the deck and then straight down the bay column; a ribbon whose
+    #    width is perpendicular to both sweeps that corner as fourteen concentric arcs,
+    #    every conductor keeping its own place. Turned the other way it would have to
+    #    fold, and a fold is a crease in a part that gets pulled every service.
+    centre = [(ex, uy, umz), (ex - 12.0, uy, umz), (BAY_X, uy, umz),
+              (BAY_X, -40.0, SP(-600.0, -40.0, -57.0)[2]),
+              SP(-600.0, -40.0, -57.0)]
+    for j, path in enumerate(bundle_paths(centre, _ribbon_offsets(UI.RIBBON_N,
+                                                                 pitch=UI.RIBBON_PITCH),
+                                          across=(0.0, 1.0, 0.0))):
+        # ...and way 1 is named for what it is rather than numbered. build._color_for
+        # strips every trailing index group, so "wire_ui_01" resolves to the same base as
+        # the other thirteen and could never carry its own colour. A ribbon's one marking
+        # is the red stripe down conductor 1, and it is the only thing that tells you
+        # which way round the plug goes.
+        out.append(("wire_ui_stripe" if j == 0 else "wire_ui_%02d" % (j + 1),
+                    _wire(path, WIRE_OD["wire_ui"])))
 
     return out
 
@@ -1121,6 +1138,7 @@ WIRE_OK = {
     "wire_usb":       {"output_panel", "pi5"},
     "wire_link":      {"motor_ctrl", "pi5"},
     "wire_ui":        {"ui_pcb", "pi5"},
+    "wire_ui_stripe": {"ui_pcb", "pi5"},
 }
 
 # ...and the body-side run of the same cable ends on the motor controller, which is the
