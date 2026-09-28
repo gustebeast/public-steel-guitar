@@ -239,29 +239,34 @@ controller.
 ## The UI station (deck mid panel) — 2026-09-28
 
 The display, the encoder and the board that carries them are ONE assembly, and the
-**clamp plate plus two M4×16** hold the whole of it to the deck panel. Plastic takes
+**clamp plate, two spigots and one M4×12** hold the whole of it to the deck panel. Plastic takes
 every other direction: the display's pocket walls and the window ledge, the board's
 cradle wall and its four bearings. **The station is built onto the panel with the panel
 off the instrument**, and the panel then goes on with all of it attached.
 
 **Building the station onto the panel** (panel off the instrument, face down)
 
-1. Heat-set an M4 insert into each of the two bosses on the panel's underside, from each
-   boss's open end. They are the only inserts on the panel.
+1. Heat-set an M4 insert into the boss on the panel's underside, from the boss's open
+   end. It is the only insert on the panel.
 2. Solder the 1×20 **female** socket (KH-2.54FH-1X20P-H8.5) to the BACK of the Newhaven
    module, opening facing away from the glass. The module ships with plated holes and no
    header — Newhaven's own drawing only recommends one — so this is the one hand-solder
    step in the station, and it is on a PCB, which the project's no-solder rule allows.
 3. Drop the module face-first into the pocket. It seats against the 1.6 mm window ledge.
-4. Plug the UI board onto the module's socket and lower it into its cradle. The header
-   stack is deliberately **0.3 mm long**, so the module is pressed up into that ledge
-   rather than rattling under it.
+4. Plug the UI board onto the module's socket and lower it onto the deck's four bearing
+   posts — two of which carry **spigots** that pass through the board's two Ø4.6 locating
+   holes. Those spigots are what hold the station in X, Y and rotation.
+   **Press the module up against the ledge as you do it.** The header stack is
+   deliberately long, so the socket has 0.6 mm still to go before it bottoms; the module
+   must end up flat on the ledge, not hanging on its pins.
 5. Plug the 14-way ribbon onto J2 at the board's −X edge. **Do this now** — it is much
    harder once the clamp is on.
-6. Offer the clamp plate up under the board. Its reliefs go over the through-hole tails
-   and its arm runs +Y under the display; the two posts on the arm's crossbar land on
-   the module's back at its far mounting-hole row. Run the two M4×16 button screws up
-   through it into the inserts.
+6. Offer the clamp plate up under the board. The two spigots enter its sockets, its
+   reliefs go over the through-hole tails, and its arm runs +Y under the display so the
+   two posts on the crossbar land on the module's back at the far mounting-hole row —
+   that is what stops the screen drooping. Run the single **M4×12** button screw up
+   through the middle of it into the insert. The screw only holds Z; the plastic holds
+   everything else.
 7. Press the printed knob onto the switch's shaft through the hole in the deck. **The
    shaft is a D** — Ø2.5 milled to 1.79 across — and so is the knob's bore. The cap is
    unindexed, so any clocking is fine; it only has to go on square.

@@ -564,10 +564,17 @@ parked it 1.8 mm proud for a clearance only ever needed at the stop.
 pretty lackluster"). One screw through a 72 mm board is a hinge, and the screen above it
 was held by nothing but the ledge over it and the header under it. A printed **PETG-GF
 clamp plate** lies against the board's underside with a relief under each through-hole
-footprint, and two **M4×16 button screws** pull it up into the deck panel's own bosses;
-an arm off it steps up past the board and runs under the display to press the module's
-far end into the window ledge. New BOM lines: 2 × M4×16 button, 2 × M4 heat-set insert,
-and the printed plate itself.
+footprint, and a single **M4×12 button screw** pulls it up into the deck panel's own
+boss; an arm off it steps up past the board and runs under the display to press the
+module's far end into the window ledge. New BOM lines: 1 × M4×12 button, 1 × M4 heat-set
+insert, and the printed plate itself.
+
+**The M4 only holds Z** (user). X, Y and rotation are two printed **spigots** that come
+down off the deck, pass through Ø4.6 clearance holes in the board and enter blind sockets
+in the clamp — the project's own rule, that plastic captures every direction but the one
+you install along. Two M4s would have been a second fastener doing a job plastic does
+better, and the board would have carried two holes instead of one plus two locating
+features.
 
 ⚠ **AND THE BAY UNDER THIS STATION IS NOT CLEAR.** An earlier note of mine in this file
 and in `src/ui_panel.py` said there was 57.5 mm of free air under the whole station. That
