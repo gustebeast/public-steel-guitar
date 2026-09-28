@@ -1657,7 +1657,15 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                             tk.SetLayer(layer)
                             tk.SetNet(pad.GetNet())
                             board.Add(tk)
-                            segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, _net))
+                            # ⚠ FIVE FIELDS, INCLUDING THE LAYER. `segs` is built at the
+                            # top of this routine as 5-tuples and clear() unpacks five;
+                            # these two append sites recorded four, so every track this
+                            # routine laid poisoned its own obstacle list. It never showed
+                            # while repair_mm was 7.0 because the search gave up before it
+                            # reached one, and it crashed the whole route the first time
+                            # the reach was raised to 14.0 -- a latent bug, not a new one.
+                            # The layer was in hand at both sites all along.
+                            segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, _net, layer))
                         hop = _hop_via_inner(board, a, b, net, inner,
                                              lambda x, y, nn, **kw: clear(x, y, nn),
                                              _seg_ok, _emit,
@@ -1679,7 +1687,8 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                         t.SetLayer(a.GetLayer())
                         t.SetNet(a.GetNet())
                         board.Add(t)
-                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, net))
+                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, net,
+                                     a.GetLayer()))
                         made += 1
                     board.BuildConnectivity()
                     cc = board.GetConnectivity()

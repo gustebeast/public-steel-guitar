@@ -179,6 +179,11 @@ MCU_VSS = (14, 22, 48, 61, 71, 90, 102, 113, 126, 135, 148, 158)
 PIN = {  # port name -> LQFP176 pin
     "PA0": 40, "PA1": 41, "PA2": 42, "PA3": 47, "PA4": 50, "PA5": 51,
     "PA6": 52, "PA7": 53, "PA13": 124, "PA14": 137,
+    # PA9/PA10 = USART1 TX/RX, the ROM bootloader interface -- see the SWD block.
+    # From KiCad symbol STM32H743IITx, the same source as the rest of this map;
+    # PE4/PE5/PB3/PD1/PI6/BOOT0/NRST and the PA13=124 / PA14=137 split all re-derive
+    # to the values already here, 7 for 7.
+    "PA9": 120, "PA10": 121,
     "PB0": 56, "PB1": 57, "PB3": 161, "PB4": 162, "PB5": 163,
     "PB10": 79, "PB11": 80, "PB12": 92, "PB13": 93,
     "PC0": 32, "PC1": 33, "PC2_C": 34, "PC3_C": 35, "PC4": 54, "PC5": 55,
@@ -813,6 +818,17 @@ def optical():
                               % net.name,
                   footprint=FP["TP"], pins=[Pin(num=1, func=P)])
         net += tp[1]
+    # ⚠ A SECOND WAY IN. SWD was the only one, so a debugger that will not attach left the
+    # board scrap: the ROM bootloader's USB is on OTG_FS (PA11/PA12) and this board uses
+    # OTG_HS through the PHY, so DFU does not exist here. USART1 on PA9/PA10 IS a
+    # bootloader interface and both pins were unused.
+    # ⚠ AND THIS IS WHY BOOT0 NOW COMES OUT. It was left off because it "only helps if a
+    # ROM bootloader interface exists, and none does" -- true then. USART1 makes the
+    # premise false, so the conclusion goes with it: BOOT0 held HIGH against R30's 10k at
+    # reset is what selects the bootloader.
+    usart1_tx, usart1_rx = Net("USART1_TX"), Net("USART1_RX")
+    usart1_tx += u6[PIN["PA9"]]
+    usart1_rx += u6[PIN["PA10"]]
     led_gate = Net("LED_GATE")
     led_gate += u6[PIN["PB3"]]       # the emitter row's on/off, one GPIO for all ten
     # VCAP: the H7's internal core regulator needs its own capacitors, and leaving
@@ -825,6 +841,7 @@ def optical():
     used = set(MCU_VDD) | set(MCU_VSS) | {
         PIN[k] for k in ("VSSA", "VDDA", "VREF+", "VBAT", "VDD33_USB", "PDR_ON",
                          "PH0", "PH1", "NRST", "BOOT0", "PA13", "PA14", "PB3",
+                         "PA9", "PA10",
                          "VCAP1", "VCAP2") + tuple(SAI_CLK.values()) + SAI_SD
         + tuple(p for bus in I2C_BUS for p in bus)}
     used |= {PIN[p] for p in ULPI.values()}
@@ -1146,6 +1163,28 @@ def optical():
                pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v5_pre += fb1[1]
     v5 += fb1[2]
+    # ⚠ THE BRING-UP PADS, AND THEY COST NOTHING BUT AREA. Like TP1-5 they carry no paste
+    # and are excluded from the BOM and the pick-and-place by the footprint.
+    # WHY. The diagnostic chain is strictly serial -- power, MCU, I2C, framing, analog,
+    # emitters, USB -- and stage ONE had no observability at all: no rail is reachable by a
+    # meter without probing a 0402 beside 0.5 mm-pitch parts, and with the MCU's own ADCs
+    # dropped and all 20 converter inputs used by photodiodes, a RUNNING MCU cannot read
+    # one of its own supplies. Three pads fix that; three more make the board reflashable
+    # when SWD will not attach.
+    # ⚠ NO PAD ON MID. It is the reference all twenty TIAs sit on, so anything coupled into
+    # it appears on EVERY channel at once and calibration cannot separate it from signal.
+    # Firmware already reads it as the common rest level of all 20 channels.
+    for _ref, _net, _why in (("TP6", usart1_tx, "USART1 TX -- ROM bootloader"),
+                             ("TP7", usart1_rx, "USART1 RX -- ROM bootloader"),
+                             ("TP8", boot0, "BOOT0 -- hold HIGH at reset for the bootloader"),
+                             ("TP9", v24, "+24V rail"),
+                             ("TP10", v5, "+5V rail -- the buck's output"),
+                             ("TP11", v3a, "+3V3A rail -- the quiet LDO")):
+        _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
+                   tool="skidl", value="BRINGUP",
+                   description="bring-up pad -- %s; bare copper, no component" % _why,
+                   footprint=FP["TP"], pins=[Pin(num=1, func=P)])
+        _net += _tp[1]
 
     # ── Q1: the emitter row's low-side switch ────────────────────────────────
     # All ten emitters share one gate. They are pulsed, not held on: pulsing lets the
@@ -2762,7 +2801,26 @@ BOARD_NOTES = {
     # spine -- the router came the whole way from R51 and stopped just before the
     # handover -- and the default 5.0 declined to finish it. This costs the router
     # nothing: the repair runs after routing, on pairs that are already unconnected.
-    "repair_mm": 7.0,
+    # ⚠ RAISED 7.0 -> 14.0, AND THE CEILING IS ON AMBITION, NOT ON SAFETY. link_close_gaps
+    # runs AFTER the router, only ever acts on pads the router already left in separate
+    # islands, and refuses any path that would not pass DRC -- so a bigger reach cannot
+    # cost a route, it can only rescue one. 7.0 was chosen when the worst observed gap was
+    # I2C2_SDA's 5.85 mm. Adding six bring-up pads produced an 11.9 mm gap on +3V3A, which
+    # sailed past the old cap and stranded, and the pressure that created cost U7 pad 9 --
+    # the PHY's supply -- its connection as collateral. 14.0 covers both with room.
+    # ⚠ 8.0, AND 14.0 COST AN HOUR PER ROUTE. link_close_gaps walks the WHOLE obstacle
+    # list for every sample of every candidate pair, so the work goes as the square of the
+    # reach -- and since the tuple fix stopped it crashing, every link it lays is appended
+    # to that list and slows the next check. Measured: freerouting finished in its normal
+    # 32 min and the post-import phase, which normally takes seconds, was still running
+    # 31 min later and climbing.
+    # The reach was raised to 14.0 to heal an 11.9 mm gap that existed only because a
+    # bring-up pad had been placed a long way from its own rail. That is fixed at the
+    # placement instead -- every pad now sits on the copper it probes, worst gap 1.19 mm --
+    # so the parameter was compensating for a mistake that no longer exists. 8.0 still
+    # covers the largest gap this board has ever genuinely needed (I2C2_SDA at 5.85 mm)
+    # with room, at a fraction of the cost.
+    "repair_mm": 8.0,
     # ⚠ SAI_FS IS CLOSED HERE, AFTER ROUTING, AND THAT TIMING IS THE ENTIRE ANSWER.
     # This net was the board's last unconnected item for a dozen routes. Everything tried
     # BEFORE routing made it worse, every time, and the count is worth keeping because the
@@ -3011,9 +3069,31 @@ BOARD_NOTES = {
     # (2026-09-24) to test whether the spine had become unnecessary now that TIA_IN_B
     # is laid first and takes a clean route: it has not. The MST went straight back to
     # crossing the TIA_IN lane and dropped all ten B channels again.
+    # ⚠ THE DIGITAL RAIL AND THE PHY'S OWN SUPPLIES ARE IN THIS LIST NOW, and the reason
+    # is that every failure on this board for the last six routes happened in one place:
+    # U7. Adding six bring-up pads stranded +3V3D at U7 pad 9, then ULPI_D5 with no copper
+    # at all, then ULPI_NXT, then +3V3A -- four different nets, one neighbourhood, and
+    # +3V3A failed even in the run where its own pad had been REMOVED. That is not a
+    # placement problem. It is a region the router re-solves from scratch every run and
+    # only just manages, so ANY perturbation anywhere redistributes pressure until
+    # something there breaks.
+    #
+    # The analog half does not behave that way, and the difference is this list. Its
+    # clusters -- op-amp to its feedback R and C, converter to its AREG/DREG/VREF caps --
+    # are laid deterministically before the router sees them, so they cannot fail and
+    # cannot vary. The PHY's three +3V3D pads, its two PHY_VDD33 pads and its 1V8 rail had
+    # no such treatment: a QFN's decoupling fan-out, which is the SAME SHAPE of problem,
+    # left entirely to a search.
+    #
+    # ⚠ THIS CANNOT MAKE THE BOARD WORSE BY CONSTRUCTION, which is why it is the right
+    # lever to reach for rather than more passes. _local_nets lays an edge only if it can
+    # be laid CLEAR, skips it otherwise, and never adds a constraint the router has to
+    # honour -- "this routine only ever removes work from the router". What it removes
+    # here is the work that keeps failing.
     "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]", r"\+3V3A",
                    r"ADC\d+_AREG", r"ADC\d+_DREG", r"ADC\d+_VREF",
-                   r"LED_A\d+"),
+                   r"LED_A\d+",
+                   r"\+3V3D", r"PHY_VDD33", r"PHY_1V8"),
     "local_mm": 6.8,
 
     # ⚠ THE NORTH HALF IS FROZEN, and it is only safe to freeze now (2026-09-24). This

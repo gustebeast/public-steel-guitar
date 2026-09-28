@@ -224,6 +224,14 @@ for k in range(N_DRV):
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    # ⚠ EXPORTED SO THE CAD CANNOT INVENT ITS OWN. src/electronics.py used to space the
+    # sections by dividing the chassis channel evenly, which silently produced 4.0 mm
+    # junctions against the 8.0 this file requires -- half what two facing plugs need, so
+    # the strip could not physically be assembled. Nothing caught it because the boards do
+    # not overlap each other: there is simply air where the plugs go. A number this file
+    # owns has to travel with the board, not be re-derived by whoever places it.
+    "junction_gap_mm": JUNCTION_GAP,
+    "sections": SECTIONS,
     "layers": 2,
     "thickness_mm": 1.6,
     "placements": _place,

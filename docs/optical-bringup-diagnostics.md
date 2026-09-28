@@ -67,12 +67,42 @@ order:
 
 Do this **regardless of whether any hardware item below lands.**
 
-### 2. `PG` to an indicator LED  *(2x 0402, digital end, no signal risk)*
+### 2. ~~Indicator LEDs~~ — DROPPED, and the reason is sequencing
 
-`PG` is an open-drain power-good already on the part, wired to nothing. A pull-up + LED off `+5V`
-or `+3V3D` makes *"is the 5 V rail up?"* answerable **without touching the board** — the single
-question that currently requires probing a 0402 beside 0.5 mm-pitch parts. Steady DC when
-asserted, so no audio-band content. Place at the **buck / digital end**, clear of `In1.Cu`.
+Two LEDs were planned: a power-good indicator and a firmware heartbeat. **Both are out.**
+
+The user's constraint was that an LED must be **off during normal operation** — an always-lit
+one is an eyesore. That is satisfiable (flash ~200 ms at boot, then dark, solid only on
+fault, never blinking, because a 1 Hz blink sits in the audio band beside twenty TIAs). So
+the constraint was not what killed it.
+
+**What killed it is that its value never lands where it was needed.** A virgin board has no
+firmware, so the LED cannot flash. Getting firmware onto it means attaching SWD or USART —
+and by then you are holding a tool that reports strictly more than one bit of light. Every
+question the LED answers is already answered:
+
+| question | what answers it without the LED |
+|---|---|
+| are the rails up? | TP9/TP10/TP11 and a meter (item 4, zero parts) |
+| is the MCU alive? | SWD, or the USART console, or the Pi seeing a USB device |
+| did firmware boot? | the Pi enumerates it — free, and the Pi is always attached |
+| what fault? | the USART console says WHICH, where the LED says only THAT |
+
+The one slice it uniquely buys is distinguishing *MCU alive but USB/ULPI broken* from *MCU
+dead* without attaching a probe. ULPI is a 12-signal parallel bus and a plausible
+first-article failure — but if USB will not enumerate, SWD comes out anyway, and SWD
+answers it completely.
+
+**What is given up:** a GPIO stays free, and there is no at-a-glance "it is powered" once the
+board is installed in the instrument and awkward to probe. Small, and the least-noticed case.
+
+**Not to be re-proposed** without a use that survives the sequencing argument above.
+
+### 2b. `PG` to a bare pad *(0 parts)*
+
+The buck's open-drain power-good is still wired to nothing (`BUCK_PG_NC`). A pad on it costs
+no part and lets a meter ask the buck its own opinion of the 5 V rail, rather than inferring
+it. Worth folding into the next pad revision.
 
 ### 3. USART1 bootloader pads + `BOOT0`  *(0 parts, 3 bare pads, no signal risk)*
 
