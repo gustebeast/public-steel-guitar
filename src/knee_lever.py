@@ -258,6 +258,21 @@ LEVER_HW = ARM_WY / 2               # UNIFORM lever half-width: hub, lobe and ar
 PIVOT_BOSS_D = 8.0                  # ...the housing carries a small Ø8 thrust boss at each hub end for
 PIVOT_CLR = 0.2                     #   low-friction Y location (a ring, not the whole hub face)
 THROW   = 30.0                      # neutral -> full throw (deg, +theta about +Y). 30° is the useful max
+# ...and the OTHER way, for STORAGE (user, 2026-09-28: "for the LKL we want a storage
+# sweep angle as well. It should be able to sweep until it touches the LKV"). The lever
+# folds back out of the way; what stops it is the VERTICAL lever's own arm.
+#
+# MEASURED IN THE ASSEMBLY, because this one cannot be derived here: the angle depends on
+# where src.build puts the stations, and on knee_lever_vert's geometry, and this module
+# can import neither (KV imports KL, so the arrow only points one way). Swept through
+# build's own poses, the binding station is LKL itself at x -500 -- the one next to the
+# vertical lever -- and its gap to vkl_kv_lever closes as 2.37 at 44, 1.64 at 45, 0.91 at
+# 46, 0.17 at 47, 0.00 at 48. LKR, the next one over, still has 1.11 at 54.
+#
+# SO IT IS A NUMBER, AND src.build ASSERTS IT. That is the compromise: the value is
+# written once here where the sweep needs it, and checked every build against the real
+# poses, so a station that moves fails loudly instead of quietly closing the gap.
+STORAGE = 47.0                      # deg the other way: the fold, stopped by LKV's arm
                                     #   knee travel (this is a SENSOR input -- the MT6701 reads angle at
                                     #   14-bit; servos pull the strings). 45° drove the swinging arm into
                                     #   the -Z cartridges; 30° + the front-bottom relief (see _cam_swept)
@@ -2275,7 +2290,13 @@ STOP_HEAD_X = STOP_TIP_IN - STOP_SCREW_L            # where the head parks, scre
 # you measure it -- 3.07 further at the top of a Ø4.4 bore than on the centre line. Ending
 # the bore at the axis's wall left exactly that wedge over the hole, and the screw drove
 # into it 3.1 mm3 short of its own travel.
-STOP_BORE_END = arm_face_x(THROW, STOP_Z + M4.shaft_clr_d / 2.0)
+# ...AND IT RUNS AS FAR AS THE SCREW DOES, not as far as the room's wall. Tying it to
+# arm_face_x tied it to the POLYGON room, and the moment the room became an honest sweep
+# the wall moved and the bore stopped 8.7 short of the screw's own reach -- a lip, exactly
+# where the tip has to pass (user, 2026-09-28: "the stop position setscrew still isn't
+# drilled far enough towards +x. it stops a bit short leaving a lip here"). The bore
+# serves the SCREW; its end is where the screw's tip can reach and nowhere else.
+STOP_BORE_END = STOP_TIP_IN
 assert STOP_HEAD_X <= STOP_ANCHOR_X + 1e-9, (
     "screwed fully in, the travel stop's head reaches %.2f -- %.2f INTO its own anchor. "
     "It needs a longer screw, not a deeper channel" % (STOP_HEAD_X, STOP_HEAD_X - STOP_ANCHOR_X))
@@ -2525,9 +2546,15 @@ def lever_room() -> cq.Workplane:
     A room is one of two things (user, 2026-09-28): the sweep of the lever's rotation, or
     the path that installs it. THIS lever needs only the first: its arm hangs -Z out of an
     open floor, so the rest pose being cut IS an install path, straight down.
+
+    THE SWEEP RUNS BOTH WAYS -- -STORAGE to +THROW. Forward is the throw the knee drives;
+    back is the fold that puts the lever out of the way, and it is stopped by the VERTICAL
+    lever's arm rather than by anything here. The old polygon had a note about "the
+    storage fold at +X swings into air" and a vertical face to keep that half-space open;
+    this is that same intent, said as a sweep instead of as a wall.
     """
     env = None
-    for i in range(int(THROW) + 1):
+    for i in range(-int(STORAGE), int(THROW) + 1):
         c = _lever_envelope().rotate((0, 0, 0), (0, 1, 0), float(i))
         env = c if env is None else env.union(c)
     return env
