@@ -238,46 +238,50 @@ controller.
 
 ## The UI station (deck mid panel) — 2026-09-28
 
-The display, the encoder and the board that carries them are ONE assembly, plugged
-together, and **one M4 holds it in the deck panel**. Plastic takes every other direction:
-the display's pocket walls and the window ledge catch it in X, Y and +Z; the board's
-cradle wall and four columns catch it in X, Y and +Z. The one direction left is the one
-you install along, and that is the screw's whole job. The display's own downward stop is
-the board's header — which is what makes one screw cover both.
+The display, the encoder and the board that carries them are ONE assembly, and the
+**clamp plate plus two M4×16** hold the whole of it to the deck panel. Plastic takes
+every other direction: the display's pocket walls and the window ledge, the board's
+cradle wall and its four bearings. **The station is built onto the panel with the panel
+off the instrument**, and the panel then goes on with all of it attached.
 
-**Building the panel up**
+**Building the station onto the panel** (panel off the instrument, face down)
 
-1. Heat-set an M4 insert into the boss on the panel's underside, from the boss's open
-   end. It is the only insert on the panel.
+1. Heat-set an M4 insert into each of the two bosses on the panel's underside, from each
+   boss's open end. They are the only inserts on the panel.
 2. Solder the 1×20 **female** socket (KH-2.54FH-1X20P-H8.5) to the BACK of the Newhaven
    module, opening facing away from the glass. The module ships with plated holes and no
    header — Newhaven's own drawing only recommends one — so this is the one hand-solder
    step in the station, and it is on a PCB, which the project's no-solder rule allows.
-3. Plug the module onto the board's 1×20 male header. They stay together from here.
-4. Offer the assembly up: the module enters the pocket in the panel's underside, the
-   board enters its cradle. The module seats against the 1.6 mm window ledge — the header
-   stack is deliberately **0.3 mm long**, so it always presses up into that ledge rather
-   than rattling under it.
-5. Run the M4 button screw up through the board into the insert, from underneath.
-6. Press the printed knob onto the switch's shaft through the hole in the deck. **The
+3. Drop the module face-first into the pocket. It seats against the 1.6 mm window ledge.
+4. Plug the UI board onto the module's socket and lower it into its cradle. The header
+   stack is deliberately **0.3 mm long**, so the module is pressed up into that ledge
+   rather than rattling under it.
+5. Plug the 14-way ribbon onto J2 at the board's −X edge. **Do this now** — it is much
+   harder once the clamp is on.
+6. Offer the clamp plate up under the board. Its reliefs go over the through-hole tails
+   and its arm runs +Y under the display; the two posts on the arm's crossbar land on
+   the module's back at its far mounting-hole row. Run the two M4×16 button screws up
+   through it into the inserts.
+7. Press the printed knob onto the switch's shaft through the hole in the deck. **The
    shaft is a D** — Ø2.5 milled to 1.79 across — and so is the knob's bore. The cap is
    unindexed, so any clocking is fine; it only has to go on square.
 
-**Taking it out — the screw first, then the panels.**
+**Onto the instrument**
 
-1. Undo the one M4 from underneath. The whole assembly — screen, board and all — is now
-   free to come down.
-2. Let it down about 20 mm onto the chassis floor. There is **57.5 mm of clear air**
-   under the station's entire footprint, so it lands on bare floor with nothing to catch
-   on, and its highest point then sits ~39 mm below the lowest feature hanging off any
-   deck panel.
-3. Reach in and unplug the 14-way ribbon at the board's −X edge.
-4. Now slide the deck panels out. They pass over the assembly with room to spare.
-5. Lift the assembly out from above once the panels are gone. **It will not come out
-   through the deck** with the panels on: the module is 82 × 47.5 and the window is
-   66 × 33.
+8. Slide the mid panel on, station and all.
+9. Plug the ribbon's other end onto the Pi's GPIO header.
+10. Slide the keyhead panel on.
+11. Fit the keyhead endplate.
 
-**Before the first panel is printed**, confirm the right-angle ribbon header's height
-against the real part. `src/board_geom.HEIGHT` carries 10.0 mm for it as an ESTIMATE —
-ZHOURI publish no drawing through LCSC — and there is 11.40 mm between the board's top
-face and the deck's underside.
+Out is the reverse, and nothing has to be reached blind: every step that touches a
+connector happens with the panel off or with the keyhead end open.
+
+**Two things to confirm against the real parts before printing a panel:**
+
+* **The clamp's arm bears on the module's back** at the two far mounting-hole pads,
+  because that is the one region of a module's back guaranteed to be clear of
+  components. Newhaven's rear view shows parts and their drawing does not dimension
+  them — check it.
+* **The right-angle ribbon header's height.** `src/board_geom.HEIGHT` carries 10.0 mm for
+  it as an ESTIMATE (ZHOURI publish no drawing through LCSC) and there is 11.40 mm
+  between the board's top face and the deck's underside.

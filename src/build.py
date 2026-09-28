@@ -109,6 +109,7 @@ PARTS = {
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
     # height plate lifted by 3 M4×20 button-head leadscrew jacks; a -Y M4 cup-tip grub
     # locks the pickup +Y against the plate's +Y wall. All hardware is stocked M4, all +Z.
+    "ui_clamp":        (lambda: heal(__import__("src.ui_panel", fromlist=["e"]).clamp()), "petg-gf/ui_clamp.step", "PETG-GF - the UI clamp plate. It lies against the BOARD'S UNDERSIDE (3.2 thick, a relief under every footprint for the through-hole tails) and two M4x16 pull it up into the deck panel's own bosses, gripping the board between its whole top face and four bearings on the deck. An arm steps up past the board and runs +Y under the display to its far mounting-hole row, where two posts press the module's back into the window ledge - the screen's only positive retention. GF because it is a stiffness part. Prints PLATE-DOWN, its own flat underside on the bed, so every rib and post grows straight up off it"),
     "ui_knob":         (lambda: heal(__import__("src.ui_panel", fromlist=["e"]).knob()), "pctg/ui_knob.step", "PCTG - the UI cap: a O8 shank up through the deck and a O17 disc over it, bored O2.6x1.8 for the Alps shaft's tip. Prints DISC-DOWN (its own flat face on the bed), so the shank and the bore are both vertical and the bore's ceiling is the last thing printed. PCTG because it is the one part of the instrument a player touches every time they change a setting, and the deck it sits on is the same resin"),
     "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (green pickup area + nubs; 3 M4×20 button-head leadscrew jacks lift/tilt it via heat-set nuts on top, pickup rests on it and slides in X for tone; +Y retention wall + -Y cup-tip grub lock the pickup to the plate; GF keeps it flat on the point loads)"),
     # (the whole round-tube leg family — sockets, segments, thread couplers and
@@ -1688,7 +1689,13 @@ _COLORS = {
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
     "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
     "ui_pcb":          (0.05, 0.35, 0.18),   # the UI board, as fabbed
-    "ui_display":      (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
+    "ui_display":      (0.16, 0.16, 0.18),   # the module's metal bezel -- the part the
+                                             # deck's ledge bears on and covers
+    "ui_screen":       (0.92, 0.94, 0.97),   # the 128 x 64 of LIT AREA, drawn light so
+                                             # the render shows what the window shows
+    "ui_clamp":        (0.36, 0.30, 0.42),   # the printed clamp plate under the board
+    "ui_insert":       (0.72, 0.60, 0.38),   # brass heat-set
+    "ui_screw":        (0.62, 0.64, 0.67),
     "ui_knob":         (0.15, 0.15, 0.17),   # the printed cap on the encoder
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),

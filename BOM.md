@@ -560,6 +560,23 @@ the deck's hole 1.41 mm below the deck's top face. The cap's underside is a 14°
 rather than a flat disc — a flat one has to sit its whole rim's dip above the deck, which
 parked it 1.8 mm proud for a clearance only ever needed at the stop.
 
+⚠ **RETENTION: A CLAMP PLATE AND TWO M4s** (user, 2026-09-28 — "the retention is
+pretty lackluster"). One screw through a 72 mm board is a hinge, and the screen above it
+was held by nothing but the ledge over it and the header under it. A printed **PETG-GF
+clamp plate** lies against the board's underside with a relief under each through-hole
+footprint, and two **M4×16 button screws** pull it up into the deck panel's own bosses;
+an arm off it steps up past the board and runs under the display to press the module's
+far end into the window ledge. New BOM lines: 2 × M4×16 button, 2 × M4 heat-set insert,
+and the printed plate itself.
+
+⚠ **AND THE BAY UNDER THIS STATION IS NOT CLEAR.** An earlier note of mine in this file
+and in `src/ui_panel.py` said there was 57.5 mm of free air under the whole station. That
+came from a probe whose filter excluded almost every part in the instrument; it found
+two. Measured properly, the highest things under the station are **wire_usb at −18.00**
+under the board and **wire_canl at −17.24** under the display, with the tee boards at
+−19.65 — against the board's own through-hole tails at −16.50. The real budget is
+**1.5 mm**, which is what the clamp plate is designed around.
+
 **Pull-ups, not debounce capacitors.** Seven 10 kΩ 0402, one per contact, and no cap
 across any of them. An RC debounce dumps the capacitor's charge through the switch
 contact at every make, and this contact is rated **10 mA with a 50,000-cycle life on the

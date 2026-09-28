@@ -31,23 +31,36 @@ here is typed.
 +X edge is level with the window's +X edge, so the two stand the same 9.90 off the seam.
 See knob_x(), which records the two wrong readings of "equally spaced" that came first.
 
--- GETTING IT OUT AGAIN (user, 2026-09-28) -----------------------------------
-ONE M4 RELEASES BOTH THE SCREEN AND THE BOARD, and plastic takes every other direction.
-The display is caught in X and Y by its pocket walls and in +Z by the window ledge; the
-board is caught in X and Y by the cradle's wall and in +Z by its four columns. Neither
-is caught in -Z by plastic at all, because -Z is the installation direction -- and that
-one direction is the M4's whole job. The display's own -Z stop is the board's header,
-which is why the screw covers both: the two are plugged together into one assembly, and
-one screw is all that holds that assembly in the panel.
+-- HOW IT GOES IN AND OUT (user, 2026-09-28) ---------------------------------
+THE STATION IS BUILT ONTO THE PANEL WHILE THE PANEL IS OFF THE INSTRUMENT, and then
+the panel is slid on with all of it attached. In order: build the station onto the mid
+panel, slide that panel on, plug the ribbon into the Pi, slide the keyhead panel on,
+fit the endplate. Out is the reverse.
 
-...AND IT DROPS STRAIGHT OUT INTO THE BAY. Under the whole 82 x 47.5 footprint there is
-nothing between the panel and the chassis floor at z -71.5: 57.5 mm of clear air,
-measured across the station's whole plan. So undoing the one screw lets the assembly --
-screen, board and all -- come down about 20 mm onto that floor, where its highest point
-sits some 39 mm below the lowest thing hanging off any deck panel. Reach in, unplug the
-ribbon, and every panel slides out over it; the assembly lifts out from above once they
-are gone. It cannot come out THROUGH the deck: the module is 82 x 47.5 and the window is
-66 x 33.
+ONE CLAMP PLATE AND TWO M4s HOLD IT. Plastic takes every direction but the one it
+installs along: the display's pocket walls and the window ledge, the board's cradle wall
+and four bearings. The clamp plate lies against the board's underside and its two screws
+pull the whole sandwich up into the deck's own bosses -- and an arm off it reaches under
+the display to press the module's far end into the ledge, which is the screen's only
+positive retention. Undo two screws and the station comes away as one piece.
+
+WHAT IS ACTUALLY UNDER IT, measured rather than assumed. An earlier probe of mine
+reported 57.5 mm of clear air under the whole station and was WRONG -- it filtered out
+almost every part in the instrument and found two. Intersecting a prism over the
+station's plan with everything gives:
+
+    under the BOARD     wire_usb at -18.00, then the motor pigtails at -21.45
+    under the DISPLAY   wire_canl at -17.24, the tee boards at -19.65
+
+The board's own through-hole tails already reach -16.50, so the clearance under this
+station is a millimetre and a half, not five centimetres. That is why the clamp lies
+AGAINST the board with reliefs for the tails instead of hanging below them, and why its
+arm steps up to -8.0 before running +Y under the display.
+
+...AND THE PANEL SLIDES ON WITH ALL OF IT ATTACHED, which is a 361 mm stroke past the
+whole bay. Stepping the real solids along it, the only thing the station meets is
+wire_usb, and only in the last 30 mm at the keyhead -- where that cable climbs to the
+Pi, on a keyhead endplate that is not fitted until after the panels.
 
 -- THE STACK, TOP DOWN -------------------------------------------------------
     deck top            +6.4   the player's surface
@@ -164,6 +177,9 @@ KNOB_BORE_CLR = 0.15               # per face, round AND flat: a press fit on a 
 # way up puts the shaft bore's blind end over air. Its own +Z is the world's, so the
 # declaration is the world axis turned over.
 KNOB_UP = (0.0, 0.0, -1.0)
+# The clamp goes the other way: its flat underside is the bed and every pad, rib and
+# post grows straight up off it.
+CLAMP_UP = (0.0, 0.0, 1.0)
 
 # -- THE BOARD --------------------------------------------------------------
 # 72 x 34, and both numbers are set by parts rather than chosen: the 1x20 header is
@@ -185,19 +201,88 @@ SOCKET_H = 2.5 + 8.5
 # their 6.0 engagement, and nothing can buzz against a printed face under an instrument
 # that gets stomped on.
 MOD_PRELOAD = 0.3
-# THE ONE M4, in board coordinates. It sits in the +Y half on purpose, twice over:
-# it is nearer the display's overhang, which is where the assembly's weight is, and it
-# leaves the whole -Y half of the board as one uninterrupted lane. Down in the -Y half
-# its O4.5 clearance hole stood in the middle of the only route the seven switch nets
-# have from the encoder to the ribbon header, and the router left two of them short.
-SCREW_XY = (-15.5, 4.0)
+# TWO M4s, in board coordinates, and they clamp a PLATE rather than the board alone
+# (user, 2026-09-28: "the retention is pretty lackluster"). One screw through a 72 mm
+# board is a hinge, and the screen under it was held by nothing but the ledge above and
+# the header below. The clamp plate spans the board, bears on it at four pads, reaches
+# under the display and presses its far end up into the ledge; these two screws pull the
+# whole sandwich together.
+#
+# Their positions are what the routed board leaves. The -Y half is one uninterrupted
+# lane for the seven switch nets -- a clearance hole in the middle of it left two of them
+# unroutable -- and the +X end is all encoder, so they sit either side of the middle.
+# The second one is 12 mm clear of the encoder's -X edge, not 5.7: at 5.7 it stood in
+# the throat every switch net escapes through and the router left SW_PUSH and SW_B short.
+# The second one is 16 mm clear of the encoder's -X edge -- at 5.7 it stood in the
+# throat every switch net escapes through and the router left SW_PUSH and SW_B short --
+# and no further -Y than -8.0, because its own head is O7.6 and at -11.0 the head's rim
+# reached into the chassis trough's nub.
+SCREWS = ((-15.5, 4.0), (0.0, -8.0))
 SCREW_CLR_D = 4.5                  # its clearance hole in the board
 
 # -- THE DECK ---------------------------------------------------------------
 LEDGE_T    = D.MIN_WALL_2P         # 1.6 of deck left over the module = the bezel
+# -- HOW MUCH OF THE SCREEN THE DECK IS ALLOWED TO COVER: none of it -------------------
+# The window was the module's own BEZEL OPENING (66 x 33), on the reasoning that beyond
+# that aperture there is only metal frame, so nothing is lost. True, and it is the wrong
+# datum: it says what the MODULE shows, not what the deck must not cover, and the two
+# only happen to be close. Against the 128 x 64 of ACTIVE area it left 1.155 mm a side in
+# Y, and three things eat into that --
+#     +-0.30  the module's slip fit in its pocket
+#     +-0.30  the drawing's own standard linear tolerance
+#     +-0.25  MY inference about where the optical centre sits in Y (see VIEW_OFF_Y)
+# -- - 0.85 of the 1.155, leaving 0.30. Positive, so no lit pixel was ever going to be
+# covered, and far too thin to have arrived at by accident.
+#
+# So the window is sized off the ACTIVE AREA and a stated margin instead. 1.6 is the
+# project's two-bead unit and it swallows the 1.05 above with room over. In X that comes
+# out INSIDE the bezel's aperture; in Y it runs 0.44 past it, which shows a hair of the
+# module's own black frame and is the right trade -- a window tight to the lit rectangle
+# also looks better than one with a band of dead glass round it.
+WINDOW_MARGIN = D.MIN_WALL_2P
+WIN_W = ACT_W + 2 * WINDOW_MARGIN          # 64.61
+WIN_L = ACT_L + 2 * WINDOW_MARGIN          # 33.89
+assert WIN_W <= BEZEL_W - 2 * D.MIN_WALL_2P and WIN_L <= BEZEL_L - 2 * D.MIN_WALL_2P, (
+    "the window is %.2f x %.2f and the module's bezel is %.2f x %.2f -- the deck's ledge "
+    "would have nothing to bear on" % (WIN_W, WIN_L, BEZEL_W, BEZEL_L))
 POCKET_CLR = 0.3                   # slip fit round the module
 EDGE_WALL  = D.MIN_WALL_2P         # 1.6 from the pocket to the panel's +X seam
-POST_SQ    = 5.0                   # the board's corner posts
+POST_SQ    = 4.0                   # the deck's bearing posts. 4.0, not 5.0: the only
+                                   # clear ground left at the +X end is the 5.4 mm strip
+                                   # between the encoder's courtyard and the pull-up row
+# 3.2, AND IT IS A CEILING, NOT A CHOICE. The bay under this station is not the clear
+# air an earlier probe of mine reported -- that probe filtered out almost every part in
+# the instrument and found two. Measured properly, by intersecting a prism over the
+# board's plan with everything:
+#     under the BOARD    the highest thing is wire_usb at -18.00
+#     under the DISPLAY  wire_canl at -17.24, then the tee boards at -19.65
+# The board's own through-hole tails already reach -16.50. So the whole budget between
+# the tails and the harness is 1.50 mm, and a plate slung under the tails -- which is
+# what this was -- lands in the middle of the motor bank's wiring.
+#
+# The plate therefore sits AT the board's underside and takes a relief under every
+# footprint for the tails to hang into. Its top face IS the bearing surface, which is
+# simpler than pads and grips the whole board rather than four spots.
+CLAMP_T    = 4 * D.BEAD
+CLAMP_TAIL_CLR = 0.5               # air under the longest through-hole tail
+# 0.4, grown round each through-hole footprint. It is a CEILING, not a fit: the fab box
+# already bounds the tails, so the relief only has to exist -- and J1's and J2's boxes
+# pass within 2.43 of each other, so anything over 0.415 leaves a web under the two-bead
+# floor between them. check_thin is what found that, at 1.43.
+CLAMP_RELIEF = 0.4
+CLAMP_RIB_W = 6.0                  # the arm that reaches under the display
+CLAMP_RIB_H = 6.0
+CLAMP_ARM_Z = -8.0                 # the arm's TOP, once it has stepped up past the
+                                   # board. Its UNDERSIDE then sits at -14.0, which is
+                                   # 3.2 clear of the highest thing under the display
+                                   # (wire_canl at -17.24); at the plate's own level it
+                                   # would have been 1.8 INSIDE it
+# A stock length, and the one that fits: 6.4 of clamp + 1.6 of board leaves 8.0 in the
+# insert, against a 5.0 insert and M4's 3.5 minimum bite.
+CLAMP_SCREW_L = 16.0
+assert CLAMP_SCREW_L - CLAMP_T - BOARD_T >= M4.insert_depth, (
+    "an M4 x %.1f leaves %.1f in the insert, which is %.1f deep"
+    % (CLAMP_SCREW_L, CLAMP_SCREW_L - CLAMP_T - BOARD_T, M4.insert_depth))
 POST_CLR   = 0.3
 
 
@@ -441,7 +526,23 @@ def display_module():
     bez_z0 = back + MOD_PCB_T
     bezel = box_at(BEZEL_W, BEZEL_L, face - bez_z0,
                    x=mx, y=bez_y, z=(bez_z0 + face) / 2.0)
-    return pcb.union(bezel)
+    # the lit area is its own part (see screen()), so take its skin out of the bezel
+    # rather than letting the two share a volume
+    return pcb.union(bezel).cut(box_at(ACT_W, ACT_L, 0.4, x=mx, y=bez_y, z=face - 0.1))
+
+
+def screen():
+    """The 128 x 64 of LIT AREA, as a face on the module's front.
+
+    Drawn separately, and only because of how the assembly read without it: the module
+    was one dark block 74.2 x 42.5, the deck's ledge covered its outer 4-5 mm all round
+    -- which is the BEZEL doing its job -- and the picture said the panel was covering
+    the screen. It never was. This is the rectangle that matters, in its own colour, so
+    the question can be answered by looking."""
+    hx, hy = routed("J1")
+    my = hy + (MOD_L / 2.0 - HDR_EDGE_DY)
+    face = z_stack()[2]
+    return box_at(ACT_W, ACT_L, 0.2, x=hx, y=my + VIEW_OFF_Y, z=face - 0.1)
 
 
 def knob_geometry():
@@ -529,9 +630,10 @@ def deck_cutter():
     # the pocket: open at the underside, its ceiling the face the module presses on
     out = box_at(MOD_W + 2 * c, MOD_L + 2 * c, face - bz + 1.0,
                  x=mx, y=my, z=(bz - 1.0 + face) / 2.0)
-    # the window: the BEZEL OPENING, which is what limits the view -- anything wider
-    # only thins the ledge, and anything narrower crops the panel
-    out = out.union(box_at(OPEN_W, OPEN_L, tz - face + 2.0,
+    # the window: the ACTIVE AREA plus WINDOW_MARGIN, which is the only thing the deck
+    # is not allowed to cover (see the constant's note -- the bezel opening was the
+    # wrong datum for it)
+    out = out.union(box_at(WIN_W, WIN_L, tz - face + 2.0,
                            x=mx, y=my + VIEW_OFF_Y, z=(face + tz + 2.0) / 2.0))
     kx, ky = knob_centre()
     out = out.union(cyl(knob_geometry()[3], tz - bz + 2.0, z=bz - 1.0)
@@ -547,12 +649,22 @@ def _posts():
     poking inward off a wall would be a ceiling with nothing beneath it. A column from
     the deck's own underside is supported the whole way.
 
-    The four are placed in the gaps the routed board leaves; check_posts() below is what
-    says so, and it runs AFTER the route rather than here. A post on a part does reach
+    TWO POSTS, NOT FOUR, because the two screw bosses are bearing faces as well -- their
+    end faces stop at the board's top exactly as a post does, so the board is carried at
+    four points and only two of them have to be found somewhere else. The two that are
+    are placed in the gaps the routed board leaves; check_posts() below is what says so,
+    and it runs AFTER the route rather than here. A post on a part does reach
     the overlap gate -- it caught two of these at 0.8 mm3 when the pull-ups moved into a
     row -- but as an anonymous solid-on-solid finding, and what you want to be told is
     WHICH post and WHICH part."""
-    return [(11.0, 6.0), (11.0, -13.5), (-6.0, -13.0), (-6.0, 6.0)]
+    return [(29.5, 8.0), (-8.0, -8.0)]
+
+
+def bearings():
+    """[(x, y)] every place the deck touches the board's top face: the two posts and the
+    two screw bosses. The clamp plate puts a pad under each of them, so the board is
+    squeezed rather than bent."""
+    return _posts() + [tuple(xy) for xy in SCREWS]
 
 
 def check_posts():
@@ -566,7 +678,7 @@ def check_posts():
     out = []
     half = POST_SQ / 2.0 + POST_CLR
     edge = board_local(0.0, module_centre()[1] - MOD_L / 2.0)[1]
-    for px, py in _posts():
+    for px, py in bearings():
         if py + half > edge:
             out.append("the post at (%+.1f, %+.1f) reaches y %+.2f, under the display "
                        "module, whose edge is at %+.2f" % (px, py, py + half, edge))
@@ -622,35 +734,128 @@ def deck_mount():
     for px, py in _posts():
         s = s.union(box_at(POST_SQ, POST_SQ, bz - board_top,
                            x=cx + px, y=cy + py, z=(bz + board_top) / 2.0))
-    # the screw boss: a column like the others, with the insert pocket bored UP into it
-    # from its own end face -- which prints as a blind hole opening at the top
-    bx, by = cx + SCREW_XY[0], cy + SCREW_XY[1]
-    s = s.union(cyl(M4.insert_pilot_d + 2 * D.MIN_WALL_2P, bz - board_top, z=board_top)
-                .translate((bx, by, 0)))
-    return cut_insert_bore(
-        M4, s, (bx, by, board_top), (0, 0, 1),
-        M4.screw_l - M4.insert_l + BOARD_T + 1.0,
-        reason="the deck's only UI fastener: a self-tapped M4 in PCTG would strip the "
-               "first time the board came off for service, and it comes off for every "
-               "display swap",
-        print_up=_tp().PIECE_UP)
+    # the two screw bosses: columns like the posts, each with its insert pocket bored UP
+    # from its own end face -- which prints as a blind hole opening at the top. Their end
+    # faces are bearing surfaces too, which is why there are only two separate posts.
+    for sx, sy in SCREWS:
+        s = s.union(cyl(M4.insert_pilot_d + 2 * D.MIN_WALL_2P, bz - board_top,
+                        z=board_top).translate((cx + sx, cy + sy, 0)))
+    for sx, sy in SCREWS:
+        s = cut_insert_bore(
+            M4, s, (cx + sx, cy + sy, board_top), (0, 0, 1),
+            CLAMP_SCREW_L - M4.insert_l + 1.0,
+            reason="the UI's only fasteners: a self-tapped M4 in PCTG would strip the "
+                   "first time the clamp came off for service, and it comes off for "
+                   "every display swap",
+            print_up=_tp().PIECE_UP)
+    return s
+
+
+def clamp_z():
+    """(top, bottom) of the clamp plate: its top face IS the board's underside.
+
+    It used to hang below the THROUGH-HOLE TAILS -- 3.5 for the encoder's terminals,
+    3.0 for the two headers -- which put it at -17.0/-23.4 and straight through the
+    motor bank's harness. There is no room down there. It sits against the board
+    instead and lets the tails hang into a relief under each footprint."""
+    board_bot = z_stack()[5]
+    return board_bot, board_bot - CLAMP_T
+
+
+def clamp():
+    """THE CLAMP PLATE: what actually holds the station in (user, 2026-09-28).
+
+    A printed plate against the board's underside, pulled up by two M4s into the deck's
+    own bosses. It does three things the single screw did not:
+
+      * it SQUEEZES the board rather than hinging it. Its whole top face bears, against
+        four bearing faces on the deck -- two posts and the two bosses' own ends -- so
+        the board is gripped between opposed surfaces instead of pinched at one point.
+      * it REACHES THE SCREEN. An arm steps up past the board and runs +Y under the
+        display to its far mounting-hole row, where two posts press the module's back up
+        into the window ledge. Until this the module's 47.5 mm was carried at one edge by
+        its own 20-way header and nothing else -- the "lackluster" the user was looking
+        at.
+      * and it is the ONE PART you undo.
+
+A RELIEF UNDER THE THROUGH-HOLE FOOTPRINTS ONLY, from board_geom.TAIL. Relieving
+    every footprint was tried and is worse: the 0402s do not need it, and two of their
+    reliefs left a 1.38 mm web between them -- under the two-bead floor.
+
+    THE ARM BEARS ON THE MOUNTING-HOLE PADS, x +-36.70 at the module's far hole row,
+    because that is the one region of a module's back guaranteed to be clear of
+    components. CONFIRM IT against the real part before printing: Newhaven's rear view
+    shows parts, and their drawing does not dimension them."""
+    cx, cy = board_centre()
+    top, bot = clamp_z()
+    hw, hl = BOARD_W / 2.0, BOARD_L / 2.0
+    _tz, _bz, _face, mod_back, _board_top, _board_bot = z_stack()
+    from . import chassis as CH
+    # ...AND ITS -Y EDGE STOPS CLEAR OF THE CABLE TROUGH, for the same reason the deck's
+    # wall does: the panel is slid on and off with the whole station bolted to it, and
+    # the trough's lip runs the length of the rail.
+    y0 = max(cy - hl - 2.0, CH.WT_Y0 + CH.WT_D + 0.5)
+    # +Y OF THE BOARD BY MORE THAN THE ARM IS WIDE, so the riser stands on plate that
+    # is not over the board -- at 2.0 it stood on the board itself and drove 121 mm3 of
+    # rib straight up through it. Its WIDTH is the board's, not more: the deck's own
+    # locating wall runs down the +X side and a wider plate lands inside it.
+    y1 = cy + hl + CLAMP_RIB_W + 2.0
+    s = box_at(BOARD_W, y1 - y0, CLAMP_T, x=cx, y=(y0 + y1) / 2.0,
+               z=(top + bot) / 2.0)
+    assert bot > CH.WT_ZF + CH.WT_H or y0 > CH.WT_Y0 + CH.WT_D, (
+        "the clamp plate reaches z %.2f over the cable trough, whose lip tops out at "
+        "%.2f" % (bot, CH.WT_ZF + CH.WT_H))
+    for _ref, (x0, x1, fy0, fy1), tail in _bg().tails("ui_board"):
+        if tail <= 0.0:
+            continue
+        s = s.cut(box_at(x1 - x0 + 2 * CLAMP_RELIEF, fy1 - fy0 + 2 * CLAMP_RELIEF,
+                         CLAMP_T + 2.0, x=cx + (x0 + x1) / 2.0, y=cy + (fy0 + fy1) / 2.0,
+                         z=(top + bot) / 2.0))
+    # the arm to the display: up past the board, +Y to the far mounting-hole row, a
+    # crossbar there, and two posts to the module's back
+    # ...AND THE ARM IS A FIN OFF THE BED, not a beam in mid-air. Drawn as a 6 mm bar
+    # at the arm's height it was a 35 mm bridge over nothing -- 650 mm2 of unsupported
+    # ceiling, on a part whose whole point is stiffness. Taken down to the plate's own
+    # underside it grows straight up off the bed, needs no support, and is four times
+    # the section it was.
+    mx, _my = module_centre()
+    far_y = header_row_y() + MOD_HOLE_DY
+    fin_y0 = y1 - CLAMP_RIB_W
+    s = s.union(box_at(CLAMP_RIB_W, far_y - fin_y0, CLAMP_ARM_Z - bot, x=mx,
+                       y=(fin_y0 + far_y) / 2.0, z=(bot + CLAMP_ARM_Z) / 2.0))
+    s = s.union(box_at(2 * MOD_HOLE_DX + CLAMP_RIB_W, CLAMP_RIB_W, CLAMP_ARM_Z - bot,
+                       x=mx, y=far_y, z=(bot + CLAMP_ARM_Z) / 2.0))
+    for sx in (-1, 1):
+        s = s.union(cyl(CLAMP_RIB_W, mod_back - CLAMP_ARM_Z, z=CLAMP_ARM_Z)
+                    .translate((mx + sx * MOD_HOLE_DX, far_y, 0)))
+    for sx, sy in SCREWS:                       # the two clearance holes
+        s = s.cut(cyl(M4.shaft_clr_d, CLAMP_T + 2.0, z=bot - 1.0)
+                  .translate((cx + sx, cy + sy, 0)))
+    return s
 
 
 def hardware():
-    """[(name, solid)] the M4 that holds the board up, and its insert."""
-    _tz, _bz, _face, _back, board_top, board_bot = z_stack()
+    """[(name, solid)] the two M4s that pull the clamp up, and their inserts."""
+    _tz, _bz, _face, _back, board_top, _bb = z_stack()
     cx, cy = board_centre()
-    bx, by = cx + SCREW_XY[0], cy + SCREW_XY[1]
-    # THE SCREW GOES IN FROM UNDERNEATH, so the dummy is turned over: cadkit draws it
-    # head-top at z=0 with the shank running -Z, and here the head is the low end and
-    # the shank climbs through the board into the boss.
-    screw = (m4_button_screw(M4.screw_l).rotate((0, 0, 0), (1, 0, 0), 180)
-             .translate((bx, by, board_bot - M4_BUTTON_HEAD_H)))
-    return [("ui_screw", screw),
-            ("ui_insert", seated_insert(M4, (bx, by, board_top), (0, 0, 1)))]
+    _top, bot = clamp_z()
+    out = []
+    for i, (sx, sy) in enumerate(SCREWS):
+        bx, by = cx + sx, cy + sy
+        # THE SCREWS GO IN FROM UNDERNEATH, so the dummies are turned over: cadkit draws
+        # one head-top at z=0 with its shank running -Z, and here the head is the low end
+        # and the shank climbs through the clamp and the board into the boss.
+        out.append(("ui_screw_%d" % i,
+                    m4_button_screw(CLAMP_SCREW_L)
+                    .rotate((0, 0, 0), (1, 0, 0), 180)
+                    .translate((bx, by, bot - M4_BUTTON_HEAD_H))))
+        out.append(("ui_insert_%d" % i,
+                    seated_insert(M4, (bx, by, board_top), (0, 0, 1))))
+    return out
 
 
 def parts():
     """[(name, solid)] everything the assembly shows for the UI station."""
     return [("ui_pcb", ui_pcb()), ("ui_display", display_module()),
+            ("ui_screen", screen()), ("ui_clamp", clamp()),
             ("ui_shaft", encoder_shaft()), ("ui_knob", knob())] + hardware()

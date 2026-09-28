@@ -170,6 +170,39 @@ PANEL = {
 }
 
 
+# ── TAIL LENGTH BELOW THE BOARD, per footprint ──────────────────────────────────────
+# The other side of HEIGHT, and needed for the same reason: KiCad does not carry it, and
+# a part that has it will go straight through anything mounted against the board's
+# underside. 0.0 means SURFACE MOUNT -- nothing to clear.
+#
+# EVERY FOOTPRINT ON A CHECKED BOARD MUST APPEAR, like HEIGHT, so a new part forces the
+# decision instead of defaulting to "no tail" and being wrong silently. The UI's clamp
+# plate lies against the board and takes a relief under exactly the entries above zero;
+# when that rule relieved EVERY footprint instead, the 0402 reliefs left a 1.38 mm web
+# between two of them.
+TAIL = {
+    "Alps_RKJXT1F42001": 3.5,                    # ten terminals + the position lug
+    "PinHeader_1x20_P2.54mm_Vertical": 3.0,      # Kinghelm's "end connection pin"
+    "IDC-Header_2x07_P2.54mm_Horizontal": 3.0,
+    "R_0402_1005Metric": 0.0, "C_0402_1005Metric": 0.0, "C_0805_2012Metric": 0.0,
+}
+
+
+def tails(board: str):
+    """[(ref, fab, tail)] for every footprint, tail 0.0 for surface mount."""
+    out = []
+    for f in load(board)["footprints"]:
+        if not f["fab"]:
+            continue
+        name = fp_name(f["fpid"])
+        if name not in TAIL:
+            raise KeyError("%s: no TAIL for %s -- say whether it has through-hole legs, "
+                           "because anything against the board's underside has to clear "
+                           "them" % (board, name))
+        out.append((f["ref"], f["fab"], TAIL[name]))
+    return out
+
+
 def holes(board: str):
     """[(x, y, d)] the board's cut holes (its mounting hole), board frame."""
     out = []
