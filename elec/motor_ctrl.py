@@ -596,6 +596,109 @@ def motor_ctrl():
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v5 += d9[1]; gnd += d9[2]
 
+    # ── THE LED STRIP'S 5 V: A SECOND BUCK, NOT A BIGGER ONE (user, 2026-09-28) ──────
+    # The strip is 36 RGBW LEDs over four sections and draws 2.2 A at full white. Feeding
+    # it from U5 was considered and does not fit: U5 is a 3 A part already budgeted at 3 A
+    # for the Pi, and F1 -- a 1 A fuse on the 24 V side -- already sits at 69-78 % of
+    # rating at that draw. Pi + strip is 5.2 A on a 3 A buck and ~1.27 A through a 1 A
+    # fuse. F1's own note names this exact limit ("the Pi's ports are not a free expansion
+    # slot"), so the answer is a separate converter rather than a larger shared one.
+    #
+    # ⚠ AND SEPARATE IS BETTER THAN SHARED HERE FOR TWO MORE REASONS, not just current.
+    # A shared rail would put the strip's PWM current steps on the Pi's supply, and it
+    # would mean a crowbar event on either one taking out the other. Two bucks off the
+    # same 24 V trunk keep those faults apart, and cost one IC: the part is the SAME
+    # LMR33630ADDAR as U5, so this adds a placement and not an SKU.
+    #
+    # ⚠ THE RAIL IS +5V_LED AND IT NEVER MEETS +5V. It leaves on J7, crosses to pi_cap's
+    # J4, and pi_cap passes it to the strip on J3 beside the SPI pair -- so ONE cable
+    # reaches the strip carrying both, which is what pi_cap was built for. The two 5 V
+    # rails share only GND.
+    v5_led, v5_led_raw = Net("+5V_LED"), Net("+5V_LED_RAW")
+    for n in (v5_led, v5_led_raw):
+        n.drive = Pin.drives.POWER
+    v24_led = Net("+24V_LED")
+    # 11 W at the load, so 0.54 A at 24 V and 85 % -- 54 % of a 1 A fuse, which is inside
+    # the 75 % continuous rule with room for the derating. Same SKU as F1.
+    f3 = Part(name="Fuse", ref_prefix="F", ref="F3", tag="F3", dest="NETLIST",
+              tool="skidl", value="1A",
+              description="24 V fuse for the LED buck -- a shorted U6 must not feed "
+                          "the fault back out into the trunk",
+              footprint="Fuse:Fuse_1206_3216Metric",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    v24 += f3[1]; v24_led += f3[2]
+    sw_l, boot_l, vcc_l, fb_l, en_l = (Net("SW_LED"), Net("BOOT_LED"), Net("VCC_LED"),
+                                       Net("FB_LED"), Net("EN_LED"))
+    u6 = Part(name="LMR33630ADDAR", ref_prefix="U", ref="U6", tag="U6", dest="NETLIST",
+              tool="skidl", value="LMR33630ADDAR",
+              description="36 V 3 A synchronous buck, 24 V -> 5 V for the LED strip",
+              footprint="Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm",
+              pins=[Pin(num=1, name="VIN", func=PWR), Pin(num=2, name="EN", func=P),
+                    Pin(num=3, name="NC", func=P), Pin(num=4, name="FB", func=P),
+                    Pin(num=5, name="GND", func=PWR), Pin(num=6, name="SW", func=P),
+                    Pin(num=7, name="BOOT", func=P), Pin(num=8, name="VCC", func=P),
+                    Pin(num=9, name="EP", func=PWR)])
+    v24_led += u6[1]
+    en_l += u6[2]
+    fb_l += u6[4]
+    gnd += u6[5], u6[9]
+    sw_l += u6[6]
+    boot_l += u6[7]
+    vcc_l += u6[8]
+    l3 = Part(name="L", ref_prefix="L", ref="L3", tag="L3", dest="NETLIST", tool="skidl",
+              value="6.8uH", description="LED buck output inductor, shielded 6x6",
+              footprint="Inductor_SMD:L_Bourns-SRN6028",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    sw_l += l3[1]; v5_led_raw += l3[2]
+    for tag, val in (("C24", "10uF/50V"), ("C25", "10uF/50V")):
+        c = _c(tag, val, "LED buck input bulk", "Capacitor_SMD:C_1206_3216Metric")
+        v24_led += c[1]; gnd += c[2]
+    c26 = _c("C26", "100nF", "LED buck input HF bypass -- nearest VIN/GND")
+    v24_led += c26[1]; gnd += c26[2]
+    c27 = _c("C27", "1uF", "LED buck VCC bypass")
+    vcc_l += c27[1]; gnd += c27[2]
+    c28 = _c("C28", "100nF", "LED buck bootstrap -- BOOT to SW")
+    boot_l += c28[1]; sw_l += c28[2]
+    # ⚠ THREE, WHERE THE Pi's RAIL HAS TWO. The Pi is a slowly varying load; the strip is
+    # twelve constant-current drivers whose PWM steps the supply current at ~19.5 kHz, and
+    # the whole reason that frequency was chosen is that it sits above the audio band a
+    # magnetic pickup can hear. Keeping those steps off the rail is worth one more 0805.
+    for tag in ("C29", "C30", "C31"):
+        c = _c(tag, "22uF/16V", "LED 5 V output bulk", "Capacitor_SMD:C_0805_2012Metric")
+        v5_led_raw += c[1]; gnd += c[2]
+    r14 = _r("R14", "100k", "LED 5 V feedback divider, top")
+    r15 = _r("R15", "24k9 1%", "LED 5 V feedback divider, bottom -- 5.02 V with R14")
+    v5_led_raw += r14[1]; fb_l += r14[2], r15[1]; gnd += r15[2]
+    r16 = _r("R16", "137k 1%", "LED buck EN/UVLO divider, top -- turn-on at 18.1 V")
+    r17 = _r("R17", "10k 1%", "LED buck EN/UVLO divider, bottom")
+    v24 += r16[1]; en_l += r16[2], r17[1]; gnd += r17[2]
+    # 3 A against a 2.2 A load, the same ratio F2 has against the Pi's 3 A.
+    f4 = Part(name="Fuse", ref_prefix="F", ref="F4", tag="F4", dest="NETLIST",
+              tool="skidl", value="3A",
+              description="LED 5 V output fuse -- the element D10 blows when U6 fails "
+                          "short", footprint="Fuse:Fuse_1206_3216Metric",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    v5_led_raw += f4[1]; v5_led += f4[2]
+    # ⚠ THE STRIP IS WORTH A CROWBAR OF ITS OWN. U6 failing short puts 24 V on twelve
+    # TLC59711s and thirty-six RGBW LEDs. It cannot reach the Pi -- the rails meet only at
+    # GND -- but the strip is the most expensive thing on this rail and the clamp is $0.30.
+    d10 = Part(name="D_TVS", ref_prefix="D", ref="D10", tag="D10", dest="NETLIST",
+               tool="skidl", value="SMBJ5.0A",
+               description="LED rail crowbar: clamps +5V_LED and draws enough through "
+                           "F4 to open it", footprint="Diode_SMD:D_SMB",
+               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    v5_led += d10[1]; gnd += d10[2]
+    # Two contacts for 5 V and two for GND, as J5 has: XH is 3 A per contact and the load
+    # is 2.2 A, so one contact would sit at 73 % of rating with no derating allowance.
+    j7 = Part(name="B4B-XH-A", ref_prefix="J", ref="J7", tag="J7", dest="NETLIST",
+              tool="skidl", value="B4B-XH-A",
+              description="5 V to the LED strip, via pi_cap J4",
+              footprint=XH_FP,
+              pins=[Pin(num=i + 1, name=n, func=P)
+                    for i, n in enumerate(("GND", "+5V_LED", "+5V_LED", "GND"))])
+    gnd += j7[1], j7[4]
+    v5_led += j7[2], j7[3]
+
 
 
 # ── the board ────────────────────────────────────────────────────────────────
@@ -636,7 +739,16 @@ def motor_ctrl():
 # did not move relative to each other or to the -X end, only the origin did.
 # The 0.50 is the "touch back": J2/J6 now overhang the edge by that much, so the plug
 # face is the lowest thing on the board and no laminate reaches past it.
-BOARD_W, BOARD_L = 61.8, 46.0
+# ⚠ 8 mm LONGER IN Y FOR THE LED BUCK (user, 2026-09-28: "add the LED buck on the motor
+# board"). 46.0 -> 54.0. The strip above y +17.5 was already empty across the full width --
+# nothing on this board reaches past y 16.5 -- so the converter goes there and nothing
+# below it moves: every existing placement keeps the coordinates it had.
+# +Y for the same reason the last growth was +Y: board +X IS the downward edge, so growing
+# there lengthens the very edge that was shortened by rotating, while board +Y is world UP
+# and the bay has headroom once the board drops to the chassis floor.
+# ⚠ outline_mm IS CENTRED ON THE ORIGIN, so this adds 4 mm at each end rather than 8 at
+# one. The -Y end gains clear space in front of the bus-B JSTs, which costs nothing.
+BOARD_W, BOARD_L = 61.8, 54.0
 
 # THE MOUNTING EAR (user, 2026-09-21): an M4 THROUGH the board, not beside it -- "having the
 # screw adjacent ... doesn't provide as strong of retention". A tab off the +Y edge at the +X
@@ -798,6 +910,34 @@ BOARD_NOTES = {
         "C21": (-15.40, 9.00, 90.0),
         "C22": (-15.40, 13.50, 90.0),
         "J5": (-22.90, 0.00, 90.0),
+        # ── the LED strip's buck, in the +Y strip that was empty ──────────────────
+        # ⚠ THE DIVIDERS SIT AT THEIR OWN PINS. The first arrangement laid the whole
+        # converter out left-to-right in signal order and put the FB and EN dividers at the
+        # far end, 20 mm from the pins they drive -- EN_LED came back unconnected and the
+        # detour cost +3V3 and CANB_H as well. A divider's position is not its value; it
+        # belongs at the pin, which is the same rule R30/R31 follow on the optical board.
+        # So: input chain west of U6, output chain east, and the two dividers directly
+        # above and below it -- EN (pin 2) and FB (pin 4) are both on U6's west side.
+        # ⚠ AND NOTHING GOES PAST y 24.5. The +Y edge is at 27.0 and copper_edge_clearance
+        # fired four times when parts sat at 25.0.
+        "F3": (-22.00, 21.50, 0.0),
+        "C24": (-18.50, 23.50, 0.0),
+        "C25": (-18.50, 19.50, 0.0),
+        "C26": (-15.50, 21.50, 0.0),
+        "R16": (-14.50, 24.50, 0.0),
+        "R17": (-12.00, 24.50, 0.0),
+        "U6": (-11.50, 21.50, 0.0),
+        "R14": (-14.50, 18.50, 0.0),
+        "R15": (-12.00, 18.50, 0.0),
+        "C27": (-8.50, 24.50, 0.0),
+        "C28": (-8.50, 18.50, 0.0),
+        "L3": (-5.00, 21.50, 0.0),
+        "C29": (-1.00, 23.50, 0.0),
+        "C30": (-1.00, 19.50, 0.0),
+        "C31": (2.00, 21.50, 0.0),
+        "F4": (5.50, 21.50, 0.0),
+        "D10": (9.00, 21.50, 0.0),
+        "J7": (18.00, 21.50, 0.0),
     },
     "refs_on_fab": True,
     # THE GROUND PLANE is why this is four layers, same as the lever board: the

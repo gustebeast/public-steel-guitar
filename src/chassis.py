@@ -547,7 +547,22 @@ LED_ROOF_TOP = LED_PLATE_Z - LED_PLATE_CLR                    # -15.43, the high
 LED_ROOF_Z = LED_ROOF_TOP - LED_ROOF_R                        # -18.93, roof underside at the wall
 LED_BOARD_TOP = LED_ROOF_Z - LED_CLR_TOP                      # -19.23
 LED_BOARD_BOT = LED_BOARD_TOP - LED_BOARD_H                   # -43.23, the slot floor
-LED_X0, LED_X1 = -600.0, -32.0
+# ⚠ 580.0, NOT 568.0, AND THE BOARD FILE SAID SO ALL ALONG (2026-09-28). These were round
+# numbers inset from the rail, and nothing reconciled them with the strip they carry:
+# led_strip.py sizes four 139 mm sections plus three 8.0 mm junctions = 580.0 and states
+# "fits with 2.7 mm of air at each end" in a rail whose clear run is KH_RAIL_X..TP_EP_GX =
+# 585.3. The channel offered 568.0, so electronics.led_sections() -- which divided the
+# channel evenly instead of reading the board's own gap -- produced 4.00 mm junctions.
+# That is half what two facing PH plugs need: each projects PH_PLUG_RUN 3.6 past its mouth
+# and the mouths sit 1.0 inside the board ends, so 5.2 of the 8.0 is gone before the
+# jumper's U has anywhere to turn. The strip could not have been assembled, and nothing
+# caught it because the boards never overlap each other -- there is only air where the
+# plugs go. The lead found it by measuring a junction (2026-09-28).
+# 17.3 mm of rail was simply unused. Taking 580.0 of it leaves 2.8 at the -X end and 2.5
+# at the +X, which is the board file's own 2.7 to rounding.
+# ⚠ THIS IS THE LED CHANNEL ONLY. Two constants, scoped to the strip's own slot; the seam
+# question it does NOT fix is recorded in the note at led_channel_runs().
+LED_X0, LED_X1 = -608.0, -28.0
 LED_SEAM_GAP = 0.2
 
 

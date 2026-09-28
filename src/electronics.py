@@ -655,7 +655,17 @@ def _led_place(shape, i):
     so a wire cannot be drawn to somewhere the board is not."""
     from . import chassis as CH
     w = LED_SECTION_W
-    gap = (CH.LED_X1 - CH.LED_X0 - LED_SECTIONS * w) / (LED_SECTIONS - 1)
+    # ⚠ THE GAP IS THE BOARD'S NUMBER, NOT A DIVISION OF THE CHANNEL. This used to be
+    # (channel - n*w) / (n-1), which spreads the sections evenly and silently absorbs any
+    # disagreement between the rail the board was designed for and the channel the chassis
+    # actually offers. It produced 4.00 mm junctions against the 8.0 led_strip.py requires
+    # -- two facing PH plugs project 3.6 past their mouths and the mouths sit 1.0 inside
+    # the board ends, so 5.2 is gone before the jumper's U has anywhere to turn. The strip
+    # could not have been assembled, and nothing caught it because the boards never overlap
+    # each other: there is only air where the plugs go.
+    # Reading it from the board file makes the two numbers meet, and the assert below makes
+    # them meet LOUDLY.
+    gap = _led_junction_gap()
     zc = (CH.LED_BOARD_BOT + CH.LED_BOARD_TOP) / 2.0
     cx = CH.LED_X0 + w / 2.0 + i * (w + gap)
     return shape.rotate((0, 0, 0), (1, 0, 0), 90.0).translate((cx, CH.LED_Y0, zc))
@@ -741,6 +751,40 @@ def led_wall_reliefs():
                               y=CH.LED_Y0 + (CH.T + 2.0) / 2.0,
                               z=(bb.zmin + bb.zmax) / 2.0))
     return out
+
+
+def _led_junction_gap() -> float:
+    """The board-to-board gap led_strip.py requires, checked against the chassis channel.
+
+    ⚠ THIS ASSERT IS THE POINT. The board and the chassis each hold a length for the same
+    space and they did not agree: led_strip.py sizes its sections for a 585.34 mm rail
+    (KH_RAIL_X..TP_EP_GX) while chassis.LED_X0/LED_X1 are hardcoded -600/-32 = 568.0, so
+    four 139 mm sections at the required 8.0 need 580.0 and the channel is 12.0 short.
+    Dividing the channel hid that for as long as nobody measured a junction.
+    """
+    from . import chassis as CH
+    import json as _json, os as _os
+    # ⚠ board.json, NOT geom.json. BG.load() returns the ROUTED board's measured geometry
+    # -- its outline comes off Edge.Cuts -- and a junction gap is design INTENT, which is
+    # never measurable from a board that does not contain the gap. The two files answer
+    # different questions and this one belongs to the generator.
+    _bj = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+                        "elec", "out", "led_strip.board.json")
+    with open(_bj, encoding="utf-8") as _fh:
+        notes = _json.load(_fh)
+    gap = notes["junction_gap_mm"]
+    n = notes["sections"]
+    w = notes["outline_mm"][0]
+    need = n * w + (n - 1) * gap
+    have = CH.LED_X1 - CH.LED_X0
+    assert need <= have + 1e-9, (
+        "the LED strip does not fit its channel: %d sections of %.1f at the %.1f mm "
+        "junction led_strip.py requires need %.1f mm, and chassis.LED_X0..LED_X1 is "
+        "%.1f. Either widen the channel (the rail's clear run is KH_RAIL_X..TP_EP_GX, "
+        "which has the room) or shorten the section -- but shortening pulls the end "
+        "connectors inward and LED_PITCH is already set by their courtyards, so it is "
+        "not the cheap end to change." % (n, w, gap, need, have))
+    return gap
 
 
 def led_sections() -> list:
