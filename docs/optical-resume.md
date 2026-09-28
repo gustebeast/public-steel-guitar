@@ -29,20 +29,45 @@ only thing standing between the board and fabrication.
 0.5 mm apart and shadow each other. Two sweeps found no reachable via site anywhere on its
 spine. West is blocked by SAI_SD5's pad, east by GND copper.
 
-**In flight when this stopped:** a joint search over (via site, waypoint) — the technique that
-closed ULPI_D0, and the thing that distinguishes it is that earlier FS sweeps used a *fixed*
-MCU-side via, so they never ruled out a joint solution. Re-run it:
+### ⚠ THE TARGET WAS WRONG FOR TWELVE ROUTES (found 2026-09-27)
+
+Every sweep above aimed at a remembered "spine point" near **(12.65, -3.00)**. That point is
+not on the spine. `SAI_FS`’s spine is the F.Cu run at **x = 22.50** laid by `_bus_spines`,
+running from y +56.02 down to **–18.89**, and that south end sits exactly on `_SD_BORDER`,
+where every other bus on this board hands over. The old target is **9.85 mm west of the
+copper it was meant to reach** — a path completing there connects the MCU to nothing, which
+is exactly what the unconnected count kept truthfully reporting. Chasing it also dragged
+searches 16 mm north into the **analog half**, and `SAI_FS` is a digital frame clock: the
+north/south split exists to keep it out of there.
+
+**Aim at (22.50, –18.89), and clamp the search south of –18.60.**
+
+### What was tried against the corrected target, and failed
+
+Declaring the path made the board **worse every time** — see [[declared-copper-costs]]:
+
+| declared | unconnected |
+|---|---|
+| baseline, none (layout’s own `U6.3` escape via) | **1** |
+| full 33 mm path on F.Cu | 4 |
+| full 33 mm path on B.Cu | 6 (strangled `SAI_SD1`/`SD4`, whose spines share that corridor) |
+| 1.2 mm stub + one eastward via | 3 |
+
+All of them produced **0 DRC violations**: they did not short anything, they crowded
+neighbours out of their lanes. The monotone trend as the declared copper shrank is the
+finding — declaring is itself costly, whatever the geometry.
+
+**So the remaining lever is placement**, per [[placement-not-router]] — not more declared
+copper, not more passes, not more layers.
+
+**The (via site, waypoint) joint search** — the technique that closed ULPI_D0 — was never
+run to completion against the *corrected* target. It prints only after all 40 rings, so
+redirect it to a file and **never pipe it through `tail`** (that buffers until exit and
+already threw away one full run’s answer):
 
 ```
-"/c/Program Files/KiCad/10.0/bin/python.exe" -u scratchpad/joint_search.py SAI_FS -6.55 -27.31 12.65 -3.00
+"/c/Program Files/KiCad/10.0/bin/python.exe" -u scratchpad/joint_search_v.py SAI_FS -6.55 -27.31 22.50 -18.89 > out.txt
 ```
-
-(pad U6.3 at `-6.55,-27.31`; target spine point `12.65,-3.00`.) **Do not pipe it through
-`tail`** — that buffers until exit and threw away one full run's answer.
-
-**Fallback if the joint search comes back empty:** a placement change to the converter cell fan.
-That is the remaining lever, and per [[placement-not-router]] it is the *right* lever — not more
-passes, not more layers.
 
 ## Hard-won process rules — re-read before touching anything
 
