@@ -105,6 +105,19 @@ DISP_PINS = {
 }
 
 # -- J2: the ribbon to the Pi -----------------------------------------------
+# ⚠ THE FAR END OF THIS CONNECTOR IS NOT DECIDED, so this order is provisional (user
+# asked how the cable reaches the Pi, 2026-09-28). A 2x7 IDC socket pushes onto any seven
+# adjacent pin-pairs of the Pi's 40-way header, and NO seven of them fit these 14 ways:
+# the best block offers 11 GPIO (pins 11-24 or 15-28) against the 12 signals below, and
+# wanting hardware SPI0 costs two more (it lives on pins 19/21/23/24 and claims GPIO9 for
+# a MISO the display never uses). Pins 1-14, the obvious block, is the worst: 8 GPIO, and
+# motor_ctrl's J5 already feeds 5 V onto four of them.
+#
+# It resolves either with an adapter (a 2x20 socket fanning to our 2x7) or with fewer
+# signals here (an expander for the seven switch lines). Whichever it is, IT WILL REORDER
+# THESE WAYS, because a socket that lands on the Pi's header has its pin positions chosen
+# for it -- which spends exactly the freedom the order below was chosen for. See BOM.md.
+#
 # ORDERED FOR THE CLOCK. A 14-way flat cable has one ground to give, so it is spent
 # where it buys the most: conductor 8 sits beside SCLK on 9, and +3V3 on 10 sits on its
 # other side. Both are AC grounds at the Pi, so the clock runs between two quiet

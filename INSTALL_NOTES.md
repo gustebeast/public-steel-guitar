@@ -283,7 +283,11 @@ off the instrument**, and the panel then goes on with all of it attached.
 **Onto the instrument**
 
 8. Slide the mid panel on, station and all.
-9. Plug the ribbon's other end onto the Pi's GPIO header.
+9. Plug the ribbon's other end onto the Pi's GPIO header. ⚠ **WHICH SEVEN PIN-PAIRS IS
+   NOT DECIDED YET** — see the UI board section of `BOM.md`. No block of seven on the
+   Pi's header carries all fourteen of these ways, so this step is waiting on either an
+   adapter or a shorter signal list, and a socket pushed onto pins 1–14 would land on the
+   motor controller's 5 V feed.
 10. Slide the keyhead panel on.
 11. Fit the keyhead endplate.
 
