@@ -27,6 +27,10 @@ deck's own -Y edge, the knob's O17 cap, the display's 63.41 x 32.69 VIEWING area
 -Y edge of the fretboard's border frame. Three equal gaps fall out of those four; nothing
 here is typed.
 
+...and the KNOB's X is its own rule, because the X above places the DISPLAY. The cap's
++X edge is level with the window's +X edge, so the two stand the same 9.90 off the seam.
+See knob_x(), which records the two wrong readings of "equally spaced" that came first.
+
 -- GETTING IT OUT AGAIN (user, 2026-09-28) -----------------------------------
 ONE M4 RELEASES BOTH THE SCREEN AND THE BOARD, and plastic takes every other direction.
 The display is caught in X and Y by its pocket walls and in +Z by the window ledge; the
@@ -316,14 +320,22 @@ def ui_x():
 
 @lru_cache(maxsize=None)
 def knob_x():
-    """THE RULE for the knob's X: the same gap to the deck panel's +X seam that the Y
-    layout gives it everywhere else (user, 2026-09-28).
+    """THE RULE for the knob's X: its cap's +X edge is level with the WINDOW's +X edge,
+    so the two stand the same distance off the deck panel's +X seam (user, 2026-09-28).
 
-    It used to share the display's X centre, which left it 45 mm from that seam against
-    16.7 to the instrument's -Y edge -- equal spacing in one axis and nothing in the
-    other. Measured on the cap, like every other gap in this station."""
-    TP = _tp()
-    return TP.REGION_X1 - y_layout()[0] - KNOB_D / 2.0
+    Two wrong answers came before this one, and the difference between them is worth
+    stating because "equally spaced" can mean either.
+
+      * It first shared the display's X CENTRE, which is equal spacing about the screen
+        and leaves the knob 45 mm from the seam against 16.7 to the instrument's -Y edge.
+      * It then took the Y layout's own gap, 16.69, to the seam -- equal to the other
+        gaps in the station but NOT to the screen's own 9.90, which the user measured off
+        the model and which is what "equally spaced from the top panel edge" meant.
+
+    So the datum is the WINDOW, not the seam and not the module: the seam is only where
+    the deck happens to be divided, and the module is under the deck where nobody sees
+    it. Two visible things, one edge, one distance."""
+    return ui_x() + OPEN_W / 2.0 - KNOB_D / 2.0
 
 
 def knob_centre():
@@ -535,29 +547,38 @@ def _posts():
     poking inward off a wall would be a ceiling with nothing beneath it. A column from
     the deck's own underside is supported the whole way.
 
-    The four are placed in the gaps the routed board leaves, and BOTH constraints are
-    checked here rather than left to the overlap gate: none may stand under the display
-    module (which reaches down to 0.7 below the deck), and none may land on a part. The
-    gate does catch a post on a part -- it caught two of these at 0.8 mm3 when the
-    pull-ups moved into a row -- but it catches it as an anonymous solid-on-solid
-    finding, and what you want to be told is WHICH post and WHICH part."""
-    posts = [(31.0, 6.0), (31.0, -13.0), (-6.0, -13.0), (-6.0, 6.0)]
+    The four are placed in the gaps the routed board leaves; check_posts() below is what
+    says so, and it runs AFTER the route rather than here. A post on a part does reach
+    the overlap gate -- it caught two of these at 0.8 mm3 when the pull-ups moved into a
+    row -- but as an anonymous solid-on-solid finding, and what you want to be told is
+    WHICH post and WHICH part."""
+    return [(11.0, 6.0), (11.0, -13.5), (-6.0, -13.0), (-6.0, 6.0)]
+
+
+def check_posts():
+    """[complaint] -- a post under the display module, or standing on a routed part.
+
+    NOT an assertion, and not on the import path, for the same reason knob_centre()'s
+    comparison is not: elec/ui_board.py imports this module, importing it builds the
+    deck, and building the deck calls _posts(). An assertion there stops the generator
+    from running the moment a part moves -- which is exactly when it has to run. This is
+    called from elec/cad_geom_check.py, once the board it is checking against exists."""
+    out = []
     half = POST_SQ / 2.0 + POST_CLR
     edge = board_local(0.0, module_centre()[1] - MOD_L / 2.0)[1]
-    for px, py in posts:
-        assert py + half <= edge, (
-            "a UI cradle post reaches y %+.2f and the display module's edge is at %+.2f"
-            % (py + half, edge))
+    for px, py in _posts():
+        if py + half > edge:
+            out.append("the post at (%+.1f, %+.1f) reaches y %+.2f, under the display "
+                       "module, whose edge is at %+.2f" % (px, py, py + half, edge))
         for f in _bg().load("ui_board")["footprints"]:
             if not f["fab"]:
                 continue
             x0, x1, y0, y1 = f["fab"]
             if (px + half > x0 - 0.5 and px - half < x1 + 0.5
                     and py + half > y0 - 0.5 and py - half < y1 + 0.5):
-                raise AssertionError(
-                    "the UI cradle post at (%+.1f, %+.1f) lands on %s, whose body is "
-                    "x %.2f..%.2f y %.2f..%.2f" % (px, py, f["ref"], x0, x1, y0, y1))
-    return posts
+                out.append("the post at (%+.1f, %+.1f) lands on %s, whose body is "
+                           "x %.2f..%.2f y %.2f..%.2f" % (px, py, f["ref"], x0, x1, y0, y1))
+    return out
 
 
 def deck_mount():
