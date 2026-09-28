@@ -261,6 +261,15 @@ off the instrument**, and the panel then goes on with all of it attached.
    must end up flat on the ledge, not hanging on its pins.
 5. Plug the 14-way ribbon onto J2 at the board's −X edge. **Do this now** — it is much
    harder once the clamp is on.
+
+   **The ribbon is creased twice, 45° each, and the creases are not optional.** The run
+   is flat all the way — width across the instrument, thickness vertical, because there
+   is only 10.70 mm of headroom under the deck and 17.78 mm of ribbon on edge does not
+   fit — so both of its 90° turns are in the cable's own plane, and flat cable turns in
+   plane by being folded. Fold them before the panel goes on, with the red stripe on the
+   outside of each turn, and the cable lies flat the whole way; fold them after and you
+   are creasing a cable that is already plugged in at both ends. 500 mm of cable against
+   a 429.5 mm run is what pays for getting a fold wrong once.
 6. Offer the clamp plate up under the board. The two spigots enter its sockets, its
    reliefs go over the through-hole tails, and its arm runs +Y under the display so the
    two posts on the crossbar land on the module's back at the far mounting-hole row —
