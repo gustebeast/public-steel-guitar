@@ -551,15 +551,42 @@ block of seven works.** Counting the header pair by pair:
   the display is write-only — so one of the eleven goes back. An 8,192-byte frame is a
   real reason to want the hardware port.
 
-So this needs a decision, not a longer cable. The two honest routes are **(a) an adapter**
-— a 2×20 socket on the Pi fanning out to our 2×7, one more part and one more joint, no
-electrical squeeze — or **(b) fewer signals on the ribbon**, the tidiest version being an
-I2C or shift-register expander on the UI board for the seven switch lines, which is one
-0.3 mm² part against three conductors saved. **OPEN, and it blocks nothing else: the board
-routes, the panel prints and the cable is the right length either way.** What it changes
-is J2's way order, and with it the one thing the current order was chosen for — SCLK
-running between GND and +3V3 for the whole length. The Pi's header dictates pin positions,
-so that freedom is spent the moment the far end is pinned down.
+**THE ADAPTER ALREADY EXISTS — it is bronner's `elec/pi_cap.py`, and it does not have room
+for this connector as it stands.** Looked at 2026-09-28, on `agent/bronner`; it is not on
+main yet, so nothing here can build against it. What it is: a 56 × 26 board whose `J1` is a
+full 2×20 socket pushed onto the Pi's header, JST connectors for everything else, and the
+standing no-crimp-off-a-PCB rule satisfied. **Electrically it is already done for us** —
+every pin `J1` does not use is explicitly netted `PI_NC_<n>`, so all fourteen ways' worth
+of GPIO is already on that board's copper, waiting. That removes the whole "which seven
+pins" problem: through the cap, our ways reach any GPIO on the header, contiguous or not.
+
+Mechanically it does not fit, and the numbers are not close:
+
+* **No face has the height for a 2.54 mm IDC.** Every connector on the cap is on the BACK,
+  inside the socket's own **8.5 mm** standoff (the JSTs are 5.5 and 5.75). A 2.54 male
+  header is **8.54** on its own before its socket goes over it, and a shrouded right-angle
+  is ~10. The front face has **2.5 mm** before `chassis_2` — measured by stepping slabs
+  outward, clear at 2.5 and hit at 3.0. And the height budget it is packed against
+  (`ELEC_STACK_D`, 14.0 above the Pi's PCB) is the one thing bronner's docstring says
+  cannot grow.
+* **No room in plan either.** The socket spine takes y −11.1…−5.9 across the full 50.8,
+  the side-entry row takes 50.9 of the 56 mm width with gaps of 4.3 and 3.3, and the
+  passives sit between them. The biggest clear rectangle is about **56 × 5.9**, against a
+  25.5 × 13.7 footprint.
+
+**But the board is small on purpose and the Pi is not.** The cap uses 26 mm of the Pi's
+56, and the space alongside it — 29.5 × 56 × 11.55, ~19,000 mm³ — holds nothing but cables
+that reroute plus **90.8 mm³ of `keyhead_endplate`**, confined to the deepest 2 mm in X at
+the far end (z −62…−46). So ~14 mm of growth is unobstructed, and growth in the board's
+PLANE costs nothing in the height budget, which is the axis that is actually full.
+
+So the route is: **the cap grows, and the connector is one that fits an 8.5 mm gap.** A
+**1.27 mm-pitch 2×7 shrouded IDC** does (halving the pitch halves the cable too: 14-way
+0.635 ribbon is 8.9 wide, and it would retire the 10.0 mm ESTIMATE this file carries for
+our own right-angle header). **FFC/ZIF** is the fallback — 1.2–2.5 mm sockets fit even the
+front face — at the cost of a cable less happy about vibration and mating cycles.
+⚠ **THE CAP IS BRONNER'S BOARD, so that growth is theirs to decide**, and until it lands
+on main this end of the cable stays open.
 
 ⚠ **THE RIBBON AND ITS SOCKETS ARE NOT LCSC LINES, which is normal rather than notable:**
 LCSC is where the parts that get soldered to a board come from, and everything else —

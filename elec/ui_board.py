@@ -113,10 +113,14 @@ DISP_PINS = {
 # a MISO the display never uses). Pins 1-14, the obvious block, is the worst: 8 GPIO, and
 # motor_ctrl's J5 already feeds 5 V onto four of them.
 #
-# It resolves either with an adapter (a 2x20 socket fanning to our 2x7) or with fewer
-# signals here (an expander for the seven switch lines). Whichever it is, IT WILL REORDER
-# THESE WAYS, because a socket that lands on the Pi's header has its pin positions chosen
-# for it -- which spends exactly the freedom the order below was chosen for. See BOM.md.
+# THE ADAPTER THAT RESOLVES IT ALREADY EXISTS: bronner's elec/pi_cap.py, a 2x20 socket on
+# the Pi's header with every unused pin explicitly netted PI_NC_<n> -- so all fourteen ways'
+# worth of GPIO is already on its copper and the "which seven pins" problem goes away
+# entirely. It has no room for a 2.54 IDC (its connectors live in an 8.5 mm gap and a 2.54
+# male header is 8.54 before its socket goes on), so it wants a 1.27-pitch 2x7 or an FFC,
+# and it is not on main yet. See BOM.md -- and note that IT WILL REORDER THESE WAYS either
+# way, because a connector reaching the Pi has its pin positions chosen for it, which is
+# exactly the freedom the order below was chosen for.
 #
 # ORDERED FOR THE CLOCK. A 14-way flat cable has one ground to give, so it is spent
 # where it buys the most: conductor 8 sits beside SCLK on 9, and +3V3 on 10 sits on its
