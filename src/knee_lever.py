@@ -2465,49 +2465,8 @@ def _housing() -> cq.Workplane:
     # middle with it and leaves only the two cheek-wall stubs.
     for _tx in TEN_X:
         w = w.union(_top_tenon(_tx))
-    # LEVER ROOM = ONE PLANAR SWEEP CUT (user round 3: 'solid everywhere
-    # except the house cut and a sweep cut for the lever range of motion' —
-    # the old full-width swing slot notched the front cheeks and the full-
-    # height hub band slotted the top face; both are gone, the followers'
-    # path lives inside the through house channels now). The cut is the
-    # planar envelope of the lever swept 0..THROW, lever Y-span only:
-    #   x +5.4 vertical  = the rest arm's +X face + clearance (the prism
-    #                      face at +5.0 is inside it, so the whole +X
-    #                      half-space stays open — the storage fold at +X
-    #                      swings into air)
-    #   OPEN OUT THE TOP = user round 4: the flat ceiling directly above
-    #                      the lever was a 10.8-wide print overhang — cut;
-    #                      the band exits the top face as a slot
-    #   30° slant        = the full-throw arm's -X face + clearance
-    _hw = LEVER_HW + HS_CLR
-    _e = ARM_TX / 2 + HS_CLR                          # 5.4: lever half-depth + clr
-    _zb = HOUS_Z0 - 1.0
-    # -X boundary: x = tan(30°)·z − c, the rotated arm face + clearance;
-    # it crosses the hub band's -5.4 at z ≈ 1.5, so the polygon walks
-    # hub-top → hub-side → slant → bottom → rest-side
-    _zc = (-_e + (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)) / math.tan(_THR)
-    _slant = lambda z: arm_face_x(THROW, z)
-    _zt = HOUS_Z1 + TEN_H + 1.0                       # ABOVE the tenons, so the sweep
-    # +X EDGE OUT THROUGH THE +X FACE (user, 2026-09-10). The rest-side boundary used to be
-    # +_e, which left the whole +X half-space open only while the prism's +X face sat
-    # INSIDE it. The bearing rounds pushed HOUS_X1 out past it (8.1 for the 695ZZ race, 9.6
-    # for the 688ZZ), which quietly put a panel back between the cheeks, and the storage
-    # fold hit it from -3 deg. Carrying this edge out past HOUS_X1 opens the +X end between
-    # the cheeks again — there it is just the two walls. Lever Y-span only, so the cheeks
-    # and the bearing seats in them are untouched; open top and bottom, so no ceiling.
-    _xo = HOUS_X1 + 1.0
-    def _room(zb):
-        """The room solid, to whatever depth is asked for. CUT TWICE, and it has to be:
-        the -X boundary is a 30 deg slant, so it reaches further -X the deeper it goes.
-        Cut once at HOUS_Z0 and then skirted down to the stop's floor, the skirt carries
-        that boundary STRAIGHT down and walls the arm in -- 512 mm3 of housing in the arm
-        at full throw, which is precisely the class of fault the overlap gate cannot see
-        because it only ever poses the lever at rest."""
-        pts = [(_xo, _zt), (-_e, _zt), (-_e, _zc), (_slant(zb), zb), (_xo, zb)]
-        f = cq.Face.makeFromWires(cq.Wire.makePolygon(
-            [cq.Vector(x, -_hw, z) for x, z in pts] + [cq.Vector(pts[0][0], -_hw, pts[0][1])]))
-        return cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, 2 * _hw, 0)))
-    w = w.cut(_room(_zb))
+    _room = lever_room()        # built once: 31 unions is not free
+    w = w.cut(_room)            # the lever's own sweep, and nothing else
     # BEARING SEATS (user): Ø8.1 pockets for the MR85ZZ pair, opening
     # INBOARD at the lever-room walls (±BRG_Y0) and reaching 2.8 into the
     # cheeks (0.3 axial float over the 2.5 bearing — the proven old wall
@@ -2521,7 +2480,7 @@ def _housing() -> cq.Workplane:
     w = _cradle(w)                                                  # the MT6701 board cradle (user)
     w = w.union(cable_keeper())     # ...and the bus-B keeper on the cheek
     w = _stop_skirt(w)              # ...the bed dropped to make room for the travel stop
-    w = w.cut(_room(STOP_FLOOR_Z - 1.0))   # ...the arm's room re-cut to the NEW depth
+    w = w.cut(_room)            # ...and again, after the skirt re-added material
     w = w.cut(_knee_relief())       # ...the bottom +X corner off at 45, for the knee
     w = w.cut(_stop_channel())      # ...and the stop's own way in, under the pockets
     # CLEARANCE AHEAD OF THE INSERT, not a self-tap (user: "the screw cut doesn't extend
@@ -2535,6 +2494,43 @@ def _housing() -> cq.Workplane:
                         STOP_BORE_END - (STOP_ANCHOR_X + M4.insert_depth),
                         reason="knee lever travel stop", print_up=PRINT_UP)
     return heal(w)                  # no printed threads any more -- the whole part heals
+
+
+def _lever_envelope() -> cq.Workplane:
+    """The lever grown by HS_CLR on every face -- the thing that gets swept to make the
+    lever room. Built from the same primitives as _lever rather than offset from it, so a
+    change to one is visibly a change to the other (the vertical lever's is the same)."""
+    c = HS_CLR
+    hub = cyl_y(HUB_D + 2 * c, 2 * (LEVER_HW + c), y0=-(LEVER_HW + c))
+    arm = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), ARM_LEN + c,
+                 x=0.0, y=HUB_YC, z=-(ARM_LEN + c) / 2.0)
+    lobe = (cyl_y(2 * LOBE_R + 2 * c, 2 * (LEVER_HW + c), y0=-(LEVER_HW + c))
+            .translate((0.0, 0.0, -LOBE_RC)))
+    return heal(hub.union(arm).union(lobe))
+
+
+def lever_room() -> cq.Workplane:
+    """THE LEVER ROOM, and it is now exactly what the name says: the lever's own shape
+    swept through its throw. Nothing else.
+
+    IT USED TO BE A DRAWN POLYGON -- a hub band, a 30 deg slant at the full-throw arm
+    face, a vertical at the rest arm's +X face, opened out through the top and carried
+    past the +X face. Every one of those was a decision about something OTHER than the
+    sweep: the top opening was there to avoid a ceiling, the +X extension to let a
+    storage fold swing, the vertical to keep the +X half-space clear. They are real
+    concerns, but folding them into the room made the room mean four things at once, and
+    then nobody could tell which part of it any given face came from -- the user asked
+    what made a vertical face and the honest answer took a measurement to find.
+
+    A room is one of two things (user, 2026-09-28): the sweep of the lever's rotation, or
+    the path that installs it. THIS lever needs only the first: its arm hangs -Z out of an
+    open floor, so the rest pose being cut IS an install path, straight down.
+    """
+    env = None
+    for i in range(int(THROW) + 1):
+        c = _lever_envelope().rotate((0, 0, 0), (0, 1, 0), float(i))
+        env = c if env is None else env.union(c)
+    return env
 
 
 def _lever() -> cq.Workplane:
