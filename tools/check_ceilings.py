@@ -170,6 +170,7 @@ DECLARED_UP = {
     "coil_mandrel_sleeve": ("src.coil_mandrel", "SLEEVE_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
+    "ui_clamp":          ("src.ui_panel", "CLAMP_UP"),
     # the print-fit coupons, which declare an orientation for the same reason the parts
     # they stand in for do -- a coupon printed the other way up is not the same test
     "test_section_tenon":   ("src.joint_coupon", "PRINT_UP"),

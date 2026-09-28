@@ -229,7 +229,8 @@ assert _J2_Y - _J2_FAB_HALF >= -_HL + 1.0, (
 
 # The one M4. It goes in the only lane wide enough: between the ribbon header's back
 # and the encoder's courtyard, on the ribbon header's own centre line.
-_SCREW_X, _SCREW_Y = UI.SCREW_XY
+_SCREW_X, _SCREW_Y = UI.SCREWS[0]
+_SCREW2_X, _SCREW2_Y = UI.SCREWS[1]
 _BOSS_D = 8.0              # the deck-side boss the screw threads into (cadkit M4)
 _ENC_CRTYD = UI.ENC_SQ / 2.0 + 0.25
 assert _SCREW_X + _BOSS_D / 2.0 <= _SW_BODY_X - _ENC_CRTYD - 1.0, \
@@ -251,7 +252,12 @@ _R_Y = 10.0
 _R_X0, _R_DX = -20.0, 4.0
 assert _R_X0 + 6 * _R_DX + 0.5 <= _SW_BODY_X - _ENC_CRTYD - 1.0,     "the pull-up row laps the encoder"
 assert _R_X0 - 0.5 >= _J2_X + _J2_FAB_BACK + 1.0, "the pull-up row laps the ribbon header"
-assert _R_Y - 0.5 >= _SCREW_Y + _BOSS_D / 2.0 + 1.0, "the pull-up row laps the screw boss"
+for _sx, _sy in UI.SCREWS:
+    assert (_R_Y - 0.5 >= _sy + _BOSS_D / 2.0 + 1.0
+            or _R_X0 - 0.5 > _sx + _BOSS_D / 2.0
+            or _R_X0 + 6 * _R_DX + 0.5 < _sx - _BOSS_D / 2.0),         "the pull-up row laps the screw boss at (%+.1f, %+.1f)" % (_sx, _sy)
+    assert (abs(_sx - _SW_BODY_X) > _ENC_CRTYD + _BOSS_D / 2.0 + 1.0
+            or abs(_sy - _SW_BODY_Y) > _ENC_CRTYD + _BOSS_D / 2.0 + 1.0),         "the screw boss at (%+.1f, %+.1f) laps the encoder" % (_sx, _sy)
 
 PLACEMENTS = {
     "J1": (round(_J1_X, 3), round(_J1_Y, 3), 90.0),
@@ -265,7 +271,7 @@ for _i in range(7):
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
-    "cutouts": [{"xy": [_SCREW_X, _SCREW_Y], "d": UI.SCREW_CLR_D}],
+    "cutouts": [{"xy": list(xy), "d": UI.SCREW_CLR_D} for xy in UI.SCREWS],
     "layers": 2,
     "thickness_mm": UI.BOARD_T,
     "placements": PLACEMENTS,
@@ -285,7 +291,7 @@ BOARD_NOTES = {
     # would be perforated anyway, by twenty through-hole pins at 2.54 leaving 0.7 mm webs
     # straight across it. So GND is a routed net like every other one, which on a 72 mm
     # board with a metre of ribbon either side is what it was always going to be worth.
-    "mounting_hole_xy": UI.SCREW_XY,
+    "mounting_hole_xy": UI.SCREWS[0],
     "single_sided": True,      # every part on the deck-facing face
     "qty_per_instrument": 1,
 }
