@@ -534,16 +534,41 @@ belongs here: all UI logic is the Pi's (see the control-architecture split).
 | **Ribbon cable** | 14-way **1.27 mm** grey flat ribbon, 17.78 wide × 0.9 thick, **500 mm** | 1 | ~$1 | ⚠ **not LCSC** — see below | **Bought to length, and the length is measured, not guessed: the modelled centreline is 429.5 mm** (`cadkit.cables.path_length` over the path `src/wiring.py` draws), so 500 mm is the next stock length up and leaves ~70 mm of service slack. **It is folded twice**, 45° each, because the run is flat under the deck and both of its 90° turns are in the ribbon's own plane — `UI.RIBBON_FOLDS` declares that and `flat_bends` holds the path to it |
 | **Ribbon sockets** | 2×7 IDC female socket, 2.54 mm (the "FC-14" / DC3 mating half) | 2 | ~$0.6 | ⚠ **not LCSC** — see below | Pressed on, not crimped and not soldered, which is the whole reason this is a ribbon and not fourteen wires. One end mates `DC3-2.54-14PAL` on our board; the other lands on the Pi's GPIO pins, and the way order is chosen so SCLK runs between GND and +3V3 (see `elec/ui_board.py`) |
 
-⚠ **THE RIBBON IS THE ONE UI LINE WITH NO LCSC PART, and that is a category fact rather
-than an oversight.** Searched 2026-09-28: LCSC's "Flat Flex Ribbon Jumpers, Cables"
-category holds **2 items**, `FC-14` returns **nothing**, and a 14-way 2.54 IDC socket is
-not in the catalogue at all. The JLC-library rule this project follows is about **parts
-the assembler places**, and nothing here is placed — the ribbon and its two sockets are
-loose hardware that arrives in the same box as the screws. Both are commodity items in
-every catalogue that sells ribbon by the metre, and JLC's own custom-cable service would
-make the assembly to length. **OPEN: no verified SKU for either line.** Their sizes are
-not open — the width, thickness, pitch and way count are all single-sourced from
-`src/ui_panel.py`, which is also what the board is laid out against.
+⚠ **AND THE PI END IS NOT DEFINED — the sentence that used to stand here, "at the Pi it
+lands on GPIO pins", does not survive being checked** (user asked how it connects,
+2026-09-28). A 2×7 IDC socket will physically push onto any seven adjacent pin-pairs of
+the Pi's 40-way header, so the question is only which seven, and the answer is that **no
+block of seven works.** Counting the header pair by pair:
+
+* **Pins 1–14, the obvious choice, is the worst one.** It offers 8 GPIO, and the 5 V feed
+  from the motor controller (`J5`, "5 V to the Pi's GPIO pins 2/4 + 6/9") is already on
+  four of its fourteen pins. Landing our socket there shorts signals onto 5 V and 3V3.
+* **The best block offers 11 GPIO** (pins 11–24 or 15–28) against the **12 signals** this
+  ribbon carries — SW_A/B/C/D, SW_PUSH, ENC_A, ENC_B, SCLK, SDIN, DC, CS_N, RES_N — plus
+  a 3V3 and a GND. One short, before any preference is expressed.
+* **Wanting hardware SPI0 makes it three short.** SPI0 lives on pins 19/21/23/24, which
+  only blocks 11–24 upward reach, and enabling it claims GPIO9 (MISO, pin 21) even though
+  the display is write-only — so one of the eleven goes back. An 8,192-byte frame is a
+  real reason to want the hardware port.
+
+So this needs a decision, not a longer cable. The two honest routes are **(a) an adapter**
+— a 2×20 socket on the Pi fanning out to our 2×7, one more part and one more joint, no
+electrical squeeze — or **(b) fewer signals on the ribbon**, the tidiest version being an
+I2C or shift-register expander on the UI board for the seven switch lines, which is one
+0.3 mm² part against three conductors saved. **OPEN, and it blocks nothing else: the board
+routes, the panel prints and the cable is the right length either way.** What it changes
+is J2's way order, and with it the one thing the current order was chosen for — SCLK
+running between GND and +3V3 for the whole length. The Pi's header dictates pin positions,
+so that freedom is spent the moment the far end is pinned down.
+
+⚠ **THE RIBBON AND ITS SOCKETS ARE NOT LCSC LINES, which is normal rather than notable:**
+LCSC is where the parts that get soldered to a board come from, and everything else —
+these two included — comes from DigiKey and the other distributors, same as the screws,
+the bearings and the springs. Recorded only because the row above it, the ribbon *header*,
+is an LCSC line and the two sit next to each other. **OPEN: no chosen SKU for either**,
+though both are commodity. Their sizes are not open — width, thickness, pitch and way
+count are single-sourced from `src/ui_panel.py`, which is what the board is laid out
+against.
 
 ⚠ **THE SHAFT IS A D, AND THE CATALOGUE DOES NOT SAY SO** (2026-09-28). The knob is
 printed, so its bore has to match the shaft, and the drawing this was first read from is
