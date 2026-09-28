@@ -40,7 +40,7 @@ HUE = gauge bucket, SHADE = the specific wire within the bucket:
   The gauge/shade rule still governs the NON-CAN nets:
   BLUE = power pair       (superseded for the CAN power rails above)
   AMBER = 28 AWG logic    (light -> dark) wire_link (motor controller <-> Pi),
-                          wire_ui (the UI board's 14-way ribbon)
+                          wire_ui (the UI board's 14-way ribbon, ONE flat prism)
   VIOLET = shielded USB-2 wire_usb: USB-C panel -> Pi 5
   GREY = factory jackets  motor_pigtail_N
 
@@ -76,7 +76,7 @@ from . import electronics as EL
 from . import ui_panel as UI
 from . import knee_lever as _KL   # the keeper barrel the lever slack winds on
 from .helpers import oct_cable
-from cadkit.cables import bundle_paths
+from cadkit.cables import bundle_paths, flat_cable, flat_bends, path_length
 
 # modeled cable OD per net (mm): jacketed bundles (shielded/USB) drawn as ONE
 # round conductor at the jacket OD; the 24 V pair AND the CAN pairs as discrete
@@ -98,9 +98,9 @@ WIRE_OD = {
     # 0.37 V and the cable may not eat it. Over this run 20 AWG spends 0.03.
     "wire_5v": 1.8,
     "wire_link": 1.4,
-    # ONE CONDUCTOR OF THE UI'S RIBBON. 0.9 is the thickness of 1.27 flat cable, which
-    # is also each conductor's pitch circle -- the insulation of neighbouring ways
-    # touches, which is what makes it a ribbon rather than fourteen wires.
+    # THE UI'S RIBBON IS NOT A DIAMETER AT ALL, and this entry only exists because
+    # the gate's colour and allow-list tables are keyed off the same names. It is drawn
+    # by flat_cable from RIBBON_W x RIBBON_T; 0.9 is its thickness.
     "wire_ui": UI.RIBBON_T,
     "motor_pigtail": 3.4,
 }
@@ -1054,16 +1054,24 @@ def build_wires():
     centre = [(ex, uy, umz), (ex - 12.0, uy, umz), (BAY_X, uy, umz),
               (BAY_X, -40.0, SP(-600.0, -40.0, -57.0)[2]),
               SP(-600.0, -40.0, -57.0)]
-    for j, path in enumerate(bundle_paths(centre, _ribbon_offsets(UI.RIBBON_N,
-                                                                 pitch=UI.RIBBON_PITCH),
-                                          across=(0.0, 1.0, 0.0))):
-        # ...and way 1 is named for what it is rather than numbered. build._color_for
-        # strips every trailing index group, so "wire_ui_01" resolves to the same base as
-        # the other thirteen and could never carry its own colour. A ribbon's one marking
-        # is the red stripe down conductor 1, and it is the only thing that tells you
-        # which way round the plug goes.
-        out.append(("wire_ui_stripe" if j == 0 else "wire_ui_%02d" % (j + 1),
-                    _wire(path, WIRE_OD["wire_ui"])))
+    #    ...AND IT IS ONE PRISM, NOT FOURTEEN SWEEPS (user, 2026-09-28). It was drawn
+    #    as fourteen conductors from bundle_paths, one octagonal solid each, which is the
+    #    truth about a ribbon and the wrong model of it: nothing inside a ribbon can move
+    #    relative to anything else, so the fourteen only ever add up to the rectangle they
+    #    fill -- and they cost fourteen solids in every boolean the overlap gate runs. The
+    #    one thing the fourteen bought was catching the width turned the wrong way, and
+    #    flat_cable asserts that instead.
+    #    BOTH ITS CORNERS ARE FOLDS, not bends -- the run is flat and both turns are in
+    #    the ribbon's own plane, so each is a 45 degree crease. That is what flat_bends
+    #    says and what UI.RIBBON_FOLDS declares; a reroute that adds a third crease has
+    #    to admit to it here rather than appear in the assembly as a surprise.
+    _bends = flat_bends(centre, across=(0.0, 1.0, 0.0))
+    _folds = [v for v, k, _d in _bends if k == "fold"]
+    assert len(_folds) == UI.RIBBON_FOLDS, (
+        "the UI ribbon's path folds %d times, not the %d declared: %r"
+        % (len(_folds), UI.RIBBON_FOLDS, _bends))
+    out.append(("wire_ui", flat_cable(centre, UI.RIBBON_W, UI.RIBBON_T,
+                                      across=(0.0, 1.0, 0.0))))
 
     return out
 
@@ -1138,7 +1146,6 @@ WIRE_OK = {
     "wire_usb":       {"output_panel", "pi5"},
     "wire_link":      {"motor_ctrl", "pi5"},
     "wire_ui":        {"ui_pcb", "pi5"},
-    "wire_ui_stripe": {"ui_pcb", "pi5"},
 }
 
 # ...and the body-side run of the same cable ends on the motor controller, which is the

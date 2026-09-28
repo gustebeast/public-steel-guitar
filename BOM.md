@@ -531,7 +531,19 @@ belongs here: all UI logic is the Pi's (see the control-architecture split).
 | **Display header** (on our board) | Kinghelm **KH-2.54PH180-1X20P-L11.5**, 1×20 male 2.54 | 1 | ~$0.10 | [LCSC C2905493](https://www.lcsc.com/product-detail/C2905493.html) — 1,131 in stock | **Insulation 2.5 / mating pin 6.0 / tail 3.0, all three read off the listing**: `src/ui_panel.py` builds the whole Z stack on them |
 | **Display socket** (on the MODULE) | Kinghelm **KH-2.54FH-1X20P-H8.5**, 1×20 female 2.54 | 1 | ~$0.15 | [LCSC C2905423](https://www.lcsc.com/product-detail/C2905423.html) — 7,005 in stock | ⚠ **HAND-SOLDERED, and it is the only hand-solder step in the station.** Newhaven ship the module with plated holes and no header — their drawing only *recommends* a 1×20 — so both halves are ours to pick. Male on our board and female on the module makes both halves stock parts with 6.0 mm of engagement; the other way round needs a long-pin header nobody stocks |
 | **Ribbon header** | ZHOURI **DC3-2.54-14PAL**, 2×7 right-angle shrouded IDC | 1 | ~$0.20 | [LCSC C5156673](https://www.lcsc.com/product-detail/C5156673.html) — ⚠ **154 in stock** | **The thinnest line on the board, and not a like-for-like swap.** Right-angle is forced: the board hangs under the deck with 11.70 mm of air over it and a vertical box header stands ~13.5. 2×7 rather than 2×10 is forced too — a 2×10's shroud is 33.2 long and the board is 34 deep. If it is gone, the vertical DC3-2.54-14PAS exists but wants the board re-laid for a different exit |
-| **Ribbon** | 14-way 1.27 flat cable + two 2×7 IDC sockets, ~500 mm | 1 | ~$2 | any | Crimped by pressing, not soldered. At the Pi it lands on GPIO pins; the conductor order is chosen so SCLK runs between GND and +3V3 (see `elec/ui_board.py`) |
+| **Ribbon cable** | 14-way **1.27 mm** grey flat ribbon, 17.78 wide × 0.9 thick, **500 mm** | 1 | ~$1 | ⚠ **not LCSC** — see below | **Bought to length, and the length is measured, not guessed: the modelled centreline is 429.5 mm** (`cadkit.cables.path_length` over the path `src/wiring.py` draws), so 500 mm is the next stock length up and leaves ~70 mm of service slack. **It is folded twice**, 45° each, because the run is flat under the deck and both of its 90° turns are in the ribbon's own plane — `UI.RIBBON_FOLDS` declares that and `flat_bends` holds the path to it |
+| **Ribbon sockets** | 2×7 IDC female socket, 2.54 mm (the "FC-14" / DC3 mating half) | 2 | ~$0.6 | ⚠ **not LCSC** — see below | Pressed on, not crimped and not soldered, which is the whole reason this is a ribbon and not fourteen wires. One end mates `DC3-2.54-14PAL` on our board; the other lands on the Pi's GPIO pins, and the way order is chosen so SCLK runs between GND and +3V3 (see `elec/ui_board.py`) |
+
+⚠ **THE RIBBON IS THE ONE UI LINE WITH NO LCSC PART, and that is a category fact rather
+than an oversight.** Searched 2026-09-28: LCSC's "Flat Flex Ribbon Jumpers, Cables"
+category holds **2 items**, `FC-14` returns **nothing**, and a 14-way 2.54 IDC socket is
+not in the catalogue at all. The JLC-library rule this project follows is about **parts
+the assembler places**, and nothing here is placed — the ribbon and its two sockets are
+loose hardware that arrives in the same box as the screws. Both are commodity items in
+every catalogue that sells ribbon by the metre, and JLC's own custom-cable service would
+make the assembly to length. **OPEN: no verified SKU for either line.** Their sizes are
+not open — the width, thickness, pitch and way count are all single-sourced from
+`src/ui_panel.py`, which is also what the board is laid out against.
 
 ⚠ **THE SHAFT IS A D, AND THE CATALOGUE DOES NOT SAY SO** (2026-09-28). The knob is
 printed, so its bore has to match the shaft, and the drawing this was first read from is

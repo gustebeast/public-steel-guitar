@@ -273,6 +273,17 @@ RIBBON_PITCH = 1.27
 RIBBON_T = 0.9                     # 1.27 flat cable, and each conductor's pitch circle:
                                    # neighbouring ways touch, which is what makes it a
                                    # ribbon rather than fourteen wires
+# ...AND IT TURNS TWO CORNERS BY BEING FOLDED. The run is flat under the deck -- width
+# in Y, thickness in Z, because there is only 10.70 of headroom and 17.78 of it on edge
+# does not fit -- so both of its 90 degree turns are IN THE RIBBON'S OWN PLANE, and flat
+# cable can only do that creased over at 45 degrees. Ordinary, and free, but it is an
+# assembly step somebody has to get the right way round, so the count is declared here
+# and cadkit.cables.flat_bends holds the modelled path to it.
+RIBBON_FOLDS = 2
+RIBBON_W = RIBBON_N * RIBBON_PITCH  # 17.78, the cable's own width. Every way's insulation
+                                    # touches its neighbour's, so the ribbon is exactly as
+                                    # wide as the ways it has -- which is also the width
+                                    # the CAD sweeps, as ONE prism rather than fourteen
 SCREW_CLR_D = 4.5                  # its clearance hole in the board
 
 # -- THE DECK ---------------------------------------------------------------

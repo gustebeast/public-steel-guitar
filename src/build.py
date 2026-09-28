@@ -1732,7 +1732,6 @@ _COLORS = {
     # is its red stripe, which is the only marking an IDC cable carries and the only
     # thing that tells you which way round the plug goes.
     "wire_ui":         (0.55, 0.56, 0.58),
-    "wire_ui_stripe":  (0.85, 0.12, 0.10),
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
