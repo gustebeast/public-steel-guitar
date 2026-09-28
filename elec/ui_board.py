@@ -199,11 +199,14 @@ _HW, _HL = BOARD_W / 2.0, BOARD_L / 2.0
 # placing this places the display. Rotated 90 so the row runs along X, which is the way
 # the module's own row runs.
 _J1_X, _J1_Y = UI.board_local(UI.ui_x(), UI.header_row_y())
-# SW1's SHAFT sits under the knob, which shares the station's X centre with the display.
+# SW1's SHAFT sits under the knob, whose X is its own rule -- the same gap to the deck
+# panel's +X seam that the Y layout gives it to everything else (user, 2026-09-28). It
+# used to share the display's X centre, which left it equally spaced in Y and 45 mm from
+# that seam in X.
 # The placement names the pad centroid and the switch's terminals are not symmetric
 # about its shaft, so the offset between the two is added here -- see
 # ui_panel.enc_anchor_offset(), which reads it out of the footprint file.
-_SW_BODY_X, _SW_BODY_Y = UI.board_local(UI.ui_x(), UI.y_layout()[1])
+_SW_BODY_X, _SW_BODY_Y = UI.board_local(UI.knob_x(), UI.y_layout()[1])
 _ENC_OFF = UI.enc_anchor_offset()
 _SW_X, _SW_Y = _SW_BODY_X + _ENC_OFF[0], _SW_BODY_Y + _ENC_OFF[1]
 
@@ -234,12 +237,21 @@ assert _SCREW_X + _BOSS_D / 2.0 <= _SW_BODY_X - _ENC_CRTYD - 1.0, \
 assert _SCREW_X - _BOSS_D / 2.0 >= _J2_X + _J2_FAB_BACK + 1.0, \
     "the M4 boss laps the ribbon header"
 
-# The pull-ups run in a column +X of the encoder -- the only block of clear board with
-# room for seven of them, the -X lane being spoken for by the screw. The two decoupling
-# parts sit beside J1's +X VDD pin (18), which is the one place their value depends on.
-_R_X = 13.0
-_R_Y0, _R_DY = 9.0, -3.0
-assert _R_X - 0.5 >= _SW_BODY_X + _ENC_CRTYD + 1.0, "the pull-up column laps the encoder"
+# The pull-ups run in a column BETWEEN the screw boss and the encoder. They were +X of
+# the encoder until the knob moved +X on top of them; this lane is the one that is still
+# clear, and a pull-up is a part whose position carries no information -- it only has to
+# reach its own signal. The two decoupling parts sit beside J1's +X VDD pin (18), which
+# is the one place on this board where position IS the value.
+# ...AND IN A ROW, NOT A COLUMN. A column of seven at 3 mm pitch is a picket fence
+# across the middle of the board, and all seven switch nets have to cross it to reach
+# J2 at the -X edge: the router left SW_PUSH 0.42 mm short on the far side of it. A row
+# along the top turns the same seven parts into a +3V3 rail with the pull-ups hanging
+# off it and an empty lane underneath for the signals to run in. It routed clean.
+_R_Y = 10.0
+_R_X0, _R_DX = -20.0, 4.0
+assert _R_X0 + 6 * _R_DX + 0.5 <= _SW_BODY_X - _ENC_CRTYD - 1.0,     "the pull-up row laps the encoder"
+assert _R_X0 - 0.5 >= _J2_X + _J2_FAB_BACK + 1.0, "the pull-up row laps the ribbon header"
+assert _R_Y - 0.5 >= _SCREW_Y + _BOSS_D / 2.0 + 1.0, "the pull-up row laps the screw boss"
 
 PLACEMENTS = {
     "J1": (round(_J1_X, 3), round(_J1_Y, 3), 90.0),
@@ -249,7 +261,7 @@ PLACEMENTS = {
     "C2": (24.5, 10.5, 0.0),
 }
 for _i in range(7):
-    PLACEMENTS["R%d" % (_i + 1)] = (_R_X, round(_R_Y0 + _i * _R_DY, 3), 0.0)
+    PLACEMENTS["R%d" % (_i + 1)] = (round(_R_X0 + _i * _R_DX, 3), _R_Y, 0.0)
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -262,7 +274,7 @@ BOARD_NOTES = {
         "J2": (round(_J2_X - 2.0, 3), round(_J2_Y - 14.2, 3)),
         "SW1": (round(_SW_X, 3), round(_SW_Y - 10.4, 3)),
         "C1": (19.0, 8.2), "C2": (24.5, 8.2),
-        **{"R%d" % (i + 1): (_R_X + 3.0, round(_R_Y0 + i * _R_DY, 3)) for i in range(7)},
+        **{"R%d" % (i + 1): (round(_R_X0 + i * _R_DX, 3), _R_Y + 1.6) for i in range(7)},
     },
     # NO GROUND POUR, and it was tried. A B.Cu pour is the obvious thing to want here --
     # the clock runs the length of the board from J2 to J1 and a plane under it is a

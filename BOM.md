@@ -533,6 +533,33 @@ belongs here: all UI logic is the Pi's (see the control-architecture split).
 | **Ribbon header** | ZHOURI **DC3-2.54-14PAL**, 2×7 right-angle shrouded IDC | 1 | ~$0.20 | [LCSC C5156673](https://www.lcsc.com/product-detail/C5156673.html) — ⚠ **154 in stock** | **The thinnest line on the board, and not a like-for-like swap.** Right-angle is forced: the board hangs under the deck with 11.70 mm of air over it and a vertical box header stands ~13.5. 2×7 rather than 2×10 is forced too — a 2×10's shroud is 33.2 long and the board is 34 deep. If it is gone, the vertical DC3-2.54-14PAS exists but wants the board re-laid for a different exit |
 | **Ribbon** | 14-way 1.27 flat cable + two 2×7 IDC sockets, ~500 mm | 1 | ~$2 | any | Crimped by pressing, not soldered. At the Pi it lands on GPIO pins; the conductor order is chosen so SCLK runs between GND and +3V3 (see `elec/ui_board.py`) |
 
+⚠ **THE SHAFT IS A D, AND THE CATALOGUE DOES NOT SAY SO** (2026-09-28). The knob is
+printed, so its bore has to match the shaft, and the drawing this was first read from is
+a 592-pixel GIF in which **"1.8 ±0.03" is not a length — it is the width across a
+FLAT**. Alps' own 3D model (the one LCSC ship with `C160841`) settles it by slicing:
+from 12.10 mm up the section is ±1.25 in one axis and −1.24…+0.55 in the other, i.e.
+Ø2.5 milled to **1.79 across**. A round bore would have turned on it and the encoder
+would have done nothing — a dead control on an assembled instrument.
+
+Two more numbers came out of the same slice and both were wrong from the drawing:
+
+| | read off the drawing | the model |
+|---|---|---|
+| shaft tip above the board | 14.2 | **17.10** |
+| 17 × 17 body height | 10.5 | **8.30** (a collar carries on to 10.20) |
+| usable key length | 1.8 | **5.00** of flat |
+
+The catalogue's `W×D×H = 17.0×17.0×10.5` is over the COLLAR, not the body. Anyone
+sizing a pocket to 10.5 is sizing it to the wrong feature.
+
+**Clearance, measured rather than derived.** The cap and the deck's hole are both sized
+off the 9° tilt, so their arithmetic agrees with itself and proves nothing. Tilting the
+real solids about the real fulcrum through 36 directions leaves **1.19 mm at full
+deflection** and 2.94 mm at rest, the tightest point being the shank against the wall of
+the deck's hole 1.41 mm below the deck's top face. The cap's underside is a 14° cone
+rather than a flat disc — a flat one has to sit its whole rim's dip above the deck, which
+parked it 1.8 mm proud for a clearance only ever needed at the stop.
+
 **Pull-ups, not debounce capacitors.** Seven 10 kΩ 0402, one per contact, and no cap
 across any of them. An RC debounce dumps the capacitor's charge through the switch
 contact at every make, and this contact is rated **10 mA with a 50,000-cycle life on the

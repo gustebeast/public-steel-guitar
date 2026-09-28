@@ -236,10 +236,14 @@ controller.
 > own assembly and let either be unplugged alone. That is a motor-controller decision,
 > not a mechanical one.
 
-## The UI station (deck mid panel) — 2026-09-25
+## The UI station (deck mid panel) — 2026-09-28
 
-The display, the encoder and the board that carries them all hang off ONE deck panel
-(`top_plate` mid). Order matters in both directions.
+The display, the encoder and the board that carries them are ONE assembly, plugged
+together, and **one M4 holds it in the deck panel**. Plastic takes every other direction:
+the display's pocket walls and the window ledge catch it in X, Y and +Z; the board's
+cradle wall and four columns catch it in X, Y and +Z. The one direction left is the one
+you install along, and that is the screw's whole job. The display's own downward stop is
+the board's header — which is what makes one screw cover both.
 
 **Building the panel up**
 
@@ -249,22 +253,31 @@ The display, the encoder and the board that carries them all hang off ONE deck p
    module, opening facing away from the glass. The module ships with plated holes and no
    header — Newhaven's own drawing only recommends one — so this is the one hand-solder
    step in the station, and it is on a PCB, which the project's no-solder rule allows.
-3. Drop the module face-first into the pocket in the panel's underside. It seats against
-   the 1.6 mm window ledge; that ledge is the bezel and the only thing setting its depth.
-4. Lift the UI board up into its cradle — the wall and the posts locate it — and run the
-   M4 button screw up through the board into the insert, from underneath. The board's
-   1×20 male header enters the module's socket as it goes; do not force it, the two are
-   only aligned once the board is square in the cradle.
-5. Press the printed knob onto the switch's Ø2.5 shaft through the hole in the deck.
+3. Plug the module onto the board's 1×20 male header. They stay together from here.
+4. Offer the assembly up: the module enters the pocket in the panel's underside, the
+   board enters its cradle. The module seats against the 1.6 mm window ledge — the header
+   stack is deliberately **0.3 mm long**, so it always presses up into that ledge rather
+   than rattling under it.
+5. Run the M4 button screw up through the board into the insert, from underneath.
+6. Press the printed knob onto the switch's shaft through the hole in the deck. **The
+   shaft is a D** — Ø2.5 milled to 1.79 across — and so is the knob's bore. The cap is
+   unindexed, so any clocking is fine; it only has to go on square.
 
-**Taking the panel out — THE UI BOARD COMES OFF FIRST.**
+**Taking it out — the screw first, then the panels.**
 
-The deck stack slides out -X, and the board passes 0.30 mm over the chassis's cable
-trough. That is clearance to sit still in, not to slide 400 mm over. Undo the one M4 from
-underneath and drop the board (and, with it, the display) out before you pull the panel.
-Everything left on the panel clears the trough; `ui_panel.deck_mount` asserts it.
+1. Undo the one M4 from underneath. The whole assembly — screen, board and all — is now
+   free to come down.
+2. Let it down about 20 mm onto the chassis floor. There is **57.5 mm of clear air**
+   under the station's entire footprint, so it lands on bare floor with nothing to catch
+   on, and its highest point then sits ~39 mm below the lowest feature hanging off any
+   deck panel.
+3. Reach in and unplug the 14-way ribbon at the board's −X edge.
+4. Now slide the deck panels out. They pass over the assembly with room to spare.
+5. Lift the assembly out from above once the panels are gone. **It will not come out
+   through the deck** with the panels on: the module is 82 × 47.5 and the window is
+   66 × 33.
 
 **Before the first panel is printed**, confirm the right-angle ribbon header's height
 against the real part. `src/board_geom.HEIGHT` carries 10.0 mm for it as an ESTIMATE —
-ZHOURI publish no drawing through LCSC — and there is 11.70 mm between the board's top
+ZHOURI publish no drawing through LCSC — and there is 11.40 mm between the board's top
 face and the deck's underside.

@@ -96,11 +96,13 @@ HEIGHT = {
     # the output board's analog rewrite (2026-09-21)
     "TSSOP-14_4.4x5mm_P0.65mm": 1.20,              # PCM1808PWR (TI PW package, 1.20 max)
     # the UI board (2026-09-25)
-    "Alps_RKJXT1F42001": 10.5,      # the BODY only, off Alps' catalogue W x D x H. The
-                                    # 3.7 of shaft above it and the cap over that are
-                                    # drawn by src/ui_panel.py, because a 17 x 17 box
-                                    # 14.2 tall would read as a collision with the deck
-                                    # the shaft passes cleanly through.
+    # THE BODY ONLY -- 8.30, not the catalogue's 10.5, which is over the COLLAR. Read
+    # off Alps' own 3D model (the one LCSC ship with C160841) by slicing its mesh: the
+    # 17 x 17 case tops out at 8.30, a two-step collar carries on to 10.20, and the
+    # D-shaft runs 11.10 to 17.10. src/ui_panel.py draws the collar and the shaft,
+    # because a 17 x 17 box 17 tall would read as a collision with the deck the shaft
+    # passes cleanly through.
+    "Alps_RKJXT1F42001": 8.30,
     "PinHeader_1x20_P2.54mm_Vertical": 8.54,   # 2.54 insulator + 6.0 of pin
     # ESTIMATED, NOT READ: a 2.54 right-angle shrouded IDC header. ZHOURI publish no
     # drawing through LCSC and the KiCad footprint carries no Z. 10.0 is a generous

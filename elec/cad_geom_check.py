@@ -71,6 +71,28 @@ def _cad(board):
 
 BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
           "ui_board")
+
+
+def _ui_rule_check():
+    """Does the UI board's routed switch land where the deck's spacing rule says?
+
+    src/ui_panel.py owns the rule -- equal gaps between the deck's -Y edge, the knob,
+    the display's window and the fretboard border, and the same gap again to the panel's
+    +X seam -- and elec/ui_board.py places SW1 from it. Nothing downstream compares the
+    two: the CAD draws the ROUTED switch, so if the placement drifted the deck's hole
+    would drift with it, silently and consistently. This is the one check that reads
+    both. It lives here rather than in ui_panel because ui_panel is on the generator's
+    own import path, and an assertion there deadlocks the pipeline it is checking."""
+    from src import ui_panel as UIP
+    kx, ky = UIP.routed("SW1")
+    wx, wy = UIP.knob_x(), UIP.y_layout()[1]
+    off = max(abs(kx - wx), abs(ky - wy))
+    if off > 0.05:
+        print("   ui_board: the routed switch is at (%.3f, %.3f) and the spacing rule "
+              "wants (%.3f, %.3f) -- %.3f off" % (kx, ky, wx, wy, off))
+        return 1
+    print("   ui_board: the routed switch is on the spacing rule (%.3f off)" % off)
+    return 0
 AX = {"x": cq.Vector(1, 0, 0), "y": cq.Vector(0, 1, 0), "z": cq.Vector(0, 0, 1)}
 
 
@@ -153,6 +175,12 @@ def main(argv):
         except Exception as exc:                  # a board the check cannot read is a
             print("%-13s COULD NOT CHECK: %s" % (b, exc))   # finding, not a pass
             bad += 1
+        if b == "ui_board":
+            try:
+                bad += _ui_rule_check()
+            except Exception as exc:
+                print("   ui_board: COULD NOT CHECK THE SPACING RULE: %s" % exc)
+                bad += 1
     print("\n%s" % ("every routed part is where the CAD draws it" if not bad
                     else "*** %d DISAGREEMENT(S) BETWEEN THE CAD AND THE ROUTED BOARDS ***"
                     % bad))

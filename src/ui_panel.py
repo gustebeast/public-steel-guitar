@@ -27,6 +27,24 @@ deck's own -Y edge, the knob's O17 cap, the display's 63.41 x 32.69 VIEWING area
 -Y edge of the fretboard's border frame. Three equal gaps fall out of those four; nothing
 here is typed.
 
+-- GETTING IT OUT AGAIN (user, 2026-09-28) -----------------------------------
+ONE M4 RELEASES BOTH THE SCREEN AND THE BOARD, and plastic takes every other direction.
+The display is caught in X and Y by its pocket walls and in +Z by the window ledge; the
+board is caught in X and Y by the cradle's wall and in +Z by its four columns. Neither
+is caught in -Z by plastic at all, because -Z is the installation direction -- and that
+one direction is the M4's whole job. The display's own -Z stop is the board's header,
+which is why the screw covers both: the two are plugged together into one assembly, and
+one screw is all that holds that assembly in the panel.
+
+...AND IT DROPS STRAIGHT OUT INTO THE BAY. Under the whole 82 x 47.5 footprint there is
+nothing between the panel and the chassis floor at z -71.5: 57.5 mm of clear air,
+measured across the station's whole plan. So undoing the one screw lets the assembly --
+screen, board and all -- come down about 20 mm onto that floor, where its highest point
+sits some 39 mm below the lowest thing hanging off any deck panel. Reach in, unplug the
+ribbon, and every panel slides out over it; the assembly lifts out from above once they
+are gone. It cannot come out THROUGH the deck: the module is 82 x 47.5 and the window is
+66 x 33.
+
 -- THE STACK, TOP DOWN -------------------------------------------------------
     deck top            +6.4   the player's surface
     window ledge        1.6    two beads of deck left over the module: the bezel
@@ -48,6 +66,8 @@ from __future__ import annotations
 
 import math
 from functools import lru_cache
+
+import cadquery as cq
 
 from . import dimensions as D
 from .helpers import box_at, cyl
@@ -84,16 +104,38 @@ VIEW_OFF_Y    = VIEW_FROM_HDR - MOD_L / 2.0          # 2.00, away from the heade
 # inside a 33 mm window with 4 mm of ledge all round, and recorded because a later
 # reader measuring the real part will find the difference and wonder which is wrong.
 
-# -- THE ENCODER, off Alps' RKJXT1F series drawing (read 2026-09-25) ---------
-ENC_SQ       = 17.0                # body, W x D
-ENC_BODY_H   = 10.5                # body above the PCB (the catalogue's H)
-ENC_TAIL     = 3.2                 # terminals below the PCB
-ENC_TOTAL    = 17.4                # shaft tip to terminal tips
-ENC_SHAFT_H  = ENC_TOTAL - ENC_TAIL - ENC_BODY_H     # 3.7 of shaft above the body
-ENC_SHAFT_D  = 2.5
-ENC_SHAFT_GRIP = 1.8               # the O2.5 length a cap can grip
-ENC_FULCRUM  = 5.55                # lever pivot above the PCB
-ENC_TILT     = 9.0                 # degrees, each direction
+# -- THE ENCODER ------------------------------------------------------------
+# MEASURED OFF ALPS' OWN 3D MODEL (the one LCSC ship with C160841, read 2026-09-28 by
+# slicing its mesh level by level), NOT off the catalogue drawing. The drawing is a
+# 592-pixel GIF and I read two of its numbers wrong from it:
+#
+#   * "1.8 +-0.03" is NOT a length. It is the WIDTH ACROSS THE FLAT of a D-cut shaft.
+#     The mesh settles it: from z 12.10 up the section is x +-1.25 but y -1.24..+0.55,
+#     which is O2.5 with one side milled to 1.79. A round bore on a rotary encoder is
+#     a knob that spins, so this is the difference between a working control and a
+#     useless one.
+#   * "17.4" is measured to the MOUNTING FACE, not to the terminal tips. The shaft tip
+#     stands 17.10 above the board, not the 14.2 that reading gave.
+#
+# And the catalogue's W x D x H "10.5" is over the COLLAR, not the body: the 17 x 17
+# body tops out at 8.30 and a two-step collar carries on to 10.20.
+ENC_SQ        = 17.0               # body, W x D
+ENC_BODY_H    = 8.30               # the 17 x 17 body above the PCB
+ENC_COLLAR_D  = 7.10               # first collar step, to ENC_COLLAR_Z
+ENC_COLLAR_Z  = 10.20              # collar top (the catalogue's "10.5")
+ENC_TAIL      = 3.5                # terminals below the PCB (the drawing says 3.2;
+                                   # the model draws 3.5, so the model's is carried)
+ENC_SHAFT_Z0  = 11.10              # shaft root above the PCB
+ENC_SHAFT_TIP = 17.10              # shaft tip above the PCB
+ENC_FLAT_Z0   = 12.10              # ...and where its flat starts: only THIS much of
+                                   # the shaft can key a cap
+ENC_SHAFT_D   = 2.5
+ENC_FLAT_W    = 1.79               # across the flat (the drawing's 1.8 +-0.03)
+ENC_FLAT_DIR  = +1                 # the flat faces +Y in the BOARD frame -- fixed by
+                                   # the model, whose ground lug lands at y -3.75 where
+                                   # the footprint's pad 10 is, so its Y is the board's
+ENC_FULCRUM   = 5.55               # lever pivot above the PCB
+ENC_TILT      = 9.0                # degrees, each direction
 
 # -- THE PRINTED CAP --------------------------------------------------------
 # O17 to match the body, because that is the width the Y spacing is measured on: what
@@ -102,9 +144,21 @@ KNOB_D       = ENC_SQ              # 17.0
 KNOB_SHANK_D = 8.0                 # what passes through the deck
 KNOB_CLR     = 0.5                 # air under the cap at rest
 KNOB_H       = 4 * D.BEAD          # 3.2 of cap above its own underside
+KNOB_HOLE_AIR = 1.0                # radial air left round the shank at FULL deflection,
+                                   # measured at the deck's top face where the throw is
+                                   # widest. It is not a fit gap: nothing bears here and
+                                   # the stick must never find the hole before its own stop
+KNOB_CONE     = 14.0               # the cap's underside cone, degrees. Anything over the
+                                   # 9 deg tilt clears at every radius at once; 14 leaves
+                                   # margin for a printed surface and still lets the cap
+                                   # sit close to the deck
+KNOB_BORE_CLR = 0.15               # per face, round AND flat: a press fit on a D that
+                                   # has to TRANSMIT the detent torque, so it is tighter
+                                   # than a sliding fit and looser than an interference
+                                   # one -- the cap is PCTG and the shaft is steel
 # THE CAP PRINTS DISC-DOWN, on the flat top face it presents to the player. Every other
-# way up puts the O2.6 shaft bore's blind end over air. Its own +Z is the world's, so
-# the declaration is the world axis turned over.
+# way up puts the shaft bore's blind end over air. Its own +Z is the world's, so the
+# declaration is the world axis turned over.
 KNOB_UP = (0.0, 0.0, -1.0)
 
 # -- THE BOARD --------------------------------------------------------------
@@ -120,7 +174,19 @@ BOARD_T = 1.6
 # module gets KH-2.54FH-1X20P-H8.5, an 8.5 socket. The module's PCB lands on the male
 # insulator, so the stack is 2.5 + 8.5, with the full 6.0 of pin engaged in the socket.
 SOCKET_H = 2.5 + 8.5
-SCREW_XY = (-15.5, -2.5)           # the one M4, in board coordinates
+# ...AND THE STACK IS DELIBERATELY 0.3 TOO LONG. The module is trapped between the deck's
+# window ledge above it and the header below, with nothing else holding it down, so an
+# exact fit is a coin toss between a rattle and a preload. Making the header stand 0.3
+# proud settles it: the module always seats UP against the ledge, the pins give up 0.3 of
+# their 6.0 engagement, and nothing can buzz against a printed face under an instrument
+# that gets stomped on.
+MOD_PRELOAD = 0.3
+# THE ONE M4, in board coordinates. It sits in the +Y half on purpose, twice over:
+# it is nearer the display's overhang, which is where the assembly's weight is, and it
+# leaves the whole -Y half of the board as one uninterrupted lane. Down in the -Y half
+# its O4.5 clearance hole stood in the middle of the only route the seven switch nets
+# have from the encoder to the ribbon header, and the router left two of them short.
+SCREW_XY = (-15.5, 4.0)
 SCREW_CLR_D = 4.5                  # its clearance hole in the board
 
 # -- THE DECK ---------------------------------------------------------------
@@ -167,6 +233,24 @@ def enc_anchor_offset():
             -sum(p[1] for p in pads) / len(pads))       # .kicad_mod is +Y DOWN
 
 
+# -- what the cap and the shaft have to agree about, stated once ------------
+# Cheap arithmetic, checked at import. The SOLID proof is a separate matter: tilting the
+# real knob against the real deck through 36 directions leaves 1.19 mm at full 9 deg
+# deflection and 2.94 mm at rest, the tightest point being the shank against the wall of
+# the deck's hole, 1.41 below the deck's top face. These three are the relationships
+# that produce that, so they are the ones that would quietly stop being true.
+assert KNOB_CONE > ENC_TILT, (
+    "the cap's underside cone is %.1f deg against a %.1f deg tilt -- its rim would "
+    "strike the deck before the stick reached its own stop" % (KNOB_CONE, ENC_TILT))
+assert ENC_SHAFT_TIP - ENC_FLAT_Z0 >= 4.0, (
+    "only %.2f mm of this shaft carries its flat; a printed cap needs more than that to "
+    "key on" % (ENC_SHAFT_TIP - ENC_FLAT_Z0))
+assert ENC_FLAT_W < ENC_SHAFT_D, (
+    "the shaft's flat (%.2f) is not smaller than its diameter (%.2f) -- that is a ROUND "
+    "shaft, and a round bore on a rotary encoder is a knob that spins"
+    % (ENC_FLAT_W, ENC_SHAFT_D))
+
+
 def _tp():
     """top_plate, imported late -- it imports THIS module (see the docstring)."""
     from . import top_plate as TP
@@ -180,8 +264,18 @@ def z_stack():
     TP = _tp()
     mod_face = TP.TZ - LEDGE_T
     mod_back = mod_face - MOD_T
-    board_top = mod_back - SOCKET_H
+    board_top = mod_back - SOCKET_H + MOD_PRELOAD
     return (TP.TZ, TP.BZ, mod_face, mod_back, board_top, board_top - BOARD_T)
+
+
+def collar_clears_deck():
+    """The switch's collar has to stop short of the deck's underside: only the shaft is
+    allowed through the hole. Checked as a function because it needs the deck's Z."""
+    _tz, bz, _f, _b, board_top, _bb = z_stack()
+    top = board_top + ENC_COLLAR_Z
+    assert top < bz - 0.5, (
+        "the switch's collar reaches z %.2f and the deck's underside is %.2f" % (top, bz))
+    return bz - top
 
 
 def board_z0():
@@ -220,6 +314,33 @@ def ui_x():
     return mod_x1 - MOD_W / 2.0
 
 
+@lru_cache(maxsize=None)
+def knob_x():
+    """THE RULE for the knob's X: the same gap to the deck panel's +X seam that the Y
+    layout gives it everywhere else (user, 2026-09-28).
+
+    It used to share the display's X centre, which left it 45 mm from that seam against
+    16.7 to the instrument's -Y edge -- equal spacing in one axis and nothing in the
+    other. Measured on the cap, like every other gap in this station."""
+    TP = _tp()
+    return TP.REGION_X1 - y_layout()[0] - KNOB_D / 2.0
+
+
+def knob_centre():
+    """Where the knob ACTUALLY is: the routed switch's body centre.
+
+    knob_x() and y_layout() are the RULE; this is what KiCad did with it, and the cap,
+    its bore and the deck's hole are all cut from this one so they cannot disagree with
+    the board that gets fabbed.
+
+    THE TWO ARE COMPARED IN elec/cad_geom_check.py, NOT HERE, and the reason is a
+    deadlock: elec/ui_board.py imports this module for the rule, importing it builds the
+    deck, and building the deck reads the routed board. An assertion on that path stops
+    the generator from running at all the moment the rule moves -- which is exactly when
+    you need to run it. The check belongs after the route, and that is where it is."""
+    return routed("SW1")
+
+
 def module_centre():
     """(x, y) of the display module's PCB centre. Its optical centre is VIEW_OFF_Y away
     from it, on the side AWAY from the header -- and the header faces -Y, toward the
@@ -246,11 +367,10 @@ def board_centre():
     THE BOARD OVERHANGS THE CABLE TROUGH, and it has to. The knob's Y is fixed by the
     spacing rule and the switch body is 17 across, so the board must reach into the
     band the chassis's -Y cable trough occupies; it passes 0.30 above that trough's
-    lip. That is fine standing still and is not enough to slide 400 mm over -- so THE
-    UI BOARD COMES OFF BEFORE THE DECK STACK IS WITHDRAWN. One M4 from underneath,
-    which is a screw you are taking out to reach the display anyway. Everything else
-    on the panel stops at the board's top face or clear of the trough in Y, so the
-    panel alone slides free (deck_mount's own assertion holds it to that)."""
+    lip. Fine standing still, not enough to slide 400 mm over -- and it never has to,
+    because the assembly comes out before the panel moves either way. See the service
+    order in the module docstring; deck_mount's own assertion holds everything that
+    DOES slide clear of that trough."""
     return ui_x(), y_layout()[1] + 4.263
 
 
@@ -313,32 +433,77 @@ def display_module():
 
 
 def knob_geometry():
-    """(shaft_tip_z, cap_z0, hole_d) -- the three numbers the cap and its hole share.
+    """(flat_z, tip_z, cap_z0, hole_d) -- the numbers the cap, the shaft and the hole share.
 
     THE HOLE IS SIZED BY THE TILT, NOT BY THE SHANK. The stick pivots 9 deg about a
     fulcrum 5.55 above the board, so the shank sweeps a cone: what has to fit through
     the deck is the shank's diameter plus twice its throw at the deck's TOP face, which
-    is the furthest point from the pivot. And the cap has to start high enough that its
-    low side still clears the deck when the stick is over -- it dips half its own
-    diameter times sin(tilt)."""
+    is the furthest point from the pivot.
+
+    THE CAP'S UNDERSIDE IS A CONE, not a flat disc, and that is what buys the clearance.
+    A flat cap has to sit its whole rim's dip (half its diameter times sin 9) above the
+    deck, which parked it 1.8 mm proud -- a visible gap for a clearance that is only
+    ever needed at full deflection. A cone whose slope exceeds sin(tilt) clears at every
+    radius at once, so the cap can come down until its INNER edge just clears, and the
+    rim takes care of itself."""
     tz, _bz, _face, _back, board_top, _bb = z_stack()
-    tip = board_top + ENC_TOTAL - ENC_TAIL
+    tip = board_top + ENC_SHAFT_TIP
+    flat = board_top + ENC_FLAT_Z0
     pivot = board_top + ENC_FULCRUM
     t = math.tan(math.radians(ENC_TILT))
-    hole_d = KNOB_SHANK_D + 2.0 * ((tz - pivot) * t + 0.4)
-    cap_z0 = tz + KNOB_D / 2.0 * math.sin(math.radians(ENC_TILT)) + KNOB_CLR
-    return tip, cap_z0, hole_d
+    hole_d = KNOB_SHANK_D + 2.0 * ((tz - pivot) * t + KNOB_HOLE_AIR)
+    dip = math.sin(math.radians(ENC_TILT))
+    cap_z0 = tz + KNOB_CLR + (KNOB_SHANK_D / 2.0) * dip   # the cone's INNER edge
+    return flat, tip, cap_z0, hole_d
 
 
 def knob():
-    """The printed cap: a shank up through the deck and a O17 disc over it."""
-    kx, ky = routed("SW1")
-    tip, cap_z0, _hole = knob_geometry()
-    z0 = tip - ENC_SHAFT_GRIP
-    s = cyl(KNOB_SHANK_D, cap_z0 - z0, z=z0).translate((kx, ky, 0))
-    s = s.union(cyl(KNOB_D, KNOB_H, z=cap_z0).translate((kx, ky, 0)))
-    return s.cut(cyl(ENC_SHAFT_D + 0.2, ENC_SHAFT_GRIP + 0.1, z=z0 - 0.05)
-                 .translate((kx, ky, 0)))
+    """The printed cap: a shank up through the deck and a coned O17 disc over it.
+
+    THE BORE IS A D, because the shaft is. O2.5 milled to 1.79 across (see the encoder
+    block above): a round bore would turn on it and the encoder would do nothing. The
+    bore keys on the 5.0 mm of shaft that actually carries the flat, not on the round
+    root below it.
+
+    The cap is UNINDEXED -- a plain disc with no marking -- so which way round it goes
+    on the D is free at assembly. Nothing downstream reads its clocking."""
+    kx, ky = knob_centre()
+    flat, tip, cap_z0, _hole = knob_geometry()
+    rim_z0 = cap_z0 + (KNOB_D - KNOB_SHANK_D) / 2.0 * math.tan(math.radians(KNOB_CONE))
+    s = cyl(KNOB_SHANK_D, cap_z0 - flat, z=flat)
+    s = s.union(cq.Workplane("XY").add(cq.Solid.makeCone(
+        KNOB_SHANK_D / 2.0, KNOB_D / 2.0, rim_z0 - cap_z0,
+        cq.Vector(0, 0, cap_z0))))
+    s = s.union(cyl(KNOB_D, KNOB_H, z=rim_z0))
+    # the D bore: the shaft's own section grown KNOB_BORE_CLR on every face, running
+    # from just under the cap's underside to past the tip so the shaft never bottoms
+    r = ENC_SHAFT_D / 2.0 + KNOB_BORE_CLR
+    y_flat = ENC_FLAT_DIR * (ENC_FLAT_W - ENC_SHAFT_D / 2.0 + KNOB_BORE_CLR)
+    bore = cyl(2.0 * r, (tip + 0.4) - (flat - 0.05), z=flat - 0.05)
+    keep = box_at(4.0 * r, 4.0 * r, (tip + 0.5) - (flat - 0.1),
+                  x=0.0, y=y_flat - ENC_FLAT_DIR * 2.0 * r,
+                  z=((tip + 0.4) + (flat - 0.05)) / 2.0)
+    return s.cut(bore.intersect(keep)).translate((kx, ky, 0))
+
+
+def encoder_shaft():
+    """The switch's collar and D-shaft above its body -- the tenon the cap mortises on.
+
+    board_geom draws every part as its F.Fab body extruded to one height, which for this
+    switch is the 17 x 17 case and nothing above it. The collar and the shaft are what
+    the cap and the deck's hole have to agree with, so they are drawn here from the same
+    constants the cap's bore is cut from."""
+    kx, ky = knob_centre()
+    _tz, _bz, _face, _back, board_top, _bb = z_stack()
+    s = cyl(ENC_COLLAR_D, ENC_COLLAR_Z - ENC_BODY_H, z=board_top + ENC_BODY_H)
+    shaft = cyl(ENC_SHAFT_D, ENC_SHAFT_TIP - ENC_SHAFT_Z0, z=board_top + ENC_SHAFT_Z0)
+    flat_z = board_top + ENC_FLAT_Z0
+    r = ENC_SHAFT_D / 2.0
+    shaft = shaft.cut(box_at(4 * r, 4 * r, (board_top + ENC_SHAFT_TIP) - flat_z + 0.1,
+                             x=0.0,
+                             y=ENC_FLAT_DIR * (ENC_FLAT_W - r + 2.0 * r),
+                             z=(flat_z + board_top + ENC_SHAFT_TIP) / 2.0 + 0.05))
+    return s.union(shaft).translate((kx, ky, 0))
 
 
 # -- the deck ---------------------------------------------------------------
@@ -356,8 +521,8 @@ def deck_cutter():
     # only thins the ledge, and anything narrower crops the panel
     out = out.union(box_at(OPEN_W, OPEN_L, tz - face + 2.0,
                            x=mx, y=my + VIEW_OFF_Y, z=(face + tz + 2.0) / 2.0))
-    kx, ky = routed("SW1")
-    out = out.union(cyl(knob_geometry()[2], tz - bz + 2.0, z=bz - 1.0)
+    kx, ky = knob_centre()
+    out = out.union(cyl(knob_geometry()[3], tz - bz + 2.0, z=bz - 1.0)
                     .translate((kx, ky, 0)))
     return out
 
@@ -370,10 +535,29 @@ def _posts():
     poking inward off a wall would be a ceiling with nothing beneath it. A column from
     the deck's own underside is supported the whole way.
 
-    The four are placed in the gaps the routed board leaves: none may stand under the
-    display module (which reaches down to 0.7 below the deck), so all four sit -Y of
-    the module's edge, and none may land on a part."""
-    return [(30.0, 9.0), (30.0, -12.0), (0.0, 8.0), (-19.0, 8.0)]
+    The four are placed in the gaps the routed board leaves, and BOTH constraints are
+    checked here rather than left to the overlap gate: none may stand under the display
+    module (which reaches down to 0.7 below the deck), and none may land on a part. The
+    gate does catch a post on a part -- it caught two of these at 0.8 mm3 when the
+    pull-ups moved into a row -- but it catches it as an anonymous solid-on-solid
+    finding, and what you want to be told is WHICH post and WHICH part."""
+    posts = [(31.0, 6.0), (31.0, -13.0), (-6.0, -13.0), (-6.0, 6.0)]
+    half = POST_SQ / 2.0 + POST_CLR
+    edge = board_local(0.0, module_centre()[1] - MOD_L / 2.0)[1]
+    for px, py in posts:
+        assert py + half <= edge, (
+            "a UI cradle post reaches y %+.2f and the display module's edge is at %+.2f"
+            % (py + half, edge))
+        for f in _bg().load("ui_board")["footprints"]:
+            if not f["fab"]:
+                continue
+            x0, x1, y0, y1 = f["fab"]
+            if (px + half > x0 - 0.5 and px - half < x1 + 0.5
+                    and py + half > y0 - 0.5 and py - half < y1 + 0.5):
+                raise AssertionError(
+                    "the UI cradle post at (%+.1f, %+.1f) lands on %s, whose body is "
+                    "x %.2f..%.2f y %.2f..%.2f" % (px, py, f["ref"], x0, x1, y0, y1))
+    return posts
 
 
 def deck_mount():
@@ -448,4 +632,4 @@ def hardware():
 def parts():
     """[(name, solid)] everything the assembly shows for the UI station."""
     return [("ui_pcb", ui_pcb()), ("ui_display", display_module()),
-            ("ui_knob", knob())] + hardware()
+            ("ui_shaft", encoder_shaft()), ("ui_knob", knob())] + hardware()
