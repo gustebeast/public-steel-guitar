@@ -57,3 +57,102 @@ washers (the spring seat, and the position stop in the housing). See `BOM.md` an
   length, which is most of the reason the band exists.
 - **Not an issue for the far row** (strings 2, 4, 6, 8, 10, at x +20.0): the board does
   not reach them.
+
+## Optical board first power-up (bring-up order)
+
+The board's diagnostic chain is **strictly serial**: power, MCU, I2C, converter framing,
+analog, emitters, USB. A fault at any stage hides everything past it, so **work these in
+order** and do not skip ahead -- a "dead analog channel" at stage 5 is meaningless if
+stage 4 never framed. `docs/optical-bringup-diagnostics.md` is the companion: what the
+board can and cannot observe, and the pads that would widen it.
+
+The only instrument on the board is **SWD** (`TP1` SWDIO, `TP2` SWCLK, `TP3` NRST,
+`TP4` GND, `TP5` +3V3D). **There is no DFU fallback** -- the ROM bootloader's USB is on
+OTG_FS and this board uses OTG_HS through the PHY -- so if SWD will not attach there is
+currently no second way in.
+
+### 0. Before applying power
+
+- **Measure each rail to GND with a meter, board unpowered:** `+24V`, `+5V`, `+3V3D`,
+  `+3V3A`. A near-zero reading is an assembly short; find it now rather than with 24 V
+  behind it.
+- **Current-limit the bench supply.** The board's normal draw is ~0.3 A and up, so a
+  ~0.6 A limit still lets it run while stopping a short from cooking anything.
+
+### 1. Power tree
+
+Apply 24 V at `J2`. Then confirm, in order: `+5V` out of the buck (U13), then `+3V3D` and
+`+3V3A` out of the LDOs, then `PHY_1V8`.
+
+> **This stage is the board's blind spot.** There is no status LED, no rail test pads, and
+> the buck's `PG` (power-good) pin is unconnected -- so every reading here means probing a
+> 0402 beside 0.5 mm-pitch parts. And because the MCU's own ADCs were dropped and all 20
+> converter inputs are photodiodes, **a running MCU cannot measure a single one of its own
+> rails.** Items 2 and 4 of the diagnostics doc exist to fix exactly this.
+
+### 2. Is the MCU alive?
+
+Attach SWD on `TP1`/`TP2`/`TP4`. **Use connect-under-reset via `TP3`** -- PA13/PA14 are
+ordinary GPIO after reset, so any firmware that reconfigures them takes SWD away, and
+under-reset is the only way back. If it will not attach: check the crystal (`OSC_IN`/
+`OSC_OUT`), the `VCAP1`/`VCAP2` core-regulator capacitors, and that `NRST` is released.
+
+### 3. I2C to the converters
+
+All five converters answer at **one address, `1001100`**, on I2C2 (`PF0` SDA, `PF1` SCL).
+
+> **Read this before you interpret a NACK.** The five open-drain ACKs are wired together,
+> so an ACK means *at least one* part answered and a NACK means *at least one* is missing
+> -- **there is no way to tell which.** And `SHDNZ` (pin 14) is tied hard to +3V3D on all
+> five with no reset line, so **no converter can be removed from the bus.** If one part
+> holds `SDA` low the whole control bus is dead, the only recovery is cutting power to the
+> board, and the only diagnosis is a scope on `SDA`/`SCL`. This is the single largest
+> diagnostic gap on the board; item 6 of the diagnostics doc is the fix.
+
+### 4. Converter framing (the stage that names a part)
+
+Bring up SAI with `SAI_SCK` (BCLK) and `SAI_FS` (FSYNC) running, and check the DMA is
+moving TDM frames.
+
+**This is where per-device visibility finally exists:** each converter drives its own
+`SDOUT` into its own line, `SAI_SD1`..`SD5`. **A silent slot names its converter** --
+U14 to U18 in order. That is the one localization the board gives for free, and it is why
+stage 3's ambiguity is survivable.
+
+### 5. Analog at rest -- the converters are the instrument
+
+With framing up, read **per-channel DC on all 20 channels with the emitters off**. Each
+should sit at `MID` plus the photodiode's dark current through `Rf`. No probe is needed and
+none should be used: the converters are 24-bit voltmeters already wired to every node worth
+measuring.
+
+- at or near a rail -> that TIA's input is open, or `Rf` is wrong
+- exactly at `MID`, unmoving -> dead or shorted photodiode
+- all four channels of one quad wrong -> that converter or its `+3V3A` feed, not the sensors
+
+**This also reads `MID` indirectly**, as the common rest level of all 20 channels -- which is
+why no test pad goes on `MID`. It is the reference all 20 TIAs sit on, so anything coupled
+into it lands on **every channel at once**, and calibration cannot tell it from signal.
+
+**Record these 20 values.** They are both the diagnostic baseline and the at-rest
+calibration the lock-in needs.
+
+### 6. Emitters -- the one end-to-end test
+
+`LED_GATE` (PB3, through Q1 to `LED_ROW`) switches **all ten emitters together**. Toggle it
+and watch the 20 channels from stage 5 move:
+
+- **all 20 shift** -> the whole chain works, sensor to converter
+- **all 20 unchanged** -> emitter side: Q1, `LED_ROW`, the current set. Not the sensors
+- **one quad unchanged** -> that converter or its supply
+- **one channel unchanged** -> that photodiode or its TIA
+
+The emitters are infrared, so there is nothing to see by eye. A phone camera **may** show
+them as a faint violet glow -- front cameras more often than rear ones, which filter IR
+harder -- so treat it as a quick hint, never as evidence they are off.
+
+### 7. USB to the Pi
+
+Enumerate over `J1`. The path is 20 channels -> 5 converters -> SAI TDM -> H743 -> ULPI PHY
+-> USB-C, carrying the audio plus MIDI from on-chip pitch detection. If it does not
+enumerate, SWD is the only way to inspect it, and the only way to reflash.
