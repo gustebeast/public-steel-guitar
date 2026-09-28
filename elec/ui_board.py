@@ -227,37 +227,41 @@ assert _J2_Y + _J2_FAB_HALF <= _MOD_EDGE_Y - 1.0, (
 assert _J2_Y - _J2_FAB_HALF >= -_HL + 1.0, (
     "J2's shroud reaches y %+.2f against a -Y edge at %+.2f" % (_J2_Y - _J2_FAB_HALF, -_HL))
 
-# The one M4. It goes in the only lane wide enough: between the ribbon header's back
-# and the encoder's courtyard, on the ribbon header's own centre line.
-_SCREW_X, _SCREW_Y = UI.SCREWS[0]
-_SCREW2_X, _SCREW2_Y = UI.SCREWS[1]
+# ONE M4, and it only holds Z: the two spigots that come down off the deck through the
+# board into the clamp plate are what hold the station in X, Y and rotation. Central,
+# because that is what a Z-only fastener wants.
+_SCREW_X, _SCREW_Y = UI.SCREW_XY
 _BOSS_D = 8.0              # the deck-side boss the screw threads into (cadkit M4)
 _ENC_CRTYD = UI.ENC_SQ / 2.0 + 0.25
-assert _SCREW_X + _BOSS_D / 2.0 <= _SW_BODY_X - _ENC_CRTYD - 1.0, \
-    "the M4 boss laps the encoder's courtyard"
-assert _SCREW_X - _BOSS_D / 2.0 >= _J2_X + _J2_FAB_BACK + 1.0, \
-    "the M4 boss laps the ribbon header"
 
-# The pull-ups run in a column BETWEEN the screw boss and the encoder. They were +X of
-# the encoder until the knob moved +X on top of them; this lane is the one that is still
-# clear, and a pull-up is a part whose position carries no information -- it only has to
-# reach its own signal. The two decoupling parts sit beside J1's +X VDD pin (18), which
-# is the one place on this board where position IS the value.
-# ...AND IN A ROW, NOT A COLUMN. A column of seven at 3 mm pitch is a picket fence
-# across the middle of the board, and all seven switch nets have to cross it to reach
-# J2 at the -X edge: the router left SW_PUSH 0.42 mm short on the far side of it. A row
-# along the top turns the same seven parts into a +3V3 rail with the pull-ups hanging
-# off it and an empty lane underneath for the signals to run in. It routed clean.
+# The pull-ups run in a ROW along the top, not a column. A column of seven at 3 mm pitch
+# is a picket fence across the middle of the board, and all seven switch nets have to
+# cross it to reach J2 at the -X edge: the router left SW_PUSH 0.42 mm short on the far
+# side of it. A row turns the same seven parts into a +3V3 rail with the pull-ups hanging
+# off it and an empty lane underneath for the signals. It routed clean. The two
+# decoupling parts sit beside J1's +X VDD pin (18), which is the one place on this board
+# where position IS the value.
 _R_Y = 10.0
 _R_X0, _R_DX = -20.0, 4.0
 assert _R_X0 + 6 * _R_DX + 0.5 <= _SW_BODY_X - _ENC_CRTYD - 1.0,     "the pull-up row laps the encoder"
-assert _R_X0 - 0.5 >= _J2_X + _J2_FAB_BACK + 1.0, "the pull-up row laps the ribbon header"
-for _sx, _sy in UI.SCREWS:
-    assert (_R_Y - 0.5 >= _sy + _BOSS_D / 2.0 + 1.0
-            or _R_X0 - 0.5 > _sx + _BOSS_D / 2.0
-            or _R_X0 + 6 * _R_DX + 0.5 < _sx - _BOSS_D / 2.0),         "the pull-up row laps the screw boss at (%+.1f, %+.1f)" % (_sx, _sy)
-    assert (abs(_sx - _SW_BODY_X) > _ENC_CRTYD + _BOSS_D / 2.0 + 1.0
-            or abs(_sy - _SW_BODY_Y) > _ENC_CRTYD + _BOSS_D / 2.0 + 1.0),         "the screw boss at (%+.1f, %+.1f) laps the encoder" % (_sx, _sy)
+assert _R_X0 - 0.5 >= _J2_X + _J2_FAB_BACK + 1.0,     "the pull-up row laps the ribbon header"
+
+# EVERY HOLE IN THE BOARD HAS TO LAND ON BARE BOARD -- the M4 with its deck-side boss
+# round it, and the two spigots with their own O4 posts. The spigots are the ones worth
+# checking: they are placed for the widest rotation base the board allows, which pushes
+# them toward the parts.
+_HOLES = ([(UI.SCREW_XY[0], UI.SCREW_XY[1], _BOSS_D, "screw boss")]
+          + [(x, y, UI.SPIGOT_D + 2.0, "spigot") for x, y in UI.SPIGOTS])
+# ...and _rad, not _r: _r is the resistor helper above, and shadowing it here turned
+# every pull-up into a TypeError halfway through the netlist.
+for _hx, _hy, _d, _what in _HOLES:
+    _rad = _d / 2.0
+    assert (_hy + _rad <= _R_Y - 0.82 or _hx - _rad > _R_X0 + 6 * _R_DX + 0.5
+            or _hx + _rad < _R_X0 - 0.5),         "the %s at (%+.1f, %+.1f) laps the pull-up row" % (_what, _hx, _hy)
+    assert (abs(_hx - _SW_BODY_X) > _ENC_CRTYD + _rad
+            or abs(_hy - _SW_BODY_Y) > _ENC_CRTYD + _rad),         "the %s at (%+.1f, %+.1f) laps the encoder" % (_what, _hx, _hy)
+    assert _hx - _rad > _J2_X + _J2_FAB_BACK or abs(_hy - _J2_Y) > _J2_FAB_HALF + _rad,         "the %s at (%+.1f, %+.1f) laps the ribbon header" % (_what, _hx, _hy)
+    assert abs(_hy - _J1_Y) > 1.32 + _rad,         "the %s at (%+.1f, %+.1f) laps the display header" % (_what, _hx, _hy)
 
 PLACEMENTS = {
     "J1": (round(_J1_X, 3), round(_J1_Y, 3), 90.0),
@@ -271,7 +275,9 @@ for _i in range(7):
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
-    "cutouts": [{"xy": list(xy), "d": UI.SCREW_CLR_D} for xy in UI.SCREWS],
+    "cutouts": ([{"xy": list(UI.SCREW_XY), "d": UI.SCREW_CLR_D}]
+                + [{"xy": list(xy), "d": UI.SPIGOT_D + 2 * UI.SPIGOT_CLR}
+                   for xy in UI.SPIGOTS]),
     "layers": 2,
     "thickness_mm": UI.BOARD_T,
     "placements": PLACEMENTS,
@@ -291,7 +297,7 @@ BOARD_NOTES = {
     # would be perforated anyway, by twenty through-hole pins at 2.54 leaving 0.7 mm webs
     # straight across it. So GND is a routed net like every other one, which on a 72 mm
     # board with a metre of ribbon either side is what it was always going to be worth.
-    "mounting_hole_xy": UI.SCREWS[0],
+    "mounting_hole_xy": UI.SCREW_XY,
     "single_sided": True,      # every part on the deck-facing face
     "qty_per_instrument": 1,
 }

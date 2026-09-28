@@ -62,6 +62,22 @@ whole bay. Stepping the real solids along it, the only thing the station meets i
 wire_usb, and only in the last 30 mm at the keyhead -- where that cable climbs to the
 Pi, on a keyhead endplate that is not fitted until after the panels.
 
+-- DOES THE SCREEN SIT LEVEL? (user, 2026-09-28) ------------------------------
+Its face lies on the window ledge, which is a flat, so level means only: can the face
+REACH that flat, and does anything hold it there.
+
+REACH is the tolerance question, and it is why MOD_PRELOAD exists. If the socket bottoms
+out on the header before the face touches, the module hangs on twenty pins at whatever
+angle they give it, and no amount of clamping recovers that. So the header is made to
+stand proud: with the face on the ledge the socket is 0.60 from bottoming, which is more
+than the realistic stack (RSS 0.50 of the module's own +-0.3 and four printed +-0.2s).
+
+HOLDING it there is the clamp's arm: two posts on the module's far mounting-hole row,
+reaching exactly its back, so the far end cannot droop. The near end is the header's own
+20 pins, 2.5 mm from the module's edge. Droop at the far end is bounded by the print
+tolerance on those posts -- 0.2 short is 0.27 deg over the 43 mm hole pitch, which is
+0.16 mm from one end of the window to the other.
+
 -- THE STACK, TOP DOWN -------------------------------------------------------
     deck top            +6.4   the player's surface
     window ledge        1.6    two beads of deck left over the module: the bezel
@@ -194,30 +210,59 @@ BOARD_T = 1.6
 # module gets KH-2.54FH-1X20P-H8.5, an 8.5 socket. The module's PCB lands on the male
 # insulator, so the stack is 2.5 + 8.5, with the full 6.0 of pin engaged in the socket.
 SOCKET_H = 2.5 + 8.5
-# ...AND THE STACK IS DELIBERATELY 0.3 TOO LONG. The module is trapped between the deck's
-# window ledge above it and the header below, with nothing else holding it down, so an
-# exact fit is a coin toss between a rattle and a preload. Making the header stand 0.3
-# proud settles it: the module always seats UP against the ledge, the pins give up 0.3 of
-# their 6.0 engagement, and nothing can buzz against a printed face under an instrument
-# that gets stomped on.
-MOD_PRELOAD = 0.3
-# TWO M4s, in board coordinates, and they clamp a PLATE rather than the board alone
-# (user, 2026-09-28: "the retention is pretty lackluster"). One screw through a 72 mm
-# board is a hinge, and the screen under it was held by nothing but the ledge above and
-# the header below. The clamp plate spans the board, bears on it at four pads, reaches
-# under the display and presses its far end up into the ledge; these two screws pull the
-# whole sandwich together.
+# ...AND THE STACK IS DELIBERATELY 1.0 TOO LONG, which is what keeps the SCREEN LEVEL.
+# The module's face has to lie flat on the window ledge, and the only thing that can stop
+# it getting there is its socket bottoming out on the header first -- which would leave
+# the module hanging on twenty pins at whatever angle they happened to hold it. So the
+# socket must never reach the bottom: the header is made to stand proud by more than the
+# whole stack-up can swallow.
 #
-# Their positions are what the routed board leaves. The -Y half is one uninterrupted
-# lane for the seven switch nets -- a clearance hole in the middle of it left two of them
-# unroutable -- and the +X end is all encoder, so they sit either side of the middle.
-# The second one is 12 mm clear of the encoder's -X edge, not 5.7: at 5.7 it stood in
-# the throat every switch net escapes through and the router left SW_PUSH and SW_B short.
-# The second one is 16 mm clear of the encoder's -X edge -- at 5.7 it stood in the
-# throat every switch net escapes through and the router left SW_PUSH and SW_B short --
-# and no further -Y than -8.0, because its own head is O7.6 and at -11.0 the head's rim
-# reached into the chassis trough's nub.
-SCREWS = ((-15.5, 4.0), (0.0, -8.0))
+# The stack-up it has to swallow: the module's own 5.5 at the drawing's +-0.3, the
+# printed pocket at +-0.2, the printed bearing posts at +-0.2, the socket's 8.5 and the
+# header's 2.5 at +-0.2 each. Root-sum-square that and it is 0.50; add them all up the
+# same way and it is 1.10.
+#
+# 0.6, WHICH IS THE RSS AND NOT THE SUM, and the reason is that it is not free: every
+# 0.1 of preload lifts the BOARD 0.1 and takes 0.1 off the headroom under the deck, where
+# the right-angle ribbon header stands. At 1.0 the assertion in elec/ui_board.py fired --
+# 0.70 of margin against that header's (estimated) 10.0 -- which is the two constraints
+# meeting. At 0.6 there is 1.10.
+#
+# What gives in the arithmetic worst case is the module's header end sitting a couple of
+# tenths off the ledge, which the clamp's arm counteracts at the far end. What must NOT
+# happen is the socket bottoming first, and 0.6 covers every realistic stack for that.
+# The cost in engagement is 6.0 of pin down to 5.4.
+MOD_PRELOAD = 0.6
+# ONE M4, AND IT ONLY HAS TO HOLD Z (user, 2026-09-28). There were two, because one
+# screw through a 72 mm board is a hinge -- but the answer to a hinge is not a second
+# screw, it is plastic. X, Y and rotation are taken by two SPIGOTS that come down off
+# the deck, pass through clearance holes in the board and enter sockets in the clamp
+# plate. That is the project's own rule: plastic captures every direction but the one
+# you install along, and one M4 takes that one.
+#
+# Central, because that is what a Z-only fastener wants and nothing else competes for
+# the position now. It is also 16 mm clear of the encoder's -X edge: at 5.7 a clearance
+# hole stood in the throat every switch net escapes through and the router left SW_PUSH
+# and SW_B short.
+SCREW_XY = (0.0, 0.0)
+
+# THE TWO SPIGOTS, in board coordinates: as far apart as the routed board allows, which
+# is what makes them a rotation stop rather than a pair of pivots. Both land on bare
+# board -- (29.5, 9.0) in the gap between the encoder's courtyard and J1's row (at
+# 8.0 its socket left a 1.03 mm web to the encoder's own relief in the clamp), and
+# (-18.0, -9.0) in the clear block between the ribbon header and the encoder.
+# ...and BOTH in the +Y half, which is not an accident: the -Y half of this board is one
+# uninterrupted lane for the seven switch nets, and a O4.6 hole at (-18, -9) stood in it
+# and left ENC_B unroutable. Two pins locate a plane wherever they sit, so the pair went
+# where the copper has nothing to lose.
+SPIGOTS = ((29.5, 9.0), (-18.0, 6.0))
+SPIGOT_D = 4.0
+SPIGOT_CLR = 0.3                   # per side, in the board's hole and the clamp's socket
+# 1.6, not 2.4: the socket is BLIND and the plate is only 3.2, so the depth and the
+# floor under it share that. At 2.4 the floor came out at exactly 0.80 -- the one-bead
+# hard floor, not the two-bead one this project builds to. check_thin found it. A O4
+# pin 1.6 deep is plenty for a locating feature that carries no load.
+SPIGOT_DEPTH = 1.6
 SCREW_CLR_D = 4.5                  # its clearance hole in the board
 
 # -- THE DECK ---------------------------------------------------------------
@@ -277,9 +322,12 @@ CLAMP_ARM_Z = -8.0                 # the arm's TOP, once it has stepped up past 
                                    # 3.2 clear of the highest thing under the display
                                    # (wire_canl at -17.24); at the plate's own level it
                                    # would have been 1.8 INSIDE it
-# A stock length, and the one that fits: 6.4 of clamp + 1.6 of board leaves 8.0 in the
-# insert, against a 5.0 insert and M4's 3.5 minimum bite.
-CLAMP_SCREW_L = 16.0
+# A stock length, and the SHORTER of the two that fit. 3.2 of clamp + 1.6 of board
+# leaves 7.2 in a boss that is 11.1 deep -- full engagement in the 5.0 insert and 2.2 to
+# spare. M4x16 also satisfies the bite, and its tip then stood 0.10 past the boss's top
+# into the deck panel's own body, which the overlap gate reported at 1.26 mm3. A screw
+# that ends inside the part it threads into is the better answer than a longer bore.
+CLAMP_SCREW_L = 12.0
 assert CLAMP_SCREW_L - CLAMP_T - BOARD_T >= M4.insert_depth, (
     "an M4 x %.1f leaves %.1f in the insert, which is %.1f deep"
     % (CLAMP_SCREW_L, CLAMP_SCREW_L - CLAMP_T - BOARD_T, M4.insert_depth))
@@ -649,22 +697,22 @@ def _posts():
     poking inward off a wall would be a ceiling with nothing beneath it. A column from
     the deck's own underside is supported the whole way.
 
-    TWO POSTS, NOT FOUR, because the two screw bosses are bearing faces as well -- their
-    end faces stop at the board's top exactly as a post does, so the board is carried at
-    four points and only two of them have to be found somewhere else. The two that are
-    are placed in the gaps the routed board leaves; check_posts() below is what says so,
-    and it runs AFTER the route rather than here. A post on a part does reach
+FOUR, spread as widely as the routed board allows, because the single M4 no longer
+    shares the bearing job with a second one. The first two of them carry the SPIGOTS
+    (see SPIGOTS): a post that already stops at the board's top face is the natural place
+    to continue a locating pin through it. check_posts() below is what says none of them
+    lands on a part, and it runs AFTER the route rather than here. A post on a part does reach
     the overlap gate -- it caught two of these at 0.8 mm3 when the pull-ups moved into a
     row -- but as an anonymous solid-on-solid finding, and what you want to be told is
     WHICH post and WHICH part."""
-    return [(29.5, 8.0), (-8.0, -8.0)]
+    return [(29.5, 9.0), (-18.0, -9.0), (-18.0, 6.0), (10.0, -9.0)]
 
 
 def bearings():
-    """[(x, y)] every place the deck touches the board's top face: the two posts and the
-    two screw bosses. The clamp plate puts a pad under each of them, so the board is
-    squeezed rather than bent."""
-    return _posts() + [tuple(xy) for xy in SCREWS]
+    """[(x, y)] every place the deck touches the board's top face: the four posts and the
+    screw boss. The clamp plate bears on the whole underside against them, so the board
+    is squeezed rather than bent."""
+    return _posts() + [SCREW_XY]
 
 
 def check_posts():
@@ -734,21 +782,25 @@ def deck_mount():
     for px, py in _posts():
         s = s.union(box_at(POST_SQ, POST_SQ, bz - board_top,
                            x=cx + px, y=cy + py, z=(bz + board_top) / 2.0))
+    # ...and two of them carry on THROUGH the board as spigots, into the clamp plate.
+    # These are what hold the station in X, Y and rotation; the M4 only holds Z.
+    clamp_top, _clamp_bot = clamp_z()
+    for px, py in SPIGOTS:
+        s = s.union(cyl(SPIGOT_D, board_top - (clamp_top - SPIGOT_DEPTH),
+                        z=clamp_top - SPIGOT_DEPTH).translate((cx + px, cy + py, 0)))
     # the two screw bosses: columns like the posts, each with its insert pocket bored UP
     # from its own end face -- which prints as a blind hole opening at the top. Their end
     # faces are bearing surfaces too, which is why there are only two separate posts.
-    for sx, sy in SCREWS:
-        s = s.union(cyl(M4.insert_pilot_d + 2 * D.MIN_WALL_2P, bz - board_top,
-                        z=board_top).translate((cx + sx, cy + sy, 0)))
-    for sx, sy in SCREWS:
-        s = cut_insert_bore(
-            M4, s, (cx + sx, cy + sy, board_top), (0, 0, 1),
-            CLAMP_SCREW_L - M4.insert_l + 1.0,
-            reason="the UI's only fasteners: a self-tapped M4 in PCTG would strip the "
-                   "first time the clamp came off for service, and it comes off for "
-                   "every display swap",
-            print_up=_tp().PIECE_UP)
-    return s
+    bx, by = cx + SCREW_XY[0], cy + SCREW_XY[1]
+    s = s.union(cyl(M4.insert_pilot_d + 2 * D.MIN_WALL_2P, bz - board_top, z=board_top)
+                .translate((bx, by, 0)))
+    return cut_insert_bore(
+        M4, s, (bx, by, board_top), (0, 0, 1),
+        CLAMP_SCREW_L - M4.insert_l + 1.0,
+        reason="the UI's only fastener: a self-tapped M4 in PCTG would strip the first "
+               "time the clamp came off for service, and it comes off for every display "
+               "swap",
+        print_up=_tp().PIECE_UP)
 
 
 def clamp_z():
@@ -828,30 +880,32 @@ A RELIEF UNDER THE THROUGH-HOLE FOOTPRINTS ONLY, from board_geom.TAIL. Relieving
     for sx in (-1, 1):
         s = s.union(cyl(CLAMP_RIB_W, mod_back - CLAMP_ARM_Z, z=CLAMP_ARM_Z)
                     .translate((mx + sx * MOD_HOLE_DX, far_y, 0)))
-    for sx, sy in SCREWS:                       # the two clearance holes
-        s = s.cut(cyl(M4.shaft_clr_d, CLAMP_T + 2.0, z=bot - 1.0)
-                  .translate((cx + sx, cy + sy, 0)))
+    # the spigot sockets: blind, so the plate keeps a floor under them -- a through
+    # hole would leave two O4.6 windows in the one part that is here for stiffness
+    for px, py in SPIGOTS:
+        s = s.cut(cyl(SPIGOT_D + 2 * SPIGOT_CLR, SPIGOT_DEPTH + 0.1,
+                      z=top - SPIGOT_DEPTH).translate((cx + px, cy + py, 0)))
+    s = s.cut(cyl(M4.shaft_clr_d, CLAMP_T + 2.0, z=bot - 1.0)
+              .translate((cx + SCREW_XY[0], cy + SCREW_XY[1], 0)))
+    assert CLAMP_T - SPIGOT_DEPTH >= D.MIN_WALL_2P, (
+        "the spigot socket leaves %.2f of floor under it, against a two-bead floor of "
+        "%.2f" % (CLAMP_T - SPIGOT_DEPTH, D.MIN_WALL_2P))
     return s
 
 
 def hardware():
-    """[(name, solid)] the two M4s that pull the clamp up, and their inserts."""
+    """[(name, solid)] the one M4 that pulls the clamp up, and its insert."""
     _tz, _bz, _face, _back, board_top, _bb = z_stack()
     cx, cy = board_centre()
     _top, bot = clamp_z()
-    out = []
-    for i, (sx, sy) in enumerate(SCREWS):
-        bx, by = cx + sx, cy + sy
-        # THE SCREWS GO IN FROM UNDERNEATH, so the dummies are turned over: cadkit draws
-        # one head-top at z=0 with its shank running -Z, and here the head is the low end
-        # and the shank climbs through the clamp and the board into the boss.
-        out.append(("ui_screw_%d" % i,
-                    m4_button_screw(CLAMP_SCREW_L)
-                    .rotate((0, 0, 0), (1, 0, 0), 180)
-                    .translate((bx, by, bot - M4_BUTTON_HEAD_H))))
-        out.append(("ui_insert_%d" % i,
-                    seated_insert(M4, (bx, by, board_top), (0, 0, 1))))
-    return out
+    bx, by = cx + SCREW_XY[0], cy + SCREW_XY[1]
+    # IT GOES IN FROM UNDERNEATH, so the dummy is turned over: cadkit draws one head-top
+    # at z=0 with its shank running -Z, and here the head is the low end and the shank
+    # climbs through the clamp and the board into the boss.
+    return [("ui_screw", m4_button_screw(CLAMP_SCREW_L)
+             .rotate((0, 0, 0), (1, 0, 0), 180)
+             .translate((bx, by, bot - M4_BUTTON_HEAD_H))),
+            ("ui_insert", seated_insert(M4, (bx, by, board_top), (0, 0, 1)))]
 
 
 def parts():
