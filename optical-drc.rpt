@@ -1,8 +1,8 @@
 ** Drc report for optical.kicad_pcb **
-** Created on 2026-09-26T09:39:49 **
+** Created on 2026-09-28T11:35:57 **
 ** Report includes: Errors, Warnings **
 
-** Found 34 DRC violations **
+** Found 33 DRC violations **
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
     @(75.1942 mm, 74.2167 mm): Footprint PD6A
@@ -92,9 +92,6 @@
 [track_dangling]: Track has unconnected end
     Local override; warning
     @(120.1000 mm, 82.6350 mm): Track [SAI_SD3] on B.Cu, length 36.3650 mm
-[track_dangling]: Track has unconnected end
-    Local override; warning
-    @(93.4508 mm, 127.3150 mm): Track [SAI_FS] on F.Cu, length 1.2500 mm
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
     @(114.8350 mm, 39.0735 mm): Segment of Cs13 on F.Silkscreen
@@ -136,11 +133,7 @@
     @(114.5400 mm, 114.1387 mm): Polygon of U18 on F.Silkscreen
     @(115.1950 mm, 114.5687 mm): Pad 2 [GND] of Cs53 on F.Cu
 
-** Found 1 unconnected pads **
-[unconnected_items]: Missing connection between items
-    Local override; error
-    @(93.4508 mm, 127.3150 mm): Track [SAI_FS] on F.Cu, length 1.2500 mm
-    @(112.6500 mm, 118.8887 mm): Track [SAI_FS] on F.Cu, length 9.8500 mm
+** Found 0 unconnected pads **
 
 ** Found 0 Footprint errors **
 

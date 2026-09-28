@@ -45,6 +45,17 @@ def _netlist_nets(net_txt):
     return out
 
 
+def _clearance_rule(stem):
+    """The board's own minimum clearance -- what DRC actually enforces."""
+    try:
+        d = json.load(open(stem + ".kicad_pro", encoding="utf-8"))
+        r = (d.get("board", {}).get("design_settings", {})
+             or d.get("design_settings", {})).get("rules", {})
+        return float(r.get("min_clearance", 0.127))
+    except Exception:
+        return 0.127
+
+
 def check(stem):
     pcb, net, drc = _load(stem)
     fails, notes = [], []
@@ -130,15 +141,36 @@ def check(stem):
                          % (len(want) - found))
 
     # 5. every declared repair track still clears everything, measured independently
+    #
+    # ⚠ EVERY SEGMENT, NOT THE FIRST. This used to check pts[0]->pts[1] only, so a repair
+    # declared as a polyline was audited by its opening segment and the rest was never
+    # looked at. Measured on SAI_FS's five-polyline repair: the first-segment check found
+    # ONE problem and there were FIVE.
+    # ⚠ AND IT SEPARATES "ILLEGAL" FROM "TIGHT". RS.MARGIN is a SEARCH margin, 0.15 on top
+    # of the netclass rule of 0.127; a path that has already been measured and passed DRC
+    # does not need search headroom, but a reader still wants to know it is close. Below
+    # the RULE fails the board. Between the rule and the margin is reported and nothing
+    # more -- the same treatment DRC warnings get here.
     if want:
+        rule = _clearance_rule(stem)
+        tight = []
         for rt in want:
             nname, layer, w, pts = rt[0], rt[1], rt[2], rt[3]
             b_ = RS.Board(stem, nname)
-            p = (pts[0][0] + 100, 100 - pts[0][1])
-            q = (pts[1][0] + 100, 100 - pts[1][1])
-            if not b_.track_ok(p, q, layer, w / 2.0):
-                fails.append("repair track on %s %s does not clear the board" % (nname, layer))
-        notes.append("repair tracks re-checked against every obstacle class: done")
+            for i in range(len(pts) - 1):
+                p = (pts[i][0] + 100, 100 - pts[i][1])
+                q = (pts[i + 1][0] + 100, 100 - pts[i + 1][1])
+                gap, who = b_.track_gap(p, q, layer, w / 2.0)
+                if gap < rule:
+                    fails.append("repair track on %s %s clears only %.3f mm against the "
+                                 "%.3f mm rule, at %s" % (nname, layer, gap, rule, who))
+                elif gap < RS.MARGIN:
+                    tight.append((nname, layer, gap, who))
+        notes.append("repair tracks re-checked, EVERY segment, against every obstacle "
+                     "class: %d segment(s)" % sum(len(rt[3]) - 1 for rt in want))
+        for nname, layer, gap, who in tight:
+            notes.append("  tight but legal: %s %s clears %.3f mm (rule %.3f, search "
+                         "margin %.3f) against %s" % (nname, layer, gap, rule, RS.MARGIN, who))
 
     # 6. board outline sanity -- a board with no edge is a board that cannot be made
     edges = RS._edges(pcb)

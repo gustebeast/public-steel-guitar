@@ -213,6 +213,42 @@ class Board:
                 return False
         return True
 
+    def track_gap(self, p, q, layer, half=TRACK_W / 2.0):
+        """Smallest EDGE-TO-EDGE gap this track leaves, and what it is against.
+
+        ⚠ track_ok() answers a SEARCH question -- "is there comfortable room here" -- by
+        demanding MARGIN (0.15) on top of every obstacle, which is deliberately more than
+        the netclass rule (0.127). That is right when CHOOSING a path and wrong as the
+        only verdict on one that has already been measured and DRC-checked: it cannot
+        tell "breaks the rule" from "legal but tighter than we like to search for", and
+        those deserve different words. This returns the number so the caller can say
+        which it is.
+        """
+        worst, who = 1e9, None
+        for s in self.segs:
+            if s["layer"] != layer or s["net"] == self.net:
+                continue
+            d = _d_seg_seg(*p, *q, s["x1"], s["y1"], s["x2"], s["y2"]) - half - s["half"]
+            if d < worst:
+                worst, who = d, "track [%s]" % s["net"]
+        for v in self.vias:
+            if v["net"] == self.net:
+                continue
+            d = _d_pt_seg(v["x"], v["y"], *p, *q) - half - v["r"]
+            if d < worst:
+                worst, who = d, "via [%s]" % v["net"]
+        for pd in self.pads:
+            if pd["net"] == self.net:
+                continue
+            d = _d_seg_seg(*p, *q, pd["x1"], pd["y1"], pd["x2"], pd["y2"]) - half - pd["r"]
+            if d < worst:
+                worst, who = d, "pad [%s]" % (pd["net"] or "no net")
+        for e in self.edges:
+            d = _d_seg_seg(*p, *q, *e) - half
+            if d < worst:
+                worst, who = d, "board edge"
+        return worst, who
+
     def track_ok(self, p, q, layer, half=TRACK_W / 2.0):
         for s in self.segs:
             if s["layer"] != layer or s["net"] == self.net:

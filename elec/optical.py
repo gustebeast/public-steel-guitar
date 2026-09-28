@@ -2763,6 +2763,70 @@ BOARD_NOTES = {
     # handover -- and the default 5.0 declined to finish it. This costs the router
     # nothing: the repair runs after routing, on pairs that are already unconnected.
     "repair_mm": 7.0,
+    # ⚠ SAI_FS IS CLOSED HERE, AFTER ROUTING, AND THAT TIMING IS THE ENTIRE ANSWER.
+    # This net was the board's last unconnected item for a dozen routes. Everything tried
+    # BEFORE routing made it worse, every time, and the count is worth keeping because the
+    # trend is the lesson: declaring its whole path on F.Cu -> 4 unconnected; the same haul
+    # on B.Cu -> 6; a 1.2 mm stub and one via -> 3; moving its spine to B.Cu -> 6; swapping
+    # lanes with SAI_SCK -> 7. Baseline with none of it: 1. Every one of those was verified
+    # geometrically clear and every one produced 0 DRC violations -- they did not short
+    # anything, they crowded neighbours out of lanes those neighbours still needed.
+    # This is the same finding _add_via's note already records for +3V3A ("four successive
+    # attempts all reached for router SETTINGS and all four made the board worse") and the
+    # same one the repair block in route.py was built for. It was rediscovered the
+    # expensive way; it is written here so it is not rediscovered again.
+    #
+    # WHY THE NET COULD NOT ROUTE. Not congestion in general -- the ROUTER SEALS THE PAD.
+    # U6.3 sits between U6.2 (SAI_SD2) and U6.4 (SAI_SCK) on 0.5 mm pitch, both of which
+    # escape east across its row, and by the time the router reaches FS its own escape lane
+    # is gone. Measured on the finished board, the pad's reachable region is ~360 grid
+    # cells: it is enclosed. No amount of aiming helps a net that cannot leave its pin.
+    #
+    # WHY THIS PATH IS LEGAL WHEN NOTHING ELSE WAS. It was searched against the FINISHED
+    # board rather than the unrouted one, so it fits the copper that will actually be there
+    # instead of copper that has not been laid yet -- which is precisely the flaw in all
+    # five attempts above. It weaves F.Cu -> In2 -> B.Cu -> In2 -> B.Cu -> F.Cu, hopping
+    # layers at each blockage, because along y -27.31 B.Cu is 26.0 of 29.05 mm free while
+    # F.Cu is 21.2 and In2.Cu only 13.8. The one via site that gets off the pad is
+    # (-5.30, -27.26) with 0.515 mm where a 0.6 via needs 0.500 -- it clears by 0.015 mm,
+    # and a 0.06 mm search margin had been hiding it.
+    #
+    # ⚠ IT IS MEASURED AGAINST ONE PARTICULAR ROUTE, so anything that changes the route can
+    # invalidate it. That is SAFE rather than fragile: laid here it is checked by the DRC
+    # that follows, so a path that no longer fits appears as a clearance error and not as a
+    # silent short. If this ever lights up, re-search it against the new finished board with
+    # scratchpad/maze.py (MAZE_BOARD=elec/out/optical.kicad_pcb) and re-verify with
+    # verify_path.py. Verified clear at 0.02 mm steps: tracks >= 0.268 mm of 0.260, vias
+    # >= 0.503 mm of 0.500 on all four layers, and hole-to-hole >= 1.004 mm of 0.250.
+    # ⚠ AND IT DOES NOT DRILL ITS OWN ESCAPE VIA, because one is already there. The first
+    # version laid a via at (-5.30, -27.26) and it came out 0.055 mm from the via
+    # link_close_gaps puts at (-5.2992, -27.315) -- two holes with -0.245 mm of laminate
+    # between their walls, i.e. one broken-out hole. KiCad grades hole_to_hole a WARNING,
+    # so the pipeline still printed "0 unconnected, 0 violations" over a board no fab house
+    # would drill. The repair therefore STARTS at that existing via: the router's own F.Cu
+    # stub already carries the pad to it, so the pad is reached for free.
+    # ⚠ THE In2 HOP IS OFFSET 0.05 mm ALONG ITS OWN NORMAL, and the audit is why. Run
+    # straight between its vias it passes 0.118 mm from an unnetted MCU pad against this
+    # board's 0.127 mm rule -- a REAL violation, and one the DRC did not report. Offset it
+    # and it clears. Four B.Cu segments remain TIGHT BUT LEGAL at 0.142-0.145 mm against
+    # SWCLK and I2C2_SCL vias: over the 0.127 rule, under repair_search's 0.15 SEARCH
+    # margin. That is measured and deliberate -- NO path with 0.15 mm of headroom exists
+    # from this pin at all (searched at 0.28, 0.285 and 0.29 mm, with and without the
+    # border clamp and over a wider region: boxed in every time), so the choice was
+    # 0.143 mm or an unconnected frame clock.
+    "repair_tracks": [
+        ("SAI_FS", "In2.Cu", 0.25, [(-5.30, -27.315), (-1.90, -27.26)]),
+        ("SAI_FS", "B.Cu", 0.25, [(-1.90, -27.26), (14.35, -27.26), (14.50, -27.11),
+                                  (14.55, -27.11), (14.65, -27.01), (16.35, -27.01),
+                                  (16.85, -26.51), (17.45, -26.51), (17.465, -26.425)]),
+        ("SAI_FS", "In2.Cu", 0.25, [(17.465, -26.425), (18.715, -25.175)]),
+        ("SAI_FS", "B.Cu", 0.25, [(18.715, -25.175), (18.75, -22.71), (20.70, -20.76),
+                                  (20.75, -20.76), (20.80, -20.71), (21.50, -20.71),
+                                  (23.35, -18.86)]),
+        ("SAI_FS", "F.Cu", 0.25, [(23.35, -18.86), (23.30, -18.91), (22.50, -18.89)]),
+    ],
+    "repair_vias": [("SAI_FS", -1.90, -27.26), ("SAI_FS", 17.465, -26.425),
+                    ("SAI_FS", 18.715, -25.175), ("SAI_FS", 23.35, -18.86)],
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.
