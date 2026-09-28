@@ -82,14 +82,23 @@ which is the failure `_spine_keepout`'s own note already records.
 
 **So two nets need one resource and the alternative resource is unusable.** The fix has to
 be structural, and the candidates are:
-1. **Widen the corridor by placement** — the user's suggestion, and the only lever that
-   adds capacity rather than reallocating it. Measure the UNROUTED board over
-   x[-8,24] y[-31,-16] first: if footprints (not tracks) bound the tight cuts, moving one
-   is the indicated fix. That measurement has not been done.
+1. ~~**Widen the corridor by placement**~~ — **MEASURED AND RULED OUT.** On the UNROUTED
+   board over x[-8,24] y[-31,-16] the tightest cut is **3.14 mm** and most are 5.60 mm,
+   and the "parts bounding a tight gap" list is **empty**: no footprint constrains this
+   corridor. The parts already leave the room; it is filled by other nets' ROUTED copper.
+   Spreading components cannot add capacity where components are not the constraint.
+   (`DENS_BOARD=elec/out/optical.unrouted.kicad_pcb ... density.py -8 24 -31 -16 y 0.20`)
 2. **Give the F.Cu-lane net a different handover point**, further west, so it never makes
    the full 29 mm crossing.
-3. Free In2.Cu in the corridor by moving `ULPI_D7` / `SAI_SD3` — they bound the 0.40 mm
-   gap six cuts running.
+3. Free In2.Cu in the corridor by re-laning `ULPI_D7` / `SAI_SD3` — they bound the
+   0.40 mm gap six cuts running. Note these are TRACKS, so the lever is their spine/lane
+   assignment, not a part move.
+4. **Re-map the MCU pin.** `SAI_FS` is PE4 and `SAI_SCK` PE5 — adjacent pins whose escapes
+   shadow each other and which then compete for one lane. If the H743's SAI alternate
+   functions offer FS on a pin that leaves the MCU on a different face, the 29 mm crossing
+   disappears instead of being re-allocated. This is the most promising untried lever and
+   it is a NETLIST change, not a routing one: check the datasheet AF table for SAI1_FS_A/B
+   alternatives before touching the board again.
 
 **Do NOT** declare the path, add a second B.Cu spine, or swap the lanes again. All three
 are measured and all three are worse.
