@@ -263,6 +263,16 @@ SPIGOT_CLR = 0.3                   # per side, in the board's hole and the clamp
 # hard floor, not the two-bead one this project builds to. check_thin found it. A O4
 # pin 1.6 deep is plenty for a locating feature that carries no load.
 SPIGOT_DEPTH = 1.6
+
+# -- THE RIBBON TO THE PI ---------------------------------------------------
+# Its shape lives here rather than in wiring.py because elec/ui_board.py imports this
+# module and can be held to it: the conductor count is J2's way count and the pitch is
+# half the header's, which is what an IDC ribbon is.
+RIBBON_N = 14
+RIBBON_PITCH = 1.27
+RIBBON_T = 0.9                     # 1.27 flat cable, and each conductor's pitch circle:
+                                   # neighbouring ways touch, which is what makes it a
+                                   # ribbon rather than fourteen wires
 SCREW_CLR_D = 4.5                  # its clearance hole in the board
 
 # -- THE DECK ---------------------------------------------------------------
