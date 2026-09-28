@@ -93,12 +93,30 @@ be structural, and the candidates are:
 3. Free In2.Cu in the corridor by re-laning `ULPI_D7` / `SAI_SD3` — they bound the
    0.40 mm gap six cuts running. Note these are TRACKS, so the lever is their spine/lane
    assignment, not a part move.
-4. **Re-map the MCU pin.** `SAI_FS` is PE4 and `SAI_SCK` PE5 — adjacent pins whose escapes
-   shadow each other and which then compete for one lane. If the H743's SAI alternate
-   functions offer FS on a pin that leaves the MCU on a different face, the 29 mm crossing
-   disappears instead of being re-allocated. This is the most promising untried lever and
-   it is a NETLIST change, not a routing one: check the datasheet AF table for SAI1_FS_A/B
-   alternatives before touching the board again.
+4. ~~**Re-map the MCU pin**~~ — **RULED OUT.** `SAI_FS` must be a **SAI1 block A** pin,
+   because SAI2/SAI3 run as synchronous slaves taking block A's clocks internally (see the
+   pin-map note), and `SAI1_FS_A` is PE4. The only alternative is making block B the master,
+   moving FS/SCK to **PF8/PF9 = pins 26/27** — the SAME package face as PE4/PE5 (pins 3/4)
+   and 11.5 mm FURTHER SOUTH along it, i.e. further from the spine. The haul gets longer.
+5. ~~**Permute the SD lane → converter assignment**~~ — **RULED OUT.** Solved exhaustively
+   over all 120 permutations: the optimum saves **0.7 mm of 273.5 mm**. The converters are a
+   north-south column at x 11.65 and every lane pin sits on the MCU's west face, so the
+   assignment is nearly irrelevant.
+
+### Where that leaves it
+
+Every cheap lever is measured out. What remains is a **design decision, not a search**, and
+should not be taken unsupervised:
+
+* **Move the PHY (U7) or re-think what crosses this corridor.** The real quantity to reduce
+  is the NUMBER of nets crossing, and the ULPI bus (12 nets) is most of them. USB_HS skew
+  has huge margin (0.18 of 8.30), so the PHY is not pinned by that.
+* **Accept 1 unconnected and hand-route `SAI_FS` in KiCad**, then keep it as declared copper
+  measured from the FINISHED board rather than the unrouted one. Every declared path tried
+  so far was measured against the unrouted board, which is why each one fitted and then
+  strangled its neighbours.
+* **Widen the board.** Rejected so far on cost, and it is the one thing that genuinely adds
+  the missing capacity.
 
 **Do NOT** declare the path, add a second B.Cu spine, or swap the lanes again. All three
 are measured and all three are worse.
