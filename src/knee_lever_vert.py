@@ -242,21 +242,36 @@ def _lever_envelope() -> cq.Workplane:
     return heal(hub.union(leg).union(arm))
 
 
-# HOW FAR THE ARM CAN ACTUALLY GO -- which is NOT how far it is driven (user, 2026-09-25:
-# "LKV will have shorter travel, we just need to ensure it isn't blocked until the lever
-# tip touches the chassis. The chassis sets the limit"). THROW_V is the driven range; the
-# room has to be carved to the PHYSICAL one, or the housing becomes the stop instead of
-# the instrument. Carved to THROW_V it was: the arm fouled its own housing from 22 deg,
-# forty degrees before anything real.
+# HOW FAR THE LEVER CAN ACTUALLY GO -- which is NOT how far it is driven (user: "LKV
+# will have shorter travel, we just need to ensure it isn't blocked until the lever tip
+# touches the chassis. The chassis sets the limit"). THROW_V is the driven range; the room
+# has to be carved to the PHYSICAL one, or the housing becomes the stop instead of the
+# instrument.
 #
-# MEASURED, NOT DERIVED, and that is a weakness worth stating. The contact is between the
-# POSED arm and the chassis, and this module cannot see either -- src.build owns the pose
-# and importing it here would be a cycle. Swept in the assembly, the tip closes its 15.2 mm
-# of clearance and touches at 62.6 deg. The local HOUS_Z1 plane is NOT a stand-in for it:
-# the arm reaches out to x 80, far outboard of the housing, and out there it passes that
-# plane at 20 deg with nothing above it. Believing otherwise is what made the first attempt
-# at this stop at 21.
-THROW_MAX = 63.0                    # deg, +throw: the arm tip on the chassis underside
+# THE CHASSIS IS HOUS_Z1. This housing's top is mounted FLUSH with the instrument's
+# underside -- that is what MOUNT_Z is -- so "the lever tip touches the chassis" is
+# "the lever reaches local z HOUS_Z1", and it needs no chassis import to say so. The tip
+# starts HOUS_Z1 - the envelope's own zmax below it, which measures 14.8 at the lever's
+# leg and 27.6 out at the tip the user read off the model; either way the angle falls out
+# of the same sweep rather than being typed.
+#
+# IT IS ABOUT 20 DEG, NOT 63, AND I HAD IT WRONG (user: "the lever will never sweep that
+# far, it will hit the chassis well before that"). I derived 63 from a probe that posed
+# the lever with KV.place -- MOUNT_POSE, y -130 -- while src.build poses this station at
+# sy -31.35. Ninety-nine millimetres of Y put the tip outboard of the chassis's -Y edge,
+# where of course nothing stopped it until 62.6. Re-measured through build's own pose the
+# gap closes at 20-21, which is THROW_V, as a sensibly-designed lever should be. The same
+# class of error as posing a cutter with the wrong transform, and the fix is the same:
+# derive it here, where the housing's own datum already says it.
+def _throw_max():
+    """Sweep until the lever reaches the instrument's underside; that angle is the limit."""
+    for i in range(1, 181):
+        if swing(_lever_envelope(), float(i)).val().BoundingBox().zmax >= HOUS_Z1:
+            return float(i)
+    raise AssertionError("the vertical lever never reaches the chassis")
+
+
+# ...assigned below, once swing() exists -- _housing() is the first thing that reads it
 
 
 def _housing() -> cq.Workplane:
@@ -412,6 +427,8 @@ def swing(s, throw=0.0):
     """Pose a lever-frame solid at a given throw. +throw pushes the +X arm UP."""
     return s.rotate((0, 0, 0), (0, 1, 0), -throw)
 
+
+THROW_MAX = _throw_max()
 
 kv_lever = _lever()
 kv_housing = _housing()
