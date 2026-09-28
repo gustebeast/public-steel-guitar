@@ -91,7 +91,14 @@ def _ui_rule_check():
         print("   ui_board: the routed switch is at (%.3f, %.3f) and the spacing rule "
               "wants (%.3f, %.3f) -- %.3f off" % (kx, ky, wx, wy, off))
         return 1
-    print("   ui_board: the routed switch is on the spacing rule (%.3f off)" % off)
+    bad = 0
+    for complaint in UIP.check_posts():
+        print("   ui_board: %s" % complaint)
+        bad += 1
+    if bad:
+        return bad
+    print("   ui_board: the routed switch is on the spacing rule (%.3f off), and the "
+          "cradle's four posts stand on bare board" % off)
     return 0
 AX = {"x": cq.Vector(1, 0, 0), "y": cq.Vector(0, 1, 0), "z": cq.Vector(0, 0, 1)}
 
