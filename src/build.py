@@ -1070,6 +1070,40 @@ def _knee_lever_components():
     return out
 
 
+def assert_storage_angle(tol=0.5):
+    """KL.STORAGE is MEASURED, not derived, so check it against the real poses.
+
+    The fold's limit is the VERTICAL lever's arm, and knee_lever cannot see either that
+    or this module's station table -- KV imports KL, so the arrow only points one way.
+    The number therefore lives where the sweep needs it and is verified here, where both
+    ends of the question are visible. A station that moves fails loudly.
+    """
+    from OCP.BRepExtrema import BRepExtrema_DistShapeShape
+    from . import knee_lever as KL
+    from . import knee_lever_vert as KV
+
+    vk = [st for st in LEVER_STATIONS if st[1] != "kl"][0]
+    vy = _vkl_mount_y() if vk[3] is None else vk[3]
+    arm = (KV.kv_lever.rotate((0, 0, 0), (0, 0, 1), -90)
+           .translate((vk[2], vy, KV.MOUNT_Z)).val())
+    worst = None
+    for name, kind, sx, sy, mirrored in LEVER_STATIONS:
+        if kind != "kl":
+            continue
+        s = KL.knee_lever.rotate((0, 0, 0), (0, 1, 0), -KL.STORAGE)
+        if mirrored:
+            s = s.mirror("YZ")
+        g = BRepExtrema_DistShapeShape(
+            s.translate((sx, sy if sy is not None else _vkl_mount_y(),
+                         KL.MOUNT_Z)).val().wrapped, arm.wrapped).Value()
+        worst = g if worst is None else min(worst, g)
+    assert worst <= tol, (
+        "KL.STORAGE is %.0f deg but the nearest knee lever still has %.2f mm to the "
+        "vertical lever's arm there -- the fold could go further, or a station moved"
+        % (KL.STORAGE, worst))
+    return worst
+
+
 def _lever_stations_components():
     """FIVE of the six knee levers, each design posed at its station (LEVER_STATIONS).
 
@@ -1095,6 +1129,7 @@ def _lever_stations_components():
     from . import knee_lever_vert as KV
 
     kl_parts, kv_parts = _knee_lever_components(), _knee_vert_components()
+    assert_storage_angle()
     out = []
     for name, kind, sx, sy, mirrored in LEVER_STATIONS:
         if sy is None:
