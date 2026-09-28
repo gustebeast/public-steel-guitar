@@ -57,8 +57,42 @@ All of them produced **0 DRC violations**: they did not short anything, they cro
 neighbours out of their lanes. The monotone trend as the declared copper shrank is the
 finding — declaring is itself costly, whatever the geometry.
 
-**So the remaining lever is placement**, per [[placement-not-router]] — not more declared
-copper, not more passes, not more layers.
+### ⚠ THE REAL CONSTRAINT, ISOLATED (2026-09-28, six routes)
+
+Two further experiments moved the SPINE rather than declaring copper, and together they
+pin the problem down exactly:
+
+| FS lane | SCK lane | FS | SCK | board |
+|---|---|---|---|---|
+| F.Cu 22.50 | B.Cu 18.30 | **fails** | connects | 1 unconnected (baseline) |
+| F.Cu 22.50 + B.Cu 22.50 | B.Cu 18.30 | connects | connects | 6 — two parallel B.Cu spines became a wall |
+| B.Cu 18.30 | F.Cu 22.50 | connects | **fails** | 7 — perfectly symmetric swap |
+
+**The F.Cu lane cannot carry this haul.** Whichever of the two sits on B.Cu connects;
+whichever sits on F.Cu does not. That is a property of the LANE, not of `SAI_FS` — which
+is why a dozen attempts aimed at the net itself went nowhere.
+
+Why: measured on the ROUTED board over the corridor x[-8,24] y[-31,-16], In2.Cu's widest
+gap is **0.40 mm** (a 0.25 mm track needs 0.77) between `ULPI_D7` and `SAI_SD3`, F.Cu is
+down to **2.38 mm**, and B.Cu holds **1.22-2.65 mm**. An F.Cu spine forces the 29 mm haul
+from U6.3 onto the two spent layers; a B.Cu spine puts it on the one with slack.
+
+And B.Cu cannot simply hold both: two parallel spines 4.2 mm apart wall the corridor off,
+which is the failure `_spine_keepout`'s own note already records.
+
+**So two nets need one resource and the alternative resource is unusable.** The fix has to
+be structural, and the candidates are:
+1. **Widen the corridor by placement** — the user's suggestion, and the only lever that
+   adds capacity rather than reallocating it. Measure the UNROUTED board over
+   x[-8,24] y[-31,-16] first: if footprints (not tracks) bound the tight cuts, moving one
+   is the indicated fix. That measurement has not been done.
+2. **Give the F.Cu-lane net a different handover point**, further west, so it never makes
+   the full 29 mm crossing.
+3. Free In2.Cu in the corridor by moving `ULPI_D7` / `SAI_SD3` — they bound the 0.40 mm
+   gap six cuts running.
+
+**Do NOT** declare the path, add a second B.Cu spine, or swap the lanes again. All three
+are measured and all three are worse.
 
 **The (via site, waypoint) joint search** — the technique that closed ULPI_D0 — was never
 run to completion against the *corrected* target. It prints only after all 40 rings, so
