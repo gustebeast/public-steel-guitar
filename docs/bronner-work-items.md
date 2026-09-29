@@ -701,6 +701,38 @@ working top-down would act on stale text. The state of each claim:
          "32K", GS8208's "8 kHz max refresh"). Confirm APA102's 20 kHz from the manufacturer
          datasheet before anything is decided on it.
 
+      5j. ⚠ THE 12 V OPTION EXISTS, IT USES THE PARTS WE ALREADY HAVE, AND THE DATASHEET
+         NOW BACKS IT. User's four criteria are high PWM, deep bit depth, a white channel,
+         and PCBA with no consignment. Those are properties of the PARTS (TLC59711 +
+         XL-5050RGBW, both JLCPCB "Economic and Standard"), so VOLTAGE IS A TOPOLOGY
+         CHOICE, not a part choice. The XL-5050RGBW has separate anodes AND cathodes per
+         die, so dice can be wired IN SERIES ACROSS LEDS.
+
+         VERIFIED against TI's datasheet, Absolute Maximum Ratings p.3 -- the number that
+         was blocking this:
+             Supply voltage VCC                        -0.3 .. +18 V
+             Output voltage OUTR0-R3/G0-G3/B0-B3       -0.3 .. +18 V   <-- 12 V is INSIDE
+             Output current (DC)                              75 mA    (we run 15 mA)
+         Three dice in series is ~9.6 V of Vf, which is what makes 12 V the natural rail.
+
+                              now (5 V, 1 die/ch)     12 V, 3 in series
+             channels              144                     48
+             TLC59711s              12                      4
+             strip current         2.16 A                  0.72 A
+             the joint        2xV5 + 2xGND + SCK + SDI   V12, GND, SCK, SDI  = FOUR WAYS
+             addressability     36 LEDs                 12 groups of 3
+
+         0.72 A is comfortably under a single 2 A PH contact, so this delivers the 4-way
+         joint with NO new connector, NO consignment and NO sourcing question -- the thing
+         three ticks of connector search could not find. It also cuts driver ICs 3x and the
+         sink's wasted dissipation with them.
+         COST: spatial resolution. 12 groups over 580 mm is ~48 mm per group against 16 mm
+         now. That is near the 10-string granularity for per-string lighting but a real
+         loss for fine gradients -- the user's call, and the only real question left here.
+         ⚠ Absolute max is a STRESS rating, not an operating recommendation. 12 V against
+         18 V is a 33 % derate, which is ordinary practice, but check the Recommended
+         Operating Conditions table before committing.
+
       5e. DECISION, so this stops consuming ticks: FEWER JUNCTIONS FIRST, better connector
          second. Three ticks of sourcing have produced no part that satisfies all of
          (coplanar OR low-profile) + (LCSC/JLCPCB so it can be PCBA-placed) + (>= 2.2 A or
