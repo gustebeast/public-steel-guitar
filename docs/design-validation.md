@@ -276,6 +276,47 @@ against PH's 2 A rating is 5%. The open item is the fleet slew budget — "<5 A"
 assumes the ten motors never draw peak together, which is a **firmware**
 guarantee (B3), not a hardware one.
 
+### THIS FAILURE HAS NOW BEEN OBSERVED ON A COMPARABLE BUILD (2026-09-29)
+
+Eric (woodslanding, see the forum thread) is building a servo-actuated pedal
+steel in parallel with this one. His report, verbatim in substance: pressing
+**pedal A and B together** caused a voltage drop, the rail clipped, and the
+result was *"noise in the system and drop out with no communication."* His fix
+was to split the supplies — servos on their own, everything else on another.
+
+That is our open item, with the theory removed. Two things follow.
+
+**Our own slew estimate is against the copedent, and the copedent disagrees.**
+`BOM.md` reasons that "a pedal or lever change moves two or three strings".
+Reading `_COPEDENT` directly:
+
+| Controls engaged | Worst case | Motors moving |
+|---|---|---|
+| 1 | P1 | 3 |
+| 2 | P1 + P2 | **5** |
+| 3 | P1 + P2 + P4 | **7** |
+
+Two pedals and a knee lever at once is ordinary technique, not a corner case —
+and A+B is *the* most-played combination in the idiom, which is exactly the one
+that broke Eric's instrument. So the stagger limit has to be derived from 7
+simultaneous motors, not 3. At an unmeasured per-motor draw:
+
+> 0.3 A → 2.1 A · 0.5 A → 3.5 A · **0.8 A → 5.6 A** · 1.0 A → 7.0 A
+> (budget "<5 A"; one XH contact is 3 A)
+
+The SERVO42D's moving supply current is **still recorded nowhere in this repo**.
+It was already the measurement `BOM.md` asks for; it is now the measurement a
+comparable build has failed for the want of.
+
+**Our supply split is the fix he arrived at, and it is worth confirming it is
+real.** Bus A (motors, 24 V) and bus B (sensors, 5 V) are already separate, which
+is the architecture he moved to. But bus B's 5 V comes from a buck fed off the
+same 24 V trunk, and — the part that matches his symptom most closely — our bus A
+cable carries **24 V and CAN H/L in the same four conductors**. A sag on that
+trunk sits alongside the differential pair that is supposed to survive it. What
+should be checked is the return path and the buck's behaviour during a
+seven-motor move, not just the steady state.
+
 ## B8 — come apart, one key, no glue
 
 The fastener family is disciplined: M4 button heads, 2.5 mm hex, called out as
