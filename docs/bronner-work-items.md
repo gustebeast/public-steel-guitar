@@ -650,3 +650,36 @@ M4 boss gap -- the one piece of clear y in this region. Drop there at x just eas
 face (~-589, NOT -584), then run +Y along the board's own face to J3 at y 5.07. Test it with
 scratchpad/segtest.py on the real polyline, segment by segment, BEFORE editing -- that is what
 fixed the 5 V cable on the third try after two attempts that made the gate worse.
+
+### The 24 V TAIL (_11) is not solved: the slot fits ONE pair, and feed 2 has it (2026-09-29)
+
+feed 2 (_12) is fixed and committed -- through the gap between the boards at _GAP_X -588,
+face z -58, and the gate went 121 -> 117 with nothing new. The TAIL (_11) has the same four
+pairs from the same cause (it descends at xt = BAY_X +- 1 onto J3's y, through motor 0) and the
+same route does NOT simply transfer:
+
+    THE SLOT IS ~2 mm WIDE. The board's face is x -591.70 and chassis_2 starts at -588, and the
+    pair spans 3.80 (PWR_OFF 1.00). One pair fits; two do not, side by side.
+
+    x -590 / -586 / -585 all put the face run into motor_ctrl (31.2) or chassis_2 (393.8).
+    Only x -588 clears structure -- and only at ONE height:
+
+        face z -52   chassis_2 24.6 on the face, 7.3 on the drop
+        face z -50   chassis_2 24.6 / 8.3
+        face z -64   chassis_2 26.0 / 3.7, and the descent picks up 0.8
+        face z -66   chassis_2 26.0 / 4.7
+        face z -58   CLEAN of structure -- and that is where feed 2 now runs.
+
+Stacking the tail 4 mm off feed 2 does not work either: pair 3.80 + clearance needs ~6 mm of
+separation, and +-6 from -58 is -52 or -64, both of which are in the chassis.
+
+WHAT THE TAIL WOULD TRADE, IF SOMEONE TAKES IT AS-IS: today it is motor_0 95.90 (hot) + 43.79
+(gnd) and chassis_2 4.29 + 25.68. Through the gap at z -52 it becomes chassis_2 ~24.6 plus
+cable grazes. Physically much better -- a 24 V pair through a MOTOR is not buildable, resting on
+a cable is -- but the gate counts PAIRS, so it may not score better. That is a judgement call
+about the gate's metric, not a measurement, and it is left for the user.
+
+THE OTHER WAYS OUT, none tried: give the tail a different LANDING on J3 (it lands on the
+connector's own y while feed 2 lands two pin pitches off, so they could instead share a face
+line and separate only at the end); or widen the slot by moving chassis_2's wall at x -588; or
+accept the tail on the far side of the board.
