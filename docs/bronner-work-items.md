@@ -411,3 +411,48 @@ moved found NOTHING -- which reads exactly like success. Keep the WHOLE output a
 read time. (Same family as the pipefail lesson: verify the artefact, not the log.) Also:
 check_overlaps has no --verbose, and src/build.PARTS maps name -> (function, str, str), so the
 solids must be built by CALLING PARTS[name][0], not read off the tuple.
+
+## The 5 V cable cannot be re-routed by moving one leg (2026-09-29, TWO FAILED ATTEMPTS)
+
+After the Y swap, `wire_5v_*` (4 conductors) run through `pi5`, 48.3 mm3 each. The cause is
+exact and is NOT a fly-height error:
+
+    J5  (motor)   world (-591.70, -11.00, -27.62)
+    J2  (pi_cap)  world (-591.50, -87.52, -27.45)
+    pi5           x -601.60..-586.00   y -135.00..-50.00   z -62.00..-6.00
+
+The two connectors sit at almost the same world x, and the run between them is now 76 mm of y
+at that x and at z -37.45 -- mid-plate. The cable goes straight through the board.
+
+⚠ TWO FIXES WERE TRIED AND BOTH MADE THE GATE WORSE. Baseline 132.
+
+    attempt 1   jog outboard, x = pi5.xmax + 2.5 = -583.5        132 -> 136
+                FIXED  pi5 <-> wire_5v x4
+                NEW    chassis_2 <-> wire_5v x4  AND  motor_0 <-> wire_5v x4
+                +X is NOT the free side: the motor bank is there.
+
+    attempt 2   x -597.0 / z -34.0, from a lane search           132 -> 136
+                FIXED  nothing
+                NEW    board_screw_2 <-> wire_5v x4
+                The long leg IS clear at that lane -- what still cuts the Pi is the
+                TRANSVERSE segment at each end, which no lane choice fixes.
+
+BOTH WERE REVERTED. src/wiring.py is back at the committed state and the tree is where it was.
+
+WHAT THE MEASUREMENTS ACTUALLY SAY. There is no straight-line lane: the Pi fills z -62..-6 over
+the whole run, its foot rib fills the space below it to the floor, the motor bank owns +X, and a
+board screw owns the inboard lane. The cable has to use the EXISTING trough system the way
+`wire_usb` does -- down into the trough at CHAN_Y, along it on a LANE_* z, and back out on a fly
+column (`_rail_pts`, `BAY_X`, `BAYFLY`). That is a rewrite of the route, not a moved waypoint,
+and it is the next piece of work on this cable. The same applies to the six `wire_led_*`.
+
+⚠ scratchpad/lanefind.py WAS WRITTEN FOR THIS and is worth keeping: it sweeps a cable-sized box
+along a y run against the assembly and prints every clear (x, z). One assembly build answers what
+otherwise costs one 3-minute gate run per guess. ITS LIMIT, WHICH BIT ME: it iterates
+`src.build.PARTS`, which is 69 solids and DOES NOT CONTAIN motor_0 -- the motor bank builds
+elsewhere. A lane it calls clear can still hit a motor. Narrow with it, then let the gate rule.
+
+⚠⚠ AND THE REAL LESSON IS THE ORDER I DID THINGS IN. I edited first and measured second, twice.
+This repo already had the answer in two places -- padsite.py searches a pad site, repair_search
+searches a track -- and the standing note says the router VERIFIES rather than searches. Search
+the site, then edit once.
