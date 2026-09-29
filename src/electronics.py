@@ -1216,11 +1216,13 @@ def mctrl_pt(ref: str):
     centre. This used to hold a 90 deg turn to reconcile two frames, and then a branch to
     decide whether to apply it -- two places to get the same fact wrong."""
     cx, cy = _ctr(MCTRL_FP)
-    bx, by, _rot = MCTRL_J[ref]
-    x, y = cx + bx, cy + by
-    # J2 is a PH now (the 5 V lever bus, 2026-09-21); every other lead is a mated XH
-    _ph = BG.fp_name(BG.footprint("motor_ctrl", ref)["fpid"]).startswith("JST_PH_")
-    return (x, y, MCTRL_BOARD_Z + BD_T + (BG._PH_MATED_H if _ph else BG._XH_MATED_H))
+    # ⚠ board_geom ANSWERS THIS, because it is the module that already knows a side-entry
+    # plug leaves through the board EDGE (it grows the solid that way for _SIDE_PLUG_RUN).
+    # This used to add a MATED HEIGHT to every connector alike, which for J2/J6 -- the
+    # whole bus-B input, side entry on the +X edge -- put the lead over the top of a
+    # shell that has no top, inside the socket instead of on a seated plug.
+    lx, ly, lz = BG.lead_exit("motor_ctrl", ref)
+    return (cx + lx, cy + ly + _MCTRL_DY, MCTRL_BOARD_Z + lz)
 
 
 MCTRL_PORT_CLR = 0.5                 # around whatever of the board enters the floor
