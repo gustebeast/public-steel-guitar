@@ -206,6 +206,42 @@ Converting the chassis floor into the cradle frame: **world z -72 = local x -537
    only if something else forces it; the floor-slot finding above removes the reason that
    prompted it, because the motor board no longer needs the easy band.
 
+### ⚠⚠ IT IS A DEFECT, NOT AN IMPROVEMENT: the motor cradle is buried in the chassis floor
+
+Measured 2026-09-28, after the boards' real edges were computed rather than read off a note:
+
+| | world z | against the floor (top −71.35, bottom −81.85) |
+|---|---|---|
+| Pi board | −6.00 … **−62.00** | bottom edge **9.35 mm ABOVE** the floor |
+| motor board | −10.35 … **−80.85** | passes **through** it, stopping 1.00 mm inside the underside |
+
+The motor cradle's ring is a tube along world X whose cross-section is the board's outline, so
+it spans the board's whole z range — **including the 9.5 mm that is inside the floor slab**.
+Intersecting the posed cradles with the chassis segment, with the assembly's own 15 cutters
+(`mctrl_floor_ports`, `led_wall_reliefs`) already applied:
+
+```
+cradles INTERSECT the cut chassis: 2717.0 mm3
+   lump 2711.0 mm3  x -626.5..-599.5  y -114.9..-49.1  z -80.9..-71.3
+```
+
+**Those two parts cannot both be printed and assembled.** It is invisible today because
+`check_overlaps` allow-lists `{keyhead_endplate, chassis}` wholesale — the note on the
+allowance is about the endplate *seating* on the chassis and its hold-down screw, which is a
+real and intended contact. A 2.7 cm³ lump of cradle inside the floor is hiding behind it.
+
+**So the rework below is the fix, and it also has to move the support**, because the two
+reasons the cradles reach x −631.3 both disappear when they leave the endplate:
+
+* the motor cradle is carried by a wall inside the endplate (`RIB_LZ`);
+* the **Pi** cradle's columns "mostly land on the NUT HARDWARE'S BLOCK", which fills
+  x −630…−610.1 — so a Pi cradle fused to the chassis instead would collide with that block,
+  and `pi_cut` (the insert-slot shadow) exists only to trim the columns to fit it.
+
+Carried from BELOW instead, neither is needed: the motor cradle's ring already reaches into the
+floor, so fusing it to the chassis turns 2711 mm³ of interference into a root, and the Pi needs
+**9.35 mm** of foot. The long columns then come out, and `pi_cut` with them.
+
 ### Next increment, and two things found while reading for it (2026-09-28)
 
 1. **The motor board's floor slot already exists.** `electronics.mctrl_floor_ports()` cuts it
