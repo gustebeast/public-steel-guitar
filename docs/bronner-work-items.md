@@ -2,6 +2,13 @@
 
 **Priority: optical first.** Everything else is route-downtime work.
 
+**Status 2026-09-28 22:1x — OPTICAL IS DONE AND SUBMITTED.** Every debug feature the user
+called a strict improvement is in: six bring-up pads (I2C2 SDA/SCL for the ROM bootloader,
+BOOT0, and the three rails) plus per-converter `SHDNZ` isolation. 0 unconnected, 0 violations,
+`audit_board` clean, SI clean, In1 web unchanged at 0.266 mm, fab rebuilt. The one item that
+did not make it — the buck's power-good — is closed with measurements, not deferred.
+**Next: the chassis_2 mounting rework (item 5), which has not been started.**
+
 ---
 
 ## 1. OPTICAL — **the bring-up pads are IN, 0 unconnected / 0 violations**
