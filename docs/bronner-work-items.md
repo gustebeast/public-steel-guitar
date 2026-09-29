@@ -1861,3 +1861,73 @@ six boards (optical, motor_ctrl, pi_cap, lever_sensor, can_tee, output_panel) --
 unchanged, since none of them reports a stray stitch today. The prototype is kept as
 scratchpad_postfill_repair.py so the next session adopts a DEMONSTRATED design rather than a
 described one.
+
+### 5n. ⚠⚠ THE CONNECTOR WAS SOLVED ALL ALONG, AND I SEARCHED THE WRONG FAMILY (2026-09-29, user)
+
+The user asked "have you considered a variety of direct connection connector types? For
+example pogo pins" and then "there's also the pin connectors used on the pi". Both land,
+and together they retire five sections of investigation above (5a-5m).
+
+**I FILTERED ON MEZZANINE VIRTUES FOR A JOINT THAT HAS NO MEZZANINE CONSTRAINTS.** Every
+candidate I chased -- DF40, FX23L, Harwin M20, the "1.27 mm 2X10P" -- was a FINE-PITCH
+LOW-PROFILE part, and I ranked them on pitch, stack height and coplanarity. The LED strip
+has 20.0 mm of board width to spend and sits in a printed channel with no height ceiling.
+I was optimising constraints we do not have, and the one we DO have -- both halves in
+stock -- I checked last, four times.
+
+**THE PI'S OWN FAMILY: 0.1 in (2.54 mm) PIN HEADER + FEMALE RECEPTACLE.** Measured on
+jlcparts 2026-09-29, 1x6P, gold, 3 A/pin, Extended (setup fee, NO consignment):
+
+        half     LCSC        part                    stock    $/unit
+        male     C7501264    ZX-PZ2.54-1-6PZZ        10031    0.031
+        male     C18078203   BX-PZ2.54-1-6PZZ         5763    0.032
+        male     C17702637   DZ254S-11-06-50          2734    0.069   <- SMD, vertical
+        female   C7500775    FH2.54-09-06PZD          2141    0.153
+        female   C7509518    DS1023-1x6SF11            428    0.057
+
+A mated pair is ~$0.18 and there are >2000 of them. DF40's matched pin count had FOUR.
+6 x 2.54 = 15.24 mm across a 20.0 mm board -- it fits with 2.38 mm each side.
+
+**AND IT RETIRES THE CURRENT ARGUMENT COMPLETELY.** 3 A per pin at 5 V means a section's
+2.2 A passes on a SINGLE pin, no doubling, no 4-way collapse. So 24 V was never needed
+for the connector either -- 5 A pogo singles say the same. The whole 24 V thread (5g-5m)
+was solving a problem the coarse-pitch part does not have.
+
+**POGO PINS: 69 parts, and the gender problem does not exist.** All are 1P SINGLES (gold,
+50 mOhm, 10k cycles, Extended), so THE PITCH IS OURS -- there is no connector body to
+source, we place N pins wherever we want them. Current runs 1 A to 5 A:
+
+        C7471680   YZP0561-23061-01   5 A   500 stock   $0.539
+        C7471708   YZP0521-22075-01   5 A   490 stock   $0.851
+        C7471715   YZP0334-30082-01   4 A   147 stock   $0.559
+        C7471672   YZ85915058P-03     3 A   483 stock   $0.548
+
+⚠ AND POGO IS THE ONLY CANDIDATE THAT SUITS THIS JOINT MECHANICALLY. Two rigid boards
+butted in a PRINTED channel will never be coplanar to a mezzanine part's tolerance; a
+pogo pin has 1.3-12 mm of travel and absorbs it. That is a reason to prefer it, not just
+availability. It needs a feature that holds the joint COMPRESSED -- which is the channel,
+geometry we already own.
+
+**THE ONE REAL COST, AND IT IS A FEE NOT A WALL.** A vertical mate needs a part on the
+two FACING surfaces, so one board carries a part on its bottom face. Per the panel rule
+(memory UPDATE 5) that is billed "Both Sides": +$25.75 setup plus a $16.54 fixture per
+order, and it forces Standard PCBA over Economic. ~$42 ONE-TIME against the whole order,
+not per board. Right-angle parts would keep everything on one face but both genders are
+thin (C18214186 male 21, C6825574 female 28) -- do not build on those.
+
+**OTHER DIRECT-MATE FAMILIES, for the record, none yet searched:**
+  * CARD EDGE -- the board's own edge IS the male half, so one side costs no part at all.
+    Needs gold fingers, which the HASL panel cannot give (same blocker as bare pogo pads).
+  * STAMPED SPRING / battery-contact fingers -- single-gender like pogo, presses a pad.
+  * SOLDERLESS LED STRIP CLIPS -- a mechanical push-on part, nothing soldered at all, so
+    it satisfies the no-hand-solder rule trivially. Sold for flex strip; rigid-PCB fit
+    unverified, and it is not a PCBA part.
+
+**WHAT THIS DOES TO 5e.** Fewer junctions is still worth doing on LIGHT (dark span
+117 -> 39 mm), but it is no longer the ONLY answer, and it is no longer forced. A
+2.54 header pair or a pogo set makes the 4-section strip mate board-to-board directly at
+~$0.20 a joint, which is what the user asked for in the first place.
+
+**RULE, and it is the same shape as the stock rule from 5m:** ask what the joint's real
+constraints ARE before picking a connector family. A fine-pitch mezzanine part is the
+answer to "no room and no height"; this joint has both.
