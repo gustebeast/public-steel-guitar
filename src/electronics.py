@@ -91,11 +91,15 @@ CRADLE_CLR = 0.3
 # that two copies of this number is two places for the screw and its hole to drift apart;
 # it was right, and the answer is to stop having two.
 #   (edge, hold_at) -- searched against the built assembly, see board_screws()
-MCTRL_HOLD = ("-y", 22.0)     # ⚠ the -Y EDGE STILL, but slid +22 along it
-# The edge was never the problem; the POSITION along it was. At hold 0 the boss sat at the
-# Pi's own z and reached 1.6 mm past its +Y edge once the Pi went flush. At +22 it sits at
-# world z ~-67.6 -- BELOW the Pi's bottom edge (-62) -- so the two no longer share space at
-# all, and the cradle's own frame is there to bore the anchor.
+MCTRL_HOLD = ("-y", 17.0)     # ⚠ the -Y EDGE STILL, but slid +17 along it
+# The edge was never the problem; the POSITION along it was. At hold 0 the boss sits at the
+# Pi's own z and reaches past its +Y edge once the Pi went flush. The clear window is the
+# band between the Pi's BOTTOM edge (world z -62) and the floor's top (-72.15): about 10 mm,
+# and the boss is 6. +17 centres it at z -67, roughly 5 mm clear of each.
+# ⚠ AND THIS ONLY BECAME COMPUTABLE ONCE THE EAR WENT. pcb_hold_xy was being handed
+# bw = 70.50, the outline INCLUDING the ear, so every hold on this board was measured from
+# a rectangle the laminate does not occupy -- which is why three hand-picked positions in a
+# row missed. The board is 61.80 now and the number means what it says.
 # ⚠ AND NOT THE UNDERSIDE, which is where I put it first. "+x" reads CLEAR of every part,
 # but this board passes THROUGH the floor, so a boss on that edge lands in the floor SLAB:
 # 17.9 + 16.2 mm3 of chassis_2 that no cradle bore reaches. Boring the floor to hold a
@@ -200,7 +204,16 @@ MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outlin
 # So: Pi -113..-28, 8.1 of gap for that boss, motor -19.9..42.1. Moving the boss to the -Y
 # edge instead would buy the gap back but would push a column out to y -120.1, into chassis
 # that has never been asked to be there. Spend the gap, not the unknown.
-_MCTRL_CX, _MCTRL_CY = -563.40, -10.5
+# ⚠ ANCHORED ON THE FLOOR EDGE, NOT ON A CENTRE. This was a literal -563.40, which is the
+# centre of a board whose WIDTH is about to change: dropping the vestigial ear takes
+# MCTRL_BOARD_X from 70.50 to 61.80 (it is read off the routed outline), and a fixed centre
+# would have slid both edges inward by 4.35 -- lifting the board's bottom edge off the floor
+# it has to sit on for its two bus-B plugs to enter the floor slot. State the TARGET, which
+# is the edge that must not move, exactly as the note above this block says for Y.
+# -528.15 is where that edge is today; -563.40 = -528.15 - 70.50/2, so this is a no-op until
+# the outline changes and then it is right by construction.
+MCTRL_FLOOR_EDGE_X = -528.15           # tray +X edge == world z -80.85, the floor
+_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -10.5
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
@@ -574,6 +587,18 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     cr = _frame(bw, bl, (hx, hy), slide_in_x=True, harness_w=HARNESS_W,
                 post_h=MCTRL_POST_H, open_down=True, root_d=4 * D.BEAD)
     cr = _cut_anchor(_M4, cr, (hx, hy, MCTRL_POST_H), (0, 0, -1), _M4.anchor_min_wall)
+    # ⚠ AND THE HEAD NEEDS ITS OWN HOLE, exactly as the Pi's does 50 lines below. The boss
+    # stands BESIDE the board, and the locating wall rises past the board's top face at
+    # that same y -- so the button head, which seats on the board top and laps its edge,
+    # lands INSIDE the wall. Measured before this cut: 83.7 mm3 of screw and 30.4 of insert
+    # buried in the cradle, which the gate reports as chassis_2 because the cradle is fused
+    # into the segment. The anchor bore does not help: it runs DOWN from the board, and the
+    # head is above it.
+    # (An earlier attempt at this cut "left the number exactly unchanged" and was reverted --
+    # true, but that was at the old hold, where the head sat over the frame's mouth and
+    # there was nothing to cut. The cut was right and the position was wrong.)
+    cr = cr.cut(_cyl_col(hx, hy, M4_BUTTON_HEAD_D + 2 * CLR, MCTRL_POST_H,
+                         MCTRL_POST_H + 20.0))
     # ⚠ THE HEAD GRAZES SOMETHING BY 0.72 mm3 AND IT IS NOT THIS FRAME. A head-clearance
     # cut at (hx, hy) -- the Pi's remedy, one-sided and then symmetric about the board
     # plane -- left the number EXACTLY unchanged both times, so the material the screw
@@ -1222,9 +1247,13 @@ def _mctrl_ear():
     ymin = min(p[1] for p in poly)
     dy = -ymin - MCTRL_BOARD_Y / 2.0                  # geom frame -> rectangle frame
     out = [(p[0], p[1] + dy) for p in poly]
-    (hx, hy, hd), = BG.holes("motor_ctrl")
+    # ⚠ THE BOARD MAY HAVE NO MOUNTING HOLE AT ALL, and now does not: the ear was removed
+    # (user, 2026-09-29 -- "a hole designed for an M4 screw that isn't being used"). This
+    # used to unpack exactly one, which is an assertion disguised as a destructuring.
+    _h = BG.holes("motor_ctrl")
+    hole = (_h[0][0], _h[0][1] + dy, _h[0][2]) if _h else None
     ear_h = max(p[1] for p in out) - MCTRL_BOARD_Y / 2.0
-    return out, (hx, hy + dy, hd), ear_h, dy
+    return out, hole, ear_h, dy
 
 
 MCTRL_OUTLINE, MCTRL_HOLE, MCTRL_EAR_H, _MCTRL_DY = _mctrl_ear()
