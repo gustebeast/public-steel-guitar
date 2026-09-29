@@ -258,14 +258,61 @@ unwelcome in the endplate.)
 
 ---
 
-## 4. What is NOT decided
+## 4. DECIDED: per-fret zones — and cost scales with ZONES, not LEDs
 
-1. **RGBW per fret, or one colour for all?** Everything above assumes per-fret RGBW
-   (96 channels, 8 drivers). If the frets are one static colour the drivers disappear
-   entirely and the LEDs become series strings off the 24 V rail — a large cost difference,
-   and it depends on whether fret lighting is ever meant to indicate anything.
-2. **The LED rail voltage** — see section 2, 12 V vs 5 V.
-3. **Fret 1 has 8.27 mm, not 17 mm**, because `wire_ui` and the Pi are under it. Either the
+Settled by the user 2026-09-29: **one controllable RGBW zone per fret.** 24 zones,
+96 channels, 8 × TLC59711.
+
+**And the user's reading of the cost is right, for a precise reason worth writing down.**
+With external constant-current drivers and the three LEDs of a fret in SERIES on one
+channel, the two marginal costs are:
+
+    one more ZONE   $0.80   (a TLC59711 is $2.41 and carries 3 RGBW zones)
+    one more LED    $0.065  ($0.0524 part + 8 joints at $0.0016)
+
+**A zone costs 12× what an LED costs.** That is the whole reason 3-per-fret is cheap: it
+buys evenness with the cheap unit. It also holds for CURRENT, not just money — LEDs in
+series share one channel's 20 mA, so a third LED per fret adds rail VOLTAGE, not rail
+amps. Zones set the current draw too.
+
+⚠ **Zones come in THREES.** 24 × 4 = 96 channels is exactly 8 drivers with nothing wasted.
+A 25th zone costs a whole 9th driver, so the staircase is at multiples of 3 zones, not at 1.
+
+### ⚠ The $15 question this raises: integrated-driver LEDs
+
+The zone/LED split above is a property of the ARCHITECTURE, and there is another one where
+it does not hold. An addressable LED with its driver built in — `SK6812MINIRGBW-NW-P6`,
+**C7423107, 12,215 in stock, $0.1039@50** — needs no TLC59711 at all:
+
+| | XL-5050RGBW + 8 × TLC59711 | SK6812MINI-RGBW |
+|---|--:|--:|
+| 82 LEDs | $4.30 | $8.52 |
+| drivers | $19.28 | — |
+| **total** | **$23.58** | **$8.52** |
+
+**About $15 an instrument, and it deletes 8 ICs and 96 driver traces from the board.** The
+catch is that every LED becomes its own zone, so cost and current then scale with LED
+COUNT, not zones — the 3-per-fret decision would cost real money and real amps again.
+
+**It was rejected before on NOISE and that is still the open question.** bronner ruled out
+SK6812 (1.2 kHz) and SK9822 (4.7 kHz) because their PWM envelope sits in the audio band and
+a magnetic pickup is built to hear exactly that; the TLC59711 was chosen for its ~19.5 kHz
+enhanced-spectrum PWM. This part lists **4 kHz**. What has changed is DISTANCE: the old
+strip ran **9.1 mm** from the pickup, and the nearest fret LED (fret 24) is **114.7 mm**
+away, or **74.6 mm** with the pickup slid fully toward the neck. On a 1/r³ loop coupling
+that is **550× weaker at worst case**.
+
+⚠ **That is an argument for BENCHING it, not for assuming it.** bronner's own method note
+in the handoff says three clearance questions answered by derivation were all wrong, and
+their doc says the absolute dB figures are not quotable because nobody has measured the
+pickup's impedance and gain. $15 an instrument and a much simpler board is worth one bench
+test beside the real pickup.
+
+## 5. What is NOT decided
+
+1. **The LED rail voltage** — see section 2, 12 V vs 5 V.
+2. **Fret 1 has 8.27 mm, not 17 mm**, because `wire_ui` and the Pi are under it. Either the
    harness moves or fret 1 gets a shallower tunnel and a 4th LED.
-4. **Which LED.** The existing XL-5050RGBW is a side-mount 5050 chosen for a side-firing
+3. **Which LED** — and see section 4: the package choice and the driver
+   architecture are one decision, not two. The existing XL-5050RGBW is a side-mount 5050 chosen for a side-firing
    strip; this board fires UP, so the package choice is open again.
