@@ -3175,3 +3175,89 @@ board and must flow out through board_geom, never be hand-cut into the CAD solid
 FULL route. The board is at 0 unconnected / 0 undeclared violations with a lot of hard-won
 work behind it, so check whether copper sits at those two points before committing to it --
 that is what decides whether this is cheap or a re-layout.
+
+### ✅ ANSWERED AND FIXED (2026-09-29) — and it was CHEAP, one capacitor
+
+The question the section above left open was whether copper sits at the two mount points.
+Measured on the finished board, in a frame **verified against both far corners** rather than
+derived (`local_x = file_x − 100.0`, `local_y = 100.0 − file_y`; the check reproduces
+28.606 → 28.606 and 94.265 → 94.265 exactly):
+
+| mount | board-local | copper within 3.5 mm |
+|---|---|---|
+| 0 | (−16.906, 84.465) | **0 items — a free hole** |
+| 1 | (24.006, −27.835) | **12**, and `C111` pad 2 overlaps at **−0.039 mm** |
+
+⚠ **AND `cutouts` WAS AN EMPTY LIST.** `BOARD_NOTES["cutouts"]` iterated `OP.O_ROD_HOLES`,
+which is `[]` and carries the comment "nothing uses it" — so this board exported *no round
+cutouts at all*, which is why `BG.holes("optical")` returned only the ten sensor slots. The
+mechanism to fix it already existed and was already wired up on this exact board:
+`layout._cutout()` draws the Edge.Cuts circle **and** a router keepout, because KiCad's
+Specctra exporter does not turn Edge.Cuts into a DSN boundary and freerouting would lay
+track straight across the hole.
+
+**Both holes now come off `mount_points()` at `M4.shaft_clr_d` (4.4)** — not
+`insert_pilot_d` (6.0); the plastic takes the insert, the board only lets the shank past.
+Driven off the same function the screw uses, so a hole cannot drift from its screw.
+
+**Verified fully inside the outline: keepout margins +7.000 and +1.800 mm.** That check is
+not ceremony — this file records the `O_ROD` circle whose rim reached x −32.58 on a board
+ending at −28.61, which is a *broken outline* rather than a hole and survived every route
+for a week. `MOUNT_KEEP` still governs the edge, since the plinth's 6.0 pilot is tighter
+than the board's 4.4 bore.
+
+#### The capacitor under the screw head — the same fault for the THIRD time
+
+`C111` was at CAD y −56.380 and the tail mount is at −56.150: **0.25 mm centre to centre,
+under a 7.6 mm button head.** C112 and C113 each got a hand-written step-away beside their
+own placement; the decoupling ring was added *later* and places by pin with no knowledge of
+the mount. The file's own note had already named it — *"the other twelve were the same bug,
+unexamined."* C111 is one of those twelve.
+
+⚠ **COPYING C113's STEP-AWAY DOES NOT WORK HERE, AND BOTH DIRECTIONS WERE MEASURED, NOT
+ASSUMED.** C111 needs 5.025 mm of Y from the screw axis (head r 3.80 + `PKG_CLR` + a 0402's
+0.975 half-height at rot 90):
+
+* **−Y** → −61.175, against `C110` at −62.380 → **1.205 mm** where two 0402s need 2.10.
+* **+Y** → −51.125, against `R50` at −50.354 → **0.771 mm**.
+
+So the +X strip cannot hold four ring caps *as well as* C112, C113, R50, TP7 and the screw
+head. The ring is rebalanced **nine west, three east** (the west flank has 27.4 mm of clear
+edge; nine across ±11.0 is a 2.75 mm pitch against the 2.10 a 0402 needs), and the east
+three are spanned inside a window derived from the obstacles rather than centred on U6.
+
+#### The real fix is the guard, not the move
+
+`_assert_mount_heads_clear()` runs over **every** placement against **every** mount point,
+once, after both exist — because a guard written beside one part cannot protect the parts
+added after it, which is precisely how this got in. It compares **courtyard against the head
+circle**, since the C113 note records that a body-clearance check is exactly what let a
+courtyard overlap through, and a 0402's extents swap at rot 90 where a radius comparison
+cannot see it. **Verified to FIRE** (−3.800 mm on an injected part), not merely to pass.
+
+Result: both heads clear of every part on the board; no duplicate or missing refs
+(C100–C111 all present); netlist regenerates at **0 errors**.
+
+#### ⚠ Still open, and NOT closed by this
+
+`C110`/`C111` are the two **ANALOG 3V3** decouplers, for the VDDA/VREF+ pins the twenty
+channels are measured against, and they have moved about 7 mm along the +X flank. C111 had
+no choice — a screw head was on it — and it stayed on the same package flank, which is the
+smallest move available. **Whether that is nearer or further from VDDA is not knowable
+here:** the LQFP176 pin table is not in the extracted datasheet, which is the stated reason
+this ring is evenly spaced rather than pin-exact. Unchanged by the fix, and it is the item
+that would benefit most from getting that pin list.
+
+#### Retracted
+
+An earlier probe in this tick concluded **"connector J2 is sitting on top of mount point
+0."** It is **wrong and withdrawn.** It came from a board-local mapping hand-rolled off bbox
+corners, and then from comparing `mount_points()` (which returns OP's **raw** frame) against
+`outline_poly` (which is **CX/CY-centred**) — two frame errors stacked. In one frame the
+nearest part to mount 0 is `Cf1A` at **11.92 mm**; J2 is nowhere near it. The lesson is the
+one this file already carries in bold: **put a box where the part would go and intersect
+it**, and when a frame has to be derived, check the derivation against both far corners
+before believing any number that comes out of it.
+
+⚠ **COST: this invalidates `ROUTE_REUSE_SES`** — two new keepouts and nine moved parts — so
+the board needs a FULL route from its 0 unconnected / 0 undeclared baseline. Running.
