@@ -454,8 +454,19 @@ working top-down would act on stale text. The state of each claim:
       4. OPEN -- "the wiring run for the 6 pin from the LED clips through the pi and the
          chassis, it should go +x of the pi". The gate already reports it and I read past
          it: pi5 <-> wire_led_gnd_a / v5_a / sck / v5_b / gnd_b / sdi, 2.6 mm3 EACH, plus
-         chassis_2 <-> the same six at 0.1. Six conductors, six pairs, all six in the
-         standing 109. Route the run +X of the Pi as the user says.
+         chassis_2 <-> the same six at 0.1.
+         ⚠ WHAT CLIPS IS THE FIRST LEG, NOT THE TRAVERSE. The long run is ALREADY outboard
+         at x -607 (pi5 is -601.60..-586.00). The cable leaves the cap at x -591.5 and
+         crosses the Pi's full 15.6 mm thickness to reach it. Fix that leg, not the run.
+         ⚠ ONE ATTEMPT MADE IT MUCH WORSE -- 109 -> 154, REVERTED. Going out to x -583,
+         +Y alongside the Pi, then back -X above the motor board (z -19.05) did clear all
+         six pi5 clips, and then added 51: the six conductors OVERLAPPED EACH OTHER in 15
+         pairs, because every one of them used the SAME three waypoints and collapsed onto
+         a single line. The per-conductor endpoints are what keep them apart, so any
+         re-route has to carry a per-conductor offset the way CAN_OFF/PWR_OFF do -- the
+         same lesson as the tee-to-tee trunk note about four conductors 0.3 mm apart.
+         It also crossed wire_pwr_hot/gnd_11 and _12 and both bus-B conductors (24 more),
+         so the return lane needs a z that clears those, not just the motor board.
 
     LIVE, and the numbers reproduce:
       * ⚠ SOLVED: motor_ctrl's M4 was buried in the PI's CRADLE, not its own. Its boss
