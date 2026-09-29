@@ -292,7 +292,19 @@ BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 # tray's posts, so BOARD_Z (a TRAY z) does not apply to it. Read from motor_bank so the day
 # the floor moves the Pi moves with it, instead of being falsified by it.
 from . import motor_bank as _MB_FLOOR                      # noqa: E402
-PI_Z = _MB_FLOOR.FLOOR_TOP             # -71.35, the laminate's underside
+# ⚠ AND IT IS OFF THE FLOOR BY A STANDOFF, NOT ON IT (2026-09-29). PI_Z was FLOOR_TOP
+# exactly -- the laminate lying on the slab -- which is how the pose was first collision
+# tested, and it is not a mounting: a Pi's underside carries SMD parts and solder tails, and
+# resting a purchased board on bare plastic gives the retention nothing to clamp against.
+# It now sits on the cradle's four corner pads (pi_cradle below), so the standoff IS the pad
+# height and the two cannot disagree.
+# 3 beads, written as a count so it stays on the grid if the nozzle changes -- the same
+# idiom, and the same value, as the retention thickness in keyhead_cradles.
+# ⚠ MEASURED, NOT PICKED: tools/_probe_pi_cradle.py raises the whole board-plus-lid envelope
+# off the floor in steps and intersects it with the assembly. Foreign-clear at every step
+# from 0.0 to 6.0 mm, so 2.4 is free and there is 3.6 mm of headroom left over it.
+PI_STANDOFF = 3 * D.BEAD               # 2.4, the cradle's corner pads
+PI_Z = _MB_FLOOR.FLOOR_TOP + PI_STANDOFF   # -68.95, the laminate's underside
 MCTRL_BOARD_Z = TRAY_Z1 + MCTRL_POST_H   # ...except the motor controller, 1.5 lower
 
 # ── STANDING TRAY (user, 2026-09-11) ─────────────────────────────────────────
@@ -451,6 +463,98 @@ def _support_posts(fp, bz):
 # stand() maps this frame to the world as  world_x = local_z - 543.8, so:
 RIB_LZ    = -87.5        # local z -> world x -631.3: just inside the endplate's own wall,
                          # which ends at -631 behind the Pi and -627 behind the controller
+
+
+# ⚠ WHICH EDGE TAKES THE ONE M4, AND IT WAS SWEPT -- tools/_probe_pi_cradle.py --sweep, THREE
+# TIMES, BECAUSE THE FIRST TWO PROBES WERE BOTH WRONG. Worth the space, because each error
+# looked like an answer:
+#   1. The first probe excluded `chassis_2` by NAME as "the parent the cradle fuses into", and
+#      that hid the chassis's own -Y WALL. It reported "-y" clear; the wall is 53.42 mm3 into
+#      the head at EVERY hold along that edge, and only the overlap gate found it, after the
+#      cradle was built, as 17.4 mm3 of board_screw_2. The split has to be by HEIGHT: chassis
+#      at or below FLOOR_TOP is the slab this cradle MERGES into, above it is a wall.
+#   2. It tested a cylinder the full height of the board, so it hit pi_cap's BOARD at z -61
+#      and I ruled "+y" and "-x" out for a lid the fastener never reaches. The boss lives 2.4
+#      below the laminate and the head 2.2 above it; the lid constrains NEITHER.
+#   3. The sweep then ran against an assembly that already contained the cradle -- measuring
+#      the design against itself, a near-uniform 42.40 mm3 everywhere. Hence PI_NO_CRADLE.
+# Swept clean (wall/pi_cap 0.00 at every hold): "-x" and "+y".  "-y" is dead at every hold.
+# ⚠ AND THE DISCRIMINATOR IS DRIVER ACCESS, which none of the three probes tested until last:
+# a clear 25 mm column above the head for the 2.5 mm hex key. It kills hold_at 0.0 on BOTH
+# surviving edges, differently -- "+y" at 0.0 is under pi_cap (72.58) and all four 5 V
+# conductors, "-x" at 0.0 is under pi_cap (1.66) and at +12 under motor_ctrl too. A default
+# hold position was never checked against the thing that has to reach it.
+#     "+y" @ +20/+24/+30/+36  -> boss, head AND driver all clear
+# ⚠ +Y, NOT -X, AND THE REASON IS WHICH END CAN LIFT. The walls are vertical, so they restrain
+# nothing in Z -- this ONE screw is the entire lift restraint -- and "+x" is the OPEN edge,
+# with no wall at all. "-x" holds the far end: 87.5 mm from the opening. +30.0 holds the I/O
+# end, 12.5 mm from it, which is also the end that takes cable insertion force, and still
+# leaves 9.8 mm of +Y wall outboard of the boss to carry it.
+PI_HOLD = ("+y", 30.0)
+
+
+def pi_hold_pt():
+    """(x, y) of the flat Pi's one hold-down screw, WORLD frame -- computed in exactly one
+    place. The cradle's boss, the anchor bore build.py takes out of the chassis, and the
+    drawn fastener in board_screws() all read it, so none of the three can drift from the
+    other two (the motor board's ear/cradle pair is in this file precisely because they did)."""
+    from cadkit.pcb import pcb_hold_xy
+    from cadkit.fasteners import M4 as _M4
+    cx, cy = _ctr(PI_FP)
+    hx, hy = pcb_hold_xy(PI_FP[1] - PI_FP[0], PI_FP[3] - PI_FP[2], PI_HOLD[0],
+                         hold_at=PI_HOLD[1], clr=CRADLE_CLR, spec=_M4)
+    return cx + hx, cy + hy
+
+
+def pi_hold_bore():
+    """The Pi hold-down's anchor as a CUTTER, for build.py to take out of the chassis AFTER
+    the cradle is fused in.
+
+    ⚠⚠ WITHOUT THIS THE BORE IS SILENTLY REFILLED, and the gate caught it: 43.9 mm3 of
+    board_screw_2 and 37.5 of board_insert_2 inside chassis_2. pcb_cradle bores its own boss,
+    but this cradle's base plate is EMBEDDED 6.1 mm in the floor slab -- it has to be, because
+    the M4's anchor needs anchor_min_wall below the board's underside -- so the floor's own
+    material occupies the same space and the union puts it straight back. Cut before union
+    refills features; this project has recorded that four times in bridge_endplate alone, and
+    a fastener is the one place it is invisible, because the plastic looks right and only the
+    screw solid shows the interference.
+    Cut from the chassis in build.py alongside mctrl_floor_ports() and led_wall_reliefs(),
+    which are there for the same ordering reason."""
+    from cadkit.fasteners import M4 as _M4, anchor_cutter
+    hx, hy = pi_hold_pt()
+    return anchor_cutter(_M4, (hx, hy, PI_Z), (0, 0, -1), _M4.anchor_min_wall)
+
+
+def pi_cradle() -> cq.Workplane:
+    """The flat Pi's retention: a drop-in cradle standing off the CHASSIS FLOOR.
+
+    ⚠ AUTHORED IN THE WORLD FRAME, WITH NO stand(). The Pi lies flat on the floor, and
+    `cadkit.pcb.pcb_cradle` is already written for exactly that pose -- board centred on the
+    origin, bottom resting at `standoff`, walls rising on every edge but `open_edge`, install
+    straight down +Z -> -Z. So this is a TRANSLATION of a shared helper, not a re-derivation:
+    the project's orientation rule is to re-author natively rather than bolt a mapping on the
+    end, and here the helper's native frame already IS the Pi's.
+
+    Retention is ONE M4 beside the board (PI_HOLD), because a Pi is a PURCHASED board whose
+    own mounting holes are 2.7 mm and this project has one screw diameter. The head lands on
+    the laminate's top face and laps its edge, clamping it down onto the boss -- the same
+    arrangement and the same SKU as the motor controller's and the CAN tee's. pcb_cradle
+    refuses a head that laps by less than 1.0 mm, so the clamp is checked rather than assumed.
+
+    The four corner pads ARE the standoff, which is why PI_Z reads PI_STANDOFF: a Pi's
+    underside carries SMD parts and solder tails, so the laminate must not rest on the slab.
+
+    The base plate lands INSIDE the floor slab and simply merges with it -- base_t defaults to
+    anchor_min_wall - standoff = 6.1, reaching world z -77.45 against a floor that runs
+    -71.35..-81.85, so the M4's anchor has 4.4 mm of material to spare below it.
+    """
+    from cadkit.pcb import pcb_cradle
+    from cadkit.fasteners import M4 as _M4
+    cx, cy = _ctr(PI_FP)
+    return pcb_cradle(PI_FP[1] - PI_FP[0], PI_FP[3] - PI_FP[2],
+                      board_t=BD_T, standoff=PI_STANDOFF, clr=CRADLE_CLR,
+                      open_edge="+x", hold_edge=PI_HOLD[0], hold_at=PI_HOLD[1],
+                      hold_spec=_M4).translate((cx, cy, _MB_FLOOR.FLOOR_TOP))
 
 
 def keyhead_cradles(standing: bool = True) -> cq.Workplane:
@@ -716,8 +820,29 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # ⚠ The cut is EXACT, so the cradle and the board now TOUCH rather than interfere. The
     # boards are held by their M4 -- head lapping the edge, clamping to the boss -- plus
     # the single install direction; the lean adds what it can where the envelope allows.
-    # (pi5 is no longer in this solid's way -- it is on the floor, not in the bay.)
     out = out.cut(motor_ctrl())
+    # ⚠ THE FLAT PI'S CRADLE JOINS HERE, AFTER THE POSE, AND THAT IS THE POINT. Everything
+    # above is authored in the tray frame and stood up by stand(); pi_cradle() is authored in
+    # the WORLD frame because the helper it uses is already flat. Unioning it after stand()
+    # keeps the two frames from ever meeting -- the alternative, expressing a floor-mounted
+    # cradle in tray coordinates so it could ride through stand(), is the mapping the
+    # orientation rule forbids.
+    # PI_NO_CRADLE=1 leaves it out, for the ONE thing that cannot be asked any other way:
+    # "where could the hold-down go?" A sweep run against an assembly that already contains
+    # the cradle measures the design against itself -- every candidate collides with the
+    # boss that is already there, which is how a sweep came back with a near-uniform 42.40
+    # mm3 at every position on every edge. Debug-only; it never changes a built part.
+    import os as _os
+    if not _os.environ.get("PI_NO_CRADLE"):
+        out = out.union(pi_cradle())
+    # ⚠ AND IT GETS THE SAME SUBTRACTION THE MOTOR BOARD DOES, for the reason the user gave
+    # about the +Y side: cradle-to-board contact is a DESIGNED contact, so check_overlaps is
+    # blind to it and the render is the only place it shows. pi_cap's underside sits exactly
+    # at the board's top face and the lid overhangs +Y by 7.915 mm, so pcb_cradle's 0.8 mm of
+    # wall_over reaches into the lid along that edge. Cutting both boards' own solids leaves
+    # the pads below and the locating walls beside, and trims only what reaches OVER them --
+    # retention is whatever the boards' envelopes leave room for.
+    out = out.cut(pi5()).cut(pi_cap())
     return out
 
 
@@ -799,16 +924,17 @@ def board_screws():
     # the cradle boss. The seat plane is therefore the board top, exactly as it is for the
     # two boards above, and the assert at the top of this function covers it unchanged.
     from cadkit.pcb import pcb_hold_xy
-    # ⚠⚠ THE PI'S M4 IS GONE WITH ITS CRADLE (2026-09-29). It threaded into a boss on the
-    # tray frame that no longer exists -- the Pi lies on the chassis floor now, so there is
-    # nothing at that hold point to thread into. Drawing the screw anyway would put a
-    # fastener in the render with no boss behind it, which is the exact fault this project
-    # already found once and named: "a hole designed for an M4 screw that isn't being used",
-    # a fastening point that cannot be fastened.
-    # ⚠ The flat Pi still needs ONE M4 -- it is a purchased board whose own holes are too
-    # small, so the head has to lap an edge exactly as before -- but its position belongs to
-    # the floor retention that has not been designed yet, and inventing one here would just
-    # have to be re-searched against whatever collar that turns out to be.
+    # ⚠ THE PI'S M4 IS BACK, BECAUSE THERE IS NOW A BOSS BEHIND IT (2026-09-29). It was
+    # removed when the Pi went flat: its boss lived on the tray frame, and drawing a fastener
+    # with nothing to thread into is this project's own named fault -- "a hole designed for an
+    # M4 screw that isn't being used", a fastening point that cannot be fastened. pi_cradle()
+    # supplies the boss and bores the anchor, so the screw has somewhere to go.
+    # WORLD frame and no stand(), like the cradle it threads into; read from the SAME
+    # PI_HOLD and the same helper the cradle bores from, so the two cannot drift.
+    _px, _py = pi_hold_pt()
+    out.append(("board_insert_2", seated_insert(_M4, (_px, _py, PI_Z), (0, 0, -1))))
+    out.append(("board_screw_2", m4_button_screw(L).translate(
+        (_px, _py, PI_Z + BD_T + M4_BUTTON_HEAD_H))))
     return out
 
 
