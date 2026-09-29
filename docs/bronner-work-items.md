@@ -1216,3 +1216,43 @@ then, and what survives is the orphaned stub.
 and I am not landing one in a file seven boards share. But the expensive parts are now paid for:
 the detector is proven against DRC, the failure mode of the naive repair is known and named, and
 what is missing is one clearance walk.
+
+### ✅ THE POST-FILL REPAIR IS PROVEN ON led_strip: 1 unconnected -> 0, ZERO ERRORS (2026-09-29)
+
+The clearance walk was the missing piece, and with it the design is demonstrated end to end on a
+real board (prototype run on a COPY; elec/layout.py still untouched).
+
+    before                     1 unconnected   35 violations (track_dangling 2 + silk 33)
+    naive repair (no clearance) 0 unconnected   AND tracks_crossing 1 -- A SHORT, rejected
+    with the clearance walk     0 unconnected   0 ERRORS, violations {track_dangling 2, silk 33}
+
+    "no CLEAR path to the plane from either end -- left alone"      <- one track, correctly DECLINED
+    "from (56.64,100.33): laid 1.35 mm, path CLEAR"                 <- the other, and since both
+                                                                       are ONE cluster, that single
+                                                                       track connected all of it
+
+⚠ THE DECLINE IS THE POINT, not a limitation. A pass that refuses when it cannot prove the route
+is the only kind safe to run unattended across seven boards -- and it re-reads layout.py's
+"report it, do not tidy it away" as sound engineering rather than resignation: tidying is safe
+only when the path is proven.
+
+⚠⚠ track_dangling STAYS AT 2 AND THAT IS CORRECT. The stubs still have loose ENDS; they are no
+longer ISOLATED. A warning about a stub's shape is not an unconnected net, and the number to
+watch is unconnected (1 -> 0) and errors (0).
+
+THE DESIGN, every parameter now measured:
+    run AFTER tidy_router_vias and after ZONE_FILLER (the stray via is already deleted by then;
+        what survives is the orphaned stub)
+    DETECT   conn.GetConnectedItems(zone), keyed on m_Uuid.AsString() -- NEVER id(), SWIG hands
+             back a fresh wrapper per call and that reported 52 loose against DRC's 1
+    TARGET   plane candidates nearest-first, so a blocked path tries the next
+    CLEAR    sample the straight run at 0.1 mm and reject if any sample sits in another net's
+             copper; try the other end, then the next candidate; DECLINE if none is clear
+    LAY      overshoot the fill edge by a track width (landing on it is a touch; connectivity
+             wants overlap), then refill and re-check, one iteration
+
+STILL NOT LANDED IN layout.py, and that is the only thing left: it needs validating on the other
+six boards (optical, motor_ctrl, pi_cap, lever_sensor, can_tee, output_panel) -- each should be
+unchanged, since none of them reports a stray stitch today. The prototype is kept as
+scratchpad_postfill_repair.py so the next session adopts a DEMONSTRATED design rather than a
+described one.
