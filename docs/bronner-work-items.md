@@ -903,3 +903,34 @@ SO THE FIX IS A PLACEMENT/POUR CHANGE ON led_strip, not a longer stub: give the 
 the cluster (open a channel between the stacked passives, or move the cluster off y -0.33 to the
 y band where the other clusters' tracks sit and the pour demonstrably reaches). Pre-existing, not
 the swap's; the board has been through three layouts and deserves better than a guess.
+
+#### led_strip, FULLY DIAGNOSED: the stitcher's stub, 2 mm short, and the plane is ONE island
+
+Correcting my own note above: the stranded tracks at kicad y 100.33 are NOT elec/led_strip.py's
+declared cluster tracks (those land at y 93.50 and are all connected). They are the STITCHER's
+stubs -- "stitched 23 pad(s) on GND straight to the plane" -- which is why elec/layout.py's
+docstring owns them.
+
+THE POUR IS ONE ISLAND, 2089.23 mm2, x 30.80..169.20 y 88.30..111.70. No fragments. So my worry
+about joining two stranded islands was unfounded: ANY contact with it connects.
+
+Mapped along the stub's own line (# = pour, 0.25 mm per character):
+
+    cluster A  y=100.33  x 50..60   #########......................##########
+    cluster B  y=100.33  x 90..100  ##############....#..............########
+
+    A: stub (56.10,100.33)->(54.10,100.33); pour ends at x 52.25 -- 1.85 mm short in -x,
+       or 1.30 mm in -y (nearest point 53.99,99.03)
+    B: stub (96.60,100.33)->(94.60,100.33); pour ends at x 93.25, AND there is a one-sample
+       FINGER of pour at x 94.5 -- which is the 0.10 mm neighbour measured earlier
+
+⚠ SO A 2 mm LONGER STUB, ALONG ITS OWN LINE, REACHES THE MAIN PLANE AT BOTH: A would land at
+52.10 against pour from 52.25, B at 92.60 against pour from 93.25.
+
+THE FIX BELONGS IN THE STITCHER, NOT THIS BOARD. layout.py lays each stub a fixed length toward
+the plane; where the plane has been pushed back by local congestion the stub falls short and is
+left dangling BY DESIGN ("this is a placement problem. Report it, do not tidy it away"). A
+stitcher that measured the distance to the nearest plane point and either laid THAT length or
+skipped the stub entirely would fix this class on every board. NOT attempted here: layout.py is
+shared by every board in the fleet and a change there needs its own validation pass, not a
+2 a.m. edit at the end of a long session.
