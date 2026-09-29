@@ -458,6 +458,18 @@ working top-down would act on stale text. The state of each claim:
          ⚠ WHAT CLIPS IS THE FIRST LEG, NOT THE TRAVERSE. The long run is ALREADY outboard
          at x -607 (pi5 is -601.60..-586.00). The cable leaves the cap at x -591.5 and
          crosses the Pi's full 15.6 mm thickness to reach it. Fix that leg, not the run.
+         ⚠⚠ ITEM 4 IS BLOCKED ON ITEM 3, and that is why the re-route flailed instead of
+         converging. MEASURED: pi_cap spans x -600.00..-589.90 and pi5 spans -601.60..
+         -586.00, so THE CAP IS ENTIRELY INSIDE THE PI'S ENVELOPE -- the block includes the
+         GPIO header's volume and swallows the board that plugs into it. The cap's J3 pins
+         are at x -591.5, i.e. INSIDE pi5. Every conductor therefore STARTS inside the Pi
+         and must pass through it to reach anywhere, so there is no route that does not
+         clip, and no amount of waypoint work will find one. The 2.6 mm3 per conductor is
+         not a routing error; it is the envelope having no hole where the connector is.
+         FIX ITEM 3 FIRST: give pi5 real geometry (a laminate, the port faces, and the
+         GPIO/cap volume as its own body), then route against it. Any effort spent on the
+         cable before that is spent against a shape the Pi does not have.
+
          ⚠ ONE ATTEMPT MADE IT MUCH WORSE -- 109 -> 154, REVERTED. Going out to x -583,
          +Y alongside the Pi, then back -X above the motor board (z -19.05) did clear all
          six pi5 clips, and then added 51: the six conductors OVERLAPPED EACH OTHER in 15
