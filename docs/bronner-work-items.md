@@ -458,17 +458,29 @@ working top-down would act on stale text. The state of each claim:
          ⚠ WHAT CLIPS IS THE FIRST LEG, NOT THE TRAVERSE. The long run is ALREADY outboard
          at x -607 (pi5 is -601.60..-586.00). The cable leaves the cap at x -591.5 and
          crosses the Pi's full 15.6 mm thickness to reach it. Fix that leg, not the run.
-         ⚠⚠ ITEM 4 IS BLOCKED ON ITEM 3, and that is why the re-route flailed instead of
-         converging. MEASURED: pi_cap spans x -600.00..-589.90 and pi5 spans -601.60..
-         -586.00, so THE CAP IS ENTIRELY INSIDE THE PI'S ENVELOPE -- the block includes the
-         GPIO header's volume and swallows the board that plugs into it. The cap's J3 pins
-         are at x -591.5, i.e. INSIDE pi5. Every conductor therefore STARTS inside the Pi
-         and must pass through it to reach anywhere, so there is no route that does not
-         clip, and no amount of waypoint work will find one. The 2.6 mm3 per conductor is
-         not a routing error; it is the envelope having no hole where the connector is.
-         FIX ITEM 3 FIRST: give pi5 real geometry (a laminate, the port faces, and the
-         GPIO/cap volume as its own body), then route against it. Any effort spent on the
-         cable before that is spent against a shape the Pi does not have.
+         ⚠⚠ RETRACTED, 2026-09-29. I wrote here that item 4 was BLOCKED on item 3 because
+         "pi5 is a plain envelope block, 15.60 mm thick at every point, no ports modelled"
+         and "the cap is entirely inside the Pi's envelope". BOTH CLAIMS ARE FALSE, and I
+         reached them the same way I reached two other wrong numbers this session: I
+         sampled the Pi's thickness only 0.5..6.0 mm in from the +Y edge -- every sample
+         inside the USB block -- and read a uniform 15.60 as "featureless".
+         SAMPLED ACROSS THE WHOLE BOARD:
+              0..18 mm in from the +Y edge   15.60 = laminate + USB/Ethernet block
+             20..40 mm in                     1.60 = BARE LAMINATE
+             45 mm in                         4.10 = laminate + SoC
+         pi5() already builds exactly that -- _board(), a 50 x 18 x 14 USB/eth block at
+         y = PI_FP[3] - 9.0, and a 15 x 15 x 2.5 SoC. The ports ARE modelled, on the +Y
+         END, which is where a Pi 5's ports are.
+         AND THE CAP IS NOT INSIDE THE PI: at the cap's y the Pi is 1.60 thick spanning
+         x -601.60..-600.00 while pi_cap spans -600.00..-589.90. ADJACENT, sharing a face.
+         So item 4 was never blocked and its 2.6 mm3 per conductor is an ordinary routing
+         error, fixable on its own.
+         ⚠ ITEM 3 IS ALSO NARROWER THAN I SAID: the geometry is fine, the CABLE ENDPOINT is
+         wrong. The USB/eth block sits at world x -600..-586, y -64.18..-46.18, z -59..-9
+         with its ports facing +Y out of the board's END. wire_usb lands at x -575.0, which
+         is outboard of the whole Pi (xmax -586) -- approaching the component FACE from +X
+         instead of the PORT FACE from +Y. That is exactly what the user saw. Fix the
+         endpoint, not the model.
 
          ⚠ ONE ATTEMPT MADE IT MUCH WORSE -- 109 -> 154, REVERTED. Going out to x -583,
          +Y alongside the Pi, then back -X above the motor board (z -19.05) did clear all
