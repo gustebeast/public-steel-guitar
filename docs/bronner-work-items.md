@@ -2962,3 +2962,53 @@ test; containment was never true.**
 `keyhead_cradles()`, the Pi entry in `board_screws()`, `_board_gap_y`, `_PORT_APR`,
 `pi_port_pt` (still written as tray coords against a standing +Y end), every `pi_cap_pin`
 lead, and optical's `pi_column_x`/`usb_run_length`.
+
+### THE FLAT PI IS RENDERED AND GATED: pi5 COLLIDES WITH NOTHING, AND ASK #4 IS SOLVED
+
+User: "I'd like to see the board floating magically in its new location". Built exactly that
+-- no retention at all -- rendered it, and gated it. **122 against 112**, and the diff is the
+whole story:
+
+**GONE (13), and twelve of them are the user's ask #4:**
+
+        pi5       <-> wire_led_{gnd_a,gnd_b,sck,sdi,v5_a,v5_b}   x6
+        chassis_2 <-> wire_led_{the same six}                    x6
+        pi_cap    <-> top_plate_5                                223.9 mm3
+
+Ask #4 was "the wiring run for the 6 pin from the LED clips through the pi and the chassis,
+it should go +x of the pi". **All twelve clips are gone -- not reduced, gone** -- because the
+Pi is no longer in that cable's way. The one previous attempt at fixing it by re-routing cost
+109 -> 154 and was reverted; moving the board deleted the problem instead. `pi_cap` against
+the deck (the largest non-wire conflict in the old list) went with it.
+
+**`pi5` APPEARS IN ZERO COLLISIONS.** The position is now validated against the whole
+assembly, not just the probe box.
+
+**NEW (23), every one a stale cable waypoint:**
+
+        wire_led_* <-> wire_led_*    x15   <- C(6,2): all six collapsed onto ONE line
+        chassis_2  <-> wire_5v_*     x4
+        wire_5v_*  <-> motor_0       x4
+
+⚠ THE 15 IS A SIGNATURE, NOT A COINCIDENCE. Six conductors sharing identical waypoints give
+exactly 15 self-overlap pairs, and this doc already records that same count from the earlier
+LED re-route attempt. The ENDPOINTS moved correctly -- `pi_cap_pin` -> `_cap_place` is one
+transform and it carried them -- but the intermediate waypoints are still written for the old
+bay. Same for the 5 V pairs now crossing motor_0: the cap moved ~60 mm, the route did not.
+**The fix is the one already written down: per-conductor offsets like CAN_OFF/PWR_OFF.**
+
+**WHAT WAS REMOVED TO GET HERE, and why it is not a shortcut:**
+  * The Pi's tray cradle -- a `_frame` with a root into the 3 mm plate, columns and a FOOT
+    computed to reach the floor. All of that holds a board STANDING OFF a plate. The assert
+    caught it exactly: "the legs would drive into the floor", foot -25.85.
+  * The Pi's M4 -- it threaded into a boss on that frame. Drawing it would leave a fastener
+    with nothing behind it, the fault this project already named once ("a hole designed for
+    an M4 screw that isn't being used").
+  The flat Pi's retention is a NEW design -- a low collar standing up from the floor around
+  the 85 x 56 plus one M4 boss -- and it is stated as unbuilt rather than faked by flipping
+  the old frame's z, which is the "bolt a mapping on the end" the orientation rule forbids.
+
+⚠ RENDER CAVEAT WHILE LOOKING: `chassis_2` is CONTEXT, not live, and the cache was 228 min
+old, so the first render still showed the Pi's OLD cradle standing empty in the bay.
+Re-cached with `scratch_view.py --start`. The Pi, pi_cap, motor_ctrl and the harness are all
+in the live set and were current.
