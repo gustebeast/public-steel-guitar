@@ -278,7 +278,7 @@ amps. Zones set the current draw too.
 ⚠ **Zones come in THREES.** 24 × 4 = 96 channels is exactly 8 drivers with nothing wasted.
 A 25th zone costs a whole 9th driver, so the staircase is at multiples of 3 zones, not at 1.
 
-### ⚠ The $15 question this raises: integrated-driver LEDs
+### ⚠ The $15 question this raised, and why it is CLOSED
 
 The zone/LED split above is a property of the ARCHITECTURE, and there is another one where
 it does not hold. An addressable LED with its driver built in — `SK6812MINIRGBW-NW-P6`,
@@ -290,23 +290,52 @@ it does not hold. An addressable LED with its driver built in — `SK6812MINIRGB
 | drivers | $19.28 | — |
 | **total** | **$23.58** | **$8.52** |
 
-**About $15 an instrument, and it deletes 8 ICs and 96 driver traces from the board.** The
-catch is that every LED becomes its own zone, so cost and current then scale with LED
-COUNT, not zones — the 3-per-fret decision would cost real money and real amps again.
+**About $15 an instrument, and it deletes 8 ICs and 96 driver traces from the board** —
+which is why it was worth checking. Two things kill it: every LED becomes its own zone, so
+cost and current go back to scaling with LED count (3-per-fret starts costing real money and
+real amps again), and, decisively, the noise argument below does not hold up.
 
-**It was rejected before on NOISE and that is still the open question.** bronner ruled out
-SK6812 (1.2 kHz) and SK9822 (4.7 kHz) because their PWM envelope sits in the audio band and
-a magnetic pickup is built to hear exactly that; the TLC59711 was chosen for its ~19.5 kHz
-enhanced-spectrum PWM. This part lists **4 kHz**. What has changed is DISTANCE: the old
-strip ran **9.1 mm** from the pickup, and the nearest fret LED (fret 24) is **114.7 mm**
-away, or **74.6 mm** with the pickup slid fully toward the neck. On a 1/r³ loop coupling
-that is **550× weaker at worst case**.
+⚠⚠ **AND IT STAYS REJECTED. I GOT THE DISTANCE WRONG BY 5× AND THE ARGUMENT DOES NOT
+SURVIVE THE REAL NUMBER** (user caught it, 2026-09-29).
 
-⚠ **That is an argument for BENCHING it, not for assuming it.** bronner's own method note
-in the handoff says three clearance questions answered by derivation were all wrong, and
-their doc says the absolute dB figures are not quotable because nobody has measured the
-pickup's impedance and gain. $15 an instrument and a much simpler board is worth one bench
-test beside the real pickup.
+I claimed the nearest fret LED was 74.6 mm from the pickup and that the coupling was
+therefore **550×** weaker than the old strip's. **It is 14.08 mm and 3.7×.** Three separate
+errors, all in the reassuring direction:
+
+1. I measured to the pickup CAVITY's **+X** edge — its far side — instead of the pickup's
+   own −X face, the near one.
+2. I counted only the piece's 40.10 mm of slot travel and missed that **the pickup slides
+   another 6.75 mm −X inside its own cavity**. Neck-most, its −X face is at −131.28.
+3. I measured to the LED position rather than to the BOARD EDGE — and the aggressor in
+   bronner's analysis is the **supply loop**, which is board copper, not the die.
+
+And the number that sets it is not fret 24 at all. **The board cannot reach past `MID_X0`
+= −145.36, the mid panel's own +X edge**, so the nearest approach is fixed at
+**145.36 − 131.28 = 14.08 mm** by the deck, not by where we choose to put an LED.
+
+    board +X edge to pickup     14.08 mm    3.7x weaker than the old strip's 9.1
+    nearest LED (fret 24)       22.47 mm     15x weaker
+
+**3.7× is about 11 dB against the ~65 dB bronner's two fixes were worth. It is nothing.**
+So the SK6812 saving is off the table on the evidence available, the TLC59711's ~19.5 kHz
+enhanced-spectrum PWM keeps its reason, and **`docs/led-handoff-brenner.md` section 5 applies
+to this board very nearly in full.** I had written the opposite one commit ago.
+
+⚠ This is the second clearance in this project I have reported from a derivation instead of
+a measurement, and the second one that was wrong. bronner's method note says it plainly:
+put a box where the part would go and intersect it.
+
+### What that means for the layout
+
+The exposure is CONFIGURATION-DEPENDENT and one-ended, which is the one piece of good news:
+14 mm happens only with the pickup slid fully to the neck (as drawn it is ~61 mm), and only
+the mid board's **+X end** — frets 24, 23, 22 — is anywhere near it. So:
+
+* put the **buck converter and the bulk supply loop at the KEYHEAD end**, as far from the
+  pickup as the board is long;
+* treat the mid board's +X 40 mm as a noise-critical zone and keep its loop area minimal;
+* the 4-layer ground plane bronner measured at ~25× is still available, and their attempt
+  failed on the OLD board's routing, not on the idea.
 
 ## 5. What is NOT decided
 
