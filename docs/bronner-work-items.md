@@ -419,6 +419,41 @@ happened, and SOME OF IT WAS LATER DISPROVED BY MY OWN MEASUREMENTS. The wrong t
 deliberately -- what was tried and why it failed is the most reusable part -- but a reader
 working top-down would act on stale text. The state of each claim:
 
+    ⚠⚠⚠ THE LED STRIP RUNS 9.1 mm FROM THE MAGNETIC PICKUP, AND NOTHING FLAGS IT
+    (measured 2026-09-29, while answering the user's question about buck noise). This is a
+    LIVE DESIGN PROBLEM in the shipped layout, not a question about a proposed change.
+
+        led_strip_0 -> pickup   385.6 mm
+        led_strip_1             239.3 mm
+        led_strip_2              94.8 mm
+        led_strip_3               9.1 mm     <-- strip z -43.2..-19.2, pickup z -11.0
+
+    Section 3 carries ~0.54 A of PWM-ENVELOPED current (19.5 kHz segments, plus frame-rate
+    brightness changes, so the envelope is IN the audio band) in a supply loop whose area is
+    the board length by the V5/GND separation -- roughly 139 x 5 = 695 mm2. As a magnetic
+    dipole at 9.1 mm that is ~99,600 nT at the pickup.
+    ⚠ FOR SCALE: a 24->5 V BUCK's hot loop, the thing we were worried about, is 5 mm2 and
+    ~730 nT at the same distance. THE EXISTING SUPPLY LOOP IS 136x THE AGGRESSOR THE BUCK
+    WOULD BE. The buck question is second-order; this is first-order and already built.
+
+    TWO INDEPENDENT LEVERS, and they multiply (ratios are robust; the absolute nT are
+    order-of-magnitude, because converting field to induced volts needs the coupling
+    efficiency and the Alumitone's turns-area, and an Alumitone is a LOW-IMPEDANCE current
+    loop rather than a conventional high-impedance coil):
+        LEVER 1  V5 and GND as OVERLAPPING PLANES on the 4-layer section  ->  25x, FREE
+        LEVER 2  strip off the +Y rail and onto the chassis floor (user's
+                 suggestion; 9.1 -> ~37 mm is only 28 mm of travel)      ->  67x
+        BOTH                                                             -> 1680x, ~59 nT
+    At 59 nT the strip lands an ORDER OF MAGNITUDE BELOW what a buck would add at the old
+    distance -- i.e. do both and the buck question stops mattering.
+    ⚠ LEVER 2 CHANGES WHERE THE LIGHT GOES. The strip currently lives in a channel on the
+    +Y rail's inner face and lights the body from the side; on the floor it lights upward.
+    That is a lighting-design decision for the user, not a noise one. LEVER 1 IS FREE AND
+    SHOULD HAPPEN WHEREVER THE STRIP ENDS UP.
+    ⚠ MY FIRST ESTIMATE ASSUMED 150 mm AND WOULD HAVE BEEN WRONG BY ~4500x, reassuringly.
+    Coupling is 1/r^3; never estimate it against an assumed distance when the CAD holds the
+    real one.
+
     ⚠⚠ USER ASKS, 2026-09-29 -- FOUR, IN THE ORDER GIVEN. Two done, two open. Do not lose
     the open ones: they were given while I was mid-turn on something else, which is exactly
     how an ask gets dropped.
