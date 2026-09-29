@@ -1113,7 +1113,16 @@ def build_wires():
     # -- motor controller <-> Pi (purple): the USB lead the Pi writes travel offsets over --
     #    a stock USB-A -> XH lead now, off J4's top like every other lead on the board
     #    (the USB-C it replaced faced the -Y rail 5.5 mm away and could not be plugged in).
-    _lt, _lp = SP(*EL.mctrl_pt("J4")), SP(-585.0, 20.0, -58.0)
+    # ⚠ THE PI END WAS A HARDCODED y 20 AND THE PI IS NOT THERE ANY MORE (2026-09-29). It read
+    # SP(-585.0, 20.0, -58.0); pre-swap the Pi spanned y -50..35 so 20 was on the board, and
+    # after the swap it spans -135..-50 -- so this lead ended in OPEN AIR where the Pi used to
+    # be, and grazed the chassis on the way (chassis_2 <-> wire_link). A cable that does not
+    # reach its connector is worse than an overlap: the gate can see the overlap.
+    # Derived now, from the Pi's USB/ethernet block, which pi5() puts at PI_FP[3] - 9.0 -- so
+    # it follows the board instead of being falsified by it. That is the FIFTH constant this
+    # swap invalidated (root_d's 13 beads, MCTRL_HOLE, the 5 V leg, _FEED2_X, and this).
+    _lt = SP(*EL.mctrl_pt("J4"))
+    _lp = SP(-585.0, EL.PI_FP[3] - 9.0, -58.0)
     # ITS OWN COLUMN, 3 mm short of the bay column: J4 is on the board's -Y edge, at the very
     # y where bus B drops down the bay column to the floor corridor.
     # It crosses motor 0's Y band, so it takes the BAYFLY lane over the motor top
