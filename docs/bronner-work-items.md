@@ -532,6 +532,35 @@ working top-down would act on stale text. The state of each claim:
          stocked in depth, and made for exactly this joint. RE-SEARCH THE MEZZANINE FAMILY
          at 4 ways before concluding anything is unsourceable.
 
+      5c. SEARCHED (user: "can you search to see if there is a 6 way connector that wasn't
+         found last time? Also search for 4 way which have pins rated to handle the full
+         current"). ⚠ THE "NOT SOURCEABLE" CLAIM IS WRONG, and the reason is instructive.
+
+         HARWIN SAYS COPLANAR IS A SUPPORTED CONFIGURATION, in as many words: "in coplanar
+         configurations, both connectors are in a horizontal orientation, where connectors
+         mate edge-to-edge". M20 right-angle SOCKETS and right-angle HEADERS are the SAME
+         SERIES and are designed to mate; M20 is 2.54 mm, 1 and 2 row, and stocked at RS
+         and DigiKey in many way-counts including 6.
+         ⚠ WHY THE OLD SEARCH MISSED IT: it compared a male from one family against a
+         female from ANOTHER ("stocked RA male 2.5 mm insulation height" vs "stocked RA
+         female H8.5") and concluded the axes cannot line up. Within a MATCHED SERIES they
+         line up by design -- that is what a series is. The part was never missing; the
+         search was looking across families instead of within one.
+
+         4-WAY AT FULL CURRENT -- yes, but NOT on Harwin M20: its sockets are rated 2 A per
+         contact, short of the 2.2 A the strip draws at full white. The 2.54 mm families
+         that quote 3 A per contact are Amphenol DUBOX and BERGSTIK, and GCT BG043 (3 A,
+         right-angle board-to-board). 3 A carries 2.2 A with 36 % headroom, which collapses
+         the doubled rails: J_PINS becomes (V5, GND, SCK, SDI) -- FOUR ways, not six.
+         Mill-Max also offers "horizontal board-to-board connections using right angle and
+         Z-bend interconnects", boards "plugged in on a horizontal plane", but publishes no
+         current rating on that page.
+
+         NOT YET VERIFIED, and needed before this is a decision: (a) that Dubox/BergStik/
+         BG043 offer a COPLANAR-mating RA-socket + RA-header pair, not just right-angle
+         parts; (b) LCSC stock and C-numbers, since the BOM is LCSC-based; (c) the mated
+         height, which sets whether the two sections stay in one channel.
+
          STILL TO SOLVE, with the corrected constraint. The joint must be a CONNECTOR the
          assembly house reflows onto each board, mating board to board with no wire. The
          2.54 right-angle HEADER rejection stands (male 2.5 mm insulation height vs female
