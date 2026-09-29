@@ -3133,3 +3133,45 @@ standing Pi in a shared bay; both boards have moved. The known shape of the work
   * optical's `pi_column_x` still reasons about "the Pi's +X face + 3 cable diameters" with
     string 1's motor beside it -- it will keep RETURNING a number and silently route the
     optical board's USB run into the motor bank. Re-derive it, do not just re-run it.
+
+### ⚠⚠ THE OPTICAL BOARD HAS NO HOLES WHERE ITS OWN MOUNTING SCREWS GO THROUGH IT
+
+After the Pi and motor-board moves, the ONLY two structural conflicts left in the whole
+assembly are `optical_pcb <-> optical_screw_0` (20.11 mm3) and `_1` (20.38). Measured:
+
+        optical_pcb        z 12.20..20.80
+        optical_screw_0    z  1.80..16.00      head above the board, shank down
+        optical_insert_0   z  7.04..12.04      directly under the board's underside
+        intersection       4.0 x 4.0 mm, z 12.20..13.80
+
+**A 4.0 mm cylinder through exactly 1.6 mm of laminate, centred on the mount point.** That
+is an M4 shank passing through the board where the board has no hole.
+
+**THE SCREW IS RIGHT AND THE BOARD IS WRONG.** Head on top, shank through, into the insert
+seated immediately below -- the fastener is doing exactly what it should. `BG.holes("optical")`
+returns TEN holes, all at x -3.3045 with D 16.409: those are the SENSOR SLOTS.
+`OP.mount_points()` is `[(-20.46, 56.15), (20.46, -56.15)]` and **neither appears in the
+board's hole list at all**.
+
+⚠ SO THE FAB WOULD RECEIVE A BOARD WITH SOLID LAMINATE AT BOTH MOUNTING POINTS AND THE
+SCREWS COULD NOT BE FITTED. This is the inverse of a fault this project already named -- "a
+hole designed for an M4 screw that isn't being used" -- and it is the more dangerous
+direction, because the CAD renders a perfectly convincing assembly.
+
+**IT IS NOT A DECLARED CONTACT.** `tools/check_overlaps.py` allows
+`{optical_screw, optical_insert}` and `{optical_screw, bridge_endplate}` -- the neighbouring
+pairs were considered -- but NOT `{optical_screw, optical_pcb}`. The gate has been telling
+the truth the whole time.
+
+**AND THE HISTORY SAYS THIS EXACT FAULT HAS HAPPENED HERE BEFORE.** src/build.py, above the
+placement: *"The old optical M2 went up from below and did need [a flip]; copying that was
+what put this one through the board."* The flip was removed and the screw's ORIENTATION
+fixed; nobody then asked whether the board had a hole for it.
+
+**THE FIX IS IN elec/optical.py, NOT IN THE CAD.** Per the project rule the mounting plastic
+is pinned to the board shape "so they can't get out of sync" -- so the holes belong in the
+board and must flow out through board_geom, never be hand-cut into the CAD solid.
+⚠ COST: adding holes changes the outline, which invalidates ROUTE_REUSE_SES and makes this a
+FULL route. The board is at 0 unconnected / 0 undeclared violations with a lot of hard-won
+work behind it, so check whether copper sits at those two points before committing to it --
+that is what decides whether this is cheap or a re-layout.
