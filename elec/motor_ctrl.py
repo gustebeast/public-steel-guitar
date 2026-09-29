@@ -739,7 +739,20 @@ def motor_ctrl():
 # did not move relative to each other or to the -X end, only the origin did.
 # The 0.50 is the "touch back": J2/J6 now overhang the edge by that much, so the plug
 # face is the lowest thing on the board and no laminate reaches past it.
-BOARD_W, BOARD_L = 61.8, 62.0
+# ⚠ BOARD_L 62.0 -> 55.0 (2026-09-29): 7.00 mm OF BARE LAMINATE CAME OFF THE PI-FACING
+# EDGE so a plug can reach the Pi's USB ports. Measured on this file's own placements: the 82
+# parts occupied y -22.00..28.50, 50.50 of a 62.00 board, leaving 9.00 mm empty below the
+# lowest part (D6/D7, the USB ESD clamps) and 2.50 above the highest. _MCTRL_CY maps
+# board-local -31.00 to world y -41.50, which is the edge sitting 4.68 mm off the Pi's port
+# face -- so the empty 9 mm was exactly where the gap had to come from.
+# ALL 82 PLACEMENTS MOVED y -3.50 with it, which keeps every part where it was relative to
+# the +Y edge: new span -25.50..25.00 inside +-27.50, so 2.00 of edge clearance at -Y
+# (D6/D7) and 2.50 at +Y. Nothing was re-placed; the board was re-centred.
+# ⚠ src/electronics.py's _MCTRL_CY must go -10.5 -> -7.0 to match, or the board shrinks
+# from BOTH ends and the +Y edge walks into body_adapter_0 (inner face y 21.15, and the old
+# +Y edge at 20.50 had only 0.65 mm of slack). Route FIRST, then move the centre, so a
+# routing failure stays separable from a placement failure.
+BOARD_W, BOARD_L = 61.8, 55.0
 
 # THE MOUNTING EAR was added 2026-09-21 on the user's "having the screw adjacent ...
 # doesn't provide as strong of retention", and removed 2026-09-29 on their own report that
@@ -778,7 +791,7 @@ BOARD_NOTES = {
     # proven is disturbed as little as possible; the 5 V section lives entirely in
     # the strip the growth added.
     "placements": {
-        "J1": (0.60, -10.00, 90.0),
+        "J1": (0.60, -13.50, 90.0),
         # ⚠ J2 MOVED WHEN IT GREW 4-WAY -> 8-WAY (2026-09-22). At its old mid-board site the
         # 17.9 mm body overlapped J1's courtyard and put a PTH pad inside it. This site is
         # elec/sitesearch.py's top-ranked of 672 legal ones, which is the tool that exists
@@ -816,14 +829,14 @@ BOARD_NOTES = {
         # than assumed. (At 20.90 on the +X edge they overhung the board by 3.98 mm --
         # that placement was written against a 54 mm outline that the re-export corrected
         # to 46, and nothing recomputed it.)
-        "J2": (24.92, -8.00, 90.0),
-        "J6": (24.92, 8.00, 90.0),
-        "J3": (11.60, 15.00, 180.0),
+        "J2": (24.92, -11.50, 90.0),
+        "J6": (24.92, 4.50, 90.0),
+        "J3": (11.60, 11.50, 180.0),
         # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
-        "TP1": (15.95, -10.10, 90.0),
-        "TP2": (18.70, 2.40, 90.0),
-        "TP3": (6.20, -10.85, 90.0),
-        "TP4": (18.70, 5.40, 90.0),
+        "TP1": (15.95, -13.60, 90.0),
+        "TP2": (18.70, -1.10, 90.0),
+        "TP3": (6.20, -14.35, 90.0),
+        "TP4": (18.70, 1.90, 90.0),
         # ⚠ J2/J6 IN BY 1.10, AND TP5/C15 OUT OF THEIR WAY -- three shorts, three mask
         # bridges and four edge-clearance errors, all pre-existing and all hidden behind a
         # motor_ctrl-drc.rpt dated 2026-09-20 that predates three reworks of this board.
@@ -834,37 +847,37 @@ BOARD_NOTES = {
         # TP5 is a bare SWD pad and C15 is MCU bulk, so neither is pinned to a pin the way
         # an HF bypass is; both move to the nearest site that clears every neighbour by the
         # 0.30 rule.
-        "TP5": (24.45, -16.60, 90.0),
+        "TP5": (24.45, -20.10, 90.0),
         # ⚠ J4 IS OFF THE -Y EDGE NOW: that edge belongs to the bus-B pair alone (see J2).
         # It keeps its top-entry XH and its mating direction -- world +X once standing --
         # so the USB lead still leaves toward the bay; only its seat moved.
-        "J4": (-25.90, -13.00, 90.0),
-        "U4": (12.60, -4.00, 90.0),
-        "U2": (8.10, 6.30, 90.0),
-        "U3": (14.60, 6.30, 90.0),
-        "U1": (6.60, -16.00, 90.0),
-        "L1": (11.10, -16.00, 90.0),
-        "D1": (14.60, -16.00, 90.0),
-        "C1": (18.10, -16.50, 90.0),
+        "J4": (-25.90, -16.50, 90.0),
+        "U4": (12.60, -7.50, 90.0),
+        "U2": (8.10, 2.80, 90.0),
+        "U3": (14.60, 2.80, 90.0),
+        "U1": (6.60, -19.50, 90.0),
+        "L1": (11.10, -19.50, 90.0),
+        "D1": (14.60, -19.50, 90.0),
+        "C1": (18.10, -20.00, 90.0),
         # ⚠ C23 SITS AS CLOSE TO U1's VIN PIN AS A COURTYARD ALLOWS, and that is the
         # whole specification. Vertical so it clears U1 (right edge -13.905) and TP3
         # (left edge -12.145); its pads land 1.73 mm from the VIN pad, against C1's
         # 11.50 mm through two vias.
-        "C23": (6.60, -13.20, 180.0),
-        "C2": (21.10, -16.00, 90.0),
-        "C3": (18.10, -12.50, 90.0),
-        "R1": (16.10, -12.50, 90.0),
-        "R2": (19.65, -12.50, 90.0),
-        "C6": (12.60, -11.00, 90.0),
-        "R7": (14.10, -11.00, 90.0),
-        "C7": (9.60, -11.00, 90.0),
-        "C8": (8.10, -11.00, 90.0),
-        "C9": (6.10, -8.60, 90.0),
-        "C10": (6.10, -6.60, 90.0),
-        "C11": (6.10, -4.60, 90.0),
-        "C12": (6.10, -2.60, 90.0),
-        "C13": (6.10, -0.60, 90.0),
-        "C14": (6.10, 1.40, 90.0),
+        "C23": (6.60, -16.70, 180.0),
+        "C2": (21.10, -19.50, 90.0),
+        "C3": (18.10, -16.00, 90.0),
+        "R1": (16.10, -16.00, 90.0),
+        "R2": (19.65, -16.00, 90.0),
+        "C6": (12.60, -14.50, 90.0),
+        "R7": (14.10, -14.50, 90.0),
+        "C7": (9.60, -14.50, 90.0),
+        "C8": (8.10, -14.50, 90.0),
+        "C9": (6.10, -12.10, 90.0),
+        "C10": (6.10, -10.10, 90.0),
+        "C11": (6.10, -8.10, 90.0),
+        "C12": (6.10, -6.10, 90.0),
+        "C13": (6.10, -4.10, 90.0),
+        "C14": (6.10, -2.10, 90.0),
         # ⚠ ABOVE U4, BECAUSE THE CORRIDOR BESIDE IT IS 3.46 mm AND THE CRYSTAL IS 3.58.
         # Y1 sat at x 19.60 between U4's courtyard (right edge 17.25) and J2's body
         # (left edge 20.71) and overlapped J2 by 0.69 -- and there is no x that clears
@@ -878,18 +891,18 @@ BOARD_NOTES = {
         # J6: the +X edge is full. So the crystal moves instead, to free board directly
         # WEST of U4 -- still a short hop to the oscillator pins. ⚠ IF OSC_IN/OSC_OUT
         # COME BACK UNCONNECTED, THIS IS WHY (it happened once before, see the J4 note).
-        "Y1": (3.35, -0.75, 90.0),
-        "C4": (19.60, -8.00, 90.0),
-        "C5": (19.60, 0.00, 90.0),
-        "C15": (28.60, -16.75, 90.0),
-        "R3": (8.10, 11.20, 90.0),
-        "R4": (14.60, 11.20, 90.0),
-        "R5": (-0.40, 16.50, 90.0),
-        "JP1": (20.60, 16.50, 90.0),
-        "D2": (2.10, 12.30, 90.0),
-        "D3": (2.10, 15.30, 90.0),
-        "D4": (19.60, 10.00, 90.0),
-        "D5": (19.60, 13.00, 90.0),
+        "Y1": (3.35, -4.25, 90.0),
+        "C4": (19.60, -11.50, 90.0),
+        "C5": (19.60, -3.50, 90.0),
+        "C15": (28.60, -20.25, 90.0),
+        "R3": (8.10, 7.70, 90.0),
+        "R4": (14.60, 7.70, 90.0),
+        "R5": (-0.40, 13.00, 90.0),
+        "JP1": (20.60, 13.00, 90.0),
+        "D2": (2.10, 8.80, 90.0),
+        "D3": (2.10, 11.80, 90.0),
+        "D4": (19.60, 6.50, 90.0),
+        "D5": (19.60, 9.50, 90.0),
         # ⚠ BESIDE J4, THE USB CONNECTOR THEY CLAMP. They sat at x 27.60, which is
         # 53 mm from it and INSIDE J2's courtyard -- J2 is side entry, so its body lies
         # on the board across x 20.71..31.00 and these were underneath it. The comment
@@ -897,31 +910,31 @@ BOARD_NOTES = {
         # they are for: an ESD clamp 53 mm downstream of the connector protects the
         # board from nothing, because the transient is already past it. Both faults have
         # the same fix, so the courtyard error was the one that made the other visible.
-        "D6": (-27.00, -22.00, 90.0),
-        "D7": (-24.00, -22.00, 90.0),
-        "C19": (-5.90, -17.00, 90.0),
-        "C20": (-5.90, -13.00, 90.0),
-        "R10": (-5.90, -9.00, 90.0),
-        "R11": (-5.90, -5.00, 90.0),
-        "R12": (-5.90, -1.00, 90.0),
-        "R13": (-5.90, 3.00, 90.0),
-        "F1": (-9.90, -18.00, 90.0),
-        "C16": (-9.90, -12.00, 90.0),
-        "C17": (-9.90, -6.00, 90.0),
+        "D6": (-27.00, -25.50, 90.0),
+        "D7": (-24.00, -25.50, 90.0),
+        "C19": (-5.90, -20.50, 90.0),
+        "C20": (-5.90, -16.50, 90.0),
+        "R10": (-5.90, -12.50, 90.0),
+        "R11": (-5.90, -8.50, 90.0),
+        "R12": (-5.90, -4.50, 90.0),
+        "R13": (-5.90, -0.50, 90.0),
+        "F1": (-9.90, -21.50, 90.0),
+        "C16": (-9.90, -15.50, 90.0),
+        "C17": (-9.90, -9.50, 90.0),
         # ⚠ C18 WAS 18.08 mm FROM THE PIN IT EXISTS TO BYPASS -- the FARTHEST of the
         # three caps on +24V_BUCK, behind the 10 uF bulk at 8.93 and C17 at 13.26. Its
         # own description says "nearest VIN/GND". Nothing checks that a placement honours
         # what a part is FOR, so it drifted and read as decoupling that was present.
         # Now north of U5's VIN pad (-18.475, 20.405), clear of the courtyard's y 21.25.
-        "C18": (-18.80, -18.48, 90.0),
-        "D8": (-9.90, 5.00, 90.0),
-        "F2": (-9.90, 13.00, 90.0),
-        "U5": (-15.40, -16.00, 90.0),
-        "L2": (-15.40, -7.00, 90.0),
-        "D9": (-15.40, 2.00, 90.0),
-        "C21": (-15.40, 9.00, 90.0),
-        "C22": (-15.40, 13.50, 90.0),
-        "J5": (-22.90, 0.90, 90.0),
+        "C18": (-18.80, -21.98, 90.0),
+        "D8": (-9.90, 1.50, 90.0),
+        "F2": (-9.90, 9.50, 90.0),
+        "U5": (-15.40, -19.50, 90.0),
+        "L2": (-15.40, -10.50, 90.0),
+        "D9": (-15.40, -1.50, 90.0),
+        "C21": (-15.40, 5.50, 90.0),
+        "C22": (-15.40, 10.00, 90.0),
+        "J5": (-22.90, -2.60, 90.0),
         # â”€â”€ the LED strip's buck â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         # âš  TWO ROWS, AND THE LAND SIZES ARE WHY. Measured off the routed board rather
         # than assumed from the body: L3 (Bourns SRN6028) lands 6.92 x 8.11 and U6's
@@ -935,28 +948,28 @@ BOARD_NOTES = {
         # âš  HOT LOOP FIRST: C24/C25 sit against U6's VIN and SW runs straight into L3.
         # That loop is what radiates, and this board shares an instrument with a magnetic
         # pickup.
-        "F3": (-27.00, 23.20, 0.0),
-        "C24": (-21.93, 23.20, 0.0),
-        "C25": (-16.85, 23.20, 0.0),
-        "U6": (-10.36, 23.20, 0.0),
-        "L3": (-2.87, 23.20, 0.0),
-        "F4": (3.20, 23.20, 0.0),
-        "D10": (9.62, 23.20, 0.0),
-        "J7": (24.21, 23.20, 0.0),
+        "F3": (-27.00, 19.70, 0.0),
+        "C24": (-21.93, 19.70, 0.0),
+        "C25": (-16.85, 19.70, 0.0),
+        "U6": (-10.36, 19.70, 0.0),
+        "L3": (-2.87, 19.70, 0.0),
+        "F4": (3.20, 19.70, 0.0),
+        "D10": (9.62, 19.70, 0.0),
+        "J7": (24.21, 19.70, 0.0),
         # row B: the passives, above row A. U6 and L3 are ~7-8 mm tall in Y and fill
         # row A by themselves, so nothing else fits beside them.
-        "C26": (-14.00, 28.50, 0.0),
-        "R16": (-11.00, 28.50, 0.0),
-        "R17": (-8.50, 28.50, 0.0),
-        "R14": (-6.00, 28.50, 0.0),
-        "R15": (-3.50, 28.50, 0.0),
-        "C27": (-1.00, 28.50, 0.0),
-        "C28": (1.50, 28.50, 0.0),
-        "C29": (4.50, 28.50, 0.0),
-        "C30": (8.10, 28.50, 0.0),
+        "C26": (-14.00, 25.00, 0.0),
+        "R16": (-11.00, 25.00, 0.0),
+        "R17": (-8.50, 25.00, 0.0),
+        "R14": (-6.00, 25.00, 0.0),
+        "R15": (-3.50, 25.00, 0.0),
+        "C27": (-1.00, 25.00, 0.0),
+        "C28": (1.50, 25.00, 0.0),
+        "C29": (4.50, 25.00, 0.0),
+        "C30": (8.10, 25.00, 0.0),
         # ⚠ 3.2 mm PITCH, NOT 3.0. At 3.0 the output bulk caps left 0.100 mm between
         # adjacent pads against a 0.127 rule -- 0.027 short, and DRC is right to say so.
-        "C31": (11.70, 28.50, 0.0),
+        "C31": (11.70, 25.00, 0.0),
     },
     "refs_on_fab": True,
     # THE GROUND PLANE is why this is four layers, same as the lever board: the
