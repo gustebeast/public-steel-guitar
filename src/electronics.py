@@ -82,7 +82,7 @@ MCTRL_POST_H = 1.7                     # user, 2026-09-25 -- 3.2 - 1.5
 # the hole it goes in to drift apart.
 CRADLE_CLR = 0.3
 BD_T = 1.6
-PI_FP     = (-603.0, -547.0, -50.0, 35.0)     # Pi 5: 56 x 85 (long side on Y);
+PI_FP     = (-603.0, -547.0, -135.0, -50.0)   # Pi 5: 56 x 85 (long side on Y);
                                        # slid 19 SOUTH (FLUSH round): the wired
                                        # leg's jack chimney + cable drop own the
                                        # tray's west-north corner (x > -603 must
@@ -155,7 +155,22 @@ MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outlin
 # -82.0 puts the plug bodies at -80.0..-68.0 and -96.0..-84.0, so the nearer one clears
 # y -98 by 2.0 mm with the 1.6 bead clearance inside that. Measure the BODY against the
 # obstacle, never the centre.
-_MCTRL_CX, _MCTRL_CY = -563.40, -82.0
+# ⚠ THE TWO BOARDS SWAPPED ENDS ALONG Y (user, 2026-09-28, with a diagram). The motor
+# controller was at the -Y end and the Pi at +Y; they are the other way round now. The reason
+# that decided it is not comfort, it is the BODY ADAPTER: this board's cradle walls run down
+# INSIDE the floor slab -- they have to, because the board's own bottom edge sits at the floor
+# so its two bus-B plugs can enter it -- and at y -82 that put 170.65 mm3 of wall through
+# body_adapter_3 at z -80.85..-73.82, which was handed to brenner as an unfixable-from-here
+# conflict. The Pi has no such structure below the floor top: its foot rib stops at
+# FLOOR_TOP + a bead (z -72.15), which is 1.67 mm ABOVE the top of that conflict zone. So
+# putting the Pi at the -Y end retires the handover instead of relocating it.
+#
+# THE Y BUDGET IS EXACT AND THE BOSS IS WHAT SETS IT. Band -113..42.1, Pi 85 long, motor 62,
+# and the Pi's M4 stands BESIDE its +Y edge (pcb_hold_xy "+y") reaching 7.1 mm past the board.
+# So: Pi -113..-28, 8.1 of gap for that boss, motor -19.9..42.1. Moving the boss to the -Y
+# edge instead would buy the gap back but would push a column out to y -120.1, into chassis
+# that has never been asked to be there. Spend the gap, not the unknown.
+_MCTRL_CX, _MCTRL_CY = -563.40, -11.0
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 

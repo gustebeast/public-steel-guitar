@@ -368,3 +368,46 @@ Keep the ring, lip, wall, lean and M4 boss exactly as they are — only the root
 * **`audit_board`** — now checks EVERY segment of a repair polyline (it checked only the
   first, and found 1 problem where there were 5) and separates a rule violation from
   "tight but legal".
+
+## The Pi/motor Y swap is APPLIED BUT NOT CLEAN (2026-09-28)
+
+The user asked for the two boards to swap ends along Y, with a diagram. Applied in
+src/electronics.py: PI_FP y -113..-28, _MCTRL_CY 11.1 (motor -19.9..42.1). The Y budget is
+exact and has NO slack -- Pi 85 + 8.1 for the Pi's M4 boss (it stands BESIDE the +Y edge,
+reaching 7.1 past the board) + motor 62 = 155.1 in a band of exactly 155.1.
+
+WHAT THE SWAP WAS SUPPOSED TO BUY, AND DID NOT. The claim was that it retires the
+chassis_2 <-> body_adapter_3 handover, because the motor cradle's walls run down INSIDE the
+floor slab (they must: the board's bottom edge sits at the floor so its two bus-B plugs can
+enter it) while the Pi's foot rib stops at FLOOR_TOP + a bead, z -72.15, clear of the
+z -80.85..-73.82 conflict zone. The Pi end is indeed clean now. But THERE IS A BODY ADAPTER AT
+BOTH CORNERS, and nobody checked what the motor board would meet at +Y:
+
+    before   chassis_2 <-> body_adapter_3   170.65 mm3   + motor_ctrl <-> adapter_3   0.9 mm3
+    after    chassis_2 <-> body_adapter_0   157.6  mm3   + motor_ctrl <-> adapter_0 158.3 mm3
+
+⚠ THIS IS WORSE, NOT LATERAL. Before, the conflict was almost entirely MY PLASTIC (170.65 of
+wall vs a 0.9 board graze) -- trimmable in principle. After, the two numbers are equal, which
+means THE BOARD ITSELF is ~158 mm3 inside body_adapter_0. A board buried in a printed part is
+not a handover; no amount of trimming the adapter fixes a part that has to occupy that space.
+And Y cannot absorb it: the budget above is full to the millimetre. The fix has to come from
+X, from Z, or from the adapter -- NOT from sliding the board along Y again.
+
+THE HARNESS FOLLOWED THE ENDPOINTS BUT NOT THE ROUTE. 13 of the 15 new gate pairs are wires.
+The endpoints are derived (EL.mctrl_pt("J5"), EL.pi_cap_pin("J2", n)) so they moved correctly;
+what broke is the WAYPOINTS. wire_5v_* runs motor J5 -> pi_cap J2, and with those connectors
+now at opposite ends the straight mid-run crosses the boards. Same for the six wire_led_*
+through pi5, and wire_pwr_*/wire_canb* through chassis_2.
+
+    check_overlaps --only chassis,keyhead_endplate,pi5,motor_ctrl   0 unintended
+    check_overlaps + body_adapter                                   2 unintended (the pair above)
+    check_overlaps (full)                                         128 vs 113 before = 15 new
+    check_ceilings --only chassis_2         worst 0.80 mm, a ledge (unchanged by the swap)
+    check_sweep                             green, 20 rotating parts
+
+⚠ METHOD NOTE, THIS COST TIME TWICE. `py -3.12 tools/x.py | tail -N` into a background file
+leaves ONLY N lines in the artefact, and grepping that truncated file for the pairs I had
+moved found NOTHING -- which reads exactly like success. Keep the WHOLE output and tail it at
+read time. (Same family as the pipefail lesson: verify the artefact, not the log.) Also:
+check_overlaps has no --verbose, and src/build.PARTS maps name -> (function, str, str), so the
+solids must be built by CALLING PARTS[name][0], not read off the tuple.
