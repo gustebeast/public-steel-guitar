@@ -2853,3 +2853,34 @@ re-derived, not just re-run.
   4. Cradle, screw, foot.
   5. wiring.py leads, then optical's `pi_column_x`/`usb_run_length`.
 Gate at 2, 4 and 5. Do NOT pay down the current +3 first -- step 2 may delete it.
+
+### ✅ THE FLAT POSE IS AGREED, FROM THE USER'S OWN TWO DRAWINGS (2026-09-29)
+
+The user drew the footprint on a plan view of the chassis floor, then drew the BOARD in that
+orientation, and said "with the I/O facing +x". Both drawings check out against the model:
+
+        drawing              measured ratio/size        pi5() builds
+        board outline        627 x 410 px = 1.53        85 / 56 = 1.52      long side on X ✓
+        I/O block, +X end    134 x 370 px = 18.2 x 50.5 box_at(50.0, 18.0, 14.0) ✓
+        centre square        111 px = 15.0 mm           15 x 15 SoC ✓
+
+**SO THE POSE IS: 85 along X, 56 along Y, 15.6 up in Z, ports on the +X END.** That is the
+same solid pi5() already makes -- nothing about the Pi model changes, only the frame it is
+authored in.
+
+**THE PORTS FACING +X IS BETTER THAN ANYTHING THE STANDING POSE OFFERED.** They look down the
+instrument into open floor instead of into the keyhead endplate, there is ~100 mm clear in
+front of them, and the optical board -- the thing wire_usb actually comes from -- is in that
+direction. Ask #3 stops being a 4.68 mm squeeze and becomes an ordinary cable run.
+
+**THE USER'S BOX vs MINE, reconciled by pixel scale on the plan view:**
+
+        user (scaled)   x about -598..-499   y about -124..-56
+        measured clean  x -596.00..-511.00   y -130.00..-74.00   0.00 mm3
+
+Same place. Theirs reads ~68 mm in Y against the Pi's real 56 and ~99 in X against 85, which
+is a hand-drawn box rather than a disagreement -- the measured 85 x 56 sits inside it. **Use
+the MEASURED rectangle**, since it is the one with a zero-collision proof behind it.
+⚠ STILL OUTSTANDING BEFORE STEP 2: whether the floor SUPPORTS that footprint. A collision
+test cannot see a hole, and the -X/-Y leg's body adapter reaches x -592.46, inside the box's
+span, with memory recording "no chassis floor over a leg (it is the leg's joinery)".
