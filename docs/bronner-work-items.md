@@ -93,13 +93,38 @@ already passes through — its Z reaches **−83.9, below the floor at −78**.
   *hard* one over solid floor. **Swap them and both get simpler**, but every harness length,
   the `mctrl_floor_ports` cut, and pi_cap's J2/J3/J4 cable runs move with them.
 
-### ⚠ Scope
+### The frame maths, which changes the design (2026-09-28)
 
-This is chassis structure. The lead has already proposed moving the LED mount to branner on the
-grounds that chassis geometry is theirs, and this is a larger change of the same kind — plus it
-moves parts that `keyhead_endplate` currently owns. **Flagging rather than building it
-unilaterally at the end of a long session**; the measurements above are the useful half and
-they hold regardless of who implements.
+`stand_pt` gives `world_z = TRAY_Z0 + STAND_DZ - (local_x - TRAY_X0)`, so **local +x runs
+downward in world** and the cradle columns' `RIB_LZ` is a *local z*, i.e. they cantilever
+**horizontally** off the endplate face (world x -631.3). That is exactly why the boards cannot
+outlive the plate.
+
+Converting the chassis floor into the cradle frame: **world z -72 = local x -537.00**.
+
+| | local x span | world z span | relation to the floor |
+|---|---|---|---|
+| `PI_FP` | -603.00 … **-547.00** | -6.0 … -62.0 | bottom edge **10 mm above** the slab |
+| `MCTRL_FP` | -598.65 … **-528.15** | -10.4 … -80.9 | **crosses** it, 8.9 mm below the top |
+
+**So the two boards want different mounts, and neither is what I first assumed:**
+
+1. **The motor board needs no posts at all.** It already passes through the floor plane, so a
+   **slot in the floor** holds it — the chassis becomes the mount directly, which is stronger
+   than any cantilever and costs only a cut.
+2. **The Pi needs 10 mm of post**, floor to its bottom edge. Short and straightforward.
+3. **⚠ THE ±Y SWAP IS NOT A SWAP.** The Pi is **85 mm** in Y (-50…35) and the motor **62 mm**
+   (-113…-51). They cannot exchange bands — the boundary between them has to move, which drags
+   every harness length, `mctrl_floor_ports`, and pi_cap's J2/J3/J4 runs with it. Worth doing
+   only if something else forces it; the floor-slot finding above removes the reason that
+   prompted it, because the motor board no longer needs the easy band.
+
+### Next increment
+
+Cut the motor board's floor slot and add the Pi's 10 mm posts into chassis_2, then stop
+`keyhead_endplate` fusing `keyhead_cradles` and let the boards stand on the chassis. The
+cradles' board-capturing geometry (walls, lip, M4 boss) is good and should be kept as-is —
+only the column ROOT changes.
 
 ## 6. Handed to chassis scope (branner), not mine
 
