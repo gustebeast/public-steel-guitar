@@ -1147,3 +1147,39 @@ the helper every cable on that board reads.
 
 STATUS: the 3.20 mm stays in check_cable_ends as a KNOWN, EXPLAINED advisory. It is not a
 stranded lead -- the ones that mattered (wire_link ~80 mm, wire_usb 8.10 mm) are fixed.
+
+### led_strip's post-fill repair, SPECIFIED by prototype -- three refinements, all measured
+
+Prototyped OUTSIDE the pipeline (scratchpad/postfill.py, on a copy) so layout.py stayed
+untouched. Three attempts, each corrected by what it measured:
+
+  1. REPAIR THE STRAY VIAS.  Found ZERO. The stitch via that lands off-plane DOES NOT SURVIVE
+     to the saved board: tidy_router_vias deletes it as dangling ("tidied 23 router via(s) --
+     dangling GND" in the log). So _check_stitches_landed reports three strays mid-run and the
+     final file has no vias to find. ⚠ This "passed" while the board still read 1 unconnected --
+     a clean result arriving too cheaply, again.
+     AND IT MOVES THE INSERTION POINT: a repair must run AFTER tidy_router_vias, not merely
+     after the fill, which is what I recorded last tick.
+
+  2. REPAIR THE ORPHANED STUBS.  Also ZERO, and for a better reason: the 2.0 mm stub touches
+     other GND copper at BOTH ends (measured earlier: "touch 2/1"). It is not orphaned in
+     isolation -- the whole CLUSTER is. The passives' pads and their joining tracks are
+     internally connected and collectively isolated from the pour.
+
+  3. SO IT IS A CONNECTED-COMPONENT PROBLEM, not a geometric one. No per-item test can see it,
+     which is precisely why KiCad's DRC reports it and four hand-written probes did not. The
+     repair must ask the CONNECTIVITY which GND items share a component with the zone, take the
+     components that do not, and extend ONE member of each toward the pour (1.30 mm away, and
+     the pour is ONE 2089 mm2 island so any contact connects).
+
+THE SPEC, then, for whoever takes it:
+    * run after tidy_router_vias, after the fill
+    * use board connectivity (or parse kicad-cli's DRC json, which already names the item) to
+      find same-net components disjoint from the zone
+    * extend one member per component toward the nearest filled plane point, OVERSHOOTING by a
+      track width -- landing on the fill's edge is a touch, and connectivity wants overlap
+    * refill, re-check, bounded to one iteration
+    * validate on all seven boards: led_strip 1 -> 0 expected, everything else unchanged
+
+NOT LANDED IN layout.py. The prototype never reached a working repair, so there is nothing to
+adopt yet -- but the three dead ends above are the expensive part and they are now paid for.
