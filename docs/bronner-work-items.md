@@ -490,18 +490,37 @@ working top-down would act on stale text. The state of each claim:
          coplanar boards, and card-edge sockets take a card vertically". That rules out
          2.54 right-angle HEADERS. It does not rule out a soldered board-to-board joint.
 
-         PROPOSED, and it fits the project's own rules: CASTELLATED EDGES, boards butted
-         and soldered across the seam. The standing rule is "solder only on PCBs" and both
-         sides here ARE PCBs, so this is the one joint style the rule positively allows.
+         ⚠⚠ I PROPOSED CASTELLATED EDGES, BUTTED AND SOLDERED ACROSS THE SEAM, AND IT IS
+         RULED OUT. I argued the standing rule "solder only on PCBs" positively allowed it
+         because both sides are PCBs. The user corrected the rule twice in one turn:
+         "can you rewrite this rule to say no hand soldering, only PCBA soldering?" and
+         then, when I still had it half right, "the rule does not allow hand soldering on
+         a PCB". So: NO HAND SOLDERING ANYWHERE. Only what the assembly house reflows.
+         A seam soldered during instrument assembly is hand soldering whatever it joins --
+         the fact that both sides are PCBs is irrelevant. Built, then reverted (the
+         footprint too); the memory rule is rewritten.
+         ⚠ THE LESSON: I read a permissive clause in a rule as licence for the case it did
+         not cover, and the wording let me. When a rule seems to permit exactly the thing
+         that is otherwise hard, check the rule rather than bank the permission.
+
+         STILL TO SOLVE, with the corrected constraint. The joint must be a CONNECTOR the
+         assembly house reflows onto each board, mating board to board with no wire. The
+         2.54 right-angle HEADER rejection stands (male 2.5 mm insulation height vs female
+         H8.5 -- contact axes that cannot line up coplanar). Candidates not yet costed:
+           * a MEZZANINE pair with the sections OVERLAPPING rather than butting -- male
+             reflowed on section k's top, female on k+1's underside. Both are PCBA parts,
+             the joint is a plug, and the overlap can be as short as the connector. It puts
+             a board-thickness step in the strip, which the channel may or may not take.
+           * ONE board for the whole 580 mm run, which deletes the problem outright. The
+             only reason for sections is panel sharing with the tee and sensor boards, so
+             this is a panel-cost question, not an electrical one -- worth pricing before
+             designing around it.
          It removes the junction gap AND the end courtyard, so the end LEDs can move out
          and the seam can fall mid-pitch: 6.75 + ~0.5 + 6.75 = 14.0, one pitch, uniform.
          Cost: the sections stop being separable by hand (18 solder joints over 3 seams).
-         That is acceptable only if sectioning exists for FAB PANEL SIZE rather than for
-         service -- and it does. CHECKED: led_strip.py's WHY SECTIONS note says "Four
-         identical 145 mm boards make the 580 mm run, each small enough to share the panel
-         with the tee and sensor boards (user)". Panel economics, not serviceability. The
-         sections never needed to come apart by hand, so soldering the seams costs nothing
-         that was being bought. DECISION: build the castellated joint.
+         (The sectioning rationale still holds and is useful for whatever replaces it:
+         led_strip.py's WHY SECTIONS note says the boards exist so each "can share the
+         panel with the tee and sensor boards" -- panel economics, not serviceability.)
 
     LIVE, and the numbers reproduce:
       * ⚠ SOLVED: motor_ctrl's M4 was buried in the PI's CRADLE, not its own. Its boss
