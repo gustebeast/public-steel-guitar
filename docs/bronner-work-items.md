@@ -450,6 +450,17 @@ working top-down would act on stale text. The state of each claim:
         run to the KNEE LEVERS out of J2. Now J6. Nothing could catch this:
         check_cable_ends asks whether an end reaches its PART, and J2 and J6 are the same
         part -- the same blind spot as the two disconnected USB leads, one level finer.
+      * ⚠ NEXT TICK, FIRST ITEM: WIRE_OK declares wire_canbh/canbl as touching
+        {motor_ctrl, tee_pcb}, and BUS B HAS NO TEES AT ALL -- that is the header comment
+        four lines above it. The true far end is the LKL lever board (kl_pcb), which the
+        trunk deliberately stops a few mm short of (a chassis follow-up, see _KNEE_B).
+        So the destination end is declared against a part that is not on the path and
+        NOT declared against the one that is. check_cable_ends still passes because it
+        only flags a cable far from EVERY declared part and the motor_ctrl end is right
+        -- a cable can be half wrong and read clean. WIRE_OK is ALSO the overlap gate's
+        allow-list ("everything else a wire grazes is a routing bug"), so correcting it
+        may surface grazes that tee_pcb has been absorbing. Do it on its own, with its
+        own gate run, NOT folded into another change.
       * STILL OPEN: bus B's PEDAL half (J2, leg -> controller) is not drawn at all. It
         lands at the TRRS adapter station, which is PARKED pending the respin; when that
         un-parks, its cable starts at EL.mctrl_pt("J2").
