@@ -643,6 +643,23 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     cr = cr.cut(_cyl_col(phx, phy, M4_BUTTON_HEAD_D + 2 * CLR, POST_H, POST_H + 20.0))
     cr = _cut_anchor(_M4, cr, (phx, phy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
     pi = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
+    # ⚠ THE MOTOR'S M4 PASSES THROUGH *THIS* FRAME, AND THAT IS THE WHOLE ANSWER TO A BUG
+    # THAT SURVIVED FIVE ATTEMPTED FIXES. Its boss stands beside the motor board's -Y edge
+    # at y -44.0; the PI's cradle wall stands at y -44.28 (the Pi's own edge -46.18 plus
+    # CLR + WALL). So the motor's insert was buried in the PI's cradle, not in its own --
+    # which is why cutting the motor's frame at its own hold point did nothing, in either
+    # z direction, while a head cut on the same frame did help: the two fasteners were
+    # never in the same solid. Measured: insert 30.4 mm3, screw 47.6, and the overlap's
+    # far boundary is -44.28 to the millimetre.
+    # The clearance belongs HERE, in the tray frame, where both cradles are already placed
+    # and no local-coordinate reasoning is needed -- the step that went wrong repeatedly.
+    _mtx = (MCTRL_FP[0] + MCTRL_FP[1]) / 2.0 + hx
+    _mty = (MCTRL_FP[2] + MCTRL_FP[3]) / 2.0 + hy
+    # sized on the HEAD, which is the widest thing that passes: at the insert's own
+    # diameter the button head still clipped this wall by 1.8 mm3.
+    pi = pi.cut(_cyl_col(_mtx, _mty, M4_BUTTON_HEAD_D + 2 * CLR,
+                         MCTRL_BOARD_Z - _M4.anchor_min_wall - 2.0,
+                         MCTRL_BOARD_Z + BD_T + 6.0))
     if not standing:
         return mc.union(pi)
     pi = stand(pi)
