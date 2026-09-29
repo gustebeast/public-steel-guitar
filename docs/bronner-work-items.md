@@ -2615,3 +2615,65 @@ male partner (TSW-108-08-x-S-RA) is unchecked.
 enumerating ONE MANUFACTURER'S family; this one would have failed by enumerating ONE PIN
 COUNT. The joint needs FOUR CONDUCTORS, not a part labelled 4P -- and the part labelled 5P
 is the better buy. Search the requirement, not the label.
+
+### THE nut_height_9 PAIR IS IN THE HEIGHT-ADJUST BLOCK, NOT IN MY CRADLE (2026-09-29)
+
+Gate is **112** after the M4x6 (the 46.2 mm3 screw-into-endplate is gone). The remaining +3
+over the 109 baseline is board_insert_0 at 3.0 and the nut_height_9 pair at 24.5. Measured
+the latter properly instead of assuming the cradle caused it:
+
+        chassis_2             x -631.99..-397.20  y -141.95..65.95  z -81.85..0.00
+        nut_height_insert_9   x -616.86..-610.86  y  -34.30..-28.30 z -70.95..-65.95
+        nut_height_screw_9    x -617.66..-610.06  y  -35.10..-27.50 z -76.53..-56.33
+
+        OVERLAP insert   17.42 mm3   x -616.65..-611.07  y -34.30..-32.40  z -70.67..-65.95
+        OVERLAP screw     7.08 mm3   x -615.53..-612.19  y -33.30..-32.40  z -69.68..-64.22
+
+**THE OVERLAPPING MATERIAL IS AT x -616..-611, AND MY CRADLE CANNOT REACH IT.** `_frame`'s
+`root_d` maps to a NEGATIVE TRAY z (`zr = zb if root_d is None else -root_d`), and the frame
+is translated to TRAY_Z1 = -61.0, so `root_d = 4 * D.BEAD = 3.2` bottoms the cradle at tray
+z -64.2 = **world x -608.0**. The overlap starts 3.1 mm further -X than the deepest thing
+this scope builds. That x band is the HEIGHT-ADJUST PRISM (a comment in electronics.py puts
+it at x -630..-610.1, "cut through by the insert slots") -- i.e. chassis/nut-block material,
+not electronics.
+
+⚠ **AND YET IT TRACKS `_MCTRL_CY` EXACTLY** -- absent at -10.5 (the 109 run), present at -7.0
+(112/113) and at -0.5 (115). I cannot yet explain that, and I am not going to pretend to.
+The overlap's y band is bounded at **-32.40** on the +Y side by something that moves with the
+board, while its -Y side is just the insert's own edge at -34.30. Two candidate mechanisms,
+neither confirmed:
+  1. A CLEARANCE CUT that tracks the hold -- keyhead_cradles cuts a 20 mm column at (hx, hy)
+     out of material that ends up in chassis_2. Move the hold and the cut moves off whatever
+     it was removing, EXPOSING a pre-existing interference rather than creating one.
+  2. An OCCT FUSE DIFFERENCE. chassis_2 is one fused solid; the project has already recorded
+     a fuse returning a valid solid with 645 of 1776 mm3 MISSING. A cradle change re-runs
+     that fuse, and material present or absent either side of it is not a design change.
+
+**EITHER WAY THE CONCLUSION IS THE SAME: this is not a defect my geometry can fix.** If it is
+(1) the interference was always there and moving the cradle back would only re-hide it, which
+is worse than reporting it. If it is (2) the number is an artefact of the boolean, not of the
+design. **HANDING IT OVER with the measurement rather than absorbing it.**
+⚠ DO NOT "FIX" THIS BY MOVING THE MOTOR BOARD BACK. That would give up the 11.68 mm USB gap
+-- the user's ask #3, and a structural impossibility before the shrink -- to hide 24.5 mm3
+in someone else's part.
+
+### board_insert_0's 3.0: LEAVING IT, because the premise is unverified
+
+The insert is modelled from cadkit's `M4.insert_l = 5.0`, seated at the board plane, so it
+spans world x -603.10..-608.10 and pokes **0.30** past the block face at -607.80. **BOM.md
+row 54 buys a 4.7 mm insert** (McMaster 94459A150). The model is 0.3 longer than the part,
+and 0.3 is exactly the overlap -- at 4.7 it would sit flush.
+
+Checked whether the board could move +0.8 in world X to clear it regardless:
+
+        _PI_TOP    -42.20 (world x -586.00)     <- the PI sets the stack
+        _MCTRL_TOP -47.90 (world x -591.70)
+        _STACK 21.80 vs D.ELEC_STACK_D 21.80 -> headroom 0.00, but the motor board has
+        **5.70 mm** before it would become the tallest, so +0.8 is free against that assert.
+
+**NOT DOING IT.** Moving a board 0.8 mm to compensate for a spec value that disagrees with
+the BOM is building a workaround on an unverified premise. The right order is to settle
+whether `insert_l` should be 4.7 or the BOM row should say 5.0 -- and `cadkit/` is VENDORED,
+never hand-edited, and `insert_l` is shared by every project that uses it. That is a question
+for the cadkit owner, with the 5.70 mm of headroom recorded here as the fallback if the spec
+turns out to be right.
