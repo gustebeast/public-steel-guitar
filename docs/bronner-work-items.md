@@ -865,3 +865,41 @@ pads): an led_strip layout change, pre-existing, not the swap's.
 INVOCATION, because I got it wrong first: finish.py needs KICAD'S python and a PATH --
   "C:/Program Files/KiCad/10.0/bin/python.exe" elec/finish.py elec/out/led_strip
 py -3.12 cannot import pcbnew, and a bare board NAME is not a path.
+
+### led_strip's 1 unconnected, DIAGNOSED to the millimetre (2026-09-29) -- not fixed, deliberately
+
+TWO of the three driver clusters have a GND ISLAND that never reaches the pour. The passives'
+pads and their joining tracks ARE connected to each other (touch 2/1 at every end); the island
+as a whole floats.
+
+    working clusters      tracks at kicad y 91.90 / 93.50 / 95.10 / 96.90, pour at BOTH ends
+    the two stranded      tracks at kicad y 100.33, pour at NEITHER end
+        (56.10,100.33)->(54.10,100.33)  2.00 mm    <- the DRC's "Track [GND] ... 2.0000 mm"
+        (96.60,100.33)->(94.60,100.33)  2.00 mm
+
+    island (54.10,100.33): nearest pour 1.30 mm away at (53.99,99.03), bearing 265 deg
+    island (94.60,100.33): nearest pour 0.10 mm away at (94.63,100.42), bearing  70 deg
+
+x 55.35 and 95.85 are exactly the coordinates layout.py's own warning names, and the clusters sit
+at 3 x LED_PITCH = 40.5 mm, so this is the per-driver passive cluster described at
+elec/led_strip.py "tracks": the three parts' GND pads joined by one track and "hopped to the via
+beside them", with the honest note that "stacked 1.6 apart with traces round them, the pour
+cannot get in".
+
+⚠ WHY I DID NOT PATCH IT. The two gaps are 1.30 and 0.10 mm, so ONE declared length cannot fix
+both -- and 0.10 mm is suspicious in itself: GetFilledPolysList returns EVERY island of the zone,
+connected or not, so the "pour" 0.10 mm from that cluster may be another stranded fragment rather
+than the plane. Patching to it could join two islands and still leave both floating.
+
+THE CONSTRAINTS ANY FIX MUST RESPECT, from the board's own notes:
+  * NO stitching vias -- with one pour there is nothing to stitch TO; laid before routing they
+    were deleted as dangling, laid after they landed on the router's own tracks.
+  * pour on F.Cu ONLY -- B.Cu carries 36 cathode runs and a pour there returns as fragments.
+  * elec/layout.py: "this is a placement problem. Report it, do not tidy it away", and it records
+    that deleting these was WRONG TWICE OVER (GetPosition() is a track's START, so a track whose
+    END lands on the via reads as absent; and deleting the via could cut the pad's only return).
+
+SO THE FIX IS A PLACEMENT/POUR CHANGE ON led_strip, not a longer stub: give the pour a way INTO
+the cluster (open a channel between the stacked passives, or move the cluster off y -0.33 to the
+y band where the other clusters' tracks sit and the pour demonstrably reaches). Pre-existing, not
+the swap's; the board has been through three layouts and deserves better than a guess.
