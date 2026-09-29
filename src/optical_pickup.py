@@ -1560,6 +1560,35 @@ def _parts():
             ("TP7", "bring-up pad -- I2C2 SCL (ROM bootloader bus)", 20.601, -21.731)):
         add(_ref, _desc, "TP_SMALL", _lx - 3.55, _ly - 28.315)
 
+    # ⚠ THE PER-CELL SHDNZ PULL-UPS AND THEIR PADS -- item 6, converter isolation. One
+    # 0402 and one 1.0 mm pad per converter, in the one clear pocket each cell has: a
+    # 1.74 mm circle (an 0402's circumscribed courtyard) sits 2 mm from pin 14 at the SAME
+    # cell-frame offset (-3.46, +2.00) in all five cells, because the cells are one pattern
+    # repeated. All five converters are rot 180 at x 11.9, y spaced 18.727.
+    # ⚠ THE RESISTOR IS VERTICAL (rot 90) SO ITS SOUTH PAD FACES +3V3D. The channel via
+    # this pull-up feeds from sits at (8.85, y+0.75), south-east of the site; a horizontal
+    # part would put the +3V3D pad on the far side and make that stub cross back under the
+    # body. SHDNZ takes the longer stub instead, which is free -- it is a DC-static line.
+    # ⚠ AND BOTH ARE PLACED AFTER ROUTING (post_route_refs), so these coordinates are
+    # measured against the FINISHED board rather than negotiated with the router.
+    # ⚠ THE OFFSETS ARE SEARCHED AGAINST THE ROUTE, AND THE FIRST GUESS WAS WRONG TWICE.
+    # (-3.46, +2.00) came from the route BEFORE pin 14 was freed and does not survive it --
+    # the router re-used the pocket. And the resistor was modelled as its circumscribed
+    # CIRCLE, 1.74 mm across against a 1.5 x 0.9 courtyard, which rejected every site an
+    # 0402 actually fits in: as a rectangle the same search finds (-3.462, +3.50) legal in
+    # ALL FIVE cells at 0.510 mm of headroom, where the circle offered 0.090.
+    # The pad then has to clear the resistor's own courtyard -- 0.75 + 1.025 = 1.8 mm, and
+    # the 1.6 mm first guess was five courtyard overlaps in the DRC report. It sits at
+    # (-3.810, +6.950), 3.45 mm clear of it.
+    for _k, _cy in enumerate((62.0187, 43.2918, 24.565, 5.8382, -12.8887)):
+        add("Rs%d1" % (_k + 1), "U%d SHDNZ pull-up (10k to IOVDD)" % (14 + _k), "0402",
+            11.9 - 3.462 - 3.55, _cy - 0.75 + 3.500 - 28.315, rot=90.0)
+        # ⚠ NO PAD OF ITS OWN -- the resistor's SHDNZ land is the access point. A 1.0 mm
+        # pad fits (searched: cell offset (-3.810, +6.950), 0.348 mm headroom) but sits
+        # 3.45 mm from the resistor and would need its own stub, which is ~4 mm more copper
+        # per cell in the analog strip -- 20 mm over five, and keeping copper out of there
+        # is why the per-cell pull-up was chosen over a shared spine in the first place.
+
     y = _block(P, y,
                      # ⚠ THE SWD PADS, WITHOUT WHICH THIS BOARD CANNOT BE PROGRAMMED
                      # AT ALL -- see the long note in elec/optical.py. They sit in the
@@ -2512,6 +2541,12 @@ _MPN_RULES = (
 _MPN_EXACT = {r: ("0402 thick-film R", "BASIC", 0.002, "pulls / divider / gate")
               for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36", "R37", "R38", "R39",
                         "R50", "R51")}
+# The five SHDNZ pull-ups. Spelled out for the same reason as the group above: "Rs11" is
+# not in any R-prefix group's namespace and should not be quietly adopted by one.
+_MPN_EXACT.update({"Rs%d1" % k: ("0402 thick-film R", "BASIC", 0.002,
+                                 "converter SHDNZ pull-up -- ground its pad to isolate "
+                                 "that converter from the I2C bus")
+                   for k in range(1, 6)})
 # The five audio converters: exact, because the bare "U" rule is the TIA quad's.
 _MPN_EXACT.update({r: ("TLV320ADC3140IRTWT", "C1852021", 3.6456,
                        "TI 4-ch 768 kHz audio ADC, WQFN-24 (RTW). 106 dB SNR (2 Vrms diff). "

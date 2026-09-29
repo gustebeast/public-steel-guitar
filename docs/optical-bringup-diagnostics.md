@@ -177,35 +177,63 @@ LQFP176 has ample deliberately-unconnected IO; pick a pin **already adjacent to 
 it costs no haul. **Constraint, written into firmware:** hold it steady or PWM at 10 kHz or above
 — never blink it in the audio band while capturing.
 
-### 6. Converter isolation — the big one, and it hinges on one measurement
+### 6. Converter isolation — **BUILT (2026-09-28): a pull-up per cell, no shared net**
 
-Item 2's logic and the `SHDNZ` fix both live on the **same local `+3V3D` node** at pins 14-16,
-because `SHDNZ` (14) is *already* strapped to `+3V3D` inside every cell and `ADDR1` (15) is its
-immediate neighbour at 0.5 mm pitch. **The whole converter-diagnostics story reduces to: can a pad
-or a short strap escape near pins 14-16 inside a cell?** These cells are tight — they had to drop
-four 100 nF caps each to route at all — so this needs measuring, not assuming.
+`Rs11`..`Rs51`, one 10k per converter, `SHDNZ` to its own IOVDD. Ground `Rs<k>1` pad 1 and that
+converter alone drops off the control bus; with the per-device `SDOUT` lines already present
+that is complete localization, which is the strongest of the four options this item listed.
 
-Options, best first:
+**The question this item said everything hinged on — can a pad or a strap escape near pins
+14-16 — is answered YES**, and the measurement is worth keeping:
 
-| Option | Cost | Gets you |
-|---|---|---|
-| **`ADDR1` to `+3V3D`** on some converters | Possibly **0 parts** (jumper to the neighbouring pad's net) | Two address groups. One bit of localization, and the two groups can be written differently to A/B a suspected fault. |
-| **Per-cell `SHDNZ` pull-up + pad** | 5x 0402 + 5 pads, all **local** | **Full per-device isolation.** Ground one pad and that converter drops out; with the per-device `SDOUT` lines already present, this is complete localization. The strongest outcome. |
-| **One shared `SHDNZ` net + pull-up + one pad** | 1 part, but **one long net across the array** | Block-level reset only. The fallback if per-cell area isn't there. |
-| **`SHDNZ` onto an MCU GPIO** | 1 long net through the converter fan | Firmware-driven reset. **Highest routing risk — see below.** |
+| what was tried | result |
+|---|---|
+| maze pin 14 → the next cell's pin 14, 0.26 mm track | no path (19 cells explored) |
+| the same at **0.20 mm** | **21.5 mm and 2 vias** |
+| an 0402's site, modelled as its circumscribed CIRCLE | 0.090 mm of headroom, take it or leave it |
+| the same site modelled as a **RECTANGLE** | **(-3.462, +3.50) in cell frame, legal in all five cells at 0.510 mm** |
 
-Full per-device *readback* needs four distinct addresses (2 bits gives only 4 combos for 5 parts)
-**plus a second bus for the fifth**, which is what was tried and abandoned: the `ADDR0`/`ADDR1`
-straps were among the last 14 nets that would not route, because those pins sit between the I2C
-pins on the part's routing side. The escape is the hard part, **not** the destination — `GND` was
-reachable only because the EP sits directly underneath.
+**Per-cell pull-up, not a shared `SHDNZ` spine**, and the honest reason is not the first one I
+gave. I argued the spine's **8 new vias through In1** — the analog reference plane, 0 cuts and a
+0.266 mm thinnest web — were the deciding cost; the per-cell version needs **5**, which is better
+and not decisively so. The real argument is the other one: the spine wanted **~86 mm of digital
+line** down the converter column, and this is two short stubs inside each cell (2.4 mm for
+`SHDNZ`, 7.3 mm for `+3V3D` with one via).
 
-> **Sequencing.** Item 6 runs a net straight through the converter fan, the same region where
-> `SAI_FS` is *still* unconnected. Nothing in item 6 is attempted until `SAI_FS` closes and the
-> board is confirmed at 0 unconnected / 0 violations, so the diagnostic change is measured
-> against a known-good baseline instead of muddying the FSYNC hunt.
+**The plane was measured before and after**, since five new vias north of the border is exactly
+the kind of change that quietly degrades something nobody checks. At the via's first position it
+left a **0.160 mm** web where the board documents 0.266 — `check_north_si` still passed, and a
+halved web is still a halved web. Moving the via 0.10 mm out along its own diagonal puts the
+thinnest web back at **0.266 mm**, i.e. exactly where it was: 138 foreign vias against 139,
+0 cuts either way.
 
----
+**No pad of its own.** A 1.0 mm pad does fit — searched, (-3.810, +6.950), 0.348 mm of headroom
+— but it lands 3.45 mm from the resistor and needs its own stub to reach the net: ~4 mm more
+copper per cell in the analog strip, 20 mm over five. The resistor's own land is the access
+point instead, and the honest cost is that grounding it is a solder-iron action rather than a
+probe action. That is acceptable for a deliberate last-resort step in a way it would not be for
+a rail reading during normal bring-up.
+
+**Both stubs are placed after routing**, like the bring-up pads, and the resistors are too: a
+part the router never sees cannot cost it a net, and a site verified clear on the finished board
+is as safe for an 0402 as it is for a bare pad. The fab still builds them — it builds from the
+board.
+
+#### Three things this cost, all of them mechanism rather than design
+
+1. **The old `SHDNZ` channel had to go, and it fought back twice.** It carried pin 14 to IOVDD,
+   so with the pull-up in the way it feeds nothing — but left in place its head via went
+   dangling, `tidy_router_vias` removed it, and that orphaned the B.Cu leg as **ten unconnected
+   `+3V3D` items**. Attaching a repair track to keep the via alive was worse: the via then sat
+   in **the only escape from pin 14** and produced five `SHDNZ`-to-`+3V3D` shorts. No track
+   width clears a 0.6 mm via whose centre is 0.383 mm off the line.
+2. **The FOOT via is not the head via.** `_v3_trunk`'s B.Cu spine lands on exactly that point in
+   every cell, so it is how each converter's IOVDD reaches the digital rail. It was removed with
+   the head for one edit — which would have disconnected all five supplies — and caught by
+   reading `_v3_trunk`, not by any check.
+3. **The second stub has to be searched against the first.** Mazed independently the two cross:
+   the router cannot see copper that is not laid yet. `lay.py` puts the first one down and the
+   second is searched against a board carrying it.
 
 **Status, 2026-09-28: items 1, 3 and 4 are IN, on a board at 0 unconnected / 0 violations.
 Item 2 is dropped on merit, 2b is measured impossible, 5 is dropped with 2, and item 6 is the

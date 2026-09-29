@@ -137,11 +137,23 @@ All five converters answer at **one address, `1001100`**, on I2C2 (`PF0` SDA, `P
 
 > **Read this before you interpret a NACK.** The five open-drain ACKs are wired together,
 > so an ACK means *at least one* part answered and a NACK means *at least one* is missing
-> -- **there is no way to tell which.** And `SHDNZ` (pin 14) is tied hard to +3V3D on all
-> five with no reset line, so **no converter can be removed from the bus.** If one part
-> holds `SDA` low the whole control bus is dead, the only recovery is cutting power to the
-> board, and the only diagnosis is a scope on `SDA`/`SCL`. This is the single largest
-> diagnostic gap on the board; item 6 of the diagnostics doc is the fix.
+> -- **there is no way to tell which** from the bus alone.
+
+**But a converter CAN now be taken off the bus, one at a time.** `SHDNZ` is no longer tied
+hard high: each converter has its own 10k pull-up, `Rs11`..`Rs51` (U14..U18 in order), sitting
+about 2 mm from pin 14 in its own cell.
+
+- **Ground pad 1 of `Rs<k>1`** -- the pad on the converter side, not the rail side -- and that
+  converter alone goes into shutdown and lets go of `SDA`/`SCL`.
+- So the stuck-bus case is diagnosable by elimination: ground them one at a time until the bus
+  comes back, and the one that freed it is the fault. Five tries, worst case.
+- **This is a solder-iron action, not a probe action.** The land is 0.54 x 0.64 mm in a dense
+  cell -- tack a wire to it. It is deliberately not a 1.5 mm pad: a pad of its own would have
+  needed 4 mm of extra copper per cell inside the analog strip, and keeping copper out of there
+  is the whole reason the pull-up is per-cell instead of one shared shutdown net.
+- ⚠ **The firmware rule is unchanged.** A 10k pull-up leaves the part out of shutdown as IOVDD
+  rises, exactly as the hard tie did, so firmware must still issue the software reset (P0_R1
+  `SW_RESET`) over the I2C broadcast once both rails are up, before configuring.
 
 ### 4. Converter framing (the stage that names a part)
 
