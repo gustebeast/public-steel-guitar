@@ -1426,11 +1426,43 @@ def _check_stitches_landed(board, notes):
             continue
         if not any(z.GetFilledPolysList(z.GetLayer()).Collide(t.GetPosition()) for z in zs):
             stray.append((t.GetNetname(), pcbnew.ToMM(t.GetPosition().x),
-                          pcbnew.ToMM(t.GetPosition().y)))
+                          pcbnew.ToMM(t.GetPosition().y)) + _plane_gap(t.GetPosition(), zs))
     if stray:
+        # ⚠ THE DISTANCE IS THE POINT, not the coordinate. "Landed where the plane is not" says
+        # a stitch is stray; it does not say whether the plane is 0.1 mm away or 12, and those
+        # want opposite answers -- a longer stub versus a placement change. On led_strip
+        # (2026-09-29) chasing that gap by hand cost four scratchpad probes to learn the two
+        # strays were 1.30 and 0.10 mm off a pour that is ONE island, so a 2 mm stub would have
+        # reached both. Report it inline and nobody measures it twice.
         print("  ⚠ %d stitch via(s) landed where the plane is not: %s"
-              % (len(stray), ", ".join("%s at %.2f,%.2f" % s for s in stray[:6])))
+              % (len(stray), ", ".join(
+                  "%s at %.2f,%.2f (%s)" % (n, x, y, "%.2f mm away" % d if d == d
+                                            else "no plane within %.0f" % _PLANE_PROBE_MM)
+                  for n, x, y, d in stray[:6])))
     return stray
+
+
+_PLANE_PROBE_MM = 12.0
+
+
+def _plane_gap(pos, zones):
+    """How far is the nearest filled plane from `pos`?  (distance_mm,) or (nan,).
+
+    A stray stitch via is only half a diagnosis. What decides the fix is the GAP: sub-millimetre
+    means the stub simply stopped short and a longer one reaches; several millimetres means the
+    pour cannot get in at all and the PLACEMENT has to change. Walks outward in 0.1 mm steps on
+    a 24-point circle, which is enough to tell those two cases apart and costs nothing next to
+    the fill itself.
+    """
+    import math
+    for i in range(1, int(_PLANE_PROBE_MM / 0.1) + 1):
+        r = i * 0.1
+        for a in range(0, 360, 15):
+            p = pcbnew.VECTOR2I(int(pos.x + r * 1e6 * math.cos(math.radians(a))),
+                                int(pos.y + r * 1e6 * math.sin(math.radians(a))))
+            if any(z.GetFilledPolysList(z.GetLayer()).Collide(p) for z in zones):
+                return (r,)
+    return (float("nan"),)
 
 
 def _via_r(v):
