@@ -97,6 +97,29 @@ a shallower tunnel. With the aperture at +4.80, that gives **h ≈ 20.8 mm**:
 | **3** | **26.5** | **1.3** | **0.51** |
 | 4 | 19.9 | 1.0 | 0.66 |
 
+### What 3-per-fret actually costs — ~$5, and the biggest line does not move
+
+The worry is "fret count × 3 LEDs and a much wider PCB". Both are real and both are small,
+because **the expensive part of this board is the DRIVERS, and 3-per-fret adds none of
+them.** Seriesing the three LEDs of a fret onto one channel (above) means the channel count
+is set by FRETS, not by LEDs — 96 either way.
+
+Per instrument (two boards). LED `C7371891` $0.0524@100 (42,600 in stock), driver
+`C116842` TLC59711 $2.41@10 (3,632), bare boards from the quotes in section 1 divided by
+the 5-piece minimum, joints at JLCPCB's published **$8 setup + $0.0016 per solder joint**:
+
+| | 1 LED/fret | 3 LEDs/fret | delta |
+|---|--:|--:|--:|
+| LEDs (34 vs 82, incl. 10 markers) | $1.78 | $4.30 | +$2.52 |
+| solder joints (8 per 5050) | $0.44 | $1.05 | +$0.61 |
+| bare boards (212+193, 12 mm vs 60 mm wide) | $2.18 | $3.96 | +$1.78 |
+| **TLC59711 × 8** | **$19.28** | **$19.28** | **—** |
+| **total** | **$23.68** | **$28.59** | **+$4.91** |
+
+**About five dollars an instrument**, against a driver stack of $19.28 that is identical in
+both columns. The LEDs themselves are five cents each; going from 34 to 82 of them costs
+less than one driver.
+
 **RECOMMENDATION: 3 LEDs per fret**, at y = −26.5, 0, +26.5. That is S/h = 1.3, and the
 figures above are for a *bare* aperture — the deck's own **4.80 mm of printed transparent
 PCTG is a heavy diffuser**, which is worth roughly a factor of two in evenness and pushes
@@ -126,10 +149,31 @@ trade and it is a change to the stated plan** — flagging rather than assuming.
 The printed light tunnels are worth building, and the reason is **not** that they spread
 light — depth does that. They earn their place by *containing* it: an opaque tunnel per
 fret stops cross-talk between neighbouring frets and stops the leakage into the body that
-this whole split exists to eliminate. Build them as **opaque PCTG walls with the aperture
-left transparent**, as a separate part clipped under the deck carrying the LED board, not
-as deck geometry — the deck prints face-down, so tunnels hanging off its underside would be
-unsupported ceilings, and a separate part prints in its own orientation.
+this whole split exists to eliminate. ⚠ **CORRECTION (user, 2026-09-29): THE TUNNELS BELONG ON THE DECK ITSELF.** I had written
+that a tunnel hanging off the deck's underside would be an unsupported ceiling. That is
+wrong, and backwards. `PIECE_UP = (0,0,-1)`: the deck's TOP face is on the bed and the part
+builds in −Z, so **the underside is the LAST thing printed and grows UPWARD** — a wall
+hanging below the deck is a wall standing up off the print, which needs no support at all.
+The precedent was already in this repo and in my own work: the UI station's cradle hangs
+**14.30 mm** below the deck and `check_ceilings top_plate_3` reports zero ceilings.
+
+So the tunnels are **deck geometry, printed with the panel**, which is strictly better than
+the separate part I proposed: **registration to the fret inlay becomes exact by
+construction** instead of a tolerance stack, and the tunnel that lights a line is the same
+printed object as the line. That matters more here than usual — a 2.40 mm aperture does not
+forgive a 0.3 mm clip-on misalignment.
+
+What the orientation still forbids is a horizontal feature with nothing between it and the
+bed: an inward-protruding retaining lip at the tunnel's mouth is an overhang unless it is
+chamfered at 45°, and a solid tunnel FLOOR would be a bridge across the tunnel's full
+width. Neither is wanted — **the LED board is the tunnel floor**, and it closes each tunnel
+when it is screwed up against the deck.
+
+Walls go in the **opaque colour material**, standing down from the colour band, so `_split`
+assigns them as it already does for the ±Y side skin. ⚠ That is ~16 mm of second-material
+wall × 24 tunnels, and a two-filament print pays a purge every layer that mixes — **estimate
+the purge waste before committing**; if it is ugly, the fallback is transparent walls plus a
+separate opaque insert, at the cost of the exact registration above.
 
 **Board width follows from the LED spread:** ±26.5 plus package ≈ **60 mm wide**. At 212
 long that is about $10.50 for five, ~$2 a board. That is the width spend from section 1,
@@ -171,17 +215,46 @@ that killed the entire board-to-board search ("JLCPCB's split is Female 82 / Mal
 joint where *we* supply both halves is the case the library is worst at"). It also makes
 the joint blind-mate as the panel slides home, which is the motion the deck already has.
 
+### The install order, and the one thing that breaks it
+
+The user's sequence (2026-09-29): attach each LED board to its own panel off the
+instrument; slide panel 1 on with its board; slide panel 2 on so the pogo pins contact;
+pull the cable from the end and plug it into the Pi daughter board; fit the endplate.
+
+That works, and it fixes the feed end: the deck installs **+X → −X**, so panel 1 is the MID
+panel and panel 2 is the KEYHEAD panel. The cable has to be plugged AFTER panel 2 is on,
+which means **the harness drop lands on the KEYHEAD board's −X end** — it is the one next to
+the Pi, and it is the last panel fitted, so nothing is covering the route. The pogo then
+carries power and data +X across the seam to the mid board. (Feeding the mid board instead
+would force the plug BEFORE panel 2, which is how the UI ribbon has to be done and is the
+more awkward of the two.)
+
+⚠ **BUT NOTHING HOLDS THE PANELS TOGETHER IN X, AND A POGO IS A SPRING.** The stack is
+built so it cannot bind: the first panel butts the bridge endplate flush, "then each panel
+keeps GAP clearance to the previous", and the last one stops `EP_TOP_CLR` (0.4) short of the
+keyhead face so the keyhead can slide in past it. Nothing preloads the stack. Four pogo pins
+pushing ≈ 2–4 N will simply shove the keyhead panel −X until they reach free length, and the
+joint reads open.
+
+**The fix is already the last step of the user's own sequence: let the keyhead endplate bear
+on the panel and push the stack +X.** The endplate goes on last, which is exactly when you
+want the joint closed, and it lands the whole deck in compression against the bridge
+endplate at the far end. Travel needed is the stack-up it has to swallow — 0.4 of
+`EP_TOP_CLR` plus 0.05 per panel seam — so **under 0.7 mm**, which any of these pogos has
+several times over. The side effect is that every panel sits up to 0.25 mm further +X than
+drawn; fret lines are at absolute X, so that is worth knowing, but it is the same size as
+the `GAP` tolerance already in the design.
+
 ⚠ **Two things to settle before committing:** the pogo's **working travel and preload
 force** against the panel's 0.05 mm design gap (read the drawing — the catalogue's "6 mm /
 8 mm" fields are length and stroke and I have not confirmed which is which), and whether a
 **proud contact** is acceptable at a blind mate given the project's standing rule about
 that joint class.
 
-⚠ **AND CONSIDER NOT JOINING THEM AT ALL.** Each panel is already a separate assembly that
-comes off on its own. Giving each board its own 4-way drop off the main harness costs one
-more connector on the harness and deletes the seam joint, its alignment problem and its
-preload problem outright. The UI station's install order — build the panel off the
-instrument, slide it on, plug it — is the pattern that already works here.
+(An earlier note here suggested **not joining them at all** — a 4-way harness drop per
+panel, deleting the seam joint outright. The user has chosen the pogo seam, so that is
+settled; it stays recorded only as the fallback if the preload above turns out to be
+unwelcome in the endplate.)
 
 ---
 
