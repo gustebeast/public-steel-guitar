@@ -420,29 +420,24 @@ deliberately -- what was tried and why it failed is the most reusable part -- bu
 working top-down would act on stale text. The state of each claim:
 
     LIVE, and the numbers reproduce:
-      * ⚠ OPEN, AND WELL CHARACTERISED: motor_ctrl's M4 sits in its own cradle --
-        board_insert_0 30.4 mm3, board_screw_0 47.6. What is MEASURED, not guessed:
-          - the cradle bores a UNIFORM O3.00 hole (the screw's self-tap) at every depth,
-            sampled at five depths through the boss. There is NO insert pocket anywhere.
-          - cut_anchor(pocket=True) is documented to leave O insert_pilot_d x insert_depth
-            = O6.00 x 5.00 at the mouth. It measurably does not, on this cradle.
-          - the bore's centre measures world y -42.70; the insert's is -44.00. 1.30 apart.
-          - BOTH pcb_hold_xy calls return an IDENTICAL (17.0, -33.5) -- verified by
-            instrumenting the function and logging every call from each site. So the hold
-            point is NOT the disagreement, and MCTRL_HOLD/PI_HOLD did their job.
-          - a heat-set with no pocket cannot be installed at all, so this is a BUILD
-            defect, not merely an overlap number.
-        RULED OUT, each tried and reverted rather than left in:
-          - boss_d = 13 beads (the Pi's deep boss): byte-identical result.
-          - cutting the insert's seat at (hx, hy) for local z POST_H-5 .. POST_H: no effect.
-          - the same cut for local z POST_H .. POST_H+5 (the other side): no effect either.
-        ⚠ THOSE LAST TWO ARE THE LEAD: a cylinder at (hx, hy) does not touch the offending
-        material in EITHER direction, yet the head-clearance cut at the SAME (hx, hy) did
-        work (screw 83.7 -> 47.6). Both cannot be true of one coordinate frame, so the next
-        tick should stop reasoning about the frame and MEASURE it: build the motor cradle
-        alone, before the translate, and find where its anchor void actually is in local
-        coordinates. The Pi's cradle is the same arrangement with no overlap and is the
-        control.
+      * ⚠ SOLVED: motor_ctrl's M4 was buried in the PI's CRADLE, not its own. Its boss
+        stands beside the motor board's -Y edge at y -44.0; the Pi's cradle wall stands at
+        y -44.28 (the Pi's edge -46.18 plus CLR + WALL), and the overlap's far boundary
+        measured -44.28 to the millimetre. Clearance now cut in the TRAY frame, where both
+        cradles are already placed, sized on the BUTTON HEAD (at the insert's diameter the
+        head still clipped 1.8 mm3). insert 30.4 -> 0.0, screw 47.6 -> 0.0.
+        ⚠ IT WAS A BUILD DEFECT, NOT A GATE NUMBER: an M4 boss inside another part's
+        cradle has no hole for its heat-set, so the board could not have been mounted.
+        ⚠ THE LESSON, AND IT COST FIVE ATTEMPTS: every one of those was a correct
+        measurement of the WRONG SOLID. Cutting the motor's own frame at its own hold
+        point did nothing in EITHER z direction, while a head cut on that same frame DID
+        help -- both true at once, because the two fasteners were never in one solid.
+        boss_d, an insert pocket, and single-sourcing the hold point were all irrelevant,
+        and instrumenting pcb_hold_xy proved both call sites return an identical
+        (17.0, -33.5). What settled it was refusing to reason about the local frame any
+        further: cut a O20 MARKER at the hold point, measure where the void lands, and
+        notice the material runs to y -52 -- far past anything the motor owns.
+        WHEN A FRAME LOOKS INCOHERENT, SUSPECT TWO SOLIDS BEFORE SUSPECTING THE FRAME.
       * ⚠ THE PI IS FLUSH TO THE BAY WALL and pi_cap_relief is DELETED (user, 2026-09-29:
         the Pi "requires cutting into the chassis wall which reduces its strength"). +3.82,
         cap face measured ON -131.55 at +0.00, wall back to its full 10.40. MEASURE THE
