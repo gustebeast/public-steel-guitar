@@ -1037,9 +1037,11 @@ def build_wires():
     # It now lands in the upper USB stack on the +Y END and is approached from +Y, which is
     # the only direction a USB-A plug can enter. See EL.pi_port_pt.
     _usb = SP(*EL.pi_port_pt("usb3"))
-    # the gap the plug lives in: Pi's +Y edge -46.18 to the motor board's -Y edge -31.50,
-    # which is 14.68 wide only because _MCTRL_CY moved +10.0 to open it.
-    _PORT_APR = EL.PI_FP[3] + 8.0                  # -38.18, mid-gap: the plug's own body
+    # ⚠ THE GAP IS 4.68 mm AND NO USB PLUG FITS IN IT -- see the block above _MCTRL_CY.
+    # The approach runs inside that real gap rather than pretending to a wider one: the lead
+    # reaches the right port from the only direction a plug could enter, and the fact that
+    # the plug itself has nowhere to go is a placement problem recorded where placement is.
+    _PORT_APR = EL.PI_FP[3] + 2.3                  # -43.88, inside the 4.68 the boards leave
     _ua = EL.op_pt("J2")
     _UA_PLUG = 25.0
     # ITS OWN COLUMN at the keyhead, 6 mm +X of the one the bay wires share: at a different
