@@ -420,6 +420,16 @@ deliberately -- what was tried and why it failed is the most reusable part -- bu
 working top-down would act on stale text. The state of each claim:
 
     LIVE, and the numbers reproduce:
+      * OPTICAL (2026-09-29 tick): item 6 was ALREADY BUILT; the board measures 0
+        unconnected / 0 unexpected. Its 21 courtyard errors are all DECLARED and reasoned
+        (20 sensor triplets + TP8/R30). But optical_declared's OWN measurements were all
+        three wrong, and it is the thing that stops DRC reporting them: it claimed bodies
+        clear by 0.350 when they ABUT by 0.035. Copper clears by 0.475, not the claimed
+        0.200, so the board is buildable and the 35 um is an accepted assembly note --
+        PD_DY cannot widen. Corrected in place; see the commit.
+      * chassis_2 mounting rework is DONE, not "NOT STARTED": mctrl_floor_ports is cut in
+        build.py, the posts are POST_H/MCTRL_POST_H, and keyhead_cradles fuses into the
+        CHASSIS SEGMENT rather than the endplate. That was the Y-swap work.
       * the Y swap is DONE at 110 unintended against a measured pre-swap 114 (NOT the 112 in
         "THE Y SWAP IS DONE AND NET-POSITIVE", which predates two more fixes)
       * body_adapter's TOP FACE z -73.82 is the rule for that corner
