@@ -420,8 +420,15 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     from cadkit.pcb import pcb_hold_xy
     from .helpers import box_at
     zb = RIB_LZ - TRAY_Z1          # cradle frame: the endplate's wall, -26.5 below the mount face
-    CLR, WALL, LIP = CRADLE_CLR, D.MIN_WALL_2P, 1.2
-    RETAIN = 1.2          # how far the 45 deg lean reaches over the board (= its rise)
+    # ⚠ RETENTION IS 3 BEADS, NOT 1.5 (user, 2026-09-29: "the retention pieces you have
+    # designed are under the 1.6mm quality bar... ideally we can work even larger"). Both
+    # of these were 1.2 -- under D.MIN_WALL_2P and not even on the bead grid, so Arachne
+    # had to thin or pad them and neither would print at its drawn size. 3 * BEAD = 2.4
+    # clears the two-bead quality bar with a whole bead of margin for the inaccuracy the
+    # user is describing. They are written as BEAD COUNTS so they stay on the grid if the
+    # nozzle ever changes.
+    CLR, WALL, LIP = CRADLE_CLR, D.MIN_WALL_2P, 3 * D.BEAD
+    RETAIN = 3 * D.BEAD   # how far the 45 deg lean reaches over the board (= its rise)
     HARNESS_W = 24.0      # the -Y notch the cable leaves through
 
     def _cyl_col(x, y, d, z0, z1):
@@ -663,7 +670,26 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     if not standing:
         return mc.union(pi)
     pi = stand(pi)
-    return stand(mc).union(pi)
+    out = stand(mc).union(pi)
+    # ⚠ NOTHING MAY LEAN INTO A BOARD'S COMPONENTS (user, 2026-09-29: "on the +y side of
+    # the pi the retention is clipping into the pi's components"). They were right, and
+    # NOTHING IN THE PROJECT COULD SEE IT: cradle-to-board contact is a designed contact,
+    # so check_overlaps does not report it, and the render is the only place it shows.
+    # Measured before this cut: 56.3 mm3 into pi5 along the board's WHOLE length, 1.7 mm
+    # ABOVE the laminate's top face -- that is component space, not board edge. Raising
+    # RETAIN to 3 beads tripled it to 194.3, which is the honest cost of a deeper lean and
+    # exactly why the two changes have to land together.
+    # The boards' own solids are the authority on where their components are, so subtract
+    # them: the lip below and the locating wall beside both survive (they are outside the
+    # footprint), and only the part that reaches OVER a board is trimmed. Retention is
+    # whatever the board's own envelope leaves room for, which is the most any cradle can
+    # honestly claim.
+    # ⚠ The cut is EXACT, so the cradle and the board now TOUCH rather than interfere. The
+    # boards are held by their M4 -- head lapping the edge, clamping to the boss -- plus
+    # the single install direction; the lean adds what it can where the envelope allows.
+    for _b in (pi5(), motor_ctrl()):
+        out = out.cut(_b)
+    return out
 
 
 def board_screws():
