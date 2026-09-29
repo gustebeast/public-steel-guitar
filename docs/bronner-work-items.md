@@ -468,6 +468,41 @@ working top-down would act on stale text. The state of each claim:
          It also crossed wire_pwr_hot/gnd_11 and _12 and both bus-B conductors (24 more),
          so the return lane needs a z that clears those, not just the motor board.
 
+      5. OPEN -- "I see wires joining the LED segments, that seems like it would lead to
+         reduced LED density. Can we have connectors that connect board to board directly
+         instead?" The user is right, and the penalty is bigger than the wires look:
+
+             LED_PITCH        13.5 mm
+             bare board past the end LED   15.5 each side (108 mm of LEDs on a 139 board)
+             JUNCTION_GAP      8.0
+             DARK SPAN AT A JUNCTION  15.5 + 8.0 + 15.5 = 39.0 mm -- 2.9x the pitch, x3
+
+         ⚠ AND THE CONNECTORS ALREADY SET THE PITCH OF THE WHOLE STRIP. led_strip.py says
+         so in as many words: "The END LED sets this, not the light -- the connector
+         centroid sits _J_ANCHOR out, and its courtyard reaches 7.8 back toward the
+         middle, so the last LED has to stop short of that. 14.0 overlapped both end
+         courtyards." So the junction costs density twice: once as the gap, once as the
+         pitch it forces on all 9 LEDs of every section.
+
+         ⚠ A WIRE-FREE JOINT WAS TRIED AND REJECTED, and the rejection is narrower than it
+         reads: "every stocked 2.54 right-angle MALE is 2.5 mm insulation height and every
+         stocked right-angle FEMALE is H8.5, so their contact axes cannot line up on
+         coplanar boards, and card-edge sockets take a card vertically". That rules out
+         2.54 right-angle HEADERS. It does not rule out a soldered board-to-board joint.
+
+         PROPOSED, and it fits the project's own rules: CASTELLATED EDGES, boards butted
+         and soldered across the seam. The standing rule is "solder only on PCBs" and both
+         sides here ARE PCBs, so this is the one joint style the rule positively allows.
+         It removes the junction gap AND the end courtyard, so the end LEDs can move out
+         and the seam can fall mid-pitch: 6.75 + ~0.5 + 6.75 = 14.0, one pitch, uniform.
+         Cost: the sections stop being separable by hand (18 solder joints over 3 seams).
+         That is acceptable only if sectioning exists for FAB PANEL SIZE rather than for
+         service -- and it does. CHECKED: led_strip.py's WHY SECTIONS note says "Four
+         identical 145 mm boards make the 580 mm run, each small enough to share the panel
+         with the tee and sensor boards (user)". Panel economics, not serviceability. The
+         sections never needed to come apart by hand, so soldering the seams costs nothing
+         that was being bought. DECISION: build the castellated joint.
+
     LIVE, and the numbers reproduce:
       * ⚠ SOLVED: motor_ctrl's M4 was buried in the PI's CRADLE, not its own. Its boss
         stands beside the motor board's -Y edge at y -44.0; the Pi's cradle wall stands at
