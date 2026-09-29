@@ -115,7 +115,12 @@ BD_T = 1.6
 # MEASURED, not chosen: an 85 x 56 x 15.6 box here collides with NOTHING (0.00 mm3 against
 # every part but the ones that move with it and the cables), and the floor under it is 90.3%
 # solid across the whole footprint, so there is no hole at the leg station.
-PI_FP     = (-596.0, -511.0, -130.0, -74.0)   # WORLD x0,x1,y0,y1: 85 on X, 56 on Y;
+# ⚠ +8 IN X AND +3 IN Y OFF THE FIRST CLEAN POSITION (user, 2026-09-29: "move the pi over
+# +x"). The +8 clears the compute bay's x range (-606.50..-591.70) so the motor board can come
+# -Y past it -- the two moves are a package and neither works alone. The +3 buys wall for the
+# floor retention on the -Y side, which the sweep found had ZERO room (the Pi sat hard against
+# chassis_2; +5 hit it). Sweep says +X is clear to 80 and +Y to 20, so both are cheap.
+PI_FP     = (-588.0, -503.0, -127.0, -71.0)   # WORLD x0,x1,y0,y1: 85 on X, 56 on Y;
 # ⚠ THE -Y EDGE IS FLUSH WITH THE BAY WALL, AND THAT IS THE WHOLE POINT (user,
 # 2026-09-29: "the pi is too far -y and requires cutting into the chassis wall which
 # reduces its strength"). That wall runs y -141.95..-131.55 -- 10.40, exactly CH.T --
@@ -258,7 +263,19 @@ MCTRL_FLOOR_EDGE_X = -528.15           # tray +X edge == world z -80.85, the flo
 #   before   y -41.50..20.50   gap to the Pi's port face (-46.18)   4.68
 #   after    y -34.50..20.50   gap                                 11.68
 # 11.68 takes a right-angle USB-A plug (~10 needed); a straight one (~22) still will not fit.
-_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -7.0
+# ⚠ -58.75 TO THE -Y END (user, 2026-09-29: "having the motor board over at +y makes it
+# quite cramped with the motor right next to it. Perhaps we should move it back to -y").
+# ⚠⚠ THE OLD SWAP'S REASON NO LONGER BINDS, AND THE NUMBERS SAY WHY. The board went +Y
+# because its cradle walls run BELOW the floor slab (they must -- the board's bottom edge sits
+# at the floor so its two bus-B plugs can enter it) and at y -82 that put 170.65 mm3 through
+# body_adapter_3. Measured now: ALL FOUR adapters top out at z -73.82, under FLOOR_TOP -71.35,
+# and the cradle's below-floor material spans y -36.40..22.40. So the only hard limit is the
+# adapter's +Y face at -97.15, and the cradle can travel 60.75 before reaching it.
+# ⚠ motor_0 IS NOT A CONSTRAINT, though it is what looked cramped: it sits ON the floor
+# (z -71.35..-29.05) while the below-floor cradle passes UNDER it, and above the floor the two
+# are 8.1 mm apart in X. They already overlap in Y today without colliding.
+# -58.75 leaves 2.0 mm to the adapter and drops the Y overlap with motor_0 from 55 mm to 3.
+_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -65.75
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
