@@ -2195,3 +2195,40 @@ That is a small, self-contained thing to look at and the only item here that is 
 wrong rather than merely untidy. SAI_FS 1.25 mm is the known post-route repair stub.
 ⚠ padsite.py IS GONE from scratchpad/ -- so any re-search of a bring-up pad needs it
 rebuilt first. Noting it because item 1 cites it as the reusable mechanism.
+
+### DO NOT RAISE drop_degenerate's FLOOR -- measured, and the premise was wrong (2026-09-29)
+
+I hypothesised that optical's 0.0132 mm PHY_VDD33 track_dangling was a fragment
+`layout.drop_degenerate(board, floor_mm=0.005)` should have caught, and that the fix was to
+raise the floor. **Measured the track-length distribution on all four live boards first, and
+it says no.** Shortest tracks, and the count below each candidate floor:
+
+        board          n     shortest few (mm)                      <0.005  <0.010  <0.020  <0.030
+        optical      1724   0.0132 0.0207 0.0219 0.0356 0.0358          0       0       1       3
+        motor_ctrl    536   0.0378 0.0385 0.0392 0.0494 0.0532          0       0       0       0
+        led_strip     543   0.00707 x3 then 0.0284 0.0405               0       3       3       5
+        pi_cap        132   0.0888 0.0888 0.1563 0.2151                 0       0       0       0
+
+**THREE THINGS THIS SETTLES:**
+
+1. **`drop_degenerate` IS WORKING AS SPECIFIED AND CATCHES NOTHING HERE.** Its docstring
+   targets fragments "half a MICRON long" (0.0005 mm), and **zero tracks on any board are
+   below 0.005 mm**. The sub-micron rounding junk it was written for is already gone. It is
+   not missing anything -- there is nothing in its window.
+2. **THERE IS NO GAP TO CUT AT.** The distribution is CONTINUOUS from 0.007 upward. A 0.020
+   floor would take optical's 0.0132 and led_strip's three 0.00707 but leave optical's 0.0207
+   (just above), and a 0.030 floor would start eating 0.0207/0.0219 -- lengths
+   indistinguishable from motor_ctrl's 0.0378 CAN1_TX, which is plainly router output and not
+   rounding. Short segments here are mostly legitimate router jogs. **Any floor above 0.005
+   is a guess that deletes real copper to silence a warning.**
+3. **SO THE PHY_VDD33 STUB IS NOT A DEGENERATE FRAGMENT.** It is a real 13.2 um segment with
+   one end dangling, and the question is why it was EMITTED, not why the filter missed it. It
+   is also harmless: DRC reports 0 unconnected, so it is redundant copper beside a junction,
+   not an island. track_dangling is a warning by a deliberate Local override.
+
+**CONCLUSION: optical needs no work here.** 0 unconnected, 0 undeclared violations, and the
+residue is 10 silk warnings plus 4 dangling stubs with no safe mechanical fix. Leaving it.
+⚠ AND THE GENERAL LESSON, which is the third time this shape has cost time on this board:
+a global cleanup threshold cannot fix a local artefact. The project already records the
+same failure for declared pre-route copper ("made it worse every single time") and for
+local_nets on rails. MEASURE THE DISTRIBUTION BEFORE MOVING A SHARED CONSTANT.
