@@ -399,7 +399,10 @@ def _housing() -> cq.Workplane:
     # printing minimum. This housing is 46.6 deep, so the corner it gives back is bigger
     # than LKL's.
     w = w.cut(_knee_relief())
-    return heal(w)                  # no printed back-stop threads any more (KL.cut_feel_rear)
+    # ...AND THE 45 DEG CLOSURE OVER BOTH VOIDS, last, on the finished solid. Same call and
+    # same reasons as LKL's (see KL.roof_close); this housing has two of them, the sweep
+    # and the install stroke, and the roof that has to be held up spans both.
+    return heal(KL.roof_close(w, _env, _ins, align=HOUS_Z1))
 
 
 def _knee_relief():
