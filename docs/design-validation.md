@@ -308,6 +308,52 @@ The SERVO42D's moving supply current is **still recorded nowhere in this repo**.
 It was already the measurement `BOM.md` asks for; it is now the measurement a
 comparable build has failed for the want of.
 
+### CORRECTION: THE TRUNK IS ALREADY FED FROM BOTH ENDS (user, 2026-09-29)
+
+The paragraph above was written without accounting for the second feed, which has
+been in `src/wiring.py` since 2026-09-18 and which I failed to find. J7 feeds the
+east end, `motor_ctrl`'s J3 the west, current meets in the middle, and the J7
+cable carries **111 mm of deliberate slack — the coil at (-56.37, -128.25,
+-22.37)** — as added resistance, because the two paths are wildly asymmetric.
+Uncorrected the east feed would take 5.6 motors' worth and the west 4.4; the
+slack brings it to 5.00/5.00 at a cost of 0.0059 ohm, 0.07 % of 24 V at 3 A. The
+pair stays bifilar through the turn so its fields cancel.
+
+**What that does to the numbers.** The balance is struck for the whole fleet
+drawing equally, and a copedent press does not do that -- it lights a cluster. So
+the question is not "half" but "how lopsided can a real combination be". Motors
+run -562 (string 1) to -160 (string 10), so the west feed serves strings 1-5 and
+the east 6-10. Across every two- and three-control combination:
+
+| Combination | Motors moving | East / West |
+|---|---|---|
+| P1 + P2 + P4 | 7 | 3 / 4 |
+| P1 + P2 + LKR | 7 | 4 / 3 |
+| **P1 + P5 + LKR** | 7 | **5 / 2** |
+| P3 + P5 + LKR | 7 | 5 / 2 |
+
+So the worst single feed carries **5 of the 7**, not 3.5:
+
+> 0.5 A/motor → 2.5 A · **0.8 A/motor → 4.0 A** · 1.0 A/motor → 5.0 A
+> (one XH contact is 3 A)
+
+The second feed genuinely helps -- 5 rather than 7 through the worst contact, and
+roughly half the IR drop -- but it does not make the measurement optional. At
+0.8 A a motor, the worst combination still puts 4.0 A through a 3 A contact.
+
+**TWO THINGS THE SECOND FEED INTRODUCES, both cheap to handle:**
+
+1. **A leg that opens is invisible.** Both feeds come from the same 24 V source,
+   so this is a ring. If one feed unseats -- a connector, a crimp -- nothing
+   indicates it and the surviving leg silently carries the whole fleet, which is
+   the single-feed case the second feed exists to avoid, arrived at without
+   warning. Worth a firmware check (compare the two legs, or watch for the drop)
+   rather than a fuse per leg.
+2. **The balance is 111 mm of wire.** Anyone who shortens that coil during
+   assembly -- it looks exactly like service slack, which is what every other coil
+   in this instrument is -- unbalances the feeds and does not find out. It needs
+   an INSTALL_NOTES entry saying DO NOT SHORTEN, with the reason.
+
 **Our supply split is the fix he arrived at, and it is worth confirming it is
 real.** Bus A (motors, 24 V) and bus B (sensors, 5 V) are already separate, which
 is the architecture he moved to. But bus B's 5 V comes from a buck fed off the
