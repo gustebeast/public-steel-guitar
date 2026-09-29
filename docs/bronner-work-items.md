@@ -605,6 +605,36 @@ working top-down would act on stale text. The state of each claim:
          the 2.2 A on one contact, so "collapse the dual V5/GND" and "use the coplanar part
          that actually mates" are, on current evidence, mutually exclusive.
 
+      5f. USER: "are there any high PWM, high bit rate WLEDs which can run at 24V?"
+         SEARCHED. The closest part is UCS7624 and it FAILS on the one criterion that
+         matters, in a way worth recording because the datasheet invites the mistake:
+             16-bit (65535-level) greyscale   YES
+             RGBW, 4-channel                  YES
+             DC24V native                     YES
+             "32K port refreshing frequency"  -- that is the DATA PORT rate, not PWM
+             PWM FREQUENCY                    1600 Hz or 3200 Hz   <-- IN THE AUDIO BAND
+         So it joins SK6812 (1.2 kHz), UCS8904B and SM16825E (4 kHz) on the same objection
+         the custom strip exists to avoid: PWM switching inches from a MAGNETIC PICKUP.
+         ⚠ DO NOT QUOTE THE 32K FIGURE AS PWM. It is the pixel-data refresh; the light is
+         still chopped at 1.6-3.2 kHz. Any future "high frequency" addressable claim needs
+         the PWM number specifically, not the refresh or the data rate.
+
+      5g. ⚠ BUT THE 24 V IDEA IS RIGHT, JUST ONE LAYER UP -- distribute 24 V ALONG the
+         strip and buck it to 5 V ON EACH SECTION. The LED/driver architecture does not
+         change; only what crosses the joint does:
+             now:   5 V at 2.2 A  -> 2 x V5 + 2 x GND to stay under a 2 A PH contact
+             then:  24 V at ~0.51 A (11 W / 0.9 / 24) -> ONE contact, 4x headroom
+         J_PINS becomes (V24, GND, SCK, SDI) -- FOUR ways, with the EXISTING connector and
+         no sourcing question at all. It also answers led_strip.py's own open item ("where
+         the strip's 5 V comes from"): nowhere, it is made locally.
+         ⚠ AND THE SWITCHER ARGUMENT INVERTS IN OUR FAVOUR. A buck runs at 1-2 MHz, far
+         above the audio band; the addressable chips' 1.6-3.2 kHz PWM sits inside it. Four
+         local bucks are a BETTER neighbour for the pickup than one 24 V rail feeding
+         audio-band PWM chips.
+         COST: 4 bucks instead of 1, and their input capacitance and layout land next to
+         the pickup -- so bench them with the same test already pending for the TLC59711's
+         sub-audio term.
+
       5e. DECISION, so this stops consuming ticks: FEWER JUNCTIONS FIRST, better connector
          second. Three ticks of sourcing have produced no part that satisfies all of
          (coplanar OR low-profile) + (LCSC/JLCPCB so it can be PCBA-placed) + (>= 2.2 A or
