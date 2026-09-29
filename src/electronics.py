@@ -240,7 +240,16 @@ MCTRL_FLOOR_EDGE_X = -528.15           # tray +X edge == world z -80.85, the flo
 #   3. TAKE wire_link OFF USB -- the Pi<->motor_ctrl link is travel offsets, low rate, and
 #      could ride the GPIO header pi_cap already sits on. That removes one plug but not
 #      wire_usb, which is the output board's 20-channel USB audio and cannot move.
-_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -10.5
+# ⚠ _MCTRL_CY -10.5 -> -7.0 GOES WITH BOARD_L 62.0 -> 55.0 (2026-09-29). The board lost
+# 7.00 mm of bare laminate off its PI-FACING edge; _MCTRL_CY is a CENTRE, so leaving it at
+# -10.5 would have taken 3.50 off each end and walked the +Y edge from 20.50 to 17.00 --
+# shrinking away from body_adapter_0 but giving back half the gap the shrink existed to open.
+# +3.50 holds the +Y edge at exactly 20.50, where it has always been and where body_adapter
+# (inner face y 21.15) leaves it 0.65 mm.
+#   before   y -41.50..20.50   gap to the Pi's port face (-46.18)   4.68
+#   after    y -34.50..20.50   gap                                 11.68
+# 11.68 takes a right-angle USB-A plug (~10 needed); a straight one (~22) still will not fit.
+_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -7.0
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
