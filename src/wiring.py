@@ -868,11 +868,29 @@ def build_wires():
     def _tail(cond, do):
         # hot (pin 2, do -1) runs HIGH and INBOARD, gnd (pin 1, do +1) low and outboard: each
         # then passes over or beside the other's turn instead of through it, at both ends
+        # ⚠ AND IT COMES UP THROUGH THE GAP TOO (2026-09-29), for the same reason feed 2 does:
+        # descending at xt onto J3's y runs through motor 0 (95.90 mm3 hot, 43.79 gnd). See
+        # _feed2 below for the survey -- no column at the connector's y at ANY x, and under the
+        # motor bank blocked at the rail's own exit.
+        # ITS OWN SLOT, because that corner is now three cables and a wall deep:
+        #     z -64            the 5 V cable            (its own fix, earlier)
+        #     z -60.5..-55.5   24 V feed 2              (_feed2, below)
+        #     z -56..-48 at x >= -586   chassis material
+        #     x -591.70        the board's face
+        # so the tail takes x -589 / z -52: WEST of that material (a pair spans 3.80, and at
+        # x -588 its envelope reaches -586 and clips it -- which is what made this look like a
+        # one-pair slot at first), and ABOVE feed 2's envelope, which tops out at -55.5.
+        # Measured: descent CLEAR, drop to J3 CLEAR, face run touches only the CAN pairs.
         _p = _pin(west[0], cond, False)
         zt = _w0[2] + _TAIL_DZ - do
         xt = BAY_X - do
-        return [_p, (_p[0], _p[1], zt), (xt, _p[1], zt), (xt, _mc24[1], zt),
-                (xt, _mc24[1], _mc24[2] + do), (_mc24[0], _mc24[1], _mc24[2] + do)]
+        _TGX, _TGY, _TFZ = -588.4, -46.0, -52.0
+        return [_p, (_p[0], _p[1], zt), (xt, _p[1], zt), (xt, _TGY, zt),
+                (_TGX - do, _TGY, zt),
+                (_TGX - do, _TGY, _TFZ + do),
+                (_TGX - do, _mc24[1], _TFZ + do),
+                (_TGX - do, _mc24[1], _mc24[2] + do),
+                (_mc24[0], _mc24[1], _mc24[2] + do)]
 
     # ── the SECOND 24 V feed: panel J10 -> motor_ctrl J3, bypassing the tees ──
     # ITS OWN COLUMN at the keyhead, 3 mm +X of the bay column the bay wires climb: run
