@@ -857,8 +857,11 @@ def _electronics_components():
     from . import wiring as WR
     from . import top_plate as TP
     # electronics_tray is gone: the Pi's and the motor controller's mounts are cradles
-    # fused into keyhead_endplate now (see electronics.keyhead_cradles). One less printed
-    # part, and the boards gained retention they never had on the tray's bare posts.
+    # fused into the CHASSIS SEGMENT now (see electronics.keyhead_cradles and the union at
+    # the top of this file) -- NOT the endplate, which is what this said until 2026-09-29.
+    # The endplate has to come off with the boards left in place (user), which is the whole
+    # reason they moved. One less printed part, and the boards gained retention they never
+    # had on the tray's bare posts.
     out = [("pi5", EL.pi5()), ("pi_cap", EL.pi_cap()),
            *EL.led_sections(),
            ("motor_ctrl", EL.motor_ctrl()),
