@@ -412,6 +412,40 @@ read time. (Same family as the pipefail lesson: verify the artefact, not the log
 check_overlaps has no --verbose, and src/build.PARTS maps name -> (function, str, str), so the
 solids must be built by CALLING PARTS[name][0], not read off the tuple.
 
+## ⚠ READ THIS BEFORE THE 2026-09-29 SECTIONS BELOW -- FIVE OF THEM ARE SUPERSEDED
+
+Everything from here to the end was written across one long session, in the order the work
+happened, and SOME OF IT WAS LATER DISPROVED BY MY OWN MEASUREMENTS. The wrong turns are kept
+deliberately -- what was tried and why it failed is the most reusable part -- but a reader
+working top-down would act on stale text. The state of each claim:
+
+    LIVE, and the numbers reproduce:
+      * the Y swap is DONE at 110 unintended against a measured pre-swap 114 (NOT the 112 in
+        "THE Y SWAP IS DONE AND NET-POSITIVE", which predates two more fixes)
+      * body_adapter's TOP FACE z -73.82 is the rule for that corner
+      * the two disconnected USB leads, and tools/check_cable_ends.py
+      * the three boards' DRC, measured with kicad-cli
+      * the LED cable is an INSTALL step (INSTALL_NOTES.md section 8)
+      * the stitcher runs BEFORE the fill, so a post-fill repair pass is the only place a
+        reach-measuring fix can live
+      * bus B's 3.20 mm is mctrl_pt's documented side-entry approximation
+
+    SUPERSEDED -- do not act on these:
+      * "THE SWAP CANNOT BE FINISHED BY PLACEMENT -- the cradle must be trimmed"  -> it WAS
+        finished: the ring shallowed, the M4 left the ear, and the board placed at -41.5..20.5
+      * "The 24 V TAIL is not solved: the slot fits ONE pair, and feed 2 has it"  -> RETRACTED.
+        The chassis at x -588 is empty in that band; my probe envelope was reaching into
+        material at -586. The tail sits at x -588.4 / z -52 and the block is CLOSED
+      * "THE Y SWAP IS DONE ... 112 vs a pre-swap 114"                            -> now 110
+      * "The LED cable needs a CHANNEL ... specified"                             -> IMPOSSIBLE,
+        it takes all ten nut slide inserts; see the two sections after it
+      * "the fix is in layout.py's stitcher -- measure reach" (in several places) -> the
+        stitcher runs 140 lines BEFORE the fill and cannot measure a plane that does not exist
+
+    THE FOUR THINGS I TRIED THAT WERE WRONG, with their measurements, are worth more than the
+    fixes: dropping led_strip's stitch_nets (1 -> 3), the LED channel (ten inserts), "the
+    stitcher should measure reach" (ordering), and "bus B needs mctrl_pin()" (side entry).
+
 ## The 5 V cable cannot be re-routed by moving one leg (2026-09-29, TWO FAILED ATTEMPTS)
 
 After the Y swap, `wire_5v_*` (4 conductors) run through `pi5`, 48.3 mm3 each. The cause is
