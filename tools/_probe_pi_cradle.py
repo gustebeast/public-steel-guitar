@@ -27,10 +27,23 @@ def _box(w, l, h, x, y, z0):
             .translate((x, y, z0 + h / 2.0)).val())
 
 
+# ⚠ WHAT THIS PROBE MUST NOT COUNT, or every candidate reads as blocked (first run did:
+# ~6900 mm3 at every standoff, which was the Pi's own lid all along).
+#   * `chassis_2` is the PARENT -- the cradle fuses into the chassis floor, so material
+#     shared with it is the attachment, not a collision. A free-floating cradle is the
+#     failure mode here, not an overlapping one.
+#   * `pi_cap` and `pi5*` ride ON the board and move with it.
+#   * `wire_*` are cables, and the Pi's harness waypoints are already known stale against
+#     this pose -- a cable is not a reason to choose an edge, but where it RUNS is.
+def _own(name: str) -> bool:
+    return (name == "chassis_2" or name.startswith("pi5") or name.startswith("pi_cap")
+            or name.startswith("wire_"))
+
+
 def _hits(shape, comps, skip=(), floor=0.5):
     out = []
     for name, shp in comps:
-        if name in skip or name.startswith("pi5"):
+        if name in skip or _own(name):
             continue
         try:
             inter = shp.intersect(shape)
@@ -58,13 +71,26 @@ def main():
                            ("-y", (CX, FP[2] - off))):
         col = (cq.Workplane("XY")
                .add(cq.Solid.makeCylinder(D / 2.0, PI_H, cq.Vector(bx, by, FLOOR))))
-        h = _hits(col.val(), comps)
         print("\n  %-3s boss at (%.2f, %.2f):" % (edge, bx, by))
+        h = _hits(col.val(), comps)
         if not h:
-            print("      CLEAR -- nothing in the way")
+            print("      FOREIGN: clear")
         for v, name, bb in h[:6]:
-            print("      %-24s %8.2f mm3   x %8.2f..%8.2f y %8.2f..%8.2f z %7.2f..%7.2f"
+            print("      FOREIGN %-18s %8.2f mm3   x %8.2f..%8.2f y %8.2f..%8.2f z %7.2f..%7.2f"
                   % (name, v, bb.xmin, bb.xmax, bb.ymin, bb.ymax, bb.zmin, bb.zmax))
+        # the family too -- not a collision, but pi_cap OVERHANGS the board on -X and a
+        # boss there would foul the lid, which is a design answer rather than a gate one
+        for name, shp in [(n, s) for n, s in comps
+                          if _own(n) and n != "chassis_2"]:
+            try:
+                it = shp.intersect(col.val())
+                v = it.Volume() if it.Solids() else 0.0
+            except Exception:
+                v = 0.0
+            if v > 0.5:
+                bb = it.BoundingBox()
+                print("      family  %-18s %8.2f mm3   x %8.2f..%8.2f y %8.2f..%8.2f z %7.2f..%7.2f"
+                      % (name, v, bb.xmin, bb.xmax, bb.ymin, bb.ymax, bb.zmin, bb.zmax))
 
     # ---- 2. the walls, as one ring ----------------------------------------------
     ox, oy = BW / 2 + CLR + WALL, BL / 2 + CLR + WALL
