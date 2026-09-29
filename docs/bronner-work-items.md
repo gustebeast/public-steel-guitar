@@ -782,3 +782,27 @@ SO: body_adapter_0 at 3.73 mm3 (x -600.60..-599.50, y 21.15..22.40, z -79.46..-7
 ADAPTER to give about 1 mm at that corner. This is the ORIGINAL handover at 2% of its size -- the
 170.65 mm3 version was retired by MOVING the board, and this residue cannot be moved away from,
 because moving -Y puts the M4 back into the Pi's cradle wall.
+
+### ⚠ THE USB LEAD TO THE PI ENDED IN OPEN AIR, AND ONLY A 1.77 mm3 GRAZE SHOWED IT (2026-09-29)
+
+wire_link -- motor_ctrl J4 to the Pi, the lead the Pi writes travel offsets over -- had its Pi
+end HARDCODED: `_lp = SP(-585.0, 20.0, -58.0)`, world y 20. Pre-swap the Pi spanned y -50..35,
+so 20 was on the board. It spans -135..-50 now, so that lead terminated about 80 mm from the Pi,
+in the space the Pi used to occupy. Fixed: `SP(-585.0, EL.PI_FP[3] - 9.0, -58.0)`, which is the
+expression pi5() itself uses to place the USB/ethernet block. The cable now ends at y -59.7,
+inside that block's -68..-50 span.  Gate 111 -> 110, FIXED chassis_2 <-> wire_link, NEW none.
+
+⚠⚠ AND THE GATE COULD NEVER HAVE TOLD ME. check_overlaps is a COLLISION check, not a
+CONNECTIVITY check: it reports two things sharing space, and has no opinion about two things
+that SHOULD touch and do not. The only reason this surfaced is that the lead happened to clip a
+chassis wall on its way to nowhere. Had I "fixed" that graze the way I fixed the two 24 V pairs
+-- a millimetre nudge -- the result would have been a clean gate and a USB lead connected to
+nothing.
+
+THE FOLLOW-UP THIS ARGUES FOR, not done: a check that walks every cable and measures the DISTANCE
+from each end to the part it terminates on. Cheap, general, and it would have caught this without
+the accidental graze. The Y swap moved a board 85 mm; wire_link is unlikely to be the only lead
+with a frozen endpoint, it is just the only one that left a mark.
+
+That makes FIVE constants this swap falsified -- root_d's 13 beads, MCTRL_HOLE on the ear, the
+5 V mid-plate leg, _FEED2_X, and this -- and this is the only one whose failure was SILENT.
