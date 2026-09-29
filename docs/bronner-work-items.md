@@ -1183,3 +1183,36 @@ THE SPEC, then, for whoever takes it:
 
 NOT LANDED IN layout.py. The prototype never reached a working repair, so there is nothing to
 adopt yet -- but the three dead ends above are the expensive part and they are now paid for.
+
+### THE POST-FILL REPAIR WORKS -- AND AS WRITTEN IT SHORTS THE BOARD (2026-09-29)
+
+Prototyped end to end on a COPY (scratchpad/repair.py); elec/layout.py untouched.
+
+    detector   connectivity, UUID-keyed:  2 loose GND tracks, matching DRC's 1 unconnected
+    repair     extend from whichever END is nearer the plane, overshooting by a track width
+    result     2 loose -> 0,  and kicad-cli agrees: 1 unconnected -> 0
+
+    ⚠ BUT THE VIOLATIONS MOVED:  track_dangling 2 -> 1  AND  tracks_crossing 0 -> 1.
+    tracks_crossing is two DIFFERENT NETS crossing -- A SHORT. Strictly worse than a floating
+    GND stub. One of the two repair tracks (1.60 mm from 54.10,100.33 or 1.35 mm from
+    56.64,100.33) runs straight across another net's copper.
+
+SO THE SPEC IS COMPLETE AND IT HAS THREE PARTS, NOT TWO:
+  1. DETECT by connectivity -- ask which same-net items share a component with the zone, and key
+     on m_Uuid.AsString(). NEVER id(): SWIG returns a fresh wrapper per call, so id() never
+     matches and every item reads as disconnected (that mistake reported 52 loose items here,
+     against DRC's 1).
+  2. CLEAR THE PATH FIRST -- sample from the loose end to the target plane point and abandon the
+     repair if any sample lands in another net's copper, or on its clearance. THIS IS THE STEP
+     THE PROTOTYPE LACKS AND IT IS WHY IT SHORTS. Try the other end, or the next-nearest plane
+     point, before giving up.
+  3. LAY, OVERSHOOTING BY A TRACK WIDTH (landing on the fill's edge is a touch; connectivity
+     wants overlap), then refill and re-check, bounded to one iteration.
+
+AND IT RUNS AFTER tidy_router_vias, not merely after the fill -- the stray VIA is deleted by
+then, and what survives is the orphaned stub.
+
+⚠⚠ NOTHING ADOPTED. A change that trades an unconnected stub for a SHORT is not an improvement,
+and I am not landing one in a file seven boards share. But the expensive parts are now paid for:
+the detector is proven against DRC, the failure mode of the naive repair is known and named, and
+what is missing is one clearance walk.
