@@ -90,6 +90,12 @@ HEIGHT = {
     # is the standoff between the Pi's top face and the cap's underside, not a bump on the
     # cap. src/electronics.py uses the same number to place the cap; it is written once here.
     "PinSocket_2x20_P2.54mm_Vertical": 8.5,
+    # ⚠ THE UI RIBBON'S HEADER, AND THE NUMBER IS FROM THE LISTING RATHER THAN A DRAWING.
+    # LCSC gives HX PZ1.27-2x7P ZZ (C22438122) as "3.9 mm"; 4.0 is that rounded up, which is
+    # the safe direction for an envelope. It is not load-bearing either way -- the part lives
+    # inside the cap's own 8.5 mm socket standoff, so it has 4.5 mm of headroom -- but a part
+    # with no height is a part the CAD leaves out, which is what this table exists to stop.
+    "PinHeader_2x07_P1.27mm_Horizontal": 4.0,
     "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
     "JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H --
                                     # motor_ctrl J2/J6, the bus-B pair on the edge

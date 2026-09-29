@@ -936,7 +936,11 @@ def _cap_place(shape):
     ⚠ ONE TRANSFORM, USED BY EVERYTHING. The board, and every wire that has to land on one
     of its pins, go through this exact call -- because stand() inverts an axis and the last
     time that was reimplemented by hand it cut the wrong side of a part."""
-    j1_y = -8.5
+    # ⚠ -4.5 SINCE THE CAP GREW TO 34 mm (elec/pi_cap.py). This is the number the whole
+    # board is positioned BY -- the socket's y in the board's own frame -- so when the board
+    # gained 8 mm on its -Y edge and every placement moved +4.00 with it, this moved too.
+    # Leave it at -8.5 and the board lands 4 mm off the header it is supposed to plug into.
+    j1_y = -4.5
     return stand(shape.rotate((0, 0, 0), (0, 0, 1), -90.0)
                  .translate((PI_HDR_X - j1_y, PI_HDR_Y,
                              BOARD_Z + BD_T + PI_CAP_STANDOFF)))

@@ -106,9 +106,36 @@ first:
    share that in an instrument that gets stomped on, but it is the only option here that is
    polarised by construction AND fits the height.
 
-**I have not decided between these**, because the trade is mechanical and it is your station's
-cable. Tell me which and I will place it. If you want my vote it is (1), with the cable length
-doing the keying.
+**DECIDED (1), and built — 2026-09-28.** You had not called it and the board could not wait on
+an answer, so: **plain `HX PZ1.27-2x7P ZZ`, LCSC C22438122, right-angle, on the back face**, with
+pin-1 silk and a cable cut to reach only one way doing the keying. Say the word if you want (3)
+instead and I will swap it; the footprint is one line.
+
+Why not the others, briefly: (2) needs 2.54, which does not fit the 8.5 mm standoff at all —
+a 2.54 male header is 8.54 mm *before* its socket goes over it — and the docstring says the stack
+cannot grow. (3) FFC/ZIF is the only option keyed by construction, and you flagged mating cycles
+on an instrument that gets stomped on; I share that.
+
+⚠ **The residual risk is written down rather than waved away:** reversing this cable puts 3V3 into
+a GPIO, which is a dead Pi rather than a puzzle. The cable length is what prevents it. If the
+assembled machine ever shows someone forcing it, the escalation is (3).
+
+## What actually got built
+
+* **J5**, 14-way 1.27 mm 2×7 right-angle, **back face** with every other connector, so the ribbon
+  leaves in-plane inside the socket's own 8.5 mm standoff instead of upward into the endplate.
+* **The board grew 26 → 34 mm**, and only on its **−Y** edge. That direction is forced: the
+  board's +Y is world +Z (`electronics._cap_place` rotates −90 then stands it), so the +Y edge is
+  the Pi's own top edge with 0.3 mm to spare. −Y grows down over the Pi, where the only thing
+  under the cap is the SoC block — 2.5 mm tall against an 8.5 mm standoff, so 6.0 mm of air.
+* **Every placement moved +4.00 in y** so nothing shifted relative to the socket, and
+  `electronics._cap_place`'s `j1_y` moved with them — that number is what the whole board is
+  positioned by, and leaving it would have landed the cap 4 mm off the header.
+* **The ribbon leaves the opposite edge from J2/J3/J4**, which carry up to 3 A to the Pi and
+  2.2 A to the strip. This one carries a display clock.
+* **`+3V3` is new on this board** — way 7 off header pin 1, the Pi's own regulator. Under 100 mA
+  for a display module is fine; a backlight or a second module needs its own regulator rather than
+  creeping up on the Pi's budget.
 
 ## Fit, and what I still owe you
 
@@ -125,3 +152,36 @@ way order above is firm — lay J2 against it.
 
 `pi_cap` is only on `agent/bronner`, not on main, so you cannot build against it yet. Getting
 it to main is queued behind the optical board.
+
+
+## ⚠ NOT DELIVERABLE YET: one unconnected GND pour island
+
+The board routes clean — **0 DRC violations, 11/11 parts in the CAD, 25 header pins used** — and
+carries **1 unconnected item**: `Zone [GND] on B.Cu` against *itself*, i.e. two islands of the
+same pour in different clusters. It is not the ribbon's wiring; every signal net is closed.
+
+**Four diagnoses were tried and all four were wrong**, which is worth more here than another
+guess:
+
+1. *"A fragment with no GND pad."* No — every fragment has one. The test that said otherwise was
+   a bounding-box point-in-polygon with 0.3 mm of slack, and the slack invented the answer.
+2. *"The F.Cu main pour has no anchor, because all eight socket GND pins sit in the band and
+   J2/J3/J4 are SMD on the back."* Two vias were added for it; the ratline did not move.
+3. *"The 5.3 mm² B.Cu sliver at x 0.64…1.95 is the orphan."* It is anchored by **J1.20 at
+   (1.27, −5.77)** — and the via placed to fix it landed **0.23 mm inside that pad**, because my
+   own site search filters *foreign*-net pads and a via must clear its **own** net's pads too.
+   `drop_redundant_pth_vias` then removed it as redundant, and that second removal in one pass
+   tipped pcbnew's SWIG container over: `GetFootprints()` began returning bare proxies and
+   `link_close_gaps` died on `fp.Pads()`. **One removal had never shown it.**
+4. *"Cast the proxies back / reorder the removal pass."* Neither works — the container is
+   degraded, not mistyped, and moving the pass breaks the file's own rule that every measurement
+   is taken before any removal. Both attempts were reverted; `elec/layout.py` and `elec/route.py`
+   are back at HEAD.
+
+**What is actually known:** the exact containment test says the two main pours are anchored only
+by `C1.2`–`C4.2`, and the four declared stitch vias do **not** register inside them — so the next
+step is to find out why a same-net via is not reading as connected to the pour it sits in, rather
+than to add a fifth via. KiCad's own ratsnest is the tool for that; the SWIG accessor for it
+(`GetRatsnestForNet`) returns an opaque object and needs a different route in.
+
+**Do not submit this board until that clears.** Everything else about it is finished.
