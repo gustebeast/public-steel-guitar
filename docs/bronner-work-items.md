@@ -683,3 +683,50 @@ THE OTHER WAYS OUT, none tried: give the tail a different LANDING on J3 (it land
 connector's own y while feed 2 lands two pin pitches off, so they could instead share a face
 line and separate only at the end); or widen the slot by moving chassis_2's wall at x -588; or
 accept the tail on the far side of the board.
+
+## THE Y SWAP IS DONE AND NET-POSITIVE (2026-09-29): 112 vs a pre-swap 114
+
+Every pair the swap introduced is resolved except three grazes. The count is now BELOW where it
+started, against a baseline measured from 991e095 rather than quoted.
+
+    pre-swap (measured)                     114
+    naive swap                              132   (+18, and the adapter conflict got WORSE)
+    5 V cable under the Pi                  128
+    mounting: ring depth + M4 off the ear   121   (~977 mm3 of cradle-in-hardware)
+    24 V feed 2 through the gap             117
+    pi_cap pocket in the -Y wall            116
+    24 V tail, its own slot in the gap      112
+
+STILL ADDED BY THE SWAP, all grazes:
+    chassis_2 <-> board_screw_0   0.72 mm3  y -48.30..-48.10 -- a 0.2 mm sliver. The Pi's
+        head-clearance remedy does NOT apply: a cut at the hold point left it EXACTLY unchanged,
+        one-sided and symmetric both, so the face belongs to chassis structure, not the cradle.
+        Find which feature owns y -48.3, x -601.5..-599.3, z -46.8..-44.4.
+    chassis_2 <-> body_adapter_0  2.2 mm3   (was the 170.65 handover at the other corner)
+    chassis_2 <-> wire_link       2.8 mm3
+
+NOT THE SWAP'S, AND STILL OPEN:
+    the LED cable crosses keyhead_endplate (68.2) and chassis_2 (46.5) -- PRE-EXISTING, in the
+    114. It runs pi_cap J3 (y -119.72) to the strip (y +51.20), 171 mm across the instrument.
+    That is a cable crossing STRUCTURE: it wants a PORT through the chassis, which belongs with
+    the chassis rework, not a bent cable.
+
+⚠ THE FOUR THINGS THAT FOOLED ME, ALL THE SAME SHAPE -- a sweeping negative that arrived cheaply:
+  1. `cmd | tail -N` into a background file leaves only N lines, and check_ceilings prints
+     DESCENDING -- so the tail shows the BEST spans and cuts the header. That is how "worst span
+     0.80 mm" got into an MR note and into my own report. The truth is 7.70, unchanged all
+     session, 200 mm from anything either of us touched.
+  2. scratchpad/lanefind.py first walked src.build.PARTS -- 69 entries, containing NEITHER pi5
+     NOR motor_ctrl NOR motor_0 -- and reported 585 clear lanes. Against
+     src.build.collect_components() (what the gate scans) the same search returns 95.
+  3. My 24 V pair probe was 6.6 mm wide: the conductor plus an INVENTED +3.6. PWR_OFF is 1.00,
+     so the pair spans 3.80. That turned a tight slot into an impossible one for two ticks.
+  4. "The slot fits one pair" -- the chassis at x -588 is EMPTY; my envelope was reaching into
+     material at -586. Measure the OBSTACLE, not the probe's verdict.
+
+⚠⚠ AND THE RULE THAT WOULD HAVE PREVENTED MOST OF THE SWAP'S FALLOUT: four hard-won constants
+were falsified by one board moving -- root_d's 13 beads ("nothing lies in this board's y band"),
+MCTRL_HOLE on the ear, the 5 V mid-plate leg, and _FEED2_X ("there is no motor at x -582").
+Each was measured and documented when written. None could notice the thing it measured had
+moved. DERIVE FROM THE GEOMETRY (pi_cap_relief reads pi_cap()'s own bbox; the 5 V fly height
+reads pi5()'s) rather than freezing a number with a comment explaining why it is safe.
