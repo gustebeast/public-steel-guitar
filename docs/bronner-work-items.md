@@ -502,3 +502,46 @@ numbers grew, but the crossings predate it.
 NEXT, IN ORDER: the Pi's mounting hardware (7 + the cap = 8 pairs, one root cause, and it IS the
 "chassis_2 mounting rework" backlog item), then the 24 V feed (8, a solved pattern), then the
 LED port as part of the chassis work.
+
+## THE SWAP CANNOT BE FINISHED BY PLACEMENT -- the cradle must be trimmed (2026-09-29)
+
+Located every pair the swap added (scratchpad/pairloc.py: intersection bbox + volume against
+collect_components). They are TWO clusters, not the eight-way mess the names suggest.
+
+⚠ FIRST, A CORRECTION TO THE NOTE ABOVE: `nut_slide_insert` / `nut_height_screw` are the
+STRING-NUT hardware, not the Pi's mounting parts, and what collides with them is CRADLE MATERIAL
+FUSED INTO chassis_2. Moving the boards moved CHASSIS GEOMETRY into unrelated parts. Trimming
+board hardware would achieve nothing.
+
+    A. THE MOTOR CRADLE INTO THE NUT ROW   all at y +10..+22, x -630..-611
+        chassis_2 <-> nut_slide_insert_2    625.45 mm3
+        chassis_2 <-> nut_slide_insert_1    236.72
+        chassis_2 <-> nut_height_screw_1     76.17
+        chassis_2 <-> nut_slide_insert_3     22.77
+        chassis_2 <-> nut_height_insert_1    18.50
+        board_screw_0 <-> nut_slide_insert_2  3.18,  keyhead_endplate <-> board_insert_0 3.92,
+        chassis_2 <-> wire_link               2.81
+
+    B. THE PI CAP INTO THE CHASSIS WALL
+        chassis_2 <-> pi_cap   291.79 mm3   y -135.37..-131.55
+        The cap overhangs the Pi's -Y edge by 0.37 and the wall is there.
+
+THE ARITHMETIC, AND IT DOES NOT CLOSE:
+        motor cradle clear of the nut row  ->  cradle ymax < 10.65  ->  motor ymax < ~8.6
+        pi_cap clear of the chassis wall   ->  Pi ymin > -131.18
+        needed   Pi 85 + boss 7.1 + motor 62            = 154.1
+        available                    -131.18 .. 8.6     = 139.8
+        SHORT BY ~14 mm.
+
+And the boss cannot move to the Pi's -Y edge to buy it back: that reaches y -141.6, outside
+CH.Y_LO -136.75. Shifting the Pi +Y to clear the cap pushes the motor +Y one-for-one and makes
+cluster A worse. The constraints are coupled; there is no placement that satisfies both.
+
+THE FIX IS THE CRADLE, AND IT IS THE chassis_2 MOUNTING REWORK. The motor cradle spans
+x -631..-598 while the board it carries is only x -606.5..-591.7 -- about 20 mm of cradle width
+reaches into the nut row at its +Y end and holds nothing. Narrow the cradle's +Y end in X and
+cluster A goes; cluster B then needs ~4 mm of Pi shift, which the freed budget affords.
+
+STATUS: placement is committed and correct as far as placement can go (adapter handover retired,
+170.65 -> 2.2 mm3; 5 V cable fixed, 132 -> 128). The remaining 18-pair debt is ONE piece of
+chassis work plus the 24 V feed (8 pairs, the 5 V cable's solved pattern).
