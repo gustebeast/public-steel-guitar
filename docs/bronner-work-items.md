@@ -960,3 +960,36 @@ stubs fall ~2 mm short of a pour that is ONE 2089 mm2 island, the stitcher is st
 connections, and layout.py's instruction is to report rather than tidy. The fleet-wide fix -- a
 stitcher that MEASURES reach before laying, and lays that length or skips -- is now backed by
 evidence instead of my assumption, and is the right next attempt.
+
+### The LED cable needs a CHANNEL through the height-adjust block -- specified (2026-09-29)
+
+I opened this tick believing the cable just needed a ~1.5 mm inboard shift off the block's face.
+WRONG, and the sweep says so: moving inboard is 2-3x WORSE, and the crossing is invariant in z.
+
+    x -611.05 (as routed)  keyhead_endplate  68.2   <- the gate's own figure for this pair
+    x -609.60 .. -608.00   keyhead_endplate 143..222
+    z -44, -40, -34.23, -30, -26   keyhead_endplate  68.2 at EVERY height
+    z -22                  keyhead_endplate 204.0
+
+So it is a THROUGH-crossing, not a graze, and the cable is already on the least-bad line.
+
+WHAT IT CROSSES, and the y range names it: y -38.91..33.20 is the NUT HEIGHT-ADJUST BLOCK --
+the same block the motor cradle's ring had to stop short of (root_d 13 -> 4 beads) and the same
+one the motor's M4 boss had to leave the ear to avoid. The cable runs 72 mm THROUGH it,
+lengthwise, at x -611.75..-610.35 (the block's inboard face is x -610.1).
+
+THE CHANNEL, sized from the bundle rather than guessed:
+    x   -611.75 .. -610.35   (1.4 wide + clearance; the run sits at x -611.05)
+    z   -34.93  .. -23.53    (11.4 tall: gnd_a's conductor at the bottom, sdi's at the top)
+    y   -38.91  .. 33.20     (72 mm, the block's own y extent)
+    and z -30 is the best height on the OTHER pair: chassis_2 drops 29.6 -> 13.4 there while
+    keyhead_endplate stays 68.2, so route the run at z -30 when the channel is cut.
+
+⚠ CHECK IT AGAINST THE INSERT SLOTS FIRST. The block is cut through by the nut height-adjust
+insert slots (that is why keyhead_cradles' old columns had to be carved around them), and a
+72 mm channel at this x/z may cross them. Measure before cutting -- and remember
+led_wall_reliefs cut four board-sized WINDOWS through a wall of this same nominal thickness by
+taking a depth that was convenient rather than the depth the part needed.
+
+NOT ATTEMPTED TONIGHT: a 72 mm channel through a structural block is a design change, not a
+tidy-up, and it belongs at the start of a tick rather than the end of a long one.
