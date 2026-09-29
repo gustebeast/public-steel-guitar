@@ -3055,3 +3055,38 @@ slab, and could not be hit at all).
 interference are both consequences of BOARD_L 62->55 and _MCTRL_CY -10.5->-7.0, which exist
 only to open a USB gap that the flat Pi has already made irrelevant. Moving the motor board
 is the natural moment to revert both and delete that debt rather than pay it.
+
+### ✅ THE SWAP-BACK IS VERIFIED: motor_ctrl to -Y, Pi to +X, EIGHT PAIRS CLEAR (user)
+
+Both of the user's moves applied and checked by REAL INTERSECTION, not arithmetic:
+
+        PI_FP        (-596.0,-511.0,-130.0,-74.0) -> (-588.0,-503.0,-127.0,-71.0)
+        _MCTRL_CY    -7.0 -> -65.75          (the board travels -58.75)
+
+        motor cradle vs body_adapter_3   CLEAR      <- the conflict that forced the Y swap
+        motor cradle vs body_adapter_2   CLEAR
+        motor cradle vs pi5 / pi_cap     CLEAR
+        motor_ctrl   vs pi5 / pi_cap     CLEAR
+        pi5 vs chassis_2 / motor_0       CLEAR
+
+        motor_ctrl   y -34.50..20.50  ->  -93.25..-38.25
+        pi5          x -596..-511     ->  -588..-503,  y -130..-74 -> -127..-71
+
+**THE 170.65 mm3 THAT FORCED THE ORIGINAL Y SWAP DOES NOT COME BACK.** It could not have
+been avoided while the Pi competed for the same bay; the Pi leaving is what opened a -Y
+position the old decision could not reach. This is the swap-back paying for the flat move.
+
+**⚠ MY OWN CHECK PRINTED THE WRONG NUMBER FIRST, and the habit it came from is the one
+this session keeps punishing.** I compared the FULL cradle's -Y edge (-100.35) against the
+adapter face (-97.15) and read "-3.20 clear", i.e. a collision. Only the BELOW-FLOOR part of
+the cradle can reach an adapter -- all four top out at z -73.82, under FLOOR_TOP -71.35 --
+and that part sits at -95.15, clearing by +2.00. **Arithmetic on a bounding box is not a
+clearance test.** The intersection took one run and answered all eight pairs.
+
+**⚠⚠ AND A PROCESS FAULT WORTH FIXING: `agent_sync submit` DOES ITS OWN `git add -A`.**
+I had deliberately split these two moves OUT of the handoff commit so they could be verified
+before going anywhere, then submitted -- and the submit swept them straight back in. Merge
+request 0b71f671 therefore carries them under a message that cites the Pi's EARLIER tested
+position (-596..-511, not -588..-503) and does not mention the motor move at all.
+**Nothing is unstaged at submit time; stage-splitting does not protect anything from it.**
+Verify BEFORE submitting, not between committing and submitting.
