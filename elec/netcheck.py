@@ -111,8 +111,26 @@ def optical_declared(vtype, refs):
 
     Declared because it cannot be loosened -- PD_DY is an optical parameter before it is
     a placement one, and widening it would let the cover shade the detectors it exists to
-    protect. Measured: courtyards overlap 0.390 mm, BODIES clear by 0.350 and copper by
-    0.200, against a 0.127 rule. Only this shape, and only between a D and its OWN PDs.
+    protect. Only this shape, and only between a D and its OWN PDs.
+
+    ⚠ RE-MEASURED 2026-09-29, AND THE BODIES DO NOT CLEAR. This docstring said "courtyards
+    overlap 0.390, BODIES clear by 0.350 and copper by 0.200". Measured on the finished
+    board, identically in all 20 pairs (every D against each of its own two PDs):
+
+        bodies      -0.035 mm   THEY ABUT -- the fab outlines overlap by 35 um
+        courtyards  -0.320 mm   overlap, which is what DRC reports
+        copper      +0.475 mm   clear, against the 0.127 rule
+
+    Copper -- the number that decides whether the board can be built -- is better than
+    was claimed, by more than double. The body figure was wrong in the direction that
+    matters: it asserted a 0.350 clearance that does not exist, and THIS DECLARATION IS
+    THE ONLY THING STOPPING DRC FROM SAYING SO, which is exactly why it has to be right.
+
+    The 35 um is accepted rather than fixed, and deliberately: PD_DY cannot widen (see
+    above), the pads clear by 0.475 so the parts self-align to copper rather than to each
+    other, and 35 um is inside the placement tolerance of any machine that will build
+    this -- the bodies will sometimes touch and nothing is harmed when they do. It is an
+    assembly note, not a defect. What would be a defect is a reader trusting 0.350.
     """
     import re as _re
     if vtype != "courtyards_overlap" or len(refs) != 2:
