@@ -2677,3 +2677,52 @@ whether `insert_l` should be 4.7 or the BOM row should say 5.0 -- and `cadkit/` 
 never hand-edited, and `insert_l` is shared by every project that uses it. That is a question
 for the cadkit owner, with the 5.70 mm of headroom recorded here as the fallback if the spec
 turns out to be right.
+
+### ⚠⚠ THE FLAT-PI DISMISSAL USED THE WRONG CONSTRAINT -- MEASURED PROPERLY (user, 2nd ask)
+
+User, twice: "perhaps the pi could sit flat on the chassis floor?" then "have you tried
+putting the pi flat on the chassis floor yet? Seems like you would need to align it so the
+long side runs along x". **I closed this with a DERIVED number, not a measured one, and the
+number was the wrong constraint.**
+
+I wrote: "X available = ELEC_STACK_D = 21.8 -> short by 63.2". ELEC_STACK_D is the depth of
+the **VERTICAL TRAY's stack** -- the gap between the endplate and the motor bank, for boards
+standing off a 3 mm plate. **A Pi lying flat ON THE FLOOR is not in that stack at all**, so
+that figure never applied to the question being asked. Measured the floor slab instead
+(z FLOOR_TOP -71.35 up 16 mm, the Pi's own thickness):
+
+        keyhead_endplate   inner face         x -607.80
+        motor_ctrl                            x -606.50..-591.70
+        pi5 (standing)                        x -601.60..-586.00
+        motor_0            floor-facing edge  x -583.60      <- the bay's +X wall
+
+**FREE X IN THE BAY = 24.2 mm** (-607.80 to -583.60). So 85 does not fit THERE, and the old
+conclusion survives -- but it now rests on a measurement instead of a mis-applied datum. The
+24.2 against the quoted 21.8 also shows the two numbers were never the same thing.
+
+**⚠ AND THE MOTORS SIT DIRECTLY ON THE FLOOR: `motor_0` zmin = -71.35 = FLOOR_TOP EXACTLY.**
+There is no gap to slide a 15.6 mm board under. That was the other way flat could have won
+and it is closed by measurement.
+
+**BUT THE USER'S ORIENTATION POINTS SOMEWHERE I NEVER LOOKED, AND IT MAY BE OPEN.** The
+motors are staggered in Y along the string fan:
+
+        motor_0  y -41.25..46.75
+        motor_1  y -50.75..37.25
+        motor_2  y -60.25..27.75
+
+**NO MOTOR REACHES BELOW y = -60.25.** The Pi laid flat with its long side on X needs
+85 (X) x 56 (Y), and 56 of Y at the -Y end is y -131..-75 -- entirely clear of every motor.
+In that band the chassis floor may run in X far past the -583.60 wall, out to chassis_2's
+own -397.20. Probing it now; the first probe's Y window was -60..40 and never covered it.
+⚠ THAT BAND IS WHERE THE PI ALREADY IS (standing, y -131.18..-46.18), so the harness
+lengths would barely change -- unlike moving it down the instrument.
+
+**IF IT IS CLEAR, THIS BEATS EVERYTHING BUILT THIS SESSION.** Flat frees 29 mm of the Y band
+(85 -> 56), which is more than the 11.68 mm USB gap the whole motor_ctrl shrink bought, and
+would retire the shrink's leftover +3 rather than trading against it.
+**CAVEATS, so they are not discovered late:** the ports end up facing in-plane so ask #3
+re-opens (probably easier, with more room); every lead off `pi_cap_pin`/`PI_FP` moves;
+`pi_cap` rides the 40-pin header so it comes too and needs headroom above the board; and
+`pi5()`/`PI_FP` are authored in the flat tray frame and posed by `stand()`, so per the
+orientation rule this is a **RE-AUTHOR in the new pose**, never a rotate bolted on the end.
