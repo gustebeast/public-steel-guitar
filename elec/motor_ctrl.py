@@ -748,7 +748,7 @@ def motor_ctrl():
 # and the bay has headroom once the board drops to the chassis floor.
 # ⚠ outline_mm IS CENTRED ON THE ORIGIN, so this adds 4 mm at each end rather than 8 at
 # one. The -Y end gains clear space in front of the bus-B JSTs, which costs nothing.
-BOARD_W, BOARD_L = 61.8, 54.0
+BOARD_W, BOARD_L = 61.8, 62.0
 
 # THE MOUNTING EAR (user, 2026-09-21): an M4 THROUGH the board, not beside it -- "having the
 # screw adjacent ... doesn't provide as strong of retention". A tab off the +Y edge at the +X
@@ -910,34 +910,37 @@ BOARD_NOTES = {
         "C21": (-15.40, 9.00, 90.0),
         "C22": (-15.40, 13.50, 90.0),
         "J5": (-22.90, 0.00, 90.0),
-        # ── the LED strip's buck, in the +Y strip that was empty ──────────────────
-        # ⚠ THE DIVIDERS SIT AT THEIR OWN PINS. The first arrangement laid the whole
-        # converter out left-to-right in signal order and put the FB and EN dividers at the
-        # far end, 20 mm from the pins they drive -- EN_LED came back unconnected and the
-        # detour cost +3V3 and CANB_H as well. A divider's position is not its value; it
-        # belongs at the pin, which is the same rule R30/R31 follow on the optical board.
-        # So: input chain west of U6, output chain east, and the two dividers directly
-        # above and below it -- EN (pin 2) and FB (pin 4) are both on U6's west side.
-        # ⚠ AND NOTHING GOES PAST y 24.5. The +Y edge is at 27.0 and copper_edge_clearance
-        # fired four times when parts sat at 25.0.
-        "F3": (-22.00, 21.50, 0.0),
-        "C24": (-18.50, 23.50, 0.0),
-        "C25": (-18.50, 19.50, 0.0),
-        "C26": (-15.50, 21.50, 0.0),
-        "R16": (-14.50, 24.50, 0.0),
-        "R17": (-12.00, 24.50, 0.0),
+        # ── the LED strip's buck ──────────────────────────────────────────────────
+        # ⚠ TWO ROWS, AND THE LAND SIZES ARE WHY. Measured off the routed board rather
+        # than assumed from the body: L3 (Bourns SRN6028) lands 6.92 x 8.11 and U6's
+        # SOIC-8-1EP lands 7.45 x 6.97. Spacing them on the 6x6 BODY put L3's pad 0.69 mm
+        # inside U6's and swallowed C27 whole -- four shorting_items and four
+        # solder_mask_bridges, on a board that was 0/0 before the buck arrived.
+        # Those two parts are ~7-8 mm tall in Y, so they fill a single row by themselves:
+        # row A carries them and the other large bodies, row B the passives.
+        # ⚠ THE DIVIDERS STAY AT THEIR PINS. An earlier version put FB and EN 20 mm away
+        # and EN_LED came back unconnected; both sit directly above U6 in row B now.
+        # ⚠ HOT LOOP FIRST: C24/C25 sit against U6's VIN and SW runs straight into L3.
+        # That loop is what radiates, and this board shares an instrument with a magnetic
+        # pickup.
+        "F3": (-27.00, 21.50, 0.0),
+        "C24": (-22.50, 21.50, 0.0),
+        "C25": (-18.00, 21.50, 0.0),
         "U6": (-11.50, 21.50, 0.0),
-        "R14": (-14.50, 18.50, 0.0),
-        "R15": (-12.00, 18.50, 0.0),
-        "C27": (-8.50, 24.50, 0.0),
-        "C28": (-8.50, 18.50, 0.0),
-        "L3": (-5.00, 21.50, 0.0),
-        "C29": (-1.00, 23.50, 0.0),
-        "C30": (-1.00, 19.50, 0.0),
-        "C31": (2.00, 21.50, 0.0),
-        "F4": (5.50, 21.50, 0.0),
-        "D10": (9.00, 21.50, 0.0),
-        "J7": (18.00, 21.50, 0.0),
+        "L3": (-3.50, 21.50, 0.0),
+        "F4": (4.00, 21.50, 0.0),
+        "D10": (9.50, 21.50, 0.0),
+        "J7": (19.50, 21.50, 0.0),
+        "C26": (-14.00, 28.50, 0.0),
+        "R16": (-11.00, 28.50, 0.0),
+        "R17": (-8.50, 28.50, 0.0),
+        "R14": (-6.00, 28.50, 0.0),
+        "R15": (-3.50, 28.50, 0.0),
+        "C27": (-1.00, 28.50, 0.0),
+        "C28": (1.50, 28.50, 0.0),
+        "C29": (4.50, 28.50, 0.0),
+        "C30": (7.50, 28.50, 0.0),
+        "C31": (10.50, 28.50, 0.0),
     },
     "refs_on_fab": True,
     # THE GROUND PLANE is why this is four layers, same as the lever board: the

@@ -76,6 +76,40 @@ is fine, but it is the Pi's budget being spent, not a rail of ours — so if the
 grows a backlight or a second module, say so and it gets its own regulator rather than
 creeping up on the Pi.
 
+## ⚠ The shroud is not available at 1.27 mm — searched, 2026-09-28
+
+LCSC stocks plenty of **plain** 2x7 1.27 mm headers and no **shrouded** one. Best candidate:
+
+| part | LCSC | stock | note |
+|---|---|---|---|
+| **HX PZ1.27-2x7P ZZ** | **C22438122** | **10535** | 14P, 2x7, 3.9 mm, gold. Same HX family as the LED connector already in this design |
+| HX PZ1.27-2x7P WZ | C22438113 | 2902 | alternate body |
+| PZ1.27-2x7PTP-L7.2 | C55099228 | 2232 | |
+
+The only shrouded part the search returns at all is `HX FH254-02-13-Z-H8.5`, which is **2.54 mm
+and 2x13** — the wrong pitch and the wrong way count, and 2.54 is what does not fit the
+standoff in the first place.
+
+**So the shroud's polarisation has to come from somewhere else, and this is the open decision.**
+Without it an IDC socket's key does nothing and the cable can go on reversed, which on a
+connector carrying 3V3 into GPIOs is a dead Pi rather than a puzzle. Options, my preference
+first:
+
+1. **Plain 1.27 header + pin-1 silk + a cable cut so it only reaches one way.** Cheapest, and
+   the length constraint is real here: the run is fixed and short. Residual risk is a service
+   visit where someone forces it.
+2. **Keep 2.54 and shroud it**, on grown board area, accepting the 8.54 mm header plus its
+   socket against the 8.5 mm standoff — i.e. it does not fit today and the cap would have to
+   carry it on the front face or the stack would have to grow. The docstring says the stack
+   cannot grow, so this means finding the height elsewhere.
+3. **FFC/ZIF**, which is keyed by the cable's own shape. You are wary of mating cycles and I
+   share that in an instrument that gets stomped on, but it is the only option here that is
+   polarised by construction AND fits the height.
+
+**I have not decided between these**, because the trade is mechanical and it is your station's
+cable. Tell me which and I will place it. If you want my vote it is (1), with the cable length
+doing the keying.
+
 ## Fit, and what I still owe you
 
 You are right that it does not fit today: the back face is inside J1's 8.5 mm standoff and the
