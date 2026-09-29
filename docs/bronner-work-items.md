@@ -1966,7 +1966,54 @@ in air is not an overlap.
 open +Y air above the motor board -- but a USB-A plug body is 8-12 mm tall and does not
 fit in 5.7. Placement was the only fix.
 
-**THE GAP WAS A LEFTOVER OF A RETIRED CONSTRAINT.** The Y-budget note above _MCTRL_CY
+**⚠⚠ AND THE BAND CANNOT BE OPENED -- I TRIED, AND IT COST 5 CONFLICTS. RETRACTED
+BELOW.** I first read the Y-budget note as holding 8.1 mm for the Pi's +Y M4 boss, reclaimable
+now that PI_HOLD is ("+x", 0.0), and moved _MCTRL_CY -10.5 -> -0.5. The gate went 110 -> 115
+and every new conflict was mine: motor_ctrl into **body_adapter_0, 91.41 mm3** (brenner's part,
+and the exact conflict the Y swap was done to retire) plus 4.0 mm3 into each of the four 5 V
+conductors. Reverted.
+
+**THE MEASUREMENT THAT SETTLES IT:** body_adapter(-X,+Y) spans **y 21.15..65.95**, so with the
+motor board's +Y edge at 20.50 there was **0.65 mm** of slack above it -- not 8.1.
+
+        band     body_adapter inner 21.15 down to the Pi's -Y face -131.18    152.33
+        boards   Pi 85.00 + motor 62.00                                       147.00
+        SLACK                                                                   5.33
+
+5.33 mm is the WHOLE budget and it is already spent -- 4.68 between the boards, 0.65 above.
+So the maximum inter-board gap achievable by placement is 5.33, and a right-angle USB-A plug
+needs ~10. **Nothing can be plugged into this Pi, and no nudge fixes it.** The Y-budget note
+is right that the band is exact; what is wrong in it is the idea that the 8.1 was ever
+reclaimable. The adapter caps the other end.
+⚠ RULE, and it replaces the one I wrote two paragraphs ago: when a datum's comment says a
+gap exists FOR something, check BOTH ends of the band before spending it. I checked that the
+boss had left and not that anything else had arrived.
+
+**WHAT IS BUILT, AND IT IS STILL WORTH HAVING.** The leads now end at real ports, approached
+from the only direction a plug could enter, in a gap no plug fits. That is strictly better
+than a lead buried inside the block -- the defect is now WHERE THE DEFECT IS, in placement,
+instead of hidden in a cable endpoint. _PORT_APR = PI_FP[3] + 2.3 runs inside the real 4.68.
+
+**GATE: 110 -> 109, and body_adapter_0 <-> motor_ctrl is GONE.** The port retarget is net
+-1 with no regressions -- one lead that used to graze now does not. The four
+motor_ctrl <-> wire_5v_* at 4.0 mm3 each survive from the baseline and are NOT from this
+change (_board_gap_y is (PI_FP[3] + MCTRL_FP[2])/2 = -43.84, unmoved); they are the next
+thing to look at in the bay.
+
+**THREE WAYS OUT, all bigger than a placement tweak, none started:**
+  1. **SHORTEN motor_ctrl IN Y.** 62.00 comes off its own routed outline, so it is ours to
+     change, and -8 mm buys a 12.68 gap. A board re-layout, and the cheapest of the three
+     in risk because nothing outside the bay moves.
+  2. **ROTATE THE PI 90 deg in its own plane** -- 56 along Y instead of 85 frees 29 mm of
+     band, and the tray has the Z for it. Relays the whole bay, both cradles, every lead.
+     Per the orientation rule this is a RE-AUTHOR in the new orientation, not a rotate.
+  3. **TAKE wire_link OFF USB.** The Pi<->motor_ctrl link is travel offsets at a low rate and
+     could ride the GPIO header pi_cap already sits on -- one plug gone for no geometry. It
+     does NOT solve wire_usb, which is the output board's 20-channel USB audio.
+⚠ 2 and 3 are not mine alone to pick: 2 touches the cradles and brenner's adapter, 3 is a
+control-architecture change. 1 is inside my scope.
+
+**ON THE ORIGINAL READING (kept, because the reasoning was right and the premise was not).** The Y-budget note above _MCTRL_CY
 reserves 8.1 mm of the band for the Pi's M4 boss standing BESIDE its +Y edge -- and that
 boss is GONE, PI_HOLD being ("+x", 0.0) since the user asked for it on the +Z side. So the
 one thing between the Pi's port end and the motor board was space held for a screw that

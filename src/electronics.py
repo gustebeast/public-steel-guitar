@@ -213,20 +213,34 @@ MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outlin
 # -528.15 is where that edge is today; -563.40 = -528.15 - 70.50/2, so this is a no-op until
 # the outline changes and then it is right by construction.
 MCTRL_FLOOR_EDGE_X = -528.15           # tray +X edge == world z -80.85, the floor
-# ⚠ _MCTRL_CY MOVED -10.5 -> -0.5 (2026-09-29): THE PI'S PORTS HAD 4.68 mm OF AIR AND
-# NOTHING PLUGS INTO THAT. The Y budget note above reserves 8.1 mm of the band for the Pi's
-# M4 boss standing BESIDE its +Y edge -- and that boss is GONE: PI_HOLD is ("+x", 0.0) now,
-# the user having asked for it on the +Z side. So the gap was a leftover of a retired
-# constraint, and it was the only thing between the Pi's USB/ethernet end and the motor
-# board. MEASURED: pi5 ymax -46.18, motor_ctrl ymin -41.50. A USB-A plug's overmould needs
-# ~10 mm of Y beyond the port face even right-angled, and a straight one ~22.
-# ⚠ THE 5.7 mm OF CLEAR HEIGHT IS NOT A WAY OUT. motor_ctrl spans world x -606.50..-591.70
-# and the Pi's USB block -600..-586, so the top 5.7 mm of the port face does have open +Y
-# air above the motor board -- but a USB-A plug body is ~8-12 mm tall, so it does not fit
-# in 5.7. The obstacle is real and placement is the only fix.
-# +10.0 puts the motor board at y -31.5..30.5 and the gap at 14.68, which takes a
-# right-angle plug with room to spare, and leaves 11.6 mm of band before the +Y limit 42.1.
-_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -0.5
+# ⚠⚠ NOTHING CAN BE PLUGGED INTO THE PI, AND THE BAND CANNOT BE OPENED TO FIX IT
+# (MEASURED 2026-09-29). pi5 ymax -46.18 against motor_ctrl ymin -41.50 is 4.68 mm, and a
+# USB-A plug's overmould needs ~10 mm of Y beyond the port face even right-angled, ~22
+# straight. I moved _MCTRL_CY -10.5 -> -0.5 to open it and the gate went 110 -> 115: the
+# board ran into body_adapter_0 (91.41 mm3) and through all four 5 V conductors (4.0 each).
+# THE MEASUREMENT THAT SETTLES IT: body_adapter(-X,+Y) spans y 21.15..65.95, so with the
+# motor board's +Y edge at 20.50 there was 0.65 mm of slack above it, not 8.1.
+#       band    body_adapter inner 21.15 down to the Pi's -Y face -131.18   152.33
+#       boards  Pi 85.00 + motor 62.00                                      147.00
+#       SLACK                                                                 5.33
+# 5.33 is the whole budget, already spent as 4.68 between the boards and 0.65 above. The Y
+# budget note below says the band is exact and it IS -- what is wrong in it is the claim
+# that 8.1 mm is held for the Pi's +Y M4 boss and could be reclaimed now the boss has moved
+# to +x. The gap is not reclaimable: the adapter caps the other end.
+# ⚠ AND THE 5.7 mm OF CLEAR HEIGHT IS NOT A WAY OUT EITHER: motor_ctrl spans world x
+# -606.50..-591.70 and the Pi's USB block -600..-586, so the top 5.7 mm of the port face has
+# open +Y air above the motor board -- but a USB-A plug body is 8-12 mm tall.
+# SO THE LEADS NOW END AT THE RIGHT PORTS, APPROACHED FROM THE RIGHT SIDE, IN A GAP NO PLUG
+# FITS. That is the honest state and it is strictly better than a lead buried in the block.
+# THREE WAYS OUT, none of them a nudge, all bigger than this file:
+#   1. SHORTEN motor_ctrl IN Y. It is 62.00 off its own routed outline, so this is ours to
+#      change; -8 mm buys a 12.68 gap. A board re-layout.
+#   2. ROTATE THE PI 90 deg in its own plane: 56 along Y instead of 85 frees 29 mm of band,
+#      and the tray has the Z for it. Relays the whole bay, the cradles and every lead.
+#   3. TAKE wire_link OFF USB -- the Pi<->motor_ctrl link is travel offsets, low rate, and
+#      could ride the GPIO header pi_cap already sits on. That removes one plug but not
+#      wire_usb, which is the output board's 20-channel USB audio and cannot move.
+_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -10.5
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
