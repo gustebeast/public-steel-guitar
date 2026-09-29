@@ -999,7 +999,12 @@ def build_wires():
     # the mouth, climbs to the trough's USB lane out in the bay -X of the J7 loop, and rides
     # the trough to the keyhead bay. (It used to run a floor corridor inside the pocket cut
     # into the rail; the trough replaced both.)
-    _usb = SP(-575.0, 20.0, -44.0)
+    # ⚠ THE SAME FROZEN y 20 AS wire_link, and check_cable_ends found it (2026-09-29): this
+    # read SP(-575.0, 20.0, -44.0), which was on the Pi when it spanned y -50..35 and is 8.10 mm
+    # off it now that the swap put the Pi at -135..-50. TWO leads to the Pi were stranded at its
+    # old position; only wire_link happened to clip a wall and raise a gate pair. Derived from
+    # the USB/ethernet block pi5() builds at PI_FP[3] - 9.0, like wire_link's.
+    _usb = SP(-575.0, EL.PI_FP[3] - 9.0, -44.0)
     _ua = EL.op_pt("J2")
     _UA_PLUG = 25.0
     # ITS OWN COLUMN at the keyhead, 6 mm +X of the one the bay wires share: at a different
