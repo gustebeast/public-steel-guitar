@@ -627,13 +627,31 @@ working top-down would act on stale text. The state of each claim:
          J_PINS becomes (V24, GND, SCK, SDI) -- FOUR ways, with the EXISTING connector and
          no sourcing question at all. It also answers led_strip.py's own open item ("where
          the strip's 5 V comes from"): nowhere, it is made locally.
-         ⚠ AND THE SWITCHER ARGUMENT INVERTS IN OUR FAVOUR. A buck runs at 1-2 MHz, far
-         above the audio band; the addressable chips' 1.6-3.2 kHz PWM sits inside it. Four
-         local bucks are a BETTER neighbour for the pickup than one 24 V rail feeding
-         audio-band PWM chips.
-         COST: 4 bucks instead of 1, and their input capacitance and layout land next to
-         the pickup -- so bench them with the same test already pending for the TLC59711's
-         sub-audio term.
+         ⚠⚠ I CLAIMED "the switcher argument inverts in our favour -- four local bucks are
+         a BETTER neighbour for the pickup". THAT WAS GLIB AND THE USER CAUGHT IT: "I was
+         going to suggest the buck but I thought you had said earlier that we shouldn't
+         consider that due to audio interference." They were right to check. THIS PROJECT
+         ALREADY TREATS A BUCK BESIDE A MAGNETIC SENSOR AS A HAZARD, in three places:
+             elec/lever_sensor.py:137  a LINEAR regulator is used INSTEAD of a buck,
+                                       "the right call beside a magnetic angle sensor"
+             BOM.md:596                "4 LAYERS, and not for density: the buck switches
+                                       ~10 mm from a magnetic angle sensor"
+             output_panel_sklib.py     "buck output inductor, SHIELDED -- it sits on the
+                                       same board as a magnetic pickup's preamp"
+         MY FREQUENCY ARGUMENT WAS TRUE BUT NOT THE WHOLE STORY. 1-2 MHz is indeed far
+         above the audio band, but a magnetic pickup does not care about the FUNDAMENTAL --
+         it couples to the INDUCTOR'S FIELD and to the ripple current loop, which is a
+         magnetic loop antenna, and switching edges carry broadband harmonics that can
+         intermodulate down. That is precisely why this project specifies a SHIELDED
+         inductor and 4 layers where a buck cannot be avoided, and a LINEAR regulator where
+         it can.
+         SO THE 24 V DISTRIBUTION PLAN IS NOT FREE: it puts FOUR switching inductors along
+         the +Y rail, which is where the strip lives and the pickup sits. It is viable ONLY
+         with the mitigations this project already uses -- shielded inductors, a 4-layer
+         section, and placement as far from the pickup as the run allows -- and the linear
+         alternative is impossible here (24 -> 5 V at 0.55 A is ~10 W in a linear pass).
+         Weigh that against today's arrangement, which is ONE buck at the far end and the
+         doubled conductors that follow from carrying 5 V at 2.2 A down the whole strip.
 
       5h. USER: "does our current plan use an LED that can be PCBA'd without consignment?"
          VERIFIED AGAINST JLCPCB'S OWN PART PAGES, both YES:
