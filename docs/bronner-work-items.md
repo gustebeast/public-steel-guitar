@@ -3090,3 +3090,46 @@ request 0b71f671 therefore carries them under a message that cites the Pi's EARL
 position (-596..-511, not -588..-503) and does not mention the motor move at all.
 **Nothing is unstaged at submit time; stage-splitting does not protect anything from it.**
 Verify BEFORE submitting, not between committing and submitting.
+
+### ✅✅ AFTER THE SWAP-BACK: 134 TOTAL, BUT ONLY **2** ARE STRUCTURAL
+
+        total conflicts                134
+        involving a cable              132
+        STRUCTURAL                       2   <- and neither is bronner's
+
+            20.4 mm3  optical_pcb <-> optical_screw_1
+            20.1 mm3  optical_pcb <-> optical_screw_0
+
+**THE COMPUTE BAY'S STRUCTURE IS CLEAN.** Every geometric question in this whole thread is
+resolved: the Pi's pose, the USB gap, the cradle, the M4, the height-adjust block, string 9's
+hardware and the body adapter. The two survivors are pre-existing and live in the optical
+board, not this scope.
+
+**AND THE SHRINK'S ENTIRE DEBT WAS DELETED RATHER THAN PAID.** The +3 over the 109 baseline
+that I flagged as outstanding -- and deliberately did not chase -- went out with the motor
+board's -Y move:
+
+        chassis_2 <-> nut_height_insert_9      17.4   GONE
+        chassis_2 <-> nut_height_screw_9        7.1   GONE
+        keyhead_endplate <-> board_insert_0     3.0   GONE   (the cadkit/BOM 0.30)
+        chassis_2 <-> body_adapter_0          109.0   GONE
+        chassis_2 / motor_0 <-> wire_5v_*        x8   GONE
+
+⚠ **THE "DO NOT PAY DOWN THE +3 UNTIL FLAT IS DECIDED" NOTE EARNED ITS PLACE.** I was one
+tick from moving the board 0.8 mm in X to chase board_insert_0's 0.30, and from handing the
+nut_height_9 pair to another agent. Both would have been work thrown away, and the handover
+would have been noise in someone else's inbox. **When a big change is pending, debt that the
+change might delete is not worth paying.**
+
+**THE 132 CABLE CONFLICTS ARE ONE JOB, NOT 132.** Every lead in the bay was drawn against a
+standing Pi in a shared bay; both boards have moved. The known shape of the work:
+  * 15 of them are `wire_led_* <-> wire_led_*`, which is exactly C(6,2) -- six conductors
+    sharing waypoints and collapsing onto one line. **Per-conductor offsets like CAN_OFF /
+    PWR_OFF are the fix**; an earlier re-route without them cost 109 -> 154 and was reverted.
+  * `wire_usb` / `wire_link` still resolve through `pi_port_pt`, which returns TRAY coords
+    and is passed through `stand_pt` -- meaningless now. `pi_port_pt` must be re-authored in
+    the world frame with the ports on the +X END.
+  * `_board_gap_y` is the midpoint of two standing boards' facing edges. That concept is gone.
+  * optical's `pi_column_x` still reasons about "the Pi's +X face + 3 cable diameters" with
+    string 1's motor beside it -- it will keep RETURNING a number and silently route the
+    optical board's USB run into the motor bank. Re-derive it, do not just re-run it.
