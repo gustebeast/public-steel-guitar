@@ -593,6 +593,25 @@ working top-down would act on stale text. The state of each claim:
          the 2.2 A on one contact, so "collapse the dual V5/GND" and "use the coplanar part
          that actually mates" are, on current evidence, mutually exclusive.
 
+      5e. DECISION, so this stops consuming ticks: FEWER JUNCTIONS FIRST, better connector
+         second. Three ticks of sourcing have produced no part that satisfies all of
+         (coplanar OR low-profile) + (LCSC/JLCPCB so it can be PCBA-placed) + (>= 2.2 A or
+         power off the joint). The JLCPCB 1.27 mm "2X10P" that looked promising is a DC3
+         RIBBON header -- it mates to a cable, so it reintroduces the wire it was meant to
+         remove.
+         Meanwhile the arithmetic is unarguable: each junction costs 39 mm of dark span, so
+         HALVING THE JUNCTION COUNT BUYS MORE THAN ANY CONNECTOR CHOICE DOES. 4 sections =
+         3 junctions = 117 mm of dark. 2 sections = 1 junction = 39 mm. That is a 2/3
+         improvement using the EXISTING part, with no sourcing risk, no rule to re-read and
+         nothing consigned.
+         ⚠ IT IS NOT FREE and the cost is on the board, not the joint: a 290 mm section
+         carries ~19 LEDs on 6 TLC59711s instead of 9 on 3, so the per-section current
+         doubles and the 2 A PH contact limit gets worse, not better -- the doubled V5/GND
+         stays and may need trebling. Price that against the panel saving before building.
+         The sectioning rationale was never electrical: "each small enough to share the
+         panel with the tee and sensor boards". That is a cost optimisation, and 117 mm of
+         dark strip is a strange price to pay for it.
+
          STILL TO SOLVE, with the corrected constraint. The joint must be a CONNECTOR the
          assembly house reflows onto each board, mating board to board with no wire. The
          2.54 right-angle HEADER rejection stands (male 2.5 mm insulation height vs female
