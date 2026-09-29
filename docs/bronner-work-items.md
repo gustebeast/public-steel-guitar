@@ -438,7 +438,21 @@ working top-down would act on stale text. The state of each claim:
         placement. Two findings came out of it: D6/D7 are USB ESD clamps that sat 53 mm
         from the connector they protect, and the crystal Y1 does not FIT anywhere on the
         +X half (every corridor there is 3.37..3.46 mm against its 3.59). See the commit
-      * bus B's 3.20 mm is mctrl_pt's documented side-entry approximation
+      * bus B's side entry is FIXED. board_geom.lead_exit() now answers "where does a lead
+        leave this connector", because board_geom is the module that already knows a
+        side-entry plug leaves through the board EDGE (it grows the solid that way for
+        _SIDE_PLUG_RUN). mctrl_pt delegates to it: the four VERTICAL connectors come back
+        bit-identical, J2/J6 move 7.45 mm out to a seated plug instead of a point inside
+        the socket.
+      * ⚠ AND THE LEVER CABLE WAS ON THE WRONG CONNECTOR. elec/motor_ctrl.py has called
+        J2 "bus B IN -- from the pedals at the leg" and J6 "bus B OUT -- to the lever
+        chain" since the 8-way PH was split in two on 2026-09-25, but wiring.py drew the
+        run to the KNEE LEVERS out of J2. Now J6. Nothing could catch this:
+        check_cable_ends asks whether an end reaches its PART, and J2 and J6 are the same
+        part -- the same blind spot as the two disconnected USB leads, one level finer.
+      * STILL OPEN: bus B's PEDAL half (J2, leg -> controller) is not drawn at all. It
+        lands at the TRRS adapter station, which is PARKED pending the respin; when that
+        un-parks, its cable starts at EL.mctrl_pt("J2").
 
     SUPERSEDED -- do not act on these:
       * "THE SWAP CANNOT BE FINISHED BY PLACEMENT -- the cradle must be trimmed"  -> it WAS
