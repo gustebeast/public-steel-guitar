@@ -33,18 +33,25 @@ A 60-minute route makes iteration impossible. Cost splits:
   the routine's own note already asks for ("these three should share one obstacle model").
   Not done.
 
-## 3. motor_ctrl — LED buck added, board currently BROKEN
+## 3. motor_ctrl — BROKEN BEFORE THE BUCK, and a stale report hid it
 
-Netlist is right; placement is not. 3 unconnected (`+3V3`, `CANB_H`, `EN_LED`), 48 violations,
-against **0/0 before the change**.
+**Measured 2026-09-28: 2 unconnected (`+3V3` at TP5, `CANB_H` at J2) and 10 real violations
+(3 shorting_items, 4 copper_edge_clearance on J2/J6 mounting pads, 3 solder_mask_bridge) with
+the source reverted to 3e74d29 — i.e. with NO LED buck.** So the buck did not break it.
 
-* **`L3` overlaps `U6` and `C27`.** The Bourns SRN6028 land measures **6.92 × 8.11**, not the
-  6×6 body I spaced it on. Shorting pads to U6 pins 5/7/8 and C27.
-* **`J2`/`J6` mounting pads now fail `copper_edge_clearance`** — they sit at x 26.02 and the
-  board grew in Y (46 → 54), which moved the ear (`_EAR_Y1` = BOARD_L/2 − EAR_W, 13.5 → 17.5)
-  and with it the outline near them. Re-check against the new polygon.
-* motor_ctrl has **no `_assert_field_clear`** like optical's, which is why a 1.5 mm overlap
-  reached the router instead of failing at generation. Worth adding.
+**`motor_ctrl-drc.rpt` in the repo root is from 2026-09-20** and claims 0 violations, 0
+unconnected. It predates three reworks of this board (bus-B plug placement 0c94b25, the
+self-crossing outline 25459ee, the 5.7 mm resize 3e74d29) and was never regenerated. The
+board has been failing since one of those and the stale artefact concealed it.
+
+⚠ **The same trap caught led_strip**: its committed report says "0 unconnected *pads*" while
+finish.py reports 1 unconnected *item* — a track↔zone pair the pad count never sees. **Do not
+trust a `*-drc.rpt` in the repo root**; run `finish.py` and `audit_board.py`.
+
+**Next:** fix the pre-existing failures first — the J2/J6 edge clearance is most likely the
+XH connectors overhanging the +X edge (their land is 11.77 × 13.25 centred at x 26.95, which
+reaches 32.84 against a board edge at 30.9). Only then re-land the LED buck, which is designed
+and correct in the netlist and preserved in history at 513315a.
 
 ## 4. pi_cap — the UI board's 14-way ribbon (brenner)
 
