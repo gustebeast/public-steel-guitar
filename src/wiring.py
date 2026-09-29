@@ -885,13 +885,36 @@ def build_wires():
 
     def _feed2(dz):
         zr, zl = _REC_Z10 + dz, LANE_PWR2 + dz
+        # ⚠ THE TAIL COMES UP THROUGH THE GAP BETWEEN THE BOARDS NOW (2026-09-29). It used to
+        # descend at _FEED2_X straight onto J3, on the strength of the comment above -- "there
+        # is no motor at x -582 (string 1's sits far +Y), so the column is free". That was true
+        # when J3 sat at y ~-100. The Y swap moved J3 to (-591.70, 5.07, -61.55), INSIDE the
+        # motor bank, and the column then descended through motor 0: ~100 mm3 per conductor.
+        # Measured with scratchpad/segtest.py + appr.py, every segment against
+        # src.build.collect_components():
+        #   * there is NO clear column at the connector's y, at ANY x -- motor_ctrl owns
+        #     -600..-590, its cradle -588..-582, and motor 0 owns -586..-558.
+        #   * going UNDER the motor bank fails too: motor 0 sits at the rail's own exit
+        #     (x -578.10), 936..1057 mm3 whatever the height.
+        #   * the one clear way in is the 8 mm GAP BETWEEN THE TWO BOARDS (the Pi ends at
+        #     y -50, the motor starts at -42; the gap exists because it is the Pi's M4 boss).
+        # So: run +Y at the rail's OWN x, which is east of the Pi and so misses the board that
+        # now sits over the trough (CHAN_Y -129.15 is inside pi5's y span -135..-50); turn west
+        # into the gap only then; drop; and walk up the board's own face to J3.
+        # The face height is -58 and NOT the connector's own z: at z -61.55 this runs alongside
+        # the 5 V cable (which lives at z -64 since its own fix) for 31.6 mm3 per conductor.
+        _GAP_X, _GAP_Y, _FACE_Z = -588.0, -46.0, -58.0
+        _jy = _mc24[1] + _J3_PITCH2
         return _pair([_j10, (_j10[0], _j10[1], zr), (_j10[0], _REC_Y, zr),
                       (_BAY_X10, _REC_Y, zr), (_BAY_X10, CHAN_Y, zr), (_RISE10, CHAN_Y, zr),
                       (_RISE10, CHAN_Y, zl)]
                      + _rail_pts(_RISE10, _FEED2_X, zl)
-                     + [(_FEED2_X, _mc24[1] + _J3_PITCH2, zl),
-                        (_FEED2_X, _mc24[1] + _J3_PITCH2, _mc24[2] + dz),
-                        (_mc24[0], _mc24[1] + _J3_PITCH2, _mc24[2] + dz)], dz)
+                     + [(_FEED2_X, _GAP_Y, zl),
+                        (_GAP_X, _GAP_Y, zl),
+                        (_GAP_X, _GAP_Y, _FACE_Z + dz),
+                        (_GAP_X, _jy, _FACE_Z + dz),
+                        (_GAP_X, _jy, _mc24[2] + dz),
+                        (_mc24[0], _jy, _mc24[2] + dz)], dz)
 
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
         def _off(pts, _do=_do):
