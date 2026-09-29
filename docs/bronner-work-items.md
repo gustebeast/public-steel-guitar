@@ -503,6 +503,35 @@ working top-down would act on stale text. The state of each claim:
          not cover, and the wording let me. When a rule seems to permit exactly the thing
          that is otherwise hard, check the rule rather than bank the permission.
 
+      5b. USER, same turn: "I'm surprised they don't stock this part. Also why do we need
+         6 wires? The LED strips I use only take three, ground power data."
+
+         WHY SIX, answered from the source rather than from memory:
+           * 2 of the 6 are PURE CURRENT CAPACITY, and it is a CONNECTOR limit, not physics
+             -- led_strip.py: "2.2 A at full white against PH's 2 A per contact". So V5 and
+             GND are doubled only because a JST-PH contact is rated 2 A. A connector with a
+             higher per-contact rating makes the joint FOUR (V5, GND, SCK, SDI), and taking
+             the strip's power off the section joint entirely makes it THREE.
+           * 2 signals, not 1, because the TLC59711 takes a CLOCKED TWO-WIRE input. The
+             user's strips need one data wire because the controller is inside each LED.
+
+         WHY NOT A 3-WIRE ADDRESSABLE STRIP: the docstring argues it and the argument holds.
+         The brief ranks quality first -- real white channel, deep bit depth, and PWM ABOVE
+         THE AUDIO BAND because the strip sits in the body beside a MAGNETIC PICKUP. Every
+         buyable addressable RGBW chip PWMs at 1-4 kHz (SK6812 RGBW 1.2 kHz, UCS8904B and
+         SM16825E 4 kHz); the one that does all three, HD108 RGBW, is quote-only, which the
+         no-quote-only-suppliers rule already forbids. So the conductor count is mostly the
+         price of keeping switching noise out of the pickup.
+
+         ⚠ THE STOCKING CLAIM IS NOT RE-VERIFIED AND THE USER IS RIGHT TO DOUBT IT. "Every
+         stocked 2.54 right-angle male is 2.5 mm insulation height and every stocked
+         right-angle female is H8.5" comes from an earlier session; I inherited it and
+         built an argument on top without testing it. It also searched ONE narrow family --
+         2.54 mm right-angle THT headers. Board-to-board MEZZANINE connectors (Hirose
+         DF11/DF40, Molex SlimStack, JST board-to-board) are a different product line,
+         stocked in depth, and made for exactly this joint. RE-SEARCH THE MEZZANINE FAMILY
+         at 4 ways before concluding anything is unsourceable.
+
          STILL TO SOLVE, with the corrected constraint. The joint must be a CONNECTOR the
          assembly house reflows onto each board, mating board to board with no wire. The
          2.54 right-angle HEADER rejection stands (male 2.5 mm insulation height vs female
