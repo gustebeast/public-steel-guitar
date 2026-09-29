@@ -1503,14 +1503,41 @@ def _parts():
     _dec_off = CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0402"][1] / 2
     _dec_off_e = (CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0]
                   + CRTYD_GAP + CRTYD["0402"][1] / 2)
-    for _k in range(8):
+    # ⚠⚠ NINE WEST AND THREE EAST, NOT EIGHT AND FOUR -- THE TAIL MOUNT OWNS THE +X STRIP
+    # (2026-09-29). The even ±9.0 span put C111 at CAD y -56.380 and the tail mount is at
+    # -56.150: the M4's button head landed ON the capacitor, 0.25 mm centre to centre.
+    # This is the C112/C113 fault a third time, and the note above already named it -- "the
+    # other twelve were the same bug, unexamined". C113 got a hand-written step-away guard
+    # and the RING, added later, places by pin with no knowledge of the mount at all.
+    # ⚠ AND A STEP-AWAY WILL NOT FIT HERE, which is why this is a rebalance and not a copy
+    # of C113's guard. C111 needs 5.025 mm of Y from the screw axis (head r 3.80 + PKG_CLR
+    # + a 0402's 0.975 half-height at rot 90). Stepping -Y lands it at -61.175 against
+    # C110 at -62.380 -- 1.205 mm where two 0402s need 2.10. Stepping +Y lands it at
+    # -51.125 against R50 at -50.354 -- 0.771. BOTH directions collide, measured, so the
+    # +X strip simply cannot hold four ring caps as well as C112, C113, R50, TP7 and the
+    # screw head. The ninth cap goes west, where there is 27.4 mm of clear edge: nine
+    # across ±11.0 is a 2.75 mm pitch against the 2.10 a 0402 needs.
+    # The three that stay east are spanned inside a window derived from the obstacles
+    # rather than centred on U6, and the assert below is the guard that was missing.
+    for _k in range(9):
         add("C%d" % (100 + _k), "MCU decoupling -- -X edge of the package", "0402",
             _part_x("U6") - _dec_off,
-            _part_y("U6") + (_k - 3.5) / 3.5 * 11.0, 90.0)
-    for _k in range(4):
-        add("C%d" % (108 + _k), "MCU decoupling -- +X edge, outboard of C112/C113",
-            "0402", _part_x("U6") + _dec_off_e,
-            _part_y("U6") + (_k - 1.5) / 1.5 * 9.0, 90.0)
+            _part_y("U6") + (_k - 4.0) / 4.0 * 11.0, 90.0)
+    # the legal band on the +X strip: below the screw head's reach and above C112, keeping
+    # a 0402's pitch off C113. Derived, so a move of U6 or the mount re-solves it.
+    _e_pitch = CRTYD["0402"][0] + CRTYD_GAP                   # 2.10, rot 90 -> Y extent
+    _e_head = TP.JACK_HEAD_D / 2 + PKG_CLR + CRTYD["0402"][0] / 2
+    _e_y1 = min(Y_TAIL - MOUNT_KEEP - _e_head,                # clear of the button head
+                _part_y("C113") - (CRTYD["0805C"][1] + CRTYD["0402"][0]) / 2 - CRTYD_GAP)
+    _e_y0 = _part_y("C112") + (CRTYD["0805C"][1] + CRTYD["0402"][0]) / 2 + CRTYD_GAP
+    assert _e_y1 - _e_y0 >= 2 * _e_pitch, (
+        "the +X decoupling band is %.2f mm -- three 0402s need %.2f"
+        % (_e_y1 - _e_y0, 2 * _e_pitch))
+    for _k in range(3):
+        add("C%d" % (109 + _k), "MCU decoupling -- +X edge, outboard of C112/C113, "
+            "spanned clear of the tail mount's head", "0402",
+            _part_x("U6") + _dec_off_e,
+            _e_y0 + (_e_y1 - _e_y0) * _k / 2.0, 90.0)
 
     # ⚠ THE TWO STRAPS GO TO THEIR PINS. They were loose items in the row below, which put
     # R30 26 mm from the BOOT0 pin it pulls down and R31 14 mm from NRST -- so the router
@@ -2806,6 +2833,36 @@ def mount_points():
     # locates the board just as well as a parallel one.
     return [(MOUNT_X_HEAD, HEAD_Y0 + MOUNT_KEEP),      # -12.00, hard -X
             (MOUNT_X_TAIL, Y_TAIL - MOUNT_KEEP)]       # +2.40, hard +X
+
+
+# ⚠⚠ NOTHING MAY STAND UNDER EITHER SCREW HEAD, AND THIS IS THE GUARD THAT WAS MISSING.
+# The same fault reached this board THREE times: C112 and C113 each got a hand-written
+# step-away beside their own placement, and C111 got none, because the decoupling ring was
+# added later and places by pin with no knowledge of the mount. A per-part guard written
+# next to one part cannot protect the parts added after it -- so this one runs over every
+# placement against every mount point, once, after both exist.
+# COURTYARD against the head CIRCLE, not centre-to-centre: the C113 note records that a
+# body-clearance check is what let a courtyard overlap through, and a 0402's extents swap
+# when it is rotated 90 degrees, which a radius comparison cannot see.
+def _assert_mount_heads_clear():
+    _hr = TP.JACK_HEAD_D / 2.0
+    for _mx, _my in mount_points():
+        for _p in PARTS:
+            _cr = CRTYD.get(_p.get("pkg"))
+            if not _cr:
+                continue
+            _w, _h = _cr
+            if abs(float(_p.get("rot", 0.0)) % 180.0 - 90.0) < 1e-6:
+                _w, _h = _h, _w
+            _dx = max(0.0, abs(_p["x"] - _mx) - _w / 2.0)
+            _dy = max(0.0, abs(_p["y"] - _my) - _h / 2.0)
+            _d = math.hypot(_dx, _dy) - _hr
+            assert _d >= PKG_CLR, (
+                "%s's courtyard is %.3f mm from the M4 head at (%.2f, %.2f) -- the head "
+                "would sit on it (needs %.2f)" % (_p["ref"], _d, _mx, _my, PKG_CLR))
+
+
+_assert_mount_heads_clear()
 
 
 # ROUTED-OUTLINE FILLETS. A PCB outline is CNC-ROUTED, not cut from plate, so any polygon
