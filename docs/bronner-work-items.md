@@ -635,6 +635,20 @@ working top-down would act on stale text. The state of each claim:
          the pickup -- so bench them with the same test already pending for the TLC59711's
          sub-audio term.
 
+      5h. USER: "does our current plan use an LED that can be PCBA'd without consignment?"
+         VERIFIED AGAINST JLCPCB'S OWN PART PAGES, both YES:
+             C7371891  XINGLIGHT XL-5050RGBW   PCBA type "Economic and Standard"
+             C116842   TI TLC59711PWPR         PCBA type "Economic and Standard"
+         So the light engine and its driver are both in the assembly library and need no
+         consignment. Neither page showed a stock QUANTITY, so confirm stock at order time
+         and note that an Extended part carries a per-unique-part setup fee.
+         ⚠ AND THIS IS THE BAR THE CONNECTOR MUST ALSO CLEAR. The whole board is
+         consignment-free today; choosing Harwin M20 for the section joint would make the
+         WHOLE ASSEMBLY consigned for the sake of one part, which is a much larger cost
+         than the joint. Any connector candidate must have a JLCPCB part page saying
+         "Economic and Standard" (or Basic/Preferred), exactly as these two do -- that is
+         now the first filter, before pitch, current or coplanarity.
+
       5e. DECISION, so this stops consuming ticks: FEWER JUNCTIONS FIRST, better connector
          second. Three ticks of sourcing have produced no part that satisfies all of
          (coplanar OR low-profile) + (LCSC/JLCPCB so it can be PCBA-placed) + (>= 2.2 A or
