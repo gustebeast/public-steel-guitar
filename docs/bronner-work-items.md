@@ -7,7 +7,11 @@ called a strict improvement is in: six bring-up pads (I2C2 SDA/SCL for the ROM b
 BOOT0, and the three rails) plus per-converter `SHDNZ` isolation. 0 unconnected, 0 violations,
 `audit_board` clean, SI clean, In1 web unchanged at 0.266 mm, fab rebuilt. The one item that
 did not make it — the buck's power-good — is closed with measurements, not deferred.
-**Next: the chassis_2 mounting rework (item 5), which has not been started.**
+**Now on the chassis_2 mounting rework (item 5), IN PROGRESS.** The cradles are moved onto the
+chassis, the frames are re-rooted in the floor, and the first measurement turned up a defect
+rather than a feature — see item 5. The open question is PRINTABILITY: those frames were shaped
+for the endplate's X-up build direction and the chassis prints **Z-up**, so the ring's two
+horizontal members become long unsupported bridges. Being measured with `check_ceilings`.
 
 ---
 

@@ -328,7 +328,7 @@ RIB_LZ    = -87.5        # local z -> world x -631.3: just inside the endplate's
                          # which ends at -631 behind the Pi and -627 behind the controller
 
 
-def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
+def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     """The Pi's and the motor controller's mounts, built INTO the keyhead endplate.
 
     ⚠ THIS REPLACES electronics_tray, AND _support_posts SAID IT WOULD: "these boards
@@ -370,7 +370,7 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
         return cq.Workplane("XY").add(cq.Solid.makeCylinder(d / 2.0, z1 - z0, cq.Vector(x, y, z0)))
 
     def _frame(bw, bl, boss_xy, slide_in_x=False, harness_w=0.0, post_h=POST_H,
-               open_down=False):
+               open_down=False, root_d=None, boss_d=None, foot=0.0):
         """A board cradle made ONLY of columns rising from the endplate wall (local z `zb`)
         to the board: a ring round the board -- a LIP under its edge to carry it, then on up
         past its top as the locating wall -- and an M4 boss column at `boss_xy`, the insert
@@ -397,9 +397,23 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
         direction is unaffected.
         """
         ox, oy = bw / 2 + CLR + WALL, bl / 2 + CLR + WALL
+        # ⚠ THE ROOT IS THE CHASSIS FLOOR NOW, NOT THE ENDPLATE WALL, and that is why these
+        # frames stop being 26.5 mm deep. `zb` reached inside the endplate (RIB_LZ) because
+        # the endplate was what carried them; carried from BELOW they only need enough depth
+        # to be stiff and to bury the M4's insert, and depth is now a COST rather than free:
+        #   * the Pi's band is filled behind it by the height-adjust block, whose inboard
+        #     face is x -607.8 -- so its frame may reach 6.2 mm back and no further. Its
+        #     BOSS may be deeper, because the hold point sits at y +36.9, outside that
+        #     block's y -38.91..+33.2.
+        #   * the motor band has no block in it at all (y -113..-51), so 10.4 is free there.
+        # THIS IS ALSO WHAT RETIRES pi_cut. The insert-slot shadow existed only to carve the
+        # old columns around the slots they landed on; a frame that stops at -607.2 never
+        # reaches them.
+        zr = zb if root_d is None else -root_d
+        zbo = zb if boss_d is None else -boss_d
         btop = post_h + BD_T                       # the board's top face
         top = btop + RETAIN + 0.8                  # wall now clears the retainer too
-        ring = (box_at(2 * ox, 2 * oy, post_h - zb, x=0.0, y=0.0, z=(zb + post_h) / 2)
+        ring = (box_at(2 * ox, 2 * oy, post_h - zr, x=0.0, y=0.0, z=(zr + post_h) / 2)
                 .cut(box_at(bw - 2 * LIP, bl - 2 * LIP, 80.0, x=0.0, y=0.0, z=0.0)))
         wall = (box_at(2 * ox, 2 * oy, top - post_h, x=0.0, y=0.0, z=(post_h + top) / 2)
                 .cut(box_at(bw + 2 * CLR, bl + 2 * CLR, btop - post_h + 0.02,
@@ -428,9 +442,36 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
             # ⚠ THE MOUTH IS LOCAL -X, WHICH IS WORLD +Z. stand() inverts this axis, and
             # cutting +x instead left all 252 mm3 exactly where it was -- the swept volume,
             # not the picture, is what said which side had opened.
-            wall = wall.cut(box_at(2 * WALL + 2 * CLR + 2, 2 * oy + 2, 80.0,
-                                   x=-bw / 2, y=0.0, z=0.0))
-        cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zb, post_h))
+            mouth = box_at(2 * WALL + 2 * CLR + 2, 2 * oy + 2, 80.0,
+                           x=-bw / 2, y=0.0, z=0.0)
+            wall = wall.cut(mouth)
+            # ⚠ AND IT CUTS THE RING TOO NOW, WHICH IS A PRINTABILITY FIX WITH A DESIGN
+            # ARGUMENT BEHIND IT. These frames were shaped for the endplate, which builds
+            # along world +X; the chassis builds along world +Z, and in that direction the
+            # ring's upper member is a horizontal bar 1.2 mm wide spanning the board's whole
+            # width between the two side members -- 85.6 mm of unsupported bridge on the Pi,
+            # ~66 on the motor controller. Neither prints.
+            # It is not needed either: that member is a LIP under the board's TOP edge, and a
+            # board standing vertically is carried by the lip under its BOTTOM edge. What the
+            # top edge needs is retention against lifting, and that is the M4 -- which is the
+            # whole reason the mouth is up there. So the frame is a U, not a rectangle.
+            ring = ring.cut(mouth)
+        cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zbo, post_h))
+        # ⚠ AND THE FOOT, which is the whole point of rooting in the chassis: two legs off
+        # the ring's own side walls, down past the board's bottom edge to the floor. Only
+        # the SIDES, because the span between them is the harness lane and the motor board's
+        # floor port. A board whose ring already reaches into the floor (the motor
+        # controller, whose laminate ends 1.00 mm inside the underside) needs none: its side
+        # walls ARE the legs, which is why 2711 mm3 of interference becomes a root.
+        # ⚠ ONE CONTINUOUS RIB, NOT TWO LEGS, and again the build direction decides it. Two
+        # legs at the ends leave the bottom lip bridging 85.6 mm between them; a rib the full
+        # width of the frame carries that lip along its whole length, so there is no bridge at
+        # all, and standing on the floor it is a vertical wall in the chassis's own build
+        # direction -- the easiest thing a printer does. It costs 5.6 mm of the bay's depth in
+        # X under the board, not a partition across the bay.
+        if foot > 0.0:
+            cr = cr.union(box_at(foot, 2 * oy, post_h - zr,
+                                 x=bw / 2 + foot / 2, y=0.0, z=(zr + post_h) / 2))
         # ⚠ THE -Z EDGE CARRIES CONNECTORS, NOT RETENTION (user, 2026-09-25: "we likely
         # don't need -z retention at all since the chassis serves as -z retention and the
         # endplate -z retention will just clip into the chassis"). local +X is world -Z,
@@ -462,8 +503,15 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     y1 = y1 + MCTRL_EAR_H
     bw, bl = x1 - x0, y1 - y0
     hx, hy = MCTRL_HOLE[0], MCTRL_HOLE[1] - MCTRL_EAR_H / 2.0
+    # ⚠ ROOTED IN THE CHASSIS FLOOR, 13 beads deep. Nothing of the endplate lies in this
+    # board's y band (-113..-51 against the height-adjust block's -38.91..+33.2), so the
+    # depth here is free. NO FOOT: this board passes THROUGH the floor -- its laminate ends
+    # 1.00 mm inside the underside -- so the frame's two side walls already run down inside
+    # the slab, either side of the board's own floor port (y -113..-51 against walls at
+    # -114.9 and -49.1). Fused to the chassis those walls ARE the root, which is what turns
+    # the 2711 mm3 the two parts used to share into structure.
     cr = _frame(bw, bl, (hx, hy), slide_in_x=True, harness_w=HARNESS_W,
-                post_h=MCTRL_POST_H, open_down=True)
+                post_h=MCTRL_POST_H, open_down=True, root_d=13 * D.BEAD)
     cr = _cut_anchor(_M4, cr, (hx, hy, MCTRL_POST_H), (0, 0, -1), _M4.anchor_min_wall)
     mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
@@ -471,22 +519,40 @@ def keyhead_cradles(standing: bool = True, pi_cut=None) -> cq.Workplane:
     # (pcb_hold_xy, the same spot pcb_cradle's hold_edge uses) and the wall is notched for
     # the head. ⚠ AND ITS COLUMNS MOSTLY LAND ON THE NUT HARDWARE'S BLOCK, NOT THE WALL: the
     # height-adjust prism fills x -630..-610.1 behind it, cut through by the insert slots.
-    # So the columns are built to the wall and then `pi_cut` (keyhead_endplate: the slots,
-    # plus everything straight above them) takes away whatever would land in a slot or hang
-    # over one. What is left stands on a fin between slots, on the solid band along the
-    # board's -Z edge, or -- past both ends of the block -- on the wall itself.
+    # ⚠ THAT IS HISTORY NOW: rooted in the chassis floor this frame stops 0.6 mm short of the
+    # block's face, so nothing lands on it, nothing has to be carved around the insert slots,
+    # and `pi_cut` is gone. The columns it describes are gone too -- what holds this board is
+    # the collar around it and the two legs under it.
     x0, x1, y0, y1 = PI_FP
     pw, pl = x1 - x0, y1 - y0
     phx, phy = pcb_hold_xy(pw, pl, "+y", hold_at=0.0, clr=CLR, spec=_M4)
-    cr = _frame(pw, pl, (phx, phy), slide_in_x=True, harness_w=HARNESS_W)
+    # ⚠ 7 BEADS DEEP AND NO DEEPER: the height-adjust block's inboard face is x -607.8 and
+    # this frame's own is -601.6, so 6.2 mm is the whole budget and 5.6 leaves 0.6 of it.
+    # The BOSS gets 13 beads because the hold point is at y +36.9, past that block's +33.2.
+    # AND THE FOOT IS MEASURED, NOT CHOSEN: this board's bottom edge stops 9.35 mm above the
+    # floor, so that is how far the legs reach. Read from the same two numbers the assembly
+    # uses -- the board's own edge through stand_pt, and motor_bank.FLOOR_TOP -- so the day
+    # either moves, the legs move with it instead of hanging in air.
+    from . import motor_bank as _MB
+    _pi_edge_z = stand_pt(x1, 0.0, TRAY_Z1 + POST_H)[2]
+    # ⚠ AND ONE BEAD PAST THE FLOOR TOP, NOT ONTO IT. A leg that ends exactly on the slab
+    # meets it in a zero-thickness contact, and this project has already watched an OCCT fuse
+    # return one valid solid with material missing. An 0.8 mm overlap is a fuse; a touch is a
+    # coin toss, and the chassis's own one-solid check is what would pay for it.
+    _pi_foot = _pi_edge_z - _MB.FLOOR_TOP + D.BEAD
+    assert 2.0 < _pi_foot < 30.0, (
+        "the Pi's cradle foot came out %.2f mm: its bottom edge is z %.2f and the chassis "
+        "floor top is %.2f. Something moved and the legs would %s."
+        % (_pi_foot, _pi_edge_z, _MB.FLOOR_TOP,
+           "hang in air" if _pi_foot > 30 else "drive into the floor"))
+    cr = _frame(pw, pl, (phx, phy), slide_in_x=True, harness_w=HARNESS_W,
+                root_d=7 * D.BEAD, boss_d=13 * D.BEAD, foot=_pi_foot)
     cr = cr.cut(_cyl_col(phx, phy, M4_BUTTON_HEAD_D + 2 * CLR, POST_H, POST_H + 20.0))
     cr = _cut_anchor(_M4, cr, (phx, phy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
     pi = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
     if not standing:
         return mc.union(pi)
     pi = stand(pi)
-    if pi_cut is not None:
-        pi = pi.cut(pi_cut)
     return stand(mc).union(pi)
 
 
@@ -732,10 +798,34 @@ def led_wall_reliefs():
     ⚠ DERIVED FROM WHAT ACTUALLY PENETRATES, like the motor controller's floor ports: ask
     the posed sections which of them is inside the wall band and pocket that, rather than
     restating connector coordinates that would go stale the next time the joint moves.
+    ⚠⚠ AND IT CUT 173,600 mm3 OF THE RAIL AWAY -- four 140 x 25 mm holes, 12.4 mm deep
+    through a 10.40 mm wall, which is a window per LED board and not a relief at all (user,
+    2026-09-28: "big holes in the front of the chassis behind the LEDs"). Two mistakes, and
+    each one alone would have been visible:
+
+      1. THE BAND REACHED 1.0 mm OUTSIDE THE WALL FACE, so it caught each board's own
+         LAMINATE as well as its tails. Laminate plus tails intersect as ONE solid, and the
+         bounding box of that solid is THE WHOLE BOARD -- 139 x 24. This file already
+         records the lesson one function up, in mctrl_floor_ports: "THE FOOTPRINT, NOT ITS
+         BOUNDING BOX ... the plate and the two plugs TOUCH, so they come back as ONE solid
+         whose bbox is five times the opening needed". Same trap, same week.
+      2. THE DEPTH WAS CH.T + 2.0, straight through a wall of CH.T. The docstring above
+         says what was meant -- "the tails need 3.40, so a relief leaves about 6.5 mm of
+         it" -- so the number contradicted the prose and the prose was right.
+
+    Now the band starts AT the wall face, so only what actually penetrates is caught, and
+    each pocket is cut to that solid's own depth plus clearance instead of to infinity.
+
+    ⚠ AND ON THIS BOARD THE ANSWER IS ZERO, WHICH IS THE REAL VERDICT ON THOSE WINDOWS.
+    led_strip's only connector is `JST_PH_S6B-PH-SM4-TB ... _Horizontal` -- SM4 is SMD, side
+    entry -- so the strip has no through-hole part on it and nothing to relieve. Measured:
+    each section spans y 48.45..55.55 and the wall face is 55.55, so the laminate's back is
+    FLUSH with it and not one cubic millimetre is inside the wall. The relief this function
+    was written for is the XH's 3.4 mm posts on the OTHER boards; it stays because a THT part
+    here would need it, and it now produces nothing until one appears.
     """
     from . import chassis as CH
-    band = box_at(4000.0, CH.T + 2.0, 200.0,
-                  x=0.0, y=CH.LED_Y0 + (CH.T + 2.0) / 2.0 - 1.0, z=0.0)
+    band = box_at(4000.0, CH.T, 200.0, x=0.0, y=CH.LED_Y0 + CH.T / 2.0, z=0.0)
     out = []
     for _n, sec in led_sections():
         inside = sec.intersect(band)
@@ -746,10 +836,22 @@ def led_wall_reliefs():
         for sol in solids:
             bb = sol.BoundingBox()
             c = LED_RELIEF_CLR
-            out.append(box_at(bb.xlen + 2 * c, CH.T + 2.0, bb.zlen + 2 * c,
+            # depth: from the wall face to the deepest this solid reaches, plus clearance,
+            # and never more than the wall has to give.
+            d = min(bb.ymax - CH.LED_Y0 + c, CH.T - D.MIN_WALL_2P)
+            assert d > 0.0, "an LED relief came out %.2f mm deep" % d
+            out.append(box_at(bb.xlen + 2 * c, d, bb.zlen + 2 * c,
                               x=(bb.xmin + bb.xmax) / 2.0,
-                              y=CH.LED_Y0 + (CH.T + 2.0) / 2.0,
+                              y=CH.LED_Y0 + d / 2.0,
                               z=(bb.zmin + bb.zmax) / 2.0))
+    # ⚠ AND A CEILING ON THE WHOLE LOT, because the failure this replaces was not a wrong
+    # number, it was a wrong SHAPE that no check had an opinion about. Relief for a handful
+    # of 3.4 mm connector tails is tens of mm3; 173,600 is a window.
+    _v = sum(c.val().Volume() for c in out)
+    assert _v < 4000.0, (
+        "the LED wall reliefs would remove %.0f mm3 from the +Y rail. These are pockets for "
+        "connector TAILS -- if this is in the thousands, the intersection has caught the "
+        "boards themselves again and every pocket is a board-sized window." % _v)
     return out
 
 
