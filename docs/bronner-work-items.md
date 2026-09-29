@@ -23,8 +23,29 @@ unsupported bridge. It is cut away with the mouth — a board standing verticall
 lip under its BOTTOM edge, and its top edge needs retention, which is what the M4 is — and the
 Pi's foot is one continuous rib rather than two legs so its bottom lip has no span at all.
 
-Left to do: the FULL overlap gate (the Pi's new rib is 5.6 mm of new material in the bay and
-could meet a harness), then submit.
+**The full overlap gate is run: 113 unintended across the whole model, and the rework adds
+none of them.** Every one is pre-existing — the 5 V pair sharing a lane (229–243 mm³), the
+harness over the Pi, the screws through boards — except that one entry **changed owner**, which
+is a finding in itself:
+
+### ⚠ The lead's `keyhead_endplate ↔ body_adapter_3` was the MOTOR CRADLE, not the endplate
+
+That pair is **gone** from the gate and `chassis_2 ↔ body_adapter_3` has appeared in its place at
+**170.65 mm³**, measured at `x −615.2…−599.5, y −114.90…−97.15, z −80.85…−73.82` — which is
+exactly the motor frame's −Y wall where it runs down inside the floor slab. The collision moved
+with the cradle, so it was never the endplate's plug latches.
+
+**And it cannot be fixed on my side, because the board itself is in it too:** the gate also reports
+`body_adapter_3 ↔ motor_ctrl` at 0.9 mm³. The adapter occupies space the motor board needs, so
+trimming my frame's wall there would delete 170 of the 171 mm³ and leave the real conflict looking
+trivial — which is the same thing the `{keyhead_endplate, chassis}` allowance was doing to the
+2717 mm³ lump. **Left visible and handed over**: `body_adapter_3` is brenner's part, the requirement
+is "the leg/body adapter must clear x −615.2…−599.5, y ≤ −97.15 below z −73.8", and the decision is
+whose geometry gives way.
+
+Also seen, and NOT mine: `chassis_2 ↔ wire_led_{sck,sdi,gnd_b}` at 0.10 mm³ each, at x −610.4,
+y 33.8…36.9 — the keyhead end, nowhere near either the restored +Y wall (y 55.55) or the new
+frames. Grazes, pre-existing.
 
 **⚠ AND A SEPARATE DEFECT FOUND AND FIXED WHILE IN THERE (user report):** `led_wall_reliefs()`
 was cutting **four 140 × 25 mm windows, 12.4 mm deep through a 10.4 mm wall — 173,600 mm³** out
