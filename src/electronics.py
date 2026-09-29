@@ -213,7 +213,20 @@ MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outlin
 # -528.15 is where that edge is today; -563.40 = -528.15 - 70.50/2, so this is a no-op until
 # the outline changes and then it is right by construction.
 MCTRL_FLOOR_EDGE_X = -528.15           # tray +X edge == world z -80.85, the floor
-_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -10.5
+# ⚠ _MCTRL_CY MOVED -10.5 -> -0.5 (2026-09-29): THE PI'S PORTS HAD 4.68 mm OF AIR AND
+# NOTHING PLUGS INTO THAT. The Y budget note above reserves 8.1 mm of the band for the Pi's
+# M4 boss standing BESIDE its +Y edge -- and that boss is GONE: PI_HOLD is ("+x", 0.0) now,
+# the user having asked for it on the +Z side. So the gap was a leftover of a retired
+# constraint, and it was the only thing between the Pi's USB/ethernet end and the motor
+# board. MEASURED: pi5 ymax -46.18, motor_ctrl ymin -41.50. A USB-A plug's overmould needs
+# ~10 mm of Y beyond the port face even right-angled, and a straight one ~22.
+# ⚠ THE 5.7 mm OF CLEAR HEIGHT IS NOT A WAY OUT. motor_ctrl spans world x -606.50..-591.70
+# and the Pi's USB block -600..-586, so the top 5.7 mm of the port face does have open +Y
+# air above the motor board -- but a USB-A plug body is ~8-12 mm tall, so it does not fit
+# in 5.7. The obstacle is real and placement is the only fix.
+# +10.0 puts the motor board at y -31.5..30.5 and the gap at 14.68, which takes a
+# right-angle plug with room to spare, and leaves 11.6 mm of band before the +Y limit 42.1.
+_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -0.5
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
@@ -793,6 +806,31 @@ def _board(fp, bz, t=BD_T):
 
 def _ctr(fp):
     return (fp[0] + fp[1]) / 2, (fp[2] + fp[3]) / 2
+
+
+# ── THE PI'S PORTS, so a cable can be drawn to one instead of to an invented point ──
+# ⚠ EVERY CABLE TO THE PI USED TO END AT A HAND-TYPED POINT, and the user saw it: "the USB
+# for example enters the pi from +x which doesn't seem like how the USB would be oriented".
+# wire_usb ended at stand_pt(-575.0, PI_FP[3] - 9.0, -44.0) = WORLD (-587.8, -55.18, -34.0),
+# which is 1.8 mm inside the USB/ethernet block's outer face -- the cable ran in along world
+# x at z -15 straight through the block's interior and stopped in the middle of it. It
+# approached the COMPONENT face from +X, exactly as described.
+# ⚠⚠ AND THE WORK-ITEMS NOTE THAT DIAGNOSED IT READ THE FRAME WRONG. It said the lead
+# "lands at x -575.0, which is outboard of the whole Pi (xmax -586)". -575.0 is the TRAY x
+# that stand_pt turns into world z -34.0; the world x is -587.8, which is INSIDE the block.
+# The user's observation was right and the explanation under it was not. stand_pt's three
+# arguments are tray (x, y, z) -> world (z-543.8, y, -609-x); never read one as a world x.
+# The ports are on the +Y END, which is where a Pi 5's are, and pi5() already builds that
+# block. These are its three connector groups along the 50 mm the block spans in tray x,
+# taken mid-height so the plug shell sits inside the block's 14 mm rather than proud of it.
+PI_PORT_Z  = BOARD_Z + BD_T + 7.0      # mid-block: world x -593.0, shell -596.4..-589.6
+PI_PORT_IN = 1.0                       # end the lead 1 mm inside the face so it CONTACTS
+PI_PORTS   = {"eth": -594.0, "usb3": -576.0, "usb2": -560.0}   # tray x (world z -15/-33/-49)
+
+
+def pi_port_pt(which: str):
+    """TRAY (x, y, z) of a port mouth on the Pi's +Y end -- feed it through stand_pt."""
+    return (PI_PORTS[which], PI_FP[3] - PI_PORT_IN, PI_PORT_Z)
 
 
 def pi5() -> cq.Workplane:

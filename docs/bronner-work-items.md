@@ -1931,3 +1931,100 @@ thin (C18214186 male 21, C6825574 female 28) -- do not build on those.
 **RULE, and it is the same shape as the stock rule from 5m:** ask what the joint's real
 constraints ARE before picking a connector family. A fine-pitch mezzanine part is the
 answer to "no room and no height"; this joint has both.
+
+### ASK #3 (USB ORIENTATION) IS BUILT -- and the note that diagnosed it read the frame wrong
+
+**⚠ CORRECTION FIRST. Item 3 above says wire_usb "lands at x -575.0, which is outboard of
+the whole Pi (xmax -586)". THAT IS A TRAY COORDINATE READ AS A WORLD ONE.** stand_pt's
+three arguments are tray (x, y, z) and it returns world (z - 543.8, y, -609 - x), so
+SP(-575.0, PI_FP[3] - 9.0, -44.0) is world **(-587.8, -55.18, -34.0)** -- 1.8 mm INSIDE
+the USB/ethernet block's outer face at x -586, not outboard of anything. The lead ran in
+along world x at z -15 straight through the block's interior and stopped in the middle of
+it. The user's observation ("enters the pi from +x") was exactly right; the sentence I
+wrote under it was not. Never read stand_pt's first argument as a world x.
+
+**THE PORTS ARE NOW MODELLED AND THE LEADS ARE DERIVED FROM THEM.** `EL.pi_port_pt(which)`
+returns the tray point of a port mouth on the Pi's +Y end -- the end pi5() already builds
+the 50 x 18 x 14 block on, and the end a real Pi 5's ports are on:
+
+        PI_PORT_Z  = BOARD_Z + BD_T + 7.0     mid-block, world x -593.0
+        PI_PORT_IN = 1.0                      1 mm inside the face, so the lead CONTACTS
+        PI_PORTS   = eth -594.0  usb3 -576.0  usb2 -560.0     tray x
+        -> world z -15.0 / -33.0 / -49.0, all inside the block's -59..-9
+
+wire_usb takes "usb3", wire_link takes "usb2" -- 16 mm apart in z, so they cannot collapse
+onto each other the way the six LED conductors did. Both approach from **+Y**, the only
+direction a USB-A plug can enter, via _PORT_APR = PI_FP[3] + 8.0 (world y -38.18, mid-gap).
+
+**AND THE REAL BLOCKER WAS NOT THE ENDPOINT AT ALL: THERE WAS NO ROOM TO PLUG IN.**
+Measured pi5 ymax -46.18 against motor_ctrl ymin -41.50 = **4.68 mm**. A USB-A plug's
+overmould needs ~10 mm of Y beyond the port face even right-angled and ~22 straight, so
+nothing plugged into that Pi at all -- a defect no gate could see, because a cable ending
+in air is not an overlap.
+⚠ AND THE 5.7 mm OF CLEAR HEIGHT IS NOT A WAY OUT: motor_ctrl spans world x
+-606.50..-591.70 and the block -600..-586, so the top 5.7 mm of the port face does have
+open +Y air above the motor board -- but a USB-A plug body is 8-12 mm tall and does not
+fit in 5.7. Placement was the only fix.
+
+**THE GAP WAS A LEFTOVER OF A RETIRED CONSTRAINT.** The Y-budget note above _MCTRL_CY
+reserves 8.1 mm of the band for the Pi's M4 boss standing BESIDE its +Y edge -- and that
+boss is GONE, PI_HOLD being ("+x", 0.0) since the user asked for it on the +Z side. So the
+one thing between the Pi's port end and the motor board was space held for a screw that
+had already moved. _MCTRL_CY -10.5 -> -0.5 spends it: motor_ctrl y -31.50..30.50, **gap
+14.68**, and 11.6 mm of band still left before the +Y limit 42.1.
+⚠ RULE: when a datum's comment says a gap exists FOR something, check the something is
+still there. This is the second constant in two days invalidated by a change to a part it
+never mentions.
+
+### 5o. RIGHT-ANGLE PAIRS: the male half is abundant, the FEMALE half is scarce AGAIN (2026-09-29)
+
+User: "can we find right angle plugs that line up? To me pins sound better than pogo since
+they seat more reliably and are presumably cheaper/more in stock". Pins ARE cheaper and
+better stocked, and right-angle is the configuration we want -- BOTH parts end up on the
+TOP face, so the "Both Sides" assembly fee from 5n disappears and two coplanar boards butt
+end-to-end. Measured on jlcparts 2026-09-29.
+
+**RIGHT-ANGLE MALE -- plentiful, gold, 3 A, pennies:**
+
+        C7501291    ZX-PZ2.54-1-3PWZ        1x3P   7834   $0.025  gold
+        C7429379    PZ254-3-03-W-2.5-G0     3x3P   3559   $0.232  HCTL
+        C18197985   PZ254-1-09-W-2.5-G1     1x9P   3305   $0.178  HCTL
+        C18198034   PZ254-2-20-W-2.5-G1    2x20P   1586   $0.728  HCTL
+        C7501292    ZX-PZ2.54-1-4PWZ        1x4P   1144   $0.031  gold
+        C18198024   PZ254-2-10-W-2.5-G1    2x10P    699   $0.385  HCTL
+        C18198017   PZ254-2-03-W-2.5-G1     2x3P    143   $0.113  HCTL (6 ways)
+
+**RIGHT-ANGLE FEMALE -- 23 parts TOTAL, almost all Samtec, tens of units, dollars each.**
+The only abundant one is C18198068 X6521FRS-2x04-C59D11 (2x4P, SMD right-angle, 3 A,
+**6798** stock, $0.436, XKB) -- and XKB has no right-angle MALE in the library to match it.
+
+⚠⚠ **THIS IS THE SAME GENDER ASYMMETRY THAT KILLED THE FOUR MEZZANINE CANDIDATES (5m),
+showing up in a completely different family.** Female 23 parts vs male 75, and the stock
+ratio is worse than the part-count ratio. It is a property of JLCPCB's catalogue, not of
+any one connector: assume the female half is the binding constraint on ANY board-to-board
+mate here and check it first.
+
+**TWO MATCHED-SERIES PAIRS EXIST -- designed to mate, so they line up by construction:**
+
+        HCTL      male C7429379  PZ254-3-03-W-2.5-G0   3x3P  3559
+                female C7429380  PM254-3-03-W-8.5-G0   3x3P    61     <- 9 ways, 3 rows
+        Samtec    male C7365809  TSW-103-08-F-D-RA     2x3P    20
+                female C7370092  SSQ-103-02-G-D-RA     2x3P    20     <- 6 ways, 2 rows
+
+HCTL's PZ/PM254 pair is the better one: same vendor, same 3x3P layout, complementary
+prefixes, and 61 female units is ~20 instruments at 3 joints each. Thin, but a usable
+number rather than DF40's 4. 3 rows x 3 = 9 ways covers the 6 we need with 3 spare.
+
+⚠ **"LINE UP" IS A DATASHEET QUESTION AND I HAVE NOT ANSWERED IT.** For a right-angle
+pair what must match is the HEIGHT OF THE PIN/HOLE CENTRELINE ABOVE THE PCB, to within
+about 0.3 mm, and the catalogue text does not give it -- it gives insulation height (male
+PZ254 2.5 mm, female X6521FRS 5.9 mm, female PM254 8.5 mm), which is NOT the same number.
+Mixing vendors on a right-angle pair is exactly how a joint that looks right on paper
+fails to seat. NEXT ACTION: pull the HCTL PZ254-3-03 and PM254-3-03 datasheets and check
+the centreline heights against each other before anything is designed around them.
+
+**AND THE STEP MATTERS TOO.** Two coplanar 1.6 mm boards butted end to end put both
+parts' centrelines at the same height only if both parts are the same height class. If the
+matched pair turns out to need a height offset, the channel can provide it -- one board
+shimmed by the difference -- but that is a geometry consequence to design in, not a
+detail to discover at assembly.

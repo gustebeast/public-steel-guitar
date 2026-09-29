@@ -1029,7 +1029,17 @@ def build_wires():
     # off it now that the swap put the Pi at -135..-50. TWO leads to the Pi were stranded at its
     # old position; only wire_link happened to clip a wall and raise a gate pair. Derived from
     # the USB/ethernet block pi5() builds at PI_FP[3] - 9.0, like wire_link's.
-    _usb = SP(-575.0, EL.PI_FP[3] - 9.0, -44.0)
+    # ⚠ DERIVED FROM THE PORT NOW, not typed (user: "the USB for example enters the pi from
+    # +x which doesn't seem like how the USB would be oriented"). The old point was tray
+    # (-575, PI_FP[3]-9, -44) = world (-587.8, -55.18, -34.0), 1.8 mm inside the USB block's
+    # outer face, and the lead ran IN ALONG WORLD X at z -15 through the block's interior to
+    # stop in the middle of it -- approaching the component face from +X exactly as described.
+    # It now lands in the upper USB stack on the +Y END and is approached from +Y, which is
+    # the only direction a USB-A plug can enter. See EL.pi_port_pt.
+    _usb = SP(*EL.pi_port_pt("usb3"))
+    # the gap the plug lives in: Pi's +Y edge -46.18 to the motor board's -Y edge -31.50,
+    # which is 14.68 wide only because _MCTRL_CY moved +10.0 to open it.
+    _PORT_APR = EL.PI_FP[3] + 8.0                  # -38.18, mid-gap: the plug's own body
     _ua = EL.op_pt("J2")
     _UA_PLUG = 25.0
     # ITS OWN COLUMN at the keyhead, 6 mm +X of the one the bay wires share: at a different
@@ -1043,8 +1053,8 @@ def build_wires():
         [(_ua_x, _ua[1], _ua[2]), (_USB_X, _ua[1], _ua[2]), (_USB_X, _ua[1], LANE_USB),
          (_USB_X, CHAN_Y, LANE_USB)]
         + _rail_pts(_USB_X, _USB_COL, LANE_USB)
-        + [(_USB_COL, CHAN_Y, _USB_FLY), (_USB_COL, _usb[1], _USB_FLY),
-           (_usb[0], _usb[1], _USB_FLY), _usb],
+        + [(_USB_COL, CHAN_Y, _USB_FLY), (_USB_COL, _PORT_APR, _USB_FLY),
+           (_usb[0], _PORT_APR, _USB_FLY), (_usb[0], _PORT_APR, _usb[2]), _usb],
         WIRE_OD["wire_usb"])))                          # over motor 0, then down into the Pi
 
     # -- 5 V to the Pi's GPIO header, from the merged board's J5. It was never
@@ -1152,7 +1162,7 @@ def build_wires():
     # it follows the board instead of being falsified by it. That is the FIFTH constant this
     # swap invalidated (root_d's 13 beads, MCTRL_HOLE, the 5 V leg, _FEED2_X, and this).
     _lt = SP(*EL.mctrl_pt("J4"))
-    _lp = SP(-585.0, EL.PI_FP[3] - 9.0, -58.0)
+    _lp = SP(*EL.pi_port_pt("usb2"))   # the lower USB stack, 16 mm in z off wire_usb's
     # ITS OWN COLUMN, 3 mm short of the bay column: J4 is on the board's -Y edge, at the very
     # y where bus B drops down the bay column to the floor corridor.
     # It crosses motor 0's Y band, so it takes the BAYFLY lane over the motor top
@@ -1160,8 +1170,8 @@ def build_wires():
     # 62 mm3 of cable inside string 1's motor.
     _LINK_X = BAY_X - 3.0
     out.append(("wire_link", _wire([
-        _lt, (_LINK_X, _lt[1], _lt[2]), (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _lp[1], BAYFLY),
-        (_lp[0] + 5.0, _lp[1], BAYFLY), (_lp[0] + 5.0, _lp[1], _lp[2]), _lp],
+        _lt, (_LINK_X, _lt[1], _lt[2]), (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _PORT_APR, BAYFLY),
+        (_lp[0], _PORT_APR, BAYFLY), (_lp[0], _PORT_APR, _lp[2]), _lp],
         WIRE_OD["wire_link"])))
 
     # (the Teensy <-> transceiver CAN jumper pair is GONE: the transceivers now sit
