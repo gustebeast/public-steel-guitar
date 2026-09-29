@@ -2277,3 +2277,37 @@ carried over from the 2.00 mm part and was wrong by 3.5 mm.)
 ⚠⚠ PROCESS LESSON, and it cost two ticks: .ins/WORKLIST.md IS PART OF THE RECORD. Search it
 before opening a browser. The jlcparts work in 5n/5o was not wrong, it was redundant -- and
 worse, 5o presented a settled question as open.
+
+### ✅ OPTION 1 IS BUILT: motor_ctrl 61.8 x 55.0, 0/0, AND THE PI GAP IS 11.68 (2026-09-29)
+
+The shrink specified two sections above, executed and verified.
+
+        BOARD_L      62.0 -> 55.0        7.00 mm of bare laminate off the Pi-facing edge
+        placements   all 82, y -3.50     nothing re-placed, only re-centred
+        _MCTRL_CY    -10.5 -> -7.0       holds the +Y edge at 20.50
+
+        span -25.50..25.00 inside +-27.50   edge clearance 2.00 (-Y, D6/D7) / 2.50 (+Y)
+        MCTRL_FP y  -41.50..20.50  ->  -34.50..20.50
+        gap to the Pi's port face   4.68  ->  **11.68**   (right-angle USB-A needs ~10)
+        slack to body_adapter inner 21.15   0.65, UNCHANGED
+
+**ROUTE: 0 unconnected, 0 violation(s) on PASS 1**, freerouting 57.1 s wall / 20 passes,
+683 track segments, 82 parts, 41 nets. Verified INDEPENDENTLY with
+`kicad-cli pcb drc --severity-error --severity-warning`: **0 violations, 0 unconnected**.
+⚠ TWO PROCESS NOTES FROM THIS RUN, both worth keeping:
+  * finish.py REFUSED the first launch -- "elec\motor_ctrl.py is NEWER than motor_ctrl.net;
+    routing now would measure the PREVIOUS placements and report it as a result". That guard
+    is the reason this number means anything. Run `py -3.12 elec/motor_ctrl.py` first.
+  * I could not reproduce the doc's earlier "30 violations" for comparison, because
+    motor_ctrl.lastrouted.kicad_pcb is overwritten by each run and now holds a different
+    board (221 violations, which is not the pre-shrink finished board either). **So do NOT
+    claim the shrink fixed the 17 courtyard overlaps** -- what is verified is that the board
+    is 0/0 NOW, twice, by two independent tools.
+
+**Residual warnings from the pipeline, neither new nor from this change:**
+  * `1 stitch via landed where the plane is not: GND at 110.20,101.55 (0.10 mm away)` -- the
+    repair moved one of two and this one has "nowhere to go". Same class as led_strip's three.
+  * `NO F.Fab body on JP1` in the geom export.
+
+_PORT_APR moved PI_FP[3] + 2.3 -> + 6.0 (world y -40.18), mid-gap of the real 11.68 instead
+of hugging the port face because there was nowhere else to be.
