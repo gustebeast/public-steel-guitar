@@ -3791,7 +3791,26 @@ def build(stem):
 
     board = pcbnew.CreateEmptyBoard()
     _rules(board, notes)
+    # ⚠ THE PARTS THE ROUTER MUST NEVER SEE. A bare test pad on a rail that is already
+    # routed needs no route -- it sits ON that rail's copper -- but handed to the router
+    # BEFORE routing it is still an obstacle, and on the optical board six of them cost a
+    # net in four consecutive runs: 2 unconnected, 2, 4, 2, always at the USB PHY, and
+    # +3V3A failed even in the run where its own pad had been REMOVED. That region is
+    # re-solved from scratch every run and only just succeeds, so the cost is not the
+    # pad's area, it is the perturbation.
+    #
+    # So these are placed AFTER routing, by route.py's repair block, for exactly the
+    # reason the SAI_FS repair and link_close_gaps are done there: "before routing the
+    # same idea is a constraint that costs more than it buys." A pad that arrives after
+    # the router has finished cannot change what the router did. It still has to pass
+    # DRC, which is the check that matters and the one that is kept.
+    #
+    # They stay in the NETLIST and in the CAD -- this is a routing-order decision, not a
+    # deletion -- so the fab, the geometry check and the pick-and-place all see them.
+    post = set(notes.get("post_route_refs", ()))
     for ref, (fp_spec, value) in sorted(comps.items()):
+        if ref in post:
+            continue
         fp = _load_footprint(fp_spec)
         # LAND RESIZE: [(ref regex, x or None, y or None)] -- a stock footprint with its pads
         # resized in the footprint's own frame (None keeps that dimension). Kept as a board
@@ -3890,13 +3909,24 @@ def build(stem):
     # unroutable. It also catches the genuine mistake -- a net that was MEANT to connect
     # to something and does not -- and those show up in ERC, which is where they belong.
     skipped = 0
+    # ⚠ AND A NET CAN BE POST-ROUTE AS WELL AS A PART. A pad on an already-routed rail
+    # only needs the rail; a USART pin needs a NET that does not exist yet, and creating
+    # it here would put it in the DSN -- so the router's input would stop being the input
+    # that produced the route the pad's site was measured against. Named here, the pin
+    # carries no net pre-route, which is exactly what it carried before as a declared
+    # no-connect, and route.py builds the net over every node after routing.
+    post_nets = set(notes.get("post_route_nets", ()))
     for name, nodes in nets.items():
+        if name in post_nets:
+            continue
         if len(nodes) < 2:
             skipped += 1
             continue
         net = pcbnew.NETINFO_ITEM(board, name)
         board.Add(net)
         for ref, pad_no in nodes:
+            if ref in post:
+                continue        # placed after routing; route.py gives it this net
             # EVERY pad with that number, not the first: a USB-C's four shell tabs are all
             # "SH", and FindPadByNumber handed the net to one of them. The other three
             # (on both output-board USB-Cs) came out <no net> -- shell tabs soldered to

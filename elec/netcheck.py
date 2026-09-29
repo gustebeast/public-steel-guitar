@@ -117,6 +117,17 @@ def optical_declared(vtype, refs):
     import re as _re
     if vtype != "courtyards_overlap" or len(refs) != 2:
         return False
+    # ⚠ TP8 AGAINST R30 IS DECLARED, AND A COURTYARD IS THE ONLY THING IT OVERLAPS.
+    # TP8 is a bare bring-up pad on BOOT0: no paste, no part, nothing ever sits on it, so
+    # the courtyard it carries reserves room for a body that does not exist. R30 is the
+    # BOOT0 pull-down, which is WHY they are adjacent -- that resistor is at the pin, and
+    # the pin's net has no copper anywhere else. Copper clears by 0.492 mm over the 0.127
+    # rule (searched, and DRC reported no clearance violation), and R30's body is a 0402
+    # 0.5 mm away from a 1.5 mm target, which a hand probe does not care about.
+    # Named as a pair rather than waved through by footprint type on purpose: a genuine
+    # courtyard overlap involving a test pad should still fail.
+    if set(refs) == {"TP8", "R30"}:
+        return True
     m = [_re.fullmatch(r"(D|PD)(\d+)([AB]?)", r) for r in refs]
     if not all(m):
         return False

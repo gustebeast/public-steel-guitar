@@ -66,10 +66,38 @@ order** and do not skip ahead -- a "dead analog channel" at stage 5 is meaningle
 stage 4 never framed. `docs/optical-bringup-diagnostics.md` is the companion: what the
 board can and cannot observe, and the pads that would widen it.
 
-The only instrument on the board is **SWD** (`TP1` SWDIO, `TP2` SWCLK, `TP3` NRST,
-`TP4` GND, `TP5` +3V3D). **There is no DFU fallback** -- the ROM bootloader's USB is on
-OTG_FS and this board uses OTG_HS through the PHY -- so if SWD will not attach there is
-currently no second way in.
+### The pads, and what each one is for
+
+| pad | net | what it answers |
+|---|---|---|
+| `TP1` `TP2` `TP3` `TP4` `TP5` | SWDIO, SWCLK, NRST, GND, +3V3D | the debugger |
+| `TP6` `TP7` | I2C2 SDA, I2C2 SCL | **the ROM bootloader, when SWD will not attach** |
+| `TP8` | BOOT0 | selects that bootloader; hold it at +3V3D through reset |
+| `TP9` `TP10` `TP11` | +24V, +5V, +3V3A | a meter on each rail, without probing a 0402 |
+
+All eleven are bare copper: no paste, no component, and not in the BOM or the
+pick-and-place. `TP6`/`TP7` are 1.0 mm, the rest 1.5 mm.
+
+**There is a second way in, and it was on the board before the pads were.** There is no
+DFU -- the ROM bootloader's USB is on OTG_FS and this board uses OTG_HS through the PHY --
+but AN2606 Rev 61 Table 113 puts the H74x bootloader's **I2C2 interface on PF1 (SCL) and
+PF0 (SDA)**, which is exactly the bus this board already runs to all five converters.
+
+- Pull **`TP8` (BOOT0) to +3V3D** (`TP5` is right there) and reset. The ROM bootloader
+  then listens on every interface it has, I2C2 among them.
+- Talk to it at **slave address `0b1001110` (0x4E)**, 7-bit, up to 400 kHz. **The
+  converters are at `0b1001100` (0x4C)**, so they cannot answer for the bootloader and it
+  cannot answer for them -- nothing has to be disconnected first.
+- The protocol is **AN4221** (I2C protocol used in the STM32 bootloader), not the AN3155
+  USART one. A Pi is the obvious master and this instrument already has one; an
+  STLINK-V3 in bridge mode is the bench alternative.
+- **Take BOOT0 back to GND afterwards.** R30 is a 10k pull-down, so removing the jumper is
+  enough -- but a jumper left on means a board that never runs its own firmware again.
+
+⚠ **This is untested silicon-side.** The pins, the address and the protocol are read out of
+AN2606/AN4221 and the board is confirmed to wire PF0/PF1 to nothing but the converter bus
+and these pads. Nobody has yet driven this bootloader on this board, so prove it on the
+first article while SWD still works -- not on the board whose SWD has failed.
 
 ### 0. Before applying power
 
@@ -84,11 +112,16 @@ currently no second way in.
 Apply 24 V at `J2`. Then confirm, in order: `+5V` out of the buck (U13), then `+3V3D` and
 `+3V3A` out of the LDOs, then `PHY_1V8`.
 
-> **This stage is the board's blind spot.** There is no status LED, no rail test pads, and
-> the buck's `PG` (power-good) pin is unconnected -- so every reading here means probing a
-> 0402 beside 0.5 mm-pitch parts. And because the MCU's own ADCs were dropped and all 20
-> converter inputs are photodiodes, **a running MCU cannot measure a single one of its own
-> rails.** Items 2 and 4 of the diagnostics doc exist to fix exactly this.
+**`TP9` is +24V, `TP10` is +5V, `TP11` is +3V3A** -- put the meter there rather than on a
+0402. There is no pad on `+3V3D` because `TP5` already is one, and none on `MID`, which is
+the reference all twenty TIAs sit on.
+
+> **What is still blind here.** There is no status LED, and the buck's `PG` (power-good)
+> pin stays unconnected -- not by choice: pad 8 is mid-row on the VQFN-HR between the
+> buck's own +24V pads, and no track of any width escapes it legally (measured; see the
+> `BUCK_PG_NC` note in `elec/optical.py`). And because the MCU's own ADCs were dropped and
+> all 20 converter inputs are photodiodes, **a running MCU still cannot measure one of its
+> own rails** -- the pads are for a meter, not for firmware.
 
 ### 2. Is the MCU alive?
 
@@ -99,7 +132,8 @@ under-reset is the only way back. If it will not attach: check the crystal (`OSC
 
 ### 3. I2C to the converters
 
-All five converters answer at **one address, `1001100`**, on I2C2 (`PF0` SDA, `PF1` SCL).
+All five converters answer at **one address, `1001100`**, on I2C2 (`PF0` SDA, `PF1` SCL)
+-- the same bus `TP6`/`TP7` land on, so a scope or a Pi can sit on it without soldering.
 
 > **Read this before you interpret a NACK.** The five open-drain ACKs are wired together,
 > so an ACK means *at least one* part answered and a NACK means *at least one* is missing

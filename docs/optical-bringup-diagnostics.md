@@ -36,19 +36,26 @@ every item:
 
 ## What is missing, and why it matters
 
-1. **Nothing reports the power tree.** No status LED, no rail pads, and the buck's **`PG` pin is
-   open** (`BUCK_PG_NC`). The MCU's own ADCs were dropped and all 20 converter inputs are
-   photodiodes, so **a live MCU cannot measure any of its own rails.**
+1. ~~**Nothing reports the power tree.**~~ **FIXED in part** (item 4): `TP9`/`TP10`/`TP11` put a
+   meter on +24V, +5V and +3V3A. What remains true is the half that no pad can fix — the MCU's
+   own ADCs were dropped and all 20 converter inputs are photodiodes, so **a live MCU still
+   cannot measure one of its own rails**, and the buck's `PG` pin stays open because it cannot
+   be escaped (item 2b). These pads answer a person with a meter, not firmware.
 2. **The shared I2C address is worse than "no readback" — it is "no isolation."** All five
    converters sit at `1001100` (both straps to GND) **and `SHDNZ` (pin 14) is tied hard to
    `+3V3D`** on all five. There is no reset line and no shutdown line. One converter holding
    `SDA` low kills the control bus for the whole board with no way to identify or isolate it.
-3. **SWD is the only way in.** No DFU: the ROM bootloader's USB is on OTG_FS (PA11/PA12) and this
-   board uses OTG_HS through the PHY; no USART/I2C/SPI/CAN bootloader pin is brought out.
-   `BOOT0` was deliberately left off on the grounds that it "only helps if a ROM bootloader
-   interface exists, and none does." **Item 3 inverts that premise.**
+3. ~~**SWD is the only way in.**~~ **FIXED (item 3), and the sentence that used to be here was
+   simply WRONG.** "No USART/I2C/SPI/CAN bootloader pin is brought out" was written without
+   checking AN2606: the H74x bootloader's I2C2 is on PF0/PF1, which is this board's converter
+   control bus and has been routed the whole time. `TP6`/`TP7` land on it and `TP8` brings out
+   `BOOT0`, which is what selects the bootloader. No DFU still: the ROM USB is on OTG_FS
+   (PA11/PA12) and this board uses OTG_HS through the PHY.
+   ⚠ **The cost of not checking was four routing runs** spent on USART1 pads that cannot escape
+   PA9/PA10, plus the pressure those pads put on the USB PHY.
 4. **The diagnostic chain is strictly serial.** Power, MCU, I2C, converters, analog. A fault at
-   stage N hides everything past it, and stage 1 is the stage with zero observability.
+   stage N hides everything past it — and stage 1, which had zero observability when this list
+   was written, now has three pads on it.
 
 ---
 
@@ -98,29 +105,70 @@ board is installed in the instrument and awkward to probe. Small, and the least-
 
 **Not to be re-proposed** without a use that survives the sequencing argument above.
 
-### 2b. `PG` to a bare pad *(0 parts)*
+### 2b. `PG` to a bare pad — **MEASURED IMPOSSIBLE (2026-09-28), not deferred**
 
-The buck's open-drain power-good is still wired to nothing (`BUCK_PG_NC`). A pad on it costs
-no part and lets a meter ask the buck its own opinion of the 5 V rail, rather than inferring
-it. Worth folding into the next pad revision.
+The buck's open-drain power-good stays wired to nothing. The pad SITE is fine (3.032 mm of
+headroom, 5.9 mm away); **the PIN cannot be escaped.** U13 pad 8 is mid-row on the VQFN-HR
+with the buck's own +24V pads 9 and 10 either side of the only way out, and C165's +24V land
+beyond them. Mazed at 0.05 mm on every layer, with a via hop allowed:
 
-### 3. USART1 bootloader pads + `BOOT0`  *(0 parts, 3 bare pads, no signal risk)*
+| track width | result |
+|---|---|
+| 0.24, 0.20, 0.18 mm | **no path at all** (326, 495, 669 cells explored) |
+| 0.16 mm | a path whose centreline comes 0.159 mm from +24V — DRC: **0.0900 mm**, 7 violations |
+| 0.14 mm | a path at 0.135 mm — worse |
 
-Today, if SWD will not attach, **the board is a brick with no second opinion.** USART1 (PA9/PA10
-— *verify the pin numbers and the AN2606 H743 interface table*) appears unused and is a ROM
-bootloader interface. Three more paste-free pads — TX, RX, `BOOT0` — give a completely
-independent way in. This **reverses the original "BOOT0 is deliberately not brought out"
-decision, and correctly**: that decision was conditional on no bootloader interface existing.
+A 0.127 mm track needs 0.191 mm of centreline clearance and the widest corridor out of that
+pin is 0.159. **There is no width that fits**, and a via-in-pad is no better: a 0.6 mm annulus
+does not fit between 0.5 mm pitch pads either. So this is a placement or part-choice question,
+and a debug pad does not get to move the buck.
 
-### 4. Rail test pads: `+24V`, `+5V`, `+3V3A`  *(0 parts, 3 bare pads)*
+⚠ **`verify_path.py` said ALL CLEAR on a path DRC then rejected**, and the reason is worth
+keeping: its reported gap is centreline-to-obstacle and does **not** subtract the track's own
+half-width, so it has to be given `rule + w/2`, not the rule. That is why its default is 0.26
+for a 0.25 mm track. Given 0.127 it passes everything by 0.08 mm too much.
 
-Paste-free, BOM-free, pick-and-place-free — pure area. Place each over **existing** copper for its
-rail so it costs nothing to route.
+### 3. A second way in — **DONE (2026-09-28), and not the way this item was written**
 
-- `+3V3A`: fine as a *supply* pad (heavily bypassed, not a signal reference) **if placed well away
-  from the summing nodes**.
-- `+24V`: keep clear of fine-pitch parts — a slipped probe there is destructive.
-- **No `MID` pad** (see item 6).
+`TP6` I2C2 SDA, `TP7` I2C2 SCL, `TP8` BOOT0. Three paste-free pads, no parts, no new copper.
+
+**The instruction to "verify the pin numbers and the AN2606 H743 interface table" was the whole
+item, and doing it changed the answer.** AN2606 Rev 61 Table 113, for STM32H74xxx: USART1 on
+PA9/PA10 **or PB14/PB15**, USART2 on PA2/PA3, USART3 on PB10/PB11, I2C1 on PB6/PB9, **I2C2 on
+PF1 (SCL) / PF0 (SDA)**, I2C3 on PA8/PC9, four SPIs, FDCAN1 on PH13/PH14, DFU on PA11/PA12.
+
+**I2C2's bootloader pins are PF0/PF1 — this board's converter control bus.** It was already
+routed to all five converters before any of this started, so the second way in needed no escape,
+no route and no area: two pads on copper that already exists. The bootloader answers at
+`0b1001110` (0x4E) and the converters at `0b1001100` (0x4C), so nothing has to be isolated and
+the bus does not have to be free — I2C is multi-slave and only one device is addressed.
+
+**The USART1 pads on PA9/PA10 were designed, sited and searched first, and they cannot be
+built.** Those pins sit mid-row on the LQFP176's east face: the maze router explores 65 cells
+out of the pad and finds every lane walled by the escape fan, which is the verdict the
+autorouter reached four times in its own way. The lesson is the cheap one — **read the
+interface table before routing to it.**
+
+This still **reverses the original "BOOT0 is deliberately not brought out" decision, and
+correctly**: that decision was conditional on no bootloader interface existing, and one does.
+Without `TP8` the I2C2 pads lead nowhere.
+
+⚠ **Untested silicon-side.** The pins, the address and the protocol (AN4221, not AN3155) are
+read out of the application notes; the board is confirmed to wire PF0/PF1 to nothing but the
+converter bus and these two pads. Prove it on the first article while SWD still works.
+
+### 4. Rail test pads: `+24V`, `+5V`, `+3V3A` — **DONE (2026-09-28)**
+
+`TP9`, `TP10`, `TP11`. Paste-free, BOM-free, pick-and-place-free. Each sits ON its own rail's
+copper, so not one millimetre of track was added; headroom over the 0.127 rule is 4.747, 1.214
+and 1.956 mm. No pad on `MID` (see item 6) and none on `+3V3D`, which already has `TP5`.
+
+**They only work because they are placed AFTER routing.** The same three pads, in the DSN, cost
+a net in four consecutive runs — always at the USB PHY, once on a rail whose own pad had been
+REMOVED. See `post_route_refs` in `elec/optical.py`: layout skips them, `route.py` drops them in
+after the session import, and DRC still checks every clearance. Sites are searched rather than
+chosen, by `scratchpad/padsite.py`: a clear circle that already overlaps its own net's copper and
+lies outside every courtyard, because a pad under a part is legal and unprobeable.
 
 ### 5. Heartbeat LED on a spare GPIO  *(2x 0402, digital corner)*
 
@@ -158,6 +206,11 @@ reachable only because the EP sits directly underneath.
 > against a known-good baseline instead of muddying the FSYNC hunt.
 
 ---
+
+**Status, 2026-09-28: items 1, 3 and 4 are IN, on a board at 0 unconnected / 0 violations.
+Item 2 is dropped on merit, 2b is measured impossible, 5 is dropped with 2, and item 6 is the
+only one left — and it now has the clean baseline it was gated on, plus a way to test a change
+against the finished board in two minutes rather than thirty.**
 
 ## Ordering
 

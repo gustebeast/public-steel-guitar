@@ -251,6 +251,9 @@ PKG = {
     # what was wrong was the envelope, not the choice.
     "SOT-563":  (2.90, 2.80, 1.45),
     "TP":       (1.50, 1.50, 0.00),   # bare 1.5 mm copper pad, nothing on it
+    # ⚠ THE SMALL ONE EXISTS BECAUSE OF WHERE THE ROOM IS, not to save area. The I2C2
+    # bring-up pads have 26 legal sites on the whole board at D1.5 and hundreds at D1.0.
+    "TP_SMALL": (1.00, 1.00, 0.00),   # bare 1.0 mm copper pad, nothing on it
     # U8's digital rail is ~300 mA, so 5V->3V3 burns 0.51 W. That is past a SOT-23-5
     # (>100 degC rise), which is why U8 is NOT the same part as U9. A BUCK is still the
     # wrong answer for THIS rail: it sits among 20 TIAs reading tens of nanoamps, and a
@@ -355,6 +358,7 @@ CRTYD = {
     "SOT-23-6": (4.19, 3.49),
     "SOT-563":  (4.19, 3.49),   # the real part is SOT-23-6 -- see the U10 note
     "TP":       (2.50, 2.50),   # KiCad's own courtyard for the D1.5 test pad
+    "TP_SMALL": (2.05, 2.05),   # ... and for the D1.0 one (r 1.0 circle + 0.05 stroke)
     "SOT-223":  (8.89, 7.29),   # the biggest gap of the lot: a tab package's land is
                                 # nothing like its body
     # ⚠ 6.45, NOT 5.50, measured off the placed footprint rather than the datasheet
@@ -474,7 +478,16 @@ STRING_BOT_MIN = D.STRING_Z
 FIELD_TALLEST  = PD_PKG[2]                                    # 1.10, the PD15s
 PCB_TOP        = STRING_BOT_MIN - PART_STRING_CLR - FIELD_TALLEST
 SENSE_FACE_Z   = PCB_TOP + LED_PKG[2]                         # emitter faces UP
-OPT_GAP        = STRING_BOT_MIN - SENSE_FACE_Z                # 2.00, was a typed 3.0
+# ⚠ 1.22, NOT THE 2.00 THIS COMMENT USED TO CLAIM. The number went stale when PCB_TOP was
+# re-datumed onto the axle: it is STRING_BOT_MIN - SENSE_FACE_Z = 16.00 - 14.78, and it has
+# been 1.22 ever since. Nothing downstream was wrong -- the value is computed, never the
+# typed one -- but the figure was quoted in review as 2.00 more than once, and a `git
+# checkout` of an unrelated revert put the stale wording back.
+# SHORTER IS BETTER HERE: signal goes as the inverse square of the standoff, so 1.22 buys
+# 2.7x the return of 2.00. What bounds it is not optics but collision -- the PD15s stand
+# 1.10 and the string's underside is 1.10 above them, of which 0.306 is the vibration
+# allowance at this station and the rest is margin.
+OPT_GAP        = STRING_BOT_MIN - SENSE_FACE_Z                # 1.22 (emitter face to string)
 AXLE_TOP       = D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2     # 12.00
 # ⚠ AND THIS IS WHAT STANDS BETWEEN THE BOARD AND THE COMB. Resting the board ON the axle
 # would let its hole become ten bearing slots with 4 mm strips between them, instead of one
@@ -1520,6 +1533,32 @@ def _parts():
     # flank, west of its courtyard at -11.10 and of the decoupling column at -8.22.
     add("R30", "BOOT0 pull-down -- at the pin", "0402", -17.55, -59.32, rot=90.0)
     add("R31", "NRST pull-up -- at the pin", "0402", -17.55, -69.63, rot=90.0)
+
+    # ⚠ THE BRING-UP PADS, AND EVERY ONE OF THESE FOUR NUMBERS WAS SEARCHED, NOT CHOSEN.
+    # An earlier attempt lined them up in a convenient empty row, which left the router an
+    # 11.9 mm haul to reach +3V3A; it stranded, and the pressure cost the USB PHY's own
+    # supply pin its connection. These sites come from scratchpad/padsite.py, which sweeps
+    # a grid over the FINISHED board for a clear 1.5 mm circle that already overlaps its
+    # own net's copper -- so no track is needed at all -- and rejects anything inside a
+    # footprint's courtyard, because a pad under a part is electrically legal and
+    # physically unprobeable. Clearance headroom over the 0.127 rule, per pad:
+    #   TP6 I2C2_SDA 1.696 (D1.0)   TP7 I2C2_SCL 0.743 (D1.0)   TP8 BOOT0 0.492
+    #   TP9 +24V 4.747   TP10 +5V 1.214   TP11 +3V3A 1.956
+    # ⚠ AND THEY ARE PLACED AFTER ROUTING (post_route_refs in elec/optical.py). The CAD
+    # still carries them because the fab, the geometry check and this model all need them;
+    # only the ROUTER is kept from seeing them.
+    # ⚠ CAD COORDINATES = board-local + (-3.55, -28.315).
+    for _ref, _desc, _lx, _ly in (
+
+            ("TP8", "bring-up pad -- BOOT0 (hold HIGH at reset)", -12.500, -30.540),
+            ("TP9", "bring-up pad -- +24V rail", -20.536, -77.372),
+            ("TP10", "bring-up pad -- +5V rail", -3.161, -54.865),
+            ("TP11", "bring-up pad -- +3V3A rail", 5.332, -57.687)):
+        add(_ref, _desc, "TP", _lx - 3.55, _ly - 28.315)
+    for _ref, _desc, _lx, _ly in (
+            ("TP6", "bring-up pad -- I2C2 SDA (ROM bootloader bus)", 6.351, -20.231),
+            ("TP7", "bring-up pad -- I2C2 SCL (ROM bootloader bus)", 20.601, -21.731)):
+        add(_ref, _desc, "TP_SMALL", _lx - 3.55, _ly - 28.315)
 
     y = _block(P, y,
                      # ⚠ THE SWD PADS, WITHOUT WHICH THIS BOARD CANNOT BE PROGRAMMED
