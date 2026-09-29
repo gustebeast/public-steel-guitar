@@ -934,3 +934,29 @@ stitcher that measured the distance to the nearest plane point and either laid T
 skipped the stub entirely would fix this class on every board. NOT attempted here: layout.py is
 shared by every board in the fleet and a change there needs its own validation pass, not a
 2 a.m. edit at the end of a long session.
+
+#### ⚠ TESTED AND WRONG: dropping led_strip's stitch_nets makes it WORSE (1 -> 3 unconnected)
+
+My reasoning was: the pour is F.Cu only on a 2-layer board, so a stitch via reaching B.Cu "lands
+on nothing", and the board's own note says "with one pour there is nothing to stitch TO". Full
+route without the stitcher:  **3 unconnected**, against 1 with it. REVERTED.
+
+WHY IT IS WRONG. A via to B.Cu is not a connection to a plane -- it is an ESCAPE TO THE OTHER
+LAYER, and the router can then reach that pad with a track. The stitcher's value on this board is
+getting GND pads off the congested face, not tying them to a second pour. Removing it traded
+three real connections for two dangling stubs.
+
+AND I MISREAD THE NOTE. "No stitching vias: with one pour there is nothing to stitch TO" is about
+explicit vias BETWEEN TWO POURS -- a different mechanism from the per-pad escape vias
+_stitch_plane_pads lays. One mechanism's comment does not govern another.
+
+⚠⚠ AND REVERTING THE SOURCE DOES NOT REVERT THE BOARD. elec/out/ is GITIGNORED, so
+`git checkout -- elec/led_strip.py` restored the generator and left the WORSE routed
+.kicad_pcb on disk. It had to be regenerated and fully re-routed (~30 min) to get back to 1
+unconnected. Any experiment on a board costs that on the way out as well as in.
+
+SO led_strip's 1 unconnected STANDS, and it is now understood rather than mysterious: two stitch
+stubs fall ~2 mm short of a pour that is ONE 2089 mm2 island, the stitcher is still net +2
+connections, and layout.py's instruction is to report rather than tidy. The fleet-wide fix -- a
+stitcher that MEASURES reach before laying, and lays that length or skips -- is now backed by
+evidence instead of my assumption, and is the right next attempt.
