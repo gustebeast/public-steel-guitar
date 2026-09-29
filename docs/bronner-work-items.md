@@ -829,3 +829,39 @@ straddles the connector's reference point diagonally instead of landing on pins 
 _pin(west[k], ...)); bus B is the one that does not. Worth the same treatment, low priority.
 
     gate 110, pair set unchanged by the wire_usb fix.
+
+## THE THREE BOARDS' REAL DRC STATE, MEASURED (2026-09-29)
+
+kicad-cli pcb drc on each elec/out/*.kicad_pcb. The tick's STATE block is wrong in BOTH
+directions, so these are the numbers to work from.
+
+    pi_cap        0 unconnected   13 violations   silk_edge_clearance x13 (warnings)
+    motor_ctrl    0 unconnected   30 violations   courtyards_overlap x17 (ERRORS),
+                                                  silk_overlap x10 + silk_over_copper x3 (warn)
+    led_strip     1 UNCONNECTED   35 violations   track_dangling x2, silk x33 (all warnings)
+
+⚠ motor_ctrl IS BETTER THAN RECORDED. The STATE says "3 unconnected (+3V3, CANB_H, NRST), 27
+violations" with copper_edge_clearance x4 and solder_mask_bridge x3 "still unexplained". It is
+FULLY ROUTED -- 0 unconnected -- and NEITHER of those violation types exists on the board at
+all. What is really there is 17 courtyard-overlap ERRORS (placement density, on a board that
+gained the LED buck) and 13 silkscreen warnings. The unexplained pair was chasing a ghost.
+
+⚠⚠ led_strip IS WORSE THAN RECORDED, and its 1 unconnected is DELIBERATE. A 2.0 mm GND track on
+F.Cu with both ends loose, sitting in the GND zone it never joins. It reproduces exactly on a
+re-run (ROUTE_REUSE_SES=1), so it is generated, not corruption. The cause is in the log:
+
+    stitched 23 pad(s) on GND straight to the plane
+    ⚠ 3 stitch via(s) landed where the plane is not: GND at 136.35,100.33, 55.35,100.33,
+      95.85,100.33     -- board-local x -44.65, -4.15, 36.35, all at y -0.33, at EXACTLY
+                          40.5 mm pitch, so it is a repeated per-section feature
+
+AND elec/layout.py's own docstring says what to do about it: "this is a placement problem.
+Report it, do not tidy it away." It also records that an earlier probe suggested deleting these
+and was WRONG TWICE OVER -- GetPosition() is a track's START, so a track whose END lands on the
+via reads as absent, and deleting the via would leave the stub and could cut the pad's only
+return. DO NOT TIDY. The fix is to make the GND plane REACH those three points (or move the
+pads): an led_strip layout change, pre-existing, not the swap's.
+
+INVOCATION, because I got it wrong first: finish.py needs KICAD'S python and a PATH --
+  "C:/Program Files/KiCad/10.0/bin/python.exe" elec/finish.py elec/out/led_strip
+py -3.12 cannot import pcbnew, and a bare board NAME is not a path.
