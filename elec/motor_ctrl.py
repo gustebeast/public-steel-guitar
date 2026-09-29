@@ -741,38 +741,29 @@ def motor_ctrl():
 # face is the lowest thing on the board and no laminate reaches past it.
 BOARD_W, BOARD_L = 61.8, 62.0
 
-# THE MOUNTING EAR (user, 2026-09-21): an M4 THROUGH the board, not beside it -- "having the
-# screw adjacent ... doesn't provide as strong of retention". A tab off the +Y edge at the +X
-# corner: that corner is clear (J5 stops at x 6.2, J3 below y -2.2), and standing on the
-# keyhead endplate the +Y edge faces the gap toward the Pi, which is where the side screw was.
-# Bare laminate under the head (the pours cover only the outline_mm layout region). Same ear
-# and hole as the CAN tee's and the output board's.
-EAR_W, EAR_H = 9.5, 8.7
-EAR_HOLE_D = 4.5                                   # M4 clearance
-# The ear is a tab off the -X edge, which is the end that stands UP: the mount belongs at
-# the top, away from the floor the +X edge now faces.
-_EAR_X0 = -BOARD_W / 2 - EAR_H
-_EAR_Y1 = BOARD_L / 2 - EAR_W
-EAR_HOLE_XY = (-BOARD_W / 2 - EAR_H / 2, _EAR_Y1 + EAR_W / 2)
+# THE MOUNTING EAR was added 2026-09-21 on the user's "having the screw adjacent ...
+# doesn't provide as strong of retention", and removed 2026-09-29 on their own report that
+# its hole was never used. Both are right: a screw through the board IS better retention,
+# and this one could not be reached -- see below. If a through-board mount is wanted again
+# it needs a corner whose BOSS clears the nut height-adjust block, which is the thing that
+# actually decided it, and that is a placement question before it is an outline one.
+# ⚠ THE EAR IS GONE (user, 2026-09-29: this board "has a hole designed for an M4 screw
+# that isn't being used"). It was right, and the hole was worse than merely spare:
+#   * its boss cannot be used from where it is -- it projects into the nut height-adjust
+#     block, 625 mm3 through nut_slide_insert_2 when it was tried, so the one fastening
+#     point the board offered was a fastening point that could not be fastened; and
+#   * it made the board 70.50 wide instead of 61.80, and src/electronics.py hands that
+#     width to pcb_hold_xy. Every hold point on this board was therefore computed against
+#     a rectangle the laminate does not occupy -- an unused hole steering the fastener
+#     that replaced it.
+# The board is a plain rectangle now and the M4 lives beside its edge, same as the Pi's.
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
-    # ⚠ WALK THE BODY FIRST, THEN THE EAR. This list was the PRE-ROTATION point order
-    # with the new coordinates substituted in, and it described a different shape: its
-    # third point (BOARD_W/2, _EAR_Y1) ran a line across the FULL WIDTH at y 13.50, so
-    # the body's north edge at y 23 was never drawn and the polygon self-crossed on the
-    # close. Everything above y 13.50 read as off-board -- which is why the stitcher
-    # reported "no room for a via" at D3.2 (y 16.00). It was not a clearance failure at
-    # all, and it is the only pad up there, so nothing else showed the damage.
-    # The ear is a tab past -X spanning y _EAR_Y1..+BOARD_L/2, so it is entered and left
-    # at x -BOARD_W/2 and the body is a closed rectangle apart from that notch.
-    "outline_poly": [(-BOARD_W / 2, -BOARD_L / 2), (BOARD_W / 2, -BOARD_L / 2),
-                     (BOARD_W / 2, BOARD_L / 2), (-BOARD_W / 2, BOARD_L / 2),
-                     (_EAR_X0, BOARD_L / 2), (_EAR_X0, _EAR_Y1),
-                     (-BOARD_W / 2, _EAR_Y1)],
-    "cutouts": [{"xy": EAR_HOLE_XY, "d": EAR_HOLE_D}],
-    "mounting_hole_xy": EAR_HOLE_XY,
-    # J4 going XH moved the router's first pass and OSC_OUT (Y1 -> U4) came back open at the
+    # (no outline_poly and no cutouts: with the ear gone the board is exactly outline_mm, and
+    # a rectangle is better said by its absence than by four points restating it. No
+    # mounting_hole_xy either -- there is no hole in this board to mount through.)
+        # J4 going XH moved the router's first pass and OSC_OUT (Y1 -> U4) came back open at the
     # default ten; more passes let it rip up and re-lay (route.py PASSES note)
     "router_passes": 20,
     "layers": 4,
