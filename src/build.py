@@ -175,18 +175,6 @@ for _i in range(len(_TP.segments)):              # placed deck panels (piece + f
         f"print AS ONE OBJECT with top_plate_{_i}). PCTG, not PETG-GF: the deck is the "
         "forearm rest — no glass fiber on skin-contact surfaces, and same-resin pairs "
         "weld/purge cleanest")
-for _i in range(len(_TP.spare_fillers)):         # fillers for the other pickup-piece slots
-    PARTS[f"top_plate_spare_{_i}"] = (
-        (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).spare_fillers[i]))(_i),
-        f"pctg/top_plate_spare_{_i}.step",
-        "PCTG (transparent) — filler-band BASE for an alternate pickup-piece "
-        f"position (print AS ONE OBJECT with top_plate_spare_{_i}_color; install "
-        "the ones the piece doesn't cover)")
-    PARTS[f"top_plate_spare_{_i}_color"] = (
-        (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).spare_fillers_color[i]))(_i),
-        f"pctg/top_plate_spare_{_i}_color.step",
-        f"PCTG (colour) — filler-band COLOUR layer (print AS ONE OBJECT with "
-        f"top_plate_spare_{_i}; skin-contact surface — no glass fiber)")
 # fuse each tee's drop-in PCB cradle (cadkit.pcb.pcb_cradle) into the chassis segment
 # whose X-band owns that tee, so the cradle PRINTS AS PART of that segment. Each cradle's
 # -Y wall merges into the -Y-rail inner face (a light cantilever bracket over the rib-top
@@ -810,18 +798,8 @@ def _electronics_components():
     out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
-    # the fillers the pickup piece displaced: show them slid +Y clear of the
-    # instrument (exploded), but at the true X/Z where they'd seat if the pickup
-    # weren't there -- so it reads as "pull these, drop in the pickup piece".
-    # Base + colour move by the SAME dy (from the base's bbox) so the pair stays
-    # aligned as printed.
-    from . import chassis as CH
-    rail_outer = CH.Y_HI + CH.T / 2
-    for i, (f, fc) in enumerate(zip(TP.spare_fillers, TP.spare_fillers_color)):
-        dy = (rail_outer + 8.0) - f.val().BoundingBox().ymin
-        out.append((f"top_plate_{len(TP.segments) + i}", f.translate((0, dy, 0))))
-        out.append((f"top_plate_color_{len(TP.segments_color) + i}",
-                    fc.translate((0, dy, 0))))
+    # (NO SPARE FILLERS to explode off to the side any more: the fillers are fret-free,
+    #  so one design fits any slot and the two installed ARE the whole set. See top_plate.)
     out += WR.tee_components()
     # out += WR.trrs_components()      # PARKED with the station above
     out += WR.build_wires()
