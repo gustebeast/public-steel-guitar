@@ -419,6 +419,44 @@ happened, and SOME OF IT WAS LATER DISPROVED BY MY OWN MEASUREMENTS. The wrong t
 deliberately -- what was tried and why it failed is the most reusable part -- but a reader
 working top-down would act on stale text. The state of each claim:
 
+    ⚠⚠ USER ASKS, 2026-09-29 -- FOUR, IN THE ORDER GIVEN. Two done, two open. Do not lose
+    the open ones: they were given while I was mid-turn on something else, which is exactly
+    how an ask gets dropped.
+
+      1. DONE -- "the retention pieces you have designed are under the 1.6mm quality bar.
+         If you do go all the way to 1.6mm we still may have some inaccuracy so ideally we
+         can work even larger than that". LIP and RETAIN were BOTH 1.2: under
+         D.MIN_WALL_2P and not even on the bead grid. Now 3 * D.BEAD = 2.4, written as
+         bead counts so they stay on-grid if the nozzle changes.
+
+      2. DONE -- "on the +y side of the pi the retention is clipping into the pi's
+         components". Measured 56.3 mm3 into pi5 along the board's WHOLE length, sitting
+         1.7 mm ABOVE the laminate's top face, i.e. in component space. ⚠ NOTHING IN THE
+         PROJECT COULD SEE IT: cradle-to-board contact is a DESIGNED contact, so
+         check_overlaps says nothing and the render is the only witness. Raising RETAIN to
+         2.4 tripled it to 194.3 -- the two asks had to land together. Fixed by subtracting
+         the boards' own solids from the cradles: lip and locating wall survive (they are
+         outside the footprint), only what leans OVER a board is trimmed. Now 0.0 for pi5,
+         pi_cap and motor_ctrl, with all four fasteners still 0.0.
+
+      3. OPEN -- "we should also ensure the pi wiring connections are accurate. The USB for
+         example enters the pi from +x which doesn't seem like how the USB would be
+         oriented". Confirmed: wire_usb lands at SP(-575.0, PI_FP[3] - 9.0, -44.0) and
+         wire_link at x -585.0 -- both OUTBOARD of pi5 (x -601.60..-586.00) approaching
+         the board's FACE. A Pi 5's USB and Ethernet are on a 56 mm END, not the face.
+         ⚠ THE ROOT CAUSE IS THAT pi5() IS A PLAIN ENVELOPE BLOCK -- 15.60 mm thick at
+         every point, no ports modelled -- so every cable to it is drawn to an invented
+         point. The fix is to give the Pi its connector geometry the way board_geom gives
+         the routed boards theirs, then derive the cable ends from it. ⚠ AND THERE IS A
+         CONFLICT TO RESOLVE FIRST: the port end can only be +Y (the -Y end is now flush
+         to the bay wall), and the gap there is 4.68 mm, which will not take a USB-A plug.
+
+      4. OPEN -- "the wiring run for the 6 pin from the LED clips through the pi and the
+         chassis, it should go +x of the pi". The gate already reports it and I read past
+         it: pi5 <-> wire_led_gnd_a / v5_a / sck / v5_b / gnd_b / sdi, 2.6 mm3 EACH, plus
+         chassis_2 <-> the same six at 0.1. Six conductors, six pairs, all six in the
+         standing 109. Route the run +X of the Pi as the user says.
+
     LIVE, and the numbers reproduce:
       * ⚠ SOLVED: motor_ctrl's M4 was buried in the PI's CRADLE, not its own. Its boss
         stands beside the motor board's -Y edge at y -44.0; the Pi's cradle wall stands at
