@@ -988,11 +988,8 @@ panels (fret lines + dust cover + hand rest + UI mount) — see
 (user, 2026-09-29). Two changes that only make sense together:
 
 * **The -X-most pickup slot was handed to the mid panel**, which takes the small
-  swappable bands from three to two and the mid panel from 226.40 to **246.45 mm**
-  (a 255 bed — now `top_plate.BED_XY`, asserted rather than left in a comment).
-  The mid/key seam does not move: MID_X0 moved +X by exactly one slot pitch and the
-  panel's length grew by the same, so the seam stays in the clear gap between fret
-  lines it was chosen for. **Cost: the pickup's COARSE positions go 4 → 3**, i.e.
+  swappable bands from three to two (a 255 bed — now `top_plate.BED_XY`, asserted
+  rather than left in a comment). **Cost: the pickup's COARSE positions go 4 → 3**, i.e.
   20.05 mm less coarse reach toward the neck. The fine adjustment is untouched
   (`CLAMP = BAND_W/2` still makes the coverage continuous), and the slot that went
   is the one furthest from the changer.
@@ -1007,6 +1004,30 @@ panels (fret lines + dust cover + hand rest + UI mount) — see
   octave quad, which now sits on the mid panel 12.5 mm clear of its +X edge. Those
   six semitones are in the swap region, where no marking could ever have been
   consistent: fret 25 falls at −145.12, which is **0.24 mm** off the region/mid seam.
+* **And the mid/key seam was re-cut to balance the two long panels** (user). They are the
+  bulk of the printed deck — 465.39 mm of material — and the old seam split it 53/47:
+  **246.45 against 218.94, 27.51 apart.** The seam is now `MID_SEAM_BEADS = 476`
+  (−380.80, on the bead grid like every other length here) giving **235.44 / 229.95,
+  5.49 apart**, and `SEAM_BALANCE_MAX` asserts it stays that way. The seam is now the
+  DATUM and the panel lengths fall out of it, which is the right way round: nothing cares
+  how long the mid panel is, and four things care where the cut falls.
+
+  ⚠ **IT IS 4.25 MM OFF ITS FRET SPACE'S MIDPOINT, which the user asked it to be on, and
+  the two requests cannot both be had.** A seam has to clear the fret lines AND the
+  position markers, and **the markers sit centred in their space** — so in a marked space
+  the midpoint is the one place a seam cannot go. Every space midpoint that fits the bed:
+
+  | space | midpoint | mid / key | apart | |
+  |---|---|---|--:|---|
+  | 8 | −399.20 (499 beads) | 253.84 / 211.55 | 42.29 | clear of markings |
+  | 9 | −376.80 (471 beads) | 231.44 / 233.95 | **2.51** | **inside the fret-9 pentagon** |
+  | 10 | −355.42 | 210.06 / 255.33 | 45.27 | 0.33 **over** the bed |
+
+  The only marker-free midpoint is space 8's, and it is **less even than what we already
+  had** — so following the rule literally would have made worse the very thing the request
+  was for. −380.80 is the best bead-grid position inside space 9 that clears the pentagon:
+  **5.43 mm to the nearest fret line, 1.49 to the marker.** Setting `MID_SEAM_BEADS = 499`
+  takes space 8's true midpoint instead and costs 36.8 mm of evenness.
 
 ## Control sensors (knee levers + pedals)
 
