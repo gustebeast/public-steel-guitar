@@ -667,6 +667,40 @@ working top-down would act on stale text. The state of each claim:
          "Economic and Standard" (or Basic/Preferred), exactly as these two do -- that is
          now the first filter, before pitch, current or coplanarity.
 
+      5i. USER: "the PWM is key, double check none of the PCBA options run at the high
+         PWM" + "also can you include 12V in the JLC search". DONE, AND THE ANSWER IS NO --
+         ONE PCBA-AVAILABLE PART DOES CLEAR THE AUDIO BAND. That contradicts the premise
+         the custom strip was built on, so it is worth stating plainly.
+
+           IC              PWM        audio band?   JLCPCB assembly part
+           HD107S          26-27 kHz  ABOVE         not found in the library (unconfirmed)
+           APA102          20 kHz     ABOVE   <--   C9900160678, and C2887942 (2020 pkg)
+           APA107           9 kHz     inside        -
+           GS8208           8 kHz max inside        12-15 V, 3-channel
+           SK9822           4.7 kHz   inside        -
+           UCS7624        1.6-3.2 kHz inside        -
+           SK6812           1.2 kHz   inside        -
+           WS2812/14/15   ~400 Hz     inside        many, incl. 12 V RGBW parts below
+
+         12 V, PCBA-AVAILABLE, RGBW (the user's second ask):
+           WS2815B-RGBW      C19188610      12 V RGBW, built-in IC
+           WS2815B-RGBW-4P   C42417619      12 V RGBW
+           WS2814 / WS2814C  C965562 / C22371810   12 V RGBW driver
+         All of these are WS281x-family PWM, i.e. hundreds of Hz to ~2 kHz -- so 12 V buys
+         a 2.4x current reduction at the joint but does NOT buy the PWM.
+
+         ⚠ WHAT APA102 COSTS, and it is the whole brief except the PWM: it is RGB with NO
+         WHITE DIE, and 8-bit per channel plus a 5-bit global current. The brief wants a
+         real white channel and deep bit depth for smooth low fades. So the choice is not
+         "APA102 instead" -- it is a three-way trade the user should make knowingly:
+             custom TLC59711  16-bit + RGBW + ~19.5 kHz segments, 6 conductors, our board
+             APA102           20 kHz + 2 wires + off-the-shelf, but RGB and 8-bit
+             WS2815B-RGBW     12 V + RGBW + 2 wires, but PWM in the audio band
+         ⚠ AND THE PWM FIGURES ABOVE COME FROM STRIP-VENDOR COMPARISON PAGES, NOT DATASHEETS.
+         I have already been caught twice quoting a REFRESH or DATA rate as PWM (UCS7624's
+         "32K", GS8208's "8 kHz max refresh"). Confirm APA102's 20 kHz from the manufacturer
+         datasheet before anything is decided on it.
+
       5e. DECISION, so this stops consuming ticks: FEWER JUNCTIONS FIRST, better connector
          second. Three ticks of sourcing have produced no part that satisfies all of
          (coplanar OR low-profile) + (LCSC/JLCPCB so it can be PCBA-placed) + (>= 2.2 A or
