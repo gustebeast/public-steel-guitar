@@ -420,6 +420,29 @@ deliberately -- what was tried and why it failed is the most reusable part -- bu
 working top-down would act on stale text. The state of each claim:
 
     LIVE, and the numbers reproduce:
+      * ⚠ OPEN, AND WELL CHARACTERISED: motor_ctrl's M4 sits in its own cradle --
+        board_insert_0 30.4 mm3, board_screw_0 47.6. What is MEASURED, not guessed:
+          - the cradle bores a UNIFORM O3.00 hole (the screw's self-tap) at every depth,
+            sampled at five depths through the boss. There is NO insert pocket anywhere.
+          - cut_anchor(pocket=True) is documented to leave O insert_pilot_d x insert_depth
+            = O6.00 x 5.00 at the mouth. It measurably does not, on this cradle.
+          - the bore's centre measures world y -42.70; the insert's is -44.00. 1.30 apart.
+          - BOTH pcb_hold_xy calls return an IDENTICAL (17.0, -33.5) -- verified by
+            instrumenting the function and logging every call from each site. So the hold
+            point is NOT the disagreement, and MCTRL_HOLD/PI_HOLD did their job.
+          - a heat-set with no pocket cannot be installed at all, so this is a BUILD
+            defect, not merely an overlap number.
+        RULED OUT, each tried and reverted rather than left in:
+          - boss_d = 13 beads (the Pi's deep boss): byte-identical result.
+          - cutting the insert's seat at (hx, hy) for local z POST_H-5 .. POST_H: no effect.
+          - the same cut for local z POST_H .. POST_H+5 (the other side): no effect either.
+        ⚠ THOSE LAST TWO ARE THE LEAD: a cylinder at (hx, hy) does not touch the offending
+        material in EITHER direction, yet the head-clearance cut at the SAME (hx, hy) did
+        work (screw 83.7 -> 47.6). Both cannot be true of one coordinate frame, so the next
+        tick should stop reasoning about the frame and MEASURE it: build the motor cradle
+        alone, before the translate, and find where its anchor void actually is in local
+        coordinates. The Pi's cradle is the same arrangement with no overlap and is the
+        control.
       * ⚠ THE PI IS FLUSH TO THE BAY WALL and pi_cap_relief is DELETED (user, 2026-09-29:
         the Pi "requires cutting into the chassis wall which reduces its strength"). +3.82,
         cap face measured ON -131.55 at +0.00, wall back to its full 10.40. MEASURE THE
