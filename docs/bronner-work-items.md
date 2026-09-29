@@ -561,6 +561,38 @@ working top-down would act on stale text. The state of each claim:
          parts; (b) LCSC stock and C-numbers, since the BOM is LCSC-based; (c) the mated
          height, which sets whether the two sections stay in one channel.
 
+      5d. ⚠ I WAS TOO HARD ON THE ORIGINAL REJECTION, AND THE LCSC CHECK IS WHY. I said the
+         old search "looked across families" and that a matched series (Harwin M20, which
+         does document coplanar edge-to-edge mating) proved the part sourceable. Then I
+         checked LCSC, and its 2.54 mm female sockets are listed at "3 A, 8.5 mm insulation
+         height" -- H8.5 is EXACTLY the figure the original note quoted. So that note was
+         measuring LCSC-STOCKED GENERIC PARTS, and against those its conclusion stands: a
+         generic RA male (pin axis 2.5) and a generic RA female (body 8.5) do not line up
+         coplanar. My critique was right about the reasoning and wrong about the verdict.
+
+         ⚠ AND THE SUPPLIER IS NOT A FREE CHOICE ANY MORE, which I under-weighted. Hand
+         soldering is banned, so this connector must be PCBA-PLACED -- which means it must
+         be in the ASSEMBLER'S library, i.e. an LCSC part for JLCPCB assembly. Harwin M20
+         from DigiKey/RS is stocked, but it is not LCSC, so choosing it also chooses
+         consigned-parts assembly. That is a real option with a real cost, not a free win.
+
+         SO THE OPTIONS, honestly ranked:
+           * MEZZANINE ON OVERLAPPING SECTIONS, both parts LCSC and matched: a straight
+             header and a straight socket are the most reliably matched pair there is, and
+             both are 3 A at 2.54. Cost: the mated height is ~8.5 mm, so section k+1 stands
+             8.5 mm off section k -- a large step for a strip living in a channel. Needs a
+             LOW-PROFILE mezzanine to be viable; check LCSC for 1.27 mm stacking pairs and
+             their current rating, which will likely be well under 2.2 A and so force the
+             power back off the joint.
+           * FEWER, LONGER SECTIONS. Every junction costs 39 mm of dark span, so halving
+             the count halves the loss. 580 mm exceeds a typical fab panel, so ONE board is
+             out, but 2 x 290 may not be -- price it.
+           * CONSIGNED HARWIN M20, coplanar by design, 2 A per contact (so the power rails
+             stay doubled: 6 ways, not 4).
+         ⚠ NOTE THE 4-WAY PRIZE ONLY SURVIVES AT 3 A. Harwin M20 is 2 A and cannot carry
+         the 2.2 A on one contact, so "collapse the dual V5/GND" and "use the coplanar part
+         that actually mates" are, on current evidence, mutually exclusive.
+
          STILL TO SOLVE, with the corrected constraint. The joint must be a CONNECTOR the
          assembly house reflows onto each board, mating board to board with no wire. The
          2.54 right-angle HEADER rejection stands (male 2.5 mm insulation height vs female
