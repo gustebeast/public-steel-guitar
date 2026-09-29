@@ -456,3 +456,49 @@ elsewhere. A lane it calls clear can still hit a motor. Narrow with it, then let
 This repo already had the answer in two places -- padsite.py searches a pad site, repair_search
 searches a track -- and the standing note says the router VERIFIES rather than searches. Search
 the site, then edit once.
+
+## The Y swap's REAL outstanding debt, measured against a true baseline (2026-09-29)
+
+⚠ THE MR NOTE'S "113 unintended, ALL pre-existing" IS NOT A MEASUREMENT YOU CAN DIFF AGAINST.
+A real pre-swap gate -- `git checkout 991e095 -- src/electronics.py src/wiring.py`, full
+check_overlaps, restore -- gives **114**. (Note `git stash push` DOES NOTHING when the changes
+are already committed: it stashes nothing, the pop then fails, and the "baseline" you just
+measured is your current tree. Use `git checkout <commit> -- <paths>`.)
+
+    pre-swap        114
+    current         128   (after the 5 V fix, which took it 132 -> 128)
+    swap added       18,  removed 4
+
+REMOVED -- this is what the swap bought:
+    body_adapter_3 <-> motor_ctrl        the 170.65 mm3 handover to brenner, retired
+    chassis_2      <-> body_adapter_3
+    pi_cap <-> wire_joy,  pi_cap <-> wire_oled
+
+ADDED -- this is what it still owes, and it is mostly ONE problem:
+    THE PI'S MOUNTING HARDWARE MOVED WITH THE BOARD AND LANDED ON CHASSIS FEATURES (7)
+        chassis_2 <-> nut_slide_insert_1 / _2 / _3
+        chassis_2 <-> nut_height_insert_1,  chassis_2 <-> nut_height_screw_1
+        board_screw_0 <-> nut_slide_insert_2
+        keyhead_endplate <-> board_insert_0
+    THE CAP ITSELF NOW TOUCHES THE CHASSIS (1)
+        chassis_2 <-> pi_cap
+    THE 24 V FEED TO THE MOTOR BOARD IS THE 5 V PROBLEM AGAIN (8)
+        wire_pwr_{hot,gnd}_{11,12} <-> chassis_2   and   <-> motor_0
+        Same cause, same cure: the motor end moved, the waypoints did not. Use
+        scratchpad/segtest.py, find the clear band, edit once.
+    AND THE ADAPTER GRAZE (1)
+        chassis_2 <-> body_adapter_0   2.2 mm3, down from 170.65 -- three orders better, but
+        not zero, and it is the same corner story at the other end.
+    chassis_2 <-> wire_link (1)
+
+⚠ THE LED CABLE'S CROSSINGS ARE **PRE-EXISTING**, NOT THE SWAP'S. keyhead_endplate <-> wire_led_*
+and chassis_2 <-> wire_led_* are all in the 114. The cable runs pi_cap J3 (y -119.72) to the
+strip (y +51.20), 171 mm across the instrument, and segtest.py puts 68.2 mm3 in the endplate and
+46.5 in chassis_2 on one segment. That is a cable crossing STRUCTURE: it wants a PORT through
+the chassis, which is a chassis change and belongs with the chassis_2 mounting rework -- not a
+bent cable. The swap did lengthen the run (J3 rides on pi_cap, which rides on the Pi), so the
+numbers grew, but the crossings predate it.
+
+NEXT, IN ORDER: the Pi's mounting hardware (7 + the cap = 8 pairs, one root cause, and it IS the
+"chassis_2 mounting rework" backlog item), then the 24 V feed (8, a solved pattern), then the
+LED port as part of the chassis work.
