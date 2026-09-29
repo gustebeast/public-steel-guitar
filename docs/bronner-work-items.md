@@ -2726,3 +2726,60 @@ re-opens (probably easier, with more room); every lead off `pi_cap_pin`/`PI_FP` 
 `pi_cap` rides the 40-pin header so it comes too and needs headroom above the board; and
 `pi5()`/`PI_FP` are authored in the flat tray frame and posed by `stand()`, so per the
 orientation rule this is a **RE-AUTHOR in the new pose**, never a rotate bolted on the end.
+
+### ✅✅ THE FLAT PI FITS. I WAS WRONG THREE TIMES AND THE USER WAS RIGHT EACH TIME
+
+Collision-tested an 85 x 56 x 15.6 box (long side along X, per the user) on the chassis
+floor at z FLOOR_TOP -71.35, against the whole assembly, excluding only the parts that
+would MOVE with the decision (pi5, pi_cap, its fastener) and the cables:
+
+        candidate  x -598.00..-513.00  y -130.00..-74.00  z -71.35..-55.75
+        COLLISIONS: 2 parts, 250.81 mm3 -- BOTH thin slivers on the -X FACE
+            242.82  chassis_2       x -598.00..-596.80   (1.2 mm)
+              7.99  board_screw_2   x -598.00..-597.80   (0.2 mm)
+
+**Sliding the footprint ~1.5 mm +X clears both.** There is no obstruction in the interior
+of that volume at all.
+
+**THE THREE WRONG ANSWERS, because the pattern matters more than the conclusion:**
+  1. "X available = ELEC_STACK_D = 21.8, SHORT BY 63.2." ELEC_STACK_D is the depth of the
+     VERTICAL TRAY's stack -- boards standing off a 3 mm plate between the endplate and the
+     motor bank. **A Pi flat on the floor is not in that stack.** I applied a datum from the
+     wrong region and never measured the one that was asked about.
+  2. "Rotated in plane needs 85 of Z and there is 78.85, SHORT BY 6.15." A different pose,
+     also derived rather than measured.
+  3. "55.90 mm of clear Y against 56.0 needed, SHORT BY 0.10." That sounded like the most
+     precise refutation of the three and was the worst: the body_adapter I measured against
+     spans **z -134.65..-73.82, entirely BELOW FLOOR_TOP -71.35**. It never reaches the floor
+     slab -- which is exactly why it never appeared in the floor probe I had already run.
+     **I measured the right part in the wrong axis, and did not cross-check it against my own
+     probe output from two minutes earlier.**
+
+**WHY THE FLOOR IS ACTUALLY CLEAR:** the motors are staggered in Y along the string fan
+(motor_0 y -41.25, motor_1 -50.75, motor_2 -60.25, motor_3 -69.75, motor_4 -79.25) and the
+row only marches -Y as it goes +X. A 56 mm band at y -130..-74 misses every one of them at
+every X out to -404. The only solid obstruction in the band is board_screw_2 / board_insert_2
+(the output board's M4) at x -610..-597.80 -- dodged by starting at x > -597.80. Everything
+else there is cable, which re-routes by definition. **There is ~200 mm of X where I claimed
+21.8, and the Pi needs 85.**
+
+**WHAT THIS IS WORTH:** flat frees **29 mm** of the Y band (85 -> 56) -- more than the
+11.68 mm USB gap the entire motor_ctrl shrink bought -- and would retire the shrink's
+leftover +3 conflicts instead of trading against them. It is the strongest option found.
+
+**WHAT IT COSTS, recorded before anyone commits:**
+  * `pi5()`/`PI_FP` are authored in the TRAY frame and posed by `stand()`. Per the project's
+    orientation rule this is a **RE-AUTHOR in the new pose**, never a rotate bolted on the
+    end, and it must leave no trace it was ever otherwise.
+  * `pi_cap` rides the 40-pin header, so it comes along and needs headroom ABOVE the board.
+  * Every lead off `pi_cap_pin`/`PI_FP` moves; `_board_gap_y` and the USB port model
+    (`pi_port_pt`) are built around the STANDING pose and would be re-derived.
+  * Ask #3 re-opens -- but with ~200 mm of X and no motor within 30 mm, it should be easier
+    there than the 11.68 mm gap it has now.
+  * The cradle, its screw and the floor-facing foot are all authored for a standing board.
+
+⚠ **PROCESS RULE, and it is the one lesson of this whole thread: DO NOT ANSWER A CLEARANCE
+QUESTION WITH A DATUM. Put a box where the part would go and intersect it.** Three
+derivations gave three wrong answers in three different ways; the first collision test
+settled it in one run. The datum answers were all *plausible* -- that is what made them
+expensive.
