@@ -170,7 +170,7 @@ MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outlin
 # So: Pi -113..-28, 8.1 of gap for that boss, motor -19.9..42.1. Moving the boss to the -Y
 # edge instead would buy the gap back but would push a column out to y -120.1, into chassis
 # that has never been asked to be there. Spend the gap, not the unknown.
-_MCTRL_CX, _MCTRL_CY = -563.40, -10.0
+_MCTRL_CX, _MCTRL_CY = -563.40, -10.5
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 

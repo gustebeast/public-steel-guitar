@@ -752,3 +752,33 @@ exactly zero when I tried it: the material was the Pi's cradle, not the motor's.
 
 REMAINING SWAP DEBT: two grazes, chassis_2 <-> body_adapter_0 (2.2) and <-> wire_link (2.8).
 111 against a measured pre-swap 114.
+
+### THE LAST 0.75 mm IS A HANDOVER, NOT A BUG (2026-09-29)
+
+The motor board is pinned between two features that are 0.75 mm too close together, and NO
+placement satisfies both:
+
+    boss must clear the PI CRADLE'S +Y WALL, whose face is -50 + CLR + WALL = -48.2
+        -> motor ymin > -42.0
+    the cradle's +Y WALL must clear body_adapter_0, whose -Y face is y 21.15
+        -> ymax < 19.25, i.e. ymin < -42.75
+
+Measured at three positions (_MCTRL_CY):
+
+    -11.0   112 pairs   body_adapter_0 2.20   wire_link 2.80   board_screw_0 0.72
+    -10.0   111 pairs   body_adapter_0 5.22   wire_link 0.71   --
+    -10.5   111 pairs   body_adapter_0 3.73   wire_link 1.77   --      <- taken
+
+⚠ AND -10.0 WAS A TRADE I REPORTED AS A WIN. It dropped a pair (112 -> 111) while MORE THAN
+DOUBLING the pair it left behind (2.20 -> 5.22). Reading the gate's COUNT instead of the
+geometry is exactly the failure the count invites. -10.5 keeps the count and halves that back.
+
+THE WALL CANNOT BE TRIMMED. It spans y 21.0..22.9, so cutting at the adapter's 21.15 leaves
+0.15 mm of a 1.9 mm member -- and that member is one of the two side walls that run down inside
+the floor slab and ROOT the cradle into the chassis. build.py's one-solid assert exists to catch
+exactly the cradle those walls would stop holding.
+
+SO: body_adapter_0 at 3.73 mm3 (x -600.60..-599.50, y 21.15..22.40, z -79.46..-75.66) needs the
+ADAPTER to give about 1 mm at that corner. This is the ORIGINAL handover at 2% of its size -- the
+170.65 mm3 version was retired by MOVING the board, and this residue cannot be moved away from,
+because moving -Y puts the M4 back into the Pi's cradle wall.
