@@ -844,6 +844,35 @@ working top-down would act on stale text. The state of each claim:
          condition. Build that, and revisit the connector only if the remaining single
          junction still reads badly.
 
+      5l. ⚠ THE CONNECTOR EXISTS. Searched JLCPCB's ACTUAL ASSEMBLY LIBRARY through
+         yaqwsx.github.io/jlcparts (the parametric mirror of the assembly catalogue) using
+         the user's Chrome extension -- which is the only way to answer this, because web
+         search cannot filter by pitch x gender x current x stock.
+             Board-to-Board and Backplane Connector: 452 parts in the assembly library
+             ALL 452 are "Extended" -- a per-unique-part SETUP FEE, but NOT consignment
+             pitches 0.35..2.54 mm; currents 300 mA..5 A; mated heights from 1.5 mm
+             mounting: 401 SMD vertical, 24 SMD right angle, 6 right angle, 14 through hole
+
+         ⚠ THE FILTER THAT MATTERS IS "ARE BOTH HALVES STOCKED", and it is what every
+         earlier candidate failed. Gender counts in the library are Female 82 vs Male 26,
+         so most series have only ONE half. FX23L looked ideal (0.5 mm, 3 A, 64P, stock 72,
+         $1.92) and is PLUG-ONLY -- all three variants are the -P half, no socket.
+
+         HIROSE DF40 HAS BOTH HALVES:
+             DS receptacles  DF40C-10DS/-24DS/-30DS, DF40B(2.0)-12DS, DF40B-30DS,
+                             DF40GL-44DS, DF40HB(4.0)-50DS, DF40TC(3.5)-30DS,
+                             DF40HC(2.5)-30DS, DF40GB(3.0)-70DS
+             DP headers      DF40C-20DP/-34DP/-40DP, DF40GB-70DP, DF40TC-30DP, DF40GB-48DP
+         0.4 mm pitch, 300 mA per contact, stack heights 1.5..4.0 mm, Slot Type Butting.
+         300 mA is under the 0.38 A joint current, so PARALLEL CONTACTS: at 70P, ~17 pins
+         each on V24 and GND is 5 A of margin, with the rest for SCK/SDI. 70P in two rows
+         is ~14 mm long on a 139 mm board.
+         ⚠ STILL TO PIN DOWN: pin counts must match ACROSS the pair and the sub-series
+         letter sets the stack height (B/C/GB/HB/TC/HC/GL), so the mate is chosen as a
+         PAIR, not as two parts. DF40GB-70DP + DF40GB(3.0)-70DS is the one visibly matched
+         pair at the same count and series; confirm stack height, stock on both, and that
+         3.0 mm clears the channel before committing.
+
       5e. DECISION, so this stops consuming ticks: FEWER JUNCTIONS FIRST, better connector
          second. Three ticks of sourcing have produced no part that satisfies all of
          (coplanar OR low-profile) + (LCSC/JLCPCB so it can be PCBA-placed) + (>= 2.2 A or
