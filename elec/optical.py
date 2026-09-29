@@ -2872,19 +2872,34 @@ BOARD_NOTES = {
     # from this pin at all (searched at 0.28, 0.285 and 0.29 mm, with and without the
     # border clamp and over a wider region: boxed in every time), so the choice was
     # 0.143 mm or an unconnected frame clock.
+    # ⚠ RE-SEARCHED AGAINST THE ROUTE OF 2026-09-28 17:34. The previous path was
+    # measured against a different route and came back as ELEVEN shorts -- SAI_FS into
+    # SAI_SD1/SD3, I2C2_SCL/SDA, SWCLK, LED_GATE and LED_ROW. That is the documented
+    # failure of this mechanism, not a surprise: a post-route repair fits ONE route.
+    # It went stale invisibly, which is the part worth noting -- reverting the
+    # bring-up pads with `git checkout` reverted this with them, and re-adding the
+    # pads did not bring it back.
+    # Starts AT the via link_close_gaps lays at (-5.2992, -27.315) rather than drilling
+    # its own 0.14 mm away, runs B.Cu the whole way, and lands on the spine end.
+    # Verified every segment with repair_search.track_gap: worst 0.169 mm against the
+    # 0.127 rule, 0 below it.
     "repair_tracks": [
-        ("SAI_FS", "In2.Cu", 0.25, [(-5.30, -27.315), (-1.90, -27.26)]),
-        ("SAI_FS", "B.Cu", 0.25, [(-1.90, -27.26), (14.35, -27.26), (14.50, -27.11),
-                                  (14.55, -27.11), (14.65, -27.01), (16.35, -27.01),
-                                  (16.85, -26.51), (17.45, -26.51), (17.465, -26.425)]),
-        ("SAI_FS", "In2.Cu", 0.25, [(17.465, -26.425), (18.715, -25.175)]),
-        ("SAI_FS", "B.Cu", 0.25, [(18.715, -25.175), (18.75, -22.71), (20.70, -20.76),
-                                  (20.75, -20.76), (20.80, -20.71), (21.50, -20.71),
-                                  (23.35, -18.86)]),
-        ("SAI_FS", "F.Cu", 0.25, [(23.35, -18.86), (23.30, -18.91), (22.50, -18.89)]),
+        ("SAI_FS", "B.Cu", 0.25, [(-5.299, -27.32), (1.5, -27.21), (8.85, -19.86), (8.9, -19.86),
+                                    (9, -19.76), (9.1, -19.76),
+                                    (9.15, -19.71), (9.4, -19.71),
+                                    (9.45, -19.76), (9.5, -19.76),
+                                    (9.55, -19.81), (9.6, -19.81),
+                                    (12.5, -22.71), (20.7, -22.71),
+                                    (20.95, -22.46), (20.95, -22.41),
+                                    (21, -22.36), (21, -22.31),
+                                    (21.05, -22.26), (21.05, -21.01),
+                                    (22.2, -19.86), (22.2, -19.81),
+                                    (22.25, -19.76), (22.25, -19.71),
+                                    (22.3, -19.66), (22.3, -19.46),
+                                    (23.15, -18.61)]),
+        ("SAI_FS", "F.Cu", 0.25, [(23.15, -18.61), (22.85, -18.91), (22.5, -18.89)]),
     ],
-    "repair_vias": [("SAI_FS", -1.90, -27.26), ("SAI_FS", 17.465, -26.425),
-                    ("SAI_FS", 18.715, -25.175), ("SAI_FS", 23.35, -18.86)],
+    "repair_vias": [("SAI_FS", 23.15, -18.61)],
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.

@@ -122,9 +122,23 @@ def _pads(board_txt):
                 half_len, half_w = (sh - sw) / 2.0, sw / 2.0
                 ux, uy = -math.sin(ang), math.cos(ang)
             nt = re.search(r'\(net "([^"]*)"\)', body)
+            # ⚠ AND WHICH COPPER LAYERS IT IS ON, which this parser did not record and
+            # every caller therefore treated as "all of them". An SMD pad on F.Cu does
+            # not block a track on B.Cu, and a QFP's unused pins are dozens of such pads
+            # in a row: measured on optical, U6's no-net pins rejected a legal B.Cu
+            # repair at -0.275 mm against copper that is two layers away from it.
+            # A model that is too FAT fails as silently as one that is too thin -- the
+            # note above says exactly that about pad SHAPE, and the same was true of pad
+            # LAYERS one line further down.
+            # "*.Cu" is a through-hole pad and really is on every layer; vias are checked
+            # against ALL pads regardless (via_ok), because a via does pierce them all.
+            lay = re.search(r"\(layers([^)]*)\)", body)
+            names = re.findall(r'"?([\w.*]+)"?', lay.group(1)) if lay else []
+            cu = {n for n in names if n.endswith(".Cu")}
             out.append(dict(x1=gx - ux * half_len, y1=gy - uy * half_len,
                             x2=gx + ux * half_len, y2=gy + uy * half_len,
-                            r=half_w, net=nt.group(1) if nt else ""))
+                            r=half_w, net=nt.group(1) if nt else "",
+                            cu=None if (not cu or "*.Cu" in cu) else cu))
     return out
 
 
@@ -240,6 +254,8 @@ class Board:
         for pd in self.pads:
             if pd["net"] == self.net:
                 continue
+            if pd.get("cu") is not None and layer not in pd["cu"]:
+                continue                      # see _pads: an F.Cu pad is not a B.Cu obstacle
             d = _d_seg_seg(*p, *q, pd["x1"], pd["y1"], pd["x2"], pd["y2"]) - half - pd["r"]
             if d < worst:
                 worst, who = d, "pad [%s]" % (pd["net"] or "no net")
@@ -263,6 +279,8 @@ class Board:
         for pd in self.pads:
             if pd["net"] == self.net:
                 continue
+            if pd.get("cu") is not None and layer not in pd["cu"]:
+                continue                      # an F.Cu pad does not block a B.Cu track
             if _d_seg_seg(*p, *q, pd["x1"], pd["y1"], pd["x2"], pd["y2"]) < half + pd["r"] + MARGIN:
                 return False
         for e in self.edges:
