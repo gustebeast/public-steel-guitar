@@ -2534,3 +2534,49 @@ only 0.30 past the face, and its depth is set by the SEAT, not the screw. Seat a
 bore are defined in two places (seated_insert here, _cut_anchor in keyhead_cradles) -- the
 exact dual-definition hazard MCTRL_HOLD/PI_HOLD were created to kill. Move them together or
 this comes back as four chassis_2 grazes.
+
+### 5r. ⚠⚠ A MATCHED 4P RIGHT-ANGLE PAIR EXISTS -- THE "NO H2.5 FEMALE" VERDICT WAS WRONG
+
+User: "I thought we only need 4P now because of 24V" and "can you re-run the standard pin
+option but with 4P instead of 6P? Can you find matching male and female for 4P?" Both good,
+and the second one **overturns 5p and WORKLIST's conclusion.**
+
+**FIRST, A CORRECTION ON WHY 4P IS AVAILABLE.** It is NOT 24 V. The doubled V5/GND exists
+because 5 V at 2.2 A per section needed two pins each; what retired that is the **3 A/pin**
+rating recorded in 5n -- at 3 A the 2.2 A passes on ONE pin, so 4P is available at 5 V.
+24 V (0.38 A) makes it easier and is where it matters for POGO (whose good singles are
+2.5 A, almost no margin at 5 V), but 24 V is not what unlocks 4P.
+⚠ AND 4P IS NOT BUILT: elec/led_strip.py still says
+`J_PINS = ("GND", "V5", "V5", "GND", "SCK", "SDI")` and src/wiring.py still draws six
+conductors. 4P is a CONCLUSION WE REACHED AND NEVER APPLIED.
+
+**THE MATCHED PAIR, measured on LCSC 2026-09-29:**
+
+        female  C6687085   SSW-104-02-T-S-RA   Samtec 1x4P RA   insul 2.41 mm  4.7 A   53 in stock  $0.44
+        male    C7402910   TSW-104-08-T-S-RA   Samtec 1x4P RA   insul 3.02 mm  mating pin 5.84
+                                                                 1 at LCSC, 1,749 other-supplier (9-14 d)
+
+Samtec's TSW (male) and SSW (female) are **one series designed to mate**, which is the
+reason to trust the contact axes rather than the body numbers -- and both showed as "E"
+(Extended) in the JLCPCB assembly library on jlcparts, so **assembly without consignment**.
+
+**WHY THE EARLIER VERDICT WAS WRONG, and it is a search-scope error not a parts change.**
+WORKLIST says "every stocked 2.54 1x6 right-angle female is H8.5 (C50878477, C54876735,
+C51018241, C2932681). There is no H2.5 female." Every part in that list is an ASIAN-BRAND
+family (hanxia, kinghelm, XKB), where H IS 8.5. **Samtec's right-angle range is 2.41 mm**,
+and it was never in the sample. I repeated the error in 5p by confirming the conclusion
+against the same hanxia FH254 family and reporting "5.7 and 8.5" as if that enumerated the
+world. Enumerating ONE MANUFACTURER'S family is not enumerating the category.
+
+**WHAT IS STILL OPEN, and it is smaller than before:**
+  * The MALE's LCSC-direct stock is **1**. 1,749 sit with other suppliers at 9-14 days, which
+    is a lead-time question rather than a wall, but it is the binding number -- check it
+    before designing around this, per 5m's rule.
+  * The contact-axis height is STILL not published for either half (2.41 vs 3.02 is body).
+    Buying a matched series is the mitigation, not a measurement. Read both drawings.
+  * 4P must actually be BUILT first: J_PINS 6 -> 4 on led_strip, the two conductor loops in
+    wiring.py, and board_geom's connector geometry.
+
+**SO THE DIRECT BOARD-TO-BOARD MATE IS BACK ON THE TABLE** -- coplanar, right-angle, no
+wire, no consignment, ~$0.90 a joint. That is the thing the user asked for in the first
+place and which 5a-5q had closed three separate times.

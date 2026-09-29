@@ -736,6 +736,29 @@ def board_screws():
     from cadkit.fasteners import M4 as _M4, M4_BUTTON_HEAD_H, m4_button_screw, seated_insert
     L = 10.0                                   # M4x10: 1.6 of board, 8.4 into the 8.5 anchor
     assert L - _PCB_T <= _M4.anchor_min_wall + 1e-9
+    # ⚠ THE MOTOR BOARD'S IS AN M4x6, NOT AN M4x10, AND THE REASON IS THE HEIGHT-ADJUST
+    # BLOCK (2026-09-29). Its inboard face is world x -607.80 and this screw is driven along
+    # world -X, so an M4x10 reaches -611.50 and buries 46.2 mm3 of itself in the block. That
+    # was FREE until the board shrank: at the old -Y edge the screw sat at y ~-44, clear of the
+    # block's -38.91, and BOARD_L 62.0 -> 55.0 moved that edge +7.00 to the far side of it.
+    # ⚠ REPOSITIONING WAS TRIED AND IS DEAD. Swept 4 edges x 9 holds against 56 obstacles:
+    # the only 0.00 was "+x" at -24, and it is a FALSE clean -- that screw sits at world z
+    # -87.15 against a FLOOR_TOP of -71.35, i.e. UNDER THE FLOOR, 22.98 mm3 into chassis_2,
+    # which is the recorded "+x inside the floor slab" failure. The current hold is the only
+    # one clean against chassis_2, circularly, because the anchor bore is cut there.
+    # So the fastener gets shorter instead of moving. Measured, not chosen:
+    #     head height 2.20, so tip_x = -599.30 - (L + 2.20)
+    #     L 10.0 -> tip -611.50   3.70 INSIDE the block
+    #     L  6.0 -> tip -607.50   clear by 0.30, engagement 4.40 mm = 1.10 x D
+    #     L  5.0 -> tip -606.50   clear by 1.30 but engagement 3.40 = 0.85 x D, under 1xD
+    # 6.0 is the stock size that clears with thread engagement still over one diameter.
+    # ⚠ 0.30 IS THINNER THAN A BEAD, and it is air between a PURCHASED screw and a PRINTED
+    # face -- a tolerance to watch, not a wall. If it proves tight the block wants a 0.5
+    # relief, but that is keyhead_endplate and not this scope.
+    # ⚠ A SECOND LENGTH, NOT A SECOND SKU FAMILY: still M4, still a 2.5 mm hex button, so the
+    # one-tool and one-diameter rules both hold. The BOM gains a length, not a driver.
+    L_MCTRL = 6.0
+    assert L_MCTRL - _PCB_T <= _M4.anchor_min_wall + 1e-9
     out = []
     # ⚠ BESIDE THE -Y EDGE, NOT THROUGH THE EAR (2026-09-29) -- and this has to track
     # keyhead_cradles, which bores the anchor. The ear's boss landed inside the nut
@@ -763,7 +786,7 @@ def board_screws():
                           hold_at=MCTRL_HOLD[1], clr=CRADLE_CLR, spec=_M4)
     tx, ty = cx + _mhx, cy + _mhy
     out.append(("board_insert_0", stand(seated_insert(_M4, (tx, ty, MCTRL_BOARD_Z), (0, 0, -1)))))
-    out.append(("board_screw_0", stand(m4_button_screw(L).translate(
+    out.append(("board_screw_0", stand(m4_button_screw(L_MCTRL).translate(
         (tx, ty, MCTRL_BOARD_Z + BD_T + M4_BUTTON_HEAD_H)))))
     ox, oy, oz = op_origin()
     (hx, hy, _hd), = BG.holes("output_panel")
