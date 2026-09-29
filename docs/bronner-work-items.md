@@ -175,7 +175,27 @@ which is why the buck then routed clean on its first attempt.
 ⚠ **A `*-drc.rpt` in the repo root is not evidence** — led_strip's counts unconnected *pads*
 and misses a track↔zone pair entirely. Use `finish.py` / `audit_board.py`.
 
-## 4. pi_cap — the UI board's 14-way ribbon (brenner)
+## 4. pi_cap — the UI board's 14-way ribbon — BUILT, one defect open
+
+`J5` is in: plain 1.27 mm 2×7 right-angle (LCSC C22438122) on the back face, board grown 26 → 34
+on its socket edge, `+3V3` off header pin 1, and `_cap_place`'s `j1_y` moved with the placements.
+The polarisation question was **decided, not waited on** — see `docs/pi-cap-ui-ribbon.md`.
+
+⚠ **DO NOT SUBMIT: 1 unconnected GND pour island** (`Zone [GND] on B.Cu` against itself). No
+signal net is open and there are 0 violations. Four diagnoses were tried and all four were wrong;
+they are written down in the ribbon doc so the fifth attempt does not repeat them. The live lead:
+the exact containment test says both main pours are anchored only by `C1.2`–`C4.2` and the four
+declared stitch vias do **not** register inside them — so the question is why a same-net via is
+not reading as connected to the pour it sits in, **not** where to put a fifth via.
+
+⚠ **And one shared-tool hazard it exposed, currently unfixed and reverted:** dropping TWO
+redundant vias in one pass degrades pcbnew's container so `GetFootprints()` returns bare proxies
+and `link_close_gaps` dies on `fp.Pads()`. Casting them back does not recover it, and moving the
+pass breaks `route.py`'s own rule that measurements come before removals. `elec/layout.py` and
+`elec/route.py` are back at HEAD; the trigger on this board was my own badly-sited via, so the
+hazard is latent again rather than fixed.
+
+## 4b. pi_cap — the original brief (brenner)
 
 Decided (see `docs/pi-cap-ui-ribbon.md`): **1.27 mm 2×7 shrouded IDC**, display on **SPI1**.
 Remaining: pick/verify the LCSC part, fit it or grow the board ~14 mm in plane (brenner
