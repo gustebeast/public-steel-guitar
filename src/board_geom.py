@@ -256,6 +256,53 @@ def mouth(board: str, ref: str) -> dict:
     return dict(dir=d, front=front, across=across, axis_h=spec["axis_h"], spec=spec)
 
 
+def lead_exit(board: str, ref: str):
+    """Where a LEAD LEAVES connector `ref`, in the board's own frame (centred in XY,
+    underside at z = 0) -- the point a cable should be drawn from.
+
+    ⚠ A SIDE-ENTRY CONNECTOR DOES NOT LET GO UPWARD, and asking for its mated HEIGHT is
+    asking the wrong question: it returns how far the body reaches, which for J2/J6 on
+    the motor controller is a point inside the socket rather than a seated plug. Those
+    two are the whole bus-B input, and their plugs leave through the board EDGE. So this
+    reuses the mouth geometry solid() already derives for _SIDE_PLUG_RUN rather than
+    carrying a second copy of it: the mouth is the end of the F.Fab body farther from
+    the origin, pushed out by the mated plug's run, at the contact axis -- mid-body, not
+    over the top.
+
+    For a top-entry part the answer is the old one: straight up off the mated plug.
+    """
+    f = footprint(board, ref)
+    t = load(board)["thickness_mm"]
+    name = fp_name(f["fpid"])
+    h = HEIGHT[name]
+    x0, x1, y0, y1 = f["fab"]
+    # ⚠ THE BODY'S CENTRE, NOT THE FOOTPRINT ORIGIN. "each lead leaves its body's centre"
+    # is the convention every existing cable is drawn to; the origin sits at the pad row,
+    # which for a side-entry part is at the BACK. Using it here would have moved four
+    # cables that had nothing wrong with them.
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    if "Horizontal" not in f["fpid"]:
+        if name.startswith("JST_XH_"):
+            h = _XH_MATED_H
+        elif name.startswith("JST_PH_"):
+            h = _PH_MATED_H
+        return (cx, cy, t + h)
+    run = _SIDE_PLUG_RUN.get(name[:7])
+    if run is None:
+        return (cx, cy, t + h)
+    ax = "x" if abs(round(f["rot"]) % 180 - 90) < 1e-6 else "y"
+    lo, hi = (x0, x1) if ax == "x" else (y0, y1)
+    o = f["x"] if ax == "x" else f["y"]
+    if abs((hi - o) - (o - lo)) < 1.0:
+        raise ValueError("%s %s: the footprint origin sits mid-body, so which end is "
+                         "the mouth cannot be read from the geometry" % (board, ref))
+    out = (hi + run) if (hi - o > o - lo) else (lo - run)
+    # mid-body in z: the contacts run along the connector's axis, and the lead leaves
+    # in line with them rather than off the top of a shell that has no top here.
+    z = t + h / 2.0
+    return (out, cy, z) if ax == "x" else (cx, out, z)
+
+
 def solid(board: str, mated: bool = False, omit: tuple = ()) -> cq.Workplane:
     """The board in its OWN frame: centred on the origin in XY, underside at z = 0, parts
     rising +Z. Every part is its routed F.Fab body extruded to its HEIGHT, and a panel

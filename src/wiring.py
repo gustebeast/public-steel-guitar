@@ -968,13 +968,23 @@ def build_wires():
         # capacitance.
 
 
-    # ── bus B (inputs): motor_ctrl J2 -> the lever boards, NO TEES ────────
+    # ── bus B (inputs): motor_ctrl J6 -> the lever boards, NO TEES ────────
     # It used to hop ifc -> tee 11 -> tee 12. Both tees are deleted (user), because both
     # ends can now terminate themselves: the lever board passes the trunk THROUGH its own
     # 8-way (in 1-4, out 5-8) so it needs no tap beside it, and the TRRS adapter carries
     # the leg jack ON the board so it needs no landing. What is left is one run from the
     # controller to the first board on the chain.
-    _ib = SP(*EL.mctrl_pt("J2"))
+    # ⚠ J6, NOT J2, AND THE NETLIST HAS SAID SO SINCE 2026-09-25. elec/motor_ctrl.py
+    # describes J2 as "bus B IN -- from the pedals at the leg" and J6 as "bus B OUT --
+    # to the lever chain": the 8-way vertical PH was split into two 4-way side-entry
+    # halves, and this cable goes to the KNEE LEVERS, so it is J6's. It was left on J2
+    # when the split happened, which put the lever run on the pedals' connector -- a
+    # cable drawn to the right place from the wrong pin, which nothing checks, because
+    # check_cable_ends asks whether an end reaches its PART and both are that part.
+    # ⚠ THE PEDAL HALF IS NOT DRAWN AT ALL. J2's run, leg -> controller, lands at the
+    # TRRS adapter station, and that station is PARKED (see TRRS_* above) pending the
+    # respin. When it un-parks, its cable starts at EL.mctrl_pt("J2").
+    _ib = SP(*EL.mctrl_pt("J6"))
     _canB_head = ([_ib, (BAY_X - 5.0, _ib[1], _ib[2]), (BAY_X - 5.0, _ib[1], BAYFLY_CANB),
                    (BAY_X, _ib[1], BAYFLY_CANB), (BAY_X, RAIL_Y, BAYFLY_CANB)]
                   + _floor_pts(BAY_X, _KNEE_B[0], LANE_CTRL)
