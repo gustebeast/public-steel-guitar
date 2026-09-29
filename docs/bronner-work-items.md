@@ -3261,3 +3261,51 @@ before believing any number that comes out of it.
 
 ⚠ **COST: this invalidates `ROUTE_REUSE_SES`** — two new keepouts and nine moved parts — so
 the board needs a FULL route from its 0 unconnected / 0 undeclared baseline. Running.
+
+### The flat Pi's retention — the probe, and what it rules out (2026-09-29)
+
+`cadkit.pcb.pcb_cradle` is the right mechanism and needs **no re-authoring**: it is written
+flat, Z-up, board bottom at `standoff`, drop-in from +Z, with `open_edge` for the face that
+must stay clear and `hold_edge` for one M4 beside the board whose head clamps it (boss up to
+the board's underside, wall notched for the head, `cut_anchor` for the insert, and it
+refuses a head that laps the edge by less than `min_overlap`). That is the flat Pi exactly,
+so this is a placement, not a new mechanism. `open_edge="+x"` is forced — the I/O faces +X
+per the user's drawings.
+
+⚠ **THE FIRST PROBE RUN WAS WORTHLESS AND READ AS CONCLUSIVE**, which is worth recording
+because it is the shape of the mistake, not a typo: every candidate came back blocked, with
+~6900 mm³ at *every* standoff from 0.0 to 6.0. All of it was the Pi's own lid and harness,
+plus `chassis_2` — and `chassis_2` is the **parent** the cradle fuses into, so shared
+material there is the attachment, not a collision (a free-floating cradle is the failure mode
+in this file's history, not an overlapping one). The skip list was `pi5*` only. A probe needs
+the same declared-contact allow-list the gate has, or it reports the design back to you as a
+fault.
+
+#### `pi_cap` still overhangs the board, and it decides the boss edge
+
+Measured off the placed solid, not the datum:
+
+        pi_cap   world  x -588.370..-532.370   y -97.270..-63.085   z -69.750..-59.650
+        PI_FP           x -588.000..-503.000   y -127.000..-71.000
+        overhang   -X +0.370    +Y +7.915    (-X/-Y otherwise inboard)
+
+⚠ **The +Y overhang is 7.915 mm and the docstring thinks this was solved.** `_cap_place`'s
+180° rotation is there because unrotated the cap reached y −57.27, "a HAT hanging in mid-air"
+16.7 mm off the edge. The rotation **halved** the overhang; it did not remove it. The cap is
+34.185 mm across and its socket sits only 9.27 mm in from the Pi's +Y edge
+(`PI_HDR_Y` −75.770 plus `j1_y` −4.5), so half the cap minus that is 7.9 mm of cantilever.
+Open item, and NOT introduced by the cradle work.
+
+**Consequences for the cradle, all from that one measurement:**
+
+* the cap's underside is at z −69.75, which *is* the board's top face (`PI_Z + BD_T`) — so
+  any wall rising `wall_over` above the board, or any hold-down head, collides with the cap
+  wherever the cap overhangs.
+* **+Y is out**: 7.915 mm of cap over that edge, and the 5 V harness runs along it
+  (`wire_5v_*` at y −70.70..−69.10).
+* **−X is out**: 0.370 mm of cap over that edge. Tiny, but a boss there fouls the lid, and
+  "tiny" is how the screw-through-laminate fault looked too.
+* **−Y is the edge**: the cap stops 29.730 mm short of it, and the only thing the −Y boss
+  candidate met was `chassis_2`, the parent.
+
+So: `open_edge="+x"`, `hold_edge="-y"`. Both are now measured choices rather than defaults.
