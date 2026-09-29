@@ -1023,3 +1023,19 @@ SO THE PORT IDEA IS DEAD AT THIS LOCATION. What is left, in rough order of cost:
 through -- ALL of it, sorted -- rather than checking the one part you have in mind. I specified
 this channel from the cable's own envelope and the endplate's face, both correctly measured, and
 it would still have destroyed ten inserts nobody was thinking about.
+
+#### CLOSED: the LED cable is an INSTALL step, not a geometry defect (2026-09-29)
+
+Option 2 (go round the block) is dead too. Every position crosses keyhead_endplate:
+
+    x -613  57.3   x -616  63.4   x -620/-625  74.3   x -631  538.7   x -634  461.1
+    z -50 / -56 / -18 at the current x:  68.2 / 68.2 / 204.0
+
+So: no channel (it would take all ten nut slide inserts), and no way round. The cable is a
+FLEXIBLE six-conductor lead and the model draws it straight -- the same choice src/wiring.py
+already makes for the pickup lead, whose comment says modelling a service loop "would only
+invent a shape nobody has to build to".
+
+Recorded as INSTALL_NOTES.md section 8: dress it around the block, clip it clear of the slide
+inserts. The 68.2 + 46.5 mm3 stays in the gate as a known modelling artefact -- it was in the
+114 baseline before the swap and it is not a defect anyone can print their way out of.
