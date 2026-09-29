@@ -722,15 +722,25 @@ BOARD_NOTES = {
         # than assumed. (At 20.90 on the +X edge they overhung the board by 3.98 mm --
         # that placement was written against a 54 mm outline that the re-export corrected
         # to 46, and nothing recomputed it.)
-        "J2": (26.02, -8.00, 90.0),
-        "J6": (26.02, 8.00, 90.0),
+        "J2": (24.92, -8.00, 90.0),
+        "J6": (24.92, 8.00, 90.0),
         "J3": (11.60, 15.50, 180.0),
         # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
         "TP1": (15.95, -10.10, 90.0),
         "TP2": (18.70, 2.40, 90.0),
         "TP3": (6.20, -10.85, 90.0),
         "TP4": (18.70, 5.40, 90.0),
-        "TP5": (24.45, -6.85, 90.0),
+        # ⚠ J2/J6 IN BY 1.10, AND TP5/C15 OUT OF THEIR WAY -- three shorts, three mask
+        # bridges and four edge-clearance errors, all pre-existing and all hidden behind a
+        # motor_ctrl-drc.rpt dated 2026-09-20 that predates three reworks of this board.
+        # The XH mounting pads reached x 31.55 against a +X edge at 30.90 with a 0.30 rule:
+        # 0.65 mm of copper off the side of the board. And TP5's pad (23.70..25.20) sat
+        # INSIDE J2 pad 3's (22.35..25.85) -- not a near miss, an overlap -- with C15 pad 1
+        # doing the same against J2 pad 2.
+        # TP5 is a bare SWD pad and C15 is MCU bulk, so neither is pinned to a pin the way
+        # an HF bypass is; both move to the nearest site that clears every neighbour by the
+        # 0.30 rule.
+        "TP5": (24.45, -16.60, 90.0),
         # ⚠ J4 IS OFF THE -Y EDGE NOW: that edge belongs to the bus-B pair alone (see J2).
         # It keeps its top-entry XH and its mating direction -- world +X once standing --
         # so the USB lead still leaves toward the bay; only its seat moved.
@@ -764,7 +774,7 @@ BOARD_NOTES = {
         "Y1": (19.60, -4.00, 90.0),
         "C4": (19.60, -8.00, 90.0),
         "C5": (19.60, 0.00, 90.0),
-        "C15": (22.10, -8.00, 90.0),
+        "C15": (28.60, -16.75, 90.0),
         "R3": (8.10, 11.20, 90.0),
         "R4": (14.60, 11.20, 90.0),
         "R5": (-0.40, 16.50, 90.0),
