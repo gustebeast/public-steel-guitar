@@ -733,6 +733,30 @@ working top-down would act on stale text. The state of each claim:
          18 V is a 33 % derate, which is ordinary practice, but check the Recommended
          Operating Conditions table before committing.
 
+      5k. ⚠ AND THE 12 V OPTION IS RULED OUT BY THE USER'S CONDITION: "I'm open to having
+         groups of LEDs instead of individually addressable ones BUT ONLY IF WE KEEP THE
+         SAME ADDRESSABLE LED/M DENSITY". That condition is fatal to series grouping, and
+         the arithmetic is short:
+             today                36 LEDs / 580 mm, each its own pixel  = 62 addressable/m
+             12 V, 3 in series    12 groups / 580 mm                    = 21 addressable/m
+             to hold 62/m         62 groups/m = 186 LEDs/m at 5.4 mm pitch, 3x the LEDs
+                                  and 3x the power -- which defeats the entire purpose
+         The only escape would be an LED with the series stack INSIDE ONE PACKAGE, so a
+         package is still one pixel. SEARCHED: that is not how 12 V strips are built. The
+         standard arrangement puts THREE SEPARATE 5050 PACKAGES in series per colour
+         ("three red, three green, three blue... three series devices"), and no 5050 RGBW
+         with separate anodes/cathodes and an internal series stack turned up.
+         SO THE STRIP STAYS AT 5 V, and with it the 2.2 A that a 2 A PH contact cannot
+         carry on one pin. The conductor count is not a voltage problem after all.
+
+         WHAT SURVIVES ALL OF THIS, and it is the 5e decision unchanged: FEWER JUNCTIONS.
+         It is the one lever that needs no new part, no new voltage, no consignment and
+         costs NO addressable density -- 4 sections -> 2 halves the dark span from 117 mm
+         to 39 mm. Every other avenue in 5a..5k either failed a rule (hand soldering), a
+         spec (PWM in the audio band), sourcing (consignment) or now this density
+         condition. Build that, and revisit the connector only if the remaining single
+         junction still reads badly.
+
       5e. DECISION, so this stops consuming ticks: FEWER JUNCTIONS FIRST, better connector
          second. Three ticks of sourcing have produced no part that satisfies all of
          (coplanar OR low-profile) + (LCSC/JLCPCB so it can be PCBA-placed) + (>= 2.2 A or
