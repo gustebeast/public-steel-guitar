@@ -545,3 +545,37 @@ cluster A goes; cluster B then needs ~4 mm of Pi shift, which the freed budget a
 STATUS: placement is committed and correct as far as placement can go (adapter handover retired,
 170.65 -> 2.2 mm3; 5 V cable fixed, 132 -> 128). The remaining 18-pair debt is ONE piece of
 chassis work plus the 24 V feed (8 pairs, the 5 V cable's solved pattern).
+
+### The motor cradle's RING is fixed; its BOSS is a design fork (2026-09-29)
+
+`root_d` 13 beads -> 4 (10.4 -> 3.2 mm). The comment granting 13 said "Nothing of the endplate
+lies in this board's y band (-113..-51 against the height-adjust block's -38.91..+33.2), so the
+depth here is free" -- TRUE WHEN WRITTEN, FALSE AFTER THE SWAP: the motor is at y -42..20 now,
+inside that block. The Pi's own frame is already capped at 7 beads by exactly this rule, so the
+motor is now doing what the Pi always did.
+
+    chassis_2 <-> nut_height_screw_1     76.17  ->  GONE
+    chassis_2 <-> nut_height_insert_1    18.50  ->  GONE
+    chassis_2 <-> nut_slide_insert_1    236.72  ->  15.33
+    full gate                              128  ->  126
+    build.py's one-solid assert: still passes -- the shallower ring is STILL rooted (checked,
+    because the file says those side walls ARE the root and a floating cradle is what that
+    assert exists to catch).
+
+⚠ WHAT REMAINS IS THE BOSS, AND IT CANNOT BE SHALLOWED. chassis_2 <-> nut_slide_insert_2 is
+unchanged at 625.45 mm3 (y 12.89..18.40) -- that is the M4 boss, not the ring. `boss_d` is not
+passed for this frame so it reaches full depth, and it MUST be deep: it buries an M4 insert,
+~8.5 mm, against a 3.6 mm budget before the block. Shallowing it means no insert.
+
+THE FORK, and none of these is free:
+  1. MOVE THE EAR TO THE BOARD'S -Y EDGE. Geometrically clean -- the boss then leads into empty
+     band and the shallow ring may sit inside the block. But EAR_* is in elec/motor_ctrl.py: it
+     is a PCB CHANGE, so re-layout and re-route a board that is currently 0/0.
+  2. SHIFT THE MOTOR -Y so the boss clears the block. The band between the adapter limit
+     (-97.15) and the block edge (-38.91) is 58.2 mm for a 62 mm board. SHORT BY 3.8 mm.
+  3. SOMEONE ELSE GIVES: brenner trims body_adapter_3 (the handover this swap was meant to
+     retire), or the height-adjust block's y extent shrinks.
+
+Option 1 is the only one that needs no other agent, and it is the most expensive. Not chosen
+unilaterally: it re-opens a routed board, and the standing rule is that a 0/0 board is not
+re-opened for convenience.

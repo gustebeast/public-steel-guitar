@@ -526,7 +526,7 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # -114.9 and -49.1). Fused to the chassis those walls ARE the root, which is what turns
     # the 2711 mm3 the two parts used to share into structure.
     cr = _frame(bw, bl, (hx, hy), slide_in_x=True, harness_w=HARNESS_W,
-                post_h=MCTRL_POST_H, open_down=True, root_d=13 * D.BEAD)
+                post_h=MCTRL_POST_H, open_down=True, root_d=4 * D.BEAD)
     cr = _cut_anchor(_M4, cr, (hx, hy, MCTRL_POST_H), (0, 0, -1), _M4.anchor_min_wall)
     mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
