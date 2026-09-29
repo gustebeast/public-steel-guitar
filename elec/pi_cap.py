@@ -91,7 +91,38 @@ import netcheck  # noqa: E402
 
 P = Pin.types.PASSIVE
 
-BOARD_W, BOARD_L = 56.0, 26.0
+# ⚠ 34, NOT 26: THE UI RIBBON NEEDED A BAND AND THIS IS THE ONLY DIRECTION IT COULD COME
+# FROM. The board's +Y is world +Z (see electronics._cap_place: rotate -90 then stand), so
+# the +Y edge is the Pi's own top edge with 0.3 mm to spare -- it cannot move. The -Y edge
+# grows instead, DOWN over the Pi, where the only thing under the cap is the SoC block:
+# 2.5 mm tall against the socket's 8.5 mm standoff, so 6.0 mm of air. Every placement below
+# moved +4.0 in y with it so nothing shifted relative to the socket, and
+# electronics._cap_place's j1_y moved with them.
+BOARD_W, BOARD_L = 56.0, 34.0
+
+# ⚠ THE UI RIBBON IS A PLAIN HEADER, NOT A SHROUDED ONE, AND THAT IS A SOURCING FACT RATHER
+# THAN A PREFERENCE. LCSC stocks no shrouded 1.27 mm 2x7; the nearest shrouded part is
+# 2.54 mm and 2x13, and 2.54 is what does not fit the 8.5 mm standoff in the first place
+# (a 2.54 male header is 8.54 BEFORE its socket goes over it). So: HX PZ1.27-2x7P ZZ,
+# LCSC C22438122, 10535 in stock, the same HX family as the LED connector already here.
+# ⚠ WHICH MEANS THE KEYING IS THE CABLE'S LENGTH, and that is a real constraint rather
+# than a hope: the run is fixed and short, pin 1 is on the silk, and a cable cut to reach
+# only one way cannot be fitted reversed. The alternative was FFC/ZIF, keyed by the
+# connector's own shape -- rejected because this instrument gets stomped on and brenner
+# flagged mating cycles. Reversing this cable puts 3V3 into a GPIO, so if the assembled
+# machine ever shows someone forcing it, that is the escalation.
+UI_FP = "Connector_PinHeader_1.27mm:PinHeader_2x07_P1.27mm_Horizontal"
+
+# way -> (signal, Pi header pin). Decided in docs/pi-cap-ui-ribbon.md: the display is on
+# SPI1 because SPI0 belongs to the LED strip and a TLC59711 has no chip select, so any
+# display byte on that bus becomes strip data. GPIO19 (pin 35) stays EMPTY on purpose --
+# the spi1-1cs overlay claims it as MISO and a switch there would work until the overlay
+# loads. The order puts the clock beside the ground and keeps the two fast lines away from
+# the seven switch lines, which are static on a human timescale.
+UI_WAYS = (("GND", 6), ("UI_SCLK", 40), ("UI_SDIN", 38), ("UI_CS_N", 12),
+           ("UI_DC", 37), ("UI_RES_N", 33), ("+3V3_PI", 1), ("UI_ENC_A", 29),
+           ("UI_ENC_B", 31), ("UI_SW_PUSH", 18), ("UI_SW_A", 11), ("UI_SW_B", 13),
+           ("UI_SW_C", 15), ("UI_SW_D", 16))
 
 XH_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
 PH6_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
@@ -155,10 +186,34 @@ def pi_cap():
     # an unnamed pin and a pin nobody thought about look identical in a netlist. The socket
     # spans all 40 for MECHANICAL reasons -- it is what holds the board on -- not because
     # this board has any business with the other GPIOs.
-    used = set(PI_5V) | set(PI_GND) | {PI_SCLK, PI_MOSI}
+    # ⚠ AND THE UI RIBBON'S PINS JOIN THE USED SET. Without this every one of them would
+    # ALSO get a PI_NC_n net -- two nets on one pad, which ERC reports as a short and which
+    # would be a genuine one on the board.
+    used = set(PI_5V) | set(PI_GND) | {PI_SCLK, PI_MOSI} | {h for _s, h in UI_WAYS}
     for n in range(1, 41):
         if n not in used:
             Net("PI_NC_%d" % n).connect(j1[n])
+
+    # ⚠ THE UI BOARD'S RIBBON (brenner's station). 14 ways, 1.27 mm, 2x7, right-angle so
+    # the cable leaves IN PLANE inside the socket's own 8.5 mm standoff rather than upward
+    # into the endplate -- the same argument that put every other connector on this board
+    # on its back face. See UI_WAYS above for the map and why SPI1 rather than SPI0.
+    # ⚠ AND THIS IS THE FIRST TIME THIS BOARD TOUCHES +3V3. It carried +5V_PI, +5V_LED, GND
+    # and the two SPI0 lines and nothing else, so way 7 is a new net off header pin 1 -- the
+    # PI'S OWN 3V3 REGULATOR, good for about 500 mA across everything on it. Under 100 mA
+    # for a display module is fine; if the station ever grows a backlight or a second
+    # module it needs its own regulator rather than creeping up on the Pi's budget.
+    j5 = Part(name="PinHeader_2x07", ref_prefix="J", ref="J5", tag="J5", dest="NETLIST",
+              tool="skidl", value="PZ1.27-2x7P",
+              description="UI board ribbon, 14-way 1.27 mm 2x7 right-angle (LCSC C22438122)",
+              footprint=UI_FP, pins=[Pin(num=i + 1, func=P) for i in range(14)])
+    ui_nets = {}
+    for _way, (_sig, _hdr) in enumerate(UI_WAYS, start=1):
+        if _sig == "GND":
+            gnd += j5[_way]
+            continue
+        n = ui_nets.setdefault(_sig, Net(_sig))
+        n += j5[_way], j1[_hdr]
 
     j2 = _xh("J2", "Pi 5 V in, from motor_ctrl J5 (GPIO pins 2/4 + 6/9)")
     gnd += j2[1], j2[4]
@@ -207,22 +262,32 @@ BOARD_NOTES = {
         # ⚠ ROT 90: PinSocket_2x20_Vertical runs along Y in its own frame, so unrotated it
         # stood 51.9 mm tall on a 26 mm board and hung off both edges. "Vertical" in the
         # footprint name is the MATING direction (pins up), not the row's direction.
-        "J1": (0.00, -8.50, 90.0),   # 4.5 from the board edge = the Pi header's own margin
+        # ⚠ EVERY y HERE MOVED +4.00 WHEN THE BOARD GREW, so nothing moved relative to the
+        # socket or to anything else -- the board gained 8 mm on its -Y edge and the parts
+        # kept their distances. electronics._cap_place's j1_y moved with them, because that
+        # is the number the whole board is positioned by.
+        "J1": (0.00, -4.50, 90.0),   # 4.5 from the board edge = the Pi header's own margin
         # ⚠ RE-TILED FOR THE SIDE-ENTRY BODIES. They are 16.8 x 12.1 (XH) and 17.3 x 10.3
         # (PH) against the 12.4 x 5.75 of the vertical parts they replace, so the three
         # together take 50.9 of the board's 56: ~1 mm of margin at each edge, 1.05 between
         # them. Their courtyards sit 6.05 ABOVE the placement point, which is why y is 5.4
         # and not 8 -- at 8 they overhung the +Y edge by 2 mm.
-        "J2": (-18.60, 5.40, 0.0),      # Pi 5 V in
-        "J4": (-0.75, 5.40, 0.0),       # LED 5 V in
-        "J3": (17.35, 5.40, 0.0),       # out to the strip
+        "J2": (-18.60, 9.40, 0.0),      # Pi 5 V in
+        "J4": (-0.75, 9.40, 0.0),       # LED 5 V in
+        "J3": (17.35, 9.40, 0.0),       # out to the strip
         # the passives drop into the band between J1's socket and the connector row
-        "C1": (-20.00, -3.00, 0.0),
-        "C3": (-15.00, -3.00, 0.0),
-        "C2": (-6.00, -3.00, 0.0),
-        "C4": (-1.00, -3.00, 0.0),
-        "R1": (5.00, -3.00, 0.0),
-        "R2": (8.00, -3.00, 0.0),
+        "C1": (-20.00, 1.00, 0.0),
+        "C3": (-15.00, 1.00, 0.0),
+        "C2": (-6.00, 1.00, 0.0),
+        "C4": (-1.00, 1.00, 0.0),
+        "R1": (5.00, 1.00, 0.0),
+        "R2": (8.00, 1.00, 0.0),
+        # ⚠ THE UI RIBBON SITS IN THE NEW BAND AND FACES AWAY FROM THE POWER CABLES. The
+        # band is y -17..-7, clear of the socket's pad rows at -5.8..-3.2; the part is
+        # ~7.6 x 1.3 of pads with its body 3.07 beyond them. ROT 270 turns the body -Y, so
+        # the ribbon leaves on the opposite edge from J2/J3/J4 -- which carry up to 3 A to
+        # the Pi and 2.2 A to the strip, and this one carries a display clock.
+        "J5": (-3.80, -11.00, 270.0),
     },
     # ⚠ THE SOCKET'S GROUND PADS TAKE NO STITCHING VIA, AND DO NOT NEED ONE. The check
     # exists because an SMD pad touching only a pour can be orphaned when routing carves
@@ -235,6 +300,35 @@ BOARD_NOTES = {
     # strip, and the return for both shares it.
     "zones": [("GND", "F.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     "stitch_nets": ("GND",),
+    # ⚠ TWO GND STITCHES IN THE RIBBON'S BAND. Growing the board and fanning 13 UI signals
+    # across it cut the GND pour into the main body plus small fragments, and the fragments
+    # are the band's own return path -- each one is what a switch line runs over. They are
+    # each anchored on a socket pad, but one pair came back as a ratline between the F.Cu and
+    # B.Cu pours, which is the pour's way of saying the anchoring is a hairline rather than a
+    # connection. These two vias tie the band to both planes outright.
+    # Sites searched against the routed board (clearance headroom 1.213 and 1.188 mm over the
+    # rule), not chosen -- the same method the optical board's bring-up pads used.
+    # ⚠ AND THE LAST TWO ARE THE ONES THAT MATTER, because the first two fixed the wrong
+    # thing. Every GND pad on this board is either a socket pin -- all eight of them in the
+    # band, at y -4.5 -- or an SMD pad on J2/J3/J4, which touch B.Cu ONLY because every
+    # connector is on the back. So once the ribbon's fan cut the band into fragments, those
+    # eight pins anchored the FRAGMENTS and the F.Cu MAIN POUR was left with no anchor of its
+    # own: one ratline, F.Cu zone to B.Cu zone, and stitching the fragments did nothing for
+    # it. These two sit in the new band's bottom strip, below J5's body (which reaches
+    # y -14.07), where both layers carry the main pour.
+    # ⚠ A FIFTH VIA WAS TRIED AT (1.30, -6.00) AND IT WAS BOTH WRONG AND DESTRUCTIVE.
+    # It was meant to anchor the 5.3 mm2 B.Cu sliver at x 0.64..1.95 -- which turned out to
+    # be anchored already, by J1.20 at (1.27, -5.77), a GND pad my own spot-search skipped
+    # because it filters SAME-NET pads and a via must not sit on one. So the via landed
+    # 0.23 mm inside that pad, drop_redundant_pth_vias correctly removed it as redundant,
+    # and that SECOND removal in one pass is what tipped pcbnew's SWIG container over:
+    # GetFootprints() started handing back bare proxies and link_close_gaps died on
+    # fp.Pads(). One removal had never shown it.
+    # TWO LESSONS, BOTH ABOUT MY OWN TOOLS: a via site must clear its OWN net's pads too,
+    # not just foreign ones; and the sliver diagnosis was wrong twice because a bounding-box
+    # point-in-polygon with 0.3 mm of slack was asked a question it cannot answer.
+    "vias": [("GND", -21.50, -11.00), ("GND", -11.75, -7.00),
+             ("GND", -20.00, -15.50), ("GND", 14.00, -15.50)],
     "router_passes": 12,
     # ⚠ THE SOCKET IS ON THE BACK, and that is the whole mechanical idea: its body is the
     # standoff the cap hangs off the Pi's header by. Mounted on the front it would be a
@@ -247,7 +341,7 @@ BOARD_NOTES = {
     # Side entry on TOP still needs 15.85. Underneath, the cap's top face is bare PCB at
     # 10.1 and the connectors live in the socket's own 8.5 mm gap (PH 5.5, XH 5.75), with
     # their cables leaving sideways instead of upward into the endplate.
-    "back_refs": ("J1", "J2", "J3", "J4"),
+    "back_refs": ("J1", "J2", "J3", "J4", "J5"),
     "single_sided": False,          # the 2x20 socket is through-hole, and on the far side
     "qty_per_instrument": 1,
 }
@@ -260,5 +354,11 @@ if __name__ == "__main__":
     netcheck.grounds_meet(os.path.join(OUT_DIR, "pi_cap.net"))
     with open(os.path.join(OUT_DIR, "pi_cap.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
-    print("board %.1f x %.1f mm, %d GPIO pins used of 40, SPI streams continuously (see docstring)"
-          % (BOARD_W, BOARD_L, len(set(PI_5V) | set(PI_GND) | {PI_SCLK, PI_MOSI})))
+    # ⚠ THE UI WAYS COUNT TOO. This line kept its own copy of the used-pin set and did not
+    # learn about the ribbon, so it said 12 while the board was holding 25 of the header's
+    # pins. A summary that is computed separately from the thing it summarises drifts the
+    # first time the design changes -- so it reads the same UI_WAYS the netlist does.
+    _used = set(PI_5V) | set(PI_GND) | {PI_SCLK, PI_MOSI} | {h for _s, h in UI_WAYS}
+    print("board %.1f x %.1f mm, %d of the header's 40 pins used (%d of them the UI ribbon's), "
+          "SPI streams continuously (see docstring)"
+          % (BOARD_W, BOARD_L, len(_used), len({h for _s, h in UI_WAYS})))
