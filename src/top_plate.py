@@ -113,14 +113,34 @@ REGION_X1 = SLOT_X[-1]                  # -X end of the band region (after the l
 
 # the two long panels behind the band region
 MID_X0 = REGION_X1                      # carries the UI (string-10 deck band)
-# ...AND IT IS ONE SLOT PITCH LONGER THAN IT WAS, which is the point: MID_X0 moved +X by
-# exactly PITCH when the slot went, so adding PITCH to the LENGTH leaves MID_X1 -- the
-# mid/key seam -- exactly where it was. The seam is the constrained end, not the length:
-# it was picked to land in the clear gap between two fret lines (283 * D.BEAD = 226.4; at
-# 220 it ran through the fret-9 pentagon). _seam_is_clear() below now checks that instead
-# of the comment asserting it, because a seam that drifts onto a line is invisible in code
-# and obvious on a printed deck.
-MID_X1 = MID_X0 - (283 * D.BEAD + PITCH)
+# ── THE MID/KEY SEAM: an ABSOLUTE datum on the bead grid ─────────────────────────────────
+# It used to be a LENGTH off MID_X0 (283 * D.BEAD, then + PITCH when a pickup slot was handed
+# over), which is the wrong way round: nothing cares how long the mid panel is, and four
+# things care exactly where the seam falls. So the seam is the number, and the lengths fall
+# out of it. On the bead grid because every length in this project is (user).
+#
+# -380.8 BALANCES THE TWO PANELS: 235.44 and 229.95 of material, 5.49 apart, against the
+# 246.45 / 218.94 (27.51 apart) that the old length gave. The 465.39 of deck behind the band
+# region is most of the printed deck, and it was being cut 53/47.
+#
+# ⚠ AND IT IS 4.25 OFF THE MIDPOINT OF ITS FRET SPACE, WHICH THE USER ASKED IT TO BE ON.
+# That request and "more even material" cannot both be had, and the arithmetic is short
+# enough to put here. A seam must clear the fret lines and the position markers, and the
+# markers sit CENTRED IN THEIR SPACE -- so in a marked space the midpoint is the one place
+# the seam cannot go. Every space midpoint that fits the bed:
+#
+#     space 8   -399.20 (499 beads)   253.84 / 211.55   42.29 apart   clear
+#     space 9   -376.80 (471 beads)   231.44 / 233.95    2.51 apart   INSIDE the fret-9
+#                                                                     pentagon
+#     space 10  -355.42               210.06 / 255.33   45.27 apart   0.33 OVER the bed
+#
+# The only marker-free midpoint, space 8's, is LESS even than what we already had -- so
+# obeying the rule literally would have made the thing the request was for worse. -380.8 is
+# the best bead-grid position in space 9 that clears the pentagon: 5.43 to the nearest fret
+# line, 1.49 to the marker, 5.49 of imbalance. To take space 8's true midpoint instead, set
+# this to 499 and the asserts below will pass -- it costs 36.8 of evenness.
+MID_SEAM_BEADS = 476                    # x = -380.8
+MID_X1 = -MID_SEAM_BEADS * D.BEAD
 KEY_X0 = MID_X1 - GAP                   # keyhead panel, sized so its -X face lands on PX1
 KEY_X1 = PX1
 
@@ -619,6 +639,17 @@ BED_XY = 255.0
 for _n, _xa, _xb in (("mid", MID_X0, MID_X1), ("keyhead", KEY_X0, KEY_X1)):
     assert _xa - _xb <= BED_XY, (
         "the %s panel is %.2f long against a %.0f bed" % (_n, _xa - _xb, BED_XY))
+
+# ...AND THEY CARRY ROUGHLY THE SAME AMOUNT OF MATERIAL (user, 2026-09-29). The seam is a
+# chosen datum, so nothing but this stops it drifting back to a lopsided split -- which is
+# what it had been, 246.45 against 218.94. The bound is generous because the seam also has
+# to dodge the fret lines and the markers; it is here to catch a 30 mm imbalance, not to
+# pin the last millimetre. See MID_SEAM_BEADS for why it is not on its space's midpoint.
+SEAM_BALANCE_MAX = 10.0
+_ml, _kl = MID_X0 - MID_X1, KEY_X0 - KEY_X1
+assert abs(_ml - _kl) <= SEAM_BALANCE_MAX, (
+    "the two long panels are %.2f and %.2f -- %.2f apart, over the %.1f this seam is "
+    "supposed to hold" % (_ml, _kl, abs(_ml - _kl), SEAM_BALANCE_MAX))
 
 # ...AND THE SEAM BETWEEN THEM CLEARS EVERY MARKING. This is what MID's length was chosen
 # for and it was only ever written down: a seam through a fret line or a marker dot reads as
