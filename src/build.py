@@ -251,6 +251,18 @@ assert _kh_n == 1, (
 for _mp in _EL_ports.mctrl_floor_ports():
     for _csi in range(len(chassis_segments)):
         chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
+# ⚠ AND THE FLAT PI'S ANCHOR, WHICH MUST BE CUT HERE AND NOT IN THE CRADLE. pcb_cradle bores
+# its own boss, but that boss is EMBEDDED in the floor slab -- the M4 needs anchor_min_wall
+# below the board's underside, which is deeper than the standoff -- so the floor's own
+# material refills the bore the moment the cradle is unioned above. The gate caught exactly
+# that: 43.9 mm3 of board_screw_2 and 37.5 of board_insert_2 inside chassis_2.
+# Every segment, not `_csi`: that name was rebound by the loop just above, so it no longer
+# points at the segment the cradle went into -- and the other cutters here sweep all segments
+# for the same reason. A bore outside its own segment removes nothing.
+if not os.environ.get("PI_NO_CRADLE"):          # see keyhead_cradles; debug sweeps only
+    _pi_bore = _EL_ports.pi_hold_bore()
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_pi_bore)
 # (pi_cap_relief is GONE, and nothing replaces it. It pocketed 5.8 mm out of the bay's
 #  -Y wall to admit the Pi cap's overhang; the Pi now sits +3.82 with the cap's face FLUSH
 #  on that wall, so there is nothing to admit. The user's point was that the pocket cost

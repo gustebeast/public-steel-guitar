@@ -35,9 +35,34 @@ def _box(w, l, h, x, y, z0):
 #   * `pi_cap` and `pi5*` ride ON the board and move with it.
 #   * `wire_*` are cables, and the Pi's harness waypoints are already known stale against
 #     this pose -- a cable is not a reason to choose an edge, but where it RUNS is.
+# ⚠⚠ AND `chassis_2` IS *NOT* BLANKET-EXCLUDED, WHICH IS THE MISTAKE THIS FILE MADE ONCE.
+# Excluding it wholesale as "the parent" hid a real obstruction: the -y boss reported 234.35
+# mm3 of chassis_2 at y -134.10..-131.55 rising to z -55.75, which was written off as the
+# fuse -- and it is the chassis's OWN -Y WALL. The screw head ended up 1.75 mm inside it and
+# only the overlap gate caught it, at 17.4 mm3, after the cradle was built.
+# The split is by HEIGHT, not by name: chassis material at or below FLOOR_TOP is the slab the
+# cradle is meant to merge into; chassis material ABOVE it is a wall, and a wall is a blocker.
 def _own(name: str) -> bool:
-    return (name == "chassis_2" or name.startswith("pi5") or name.startswith("pi_cap")
+    return (name.startswith("pi5") or name.startswith("pi_cap")
             or name.startswith("wire_"))
+
+
+def _chassis_wall_hit(shape, comps):
+    """Chassis material ABOVE the floor that `shape` runs into -- the real blockers."""
+    out = []
+    for name, shp in comps:
+        if not name.startswith("chassis"):
+            continue
+        try:
+            inter = shp.intersect(shape)
+            if not inter.Solids():
+                continue
+        except Exception:
+            continue
+        bb = inter.BoundingBox()
+        if bb.zmax > FLOOR + 1e-6:              # anything reaching above the slab is a wall
+            out.append((inter.Volume(), name, bb))
+    return sorted(out, reverse=True)
 
 
 def _hits(shape, comps, skip=(), floor=0.5):
@@ -120,5 +145,62 @@ def main():
               % (so, FLOOR + so, FLOOR + so + PI_H, tag))
 
 
+def sweep():
+    """Every edge x a range of hold positions, scoring the BOSS and the HEAD separately.
+
+    The head is what the first pass missed: it sits ABOVE the board (z board_top ..
+    board_top + head_h), where the boss never reaches, so a boss-only probe cannot see a
+    wall that the head runs into. Both are tested, plus pi_cap, which owns two of the edges.
+    """
+    from cadkit.fasteners import M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
+    from cadkit.pcb import pcb_hold_xy
+    from src import electronics as EL
+
+    comps = [(n, wp.val()) for n, wp in collect_components()]
+    cap = [(n, s) for n, s in comps if n.startswith("pi_cap")]
+    board_top = FLOOR + EL.PI_STANDOFF + EL.BD_T
+    off = CLR + M4.shaft_clr_d / 2.0
+    print("\n=== SWEEP: edge x hold, boss AND head, against chassis walls + pi_cap ===")
+    print("    board top %.2f ; head O%.1f x %.1f above it ; boss O%.1f below it"
+          % (board_top, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H, M4.boss_od))
+    best = []
+    for edge in ("-x", "+y", "-y"):
+        span = BL if edge in ("+x", "-x") else BW
+        print("\n  edge %s:" % edge)
+        for hold in [round(v, 1) for v in
+                     (-span / 2 + 6, -span / 4, -10.0, -6.0, 0.0, 6.0, span / 4, span / 2 - 6)]:
+            try:
+                hx, hy = pcb_hold_xy(BW, BL, edge, hold_at=hold, clr=CLR, spec=M4)
+            except AssertionError:
+                continue
+            ax, ay = CX + hx, CY + hy
+            boss = (cq.Workplane("XY").add(cq.Solid.makeCylinder(
+                M4.boss_od / 2.0, EL.PI_STANDOFF, cq.Vector(ax, ay, FLOOR)))).val()
+            head = (cq.Workplane("XY").add(cq.Solid.makeCylinder(
+                M4_BUTTON_HEAD_D / 2.0, M4_BUTTON_HEAD_H,
+                cq.Vector(ax, ay, board_top)))).val()
+            wall = sum(v for v, _n, _b in _chassis_wall_hit(boss, comps)) \
+                + sum(v for v, _n, _b in _chassis_wall_hit(head, comps))
+            capv = 0.0
+            for _n, s in cap:
+                for probe in (boss, head):
+                    try:
+                        i = s.intersect(probe)
+                        capv += i.Volume() if i.Solids() else 0.0
+                    except Exception:
+                        pass
+            tot = wall + capv
+            print("     hold %+6.1f -> axis (%8.2f, %8.2f)   wall %7.2f   pi_cap %7.2f   %s"
+                  % (hold, ax, ay, wall, capv, "CLEAR" if tot < 0.5 else ""))
+            best.append((tot, edge, hold, ax, ay))
+    best.sort()
+    print("\n  best: %s" % ", ".join(
+        "%s@%+.1f=%.2f" % (e, h, t) for t, e, h, _x, _y in best[:5]))
+
+
 if __name__ == "__main__":
-    main()
+    import sys as _s
+    if "--sweep" in _s.argv:
+        sweep()
+    else:
+        main()

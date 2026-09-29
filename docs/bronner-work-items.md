@@ -3309,3 +3309,84 @@ Open item, and NOT introduced by the cradle work.
   candidate met was `chassis_2`, the parent.
 
 So: `open_edge="+x"`, `hold_edge="-y"`. Both are now measured choices rather than defaults.
+
+### ⚠ CORRECTION to the section above: the boss edge is `+y` @ +30.0, NOT `-y`
+
+The section above concludes **`hold_edge="-y"`** and that conclusion is **WRONG**. Superseded
+here; the reasoning behind it was wrong in two independent ways and the gate caught the
+result. Left in place rather than deleted, because how it read as an answer is the useful part.
+
+**`-y` is dead at EVERY hold along the edge — 53.42 mm³ into the screw head.** The blocker is
+the chassis's own **−Y wall**. The first probe *did* report it — `chassis_2` 234.35 mm³ at
+y −134.10..−131.55, rising to z −55.75 — and it was dismissed as "the parent the cradle fuses
+into". That dismissal is the error: the cradle did not exist when the probe ran, so that
+material was never the cradle's. It surfaced only after the cradle was built, as
+`chassis_2 <-> board_screw_2` 17.4 mm³, at z −67.350..−65.150 — **above** the board, which is
+the head, not the boss.
+
+⚠ **THE EXCLUSION MUST BE BY HEIGHT, NOT BY NAME.** Chassis material at or below `FLOOR_TOP`
+is the slab the cradle is *meant* to merge into; chassis material above it is a **wall**, and a
+wall is a blocker. `_own()` now excludes only `pi5*`/`pi_cap*`/`wire_*`, and
+`_chassis_wall_hit()` does the height split.
+
+**And `pi_cap` never constrained this at all.** The section above rules out `+y` (106.36 mm³)
+and `-x` (4.96) on lid grounds. Both numbers came from a probe cylinder run the **full 15.6 mm
+height of the board**, which reaches the cap's *board* at z −61. The boss lives 2.4 mm below
+the laminate and the head 2.2 mm above it; **neither ever reaches the cap.** Swept properly,
+`pi_cap` is 0.00 at every hold on every edge. Two edges were discarded for an obstruction that
+was not there.
+
+**Third probe error, for completeness:** the first sweep ran against an assembly that already
+contained the cradle — measuring the design against itself, a near-uniform 42.40 mm³ at every
+position on every edge. Hence the debug-only `PI_NO_CRADLE=1`.
+
+#### What actually decided it: DRIVER ACCESS
+
+None of the three probes tested whether a 2.5 mm hex key can reach the head — a clear 25 mm
+column above it. That single test kills `hold_at=0.0` on **both** surviving edges, differently:
+
+| candidate | boss/head | driver column | from the open +X end |
+|---|---|---|---|
+| `+y` @ 0 | clear | **blocked** — `pi_cap` 72.58 **+ all four 5 V conductors** | 42.5 |
+| `+y` @ +20/+24/+30/+36 | clear | **clear** | 22.5 / 18.5 / 12.5 / 6.5 |
+| `-x` @ −12 | clear | clear | 87.5 |
+| `-x` @ 0 | clear | **blocked** — `pi_cap` 1.66 | 87.5 |
+| `-x` @ +12 | clear | **blocked** — `motor_ctrl` 18.50, `pi_cap` 11.82 | 87.5 |
+
+A default hold position had never been checked against the thing that has to reach it.
+
+#### `+y`, not `-x`, and the reason is which end can lift
+
+The walls are **vertical**, so they restrain nothing in Z — **this one M4 is the entire lift
+restraint** — and `+x` is the OPEN edge with no wall at all. `-x` holds the far end, 87.5 mm
+from the opening. `+y` @ **+30.0** holds the I/O end, 12.5 mm from it, which is also the end
+that takes cable insertion force, and still leaves 9.8 mm of +Y wall outboard of the boss.
+
+#### Two more faults found by building it
+
+* ⚠ **THE ANCHOR BORE WAS SILENTLY REFILLED.** `pcb_cradle` bores its own boss, but this boss
+  is embedded 6.1 mm in the floor slab — it must be, since the M4 needs `anchor_min_wall`
+  below the board's underside, deeper than the 2.4 standoff — so the floor's own material
+  reoccupies the bore the instant the cradle is unioned. 43.9 mm³ of screw and 37.5 of insert
+  inside `chassis_2`. Fixed with `pi_hold_bore()`, cut in `build.py` **after** the fuse,
+  beside `mctrl_floor_ports()` and `led_wall_reliefs()`, which are there for the same
+  ordering reason. Cut-before-union refills features — recorded four times in
+  `bridge_endplate` already, and a fastener is where it is most invisible, because the
+  plastic looks right and only the screw solid shows it.
+* The first version of that cut used `_csi`, which the `mctrl_floor_ports` loop **rebinds** —
+  so it pointed at the last segment, not the cradle's, and would have cut nothing while
+  leaving the gate red for a confusing reason. It sweeps all segments now, like its neighbours.
+
+#### Method note, earned three times in one sitting
+
+Every one of these came from the probe's **shape or scope** being wrong, and each time the
+output was plausible enough to reason about instead of doubting the instrument. **Probe with
+the shape of the thing you are placing** — the boss AND the head AND the driver column, not a
+convenient tall cylinder — **and never exclude a part by name when what you mean is a
+region.** The overlap gate caught what the probes missed, twice in one day: the optical screw
+through the laminate, and this head in the wall.
+
+⚠ **AND `route.py` SHOULD NOT BE CALLED BY HAND.** `finish.py` runs layout → route →
+repair_planes → DRC itself, up to `rounds` times, so a hand route is thrown away when finish
+regenerates the layout. One wasted 2126 s route. The project note says "run finish, not
+stages"; this is that note in the other direction.
