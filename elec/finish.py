@@ -183,6 +183,7 @@ def finish(stem, rounds=1):
         os.remove(retry)          # always start from the board as designed
     _run("layout.py", stem)
     _run("route.py", stem)
+    _run("repair_planes.py", stem)
     best_n, nets, best_v = _drc(stem)
     print("  pass 1: %d unconnected, %d violation(s)" % (best_n, best_v))
     # ⚠ THE DRC FILE TRAVELS WITH THE BOARD, because otherwise it does not. This routine
@@ -201,6 +202,7 @@ def finish(stem, rounds=1):
         json.dump(nets, open(retry, "w", encoding="utf-8"))
         _run("layout.py", stem)
         _run("route.py", stem)
+        _run("repair_planes.py", stem)
         n, nets_now, v = _drc(stem)
         print("  pass %d: %d unconnected, %d violation(s)" % (k, n, v))
         # ⚠ STRICTLY BETTER OR IT DOES NOT COUNT. A violation is worse than an
