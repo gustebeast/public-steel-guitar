@@ -3092,8 +3092,22 @@ BOARD_NOTES = {
     # here is the work that keeps failing.
     "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]", r"\+3V3A",
                    r"ADC\d+_AREG", r"ADC\d+_DREG", r"ADC\d+_VREF",
-                   r"LED_A\d+",
-                   r"\+3V3D", r"PHY_VDD33", r"PHY_1V8"),
+                   r"LED_A\d+"),
+    # ⚠ +3V3D / PHY_VDD33 / PHY_1V8 WERE TRIED HERE AND CAME STRAIGHT BACK OUT
+    # (2026-09-28). The idea was sound -- every failure for six routes was in one
+    # neighbourhood, U7's supplies and the ULPI escapes, and that region is re-solved from
+    # scratch every run while the analog half's clusters are laid deterministically. But
+    # adding them took the board from 0 unconnected to 11, and the broken nets were
+    # +3V3D, PHY_VDD33 and PHY_VBUS themselves.
+    # THE REASONING THAT JUSTIFIED IT WAS WRONG, and the error is worth keeping: this
+    # routine's docstring says it "only ever removes work from the router, never adds a
+    # constraint it has to honour", and that was read as a guarantee it cannot hurt. It is
+    # a guarantee about CONSTRAINTS, not about COPPER. What it lays is still an obstacle,
+    # and on a 53-pad rail single linkage at 6.8 mm chains an MST clear across the board.
+    # The MID note above says the same thing in the same words about the same mechanism --
+    # "the MST went straight back to crossing the TIA_IN lane" -- and it was read past.
+    # A rail is not a cluster. This list is for repetitive LOCAL networks: an op-amp and
+    # its own feedback pair, a converter and its own three reference caps.
     "local_mm": 6.8,
 
     # ⚠ THE NORTH HALF IS FROZEN, and it is only safe to freeze now (2026-09-24). This
