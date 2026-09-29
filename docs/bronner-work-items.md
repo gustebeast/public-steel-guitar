@@ -993,3 +993,33 @@ taking a depth that was convenient rather than the depth the part needed.
 
 NOT ATTEMPTED TONIGHT: a 72 mm channel through a structural block is a design change, not a
 tidy-up, and it belongs at the start of a tick rather than the end of a long one.
+
+#### ⚠ AND THE CHANNEL IS IMPOSSIBLE AS SPECIFIED -- it runs through ALL TEN nut slide inserts
+
+The check the previous note demanded, done before cutting anything. The channel
+(x -612.15..-609.95, y -38.91..33.20, z -35.33..-23.13, 1935 mm3) would pass through:
+
+        586.23 mm3   keyhead_endplate        <- intended
+         97.36 mm3   nut_slide_insert_9
+         74.18 mm3   nut_slide_insert_8, _7
+         49.84 mm3   nut_slide_insert_0..6   <- ALL TEN, ~594 mm3 of heat-set brass
+
+That is the string-nut height-adjust hardware for every string on the instrument. The block is
+not empty material with a cable grazing it; it is FULL of the mechanism it exists to carry, and
+the cable's 11.4 mm z spread (gnd_a at the bottom, sdi at the top) is what makes the channel
+tall enough to catch all of them.
+
+SO THE PORT IDEA IS DEAD AT THIS LOCATION. What is left, in rough order of cost:
+  1. BUNDLE THE CONDUCTORS TIGHTER. The 11.4 mm spread comes from the strip connector's pin
+     order being carried the whole 171 mm. A tighter stack (2 rows of 3, ~4 mm) would need a
+     much smaller channel -- the earlier z sweep at a 1.8 mm probe showed only
+     nut_slide_insert_9 (11.3) and _8 (8.6) at z -40/-44, against 49..97 for all ten here.
+  2. GO ROUND THE BLOCK. It spans y -38.91..33.20 and x -630..-610.1; the cable currently
+     threads its inboard face. Outboard or under is unexplored.
+  3. ACCEPT IT. 68.2 + 46.5 mm3 of cable-in-structure, pre-existing, on a flexible cable that a
+     real build dresses around the hardware. It has been in the 114 baseline all along.
+
+⚠⚠ THE GENERAL LESSON, AND IT COST NOTHING TO LEARN HERE: enumerate what a proposed cut passes
+through -- ALL of it, sorted -- rather than checking the one part you have in mind. I specified
+this channel from the cable's own envelope and the endplate's face, both correctly measured, and
+it would still have destroyed ten inserts nobody was thinking about.
