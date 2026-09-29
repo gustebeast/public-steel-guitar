@@ -1087,3 +1087,29 @@ seven, and this session has already produced one plausible-and-wrong change in e
 morning: the gap printed inline (1.30 mm on all three of led_strip's strays), the knowledge that
 the pour is ONE 2089 mm2 island so any contact connects, and proof that the stitcher is net +2
 connections even leaving the strays behind.
+
+### bus B's 3.20 mm is a DOCUMENTED modelling limit, not a defect -- and the fix is bigger (2026-09-29)
+
+check_cable_ends flags wire_canbl_0 as 3.20 mm from motor_ctrl. I had put that down to the pair
+straddling the connector point (+-CAN_OFF in x AND y, where the 5 V and 24 V pairs land per-pin).
+That is only half of it, and electronics.py already says the other half:
+
+    "⚠ J2 AND J6 ARE THE BUS-B PAIR, AND THEY ARE SIDE ENTRY (2026-09-25). ... two 4-way
+     S4B-PH-SM4-TB on the board's flat +X edge -- the edge stand() maps to world -Z -- so each
+     half of the lever/pedal bus unplugs DOWNWARD ... mctrl_pt's mated-height lookup only knows
+     the VERTICAL parts, so what it returns for these two is the body's reach, not a seated plug."
+
+So mctrl_pt is ALREADY approximate for J2/J6 by design, and an mctrl_pin() helper mirroring
+pi_cap_pin() would inherit that approximation -- a per-pin landing on a connector point that is
+itself the wrong height is not an improvement, it is a more precise wrong answer.
+
+AND BUS B HAS TWO CONNECTORS. J2 and J6 are one half of the bus each; src/wiring.py draws from
+J2 only. Whether J6's half is meant to be drawn is a separate question from the 3.20 mm.
+
+THE REAL PREREQUISITE, then, is not mctrl_pin() -- it is teaching the mated-height lookup about
+SIDE-ENTRY parts, so mctrl_pt returns a seated-plug point for J2/J6 instead of the body's reach.
+Per-pin landing follows for free once that exists. Recorded rather than attempted: it touches
+the helper every cable on that board reads.
+
+STATUS: the 3.20 mm stays in check_cable_ends as a KNOWN, EXPLAINED advisory. It is not a
+stranded lead -- the ones that mattered (wire_link ~80 mm, wire_usb 8.10 mm) are fixed.
