@@ -7,11 +7,34 @@ called a strict improvement is in: six bring-up pads (I2C2 SDA/SCL for the ROM b
 BOOT0, and the three rails) plus per-converter `SHDNZ` isolation. 0 unconnected, 0 violations,
 `audit_board` clean, SI clean, In1 web unchanged at 0.266 mm, fab rebuilt. The one item that
 did not make it — the buck's power-good — is closed with measurements, not deferred.
-**Now on the chassis_2 mounting rework (item 5), IN PROGRESS.** The cradles are moved onto the
-chassis, the frames are re-rooted in the floor, and the first measurement turned up a defect
-rather than a feature — see item 5. The open question is PRINTABILITY: those frames were shaped
-for the endplate's X-up build direction and the chassis prints **Z-up**, so the ring's two
-horizontal members become long unsupported bridges. Being measured with `check_ceilings`.
+**Now on the chassis_2 mounting rework (item 5), IN PROGRESS and passing its gates.** The
+cradles are fused into the chassis, the frames are re-rooted in the floor, and the long columns
+into the endplate are gone with `_slot_shadow()` and `pi_cut`.
+
+| gate | result |
+|---|---|
+| `check_overlaps --only chassis,keyhead_endplate,pi5,motor_ctrl` | **0 unintended** |
+| `build.py`'s new one-solid assert after the fuse | holds — the cradles really attached |
+| `check_ceilings --only chassis_2` | worst span **0.80 mm**, "a ledge, not a bridge" |
+
+**The printability question is answered.** These frames were shaped for the endplate's X-up build
+and the chassis prints **Z-up**, which would have made the ring's upper member an 85.6 mm
+unsupported bridge. It is cut away with the mouth — a board standing vertically is carried by the
+lip under its BOTTOM edge, and its top edge needs retention, which is what the M4 is — and the
+Pi's foot is one continuous rib rather than two legs so its bottom lip has no span at all.
+
+Left to do: the FULL overlap gate (the Pi's new rib is 5.6 mm of new material in the bay and
+could meet a harness), then submit.
+
+**⚠ AND A SEPARATE DEFECT FOUND AND FIXED WHILE IN THERE (user report):** `led_wall_reliefs()`
+was cutting **four 140 × 25 mm windows, 12.4 mm deep through a 10.4 mm wall — 173,600 mm³** out
+of the +Y rail, one per LED board. The band reached 1.0 mm outside the wall face, so it caught
+each board's laminate as well as its tails; laminate and tails intersect as ONE solid and the
+code pocketed that solid's **bounding box**, which is the whole board. Same trap `mctrl_floor_ports`
+records one function above. And the depth was `CH.T + 2.0` through a wall of `CH.T`, against its
+own docstring's "leaves about 6.5 mm of it". **The right answer here is zero reliefs**: the
+strip's only connector is `S6B-PH-SM4-TB`, SMD side-entry, so nothing penetrates. 145,374 mm³ of
+wall restored, and the guard is a volume ceiling because what failed was a wrong SHAPE.
 
 ---
 
