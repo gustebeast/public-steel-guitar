@@ -1276,6 +1276,40 @@ def mctrl_floor_ports():
             for k, ya, yb in runs]
 
 
+def pi_cap_relief():
+    """The pocket the Pi cap needs in the bay's -Y wall, as a cutter: [solid].
+
+    ⚠ THE CAP OVERHANGS THE PI AND THE WALL IS THERE. pi_cap spans y -135.37..-79.37 while the
+    Pi's own board stops at -135.00, so the cap's -Y edge stands 0.37 mm proud -- and after the
+    Y swap that edge sits in the bay's -Y wall: 291.79 mm3 over y -135.37..-131.55, the cap's
+    full height (z -32.27..0) and x -600.00..-589.90.
+
+    ⚠ A POCKET, NOT A WINDOW, AND THE DEPTH IS THE WHOLE POINT. That wall runs y -141.95..
+    -131.55 -- 10.40 mm, exactly CH.T. The cap needs 3.82 of it; this takes that plus a bead of
+    clearance and LEAVES ABOUT 6 mm standing. led_wall_reliefs cut CH.T + 2.0 through a wall of
+    CH.T and put four board-sized windows through it (145,374 mm3, user report), against its own
+    docstring's "leaves about 6.5 mm of it". Same wall, same lesson: take the depth the part
+    needs, never the depth that is convenient.
+
+    Sized from the cap's OWN solid, so it tracks the board if either moves again -- the failure
+    mode of every constant this swap has falsified.
+    """
+    cap = pi_cap().val().BoundingBox()
+    from .helpers import box_at
+    # ⚠ THE POCKET RUNS +Y FROM THE CAP'S EDGE, NOT -Y. The cap's -Y end sits INSIDE the wall
+    # and the wall's near face is +Y of it, so a pocket anchored the other way misses the
+    # overlap entirely -- the first version spanned y -139.37..-134.57 against an overlap at
+    # -135.37..-131.55 and the gate did not move by a single pair.
+    CLR = 0.8                                    # one bead
+    y0 = cap.ymin - CLR                          # just -Y of the cap's own edge
+    depth = 5.8                                  # 3.82 of overhang + margin, of a 10.40 wall,
+    #                                              which leaves 5.78 standing (y -141.95..y0)
+    return [box_at(cap.xmax - cap.xmin + 2 * CLR, depth, cap.zmax - cap.zmin + 2 * CLR,
+                   x=(cap.xmin + cap.xmax) / 2.0,
+                   y=y0 + depth / 2.0,
+                   z=(cap.zmin + cap.zmax) / 2.0)]
+
+
 def motor_ctrl() -> cq.Workplane:
     """The motor controller posed in the standing tray (see MCTRL_FP)."""
     cx, cy = _ctr(MCTRL_FP)
