@@ -81,8 +81,38 @@ MCTRL_POST_H = 1.7                     # user, 2026-09-25 -- 3.2 - 1.5
 # the clearance as an argument, so two copies of the number is two places for the screw and
 # the hole it goes in to drift apart.
 CRADLE_CLR = 0.3
+
+# ⚠ WHERE EACH BOARD IS HELD, IN ONE PLACE, BECAUSE IT WAS IN TWO AND THEY DRIFTED.
+# keyhead_cradles() BORES the anchor and board_screws() DRAWS the screw that goes in it,
+# and each called pcb_hold_xy with its own literal edge. Moving the screws to the boards'
+# undersides changed one copy and not the other, so the gate came back with four fresh
+# chassis_2 overlaps -- the fasteners standing in cradle material because the hole was
+# still being bored on the old edge. The comment at the top of this file already warned
+# that two copies of this number is two places for the screw and its hole to drift apart;
+# it was right, and the answer is to stop having two.
+#   (edge, hold_at) -- searched against the built assembly, see board_screws()
+MCTRL_HOLD = ("-y", 22.0)     # ⚠ the -Y EDGE STILL, but slid +22 along it
+# The edge was never the problem; the POSITION along it was. At hold 0 the boss sat at the
+# Pi's own z and reached 1.6 mm past its +Y edge once the Pi went flush. At +22 it sits at
+# world z ~-67.6 -- BELOW the Pi's bottom edge (-62) -- so the two no longer share space at
+# all, and the cradle's own frame is there to bore the anchor.
+# ⚠ AND NOT THE UNDERSIDE, which is where I put it first. "+x" reads CLEAR of every part,
+# but this board passes THROUGH the floor, so a boss on that edge lands in the floor SLAB:
+# 17.9 + 16.2 mm3 of chassis_2 that no cradle bore reaches. Boring the floor to hold a
+# board is the same objection as the wall pocket this whole change exists to remove.
+PI_HOLD    = ("+x", 0.0)
 BD_T = 1.6
-PI_FP     = (-603.0, -547.0, -135.0, -50.0)   # Pi 5: 56 x 85 (long side on Y);
+PI_FP     = (-603.0, -547.0, -131.18, -46.18)  # Pi 5: 56 x 85 (long side on Y);
+# ⚠ THE -Y EDGE IS FLUSH WITH THE BAY WALL, AND THAT IS THE WHOLE POINT (user,
+# 2026-09-29: "the pi is too far -y and requires cutting into the chassis wall which
+# reduces its strength"). That wall runs y -141.95..-131.55 -- 10.40, exactly CH.T --
+# and the Pi STACK's -Y face is the CAP, not the board: pi_cap overhangs 0.37 past the
+# laminate, so the stack reached -135.37 and stood 3.82 INSIDE the wall. pi_cap_relief
+# used to pocket that 3.82 away; moving +3.82 puts the cap exactly on -131.55 and the
+# wall goes back to full thickness with nothing cut from it at all.
+# ⚠ MEASURE THE STACK, NOT THE BOARD. Sliding by the board's own 3.45 would have left
+# the cap 0.37 proud and the relief still necessary -- a 0.37 mm pocket instead of a
+# 3.82 mm one, which is the same defect in a less visible size.
                                        # slid 19 SOUTH (FLUSH round): the wired
                                        # leg's jack chimney + cable drop own the
                                        # tray's west-north corner (x > -603 must
@@ -532,7 +562,8 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # ⚠ THE EAR IS NOW VESTIGIAL: elec/motor_ctrl.py still carries EAR_* and its 4.5 mm hole,
     # unused. Left alone deliberately -- removing it re-opens a board that is 0 unconnected /
     # 0 violations, and a spare hole costs nothing. Drop it at the next motor_ctrl revision.
-    hx, hy = pcb_hold_xy(bw, bl, "-y", hold_at=0.0, clr=CLR, spec=_M4)
+    hx, hy = pcb_hold_xy(bw, bl, MCTRL_HOLD[0], hold_at=MCTRL_HOLD[1],
+                         clr=CLR, spec=_M4)
     # ⚠ ROOTED IN THE CHASSIS FLOOR, 13 beads deep. Nothing of the endplate lies in this
     # board's y band (-113..-51 against the height-adjust block's -38.91..+33.2), so the
     # depth here is free. NO FOOT: this board passes THROUGH the floor -- its laminate ends
@@ -561,7 +592,8 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # the collar around it and the two legs under it.
     x0, x1, y0, y1 = PI_FP
     pw, pl = x1 - x0, y1 - y0
-    phx, phy = pcb_hold_xy(pw, pl, "+y", hold_at=0.0, clr=CLR, spec=_M4)
+    phx, phy = pcb_hold_xy(pw, pl, PI_HOLD[0], hold_at=PI_HOLD[1],
+                           clr=CLR, spec=_M4)
     # ⚠ 7 BEADS DEEP AND NO DEEPER: the height-adjust block's inboard face is x -607.8 and
     # this frame's own is -601.6, so 6.2 mm is the whole budget and 5.6 leaves 0.6 of it.
     # The BOSS gets 13 beads because the hold point is at y +36.9, past that block's +33.2.
@@ -610,8 +642,21 @@ def board_screws():
     from cadkit.pcb import pcb_hold_xy as _hold_xy
     cx, cy = _ctr(MCTRL_FP)
     _mx0, _mx1, _my0, _my1 = MCTRL_FP
-    _mhx, _mhy = _hold_xy(_mx1 - _mx0, _my1 - _my0, "-y",
-                          hold_at=0.0, clr=CRADLE_CLR, spec=_M4)
+    # ⚠ THE +X EDGE, WHICH STANDS AS THIS BOARD'S UNDERSIDE. It was "-y", beside the
+    # edge that faces the Pi, and once the Pi went flush to the bay wall its boss spanned
+    # y -47.8..-40.2 -- 1.6 mm PAST the Pi's new +Y edge at -46.18, straight into the
+    # board. Both fasteners used to live in the gap between the two boards, which is why
+    # the gap was 8.5 wide; with both off it the gap carries cable only.
+    # ⚠ NOT the +Z face, which is where the user pointed and where I tried first: that is
+    # the keyhead endplate's, 26..49 mm3 at EVERY position along the edge. Searched all
+    # four edges x ten holds against the built assembly; "+x" at hold -18 is CLEAR, and
+    # -18 also keeps it off the two floor-port slots, which are at the plugs' own y.
+    # ⚠ NOT THROUGH THE EAR, and the ear is why the user asked. That M4 hole cannot be
+    # used from here: its boss projects -X into the nut height-adjust block and put
+    # 625 mm3 through nut_slide_insert_2 when it was tried. The hole is being removed
+    # from the board rather than left as a fastening point that cannot be fastened.
+    _mhx, _mhy = _hold_xy(_mx1 - _mx0, _my1 - _my0, MCTRL_HOLD[0],
+                          hold_at=MCTRL_HOLD[1], clr=CRADLE_CLR, spec=_M4)
     tx, ty = cx + _mhx, cy + _mhy
     out.append(("board_insert_0", stand(seated_insert(_M4, (tx, ty, MCTRL_BOARD_Z), (0, 0, -1)))))
     out.append(("board_screw_0", stand(m4_button_screw(L).translate(
@@ -635,8 +680,20 @@ def board_screws():
     # two boards above, and the assert at the top of this function covers it unchanged.
     from cadkit.pcb import pcb_hold_xy
     _px0, _px1, _py0, _py1 = PI_FP
-    _phx, _phy = pcb_hold_xy(_px1 - _px0, _py1 - _py0, "+y",
-                             hold_at=0.0, clr=CRADLE_CLR, spec=_M4)
+    # ⚠ THE -X EDGE, WHICH STANDS AS THE BAY'S +Z FACE (user, 2026-09-29: the screw
+    # "doesn't make sense, it's clipping into a large block on the board... I suggest
+    # moving it to the +z side"). It was "+y", which put the boss 7.1 mm past the Pi's
+    # +Y edge and INTO the gap to the motor board -- the gap existed FOR it, and the
+    # comment above _MCTRL_CY spends 8.1 mm on exactly that ("Spend the gap, not the
+    # unknown"). Taking the boss off that edge is what pays for the +3.82 slide: the
+    # Pi cannot move +Y while its own fastener occupies the space it would move into.
+    # ⚠ THE UNDERSIDE, NOT THE +Z FACE, AND THE DECK IS WHY. stand() maps tray -X to
+    # world +Z, so "-x" is the +Z side the user pointed at -- but the button head lands
+    # 0.3 mm proud of z 0 and takes 1.3 mm3 out of top_plate_5, identically at every
+    # position along that edge: the deck covers it end to end. "+x" is the board's
+    # underside, where the cradle boss already is, and it is CLEAR at every hold.
+    _phx, _phy = pcb_hold_xy(_px1 - _px0, _py1 - _py0, PI_HOLD[0],
+                             hold_at=PI_HOLD[1], clr=CRADLE_CLR, spec=_M4)
     _pxy = (_phx + (_px0 + _px1) / 2.0, _phy + (_py0 + _py1) / 2.0)
     out.append(("board_insert_2",
                 stand(seated_insert(_M4, (_pxy[0], _pxy[1], BOARD_Z), (0, 0, -1)))))
@@ -1278,40 +1335,13 @@ def mctrl_floor_ports():
             for k, ya, yb in runs]
 
 
-def pi_cap_relief():
-    """The pocket the Pi cap needs in the bay's -Y wall, as a cutter: [solid].
-
-    ⚠ THE CAP OVERHANGS THE PI AND THE WALL IS THERE. pi_cap spans y -135.37..-79.37 while the
-    Pi's own board stops at -135.00, so the cap's -Y edge stands 0.37 mm proud -- and after the
-    Y swap that edge sits in the bay's -Y wall: 291.79 mm3 over y -135.37..-131.55, the cap's
-    full height (z -32.27..0) and x -600.00..-589.90.
-
-    ⚠ A POCKET, NOT A WINDOW, AND THE DEPTH IS THE WHOLE POINT. That wall runs y -141.95..
-    -131.55 -- 10.40 mm, exactly CH.T. The cap needs 3.82 of it; this takes that plus a bead of
-    clearance and LEAVES ABOUT 6 mm standing. led_wall_reliefs cut CH.T + 2.0 through a wall of
-    CH.T and put four board-sized windows through it (145,374 mm3, user report), against its own
-    docstring's "leaves about 6.5 mm of it". Same wall, same lesson: take the depth the part
-    needs, never the depth that is convenient.
-
-    Sized from the cap's OWN solid, so it tracks the board if either moves again -- the failure
-    mode of every constant this swap has falsified.
-    """
-    cap = pi_cap().val().BoundingBox()
-    from .helpers import box_at
-    # ⚠ THE POCKET RUNS +Y FROM THE CAP'S EDGE, NOT -Y. The cap's -Y end sits INSIDE the wall
-    # and the wall's near face is +Y of it, so a pocket anchored the other way misses the
-    # overlap entirely -- the first version spanned y -139.37..-134.57 against an overlap at
-    # -135.37..-131.55 and the gate did not move by a single pair.
-    CLR = 0.8                                    # one bead
-    y0 = cap.ymin - CLR                          # just -Y of the cap's own edge
-    depth = 5.8                                  # 3.82 of overhang + margin, of a 10.40 wall,
-    #                                              which leaves 5.78 standing (y -141.95..y0)
-    return [box_at(cap.xmax - cap.xmin + 2 * CLR, depth, cap.zmax - cap.zmin + 2 * CLR,
-                   x=(cap.xmin + cap.xmax) / 2.0,
-                   y=y0 + depth / 2.0,
-                   z=(cap.zmin + cap.zmax) / 2.0)]
-
-
+# pi_cap_relief() lived here and is DELETED (user, 2026-09-29). It cut a 5.8 mm pocket in
+# the bay's -Y wall so the Pi cap's 3.82 mm of overhang could sit inside it. The Pi now
+# stands +3.82 further +Y with the cap FLUSH on the wall's face, so the wall is whole and
+# the pocket has nothing to do. Kept as a note rather than silence because the pocket was
+# deliberate and reasoned when it was written -- what changed is the board's position, and
+# a reader finding the old call in history should see why it went rather than assume it was
+# lost in a merge.
 def motor_ctrl() -> cq.Workplane:
     """The motor controller posed in the standing tray (see MCTRL_FP)."""
     cx, cy = _ctr(MCTRL_FP)

@@ -103,6 +103,19 @@ WIRE_OD = {
 # chassis CAD lets the trunk reach today, clear of the packed -X corner. The last few
 # millimetres onto the board are a chassis follow-up.
 _KNEE_B = (-508.0, -110.0, -60.0)
+# ⚠ THE INTER-BOARD GAP'S CENTRE, DERIVED. Both 24 V runs (the tail and feed 2) cross
+# between the Pi and the motor controller, and both had this frozen at y -46.0 with a
+# comment reading "the Pi ends at y -50, the motor starts at -42". The Pi's +Y edge moved
+# to -46.18 when the board went flush against the bay wall (user, 2026-09-29), which left
+# those cables 0.18 mm off the laminate -- and nothing would have said so, because a cable
+# that merely GRAZES a board still reaches it and check_cable_ends only asks whether an end
+# arrives. This is the fifth constant this pair of boards has falsified by moving; the
+# lesson each time was the same, so take it: ask the boards where the gap is.
+def _board_gap_y():
+    """Mid-gap between the Pi's +Y edge and the motor controller's -Y edge."""
+    return (EL.PI_FP[3] + EL.MCTRL_FP[2]) / 2.0
+
+
 CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
                       # scheme as PWR_OFF): the split pair stays inside the old
                       # single-jacket envelope (0.7 + 0.65 = 1.35 < the 2.4/2 it
@@ -884,7 +897,7 @@ def build_wires():
         _p = _pin(west[0], cond, False)
         zt = _w0[2] + _TAIL_DZ - do
         xt = BAY_X - do
-        _TGX, _TGY, _TFZ = -588.4, -46.0, -52.0
+        _TGX, _TGY, _TFZ = -588.4, _board_gap_y(), -52.0
         return [_p, (_p[0], _p[1], zt), (xt, _p[1], zt), (xt, _TGY, zt),
                 (_TGX - do, _TGY, zt),
                 (_TGX - do, _TGY, _TFZ + do),
@@ -914,14 +927,16 @@ def build_wires():
         #     -600..-590, its cradle -588..-582, and motor 0 owns -586..-558.
         #   * going UNDER the motor bank fails too: motor 0 sits at the rail's own exit
         #     (x -578.10), 936..1057 mm3 whatever the height.
-        #   * the one clear way in is the 8 mm GAP BETWEEN THE TWO BOARDS (the Pi ends at
-        #     y -50, the motor starts at -42; the gap exists because it is the Pi's M4 boss).
+        #   * the one clear way in is the GAP BETWEEN THE TWO BOARDS. It used to be 8 mm
+        #     and to exist FOR the Pi's M4 boss; the boss has since moved to the Pi's +Z
+        #     face and the Pi went flush to the bay wall, so the gap is now 4.68 and the
+        #     y comes from _board_gap_y() rather than a number typed here.
         # So: run +Y at the rail's OWN x, which is east of the Pi and so misses the board that
         # now sits over the trough (CHAN_Y -129.15 is inside pi5's y span -135..-50); turn west
         # into the gap only then; drop; and walk up the board's own face to J3.
         # The face height is -58 and NOT the connector's own z: at z -61.55 this runs alongside
         # the 5 V cable (which lives at z -64 since its own fix) for 31.6 mm3 per conductor.
-        _GAP_X, _GAP_Y, _FACE_Z = -588.0, -46.0, -58.0
+        _GAP_X, _GAP_Y, _FACE_Z = -588.0, _board_gap_y(), -58.0
         _jy = _mc24[1] + _J3_PITCH2
         return _pair([_j10, (_j10[0], _j10[1], zr), (_j10[0], _REC_Y, zr),
                       (_BAY_X10, _REC_Y, zr), (_BAY_X10, CHAN_Y, zr), (_RISE10, CHAN_Y, zr),
@@ -1203,8 +1218,17 @@ WIRE_OK = {
     "wire_pickup":    {"pickup", "output_panel"},
     "wire_canh":      {"motor_ctrl", "tee_pcb"},
     "wire_canl":      {"motor_ctrl", "tee_pcb"},
-    "wire_canbh":     {"motor_ctrl", "tee_pcb"},
-    "wire_canbl":     {"motor_ctrl", "tee_pcb"},
+    # ⚠ BUS B HAS NO TEES -- the header of this file says so ("bus B (inputs):
+    # motor_ctrl -> the lever/pedal boards, WITH NO TEES AT ALL") and both tees on this
+    # path were deleted when the lever board started passing the trunk through its own
+    # 8-way. These two entries kept naming tee_pcb anyway, so the far end was declared
+    # against a part that is not on the path and NOT declared against the one that is.
+    # check_cable_ends passed throughout, because it only flags a cable far from EVERY
+    # declared part and the motor_ctrl end was right: a cable can be half wrong and read
+    # clean. kl_pcb is the LKL lever board, which the trunk deliberately stops a few mm
+    # short of -- that last hop is a chassis follow-up, see _KNEE_B.
+    "wire_canbh":     {"motor_ctrl", "kl_pcb"},
+    "wire_canbl":     {"motor_ctrl", "kl_pcb"},
     "motor_pigtail":  {"tee_pcb", "motor"},
     # leg↔body TRRS: the chassis jack's factory cable (tenon channel ->
     # bus-B socket tee) and the column CA-354S inside the leg stack

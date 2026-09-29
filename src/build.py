@@ -251,11 +251,10 @@ assert _kh_n == 1, (
 for _mp in _EL_ports.mctrl_floor_ports():
     for _csi in range(len(chassis_segments)):
         chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
-# ...and the Pi cap's 0.37 mm overhang into the bay's -Y wall -- a POCKET of 4.8 in a wall
-# of 10.40, not a window (see electronics.pi_cap_relief).
-for _cr in _EL_ports.pi_cap_relief():
-    for _csi in range(len(chassis_segments)):
-        chassis_segments[_csi] = chassis_segments[_csi].cut(_cr)
+# (pi_cap_relief is GONE, and nothing replaces it. It pocketed 5.8 mm out of the bay's
+#  -Y wall to admit the Pi cap's overhang; the Pi now sits +3.82 with the cap's face FLUSH
+#  on that wall, so there is nothing to admit. The user's point was that the pocket cost
+#  wall strength -- the answer is to not need it, not to make it smaller. See PI_FP.)
 # ...and the LED strip's connector tails, for the same reason and by the same route.
 for _lr in _EL_ports.led_wall_reliefs():
     for _csi in range(len(chassis_segments)):
