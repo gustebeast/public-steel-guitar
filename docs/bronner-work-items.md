@@ -2438,3 +2438,37 @@ the M4 spec via the cradle's anchor), shorten so its -X end lands at >= -607.80 
 re-measure the insert seat against `_M4.anchor_min_wall` before believing the engagement is
 still legal, then re-gate. Target is <= 109. The two chassis_2 <-> nut_height_9 pairs
 (24.5 mm3) are still separate and may need the cradle trimmed instead.
+
+### ⚠ board_screws() CONTAINS A COMMENT THAT CONTRADICTS MCTRL_HOLD, AND IT WAS NEVER TRUE
+
+Looking for the screw's length I found the hold documented twice, incompatibly, in the same
+function. src/electronics.py:94 declares the constant:
+
+        MCTRL_HOLD = ("-y", 17.0)     # ⚠ the -Y EDGE STILL, but slid +17 along it
+
+while board_screws()'s own comment block, ~25 lines lower, says:
+
+        "⚠ THE +X EDGE, WHICH STANDS AS THIS BOARD'S UNDERSIDE. It was "-y", beside the edge
+         that faces the Pi ... Searched all four edges x ten holds against the built
+         assembly; "+x" at hold -18 is CLEAR, and -18 also keeps it off the two floor-port
+         slots"
+
+**`MCTRL_HOLD = ("+x", -18.0)` HAS NEVER EXISTED IN THE FILE** -- `git log -S` for it returns
+nothing, while the "-y", 17.0 line arrived in cbbf66a ("the ear is gone, and it was steering
+every hold point on the board") and survived b441968 ("the motor's M4 was buried in the PI's
+cradle, and that is why five fixes missed"). So the comment records a SEARCH RESULT that was
+then overridden and the prose was left behind claiming the opposite of the code.
+
+⚠ THAT IS THE THIRD STALE CLAIM IN THIS ONE AREA -- with the "y band -113..-51" and the "13
+beads deep" from the section above, all three in comments that read as measurements. This
+region's prose cannot be trusted at all; only the constants and the solids can.
+
+**SO THE SEARCH IS BEING REDONE RATHER THAN EITHER RECORD BELIEVED**, and it has to be: the
+board is 55.0 long at centre -7.0 now, so every verdict from every earlier search was measured
+against a board that no longer exists. Sweeping four edges x nine holds and measuring
+board_screw_0 + board_insert_0 against the HOLD-INDEPENDENT obstacles.
+⚠ chassis_2 IS EXCLUDED FROM THE SWEEP ON PURPOSE. keyhead_cradles() bores the anchor at the
+CURRENT hold, so any moved screw reads a large FALSE conflict against a bore still in the old
+place. The sweep screens against keyhead_endplate, pi5, pi_cap, motor_ctrl and the
+nut_height_*/nut_slide_*/body_adapter_*/top_plate_* families; the winner then gets a real gate
+run, which is the only thing that can price chassis_2.
