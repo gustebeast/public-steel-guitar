@@ -1,8 +1,12 @@
 ** Drc report for optical.kicad_pcb **
-** Created on 2026-09-28T19:10:06 **
+** Created on 2026-09-28T22:14:15 **
 ** Report includes: Errors, Warnings **
 
-** Found 33 DRC violations **
+** Found 35 DRC violations **
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(87.5013 mm, 130.5400 mm): Footprint TP8
+    @(86.0000 mm, 131.0050 mm): Footprint R30
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
     @(75.1942 mm, 74.2167 mm): Footprint PD6A
@@ -92,26 +96,37 @@
 [track_dangling]: Track has unconnected end
     Local override; warning
     @(120.1000 mm, 82.6350 mm): Track [SAI_SD3] on B.Cu, length 36.3650 mm
+[track_dangling]: Track has unconnected end
+    Local override; warning
+    @(93.4508 mm, 127.3150 mm): Track [SAI_FS] on F.Cu, length 1.2500 mm
+[silk_overlap]: Silkscreen clearance
+    Rule: board setup constraints silk; warning
+    @(114.8350 mm, 76.5272 mm): Segment of Cs33 on F.Silkscreen
+    @(114.5400 mm, 76.6850 mm): Polygon of U16 on F.Silkscreen
+[silk_overlap]: Silkscreen clearance
+    Rule: board setup constraints silk; warning
+    @(114.8350 mm, 95.2540 mm): Segment of Cs43 on F.Silkscreen
+    @(114.5400 mm, 95.4118 mm): Polygon of U17 on F.Silkscreen
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
     @(114.8350 mm, 39.0735 mm): Segment of Cs13 on F.Silkscreen
     @(114.5400 mm, 39.2313 mm): Polygon of U14 on F.Silkscreen
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
-    @(114.5400 mm, 57.9582 mm): Polygon of U15 on F.Silkscreen
     @(114.8350 mm, 57.8004 mm): Segment of Cs23 on F.Silkscreen
+    @(114.5400 mm, 57.9582 mm): Polygon of U15 on F.Silkscreen
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
-    @(114.5400 mm, 95.4118 mm): Polygon of U17 on F.Silkscreen
-    @(114.8350 mm, 95.2540 mm): Segment of Cs43 on F.Silkscreen
-[silk_overlap]: Silkscreen clearance
-    Rule: board setup constraints silk; warning
-    @(114.5400 mm, 76.6850 mm): Polygon of U16 on F.Silkscreen
-    @(114.8350 mm, 76.5272 mm): Segment of Cs33 on F.Silkscreen
-[silk_overlap]: Silkscreen clearance
-    Rule: board setup constraints silk; warning
-    @(114.5400 mm, 114.1387 mm): Polygon of U18 on F.Silkscreen
     @(114.8350 mm, 113.9809 mm): Segment of Cs53 on F.Silkscreen
+    @(114.5400 mm, 114.1387 mm): Polygon of U18 on F.Silkscreen
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(114.5400 mm, 76.6850 mm): Polygon of U16 on F.Silkscreen
+    @(115.1950 mm, 77.1150 mm): Pad 2 [GND] of Cs33 on F.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(114.5400 mm, 95.4118 mm): Polygon of U17 on F.Silkscreen
+    @(115.1950 mm, 95.8418 mm): Pad 2 [GND] of Cs43 on F.Cu
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(114.5400 mm, 39.2313 mm): Polygon of U14 on F.Silkscreen
@@ -120,14 +135,6 @@
     Local override; warning
     @(114.5400 mm, 57.9582 mm): Polygon of U15 on F.Silkscreen
     @(115.1950 mm, 58.3882 mm): Pad 2 [GND] of Cs23 on F.Cu
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(114.5400 mm, 95.4118 mm): Polygon of U17 on F.Silkscreen
-    @(115.1950 mm, 95.8418 mm): Pad 2 [GND] of Cs43 on F.Cu
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(114.5400 mm, 76.6850 mm): Polygon of U16 on F.Silkscreen
-    @(115.1950 mm, 77.1150 mm): Pad 2 [GND] of Cs33 on F.Cu
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(114.5400 mm, 114.1387 mm): Polygon of U18 on F.Silkscreen
