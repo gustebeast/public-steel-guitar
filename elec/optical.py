@@ -2648,8 +2648,29 @@ BOARD_NOTES = {
     # The driver still reaches the screw, because the board is not in its way: 1.775 mm of
     # air against the 1.444 a 2.5 mm hex key needs. optical_pickup.pcb() asserts that
     # rather than trusting it, since the margin is 0.33 mm.
+    # ⚠⚠ THE BOARD'S OWN TWO MOUNTING HOLES, WHICH IT DID NOT HAVE (2026-09-29).
+    # `cutouts` was an empty list -- O_ROD_HOLES is `[]` and says so -- so the only holes
+    # this board exported were the ten sensor slots. Meanwhile src/build.py places an M4
+    # through EACH of OP.mount_points(): head above the laminate, shank down, insert
+    # seated immediately below. The overlap gate had been reporting the consequence all
+    # along as `optical_pcb <-> optical_screw_0` 20.11 mm3 and `_1` 20.38 -- a 4.0 mm
+    # cylinder crossing exactly 1.6 mm of laminate, centred on the mount point. Not a
+    # declared contact either: check_overlaps allows {optical_screw, optical_insert} and
+    # {optical_screw, bridge_endplate}, so the neighbouring pairs were considered and this
+    # one was simply absent. THE SCREW WAS RIGHT AND THE BOARD WAS WRONG: the fab would
+    # have shipped solid laminate at both points and neither screw could be fitted.
+    # build.py records the near-miss that set it up -- "the old optical M2 went up from
+    # below and did need [a flip]; copying that was what put this one through the board."
+    # The flip was removed and the screw's ORIENTATION fixed; nobody then asked whether
+    # the board had a hole for it.
+    # Driven off mount_points() rather than a pair of constants so the hole cannot drift
+    # from the screw, which is the same single-source rule the plinth's inserts follow.
+    # M4.shaft_clr_d (4.4) is the canonical clearance bore, NOT insert_pilot_d (6.0) --
+    # the plastic takes the insert, the board only has to let the shank past.
     "cutouts": [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.O_ROD_HOLE_D}
-                for x, y in OP.O_ROD_HOLES],
+                for x, y in OP.O_ROD_HOLES]
+               + [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.M4.shaft_clr_d}
+                  for x, y in OP.mount_points()],
     # ⚠ CORRIDORS ARE OFF, AND THE MEASUREMENT SAYS SO. The generator did what it was
     # built to do -- 20 of 20 comb crossings placed on assigned gaps, A through the strip
     # +Y of its string and B through the strip -Y -- and the BOARD GOT WORSE. Measured
