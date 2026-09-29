@@ -427,7 +427,17 @@ working top-down would act on stale text. The state of each claim:
       * the three boards' DRC, measured with kicad-cli
       * the LED cable is an INSTALL step (INSTALL_NOTES.md section 8)
       * the stitcher runs BEFORE the fill, so a post-fill repair pass is the only place a
-        reach-measuring fix can live
+        reach-measuring fix can live -- BUILT AND LANDED, elec/repair_planes.py, run by
+        finish.py after each route.py. led_strip 1 unconnected -> 0/0; the other seven
+        boards are byte-identical after running the stage against each. It had to become
+        its own SCRIPT: at layout.py's pour it printed nothing (that pour runs during
+        PLACEMENT, no tracks exist yet), and at the end of route.py it RAISED, because
+        drop_degenerate's board.Remove() leaves the whole interpreter handing back raw
+        SwigPyObjects -- a fresh LoadBoard in that process had no BuildConnectivity
+      * motor_ctrl's 17 courtyard overlaps are FIXED -- 0 violations of any kind at
+        placement. Two findings came out of it: D6/D7 are USB ESD clamps that sat 53 mm
+        from the connector they protect, and the crystal Y1 does not FIT anywhere on the
+        +X half (every corridor there is 3.37..3.46 mm against its 3.59). See the commit
       * bus B's 3.20 mm is mctrl_pt's documented side-entry approximation
 
     SUPERSEDED -- do not act on these:
