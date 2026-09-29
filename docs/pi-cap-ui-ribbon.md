@@ -154,34 +154,57 @@ way order above is firm — lay J2 against it.
 it to main is queued behind the optical board.
 
 
-## ⚠ NOT DELIVERABLE YET: one unconnected GND pour island
+## RESOLVED — 0 unconnected, 0 violations, single-sided (2026-09-28)
 
-The board routes clean — **0 DRC violations, 11/11 parts in the CAD, 25 header pins used** — and
-carries **1 unconnected item**: `Zone [GND] on B.Cu` against *itself*, i.e. two islands of the
-same pour in different clusters. It is not the ribbon's wiring; every signal net is closed.
+The board routes clean: **0 unconnected, 0 DRC violations, 11 / 11 parts in the CAD**, 23 of
+the header's 40 pins used. Two things had to be settled to get there, and both are worth
+keeping.
 
-**Four diagnoses were tried and all four were wrong**, which is worth more here than another
-guess:
+### 1. The GND pour was TWO ANCHORED CLUSTERS, not an orphan island
 
-1. *"A fragment with no GND pad."* No — every fragment has one. The test that said otherwise was
-   a bounding-box point-in-polygon with 0.3 mm of slack, and the slack invented the answer.
-2. *"The F.Cu main pour has no anchor, because all eight socket GND pins sit in the band and
-   J2/J3/J4 are SMD on the back."* Two vias were added for it; the ratline did not move.
-3. *"The 5.3 mm² B.Cu sliver at x 0.64…1.95 is the orphan."* It is anchored by **J1.20 at
-   (1.27, −5.77)** — and the via placed to fix it landed **0.23 mm inside that pad**, because my
-   own site search filters *foreign*-net pads and a via must clear its **own** net's pads too.
-   `drop_redundant_pth_vias` then removed it as redundant, and that second removal in one pass
-   tipped pcbnew's SWIG container over: `GetFootprints()` began returning bare proxies and
-   `link_close_gaps` died on `fp.Pads()`. **One removal had never shown it.**
-4. *"Cast the proxies back / reorder the removal pass."* Neither works — the container is
-   degraded, not mistyped, and moving the pass breaks the file's own rule that every measurement
-   is taken before any removal. Both attempts were reverted; `elec/layout.py` and `elec/route.py`
-   are back at HEAD.
+Four diagnoses were tried and all four were wrong. What settled it was mapping every
+through-hole item to its island INDEX on both layers with an exact
+`SHAPE_POLY_SET.Contains(pos, i)` -- no bounding boxes, no slack -- and then union-finding
+the islands through the items they share. That turns "which fragment is floating" into
+"which CLUSTERS are there", which is the question the ratsnest was actually answering.
 
-**What is actually known:** the exact containment test says the two main pours are anchored only
-by `C1.2`–`C4.2`, and the four declared stitch vias do **not** register inside them — so the next
-step is to find out why a same-net via is not reading as connected to the pour it sits in, rather
-than to add a fifth via. KiCad's own ratsnest is the tool for that; the SWIG accessor for it
-(`GetRatsnestForNet`) returns an opaque object and needs a different route in.
+There were three clusters. The main pour, a group of five islands around J5 -- **fully
+anchored, just not to the main pour** -- and, later, the two below. One via at
+**(-16.62, -10.91)**, inside the J5 group on F.Cu and over the main pour on B.Cu with
+3.74 mm of clearance headroom, joined the first two.
 
-**Do not submit this board until that clears.** Everything else about it is finished.
+The lesson for next time: an unconnected zone-against-itself item does NOT mean a fragment
+with no anchor. Cluster the islands before looking for an orphan.
+
+### 2. Header GND pins 14 and 20 are UNREACHABLE, and the board takes six of eight
+
+Fanning J5's thirteen signals out of the socket band put **`+3V3_PI` across the entire band
+at y -7.23** -- on F.Cu west of x 7.95 and on B.Cu east of it, so there is no layer on which
+anything can cross it. Pins 14 and 20 are north of that fence with the switch lines filling
+what is left. Measured, not assumed:
+
+* the pour around each is a closed island on **both** layers;
+* **no via site exists** that lands in the island on one layer and the main pour on the other
+  (exhaustive 0.05 mm sweep of both islands);
+* a two-layer maze at 0.10 mm finds **NO PATH** at track widths 0.25, 0.20 and 0.16.
+
+So the choice was six ground pins or re-routing `+3V3_PI` out of the band on a board that is
+otherwise clean. **Six wins on the numbers**: the high-current returns are J2/J3/J4's own GND
+ways, not the header, and what the header carries is the Pi's own 3 A shared over six pins.
+Taking two pins the pour cannot reach would leave two isolated copper islands and two
+unconnected items to buy nothing. `PI_GND` carries the reasoning.
+
+### 3. ⚠ The board is SINGLE-SIDED now, and it was the only two-sided one
+
+`pi_cap` was the only board in the fleet populated on both faces -- 6 parts on F, 5 on B --
+and it was so **before** J5 (the connectors moved to the back on 2026-09-22 because the 2x20
+socket's body IS the standoff). Two LAYERS of copper cost nothing; **parts on both faces**
+cost a second placement setup on every order. C1-C4, R1 and R2 moved to `back_refs`, so all
+eleven parts sit on one face and the front is bare laminate.
+
+⚠ **`"single_sided"` in the board notes is DOCUMENTATION -- no code reads it.** It said
+`False` here while the board was two-sided and setting it `True` would not have made the
+board one-sided. What decides the invoice is `back_refs`. Do not trust the flag as a control.
+
+Board census at the time of writing: optical F 253, motor_ctrl F 81, led_strip F 27,
+pi_cap F 0 / B 11. Every board single-sided.

@@ -116,7 +116,46 @@ def _plates(solid, w, l):
     return found
 
 
-def _hole_check(board, plate, g, verbose):
+def _through_wires(plate, others, up):
+    """The inner wires of `plate` that are CUTOUTS rather than parts sitting on it.
+
+    ⚠ WHY THIS IS NOT JUST innerWires(). The CAD's board solid is the laminate FUSED WITH
+    every part body, so a connector standing on the plate face leaves its own footprint as
+    an inner wire of that face -- indistinguishable, by count, from a hole. pi_cap reported
+    "the CAD plate has 10 hole(s), the routed board 0" for exactly that reason, and the
+    number tracked how many parts were on the face rather than anything about cutouts: it
+    was 4 with the connectors on the back, and 10 once every part moved there.
+
+    The discriminator is the one thing a cutout has and a part does not: a cutout goes
+    THROUGH, so it appears on BOTH plate faces at the same in-plane position. A part body
+    appears on the face it stands on and nowhere else. So a wire counts only if the
+    opposite face carries one whose offset from it is purely along the normal.
+    """
+    def _c(wr):
+        bb = wr.BoundingBox()
+        return cq.Vector((bb.xmin + bb.xmax) / 2, (bb.ymin + bb.ymax) / 2,
+                         (bb.zmin + bb.zmax) / 2)
+    # ⚠ `f is not plate` IS NOT AN IDENTITY TEST HERE. The caller re-runs _plates() to get
+    # this list, so the plate's own twin is a DIFFERENT Python object wrapping the SAME face
+    # -- and every wire then matches itself at zero offset, which reported all ten of
+    # pi_cap's part outlines as through-cutouts. The face has to be excluded GEOMETRICALLY.
+    opp = []
+    for f in others:
+        if abs(f.normalAt().dot(up)) > 0.9:
+            opp.extend(_c(wr) for wr in f.innerWires())
+    out = []
+    for wr in plate.innerWires():
+        c = _c(wr)
+        for o in opp:
+            d = o - c
+            # in-plane offset ~0 (same hole) AND a real through-thickness offset (other face)
+            if (d - up * d.dot(up)).Length < 0.20 and abs(d.dot(up)) > 0.5:
+                out.append(wr)
+                break
+    return out
+
+
+def _hole_check(board, plate, g, verbose, through=None):
     """Does the CAD's plate have the same CUTOUTS as the routed board?
 
     ⚠ THIS IS THE GAP THAT SHIPPED A BOARD WITH NO COMB. The footprint probe above asks
@@ -133,13 +172,14 @@ def _hole_check(board, plate, g, verbose):
     this on the first run; comparing areas catches a hole that is the right count and the
     wrong size. Both are cheap and need no per-board bookkeeping.
     """
-    cad_n = len(plate.innerWires())
+    wires = plate.innerWires() if through is None else through
+    cad_n = len(wires)
     routed = g.get("holes", [])
     def _area(pts):
         return abs(sum(pts[i][0] * pts[(i + 1) % len(pts)][1]
                        - pts[(i + 1) % len(pts)][0] * pts[i][1]
                        for i in range(len(pts)))) / 2.0
-    cad_a = sum(abs(cq.Face.makeFromWires(wr).Area()) for wr in plate.innerWires())
+    cad_a = sum(abs(cq.Face.makeFromWires(wr).Area()) for wr in wires)
     routed_a = sum(_area(h) for h in routed)
     bad = 0
     if cad_n != len(routed):
@@ -185,7 +225,9 @@ def check(board, verbose=True):
             if best is None or key < (len(best[0]), best[1]):
                 best = (misses, mirrored, plate)
     misses, mirrored, plate = best
-    holes = _hole_check(board, plate, g, verbose)
+    _faces = [pl for _c, _d, pl in _plates(cq.Workplane(obj=solid), w, l)]
+    holes = _hole_check(board, plate, g, verbose,
+                        through=_through_wires(plate, _faces, plate.normalAt()))
     ok = len(parts) - len(misses)
     if verbose:
         print("%-13s %3d / %3d routed parts present in the CAD%s"

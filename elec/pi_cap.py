@@ -132,7 +132,22 @@ SOCKET_FP = "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical"
 # numbers its pads (1/2 the first pair, odd on one row, even on the other), so the socket's
 # pad n IS header pin n and no mapping table is needed.
 PI_5V = (2, 4)
-PI_GND = (6, 9, 14, 20, 25, 30, 34, 39)
+# ⚠ PINS 14 AND 20 ARE DELIBERATELY NOT TAKEN, and this is the UI ribbon's doing.
+# The header has eight GND pins; this board uses six. Fanning J5's thirteen signals out of
+# the socket band put +3V3_PI across the whole band at y -7.23 -- on F.Cu west of x 7.95 and
+# on B.Cu east of it, so there is no layer on which anything can cross it -- and pins 14 and
+# 20 are north of that fence with the switch lines filling what is left. Measured, not
+# assumed: the pour around each is a closed island on BOTH layers (an exact
+# SHAPE_POLY_SET.Contains map, not a bounding box), no via site exists that lands in the
+# island on one layer and the main pour on the other, and a maze over both layers at 0.10 mm
+# finds NO PATH at track widths 0.25, 0.20 and 0.16.
+#
+# So the choice was six ground pins or re-routing +3V3_PI out of the band on a board that is
+# otherwise 0 violations. Six wins on the numbers: the high-current returns are J2/J3/J4's
+# own GND ways, not the header, and what the header carries is the Pi's own 3 A shared over
+# six pins. Taking two pins the pour cannot reach would leave two isolated copper islands and
+# two unconnected items to buy nothing.
+PI_GND = (6, 9, 25, 30, 34, 39)
 PI_SCLK = 23                      # GPIO 11
 PI_MOSI = 19                      # GPIO 10
 SERIES_R = "68R"                  # see note 1 in the docstring
@@ -327,8 +342,20 @@ BOARD_NOTES = {
     # TWO LESSONS, BOTH ABOUT MY OWN TOOLS: a via site must clear its OWN net's pads too,
     # not just foreign ones; and the sliver diagnosis was wrong twice because a bounding-box
     # point-in-polygon with 0.3 mm of slack was asked a question it cannot answer.
+    # ⚠ THE LAST ONE IS THE BRIDGE, AND IT IS THE ONLY ONE THAT WAS EVER REQUIRED. Fanning
+    # 13 UI signals across the band splits the GND pour into two CLUSTERS, not merely into
+    # islands, and every island in each cluster is anchored -- which is why four rounds of
+    # "find the island with no anchor" all failed. Mapping each through-hole item to its
+    # island index on BOTH layers settles it in one pass:
+    #     MAIN     F4,B3 + F3,F2   (J1.6, J1.9, J1.14, J1.25, J1.39 and most vias)
+    #     ISLAND A F1,F0 + B0,B1,B2 (J1.20, J1.30, J1.34, J5.1)
+    # Nothing joined them: every through item lands inside ONE cluster on both layers. The
+    # bridge has to be a point that is in cluster A on one layer and MAIN on the other, and
+    # (-16.62, -10.91) is exactly that -- F island 0, over the B main pour, 3.739 mm of
+    # clearance headroom. One via, not a fifth guess.
     "vias": [("GND", -21.50, -11.00), ("GND", -11.75, -7.00),
-             ("GND", -20.00, -15.50), ("GND", 14.00, -15.50)],
+             ("GND", -20.00, -15.50), ("GND", 14.00, -15.50),
+             ("GND", -16.62, -10.91)],
     "router_passes": 12,
     # ⚠ THE SOCKET IS ON THE BACK, and that is the whole mechanical idea: its body is the
     # standoff the cap hangs off the Pi's header by. Mounted on the front it would be a
@@ -341,8 +368,21 @@ BOARD_NOTES = {
     # Side entry on TOP still needs 15.85. Underneath, the cap's top face is bare PCB at
     # 10.1 and the connectors live in the socket's own 8.5 mm gap (PH 5.5, XH 5.75), with
     # their cables leaving sideways instead of upward into the endplate.
-    "back_refs": ("J1", "J2", "J3", "J4", "J5"),
-    "single_sided": False,          # the 2x20 socket is through-hole, and on the far side
+    # ⚠ EVERY PART IS ON THE BACK NOW, AND THAT IS AN ASSEMBLY-COST FIX (user, 2026-09-28:
+    # "I hope you aren't making a two sided board, that increases the cost"). Two LAYERS of
+    # copper is standard and cheap; what costs is parts on BOTH FACES, because the fab runs
+    # a second placement setup. This board had six 0402s on the front and five connectors on
+    # the back -- the only board in the fleet populated on both sides, and it had been that
+    # way since the connectors moved to the back on 2026-09-22 for the height reason below.
+    # The connectors CANNOT move: the 2x20 socket's body is the standoff the cap hangs off
+    # the Pi's header by. The passives can, and they are 0.5 mm tall against a 8.5 mm gap,
+    # so they go where the connectors already are and the front face becomes bare laminate.
+    "back_refs": ("J1", "J2", "J3", "J4", "J5",
+                  "C1", "C2", "C3", "C4", "R1", "R2"),
+    # ⚠ AND THIS FLAG IS DOCUMENTATION -- nothing reads it (checked across the tree), so it
+    # never made the board one-sided and never will. It says what the layout is FOR; the
+    # thing that decides the invoice is back_refs above.
+    "single_sided": True,           # all eleven parts on one face, connectors and passives
     "qty_per_instrument": 1,
 }
 
