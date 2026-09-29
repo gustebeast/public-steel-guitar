@@ -402,7 +402,9 @@ def _housing() -> cq.Workplane:
     # ...AND THE 45 DEG CLOSURE OVER BOTH VOIDS, last, on the finished solid. Same call and
     # same reasons as LKL's (see KL.roof_close); this housing has two of them, the sweep
     # and the install stroke, and the roof that has to be held up spans both.
-    return heal(KL.roof_close(w, _env, _ins, align=HOUS_Z1))
+    # ...at HALF a bead: this housing's 2.1 mm cartridge rib changes what it supports
+    # inside one full-bead course. See the note in KL.roof_close.
+    return heal(KL.roof_close(w, _env, _ins, align=HOUS_Z1, step=KL.D.BEAD / 2))
 
 
 def _knee_relief():
