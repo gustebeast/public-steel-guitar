@@ -41,7 +41,7 @@ from . import dimensions as D
 from . import components as C
 from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
                                         # (chassis imports knee_lever, so not chassis)
-from .helpers import box_at, cyl, cyl_y, heal
+from .helpers import box_at, corbel_close, cyl, cyl_y, heal
 
 from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
                               seated_insert,
@@ -2514,7 +2514,47 @@ def _housing() -> cq.Workplane:
     w = cut_insert_bore(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0),
                         STOP_BORE_END - (STOP_ANCHOR_X + M4.insert_depth),
                         reason="knee lever travel stop", print_up=PRINT_UP)
-    return heal(w)                  # no printed threads any more -- the whole part heals
+    return heal(roof_close(w, _room))
+
+
+def roof_close(w, *rooms, z_top=None, align=None):
+    """The 45 deg closure over the lever room -- LAST, so it sees the finished solid.
+
+    THE ROOM LEAVES A ROOF AND THE ROOF HAS NOTHING UNDER IT. Now that the room is the
+    lever's sweep and nothing else (user, 2026-09-28), the prism's own material closes
+    back over the top of it, and a swept hub band's crown is flat: 326 mm2 of ceiling on
+    this housing, the worst of it 180 mm2 bridging 11.15 mm. The cheap answer is to pick
+    one wall and cut a 45 down to it, and it throws away everything the other walls could
+    have carried -- so this grows a 45 out of ALL of them at once (user: "there are three
+    walls which we can grow 45 supports out of, and ideally we would use all of them to
+    maximize the amount of material above the levers"). See helpers.corbel_close.
+
+    IT IS SCOPED TO THE ROOM, which is what makes it both right and cheap (user: "we can
+    focus it to just the area we need help with"). The room's own footprint is the only
+    place the prism was opened, so it is the only place a roof can be floating; and the
+    material outside that footprint -- the two cheeks and the -X end, the three walls --
+    is untouched and hands itself back in as support at every layer. The sweep then starts
+    at the PRINT BED, where "supported" is not an assumption at all.
+
+    A step of one BEAD is not a rounding of the layer height: each course of the corbel
+    steps out exactly one nozzle width, which is the ledge check_ceilings already calls
+    printable rather than a bridge.
+    """
+    bb = w.val().BoundingBox()
+    bed = bb.zmin
+    up = box_at(800.0, 800.0, 800.0, z=bed + 400.0).val()          # everything off the bed
+    bs = [r.val().intersect(up).BoundingBox() for r in rooms]
+    x0, x1 = min(b.xmin for b in bs), max(b.xmax for b in bs)
+    y0, y1 = min(b.ymin for b in bs), max(b.ymax for b in bs)
+    crop = box_at(x1 - x0, y1 - y0, 800.0, x=(x0 + x1) / 2, y=(y0 + y1) / 2)
+    # ...AND IT RUNS TO THE VERY TOP OF THE PART, mount tenons included. Stopping at the
+    # housing's top face left the tenon that stands over the lever sitting on the roof the
+    # closure had just carved out from under it: 27 mm2 of its underside bridging 3.30 mm,
+    # the worst ceiling left in the part. Carried on up, the tenon gives back 49 mm3 -- a
+    # nibble out of the one corner of it that was over the void -- and the mortise faces,
+    # which are its flanks, are untouched.
+    return corbel_close(w, crop, bed, bb.zmax if z_top is None else z_top, D.BEAD,
+                        align=HOUS_Z1 if align is None else align)
 
 
 def _lever_envelope() -> cq.Workplane:
