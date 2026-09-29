@@ -440,7 +440,20 @@ working top-down would act on stale text. The state of each claim:
     order-of-magnitude, because converting field to induced volts needs the coupling
     efficiency and the Alumitone's turns-area, and an Alumitone is a LOW-IMPEDANCE current
     loop rather than a conventional high-impedance coil):
-        LEVER 1  V5 and GND as OVERLAPPING PLANES on the 4-layer section  ->  25x, FREE
+        LEVER 1  V5 and GND as OVERLAPPING PLANES on a 4-layer section     ->  25x
+                 ⚠ TRIED AND REVERTED. Set layers 4 with a solid GND on In1.Cu
+                 (plane_layers In1.Cu) -- the RIGHT pair, because in JLC's 1.6 mm
+                 4-layer stackup F-In1 is 0.2 mm prepreg while the In1-In2 CORE is
+                 1.065, so "adjacent inner planes" would have been 5x worse than it
+                 sounds. The board then would NOT ROUTE: 3 unconnected, one LED
+                 cathode per driver (D2_K6/U1, D5_K7/U2, D8_K6/U3), and finish.py's
+                 retry (rounds=3, which is not reachable from the CLI) did not improve
+                 it. A 25x loop gain is not worth a board with unrouted nets, so this
+                 is reverted and the board is back at 0 unconnected / 0 violations.
+                 On 2 layers the achievable version is V5 stacked directly over the
+                 GND pour -- separation = board thickness 1.6 -> 222 mm2 -> only 3.1x,
+                 and it is the ROUTER's choice, not something the notes can declare.
+                 ⚠ SO LEVER 2 NOW CARRIES THE NOISE CASE ALONE.
         LEVER 2  strip off the +Y rail and onto the chassis floor (user's
                  suggestion; 9.1 -> ~37 mm is only 28 mm of travel)      ->  67x
         BOTH                                                             -> 1680x, ~59 nT
