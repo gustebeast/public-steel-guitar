@@ -2923,3 +2923,42 @@ pointing at the old place, which the gate would report as a hundred new conflict
 the render would show as a Pi floating away from its own cradle. The electronics.py side
 (PI_FP, PI_Z, pi5, the assert, PI_HDR_*, pi_port_pt, pi_cap) is ONE commit; cradle+screw is
 the second; wiring plus optical's pi_column_x is the third. Gate after each.
+
+### STEP 2 IS IN: pi5 + pi_cap RE-AUTHORED FLAT, AND THE TRANSFORM IS PROVEN BY ITS OVERHANGS
+
+        pi5     x -596.00..-511.00  y -130.00..-74.00  z -71.35..-55.75   <- the 0.00 mm3 box
+        pi_cap  x -596.37..-540.37  y -100.27..-66.08  z -69.75..-59.65
+        cap socket bottom -69.75  ==  Pi top face PI_Z + BD_T = -69.75    <- seated, not floating
+
+**HOW THE CAP TRANSFORM WAS VERIFIED, because "is the cap inside the Pi" was the WRONG TEST
+and I ran it first.** The cap is 56 x 34.18 with its J1 socket at y -4.50 in its own frame --
+**12.68 mm from its near edge, 21.50 from its far one** -- while the header sits 4.77 mm in
+from the Pi's edge. So the cap CANNOT sit inside the Pi's outline in that direction; it never
+did. Measured against the STANDING pose it replaced:
+
+        cap past the Pi's -X / laminate edge      standing 0.37     flat 0.37
+        cap past the Pi's header-side edge        standing 7.91     flat 7.92
+
+Both reproduced to 0.01 mm, and the 0.37 is the figure PI_FP's own comment already records
+("pi_cap overhangs 0.37 past the laminate"). **Reproducing the prior relationship is the
+test; containment was never true.**
+
+**WHAT CHANGED, and all of it is frame rather than shape:**
+  * `PI_FP` -> WORLD (-596.0, -511.0, -130.0, -74.0); the 56x85 assert flips to 85x56 so it
+    keeps tying the footprint to a real Pi 5 in the new pose.
+  * `PI_Z = _MB.FLOOR_TOP` (-71.35) -- read from motor_bank, so if the floor moves the Pi
+    moves with it instead of being falsified by it. BOARD_Z is a TRAY z and never applied.
+  * `pi5()` drops `stand()` and puts the 50 x 18 x 14 I/O block on the **+X END**. The solid
+    is otherwise untouched -- same laminate, same block, same SoC.
+  * `PI_HDR_X/Y` -- the 2x20 runs along X now, off the +Y long edge, so the cap's two cable
+    runs (UI ribbon, LED strip) face the things they feed.
+  * `_cap_place()` drops `stand()`, and its -90 becomes **+180**. ⚠ THE -90 EXISTED TO SWING
+    THE CAP'S SOCKET ONTO THE HEADER'S AXIS, which was the TRAY's y; flat, the header runs
+    along WORLD X, which is the cap's own axis, so the old rotation would have laid the cap
+    ACROSS the header. The 180 is what turns its long side -Y over the board, and j1_y
+    therefore ADDS instead of subtracting.
+
+**STILL POINTING AT THE OLD PLACE (expect a large gate until these land):** the Pi half of
+`keyhead_cradles()`, the Pi entry in `board_screws()`, `_board_gap_y`, `_PORT_APR`,
+`pi_port_pt` (still written as tray coords against a standing +Y end), every `pi_cap_pin`
+lead, and optical's `pi_column_x`/`usb_run_length`.

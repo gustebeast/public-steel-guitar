@@ -106,7 +106,16 @@ MCTRL_HOLD = ("-y", 17.0)     # ⚠ the -Y EDGE STILL, but slid +17 along it
 # board is the same objection as the wall pocket this whole change exists to remove.
 PI_HOLD    = ("+x", 0.0)
 BD_T = 1.6
-PI_FP     = (-603.0, -547.0, -131.18, -46.18)  # Pi 5: 56 x 85 (long side on Y);
+# ⚠⚠ THE PI LIES FLAT ON THE CHASSIS FLOOR AND THESE ARE WORLD COORDS (user, 2026-09-29,
+# with two drawings: the footprint on a plan view and the board in it, "with the I/O facing
+# +x"). It is NOT a tray part any more -- it does not go through stand() -- exactly as the
+# output board already does not. 85 on X, 56 on Y, ports on the +X END.
+# WHY: standing, the Pi ate 85 mm of a Y band only 152 wide, which is what squeezed its USB
+# gap to 4.68 and made ask #3 unfixable by placement. Flat it eats 56, freeing 29 mm.
+# MEASURED, not chosen: an 85 x 56 x 15.6 box here collides with NOTHING (0.00 mm3 against
+# every part but the ones that move with it and the cables), and the floor under it is 90.3%
+# solid across the whole footprint, so there is no hole at the leg station.
+PI_FP     = (-596.0, -511.0, -130.0, -74.0)   # WORLD x0,x1,y0,y1: 85 on X, 56 on Y;
 # ⚠ THE -Y EDGE IS FLUSH WITH THE BAY WALL, AND THAT IS THE WHOLE POINT (user,
 # 2026-09-29: "the pi is too far -y and requires cutting into the chassis wall which
 # reduces its strength"). That wall runs y -141.95..-131.55 -- 10.40, exactly CH.T --
@@ -257,11 +266,16 @@ MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
 # purchased board and there is no elec/geom for it. PI_FP is already the single source for
 # both the dummy in pi5() and the cradle in keyhead_cradles(), so those two cannot drift
 # from each other; what was missing is anything tying PI_FP to the actual Pi. A Pi 5 is
-# 85 x 56 mm (RPi mechanical drawing), long side on Y here. If someone re-sizes this to
+# 85 x 56 mm (RPi mechanical drawing), long side on X here, FLAT. If someone re-sizes this to
 # make something fit, the assert is what says the board stopped being a Pi.
-assert (round(PI_FP[1] - PI_FP[0], 3), round(PI_FP[3] - PI_FP[2], 3)) == (56.0, 85.0),     "PI_FP is %.1f x %.1f; a Pi 5 is 56 x 85" % (PI_FP[1] - PI_FP[0], PI_FP[3] - PI_FP[2])
+assert (round(PI_FP[1] - PI_FP[0], 3), round(PI_FP[3] - PI_FP[2], 3)) == (85.0, 56.0),     "PI_FP is %.1f x %.1f; a Pi 5 is 85 x 56" % (PI_FP[1] - PI_FP[0], PI_FP[3] - PI_FP[2])
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
+# ⚠ THE PI HAS ITS OWN Z AND IT IS A WORLD ONE: it lies on the chassis floor, not on the
+# tray's posts, so BOARD_Z (a TRAY z) does not apply to it. Read from motor_bank so the day
+# the floor moves the Pi moves with it, instead of being falsified by it.
+from . import motor_bank as _MB_FLOOR                      # noqa: E402
+PI_Z = _MB_FLOOR.FLOOR_TOP             # -71.35, the laminate's underside
 MCTRL_BOARD_Z = TRAY_Z1 + MCTRL_POST_H   # ...except the motor controller, 1.5 lower
 
 # ── STANDING TRAY (user, 2026-09-11) ─────────────────────────────────────────
@@ -880,13 +894,22 @@ def pi_port_pt(which: str):
 
 
 def pi5() -> cq.Workplane:
-    """Raspberry Pi 5 dummy: board + USB/eth block + SoC."""
+    """Raspberry Pi 5 dummy: board + USB/eth block + SoC. WORLD frame, lying FLAT.
+
+    ⚠ NO stand(). This board is not in the tray any more -- it lies on the chassis floor,
+    so it is authored where it sits, the way the output board already is. `_board` and
+    `box_at` were always frame-agnostic; the stand() on this function's last line was the
+    only thing that made the Pi a tray part.
+    ⚠ THE SOLID IS UNCHANGED -- same 85 x 56 laminate, same 50 x 18 x 14 I/O block, same
+    15 x 15 SoC. Only the frame and the block's END moved: the block is on the +X end now
+    (user: "with the I/O facing +x"), looking down the instrument into open floor instead
+    of into the keyhead endplate."""
     cx, cy = _ctr(PI_FP)
-    b = _board(PI_FP, BOARD_Z)
-    b = b.union(box_at(50.0, 18.0, 14.0, x=cx, y=PI_FP[3] - 9.0,
-                       z=BOARD_Z + BD_T + 7.0))
-    b = b.union(box_at(15.0, 15.0, 2.5, x=cx, y=cy, z=BOARD_Z + BD_T + 1.25))
-    return stand(b)
+    b = _board(PI_FP, PI_Z)
+    b = b.union(box_at(18.0, 50.0, 14.0, x=PI_FP[1] - 9.0, y=cy,
+                       z=PI_Z + BD_T + 7.0))
+    b = b.union(box_at(15.0, 15.0, 2.5, x=cx, y=cy, z=PI_Z + BD_T + 1.25))
+    return b
 
 
 # (adc_stack is DELETED, 2026-09-14. It modelled a three-PCM1864 carrier that
@@ -960,8 +983,13 @@ from . import board_geom as BG
 LED_SECTION_W = BG.load("led_strip")["outline_mm"][0]
 LED_SECTIONS = 4
 
-PI_HDR_X = PI_FP[0] + 3.5 + 1.27               # -598.23, between the two pin rows
-PI_HDR_Y = PI_FP[2] + 3.5 + (20 - 1) * 2.54 / 2.0   # -22.37, the pad centroid along the row
+# ⚠ THE 40-PIN HEADER RUNS ALONG X NOW, off the +Y long edge. Flat, the 2x20 runs down the
+# board's 85 mm side; 3.5 mm in from the corner is the Pi's own pin-1 inset, and 1.27 is half
+# the 2.54 row spacing so the datum sits BETWEEN the two rows, exactly as before.
+# +Y edge chosen deliberately: the cap's two cable runs (the UI ribbon to the deck, and the
+# LED strip) both go +Y, so the header faces the things it feeds.
+PI_HDR_X = PI_FP[0] + 3.5 + (20 - 1) * 2.54 / 2.0   # the pad centroid along the row
+PI_HDR_Y = PI_FP[3] - 3.5 - 1.27                    # between the two pin rows
 PI_CAP_STANDOFF = BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"]   # 8.5, the socket's body
 
 
@@ -1196,9 +1224,20 @@ def _cap_place(shape):
     # gained 8 mm on its -Y edge and every placement moved +4.00 with it, this moved too.
     # Leave it at -8.5 and the board lands 4 mm off the header it is supposed to plug into.
     j1_y = -4.5
-    return stand(shape.rotate((0, 0, 0), (0, 0, 1), -90.0)
-                 .translate((PI_HDR_X - j1_y, PI_HDR_Y,
-                             BOARD_Z + BD_T + PI_CAP_STANDOFF)))
+    # ⚠ NO ROTATE AND NO stand() SINCE THE PI WENT FLAT. The -90 existed to swing the cap's
+    # socket (which runs along the cap board's own X) onto the header's axis, which was the
+    # TRAY's y. Flat, the header runs along WORLD X -- the cap's own axis already -- so the
+    # rotation is not just unnecessary, it would put the cap across the header.
+    # The j1_y offset moves to Y for the same reason: it positions the socket, and the socket
+    # now varies in y rather than x.
+    # ⚠ 180 ABOUT Z, AND IT IS NOT COSMETIC: the cap is 34 mm across a 56 mm board and the
+    # header sits 4.77 in from the +Y edge, so the board it carries has to extend -Y OVER the
+    # Pi. Placed unrotated it reached y -57.27 -- 16.7 mm off the Pi's +Y edge, a HAT hanging
+    # in mid-air. The 180 turns its long axis around so it lies on the board it plugs into,
+    # and j1_y therefore ADDS rather than subtracts.
+    return (shape.rotate((0, 0, 0), (0, 0, 1), 180.0)
+                 .translate((PI_HDR_X, PI_HDR_Y + j1_y,
+                             PI_Z + BD_T + PI_CAP_STANDOFF)))
 
 
 def pi_cap_pin(ref, n):
