@@ -867,11 +867,39 @@ working top-down would act on stale text. The state of each claim:
          300 mA is under the 0.38 A joint current, so PARALLEL CONTACTS: at 70P, ~17 pins
          each on V24 and GND is 5 A of margin, with the rest for SCK/SDI. 70P in two rows
          is ~14 mm long on a 139 mm board.
-         ⚠ STILL TO PIN DOWN: pin counts must match ACROSS the pair and the sub-series
-         letter sets the stack height (B/C/GB/HB/TC/HC/GL), so the mate is chosen as a
-         PAIR, not as two parts. DF40GB-70DP + DF40GB(3.0)-70DS is the one visibly matched
-         pair at the same count and series; confirm stack height, stock on both, and that
-         3.0 mm clears the channel before committing.
+      5m. ⚠⚠ AND THE STOCK CHECK KILLS IT. The user asked "what's the stock like for that
+         DF40" and the answer retires the recommendation I had just made:
+
+             pins   socket (DS)              header (DP)
+             10P    1,000                    --
+             12P    198 / 24 / 13            --
+             20P    --                       132
+             24P    805                      --
+             30P    15,099 / 984 / 84        5
+             34P    --                       27
+             40P    --                       121
+             48P    --                       692
+             70P    184                      4      <-- the pair I recommended
+             100P   1                        --
+
+         THERE IS NO DF40 PIN COUNT WHERE BOTH HALVES HAVE USABLE STOCK. 70P is the only
+         matched count and its HEADER has FOUR units; we need three per instrument. Every
+         other count has one half and not the other.
+
+         ⚠ THIS IS STRUCTURAL, NOT BAD LUCK, AND IT IS THE FOURTH CANDIDATE TO DIE THE SAME
+         WAY. The library's gender split is Female 82 vs Male 26 across all 452
+         board-to-board parts: JLCPCB stocks SOCKETS far more than HEADERS, because most of
+         its customers mate a board to a module that already carries the other half. A
+         board-to-board pair where WE supply both halves is exactly the case the library is
+         worst at. FX23L was plug-only; DF40 is socket-rich and header-poor; Harwin was not
+         in the library at all; the "1.27 mm 2X10P" was a DC3 ribbon header.
+         ⚠ SO CHECK BOTH HALVES' STOCK FIRST, BEFORE pitch, current, height or coplanarity.
+         That one filter would have retired all four candidates in minutes.
+
+         WHAT THIS MEANS FOR THE DESIGN: a direct board-to-board mate is not reliably
+         sourceable from the assembly library at any voltage, so 24 V does not rescue it --
+         24 V solves the CURRENT problem (0.38 A vs 2.2 A) and that was never the binding
+         one. FEWER JUNCTIONS (5e) remains the robust answer, and it needs no part at all.
 
       5e. DECISION, so this stops consuming ticks: FEWER JUNCTIONS FIRST, better connector
          second. Three ticks of sourcing have produced no part that satisfies all of
