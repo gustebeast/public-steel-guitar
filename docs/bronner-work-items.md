@@ -1039,3 +1039,25 @@ invent a shape nobody has to build to".
 Recorded as INSTALL_NOTES.md section 8: dress it around the block, clip it clear of the slide
 inserts. The 68.2 + 46.5 mm3 stays in the gate as a known modelling artefact -- it was in the
 114 baseline before the swap and it is not a defect anyone can print their way out of.
+
+### layout.py's stray-stitch warning now reports the GAP (2026-09-29)
+
+"landed where the plane is not" says a stitch via is stray; it never said whether the plane was
+0.1 mm away or 12, and those want OPPOSITE fixes -- a longer stub versus a placement change.
+Now:
+
+    ⚠ 3 stitch via(s) landed where the plane is not: GND at 136.35,100.33 (1.30 mm away),
+      GND at 55.35,100.33 (1.30 mm away), GND at 95.85,100.33 (1.30 mm away)
+
+⚠ AND THE NUMBER CORRECTS MY OWN SCRATCHPAD MEASUREMENT. My probes reported 1.30 AND 0.10 mm;
+the report says 1.30 for all three. Both are right and they measure different points -- mine
+walked out from the STUB'S FREE END, the report walks from the VIA. The 0.10 was a finger of
+pour reaching toward the stub's tip, not toward the via. The VIA's distance is the actionable
+one, because the via is what the stitcher places: a "fix" built on my 0.10 would have come up
+1.1 mm short on every one of them.
+
+REPORT-ONLY, DELIBERATELY. The stitcher lays exactly what it laid before -- led_strip is
+unchanged at 1 unconnected, pi_cap unchanged at 0/0 with no stray line at all (its pours are on
+both faces). layout.py is shared by all seven boards and this session already produced one
+plausible-and-wrong change on this exact board (dropping stitch_nets, 1 -> 3). A diagnostic that
+hands the next attempt the deciding number is worth more than a geometry change made tired.
