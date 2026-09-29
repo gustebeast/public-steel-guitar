@@ -1041,7 +1041,12 @@ def build_wires():
     # The approach runs inside that real gap rather than pretending to a wider one: the lead
     # reaches the right port from the only direction a plug could enter, and the fact that
     # the plug itself has nowhere to go is a placement problem recorded where placement is.
-    _PORT_APR = EL.PI_FP[3] + 2.3                  # -43.88, inside the 4.68 the boards leave
+    # THE GAP IS 11.68 mm NOW and a right-angle USB-A plug fits (2026-09-29):
+    # motor_ctrl's BOARD_L went 62.0 -> 55.0 off its bare Pi-facing edge and _MCTRL_CY
+    # -10.5 -> -7.0 held the +Y edge, so the boards leave y -46.18..-34.50. The approach
+    # sits MID-GAP, where the plug body actually lives, instead of hugging the port face
+    # because there was nowhere else to be.
+    _PORT_APR = EL.PI_FP[3] + 6.0                  # -40.18, mid-gap of the real 11.68
     _ua = EL.op_pt("J2")
     _UA_PLUG = 25.0
     # ITS OWN COLUMN at the keyhead, 6 mm +X of the one the bay wires share: at a different
