@@ -806,3 +806,26 @@ with a frozen endpoint, it is just the only one that left a mark.
 
 That makes FIVE constants this swap falsified -- root_d's 13 beads, MCTRL_HOLE on the ear, the
 5 V mid-plate leg, _FEED2_X, and this -- and this is the only one whose failure was SILENT.
+
+### tools/check_cable_ends.py -- and it found a SECOND stranded lead on its first run
+
+Built because check_overlaps is a COLLISION check with no opinion about things that SHOULD touch
+and do not. It walks src.wiring.WIRE_OK (each cable -> the parts it may touch) and reports any
+cable far from EVERY part it is declared to touch. Advisory, not a gate.
+
+    wire_usb       8.10 mm from pi5     -- SP(-575.0, 20.0, -44.0), the SAME frozen y 20
+    wire_link     ~80    mm from pi5     -- fixed the commit before, found only by its graze
+    wire_canbl_0   3.20 mm from motor_ctrl -- PRE-EXISTING, see below
+
+⚠ TWO LEADS TO THE PI WERE BOTH STRANDED AT ITS OLD POSITION and the overlap gate saw ONE of
+them, by luck, because it clipped a wall on the way. Moving one board 85 mm silently
+disconnected two cables while the gate's count went DOWN. Both now derive from
+PI_FP[3] - 9.0, the expression pi5() uses to place the USB/ethernet block.
+
+wire_canbl_0 IS NOT THE SAME BUG and is not the swap's. Bus B's start IS derived
+(SP(*EL.mctrl_pt("J2"))), but both conductors are then offset +-CAN_OFF in x AND y, so the pair
+straddles the connector's reference point diagonally instead of landing on pins -- canbl ends up
+~3.2 mm off the board BY CONSTRUCTION. The 5 V and 24 V pairs land per-pin (pi_cap_pin,
+_pin(west[k], ...)); bus B is the one that does not. Worth the same treatment, low priority.
+
+    gate 110, pair set unchanged by the wire_usb fix.
