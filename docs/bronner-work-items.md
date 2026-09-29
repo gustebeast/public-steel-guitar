@@ -3012,3 +3012,46 @@ bay. Same for the 5 V pairs now crossing motor_0: the cap moved ~60 mm, the rout
 old, so the first render still showed the Pi's OLD cradle standing empty in the bay.
 Re-cached with `scratch_view.py --start`. The Pi, pi_cap, motor_ctrl and the harness are all
 in the live set and were current.
+
+### CLEAR ROOM AROUND THE FLAT PI, PER FACE (2026-09-29)
+
+Grew the 85 x 56 x 15.6 footprint one face at a time against 841 parts (pi5/pi_cap and the
+cables excluded) until something was hit:
+
+        +X   clear to +80    blocked at +120 by chassis_1, motor_4
+        -X   clear to +30    blocked at +40  by keyhead_endplate
+        +Y   clear to +20    blocked at +30  by chassis_2, motor_1
+        -Y   clear to  +0    blocked at  +5  by chassis_2        <- HARD AGAINST THE WALL
+        +Z   clear to +20    blocked at +30  by chassis_2
+
+**+X IS EFFECTIVELY FREE** -- 80 mm against the ~5 the Pi needs to clear the bay's x range
+(-606.50..-591.70) entirely. The user's "move the pi over +x" costs nothing.
+**⚠ -Y IS ZERO, AND IT CONSTRAINS RETENTION.** The Pi is already up against the chassis wall,
+so a collar has no room for a wall on that side. The board wants a few mm of +Y as well as
+the +X -- 2 to 4 of the 20 available -- so the collar can have material all the way round.
++Z's 20 against the cap's 10.1 means the cap clears with headroom.
+
+### THE USER'S SWAP-BACK: motor_ctrl to -Y, Pi to +X (2026-09-29)
+
+User: "having the motor board over at +y makes it quite cramped with the motor right next to
+it. Perhaps we should move it back to -y and move the pi over +x". Correct on the cramping --
+motor_ctrl sits at x -606.50..-591.70 with motor_0 starting at -583.60, and they overlap
+through most of Y. **The two moves are a package**: the motor board cannot come -Y while the
+flat Pi holds x -596..-511, because the bay's x range and the Pi's overlap over -596..-591.70
+and their z ranges already interleave. Moving the Pi +X is what opens the -Y end.
+
+**⚠ THE ONE REAL RISK IS THE CONFLICT THAT CAUSED THE ORIGINAL SWAP.** The Y swap happened
+because the motor board's cradle walls run BELOW the floor slab -- they must, since the
+board's bottom edge sits at the floor so its two bus-B plugs can enter it -- and at y -82
+those walls put **170.65 mm3 through body_adapter_3**, handed to brenner as unfixable from
+here. Bringing the board back -Y risks re-creating exactly that, in someone else's part.
+**WHAT HAS CHANGED:** that trade was decided with the Pi competing for the same bay. With the
+Pi on the floor the -Y end is free, so there may be a Y the old decision could not reach.
+MEASURE IT -- specifically which adapters reach ABOVE FLOOR_TOP, since only those can be hit
+by something standing in the bay (the -X/-Y adapter is z -134.65..-73.82, entirely under the
+slab, and could not be hit at all).
+
+**WHAT THE SWAP-BACK WOULD ALSO BUY:** the nut_height_9 pair and the height-adjust-block
+interference are both consequences of BOARD_L 62->55 and _MCTRL_CY -10.5->-7.0, which exist
+only to open a USB gap that the flat Pi has already made irrelevant. Moving the motor board
+is the natural moment to revert both and delete that debt rather than pay it.
