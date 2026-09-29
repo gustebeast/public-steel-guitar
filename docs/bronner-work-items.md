@@ -2350,3 +2350,48 @@ technique is what to reuse.
 ⚠ AND CHECK chassis_2 SEPARATELY. Two of the four are the cradle's effect on chassis_2, not
 the screw's own position, so a hold_at that clears keyhead_endplate can still leave the
 nut_height_9 pair -- they are different obstacles reached by different parts of the change.
+
+### ⚠ CORRECTION: SWEEPING MCTRL_HOLD[1] CANNOT FIX THIS -- hold_at slides in world Z
+
+Measured the actual solids rather than reasoning from the hold, and the "sweep hold_at"
+next-action I wrote one section above is WRONG. The numbers:
+
+        keyhead_endplate     x -637.26..-607.80   y -141.95..65.95   z -81.85..13.21
+        board_screw_0        x -611.50..-599.30   y  -40.80..-33.20  z -70.75..-63.15
+        board_insert_0       x -608.10..-603.10   y  -40.00..-34.00  z -69.95..-63.95
+        OVERLAP              x -611.50..-607.80   y  -38.91..-35.00  z -68.95..-64.95  46.23
+
+**THE OVERLAP IS IN X, AND THE SCREW'S X DID NOT CHANGE.** The endplate's inner face is
+x -607.80 and the screw spans x -611.50..-599.30, so it reaches 3.70 mm past that face -- and
+it ALWAYS did, because the M4's axis is the board NORMAL (tray z -> world x) and nothing in
+this change touched it. What changed is Y: the screw used to sit in a RELIEF in the endplate
+and the +7.00 slid it into solid material. Only part of its y range overlaps
+(-38.91..-35.00 of -40.80..-33.20), which is the pocket's edge showing.
+
+**AND HERE IS WHY hold_at IS THE WRONG KNOB:** `pcb_hold_xy(bw, bl, "-y", hold_at=...)` slides
+the hold ALONG the -Y edge, which is the board's local X -- and board-local x maps to
+**world Z**, not world Y. So sweeping MCTRL_HOLD[1] moves the screw along the endplate face
+and can never undo a Y displacement. The screw's Y is PINNED to the board's -Y edge by the
+choice of edge, and that edge is the one that moved 7 mm.
+
+**SO THE REAL OPTIONS ARE, and none is a one-line sweep:**
+  1. **Move the hold to a different EDGE.** "+y" is the edge that did NOT move (still 20.50) --
+     and it is unusable, because body_adapter's inner face is 21.15, leaving 0.65 mm. "-x"/"+x"
+     were the first two of the five previous failures (endplate 26-49 mm3; inside the floor
+     slab), and those verdicts were against the OLD board so they need re-measuring, not
+     assuming -- but both are world-Z edges and neither addresses an X interference.
+  2. **EXTEND THE ENDPLATE'S RELIEF** to cover the screw's new y band (-38.91..-35.00 plus
+     clearance). This is the honest fix -- the screw is where the board puts it and the pocket
+     is what is 7 mm short -- but keyhead_endplate is NOT in bronner's scope
+     (src.build._electronics_components is), so it is a handover.
+  3. **Shorten the M4 / re-seat the insert** so the screw stops short of x -607.80. It reaches
+     3.70 mm past; board_insert_0 only 0.30. A 4 mm shorter screw would clear the endplate
+     entirely and make the relief unnecessary. CHEAPEST IF THE THREAD ENGAGEMENT ALLOWS IT --
+     check against the M4 insert spec's anchor_min_wall before believing it.
+  4. The two chassis_2 <-> nut_height_9 pairs are a SEPARATE obstacle (the cradle is fused to
+     chassis_2, so the cradle's move grew chassis_2 into string 9's height screw) and none of
+     1-3 necessarily touches them. 24.5 mm3 across the two.
+
+**RECOMMENDATION: option 3 first**, because it is inside my scope, it is a length not a
+position, and 3.70 mm of over-reach against a 12.20 mm screw is a stock-size step. Then
+re-measure the chassis_2 pair, which may need the cradle trimmed rather than anything moved.
