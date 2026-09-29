@@ -664,63 +664,25 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # for 0.72 mm3; see docs/bronner-work-items.md. Cutting this frame cannot fix it.
     mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
-    # THE PI: a purchased board, holes too small for M4, so its M4 stands BESIDE the +Y edge
-    # (pcb_hold_xy, the same spot pcb_cradle's hold_edge uses) and the wall is notched for
-    # the head. ⚠ AND ITS COLUMNS MOSTLY LAND ON THE NUT HARDWARE'S BLOCK, NOT THE WALL: the
-    # height-adjust prism fills x -630..-610.1 behind it, cut through by the insert slots.
-    # ⚠ THAT IS HISTORY NOW: rooted in the chassis floor this frame stops 0.6 mm short of the
-    # block's face, so nothing lands on it, nothing has to be carved around the insert slots,
-    # and `pi_cut` is gone. The columns it describes are gone too -- what holds this board is
-    # the collar around it and the two legs under it.
-    x0, x1, y0, y1 = PI_FP
-    pw, pl = x1 - x0, y1 - y0
-    phx, phy = pcb_hold_xy(pw, pl, PI_HOLD[0], hold_at=PI_HOLD[1],
-                           clr=CLR, spec=_M4)
-    # ⚠ 7 BEADS DEEP AND NO DEEPER: the height-adjust block's inboard face is x -607.8 and
-    # this frame's own is -601.6, so 6.2 mm is the whole budget and 5.6 leaves 0.6 of it.
-    # The BOSS gets 13 beads because the hold point is at y +36.9, past that block's +33.2.
-    # AND THE FOOT IS MEASURED, NOT CHOSEN: this board's bottom edge stops 9.35 mm above the
-    # floor, so that is how far the legs reach. Read from the same two numbers the assembly
-    # uses -- the board's own edge through stand_pt, and motor_bank.FLOOR_TOP -- so the day
-    # either moves, the legs move with it instead of hanging in air.
-    from . import motor_bank as _MB
-    _pi_edge_z = stand_pt(x1, 0.0, TRAY_Z1 + POST_H)[2]
-    # ⚠ AND ONE BEAD PAST THE FLOOR TOP, NOT ONTO IT. A leg that ends exactly on the slab
-    # meets it in a zero-thickness contact, and this project has already watched an OCCT fuse
-    # return one valid solid with material missing. An 0.8 mm overlap is a fuse; a touch is a
-    # coin toss, and the chassis's own one-solid check is what would pay for it.
-    _pi_foot = _pi_edge_z - _MB.FLOOR_TOP + D.BEAD
-    assert 2.0 < _pi_foot < 30.0, (
-        "the Pi's cradle foot came out %.2f mm: its bottom edge is z %.2f and the chassis "
-        "floor top is %.2f. Something moved and the legs would %s."
-        % (_pi_foot, _pi_edge_z, _MB.FLOOR_TOP,
-           "hang in air" if _pi_foot > 30 else "drive into the floor"))
-    cr = _frame(pw, pl, (phx, phy), slide_in_x=True, harness_w=HARNESS_W,
-                root_d=7 * D.BEAD, boss_d=13 * D.BEAD, foot=_pi_foot)
-    cr = cr.cut(_cyl_col(phx, phy, M4_BUTTON_HEAD_D + 2 * CLR, POST_H, POST_H + 20.0))
-    cr = _cut_anchor(_M4, cr, (phx, phy, POST_H), (0, 0, -1), _M4.anchor_min_wall)
-    pi = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
-    # ⚠ THE MOTOR'S M4 PASSES THROUGH *THIS* FRAME, AND THAT IS THE WHOLE ANSWER TO A BUG
-    # THAT SURVIVED FIVE ATTEMPTED FIXES. Its boss stands beside the motor board's -Y edge
-    # at y -44.0; the PI's cradle wall stands at y -44.28 (the Pi's own edge -46.18 plus
-    # CLR + WALL). So the motor's insert was buried in the PI's cradle, not in its own --
-    # which is why cutting the motor's frame at its own hold point did nothing, in either
-    # z direction, while a head cut on the same frame did help: the two fasteners were
-    # never in the same solid. Measured: insert 30.4 mm3, screw 47.6, and the overlap's
-    # far boundary is -44.28 to the millimetre.
-    # The clearance belongs HERE, in the tray frame, where both cradles are already placed
-    # and no local-coordinate reasoning is needed -- the step that went wrong repeatedly.
-    _mtx = (MCTRL_FP[0] + MCTRL_FP[1]) / 2.0 + hx
-    _mty = (MCTRL_FP[2] + MCTRL_FP[3]) / 2.0 + hy
-    # sized on the HEAD, which is the widest thing that passes: at the insert's own
-    # diameter the button head still clipped this wall by 1.8 mm3.
-    pi = pi.cut(_cyl_col(_mtx, _mty, M4_BUTTON_HEAD_D + 2 * CLR,
-                         MCTRL_BOARD_Z - _M4.anchor_min_wall - 2.0,
-                         MCTRL_BOARD_Z + BD_T + 6.0))
+    # ⚠⚠ THE PI'S CRADLE IS GONE, AND IT IS NOT A REGRESSION -- THE PI LEFT THE TRAY
+    # (2026-09-29). What stood here was a tray `_frame` with a root into the 3 mm plate,
+    # columns, and a FOOT computed to reach the chassis floor. Every one of those exists to
+    # hold a board STANDING off a plate. The Pi now lies ON the floor, so there is nothing
+    # for a foot to reach and nothing for a root to root into; the assert that caught this
+    # said so exactly -- "the legs would drive into the floor", foot -25.85.
+    # ⚠ THE FLAT PI'S RETENTION IS A NEW DESIGN AND IT IS NOT BUILT YET. It wants a low
+    # collar standing UP from the floor around the 85 x 56 footprint plus one M4 boss -- not
+    # this frame with its z flipped, which is exactly the "bolt a mapping on the end" that
+    # the orientation rule forbids. Until it exists the Pi is UNRETAINED in the model, and
+    # that is stated here rather than faked with a shape that would render convincingly.
+    # ⚠ AND ONE LONG-RUNNING BUG DIES WITH IT. The motor's M4 used to bury itself in the
+    # PI's cradle wall at y -44.28 -- the defect that survived five attempted fixes, because
+    # the two fasteners were never in the same solid. With no Pi cradle in the bay there is
+    # nothing for it to bury itself in, so the `_mtx`/`_mty` clearance cut that compensated
+    # for it is gone too.
     if not standing:
-        return mc.union(pi)
-    pi = stand(pi)
-    out = stand(mc).union(pi)
+        return mc
+    out = stand(mc)
     # ⚠ NOTHING MAY LEAN INTO A BOARD'S COMPONENTS (user, 2026-09-29: "on the +y side of
     # the pi the retention is clipping into the pi's components"). They were right, and
     # NOTHING IN THE PROJECT COULD SEE IT: cradle-to-board contact is a designed contact,
@@ -737,8 +699,8 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # ⚠ The cut is EXACT, so the cradle and the board now TOUCH rather than interfere. The
     # boards are held by their M4 -- head lapping the edge, clamping to the boss -- plus
     # the single install direction; the lean adds what it can where the envelope allows.
-    for _b in (pi5(), motor_ctrl()):
-        out = out.cut(_b)
+    # (pi5 is no longer in this solid's way -- it is on the floor, not in the bay.)
+    out = out.cut(motor_ctrl())
     return out
 
 
@@ -820,26 +782,16 @@ def board_screws():
     # the cradle boss. The seat plane is therefore the board top, exactly as it is for the
     # two boards above, and the assert at the top of this function covers it unchanged.
     from cadkit.pcb import pcb_hold_xy
-    _px0, _px1, _py0, _py1 = PI_FP
-    # ⚠ THE -X EDGE, WHICH STANDS AS THE BAY'S +Z FACE (user, 2026-09-29: the screw
-    # "doesn't make sense, it's clipping into a large block on the board... I suggest
-    # moving it to the +z side"). It was "+y", which put the boss 7.1 mm past the Pi's
-    # +Y edge and INTO the gap to the motor board -- the gap existed FOR it, and the
-    # comment above _MCTRL_CY spends 8.1 mm on exactly that ("Spend the gap, not the
-    # unknown"). Taking the boss off that edge is what pays for the +3.82 slide: the
-    # Pi cannot move +Y while its own fastener occupies the space it would move into.
-    # ⚠ THE UNDERSIDE, NOT THE +Z FACE, AND THE DECK IS WHY. stand() maps tray -X to
-    # world +Z, so "-x" is the +Z side the user pointed at -- but the button head lands
-    # 0.3 mm proud of z 0 and takes 1.3 mm3 out of top_plate_5, identically at every
-    # position along that edge: the deck covers it end to end. "+x" is the board's
-    # underside, where the cradle boss already is, and it is CLEAR at every hold.
-    _phx, _phy = pcb_hold_xy(_px1 - _px0, _py1 - _py0, PI_HOLD[0],
-                             hold_at=PI_HOLD[1], clr=CRADLE_CLR, spec=_M4)
-    _pxy = (_phx + (_px0 + _px1) / 2.0, _phy + (_py0 + _py1) / 2.0)
-    out.append(("board_insert_2",
-                stand(seated_insert(_M4, (_pxy[0], _pxy[1], BOARD_Z), (0, 0, -1)))))
-    out.append(("board_screw_2", stand(m4_button_screw(L).translate(
-        (_pxy[0], _pxy[1], BOARD_Z + _PCB_T + M4_BUTTON_HEAD_H)))))
+    # ⚠⚠ THE PI'S M4 IS GONE WITH ITS CRADLE (2026-09-29). It threaded into a boss on the
+    # tray frame that no longer exists -- the Pi lies on the chassis floor now, so there is
+    # nothing at that hold point to thread into. Drawing the screw anyway would put a
+    # fastener in the render with no boss behind it, which is the exact fault this project
+    # already found once and named: "a hole designed for an M4 screw that isn't being used",
+    # a fastening point that cannot be fastened.
+    # ⚠ The flat Pi still needs ONE M4 -- it is a purchased board whose own holes are too
+    # small, so the head has to lap an edge exactly as before -- but its position belongs to
+    # the floor retention that has not been designed yet, and inventing one here would just
+    # have to be re-searched against whatever collar that turns out to be.
     return out
 
 
