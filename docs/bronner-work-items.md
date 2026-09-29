@@ -2152,3 +2152,46 @@ option 1's re-route is spent.
 Option 2 is parked on a 6.15 mm chassis question. The user's instinct stands even though
 the pose does not -- but the only Pi-side pose that helps is blocked by a top-level datum,
 so the compromise has to land on the motor board after all, which is option 1.
+
+### OPTICAL'S "0 VIOLATIONS" IS CORRECT -- but raw kicad-cli says 35, and item 1 never said so
+
+Ran `kicad-cli pcb drc --severity-error --severity-warning` on elec/out/optical.kicad_pcb
+(2026-09-29). It reports **35 violations, 0 unconnected pads, 0 footprint errors**. Item 1
+says "0 unconnected / 0 violations" and both statements are true of different questions --
+item 1 means UNDECLARED violations, which is the project's own standard. Recording the raw
+number here because I read the 35 as a defect and spent a pass on it, and the next reader
+who runs kicad-cli directly will do the same.
+
+        21  courtyards_overlap   ERRORS   -- 20 D<k> vs PD<k>A/PD<k>B, 1 TP8 vs R30
+         5  silk_overlap         warning
+         5  silk_over_copper     warning
+         4  track_dangling       warning  (Local override -- the board setup downgrades it)
+
+**ALL 21 COURTYARD ERRORS ARE DECLARED** in `netcheck.optical_declared`, which finish.py
+passes in as `declared` for any stem containing "optical":
+  * the 20 D/PD pairs are the sensing cell -- an IR emitter between its own two detectors,
+    bodies abutting by 0.035, courtyards overlapping 0.320, copper clear by 0.475.
+  * TP8 vs R30 is named as an explicit PAIR (netcheck.py:138): TP8 is a bare BOOT0 bring-up
+    pad with no paste and no part, so its courtyard reserves room for a body that will never
+    exist, and R30 is the BOOT0 pull-down, which is WHY it is adjacent. Copper clears 0.492
+    over the 0.127 rule.
+⚠ I MISREAD THIS AS A padsite.py BUG -- "two post-route placement passes that cannot see each
+other" -- and it is not. R30 is not in post_route_refs (that is TP6..TP11 + Rs11..Rs51), the
+adjacency is intentional, and the declaration is deliberately narrow: named as a pair rather
+than by footprint type, "so a genuine courtyard overlap involving a test pad should still
+fail". Check the declarations before calling a DRC line a defect.
+
+**THE ONLY UNINVESTIGATED RESIDUE IS THE 4 track_dangling**, and they are not equal:
+
+        [I2C2_SCL]    B.Cu  @(107.9200, 38.7313)   length 80.2687 mm
+        [SAI_SD3]     B.Cu  @(120.1000, 82.6350)   length 36.3650 mm
+        [SAI_FS]      F.Cu  @(93.4508, 127.3150)   length  1.2500 mm
+        [PHY_VDD33]   F.Cu  @(116.3076, 176.0566)  length  0.0132 mm   <- DEGENERATE
+
+0 unconnected means none of these is an OPEN -- a dangling end is a stub past a junction,
+an antenna rather than a break. But **PHY_VDD33 at 0.0132 mm is a degenerate segment and
+route.py has a `drop_degenerate` pass whose whole job is removing those**; one survived it.
+That is a small, self-contained thing to look at and the only item here that is plainly
+wrong rather than merely untidy. SAI_FS 1.25 mm is the known post-route repair stub.
+⚠ padsite.py IS GONE from scratchpad/ -- so any re-search of a bring-up pad needs it
+rebuilt first. Noting it because item 1 cites it as the reusable mechanism.
