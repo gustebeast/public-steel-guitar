@@ -205,6 +205,49 @@ chassis_segments = list(chassis_segments)
 # board is without a circular import. The assembly knows both, so it does it (see
 # electronics.mctrl_floor_ports).
 from . import electronics as _EL_ports
+# ⚠⚠ THE PI'S AND THE MOTOR BOARD'S CRADLES BELONG TO THE CHASSIS NOW, NOT TO THE ENDPLATE
+# (user, 2026-09-28: "we need to be able to remove the endplate while leaving the pi and
+# motor board in place"). Fused here for the same reason the floor ports are cut here -- the
+# chassis cannot ask electronics where those boards are without a circular import -- and by
+# the same route as wiring.tee_cradles below.
+#
+# ⚠ AND IT IS A DEFECT FIX AS WELL AS A FEATURE. Fused to the ENDPLATE, the motor frame's
+# side walls ran down inside the chassis floor: 2717 mm3 of two printed parts occupying the
+# same space, which check_overlaps never reported because {keyhead_endplate, chassis} is
+# allow-listed wholesale for the endplate's own seating and hold-down screw. Fused to the
+# CHASSIS the same walls are a root instead of an interference, and they are a better root
+# than the endplate ever was: the motor board passes through the floor, so the slab grips it
+# either side of its own port.
+#
+# BEFORE the port cuts, deliberately: the frames' walls sit outside the ports (walls at
+# y -114.9 and -49.1 against a port spanning -113..-51), so cutting afterwards cannot take
+# anything load-bearing away, and it guarantees the ports stay open whatever the frames do.
+_kh_cr = _EL_ports.keyhead_cradles()
+_kh_bb = _kh_cr.val().BoundingBox()
+_kh_hit = 0
+for _csi, _cs in enumerate(chassis_segments):
+    _sb = _cs.val().BoundingBox()
+    if _sb.xmin <= _kh_bb.xmin and _kh_bb.xmax <= _sb.xmax + 1e-6:
+        chassis_segments[_csi] = _cs.union(_kh_cr)
+        _kh_hit += 1
+        break
+assert _kh_hit == 1, (
+    "the board cradles (x %.1f..%.1f) did not fall inside exactly one chassis segment -- "
+    "they landed in %d. A cradle that straddles a print split is two halves of a mount."
+    % (_kh_bb.xmin, _kh_bb.xmax, _kh_hit))
+# ⚠ AND ASK WHETHER THEY ATTACHED, because nothing else will. chassis._largest() bins the
+# non-largest solids in a segment, but it runs at IMPORT -- before this union -- so a cradle
+# that touches nothing survives here as a second solid and prints as a loose part. That is the
+# exact failure keyhead_endplate's own assert was written for when it carried them: "the motor
+# controller's came out a free-floating 18,121 mm3 lump, which the overlap gate cannot see --
+# two solids that never touch do not interpenetrate". The question moves with the cradles.
+_kh_n = len(chassis_segments[_csi].val().Solids())
+assert _kh_n == 1, (
+    "the chassis segment came out as %d disconnected solids after fusing the board cradles. "
+    "One of them is not touching: the motor frame's side walls should run INTO the floor slab "
+    "(board bottom edge z -80.85 against a floor top of -71.35) and the Pi's two legs should "
+    "reach it with one bead of overlap. Check electronics.keyhead_cradles's root_d/foot "
+    "against motor_bank.FLOOR_TOP." % _kh_n)
 for _mp in _EL_ports.mctrl_floor_ports():
     for _csi in range(len(chassis_segments)):
         chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
