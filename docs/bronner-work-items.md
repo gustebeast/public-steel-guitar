@@ -2075,3 +2075,38 @@ parts' centrelines at the same height only if both parts are the same height cla
 matched pair turns out to need a height offset, the channel can provide it -- one board
 shimmed by the difference -- but that is a geometry consequence to design in, not a
 detail to discover at assembly.
+
+### OPTION 1 IS CHEAPER THAN IT LOOKED: 9.0 mm OF motor_ctrl's PI-FACING EDGE IS EMPTY
+
+Measured from elec/motor_ctrl.py's own BOARD_NOTES["placements"], 82 parts, 2026-09-29:
+
+        BOARD_W, BOARD_L        61.80, 62.00   -> board-local y spans -31.00..31.00
+        lowest  placements      D6, D7 at y -22.00   (the USB ESD clamps)
+        highest placements      C30/C31/R14..R17 at y 28.50
+        occupied span           50.50 of 62.00
+
+        margin below the lowest part      -31.00 to -22.00 =  9.00 mm  EMPTY
+        margin above the highest part      28.50 to 31.00 =   2.50 mm
+
+**AND THE EMPTY 9 mm IS THE END THAT FACES THE PI.** _MCTRL_CY is -10.5, so board-local
+-31.00 maps to world y -41.50 -- the edge 4.68 mm off the Pi's port face. The board is
+carrying 9 mm of bare laminate exactly where the gap has to come from.
+
+**THE CHANGE, and it needs NO re-placement, only a re-centre and a re-route:**
+
+        BOARD_L      62.00 -> 55.00        (-7.00, leaving D6/D7 ~2.0 mm of edge)
+        placements   all y  -3.50          keeps every part where it is vs the +Y edge
+        _MCTRL_CY    -10.5 -> -7.0         holds the +Y edge at 20.50, unchanged
+
+Result: motor_ctrl y **-34.50..20.50**, so the +Y edge does not move (body_adapter still
+clear by its 0.65) and **the Pi gap opens 4.68 -> 11.68**, which takes a right-angle USB-A
+plug. New span -25.50..25.00 inside +-27.50: 2.00 of edge clearance at -Y, 2.50 at +Y.
+
+⚠ COSTS, both real: the outline change is a DSN change so **ROUTE_REUSE_SES=1 is invalid**
+and this is a full ~30-minute route; and motor_ctrl is at 0 unconnected / 0 violations
+today, which a 7 mm narrower board may not hold. Re-route BEFORE touching _MCTRL_CY so a
+routing failure is separable from a placement failure.
+⚠ The 82 placements are written literally in the file (the note at elec/motor_ctrl.py:738
+records the last such shift: "BOARD_W drops 6.20 and all 64 placements moved +3.10 in x").
+A y -3.50 on all 82 is a mechanical edit -- do it programmatically and verify by reading
+BOARD_NOTES back, not by trusting the edit script.
