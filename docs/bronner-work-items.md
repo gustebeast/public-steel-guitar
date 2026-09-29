@@ -2472,3 +2472,65 @@ CURRENT hold, so any moved screw reads a large FALSE conflict against a bore sti
 place. The sweep screens against keyhead_endplate, pi5, pi_cap, motor_ctrl and the
 nut_height_*/nut_slide_*/body_adapter_*/top_plate_* families; the winner then gets a real gate
 run, which is the only thing that can price chassis_2.
+
+### 5q. CHROME *CAN* SEARCH LCSC'S UI -- and it CONFIRMS the no-coplanar-mate verdict (user)
+
+The user asked, against WORKLIST's note that the web UI "would not render results for these
+queries at all": can Chrome search it? **Yes** -- the extension drives a real browser, so the
+UI renders and its PARAMETRIC FACETS work, which is more than the JSON API gave us. The old
+note was about particular queries (and about curl), not the UI in general. Worth keeping:
+the facet panel is the fastest way to enumerate a family's attribute values.
+
+**THE MALE IS CONFIRMED FROM ITS PRODUCT PAGE** (C32713265, HX PZ2.54-1x6P WZ):
+
+        Insulation Height 2.5 mm    Length of Mating Pin 6 mm
+        Length of End Connection Pin 3 mm    3 A, gold, 1 kV, 16,380 in stock
+
+**AND THE DECISIVE ENUMERATION.** Filtering the hanxia FH254 family by
+Mounting Type = Right Angle collapses the Insulation Height facet to exactly TWO values:
+
+        5.7 mm   and   8.5 mm          (5.0 and 5.9 are the THROUGH-HOLE parts)
+
+So an H5.7 right-angle female DOES exist, which WORKLIST never mentioned -- and it is
+**FFH25402-S08B1004K6K (C2833721), 1x8P, "Not available now / Not recommended for new"**.
+Zero stock, deprecated. Every right-angle female that is actually BUYABLE at 2.54 is H8.5.
+⚠ AND IT WOULD NOT HAVE MATED ANYWAY: the male is H2.5, so even H5.7 is 3.2 mm out. The
+verdict is unchanged and now better supported -- I can name the low part and say why it is
+not an answer, instead of asserting none exists.
+
+**STILL GENUINELY OPEN, and Chrome did not close it:** "Insulation Height" is the plastic
+BODY height, not the contact-axis height, and the axis is what decides mating. The product
+page does not carry it for either half. board_geom's 8.5-for-both is still A CLAIM TO CHECK,
+and closing it needs the mechanical drawing, not a catalogue field.
+
+### ⚠⚠ THE M4: +x hold -24's 0.00 WAS A FALSE CLEAN, AND THE SWEEP'S EXCLUSION FOUND IT
+
+Sweep of 4 edges x 9 holds against 56 hold-independent obstacles said **+x hold -24.0 =
+0.00 mm3**, the only zero in 36 positions -- and the `+x` EDGE is what board_screws's stale
+comment recommended. Tested it against chassis_2, which the sweep deliberately excluded:
+
+        +x  -24.0   screw world z -87.15..-79.55   chassis_2  22.98 mm3   (FLOOR_TOP -71.35)
+        +x   22.0   screw world z -87.15..-79.55   chassis_2  12.45 mm3
+        -y   17.0   screw world z -70.75..-63.15   chassis_2   0.00 mm3   <- CURRENT
+        -y   22.0   screw world z -75.75..-68.15   chassis_2 175.73 mm3
+
+**+x puts the screw UNDER THE FLOOR** -- z -87.15 against a FLOOR_TOP of -71.35 -- which is
+exactly the recorded historical failure "+x (inside the floor slab)". The sweep could not see
+it because chassis_2 carries the floor AND the cradle bore, and I excluded it to avoid the
+false conflict from the bore. **The exclusion that made the sweep meaningful is the same one
+that made its winner wrong**; the follow-up against chassis_2 is not optional.
+
+**AND THE CURRENT POSITION IS THE ONLY ONE CLEAN AGAINST chassis_2** (-y 17.0, 0.00) -- for
+the circular reason that the bore is cut there. So:
+
+**REPOSITIONING IS DEAD. Every alternative edge is worse once the floor and chassis count,
+and the -y edge's own neighbours (22.0 -> 175.73) are worse still.** The fix is the one the
+measurement pointed at two sections ago: SHORTEN the fastener so it stops short of the
+height-adjust block's face at x -607.80. The screw spans x -611.50..-599.30 and needs its
+-X end at >= -607.40 (face + a bead), i.e. **-4.10 mm**, L 10.0 -> ~5.9; M4x6 is a stock
+size and leaves 4.3 mm of engagement in a 5.0 mm insert.
+⚠ THE INSERT MOVES TOO, and it is the harder half: board_insert_0 spans x -608.10..-603.10,
+only 0.30 past the face, and its depth is set by the SEAT, not the screw. Seat and cradle
+bore are defined in two places (seated_insert here, _cut_anchor in keyhead_cradles) -- the
+exact dual-definition hazard MCTRL_HOLD/PI_HOLD were created to kill. Move them together or
+this comes back as four chassis_2 grazes.
