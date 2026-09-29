@@ -22,6 +22,7 @@ IPC API (`kicad-python`); nothing else in elec/ imports pcbnew.
 from __future__ import annotations
 
 import json
+import math
 import os
 import shutil
 import re
@@ -1378,6 +1379,131 @@ def drop_degenerate(board, floor_mm=0.005):
     for t in doomed:
         board.Remove(t)
     return len(doomed)
+
+
+def _plane_orphans(board, net):
+    """Tracks on `net` that the connectivity graph does NOT place in the plane's component.
+
+    ⚠ KEY ON m_Uuid, NEVER id(). SWIG hands back a FRESH Python wrapper on every call, so
+    `id(item)` never matches between two traversals: keying on it reported 52 loose GND
+    items on led_strip where DRC found 1. The UUID is the board's own identity and agrees
+    with DRC exactly (2 loose tracks for its 1 unconnected item).
+    """
+    zs = [z for z in board.Zones() if z.GetNetname() == net]
+    if not zs:
+        return [], []
+    conn = board.GetConnectivity()
+    linked = set()
+    for z in zs:
+        for it in conn.GetConnectedItems(z):
+            try:
+                linked.add(it.m_Uuid.AsString())
+            except Exception:
+                pass
+    loose = [t for t in board.GetTracks()
+             if t.GetClass() == "PCB_TRACK" and t.GetNetname() == net
+             and t.m_Uuid.AsString() not in linked]
+    return loose, zs
+
+
+def _path_clear(board, a, z, net, layer, w, step_mm=0.1):
+    """Sample the straight run a->z and refuse it if any sample sits in ANOTHER net's copper.
+
+    ⚠ THE STEP THE FIRST VERSION LACKED, AND IT SHORTED THE BOARD. Without it the repair
+    took led_strip to 0 unconnected AND tracks_crossing 0 -> 1 -- two nets crossing, which
+    is strictly worse than the floating stub it removed. A stub that floats is a missing
+    connection; a crossing is a short, and only one of those is caught downstream.
+    """
+    n = max(2, int(math.hypot(z.x - a.x, z.y - a.y) / pcbnew.FromMM(step_mm)))
+    others = [o for o in board.GetTracks()
+              if o.GetNetname() != net and o.GetLayer() == layer]
+    pads = [pd for m in board.GetFootprints() for pd in m.Pads()
+            if pd.GetNetname() != net]
+    for i in range(n + 1):
+        p = pcbnew.VECTOR2I(int(a.x + (z.x - a.x) * i / n),
+                            int(a.y + (z.y - a.y) * i / n))
+        if any(o.HitTest(p, int(w)) for o in others):
+            return False
+        if any(pd.HitTest(p) for pd in pads):
+            return False
+    return True
+
+
+def _plane_points(pos, zs, probe_mm=12.0, step_mm=0.1, limit=6):
+    """Plane positions within reach of `pos`, NEAREST FIRST so a blocked path tries the next."""
+    out = []
+    for i in range(1, int(probe_mm / step_mm) + 1):
+        r = i * step_mm
+        for a in range(0, 360, 5):
+            p = pcbnew.VECTOR2I(int(pos.x + r * 1e6 * math.cos(math.radians(a))),
+                                int(pos.y + r * 1e6 * math.sin(math.radians(a))))
+            if any(z.GetFilledPolysList(z.GetLayer()).Collide(p) for z in zs):
+                out.append((p, r))
+                if len(out) >= limit:
+                    return out
+    return out
+
+
+def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
+    """Reconnect copper the fill stranded from its own plane, and REFILL.
+
+    The stitcher runs ~140 lines before ZONE_FILLER, so it cannot know where the plane
+    will end up (see _check_stitches_landed) -- it can only warn. This runs AFTER the
+    fill, when the pour is a fact, and finishes the job: for each stranded track, walk
+    outward for real plane copper and lay one short segment to it, but ONLY along a path
+    that crosses nothing. A track with no clear path is LEFT ALONE on purpose.
+
+    Measured on led_strip (the only board of the eight with anything to repair): 1
+    unconnected -> 0, 0 errors, one track laid 1.35 mm and one declined for lack of a
+    clear path. The other seven are untouched -- none has a stranded cluster.
+    """
+    if not notes.get("zones"):
+        return 0
+    board.BuildConnectivity()
+    laid = 0
+    for net in sorted({z.GetNetname() for z in board.Zones()}):
+        loose, zs = _plane_orphans(board, net)
+        if not loose:
+            continue
+        if len(loose) > max_items:
+            print("  ⚠ %d %s track(s) stranded from the plane -- too many to be stitch "
+                  "fallout, NOT repairing (look at the pour, not the tracks)"
+                  % (len(loose), net))
+            continue
+        for t in loose:
+            w = t.GetWidth()
+            done = False
+            for src in (t.GetStart(), t.GetEnd()):
+                for tgt, r in _plane_points(src, zs, probe_mm):
+                    if not _path_clear(board, src, tgt, net, t.GetLayer(), w):
+                        continue
+                    dx, dy = tgt.x - src.x, tgt.y - src.y
+                    n = math.hypot(dx, dy) or 1.0
+                    nt = pcbnew.PCB_TRACK(board)
+                    nt.SetStart(src)
+                    nt.SetEnd(pcbnew.VECTOR2I(int(tgt.x + dx / n * w),
+                                              int(tgt.y + dy / n * w)))
+                    nt.SetWidth(w)
+                    nt.SetLayer(t.GetLayer())
+                    nt.SetNet(t.GetNet())
+                    board.Add(nt)
+                    laid += 1
+                    done = True
+                    print("      reconnected %s at %.2f,%.2f to the plane (%.2f mm)"
+                          % (net, pcbnew.ToMM(src.x), pcbnew.ToMM(src.y),
+                             r + pcbnew.ToMM(w)))
+                    break
+                if done:
+                    break
+            if not done:
+                print("      ⚠ %s at %.2f,%.2f is stranded from the plane and NO clear "
+                      "path reaches it -- left alone (a short is worse). Move the part "
+                      "or except the pad." % (net, pcbnew.ToMM(t.GetStart().x),
+                                              pcbnew.ToMM(t.GetStart().y)))
+    if laid:
+        board.BuildConnectivity()
+        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    return laid
 
 
 def _check_stitches_landed(board, notes):

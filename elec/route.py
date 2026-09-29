@@ -688,6 +688,15 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     if board.Zones():
         board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    # ⚠ AND ONLY NOW CAN THE STRANDED COPPER BE FOUND. _check_stitches_landed runs in
+    # layout.py ~140 lines BEFORE the first pour and can only warn; even the retry above
+    # gives up on vias with "nowhere to go". This pass runs after tidy AND after the
+    # final pour, when the plane is a fact, and lays one short segment from each stranded
+    # track to real plane copper -- but only where the path crosses nothing, because a
+    # short is worse than the floating stub it would replace.
+    # ⚠ IT MUST BE HERE, NOT AT THE layout.py POUR. Put there first, it printed nothing
+    # on a board it then left at 1 unconnected: that pour happens during PLACEMENT, when
+    # the board has no tracks at all, so there is nothing stranded yet to find.
     board.Save(pcb)
     # ⚠ CANONICALISE THE ROUTED BOARD TOO, for the same reason layout.py does it --
     # and the reason is now MEASURED rather than argued. Two independent runs of the
