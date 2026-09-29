@@ -2783,3 +2783,33 @@ QUESTION WITH A DATUM. Put a box where the part would go and intersect it.** Thr
 derivations gave three wrong answers in three different ways; the first collision test
 settled it in one run. The datum answers were all *plausible* -- that is what made them
 expensive.
+
+**CONFIRMED CLEAN AT THE SHIFTED POSITION -- 0 parts, 0.00 mm3:**
+
+        flat Pi   x -596.00..-511.00   y -130.00..-74.00   z -71.35..-55.75
+
+Not "small", not "acceptable" -- **zero**, against every part in the assembly bar the ones
+that move with the decision and the cables. 2.0 mm of +X off my first guess was the whole
+difference. This is the position to build from.
+
+### ⚠ AND IT INTERACTS WITH THIS SESSION'S OTHER WORK -- read before spending more on either
+
+**FLAT MAY RETIRE THE motor_ctrl SHRINK ENTIRELY.** The shrink (BOARD_L 62.0 -> 55.0,
+_MCTRL_CY -10.5 -> -7.0) exists ONLY to open the Pi's USB gap from 4.68 to 11.68, and it
+cost +3 on the gate (board_insert_0 3.0, the nut_height_9 pair 24.5). If the Pi leaves the
+standing bay, that gap stops existing as a constraint and the motor board could go back to
+62.0 -- which would also retire the M4x6, the height-adjust-block interference and the
+nut_height_9 pair in one move, since all three are consequences of the -Y edge moving +7.00.
+
+**SO DO NOT SPEND MORE ON THE +3 UNTIL FLAT IS DECIDED.** Specifically: do NOT move the
+board +0.8 in X for board_insert_0's 0.30, and do NOT chase the nut_height_9 handover. Both
+may be deleted rather than fixed.
+⚠ WHAT SURVIVES EITHER WAY: `EL.pi_port_pt()` (the Pi's ports are real geometry now, wherever
+the board sits), the M4x6 length finding, and every measurement above.
+⚠ WHAT DOES NOT: `_PORT_APR`, `_board_gap_y`, the cradle's foot and MCTRL_HOLD's rationale
+are all written against a STANDING Pi in a bay with a 4.68 mm gap.
+
+**GATE STATE AT THIS POINT: 112, baseline 109**, check_cable_ends clean at 65. The +3 is
+fully accounted: 3.0 is a cadkit spec/BOM disagreement (insert_l 5.0 vs a 4.7 mm part), and
+24.5 is in the height-adjust prism at x -616..-611, 3.1 mm beyond anything this scope builds.
+NOT SUBMITTING at 112 -- the branch is mid-decision and the decision may delete the debt.
