@@ -618,3 +618,35 @@ REMAINING SWAP DEBT (12 vs pre-swap 114): the 24 V feed to the motor board, 8 pa
 scratchpad/segtest.py makes it mechanical; chassis_2 <-> pi_cap 291.79 mm3 (the cap 0.37 mm past
 the board's -Y edge into the wall); and three grazes (body_adapter_0 2.2, wire_link 2.8,
 board_screw_0 0.72).
+
+### The 24 V feed: the EAST approach to motor_ctrl J3 is dead (2026-09-29)
+
+8 pairs: wire_pwr_{hot,gnd}_{11,12} against chassis_2 and motor_0. All four wires hit in the
+SAME place -- x -585.6..-576.2, y 4.17..10.97, z -63.45..-29.05 -- which is the final approach
+to J3, NOT the trough transit. `_feed2` already uses the trough properly (down to CHAN_Y, along
+the rail at LANE_PWR2, out on a fly column at `_FEED2_X`), and that part is still fine.
+
+⚠ ANOTHER STALE PREMISE, THE THIRD TONIGHT. `_FEED2_X = BAY_X + 4.5` carries the comment "there
+is no motor at x -582 (string 1's sits far +Y), so the column is free". True when J3 sat at
+y ~-100. The swap put J3 at (-591.70, 5.07, -61.55) -- inside the motor bank -- so the column
+now descends through motor 0.
+
+WHAT THE SWEEPS RULE OUT (search the site, do not choose it):
+  * THE WHOLE X AXIS, at the connector's own y. A vertical column at y 10.07:
+        x -600..-590   motor_ctrl (the board itself)
+        x -588..-582   chassis_2  (its cradle)
+        x -586..-558   motor_0    -- 28 mm of motor
+    There is no clear column at any x. This is NOT fixable by retuning _FEED2_X.
+  * x -584 AT EVERY Y from -46 to +23: chassis_2 blocks all of it. That x is inside chassis.
+
+⚠ AND ONE SWEEP WAS A STRAWMAN -- do not repeat it. Testing "the x-leg from -560 to the board
+face at y 10.07" was blocked at every z from -72 to -43, but that leg is 32 mm long and crosses
+motor 0's whole span by construction. The real cable does not start at x -560; it leaves the
+trough. A probe has to model the route the cable would actually take.
+
+THE HYPOTHESIS FOR THE NEXT ATTEMPT, not yet tested: come through the GAP BETWEEN THE TWO
+BOARDS. The Pi ends at y -50 and the motor board starts at y -42, and those 8 mm are the Pi's
+M4 boss gap -- the one piece of clear y in this region. Drop there at x just east of the board
+face (~-589, NOT -584), then run +Y along the board's own face to J3 at y 5.07. Test it with
+scratchpad/segtest.py on the real polyline, segment by segment, BEFORE editing -- that is what
+fixed the 5 V cable on the third try after two attempts that made the gate worse.
