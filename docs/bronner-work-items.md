@@ -2395,3 +2395,46 @@ choice of edge, and that edge is the one that moved 7 mm.
 **RECOMMENDATION: option 3 first**, because it is inside my scope, it is a length not a
 position, and 3.70 mm of over-reach against a 12.20 mm screw is a stock-size step. Then
 re-measure the chassis_2 pair, which may need the cradle trimmed rather than anything moved.
+
+### ⚠⚠ THE OBSTACLE IS THE HEIGHT-ADJUST BLOCK, AND A STALE COMMENT LICENSED THE DEPTH
+
+The 46.23 mm3 is not "the endplate" generically. src/electronics.py's own comment above the
+motor hold says, verbatim:
+
+    "⚠ ROOTED IN THE CHASSIS FLOOR, 13 beads deep. Nothing of the endplate lies in this
+     board's y band (-113..-51 against the height-adjust block's -38.91..+33.2), so the
+     depth here is free."
+
+**THAT y BAND IS THE PRE-Y-SWAP POSITION AND THE COMMENT WAS NEVER UPDATED.** The motor board
+has not been at y -113..-51 since the swap; it was -41.50..20.50 and is now -34.50..20.50 --
+squarely INSIDE the block's -38.91..+33.2. And -38.91 is exactly the lower bound of the
+overlap zone I measured (y -38.91..-35.00), so the obstacle identifies itself.
+
+        height-adjust block   inboard face x -607.80, y -38.91..+33.2
+        board_screw_0         x -611.50..-599.30   reaches 3.70 mm PAST that face
+        board_insert_0        x -608.10..-603.10   reaches 0.30 mm past it
+
+**AND THE SAME COMMENT BLOCK ALREADY STATED THE RULE THAT NOW BREAKS:** "Beside the -Y edge
+the boss sits at y ~-44, OUTSIDE the block, and the board stays where it is." That was the
+whole reason the -y hold was chosen over the five that failed. At the old -41.50 edge the
+screw sat at y ~-44..-41, clear of -38.91 by ~2 mm. The shrink moved that edge +7.00 and the
+screw to a centre of ~-37.0 -- **the far side of the block's face**. The hold did not become
+wrong; the condition it was selected under stopped holding.
+
+**SO THE FIX IS DEPTH IN X, NOT POSITION IN Y, and option 3 is confirmed as the right one.**
+The screw is driven world -X (`_cut_anchor(..., (0,0,-1), ...)` in tray z), so shortening it
+retreats it from the block whatever its y. It needs >= 3.70 + clearance off the screw and
+>= 0.30 off the insert seat. The "13 beads deep / depth is free" licence is void: depth here
+is now paid for against the block, and the honest budget is x -607.80 minus a bead.
+⚠ THE COMMENT ALSO DISAGREES WITH THE CODE: it says 13 beads while `_frame(...)` passes
+`root_d=4 * D.BEAD`. Two stale claims in one block. Fix the prose with the geometry.
+⚠ AND NOTE WHAT THIS SAYS ABOUT THE FIVE PREVIOUS M4 FAILURES: they were rejected for
+reasons that referenced this same block at the OLD board position. None of those verdicts is
+safe to reuse, in either direction -- "-x into the endplate 26-49 mm3" may now be fine, and
+"-y beside the edge" has just stopped being.
+
+**NEXT ACTION:** find where board_screw_0's length comes from (it is 12.20 mm in x, drawn off
+the M4 spec via the cradle's anchor), shorten so its -X end lands at >= -607.80 + D.BEAD,
+re-measure the insert seat against `_M4.anchor_min_wall` before believing the engagement is
+still legal, then re-gate. Target is <= 109. The two chassis_2 <-> nut_height_9 pairs
+(24.5 mm3) are still separate and may need the cradle trimmed instead.
