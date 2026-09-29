@@ -2580,3 +2580,38 @@ world. Enumerating ONE MANUFACTURER'S family is not enumerating the category.
 **SO THE DIRECT BOARD-TO-BOARD MATE IS BACK ON THE TABLE** -- coplanar, right-angle, no
 wire, no consignment, ~$0.90 a joint. That is the thing the user asked for in the first
 place and which 5a-5q had closed three separate times.
+
+### 5s. THE BEST-STOCKED MATCHED RIGHT-ANGLE PAIR IS 5P, NOT 4P (2026-09-29)
+
+User: "are there any other 4P options that are more well stocked?" Yes -- and the answer is
+to stop insisting on exactly 4P. **A 5P connector with four ways used is still a four-way
+joint**, and the 5P pair is stocked an order of magnitude better than the 4P one.
+
+        pin count   half     LCSC        part                  insul    plating  stock   $
+        4P          female   C6687085    SSW-104-02-T-S-RA      2.41     tin        53   0.44
+        4P          male     C7402910    TSW-104-08-T-S-RA      3.02     tin         1   0.39   <- binding
+        ----
+        5P          female   C6687110    SSW-105-02-G-S-RA      2.41     GOLD       92   1.68
+        5P          male     C6561632    TSW-105-08-F-S-RA      3.02     tin       122   0.77
+
+**5P WINS ON EVERY AXIS THAT MATTERS.** 92/122 against 53/1 -- both halves three-figure,
+which is the first time in this entire investigation that has been true. The female is GOLD
+rather than tin at 5P. 4.7 A on the female, mating pin 5.84 mm, and the same Samtec TSW/SSW
+series so they are designed to mate. Both were "E" (Extended) on jlcparts, so **assembly
+without consignment**. Cost is $2.45 a joint against the 4P pair's $0.83.
+⚠ THE 4P MALE'S "1 IN STOCK" IS THE WHOLE REASON TO PREFER 5P. 1,749 sit with other
+suppliers at 9-14 days, which is a lead time rather than a wall, but 5m's rule says the
+binding half decides, and 1 is the binding half.
+
+**AND A 5TH WAY IS NOT WASTE.** GND / V+ / SCK / SDI uses four; the spare can be a second
+GND beside the data pair, which is the pin you would ask for anyway on a run carrying a
+clock next to a supply.
+
+**ALSO WORTH KEEPING: SSQ-108-02-T-S-RA (C7019030), 1x8P right angle, 2.41 mm, 6.3 A, 100
+in stock.** Higher current and eight ways if the joint ever needs doubling back up -- its
+male partner (TSW-108-08-x-S-RA) is unchecked.
+
+⚠⚠ **THE GENERAL LESSON, and it is the second scope error in this thread.** 5p failed by
+enumerating ONE MANUFACTURER'S family; this one would have failed by enumerating ONE PIN
+COUNT. The joint needs FOUR CONDUCTORS, not a part labelled 4P -- and the part labelled 5P
+is the better buy. Search the requirement, not the label.
