@@ -2813,3 +2813,43 @@ are all written against a STANDING Pi in a bay with a 4.68 mm gap.
 fully accounted: 3.0 is a cadkit spec/BOM disagreement (insert_l 5.0 vs a 4.7 mm part), and
 24.5 is in the height-adjust prism at x -616..-611, 3.1 mm beyond anything this scope builds.
 NOT SUBMITTING at 112 -- the branch is mid-decision and the decision may delete the debt.
+
+### THE FLAT RE-AUTHOR: consumer survey before touching anything
+
+Everything that would have to move, found by grep rather than by memory:
+
+**src/electronics.py**
+  * `PI_FP` (line 109) + the 56x85 assert at 262 -- the footprint itself, currently TRAY coords
+  * `pi5()` (884), `pi_cap()` (1178), `pi_cap_pin()` (1204)
+  * `pi_port_pt()` / `PI_PORT_Z` / `PI_PORTS` (872-879) -- built THIS session, written as tray
+    coords against a standing board's +Y end
+  * `PI_HDR_X` / `PI_HDR_Y` (963-964) -- the 40-pin header centroid, off PI_FP
+  * `keyhead_cradles()` (661) and `board_screws()` (809) -- the Pi's cradle and its M4
+  * line 840's `for fp, bz in ((PI_FP, BOARD_Z), (MCTRL_FP, BOARD_Z))`
+**src/wiring.py**
+  * `_board_gap_y()` (116) -- the whole notion of a gap BETWEEN two standing boards
+  * `_PORT_APR` (1049), the wire_usb/wire_link legs, and every `pi_cap_pin` lead (1096, 1107)
+**src/optical_pickup.py -- ⚠ THE ONE I WOULD HAVE MISSED**
+  * `pi_target()` (3289) and `pi_column_x()` (3308) derive from `EL.pi5().val().BoundingBox()`
+
+**⚠⚠ THE OPTICAL COUPLING IS THE DANGEROUS KIND: IT WILL NOT BREAK THE BUILD.** Both are
+DERIVED from the bbox, so they follow the Pi automatically and keep returning numbers. But
+`pi_column_x()` is "the Pi's +X face + 3 cable diameters", and its docstring reasons about
+"string 1's motor 1.6 mm off the Pi" and a run "down at PI_RUN_Z just over the motor top" --
+all true of a STANDING Pi against the endplate. Flat, the +X face moves from -586.00 to
+-511.00 and that column lands at -503.2, deep inside the motor bank. **The optical board's
+USB run would be silently re-routed to a nonsense path that still computes a length.**
+That is the exact failure mode this session keeps hitting: geometry that follows a datum
+while the REASONING that chose the datum quietly stops applying. `usb_run_length()` must be
+re-derived, not just re-run.
+
+**ORDER OF WORK, so the build never sits broken:**
+  1. Confirm the floor SUPPORTS the footprint (a collision test cannot see a hole -- see
+     below; the -X/-Y leg's adapter reaches x -592.46 and memory says there is no chassis
+     floor over a leg).
+  2. Re-author `PI_FP`/`pi5()` in the WORLD frame -- flat is not a tray part any more, so it
+     stops going through `stand()` entirely, the way the output board already does.
+  3. `pi_cap` + `PI_HDR_*` + `pi_port_pt` on top of it.
+  4. Cradle, screw, foot.
+  5. wiring.py leads, then optical's `pi_column_x`/`usb_run_length`.
+Gate at 2, 4 and 5. Do NOT pay down the current +3 first -- step 2 may delete it.
