@@ -366,14 +366,21 @@ def _housing() -> cq.Workplane:
     _top = _lever_envelope().translate((0.0, 0.0, _lift))
     for dx in [j * 2.0 for j in range(1, int(_draw / 2.0) + 2)]:
         _ins = _ins.union(_top.translate((min(dx, _draw), 0.0, 0.0)))
-    # ...AND THE SLIVER OF RIB LEFT ABOVE IT. The strip between the two cartridge pockets
-    # is 2.1 wide; the sweep takes it from below and the lever room takes it from above,
-    # and what was left in between was 2.87 of rib standing on nothing -- a 25.7 mm2 flat
-    # ceiling and a 6 mm2 end face with no material under either. Carrying the cut on up
-    # through that band deletes it. It costs nothing structural: at 2.1 wide the rib is
-    # already the thinnest thing in the part, and over this span it is in three pieces.
-    _rib = (abs(KL.HS_YC) - KL.HS_POCKET_HW) + KL.HS_CLR
-    _ib = _ins.val().BoundingBox()
+    # ...AND IT GETS A ROOF OF ITS OWN. The install stroke is the lever's own section
+    # swept, so its top is the lever's FLAT top, and a flat-topped hole is a ceiling: 7.2
+    # mm of it here, 38.7 mm2, the biggest on this part. helpers.corbel_close will trim
+    # that back to a 45, but only to within one of its courses -- it credits a course
+    # with a whole step of 45 growth at the course's own floor, and this jump happens AT
+    # a floor, so a lip exactly one step wide survives. 0.82 at a bead, 0.43 at half a
+    # bead, and never zero (user, 2026-09-29, twice: "there's an overhang here", "still a
+    # small overhang"). Chasing it with a finer step is chasing a limit.
+    #
+    # A hole in this project is not left flat-topped in the first place -- every pocket
+    # here is a house profile. So the CUTTER gets the gable, drafted up off its own top
+    # face at 45 until it closes to a ridge, and then there is nothing for the closure to
+    # find. It costs no strength: the material it takes is the material that could not
+    # have been printed anyway.
+    _ins = _ins.union(_gable_up(_ins))
     w = w.cut(_ins)
     w = KL.cut_axle_stack(w)       # bearing seats + contact rib + axle way
     w = KL.cut_feel_pockets(w, vplace, HOUS_X1)
@@ -402,9 +409,56 @@ def _housing() -> cq.Workplane:
     # ...AND THE 45 DEG CLOSURE OVER BOTH VOIDS, last, on the finished solid. Same call and
     # same reasons as LKL's (see KL.roof_close); this housing has two of them, the sweep
     # and the install stroke, and the roof that has to be held up spans both.
-    # ...at HALF a bead: this housing's 2.1 mm cartridge rib changes what it supports
-    # inside one full-bead course. See the note in KL.roof_close.
-    return heal(KL.roof_close(w, _env, _ins, align=HOUS_Z1, step=KL.D.BEAD / 2))
+    return heal(KL.roof_close(w, _env, _ins, align=HOUS_Z1))
+
+
+def _gable_up(v):
+    """A 45 deg gable standing on every flat top face of a cutter, to its own ridge.
+
+    cadkit's house profile said as an operation instead of as a drawn section: OCC drafts
+    the wire, so the roof is exact planes and arcs whatever shape the face is. The height
+    is found by trying -- a draft that would close the face before it gets there is
+    refused by the kernel rather than clamped, and the footprint's inradius is not
+    something the bounding box knows."""
+    # HEALED FIRST. The install stroke is a union of forty-odd translated copies, so its
+    # roof arrives as forty-odd coplanar shards; drafting each one and fusing the results
+    # handed back a NULL shape. Merged into whole faces there is one roof to gable.
+    v = KL.heal(v)
+    out = []
+    for f in v.val().Faces():
+        if f.Area() < 1.0:                # a shard the merge could not absorb
+            continue
+        try:
+            n = f.normalAt()
+        except Exception:
+            continue
+        if n.z < 0.999:
+            continue
+        b = f.BoundingBox()
+        h = min(b.xlen, b.ylen) / 2.0
+        while h > KL.D.BEAD / 4:
+            g = None
+            try:
+                g = cq.Solid.extrudeLinear(f.outerWire(), list(f.innerWires()),
+                                           cq.Vector(0, 0, h), taper=45)
+                ok = g.isValid() and g.Volume() > 1e-6
+            except Exception:
+                ok = False                # ...and a REFUSAL is not the only failure:
+            if ok:                        #   OCC also hands back a null shape, which
+                out.append(g)             #   only raises later, inside the union
+                break
+            h *= 0.5
+    if not out:
+        return cq.Workplane("XY")
+    got = out[0]
+    for g in out[1:]:                     # one at a time, checked: a fuse can come back
+        try:                              #   null, and it only shows up much later
+            f = got.fuse(g)
+            if f.isValid() and f.Volume() >= got.Volume() - 1e-6:
+                got = f
+        except Exception:
+            pass
+    return cq.Workplane("XY").add(got)
 
 
 def _knee_relief():
