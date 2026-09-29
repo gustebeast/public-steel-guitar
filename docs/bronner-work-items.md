@@ -2110,3 +2110,45 @@ routing failure is separable from a placement failure.
 records the last such shift: "BOARD_W drops 6.20 and all 64 placements moved +3.10 in x").
 A y -3.50 on all 82 is a mechanical edit -- do it programmatically and verify by reading
 BOARD_NOTES back, not by trusting the edit script.
+
+### THE PI CANNOT LIE FLAT -- and checking it RETRACTED option 2 as well (user, 2026-09-29)
+
+User: "perhaps the pi could sit flat on the chassis floor? The motor board needs to be
+upright so its lever/pedal plugs are accessible but the pi is free to sit flat if it fits
+that way". The reasoning is right -- the Pi's constraints ARE looser than the motor
+board's, so the Pi is where a compromise should land -- and the pose does not fit. The Pi
+is 85 x 56 x 15.6 and all three poses were measured against the real room:
+
+        pose               X (depth)   Y      Z      verdict
+        standing (today)      15.6     85     56     fits; costs 85 mm of the Y band
+        FLAT                  85/56  56/85   15.6    X available = ELEC_STACK_D = 21.8
+                                                     SHORT BY 34.2 (or 63.2)
+        rotated in plane      15.6     56     85     Z available = 78.85
+                                                     SHORT BY 6.15
+
+**WHY FLAT IS NOT CLOSE, and it is a datum not a clearance.** The bay is not a floor, it is
+a VERTICAL 60 x 181 PLATE 3.0 mm thick at world x -607.8..-604.8, with the boards standing
+off it on posts into a stack 21.8 mm deep. That 21.8 is `D.ELEC_STACK_D`, and
+`MOTOR_X0 = -(KEYHEAD_INBOARD_X + ELEC_STACK_D + MOTOR_ELEC_CLR + MOTOR_SQ/2)` -- the motor
+bank's X is DERIVED FROM IT. Growing the stack to take a flat Pi pushes the whole motor
+bank +X and with it the drivetrain, the belts and the instrument's length. Not a bay change
+at all, and not mine.
+⚠ Laying the Pi flat with its 85 along Y instead would need 56 of depth AND free no Y, so
+there is only one useful flat orientation and it is the one that is 63.2 mm short.
+
+**⚠⚠ RETRACTION: OPTION 2 ("rotate the Pi 90 deg in plane") IS NOT VIABLE EITHER, and I
+listed it as the 29 mm win without measuring the Z.** Rotated, the Pi wants 85 mm along
+world Z. From the tray top (world z -2.00) down to the chassis floor (-80.85) there is
+**78.85**, so it is **6.15 mm short** -- and the motor board already occupies z
+-19.05..-83.85 in that band. Option 2 is not a free 29 mm; it is 6.15 mm of chassis
+datum plus a fight with the motor board.
+⚠ BUT 6.15 IS A SMALL NUMBER AND WORTH KEEPING ON THE LIST. If the tray can start 6.2 mm
+higher, or the floor is locally lower where the Pi would sit, rotating in plane frees
+29 mm of Y -- which solves the USB gap outright with 17 mm to spare rather than the 11.68
+option 1 scrapes. Someone who owns the chassis datums should price that 6.15 before
+option 1's re-route is spent.
+
+**SO THE LIST IS NOW: option 1 (mine, measured, cheap) and option 3 (architecture).**
+Option 2 is parked on a 6.15 mm chassis question. The user's instinct stands even though
+the pose does not -- but the only Pi-side pose that helps is blocked by a top-level datum,
+so the compromise has to land on the motor board after all, which is option 1.
