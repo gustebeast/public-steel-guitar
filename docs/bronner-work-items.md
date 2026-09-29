@@ -2884,3 +2884,42 @@ the MEASURED rectangle**, since it is the one with a zero-collision proof behind
 ⚠ STILL OUTSTANDING BEFORE STEP 2: whether the floor SUPPORTS that footprint. A collision
 test cannot see a hole, and the -X/-Y leg's body adapter reaches x -592.46, inside the box's
 span, with memory recording "no chassis floor over a leg (it is the leg's joinery)".
+
+### STEP 1 CLEARS: THE FLOOR SUPPORTS THE FOOTPRINT (2026-09-29)
+
+        chassis_2 in the 3 mm below FLOOR_TOP, under the 85 x 56:
+        12,896 of 14,280 mm3 = 90.3% supported
+        supported zone x -596.00..-511.00  y -130.00..-74.00  z -74.35..-71.35
+
+The zone spans the WHOLE footprint, so there is no hole at the leg station -- the missing
+9.7% is the slab being thinner than the 3 mm probe in places, not an opening. (If a mounting
+screw later lands in one of those thin spots that is a separate, local question.)
+
+### THE EDIT, WRITTEN OUT SO THE NEXT TICK IS MECHANICAL
+
+`_board(fp, bz, t)` and `box_at(...)` are both FRAME-AGNOSTIC -- they take a footprint and a
+base z and make a box. **The only thing that makes pi5() a tray part is the `stand()` on its
+last line.** So the re-author is genuinely a re-author, not a rewrite:
+
+        PI_FP = (-596.0, -511.0, -130.0, -74.0)     # WORLD x0,x1,y0,y1 -- 85 on X, 56 on Y
+        PI_Z  = _MB.FLOOR_TOP                       # -71.35, the board sits ON the floor
+
+        def pi5():
+            cx, cy = _ctr(PI_FP)
+            b = _board(PI_FP, PI_Z)
+            b = b.union(box_at(18.0, 50.0, 14.0,            # I/O block on the +X END
+                               x=PI_FP[1] - 9.0, y=cy, z=PI_Z + BD_T + 7.0))
+            b = b.union(box_at(15.0, 15.0, 2.5, x=cx, y=cy, z=PI_Z + BD_T + 1.25))
+            return b                                        # NO stand()
+
+⚠ The 56x85 assert at electronics.py:262 reads
+`(PI_FP[1]-PI_FP[0], PI_FP[3]-PI_FP[2]) == (56.0, 85.0)` and must become **(85.0, 56.0)** --
+it is the guard that ties PI_FP to a real Pi 5 and it has to keep doing that in the new pose.
+
+**⚠⚠ DO NOT LAND PI_FP ALONE.** pi_cap, pi_cap_pin, PI_HDR_X/Y, pi_port_pt, the Pi half of
+keyhead_cradles, the Pi entry in board_screws and every wiring lead all read PI_FP. Changing
+it by itself does not BREAK the build -- it moves the Pi 75 mm and leaves everything else
+pointing at the old place, which the gate would report as a hundred new conflicts and which
+the render would show as a Pi floating away from its own cradle. The electronics.py side
+(PI_FP, PI_Z, pi5, the assert, PI_HDR_*, pi_port_pt, pi_cap) is ONE commit; cradle+screw is
+the second; wiring plus optical's pi_column_x is the third. Gate after each.
