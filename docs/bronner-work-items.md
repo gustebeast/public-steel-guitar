@@ -579,3 +579,42 @@ THE FORK, and none of these is free:
 Option 1 is the only one that needs no other agent, and it is the most expensive. Not chosen
 unilaterally: it re-opens a routed board, and the standing rule is that a 0/0 board is not
 re-opened for convenience.
+
+### Cluster A is CLOSED: the motor's M4 moved off the ear (2026-09-29)
+
+    ring depth 13 -> 4 beads          nut_height_screw_1 76.17 and nut_height_insert_1 18.50 GONE,
+                                      nut_slide_insert_1 236.72 -> 15.33
+    M4 off the ear, beside the -Y     ALL remaining chassis_2 <-> nut_* GONE, incl. the 625.45
+    screw + insert follow the hold    board_insert_0 clear
+    full gate                         128 -> 121   (pre-swap baseline 114)
+
+THE M4 IS NOW BESIDE THE BOARD'S -Y EDGE, via `pcb_hold_xy`, the same helper, arrangement and SKU
+as the Pi's. It had to leave the ear: the boss under it buries an M4 insert (~8.5 mm) against a
+3.6 mm budget before the nut height-adjust block, the thing it hit is a HEAT-SET INSERT for the
+string-nut slide (so the obstacle cannot move), and the board cannot move either --
+
+    clear the block   ymax < -38.91 - EAR_H/2
+    clear the adapter ymin > -97.15, i.e. ymax >= -35.15 for a 62 mm board
+    infeasible by 3.76 + EAR_H/2
+
+⚠ AND THE ESCAPE HATCH IS SHUT, MEASURED: the board's dip below the adapter's top face
+(z -73.82) is the FULL 62 mm. It stands vertically, so its bottom edge runs at z -83.85 along its
+whole length -- there is no short plug region to slide past the adapter. That measurement is what
+ruled out moving the board and sent the fix to the mounting instead.
+
+⚠ THE EAR IS VESTIGIAL NOW. elec/motor_ctrl.py still carries EAR_* and its 4.5 mm hole, unused.
+Deliberate: removing it re-opens a board at 0 unconnected / 0 violations. Drop it at the next
+motor_ctrl revision, not before.
+
+OPEN, SMALL: chassis_2 <-> board_screw_0, 0.72 mm3, y -48.30..-48.10 -- a 0.2 mm sliver on one
+side of the screw's circle. A head-clearance cut at the hold point (the Pi's remedy) left it
+EXACTLY unchanged, one-sided and symmetric both, so the material is CHASSIS STRUCTURE, not the
+cradle, and cutting the frame cannot reach it. The cut was reverted rather than left in doing
+nothing. Whoever picks it up: find which chassis feature owns the face at y -48.3, x -601.5..
+-599.3, z -46.8..-44.4.
+
+REMAINING SWAP DEBT (12 vs pre-swap 114): the 24 V feed to the motor board, 8 pairs
+(wire_pwr_{hot,gnd}_{11,12} x chassis_2 and x motor_0) -- the 5 V cable's problem again, and
+scratchpad/segtest.py makes it mechanical; chassis_2 <-> pi_cap 291.79 mm3 (the cap 0.37 mm past
+the board's -Y edge into the wall); and three grazes (body_adapter_0 2.2, wire_link 2.8,
+board_screw_0 0.72).

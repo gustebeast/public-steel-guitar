@@ -515,9 +515,24 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
 
     # THE MOTOR CONTROLLER: the M4 goes THROUGH its mounting ear (elec/motor_ctrl.py EAR_*).
     x0, x1, y0, y1 = MCTRL_FP
-    y1 = y1 + MCTRL_EAR_H
     bw, bl = x1 - x0, y1 - y0
-    hx, hy = MCTRL_HOLE[0], MCTRL_HOLE[1] - MCTRL_EAR_H / 2.0
+    # ⚠ THE HOLD MOVED OFF THE EAR, TO BESIDE THE BOARD'S -Y EDGE (2026-09-29). The M4 used to
+    # go THROUGH the mounting ear at the board's +Y end, and the boss under it has to be deep
+    # enough to bury an M4 insert (~8.5 mm). After the Y swap that boss lands at world y ~+15,
+    # inside the nut height-adjust block (y -38.91..+33.2) -- 625.45 mm3 into
+    # nut_slide_insert_2, a HEAT-SET INSERT for the string-nut slide. It cannot be shallowed
+    # (no insert), the insert cannot move (it is string-nut hardware), and the board cannot
+    # move: clearing the block needs ymax < -38.91 - EAR_H/2 while the adapter needs
+    # ymin > -97.15, i.e. ymax >= -35.15 for a 62 mm board. Infeasible by 3.76 + EAR_H/2.
+    # ⚠ AND THE DIP IS THE WHOLE BOARD, WHICH IS WHAT CLOSED THAT DOOR. It stands vertically,
+    # so its bottom edge runs at z -83.85 along all 62 mm -- measured, not assumed; there is no
+    # short plug region to slide past the adapter.
+    # Beside the -Y edge the boss sits at y ~-44, outside the block, and the board stays where
+    # it is. Same pattern and same helper as the Pi, same single 2.5 mm hex key.
+    # ⚠ THE EAR IS NOW VESTIGIAL: elec/motor_ctrl.py still carries EAR_* and its 4.5 mm hole,
+    # unused. Left alone deliberately -- removing it re-opens a board that is 0 unconnected /
+    # 0 violations, and a spare hole costs nothing. Drop it at the next motor_ctrl revision.
+    hx, hy = pcb_hold_xy(bw, bl, "-y", hold_at=0.0, clr=CLR, spec=_M4)
     # ⚠ ROOTED IN THE CHASSIS FLOOR, 13 beads deep. Nothing of the endplate lies in this
     # board's y band (-113..-51 against the height-adjust block's -38.91..+33.2), so the
     # depth here is free. NO FOOT: this board passes THROUGH the floor -- its laminate ends
@@ -528,6 +543,12 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     cr = _frame(bw, bl, (hx, hy), slide_in_x=True, harness_w=HARNESS_W,
                 post_h=MCTRL_POST_H, open_down=True, root_d=4 * D.BEAD)
     cr = _cut_anchor(_M4, cr, (hx, hy, MCTRL_POST_H), (0, 0, -1), _M4.anchor_min_wall)
+    # ⚠ THE HEAD GRAZES SOMETHING BY 0.72 mm3 AND IT IS NOT THIS FRAME. A head-clearance
+    # cut at (hx, hy) -- the Pi's remedy, one-sided and then symmetric about the board
+    # plane -- left the number EXACTLY unchanged both times, so the material the screw
+    # touches is chassis structure, not the cradle. y -48.30..-48.10 is a 0.2 mm sliver on
+    # one side of the screw's circle, i.e. a flat face it just crosses. Not chased further
+    # for 0.72 mm3; see docs/bronner-work-items.md. Cutting this frame cannot fix it.
     mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
     # THE PI: a purchased board, holes too small for M4, so its M4 stands BESIDE the +Y edge
@@ -580,8 +601,18 @@ def board_screws():
     L = 10.0                                   # M4x10: 1.6 of board, 8.4 into the 8.5 anchor
     assert L - _PCB_T <= _M4.anchor_min_wall + 1e-9
     out = []
+    # ⚠ BESIDE THE -Y EDGE, NOT THROUGH THE EAR (2026-09-29) -- and this has to track
+    # keyhead_cradles, which bores the anchor. The ear's boss landed inside the nut
+    # height-adjust block after the Y swap (625 mm3 into nut_slide_insert_2, a heat-set
+    # insert), and an M4 boss cannot be shallowed below its insert. Same helper, same
+    # arrangement and same SKU as the Pi's a few lines below. The ear on elec/motor_ctrl.py
+    # is vestigial until that board is next revised; MCTRL_HOLE is no longer read here.
+    from cadkit.pcb import pcb_hold_xy as _hold_xy
     cx, cy = _ctr(MCTRL_FP)
-    tx, ty = cx + MCTRL_HOLE[0], cy + MCTRL_HOLE[1]
+    _mx0, _mx1, _my0, _my1 = MCTRL_FP
+    _mhx, _mhy = _hold_xy(_mx1 - _mx0, _my1 - _my0, "-y",
+                          hold_at=0.0, clr=CRADLE_CLR, spec=_M4)
+    tx, ty = cx + _mhx, cy + _mhy
     out.append(("board_insert_0", stand(seated_insert(_M4, (tx, ty, MCTRL_BOARD_Z), (0, 0, -1)))))
     out.append(("board_screw_0", stand(m4_button_screw(L).translate(
         (tx, ty, MCTRL_BOARD_Z + BD_T + M4_BUTTON_HEAD_H)))))
