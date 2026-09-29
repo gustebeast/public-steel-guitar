@@ -30,9 +30,53 @@ converters' 0x4C. The USART1 pads that four routes were spent on cannot escape P
 netlist have not changed — which is exactly the case for a post-route change. It already
 existed in `route.py`.
 
-Still open on this board: **item 6 of the diagnostics doc**, converter isolation. It was gated
-on a clean baseline and now has one, plus a two-minute way to test a change (insert into the
-finished board, run `kicad-cli pcb drc`) — see `scratchpad/trypads.py`.
+## 1b. Item 6, converter isolation — the last diagnostic gap, and it is ALIVE
+
+**The gap:** five converters at one address with `SHDNZ` tied hard high, so one part holding
+`SDA` low kills the control bus and there is no way to identify or remove it. Per-device
+`SDOUT` already names a *silent* converter; this is the other failure.
+
+**Measured 2026-09-28, and the first answer is yes.** The question the doc says everything
+hinges on — can pin 14 escape a cell — was tested with `scratchpad/mkshdnz.py` (re-net the five
+pin 14s, drop the `+3V3D` stubs that tie them) plus `maze.py` on the finished board:
+
+| track | result |
+|---|---|
+| 0.26 mm | no path (19 cells) |
+| **0.20 mm** | **path: 21.5 mm, 2 vias, U14 pin 14 to U15 pin 14** |
+| 0.16, 0.14 mm | the same path |
+
+So a shared spine is routable. **And there is room for a per-cell resistor**: a clear 1.74 mm
+circle (an 0402's circumscribed courtyard) exists ~2 mm from pin 14 in **all five cells at the
+same cell-frame offset (-3.46, +2.00)** — 84 sites in the first cell, 20 in each of the others.
+All five converters are at rot 180, x 11.9, y spaced 18.727, so one solution copies five times
+exactly as the cells' other features do.
+
+**Take the per-cell pull-up, not the shared spine.** The spine needs ~86 mm of digital line and
+**8 new vias through In1**, whose integrity (0 cuts, 0.266 mm thinnest web) is a measured SI
+property of the analog reference — that is a real trade against audio quality, and the per-cell
+version has no long net and no new plane cuts at all. Per cell: `SHDNZ_k` = pin 14 + a 10k
+pull-up to `+3V3D` + a bare pad. Ground the pad and that converter alone drops off the bus;
+with the per-device `SDOUT` lines already there, that is complete localization.
+
+**The one thing that does not fit:** the existing tie is only **1.09 mm** long (pin 14 at cell
+dx -1.96 to the channel via at -3.05, see `_shdn_tracks`), and an 0402's land pair spans ~1.5 mm.
+So the resistor cannot sit in the channel; it goes at the searched site and the two stubs are
+re-laid.
+
+### The sequence, and why it is this order
+
+1. **Free pin 14 in the netlist** (`SHDNZ_k` in `post_route_nets`) and drop the first segment of
+   `_shdn_tracks`. This changes the DSN, so it needs **one real 30-minute route** — and
+   `ROUTE_REUSE_SES` is NOT valid across it.
+2. **Route.** Nothing in optical is touched while it runs.
+3. **Search the resistor and pad sites against the NEW board**, then place both AFTER routing:
+   the resistor is a real BOM part but nothing says the router has to see it, and a site verified
+   clear on the finished board cannot be perturbed by a route that has already happened.
+4. **Three-minute `ROUTE_REUSE_SES` pass** to validate, with DRC as the arbiter.
+
+⚠ `route.py`'s post-route block nets ONE pad per ref. A resistor has two on different nets
+(`SHDNZ_k` and `+3V3D`), so that loop needs to walk every node of every net, not one per ref.
 
 ## 2. Routing must stay fast enough to iterate (user, 2026-09-28)
 
