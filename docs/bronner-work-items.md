@@ -2232,3 +2232,48 @@ residue is 10 silk warnings plus 4 dangling stubs with no safe mechanical fix. L
 a global cleanup threshold cannot fix a local artefact. The project already records the
 same failure for declared pre-route copper ("made it worse every single time") and for
 local_nets on rails. MEASURE THE DISTRIBUTION BEFORE MOVING A SHARED CONSTANT.
+
+### 5p. ⚠⚠ THE RIGHT-ANGLE QUESTION WAS ALREADY ANSWERED IN .ins/WORKLIST.md -- NO, AND WHY
+
+I told the user in 5o that "whether they LINE UP is a centreline-height question the
+catalogue does not answer" and named it as the next action. **It was answered on 2026-09-25/26,
+chased through LCSC's JSON API, and the answer is NO.** .ins/WORKLIST.md lines ~286-360, and
+src/wiring.py's own section-jumper comment states the conclusion inline. I searched jlcparts
+for two ticks without reading the file that already had it.
+
+**WHY RIGHT-ANGLE PAIRS CANNOT MATE COPLANAR -- it is a property of the parts, not of us:**
+
+        every stocked 2.54 1x6 right-angle MALE     insulation height 2.5 mm
+                                                   C32713265 (16451), C2894948, and the rest
+        every stocked 2.54 1x6 right-angle FEMALE   H8.5
+                                                   C50878477 (1962), C54876735, C51018241, C2932681
+        THERE IS NO H2.5 FEMALE.
+
+Two right-angle connectors mate only if their contact axes sit at the same height above their
+boards. The sections are coplanar in the rail so nothing absorbs a 6 mm difference. **The H is
+sold as a range precisely because it sets that axis -- the mismatch is the point, not an
+oversight.** So my 5o "matched-series pairs line up by construction" is right in principle and
+irrelevant here: the pair has to be male-H2.5 with female-H2.5, and that female does not exist.
+
+**THE OTHER TWO DIRECT-MATE FAMILIES WERE CHECKED TOO, and both fail for GEOMETRY not stock:**
+  * CARD EDGE -- ED06BGFBK (C5173287, 6P 2.54 gold, 35 stock) has "Height Above Board 15.6 mm":
+    the slot faces UP and takes a card inserted DOWNWARD, not a board butted in-plane. So my
+    5n note that card edge is blocked by HASL gold fingers understated it -- the socket's
+    orientation rules it out before the finish does.
+  * MEZZANINE would be wire-free and standard but needs the boards to OVERLAP, and these lie
+    flat in one channel. That is the same wall from the other side: 5m killed mezzanine on
+    stock, and even with stock the channel geometry forbids it.
+  * 2.00 mm pitch: the right-angle FEMALE is stocked (C22465680, 602, gold, 4.3 mm) and the
+    MALE is not, which is why the joint moved to 2.54 in the first place.
+
+**SO THE DECISION STANDS AS ALREADY RECORDED: a socket at each end and a short stock jumper
+between sections.** Both halves are sourced and verified by elec/lcsc_check.py (47/47 codes
+"point at the part it claims"). The user's "can connectors mate the boards directly" is
+answered NO on parts availability AND on in-plane geometry, independently.
+⚠ ONE THING GENUINELY STILL OPEN, and WORKLIST flags it as the one that decides the joint:
+the MALE's mating-axis height is not in the catalogue. board_geom carries 8.5 for BOTH as a
+CLAIM TO BE CHECKED. Read C32713265's drawing before ordering. (The 5.0 that stood there was
+carried over from the 2.00 mm part and was wrong by 3.5 mm.)
+⚠⚠ PROCESS LESSON, and it cost two ticks: .ins/WORKLIST.md IS PART OF THE RECORD. Search it
+before opening a browser. The jlcparts work in 5n/5o was not wrong, it was redundant -- and
+worse, 5o presented a settled question as open.
