@@ -202,3 +202,21 @@ harder -- so treat it as a quick hint, never as evidence they are off.
 Enumerate over `J1`. The path is 20 channels -> 5 converters -> SAI TDM -> H743 -> ULPI PHY
 -> USB-C, carrying the audio plus MIDI from on-chip pitch detection. If it does not
 enumerate, SWD is the only way to inspect it, and the only way to reflash.
+
+### 8. Dress the LED strip cable around the nut height-adjust block
+
+The six-conductor lead from the Pi cap's `J3` to LED section 0's `J1` runs 171 mm along the
+keyhead, and the model draws it as a STRAIGHT LINE through the nut height-adjust block
+(y -38.91..33.20). That is a modelling artefact, not a routing instruction: **dress it around
+the block during assembly**, on whichever side the harness falls, and clip it clear of the ten
+slide inserts so nothing bears on the height screws.
+
+WHY IT IS NOT MODELLED AS A DRESSED CABLE -- the same reason the pickup lead gives one function
+away in src/wiring.py: modelling a service loop "would only invent a shape nobody has to build
+to". The straight line is honest about the ENDPOINTS, which are what the build has to match.
+
+AND WHY THERE IS NO CHANNEL FOR IT. Measured, 2026-09-29: a channel at the cable's own envelope
+would pass through ALL TEN nut slide inserts (~594 mm3 of heat-set brass, the height adjustment
+for every string). Going round the block is no better -- every x from -613 to -634 and every z
+from -56 to -18 still crosses keyhead_endplate, 57..539 mm3. There is nowhere for a machined
+route to go, which is exactly why this is an assembly step instead.
