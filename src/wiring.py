@@ -988,13 +988,28 @@ def build_wires():
     # straight LEAD-IN out of the mouth so the pin order reads off the model. Same idea as
     # tee_pin() on the CAN tees.
     _j5 = SP(*EL.mctrl_pt("J5"))
+    # ⚠ THE RUN GOES UNDER THE PI, NOT ACROSS IT (2026-09-29). Once the two boards swapped ends
+    # J5 and J2 ended up at nearly the same world x (-591.70 / -591.50) with 76 mm of y between
+    # them, and the old mid-plate leg at z -37.45 went straight THROUGH pi5: 48.3 mm3 per
+    # conductor over y -50..-68. Two fixes were tried and BOTH scored worse on the gate
+    # (132 -> 136 each): outboard at x -583.5 lands in motor_0 and the chassis (+X is the motor
+    # bank's), and x -597/z -34 lands in board_screw_2. See docs/bronner-work-items.md.
+    # The lane is UNDERNEATH: pi5 stops at z -62, and at these connectors' own x the only clear
+    # band is z -62..-68 (above the Pi, z -4, is clear elsewhere but blocked here by the cap).
+    # Searched with scratchpad/lanefind.py and then checked SEGMENT BY SEGMENT with
+    # scratchpad/segtest.py -- a lane search only clears the long run, and it was the vertical
+    # ends that broke the two previous attempts. Both tools scan
+    # src.build.collect_components(), which is what the gate scans; an earlier version walked
+    # src.build.PARTS and was blind to pi5, motor_ctrl AND motor_0 (it "cleared" a lane the
+    # gate then rejected). What remains after this are the three connector-adjacent contacts
+    # the baseline already had: the cable entering its own J5 and its own J2.
+    _FLY_Z = -64.0
     for _n, _nm in ((1, "gnd_a"), (2, "hot_a"), (3, "hot_b"), (4, "gnd_b")):
         _pin = EL.pi_cap_pin("J2", _n)
         _lead = (_pin[0], _pin[1], _pin[2] - CAP_LEAD_IN)     # mouths face -Z (see pi_cap.py)
-        _over = (_j5[0], _pin[1], _lead[2] - 6.0)
         out.append(("wire_5v_%s" % _nm, _wire(
-            [_j5, (_j5[0], _j5[1], _over[2]), _over, (_lead[0], _lead[1], _over[2]),
-             _lead, _pin], WIRE_OD["wire_5v"])))
+            [_j5, (_j5[0], _j5[1], _FLY_Z), (_lead[0], _j5[1], _FLY_Z),
+             (_lead[0], _lead[1], _FLY_Z), _lead, _pin], WIRE_OD["wire_5v"])))
 
     # -- the Pi cap's J3 -> LED strip section 0's J1. One cable carries the strip's 5 V and
     #    its SPI pair, in led_strip.J_PINS order: GND V5 V5 GND SCK SDI. Six conductors drawn
