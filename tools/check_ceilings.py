@@ -189,11 +189,16 @@ for _c in ("mx_my", "px_my", "px_py"):
 # The deck panels print deck-DOWN on the one declaration -- each as ONE OBJECT with its colour
 # layer, so that is the unit checked, exactly as a chassis segment is checked with its light band
 # (see _chassis_seg, which learned this the same way). Checking a BASE alone is not a stricter
-# test, it is a wrong one: top_plate_4's base has 4056 mm2 of embossed fret line standing 1.6
-# proud of a 39350 mm2 deck, so on its own it reads as resting on the fret lines with the whole
-# field bridging -- 95 mm of it. The colour layer is what fills that 1.6, and the two go on the
-# bed as a single printed object.
-for _i in list(range(6)) + ["spare_0", "spare_1", "spare_2"]:
+# test, it is a wrong one: the MID panel's base has 4056 mm2 of embossed fret line standing
+# 1.6 proud of a 39350 mm2 deck, so on its own it reads as resting on the fret lines with the
+# whole field bridging -- 95 mm of it. The colour layer is what fills that 1.6, and the two go
+# on the bed as a single printed object. (Named by role, not by index: the panel count and the
+# numbering both move when a pickup slot is handed to the mid panel, and they just did.)
+# ⚠ COUNTED FROM top_plate, NOT TYPED. This was `range(6)` plus three "spare_N" names, and
+# the spares are gone while the segments went 6 -> 5 -- so a hand-typed list would have
+# declared two panels that do not exist and, the next time the count grows, left one
+# undeclared with nothing but the coverage line to notice.
+for _i in range(len(__import__("src.top_plate", fromlist=["e"]).segments)):
     DECLARED_UP[f"top_plate_{_i}"] = ("src.top_plate", "PIECE_UP")
 # STILL UNDECLARED, and deliberately so -- a guess here makes the whole report meaningless,
 # which is worse than a gap the coverage line names every run:

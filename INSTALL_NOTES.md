@@ -236,6 +236,16 @@ controller.
 > own assembly and let either be unplugged alone. That is a motor-controller decision,
 > not a mechanical one.
 
+## The deck's swappable bands — 2026-09-29
+
+**There are TWO filler bands and they are the same part.** Slide the pickup piece to the
+slot position you want and drop the two fillers into whichever slots it leaves; either
+band goes in either slot, and there is no set of spares to keep track of. That is what
+the fillers losing their fret lines bought — a marked band fits one slot only.
+
+The deck is therefore marked to **fret 24** (the octave quad, on the mid panel). Frets
+25–30 are unmarked, because they fall in the region that moves.
+
 ## The UI station (deck mid panel) — 2026-09-28
 
 The display, the encoder and the board that carries them are ONE assembly, and the
@@ -269,7 +279,7 @@ off the instrument**, and the panel then goes on with all of it attached.
    plane by being folded. Fold them before the panel goes on, with the red stripe on the
    outside of each turn, and the cable lies flat the whole way; fold them after and you
    are creasing a cable that is already plugged in at both ends. 500 mm of cable against
-   a 429.5 mm run is what pays for getting a fold wrong once.
+   a 449.6 mm run is what pays for getting a fold wrong once.
 6. Offer the clamp plate up under the board. The two spigots enter its sockets, its
    reliefs go over the through-hole tails, and its arm runs +Y under the display so the
    two posts on the crossbar land on the module's back at the far mounting-hole row —

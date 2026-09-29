@@ -531,7 +531,7 @@ belongs here: all UI logic is the Pi's (see the control-architecture split).
 | **Display header** (on our board) | Kinghelm **KH-2.54PH180-1X20P-L11.5**, 1×20 male 2.54 | 1 | ~$0.10 | [LCSC C2905493](https://www.lcsc.com/product-detail/C2905493.html) — 1,131 in stock | **Insulation 2.5 / mating pin 6.0 / tail 3.0, all three read off the listing**: `src/ui_panel.py` builds the whole Z stack on them |
 | **Display socket** (on the MODULE) | Kinghelm **KH-2.54FH-1X20P-H8.5**, 1×20 female 2.54 | 1 | ~$0.15 | [LCSC C2905423](https://www.lcsc.com/product-detail/C2905423.html) — 7,005 in stock | ⚠ **HAND-SOLDERED, and it is the only hand-solder step in the station.** Newhaven ship the module with plated holes and no header — their drawing only *recommends* a 1×20 — so both halves are ours to pick. Male on our board and female on the module makes both halves stock parts with 6.0 mm of engagement; the other way round needs a long-pin header nobody stocks |
 | **Ribbon header** | ZHOURI **DC3-2.54-14PAL**, 2×7 right-angle shrouded IDC | 1 | ~$0.20 | [LCSC C5156673](https://www.lcsc.com/product-detail/C5156673.html) — ⚠ **154 in stock** | **The thinnest line on the board, and not a like-for-like swap.** Right-angle is forced: the board hangs under the deck with 11.70 mm of air over it and a vertical box header stands ~13.5. 2×7 rather than 2×10 is forced too — a 2×10's shroud is 33.2 long and the board is 34 deep. If it is gone, the vertical DC3-2.54-14PAS exists but wants the board re-laid for a different exit |
-| **Ribbon cable** | 14-way **1.27 mm** grey flat ribbon, 17.78 wide × 0.9 thick, **500 mm** | 1 | ~$1 | ⚠ **not LCSC** — see below | **Bought to length, and the length is measured, not guessed: the modelled centreline is 429.5 mm** (`cadkit.cables.path_length` over the path `src/wiring.py` draws), so 500 mm is the next stock length up and leaves ~70 mm of service slack. **It is folded twice**, 45° each, because the run is flat under the deck and both of its 90° turns are in the ribbon's own plane — `UI.RIBBON_FOLDS` declares that and `flat_bends` holds the path to it |
+| **Ribbon cable** | 14-way **1.27 mm** grey flat ribbon, 17.78 wide × 0.9 thick, **500 mm** | 1 | ~$1 | ⚠ **not LCSC** — see below | **Bought to length, and the length is measured, not guessed: the modelled centreline is 449.6 mm** (it was 429.5 until the deck handed a pickup slot to the mid panel on 2026-09-29 and the whole station moved 20.05 mm +X, away from the Pi) (`cadkit.cables.path_length` over the path `src/wiring.py` draws), so 500 mm is the next stock length up and leaves ~70 mm of service slack. **It is folded twice**, 45° each, because the run is flat under the deck and both of its 90° turns are in the ribbon's own plane — `UI.RIBBON_FOLDS` declares that and `flat_bends` holds the path to it |
 | **Ribbon sockets** | 2×7 IDC female socket, 2.54 mm (the "FC-14" / DC3 mating half) | 2 | ~$0.6 | ⚠ **not LCSC** — see below | Pressed on, not crimped and not soldered, which is the whole reason this is a ribbon and not fourteen wires. One end mates `DC3-2.54-14PAL` on our board; the other lands on the Pi's GPIO pins, and the way order is chosen so SCLK runs between GND and +3V3 (see `elec/ui_board.py`) |
 
 ⚠ **AND THE PI END IS NOT DEFINED — the sentence that used to stand here, "at the Pi it
@@ -980,9 +980,33 @@ TRRS blind-mate's leg_trrs_throat ×4 / leg_trrs_sleeve ×4 in **TPU**
 (anti-unscrew preload washers + floor-friendly feet), electronics_tray, and
 the **removable top deck**: a **pickup-carrier piece** (a tray whose floor runs
 under the pickup; 3 M4 height screws set the string gap, 2 M4 clamp screws pin
-X/Y — all from the packs above) + swappable fret-marked **filler bands** (one
-per slot; print the set) + the UI/keyhead panels (fret lines + dust cover + hand
-rest + UI mount) — see `py -3.12 -m src.build --list`.
+X/Y — all from the packs above) + **TWO swappable filler bands** + the UI/keyhead
+panels (fret lines + dust cover + hand rest + UI mount) — see
+`py -3.12 -m src.build --list`.
+
+⚠ **THE FILLERS ARE NOW ONE PART, AND THE DECK IS ONE PANEL SHORTER**
+(user, 2026-09-29). Two changes that only make sense together:
+
+* **The -X-most pickup slot was handed to the mid panel**, which takes the small
+  swappable bands from three to two and the mid panel from 226.40 to **246.45 mm**
+  (a 255 bed — now `top_plate.BED_XY`, asserted rather than left in a comment).
+  The mid/key seam does not move: MID_X0 moved +X by exactly one slot pitch and the
+  panel's length grew by the same, so the seam stays in the clear gap between fret
+  lines it was chosen for. **Cost: the pickup's COARSE positions go 4 → 3**, i.e.
+  20.05 mm less coarse reach toward the neck. The fine adjustment is untouched
+  (`CLAMP = BAND_W/2` still makes the coverage continuous), and the slot that went
+  is the one furthest from the changer.
+* **The remaining two fillers lost their fret lines**, keeping only the border's two
+  long side bands. That is what makes them ONE part: a fret line is at an absolute X,
+  so a marked filler fits one slot and every slot the pickup might vacate needed its
+  own printed band — which is why the build used to export a set of **spares off to
+  the side of the instrument**. Unmarked, any filler fits any slot, the two installed
+  ARE the whole set, and there is nothing to print twice. `top_plate` asserts the
+  fillers are congruent, so the claim cannot quietly stop being true.
+  **Cost: frets 25–30 are no longer marked** — the deck is marked to fret 24, the
+  octave quad, which now sits on the mid panel 12.5 mm clear of its +X edge. Those
+  six semitones are in the swap region, where no marking could ever have been
+  consistent: fret 25 falls at −145.12, which is **0.24 mm** off the region/mid seam.
 
 ## Control sensors (knee levers + pedals)
 
