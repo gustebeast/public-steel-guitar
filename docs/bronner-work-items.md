@@ -454,6 +454,33 @@ working top-down would act on stale text. The state of each claim:
     Coupling is 1/r^3; never estimate it against an assumed distance when the CAD holds the
     real one.
 
+    NOISE IN dB, asked for directly ("how much db would you expect us to add to the pickup
+    signal"). THE ONE FIGURE THAT IS DEFENSIBLE IS THE DELTA, because it is a ratio and the
+    unknowns cancel:
+        strip residual with both fixes   59 nT
+        one local buck on the floor      11 nT
+        ADDING BUCKED 24 V COSTS         20*log10(70/59) = ~1.5 dB
+    The two fixes themselves are ~1700x = ~65 dB of improvement.
+
+    ⚠ THE ABSOLUTE LEVEL IS NOT DEFENSIBLE FROM A MODEL, and the reason is worth keeping:
+    induced volts go as dB/dt, so THE LIGHT'S BEHAVIOUR SETS THE NOISE, not its presence.
+    Against a 150 mV signal, across coupling assumptions spanning 1%..100%:
+        slow fades ~1 Hz        -104 .. -144 dB   silent
+        20 Hz                    -78 .. -118 dB
+        200 Hz                   -58 ..  -98 dB
+        full depth at 1 kHz      -44 ..  -84 dB   audible at the pessimistic end
+        the 19.5 kHz PWM carrier -18 ..  -58 dB   largest term, above the audible band
+    That is a 40 dB spread, because I do not have the Alumitone's turns-area product or the
+    coupling efficiency -- and an Alumitone is a LOW-IMPEDANCE SINGLE-TURN CURRENT LOOP, not
+    a multi-thousand-turn coil, so the conventional-pickup model used here may not transfer.
+    ⚠ SAY "adding the bucks costs ~1.5 dB" and "the fixes buy ~65 dB". DO NOT quote a single
+    absolute dB figure for the LED system from this analysis.
+    TWO THINGS THAT PUSH THE REAL NUMBER BELOW THE TABLE: the TLC59711's enhanced-spectrum
+    PWM spreads that 19.5 kHz across 128 segments rather than leaving a tone, and a pickup
+    is well past its resonance by 19.5 kHz. ONE THING THE TABLE CANNOT SEE: RF rectification
+    of the buck's 1-2 MHz at the preamp input -- layout and filtering, not distance. Bench
+    it with the TLC59711 sub-audio test that is already pending.
+
     ⚠⚠ USER ASKS, 2026-09-29 -- FOUR, IN THE ORDER GIVEN. Two done, two open. Do not lose
     the open ones: they were given while I was mid-turn on something else, which is exactly
     how an ask gets dropped.
