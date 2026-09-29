@@ -730,3 +730,25 @@ MCTRL_HOLE on the ear, the 5 V mid-plate leg, and _FEED2_X ("there is no motor a
 Each was measured and documented when written. None could notice the thing it measured had
 moved. DERIVE FROM THE GEOMETRY (pi_cap_relief reads pi_cap()'s own bbox; the 5 V fly height
 reads pi5()'s) rather than freezing a number with a comment explaining why it is safe.
+
+### board_screw_0's 0.72 mm3 is SOLVED, and the cause was arithmetic (2026-09-29)
+
+The motor's M4 boss sits beside its -Y edge at y ~-48.2. The PI CRADLE'S +Y WALL lands at
+-50 + CLR + WALL = -48.2. Coincident BY CONSTRUCTION -- both derive from the same 8 mm
+inter-board gap -- which is why the Pi's own head-clearance remedy changed the number by
+exactly zero when I tried it: the material was the Pi's cradle, not the motor's.
+
+    _MCTRL_CY -11.0 -> -10.0     the board to y -41..21, 1.15 of room before the adapter's 21.15
+    full gate                    112 -> 111,  FIXED chassis_2 <-> board_screw_0,  NEW none
+    ceilings 7.70 unchanged;  one-solid assert passes;  sweep green
+
+⚠ AND THE TICK'S "chassis_2 mounting rework (NOT STARTED)" IS STALE -- it is DONE:
+  * the motor board's floor slot is cut (electronics.mctrl_floor_ports, cut in build.py)
+  * the Pi has a continuous FOOT RIB, not 10 mm posts -- posts were rejected because the
+    chassis prints Z-UP and two legs would have left the bottom lip spanning
+  * keyhead_endplate does NOT fuse keyhead_cradles: only build.py:225 unions them, into the
+    CHASSIS segment. build.py's comment still claimed "fused into keyhead_endplate now" and has
+    been corrected -- a comment asserting the opposite of the design is worse than none.
+
+REMAINING SWAP DEBT: two grazes, chassis_2 <-> body_adapter_0 (2.2) and <-> wire_link (2.8).
+111 against a measured pre-swap 114.
