@@ -97,7 +97,18 @@ def _pads(board_txt):
         if not at:
             continue
         fx, fy = float(at.group(1)), float(at.group(2))
-        rot = math.radians(float(at.group(3)) if at.group(3) else 0.0)
+        # ⚠ THE SIGN OF THIS ROTATION WAS WRONG, AND IT MOVED 456 OF 982 PADS -- by up to
+        # 10.65 mm. KiCad's angles are counter-clockwise on screen while its y axis points
+        # DOWN, so a footprint's local (px, py) lands at
+        #     gx = fx + px cos - (-py) sin ... = fx + px cos(a) + py sin(a)
+        #     gy = fy - px sin(a) + py cos(a)
+        # i.e. the transform of -a, not of +a. With +a every rotated part's pads came out
+        # MIRRORED THROUGH ITS CENTRE: on a symmetric two-pad passive that silently swaps
+        # which end carries which net (found on a SHDNZ pull-up, where audit_board then
+        # reported fifteen problems that were each a track ending on its OWN pad), and on
+        # an asymmetric part it is simply wrong. Checked now against pcbnew, part by part,
+        # in scratchpad/padtest.py: 0 pads more than 0.02 mm out.
+        rot = -math.radians(float(at.group(3)) if at.group(3) else 0.0)
         # ⚠ MATCH THE WHOLE PAD BLOCK, not just up to (size ...). A pad's net sits on a
         # LATER line, so a pattern that ended at the size never saw it and every pad read
         # as net "" -- which kills the same-net exemption silently: the search would
@@ -114,7 +125,9 @@ def _pads(board_txt):
             gx = fx + px * math.cos(rot) - py * math.sin(rot)
             gy = fy + px * math.sin(rot) + py * math.cos(rot)
             sw, sh = float(size.group(1)), float(size.group(2))
-            ang = rot + math.radians(float(prot.group(1)) if prot else 0.0)
+            # the pad's own angle turns the same way as the footprint's, so it takes the
+            # same sign -- and `rot` is already negated above.
+            ang = rot - math.radians(float(prot.group(1)) if prot else 0.0)
             if sw >= sh:                       # long axis along the pad's local x
                 half_len, half_w = (sw - sh) / 2.0, sh / 2.0
                 ux, uy = math.cos(ang), math.sin(ang)

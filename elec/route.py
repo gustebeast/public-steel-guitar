@@ -569,11 +569,16 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     _post = list(notes.get("post_route_refs", ()))
     if _post:
         _comps, _nl = layout.read_netlist(stem + ".net")
+        # ⚠ EVERY PAD OF EVERY POST-ROUTE PART, NOT ONE PER REF. The first version of
+        # this kept a single (net, pad) per reference, which is true of a test pad and
+        # false of a resistor: the SHDNZ pull-ups have pad 1 on a brand-new net and pad 2
+        # on +3V3D, and one-per-ref silently dropped whichever came second.
         _of = {}
         for _nm, _nodes in _nl.items():
             for _r, _pn in _nodes:
                 if _r in _post:
-                    _of[_r] = (_nm, str(_pn))
+                    _of.setdefault(_r, []).append((_nm, str(_pn)))
+        _newnets = set(notes.get("post_route_nets", ()))
         for _ref in _post:
             _fp = layout._load_footprint(_comps[_ref][0])
             board.Add(_fp)
@@ -589,39 +594,52 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
                 layout._anchor_on_pads(_fp, layout._to_board(_x, _y))
             if notes.get("refs_on_fab"):
                 _fp.Reference().SetLayer(pcbnew.F_Fab)
-            _nm, _pn = _of[_ref]
-            # ⚠ A NET MAY BE POST-ROUTE TOO, AND THAT IS WHAT KEEPS THE DSN IDENTICAL.
-            # A pad on a rail joins a net the router has already finished. A USART pin
-            # does not: its net is new, and if layout created it the DSN would gain a net
-            # and the router's input would no longer be the input that produced the route
-            # this pad's site was measured against. So layout skips the nets named in
-            # post_route_nets entirely -- those pins carry no net pre-route, which is
-            # exactly what they carried before, a named no-connect -- and the net is
-            # built here, over every node it has.
-            _net = board.FindNet(_nm)
-            if _net is None:
-                if _nm not in set(notes.get("post_route_nets", ())):
-                    raise SystemExit(
-                        "post-route pad %s wants net %s, which is not on the board. A "
-                        "net that does not exist pre-route has to be declared in "
-                        "post_route_nets, so that layout skips it deliberately rather "
-                        "than by accident." % (_ref, _nm))
-                _net = pcbnew.NETINFO_ITEM(board, _nm)
-                board.Add(_net)
-                _by = {_f.GetReference(): _f for _f in board.GetFootprints()}
+            for _nm, _pn in _of[_ref]:
+                # ⚠ A NET MAY BE POST-ROUTE TOO, AND THAT IS WHAT KEEPS THE DSN IDENTICAL
+                # WHERE IT CAN BE. A pad on a rail joins a net the router has already
+                # finished; a converter's SHDNZ pin does not, because its net is new. So
+                # layout skips the nets named in post_route_nets -- those pins carry no net
+                # pre-route, which is what a no-connect carried -- and the net is built
+                # here, over every node it has, including the ones on parts that were
+                # placed normally.
+                _net = board.FindNet(_nm)
+                if _net is None:
+                    if _nm not in _newnets:
+                        raise SystemExit(
+                            "post-route pad %s.%s wants net %s, which is not on the "
+                            "board. A net that does not exist pre-route has to be "
+                            "declared in post_route_nets, so that layout skips it "
+                            "deliberately rather than by accident." % (_ref, _pn, _nm))
+                    _net = pcbnew.NETINFO_ITEM(board, _nm)
+                    board.Add(_net)
+                    _by = {_f.GetReference(): _f for _f in board.GetFootprints()}
+                    for _r2, _p2 in _nl[_nm]:
+                        if _r2 == _ref or _r2 not in _by:
+                            continue          # placed later in this same loop
+                        for _pad in _by[_r2].Pads():
+                            if _pad.GetNumber() == str(_p2):
+                                _pad.SetNet(_net)
+                _hit = 0
+                for _pad in _fp.Pads():
+                    if _pad.GetNumber() == _pn:
+                        _pad.SetNet(_net)
+                        _hit += 1
+                if not _hit:
+                    raise SystemExit("post-route part %s has no pad %s" % (_ref, _pn))
+        # ⚠ AND A SECOND PASS, BECAUSE A POST-ROUTE NET CAN JOIN TWO POST-ROUTE PARTS.
+        # SHDNZ<k> is a converter pin, a pull-up and a pad: when the pull-up created the
+        # net, the pad's footprint did not exist yet. Whichever order the refs come in, one
+        # of them would be missed -- so every node is re-asserted once they are all placed.
+        _by = {_f.GetReference(): _f for _f in board.GetFootprints()}
+        for _ref in _post:
+            for _nm, _pn in _of[_ref]:
+                _net = board.FindNet(_nm)
                 for _r2, _p2 in _nl[_nm]:
                     for _pad in _by[_r2].Pads():
                         if _pad.GetNumber() == str(_p2):
                             _pad.SetNet(_net)
-            _hit = 0
-            for _pad in _fp.Pads():
-                if _pad.GetNumber() == _pn:
-                    _pad.SetNet(_net)
-                    _hit += 1
-            if not _hit:
-                raise SystemExit("post-route pad %s has no pad %s" % (_ref, _pn))
-        print("  placed %d bring-up pad(s) AFTER routing, invisible to the router"
-              % len(_post))
+        print("  placed %d part(s)/pad(s) AFTER routing, invisible to the router: %s"
+              % (len(_post), ", ".join(_post)))
         board.BuildConnectivity()
 
     _nets = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}

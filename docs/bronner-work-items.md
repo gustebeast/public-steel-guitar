@@ -30,53 +30,69 @@ converters' 0x4C. The USART1 pads that four routes were spent on cannot escape P
 netlist have not changed — which is exactly the case for a post-route change. It already
 existed in `route.py`.
 
-## 1b. Item 6, converter isolation — the last diagnostic gap, and it is ALIVE
+## 1b. Item 6, converter isolation — BUILT
 
-**The gap:** five converters at one address with `SHDNZ` tied hard high, so one part holding
-`SDA` low kills the control bus and there is no way to identify or remove it. Per-device
-`SDOUT` already names a *silent* converter; this is the other failure.
+`Rs11`..`Rs51`: one 10k `SHDNZ` pull-up per converter, ground `Rs<k>1` pad 1 and that converter
+alone drops off the I2C bus. With the per-device `SDOUT` lines already present that is complete
+localization — the strongest of the four options the diagnostics doc listed, and the last
+diagnostic gap on the board.
 
-**Measured 2026-09-28, and the first answer is yes.** The question the doc says everything
-hinges on — can pin 14 escape a cell — was tested with `scratchpad/mkshdnz.py` (re-net the five
-pin 14s, drop the `+3V3D` stubs that tie them) plus `maze.py` on the finished board:
+Resistors and both stubs are **post-route**, like the bring-up pads. Per cell: a 2.4 mm `SHDNZ`
+stub from pin 14, and a 7.3 mm `+3V3D` run on F.Cu then B.Cu with **one** via, landing on the
+`_v3_trunk` foot via. Sites and paths are searched against the finished board and verified
+continuously at 0.02 mm; worst gap 0.360 mm against the 0.127 rule.
 
-| track | result |
-|---|---|
-| 0.26 mm | no path (19 cells) |
-| **0.20 mm** | **path: 21.5 mm, 2 vias, U14 pin 14 to U15 pin 14** |
-| 0.16, 0.14 mm | the same path |
+### What it cost, and every item is mechanism rather than design
 
-So a shared spine is routable. **And there is room for a per-cell resistor**: a clear 1.74 mm
-circle (an 0402's circumscribed courtyard) exists ~2 mm from pin 14 in **all five cells at the
-same cell-frame offset (-3.46, +2.00)** — 84 sites in the first cell, 20 in each of the others.
-All five converters are at rot 180, x 11.9, y spaced 18.727, so one solution copies five times
-exactly as the cells' other features do.
+1. **The old `SHDNZ` channel had to go**, and it fought back twice. Its head via went dangling,
+   `tidy_router_vias` removed it, and that orphaned the B.Cu leg — **ten unconnected `+3V3D`
+   items**. Keeping the via alive with a repair track was worse: it then sat in **the only
+   escape from pin 14**, giving five `SHDNZ`↔`+3V3D` shorts, and no track width clears a 0.6 mm
+   via 0.383 mm off the centreline.
+2. **The FOOT via is not the head via.** `_v3_trunk`'s spine lands on it in every cell, so it is
+   how each converter's IOVDD reaches the digital rail. It was deleted with the head for one
+   edit — which would have floated all five supplies — and caught by reading `_v3_trunk`.
+3. **The second stub must be searched against the first.** Mazed independently they cross.
+   `lay.py` puts one down and the other is searched against a board carrying it.
+4. **An 0402 is not its circumscribed circle.** As a circle the site search offered 0.090 mm of
+   headroom; as a rectangle the same search found one offset legal in **all five cells at
+   0.510 mm**. `padsite.py` takes `PAD_RECT="w,h"` now.
+5. **Verifying one cell is not verifying five.** The first `+3V3D` path put its B.Cu leg at
+   cell x −3.960, which is **0.02 mm from the `I2C2_SCL` B.Cu spine** — and in cell 0 that is
+   fine, because the spine starts at y 61.269, below it. In the other four it is a short, and
+   DRC said so three times. A repeated pattern is only repeated where the *surroundings* repeat;
+   the path is now searched in cell **1** and checked in all five.
+6. **Removing pre-laid copper is the one change that can safely reuse a routing session** — a
+   route that was legal with an obstacle present stays legal once it is gone. That is what kept
+   the channel removal to a 3-minute pass instead of a 30-minute route.
 
-**Take the per-cell pull-up, not the shared spine.** The spine needs ~86 mm of digital line and
-**8 new vias through In1**, whose integrity (0 cuts, 0.266 mm thinnest web) is a measured SI
-property of the analog reference — that is a real trade against audio quality, and the per-cell
-version has no long net and no new plane cuts at all. Per cell: `SHDNZ_k` = pin 14 + a 10k
-pull-up to `+3V3D` + a bare pad. Ground the pad and that converter alone drops off the bus;
-with the per-device `SDOUT` lines already there, that is complete localization.
+7. **The scratch harness drifted from `route.py`.** `trypads.py` netted ONE pad per
+   reference, which is true of a test pad and false of a resistor — pad 2 came out with no net,
+   so the maze read the pull-up's own land as a foreign obstacle and refused to leave it. When a
+   mechanism gains a case, every copy of it needs the case.
 
-**The one thing that does not fit:** the existing tie is only **1.09 mm** long (pin 14 at cell
-dx -1.96 to the channel via at -3.05, see `_shdn_tracks`), and an 0402's land pair spans ~1.5 mm.
-So the resistor cannot sit in the channel; it goes at the searched site and the two stubs are
-re-laid.
+### ⚠⚠ The obstacle model itself was wrong, and it is the biggest finding of the session
 
-### The sequence, and why it is this order
+`repair_search._pads` built its pad capsules with the transform of **+a** where KiCad means
+**−a** (counter-clockwise angles, y axis pointing down), so **every rotated part's pads came out
+mirrored through its centre** — 456 of 982 pads on the optical board, by up to **10.65 mm**.
 
-1. **Free pin 14 in the netlist** (`SHDNZ_k` in `post_route_nets`) and drop the first segment of
-   `_shdn_tracks`. This changes the DSN, so it needs **one real 30-minute route** — and
-   `ROUTE_REUSE_SES` is NOT valid across it.
-2. **Route.** Nothing in optical is touched while it runs.
-3. **Search the resistor and pad sites against the NEW board**, then place both AFTER routing:
-   the resistor is a real BOM part but nothing says the router has to see it, and a site verified
-   clear on the finished board cannot be perturbed by a route that has already happened.
-4. **Three-minute `ROUTE_REUSE_SES` pass** to validate, with DRC as the arbiter.
+- On a symmetric two-pad passive it silently swaps which end carries which net. That is how it
+  surfaced: `audit_board` reported fifteen problems that were each a track ending on its **own**
+  pad.
+- On an asymmetric part it is simply wrong, and it has been wrong for every search run through
+  this file — `repair_search`, `audit_board`, and `padsite.py`.
+- It is now **checked rather than argued**: `scratchpad/padtest.py` walks every real pad with
+  pcbnew and asks whether a parsed capsule sits at its position with its net. Before: 456
+  misplaced. After: **0 of 982 misplaced, 0 with the wrong net.**
+- **Worth re-auditing the other boards** — motor_ctrl, led_strip, pi_cap, lever_sensor,
+  output_panel — since their audits ran on the same broken model.
 
-⚠ `route.py`'s post-route block nets ONE pad per ref. A resistor has two on different nets
-(`SHDNZ_k` and `+3V3D`), so that loop needs to walk every node of every net, not one per ref.
+⚠ **And a correction to my own reasoning.** I rejected the shared `SHDNZ` spine partly because
+it wanted 8 new vias through In1, the analog reference plane. The per-cell version needs 5. That
+is better but not by much, so the honest argument for per-cell is the other one: **no long net.**
+The spine wanted ~86 mm of digital line down the converter column; this is two short stubs
+inside each cell.
 
 ## 2. Routing must stay fast enough to iterate (user, 2026-09-28)
 
@@ -183,12 +199,29 @@ Converting the chassis floor into the cradle frame: **world z -72 = local x -537
    only if something else forces it; the floor-slot finding above removes the reason that
    prompted it, because the motor board no longer needs the easy band.
 
-### Next increment
+### Next increment, and two things found while reading for it (2026-09-28)
 
-Cut the motor board's floor slot and add the Pi's 10 mm posts into chassis_2, then stop
-`keyhead_endplate` fusing `keyhead_cradles` and let the boards stand on the chassis. The
-cradles' board-capturing geometry (walls, lip, M4 boss) is good and should be kept as-is —
-only the column ROOT changes.
+1. **The motor board's floor slot already exists.** `electronics.mctrl_floor_ports()` cuts it
+   and `build.py` applies it to every chassis segment — it was cut so a mated PH plug's latch
+   is reachable from outside, and the board already hangs 3.10 mm proud of the underside. So
+   this increment is not a cut, it is **support**: the cradle has to land on the floor material
+   either side of that port (y −130…−106, or the island at −82).
+2. **There is already a pattern for fusing a cradle into the chassis rather than the endplate**
+   — `wiring.tee_cradles()` in `build.py`, which picks the segment by x and unions into it, then
+   re-cuts the rib mortises the union filled back in. `keyhead_cradles` should go the same way:
+   union into the chassis segment, and stop `keyhead_endplate` fusing it.
+
+**The frame maths for the column root.** `_frame()` builds every column spanning local **z**
+(zb → post_h), and local +z is world +x — which is why they cantilever horizontally off the
+endplate face. Standing on the floor means material spanning local **x** instead, because local
++x is world −z (downward):
+
+| | board edge (local x) | the floor top (local x) | what it needs |
+|---|---|---|---|
+| `PI_FP` | −547.00 | −537.00 | **10 mm of foot**, straight down |
+| `MCTRL_FP` | −528.15 | −537.00 | nothing below: it already **crosses** the floor, so the floor holds it if the ring lands either side of the port |
+
+Keep the ring, lip, wall, lean and M4 boss exactly as they are — only the root changes.
 
 ## 6. Handed to chassis scope (branner), not mine
 
