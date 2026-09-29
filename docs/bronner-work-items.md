@@ -2311,3 +2311,42 @@ The shrink specified two sections above, executed and verified.
 
 _PORT_APR moved PI_FP[3] + 2.3 -> + 6.0 (world y -40.18), mid-gap of the real 11.68 instead
 of hugging the port face because there was nowhere else to be.
+
+### ⚠ THE SHRINK COSTS +4 ON THE GATE: 109 -> 113, ALL OF IT THE MOTOR'S M4 (2026-09-29)
+
+check_cable_ends is CLEAN at 65. check_overlaps is **113 against the 109 baseline**, and the
+diff is exact -- four new pairs, nothing gone:
+
+        46.2 mm3   keyhead_endplate <-> board_screw_0
+        17.4 mm3   chassis_2        <-> nut_height_insert_9
+         7.1 mm3   chassis_2        <-> nut_height_screw_9
+         3.0 mm3   keyhead_endplate <-> board_insert_0
+        ------
+        73.7 mm3 total
+
+**THE CAUSE IS ONE LINE: `MCTRL_HOLD = ("-y", 17.0)`.** The motor's M4 stands BESIDE the
+board's -Y edge, and that edge is exactly what moved: -41.50 -> -34.50, **+7.00 mm**. So the
+screw and its insert walked +7 into keyhead_endplate. The two nut_height_9 pairs are the same
+event one step removed: the cradle is FUSED to chassis_2, so moving the cradle changed
+chassis_2's solid and it now reaches string 9's height screw.
+⚠ THE +7 IS NOT THE +3.5 OF THE CENTRE MOVE. BOARD_L lost 7.0 AND the centre went +3.5, and
+those add at the -Y edge (-7.0 - 27.5 = -34.50) while cancelling at the +Y edge (-7.0 + 27.5
+= 20.50). That asymmetry is the whole point of the change -- and it means anything pinned to
+the -Y edge moves by the FULL 7.0, not by the centre's 3.5. I did not think about the hold.
+
+**THIS IS A TRADE, NOT A FAILURE, AND IT IS WORTH STATING PLAINLY:** the shrink bought the
+thing the user asked for (a USB plug that fits: 4.68 -> 11.68) and a board still at 0/0, and
+it cost 4 conflicts and 73.7 mm3 in the M4 region. The M4 is a SCREW POSITION -- a parameter
+with a one-line fix -- while the gap was a structural impossibility. Right trade; finish it.
+
+**NEXT ACTION, and the method matters because this M4 has failed FIVE times before**
+(-x into the endplate 26-49 mm3, +x inside the floor slab, -y hold 0 into the Pi by 1.6,
+-y hold +22 into 112 mm3 of chassis, boss_d=13 byte-identical). Those five were measured
+against the OLD board, so none of their verdicts transfer -- the edge they were rejected
+against has moved 7 mm. Sweep `MCTRL_HOLD[1]` and MEASURE, do not gate-guess: a gate run is
+~90 s and a direct intersect of board_screw_0 against keyhead_endplate is seconds. The five
+failures were found by cutting a marker cylinder and seeing where the void landed; that
+technique is what to reuse.
+⚠ AND CHECK chassis_2 SEPARATELY. Two of the four are the cradle's effect on chassis_2, not
+the screw's own position, so a hold_at that clears keyhead_endplate can still leave the
+nut_height_9 pair -- they are different obstacles reached by different parts of the change.
