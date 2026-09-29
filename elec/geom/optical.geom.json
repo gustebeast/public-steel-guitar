@@ -3435,6 +3435,38 @@
    "tht": null
   },
   {
+   "ref": "TP10",
+   "fpid": "TestPoint_Pad_D1.5mm",
+   "x": -3.16,
+   "y": -54.865,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -5.118,
+    -1.201,
+    -54.063,
+    -52.367
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "TP11",
+   "fpid": "TestPoint_Pad_D1.5mm",
+   "x": 5.333,
+   "y": -57.687,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    3.375,
+    7.292,
+    -56.885,
+    -55.189
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
    "ref": "TP2",
    "fpid": "TestPoint_Pad_D1.5mm",
    "x": -17.253,
@@ -3494,6 +3526,70 @@
     10.935,
     -52.493,
     -50.797
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "TP6",
+   "fpid": "TestPoint_Pad_D1.0mm",
+   "x": 6.352,
+   "y": -20.231,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    4.87,
+    7.834,
+    -19.629,
+    -17.933
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "TP7",
+   "fpid": "TestPoint_Pad_D1.0mm",
+   "x": 20.602,
+   "y": -21.731,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    19.12,
+    22.084,
+    -21.129,
+    -19.433
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "TP8",
+   "fpid": "TestPoint_Pad_D1.5mm",
+   "x": -12.499,
+   "y": -30.54,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -13.981,
+    -11.017,
+    -29.738,
+    -28.042
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "TP9",
+   "fpid": "TestPoint_Pad_D1.5mm",
+   "x": -20.535,
+   "y": -77.372,
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -22.017,
+    -19.053,
+    -76.57,
+    -74.874
    ],
    "crtyd": null,
    "tht": null

@@ -137,6 +137,8 @@ FP = {
     # Bourns SRN4018 one that used to be here -- LCSC stocks no usable SRN4018 value.
     "IND-4040": "Inductor_SMD:L_Sunlord_SWPA4030S",  # 4030 since the LMR33630 swap (same land)
     "TP": "TestPoint:TestPoint_Pad_D1.5mm",
+    # ⚠ A SMALLER PAD IS NOT A COMPROMISE, IT IS WHERE THE ROOM IS. See TP6/TP7.
+    "TP_SMALL": "TestPoint:TestPoint_Pad_D1.0mm",
     "USB-C":    "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
     "XH-SM-4Y": "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
 }
@@ -813,6 +815,28 @@ def optical():
                               % net.name,
                   footprint=FP["TP"], pins=[Pin(num=1, func=P)])
         net += tp[1]
+    # ⚠ THE SECOND WAY IN WAS ALREADY ON THIS BOARD, AND FOR MONTHS NOBODY LOOKED IT UP.
+    # The claim above -- "no USART/I2C/SPI/CAN bootloader pin is brought out" -- is FALSE,
+    # and AN2606 Rev 61 Table 113 says so: on STM32H74xxx the ROM bootloader's I2C2
+    # interface is SCL on PF1 and SDA on PF0, which is EXACTLY the pair this board already
+    # runs to all five converters as its control bus. It is routed, it reaches every corner
+    # of the digital half, and it has pull-ups.
+    #   bootloader I2C2 slave address  0b1001110  (0x4E)
+    #   TLV320ADC3140 x5               0b1001100  (0x4C)
+    # Different addresses, so the converters cannot answer for the bootloader and the
+    # bootloader cannot answer for them. Nothing has to be isolated, and the bus does not
+    # have to be free: I2C is multi-slave by design and only one of them is addressed.
+    #
+    # WHAT THAT REPLACES. Two pads on USART1 (PA9/PA10) were designed, placed and searched
+    # first, and they cannot be built: PA9/PA10 sit mid-row on the LQFP176's east face, the
+    # maze router explores 65 cells out of the pad and finds every lane walled by the
+    # escape fan, and the autorouter reached the same verdict four times in its own way.
+    # I2C2 needs no escape at all, because the escape already happened.
+    #
+    # ⚠ AND THIS IS WHY BOOT0 IS BROUGHT OUT NOW (TP8). It was left off because it "only
+    # helps if a ROM bootloader interface exists, and none does". A bootloader interface
+    # does exist, so the premise is gone: BOOT0 held HIGH against R30's 10k at reset is
+    # what selects the bootloader, and without it the I2C2 pads lead nowhere.
     led_gate = Net("LED_GATE")
     led_gate += u6[PIN["PB3"]]       # the emitter row's on/off, one GPIO for all ten
     # VCAP: the H7's internal core regulator needs its own capacitors, and leaving
@@ -1077,6 +1101,21 @@ def optical():
     boot += u13[4]
     vcc_buck += u13[5]
     fb += u13[7]
+    # ⚠ POWER-GOOD STAYS A NO-CONNECT, AND THIS TIME THE REASON IS MEASURED. A pad on it
+    # was designed, sited and mazed: the site is fine (3.032 mm of headroom, 5.9 mm away),
+    # and the PIN CANNOT BE ESCAPED. Pad 8 sits mid-row on the VQFN-HR with the buck's own
+    # +24V pads 9 and 10 either side of the only way out, and C165's +24V land beyond them.
+    # Mazed at 0.05 mm over the finished board, on every layer, with a via hop allowed:
+    #   0.24, 0.20, 0.18 mm track   NO PATH AT ALL (326, 495, 669 cells explored)
+    #   0.16 mm                     a path, whose centreline comes 0.159 mm from +24V
+    #   0.14 mm                     a path, 0.135 mm
+    # A centreline at 0.159 mm with a 0.16 mm track is 0.079 mm of copper-to-copper, and
+    # DRC confirmed it: 0.0900 mm against the 0.127 rule, seven violations. For a
+    # 0.127 mm track the centreline would have to clear by 0.191 mm and the widest corridor
+    # out of that pin is 0.159. There is no width that fits, so this is a PLACEMENT or a
+    # part-choice question, not a routing one -- and a debug pad does not get to move the
+    # buck. (A via-in-pad is no better: a 0.6 mm annulus does not fit between 0.5 mm pitch
+    # pads either.)
     Net("BUCK_PG_NC").connect(u13[8])
     # EN tied to VIN, which the datasheet allows ("Can be connected directly to VIN; Do
     # not float") -- the same choice the TPS560430 had.
@@ -1146,6 +1185,42 @@ def optical():
                pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v5_pre += fb1[1]
     v5 += fb1[2]
+    # ⚠ THE BRING-UP PADS, AND THIS TIME THEY ARE PLACED AFTER ROUTING. Like TP1-5 they
+    # carry no paste and are excluded from the BOM and the pick-and-place by the footprint.
+    # WHY THEY ARE NEEDED. The diagnostic chain is strictly serial -- power, MCU, I2C,
+    # framing, analog, emitters, USB -- and stage ONE had no observability at all: no rail
+    # is reachable by a meter without probing a 0402 beside 0.5 mm-pitch parts, and with
+    # the MCU's own ADCs dropped and all 20 converter inputs used by photodiodes, a RUNNING
+    # MCU cannot read one of its own supplies. Three pads fix that, and BOOT0 is what
+    # selects the ROM bootloader when SWD will not attach.
+    # ⚠ WHY THE FIRST FOUR ATTEMPTS FAILED, AND WHAT CHANGED. Handed to the ROUTER these
+    # same pads cost a net every time -- 2 unconnected, then 2, then 4, then 2, always at
+    # the USB PHY, and +3V3A failed even in the run where its own pad had been REMOVED.
+    # That is not a placement problem and no re-siting fixes it: the south is re-solved
+    # from scratch every run and only just succeeds, so the cost is the PERTURBATION, not
+    # the area. These pads are now listed in post_route_refs and placed by route.py's
+    # repair block, after the router has finished, on copper their own net already has --
+    # which is the same timing argument that closed SAI_FS and +3V3A before them.
+    # ⚠ NO PAD ON MID. It is the reference all twenty TIAs sit on, so anything coupled into
+    # it appears on EVERY channel at once and calibration cannot separate it from signal.
+    # Firmware already reads it as the common rest level of all 20 channels.
+    # ⚠ TP6/TP7 ARE 1.0 mm, NOT 1.5, and the reason is measured rather than tidy: at D1.5
+    # the I2C2 pair has 26 legal sites on the whole board and the best one in the digital
+    # half clears by 0.074 mm, while at D1.0 the same search returns sites at 1.696 and
+    # 0.743 mm. A millimetre is still four times a 0402's pad and a probe tip does not
+    # care; half a fab tolerance does.
+    for _ref, _net, _why in (("TP6", i2c[0][0], "I2C2 SDA -- the ROM bootloader's bus"),
+                             ("TP7", i2c[0][1], "I2C2 SCL -- the ROM bootloader's bus"),
+                             ("TP8", boot0, "BOOT0 -- hold HIGH at reset for the bootloader"),
+                             ("TP9", v24, "+24V rail"),
+                             ("TP10", v5, "+5V rail -- the buck's output"),
+                             ("TP11", v3a, "+3V3A rail -- the quiet LDO")):
+        _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
+                   tool="skidl", value="BRINGUP",
+                   description="bring-up pad -- %s; bare copper, no component" % _why,
+                   footprint=FP["TP_SMALL" if _ref in ("TP6", "TP7") else "TP"],
+                   pins=[Pin(num=1, func=P)])
+        _net += _tp[1]
 
     # ── Q1: the emitter row's low-side switch ────────────────────────────────
     # All ten emitters share one gate. They are pulsed, not held on: pulsing lets the
@@ -2763,6 +2838,41 @@ BOARD_NOTES = {
     # handover -- and the default 5.0 declined to finish it. This costs the router
     # nothing: the repair runs after routing, on pairs that are already unconnected.
     "repair_mm": 7.0,
+    # ⚠ THE BRING-UP PADS ARE PLACED AFTER ROUTING, AND THAT IS THE WHOLE REASON THEY
+    # EXIST AT ALL. Four routes with these pads in the DSN cost a net every time, always
+    # in the same neighbourhood (the USB PHY), and once on a rail whose own pad had been
+    # removed -- so the cost was never the pad's area, it was handing the router one more
+    # obstacle in the one region it re-solves from scratch and only just finishes. Placed
+    # here they are invisible to it: layout skips them, route.py drops them in after the
+    # session import, and DRC still checks every clearance.
+    # Each site was SEARCHED against the finished board (scratchpad/padsite.py): a clear
+    # 1.5 mm circle that already overlaps its own net's copper, so no track is needed, and
+    # outside every courtyard, because a pad under a part is legal and unprobeable.
+    #   TP8  BOOT0   headroom 0.492 mm    TP9  +24V   4.747
+    #   TP10 +5V     1.214               TP11 +3V3A  1.956
+    # ⚠ NONE OF THE SIX NEEDS A SINGLE MILLIMETRE OF NEW COPPER, which is the whole reason
+    # they exist. Each one sits on a net the router has already finished: the three rails,
+    # BOOT0 at its own pull-down, and the I2C2 pair on the converter control bus. TP6/TP7
+    # are 1.0 mm rather than 1.5, because that is what turns 0.074 mm of clearance into
+    # 1.696 and 0.743.
+    # The one pad that DID need copper -- the buck's power-good -- is not here: its pin
+    # cannot be escaped at any width. See the BUCK_PG_NC note for the numbers.
+    # ⚠ THE EDGE KEEP-OUT THAT MATTERS HERE IS THE CAD'S 1.2 mm, NOT DRC'S 0.300. The
+    # first USART lane found, x 27.55, clears copper by 2.6 mm and dies in
+    # _assert_field_clear at 0.31 mm inside the model's keep-out. Whichever rule is
+    # stricter is the rule.
+    # ⚠ BOOT0 HAS NO CLEAR SITE AT ALL and TP8 is the one exception on this list: at D1.5,
+    # D1.0 and even D0.8 the search returns ZERO sites, because every millimetre of BOOT0
+    # copper lies inside somebody's courtyard -- the net runs from the pin to R30 and
+    # stops. Its courtyard overlap with R30 is declared in netcheck (nothing is ever
+    # fitted on a bring-up pad, so that courtyard reserves room for a body that does not
+    # exist); its COPPER clears by 0.492 mm.
+    "post_route_refs": ("TP6", "TP7", "TP8", "TP9", "TP10", "TP11"),
+    # ⚠ post_route_nets IS EMPTY, AND THE MECHANISM STAYS. It exists for a pad whose net
+    # does not exist pre-route: layout skips such a net so the DSN does not gain one, and
+    # route.py builds it over every node after the import. Nothing needs it today -- all six
+    # pads sit on nets the router already finished -- and it is what the BUCK_PG attempt
+    # would have used, so it is kept rather than re-derived next time.
     # ⚠ SAI_FS IS CLOSED HERE, AFTER ROUTING, AND THAT TIMING IS THE ENTIRE ANSWER.
     # This net was the board's last unconnected item for a dozen routes. Everything tried
     # BEFORE routing made it worse, every time, and the count is worth keeping because the

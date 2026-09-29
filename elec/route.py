@@ -554,6 +554,76 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     #
     # These are repairs, not hints: they are applied after the router has finished and
     # are never visible to it.
+    # ⚠ AND THE BRING-UP PADS GO IN HERE, FOR THE SAME REASON THE REPAIRS DO. A bare pad
+    # on a rail the router has already finished needs no route at all -- it is placed ON
+    # that rail's copper -- but given to the router BEFORE routing it is an obstacle, and
+    # six of them cost the optical board a net in four consecutive runs, always at the USB
+    # PHY, once even on a rail whose own pad had been removed. See layout.build's note on
+    # post_route_refs: the netlist and the CAD carry them, the DSN does not.
+    #
+    # THE SITE IS SEARCHED AGAINST THE FINISHED BOARD, not chosen: scratchpad/padsite.py
+    # sweeps a grid for a circle that clears every segment, via, pad, COURTYARD (a pad
+    # under a part is legal and unprobeable) and the outline, and that already sits on its
+    # own net's copper so no copper has to be added. What is left for DRC to check is a
+    # clearance, which is the check that caught every earlier version of this.
+    _post = list(notes.get("post_route_refs", ()))
+    if _post:
+        _comps, _nl = layout.read_netlist(stem + ".net")
+        _of = {}
+        for _nm, _nodes in _nl.items():
+            for _r, _pn in _nodes:
+                if _r in _post:
+                    _of[_r] = (_nm, str(_pn))
+        for _ref in _post:
+            _fp = layout._load_footprint(_comps[_ref][0])
+            board.Add(_fp)
+            _fp.SetReference(_ref)
+            _fp.SetValue(_comps[_ref][1])
+            _fp.Value().SetVisible(False)
+            _x, _y, _rot = notes["placements"][_ref]
+            _fp.SetPosition(layout._to_board(_x, _y))
+            _fp.SetOrientationDegrees(_rot)
+            if notes.get("anchor") == "courtyard":
+                layout._anchor_on_courtyard(_fp, layout._to_board(_x, _y))
+            else:
+                layout._anchor_on_pads(_fp, layout._to_board(_x, _y))
+            if notes.get("refs_on_fab"):
+                _fp.Reference().SetLayer(pcbnew.F_Fab)
+            _nm, _pn = _of[_ref]
+            # ⚠ A NET MAY BE POST-ROUTE TOO, AND THAT IS WHAT KEEPS THE DSN IDENTICAL.
+            # A pad on a rail joins a net the router has already finished. A USART pin
+            # does not: its net is new, and if layout created it the DSN would gain a net
+            # and the router's input would no longer be the input that produced the route
+            # this pad's site was measured against. So layout skips the nets named in
+            # post_route_nets entirely -- those pins carry no net pre-route, which is
+            # exactly what they carried before, a named no-connect -- and the net is
+            # built here, over every node it has.
+            _net = board.FindNet(_nm)
+            if _net is None:
+                if _nm not in set(notes.get("post_route_nets", ())):
+                    raise SystemExit(
+                        "post-route pad %s wants net %s, which is not on the board. A "
+                        "net that does not exist pre-route has to be declared in "
+                        "post_route_nets, so that layout skips it deliberately rather "
+                        "than by accident." % (_ref, _nm))
+                _net = pcbnew.NETINFO_ITEM(board, _nm)
+                board.Add(_net)
+                _by = {_f.GetReference(): _f for _f in board.GetFootprints()}
+                for _r2, _p2 in _nl[_nm]:
+                    for _pad in _by[_r2].Pads():
+                        if _pad.GetNumber() == str(_p2):
+                            _pad.SetNet(_net)
+            _hit = 0
+            for _pad in _fp.Pads():
+                if _pad.GetNumber() == _pn:
+                    _pad.SetNet(_net)
+                    _hit += 1
+            if not _hit:
+                raise SystemExit("post-route pad %s has no pad %s" % (_ref, _pn))
+        print("  placed %d bring-up pad(s) AFTER routing, invisible to the router"
+              % len(_post))
+        board.BuildConnectivity()
+
     _nets = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
     for _rv in notes.get("repair_vias", []):
         assert _rv[0] in _nets, "repair_vias names unknown net %r" % (_rv[0],)

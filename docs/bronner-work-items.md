@@ -4,15 +4,35 @@
 
 ---
 
-## 1. ~~OPTICAL~~ — DONE, submitted
+## 1. OPTICAL — **the bring-up pads are IN, 0 unconnected / 0 violations**
 
-0 unconnected, 0 violations, SI all four pass, CAD 237/237, ULPI skew 47.93/80, USB_HS
-0.18/8.30, fab packages (237 placements, 45 BOM lines). Submitted at 0ff6c2c.
+Six pads: `TP6`/`TP7` I2C2 SDA/SCL, `TP8` BOOT0, `TP9` +24V, `TP10` +5V, `TP11` +3V3A. 248
+placements, SI all four pass, ULPI skew 47.93/80, USB_HS 0.18/8.30, audit_board all checks pass.
 
-**The bring-up pads came out** and that is the one thing still open on this board: they cost
-a net in every one of four routes, and `+3V3A` failed even in the run where its own pad was
-REMOVED — so the south is at its routing limit and cannot absorb an addition there. **There is
-still no second way to flash this board.** It needs a placement rework, not an insertion.
+**Two things made it possible, and both are reusable.**
+
+1. **The pads are placed AFTER routing** (`post_route_refs`, applied in `route.py`'s repair
+   block). Given to the router they cost a net in four consecutive runs; placed after it they
+   cannot change what it did, and DRC still checks every clearance. `post_route_nets` does the
+   same for a net that does not exist pre-route, so the DSN stays identical.
+2. **The sites are searched, not chosen** — `scratchpad/padsite.py` sweeps a grid for a clear
+   circle that already overlaps its own net's copper and clears every segment, via, pad,
+   courtyard and the outline. Three bugs it had are worth remembering: the courtyard radius is
+   the FOOTPRINT's (1.297 for a D1.5 pad), not the pad's; distance-to-outline is not the same
+   question as being ON the board; and the edge keep-out that binds is the CAD's 1.2 mm, not
+   DRC's 0.300.
+
+**And the second way in was already on the board.** AN2606 puts the H74x bootloader's I2C2 on
+PF0/PF1 — the converter control bus, routed since day one, at slave address 0x4E against the
+converters' 0x4C. The USART1 pads that four routes were spent on cannot escape PA9/PA10 at all.
+
+**`ROUTE_REUSE_SES=1` turns a 30-minute iteration into three minutes** when the placement and
+netlist have not changed — which is exactly the case for a post-route change. It already
+existed in `route.py`.
+
+Still open on this board: **item 6 of the diagnostics doc**, converter isolation. It was gated
+on a clean baseline and now has one, plus a two-minute way to test a change (insert into the
+finished board, run `kicad-cli pcb drc`) — see `scratchpad/trypads.py`.
 
 ## 2. Routing must stay fast enough to iterate (user, 2026-09-28)
 
