@@ -420,6 +420,28 @@ deliberately -- what was tried and why it failed is the most reusable part -- bu
 working top-down would act on stale text. The state of each claim:
 
     LIVE, and the numbers reproduce:
+      * ⚠ THE PI IS FLUSH TO THE BAY WALL and pi_cap_relief is DELETED (user, 2026-09-29:
+        the Pi "requires cutting into the chassis wall which reduces its strength"). +3.82,
+        cap face measured ON -131.55 at +0.00, wall back to its full 10.40. MEASURE THE
+        STACK NOT THE BOARD: the cap overhangs the laminate 0.37, so the board's own 3.45
+        would have left it proud and still needing a relief.
+      * The Pi's M4 was CLIPPING the Pi -- gate confirms pi5 <-> board_screw_2 is gone. It
+        is on the board's UNDERSIDE, not the +Z face the user suggested: the deck covers
+        that edge end to end, 1.3 mm3 into top_plate_5 at EVERY hold.
+      * The motor board CANNOT move +Y: 0.65 mm to body_adapter_0, which re-opens the
+        retired handover. It did not need to -- clearing both screws out of the inter-board
+        gap freed the room on its own.
+      * MCTRL_HOLD / PI_HOLD single-source the hold point. keyhead_cradles BORES the anchor
+        and board_screws DRAWS the screw and each had its own literal edge; moving one gave
+        four chassis_2 overlaps, fasteners in unbored cradle.
+      * WIRE_OK's bus-B entry is ALREADY FIXED (9303bd5) -- {motor_ctrl, kl_pcb}. Gate 110
+        unchanged, so tee_pcb was absorbing nothing. A tick prompt still lists it as next.
+      * IN FLIGHT: the motor board's EAR IS REMOVED. It was not merely a spare hole -- it
+        made the board 70.50 wide instead of 61.80 and electronics.py hands THAT width to
+        pcb_hold_xy, so every hold point was computed against a rectangle the laminate does
+        not occupy. _MCTRL_CX now anchors on MCTRL_FLOOR_EDGE_X so the bottom edge stays on
+        the floor when the width changes. Routing now; the motor screw's final home depends
+        on it.
       * OPTICAL (2026-09-29 tick): item 6 was ALREADY BUILT; the board measures 0
         unconnected / 0 unexpected. Its 21 courtyard errors are all DECLARED and reasoned
         (20 sensor triplets + TP8/R30). But optical_declared's OWN measurements were all
