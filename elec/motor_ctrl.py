@@ -827,7 +827,7 @@ BOARD_NOTES = {
         # to 46, and nothing recomputed it.)
         "J2": (24.92, -8.00, 90.0),
         "J6": (24.92, 8.00, 90.0),
-        "J3": (11.60, 15.50, 180.0),
+        "J3": (11.60, 15.00, 180.0),
         # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
         "TP1": (15.95, -10.10, 90.0),
         "TP2": (18.70, 2.40, 90.0),
@@ -862,8 +862,8 @@ BOARD_NOTES = {
         "C23": (6.60, -13.20, 180.0),
         "C2": (21.10, -16.00, 90.0),
         "C3": (18.10, -12.50, 90.0),
-        "R1": (20.60, -12.50, 90.0),
-        "R2": (22.10, -12.50, 90.0),
+        "R1": (16.10, -12.50, 90.0),
+        "R2": (19.65, -12.50, 90.0),
         "C6": (12.60, -11.00, 90.0),
         "R7": (14.10, -11.00, 90.0),
         "C7": (9.60, -11.00, 90.0),
@@ -874,7 +874,20 @@ BOARD_NOTES = {
         "C12": (6.10, -2.60, 90.0),
         "C13": (6.10, -0.60, 90.0),
         "C14": (6.10, 1.40, 90.0),
-        "Y1": (19.60, -4.00, 90.0),
+        # ⚠ ABOVE U4, BECAUSE THE CORRIDOR BESIDE IT IS 3.46 mm AND THE CRYSTAL IS 3.58.
+        # Y1 sat at x 19.60 between U4's courtyard (right edge 17.25) and J2's body
+        # (left edge 20.71) and overlapped J2 by 0.69 -- and there is no x that clears
+        # both, which is why nudging it failed twice. North of U4 is no better: U2 and
+        # U3 sit shoulder to shoulder there with 1.02 mm between them, and EVERY
+        # corridor on that side of the board measures 3.37..3.46 mm. This site is the
+        # NEAREST of 9974 that a free-space search found -- 2.81 mm off U4's package
+        # edge, and nothing on this board is closer. Searched, not guessed: three
+        # hand-picked spots in a row landed on C3, then U2/U3, then J1. The alternative was spreading
+        # J2/J6 apart in y to open the gap, and that swallows C2 under J2 and JP1 under
+        # J6: the +X edge is full. So the crystal moves instead, to free board directly
+        # WEST of U4 -- still a short hop to the oscillator pins. ⚠ IF OSC_IN/OSC_OUT
+        # COME BACK UNCONNECTED, THIS IS WHY (it happened once before, see the J4 note).
+        "Y1": (3.35, -0.75, 90.0),
         "C4": (19.60, -8.00, 90.0),
         "C5": (19.60, 0.00, 90.0),
         "C15": (28.60, -16.75, 90.0),
@@ -884,10 +897,17 @@ BOARD_NOTES = {
         "JP1": (20.60, 16.50, 90.0),
         "D2": (2.10, 12.30, 90.0),
         "D3": (2.10, 15.30, 90.0),
-        "D4": (20.10, 10.00, 90.0),
-        "D5": (20.10, 13.00, 90.0),
-        "D6": (27.60, -7.00, 90.0),     # the USB clamps take R8/R9's old slots
-        "D7": (27.60, -10.00, 90.0),
+        "D4": (19.60, 10.00, 90.0),
+        "D5": (19.60, 13.00, 90.0),
+        # ⚠ BESIDE J4, THE USB CONNECTOR THEY CLAMP. They sat at x 27.60, which is
+        # 53 mm from it and INSIDE J2's courtyard -- J2 is side entry, so its body lies
+        # on the board across x 20.71..31.00 and these were underneath it. The comment
+        # they carried ("take R8/R9's old slots") recorded where they were put, not what
+        # they are for: an ESD clamp 53 mm downstream of the connector protects the
+        # board from nothing, because the transient is already past it. Both faults have
+        # the same fix, so the courtyard error was the one that made the other visible.
+        "D6": (-27.00, -22.00, 90.0),
+        "D7": (-24.00, -22.00, 90.0),
         "C19": (-5.90, -17.00, 90.0),
         "C20": (-5.90, -13.00, 90.0),
         "R10": (-5.90, -9.00, 90.0),
@@ -910,7 +930,7 @@ BOARD_NOTES = {
         "D9": (-15.40, 2.00, 90.0),
         "C21": (-15.40, 9.00, 90.0),
         "C22": (-15.40, 13.50, 90.0),
-        "J5": (-22.90, 0.00, 90.0),
+        "J5": (-22.90, 0.90, 90.0),
         # â”€â”€ the LED strip's buck â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         # âš  TWO ROWS, AND THE LAND SIZES ARE WHY. Measured off the routed board rather
         # than assumed from the body: L3 (Bourns SRN6028) lands 6.92 x 8.11 and U6's
@@ -924,14 +944,14 @@ BOARD_NOTES = {
         # âš  HOT LOOP FIRST: C24/C25 sit against U6's VIN and SW runs straight into L3.
         # That loop is what radiates, and this board shares an instrument with a magnetic
         # pickup.
-        "F3": (-27.00, 21.50, 0.0),
-        "C24": (-22.50, 21.50, 0.0),
-        "C25": (-18.00, 21.50, 0.0),
-        "U6": (-11.50, 21.50, 0.0),
-        "L3": (-3.50, 21.50, 0.0),
-        "F4": (4.00, 21.50, 0.0),
-        "D10": (9.50, 21.50, 0.0),
-        "J7": (19.50, 21.50, 0.0),
+        "F3": (-27.00, 23.20, 0.0),
+        "C24": (-21.93, 23.20, 0.0),
+        "C25": (-16.85, 23.20, 0.0),
+        "U6": (-10.36, 23.20, 0.0),
+        "L3": (-2.87, 23.20, 0.0),
+        "F4": (3.20, 23.20, 0.0),
+        "D10": (9.62, 23.20, 0.0),
+        "J7": (24.21, 23.20, 0.0),
         # row B: the passives, above row A. U6 and L3 are ~7-8 mm tall in Y and fill
         # row A by themselves, so nothing else fits beside them.
         "C26": (-14.00, 28.50, 0.0),
@@ -942,10 +962,10 @@ BOARD_NOTES = {
         "C27": (-1.00, 28.50, 0.0),
         "C28": (1.50, 28.50, 0.0),
         "C29": (4.50, 28.50, 0.0),
-        "C30": (7.70, 28.50, 0.0),
+        "C30": (8.10, 28.50, 0.0),
         # ⚠ 3.2 mm PITCH, NOT 3.0. At 3.0 the output bulk caps left 0.100 mm between
         # adjacent pads against a 0.127 rule -- 0.027 short, and DRC is right to say so.
-        "C31": (10.90, 28.50, 0.0),
+        "C31": (11.70, 28.50, 0.0),
     },
     "refs_on_fab": True,
     # THE GROUND PLANE is why this is four layers, same as the lever board: the
