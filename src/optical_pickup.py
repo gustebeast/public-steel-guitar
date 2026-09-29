@@ -474,15 +474,7 @@ STRING_BOT_MIN = D.STRING_Z
 FIELD_TALLEST  = PD_PKG[2]                                    # 1.10, the PD15s
 PCB_TOP        = STRING_BOT_MIN - PART_STRING_CLR - FIELD_TALLEST
 SENSE_FACE_Z   = PCB_TOP + LED_PKG[2]                         # emitter faces UP
-# ⚠ 1.22, NOT THE 2.00 THIS COMMENT CLAIMED. The number went stale when PCB_TOP was
-# re-datumed onto the axle: it is STRING_BOT_MIN - SENSE_FACE_Z = 16.00 - 14.78, and it
-# has been 1.22 ever since. Nothing downstream was wrong -- the value is computed, never
-# the typed one -- but the figure was quoted in review as 2.00 more than once.
-# SHORTER IS BETTER HERE: signal goes as the inverse square of the standoff, so 1.22 buys
-# 2.7x the return of 2.00. What bounds it is not optics but collision -- the PD15s stand
-# 1.10 and the string's underside is 1.10 above them, of which 0.306 is the vibration
-# allowance at this station and the rest is margin.
-OPT_GAP        = STRING_BOT_MIN - SENSE_FACE_Z                # 1.22 (emitter face to string)
+OPT_GAP        = STRING_BOT_MIN - SENSE_FACE_Z                # 2.00, was a typed 3.0
 AXLE_TOP       = D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2     # 12.00
 # ⚠ AND THIS IS WHAT STANDS BETWEEN THE BOARD AND THE COMB. Resting the board ON the axle
 # would let its hole become ten bearing slots with 4 mm strips between them, instead of one
@@ -1528,28 +1520,6 @@ def _parts():
     # flank, west of its courtyard at -11.10 and of the decoupling column at -8.22.
     add("R30", "BOOT0 pull-down -- at the pin", "0402", -17.55, -59.32, rot=90.0)
     add("R31", "NRST pull-up -- at the pin", "0402", -17.55, -69.63, rot=90.0)
-
-    # ⚠ EACH BRING-UP PAD SITS ON ITS OWN NET'S COPPER. Lining them up in a convenient
-    # empty row instead left the router an 11.9 mm haul to reach +3V3A; it stranded, and
-    # the pressure cost U7 pad 9 -- the PHY's supply -- its connection as collateral.
-    # Sites were scored against part BOUNDING BOXES, not centres: scoring by centre put
-    # TP8 1.08 mm INSIDE the LQFP176, because 8.76 mm to U6's centre is nothing when the
-    # body is 24 mm across. +24V lands 0.01 mm from its copper, +5V 0.04, BOOT0 0.03,
-    # +3V3A 1.19 -- so four of the six need no route at all.
-    # ⚠ THE USART PADS GO BESIDE THEIR OWN PINS. PA9/PA10 come out on the MCU's EAST face
-    # at (18.80, -32.31) and (18.80, -31.81); x 23 is 0.45 mm inside C113 and x 26.75
-    # overshoots the 1.2 mm edge keep-out by 0.09, so x 26.40 it is -- ~8 mm of new net,
-    # which is the shortest these two can be. All of it is SOUTH of the y -19 border, so
-    # none of it touches the analog strip or the east spine lane.
-    # ⚠ CAD COORDINATES = board-local + (-3.55, -28.315).
-    for _ref, _desc, _lx, _ly in (
-            ("TP6", "bring-up pad -- USART1 TX (ROM bootloader)", 26.40, -32.00),
-            ("TP7", "bring-up pad -- USART1 RX (ROM bootloader)", 26.40, -29.00),
-            ("TP8", "bring-up pad -- BOOT0 (hold HIGH at reset)", -18.50, -37.75),
-            ("TP9", "bring-up pad -- +24V rail", -20.25, -78.50),
-            ("TP10", "bring-up pad -- +5V rail", 19.75, -66.25),
-            ("TP11", "bring-up pad -- +3V3A rail", 5.25, -56.75)):
-        add(_ref, _desc, "TP", _lx - 3.55, _ly - 28.315)
 
     y = _block(P, y,
                      # ⚠ THE SWD PADS, WITHOUT WHICH THIS BOARD CANNOT BE PROGRAMMED
