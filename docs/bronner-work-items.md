@@ -1061,3 +1061,29 @@ unchanged at 1 unconnected, pi_cap unchanged at 0/0 with no stray line at all (i
 both faces). layout.py is shared by all seven boards and this session already produced one
 plausible-and-wrong change on this exact board (dropping stitch_nets, 1 -> 3). A diagnostic that
 hands the next attempt the deciding number is worth more than a geometry change made tired.
+
+### ⚠ WHY THE STITCHER CANNOT "MEASURE REACH": IT RUNS BEFORE THE FILL (2026-09-29)
+
+I proposed twice that layout.py's stitcher should measure the distance to the plane and lay that
+length or skip. IT CANNOT. The order in elec/layout.py is:
+
+    3990   _stitch_plane_pads(...)           vias placed
+    4128   ZONE_FILLER(board).Fill(...)      the plane comes into existence
+    4129   _check_stitches_landed(...)       strays found, and now reported with their gap
+
+At stitch time there is NO FILL to test against. The stitcher places a via beside each pad in
+the first of eight directions that clears other pads -- which is all it CAN do, because the pour
+it is aiming at does not exist for another 140 lines. That is also why the docstring says "this
+is a placement problem. Report it, do not tidy it away": not a shrug, an ORDERING CONSTRAINT.
+
+SO THE REAL FIX IS A POST-FILL REPAIR PASS, not a smarter stitcher: after the fill, for each
+stray via, lay a track toward the nearest filled plane point (_plane_gap already finds it and
+now prints it), then REFILL and re-check. Bounded to one iteration it is contained; unbounded it
+could chase its own tail, because new copper changes the fill that defines what is stray.
+
+NOT ATTEMPTED. It needs a second fill on every board in the fleet and validation across all
+seven, and this session has already produced one plausible-and-wrong change in exactly this area
+(dropping led_strip's stitch_nets, 1 -> 3 unconnected). What it now has that it did not have this
+morning: the gap printed inline (1.30 mm on all three of led_strip's strays), the knowledge that
+the pour is ONE 2089 mm2 island so any contact connects, and proof that the stitcher is net +2
+connections even leaving the strays behind.
