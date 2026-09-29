@@ -108,8 +108,18 @@ def corbel_close(w, crop, z0, z1, step, align=None, keep_frac=0.5, debug=False):
     bnds.append(z1)
     band = crop_s.intersect(box_at(big, big, z1 - z0, x=0.0, y=0.0,
                                    z=(z0 + z1) / 2.0).val())
+    cb = crop_s.BoundingBox()
     region = sol.intersect(band)            # the only material this may change
-    outside = sol.cut(crop_s)               # ...and the walls it grows the 45s out of
+    # ...AND THE WALLS IT GROWS THE 45s OUT OF -- but only a COLLAR of them. Outside
+    # material re-seeds the sweep at every course, so its reach into the region is one
+    # course and no more; the rest of the housing behind it can never matter. Sectioning
+    # and drafting the whole part per course instead of a 1.6 mm collar was most of the
+    # run time and none of the answer.
+    grab = 2 * step
+    outside = sol.cut(crop_s).intersect(
+        box_at(cb.xlen + 2 * grab, cb.ylen + 2 * grab, cb.zlen + 2 * grab,
+               x=(cb.xmin + cb.xmax) / 2, y=(cb.ymin + cb.ymax) / 2,
+               z=(cb.zmin + cb.zmax) / 2).val())
 
     def faces_at(shape, z):
         """The cross-section at `z`, as the bottom faces of a hair-thin slab ABOVE it.

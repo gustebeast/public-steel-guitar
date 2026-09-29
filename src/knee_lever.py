@@ -2517,7 +2517,7 @@ def _housing() -> cq.Workplane:
     return heal(roof_close(w, _room))
 
 
-def roof_close(w, *rooms, z_top=None, align=None):
+def roof_close(w, *rooms, z_top=None, align=None, step=None):
     """The 45 deg closure over the lever room -- LAST, so it sees the finished solid.
 
     THE ROOM LEAVES A ROOF AND THE ROOF HAS NOTHING UNDER IT. Now that the room is the
@@ -2553,7 +2553,15 @@ def roof_close(w, *rooms, z_top=None, align=None):
     # the worst ceiling left in the part. Carried on up, the tenon gives back 49 mm3 -- a
     # nibble out of the one corner of it that was over the void -- and the mortise faces,
     # which are its flanks, are untouched.
-    return corbel_close(w, crop, bed, bb.zmax if z_top is None else z_top, D.BEAD,
+    # THE STEP IS NOT THE SURFACE QUALITY any more -- the cut is drafted, so its faces
+    # are true planes whatever the step -- it is how finely the sweep TRACKS a change in
+    # support. One bead is enough wherever the walls are wide. It is not enough on the
+    # vertical lever, whose rib between the cartridge pockets is 2.1 wide: the support
+    # there changes inside a single course and the sweep stepped straight over it,
+    # leaving 1.72 mm2 of flat on the rib's underside (user, 2026-09-29: "there's an
+    # overhang here"). Half a bead closes it completely, and costs that part 9.7 s.
+    return corbel_close(w, crop, bed, bb.zmax if z_top is None else z_top,
+                        D.BEAD if step is None else step,
                         align=HOUS_Z1 if align is None else align)
 
 
