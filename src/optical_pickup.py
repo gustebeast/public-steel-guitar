@@ -1609,14 +1609,14 @@ def _parts():
             # extra debt: padsite.py sweeps the FINISHED board, and any placement change
             # invalidates every site it found. The current 15 violations include four on TP7
             # for exactly that reason.
-            ("TP8", "bring-up pad -- BOOT0 (hold HIGH at reset)", -21.450, -33.685),
-            ("TP9", "bring-up pad -- +24V rail", -20.536, -77.372),
-            ("TP10", "bring-up pad -- +5V rail", -3.161, -54.865),
-            ("TP11", "bring-up pad -- +3V3A rail", 5.332, -57.687)):
+            ("TP8", "bring-up pad -- BOOT0 (hold HIGH at reset)", -12.606, -23.735),
+            ("TP9", "bring-up pad -- +24V rail", -20.106, -79.735),
+            ("TP10", "bring-up pad -- +5V rail", 21.394, -66.735),
+            ("TP11", "bring-up pad -- +3V3A rail", 17.894, -16.235)):
         add(_ref, _desc, "TP", _lx - 3.55, _ly - 28.315)
     for _ref, _desc, _lx, _ly in (
-            ("TP6", "bring-up pad -- I2C2 SDA (ROM bootloader bus)", 6.351, -20.231),
-            ("TP7", "bring-up pad -- I2C2 SCL (ROM bootloader bus)", 20.601, -21.731)):
+            ("TP6", "bring-up pad -- I2C2 SDA (ROM bootloader bus)", 6.394, 54.265),
+            ("TP7", "bring-up pad -- I2C2 SCL (ROM bootloader bus)", 7.394, 61.765)):
         add(_ref, _desc, "TP_SMALL", _lx - 3.55, _ly - 28.315)
 
     # ⚠ THE PER-CELL SHDNZ PULL-UPS AND THEIR PADS -- item 6, converter isolation. One
