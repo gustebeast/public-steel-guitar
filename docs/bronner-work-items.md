@@ -3922,3 +3922,62 @@ as a lap number times a width number.
 ⚠ **And those probes now have to skip `pi_spacer` by name**, because the part is in the
 assembly: a probe of its own envelope finds ITSELF, a 100 %-full hit that reads exactly like a
 fatal collision.
+
+### 6. ⚠⚠ THE SCOPED GATE WAS REPORTING A PART AGAINST ITSELF — AND HAS BEEN FOR A WHILE
+
+The first gate on the spacer looked alarming and almost none of it was real. Reading it
+properly is the lesson, so here is the whole diagnosis.
+
+**Top of the report:**
+
+```
+ INNER-LOOP GATE -- live part FRESH, 915 context solids CACHED (83 min old)
+== UNINTENDED overlaps (170) ==
+    279176.3 mm^3   keyhead_endplate <-> keyhead_endplate
+     20778.5 mm^3   pi5            <-> pi5
+     11673.7 mm^3   motor_ctrl     <-> motor_ctrl
+```
+
+**A part cannot overlap itself.** Those are each part drawn TWICE — once live, once from the
+cache — which is precisely the failure `optical_work_components`'s own docstring describes:
+*"ScratchView only skips caching for names matching `replaced` prefixes, so with none declared
+every live part was ALSO cached and rendered twice. The user saw the old C-shaped board sitting
+inside the new O-shaped one."*
+
+The stored scope's `replaced` was `["optical_", "bridge_endplate", "chassis_"]` — but the live
+set also contains **`motor_ctrl` and `keyhead_endplate`**, and neither was declared. That
+predates this tick entirely: those two have been doubled in the view and in the gate, and a
+279,177 mm³ phantom at the top of the list is loud enough to bury everything under it.
+
+**The Pi fasteners were the same error in a more convincing disguise:**
+
+| pair | mm³ | what it really was |
+|---|---|---|
+| `pi_spacer` ↔ `board_screw_2` | 112.8 | the **old** screw, at the old hold, passing through the new spacer |
+| `chassis_2` ↔ `board_screw_2` | 61.1 | the old screw where the chassis no longer has a bore |
+| `chassis_2` ↔ `board_insert_2` | 47.1 | same, for the insert |
+| `board_screw_2` ↔ `knee_housing` | 36.5 | **the user's reported fault, measured** — but at the OLD site |
+| `board_insert_2` ↔ `knee_housing` | 1.8 | same |
+
+`board_screw_*` / `board_insert_*` were **not in the live set**, so they came from a cache built
+before the hold moved. Every one of those numbers is an artefact of comparing an 83-minute-old
+fastener with a freshly built chassis.
+
+⚠ **The trap is that 36.5 mm³ into `knee_housing` is exactly the fault we set out to fix**, so
+it reads as "the spacer did not work". It is the opposite: it is the old arrangement, still
+recorded in the cache, failing the way the user said it would.
+
+**Fixes applied:**
+
+* `replaced` now lists every live name: `optical_`, `bridge_endplate`, `chassis_`,
+  `motor_ctrl`, `keyhead_endplate`, `pi5`, `pi_spacer`, `board_screw`, `board_insert`
+* `board_screws()` joins the live set, because the fasteners **move with the retention** and
+  the cache cannot know that
+* re-rendered with `--start`, which rebuilds the cache from scratch, so the view and the gate
+  agree
+
+**Rule for next time:** in a scoped gate, treat a `X <-> X` pair as a scope bug, not a
+geometry bug, and check whether a suspicious pair involves anything the live set does not own
+before believing it. ⚠ And a probe that measures a *shell* around a bore cannot see material
+*inside* it — `tools/_probe_pi_spacer` cleared the 1.6 mm annulus, which says nothing about the
+hole, so the insert-vs-housing question needed the assembly to answer.

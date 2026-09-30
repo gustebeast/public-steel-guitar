@@ -1259,6 +1259,13 @@ def optical_work_components():
            ("motor_ctrl", EL.motor_ctrl()),
            ("pi5", EL.pi5()), ("pi_spacer", EL.pi_spacer()),
            ("keyhead_endplate", _KE.keyhead_endplate)]
+    # ⚠ AND THE FASTENERS, BECAUSE THEY MOVE WITH THE RETENTION AND THE CACHE DOES NOT KNOW.
+    # Left to the cache, board_screw_2/board_insert_2 stay at the hold position they had when
+    # it was built -- and a scoped gate then reports the OLD screw against the NEW chassis:
+    # 61.1 mm3 into chassis_2, 47.1 of insert, 36.5 into knee_housing and 112.8 through
+    # pi_spacer, every one of them an artefact of an 83-minute-old cache rather than a fault in
+    # the design. Live, they are checked where they actually are.
+    out += EL.board_screws()
     out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     return out
 
