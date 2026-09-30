@@ -149,6 +149,41 @@ def _pads(board_txt):
             else:                              # ...or along its local y
                 half_len, half_w = (sh - sw) / 2.0, sw / 2.0
                 ux, uy = -math.sin(ang), math.cos(ang)
+            # ⚠ AND ITS FOUR CORNERS. The capsule above is a STADIUM -- fully rounded ends --
+            # and a KiCad pad is a rounded RECTANGLE, which reaches further at the corners. On
+            # a SOT-23-5 that is worth up to 0.15 mm, and it is an UNDER-estimate, so the
+            # search hands back paths DRC then rejects: this cost three lay-measure-bump
+            # cycles in one sitting (four clearance violations at 0.086-0.111, then six at
+            # 0.066-0.118, then one at 0.1177) before the shape itself was suspected.
+            # The docstring above already tells this story about a pad being modelled as a
+            # CIRCLE and being too fat; too thin fails the same way, just more quietly.
+            # ⚠ THE SHAPE DECIDES THE MODEL, AND THIS BOARD USES FOUR OF THEM: 881 roundrect,
+            # 86 rect, 13 circle, 4 oval. One formula covers all of them -- a rectangle INSET
+            # by the corner radius, with that radius added back as a distance offset:
+            #     rect      cr = 0            -> the rectangle itself
+            #     roundrect cr = rratio*min   -> KiCad's own definition
+            #     circle    cr = r            -> the inset is a POINT
+            #     oval      cr = min/2        -> the inset is a SEGMENT, i.e. the capsule
+            # So the original capsule was exactly right for the 4 oval pads and wrong for the
+            # other 980, where it UNDER-states the pad at its corners and therefore OVER-states
+            # the clearance -- which is why the search kept approving paths DRC rejected.
+            # ⚠ AND A PLAIN RECTANGLE IS NOT THE FIX EITHER: it over-states a roundrect, which
+            # flagged an already-DRC-clean repair as violating. Too fat and too thin fail the
+            # same way, one by inventing obstacles and one by hiding them.
+            _shape = (re.search(r'\(pad "[^"]*" \w+ (\w+)', p.group(0)) or [None, "rect"])[1] \
+                if False else _pad_shape(p.group(0))
+            _rr = re.search(r"\(roundrect_rratio ([\d.]+)\)", body)
+            _mn = min(sw, sh)
+            if _shape == "circle":
+                _cr = _mn / 2.0
+            elif _shape == "oval":
+                _cr = _mn / 2.0
+            elif _shape == "roundrect":
+                _cr = (float(_rr.group(1)) if _rr else 0.25) * _mn
+            else:
+                _cr = 0.0
+            _ihx, _ihy = max(0.0, sw / 2.0 - _cr), max(0.0, sh / 2.0 - _cr)
+            _ca, _sa = math.cos(ang), math.sin(ang)
             nt = re.search(r'\(net "([^"]*)"\)', body)
             # ⚠ AND WHICH COPPER LAYERS IT IS ON, which this parser did not record and
             # every caller therefore treated as "all of them". An SMD pad on F.Cu does
@@ -166,6 +201,7 @@ def _pads(board_txt):
             out.append(dict(x1=gx - ux * half_len, y1=gy - uy * half_len,
                             x2=gx + ux * half_len, y2=gy + uy * half_len,
                             r=half_w, net=nt.group(1) if nt else "",
+                            gx=gx, gy=gy, ca=_ca, sa=_sa, ihx=_ihx, ihy=_ihy, cr=_cr,
                             cu=None if (not cu or "*.Cu" in cu) else cu))
     return out
 
@@ -318,6 +354,44 @@ def _d_seg_seg(ax, ay, bx, by, cx, cy, dx_, dy_):
                _d_pt_seg(cx, cy, ax, ay, bx, by), _d_pt_seg(dx_, dy_, ax, ay, bx, by))
 
 
+def _pad_shape(block):
+    m = re.search(r'\(pad "[^"]*"\s+\S+\s+(\w+)', block)
+    return m.group(1) if m else "rect"
+
+
+def _d_seg_pad(ax, ay, bx, by, pad):
+    """Edge-to-edge distance from segment AB to a pad, EXACT for rect/roundrect/circle/oval.
+
+    The pad is an inset axis-aligned box in its own frame plus a corner radius, so the work is
+    a segment-to-box distance there and one subtraction. Falls back to the old capsule if a pad
+    somehow has no frame -- a parser that silently changes shape is the thing this module keeps
+    being bitten by, so the fallback is explicit rather than implied."""
+    if "ihx" not in pad:
+        return _d_pt_seg(ax, ay, pad["x1"], pad["y1"], pad["x2"], pad["y2"]) - pad["r"]
+    ca, sa = pad["ca"], pad["sa"]
+    gx, gy = pad["gx"], pad["gy"]
+
+    def loc(x, y):
+        dx, dy = x - gx, y - gy
+        return (dx * ca + dy * sa, -dx * sa + dy * ca)
+
+    ux, uy = loc(ax, ay)
+    vx, vy = loc(bx, by)
+    hx, hy = pad["ihx"], pad["ihy"]
+    inside = (abs(ux) <= hx and abs(uy) <= hy) or (abs(vx) <= hx and abs(vy) <= hy)
+    if inside:
+        return -pad["cr"]
+    best = 1e9
+    corners = [(-hx, -hy), (hx, -hy), (hx, hy), (-hx, hy)]
+    for i in range(4):
+        cx, cy = corners[i]
+        dx, dy = corners[(i + 1) % 4]
+        d = _d_seg_seg(ux, uy, vx, vy, cx, cy, dx, dy)
+        if d < best:
+            best = d
+    return best - pad["cr"]
+
+
 class Board:
     def __init__(self, stem, net):
         txt = open(stem + ".kicad_pcb", encoding="utf-8").read()
@@ -344,7 +418,7 @@ class Board:
         for p in self.pads:                       # pads: capsules, not circles
             if p["net"] == self.net:
                 continue
-            if _d_pt_seg(x, y, p["x1"], p["y1"], p["x2"], p["y2"]) < r + p["r"] + MARGIN:
+            if _d_seg_pad(x, y, x, y, p) < r + MARGIN:
                 return False
         for e in self.edges:                      # and the outline
             if _d_pt_seg(x, y, *e) < r + MARGIN:
@@ -380,7 +454,7 @@ class Board:
                 continue
             if pd.get("cu") is not None and layer not in pd["cu"]:
                 continue                      # see _pads: an F.Cu pad is not a B.Cu obstacle
-            d = _d_seg_seg(*p, *q, pd["x1"], pd["y1"], pd["x2"], pd["y2"]) - half - pd["r"]
+            d = _d_seg_pad(*p, *q, pd) - half
             if d < worst:
                 worst, who = d, "pad [%s]" % (pd["net"] or "no net")
         for e in self.edges:
@@ -445,7 +519,7 @@ class Board:
                 continue
             if pd.get("cu") is not None and layer not in pd["cu"]:
                 continue                      # an F.Cu pad does not block a B.Cu track
-            if _d_seg_seg(*p, *q, pd["x1"], pd["y1"], pd["x2"], pd["y2"]) < half + pd["r"] + MARGIN:
+            if _d_seg_pad(*p, *q, pd) < half + MARGIN:
                 return False
         for e in self.edges:
             if _d_seg_seg(*p, *q, *e) < half + MARGIN:
@@ -498,9 +572,10 @@ class _Index:
                 continue
             if pd.get("cu") is not None and layer not in pd["cu"]:
                 continue
-            self._put(min(pd["x1"], pd["x2"]) - pd["r"], min(pd["y1"], pd["y2"]) - pd["r"],
-                      max(pd["x1"], pd["x2"]) + pd["r"], max(pd["y1"], pd["y2"]) + pd["r"],
-                      ("seg", pd["x1"], pd["y1"], pd["x2"], pd["y2"], pd["r"]))
+            _xs = [q[0] for q in pd["poly"]] if pd.get("poly") else [pd["x1"], pd["x2"]]
+            _ys = [q[1] for q in pd["poly"]] if pd.get("poly") else [pd["y1"], pd["y2"]]
+            self._put(min(_xs) - pd["r"], min(_ys) - pd["r"],
+                      max(_xs) + pd["r"], max(_ys) + pd["r"], ("pad", pd))
         for e in board.edges:
             self._put(min(e[0], e[2]), min(e[1], e[3]), max(e[0], e[2]), max(e[1], e[3]),
                       ("seg", e[0], e[1], e[2], e[3], 0.0))
@@ -514,7 +589,10 @@ class _Index:
     def clear(self, x, y, r):
         """Is a disc of radius r at (x, y) clear of every foreign obstacle on this layer?"""
         for it in self.g.get((int(math.floor(x / self.CELL)), int(math.floor(y / self.CELL))), ()):
-            if it[0] == "pt":
+            if it[0] == "pad":
+                if _d_seg_pad(x, y, x, y, it[1]) < r:
+                    return False
+            elif it[0] == "pt":
                 if math.hypot(x - it[1], y - it[2]) < r + it[3]:
                     return False
             else:
@@ -538,7 +616,14 @@ def maze(board, layer, start, goal, w=TRACK_W, step=MAZE_STEP, clearance=None, r
     import heapq
 
     clr = RULE_CLEAR if clearance is None else clearance
-    r = w / 2.0 + clr
+    # ⚠ THE GRID GUARANTEES LESS THAN THE DISC IT TESTS, AND THIS IS THE WHOLE GUARD BAND.
+    # Two adjacent cleared cells are step*sqrt(2) apart at worst, so every point of the segment
+    # between them is within step*sqrt(2)/2 of one centre -- and a disc of radius r therefore
+    # guarantees only r - step*sqrt(2)/2 along the track. Asking for the rule and getting
+    # 0.121 back is not a model error, it is that half-diagonal, and it cost three
+    # lay-measure-bump cycles before it was named: 0.175 failed, 0.26 worked, and the boundary
+    # is exactly 0.127 + 0.106. Inflate here so the CALLER's clearance is the one delivered.
+    r = w / 2.0 + clr + step * math.sqrt(2.0) / 2.0
     idx = _Index(board, layer)
     reach = MAZE_PAD if reach is None else reach
     x0 = min(start[0], goal[0]) - reach
@@ -598,6 +683,126 @@ def maze(board, layer, start, goal, w=TRACK_W, step=MAZE_STEP, clearance=None, r
             out.append(path[i])
     out.append(path[-1])
     return out
+
+
+def _flood(idx, start, x0, y0, nx, ny, step, r, goal=None):
+    """Dijkstra over the free cells of one layer from `start`. Returns (cost, parent), both
+    keyed by grid cell. `goal`, if given, is exempt from the clearance test for the same
+    reason `start` always is -- an endpoint sits ON its own net's copper while foreign copper
+    is often inside the radius, and a flood that refuses to finish looks exactly like one that
+    found nothing."""
+    import heapq
+
+    def key(pt):
+        return (int(round((pt[0] - x0) / step)), int(round((pt[1] - y0) / step)))
+
+    def pos(k):
+        return (x0 + k[0] * step, y0 + k[1] * step)
+
+    sk = key(start)
+    gk = key(goal) if goal is not None else None
+    cost = {sk: 0.0}
+    parent = {sk: None}
+    pq = [(0.0, sk)]
+    diag = math.sqrt(2.0) * step
+    while pq:
+        g, k = heapq.heappop(pq)
+        if g > cost.get(k, 1e18):
+            continue
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                nk = (k[0] + dx, k[1] + dy)
+                if not (0 <= nk[0] < nx and 0 <= nk[1] < ny):
+                    continue
+                ng = g + (diag if dx and dy else step)
+                if ng >= cost.get(nk, 1e18):
+                    continue
+                q = pos(nk)
+                if nk != gk and not idx.clear(q[0], q[1], r):
+                    continue
+                cost[nk] = ng
+                parent[nk] = k
+                heapq.heappush(pq, (ng, nk))
+    return cost, parent
+
+
+def _walk(parent, k, x0, y0, step, endpoint):
+    out = []
+    while k is not None:
+        out.append((x0 + k[0] * step, y0 + k[1] * step))
+        k = parent[k]
+    out.reverse()
+    # ⚠ out[0] IS THE FLOOD'S SOURCE AND out[-1] IS THE JOIN CELL. Snapping out[-1] instead
+    # -- which the first version did -- overwrites the join with the endpoint and invents a
+    # segment straight across the board. It showed up as a path the flood had certified at
+    # 0.175 clearance whose measured gaps were -0.2135 and -0.2990: the flood was fine, the
+    # reconstruction was not. track_gap caught it before a single track was laid, which is the
+    # whole reason the caller re-measures instead of trusting the search.
+    out[0] = endpoint
+    keep = [out[0]]
+    for i in range(1, len(out) - 1):
+        ax, ay = keep[-1]
+        bx, by = out[i]
+        cx, cy = out[i + 1]
+        if abs((bx - ax) * (cy - ay) - (by - ay) * (cx - ax)) > 1e-9:
+            keep.append(out[i])
+    keep.append(out[-1])
+    return keep
+
+
+def maze_via(board, layer_a, layer_b, start, goal, w=TRACK_W, step=MAZE_STEP,
+             clearance=None, reach=None, via_d=VIA_D):
+    """A repair that CHANGES LAYER: maze on `layer_a` from `start`, one via, maze on
+    `layer_b` to `goal`. Returns (path_a, (vx, vy), path_b) or None.
+
+    ⚠ THE SHAPE BOTH REMAINING OPTICAL NETS NEED. maze() is single-layer, and what is left on
+    that board is cross-layer: +3V3A's second break is F.Cu to In2.Cu, and SAI_FS has no F.Cu
+    path at any clearance across its 20.97 mm. The old two-via bridge search failed for a
+    different reason -- it only tried STRAIGHT runs between via sites, and the run is exactly
+    what is blocked.
+
+    ⚠ FLOOD BOTH LAYERS ONCE, THEN JOIN -- do not maze per candidate via. There are hundreds of
+    legal via sites (63 beside one pad, 224-563 beside the islands), and mazing for each would
+    be hundreds of searches. Two Dijkstra floods and a scan over the shared cells gives the
+    optimal join for the cost of two searches, which is what makes this usable at all.
+    """
+    clr = RULE_CLEAR if clearance is None else clearance
+    r = w / 2.0 + clr + step * math.sqrt(2.0) / 2.0   # see maze()'s note on the half-diagonal
+    reach = MAZE_PAD if reach is None else reach
+    x0 = min(start[0], goal[0]) - reach
+    x1 = max(start[0], goal[0]) + reach
+    y0 = min(start[1], goal[1]) - reach
+    y1 = max(start[1], goal[1]) + reach
+    nx = int((x1 - x0) / step) + 1
+    ny = int((y1 - y0) / step) + 1
+
+    ca, pa = _flood(_Index(board, layer_a), start, x0, y0, nx, ny, step, r)
+    cb, pb = _flood(_Index(board, layer_b), goal, x0, y0, nx, ny, step, r)
+
+    best = None
+    vr = via_d / 2.0 + clr
+    for k, g in ca.items():
+        gb = cb.get(k)
+        if gb is None:
+            continue
+        tot = g + gb
+        if best is not None and tot >= best[0]:
+            continue
+        vx, vy = x0 + k[0] * step, y0 + k[1] * step
+        # ⚠ THE VIA IS CHECKED AGAINST EVERY LAYER, not the two it joins: it is a plated hole
+        # through the whole stack. That is the same fact that made In2 "empty of pour but not
+        # of obstacles", and getting it wrong here would put a drill through someone's track.
+        if not board.via_ok(vx, vy, r=vr):
+            continue
+        best = (tot, k, (vx, vy))
+    if best is None:
+        return None
+    _tot, k, v = best
+    # pa runs start -> join; pb comes back goal -> join, so it is reversed to join -> goal.
+    return (_walk(pa, k, x0, y0, step, start), v,
+            list(reversed(_walk(pb, k, x0, y0, step, goal))))
 
 
 def search(stem, net, pad_xy, top=5):
