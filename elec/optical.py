@@ -3167,11 +3167,16 @@ BOARD_NOTES = {
         # at 0.127 width and the 0.127 rule, pours ignored because repair_planes refills), lay
         # it, refill, and check DRC shows no clearance violation. Last time that was
         # 4 unconnected items -> 2 with violations identical to the baseline.
-        # RESTORED: the re-route was reverted, so the route these points were measured against
-        # is the one on the board again. Verified after restoring -- see audit_board below.
-        ("+3V3D", "F.Cu", 0.127, [(-6.5492, -43.8150),     # U6 pad 36
-                                  (-7.2470, -43.8660),     # the knee, round the blocking pad
-                                  (-8.2190, -42.2590)]),   # its own copper's endpoint
+        # ⚠ THE +3V3D DOG-LEG IS DELETED, AND IT WAS NOT WRONG -- IT BECAME UNNECESSARY.
+        # It closed U6 pad 36 when +3V3D had no copper nearby: knee at (-7.2470, -43.8660),
+        # measured on rings against the route of 2026-09-29, worth 4 unconnected items -> 2.
+        # Giving VDDIO its own bypass cap (C119, at pin 9) put a +3V3D pad in that region, and
+        # the ROUTER now closes pad 36 by itself. Tested rather than assumed: the two segments
+        # were deleted from the finished board and DRC came back IDENTICAL -- same 4 items, same
+        # violations, +3V3D still fully connected -- so they were carrying nothing.
+        # Keeping it would have been the worse kind of dead weight: hand-laid copper re-laid
+        # blind into every future route, at coordinates that only happened not to short this
+        # time. The repair mechanism is not in question; this particular repair is retired.
     ] + _shdnz_stubs(),
     "repair_vias": [("SAI_FS", 0.70, -27.41), ("SAI_FS", 6.25, -28.61),
                     ("SAI_FS", 25.00, -19.31)] + _shdnz_vias(),
