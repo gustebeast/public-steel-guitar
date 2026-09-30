@@ -4601,3 +4601,44 @@ room for one more via at any size (Ø0.40 reaches only +0.0697 mm against a 0.12
 F.Cu dog-leg reaches its own copper, and every attempt to reserve space for it costs more than it
 buys. The next thing to try is **moving U7 or its decoupling so pin 9 has a corridor** — not
 another via, not another repair.
+
+## VDDIO: THE BYPASS CAP WAS 9.19 mm FROM THE PIN IT BYPASSES (2026-09-30)
+
+The placement question answered, and it turned out not to need moving U7 at all.
+
+**`C121` is declared "PHY VBAT/VDDIO bypass -- pad 16 and 9", and it cannot be both.** VBAT (16)
+is on the socket face; VDDIO (9) is on another. The socket-face row is ordered *"by the pad each
+part serves"*, so C121 sits beside 16 and **9.194 mm from 9** — measured, not assumed.
+
+That is wrong twice, and the second reason matters more than the first:
+
+* **Routing.** VDDIO's escape corridor runs **−X, away from every `+3V3D` pad**; the nearest is
+  2.756 mm and is another U7 pin. The router had nothing to reach. No via can help — none fits at
+  any size once the neighbours route (Ø0.40 → +0.0697 mm against a 0.127 rule) — and escape vias
+  on that edge made the board monotonically worse.
+* **Decoupling.** VDDIO sources the ULPI output drivers' switching current at 60 MHz. Its bypass
+  belongs **at** the pin. 9.194 mm of loop is not a bypass whatever the netlist says, so this was
+  a latent electrical fault independent of routing.
+
+**So pin 16 keeps C121 and pin 9 gets `C119`** — one bypass per supply pin, which is what the
+datasheet means. C119 fills a gap in the numbering (C115–C119 were unused) directly below the PHY
+cluster C120–C122.
+
+**Everything measured off the board rather than guessed:**
+
+| check | value |
+|---|---|
+| U7's courtyard −X edge | **114.056** (read from the board, not derived) |
+| C119's courtyard | 1.910 × 1.010, so +X edge at 113.955 → **0.10 mm clear of U7's** |
+| other courtyards overlapping the site | **none**, checked against every footprint |
+| pads in the 3 × 4 mm region outboard of pin 9 | **zero** |
+| pad 1 (the rail) offset | −0.48 at rot 0, so **rot 180** to face the pin; unrotated it would offer the router its GROUND pad |
+
+⚠ **Placed relative to U7**, per that section's own rule — *"read U7 back, never re-derive it: a
+copy that drifted by 1.2 mm once put R37's pad on U10's and shorted PHY_RBIAS to USB_DP."*
+Offsets `(−3.731, +0.250)` in the CAD frame; the frame mapping (`local = raw − CX/CY`, then
+`file_y = 100 − local_y`) was **verified by reading the generated placement back**: file
+(113.000, 173.040), collinear with pin 9's land, as intended.
+
+Generator clean at **254 parts**, CAD table / netlist / BOM.md all agree — BOM.md counts 100 nF by
+MPN, so the extra one needed no new row. Routing now.

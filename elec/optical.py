@@ -1520,7 +1520,11 @@ def optical():
     # depends on its output capacitance. They were 100 nF bypass caps, the wrong part for
     # that job. C121 bypasses the 3V3 the PHY is fed from (VBAT and VDDIO).
     for tag, net, val, why in (("C120", phy_vdd33, "1uF", "PHY VDD33 regulator output"),
-                               ("C121", v3d, "100nF", "PHY VBAT/VDDIO bypass"),
+                               # C119 is the SECOND +3V3D bypass: C121 sits beside VBAT (16)
+                               # and 9.19 mm from VDDIO (9), which is on another face. See the
+                               # note at its placement in src/optical_pickup.py.
+                               ("C119", v3d, "100nF", "PHY VDDIO bypass -- AT pad 9"),
+                               ("C121", v3d, "100nF", "PHY VBAT bypass"),
                                ("C122", v1v8, "1uF", "PHY VDD18 regulator output")):
         c = _c(tag, val, why)
         net += c[1]

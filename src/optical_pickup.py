@@ -2377,6 +2377,29 @@ def _parts():
             ("R39", "PHY VBUS series 20 k, device-only -- pad 17"),
             ("C121", "PHY VBAT/VDDIO bypass -- pad 16 and 9"))):
         add(_ref, _desc, "0402", _row_x0 + _r_w / 2 + _k * (_r_w + CRTYD_GAP), _row_y)
+    # ⚠ C119: A SECOND BYPASS, AT PIN 9, BECAUSE ONE CAP CANNOT SERVE BOTH PINS IT NAMES.
+    # C121's description reads "pad 16 and 9" and the row above is ordered "by the pad each
+    # part serves" -- but VBAT (16) is on the SOCKET FACE and VDDIO (9) is on another, so a cap
+    # in this row is adjacent to 16 and 9.194 mm from 9. Measured, not assumed.
+    # That is wrong twice over, and the second reason is the one that matters more:
+    #   * ROUTING. VDDIO is the last unconnected net on this board. Its escape corridor runs
+    #     -X, away from every +3V3D pad -- the nearest is 2.756 mm and is another U7 pin -- so
+    #     the router has nothing to reach. A via cannot help: none fits at any size once the
+    #     neighbours route (O0.40 reaches +0.0697 mm against a 0.127 rule), and escape vias on
+    #     this edge made the board monotonically worse (2 -> 3 -> 5 unconnected).
+    #   * DECOUPLING. VDDIO sources the ULPI output drivers' switching current at 60 MHz. Its
+    #     bypass belongs AT the pin; 9.194 mm of loop is not a bypass, whatever the netlist says.
+    # So pin 16 keeps C121 and pin 9 gets its own, which is what one-bypass-per-supply-pin means.
+    # ⚠ PLACED RELATIVE TO U7, per this section's own rule ("read U7 back, never re-derive it").
+    # The offsets put it at file (113.000, 173.040): collinear with pin 9's land so the run is a
+    # straight -X hop, and its courtyard's +X edge lands 0.10 mm clear of U7's, which starts at
+    # 114.056 -- measured off the board, not guessed. Checked against every other courtyard on
+    # the board: nothing overlaps, and the 3 x 4 mm region outboard of the pin holds no pads.
+    # ⚠ rot 180 SO PAD 1 FACES THE PIN. _c() wires pad 1 to the rail and pad 2 to ground, and
+    # an 0402's pad 1 sits at -x unrotated, i.e. pointing AWAY. Unrotated this cap would offer
+    # the router its ground pad.
+    add("C119", "PHY VDDIO bypass -- AT pad 9, which C121 is 9.19 mm from", "0402",
+        _part_x("U7") - 3.731, _part_y("U7") + 0.250, 180.0)
     # ⚠ C130 LEAVES THE POWER ROW, AND IT IS BOTH A ROUTING FIX AND A CORRECTION. It is
     # the VBUS SENSE FILTER -- the C of an RC whose R is R39's 20 k -- and it was sitting
     # 24 mm from R39, in the middle of the wall the ULPI nets have to cross. An RC filter
