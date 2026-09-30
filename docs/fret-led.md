@@ -637,3 +637,101 @@ direction, and *is* the end reflector the optics want. One feature doing three j
 3. **Two-material volume.** Opaque walls now run the full 20.8 mm from the colour layer to
    the board, 24 of them. That is a lot of second-material purge on a two-filament print —
    worth estimating before a panel is committed.
+
+
+---
+
+# 8. ATTACHING THE BOARD TO THE PANEL (2026-09-29)
+
+    "Ideally it relies on plastic along all directions except for one installation
+     path."  (user)
+
+## 8.1 ⚠ First, the floor: the PLUG is the floor, and the CAN wires are drawn wrong
+
+The user called this: *"The can wires are modeled incorrectly, the plugs are the real
+floor, or perhaps the height of a male connector plugged into those female connectors."*
+Measured:
+
+    tee board, placed on its cradle   top face      -26.65
+    its side-entry XH + MATED plug    XH_SIDE_H 7.00  ->  -19.65
+    wire_canl / wire_canh, as drawn                      -17.15
+
+**The wires ride 2.5 mm above their own plug.** `src/wiring.py` stacks the four trunk
+conductors in Z — `TRUNK_DZ = {gnd -0.8, hot 1.2, canh 3.2, canl 5.2}` — so the bus's top
+conductor floats above the connector it lands in. The real envelope under the deck is the
+**mated plug at −19.65**, and the cable should be inside it, not over it.
+
+**What it costs right now:** `fret_light.BOARD_BOT` is held at −16.15 (1.0 over the wires
+as drawn) rather than −17.65 (2.0 over the plugs). That is 1.5 mm of optical depth and
+takes the fret line from **1.21 : 1 to 1.28 : 1**. Recovering it is a `wiring.py` change —
+invert the trunk stack so `canl` is the LOWEST conductor rather than the highest — and it
+is not a fret-light change. Flagged here rather than done, because the CAN trunk is shared
+and its stacking order was chosen for reasons this work has not read.
+
+## 8.2 The install path has to be +Z, and the reason kills the obvious alternative
+
+Sliding the board in along X — the same way the panel itself goes on — looks attractive and
+**cannot work**: the cell walls' undersides sit at the board's TOP FACE, and the LEDs stand
+1.40 above that. Every wall would scrape every LED. The walls could be lifted 1.4 to clear
+them, but then each cell leaks light all along its bottom edge and the isolation this whole
+design exists for is gone.
+
+**So the LEDs have to enter their cells vertically, and the board installs +Z.**
+
+## 8.3 The comb is already the pocket
+
+Three of the six directions come free, because the cell walls are exactly a close fit
+around the board:
+
+| direction | held by | how |
+|---|---|---|
+| **+X, −X** | plastic | the comb's two end walls, which the board butts |
+| **+Y, −Y** | plastic | the two end ramps, whose inner faces are the board's edges |
+| **+Z** | plastic | the cell walls' undersides — the board bottoms on them, all 23 |
+| **−Z** | — | **nothing yet. This is the one that needs solving.** |
+
++Z is held at 23 places along the length, so the board cannot bow upward. −Z is gravity's
+direction and is held nowhere, and one screw in the middle of a 220 mm board lets both ends
+hang.
+
+## 8.4 The plan: lift, shift, one screw
+
+A **two-motion install**, which is how you get plastic capture in five directions when
+only one fastener is allowed:
+
+1. **Lift** the board +Z into the comb until it bottoms on the cell walls.
+2. **Shift** it ~6 mm along X. Its long edges pass under **retaining tabs** on the ramps.
+3. **One M4** through the board into a boss on the deck, locking the shift.
+
+The tabs are the whole trick: they are short (~8 mm), they live on the ramps at the board's
+long edges, and they are **outboard of every LED courtyard**, so nothing about them ever
+interacts with an LED. They hold −Z continuously along both edges, which is what a 220 mm
+board needs and what a single central screw cannot give.
+
+⚠ **AND THE BOARD HAS TO GET WIDER FOR THEM.** The outer LEDs sit at ±27.20 with a 6.10
+courtyard, so their copper reaches ±30.25. At today's `BOARD_HALF_W` of 31.20 a tab has
+0.95 mm to live in, which is not a tab. Taking the board to **42 beads = 33.60 half-width
+(67.2 mm)** gives a 2.40 mm tab reach with 0.95 clear of the courtyard. Width is the
+expensive axis — this is ~+$1 per five boards — and it buys the retention scheme outright.
+
+**Why not snap the board in?** The project's standing rule: no flex snaps. The tabs are
+rigid and the motion does the engaging, which is the same trick the deck's own
+tongue-and-groove uses.
+
+**Why one screw and not two?** Because with the tabs engaged the screw is not carrying the
+board — it is only stopping the 6 mm shift from reversing. That is the "one installation
+path" the user asked for: every direction is plastic except the shift, and the shift is
+what the screw locks.
+
+## 8.5 Open on the attachment
+
+1. **Where the M4 goes.** It wants to be at the keyhead end, where the harness drop already
+   is, so one region carries all the service access. It must also miss a cell wall and the
+   LED rows, which on a 9.14 mm pitch at the bridge end would be impossible — at the
+   keyhead end the pitch is 21–32 and there is room.
+2. **The shift direction.** Shifting −X (toward the keyhead) means the board is pushed the
+   same way the panel slides off, so a loose screw and a tug could walk it out. +X is the
+   safer sense and wants checking against the cell walls' end stops.
+3. **Whether the tabs print.** They protrude inward from the ramps, i.e. they are a
+   horizontal feature with air beneath them in the deck's print direction. Short ones
+   bridge; long ones want a 45° chamfer underneath.

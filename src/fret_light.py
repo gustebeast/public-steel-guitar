@@ -103,7 +103,15 @@ APERTURE_Z_NOM = 4.80
 # what the cable is above. Recovering those 2.5 mm is a harness job, and it is worth
 # 0.74 -> 0.78 of uniformity if anyone does it.
 TEE_TOP   = -19.65                 # highest STRUCTURE under the fret field
-CABLE_TOP = -17.15                 # highest CABLE -- wire_canl, and the real floor
+# ⚠ ...AND THE CABLE IS DRAWN WRONG (user, 2026-09-29): "the plugs are the real floor".
+# Measured -- the tee board's own top face is -26.65, its side-entry XH plus a MATED plug
+# is XH_SIDE_H 7.00 on top of that, so the real envelope ends at -19.65. wire_canl runs to
+# -17.15, TWO AND A HALF MILLIMETRES ABOVE ITS OWN PLUG, because src/wiring.py stacks the
+# trunk's four conductors in Z (TRUNK_DZ: gnd -0.8, hot 1.2, canh 3.2, canl 5.2) and canl
+# is the top one. So this floor is an artefact, not a part.
+# Holding to it anyway costs 1.5 mm of depth and takes the line 1.21 -> 1.28 : 1. Inverting
+# that stack is a wiring.py change on a shared trunk, so it is FLAGGED, not taken.
+CABLE_TOP = -17.15                 # highest CABLE as DRAWN -- see above
 SLIDE_CLR = 1.00
 BOARD_BOT = CABLE_TOP + SLIDE_CLR  # -16.15
 BOARD_T   = 1.60
