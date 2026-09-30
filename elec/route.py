@@ -87,6 +87,143 @@ def failing_nets(stem):
     return sorted(out)
 
 
+# The bring-up pads are placed after routing, which is what makes them cheap and what
+# makes them ROT: a site that clears every track of one route is inside a track of the
+# next. Three separate runs have now lost real work to this -- most recently a pass that
+# routed TWO MORE NETS than the one we kept, thrown away because TP10's frozen site had
+# become a 6.02 mm short against V5_PRE.
+#
+# route.py's own comment above post_route_refs already says the right thing -- "THE SITE IS
+# SEARCHED AGAINST THE FINISHED BOARD, not chosen" -- and that was true when the site was
+# searched. Freezing the ANSWER into notes["placements"] is what broke it: the search was a
+# one-off by hand (tools/padsite.py) and the board moves underneath it. So do the search
+# HERE, where the finished board is in hand, and treat the recorded coordinate as a
+# PREFERENCE rather than a fact: if it still clears, nothing moves and this costs nothing.
+#
+# ⚠ ONLY THE TP PADS. Rs11..Rs51 are post-route too, but each carries a pull-up on a new
+# SHDNZ net that has to reach its converter's pin -- moving one is not free the way moving a
+# bare pad on a finished rail is.
+POST_PAD_CLR_MM = 0.127            # the fab copper rule this board is built to
+POST_PAD_REACH_MM = 20.0           # how far a stale site may be nudged before giving up
+POST_PAD_STEP_MM = 0.25
+
+
+def _resite_post_pads(board, refs, notes):
+    """Re-search each bring-up pad's site against the copper that is actually there.
+
+    A good site, in the original search's words: a clear circle that ALREADY OVERLAPS ITS
+    OWN NET'S COPPER, so the pad needs no track of its own. Rejected: too close to foreign
+    copper, or under a footprint's courtyard (a pad under a part is electrically legal and
+    physically unprobeable).
+
+    Returns a list of (ref, dx, dy) for the pads that had to move. Run AFTER the nets are
+    assigned -- the search needs to know which copper is the pad's own."""
+    import math
+
+    segs, vias = [], []
+    for t in board.Tracks():
+        n = t.GetNetname()
+        if isinstance(t, pcbnew.PCB_VIA):
+            a = t.GetStart()
+            vias.append((pcbnew.ToMM(a.x), pcbnew.ToMM(a.y),
+                         pcbnew.ToMM(t.GetWidth()) / 2.0, n))
+        else:
+            if t.GetLayer() != pcbnew.F_Cu:
+                continue           # a bare pad probes the front; other layers cannot short it
+            a, b = t.GetStart(), t.GetEnd()
+            segs.append((pcbnew.ToMM(a.x), pcbnew.ToMM(a.y),
+                         pcbnew.ToMM(b.x), pcbnew.ToMM(b.y),
+                         pcbnew.ToMM(t.GetWidth()) / 2.0, n))
+
+    courts = []
+    for fp in board.GetFootprints():
+        if fp.GetReference() in refs:
+            continue
+        try:
+            bb = fp.GetCourtyard(pcbnew.F_CrtYd).BBox()
+            if bb.GetWidth() <= 0:
+                bb = fp.GetBoundingBox(False, False)
+        except Exception:
+            bb = fp.GetBoundingBox(False, False)
+        courts.append((pcbnew.ToMM(bb.GetLeft()), pcbnew.ToMM(bb.GetRight()),
+                       pcbnew.ToMM(bb.GetTop()), pcbnew.ToMM(bb.GetBottom())))
+
+    def _seg_d(px, py, x1, y1, x2, y2):
+        dx, dy = x2 - x1, y2 - y1
+        l2 = dx * dx + dy * dy
+        t = 0.0 if l2 == 0 else max(0.0, min(1.0,
+                                             ((px - x1) * dx + (py - y1) * dy) / l2))
+        return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+    def _ok(px, py, r, net):
+        own = 1e9
+        for x1, y1, x2, y2, hw, n in segs:
+            d = _seg_d(px, py, x1, y1, x2, y2) - hw
+            if n == net:
+                own = min(own, d)
+            elif d < r + POST_PAD_CLR_MM:
+                return None
+        for vx, vy, vr, n in vias:
+            d = math.hypot(px - vx, py - vy) - vr
+            if n == net:
+                own = min(own, d)
+            elif d < r + POST_PAD_CLR_MM:
+                return None
+        if own > r:
+            return None            # not on its own copper: the pad would need a track
+        keep = r + POST_PAD_CLR_MM
+        for cx0, cx1, cy0, cy1 in courts:
+            if cx0 - keep <= px <= cx1 + keep and cy0 - keep <= py <= cy1 + keep:
+                return None
+        return own
+
+    moved = []
+    for fp in board.GetFootprints():
+        ref = fp.GetReference()
+        if ref not in refs or not ref.startswith("TP"):
+            continue
+        pads = list(fp.Pads())
+        if len(pads) != 1:
+            continue               # a multi-pad post-route part is not a bare probe pad
+        pad = pads[0]
+        net = pad.GetNetname()
+        r = pcbnew.ToMM(max(pad.GetSize().x, pad.GetSize().y)) / 2.0
+        px = pcbnew.ToMM(pad.GetPosition().x)
+        py = pcbnew.ToMM(pad.GetPosition().y)
+        if _ok(px, py, r, net) is not None:
+            continue               # the recorded site still clears: nothing to do
+        # Ring search outwards, so a pad that has to move moves as little as possible --
+        # these coordinates were chosen next to the thing they help bring up, and that
+        # intent is worth keeping even when the copper no longer allows the exact point.
+        best = None
+        k = 1
+        while k * POST_PAD_STEP_MM <= POST_PAD_REACH_MM and best is None:
+            rad = k * POST_PAD_STEP_MM
+            n_th = max(8, int(2.0 * math.pi * rad / POST_PAD_STEP_MM))
+            for i in range(n_th):
+                th = 2.0 * math.pi * i / n_th
+                qx, qy = px + rad * math.cos(th), py + rad * math.sin(th)
+                if _ok(qx, qy, r, net) is not None:
+                    best = (qx, qy, rad)
+                    break
+            k += 1
+        if best is None:
+            print("      ⚠ %s (%s) has no clear site within %.1f mm of its recorded "
+                  "place ON THIS ROUTE -- left where it is, so DRC will report it"
+                  % (ref, net, POST_PAD_REACH_MM))
+            continue
+        qx, qy, rad = best
+        pos = fp.GetPosition()
+        fp.SetPosition(pcbnew.VECTOR2I(
+            pos.x + pcbnew.FromMM(qx - px), pos.y + pcbnew.FromMM(qy - py)))
+        moved.append((ref, net, rad))
+    if moved:
+        print("      re-sited %d bring-up pad(s) against THIS route's copper: %s"
+              % (len(moved), ", ".join("%s (%s) moved %.2f mm" % m for m in moved)))
+    return moved
+
+
+
 def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     """Route the board at `stem`.
 
@@ -638,6 +775,8 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
                     for _pad in _by[_r2].Pads():
                         if _pad.GetNumber() == str(_p2):
                             _pad.SetNet(_net)
+        board.BuildConnectivity()
+        _resite_post_pads(board, set(_post), notes)
         print("  placed %d part(s)/pad(s) AFTER routing, invisible to the router: %s"
               % (len(_post), ", ".join(_post)))
         board.BuildConnectivity()
