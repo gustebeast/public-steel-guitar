@@ -63,7 +63,7 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
 BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
-          "optical")
+          "optical", "ui_board")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
 L2 = "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
@@ -145,6 +145,20 @@ LCSC = {
     "CH334F": "C5187527",           # WCH HS hub, QFN-24 4x4 (DS V2.5 Table 1-3, "4F")
     "G6K-2F-Y-DC5": "C326376",      # Omron DPDT, 5 V coil (terminal arrangement p.6), ~2.5k
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
+    # -- the UI board, 2026-09-25, every line read off the LCSC listing itself ------
+    "RKJXT1F42001": "C160841",      # Alps 4-way stick + encoder + push, 7,354 in stock.
+                                    # DigiKey's listing for the same part is 0 in stock
+                                    # at $9.22 and describes it as "non-continuous",
+                                    # which is wrong -- see the note in BOM.md.
+    "KH-2.54PH180-1X20P-L11.5": "C2905493",   # 1x20 male, insulation 2.5 / mating pin
+                                    # 6.0 / tail 3.0, all three read from the listing
+                                    # because src/ui_panel.py's Z stack is built on
+                                    # them. 1,131 in stock.
+    # 154 IN STOCK, AND IT IS THE THINNEST LINE ON THIS BOARD. The right-angle 2x7 is
+    # the only shrouded IDC that fits under the deck (see ui_board.py); if it is gone,
+    # the fallback is the VERTICAL DC3-2.54-14PAS, which needs the board re-laid for a
+    # different exit -- not a like-for-like swap. Check it before ordering.
+    "DC3-2.54-14PAL": "C5156673",
 }
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
 # branner's catch, and it is the right shape for the bug that happened: usb_panel's

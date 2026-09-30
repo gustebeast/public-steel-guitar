@@ -97,8 +97,18 @@ SHRINK_ADAPTER = SLIDE_CLR + REST_OUT   # 0.754
 # flanks by the shrink but its APEX FLAT by sqrt2 x the shrink, and a 1x transition
 # leaned that apex face out to 35 degrees (the overhang probe caught it).
 TRANSITION_Z = math.sqrt(2.0) * (SHRINK_ADAPTER - CLR)   # 0.713
-BUTTON_SIDE = -1.0                 # the button faces -Y: inboard of the +Y rail,
-                                   # toward the player
+BUTTON_SIDE = 1.0                  # the button faces +Y.
+                                   #
+                                   # THIS SIDE AND leg_pogo.DROP_OFF ARE ONE CHOICE,
+                                   # not two: the latch takes one of the tenon's Y
+                                   # middles and the harness lane takes the other.
+                                   # Whichever way they go, they go together -- put
+                                   # either one alone on the other side and it lands
+                                   # inside whichever stayed.
+                                   #
+                                   # Every latch in the instrument faces the same way
+                                   # (user): they are worked with the instrument upside
+                                   # down in its case, not in playing position.
 
 
 # -- the radii (from the leg's axis toward the button) -----------------------
@@ -575,7 +585,18 @@ def adapter_pocket() -> cq.Workplane:
     on -- pure shear, no cam-out, so a hard lift cannot pop the latch.
 
     Open to the BORE (not to the mouth): the hook enters by riding the bore
-    retracted for RUN, then springing out into this."""
+    retracted for RUN, then springing out into this.
+
+    ⚠ ITS OUTER END IS A 91.8 mm^2 BRIDGE, span 6.90. This is a blind radial slot
+    and the adapter builds -Y (leg_stack.ADAPTER_UP), so that end is the last thing
+    the print reaches. It cannot be gabled: the end sits 2.66 from the adapter's -Y
+    face and a 45 roof over 6.90 of span wants 3.45 of depth, leaving 1.06 to spend
+    against 3.45 needed. It droops into a clearance volume 42 mm deep with the hook's
+    throw under it -- tolerable, not fine.
+
+    What removes it is the pocket being on the OTHER side: on +Y this same end lands
+    near the bed and is a floor, and the part measures 5 ceilings / 74.8 mm^2 / worst
+    span 1.60. That is BUTTON_SIDE, and it is not this function's to choose."""
     # Reaches in past the bore on purpose: inside the bore there is nothing to
     # remove (that is the mortise), so this cuts only the wall the hook stands in.
     return _band(0.0, POCKET_R, Z_HOOK_LEDGE - CLR, Z_HOOK_LEAD + CLR,
@@ -585,8 +606,12 @@ def adapter_pocket() -> cq.Workplane:
 def mouth_chamfer() -> cq.Workplane:
     """Cut in the BODY ADAPTER: a 45-degree chamfer round the mouth, across the latch
     band only (see MOUTH_CH). The ramp's printed stairs then meet a flat slope, not
-    a square corner. Its faces look into the bore and down, and the adapter prints
-    button face DOWN, so in the print they face up: no overhang."""
+    a square corner.
+
+    Its faces look into the bore and down, and the adapter builds button face UP
+    (leg_stack.ADAPTER_UP), so on the printer they face down: overhangs, but at the 45
+    this chamfer is cut to, so they carry themselves. Neither check_ceilings nor
+    check_floating reports anything from this cone."""
     lo = _bore_wire(Z_BUTT - 1.0, MOUTH_CH + 1.0, shrink=0.0)
     hi = _bore_wire(Z_BUTT + MOUTH_CH, 0.0, shrink=0.0)
     cone = cq.Workplane("XY").add(cq.Solid.makeLoft([lo, hi], True))

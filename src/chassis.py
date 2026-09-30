@@ -30,6 +30,8 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
+from cadkit.pcb import PH_SIDE_H as _PH_S_H, ph_side_length as _ph_side_length
+from elec.harness import ph_trunk_pins as _ph_trunk_pins
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at
@@ -992,6 +994,65 @@ def _light_band():
                   z=(Z_BOT + MB.FLOOR_TOP) / 2)
 
 
+# ── BUS B'S -X END: the wiring port through the chassis floor ─────────────
+# TWO CABLES MEET THE CONTROLLER HERE and only one of them comes from outside. The
+# pedal bar's four conductors arrive up the -X/+Y leg and out of the body adapter's
+# channel onto the instrument's UNDERSIDE (leg_pogo.chan_ends); the knee-lever chain
+# starts at LKL and is inside the body already. The controller is a MID-BUS node --
+# bus in on J2 ways 1-4, out on 5-8 (elec/motor_ctrl) -- so both land on the one
+# connector and this port is what gets the outside half in.
+#
+# IT SITS ON MORTISE STATION 3'S OWN SLOT LINE, and that placement is the whole point
+# of the number rather than a clearance that was chosen (user: "-x of mortise 4 ...
+# this ensures that we don't block a lever installation position"). Stations 1-3 are
+# the ones the -X/+Y leg's foot tenons take, so no lever can stand there whatever this
+# port does; station 4 is the first one a lever can use. Putting the port ON station
+# 3's centre at station 3's own width means the wall to station 4 is the GRID's wall --
+# LEVER_PITCH - LEVER_MORT_W, 3.20 -- so there is no clearance to pick and nothing to
+# keep in step if the pitch ever moves.
+#
+# ...and in the Y GAP, not through the leg's mortise. chassis.mort_segments(station 3)
+# cuts y 21.15..66.95 for the foot tenon and y -151.15..-97.15 at the other end; the
+# middle is solid slab, measured on the built chassis rather than reasoned about. The
+# port stays 4 beads short of the foot mortise's own end so that end stays a face.
+#
+# THE SLAB IS 10.0 THICK, z -81.5 (the instrument's underside, and this segment's print
+# bed) to -71.5, measured. Above it the cavity is open to the standing tray.
+_PORT_ST = 2                        # station 3, 0-based: the -X/+Y leg's middle foot
+PORT_X = _MORT_X[_PORT_ST]
+PORT_W = D.LEVER_MORT_W             # 7.2 ACROSS X: the port IS this station's slot
+# ...AND IT PASSES THE CONNECTOR, not just the wires (user). A cable threaded bare has
+# to be crimped in place, which is what the leg's own tunnel makes you do and is the
+# fiddliest step in INSTALL_NOTES; a port that admits a made-up head lets the harness be
+# built on the bench and fed through. The head goes through on its SMALLEST section --
+# its length by its height, 19.9 x 5.5 for the 8-way (cadkit.pcb) -- so the port is sized
+# on that, long way along Y because that is the way the slab has room.
+PORT_L = 27 * D.BEAD                # 21.6 along Y: the 8-way head plus 0.85 a side
+assert PORT_L >= _ph_side_length(len(_ph_trunk_pins())) + 1.2, (
+    "the wiring port is %.1f long and the %d-way PH head is %.1f: it would pass wires "
+    "but not a made-up connector" % (PORT_L, len(_ph_trunk_pins()), _ph_side_length(len(_ph_trunk_pins()))))
+assert PORT_W >= _PH_S_H + 1.2, (
+    "the wiring port is %.1f across and the PH head stands %.1f: see above"
+    % (PORT_W, _PH_S_H))
+
+
+def port_y():
+    """(y0, y1) of the port: 4 beads -Y of the leg foot mortise's own end, running -Y."""
+    near = min(y0 for y0, y1 in mort_segments(PORT_X) if y0 > -50.0)
+    y1 = near - 4 * D.BEAD
+    return y1 - PORT_L, y1
+
+
+def port_cutter(bed_z, floor_top):
+    """The port, as a through-cut in the floor slab -- cut by chassis.py, dimensioned
+    here beside the station it serves. Over-run at both ends in Z so it opens into the
+    underside and into the cavity rather than touching either."""
+    y0, y1 = port_y()
+    return cq.Workplane("XY").add(cq.Solid.makeBox(
+        PORT_W, y1 - y0, (floor_top + 1.0) - (bed_z - 1.0),
+        cq.Vector(PORT_X - PORT_W / 2.0, y0, bed_z - 1.0)))
+
+
 def _floor_negatives():
     """The chassis' OWN features that pass through the floor band, as a list of cutters.
 
@@ -1019,6 +1080,12 @@ def _floor_negatives():
         out.append(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
             cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
+    # THE BUS-B WIRING PORT, which is the chassis' own the same way the raceway is: the
+    # pedal bar's four conductors arrive on the instrument's UNDERSIDE out of the body
+    # adapter's channel and have to get inside to reach the motor controller. It is cut
+    # here for the same reason the lock pins are -- cut in the main builder the fresh
+    # slab fills it straight back in.
+    out.append(port_cutter(Z_BOT, MB.FLOOR_TOP))
     return out
 
 

@@ -21,7 +21,23 @@ test -- a downward face is reported when its normal is within --max-tilt of stra
 down, and the tilt is printed so a 5 degree bridge reads differently from a 40 degree
 flank on its way to being fine.
 
+AND THE BUILD DIRECTION IS A VECTOR, not an axis letter. That is not a tidying: the
+two floating tenons build along (-0.707, -0.707, 0), which no letter can express, so an
+axis-based test SKIPPED them -- the registry said "diagonal: reported, not checked" and
+nothing ever looked at them, while the report still ended "no flat ceilings", which
+reads as a pass and is not one. Everything here is therefore measured against the build
+vector and in the bed's own frame, and a part that prints on a diagonal is checked like
+any other.
+
 WHAT DOES NOT COUNT, and this is the distinction that matters:
+
+  * MATERIAL THAT STARTS IN MID-AIR WITH NO FLAT FACE AT ALL -- the wedge caught
+    between two adjacent 45 degree cavities, which comes to a point over open
+    air. It has no downward-facing face, only the LINE two flanks share, so
+    nothing here can see it however the normals are tested. That is the other
+    half of the job and it lives in `tools/check_floating.py`, which samples the
+    SOLID instead, and which reports the unsupported AREA. Run both; neither
+    alone is cover.
 
   * 45 degree flanks. A dovetail undercut looks like an overhang to a crude
     point-probe (material inboard, void outboard) but is self-supporting by
@@ -76,8 +92,8 @@ from src.dimensions import NOZZLE_D as D_NOZZLE
 PARTS = {
     # The leg head lies on its +Y face: authored +Y is world -Y once every leg
     # is placed rot 180, so that face is both the bed and the button side.
-    "leg_head": (lambda: LG.leg_head(latch=True), "y", None, +1),
-    "leg_body_stub_trrs": (LG.leg_body_stub_trrs, "y", None, +1),
+    "leg_head": (lambda: LG.leg_head(latch=True), (0.0, -1.0, 0.0), None),
+    "leg_body_stub_trrs": (LG.leg_body_stub_trrs, (0.0, -1.0, 0.0), None),
 }
 
 
@@ -103,7 +119,7 @@ def _register_chassis():
         BUILDERS[f"chassis_{i}"] = _chassis_seg(i)
 
 
-# ── WHICH PARTS GET CHECKED, AND WHERE THE ORIENTATION COMES FROM ─────────
+# â”€â”€ WHICH PARTS GET CHECKED, AND WHERE THE ORIENTATION COMES FROM â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # This registry used to hold five parts out of the seventy-one src.build prints, each with a
 # hand-typed bed plane. Two things were wrong with that. The obvious one is coverage: sixty-six
 # printed parts had never been checked for an unsupported ceiling at all. The other is that a
@@ -129,7 +145,6 @@ DECLARED_UP = {
     "leg_latch_slider":  ("src.leg_stack", "SLIDER_UP"),
     "bar_latch_frame":   ("src.leg_stack", "BAR_FRAME_UP"),
     "bar_latch_collar":  ("src.leg_stack", "BAR_COLLAR_UP"),
-    "latch_slider":      ("src.latch", "SLIDER_UP"),
     "pickup_zplate":     ("src.top_plate", "ZPL_UP"),
     "pedal_bar_a":       ("src.pedal_bar", "BAR_UP"),
     "pedal_bar_b":       ("src.pedal_bar", "BAR_UP"),
@@ -154,6 +169,8 @@ DECLARED_UP = {
     "coil_mandrel":      ("src.coil_mandrel", "MANDREL_UP"),
     "coil_mandrel_sleeve": ("src.coil_mandrel", "SLEEVE_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
+    "ui_knob":           ("src.ui_panel", "KNOB_UP"),
+    "ui_clamp":          ("src.ui_panel", "CLAMP_UP"),
     # the print-fit coupons, which declare an orientation for the same reason the parts
     # they stand in for do -- a coupon printed the other way up is not the same test
     "test_section_tenon":   ("src.joint_coupon", "PRINT_UP"),
@@ -172,21 +189,26 @@ for _c in ("mx_my", "px_my", "px_py"):
 # The deck panels print deck-DOWN on the one declaration -- each as ONE OBJECT with its colour
 # layer, so that is the unit checked, exactly as a chassis segment is checked with its light band
 # (see _chassis_seg, which learned this the same way). Checking a BASE alone is not a stricter
-# test, it is a wrong one: top_plate_4's base has 4056 mm2 of embossed fret line standing 1.6
-# proud of a 39350 mm2 deck, so on its own it reads as resting on the fret lines with the whole
-# field bridging -- 95 mm of it. The colour layer is what fills that 1.6, and the two go on the
-# bed as a single printed object.
-for _i in list(range(6)) + ["spare_0", "spare_1", "spare_2"]:
+# test, it is a wrong one: the MID panel's base has 4056 mm2 of embossed fret line standing
+# 1.6 proud of a 39350 mm2 deck, so on its own it reads as resting on the fret lines with the
+# whole field bridging -- 95 mm of it. The colour layer is what fills that 1.6, and the two go
+# on the bed as a single printed object. (Named by role, not by index: the panel count and the
+# numbering both move when a pickup slot is handed to the mid panel, and they just did.)
+# ⚠ COUNTED FROM top_plate, NOT TYPED. This was `range(6)` plus three "spare_N" names, and
+# the spares are gone while the segments went 6 -> 5 -- so a hand-typed list would have
+# declared two panels that do not exist and, the next time the count grows, left one
+# undeclared with nothing but the coverage line to notice.
+for _i in range(len(__import__("src.top_plate", fromlist=["e"]).segments)):
     DECLARED_UP[f"top_plate_{_i}"] = ("src.top_plate", "PIECE_UP")
 # STILL UNDECLARED, and deliberately so -- a guess here makes the whole report meaningless,
 # which is worse than a gap the coverage line names every run:
 #   cart_piston       nothing states it, it takes no print_up, and its half-cylinder
 #                     follower nose would be a bottom overhang in the cartridge base's +Z,
 #                     so the base's direction cannot be assumed for it;
-#   latch_cover       the AXIS is determinable (it prints flat on an X-Z face, so +-Y) but
-#                     not the sign: inner-face-down puts the blind lock groove's roof up as
-#                     a ceiling, outer-face-down makes the dovetail flanks exact-45
-#                     overhangs. Both are legal here and nothing says which was meant;
+#   (latch_cover and latch_slider were both here. src.latch is not installed at either
+#    leg joint any more -- leg_latch and bar_latch replaced it and pedal_bar.LATCH_FOOT is
+#    None -- so neither is in src.build's PARTS and there is nothing left to orient. The
+#    module stays only as the spring and stroke both live latches are sized against.)
 #   pedal_detent_nub  a bare O4 x 4 TPU cylinder with no orientation anywhere in the code
 #                     (and no ceiling to find in any of them).
 
@@ -245,44 +267,80 @@ def _src_part(name):
 
 
 def _register_declared():
+    # EVERY declared part, diagonal or not: the checker works off the build VECTOR.
     _register_chassis()
     for nm in DECLARED_UP:
-        up = _up_of(nm)
-        got = _axis_side(up)
-        if got is None:
-            continue                       # listed in the report as not checkable
-        ax, side = got
         build = BUILDERS.get(nm) or _src_part(nm)
-        PARTS[nm] = (build, ax, None, side)           # None bed = derive from the part
+        PARTS[nm] = (build, _unit(_up_of(nm)), None)   # None bed = derive from the part
 
 
-_register_declared()
-
-AX = {"x": 0, "y": 1, "z": 2}
-
-
-def bed_plane(part, axis: str, side: int):
-    """The part's own extreme face on the build axis -- which IS the bed plane, since the part
-    lies on it. Derived rather than typed: a hand-written bed constant is one more number that
-    goes stale when a datum moves, and a wrong one silently rebases every depth in the report."""
-    bb = part.val().BoundingBox() if hasattr(part, "val") else part.BoundingBox()
-    lo = (bb.xmin, bb.ymin, bb.zmin)[AX[axis]]
-    hi = (bb.xmax, bb.ymax, bb.zmax)[AX[axis]]
-    return hi if side > 0 else lo
+def _unit(v):
+    m = math.sqrt(sum(c * c for c in v))
+    return tuple(c / m for c in v)
 
 
-def ceilings(part, axis: str, bed: float, side: int, max_tilt: float = 44.0,
-             tol: float = 1e-6):
-    """Faces pointing at the bed within `max_tilt` of straight down, set back from it."""
-    i = AX[axis]
+def _dot(a, b):
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def _cross(a, b):
+    return (a[1] * b[2] - a[2] * b[1],
+            a[2] * b[0] - a[0] * b[2],
+            a[0] * b[1] - a[1] * b[0])
+
+
+def _frame(up):
+    """An orthonormal (a, b) spanning the BED PLANE for build direction `up`."""
+    ref = (0.0, 0.0, 1.0) if abs(up[2]) < 0.9 else (1.0, 0.0, 0.0)
+    a = _unit(_cross(ref, up))
+    return a, _cross(up, a)
+
+
+def _verts(shape):
+    """Points on a shape's boundary, for measuring its extent in a rotated frame.
+
+    EDGES ARE SAMPLED, not just corners. A circular face -- a bore's flat cap, a
+    counterbore floor -- carries one vertex or none, so reading Vertices() alone measured
+    two of them as span 0.00 where they are really 3.00 and 4.20 across."""
+    pts = [v.toTuple() for v in shape.Vertices()]
+    for e in shape.Edges():
+        try:
+            pts += [e.positionAt(i / 12.0).toTuple() for i in range(13)]
+        except Exception:
+            continue
+    return pts
+
+
+def bed_plane(part, up, side=None):
+    """How far along `up` the part's LOWEST material sits -- which IS the bed plane, since
+    the part lies on it. Derived rather than typed: a hand-written bed constant is one more
+    number that goes stale when a datum moves, and a wrong one silently rebases every depth
+    in the report.
+
+    Measured off the VERTICES, not the bounding box. For an axis-aligned build the two agree,
+    but on a DIAGONAL the box's corner sits out in the air beside the part, which would put
+    the bed somewhere the part never reaches."""
+    shape = part.val() if hasattr(part, "val") else part
+    return min(_dot(v, up) for v in _verts(shape))
+
+
+def ceilings(part, up, bed: float, max_tilt: float = 44.0, tol: float = 1e-6):
+    """Faces pointing at the bed within `max_tilt` of straight down, set back from it.
+
+    Against the build VECTOR, so a part that prints on a diagonal is checked like any
+    other. Testing the normal against the build direction rather than against the world is
+    also what keeps faces that merely look flat IN THE VIEWER out of the report: a tenon's
+    world-horizontal roof is a 90 deg wall on the printer, because the part lies on its
+    side."""
+    shape = part.val() if hasattr(part, "val") else part
+    fa, fb = _frame(up)
     out = []
-    for f in part.faces().vals():
+    for f in shape.Faces():
         try:
             n = f.normalAt()
         except Exception:
             continue                      # no normal to speak of
-        comp = (n.x, n.y, n.z)
-        down = comp[i] * side             # +1 is straight at the bed, 0 is a wall
+        down = -_dot((n.x, n.y, n.z), up)  # +1 is straight at the bed, 0 is a wall
         if down <= 0:                     # must face the bed, not away from it
             continue
         # HOW FAR OFF FLAT, which is the whole test: 0 is a flat bridge, 45 is a
@@ -292,13 +350,20 @@ def ceilings(part, axis: str, bed: float, side: int, max_tilt: float = 44.0,
         if tilt > max_tilt:
             continue
         c = (f.Center().x, f.Center().y, f.Center().z)
-        depth = (bed - c[i]) * side
+        depth = _dot(c, up) - bed
         if depth > tol:                   # set BACK from the bed plane
-            bb = f.BoundingBox()
-            ext = [bb.xlen, bb.ylen, bb.zlen]
-            span = min(e for j, e in enumerate(ext) if j != i)
+            vs = _verts(f)
+            if not vs:
+                continue
+            ea = [_dot(v, fa) for v in vs]
+            eb = [_dot(v, fb) for v in vs]
+            span = min(max(ea) - min(ea), max(eb) - min(eb))
             out.append((span, f.Area(), depth, tilt, c))
     return sorted(out, reverse=True)
+
+
+# ...registered LAST, because it needs the vector helpers above.
+_register_declared()
 
 
 def main() -> int:
@@ -322,16 +387,17 @@ def main() -> int:
 
     total = 0
     for nm in names:
-        build, axis, bed, side = PARTS[nm]
+        build, up, bed = PARTS[nm]
         part = build()
         if bed is None:
-            bed = bed_plane(part, axis, side)
-        found = [c for c in ceilings(part, axis, bed, side, a.max_tilt)
+            bed = bed_plane(part, up)
+        found = [c for c in ceilings(part, up, bed, a.max_tilt)
                  if c[1] >= a.min and c[0] >= a.min_span]
         area = sum(c[1] for c in found)
         worst = max((c[0] for c in found), default=0.0)
-        print("%-22s build axis %s, bed at %+.2f : %d ceiling(s), %.1f mm^2, "
-              "worst span %.2f mm" % (nm, axis.upper(), bed, len(found), area, worst))
+        print("%-22s build up (%+.2f,%+.2f,%+.2f), bed at %+.2f : %d ceiling(s), "
+              "%.1f mm^2, worst span %.2f mm"
+              % (nm, up[0], up[1], up[2], bed, len(found), area, worst))
         for span, ar, depth, tilt, c in found:
             flag = "  <-- ON THE BED" if depth < 0.6 else ""
             if span <= D_NOZZLE + 1e-6:
@@ -359,13 +425,16 @@ def _coverage():
     fused = {n for n in printed if FUSED_INTO.get(n) in PARTS}
     checked = (printed & set(PARTS)) | fused
     diagonal = {n for n in DECLARED_UP if n in printed and _axis_side(_up_of(n)) is None}
-    undeclared = sorted(printed - checked - diagonal)
+    undeclared = sorted(printed - checked)
     print("")
     print("coverage: %d of %d src.build prints checked (%d of them as the other half of "
           "an object they print with)" % (len(checked), len(printed), len(fused)))
     if diagonal:
-        print("  %d declare a DIAGONAL build direction, which has no flat bed axis and so "
-              "cannot be checked here: %s" % (len(diagonal), ", ".join(sorted(diagonal))))
+        # CHECKED, not skipped -- said out loud because this line used to read "cannot be
+        # checked here" while the report still ended "no flat ceilings", and the two
+        # together read as a pass on parts nothing had looked at.
+        print("  %d of those build on a DIAGONAL and are checked against that vector, not "
+              "an axis: %s" % (len(diagonal), ", ".join(sorted(diagonal))))
     if undeclared:
         print("  %d have never declared a print orientation, so there is nothing to check "
               "them against:" % len(undeclared))
