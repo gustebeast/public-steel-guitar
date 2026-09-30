@@ -30,8 +30,27 @@ def main(stem):
     if not notes.get("zones"):
         return 0
     board = pcbnew.LoadBoard(pcb)
+    # ⚠ REFILL THE POUR FIRST, BECAUSE NOTHING ELSE EVER DID, AND THE REPAIRS NEED IT.
+    # The pour is computed in layout.py DURING PLACEMENT, when the board has no tracks at all
+    # (this file's own header says so). route.py then lays the post-route repair tracks into a
+    # fill that predates them, so a repair reads as a clearance violation against the pour even
+    # when it is perfectly placed -- optical's +3V3D dog-leg measured 0.4892 and 0.0225 mm
+    # against a 0.5000 mm zone rule and was very nearly abandoned as impossible.
+    # Refilled, the pour retreats around the new copper and the SAME dog-leg is clean: DRC goes
+    # from 4 unconnected items to 2 with violations IDENTICAL to the baseline, zero clearance.
+    # ⚠ AND THE ORDER IS THE POINT. This script exists to reconnect copper the fill STRANDED,
+    # so it has to run after the fill it is cleaning up after -- and until now it cleaned up
+    # after a fill computed before the tracks existed. Refill, then reconnect what the NEW fill
+    # stranded. Doing it the other way round reconnects against a fill that is about to change.
+    n_zones = len(board.Zones())
+    if n_zones:
+        pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+        board.Save(pcb)
+        board = pcbnew.LoadBoard(pcb)      # a fresh handle: Fill+Save then reuse is asking for
+                                           # the SwigPyObject damage this file was split out for
+        print("  refilled %d zone(s) around the post-route copper" % n_zones)
     laid = layout.repair_plane_orphans(board, notes)
-    if laid:
+    if laid or n_zones:
         board.Save(pcb)
         # the repair added copper after route.py canonicalised, so do it again --
         # otherwise the repaired tracks carry random UUIDs and every diff of a
