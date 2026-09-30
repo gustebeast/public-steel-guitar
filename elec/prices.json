@@ -38,11 +38,11 @@
   },
   "mechanical": {
     "servo42d": {
-      "usd": 34.0,
+      "usd": 33.99,
       "qty": 10,
-      "verified": "m",
+      "verified": "v",
       "per_instrument": 10,
-      "what": "MKS SERVO42D closed-loop stepper, NEMA17, CAN"
+      "what": "MKS SERVO42D CAN MT (board + MOTOR) -- makerbase3d.com variant table, in stock 2026-09-30. MB is the BOARD ONLY at $22.99 and is the wrong SKU."
     },
     "leadscrew_tr8x2": {
       "usd": 4.5,
@@ -1647,12 +1647,6 @@
       "this file had it at $9.22 from DigiKey, where the listing shows 0 in stock. JLCPCB",
       "has the same Alps RKJXT1F42001 at $4.52 with 7,341 on the shelf."
     ],
-    "pi5": {
-      "usd": 80.0,
-      "verified": "m",
-      "per_instrument": 1,
-      "what": "Raspberry Pi 5"
-    },
     "oled_2_42": {
       "usd": 17.0,
       "verified": "m",
@@ -1660,10 +1654,14 @@
       "what": "2.42in 128x64 SSD1309"
     },
     "pickup": {
-      "usd": 99.0,
-      "verified": "m",
-      "per_instrument": 1,
-      "what": "Lace Alumitone 4.0 bar"
+      "usd": 147.0,
+      "verified": "v",
+      "what": "Lace Aluma Bass Bar 4.0 -- lacemusic.com, the maker, $147.00 2026-09-30"
+    },
+    "pi4_2gb": {
+      "usd": 55.0,
+      "verified": "v",
+      "what": "Raspberry Pi 4 Model B 2GB -- PiShop $55.00 2026-09-30. NOT a Pi 5: BOM.md line 478 swapped it, and this table had not caught up. Listing caps at ONE unit per order, which a ten-instrument buy has to work around."
     }
   },
   "missing": {
