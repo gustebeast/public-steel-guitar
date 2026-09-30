@@ -3200,8 +3200,27 @@ BOARD_NOTES = {
             (0.1864, -60.1800), (0.3364, -60.3300), (0.3364, -60.4800),
             (0.4864, -60.6300), (0.4864, -60.7800), (0.6364, -60.9300),
             (0.6364, -61.0800)]),
+        # +3V3A's SECOND break: F.Cu -> via -> In2.Cu, from the cross-layer maze. This one
+        # closes the net: DRC goes from 4 unconnected items to 2, leaving only SAI_FS, with
+        # violations IDENTICAL to the baseline.
+        # ⚠ IT NEEDED A WIDE DETOUR. At reach 14 the two floods are DISJOINT -- 16,196 cells
+        # reachable on F.Cu, 5,321 on In2, and not one cell in both -- because the In2 island
+        # sits in a pocket walled off by the vias that pierce every layer. At reach 20 they
+        # meet. Reach was the constraint, not the board, for the third time.
+        ("+3V3A", "F.Cu", 0.127, [
+            (0.4864, -55.8300), (0.3508, -55.8650), (0.0508, -56.1650),
+            (0.0508, -57.5150), (-0.0992, -57.6650), (-0.0992, -59.3150),
+            (-4.4492, -63.6650), (-7.5992, -63.6650), (-8.0492, -64.1150),
+            (-8.1992, -64.1150), (-8.3492, -64.2650), (-9.9992, -64.2650),
+            (-10.1492, -64.4150), (-20.3492, -64.4150), (-21.3992, -63.3650),
+            (-21.5492, -63.3650), (-21.6992, -63.2150), (-23.3492, -63.2150),
+            (-23.7992, -62.7650), (-23.7992, -56.7650), (-10.2992, -43.2650)]),
+        ("+3V3A", "In2.Cu", 0.127, [
+            (-10.2992, -43.2650), (-9.3992, -42.3650), (-8.4992, -42.3650),
+            (-6.8492, -44.0150), (-6.0992, -44.0150), (-5.2992, -44.8150)]),
     ] + _shdnz_stubs(),
-    "repair_vias": [("SAI_FS", 0.70, -27.41), ("SAI_FS", 6.25, -28.61),
+    "repair_vias": [("+3V3A", -10.2992, -43.2650),
+                    ("SAI_FS", 0.70, -27.41), ("SAI_FS", 6.25, -28.61),
                     ("SAI_FS", 25.00, -19.31)] + _shdnz_vias(),
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
