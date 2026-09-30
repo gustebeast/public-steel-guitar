@@ -842,9 +842,16 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # bore, and its housing in two pieces.
     _far, _near = (((inner0, outer0), (inner1, outer1)) if abs(inner0) > abs(inner1)
                    else ((inner1, outer1), (inner0, outer0)))
-    # the NEAR side is the one that risks reaching past the housing's own +X face
+    # the NEAR side is the one that risks reaching past the housing's own +X face...
     _ni, _no = _near
-    _no = min(_no, x_max) if _no > 0 else max(_no, -x_max)
+    # ...AND THE ONE THAT NEEDS A LEG BESIDE THE DRIVER BORE. Running this web full
+    # height only works if something carries it past the socket, and at its drawn width
+    # nothing does: the web is 5.85 wide, the bore is 14, so the bore eats all of it but
+    # a 0.15 mm rind and everything above stood on that (check_thin, 602 samples at
+    # 0.15). Widened to clear SOCK_R by a two-bead wall it has a real column from the
+    # plinth to the ceiling, and the material over the socket becomes an arch springing
+    # off it -- which is what the teardrop roof is for.
+    _no = math.copysign(min(x_max, max(abs(_no), SOCK_R + D.MIN_WALL_2P)), _no)
     _near = (_ni, _no)
     # write the capped extents back, because the plinth and the floor span
     # outer0..outer1 and would otherwise be built to the UNcapped width
@@ -860,43 +867,24 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # carries the rest — which is the trade the user asked for, and it is a good
     # one: the -X web is 14 from the chip with a full-height groove, so it has far
     # more leverage on the board than a short +X one ever had.
-    # ...and WHICH part of the board's height the +X side can hold is derived, not
-    # fixed. The bore forbids printed material within SOCK_R of the axis, so the +X
-    # carrier has to live either below -SOCK_R or above +SOCK_R; the right answer is
-    # whichever of those two bands actually OVERLAPS THE BOARD. On this lever the
-    # board hangs low and it is the lower band (a 5 mm groove at the bottom); on the
-    # vertical lever the axle sits 19 lower, the board is entirely ABOVE the bore,
-    # and the upper band is the only one that touches it — pinning this to the lower
-    # band left that lever with NO +X retention at all, which the push probe caught.
-    _lo = (z_bot, min(pcb_z1, CR_PLINTH_Z1))
-    _hi = (max(z_bot, SOCK_R), z_top)
-    # Scored by the groove that SURVIVES the 45° underside ramp, not by the raw band: a band that
-    # does not start on the bed loses its lowest (CR_SLOT_Y1 - CR_Y0) at the groove to that ramp.
-    # Scoring the raw band picked LKL's upper band (4.3 of board) whose ramp then ate the whole
-    # web short of the groove -- a loose triangle that held nothing (user caught it in a render).
-    def _held(r):
-        z0 = r[0] if r[0] <= z_bot + 1e-6 else r[0] + (CR_SLOT_Y1 - CR_Y0)
-        return max(0.0, min(r[1], pcb_z1) - max(z0, pcb_z0))
-    _span = max(_lo, _hi, key=_held)
-    for a, b, z0, z1 in ((_far[0], _far[1], z_bot, z_top), _near + _span):
-        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, z1 - z0,
+    # ...and the near web runs FULL HEIGHT too, with the driver bore cut out of it.
+    # It used to stop at the bore, on the reasoning that everything above that was
+    # inside it. That is true of the band just above the plinth and false higher up: the
+    # socket is a TEARDROP, so its apex is at SOCK_R * sqrt(2) and the material above
+    # THAT is carried by the teardrop's own flanks, exactly as every sideways bore in
+    # this project is. Cut short, the near side ended 17 mm below the shim, which is why
+    # both shims could be lifted straight out sideways -- the far web was holding them
+    # alone, and the plug tunnel takes its groove flanks away at that height.
+    # BOTH WEBS STAND ON THE BED, so neither has an underside to ramp. There used to be
+    # a 45 deg ramp here for a web that started partway up, and with it a note about how
+    # it cost the groove its lowest CR_Y1-CR_Y0 of engagement -- which is exactly why a
+    # partway-up web is not worth having: on the horizontal lever the ramp would have
+    # eaten 8.35 mm of a 1.35 mm shim's worth of groove. The near web earns its full
+    # height from the leg beside the socket instead.
+    for a, b in (_far, _near):
+        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, z_top - z_bot,
                            x=(a + b) / 2, y=(CR_Y0 + CR_Y1) / 2,
-                           z=(z0 + z1) / 2))
-        if z0 > z_bot + 1e-6:
-            # This web does not start on the bed — it cantilevers off the housing's
-            # +Y cheek — so its underside is a CR_Y1-CR_Y0 deep unsupported ledge.
-            # Ramp it at 45° off the cheek instead. Costs the groove its lowest
-            # (CR_Y1-CR_Y0) of engagement and nothing else, and the band it takes
-            # is the far end from the board's seat anyway.
-            # The ramp starts ON the housing face (CR_Y0), never inside it: starting 1.0 in
-            # notched the cheek beside the +Y bearing once the bearings went flush (user).
-            _p = [(CR_Y0, z0 - 1.0), (CR_Y1 + 1.0, z0 - 1.0),
-                  (CR_Y1 + 1.0, z0 + (CR_Y1 + 1.0) - CR_Y0), (CR_Y0, z0)]
-            _f = cq.Face.makeFromWires(cq.Wire.makePolygon(
-                [cq.Vector(min(a, b) - 1.0, y, z) for y, z in _p]
-                + [cq.Vector(min(a, b) - 1.0, _p[0][0], _p[0][1])]))
-            w = w.cut(cq.Workplane("XY").add(cq.Solid.extrudeLinear(
-                _f, cq.Vector(abs(b - a) + 2.0, 0, 0))))
+                           z=(z_bot + z_top) / 2))
     # front plinth: the slab the board's -Y face seats on, and the body the screw
     # boss lives in. Its top IS the socket cone's floor.
     w = w.union(box_at(outer1 - outer0, CR_SLOT_Y0 - CR_Y0, CR_PLINTH_Z1 - z_bot,
