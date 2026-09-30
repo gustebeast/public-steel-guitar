@@ -5,7 +5,7 @@ replace the single side-firing strip `elec/led_strip.py` was built for, which wa
 to light the frets and the floor from one place and losing most of it bouncing around
 inside the instrument.
 
-    elec/foot_led.py     286.36 x 17.20, 4 layers, 24 LEDs, 6 zones, 2 x TLC59711
+    elec/foot_led.py     286.36 x 17.20, 4 layers, 36 LEDs, 12 zones, 4 x TLC59711
     src/foot_light.py    the window, the Z stack, the channel, the optics
                          ONE board design, TWO per instrument
 
@@ -59,29 +59,112 @@ end, both in the **component lane**, joined by a short jumper lying in the relie
 
     Pi -> J1 [board A] J2 -> jumper -> J1 [board B] J2 (a 21-cent spare)
 
-24 V passes straight through and the SPI runs J1 -> U1 -> U2 -> J2, so all four drivers
-are one stream from one Pi pin. Only the -X board's J1 leaves the instrument.
+24 V passes straight through and the SPI runs J1 -> U1 -> U2 -> U3 -> U4 -> J2, so all
+eight drivers are one stream from one Pi pin. Only the -X board's J1 leaves the instrument.
 
 **The seam costs no light.** The connectors are in the lane, not at the board ends, so the
-LED row runs to within half a pitch of both edges and the boards butt: 48 LEDs at one
-pitch end to end, the seam falling exactly half a pitch past LED 23.
+LED row runs to within half a pitch of both edges and the boards butt: 72 LEDs at one
+pitch end to end, the seam falling exactly half a pitch past LED 35.
 
-## 4. The pitch, and why 48
+## 4. The pitch, and why 72
 
 Same Lambertian model as the fret cells, and the same lesson: evenness is decided by the
 ratio of SPACING to DEPTH. Here the depth is fixed at **10.80** by the bottom prism, so
-the pitch is the only lever:
+the pitch is the only lever -- and the pitch is the run over the LED count:
 
-| S/h | pitch | ripple |
-|--:|--:|--:|
-| 0.95 | 10.26 | 1.04 : 1 |
-| **1.11** | **11.93** | **1.095 : 1** |
-| 1.29 | 13.50 | 1.20 : 1 |
-| 1.52 | 16.00 | 1.40 : 1 |
+| LEDs | pitch | S/h | ripple | courtyard gap |
+|--:|--:|--:|--:|--:|
+| 48 | 11.932 | 1.105 | 1.095 : 1 | 5.83 |
+| **72** | **7.954** | **0.737** | **1.008 : 1** | **1.85** |
+| 96 | 5.966 | 0.552 | 1.001 : 1 | **-0.13 -- overlaps** |
 
-11.93 is also where the arithmetic divides: 48 LEDs, four in series per channel, is 12
-zones and exactly 4 x TLC59711 with nothing wasted — 24 LEDs, 6 zones and 2 drivers on
-each board. One LED coarser and it stops dividing.
+**72 is the densest the row can physically be.** The XL-5050RGBW's courtyard is 6.10 mm,
+so at 96 LEDs neighbours overlap by 0.13 and `check_placement` rejects the board before
+anything is routed. Optically the run is finished well before that: 1.008 : 1 is flat.
+
+## 4a. Zones, series strings, and where the money is
+
+Two numbers describe the strip's addressing and they are not independent:
+
+    zones    = N_LED / N_SERIES          (how finely it can be addressed)
+    channels = zones x 4                 (RGBW -- and what the DRIVERS cost)
+
+A TLC59711 carries twelve channels, i.e. three zones, so the zone count has to be a
+multiple of three. **24 zones, three LEDs each** is where this landed:
+
+| | |
+|---|--:|
+| LEDs per instrument | 72 |
+| zones | 24, of 23.86 mm |
+| channels | 96 |
+| TLC59711 | 8 (4 per board) |
+| rail | 11.00 V |
+| rail current | 1.44 A |
+
+> "I'd like to have closer to 24 controllable zones" (user, 2026-09-30)
+> "would it benefit us to put 3 LEDs per zone instead of 2? Same number of zones just
+> increase LED density" (user, 2026-09-30)
+
+**The second question is the cheap one and the answer is yes.** Channels follow ZONES, so
+holding zones at 24 and raising the string from 2 to 3 leaves the channel count -- and
+therefore the driver count, the driver cost, the board area and the rail CURRENT -- exactly
+where they were. A channel draws 15.0 mA whether it feeds two dice or three:
+
+| | 48 LEDs, 2 a zone | **72 LEDs, 3 a zone** |
+|---|--:|--:|
+| zones / channels / drivers | 24 / 96 / 8 | **24 / 96 / 8** |
+| driver cost | $19.28 | **$19.28** |
+| LED cost | $3.12 | $4.68 |
+| rail | 7.67 V | 11.00 V |
+| rail current | 1.44 A | **1.44 A** |
+| light | 1x | **1.5x** |
+| ripple | 1.095 : 1 | 1.008 : 1 |
+
+Half again the light for **$1.56 an instrument**, paid for in rail volts -- the one thing
+this rail has spare. The whole electrical change is R11: 100k / 10k on the LMR33630's
+1.000 V reference is 11.00 V, against a 9.60 V string at the LED's 3.2 V maximum.
+
+### What 3 a zone costs, stated plainly
+
+| | 2 a zone | 3 a zone |
+|---|--:|--:|
+| through the -X J1 and the seam jumper | 0.52 A | **0.73 A** of a 1.0 A contact |
+| LED dissipation per board | 4.25 W | **6.37 W** (14.8 -> 22.2 mW per mm of strip) |
+| dissipation per driver | 0.32 W | 0.39 W |
+| clear lane between LED courtyards | 5.83 mm | **1.85 mm** |
+| solder joints per board | 192 LED pads | 288 |
+| LEDs in series per zone | 2 | 3 |
+
+Four of those are worth keeping in mind rather than merely noting:
+
+1. **0.73 A through one contact** is the tightest number on this strip, 73% of the
+   SM04B-SRSS's rating, because the -X board's inlet and the seam jumper carry BOTH boards.
+   It is an every-zone-full-white worst case that the effects daemon caps, the same way it
+   caps the fret boards' 1.38 A -- but it is the number that would have to be solved first
+   if the strip ever grew again.
+2. **6.37 W of LED heat per board** goes into a still-air plastic channel, 0.30 mm off a
+   PCTG window. The 4-layer GND plane is the heatsink and 286 mm is a lot of it, but this
+   is the first thing to measure on the prototype.
+3. **1.85 mm between courtyards** means the LED row is full. There is no room left to
+   substitute a physically larger RGBW 5050 -- a second source with a wider courtyard would
+   not fit, where at 48 LEDs it would have had 5.83 mm to grow into.
+4. **Three dice in series instead of two** is 1.5x the exposure to an OPEN failure taking a
+   whole zone dark. The zone goes dark either way; there are simply more parts that can do
+   it. A SHORT costs one die's light and nothing else.
+
+### ⚠ It does NOT match the fret boards, and that is worth being exact about
+
+The fret cells are **four** in series on a **14.0 V** rail (`src/fret_light.py`,
+`elec/fret_led.py` line 112: "FOUR DICE IN SERIES: W/G/B are 3.0-3.2 V each, so 12.8 V").
+So neither 2 nor 3 matches them, and 4 is not available here: four a zone at 24 zones is
+96 LEDs, which is the 5.966 pitch whose courtyards overlap. Four a zone is only reachable
+by going back to 12 zones, which is what 24 zones replaced.
+
+**The commonality that matters is already complete.** The foot strip and the fret boards
+share the LED (C7371891), the driver (C116842), the buck (C2071783) and the inductor
+(C57269) -- every active part. The only thing that differs is R11's value, and that would
+still differ at any string length that fits: a series string sets the rail, and a 572 mm
+floor wash and a 9.14 mm fret cell are not going to want the same one.
 
 ## 5. ⚠ The trough is 1.90 mm deep, and the LED is what sets it
 

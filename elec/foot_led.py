@@ -2,7 +2,7 @@
 
     py -3.12 elec/foot_led.py       # -> elec/out/foot_led.{net,board.json}
 
-    286.36 x 17.20, 4 layers, 24 LEDs, 6 zones, 2 x TLC59711.  TWO PER INSTRUMENT.
+    286.36 x 17.20, 4 layers, 36 LEDs, 12 zones, 4 x TLC59711.  TWO PER INSTRUMENT.
 
 The other lighting job (elec/fret_led.py is the first). It lies on top of the transparent
 band through the chassis's bottom prism and shines into it; the 10.80 mm of PCTG is the
@@ -82,12 +82,34 @@ FUSE_FP = "Fuse:Fuse_1206_3216Metric"
 # of: AIR_GAP + LED_H = 1.90 mm, relieved to 3.40 under the lane. The PH the rest of the
 # instrument uses is 5.50 tall and does not fit at any relief worth cutting; the SH is
 # **2.95**, read off JST's own drawing (side-entry side view, not a catalogue field).
-# 1.0 A / 50 V against this board's 0.24 A at 24 V. S4B is 4-way: GND, 24V, SCK, SDT.
+# ⚠ 1.0 A / 50 V AGAINST 0.37 A A BOARD AT 24 V -- AND 0.73 A THROUGH THE -X BOARD'S
+# J1 AND THE SEAM JUMPER, which carry both boards. That is the tightest number on this
+# strip, 73% of a contact's rating, and it is the price of the 72-LED row. It is also a
+# worst case the firmware never has to reach: it is every zone at full white at once,
+# which the effects daemon caps the same way it caps the fret boards' 1.38 A. S4B is 4-way: GND, 24V, SCK, SDT.
 # SM04B-SRSS-TB(LF)(SN), C160404, JST, 3,495 in stock at $0.2131@50.
 J_FP = "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
 
 R_IREF = "3k3"                       # 15.0 mA per channel, as the fret boards
-V_RAIL = 14.0
+# ⚠ 11.00 V, AND THE STRING LENGTH IS THE ONLY THING THAT SETS IT. A channel sinks
+# constant current from the rail down through its series string, so the rail has to sit one
+# string plus the sink's headroom above ground -- and every volt above that is heat in the
+# driver rather than light. Three dice in series (src/foot_light.N_SERIES) is 9.6 V at the
+# LED's 3.2 max, so 11.00 leaves 1.40 V of headroom, a little more than the 1.27 the
+# earlier 4-in-series/14 V board ran on.
+#
+# The whole rail change is R11: 100k / 10k on the LMR33630's 1.000 V reference is 11.00 V.
+#
+# ⚠ RAIL CURRENT DOES NOT MOVE WHEN THE LED COUNT DOES, and that is the fact the whole
+# strip is designed around. A channel draws 15.0 mA whether it feeds two dice or three, and
+# the channel count is set by ZONES: 48 a board, before and after. Going from 48 LEDs to 72
+# bought half again the light for 3.3 V of rail and $1.56 of LEDs -- no more drivers, no
+# more amps, no more board.
+#
+# Each driver dissipates 0.39 W here: red's string is 6.6 V so its sink drops 4.4, and
+# W/G/B drop the 1.40 headroom. 1.55 W a board, in a bay with 572 mm of aluminium-free
+# plastic around it -- the four packages spread over 286 mm, not stacked.
+V_RAIL = 11.00
 I_CHAN = 0.015
 COLOURS = ("R", "G", "B", "W")
 # ⚠ +24V ON AN END PAD, AND IT IS THE ONE THING THAT KEPT FAILING. The SH is a 1.00 mm
@@ -152,19 +174,25 @@ class Row(object):
     only thing that can go wrong is two parts touching. check_placement catches that
     anyway; this just makes the spacing an outcome of the part sizes rather than of
     thirteen numbers typed by hand -- which is how the fret board's bay went wrong twice.
+
+    `dirn` lays a row out towards -X instead of +X, which is what the drivers' own
+    passives need. At 12 zones this board had two drivers with the whole middle to
+    themselves; at 24 it has four, and the inner two would walk their passives straight
+    into the supply block. Sending every driver's passives OUTBOARD keeps the middle clear
+    symmetrically and needs no clamp.
     """
 
-    def __init__(self, place, fps, x, gap=0.45):
-        self.place, self.fps, self.x, self.gap = place, fps, x, gap
+    def __init__(self, place, fps, x, gap=0.45, dirn=1.0):
+        self.place, self.fps, self.x, self.gap, self.dirn = place, fps, x, gap, dirn
 
     def add(self, ref, fp, rot=0.0):
         w, h = fp_box(fp)
         if round(rot) % 180:
             w = h
-        self.x += w / 2.0
+        self.x += self.dirn * w / 2.0
         self.place[ref] = (self.x, LANE_Y, rot)
         self.fps[ref] = fp
-        self.x += w / 2.0 + self.gap
+        self.x += self.dirn * (w / 2.0 + self.gap)
         return self
 
 
@@ -177,11 +205,11 @@ def build(passes=20):
     n_zone = len(xs) // FL.N_SERIES
     n_drv = (n_zone + 2) // 3
     assert len(xs) % FL.N_SERIES == 0 and n_zone % 3 == 0, (
-        "%s: %d LEDs is %d zones -- zones come in threes (a TLC59711 carries three) and "
-        "series strings in fours" % (name, len(xs), n_zone))
+        "%s: %d LEDs is %d zones -- zones come in threes (a TLC59711 carries three) "
+        "and strings in N_SERIES" % (name, len(xs), n_zone))
     half = length / 2.0
 
-    gnd, v24, vrail = Net("GND"), Net("+24V"), Net("+14V")
+    gnd, v24, vrail = Net("GND"), Net("+24V"), Net("+11V")
     for n in (gnd, v24, vrail):
         n.drive = Pin.drives.POWER
     place, fps = {}, {}
@@ -221,7 +249,7 @@ def build(passes=20):
     # ── the buck: the fret boards', unchanged ────────────────────────────────────────
     u10 = Part(name="LMR33630CRNX", ref_prefix="U", ref="U10", tag="U10", dest="NETLIST",
                tool="skidl", value="LMR33630CRNXR",
-               description="24 V -> 14 V synchronous buck, 2.1 MHz, 3 A (LCSC C2071783)",
+               description="24 V -> 11.00 V synchronous buck, 2.1 MHz, 3 A (LCSC C2071783)",
                footprint=BUCK_FP, pins=[Pin(num=n, func=P) for n in range(1, 13)])
     sw, boot, vcc, fb = Net("SW"), Net("BOOT"), Net("BUCK_VCC"), Net("FB")
     gnd += u10[1], u10[11], u10[6]
@@ -243,17 +271,18 @@ def build(passes=20):
             ("C31", "10uF/50V", C12_FP, v24, "buck input bulk"),
             ("C32", "100nF", C_FP, v24, "buck input HF bypass -- at U10's VIN/GND pins"),
             ("C34", "1uF", C_FP, vcc, "buck VCC bypass"),
-            ("C36", "10uF/50V", C12_FP, vrail, "14 V output bulk"),
-            ("C37", "10uF/50V", C12_FP, vrail, "14 V output bulk"),
-            ("C38", "100nF", C_FP, vrail, "14 V output HF bypass")):
+            ("C36", "10uF/50V", C12_FP, vrail, "11 V output bulk"),
+            ("C37", "10uF/50V", C12_FP, vrail, "11 V output bulk"),
+            ("C38", "100nF", C_FP, vrail, "11 V output HF bypass")):
         c = _c(ref, val, why, fp)
         net += c[1]
         gnd += c[2]
     c33 = _c("C33", "100nF", "buck bootstrap -- BOOT to SW")
     boot += c33[1]
     sw += c33[2]
-    r10 = _r("R10", "100k", "14 V feedback divider, top")
-    r11 = _r("R11", "7k68 1%", "14 V feedback divider, bottom -- 14.02 V with R10")
+    r10 = _r("R10", "100k", "11 V feedback divider, top")
+    r11 = _r("R11", "10k 1%", "11 V feedback divider, bottom -- 11.00 V with R10, "
+                              "against a 9.60 V string at the LED's max Vf")
     vrail += r10[1]
     fb += r10[2], r11[1]
     gnd += r11[2]
@@ -279,16 +308,16 @@ def build(passes=20):
         row.add(ref, fp)
 
     # ── the zones ────────────────────────────────────────────────────────────────────
-    # A zone is four consecutive LEDs in series on one channel; a driver serves three and
-    # sits on the middle one. The CHAIN DIRECTION is chosen per zone so the end that
+    # A zone is N_SERIES consecutive LEDs in series on one channel; a driver serves three
+    # and sits on the middle one. The CHAIN DIRECTION is chosen per zone so the end that
     # returns to the driver is the end NEAREST it -- the far end goes to the rail, and a
-    # long rail run is a pour while a long return is a trace. Worst return here is 2.5
-    # pitches, 30 mm.
+    # long rail run is a pour while a long return is a trace. At 2 in series the worst
+    # return is 1.5 zone-pitches, 18 mm: HALF what the 12-zone board asked of it.
     zones = [list(range(z * FL.N_SERIES, (z + 1) * FL.N_SERIES)) for z in range(n_zone)]
     for k in range(n_drv):
         trio = zones[3 * k:3 * k + 3]
         mid = trio[len(trio) // 2]
-        xd = (xs[mid[1]] + xs[mid[2]]) / 2.0
+        xd = sum(xs[i] for i in mid) / len(mid)   # the middle zone's centre
         # (no clamp against the supply row any more: it is in the middle, and the
         # drivers are what it has to stay clear of rather than the other way round)
         u = Part(name="TLC59711", ref_prefix="U", ref="U%d" % (k + 1),
@@ -322,10 +351,10 @@ def build(passes=20):
         gnd += cb[2]
         place["U%d" % (k + 1)] = (xd, LANE_Y, 0.0)
         fps["U%d" % (k + 1)] = DRV_FP
-        # the driver's own four passives go on its +X side, in the lane, because its -X
-        # side is where the supply row ends on the first driver and there is no reason
-        # for the two to meet
-        prow = Row(place, fps, xd + fp_box(DRV_FP)[0] / 2.0 + 0.45)
+        # the driver's own four passives go OUTBOARD of it, in the lane -- away from the
+        # board's middle, which is where the supply block sits. See Row on the direction.
+        sgn = -1.0 if xd < 0 else 1.0
+        prow = Row(place, fps, xd + sgn * (fp_box(DRV_FP)[0] / 2.0 + 0.45), dirn=sgn)
         for ref, fp in (("R%d" % (k + 1), R_FP), ("C%d" % (k + 1), C_FP),
                         ("C%d" % (10 + k + 1), C_FP), ("C%d" % (20 + k + 1), C08_FP)):
             prow.add(ref, fp)
@@ -351,10 +380,10 @@ def build(passes=20):
             zi = 3 * k + s
             for c, col in enumerate(COLOURS):
                 vrail += leds[0][c + 1]
-                for a, b in ((0, 1), (1, 2), (2, 3)):
+                for a in range(len(leds) - 1):
                     Net("Z%d_%s_%d" % (zi, col, a)).connect(leds[a][c + 5],
-                                                            leds[b][c + 1])
-                Net("Z%d_%s_RET" % (zi, col)).connect(leds[3][c + 5], u[outs[c]])
+                                                            leds[a + 1][c + 1])
+                Net("Z%d_%s_RET" % (zi, col)).connect(leds[-1][c + 5], u[outs[c]])
 
     # the chain leaves on J2
     sck += js["J2"][3]
@@ -406,10 +435,10 @@ BOARD_NOTES = {
     # at the driver.
     "layers": 4,
     "thickness_mm": 1.6,
-    "zones": [("+14V", "In1.Cu", 0.3), ("GND", "In2.Cu", 0.3)],
+    "zones": [("+11V", "In1.Cu", 0.3), ("GND", "In2.Cu", 0.3)],
     "plane_layers": ("In1.Cu", "In2.Cu"),
     "local_inner": "B.Cu",
-    "stitch_nets": ("+14V", "GND"),
+    "stitch_nets": ("+11V", "GND"),
     # ⚠ A SMALLER VIA, AND IT IS THE DRIVER'S ESCAPE FAN THAT ASKS FOR IT. Twelve outputs
     # leave one HTSSOP-20 on a 0.65 mm pitch and every one of them has to dive to an
     # outer layer beside the package: six vias have to fit in the 5.85 mm the pin column
@@ -428,7 +457,7 @@ BOARD_NOTES = {
     # at a 10 C rise against this board's largest signal load of 15 mA -- the constraint
     # is geometry, not current. The rails keep their own width below.
     "track_mm": 0.15,
-    # ...and the two power nets are widened back up. +14V and GND are planes, so this is
+    # ...and the two power nets are widened back up. +11V and GND are planes, so this is
     # really just the 24 V pass-through, which carries 0.24 A the length of the board.
     "net_widths": {"+24V": 0.30},
     "order_options": {
@@ -450,7 +479,7 @@ BOARD_NOTES = {
 if __name__ == "__main__":
     n_led, n_zone, n_drv = build()
     q = FL.BOARD_QTY
-    print("%d LEDs, %d zones, %d channels, %d drivers per instrument, %.2f A at %.0f V"
+    print("%d LEDs, %d zones, %d channels, %d drivers per instrument, %.2f A at %.2f V"
           % (n_led * q, n_zone * q, 4 * n_zone * q, n_drv * q,
              4 * n_zone * q * I_CHAN, V_RAIL))
     print("run %.2f mm, pitch %.3f, depth %.2f -> %.3f : 1"
