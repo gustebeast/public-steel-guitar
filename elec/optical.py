@@ -2667,10 +2667,15 @@ BOARD_NOTES = {
     # from the screw, which is the same single-source rule the plinth's inserts follow.
     # M4.shaft_clr_d (4.4) is the canonical clearance bore, NOT insert_pilot_d (6.0) --
     # the plastic takes the insert, the board only has to let the shank past.
-    "cutouts": [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.O_ROD_HOLE_D}
-                for x, y in OP.O_ROD_HOLES]
-               + [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.M4.shaft_clr_d}
-                  for x, y in OP.mount_points()],
+    # ⚠ AND IT NO LONGER HANGS OFF O_ROD_HOLES, WHICH IS A LANDMINE. That list is a leftover
+    # from the abandoned O-shaped-board experiment (c50b68f): it is `[]` and its own comment
+    # says "nothing uses it". Building the mount holes as an append to a comprehension over it
+    # made a dead name look load-bearing while still reading as dead -- and main has already
+    # run one "delete dead code, drop unused imports" pass over this file. Deleting
+    # O_ROD_HOLES is the right call and it would have taken the mounting holes with it.
+    # The holes stand on their own now, so the dead list can go whenever anyone gets to it.
+    "cutouts": [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.M4.shaft_clr_d}
+                for x, y in OP.mount_points()],
     # ⚠ CORRIDORS ARE OFF, AND THE MEASUREMENT SAYS SO. The generator did what it was
     # built to do -- 20 of 20 comb crossings placed on assigned gaps, A through the strip
     # +Y of its string and B through the strip -Y -- and the BOARD GOT WORSE. Measured
