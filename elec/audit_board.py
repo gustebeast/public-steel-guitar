@@ -166,8 +166,21 @@ def check(stem):
                                  "%.3f mm rule, at %s" % (nname, layer, gap, rule, who))
                 elif gap < RS.MARGIN:
                     tight.append((nname, layer, gap, who))
+                # ⚠ AND THE POURS, WHICH "EVERY OBSTACLE CLASS" DID NOT INCLUDE UNTIL
+                # 2026-09-30. track_gap covers segments, vias, pads and the outline; copper
+                # ZONES were not modelled at all, and they answer to a different and much
+                # larger rule -- 0.5000 mm on optical against the 0.127 netclass clearance.
+                # So this note claimed more than it checked, on the one board whose remaining
+                # work is repair tracks. A dog-leg with 0.1557 mm of measured headroom passed
+                # every check here and sat 0.0225 mm from the ground pour.
+                zgap, zwho = b_.zone_gap(p, q, layer, w / 2.0)
+                if zgap < b_.zone_clear:
+                    fails.append("repair track on %s %s clears only %.3f mm against the "
+                                 "%.3f mm ZONE rule, at %s"
+                                 % (nname, layer, zgap, b_.zone_clear, zwho))
         notes.append("repair tracks re-checked, EVERY segment, against every obstacle "
-                     "class: %d segment(s)" % sum(len(rt[3]) - 1 for rt in want))
+                     "class INCLUDING THE POURS: %d segment(s)"
+                     % sum(len(rt[3]) - 1 for rt in want))
         for nname, layer, gap, who in tight:
             notes.append("  tight but legal: %s %s clears %.3f mm (rule %.3f, search "
                          "margin %.3f) against %s" % (nname, layer, gap, rule, RS.MARGIN, who))
