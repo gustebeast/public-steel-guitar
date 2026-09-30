@@ -557,14 +557,12 @@ def output_panel():
     pot_cs += u1[64]
     pot_sck += u1[65]
     pot_sdi += u1[26]
-    # ⚠⚠ PIN 27 IS AN INFERENCE AND MUST BE READ OFF THE COLUMN BEFORE FAB.
-    # Every other pin on this part was taken from WCH's QFN-68 column with per-word
-    # coordinates, and the note above says why: "Nothing downstream can catch a wrong
-    # pin number -- SKiDL wires to the NUMBER, layout places the pad it names, DRC
-    # agrees the copper matches -- so it is checked here or it is not checked at all."
-    # 27 is PB1 ONLY because 26 is PB0 and the two are adjacent in that column. That is
-    # reasoning about a table, not reading one, and it is the exact move the note
-    # forbids. It is written down as unverified rather than quietly assumed.
+    # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 26 PB0, 27 PB1, 64 PB8, 65 PB9,
+    # checked against .ins/ch32v307_qfn68.json -- the same QFN-68 column the other
+    # twenty-four pins on this part were taken from. 27 was briefly written down as an
+    # inference from "26 is PB0 and they are adjacent", which is reasoning about a table
+    # rather than reading one; the note above is explicit that nothing downstream can
+    # catch a wrong pin number, so it was read.
     jack_mode += u1[27]
     mclk = Net("I2S_MCK")
     mclk += u1[39]
@@ -866,15 +864,28 @@ def output_panel():
                description="SPDT analog switch -- ring = inverted tip (balanced) or the "
                "right-hand channel (stereo)",
                footprint="Package_TO_SOT_SMD:SOT-363_SC-70-6",
-               pins=[Pin(num=1, name="B1", func=P), Pin(num=2, name="GND", func=P),
-                     Pin(num=3, name="A", func=P), Pin(num=4, name="B2", func=P),
+               # ⚠ READ OFF TI'S OWN TABLE 4-1 (SCES424O, rev June 2025), NOT REMEMBERED.
+               # It was remembered first, as 1 B1 / 3 A / 4 B2, and ALL THREE SIGNAL PINS
+               # WERE WRONG: the real order is 1 B2, 2 GND, 3 B1, 4 A, 5 VCC, 6 S. A route
+               # was already running against the wrong netlist when the datasheet arrived.
+               # This is the second time in one sitting that this file's rule -- "it is
+               # checked here or it is not checked at all" -- has earned its keep, and the
+               # first was the MCU pin four lines of comment away.
+               pins=[Pin(num=1, name="B2", func=P), Pin(num=2, name="GND", func=P),
+                     Pin(num=3, name="B1", func=P), Pin(num=4, name="A", func=P),
                      Pin(num=5, name="VCC", func=P), Pin(num=6, name="S", func=P)])
-    inv_out += u12[1]         # B1: balanced -- the inverted tip
+    # B1 conducts with S LOW and B2 with S HIGH (Table 4-1), which fixes the polarity of
+    # JACK_MODE rather than leaving it to firmware to discover: 0 = balanced, 1 = stereo.
+    inv_out += u12[3]         # B1, S low  -- balanced: the inverted tip
     agnd += u12[2]
-    u9_in += u12[3]           # A: the common, into U9
-    ring_gain += u12[4]       # B2: stereo -- pole B's signal, after P1
+    ring_gain += u12[1]       # B2, S high -- stereo: pole B's signal, after P1
+    u9_in += u12[4]           # A: the common, into U9
     v5 += u12[5]
     jack_mode += u12[6]
+    # ✅ AND THE PART IS RIGHT FOR THE JOB, from the same datasheet: "Audio signal
+    # routing" is a listed application, Ron is ~6 ohm, and it is rail-to-rail on signals up
+    # to VCC -- which matters because this board's audio is VMID-centred and swings most of
+    # 0..5 V, so a switch that only passed a logic-level window would clip the loud half.
 
     # ── U10: THE GAIN, AND IT IS AN ATTENUATOR IN FRONT OF THE BUFFERS ─────────
     # MCP4261-103E/ST: dual 10k digital pot, SPI, TSSOP-14. Pinout off Microchip's
