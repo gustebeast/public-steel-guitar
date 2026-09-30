@@ -397,12 +397,18 @@ def adjust_tenon(top: float = Z_ADJ_TEN_TOP):
     # placed from where this tenon seats in the bar (src.bar_latch)
     from . import bar_latch as BL
     t = t.cut(BL.tenon_cut(top - ADJ_TEN_L + ENGAGE))
-    # THE BOTTOM BLIND-MATE (src.bar_trrs): the male plug floats in this tenon on the
-    # same coil SKU as the top joint, and the bar keeps a short PCB jack. Cut last, and
-    # only on the tenon as drawn -- a shortened one is a height setting, not a station
+    # THE BOTTOM BLIND-MATE (src.leg_pogo): the MALE pogo board in a pocket in this
+    # end, and the harness's way up past the ladder. Cut last, and only on the tenon as
+    # drawn -- a shortened one is a height setting, not a station
     if abs(top - Z_ADJ_TEN_TOP) < 1e-9:
-        from . import bar_trrs as BT
-        t = t.cut(BT.tenon_negatives(TENON_UP))
+        from . import leg_pogo as PG
+        # ONE STRAIGHT BORE on the PH port's own line, all the way to the tenon's top
+        # (leg_pogo.ROUTE_D). It replaces the pogo hop onto the retired TRRS spine AND
+        # bar_trrs.route_negatives' jog around the ladder: the port's line already
+        # clears the ladder, so neither dogleg was buying anything.
+        t = t.cut(PG.tenon_negatives(
+            PG.BOTTOM, PG.route_xy(),
+            PG.ROUTE_D, Z_ADJ_TEN_TOP + 1.0, TENON_UP))
     return t
 
 
@@ -421,11 +427,24 @@ def fixed_tenon():
     for z in (Z_FIX_SCREW, Z_ADJ_SCREW):
         t = t.cut(_from_plus_x(ADJ_HOLE_D, z, LEG_X + TEN_APEX - JOIN_SEAT,
                                TENON_UP, limit_deg=TEN_HOLE_LIMIT_DEG))
-    # THE LEG'S SIGNAL, down the joint's own axis (src.leg_trrs): the throat at this
-    # tenon's tip, the floating jack's travel, its coil, and the cable on down the leg
-    from . import leg_trrs as LTR       # late: leg_trrs reads this module
-    return t.cut(LTR.tenon_negatives(LEG_X, LEG_Y, TENON_UP,
-                                     bot=Z_FIX_TEN_BOT - 1.0))
+    # THE LEG'S SIGNAL (src.leg_pogo): the MALE pogo board in a pocket at this
+    # tenon's tip, and the harness's bore on down the leg at the old lead's spine
+    from . import leg_pogo as PG
+    # (the lane is leg_pogo's: ROUTE_D wide, like the adjust tenon's, because nothing
+    #  travels it but four bare wires -- they are crimped after threading.)
+    return t.cut(PG.tenon_negatives(PG.TOP, PG.drop_xy(), PG.ROUTE_D,
+                                    Z_FIX_TEN_BOT - 1.0, TENON_UP))
+
+
+def is_signal_corner(sx: float, ly: float) -> bool:
+    """Is this the corner the bus comes up? ONE statement of it.
+
+    It was a float compare written out at the cut, and the harness channel's own guard
+    further down did not share it -- so that guard ran at all four corners against a
+    channel only this one has. It passed for as long as it did by luck: move CHAN_X
+    outboard and three corners whose tenon stations fall differently begin failing a
+    check on geometry they do not contain."""
+    return abs(sx - LEG_X) < 1e-6 and abs(ly - LEG_Y) < 1e-6
 
 
 def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
@@ -458,6 +477,13 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # chamfered mouth that lets a printed hook ride in without catching
     b = b.cut(LL.adapter_pocket())
     b = b.cut(LL.mouth_chamfer())
+    # THE SIGNAL CORNER's female pogo board (src.leg_pogo): it lies on the mortise roof;
+    # the connector's cavity above it and the harness's groove out the -Y face. Only
+    # this corner carries the bus
+    if is_signal_corner(sx, ly):
+        from . import leg_pogo as PG
+        _ped, _neg = PG.adapter_features()
+        b = (b.union(_ped) if _ped is not None else b).cut(_neg)
     b = b.translate((sx - LEG_X, ly - LEG_Y, 0.0))
     # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
     # run the full LEG_W along Y, the slide axis.
@@ -472,11 +498,68 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     # authority on where each station's mortise actually runs -- one run for most, two short
     # runs (one per foot) for the three at each end -- and a tenon is clamped to the run it sits
     # in and kept only if that run opens the way this corner slides in.
+    # WHICH END LEADS depends on ADAPTER_UP, so read it rather than assume it. This
+    # ramp is the one piece of adapter geometry that is shaped BY the print direction
+    # without going through a hole cutter, so if the part is ever flipped it has to
+    # follow -- put on the wrong end it would both miss the overhang and throw away
+    # engagement at the end that never needed it.
+    assert abs(ADAPTER_UP[1]) > 0.99 and abs(ADAPTER_UP[0]) < 1e-9, (
+        "the ridge ramp assumes the adapter builds along Y, either way up")
+    _uy = 1.0 if ADAPTER_UP[1] > 0 else -1.0
+    _bed = ly - _uy * LEG_W / 2.0       # the face it lies on: -Y face when it builds +Y
+    # THE HARNESS CHANNEL MUST NOT RUN UNDER A TENON'S FOOT. It is cut in this same top
+    # face and undercuts anything it passes beneath, and a tenon undercut ALONG ITS RUN
+    # is holding the leg on with what is left either side. Checked here because this is
+    # where the stations are known; leg_pogo.CHAN_X is where the number lives.
+    #
+    # ...AND ONLY AT THE CORNER THAT HAS ONE. Three of the four adapters carry no bus
+    # (is_signal_corner), and this used to assert against all four -- a check on geometry
+    # three of them do not contain, which passed only because CHAN_X happened to miss
+    # their stations as well. At -14.4 it does not, and three corners failed over a
+    # channel that was never cut in them.
+    #
+    # As it stands the channel takes 0.0 mm3 off all three tenons, because it is a
+    # single BURIED diagonal: it dives as it goes outboard, so by the time it crosses
+    # the outermost tenon's x band it is 11.51 under this face and every tenon is above
+    # it. This assert is what keeps that true if the line is ever flattened or the
+    # stations move. (An L in the top face could not do it: 27.0 mm3 on the 45 and
+    # 137.0 mm3 square, over 21.45 of that tenon's 32.49 run.)
+    from . import leg_pogo as _PG
+    _cx0, _cx1 = (sx + _PG.CHAN_X - _PG.CHAN_W / 2.0,
+                  sx + _PG.CHAN_X + _PG.CHAN_W / 2.0)
+    _rb = LG._stub_ridge(1.0).val().BoundingBox()       # the ridge's own section, measured
     for st, y0, y1 in CH.foot_tenon_runs(sx, ly, syg):
         # (keeping off the height-screw heads and the string access channels is the MORTISE's
         #  business, not the tenon's: chassis.mort_segments shortens the run and this follows it.
         #  It was duplicated here, which is two places to get the same rule wrong.)
         b = b.union(LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP)))
+        assert not is_signal_corner(sx, ly) or \
+            st + _rb.xmax + D.MIN_WALL_2P <= _cx1 or \
+            _cx0 <= st + _rb.xmin - D.MIN_WALL_2P, (
+                "the harness channel (x %.2f..%.2f) runs under the body tenon at "
+                "x %.2f..%.2f" % (_cx0, _cx1, st + _rb.xmin, st + _rb.xmax))
+        # RAMP THE LEADING END. The adapter builds +Y, so a ridge whose run STARTS above the
+        # bed begins in mid-air: its whole 6.60 x 8.03 section is laid down in one layer with
+        # nothing under it but the 0.80 strip where it meets the top face. Two of them were the
+        # worst ceilings left in this part (35.6 and 37.8 mm^2, span 6.60), and they are
+        # invisible in the viewer because on the printer this "end wall" is a ROOF.
+        #
+        # A 45 wedge off that end lets the section grow out of the top face over its own
+        # height. It costs nothing functionally -- the ridge is a tenon sliding into the
+        # chassis' mortise along Y, so a tapered leading end is a LEAD-IN -- and the run's
+        # far end needs no such thing, because a face at the far end points AWAY from the bed.
+        #
+        # Only ridges that start off the bed: one whose run opens at the adapter's own -Y face
+        # is printed from layer one, and ramping it would throw away engagement for nothing.
+        _lead = y0 if _uy > 0 else y1               # the end the printer reaches FIRST
+        if abs(_lead - _bed) > 0.1:
+            h = _rb.zmax                                # 8.03, the section's height in Z
+            _run = _uy * (h + 0.5)
+            b = b.cut(cq.Workplane("YZ")
+                      .polyline([(_lead, Z_TOP), (_lead, Z_TOP + h + 0.5),
+                                 (_lead + _run, Z_TOP + h + 0.5)])
+                      .close().extrude(_rb.xmax - _rb.xmin + 0.4)
+                      .translate((st + _rb.xmin - 0.2, 0.0, 0.0)))
     # M4 LOCK PIN, the adapter's ONLY screw (user): it threads into an insert in the ENDPLATE
     # and carries on through the chassis floor into this foot's TENONS, which it pins -- that is
     # what stops the foot sliding back out along Y. Same legs helper the endplate's and the
@@ -527,10 +610,25 @@ _S2 = 1.0 / math.sqrt(2.0)
 SLEEVE_UP = (0.0, -1.0, 0.0)       # both sleeves: the bed is the +Y face (at Y 65.95
                                    # on this station) and the part builds toward -Y,
                                    # so the BUTTON face is the top (user)
-ADAPTER_UP = (0.0, 1.0, 0.0)       # the adapter the OTHER way up, -Y -> +Y (user):
-                                   # button face down. Built like the sleeves, its
-                                   # latch pocket's outer skin was a 5.3 mm flat
-                                   # bridge over the hook; this way up it is a floor.
+ADAPTER_UP = (0.0, -1.0, 0.0)      # +Y -> -Y, button face UP (user). THE RIDGES
+                                   # DECIDE THIS. The body tenons on the top face
+                                   # run along Y and END at the +Y face, so that
+                                   # face is the bed and all three reach it on
+                                   # layer one. Built the other way each ridge
+                                   # starts in mid-air -- a 6.60 x 8.03 section
+                                   # laid down in one layer -- and the 45 ramp that
+                                   # fixes it spends 481 mm^3 of tenon, about a
+                                   # quarter of the full-section engagement on two
+                                   # of the three. That is joinery holding the leg
+                                   # to the instrument (user), and it outweighs
+                                   # what this way up costs: the latch pocket's
+                                   # blind end is a 91.8 mm^2 bridge, span 6.90,
+                                   # buried 42 mm inside a clearance pocket.
+                                   # Everything else in the part is <= 1.60.
+                                   # (That bridge is not permanent -- on the +Y
+                                   #  side of the leg the same end lands near the
+                                   #  bed and is a floor: 5 ceilings / 74.8 mm^2 /
+                                   #  worst span 1.60. See leg_latch.BUTTON_SIDE.)
                                    # (The sleeve's pad recess is the mirror case --
                                    # it wants the button face UP -- which is why the
                                    # two differ.)
@@ -551,7 +649,7 @@ SLIDER_UP = (1.0, 0.0, 0.0)        # the latch slider builds -X -> +X (user): it
                                    # whose pad wing hung from its tip in mid-air.
 BAR_FRAME_UP = (0.0, 0.0, 1.0)     # the pedal bar's yoke: ring on the bed, pad and
                                    # spring lugs growing up off it (src.bar_latch)
-BAR_COLLAR_UP = (0.0, -1.0, 0.0)   # its collar builds +Y -> -Y: the bed is the +Y
+BAR_COLLAR_UP = (0.0, 1.0, 0.0)    # its collar builds -Y -> +Y: the bed is the -Y
                                    # face, the same AXIS the bar prints in (the bar
                                    # runs -Y -> +Y, this the other way up). Two things
                                    # wanted that: the pad's recess, whose back wall is
@@ -568,10 +666,10 @@ PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "latch_slider": SLIDER_UP, "bar_latch_frame": BAR_FRAME_UP,
             "bar_latch_collar": BAR_COLLAR_UP}
 PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
-             "body_adapter": ((1, 0, 0), 90),
+             "body_adapter": ((1, 0, 0), -90),
              "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
              "latch_slider": ((0, 1, 0), -90), "bar_latch_frame": ((1, 0, 0), 0),
-             "bar_latch_collar": ((1, 0, 0), -90)}
+             "bar_latch_collar": ((1, 0, 0), 90)}
 
 
 def _rotated(v, axis, deg):
@@ -679,17 +777,12 @@ def leg_parts():
            # the pedal bar latch, AT REST (hook in, pad flush)
            ("bar_latch_frame", BL.frame(Z_BAR_MOUTH)),
            ("bar_latch_collar", BL.collar(Z_BAR_MOUTH))]
-    from . import bar_trrs as BT
-    out += BT.dummies()
-    # ...and the BAR's half of the same joint. It is authored against a caller-supplied
-    # mortise floor precisely so it can be drawn in either frame; in world, that floor
-    # is the adjust tenon's own bottom face, which is BT.TIP.
-    out += BT.bar_dummies(BT.TIP)
+    # both blind-mates, male and female boards and their screws (src.leg_pogo)
+    from . import leg_pogo as PG
+    out += PG.dummies()
     out += [("bar_latch_spring_%d" % i, s) for i, s in enumerate(BL.springs(Z_BAR_MOUTH))]
     out += BL.screw_dummies(Z_BAR_MOUTH)        # the collar's one screw, and its insert
     out += LG.lock_pin_dummies(LEG_X, LEG_Y, EGX, SYG, Z_TOP, 0)   # the leg's one screw
-    from . import leg_trrs as LTR
-    out += LTR.dummies(LEG_X, LEG_Y, 0)        # the blind-mate, at its MATED length
     return out
 
 

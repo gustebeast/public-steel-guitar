@@ -62,9 +62,13 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
+# ...plus the two FRET LIGHTING boards (2026-09-29), which are one design in
+# elec/fret_led.py cut to two panels -- see that module. `led_strip` is the OTHER
+# lighting job, the one that fires down at the player's feet; the two were a single
+# strip until the fret work split them.
 BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
-          "pi_cap",
-          "optical")
+          "pi_cap", "optical", "ui_board", "fret_led_mid", "fret_led_key",
+          "foot_led")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
 L2 = "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
@@ -132,6 +136,11 @@ LCSC = {
                                     # and pi_cap J3, 5 V + SPI out to the strip
     "S4B-XH-SM4-TB": "C161861",     # S4B-XH-SM4-TB(LF)(SN), 20,777 -- pi_cap J2/J4,
                                     # side entry so they fit UNDER the cap (see there)
+    # ⚠ THE FOOT STRIP'S, AND IT IS THERE FOR ITS HEIGHT. Everything on that board hangs
+    # into a 3.40 mm trough; the PH above is 5.50 tall and does not fit. JST's own
+    # drawing puts the side-entry SH at 2.95. 1.0 A / 50 V against 0.24 A at 24 V.
+    "SM04B-SRSS-TB": "C160404",     # JST SM04B-SRSS-TB(LF)(SN), 4-way side-entry SH,
+                                    # 3,495 in stock 2026-09-30
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the
                                     # (LF)(SN) trap again and not a preference: the BARE
@@ -157,6 +166,20 @@ LCSC = {
     "CH334F": "C5187527",           # WCH HS hub, QFN-24 4x4 (DS V2.5 Table 1-3, "4F")
     "G6K-2F-Y-DC5": "C326376",      # Omron DPDT, 5 V coil (terminal arrangement p.6), ~2.5k
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
+    # -- the UI board, 2026-09-25, every line read off the LCSC listing itself ------
+    "RKJXT1F42001": "C160841",      # Alps 4-way stick + encoder + push, 7,354 in stock.
+                                    # DigiKey's listing for the same part is 0 in stock
+                                    # at $9.22 and describes it as "non-continuous",
+                                    # which is wrong -- see the note in BOM.md.
+    "KH-2.54PH180-1X20P-L11.5": "C2905493",   # 1x20 male, insulation 2.5 / mating pin
+                                    # 6.0 / tail 3.0, all three read from the listing
+                                    # because src/ui_panel.py's Z stack is built on
+                                    # them. 1,131 in stock.
+    # 154 IN STOCK, AND IT IS THE THINNEST LINE ON THIS BOARD. The right-angle 2x7 is
+    # the only shrouded IDC that fits under the deck (see ui_board.py); if it is gone,
+    # the fallback is the VERTICAL DC3-2.54-14PAS, which needs the board re-laid for a
+    # different exit -- not a like-for-like swap. Check it before ordering.
+    "DC3-2.54-14PAL": "C5156673",
 }
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
 # branner's catch, and it is the right shape for the bug that happened: usb_panel's
@@ -678,7 +701,11 @@ def _sweep_stale(names):
         # and are kept on purpose for comparison; only an undotted stem is its own board.
         if "." in board:
             continue
-        if not os.path.isfile(os.path.join(HERE, "%s.py" % board)):
+        # ⚠ A BOARD'S GENERATOR NEED NOT BE NAMED AFTER IT. fret_led.py writes BOTH
+        # fret_led_mid and fret_led_key -- one design cut to two deck panels -- so the
+        # file-name test called them orphans. Being in BOARDS is the real proof that a
+        # stem is still in the design, which is what this check is for.
+        if board not in BOARDS and not os.path.isfile(os.path.join(HERE, "%s.py" % board)):
             n = len(glob.glob(os.path.join(OUT_DIR, board + ".*")))
             print("  !! elec/out holds %d file(s) for '%s', which has no generator -- a "
                   "board that is not in the design any more. Delete them or restore it."

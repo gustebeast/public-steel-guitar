@@ -176,16 +176,6 @@
       "faces": 34
     },
     {
-      "part": "latch_slider",
-      "share": 0.0011395364934893985,
-      "faces": 19
-    },
-    {
-      "part": "latch_cover",
-      "share": 0.0005910341254518359,
-      "faces": 14
-    },
-    {
       "part": "pedal_bar_a",
       "share": 0.10178042715766021,
       "faces": 415

@@ -1,29 +1,27 @@
 """Electronics bay: compute hardware mounts + purchased-part dummies.
 
-The PRO compute stack (per the compute plan) lives on one printed TRAY in the
-keyhead bay (x -608..-530 - between the keyhead bulkhead and motor 9, under
-the strings, above the open floor):
+WHAT IS ACTUALLY IN THE BAY (keyhead end, x -608..-547, under the strings):
 
-  - Raspberry Pi 5            (pro: 10ch audio->MIDI + Dexed + USB audio)
-  - Teensy 4.1 + audio shield (basic+pro: sensors, CAN servo loop, UI, USB)
-  - multichannel TDM ADC stack (pro: 10ch analog in; modeled stacked)
-  - buck converter            (24V -> 5V for Pi + Teensy)
-  - CAN transceiver breakout  (SN65HVD230: Teensy logic <-> CAN-H/L bus)
+  - Raspberry Pi 5      -- audio, UI, copedent logic, USB
+  - motor controller    -- elec/motor_ctrl.py: CH32V307 + CAN, the sensor->motor
+                           loop and the two bus tees' upstream end
+  - output + panel board -- elec/output_panel.py, at the BRIDGE end, not here
 
-A BASIC build prints the SAME tray and just leaves the Pi/ADC/buck mounts
-empty - the sockets are the upgrade path.
+THE TRAY IS GONE (2026-09-20). It was a printed plate carrying bare posts; the
+Pi and the motor controller now mount on cradles fused into keyhead_endplate,
+retained by M4 screws through each board's own mounting ear (board_screws).
+Nothing here snaps: no flex fingers, no press-fits (user rule).
 
-Mounting is tool-free and zero-hardware: each board sits on corner posts
-between low locator strips and is retained by two 45-degree snap fingers
-(all clearance-fit in the model - posts stop 0.2 under the board, finger
-nubs hover 0.15 over it, so the gate sees no contact). The tray itself
-drops in from above: a 40-wide tab on each side edge rides a vertical
-channel cut in the rail web (open at the top, floor at the tab's z) -
-gravity plus the wire loom holds it; lift straight out for service.
+WHAT THE TRAY LEFT BEHIND IS A COORDINATE FRAME, and that is why TRAY_* still
+exists. Boards and cradles are AUTHORED FLAT -- plate band at TRAY_Z0..Z1,
+footprints in X/Y -- and stand() rotates the whole frame +90 deg about Y onto
+the keyhead endplate's inboard face, so the stack costs its DEPTH in X rather
+than its 60 mm length. Author flat, pose once; never write standing coordinates
+by hand. stand_pt() is the same transform for a single point, which is what
+wiring.py needs for cable ends on these boards.
 
-Panel I/O (TS line out, DC power in, USB-C) mounts through a 4 mm recessed
-wall in the bridge endplate's lower -Y corner - the endplate prints flat so
-the holes are print-trivial, and the inside there is empty floor band.
+Panel I/O (TS line out, DC power in, USB) is on the output + panel board at the
+BRIDGE end, cut flush through the +X endplate face.
 """
 
 from __future__ import annotations
@@ -48,7 +46,7 @@ from . import dimensions as D
 # circular-import ImportError -- only working at all because everything else
 # happened to import chassis first. These are plain literals, so hoisting them is
 # free and makes the module importable on its own.
-# ---- bay geometry (the tray's FLAT frame; see STANDING TRAY below) ----
+# ---- bay geometry: the FLAT authoring frame (see THE STANDING FRAME below) ----
 TRAY_X0, TRAY_X1 = -607.0, -547.0
 TRAY_Y0, TRAY_Y1 = -127.5, 53.5        # 1.25 off each rail inner face
 TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
@@ -58,7 +56,7 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
 
 from . import board_geom as BG      # the ROUTED boards -- see MCTRL_BOARD_X/Y below
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
-from .helpers import box_at, cyl, cyl_x
+from .helpers import box_at, cyl
 from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
                         xh_length, xh_side_length)
 
@@ -307,7 +305,7 @@ PI_STANDOFF = 3 * D.BEAD               # 2.4, the cradle's corner pads
 PI_Z = _MB_FLOOR.FLOOR_TOP + PI_STANDOFF   # -68.95, the laminate's underside
 MCTRL_BOARD_Z = TRAY_Z1 + MCTRL_POST_H   # ...except the motor controller, 1.5 lower
 
-# ── STANDING TRAY (user, 2026-09-11) ─────────────────────────────────────────
+# ── THE STANDING FRAME (user, 2026-09-11) ────────────────────────────────────
 # Everything above is the tray's FLAT layout -- plate, posts, boards -- and it is still
 # the frame the tray PRINTS in. In the instrument the whole thing stands on its end with
 # the plate's underside against the keyhead endplate's inboard face, so it takes only
@@ -316,9 +314,9 @@ MCTRL_BOARD_Z = TRAY_Z1 + MCTRL_POST_H   # ...except the motor controller, 1.5 l
 # moves relative to anything else: rotate +90 deg about Y through the flat tray's -X
 # bottom edge (up -> +X, the old +X end -> down), plate underside onto the keyhead face,
 # bottom edge STAND_Z0.
-# NO MOUNT YET (user): bronner is reworking the keyhead endplate, so retention is left
-# for that round. The old drop-in side tabs and their rail channels are gone -- they
-# do not line up with a standing tray.
+# RETENTION LANDED 2026-09-20 (bronner): cradles fused into keyhead_endplate, one M4
+# through each board's own mounting ear. The old drop-in side tabs and their rail
+# channels are gone -- they did not line up with a standing stack.
 STAND_Z0 = -62.0                       # bottom edge: 1.1 above the wired leg's TRRS pigtail
                                        # (top -63.1) where it runs east under this corner
 STAND_DX = D.KEYHEAD_INBOARD_X - TRAY_X0
@@ -404,38 +402,18 @@ TS_Y = -68.0                           # THE ONE PANEL INPUT. Every other panel 
                                        # jacks on one PCB and the ROUTED board, not
                                        # this file, decides where the holes go.
 
-# ---- UI: OLED + joystick on the top deck (mounted to the top plate) ----
-# Centred along X. NOTE: the strings cover the deck within +-42.75 with only
-# ~2 mm clearance, and the +Y/string-10 edge is just ~12 mm wide before the
-# rail - too narrow for the 38 mm screen. So the UI sits on the WIDE -Y deck
-# band (86 mm, over the motor PCBs, clear of the strings). The joystick (Alps
-# RKJXT1F42001: 2-way rotary + 4-way + push) is the sole control.
-UI_X      = (CH.X_BRIDGE + CH.X_NUT) / 2     # instrument X centre
-DECK_TOP  = D.DECK_TOP_Z                      # 6.4 — THE deck datum (was a stale
-                                              # STRING_Z - 10 = 6.0, which sank the UI
-                                              # dummies 0.4 into the deck plate); 9.6
-                                              # under the strings, bar still can't bottom
-OLED_Y    = -100.0                            # wide -Y deck band (clear of strings)
-OLED_W, OLED_L, OLED_T = 38.0, 72.0, 1.6      # 2.42" module PCB (Y x X)
-JOY_X     = UI_X + 70 * D.BEAD                # -252.17: just +X of the screen
-JOY_Y     = -102 * D.BEAD                     # -81.6
-
-
-def oled() -> cq.Workplane:
-    """2.42" 128x64 OLED module dummy: PCB + glass + header, face up."""
-    b = box_at(OLED_L, OLED_W, OLED_T, x=UI_X, y=OLED_Y, z=DECK_TOP + OLED_T / 2)
-    b = b.union(box_at(62.0, 33.0, 2.0, x=UI_X, y=OLED_Y,
-                       z=DECK_TOP + OLED_T + 1.0))          # glass active area
-    b = b.union(box_at(20.0, 2.5, 5.0, x=UI_X, y=OLED_Y - OLED_W / 2 + 2.0,
-                       z=DECK_TOP + OLED_T + 2.5))          # pin header (-Y edge)
-    return b
-
-
-def joystick() -> cq.Workplane:
-    """Alps RKJXT1F42001 multi-control dummy: ~13 mm body + actuator cap."""
-    b = box_at(13.0, 13.0, 9.0, x=JOY_X, y=JOY_Y, z=DECK_TOP + 4.5)
-    b = b.union(cyl(7.0, 6.0, z=DECK_TOP + 9.0).translate((JOY_X, JOY_Y, 0)))
-    return b
+# ---- UI: the deck station ----
+# THE WHOLE OF IT MOVED TO src/ui_panel.py (2026-09-25), and the reason is that it
+# stopped being a pair of dummies. What stood here was a guessed OLED rectangle and a
+# guessed joystick block at hand-typed deck coordinates, with a note that "the UI board
+# carries the ENCODER and this module's connector -- that board is not modelled yet".
+# That board exists now (elec/ui_board.py), and both the display and the knob are placed
+# from where KiCad actually put its two connectors. A second copy of those coordinates
+# here is exactly the drift elec/export_geom.py was written to end.
+DECK_TOP  = D.DECK_TOP_Z                      # 6.4 -- THE deck datum, and it stays here
+                                              # because half the file measures off it
+                                              # (was a stale STRING_Z - 10 = 6.0, which
+                                              # sank the UI dummies 0.4 into the plate)
 
 # ---- analog front end (bridge-end -Y corner, near the pickup + jacks) ----
 # JFET buffer + SPDT signal relay (true-bypass: de-energized = raw straight to
@@ -1129,21 +1107,6 @@ def board_screws():
     out.append(("board_screw_2", m4_button_screw(L).translate(
         (_px, _py, PI_Z + BD_T + PI_SPACER_T + M4_BUTTON_HEAD_H))))
     return out
-
-
-def electronics_tray(standing: bool = True) -> cq.Workplane:
-    """The printed tray: plate + board support posts. Prints flat (plate on the bed,
-    posts up); stands against the keyhead endplate in the instrument (see STANDING TRAY).
-    Pass standing=False for the print pose."""
-    body = box_at(TRAY_X1 - TRAY_X0, TRAY_Y1 - TRAY_Y0, TRAY_Z1 - TRAY_Z0,
-                  x=(TRAY_X0 + TRAY_X1) / 2, y=(TRAY_Y0 + TRAY_Y1) / 2,
-                  z=(TRAY_Z0 + TRAY_Z1) / 2)
-    # each board rests on four plain posts -- no retention yet (see _support_posts)
-    for fp, bz in ((PI_FP, BOARD_Z), (MCTRL_FP, BOARD_Z)):
-        body = body.union(_support_posts(fp, bz))
-    # (the NORTH-SHELF lane channel for the TRRS pigtail is gone: standing, the tray's
-    #  bottom edge rides above that pigtail instead of lying over it)
-    return stand(body) if standing else body
 
 
 def _board(fp, bz, t=BD_T):

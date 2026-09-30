@@ -61,7 +61,6 @@ import cadquery as cq
 
 from cadkit.holes import teardrop_hole
 from . import dimensions as D
-from . import latch as LT
 from . import leg_stack as LS
 from . import legs as LG
 
@@ -93,6 +92,46 @@ CABLE_BEND_R = 22.8     # ...AND ITS PUBLISHED MINIMUM BEND RADIUS, which is 6x 
                         # module bends the lead near it -- the tightest here is the
                         # adapter's fold, in stripped 28 AWG, not in the jacket -- but
                         # anything that COILS this cable has to answer to it
+CABLE_BEND_STATIC = 7.5
+                        # WHAT WE ACTUALLY DESIGN TO, and it is BELOW the published
+                        # 22.8 on purpose. The licence is the duty cycle (user,
+                        # 2026-09-18): THIS LEAD IS SET ONCE. The leg's height is
+                        # chosen when the instrument is first set up and again only if
+                        # it is ever resold -- so the coil is a static form that is
+                        # bent once, not a flexing member. Three things follow:
+                        #
+                        #  * FATIGUE IS OFF THE TABLE. The usual reason to respect a
+                        #    bend radius is cycles, and there are none.
+                        #  * WHAT BREAKS AT 10.4 IS THE FOIL, and the foil is doing no
+                        #    work here. This cable's shield is one of the four CIRCUIT
+                        #    conductors (the assembly drawing's wiring table: D ->
+                        #    shield -> D, and sleeve = GND), the spiral serve carries
+                        #    that current and survives bending, and the 3.5 mm
+                        #    connector has no shield continuity through the mate
+                        #    anyway. CAN_H/CAN_L are not a twisted pair in a round 4C
+                        #    cable either, so nothing was screening them to begin with.
+                        #  * THE STRAIN IS SURVIVABLE ONCE. Outermost conductor at
+                        #    R 7.5 is ~15% against ~5% at the published radius;
+                        #    annealed copper breaks around 20-30% and stranded
+                        #    conductors redistribute by strand slip. Tight, and a
+                        #    number to respect if the duty ever changes.
+                        #
+                        # 7.5 IS NOT A ROUND NUMBER I LIKED, it is what the geometry
+                        # imposes. The coil NARROWS as it stretches -- a helix holding
+                        # a fixed cable length over a growing span has no choice -- so
+                        # the cavity's 10.4 describes the RELAXED coil and the worst
+                        # case is the stretched one at 7.9. The floor sits just under
+                        # that. There is no turn count that improves it: more turns
+                        # narrow faster, fewer will not fit the bore relaxed.
+                        #
+                        # AND NOTHING BETTER EXISTS TO BUY. Tensility's whole 2750-part
+                        # catalogue holds exactly two 4C audio assemblies (10-02135 and
+                        # 10-02133) and both use this same wire at O3.8 / 22.8. The
+                        # wider market for 4-pole 3.5 mm leads is consumer headphone
+                        # cable, which does not publish a bend radius at all -- which
+                        # is why this project is on Tensility in the first place.
+                        # A thinner lead would genuinely help (O3.0 at 3xOD clears the
+                        # cavity), but not at the price of an unpublished datasheet.
 CABLE_D = 3.8           # the lead, either side (10-02135's is 3.8). The leg's coil is
                         # slid on over the far PLUG, not the cable, so the cable's own
                         # diameter is no longer a sourcing constraint -- the O6.6 coil
@@ -564,24 +603,6 @@ def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up, chamfer=None):
         w = _sector(r_in, r_out, z_lo, z_hi, a0 + LUG_TURN, LUG_DEG, x, y)
         out = w if out is None else out.union(w)
     return out.cut(chamfer)
-
-
-def adapter_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None):
-    """Cut in the BODY ADAPTER: the counterbore the TPU sleeve turns into, its bayonet
-    slots, the lead bore through the counterbore's roof, and the channel above.
-
-    There is no press here any more. What used to hold the plug was a O6.1 overmould in
-    a O6.0 bore, and the user asked the question that has no good answer: with the leg
-    off, what stops it falling -Z? Friction, sized at somewhere between 6 and 48 N
-    depending on a modulus nobody published -- against a plug detent of 5-20 N that
-    pulls on it every single time the leg comes off."""
-    x, y = _ax(sx, ly)
-    up = up or LS.PRINT_UP["body_adapter"]
-    out = _bore(CB_D, SLV_BOT - 0.01, SLV_TOP, x, y, up)          # the sleeve's barrel
-    out = out.union(_bayonet_slots(CB_D / 2.0 - 0.01, LUG_D / 2.0,
-                                   LUG_BOT, LUG_BOT + LUG_SLOT_H, True, x, y, SLV_A, up))
-    out = out.union(_bore(LEAD_BORE_D, SLV_TOP, LS.Z_TOP + 0.01, x, y, up))
-    return out.union(channel(sx, ly))
 
 
 def sleeve(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):

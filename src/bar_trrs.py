@@ -326,6 +326,19 @@ def tenon_negatives(up=None):
     return out
 
 
+def route_negatives(up=None):
+    """ONLY the lead's way up the adjust tenon past the ladder: the channel out in +Y
+    and the jog into it from the spine. What the pogo joint (src.leg_pogo) keeps of
+    this module -- the collar, coil, bayonet and plug bores are gone with the TRRS."""
+    x, y = _ax()
+    up = up or LS.PRINT_UP["adjust_tenon"]
+    cx, cy = LS.LEG_X + CH_X, LS.LEG_Y + CH_Y
+    out = LT._bore(CH_D, PASS_TOP - _JOG_LAP, CH_TOP + 1.0, cx, cy, up)
+    return out.union(teardrop_hole(
+        CH_D, _JOG_LEN + _JOG_LAP, (x, y, CH_BOT),
+        (cx - x, cy - y, PASS_TOP - CH_BOT), up))
+
+
 def sleeve():
     """THE PLUG'S CARRIER: a TPU collar, gripping the overmould and riding the bayonet.
 

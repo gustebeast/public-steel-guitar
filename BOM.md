@@ -137,9 +137,31 @@ the constraint is stock, not selection. See the optical-pickup section.
 > 20 → 24 wide so the 14-wide cartridges sit on their lobes. The FOOT PEDAL housing grew 6.15
 > deeper in guitar +Y (`foot_pedal.Y_GROWTH`), into the 15.6 of bar behind it.
 
-| **TRRS cable, 4C jack-to-plug** | [Tensility 10-02135](https://www.digikey.com/en/products/detail/tensility-international-corp/10-02135/7606584) — 3.5 mm **4-conductor TRRS**, phone JACK to phone PLUG, 914 mm (3.0 ft), 28 AWG shielded, $5.31, 420 in stock | **2** | DigiKey [d] | **THE ONE CABLE SKU FOR THE WHOLE LEG.** Its own drawing gives the parts, which is why it is here rather than an envelope: plug **3.5 × L20.7**, jack **3.5 × 7.8 × L25.8**, cable Ø3.8. **One is left WHOLE** as the leg's lead — female up (floating in the fixed tenon at the top joint), male down (floating in the adjust tenon at the bottom) — which is exactly the handedness the user's rule wants, since the part with the latch is always female. **One is CUT IN HALF** (user), and a jack-to-plug cut in half is the two pigtails this instrument needs and nothing else: the MALE half fixed in the body adapter at the top, the FEMALE half fixed in the pedal bar at the bottom, both stripped and crimped to JST-XH. A plug-to-plug cut in half would have given two males and left the bar without a female |
-| **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
+| ~~**TRRS cable, 4C jack-to-plug**~~ **SUPERSEDED 2026-09-21 by the pogo boards (Connectors → Leg blind-mates)** | [Tensility 10-02135](https://www.digikey.com/en/products/detail/tensility-international-corp/10-02135/7606584) — 3.5 mm **4-conductor TRRS**, phone JACK to phone PLUG, 914 mm (3.0 ft), 28 AWG shielded, $5.31, 420 in stock | **2** | DigiKey [d] | **THE ONE CABLE SKU FOR THE WHOLE LEG.** Its own drawing gives the parts, which is why it is here rather than an envelope: plug **3.5 × L20.7**, jack **3.5 × 7.8 × L25.8**, cable Ø3.8. **One is left WHOLE** as the leg's lead — female up (floating in the fixed tenon at the top joint), male down (floating in the adjust tenon at the bottom) — which is exactly the handedness the user's rule wants, since the part with the latch is always female. **One is CUT IN HALF** (user), and a jack-to-plug cut in half is the two pigtails this instrument needs and nothing else: the MALE half fixed in the body adapter at the top, the FEMALE half fixed in the pedal bar at the bottom, both stripped and crimped to JST-XH. A plug-to-plug cut in half would have given two males and left the bar without a female |
+| ~~**TRRS float spring**~~ **SUPERSEDED 2026-09-21 (pogo boards: no float spring)** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
+
+> ✅ **THE BEND RADIUS IS RESOLVED — the duty cycle is what settles it (user, 2026-09-18).**
+> This lead is **SET ONCE**: the leg's height is chosen at first setup and again only if
+> the instrument is resold. So the coil is a static form bent once, not a flexing
+> member, and fatigue — the usual reason to respect a bend radius — does not apply.
+> What breaks at a tight radius is the **foil**, and the foil does no work here: the
+> shield is one of the four CIRCUIT conductors (assembly drawing: D → shield → D,
+> sleeve = GND), the spiral serve carries that current and survives bending, the 3.5 mm
+> connector has no shield continuity through the mate anyway, and CAN_H/CAN_L are not a
+> twisted pair in a round 4C cable, so nothing was screening them to begin with.
+> Outermost-conductor strain is ~14% at the design's worst radius against ~5% at the
+> published one; annealed copper breaks at 20–30% and strands redistribute by slip.
+> `leg_trrs.CABLE_BEND_STATIC` (7.5) records the deviation and its licence, and the
+> mandrel asserts against it.
+>
+> **SEARCHED, AND THERE IS NOTHING BETTER TO BUY.** Tensility's whole 2750-part
+> catalogue holds exactly **two** 4C audio assemblies — 10-02135 and 10-02133 — and both
+> use the same 30-00179 wire at Ø3.8 / 22.8. The wider market for 4-pole 3.5 mm leads is
+> consumer headphone cable, which publishes no bend radius at all, which is the reason
+> this project is on Tensility. A **thinner** lead would genuinely help (Ø3.0 at 3×OD
+> clears the cavity outright) and unshielded would cost us nothing electrically — but
+> not at the price of an unpublished datasheet.
 
 > ⚠⚠ **READ THE VENDOR'S PAGE, 2026-09-18 — and it BLOCKS the coil (user asked).**
 > Tensility publish, for 10-02135: wire outer **Ø3.8** ✓, cable length **915** (not the
@@ -269,7 +291,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 > — but it is not worth filtering for until the arm question is answered, because the OD
 > is the input.
 
-| **TRRS float spring** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
+| ~~**TRRS float spring**~~ **SUPERSEDED 2026-09-21 (pogo boards: no float spring)** | Compression, **Ø8.0 OD × 0.7 wire × 20.0 free**, **ID 6.6**, 304 SS (rate ~0.75 N/mm, bracketed 0.6–0.9; **measure on arrival**) | 1 (+ 4 spare) | [uxcell B0C33C21K9](https://www.amazon.com/dp/B0C33C21K9) — 5 to a pack, used **AS BOUGHT** | **$6.29 / 5** [a] | SECOND SKU, and not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 3.8 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 6.6 clears the far plug by 0.5.** Installed 13.80 → **4.7 N at rest / 6.9 N seated**. The installed length is the SOLID FLOOR here, not the preload target: at 0.75 N/mm a 5.0 N target would want 13.33 and the coil would go solid before the leg seats |
 
 > **SPRING SOURCING, 2026-09-16 — OUTCOME: both leg springs are McMaster catalogue
 > parts, used as bought, $51.30 the pair.** The user's constraints, in the order they
@@ -329,7 +351,7 @@ the constraint is stock, not selection. See the optical-pickup section.
 > — but it is not worth filtering for until the arm question is answered, because the OD
 > is the input.
 
-| **TRRS float spring** | Compression, **Ø8.8 OD × 0.8 wire × 14.5 free**, **ID 7.2**, 302 SS, **rate 1.91 N/mm PUBLISHED**, compressed 6.1 at max load | 1 (+ 4 spare) | [McMaster 2006N232](https://www.mcmaster.com/2006N232/) — pack of 5, used **AS BOUGHT** | **$15.98** [m] | SECOND SKU, and it is not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 4.37 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 7.2 clears the far plug by 1.1.** Installed 11.88 → **5.0 N at rest / 10.7 N seated**; the rest figure is the one that matters (it holds the jack against its keeper with the leg off) and `leg_trrs.PRELOAD_TARGET` sets it directly |
+| ~~**TRRS float spring**~~ **SUPERSEDED 2026-09-21 (pogo boards: no float spring)** | Compression, **Ø8.8 OD × 0.8 wire × 14.5 free**, **ID 7.2**, 302 SS, **rate 1.91 N/mm PUBLISHED**, compressed 6.1 at max load | 1 (+ 4 spare) | [McMaster 2006N232](https://www.mcmaster.com/2006N232/) — pack of 5, used **AS BOUGHT** | **$15.98** [m] | SECOND SKU, and it is not a preference: the coil has to end up ON the lead, and a lead has two ends — the moulded jack (Ø9.7) and the moulded far plug (Ø6.1). The latch coil's 4.37 ID passes neither, so no assembly order puts it there and the joint was unbuildable with it (user found this). **ID 7.2 clears the far plug by 1.1.** Installed 11.88 → **5.0 N at rest / 10.7 N seated**; the rest figure is the one that matters (it holds the jack against its keeper with the leg off) and `leg_trrs.PRELOAD_TARGET` sets it directly |
 
 > **SPRING SOURCING, 2026-09-16 (user: Lee Spring has bitten us on price before).**
 > Both springs are now catalogue parts at **$13.28 the pair** rather than a Lee Spring
@@ -433,6 +455,10 @@ fitted on every instrument.
 
 | Part | B/P | PN / source | ~Price | URL |
 |------|-----|-------------|--------|-----|
+| **Foot lighting PCB** | B | Custom, `elec/foot_led.py` — **ONE design, TWO per instrument**: 286.36 × 17.20, 4-layer, 36 LEDs, **12 zones**, 4× TLC59711 each. Lies in a channel on the chassis bottom and fires DOWN through the 572.72 mm light window at the player’s feet. 72 LEDs at a 7.95 pitch run the whole window **unbroken across the seam** (1.008 : 1). Two boards because JLCPCB’s assembly limit is 470 mm, one DESIGN because both slide in from −X the same way round. Per board: **TLC59711PWPR** C116842 ×4 + **XL-5050RGBW** C7371891 ×36 + **LMR33630CRNXR** C2071783 + **SWPA4030S4R7MT** C57269 + **2× SM04B-SRSS-TB** C160404 (in and out — the strip is a chain). SMT throughout; nothing on the board may exceed 3.40 mm, which is what the channel’s relief groove leaves. No mounting hole: the channel holds five faces and the −X endplate closes the sixth. **Three LEDs in series per channel, so 24 addressable zones of 23.9 mm per instrument** — and the rail is **11.00 V**, not the fret boards’ 14, because the string sets the rail and a sink drops whatever the string does not use. 72 LEDs is the densest the 5050’s courtyard allows; the extra light over 48 cost $1.56 an instrument and not one more driver (docs/foot-led.md §4a) | **~$19 of parts** [m] per board; 4-layer fab ~$19 / 5 | — |
+| **Foot LED harness + jumper** | B | One 4-way JST SH cable from the −X board to the Pi daughter board, and one short SH jumper (~16 mm of free wire) between the two boards, lying in the relief groove. **SH, not PH**, and the reason is height: JST’s drawing puts the side-entry PH at 5.50 mm and the SH at **2.95** against a 3.40 budget | ~$2 [m] | LCSC custom cable, MOQ 1 |
+| **Fret lighting PCBs** | B | Custom, `elec/fret_led.py` — **TWO boards, one per deck panel**: `fret_led_mid` 210.8 × 70.4 (frets 24–10, 15 zones, 60 LEDs, 5× TLC59711) and `fret_led_key` 211.0 × 70.4 (frets 9–2, 8 zones, 32 LEDs, 3×). **4-layer**, 1.6 mm, SMT throughout (the underside clears the CAN harness by 1.00 mm, so a through-hole tail would be in the cable). One RGBW zone per fret, **four LEDs in series per channel** — so a fret costs rail VOLTS, not rail amps, and the channel count follows frets rather than LEDs. Per board: **TLC59711PWPR** C116842 ×5/×3 + **XL-5050RGBW** C7371891 ×60/×32 + **LMR33630CRNXR** C2071783 (24→14 V, 2.1 MHz — the optical board's buck) + **SWPA4030S4R7MT** C57269 + **S6B-PH-SM4-TB** C265405 harness inlet + one M4 through the board. ⚠ **NOT ONE NEW SOURCING LINE** — every part is already bought for another board. 92 channels total, **1.38 A at 14 V** with every fret at full white (the absolute worst case; the effects daemon caps it) | **~$24 of parts** [m] — 92 LEDs $4.30, 8 drivers $19.28, 2 supplies ~$3; 4-layer fab ~$13/instrument (docs/fret-led.md §6.3) | — |
+| **Fret LED harness, ×2** | B | 6-way JST PH, board to the Pi daughter board: GND, 24 V ×2, GND, SCK, SDT. **Two cables, not one** — the deck-seam pogo joint was retracted (docs/fret-led.md §9.1: a right-angle pogo fires 1.90 mm above its own board and misses a coplanar board's 1.6 mm edge entirely). Crimped PH, no hand soldering | ~$2 [m] | commodity |
 | **Motor controller PCB** | B | Custom, `elec/motor_ctrl.py` — CH32V307WCU6 + 2× SN65HVD230 + LMR16006 buck + **LMR33630ADDAR** C841384 $0.8138, U5 — the merged power PCB's 36 V 3 A synchronous buck, 24 V → 5 V for the Pi; full MPN named here 2026-09-19, it had no row anywhere + **5× B4B-XH** (the USB link to the Pi is one of them since 2026-09-21: the USB-C it replaced faced the −Y rail 5.5 mm away and no plug could reach it) + an **M4 mounting ear** (46 × 58 + 9.5 × 8.7 tab). **46 × 58**, 4-layer — size and connector count corrected 2026-09-19 from "3× XH. 40 × 35", which was **1,400 mm² against the real 2,668**, nearly double the area, on the row somebody sizes an enclosure from. Read from the board itself (`BOARD_W, BOARD_L`) and its built fab BOM, not retyped | **~$5 of parts** [m]; fab + assembly not yet quoted | — |
 | ~~Teensy 4.1~~ | — | **DELETED** ($31.50), with ~~**Teensy 4 Audio Shield Rev D**~~ ($9.80) and the teensy_ifc carrier. The Teensy's value was the Audio Library, USB high-speed and the codec, all irrelevant once no audio touches this board — the Pi does audio, and this board only reads angles off bus B and commands the motors on bus A. What could not be deleted is the pair of CAN transceivers (no general-purpose MCU integrates one), so a board was always going to exist; the only question was whether an MCU sat on it too | — | — |
 | **CAN transceiver** | B | SN65HVD230DR | **$0.6185 @10** [v] — **32,557 in stock** | [LCSC C12084](https://www.lcsc.com/product-detail/C12084.html) — was priced from DigiKey at $2.45/stock 0, which made it look unavailable; LCSC has it 4× cheaper and deep. Also the sensor boards' transceiver (3.3 V — single rail) |
@@ -444,8 +470,8 @@ fitted on every instrument.
 | **1/4" TS jack** | B | Neutrik NMJ4HCD2 (Ø11.4 bushing) — **PCB-MOUNT, on the output + panel PCB**. Same part as before: it was always a PCB jack, and mounting it as a free-standing panel jack would have meant hand-soldered lugs | **$2.53** [v] | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
 | **DC barrel jack** | B | Same Sky **PJ-102AH** (2.0 pin) — **PCB-MOUNT, on the output + panel PCB**. Replaces the PJ-005A, which was a SOLDER-LUG panel jack and carried the same hand-soldering violation the TS jack did. Same family, same vendor | **~$3** [m] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
 | ~~USB-C panel coupler~~ | — | **DELETED** ($7.50, Adafruit 4261 F↔F). ⚠ It would have caused the fault the USB panel PCB exists to prevent: a F↔F coupler passes VBUS, and with the Pi fed from its GPIO header that puts a laptop's VBUS straight onto the power board's output. On the Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the **same node**, with no polyfuse between them | — | — |
-| **Rotary/4-way joystick** | B | Alps RKJXT1F42001 (sole UI control) | **$9.22** [v] | [DigiKey](https://www.digikey.com/en/products/detail/alps-alpine/RKJXT1F42001/19529127) |
-| **OLED display** | B | 2.42" 128×64 SSD1309 SPI (UI screen) | ~$17 [m] | [Waveshare](https://www.waveshare.com/2.42inch-oled-module.htm) |
+| **Rotary encoder + 4-way** | B | Alps **RKJXT1F42001** (sole UI control) — **15 pulses / 30 detents** incremental encoder, **infinite both ways**, + 4-way directional + centre push, one 17.0×17.0×10.5 part | **$5.27** [v] (10+: $4.57) | [LCSC C160841](https://www.lcsc.com/product-detail/multi-directional-switches_alpsalpine-rkjxt1f42001_C160841.html) |
+| **OLED display** | B | **2.7" 128×64 SSD1322** — Newhaven **NHD-2.7-12864WDW3**, **WHITE on BLACK**, active **61.41×30.69** (viewing window 63.41×32.69), 0.48 dot pitch, module 82.0×47.5×5.5, 3.3 V. A module on a short lead; the **encoder** and its connector are what go on our UI board | **$38.08** [v] (2,057 in stock) | [DigiKey](https://www.digikey.com/en/products/detail/newhaven-display-intl/NHD-2-7-12864WDW3/7355953) |
 | ~~USB 2.0 hub (module)~~ | — | **DELETED as a MODULE** ($4.50, Adafruit CH334F) — but the function came back as a **chip on the output + panel PCB** (2026-09-15), for a different reason than it was first bought. It no longer shares a panel port; it puts the optical board's 480 Mbps link on a ~100 mm cable to the panel instead of an ~800 mm one to the keyhead, and it must be a **high-speed** hub or both devices behind it pay a Transaction Translator's ~1 ms | — | — |
 | **USB lead, motor controller → Pi** | B | **USB-A male → JST XH 2.54 4-pin**, stock adapter lead (e.g. Amazon [B0H9QTYT83](https://www.amazon.com/Jumper-Header-Adapter-Compatible-Extension/dp/B0H9QTYT83)) into motor_ctrl **J4** | ~$5 [m] | new 2026-09-21, replaces a USB-C lead that could not be plugged in. J4's pin order is USB's own — **1 VBUS (n/c on the board), 2 D−, 3 D+, 4 GND**. ⚠ Adapter leads do not agree on pin order: check it on arrival and re-pin the XH housing's crimps to match (a pin tool, no solder). Full speed is all the link uses |
 | **USB cable, optical board → output panel** | B | **USB-A ↔ USB-C, ~150 mm, USB 2.0 HIGH SPEED, STRAIGHT plug, overmold ≤ 17.5 mm** (mating face → cable exit) | ~$5–8 [m] | commodity. **Two changes, 2026-09-15.** *Destination*: it lands on the output panel's hub downstream port, not the Pi — which is the whole point of putting a hub there, and takes this 480 Mbps link from ~800 mm to ~100 mm, so the length drops from 1 m. *Overmold*: **20 → 17.5 mm**. Spacing the optical board's layout by land rather than by body moved its −Y face 2.58 mm further out, and that came straight off the conduit's depth budget (`PLUG_L` in `src/optical_pickup.py`, asserted against the endplate's exterior wall). Surveyed overmolds run 10–25 mm, so this rules out the long boots, not the market — but it is now a **purchasing constraint to check, not a preference** |
@@ -464,9 +490,447 @@ gadget port), and that path skips every input protection the Pi has. A designed-
 buck puts the crowbar on the same board as the converter it protects. **$42.90 of
 modules → ~$3 of parts**, and one less hand-assembly step.
 
-⚠ **OLED [m]:** both the Waveshare product page and RobotShop return **HTTP 403**
-to automated fetches, so the ~$17 is unconfirmed. A German reseller lists the
-yellow variant at €18.00, which is at least consistent. Needs a manual look.
+⚠ **THE UI CONTROL'S SOURCE WAS WRONG, not the part** (2026-09-25). The part is
+exactly right and the DigiKey line was not: **0 in stock**, 1,309 past due against an
+08-Sep date already gone, 11 expected 01-Oct, at **$9.22**. The same part is an LCSC
+line — **C160841, 6,466 in stock, $5.27** — so it is both available and $3.95 cheaper,
+and being an LCSC line it is one the **assembler can place** rather than a part someone
+hand-mounts. Mouser is 0 too, with a long lead time flagged, so DigiKey was not an
+outlier.
+
+⚠ **AND DIGIKEY'S PARAMETRICS DESCRIBE IT WRONGLY** — worth recording, because the
+listing talks anyone out of the part. It is filed as "2-Way Rotational … **Non-
+continuous**", which reads as a rotary *switch* with end stops. Alps' own data for the
+RKJXT1F series says otherwise: **15 pulses / 30 detents**, an incremental encoder, free
+to turn for ever in either direction, with the 4-way stick and the centre push on the
+same shaft. That is the whole requirement — stepped, clicky, infinite, plus N/E/S/W —
+in one 17 mm part, which is why it is the sole UI control. Read the Alps page, not the
+distributor's filter fields.
+
+⚠ **SIZE DECIDED IT, AND WHITE + ON-OUR-BOARD DO NOT CO-EXIST AT THIS SIZE.** The
+user's range is **55.0×27.5 at the smallest, 63.4×32.7 preferred**. Three parts reach
+it and each gives up something:
+
+| part | active | white | stock | JLC places it? | |
+|---|---|---|---|---|---|
+| **NHD-2.7-12864WDW3** *(this row)* | 63.41×32.69 | ✅ | **2,057** | ✗ module | $38.08 |
+| C7466001 `HS242L03**W**2C01` | 55.01×27.49 | ✅ | ⚠ **18** | ✗ not in the library | $12.88 |
+| C7466000 `HS242L03**B**2C01` | 55.01×27.49 | ✗ **blue** | ok | ✅ Extended | $12.40 |
+
+The white 2.42" exists — but 18 in stock and JLCPCB's part page for it is empty, so
+they will not place it. Only the **blue** 2.42" is assemblable. White on black was the
+requirement, so the display stays a module and the **UI board carries the encoder plus
+the display's connector** instead of the panel itself.
+
+### The UI board — designed 2026-09-25 (`elec/ui_board.py`)
+
+One 72 × 34 two-layer board under the deck's mid panel, twelve parts, JLC-assembled,
+**0 unconnected / 0 DRC violations on the first routing pass**. It carries the encoder,
+the display's connector and one ribbon to the Pi — nothing else, because nothing else
+belongs here: all UI logic is the Pi's (see the control-architecture split).
+
+| line | part | qty | price | source | note |
+|---|---|--:|---:|---|---|
+| **UI PCB** | custom 72 × 34, 2-layer, 1.6 mm, 12 placements, one M4 through-hole | 1 | ~$2 assembled (est.) | JLCPCB | panelises with the tee/sensor boards |
+| **Display header** (on our board) | Kinghelm **KH-2.54PH180-1X20P-L11.5**, 1×20 male 2.54 | 1 | ~$0.10 | [LCSC C2905493](https://www.lcsc.com/product-detail/C2905493.html) — 1,131 in stock | **Insulation 2.5 / mating pin 6.0 / tail 3.0, all three read off the listing**: `src/ui_panel.py` builds the whole Z stack on them |
+| **Display socket** (on the MODULE) | Kinghelm **KH-2.54FH-1X20P-H8.5**, 1×20 female 2.54 | 1 | ~$0.15 | [LCSC C2905423](https://www.lcsc.com/product-detail/C2905423.html) — 7,005 in stock | ⚠ **HAND-SOLDERED, and it is the only hand-solder step in the station.** Newhaven ship the module with plated holes and no header — their drawing only *recommends* a 1×20 — so both halves are ours to pick. Male on our board and female on the module makes both halves stock parts with 6.0 mm of engagement; the other way round needs a long-pin header nobody stocks |
+| **Ribbon header** | ZHOURI **DC3-2.54-14PAL**, 2×7 right-angle shrouded IDC | 1 | ~$0.20 | [LCSC C5156673](https://www.lcsc.com/product-detail/C5156673.html) — ⚠ **154 in stock** | **The thinnest line on the board, and not a like-for-like swap.** Right-angle is forced: the board hangs under the deck with 11.70 mm of air over it and a vertical box header stands ~13.5. 2×7 rather than 2×10 is forced too — a 2×10's shroud is 33.2 long and the board is 34 deep. If it is gone, the vertical DC3-2.54-14PAS exists but wants the board re-laid for a different exit |
+| **Ribbon cable** | 14-way **1.27 mm** grey flat ribbon, 17.78 wide × 0.9 thick, **500 mm** | 1 | ~$1 | ⚠ **not LCSC** — see below | **Bought to length, and the length is measured, not guessed: the modelled centreline is 449.6 mm** (it was 429.5 until the deck handed a pickup slot to the mid panel on 2026-09-29 and the whole station moved 20.05 mm +X, away from the Pi) (`cadkit.cables.path_length` over the path `src/wiring.py` draws), so 500 mm is the next stock length up and leaves ~70 mm of service slack. **It is folded twice**, 45° each, because the run is flat under the deck and both of its 90° turns are in the ribbon's own plane — `UI.RIBBON_FOLDS` declares that and `flat_bends` holds the path to it |
+| **Ribbon sockets** | 2×7 IDC female socket, 2.54 mm (the "FC-14" / DC3 mating half) | 2 | ~$0.6 | ⚠ **not LCSC** — see below | Pressed on, not crimped and not soldered, which is the whole reason this is a ribbon and not fourteen wires. One end mates `DC3-2.54-14PAL` on our board; the other lands on the Pi's GPIO pins, and the way order is chosen so SCLK runs between GND and +3V3 (see `elec/ui_board.py`) |
+
+⚠ **AND THE PI END IS NOT DEFINED — the sentence that used to stand here, "at the Pi it
+lands on GPIO pins", does not survive being checked** (user asked how it connects,
+2026-09-28). A 2×7 IDC socket will physically push onto any seven adjacent pin-pairs of
+the Pi's 40-way header, so the question is only which seven, and the answer is that **no
+block of seven works.** Counting the header pair by pair:
+
+* **Pins 1–14, the obvious choice, is the worst one.** It offers 8 GPIO, and the 5 V feed
+  from the motor controller (`J5`, "5 V to the Pi's GPIO pins 2/4 + 6/9") is already on
+  four of its fourteen pins. Landing our socket there shorts signals onto 5 V and 3V3.
+* **The best block offers 11 GPIO** (pins 11–24 or 15–28) against the **12 signals** this
+  ribbon carries — SW_A/B/C/D, SW_PUSH, ENC_A, ENC_B, SCLK, SDIN, DC, CS_N, RES_N — plus
+  a 3V3 and a GND. One short, before any preference is expressed.
+* **Wanting hardware SPI0 makes it three short.** SPI0 lives on pins 19/21/23/24, which
+  only blocks 11–24 upward reach, and enabling it claims GPIO9 (MISO, pin 21) even though
+  the display is write-only — so one of the eleven goes back. An 8,192-byte frame is a
+  real reason to want the hardware port.
+
+**THE ADAPTER ALREADY EXISTS — it is bronner's `elec/pi_cap.py`, and it does not have room
+for this connector as it stands.** Looked at 2026-09-28, on `agent/bronner`; it is not on
+main yet, so nothing here can build against it. What it is: a 56 × 26 board whose `J1` is a
+full 2×20 socket pushed onto the Pi's header, JST connectors for everything else, and the
+standing no-crimp-off-a-PCB rule satisfied. **Electrically it is already done for us** —
+every pin `J1` does not use is explicitly netted `PI_NC_<n>`, so all fourteen ways' worth
+of GPIO is already on that board's copper, waiting. That removes the whole "which seven
+pins" problem: through the cap, our ways reach any GPIO on the header, contiguous or not.
+
+Mechanically it does not fit, and the numbers are not close:
+
+* **No face has the height for a 2.54 mm IDC.** Every connector on the cap is on the BACK,
+  inside the socket's own **8.5 mm** standoff (the JSTs are 5.5 and 5.75). A 2.54 male
+  header is **8.54** on its own before its socket goes over it, and a shrouded right-angle
+  is ~10. The front face has **2.5 mm** before `chassis_2` — measured by stepping slabs
+  outward, clear at 2.5 and hit at 3.0. And the height budget it is packed against
+  (`ELEC_STACK_D`, 14.0 above the Pi's PCB) is the one thing bronner's docstring says
+  cannot grow.
+* **No room in plan either.** The socket spine takes y −11.1…−5.9 across the full 50.8,
+  the side-entry row takes 50.9 of the 56 mm width with gaps of 4.3 and 3.3, and the
+  passives sit between them. The biggest clear rectangle is about **56 × 5.9**, against a
+  25.5 × 13.7 footprint.
+
+**But the board is small on purpose and the Pi is not.** The cap uses 26 mm of the Pi's
+56, and the space alongside it — 29.5 × 56 × 11.55, ~19,000 mm³ — holds nothing but cables
+that reroute plus **90.8 mm³ of `keyhead_endplate`**, confined to the deepest 2 mm in X at
+the far end (z −62…−46). So ~14 mm of growth is unobstructed, and growth in the board's
+PLANE costs nothing in the height budget, which is the axis that is actually full.
+
+So the route is: **the cap grows, and the connector is one that fits an 8.5 mm gap.** A
+**1.27 mm-pitch 2×7 shrouded IDC** does (halving the pitch halves the cable too: 14-way
+0.635 ribbon is 8.9 wide, and it would retire the 10.0 mm ESTIMATE this file carries for
+our own right-angle header). **FFC/ZIF** is the fallback — 1.2–2.5 mm sockets fit even the
+front face — at the cost of a cable less happy about vibration and mating cycles.
+⚠ **THE CAP IS BRONNER'S BOARD, so that growth is theirs to decide**, and until it lands
+on main this end of the cable stays open.
+
+⚠ **THE RIBBON AND ITS SOCKETS ARE NOT LCSC LINES, which is normal rather than notable:**
+LCSC is where the parts that get soldered to a board come from, and everything else —
+these two included — comes from DigiKey and the other distributors, same as the screws,
+the bearings and the springs. Recorded only because the row above it, the ribbon *header*,
+is an LCSC line and the two sit next to each other. **OPEN: no chosen SKU for either**,
+though both are commodity. Their sizes are not open — width, thickness, pitch and way
+count are single-sourced from `src/ui_panel.py`, which is what the board is laid out
+against.
+
+⚠ **THE SHAFT IS A D, AND THE CATALOGUE DOES NOT SAY SO** (2026-09-28). The knob is
+printed, so its bore has to match the shaft, and the drawing this was first read from is
+a 592-pixel GIF in which **"1.8 ±0.03" is not a length — it is the width across a
+FLAT**. Alps' own 3D model (the one LCSC ship with `C160841`) settles it by slicing:
+from 12.10 mm up the section is ±1.25 in one axis and −1.24…+0.55 in the other, i.e.
+Ø2.5 milled to **1.79 across**. A round bore would have turned on it and the encoder
+would have done nothing — a dead control on an assembled instrument.
+
+Two more numbers came out of the same slice and both were wrong from the drawing:
+
+| | read off the drawing | the model |
+|---|---|---|
+| shaft tip above the board | 14.2 | **17.10** |
+| 17 × 17 body height | 10.5 | **8.30** (a collar carries on to 10.20) |
+| usable key length | 1.8 | **5.00** of flat |
+
+The catalogue's `W×D×H = 17.0×17.0×10.5` is over the COLLAR, not the body. Anyone
+sizing a pocket to 10.5 is sizing it to the wrong feature.
+
+**Clearance, measured rather than derived.** The cap and the deck's hole are both sized
+off the 9° tilt, so their arithmetic agrees with itself and proves nothing. Tilting the
+real solids about the real fulcrum through 36 directions leaves **1.19 mm at full
+deflection** and 2.94 mm at rest, the tightest point being the shank against the wall of
+the deck's hole 1.41 mm below the deck's top face. The cap's underside is a 14° cone
+rather than a flat disc — a flat one has to sit its whole rim's dip above the deck, which
+parked it 1.8 mm proud for a clearance only ever needed at the stop.
+
+⚠ **RETENTION: A CLAMP PLATE AND TWO M4s** (user, 2026-09-28 — "the retention is
+pretty lackluster"). One screw through a 72 mm board is a hinge, and the screen above it
+was held by nothing but the ledge over it and the header under it. A printed **PETG-GF
+clamp plate** lies against the board's underside with a relief under each through-hole
+footprint, and a single **M4×12 button screw** pulls it up into the deck panel's own
+boss; an arm off it steps up past the board and runs under the display to press the
+module's far end into the window ledge. New BOM lines: 1 × M4×12 button, 1 × M4 heat-set
+insert, and the printed plate itself.
+
+**The M4 only holds Z** (user). X, Y and rotation are two printed **spigots** that come
+down off the deck, pass through Ø4.6 clearance holes in the board and enter blind sockets
+in the clamp — the project's own rule, that plastic captures every direction but the one
+you install along. Two M4s would have been a second fastener doing a job plastic does
+better, and the board would have carried two holes instead of one plus two locating
+features.
+
+⚠ **AND THE BAY UNDER THIS STATION IS NOT CLEAR.** An earlier note of mine in this file
+and in `src/ui_panel.py` said there was 57.5 mm of free air under the whole station. That
+came from a probe whose filter excluded almost every part in the instrument; it found
+two. Measured properly, the highest things under the station are **wire_usb at −18.00**
+under the board and **wire_canl at −17.24** under the display, with the tee boards at
+−19.65 — against the board's own through-hole tails at −16.50. The real budget is
+**1.5 mm**, which is what the clamp plate is designed around.
+
+**Pull-ups, not debounce capacitors.** Seven 10 kΩ 0402, one per contact, and no cap
+across any of them. An RC debounce dumps the capacitor's charge through the switch
+contact at every make, and this contact is rated **10 mA with a 50,000-cycle life on the
+directions and 15,000 on the encoder** (Alps' own figures) — the cheapest possible way to
+spend that life. Debouncing is the Pi's, where it costs nothing and can be tuned. 10 kΩ
+external rather than the Pi's ~50 kΩ internal because the run is half a metre of ribbon
+through an instrument full of stepper drivers.
+
+**No ground pour, and it was tried.** A B.Cu plane under the SPI clock is the obvious
+thing to want. On two layers it cannot be had: leave B.Cu open to the router and it lays
+signals across the pour — that came back as two GND islands and an unconnected board —
+and close B.Cu to the router and the only remaining layer has to carry five SPI signals
+past a 20-way row that +3V3 already crosses. The plane would be perforated anyway, by
+twenty through-hole pins at 2.54 leaving 0.7 mm webs straight across it.
+
+⚠ **BS1 = 0, BS0 = 0 IS NOW READ, NOT INFERRED.** The note below this one used to flag
+the 4-wire SPI strap as the *standard* SSD1322 mapping that wanted a human's eyes on the
+PDF before the board was fabbed. It has had them: page 5, "MPU Interface Pin Selections",
+gives BS1/BS0 as 1/1, 1/0, 0/1, **0/0** for 6800, 8080, 3-wire and 4-wire. Both are
+strapped to VSS on our board, and /SHDN — internally pulled high — is strapped to VDD
+rather than run to the Pi, so it cannot float at the end of half a metre of ribbon.
+
+⚠ **ONE HEIGHT ON THIS BOARD IS AN ESTIMATE.** `src/board_geom.HEIGHT` carries **10.0 mm**
+for the right-angle ribbon header because ZHOURI publish no drawing through LCSC and the
+KiCad footprint carries no Z. There is 11.70 mm between the board's top face and the
+deck's underside. **Measure the part before the deck panel is printed.**
+
+⚠ **AMOLED WAS INVESTIGATED AND IS A DEAD END THROUGH OUR CHANNELS** — recorded so it
+is not re-opened. At distributors it is either absent or tiny wearable panels (1.3–2.06",
+about 29×35, round, QSPI on ESP32 boards); anything 55 mm and up is phone-panel OEM
+supply on MIPI-DSI, volume-only and not stocked. **And it is not needed**: both sizes
+asked for are ~2:1 (55.0/27.5 = 2.00, 63.4/32.7 = 1.94), which is exactly 128×64's own
+aspect, so PMOLED covers the whole range. AMOLED would only have been required for the
+earlier 40–60 mm height, which is what made it a 4:3 problem.
+
+⚠ **PMOLED vs AMOLED, FOR THE RECORD: no picture-quality difference in black and
+white.** Both are OLED, so an off pixel emits nothing and black is black on either.
+What differs is SCALING: a passive matrix lights one row at a time, so with 64 rows
+each is lit 1/64 of the time and must be driven 64× harder — which is exactly why
+PMOLED stops around 2.4–2.7" and why nothing bigger exists at any price. AMOLED holds
+every pixel lit through a per-pixel transistor, so it scales, runs brighter and takes
+static content better (a menu is a burn-in load). None of that buys anything here.
+
+⚠ **MENU DEPTH COMES FROM THE PIXEL COUNT, NOT THE PANEL SIZE.** Every 128×64 panel
+gives the **same 8 rows** of 5×7 text whether it is 0.96" or 2.7" — a bigger panel makes
+characters bigger, not the list longer. Read at **1 ft**, where ISO 9241 wants ≥20
+arcmin (1.77 mm) and 16 is the floor, this panel's 0.495 pitch gives:
+
+⚠ **THE PANEL IS SIZED FROM THE FONT, NOT THE OTHER WAY ROUND** (user, 2026-09-25),
+and the binding constraint is the **accessibility font, not the normal one**. The brief:
+good legibility at 1 ft for most people, at least 3 menu items, plus a larger option for
+impaired vision. A large font at 2× halves the rows — so the normal font must give **6+
+rows** for the large one to still show 3 items.
+
+| font cell | rows | cols | character | at 1 ft | |
+|---|---|---|---|---|---|
+| **5×7 in 8 px** | **8** | 21 | 3.36 mm | **38′** | NORMAL — 7 items + header |
+| 6×8 in 10 px | 6 | 18 | 3.84 mm | 43′ | NORMAL, roomier — 5 items + header |
+| 8×11 in 12 px | 5 | 14 | 5.28 mm | 60′ | LARGE — 4 items + header |
+| **8×14 in 16 px** | **4** | 14 | 6.72 mm | **76′** | LARGE — 3 items + header |
+
+Both modes clear the brief with margin, and rows trade against character size in
+firmware at no cost in parts.
+
+⚠ **THE PER-CHARACTER FLOOR IS 2.4 mm WIDE × 3.0 mm TALL, AND IT LANDS ON THE CLASSIC
+5×7** (user, 2026-09-25). Two things fall out, and both read backwards off a spec sheet.
+
+**WIDTH BINDS, NOT HEIGHT** — glyphs are narrower than they are tall, so the floor is
+reached across first: the glyph needs `ceil(2.4 / pitch)` pixels wide.
+
+**AND SO A FINER PITCH IS WORSE.** Each character costs more pixels on a denser panel,
+so fewer fit. Higher resolution actively hurts under a millimetre floor:
+
+| panel | pitch | glyph | char mm | cols × rows |
+|---|---|---|---|---|
+| 1.54" 128×64 | 0.274 | 9×11 | 2.46 × 3.01 | **12**×5 — too narrow |
+| 2.42" 128×64 | 0.430 | 6×7 | 2.58 × 3.01 | 18×8 |
+| **2.7" 128×64** *(this row)* | **0.480** | **5×7** | **2.40 × 3.36** | **21×8** |
+| 3.12" 256×64 | 0.300 | 8×10 | 2.40 × 3.00 | 28×**5** |
+
+This panel is the **coarsest available**, which under a millimetre floor is exactly
+right — it spends the fewest pixels per character and so fits the most text. At 0.48
+pitch, 2.4 mm **is 5 pixels exactly**, so the floor selects the canonical **5×7 font**
+and the panel's full native **21 × 8** grid: **7 menu items plus a header**, every
+character 2.40 × 3.36 mm, **38 arcmin** at 1 ft against ISO 9241's 20.
+
+(Arithmetic note: at the exact 61.41/128 = 0.47977 pitch a 5 px glyph is 2.3988 mm —
+1.2 µm under, 0.05%. Newhaven's own quoted dot pitch of 0.48 gives exactly 2.40. Not a
+number to design around.)
+
+⚠ **A 7 px GLYPH HAS NO TRUE DESCENDERS** (they want 9–10 px), so mixed-case g/p/y sit
+on the baseline. Either caps for labels, or a 5×9 glyph at 6 rows — **height is not the
+binding axis**, so a taller glyph costs rows, not legibility. The earlier 3.0 mm width
+floor forced a 7×7 square glyph and only 16 columns; dropping to 2.4 buys five more
+characters per label and a properly proportioned letter.
+
+⚠ **THE LARGE-FONT OPTION still works from the same grid**: doubling to a 10×14 glyph
+in a 16 px cell gives 4 rows at 6.72 mm / 76 arcmin — **3 menu items plus a header**,
+which was the accessibility floor asked for.
+
+⚠ **AND SIZE IS NOT WHY THIS PANEL WAS CHOSEN — be clear about that before anyone
+"optimises" it.** Legibility alone does NOT need 2.7". ISO 9241 wants ≥20 arcmin (1.77
+mm at 1 ft) and the brief's 3 items at 6 rows needs only **13.4 mm of active height**;
+the 1.54" C7465999 hits 22′ and 8 rows in 17.52 mm for $6.57 on our own board. What the
+1.54" cannot do is **4-bit greyscale over SPI** — it is a 1-bit I²C part, so no
+antialiasing and no sub-pixel scrolling. The 2.7" is bought for the greyscale and the
+bandwidth (see the notes above); 38′ instead of 22′ is a *consequence*, and a welcome
+one — most eyes will never need the large font.
+
+⚠ **THE FRAME IS 8,192 BYTES, NOT 4,096 — every rate figure below was 2× optimistic
+until this was read off the drawing** (2026-09-25). The mechanical drawing maps
+**Column 1 → segments 366 AND 367**, Column 128 → 112,113: **two segments per visible
+dot**. The window is segments 112–367, which the drawing's `(91, 63)` corner confirms as
+column addresses 28–91. SSD1322 packs 4 segments per column address at 2 bytes each, so
+a frame is **64 addresses × 2 B × 64 rows = 8,192 B**. Counting the 128 *visible dots*
+gives 4,096 and is wrong.
+
+| | on 4,096 B | actual, 8,192 B |
+|---|---|---|
+| max full-frame @ 7.8 MHz | 238 fps | **119 fps** |
+| 60 fps bus load | 20% | **50%** |
+| write duty @ 110 Hz scan | 46% | **92%** |
+| write duty @ 220 Hz scan | 92% | **185% — exceeds the scan** |
+
+**So PARTIAL UPDATES ARE THE DESIGN, not an optimisation.** A full frame takes 8.40 ms
+against a 9.09 ms scan at 110 Hz — it nearly fills it — and at 220 Hz it cannot fit at
+all. An 8-row scroll band is 1,024 B = 1.05 ms = **12% duty**, which is comfortable. The
+110 Hz / 60 fps / 7.8 MHz settings hold **only if regions are redrawn rather than
+frames**.
+
+⚠ **THE UI BOARD'S INTERFACE TO THIS MODULE**, read off the datasheet (2026-09-25):
+
+* **Connector: 1×20 pin header, 2.54 mm pitch** (Newhaven's own recommendation, note 5
+  on the mechanical drawing). The UI board carries the mating half.
+* **4-wire SPI pinout** — 1 `VSS`, 2 `VDD` (3.3 V), 4 `D/C`, 7 `SCLK`, 8 `SDIN`,
+  16 `/RES`, 17 `/CS`, 18 `/SHDN` (boost shutdown, internally pulled high), 19 `BS1`,
+  20 `BS0`; pins 5–6 and 10–14 are `VSS`, 3/9/15 are NC.
+* **`BS1`/`BS0` select the interface and are STRAPPED ON OUR BOARD, not run to the Pi** —
+  likewise `/SHDN`. ⚠ The datasheet's selection table did not survive text extraction
+  cleanly; the standard SSD1322 mapping for **4-wire SPI is BS1=0, BS0=0**, and that
+  wants one look at the PDF before the board is fabbed.
+* So the Pi only ever sees **5 SPI signals + 3.3 V + GND**, and the encoder's 7 —
+  **14 conductors**, unchanged.
+
+⚠ **CONFIRMED FROM NEWHAVEN'S OWN INIT ROUTINE**: `0xCA 0x3F` = **MUX 64** (so the scan
+arithmetic above uses the right divisor), and `0xB3 0x91` = divide ratio 1 with the
+oscillator at **level 9**, above the reset level 5 — the stock scan is therefore somewhat
+ABOVE the 220 Hz computed at the default oscillator. And the optics are listed **"White
+Color, Anti-Glare, Full View"** — the anti-glare treatment is the thing that keeps blacks
+black under stage lighting, and this part has it.
+
+⚠ **RAISING THE REFRESH RATE BUYS ALMOST NOTHING — THE ARTIFACT TO DESIGN AGAINST IS
+TEARING** (user asked, 2026-09-25). Two separate things get called "refresh" and the
+part already has plenty of both.
+
+**Panel scan, ~220 Hz.** Settable by B3h (oscillator level 5 of 16 at reset, headroom to
+~360 Hz; the divider only ever lowers it). Raising it shows nothing — flicker fusion is
+finished above ~100 Hz — and the datasheet is explicit: *"higher frame frequency leads to
+higher power consumption on the whole system."* The useful direction is DOWN.
+
+**Update rate, up to 305 fps**, purely SPI-bound: 60 fps is 20% of the 10 Mbit/s bus,
+120 fps is 39%. Above ~60 the returns vanish for a menu.
+
+**AND NEITHER FIXES TEARING, WHICH IS WHAT WILL ACTUALLY SPOIL A SCROLL.** These modules
+bring out no tearing-effect signal, so GDDRAM writes are asynchronous to the scan.
+Update mid-scan and the top of the panel shows the new frame while the bottom shows the
+old — a tear line crawling through the animation. More fps only moves it. What fixes it
+is writing a whole frame faster than one scan takes:
+
+| | |
+|---|---|
+| one scan at 220 Hz | **4.55 ms** |
+| 4,096 B at 10 MHz | 3.28 ms ✅ |
+| at 8 MHz | 4.10 ms ✅ |
+| at 7 MHz | 4.68 ms ❌ tears |
+
+**So the rule is SPI as fast as the part allows, not "more fps"** — and on a Pi that
+ceiling is lower than it looks. The Pi divides its 250 MHz core by powers of two, giving
+**7.8 or 15.6 MHz**, and the SSD1322's `tcycle` minimum of 100 ns caps it at **10 MHz**.
+15.6 is 56% over spec, so **7.8 MHz is the ceiling** and tearing cannot be bought off
+with a faster bus.
+
+⚠ **DO NOT SET THE SCAN AND THE UPDATE TO THE SAME RATE** (user asked, 2026-09-25).
+Three reasons, and the last one picks the setting:
+
+  * **It cannot be held.** The scan is an internal RC — FOSC 1.75/1.94/2.13 MHz — so a
+    *nominal* 110 Hz part is anywhere in **99–121 Hz** and drifts with temperature, with
+    no TE output to lock onto.
+  * **It would look worse if it could.** An exact ratio (1:1, 2:1) freezes the tear in
+    one place: a standing seam through every scroll. A mismatched rate sweeps it through
+    the display fast enough to average away. Matching is the case to avoid.
+  * **What is controllable is WRITE DUTY** — the fraction of a scan period spent
+    writing, which is the only window a tear can open in:
+
+| scan / SPI | scan period | 4,096 B write | duty |
+|---|---|---|---|
+| 220 Hz / 7.8 MHz | 4.55 ms | 4.20 ms | **92%** |
+| **110 Hz / 7.8 MHz** | 9.09 ms | 4.20 ms | **46%** |
+
+**SETTLED: scan 110 Hz (B3h divider D=2), update 60 fps, SPI 7.8 MHz.** The scan halves
+the duty and saves power; 60 sits below the scan so no frame is written that cannot be
+shown; and 110/60 is not a clean ratio, so what tearing remains sweeps. Going *up* to
+120 fps would put the update above the scan — writing frames the panel physically
+cannot display.
+
+And the practical escape: **menus rarely redraw a whole frame.** An eight-row scrolling
+region is ~512 B = 0.53 ms, a **6% duty**. The full-frame figures bound the worst case,
+not the normal one — if a scroll ever tears, redraw less rather than clock faster.
+
+⚠ **WHAT MAKES IT LOOK GOOD IS GREYSCALE, NOT BRIGHTNESS** (user asked, 2026-09-25) —
+and it is the real justification for paying $38 rather than $12. The SSD1322 is **4-bit,
+16 grey levels**, with 256-step contrast and 16-step master current. Every cheap I²C
+panel in JLC's library (SSD1309, SH1107) is **1-bit**: a pixel is on or off.
+
+That is the difference between text you can ANTIALIAS and text with hard jagged edges,
+and — the part that matters for the scrolling animation asked for — between motion that
+glides and motion that steps. **At 1 bit, 200 fps still looks like it jumps a whole
+pixel at a time; at 4 bits you can move in sixteenths of a pixel and it reads as
+smooth.** Greyscale buys more perceived quality here than frame rate does.
+
+The rest of "looks good", in order:
+  * **AMBIENT contrast, not contrast ratio.** Every OLED is effectively infinite —
+    an off pixel emits nothing — so that spec never separates two OLEDs. What separates
+    them is whether the room reflects off the glass and greys the black. A polariser or
+    AR treatment is what keeps blacks black under stage lighting.
+  * **Luminance** (~100 cd/m² typical) matters for washout, not for quality, and it
+    trades against lifetime: a PMOLED driven harder dies sooner.
+  * **Fill factor** — how much of each 0.48 cell emits. At 1 ft the grid IS visible;
+    whether it reads as deliberate or cheap is fill factor plus the font.
+  * **BURN-IN is the one to design around.** A static menu is the worst possible
+    content for an OLED. Low brightness, a dim/blank timeout, and shifting the UI a
+    pixel now and then.
+
+⚠ **AND IT HAS NO TOUCHSCREEN** — worth saying because it was assumed to (user) and it
+would be a real waste. DigiKey lists no touch field for `NHD-2.7-12864WDW3`; the touch
+version is a **separate order code, `NHD-2.7-12864WDW3-CTP`**. The price is Newhaven
+being an industrial, US-distributed module: SSD1322, the DC-DC boost an OLED needs for
+its ~12 V panel rail, a carrier PCB, low volume.
+
+⚠ **COLOUR: wanted as a bonus, and it does not exist at this size.** Colour PMOLED is
+only made small (1.5" 128×128, SSD1351); colour at 2.7" means AMOLED, which is not
+purchasable through our channels (see the AMOLED note above). Colour and this size do
+not co-exist, at any price we would pay.
+
+⚠ **REFRESH IS ~220 Hz AND THE INTERFACE MUST BE SPI, NOT I²C.** Newhaven publishes no
+refresh figure because it is not a panel property: the SSD1322 sets it, and it is
+programmable — `F_FRM = FOSC / (D × K × MUX)` with FOSC 1.94 MHz typ, D 1, K 138 and
+MUX 64 gives **219.7 Hz**. Flicker is a non-issue; power is the reason to lower it.
+
+What is NOT free is pushing frames. A frame is **4,096 bytes** (SSD1322 is 4-bit
+greyscale, two pixels to a byte), so 60 fps needs 246 KB/s = **1.97 Mbit/s**:
+
+| interface | full-frame rate |
+|---|---|
+| 4-wire SPI @ 10 MHz (tcycle ≥ 100 ns, the part's max) | **305 fps** |
+| 4-wire SPI @ 2 MHz | 61 fps |
+| I²C @ 400 kHz | **10.9 fps** |
+| I²C @ 1 MHz | 27 fps |
+
+So SPI reaches 60 Hz at 2 MHz with headroom over the same five signal lines, and **I²C
+cannot reach it at all**. That is a second reason to carry this part over the cheap
+JLC-assemblable panels, which are I²C: they would cap near 11 fps on full frames.
+(Menus rarely redraw whole frames — one scrolled row is ~512 bytes, which 400 kHz I²C
+does in 11 ms — so this bounds the worst case, not the normal one.)
+
+⚠ **AND IT MUST BE EMISSIVE, which is what ruled out everything that fit the FIRST size
+asked for** (60–80 wide × 40–60 tall). **TFT** at 3.5"/320×240 is exactly that size,
+cheap and well stocked — and backlit, so black is never off. **VFD** is perfect on every
+count and the Noritake GU128X64-800B (83.1×41.5 viewing, 0.65 mm pixels, 336 in stock)
+is **$425.46**. A **Sharp Memory LCD** has the look and fails outright: reflective, so
+its white is ambient light off a grey substrate.
+
+⚠ **A DEAD END, RECORDED SO IT IS NOT RE-WALKED.** While this row was briefly a
+1.5" 128×128, the part to take was Newhaven's **UGC3** ($24.55, 316 in stock) and *not*
+the **ASC3** ($29.15, 43 in stock), which carries a **microSD card reader** with no use
+here; **NHD-1.5-128128G** is a third sibling and is the bare **glass**, no carrier PCB.
+None of them is the line now — the panel went back to 128×64 — but the three look
+identical in a parametric search, so the distinction is kept for whoever needs a small
+128×128 next.
 
 **Why the Pi dropped from a 5/8 GB to a 4/2 GB:** audio→MIDI now runs on the
 optical pickup's own MCU, so the Pi's remaining jobs are Dexed (a DX7 emulation,
@@ -520,9 +984,74 @@ TRRS blind-mate's leg_trrs_throat ×4 / leg_trrs_sleeve ×4 in **TPU**
 (anti-unscrew preload washers + floor-friendly feet), electronics_tray, and
 the **removable top deck**: a **pickup-carrier piece** (a tray whose floor runs
 under the pickup; 3 M4 height screws set the string gap, 2 M4 clamp screws pin
-X/Y — all from the packs above) + swappable fret-marked **filler bands** (one
-per slot; print the set) + the UI/keyhead panels (fret lines + dust cover + hand
-rest + UI mount) — see `py -3.12 -m src.build --list`.
+X/Y — all from the packs above) + **TWO swappable filler bands** + the UI/keyhead
+panels (fret lines + dust cover + hand rest + UI mount) — see
+`py -3.12 -m src.build --list`.
+
+⚠ **THE FILLERS ARE NOW ONE PART, AND THE DECK IS ONE PANEL SHORTER**
+(user, 2026-09-29). Two changes that only make sense together:
+
+* **The -X-most pickup slot was handed to the mid panel**, which takes the small
+  swappable bands from three to two (a 255 bed — now `top_plate.BED_XY`, asserted
+  rather than left in a comment). **Cost: the pickup's COARSE positions go 4 → 3**, i.e.
+  20.05 mm less coarse reach toward the neck. The fine adjustment is untouched
+  (`CLAMP = BAND_W/2` still makes the coverage continuous), and the slot that went
+  is the one furthest from the changer.
+* **The remaining two fillers lost their fret lines**, keeping only the border's two
+  long side bands. That is what makes them ONE part: a fret line is at an absolute X,
+  so a marked filler fits one slot and every slot the pickup might vacate needed its
+  own printed band — which is why the build used to export a set of **spares off to
+  the side of the instrument**. Unmarked, any filler fits any slot, the two installed
+  ARE the whole set, and there is nothing to print twice. `top_plate` asserts the
+  fillers are congruent, so the claim cannot quietly stop being true.
+  **Cost: frets 25–30 are no longer marked** — the deck is marked to fret 24, the
+  octave quad, which now sits on the mid panel 12.5 mm clear of its +X edge. Those
+  six semitones are in the swap region, where no marking could ever have been
+  consistent: fret 25 falls at −145.12, which is **0.24 mm** off the region/mid seam.
+* ⚠ **SUPERSEDED THE SAME DAY — see the note after this list.** *(kept because it records
+  why the balance assertion existed before it was removed.)* **The mid/key seam was re-cut
+  to balance the two long panels** (user). They are the
+  bulk of the printed deck — 465.39 mm of material — and the old seam split it 53/47:
+  **246.45 against 218.94, 27.51 apart.** The seam is now `MID_SEAM_BEADS = 476`
+  (−380.80, on the bead grid like every other length here) giving **235.44 / 229.95,
+  5.49 apart**, and `SEAM_BALANCE_MAX` asserts it stays that way. The seam is now the
+  DATUM and the panel lengths fall out of it, which is the right way round: nothing cares
+  how long the mid panel is, and four things care where the cut falls.
+
+  ⚠ **IT IS 4.25 MM OFF ITS FRET SPACE'S MIDPOINT, which the user asked it to be on, and
+  the two requests cannot both be had.** A seam has to clear the fret lines AND the
+  position markers, and **the markers sit centred in their space** — so in a marked space
+  the midpoint is the one place a seam cannot go. Every space midpoint that fits the bed:
+
+  | space | midpoint | mid / key | apart | |
+  |---|---|---|--:|---|
+  | 8 | −399.20 (499 beads) | 253.84 / 211.55 | 42.29 | clear of markings |
+  | 9 | −376.80 (471 beads) | 231.44 / 233.95 | **2.51** | **inside the fret-9 pentagon** |
+  | 10 | −355.42 | 210.06 / 255.33 | 45.27 | 0.33 **over** the bed |
+
+  The only marker-free midpoint is space 8's, and it is **less even than what we already
+  had** — so following the rule literally would have made worse the very thing the request
+  was for. −380.80 is the best bead-grid position inside space 9 that clears the pentagon:
+  **5.43 mm to the nearest fret line, 1.49 to the marker.** Setting `MID_SEAM_BEADS = 499`
+  takes space 8's true midpoint instead and costs 36.8 mm of evenness.
+* ✅ **RESOLVED (user, 2026-09-29): the KEYHEAD panel is set to 249.60 mm** — 312 beads,
+  just inside the 250 the bed really gives — and the seam falls out of it at **−361.15**.
+  That lands in fret **space 10, which carries no marker symbol** (the nearest marking is
+  12.65 mm away, against the 1.49 mm the old seam managed off the fret-9 pentagon), with
+  3.33 mm to fret 9's line and 14.79 to fret 10's.
+
+  **What it trades is evenness: 215.79 / 249.60, 33.81 apart.** Of the three things
+  competing for this seam — marker-free, on the bed, evenly split — the third is the one
+  given up, and `SEAM_BALANCE_MAX` was **deleted** rather than loosened to a number that
+  asserts nothing. `BED_XY` is the constraint that actually binds and it is still checked.
+  The seam is 5.73 off space 10's own midpoint because the midpoint would make the keyhead
+  panel 255.33; "halfway between two frets" and "250 max" cannot both hold there.
+
+  The panel LENGTH is now the anchored datum rather than the seam's position, which is the
+  right way round — the thing under constraint is how much panel has to fit on a bed. The
+  seam is consequently not on the bead grid (451.44 beads), because it derives from `PX1`,
+  a chassis datum that is not; 451 beads would give exactly 250.00 and 452 gives 249.20.
+  **`MID_X0` did not move**, so the UI station and its ribbon are untouched.
 
 ## Control sensors (knee levers + pedals)
 
@@ -835,10 +1364,22 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > retires the question.** Bus B feeds **eleven** sensor boards, not steppers (this
 > read "eight" until 2026-09-18 — 6 knee levers + 5 pedals, see the sensor-IC row).
 > Each is a CH32V203 (~30 mA), an MT6701 (~18 mA), a recessive SN65HVD230 (~10 mA)
-> and an LDO — about **59 mA at 3V3**, so eleven boards are 0.65 A at 3V3 and
-> roughly **105 mA at 24 V** through the bus. That is **5.2 % of PH's 2 A contact
-> rating** — the conclusion survives the correction with room to spare, which is why
-> the number was worth fixing rather than re-arguing. The
+> and an LDO — about **59 mA at 3V3**, so eleven boards are **0.65 A at 3V3**.
+>
+> ⚠ **That is also the bus current, because bus B is 5 V and the regulator is an
+> LDO.** This line read "roughly 105 mA at 24 V" until 2026-09-23, and the mistake
+> is worth naming because it is the easy one to make twice: 105 mA is what you get
+> by conserving POWER across the regulator, 0.65 A × 3V3 / 24 V. That arithmetic
+> describes a **buck**. An LDO is a series pass element — it burns the difference
+> as heat and passes the SAME current — so dropping the bus from 24 V to 5 V did
+> not divide the bus current by five, it **multiplied it by six**, to 0.65 A.
+>
+> The conclusion still holds, with a much smaller margin than the old number
+> claimed: 0.65 A is **33 % of PH's 2 A** contact rating rather than 5 %. What the
+> correction does change is that the margin is now worth watching — the leg drop's
+> **ZH is rated 1 A**, and it carries only the five pedal boards (5 × 59 mA ≈
+> **0.30 A, 30 % of ZH**), which is the reason that joint can use the smaller
+> connector at all. Adding boards to the leg drop is no longer free. The
 > 26 AWG the CAN cable already specifies sits mid-range in PH's AWG 30–24 window.
 >
 > **The two families map cleanly onto the two buses**, which is why this works: bus
@@ -857,6 +1398,7 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > be answered by the same decision about how bus A carries its current.
 | CAN | 26 AWG twisted pair, 120 Ω terminated — ⚠ **this is the H/L pair only; the same cable's 24 V and GND conductors have no gauge** | ~2.2 |
 | 24 V → optical board | **4 × 26 AWG**, ~150 mm, XH crimps both ends — panel **J9** to optical **J2**, both `1=GND 2=+24V 3=+24V 4=GND`. ⚠ **Was missing entirely:** the connector exists at both ends and this row did not, found 2026-09-18. 26 AWG is ample here — the board draws **79 mA at 24 V** typical (324 mA on its 5 V rail through an 85 % buck), ~122 mA at the worst case in `elec/optical.py`'s budget, against XH's applicable #30–#22. It runs beside the ~150 mm USB cable between the same two boards | ~2.2 |
+| **bus B, pedal segments** | **4 × 26 AWG** twisted (GND / +5 V / CAN_H / CAN_L), **~100 mm each, ×5**, PHR-8 both ends, ways 5–8 of one board to ways 1–4 of the next. Cut to fit: a pedal's station is printed into the bar, so these lengths are fixed. Each runs from its board's bay up through the **spur** into the trough (INSTALL_NOTES PB-1). The **levers** are the adjustable ones and they get the slack scheme instead — see `knee_lever.lace_loop` | ~2.5 bundled |
 | pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
 | USB panel → Pi | slim shielded USB-2 | ~2.6 |
 | logic (relay, link, TDM, OLED, joystick) | 28 AWG | ~1.4 |
@@ -867,6 +1409,40 @@ not yet modelled) and the optical pickup's USB + 5 V feed. All cross-rib raceway
 knee-lever mortise plane — route no fatter cable through the floor trunk.
 
 ## Connectors (wiring strategy, July 2026)
+
+### Leg blind-mates — POGO BOARDS, 2026-09-21 (user)
+
+Both leg joints (leg ↔ body adapter, pedal bar ↔ adjust tenon) are now **two PCBs
+each**, and the whole TRRS stack is gone: no jack, plug, float spring, TPU throat,
+TPU sleeve or bayonet, and no moulded cable. CAD: `src/leg_pogo.py` (boards drawn
+from the component drawings; **bronner routes the real boards from it**).
+
+| Item | Part | Qty | Unit | Note |
+|---|---|---|---|---|
+| **Male pogo board** | custom 13.0 × 19.0, 1.6 mm, **STANDING ON EDGE** in a slot in the tenon end: a **right-angle** 1 × 4 spring-pin header on its lower edge + a **side-entry** PH on its upper edge, mouth up the leg. **Every part on ONE face** | 2 | ~$2 assembled (est.) | on the LEG; the free tips sit **0.6 inside** the tenon face. One M4 × 20 runs **sideways** through the tenon and the board (head recessed in one flat, insert pressed into the opposite flat from outside) — the tenon end is exposed whenever the leg is off |
+| **Female pogo board** | custom ~10 × 17, 1.6 mm, lies flat on the adapter's roof / the bar's floor: a **gold target** + a **side-entry ZR** on ONE face, one M4 × 6 beyond the target's end | 2 | ~$2 assembled (est.) | Single-sided. The contacts are the TARGET's own gold, so the panel stays on **HASL** — ENIG for the whole panel was +$16.60 (1 µin) / +$33.16 (2 µin) per order on one small test board, scaling with area. One screw, reached down the empty mortise |
+| **Contact target, vertical 1 × 4** | Xinyangze **YZ185115035T-04025-01**, LCSC **C54930022**: 4 × Ø1.2 contacts at **2.54** pitch (the header's 2.5 — 0.06 at the ends, in the landing budget), 3.5 tall, 3 µin Au over Ni, SMT | 2 | $1.03 @10 | **210 in stock** — the thinnest-stocked part here; buy spares. Its right-angle twin C5296825 is the header's exact mate but would stand the female on edge, which the adapter's 12.8 cannot take |
+| **Spring-pin header, right angle 1 × 4** | Xinyangze **YZ165615055F-04025-02**, LCSC **C54799748** — or the **-01, C5296819** (same drawing). SMT, 2.5 pitch, 11.0 × 2.5, 5.5 free / 4.0 working, Ø1.0 plunger, **120 gf**, 1 A, 12 V, 10k cycles, 3 µin Au | 2 | $1.46 @10 | **1,467 + 910 in stock** at JLCPCB. ONE pin per circuit — two headers side by side (22 of pads) do not fit the female board inside a 24-square tenon (`leg_pogo` docstring). JLCPCB flag it a hard-to-process part: tick it by hand in the BOM step (+$0.08 each) |
+| **Harness header, male (side entry)** | JST **S4B-PH-SM4-TB(LF)(SN)**, LCSC **C265102** (Extended, 30k stock) | 2 | ~$0.25 | 11.9 × 6.0 (+2.6 tails) × 5.5; the PHR-4 reaches 3.6 past its mouth |
+| **Harness header, female (side entry)** | JST **S4B-ZR-SM4A-TF(LF)(SN)**, LCSC **C485354** (27k stock) | 2 | ~$0.2 | 9.0 × 5.0 (+1.5 tails) × 3.7 (eZR p.5). ZR sockets are IDC; the header also takes the **ZH crimp** housing (ZHR-4 + SZH-002T), so the two female stubs are ZH-to-PH jumpers — a second crimp family (its own contacts and die) |
+| **M4 × 20 button** + **M4 × 6 button** + **M4 heat-set inserts** | — | 2 + 2 + 4 | — | one screw per board (project PCB rule); the inserts have no self-tap fallback (`leg_pogo._INS_WHY`) |
+| **Leg harness** | **two twisted pairs** of 28 AWG 7/36 PVC hookup wire (CAN_H/CAN_L, 5V/GND), **laid up as a 4-core** — the two pairs twisted around each other at ~5× the pair lay, capped by a 6 mm adhesive-lined heat-shrink collar behind each crimp — PHR-4 + SPH-002T at both ends | 1 leg run + 2 stubs | — | replaces the 10-02135 lead; crimped **after** threading, so the bores only have to pass contacts. Bundle ~Ø2.4 (`leg_pogo.HARNESS_D`); the leg's slack is heat-set into a coil on `coil_mandrel` (barrel now Ø16.8; stretched r 7.94 against a 7.2 floor). A round jacketed 4-core was rejected: the datasheeted ones that fit the bores are too fat (Alpha 86004 is Ø4.83) and none pairs CAN_H with CAN_L |
+
+**Why the male board stands on edge:** the panel shares one assembly setting (user), so
+no board may carry parts on both faces. The live JLCPCB quote (2026-09-21, 5 boards,
+Standard, list prices) settled what that is worth: a through-hole PH on the bottom is
+billed **Both Sides** — setup $25.75 → $51.50 and a **$16.54 fixture**, ~$45 an order —
+and Economic PCBA has no Both Sides at all. On edge, a right-angle header and a
+side-entry PH share one face. **Why the pins are on the leg:** the body adapter has 12.8
+above its mortise roof; only the flat female fits there. **Why one header:** the female
+board lies above the host face, so all of it must fit in the tenon's pocket, and two
+headers' 22 of pads plus a connector and a screw do not (the diagonal leaves ~23 × 7).
+
+**Open:** (1) the PHR-4's seated height on the top-entry header is an allowance (8.5
+mated) — JST do not dimension the floor; (2) the pads face UP at the bar joint, so dust on
+them is the thing to watch; (3) the header's plunger line (1.3 off the board) is read off
+a view whose datum is not stated — confirm on a sample before bronner fixes the pads.
+
 
 Rule: **solder only happens on factory-assembled PCBs; every field connection
 is a connector** (no bare wire ever meets a bare module pin; never
@@ -2336,7 +2912,7 @@ several are unverified — re-verify the whole file before ordering.**
 | Filament (printed) | ~$81 | estimate; **spool prices verified**, masses are model estimates |
 | Mechanical hardware (motors, screws, bearings, belt, fasteners, dowels) | ~$620 | belt/collar/bearings **verified**; motor + all McMaster **[m]** |
 | Wire | ~$35 | estimate, excludes 10 control drops |
-| Electronics + UI (motor controller, power + USB panel boards, Pi 4, jacks, joystick, OLED) | ~$95 | **all verified except the OLED [m]** |
+| Electronics + UI (motor controller, power + USB panel boards, Pi 4, jacks, encoder, OLED, UI board) | ~$117 | **all verified** (2026-09-25: the display is sized to be read at 1 ft, 63.4×32.7 — white-on-black and that size are only had as a module; −$4 on the encoder for sourcing it where it is actually in stock; **+$5 for the UI board, its two 1×20 headers, the ribbon header and the ribbon**) |
 | Optical pickup board (148 parts, 4-layer, ÷10 basis) | **~$45** | parts cost **computed from the model**; all 18 lines have real MPNs |
 | Control sensors, 10 controls (MT6701 + magnet + board) | ~$50 | IC + magnet **verified**; boards not yet quoted |
 | Tee / carrier PCBs | ~$25 | estimate |
@@ -2378,7 +2954,7 @@ by how much money rides on each.
 | 2 | **All eight McMaster rows** — dowels, cup-tip screws, heat-set inserts, mount screws, hold-down, shafts, guide rods, M2 grubs (~$50–70) | mcmaster.com serves **no product content** to automated fetches — every part URL returns the bare catalogue navigation. This is a site-wide block, not a bad URL | Open each part number in a browser. Part numbers themselves are stable and were previously correct |
 | 3 | **Tr8×2 H-flange nut — dimensions read off the seller's drawing, not yet measured** | The drivetrain moved Ø5×1 → Tr8×2 (see the Lead screw + nut row). The listing (AliExpress 3256804704147842, SKU "Pitch 2mm Lead 2mm") is unfetchable, so all six numbers in `dimensions.py` — flange 22 × 10.5 × 4, boss Ø10.2 × 11, total 15, ear holes Ø3.5 at ±8 — were read by hand off its drawing, which itself states "a normal error of 0.5–1 mm". The **'Lead 8mm' variant on the same listing is the 4-start** — it looks identical and does not self-lock | **Order ONE first and measure it.** `NUT_FLANGE_L` sets the row spacing (asserted against the flange clearance), `NUT_HOLE_D` sets the guide rod, and `NUT_H` feeds the nut-to-ledge assert. Confirm the variant reads **Pitch 2mm / Lead 2mm** before ordering all 12 |
 | 3b | **Anything that TURNS is checked by `tools/check_sweep.py`, not `check_overlaps`** | `check_overlaps` compares parts *where they sit*, which is the wrong question for a rotating part — what must clear is its swept circle. Three real collisions hid behind that gap at once: a Ø20.8-swept retaining collar in a 9.5 mm lane, the drive pulleys buried ~1.7 mm in the endplate foot (allow-listed as an "intended contact" because where they sit they only graze), and a grub-screw lug sweeping Ø17 | Run **both** gates. `check_sweep` registers rotating parts in its `ROTATING` map — **add to it when you add a part on a shaft**, or the gate silently says nothing about it |
-| 4 | **2.42" OLED module** — ~$17 | Both Waveshare and RobotShop return **HTTP 403** to fetches | Check in a browser. A German reseller at €18.00 suggests ~$17 is close |
+| 4 | ~~**2.42" OLED module** — ~$17~~ | **CLOSED 2026-09-25, and this row's own closing note was already out of date when it was written.** It said "there is no module: the UI is one JLC-assembled board carrying a bare panel (C5123566)" — that was the 2.42" bare-panel branch, which the size requirement killed the same day. There IS a module: **NHD-2.7-12864WDW3, $38.08, 2,057 in stock, verified**, white on black at 63.41 × 32.69, because white-on-black at that size is not sold as a bare panel anyone will place. The UI board beside it is real and routed (`elec/ui_board.py`) | Nothing on price. What IS live: the ribbon header **C5156673 at 154 in stock**, and the ribbon header's 10.0 mm height, which is an estimate — see the UI board section |
 | 5 | **Ø3 g6/h6 precision shaft** — ~$30 | McMaster (see #2); also the row points at a **category page**, not a part | Pick an actual part number while you are there. *(2026-09-10: the guide rods are no longer this stock — they are Ø3.5 drill blanks sized to the measured nut ear hole; see the Guide rod row)* |
 | 6 | **Threadlocker, plastic-rated (e.g. Loctite 425)** — 10 joints/instrument | Price not looked up, and **compatibility with PETG-GF is untested**: the reason for choosing a plastic-rated type is that anaerobic 242/243 can craze thermoplastics, but nothing here has been tried on this filament | Put a drop on a spare printed endcap pulley: check for crazing after 24 h, and try breakaway torque by hand. Record the product and price |
 | 7 | **688ZZ screw bearings** — 10/instrument | Price TBD, and the conclusion rests on **C0r**: makers publish 474–710 N, a spread wider than the 1.6× worst-case axial margin itself | Buy a **branded** part and read its real C0r off the datasheet before ordering ten. Also confirm the inner-ring OD (~Ø10.2) and outer-ring ID (~Ø13.8): the pulley boss (Ø9.6) and the rail ledge (Ø14.4) are sized to them by rule of thumb |

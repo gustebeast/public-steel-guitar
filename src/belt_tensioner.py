@@ -43,7 +43,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import box_at, cyl_y
+from .helpers import box_at, cyl_x, cyl_y
 from cadkit.fasteners import M4, m4_button_screw, seated_insert
 
 # ── belt cross-section ───────────────────────────────────────────────────────
@@ -115,12 +115,9 @@ WELL_MID_B = -WELL_MID_A + TB             # 4.5    lifter_b well centre (SAME li
 # works but over-reaches — a permanent 2.6–6.6 mm stub past the nut.)
 _SCREW_MIN = (HALF_B_OUTER - HEAD_X) + 2.0               # 34.4  reach the nut at GAP + 2 mm engagement
 SCREW_L  = 35.0                           # M4×35 (nearest stock ≥ min; see the take-up table)
-
-
-def cyl_x(d: float, length: float, x0: float, z: float = 0.0) -> cq.Workplane:
-    """Solid cylinder along +X, base at x0, centred on (y=0, z)."""
-    return cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        d / 2, length, pnt=cq.Vector(x0, 0.0, z), dir=cq.Vector(1, 0, 0)))
+assert SCREW_L >= _SCREW_MIN, (
+    f"M4×{SCREW_L:.0f} cannot reach the insert-nut at the loosest gap with 2 mm engaged "
+    f"({_SCREW_MIN:.1f} needed) -- the geometry moved, so the stock screw has to move with it")
 
 
 def _ridges(x0: float, x1: float, zc: float, width: float) -> cq.Workplane:
@@ -174,7 +171,7 @@ def clamp_half() -> cq.Workplane:
     body = body.cut(box_at(mouth - bx0, LANE, CEIL_UZ,                                # 3  belt tunnel
                            x=(bx0 + mouth) / 2, y=0.0, z=CEIL_UZ / 2))                #    (open at −X)
     body = body.union(_ret_ramp(x1))                                                 # 4  +X retention ramp
-    body = body.cut(cyl_x(SCR_CLR, mouth - HEAD_X, HEAD_X, Z_SCR))                    # 1  screw channel — cut
+    body = body.cut(cyl_x(SCR_CLR, mouth - HEAD_X, HEAD_X, z=Z_SCR))                    # 1  screw channel — cut
     return body                                                                      #    LAST, so it clears the ramp too
 
 
@@ -227,11 +224,6 @@ def screw_dummy() -> cq.Workplane:
     return scr.translate((HEAD_X - HEAD_H, 0.0, Z_SCR))
 
 
-def insert_dummy() -> cq.Workplane:
-    # NOT heat-set: the insert sits OUTSIDE half-B's +X face on the Ø4.4 rim, acting as a plain nut
-    return seated_insert(M4, (HALF_B_OUTER, 0.0, Z_SCR), (1.0, 0.0, 0.0))
-
-
 def seated_lifter(bar, well_mid: float, locked: bool = True) -> cq.Workplane:
     """Place a bar in its well: flush on the screw crest (locked = LOCK_Z) or on the well floor
     (unlocked = WELL_FLR, ribs just clear of the belt)."""
@@ -239,11 +231,22 @@ def seated_lifter(bar, well_mid: float, locked: bool = True) -> cq.Workplane:
 
 
 # ── coupon: the printable set (2 identical halves + 2 identical lifters), spread in Y ────────
+COUPON_UP = (0.0, 0.0, 1.0)     # ...the assembled plate; see the note inside
+
+
 def tensioner_coupon() -> cq.Workplane:
     """TWO identical clamp_halves + TWO identical lifters, in PRINT poses. HALVES build +X: the
     belt tunnel and screw channel run along the build → clean walls + a round bore (a ceiling-
     bridge + sagging bore if built +Z), and the bearing face is the flat first layer. BARS build
     −Y→+Y (0.2 mm nozzle) so the ridge curves + concave seat land in the layer plane."""
+    # PRINT ORIENTATION: the coupon is assembled IN PRINT POSES -- each piece is rotated
+    # out of its own build direction (the halves build +X, the bars -Y->+Y) and dropped on
+    # z=0 by _on_bed, precisely so the whole plate builds +Z. So the coupon's declared
+    # direction is the plate's, not any one piece's; see COUPON_UP.
+    # PRINT ORIENTATION: the coupon is assembled IN PRINT POSES -- each piece is rotated
+    # out of its own build direction (the halves build +X, the bars -Y->+Y) and dropped on
+    # z=0 by _on_bed, precisely so the whole plate builds +Z. So the coupon's declared
+    # direction is the plate's, not any one piece's; see COUPON_UP.
     def _on_bed(w):
         return w.translate((0.0, 0.0, -w.val().BoundingBox().zmin))
     h1 = _on_bed(clamp_half().rotate((0, 0, 0), (0, 1, 0), -90)).translate((0.0, -14.0, 0.0))
