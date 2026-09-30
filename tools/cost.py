@@ -212,7 +212,8 @@ def _by_substring(fpid, prices):
 
 
 def tht_joints(geom, prices):
-    """Through-hole PINS on one board -- the joints JLCPCB hand-solders.
+    """Through-hole PINS and PART COUNT on one board. JLCPCB bills both, separately:
+    hand-soldering per pin, then Manual Assembly per part placed.
 
     Worth separating because the live quote form bills hand-soldering on its own line.
     Most of our JST parts are the -SM4-TB / -SRSS-TB surface-mount variants and do NOT
@@ -220,7 +221,7 @@ def tht_joints(geom, prices):
     b = prices["boards"]
     keys = b.get("tht_footprints", [])
     fallback = b.get("tht_pins_fallback", {})
-    pins = 0
+    pins = parts = 0
     for fp in geom.get("footprints", []):
         fpid = str(fp.get("fpid", fp.get("footprint", "")))
         if not any(k in fpid for k in keys):
@@ -230,7 +231,8 @@ def tht_joints(geom, prices):
             pins += int(m.group(1)) * int(m.group(2))
         else:
             pins += next((v for k, v in fallback.items() if k in fpid), 2)
-    return pins
+        parts += 1
+    return pins, parts
 
 
 def board_fab_cost(geom, layers, boards_in_order, prices):
@@ -253,9 +255,12 @@ def board_fab_cost(geom, layers, boards_in_order, prices):
     fab = k["base"] + k["area_rate"] * area_cm2
     if boards_in_order > 10:
         fab += k["per_extra_board"] * (boards_in_order - 10)
-    joints = len(geom.get("footprints", [])) * 2        # a rough two joints per part
-    asm = b["assembly_per_joint_usd"] * joints * boards_in_order
-    asm += b["hand_solder_per_joint_usd"] * tht_joints(geom, prices) * boards_in_order
+    n_parts = len(geom.get("footprints", []))
+    tht_pins, tht_parts = tht_joints(geom, prices)
+    smt_joints = (n_parts - tht_parts) * 2              # a rough two joints per SMT part
+    asm = (b["assembly_per_joint_usd"] * smt_joints
+           + b["hand_solder_per_joint_usd"] * tht_pins
+           + b["manual_assembly_per_tht_part_usd"] * tht_parts) * boards_in_order
     return fab, asm
 
 
@@ -321,8 +326,8 @@ def main(argv=None):
     # ---- boards -------------------------------------------------------------
     parts_usd = fab_usd = asm_usd = 0.0
     setup = float(prices["boards"]["assembly_setup_usd"])
-    feeder = float(prices["boards"]["assembly_per_feeder_usd"])
-    order_lines = 0
+    stencil = float(prices["boards"]["assembly_stencil_usd"])
+    designs = 0
     for board, geom in sorted(geoms.items()):
         if board == "optalt":
             continue                                   # an alternative, not fitted
@@ -337,7 +342,7 @@ def main(argv=None):
         parts_usd += p_each * in_order
         fab_usd += fab
         asm_usd += asm
-        order_lines += max(1, priced // 8)             # crude: feeders scale with distinct lines
+        designs += 1                                   # setup and stencil are PER DESIGN
         if unp:
             unpriced_all.append((board, unp))
         if a.detail:
@@ -345,11 +350,13 @@ def main(argv=None):
             print("  %-14s x%-3d %3d parts %6.1fx%-6.1f mm %dL  parts $%6.2f  fab $%6.2f  asm $%5.2f"
                   % (board, qty, len(geom.get("footprints", [])), w, h, layers,
                      p_each * in_order, fab, asm))
-    per_order_asm = setup + feeder * order_lines
+    per_order_asm = (setup + stencil) * designs
     boards_total = (parts_usd + fab_usd + asm_usd + per_order_asm) / ORDER_INSTRUMENTS
-    notes.append("ASSEMBLY is $%.2f of the $%.2f PCB line and NONE of it is measured. "
-                 "Fab was re-confirmed against the live JLCPCB form; assembly cannot be "
-                 "without uploading gerber+BOM+CPL. See elec/prices.json boards._assembly_note."
+    notes.append("ASSEMBLY is $%.2f of the $%.2f PCB line. The RATES are measured (one "
+                 "real JLCPCB PCBA quote, can_tee, Economic, qty 50) and the model "
+                 "reproduces that quote to 1%%. What is NOT modelled is the edge-rail "
+                 "cliff on small boards at high quantity -- see boards.rails_note, it is "
+                 "worth more than this whole line on can_tee and lever_sensor."
                  % ((asm_usd + per_order_asm) / ORDER_INSTRUMENTS, boards_total))
     groups.append(("PCBs: parts + fab + assembly (%d instruments / %d)"
                    % (ORDER_INSTRUMENTS, ORDER_INSTRUMENTS), boards_total))
