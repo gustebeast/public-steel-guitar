@@ -409,7 +409,7 @@ Keep the ring, lip, wall, lean and M4 boss exactly as they are — only the root
 
 ## 7. Collisions the lead sent back
 
-* 5 V pair still one lane, 229–243 mm³ over ~78 mm — same fix as the LED feed, one lane over.
+* ✅ **DONE** — 5 V pair: **0.00 mm³** (`507e198`). It was not a lane problem and the “same fix as the LED feed, one lane over” prescription was wrong: the four conductors were inside each other, not inside anything else. ⚠ **I GUESSED THE SIX `wire_led_*` HAD THE IDENTICAL FAULT AND THEY DO NOT.** Measured straight after writing that: they already land pin-by-pin at BOTH ends (`pi_cap_pin` and `led_pin`), and their self-overlap is **29.79 mm³ over 15 pairs (~2.0 each)**, not the ~228 the 5 V pairs carried. Their 19 pairs each are mostly against OTHER parts — `keyhead_endplate` **32.3 mm³ × 6**, `pi_cap` 10.2 × 6, twelve `nut_slide_insert_*` at 2.6 — so that harness needs a ROUTE fix, which is the thing the 5 V cable turned out not to need. One cable's diagnosis is not the next cable's.
 * Harness lane over the Pi, 23 pairs; `pi_cap` in 16, `pi5` in 7.
 * `keyhead_endplate` ↔ `body_adapter_3`, 262.7 mm³ — **cross-scope**, body_adapter is
   brenner's. Either pull the plug latches inside the endplate envelope or hand over the
@@ -1126,7 +1126,11 @@ working top-down would act on stale text. The state of each claim:
     fixes: dropping led_strip's stitch_nets (1 -> 3), the LED channel (ten inserts), "the
     stitcher should measure reach" (ordering), and "bus B needs mctrl_pin()" (side entry).
 
-## The 5 V cable cannot be re-routed by moving one leg (2026-09-29, TWO FAILED ATTEMPTS)
+## ✅ CLOSED — the 5 V cable (was: "cannot be re-routed by moving one leg", two failed attempts)
+
+**✅ SOLVED 2026-09-30 in `507e198`, and the diagnosis below is WRONG in its premise — kept because being wrong in a specific way is the useful part.** Everything under here reasons about which LANE the cable should take. It never needed a lane: the four conductors were coincident with EACH OTHER, because `mctrl_pt("J5")` returns the connector and not its pins, so all four started at one point. Landing them pin by pin with the new `mctrl_pin()`, then reversing the J5 mapping so the four paths nest instead of crossing, took the self-overlap from ~1,371 mm³ to **0.00** with no lane change at all. Two fixes failed here because both asked “where should the shared lane go” when the answer was “stop sharing”.
+
+### the original analysis, kept for the record
 
 After the Y swap, `wire_5v_*` (4 conductors) run through `pi5`, 48.3 mm3 each. The cause is
 exact and is NOT a fly-height error:
