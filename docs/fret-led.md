@@ -350,3 +350,120 @@ the mid board's **+X end** — frets 24, 23, 22 — is anywhere near it. So:
 3. **Which LED** — and see section 4: the package choice and the driver
    architecture are one decision, not two. The existing XL-5050RGBW is a side-mount 5050 chosen for a side-firing
    strip; this board fires UP, so the package choice is open again.
+
+
+---
+
+# 6. THE POWER + NOISE PLAN (2026-09-29)
+
+How to drive 3 LEDs per fret as one controllable zone, survive the 9.14 mm pitch at the
++X end, and put as little as possible into the pickup. Everything below is measured off
+the model or read off a catalogue; the open items are listed at the end and named.
+
+## 6.1 Topology — and it divides perfectly
+
+    zone            = one fret = 4 channels (R, G, B, W)
+    channel         = THREE LEDs IN SERIES, spread along the fret at y = -26.5, 0, +26.5
+    MID board       frets 10-24 = 15 zones = 60 channels = exactly 5 x TLC59711
+    KEYHEAD board   frets  1-9  =  9 zones = 36 channels = exactly 3 x TLC59711
+
+**Zero wasted channels on either board**, which fell out of the 249.60 seam rather than
+being designed. Worth protecting: any change that moves a fret across the seam breaks it
+and costs a whole driver for one zone (see "zones come in threes", section 4).
+
+Series, not parallel, for three reasons: the three LEDs of a fret carry **identical current
+by construction** (a match no binning sells), the channel count follows FRETS not LEDs, and
+— the one that matters here — **a series string draws the same current as a single LED**, so
+3-per-fret costs rail volts, not rail amps.
+
+## 6.2 Rail and power budget
+
+`R_IREF = 3k3` in `elec/led_strip.py` already sets **15.0 mA per channel**; keep it.
+
+    W/G/B string   3 x 3.2 = 9.6 V        red string   3 x 2.2 = 6.6 V
+    rail           12 V  (9.6 + sink headroom; TI gives TLC59711 Vin 3-17 V)
+
+At **all 24 frets full white**, the absolute worst case and not a normal state:
+
+| | |
+|---|--:|
+| LED power | 12.74 W |
+| driver dissipation | 4.54 W — **567 mW per TLC59711**, 8 of them |
+| total at 12 V | 17.28 W = 1.44 A |
+| **from 24 V at 90 % buck** | **0.80 A** — mid 0.50, keyhead 0.30 |
+
+⚠ **Red wastes the most**, 81 mW a channel against 36 for the others, because its string is
+3 V below the rail. TLC59711's per-colour brightness control is the lever, and red wants
+trimming down for colour balance anyway — so the fix and the calibration are one knob.
+
+## 6.3 Noise — ranked by measured leverage
+
+The pickup sits **14.08 mm** from the mid board's +X edge at its neck-most slide
+(section 4). bronner measured the old strip's supply loop at **695 mm²**. So:
+
+**1. FOUR LAYERS, GND plane directly under the LED layer. Not optional.** Each zone's
+series string spans the fret's **79.6 mm**, and loop area is string length x return
+distance:
+
+| stackup | return path | loop area | vs the old strip |
+|---|---|--:|--:|
+| **4-layer** | plane 0.2 mm below | **15.9 mm²** | **44x smaller** |
+| 2-layer | trace 2 mm away | 159.2 mm² | 4x smaller |
+
+Cost: 4-layer at 200x60 and 224x60 quotes **$32.40 + $33.30 per five**, about **$13.14 an
+instrument** against ~$4.12 for 2-layer — **+$9**, against a $19.28 driver stack. Buy it.
+
+**2. Put the loop in a VERTICAL plane, not a horizontal one.** A magnetic pickup's coil
+axis is vertical, so it answers to Bz. A current loop lying flat in the board plane makes
+exactly that; a trace over its own return plane stands the loop up and points its field
+sideways. Free once you are on 4 layers **but only if the return is actually underneath** —
+hence the layout rule: *every zone's return is the plane directly beneath its own string,
+and no zone's current may take a path that encloses board area.*
+
+**3. Buck at the KEYHEAD end.** It is the highest di/dt thing on the board. On the mid
+board that puts it ~200 mm from the pickup and leaves only smoothed 12 V at the +X end.
+
+**4. Local bulk + HF decoupling at EVERY driver.** Otherwise each zone's PWM current is
+drawn down the full-length rail and the loop is the whole board, which undoes item 1.
+
+**5. A consequence of item 1 worth using: with a plane return you can move the +X drivers
+AWAY from the pickup almost for free.** Lengthening a run 15 mm adds 15 x 0.2 = 3 mm² of
+loop, while the distance term goes as 1/r³. On 2 layers that trade runs the other way.
+
+**6. Stream continuously; do not burst.** Straight from bronner: the audio-band threat is
+the ENVELOPE, not the carrier. Refreshing 24 zones at 100 Hz puts a 100 Hz envelope on the
+supply, which is precisely what a pickup is built to hear. ES-PWM at ~19.5 kHz is why the
+TLC59711 was chosen over SK6812/SK9822, and it only pays off if the writes never stop.
+
+## 6.4 The +X end — the tight case, measured
+
+Fret pitch, tightest first: **24->23 is 9.14**, then 9.69, 10.26, 10.87 ... 19.37 at 11->10.
+Against `XINGLIGHT_XL-5050RGBW`: body **5.00**, copper out to ~**5.56**, courtyard **6.10**.
+
+    pitch 9.14  -  copper 5.56  =  3.58 for BOTH tunnel walls
+       two 2-bead walls (3.20)   ->  0.38 mm of air.  Fits, and is the tightest
+                                     thing on this board.
+       two 1-bead walls (1.60)   ->  1.98 mm of air.  Comfortable.
+
+So **the tunnel wall thickness should be GENERATIVE from the fret pitch**, not a constant:
+two beads wherever the pitch allows, one bead in the top gap or two. Everything from fret
+22 down has >= 0.96 mm of air with 2-bead walls.
+
+The LEDs spread in **Y**, so the pitch constraint is purely in X and one package width is
+all each fret needs there. Board width follows the spread: +-26.5 plus a 6.10 courtyard is
+**60 mm**. The tunnel is 79.6 long, so its outer ~9.8 mm each side overhangs the board and
+is closed by a deck rib at board level rather than by the PCB.
+
+## 6.5 What this plan still needs
+
+1. ⚠ **TLC59711 OUTn absolute max voltage.** TI's parametric gives Vin 3-17 V and 60 mA a
+   channel, so 12 V is inside the family's range — but **the whole series-of-3 plan rests
+   on the OUT pin tolerating a 12 V rail**, and that number has to come off the datasheet,
+   not off a parametric table.
+2. **Whether to light frets 23 and 24 at all.** They are the two tightest gaps AND the two
+   nearest the pickup. Dropping them removes the worst routing and the worst coupling in
+   one move, at the cost of two markings at the extreme treble end. A real option, not a
+   recommendation.
+3. **Per-channel current.** 15 mA is inherited from a strip that lit a whole body; this
+   aperture is 2.4 x 79.6 = 191 mm² per fret, seen in a room. Half may be plenty, and it
+   halves every number in 6.2.
