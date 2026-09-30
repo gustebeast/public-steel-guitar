@@ -1091,12 +1091,37 @@ def build_wires():
     # src.build.PARTS and was blind to pi5, motor_ctrl AND motor_0 (it "cleared" a lane the
     # gate then rejected). What remains after this are the three connector-adjacent contacts
     # the baseline already had: the cable entering its own J5 and its own J2.
+    # ⚠ AND THE MOTOR END LANDS PIN BY PIN TOO, WHICH IS WHAT THE OTHER HALF OF THIS
+    # NOTE HAS SAID SINCE THE Pi END WAS FIXED. Every conductor used to start at ONE point --
+    # mctrl_pt("J5") is the connector, not its pins -- so all four shared a start, ran the
+    # same x at the same y and the same z, and were COINCIDENT until they fanned out at the
+    # cap. The gate reported that honestly and it was read as a routing problem: the item in
+    # docs/bronner-work-items.md is filed as "5 V pair still one lane, 229-243 mm3 over
+    # ~78 mm", and its two failed fixes both moved the shared lane instead of un-sharing it.
+    # Four cables inside each other do not need a better lane, they need four leads.
+    # ⚠ THE PIN ORDER IS THE SAME AT BOTH ENDS AND THAT IS NOT LUCK: J5 is GND, +5V, +5V,
+    # GND and so is the cap's J2, so conductor k joins pin k to pin k with no crossover. It
+    # is also palindromic, which is why a mirrored pin axis would have been invisible here --
+    # see mctrl_pin, where the axis is verified against the routed board rather than assumed
+    # precisely because the next connector to use it may not be so forgiving.
     _FLY_Z = -64.0
     for _n, _nm in ((1, "gnd_a"), (2, "hot_a"), (3, "hot_b"), (4, "gnd_b")):
         _pin = EL.pi_cap_pin("J2", _n)
         _lead = (_pin[0], _pin[1], _pin[2] - CAP_LEAD_IN)     # mouths face -Z (see pi_cap.py)
+        # ⚠ 5 - _n, NOT _n, AND IT REMOVES THE LAST OF THE OVERLAP. Landing pin-for-pin
+        # dropped each pair from ~228 mm3 to 4.22, and what was left was the four conductors
+        # CROSSING in the fly plane: they all run +x at their own y, then each turns -y at
+        # its own cap-pin x. The one that turns FIRST (smallest x) was the one at the
+        # least-negative y, so its turn cut across every horizontal below it. Give the first
+        # turn to the conductor at the MOST negative y and the four paths nest instead of
+        # crossing -- no lane change, no extra height, just the order they are assigned in.
+        # ⚠ AND THIS IS FREE ONLY BECAUSE THE CONNECTOR IS PALINDROMIC. J5 is GND, +5V, +5V,
+        # GND, so 1<->4 and 2<->3 swap like for like and the cable is electrically identical
+        # either way. On a connector that is not symmetric this reversal would be a wiring
+        # fault, so it is written as a deliberate choice with its reason, not as an index.
+        _src = EL.mctrl_pin("J5", 5 - _n)
         out.append(("wire_5v_%s" % _nm, _wire(
-            [_j5, (_j5[0], _j5[1], _FLY_Z), (_lead[0], _j5[1], _FLY_Z),
+            [_src, (_src[0], _src[1], _FLY_Z), (_lead[0], _src[1], _FLY_Z),
              (_lead[0], _lead[1], _FLY_Z), _lead, _pin], WIRE_OD["wire_5v"])))
 
     # -- the Pi cap's J3 -> LED strip section 0's J1. One cable carries the strip's 5 V and
