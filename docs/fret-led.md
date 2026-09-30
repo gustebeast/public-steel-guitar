@@ -855,6 +855,71 @@ buck on each board"). It costs one extra cable and one extra buck (about $1.50) 
 deletes a blind-mate joint, six notches through a light-cell wall, and two cantilevered
 board tongues. The install order is unchanged except that the plug happens twice.
 
+## 9.1a ⚠ CORRECTION TO 9.1: the 10.40 was the wrong number, and the joint may be open
+
+> "So the issue is that the pins are too long? Why can't we just mount them further from
+> the PCB edge then?" (user, 2026-09-30)
+
+The question is right and §9.1's tip-to-tip row is wrong. **12.00 is a SUM**: sliding a
+pogo inboard retreats its tip by the same amount, so the two pads stay 12.00 apart wherever
+they sit. What moves is WHERE the joint lands along X, not how much room it needs -- so the
+12.00 never had to fit inside the 10.40 bay. mid's pogo can sit in MID'S OWN BAY.
+
+Measured, `tools/_probe_seam.py`:
+
+    mid  board -X edge -360.50   its -X-most wall -350.00 (face -349.20)
+    key  board +X edge -362.00   its +X-most wall -362.00 (face -362.80)
+
+    CLEAR BOARD TOP at each facing end (a 4.50 mm C5203987 body needs):
+      mid    9.70 mm   OK
+      key   -0.80 mm   TOO SHORT
+
+    span the pads need, 2 x 6.00 = 12.00:
+      key board edge -362.00 to mid comb wall face -349.20 = 12.80
+
+**12.80 available against 12.00 needed.** Length was never the binding constraint; there is
+0.80 of margin. §9.1 quoted the clear run between the combs, which is the space the joint
+happens to cross, not the space it needs.
+
+**THE REAL BLOCKER IS ONE-SIDED**: `fret_led_key` has no clear board top at its +X end at
+all -- its last comb wall stands at the board's edge and overhangs it by 0.80. mid has 9.70.
+
+**And the stroke is comfortable.** Each pogo runs 8.00 free to 5.70 bottomed (datasheet
+YZF0002-38080-02, read 2026-09-30), so at a 12.80 span the pair sits at 6.40 each, inside
+the working window with about +-2.3 mm of panel tolerance -- which is what a blind mate
+across two sliding panels wants, and more than the joinery will ever give it.
+
+### What it would cost, and why 9.1 over-priced it
+
+Key's wall has to let four 3.00 x 3.80 bodies through. Two ways:
+
+| | cost |
+|---|---|
+| **notch the wall** | four notches, 45.6 mm2 of aperture total |
+| move the wall 5.30 -X | it crosses fret 9 at -365.68 by 1.62 -- **fret 9 goes unlit** |
+
+⚠ **§9.1 listed "six notches through a light-cell wall" among the costs it was glad to
+delete, and I inherited that without noticing what is on the OTHER SIDE of that wall.** It
+is the seam bay, which has no LEDs in it. A notch there leaks a little of fret 9's light
+into dead space; it is NOT cell-to-cell crosstalk, which is what a notch costs anywhere
+else in the comb. That is a much smaller price than the retraction assumed.
+
+### Still to check before this is reopened
+
+1. **Four pogos across Y**, and whether their pads clear the LED rows at both board ends.
+2. **The optical cost of the notches**, through `check_optics` rather than by argument --
+   fret 9 is the cell that pays and it is already the panel's outermost.
+3. **Alignment.** Tip-to-tip is two R0.50 domes meeting; they need lateral registration the
+   panel joint may or may not give. §9.1's mechanism argument (the deck's slide is a
+   compression joint along the mating axis) still holds, but the LATERAL tolerance does not
+   follow from it.
+4. **Force.** 200 gf x 4 = 800 gf pushing the panels apart, against a dovetail that is not
+   preloaded along X.
+
+None of that is done. What IS established is that the number §9.1 refused on was the wrong
+one, and that the joint fails on a 4.50 mm landing on ONE board rather than on 1.60 mm of
+length across both.
+
 ## 9.2 The layout, and why it routes
 
 The whole board falls out of one observation: **the LED rows at |y| = 10.40 and 30.40 have
