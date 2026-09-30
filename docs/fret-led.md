@@ -895,8 +895,8 @@ Key's wall has to let four 3.00 x 3.80 bodies through. Two ways:
 
 | | cost |
 |---|---|
-| **notch the wall** | four notches, 45.6 mm2 of aperture total |
-| move the wall 5.30 -X | it crosses fret 9 at -365.68 by 1.62 -- **fret 9 goes unlit** |
+| **notch the wall** | four plunger holes, 13.6 mm2 of aperture -- **this is the answer, see 9.1c** |
+| move the wall | ⚠ never needed; the claim that it was came from measuring the wrong side of it |
 
 ⚠ **§9.1 listed "six notches through a light-cell wall" among the costs it was glad to
 delete, and I inherited that without noticing what is on the OTHER SIDE of that wall.** It
@@ -950,28 +950,29 @@ one of the seventeen is 12 V. Our seam carries the 24 V rail, because each board
 own -- so if the joint is to carry power at all, there is exactly one candidate. 9.1 landed
 on the right part for a reason it did not state, having refused it on one that was wrong.
 
-### ⚠ AND THE SETBACK SPLIT DOES NOT RESCUE KEY
+### The setback split, and the constraint that is real but does not bind
 
 The setback is ours to choose, and with a gap g the two only have to satisfy
-**a + b = 12.00 - g** -- so they can be split unevenly, most of it on mid, which has 9.70 mm
-of bay. It does not help, because **the body has to sit on the board**: b >= body length,
-full stop. The minimum land on key is the barrel, **4.50 mm**, however the setback is
-divided. That is what forces key's comb wall back 5.30 and costs fret 9's cell.
+**a + b = 12.00 - g**, so they can be split unevenly. There IS a floor on each side --
+**the barrel has to sit on the board**, so b >= body length, or its rear pads hang over the
+edge with no copper under them. ⚠ **But that floor never binds here**, and §9.1c is the
+measurement: land is counted INBOARD from the barrel's front face, and key's board runs
+211 mm in that direction.
 
 ### The fork that actually decides it
 
-| what crosses the seam | part | key's land | fret 9 | key's cable |
-|---|---|--:|---|---|
-| **everything** | **C5203987** 24 V | 4.50 | **cell lost** | **deleted** |
-| data only, power bussed | C5203974 12 V, body 1.50 | 1.50 | survives (wall moves 2.30, fret 9 is 2.88 away) | still needed |
+| what crosses the seam | part | fret 9 | key's cable |
+|---|---|---|---|
+| **everything** | **C5203987** 24 V | **keeps everything** -- see 9.1c | **deleted** |
+| data only, power bussed | C5203974 12 V | keeps everything | still needed |
 
 C5203974 is the better CONNECTOR by every measure -- 2.5x the stock, half the price, a
 third of the land, 2.80/2.10/2.00 free/working/limit off its drawing. It is the worse
 ANSWER, because a seam that carries only data still leaves key needing a power cable, and
 once that cable exists the joint has stopped earning its keep.
 
-**Recommendation: C5203987, and fret 9's cell is the price.** `SKIP_FRETS` already carries
-fret 1 on a similar trade.
+**Recommendation: C5203987.** §9.1c prices it: four plunger holes through one wall, and
+nothing else moves.
 
 ### One of 9.1's calls that survives
 
@@ -980,6 +981,43 @@ board". **Correct**, and worth recording because JLC files it under side-mount: 
 shows four plungers standing up out of a PA46 housing, 5.50 free / 4.00 working measured
 vertically, over a recommended layout of four 1.60 x 2.30 pads. A 4-way part in one
 placement would have been ideal; it is not available to a coplanar joint, and it is 12 V.
+
+## 9.1c ⚠ SECOND CORRECTION: nothing is given up. Four plunger holes, and that is all.
+
+> "I'm not following why we have to give up fret 9" (user, 2026-09-30)
+
+Right not to follow. **We do not.** Two of my own errors stacked to produce that claim.
+
+**Error one: the land was measured on the wrong side of the wall.** `_probe_seam.py`
+computed key's clear board top between the wall's OUTER face and the board edge -- 0.80 mm
+of overhang, hence negative -- and concluded key needed 4.50 mm it did not have. The barrel
+does not go there. It goes INBOARD, where the board runs 211 mm.
+
+**Error two: the comb was not the one that gets built.** The first corrected run still hit
+44.19 mm3 at x -356.22..-355.25. That is a wall at the fret 9/10 midpoint, and it exists
+only because the probe called `FL.walls()` with no arguments. `top_plate` builds the comb
+PER PANEL, clamped to each panel's range, and no such wall is produced.
+
+Rebuilt the way top_plate does it, with the pogos placed as solids:
+
+    mid comb     CLEAR
+    key comb     21.76 mm3   x -362.80..-361.20   z -14.55..-10.75
+    key board    0.00        mid board   0.00
+    key LEDs     0.00        mid LEDs    0.00
+
+That x span is key's end wall, its whole 1.60 thickness; the z span is the pogo's body
+band. 21.76 mm3 through 1.60 of wall is 13.6 mm2 of cross-section -- **four O2.00 plungers
+passing through one wall**, and 0.05 mm of barrel nose.
+
+**So: the wall stays. Fret 9 keeps its cell, its wall and all four LEDs.** The boards do
+not grow, the setback needs no cleverness, and no LED is touched on either panel. The cost
+of the joint is four holes in the base of one comb wall, into a bay that has no LEDs in it.
+
+⚠ **THIS IS THE THIRD TIME THIS JOINT HAS BEEN PRICED FROM A DERIVATION RATHER THAN AN
+INTERSECTION** -- the pogo contact axis in §9.1, the seam bay in §9.1a, the land here. The
+method note is not advice: put the part where it would go and intersect it. Distances to
+things are not clearances, and a solid built with different arguments than the build uses
+is not the build.
 
 ## 9.2 The layout, and why it routes
 
