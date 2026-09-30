@@ -200,9 +200,29 @@ def finish(stem, rounds=1):
         if not best_n:
             break
         json.dump(nets, open(retry, "w", encoding="utf-8"))
-        _run("layout.py", stem)
-        _run("route.py", stem)
-        _run("repair_planes.py", stem)
+        # ⚠⚠ A FAILED RETRY ROUND MUST NOT TAKE THE GOOD BOARD WITH IT, AND IT DID.
+        # _run raises SystemExit on a non-zero exit, so a round that died anywhere in
+        # layout/route/repair skipped the restore at the end of this function -- and the FIRST
+        # thing a round does is re-run layout, which overwrites <stem>.kicad_pcb with a fresh
+        # UNROUTED board. So a failed round left the baseline in the worst possible state: the
+        # best board existed only as <stem>.best.kicad_pcb, a file nothing else reads, and
+        # elec/out is NOT under git -- there is no second copy anywhere.
+        # Seen for real on optical, 2026-09-29: pass 2 reached 2 unconnected / 0 violations --
+        # the best this board has ever routed -- and pass 3's freerouting produced no session
+        # file, leaving an unrouted optical.kicad_pcb as the committed baseline and the SES
+        # import reference. Recovered by hand from .best.kicad_pcb (byte-identical to
+        # .lastrouted), which is exactly the recovery this makes unnecessary.
+        # A retry round is OPTIONAL WORK: it either improves on what we have or it does not
+        # happen. Failing is 'does not happen', not 'lose the board'.
+        try:
+            _run("layout.py", stem)
+            _run("route.py", stem)
+            _run("repair_planes.py", stem)
+        except SystemExit as exc:
+            print("  ⚠ pass %d FAILED (%s) -- keeping pass %d's board and stopping the "
+                  "retries. The best board is restored below, as if this round never ran."
+                  % (k, exc, k - 1))
+            break
         n, nets_now, v = _drc(stem)
         print("  pass %d: %d unconnected, %d violation(s)" % (k, n, v))
         # ⚠ STRICTLY BETTER OR IT DOES NOT COUNT. A violation is worse than an
