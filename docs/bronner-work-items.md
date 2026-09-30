@@ -3981,3 +3981,42 @@ geometry bug, and check whether a suspicious pair involves anything the live set
 before believing it. ⚠ And a probe that measures a *shell* around a bore cannot see material
 *inside* it — `tools/_probe_pi_spacer` cleared the 1.6 mm annulus, which says nothing about the
 hole, so the insert-vs-housing question needed the assembly to answer.
+
+## J7 OFF THE MOTOR BOARD'S DOWNWARD EDGE — ANALYSIS, NOT YET MOVED (2026-09-29)
+
+> *"the bottom of the motor board has three connectors but the plan is to only use two, one
+> for pedals and one for levers. The third one needs to move elsewhere"*
+
+Board is **61.8 × 55.0**, so local x −30.9..+30.9, y −27.5..+27.5. `stand()` maps **local +X →
+world −Z**, so the **+X edge is the board's underside** — which is exactly the edge the user is
+pointing at, and all three connectors are on it:
+
+| ref | local | what it is | verdict |
+|---|---|---|---|
+| J2 | (24.92, −11.50, 90°) | bus B **IN**, from the pedals | keep |
+| J6 | (24.92, +4.50, 90°) | bus B **OUT**, to the lever chain | keep |
+| **J7** | (24.21, +19.70, 0°) | **5 V to the LED strip** via `pi_cap` J4 | **move** |
+
+J7 is a `B4B-XH-A` with **doubled contacts** — 2 × +5V_LED, 2 × GND — because XH is 3 A per
+contact and the LED load is 2.2 A. `xh_length(4)` = **12.4 mm** of edge needed, and any new
+site must keep all four ways.
+
+**The −X edge has room on paper.** It carries J4 (y −16.50) and J5 (y −2.60); at ±6.2 mm of
+body each that leaves **y +3.6..+27.5 ≈ 23.9 mm** free, comfortably more than 12.4.
+
+⚠ **But local −X is world +Z — the edge the TOP PANEL now captures.** The motor board's M4 was
+deleted this same day in favour of `_mctrl_capture()` pressing on that edge, so a connector
+there sits under the capture rib. J4 and J5 already live on it, so connectors are evidently
+tolerable — **the open question is whether `MCTRL_CAP_L` = 30.0 of rib lands between them or on
+them**, and whether it would land on J7. That has to be measured against
+`mctrl_capture_target()` before anything moves.
+
+⚠ **AND THIS BOARD IS NOT PLACED BY EYE.** `elec/sitesearch.py` exists precisely because this
+board *"keeps being placed by eye and keeps being wrong"* — J2's current site is its
+top-ranked of 672 legal ones. Picking (−25.90, +11.50, 90°) because it looks free is the
+mistake that tool was written to stop. **Run sitesearch for J7, then check the winner against
+the capture rib.**
+
+**Cost:** moving a connector changes the DSN, so a **full route**. Batch it with any other
+motor-board change rather than spending two routes — and the optical route occupies the router
+right now, which is why this tick stops at the analysis.
