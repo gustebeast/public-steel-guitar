@@ -4245,3 +4245,55 @@ measurement is worth keeping even though the copper must not be laid.
 clearance is measured against. Then re-run the dog-leg search at 0.5 mm from the pours, and
 re-open `SAI_FS` on the same basis. Without it, every further search on this board returns
 answers that DRC will reject.
+
+## `repair_search` NOW SEES THE POURS — AND IT AGREES WITH DRC TO FOUR DECIMALS (2026-09-30)
+
+The enabling fix is in (`dc1c1c5`). `Board` parsed segments, vias, pads and edges and had **no
+zone parser at all**, so every clearance number this module has produced was headroom against
+everything except the largest copper feature on the board:
+
+```
+optical pours: 46 filled polygons (35 F.Cu, 10 B.Cu, 1 In1.Cu), 43,527 points
+zone clearance: 0.5000 mm   <- FOUR TIMES the 0.127 netclass rule the search compared against
+```
+
+Three deliberate choices:
+
+* **`_zones()` reads the FILLED polygons, not the zone outline.** An outline can cover the whole
+  board; the `filled_polygon` list is what is actually plated, poured around every existing track
+  and pad, so it is the only shape clearance can honestly be measured against.
+* **`_zone_clearance()` reads `board.design_settings.defaults.zones.min_clearance` from the
+  project file** rather than assuming a number, and each zone's own `(clearance N)` is kept too.
+* **`zone_gap`/`zone_ok` are SEPARATE from `track_gap`.** The two answer to different rules, and
+  folding pours into one "worst gap" for the caller to compare against one rule is *exactly* the
+  mistake that approved the bad dog-leg: the number was true, the rule was wrong.
+
+### ⚠ VALIDATED AGAINST KiCad, NOT BY CONSTRUCTION
+
+The two legs DRC rejected, re-measured by the new code:
+
+| leg | this tool | DRC's reported actual |
+|---|---|---|
+| 1 | **0.4892** | 0.4892 |
+| 2 | **0.0225** | 0.0225 |
+
+Exact to four decimal places, and both now correctly FAIL the 0.5 rule. A parser that merely
+"looked right" would not have matched a second engine this closely.
+
+### ⚠ AND `audit_board` CLAIMED MORE THAN IT CHECKED (`7faa7c4`)
+
+Its note read *"repair tracks re-checked, EVERY segment, against every obstacle class"* — and
+**zones were not among the classes**, because it re-checks through `track_gap`. The
+strongest-worded check in the auditor was overstating itself on the one board whose remaining
+work IS repair tracks. It now calls `zone_gap` as well and fails a repair that clears the
+netclass rule but not the zone rule, naming which.
+
+**Re-audited all three boards under the stricter check — all still green:** optical 15 repair
+tracks / 55 segments, `output_panel` 7 / 9, `motor_ctrl` none. So the existing repairs were
+correct in fact; only the checking was weaker than its own description. That is the good case,
+and it is worth distinguishing from the alternative: had any of those 55 segments been laid
+against a pour, the board would have been shipped on a green audit.
+
+**Every earlier `repair_search` verdict on this board was computed without pours**, so any of
+them can be wrong in either direction — including `SAI_FS`'s "boxed in every time", which was
+already in doubt for being a two-shape search.
