@@ -795,6 +795,12 @@ def _electronics_components():
            ("output_panel", EL.output_panel()),
            ]
     out += UI.parts()
+    # the fret-light boards and their LEDs. The CELLS are not here -- they are deck
+    # geometry, built into top_plate's mid/keyhead panels (src/fret_light.py).
+    from . import fret_light as FL
+    for panel in ("mid", "key"):
+        out.append(("fret_pcb_%s" % panel, FL.pcb(panel)))
+        out.append(("fret_led_%s" % panel, FL.leds(panel)))
     out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
@@ -1709,6 +1715,12 @@ _COLORS = {
     # THE UI RIBBON, fourteen conductors. Grey is what 1.27 flat cable is; conductor 1
     # is its red stripe, which is the only marking an IDC cable carries and the only
     # thing that tells you which way round the plug goes.
+    # named per PANEL, not per index (_color_for strips digits, not words), because
+    # "mid" and "key" are what every other file calls these two boards
+    "fret_pcb_mid":    (0.05, 0.35, 0.15),   # PCB green
+    "fret_pcb_key":    (0.05, 0.35, 0.15),
+    "fret_led_mid":    (0.95, 0.95, 0.88),   # RGBW, lit
+    "fret_led_key":    (0.95, 0.95, 0.88),
     "wire_ui":         (0.55, 0.56, 0.58),
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }

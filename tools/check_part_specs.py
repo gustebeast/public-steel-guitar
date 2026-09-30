@@ -74,6 +74,21 @@ PARTS = [
              "contact face":         (1.2, "src.leg_pogo.TG_FACE_D"),
          },
          "the vertical gold 1 x 4 target on both female boards"),
+    # ⚠ THE FRET LED, AND IT IS HERE BECAUSE THE CODE HAD IT WRONG. src/fret_light.py
+    # carried LED_H = 1.40 "body to its emitting face" from the day it was written; the
+    # listing says 1.6, and so has the footprint's own description since bronner drew
+    # it. Nothing compared them. The height is not cosmetic -- it is the top of the
+    # optical depth h that the whole four-LED spacing solution is solved at, so a
+    # 0.2 mm error moves the uniformity the cells exist to deliver.
+    # Read off the LCSC listing's Features block and its attribute table, 2026-09-30.
+    Part("C7371891", "https://www.lcsc.com/product-detail/C7371891.html", "2026-09-30",
+         {
+             "height (L/W/H 5.0x5.0x1.6)": (1.6, "src.fret_light.LED_H"),
+         },
+         "XINGLIGHT XL-5050RGBW, the per-fret RGBW LED. The same listing settles the "
+         "package question docs/fret-led.md 5.3 left open: \"Installation method: "
+         "Top-mount\", 120 degree viewing angle -- it fires UP out of a clear "
+         "encapsulant, which is what a light cell needs"),
 ]
 
 # SUPERSEDED 2026-09-21 -- the TRRS cable the leg used before the pogo boards. Its
