@@ -718,3 +718,164 @@ def parts(panel):
     return [("fret_cell_%s" % panel, walls(lo, hi).union(ramps(lo, hi))),
             ("fret_pcb_%s" % panel, pcb(panel)),
             ("fret_led_%s" % panel, leds(panel))]
+
+
+# ── THE SEAM JOINT ────────────────────────────────────────────────────────────────────
+# docs/fret-led.md 9.1f. The two boards meet across the deck-panel seam TIP TO TIP: six
+# side-mount pogos on each, on one axis, 1.90 above each board's top face -- the boards
+# are coplanar, so both axes are at the same height by construction. The keyhead board
+# carries the harness plug and the buck; the seam carries +14V, GND and the TLC59711
+# chain from key's last driver into mid's first.
+#
+# Xinyangze YZF0002-38080-02 (LCSC C5203987), off LCSC's own EasyEDA footprint
+# CONN-SMD_YZF0002-38080-02 and the maker's drawing, both read 2026-09-30. Everything
+# is measured from the PAD CENTRE, because that is where elec/ places the part:
+#     pad         5.00 (along the axis) x 3.50
+#     barrel      4.50 x 3.00 x 3.80, centred on the pad: rear face 2.25 BEHIND the
+#                 centre, front face 2.25 AHEAD of it
+#     plunger     O2.00, 3.50 proud of the barrel at free length (8.00 rear-to-tip),
+#                 bottoms at 5.70, rated 200 gf at 6.00
+POGO_MPN = "YZF0002-38080-02"
+POGO_PAD_L, POGO_PAD_W = 5.00, 3.50
+POGO_BODY_L, POGO_BODY_W, POGO_BODY_H = 4.50, 3.00, 3.80
+POGO_AXIS_H = 1.90
+POGO_PLUNGER_D = 2.00
+# ⚠ THE BARREL AS BUILT IS 4.60, NOT 4.50. board_geom extrudes a part's F.Fab to KiCad's
+# bounding box, which includes the outline's 0.10 stroke -- 0.05 proud all round. The
+# plungers start at THAT face, or each one sits 0.05 inside its own barrel and the gate
+# reads 0.94 mm3 per board (tools/_probe_seam.py found it). Geometry of the pogo itself
+# (setbacks, working height) still uses the drawing's 4.50.
+POGO_FAB_STROKE = 0.10
+POGO_FREE, POGO_LIMIT = 8.00, 5.70
+# ⚠ 6.30 AT FLUSH, NOT THE CATALOGUE'S 6.00 -- 9.1e. Bottoming is the failure that
+# cannot be recovered: a pogo at its 5.70 limit is a brass strut holding the panels
+# apart, and no endplate clamping closes that seam. Losing a little force is not.
+POGO_WORK = 6.30
+POGO_STACK = 0.80          # +- the deck stack at the seam, both panels' ribs and the gap
+# key's barrels to key's end wall: elec/fret_led.py's WALL_CLR (0.30), plus 0.05 so its
+# strict float test is not decided by rounding when the two are equal
+POGO_WALL_CLR = 0.35
+POGO_EDGE_MIN = 0.50       # a pad's inboard edge to its board's edge
+POGO_NOTCH_CLR = 0.50      # the plunger's lateral float in its notch, each side
+POGO_PITCH = 4.50          # 4.00 courtyards with 0.50 between -- and 0.45 to the LEDs
+# ⚠ TWO LANES, THREE EACH, AND THE LED ROWS ARE WHAT DECIDE IT. key's pogos stand INSIDE
+# fret 9's cell (its seam end is a comb end, not a bay), so they must sit between LED
+# rows: 13.90 clear between two courtyards, which takes three 4.00 courtyards and not
+# four. The -Y lane is left for the M4 on mid (M4_Y = -28.00 is in it).
+#     centre lane   +14V GND +14V     power doubled, its return in the middle
+#     +Y lane       SCK  GND SDT      each signal beside a ground, loop ~4.5 x 12
+POGO_LANES = ((0.0, ("+14V", "GND", "+14V")),
+              ((LED_Y_IN + LED_Y_OUT) / 2.0, ("SCK_SEAM", "GND", "SDT_SEAM")))
+# (which end of board_span faces the seam, which way is inboard)
+_SEAM = {"mid": (0, 1.0), "key": (1, -1.0)}
+
+
+def pogo_ys():
+    """[(y, net)] the six contacts, -Y to +Y -- the same on both boards, tip to tip."""
+    out = []
+    for yc, nets in POGO_LANES:
+        for i, net in enumerate(nets):
+            out.append((yc + (i - (len(nets) - 1) / 2.0) * POGO_PITCH, net))
+    return sorted(out)
+
+
+def _key_seam_wall():
+    """X of the comb wall at key's seam end -- it straddles the board's +X edge."""
+    lo, hi = panel_range("key")
+    return max(_boundaries([x for _n, x in fret_xs() if lo <= x <= hi], lo, hi))
+
+
+def pogo_sep_flush():
+    """Board edge to board edge across the seam with the two panels BUTTED (9.1e).
+
+    The two insets, derived: a panel length that moves moves this, and the setbacks
+    follow instead of the joint silently leaving preload."""
+    return ((board_span("mid")[0] - panel_range("mid")[0])
+            + (panel_range("key")[1] - board_span("key")[1]))
+
+
+def pogo_set():
+    """{panel: its pads' centre, inboard of its seam edge}.
+
+    The two must SUM to the tip-to-tip span at POGO_WORK, less the flush separation.
+    Key's is the one with a floor that is not the board edge: its barrels stand in fret
+    9's cell and must clear the end wall that straddles the edge. Mid takes the rest."""
+    reach = POGO_WORK - POGO_BODY_L / 2.0            # pad centre to tip
+    total = 2.0 * reach - pogo_sep_flush()
+    wall_in = board_span("key")[1] - (_key_seam_wall() - WALL / 2.0)
+    key = wall_in + POGO_WALL_CLR + POGO_BODY_L / 2.0
+    return {"mid": total - key, "key": key}
+
+
+def pogo_pads(panel):
+    """[(x, y, net)] world pad centres on this board, -Y to +Y."""
+    end, inb = _SEAM[panel]
+    x = board_span(panel)[end] + inb * pogo_set()[panel]
+    return [(x, y, net) for y, net in pogo_ys()]
+
+
+def pogo_fire(panel):
+    """+1 / -1: which way this board's plungers point in world X."""
+    return -_SEAM[panel][1]
+
+
+def _pogo_contact():
+    """World X where the tips meet AS MODELLED -- the panels' modelled 0.05 gap included,
+    so each pogo sits a hair past POGO_WORK here and at it when the panels butt."""
+    return (pogo_pads("mid")[0][0] + pogo_pads("key")[0][0]) / 2.0
+
+
+def pogo_pins():
+    """[(name, solid)] -- the twelve plungers, barrel front to the shared contact.
+
+    The barrels are the boards' own (board_geom reads the pogo's F.Fab); the plungers are
+    here because they leave the board and one set crosses key's end wall."""
+    z = BOARD_TOP + POGO_AXIS_H
+    xc = _pogo_contact()
+    out = None
+    for panel in BOARD_NAME:
+        f = pogo_fire(panel)
+        for x, y, _net in pogo_pads(panel):
+            x0 = x + f * (POGO_BODY_L + POGO_FAB_STROKE) / 2.0
+            c = (cq.Workplane("YZ").circle(POGO_PLUNGER_D / 2.0).extrude(abs(xc - x0))
+                 .translate((min(x0, xc), y, z)))
+            out = c if out is None else out.union(c)
+    return [("fret_pogo_pins", out)]
+
+
+def pogo_notches(x_lo=None, x_hi=None):
+    """The plungers' way through key's end wall -- CUT from the comb.
+
+    Open at the wall's base rather than a round hole: a hole with the plunger's float
+    around it would leave 0.40 of wall under it at a 1.90 axis, half a bead. Open, it
+    needs nothing below it, and in the deck's -Z print direction its roof is printed
+    before the notch starts, so it is not an overhang either. Fret 9 loses six 3.00 x
+    3.40 windows into the seam bay, which has no LEDs in it -- a light trap, not
+    crosstalk."""
+    bx = _key_seam_wall()
+    if x_lo is not None and not (x_lo <= bx <= x_hi):
+        return cq.Workplane("XY")
+    w = POGO_PLUNGER_D + 2.0 * POGO_NOTCH_CLR
+    top = POGO_AXIS_H + POGO_PLUNGER_D / 2.0 + POGO_NOTCH_CLR
+    out = None
+    for y, _net in pogo_ys():
+        c = box_at(WALL + 0.4, w, top + 0.2, x=bx, y=y, z=BOARD_TOP + (top - 0.2) / 2.0)
+        out = c if out is None else out.union(c)
+    return out
+
+
+_ps = pogo_set()
+assert min(_ps.values()) - POGO_PAD_L / 2.0 >= POGO_EDGE_MIN - 1e-9, (
+    "a seam pad hangs within %.2f of its board edge: %s" % (POGO_EDGE_MIN, _ps))
+assert POGO_WORK - POGO_STACK / 2.0 > POGO_LIMIT, (
+    "the seam pogos bottom out at the short end of the stack: %.2f vs %.2f"
+    % (POGO_WORK - POGO_STACK / 2.0, POGO_LIMIT))
+assert POGO_WORK + POGO_STACK / 2.0 < POGO_FREE, "the seam pogos lose contact"
+for _yc, _nets in POGO_LANES:
+    _half = (len(_nets) - 1) / 2.0 * POGO_PITCH + POGO_PAD_W / 2.0 + 0.25
+    _near = min(abs(_yc - _ly) for _ly in LED_YS)
+    assert _near - LED_CRTYD / 2.0 - _half >= 0.30 - 1e-9, (
+        "seam lane at y %.2f comes within %.2f of an LED courtyard"
+        % (_yc, _near - LED_CRTYD / 2.0 - _half))
+assert POGO_PITCH - POGO_PLUNGER_D - 2.0 * POGO_NOTCH_CLR >= D.MIN_WALL, (
+    "the wall between two seam notches is under a bead")
