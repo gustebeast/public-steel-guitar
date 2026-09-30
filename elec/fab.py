@@ -67,7 +67,7 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 # lighting job, the one that fires down at the player's feet; the two were a single
 # strip until the fret work split them.
 BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
-          "optical", "ui_board", "fret_led_mid", "fret_led_key")
+          "optical", "ui_board", "fret_led_mid", "fret_led_key", "foot_led")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
 L2 = "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
@@ -124,6 +124,11 @@ LCSC = {
     "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (led_strip)
     "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (led_strip)
     "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector
+    # ⚠ THE FOOT STRIP'S, AND IT IS THERE FOR ITS HEIGHT. Everything on that board hangs
+    # into a 3.40 mm trough; the PH above is 5.50 tall and does not fit. JST's own
+    # drawing puts the side-entry SH at 2.95. 1.0 A / 50 V against 0.24 A at 24 V.
+    "SM04B-SRSS-TB": "C160404",     # JST SM04B-SRSS-TB(LF)(SN), 4-way side-entry SH,
+                                    # 3,495 in stock 2026-09-30
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the
                                     # (LF)(SN) trap again and not a preference: the BARE

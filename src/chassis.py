@@ -1229,6 +1229,33 @@ def _segments():
         _segmc = _mort_cutters(b - 30.0, a + 30.0)
         if _segmc is not None:
             seg = seg.cut(_segmc)
+        # THE FOOT-LIGHT CHANNEL, clipped to this segment. It stands on the bottom
+        # prism's top face over the light window and the strip SLIDES into it along X
+        # once the chassis is together -- so it is deliberately featureless: nothing in
+        # it is keyed to where a board ends, and the boards do not know where the
+        # segments are (user, 2026-09-30). src/foot_light.py owns every number.
+        from . import foot_light as FL
+        # CUT THE SLOT FIRST, then build the channel into the hole -- see FL.slot_cut.
+        _fs = FL.slot_cut().intersect(
+            box_at(a - b, (FL.RAIL_IN - FL.WALL_Y0) + 4.0, 40.0,
+                   x=(a + b) / 2, y=(FL.WALL_Y0 + FL.RAIL_IN) / 2, z=MB.FLOOR_TOP + 15.0))
+        if _fs.solids().size():
+            seg = seg.cut(_fs)
+        _fc = FL.channel().intersect(
+            box_at(a - b, (FL.RAIL_IN - FL.WALL_Y0) + 4.0, 40.0,
+                   x=(a + b) / 2, y=(FL.WALL_Y0 + FL.RAIL_IN) / 2, z=MB.FLOOR_TOP + 15.0))
+        if _fc.solids().size():
+            seg = seg.union(_fc)
+        # ...and the RELIEF under the component lane, cut AFTER the union: everything on
+        # the strip that is not an LED hangs into a trough the LED's own height sets at
+        # 1.90 mm, which fits a driver and nothing else. 1.50 mm of relief over a 6.50
+        # strip buys 3.40 and is what lets the connector and the buck's inductor exist.
+        _fr = FL.relief().intersect(
+            box_at(a - b, (FL.RELIEF_Y1 - FL.RELIEF_Y0) + 4.0, 20.0,
+                   x=(a + b) / 2, y=(FL.RELIEF_Y0 + FL.RELIEF_Y1) / 2,
+                   z=MB.FLOOR_TOP - 5.0))
+        if _fr.solids().size():
+            seg = seg.cut(_fr)
         segs.append(_largest(seg))
     return segs
 

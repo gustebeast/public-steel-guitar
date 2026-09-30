@@ -336,3 +336,26 @@ cables are what replaced it. Nothing about the panel slide has to make electrica
 
 ⚠ **Every part on these boards stands inside a light cell except the bay's.** Do not add
 anything tall to the fret field without asking what it does to that cell's floor bounce.
+
+
+## Foot lighting strip (2026-09-30)
+
+Two boards of one design, end to end in a channel on the chassis bottom, firing down
+through the light window. **It goes in before the −X endplate.**
+
+1. **Join the two boards with the SH jumper**, outside the instrument: the −X board's J2
+   to the +X board's J1. Attach the −X board's J1 cable at the same time.
+2. **Assemble the chassis, leaving the −X endplate off.**
+3. **Slide the pair in from −X, far board first**, until the −X board's end is flush with
+   the window's −X end. The channel holds it on five faces; nothing screws down.
+4. **Run the J1 cable to the Pi daughter board** and plug it.
+5. **Fit the −X endplate**, which closes the channel and is what stops the strip sliding
+   back out.
+
+⚠ **The +X board's J2 is a spare** — it exists because both boards are the same part
+number. Leave it unplugged.
+
+⚠ **Nothing on these boards may stand more than 3.40 mm off the PCB.** The channel's
+trough is 1.90 (the LED sets it) with a 1.50 relief under the component lane, and the
+board is installed face DOWN. That is why the connectors are JST SH rather than the PH
+used everywhere else on the instrument.

@@ -74,6 +74,8 @@ import skidl  # noqa: E402
 from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 
 import netcheck  # noqa: E402
+import placecheck  # noqa: E402
+from placecheck import check_placement  # noqa: E402
 
 P = Pin.types.PASSIVE
 
@@ -180,129 +182,24 @@ ZONE_OUTS = {-1: (5, 6, 7, 8), 0: (3, 4, 17, 18), 1: (13, 14, 15, 16)}
 COLOURS = ("R", "G", "B", "W")
 
 
-# ── the placement check ──────────────────────────────────────────────────────────────
-# ⚠ THE FIRST ROUTED BOARD CAME BACK WITH ELEVEN COURTYARD OVERLAPS, FOUR CLEARANCE
-# VIOLATIONS AND A GND/+14V SHORT -- AND EVERY ONE OF THEM WAS IN THE BAY. The 92-LED
-# fret array, which is generated, routed clean on the first attempt; the twelve parts
-# I positioned BY HAND from remembered package sizes did not. The inductor's land is
-# 4.6 x 4.5, not the 4.0 x 4.0 its part number says, and the 6-way PH's courtyard is
-# 17.2 long -- the fuse sat inside it.
+# ── the placement checks ─────────────────────────────────────────────────────────────
+# Both live in elec/placecheck.py now, because the foot-light strip needs the same two
+# and a second copy is how two files stop agreeing. See that module for what each one
+# caught and why it runs before the netlist rather than after the route.
 #
-# So the board module reads the courtyards out of the footprint files and refuses to
-# write a netlist whose placements overlap. That is the same bargain the rest of this
-# directory makes: a checker beats a round trip through DRC, and a number nobody typed
-# cannot be mistyped.
-_FP_DIRS = [os.environ.get("KICAD10_FOOTPRINT_DIR")
-            or r"C:\Program Files\KiCad\10.0\share\kicad\footprints",
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "footprints")]
-
-
-def _fp_box(fpid, layer="F.CrtYd"):
-    """(w, h) of a footprint's outline on `layer`, read from the .kicad_mod."""
-    import re
-    lib, name = fpid.split(":")
-    for d in _FP_DIRS:
-        path = os.path.join(d, lib + ".pretty", name + ".kicad_mod")
-        if os.path.isfile(path):
-            break
-    else:
-        raise KeyError("no footprint file for %s" % fpid)
-    txt = io.open(path, encoding="utf-8").read()
-    xs, ys = [], []
-    for blk in re.findall(r"\(fp_(?:line|rect|poly|circle|arc)\b(.*?)\)\s*(?=\(fp_|\(pad|\)\s*$)",
-                          txt, re.S):
-        if layer not in blk:
-            continue
-        for a, b in re.findall(r"(-?\d+\.?\d*)\s+(-?\d+\.?\d*)\)", blk):
-            xs.append(float(a))
-            ys.append(float(b))
-    if not xs:
-        raise KeyError("%s has no %s" % (fpid, layer))
-    return max(xs) - min(xs), max(ys) - min(ys)
-
-
-def _boxes(place, fps):
-    out = {}
-    for ref, (x, y, rot) in place.items():
-        w, h = _fp_box(fps[ref])
-        if round(rot) % 180:
-            w, h = h, w
-        out[ref] = (x - w / 2.0, x + w / 2.0, y - h / 2.0, y + h / 2.0)
-    return out
-
-
-MIN_GAP = 0.30
-
-
-def check_placement(name, place, fps, exempt=(), min_gap=MIN_GAP):
-    """No two courtyards may come within `min_gap`. Raises with the pair and the gap.
-
-    ⚠ IT TESTED OVERLAP AND THAT WAS NOT ENOUGH. The first version asked only whether two
-    courtyards intersected, and a bay that passed it left a 0.10 mm LANE between a 1206's
-    courtyard and the 0402 beside it -- legal, and nowhere near enough room for the router
-    to bring a stitch via down to the plane. The board came back with a via 0.1084 mm from
-    a GND track against a 0.127 floor. A gap of zero is a placement that has handed the
-    router an impossible job and called it legal."""
-    ok = {frozenset(e) for e in exempt}
-    boxes = _boxes(place, fps)
-    bad = []
-    refs = sorted(boxes)
-    for i, a in enumerate(refs):
-        for b in refs[i + 1:]:
-            if frozenset((a, b)) in ok:
-                continue
-            ax0, ax1, ay0, ay1 = boxes[a]
-            bx0_, bx1_, by0, by1 = boxes[b]
-            # the gap between two boxes is the LARGER of the two axis separations: they
-            # clear each other if EITHER axis does
-            gap = max(max(ax0, bx0_) - min(ax1, bx1_), max(ay0, by0) - min(ay1, by1))
-            if gap < min_gap - 1e-6:
-                bad.append("%s/%s %s %.2f" % (a, b, "overlap" if gap < 0 else "gap", gap))
-    if bad:
-        raise AssertionError(
-            "%s: %d courtyard pair(s) closer than %.2f mm -- %s\nFix the placement here; "
-            "DRC will report the consequence forty minutes later, somewhere else."
-            % (name, len(bad), min_gap, ", ".join(bad[:8])))
-    return boxes
-
-
-# ⚠ AND THE DECK IS A KEEP-OUT THE DRC CANNOT SEE. Each board sits inside its panel's
-# light-cell comb, and the comb hangs a 1.60 mm wall down onto the board's top face at
-# EVERY fret boundary. Nothing in the PCB pipeline knows those exist: DRC compares
-# copper to copper, so a driver's decoupling cap can be placed squarely under a wall and
-# every electrical check passes. It only surfaces in the CAD overlap gate, an hour and a
-# build later, as a part-versus-deck collision.
-#
-# It is not hypothetical -- the first placement put each driver's passives at xd +-4.8
-# and +-5.0, and at the 9.14 mm pitch between frets 24 and 23 that is 0.05 mm INSIDE the
-# wall. The tightest gap leaves 3.77 mm either side of a fret centre, so every part in
-# the fret field has to live inside that.
-#
-# The BODY is the test, not the courtyard: a wall may stand over copper (it lands on the
-# solder mask and nothing cares), but it may not stand over a part. F.Fab plus 0.3.
-WALL_CLR = 0.3
-
-
+# check_spans is the deck-wall check, given this board's own walls: the comb hangs a
+# 1.60 mm wall onto the board's top face at EVERY fret boundary, which no DRC can see.
 def check_walls(name, place, fps, walls, bay_x1, cx):
-    """No part's BODY may sit under one of the deck comb's walls."""
+    """No part's BODY may sit under one of the light-cell comb's walls."""
     from src import fret_light as _FL
-    bad = []
-    for ref, (x, y, rot) in sorted(place.items()):
-        if x + cx <= bay_x1:
-            continue                      # the bay is outside the cells by construction
-        w, h = _fp_box(fps[ref], "F.Fab")
-        if round(rot) % 180:
-            w = h
-        x0, x1 = x + cx - w / 2.0 - WALL_CLR, x + cx + w / 2.0 + WALL_CLR
-        for bx in walls:
-            if x0 < bx + _FL.WALL / 2.0 and x1 > bx - _FL.WALL / 2.0:
-                bad.append("%s at x %.2f under the wall at %.2f" % (ref, x + cx, bx))
-    if bad:
-        raise AssertionError(
-            "%s: %d part(s) under a light-cell wall -- %s\nThe deck hangs a %.2f wall at "
-            "every fret boundary onto this board's top face; DRC cannot see them and the "
-            "CAD gate will, an hour from now."
-            % (name, len(bad), "; ".join(bad[:8]), _FL.WALL))
+    spans = [(bx - _FL.WALL / 2.0, bx + _FL.WALL / 2.0) for bx in walls]
+    bay = {r for r, (x, _y, _rot) in place.items() if x + cx <= bay_x1}
+    placecheck.check_spans(name, {r: (x + cx, y, rot)
+                                  for r, (x, y, rot) in place.items()},
+                           fps, spans, clr=WALL_CLR, axis=0, skip=bay)
+
+
+WALL_CLR = 0.3
 
 
 def _r(ref, value, desc, fp=R_FP):
