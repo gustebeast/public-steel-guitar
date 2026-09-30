@@ -1670,8 +1670,7 @@
       "these under the table and refuses to call the number complete while any remain."
     ],
     "psu": "No power supply is specified anywhere in this project. BOM.md says so too. The slew budget that would size it is unmeasured (docs/design-validation.md B7).",
-    "wire": "Harness wire is ~$35 in BOM.md as an estimate, excluding the ten control drops. Not itemised here because the cut lists exist per-cable and nobody has totalled them.",
-    "connectors": "XH/PH/ZR housings, crimps and the pogo parts. Counted by elec/part_totals.py, not yet priced here."
+    "wire": "Harness wire is ~$35 in BOM.md as an estimate, excluding the ten control drops. Not itemised here because the cut lists exist per-cable and nobody has totalled them."
   },
   "parts_by_footprint_substring": {
     "_note": [
@@ -1896,5 +1895,67 @@
       "will run HIGHER than 0.60; a large hollow one lower. Slicing a second part -- a",
       "knee housing, say -- would show whether one factor is honest for the whole set."
     ]
+  },
+  "connectors": {
+    "_note": [
+      "Housings and crimp contacts, DERIVED from the board headers by",
+      "tools/lcsc_prices.py -- one housing per header, one contact per way -- and",
+      "priced at the order quantity. No netlist holds these: a harness is not a",
+      "schematic, which is why this category used to be reported as not counted."
+    ],
+    "C140573": {
+      "usd": 0.0099,
+      "verified": "v",
+      "per_instrument": 150.0,
+      "what": "SXH-001T-P0.6 -- JLCPCB parts API at qty 1500"
+    },
+    "C111515": {
+      "usd": 0.0068,
+      "verified": "v",
+      "per_instrument": 156.0,
+      "what": "SPH-002T-P0.5S -- JLCPCB parts API at qty 1560"
+    },
+    "C493083": {
+      "usd": 0.0352,
+      "verified": "v",
+      "per_instrument": 17.0,
+      "what": "XHP-4-M -- JLCPCB parts API at qty 170"
+    },
+    "C157950": {
+      "usd": 0.029,
+      "verified": "v",
+      "per_instrument": 12.0,
+      "what": "PHR-8 -- JLCPCB parts API at qty 120"
+    },
+    "C144407": {
+      "usd": 0.0337,
+      "verified": "v",
+      "per_instrument": 10.0,
+      "what": "XHP-8 -- JLCPCB parts API at qty 100"
+    },
+    "C263995": {
+      "usd": 0.0196,
+      "verified": "v",
+      "per_instrument": 16.0,
+      "what": "SSH-003T-P0.2-H -- JLCPCB parts API at qty 160"
+    },
+    "C157952": {
+      "usd": 0.0202,
+      "verified": "v",
+      "per_instrument": 10.0,
+      "what": "PHR-6 -- JLCPCB parts API at qty 100"
+    },
+    "C2962275": {
+      "usd": 0.0251,
+      "verified": "v",
+      "per_instrument": 4.0,
+      "what": "HC-1.0-4Y -- JLCPCB parts API at qty 40"
+    },
+    "C144401": {
+      "usd": 0.02,
+      "verified": "v",
+      "per_instrument": 1.0,
+      "what": "XHP-2 -- JLCPCB parts API at qty 10"
+    }
   }
 }
