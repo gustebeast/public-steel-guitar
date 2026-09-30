@@ -119,6 +119,11 @@ HEIGHT = {
     "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": 0.90,  # TI RNX0012B outline, 0.8 +0.1
     "L_Sunlord_SWPA4030S": 3.00,                    # SWPA4030 = 4.0 x 4.0 x 3.0
     "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
+    # ⚠ THE FOOT STRIP'S CONNECTOR, AND THIS NUMBER IS THE REASON IT IS AN SH. Read off
+    # JST's own SH catalogue drawing (side entry type, side view: 6.25 long x 2.95 tall),
+    # not a catalogue attribute -- the whole board hangs into a 3.40 mm trough and the
+    # 5.5 PH above does not fit. See src/foot_light.py.
+    "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal": 2.95,
 }
 # a top-entry XH with its XHP plug seated: 9.8 over the board (JST's "assembled board
 # height"), which is what a housing has to leave room for -- see solid(mated=True)
@@ -201,6 +206,9 @@ TAIL = {
     "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": 0.0, "L_Sunlord_SWPA4030S": 0.0,
     "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": 0.0,
     "C_1206_3216Metric": 0.0, "Fuse_1206_3216Metric": 0.0,
+    "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal": 0.0,   # SMT, like everything on
+                                                               # the foot strip: it has
+                                                               # 1.90 mm under it
 }
 
 
