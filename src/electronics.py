@@ -1663,12 +1663,36 @@ def op_pt(ref: str):
 
     ⚠ IT RETURNS THE BODY'S FAR FACE ALONG +Y FOR EVERY REF, which is right for the
     connectors the harness actually uses (J7, J9, J10 exit +Y) and not for the -X three.
-    Those need their own exit vector before wiring.py routes a lead to one."""
+    Those have their own exit point: op_mouth()."""
     cx, cy, cz = op_origin()
     f = BG.footprint("output_panel", ref)
     x0, x1, y0, y1 = f["fab"]
     h = BG.HEIGHT[BG.fp_name(f["fpid"])]
     return (cx + (x0 + x1) / 2.0, cy + y1, cz + _OP_T + h / 2.0)
+
+
+OP_EDGE_REFS = ("J2", "J3", "J4")       # the -X-facing USB receptacles (elec EDGE_REFS)
+
+
+def op_mouth(ref: str):
+    """World (x, y, z) of the MOUTH of one of the output board's -X-facing USB receptacles:
+    the -X face of its body, mid-body across it, on the shell's axis. Where a plug seats.
+
+    ⚠ THIS EXISTS BECAUSE BOTH CABLES THAT PLUG IN HERE GOT IT WRONG THE SAME WAY, and
+    nothing could see it. Each computed the mouth as `op_origin()[0] - OP_BOARD_X / 2`,
+    commented "the board's -X edge". It is the tip of the M4 MOUNTING EAR: export_geom
+    centres the board frame on the ear-inclusive bounding box, so half its width lands on
+    the ear, and the ear is at the -Y corner, nowhere near J2 or J4. Measured 2026-09-30:
+    both leads stopped 10.000 mm short of their sockets, and wire_usb also sat 7.300 mm
+    off J2's axis because op_pt() hands back the body's +Y face. A plug that stops short
+    of its socket overlaps nothing, so no gate had an opinion. The -X growth only made it
+    findable by moving the edge and asking who had been reading it."""
+    assert ref in OP_EDGE_REFS, "%s does not face -X; its lead leaves via op_pt()" % ref
+    cx, cy, cz = op_origin()
+    f = BG.footprint("output_panel", ref)
+    x0, x1, y0, y1 = f["fab"]
+    h = BG.HEIGHT[BG.fp_name(f["fpid"])]
+    return (cx + x0, cy + (y0 + y1) / 2.0, cz + _OP_T + h / 2.0)
 
 
 # ── MOTOR CONTROLLER PCB ─────────────────────────────────────────────────────

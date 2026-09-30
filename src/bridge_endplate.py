@@ -1255,7 +1255,12 @@ def op_cradle():
     _pyc = _hl - _pad / 2.0
     cr = cr.cut(box_at(_pad + 0.02, _pad + 0.02, standoff + 0.01,
                        x=-_hw + _pad / 2.0, y=_pyc, z=standoff / 2.0))
-    _PY_X0 = -17.85 - rcx                           # the moved pad's -X edge, cradle frame
+    # the moved pad's -X edge, cradle frame: 0.34 mm past J2's body, READ OFF J2.
+    # ⚠ IT WAS THE LITERAL -17.85, i.e. J2's body end (-18.19) plus 0.34 as the board stood
+    # on 2026-09-21. The -X growth moved J2 12 mm relative to everything else (its mouth
+    # rides the -X edge), so the literal would have silently re-described an empty patch of
+    # board. Derived, it stays "the clear strip past J2" whatever the outline does.
+    _PY_X0 = _BG.footprint("output_panel", "J2")["fab"][1] + 0.34 - rcx
     cr = cr.union(box_at(_pad, _pad, standoff, x=_PY_X0 + _pad / 2.0, y=_pyc,
                          z=standoff / 2.0))
     # 45 DEG GUSSETS under the -X pads. This part builds -X off a bed at the panel face, so
