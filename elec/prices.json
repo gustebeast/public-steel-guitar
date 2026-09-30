@@ -1667,7 +1667,7 @@
     "pi4_2gb": {
       "usd": 55.0,
       "verified": "v",
-      "what": "Raspberry Pi 4 Model B 2GB -- PiShop $55.00 2026-09-30, SKU 2GB-9003. NOT a Pi 5: BOM.md line 478 swapped it and this table had not caught up. \u26a0 THE 2GB LISTING CAPS AT ONE UNIT PER ORDER. That cap is PER SKU, not a vendor policy -- the 1GB (SKU 1GB-9002) is $35.00 with a cap of TEN. So the choice of 2GB costs $20 an instrument AND forces ten separate orders; 1GB would do neither. Whether 1GB is enough for Dexed + USB gadget + USB host is a DESIGN question, not a sourcing one -- raised with bronner, unchanged here until it is answered."
+      "what": "Raspberry Pi 4 Model B 2GB -- PiShop $55.00, SKU 2GB-9003, BOM.md line 478. \u26a0\u26a0 YOU CANNOT BUY TEN. Surveyed 2026-09-30: PiShop max 1 unit; CanaKit max 1 \"per customer, business, location, or related entity\" with multiple orders AUTO-CANCELLED; Adafruit $63.25 and SparkFun $60.00 both cap-free but OUT OF STOCK; Newark no longer available. The cap is on the 2GB SKU across the trade, not one vendor policy, and the anti-circumvention wording rules out the split-orders workaround. BUYABLE IN TEN, all PiShop: 1GB $35.00 (max 10), 4GB $100.00 (no cap), 8GB $165.00. So the ten-instrument choice is 1GB at -$20/instrument or 4GB at +$45/instrument. Which one depends on whether Dexed + USB gadget + USB host fits 1GB -- a DESIGN question, raised with bronner. Price left at 2GB until it is answered."
     }
   },
   "missing": {
@@ -1678,7 +1678,8 @@
     "psu": "PRICED NOW -- Mean Well LRS-150-24 at $20.69 landed, see mechanical.psu_24v_150w. What is still open is the DESIGN question, not the price: the slew budget that would confirm 150 W is enough is unmeasured (docs/design-validation.md B7).",
     "wire": "LENGTH IS MEASURED NOW, PRICE IS NOT. tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had. Its ~$35 estimate implies $2.29/m, far above hookup-wire rates -- almost certainly because you buy SPOOLS, not metres. Needs one product page and a spool-count, not another estimate.",
     "tariff_uncollected": "The motors are the exposure. Makerbase ships them from China collecting no tax and no duty at checkout, so $339.90 of an order is NOT landed cost. JLCPCB by contrast ships DHL DDP, duty included. See boards/landed.",
-    "pogo": "The leg blind-mate pogo boards (src/leg_pogo.py, RA_N=4 + TG_N=4 pins) are custom PCBs that live outside elec/, so neither the board pipeline nor the connector derivation sees them. Small, but genuinely uncounted."
+    "pogo": "The leg blind-mate pogo boards (src/leg_pogo.py, RA_N=4 + TG_N=4 pins) are custom PCBs that live outside elec/, so neither the board pipeline nor the connector derivation sees them. Small, but genuinely uncounted.",
+    "pi_supply": "BLOCKER FOR A TEN-INSTRUMENT RUN, not a price gap: the specced Pi 4 2GB is allocation-capped at ONE per customer at every vendor that has it, and out of stock at the two that do not cap. See modules.pi4_2gb."
   },
   "parts_by_footprint_substring": {
     "_note": [
