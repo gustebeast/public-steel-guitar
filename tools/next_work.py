@@ -58,7 +58,17 @@ DONE_MARKS = ("✅", "BUILT", "CLOSED", "LANDED", "FINISHED", "SUPERSEDED",
 # row that says "not a BLOCKED corridor" -- a sentence explaining what the problem is NOT,
 # reported as an open item. A marker short enough to appear inside ordinary prose will.
 OPEN_MARKS = ("STILL OPEN", "NOT STARTED", "NOT LANDED", "NOT BUILT", "BLOCKED ON",
-              "FOLLOW-UP", "TODO", "IS A REGRESSION", "STILL A REGRESSION")
+              "FOLLOW-UP", "TODO", "IS A REGRESSION", "STILL A REGRESSION",
+              "UNRESOLVED", "NOT YET DONE", "NEEDS A ROUTE", "OPEN QUESTION")
+# ⚠ AND THE ▶ MARKER IN THE *THING* CELL COUNTS, WHICH ⚠ DOES NOT.
+# The rule above -- "the state cell must say so in words" -- was written against ⚠, and it
+# is right about ⚠: this doc uses that sign for emphasis on FINISHED work at least as often
+# as on unfinished, so it carries no information about status. ▶ / ▶▶ is different: the doc
+# uses it for exactly one thing, "this is the next item", and it is written in the thing cell
+# rather than the state cell. Ignoring it meant the table could name five next-items and this
+# tool would surface one, which is the one job it has. DONE_MARKS still vetoes, so a row that
+# gets finished and keeps its arrow drops out on its own.
+NEXT_MARK = "▶"
 
 
 def _done(title, body):
@@ -105,7 +115,9 @@ def table_rows(text):
         state = cells[1].upper()
         if any(m in state for m in DONE_MARKS):
             continue
-        if any(m in state for m in OPEN_MARKS):
+        if any(m in cells[0].upper() for m in DONE_MARKS):
+            continue
+        if any(m in state for m in OPEN_MARKS) or NEXT_MARK in cells[0]:
             out.append((cells[0], cells[1]))
     return out
 
