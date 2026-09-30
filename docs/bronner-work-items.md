@@ -4394,3 +4394,35 @@ existing repair was leaning on the wrong geometry.
 ⚠ **THIS INVALIDATES EVERY EARLIER `repair_search` VERDICT NEAR A ROTATED PAD**, on every board.
 `SAI_FS`'s "boxed in every time" is now suspect on a THIRD independent count — two shapes only,
 zone-blind, and pad capsules 90° off. Re-run it.
+
+### VDDIO CANNOT BE CLOSED BY A POST-ROUTE REPAIR — IT IS AN UPSTREAM FIX (fully quantified)
+
+With the pad geometry finally correct, U7.9's situation is measured rather than guessed:
+
+| question | answer |
+|---|---|
+| can a track leave the pad? | **yes** — 18 of 24 headings legal at r 0.15, best +0.2160 mm |
+| how far does the corridor run? | **~1.05 mm**, then the neighbours' escape vias close it (r 1.2 → 0 legal) |
+| nearest own `+3V3D` F.Cu copper | **3.094 mm** — outside the corridor |
+| straight hop to own copper | 0 of 10 nearest legal |
+| F.Cu dog-leg to own copper | **0 legal** |
+| via inside the corridor | **none at any size** — Ø0.60 −0.0303, Ø0.50 +0.0197, Ø0.45 +0.0447, Ø0.40 +0.0697, all under the 0.127 rule |
+| and the board's own rule | `min_via_diameter` = **0.6**, so shrinking one breaks the fab class as well |
+
+So the pin can get out and then has nowhere to go: the corridor is real but dead-ends before it
+reaches either its own copper or a legal via site. **No post-route repair closes this.**
+
+**The fix is upstream, and there are two candidates:**
+
+1. **`escape_runs` for VDDIO** — the project's designed mechanism for exactly this, already used
+   for `U6.38`. It hands the ROUTER the escape so it lays it knowing the neighbours, instead of
+   us threading copper after the fact. ⚠ Note the recorded hazard: a hand-typed `escape_runs`
+   polyline is what put copper through the mounting holes, because no guard consults it. Any
+   entry here wants a guard that checks it against the pads and pours — which now exists, since
+   `repair_search` can finally measure both correctly.
+2. **A placement nudge** so ULPI_D4/D5's escape vias stop boxing pin 9 in. More disruptive.
+
+⚠ **Either costs a full route, and a re-route invalidates the `+3V3D` dog-leg at U6.36**, which
+is position-dependent post-route copper and would need re-searching against the new board. The
+bring-up pads no longer need that treatment — they self-search at placement time now — so the
+dog-leg is the only artefact that has to be re-derived.
