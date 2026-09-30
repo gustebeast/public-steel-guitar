@@ -4850,3 +4850,32 @@ board near its routing limit".
 ⚠ **The electrical gap is separate and still real:** U11's V+ has no bypass within 7.72 mm and it
 feeds the mid-rail reference for twenty TIAs. Whatever happens to the routing, that wants fixing
 in a rework rather than by wedging a part into a full region.
+
+## ⚠ CORRECTION: THE MOUNTING HOLES DID NOT BREAK THE ROUTING (user, 2026-09-30)
+
+User: *"It surprises me that the holes you added would break the routing you had working before,
+they are in places that weren't used."* **They are right, and the "holes broke the route" framing
+was mine and is not supported by anything.**
+
+Measured on the current board — distance from each hole's EDGE to the nearest routed copper:
+
+| hole | nearest track | nearest via |
+|---|---|---|
+| Ø4.40 at (83.09, 15.53) | **7.716 mm** (`MID`) | 7.541 mm |
+| Ø4.40 at (83.09, 127.84) | **1.866 mm** (`GND`) | 1.691 mm |
+
+Both sit in unused space, neither is near the ULPI fan or the TIA row where every failure actually
+lives, and their keepouts (r 2.800 against a hole of r 2.20, so 0.6 mm of margin) leave over a
+millimetre of slack even at the closer one. **They took nothing the router wanted.**
+
+**What really happened is one specific, documented conflict:** a hand-typed `escape_runs` polyline
+(U6.38) crossed a hole, and `route.py` freezes pre-laid wire as `(type fix)`, so the router could
+not move it. That is two DECLARED things colliding — the escape run and the keepout — not the
+holes crowding anything. The hole's keepout was verified correct at the time.
+
+⚠ **The lesson is about attribution.** The board went from 0/0 to worse across a window in which
+the holes, the six bring-up pads, the five SHDNZ pull-ups and several placement moves ALL landed.
+The holes were the most visible change, so they got the blame; nothing ever measured them. The
+same window is the one where post-route artefacts were found to rot, which is a sufficient
+explanation on its own. **A coincidence in time is not a cause, and this file should not have
+implied one.**
