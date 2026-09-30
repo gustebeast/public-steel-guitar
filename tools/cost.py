@@ -212,12 +212,25 @@ def _by_substring(fpid, prices):
 
 
 def board_fab_cost(geom, layers, boards_in_order, prices):
-    """Fab + assembly for ONE board type across the whole ten-instrument order."""
+    """Fab + assembly for ONE board type across the whole ten-instrument order.
+
+    Fab is fitted to MEASURED JLCPCB quotes (prices.json boards.fab_quotes), not to a
+    per-board rate. The distinction is the whole correction: JLCPCB prices a BATCH. The
+    first version of this charged a $2.00 minimum per board and came to $200 for a
+    hundred tee boards that really quote $16.60."""
     b = prices["boards"]
     w, h = geom["outline_mm"][0], geom["outline_mm"][1]
     area_cm2 = (w * h) / 100.0
-    rate = b["fab_usd_per_cm2"].get(str(layers), b["fab_usd_per_cm2"]["4"])
-    fab = max(area_cm2 * rate, b["fab_min_usd"]) * boards_in_order
+    m = b["fab_quotes"]["model"]
+    if layers >= 4:
+        k = m["4"]
+    elif max(w, h) <= 100.0:
+        k = m["2_small"]                 # inside JLCPCB's cheap bracket, and it shows
+    else:
+        k = m["2_long"]
+    fab = k["base"] + k["area_rate"] * area_cm2
+    if boards_in_order > 10:
+        fab += k["per_extra_board"] * (boards_in_order - 10)
     joints = len(geom.get("footprints", [])) * 2        # a rough two joints per part
     asm = b["assembly_per_joint_usd"] * joints * boards_in_order
     return fab, asm
