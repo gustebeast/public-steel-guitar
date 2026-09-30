@@ -1355,7 +1355,7 @@ def snap_hairline_gaps(board, eps_mm=0.02):
     return snapped
 
 
-def drop_degenerate(board, floor_mm=0.005):
+def drop_degenerate(board, floor_mm=0.005, width_frac=0.1):
     """Remove tracks too short to be anything, and report how many.
 
     ⚠ A TRACK HAS WIDTH, which is what makes this safe. These fragments are half a
@@ -1363,6 +1363,14 @@ def drop_degenerate(board, floor_mm=0.005):
     touches, the copper already at that spot touches far more of. It can never be the
     only link between two things. Either it is redundant with its neighbours, or there
     are no neighbours and it is an orphan.
+
+    ⚠ SO THE FLOOR IS RELATIVE TO THE TRACK'S OWN WIDTH, which is what the argument above
+    was saying all along while the code compared against a flat 5 microns. A fret LED
+    board came back clean except for one 8.3 micron stub -- above the absolute floor,
+    and 3% of its own 0.25 mm width, so the ratio argument covers it completely and the
+    absolute number did not. `width_frac` 0.1 keeps a segment only if it is at least a
+    tenth as long as it is wide; below that the copper at each end already overlaps the
+    whole of it. The absolute floor stays as a lower bound for hair-thin tracks.
 
     And the orphans are not harmless: an isolated fragment is a separate island of its
     net, so DRC counts it as an unconnected item and a board reads as unfinished because
@@ -1375,7 +1383,8 @@ def drop_degenerate(board, floor_mm=0.005):
     """
     floor = pcbnew.FromMM(floor_mm)
     doomed = [t for t in board.GetTracks()
-              if t.GetClass() != "PCB_VIA" and t.GetLength() < floor]
+              if t.GetClass() != "PCB_VIA"
+              and t.GetLength() < max(floor, t.GetWidth() * width_frac)]
     for t in doomed:
         board.Remove(t)
     return len(doomed)

@@ -1,8 +1,25 @@
-"""Push-to-connect / press-to-release LATCH — shared by both leg joints.
+"""Push-to-connect / press-to-release LATCH.
 
-ONE mechanism, ONE spring SKU, ONE user interface, used at:
-  * leg HEAD  -> body STUB      (you pull the LEG off the body)
-  * bar TOWER -> shaft BLOCK    (you lift the BAR off the legs)
+⚠ THE MECHANISM IS NOT INSTALLED ANYWHERE. Both joints it was drawn for have since
+been given their own latches, and NEITHER builds this one:
+
+  * leg HEAD -> body STUB, where you pull the LEG off the body, is src.leg_latch now,
+    and the old leg family this one was cut into is retired (nothing in build.PARTS
+    reaches leg_head).
+  * bar TOWER -> shaft BLOCK, where you lift the BAR off the legs, is src.bar_latch's
+    collar yoke. pedal_bar.LATCH_FOOT is None, which gates both of this module's call
+    sites there -- set it to a FEET index to put this mechanism back on a tower.
+
+WHAT STILL USES THIS FILE, and why it is not deleted: it owns the SPRING and the
+stroke that both live latches are sized against -- SPR_FREE / SPR_SOLID / SPR_RATE /
+SPR_SEAT, STROKE, and coil() -- so there is still one spring SKU and one feel across
+the instrument. leg_latch and bar_latch both import it for exactly that.
+
+Its own slider and cover were printed parts until 2026-09-23; they are out of
+build.PARTS, the fast-build map and the profiler baseline now, because a part nobody
+prints should not be exported, coloured, checked or profiled.
+
+The mechanism as drawn, for whoever turns it back on:
 
 In both, the piece you REMOVE is the MALE (spigot) half, so the mechanism lives
 in the male and the button sits on the male's own body BELOW the joint line.
@@ -48,7 +65,7 @@ button out, which is exactly why that spring is STEEL and not TPU -- a printed
 elastomer takes a compression set there and the button sinks in over years.
 
 PARTS, per joint: latch_slider + latch_cover (printed) + one steel coil. Both
-printed parts are ONE SKU across both joints -- the head and the tower differ
+printed parts were ONE SKU across both joints — the head and the tower differ
 only in what surrounds them, not in the mechanism.
 
 ASSEMBLY: slider (spring in its blind bore) enters through the male's -Y face
@@ -57,8 +74,11 @@ bottoming on a hard stop. The cover can only come back out UPWARD, which the
 female half blocks once the joint is together -- so with the leg on the body
 (or the bar on the legs) the whole mechanism is captive with zero fasteners.
 
-FRAME: male-local, z0 = the BUTT PLANE (male body top face = female mouth),
--Y = inboard = the button side. Both joints share this frame.
+FRAME: male-local, z0 = the BUTT PLANE (male body top face = female mouth), and
++y = OUTBOARD = the button side (BUTTON_SIDE below); -y is inboard, into the joint.
+Both joints share this frame. The slider measures y 1.60..22.40 in it, which is what
+settles the question -- this line read "-Y = inboard = the button side", which says
+the opposite and disagrees with the geometry.
 """
 
 from __future__ import annotations
@@ -109,6 +129,15 @@ LOW_W = 16 * B                    # 12.8 lower band (pad + load window)
 # placed at +-LX_C.
 LX_HEAD = LX_C                    # leg head <-> body stub
 LX_TOWER = -LX_C                  # bar tower <-> shaft block (mirrored)
+
+BUTTON_SIDE = 1.0                 # the button is at +y IN THIS MODULE'S FRAME. The
+                                  # HOST decides which world side that becomes: the
+                                  # bar poses its tower through a 180 rotation, so
+                                  # there the button lands on -y of the bar's axis.
+                                  # Named because every latch in the instrument must
+                                  # face the same way (user) and this module had no
+                                  # single place saying which way it faces -- see the
+                                  # guard at pedal_bar.LATCH_FOOT.
 
 # ── Y datums (all inboard-negative) ──────────────────────────────────────────
 # The male's outer face is NOT the same on both joints: the head/stub are 44 sq
@@ -525,11 +554,6 @@ def cover(cx: float = LX_C) -> cq.Workplane:
     return b.cut(_cover_lock_pocket())
 
 
-def slider_pressed(cx: float = LX_C) -> cq.Workplane:
-    """The slider RELEASED -- pressed in by STROKE, i.e. away from the face."""
-    return slider(cx).translate((0, -STROKE, 0))
-
-
 # ═══════════════════════════════════════════════════════════════════════════
 # hardware dummy
 # ═══════════════════════════════════════════════════════════════════════════
@@ -541,10 +565,6 @@ def spring_length(pressed: bool = False) -> float:
     """Installed coil length: SEAT (inside the slider's blind bore) + GAP (open,
     to the tunnel's back wall). Pressing the button closes the GAP by STROKE."""
     return SPR_SEAT + SPR_GAP - (STROKE if pressed else 0.0)
-
-
-def spring_force(pressed: bool = False) -> float:
-    return (SPR_FREE - spring_length(pressed)) * SPR_RATE
 
 
 def coil(length: float, base, direction) -> cq.Workplane:

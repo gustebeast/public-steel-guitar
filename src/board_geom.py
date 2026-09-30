@@ -129,7 +129,35 @@ HEIGHT = {
     "L_Bourns-SRN6028": 2.80,
     # the output board's analog rewrite (2026-09-21)
     "TSSOP-14_4.4x5mm_P0.65mm": 1.20,              # PCM1808PWR (TI PW package, 1.20 max)
+    # the UI board (2026-09-25)
+    # THE BODY ONLY -- 8.30, not the catalogue's 10.5, which is over the COLLAR. Read
+    # off Alps' own 3D model (the one LCSC ship with C160841) by slicing its mesh: the
+    # 17 x 17 case tops out at 8.30, a two-step collar carries on to 10.20, and the
+    # D-shaft runs 11.10 to 17.10. src/ui_panel.py draws the collar and the shaft,
+    # because a 17 x 17 box 17 tall would read as a collision with the deck the shaft
+    # passes cleanly through.
+    "Alps_RKJXT1F42001": 8.30,
+    "PinHeader_1x20_P2.54mm_Vertical": 8.54,   # 2.54 insulator + 6.0 of pin
+    # ESTIMATED, NOT READ: a 2.54 right-angle shrouded IDC header. ZHOURI publish no
+    # drawing through LCSC and the KiCad footprint carries no Z. 10.0 is a generous
+    # standard body, and elec/ui_board.py asserts the deck clears it -- CONFIRM IT
+    # AGAINST THE PART BEFORE THE DECK IS PRINTED, because 11.74 is all the room there
+    # is under that panel.
+    "IDC-Header_2x07_P2.54mm_Horizontal": 10.0,
     "Relay_DPDT_Omron_G6K-2F-Y": 5.20,              # Omron G6K-2F-Y: 10 x 6.5 x 5.2 (p.6)
+    # the fret LED boards (2026-09-29). Every one of these stands INSIDE a light cell
+    # unless it is in the bay, so the height is not just a clearance number here -- it
+    # is how much of the cell's floor the part takes out of the bounce.
+    "XINGLIGHT_XL-5050RGBW": 1.60,     # LCSC C7371891: "Dimensions (L/W/H) 5.0x5.0x1.6"
+    "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm": 1.20,   # TI PWP max
+    "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": 0.90,  # TI RNX0012B outline, 0.8 +0.1
+    "L_Sunlord_SWPA4030S": 3.00,                    # SWPA4030 = 4.0 x 4.0 x 3.0
+    "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
+    # ⚠ THE FOOT STRIP'S CONNECTOR, AND THIS NUMBER IS THE REASON IT IS AN SH. Read off
+    # JST's own SH catalogue drawing (side entry type, side view: 6.25 long x 2.95 tall),
+    # not a catalogue attribute -- the whole board hangs into a 3.40 mm trough and the
+    # 5.5 PH above does not fit. See src/foot_light.py.
+    "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal": 2.95,
 }
 # a top-entry XH with its XHP plug seated: 9.8 over the board (JST's "assembled board
 # height"), which is what a housing has to leave room for -- see solid(mated=True)
@@ -214,6 +242,50 @@ PANEL = {
         mouth=(0.0, 1.0), axis_h=6.5, nose=None,
         opening=("rect", 9.6, 11.6, 5.5), mount="through"),
 }
+
+
+# ── TAIL LENGTH BELOW THE BOARD, per footprint ──────────────────────────────────────
+# The other side of HEIGHT, and needed for the same reason: KiCad does not carry it, and
+# a part that has it will go straight through anything mounted against the board's
+# underside. 0.0 means SURFACE MOUNT -- nothing to clear.
+#
+# EVERY FOOTPRINT ON A CHECKED BOARD MUST APPEAR, like HEIGHT, so a new part forces the
+# decision instead of defaulting to "no tail" and being wrong silently. The UI's clamp
+# plate lies against the board and takes a relief under exactly the entries above zero;
+# when that rule relieved EVERY footprint instead, the 0402 reliefs left a 1.38 mm web
+# between two of them.
+TAIL = {
+    "Alps_RKJXT1F42001": 3.5,                    # ten terminals + the position lug
+    "PinHeader_1x20_P2.54mm_Vertical": 3.0,      # Kinghelm's "end connection pin"
+    "IDC-Header_2x07_P2.54mm_Horizontal": 3.0,
+    "R_0402_1005Metric": 0.0, "C_0402_1005Metric": 0.0, "C_0805_2012Metric": 0.0,
+    # the fret LED boards are SURFACE MOUNT THROUGHOUT, and that is a requirement
+    # rather than a preference: the board's underside sits 1.00 mm over the CAN
+    # harness (src/fret_light.py), so a 3 mm through-hole tail would be in the cable.
+    "XINGLIGHT_XL-5050RGBW": 0.0,
+    "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm": 0.0,
+    "Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": 0.0, "L_Sunlord_SWPA4030S": 0.0,
+    "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": 0.0,
+    "C_1206_3216Metric": 0.0, "Fuse_1206_3216Metric": 0.0,
+    "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal": 0.0,   # SMT, like everything on
+                                                               # the foot strip: it has
+                                                               # 1.90 mm under it
+}
+
+
+def tails(board: str):
+    """[(ref, fab, tail)] for every footprint, tail 0.0 for surface mount."""
+    out = []
+    for f in load(board)["footprints"]:
+        if not f["fab"]:
+            continue
+        name = fp_name(f["fpid"])
+        if name not in TAIL:
+            raise KeyError("%s: no TAIL for %s -- say whether it has through-hole legs, "
+                           "because anything against the board's underside has to clear "
+                           "them" % (board, name))
+        out.append((f["ref"], f["fab"], TAIL[name]))
+    return out
 
 
 def holes(board: str):
@@ -321,13 +393,45 @@ def lead_exit(board: str, ref: str):
     return (out, cy, z) if ax == "x" else (cx, out, z)
 
 
-def solid(board: str, mated: bool = False, omit: tuple = ()) -> cq.Workplane:
+def bodies(board: str, refs) -> cq.Workplane:
+    """Just the named parts' bodies, in the board's own frame.
+
+    For a board the CAD wants to draw in more than one colour. The fret LED boards are
+    the case: their 92 LEDs are the point of the part and want to read as LIT, so they
+    come out of solid(skip=...) and back in through here. Two parts, no shared volume,
+    which is what the overlap gate requires of anything drawn twice."""
+    g = load(board)
+    t, want = g["thickness_mm"], set(refs)
+    out = None
+    for f in g["footprints"]:
+        if f["ref"] not in want or not f["fab"]:
+            continue
+        h = HEIGHT[fp_name(f["fpid"])]
+        x0, x1, y0, y1 = f["fab"]
+        z0 = -h if f["side"] == "B" else t
+        b = box_at(x1 - x0, y1 - y0, h, x=(x0 + x1) / 2.0, y=(y0 + y1) / 2.0,
+                   z=z0 + h / 2.0)
+        out = b if out is None else out.union(b)
+    if out is None:
+        raise KeyError("%s has none of %s" % (board, sorted(want)[:6]))
+    return out
+
+
+def solid(board: str, mated: bool = False, omit: tuple = (), skip=()) -> cq.Workplane:
     """The board in its OWN frame: centred on the origin in XY, underside at z = 0, parts
     rising +Z. Every part is its routed F.Fab body extruded to its HEIGHT, and a panel
     connector with a nose gets that too. `mated=True` stands every top-entry XH at its
-    plugged height -- the envelope a housing has to clear, not the bare header."""
+    plugged height -- the envelope a housing has to clear, not the bare header.
+    `skip` names refs to leave out, for a caller drawing them separately (see bodies).
+    ⚠ `omit` AND `skip` ARE NOT THE SAME EXCLUSION, and they arrived from two branches
+    within a day of each other, which is exactly how they would have been collapsed into
+    one by mistake. `omit` means THIS INSTANCE DOES NOT FIT THAT PART -- the strip's last
+    section has no outgoing header -- so nothing draws it and nothing should. `skip` means
+    the part IS fitted and SOMEONE ELSE DRAWS IT, so that it can be a different colour.
+    Merge them and either a DNP part reappears or a lit LED is drawn twice."""
     g = load(board)
     t = g["thickness_mm"]
+    skip = set(skip)
     out = _plate(board)
     missing = sorted({fp_name(f["fpid"]) for f in g["footprints"]
                       if f["fab"] and fp_name(f["fpid"]) not in HEIGHT})
@@ -341,7 +445,7 @@ def solid(board: str, mated: bool = False, omit: tuple = ()) -> cq.Workplane:
             # modelled it projects past the seat and into the chassis (16.4 mm3), which
             # reads as a board that is too long rather than a part that is not there.
             continue
-        if not f["fab"]:
+        if not f["fab"] or f["ref"] in skip:
             continue                               # solder jumpers: flat copper
         h = HEIGHT[fp_name(f["fpid"])]
         if mated and fp_name(f["fpid"]).startswith("JST_XH_") and "Vertical" in f["fpid"]:

@@ -122,7 +122,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import knee_lever as KL
 from . import pedal_bar as PB
-from .helpers import box_at, cyl_y, heal
+from .helpers import box_at, cyl_y, heal, pose_dir
 
 
 # ── throw, arm and the lobe that keeps the feel identical ────────────────────
@@ -140,10 +140,12 @@ ARM_TX     = KL.ARM_TX              # arm depth in X = the bending axis (the foo
 HUB_D      = KL.HUB_D               # Ø10 hub on the axle — unchanged
 LEVER_HW   = KL.LEVER_HW            # ±12.8 in Y (LKL's) — unchanged, so the whole bearing /
                                     # axle / magnet / board stack transfers verbatim
-PAD_LZ     = 88 * KL.D.BEAD         # 70.4 board length along local Z (= guitar Y, the
-                                    # foot's own direction)
-PAD_WY     = 28.0                   # board width along local Y (= guitar X, across)
-PAD_T      = 4.0                    # board thickness
+# THE ARM IS THE PAD (user, 2026-09-21). A separate 28-wide board used to stand on the arm's
+# working face; once the lever widened to 25.6 for the 1.6 recess walls it stood only 1.2 proud
+# a side and read as a stray ledge. The arm's own 25.6 face is the pad now, and the arm runs
+# ARM_TIP further so the foot surface still ends where the board's did.
+PAD_WY     = 2 * LEVER_HW           # 25.6 the working face's width (local Y = guitar X)
+ARM_TIP    = 4.0                    # the arm's reach past ARM_LEN_P (the old board's overhang)
 # Past REST the other way (+theta) nothing but gravity acts, and gravity pulls INTO the spring,
 # so the pedal barely goes there -- the recess still covers a small margin of it.
 REST_OVER_P = 5.0
@@ -162,9 +164,12 @@ LEG_TOP    = LOBE_RC_P + 4 * KL.D.BEAD   # the leg reaches 3.2 past the lobe sta
 # exactly how XS1 came to fall inside a pedal.
 PEDAL_X  = PB.PEDAL_X
 N_PEDALS = PB.N_PEDALS
-assert PAD_WY == PB.PEDAL_W, (
-    f"the pad is {PAD_WY} but the bar lays the stations out on {PB.PEDAL_W} — the "
-    f"bar's spacing and the pedal's own footprint have to be the same number")
+assert PAD_WY <= PB.PEDAL_W, (
+    f"the pad (the arm, {PAD_WY}) is wider than the {PB.PEDAL_W} the bar lays each station "
+    f"out on")
+# ⚠ PB.PEDAL_W (28) is also described as "the pedal's X footprint, marginally wider than its
+# 27.4 housing" -- stale: the housing is 2*HOUS_HW = 36.4 now. It still works (the splices clear
+# every housing by >= 13, measured 2026-09-21), but it is the bar's number to update.
 
 
 def swing(s, deg):
@@ -186,7 +191,8 @@ def _lever() -> cq.Workplane:
     recess per follower — knee_lever's scheme unchanged."""
     hub = cyl_y(HUB_D, 2 * LEVER_HW, y0=-LEVER_HW)
     leg = box_at(ARM_TX, 2 * LEVER_HW, LEG_TOP, x=0.0, y=0.0, z=LEG_TOP / 2)
-    arm = box_at(ARM_TX, 2 * LEVER_HW, ARM_LEN_P, x=0.0, y=0.0, z=-ARM_LEN_P / 2)
+    arm = box_at(ARM_TX, 2 * LEVER_HW, ARM_LEN_P + ARM_TIP, x=0.0, y=0.0,
+                 z=-(ARM_LEN_P + ARM_TIP) / 2)          # the arm's +X face IS the pad
     body = hub.union(leg).union(arm)
     # follower recesses: knee_lever's SWEPT tongue envelope, one per lane (they were plain
     # notches sized to the CARTRIDGE -- 14.8 wide each -- which stripped the leg around the
@@ -196,10 +202,6 @@ def _lever() -> cq.Workplane:
                                         sense=-1, rest_span=REST_OVER_P))
     body = body.union(cyl_y(2 * KL.LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)
                       .translate((0.0, 0.0, LOBE_RC_P)))
-    # PEDAL BOARD: the foot presses -X, so the board's working face is its +X one.
-    body = body.union(box_at(PAD_T, PAD_WY, PAD_LZ,
-                             x=ARM_TX / 2 - PAD_T / 2, y=0.0,
-                             z=-(ARM_LEN_P - PAD_LZ / 2 + 4.0)))
     body = KL.cut_axle_bore(body)
     return heal(body)
 
@@ -212,8 +214,8 @@ def _lever_envelope() -> cq.Workplane:
     hub = cyl_y(HUB_D + 2 * c, 2 * (LEVER_HW + c), y0=-(LEVER_HW + c))
     leg = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), LEG_TOP + c,
                  x=0.0, y=0.0, z=(LEG_TOP + c) / 2)
-    arm = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), ARM_LEN_P + 2.0,
-                 x=0.0, y=0.0, z=-(ARM_LEN_P + 2.0) / 2)
+    arm = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), ARM_LEN_P + ARM_TIP + 2.0,
+                 x=0.0, y=0.0, z=-(ARM_LEN_P + ARM_TIP + 2.0) / 2)   # the arm reaches ARM_TIP further now
     return heal(hub.union(leg).union(arm))
 
 
@@ -360,9 +362,19 @@ def _to_guitar(s):
     The extra 180° about guitar Y is also what keeps this a proper rotation: the
     mapping (+X->-Z, +Y->+X, +Z->+Y) has determinant -1 — a reflection, not a
     pose. Flipping the axle's sign too makes it a rotation again."""
-    return (s.rotate((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), -90.0)
-             .rotate((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), -90.0)
-             .rotate((0.0, 0.0, 0.0), (0.0, 1.0, 0.0), 180.0))
+    for ax, deg in POSE_ROT:
+        s = s.rotate((0.0, 0.0, 0.0), ax, deg)
+    return s
+
+
+POSE_ROT = (((1.0, 0.0, 0.0), -90.0),
+            ((0.0, 1.0, 0.0), -90.0),
+            ((0.0, 1.0, 0.0), 180.0))
+# PRINT ORIENTATION (the record, declared once per part) -- the pedal's arm IS a knee
+# lever arm (it takes its axle bore from cut_axle_bore), so it prints the way that one
+# does and arrives here through the three turns above: local +Y -> guitar -X. Derived
+# rather than written out, so the mapping and the orientation cannot drift apart.
+LEVER_UP = pose_dir(POSE_ROT, KL.LEVER_UP)
 
 
 # the bar's -Y face and top, in guitar coordinates (pedal_bar is drawn at
@@ -516,6 +528,45 @@ def cut_feel_access(piece, x0: float, x1: float):
             continue
         piece = KL.cut_feel_rear(piece, lambda s, x=x: place(pplace(s), x), reach=_BAR_REACH)
     return piece
+
+
+# -- THE TROUGH SPUR --------------------------------------------------------
+# The board bay stops short of the trough, so the plug sits in a sealed pocket with no
+# way out. (The bay used to break into the trough -- _housing still says so -- but the
+# 2026-09-21 board re-spin moved J1, and the bay is derived from the posed hardware, so
+# it followed the board and quietly parted company with the trough. Nothing failed: a
+# cavity that does not reach another cavity is not an overlap, and the gate has no
+# opinion about wires.) The spur is the trough carried DOWN over the bay's own span. It
+# runs along +Y, the build axis, so it is a bore, not a pocket -- no ceiling, no
+# overhang, and it cuts the bridge over the bay from a 41 mm span to 7.45.
+#
+# NO SLACK CLEAT HERE, unlike the knee levers (knee_lever.lace_loop). A cleat was built
+# and then taken out (user, 2026-09-22): a pedal's X station is PRINTED INTO THE BAR
+# (fuse_into_bar), so nothing about it moves, and a stow point for an adjustment that
+# cannot happen is dead weight in the trough. The levers are the adjustable ones -- that
+# request was about them.
+
+
+def _trough_spur(x):
+    """The cutter that joins one station's board bay to the wiring trough."""
+    b = place(board_bay_cutter(), x).val().BoundingBox()
+    y0, y1 = b.ymax - 0.1, PB.LID_Y0 - PB.TROUGH_D + 0.1          # bay -> trough floor
+    z0 = max(b.zmin, PB.TROUGH_Z0)
+    z1 = min(b.zmax, PB.TROUGH_Z1)
+    return box_at(b.xlen, y1 - y0, z1 - z0,
+                  x=(b.xmin + b.xmax) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
+
+
+def cut_wire_ways(piece, x0: float, x1: float):
+    """Cut each station's spur on a fused bar piece.
+
+    After fuse_into_bar, like cut_feel_access, and for the same reason: the spur reaches
+    out of a bay the housing has already been fused around."""
+    for x in PEDAL_X:
+        if x0 <= x < x1:
+            piece = piece.cut(_trough_spur(x))
+    return piece
+
 
 def demo_parts():
     """(name, solid) in GUITAR coordinates — the WHOLE control core at each of the
