@@ -3128,6 +3128,29 @@ BOARD_NOTES = {
         # still overlaps the spine at -18.889 by most of a track width, so the join is
         # untouched, and the gap becomes 0.184 mm.
         ("SAI_FS", "F.Cu", 0.25, [(25.00, -19.31), (24.55, -18.80), (22.30, -18.80)]),
+        # ── +3V3D at U6 pin 36: a DOG-LEG, and the shape is the whole point ──────────
+        # The 2/0 board's remaining unconnected items are two +3V3D pads, and repair_search
+        # reported "0 same-layer paths, 0 via paths" for BOTH. That is the signature of a
+        # broken filter (padsite.py: "40548 of 40548 points failing the same criterion is a
+        # broken test, not a full board"), so it was measured rather than believed -- and the
+        # tool is right about what it TESTS. track_gap at this board's own 0.127 width, against
+        # the 0.127 rule, on every straight hop to the nearest own-net copper:
+        #     U6.36 -> (91.781,142.259) 2.282 mm   gap -0.2135  vs pad [no net]
+        #     U6.36 -> (91.781,145.402) 2.304 mm   gap -0.2135  vs pad [GND]
+        # NEGATIVE -- the straight track would sit INSIDE a pad, by 0.2 mm. Narrowing to
+        # 0.100 recovers only 0.0135, because the obstruction is a pad BODY, not a clearance.
+        # ⚠ BUT repair_search MODELS ONLY TWO SHAPES -- one straight track, or via-plus-spur
+        # (its own docstring: "TWO SHAPES OF REPAIR"). A DOG-LEG ROUND THE PAD IS NOT TRIED,
+        # and that is the obvious move when a single pad is 0.2 mm in the way. Searched with a
+        # knee on 0.1 mm rings: 2 legal paths, and the best has 0.1557 mm of headroom -- which
+        # CLEARS THE SEARCH'S OWN 0.15 MARGIN, so the tool would have accepted this path had it
+        # ever looked for it. The gap is measured at 0.127 width, so the width below must stay
+        # 0.127: the 0.25 the SAI_FS entries use would eat the clearance this was chosen for.
+        # (U7 pad 9, the other break, has NO legal dog-leg at 0.127 -- see the doc. It needs a
+        # third segment, a via smaller than 0.6, or a placement nudge, and it is still open.)
+        ("+3V3D", "F.Cu", 0.127, [(-6.5492, -43.8150),     # U6 pad 36
+                                  (-7.2470, -43.8660),     # the knee, round the blocking pad
+                                  (-8.2190, -42.2590)]),   # its own copper's endpoint
     ] + _shdnz_stubs(),
     "repair_vias": [("SAI_FS", 0.70, -27.41), ("SAI_FS", 6.25, -28.61),
                     ("SAI_FS", 25.00, -19.31)] + _shdnz_vias(),
@@ -3524,12 +3547,27 @@ BOARD_NOTES = {
 # repair's own finding when doing it: NO path from this pin has 0.15 mm of headroom (searched
 # at 0.28, 0.285 and 0.29, boxed in every time), so the answer was 0.143 mm or an unconnected
 # frame clock. The +3V3D and SHDNZ members are NOT implicated and stay.
-SAI_FS_REPAIR_STALE = True
-if SAI_FS_REPAIR_STALE:
+# Repairs that are RECORDED but must not be laid. Each one's analysis is kept beside its
+# coordinates in repair_tracks, because the measurement is the valuable part and re-deriving it
+# costs hours; what is switched off here is only the laying of copper.
+#   SAI_FS  -- fits ONE route and the route has moved since; re-search before re-enabling.
+#   +3V3D   -- the U6.36 dog-leg. It CLOSES the break (DRC: 4 unconnected items -> 2, verified
+#              in place with the real rules) and it costs TWO clearance violations, so it is a
+#              net loss as it stands. ⚠ AND THE REASON IS A HOLE IN repair_search, NOT A NEAR
+#              MISS: its Board parses segments, vias, pads and edges and NOT ZONES, so the
+#              +0.1557 mm headroom it measures is headroom against everything EXCEPT the GND
+#              pour -- and this board's ZONE clearance is 0.5000 mm, four times the 0.127 the
+#              search compares against. Measured after laying: 0.4892 mm (0.011 short) on the
+#              first leg and 0.0225 mm on the second. repair_planes.py does not rescue it.
+#              So a repair on this board has to be searched against the POURS as well, at
+#              0.5 mm, and neither leg of this dog-leg survives that. Re-enable only when the
+#              search knows about zones.
+STALE_REPAIRS = {"SAI_FS", "+3V3D"}
+if STALE_REPAIRS:
     BOARD_NOTES["repair_tracks"] = [t for t in BOARD_NOTES["repair_tracks"]
-                                    if t[0] != "SAI_FS"]
+                                    if t[0] not in STALE_REPAIRS]
     BOARD_NOTES["repair_vias"] = [v for v in BOARD_NOTES["repair_vias"]
-                                  if v[0] != "SAI_FS"]
+                                  if v[0] not in STALE_REPAIRS]
 
 
 def _assert_matches_cad(net_path):

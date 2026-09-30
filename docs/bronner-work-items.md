@@ -4192,3 +4192,56 @@ true impossibility. Re-check it once the dog-leg search exists.
 having taken this board from 0 to 11 unconnected, and a hand-typed `escape_runs` polyline is what
 put copper through the mounting holes — no guard consults it. Post-route repair is the mechanism
 that works on this board; it just needs one more shape.
+
+### THE DOG-LEG WORKS AND IS STILL A NET LOSS — `repair_search` IS BLIND TO ZONES
+
+Searched with a knee on 0.1 mm rings, both legs required to clear the 0.127 rule at 0.127 width:
+
+```
+U6.36 : 2 legal dog-legs   best knee (92.753,143.866) -> (91.781,142.259)
+                           len 2.578 mm, worst gap +0.1557
+U7.9  : 0 legal dog-legs
+```
+
++0.1557 **clears `repair_search`'s own 0.15 MARGIN**, so the tool would have accepted that path
+had it ever tried two segments. Laid on the board and DRC'd **in place, with the real rules**:
+
+| | unconnected items | clearance violations |
+|---|---|---|
+| baseline | 4 | **0** |
+| with the dog-leg | **2** | **2** |
+
+**It closes the U6.36 break — and costs two clearance violations, so it is a net loss.**
+
+⚠⚠ **AND THE CAUSE IS A HOLE IN THE TOOL, NOT A NEAR MISS.** Both violations are against
+**`Zone [GND] on F.Cu`**, reported at **`zone clearance 0.5000 mm`**:
+
+```
+actual 0.4892 mm   (0.011 short)   leg 1
+actual 0.0225 mm                   leg 2
+```
+
+`repair_search.Board.__init__` parses `_segments`, `_vias`, `_pads` and `_edges` — **there is no
+zone parser.** So every clearance number that tool has ever produced is headroom against
+everything *except the copper pours*, and this board's zone clearance is **0.5 mm, four times
+the 0.127** the search compares against. A path can be comfortably legal by the search's
+reckoning and sit 0.0225 mm from the ground pour. `repair_planes.py` does not rescue it.
+
+**So `repair_search` is unreliable in BOTH directions:**
+* **too strict on shape** — no dog-leg, so it reports "0 paths" where a legal two-segment path exists
+* **too lenient on obstacles** — no zones, so the paths it approves can violate a 0.5 mm rule
+
+⚠ **This puts the `SAI_FS` conclusion back in doubt for a second reason.** That note says "no path
+from that pin has 0.15 mm headroom, boxed in every time" — reached with a tool that tries only two
+shapes *and* cannot see the pours. Both halves of its reasoning are now suspect.
+
+**State:** the board is reverted to the verified 2/0 baseline (`optical.best-2unconn-0viol.kicad_pcb`,
+DRC 4 items / 0 clearance, `audit_board` agrees). The `+3V3D` entry is kept in `repair_tracks`
+**with its full analysis** but gated off through the generalised `STALE_REPAIRS` set — the
+measurement is worth keeping even though the copper must not be laid.
+
+**NEXT, AND IT IS THE ENABLING FIX:** teach `repair_search` about zones, from the
+`(filled_polygon ...)` sections, which are the actual filled outlines and therefore the thing
+clearance is measured against. Then re-run the dog-leg search at 0.5 mm from the pours, and
+re-open `SAI_FS` on the same basis. Without it, every further search on this board returns
+answers that DRC will reject.
