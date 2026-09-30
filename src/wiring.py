@@ -1293,7 +1293,18 @@ WIRE_OK = {
                          "leg_junction_pcb", "leg_head"},
     "wire_pwr_hot":   {"output_panel", "tee_pcb", "motor_ctrl"},
     "wire_pwr_gnd":   {"output_panel", "tee_pcb", "motor_ctrl"},
-    "wire_5v":        {"motor_ctrl", "pi5"},
+    # ⚠ pi_cap, NOT pi5, AND IT IS THE SAME FAULT AS THE BUS-B ENTRY BELOW: the declared
+    # far end was the wrong PART. This cable is drawn to EL.pi_cap_pin("J2", n) -- it lands
+    # on the cap's connector, pin by pin -- and pi5 is only what it passes under on the way,
+    # at 0.1 mm3 of graze. Declaring pi5 therefore did two wrong things at once: it made the
+    # cable's real landing on pi_cap read as FOUR unintended overlaps of 40.5 mm3 each, and
+    # it allow-listed the Pi, which is the part a future mistake would most like to hide in.
+    # WIRE_OK is the overlap gate's allow-list as well as a wiring declaration, so a wrong
+    # name here does not just mislabel -- it silences.
+    # pi5 is deliberately NOT added back. The 0.1 mm3 is residual, not designed (the note at
+    # the cable says the under-Pi lane leaves "the three connector-adjacent contacts"), so it
+    # stays visible as the small real thing it is rather than being covered over.
+    "wire_5v":        {"motor_ctrl", "pi_cap"},
     "wire_usb":       {"output_panel", "pi5"},
     "wire_link":      {"motor_ctrl", "pi5"},
     "wire_oled":      {"oled", "pi5"},
