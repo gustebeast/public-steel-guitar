@@ -1199,6 +1199,29 @@ JACK_ACCESS_XY = TP.JACK_POS[0]                 # THE JACK'S OWN POSITION, read 
 JACK_ACCESS_D  = M4.shaft_clr_d                 # 4.4
 # what actually has to fit past the board edge: the KEY, not its clearance hole
 _HEX25_R = 2.887 / 2.0
+# ⚠ ASKED FOR, MEASURED, AND FOUND UNNECESSARY -- DO NOT RE-CUT IT (2026-09-29). The user
+# reported from a render that the pickup height screw looked hard to reach and asked for "a
+# little trim". Both a wider endplate relief and a scallop in the board's -X edge were built
+# and then REVERTED, because the measurement does not support either.
+# tools/_probe_jack_swept.py sweeps the column above each jack head, BEFORE any trim:
+#       O2.887 (the 2.5 mm hex key)  jack 0 CLEAR   jacks 1,2 CLEAR
+#       O4.000                       jack 0 CLEAR   jacks 1,2 CLEAR
+#       O5.000                       jack 0  2.8 mm3 (optical_pcb only)
+#       O6.000                       jack 0 16.2 mm3 (bridge_endplate 9.6 + optical_pcb 6.6)
+#       O8.000                       jacks 1,2 STILL CLEAR
+# ⚠ THE REQUIREMENT IS REACHING THE HEAD, NOT WITHDRAWING THE SCREW (user). A O2.887 key in a
+# O4.0 clear column has 0.56 mm all round. Nothing was ever blocked; the O6.0 figure that
+# started this came from a probe sized for a driver BODY, which was an assumption about the
+# tool, not a requirement. Jack 0 is tighter than jacks 1 and 2 (O4.0 against O8.0) and that
+# asymmetry is real and visible -- it is simply not a problem.
+# ⚠ AND WIDENING WOULD HAVE TAKEN STRUCTURE OUT FOR NOTHING. jack_access is cut through the
+# endplate's PAD, and the comment at that cut says "the pad is structure". This project
+# already settled the principle on pi_cap_relief, where a pocket cost wall strength: the
+# answer is to not need it, not to make it smaller.
+# The scallop in the board's edge would have been 0.725 mm deep at O5.0 and 1.225 at O6.0 --
+# genuinely small, and copper-free until O6.4, where a MID track comes within 0.259 mm -- but
+# it changes Edge.Cuts, which costs a full re-route on a board at 0 violations, and the user
+# confirmed from a top view that the head is reachable as built.
 
 
 

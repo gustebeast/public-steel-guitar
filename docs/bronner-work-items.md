@@ -3568,3 +3568,126 @@ that silently returned empty, a distance metric that disagreed with the guard it
 an assert reading the wrong edge. The geometry was never the hard part. **Verify the verifier:
 make it FAIL on a case you know is bad before believing it passes.** `_assert_mount_heads_clear`
 earned its place by catching C111, R30, TP8 *and* a bug in `padsite.py` itself.
+
+## OPEN ITEMS FROM THE USER, 2026-09-29 (all three found from renders)
+
+### 1. ⚠ THE MOTOR BOARD'S M4 BOSS PRINTS AS AN OVERHANG — and the gate cannot see it
+
+User, from a render: *"the screw boss for the motor board has print overhangs"*. Correct.
+
+`keyhead_cradles._frame` builds it as `_cyl_col(boss_xy, M4.boss_od, ...)` — a Ø9.2 column
+along **local +Z**, and `stand()` maps local +Z → **world +X**. So it is a HORIZONTAL cylinder
+in world, and the cradles now live in `chassis_2`, which prints **Z-up**. A horizontal
+cylinder's underside sweeps from 0° at its sides to **90° at its lowest line**.
+
+⚠ **`check_ceilings --only chassis` reports "no flat ceilings above the threshold".** It is
+blind to this by construction: it looks for FLAT ceilings and a cylinder's underside is
+CURVED, so there is no facet to trip the threshold. The user found from a render what no gate
+in this project can report. **If this gets fixed, the checker wants extending to curved
+downward faces too, or the next one will be found the same way.**
+
+This is the same root as the endplate-vs-chassis print-direction note already in this file:
+geometry shaped for one build axis, then posed onto another.
+
+### 2. ⚠ USER'S PROPOSAL — LET THE TOP PANEL CAPTURE THE MOTOR BOARD, AND DELETE THE SCREW
+
+> *"would it work to add material under it to lift it up so the top is just below the top
+> panel? If so then when you put the top panel on it would lock the motor board in place
+> without needing a screw at all"*
+
+**Strictly better than buttressing the boss, because it DELETES the boss.** It also:
+
+* removes a fastener — the project's stated first priority is fewest tools, then fewest SKUs
+* keeps the one-install-direction rule intact: the board drops in +Z, and the panel closes
+  that direction, which is precisely the job the M4 was doing
+* reuses a part that has to go on anyway
+* makes `MCTRL_HOLD`, the head-clearance cut and `_cut_anchor` all unnecessary, which retires
+  several separately-recorded headaches (the ear that landed in the nut block, the M4x6-vs-x10
+  length, the head buried in the locating wall)
+
+**Three things decide it, and `tools/_probe_mctrl_capture.py` measures them:**
+
+1. **The gap** — how far the board's top edge sits below the panel, i.e. the lift required.
+2. **The root.** ⚠ The board currently passes THROUGH the floor — "its laminate ends 1.00 mm
+   inside the underside" — and the frame's two side walls run down inside the slab, either
+   side of the board's own floor port. *Fused to the chassis those walls ARE the root.*
+   Lifting the board may pull it out of the slot that roots it, and `mctrl_floor_ports()` is
+   cut to its current position. **This is the real risk, not the panel.**
+3. **Whether the panel is actually over the board's footprint** at all.
+
+Also to check: the lever/pedal plugs must stay accessible (the reason this board stands
+upright at all), and the capture gap must be smaller than the lip engagement under the
+board's bottom edge, or the board can still lift off its lip before the panel stops it.
+
+### 3. ⚠ THE PI'S RETENTION SCREW HAS NOWHERE TO GO — USE A PRINTED SPACER INSTEAD
+
+> *"The screw for the pi retention doesn't have room since it needs to avoid interfering with
+> the mortise/tenon system for the levers and not create any sub 1.6mm material down there. I
+> propose adding a printed spacer which covers the distance between the screw head and the
+> PCB. The spacer can be designed to give better retention than the screw head anyway"*
+
+The hold is currently `PI_HOLD = ("+y", 30.0)` → axis world **(−515.5, −68.5)**, with
+`pi_hold_bore()` cutting an anchor from `PI_Z` **down to z −77.45** — 8.5 mm of
+`anchor_min_wall` into the floor slab. That is the depth that collides with the levers'
+mortise/tenon joinery and squeezes the material around it under `D.MIN_WALL_2P`.
+
+⚠ **AND THE EXISTING SEARCH WOULD NOT HAVE CAUGHT IT.** The sweep behind that hold point
+tested the boss, the head and the driver column **above** the floor. Nothing tested what the
+ANCHOR runs into **below** it. `pi_hold_bore` was written because the floor refilled the bore
+— the bore was treated as something to preserve, never as something that has to fit.
+
+**The proposal decouples the two problems:** put the screw where there IS room below, and let
+a printed spacer span from its head across to the board's edge. The spacer is a better
+retainer than a button head anyway — a head laps the laminate by `pcb_hold_overlap()` ≈
+1.30 mm and bears on one small arc, where a printed piece can:
+
+* reach further over the board and spread the clamp over a longer edge run
+* hook the edge rather than just press on it, so it resists lift with a form, not friction
+* be a bead-grid thickness chosen for strength rather than inherited from a fastener
+* put its own screw anywhere the floor allows, since it no longer has to be beside the board
+
+**Design notes when building it:** `cadkit.pcb.pcb_hold_overlap()` gives the baseline to beat;
+retention thickness elsewhere in this file is `3 * D.BEAD` = 2.4 after the user rejected 1.2 as
+under the quality bar; and the spacer must not reintroduce an overhang — it sits in `chassis_2`,
+which prints Z-up.
+
+⚠ **AND `_assert_mount_heads_clear()` MUST LEARN ABOUT IT.** That guard refuses any part under
+a screw HEAD. A spacer deliberately occupies exactly that space, so it will either need
+declaring or the assert will reject the design it is meant to protect.
+
+### 4. ⚠ THE MOTOR BOARD'S DOWNWARD EDGE CARRIES THREE CONNECTORS AND ONLY TWO BELONG
+
+> *"the bottom of the motor board has three connectors but the plan is to only use two, one
+> for pedals and one for levers. The third one needs to move elsewhere"*
+
+The board stands upright and its **+X edge is its underside** (`MCTRL_HOLD`'s note: "THE +X
+EDGE, WHICH STANDS AS THIS BOARD'S UNDERSIDE"). Three connectors sit on it:
+
+| ref | board-local | part | what it is |
+|---|---|---|---|
+| J2 | (24.92, −11.50) | `S4B-PH-SM4-TB` | bus B **IN** — from the pedals at the leg, 5 V | **keep** |
+| J6 | (24.92, +4.50) | `S4B-PH-SM4-TB` | bus B **OUT** — to the lever chain, 5 V | **keep** |
+| **J7** | (24.21, +19.70) | `B4B-XH-A` | **5 V to the LED strip, via pi_cap J4** | **MOVE** |
+
+**J7 is the one to move.** It is a 4-way XH with **doubled contacts** — 2 × +5V_LED and
+2 × GND — because XH is 3 A per contact and the LED load is 2.2 A, so one contact would sit
+at 73 % of rating with no derating allowance. Any new position has to keep all four ways.
+
+**What moving it touches:**
+
+* ⚠ **`mctrl_floor_ports()`** cuts the floor slots from whatever is on the downward edge, by
+  walking the board's length and taking each slice's own x-extent. Removing J7 shrinks that
+  opening — currently 287 mm², already sized as "a thin slot, not a finger hole". Good: less
+  wall removed. But the cut is derived, so it follows automatically; do not hand-edit it.
+* ⚠ **The −Y edge is already spoken for.** J4 was pushed off it with the note "that edge
+  belongs to the bus-B pair alone", so −Y is not a free destination. The remaining candidates
+  are −X (already carrying J4 and J5) and +Y (J3's 24 V inlet is at +Y-ish, x 11.60).
+* The LED cable's run changes with it. That cable already has history: six conductors given
+  identical waypoints collapsed into 15 self-overlap pairs (= C(6,2)), and any re-route needs
+  per-conductor offsets like `CAN_OFF`/`PWR_OFF` in `src/wiring.py`.
+* ⚠ **The LED work is brenner's now** (`docs/led-handoff-brenner.md`). J7 is the motor board's
+  connector so the placement is mine, but the strip end of that cable is theirs — flag it.
+
+Moving a connector changes the DSN, so it costs a **full route** on a board that was 0/0
+before the LED buck went in. Batch it with the top-panel capture work (item 2) if that also
+lands, rather than spending two routes.
