@@ -50,7 +50,7 @@
    "volume_mm3": 640110.6
   },
   "chassis_0_light": {
-   "material": "petg",
+   "material": "pctg",
    "volume_mm3": 15755.0
   },
   "chassis_1": {
@@ -58,7 +58,7 @@
    "volume_mm3": 611110.8
   },
   "chassis_1_light": {
-   "material": "petg",
+   "material": "pctg",
    "volume_mm3": 16598.4
   },
   "chassis_2": {
@@ -66,7 +66,7 @@
    "volume_mm3": 687379.5
   },
   "chassis_2_light": {
-   "material": "petg",
+   "material": "pctg",
    "volume_mm3": 15755.0
   },
   "coil_mandrel": {

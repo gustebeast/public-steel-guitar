@@ -594,17 +594,29 @@
     }
   },
   "print_material_factor": {
-    "usd": null,
-    "factor": 0.45,
-    "verified": "m",
+    "factor": 0.6,
+    "verified": "v",
+    "measured": {
+      "part": "chassis_2",
+      "sliced_g": 540.13,
+      "solid_cm3": 687.4,
+      "density_g_cm3": 1.32,
+      "solid_g": 907.3,
+      "date": "2026-09-30",
+      "by": "user, in the slicer"
+    },
     "what": [
-      "Fraction of SOLID volume that actually becomes filament. Walls plus sparse",
-      "infill: a 4-wall / 15% part lands near 0.40-0.50 depending on how much of it",
-      "is wall. THIS IS A GUESS and it moves the plastic line by more than any",
-      "other single number here -- 5175 cm3 of PETG-GF is 6.8 kg solid and about",
-      "3.1 kg at 0.45. Slice one chassis segment and read the real figure off the",
-      "slicer; that one measurement is worth more than every other estimate in",
-      "this file."
+      "Fraction of SOLID volume that becomes filament. MEASURED, not guessed: the user",
+      "sliced chassis_2 and got 540.13 g against 907.3 g solid, which is 0.595. Rounded",
+      "to 0.60.",
+      "",
+      "Previous value was 0.45, a guess, and it was 25% low -- the plastic line moves",
+      "$109 -> $146 on this one number. Walls dominate a part like the chassis, so it",
+      "packs denser than sparse-infill intuition suggests.",
+      "",
+      "⚠ ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
+      "will run HIGHER than 0.60; a large hollow one lower. Slicing a second part -- a",
+      "knee housing, say -- would show whether one factor is honest for the whole set."
     ]
   }
 }
