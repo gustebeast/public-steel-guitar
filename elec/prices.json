@@ -1667,7 +1667,7 @@
     "pi4_2gb": {
       "usd": 55.0,
       "verified": "v",
-      "what": "Raspberry Pi 4 Model B 2GB -- PiShop $55.00 2026-09-30. NOT a Pi 5: BOM.md line 478 swapped it, and this table had not caught up. Listing caps at ONE unit per order, which a ten-instrument buy has to work around."
+      "what": "Raspberry Pi 4 Model B 2GB -- PiShop $55.00 2026-09-30, SKU 2GB-9003. NOT a Pi 5: BOM.md line 478 swapped it and this table had not caught up. \u26a0 THE 2GB LISTING CAPS AT ONE UNIT PER ORDER. That cap is PER SKU, not a vendor policy -- the 1GB (SKU 1GB-9002) is $35.00 with a cap of TEN. So the choice of 2GB costs $20 an instrument AND forces ten separate orders; 1GB would do neither. Whether 1GB is enough for Dexed + USB gadget + USB host is a DESIGN question, not a sourcing one -- raised with bronner, unchanged here until it is answered."
     }
   },
   "missing": {
@@ -2026,7 +2026,7 @@
       "tax_pct": null,
       "ddp": null,
       "verified": "m",
-      "what": "10 x Pi 4 2GB. \u26a0 THE LISTING CAPS AT ONE UNIT PER ORDER, so ten instruments means TEN SEPARATE ORDERS each paying its own shipping. Shipping not yet measured -- the cart would not take the item without a signed-in session."
+      "what": "10 x Pi 4 2GB. The 2GB SKU caps at ONE unit per order, so ten instruments means ten separate orders each paying shipping. The 1GB SKU caps at ten and costs $35. Shipping still unmeasured either way."
     },
     "jameco_psu": {
       "vendor": "Jameco",
