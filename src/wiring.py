@@ -1054,9 +1054,7 @@ def build_wires():
     # stop in the middle of it -- approaching the component face from +X exactly as described.
     # It now lands in the upper USB stack on the +Y END and is approached from +Y, which is
     # the only direction a USB-A plug can enter. See EL.pi_port_pt.
-    # NOT through SP(): pi_port_pt returns WORLD coords now -- the Pi lies flat and no
-    # longer stands, and standing these again is what put this lead inside motor_ctrl.
-    _usb = EL.pi_port_pt("usb3")
+    _usb = SP(*EL.pi_port_pt("usb3"))
     # ⚠ THE GAP IS 4.68 mm AND NO USB PLUG FITS IN IT -- see the block above _MCTRL_CY.
     # The approach runs inside that real gap rather than pretending to a wider one: the lead
     # reaches the right port from the only direction a plug could enter, and the fact that
@@ -1166,7 +1164,7 @@ def build_wires():
     # it follows the board instead of being falsified by it. That is the FIFTH constant this
     # swap invalidated (root_d's 13 beads, MCTRL_HOLE, the 5 V leg, _FEED2_X, and this).
     _lt = SP(*EL.mctrl_pt("J4"))
-    _lp = EL.pi_port_pt("usb2")        # the other USB stack; WORLD, not through SP()
+    _lp = SP(*EL.pi_port_pt("usb2"))   # the lower USB stack, 16 mm in z off wire_usb's
     # ITS OWN COLUMN, 3 mm short of the bay column: J4 is on the board's -Y edge, at the very
     # y where bus B drops down the bay column to the floor corridor.
     # It crosses motor 0's Y band, so it takes the BAYFLY lane over the motor top
