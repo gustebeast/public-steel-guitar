@@ -587,8 +587,13 @@ def pi_cradle() -> cq.Workplane:
     # BELOW that face, so without this the two interfere across the spacer's whole width. It is
     # the same arrangement pcb_cradle makes when it notches a wall for a head; the only
     # difference is that this head is further out.
+    # ⚠ CENTRED ON THE BAR, NOT ON THE SCREW. Written with `hx` while the bar was still
+    # centred on its screw, this notch stayed put when the bar moved to PI_SPACER_CX and went
+    # 20.0 long: the notch spanned x -520.3..-499.7 and the bar -524.0..-504.0, so its outboard
+    # 3.7 mm still crossed an un-notched wall -- 14.2 mm3, which the gate reported the moment
+    # the scope stopped drowning it in phantom self-overlaps.
     cr = cr.cut(box_at(PI_SPACER_W + 2 * CRADLE_CLR, 4.0, 8.0,
-                       hx, PI_FP[3] + 1.0, PI_Z + 4.0))
+                       PI_SPACER_CX, PI_FP[3] + 1.0, PI_Z + 4.0))
     return cr.union(pi_spacer_boss())
 
 
