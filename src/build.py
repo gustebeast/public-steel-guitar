@@ -28,10 +28,12 @@ import cadquery as cq
 from cadkit.freecad import show
 from cadkit.step_export import export_step
 try:                                    # optional on-every-build face-count regression gate
-    from tools.build_profile import record_part, report_build_regressions
+    from tools.build_profile import (record_part, report_build_regressions,
+                                     write_part_volumes)
 except Exception:                       # a profiling hook must NEVER break a build
     def record_part(*a, **k): pass
     def report_build_regressions(): return 0
+    def write_part_volumes(*a, **k): return 0
 
 from . import dimensions as D
 from elec import harness as _EH           # the PCB's pin order, single-sourced
@@ -327,13 +329,29 @@ PARTS["test_belt_tensioner"] = (
 OUT = pathlib.Path(__file__).resolve().parents[1]
 
 
+MATERIALS = ("petg-gf", "petg", "pctg", "tpu")
+
+
+def _material_of(path):
+    """The material folder a part exports into, or None.
+
+    ⚠ NOT path.split("/")[0]. Test coupons are written at the root and coil_mandrel into
+    tools/, so that returned "test_cover_plate.step" and "tools" as materials and
+    tools/cost.py then had no filament price for either (lead, 2026-09-30). A part
+    outside the material folders has no filament cost to attribute, and saying None is
+    how cost.py knows to leave it out rather than guess."""
+    head = path.split("/")[0]
+    return head if head in MATERIALS else None
+
+
 def _export(name):
     builder, path, note = PARTS[name]
     dest = OUT / path
     dest.parent.mkdir(parents=True, exist_ok=True)   # material folder (petg-gf/pctg/tpu)
     t = time.perf_counter(); wp = builder(); build_s = time.perf_counter() - t
     t = time.perf_counter(); export_step(wp, str(dest)); export_s = time.perf_counter() - t
-    record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp)   # ~free profiling hook
+    record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp,
+                material=_material_of(path))          # ~free profiling + volume hook
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
@@ -1954,6 +1972,12 @@ def main() -> None:
 
     for name in PARTS:
         _export(name)
+    # ⚠ VOLUMES FIRST. report_build_regressions() ends by CLEARING the record list, so
+    # writing the volumes after it wrote an empty file (found by the file being 100
+    # bytes, lead 2026-09-30). Order matters here and nothing else would have said so.
+    _n = write_part_volumes()           # what the plastic costs, for tools/cost.py
+    if _n:
+        print(f"wrote tools/part_volumes.json  ({_n} parts)")
     report_build_regressions()          # ~free: flags any part whose face count grew vs baseline
     sys.exit(_export_assembly(gate=gate, gate_full=gate_full))
 
