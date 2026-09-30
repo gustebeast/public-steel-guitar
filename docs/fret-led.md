@@ -1019,6 +1019,80 @@ method note is not advice: put the part where it would go and intersect it. Dist
 things are not clearances, and a solid built with different arguments than the build uses
 is not the build.
 
+## 9.1d The install rule: the board must BLOCK assembly until the pogos are loaded
+
+> "The key here: the LED board needs to block endplate installation until the POGO are
+> loaded properly. If we allow endplate installation without POGO contact then we can't
+> guarantee both boards get connected." (user, 2026-09-30)
+
+This is the design rule for the seam joint, and it is a poka-yoke: it makes the failure
+mode -- pogos not engaged -- **physically impossible** rather than an assembly step
+somebody can skip. The boards float in X inside their panels; each is pushed back by
+whatever it lands against; and the LAST thing installed cannot seat until the chain has
+been pushed in far enough to compress the pogos.
+
+⚠ **The boards do not reach the endplates** (user, same session: "I forgot the LED board
+doesn't reach the +x endplate, it'll reach some other stop material but it's functionally
+the same"). Measured: mid's board ends 4.34 inside its panel's +X edge, key's **37.80**
+inside its panel's -X edge. So at least one stop is panel material, and that is what
+decides the tolerance stack.
+
+### The condition, as an inequality
+
+With setbacks summing to 10.50, the pogo pair's board-edge-to-board-edge gap is:
+
+| | gap | chain = mid + gap + key |
+|---|--:|--:|
+| free, 8.00 each | 5.50 | 427.3 |
+| **working, 6.00** | **1.50** | **423.3** |
+| bottomed, 5.70 | 0.90 | 422.7 |
+
+Measured chain at the design position, mid's +X end to key's -X end: **423.30** -- the
+working point exactly. The geometry is already where it should be; only the stops are
+missing. For a stop-to-stop distance D, with the board outline tolerance (+-0.2 each)
+taken off both ends:
+
+    must compress (pogos loaded)   D < 426.9
+    must not bottom out            D > 423.1
+    -> a 3.8 mm window
+
+⚠ **WHERE IN THE WINDOW MATTERS MORE THAN FITTING IN IT.** Contact force is what the
+joint is actually buying, and at the top of the window the pogos sit near free length with
+almost none. **Target D ~ 423.8**: each pogo at 6.25 +- 0.22 against a stack of about
++-0.45 (two printed ribs plus the 0.05 inter-panel gap), never below the 5.70 limit, force
+near its rated 200 gf, and **3.5 mm of protrusion** to push in before the last part seats.
+
+### ⚠ The one number this is missing
+
+The datasheet gives force AT WORKING HEIGHT (200 gf +-20%) and nothing else -- **no spring
+rate**. A pogo is preloaded, so force at free length is not zero and the rate cannot be
+extrapolated from one point. Everything above therefore assumes the pogos sit essentially
+AT 6.00, which is why D is targeted tightly rather than centred. Getting the rate from
+Xinyangze would let the tolerance open up, and it is the first thing to ask for.
+
+### Where the last stop should live
+
+| last stop | D is a... | poka-yoke lands on | cost |
+|---|---|---|---|
+| **-X endplate** | chassis-frame dimension | the genuinely last operation | needs a ~37.8 finger to reach key's board |
+| rib in each panel | two printed parts + the panel gap | the SECOND PANEL's install | none, but a looser stack |
+
+The endplate version is the better one and is what the user described. Growing key's board
+-X to meet it is tempting -- length is the cheap axis and key wants bay room -- but it has
+only **7 mm** before `wire_usb` crosses at -580.00 (see BOARD_BAY).
+
+### Consequences to carry
+
+1. **The M4 and the lift-and-shift may be redundant.** Section 8.4 locks the board's X with
+   a screw; this scheme locates it by the stack instead. The tabs still hold -Z, but their
+   engagement has to survive the board floating in X -- the notches are 15.00 long and the
+   tabs 8.00, so there is 7.00 of float before a tab meets a notch end, against 3.5 of
+   push-in. It fits, but it wants checking rather than assuming.
+2. **800 gf ends up in the deck stack**, taking up its 0.05 GAPs and pressing the panels
+   apart against the endplates.
+3. **The force may not need holding at all** (user: "in practice it may not actually
+   provide any force since the retention plastic may provide enough friction").
+
 ## 9.2 The layout, and why it routes
 
 The whole board falls out of one observation: **the LED rows at |y| = 10.40 and 30.40 have
