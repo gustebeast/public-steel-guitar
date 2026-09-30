@@ -39,7 +39,9 @@ import os
 import sys
 
 TOL = 0.005                     # mm: below this the two are the same number
-NO_BODY = ("J1", "TP1", "TP2", "TP3", "TP4")
+# no BODY to clear, so the CAD carries none of them: the connector is modelled properly
+# by cadkit, and the rest are bare copper (board_geom.HEIGHT has them at 0).
+NO_BODY = ("J1", "TP1", "TP2", "TP3", "TP4", "JP1")
 
 
 def _elec():
@@ -78,27 +80,41 @@ def main() -> int:
 
     pl = EL.BOARD_NOTES["placements"]
     bom = {r[0]: (r[5], r[6], r[2], r[3]) for r in KL.SENSOR_BOM}
-    print("\nPARTS (%d in the CAD BOM, %d placed by elec)" % (len(bom), len(pl)))
+    # THE CAD'S SIDE IS THE ROUTED BOARD NOW, not a typed table, so this compares
+    # what the layout ASKED FOR against where the part actually ENDED UP -- a better
+    # question than the one it used to ask. A copy checked against its own source
+    # always passes, and export_geom exists because nothing read the board back.
+    print(chr(10) + "PARTS -- what elec asked for vs where the routed board put it")
+    print("  (%d bodies in the CAD BOM, %d placements)" % (len(bom), len(pl)))
     only_cad = sorted(set(bom) - set(pl))
     only_elec = sorted(set(pl) - set(bom) - set(NO_BODY))
     for r in only_cad:
-        print("  %-6s in the CAD BOM, NOT placed by elec -- the housing clears a part "
-              "that is not on the board" % r)
+        print("  %-6s the housing clears a part the board does not have"
+              % r)
     for r in only_elec:
-        print("  %-6s placed by elec, NOT in the CAD BOM -- the housing does not know "
-              "it is there" % r)
+        print("  %-6s on the board with a body the housing does not know about "
+              "(if it has none, name it in NO_BODY)" % r)
     bad += ["ref %s" % r for r in only_cad + only_elec]
 
+    # LIKE FOR LIKE: a board module places by PAD CENTROID and the export carries both
+    # that and the footprint origin, which differ for anything with asymmetric pads --
+    # 0.228 mm on the LDO's SOT-23-5, and 3.75 on a JST header. Comparing the request to
+    # the origin reported the LDO as 0.228 mm out when it is exactly where it was put.
+    from src import board_geom as BG
+    geom = {f["ref"]: f for f in BG.load("lever_sensor")["footprints"]}
+    chip = geom["U4"]["pads_xy"] or [geom["U4"]["x"], geom["U4"]["y"]]
     moved = []
     for ref in sorted(set(bom) & set(pl)):
-        bx, bz = bom[ref][0], bom[ref][1]
+        g = geom[ref]
+        anchor = g.get("pads_xy") or [g["x"], g["y"]]
+        bx, bz = anchor[0] - chip[0], anchor[1] - chip[1]
         ex, ez = pl[ref][0] - EL.CHIP_XY[0], pl[ref][1] - EL.CHIP_XY[1]
         d = ((bx - ex) ** 2 + (bz - ez) ** 2) ** 0.5
         if d > a.tol:
             moved.append((d, ref, bx, bz, ex, ez))
     for d, ref, bx, bz, ex, ez in sorted(moved, reverse=True):
-        print("  %-6s CAD (%7.3f,%7.3f)  elec (%7.3f,%7.3f)  %.3f mm apart"
-              % (ref, bx, bz, ex, ez, d))
+        print("  %-6s asked (%7.3f,%7.3f)  landed (%7.3f,%7.3f)  %.3f mm out"
+              % (ref, ex, ez, bx, bz, d))
     bad += ["position %s" % m[1] for m in moved]
 
     # ...and the one thing neither copy states: does anything stand in a groove? The CAD

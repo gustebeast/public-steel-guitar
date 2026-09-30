@@ -42,6 +42,7 @@ from . import components as C
 from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
                                         # (chassis imports knee_lever, so not chassis)
 from .helpers import box_at, corbel_close, cyl, cyl_y, heal
+from . import board_geom as BG
 
 from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
                               seated_insert,
@@ -1364,46 +1365,44 @@ PCB_Z0 = PCB_Z1 - PCB_WZ                        # -12.0
 # run at 1 Mbps — 10 controls x 76-bit frames at 500 Hz is 38% loaded there,
 # against 76% at the BOM's 500 kbps.
 #
-#              LCSC        Lx    Wz    Hy      x       z
-# EVERY POPULATED PART, generated from the laid-out board (elec/lever_sensor.py
-# + elec/out/lever_sensor.board.json) rather than typed: ref, value, X, Z, HEIGHT
-# off the board face, and the centre in the CHIP's frame (the chip is the axle
-# axis, so that is the frame the housing cares about). Sizes are KiCad courtyards
-# -- the envelope the part actually needs, not its bare body. The CONNECTOR is
-# not here; it is modelled properly by cadkit (see sensor_connector).
+# ── EVERY POPULATED PART, READ OFF THE ROUTED BOARD ──────────────────────────────
+# (ref, footprint, X, Z, HEIGHT off the board face, and the centre in the CHIP's frame --
+# the chip is the axle axis, so that is the frame the housing cares about.)
 #
-# This used to be six parts and no passives at all, which made the board look
-# 43%% covered when the real circuit is 29 parts.
-SENSOR_BOM = (
-    ("C1",   "4.7uF/50V",          4.69,  2.39, 1.60,  -11.90,   6.20),
-    ("C2",   "10uF/16V",           3.49,  2.05, 1.45,   -7.60,   6.30),
-    ("C3",   "100nF",              1.91,  1.01, 0.55,   -4.50,   6.30),
-    ("C4",   "100nF",              1.91,  1.01, 0.55,   -5.00,  -5.70),
-    ("C5",   "12pF",               1.91,  1.01, 0.55,   -7.40,  -1.90),
-    ("C6",   "12pF",               1.91,  1.01, 0.55,   -7.40,  -3.70),
-    ("C7",   "100nF",              1.91,  1.01, 0.55,   -5.00,  -1.90),
-    ("C8",   "100nF",              1.91,  1.01, 0.55,   -3.50,   3.80),
-    ("C9",   "100nF",              1.91,  1.01, 0.55,   -5.50,   3.80),
-    ("C10",  "4.7uF",              3.49,  2.05, 1.45,   -1.50,  -3.30),
-    ("C11",  "100nF",              1.91,  1.01, 0.55,   -4.00,   0.00),
-    ("D1",   "B5819W",             4.79,  2.39, 1.10,   -3.40,   9.85),
-    ("D2",   "PESD1CAN-like",      2.59,  1.49, 0.75,   -5.20,  -9.20),
-    ("D3",   "PESD1CAN-like",      2.59,  1.49, 0.75,   -2.40,  -9.20),
-    ("JP1",  "TERM",               3.39,  2.59, 0.05,   -1.50,  -7.10),
-    ("L1",   "47uH",               3.69,  3.69, 1.50,   -8.00,   9.30),
-    ("R1",   "100k",               1.95,  1.03, 0.50,    0.10,   9.85),
-    ("R2",   "30k1",               1.95,  1.03, 0.50,   -2.40,   6.30),
-    ("R3",   "10k",                1.95,  1.03, 0.50,   -5.00,  -7.20),
-    ("R4",   "120R",               1.95,  1.03, 0.50,   -1.50,  -5.15),
-    ("R5",   "0R",                 1.95,  1.03, 0.50,    0.00,   3.50),
-    ("R6",   "4k7",                1.95,  1.03, 0.50,   -5.00,  -3.90),
-    ("R7",   "4k7",                1.95,  1.03, 0.50,   -0.10,   6.30),
-    ("U1",   "LMR16006XDDCR",      4.19,  3.49, 1.10,  -12.10,   9.35),
-    ("U2",   "SN65HVD230DR",       7.49,  5.49, 1.75,  -10.50,  -7.00),
-    ("U3",   "CH32V203G6U6",       5.29,  5.29, 0.90,  -10.00,   2.15),
-    ("U4",   "MT6701QT-STD",       4.35,  4.35, 0.80,    0.00,   0.00),
-    ("Y1",   "8MHz",               4.29,  3.59, 0.90,  -11.90,  -2.40),
-)
+# IT WAS A TYPED TABLE, and the two copies drifted. It said it was "generated from the
+# laid-out board", and it had been, once: by 2026-09-30 it still carried the BUCK
+# CONVERTER and its inductor that the 2026-09-21 re-spin deleted, four parts that had no
+# placement at all, and five sitting up to 10.65 mm from where the router put them. The
+# CAD built and rendered perfectly the whole time, because nothing compared them
+# (tools/check_board_match now does, and that is how this was found).
+#
+# So it is read instead, from the same tracked export src/board_geom.py already uses for
+# every other board -- elec/geom/lever_sensor.geom.json, written back OUT of the finished
+# .kicad_pcb by elec/export_geom.py. Three things come from there and one does not:
+#   the POSITION and the BODY are the router's, measured off F.Fab rather than off a
+#     courtyard, which is the keep-out and not the part;
+#   the HEIGHT is not in a KiCad board at all, so it stays in board_geom.HEIGHT, keyed by
+#     FOOTPRINT rather than by ref -- a property of the part, not of this board.
+_SENSOR_BOARD = "lever_sensor"
+_BOM_SKIP = ("J1",)                 # cadkit models the real connector: sensor_connector
+
+
+def _sensor_bom():
+    fps = {f["ref"]: f for f in BG.load(_SENSOR_BOARD)["footprints"]}
+    chip = fps["U4"]                # THE DATUM IS THE SENSOR, not the board's centre:
+    out = []                        #   it is the axle axis, and it does not move when
+    for ref, f in sorted(fps.items()):        # an edge does
+        name = BG.fp_name(f["fpid"])
+        h = BG.HEIGHT[name]         # KeyError here means a new package needs a height
+        if ref in _BOM_SKIP or h <= 0.0 or f["fab"] is None:
+            continue                # bare copper, or modelled properly elsewhere
+        x0, x1, z0, z1 = f["fab"]
+        out.append((ref, name, x1 - x0, z1 - z0, h,
+                    round(f["x"] - chip["x"], 4), round(f["y"] - chip["y"], 4)))
+    return tuple(out)
+
+
+SENSOR_BOM = _sensor_bom()
 
 # NOTHING MAY STAND IN A GROOVE. Each X edge of the board is gripped CR_ENG deep, and
 # that band has to be bare copper -- not because of a fabrication rule (JLCPCB's
@@ -1436,9 +1435,7 @@ def sensor_hardware():
     """(name, solid) for every populated part, on the board's -Y (magnet) face.
     Single-sided by design — one assembly setup."""
     out = []
-    for n, _lcsc, lx, wz, hy, cx, cz in SENSOR_BOM:
-        if n in RESPIN_MOVES:        # off the re-spin spec's outline: the re-layout moves it
-            continue
+    for n, _fp, lx, wz, hy, cx, cz in SENSOR_BOM:
         out.append((n, box_at(lx, hy, wz, x=cx, y=PCB_Y - hy / 2, z=cz)))
     return out
 
@@ -1576,17 +1573,21 @@ def _conn_keepout():
 
 
 CONN_PAD_CONFLICTS = []
-RESPIN_MOVES = {}                   # pre-route part -> why the re-spin must move it
+# ...AND THESE ARE ASSERTS NOW, not a list of handoff items. They were lenient because the
+# table was the PRE-ROUTE layout against a spec outline it had never been laid out to, so
+# a part off the edge was a note to whoever re-spun the board. The table is the ROUTED
+# board now (see _sensor_bom), so a part off the outline or in a groove band is not a
+# handoff item -- it is a part the housing would be driven through, on the board as it
+# would actually be ordered.
 for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
     _x0, _x1 = _cx - _lx / 2, _cx + _lx / 2
     _z0, _z1 = _cz - _wz / 2, _cz + _wz / 2
-    # The table is the PRE-ROUTE layout, and the outline is now the RE-SPIN SPEC, so a part
-    # that falls off it or into a groove band is a handoff item (RESPIN_MOVES), not an error.
-    # It is left out of the drawn board (sensor_hardware) rather than drawn hanging in air.
-    if not (PCB_Z0 <= _z0 and _z1 <= PCB_Z1):
-        RESPIN_MOVES[_n] = "off the spec outline in Z"
-    elif _n != _SENSOR_REF and not (PCB_X0 + CR_EDGE_KEEP <= _x0 and _x1 <= PCB_X1 - CR_EDGE_KEEP):
-        RESPIN_MOVES[_n] = f"in the {CR_EDGE_KEEP} groove band / off the outline in X"
+    assert PCB_Z0 <= _z0 and _z1 <= PCB_Z1, (
+        "%s spans z %.3f..%.3f, off the board's %.3f..%.3f" % (_n, _z0, _z1, PCB_Z0, PCB_Z1))
+    assert _n == _SENSOR_REF or (PCB_X0 + CR_EDGE_KEEP <= _x0
+                                 and _x1 <= PCB_X1 - CR_EDGE_KEEP), (
+        "%s spans x %.3f..%.3f, inside the %.2f the grooves grip of %.3f..%.3f"
+        % (_n, _x0, _x1, CR_EDGE_KEEP, PCB_X0, PCB_X1))
     if _hy > CAP_CLR_H:
         # the board is installed by dropping it PAST the rotating magnet cap, so a part
         # deeper than the gap must clear the cap's sweep — measured as the true distance
