@@ -83,3 +83,38 @@ about 11 mm up the stroke, on both levers.
 
 `src/knee_lever.py` now asserts this against the generated BOM, both edges, so a part
 that moves into a groove band stops the build instead of being found in a render.
+
+## The two copies are checked now: `tools/check_board_match.py` (2026-09-30)
+
+The board is described twice and neither copy is derived from the other, because the
+dependency genuinely runs both ways: the OUTLINE is a mechanical spec (the groove decides
+how much bare edge the board needs) and the PLACEMENTS are an electrical output (the
+housing's plinth relief is cut to clear the parts). Each side owns half and has to believe
+the other half, and until now nothing checked that they still agreed — the CAD builds and
+renders perfectly against a stale BOM, and the netlist is valid against a stale outline.
+
+Run it. It exits 1 while the two disagree. As of this writing it disagrees on 12 things:
+
+**The outline, which is mine and is done on the CAD side only.** `elec/lever_sensor.py`
+still has the old numbers, and they are not independent — it works in a board-CENTRED
+frame, so the chip's position encodes the edges too:
+
+| | now | needs to be |
+|---|---|---|
+| `BOARD_W` | 31.0 | **32.025** |
+| `CHIP_XY` | (12.5, 0.85) | **(11.9875, 0.85)** |
+| every entry in `BOARD_NOTES["placements"]` | — | **x − 0.5125** |
+
+That last row is the part that is easy to miss: growing the board on +X alone moves the
+board's centre, so holding a part still in the CHIP's frame — the frame the housing cares
+about, because the chip is the axle axis — means moving it in the board's. It is the same
+block move the 2026-09-21 re-spin did by hand (+1.5, +1.45), and it wants a re-route and a
+DRC pass, which is why it is not done here.
+
+**And a divergence that predates all of this**: the CAD's `SENSOR_BOM` is generated from
+an OLDER layout than the one `elec/lever_sensor.py` now holds. It still carries U1 as the
+buck converter and L1 as its inductor, both of which the re-spin deleted; C3, D1, R1 and
+R2 are in the BOM with no placement; and C7, R6, C2, U1 and C1 sit between 1.55 and 10.65
+mm from where elec puts them. The housing's plinth relief is cut against that BOM, so it
+is currently clearing parts that are not there and not clearing parts that are.
+Regenerating it needs the elec pipeline.
