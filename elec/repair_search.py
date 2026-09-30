@@ -39,6 +39,7 @@ import os
 import re
 import sys
 
+RULE_CLEAR = 0.127     # the netclass clearance itself -- what DRC actually enforces
 MARGIN = 0.15          # on top of each obstacle's own half-width, over the netclass rule
 VIA_D, VIA_DRILL = 0.6, 0.3
 TRACK_W = 0.25
@@ -450,6 +451,153 @@ class Board:
             if _d_seg_seg(*p, *q, *e) < half + MARGIN:
                 return False
         return True
+
+
+# ── the third shape: a MAZE path, because the first two cannot bend ────────────────────
+# ⚠ WHY THIS EXISTS, IN NUMBERS. search() above offers a straight track or via-plus-spur.
+# On optical's +3V3A at U11.5 that returns 0 same-layer paths and 755 via paths whose SHORTEST
+# is 48.92 mm -- for a net whose nearest island is 6.97 mm away. It aims at whatever point of
+# the net it can reach and on B.Cu that is 40 mm off, which this module's own notes already
+# call out: it has "no notion that its own net's copper is a destination rather than an
+# obstacle". A 40 mm hand-laid trace is not a repair, it is a liability.
+# A dog-leg was searched by hand and found nothing here either, and so did via -> In2 -> via.
+# ⚠ AND THE DIAGNOSTIC IS WHAT MADE THAT LAST ONE MEAN SOMETHING: 63 legal via sites beside the
+# pad, 224-563 beside each island, and all ~8000 sampled pairs failing on the RUN BETWEEN THEM.
+# The endpoints were never the problem. In2.Cu carries no pour -- which is what made it look
+# like the free layer -- but the board's 400 vias pierce EVERY layer, so a straight run across
+# it meets them. Emptiness of pour is not emptiness of obstacles, and the answer is a path that
+# can bend around them.
+MAZE_STEP = 0.15               # grid pitch; below the rule, so adjacent free cells overlap
+MAZE_PAD = 4.0                 # how far outside the start/goal box the search may wander
+
+
+class _Index:
+    """Uniform bucket index over one layer's obstacles, so a cell test looks at ~10 of them
+    instead of ~2700. Built once per (layer, net) and reused for every cell of the search."""
+
+    CELL = 2.0
+
+    def __init__(self, board, layer):
+        self.b, self.layer, self.g = board, layer, {}
+        for s_ in board.segs:
+            if s_["layer"] != layer or s_["net"] == board.net:
+                continue
+            self._put(min(s_["x1"], s_["x2"]), min(s_["y1"], s_["y2"]),
+                      max(s_["x1"], s_["x2"]), max(s_["y1"], s_["y2"]),
+                      ("seg", s_["x1"], s_["y1"], s_["x2"], s_["y2"], s_["half"]))
+        for v in board.vias:
+            if v["net"] == board.net:
+                continue
+            # ⚠ EVERY LAYER. A via is a plated hole through the whole stack, so it obstructs
+            # In2 exactly as it obstructs F.Cu -- which is the entire reason the "empty" inner
+            # layer was not empty.
+            self._put(v["x"] - v["r"], v["y"] - v["r"], v["x"] + v["r"], v["y"] + v["r"],
+                      ("pt", v["x"], v["y"], v["r"]))
+        for pd in board.pads:
+            if pd["net"] == board.net:
+                continue
+            if pd.get("cu") is not None and layer not in pd["cu"]:
+                continue
+            self._put(min(pd["x1"], pd["x2"]) - pd["r"], min(pd["y1"], pd["y2"]) - pd["r"],
+                      max(pd["x1"], pd["x2"]) + pd["r"], max(pd["y1"], pd["y2"]) + pd["r"],
+                      ("seg", pd["x1"], pd["y1"], pd["x2"], pd["y2"], pd["r"]))
+        for e in board.edges:
+            self._put(min(e[0], e[2]), min(e[1], e[3]), max(e[0], e[2]), max(e[1], e[3]),
+                      ("seg", e[0], e[1], e[2], e[3], 0.0))
+
+    def _put(self, x0, y0, x1, y1, item):
+        c = self.CELL
+        for gx in range(int(math.floor(x0 / c)) - 1, int(math.floor(x1 / c)) + 2):
+            for gy in range(int(math.floor(y0 / c)) - 1, int(math.floor(y1 / c)) + 2):
+                self.g.setdefault((gx, gy), []).append(item)
+
+    def clear(self, x, y, r):
+        """Is a disc of radius r at (x, y) clear of every foreign obstacle on this layer?"""
+        for it in self.g.get((int(math.floor(x / self.CELL)), int(math.floor(y / self.CELL))), ()):
+            if it[0] == "pt":
+                if math.hypot(x - it[1], y - it[2]) < r + it[3]:
+                    return False
+            else:
+                if _d_pt_seg(x, y, it[1], it[2], it[3], it[4]) < r + it[5]:
+                    return False
+        return True
+
+
+def maze(board, layer, start, goal, w=TRACK_W, step=MAZE_STEP, clearance=None, reach=None):
+    """A grid path from `start` to `goal` on `layer` that bends around obstacles.
+
+    Returns a simplified list of points, or None. `clearance` defaults to the netclass rule
+    rather than this module's SEARCH margin -- a repair that exists at all beats one that is
+    comfortable, and every segment is re-measured with track_gap afterwards either way.
+
+    ⚠ POURS ARE NOT OBSTACLES HERE, deliberately: a post-route repair is followed by a zone
+    refill (repair_planes), so the pour on the board now is not the pour the repair will live
+    in. See track_ok's note -- treating the old pour as solid once declared a proven-good
+    dog-leg impossible.
+    """
+    import heapq
+
+    clr = RULE_CLEAR if clearance is None else clearance
+    r = w / 2.0 + clr
+    idx = _Index(board, layer)
+    reach = MAZE_PAD if reach is None else reach
+    x0 = min(start[0], goal[0]) - reach
+    x1 = max(start[0], goal[0]) + reach
+    y0 = min(start[1], goal[1]) - reach
+    y1 = max(start[1], goal[1]) + reach
+
+    def key(p):
+        return (int(round((p[0] - x0) / step)), int(round((p[1] - y0) / step)))
+
+    def pos(k):
+        return (x0 + k[0] * step, y0 + k[1] * step)
+
+    sk, gk = key(start), key(goal)
+    nx = int((x1 - x0) / step) + 1
+    ny = int((y1 - y0) / step) + 1
+    # ⚠ THE ENDPOINTS ARE EXEMPT FROM THE CELL TEST. They sit ON their own net's copper, which
+    # is not an obstacle -- but the pad they touch often puts foreign copper inside r, and a
+    # search that refuses to start is indistinguishable from one that finds nothing.
+    seen = {sk: None}
+    pq = [(0.0, 0.0, sk)]
+    diag = math.sqrt(2.0) * step
+    while pq:
+        _f, g, k = heapq.heappop(pq)
+        if k == gk:
+            break
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                nk = (k[0] + dx, k[1] + dy)
+                if nk in seen or not (0 <= nk[0] < nx and 0 <= nk[1] < ny):
+                    continue
+                q = pos(nk)
+                if nk != gk and not idx.clear(q[0], q[1], r):
+                    continue
+                ng = g + (diag if dx and dy else step)
+                h = math.hypot(q[0] - goal[0], q[1] - goal[1])
+                seen[nk] = k
+                heapq.heappush(pq, (ng + h, ng, nk))
+    if gk not in seen:
+        return None
+    path = []
+    k = gk
+    while k is not None:
+        path.append(pos(k))
+        k = seen[k]
+    path.reverse()
+    path[0], path[-1] = start, goal
+    # collapse collinear runs so the result is a few segments, not hundreds
+    out = [path[0]]
+    for i in range(1, len(path) - 1):
+        ax, ay = out[-1]
+        bx, by = path[i]
+        cx, cy = path[i + 1]
+        if abs((bx - ax) * (cy - ay) - (by - ay) * (cx - ax)) > 1e-9:
+            out.append(path[i])
+    out.append(path[-1])
+    return out
 
 
 def search(stem, net, pad_xy, top=5):
