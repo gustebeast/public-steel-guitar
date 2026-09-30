@@ -3042,16 +3042,27 @@ def opt_pcb() -> cq.Workplane:
         body = _part_solid(p)
         if body is not None:                          # bare pads (TP) have no body
             pcb = pcb.union(body)
-    # ⚠ NO M4 CLEARANCE HOLES (user, 2026-09-23: "get rid of the M4 mounting holes. We can
-    # add them back later based on where there's available space"). They were cut here as
-    # SQUARE prisms -- box_at on M4.shaft_clr_d -- which is what led to finding that the
-    # FABRICATED board never had them at all: zero Edge.Cuts circles, and Cd11 sitting
-    # 0.47 mm inside where the head one belongs. So the CAD and the gerbers disagreed, and
-    # the placement disagreed with both. Removing them makes the three agree on "none",
-    # which is at least a state that can be reasoned about.
-    # ⚠ mount_points() STILL EXISTS and the endplate still builds anchors, inserts and
-    # screws to it. Those are ORPHANED until the mounts are re-sited on real free board --
-    # see WORKLIST. The board is currently held by nothing.
+    # ⚠⚠ THE M4 CLEARANCE HOLES ARE BACK, WHICH IS THE 2026-09-23 INSTRUCTION COMPLETED
+    # (user: "get rid of the M4 mounting holes. We can add them back later based on where
+    # there's available space"). The space has now been found and the fab data has them: both
+    # mounts sit on the -X plinth, and elec/optical.py emits them through BOARD_NOTES
+    # ["cutouts"] as Edge.Cuts circles with router keepouts.
+    # Until this, the board was held by NOTHING while the endplate still built anchors,
+    # inserts and screws to mount_points() -- and the overlap gate had been reporting the
+    # consequence all along as optical_pcb <-> optical_screw_0/1, a 4.0 mm shank crossing
+    # 1.6 mm of laminate at each point. A fab house would have shipped solid laminate there.
+    # ⚠ CYLINDERS, NOT box_at. The note this replaces records that they were SQUARE prisms
+    # when they last existed here -- which is both a CAD/fab divergence and the reason the
+    # FreeCAD render showed square holes. `cyl` matches what the mill actually makes.
+    # ⚠ AND FROM mount_points(), THE SAME SOURCE THE SCREW AND THE FAB READ. Three things
+    # have to agree here -- the CAD plate, the Edge.Cuts circle and the screw -- and the last
+    # time they were hand-typed the placement disagreed with both (Cd11 sitting 0.47 mm inside
+    # where the head one belongs). Driven off one function they cannot drift.
+    # cad_geom_check compares the CAD's hole count against the routed board's and reported
+    # "the CAD plate has 10 hole(s), the routed board 12" until this was added.
+    for _mx, _my in mount_points():
+        pcb = pcb.cut(cyl(M4.shaft_clr_d, PCB_T + 2.0, PCB_BOT - 1.0)
+                      .translate((_mx, _my, 0.0)))
     # ⚠ NO JACK ACCESS HOLE, BECAUSE THE JACK IS NOT UNDER THE BOARD. This cut it, and
     # elec/optical.py emitted the matching circle on Edge.Cuts -- where it was a FAB
     # DEFECT, not a hole: the jack sits at x -33.93 and the board's -X edge is at -32.16,
@@ -3065,7 +3076,14 @@ def opt_pcb() -> cq.Workplane:
     # being there: 1.775 mm of clear air from the screw centre to the board edge against
     # the 1.444 a 2.5 mm hex key needs across corners. Asserted below rather than assumed,
     # because the margin is 0.33 mm and the strip has moved in X twice this month.
-    _x0 = min(_s[3] for _s in _SECTIONS)          # the board's -X edge
+    # ⚠ _s[2], NOT _s[3] -- THIS ASSERT WAS VACUOUS (2026-09-29). _SECTIONS tuples are
+    # (y0, y1, x1, x0): [2] is the -X edge (-32.156) and [3] is TAIL_X1, the +X edge
+    # (+25.056). Reading [3] compared the jack at x -33.93 against the FAR side of the board
+    # and computed a 58.99 mm gap, so the assert passed unconditionally and could never catch
+    # the one thing it exists to catch -- the strip growing -X into the driver. The comment
+    # above had the right number all along (1.775 mm); only the code was measuring the wrong
+    # edge. With [2] it reproduces 1.775 against the 1.444 a 2.5 mm hex key needs.
+    _x0 = min(_s[2] for _s in _SECTIONS)          # the board's -X edge
     gap = _x0 - JACK_ACCESS_XY[0] if JACK_ACCESS_XY[0] < _x0 else 0.0
     assert gap >= _HEX25_R, (
         "the pickup-height jack at x %.2f is %.2f from the board's -X edge at %.2f, and a "
