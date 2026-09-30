@@ -4297,3 +4297,54 @@ against a pour, the board would have been shipped on a green audit.
 **Every earlier `repair_search` verdict on this board was computed without pours**, so any of
 them can be wrong in either direction — including `SAI_FS`'s "boxed in every time", which was
 already in doubt for being a two-shape search.
+
+## OPTICAL IS AT **1 UNCONNECTED**, AND TWO OF MY OWN CHANGES NEEDED CORRECTING (2026-09-30)
+
+`+3V3D` at U6.36 is CLOSED. The dog-leg was right all along; the pour was the problem.
+
+**What I got wrong, and it matters because I gated a good repair on it:** nothing in this
+pipeline ever refilled the pour after laying a post-route repair. `layout.py` pours during
+PLACEMENT, before any track exists; `route.py` then lays repairs into a fill that predates them;
+`repair_planes.py` reconnects copper the fill *stranded* but never updated the fill. I read that
+script's name and treated it as the refill stage. One `ZONE_FILLER` pass and the same geometry
+that measured 0.4892 / 0.0225 mm against a 0.5000 mm rule is clean:
+
+| | unconnected items | violations |
+|---|---|---|
+| baseline | 4 | 20 declared courtyards + warnings |
+| dog-leg + **refill** | **2** | **identical — zero clearance** |
+
+The refill now runs at the top of `repair_planes.py`, and the ORDER is the point: a script whose
+job is reconnecting what the fill stranded must run *after* the fill it cleans up after.
+
+### ⚠ CORRECTION 1: pour-blocking in `track_ok` was WRONG BY DEFAULT and hid a good repair
+
+Adding zones to `track_ok` (last tick) made the search reject paths that work. A post-route
+repair is followed by a refill, so **the pour on the board during the search is not the pour the
+repair will live in.** That switch declared U6.36 "0 legal dog-legs" while the refilled result
+was provably clean. `track_ok` now takes `pours=False` by default, with `pours=True` for the
+other question — "is this legal against the board AS IT STANDS" — which is the auditor's
+question and what `audit_board` asks through `zone_gap`. Both callers now ask what they mean.
+
+### ⚠ CORRECTION 2: gating repairs BY NET NAME nearly deleted the converter isolation
+
+`"+3V3D"` was on `STALE_REPAIRS` for one tick to gate ONE dog-leg. But `_shdnz_stubs()` emits
+**ten** `+3V3D` tracks — two per converter cell — and `_shdnz_vias()` five more `+3V3D` vias. The
+filter would have silently removed **fifteen pieces of working, verified copper to gate one**.
+
+⚠ **And nothing noticed**, because `audit_board` reads the declaration from `<stem>.board.json`,
+which had not been regenerated since the edit — so it kept reporting the old "15 declared, 15
+found" from *before*. A stale generated file made a destructive edit invisible, which is the
+third time today that a stale artefact has produced a confident wrong reading.
+
+`STALE_REPAIRS` is now `{net: (n_tracks, n_vias)}` and asserts the counts, so a gate that removes
+more than its author intended fails loudly. Generator re-run confirms SAI_FS = exactly (4, 3).
+
+**State:** 16 repair tracks declared / 16 found, 57 segments re-checked including pours, 1 net
+open (`U7 pad 9` + its stub). Best board saved as `optical.best-1unconn-0viol.kicad_pcb`.
+
+**U7.9's escape route, from the layer survey:** `In2.Cu` has **zero pours** and carries 3 `+3V3D`
+segments, nearest 3.771 mm away, while `In1.Cu` and `B.Cu` both have pour AT the pad (distance
+0.0000 — it is plane there). So the move is a via down to In2 and a run across it, which is what
+the earlier note predicted: "In2.Cu is the one layer with no ground pour, i.e. the emptiest place
+to land."

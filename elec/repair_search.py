@@ -398,12 +398,22 @@ class Board:
         g, _ = self.zone_gap(p, q, layer, half)
         return g >= self.zone_clear
 
-    def track_ok(self, p, q, layer, half=TRACK_W / 2.0):
-        # ⚠ THE POURS FIRST, because they are the cheapest way to be wrong and the most
-        # likely to bind: they are the largest copper on the board and carry a rule four times
-        # the track rule. Every "0 legal paths" and every approved path this module reported
-        # before 2026-09-30 was computed without them.
-        if not self.zone_ok(p, q, layer, half):
+    def track_ok(self, p, q, layer, half=TRACK_W / 2.0, pours=False):
+        """Is there comfortable room for this track? `pours` decides whether the EXISTING
+        copper pours count as obstacles, and the default is NO. That is not laziness:
+
+        ⚠ A POST-ROUTE REPAIR IS FOLLOWED BY A ZONE REFILL, so the pour that is on the board
+        while we search is NOT the pour the repair will live in -- repair_planes.py refills,
+        and the fill retreats around whatever copper it finds. Treating the old pour as an
+        obstacle rejects paths that work: it declared optical's +3V3D dog-leg at U6.36
+        impossible ("0 legal dog-legs") when laying that exact path and refilling gives DRC
+        violations IDENTICAL to the baseline and zero clearance. I had this switched on by
+        default for one tick and it hid a repair that was already proven good.
+
+        Pass pours=True to ask the other question -- "is this legal against the board AS IT
+        STANDS" -- which is what an auditor wants, and what audit_board asks through zone_gap.
+        """
+        if pours and not self.zone_ok(p, q, layer, half):
             return False
         for s in self.segs:
             if s["layer"] != layer or s["net"] == self.net:
