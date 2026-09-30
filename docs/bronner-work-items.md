@@ -6,24 +6,27 @@ rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction 
 prompt. Where a prompt and this file disagree, this file is right — and where this file carries
 a stale marker, striking the marker is part of the work.
 
-**Current state, 2026-09-30 (end of the VDDIO tick):**
+**Current state, 2026-09-30 (end of the SAI_FS tick — THE OPTICAL BOARD IS AT ZERO):**
 
 | thing | state |
 |---|---|
-| optical route | **3 unconnected / 0 violations**; open nets are `+3V3A` and `SAI_FS`. 166/166 multi-pin nets carry copper. `optical.best-vddio-and-d5-closed.kicad_pcb` |
+| optical route | ✅ **0 unconnected / 0 unexpected violations**, `audit_board` all checks pass. 166/166 multi-pin nets carry copper, 21/21 declared repairs found and re-measured against the pours. `optical.best-0net.kicad_pcb`, committed at `f031f83` |
 | VDDIO (`U7.9`) | ✅ **CLOSED** — by a bypass cap at the pin (`C119`), not a via or a repair. No via fitted at any size and escape vias made the edge worse |
 | `ULPI_D5` | ✅ **CLOSED** — C119's first position took its escape lane (0.5 mm pitch vs a 1.010 mm courtyard); a 1 mm nudge outward recovered it |
 | `C121` | was declared bypass for pins 16 AND 9, on different faces, so it sat **9.19 mm** from VDDIO. A latent electrical fault that would have survived a routed board |
 | the `+3V3D` dog-leg | retired — tested redundant once C119 existed (deleting it gave an identical DRC) |
-| `+3V3A` / `SAI_FS` | need a **MAZE path on In2.Cu**. Endpoints are clear (63 / 224–563 legal via sites); the straight run between them is not — 400 vias pierce every layer |
-| ⚠ by raw count | the board went 1 open net → 2. That is progress in KIND, not in number: VDDIO was unrepairable, both survivors have documented repair paths |
+| `+3V3A` / `SAI_FS` | ✅ **BOTH CLOSED.** `SAI_FS` was the last one: 3 runs (F.Cu→B.Cu→F.Cu), 2 vias, 23.41 mm, worst gap **+0.2602 mm** against every obstacle class including the pours — twice the rule |
+| ⚠ why it took four "no path" verdicts | the SEARCH could not express the answer, three ways at once: pads modelled as stadiums/circles rather than rounded rectangles (881 roundrect / 86 rect / 13 circle / 4 oval), zones invisible on a board whose zone clearance is 0.5000 mm, and **at most ONE via** when both islands are on F.Cu with no F.Cu path at any clearance. `maze3d` puts the layer in the search space and makes a via an edge; 213 s |
+| the raw count, settled | it went 1 → 2 → **0**. The "progress in KIND not in number" call was right: VDDIO was unrepairable and needed a CAP, while the two that replaced it were both repairable once the search stopped lying |
 | tooling | `repair_search` sees pours + correct pad capsules; `repair_planes` refills; `audit_board` checks pours; `finish.py` survives a failed round; `check_ceilings` sees curved overhangs |
 | Pi retention | the user's printed spacer, built and gate-clean |
 | motor + I/O boards | `audit_board` clean. The I/O TRS + gain change is specified with verified pinouts, NOT landed — needs placements |
 | scope | `optical_work_components` |
 
 
-**Priority: optical first.** Everything else is route-downtime work.
+**Priority: optical first — ✅ AND OPTICAL IS DONE.** The head of the backlog is now the **I/O board TRS + gain** change (the user's own request, specified with verified pinouts and placements, not yet landed), then **moving J7** off the motor board's downward edge. Neither needs an optical route, so nothing is blocked on an hour of router time any more.
+
+**⚠ DO NOT RE-ISSUE: `SAI_FS` / `+3V3A` / VDDIO / `ULPI_D5`.** All four are closed and committed. `STALE_REPAIRS` is now EMPTY. A prompt that still names the optical board's open nets is stale; this table is right.
 
 **⚠ HISTORICAL — status as of 2026-09-28 22:1x, KEPT FOR THE RECORD AND NOT CURRENT.**
 The "0 unconnected, 0 violations" below was true of the board as it stood that night and
