@@ -1,0 +1,681 @@
+{
+  "_note": [
+    "THE ONE PLACE A PRICE IS WRITTEN DOWN. tools/cost.py reads this and nothing else;",
+    "BOM.md's prose prices are for a human to read, and drifted from each other (three",
+    "different per-motor supply currents, two different junction gaps). A price here has",
+    "a source and a date, or it is marked unverified and the total says so.",
+    "",
+    "verified: 'v' = read off the supplier's own product page. 'm' = from a listing,",
+    "search result or memory, NOT the product page -- cost.py counts these separately",
+    "and prints the total twice, with and without them, because the user's rule is that",
+    "a price comes off the product page.",
+    "",
+    "qty: the price break this figure came from. cost.py does NOT interpolate breaks --",
+    "if the instrument needs 40 and the price is @10, it uses the @10 figure and says so."
+  ],
+  "filament_per_kg": {
+    "petg-gf": {
+      "usd": 29.99,
+      "verified": "v",
+      "source": "Tinmorry, list price",
+      "date": "2026-09-01",
+      "density_g_cm3": 1.32
+    },
+    "pctg": {
+      "usd": 31.99,
+      "verified": "m",
+      "source": "3D-Fuel Pro PCTG",
+      "date": "2026-09-01",
+      "density_g_cm3": 1.23
+    },
+    "tpu": {
+      "usd": 28.0,
+      "verified": "m",
+      "source": "generic 95A",
+      "date": "2026-09-01",
+      "density_g_cm3": 1.21
+    }
+  },
+  "mechanical": {
+    "servo42d": {
+      "usd": 34.0,
+      "qty": 10,
+      "verified": "m",
+      "per_instrument": 10,
+      "what": "MKS SERVO42D closed-loop stepper, NEMA17, CAN"
+    },
+    "leadscrew_tr8x2": {
+      "usd": 4.5,
+      "qty": 10,
+      "verified": "m",
+      "per_instrument": 10,
+      "what": "Tr8x2 screw + bronze nut, cut to length"
+    },
+    "bearing_688zz": {
+      "usd": 0.6,
+      "qty": 40,
+      "verified": "v",
+      "per_instrument": 40,
+      "what": "688ZZ O8xO16x5 -- screw, bridge and knee axles"
+    },
+    "bearing_mr85zz": {
+      "usd": 0.49,
+      "qty": 20,
+      "verified": "v",
+      "per_instrument": 20,
+      "what": "MR85ZZ, the screws' bottom thrust pair"
+    },
+    "belt_gt2": {
+      "usd": 0.8,
+      "qty": 10,
+      "verified": "v",
+      "per_instrument": 8,
+      "what": "GT2 open belt, USD per metre; ~7.74 m per instrument"
+    },
+    "shaft_o8": {
+      "usd": 6.0,
+      "qty": 2,
+      "verified": "m",
+      "per_instrument": 2,
+      "what": "O8 x 100 ground shaft -- bridge axle AND nut wrap rod, one SKU"
+    },
+    "guide_rod_o3_5": {
+      "usd": 1.2,
+      "qty": 10,
+      "verified": "m",
+      "per_instrument": 10,
+      "what": "O3.5 hardened drill blank, ~34 mm"
+    },
+    "m4_button": {
+      "usd": 0.12,
+      "qty": 100,
+      "verified": "m",
+      "per_instrument": 120,
+      "what": "M4 button head, 18-8 SS, 2.5 mm hex -- the one screw family"
+    },
+    "m4_insert": {
+      "usd": 0.15,
+      "qty": 100,
+      "verified": "m",
+      "per_instrument": 100,
+      "what": "M4 heat-set brass insert"
+    },
+    "m4_setscrew": {
+      "usd": 0.2,
+      "qty": 50,
+      "verified": "m",
+      "per_instrument": 30,
+      "what": "M4 set screw, cup point"
+    },
+    "die_spring": {
+      "usd": 1.1,
+      "qty": 20,
+      "verified": "m",
+      "per_instrument": 11,
+      "what": "uxcell O10x30 blue die spring, the control feel cartridge"
+    },
+    "magnet_o6": {
+      "usd": 1.0,
+      "qty": 20,
+      "verified": "m",
+      "per_instrument": 11,
+      "what": "O6 x 2.5 diametric NdFeB, one per sensed control"
+    },
+    "strings": {
+      "usd": 25.0,
+      "qty": 1,
+      "verified": "m",
+      "per_instrument": 1,
+      "what": "one 10-string pedal steel set"
+    }
+  },
+  "boards": {
+    "_fab_note": [
+      "JLCPCB, TEN INSTRUMENTS PER ORDER, divided by ten -- the user's basis. A board",
+      "needed 4 per instrument is ordered 40. These are the numbers to re-check on the",
+      "live quote form; every one is marked 'm' until somebody does.",
+      "",
+      "cost.py computes area from elec/geom/*.geom.json rather than taking it from here,",
+      "so a board that grows is re-priced without anyone editing this file."
+    ],
+    "fab_usd_per_cm2": {
+      "2": 0.03,
+      "4": 0.075,
+      "6": 0.17
+    },
+    "fab_min_usd": 2.0,
+    "assembly_setup_usd": 8.24,
+    "assembly_per_joint_usd": 0.0017,
+    "assembly_note": "setup and feeder are PER ORDER (so per ten instruments); joints are per board",
+    "verified": "v",
+    "fab_quotes": {
+      "_note": [
+        "MEASURED on jlcpcb.com's instant quote, 2026-09-30, at the form's DEFAULTS:",
+        "FR-4, 1.6 mm, green, HASL(with lead), 1 oz outer, tented vias, single PCB,",
+        "Industrial/Consumer. Price is for the WHOLE quantity, not per board.",
+        "",
+        "These replace a formula that was wrong by 2x to 12x. The old model charged a",
+        "$2.00 MINIMUM PER BOARD, so 100 small tee boards came to $200 against a real",
+        "$16.60 -- JLCPCB prices a batch, not a board, and the minimum is per ORDER.",
+        "The error was worst exactly where the instrument has most boards.",
+        "",
+        "\u26a0 Re-measure before ordering. Quotes move, and these are one day's numbers."
+      ],
+      "measured": [
+        {
+          "mm": [
+            49.5,
+            16.0
+          ],
+          "layers": 2,
+          "qty": 10,
+          "usd": 5.2,
+          "board": "can_tee"
+        },
+        {
+          "mm": [
+            49.5,
+            16.0
+          ],
+          "layers": 2,
+          "qty": 100,
+          "usd": 16.6,
+          "board": "can_tee"
+        },
+        {
+          "mm": [
+            72.0,
+            34.0
+          ],
+          "layers": 2,
+          "qty": 10,
+          "usd": 5.0,
+          "board": "ui_board"
+        },
+        {
+          "mm": [
+            139.0,
+            20.0
+          ],
+          "layers": 2,
+          "qty": 10,
+          "usd": 6.9,
+          "board": "led_strip"
+        },
+        {
+          "mm": [
+            286.4,
+            17.2
+          ],
+          "layers": 4,
+          "qty": 20,
+          "usd": 37.7,
+          "board": "foot_led"
+        },
+        {
+          "mm": [
+            210.8,
+            70.4
+          ],
+          "layers": 4,
+          "qty": 10,
+          "usd": 43.3,
+          "board": "fret_led_mid"
+        },
+        {
+          "mm": [
+            64.8,
+            188.5
+          ],
+          "layers": 4,
+          "qty": 10,
+          "usd": 40.1,
+          "board": "optical"
+        }
+      ],
+      "model": {
+        "_note": [
+          "Fitted to the rows above. base + area_rate x cm2, then extra boards beyond",
+          "the quoted 10 at per_extra_board. The 2-layer split at 100 mm is real and",
+          "visible in the data: 72x34 (both sides under 100) quotes $5.00 while the",
+          "LARGER-in-one-dimension 139x20 quotes $6.90 on LESS area."
+        ],
+        "2_small": {
+          "base": 4.5,
+          "area_rate": 0.02,
+          "per_extra_board": 0.127
+        },
+        "2_long": {
+          "base": 6.0,
+          "area_rate": 0.03,
+          "per_extra_board": 0.127
+        },
+        "4": {
+          "base": 25.2,
+          "area_rate": 0.122,
+          "per_extra_board": 0.65
+        }
+      },
+      "verified": "v"
+    },
+    "_assembly_note": [
+      "MEASURED 2026-09-30 on a real JLCPCB PCBA quote: can_tee's own gerber + BOM + CPL",
+      "uploaded, Economic PCBA, qty 50, 3 parts (2 THT connectors, 1 0603 resistor).",
+      "",
+      "  PCB Price                 $11.30   engineering 8.00 + film 0.30 + board 3.00",
+      "  Economic PCBA Price       $35.98",
+      "    Setup Fee                $8.24   per board DESIGN per order",
+      "    Stencil                  $1.55   per board DESIGN per order",
+      "    Components (3 items)    $10.79   50 boards' worth of parts",
+      "    SMT Assembly             $0.17   100 joints  -> $0.0017 each",
+      "    Hand-soldering           $3.61   600 THT pins -> $0.0060 each",
+      "    Manual Assembly          $9.97   100 THT parts -> $0.0997 each",
+      "    Nitrogen reflow          $1.65   an option, not modelled -- turn it off",
+      "  Total                     $47.28",
+      "",
+      "WHAT THIS OVERTURNED. The $0.0017 per SMT joint was right. Everything else was",
+      "not. Hand-soldering is $0.006 a pin, not the $0.20 guessed here yesterday -- 33x",
+      "out -- but THT also carries a SEPARATE $0.0997 per PART placed, which nothing in",
+      "the model knew about. Net for can_tee: $0.27 a board against $2.40 guessed.",
+      "Setup is $8.24 and it is PER DESIGN, not $25.00 once for the order, so ten board",
+      "designs pay it ten times.",
+      "",
+      "ONE DATA POINT, Economic, qty 50. Standard PCBA prices differently -- it shows a",
+      "'Feeders Loading fee' where Economic shows 'Setup Fee' -- and JLCPCB forces",
+      "Standard above a qty threshold, where a board under 70 mm a side then gets EDGE",
+      "RAILS added. Measured on can_tee at qty 100: the board charge went $6.00 -> $37.40",
+      "because the 49.5x16 outline was padded out to 71.5x70. See boards.rails_note."
+    ],
+    "hand_solder_per_joint_usd": 0.006,
+    "tht_footprints": [
+      "-XH-A_",
+      "-PH-K_",
+      "PinHeader",
+      "IDC-Header",
+      "TerminalBlock",
+      "BarrelJack",
+      "Jack_6.35"
+    ],
+    "tht_pins_fallback": {
+      "Jack_6.35": 4,
+      "BarrelJack": 3
+    },
+    "rails_note": [
+      "MEASURED: can_tee qty 100 was pushed to Standard PCBA, which requires every side",
+      "over 70 mm and adds edge rails. 49.5 x 16 became 71.5 x 70 and the board line went",
+      "from $6.00 to $37.40. At qty 50 the same board stays Economic, needs no rails, and",
+      "the board line is $3.00. This is a REAL cost cliff that depends on order quantity,",
+      "and it lands on our two smallest, most numerous boards: can_tee (10 per instrument)",
+      "and lever_sensor (11 per instrument, 31 x 21.9 mm). Panelising is the escape --",
+      "JLCPCB itself offered a 5 x 15 panel -- and nothing in this model represents it."
+    ],
+    "assembly_stencil_usd": 1.55,
+    "manual_assembly_per_tht_part_usd": 0.0997,
+    "_stock_note": [
+      "SOURCING RISK found while quoting can_tee: C157914 (S8B-XH-A, the 8-way CAN",
+      "connector) had 65 pieces in JLCPCB's library on 2026-09-30, against the 100 a",
+      "ten-instrument order needs. The quote would not proceed until the quantity came",
+      "down under stock. It is a stocked JST part, so this is a JLCPCB-library depth",
+      "problem rather than a dead part -- but assembly is only turnkey while they hold it."
+    ]
+  },
+  "parts_by_footprint": {
+    "_note": "generic passives, priced by package class. LCSC Basic-library rates.",
+    "R_0402": 0.002,
+    "R_0603": 0.003,
+    "R_0805": 0.004,
+    "C_0402": 0.002,
+    "C_0603": 0.003,
+    "C_0805": 0.01,
+    "C_1206": 0.02,
+    "L_0603": 0.03,
+    "L_0805": 0.04,
+    "L_1210": 0.12,
+    "D_SOD-323": 0.03,
+    "D_SOD-123": 0.03,
+    "LED_0603": 0.04,
+    "LED_0805": 0.05,
+    "SOT-23": 0.06,
+    "SOT-23-5": 0.08,
+    "SOT-23-6": 0.09,
+    "TestPoint": 0.0,
+    "SolderJumper": 0.0,
+    "MountingHole": 0.0,
+    "Fiducial": 0.0,
+    "C_1210": 0.02
+  },
+  "parts_by_ref": {
+    "_note": [
+      "The named parts -- ICs, connectors, crystals -- keyed board:REF. A designator",
+      "with no entry here and no footprint-class match is reported UNPRICED by cost.py",
+      "rather than silently costing nothing."
+    ],
+    "motor_ctrl:U4": {
+      "usd": 2.6,
+      "verified": "v",
+      "what": "CH32V307WCU6"
+    },
+    "motor_ctrl:U5": {
+      "usd": 1.05,
+      "verified": "v",
+      "what": "LMR33630ADDAR buck"
+    },
+    "motor_ctrl:U6": {
+      "usd": 1.05,
+      "verified": "v",
+      "what": "LMR33630ADDAR, LED buck"
+    },
+    "output_panel:U1": {
+      "usd": 2.2,
+      "verified": "v",
+      "what": "CH32V307"
+    },
+    "output_panel:U2": {
+      "usd": 1.65,
+      "verified": "v",
+      "what": "PCM1808PWR ADC"
+    },
+    "output_panel:U3": {
+      "usd": 2.1,
+      "verified": "v",
+      "what": "PCM5102APWR DAC"
+    },
+    "output_panel:U4": {
+      "usd": 0.95,
+      "verified": "v",
+      "what": "CH334F USB hub"
+    },
+    "optical:U6": {
+      "usd": 11.5,
+      "verified": "v",
+      "what": "STM32H743 LQFP176"
+    },
+    "lever_sensor:U1": {
+      "usd": 1.68,
+      "verified": "v",
+      "what": "MT6701QT angle sensor"
+    },
+    "lever_sensor:U2": {
+      "usd": 0.62,
+      "verified": "v",
+      "what": "SN65HVD230 CAN transceiver"
+    },
+    "lever_sensor:U3": {
+      "usd": 0.45,
+      "verified": "m",
+      "what": "CH32V203 MCU"
+    }
+  },
+  "modules": {
+    "_note": "bought assembled, not fabbed by us",
+    "pi5": {
+      "usd": 80.0,
+      "verified": "m",
+      "per_instrument": 1,
+      "what": "Raspberry Pi 5"
+    },
+    "oled_2_42": {
+      "usd": 17.0,
+      "verified": "m",
+      "per_instrument": 1,
+      "what": "2.42in 128x64 SSD1309"
+    },
+    "alps_rkjxt": {
+      "usd": 9.22,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Alps RKJXT1F42001"
+    },
+    "ts_jack": {
+      "usd": 2.53,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Neutrik NMJ4HCD2"
+    },
+    "dc_jack": {
+      "usd": 3.0,
+      "verified": "m",
+      "per_instrument": 1,
+      "what": "Same Sky PJ-102AH"
+    },
+    "pickup": {
+      "usd": 99.0,
+      "verified": "m",
+      "per_instrument": 1,
+      "what": "Lace Alumitone 4.0 bar"
+    }
+  },
+  "missing": {
+    "_note": [
+      "KNOWN ABSENT, listed so the total is honest about its own holes. cost.py prints",
+      "these under the table and refuses to call the number complete while any remain."
+    ],
+    "psu": "No power supply is specified anywhere in this project. BOM.md says so too. The slew budget that would size it is unmeasured (docs/design-validation.md B7).",
+    "wire": "Harness wire is ~$35 in BOM.md as an estimate, excluding the ten control drops. Not itemised here because the cut lists exist per-cable and nobody has totalled them.",
+    "connectors": "XH/PH/ZR housings, crimps and the pogo parts. Counted by elec/part_totals.py, not yet priced here."
+  },
+  "parts_by_footprint_substring": {
+    "_note": [
+      "Matched as a SUBSTRING of the footprint id, after the package-class table",
+      "fails. This is how a part with a real MPN in its footprint name gets priced",
+      "without an entry per board per designator -- there are ~90 RGBW LEDs and 20",
+      "photodiodes, and listing them individually would be a transcription exercise."
+    ],
+    "XL-5050RGBW": {
+      "usd": 0.05,
+      "verified": "m",
+      "what": "XINGLIGHT RGBW 5050 (C7371891) -- five cents each, measured in docs/fret-led.md"
+    },
+    "PD15-22B": {
+      "usd": 0.067,
+      "verified": "v",
+      "what": "Everlight PD15-22B/TR8 (C161211) @200, 11271 in stock"
+    },
+    "SOD-523": {
+      "usd": 0.03,
+      "verified": "m",
+      "what": "small-signal diode / ESD clamp"
+    },
+    "SMA": {
+      "usd": 0.09,
+      "verified": "m",
+      "what": "SMA-body diode"
+    },
+    "SWPA4030S": {
+      "usd": 0.12,
+      "verified": "m",
+      "what": "Sunlord shielded power inductor"
+    },
+    "USB_C_Receptacle": {
+      "usd": 0.3,
+      "verified": "m",
+      "what": "HRO TYPE-C-31-M-12"
+    },
+    "JST_XH_S4B": {
+      "usd": 0.0698,
+      "verified": "v",
+      "what": "JST XH 4-way, C157925 -- JLCPCB cart, 51 pcs $3.5598"
+    },
+    "JST_XH_S8B": {
+      "usd": 0.1416,
+      "verified": "v",
+      "what": "JST XH 8-way, C157914 -- JLCPCB cart, 50 pcs $7.08; ONLY 65 IN STOCK 2026-09-30"
+    },
+    "JST_XH_B4B": {
+      "usd": 0.11,
+      "verified": "m",
+      "what": "JST XH 4-way THT header"
+    },
+    "JST_PH_S4B": {
+      "usd": 0.15,
+      "verified": "m",
+      "what": "JST PH 4-way side-entry"
+    },
+    "JST_PH_S8B": {
+      "usd": 0.289,
+      "verified": "v",
+      "what": "S8B-PH-SM4-TB (C265121) @100"
+    },
+    "JST_PH_B": {
+      "usd": 0.14,
+      "verified": "m",
+      "what": "JST PH top-entry header"
+    },
+    "PinHeader": {
+      "usd": 0.18,
+      "verified": "m",
+      "what": "2.54 pin header, the Pi's own family"
+    },
+    "IDC-Header": {
+      "usd": 0.18,
+      "verified": "m",
+      "what": "2.54 IDC header"
+    },
+    "Alps_RKJXT": {
+      "usd": 0.0,
+      "verified": "v",
+      "what": "COUNTED IN modules.alps_rkjxt -- zero here so the one switch is not paid for twice"
+    },
+    "Crystal": {
+      "usd": 0.07,
+      "verified": "v",
+      "what": "X322525MSB4SI 25 MHz 3225 (C13740)"
+    },
+    "TLC5971": {
+      "usd": 0.85,
+      "verified": "m",
+      "what": "LED driver"
+    },
+    "TLC597": {
+      "usd": 0.85,
+      "verified": "m",
+      "what": "LED driver (prefix match)"
+    },
+    "S6B-PH": {
+      "usd": 0.23,
+      "verified": "m",
+      "what": "JST PH 6-way side-entry (the LED sections' joint)"
+    },
+    "Fuse_1206": {
+      "usd": 0.09,
+      "verified": "m",
+      "what": "1206 fuse"
+    },
+    "D_SMB": {
+      "usd": 0.12,
+      "verified": "m",
+      "what": "SMB-body diode"
+    },
+    "NR-3": {
+      "usd": 0.11,
+      "verified": "m",
+      "what": "Taiyo-Yuden NR-series inductor"
+    },
+    "USB_A_Receptacle": {
+      "usd": 0.32,
+      "verified": "m",
+      "what": "GCT USB1046 USB-A"
+    },
+    "Jack_6.35mm_Neutrik": {
+      "usd": 0.0,
+      "verified": "v",
+      "what": "COUNTED IN modules.ts_jack"
+    },
+    "QFN-16": {
+      "usd": 0.45,
+      "verified": "m",
+      "what": "QFN-16 IC, generic -- lever_sensor U4"
+    },
+    "SOIC-14": {
+      "usd": 0.3,
+      "verified": "m",
+      "what": "SOIC-14 IC, generic"
+    },
+    "VQFN-HR-12": {
+      "usd": 1.05,
+      "verified": "m",
+      "what": "TI VQFN-HR-12 buck"
+    },
+    "HT": {
+      "usd": 0.85,
+      "verified": "m",
+      "what": "LED driver (fret_led U1)"
+    },
+    "JST_SH_SM04B": {
+      "usd": 0.16,
+      "verified": "m",
+      "what": "JST SH 4-way 1.0 mm"
+    },
+    "SRN6028": {
+      "usd": 0.15,
+      "verified": "m",
+      "what": "Bourns SRN6028 inductor"
+    },
+    "SOIC-8": {
+      "usd": 0.25,
+      "verified": "m",
+      "what": "SOIC-8 IC, generic"
+    },
+    "WQFN-24": {
+      "usd": 1.9,
+      "verified": "m",
+      "what": "TLV320ADC3140 audio ADC (WQFN-24)"
+    },
+    "BarrelJack": {
+      "usd": 0.0,
+      "verified": "v",
+      "what": "COUNTED IN modules.dc_jack"
+    },
+    "MX126-5.0": {
+      "usd": 0.066,
+      "verified": "v",
+      "what": "MaiXu MX126-5.0-02P screw terminal (C5188434)"
+    },
+    "HVQFN-24": {
+      "usd": 1.2,
+      "verified": "m",
+      "what": "USB3300 ULPI PHY (HVQFN-24) -- optical U7"
+    },
+    "SOT-223": {
+      "usd": 0.18,
+      "verified": "m",
+      "what": "SOT-223 LDO"
+    },
+    "JST_XH_B2B": {
+      "usd": 0.09,
+      "verified": "m",
+      "what": "JST XH 2-way THT header"
+    },
+    "Relay_DPDT_Omron_G6K": {
+      "usd": 1.48,
+      "verified": "v",
+      "what": "Omron G6K-2F-Y-DC5 (C326376)"
+    }
+  },
+  "print_material_factor": {
+    "factor": 0.6,
+    "verified": "v",
+    "measured": {
+      "part": "chassis_2",
+      "sliced_g": 540.13,
+      "solid_cm3": 687.4,
+      "density_g_cm3": 1.32,
+      "solid_g": 907.3,
+      "date": "2026-09-30",
+      "by": "user, in the slicer"
+    },
+    "what": [
+      "Fraction of SOLID volume that becomes filament. MEASURED, not guessed: the user",
+      "sliced chassis_2 and got 540.13 g against 907.3 g solid, which is 0.595. Rounded",
+      "to 0.60.",
+      "",
+      "Previous value was 0.45, a guess, and it was 25% low -- the plastic line moves",
+      "$109 -> $146 on this one number. Walls dominate a part like the chassis, so it",
+      "packs denser than sparse-infill intuition suggests.",
+      "",
+      "\u26a0 ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
+      "will run HIGHER than 0.60; a large hollow one lower. Slicing a second part -- a",
+      "knee housing, say -- would show whether one factor is honest for the whole set."
+    ]
+  }
+}
