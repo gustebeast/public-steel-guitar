@@ -461,15 +461,29 @@ left the process count at **1** and the existing process grew 1,491,164 K -> 1,5
 (~40 MB, a new document's overhead). It did not start a second FreeCAD. So FreeCAD DOES
 offer an external way in, and the earlier claim that it offers none is withdrawn.
 
-**(b) Does a second open of the SAME file re-import, or just focus? PARTLY answered.**
-Running it again on the already-open file grew memory only 1,531,112 -> 1,533,864 K
-(+2.7 MB against the +40 MB a new document cost), so it does **not** create a duplicate
-document. Whether it RE-IMPORTS a file whose contents changed is NOT established -- memory
-cannot distinguish "reloaded in place" from "focused and did nothing", and every STEP small
-enough to test with is dwarfed by FreeCAD's per-document overhead.
+**(b) Does a second open of the SAME file re-import, or just focus? THE MEASUREMENT IS VOID.**
+The run appeared to grow memory only 1,531,112 -> 1,533,864 K (+2.7 MB against the +40 MB a
+new document cost). **That number has been WITHDRAWN.** The user reports a **modal Save As
+dialog** appeared during the test and had to be closed by hand. If it was raised by the FIRST
+invocation and was still up when the second fired, the second import was **queued behind a
+blocked GUI thread**, not completed -- so +2.7 MB measures a stalled import, not a focus.
+The two runs cannot be told apart after the fact, so the reading is discarded rather than
+reported as weak evidence. (b) is UNANSWERED, not partly answered.
 
-**What (a) already decides:** the INBOX is not load-bearing for opening a tab. A build could
-hand FreeCAD a project with no macro involved at all.
+**⚠ AND THE DIALOG IS THE REAL FINDING -- it is already a known, already-defeated bug.**
+`cadkit/freecad/freecad_viewer.py:146` documents it: FreeCAD 1.1's `ImportGui.insert` pops a
+modal Save As when the target document **has never been saved**, and it "wedges the hub on
+every build". The hub defeats it at line 151 by giving the empty doc a throwaway `FileName`
+in temp BEFORE importing. The CLI test went AROUND that workaround, which is why the dialog
+appeared. **It would not occur in the final version through the hub.**
+
+**⚠ WHICH REVERSES WHAT (a) SEEMED TO DECIDE.** The earlier note here said "the INBOX is not
+load-bearing for opening a tab". Too strong. CLI forwarding **creates the document itself**,
+so there is no hook at which to pre-save it -- the modal is therefore UNAVOIDABLE on the CLI
+path, on every fresh document, and a modal wedges everything behind it. The in-process macro
+path exists partly BECAUSE it can pre-save. So (a) proves FreeCAD has an external way in, but
+**not a usable one for opening a project**; the inbox stays. A modal blocker outranks the
+convenience of dropping a component.
 
 **What still turns on (b):** the AUTO-RELOAD is the hub's actual value -- the tab updating
 itself on every rebuild -- and until (b) is proven the resident watcher has to stay for it.
