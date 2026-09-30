@@ -44,9 +44,35 @@ JAVA = os.path.expandvars(
     r"%LOCALAPPDATA%\Programs\temurin\jdk-25.0.4.1+1-jre\bin\java.exe")
 # Freerouting 2.4.1 is built for Java 25 (class file 69) -- a Java 21 runtime
 # fails to load it at all, which is the first thing to check if this breaks.
-JAR = os.path.expandvars(
-    r"%LOCALAPPDATA%\Temp\claude\C--Users-gus-Sync-Documents-Archive-3D-public-steel-guitar"
-    r"\d7576032-b257-4aee-8a45-89e587fe4007\scratchpad\freerouting.jar")
+def _find_jar():
+    r"""Locate freerouting.jar, and NOT in a session scratch directory.
+
+    ⚠⚠ THIS USED TO POINT INTO %LOCALAPPDATA%\Temp\claude\<session-id>\scratchpad, which
+    means the whole routing pipeline stopped working the moment that temp directory was
+    cleaned -- for the lead and every other agent who took the merge, not just the session
+    that happened to download it. Nothing would have said why: the jar simply is not there.
+    This project has already lost a tool that way (scratchpad/maze.py, whose own replacement
+    note reads "anything that has to be re-run every time the route changes cannot live in a
+    scratch directory"), and then the ROUTER itself did the same thing.
+    Order: an explicit override, then a stable per-machine install, then the old scratch path
+    so an existing checkout keeps working until the copy is made.
+    """
+    import glob
+    cands = [os.environ.get("FREEROUTING_JAR"),
+             os.path.expandvars(r"%LOCALAPPDATA%\Programs\freerouting\freerouting.jar")]
+    cands += sorted(glob.glob(os.path.expandvars(
+        r"%LOCALAPPDATA%\Temp\claude\*\*\scratchpad\freerouting.jar")), reverse=True)
+    for c in cands:
+        if c and os.path.isfile(c):
+            return c
+    raise SystemExit(
+        r"freerouting.jar not found. Put it at "
+        r"%LOCALAPPDATA%\Programs\freerouting\freerouting.jar, or set FREEROUTING_JAR. "
+        r"(~64 MB, so deliberately NOT in the repo -- but it must not live in a session "
+        r"scratch directory either: that is how this pipeline came to depend on a temp dir.)")
+
+
+JAR = _find_jar()
 # ⚠ PASSES BUY CONNECTIVITY ON A HARD BOARD, AND THIS COMMENT USED TO SAY THEY DO NOT.
 # The old claim was that freerouting finds connectivity in the first pass or two and
 # every pass after that only shortens track, so "the curve is flat after about 10". It
