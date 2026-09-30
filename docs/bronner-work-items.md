@@ -4426,3 +4426,63 @@ reaches either its own copper or a legal via site. **No post-route repair closes
 is position-dependent post-route copper and would need re-searching against the new board. The
 bring-up pads no longer need that treatment — they self-search at placement time now — so the
 dog-leg is the only artefact that has to be re-derived.
+
+## THE I/O BOARD'S TRS + GAIN CHANGE: FULLY SPECIFIED, VERIFIED PARTS, NOT YET LANDED (2026-09-30)
+
+Attempted during the optical route's downtime and **deliberately reverted**: the netlist half of
+it applied cleanly, but every new part also needs a **placement** entry (this board has an
+explicit `placements` dict, 94 entries), and a half-wired generator is a hazard to leave in a
+shared repo. `output_panel.py` is back to generating cleanly. Everything below is verified, so
+landing it is mechanical.
+
+### Verified parts and pinouts — no guesses left
+
+| item | part | evidence |
+|---|---|---|
+| jack | **NMJ6HCD2** | strict pad SUPERSET of the NMJ4HCD2: T/TN/S/SN identical, R/RN inserted midway at 6.35. KiCad ships the footprint |
+| ring driver | **TLV9062IDR**, SOIC-8 | dual of the TLV9061 already on the board; **170,592** in stock |
+| gain | **MCP4261-103E/ST**, TSSOP-14 | dual 10 kΩ, 257 taps, SPI, **non-volatile**, 2.7–5.5 V single supply; **96** in stock |
+
+**MCP4261 14-lead pinout, read from the datasheet's own Table 3-1 (`14L` column):**
+
+```
+1 CS   2 SCK  3 SDI  4 VSS  5 P1B  6 P1W  7 P1A
+8 P0A  9 P0W 10 P0B 11 WP  12 SHDN 13 SDO 14 VDD
+```
+
+`WP` and `SHDN` tie to VDD (both active-low); `SDO` unconnected.
+
+**MCU pins — verified, not chosen by eye.** `output_panel.py` warns that a wrong pin number is
+uncatchable downstream. `motor_ctrl.py` uses the *same* CH32V307 in the *same* QFN-68 and its
+table **cross-validates** output_panel's where they overlap (35=PB12, 36=PB13, 48=PA13,
+52=PA14, 63=BOOT0). Free and verified on this board: **PB8 (64), PB9 (65), PB0 (26)** — PA11/PA12
+are also free here (USB is on PB6/PB7) but are worth keeping.
+⚠ **Bit-banged, so no alternate-function mapping question arises**: a 3-wire pot at control rates
+(a foot moves at ~10 Hz) needs no hardware SPI peripheral.
+⚠ **Level shifting is not needed and that is measured:** the pot must run at 5 V to pass a
+VMID-centred signal, and its Schmitt VIH is **0.45 × VDD = 2.25 V** at 5 V, which 3.3 V logic
+clears with margin.
+
+### The architecture, and why it is cheaper than it looks
+
+* **Modes 2 and 3 differ only in software.** Stereo is L/R; balanced mono is L/−L. The PCM5102A
+  is already stereo with `OUTR` unused, so **no inverting amplifier is needed at all**.
+* **That is what makes K1's spare pole sufficient.** It follows the same coil as pole A, so it
+  cannot pick between three things — and it never has to. The hardware choice is binary:
+  de-energised = direct = ring grounded; energised = processed = ring driven.
+* ⚠ **`OUTR`'s "unconnected ON PURPOSE" note is overturned, not ignored.** It is right for a MONO
+  jack; a TRS jack gives the Pi a second conductor and stereo cannot be made from a fold-down.
+* **Gain sits at U7A's input**, so it serves direct *and* processed. The pot must be where the
+  signal is VMID-biased (it is single-supply and cannot pass a ground-centred swing): P0A = the
+  AC-coupled node, P0W = U7A IN+, P0B = VMID. DC for the node comes through the pot itself.
+* ⚠ **Known limitation:** P0B into VMID loads it through C40 (10 µF), so the AC reference is
+  ~796 Ω at 20 Hz — about 8 % low-frequency error at mid-settings, ~1.6 % at 100 Hz. Acceptable
+  for an instrument whose lowest note is ~82 Hz; if it ever matters, C40 grows.
+* **Zipper noise, not latency, is the thing to engineer against** — see the latency note below.
+
+### Still to do when it lands
+
+5 new passives mirroring the tip chain (470R + 2.2nF C0G filter, 1 µF coupling, 100k bias) plus a
+**100 Ω series resistor on the ring** — the hardware backstop for a TS plug shorting R to S, since
+mode is a UI setting rather than detected. Then placements for all of them and U7's package change
+(SOT-23-5 → SOIC-8), and one route.
