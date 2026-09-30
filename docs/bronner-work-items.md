@@ -53,6 +53,7 @@ a stale marker, striking the marker is part of the work.
 | … ✅ but perpendicular does NOT force an overlap | the four conductors join corresponding points on two **skew** lines, and such segments are pairwise skew — they cannot intersect. Measured closest approach for straight pin-to-pin runs: **1.40 mm** against a 1.30 mm conductor OD (**CLEAR**); reversed order gives 1.30 (touching). So the 32 mm³ is the rigid-section BUNDLE MODEL, not the connectors |
 | … ⚠ and the margin is why this is not yet a fix | **0.10 mm** of clearance, on STRAIGHT lines that ignore the chassis. The real run must thread the wiring port, which only adds constraints. Do not treat “skew lines cannot meet” as a licence to ship a 0.1 mm harness |
 | … what this DOES unblock | per-conductor pin-to-pin routing is **not** among the five attempts `check_overlaps` rules out — all five (`across` seed, way order, 2×2 section, wider ribbon, chord at the rise) are variants INSIDE the bundle model. And the file's own docstring says the lever segments already do pin-to-pin successfully “because both their connectors face the same way”. The open question is whether it survives the port |
+| ▶ FreeCAD hub integration (cadkit) | **NOT STARTED.** The crash is fixed — the busy guard arrived with the sync — but the PID/kill design is still there. **Test `--single-instance` FIRST**: it decides the other three items. See the section below |
 | Pi retention | the user's printed spacer, built and gate-clean |
 | I/O board TRS + gain | ✅ **LANDED AND ROUTED** (`a09089a` … `ba97b18`). J5 → NMJ6HCD2; ring leg = a part-for-part mirror of the tip's phantom guard (U9/R20/D7/C41/R21); gain = MCP4261 dual pot **in front of** both buffers |
 | ⚠ the ring needed a PHANTOM GUARD | on a TRS→XLR the ring IS pin 3, so +48 V arrives down it through 6.81k exactly as down pin 2. The tip has been guarded since the board was drawn; a ring added without R9/C1/D5's mirrors would have been a new 48 V path onto a new op-amp |
@@ -440,6 +441,68 @@ Keep the ring, lip, wall, lean and M4 boss exactly as they are — only the root
 * Screws through boards (`optical_pcb`, `pi5`, `keyhead_endplate`) — declare the clamp or fix
   the missing hole.
 * `pickup_zplate` ↔ `wire_pickup` — must hold across the jack travel, not just the demo pose.
+
+## FreeCAD hub integration (cadkit) — run the TEST first, it gates the rest
+
+The viewer crash is fixed and needs nothing further: the vendored `freecad_view.py` now
+carries `_BUSY_MAX_S` and the `_busy_age()` guard, which arrived with the sync from main.
+Verified 2026-09-30: **zero content differences** against canonical across every `.py`
+(the "26 drifted files" reported earlier were CRLF-vs-LF noise, not drift — a propagate
+is NOT needed, and the earlier claim that one was is withdrawn).
+
+What is left is the DESIGN, which the user pushed on and which is right: the hub keeps a
+process id and a force-kill for something they should not be needed for.
+
+### 1. THE TEST — do this before deciding anything else
+
+FreeCAD 1.1's CLI has **`--single-instance`** ("Allow to run a single instance of the
+application"). The user found it; it contradicts the claim that FreeCAD offers no external
+API, which was wrong and is withdrawn. Two questions, in one sitting:
+
+  a. `freecad.exe --single-instance some.step` with a hub already running — does the file
+     open as a tab in the EXISTING window, or does it start a second process?
+  b. With that file ALREADY open as a tab, run it again — does the document **re-import**
+     (which is the auto-reload the hub exists to provide), or does it merely focus?
+
+Answer (a) decides whether the INBOX is still needed. Answer (b) decides whether the
+resident watcher can shrink to almost nothing or has to stay. **Do not start items 2–4
+before this**: (b) especially can make most of them unnecessary.
+
+### 2. Documents carry their own provenance, not a dict
+
+`freecad_viewer.py` holds `_hub["projects"]`: name -> {step path, mtime at last load,
+pending-stability check}. That is a second copy of the truth and it drifts — close a tab by
+hand and the dict still lists it; reload the module and the dict is gone while the tabs
+remain. Stamp each loaded document with its source path, mtime and size as document
+properties, then reconcile `App.listDocuments()` against disk each tick. No dict, no drift,
+a closed tab simply is not in the list. **And it is what makes item 3 possible**, because
+in-memory state dies on a module reload and document properties do not.
+
+### 3. Hot-reload the viewer module, so nothing ever needs killing
+
+FreeCAD runs the macro once at launch, so new viewer code reaches a live hub ONLY by
+restarting it. That is the second of the two reasons `_kill_hub()` exists. Re-read the
+viewer module each tick (keeping a tiny stable shim resident) and `.codestamp` becomes a
+warning rather than a trigger.
+
+### 4. Then delete the PID and the kill
+
+With 2 and 3 done, PID serves nothing. What each question is really answered by:
+
+    is our watcher alive?        .heartbeat freshness
+    is it mid-load, not wedged?  .busy
+    is my tab there and current?  the status file
+    open a new tab                a request in the inbox
+    which process to kill         the PID   <- the only row, and the one that crashed it
+
+So: drop the marker file and `_kill_hub()`; liveness becomes "is there a fresh heartbeat";
+launch only when there is not. A genuinely wedged hub gets REPORTED instead of
+`taskkill /F /T`-ed — a FreeCAD holding someone's unsaved work is theirs to close.
+
+⚠ ALL OF 2–4 ARE CANONICAL-CADKIT CHANGES, so they go in `../cadkit` and then propagate to
+every project that vendors it — never edited in the vendored copy here. That is also why
+the test comes first: the blast radius is every project, so it is worth knowing which of
+these are needed before touching any of them.
 
 ## Done this session
 
