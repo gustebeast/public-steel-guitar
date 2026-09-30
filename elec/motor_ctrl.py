@@ -955,7 +955,18 @@ BOARD_NOTES = {
         "L3": (-2.87, 19.70, 0.0),
         "F4": (3.20, 19.70, 0.0),
         "D10": (9.62, 19.70, 0.0),
-        "J7": (24.21, 19.70, 0.0),
+        # ⚠ J7 IS OFF THE DOWNWARD EDGE, AND IT WAS OVER IT (user, measured 2026-09-30).
+        # board +X is world -Z -- electronics.stand() maps the flat +X edge to the chassis
+        # floor -- and the rule written 20 lines above is that this edge "carries the two
+        # bus-B JSTs and nothing else, because anything on it would have its cable pointing
+        # down through the service hole". J7 was not merely near that edge: its courtyard
+        # ran to x 130.96 against an outline at 130.95, so it OVERHUNG the board by 0.01 mm
+        # and sat 0.26 mm inside its own clearance. The rule was stated and then not applied
+        # to the part added after it, which is the ordinary way a design rule fails.
+        # Moved 3.00 mm inboard to the NEAREST site that passes a courtyard sweep with a
+        # 2.50 mm keep-off on +X (1.00 elsewhere); it now clears that edge by 2.74 mm, and
+        # J2/J6 have it to themselves as intended.
+        "J7": (21.21, 19.83, 0.0),
         # row B: the passives, above row A. U6 and L3 are ~7-8 mm tall in Y and fill
         # row A by themselves, so nothing else fits beside them.
         "C26": (-14.00, 25.00, 0.0),
