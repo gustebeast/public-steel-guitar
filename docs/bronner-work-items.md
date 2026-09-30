@@ -4879,3 +4879,50 @@ The holes were the most visible change, so they got the blame; nothing ever meas
 same window is the one where post-route artefacts were found to rot, which is a sufficient
 explanation on its own. **A coincidence in time is not a cause, and this file should not have
 implied one.**
+
+## ⚠ `--incremental` IS NOT THE ITERATION LEVER — MEASURED, AND IT DAMAGED THE BOARD
+
+Item 2 of this file recommends *"`route.py --incremental` … use those while iterating"*. **Nobody
+had ever timed it.** Measured on the 3/0 board:
+
+```
+incremental: 2 net(s) left free (+3V3A, SAI_FS), 164 frozen
+freerouting: 2217.5 s wall, 10 pass(es)        <- 37 MINUTES for two nets
+```
+
+Not faster — **slower than a full pass** (29–35 min). Freezing shrinks what the router must
+SOLVE, but freerouting still runs its ten optimisation passes over all 2204 segments, so the
+per-pass cost barely moves.
+
+**And the result was worse than useless:**
+
+| | unconnected | violations |
+|---|---|---|
+| baseline | 6 items, `+3V3A`+`SAI_FS` | `courtyards_overlap` 20 |
+| after incremental | 6 items, same nets | `courtyards_overlap` **31**, **`holes_co_located` 5** |
+
+⚠ **`holes_co_located` is a FABRICATION error** — drills on top of each other — introduced by the
+re-lay. 37 minutes for no gain and a board that could not be made. Reverted.
+
+### So the measured picture on route time is:
+
+| lever | verdict |
+|---|---|
+| **`--rounds 1`** | ✅ real and 2× — six of seven pass-2s were wasted (~32 min each) |
+| `--incremental` | ❌ **37 min, no gain, introduced fab errors** |
+| fewer freerouting passes | ❌ counter-indicated: `route.py` says early passes leave a mess later ones rip up, and optical asks for 10 deliberately |
+
+**~32 minutes is the floor for a full route of this board with the current tooling.** Item 2's
+advice is now corrected in place by this section.
+
+### ⚠ THE FAST PATH THAT DOES EXIST: SUBSET ROUTING, AND IT IS ALREADY IN THE REPO
+
+`elec/pinsearch.py` routes **a DSN carrying only one group of nets** on the real placement, and
+its own docstring records the cost: *"Routing 96 nets to learn about 20 costs ten minutes a
+trial"* — so a subset trial is minutes, not half an hour, and every PAD is still present as an
+obstacle so escapes and squeezes stay real.
+
+That is the harness to generalise for `+3V3A` / `SAI_FS` work: route those two nets plus their
+neighbours, not the whole board. ⚠ And with its own caveat, which pinsearch states: it cannot see
+a change that would have made the other nets route differently, so **it ranks candidates and the
+full `finish.py` still confirms a result.**
