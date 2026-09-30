@@ -804,6 +804,7 @@ def _electronics_components():
     # the FOOT strip: one board placed twice, firing down through the chassis window.
     # The channel it slides into is chassis geometry (src/foot_light.py).
     from . import foot_light as FOOT
+    out += FL.strips()
     out += FOOT.parts()
     out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]

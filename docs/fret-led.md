@@ -802,6 +802,119 @@ The two remaining questions from the original plan:
    way the panel slides off, so a loose screw and a tug could walk it out — and it still
    wants checking against the cell walls' end stops.
 
+## 8.6 ⚠ RETRACTED: the lift-and-shift tabs cannot be engaged, and what I shipped did not retain
+
+§8.4 was written as a plan and built in commit `818bd8a` without the one measurement that
+decides it. Two defects, both mine, found on the next pass:
+
+### Defect 1: the notch was at the same X as its tab
+
+`_outline()` put a notch at every `tab_xs()` and `tabs()` put a tab at the same X. So at
+the board's DESIGN POSITION each tab sat inside its own notch and **the board lifted
+straight out**. The retention held nothing.
+
+⚠ **A solid intersection could never have caught it**, and my probe reported
+`tab vs board 0.00 mm3` which I read as "face to face, correct". The tab is BELOW the
+board: it reads 0.00 whether it laps the edge or sits in a hole. **Retention is a
+PLAN-VIEW question** and I asked it as a volume one. `tools/_probe_strip.py` now asks it
+properly, by lifting the strip into the board's own Z band and intersecting there.
+
+### Defect 2: the shift is geometrically impossible on the mid board
+
+§8.2 says the LEDs must enter their cells vertically because "the cell walls' undersides
+sit at the board's TOP FACE, and the LEDs stand 1.40 above that". That argument does not
+stop at insertion -- it applies to **any** X motion of a seated board, forever:
+
+    an LED and a cell wall share z BOARD_TOP .. BOARD_TOP + LED_H
+
+So the board's X freedom is whatever its tightest cell allows:
+
+| fret | pitch | cell clear | LED free | max shift each way |
+|--:|--:|--:|--:|--:|
+| **24** | 9.14 | 7.54 | 2.54 | **1.27** |
+| 12 | 18.28 | 16.68 | 11.68 | 5.84 |
+| 9 | 21.74 | 20.14 | 15.14 | 7.57 |
+
+§8.4 asked for **6.00 mm**, and a tab has to travel its **own length** to leave its notch,
+so the real requirement is **> TAB_LEN + clearance = 8.50**. The mid board has 1.27. The
+scheme was never installable, at any tab length that is also a useful tab.
+
+## 8.7 The retainer strip: move the STRIP, not the board
+
+The fix follows from the same fact that killed the tabs. The comb lives ABOVE `BOARD_TOP`;
+the board's underside is bare, every part being on its top face. So **a strip sliding along
+X BELOW the board meets no wall and no LED**, and the board itself never moves.
+
+    panel face down on the bench -> drop the board into the comb (gravity seats it
+    against the cell walls) -> slide a strip in along each long edge to trap it
+
+`src/fret_light.py`: `edge_walls()` (grooved), `strip_groove()` (cut from the comb by
+`top_plate`), `strips()` (two bars per panel). It deletes the notches, so the boards are
+plain rectangles again and `outline_poly` is gone.
+
+### One screw is not enough, which is where §8.3 was right
+
+The M4 sits 4.50 from the board's -X end, so the board cantilevers 206 mm. At
+EI = 576,000 N.mm2 (70.4 x 1.6 FR4) and ~35 g with parts:
+
+    sag = wL^4 / 8EI = 0.64 mm at the far end
+
+0.64 mm of the board hanging OFF the cell walls, leaking light between cells -- the one
+thing the comb exists to prevent. Distributed edge retention is required; §8.3's
+conclusion stands even though §8.4's mechanism did not.
+
+### ⚠ THREE STRIPS, NOT FOUR, and the CAN trunk picks which
+
+The room under each edge is measured, not assumed (`tools/_probe_fret_tab.py` and the
+band probe that followed):
+
+| edge | room under the board | strip |
+|---|--:|---|
+| mid +Y | 6.00 | ✅ 1.60 |
+| key -Y | 5.30 | ✅ 1.60 |
+| key +Y | 6.00 | ✅ 1.60 |
+| **mid -Y** | **1.00** (`wire_canl_6/7`) | ❌ none |
+
+**The trunk runs DIAGONALLY under the boards**, which is why three of the four are open
+and one is not: it passes under mid's -Y side and crosses to key's middle. A groove needs
+the strip PLUS a floor to hold it up -- two beads -- so 1.00 cannot host one.
+`has_strip()` decides it from `STRIP_ROOM` and `fret_light` says which edge lost out, once,
+on every import. Invert `wiring.py TRUNK_DZ` (§8.1) and mid's fourth strip appears with no
+edit here.
+
+### ⚠ ONE FULL-LENGTH EDGE STRIP IS ENOUGH, AND THE EXPONENT IS WHY
+
+§8.3's "one screw lets both ends hang" is right about a SCREW and wrong as a general
+claim, and the difference is worth having in writing because it is what makes mid's
+missing strip a non-event.
+
+    M4 alone:  cantilever 206 mm along X   ->  wL^4/8EI = 0.64 mm at the far end
+    one strip: cantilever = the board's WIDTH, 70.4 mm
+
+Deflection goes as the FOURTH power of the span, so (70.4/206)^4 = 0.0136 and the
+unsupported edge droops about **15 um**. Against a 17.75 mm optical depth that is 0.08%.
+A strip running the board's whole length does not need a partner; the second one is
+welcome where there is room and is not what makes this work.
+
+### ⚠ The wall's depth is a clearance, and asking it of a constant turned the gate red
+
+`edge_walls()` first hung a full `WALL` below the strip on every edge. On mid's -Y that put
+the wall floor at **-18.55** against a CAN conductor at **-17.15**, and the gate found it:
+
+    == UNINTENDED overlaps (1) ==
+             4.4 mm^3   top_plate_color_3 <-> wire_canl_7
+
+`wall_floor(panel, sgn)` now derives it from the same measurement the strip uses, so a wall
+can never hang past what was probed under it. **Fourth time on this feature that a depth
+was taken from a constant instead of a measurement**; the rule is in §9.1c and it applies
+to structure as much as to parts.
+
+### What this costs and what it buys
+
+Two extra printed parts per panel (four per instrument), each a plain bar that prints lying
+down with no orientation to get wrong. In exchange: no notches in either board, no
+`outline_poly`, no reach budget, no shift, and a retention that can actually be installed.
+
 ---
 
 # 9. THE BOARDS (2026-09-29)
