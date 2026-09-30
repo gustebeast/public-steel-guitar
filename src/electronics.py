@@ -175,38 +175,18 @@ TS_Y = -68.0                           # THE ONE PANEL INPUT. Every other panel 
                                        # jacks on one PCB and the ROUTED board, not
                                        # this file, decides where the holes go.
 
-# ---- UI: OLED + joystick on the top deck (mounted to the top plate) ----
-# Centred along X. NOTE: the strings cover the deck within +-42.75 with only
-# ~2 mm clearance, and the +Y/string-10 edge is just ~12 mm wide before the
-# rail - too narrow for the 38 mm screen. So the UI sits on the WIDE -Y deck
-# band (86 mm, over the motor PCBs, clear of the strings). The joystick (Alps
-# RKJXT1F42001: 2-way rotary + 4-way + push) is the sole control.
-UI_X      = (CH.X_BRIDGE + CH.X_NUT) / 2     # instrument X centre
-DECK_TOP  = D.DECK_TOP_Z                      # 6.4 — THE deck datum (was a stale
-                                              # STRING_Z - 10 = 6.0, which sank the UI
-                                              # dummies 0.4 into the deck plate); 9.6
-                                              # under the strings, bar still can't bottom
-OLED_Y    = -100.0                            # wide -Y deck band (clear of strings)
-OLED_W, OLED_L, OLED_T = 38.0, 72.0, 1.6      # 2.42" module PCB (Y x X)
-JOY_X     = UI_X + 70 * D.BEAD                # -252.17: just +X of the screen
-JOY_Y     = -102 * D.BEAD                     # -81.6
-
-
-def oled() -> cq.Workplane:
-    """2.42" 128x64 OLED module dummy: PCB + glass + header, face up."""
-    b = box_at(OLED_L, OLED_W, OLED_T, x=UI_X, y=OLED_Y, z=DECK_TOP + OLED_T / 2)
-    b = b.union(box_at(62.0, 33.0, 2.0, x=UI_X, y=OLED_Y,
-                       z=DECK_TOP + OLED_T + 1.0))          # glass active area
-    b = b.union(box_at(20.0, 2.5, 5.0, x=UI_X, y=OLED_Y - OLED_W / 2 + 2.0,
-                       z=DECK_TOP + OLED_T + 2.5))          # pin header (-Y edge)
-    return b
-
-
-def joystick() -> cq.Workplane:
-    """Alps RKJXT1F42001 multi-control dummy: ~13 mm body + actuator cap."""
-    b = box_at(13.0, 13.0, 9.0, x=JOY_X, y=JOY_Y, z=DECK_TOP + 4.5)
-    b = b.union(cyl(7.0, 6.0, z=DECK_TOP + 9.0).translate((JOY_X, JOY_Y, 0)))
-    return b
+# ---- UI: the deck station ----
+# THE WHOLE OF IT MOVED TO src/ui_panel.py (2026-09-25), and the reason is that it
+# stopped being a pair of dummies. What stood here was a guessed OLED rectangle and a
+# guessed joystick block at hand-typed deck coordinates, with a note that "the UI board
+# carries the ENCODER and this module's connector -- that board is not modelled yet".
+# That board exists now (elec/ui_board.py), and both the display and the knob are placed
+# from where KiCad actually put its two connectors. A second copy of those coordinates
+# here is exactly the drift elec/export_geom.py was written to end.
+DECK_TOP  = D.DECK_TOP_Z                      # 6.4 -- THE deck datum, and it stays here
+                                              # because half the file measures off it
+                                              # (was a stale STRING_Z - 10 = 6.0, which
+                                              # sank the UI dummies 0.4 into the plate)
 
 # ---- analog front end (bridge-end -Y corner, near the pickup + jacks) ----
 # JFET buffer + SPDT signal relay (true-bypass: de-energized = raw straight to

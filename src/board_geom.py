@@ -95,6 +95,21 @@ HEIGHT = {
     "L_Bourns-SRN6028": 2.80,
     # the output board's analog rewrite (2026-09-21)
     "TSSOP-14_4.4x5mm_P0.65mm": 1.20,              # PCM1808PWR (TI PW package, 1.20 max)
+    # the UI board (2026-09-25)
+    # THE BODY ONLY -- 8.30, not the catalogue's 10.5, which is over the COLLAR. Read
+    # off Alps' own 3D model (the one LCSC ship with C160841) by slicing its mesh: the
+    # 17 x 17 case tops out at 8.30, a two-step collar carries on to 10.20, and the
+    # D-shaft runs 11.10 to 17.10. src/ui_panel.py draws the collar and the shaft,
+    # because a 17 x 17 box 17 tall would read as a collision with the deck the shaft
+    # passes cleanly through.
+    "Alps_RKJXT1F42001": 8.30,
+    "PinHeader_1x20_P2.54mm_Vertical": 8.54,   # 2.54 insulator + 6.0 of pin
+    # ESTIMATED, NOT READ: a 2.54 right-angle shrouded IDC header. ZHOURI publish no
+    # drawing through LCSC and the KiCad footprint carries no Z. 10.0 is a generous
+    # standard body, and elec/ui_board.py asserts the deck clears it -- CONFIRM IT
+    # AGAINST THE PART BEFORE THE DECK IS PRINTED, because 11.74 is all the room there
+    # is under that panel.
+    "IDC-Header_2x07_P2.54mm_Horizontal": 10.0,
     "Relay_DPDT_Omron_G6K-2F-Y": 5.20,              # Omron G6K-2F-Y: 10 x 6.5 x 5.2 (p.6)
 }
 # a top-entry XH with its XHP plug seated: 9.8 over the board (JST's "assembled board
@@ -153,6 +168,39 @@ PANEL = {
         mouth=(0.0, 1.0), axis_h=6.5, nose=None,
         opening=("rect", 9.6, 11.6, 5.5), mount="through"),
 }
+
+
+# ── TAIL LENGTH BELOW THE BOARD, per footprint ──────────────────────────────────────
+# The other side of HEIGHT, and needed for the same reason: KiCad does not carry it, and
+# a part that has it will go straight through anything mounted against the board's
+# underside. 0.0 means SURFACE MOUNT -- nothing to clear.
+#
+# EVERY FOOTPRINT ON A CHECKED BOARD MUST APPEAR, like HEIGHT, so a new part forces the
+# decision instead of defaulting to "no tail" and being wrong silently. The UI's clamp
+# plate lies against the board and takes a relief under exactly the entries above zero;
+# when that rule relieved EVERY footprint instead, the 0402 reliefs left a 1.38 mm web
+# between two of them.
+TAIL = {
+    "Alps_RKJXT1F42001": 3.5,                    # ten terminals + the position lug
+    "PinHeader_1x20_P2.54mm_Vertical": 3.0,      # Kinghelm's "end connection pin"
+    "IDC-Header_2x07_P2.54mm_Horizontal": 3.0,
+    "R_0402_1005Metric": 0.0, "C_0402_1005Metric": 0.0, "C_0805_2012Metric": 0.0,
+}
+
+
+def tails(board: str):
+    """[(ref, fab, tail)] for every footprint, tail 0.0 for surface mount."""
+    out = []
+    for f in load(board)["footprints"]:
+        if not f["fab"]:
+            continue
+        name = fp_name(f["fpid"])
+        if name not in TAIL:
+            raise KeyError("%s: no TAIL for %s -- say whether it has through-hole legs, "
+                           "because anything against the board's underside has to clear "
+                           "them" % (board, name))
+        out.append((f["ref"], f["fab"], TAIL[name]))
+    return out
 
 
 def holes(board: str):

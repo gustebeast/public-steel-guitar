@@ -41,6 +41,7 @@ from . import dimensions as D
 from . import chassis as CH
 from . import electronics as EL
 from . import pickup_mount as PM
+from . import ui_panel as UIP
 from .helpers import box_at, cyl, heal
 from cadkit.fasteners import M4, cut_counterbore, cut_insert_bore
 
@@ -75,7 +76,15 @@ GAP = 0.05                              # assembly clearance between consecutive
 # firing DOWN at the strings -- see optical_pickup.py. That keeps the whole slot grid
 # for the MAGNETIC pickup, which needs every millimetre of approach to the changer.)
 BAND_W   = 20.0                        # one slot (band material width)
-N_SLOTS  = 7                           # pickup-region slots
+# SIX, NOT SEVEN: the -X-most slot was handed to the mid panel (user, 2026-09-29), which is
+# what takes the SHOWN fillers from three to two. Everything downstream is derived from this
+# number, so the one edit moves the region end, the mid panel's +X edge, the UI station that
+# hangs off it and the coarse swap count together.
+# THE COST IS ONE COARSE POSITION: N_POS below goes 4 -> 3, so the pickup's coarse reach
+# toward the neck is 20.05 mm shorter. Its FINE adjustment is untouched (CLAMP = BAND_W/2
+# still makes the coverage continuous), and the slot that went is the one furthest from the
+# changer, which is the end of the range the magnetic pickup is least likely to want.
+N_SLOTS  = 6                           # pickup-region slots
 PITCH    = BAND_W + GAP                # slot pitch = band + the gap after it
 SLOT_X   = [PX0 - i * PITCH for i in range(N_SLOTS + 1)]   # +X face of each slot
 PIECE_SLOTS = 4                        # the pickup piece spans 4 slots (enlarged one slot so the
@@ -83,10 +92,9 @@ PIECE_SLOTS = 4                        # the pickup piece spans 4 slots (enlarge
 N_POS    = N_SLOTS - PIECE_SLOTS + 1   # = 4 coarse swap positions
 CLAMP    = BAND_W / 2                  # 10.0 +/- fine X-adjust (BAND_W/2 -> continuous
                                        # by construction, so the identity is now literal)
-# Slots the piece covers in EVERY position -- their fillers could never be installed, so they are not
-# printed (user). The piece spans [p, p+PIECE_SLOTS) for p in 0..N_POS-1, so the intersection of all
-# positions is [N_POS-1, PIECE_SLOTS): slot 3 alone as drawn. Derived, so it tracks the slot counts.
-DEAD_SLOTS = set(range(N_POS - 1, PIECE_SLOTS))
+# (DEAD_SLOTS is GONE with the spare fillers. It named the slots the piece covers in every
+#  position, whose marked fillers could never be installed and so were never printed. With
+#  one fret-free filler design there is nothing per-slot left to leave out.)
 
 # shown installed state: piece in the 3 bridge-most slots, fillers behind it
 # The -X run that can reach the MOTOR BANK at the neck-most slot position: everything -X of the
@@ -105,11 +113,36 @@ REGION_X1 = SLOT_X[-1]                  # -X end of the band region (after the l
 
 # the two long panels behind the band region
 MID_X0 = REGION_X1                      # carries the UI (string-10 deck band)
-MID_X1 = MID_X0 - 283 * D.BEAD         # 226.4: length picked so the mid/key seam lands in the CLEAR gap between
-                                       #   the fret-9 pentagon marker and the fret-8 line (was 220 -> the
-                                       #   seam ran through the pentagon); both panels stay < 255 mm bed
-KEY_X0 = MID_X1 - GAP                   # keyhead panel, sized so its -X face lands on PX1
+# ── THE MID/KEY SEAM, set by the KEYHEAD PANEL'S LENGTH ──────────────────────────
+# The KEYHEAD panel is the long one now, at 312 beads = 249.60, just inside the 250 the bed
+# really gives (user, 2026-09-29). Anchoring its LENGTH rather than the seam's position is
+# the right way round for the same reason the seam beat the mid panel's length before: the
+# thing under constraint is how much panel has to fit on a bed, and that is a length.
+#
+# ⚠ WHAT THIS TRADES. The seam lands at -361.15, in fret SPACE 10, and the three things
+# that were fighting over it resolve like this:
+#
+#     MARKER-FREE   yes -- 10 % 12 = 10 carries no symbol, and the nearest marking is
+#                   12.65 away. This is what the old -380.80 could not do; it sat 1.49
+#                   off the fret-9 pentagon.
+#     ON THE BED    yes, both: 215.79 and 249.60.
+#     EVEN          NO. 33.81 apart, against the 5.49 the old seam gave. Evenness is the
+#                   one that was given up, deliberately, and the balance assertion that
+#                   used to stand here has gone with it rather than being loosened to a
+#                   number that asserts nothing.
+#
+# It is 5.73 off space 10's own midpoint, because the midpoint (-355.42) would make the
+# keyhead panel 255.33 and that is over the bed. "Halfway between two frets" and "250 max"
+# cannot both hold in this space; the line clearances are 3.33 to fret 9 and 14.79 to
+# fret 10, and _fret_positions drops any line within 0.8 of a panel end, so nothing is cut.
+#
+# The seam itself is NOT on the bead grid (451.44 beads) because it is now derived from
+# PX1, a chassis datum that is not. The LENGTH is what is on the grid. If the seam's own
+# position matters more later, 451 beads gives exactly 250.00 and 452 gives 249.20.
+KEY_L  = 312 * D.BEAD                   # 249.60, the keyhead panel: the bed-limited one
 KEY_X1 = PX1
+KEY_X0 = KEY_X1 + KEY_L
+MID_X1 = KEY_X0 + GAP
 
 # ── pickup-piece interior geometry ───────────────────────────────────────────
 # The pickup does NOT rest on the height screws directly (those would block its X
@@ -380,11 +413,21 @@ for _n in sorted(MARKER_FRETS):
     _MARKERS = _m if _MARKERS is None else _MARKERS.union(_m)
 
 
-def _fret_solids(x0, x1):
+def _fret_solids(x0, x1, frets=True):
     """The fret lines (string-field Y only) + the fretboard border frame + all fret-position markers
     (absolute; _split clips each panel's share), as prisms in the colour band (TZ-FRET_T .. TZ). _split
-    embosses these into the transparent base and cuts them from the colour layer."""
-    out = _border_frame().union(_MARKERS)
+    embosses these into the transparent base and cuts them from the colour layer.
+
+    frets=False LEAVES ONLY THE BORDER -- the two long side bands, and no line or marker across
+    the field. That is what the SWAPPABLE FILLERS get (user, 2026-09-29), and the reason is that
+    a fret line is at an ABSOLUTE X: mark a filler and it fits one slot only, so every slot the
+    pickup piece might vacate needs its own printed part. Unmarked, one filler fits any slot, and
+    the two that are installed are the same part as each other and as any spare. The border runs
+    on because it is constant along X -- it is the only marking that can survive being movable."""
+    out = _border_frame()
+    if not frets:
+        return out
+    out = out.union(_MARKERS)
     for n, fx in _fret_positions(x0, x1):
         out = out.union(box_at(_inlay_w(n), 2 * FRET_HY, FRET_T, x=fx, y=0.0, z=TZ - FRET_T / 2))
     return out
@@ -432,7 +475,7 @@ def _side_skin(xa, xb):
                   x=(xa + xb) / 2, y=BY0 + SIDE_SKIN_T / 2, z=(TZ + BZ) / 2))
 
 
-def _split(panel, xa, xb, lines=True):
+def _split(panel, xa, xb, lines=True, frets=True, cavity=False):
     """Split a finished panel at the colour line (z = TZ-FRET_T) → (base, colour).
     BASE (transparent PCTG) keeps everything below, plus the embossed fret solids
     trimmed to the panel (openings/windows interrupt the lines automatically);
@@ -442,15 +485,22 @@ def _split(panel, xa, xb, lines=True):
     slab = box_at(xa - xb + 2.0, BY1 - BY0 + 2.0, FRET_T,
                   x=(xa + xb) / 2, y=(BY0 + BY1) / 2, z=TZ - FRET_T / 2)
     slab = slab.union(_side_skin(xa, xb))
-    slab = slab.union(_cavity_skin())      # ...and the pickup opening's own wall (no-op on the
-                                           # panels that have no opening: it lands on nothing)
-    frets = _fret_solids(xa, xb) if lines else None
+    if cavity:
+        slab = slab.union(_cavity_skin())  # ...and the pickup opening's own wall
+    # ⚠ cavity=False IS NOT JUST AN OPTIMISATION, and the comment that used to stand here --
+    # "no-op on the panels that have no opening: it lands on nothing" -- was wrong. The skin
+    # is at the pickup's ABSOLUTE X, so on a FILLER built for a slot the opening passes
+    # through it lands squarely INSIDE the panel and turns a patch of its top to colour: a
+    # phantom rectangle of the pickup's outline, on a part that has no pickup in it. Caught by
+    # the filler congruence check below, which is exactly the class of thing it is for (640.9
+    # mm3 of one filler's top, moved from colour to base against its neighbour's).
+    inlays = _fret_solids(xa, xb, frets=frets) if lines else None
     base, colour = panel.cut(slab), panel.intersect(slab)
-    if frets is not None:
-        inlay = frets.intersect(panel)
+    if inlays is not None:
+        inlay = inlays.intersect(panel)
         if inlay.solids().vals():          # nothing lands on this panel (e.g. a pickup-region filler)
             base = base.union(inlay)
-            colour = colour.cut(frets)
+            colour = colour.cut(inlays)
     return heal(base), heal(colour)
 
 
@@ -473,13 +523,14 @@ def _band(xa, xb, *, ui=False):
     applied by _split, which turns them into the base/colour material boundary)."""
     body = _deck_body(xa, xb)
     if ui:
-        # clearance windows for the OLED glass + joystick actuator
-        body = body.cut(box_at(64.0, 35.0, TZ - BZ + 2, x=EL.UI_X, y=EL.OLED_Y,
-                               z=(BZ + TZ) / 2))
-        body = body.cut(cyl(9.0, TZ - BZ + 2, z=BZ - 1).translate(
-            (EL.JOY_X, EL.JOY_Y, 0)))
-        # (OLED: NO fasteners or retention yet -- user, 2026-09-10. The four M2 self-tap
-        #  pilots are gone; revisited later under the one-M4-beside-the-board rule.)
+        # THE UI STATION. src/ui_panel.py owns all of it and derives its geometry from
+        # the ROUTED ui_board -- the display's pocket and window hang off the header
+        # KiCad placed, and the knob's hole off the switch KiCad placed. What lands
+        # here is a cutter and a cradle; the two placeholder windows that used to be
+        # cut at guessed coordinates are gone with the guesses.
+        # ORDER MATTERS: the cradle is fused BEFORE the cutter runs, so the module's
+        # pocket also clears anything of the cradle that strayed into it.
+        body = body.union(UIP.deck_mount()).cut(UIP.deck_cutter())
     return body
 
 
@@ -579,15 +630,49 @@ def _filler(slot):
     return _band(SLOT_X[slot], SLOT_X[slot] - BAND_W)
 
 
+# ── the two long panels' seam, and the bed ──────────────────────────────────────────────
+# 255 on this printer. It was a number in a COMMENT beside MID's length ("both panels stay
+# < 255 mm bed") and nothing checked it -- which is fine until a slot is handed over and the
+# mid panel grows by 20, at which point the comment is the only thing standing between the
+# deck and a panel that will not print.
+BED_XY = 255.0
+for _n, _xa, _xb in (("mid", MID_X0, MID_X1), ("keyhead", KEY_X0, KEY_X1)):
+    assert _xa - _xb <= BED_XY, (
+        "the %s panel is %.2f long against a %.0f bed" % (_n, _xa - _xb, BED_XY))
+
+# (THE BALANCE ASSERTION THAT STOOD HERE IS GONE. It held the two long panels within 10 mm
+#  of each other, which they no longer are -- 215.79 against 249.60 -- because the keyhead
+#  panel was set to fill the bed instead (user, see KEY_L). Loosening it to 40 would have
+#  been an assertion that asserts nothing; the constraint that actually binds is BED_XY
+#  above, and it is checked.)
+
+# ...AND THE SEAM BETWEEN THEM CLEARS EVERY MARKING. This is what MID's length was chosen
+# for and it was only ever written down: a seam through a fret line or a marker dot reads as
+# a broken inlay on a deck somebody looks at all day. Checked against the real solids rather
+# than against the fret numbers, so a marker nudge (MARK_X_ADJ) cannot sneak past it.
+_SEAM_CLR = D.MIN_WALL              # 0.8, one bead of material either side of the cut
+for _n, _fx in _fret_positions(MID_X0 + 50.0, MID_X1 - 50.0):
+    assert abs(_fx - MID_X1) > _inlay_w(_n) / 2.0 + _SEAM_CLR, (
+        "the mid/key seam at %.2f runs through fret %d's line at %.2f"
+        % (MID_X1, _n, _fx))
+for _s in _MARKERS.val().Solids():
+    _b = _s.BoundingBox()
+    assert not (_b.xmin - _SEAM_CLR < MID_X1 < _b.xmax + _SEAM_CLR), (
+        "the mid/key seam at %.2f runs through a marker at x %.2f..%.2f"
+        % (MID_X1, _b.xmin, _b.xmax))
+
+
 pickup_zplate = heal(_pickup_zplate())
 
-# every panel becomes a (base, colour) print pair. The pickup piece keeps a
-# line-free top (its opening chops the field, and it had no lines before); every
-# other panel carries the lines. Fret lines are at absolute X, so a filler only
-# fits its own slot; print the set, install the ones the piece doesn't cover.
-# SHOWN config: piece in slots [0..3), fillers in slots [3..7).
-_piece_pair   = _split(_pickup_piece(), PIECE_X0, PIECE_X1, lines=False)
-_filler_pairs = [_split(_filler(i), SLOT_X[i], SLOT_X[i] - BAND_W)
+# every panel becomes a (base, colour) print pair. The pickup piece keeps a fully
+# line-free top (its opening chops the field, and it had no lines before); the two LONG
+# panels carry the fret lines and markers; the FILLERS carry the border and nothing else,
+# so any filler fits any slot.
+# SHOWN config: piece in slots [0..PIECE_SLOTS), fillers in the rest.
+_piece_pair   = _split(_pickup_piece(), PIECE_X0, PIECE_X1, lines=False, cavity=True)
+# FRET-FREE, so every filler is the same part -- see _fret_solids. The congruence is
+# asserted below rather than asserted in prose.
+_filler_pairs = [_split(_filler(i), SLOT_X[i], SLOT_X[i] - BAND_W, frets=False)
                  for i in range(N_SLOTS)]
 _mid_pair     = _split(_band(MID_X0, MID_X1, ui=True), MID_X0, MID_X1)
 _key_pair     = _split(_band(KEY_X0, KEY_X1), KEY_X0, KEY_X1)
@@ -599,7 +684,22 @@ _shown_pairs = [_filler_pairs[i] for i in range(PIECE_SHOWN + PIECE_SLOTS, N_SLO
 _seg_pairs   = [_piece_pair, *_shown_pairs, _mid_pair, _key_pair]
 segments        = [b for b, _ in _seg_pairs]
 segments_color  = [c for _, c in _seg_pairs]
-_spare_pairs = [_filler_pairs[i] for i in range(PIECE_SHOWN, PIECE_SHOWN + PIECE_SLOTS)
-                if i not in DEAD_SLOTS]      # DEAD_SLOTS never surface -> nothing to print
-spare_fillers       = [b for b, _ in _spare_pairs]
-spare_fillers_color = [c for _, c in _spare_pairs]
+
+# ⚠ THERE ARE NO SPARE FILLERS ANY MORE, and their absence is the point of the fret-free
+# filler (user, 2026-09-29). They existed because a marked filler fits one slot: whichever
+# slots the pickup piece vacated needed their own printed parts, so the build carried
+# N_SLOTS - PIECE_SLOTS installed ones PLUS a set for every other position, exported off to
+# the side of the instrument. Unmarked, a filler is the same part in any slot: print the
+# N_SLOTS - PIECE_SLOTS that are installed and move them when the pickup moves.
+N_FILLERS = N_SLOTS - PIECE_SLOTS
+
+# ...AND THAT IS CHECKED, not just described. If a filler ever stops being congruent with
+# its neighbours -- a stray absolute-X feature, a marker creeping into the region -- the
+# "one part fits any slot" claim is silently false and the instrument gets a filler that
+# only goes in one way round.
+_fv = [(b.val().Volume(), c.val().Volume()) for b, c in _filler_pairs]
+for _i, (_bv, _cv) in enumerate(_fv[1:], 1):
+    assert abs(_bv - _fv[0][0]) < 1e-3 and abs(_cv - _fv[0][1]) < 1e-3, (
+        "filler %d is not the same part as filler 0 (base %.3f vs %.3f, colour %.3f vs "
+        "%.3f) -- something in it is at an absolute X, so it no longer fits any slot"
+        % (_i, _bv, _fv[0][0], _cv, _fv[0][1]))
