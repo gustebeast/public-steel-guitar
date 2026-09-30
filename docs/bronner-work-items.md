@@ -3838,3 +3838,51 @@ a site is bad, but nothing depends on a human running it any more.
 **Re-running `--rounds 3` with this live** (log `/tmp/optical_finish8.log`): a pass-2-quality
 board should now score 3/0 and be KEPT. If it does, the remaining unconnected set is 3, and
 `+3V3A` / `ULPI_NXT` / `ULPI_D4` / `LED_ROW` is the real list to work.
+
+## THE PI SPACER, MEASURED BEFORE IT WAS BUILT (2026-09-29)
+
+The user's proposal is built against measurement at every step, and three of the four numbers
+in the first draft were wrong. Recording them because each was a plausible guess.
+
+### 1. The bore height re-check — PASSED, and the note that demanded it was half wrong
+
+`tools/_probe_pi_spacer` at the chosen site **(−510.00, −58.50)**: **nothing foreign in the
+1.6 mm shell**, driver column **CLEAR**. The knee housing does not come back at the higher z.
+
+But the re-check also killed the reason for raising the bore. The note said the boss must top
+out *level with the board's top face* so the spacer has support at its own height. **It should
+top out level with the board's UNDERSIDE instead**, which is where `FLOOR_TOP → PI_Z` already
+puts it, because:
+
+* raising the bore 1.60 mm pushes its far end **further into** the knee housing's band
+  (z −79.45..−73.25), which is BELOW — raising it cannot help and can only hurt
+* it keeps the anchor at exactly the depth the sweep cleared (219 mm³ of chassis, not 116.5)
+* it makes the spacer a **stepped** part, and the step is a feature: one part bears on the
+  board's top face AND on a boss level with its bottom, and the step's vertical face
+  **registers on the board's edge**, so the part's position is set by the board rather than by
+  a tolerance
+
+### 2. ⚠ `_assert_mount_heads_clear()` WILL NOT reject the spacer — the note was wrong
+
+That guard lives in `src/optical_pickup.py` and compares `OP.PARTS` against
+`OP.mount_points()`: it is the **optical board's** guard and knows nothing about the Pi. The
+warning to "teach it about a declared spacer" was wrong, and acting on it would have weakened
+a guard that has caught four real faults for no reason at all.
+
+### 3. ⚠ The first envelope collided TWICE — `check_overlaps` would have caught neither cheaply
+
+`tools/_probe_pi_spacer_env` intersects the part's real envelope, in two pieces because it is
+stepped. Both hits are the kind that only show up against the actual assembly:
+
+| piece | hit | what it is |
+|---|---|---|
+| lap | `pi5` **108.0 mm³** | the modelled **USB/ethernet block** — `box_at(18, 50, 14)` at x −521..−503, y up to −74, 14 mm tall |
+| shank | `chassis_2` **23.0 mm³** | a wall at the tail's far end, y ≥ −53.95 |
+
+**108 / (15 × 3 × 2.4) = 1.00 — that box is SOLID.** Not a graze: the lap was driven 3 mm into
+a 14 mm tall block. The Pi's own top-side parts limit the lap to the **3.00 mm** of clear
+laminate between the board's +Y edge (−71.00) and the block's face (−74.00), and `PI_SPACER_LAP`
+= 6.0 was simply invented.
+
+`TAIL` 5.0 → **4.0**: y_out −54.50 clears the chassis wall by 0.55 mm and still stands
+0.20 mm proud of the head's edge (−54.70), so the head bears on plastic all round.
