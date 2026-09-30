@@ -3691,3 +3691,38 @@ at 73 % of rating with no derating allowance. Any new position has to keep all f
 Moving a connector changes the DSN, so it costs a **full route** on a board that was 0/0
 before the LED buck went in. Batch it with the top-panel capture work (item 2) if that also
 lands, rather than spending two routes.
+
+## THE RETRY PASS REACHES 3 UNCONNECTED, BUT THE BRING-UP PADS GO STALE INSIDE THE RUN
+
+`finish.py --rounds 2`, 2026-09-29:
+
+        pass 1: 5 unconnected, 0 violation(s)
+          retry: laid 26 segment(s) for 5 net(s) the router could not finish
+        pass 2: 3 unconnected, 2 violation(s)
+        pass 2 did not improve on pass 1 -- keeping the better board
+        optical: 5 unconnected, 0 violation(s)
+
+⚠ **`--rounds` WAS UNREACHABLE UNTIL THIS TICK** (`b87f446`). `finish()` has taken it since it
+was written, but `__main__` called `finish(stem)` with no second argument, so the retry loop,
+the retry.json plumbing, the strictly-better comparison and the `.best.kicad_pcb` snapshots
+were all dead code from the command line.
+
+**The retry does its job: 5 unconnected → 3.** It is discarded anyway, correctly, because it
+costs 2 violations and violations rank first.
+
+⚠ **AND BOTH VIOLATIONS ARE TP10 — THE ROT PROBLEM INSIDE A SINGLE RUN.** TP10's site is
+searched against pass 1's finished route; the retry then re-routes; the site is stale before
+DRC ever sees it. `shorting_items` + `solder_mask_bridge`, TP10's +5V pad against a `V5_PRE`
+track. **Re-sited against pass 2's board, pass 2 would be 3 unconnected / 0 violations and
+would win.** The pads and the retry are in tension by construction: the pads are placed AFTER
+routing (`post_route_refs`) and the retry's whole job is to change the routing.
+
+**The way to 3 unconnected, when someone spends the routes on it:** run `--rounds 2`, take the
+pass-2 board, re-site the pads against it with `tools/padsite.py`, then re-run. Each cycle is
+~25 min per round. ⚠ Note freerouting is not obviously deterministic here (1910.6 s vs
+1406.4 s wall for the two rounds), so a re-run may not reproduce the same route and the sites
+may need searching again — budget for iteration, not a single pass.
+
+**Current committed state: 5 unconnected, 0 violations, mounting holes in, CAD and fab
+agreeing on 12 cutouts.** The five are `+3V3A`, `ULPI_NXT`, `ULPI_D4`, `LED_ROW` and `SAI_FS`
+(the last by choice, its repair withdrawn as stale).
