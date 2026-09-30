@@ -299,7 +299,29 @@ def finish(stem, rounds=1):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        raise SystemExit("usage: finish.py <stem> [<stem> ...]")
-    for st in sys.argv[1:]:
-        finish(os.path.abspath(st))
+    # ⚠ --rounds WAS UNREACHABLE, AND IT IS THE MECHANISM FOR THE LAST FEW UNCONNECTED NETS.
+    # finish() has taken `rounds` since it was written -- round 2+ hands the nets the router
+    # could not finish back to _local_nets with local_mm=1e9, which is the one pass that will
+    # lay a long run deterministically -- but this block called finish(stem) with no second
+    # argument, so no invocation could ever reach it. The retry loop, the retry.json
+    # plumbing, the strictly-better comparison and the .best.kicad_pcb snapshots were all
+    # dead code from the command line.
+    # Kept at 1 by default: a round is a full route, so asking for 3 asks for three routes.
+    _rounds = 1
+    _stems = []
+    _argv = sys.argv[1:]
+    _i = 0
+    while _i < len(_argv):
+        if _argv[_i] == "--rounds":
+            _rounds = int(_argv[_i + 1])
+            _i += 2
+        elif _argv[_i].startswith("--rounds="):
+            _rounds = int(_argv[_i].split("=", 1)[1])
+            _i += 1
+        else:
+            _stems.append(_argv[_i])
+            _i += 1
+    if not _stems:
+        raise SystemExit("usage: finish.py [--rounds N] <stem> [<stem> ...]")
+    for st in _stems:
+        finish(os.path.abspath(st), rounds=_rounds)
