@@ -1,6 +1,7 @@
 """Route a board, then hand the router's own failures back to the generator.
 
     "C:/Program Files/KiCad/10.0/bin/python.exe" elec/finish.py elec/out/optical
+    "C:/Program Files/KiCad/10.0/bin/python.exe" elec/finish.py --rounds=2 elec/out/lever_sensor
 
 ⚠ THIS EXISTS BECAUSE PRE-LAYING COPPER IS A TRADE, NOT AN IMPROVEMENT, and the trade
 only pays on the nets the router cannot do. Measured on three boards, freezing every
@@ -265,7 +266,17 @@ def finish(stem, rounds=1):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        raise SystemExit("usage: finish.py <stem> [<stem> ...]")
-    for st in sys.argv[1:]:
-        finish(os.path.abspath(st))
+    # ...AND THE RETRY IS REACHABLE FROM HERE, because on one board it is the difference
+    # between orderable and not. It was a keyword nobody could pass: the docstring says
+    # it has never paid, which was measured on the optical board and is not true of
+    # lever_sensor -- pass 1 leaves NRST 0.85 mm short of U3 pad 4, pass 2 closes it and
+    # costs nothing (0 unconnected, 0 violations, same 2 cosmetic warnings). A board that
+    # only routes when someone edits a default is not reproducible, which is the one
+    # claim this pipeline makes about itself.
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    rounds = next((int(a.split("=")[1]) for a in sys.argv[1:]
+                   if a.startswith("--rounds=")), 1)
+    if not args:
+        raise SystemExit("usage: finish.py [--rounds=N] <stem> [<stem> ...]")
+    for st in args:
+        finish(os.path.abspath(st), rounds=rounds)
