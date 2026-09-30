@@ -453,7 +453,35 @@ is NOT needed, and the earlier claim that one was is withdrawn).
 What is left is the DESIGN, which the user pushed on and which is right: the hub keeps a
 process id and a force-kill for something they should not be needed for.
 
-### 1. THE TEST — do this before deciding anything else
+### 1. THE TEST — RUN 2026-09-30, and (a) is answered
+
+**(a) Does `--single-instance` forward a file to the RUNNING instance? YES.**
+With the hub up (1 freecad.exe), `freecad.exe --single-instance pctg/guide_post.step`
+left the process count at **1** and the existing process grew 1,491,164 K -> 1,531,112 K
+(~40 MB, a new document's overhead). It did not start a second FreeCAD. So FreeCAD DOES
+offer an external way in, and the earlier claim that it offers none is withdrawn.
+
+**(b) Does a second open of the SAME file re-import, or just focus? PARTLY answered.**
+Running it again on the already-open file grew memory only 1,531,112 -> 1,533,864 K
+(+2.7 MB against the +40 MB a new document cost), so it does **not** create a duplicate
+document. Whether it RE-IMPORTS a file whose contents changed is NOT established -- memory
+cannot distinguish "reloaded in place" from "focused and did nothing", and every STEP small
+enough to test with is dwarfed by FreeCAD's per-document overhead.
+
+**What (a) already decides:** the INBOX is not load-bearing for opening a tab. A build could
+hand FreeCAD a project with no macro involved at all.
+
+**What still turns on (b):** the AUTO-RELOAD is the hub's actual value -- the tab updating
+itself on every rebuild -- and until (b) is proven the resident watcher has to stay for it.
+So items 2-4 remain worth doing. To settle (b), watch a document's contents rather than the
+process: load a file, overwrite it with visibly different geometry, re-run, and read the
+tab. That needs eyes on the window or a probe inside FreeCAD, which is why memory was tried
+first and why it was not enough.
+
+⚠ A stray `guide_post` document is now open in the hub from this test; it is not one of the
+watched projects and can just be closed.
+
+### 1b. the original questions, kept
 
 FreeCAD 1.1's CLI has **`--single-instance`** ("Allow to run a single instance of the
 application"). The user found it; it contradicts the claim that FreeCAD offers no external
