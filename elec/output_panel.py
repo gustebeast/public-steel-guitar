@@ -892,6 +892,18 @@ def output_panel():
     # DS22059 Table 3-1 (14-lead), read 2026-09-30:
     #   1 CS   2 SCK  3 SDI  4 VSS  5 P1B  6 P1W  7 P1A
     #   8 P0A  9 P0W 10 P0B 11 WP  12 SHDN 13 SDO 14 VDD
+    # ⚠⚠ STILL UNCONFIRMED, AND SAID SO BECAUSE THE PART NEXT TO IT WAS WRONG. U12's
+    # pinout was also "read from the datasheet", also written down with confidence, and all
+    # three of its signal pins were mis-assigned -- so an unrepeated reading is not evidence
+    # on this board. This one was re-checked on 2026-09-30 and COULD NOT BE: the fetched
+    # DS22059B renders its pin table as an image, so nothing could be extracted, and the
+    # package drawing's text comes out with the column order scrambled (it cannot even be
+    # used to settle whether pin 2 is SCK or SDI, which is the only part in doubt).
+    # WHAT TO CHECK, AND IT IS A TWO-MINUTE JOB: pins 2 and 3. Everything else is
+    # corroborated by the MCP42X1 package drawing that did extract. If 2 and 3 are
+    # transposed, SCK and SDI swap -- a bit-banged SPI master would clock data on the wrong
+    # wire and the pot would simply never respond, which is at least a LOUD failure rather
+    # than a quiet one. Confirm against a scan of Table 3-1 or the 14-lead drawing.
     # ⚠ WHY A POT AND NOT A GAIN THE Pi APPLIES IN SOFTWARE: BECAUSE OF MODE 1.
     # The user asked for gain control in the DIRECT mode -- the one whose whole point is
     # that the pickup reaches the jack without the Pi in the path. A software gain is by
