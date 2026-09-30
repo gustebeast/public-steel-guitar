@@ -28,6 +28,7 @@ the holes are print-trivial, and the inside there is empty floor band.
 
 from __future__ import annotations
 
+import math
 import re
 
 import cadquery as cq
@@ -1761,6 +1762,43 @@ def mctrl_pt(ref: str):
     # whole bus-B input, side entry on the +X edge -- put the lead over the top of a
     # shell that has no top, inside the socket instead of on a seated plug.
     lx, ly, lz = BG.lead_exit("motor_ctrl", ref)
+    return (cx + lx, cy + ly + _MCTRL_DY, MCTRL_BOARD_Z + lz)
+
+
+def mctrl_pin(ref: str, n: int, count: int = 4, pitch=None):
+    """World point of pin `n` (1-based) on the motor board's connector `ref`.
+
+    mctrl_pt() answers "where does a lead leave this connector" with ONE point, which is
+    right for a cable drawn as one line and wrong for a cable drawn as its conductors: four
+    conductors that all start at one point run COINCIDENT until they separate, and the gate
+    reports that honestly as four cables inside each other. wire_5v's four were overlapping
+    at 224-238 mm3 each for exactly this reason.
+
+    ⚠ THIS IS THE SAME FIX THE Pi END ALREADY HAD, and the argument is quoted from the note
+    beside it: the cable "lands on the pi cap's J2 now, PIN BY PIN, not on a guessed point
+    over the header ... so the pin order reads off the model". The motor end never got it,
+    so one end of the same cable was honest and the other was a point.
+
+    ⚠ THE PIN AXIS COMES FROM THE FOOTPRINT'S ROTATION, AND THE FORMULA WAS CHECKED AGAINST
+    THE ROUTED BOARD RATHER THAN DERIVED AND HOPED FOR. Predicting each pad as
+    centre + (n - (count+1)/2) * pitch * (cos rot, sin rot) reproduces every pad of J1, J2,
+    J5 and J7 to within 0.01 mm -- both rotations the board uses (0 and 90) and both pitches
+    (XH 2.5, PH 2.0). Getting the SIGN wrong would mirror the pin order, which on a
+    palindromic connector like J5 (GND, +5V, +5V, GND) is invisible and on any other
+    connector is a wiring fault, so it is verified rather than assumed.
+
+    The base point stays mctrl_pt's lead exit -- board_geom already knows a side-entry plug
+    leaves through the EDGE and a vertical one leaves +Z -- and only the offset along the pin
+    row is added, so this cannot drift from mctrl_pt for the single-conductor callers."""
+    f = BG.footprint("motor_ctrl", ref)
+    if pitch is None:
+        pitch = 2.5 if "XH" in BG.fp_name(f["fpid"]) else 2.0
+    lx, ly, lz = BG.lead_exit("motor_ctrl", ref)
+    r = math.radians(float(f.get("rot") or 0.0))
+    off = (n - (count + 1) / 2.0) * pitch
+    lx += off * math.cos(r)
+    ly += off * math.sin(r)
+    cx, cy = _ctr(MCTRL_FP)
     return (cx + lx, cy + ly + _MCTRL_DY, MCTRL_BOARD_Z + lz)
 
 
