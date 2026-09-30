@@ -4055,3 +4055,63 @@ had nowhere to go. The Pi's anchor is now well clear of it, so this is not block
 3.3 cm³ undeclared overlap sitting permanently at the top of the list is exactly the kind of
 noise that hid the 14.2 mm³ spacer fault for a whole run. **Not mine to fix** — `knee_housing`
 belongs to the lever work — so it is raised, not touched.
+
+## OPTICAL: 2 UNCONNECTED / 0 VIOLATIONS — THE BEST THIS BOARD HAS ROUTED (2026-09-30)
+
+The pad-site fix paid off on its first real run, and by a smaller margin than expected in
+distance and a bigger one in result:
+
+```
+pass 1: 5 unconnected, 0 violation(s)
+      re-sited 1 bring-up pad(s) against THIS route's copper: TP10 (+5V) moved 0.75 mm
+pass 2: 2 unconnected, 0 violation(s)
+```
+
+**0.75 mm.** Last run the same pad, frozen, produced a 6.02 mm short against `V5_PRE` and cost
+a board that was two nets better. Confirmed by `audit_board.py`, which recomputes from the
+board and netlist rather than trusting finish.py's summary:
+
+```
+unconnected nets: ['+3V3D']
+violation ERRORS: courtyards_overlap x20      (the DECLARED sensor triplets, 0 unexpected)
+repair tracks: 15 declared, 15 found, all 55 segments re-checked
+166 of 166 multi-pin nets carry copper
+```
+
+⚠ Note pass 1 did NOT re-site anything, in the real pipeline as in the standalone test — the
+no-op path costs nothing, which is what makes the search safe to run every pass.
+
+**The whole remainder is ONE net.** `+3V3D` at **U6 pin 36** to its decoupling caps, reported by
+the retry layout as `C101.1 -> U6.36 (2.30 mm)` and `U6.36 -> C102.1 (2.28 mm)`. Two edges,
+one net, ~2.3 mm each — a local decoupling connection, which is exactly what post-route repair
+tracks are good at, and post-route repair is the mechanism that has worked on this board where
+declared pre-route copper has made it worse every time.
+
+### ⚠⚠ AND PASS 3 ALMOST DESTROYED IT — A FAILED RETRY ROUND TOOK THE BASELINE WITH IT
+
+Pass 3's freerouting plateaued (score 664.39 unchanged over passes #6–#8) and then **produced no
+session file**, so `route.py` exited non-zero. `_run()` raises `SystemExit` on that, which
+skipped the restore at the end of `finish()` — and **the first thing a retry round does is
+re-run `layout.py`, which overwrites `<stem>.kicad_pcb` with a fresh UNROUTED board.**
+
+So the state left on disk was the worst possible one:
+
+| file | what it held |
+|---|---|
+| `optical.kicad_pcb` | pass 3's **unrouted** layout — 1008 segments, 331 vias |
+| `optical.lastrouted.kicad_pcb` | the **2/0 board** — 1699 segments, 425 vias |
+| `optical.best.kicad_pcb` | the same 2/0 board, a file nothing else reads |
+
+⚠ **`elec/out/` is not under git**, so there was no second copy anywhere. The baseline is also
+the SES import reference for the next run, so the next route would have started from an
+unrouted board.
+
+Recovered by restoring from `lastrouted`, then **verified against finish.py's own
+`.best.kicad_pcb` — byte-identical**, so the recovery is confirmed by the pipeline's own record
+rather than by my reading of the log. `.finish.drc.json` was restored from `.best.drc.json`
+alongside it, because that file's own comment says why they must travel together.
+
+**Fixed in `finish.py`:** the round body is wrapped so a failed retry is a no-op. A retry round
+is OPTIONAL WORK — it either improves on what we have or it does not happen, and "does not
+happen" must not mean "lose the board". A copy of the good board is also kept as
+`optical.best-2unconn-0viol.kicad_pcb`.
