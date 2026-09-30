@@ -1311,6 +1311,24 @@ BOARD_NOTES = {
     #  router has a direct corridor for it.)
     "diff_pairs": [{"nets": ["HUB_DN2_DP", "HUB_DN2_DM"], "chain": ["U4", "J4"],
                     "gap": 0.2, "width": 0.2}],
+    # ⚠ U1.27 GETS AN ESCAPE VIA, AND THE MEASUREMENT SAYS WHY. JACK_MODE was the one net
+    # the router left unconnected after the TRS parts went in, and it could not be repaired
+    # afterwards either -- maze3d found no path at 0.127 mm on any of three layers at any
+    # reach. The reason is not the 22 mm span, it is the FIRST 0.2 mm: a flood from that pad
+    # across F.Cu reaches ONE CELL. The pad is walled in by its own neighbours' escapes.
+    # But the same neighbourhood on B.Cu has 277 free cells of 289, and In2 has 193. So the
+    # copper is not missing, it is on the wrong layer, and what the net needs is to leave
+    # F.Cu at the pad rather than to travel on it.
+    # ⚠ A POST-ROUTE REPAIR CANNOT DO THIS, which is the general lesson and not a quirk of
+    # this net: a repair may not drop a via inside a 0.4 mm pad field, so it can only ever
+    # work with the layer the pad is already on. Escaping a fine-pitch QFN is a PLACEMENT-time
+    # move. The router escapes the other twenty-four signals here happily because it does it
+    # before any of this copper exists.
+    # ⚠ AND THIS IS THE OPPOSITE CONCLUSION TO THE OPTICAL BOARD, DELIBERATELY. There,
+    # escape vias made the PHY edge monotonically worse (2 -> 3 -> 5 unconnected) and were
+    # reverted. The difference is that those were added on a hypothesis about congestion;
+    # this one is aimed at a pad whose F.Cu reachable set was MEASURED at one cell.
+    "pin_escapes": ("U1.27",),
     "diff_pair_inner": "In2.Cu",
     "layers": 4,
     "thickness_mm": 1.6,
