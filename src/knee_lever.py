@@ -931,12 +931,22 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # place. Cut rather than merely avoided: it is a guarantee, not an intention,
     # and anything a later round adds in this zone now gets removed instead of
     # silently blocking the driver. Teardrop, like every sideways bore here.
-    # It starts at MAG_Y0, NOT at the housing face: the socket only ever has to
-    # reach the cap's rim, and running it inboard of that would bore Ø14 straight
-    # through the two features that live there — the axle flange's CONTACT RIB
-    # (the air gap's whole datum) and the +Y bearing seat's 0.7 outboard skin
-    # (what stops the bearing walking out). Both are well inside Ø14.
-    w = w.cut(printable_bore(SOCK_D, (CR_Y1 + 1.0) - MAG_Y0, (0.0, MAG_Y0, 0.0),
+    # IT STARTS AT THE HOUSING FACE, which is also the AXLE's clearance through here.
+    # It used to start at MAG_Y0, the cap's rim, to protect two things that lived in the
+    # band below it: the axle flange's printed CONTACT RIB and the +Y bearing seat's
+    # outboard skin. Both are gone -- the bearings sit flush and the seats run out
+    # through both faces (see cut_axle_stack) -- and CR_Y0 IS the housing's +Y face, so
+    # starting there reaches nothing inside the housing at all.
+    #
+    # What it does reach is the 1.6 mm band between that face and the cap's rim, where
+    # the axle FLANGE stands at AXLE_FLANGE_D (Ø12.8, r 6.40). Nothing was clearing it:
+    # the socket started outboard of it and the webs used to stop below it. The moment
+    # the near web ran full height it went straight through the flange -- 56 mm3 on every
+    # lever station, which the overlap gate could not report because housing-vs-axle is
+    # allow-listed as a designed contact (user, 2026-09-29: "this wall is clipping the
+    # axel"). Ø14 clears Ø12.8 with 0.6 all round.
+    _sock_y0 = min(MAG_Y0, CR_Y0)
+    w = w.cut(printable_bore(SOCK_D, (CR_Y1 + 1.0) - _sock_y0, (0.0, _sock_y0, 0.0),
                              (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     return w
 
@@ -1278,12 +1288,23 @@ CR_BACK  = D.MIN_WALL_2P   # 1.6 (was 1.5)                      # web material B
 # the M4, which needs 1.4 of FR4 around its Ø4.4 hole. Since the chip's X is fixed at
 # the axle axis and the outline is ours, paying for the screw on one side only is
 # free — and it keeps the +X web from reaching much past the housing's knee face.
-PCB_X1  =  3.0                                  # +X edge: as close to the CHIP as the board
-                                                # house allows (user: pull the lever's +X extent
-                                                # in). The QFN body ends at 1.5, so this leaves
-                                                # 1.5 of edge keepout — comfortably over
-                                                # JLCPCB's 1.0 component-to-edge rule, on a
-                                                # board that panelises with the tee PCBs anyway.
+PCB_X1  =  4.025                                # +X edge: as close to the CHIP as the GROOVE
+                                                # allows, which is not the same as as close as
+                                                # the board house allows. It was 3.0, chosen
+                                                # against JLCPCB's 1.0 component-to-edge rule
+                                                # and the QFN's 1.5 body half-width -- and the
+                                                # groove does not grip 1.0, it grips CR_ENG.
+                                                # U4's courtyard reaches 2.175, so the groove's
+                                                # inner face at 1.30 was 0.87 inside it and 0.35
+                                                # inside the bare body: the sensor fouled the
+                                                # housing on the way down the slot, 3.05 mm3 at
+                                                # 11 mm up the stroke (user, 2026-09-29: "this
+                                                # component on the PCB looks like it will clip
+                                                # when trying to insert the board... we need a
+                                                # little bit of extra blank PCB at the edge for
+                                                # the retention piece to grip without touching
+                                                # PCB components"). Now the outermost part plus
+                                                # CR_ENG, asserted below against the real BOM.
                                                 # This used to be 8.70, set by the driver bore:
                                                 # a groove wall may not come inside SOCK_R. That
                                                 # no longer binds because the +X groove carrier
@@ -1383,7 +1404,22 @@ SENSOR_BOM = (
     ("U4",   "MT6701QT-STD",       4.35,  4.35, 0.80,    0.00,   0.00),
     ("Y1",   "8MHz",               4.29,  3.59, 0.90,  -11.90,  -2.40),
 )
-CR_EDGE_KEEP = 1.85                 # the groove takes this much of each X edge — mechanical
+
+# NOTHING MAY STAND IN A GROOVE. Each X edge of the board is gripped CR_ENG deep, and
+# that band has to be bare copper -- not because of a fabrication rule (JLCPCB's
+# component-to-edge is 1.0 and every part clears that) but because the groove is
+# material and the part would have to pass through it on the way down the slot. The
+# board's outline is a SPEC rather than an output, so this is the thing that keeps the
+# spec honest when a part moves: it is how the sensor's own courtyard came to be 0.87
+# inside the +X groove without anything noticing.
+_BOM_X1 = max(x + lx / 2 for _, _, lx, _, _, x, _ in SENSOR_BOM)
+_BOM_X0 = min(x - lx / 2 for _, _, lx, _, _, x, _ in SENSOR_BOM)
+for _e, _p, _w in ((PCB_X1, _BOM_X1, "+X"), (PCB_X0, _BOM_X0, "-X")):
+    assert abs(_e) - abs(_p) >= CR_ENG - 1e-9, (
+        "a part reaches %.3f of the board's %s edge at %.3f -- the groove grips %.2f, so "
+        "it would be driven through the part. Move the edge to %.3f."
+        % (_p, _w, _e, CR_ENG, math.copysign(abs(_p) + CR_ENG, _e)))
+CR_EDGE_KEEP = CR_ENG               # the groove takes this much of each X edge — mechanical
 # The magnet cap's SWEEP, which is what forces the empty annulus around the chip
 # (user asked whether that gap was intentional — it is, and this is the number).
 # Measured off kl_magnet_cap: 5.312 true circumradius about the axle. The bare 5.4

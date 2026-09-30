@@ -30,11 +30,11 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
 
 | Item | Routed now | **Spec** | Why |
 |---|---|---|---|
-| +X edge | +6.0 | **+3.0** | the foot pedal's bar-top face, with the cradle web outboard of the edge |
+| +X edge | +6.0 | **+4.025** | the groove grips CR_ENG (1.85) of this edge and U4's courtyard reaches +2.175, so the edge is the part plus the grip. Was +3.0, set against the 1.0 component-to-edge rule instead, which put the groove 0.87 inside the sensor's courtyard and 0.35 inside its bare body — the board fouled the slot on the way in |
 | Top edge | +14.6 | **+10.1** | the turned-over pedal board's top faces the player: 10.15 of room |
 | Bottom edge | −13.4 | **−11.8** | J1's 19.9 on end + the 1.0 edge rule at both ends |
 | −X edge | −28.0 | −28.0 | unchanged; an upper bound, so shrink it if the 5 V board allows |
-| **Outline** | 34.0 × 28.0 | **≤ 31.0 × 21.9** | |
+| **Outline** | 34.0 × 28.0 | **≤ 32.025 × 21.9** | the +X edge moved out 1.025; the −X edge and both Z edges are unchanged |
 | **J1** | S8B-XH-A (THT) | **S8B-PH-SM4-TB** (SMT), on the **magnet face**, standing **on end** (length along Z, spec z −10.8 … +9.1), **mouth facing −X**, mouth face at x −24.95 (3.05 in from the −X edge) | |
 | J1 pinout | `harness.xh_trunk_pins()` | the same four nets, **in on 1–4, out on 5–8**; +V is the **5 V** lever bus | |
 | Sides | single | **single** | shared panel settings |
@@ -67,3 +67,19 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
   B4B-PH-SM4-TB (6.6 tall, 5.0 deep) is the *top-entry* part on the same page, not this one.
 - **Harness side:** PHR-8 housings, SPH-002T-P0.5S contacts and a PH crimp tool. Stock for
   those hasn't been checked yet.
+
+## The +X edge is a MECHANICAL keep-out, not a fabrication one (2026-09-29)
+
+JLCPCB's component-to-edge rule is 1.0 mm and every part on this board clears it. That
+is not the rule that binds here. The board is retained by sliding down a GROOVE, and the
+groove is material that grips `CR_ENG` = 1.85 mm of each X edge — so anything standing
+within 1.85 mm of an edge has to pass through the housing on the way in.
+
+U4 is centred on the axle axis by definition (it is the sensor), its courtyard reaches
+2.175, and the edge was at 3.0. The groove's inner face therefore sat at 1.30: 0.87
+inside the courtyard, and 0.35 inside even the bare 3.0 mm QFN body. Measured by sliding
+the populated board up its own install axis, the sensor fouled the housing by 3.05 mm³
+about 11 mm up the stroke, on both levers.
+
+`src/knee_lever.py` now asserts this against the generated BOM, both edges, so a part
+that moves into a groove band stops the build instead of being found in a render.
