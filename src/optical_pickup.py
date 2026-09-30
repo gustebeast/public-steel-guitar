@@ -2399,7 +2399,18 @@ def _parts():
     # an 0402's pad 1 sits at -x unrotated, i.e. pointing AWAY. Unrotated this cap would offer
     # the router its ground pad.
     add("C119", "PHY VDDIO bypass -- AT pad 9, which C121 is 9.19 mm from", "0402",
-        _part_x("U7") - 3.731, _part_y("U7") + 0.250, 180.0)
+        _part_x("U7") - 4.731, _part_y("U7") + 0.250, 180.0)
+    # ⚠ -4.731, NOT -3.731: ONE MILLIMETRE FURTHER OUT, BECAUSE THE FIRST TRY TOOK D5'S LANE.
+    # At -3.731 (file x 113.000) VDDIO closed -- and ULPI_D5 came back with NO COPPER AT ALL,
+    # which audit_board reported and the DRC item count did not. The cause is the pitch: pins 8,
+    # 9 and 10 are 0.5 mm apart (y 172.54 / 173.04 / 173.54) and an 0402's courtyard is 1.010 mm
+    # tall, so a cap outboard of pin 9 SPANS ITS NEIGHBOURS' ESCAPE LANES no matter how it is
+    # rotated -- turning it 90 degrees makes it 1.910 mm tall, which is worse.
+    # That is the same mistake as the escape vias, wearing a capacitor: something placed in a
+    # crowded fan-out lane does not create room, it takes it from whoever was using it.
+    # A millimetre further out is past where the three escapes fan apart, and it costs almost
+    # nothing that matters: the run from pin 9 grows to about 1.7 mm, still a short bypass loop
+    # and still an order of magnitude better than C121's 9.194 mm.
     # ⚠ C130 LEAVES THE POWER ROW, AND IT IS BOTH A ROUTING FIX AND A CORRECTION. It is
     # the VBUS SENSE FILTER -- the C of an RC whose R is R39's 20 k -- and it was sitting
     # 24 mm from R39, in the middle of the wall the ULPI nets have to cross. An RC filter

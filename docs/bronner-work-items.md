@@ -4642,3 +4642,32 @@ Offsets `(−3.731, +0.250)` in the CAD frame; the frame mapping (`local = raw �
 
 Generator clean at **254 parts**, CAD table / netlist / BOM.md all agree — BOM.md counts 100 nF by
 MPN, so the extra one needed no new row. Routing now.
+
+### VDDIO IS CLOSED — AND THE FIRST CAP POSITION TOOK ULPI_D5'S LANE
+
+`C119` at pin 9 did what no via or repair could: **`+3V3D` gone from the unconnected list, 2
+unconnected / 0 violations, no escape via and no repair track.**
+
+**The dog-leg is retired, and it was not wrong — it became unnecessary.** With a `+3V3D` pad in
+that region the router closes U6 pad 36 itself. ⚠ Tested rather than assumed: both segments were
+deleted from the finished board and DRC came back **identical** — same 4 items, same violations,
+`+3V3D` still fully connected. Keeping it would have been hand-laid copper re-laid blind into
+every future route at coordinates that only happened not to short this time.
+
+**But the count went 1 open net → 2, and that is not a win to dress up.** `SAI_FS` (repair
+disabled) plus `ULPI_D5` — and `audit_board` says what the DRC item count hides: **ULPI_D5 has NO
+COPPER AT ALL.** The router never started it.
+
+⚠ **THE CAUSE IS THE PITCH, AND IT IS THE ESCAPE-VIA MISTAKE WEARING A CAPACITOR.** Pins 8/9/10
+sit at y 172.54 / 173.04 / 173.54 — 0.5 mm apart — and an 0402's courtyard is **1.010 mm** tall.
+A cap outboard of pin 9 therefore **spans its neighbours' escape lanes whatever its rotation**;
+turning it 90° makes it 1.910 mm tall, which is worse. Something placed in a crowded fan-out lane
+does not create room, it takes it from whoever was using it.
+
+**Now routing:** C119 moved one millimetre further out, to file (112.000, 173.040) — past where
+the three escapes fan apart. The cost is small and the point survives: the run from pin 9 grows to
+about 1.7 mm, still a short bypass loop and still an order of magnitude better than the 9.194 mm
+it replaced.
+
+Boards kept: `optical.best-1unconn-0viol.kicad_pcb` (VDDIO open) and
+`optical.best-vddio-closed.kicad_pcb` (VDDIO closed, D5 unrouted).
