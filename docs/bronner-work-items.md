@@ -6,22 +6,21 @@ rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction 
 prompt. Where a prompt and this file disagree, this file is right — and where this file carries
 a stale marker, striking the marker is part of the work.
 
-**Current state, 2026-09-30 (end of the escape-via tick):**
+**Current state, 2026-09-30 (end of the VDDIO tick):**
 
 | thing | state |
 |---|---|
-| optical route | **1 net open / 0 violations** — `+3V3D` at `U7.9` (VDDIO) only. Best verified; `optical.best-1unconn-0viol.kicad_pcb` |
-| VDDIO | a **PLACEMENT** problem, measured: no via fits at any size, no dog-leg reaches its own copper, and escape vias made the edge WORSE. Next move is U7 or its decoupling |
-| escape vias | ⚠ **REFUTED on a congested edge** — 2 → 3 → 5 unconnected as more pins were planned. `pin_escapes` is for pins stranded IN ISOLATION |
-| `repair_search` | now sees the **pours** (zone rule read from the project, 0.5 vs 0.127) and its pad capsules are no longer 90° off. Both validated against KiCad/pcbnew |
-| `audit_board` | "every obstacle class" now really includes the pours |
-| `repair_planes` | **refills the zones** — nothing ever did, which is why a good repair looked illegal |
-| `finish.py` | a failed retry round is a no-op, not a baseline-destroyer |
-| optical pad sites | searched at placement time, so they no longer rot between routes |
-| `check_ceilings` | sees **curved** overhangs now (the user's render finding); validated both ways |
+| optical route | **3 unconnected / 0 violations**; open nets are `+3V3A` and `SAI_FS`. 166/166 multi-pin nets carry copper. `optical.best-vddio-and-d5-closed.kicad_pcb` |
+| VDDIO (`U7.9`) | ✅ **CLOSED** — by a bypass cap at the pin (`C119`), not a via or a repair. No via fitted at any size and escape vias made the edge worse |
+| `ULPI_D5` | ✅ **CLOSED** — C119's first position took its escape lane (0.5 mm pitch vs a 1.010 mm courtyard); a 1 mm nudge outward recovered it |
+| `C121` | was declared bypass for pins 16 AND 9, on different faces, so it sat **9.19 mm** from VDDIO. A latent electrical fault that would have survived a routed board |
+| the `+3V3D` dog-leg | retired — tested redundant once C119 existed (deleting it gave an identical DRC) |
+| `+3V3A` / `SAI_FS` | need a **MAZE path on In2.Cu**. Endpoints are clear (63 / 224–563 legal via sites); the straight run between them is not — 400 vias pierce every layer |
+| ⚠ by raw count | the board went 1 open net → 2. That is progress in KIND, not in number: VDDIO was unrepairable, both survivors have documented repair paths |
+| tooling | `repair_search` sees pours + correct pad capsules; `repair_planes` refills; `audit_board` checks pours; `finish.py` survives a failed round; `check_ceilings` sees curved overhangs |
 | Pi retention | the user's printed spacer, built and gate-clean |
-| motor + I/O boards | `audit_board` clean. The I/O board's TRS + gain change is **specified with verified pinouts** but NOT landed — it needs placements |
-| scope | `optical_work_components`, declaring every live part so nothing renders twice |
+| motor + I/O boards | `audit_board` clean. The I/O TRS + gain change is specified with verified pinouts, NOT landed — needs placements |
+| scope | `optical_work_components` |
 
 
 **Priority: optical first.** Everything else is route-downtime work.
