@@ -3390,3 +3390,102 @@ through the laminate, and this head in the wall.
 repair_planes → DRC itself, up to `rounds` times, so a hand route is thrown away when finish
 regenerates the layout. One wasted 2126 s route. The project note says "run finish, not
 stages"; this is that note in the other direction.
+
+## OPTICAL MOUNTING HOLES — state after the −X move (2026-09-29, end of tick)
+
+**Where it stands: 8 unconnected / 11 violations**, against the committed 0/0 baseline at
+`eef008e`. The user's −X suggestion improved it from 10/15 and is committed (`e846b65`).
+
+### The placement delta is now three parts, two of them improvements
+
+| part | was | is | |
+|---|---|---|---|
+| U6, C100–C111, C112, R31 | — | **unchanged** | the ring is back to its even 8/4 span |
+| C113 | −61.225 | −58.130 | the +X step-away no longer triggers; back at its own VCAP2 pin |
+| R30 | −59.320 | −60.500 | the one part under the new head |
+| TP8 | — | re-sited | ⚠ **PROVISIONAL**, not a `padsite.py` result |
+
+Against the nine capacitors the +X mount required. **Move the mount, not the copper.**
+
+### ⚠ A SCREW POSITION WAS ALSO A PLACEMENT DATUM
+
+`_mcu_x1 = MOUNT_X_TAIL - MOUNT_CLR - ROW_GAP` — *"X is anchored to the TAIL SCREW, not to
+the board edge."* Moving the mount to −X dragged the LQFP176 **41 mm west, off the board**.
+Two asserts caught it in sequence: `_assert_mount_heads_clear` saw C111 land under the head,
+then `_assert_field_clear` saw U6 at X −51.34..−25.34 against a board ending at −32.16. It
+now reads `TAIL_X1 - MOUNT_KEEP`, identical to the micron, so nothing moves. The +7.6 mm the
+departing screw freed is deliberately **not** taken — this file's own rule is that a 176-pin
+part moves "because the ROUTER says so, not because of a dimension".
+
+### ⚠ THE REMAINING BLOCKER: THE +3V3A SPINE CROSSES THE TAIL HOLE, AND IT IS PRE-LAID
+
+Two of the 11 violations are the hole's own:
+
+        UNEXPECTED items_not_allowed:     Track [+3V3A] on In2.Cu, length 22.7941 mm
+        UNEXPECTED copper_edge_clearance: Circle on Edge.Cuts + Track [+3V3A], actual 0.0000
+
+**The keepout is correct and was not the problem** — verified in the board: a 24-point
+polygon, r 2.800, centred exactly on each hole. The router saw it. The track is **pre-laid**
+(present in `optical.unrouted.kicad_pcb`, i.e. before routing) and `route.py` freezes pre-laid
+wire as `(type fix)`, and **a frozen wire ignores a rule area.** The router never had a choice.
+
+Geometry, board-local:
+
+* the spine runs **x −20.0808 on B.Cu**, and it CLEARS the hole — 0.224 mm, tight but positive
+* entries #260/#261 bring it to (−20.0808, −21.0754) and turn it east on In2.Cu
+* the offender is a **22.79 mm In2.Cu diagonal** (−20.08, −21.08) → (−9.00, −41.00), which
+  passes **0.385 mm** from the hole's centre. It is NOT in `BOARD_NOTES["tracks"]` (searched
+  by endpoint and by distance) and it is longer than `local_mm` 6.8, so the generating pass is
+  still unidentified. `_v3a_spine()` produces the straight members, not this diagonal.
+
+⚠ **AND `_local_nets` IS NOT THE CULPRIT BY CONSTRUCTION.** Both its call sites already pass
+`holes=_hole_pts(notes)`, and `seg_clear` samples every **0.15 mm** — a 22.79 mm run gets ~152
+samples, so an r 2.8 hole cannot be missed. Whatever lays this diagonal is a pass that does
+**not** consult `_hole_pts`. Finding it is the next concrete step.
+
+### ⚠ THE TAIL WRAP PLINTH IS FULL — SEARCHED IN 2D, NOT ALONG A LINE
+
+`MOUNT_X_HEAD` is the westmost legal axis, not the only one: the plinth spans x −20.456 to
++20.456. Swept in 2D over the whole tail wrap band (x at 1.0 mm, y at 0.65 mm):
+
+**exactly ONE of ~370 candidates clears every part courtyard** — (−20.456, −56.15), the one in
+use — and copper crosses it at −2.415 mm. The band is 5.2 mm tall and parts fill it.
+
+⚠ I had previously swept only the westmost column and called the edge "settled by
+measurement". That was searching a LINE where the constraint is an AREA — the same shape of
+error as probing with the wrong shape, and it narrowed the search space without my noticing.
+
+### The honest summary
+
+The head mount (mount 0) is free — 0 copper within 3.5 mm, nothing within 11.92 mm. **The TAIL
+mount is contested on both sides**: +X costs nine capacitors, −X collides with the analog power
+spine's feed. Adding two Ø4.4 holes to this board is a layout problem, not a drop-in, and that
+is the finding rather than a step on the way to one.
+
+Next, in order: (1) identify the pass that lays the +3V3A diagonal and give it `_hole_pts`;
+(2) re-search all six bring-up pads with `padsite.py` against the finished board — four of the
+current violations are TP7 and TP8 is provisional; (3) re-search the `SAI_FS` repair with
+`scratchpad/maze.py`, which is ~7 of the 11 violations and is the known, predicted consequence
+of any placement change.
+
+### ⚠ STILL OPEN AND SEPARATE: THE CAD/FAB CUTOUT DIVERGENCE
+
+        CUTOUTS DISAGREE: the CAD plate has 10 hole(s), the routed board 12
+        *** 1 DISAGREEMENT(S) BETWEEN THE CAD AND THE ROUTED BOARDS ***
+
+The holes are in the fab data and **not** in the CAD's own plate model. This is the same check
+that once caught the comb missing from the fab data, firing in the other direction. It is also
+the direct answer to the user's "circular holes in KiCad, square holes in FreeCAD": the squares
+are the ten comb slots, and the CAD genuinely has no mount holes yet.
+
+### ⚠ AND THE PICKUP HEIGHT JACK NEEDS A TRIM (user, with a screenshot)
+
+`tools/_probe_jack_access.py`. Only **`pickup_jack_screw_0`** is blocked; jacks 1 and 2 are clear.
+
+        bridge_endplate   blocks from 1.10 mm above the head, 4.84 mm deep
+        optical_pcb       blocks from 6.10 mm above the head, 1.60 mm deep
+
+The endplate half is the "little trim" the user means. **The other half is the optical board
+itself over the driver column**, which is not a CAD trim — it is a notch in the board outline,
+in `elec/optical.py`. Probed with a generous Ø6.0 column (key plus driver body); re-measure
+against a bare 2.5 mm key before sizing the notch, as that may shrink or remove the PCB half.
