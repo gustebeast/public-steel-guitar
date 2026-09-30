@@ -120,12 +120,26 @@ LED_H     = 1.40                   # XL-5050RGBW body to its emitting face
 LED_Z     = BOARD_TOP + LED_H      # -14.65
 DEPTH_NOM = APERTURE_Z_NOM - LED_Z  # 19.45, the h the optics are solved at
 
-# ── where the three LEDs go along the fret ────────────────────────────────────────────
-# Solved numerically, not guessed: 27.15 maximises min/max over the whole 79.6 with end
-# reflectors at 0.85. It is NOT 2*HALF_LEN/3 = 26.53, the even-thirds answer — the
-# reflectors pull it outward. Rounded onto the bead grid at 34 beads.
-LED_Y    = 34 * D.BEAD             # 27.20
-LED_YS   = (-LED_Y, 0.0, LED_Y)
+# ── where the FOUR LEDs go along the fret ─────────────────────────────────────────────
+# ⚠ FOUR, NOT THREE, AND IT IS THE CHEAP WAY OUT OF THE DEPTH PROBLEM. Three LEDs want
+# h = 20.80 to reach 1.21 : 1, and the CAN trunk as drawn caps h at 17.95, where three
+# give only 1.38 : 1. A fourth LED gives 1.14 : 1 AT THE CAPPED DEPTH -- better than three
+# would manage even if the harness moved. Weighed against each other:
+#
+#     3 LEDs, harness moves 2.5 mm     1.28 : 1   a change to a SHARED trunk whose
+#                                                 stacking order was chosen for reasons
+#                                                 this work has not read
+#     4 LEDs, harness untouched        1.14 : 1   +24 LEDs = $1.56, NO extra driver
+#                                                 (they series on the same channel)
+#
+# The fourth LED is better and cheaper and touches nobody else's work. Positions solved
+# numerically on the bead grid; note they are NOT evenly spaced -- the outer pair sits
+# near the ends because the end reflectors do the work out there.
+# ⚠ IT MOVES THE RAIL: four in series is 12.8 V for W/G/B, so the rail goes 12 -> 14 V.
+# Still inside the TLC59711's 17 V (see docs/fret-led.md 6.5).
+LED_Y_IN  = 13 * D.BEAD            # 10.40
+LED_Y_OUT = 38 * D.BEAD            # 30.40
+LED_YS    = (-LED_Y_OUT, -LED_Y_IN, LED_Y_IN, LED_Y_OUT)
 END_REFL = 0.85                    # printed white PCTG, diffuse
 
 # ── the cell's walls ──────────────────────────────────────────────────────────────────
@@ -148,7 +162,10 @@ TAPER_MAX_DEG = 45.0
 # LEDs' courtyards overhang the board by 0.25, caught the first time this module loaded.
 # Width is the expensive axis (docs/fret-led.md section 1: ~13x more per mm than length),
 # but 2.4 mm of it is a rounding error against holding the optimum LED spacing.
-BOARD_HALF_W = 39 * D.BEAD         # 31.20 -> a 62.4 wide board
+BOARD_HALF_W = 44 * D.BEAD         # 35.20 -> a 70.4 wide board. The outer LED's BODY
+                                   # reaches 32.90, so a retaining tab on the ramp has
+                                   # 2.30 of reach over the board's edge without touching
+                                   # it -- see docs/fret-led.md section 8.
 # The fret line runs to +-39.8, so the last ~8.6 mm of each cell has no board under it.
 # Rather than widen the board to 84, the deck RAMPS ITS OWN FLOOR up from the board's edge
 # to the aperture. The ramp closes the cell AND is the end reflector the optics want, and
@@ -212,8 +229,8 @@ def check_optics(pitches=()):
     top_plate from here at import time IS the cycle. A checker calls this once everything
     is loaded. Pass the real fret pitches and the wall/taper budget is checked too."""
     u, _ = uniformity()
-    assert u >= 0.77, (
-        "the fret line is %.2f : 1 end to end, past the 1.30 : 1 this geometry was solved "
+    assert u >= 0.85, (
+        "the fret line is %.2f : 1 end to end, past the 1.18 : 1 this geometry was solved "
         "for — LED_Y, the Z stack or top_plate.FRET_HY has moved" % (1.0 / u))
     u0, _ = uniformity(refl=0.0)
     assert u0 < u, "the end reflectors are supposed to help; check RAMP_DEG"
@@ -234,9 +251,12 @@ assert BOARD_BOT - CABLE_TOP >= 0.8, (
 assert BOARD_BOT - TEE_TOP >= 1.5, (
     "the LED board at %.2f leaves only %.2f over the tee PCBs at %.2f, and the panel has "
     "to SLIDE over them" % (BOARD_BOT, BOARD_BOT - TEE_TOP, TEE_TOP))
-assert LED_Y + LED_CRTYD / 2.0 <= BOARD_HALF_W, (
+assert LED_Y_OUT + LED_CRTYD / 2.0 <= BOARD_HALF_W, (
     "the outer LEDs at +-%.2f plus a %.2f courtyard overhang a %.2f-half-width board"
-    % (LED_Y, LED_CRTYD, BOARD_HALF_W))
+    % (LED_Y_OUT, LED_CRTYD, BOARD_HALF_W))
+assert LED_Y_OUT - LED_Y_IN >= LED_CRTYD, (
+    "the two LED rows at %.2f and %.2f are closer than a %.2f courtyard"
+    % (LED_Y_IN, LED_Y_OUT, LED_CRTYD))
 
 
 # ── THE CAD ───────────────────────────────────────────────────────────────────────────
