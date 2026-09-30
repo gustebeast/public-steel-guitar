@@ -545,7 +545,9 @@ def _band(xa, xb, *, ui=False, cells=False):
         body = body.union(UIP.deck_mount()).cut(UIP.deck_cutter())
     if cells:
         from . import fret_light as FL
-        comb = FL.walls(xb, xa).union(FL.ramps(xb, xa))
+        # the tabs go in with the comb: they are opaque structure under the board's
+        # edges, outboard of every LED courtyard, and _split treats them as comb
+        comb = FL.walls(xb, xa).union(FL.ramps(xb, xa)).union(FL.edge_walls(xb, xa)).union(FL.tabs(xb, xa))
         return heal(body.union(comb)), comb
     return body, None
 

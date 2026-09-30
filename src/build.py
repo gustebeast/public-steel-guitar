@@ -28,10 +28,12 @@ import cadquery as cq
 from cadkit.freecad import show
 from cadkit.step_export import export_step
 try:                                    # optional on-every-build face-count regression gate
-    from tools.build_profile import record_part, report_build_regressions
+    from tools.build_profile import (record_part, report_build_regressions,
+                                     write_part_volumes)
 except Exception:                       # a profiling hook must NEVER break a build
     def record_part(*a, **k): pass
     def report_build_regressions(): return 0
+    def write_part_volumes(*a, **k): return 0
 
 from . import dimensions as D
 from elec import harness as _EH           # the PCB's pin order, single-sourced
@@ -308,14 +310,21 @@ for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
 chassis_light = list(chassis_light)
 for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
     PARTS[f"chassis_{_i}_light"] = (
-        partial(heal, _lt), f"petg/chassis_{_i}_light.step",
-        "PETG (WHITE, translucent) — DOWNWARD LIGHT WINDOW: 8 mm across Y by the bottom "
+        partial(heal, _lt), f"pctg/chassis_{_i}_light.step",
+        "PCTG (WHITE, translucent) — DOWNWARD LIGHT WINDOW: 8 mm across Y by the bottom "
         f"prism's full XBAR, one XBAR inboard of the +Y rail (print AS ONE OBJECT with chassis_{_i}, "
         "the deck panels' base/colour pattern). The bottom is sealed now, which is what keeps the "
         "motor noise in; this is the one deliberate leak, and the rail stands outboard of it so "
         "nothing shows from the front -- it only aims DOWN, at the pedals. White to match the deck "
-        "panels, and it diffuses rather than glares. Same resin family as the PETG-GF body, so the "
-        "two weld and purge cleanly")
+        "panels, and it diffuses rather than glares. "
+        "⚠ PCTG, NOT PETG (user, 2026-09-30). These three were the ONLY parts in the instrument "
+        "asking for a fourth spool, and nothing else in the project is plain PETG -- the body is "
+        "PETG-GF, the deck and fine-feature parts are PCTG, the feet TPU. The deck panels are "
+        "already translucent/white PCTG, so the window is now the material it sits next to rather "
+        "than one bought for it. PCTG is the same glycol-modified polyester family as PETG-GF, so "
+        "the two still weld and purge cleanly in a one-object print. If a test print shows that "
+        "weld is worse than PETG's, that is a reason to revisit -- a spool is cheaper than a "
+        "delamination")
 # THE TRRS ADAPTER'S STATION over the -X/+Y leg (wiring.trrs_*): the same three-step
 # dance the tees do, and for the same reason -- fuse the cradle into the segment that
 # owns its X, THEN cut the things that live inside it, because the fuse fills them in.
@@ -398,13 +407,33 @@ PARTS["test_belt_tensioner"] = (
 OUT = pathlib.Path(__file__).resolve().parents[1]
 
 
+# The instrument's materials, and there are THREE (user, 2026-09-30): PETG-GF for the
+# body, PCTG for the deck and fine-feature parts, TPU for the feet. Plain PETG was here
+# for exactly three parts -- the chassis light windows -- and buying a fourth spool for
+# three translucent strips is the opposite of what this instrument is for.
+MATERIALS = ("petg-gf", "pctg", "tpu")
+
+
+def _material_of(path):
+    """The material folder a part exports into, or None.
+
+    ⚠ NOT path.split("/")[0]. Test coupons are written at the root and coil_mandrel into
+    tools/, so that returned "test_cover_plate.step" and "tools" as materials and
+    tools/cost.py then had no filament price for either (lead, 2026-09-30). A part
+    outside the material folders has no filament cost to attribute, and saying None is
+    how cost.py knows to leave it out rather than guess."""
+    head = path.split("/")[0]
+    return head if head in MATERIALS else None
+
+
 def _export(name):
     builder, path, note = PARTS[name]
     dest = OUT / path
     dest.parent.mkdir(parents=True, exist_ok=True)   # material folder (petg-gf/pctg/tpu)
     t = time.perf_counter(); wp = builder(); build_s = time.perf_counter() - t
     t = time.perf_counter(); export_step(wp, str(dest)); export_s = time.perf_counter() - t
-    record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp)   # ~free profiling hook
+    record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp,
+                material=_material_of(path))          # ~free profiling + volume hook
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
@@ -2083,6 +2112,12 @@ def main() -> None:
 
     for name in PARTS:
         _export(name)
+    # ⚠ VOLUMES FIRST. report_build_regressions() ends by CLEARING the record list, so
+    # writing the volumes after it wrote an empty file (found by the file being 100
+    # bytes, lead 2026-09-30). Order matters here and nothing else would have said so.
+    _n = write_part_volumes()           # what the plastic costs, for tools/cost.py
+    if _n:
+        print(f"wrote tools/part_volumes.json  ({_n} parts)")
     report_build_regressions()          # ~free: flags any part whose face count grew vs baseline
     sys.exit(_export_assembly(gate=gate, gate_full=gate_full))
 
