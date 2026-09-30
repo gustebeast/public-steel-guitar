@@ -2,18 +2,27 @@
 
 A pedal steel guitar **you can build yourself, from parts anyone can buy.**
 
-That is the whole point, and it is what the name means. A pedal steel today
-comes from one of a handful of builders, costs several thousand dollars, and is
-held together by a mechanical changer nobody outside that shop can make. When it
-breaks, you send it back. When you want it to do something different, you wait
-for someone who owns a mill.
+That is the whole point, and it is what the name means.
 
-This one is designed so that never applies. Every printed part is in this
-repository as parametric source. Every purchased part is a catalogue SKU with a
-supplier link in [`BOM.md`](BOM.md), which comes to **~$865 basic / ~$1,090
-pro** — and the electronics are generated from source too, so the boards can be
-re-fabbed by anyone rather than bought from us. **Nothing here needs our
-permission, our shop, or our help.**
+A pedal steel is a remarkable piece of engineering. The mechanical changer —
+rods, bellcranks and pull-fingers moving a dozen strings through precise
+intervals under hundreds of newtons, with a feel that generations of players
+have refined — is one of the most sophisticated mechanisms in any instrument,
+and the builders who make them are doing precision machining in small numbers,
+by hand, at prices that reflect exactly that. It is skilled work and it is worth
+what it costs.
+
+It is also, by its nature, work that a player cannot do at home. That is the
+constraint this project takes on: **not to make a better pedal steel, but to
+make one that a person can source, build, modify and repair entirely
+themselves.** Every printed part is in this repository as parametric source.
+Every purchased part is a catalogue SKU with a supplier link in
+[`BOM.md`](BOM.md), which comes to **~$1,060 per instrument** — approximate, and
+several lines are still unverified — and the electronics are generated from
+source too, so the boards can be re-fabbed by anyone rather than bought from us.
+Motors dominate that total; there is one model, fully populated, with no
+cut-down version. Nothing here needs a machine shop, a
+proprietary part, or our involvement.
 
 **Status:** CAD and electronics in progress; no physical prototype yet. The
 mechanism is build-verified geometry (every commit is gated for part collisions,
@@ -36,19 +45,24 @@ instrument body, strings, nut block, and motor/changer drivetrain.
 
 Almost every design decision here follows from that one constraint. The
 mechanism is not the goal; it is what is left once you insist that a person with
-a 3D printer and a credit card can make the whole instrument.
+a 3D printer and a credit card can make the whole instrument. The column on the
+left is not a criticism — it is the toolset a professional shop has and a player
+usually does not.
 
-| Traditional | Here | Because |
+| A shop can | So instead | Because |
 |---|---|---|
-| Body milled from hardwood | **Printed PETG-GF and PCTG** | A printer is a machine people already own, and a file is not tooling. Changing a dimension is an edit, not a new setup. |
-| A machined changer: rods, bellcranks, pull-fingers, all bespoke | **One commodity stepper and a GT2 belt per string** | Nothing in the drivetrain is made to order. A stepper, a belt, a trapezoidal screw and a nut are catalogue parts with several suppliers each. |
-| Pull-rod geometry fixes which pedal moves which string | **The copedent is a data table** | Falls out of the above rather than being the aim: once each string has its own actuator, the mapping is software and costs nothing to change. |
-| Repairs go back to the builder | **Every part is a file or a SKU** | Print the part again, or order the same screw. No part of this instrument is unobtainable. |
-| Assembly needs a shop | **One 2.5 mm hex key, heat-set inserts, no glue** | Fewest tools, one screw family, and every joint comes apart — so it can be repaired and modified, not just built. |
+| Mill a body from hardwood | **Printed PETG-GF and PCTG** | A printer is a machine people already own, and a file is not tooling. Changing a dimension is an edit, not a new setup. |
+| Machine a changer: rods, bellcranks, pull-fingers, fitted as a set | **One commodity stepper and a GT2 belt per string** | Nothing in the drivetrain is made to order. A stepper, a belt, a trapezoidal screw and a nut are catalogue parts with several suppliers each. |
+| Set the copedent in the pull-rod geometry | **The copedent is a data table** | Falls out of the above rather than being the aim: once each string has its own actuator, the mapping is software and costs nothing to change. |
+| Keep spares and service what it built | **Every part is a file or a SKU** | Print the part again, or order the same screw — without depending on any one supplier staying in business. |
+| Ream, tap, press and fit by hand | **One 2.5 mm hex key, heat-set inserts, no glue** | Fewest tools, one screw family, and every joint comes apart — so it can be repaired and modified, not just built. |
 
-The cost of this trade is honest and worth stating: it needs electricity,
-firmware and ten motors, where a mechanical steel needs none of those. It is a
-different instrument, not a cheaper copy of an existing one.
+**What this gives up is real.** A mechanical steel needs no electricity, no
+firmware and no motors; it will work in fifty years with a screwdriver, and its
+feel is the product of decades of refinement by people who play them. This
+instrument trades all of that for self-sufficiency. It is a different
+instrument, not a cheaper copy of a good one — and if you want a pedal steel
+rather than this, buy one from a builder.
 
 ## The concept, in one paragraph
 
