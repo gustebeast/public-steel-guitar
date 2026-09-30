@@ -315,24 +315,24 @@ connector happens with the panel off or with the keyhead end open.
   between the board's top face and the deck's underside.
 
 
-## Fret lighting boards (2026-09-30)
+## Fret lighting boards (2026-09-30, seam joint built the same day)
 
-Two boards, one per deck panel, each with its own cable to the Pi daughter board.
+Two boards, one per deck panel, ONE cable: it lands on the keyhead board, and the mid board
+is fed across the panel seam by six tip-to-tip pogo pins (`docs/fret-led.md` §9.1f).
 
-1. **Attach each LED board to its own panel, off the instrument.** Lift it +Z into the
-   panel's light-cell comb until it bottoms on the cell walls, shift it ~6 mm in X under
-   the ramps' retaining tabs, and put in the single M4 — it is in the **bay** at the
-   board's −X end, outside every light cell (`docs/fret-led.md` §8, §9.6).
+1. **Attach each LED board to its own panel, off the instrument** -- the retainer strips
+   and the one M4, below. The board must not move in X once seated.
 2. **Slide the mid panel on** (it goes first and furthest, butting the bridge endplate).
-3. **Slide the keyhead panel on.**
-4. **Plug BOTH cables into the Pi daughter board.** The keyhead board's plug faces −X at
-   the keyhead cluster and is easy to reach; the mid board's leaves its −X end into the
-   seam bay between the two panels and drops into the chassis from there.
-5. **Fit the keyhead endplate.**
+3. **Slide the keyhead panel on until the two panels BUTT.** The pogos meet in the last
+   ~3.4 mm before the panels touch: from first contact to flush they compress 1.70 each
+   and push back with about **1.2 kg** in all. Flush IS the preload -- if the panels meet,
+   the joint is made (§9.1e). A visible seam gap means it is not.
+4. **Plug the one cable into the keyhead board's J1** -- its plug faces -X at the keyhead
+   cluster, in the bay at the board's far end.
+5. **Fit the keyhead endplate**, which holds the panels butted against the pogos' push.
 
-⚠ **There is no connector at the deck seam and nothing to blind-mate.** An earlier plan
-joined the two boards there with pogo pins; it was retracted on measurement, and the two
-cables are what replaced it. Nothing about the panel slide has to make electrical contact.
+⚠ **Never force the panels closer than flush.** The pogos bottom at 5.70 and are designed to
+sit at 6.30 when the panels touch, only 0.60 above that limit.
 
 ⚠ **Every part on these boards stands inside a light cell except the bay's.** Do not add
 anything tall to the fret field without asking what it does to that cell's floor bounce.

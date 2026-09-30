@@ -1,82 +1,60 @@
-"""Put the pogo where it would go and intersect it.
+"""The seam joint AS BUILT: intersect the build's own solids, per panel.
 
-⚠ THIS REPLACES A VERSION THAT MEASURED THE WRONG SIDE OF THE WALL. It computed key's
-clear board top between the wall's OUTER face and the board edge -- 0.80 of overhang, so
-negative -- and concluded key needed its comb wall moved 5.30 mm, which would have cost
-fret 9. The body does not go there. It goes INBOARD of the wall, where the whole board is.
-Distances to walls are a derivation; this intersects solids, which is the rule bronner's
-method note gives and which this project has now got wrong three times.
+    py -3.12 -m tools._probe_seam
 
-C5203987 (YZF0002-38080-02), read off Xinyangze's drawing 2026-09-30:
-    8.00 free, 6.00 working height, 5.70 compression limit
-    barrel 4.50 long, 3.00 wide x 3.80 tall, bore centred at 1.90
-    plunger O2.00, R0.50 dome, so it protrudes 1.50 beyond the barrel at working height
+⚠ THIS PROBE HAS BEEN WRONG TWICE, AND BOTH TIMES FOR THE SAME REASON: it measured
+something other than what gets built. First it measured the wrong SIDE of key's end wall
+(a distance to a face, not an intersection), then it called `FL.walls()` with no range and
+met a wall top_plate never builds. So it now builds the comb exactly the way
+top_plate._piece does -- per panel, clamped, grooved, notched -- and intersects the
+plungers and the boards' own routed bodies (which carry the pogo barrels) against it.
+Nothing here is a copy of a number: every solid comes from src/fret_light.py.
 """
-import cadquery as cq
-
 from src import fret_light as FL
-from src.helpers import box_at
-
-BODY_L, BODY_W, BODY_H = 4.50, 3.00, 3.80
-AXIS_Z = 1.90
-PLUNGER_D = 2.00
-WORK = 6.00
-LANE_Y = (-27.35 + -13.45) / 2.0     # a clear lane between two LED rows
-N_POGO = 4
-PITCH_Y = 3.40
 
 
-def pogo(x_tip, sgn, y):
-    """One pogo at working height: barrel + plunger, tip at x_tip, firing `sgn`."""
-    z0 = FL.BOARD_TOP
-    front = x_tip - sgn * (WORK - BODY_L)          # barrel's front face
-    back = front - sgn * BODY_L
-    body = box_at(BODY_L, BODY_W, BODY_H, x=(front + back) / 2.0, y=y,
-                  z=z0 + BODY_H / 2.0)
-    pl = (cq.Workplane("YZ").circle(PLUNGER_D / 2.0)
-          .extrude(WORK - BODY_L)
-          .translate((min(front, x_tip), y, z0 + AXIS_Z)))
-    return body.union(pl), back, front
+def _v(a, b):
+    h = a.val().intersect(b.val())
+    return (h.Volume() if h.Solids() else 0.0), (h.BoundingBox() if h.Solids() else None)
+
+
+def comb(panel):
+    """top_plate's comb for this panel, built the way top_plate builds it."""
+    xb, xa = FL.panel_range(panel)
+    c = (FL.walls(xb, xa).union(FL.ramps(xb, xa))
+         .union(FL.edge_walls(xb, xa)).cut(FL.strip_groove(xb, xa)))
+    notch = FL.pogo_notches(xb, xa)
+    return c.cut(notch) if notch.vals() else c
 
 
 def main():
-    k0, k1 = FL.board_span("key")
-    m0, m1 = FL.board_span("mid")
-    contact = (k1 + m0) / 2.0
-    print("key board %.2f..%.2f   mid board %.2f..%.2f   gap %.2f, contact at %.2f"
-          % (k0, k1, m0, m1, m0 - k1, contact))
+    ps = FL.pogo_set()
+    print("flush separation %.2f   setbacks mid %.2f key %.2f   contact x %.3f"
+          % (FL.pogo_sep_flush(), ps["mid"], ps["key"], FL._pogo_contact()))
+    m, k = FL.pogo_pads("mid")[0][0], FL.pogo_pads("key")[0][0]
+    work = (m - k) / 2.0 + FL.POGO_BODY_L / 2.0
+    print("working height as modelled %.3f (at flush %.3f, limit %.2f, free %.2f)"
+          % (work, FL.POGO_WORK, FL.POGO_LIMIT, FL.POGO_FREE))
 
-    ys = [LANE_Y + (i - (N_POGO - 1) / 2.0) * PITCH_Y for i in range(N_POGO)]
-    parts, out = {}, None
-    for tag, sgn in (("mid", -1.0), ("key", +1.0)):
-        for i, y in enumerate(ys):
-            p, back, front = pogo(contact, sgn, y)
-            if i == 0:
-                print("  %s pogo: barrel %.2f..%.2f, plunger to %.2f  (setback from its "
-                      "board edge %.2f)"
-                      % (tag, back, front, contact,
-                         abs(back - (k1 if tag == "key" else m0))))
-            parts["%s%d" % (tag, i)] = p
-            out = p if out is None else out.union(p)
-
-    comb = FL.walls().union(FL.ramps())
-    print("\nINTERSECTIONS (mm3):")
-    hit = out.val().intersect(comb.val())
-    v = hit.Volume() if hit.Solids() else 0.0
-    b = hit.BoundingBox() if hit.Solids() else None
-    print("  pogos vs comb+ramps   %8.2f   %s"
-          % (v, "x %.2f..%.2f" % (b.xmin, b.xmax) if b else "clear"))
-
-    for panel in ("key", "mid"):
-        leds = FL.leds(panel).val()
-        h = out.val().intersect(leds)
-        print("  pogos vs %s LEDs      %8.2f" % (panel, h.Volume() if h.Solids() else 0.0))
-        pcb = FL.pcb(panel).val()
-        h = out.val().intersect(pcb)
-        print("  pogos vs %s board     %8.2f" % (panel, h.Volume() if h.Solids() else 0.0))
-
-    # what the wall actually has to give up: the plungers crossing key's end wall
-    print("\nthe notch, if any: the intersection above is what must be cut from the comb.")
+    pins = FL.pogo_pins()[0][1]
+    combs = {p: comb(p) for p in FL.BOARD_NAME}
+    print("\nINTERSECTIONS, mm3 (every one should be 0):")
+    worst = 0.0
+    for p in FL.BOARD_NAME:
+        for tag, a, b in (("plungers vs %s comb" % p, pins, combs[p]),
+                          ("%s board+barrels vs %s comb" % (p, p), FL.pcb(p), combs[p]),
+                          ("plungers vs %s LEDs" % p, pins, FL.leds(p))):
+            v, bb = _v(a, b)
+            worst = max(worst, v)
+            print("  %-34s %8.3f   %s" % (tag, v, "x %.2f..%.2f z %.2f..%.2f"
+                                           % (bb.xmin, bb.xmax, bb.zmin, bb.zmax)
+                                           if bb else "clear"))
+    # the plungers against the boards: they must clear the laminate they fly over
+    for p in FL.BOARD_NAME:
+        v, _bb = _v(pins, FL.pcb(p))
+        worst = max(worst, v)
+        print("  %-34s %8.3f" % ("plungers vs %s board (not barrels)" % p, v))
+    print("\n%s" % ("CLEAR" if worst < 1e-3 else "!! NOT CLEAR -- worst %.3f mm3" % worst))
 
 
 if __name__ == "__main__":

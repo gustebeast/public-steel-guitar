@@ -124,6 +124,7 @@ LCSC = {
     "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (led_strip)
     "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (led_strip)
     "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector
+    "YZF0002-38080-02": "C5203987", # side-mount SMD pogo, 24 V / 12 A: the fret seam, x6 a side
     # ⚠ THE FOOT STRIP'S, AND IT IS THERE FOR ITS HEIGHT. Everything on that board hangs
     # into a 3.40 mm trough; the PH above is 5.50 tall and does not fit. JST's own
     # drawing puts the side-entry SH at 2.95. 1.0 A / 50 V against 0.24 A at 24 V.
