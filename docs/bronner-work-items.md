@@ -4486,3 +4486,69 @@ clears with margin.
 **100 Ω series resistor on the ring** — the hardware backstop for a TS plug shorting R to S, since
 mode is a UI setting rather than detected. Then placements for all of them and U7's package change
 (SOT-23-5 → SOIC-8), and one route.
+
+## THE VDDIO ESCAPE: IT WORKED, AND IT WAS STILL A NET LOSS (2026-09-30)
+
+`pin_escapes` + `U7.9` → **`+3V3D` closed completely**, both breaks, with no dog-leg at all. The
+via landed 0.938 mm out at (113.856, 173.040) — outward along −X, inside the corridor measured
+earlier. So the mechanism and the diagnosis were both right.
+
+**And the board went 2 unconnected → 3.** The reason is visible in where each neighbour's via
+ended up:
+
+| pin | net | nearest own via |
+|---|---|---|
+| U7.9 | +3V3D (VDDIO) | **0.938 mm** — the planned escape |
+| U7.8 | ULPI_D4 | **11.205 mm** — 11 mm of F.Cu before it could change layer |
+| U7.10 | ULPI_D5 | **none at all** — failed outright |
+
+Newly open: `ULPI_D5`, `ULPI_NXT`, and `SAI_FS` (whose repair is disabled). **Planning ONE pin on
+a congested edge does not reduce the congestion — it decides who wins.** One supply pin gained,
+two bus signals lost, and a broken ULPI data line is as fatal as a floating VDDIO.
+
+**Follow-up now routing:** plan the whole edge — `U7.3` (NXT), `U7.8` (D4), `U7.10` (D5) join
+`U7.9`. The escape search places vias one at a time against `done_vias`, so declared pins get
+SPACED instead of racing; an undeclared neighbour gets the leftovers, which is exactly what
+happened to D5. `U7.5` (D1) and `U7.11` (D6) have been escaped this way all along on the same
+package and edge, so this is not a new use, and a pin that cannot be placed fails gracefully.
+
+Both results are kept: `optical.best-1unconn-0viol.kicad_pcb` and
+`optical.vddio-escape-3unconn.kicad_pcb`.
+
+## `check_ceilings` NOW SEES CURVED OVERHANGS — THE USER'S RENDER FINDING, CLOSED (2026-09-30)
+
+The motor board's M4 boss was a horizontal cylinder on a Z-up part and
+`check_ceilings --only chassis` said "no flat ceilings above the threshold" — correctly, because
+a curved surface has no facet to trip. The old code dropped every non-planar face with
+`except: continue` / *"non-planar: no flat ceiling to have"*: true, and misleading, since it
+reads as "nothing to check here".
+
+⚠ **And `normalAt()` cannot do this job**, which is the subtler half. It returns the normal at ONE
+parameter: on a full horizontal cylinder that is (0,0,−1) — straight down — so the face would
+*pass* the axis-aligned test and then be measured with a `Center()` sitting on the cylinder's
+AXIS and a span of the whole diameter; on a partial face left by a union it points elsewhere and
+the face is dropped. One sample of a curved surface is a coin toss either way.
+
+`curved_overhangs()` tessellates each non-planar face and measures **every triangle's own
+normal** against the bed direction. No UV parameter maths, exact for the mesh the slicer sees,
+and area weighting comes free.
+
+**Validated in BOTH directions, which a negative result requires:**
+
+| case | result |
+|---|---|
+| Ø9.2 horizontal cylinder | worst **88.6°**, **146.8 mm²** beyond 45°, at the bottom of the barrel; triangle areas total 578.0 vs a face area of 578.1 |
+| `leg_head` (passes the flat check) | **two 90.0°** overhangs, 265.2 and 119.3 mm² |
+| `chassis_2` at 45° | **silent** — and that is a real pass, not a dead code path: at a 20° threshold it reports 6 overhangs whose worst is **44.3°**, so the chassis clears the self-supporting limit by 0.7° |
+
+A teardropped hole does not read 90°, so the project's own teardrop practice **self-exempts** and
+what surfaces is un-teardropped cross-bores rather than every hole on the instrument.
+
+### ⚠ FLAGGED, NOT MINE: seven 430 mm² flat ceilings under the Pi bay
+
+`chassis_2` reports **7 × 430.6 mm², span 7.20 mm, 4.40 mm in from the bed**, at y −99.0 (the Pi
+bay's centre line) and x −504.2 … −586.6 on a ~10.4 mm pitch, plus two smaller ones at each end.
+These are roofs over voids just above the bed. **I believe them pre-existing** — my spacer work
+added geometry at y −58.5 and a wall notch at y −70, not at y −99 — but that is reasoning from
+position and wants confirming against a pre-spacer build before anyone acts on it. Raised for
+whoever owns the chassis floor.
