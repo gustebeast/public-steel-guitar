@@ -179,6 +179,81 @@ BOARD_HALF_W = 44 * D.BEAD         # 35.20 -> a 70.4 wide board. The outer LED's
 # at 58 degrees from horizontal it self-supports in this print direction.
 RAMP_DEG = 58.0
 
+# ── the -Z retention ─────────────────────────────────────────────────────────────
+# Five of the six directions come free (docs/fret-led.md section 8.3): the comb's end
+# walls take +-X, the ramps take +-Y, and the cell walls' undersides take +Z at 23 places
+# along the length. -Z is gravity's direction, it is held NOWHERE, and this is it.
+#
+# ⚠ THE TABS ARE 45 DEGREE RAMPS, AND IT IS THE SAME SHAPE AS THE FOOT STRIP'S LIPS,
+# MIRRORED. `top_plate.PIECE_UP` is (0,0,-1) -- the deck face goes on the bed and the
+# underside is built LAST, growing in world -Z -- while the chassis builds world +Z. So a
+# tab reaching in over the board's underside is exactly the foot channel's retaining lip
+# turned over: its retention face is the overhang, which is why that one became a ramp.
+# Each tab rises off the ramp wall at 45 degrees, so every layer lands on the one below
+# it, and the clearance over the board's edge is TAB_PLAY rather than a second number.
+# docs/fret-led.md section 8.5.3 asked this question and this is the answer to it.
+#
+# ⚠ AND THE BOARD IS NOTCHED, BECAUSE A STRAIGHT EDGE CANNOT LIFT PAST A TAB. Section
+# 8.4's install is lift-then-shift, and a continuous 211 mm edge is already under any tab
+# that overhangs it -- there is nothing to lift past. So the board's long edges carry a
+# notch at each tab: the board rises with the tabs IN its notches, then shifts SHIFT along
+# X and the solid edge between the notches runs under them. The outline goes out as
+# `outline_poly` (elec/layout.py _edge_poly, which the motor tee's ear already uses), so
+# this costs a polygon in the board module and nothing at the fab.
+#
+# ⚠ THE REACH IS BOUNDED BY THE LED COURTYARD, NOT BY THE BODY. A notch removes
+# substrate, so what it may not reach is the outer LED's KEEPOUT -- LED_Y_OUT + LED_CRTYD/2
+# = 33.45 against the board's edge at 35.20. 1.75, not the 2.30 section 8.4 read off the
+# body. Both tab and notch are held to it.
+# ⚠ IT IS THE NOTCH THAT THE COURTYARD BOUNDS, NOT THE TAB, and the tab is one PLAY
+# shorter than it: the tab sits TAB_PLAY outboard of the board's edge, so the slot it has
+# to pass through is its own reach plus that play. Sizing the tab at 1.75 puts the notch
+# at 2.05 and takes 0.30 out of the outer LED's keepout.
+# ⚠ AND THE COURTYARD WANTS A CLEARANCE, NOT A TOUCH. The outer LED sits at every
+# fret, so the +Y edge is LINED with courtyards reaching 33.45 -- a notch cut exactly to
+# that line leaves the row standing on the lip of a hole for 23 frets. NOTCH_CLR holds it
+# off. What is left, 1.05 of tab reach, is what the LED spacing leaves at this board
+# width; buying more means buying width, which is ~13x length per mm.
+NOTCH_CLR = 0.40
+NOTCH_MAX = BOARD_HALF_W - (LED_Y_OUT + LED_CRTYD / 2.0) - NOTCH_CLR   # 1.35
+TAB_REACH_MAX = NOTCH_MAX - 0.30                                       # 1.05
+TAB_PLAY  = 0.30                   # board edge to the ramp wall -- and, via the 45
+                                   # degree face, the clearance under the board's edge
+TAB_CLR   = 0.40                   # tab tip to whatever lies below it
+TAB_LEN   = 8.00                   # along X, per tab
+TAB_SHIFT = 6.00                   # the install shift the M4 then locks
+TAB_PITCH = 52.0                   # nominal spacing; the real one divides the span
+# ⚠ THE FLOOR UNDER EACH EDGE IS MEASURED, NOT ASSUMED -- tools/_probe_fret_tab.py, run
+# 2026-09-30 over both panels' long edges with the boards and the deck taken out:
+#     key +Y, mid +Y   clear for the full 6.00 mm probed
+#     key -Y           motor pigtails, top -21.45  -> 5.30 free
+#     mid -Y           wire_canl_6/7, top -17.15  -> 1.00 free
+# A 45 degree tab is DEEPER than a flat one by exactly its own reach, so that 1.00 is what
+# decides the -Y side, and it is not enough: see tab_reach() and the assert below.
+TAB_FLOOR = {-1.0: CABLE_TOP, 1.0: -22.15}
+
+
+def tab_reach(sgn):
+    """How far a tab on this edge may reach over the board, in mm.
+
+    DERIVED, so that the day the CAN trunk stops floating above its own plug (section 8.1)
+    the -Y tabs grow to the full reach with no edit here."""
+    room = BOARD_BOT - TAB_FLOOR[sgn] - TAB_CLR - TAB_PLAY
+    return min(TAB_REACH_MAX, max(0.0, room))
+
+
+def tab_xs(panel):
+    """World X centres of the tabs on one panel -- and so of the board's notches."""
+    x0, x1 = board_span(panel)
+    x0, x1 = x0 + TAB_LEN, x1 - TAB_LEN
+    n = max(2, int(round((x1 - x0) / TAB_PITCH)) + 1)
+    return [x0 + i * (x1 - x0) / (n - 1) for i in range(n)]
+
+
+def notch(sgn):
+    """(depth, length) of the board-edge notch a tab passes through on the way in."""
+    return tab_reach(sgn) + TAB_PLAY, TAB_LEN + TAB_SHIFT + 1.0
+
 
 def depth() -> float:
     """The live h: the real aperture underside over the LED's emitting face."""
@@ -258,6 +333,28 @@ assert BOARD_BOT - CABLE_TOP >= 0.8, (
 assert BOARD_BOT - TEE_TOP >= 1.5, (
     "the LED board at %.2f leaves only %.2f over the tee PCBs at %.2f, and the panel has "
     "to SLIDE over them" % (BOARD_BOT, BOARD_BOT - TEE_TOP, TEE_TOP))
+assert tab_reach(1.0) >= D.MIN_WALL, (
+    "the +Y retaining tab reaches %.2f, under a %.2f bead -- with %.2f of room under that "
+    "edge it should have the full %.2f" % (tab_reach(1.0), D.MIN_WALL,
+                                           BOARD_BOT - TAB_FLOOR[1.0], TAB_REACH_MAX))
+# ⚠ THE -Y TAB IS STARVED AND THIS IS A WARNING, NOT AN ASSERT, ON PURPOSE. It is
+# short because the CAN trunk is drawn 2.5 mm above the plug it lands in -- section 8.1's
+# TRUNK_DZ finding, raised there for the 1.5 mm of optical depth it costs and unresolved
+# because the trunk is shared geometry. Inverting that stack puts the cable top at the
+# mated plug's -19.65 and this edge gets 3.50 mm, i.e. the full reach. Asserting would
+# stop every build over a number this module does not own; saying it once, loudly, at the
+# one moment someone is looking at fret geometry, is the useful thing.
+if tab_reach(-1.0) < D.MIN_WALL:
+    import sys
+    print("  !! fret_light: the -Y retaining tab reaches only %.2f (a %.2f bead is the "
+          "floor).\n     %.2f mm under that edge, and a 45 deg tab needs its reach plus "
+          "%.2f.\n     wiring.py TRUNK_DZ floats canl %.2f above its own plug -- invert "
+          "it and this\n     edge gets %.2f. See docs/fret-led.md 8.1 and 8.5."
+          % (tab_reach(-1.0), D.MIN_WALL, BOARD_BOT - TAB_FLOOR[-1.0],
+             TAB_CLR + TAB_PLAY, CABLE_TOP - TEE_TOP,
+             min(TAB_REACH_MAX, BOARD_BOT - TEE_TOP - TAB_CLR - TAB_PLAY)),
+          file=sys.stderr)
+
 assert LED_Y_OUT + LED_CRTYD / 2.0 <= BOARD_HALF_W, (
     "the outer LEDs at +-%.2f plus a %.2f courtyard overhang a %.2f-half-width board"
     % (LED_Y_OUT, LED_CRTYD, BOARD_HALF_W))
@@ -379,6 +476,61 @@ def ramps(x_lo=None, x_hi=None):
              .extrude(x1 - x0).translate((x0, 0, 0)))
         out = w if out is None else out.union(w)
     return heal(out)
+
+
+def edge_walls(x_lo=None, x_hi=None):
+    """The wall each long edge of the board runs against -- and what the tabs stand on.
+
+    ⚠ SECTION 8.3 SAYS THE RAMPS HOLD +-Y AND THEY VERY NEARLY DO NOT. A ramp is a
+    triangle from (BOARD_HALF_W, BOARD_TOP) out to the deck, so at the board's edge it is
+    a KNIFE EDGE: it meets the board's top corner and has nothing beside the board's
+    1.60 mm of thickness. This drops a real face past it, TAB_PLAY outboard, which is what
+    the board actually bears against in Y -- and it is the only thing a tab can hang from,
+    the ramp having no material at that Y to hold one.
+
+    It costs nothing to print: it hangs from the ramp's flat underside at BOARD_TOP, in
+    the deck's own print direction."""
+    out = None
+    for panel in BOARD_NAME:
+        bx0, bx1 = board_span(panel)
+        if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
+            continue
+        for sgn in (-1.0, 1.0):
+            bot = BOARD_BOT - tab_reach(sgn) - TAB_PLAY
+            y0 = sgn * (BOARD_HALF_W + TAB_PLAY)
+            w = box_at(bx1 - bx0, WALL, BOARD_TOP - bot,
+                       x=(bx0 + bx1) / 2.0, y=y0 + sgn * WALL / 2.0,
+                       z=(BOARD_TOP + bot) / 2.0)
+            out = w if out is None else out.union(w)
+    return heal(out) if out is not None else cq.Workplane("XY")
+
+
+def tabs(x_lo=None, x_hi=None):
+    """The -Z retaining tabs: short 45 degree ledges under the board's long edges.
+
+    Cross-section in Y-Z, extruded along X, exactly as the foot channel's lips are built
+    -- and for the same reason, that the shape wanted is the cross-section. The face that
+    holds the board is the 45 degree one; it starts at the board's own underside on the
+    ramp wall, TAB_PLAY outboard of the board's edge, so over the edge it stands TAB_PLAY
+    proud and the clearance under the board IS the lateral play."""
+    out = None
+    for panel in BOARD_NAME:
+        bx0, bx1 = board_span(panel)
+        if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
+            continue
+        for sgn in (-1.0, 1.0):
+            r = tab_reach(sgn)
+            if r < D.MIN_WALL:
+                continue                      # starved: see TAB_FLOOR and section 8.1
+            yw = sgn * (BOARD_HALF_W + TAB_PLAY)
+            pts = [(yw, BOARD_BOT),
+                   (yw - sgn * (r + TAB_PLAY), BOARD_BOT - r - TAB_PLAY),
+                   (yw, BOARD_BOT - r - TAB_PLAY)]
+            for xc in tab_xs(panel):
+                w = (cq.Workplane("YZ").polyline(pts).close()
+                     .extrude(TAB_LEN).translate((xc - TAB_LEN / 2.0, 0, 0)))
+                out = w if out is None else out.union(w)
+    return heal(out) if out is not None else cq.Workplane("XY")
 
 
 def columns(x_lo=None, x_hi=None):

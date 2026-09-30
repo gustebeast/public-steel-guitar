@@ -694,48 +694,113 @@ around the board:
 direction and is held nowhere, and one screw in the middle of a 220 mm board lets both ends
 hang.
 
-## 8.4 The plan: lift, shift, one screw
+## 8.4 BUILT: lift, shift, one screw
 
 A **two-motion install**, which is how you get plastic capture in five directions when
 only one fastener is allowed:
 
 1. **Lift** the board +Z into the comb until it bottoms on the cell walls.
-2. **Shift** it ~6 mm along X. Its long edges pass under **retaining tabs** on the ramps.
+2. **Shift** it `TAB_SHIFT` = 6 mm along X. Its long edges pass under **retaining tabs**.
 3. **One M4** through the board into a boss on the deck, locking the shift.
 
-The tabs are the whole trick: they are short (~8 mm), they live on the ramps at the board's
-long edges, and they are **outboard of every LED courtyard**, so nothing about them ever
-interacts with an LED. They hold −Z continuously along both edges, which is what a 220 mm
-board needs and what a single central screw cannot give.
+`src/fret_light.py` builds it: `edge_walls()` and `tabs()`, both unioned into the comb by
+`top_plate._deck_body`, and `elec/fret_led.py::_outline()` cuts the matching notches in
+the board. Four things came out of building it that the plan did not have.
 
-⚠ **AND THE BOARD HAS TO GET WIDER FOR THEM.** The outer LEDs sit at ±27.20 with a 6.10
-courtyard, so their copper reaches ±30.25. At today's `BOARD_HALF_W` of 31.20 a tab has
-0.95 mm to live in, which is not a tab. Taking the board to **42 beads = 33.60 half-width
-(67.2 mm)** gives a 2.40 mm tab reach with 0.95 clear of the courtyard. Width is the
-expensive axis — this is ~+$1 per five boards — and it buys the retention scheme outright.
+### 8.4a ⚠ THE TABS ARE 45 DEGREE RAMPS, and the deck's print direction is why
 
-**Why not snap the board in?** The project's standing rule: no flex snaps. The tabs are
-rigid and the motion does the engaging, which is the same trick the deck's own
-tongue-and-groove uses.
+`top_plate.PIECE_UP` is `(0,0,-1)` — the deck face goes on the bed and the underside is
+built LAST, growing in world −Z — while the chassis builds world +Z. So a tab reaching in
+over the board's underside is **exactly the foot channel's retaining lip turned over**:
+its retention face is the overhang, which is why that one became a ramp
+(`docs/foot-led.md` §7). Each tab rises off its wall at 45°, so every layer lands on the
+one below it.
 
-**Why one screw and not two?** Because with the tabs engaged the screw is not carrying the
-board — it is only stopping the 6 mm shift from reversing. That is the "one installation
-path" the user asked for: every direction is plastic except the shift, and the shift is
-what the screw locks.
+Checked the same way, by face normal rather than by eye: the tabs solid reports
+`[-1.0, -0.0, 0.707]` — a flat world-underside (the last layer printed), verticals, and
+the 45° retention face. Nothing facing up, so nothing bridges. §8.5.3 asked this question
+and this is the answer to it.
 
-## 8.5 Open on the attachment
+### 8.4b ⚠ THE BOARD HAD TO BE NOTCHED, because a straight edge cannot lift past a tab
 
-1. **Where the M4 goes.** It wants to be at the keyhead end, where the harness drop already
-   is, so one region carries all the service access. It must also miss a cell wall and the
-   LED rows, which on a 9.14 mm pitch at the bridge end would be impossible — at the
-   keyhead end the pitch is 21–32 and there is room.
-2. **The shift direction.** Shifting −X (toward the keyhead) means the board is pushed the
-   same way the panel slides off, so a loose screw and a tug could walk it out. +X is the
-   safer sense and wants checking against the cell walls' end stops.
-3. **Whether the tabs print.** They protrude inward from the ramps, i.e. they are a
-   horizontal feature with air beneath them in the deck's print direction. Short ones
-   bridge; long ones want a 45° chamfer underneath.
+The plan said the long edges "pass under retaining tabs" on a 6 mm shift. They cannot: a
+continuous 211 mm edge is **already** under any tab that overhangs it, so there is nothing
+to lift past. The board's +Y edge therefore carries a **notch per tab** — 1.35 deep,
+15.00 long — and the board rises with the tabs IN its notches before it shifts.
 
+The outline goes out as `outline_poly`, which `elec/layout.py::_edge_poly` already
+supports (the motor tee's ear uses it) and `src/board_geom.py:248` already reads, so the
+CAD renders the real notched board. It costs a polygon in the board module and nothing at
+the fab, which routes an outline either way.
+
+### 8.4c ⚠ THE RAMPS DO NOT HOLD ±Y, AND §8.3 IS WRONG ABOUT IT
+
+A ramp is a triangle from `(BOARD_HALF_W, BOARD_TOP)` out to the deck, so **at the board's
+edge it is a knife edge**: it meets the board's top corner and has nothing beside the
+board's 1.60 mm of thickness. It also has no material at that Y for a tab to hang from.
+`edge_walls()` drops a real face past it, `TAB_PLAY` = 0.30 outboard, which is what the
+board actually bears against in Y and what the tabs stand on. It hangs off the ramp's flat
+underside at `BOARD_TOP`, so it costs nothing to print.
+
+### 8.4d ⚠ THE REACH IS 1.05, NOT THE 2.30 THIS SECTION FIRST CLAIMED
+
+That 2.30 was measured against the outer LED's **body** at 32.90. A notch removes
+substrate, so what bounds it is the **courtyard** at 33.45 — and the outer LED repeats at
+every fret, so the whole +Y edge is lined with them. Holding the notch off that keepout by
+`NOTCH_CLR` = 0.40 leaves a 1.35 notch, and the tab is one `TAB_PLAY` shorter again
+because it sits outboard of the board's edge:
+
+    NOTCH_MAX     = 35.20 - 33.45 - 0.40 = 1.35
+    TAB_REACH_MAX = 1.35 - 0.30          = 1.05
+
+1.05 mm of engagement against 0.30 mm of Y play the board could ever use. Buying more
+means buying board width, at ~13× length per mm (§1).
+
+`check_notches()` in the board module is what found the consequences, before either board
+was routed rather than after: **eight parts standing in a notch** — six outer LEDs on the
+lip of a hole, and the feedback divider squarely inside one. The divider moved by taking
+the whole bay column down 0.60, which keeps the feedback pair WITH the buck; FB is that
+cluster's only high-impedance node and a long trace to it is the classic way to make a
+switcher sing.
+
+## 8.5 ⚠ STILL OPEN: the −Y tab is starved by the CAN trunk
+
+`tab_reach()` derives each edge from what was **measured** under it
+(`tools/_probe_fret_tab.py`, both panels, boards and deck taken out):
+
+| edge | room under the board | tab |
+|---|--:|--:|
+| key +Y, mid +Y | 6.00+ mm, clear | **1.05 — the full reach** |
+| key −Y | 5.30 (motor pigtails at −21.45) | 1.05 |
+| **mid −Y** | **1.00** (`wire_canl_6/7` at −17.15) | **0.30 — not a tab** |
+
+A 45° tab is **deeper than a flat one by exactly its own reach**, so that 1.00 mm is what
+decides it, and it is not enough. `fret_light` builds no tab there and says so on every
+import:
+
+    !! fret_light: the -Y retaining tab reaches only 0.30 (a 0.80 bead is the floor).
+       1.00 mm under that edge, and a 45 deg tab needs its reach plus 0.70.
+       wiring.py TRUNK_DZ floats canl 2.50 above its own plug -- invert it and this
+       edge gets 1.05. See docs/fret-led.md 8.1 and 8.5.
+
+**The fix is §8.1's, already on the books for a different reason.** `wiring.py`'s
+`TRUNK_DZ` stacks `canl` at +5.2, floating the bus 2.5 mm above the mated plug it lands
+in; the real envelope is the plug at −19.65. Inverting that stack gives this edge 3.50 mm
+— more than the reach needs — **and** recovers 1.5 mm of optical depth, taking the fret
+line from 1.28 : 1 to 1.21 : 1. Two unrelated problems, one line.
+
+It is a warning rather than an assert on purpose: the number belongs to shared bus
+geometry this module does not own, and asserting would stop every build over it. Saying it
+once, loudly, at the one moment someone is looking at fret geometry, is the useful thing.
+
+The two remaining questions from the original plan:
+
+1. **Where the M4 goes.** It is at the keyhead end, in the bay, where the harness drop
+   already is — `elec/fret_led.py` cuts it at board-local `(x0 − cx + 4.50, −28.0)`,
+   Ø4.50. The deck's boss for it is **not modelled yet.**
+2. **The shift direction.** +X is the safer sense — shifting −X pushes the board the same
+   way the panel slides off, so a loose screw and a tug could walk it out — and it still
+   wants checking against the cell walls' end stops.
 
 ---
 
