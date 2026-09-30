@@ -780,7 +780,19 @@ assert TAIL_X1 - COMPUTE_X0 >= COMPUTE_W_MIN - 1e-9, \
 # drift apart. MIN_WALL_2P of plinth on the outboard side of each.
 MOUNT_KEEP   = D.MIN_WALL_2P + M4.insert_pilot_d / 2          # 4.60
 MOUNT_X_HEAD = PLINTH_X0 + MOUNT_KEEP                         # -20.46, hard -X
-MOUNT_X_TAIL = TAIL_X1 - MOUNT_KEEP                           # +2.40, hard +X
+# ⚠⚠ THE TAIL MOUNT IS ON THE -X PLINTH NOW, NOT +X (user, 2026-09-29: "There seems to be
+# more open space over on the -x side, and that's closer to the optical sensors which are the
+# main thing we need to lock in position"). Both true, and it is the cheaper answer by a long
+# way. The +X strip carries C112, C113, R50, TP7 AND the four east ring caps, and putting a
+# 7.6 mm button head in there cost C111 its place -- the fix was moving NINE capacitors, which
+# invalidated the SAI_FS post-route repair and the searched bring-up-pad sites and took the
+# board from 0/0 to 10 unconnected / 15 violations. On the -X plinth the only thing in the
+# head's way is R30, one 0402, which steps 1.0 mm -Y.
+# ⚠ AND IT IS NOT AT THE USER'S EXACT SPOT, because the PLINTH runs out before the board does.
+# The circled area is around board-local x -20.7; PLINTH_X0 + MOUNT_KEEP puts the westmost
+# legal AXIS at -16.906 local. The binding surface is the wrap plinth, not the laminate (see
+# mount_points), so this is as far -X as an M4 can go with MIN_WALL_2P of plinth around it.
+MOUNT_X_TAIL = MOUNT_X_HEAD                                   # -20.46, the -X plinth too
 MOUNT_CLR    = M4.shaft_clr_d / 2 + 1.0                       # keep-out radius, 3.20
 # PCB_YP is an OUTPUT, set after the parts exist: the +Y-most quad's feedback grid sits
 # in the Y gap above it and reaches past the last detector, so sizing this end from the
@@ -1379,7 +1391,21 @@ def _parts():
     # datum note above. The annulus is now 26.18 mm, so the argument holds harder, not
     # less. The binding number on the other side is unchanged: ROW_GAP, 1.00 mm to the
     # tail screw's clearance, which is what "as far +X as it may" actually means.)
-    _mcu_x1 = MOUNT_X_TAIL - MOUNT_CLR - ROW_GAP
+    # ⚠⚠ THIS NO LONGER READS MOUNT_X_TAIL, AND THE MCU DELIBERATELY DOES NOT TAKE THE ROOM
+    # THE SCREW LEFT BEHIND (2026-09-29). When the tail mount moved to the -X plinth this line
+    # dragged the MCU 41 mm west with it -- straight off the board -- and two asserts caught it
+    # in turn: _assert_mount_heads_clear saw C111 land under the head, then _assert_field_clear
+    # saw U6 at X -51.34..-25.34 against a board ending at -32.16. A screw position was
+    # silently also a PLACEMENT DATUM.
+    # The value is unchanged to the micron: TAIL_X1 - MOUNT_KEEP is exactly what MOUNT_X_TAIL
+    # used to be, so U6 and every row derived from it stay where they are.
+    # ⚠ AND NOT TAKING THE +7.6 mm IS THE POINT, not an oversight. With no screw on this row
+    # the package could now reach the board's edge keep-out instead, but this file's own rule
+    # governs: "moving a 176-pin part rearranges every row below it. If it moves it will be
+    # because the ROUTER says so, not because of a dimension." The board is at a hard-won
+    # 0-unconnected baseline and the whole purpose of moving the mount was to STOP perturbing
+    # the placement. The freed room is recorded here for whoever does want to spend it.
+    _mcu_x1 = TAIL_X1 - MOUNT_KEEP - MOUNT_CLR - ROW_GAP       # 16.256, frozen at its old value
     add("U6", "MCU -- STM32H743IIT6, 5 SAI TDM lanes from the audio ADCs, USB OTG_HS via ULPI", _MCU_PKG,
         _mcu_x1 - CRTYD[_MCU_PKG][0] / 2, y)
     y -= CRTYD[_MCU_PKG][1] / 2 + CRTYD_GAP
@@ -1503,41 +1529,28 @@ def _parts():
     _dec_off = CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0402"][1] / 2
     _dec_off_e = (CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0]
                   + CRTYD_GAP + CRTYD["0402"][1] / 2)
-    # ⚠⚠ NINE WEST AND THREE EAST, NOT EIGHT AND FOUR -- THE TAIL MOUNT OWNS THE +X STRIP
-    # (2026-09-29). The even ±9.0 span put C111 at CAD y -56.380 and the tail mount is at
-    # -56.150: the M4's button head landed ON the capacitor, 0.25 mm centre to centre.
-    # This is the C112/C113 fault a third time, and the note above already named it -- "the
-    # other twelve were the same bug, unexamined". C113 got a hand-written step-away guard
-    # and the RING, added later, places by pin with no knowledge of the mount at all.
-    # ⚠ AND A STEP-AWAY WILL NOT FIT HERE, which is why this is a rebalance and not a copy
-    # of C113's guard. C111 needs 5.025 mm of Y from the screw axis (head r 3.80 + PKG_CLR
-    # + a 0402's 0.975 half-height at rot 90). Stepping -Y lands it at -61.175 against
-    # C110 at -62.380 -- 1.205 mm where two 0402s need 2.10. Stepping +Y lands it at
-    # -51.125 against R50 at -50.354 -- 0.771. BOTH directions collide, measured, so the
-    # +X strip simply cannot hold four ring caps as well as C112, C113, R50, TP7 and the
-    # screw head. The ninth cap goes west, where there is 27.4 mm of clear edge: nine
-    # across ±11.0 is a 2.75 mm pitch against the 2.10 a 0402 needs.
-    # The three that stay east are spanned inside a window derived from the obstacles
-    # rather than centred on U6, and the assert below is the guard that was missing.
-    for _k in range(9):
+    # ⚠ THE RING IS BACK TO EIGHT WEST AND FOUR EAST, AND THE REASON IS THAT THE TAIL MOUNT
+    # LEFT THE +X STRIP (2026-09-29, user). It was briefly rebalanced nine/three because the
+    # M4's button head landed on C111 -- 0.25 mm centre to centre -- and a step-away would not
+    # fit either way (-Y hit C110 at 1.205 mm, +Y hit R50 at 0.771, where two 0402s need
+    # 2.10). That was solving the collision by moving NINE capacitors, and it cost the board
+    # its 0 unconnected / 0 violation baseline: the placement change invalidated the SAI_FS
+    # post-route repair and the searched bring-up-pad sites, which are both measured against
+    # ONE finished route. 10 unconnected and 15 violations, 11 of them SAI_FS.
+    # The user's answer was better and is the one in place: move the MOUNT, not the copper.
+    # MOUNT_X_TAIL is on the -X plinth now, so nothing here has to dodge a screw head at all,
+    # and the ring goes back to the even span it wants. Cost: ONE 0402 (R30) instead of nine.
+    # ⚠ AND THIS IS WHY _assert_mount_heads_clear() EXISTS RATHER THAN A GUARD HERE. A rule
+    # written into this loop would have to be rewritten every time the mount moves; the assert
+    # simply refuses any placement that puts a part under a head, wherever either one goes.
+    for _k in range(8):
         add("C%d" % (100 + _k), "MCU decoupling -- -X edge of the package", "0402",
             _part_x("U6") - _dec_off,
-            _part_y("U6") + (_k - 4.0) / 4.0 * 11.0, 90.0)
-    # the legal band on the +X strip: below the screw head's reach and above C112, keeping
-    # a 0402's pitch off C113. Derived, so a move of U6 or the mount re-solves it.
-    _e_pitch = CRTYD["0402"][0] + CRTYD_GAP                   # 2.10, rot 90 -> Y extent
-    _e_head = TP.JACK_HEAD_D / 2 + PKG_CLR + CRTYD["0402"][0] / 2
-    _e_y1 = min(Y_TAIL - MOUNT_KEEP - _e_head,                # clear of the button head
-                _part_y("C113") - (CRTYD["0805C"][1] + CRTYD["0402"][0]) / 2 - CRTYD_GAP)
-    _e_y0 = _part_y("C112") + (CRTYD["0805C"][1] + CRTYD["0402"][0]) / 2 + CRTYD_GAP
-    assert _e_y1 - _e_y0 >= 2 * _e_pitch, (
-        "the +X decoupling band is %.2f mm -- three 0402s need %.2f"
-        % (_e_y1 - _e_y0, 2 * _e_pitch))
-    for _k in range(3):
-        add("C%d" % (109 + _k), "MCU decoupling -- +X edge, outboard of C112/C113, "
-            "spanned clear of the tail mount's head", "0402",
-            _part_x("U6") + _dec_off_e,
-            _e_y0 + (_e_y1 - _e_y0) * _k / 2.0, 90.0)
+            _part_y("U6") + (_k - 3.5) / 3.5 * 11.0, 90.0)
+    for _k in range(4):
+        add("C%d" % (108 + _k), "MCU decoupling -- +X edge, outboard of C112/C113",
+            "0402", _part_x("U6") + _dec_off_e,
+            _part_y("U6") + (_k - 1.5) / 1.5 * 9.0, 90.0)
 
     # ⚠ THE TWO STRAPS GO TO THEIR PINS. They were loose items in the row below, which put
     # R30 26 mm from the BOOT0 pin it pulls down and R31 14 mm from NRST -- so the router
@@ -1558,7 +1571,15 @@ def _parts():
     # parts in the string array against Cf9A. CAD = local + (CX, CY) = local + (-3.55,
     # -28.315). Board-local (-14.0, -31.0) and (-14.0, -41.3) -- beside the MCU's west
     # flank, west of its courtyard at -11.10 and of the decoupling column at -8.22.
-    add("R30", "BOOT0 pull-down -- at the pin", "0402", -17.55, -59.32, rot=90.0)
+    # ⚠ R30 STEPS 1.00 mm -Y FOR THE TAIL MOUNT'S HEAD (2026-09-29). The tail M4 moved to the
+    # -X plinth, and this is the one part that was under it: 3.545 mm from the screw axis where
+    # a 0402 at rot 90 needs 5.025 by CENTRES -- but the guard measures COURTYARD to the head
+    # ⚠ THIS IS THE WHOLE COST OF THE MOUNT MOVE -- one 0402, against the nine capacitors that
+    # moving the copper instead required. It stays west of CAD x -16 (the bridge bearings sit
+    # over x -16..0 and nothing may stand on the board there) and keeps 9.31 mm to R31.
+    # It is 1.00 mm further from the BOOT0 pin it pulls down, which is the price and it is small.
+    add("R30", "BOOT0 pull-down -- at the pin, stepped clear of the tail mount's head",
+        "0402", -17.55, -60.50, rot=90.0)
     add("R31", "NRST pull-up -- at the pin", "0402", -17.55, -69.63, rot=90.0)
 
     # ⚠ THE BRING-UP PADS, AND EVERY ONE OF THESE FOUR NUMBERS WAS SEARCHED, NOT CHOSEN.
@@ -1577,7 +1598,18 @@ def _parts():
     # ⚠ CAD COORDINATES = board-local + (-3.55, -28.315).
     for _ref, _desc, _lx, _ly in (
 
-            ("TP8", "bring-up pad -- BOOT0 (hold HIGH at reset)", -12.500, -30.540),
+            # ⚠ TP8 IS PROVISIONAL AND MUST BE RE-SEARCHED (2026-09-29). Its old site put it
+            # 0.4 mm inside the tail mount's button head once that mount moved to the -X
+            # plinth, and a pad under a screw head cannot be probed -- which is why
+            # _assert_mount_heads_clear covers TP packages too. This position clears the head
+            # by 1.86 mm and sits clear of R30/R31, but it was NOT produced by padsite.py, so
+            # it almost certainly does not overlap its own net's copper and will cost BOOT0 a
+            # track it should not need.
+            # ⚠ ALL SIX PADS NEED RE-SEARCHING AGAINST THE NEW ROUTE ANYWAY, so this is not an
+            # extra debt: padsite.py sweeps the FINISHED board, and any placement change
+            # invalidates every site it found. The current 15 violations include four on TP7
+            # for exactly that reason.
+            ("TP8", "bring-up pad -- BOOT0 (hold HIGH at reset)", -21.450, -33.685),
             ("TP9", "bring-up pad -- +24V rail", -20.536, -77.372),
             ("TP10", "bring-up pad -- +5V rail", -3.161, -54.865),
             ("TP11", "bring-up pad -- +3V3A rail", 5.332, -57.687)):
@@ -2824,13 +2856,24 @@ def mount_points():
     # PLINTH, not the board: the board is wider than the plinth at both ends, so the insert
     # boss is what runs out of material first. MIN_WALL_2P of plinth all round.
     #
-    # THEY ARE NOT AT THE SAME X, and that asymmetry is deliberate (user). The HEAD screw
-    # stays hard -X, closest to the sensor row. The TAIL screw is pushed hard +X instead, to
-    # get out of the MCU's way: that lets the LQFP144 tuck -X and climb +Y INTO the wrap
-    # band rather than starting below it, which takes ~9.75 mm off the board's -Y end -- the
-    # end that is already a cantilever. Both still land in the plinth, which is the only
-    # hard requirement. The two screws still define the Y datum; a skewed line between them
-    # locates the board just as well as a parallel one.
+    # ⚠ BOTH ARE ON THE -X PLINTH NOW, AND THE SKEW IS GONE (user, 2026-09-29: "There seems
+    # to be more open space over on the -x side, and that's closer to the optical sensors
+    # which are the main thing we need to lock in position"). This SUPERSEDES the previous
+    # note here, which said the asymmetry was deliberate and had the tail pushed hard +X to
+    # get out of the MCU's way.
+    # Both points are what this board exists to locate: the sensor triplets have to land on
+    # the integrated lid's slots, and the sensing hardware is the -X column, so two screws in
+    # one line beside it constrain the thing that matters more directly than a diagonal did.
+    # ⚠ AND THE +X STRIP WAS THE EXPENSIVE SIDE. It already carries C112, C113, R50, TP7 and
+    # four ring caps; a 7.6 mm button head in there landed on C111, and clearing it by moving
+    # COPPER took nine capacitors -- which invalidated the SAI_FS post-route repair and the
+    # searched bring-up-pad sites and cost the board its 0/0 baseline (10 unconnected, 15
+    # violations, 11 of them SAI_FS). On -X the whole bill is R30 stepping 1.18 mm and TP8
+    # needing the re-search it needed anyway. Move the mount, not the copper.
+    # The MCU does NOT follow the screw west -- see _mcu_x1, which used to derive from
+    # MOUNT_X_TAIL and dragged U6 41 mm off the board the moment this changed.
+    # Both still land in the plinth, which is the only hard requirement, and MOUNT_X_HEAD is
+    # the westmost axis that keeps MIN_WALL_2P of plinth outboard of the insert.
     return [(MOUNT_X_HEAD, HEAD_Y0 + MOUNT_KEEP),      # -12.00, hard -X
             (MOUNT_X_TAIL, Y_TAIL - MOUNT_KEEP)]       # +2.40, hard +X
 
