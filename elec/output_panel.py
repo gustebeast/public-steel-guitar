@@ -1339,9 +1339,36 @@ BOARD_NOTES = {
     # and has no notion that these two belong to each other. A staggered pair of vias on a
     # 480 Mbps pair is a mode-conversion fault, which is a worse thing to own than the layer
     # split it was meant to fix. Cost: one layout run, no route.
-    # If this is ever wanted, the mechanism is escape_runs, not pin_escapes -- it takes the
-    # whole escape (stub + via + run) at coordinates chosen TOGETHER, which is the only way
-    # two vias on one pair get placed as a pair.
+    # ⚠⚠ AND THE NOTE THAT USED TO SIT HERE WAS WRONG, WHICH MATTERS MORE THAN THE
+    # EXPERIMENT. It said "the mechanism is escape_runs, not pin_escapes -- it takes the
+    # whole escape at coordinates chosen TOGETHER". It does not. Reading layout.py: the via
+    # position is SEARCHED by the escape routine, and escape_runs only lays a run FROM the
+    # via that search chose. layout.py says so in as many words, and says hard-coding a via
+    # position in the board notes was tried and rejected -- "a hard-coded escape position
+    # goes stale the moment any placement moves -- it already did once, leaving stubs at
+    # angles through paths nobody had checked". So the correction is not a detail: a reader
+    # following the old note would have reached for a mechanism that does not exist.
+    # ⚠ AND THE REJECTION ITSELF WAS REASONED RATHER THAN MEASURED. 0.70 mm of via
+    # stagger is ~4.7 ps against a 2,080 ps bit -- 0.2% -- while the layer split it would be
+    # fixing is a CONTINUOUS impedance mismatch over the whole 11 mm run, because B.Cu and
+    # In2.Cu sit at different distances from the In1 reference plane. Calling the small
+    # continuous fault the lesser one needed a number and did not have one.
+    # ✅ TESTED AND REVERTED: ESCAPE VIAS ON 61/62, AND THE TEST WAS WORTH RUNNING.
+    # The previous note rejected this on 0.70 mm of via stagger without comparing it to what
+    # it fixes; the route settles it, and it settles MORE than was asked:
+    #   HUB_DN1 layer split  FIXED -- it came back ok on skew AND on layer set
+    #   a SHORT              NEW   -- DP's 1.612 mm stub runs into DM's via on F.Cu. That is
+    #                               the 0.70 mm asymmetry, cashed as a DRC violation rather
+    #                               than as the theory it was
+    #   THRU                 BROKE -- the layer split MOVED to a pair that was fine before
+    # ⚠ AND THAT LAST LINE IS THE REAL FINDING. Fixing one pair's layer set pushed the
+    # fault onto another, which says the split is not a property of HUB_DN1 at all -- it is
+    # CONTENTION for a scarce inner lane. Four pairs want In2.Cu and the board has room for
+    # three, so whichever pair is helped, another is displaced. No amount of per-pair
+    # escaping fixes a shortage; that is a placement or a layer-count question.
+    # Board to beat remains output_panel.best-0-0.kicad_pcb: 0 unconnected, 0 violations,
+    # one layer-set problem -- which is strictly better than 1 unconnected, 1 violation and
+    # one layer-set problem somewhere else.
     "pin_escapes": ("U1.27",),
     "diff_pair_inner": "In2.Cu",
     "layers": 4,
