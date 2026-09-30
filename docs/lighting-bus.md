@@ -3,11 +3,19 @@
 Three lit things, two boards that feed them. This is the interface, written from the LED
 side, so `elec/pi_cap.py` (bronner) and the motor board can be built against it.
 
-    fret_led_mid   5 x TLC59711    J1 6-way PH   S6B-PH-SM4-TB   C265405
     fret_led_key   3 x TLC59711    J1 6-way PH   S6B-PH-SM4-TB   C265405
+      -> fret_led_mid  5 x TLC59711    fed over the seam: 6 x C5203987 tip to tip
     foot_led  x2   8 x TLC59711    J1 4-way SH   SM04B-SRSS-TB   C160404
 
-## 1. ⚠ THREE DROPS, NOT TWO
+## 0. ⚠ UPDATE, 2026-09-30: TWO DROPS -- the seam joint is built
+
+`docs/fret-led.md` §9.1f. The two fret boards are ONE drop now: the harness lands on
+`fret_led_key`, whose buck feeds both, and the chain continues into `fret_led_mid` over six
+tip-to-tip pogos at the panel seam. So everything below that says three is history, and §4
+is rewritten: **two LED headers, three GPIO (1 SCK + 2 SDT)**. The fret header's pin-out
+does not change -- one SDT drives both boards, because the chain now runs through.
+
+## 1. ⚠ THREE DROPS, NOT TWO (superseded by §0)
 
 > "we'll need the pi to be able to drive both via the data wire and the motor board to
 > drive both via the power wire" (user, 2026-09-30)
@@ -162,8 +170,7 @@ it drops further the brighter the strip gets — the zones would dim as a group.
 
 | drop | 24 V draw | rail it makes |
 |---|--:|---|
-| fret_led_mid | 0.583 A | 14.0 V |
-| fret_led_key | 0.311 A | 14.0 V |
+| fret_led_key, feeding mid over the seam | 0.894 A | 14.0 V, one buck for both |
 | foot (both boards, through one inlet) | **0.733 A** | 11.0 V |
 | **total, every zone full white** | **1.63 A** | 39 W |
 
@@ -177,16 +184,17 @@ thing to revisit if the foot strip ever grows again.
 
 ## 4. What the Pi cap needs
 
-1. **Three LED headers.** Two 6-way (fret mid, fret key) and one 4-way (foot), or three
-   6-way with the foot cable's far end crimped to SH — the board-side part numbers above
-   are fixed, the cap side is bronner's choice.
+1. **Two LED headers.** One 6-way (fret, landing on `fret_led_key`) and one 4-way (foot),
+   or two 6-way with the foot cable's far end crimped to SH — the board-side part numbers
+   above are fixed, the cap side is bronner's choice.
 2. **Pin-out per header**, matching each board's J1 exactly:
    - fret, 6-way PH: `GND, V24, V24, GND, SCK, SDT` — power is doubled, signal is not.
    - foot, 4-way SH: `V24, GND, SCK, SDT`, with **V24 on an end pad** (the SH is 1.00 mm
      pitch and an interior pad cannot be entered by a 0.15 track past two 0.127
      clearances — three separate routes failed on it before it moved).
-3. **Four GPIO**: one SCK fanned to all three headers, three separate SDT.
-4. **24 V in from the motor board**, 2 A of headroom, bussed to all three headers.
+3. **Three GPIO**: one SCK fanned to both headers, two separate SDT.
+4. **24 V in from the motor board**, 2 A of headroom, bussed to both headers. The fret
+   header now carries 0.89 A of it over its two V24 contacts (0.45 A each, PH is 2 A).
 
 ## 5. Still open
 

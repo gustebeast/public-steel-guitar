@@ -934,6 +934,9 @@ prevent. Move a fret and the board follows.
 
 ## 9.1 ⚠ RETRACTED: the pogo seam joint does not fit, and section 3 never measured it
 
+> **Superseded by 9.1f -- the joint is BUILT.** 9.1 through 9.1e are kept as the record of how
+> it was priced, wrongly and then rightly.
+
 Section 3 recommended joining the two boards across the deck seam with right-angle SMD
 pogo pins (4 x C5203987), on the strength of the deck's sliding assembly already being a
 compression joint along the mating axis. **The mechanism argument still holds. The
@@ -1262,6 +1265,132 @@ print-tuning-and-flex point, and it is a chassis change, not a fret-light one:
 rail-end dovetails, the bridge L-joint), and this is the second time the fret lighting has
 wanted a number it does not own -- see §9.1c on `wiring.py TRUNK_DZ`. Raised, measured,
 and left for whoever owns it.
+
+## 9.1f BUILT: six tip-to-tip pogos, and the buck moved to the keyhead board
+
+> "Go ahead with the seam pogo joint" (user, 2026-09-30)
+
+Built in `src/fret_light.py` (geometry: pads, plungers, notches) and `elec/fret_led.py`
+(netlist), with the footprint authored from LCSC's own EasyEDA land for C5203987.
+
+### What crosses the seam, and why it is not what 9.1b said
+
+    Pi cap --J1--> fret_led_key  U1 (fret 2) .. U3 (fret 8)
+                     == +14V x2, GND x2, SCK_SEAM, SDT_SEAM ==>
+                   fret_led_mid  U1 (fret 10) .. U5 (fret 24), chain end
+
+**One chain for the whole fretboard, entering at the nut end.** 9.1b assumed each board made
+its own 24 V -> 14 V rail and the seam carried 24 V. Building it showed that could not work:
+
+⚠ **MID'S BAY CANNOT HOLD THE HARNESS PLUG, THE BUCK AND THE JOINT.** The pads have to sit
+close to BOTH seam edges -- the two setbacks sum to the tip-to-tip span, and that span is
+small:
+
+    setback_mid + setback_key = 2 x (POGO_WORK - 2.25) - flush separation
+                              = 2 x (6.30 - 2.25) - 1.45 = 6.65
+
+(2.25 is pad centre to barrel front, off the land pattern: the barrel is centred on its
+pad.) So each pad lands ~3.3 mm from its board's edge, which on mid is the first 6 mm of a
+9.70 mm bay that already held J1 across its middle and the buck column, 4.6 wide with L1 in
+it, down its +Y half. There is no Y band left for three pads.
+
+**Key's bay is at the far (nut) end and has 17 mm.** Moving the harness plug and the buck
+there fixes it, and three things fall out that are better than what 9.1b planned:
+
+1. **No trace doubles back on either board.** The harness lands at key's -X end, key's
+   chain runs +X to the seam, crosses, and mid's runs +X to the bridge -- ascending X
+   throughout, which is the order `zones_for` already used. A per-board 24 V seam would
+   have needed key's 24 V carried 211 mm from the seam to its bay.
+2. **The rail crosses as 14 V, straight off the In1 plane.** No trace at all on either side:
+   a via under each pad. (C5203987 is still the only candidate -- 14 > 12, and every other
+   side-mount pogo is 12 V.)
+3. **One SDT for both boards.** The chain continues through the seam, so the Pi cap needs
+   one fret header, not two. See docs/lighting-bus.md.
+
+Mid loses its J1, F1, U10, L1, the feedback divider and seven capacitors, and gains two
+10 uF arrival bulk caps beside the pogos. Key's F1 goes 1 A -> **2 A**: its buck now feeds
+23 zones, 1.38 A at 14 V = 0.89 A at 24 V, and a 1 A fuse at 89 % ages open. L1 sees a
+1.68 A peak against its 3.2 A saturation.
+
+### The geometry, derived
+
+| | mid | key |
+|---|--:|--:|
+| seam edge | -360.50 | -362.00 |
+| pad centre setback | **3.25** | **3.40** |
+| pad centre, world X | -357.25 | -365.40 |
+| barrel | -359.50 .. -355.00 | -363.15 .. -367.65 |
+| fires | -X | +X |
+
+Key's setback is the one with a floor that is not the board edge: its barrels stand in fret
+9's cell and must clear the comb wall that straddles its edge (inner face -362.80) by
+elec's WALL_CLR. Mid takes the rest of the 6.65. Tips meet at x -361.325 as modelled, where
+the panels carry their 0.05 gap, so each pogo reads 6.325 there and **6.30 with the panels
+butted** -- the flush datum of 9.1e. Import-time asserts hold the rest:
+
+    6.30 - 0.40 = 5.90 > 5.70 limit     never bottoms at the short end of the stack
+    6.30 + 0.40 = 6.70 < 8.00 free      never loses contact at the long end
+    pads 0.75 / 0.90 inside their board edges
+
+**Two lanes of three, between key's LED rows.** Key's pogos stand INSIDE fret 9's cell, so
+they must sit between LED rows: 13.90 clear between two LED courtyards takes three 4.00
+courtyards at 4.50 pitch (0.50 between them, 0.45 to the LEDs) and not four. The -Y lane
+is left alone because mid's M4 is in it.
+
+| y | -4.50 | 0.00 | +4.50 | +15.90 | +20.40 | +24.90 |
+|---|---|---|---|---|---|---|
+| net | +14V | GND | +14V | SCK_SEAM | GND | SDT_SEAM |
+
+The rail and its return are doubled, which buys lost-contact margin on the joint 15 frets
+hang from; each signal sits beside a ground, so its loop is ~4.5 x 12 mm rather than the
+40 x 12 a single ground at the far lane would give.
+
+### What it costs the deck
+
+**Six notches in key's end wall**, open at the wall's base, 3.00 wide (the O2.00 plunger
+and 0.50 of float each side) and 3.40 tall. Open rather than a hole because a hole with that
+float would leave 0.40 of wall under it at a 1.90 axis -- half a bead. It prints without
+support: the deck prints -Z, so the notch's roof is laid before the notch begins. 1.50 of
+wall stands between neighbours. The windows open into the seam bay, which has no LEDs: a
+light trap, not crosstalk.
+
+**Six barrels on fret 9's floor**, 3.00 x 4.50 x 3.80 each: 81 mm2 of a ~1400 mm2 cell
+floor, 5.8 %, between the LED rows rather than over them.
+
+**1200 gf pushing the panels apart**, six at 200 gf. 9.1e's point stands and gets bigger:
+this is deck preload, and the endplates are what hold it.
+
+### Checked by intersection
+
+`py -3.12 -m tools._probe_seam` builds the comb the way `top_plate` does -- per panel,
+clamped, grooved, notched -- and intersects the plungers and both routed boards (which carry
+the barrels) against it and against the LEDs. 2026-09-30, after both boards routed:
+
+    plungers vs mid comb / key comb          0.000 / 0.000
+    boards + barrels vs mid comb / key comb  0.000 / 0.000
+    plungers vs mid LEDs / key LEDs          0.000 / 0.000
+    plungers vs mid board / key board        0.000 / 0.000
+    and WITHOUT the notches, key's comb:     30.16  = six O2.00 plungers x 1.60 of wall
+
+⚠ **THE PROBE CAUGHT ONE THING, AND IT IS THE KIND THIS JOINT KEEPS TEACHING.** The first
+run read 0.94 mm3 of plunger inside each board: board_geom extrudes a part's F.Fab to
+KiCad's bounding box, which includes the outline's 0.10 stroke, so the barrel AS BUILT is
+4.60 x 3.10, not the drawing's 4.50 x 3.00. The plungers now start at the built face
+(`POGO_FAB_STROKE`); the joint's own arithmetic still uses the drawing.
+
+**Both boards routed 0 unconnected / 0 violations on pass 1** -- mid lost its supply column
+and routes more easily for it; key gained six pads at its +X end and its chain's last hop.
+`check_part_specs` carries the pogo's nine drawing numbers against the code, 0 disagreements.
+
+### Still open on the joint
+
+1. **The spring rate.** 9.1d's missing number, unchanged: force is published at 6.00 only.
+2. **Lateral registration.** Two R0.50 domes meet; the notches give 0.50 of float each way
+   and the dovetail decides the rest. Not measured.
+3. **chassis.EP_TOP_CLR** still has to change sign for the panels to be pushed flush (9.1e).
+   Not ours; raised.
+4. **JLCPCB flag C5203987 as High assembly difficulty**, and there are twelve per instrument
+   against 602 in stock -- 50 instruments.
 
 ## 9.2 The layout, and why it routes
 
