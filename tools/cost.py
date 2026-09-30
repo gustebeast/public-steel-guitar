@@ -385,6 +385,36 @@ def main(argv=None):
                          ent.get("what", "")))
         groups.append((label, tot))
 
+    # ---- landed: freight, sales tax, duty -----------------------------------
+    # A price on a product page is not what the money costs. These are measured at
+    # real checkouts with the real address (elec/prices.json "landed"), and they are
+    # per ORDER, so they divide by the order like everything else. Anything already
+    # folded into a unit price elsewhere is skipped -- see counted_in_unit_price.
+    landed_usd, landed_seen, landed_partial = 0.0, [], []
+    for vend, ent in sorted(prices.get("landed", {}).items()):
+        if vend.startswith("_"):
+            continue
+        if ent.get("counted_in_unit_price"):
+            continue
+        got = [ent.get(k) for k in ("shipping_usd", "tax_usd", "tariff_usd")]
+        if all(v is None for v in got):
+            landed_partial.append(vend)
+            continue
+        if any(v is None for v in got[:2]):        # some of it measured, some not
+            landed_partial.append(vend)
+        landed_usd += sum(v for v in got if v is not None)
+        landed_seen.append(vend)
+    landed_usd /= ORDER_INSTRUMENTS
+    groups.append(("Shipping + sales tax + duty (%d vendor%s measured)"
+                   % (len(landed_seen), "" if len(landed_seen) == 1 else "s"), landed_usd))
+    notes.append("The LANDED line is %d measured vendor checkout(s): %s. It is a FLOOR. "
+                 "Nobody has measured freight or tax on the filament or on the listing-priced "
+                 "mechanical hardware (~$213/instrument), most of which records no vendor "
+                 "at all, and the duty on $339.90 of China-shipped motors is named but "
+                 "unpriced -- see missing.landed_gaps.%s"
+                 % (len(landed_seen), ", ".join(landed_seen),
+                    ("  PARTIAL: " + ", ".join(landed_partial)) if landed_partial else ""))
+
     # ---- the table ----------------------------------------------------------
     width = max(len(g) for g, _ in groups)
     print()
