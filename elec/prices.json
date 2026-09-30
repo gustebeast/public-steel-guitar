@@ -15,11 +15,12 @@
   ],
   "filament_per_kg": {
     "petg-gf": {
-      "usd": 29.99,
+      "usd": 17.71,
       "verified": "v",
-      "source": "Tinmorry, list price",
-      "date": "2026-09-01",
-      "density_g_cm3": 1.32
+      "source": "Tinmorry 10-roll pack, blended over the order basket",
+      "date": "2026-09-30",
+      "density_g_cm3": 1.32,
+      "what": "WAS $29.99/kg from a list price. The store sells a TEN-ROLL PACK -- 10 Rolls Glass Fiber PETG Filament, 1 KG 1 Spool, Frosted Black/White/Grey -- at $175.00, in stock, i.e. $17.50/kg. A ten-instrument order needs 41.0 kg, so the real basket is 4 packs + 1 single spool at $25.99 = $725.99, which blends to $17.71/kg. That is the number here. Measured at a real Tinmorry checkout 2026-09-30 (cart built, shipping quoted, cart cleared, nothing ordered): SHIPPING FREE on 57.35 kg gross, ships from the USA in 7-14 days, and NO SALES TAX LINE AT ALL -- total equalled subtotal. So this is already landed. One caveat: a SINGLE instrument cannot reach this rate (4.1 kg off singles is $31.70/kg); the ten-instrument basis is what buys it."
     },
     "pctg": {
       "usd": 31.99,
@@ -1664,10 +1665,11 @@
       "verified": "v",
       "what": "Lace Aluma Bass Bar 4.0 -- lacemusic.com, the maker, $147.00 2026-09-30"
     },
-    "pi4_2gb": {
-      "usd": 55.0,
+    "pi4_1gb": {
+      "usd": 35.0,
       "verified": "v",
-      "what": "Raspberry Pi 4 Model B 2GB -- PiShop $55.00, SKU 2GB-9003, BOM.md line 478. \u26a0\u26a0 YOU CANNOT BUY TEN. Surveyed 2026-09-30: PiShop max 1 unit; CanaKit max 1 \"per customer, business, location, or related entity\" with multiple orders AUTO-CANCELLED; Adafruit $63.25 and SparkFun $60.00 both cap-free but OUT OF STOCK; Newark no longer available. The cap is on the 2GB SKU across the trade, not one vendor policy, and the anti-circumvention wording rules out the split-orders workaround. BUYABLE IN TEN, all PiShop: 1GB $35.00 (max 10), 4GB $100.00 (no cap), 8GB $165.00. So the ten-instrument choice is 1GB at -$20/instrument or 4GB at +$45/instrument. Which one depends on whether Dexed + USB gadget + USB host fits 1GB -- a DESIGN question, raised with bronner. Price left at 2GB until it is answered."
+      "per_instrument": 1,
+      "what": "Raspberry Pi 4 Model B 1GB -- PiShop $35.00, SKU 1GB-9002. DECIDED 2026-09-30 by the user after the survey: the 2GB SKU caps at ONE unit per order across the trade (PiShop max 1; CanaKit max 1 per customer with multiple orders AUTO-CANCELLED; Adafruit and SparkFun cap-free but out of stock), so it cannot be bought ten at a time at all. The 1GB caps at TEN, which is exactly the order. That is -$20/instrument against the old 2GB line. THE RISK IS RAM, not price: Dexed + USB gadget + USB host has to fit 1GB headless. If it does not, the fallback is the 4GB at $100 (no cap), +$45/instrument."
     }
   },
   "missing": {
@@ -1679,7 +1681,8 @@
     "wire": "LENGTH IS MEASURED NOW, PRICE IS NOT. tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had. Its ~$35 estimate implies $2.29/m, far above hookup-wire rates -- almost certainly because you buy SPOOLS, not metres. Needs one product page and a spool-count, not another estimate.",
     "tariff_uncollected": "The motors are the exposure. Makerbase ships them from China collecting no tax and no duty at checkout, so $339.90 of an order is NOT landed cost. JLCPCB by contrast ships DHL DDP, duty included. See boards/landed.",
     "pogo": "The leg blind-mate pogo boards (src/leg_pogo.py, RA_N=4 + TG_N=4 pins) are custom PCBs that live outside elec/, so neither the board pipeline nor the connector derivation sees them. Small, but genuinely uncounted.",
-    "pi_supply": "BLOCKER FOR A TEN-INSTRUMENT RUN, not a price gap: the specced Pi 4 2GB is allocation-capped at ONE per customer at every vendor that has it, and out of stock at the two that do not cap. See modules.pi4_2gb."
+    "pi_ram": "DECIDED, with a risk attached. The user chose the 1GB at $35 because it is the only Pi 4 that can actually be bought ten at a time (the 2GB is capped at one per customer across the trade). What is NOT settled is whether Dexed + USB gadget + USB host fits 1GB headless -- a design question with bronner. If it does not, the fallback is the 4GB at $100, +$65/instrument on today's line.",
+    "landed_gaps": "SHIPPING AND TAX ARE MEASURED FOR FIVE VENDORS, NOT FOR THE BOM. Measured: Lace, JLCPCB, Makerbase, PiShop, Tinmorry, plus Jameco's tariff. UNMEASURED and therefore missing from the landed line: every listing-priced mechanical item (~$213/instrument of screws, bearings, belts, springs, shaft -- no vendor is even recorded for most of them, so there is nothing to check), the PCTG and TPU filament, and the uncollected duty on the $339.90 of motors. Expect the landed line to grow, not shrink."
   },
   "parts_by_footprint_substring": {
     "_note": [
@@ -1981,9 +1984,14 @@
       "later, from the carrier. That is an exposure this file can name but cannot price,",
       "because the rate is policy and changes.",
       "",
-      "CALIFORNIA SALES TAX CAME OUT AT 8.00%, not the 10.25% Berkeley headline -- that",
-      "is what Lace's checkout actually computed on $1,470, and it is the vendor's rate",
-      "that gets charged, not the buyer's city rate."
+      "SALES TAX IS NOT ONE NUMBER. Lace's checkout computed 8.00% on $1,470; PiShop's",
+      "computed 10.25% on $350, which IS the Berkeley headline rate. Same address, same",
+      "state, 2.25 points apart -- so tax is a per-vendor measurement like shipping, and",
+      "a single assumed rate across the BOM would be wrong in both directions.",
+      "",
+      "counted_in_unit_price says whether the money is ALREADY inside the unit price",
+      "elsewhere in this file. The Jameco tariff is (mechanical.psu_24v_150w carries its",
+      "$3.59 share), so cost.py must not add it twice."
     ],
     "lace_pickup": {
       "vendor": "Lace Music",
@@ -1994,7 +2002,8 @@
       "tax_pct": 8.0,
       "ddp": null,
       "verified": "v",
-      "what": "10 x Aluma Bass Bar 4.0 -- free shipping, estimated tax $117.60, total $1,587.60"
+      "what": "10 x Aluma Bass Bar 4.0 -- free shipping, estimated tax $117.60, total $1,587.60",
+      "counted_in_unit_price": false
     },
     "makerbase_motors": {
       "vendor": "Makerbase",
@@ -2005,7 +2014,8 @@
       "tax_pct": 0.0,
       "ddp": false,
       "verified": "v",
-      "what": "10 x SERVO42D CAN MT -- free shipping (10-16 d); paid options 4PX $8.99, DHL/UPS $22.80, standard $3.99. NO tax and NO duty collected at checkout. DUTY EXPOSURE IS UNPRICED, not zero."
+      "what": "10 x SERVO42D CAN MT -- free shipping (10-16 d); paid options 4PX $8.99, DHL/UPS $22.80, standard $3.99. NO tax and NO duty collected at checkout. DUTY EXPOSURE IS UNPRICED, not zero.",
+      "counted_in_unit_price": false
     },
     "jlcpcb_boards": {
       "vendor": "JLCPCB",
@@ -2016,18 +2026,20 @@
       "tax_pct": null,
       "ddp": true,
       "verified": "v",
-      "what": "DHL Express (DDP) -- duty INCLUDED in the shipping line. Measured $30.86 on a 2L qty-10 quote, $32.26 on the 4L optical, $39.60 on the qty-100 PCBA. Ten board designs ship as ONE order, so this is per ORDER, not per board."
+      "what": "DHL Express (DDP) -- duty INCLUDED in the shipping line. Measured $30.86 on a 2L qty-10 quote, $32.26 on the 4L optical, $39.60 on the qty-100 PCBA. Ten board designs ship as ONE order, so this is per ORDER, not per board.",
+      "counted_in_unit_price": false
     },
     "pishop_pi": {
       "vendor": "PiShop",
       "ships_from": "US (DE)",
-      "order_usd": 550.0,
-      "shipping_usd": null,
-      "tax_usd": null,
-      "tax_pct": null,
+      "order_usd": 350.0,
+      "shipping_usd": 14.58,
+      "tax_usd": 35.88,
+      "tax_pct": 10.25,
       "ddp": null,
-      "verified": "m",
-      "what": "10 x Pi 4 2GB. The 2GB SKU caps at ONE unit per order, so ten instruments means ten separate orders each paying shipping. The 1GB SKU caps at ten and costs $35. Shipping still unmeasured either way."
+      "counted_in_unit_price": false,
+      "verified": "v",
+      "what": "10 x Pi 4 Model B 1GB (SKU 1GB-9002, product 639, max 10 units) = $350.00 goods. Measured 2026-09-30 by creating a real guest cart and a real consignment to 2103 West Street Berkeley CA 94702 through the storefront checkout API, then DELETING the cart. Nothing ordered. Cheapest shipping USPS Priority $14.58; FedEx Ground $21.85, Express Saver $33.48, 2Day $67.65. Tax $35.88. LANDED $400.46, i.e. $40.05 per instrument against a $35.00 list price -- the freight and tax are 14% on top."
     },
     "jameco_psu": {
       "vendor": "Jameco",
@@ -2040,7 +2052,20 @@
       "tariff_usd": 35.91,
       "tariff_pct": 21.0,
       "verified": "v",
-      "what": "THE ONLY PLACE A TARIFF WAS ACTUALLY ITEMISED. 10 x LRS-150-24: $171.00 goods + $35.91 tariff = $206.91, i.e. 21.0% on HTS 8504.40.9530. A US distributor importing Chinese-made goods shows the duty as its own cart line. That is one measured rate for ONE commodity code -- do not spread it across the BOM, but it is the right order of magnitude for the China-made electronics in it."
+      "what": "THE ONLY PLACE A TARIFF WAS ACTUALLY ITEMISED. 10 x LRS-150-24: $171.00 goods + $35.91 tariff = $206.91, i.e. 21.0% on HTS 8504.40.9530. A US distributor importing Chinese-made goods shows the duty as its own cart line. That is one measured rate for ONE commodity code -- do not spread it across the BOM, but it is the right order of magnitude for the China-made electronics in it.",
+      "counted_in_unit_price": true
+    },
+    "tinmorry_filament": {
+      "vendor": "Tinmorry",
+      "ships_from": "US",
+      "order_usd": 725.99,
+      "shipping_usd": 0.0,
+      "tax_usd": 0.0,
+      "tax_pct": 0.0,
+      "ddp": null,
+      "counted_in_unit_price": true,
+      "verified": "v",
+      "what": "41.0 kg of PETG-GF as 4 x 10-roll packs + 1 spool. Free shipping, NO California sales tax collected, total = subtotal $725.99. counted_in_unit_price is true because both are zero and the blended $17.71/kg already IS the landed rate -- there is nothing for the landed line to add. Recorded so the zero is a MEASUREMENT and not an omission."
     }
   }
 }
