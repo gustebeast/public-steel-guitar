@@ -1657,12 +1657,22 @@ BOARD_NOTES = {
                                         # the pot is written on a volume change, not an edge
         "U9": (6.76, 0.43, 0.0),        # ring buffer, matched to U7
         "C43": (11.49, -2.53, 0.0),     # U9 bypass -- 5.7 mm, the worst of the op-amp three
-        "U11": (2.50, 0.03, 0.0),       # the inverter: the balanced cold leg
-        "C46": (-0.19, 1.00, 0.0),      # U11 bypass, 2.9 mm
-        "U12": (7.00, -3.66, 0.0),      # SPDT: inverted tip, or the right-hand channel
-        "C47": (4.50, -3.10, 0.0),      # U12 bypass, 2.6 mm
-        "R26": (-2.72, 2.63, 0.0),      # the 0.1% pair that sets the balanced CMRR --
-        "R27": (-0.19, -0.94, 0.0),     # same reel, and they want to stay near each other
+        # ⚠ THESE SIX WERE RE-SWEPT AGAINST THEIR **REAL** COURTYARDS, AND THE FIRST
+        # SET WAS GUESSED. The other fifteen were measured off a placed board; these did
+        # not exist yet, so their sizes were typed from memory -- and they were wrong by
+        # about a factor of two, because what got typed was the PAD EXTENT and the BODY,
+        # not the courtyard: U11 is 4.19 x 3.49 and not 1.90 x 2.60, an 0402 courtyard is
+        # 1.95 x 1.03 and not 1.05 x 0.55. The route found it as two courtyards_overlap
+        # errors around U11 -- the only two errors on an otherwise 0-unconnected board.
+        # A sweep is only as good as the boxes handed to it, and a guessed box is a
+        # guessed placement wearing a measurement's clothes.
+        "U11": (1.93, -0.45, 0.0),      # the inverter: the balanced cold leg
+        "C46": (4.53, -3.98, 0.0),      # U11 bypass, 4.9 mm -- see the note above
+        "U12": (14.50, -3.66, 0.0),     # SPDT: inverted tip, or the right-hand channel
+        "C47": (7.75, -3.10, 0.0),      # U12 bypass. The switch draws no output current,
+                                        # so its supply is the least demanding of the four
+        "R26": (-3.25, 2.00, 0.0),      # the 0.1% pair that sets the balanced CMRR --
+        "R27": (-3.32, 4.35, 0.0),      # same reel, and they stay near each other
         "C41": (21.54, 5.06, 0.0),      # ring DC block, 1210 (C1's mirror)
         "D7": (18.29, -3.91, 0.0),      # ring phantom clamp (D5's mirror) -- see above
         "R21": (21.19, 1.51, 0.0),      # ring bleed (R10's mirror)
