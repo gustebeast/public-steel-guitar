@@ -440,14 +440,21 @@ TLC59711 was chosen over SK6812/SK9822, and it only pays off if the writes never
 Fret pitch, tightest first: **24->23 is 9.14**, then 9.69, 10.26, 10.87 ... 19.37 at 11->10.
 Against `XINGLIGHT_XL-5050RGBW`: body **5.00**, copper out to ~**5.56**, courtyard **6.10**.
 
-    pitch 9.14  -  copper 5.56  =  3.58 for BOTH tunnel walls
-       two 2-bead walls (3.20)   ->  0.38 mm of air.  Fits, and is the tightest
-                                     thing on this board.
-       two 1-bead walls (1.60)   ->  1.98 mm of air.  Comfortable.
+⚠ **CORRECTED — I COUNTED TWO WALLS WHERE THERE IS ONE.** Cell n's +X wall IS cell
+n+1's −X wall; adjacent cells share it. The budget is therefore:
 
-So **the tunnel wall thickness should be GENERATIVE from the fret pitch**, not a constant:
-two beads wherever the pitch allows, one bead in the top gap or two. Everything from fret
-22 down has >= 0.96 mm of air with 2-bead walls.
+    pitch 9.14  -  courtyard 6.10  =  3.04 for ONE shared wall
+       a 2-bead wall (1.60)   ->  1.44 mm of air.  Comfortable.
+       a 1-bead wall (0.80)   ->  2.24 mm of air.
+
+So **2-bead walls fit at every fret on the instrument**, tightest included, and
+`fret_light.wall_for()` is still written generatively (falling back to one bead) so a
+future pitch change fails loudly instead of silently pinching. The earlier figure of
+"0.38 mm of air" was the doubled-wall error and is withdrawn.
+
+✅ **Which answers the standing question: geometry does NOT force dropping frets 23 and
+24.** They fit, at 1.44 and 1.99 mm of air respectively. If they come out it will be for
+the noise reason, which the user has already said is not reason enough on its own.
 
 The LEDs spread in **Y**, so the pitch constraint is purely in X and one package width is
 all each fret needs there. Board width follows the spread: +-26.5 plus a 6.10 courtyard is
@@ -539,3 +546,94 @@ put precisely that rate onto the supply, 14 mm from a coil built to hear it.
 
 This costs nothing to honour and is invisible once the board exists, which is why it is
 written down here rather than discovered on a bench.
+
+
+---
+
+# 7. THE FRET CELL — the design (2026-09-29)
+
+`src/fret_light.py`. One opaque CELL per fret, built as deck geometry, turning three LEDs
+into an even line and sealing each fret from its neighbours. Datums live in that module and
+are read from `top_plate` rather than copied; `check_optics()` is the proof.
+
+## 7.1 Section, bottom to top
+
+    z -19.00 .. -17.40   the LED board (1.6), clearing the tee PCBs at -19.65
+    z -16.00             the 5050's emitting face
+    z -16.00 ..   0.00   the TUNNEL: opaque walls on the fret pitch, gently tapered
+    z   0.00 ..   4.80   a TRANSPARENT COLUMN through the deck's base, aperture-wide
+    z   4.80 ..   6.40   the fret inlay, in the colour layer
+
+⚠ **The isolation has to reach 4.80, not 0** — and that is the whole reason the cell is
+deck geometry rather than a part clipped underneath. The deck's base is **4.80 mm of
+transparent PCTG and it is continuous across the panel**: seal a tunnel at the deck's
+underside and light just crosses to the neighbour INSIDE THE SLAB, 9.14 mm away at the
+bridge end. So in the fret field **the base becomes opaque except for a transparent column
+under each fret line and under the two border strips.** Isolation by material, not by air —
+which also keeps the deck a solid plate, where 24 slots of 7 × 79.6 through a 4.8 base
+would not.
+
+**The one bleed path, and it is the one the user allowed:** the fret inlay and the border
+strip meet in the COLOUR LAYER at |y| = 39.8 — a junction 2.4 wide and 1.6 tall. Narrow, at
+the extreme ends, nothing below 4.80.
+
+## 7.2 Why three LEDs land evenly
+
+Illuminance falls as (h²/(h²+y²))², so one LED under the middle of a 79.6 line leaves the
+ends **22×** down. Solved numerically over LED spacing and depth:
+
+| | |
+|---|--:|
+| depth h (aperture 4.80 over LED face −16.00) | **20.80** |
+| LEDs at | **y = −27.20, 0, +27.20** (34 beads) |
+| end reflector | 0.85, diffuse white PCTG |
+| **uniformity over the whole line** | **1.21 : 1** |
+
+Two findings worth keeping:
+
+* **Depth is the lever.** Same three LEDs at h = 12 give 2.6 : 1; at 20.8, 1.21 : 1. The
+  17 mm of clear air under the deck was the thing to spend.
+* **The end reflectors are worth more than they look** — without them the identical
+  geometry is 1.9 : 1, because an end point is lit from one side where a mid-gap is lit
+  from two. They also shift the optimum spacing outward, from the even-thirds 26.53 to
+  27.15; the design uses 27.20 to sit on the bead grid.
+
+The profile dips to 0.83 between LEDs and 0.82 at the ends — under half a stop, before the
+deck's own 4.8 mm of scattering PCTG smooths it further.
+
+## 7.3 The cell in plan, and it fits everywhere
+
+Walls are shared, so a fret gap holds **one** wall (see the correction in 6.4):
+
+| gap | pitch | wall | tunnel | air round the 6.10 courtyard | taper |
+|---|--:|--:|--:|--:|--:|
+| 24–23 | 9.14 | 1.60 | 7.54 | 1.44 | 7.0° |
+| 23–22 | 9.69 | 1.60 | 8.09 | 1.99 | 7.8° |
+| 2–1 | 32.58 | 1.60 | 30.98 | 24.88 | 34.5° |
+
+**2-bead walls at all 23 gaps**, and the worst taper is 34.5° off vertical against a 45°
+limit. The taper runs narrow-at-the-top to wide-at-the-bottom, which in the deck's print
+direction (`PIECE_UP = -Z`, face on the bed) starts narrow at the bed and leans outward as
+it builds — self-supporting.
+
+## 7.4 The outboard ends
+
+The board is 62.4 wide (outer LEDs at ±27.20 plus a courtyard) but the fret line runs to
+±39.8, so the last ~8.6 mm of each cell has no board under it. Rather than widen the board
+to 84 — width being the expensive axis — **the deck ramps its own floor up from the board's
+edge to the aperture at 58°**. The ramp closes the cell, self-supports in this print
+direction, and *is* the end reflector the optics want. One feature doing three jobs.
+
+## 7.5 Still open on the cell
+
+1. **The markers.** Ten symbols sit centred in a fret SPACE, i.e. in the opaque region
+   between two cells. At the nut end there is room for their own cell and LED; at the
+   bridge end there is not — the marker in space 24 sits in a 9.14 gap already spent on
+   two cell walls. Either it shares the neighbouring fret's cell (the aperture becomes
+   line + symbol) or it goes dark.
+2. **The harness has to move.** The depth budget assumes the floor is the tee PCBs at
+   −19.65, not `wire_canl` at −17.15. Designing to the cable costs 2.5 mm and takes the
+   line from 1.21 : 1 to 1.35 : 1.
+3. **Two-material volume.** Opaque walls now run the full 20.8 mm from the colour layer to
+   the board, 24 of them. That is a lot of second-material purge on a two-filament print —
+   worth estimating before a panel is committed.
