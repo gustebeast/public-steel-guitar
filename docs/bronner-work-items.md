@@ -6,21 +6,31 @@ rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction 
 prompt. Where a prompt and this file disagree, this file is right — and where this file carries
 a stale marker, striking the marker is part of the work.
 
-**Current state, 2026-09-30:**
+**Current state, 2026-09-30 (end of the escape-via tick):**
 
 | thing | state |
 |---|---|
-| optical route | **2 unconnected / 0 violations** — best ever; the whole remainder is ONE net, `+3V3D` at U6.36 |
-| optical pad sites | searched at placement time now (`b7bf011`), so they no longer rot between routes |
-| `finish.py` | a failed retry round is a no-op, not a baseline-destroyer (`e72c00e`) |
-| Pi retention | the user's printed spacer, built and gate-clean (`5c9a680`, `d14dd1d`) |
-| motor + I/O boards | `audit_board` clean; the I/O board's TRS/gain work is specified, not yet built |
-| scope | `optical_work_components`, now declaring every live part so nothing renders twice |
+| optical route | **1 net open / 0 violations** — `+3V3D` at `U7.9` (VDDIO) only. Best verified; `optical.best-1unconn-0viol.kicad_pcb` |
+| VDDIO | a **PLACEMENT** problem, measured: no via fits at any size, no dog-leg reaches its own copper, and escape vias made the edge WORSE. Next move is U7 or its decoupling |
+| escape vias | ⚠ **REFUTED on a congested edge** — 2 → 3 → 5 unconnected as more pins were planned. `pin_escapes` is for pins stranded IN ISOLATION |
+| `repair_search` | now sees the **pours** (zone rule read from the project, 0.5 vs 0.127) and its pad capsules are no longer 90° off. Both validated against KiCad/pcbnew |
+| `audit_board` | "every obstacle class" now really includes the pours |
+| `repair_planes` | **refills the zones** — nothing ever did, which is why a good repair looked illegal |
+| `finish.py` | a failed retry round is a no-op, not a baseline-destroyer |
+| optical pad sites | searched at placement time, so they no longer rot between routes |
+| `check_ceilings` | sees **curved** overhangs now (the user's render finding); validated both ways |
+| Pi retention | the user's printed spacer, built and gate-clean |
+| motor + I/O boards | `audit_board` clean. The I/O board's TRS + gain change is **specified with verified pinouts** but NOT landed — it needs placements |
+| scope | `optical_work_components`, declaring every live part so nothing renders twice |
 
 
 **Priority: optical first.** Everything else is route-downtime work.
 
-**Status 2026-09-28 22:1x — OPTICAL IS DONE AND SUBMITTED.** Every debug feature the user
+**⚠ HISTORICAL — status as of 2026-09-28 22:1x, KEPT FOR THE RECORD AND NOT CURRENT.**
+The "0 unconnected, 0 violations" below was true of the board as it stood that night and
+has been overtaken twice since: the bring-up pads' sites rotted against a later route, and
+the board now stands at 1 net open (see the table above). Read the table, not this.
+**What it said then:** OPTICAL IS DONE AND SUBMITTED. Every debug feature the user
 called a strict improvement is in: six bring-up pads (I2C2 SDA/SCL for the ROM bootloader,
 BOOT0, and the three rails) plus per-converter `SHDNZ` isolation. 0 unconnected, 0 violations,
 `audit_board` clean, SI clean, In1 web unchanged at 0.266 mm, fab rebuilt. The one item that
