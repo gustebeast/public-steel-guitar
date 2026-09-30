@@ -155,6 +155,99 @@ def _pads(board_txt):
     return out
 
 
+def _zone_clearance(stem):
+    """The ZONE clearance rule, read from the project file rather than assumed.
+
+    ⚠ IT IS NOT THE TRACK RULE, AND ON THIS BOARD IT IS FOUR TIMES LARGER. optical's
+    board.design_settings.defaults.zones.min_clearance is 0.5000 mm against a 0.127 mm
+    netclass clearance, and DRC reports it in those words ("zone clearance 0.5000 mm").
+    Assuming the track rule for pours is what let a dog-leg with 0.1557 mm of MEASURED
+    headroom land 0.0225 mm from the ground pour. Read it, so it cannot drift from the board.
+    """
+    try:
+        d = json.load(open(stem + ".kicad_pro", encoding="utf-8"))
+        return float(d["board"]["design_settings"]["defaults"]["zones"]["min_clearance"])
+    except Exception:
+        return 0.5              # optical's value: a miss here is conservative, not silent
+
+
+def _zones(board_txt):
+    """The FILLED copper pours: [{layer, net, pts, bbox}], one entry per filled_polygon.
+
+    ⚠ THE FILLED POLYGON IS THE COPPER, NOT THE ZONE OUTLINE. A zone's outline can cover the
+    whole board; what is actually plated is the filled_polygon list, poured around every
+    existing track and pad. It is the only shape clearance can honestly be measured against.
+
+    ⚠ AND THIS FUNCTION WAS MISSING, WHICH MADE EVERY NUMBER THIS MODULE PRODUCED AN
+    UNDERSTATEMENT. Board parsed segments, vias, pads and edges; the pours were invisible, so
+    "0.1557 mm of headroom" meant headroom against everything except the largest copper feature
+    on the board. optical carries 35 filled polygons on F.Cu alone, 10 on B.Cu and 1 on In1.Cu.
+    """
+    out = []
+    for z in re.findall(r"\(zone\b(.*?)\n\t\)", board_txt, re.S):
+        # ⚠ IT IS (net "GND"), NOT (net_name ...). KiCad 10 writes a zone's net the same way
+        # it writes a segment's, and this file contains ZERO occurrences of net_name -- so the
+        # first version silently gave every pour an empty net. That reads as "foreign" against
+        # every net, which happens to be right for +3V3D (the pours are GND) and would block a
+        # repair on GND against ITS OWN copper. A parser that is accidentally right on the case
+        # in front of it is the kind that gets trusted and then surprises somebody.
+        nt = re.search(r'\(net "([^"]*)"', z)
+        net = nt.group(1) if nt else ""
+        # a zone may also carry its own clearance; keep the STRICTER of it and the project rule
+        zc = re.search(r"\(clearance ([-\d.]+)\)", z)
+        z_clear = float(zc.group(1)) if zc else 0.0
+        for fp in re.findall(r"\(filled_polygon\b(.*?)\n\t\t\)", z, re.S):
+            ly = re.search(r'\(layer "([^"]+)"', fp)
+            if not ly:
+                continue
+            pts = [(float(a), float(b))
+                   for a, b in re.findall(r"\(xy ([-\d.]+) ([-\d.]+)\)", fp)]
+            if len(pts) < 3:
+                continue
+            xs = [q[0] for q in pts]
+            ys = [q[1] for q in pts]
+            out.append(dict(layer=ly.group(1), net=net, pts=pts, clear=z_clear,
+                            bbox=(min(xs), max(xs), min(ys), max(ys))))
+    return out
+
+
+def _pt_in_poly(px, py, pts):
+    inside = False
+    n = len(pts)
+    for i in range(n):
+        x1, y1 = pts[i]
+        x2, y2 = pts[(i + 1) % n]
+        if (y1 > py) != (y2 > py):
+            if px < x1 + (py - y1) * (x2 - x1) / (y2 - y1):
+                inside = not inside
+    return inside
+
+
+def _d_seg_poly(ax, ay, bx, by, z, reach):
+    """Edge-to-edge distance from segment AB to a filled polygon; 0.0 if AB touches or enters.
+
+    `reach` bounds the bbox reject, so a pour whose nearest edge cannot matter is skipped
+    before its (often thousands of) points are walked."""
+    x0, x1, y0, y1 = z["bbox"]
+    if (min(ax, bx) > x1 + reach or max(ax, bx) < x0 - reach
+            or min(ay, by) > y1 + reach or max(ay, by) < y0 - reach):
+        return 1e9
+    pts = z["pts"]
+    if _pt_in_poly(ax, ay, pts) or _pt_in_poly(bx, by, pts):
+        return 0.0
+    best = 1e9
+    n = len(pts)
+    for i in range(n):
+        cx, cy = pts[i]
+        dx, dy = pts[(i + 1) % n]
+        d = _d_seg_seg(ax, ay, bx, by, cx, cy, dx, dy)
+        if d < best:
+            best = d
+            if best <= 0.0:
+                return 0.0
+    return best
+
+
 def _edges(board_txt):
     """The board outline. Copper too close to it is copper_edge_clearance, three of
     which the fourth inline version of this search produced."""
@@ -218,6 +311,9 @@ class Board:
         self.vias = _vias(txt)
         self.pads = _pads(txt)
         self.edges = _edges(txt)
+        # ⚠ AND THE POURS, which this class did not model at all until 2026-09-30.
+        self.zones = _zones(txt)
+        self.zone_clear = _zone_clearance(stem)
 
     def via_ok(self, x, y, r=VIA_D / 2.0):
         for s in self.segs:
@@ -278,7 +374,37 @@ class Board:
                 worst, who = d, "board edge"
         return worst, who
 
+    def zone_gap(self, p, q, layer, half=TRACK_W / 2.0):
+        """Edge-to-edge gap from this track to the nearest FOREIGN copper pour, and its net.
+
+        ⚠ KEPT SEPARATE FROM track_gap ON PURPOSE. The two answer to DIFFERENT RULES -- the
+        netclass clearance (0.127 on optical) for tracks, pads, vias and the outline, and the
+        zone clearance (0.5000) for pours. Folding pours into track_gap would return one "worst
+        gap" that the caller then compares against one rule, which is exactly the mistake that
+        approved a dog-leg sitting 0.0225 mm from the ground pour: the number was true and the
+        rule it was judged against was the wrong one.
+        """
+        worst, who = 1e9, None
+        reach = half + self.zone_clear + 1.0
+        for z in self.zones:
+            if z["layer"] != layer or z["net"] == self.net:
+                continue
+            d = _d_seg_poly(p[0], p[1], q[0], q[1], z, reach) - half
+            if d < worst:
+                worst, who = d, "zone [%s] on %s" % (z["net"] or "?", z["layer"])
+        return worst, who
+
+    def zone_ok(self, p, q, layer, half=TRACK_W / 2.0):
+        g, _ = self.zone_gap(p, q, layer, half)
+        return g >= self.zone_clear
+
     def track_ok(self, p, q, layer, half=TRACK_W / 2.0):
+        # ⚠ THE POURS FIRST, because they are the cheapest way to be wrong and the most
+        # likely to bind: they are the largest copper on the board and carry a rule four times
+        # the track rule. Every "0 legal paths" and every approved path this module reported
+        # before 2026-09-30 was computed without them.
+        if not self.zone_ok(p, q, layer, half):
+            return False
         for s in self.segs:
             if s["layer"] != layer or s["net"] == self.net:
                 continue
