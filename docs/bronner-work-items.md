@@ -4552,3 +4552,42 @@ These are roofs over voids just above the bed. **I believe them pre-existing** �
 added geometry at y −58.5 and a wall notch at y −70, not at y −99 — but that is reasoning from
 position and wants confirming against a pre-spacer build before anyone acts on it. Raised for
 whoever owns the chassis floor.
+
+### ⚠⚠ REFUTED: ESCAPE VIAS MAKE THE PHY'S EDGE MONOTONICALLY WORSE (2026-09-30)
+
+The whole-edge plan was tried and it is the wrong idea. Three routes, same board otherwise:
+
+| U7 escapes planned | result |
+|---|---|
+| the six that were already there | **2 unconnected, 0 violations** |
+| + `U7.9` (VDDIO) | 3 unconnected, 0 violations |
+| + `U7.3`, `U7.8`, `U7.10` (NXT, D4, D5) | **5 unconnected, 3 violations** |
+
+The last run also lost `+3V3A`, `I2C2_SDA` and `SAI_SD3`, and produced violations for the first
+time in several routes.
+
+**Escaping `U7.9` was not the error — the follow-up reasoning was.** VDDIO really did close, via
+0.938 mm out, both breaks gone. But "planning more pins will relieve the congestion" is backwards:
+**a pre-placed via is an obstacle the router must respect**, so on an edge with no spare room each
+one competes with the router instead of helping it. Planning one pin only decided who won (D4 ran
+11.205 mm before a layer change, D5 got no via); planning four took three more nets down with it.
+
+`pin_escapes` is for pins the router strands **in isolation** — which is what all six survivors
+are, spread across two packages — not for a crowded fan-out. Reverted, with the numbers recorded
+in the source so the experiment is not repeated.
+
+**State restored and verified consistent:** `pin_escapes` back to six, the `+3V3D` dog-leg
+re-enabled (the 1-unconnected board *is* the 2-unconnected route plus that dog-leg, so the
+coordinates match the copper again), board restored, DRC re-run, `optical.geom.json` regenerated
+from the restored board so the CAD is not drawing a board that was thrown away.
+
+```
+unconnected items 2 (= 1 net, +3V3D at U7 pad 9)   violations: 20 declared courtyards only
+16 declared repair tracks / 16 found, 57 segments re-checked INCLUDING the pours
+```
+
+**⚠ VDDIO IS A PLACEMENT PROBLEM, AND THAT IS NOW THE MEASURED CONCLUSION.** The fan-out has no
+room for one more via at any size (Ø0.40 reaches only +0.0697 mm against a 0.127 rule), no
+F.Cu dog-leg reaches its own copper, and every attempt to reserve space for it costs more than it
+buys. The next thing to try is **moving U7 or its decoupling so pin 9 has a corridor** — not
+another via, not another repair.
