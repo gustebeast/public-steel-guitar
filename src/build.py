@@ -1247,11 +1247,17 @@ def optical_work_components():
     from . import optical_pickup as OP
     from . import electronics as EL
     _KE = __import__("src.keyhead_endplate", fromlist=["e"])
+    # ⚠ AND THE FLAT PI WITH ITS SPACER, FOR THE SAME REASON THE MOTOR BOARD IS HERE. The
+    # retention work crossed into the Pi's bay (its hold-down had to leave the board's edge
+    # entirely -- electronics.PI_SPACER_XY), and a scope that hides the part being designed is
+    # how the user came to report "the pi disappeared from your tab". The spacer is the point of
+    # the change, so it has to be visible in the view that reviews it.
     out = [("optical_pcb", OP.opt_pcb()),
            ("optical_cable_usb", OP.opt_cables("usb")),
            ("optical_cable_pwr", OP.opt_cables("pwr")),
            ("bridge_endplate", PARTS["bridge_endplate"][0]()),
            ("motor_ctrl", EL.motor_ctrl()),
+           ("pi5", EL.pi5()), ("pi_spacer", EL.pi_spacer()),
            ("keyhead_endplate", _KE.keyhead_endplate)]
     out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
     return out

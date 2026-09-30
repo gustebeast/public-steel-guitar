@@ -220,3 +220,26 @@ would pass through ALL TEN nut slide inserts (~594 mm3 of heat-set brass, the he
 for every string). Going round the block is no better -- every x from -613 to -634 and every z
 from -56 to -18 still crosses keyhead_endplate, 57..539 mm3. There is nowhere for a machined
 route to go, which is exactly why this is an assembly step instead.
+
+## The flat Pi: seat it, then clamp it with the spacer (2026-09-29)
+
+The Pi is **not** held by a screw head on its laminate any more. It is held by a printed
+**spacer** (`pi_spacer`) that bridges from the board's edge out to a screw 12.50 mm away,
+because no position beside the board had room for that screw's anchor below the floor — the
+levers' mortise/tenon joinery is under it.
+
+1. **Drop the Pi into its cradle, straight down.** The four corner pads carry it; its
+   underside never touches the floor slab (it has solder tails and SMD parts on the back).
+   The walls locate it in plane; the **+X end is open** — that is the I/O end, and it is also
+   the only way the board goes in or out.
+2. **Lay the spacer across the board's +Y edge.** It is stepped, and the step tells you which
+   way round it goes: the **thin end (2.40 mm) lies on the board's top face**, the **thick end
+   (4.00 mm) sits outboard on the chassis boss**. The step's vertical face butts the board's
+   edge — if it will not sit flat, it is on backwards or the board is not fully down.
+3. **One M4 × 10 button head, 2.5 mm hex**, through the spacer into the insert in the boss.
+   Same screw and same key as everywhere else; no new SKU and no second length.
+4. **Do not overtighten.** The spacer clamps 50 mm² of the laminate's edge (against the
+   1.30 mm arc a bare head used to reach), so it does not need much to hold — and what it is
+   resisting is the board lifting, not sliding: the walls already stop that.
+
+⚠ **Removal order:** the spacer comes off before the Pi, and the Pi comes out along **+X**.

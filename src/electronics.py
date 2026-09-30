@@ -624,7 +624,17 @@ PI_SPACER_XY   = (-510.0, -58.50)  # WORLD x,y of the anchor -- 12.50 mm out fro
 PI_SPACER_T    = 3 * D.BEAD        # 2.40 over the laminate. 1.2 was rejected as under the
                                    # quality bar for retention; this is the same 3-bead
                                    # thickness the rest of this file uses for it.
-PI_SPACER_W    = 16.0              # along X -- the run of edge it clamps
+PI_SPACER_W    = 20.0              # along X -- the run of edge it clamps
+# ⚠ AND THE BAR IS NOT CENTRED ON ITS SCREW, WHICH IS WHAT MAKES THE RUN AFFORDABLE. Centred,
+# a bar this long reaches x -504..-524 -- fine -- but every wider option ran to x -498 and hit
+# chassis_2 there (50.9 mm3 at W 24 against 23.0 at W 16, i.e. the wall that limits it sits off
+# to ONE SIDE in X, so a wider bar changes WHICH obstacle binds, not just how much).
+# It also cannot overhang x -503: that is the board's +X edge AND `open_edge`, the direction the
+# board slides out, so plastic past it laps air and blocks the one install direction. Offset -4
+# buys 20.0 mm of run inside both limits -- 50.0 mm2 of laminate held, against a O7.6 head's
+# 1.30 mm on one arc -- with the head 2.2 mm inside the +X end, so it bears on plastic all round.
+# Swept as ONE STEPPED SOLID over five (centre, W) pairs: tools/_probe_pi_spacer_bar.
+PI_SPACER_CX   = -514.0            # WORLD x of the BAR's centre (the screw is at -510.0)
 # ⚠ THE LAP IS SET BY THE PI'S OWN I/O BLOCK, NOT CHOSEN. pi5() models the USB/ethernet
 # block as box_at(18, 50, 14) reaching y -74.00 and standing 14 mm off the laminate, so the
 # clear laminate between it and the board's +Y edge (-71.00) is 3.00 mm and that is the whole
@@ -655,8 +665,20 @@ def pi_spacer_boss() -> cq.Workplane:
     also keeps the anchor at exactly the depth the sweep cleared."""
     from cadkit.fasteners import M4 as _M4
     hx, hy = PI_SPACER_XY
-    return cyl(_M4.boss_od, PI_Z - _MB_FLOOR.FLOOR_TOP,
-               _MB_FLOOR.FLOOR_TOP).translate((hx, hy, 0.0))
+    # ⚠ A BEAD INTO THE SLAB AND A RIB BACK TO THE CRADLE, BECAUSE A COLUMN STANDING ON A
+    # COINCIDENT PLANE IS NOT ATTACHED. Built flush at FLOOR_TOP and free of the cradle, this
+    # came out as a SECOND SOLID -- pi_cradle() returned 2 -- which is exactly the failure
+    # build.py's one-solid assert exists for: "a cradle that touches nothing survives here as a
+    # second solid and prints as a loose part", and the overlap gate cannot see it either,
+    # because two solids that never touch do not interpenetrate.
+    # The rib also gives the boss its lateral strength: 12.50 mm out from the cradle, a bare
+    # O9.2 column carrying the board's whole lift restraint is a cantilever on the floor.
+    z0 = _MB_FLOOR.FLOOR_TOP - D.BEAD
+    boss = cyl(_M4.boss_od, PI_Z - z0, z0).translate((hx, hy, 0.0))
+    y_web = PI_FP[3] + CRADLE_CLR + 1.6 - D.BEAD     # a bead INTO the cradle's +Y wall foot
+    rib = box_at(_M4.boss_od, hy - y_web, PI_Z - z0,
+                 hx, (y_web + hy) / 2.0, (z0 + PI_Z) / 2.0)
+    return boss.union(rib)
 
 
 def pi_spacer() -> cq.Workplane:
@@ -691,10 +713,10 @@ def pi_spacer() -> cq.Workplane:
     # box_at is CENTRED on all three axes, so these are midpoints, not faces. Written with
     # faces first, which straddled the laminate's top plane by half the thickness.
     lap = box_at(PI_SPACER_W, PI_SPACER_LAP, PI_SPACER_T,
-                 hx, y_edge - PI_SPACER_LAP / 2.0, PI_Z + BD_T + PI_SPACER_T / 2.0)
+                 PI_SPACER_CX, y_edge - PI_SPACER_LAP / 2.0, PI_Z + BD_T + PI_SPACER_T / 2.0)
     y_out = hy + PI_SPACER_TAIL
     shank = box_at(PI_SPACER_W, y_out - y_edge, z_top - PI_Z,
-                   hx, (y_edge + y_out) / 2.0, (PI_Z + z_top) / 2.0)
+                   PI_SPACER_CX, (y_edge + y_out) / 2.0, (PI_Z + z_top) / 2.0)
     return lap.union(shank).cut(
         cyl(_M4.shaft_clr_d, (z_top - PI_Z) + 2.0, PI_Z - 1.0).translate((hx, hy, 0.0)))
 
