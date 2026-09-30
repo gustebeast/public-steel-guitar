@@ -115,10 +115,17 @@ CABLE_TOP = -17.15                 # highest CABLE as DRAWN -- see above
 SLIDE_CLR = 1.00
 BOARD_BOT = CABLE_TOP + SLIDE_CLR  # -16.15
 BOARD_T   = 1.60
-BOARD_TOP = BOARD_BOT + BOARD_T    # -16.05
-LED_H     = 1.40                   # XL-5050RGBW body to its emitting face
-LED_Z     = BOARD_TOP + LED_H      # -14.65
-DEPTH_NOM = APERTURE_Z_NOM - LED_Z  # 19.45, the h the optics are solved at
+BOARD_TOP = BOARD_BOT + BOARD_T    # -14.55
+# ⚠ 1.60, NOT THE 1.40 THIS LINE CARRIED. Read off the part's own listing while the
+# PCB was being designed (LCSC C7371891): "Dimensions (L/W/H): 5.0x5.0x1.6mm", and the
+# footprint elec/footprints/Steel.pretty/XINGLIGHT_XL-5050RGBW.kicad_mod has said 1.6
+# in its description since bronner drew it. The same listing settles the other open
+# question about this part -- "Installation method: Top-mount", 120 degrees -- which is
+# what a cell needs and which docs/fret-led.md section 5.3 had recorded backwards.
+# It costs 0.20 mm of depth: 17.95 -> 17.75, and the line goes 1.136 -> 1.143 : 1.
+LED_H     = 1.60                   # XL-5050RGBW body top = its emitting face
+LED_Z     = BOARD_TOP + LED_H      # -12.95
+DEPTH_NOM = APERTURE_Z_NOM - LED_Z  # 17.75, the h the optics are solved at
 
 # ── where the FOUR LEDs go along the fret ─────────────────────────────────────────────
 # ⚠ FOUR, NOT THREE, AND IT IS THE CHEAP WAY OUT OF THE DEPTH PROBLEM. Three LEDs want
@@ -295,15 +302,43 @@ def _boundaries(xs, x_lo=None, x_hi=None):
     # only 2.29 mm, and the wall then lands on the LED -- the gate caught it as
     # fret_led_0 <-> top_plate_color_3, 21.3 mm3. The end wall has to clear the outermost
     # LED's courtyard plus its own half-thickness.
+    # ⚠ AND A CLAMPED WALL IS INSET BY HALF ITS OWN THICKNESS, or it hangs OUTSIDE the
+    # panel. `min(lo, x_hi)` put the wall's CENTRE on the panel edge, so 0.80 of it
+    # stood in the seam gap -- measured at -360.40 against the keyhead panel's edge of
+    # -361.15. It collided with nothing (the mid panel has no structure under its own
+    # last 11 mm) so the overlap gate never saw it, and it cost the mid board 0.80 mm
+    # of its power bay, which is where the harness connector has to fit.
     end_min = LED_CRTYD / 2.0 + WALL / 2.0 + 0.2
     mids = [(xs[i] + xs[i + 1]) / 2.0 for i in range(len(xs) - 1)]
     lo = xs[0] + max((xs[0] - mids[0]) / 2.0, end_min)
     hi = xs[-1] - max((mids[-1] - xs[-1]) / 2.0, end_min)
     if x_hi is not None:
-        lo = min(lo, x_hi)
+        lo = min(lo, x_hi - WALL / 2.0)
     if x_lo is not None:
-        hi = max(hi, x_lo)
+        hi = max(hi, x_lo + WALL / 2.0)
     return [lo] + mids + [hi]
+
+
+_optics_checked = False
+
+
+def _check_optics_once():
+    """Run check_optics() the first time a comb is built, on the real fret pitches.
+
+    ⚠ A CHECKER NOTHING CALLS IS A CHECKER THAT DOES NOT RUN, and this one proved it:
+    `check_optics` was written to be "called once everything is loaded" and nothing ever
+    called it, so a commit shipped with the fret line at 1.39 : 1 against its own 1.18
+    threshold and the repository said nothing. The deck cannot call it at import (that IS
+    the cycle this module's late import exists to break), but by the time a comb is being
+    BUILT top_plate's datums are all set -- which is why walls() can already read
+    half_len(). So the check rides the build, and there is no separate tool to forget.
+    """
+    global _optics_checked
+    if _optics_checked:
+        return
+    _optics_checked = True
+    xs = [x for _n, x in fret_xs()]
+    check_optics([abs(xs[i + 1] - xs[i]) for i in range(len(xs) - 1)])
 
 
 def walls(x_lo=None, x_hi=None):
@@ -312,6 +347,7 @@ def walls(x_lo=None, x_hi=None):
     ⚠ It reaches APERTURE_Z, not the deck's underside, because the deck's base is
     transparent and continuous — see the module docstring. Above z = 0 this is material
     the deck gives up to the colour layer; below it is new structure hanging free."""
+    _check_optics_once()
     xs = [x for _n, x in fret_xs() if (x_lo is None or x_lo <= x <= x_hi)]
     if not xs:
         return cq.Workplane("XY")
@@ -360,32 +396,83 @@ def columns(x_lo=None, x_hi=None):
     return heal(out)
 
 
-def board(x_lo=None, x_hi=None):
-    """The LED PCB for one panel: a slab under the cells it serves."""
-    xs = [x for _n, x in fret_xs() if (x_lo is None or x_lo <= x <= x_hi)]
-    if not xs:
-        return cq.Workplane("XY")
-    bnd = _boundaries(xs, x_lo, x_hi)
-    x0, x1 = min(bnd), max(bnd)
-    return box_at(x1 - x0, 2 * BOARD_HALF_W, BOARD_T,
-                  x=(x0 + x1) / 2.0, y=0.0, z=BOARD_BOT + BOARD_T / 2.0)
+# ── THE BOARDS ────────────────────────────────────────────────────────────────────────
+# One PCB per panel, designed in elec/fret_led.py, which imports THIS module for every
+# fret X, the four LED Y positions, the board width and the Z stack. The span is here
+# rather than there because it is geometry -- where a board may reach is a fact about
+# the deck and the harness, and the CAD has to place the board without reading elec/.
+#
+# THE BAY is the run at each board's -X end that lies OUTSIDE the light cells: the
+# 24 V harness plug, the buck and its inductor go there, because a part standing inside
+# a cell is a dark patch on that cell's floor. Both ends were MEASURED, not chosen:
+#   mid   the mid comb's end wall is at -350.00 and the panel runs to -361.15, so the
+#         bay is the panel's own last 11 mm. It stops at -360.50, which leaves 0.65 to
+#         the keyhead panel's edge -- the two boards are coplanar and the keyhead comb's
+#         last wall stands right at that edge, so this is a face-to-face clearance.
+#         ⚠ IT WAS -359.50 UNTIL THE CONNECTOR WOULD NOT FIT. The 6-way PH's courtyard
+#         reaches 11.91 back from the board edge and fret 10's outer LED begins 12.29
+#         in, which is 0.38 of clearance and was -0.62 before `_boundaries` stopped
+#         hanging a clamped wall half outside its panel. The checker in elec/fret_led.py
+#         is what found it, before the board was routed rather than after.
+#   key   the keyhead comb's end wall is at -555.59 and the panel runs to -610.80, so
+#         there is 55 mm of room. It stops at -573.00 because `wire_usb` crosses at
+#         z -14.55..-13.70 from -580.00 -X, and the board's top face IS -14.55.
+BOARD_BAY = {"mid": -360.50, "key": -573.00}
+BOARD_NAME = {"mid": "fret_led_mid", "key": "fret_led_key"}
 
 
-def leds(x_lo=None, x_hi=None):
-    """The three LEDs per fret, as their 5050 bodies."""
-    out = None
-    for _n, x in fret_xs():
-        if x_lo is not None and not (x_lo <= x <= x_hi):
-            continue
-        for y in LED_YS:
-            d = box_at(5.0, 5.0, LED_H, x=x, y=y, z=BOARD_TOP + LED_H / 2.0)
-            out = d if out is None else out.union(d)
-    return heal(out) if out is not None else cq.Workplane("XY")
+def panel_range(panel):
+    """(x_lo, x_hi) of the deck panel a board serves."""
+    TP = _tp()
+    return (TP.MID_X1, TP.MID_X0) if panel == "mid" else (TP.KEY_X1, TP.KEY_X0)
 
 
-def parts(x_lo=None, x_hi=None, tag=""):
+def board_span(panel):
+    """(x0, x1) of the PCB in world X: its comb's boundaries, plus the bay at the -X end."""
+    lo, hi = panel_range(panel)
+    xs = [x for _n, x in fret_xs() if lo <= x <= hi]
+    bnd = _boundaries(xs, lo, hi)
+    return min(BOARD_BAY[panel], min(bnd)), max(bnd)
+
+
+def board_cx(panel):
+    """The board frame's origin in world X (elec/ works board-centred)."""
+    x0, x1 = board_span(panel)
+    return (x0 + x1) / 2.0
+
+
+def _led_refs(panel):
+    from . import board_geom as BG
+    return [f["ref"] for f in BG.load(BOARD_NAME[panel])["footprints"]
+            if f["ref"].startswith("D")]
+
+
+def _placed(panel, wp):
+    return wp.translate((board_cx(panel), 0.0, BOARD_BOT))
+
+
+def pcb(panel):
+    """The PCB and every part on it EXCEPT the LEDs, as routed.
+
+    ⚠ READ BACK FROM THE ROUTED BOARD (src/board_geom.py), not drawn from a table. The
+    slab this used to be was 70.4 x 200 x 1.6 with four boxes per fret on top, and it
+    agreed with nothing but itself: it had no drivers, no buck, no inductor, no harness
+    plug and no mounting hole, which are exactly the parts that decide whether this
+    thing fits under the deck. The same argument board_geom's own docstring makes about
+    the output board, and the same three classes of error waiting in it."""
+    from . import board_geom as BG
+    return _placed(panel, BG.solid(BOARD_NAME[panel], skip=_led_refs(panel)))
+
+
+def leds(panel):
+    """The panel's LEDs, as their routed bodies -- their own part so they read as lit."""
+    from . import board_geom as BG
+    return _placed(panel, BG.bodies(BOARD_NAME[panel], _led_refs(panel)))
+
+
+def parts(panel):
     """[(name, solid)] for build.py, so the idea renders in the viewer."""
-    return [("fret_cell%s" % tag, walls(x_lo, x_hi).union(ramps(x_lo, x_hi))),
-            ("fret_column%s" % tag, columns(x_lo, x_hi)),
-            ("fret_board%s" % tag, board(x_lo, x_hi)),
-            ("fret_led%s" % tag, leds(x_lo, x_hi))]
+    lo, hi = panel_range(panel)
+    return [("fret_cell_%s" % panel, walls(lo, hi).union(ramps(lo, hi))),
+            ("fret_pcb_%s" % panel, pcb(panel)),
+            ("fret_led_%s" % panel, leds(panel))]

@@ -8,7 +8,7 @@ open a layout editor and nudge things.
 If you are reading this because you want to change something, read
 **"What to change, and what regenerates itself"** at the bottom first.
 
-## The six boards
+## The boards
 
 | board | what it is | qty |
 |---|---|---|
@@ -17,11 +17,27 @@ If you are reading this because you want to change something, read
 | `motor_ctrl` | CH32V307 + dual CAN + the 24→5 V supply | 1 |
 | `output_panel` | the front panel, both audio conversions, a USB hub | 1 |
 | `optical` | 10-string optical pickup: 20 photodiodes, 20 TIAs, USB HS | 1 |
+| `fret_led_mid` | frets 24–10: 15 RGBW zones, 60 LEDs, 5× TLC59711 | 1 |
+| `fret_led_key` | frets 9–2: 8 RGBW zones, 32 LEDs, 3× TLC59711 | 1 |
+
+⚠ **`fret_led_*` is the SECOND board whose geometry is an INPUT rather than an output**
+(the first is `optical`). One module, `fret_led.py`, cuts to two panels; every fret X, the
+four LED Y positions, the board width and the Z stack come from `src/fret_light.py`. It
+also carries two checks the rest of the directory does not need -- `check_placement`
+(courtyards, read out of the footprint files) and `check_walls` (the DECK hangs a 1.6 mm
+light-cell wall onto this board's top face at every fret boundary, and no DRC can see it).
+Both run before the netlist is written.
 
 ## Two Pythons, and it is not optional
 
-* `py -3.12` runs the **board modules** (`elec/<board>.py`) and `fab.py`. They need
-  `skidl` and, for the optical board, `cadquery`.
+* `py -3.12` runs the **board modules** (`elec/<board>.py`). They need `skidl` and,
+  for the boards whose geometry is an input, `cadquery`.
+
+  ⚠ **NOT `fab.py`, whatever this line used to say.** `fab.py` imports `pcbnew`
+  inside `_check_drill` -- the check that compares the drill file against the board's
+  own holes and REFUSES rather than reports -- so under 3.12 it dies with
+  `ModuleNotFoundError: pcbnew` after writing the gerbers. Run it under KiCad's Python
+  like the other three stages (found 2026-09-30, packaging the fret LED boards).
 * KiCad's own Python (`C:\Program Files\KiCad\10.0\bin\python.exe`) runs
   `layout.py`, `route.py` and `verify.py`, because those need `pcbnew`, which ships
   only inside the KiCad install and cannot be pip-installed.
@@ -45,7 +61,7 @@ cd elec/out && "C:/Program Files/KiCad/10.0/bin/python.exe" ../route.py optical
 ```
 
 ```bash
-py -3.12 elec/fab.py
+cd elec/out && "C:/Program Files/KiCad/10.0/bin/python.exe" ../fab.py
 ```
 
 `fab.py` does the last three checks itself and **refuses to package a board that
