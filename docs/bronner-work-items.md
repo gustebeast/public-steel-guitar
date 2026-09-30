@@ -4020,3 +4020,38 @@ the capture rib.**
 **Cost:** moving a connector changes the DSN, so a **full route**. Batch it with any other
 motor-board change rather than spending two routes — and the optical route occupies the router
 right now, which is why this tick stops at the analysis.
+
+### 7. THE SPACER, VERIFIED — and the anchor's depth is covered by TWO probes, not one
+
+Fresh cache, fasteners live, scope declaring every live part:
+
+* **`pi_spacer` appears ZERO times** in the overlap report — no pair anywhere.
+* **`board_screw_2`: 0 pairs. `board_insert_2`: 0 pairs.** The Pi's fastener is clear of
+  everything, `knee_housing` included. That is the user's report closed by measurement.
+* `pi_cradle()` is **1 solid**; `pi_spacer` vs `pi_cradle` is **0.00 mm³**.
+* sweep clean; 138 unintended overlaps, all pre-existing and none involving this work.
+
+⚠ **The bore's full depth is only covered because two probes ran, and neither covers it alone.**
+The bore runs **z −77.45..−68.95** (from the board's underside down `anchor_min_wall`):
+
+| probe | range tested | result |
+|---|---|---|
+| `_probe_pi_anchor_sweep` | −77.45..−68.95 | clear below, 219.0 mm³ of chassis |
+| `_probe_pi_spacer` | −75.85..−67.35 | nothing foreign in the 1.6 mm shell |
+
+The second was written for the *rejected* boss-level-with-the-top-face variant. It happens to
+overlap the real range, but if the design had moved again the covering probe would have been the
+one for a variant that no longer existed. **A probe pinned to a design decision expires with
+it** — the same trap as the frozen pad sites fixed in `route.py` this tick, in a different guise.
+
+### 8. ⚠ FLAG FOR WHOEVER OWNS `knee_housing`: 3334.4 mm³ INTO `chassis_2`
+
+The largest unintended overlap in the bay, and **pre-existing** — not from this work. It is
+either a designed mortise/tenon contact that was never declared (in which case declaring it
+would stop it masking real faults) or a real interference in the joinery.
+
+It matters here because it is the **same joinery the user named** as the reason the Pi's screw
+had nowhere to go. The Pi's anchor is now well clear of it, so this is not blocking, but a
+3.3 cm³ undeclared overlap sitting permanently at the top of the list is exactly the kind of
+noise that hid the 14.2 mm³ spacer fault for a whole run. **Not mine to fix** — `knee_housing`
+belongs to the lever work — so it is raised, not touched.
