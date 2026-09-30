@@ -801,6 +801,10 @@ def _build() -> cq.Workplane:
     # so the same cutter the board uses comes through here -- which is what keeps the two
     # concentric. Grown half a bead: the pad is structure, the board is not, and a driver
     # that just clears the board should not scrape the plastic.
+    # ⚠ STAYS AT HALF A BEAD -- see OP.JACK_ACCESS_D for the sweep that settled it. This was
+    # briefly grown to a driver's size and REVERTED: the requirement is reaching the head, not
+    # withdrawing the screw, and jack 0 already passes a O4.0 column against a O2.887 key.
+    # Widening it would take structure out of the pad for a problem that is not there.
     body = body.cut(OP.jack_access(grow=D.MIN_WALL / 2))
     # ...and the board's M4 ANCHORS, back now that there is something to sink them into.
     # The screw enters from ABOVE, down through the board's clearance hole, into the pad.

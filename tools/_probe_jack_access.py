@@ -12,7 +12,12 @@ import cadquery as cq
 from src.build import collect_components
 from src import top_plate as TP
 
-KEY_D = 6.0            # 2.5 mm hex key + a grip/driver body; generous on purpose
+# ⚠ THE BARE KEY, NOT A DRIVER BODY. This was 6.0 "generous on purpose" and that generosity
+# produced a WRONG ANSWER: it reported the optical board obstructing jack 0 by 1.60 mm, when
+# the board is deliberately sized for a bare key and clears it by 1.775 against the 1.4435 it
+# needs (optical_pickup's own assert, once it was reading the right edge). Size the probe to
+# the tool the project actually standardised on -- 2.5 mm across flats, 2.887 across corners.
+KEY_D = 2.887          # 2.5 mm hex key, ACROSS CORNERS (= 2 * _HEX25_R)
 COL_H = 45.0           # how far up the key has to swing clear
 BORE_D = TP.HEAD_POCKET_D
 
