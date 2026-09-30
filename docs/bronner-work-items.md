@@ -53,7 +53,7 @@ a stale marker, striking the marker is part of the work.
 | … ✅ but perpendicular does NOT force an overlap | the four conductors join corresponding points on two **skew** lines, and such segments are pairwise skew — they cannot intersect. Measured closest approach for straight pin-to-pin runs: **1.40 mm** against a 1.30 mm conductor OD (**CLEAR**); reversed order gives 1.30 (touching). So the 32 mm³ is the rigid-section BUNDLE MODEL, not the connectors |
 | … ⚠ and the margin is why this is not yet a fix | **0.10 mm** of clearance, on STRAIGHT lines that ignore the chassis. The real run must thread the wiring port, which only adds constraints. Do not treat “skew lines cannot meet” as a licence to ship a 0.1 mm harness |
 | … what this DOES unblock | per-conductor pin-to-pin routing is **not** among the five attempts `check_overlaps` rules out — all five (`across` seed, way order, 2×2 section, wider ribbon, chord at the rise) are variants INSIDE the bundle model. And the file's own docstring says the lever segments already do pin-to-pin successfully “because both their connectors face the same way”. The open question is whether it survives the port |
-| ▶ FreeCAD hub integration (cadkit) | **NOT STARTED.** The crash is fixed — the busy guard arrived with the sync — but the PID/kill design is still there. **Test `--single-instance` FIRST**: it decides the other three items. See the section below |
+| FreeCAD hub integration (cadkit) | ✅ **DONE, LANDED, PROPAGATED 11/11** (`3097596`…`4c9575f` in canonical cadkit). PID and `_kill_hub()` deleted; a wedged or stale hub is reloaded IN PLACE via `--single-instance <macro>`, which was measured to execute the macro inside the running FreeCAD. Four bugs found by testing, one of which (adoption silently re-importing every tab) only appeared from a VENDORED copy. 38-check guard in `cadkit/freecad/test_hub.py`. See the section below |
 | Pi retention | the user's printed spacer, built and gate-clean |
 | I/O board TRS + gain | ✅ **LANDED AND ROUTED** (`a09089a` … `ba97b18`). J5 → NMJ6HCD2; ring leg = a part-for-part mirror of the tip's phantom guard (U9/R20/D7/C41/R21); gain = MCP4261 dual pot **in front of** both buffers |
 | ⚠ the ring needed a PHANTOM GUARD | on a TRS→XLR the ring IS pin 3, so +48 V arrives down it through 6.81k exactly as down pin 2. The tip has been guarded since the board was drawn; a ring added without R9/C1/D5's mirrors would have been a new 48 V path onto a new op-amp |
@@ -442,109 +442,77 @@ Keep the ring, lip, wall, lean and M4 boss exactly as they are — only the root
   the missing hole.
 * `pickup_zplate` ↔ `wire_pickup` — must hold across the jack travel, not just the demo pose.
 
-## FreeCAD hub integration (cadkit) — run the TEST first, it gates the rest
+## FreeCAD hub integration (cadkit) -- ✅ DONE, LANDED AND PROPAGATED 2026-09-30
 
-The viewer crash is fixed and needs nothing further: the vendored `freecad_view.py` now
-carries `_BUSY_MAX_S` and the `_busy_age()` guard, which arrived with the sync from main.
-Verified 2026-09-30: **zero content differences** against canonical across every `.py`
-(the "26 drifted files" reported earlier were CRLF-vs-LF noise, not drift — a propagate
-is NOT needed, and the earlier claim that one was is withdrawn).
+All four items are complete in canonical `../cadkit` and propagated to **11/11 consumers**
+(`tools/propagate.py`, pushed to github.com/gustebeast/cadkit). This worktree got it through
+`agent_sync sync`, which propagate skips linked worktrees for by design.
 
-What is left is the DESIGN, which the user pushed on and which is right: the hub keeps a
-process id and a force-kill for something they should not be needed for.
+**The test that gated everything came back the opposite way to expected, and that is what
+shaped the design.** `freecad.exe --single-instance <macro>` **executes the macro inside the
+already-running FreeCAD**: process count stays at 1 and `.codestamp` -- written only inside
+`start_hub` -- is rewritten. So the answer to "new code in a live hub" and "a wedged watch
+loop" is the SAME non-destructive call, and the PID plus `taskkill /F /T` had no job left.
 
-### 1. THE TEST — RUN 2026-09-30, and (a) is answered
+| item | state |
+| --- | --- |
+| 1. the test | ✅ `--single-instance` forwards a FILE into the running instance (+40 MB, 1 process), and forwards a MACRO too -- the macro is what mattered |
+| 2. documents carry provenance | ✅ source step/mtime/size live on `doc.Meta`; `_tracked()` reconciles `App.listDocuments()` against disk each tick. `_hub["projects"]` is gone |
+| 3. hot-reload the viewer | ✅ `view.FCMacro` reloads `freecad_viewer` on re-run, after `shutdown()` drops the old QTimer + shortcuts. Compiles the file FIRST, so a typo costs nothing |
+| 4. delete the PID and the kill | ✅ `_MARKER`, `_hub_running()`, `_kill_hub()` deleted. Liveness = heartbeat; loading = `.busy`; wedged or stale = re-run the macro in place |
 
-**(a) Does `--single-instance` forward a file to the RUNNING instance? YES.**
-With the hub up (1 freecad.exe), `freecad.exe --single-instance pctg/guide_post.step`
-left the process count at **1** and the existing process grew 1,491,164 K -> 1,531,112 K
-(~40 MB, a new document's overhead). It did not start a second FreeCAD. So FreeCAD DOES
-offer an external way in, and the earlier claim that it offers none is withdrawn.
+**Verified against the live hub, not just in a harness.** PID 31828 took three separate
+in-place reloads without ever restarting, both tabs intact each time, `.error` never written.
 
-**(b) Does a second open of the SAME file re-import, or just focus? THE MEASUREMENT IS VOID.**
-The run appeared to grow memory only 1,531,112 -> 1,533,864 K (+2.7 MB against the +40 MB a
-new document cost). **That number has been WITHDRAWN.** The user reports a **modal Save As
-dialog** appeared during the test and had to be closed by hand. If it was raised by the FIRST
-invocation and was still up when the second fired, the second import was **queued behind a
-blocked GUI thread**, not completed -- so +2.7 MB measures a stalled import, not a focus.
-The two runs cannot be told apart after the fact, so the reading is discarded rather than
-reported as weak evidence. (b) is UNANSWERED, not partly answered.
+### what only showed up by testing, and would have shipped otherwise
 
-**⚠ AND THE DIALOG IS THE REAL FINDING -- it is already a known, already-defeated bug.**
-`cadkit/freecad/freecad_viewer.py:146` documents it: FreeCAD 1.1's `ImportGui.insert` pops a
-modal Save As when the target document **has never been saved**, and it "wedges the hub on
-every build". The hub defeats it at line 151 by giving the empty doc a throwaway `FileName`
-in temp BEFORE importing. The CLI test went AROUND that workaround, which is why the dialog
-appeared. **It would not occur in the final version through the hub.**
+* **A code update ORPHANED the tabs it inherited.** Tabs from an older hub carry no stamp, so
+  `_tracked()` did not see them: the tab looked fine and silently never refreshed again.
+  `_open_project` adopts lazily when a build next asks for that project, which is too late.
+  Fixed by adopting from the `.status` file the previous hub already wrote.
+* **⚠ ADOPTION WAS RE-IMPORTING EVERY TAB IT ADOPTED -- the exact cost it exists to avoid.**
+  `.status` wrote mtimes as `%.6f`; real mtimes carry finer digits (NTFS keeps 100 ns). The
+  stamped value compared unequal to the file, so every adopted tab re-imported its STEP on
+  the next tick. **This explains the one timeline I could not account for**: 104 s between a
+  reload and the status write is TWO big imports, not one. Fixed three ways, the first two
+  each sufficient: compare within `_MTIME_EPS`, snap adoption to the real mtime, and write
+  `repr(float)`.
+  **Found by running the test from a VENDORED copy, not from canonical** -- canonical's mtime
+  happened to be exactly representable at microsecond precision and the vendored ones' were
+  not. A test that only runs where it was written is a test that passes where it was written.
+* **The inbox open was the one blocking load with no `.busy` marker.** Measured on a real tab
+  open: **35 s of frozen heartbeat with `.busy` False** for a 128 MB assembly, well past the
+  30 s staleness limit. Same fault the marker was introduced for -- it used to be answered by
+  force-killing the hub mid-import, which is the crash the user reported. `start_hub`'s open
+  and `_tick`'s reload were already marked; this one was not.
+* **A macro failure was invisible from outside.** FreeCAD sends the traceback to its Report
+  view, which no build can read, while the launcher now DEPENDS on the macro running. It is
+  written to `<heartbeat>.error` and removed on success.
 
-**⚠ WHICH REVERSES WHAT (a) SEEMED TO DECIDE.** The earlier note here said "the INBOX is not
-load-bearing for opening a tab". Too strong. CLI forwarding **creates the document itself**,
-so there is no hook at which to pre-save it -- the modal is therefore UNAVOIDABLE on the CLI
-path, on every fresh document, and a modal wedges everything behind it. The in-process macro
-path exists partly BECAUSE it can pre-save. So (a) proves FreeCAD has an external way in, but
-**not a usable one for opening a project**; the inbox stays. A modal blocker outranks the
-convenience of dropping a component.
+### the guard
 
-**What still turns on (b):** the AUTO-RELOAD is the hub's actual value -- the tab updating
-itself on every rebuild -- and until (b) is proven the resident watcher has to stay for it.
-So items 2-4 remain worth doing. To settle (b), watch a document's contents rather than the
-process: load a file, overwrite it with visibly different geometry, re-run, and read the
-tab. That needs eyes on the window or a probe inside FreeCAD, which is why memory was tried
-first and why it was not enough.
+`py -3.12 cadkit/freecad/test_hub.py` -- **38 checks** against a stubbed FreeCAD (the real
+module cannot be imported outside it, and FreeCAD's headless binary has no GUI modules
+either). Covers adoption, no duplicate tabs, stable-then-reload, a failed reload retrying
+WITHOUT stamping, the busy marker, shutdown/re-arm, and that both code stamps hash the same
+bytes. Mutation-checked: reintroducing the mutate-in-place `Meta` bug, a provenance read that
+always fails, a neutered `_adopt_from_status`, an unmarked inbox open, or BOTH mtime defences
+at once each makes it fail. `doc.Meta` semantics (dict, copy-on-read, survives save/reopen)
+were verified headlessly with `freecadcmd` before any of this was written.
 
-⚠ A stray `guide_post` document is now open in the hub from this test; it is not one of the
-watched projects and can just be closed.
+### ⚠ one consequence to know about
 
-### 1b. the original questions, kept
+**A project whose vendored cadkit is STALE will now push its old code into the hub.** That is
+not new -- the old code answered a stamp mismatch by killing FreeCAD and restarting it on its
+own version -- but it is why this worktree had to be synced before rendering again: its
+pre-provenance copy would have force-killed the user's FreeCAD. Any worktree that has not
+synced is in that state.
 
-FreeCAD 1.1's CLI has **`--single-instance`** ("Allow to run a single instance of the
-application"). The user found it; it contradicts the claim that FreeCAD offers no external
-API, which was wrong and is withdrawn. Two questions, in one sitting:
-
-  a. `freecad.exe --single-instance some.step` with a hub already running — does the file
-     open as a tab in the EXISTING window, or does it start a second process?
-  b. With that file ALREADY open as a tab, run it again — does the document **re-import**
-     (which is the auto-reload the hub exists to provide), or does it merely focus?
-
-Answer (a) decides whether the INBOX is still needed. Answer (b) decides whether the
-resident watcher can shrink to almost nothing or has to stay. **Do not start items 2–4
-before this**: (b) especially can make most of them unnecessary.
-
-### 2. Documents carry their own provenance, not a dict
-
-`freecad_viewer.py` holds `_hub["projects"]`: name -> {step path, mtime at last load,
-pending-stability check}. That is a second copy of the truth and it drifts — close a tab by
-hand and the dict still lists it; reload the module and the dict is gone while the tabs
-remain. Stamp each loaded document with its source path, mtime and size as document
-properties, then reconcile `App.listDocuments()` against disk each tick. No dict, no drift,
-a closed tab simply is not in the list. **And it is what makes item 3 possible**, because
-in-memory state dies on a module reload and document properties do not.
-
-### 3. Hot-reload the viewer module, so nothing ever needs killing
-
-FreeCAD runs the macro once at launch, so new viewer code reaches a live hub ONLY by
-restarting it. That is the second of the two reasons `_kill_hub()` exists. Re-read the
-viewer module each tick (keeping a tiny stable shim resident) and `.codestamp` becomes a
-warning rather than a trigger.
-
-### 4. Then delete the PID and the kill
-
-With 2 and 3 done, PID serves nothing. What each question is really answered by:
-
-    is our watcher alive?        .heartbeat freshness
-    is it mid-load, not wedged?  .busy
-    is my tab there and current?  the status file
-    open a new tab                a request in the inbox
-    which process to kill         the PID   <- the only row, and the one that crashed it
-
-So: drop the marker file and `_kill_hub()`; liveness becomes "is there a fresh heartbeat";
-launch only when there is not. A genuinely wedged hub gets REPORTED instead of
-`taskkill /F /T`-ed — a FreeCAD holding someone's unsaved work is theirs to close.
-
-⚠ ALL OF 2–4 ARE CANONICAL-CADKIT CHANGES, so they go in `../cadkit` and then propagate to
-every project that vendors it — never edited in the vendored copy here. That is also why
-the test comes first: the blast radius is every project, so it is worth knowing which of
-these are needed before touching any of them.
+**And one behaviour change:** if a FreeCAD is running that is NOT our hub (the user started
+it themselves), the hub is now planted INSIDE it rather than a second window being spawned.
+That is the user's own stated model -- "check if freecad is running at all, if not launch it,
+if so check if your tab is already there" -- and the macro no longer needs `FREECAD_VIEW_*`
+in its environment for it, because a forwarded macro runs with the RUNNING process's env.
 
 ## Done this session
 
