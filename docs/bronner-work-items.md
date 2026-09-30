@@ -4926,3 +4926,40 @@ That is the harness to generalise for `+3V3A` / `SAI_FS` work: route those two n
 neighbours, not the whole board. ⚠ And with its own caveat, which pinsearch states: it cannot see
 a change that would have made the other nets route differently, so **it ranks candidates and the
 full `finish.py` still confirms a result.**
+
+## ⚠⚠ THE ROUTER WAS ONE TEMP-DIRECTORY CLEANUP FROM UNBUILDABLE (2026-09-30)
+
+Found while reading `pinsearch.py` for its subset-routing trick. **`route.py` loaded
+freerouting.jar from a session scratch directory:**
+
+```
+JAR = %LOCALAPPDATA%\Temp\claude\C--Users-...\<session-id>\scratchpad\freerouting.jar
+```
+
+That is this session's temp folder. When it is cleaned, **the entire routing pipeline stops
+working — for the lead and every agent who takes the merge, not just the session that downloaded
+the jar** — and nothing would explain why: the file is simply gone.
+
+⚠ **This project has already lost a tool exactly this way.** `scratchpad/maze.py` vanished, and
+the note written to replace it says *"anything that has to be re-run every time the route changes
+cannot live in a scratch directory"*. Then `route.py` itself did the same thing, and `pinsearch.py`
+hard-coded a second copy of the same path.
+
+**Fixed:** `_find_jar()` resolves in order —
+
+1. `$FREEROUTING_JAR` (explicit override)
+2. `%LOCALAPPDATA%\Programs\freerouting\freerouting.jar` (stable per-machine install; the jar is
+   copied there now)
+3. any session scratchpad copy, newest first, so an existing checkout keeps working until someone
+   makes the stable copy
+
+…and raises with instructions if none is found, instead of failing obscurely deep in a subprocess.
+`pinsearch.py` now imports `JAR` from `route` rather than keeping its own copy — **one resolver,
+not two**, which is the actual bug behind a duplicated hard-coded path.
+
+The jar is ~64 MB, so it is deliberately NOT committed; the point is only that it must not live
+somewhere temporary.
+
+⚠ Verified: `route.py` compiles with **zero SyntaxWarning** (the Windows paths in the new
+docstring and message needed raw strings — a warning printed on every route is noise this
+pipeline does not need), and both modules resolve to the same existing file.
