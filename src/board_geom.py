@@ -103,6 +103,12 @@ HEIGHT = {
                                     # body height as the 8-way above; only the
                                     # length differs (11.9 against 19.9).
     "Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal": 15.67,     # Neutrik's STEP: body top
+    # ⚠ THE TRS SIBLING IS THE SAME HOUSING. NMJ4HCD2 and NMJ6HCD2 differ in their
+    # CONTACTS, not their body: same shell, same bushing, same panel cut-out, same
+    # 15.67 mm to the body top. So this is an alias and not a second measurement --
+    # and it has to be here at all because a part with no height is a part the CAD
+    # silently leaves out, which is what cad_geom_check caught on the first route.
+    "Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal": 15.67,
     "L_0603_1608Metric": 0.95, "L_Taiyo-Yuden_NR-30xx": 1.50,
     "Relay_DPDT_FRT5_SMD": 5.10,
     "SOT-23": 1.30, "SOT-23-5": 1.45, "SOT-23-6": 1.10,
@@ -174,6 +180,14 @@ PANEL = {
     #   boss_d   the counterbore plus a 1.6 wall all round, flat underneath at the
     #            counterbore's own bottom so no sliver is left between them
     "Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal": dict(
+        mouth=(1.0, 0.0), axis_h=8.14, nose=None, stub=(11.4, 3.0),
+        nut=(11.0, 2.05, 9.0, 3.74), clamp=4.0, boss_d=18.8, cbore_d=15.6,
+        opening=("round", 11.8), mount="rear"),
+    # The TRS sibling, and every number above is UNCHANGED: Neutrik's D-series housing is
+    # common to both, so the panel work -- the 3.0 mm clamp, the nose nut, the 15.6
+    # counterbore, the 11.8 opening -- is the same part of the endplate either way. What
+    # differs is two more contacts inside the shell, which the panel never sees.
+    "Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal": dict(
         mouth=(1.0, 0.0), axis_h=8.14, nose=None, stub=(11.4, 3.0),
         nut=(11.0, 2.05, 9.0, 3.74), clamp=4.0, boss_d=18.8, cbore_d=15.6,
         opening=("round", 11.8), mount="rear"),

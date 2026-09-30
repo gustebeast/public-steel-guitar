@@ -119,8 +119,17 @@ def _c(tag, value, desc, fp="Capacitor_SMD:C_0402_1005Metric"):
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
 
+# ⚠ AND _d WAS THE ONE THAT NEVER GOT THE FIX. The note above says a ref that agrees
+# with its tag "without ref= ... is a COINCIDENCE of CREATION ORDER" -- and _r and _c were
+# both pinned while the diode helper was left as it was, so the fault the note describes
+# was still live in this file. Adding D7 for the ring's phantom guard BEFORE D6 in the
+# source proved it: the netlist came out with "D7" carrying +24V and PWR_GND, which are
+# D6's nets, because skidl had numbered them by creation order and the placement dict --
+# keyed by ref -- then put each part at the other one's coordinates. DRC found it as a
+# solder-mask bridge between parts that should not have been near each other.
+# Caught in one route. It would have been much harder to see in a year.
 def _d(tag, value, desc, fp="Diode_SMD:D_SOD-523"):
-    return Part(name="D", ref_prefix="D", tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="D", ref_prefix="D", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=fp,
                 pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
 
@@ -243,18 +252,35 @@ def output_panel():
     #      instrument plays with no Pi, no firmware and no DAC.
     #   2. TRS stereo         -- tip = DAC left, ring = DAC RIGHT.
     #   3. TRS balanced mono  -- tip = +signal, ring = -signal.
-    # ⚠ AND 2 AND 3 ARE THE SAME HARDWARE. Both want "the other channel on the ring"; they
-    # differ only in WHAT the Pi puts there, R for stereo and -L for balanced. So the Pi
-    # generates the inverted leg in software and this board grows no inverter, no analog mux
-    # and no mode switch -- and gets a differential pair that is sample-synchronous and
-    # gain-matched by construction, which an analog inverter is not. The DAC's right channel
-    # already existed and was being thrown away (it was literally Net("DAC_OUT_R_NC")).
-    # ⚠ BALANCED IS A PROCESSED MODE, and that is a real limit, stated rather than hidden:
-    # the inverted leg comes from the Pi, so mode 3 does not work in the direct path. The
-    # user's own framing says direct IS mode 1, so nothing is lost -- but a TRS cable into a
-    # balanced input while in direct mode still behaves correctly, as IMPEDANCE-BALANCED:
-    # the ring sits at the ring buffer's low output impedance instead of floating, which is
-    # what a receiver's common-mode rejection actually needs from the cold leg.
+    # ⚠⚠ THE JACK MODE AND THE SOURCE ARE INDEPENDENT AXES, AND AN EARLIER VERSION OF
+    # THIS BLOCK CONFLATED THEM (corrected by the user, 2026-09-30). It read "balanced is a
+    # processed mode", because it was cheaper: if balanced only ever happens when the Pi is
+    # in the path, the Pi can emit -L on the right channel and the board needs no inverter.
+    # That is true and it is the wrong shape. The two settings are:
+    #
+    #     jack     unbalanced mono | balanced mono | unbalanced stereo
+    #     source   magnetic pickup (DIRECT) | optical pickup | MIDI
+    #
+    # and every combination is meant to work -- including BALANCED + DIRECT, which no amount
+    # of Pi-side arithmetic can reach, because the direct path exists precisely so the Pi is
+    # not in it. So the balancing lives HERE, in analog, and is source-agnostic by
+    # construction. One code path instead of two, and the cold leg is correct even with the
+    # firmware stopped.
+    #
+    # ⚠ THE SOURCE AXIS NEEDS NO NEW HARDWARE AT ALL, which is worth saying because it
+    # looks like it should. "Optical pickup" and "MIDI" are both THE Pi VIA THE DAC -- they
+    # differ in what the Pi computes, not in what arrives on this board -- so K1's existing
+    # direct/processed throw already covers all three sources, and the Pi chooses between
+    # the latter two internally.
+    #
+    # ⚠ AND STEREO + DIRECT COSTS NOTHING EITHER, BECAUSE K1 HAS A SPARE POLE. Pole B was
+    # unused (it showed up in ERC as K1_NC_6 / K1_NC_7). Wiring its NC contact to the SAME
+    # `direct` net as pole A, and its NO contact to the attenuated DAC right, makes pole B's
+    # common mean "the right-hand signal, whatever the source": the pickup when direct, DAC
+    # right when processed. Duplicating the mono pickup across both channels therefore falls
+    # out of the relay that already selects the source, with no part and no second control.
+    # The DAC's right channel already existed and was being thrown away -- it was literally
+    # Net("DAC_OUT_R_NC").
     outp, ringp = Net("JACK_TIP"), Net("JACK_RING")
     j5 = Part(name="NMJ6HCD2", ref_prefix="J", ref="J5", tag="J5", dest="NETLIST", tool="skidl",
               value="NMJ6HCD2", description="1/4 in TRS output, PCB mount, panel bushing",
@@ -500,7 +526,7 @@ def output_panel():
                  18, 49, 12, 69,                        # VSS + the exposed pad
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 37, 38, 25, 48, 52, 63, 39, 1,
-                 64, 65, 26)]       # PB8, PB9, PB0 -- the gain pot's SPI
+                 64, 65, 26, 27)]   # PB8, PB9, PB0 pot SPI; PB1 the jack mode
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -527,9 +553,19 @@ def output_panel():
     # 160 us, four hundred times inside the 50 ms budget below. Spending a hardware SPI
     # peripheral on it would buy nothing and cost a pin map that is already full.
     pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
+    jack_mode = Net("JACK_MODE")   # 0 = balanced (inverted tip), 1 = stereo
     pot_cs += u1[64]
     pot_sck += u1[65]
     pot_sdi += u1[26]
+    # ⚠⚠ PIN 27 IS AN INFERENCE AND MUST BE READ OFF THE COLUMN BEFORE FAB.
+    # Every other pin on this part was taken from WCH's QFN-68 column with per-word
+    # coordinates, and the note above says why: "Nothing downstream can catch a wrong
+    # pin number -- SKiDL wires to the NUMBER, layout places the pad it names, DRC
+    # agrees the copper matches -- so it is checked here or it is not checked at all."
+    # 27 is PB1 ONLY because 26 is PB0 and the two are adjacent in that column. That is
+    # reasoning about a table, not reading one, and it is the exact move the note
+    # forbids. It is written down as unverified rather than quietly assumed.
+    jack_mode += u1[27]
     mclk = Net("I2S_MCK")
     mclk += u1[39]
     v3v3 += u1[1]             # VBAT: no backup battery, so it is the main supply
@@ -725,6 +761,16 @@ def output_panel():
     # at VMID = 2.5 V, so the whole waveform fits the rail instead of the bottom half
     # clipping at ground.
     sel, buf = Net("AUDIO_SEL"), Net("BUF_OUT")
+    # The ring side's nets, declared together and BEFORE anything reaches for them.
+    # They are used across three blocks that do not appear in signal order -- K1 wires
+    # pole B, U12 selects, U10 attenuates -- and a net created where it is first
+    # mentioned makes that order load-bearing for no reason.
+    ring_in = Net("RING_BUF_IN")
+    ring_buf = Net("RING_BUF_OUT")
+    ring_blocked = Net("RING_BLOCKED")
+    ring_gain = Net("RING_GAIN")
+    ring_att = Net("RING_ATT")
+    dac_r_filt = Net("DAC_R_FILT")
     u7_in, pk_in, vmid = Net("OUT_BUF_IN"), Net("PICKUP_IN"), Net("VMID")
     u7 = Part(name="OPAMP", ref_prefix="U", ref="U7", tag="U7", dest="NETLIST", tool="skidl",
               value="TLV9061IDBVR", description="output buffer -- drives the TS jack",
@@ -765,9 +811,6 @@ def output_panel():
     # identical topology, identical 220R series and identical 2.2 uF block is what makes
     # the two legs the same impedance; a different op-amp on the cold leg would be a
     # CMRR fault that measures fine on a bench and hums in a room.
-    ring_in, ring_buf = Net("RING_BUF_IN"), Net("RING_BUF_OUT")
-    ring_blocked = Net("RING_BLOCKED")
-    dac_r_filt, ring_att = Net("DAC_R_FILT"), Net("RING_ATT")
     u9 = Part(name="OPAMP", ref_prefix="U", ref="U9", tag="U9", dest="NETLIST",
               tool="skidl", value="TLV9061IDBVR",
               description="ring buffer -- the TRS cold leg, matched to U7",
@@ -777,9 +820,61 @@ def output_panel():
                     Pin(num=5, name="V+", func=P)])
     ring_buf += u9[1], u9[4]      # unity-gain follower, exactly as U7
     agnd += u9[2]
-    ring_gain = Net("RING_GAIN")
-    ring_gain += u9[3]        # the pot's P1 wiper -- see U10
+    u9_in = Net("RING_BUF_SEL")
+    u9_in += u9[3]            # U12 picks what this is: the inverted tip, or the right channel
     v5 += u9[5]
+
+    # ── U11: THE INVERTER. This is what "balanced" actually costs. ─────────────
+    # A fourth TLV9061 -- the same SKU as U7, U8 and U9, so the balancing capability adds a
+    # line to the reel count and no new part to buy or stock.
+    # ⚠ ITS INPUT IS U7's OUTPUT, NOT THE POT WIPER, AND THAT IS THE WHOLE POINT. The two
+    # legs of a balanced pair have to carry the same magnitude at EVERY volume setting. A
+    # pot wiper's source impedance varies with position -- up to a quarter of the track,
+    # 2.5k on a 10k part -- and that impedance sits in series with R26, so an inverter fed
+    # from the wiper would have a gain that CHANGES AS THE VOLUME MOVES. Taking `buf`
+    # instead puts an op-amp output (milliohms) in front of R26, so the gain is R27/R26 and
+    # nothing else, and the cold leg tracks the hot one exactly.
+    # ⚠ AND R26/R27 ARE 0.1%, NOT 1%. The receiver's common-mode rejection is set by how
+    # well the two legs match: a 1% pair allows 2% of gain error, which is about 34 dB of
+    # CMRR, and 0.1% buys roughly 54 dB. That is the difference between a balanced output
+    # that measures balanced and one that merely has three contacts. The parts cost cents.
+    inv_n, inv_out = Net("INV_IN_N"), Net("INV_OUT")
+    u11 = Part(name="OPAMP", ref_prefix="U", ref="U11", tag="U11", dest="NETLIST",
+               tool="skidl", value="TLV9061IDBVR",
+               description="unity INVERTER -- makes the balanced cold leg in analog, so "
+               "balanced works with the DIRECT source too",
+               footprint="Package_TO_SOT_SMD:SOT-23-5",
+               pins=[Pin(num=1, name="OUT", func=P), Pin(num=2, name="V-", func=P),
+                     Pin(num=3, name="IN+", func=P), Pin(num=4, name="IN-", func=P),
+                     Pin(num=5, name="V+", func=P)])
+    inv_out += u11[1]
+    agnd += u11[2]
+    vmid += u11[3]            # it inverts ABOUT VMID, which is this board's signal zero
+    inv_n += u11[4]
+    v5 += u11[5]
+
+    # ── U12: which of the two the ring carries. ONE BIT, and mode 1 needs none. ────
+    # ⚠ UNBALANCED MONO IS NOT A SETTING HERE. A TS plug shorts ring to sleeve, so mode 1
+    # is selected by the CABLE and this switch can be in either position. That is why three
+    # jack modes need one control line and not two.
+    # ⚠ THE SWITCH IS ON THE BUFFER'S INPUT, NOT ITS OUTPUT, and that is deliberate: an
+    # analog switch's on-resistance varies with signal voltage, so passing CURRENT through
+    # one is what turns it into distortion. U9's input draws picoamps, so Ron modulation has
+    # nothing to act on.
+    u12 = Part(name="SN74LVC1G3157", ref_prefix="U", ref="U12", tag="U12", dest="NETLIST",
+               tool="skidl", value="SN74LVC1G3157DCKR",
+               description="SPDT analog switch -- ring = inverted tip (balanced) or the "
+               "right-hand channel (stereo)",
+               footprint="Package_TO_SOT_SMD:SOT-363_SC-70-6",
+               pins=[Pin(num=1, name="B1", func=P), Pin(num=2, name="GND", func=P),
+                     Pin(num=3, name="A", func=P), Pin(num=4, name="B2", func=P),
+                     Pin(num=5, name="VCC", func=P), Pin(num=6, name="S", func=P)])
+    inv_out += u12[1]         # B1: balanced -- the inverted tip
+    agnd += u12[2]
+    u9_in += u12[3]           # A: the common, into U9
+    ring_gain += u12[4]       # B2: stereo -- pole B's signal, after P1
+    v5 += u12[5]
+    jack_mode += u12[6]
 
     # ── U10: THE GAIN, AND IT IS AN ATTENUATOR IN FRONT OF THE BUFFERS ─────────
     # MCP4261-103E/ST: dual 10k digital pot, SPI, TSSOP-14. Pinout off Microchip's
@@ -824,7 +919,7 @@ def output_panel():
     vmid += u10[10]           # P0B: AC ground
     # P1 = the RING path. Same 10k, same code written to both, so the two legs track
     # and a balanced pair stays balanced at every volume setting.
-    ring_in += u10[7]         # P1A: DAC right, attenuated, AC-coupled, VMID-biased
+    ring_in += u10[7]         # P1A: pole B, attenuated, AC-coupled, VMID-biased
     ring_gain += u10[6]       # P1W -> U9
     vmid += u10[5]            # P1B
 
@@ -845,6 +940,7 @@ def output_panel():
     # and the common is held at 0 V by R15 -- so switching between them moves no DC and
     # makes no click.
     coil, direct, dac_att = Net("RELAY_COIL"), Net("DIRECT_AC"), Net("DAC_ATT")
+    ring_sel = Net("RING_SEL")   # pole B common: the right-hand signal, whichever source
     k1 = Part(name="G6K-2F-Y", ref_prefix="K", tag="K1", dest="NETLIST", tool="skidl",
               value="G6K-2F-Y-DC5", description="true-bypass select; DE-ENERGISED = DIRECT "
               "(LCSC C326376)", footprint=RELAY_FP, pins=[Pin(num=i, func=P) for i in range(1, 9)])
@@ -853,8 +949,22 @@ def output_panel():
     sel += k1[3]
     direct += k1[2]
     dac_att += k1[4]
-    for i in (5, 6, 7):
-        Net("K1_NC_%d" % i).connect(k1[i])
+    # ── POLE B: the right-hand signal, and it costs NOTHING because the pole existed ──
+    # Pole A answers "what does the TIP carry"; pole B answers the same question for the
+    # RING, off the same coil and therefore always in agreement with it. NC is direct and
+    # NO is processed on both poles, so:
+    #     direct   -> pole B carries the PICKUP, the same signal as the tip. That IS
+    #                 "stereo + direct duplicates the mono pickup across both channels",
+    #                 and it needs no control of its own.
+    #     processed-> pole B carries the DAC's RIGHT channel, which the Pi is free to make
+    #                 genuinely different from the left.
+    # ⚠ BOTH NC CONTACTS SHARE ONE NET AND ONE COUPLING CAP. k1[7] joins `direct`, which
+    # C38 already feeds from the pickup buffer -- the two poles want the identical signal,
+    # so a second cap would only add a second high-pass corner to mismatch against the
+    # first. U8 buffers the coil precisely so it can be tapped more than once.
+    direct += k1[7]
+    ring_att += k1[5]
+    ring_sel += k1[6]
     q1 = Part(name="Q_NMOS", ref_prefix="Q", tag="Q1", dest="NETLIST", tool="skidl",
               value="AO3400A", description="relay coil driver (LCSC C20917)",
               footprint="Package_TO_SOT_SMD:SOT-23",
@@ -1064,13 +1174,15 @@ def output_panel():
              "safety part for the same reason: 100 V is the RATING, because it sits charged "
              "to 48 V for the duration of a phantom fault",
              "Capacitor_SMD:C_1210_3225Metric"),
-            ("C42", "1uF", ring_att, ring_in, "ring buffer input coupling -- C39's mirror",
-             C0805),
+            ("C42", "1uF", ring_sel, ring_in, "ring path coupling, off K1 POLE B -- "
+             "C39's mirror on the other pole", C0805),
             ("C43", "100nF", v5, agnd, "U9 bypass", None),
             ("C44", "100nF", v5, agnd, "U10 bypass -- the pot's supply is also the reference "
              "its wiper divides, so it gets its own", None),
             ("C45", "2.2nF C0G", dac_r_filt, agnd, "DAC right output filter, with R23 -- "
-             "C34's mirror", None)):
+             "C34's mirror", None),
+            ("C46", "100nF", v5, agnd, "U11 bypass", None),
+            ("C47", "100nF", v5, agnd, "U12 bypass", None)):
         c = _c(tag, val, desc, fp) if fp else _c(tag, val, desc)
         a += c[1]
         b += c[2]
@@ -1094,7 +1206,13 @@ def output_panel():
             ("R24", "10k", dac_r_filt, ring_att, "DAC right -6 dB with R25 -- R14's mirror. "
              "2.1 Vrms is more than a 5 V rail carries on EITHER channel"),
             ("R25", "10k", ring_att, agnd, "ring attenuator bottom -- R15's mirror, and it "
-             "holds the node at 0 V so nothing steps when the DAC starts")):
+             "holds the node at 0 V so nothing steps when the DAC starts"),
+            ("R26", "10k 0.1%", buf, inv_n, "inverter input -- 0.1% because this pair IS "
+             "the balanced output's CMRR (1% would be ~34 dB, 0.1% ~54 dB)"),
+            ("R27", "10k 0.1%", inv_n, inv_out, "inverter feedback -- the other half of "
+             "that pair, and it must be the SAME tolerance and ideally the same reel"),
+            ("R28", "10k", ring_sel, agnd, "pole B common to 0 V -- R15's mirror, so the "
+             "ring throw makes no DC step either")):
         r = _r(tag, val, desc)
         a += r[1]
         b += r[2]
@@ -1502,40 +1620,50 @@ BOARD_NOTES = {
         "R18": (0.60, 5.00, 0.0),
         "C40": (0.40, 3.00, 0.0),
         "R15": (-1.60, 11.60, 0.0),     # relay common to 0 V
-        # ── THE RING LEG. Sites MEASURED, not chosen by eye ──────────────────
-        # Every one of these came out of a courtyard-collision sweep against the board as
-        # it actually stood (0.25 mm of air between courtyards, 1.0 mm off the rim), seeded
-        # at the part's electrical anchor and taking the NEAREST legal site -- worst case
-        # 5.50 mm from where it was asked for, most under 2 mm. Placing this row by reading
-        # the dict and guessing at gaps is exactly the move that has gone wrong on this
-        # board before, and the sweep costs seconds.
-        # ⚠ THE RING CHAIN DELIBERATELY SITS BELOW THE TIP CHAIN, not beside it: the tip
-        # runs along y 8.00 from x 4 to 21 and J5's courtyard owns everything above y 11.34,
-        # so the only room that keeps the two legs SHORT and PARALLEL -- which is what a
-        # differential pair wants -- is the strip beneath.
-        "U9": (9.50, 4.00, 0.0),        # ring buffer, matched to U7
-        "R20": (10.00, 1.75, 0.0),      # ring series 220R (R9's mirror)
-        "D7": (18.04, 5.34, 0.0),       # ring phantom clamp (D5's mirror)
-        "C41": (19.22, 2.78, 0.0),      # ring DC block, 1210 (C1's mirror)
-        "R21": (21.00, 5.00, 0.0),      # ring bleed (R10's mirror)
-        "C42": (6.44, 1.31, 0.0),       # ring input coupling (C39's mirror)
-        "R22": (6.66, 2.94, 0.0),       # ring bias to VMID (R16's mirror)
-        "C43": (9.12, 0.65, 0.0),       # U9 bypass
-        # the gain pot and its bypass
+        # ── THE RING LEG, THE INVERTER AND THE GAIN POT. Sites SWEPT, not chosen ────
+        # Every position below came out of a courtyard-collision sweep against the board as
+        # it actually stood: 0.60 mm of air between courtyards, 1.0 mm off the rim, biggest
+        # parts first, and each IC immediately followed by its own bypass so the bypass gets
+        # the near site rather than whatever is left.
+        # ⚠ 0.60 AND NOT 0.25, AND THE FIRST ROUTE IS WHY. At 0.25 mm of courtyard air the
+        # board came back with eleven SOLDER_MASK_BRIDGE errors through this region: the
+        # courtyards cleared each other and the MASK OPENINGS did not. Courtyard clearance
+        # is not mask clearance, and only one of them is what the fab cares about.
+        # ⚠⚠ AND THIS CORNER IS NOW FULL -- SAID PLAINLY, BECAUSE THE NUMBERS SAY IT.
+        # Twenty-one parts went in and the sweep was re-run three times with different
+        # orderings; every ordering placed all of them legally, and every ordering left at
+        # least one part 5-9 mm from where it belongs. D7 is 9.25 mm from the ring it
+        # clamps, C43 is 5.7 mm from U9's supply pin. Those are legal and they are not good,
+        # and re-rolling the sweep a fourth time would only move which part is worst.
+        # The honest reading is that the audio section has run out of room, not that the
+        # placer needs another try. It is TOLERABLE as it stands -- D7 sits behind R20's
+        # 220R, so U9 is current-limited whatever the clamp does, and an op-amp bypass at
+        # 5.7 mm still resonates well above the audio band -- but if this board is ever
+        # respun, the +X edge cannot move (it is the panel) so the growth is -X, and it
+        # wants the USB block at that end spread out to free the middle for the audio.
         "U10": (14.00, 2.00, 0.0),      # MCP4261, between the two legs it drives
-        # ⚠ C44 IS 3.00 mm FROM ITS ANCHOR AND NOT 2.25, BECAUSE OF A STITCHING VIA.
-        # At the nearest legal site layout could find no room beside pad 2 for a via down to
-        # the plane, and a bypass cap whose ground reaches the plane only THROUGH THE POUR is
-        # a bypass cap that island removal can quietly disconnect. Re-swept with 0.90 mm of
-        # air instead of 0.25 -- enough for the via and its clearance -- and took the nearest
-        # site that passes THAT test. Declaring a stitch_exception would have been one line
-        # and the wrong line.
-        "C44": (17.00, 5.00, 0.0),
+        "C44": (16.75, 9.96, 0.0),      # pot bypass. 8.4 mm, and the least bad of the four:
+                                        # the pot is written on a volume change, not an edge
+        "U9": (6.76, 0.43, 0.0),        # ring buffer, matched to U7
+        "C43": (11.49, -2.53, 0.0),     # U9 bypass -- 5.7 mm, the worst of the op-amp three
+        "U11": (2.50, 0.03, 0.0),       # the inverter: the balanced cold leg
+        "C46": (-0.19, 1.00, 0.0),      # U11 bypass, 2.9 mm
+        "U12": (7.00, -3.66, 0.0),      # SPDT: inverted tip, or the right-hand channel
+        "C47": (4.50, -3.10, 0.0),      # U12 bypass, 2.6 mm
+        "R26": (-2.72, 2.63, 0.0),      # the 0.1% pair that sets the balanced CMRR --
+        "R27": (-0.19, -0.94, 0.0),     # same reel, and they want to stay near each other
+        "C41": (21.54, 5.06, 0.0),      # ring DC block, 1210 (C1's mirror)
+        "D7": (18.29, -3.91, 0.0),      # ring phantom clamp (D5's mirror) -- see above
+        "R21": (21.19, 1.51, 0.0),      # ring bleed (R10's mirror)
+        "R20": (7.76, 5.75, 0.0),       # ring series 220R (R9's mirror)
+        "C42": (10.78, -5.29, 0.0),     # ring path coupling, off K1 pole B
+        "R22": (18.44, -7.43, 0.0),     # ring bias to VMID (R16's mirror)
+        "R28": (-7.25, 11.00, 0.0),     # pole B common to 0 V, beside K1
         # the DAC's right channel, beside the left channel's own filter and divider
-        "R23": (10.72, -21.72, 0.0),    # right output filter 470R (R13's mirror)
-        "C45": (10.66, -25.25, 0.0),    # right output filter 2.2nF (C34's mirror)
-        "R24": (8.72, -21.72, 0.0),     # right -6 dB top (R14's mirror)
-        "R25": (7.12, -21.72, 0.0),     # right -6 dB bottom (R15's mirror)
+        "R23": (9.84, -25.88, 0.0),     # right output filter 470R (R13's mirror)
+        "C45": (9.85, -28.14, 0.0),     # right output filter 2.2nF (C34's mirror)
+        "R24": (5.74, -21.34, 0.0),     # right -6 dB top (R14's mirror)
+        "R25": (5.34, -23.81, 0.0),     # right -6 dB bottom (R15's mirror)
         "C7": (4.00, 4.00, 0.0),
         "C8": (7.50, 4.00, 0.0),
         # CC pull-downs and the panel ESD clamps, beside their own connectors

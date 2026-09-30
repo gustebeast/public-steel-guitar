@@ -172,7 +172,7 @@ LCSC = {
 # value that is neither sourced nor generic nor listed below FAILS THE BUILD,
 # which means changing a part number forces you to come here and say so.
 OPEN_VALUES = frozenset({
-    "NMJ4HCD2",            # 1/4 in jack. JLCPCB lists it (C18185363) at ZERO
+    "NMJ6HCD2",            # 1/4 in TRS jack (was the TS NMJ4HCD2). JLCPCB at ZERO
                            # stock, 2026-09-17 -- a listing is not a source
     "USB1046-GF-0180",     # GCT USB-A. Not listed at JLCPCB (2026-09-17); the
                            # nearest is -0190-L-B-A at 5 in stock. ⚠ THE ONE THAT WENT WRONG -- if this
