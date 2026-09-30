@@ -350,27 +350,39 @@ DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
 # being plain boxes and started carrying their real parts -- the boards doing their job
 # for the first time, not new faults. The user's call, today: these must not block merges.
 DEFERRED_RULES = (
-    # THE LEVER FEED'S OWN CONDUCTORS WHERE ITS TWO HALVES MEET IN THE WIRING PORT --
-    # 6 pairs, ~32 mm^3. OWNER bronner from 2026-09-25 (the user's call): this whole run
-    # is being redrawn, because the two outside cables will plug into 4-way sockets on
-    # the MOTOR CONTROLLER's own bottom edge instead of threading up to it.
+    # (THE LEVER FEED'S OWN CONDUCTORS -- wire_canb_(gnd|v5|h|l)_lkl_0 against each other,
+    #  6 pairs, ~32 mm^3 -- WERE DEFERRED HERE FROM 2026-09-25 AND ARE NOW RETIRED, 2026-09-30.
+    #  Three reasons, in the order they settle it:
     #
-    # A cadkit.cables.bundle_paths bug was ONE cause and is fixed (505ea15): the frame
-    # was advanced by a projection that returns noise when the old axis lies near the
-    # new direction, collapsing the bundle to a line at a vertex. It is not the whole
-    # cause -- these pairs still touch with it fixed, so the earlier note claiming the
-    # workarounds were all chasing that bug was too strong. What remains is the real
-    # thing underneath: this cable has a connector at BOTH ends with perpendicular rows,
-    # so its section must turn, and it is drawn as two halves meeting mid-air.
+    #  1. ITS PREMISE HAS ARRIVED. The deferral read "superseded by the controller-mounted
+    #     4-way sockets ... this whole run is being redrawn, because the two outside cables
+    #     will plug into 4-way sockets on the MOTOR CONTROLLER's own bottom edge instead of
+    #     threading up to it". Those sockets EXIST (J2/J6, S4B-PH-SM4-TB, flush on the
+    #     board's downward edge) and ctrl_bus_b already draws the cable into them. It was
+    #     waiting on a future that had already happened.
     #
-    # Ruled out already, with what each measured, so they are not re-tried: a different
-    # `across` seed (103 and 114 mm^3), reversing J2's way order (134, then 25), a 2x2
-    # section instead of a ribbon (132), widening the ribbon (114), and taking the turn
-    # at the port's rise as a chord (25.1 against 16.6).
-    (re.compile(r"^wire_canb_(gnd|v5|h|l)_lkl_0$"),
-     re.compile(r"^wire_canb_(gnd|v5|h|l)_lkl_0$"),
-     "the lever feed's own conductors where its two halves meet (6 pairs, ~32 mm3). "
-     "OWNER bronner: superseded by the controller-mounted 4-way sockets"),
+    #  2. IT CONTRADICTED THIS FILE'S OWN DOCTRINE, forty lines below: both names resolve to
+    #     WIRE_OK keys, so `if ka and kb` returns True under the comment "wires are insulated
+    #     cables: crossing/touching ANOTHER wire is physically fine (and not worth fighting in
+    #     the model)". DEFERRED_RULES is tested FIRST, so the same file was shouting "must be
+    #     fixed before the instrument is finalised" at a pair it otherwise calls fine. The
+    #     deferral predates the _wire_key fix that re-enabled that doctrine for conductors
+    #     named for their function rather than their index.
+    #
+    #  3. AND THE REAL VERSION OF THIS FAULT IS WATCHED ELSEWHERE, WHICH IS WHY DROPPING IT
+    #     LOSES NOTHING. tools/check_cable_pairs.py exists precisely because this gate
+    #     allow-lists wire against wire, and its threshold is the physical one: a contact
+    #     under 4 mm across is a TOUCH (cables converging on a connector, or a crossing), a
+    #     contact that RUNS is two cables occupying the same length of space. Measured
+    #     2026-09-30: its 10 runs are all wire_pwr_* / wire_usb / wire_link, and NO
+    #     wire_canb_*_lkl_0 pair appears in the run list at all -- they are touches.
+    #     ⚠ The "~2 x 2.6 x 19 mm column" in the work-items doc is the bounding box of all
+    #     six pairs TOGETHER, not the extent of one contact. Reading it as a single 19 mm
+    #     run is what made this look like a 4 mm-rule violation; it is not one.
+    #
+    #  So: not declared away, RECLASSIFIED -- by the tool that owns the distinction. If these
+    #  conductors ever start to RUN through each other, check_cable_pairs fails on it with a
+    #  length, which is a better signal than this rule ever gave.)
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
