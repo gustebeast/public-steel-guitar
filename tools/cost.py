@@ -415,7 +415,7 @@ def main(argv=None):
     groups.append(("Shipping + sales tax + duty (%d vendor%s measured)"
                    % (len(landed_seen), "" if len(landed_seen) == 1 else "s"), landed_usd))
     notes.append("The LANDED line is %d measured vendor checkout(s): %s. It is a FLOOR. "
-                 "Nobody has measured freight or tax on the filament or on the listing-priced "
+                 "Nobody has measured freight or tax on the PCTG and TPU filament or on the listing-priced "
                  "mechanical hardware (~$213/instrument), most of which records no vendor "
                  "at all. The duty on the China-shipped motors is not in it either: it is "
                  "a BOUND, printed as the worst-case line under the total -- see "
