@@ -495,6 +495,47 @@ is closed by a deck rib at board level rather than by the PCB.
    nearest the pickup. Dropping them removes the worst routing and the worst coupling in
    one move, at the cost of two markings at the extreme treble end. A real option, not a
    recommendation.
-3. **Per-channel current.** 15 mA is inherited from a strip that lit a whole body; this
-   aperture is 2.4 x 79.6 = 191 mm² per fret, seen in a room. Half may be plenty, and it
-   halves every number in 6.2.
+3. ✅ **CLOSED — 15 mA is the CEILING, and it does not need changing to run dimmer.**
+   (user asked whether it was about max brightness, 2026-09-29.) The datasheet stacks
+   three controls:
+
+       R_IREF  (one resistor per chip)  ->  IOLCmax,  2 mA .. 60 mA
+       BC      7 bits, 128 steps        ->  0-100 % of IOLCmax   ANALOGUE, per colour group
+       GS      16 bits, 65536 steps     ->  0-100 % duty          PWM, per channel
+
+   "IOLCMax is the maximum current for each output. Each output sinks the IOLCMax current
+   when it is turned on **and** global brightness control data (BC) are set to the maximum
+   value of 7Fh." So 15 mA is the on-portion current at full brightness, and every figure
+   in 6.2 is BC = 127 and GS = max on all 24 frets at once — the absolute worst case.
+
+   **Dimming goes through BC, not through a different resistor.** TI: "Output currents
+   lower than 2 mA can be achieved by setting IOLCMax to 2 mA or higher and then using
+   global brightness control to lower the output current." `R_IREF` only wants revisiting
+   if 15 mA is the wrong CEILING; there is headroom to 60 mA if it reads dim.
+
+## 6.6 ⚠ THE FIRMWARE RULE THIS EXPOSES: it is not brightness that makes noise, it is CHANGE
+
+BC and GS dim by different mechanisms and **only one of them switches**:
+
+* **BC lowers the current itself.** The waveform shape does not change.
+* **GS shortens the on-time.** This is what creates switching — and at **GS = FFFFh the
+  output is on for the whole period, i.e. DC, with no switching at all.**
+
+So the quietest lit state is full GS with brightness set by BC, and the quietest state of
+all is off. ⚠ **But BC cannot be used per fret**: it is per colour GROUP, and bronner's
+`DRV_LED_OUTS` note already establishes that all three BC fields must be set equal because
+an RGBW LED necessarily mixes groups. BC is therefore one global brightness for a whole
+chip. Per-fret colour has to come from GS, and GS switches.
+
+**Which is fine, because a STATIC GS value is a steady ~19.5 kHz carrier with no
+audio-band content.** The audio-band threat is the ENVELOPE (bronner, section 5 of the
+handoff), and an envelope is what you get from CHANGE: fades, pulses, animation at 1-100 Hz
+put precisely that rate onto the supply, 14 mm from a coil built to hear it.
+
+    FIRMWARE CONSTRAINT: fret zones hold static GS values while the instrument is
+    being played. Animate at load/idle if you like. No fades, no breathing, no
+    pulsing, and no per-frame redraw at an audio-band rate, with the strings live.
+    Global brightness changes ride BC, which does not switch.
+
+This costs nothing to honour and is invisible once the board exists, which is why it is
+written down here rather than discovered on a bench.
