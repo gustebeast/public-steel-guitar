@@ -692,7 +692,13 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
             # top edge needs is retention against lifting, and that is the M4 -- which is the
             # whole reason the mouth is up there. So the frame is a U, not a rectangle.
             ring = ring.cut(mouth)
-        cr = ring.union(wall).union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zbo, post_h))
+        cr = ring.union(wall)
+        # ⚠ boss_xy=None MEANS NO BOSS, and the motor board now passes None. Its M4 is gone:
+        # the TOP PANEL retains it (top_plate._mctrl_capture). The boss was also the part the
+        # user found printing as an overhang -- a column along local +Z, which stand() maps to
+        # world +X, so a horizontal O9.2 cylinder in a chassis that prints Z-up.
+        if boss_xy is not None:
+            cr = cr.union(_cyl_col(boss_xy[0], boss_xy[1], _M4.boss_od, zbo, post_h))
         # ⚠ AND THE FOOT, which is the whole point of rooting in the chassis: two legs off
         # the ring's own side walls, down past the board's bottom edge to the floor. Only
         # the SIDES, because the span between them is the harness lane and the motor board's
@@ -762,9 +768,16 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # the slab, either side of the board's own floor port (y -113..-51 against walls at
     # -114.9 and -49.1). Fused to the chassis those walls ARE the root, which is what turns
     # the 2711 mm3 the two parts used to share into structure.
-    cr = _frame(bw, bl, (hx, hy), slide_in_x=True, harness_w=HARNESS_W,
+    # ⚠⚠ NO BOSS, NO ANCHOR, NO SCREW -- THE TOP PANEL RETAINS THIS BOARD (user, 2026-09-29).
+    # The walls still locate it and the lip still carries it; what the M4 used to do -- close
+    # the one install direction against lifting -- the panel now does, reaching down to 0.30
+    # above the board's top edge (top_plate._mctrl_capture, electronics.mctrl_capture_target).
+    # This deletes a fastener, which is this project's first priority, AND deletes the boss the
+    # user found printing as an overhang. It also retires three separately-recorded headaches
+    # that all belonged to this one screw: the ear that landed inside the nut height-adjust
+    # block, the M4x6-instead-of-x10 length, and the head buried in the locating wall.
+    cr = _frame(bw, bl, None, slide_in_x=True, harness_w=HARNESS_W,
                 post_h=MCTRL_POST_H, open_down=True, root_d=4 * D.BEAD)
-    cr = _cut_anchor(_M4, cr, (hx, hy, MCTRL_POST_H), (0, 0, -1), _M4.anchor_min_wall)
     # ⚠ AND THE HEAD NEEDS ITS OWN HOLE, exactly as the Pi's does 50 lines below. The boss
     # stands BESIDE the board, and the locating wall rises past the board's top face at
     # that same y -- so the button head, which seats on the board top and laps its edge,
@@ -775,8 +788,7 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # (An earlier attempt at this cut "left the number exactly unchanged" and was reverted --
     # true, but that was at the old hold, where the head sat over the frame's mouth and
     # there was nothing to cut. The cut was right and the position was wrong.)
-    cr = cr.cut(_cyl_col(hx, hy, M4_BUTTON_HEAD_D + 2 * CLR, MCTRL_POST_H,
-                         MCTRL_POST_H + 20.0))
+    # (the head-clearance cut is gone with the head -- there is no screw here any more)
     # ⚠ THE HEAD GRAZES SOMETHING BY 0.72 mm3 AND IT IS NOT THIS FRAME. A head-clearance
     # cut at (hx, hy) -- the Pi's remedy, one-sided and then symmetric about the board
     # plane -- left the number EXACTLY unchanged both times, so the material the screw
@@ -903,9 +915,15 @@ def board_screws():
     _mhx, _mhy = _hold_xy(_mx1 - _mx0, _my1 - _my0, MCTRL_HOLD[0],
                           hold_at=MCTRL_HOLD[1], clr=CRADLE_CLR, spec=_M4)
     tx, ty = cx + _mhx, cy + _mhy
-    out.append(("board_insert_0", stand(seated_insert(_M4, (tx, ty, MCTRL_BOARD_Z), (0, 0, -1)))))
-    out.append(("board_screw_0", stand(m4_button_screw(L_MCTRL).translate(
-        (tx, ty, MCTRL_BOARD_Z + BD_T + M4_BUTTON_HEAD_H)))))
+    # ⚠⚠ THE MOTOR BOARD'S M4 IS GONE -- THE TOP PANEL RETAINS IT NOW (user, 2026-09-29).
+    # keyhead_cradles no longer builds a boss for it, so drawing the screw would put a
+    # fastener in the render with nothing to thread into: this project's own named fault,
+    # "a hole designed for an M4 screw that isn't being used", a fastening point that cannot
+    # be fastened. The board is located by the frame's walls, carried by its lip, and stopped
+    # from lifting by top_plate's capture rib 0.30 above its top edge.
+    # ⚠ L_MCTRL, MCTRL_HOLD and the whole M4x6-vs-M4x10 argument above go with it. They are
+    # left in place for now only because MCTRL_HOLD still sizes the frame's mouth; if that
+    # stops being true they should be deleted rather than left as dead parameters.
     ox, oy, oz = op_origin()
     (hx, hy, _hd), = BG.holes("output_panel")
     out.append(("board_insert_1", seated_insert(_M4, (ox + hx, oy + hy, oz), (0, 0, -1))))
@@ -1573,6 +1591,32 @@ def mctrl_pt(ref: str):
 
 
 MCTRL_PORT_CLR = 0.5                 # around whatever of the board enters the floor
+
+
+MCTRL_CAP_GAP = CRADLE_CLR                  # 0.3, how far the board may lift before the rib
+MCTRL_CAP_T   = 4.0                         # rib thickness across the board (x)
+MCTRL_CAP_L   = 30.0                        # rib length along the board (y)
+
+
+def mctrl_capture_target():
+    """The motor board's top EDGE in world: (x0, x1, y0, y1, z_top).
+
+    ⚠ THE TOP PANEL RETAINS THIS BOARD, NOT A SCREW (user, 2026-09-29: "would it work to add
+    material under it to lift it up so the top is just below the top panel? If so then when
+    you put the top panel on it would lock the motor board in place without needing a screw at
+    all"). top_plate grows a rib down to this edge; see _mctrl_capture there.
+    ⚠ BUT THE BOARD DOES NOT RISE TO MEET THE PANEL -- THE PANEL REACHES DOWN TO IT. Measured:
+    the board's top sits at z -19.05 and the panel's underside at 0.00, a 19.05 mm gap, and the
+    board CANNOT take any of it up. Its Z is load-bearing: the user set it on 2026-09-25 --
+    "move the board -z until the latch mechanism for the JST is clear of the instrument
+    underside" -- so it hangs 12.50 mm through the floor with the plug tips 3.10 mm proud where
+    a hand can squeeze the latches from OUTSIDE. Lifting it 19 mm would put its bottom 6.55 mm
+    above the floor top and stranded every plug inside the instrument.
+    Read off the placed laminate rather than re-derived, because stand() inverts an axis and
+    this file has shipped a bug from doing that arithmetic by hand.
+    """
+    bb = stand(_board(MCTRL_FP, MCTRL_BOARD_Z)).val().BoundingBox()
+    return (bb.xmin, bb.xmax, bb.ymin, bb.ymax, bb.zmax)
 
 
 def mctrl_floor_ports():

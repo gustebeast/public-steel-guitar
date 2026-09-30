@@ -590,7 +590,32 @@ _piece_pair   = _split(_pickup_piece(), PIECE_X0, PIECE_X1, lines=False)
 _filler_pairs = [_split(_filler(i), SLOT_X[i], SLOT_X[i] - BAND_W)
                  for i in range(N_SLOTS)]
 _mid_pair     = _split(_band(MID_X0, MID_X1, ui=True), MID_X0, MID_X1)
-_key_pair     = _split(_band(KEY_X0, KEY_X1), KEY_X0, KEY_X1)
+def _mctrl_capture():
+    """A rib down from the keyhead panel to just above the motor board's top edge, so the
+    PANEL retains that board and it needs no screw (user, 2026-09-29).
+
+    ⚠ THIS REPLACES AN M4 AND ITS BOSS, which is the point -- and the boss was also the part
+    the user found printing as an overhang: keyhead_cradles builds it as a column along LOCAL
+    +Z, and stand() maps that to WORLD +X, so it is a horizontal O9.2 cylinder in a chassis
+    that prints Z-up. check_ceilings cannot see it (it looks for FLAT ceilings; a cylinder's
+    underside is curved), so deleting it beats buttressing it.
+    ⚠ THE RIB REACHES DOWN; THE BOARD DOES NOT COME UP. See electronics.mctrl_capture_target
+    for why the board's Z cannot move -- its plug latches have to stay reachable from outside.
+    ⚠ SIZED FROM MEASUREMENT. Within the laminate's own footprint the board's top 10 mm is
+    PURE LAMINATE (880.0 mm3, exactly 1.6 x 55 x 10), and the whole board's zmax equals the
+    laminate's, so nothing stands proud of the edge the rib lands on. The column above the
+    board is empty but for this panel. The rib is therefore wider than the 1.6 laminate --
+    it bears on the edge, and the extra width is section rather than contact.
+    It prints the right way up: top_plate builds DECK-DOWN, so this points UP off the bed.
+    """
+    x0, x1, y0, y1, ztop = EL.mctrl_capture_target()
+    return box_at(EL.MCTRL_CAP_T, EL.MCTRL_CAP_L,
+                  BZ - (ztop + EL.MCTRL_CAP_GAP),
+                  x=(x0 + x1) / 2.0, y=(y0 + y1) / 2.0,
+                  z=(BZ + ztop + EL.MCTRL_CAP_GAP) / 2.0)
+
+
+_key_pair     = _split(_band(KEY_X0, KEY_X1).union(_mctrl_capture()), KEY_X0, KEY_X1)
 
 # build.py places these in the assembly (piece + visible fillers + the 2 panels)
 # and exports base + colour side by side (top_plate_N + top_plate_N_color). The
