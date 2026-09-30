@@ -217,8 +217,41 @@ def trough_y():
 
 
 # ── the boards ────────────────────────────────────────────────────────────────────────
-N_LED      = 48
-N_SERIES   = 4                      # LEDs per channel; 4 x 3.2 V = 12.8 on the 14 V rail
+# ⚠ 72 LEDs AND THREE TO A ZONE -- and the two numbers are one decision (user,
+# 2026-09-30: "would it benefit us to put 3 LEDs per zone instead of 2? Same number of
+# zones just increase LED density"). It does, and the reason is the economics this whole
+# strip is built on: A CHANNEL COSTS A THIRD OF A DRIVER, AN LED COSTS SIX CENTS. The
+# channel count is zones x 4 and the zone count is N_LED / N_SERIES, so raising both
+# together leaves the channel count -- and therefore the driver count, and therefore the
+# money and the board area -- exactly where it was:
+#
+#     48 LEDs, 2 in series   24 zones   96 channels   8 drivers   $19.28 + $3.12 of LEDs
+#     72 LEDs, 3 in series   24 zones   96 channels   8 drivers   $19.28 + $4.68 of LEDs
+#
+# Half again the light for $1.56 an instrument, with the addressing untouched.
+#
+# ⚠ AND 72 IS THE LAST COUNT THAT FITS, which is the pleasant part: the XL-5050's
+# courtyard is 6.10 and the pitch at 72 is 7.954, so 1.85 mm of clear lane between
+# neighbours. 96 LEDs (4 a zone) would be a 5.97 pitch -- the courtyards OVERLAP by 0.13
+# and check_placement rejects the board. So this is the densest the row can be at all, and
+# it happens to land on a series count that divides into 24 zones.
+#
+#     LEDs  pitch   S/h    ripple
+#      48   11.932  1.105  1.095 : 1
+#      72    7.954  0.737  1.008 : 1    <- chosen
+#      96    5.966  0.552  courtyards overlap
+#
+# What it costs is rail volts again, and only that: three dice at the LED's 3.2 V max is
+# 9.6, so the rail goes 7.67 -> 11.00 (elec/foot_led.py, R11 10k) and the headroom over
+# the string grows slightly, 1.27 -> 1.40. Rail CURRENT does not move at all, because the
+# current is set by the channel count: 48 channels x 15 mA a board, before and after. The
+# extra light is paid for in volts, which is the one thing this rail has spare.
+N_LED      = 72
+# ⚠ THREE IN SERIES, AND THE SERIES COUNT IS THE DIVISOR BETWEEN LEDs AND ZONES. It is
+# the only knob on how finely the strip can be addressed: 72 LEDs at 3 in series is 24
+# zones of 23.9 mm (user, 2026-09-30: "I'd like to have closer to 24 controllable zones").
+# Zones come in threes, because a TLC59711 carries three, and 24 divides.
+N_SERIES   = 3                      # LEDs per channel; 3 x 3.2 V = 9.6 on the 11.00 rail
 HALVES     = ("a", "b")
 # ⚠ ONE PART NUMBER, BUILT TWICE -- and it is the -X-only install that buys it (user,
 # 2026-09-30: "we install this LED before we put the -x endplate on so it can slide in
