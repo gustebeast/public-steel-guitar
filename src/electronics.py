@@ -1135,14 +1135,39 @@ def _ctr(fp):
 # against a Pi 4B, which is the board the BOM now specifies), and pi4() already builds that
 # block. These are its three connector groups along the 50 mm the block spans in tray x,
 # taken mid-height so the plug shell sits inside the block's 14 mm rather than proud of it.
-PI_PORT_Z  = BOARD_Z + BD_T + 7.0      # mid-block: world x -593.0, shell -596.4..-589.6
+# ⚠ THESE ARE WORLD COORDS NOW, AND THEY USED TO BE TRAY COORDS THAT NOBODY MOVED.
+# pi_port_pt returned tray (x, y, z) for stand_pt, from when the Pi STOOD in the electronics
+# tray. pi4() stopped standing -- it lies flat on the chassis floor and is authored where it
+# sits -- and the ports were left behind. Measured before the fix: all three resolved to
+# world (-593.0, -72.0, z) with z -15 / -33 / -49, i.e. the port stack of a standing board,
+# while the Pi solid is flat at x -588..-503, y -127..-71, z -68.95..-53.35. The points sat
+# 5 mm off its -X edge and up to 38 mm ABOVE it, and (-593, -72, -33) is inside motor_ctrl --
+# which is exactly why wire_usb (33.31 mm3) and wire_link (9.66 mm3) terminated in that
+# board. They were landing where the ports used to be.
+# ⚠ TWO DATUMS WERE WRONG, NOT ONE. The z used BOARD_Z (-57.80, the TRAY board) where pi4()
+# builds from PI_Z (-68.95); mid-block is PI_Z + BD_T + 7.0, the same expression pi4() uses
+# to place the block, so the two cannot drift again.
+PI_PORT_Z  = PI_Z + BD_T + 7.0         # mid-block, by pi4()'s own expression
 PI_PORT_IN = 1.0                       # end the lead 1 mm inside the face so it CONTACTS
-PI_PORTS   = {"eth": -594.0, "usb3": -576.0, "usb2": -560.0}   # tray x (world z -15/-33/-49)
+# OFFSETS ALONG THE 56 mm END, read off the official Pi 4B mechanical drawing
+# (datasheets.raspberrypi.com/rpi4/raspberry-pi-4-mechanical-drawing.pdf): the connector
+# centres are 9 / 27 / 45.75 from one 85 mm edge, with the two USB stacks at Z=16.0 and the
+# Ethernet at Z=13.5. Ours used to be absolute tray x on gaps of 18.0 and 16.0; the real
+# USB-to-USB gap is 18.0, so the old spacing was 2 mm short as well as in the wrong frame.
+# ⚠ WHICH END IS THE DATUM IS A CHOICE, NOT A READING -- the drawing cannot say how the board
+# is turned on our floor. Taking PI_FP[2] puts Ethernet toward +Y. It decides which cable
+# lands on which port and nothing else, and it is stated here for the same reason _j2_pin
+# states "WAY 1 IS AT -Y": so it is one statement rather than a pattern spread over two files.
+PI_PORTS   = {"usb2": 9.0, "usb3": 27.0, "eth": 45.75}
 
 
 def pi_port_pt(which: str):
-    """TRAY (x, y, z) of a port mouth on the Pi's +Y end -- feed it through stand_pt."""
-    return (PI_PORTS[which], PI_FP[3] - PI_PORT_IN, PI_PORT_Z)
+    """WORLD (x, y, z) of a port mouth on the Pi's +X end. Do NOT feed it through stand_pt.
+
+    The Pi lies flat, so its ports are on the +X 56 mm end and spread along Y. pi4() puts
+    the I/O block at x = PI_FP[1] - 9.0, 18 deep, so PI_FP[1] is its outer face and the
+    mouth sits PI_PORT_IN inside that."""
+    return (PI_FP[1] - PI_PORT_IN, PI_FP[2] + PI_PORTS[which], PI_PORT_Z)
 
 
 def pi4() -> cq.Workplane:
