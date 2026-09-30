@@ -4752,3 +4752,65 @@ is the next piece of tooling, and it is now well specified:
 
 `SAI_FS` is the same class and should be re-searched with the same tool once it exists — its
 "boxed in every time" verdict predates all three tool fixes.
+
+## ⚠ ROUTE TIME: I WAS USING THE VALIDATION TOOL TO ITERATE (user, 2026-09-30)
+
+User: *"Your route is taking 1h11m, that's too long."* Correct, and item 2 of this file already
+said how to avoid it — I did not follow it.
+
+**Where the 71 minutes went:**
+
+```
+pass 1 freerouting  1744.6 s (29 min)  -> 6 unconnected, 1 violation
+pass 2 freerouting  2106.4 s (35 min)  -> 13 unconnected, 1 violation  (wasted)
+```
+
+64 of the 71 minutes are freerouting, **doubled by `--rounds 2` — which I passed by hand.**
+`finish()` already defaults to `rounds=1`.
+
+### The evidence on `--rounds 2`: it helped ONCE in SEVEN
+
+| log | pass 1 | pass 2 | verdict |
+|---|---|---|---|
+| finish6 | 5 / 0 | 3 / 2 | wasted |
+| finish7 | 5 / 0 | 3 / 2 | wasted |
+| **finish8** | 5 / 0 | **2 / 0** | **the only gain** |
+| finish9 | 3 / 0 | 4 / 0 | wasted |
+| finish10 | 5 / 3 | 10 / 4 | wasted |
+| finish11 | 2 / 0 | 5 / 1 | wasted |
+| finish12 | 3 / 0 | 3 / 0 | wasted |
+| finish13 | 6 / 1 | 13 / 1 | wasted |
+
+Seven pass-2s, one improvement, ~32 min each: about **3.5 hours spent for one gain**.
+
+### ⚠ AND CUTTING FREEROUTING PASSES IS NOT AVAILABLE ON THIS BOARD
+
+The obvious lever is the wrong one here, and `route.py` says so: *"the early passes leave a mess
+that later passes rip up and re-lay, and **stopping early freezes the mess** … boards that do not
+finish should ask for more via `router_passes` (optical does)"*. optical asks for **10**. So the
+pass count stays.
+
+### THE RULE, FROM NOW
+
+* **`--rounds 1`** unless pass 1 has landed close and the run is a validation.
+* **`route.py --incremental`** to iterate — it freezes every routed net and re-routes only the
+  failures, which is the whole point and which I never once used this session.
+* **full `finish.py` only to validate**, because hand-called stages skip `export_geom` and the
+  CAD then renders a stale board.
+
+## C115 REVERTED — RIGHT DIAGNOSIS, WRONG PLACE (2026-09-30)
+
+The route came back **6 unconnected / 1 violation** against a 3/0 baseline, so C115 cost three
+nets and it is reverted; the board is restored to `optical.best-vddio-and-d5-closed.kicad_pcb`
+and the source regenerated to match at 254 parts.
+
+⚠ **The electrical finding STANDS and is still open:** `U11` is the mid-rail buffer the twenty
+TIAs share, and its V+ pin has **no bypass within 7.72 mm** (the nearest cap, C114, bypasses the
+MID divider — a different node). That is a real analog gap regardless of routing.
+
+**What went wrong was the position, and C119 had already taught me the lesson.** A cap dropped
+into a fan-out region does not add room, it takes a lane — C119's first site cost `ULPI_D5` its
+escape and a 1 mm nudge recovered it. C115 sits 1.5 mm below pad 5, in the region the twenty TIA
+outputs fan through. **Next attempt must pick the site with the lanes in mind**, not merely the
+nearest courtyard-clear spot, and should be tried with `--incremental` rather than a 35-minute
+full route.

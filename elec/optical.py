@@ -1467,11 +1467,6 @@ def optical():
     # 48 kHz is down a further 48.6 dB -- about 69 dB total with the divider. It costs no
     # new BOM line: 1 uF 0402 is already on this board (C127, and the converters' AVDD and
     # VREF bulk). The 0.9 ms it adds to the reference's startup is nothing.
-    # ⚠ C115 bypasses U11's SUPPLY pin; C114 below bypasses the MID DIVIDER. Different nodes,
-    # and the board had the second without the first -- see the note at C115's placement.
-    c115 = _c("C115", "100nF", "U11 mid-rail buffer V+ bypass -- AT pad 5")
-    v3a += c115[1]
-    gnd += c115[2]
     c114 = _c("C114", "1uF", "MID divider bypass -- keeps the LED's 48 kHz off the "
               "reference all twenty channels share; see the note")
     mid_raw += c114[1]
