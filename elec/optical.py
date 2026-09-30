@@ -3562,12 +3562,41 @@ BOARD_NOTES = {
 #              So a repair on this board has to be searched against the POURS as well, at
 #              0.5 mm, and neither leg of this dog-leg survives that. Re-enable only when the
 #              search knows about zones.
-STALE_REPAIRS = {"SAI_FS", "+3V3D"}
-if STALE_REPAIRS:
-    BOARD_NOTES["repair_tracks"] = [t for t in BOARD_NOTES["repair_tracks"]
-                                    if t[0] not in STALE_REPAIRS]
-    BOARD_NOTES["repair_vias"] = [v for v in BOARD_NOTES["repair_vias"]
-                                  if v[0] not in STALE_REPAIRS]
+# ✅ +3V3D IS OFF THIS LIST AGAIN, AND THE REASON IS THE REFILL, NOT A NEW PATH. The dog-leg
+# below is the SAME geometry that was gated here for costing two clearance violations against
+# the GND pour (0.4892 and 0.0225 against a 0.5000 rule). It was not the path that was wrong --
+# it was that nothing in the pipeline ever refilled the pour after laying a post-route repair.
+# The pour is computed in layout.py during PLACEMENT, before any track exists; repair_planes.py
+# reconnects copper the fill stranded but never updated the fill itself. With a genuine
+# ZONE_FILLER pass (now in repair_planes) the pour retreats around the new track and this repair
+# is clean: 4 unconnected items -> 2, violations IDENTICAL to the baseline, zero clearance.
+# ⚠⚠ GATING BY NET NAME IS THE WRONG GRANULARITY, AND IT NEARLY COST THE CONVERTER ISOLATION.
+# "+3V3D" was on this list for one tick, to disable ONE dog-leg. But _shdnz_stubs() emits TEN
+# +3V3D tracks -- two per converter cell -- and _shdnz_vias() five more +3V3D vias, so the
+# filter would have silently removed the whole SHDNZ supply: fifteen pieces of working,
+# verified copper, to gate one. Nothing noticed, because audit_board reads the DECLARATION from
+# <stem>.board.json and that file had not been regenerated since the edit, so it kept reporting
+# "15 declared, 15 found" from before.
+# So the filter now states HOW MANY repairs each name is expected to remove and fails if the
+# count is wrong. A gate that removes more than its author meant is exactly the kind of silent
+# damage this pipeline has been bitten by repeatedly, and it costs one integer to refuse.
+#   SAI_FS -- 4 tracks, 3 vias: fits ONE route and the route has moved. Re-search before use;
+#             ⚠ and its "boxed in every time" verdict is doubly suspect, having been reached
+#             with a search that tried only two shapes AND could not see the pours.
+STALE_REPAIRS = {"SAI_FS": (4, 3)}
+for _net, (_nt, _nv) in STALE_REPAIRS.items():
+    _t_before = len(BOARD_NOTES["repair_tracks"])
+    _v_before = len(BOARD_NOTES["repair_vias"])
+    BOARD_NOTES["repair_tracks"] = [t for t in BOARD_NOTES["repair_tracks"] if t[0] != _net]
+    BOARD_NOTES["repair_vias"] = [v for v in BOARD_NOTES["repair_vias"] if v[0] != _net]
+    _t_gone = _t_before - len(BOARD_NOTES["repair_tracks"])
+    _v_gone = _v_before - len(BOARD_NOTES["repair_vias"])
+    assert (_t_gone, _v_gone) == (_nt, _nv), (
+        "gating %r removed %d track(s) and %d via(s), not the %d and %d it declares. A net "
+        "name can cover repairs that have nothing to do with each other -- +3V3D names one "
+        "dog-leg AND the ten stubs plus five vias that feed the SHDNZ pull-ups -- so either "
+        "the count is stale or this gate is about to delete working copper."
+        % (_net, _t_gone, _v_gone, _nt, _nv))
 
 
 def _assert_matches_cad(net_path):
