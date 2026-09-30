@@ -1076,14 +1076,15 @@ def build_wires():
     # one is ~10). The +X end is open. So the Pi does NOT rotate; the pose was right and only
     # the port frame was wrong.
     _PORT_APR_X = EL.PI_FP[1] + 20.0               # -483.0: clear of the +X face + a plug
-    _ua = EL.op_pt("J2")
+    _ua = EL.op_mouth("J2")          # was op_pt: J2's +Y FACE, 7.300 mm off its axis
     _UA_PLUG = 25.0
     # ITS OWN COLUMN at the keyhead, 6 mm +X of the one the bay wires share: at a different
     # fly height in the shared column it met the OLED lead's drop instead (24.9 mm3). Here it
     # flies over string 1's motor, well above its top.
     _USB_COL = BAY_X + 6.0
     _USB_FLY = BAYFLY - 3.0               # under the Pi link's fly, which it crossed at the Pi
-    _ua_x = EL.op_origin()[0] - EL.OP_BOARD_X / 2 - _UA_PLUG     # the plug's cable end
+    _ua_x = _ua[0] - _UA_PLUG           # the plug's cable end. Was measured from the EAR TIP,
+                                        # 10.000 mm short of the mouth -- see EL.op_mouth
     _USB_X = _LOOP_CX - _LOOP_R - 9.5     # -X of the loop, +X of the trough's end
     out.append(("wire_usb", _wire(
         [(_ua_x, _ua[1], _ua[2]), (_USB_X, _ua[1], _ua[2]), (_USB_X, _ua[1], LANE_USB),

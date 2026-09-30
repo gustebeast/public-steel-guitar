@@ -3582,7 +3582,7 @@ def opt_cables(which: str = "all") -> cq.Workplane:
     # doesn't go very far at all"). The USB hub moved onto the output board: its J4 is "hub
     # downstream -> the optical board, ~100 mm", and its J9 is "24 V out to the optical pickup
     # board". Both are a few centimetres from the conduit's foot.
-    from .electronics import op_origin, op_top, OP_BOARD_X
+    from .electronics import op_top, op_mouth
     if "J2" in _WANT:
         # 24 V: across the conduit's floor to its +Y side, down the slot (opt_pwr_slot) into
         # the endplate's board recess, and onto J9 from above -- J9 is a top-entry XH.
@@ -3597,7 +3597,9 @@ def opt_cables(which: str = "all") -> cq.Workplane:
     # rail leaves open is y -128.75..-124.58 -- over the output board, down, and into the
     # USB-A plug standing in J4's mouth on the board's -X edge.
     xu = CONDUIT_XC + 2.2
-    ua_mouth = op_origin()[0] - OP_BOARD_X / 2          # the board's -X edge = J4's mouth
+    # J4's own mouth. It used to be the tip of the mounting ear, 10.000 mm short -- see
+    # electronics.op_mouth, which exists because wiring.py's wire_usb made the same mistake.
+    ua_mouth = op_mouth("J4")[0]
     ua_end = ua_mouth - USBA_PLUG_L
     zc4 = op_top("J4")[2] - 3.3                         # USB-A shell axis, mid-height
     y4 = op_top("J4")[1]

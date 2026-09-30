@@ -1262,6 +1262,42 @@ def output_panel():
 #      J4 to the optical board) plus a USB-C (J3, hub upstream). Those face INTO
 #      the instrument, not out the panel, and want cable room behind them.
 BOARD_W, BOARD_L = 74.0, 66.0
+# ── -X GROWTH (2026-09-30). The audio section ran out of room: twenty-one TRS/gain parts
+# went in, every sweep ordering placed them legally, and every ordering left one part
+# 5-9 mm from where it belongs. The +X edge IS the panel and cannot move, so the growth
+# is -X, into the instrument's interior rather than at a wall.
+#
+# ⚠ MEASURED CLEAR BEFORE IT WAS APPLIED, by intersecting a 30 mm test prism in the
+# board's own y/z band against every collect_components() solid: the ONLY two occupants
+# are cables -- optical_cable_usb (3,246.9 mm3, starting AT the board edge) and wire_usb
+# (102.9 mm3, 18.02 mm free). No plastic, no boards, no chassis structure in 30 mm. An
+# earlier BOUNDING-BOX test told me nothing at all: it "found" chassis_0, the hollow
+# shell the board sits INSIDE, so every clearance came out negative and it missed both
+# real occupants. Probe the finished SOLID by intersection, never a bbox.
+#
+# ⚠⚠ THE BOARD STAYS SYMMETRIC ABOUT ITS OWN ORIGIN, AND THAT IS NOT A STYLE CHOICE --
+# IT IS THE CONVENTION THIS PROJECT ALREADY SETTLED. layout.py's `_add_zone` builds each
+# pour as a rectangle CENTRED ON THE ORIGIN out of `outline_mm`, so an asymmetric outline
+# pours off-centre: at GROW_X = 12 the pour would overhang the +X edge by 6 mm (clipped,
+# harmless) and stop 6 mm SHORT of the -X edge -- which is precisely where the USB block
+# now lives and where its GND has to reach the plane. Tried it that way first, and the
+# laid-out board said so out loud: `2 stitch via(s) landed where the plane is not ...
+# 3.20 mm away`, up from none.
+#   motor_ctrl hit this exact wall from the other side and wrote the answer down (see its
+# BOARD_W note): "The frame had to shrink rather than the edge move: outline_mm is the
+# POUR's layout region and it is centred on the origin, so an asymmetric board would pour
+# off-centre. So BOARD_W drops 6.20 and all 64 placements moved +3.10 in x to re-centre --
+# the parts did not move relative to each other or to the -X end, only the origin did."
+# Same move here, mirrored: the origin shifts -GROW_X/2 with the laminate, so every
+# placement gets +GROW_X/2 back. NOTHING is re-placed; the frame moved under it. That
+# keeps the shared layout.py untouched, which matters -- eleven boards run through it.
+#
+# BOARD_W STAYS 74.0, as the PRE-GROWTH half-width datum: every placement below, and the
+# panel expressions J5/J1/J6 (`BOARD_W / 2 + PANEL_OVERHANG`), are authored in the OLD
+# frame and re-centred in one pass at the bottom of this dict. Read a coordinate here as
+# "distance from the panel edge, as it always was".
+GROW_X = 12.0
+BOARD_W_GROWN = BOARD_W + GROW_X        # 86.0 -- the laminate that gets fabricated
 # How far each panel connector's body front stands past the +X edge: the fit clearance
 # between the board and the endplate's panel, plus the panel itself. src/electronics.py
 # builds the panel to the same two numbers (OP_PANEL_CLR, OP_PANEL_T), and
@@ -1282,15 +1318,15 @@ TS_SHOULDER_DEPTH = TS_CLAMP_T + TS_HEAD_T         # 6.05: face -> jack shoulder
 # is under the head. Same ear and hole as the CAN tee's (can_tee.EAR_*).
 EAR_W, EAR_H = 9.5, 8.7
 EAR_HOLE_D = 4.5                                   # M4 clearance
-_EAR_X0 = -BOARD_W / 2 - EAR_W
+_EAR_X0 = -BOARD_W_GROWN / 2 - EAR_W
 _EAR_Y1 = -BOARD_L / 2 + EAR_H
 EAR_HOLE_XY = (_EAR_X0 + EAR_W / 2, -BOARD_L / 2 + EAR_H / 2)
 
 BOARD_NOTES = {
-    "outline_mm": (BOARD_W, BOARD_L),
-    "outline_poly": [(_EAR_X0, -BOARD_L / 2), (BOARD_W / 2, -BOARD_L / 2),
-                     (BOARD_W / 2, BOARD_L / 2), (-BOARD_W / 2, BOARD_L / 2),
-                     (-BOARD_W / 2, _EAR_Y1), (_EAR_X0, _EAR_Y1)],
+    "outline_mm": (BOARD_W_GROWN, BOARD_L),
+    "outline_poly": [(_EAR_X0, -BOARD_L / 2), (BOARD_W_GROWN / 2, -BOARD_L / 2),
+                     (BOARD_W_GROWN / 2, BOARD_L / 2), (-BOARD_W_GROWN / 2, BOARD_L / 2),
+                     (-BOARD_W_GROWN / 2, _EAR_Y1), (_EAR_X0, _EAR_Y1)],
     "cutouts": [{"xy": EAR_HOLE_XY, "d": EAR_HOLE_D}],
     "mounting_hole_xy": EAR_HOLE_XY,
     # the ear moved the router's first-pass choices and BOOT0 (a one-resistor strap across
@@ -1648,9 +1684,9 @@ BOARD_NOTES = {
         # place_check passes either way (the rotated courtyard lands in free space
         # both times), so nothing catches it but reading the offset. 270 turns the
         # mouth out through the -X edge, which is what these three are for.
-        "J2": (-24.32, 24.00, 270.0),   # -> the Pi's gadget port
-        "J3": (-29.44, 8.00, 270.0),    # hub upstream -> a Pi host port
-        "J4": (-24.32, -8.00, 270.0),   # hub downstream -> the optical board
+        "J2": (-24.32 - GROW_X, 24.00, 270.0),   # -> the Pi's gadget port
+        "J3": (-29.44 - GROW_X, 8.00, 270.0),    # hub upstream -> a Pi host port
+        "J4": (-24.32 - GROW_X, -8.00, 270.0),   # hub downstream -> the optical board
         # +Y BAND: THE ANALOG CHAIN. It is up here because the switcher is down
         # there -- 50 mm of board between a 24 V switching node and a magnetic
         # pickup's preamp is the cheapest noise measure available.
@@ -1872,6 +1908,69 @@ BOARD_NOTES = {
     "qty_per_instrument": 1,
 }
 
+# ── RE-CENTRE THE FRAME ON THE GROWN LAMINATE (one pass, nothing re-placed) ───────────
+# Every placement above is authored in the PRE-GROWTH frame, whose origin is the centre of
+# the 74 mm board. -X growth moves the laminate's centre -GROW_X/2, so each x gets
+# +GROW_X/2 to stay exactly where it was relative to the +X panel edge and to every other
+# part. See the BOARD_W note for why this is a re-centring and not a placement change.
+#
+# ⚠ THE THREE USB SHELLS TRAVEL WITH THE -X EDGE, NOT WITH THE PANEL. Their mouths ride
+# that edge because their plugs come in from outside the board -- measured at 0.49-0.50 mm
+# of fab-body relief off the old edge, from the routed board's own export. So they are
+# authored `- GROW_X` above (the edge moved GROW_X further out in the old frame) AND take
+# this pass's +GROW_X/2 like everything else (the frame moved under them too). Both terms.
+#
+# ⚠⚠ I GOT THIS WRONG BOTH WAYS BEFORE THE ASSERT BELOW SETTLED IT, and the second error
+# was the more convincing one. First: shifted everything and trusted it. Then a hand check
+# "at the far corner" said the USB shells would land 6.00 mm too far from the new edge, so
+# I EXCLUDED them from the pass -- and the assert fired at once, J2 12.680 -> 6.680 mm,
+# i.e. the exclusion was the bug and the original was right. The hand check had silently
+# worked in export_geom's frame, which centres on the EAR-INCLUSIVE bounding box, and took
+# the new edge from the asymmetric draft rather than the symmetric board. Two frames, one
+# sum. This is the "verify derived frames" rule biting in a third place: do not derive a
+# frame mapping by hand when a one-line invariant can be asserted in a single frame.
+# ⚠ AND A PLACEMENT NAMES THE PAD CENTROID, NOT THE FOOTPRINT ORIGIN (layout.py
+# `_anchor_on_pads`), while export_geom reports the ORIGIN. On a USB-A receptacle those are
+# 5.40 mm apart, and that gap is why the exported x of J2/J3/J4 does not equal the authored
+# x plus the frame offset. It looked for a while like layout was nudging edge connectors by
+# hand. It is not. Do not "correct" a placement to close that difference.
+EDGE_REFS = ("J2", "J3", "J4")          # mouths on the -X edge: referenced to THAT edge
+_authored = dict(BOARD_NOTES["placements"])
+BOARD_NOTES["placements"] = {
+    _ref: (_x + GROW_X / 2.0, _y, _rot)
+    for _ref, (_x, _y, _rot) in _authored.items()
+}
+
+# ⚠ AND THE HAND-LAID COPPER RIDES THE SAME FRAME, OR IT LANDS 6 mm FROM ITS PADS.
+# repair_vias and repair_tracks are raw board coordinates, authored against the same
+# pre-growth origin as the placements. The first route after the growth shifted the parts
+# and not these, and came back 3 unconnected / 18 violations against a committed 0 / 0 --
+# every one of the eighteen was the SAME +24V repair run, now drawn straight across U3
+# (the DAC) and C31 six millimetres from the J7 -> J9 -> J6 -> J10 pads it was laid to
+# join. One pass, one frame, for everything that carries an x.
+# None of these repairs touches J2/J3/J4, so none of them has to follow the -X edge.
+BOARD_NOTES["repair_vias"] = [
+    (_net, _x + GROW_X / 2.0, _y) for _net, _x, _y in BOARD_NOTES["repair_vias"]]
+BOARD_NOTES["repair_tracks"] = [
+    (_net, _layer, _w, [(_x + GROW_X / 2.0, _y) for _x, _y in _pts])
+    for _net, _layer, _w, _pts in BOARD_NOTES["repair_tracks"]]
+
+# THE INVARIANT, ASSERTED: growth must not move any part relative to the edge it is
+# referenced to. Panel parts keep their distance to +X; the USB shells keep theirs to -X.
+# Distances are computed in each frame's own terms -- pre-growth half-width BOARD_W / 2,
+# post-growth BOARD_W_GROWN / 2 -- because that is exactly what the re-centring changes.
+for _ref, (_x, _y, _rot) in BOARD_NOTES["placements"].items():
+    _x0 = _authored[_ref][0]
+    if _ref in EDGE_REFS:
+        _was, _now = _x0 + GROW_X + BOARD_W / 2, _x + BOARD_W_GROWN / 2
+        _which = "-X edge"
+    else:
+        _was, _now = BOARD_W / 2 - _x0, BOARD_W_GROWN / 2 - _x
+        _which = "+X panel edge"
+    assert abs(_was - _now) < 1e-9, (
+        "-X growth moved %s relative to the %s: %.3f mm -> %.3f mm. The re-centring pass "
+        "and the per-part offsets disagree." % (_ref, _which, _was, _now))
+
 
 if __name__ == "__main__":
     output_panel(tag="panel")
@@ -1903,5 +2002,5 @@ if __name__ == "__main__":
     with open(os.path.join(OUT_DIR, "output_panel.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, x%d per instrument"
-          % (BOARD_W, BOARD_L, len(BOARD_NOTES["placements"]),
+          % (BOARD_W_GROWN, BOARD_L, len(BOARD_NOTES["placements"]),
              BOARD_NOTES["qty_per_instrument"]))
