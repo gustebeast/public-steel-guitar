@@ -3430,7 +3430,25 @@ BOARD_NOTES = {
     # F.Cu stub and a clear inner run found none within 2.8 mm of the pad, but the
     # waypoint it was tested against was itself derived from the pad: the honest next step
     # is a JOINT search over (via site, waypoint), not a sequential one.
-    "escape_runs": {"U6.38": ("In2.Cu", [(-9.00, -41.00), (-20.08, -21.08)])},
+    # ⚠⚠ THE WAYPOINT AT (-12.00, -24.00) EXISTS TO DODGE THE TAIL MOUNTING HOLE, AND THIS
+    # ENTRY IS WHY THAT HOLE COULD NOT BE PLACED (2026-09-29). The straight run from
+    # (-9.00, -41.00) to (-20.08, -21.08) passes 0.385 mm from the hole's centre -- through
+    # it -- and produced two of the board's violations:
+    #     items_not_allowed:     Track [+3V3A] on In2.Cu, length 22.7941 mm
+    #     copper_edge_clearance: Circle on Edge.Cuts + Track [+3V3A], actual 0.0000 mm
+    # ⚠ AND NO GUARD COULD HAVE CAUGHT IT, which is the part worth keeping. The hole's
+    # keepout is emitted correctly -- verified in the board, a 24-point polygon of r 2.800
+    # centred on it -- but an escape_run is a pair of HAND-TYPED waypoints laid verbatim, and
+    # route.py then freezes all pre-laid wire as "(type fix)". A frozen wire ignores a rule
+    # area, so the router never had the option to move it. _local_nets is exonerated by
+    # construction: both its call sites pass holes=_hole_pts(notes) and seg_clear samples
+    # every 0.15 mm, so a 22.79 mm run gets ~152 samples and an r 2.8 hole cannot be missed.
+    # escape_runs is simply a pass that never consults _hole_pts.
+    # Searched, not chosen: 80 waypoints clear the hole; this one keeps +2.349 mm to it and
+    # +6.179 mm to the nearest other declared In2 copper (LED_ROW), and costs 3.06 mm of
+    # length. It goes NORTH of the hole, which is the side the spine corner is on anyway.
+    "escape_runs": {"U6.38": ("In2.Cu", [(-9.00, -41.00), (-12.00, -24.00),
+                                         (-20.08, -21.08)])},
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
