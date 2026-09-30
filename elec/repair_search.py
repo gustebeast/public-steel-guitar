@@ -125,9 +125,23 @@ def _pads(board_txt):
             gx = fx + px * math.cos(rot) - py * math.sin(rot)
             gy = fy + px * math.sin(rot) + py * math.cos(rot)
             sw, sh = float(size.group(1)), float(size.group(2))
-            # the pad's own angle turns the same way as the footprint's, so it takes the
-            # same sign -- and `rot` is already negated above.
-            ang = rot - math.radians(float(prot.group(1)) if prot else 0.0)
+            # ⚠⚠ A PAD'S STORED ANGLE IS ABSOLUTE, NOT RELATIVE TO ITS FOOTPRINT, and
+            # combining the two turned every rotated pad's CAPSULE 90 DEGREES OFF. Positions
+            # were right -- an earlier fix checked those against pcbnew part by part -- so the
+            # error hid in the pad's SHAPE, where nothing was comparing anything.
+            # U7 on optical is the proof: footprint at -90, pads at 270, size 0.25 x 0.875, and
+            # pcbnew reports each pad's world bbox as 0.875 x 0.250 -- long axis along X. The
+            # combined angle (90 - 270 = -180) put the long axis along Y instead, which laid
+            # three 0.625-long capsules END TO END on one line at 0.5 mm pitch, so adjacent QFN
+            # lands OVERLAPPED each other by 0.125 mm. Pads that cannot physically coexist.
+            # What that cost: U7 pad 9 is VDDIO, the ULPI PHY's I/O supply, and it read as
+            # having NO legal escape in any direction at any radius -- a constant -0.0010 mm
+            # against pad [ULPI_D4] whose uniformity was the clue, since a real obstacle field
+            # does not give the same answer for every heading. 667 legal via sites, zero
+            # reachable, because the phantom capsules sealed the pin off. "An obstacle model
+            # that is too FAT fails as silently as one that is too thin" -- this docstring said
+            # so about pad SHAPE two paragraphs up, and was wrong about shape anyway.
+            ang = -math.radians(float(prot.group(1))) if prot else rot
             if sw >= sh:                       # long axis along the pad's local x
                 half_len, half_w = (sw - sh) / 2.0, sh / 2.0
                 ux, uy = math.cos(ang), math.sin(ang)
