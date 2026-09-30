@@ -113,36 +113,36 @@ REGION_X1 = SLOT_X[-1]                  # -X end of the band region (after the l
 
 # the two long panels behind the band region
 MID_X0 = REGION_X1                      # carries the UI (string-10 deck band)
-# ── THE MID/KEY SEAM: an ABSOLUTE datum on the bead grid ─────────────────────────────────
-# It used to be a LENGTH off MID_X0 (283 * D.BEAD, then + PITCH when a pickup slot was handed
-# over), which is the wrong way round: nothing cares how long the mid panel is, and four
-# things care exactly where the seam falls. So the seam is the number, and the lengths fall
-# out of it. On the bead grid because every length in this project is (user).
+# ── THE MID/KEY SEAM, set by the KEYHEAD PANEL'S LENGTH ──────────────────────────
+# The KEYHEAD panel is the long one now, at 312 beads = 249.60, just inside the 250 the bed
+# really gives (user, 2026-09-29). Anchoring its LENGTH rather than the seam's position is
+# the right way round for the same reason the seam beat the mid panel's length before: the
+# thing under constraint is how much panel has to fit on a bed, and that is a length.
 #
-# -380.8 BALANCES THE TWO PANELS: 235.44 and 229.95 of material, 5.49 apart, against the
-# 246.45 / 218.94 (27.51 apart) that the old length gave. The 465.39 of deck behind the band
-# region is most of the printed deck, and it was being cut 53/47.
+# ⚠ WHAT THIS TRADES. The seam lands at -361.15, in fret SPACE 10, and the three things
+# that were fighting over it resolve like this:
 #
-# ⚠ AND IT IS 4.25 OFF THE MIDPOINT OF ITS FRET SPACE, WHICH THE USER ASKED IT TO BE ON.
-# That request and "more even material" cannot both be had, and the arithmetic is short
-# enough to put here. A seam must clear the fret lines and the position markers, and the
-# markers sit CENTRED IN THEIR SPACE -- so in a marked space the midpoint is the one place
-# the seam cannot go. Every space midpoint that fits the bed:
+#     MARKER-FREE   yes -- 10 % 12 = 10 carries no symbol, and the nearest marking is
+#                   12.65 away. This is what the old -380.80 could not do; it sat 1.49
+#                   off the fret-9 pentagon.
+#     ON THE BED    yes, both: 215.79 and 249.60.
+#     EVEN          NO. 33.81 apart, against the 5.49 the old seam gave. Evenness is the
+#                   one that was given up, deliberately, and the balance assertion that
+#                   used to stand here has gone with it rather than being loosened to a
+#                   number that asserts nothing.
 #
-#     space 8   -399.20 (499 beads)   253.84 / 211.55   42.29 apart   clear
-#     space 9   -376.80 (471 beads)   231.44 / 233.95    2.51 apart   INSIDE the fret-9
-#                                                                     pentagon
-#     space 10  -355.42               210.06 / 255.33   45.27 apart   0.33 OVER the bed
+# It is 5.73 off space 10's own midpoint, because the midpoint (-355.42) would make the
+# keyhead panel 255.33 and that is over the bed. "Halfway between two frets" and "250 max"
+# cannot both hold in this space; the line clearances are 3.33 to fret 9 and 14.79 to
+# fret 10, and _fret_positions drops any line within 0.8 of a panel end, so nothing is cut.
 #
-# The only marker-free midpoint, space 8's, is LESS even than what we already had -- so
-# obeying the rule literally would have made the thing the request was for worse. -380.8 is
-# the best bead-grid position in space 9 that clears the pentagon: 5.43 to the nearest fret
-# line, 1.49 to the marker, 5.49 of imbalance. To take space 8's true midpoint instead, set
-# this to 499 and the asserts below will pass -- it costs 36.8 of evenness.
-MID_SEAM_BEADS = 476                    # x = -380.8
-MID_X1 = -MID_SEAM_BEADS * D.BEAD
-KEY_X0 = MID_X1 - GAP                   # keyhead panel, sized so its -X face lands on PX1
+# The seam itself is NOT on the bead grid (451.44 beads) because it is now derived from
+# PX1, a chassis datum that is not. The LENGTH is what is on the grid. If the seam's own
+# position matters more later, 451 beads gives exactly 250.00 and 452 gives 249.20.
+KEY_L  = 312 * D.BEAD                   # 249.60, the keyhead panel: the bed-limited one
 KEY_X1 = PX1
+KEY_X0 = KEY_X1 + KEY_L
+MID_X1 = KEY_X0 + GAP
 
 # ── pickup-piece interior geometry ───────────────────────────────────────────
 # The pickup does NOT rest on the height screws directly (those would block its X
@@ -640,16 +640,11 @@ for _n, _xa, _xb in (("mid", MID_X0, MID_X1), ("keyhead", KEY_X0, KEY_X1)):
     assert _xa - _xb <= BED_XY, (
         "the %s panel is %.2f long against a %.0f bed" % (_n, _xa - _xb, BED_XY))
 
-# ...AND THEY CARRY ROUGHLY THE SAME AMOUNT OF MATERIAL (user, 2026-09-29). The seam is a
-# chosen datum, so nothing but this stops it drifting back to a lopsided split -- which is
-# what it had been, 246.45 against 218.94. The bound is generous because the seam also has
-# to dodge the fret lines and the markers; it is here to catch a 30 mm imbalance, not to
-# pin the last millimetre. See MID_SEAM_BEADS for why it is not on its space's midpoint.
-SEAM_BALANCE_MAX = 10.0
-_ml, _kl = MID_X0 - MID_X1, KEY_X0 - KEY_X1
-assert abs(_ml - _kl) <= SEAM_BALANCE_MAX, (
-    "the two long panels are %.2f and %.2f -- %.2f apart, over the %.1f this seam is "
-    "supposed to hold" % (_ml, _kl, abs(_ml - _kl), SEAM_BALANCE_MAX))
+# (THE BALANCE ASSERTION THAT STOOD HERE IS GONE. It held the two long panels within 10 mm
+#  of each other, which they no longer are -- 215.79 against 249.60 -- because the keyhead
+#  panel was set to fill the bed instead (user, see KEY_L). Loosening it to 40 would have
+#  been an assertion that asserts nothing; the constraint that actually binds is BED_XY
+#  above, and it is checked.)
 
 # ...AND THE SEAM BETWEEN THEM CLEARS EVERY MARKING. This is what MID's length was chosen
 # for and it was only ever written down: a seam through a fret line or a marker dot reads as

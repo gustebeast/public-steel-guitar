@@ -1004,7 +1004,9 @@ panels (fret lines + dust cover + hand rest + UI mount) — see
   octave quad, which now sits on the mid panel 12.5 mm clear of its +X edge. Those
   six semitones are in the swap region, where no marking could ever have been
   consistent: fret 25 falls at −145.12, which is **0.24 mm** off the region/mid seam.
-* **And the mid/key seam was re-cut to balance the two long panels** (user). They are the
+* ⚠ **SUPERSEDED THE SAME DAY — see the note after this list.** *(kept because it records
+  why the balance assertion existed before it was removed.)* **The mid/key seam was re-cut
+  to balance the two long panels** (user). They are the
   bulk of the printed deck — 465.39 mm of material — and the old seam split it 53/47:
   **246.45 against 218.94, 27.51 apart.** The seam is now `MID_SEAM_BEADS = 476`
   (−380.80, on the bead grid like every other length here) giving **235.44 / 229.95,
@@ -1028,6 +1030,24 @@ panels (fret lines + dust cover + hand rest + UI mount) — see
   was for. −380.80 is the best bead-grid position inside space 9 that clears the pentagon:
   **5.43 mm to the nearest fret line, 1.49 to the marker.** Setting `MID_SEAM_BEADS = 499`
   takes space 8's true midpoint instead and costs 36.8 mm of evenness.
+* ✅ **RESOLVED (user, 2026-09-29): the KEYHEAD panel is set to 249.60 mm** — 312 beads,
+  just inside the 250 the bed really gives — and the seam falls out of it at **−361.15**.
+  That lands in fret **space 10, which carries no marker symbol** (the nearest marking is
+  12.65 mm away, against the 1.49 mm the old seam managed off the fret-9 pentagon), with
+  3.33 mm to fret 9's line and 14.79 to fret 10's.
+
+  **What it trades is evenness: 215.79 / 249.60, 33.81 apart.** Of the three things
+  competing for this seam — marker-free, on the bed, evenly split — the third is the one
+  given up, and `SEAM_BALANCE_MAX` was **deleted** rather than loosened to a number that
+  asserts nothing. `BED_XY` is the constraint that actually binds and it is still checked.
+  The seam is 5.73 off space 10's own midpoint because the midpoint would make the keyhead
+  panel 255.33; "halfway between two frets" and "250 max" cannot both hold there.
+
+  The panel LENGTH is now the anchored datum rather than the seam's position, which is the
+  right way round — the thing under constraint is how much panel has to fit on a bed. The
+  seam is consequently not on the bead grid (451.44 beads), because it derives from `PX1`,
+  a chassis datum that is not; 451 beads would give exactly 250.00 and 452 gives 249.20.
+  **`MID_X0` did not move**, so the UI station and its ribbon are untouched.
 
 ## Control sensors (knee levers + pedals)
 
