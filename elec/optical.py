@@ -3163,9 +3163,11 @@ BOARD_NOTES = {
         # at 0.127 width and the 0.127 rule, pours ignored because repair_planes refills), lay
         # it, refill, and check DRC shows no clearance violation. Last time that was
         # 4 unconnected items -> 2 with violations identical to the baseline.
-        #   ("+3V3D", "F.Cu", 0.127, [(-6.5492, -43.8150),   # U6 pad 36
-        #                             (-7.2470, -43.8660),   # the knee, round the blocking pad
-        #                             (-8.2190, -42.2590)]), # its own copper's endpoint
+        # RESTORED: the re-route was reverted, so the route these points were measured against
+        # is the one on the board again. Verified after restoring -- see audit_board below.
+        ("+3V3D", "F.Cu", 0.127, [(-6.5492, -43.8150),     # U6 pad 36
+                                  (-7.2470, -43.8660),     # the knee, round the blocking pad
+                                  (-8.2190, -42.2590)]),   # its own copper's endpoint
     ] + _shdnz_stubs(),
     "repair_vias": [("SAI_FS", 0.70, -27.41), ("SAI_FS", 6.25, -28.61),
                     ("SAI_FS", 25.00, -19.31)] + _shdnz_vias(),
@@ -3462,25 +3464,25 @@ BOARD_NOTES = {
     # coordinates from me: layout searches it over 8 directions and 84 radial steps against
     # the pads, the vias already placed, the keepouts and the outline.
     # ⚠ AND U7.16 IS ALREADY HERE ON THE SAME NET (+3V3D), so this is not a new kind of use.
-    # ⚠ U7.3/U7.8/U7.10 ADDED 2026-09-30, AND THE REASON IS WHAT U7.9 ALONE DID. Escaping
-    # VDDIO worked -- its via landed 0.938 mm out and +3V3D closed completely, both breaks --
-    # but it took the only good spot on that edge and its neighbours raced for the rest:
-    #     U7.9  VDDIO  via 0.938 mm away   (planned)
-    #     U7.8  D4     via 11.205 mm away  (squeezed: 11 mm of F.Cu before a layer change)
-    #     U7.10 D5     NO via at all       (failed outright)
-    # Net effect 2 unconnected -> 3: one supply pin gained, ULPI_D5 and ULPI_NXT lost. Planning
-    # ONE pin on a congested edge does not reduce the congestion, it just decides who wins.
-    # So the whole edge is planned. The escape search places vias one at a time and checks each
-    # against `done_vias`, so declared pins get SPACED instead of competing; an undeclared
-    # neighbour gets whatever is left, which is what happened to D5.
-    # U7.3 is NXT at the PHY end (U6.45 is its MCU end and was already here), U7.8 is DATA4 and
-    # U7.10 is DATA5 -- pin numbers off this file's own datasheet read of the USB3343 table.
-    # ⚠ AND THIS IS NOT A NEW USE: U7.5 (DATA1) and U7.11 (DATA6) have been escaped this way
-    # all along, on this same package and this same edge.
-    # A pin that cannot be placed fails gracefully -- the search returns False and that pin
-    # simply gets no escape -- so the downside is bounded.
-    "pin_escapes": ("U6.3", "U7.3", "U7.5", "U7.8", "U7.9", "U7.10", "U7.11", "U7.16",
-                    "U6.38", "U6.45"),
+    # ⚠⚠ ESCAPE VIAS ON THE PHY'S CONGESTED EDGE MADE THIS BOARD MONOTONICALLY WORSE, AND
+    # THE EXPERIMENT IS RECORDED HERE SO IT IS NOT REPEATED. Measured, three routes:
+    #     the six below alone                -> 2 unconnected, 0 violations
+    #     + U7.9  (VDDIO)                    -> 3 unconnected, 0 violations
+    #     + U7.3, U7.8, U7.10 (NXT, D4, D5)  -> 5 unconnected, 3 violations
+    # Escaping U7.9 DID close +3V3D completely -- its via landed 0.938 mm out and both breaks
+    # went -- so neither the mechanism nor the diagnosis was wrong. What was wrong was the
+    # reasoning that planning MORE pins would relieve the congestion. It does the opposite: a
+    # pre-placed via is an OBSTACLE THE ROUTER MUST RESPECT, so on an edge with no spare room
+    # each one competes with the router rather than helping it. Planning one pin decided who
+    # won (D4 had to run 11.205 mm before a layer change, D5 got no via at all); planning four
+    # lost +3V3A, I2C2_SDA and SAI_SD3 as well.
+    # This list is for pins the router leaves stranded IN ISOLATION -- which is what all six
+    # below are, spread across two packages -- not for a crowded fan-out.
+    # ⚠ SO VDDIO (U7.9) IS STILL OPEN AND IT IS A PLACEMENT PROBLEM, NOT A ROUTING ONE. The
+    # ULPI fan-out has no room for one more via at any size (measured: O0.40 reaches only
+    # +0.0697 mm against a 0.127 rule). The next thing to try is moving U7 or its decoupling so
+    # pin 9 has a corridor, NOT another via.
+    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16", "U6.38", "U6.45"),
     # ⚠ U6.38 CARRIES ITS OWN INNER RUN TO THE +3V3A SPINE. The escape via gave the MCU's
     # analog supply a local connection (27.32 mm -> 1.25) and took the board from 5
     # unconnected to 3, but the router still would not join that via to the rail: +3V3A's
