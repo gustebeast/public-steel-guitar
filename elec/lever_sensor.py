@@ -70,8 +70,17 @@ I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.P
 # the nearest stock KiCad lands, not read off the drawings -- resolve before ordering.
 MCU_FP = "Package_DFN_QFN:QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm"
 SENSOR_FP = "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm"
-BOARD_W, BOARD_L = 31.0, 21.9
-CHIP_XY = (12.5, 0.85)        # the axle axis, in board-local mm
+# THE SPEC'S FOUR EDGES, in the spec's own frame (origin on the MT6701, +X toward the
+# lever, +Z up). Everything else about the outline is derived from them, because it was
+# not: BOARD_W and CHIP_XY were both typed, and both encode the edges, so the +X edge
+# moving on 2026-09-29 left this file describing a board that no longer existed while
+# every number in it stayed self-consistent (tools/check_board_match.py now says so).
+SPEC_X0, SPEC_X1 = -28.0, 4.025
+SPEC_Z0, SPEC_Z1 = -11.8, 10.1
+BOARD_W, BOARD_L = SPEC_X1 - SPEC_X0, SPEC_Z1 - SPEC_Z0
+# the axle axis in board-local mm -- half the board, less the chip's distance to the far
+# edge. Grow the board on +X alone and the CENTRE moves, so this moves too.
+CHIP_XY = (BOARD_W / 2 - SPEC_X1, BOARD_L / 2 - SPEC_Z1)
 
 # Anything TALLER than 1.5 mm must keep its whole footprint outside the magnet
 # cap's swept circle, because the board installs by dropping straight down past
@@ -423,6 +432,59 @@ def _sensor_qty():
 
 _SENSOR_QTY = _sensor_qty()
 
+# ── WHERE EVERY PART SITS, IN THE CHIP'S FRAME ───────────────────────────────
+# Authored about the CHIP, not the board's centre, because the chip is the axle axis:
+# it is the one datum the housing, the spec and this file all share, and it does not
+# move when an edge does. Board-local comes out of it below, once, via CHIP_XY.
+# (They were board-local until 2026-09-30. That is a frame whose origin moves whenever
+# the outline changes, so widening the +X edge by 1.025 would have shifted all 28 of
+# them 0.5125 mm sideways relative to the chip, silently, while every number here
+# stayed the same.)
+_PLACE_CHIP = {
+        "U4": (0.0000, 0.0000, 0.0),
+        # SWD: SWDIO / SWCLK / GND in a row for a clip, NRST stranded (recovery only)
+        "TP1": (-4.5000, 7.9500, 0.0),     # SWDIO
+        "TP2": (-2.1000, 7.9500, 0.0),    # SWCLK
+        "TP3": (-4.5000, 5.6500, 0.0),     # GND
+        "TP4": (-14.1500, 8.0500, 0.0),    # NRST
+        # J1 on end, mouth -X at x -12.45 (3.05 in from the -X edge, the spec's figure).
+        # Placements anchor on the PAD CENTROID: the footprint's mouth is its local +y 4.4,
+        # its pad centroid local y -1.70 (eight pins at -2.85, two tabs at +2.90), and rot
+        # 270 turns +y to -X -- so the centroid sits 6.10 +X of the mouth. Read back off
+        # the routed geom, not assumed: -8.05 put the mouth at -14.15.
+        "J1": (-18.8500, -0.8500, 270.0),
+        "U1": (-8.5000, 7.1500, 0.0),
+        "C1": (-11.9000, 7.7500, 0.0),
+        "C2": (-11.9000, 6.4500, 0.0),
+        "R7": (-0.1000, 6.3000, 0.0),
+        # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
+        # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
+        # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
+        "U3": (-10.0000, 2.1500, 0.0),
+        "C9": (-5.5000, 3.8000, 0.0),
+        "C8": (-3.5000, 3.8000, 0.0),
+        "R5": (0.0000, 3.5000, 0.0),
+        "C11": (-4.0000, 0.0000, 0.0),
+        "C10": (-1.5000, -3.3000, 0.0),
+        "Y1": (-11.9000, -2.4000, 0.0),
+        # C5/C6 stay east of the crystal: moving them west measured 1 -> 5 unconnected
+        "C5": (-7.4000, -1.9000, 0.0),
+        "C6": (-7.4000, -3.7000, 0.0),
+        # C7 (NRST) steps 2.8 +Y off the MCU's west edge: J1's pads now stand 1.9 from
+        # it rather than 3.6, and at its old site it sat squarely in OSC_OUT's escape
+        # (pin 3, the pin below NRST) -- 1 unconnected with no legal repair path.
+        "C7": (-13.5500, 4.4500, 90.0),
+        "R6": (0.4000, -3.3200, 270.0),
+        "U2": (-10.5000, -7.0000, 0.0),
+        "C4": (-5.0000, -5.7000, 0.0),
+        "R3": (-5.0000, -7.2000, 0.0),
+        "R4": (-1.5000, -5.1500, 0.0),
+        "JP1": (-1.5000, -7.1000, 0.0),
+        "D2": (-5.2000, -9.2000, 0.0),
+        "D3": (-2.4000, -9.2000, 0.0),
+    }
+
+
 BOARD_NOTES = {
     # ⚠ THE ONLY BOARD THERE IS MORE THAN ONE OF, AND IT USED TO DECLARE NO COUNT AT ALL.
     # Every other board states it -- optical 1, output_panel 1, motor_ctrl 1, can_tee one
@@ -449,49 +511,8 @@ BOARD_NOTES = {
     # changed: the buck is gone from the top, the LDO and its two caps take that corner,
     # R6 steps 0.57 -X out of the +X groove band, and the four SWD pads come in off the
     # trimmed +X edge into the top strip (one column of three plus NRST, as before).
-    "placements": {
-        "U4": (12.50, 0.85, 0.0),
-        # SWD: SWDIO / SWCLK / GND in a row for a clip, NRST stranded (recovery only)
-        "TP1": (8.00, 8.80, 0.0),     # SWDIO
-        "TP2": (10.40, 8.80, 0.0),    # SWCLK
-        "TP3": (8.00, 6.50, 0.0),     # GND
-        "TP4": (-1.65, 8.90, 0.0),    # NRST
-        # J1 on end, mouth -X at x -12.45 (3.05 in from the -X edge, the spec's figure).
-        # Placements anchor on the PAD CENTROID: the footprint's mouth is its local +y 4.4,
-        # its pad centroid local y -1.70 (eight pins at -2.85, two tabs at +2.90), and rot
-        # 270 turns +y to -X -- so the centroid sits 6.10 +X of the mouth. Read back off
-        # the routed geom, not assumed: -8.05 put the mouth at -14.15.
-        "J1": (-6.35, 0.00, 270.0),
-        "U1": (4.00, 8.00, 0.0),
-        "C1": (0.60, 8.60, 0.0),
-        "C2": (0.60, 7.30, 0.0),
-        "R7": (12.40, 7.15, 0.0),
-        # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
-        # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
-        # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
-        "U3": (2.50, 3.00, 0.0),
-        "C9": (7.00, 4.65, 0.0),
-        "C8": (9.00, 4.65, 0.0),
-        "R5": (12.50, 4.35, 0.0),
-        "C11": (8.50, 0.85, 0.0),
-        "C10": (11.00, -2.45, 0.0),
-        "Y1": (0.60, -1.55, 0.0),
-        # C5/C6 stay east of the crystal: moving them west measured 1 -> 5 unconnected
-        "C5": (5.10, -1.05, 0.0),
-        "C6": (5.10, -2.85, 0.0),
-        # C7 (NRST) steps 2.8 +Y off the MCU's west edge: J1's pads now stand 1.9 from
-        # it rather than 3.6, and at its old site it sat squarely in OSC_OUT's escape
-        # (pin 3, the pin below NRST) -- 1 unconnected with no legal repair path.
-        "C7": (-1.05, 5.30, 90.0),
-        "R6": (12.90, -2.47, 270.0),
-        "U2": (2.00, -6.15, 0.0),
-        "C4": (7.50, -4.85, 0.0),
-        "R3": (7.50, -6.35, 0.0),
-        "R4": (11.00, -4.30, 0.0),
-        "JP1": (11.00, -6.25, 0.0),
-        "D2": (7.30, -8.35, 0.0),
-        "D3": (10.10, -8.35, 0.0),
-    },
+    "placements": {_r: (_x + CHIP_XY[0], _y + CHIP_XY[1], _rot)
+                    for _r, (_x, _y, _rot) in _PLACE_CHIP.items()},
     "cap_keepout": {"xy": list(CHIP_XY), "r": CAP_SWEEP_R, "tall": list(TALL_PARTS)},
     # FOUR LAYERS: an unbroken GND plane on In1 under a magnetic angle sensor, and the
     # layer set the 0.4 mm-pitch MCU's escape needs. (It was first argued against the 24 V

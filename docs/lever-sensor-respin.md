@@ -95,21 +95,23 @@ renders perfectly against a stale BOM, and the netlist is valid against a stale 
 
 Run it. It exits 1 while the two disagree. As of this writing it disagrees on 12 things:
 
-**The outline, which is mine and is done on the CAD side only.** `elec/lever_sensor.py`
-still has the old numbers, and they are not independent — it works in a board-CENTRED
-frame, so the chip's position encodes the edges too:
+**The outline — DONE on both sides and re-routed, 2026-09-30.** `elec/lever_sensor.py`
+had the old numbers, and they were not independent: it works in a board-CENTRED frame, so
+the chip's position encoded the edges too. Rather than retype them, the four spec edges
+are now the only typed numbers there and `BOARD_W`/`CHIP_XY` derive from them — and the
+28 placements were re-expressed in the CHIP's frame, which is the one datum the housing,
+the spec and the layout all share and the only one that does not move when an edge does.
+(In the board frame they would all have shifted 0.5125 mm sideways, silently, while every
+number in the file stayed the same. That is the same block move the 2026-09-21 re-spin
+did by hand as +1.5, +1.45.)
 
-| | now | needs to be |
-|---|---|---|
-| `BOARD_W` | 31.0 | **32.025** |
-| `CHIP_XY` | (12.5, 0.85) | **(11.9875, 0.85)** |
-| every entry in `BOARD_NOTES["placements"]` | — | **x − 0.5125** |
+Verified: every part's chip-frame position is unchanged, so nothing moved relative to the
+sensor. Re-routed to **0 unconnected, 0 violations** on 32.025 × 21.9, and packaged —
+`lever_sensor.zip`, 23 placements, 17 BOM lines, 0 OPEN sourcing decisions.
 
-That last row is the part that is easy to miss: growing the board on +X alone moves the
-board's centre, so holding a part still in the CHIP's frame — the frame the housing cares
-about, because the chip is the axle axis — means moving it in the board's. It is the same
-block move the 2026-09-21 re-spin did by hand (+1.5, +1.45), and it wants a re-route and a
-DRC pass, which is why it is not done here.
+⚠ IT NEEDS `--rounds=2`. Pass 1 leaves NRST 0.85 mm short of U3 pad 4; the retry closes it
+at no cost. `finish.py`'s docstring says the retry has never paid — that was measured on
+the optical board and does not hold here. The flag did not exist before this; it does now.
 
 **And a divergence that predates all of this**: the CAD's `SENSOR_BOM` is generated from
 an OLDER layout than the one `elec/lever_sensor.py` now holds. It still carries U1 as the
