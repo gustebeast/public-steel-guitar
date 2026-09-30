@@ -4348,3 +4348,49 @@ segments, nearest 3.771 mm away, while `In1.Cu` and `B.Cu` both have pour AT the
 0.0000 — it is plane there). So the move is a via down to In2 and a run across it, which is what
 the earlier note predicted: "In2.Cu is the one layer with no ground pour, i.e. the emptiest place
 to land."
+
+## ⚠⚠ THE "SEALED" VDDIO PIN WAS A PARSER BUG — PAD CAPSULES WERE 90° OFF (2026-09-30)
+
+`U7 pad 9` is **VDDIO on the USB3343 ULPI PHY** — the I/O supply for the whole ULPI bus, so
+this is not a net that can be left open; the project's own rule is that a floating PHY supply
+pin outranks everything.
+
+It read as **completely sealed**: 667 legal via sites within 6 mm and not one reachable, no
+legal escape in **any** direction at **any** radius.
+
+**The clue was the uniformity.** The best gap was a constant **−0.0010 mm** against
+`pad [ULPI_D4]` for every heading and every radius. A real obstacle field does not give the same
+answer in all directions — that shape means the minimum is dominated by a term that never
+changes, which here was the start point.
+
+**Diagnosis.** `_pads` computed `ang = rot - radians(pad_rot)`, adding the pad's own angle to the
+footprint's. **KiCad stores a pad's angle absolute**, so this double-counted. On U7 (footprint
+−90°, pads 270°) it produced −180° where the truth is 270°, laying each capsule along Y:
+
+```
+parsed:  ULPI_D5  y 173.8525..173.2275   +3V3D  y 173.3525..172.7275   <- OVERLAP 0.125 mm
+pcbnew:  each pad's world bbox is 0.875 x 0.250  -> long axis along X
+```
+
+Three 0.625-long capsules **end to end on one line at 0.5 mm pitch**, so adjacent QFN lands
+overlapped one another. Pads that cannot physically coexist — and the phantom overlap straddled
+the pin, sealing it off.
+
+⚠ **Positions were right, which is why this survived.** An earlier fix in the same function
+checked pad POSITIONS against pcbnew part by part and its comment records "0 pads more than
+0.02 mm out". The error hid in pad SHAPE, which nothing compared against anything. The
+docstring two paragraphs above the faulty line already warns that *"an obstacle model that is
+too FAT fails as silently as one that is too thin — it just reports 'impossible' instead of
+'clear'"*, about pad shape.
+
+**After the fix:** U7.9 has **18 of 24 legal exit directions** at r 0.15 (best +0.2160 mm), with
+a corridor out to ~1.05 mm before the neighbours' escape vias close it.
+
+**Validated the way the position fix was:** all **982** of optical's pads compared against
+pcbnew's own bounding box — **worst disagreement 0.0000 mm**. All three boards re-audited and
+unchanged (optical 16/16 over 57 segments, `output_panel` 7/7 over 9, `motor_ctrl` clean), so no
+existing repair was leaning on the wrong geometry.
+
+⚠ **THIS INVALIDATES EVERY EARLIER `repair_search` VERDICT NEAR A ROTATED PAD**, on every board.
+`SAI_FS`'s "boxed in every time" is now suspect on a THIRD independent count — two shapes only,
+zone-blind, and pad capsules 90° off. Re-run it.
