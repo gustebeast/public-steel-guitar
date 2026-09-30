@@ -148,7 +148,7 @@
     "assembly_per_feeder_usd": 1.5,
     "assembly_per_joint_usd": 0.0017,
     "assembly_note": "setup and feeder are PER ORDER (so per ten instruments); joints are per board",
-    "verified": "m",
+    "verified": "e",
     "fab_quotes": {
       "_note": [
         "MEASURED on jlcpcb.com's instant quote, 2026-09-30, at the form's DEFAULTS:",
@@ -160,7 +160,7 @@
         "$16.60 -- JLCPCB prices a batch, not a board, and the minimum is per ORDER.",
         "The error was worst exactly where the instrument has most boards.",
         "",
-        "⚠ Re-measure before ordering. Quotes move, and these are one day's numbers."
+        "\u26a0 Re-measure before ordering. Quotes move, and these are one day's numbers."
       ],
       "measured": [
         {
@@ -258,6 +258,35 @@
         }
       },
       "verified": "v"
+    },
+    "_assembly_note": [
+      "MEASURED 2026-09-30 on cart.jlcpcb.com/quote: enabling PCB Assembly breaks the",
+      "charge into FIVE lines, not the two this model had --",
+      "  Components / Extended components fee / SMT Assembly /",
+      "  Hand-soldering labor fee / Manual Assembly",
+      "The RATES are still unmeasured. JLCPCB will not quote assembly without a gerber +",
+      "BOM + CPL upload and an assembly terms acceptance, so none of the numbers below",
+      "came off the live form the way the fab_quotes did. They are marked 'e' (estimate).",
+      "The fab side WAS re-confirmed on the same clean form: optical 4L 64.8x188.5 q10",
+      "quotes $40.10 = $25.00 engineering + $15.10 board, exactly as fab_quotes records.",
+      "",
+      "Hand-soldering is the line this model was missing entirely. Our THT is small but",
+      "not zero: output_panel, motor_ctrl, ui_board and can_tee carry real through-hole",
+      "connectors, and can_tee is ordered a hundred at a time."
+    ],
+    "hand_solder_per_joint_usd": 0.2,
+    "tht_footprints": [
+      "-XH-A_",
+      "-PH-K_",
+      "PinHeader",
+      "IDC-Header",
+      "TerminalBlock",
+      "BarrelJack",
+      "Jack_6.35"
+    ],
+    "tht_pins_fallback": {
+      "Jack_6.35": 4,
+      "BarrelJack": 3
     }
   },
   "parts_by_footprint": {
@@ -614,7 +643,7 @@
       "$109 -> $146 on this one number. Walls dominate a part like the chassis, so it",
       "packs denser than sparse-infill intuition suggests.",
       "",
-      "⚠ ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
+      "\u26a0 ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
       "will run HIGHER than 0.60; a large hollow one lower. Slicing a second part -- a",
       "knee housing, say -- would show whether one factor is honest for the whole set."
     ]
