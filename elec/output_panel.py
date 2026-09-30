@@ -78,7 +78,13 @@ P = Pin.types.PASSIVE
 
 USBC_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
 USBA_FP = "Connector_USB:USB_A_Receptacle_GCT_USB1046"
-TS_FP = "Connector_Audio:Jack_6.35mm_Neutrik_NMJ4HCD2_Horizontal"
+# ⚠ NMJ6HCD2, NOT NMJ4HCD2: the 4 is the TS part and the 6 is its TRS sibling.
+# Same body, same bushing, same panel cut-out, same mounting -- the TRS simply adds the
+# RING and RING_N lands, and its pad set is a strict SUPERSET of the TS one (checked pad
+# by pad, 2026-09-30). So the mechanical work already done against the TS part -- the
+# 3.0 mm panel clamp, TS_SHOULDER_DEPTH, the endplate counterbore, _FRONT["J5"] -- all
+# still holds, and the change costs a footprint name.
+TRS_FP = "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal"
 # PJ-102AH: the PCB-MOUNT sibling of the PJ-005A the BOM already specifies -- same
 # Same Sky/CUI family, same 2.0 mm pin, but board pins instead of solder lugs.
 DC_FP = "Connector_BarrelJack:BarrelJack_CUI_PJ-102AH_Horizontal"
@@ -229,16 +235,38 @@ def output_panel():
     # and mounting it as a free-floating panel jack was what implied hand-soldered
     # lugs. Its nut clamps the endplate, so the PANEL takes the cable-yank load
     # rather than the PCB.
-    outp = Net("JACK_TIP")
-    j5 = Part(name="NMJ4HCD2", ref_prefix="J", ref="J5", tag="J5", dest="NETLIST", tool="skidl",
-              value="NMJ4HCD2", description="1/4 in TS output, PCB mount, panel bushing",
-              footprint=TS_FP,
+    # ⚠ THREE MODES OUT OF ONE JACK, AND THE PLUG PICKS BETWEEN TWO OF THEM MECHANICALLY.
+    #   1. TS mono, "DIRECT"  -- a TS plug SHORTS RING TO SLEEVE. Nothing switches, nothing
+    #      is told, and nothing has to detect the plug: the ring driver simply finds itself
+    #      driving ground through its 220R series resistor, which is what that resistor is
+    #      for. The tip carries the pickup through the relay's de-energised contact, so the
+    #      instrument plays with no Pi, no firmware and no DAC.
+    #   2. TRS stereo         -- tip = DAC left, ring = DAC RIGHT.
+    #   3. TRS balanced mono  -- tip = +signal, ring = -signal.
+    # ⚠ AND 2 AND 3 ARE THE SAME HARDWARE. Both want "the other channel on the ring"; they
+    # differ only in WHAT the Pi puts there, R for stereo and -L for balanced. So the Pi
+    # generates the inverted leg in software and this board grows no inverter, no analog mux
+    # and no mode switch -- and gets a differential pair that is sample-synchronous and
+    # gain-matched by construction, which an analog inverter is not. The DAC's right channel
+    # already existed and was being thrown away (it was literally Net("DAC_OUT_R_NC")).
+    # ⚠ BALANCED IS A PROCESSED MODE, and that is a real limit, stated rather than hidden:
+    # the inverted leg comes from the Pi, so mode 3 does not work in the direct path. The
+    # user's own framing says direct IS mode 1, so nothing is lost -- but a TRS cable into a
+    # balanced input while in direct mode still behaves correctly, as IMPEDANCE-BALANCED:
+    # the ring sits at the ring buffer's low output impedance instead of floating, which is
+    # what a receiver's common-mode rejection actually needs from the cold leg.
+    outp, ringp = Net("JACK_TIP"), Net("JACK_RING")
+    j5 = Part(name="NMJ6HCD2", ref_prefix="J", ref="J5", tag="J5", dest="NETLIST", tool="skidl",
+              value="NMJ6HCD2", description="1/4 in TRS output, PCB mount, panel bushing",
+              footprint=TRS_FP,
               pins=[Pin(num="T", name="TIP", func=P), Pin(num="TN", name="TIP_N", func=P),
+                    Pin(num="R", name="RING", func=P), Pin(num="RN", name="RING_N", func=P),
                     Pin(num="S", name="SLEEVE", func=P), Pin(num="SN", name="SLEEVE_N", func=P)])
     outp += j5["T"]
+    ringp += j5["R"]
     # The switched contacts go to ground rather than floating: an open switch lug
     # beside an audio contact is an antenna, and nothing here needs to sense a plug.
-    agnd += j5["S"], j5["TN"], j5["SN"]
+    agnd += j5["S"], j5["TN"], j5["SN"], j5["RN"]
 
     # ── J6/J7: the 24 V inlet, crossing its own corner ───────────────────────
     # ⚠ AND THE SPLIT COSTS SOMETHING, MEASURED 2026-09-19: THIS BOARD HAS THE WORST
@@ -471,7 +499,8 @@ def output_panel():
                 (32, 50, 68, 17, 31, 51, 67, 13,        # VDD
                  18, 49, 12, 69,                        # VSS + the exposed pad
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
-                 61, 62, 35, 36, 37, 38, 25, 48, 52, 63, 39, 1)]
+                 61, 62, 35, 36, 37, 38, 25, 48, 52, 63, 39, 1,
+                 64, 65, 26)]       # PB8, PB9, PB0 -- the gain pot's SPI
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -491,6 +520,16 @@ def output_panel():
     i2s_sdi += u1[37]
     i2s_sdo += u1[38]
     relay += u1[25]
+    # ⚠ BIT-BANGED, AND DELIBERATELY. SPI1 (PA5/6/7) and SPI2 (PB13/14/15) are both
+    # spoken for -- SPI2 IS the I2S2 that carries the audio -- and PB8/PB9/PB0 were the
+    # three pins cross-checked as genuinely free against WCH's QFN-68 column. A digital
+    # pot is written when the VOLUME CHANGES, not per sample: 16 bits at even 100 kHz is
+    # 160 us, four hundred times inside the 50 ms budget below. Spending a hardware SPI
+    # peripheral on it would buy nothing and cost a pin map that is already full.
+    pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
+    pot_cs += u1[64]
+    pot_sck += u1[65]
+    pot_sdi += u1[26]
     mclk = Net("I2S_MCK")
     mclk += u1[39]
     v3v3 += u1[1]             # VBAT: no backup battery, so it is the main supply
@@ -588,7 +627,11 @@ def output_panel():
     # chooses what to send here, so it can fold down for the jack while the
     # computer gets full stereo over the gadget port -- two different mixes from
     # one stream.
-    Net("DAC_OUT_R_NC").connect(u3["OUTR"])
+    # ⚠ THIS USED TO BE Net("DAC_OUT_R_NC") -- the right channel existed and was
+    # discarded, because the Pi summed to mono for a TS jack. With a TRS jack the ring
+    # IS that channel, so the whole of modes 2 and 3 is already sitting on this pin.
+    proc_r = Net("DAC_OUT_R")
+    proc_r += u3["OUTR"]
 
     # ── U4: the hub. HIGH SPEED -- a FS hub would reintroduce the TT ─────────
     # WCH CH334F, QFN-24 4x4 (LCSC C5187527). Pins off WCH's datasheet V2.5 Table 1-3, the
@@ -691,7 +734,8 @@ def output_panel():
                     Pin(num=5, name="V+", func=P)])
     buf += u7[1], u7[4]       # unity-gain follower
     agnd += u7[2]
-    u7_in += u7[3]            # AC-coupled from the relay's common, biased at VMID
+    tip_gain = Net("TIP_GAIN")
+    tip_gain += u7[3]         # the pot's P0 wiper -- see U10
     v5 += u7[5]
     # ⚠ U8 IS NEW WITH THE PICKUP, AND IT IS WHAT MAKES ONE COIL FEED TWO THINGS.
     # The ADC and the relay's direct contact both want the pickup, and a magnetic
@@ -709,6 +753,80 @@ def output_panel():
     agnd += u8[2]
     pk_in += u8[3]            # the coil through C37, biased at VMID through R8 (1M)
     v5 += u8[5]
+
+    # ── U9: the RING buffer. Third instance of a part already on this board. ─────
+    # TLV9061 again rather than a dual: U7 and U8 are already this SKU, so the ring leg
+    # adds a line to the reel count and not a new part to buy, place and stock. A dual
+    # would have saved one package and cost a SKU, and on a board that already carries
+    # two singles that is the wrong way round.
+    # ⚠ AND IT MUST BE THE SAME PART FOR AN ELECTRICAL REASON TOO, not just a purchasing
+    # one. In balanced mode the tip and ring are a differential pair, and the receiver
+    # rejects common-mode noise only as well as the two legs MATCH. Identical amplifier,
+    # identical topology, identical 220R series and identical 2.2 uF block is what makes
+    # the two legs the same impedance; a different op-amp on the cold leg would be a
+    # CMRR fault that measures fine on a bench and hums in a room.
+    ring_in, ring_buf = Net("RING_BUF_IN"), Net("RING_BUF_OUT")
+    ring_blocked = Net("RING_BLOCKED")
+    dac_r_filt, ring_att = Net("DAC_R_FILT"), Net("RING_ATT")
+    u9 = Part(name="OPAMP", ref_prefix="U", ref="U9", tag="U9", dest="NETLIST",
+              tool="skidl", value="TLV9061IDBVR",
+              description="ring buffer -- the TRS cold leg, matched to U7",
+              footprint="Package_TO_SOT_SMD:SOT-23-5",
+              pins=[Pin(num=1, name="OUT", func=P), Pin(num=2, name="V-", func=P),
+                    Pin(num=3, name="IN+", func=P), Pin(num=4, name="IN-", func=P),
+                    Pin(num=5, name="V+", func=P)])
+    ring_buf += u9[1], u9[4]      # unity-gain follower, exactly as U7
+    agnd += u9[2]
+    ring_gain = Net("RING_GAIN")
+    ring_gain += u9[3]        # the pot's P1 wiper -- see U10
+    v5 += u9[5]
+
+    # ── U10: THE GAIN, AND IT IS AN ATTENUATOR IN FRONT OF THE BUFFERS ─────────
+    # MCP4261-103E/ST: dual 10k digital pot, SPI, TSSOP-14. Pinout off Microchip's
+    # DS22059 Table 3-1 (14-lead), read 2026-09-30:
+    #   1 CS   2 SCK  3 SDI  4 VSS  5 P1B  6 P1W  7 P1A
+    #   8 P0A  9 P0W 10 P0B 11 WP  12 SHDN 13 SDO 14 VDD
+    # ⚠ WHY A POT AND NOT A GAIN THE Pi APPLIES IN SOFTWARE: BECAUSE OF MODE 1.
+    # The user asked for gain control in the DIRECT mode -- the one whose whole point is
+    # that the pickup reaches the jack without the Pi in the path. A software gain is by
+    # definition unavailable there. This is an ANALOG attenuator, so it works in every
+    # mode including the one with no firmware running, and it adds ZERO samples of
+    # latency because there is no sample: it is a resistor divider that a wiper moves.
+    # ⚠ AND IT SITS BEFORE THE BUFFER, WHICH IS THE WHOLE TRICK. Signal -> wiper ->
+    # buffer -> jack. Put the pot AFTER the buffer and the jack sees 10k of source
+    # impedance that varies with the setting; in front of a unity follower the jack
+    # always sees the op-amp. The low end of each track goes to VMID rather than ground
+    # because VMID IS the AC ground here (C40 is 10 uF across it) -- and because both
+    # ends of the track then sit at the same DC as the wiper, so moving the wiper moves
+    # no charge and the volume change does not click.
+    # ⚠ 3.3 V LOGIC INTO A 5 V PART, CHECKED RATHER THAN ASSUMED: VIH is 0.45*VDD =
+    # 2.25 V at VDD = 5 V, and the MCU drives 3.3 V. It runs off V5 and not V3V3 because
+    # the AUDIO has to fit between its rails -- the signal is VMID-centred and swings the
+    # full 0..5 V, which a 3.3 V-powered pot would clip against its own substrate diodes.
+    u10 = Part(name="MCP4261-103E_ST", ref_prefix="U", ref="U10", tag="U10",
+               dest="NETLIST", tool="skidl", value="MCP4261-103E/ST",
+               description="dual 10k SPI digital pot -- the OUTPUT GAIN, analog so it "
+               "works in the direct mode too (LCSC C132173)",
+               footprint="Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+               pins=[Pin(num=n, func=P) for n in range(1, 15)])
+    pot_cs += u10[1]
+    pot_sck += u10[2]
+    pot_sdi += u10[3]
+    agnd += u10[4]
+    v5 += u10[14]
+    # WP and SHDN are tied INACTIVE rather than left to float: SHDN floating would let
+    # noise mute the instrument, which is the one failure nobody would debug quickly.
+    v5 += u10[11], u10[12]
+    Net("POT_SDO_NC").connect(u10[13])   # daisy-chain out, nothing downstream
+    # P0 = the TIP path, which is BOTH modes' hot leg and therefore the direct path too
+    u7_in += u10[8]           # P0A: the relay common, AC-coupled and VMID-biased
+    tip_gain += u10[9]        # P0W -> U7
+    vmid += u10[10]           # P0B: AC ground
+    # P1 = the RING path. Same 10k, same code written to both, so the two legs track
+    # and a balanced pair stays balanced at every volume setting.
+    ring_in += u10[7]         # P1A: DAC right, attenuated, AC-coupled, VMID-biased
+    ring_gain += u10[6]       # P1W -> U9
+    vmid += u10[5]            # P1B
 
     # ── K1/Q1: direct vs processed. DE-ENERGISED IS DIRECT. ──────────────────
     # With no power, no Pi and no firmware the magnetic pickup reaches the jack
@@ -803,6 +921,18 @@ def output_panel():
             "0..5 V, inside its 5.0 V working voltage")
     blocked += d5[1]
     agnd += d5[2]
+    # ⚠ D7 IS NOT OPTIONAL, AND FINDING THAT OUT IS THE REASON THE RING TOOK MORE THAN
+    # A BUFFER. On a TRS-to-XLR cable the RING IS PIN 3, and a desk with phantom power on
+    # puts +48 V down pin 3 through 6.81k exactly as it does down pin 2. The tip has been
+    # guarded since this board was drawn -- R9, C1 and D5 -- and a ring added without the
+    # same three parts would be a brand-new 48 V path onto a brand-new op-amp. So the cold
+    # leg is a part-for-part mirror of the hot one, which the matching argument at U9 wants
+    # anyway: R20 for R9, D7 for D5, C41 for C1, R21 for R10.
+    d7 = _d("D7", "ESD5B5.0ST1G", "RING phantom-guard clamp -- the mirror of D5. A TRS "
+            "plug's ring lands on XLR pin 3, which carries +48 V through 6.81k just like "
+            "pin 2, and C41 blocks the DC but passes the insertion edge")
+    ring_blocked += d7[1]
+    agnd += d7[2]
     d6 = _d("D6", "SMAJ30A", "24 V rail clamp -- the trunk is shared with ten stepper "
             "drivers and their inductive kick arrives here", "Diode_SMD:D_SMA")
     v24 += d6[1]
@@ -928,7 +1058,19 @@ def output_panel():
             ("C38", "1uF", pk_buf, direct, "direct-path coupling to the relay -- 16 Hz into "
              "R15's 10k, two octaves under the lowest string (C2, 65 Hz)", C0805),
             ("C39", "1uF", sel, u7_in, "output buffer input coupling (1.6 Hz into R16)", C0805),
-            ("C40", "10uF", vmid, agnd, "VMID reservoir", C0805)):
+            ("C40", "10uF", vmid, agnd, "VMID reservoir", C0805),
+            # ── the RING leg ─────────────────────────────────────────
+            ("C41", "2.2uF/100V", ring_blocked, ringp, "RING DC BLOCK -- C1's mirror, and a "
+             "safety part for the same reason: 100 V is the RATING, because it sits charged "
+             "to 48 V for the duration of a phantom fault",
+             "Capacitor_SMD:C_1210_3225Metric"),
+            ("C42", "1uF", ring_att, ring_in, "ring buffer input coupling -- C39's mirror",
+             C0805),
+            ("C43", "100nF", v5, agnd, "U9 bypass", None),
+            ("C44", "100nF", v5, agnd, "U10 bypass -- the pot's supply is also the reference "
+             "its wiper divides, so it gets its own", None),
+            ("C45", "2.2nF C0G", dac_r_filt, agnd, "DAC right output filter, with R23 -- "
+             "C34's mirror", None)):
         c = _c(tag, val, desc, fp) if fp else _c(tag, val, desc)
         a += c[1]
         b += c[2]
@@ -940,7 +1082,19 @@ def output_panel():
             ("R16", "100k", u7_in, vmid, "output buffer bias to VMID"),
             ("R17", "100k", v5, vmid, "VMID divider, top"),
             ("R18", "100k", vmid, agnd, "VMID divider, bottom"),
-            ("R19", "10k", ovcur, v3v3, "hub OVCUR# pulled inactive")):
+            ("R19", "10k", ovcur, v3v3, "hub OVCUR# pulled inactive"),
+            # ── the RING leg: every one of these is the mirror of a TIP part ─────────
+            ("R20", "220R", ring_buf, ring_blocked, "ring output series -- R9's mirror, and "
+             "the part that makes a TS PLUG SAFE: it shorts ring to sleeve, so this resistor "
+             "is what the ring buffer drives in mode 1"),
+            ("R21", "100k", ringp, agnd, "ring output bleed -- R10's mirror"),
+            ("R22", "100k", ring_in, vmid, "ring buffer bias to VMID -- R16's mirror"),
+            ("R23", "470R", proc_r, dac_r_filt, "DAC right output filter, with C45 -- R13's "
+             "mirror. The right channel needs TI's filter for the same reason the left does"),
+            ("R24", "10k", dac_r_filt, ring_att, "DAC right -6 dB with R25 -- R14's mirror. "
+             "2.1 Vrms is more than a 5 V rail carries on EITHER channel"),
+            ("R25", "10k", ring_att, agnd, "ring attenuator bottom -- R15's mirror, and it "
+             "holds the node at 0 V so nothing steps when the DAC starts")):
         r = _r(tag, val, desc)
         a += r[1]
         b += r[2]
@@ -1348,6 +1502,40 @@ BOARD_NOTES = {
         "R18": (0.60, 5.00, 0.0),
         "C40": (0.40, 3.00, 0.0),
         "R15": (-1.60, 11.60, 0.0),     # relay common to 0 V
+        # ── THE RING LEG. Sites MEASURED, not chosen by eye ──────────────────
+        # Every one of these came out of a courtyard-collision sweep against the board as
+        # it actually stood (0.25 mm of air between courtyards, 1.0 mm off the rim), seeded
+        # at the part's electrical anchor and taking the NEAREST legal site -- worst case
+        # 5.50 mm from where it was asked for, most under 2 mm. Placing this row by reading
+        # the dict and guessing at gaps is exactly the move that has gone wrong on this
+        # board before, and the sweep costs seconds.
+        # ⚠ THE RING CHAIN DELIBERATELY SITS BELOW THE TIP CHAIN, not beside it: the tip
+        # runs along y 8.00 from x 4 to 21 and J5's courtyard owns everything above y 11.34,
+        # so the only room that keeps the two legs SHORT and PARALLEL -- which is what a
+        # differential pair wants -- is the strip beneath.
+        "U9": (9.50, 4.00, 0.0),        # ring buffer, matched to U7
+        "R20": (10.00, 1.75, 0.0),      # ring series 220R (R9's mirror)
+        "D7": (18.04, 5.34, 0.0),       # ring phantom clamp (D5's mirror)
+        "C41": (19.22, 2.78, 0.0),      # ring DC block, 1210 (C1's mirror)
+        "R21": (21.00, 5.00, 0.0),      # ring bleed (R10's mirror)
+        "C42": (6.44, 1.31, 0.0),       # ring input coupling (C39's mirror)
+        "R22": (6.66, 2.94, 0.0),       # ring bias to VMID (R16's mirror)
+        "C43": (9.12, 0.65, 0.0),       # U9 bypass
+        # the gain pot and its bypass
+        "U10": (14.00, 2.00, 0.0),      # MCP4261, between the two legs it drives
+        # ⚠ C44 IS 3.00 mm FROM ITS ANCHOR AND NOT 2.25, BECAUSE OF A STITCHING VIA.
+        # At the nearest legal site layout could find no room beside pad 2 for a via down to
+        # the plane, and a bypass cap whose ground reaches the plane only THROUGH THE POUR is
+        # a bypass cap that island removal can quietly disconnect. Re-swept with 0.90 mm of
+        # air instead of 0.25 -- enough for the via and its clearance -- and took the nearest
+        # site that passes THAT test. Declaring a stitch_exception would have been one line
+        # and the wrong line.
+        "C44": (17.00, 5.00, 0.0),
+        # the DAC's right channel, beside the left channel's own filter and divider
+        "R23": (10.72, -21.72, 0.0),    # right output filter 470R (R13's mirror)
+        "C45": (10.66, -25.25, 0.0),    # right output filter 2.2nF (C34's mirror)
+        "R24": (8.72, -21.72, 0.0),     # right -6 dB top (R14's mirror)
+        "R25": (7.12, -21.72, 0.0),     # right -6 dB bottom (R15's mirror)
         "C7": (4.00, 4.00, 0.0),
         "C8": (7.50, 4.00, 0.0),
         # CC pull-downs and the panel ESD clamps, beside their own connectors
