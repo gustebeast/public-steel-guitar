@@ -475,7 +475,7 @@ def _side_skin(xa, xb):
                   x=(xa + xb) / 2, y=BY0 + SIDE_SKIN_T / 2, z=(TZ + BZ) / 2))
 
 
-def _split(panel, xa, xb, lines=True, frets=True, cavity=False):
+def _split(panel, xa, xb, lines=True, frets=True, cavity=False, opaque=None):
     """Split a finished panel at the colour line (z = TZ-FRET_T) → (base, colour).
     BASE (transparent PCTG) keeps everything below, plus the embossed fret solids
     trimmed to the panel (openings/windows interrupt the lines automatically);
@@ -496,6 +496,13 @@ def _split(panel, xa, xb, lines=True, frets=True, cavity=False):
     # mm3 of one filler's top, moved from colour to base against its neighbour's).
     inlays = _fret_solids(xa, xb, frets=frets) if lines else None
     base, colour = panel.cut(slab), panel.intersect(slab)
+    # ...and anything handed in as `opaque` is COLOUR material wherever it lies, not just
+    # in the top band. The fret-light comb is the case: it runs from the board at -16.05
+    # up to the inlay's underside, so a plain Z split would hand most of it to the
+    # transparent base and the cells would not block anything (src/fret_light.py).
+    if opaque is not None:
+        base = base.cut(opaque)
+        colour = colour.union(opaque.intersect(panel))
     if inlays is not None:
         inlay = inlays.intersect(panel)
         if inlay.solids().vals():          # nothing lands on this panel (e.g. a pickup-region filler)
@@ -518,9 +525,14 @@ def _deck_body(xa, xb):
     return body
 
 
-def _band(xa, xb, *, ui=False):
+def _band(xa, xb, *, ui=False, cells=False):
     """A plain (filler / mid / keyhead) deck panel body + opt. UI (fret lines are
-    applied by _split, which turns them into the base/colour material boundary)."""
+    applied by _split, which turns them into the base/colour material boundary).
+
+    `cells` hangs the FRET LIGHT COMB under it -- one opaque wall per fret boundary from
+    the LED board up to the inlay's underside, closed outboard by ramps. See
+    src/fret_light.py; the comb is returned to the caller as well so _split can assign it
+    the colour material."""
     body = _deck_body(xa, xb)
     if ui:
         # THE UI STATION. src/ui_panel.py owns all of it and derives its geometry from
@@ -531,7 +543,11 @@ def _band(xa, xb, *, ui=False):
         # ORDER MATTERS: the cradle is fused BEFORE the cutter runs, so the module's
         # pocket also clears anything of the cradle that strayed into it.
         body = body.union(UIP.deck_mount()).cut(UIP.deck_cutter())
-    return body
+    if cells:
+        from . import fret_light as FL
+        comb = FL.walls(xb, xa).union(FL.ramps(xb, xa))
+        return heal(body.union(comb)), comb
+    return body, None
 
 
 def _pickup_piece():
@@ -627,7 +643,7 @@ def _pickup_zplate():
 def _filler(slot):
     """One fret-marked filler band at slot index `slot` (its own fixed X span; BAND_W
     wide, with the GAP to the next slot left as clearance)."""
-    return _band(SLOT_X[slot], SLOT_X[slot] - BAND_W)
+    return _band(SLOT_X[slot], SLOT_X[slot] - BAND_W)[0]
 
 
 # ── the two long panels' seam, and the bed ──────────────────────────────────────────────
@@ -674,8 +690,10 @@ _piece_pair   = _split(_pickup_piece(), PIECE_X0, PIECE_X1, lines=False, cavity=
 # asserted below rather than asserted in prose.
 _filler_pairs = [_split(_filler(i), SLOT_X[i], SLOT_X[i] - BAND_W, frets=False)
                  for i in range(N_SLOTS)]
-_mid_pair     = _split(_band(MID_X0, MID_X1, ui=True), MID_X0, MID_X1)
-_key_pair     = _split(_band(KEY_X0, KEY_X1), KEY_X0, KEY_X1)
+_mid_body, _mid_comb = _band(MID_X0, MID_X1, ui=True, cells=True)
+_key_body, _key_comb = _band(KEY_X0, KEY_X1, cells=True)
+_mid_pair     = _split(_mid_body, MID_X0, MID_X1, opaque=_mid_comb)
+_key_pair     = _split(_key_body, KEY_X0, KEY_X1, opaque=_key_comb)
 
 # build.py places these in the assembly (piece + visible fillers + the 2 panels)
 # and exports base + colour side by side (top_plate_N + top_plate_N_color). The
