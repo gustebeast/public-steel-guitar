@@ -64,6 +64,54 @@ above its own board whatever its diameter, so it fires over a coplanar neighbour
 that is geometry, not catalogue, and it is why §9.1 called tip-to-tip the only
 coplanar-valid arrangement. Tip-to-tip needs 12.00 mm against 10.40.
 
+### 1b2 ⚠ THE MATING AXIS IS THE REAL FILTER, AND THEN THE SEAM IS
+
+> "So there's no well stocked PCBA part that can join two boards together such that they
+> can be pushed together or pulled apart blind?" (user, 2026-09-30)
+
+Fair challenge, and the first framing above was too narrow. Blind-mate board-to-board
+parts are PLENTIFUL and well stocked -- the same catalogue search turned up
+`BTB-0.8-2*60P`. Three things filter them out, in this order.
+
+**1. They mate along Z; this joint can only mate along X.** A deck panel "caps both rails
+and drops a vertical DOVETAIL tongue down the rail centre-line into a rail-top groove...
+the tongue runs along X -> plates slide out -X" (`top_plate.py`). The panel is CAPTURED in
+Z and cannot lift. So mezzanine, stacking and vertical-pogo parts are all out however well
+stocked they are -- the panel would shear them, not unplug them.
+
+**2. The X-mating stocked list is two entries and both fail.** Right-angle header + socket:
+0 in stock (§1a). Horizontal SMD pogo: one family, `YZF`, of which C5203987 is the part
+§9.1 retracted. The six in-stock pogos found on 2026-09-30 are `YZP`/`YZ` -- the VERTICAL
+family. Two drawings read rather than inferred:
+
+| | C5157217 YZP0575-29035-01 | C5157273 YZP0207-27090-01 |
+|---|---|---|
+| overall | 3.50 working height | **9.00**, 5.50 working height |
+| stroke | 0.70 (to 2.80) | 0.70 (to 4.80 min) |
+| body / flange | Ø2.54 / Ø2.90 | Ø2.50 / Ø2.70 |
+| tail | Ø2.45 | **Ø1.50 THT pin**, C0.20 |
+| force | 80 gf ±20% | 100 gf ±20% |
+| plating | **Ni only** | Au 3u' over Ni |
+| axis | **perpendicular to the board** | **perpendicular to the board** |
+
+Both fire along the barrel, i.e. into a board stacked above. C5157273 is through-hole as
+well, which these boards cannot take at all -- their underside clears the CAN harness by
+1.00 mm, so a tail would be in the cable. (The other four share the vertical-family prefix;
+that is inference, not a drawing.)
+
+**3. And underneath both, the SEAM is the blocker, which is the durable part.** Any
+X-mating connector needs land on BOTH boards. The 10.40 mm bay is entirely on MID's panel
+-- `fret_led_key` has **no bay at its +X end**, because that region is fret 9's light cell.
+Even a perfect part would have to notch through a cell wall, which is one of the costs
+§9.1 deleted by retracting ("six notches through a light-cell wall").
+
+That last one is geometry, not catalogue, so it does not change when stock does.
+
+⚠ **WHAT WOULD ACTUALLY REOPEN IT: give `fret_led_key` a bay at its +X end**, at the cost
+of fret 9's cell -- one unlit fret, at the panel seam. `SKIP_FRETS` already carries fret 1
+for a similar reason. That is a real trade and it belongs to whoever is weighing the header
+count, not to this module.
+
 ### 1c The jumper is the one live route to TWO headers
 
 No blind-mate, no new sourcing risk: give `fret_led_mid` a second connector and run a
