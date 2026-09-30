@@ -782,8 +782,12 @@ def _foot_pedal_components():
 
 
 def _electronics_components():
-    """The compute bay (PRO population shown; a basic build leaves the Pi /
-    CS stack / buck sockets empty) + panel jacks + the wire harness."""
+    """The compute bay + panel jacks + the wire harness.
+
+    (The old "PRO population shown; a basic build leaves the Pi / CS stack / buck
+    sockets empty" is retired with the basic/pro split itself -- there is ONE model,
+    fully populated, and BOM.md's cost summary says so. The CS stack and the buck
+    sockets it named are both gone besides.)"""
     from . import electronics as EL
     from . import wiring as WR
     from . import top_plate as TP
