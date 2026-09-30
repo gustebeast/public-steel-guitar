@@ -1806,10 +1806,43 @@ def ctrl_bus_b(lkl):
     low = bundle_paths(list(reversed(_ends(farc, d, lead=max(CANB_LEAD, _so - CTRL_FAN))))
                        + [lo2], offs2, across=(0.0, 0.0, 1.0))
     low = _fan(low, 0, far, d, CANB_LEAD)
-    high = bundle_paths(list(reversed(_ends(j2bc, (1.0, 0.0, 0.0))))
-                        + list(reversed(_to_j2(hi2, j2bc))) + [lo2],
-                        offs2, across=(0.0, 1.0, 0.0))
-    high = _fan(high, 0, j2b, (1.0, 0.0, 0.0), CANB_LEAD)
+    # ⚠ THE J2 END GOES DOWN, NOT ALONG. J2's plug face is at z -83.85, BELOW the floor
+    # slab's underside (_CH_Z_BOT -81.85) -- the connector is under the floor. The old path
+    # took the cable UP into the cavity on the lane's `hi` point (z -62.85), ran it -Y past
+    # the board and brought it back DOWN to a connector that was below the floor the whole
+    # time, and that up-and-back-down is what drove it THROUGH motor_ctrl: measured 10.25 /
+    # 10.25 / 4.57 mm^3 with 22-26 mm of y inside the board. It is why five polyline
+    # variants and three `across` seeds never touched this -- they were all re-aiming a run
+    # whose TOPOLOGY was wrong.
+    # ⚠ AND BOTH +-X FAN DIRECTIONS ARE WRONG, which is what the old note here got wrong.
+    # The pin sits at x -598.75, MID-THICKNESS of a board spanning -606.50..-591.70, so any
+    # approach from +-X at a z inside the board travels through it. "Pointed -X the fan ran
+    # back into the board" was true; "so use +X" did not follow. -Z is the one direction the
+    # connector actually faces, and it had never been tried.
+    # THE LANE IS AT pin_z - CANB_LEAD, NOT AT THE PORT'S `lo`. The crimp lead squares 6.4
+    # out of the pin, so it lands at -90.25; putting the run at lo's -85.85 instead would
+    # make the path dip below the lane and come back up, and bundle_paths COLLAPSES ITS
+    # SECTION at a reversal (the _to_j2 note above records that exact failure). Measured
+    # clear at every x from -600.00 to -592.50 at -85.85, -88.00, -90.25 and -92.00; only
+    # z -83.00 is blocked, by the board itself.
+    # ⚠ AND THE RIBBON SPREADS IN X, NOT Y. J2's four ways are strung out along y and the
+    # run to the port is ALSO +y, so a y-spread section would lay all four conductors on one
+    # line for the whole run -- the same fault this file records for the pedal cable, where
+    # 2.0 mm of y offset collapsed to 0.42 of real separation. The fan converts the pins'
+    # y spread into an x-spread ribbon over its own CTRL_FAN.
+    # ⚠ `across` MAKES NO MEASURABLE DIFFERENCE ON THIS PATH, and a note here previously
+    # claimed it did. Both seeds were measured: (1,0,0) -> 25.737 mm^3 of self-overlap,
+    # (0,0,1) -> 26.045, and the four conductors' zmin is -96.46/-98.46/-100.46/-102.46
+    # under BOTH. The earlier note derived "second axis = run x across" and read the 2.0 mm
+    # z stagger as proof the spread had landed on z; the next measurement refuted it, since
+    # swapping the seed moved nothing. THE STAGGER IS NOT THIS BUNDLE'S SECTION -- it is the
+    # LKL end's, and it is identical with this whole block reverted to HEAD. Do not re-tune
+    # this vector expecting the depth to move; it will not.
+    _lane_z = j2bc[2] - CANB_LEAD
+    high = bundle_paths([j2bc, (j2bc[0], j2bc[1] + CTRL_FAN, _lane_z),
+                         (lo2[0], lo2[1], _lane_z), lo2],
+                        offs2, across=(0.0, 0.0, 1.0))
+    high = _fan(high, 0, j2b, (0.0, 0.0, -1.0), CANB_LEAD)
     for j, (nm, _pl) in enumerate(CANB_NETS):
         q = list(low[j]) + list(reversed(high[j]))[1:]
         out.append(("wire_canb_%s_lkl_0" % nm, _wire(q, CANB_WIRE_OD)))
