@@ -109,6 +109,10 @@ HEIGHT = {
     # and it has to be here at all because a part with no height is a part the CAD
     # silently leaves out, which is what cad_geom_check caught on the first route.
     "Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal": 15.67,
+    # SC-70-6 (TI DCK): 1.10 mm max body height, SCES424O section 11. It is here because
+    # cad_geom_check refused the board without it -- "a part with no height is a part
+    # the CAD would silently leave out" -- which is the right way round.
+    "SOT-363_SC-70-6": 1.10,
     "L_0603_1608Metric": 0.95, "L_Taiyo-Yuden_NR-30xx": 1.50,
     "Relay_DPDT_FRT5_SMD": 5.10,
     "SOT-23": 1.30, "SOT-23-5": 1.45, "SOT-23-6": 1.10,
