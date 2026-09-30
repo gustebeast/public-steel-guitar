@@ -3489,3 +3489,82 @@ The endplate half is the "little trim" the user means. **The other half is the o
 itself over the driver column**, which is not a CAD trim — it is a notch in the board outline,
 in `elec/optical.py`. Probed with a generous Ø6.0 column (key plus driver body); re-measure
 against a bare 2.5 mm key before sizing the notch, as that may shrink or remove the PCB half.
+
+## ✅ OPTICAL: 0 VIOLATIONS, 5 UNCONNECTED, AND THE HOLES ARE IN (2026-09-29, end of tick)
+
+        pass 1: 5 unconnected, 0 violation(s)
+        12 cutout(s) match, 861.7 mm2 vs 864.9
+        optical  242 / 242 routed parts present in the CAD
+        every routed part is where the CAD draws it
+
+**The CAD, the fab data and the screws finally describe one board.** The session opened with
+a board whose two M4s passed through solid laminate while the CAD rendered a convincing
+assembly; the overlap gate had been reporting it the whole time as `optical_pcb <->
+optical_screw_0/1`.
+
+| run | unconnected | violations | what changed |
+|---|---|---|---|
+| +X mount | 10 | 15 | holes in, nine capacitors moved to clear C111 |
+| −X mount | 8 | 11 | **user's suggestion** — three parts moved instead of nine |
+| + escape detour | 8 | 15 | `escape_runs` U6.38 routed around the hole |
+| − stale SAI_FS repair | 9 | **2** | 13 violations traded for 1 unconnected |
+| + re-sited pads | **5** | **0** | all six bring-up pads re-searched |
+
+Remaining unconnected: `+3V3A`, `ULPI_NXT`, `ULPI_D4`, `LED_ROW`, `SAI_FS`.
+
+### The four faults this uncovered, all of them checks that did not test what they claimed
+
+1. **`escape_runs` is a pass no guard consults.** A hand-typed 2-point polyline, laid
+   verbatim, then frozen by `route.py` as `(type fix)` — and **a frozen wire ignores a rule
+   area**. The hole's keepout was correct all along (verified: 24-point polygon, r 2.800,
+   dead centre). `_local_nets` is exonerated by construction — both call sites pass
+   `holes=_hole_pts` and `seg_clear` samples every 0.15 mm.
+2. **A screw position was secretly a placement datum.** `_mcu_x1` read `MOUNT_X_TAIL`, so
+   moving the mount dragged the LQFP176 **41 mm off the board**. Caught by two asserts in
+   sequence. Now `TAIL_X1 - MOUNT_KEEP`, identical to the micron.
+3. **The jack-access assert was vacuous.** `_SECTIONS` tuples are `(y0, y1, x1, x0)`;
+   reading `_s[3]` took `TAIL_X1` on the FAR side, computed a 58.99 mm gap and passed
+   unconditionally. It could never have caught the strip growing −X into the driver, which
+   is the only thing it exists for. With `_s[2]` it reproduces the 1.775 mm its own comment
+   always claimed, against the 1.4435 a 2.5 mm hex key needs.
+4. **The CAD's holes were square.** The note in `opt_pcb` records that when they last existed
+   they were `box_at` prisms. That is the user's "circular in KiCad, square in FreeCAD",
+   and adding them back naively would have reproduced it. They are `cyl` now, from
+   `mount_points()`, so the CAD plate / Edge.Cuts circle / screw cannot drift.
+
+### ⚠ Post-route artifacts ROT, and that is a standing cost, not a one-off bug
+
+The `SAI_FS` repair and all six bring-up pad sites are fitted to ONE finished route. Any
+placement change invalidates every one of them. This is why the board went 15 → 2 violations
+by *withdrawing* the repair and 2 → 0 by *re-searching* the pads.
+
+* `tools/padsite.py` is REBUILT and committed. The original lived in `scratchpad/`, which no
+  longer exists — the tick prompt still names `maze.py`, `verify_path.py` and
+  `repair_search.track_gap`, and **none of them are there**. Anything re-run on every route
+  change cannot live in a scratch directory.
+* ⚠ **`SAI_FS`'s repair now needs REBUILDING, not re-running.** Keep its own finding: no path
+  from that pin has 0.15 mm of headroom (searched at 0.28/0.285/0.29, "boxed in every time"),
+  so the answer was 0.143 mm or an unconnected frame clock.
+* ⚠ **`TP7` IS NOT REALLY FIXED.** ONE viable site on the whole board at **0.195 mm** of
+  headroom, where the other five have 12–401 sites and 1.6–4.7 mm. It is placed, but it is a
+  coincidence and it will break on the next route. If another route is needed, TP7 is the pad
+  to drop rather than re-site again.
+
+### The pickup height jack — measured, and smaller than first reported
+
+Only `pickup_jack_screw_0` is obstructed; jacks 1 and 2 are clear.
+
+**The optical board does NOT obstruct it.** The earlier "1.60 mm" came from sweeping a Ø6.0
+column (key plus driver body) where the board is sized for a bare key — 1.775 mm of air
+against 1.4435 needed. **The trim is `bridge_endplate` alone: 4.84 mm deep, starting 1.10 mm
+above the head.** NOT YET BUILT.
+
+### Method note, and it is the theme of the whole tick
+
+Every fault above — and every mistake I made chasing them — was **a check that was subtly not
+testing the thing it claimed to test**: a probe cylinder the wrong shape, an exclusion by name
+where a region was meant, a search along a line where the constraint was an area, a net lookup
+that silently returned empty, a distance metric that disagreed with the guard it mirrored, and
+an assert reading the wrong edge. The geometry was never the hard part. **Verify the verifier:
+make it FAIL on a case you know is bad before believing it passes.** `_assert_mount_heads_clear`
+earned its place by catching C111, R30, TP8 *and* a bug in `padsite.py` itself.
