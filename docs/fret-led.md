@@ -22,8 +22,13 @@ follows replaces its **geometry**, not its rules.
 
 | panel | frets | markers | LED span in X |
 |---|---|--:|--:|
-| mid | 9–24 (16) | 7 | 211.9 |
-| keyhead | 1–8 (8) | 3 | 193.1 |
+| mid | 10–24 (15) | 7 | 191.4 |
+| keyhead | 1–9 (9) | 3 | 214.8 |
+
+(Seam moved to −361.15 on 2026-09-29 — keyhead panel set to 249.60, see `top_plate.KEY_L`.
+The keyhead board is now the long one. Nothing above changes: both spans are still far
+inside every JLCPCB limit, and **`MID_X0` did not move**, so the 14.08 mm pickup clearance
+in section 4 is unaffected.)
 
 **The fret line is 79.6 mm long. That single number drives everything below.**
 
