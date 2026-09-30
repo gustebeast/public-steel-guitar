@@ -394,12 +394,32 @@ def intended(na, nb) -> bool:
     # fine (and not worth fighting in the model). A wire may otherwise only clip
     # its declared source/destination bodies; clipping any OTHER solid (a motor,
     # a board, the chassis) is a real routing bug.
-    a_wire, b_wire = base(na) in WIRE_OK, base(nb) in WIRE_OK
-    if a_wire and b_wire:
+    # ⚠ base() IS NOT ENOUGH TO FIND A CABLE'S WIRE_OK ENTRY, and this silently disabled
+    # the whole wire doctrine for most of the harness. base() strips trailing DIGIT groups --
+    # "(_\d+)+$" -- so wire_canbl_0 reduces to wire_canbl and matches, while wire_5v_gnd_a
+    # reduces to ITSELF and matches nothing. Every conductor named for its function rather
+    # than its index therefore fell outside the allow-list entirely: not allowed to touch the
+    # parts it is DECLARED to connect, and not even allowed to touch another wire, which the
+    # comment three lines up calls "physically fine (and not worth fighting in the model)".
+    # It was found by correcting wire_5v's declared far end from pi5 to pi_cap and watching
+    # the gate not move -- the allow-list had never been consulted for that cable at all.
+    # So resolve a cable to the LONGEST WIRE_OK key it is a prefix-path of. Longest wins so
+    # that a key which is a prefix of another cannot shadow it, and the "_" is required so
+    # wire_link never claims wire_linkage.
+    def _wire_key(name):
+        best = None
+        for k in WIRE_OK:
+            if name == k or name.startswith(k + "_"):
+                if best is None or len(k) > len(best):
+                    best = k
+        return best
+
+    ka, kb = _wire_key(na), _wire_key(nb)
+    if ka and kb:
         return True
-    for w, o in ((na, nb), (nb, na)):
-        if base(w) in WIRE_OK:
-            return base(o) in WIRE_OK[base(w)]
+    for w, o in ((ka, nb), (kb, na)):
+        if w:
+            return base(o) in WIRE_OK[w] or o in WIRE_OK[w]
     # the electronics tray's tabs rest on their channel floors
     if frozenset({base(na), base(nb)}) == frozenset({"electronics_tray", "chassis"}):
         return True
