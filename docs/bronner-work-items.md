@@ -3783,3 +3783,58 @@ this file is `3 * D.BEAD` = 2.4, after the user rejected 1.2 as under the qualit
   spacer rather than weaken it.
 * `pcb_cradle` cannot build this: it puts its `hold_edge` boss immediately beside the board,
   and this boss is 12.5 mm out. The boss and the clamp are new geometry in `electronics.py`.
+
+## THE BRING-UP PADS WERE THROWING AWAY BETTER ROUTES — FIXED AT THE SOURCE (2026-09-29)
+
+`finish.py --rounds 3` (log `/tmp/optical_finish7.log`) came back **5 unconnected / 0
+violations** — identical to the committed baseline, so on its face a wasted 25 minutes. It
+was not. The pass table is the finding:
+
+| pass | unconnected | violations | what the violations were |
+|---|---|---|---|
+| 1 | 5 | 0 | — (kept) |
+| 2 | **3** | 2 | **both the same object**: `TP10` pad 1 [+5V] shorting a `V5_PRE` track, 6.02 mm |
+
+**Pass 2 routed two more nets and was discarded because of a pad we place ourselves.** Not a
+routing failure at all — `TP10`'s frozen site had a track through it on that pass.
+
+### Root cause: the search was right, freezing its answer was wrong
+
+`route.py`'s own comment above `post_route_refs` already states the correct rule — *"THE SITE
+IS SEARCHED AGAINST THE FINISHED BOARD, not chosen"* — and that was true **when the search
+ran**. But the search was a one-off by hand (`tools/padsite.py`) and its ANSWER was frozen
+into `notes["placements"]`. The board then moves underneath it. This is the third time the
+rot has cost real work, and the pattern was already recorded ("post-route artifacts rot: the
+six bring-up pad sites fit ONE route; any placement change invalidates them"). Recording it
+was not enough — a note cannot re-run a search.
+
+### The fix (commit `b7bf011`): `_resite_post_pads()` in `elec/route.py`
+
+The search now runs **at placement time**, on the board in hand, with the recorded coordinate
+demoted from a fact to a **preference**. A good site is unchanged from the original search:
+
+* a clear circle that **already overlaps its own net's copper**, so the pad needs no track —
+  a pad that needs a track is a new net for the router to carry, which is how these cost
+  connections in the first place
+* not within the fab rule (0.127) of foreign copper on F.Cu
+* not under a courtyard — a pad under a part is electrically legal and **unprobeable**
+
+A ring search outward at 0.25 mm moves a failed pad **as little as possible**, because these
+coordinates were chosen next to the thing they help bring up and that intent is worth keeping.
+
+⚠ **TP pads only.** `Rs11..Rs51` are `post_route_refs` too, but each carries a pull-up on a
+new `SHDNZ<k>` net that must reach its converter's pin. Moving a bare pad on a finished rail
+is free; moving those is not.
+
+**Verified both directions** (KiCad python, against the finished board):
+
+* every recorded site still clears → `moved: []`, so the normal path costs nothing
+* with `TP10` planted on a `V5_PRE` track — *the exact pass-2 failure* — it is caught and
+  re-sited **10.75 mm** onto its own `+5V` copper
+
+`tools/padsite.py` is now a REPORTING tool, not the mechanism. It stays useful for asking why
+a site is bad, but nothing depends on a human running it any more.
+
+**Re-running `--rounds 3` with this live** (log `/tmp/optical_finish8.log`): a pass-2-quality
+board should now score 3/0 and be KEPT. If it does, the remaining unconnected set is 3, and
+`+3V3A` / `ULPI_NXT` / `ULPI_D4` / `LED_ROW` is the real list to work.
