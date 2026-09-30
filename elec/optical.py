@@ -3177,6 +3177,29 @@ BOARD_NOTES = {
         # Keeping it would have been the worse kind of dead weight: hand-laid copper re-laid
         # blind into every future route, at coordinates that only happened not to short this
         # time. The repair mechanism is not in question; this particular repair is retired.
+        # +3V3A at U11 pad 5: a MAZE path, and the first repair this board has taken from
+        # the new search. 25 points, 15.541 mm, worst clearance +0.1804 against a 0.127 rule.
+        # Laid on the finished board and refilled, it takes DRC from 6 unconnected items to 4
+        # with violations IDENTICAL to the baseline.
+        # WHY 15.5 mm FOR A 6.97 mm GAP: straight is blocked, a dog-leg is blocked, and
+        # via->In2->via is blocked -- 63 legal via sites at the pad and 224-563 at the islands,
+        # but all ~8000 sampled pairs fail on the run BETWEEN them, because In2 carries no pour
+        # yet the board's 400 vias pierce every layer. The detour is what exists.
+        # ⚠ SEARCHED AT clearance 0.175, NOT THE 0.127 RULE, AND THAT IS NOT PADDING. At the
+        # rule itself the path grazed C114 pad 2 and DRC returned four clearance violations of
+        # 0.0864-0.1105 mm, because _pads models a pad as a STADIUM (a capsule with fully
+        # rounded ends) where KiCad pads are ROUNDED RECTANGLES, which reach further at the
+        # corners. 0.175 covers that underestimate; the model itself still wants fixing.
+        ("+3V3A", "F.Cu", 0.127, [
+            (7.6039, -61.1300), (7.3864, -60.9300), (3.0364, -56.5800),
+            (3.0364, -56.2800), (2.5864, -55.8300), (2.2864, -55.8300),
+            (2.1364, -55.9800), (1.8364, -55.9800), (1.6864, -55.8300),
+            (1.5364, -55.8300), (1.3864, -55.9800), (1.2364, -55.9800),
+            (1.0864, -56.1300), (0.7864, -55.8300), (0.4864, -55.8300),
+            (0.0364, -56.2800), (0.0364, -59.8800), (0.1864, -60.0300),
+            (0.1864, -60.1800), (0.3364, -60.3300), (0.3364, -60.4800),
+            (0.4864, -60.6300), (0.4864, -60.7800), (0.6364, -60.9300),
+            (0.6364, -61.0800)]),
     ] + _shdnz_stubs(),
     "repair_vias": [("SAI_FS", 0.70, -27.41), ("SAI_FS", 6.25, -28.61),
                     ("SAI_FS", 25.00, -19.31)] + _shdnz_vias(),
