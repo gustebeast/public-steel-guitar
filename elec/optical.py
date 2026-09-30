@@ -3462,7 +3462,25 @@ BOARD_NOTES = {
     # coordinates from me: layout searches it over 8 directions and 84 radial steps against
     # the pads, the vias already placed, the keepouts and the outline.
     # ⚠ AND U7.16 IS ALREADY HERE ON THE SAME NET (+3V3D), so this is not a new kind of use.
-    "pin_escapes": ("U6.3", "U7.5", "U7.9", "U7.11", "U7.16", "U6.38", "U6.45"),
+    # ⚠ U7.3/U7.8/U7.10 ADDED 2026-09-30, AND THE REASON IS WHAT U7.9 ALONE DID. Escaping
+    # VDDIO worked -- its via landed 0.938 mm out and +3V3D closed completely, both breaks --
+    # but it took the only good spot on that edge and its neighbours raced for the rest:
+    #     U7.9  VDDIO  via 0.938 mm away   (planned)
+    #     U7.8  D4     via 11.205 mm away  (squeezed: 11 mm of F.Cu before a layer change)
+    #     U7.10 D5     NO via at all       (failed outright)
+    # Net effect 2 unconnected -> 3: one supply pin gained, ULPI_D5 and ULPI_NXT lost. Planning
+    # ONE pin on a congested edge does not reduce the congestion, it just decides who wins.
+    # So the whole edge is planned. The escape search places vias one at a time and checks each
+    # against `done_vias`, so declared pins get SPACED instead of competing; an undeclared
+    # neighbour gets whatever is left, which is what happened to D5.
+    # U7.3 is NXT at the PHY end (U6.45 is its MCU end and was already here), U7.8 is DATA4 and
+    # U7.10 is DATA5 -- pin numbers off this file's own datasheet read of the USB3343 table.
+    # ⚠ AND THIS IS NOT A NEW USE: U7.5 (DATA1) and U7.11 (DATA6) have been escaped this way
+    # all along, on this same package and this same edge.
+    # A pin that cannot be placed fails gracefully -- the search returns False and that pin
+    # simply gets no escape -- so the downside is bounded.
+    "pin_escapes": ("U6.3", "U7.3", "U7.5", "U7.8", "U7.9", "U7.10", "U7.11", "U7.16",
+                    "U6.38", "U6.45"),
     # ⚠ U6.38 CARRIES ITS OWN INNER RUN TO THE +3V3A SPINE. The escape via gave the MCU's
     # analog supply a local connection (27.32 mm -> 1.25) and took the board from 5
     # unconnected to 3, but the router still would not join that via to the rail: +3V3A's
