@@ -144,11 +144,10 @@
       "6": 0.17
     },
     "fab_min_usd": 2.0,
-    "assembly_setup_usd": 25.0,
-    "assembly_per_feeder_usd": 1.5,
+    "assembly_setup_usd": 8.24,
     "assembly_per_joint_usd": 0.0017,
     "assembly_note": "setup and feeder are PER ORDER (so per ten instruments); joints are per board",
-    "verified": "e",
+    "verified": "v",
     "fab_quotes": {
       "_note": [
         "MEASURED on jlcpcb.com's instant quote, 2026-09-30, at the form's DEFAULTS:",
@@ -260,21 +259,34 @@
       "verified": "v"
     },
     "_assembly_note": [
-      "MEASURED 2026-09-30 on cart.jlcpcb.com/quote: enabling PCB Assembly breaks the",
-      "charge into FIVE lines, not the two this model had --",
-      "  Components / Extended components fee / SMT Assembly /",
-      "  Hand-soldering labor fee / Manual Assembly",
-      "The RATES are still unmeasured. JLCPCB will not quote assembly without a gerber +",
-      "BOM + CPL upload and an assembly terms acceptance, so none of the numbers below",
-      "came off the live form the way the fab_quotes did. They are marked 'e' (estimate).",
-      "The fab side WAS re-confirmed on the same clean form: optical 4L 64.8x188.5 q10",
-      "quotes $40.10 = $25.00 engineering + $15.10 board, exactly as fab_quotes records.",
+      "MEASURED 2026-09-30 on a real JLCPCB PCBA quote: can_tee's own gerber + BOM + CPL",
+      "uploaded, Economic PCBA, qty 50, 3 parts (2 THT connectors, 1 0603 resistor).",
       "",
-      "Hand-soldering is the line this model was missing entirely. Our THT is small but",
-      "not zero: output_panel, motor_ctrl, ui_board and can_tee carry real through-hole",
-      "connectors, and can_tee is ordered a hundred at a time."
+      "  PCB Price                 $11.30   engineering 8.00 + film 0.30 + board 3.00",
+      "  Economic PCBA Price       $35.98",
+      "    Setup Fee                $8.24   per board DESIGN per order",
+      "    Stencil                  $1.55   per board DESIGN per order",
+      "    Components (3 items)    $10.79   50 boards' worth of parts",
+      "    SMT Assembly             $0.17   100 joints  -> $0.0017 each",
+      "    Hand-soldering           $3.61   600 THT pins -> $0.0060 each",
+      "    Manual Assembly          $9.97   100 THT parts -> $0.0997 each",
+      "    Nitrogen reflow          $1.65   an option, not modelled -- turn it off",
+      "  Total                     $47.28",
+      "",
+      "WHAT THIS OVERTURNED. The $0.0017 per SMT joint was right. Everything else was",
+      "not. Hand-soldering is $0.006 a pin, not the $0.20 guessed here yesterday -- 33x",
+      "out -- but THT also carries a SEPARATE $0.0997 per PART placed, which nothing in",
+      "the model knew about. Net for can_tee: $0.27 a board against $2.40 guessed.",
+      "Setup is $8.24 and it is PER DESIGN, not $25.00 once for the order, so ten board",
+      "designs pay it ten times.",
+      "",
+      "ONE DATA POINT, Economic, qty 50. Standard PCBA prices differently -- it shows a",
+      "'Feeders Loading fee' where Economic shows 'Setup Fee' -- and JLCPCB forces",
+      "Standard above a qty threshold, where a board under 70 mm a side then gets EDGE",
+      "RAILS added. Measured on can_tee at qty 100: the board charge went $6.00 -> $37.40",
+      "because the 49.5x16 outline was padded out to 71.5x70. See boards.rails_note."
     ],
-    "hand_solder_per_joint_usd": 0.2,
+    "hand_solder_per_joint_usd": 0.006,
     "tht_footprints": [
       "-XH-A_",
       "-PH-K_",
@@ -287,7 +299,25 @@
     "tht_pins_fallback": {
       "Jack_6.35": 4,
       "BarrelJack": 3
-    }
+    },
+    "rails_note": [
+      "MEASURED: can_tee qty 100 was pushed to Standard PCBA, which requires every side",
+      "over 70 mm and adds edge rails. 49.5 x 16 became 71.5 x 70 and the board line went",
+      "from $6.00 to $37.40. At qty 50 the same board stays Economic, needs no rails, and",
+      "the board line is $3.00. This is a REAL cost cliff that depends on order quantity,",
+      "and it lands on our two smallest, most numerous boards: can_tee (10 per instrument)",
+      "and lever_sensor (11 per instrument, 31 x 21.9 mm). Panelising is the escape --",
+      "JLCPCB itself offered a 5 x 15 panel -- and nothing in this model represents it."
+    ],
+    "assembly_stencil_usd": 1.55,
+    "manual_assembly_per_tht_part_usd": 0.0997,
+    "_stock_note": [
+      "SOURCING RISK found while quoting can_tee: C157914 (S8B-XH-A, the 8-way CAN",
+      "connector) had 65 pieces in JLCPCB's library on 2026-09-30, against the 100 a",
+      "ten-instrument order needs. The quote would not proceed until the quantity came",
+      "down under stock. It is a stocked JST part, so this is a JLCPCB-library depth",
+      "problem rather than a dead part -- but assembly is only turnkey while they hold it."
+    ]
   },
   "parts_by_footprint": {
     "_note": "generic passives, priced by package class. LCSC Basic-library rates.",
@@ -462,14 +492,14 @@
       "what": "HRO TYPE-C-31-M-12"
     },
     "JST_XH_S4B": {
-      "usd": 0.12,
-      "verified": "m",
-      "what": "JST XH 4-way header"
+      "usd": 0.0698,
+      "verified": "v",
+      "what": "JST XH 4-way, C157925 -- JLCPCB cart, 51 pcs $3.5598"
     },
     "JST_XH_S8B": {
-      "usd": 0.23,
-      "verified": "m",
-      "what": "JST XH 8-way header"
+      "usd": 0.1416,
+      "verified": "v",
+      "what": "JST XH 8-way, C157914 -- JLCPCB cart, 50 pcs $7.08; ONLY 65 IN STOCK 2026-09-30"
     },
     "JST_XH_B4B": {
       "usd": 0.11,
