@@ -3505,6 +3505,32 @@ BOARD_NOTES = {
     "placements": _placements(CX, CY),
 }
 
+# ⚠⚠ THE SAI_FS POST-ROUTE REPAIR IS WITHDRAWN AS STALE (2026-09-29). Its own header says
+# what it is: "RE-SEARCHED AGAINST THE ROUTE OF 2026-09-28 21:5x ... a post-route repair fits
+# ONE route". The mount holes and the -X mount move changed the route, so the path it was cut
+# for no longer exists, and it now supplies THIRTEEN of the board's fifteen violations --
+# SAI_FS shorting or crossing SWCLK, SWDIO, I2C2_SCL, SAI_SD2/SD3 and ULPI_D7.
+# ⚠ THIS IS A DELIBERATE TRADE, TAKEN ON THIS PROJECT'S OWN RULE: "a violation is worse than
+# an unconnected pad -- one is a board that cannot be made, the other a board that is not
+# finished." Withdrawing it should cost SAI_FS its connection and buy back thirteen
+# violations, which converts an unmakeable board into an unfinished one.
+# ⚠ AND THE ORDER MATTERS, which is the lesson this keeps teaching. Re-searching the repair
+# against a route that is still moving is exactly what produced this: the path was fitted, the
+# placement then changed underneath it, and the fit became a short. Let the board settle
+# FIRST, then search the repair once against the final route.
+# ⚠ THE SEARCH TOOL NAMED IN THE TICK PROMPT DOES NOT EXIST. There is no scratchpad/
+# directory at all -- no maze.py, no verify_path.py, no repair_search.track_gap -- so
+# re-searching means rebuilding the search, not re-running it. Budget for that, and note the
+# repair's own finding when doing it: NO path from this pin has 0.15 mm of headroom (searched
+# at 0.28, 0.285 and 0.29, boxed in every time), so the answer was 0.143 mm or an unconnected
+# frame clock. The +3V3D and SHDNZ members are NOT implicated and stay.
+SAI_FS_REPAIR_STALE = True
+if SAI_FS_REPAIR_STALE:
+    BOARD_NOTES["repair_tracks"] = [t for t in BOARD_NOTES["repair_tracks"]
+                                    if t[0] != "SAI_FS"]
+    BOARD_NOTES["repair_vias"] = [v for v in BOARD_NOTES["repair_vias"]
+                                  if v[0] != "SAI_FS"]
+
 
 def _assert_matches_cad(net_path):
     """The netlist and the CAD must describe the SAME board, part for part.
