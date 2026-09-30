@@ -1,9 +1,19 @@
 # Public Steel Guitar
 
-Open-source parametric CAD for an **electro-mechanical pedal steel guitar**:
-one closed-loop electric actuator per string, so the copedent — the mapping
-from pedals and knee levers to pitch changes — becomes **software
-configuration** instead of a hand-built maze of rods and bellcranks.
+A pedal steel guitar **you can build yourself, from parts anyone can buy.**
+
+That is the whole point, and it is what the name means. A pedal steel today
+comes from one of a handful of builders, costs several thousand dollars, and is
+held together by a mechanical changer nobody outside that shop can make. When it
+breaks, you send it back. When you want it to do something different, you wait
+for someone who owns a mill.
+
+This one is designed so that never applies. Every printed part is in this
+repository as parametric source. Every purchased part is a catalogue SKU with a
+supplier link in [`BOM.md`](BOM.md), which comes to **~$865 basic / ~$1,090
+pro** — and the electronics are generated from source too, so the boards can be
+re-fabbed by anyone rather than bought from us. **Nothing here needs our
+permission, our shop, or our help.**
 
 **Status:** CAD and electronics in progress; no physical prototype yet. The
 mechanism is build-verified geometry (every commit is gated for part collisions,
@@ -14,8 +24,7 @@ reads, and nothing commands a motor. [`docs/design-validation.md`](docs/design-v
 tracks what the instrument can and cannot yet be shown to do, behaviour by
 behaviour, including the open items. See
 [`electromechanical-pedal-steel-spec.md`](electromechanical-pedal-steel-spec.md)
-for the full design rationale and history, and [`BOM.md`](BOM.md) for sourced
-purchased parts (~$865 basic / ~$1,090 pro, dominated by the ten closed-loop steppers).
+for the full design rationale and history.
 
 **View it in 3D** (no install, no account):
 <https://gustebeast.github.io/public-steel-guitar/> — an interactive model of the
@@ -23,12 +32,32 @@ instrument body, strings, nut block, and motor/changer drivetrain.
 
 **License:** [CERN-OHL-S 2.0](LICENSE) (strongly reciprocal open hardware).
 
+## Why it is built this way
+
+Almost every design decision here follows from that one constraint. The
+mechanism is not the goal; it is what is left once you insist that a person with
+a 3D printer and a credit card can make the whole instrument.
+
+| Traditional | Here | Because |
+|---|---|---|
+| Body milled from hardwood | **Printed PETG-GF and PCTG** | A printer is a machine people already own, and a file is not tooling. Changing a dimension is an edit, not a new setup. |
+| A machined changer: rods, bellcranks, pull-fingers, all bespoke | **One commodity stepper and a GT2 belt per string** | Nothing in the drivetrain is made to order. A stepper, a belt, a trapezoidal screw and a nut are catalogue parts with several suppliers each. |
+| Pull-rod geometry fixes which pedal moves which string | **The copedent is a data table** | Falls out of the above rather than being the aim: once each string has its own actuator, the mapping is software and costs nothing to change. |
+| Repairs go back to the builder | **Every part is a file or a SKU** | Print the part again, or order the same screw. No part of this instrument is unobtainable. |
+| Assembly needs a shop | **One 2.5 mm hex key, heat-set inserts, no glue** | Fewest tools, one screw family, and every joint comes apart — so it can be repaired and modified, not just built. |
+
+The cost of this trade is honest and worth stating: it needs electricity,
+firmware and ten motors, where a mechanical steel needs none of those. It is a
+different instrument, not a cheaper copy of an existing one.
+
 ## The concept, in one paragraph
 
-A traditional pedal steel changes string pitch by pulling the string's anchor
-with a mechanical changer; which pedal pulls which string, and by how much, is
-fixed in hardware. Here, each of the 10 strings terminates on the **nut of its
-own self-locking leadscrew**, driven by a **closed-loop stepper** (MKS SERVO42D).
+So: each of the 10 strings terminates on the **nut of its own self-locking
+leadscrew**, driven by a **closed-loop stepper** (MKS SERVO42D) through a
+twisted GT2 belt. A traditional pedal steel changes pitch by pulling the
+string's anchor with a mechanical changer, and which pedal pulls which string is
+fixed in the hardware; giving every string its own stock actuator is the
+cheapest way to get the same job done out of parts that already exist.
 Pedals and levers are just **sensors**; firmware looks up the active copedent
 and commands the relevant motors to new positions. Any pedal can bend any
 combination of strings by any interval, changeable between songs. Because the
@@ -38,9 +67,19 @@ heat, no idle noise — and the instrument holds its tuning even switched off.
 
 ## System concepts
 
+Everything below is downstream of the buildability constraint: where there was a
+choice between a clever part and an obtainable one, the obtainable one won.
+
 - Per-string servo/stepper actuation of a pedal-steel changer, with a
   **software-reconfigurable copedent** (pedal/lever sensors → lookup →
   per-string position targets).
+- **One bearing size, one screw family, one hex key.** A 688ZZ carries every
+  axle; every fastener is an M4 button head on a 2.5 mm key; threads are
+  heat-set brass inserts rather than tapped plastic. Fewer SKUs to source is
+  the same goal as fewer tools to own.
+- **No glue and no flex fittings anywhere.** Every joint is a screw, a slide or
+  a captured pin, so any part can come out and be reprinted — which is what
+  makes a repair a repair rather than a rebuild.
 - A **self-locking (non-back-drivable) leadscrew per string** holding pitch
   with zero motor power, and serving as the tuning machine (no manual tuners).
 - **Two nested control loops**: a fast feed-forward path (pedal position →
