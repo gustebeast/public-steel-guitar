@@ -1093,6 +1093,63 @@ only **7 mm** before `wire_usb` crosses at -580.00 (see BOARD_BAY).
 3. **The force may not need holding at all** (user: "in practice it may not actually
    provide any force since the retention plastic may provide enough friction").
 
+## 9.1e FLUSH IS THE TARGET: preload defined by the panels butting
+
+> "Could we design it though such that if the top panels are flush then the pins are
+> preloaded the right amount? Then it's just a matter of getting the endplates to push the
+> panels flush together which we can do with print tuning and taking advantage of the
+> plastic's slight flex" (user, 2026-09-30)
+
+Yes, and it collapses the whole tolerance argument into one constant. It also gives the
+assembler a target they can SEE -- no gap -- instead of a force they cannot feel.
+
+**At flush the board-edge separation is just the two insets.** mid's board sits 0.65 inside
+its panel's -X edge, key's 0.80 inside its +X edge:
+
+    board separation at flush = 0.65 + 0.80 = 1.45
+    a + b = 2 x workH - 1.45 = 12.00 - 1.45 = 10.55
+
+⚠ **DERIVE IT, DO NOT TYPE IT.** Those insets are consequences of `board_span()` and the
+panel ranges; the setback must be computed from them, or the joint silently goes out of
+preload the next time a panel length moves. Same rule the whole module already follows.
+
+### ⚠ BIAS THE PRELOAD LONG, BECAUSE BOTTOMING IS THE UNRECOVERABLE FAILURE
+
+Do not aim at 6.00. The failure that makes FLUSH UNACHIEVABLE is bottoming: if the stack
+lands short, the pogos reach their 5.70 limit and become rigid brass struts holding the
+panels apart, and no endplate clamping or plastic flex closes that seam -- there is no
+spring left to compress. Losing contact force is recoverable and visible; bottoming is
+neither.
+
+| target at flush | worst case, +-0.8 stack | bottoms? |
+|---|--:|---|
+| 6.00 per pogo | 5.60 | **yes -- flush impossible** |
+| **6.30** | 5.90 | no, 0.20 clear |
+| 7.00 | 6.20 | no, but force is well below rated |
+
+**6.30, so a + b ~ 11.15.** It costs contact force at nominal and buys a joint that can
+always reach flush.
+
+### The 800 gf stops being a nuisance and becomes a deck preload
+
+If the pogos are compressed at flush they push outward permanently, closing every gap in
+the panel stack and leaving the deck preloaded rather than rattling. The seam gap in
+§9.1d is the symptom of a stack that is not clamped, not of the spring being there.
+
+⚠ **WHICH MEANS ONE DIMENSION HAS TO CHANGE SIGN.** `chassis.EP_TOP_CLR = 0.4` is
+CLEARANCE -- the keyhead deliberately slides in past the seated stack -- and that 0.4 is
+exactly what the pogos convert into seam gap (§9.1d: 0.05 + 0.15 + 0.40 = 0.60). This
+scheme needs the keyhead to arrive slightly PROUD and be pushed home. That is the user's
+print-tuning-and-flex point, and it is a chassis change, not a fret-light one:
+
+    today     keyhead clears the stack by 0.4, stack is free in -X
+    wanted    keyhead meets the stack with a light interference, stack is clamped
+
+**Not taken here.** `EP_TOP_CLR` is shared chassis geometry with its own reasons (the
+rail-end dovetails, the bridge L-joint), and this is the second time the fret lighting has
+wanted a number it does not own -- see §9.1c on `wiring.py TRUNK_DZ`. Raised, measured,
+and left for whoever owns it.
+
 ## 9.2 The layout, and why it routes
 
 The whole board falls out of one observation: **the LED rows at |y| = 10.40 and 30.40 have
