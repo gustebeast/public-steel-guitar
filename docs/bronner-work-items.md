@@ -4145,3 +4145,50 @@ alongside it, because that file's own comment says why they must travel together
 is OPTIONAL WORK — it either improves on what we have or it does not happen, and "does not
 happen" must not mean "lose the board". A copy of the good board is also kept as
 `optical.best-2unconn-0viol.kicad_pcb`.
+
+## THE LAST OPTICAL NET: `+3V3D` IS TWO BREAKS, AND BOTH ARE GENUINELY BLOCKED (2026-09-30)
+
+The 2-unconnected board's remainder, read from the DRC file rather than from the route log
+(which named C101/C102 — the DRC names the pads it actually failed):
+
+| pad | at | nearest own stub | straight distance |
+|---|---|---|---|
+| `Pad 36 [+3V3D] of U6` | (93.4508, 143.8150) | 0.8911 mm track at (91.7808, 142.2593) | 2.282 mm |
+| `Pad 9 [+3V3D] of U7` | (114.7933, 173.0400) | 0.9375 mm track at (116.9808, 175.2275) | 3.094 mm |
+
+`repair_search.py` reports **0 same-layer paths and 0 via paths for both**. ⚠ That is the
+signature that turned out to be a BROKEN FILTER in `padsite.py` ("40548 of 40548 points failing
+the same criterion is a broken test, not a full board"), so it was checked rather than believed —
+and this time the tool is right, which is worth recording just as much.
+
+`track_gap()` at the board's own 0.127 width, against the 0.127 rule:
+
+```
+U6.36 -> (91.781,142.259) 2.282 mm   gap -0.2135  vs pad [no net]
+U6.36 -> (91.781,145.402) 2.304 mm   gap -0.2135  vs pad [GND]
+U7.9  -> (116.981,175.227) 3.094 mm  gap -0.2591  vs pad [no net]
+U7.9  -> (116.981,176.165) 3.815 mm  gap -0.1885  vs pad [PHY_VDD33]
+```
+
+**Every gap is NEGATIVE** — the straight track would physically overlap a pad, by about 0.2 mm.
+Narrowing to 0.100 mm moves it by only 0.0135, because the obstruction is a **pad body**, not a
+marginal clearance. So this is not the `MARGIN`-vs-rule distinction that `track_gap`'s own
+docstring warns about; it is a real blockage. Note an unconnected **`pad [no net]`** sits in the
+line twice — a mechanical/NC pad blocking a power connection.
+
+⚠ **BUT `repair_search` MODELS ONLY TWO SHAPES:** one straight track on the pad's layer, or
+via-plus-one-spur. Its own docstring says so ("TWO SHAPES OF REPAIR"). **A DOG-LEG — two
+segments around an obstacle — IS NOT CONSIDERED AT ALL**, and that is the obvious shape for
+getting around a single pad 0.2 mm in the way. Its via search is also asking for a 0.6 mm via
+plus 0.15 margin inside a QFN pin field, and the route log independently reports "a 0.6 via does
+not fit there" for other nets.
+
+**So "0 legal paths" means "no straight track and no 0.6 mm via", NOT "no repair exists."**
+⚠ The `SAI_FS` note's conclusion — *"no path from that pin has 0.15 mm headroom, boxed in every
+time"* — was reached with the same two-shape tool and may be the same limitation rather than a
+true impossibility. Re-check it once the dog-leg search exists.
+
+**Do NOT reach for `local_nets` or `escape_runs` here.** `+3V3D` in `local_nets` is recorded as
+having taken this board from 0 to 11 unconnected, and a hand-typed `escape_runs` polyline is what
+put copper through the mounting holes — no guard consults it. Post-route repair is the mechanism
+that works on this board; it just needs one more shape.
