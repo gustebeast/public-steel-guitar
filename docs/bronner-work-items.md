@@ -20,7 +20,12 @@ a stale marker, striking the marker is part of the work.
 | the raw count, settled | it went 1 → 2 → **0**. The "progress in KIND not in number" call was right: VDDIO was unrepairable and needed a CAP, while the two that replaced it were both repairable once the search stopped lying |
 | tooling | `repair_search` sees pours + correct pad capsules; `repair_planes` refills; `audit_board` checks pours; `finish.py` survives a failed round; `check_ceilings` sees curved overhangs |
 | Pi retention | the user's printed spacer, built and gate-clean |
-| motor + I/O boards | `audit_board` clean. The I/O TRS + gain change is specified with verified pinouts, NOT landed — needs placements |
+| I/O board TRS + gain | ✅ **LANDED** (`a09089a`). J5 → NMJ6HCD2; ring leg = a part-for-part mirror of the tip's phantom guard (U9/R20/D7/C41/R21); gain = MCP4261 dual pot **in front of** both buffers. 0 ERC errors, layout 108 parts. **Route running** |
+| ⚠ the ring needed a PHANTOM GUARD | on a TRS→XLR the ring IS pin 3, so +48 V arrives down it through 6.81k exactly as down pin 2. The tip has been guarded since the board was drawn; a ring added without R9/C1/D5's mirrors would have been a new 48 V path onto a new op-amp |
+| stereo + balanced = one topology | both want "the other channel on the ring" and differ only in what the Pi puts there (R, or −L). So the Pi makes the inverted leg in software: no inverter, no analog mux, no mode switch, and the pair is sample-synchronous by construction. The DAC's right channel already existed and was being discarded |
+| J7 on the motor board | ✅ **MOVED** (`7d3160c`). It was not merely on the downward edge — its courtyard ran to x 130.96 against an outline at 130.95, **overhanging by 0.01 mm**. 3.00 mm inboard, now clears by 2.74 mm. Needs a route |
+| volume pedal <50 ms | ✅ **CHECKED** (`docs/volume-pedal-latency.md`): ~4.3 ms of hardware, ~45 ms of slack. Biggest hardware term is the sensor's 500 Hz sample period, not the bus. Only soft number is Pi userspace scheduling |
+| motor board | `audit_board` clean before the J7 move |
 | scope | `optical_work_components` |
 
 
