@@ -3148,9 +3148,24 @@ BOARD_NOTES = {
         # 0.127: the 0.25 the SAI_FS entries use would eat the clearance this was chosen for.
         # (U7 pad 9, the other break, has NO legal dog-leg at 0.127 -- see the doc. It needs a
         # third segment, a via smaller than 0.6, or a placement nudge, and it is still open.)
-        ("+3V3D", "F.Cu", 0.127, [(-6.5492, -43.8150),     # U6 pad 36
-                                  (-7.2470, -43.8660),     # the knee, round the blocking pad
-                                  (-8.2190, -42.2590)]),   # its own copper's endpoint
+        # ⚠⚠ COMMENTED OUT FOR THE 2026-09-30 RE-ROUTE, AND IT MUST BE RE-SEARCHED, NOT
+        # RE-ENABLED. These three points were measured against the route of 2026-09-29 23:55.
+        # A post-route repair fits ONE route -- that is this mechanism's documented failure
+        # mode, and SAI_FS has demonstrated it twice by coming back as a track_crossing plus a
+        # shorting_items after a placement change. Adding U7.9 to pin_escapes moves copper in
+        # the same QFN fan-out this dog-leg threads through, so its knee is the LAST thing that
+        # can be assumed still clear.
+        # It cannot be gated through STALE_REPAIRS either: that filter keys on the NET, and
+        # "+3V3D" names this one dog-leg plus the ten _shdnz_stubs() tracks and five
+        # _shdnz_vias() that feed the SHDNZ pull-ups. Gating the net would delete fifteen
+        # working pieces of copper to disable one, which the counted assert there now refuses.
+        # TO RESTORE: re-run the knee search against the NEW board (rings on 0.1 mm, both legs
+        # at 0.127 width and the 0.127 rule, pours ignored because repair_planes refills), lay
+        # it, refill, and check DRC shows no clearance violation. Last time that was
+        # 4 unconnected items -> 2 with violations identical to the baseline.
+        #   ("+3V3D", "F.Cu", 0.127, [(-6.5492, -43.8150),   # U6 pad 36
+        #                             (-7.2470, -43.8660),   # the knee, round the blocking pad
+        #                             (-8.2190, -42.2590)]), # its own copper's endpoint
     ] + _shdnz_stubs(),
     "repair_vias": [("SAI_FS", 0.70, -27.41), ("SAI_FS", 6.25, -28.61),
                     ("SAI_FS", 25.00, -19.31)] + _shdnz_vias(),
@@ -3427,7 +3442,27 @@ BOARD_NOTES = {
     # effect even though the reasoning behind it was not -- worth recording, because "the
     # tool was broken" is a reason to re-measure, not a reason to assume the opposite.
     # The PHY's west fan is simply full: U7.9 costs more than it buys too (6 against 3).
-    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16", "U6.38", "U6.45"),
+    # ⚠ U7.9 ADDED 2026-09-30: VDDIO, the ULPI PHY's I/O supply, and the last unconnected
+    # net on this board. It belongs here for exactly the reason the other six do -- it is a
+    # pin the router leaves stranded -- and the diagnosis says a via is precisely what it
+    # needs rather than copper threaded in afterwards:
+    #   * a track CAN leave the pad: 18 of 24 headings legal at r 0.15, best +0.2160 mm
+    #   * but the corridor DEAD-ENDS at ~1.05 mm, closed by ULPI_D4's and ULPI_D5's own
+    #     escape vias, and the nearest +3V3D copper on F.Cu is 3.094 mm away
+    #   * and no via fits inside that corridor at ANY size once those neighbours are routed:
+    #     O0.60 -0.0303, O0.50 +0.0197, O0.45 +0.0447, O0.40 +0.0697, all under the 0.127
+    #     rule -- and min_via_diameter is 0.6, so a smaller one breaks the fab class too
+    # So the pin is reachable but has nowhere to go AFTER its neighbours are routed. Placed
+    # as an escape, its via goes in BEFORE them and they route around it, which is the whole
+    # point of this list: every other entry is a pin of a net that could not otherwise close
+    # (SAI_FS, +3V3A, ULPI_NXT, ULPI_D1, ULPI_D6).
+    # ⚠ NO escape_runs ENTRY FOR IT, DELIBERATELY. A run is hand-typed waypoints laid
+    # verbatim and then FROZEN by route.py, and it is the one mechanism here that consults
+    # no guard -- that is how a run came to cross a mounting hole. The via alone needs no
+    # coordinates from me: layout searches it over 8 directions and 84 radial steps against
+    # the pads, the vias already placed, the keepouts and the outline.
+    # ⚠ AND U7.16 IS ALREADY HERE ON THE SAME NET (+3V3D), so this is not a new kind of use.
+    "pin_escapes": ("U6.3", "U7.5", "U7.9", "U7.11", "U7.16", "U6.38", "U6.45"),
     # ⚠ U6.38 CARRIES ITS OWN INNER RUN TO THE +3V3A SPINE. The escape via gave the MCU's
     # analog supply a local connection (27.32 mm -> 1.25) and took the board from 5
     # unconnected to 3, but the router still would not join that via to the rail: +3V3A's
