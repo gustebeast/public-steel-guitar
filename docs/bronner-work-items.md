@@ -3886,3 +3886,39 @@ laminate between the board's +Y edge (−71.00) and the block's face (−74.00),
 
 `TAIL` 5.0 → **4.0**: y_out −54.50 clears the chassis wall by 0.55 mm and still stands
 0.20 mm proud of the head's edge (−54.70), so the head bears on plastic all round.
+
+### 4. ⚠ DELETING A DATUM CAN MAKE AN OLDER ONE LIVE AGAIN
+
+`src/electronics.py` carried **two** `PI_HOLD` assignments: `("+x", 0.0)` at line 107 and
+`("+y", 30.0)` at line 493. The second shadowed the first, so the first had no effect and was
+already dead.
+
+Removing only the live one would have **resurrected `("+x", 0.0)`** — a retention edge nothing
+chose, reached purely by deletion, and the `-x`/`+x` distinction matters here: `+x` is the
+board's OPEN edge with no wall at all. Both are gone now.
+
+`pi_hold_pt()` no longer calls `pcb_hold_xy` either. That helper answers *"where beside this
+edge"*, and the whole finding is that no position beside the board works, so the question it
+answers is the wrong one. `PI_SPACER_XY` is the single source that `pi_spacer_boss()`,
+`pi_hold_bore()` and `board_screws()` all read.
+
+### 5. The clamp is capped by the board's OPEN edge, not by the sweep's best number
+
+The LAP × W sweep's summary line read *"biggest clear clamp: lap 3.0 × W 32.0 = 96.0 mm²"* and
+both halves of that are traps:
+
+* **lap 3.0 is face-to-face contact** with the I/O block (its face is at exactly −74.00, and
+  3.0 reaches −74.00). It reports "clear" because a zero-volume touch is not an intersection —
+  the same blindness the overlap gate has. 2.50 is the value with actual air in it.
+* **W 32 centred on the screw runs to x −494, and the board's +X edge is −503.** Nine
+  millimetres of that bar laps AIR. Worse, `+x` is `open_edge` — the end the board slides out
+  of — so overhanging it is not merely useless, it obstructs the one install direction.
+
+Also: every TAIL hit `chassis_2` at W 24 (50.9 mm³) where W 16 hit only 23.0, so the wall that
+limits the tail sits off to one side in X. A wider bar changes **which** obstacle binds, which
+is why the final bar is swept as one stepped solid (`tools/_probe_pi_spacer_bar`) rather than
+as a lap number times a width number.
+
+⚠ **And those probes now have to skip `pi_spacer` by name**, because the part is in the
+assembly: a probe of its own envelope finds ITSELF, a 100 %-full hit that reads exactly like a
+fatal collision.

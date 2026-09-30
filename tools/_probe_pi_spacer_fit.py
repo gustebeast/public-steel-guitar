@@ -26,8 +26,9 @@ WS = (16.0, 20.0, 24.0, 28.0, 32.0)
 def _hits(comps, env):
     out = []
     for n, s in comps:
-        if n.startswith("board_screw") or n.startswith("board_insert"):
-            continue
+        if (n.startswith("board_screw") or n.startswith("board_insert")
+                or n == "pi_spacer"):
+            continue            # ⚠ pi_spacer is IN the assembly now: it would find ITSELF
         try:
             it = s.intersect(env)
             v = it.Volume() if it.Solids() else 0.0

@@ -47,8 +47,9 @@ def main():
     for label, env in (("lap", lap), ("shank", shank)):
         hits = []
         for n, s in comps:
-            if n.startswith("board_screw") or n.startswith("board_insert"):
-                continue
+            if (n.startswith("board_screw") or n.startswith("board_insert")
+                    or n == "pi_spacer"):
+                continue        # ⚠ pi_spacer is IN the assembly now: it would find ITSELF
             try:
                 it = s.intersect(env)
                 v = it.Volume() if it.Solids() else 0.0
