@@ -62,8 +62,12 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
+# ...plus the two FRET LIGHTING boards (2026-09-29), which are one design in
+# elec/fret_led.py cut to two panels -- see that module. `led_strip` is the OTHER
+# lighting job, the one that fires down at the player's feet; the two were a single
+# strip until the fret work split them.
 BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
-          "optical", "ui_board")
+          "optical", "ui_board", "fret_led_mid", "fret_led_key")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
 L2 = "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
@@ -680,7 +684,11 @@ def _sweep_stale(names):
         # and are kept on purpose for comparison; only an undotted stem is its own board.
         if "." in board:
             continue
-        if not os.path.isfile(os.path.join(HERE, "%s.py" % board)):
+        # ⚠ A BOARD'S GENERATOR NEED NOT BE NAMED AFTER IT. fret_led.py writes BOTH
+        # fret_led_mid and fret_led_key -- one design cut to two deck panels -- so the
+        # file-name test called them orphans. Being in BOARDS is the real proof that a
+        # stem is still in the design, which is what this check is for.
+        if board not in BOARDS and not os.path.isfile(os.path.join(HERE, "%s.py" % board)):
             n = len(glob.glob(os.path.join(OUT_DIR, board + ".*")))
             print("  !! elec/out holds %d file(s) for '%s', which has no generator -- a "
                   "board that is not in the design any more. Delete them or restore it."

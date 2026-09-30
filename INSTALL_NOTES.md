@@ -313,3 +313,26 @@ connector happens with the panel off or with the keyhead end open.
 * **The right-angle ribbon header's height.** `src/board_geom.HEIGHT` carries 10.0 mm for
   it as an ESTIMATE (ZHOURI publish no drawing through LCSC) and there is 11.40 mm
   between the board's top face and the deck's underside.
+
+
+## Fret lighting boards (2026-09-30)
+
+Two boards, one per deck panel, each with its own cable to the Pi daughter board.
+
+1. **Attach each LED board to its own panel, off the instrument.** Lift it +Z into the
+   panel's light-cell comb until it bottoms on the cell walls, shift it ~6 mm in X under
+   the ramps' retaining tabs, and put in the single M4 — it is in the **bay** at the
+   board's −X end, outside every light cell (`docs/fret-led.md` §8, §9.6).
+2. **Slide the mid panel on** (it goes first and furthest, butting the bridge endplate).
+3. **Slide the keyhead panel on.**
+4. **Plug BOTH cables into the Pi daughter board.** The keyhead board's plug faces −X at
+   the keyhead cluster and is easy to reach; the mid board's leaves its −X end into the
+   seam bay between the two panels and drops into the chassis from there.
+5. **Fit the keyhead endplate.**
+
+⚠ **There is no connector at the deck seam and nothing to blind-mate.** An earlier plan
+joined the two boards there with pogo pins; it was retracted on measurement, and the two
+cables are what replaced it. Nothing about the panel slide has to make electrical contact.
+
+⚠ **Every part on these boards stands inside a light cell except the bay's.** Do not add
+anything tall to the fret field without asking what it does to that cell's floor bounce.

@@ -735,3 +735,291 @@ what the screw locks.
 3. **Whether the tabs print.** They protrude inward from the ramps, i.e. they are a
    horizontal feature with air beneath them in the deck's print direction. Short ones
    bridge; long ones want a 45° chamfer underneath.
+
+
+---
+
+# 9. THE BOARDS (2026-09-29)
+
+`elec/fret_led.py`, one module, two boards, designed to the same bar as the other seven:
+generated from the instrument's geometry, placed by the board module rather than by an
+auto-arranger, routed by freerouting, and read BACK into the CAD from the routed file.
+
+    fret_led_mid   frets 24..10   15 zones   60 channels   5 x TLC59711   209.8 x 70.4
+    fret_led_key   frets  9.. 2    8 zones   32 channels   3 x TLC59711   211.8 x 70.4
+    92 channels, 8 drivers, 1.38 A at 14 V with every fret at full white
+
+Every fret X, the four LED Y positions, the 70.4 width and the whole Z stack are IMPORTED
+from `src/fret_light.py`. Nothing is retyped, for the reason `optical.py` gives about its
+own placements: a copy of a hundred positions is exactly the drift this pipeline exists to
+prevent. Move a fret and the board follows.
+
+## 9.1 ⚠ RETRACTED: the pogo seam joint does not fit, and section 3 never measured it
+
+Section 3 recommended joining the two boards across the deck seam with right-angle SMD
+pogo pins (4 x C5203987), on the strength of the deck's sliding assembly already being a
+compression joint along the mating axis. **The mechanism argument still holds. The
+geometry does not, and I had not looked at it.**
+
+**The pin fires 1.90 mm above the board it is soldered to.** Xinyangze's own drawing for
+YZF0002-38080-02: the barrel's front view is 3.00 wide x 3.80 tall with the bore centred,
+so lying on its pad the axis is at 1.90. The two LED boards are COPLANAR -- same comb
+pocket, same Z stack, by construction -- so the facing board presents a 1.6 mm laminate
+edge spanning 0.00 to -1.60 below the pogo board's top face. **The pin fires over it and
+touches nothing.** Mounting on the underside instead puts the axis 1.90 below the board's
+bottom, which misses by the same margin the other way.
+
+Three ways round it, all measured, all closed:
+
+| | what it needs | what there is |
+|---|---|---|
+| **tip to tip** (two pins on one axis -- the heights DO agree) | 12.00 mm between the pads' outer edges | the seam bay is **10.40** -- the clear run between the two combs' end walls, measured. (It was 9.60 when this was first checked; fixing the clamped-wall overhang in 9.2a gave back 0.80, and it is still 1.60 short) |
+| **offset the boards in Z** so the axis lands inside the other's edge | 2.70 mm | UP takes the keyhead board's depth 17.75 to 15.05, under the 1.18 : 1 the cells are solved for. DOWN leaves **0.80** over the tee PCBs, and `fret_light` asserts 1.50 because the panel SLIDES over them |
+| **the 4-way module** C5296819 | -- | it is a **MEZZANINE** part: its four plungers fire PERPENDICULAR to the board, 4.00 mm working height. It wants the boards stacked 5.6 mm apart in Z, not butted. LCSC's "SMD R/A" attribute is what misled section 3 |
+
+⚠ **This is the third clearance in this project I have reported from a derivation instead
+of a measurement.** The first two were the pickup distance (74.6 against a real 14.08) and
+the cell wall count. bronner's method note says it plainly, and it applies to catalogue
+attributes as much as to CAD: put the part where it would go and intersect it. "Right-angle
+SMD pogo" in a parametric table is not a contact height.
+
+**So: no seam joint. Each board takes its own 6-way harness drop to the Pi daughter board
+and its own 24 V to 14 V buck** -- which is the fallback this document already recorded at
+the end of section 3, and which is also what the user originally described ("24 V with a
+buck on each board"). It costs one extra cable and one extra buck (about $1.50) and it
+deletes a blind-mate joint, six notches through a light-cell wall, and two cantilevered
+board tongues. The install order is unchanged except that the plug happens twice.
+
+## 9.2 The layout, and why it routes
+
+The whole board falls out of one observation: **the LED rows at |y| = 10.40 and 30.40 have
+a 6.10 courtyard, which leaves two clear bands 13.90 mm tall running the FULL length of the
+board**, at 13.45 < |y| < 27.35, plus a 14.70 mm one down the middle.
+
+**Every driver goes in the +Y band.** Then:
+
+* a zone's four returns leave its +Y outer LED and travel **10 mm** to the driver, crossing
+  **no** row of LEDs. The obvious alternative -- drivers down the middle -- makes all twelve
+  returns cross the inner row through the 3.04 mm gap between courtyards at the 9.14 mm
+  fret pitch, which is the tightest routing on the instrument and would be self-inflicted.
+* the SPI chain is a **straight line**: the TLC59711's inputs (SDTI 9, SCKI 10) sit at the
+  bottom of its -X column and its re-buffered outputs (SCKO 11, SDTO 12) at the bottom of
+  its +X column, so drivers chained left to right need no jog at all.
+* the -Y band stays empty and absorbs the bay's overflow.
+
+**A zone's LEDs rotate to face their driver.** The footprint's anodes are its -X pad column
+and its cathodes its +X column, and a zone's returns leave from the cathodes -- so a zone
+sitting +X of its driver is rotated 180 as a WHOLE. Rotating the whole zone keeps its three
+chain links parallel. (Alternating the feed direction per COLOUR, which was the first
+attempt at balancing the two sides, crosses them: four crossings per fret gap, 180 vias on
+the mid board, bought nothing.)
+
+**The rail is a plane, so the anode end of every string is a via, not a trace.** 123 pads on
+the mid board stitch straight down to a plane.
+
+## 9.2a What the routing actually did, and the two checkers it bought
+
+**The generated part of the board routed on the first attempt.** 92 LEDs, 8 drivers, 268
+nets on the mid board: **zero** unconnected in the fret field, both runs. The layout above
+is why -- nothing has to cross a row of LEDs, so there is nothing for the router to fail at.
+
+**Every defect, every run, was in the bay or in the passives I placed by hand.**
+
+    run 1  mid   11 courtyard overlaps, 4 clearance, 1 short, 1 unconnected -- ALL in the bay
+    run 2  mid    3 shorts (one spot in the bay), 1 unconnected (a driver's bulk cap)
+           key    2 shorts (the same spot), 1 clearance
+    run 3  key    0 unconnected, 0 shorts; ONE clearance, 18 microns short, in the same lane
+    run 4  mid   ✅ 0 violations, 0 unconnected
+           key   ✅ 0 violations, 0 unconnected
+
+Four attempts, and **not one of them was a retry** -- each round changed the placement and
+the next round measured it. The fret array never had a single unconnected net.
+
+That is a useful asymmetry: the parts placed by a rule were right, and the parts placed
+from remembered package sizes were wrong three different ways. So the rule got two
+checkers, and both live in `elec/fret_led.py` where they run BEFORE the netlist is written
+rather than forty minutes later in a DRC report.
+
+**`check_placement` -- courtyards, read out of the footprint files, with a MINIMUM GAP.**
+The inductor's land is 4.6 x 4.5, not the 4.0 x 4.0 its part number says; the 6-way PH's
+courtyard is 17.2 long and the fuse was inside it. It caught its first real collision
+immediately: the connector against fret 10's LEDs, 0.62 mm of overlap, which no amount of
+re-routing would have fixed.
+
+⚠ **And testing OVERLAP was not enough.** The first version asked only whether two
+courtyards intersected, and a bay that passed it left a **0.10 mm lane** between a 1206's
+courtyard and the 0402 beside it -- legal, and nowhere near enough room for the router to
+bring a stitch via down to the plane. That lane is exactly where run 3's via landed
+0.1084 mm from a GND track against a 0.127 floor. **A legal placement is not a routable
+one.** The check now demands 0.30 mm, and tightening it immediately caught a second
+instance that would otherwise have shipped: the feedback divider pair at 0.26.
+
+That is what took the bay from three columns to **one**, with the 0402s paired across it.
+Three columns never fitted the mid board's 10.50 mm bay except on paper -- a 1206 is 4.6
+wide and eats more than half the usable width. One column leaves ~2.95 mm of clear lane
+down BOTH sides for the router and the stitching, and Y was the axis with room all along:
+26.6 mm between the connector's courtyard and the board edge, of which the stack uses 24.4.
+
+**`check_walls` -- the deck is a keep-out the DRC cannot see.** Each board sits inside its
+panel's comb, and the comb hangs a 1.60 mm wall onto the board's top face at every fret
+boundary. Nothing in the PCB pipeline knows they exist. The first placement put each
+driver's passives at xd +-4.8 and +-5.0, which at the 9.14 mm pitch between frets 24 and 23
+is **0.05 mm inside the wall** -- electrically perfect, physically a collision, and it would
+have surfaced an hour later in the CAD overlap gate as a part-versus-deck report. The
+passives now stack in Y instead, everything within 2.7 mm of its fret centre against the
+3.77 the tightest gap allows. The BODY is the test, not the courtyard: a wall may stand
+over copper, it may not stand over a part.
+
+⚠ **And fixing the bay found a latent bug in the comb.** `_boundaries` clamped a wall at a
+panel edge by putting its CENTRE on the edge, so 0.80 mm of the keyhead comb's last wall
+stood outside its own panel, in the seam gap. It collided with nothing -- the mid panel has
+no structure under its own last 11 mm -- so the overlap gate never saw it, and the only
+symptom was that the mid board's power bay was 0.80 mm shorter than the deck actually
+allowed, which was exactly the margin the harness connector needed.
+
+## 9.2b Two more, found by reading the placement rather than the DRC
+
+Neither of these is something a checker would have reported. Both were visible in the
+generated numbers and I only looked because the router was busy.
+
+**The SPI chain ran the length of the board and back.** `fret_xs()` comes bridge-end
+first, so driver one was at the +X tip and the harness -- which lands in the bay at the
+-X end -- had to carry SCK and SDT 200 mm to reach it before the chain walked back. Two
+passes of a clocked edge over the rail plane, the outbound one terminating at the board's
++X tip, **which is the end that comes within 14.08 mm of the magnetic pickup**. Ordering
+the zones from the bay outward makes it one pass, heading away, and costs nothing.
+
+**And the driver's pin mapping was mirrored by the same list order.** `ZONE_OUTS` keys a
+trio by which side of its driver a zone sits on; with the list descending in X, `trio[0]`
+was the **+X** zone being handed the **-X** pin column and the unrotated footprint. Its
+cathodes faced away from its driver and its four returns had to cross the package. The
+router coped, which is the point -- a routable board and a correct one are not the same
+thing, and nothing downstream would ever have said so.
+
+**The short trio, which layout.py did catch.** 8 zones on the keyhead board is two full
+trios and a pair, and "the middle of two" is `trio[1]` -- the +X one, which on that board
+is fret 9, **3.68 mm from the board's own +X edge**. `layout.py` refused it outright: *"no
+room for a stitching via beside U3.19"*. The driver takes `trio[0]` instead, a whole fret
+pitch further in. ⚠ Not the midpoint of the two, which is the obvious alternative and is
+exactly where a comb wall stands.
+
+## 9.3 ⚠ +14V on In1 and GND on In2 -- which inverts 6.3, on purpose
+
+Section 6.3 says "GND plane directly under the LED layer", having assumed the LED loop's
+return conductor is ground. **It is not.** A zone's switched current runs: local bulk ->
++14V -> four LEDs in series along 60 mm of fret -> the driver's output pin -> through the
+chip to its GND pad -> back to the cap, and **the cap sits at the driver**. The conductor
+that mirrors the long F.Cu run is therefore the RAIL:
+
+    In1 = +14V    0.21 mm under F.Cu     ~15 mm2 of loop
+    In2 = +14V    1.28 mm under F.Cu     ~90 mm2
+
+Six times smaller, for a swap that costs nothing. GND is still a solid plane one layer
+down, which is all a few-MHz SPI chain asks of a reference, and the two planes face each
+other across 1.065 mm of core, which is free interplane decoupling. Everything else in 6.3
+stands: the loop is vertical rather than flat (item 2), the buck is at the keyhead end
+(item 3), and every driver has local bulk (item 4).
+
+## 9.4 Two things the catalogue settled that this document had wrong
+
+1. **The LED is TOP-MOUNT.** Section 5.3 called XL-5050RGBW "a side-mount 5050 chosen for a
+   side-firing strip" and left the package choice open on that basis. LCSC's own attribute
+   table for C7371891 reads **"Installation method: Top-mount"**, 120 degree viewing angle.
+   It fires up, out of a clear encapsulant, which is exactly what a cell wants. **The
+   package choice is closed and the part does not change.**
+2. **Its body is 1.60 tall, not 1.40.** Same listing, same line: "Dimensions (L/W/H):
+   5.0x5.0x1.6mm" -- and `elec/footprints/Steel.pretty/XINGLIGHT_XL-5050RGBW.kicad_mod` has
+   carried 5.0x5.0x1.6 in its description since bronner drew it. `fret_light.LED_H` said
+   1.40. It costs 0.20 mm of optical depth: h 17.95 to 17.75, the fret line 1.136 to 1.143
+   : 1, still inside the threshold.
+
+## 9.5 Parts -- and NOT ONE NEW SOURCING LINE
+
+Every part on both boards is already sourced in `elec/fab.py`:
+
+| | part | LCSC | why this one |
+|---|---|---|---|
+| LED | XL-5050RGBW | C7371891 | already selected; top-mount confirmed |
+| driver | TLC59711PWPR | C116842 | ES-PWM ~19.5 kHz, 16-bit GS, a white channel |
+| buck | LMR33630CRNXR | C2071783 | the **optical board's** buck, and the "C" is **2.1 MHz** |
+| inductor | SWPA4030S4R7MT | C57269 | the optical board's, 4.7 uH, Isat 3.2 A |
+| harness | S6B-PH-SM4-TB | C265405 | the LED strip's own connector, 4.80 deep |
+
+**Why the 2.1 MHz variant matters here.** A 400 kHz part beside a magnetic pickup puts its
+fundamental four octaves nearer the audio band, and at light load every LMR33630 pulse-skips
+-- which drops the switching energy to a load-dependent rate. Measured against this board's
+own floor: the eight drivers' ICC is tens of milliamps even with every LED dark, which puts
+the skip rate in the hundreds of kHz. It only reaches the audio band at loads this board
+cannot present while it is powered.
+
+**And the connector was an XH for one draft.** PH is 2.00 mm pitch against XH's 2.50 and
+**4.80 mm deep against 7.50** -- the mid board's bay is 9.50 mm long, and the XH fitted only
+on paper. Six ways rather than four because the part is already sourced and the two spare
+contacts double the rail: PH is 2 A per contact against this board's 0.60 A, so the doubling
+buys a lost-contact margin, not current.
+
+## 9.6 The bay, and both its ends were probed
+
+The **bay** is the run at each board's -X end that lies OUTSIDE the light cells. The buck,
+its inductor, the harness plug and the M4 all go there, because a part standing inside a
+cell is a dark patch on that cell's floor.
+
+    mid   -359.50 .. -350.00    9.50 mm    the mid panel's own last 10 mm, past its comb's
+                                           end wall. It stops at -359.50 because the KEYHEAD
+                                           comb's end wall overhangs its panel edge to
+                                           -360.40 and the boards are coplanar: 0.90 mm of
+                                           clearance, against the 0.70 of stack-up the
+                                           panel train can take up (section 3).
+    key   -573.00 .. -555.59   17.41 mm    the keyhead panel has 55 mm past its last cell.
+                                           It stops at -573.00 because `wire_usb` crosses at
+                                           z -14.55..-13.70 from -580.00 -X, and the board's
+                                           top face IS -14.55 -- it would be lying on the
+                                           cable.
+
+Both figures come from intersecting a box with the built assembly (`tools/_probe_bay.py`),
+not from reading a drawing. The same probe confirms the rest of the volume is clear: above
+the boards, between the combs' end walls, there is nothing but deck.
+
+## 9.7 Still open
+
+1. **The mid board's cable has to get to the Pi.** It leaves the mid board's -X end into the
+   seam bay, which is open to the chassis below, and then runs about 220 mm forward. That
+   route is `src/wiring.py`'s to draw and it is not drawn.
+2. **The M4's boss.** The hole is in the bay; the deck needs a boss hanging 14.55 mm to meet
+   it. That is the same kind of feature as the UI cradle (14.30, already printed in this
+   direction) but it is not modelled, and neither are section 8's retaining tabs.
+3. **White solder mask.** The board IS the floor of 23 light cells and a green one absorbs.
+   JLCPCB stocks white; worth pricing against what the bounce is worth.
+4. **Rotations.** Unchanged from the standing warning in `elec/README.md`: the CPL carries
+   KiCad's convention and JLCPCB's placement machine wants the part's. 92 LEDs make this the
+   most rotation-sensitive board in the set -- check them in the previewer before paying.
+
+
+---
+
+# 10. WHERE THE BOARDS STAND (2026-09-30)
+
+    fret_led_mid   210.8 x 70.4   4-layer   99 parts   268 nets   ✅ 0 violations, 0 unconnected
+    fret_led_key   211.0 x 70.4   4-layer   61 parts   140 nets   ✅ 0 violations, 0 unconnected
+
+Both packaged by `fab.py`: **13 BOM lines each, 8 generic passives, 0 OPEN** -- the
+sourcing gate passes with nothing undecided, which is the machine-checked form of "not one
+new sourcing line". Both read back into the CAD through `src/board_geom.py`, so what the
+viewer shows is the routed board and its real component bodies, not a slab.
+
+**Two pieces of shared pipeline were fixed on the way, and both were pre-existing:**
+
+1. **`layout.drop_degenerate` compared against a flat 5 microns** when its own docstring
+   argues from the ratio of a fragment's length to its WIDTH. Both boards routed clean
+   except for one ~8.5 micron stub -- above the absolute floor, 3% of its own 0.25 mm
+   track, so the ratio argument covers it completely and the absolute number did not. The
+   floor is now `max(5 um, 0.1 x width)`.
+2. **`fab.py` cannot run under `py -3.12`**, whatever `elec/README.md` said: `_check_drill`
+   imports `pcbnew`, so it writes the gerbers and then dies. It needs KiCad's Python like
+   the other three stages. The README is corrected.
+
+And `elec/tidy_board.py` is new: it re-applies route.py's DETERMINISTIC post-route
+clean-up to a board already on disk. Re-running a whole route to pick up an improvement in
+the clean-up throws away a good board and gambles on freerouting giving another one -- the
+non-determinism `elec/README.md` warns about. ⚠ It is not a repair tool and must not become
+one; anything needing judgement about where copper goes belongs in route.py's repair block.
