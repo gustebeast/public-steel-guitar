@@ -109,6 +109,38 @@ def price_at(code, qty, cache):
     return float(best), rec["stock"], rec["model"]
 
 
+# A board header implies its MATING HALF, and no netlist contains one -- a harness is
+# not a schematic. So they are DERIVED: every JST header needs one housing plus one crimp
+# contact per way. That is why "connectors" sat in cost.py's not-counted-at-all list.
+#
+# Housings are picked by stock as well as by name: the genuine JST SHR-04V-S-B had ONE
+# piece in the catalogue on 2026-09-30, so the SH row is the stocked HC-1.0-4Y instead.
+HOUSING = {("XH", 2): "C144401", ("XH", 4): "C493083", ("XH", 8): "C144407",
+           ("PH", 6): "C157952", ("PH", 8): "C157950", ("SH", 4): "C2962275"}
+CRIMP = {"XH": "C140573", "PH": "C111515", "SH": "C263995"}
+
+
+def mating_halves():
+    """{LCSC code -> pieces in a ten-instrument order} for housings and crimps."""
+    need = collections.Counter()
+    for path in sorted(glob.glob(os.path.join(ROOT, "elec", "out", "*.net"))):
+        board = os.path.basename(path)[:-4]
+        n = board_qty(board)
+        if n is None:
+            continue
+        for ref, val, fp, code in netlist_parts(path):
+            m = re.search(r"JST_(XH|PH|SH)_.*?(\d+)x(\d+)", fp)
+            if not m:
+                continue
+            fam, ways = m.group(1), int(m.group(2)) * int(m.group(3))
+            key = HOUSING.get((fam, ways))
+            if key is None:                    # a way-count with no housing chosen yet
+                continue
+            need[key] += n
+            need[CRIMP[fam]] += n * ways
+    return need
+
+
 def collect():
     """(demand, used, unpriceable) across every netlist in elec/out."""
     codes = lcsc_map()
@@ -167,6 +199,24 @@ def main(argv=None):
         for v, n in unpriceable.most_common(8):
             print("     x%-6d %s" % (n, v[:60]))
 
+    conn, conn_rows = mating_halves(), []
+    for code, qty in conn.most_common():
+        try:
+            usd, stock, model = price_at(code, qty, cache)
+        except Exception as e:
+            print("  %-10s lookup failed: %r" % (code, e))
+            continue
+        if usd is not None:
+            conn_rows.append((usd * qty, code, qty, usd, stock, model))
+    conn_rows.sort(reverse=True)
+    print("\nMATING HALVES -- housings and crimps, derived from the headers:")
+    for line, code, qty, usd, stock, model in conn_rows:
+        print("  %-10s %-24s %6d %9.4f %10.2f %9s%s"
+              % (code, (model or "?")[:24], qty, usd, line, stock,
+                 "  << SHORT" if stock is not None and stock < qty else ""))
+    print("  order total $%.2f -> $%.2f per instrument"
+          % (sum(r[0] for r in conn_rows), sum(r[0] for r in conn_rows) / ORDER_INSTRUMENTS))
+
     if a.dry:
         print("\n--dry: nothing written")
         return 0
@@ -175,6 +225,17 @@ def main(argv=None):
     prices = json.load(io.open(path, encoding="utf-8"),
                        object_pairs_hook=collections.OrderedDict)
     by_ref = prices["parts_by_ref"]
+    prices["connectors"] = collections.OrderedDict([("_note", [
+        "Housings and crimp contacts, DERIVED from the board headers by",
+        "tools/lcsc_prices.py -- one housing per header, one contact per way -- and",
+        "priced at the order quantity. No netlist holds these: a harness is not a",
+        "schematic, which is why this category used to be reported as not counted.",
+    ])])
+    for line, code, qty, usd, stock, model in conn_rows:
+        prices["connectors"][code] = collections.OrderedDict([
+            ("usd", round(usd, 4)), ("verified", "v"),
+            ("per_instrument", qty / float(ORDER_INSTRUMENTS)),
+            ("what", "%s -- JLCPCB parts API at qty %d" % (model, qty))])
     by_ref["_note"] = [
         "Every 'v' line here is written by tools/lcsc_prices.py from JLCPCB's parts",
         "API at the quantity a ten-instrument order needs. Re-run it rather than",

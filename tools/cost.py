@@ -362,7 +362,9 @@ def main(argv=None):
                    % (ORDER_INSTRUMENTS, ORDER_INSTRUMENTS), boards_total))
 
     # ---- purchased ----------------------------------------------------------
-    for label, key in (("Mechanical hardware", "mechanical"), ("Purchased modules", "modules")):
+    for label, key in (("Mechanical hardware", "mechanical"),
+                       ("Purchased modules", "modules"),
+                       ("Connectors: housings + crimps", "connectors")):
         tot = 0.0
         for name, ent in sorted(prices[key].items()):
             if name.startswith("_"):
