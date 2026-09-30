@@ -299,8 +299,14 @@ def main(argv=None):
     per_mat = {}
     for part, rec in vols.items():
         mat = (rec.get("material") or "?").lower()
-        if part.startswith("test_") or part.endswith("_light") or part == "assembly":
-            continue                    # coupons and the viewer's lightweight chassis
+        if (part.startswith("test_") or part.startswith("coil_mandrel")
+                or part.endswith("_light") or part == "assembly"):
+            continue                    # coupons, the viewer's lightweight chassis, and
+            # TOOLING. The mandrel and its sleeve are what you wind the knee-lever coils
+            # ON, not anything that ships inside the instrument -- 47 cm3 of print that
+            # was showing up under a material of "?" because it has no material folder.
+            # Shop infrastructure is bought once and never weighed against a design
+            # (user's standing rule), so it does not belong in a per-instrument cost.
         per_mat.setdefault(mat, 0.0)
         per_mat[mat] += float(rec.get("volume_mm3", 0.0))
     plastic = solid_usd = 0.0

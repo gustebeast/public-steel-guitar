@@ -127,6 +127,12 @@
       "verified": "m",
       "per_instrument": 1,
       "what": "one 10-string pedal steel set"
+    },
+    "psu_24v_150w": {
+      "usd": 20.69,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Mean Well LRS-150-24, 24 V 6.5 A 156 W -- Jameco $17.10 at qty 10, PLUS $3.59 of TARIFF ($35.91 on ten, itemised in the cart, HTS 8504.40.9530) = $20.69 landed. Sized from BOM.md power table: 120 W bus A + 16.7 W Pi = ~137 W peak. On backorder 2026-09-30, ships 11/16."
     }
   },
   "boards": {
@@ -1669,8 +1675,10 @@
       "KNOWN ABSENT, listed so the total is honest about its own holes. cost.py prints",
       "these under the table and refuses to call the number complete while any remain."
     ],
-    "psu": "No power supply is specified anywhere in this project. BOM.md says so too. The slew budget that would size it is unmeasured (docs/design-validation.md B7).",
-    "wire": "Harness wire is ~$35 in BOM.md as an estimate, excluding the ten control drops. Not itemised here because the cut lists exist per-cable and nobody has totalled them."
+    "psu": "PRICED NOW -- Mean Well LRS-150-24 at $20.69 landed, see mechanical.psu_24v_150w. What is still open is the DESIGN question, not the price: the slew budget that would confirm 150 W is enough is unmeasured (docs/design-validation.md B7).",
+    "wire": "LENGTH IS MEASURED NOW, PRICE IS NOT. tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had. Its ~$35 estimate implies $2.29/m, far above hookup-wire rates -- almost certainly because you buy SPOOLS, not metres. Needs one product page and a spool-count, not another estimate.",
+    "tariff_uncollected": "The motors are the exposure. Makerbase ships them from China collecting no tax and no duty at checkout, so $339.90 of an order is NOT landed cost. JLCPCB by contrast ships DHL DDP, duty included. See boards/landed.",
+    "pogo": "The leg blind-mate pogo boards (src/leg_pogo.py, RA_N=4 + TG_N=4 pins) are custom PCBs that live outside elec/, so neither the board pipeline nor the connector derivation sees them. Small, but genuinely uncounted."
   },
   "parts_by_footprint_substring": {
     "_note": [
@@ -1956,6 +1964,82 @@
       "verified": "v",
       "per_instrument": 1.0,
       "what": "XHP-2 -- JLCPCB parts API at qty 10"
+    }
+  },
+  "landed": {
+    "_note": [
+      "SHIPPING, SALES TAX AND TARIFF, measured at real checkouts on 2026-09-30 with the",
+      "user's own address (Berkeley CA 94702) and a TEN-INSTRUMENT order in the cart.",
+      "Nothing was purchased.",
+      "",
+      "THE ONE DISTINCTION THAT DECIDES THE TARIFF QUESTION is whether a vendor ships",
+      "DDP -- Delivered Duty Paid. JLCPCB's DHL line says DDP outright, so its quoted",
+      "shipping ALREADY CONTAINS the duty and there is nothing further to add. Makerbase",
+      "ships the motors from Liwan District on 'free shipping' and collects no US tax and",
+      "no duty at checkout, so that one is NOT landed cost: whatever duty applies arrives",
+      "later, from the carrier. That is an exposure this file can name but cannot price,",
+      "because the rate is policy and changes.",
+      "",
+      "CALIFORNIA SALES TAX CAME OUT AT 8.00%, not the 10.25% Berkeley headline -- that",
+      "is what Lace's checkout actually computed on $1,470, and it is the vendor's rate",
+      "that gets charged, not the buyer's city rate."
+    ],
+    "lace_pickup": {
+      "vendor": "Lace Music",
+      "ships_from": "US (CA)",
+      "order_usd": 1470.0,
+      "shipping_usd": 0.0,
+      "tax_usd": 117.6,
+      "tax_pct": 8.0,
+      "ddp": null,
+      "verified": "v",
+      "what": "10 x Aluma Bass Bar 4.0 -- free shipping, estimated tax $117.60, total $1,587.60"
+    },
+    "makerbase_motors": {
+      "vendor": "Makerbase",
+      "ships_from": "CN",
+      "order_usd": 339.9,
+      "shipping_usd": 0.0,
+      "tax_usd": 0.0,
+      "tax_pct": 0.0,
+      "ddp": false,
+      "verified": "v",
+      "what": "10 x SERVO42D CAN MT -- free shipping (10-16 d); paid options 4PX $8.99, DHL/UPS $22.80, standard $3.99. NO tax and NO duty collected at checkout. DUTY EXPOSURE IS UNPRICED, not zero."
+    },
+    "jlcpcb_boards": {
+      "vendor": "JLCPCB",
+      "ships_from": "CN",
+      "order_usd": null,
+      "shipping_usd": 39.6,
+      "tax_usd": null,
+      "tax_pct": null,
+      "ddp": true,
+      "verified": "v",
+      "what": "DHL Express (DDP) -- duty INCLUDED in the shipping line. Measured $30.86 on a 2L qty-10 quote, $32.26 on the 4L optical, $39.60 on the qty-100 PCBA. Ten board designs ship as ONE order, so this is per ORDER, not per board."
+    },
+    "pishop_pi": {
+      "vendor": "PiShop",
+      "ships_from": "US (DE)",
+      "order_usd": 550.0,
+      "shipping_usd": null,
+      "tax_usd": null,
+      "tax_pct": null,
+      "ddp": null,
+      "verified": "m",
+      "what": "10 x Pi 4 2GB. \u26a0 THE LISTING CAPS AT ONE UNIT PER ORDER, so ten instruments means TEN SEPARATE ORDERS each paying its own shipping. Shipping not yet measured -- the cart would not take the item without a signed-in session."
+    },
+    "jameco_psu": {
+      "vendor": "Jameco",
+      "ships_from": "US (CA)",
+      "order_usd": 171.0,
+      "shipping_usd": null,
+      "tax_usd": null,
+      "tax_pct": null,
+      "ddp": null,
+      "tariff_usd": 35.91,
+      "tariff_pct": 21.0,
+      "verified": "v",
+      "what": "THE ONLY PLACE A TARIFF WAS ACTUALLY ITEMISED. 10 x LRS-150-24: $171.00 goods + $35.91 tariff = $206.91, i.e. 21.0% on HTS 8504.40.9530. A US distributor importing Chinese-made goods shows the duty as its own cart line. That is one measured rate for ONE commodity code -- do not spread it across the BOM, but it is the right order of magnitude for the China-made electronics in it."
     }
   }
 }
