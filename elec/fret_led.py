@@ -75,7 +75,7 @@ from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 
 import netcheck  # noqa: E402
 import placecheck  # noqa: E402
-from placecheck import check_placement  # noqa: E402
+from placecheck import check_placement, fp_box  # noqa: E402
 
 P = Pin.types.PASSIVE
 
@@ -379,22 +379,28 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # two of a pair -- which the gap check above caught the moment it was tightened. At
     # 1.15 the pair spans 4.16, still inside a 1206's own 4.60.
     pair = 1.15
+    # ⚠ THE WHOLE COLUMN SITS 0.60 LOWER THAN IT DID, AND THE RETAINING NOTCHES ARE
+    # WHY. The +Y edge now carries a notch per deck tab (see _outline), 1.35 deep, so
+    # nothing may stand past y 33.85 -- and the column's top two rows did. Moving the
+    # column rather than the divider keeps the feedback pair WITH the buck, which is the
+    # one thing about this cluster that is not negotiable: FB is its only high-impedance
+    # node. check_notches is what found it, before the board was routed rather than after.
     place.update({
         "J1": (mouth + 5.8125, 0.00, 270.0),
-        "C30": (col, 10.85, 0.0),
-        "C31": (col, 13.65, 0.0),
-        "C32": (col - pair, 15.77, 0.0),     # VIN HF bypass, against U10's VIN/GND
-        "C33": (col + pair, 15.77, 0.0),     # bootstrap, BOOT to SW
-        "U10": (col, 18.69, 0.0),
-        "C34": (col - pair, 21.61, 0.0),     # VCC bypass
-        "C38": (col + pair, 21.61, 0.0),     # output HF
-        "L1": (col, 24.83, 0.0),
-        "C36": (col, 28.73, 0.0),
-        "C37": (col, 31.53, 0.0),
+        "C30": (col, 10.25, 0.0),
+        "C31": (col, 13.05, 0.0),
+        "C32": (col - pair, 15.17, 0.0),     # VIN HF bypass, against U10's VIN/GND
+        "C33": (col + pair, 15.17, 0.0),     # bootstrap, BOOT to SW
+        "U10": (col, 18.09, 0.0),
+        "C34": (col - pair, 21.01, 0.0),     # VCC bypass
+        "C38": (col + pair, 21.01, 0.0),     # output HF
+        "L1": (col, 24.23, 0.0),
+        "C36": (col, 28.13, 0.0),
+        "C37": (col, 30.93, 0.0),
         # the feedback divider stays WITH the buck: FB is the one high-impedance node
         # here and a long trace to it is the classic way to make a switcher sing
-        "R10": (col - pair, 33.65, 0.0),
-        "R11": (col + pair, 33.65, 0.0),
+        "R10": (col - pair, 33.05, 0.0),
+        "R11": (col + pair, 33.05, 0.0),
         # ...and the fuse goes in the EMPTY -Y half, because it is the only part of the
         # supply that is NOT in a loop that matters: it sits upstream of the input bulk,
         # so the hot loop closes without it and its feed from J1 can be as long as it
@@ -409,6 +415,52 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     assert bx1 - bx0 >= 9.0, "the bay is %.2f mm long and J1 plus the buck needs 9" % (
         bx1 - bx0)
     return sck, sdt
+
+
+def _outline(panel, cx, x0, x1):
+    """The board outline in board-local mm: a rectangle with the tab notches taken out.
+
+    ⚠ THE NOTCHES ARE ON +Y ONLY, and that is the CAN trunk's doing rather than a
+    choice. src/fret_light.tab_reach() derives each edge's tab from what was measured
+    under it (tools/_probe_fret_tab.py): the +Y edge has 6.00 mm of clear air and gets the
+    full tab, the -Y edge has 1.00 before wire_canl and gets 0.30, which is not a tab. So
+    fret_light builds no -Y tab, and a notch for a tab that does not exist would only be
+    substrate thrown away. Fix the trunk stack (section 8.1) and both sides grow together,
+    here and in the deck, off the same function."""
+    hw = FL.BOARD_HALF_W
+    d, ln = FL.notch(1.0)
+    pts = [(x0 - cx, -hw), (x1 - cx, -hw), (x1 - cx, hw)]
+    for xc in sorted((x - cx for x in FL.tab_xs(panel)), reverse=True):
+        pts += [(xc + ln / 2.0, hw), (xc + ln / 2.0, hw - d),
+                (xc - ln / 2.0, hw - d), (xc - ln / 2.0, hw)]
+    pts.append((x0 - cx, hw))
+    return [[round(a, 4), round(b, 4)] for a, b in pts]
+
+
+def check_notches(name, panel, place, fps, cx, clr=0.30):
+    """No part may stand in a notch -- the notch is where the deck's tab comes through.
+
+    DRC cannot see this: the notch is board outline, the parts are in the layout region,
+    and a courtyard hanging over a notch is a part sitting on a piece of plastic."""
+    d, ln = FL.notch(1.0)
+    hw = FL.BOARD_HALF_W
+    bad = []
+    for ref, (px, py, rot) in place.items():
+        w, h = fp_box(fps[ref])
+        if round(rot) % 180:
+            w, h = h, w
+        y1 = py + h / 2.0
+        if y1 < hw - d - clr:
+            continue
+        for xc in (x - cx for x in FL.tab_xs(panel)):
+            if abs(px) - w / 2.0 < abs(xc) + ln / 2.0 + clr and \
+               px - w / 2.0 < xc + ln / 2.0 + clr and px + w / 2.0 > xc - ln / 2.0 - clr:
+                bad.append("%s reaches y %.2f at x %.2f, inside the notch at %.2f"
+                           % (ref, y1, px, xc))
+                break
+    if bad:
+        raise SystemExit("%s: %d part(s) in a retaining-tab notch:\n  %s"
+                         % (name, len(bad), "\n  ".join(bad)))
 
 
 def build(panel, hole_y):
@@ -523,6 +575,7 @@ def build(panel, hole_y):
                 Net("Z%d_%s_RET" % (fret, col)).connect(leds[3][i + 5], u[outs[i]])
 
     # ⚠ BEFORE THE NETLIST, NOT AFTER THE ROUTE. See check_placement.
+    check_notches(name, panel, place, fps, cx)
     check_placement(name, place, fps)
     check_walls(name, place, fps, bnd, min(bnd), cx)
     ERC()
@@ -540,6 +593,13 @@ def build(panel, hole_y):
     # lift-and-shift retention in docs/fret-led.md section 8; the ramps' tabs are what
     # hold -Z along the length.
     notes["cutouts"] = [{"xy": [x0 - cx + 4.50, hole_y], "d": 4.50}]
+    # ⚠ THE OUTLINE IS NOT A RECTANGLE ANY MORE: the +Y edge carries a notch per
+    # retaining tab. docs/fret-led.md section 8.4's install is lift-then-shift, and a
+    # straight 211 mm edge cannot lift past a tab that already overhangs it -- the board
+    # rises with the tabs IN its notches and then shifts FL.TAB_SHIFT along X, running its
+    # solid edge under them. Every number comes from src/fret_light.py, which owns the
+    # deck side of the joint; nothing here is typed twice.
+    notes["outline_poly"] = _outline(panel, cx, x0, x1)
     notes["qty_per_instrument"] = 1
     notes["world_x"] = [round(x0, 3), round(x1, 3)]
     notes["board_frame"] = {"cx": round(cx, 4), "z_bot": FL.BOARD_BOT}
