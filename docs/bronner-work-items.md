@@ -3726,3 +3726,60 @@ may need searching again — budget for iteration, not a single pass.
 **Current committed state: 5 unconnected, 0 violations, mounting holes in, CAD and fab
 agreeing on 12 cutouts.** The five are `+3V3A`, `ULPI_NXT`, `ULPI_D4`, `LED_ROW` and `SAI_FS`
 (the last by choice, its repair withdrawn as stale).
+
+## THE PI'S SPACER IS NECESSARY, NOT A PREFERENCE — MEASURED (2026-09-29)
+
+The user proposed a printed spacer between the screw head and the PCB so the screw could move
+off the board's edge. **The cheap alternative was tried first and does not exist.**
+
+**The constraint, named:** the current hold at (−515.50, −68.50) puts `knee_housing` — the
+levers' mortise/tenon — **66 mm³ inside the 1.6 mm shell around the anchor bore**, with the
+housing spanning z −79.45..−73.25 against an anchor of −77.45..−68.95. ⚠ **The overlap gate
+reads CLEAN here and always will**: a sub-1.6 mm wall is not an interpenetration. This is the
+second defect this session the user found from a render that no gate can report (the other
+being the motor boss's curved overhang, invisible to `check_ceilings`).
+
+**The sweep — `tools/_probe_pi_anchor_sweep.py`** — scores candidates on three things at once:
+nothing foreign within `MIN_WALL` of the bore, chassis actually present to anchor into, and a
+clear column for a 2.5 mm key.
+
+        span 2.50 (hugging the board)  5 sites clear below   driver blocked 39.9
+        span 3.50                      5 sites clear below   driver blocked 31.7
+        span 4.50                      5 sites clear below   driver blocked 13.9
+        span 5.50                      clear below           driver blocked 10.5
+        span 10.50+                    clear below           driver CLEAR
+
+⚠ **NO POSITION BESIDE THE BOARD IS BOTH ANCHORABLE AND REACHABLE.** Where the bore is safe
+the driver cannot get to it; where the driver is free the bore is in the knee housing. A
+one-line `hold_at` change cannot fix this, which is why the spacer is the answer and not a
+nicety.
+
+### The chosen site: (−510.00, −58.50), span 12.50 mm
+
+* driver column **CLEAR**, nothing foreign within 1.6 mm of the bore
+* **219.0 mm³ of chassis** around the bore — it has something to anchor into
+* 7 mm from the board's **+X end**, which is the OPEN edge with no wall and the end that takes
+  cable insertion force. That is the same reasoning that chose the current hold, and the walls
+  restrain nothing in Z, so this one screw is still the entire lift restraint.
+* runner-up (−582.00, −60.50), span 10.50, 228.0 mm³ — shorter reach but at the far end
+
+### What the spacer has to beat, and what it should do better
+
+A button head laps the laminate by `pcb_hold_overlap()` = **1.30 mm** on one small arc. A
+printed piece can reach further along the edge, spread the clamp over a longer run, and HOOK
+the edge so it resists lift by form rather than friction. Retention thickness elsewhere in
+this file is `3 * D.BEAD` = 2.4, after the user rejected 1.2 as under the quality bar.
+
+**Build notes:**
+
+* the spacer lies on the board's top face (z −67.35) and must be supported at the same height
+  at the screw end, so the chassis needs a boss there topping out level with the board — the
+  bore then runs from −67.35 rather than the −68.95 this sweep used. ⚠ **Re-check the knee
+  housing at that z before committing**; it is 1.6 mm higher than what was swept.
+* it prints in `chassis_2`, which builds **Z-up** — do not reintroduce an overhang.
+* ⚠ **`_assert_mount_heads_clear()` WILL REJECT IT ON SIGHT.** That guard refuses any part
+  under a screw head and a spacer deliberately occupies exactly that space. It has caught four
+  real faults today (C111, R30, TP8 and a bug in `padsite.py`), so teach it about a declared
+  spacer rather than weaken it.
+* `pcb_cradle` cannot build this: it puts its `hold_edge` boss immediately beside the board,
+  and this boss is 12.5 mm out. The boss and the clamp are new geometry in `electronics.py`.
