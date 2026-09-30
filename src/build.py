@@ -801,6 +801,10 @@ def _electronics_components():
     for panel in ("mid", "key"):
         out.append(("fret_pcb_%s" % panel, FL.pcb(panel)))
         out.append(("fret_led_%s" % panel, FL.leds(panel)))
+    # the FOOT strip: one board placed twice, firing down through the chassis window.
+    # The channel it slides into is chassis geometry (src/foot_light.py).
+    from . import foot_light as FOOT
+    out += FOOT.parts()
     out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
@@ -1721,6 +1725,10 @@ _COLORS = {
     "fret_pcb_key":    (0.05, 0.35, 0.15),
     "fret_led_mid":    (0.95, 0.95, 0.88),   # RGBW, lit
     "fret_led_key":    (0.95, 0.95, 0.88),
+    "foot_pcb_a":      (0.05, 0.35, 0.15),
+    "foot_pcb_b":      (0.05, 0.35, 0.15),
+    "foot_led_a":      (0.95, 0.95, 0.88),
+    "foot_led_b":      (0.95, 0.95, 0.88),
     "wire_ui":         (0.55, 0.56, 0.58),
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
