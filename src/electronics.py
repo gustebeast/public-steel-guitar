@@ -2,7 +2,7 @@
 
 WHAT IS ACTUALLY IN THE BAY (keyhead end, x -608..-547, under the strings):
 
-  - Raspberry Pi 5      -- audio, UI, copedent logic, USB
+  - Raspberry Pi 4 (2 GB) -- Dexed, UI, copedent logic, USB host + gadget
   - motor controller    -- elec/motor_ctrl.py: CH32V307 + CAN, the sensor->motor
                            loop and the two bus tees' upstream end
   - output + panel board -- elec/output_panel.py, at the BRIDGE end, not here
@@ -226,7 +226,7 @@ MCTRL_BOARD_X, MCTRL_BOARD_Y = _mctrl_rect()   # straight from the routed outlin
 # the outline changes and then it is right by construction.
 MCTRL_FLOOR_EDGE_X = -528.15           # tray +X edge == world z -80.85, the floor
 # ⚠⚠ NOTHING CAN BE PLUGGED INTO THE PI, AND THE BAND CANNOT BE OPENED TO FIX IT
-# (MEASURED 2026-09-29). pi5 ymax -46.18 against motor_ctrl ymin -41.50 is 4.68 mm, and a
+# (MEASURED 2026-09-29). pi4 ymax -46.18 against motor_ctrl ymin -41.50 is 4.68 mm, and a
 # USB-A plug's overmould needs ~10 mm of Y beyond the port face even right-angled, ~22
 # straight. I moved _MCTRL_CY -10.5 -> -0.5 to open it and the gate went 110 -> 115: the
 # board ran into body_adapter_0 (91.41 mm3) and through all four 5 V conductors (4.0 each).
@@ -279,11 +279,11 @@ MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
 
 # ⚠ THE PI IS PINNED TOO, but to its DATASHEET rather than to a routed outline -- it is a
 # purchased board and there is no elec/geom for it. PI_FP is already the single source for
-# both the dummy in pi5() and the cradle in keyhead_cradles(), so those two cannot drift
-# from each other; what was missing is anything tying PI_FP to the actual Pi. A Pi 5 is
+# both the dummy in pi4() and the cradle in keyhead_cradles(), so those two cannot drift
+# from each other; what was missing is anything tying PI_FP to the actual Pi. A Pi 4B is
 # 85 x 56 mm (RPi mechanical drawing), long side on X here, FLAT. If someone re-sizes this to
 # make something fit, the assert is what says the board stopped being a Pi.
-assert (round(PI_FP[1] - PI_FP[0], 3), round(PI_FP[3] - PI_FP[2], 3)) == (85.0, 56.0),     "PI_FP is %.1f x %.1f; a Pi 5 is 85 x 56" % (PI_FP[1] - PI_FP[0], PI_FP[3] - PI_FP[2])
+assert (round(PI_FP[1] - PI_FP[0], 3), round(PI_FP[3] - PI_FP[2], 3)) == (85.0, 56.0),     "PI_FP is %.1f x %.1f; a Pi 4B is 85 x 56" % (PI_FP[1] - PI_FP[0], PI_FP[3] - PI_FP[2])
 
 BOARD_Z = TRAY_Z1 + POST_H             # every bottom board sits at -67
 # ⚠ THE PI HAS ITS OWN Z AND IT IS A WORLD ONE: it lies on the chassis floor, not on the
@@ -338,7 +338,7 @@ def stand_pt(x: float, y: float, z: float):
 
 # the dimensions datum the motor bank is packed against has to hold the real boards:
 # tallest part above the plate's underside in the flat frame = depth in X once standing
-_PI_TOP = BOARD_Z + BD_T + 14.0                # Pi 5 USB/ethernet block top (see pi5)
+_PI_TOP = BOARD_Z + BD_T + 14.0                # I/O block top (see pi4, and its ⚠)
 _MCTRL_TOP = MCTRL_BOARD_Z + BD_T + 9.8        # a MATED XH on the motor controller
 _STACK = max(_PI_TOP, _MCTRL_TOP, BOARD_Z + BD_T + 9.0) - TRAY_Z0   # (+ buck caps)
 assert _STACK <= D.ELEC_STACK_D + 1e-6, (
@@ -619,7 +619,7 @@ PI_SPACER_W    = 20.0              # along X -- the run of edge it clamps
 # 1.30 mm on one arc -- with the head 2.2 mm inside the +X end, so it bears on plastic all round.
 # Swept as ONE STEPPED SOLID over five (centre, W) pairs: tools/_probe_pi_spacer_bar.
 PI_SPACER_CX   = -514.0            # WORLD x of the BAR's centre (the screw is at -510.0)
-# ⚠ THE LAP IS SET BY THE PI'S OWN I/O BLOCK, NOT CHOSEN. pi5() models the USB/ethernet
+# ⚠ THE LAP IS SET BY THE PI'S OWN I/O BLOCK, NOT CHOSEN. pi4() models the USB/ethernet
 # block as box_at(18, 50, 14) reaching y -74.00 and standing 14 mm off the laminate, so the
 # clear laminate between it and the board's +Y edge (-71.00) is 3.00 mm and that is the whole
 # budget. The first draft said 6.0 and drove the lap 3 mm into a 14 mm tall block -- 108.0 mm3,
@@ -968,7 +968,7 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # the pi the retention is clipping into the pi's components"). They were right, and
     # NOTHING IN THE PROJECT COULD SEE IT: cradle-to-board contact is a designed contact,
     # so check_overlaps does not report it, and the render is the only place it shows.
-    # Measured before this cut: 56.3 mm3 into pi5 along the board's WHOLE length, 1.7 mm
+    # Measured before this cut: 56.3 mm3 into pi4 along the board's WHOLE length, 1.7 mm
     # ABOVE the laminate's top face -- that is component space, not board edge. Raising
     # RETAIN to 3 beads tripled it to 194.3, which is the honest cost of a deeper lean and
     # exactly why the two changes have to land together.
@@ -1002,7 +1002,7 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # wall_over reaches into the lid along that edge. Cutting both boards' own solids leaves
     # the pads below and the locating walls beside, and trims only what reaches OVER them --
     # retention is whatever the boards' envelopes leave room for.
-    out = out.cut(pi5()).cut(pi_cap())
+    out = out.cut(pi4()).cut(pi_cap())
     return out
 
 
@@ -1131,7 +1131,8 @@ def _ctr(fp):
 # that stand_pt turns into world z -34.0; the world x is -587.8, which is INSIDE the block.
 # The user's observation was right and the explanation under it was not. stand_pt's three
 # arguments are tray (x, y, z) -> world (z-543.8, y, -609-x); never read one as a world x.
-# The ports are on the +Y END, which is where a Pi 5's are, and pi5() already builds that
+# The ports are on the +Y END, which is where a Pi 5's are (⚠ see pi4: NOT re-checked
+# against a Pi 4B, which is the board the BOM now specifies), and pi4() already builds that
 # block. These are its three connector groups along the 50 mm the block spans in tray x,
 # taken mid-height so the plug shell sits inside the block's 14 mm rather than proud of it.
 PI_PORT_Z  = BOARD_Z + BD_T + 7.0      # mid-block: world x -593.0, shell -596.4..-589.6
@@ -1144,8 +1145,21 @@ def pi_port_pt(which: str):
     return (PI_PORTS[which], PI_FP[3] - PI_PORT_IN, PI_PORT_Z)
 
 
-def pi5() -> cq.Workplane:
-    """Raspberry Pi 5 dummy: board + USB/eth block + SoC. WORLD frame, lying FLAT.
+def pi4() -> cq.Workplane:
+    """Raspberry Pi 4B dummy: board + USB/eth block + SoC. WORLD frame, lying FLAT.
+
+    ⚠ THE NAME IS A Pi 4B; THE I/O BLOCK'S GEOMETRY IS STILL THE Pi 5'S. Renamed
+    2026-09-30 to follow BOM.md, which specifies a Pi 4 (2 GB) -- the Pi 5 and its 6 A buck
+    were dropped to save ~$130 once audio->MIDI moved onto the optical pickup's own MCU, so
+    the Pi's jobs are Dexed, USB gadget duty and hosting the optical board. The 85 x 56
+    laminate is right either way: both boards are 85 x 56, and the assert on PI_FP says so.
+    The 50 x 18 x 14 I/O BLOCK IS NOT VERIFIED. Its height and its position on the board's
+    end were taken from a Pi 5, and the two boards do not place USB and Ethernet
+    identically. That block is load-bearing: `wire_usb`, `wire_link` and `wire_ui` all
+    terminate on it (see wiring.WIRE_OK), `_PI_TOP` derives the tray depth from its height,
+    and pi_relief/pi_slide cut plastic against it. Check it against a real Pi 4B mechanical
+    drawing before those runs or that pocket are trusted -- PI_PORTS and PI_PORT_IN are
+    where the fix goes, as the note further down already says.
 
     ⚠ NO stand(). This board is not in the tray any more -- it lies on the chassis floor,
     so it is authored where it sits, the way the output board already is. `_board` and
@@ -1223,7 +1237,7 @@ from . import board_geom as BG
 # Where the Pi's 40-way header is, in the tray frame. ⚠ ASSUMED FROM THE STANDARD Pi
 # LAYOUT, NOT MEASURED: the header runs parallel to the 85 mm edge, its rows 3.5 and 6.04
 # in from one long edge, pin 1 3.5 in from the short edge AWAY from the USB/ethernet block
-# (which pi5() puts at +Y). If a real Pi says otherwise, these two numbers are the fix and
+# (which pi4() puts at +Y). If a real Pi says otherwise, these two numbers are the fix and
 # nothing else moves. The cap is 56 x 26 against the Pi's 85 x 56, so it lands inside the
 # Pi's outline apart from 0.37 mm at the -Y end -- real HATs sit flush, and 0.37 is the
 # difference between the cap's half-length and the header's margin, not a placement error.

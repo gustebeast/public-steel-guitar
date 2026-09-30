@@ -408,11 +408,11 @@
   },
   "modules": {
     "_note": "bought assembled, not fabbed by us",
-    "pi5": {
-      "usd": 80.0,
+    "pi4": {
+      "usd": 55.0,
       "verified": "m",
       "per_instrument": 1,
-      "what": "Raspberry Pi 5"
+      "what": "Raspberry Pi 4 Model B, 2 GB"
     },
     "oled_2_42": {
       "usd": 17.0,

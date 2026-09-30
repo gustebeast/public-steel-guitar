@@ -33,7 +33,7 @@ def main():
     foreign = [(n, s) for n, s in comps
                if not n.startswith("chassis") and not n.startswith("board_screw")
                and not n.startswith("board_insert") and not n.startswith("wire_")
-               and not n.startswith("pi5") and not n.startswith("pi_cap")]
+               and not n.startswith("pi4") and not n.startswith("pi_cap")]
     chassis = [(n, s) for n, s in comps if n.startswith("chassis")]
     z1 = EL.PI_Z
     z0 = z1 - M4.anchor_min_wall

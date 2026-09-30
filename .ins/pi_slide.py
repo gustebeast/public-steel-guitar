@@ -9,7 +9,7 @@ ep = solids[0]
 for q in solids[1:]:
     ep = ep.union(q)
 
-pi = EL.pi5()
+pi = EL.pi4()
 bb = pi.val().BoundingBox()
 print('Pi occupies  x %.1f..%.1f  y %.1f..%.1f  z %.1f..%.1f  (so %.0f along Y, %.0f along Z)'
       % (bb.xmin, bb.xmax, bb.ymin, bb.ymax, bb.zmin, bb.zmax,

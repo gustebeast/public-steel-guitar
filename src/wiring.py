@@ -41,7 +41,7 @@ HUE = gauge bucket, SHADE = the specific wire within the bucket:
   BLUE = power pair       (superseded for the CAN power rails above)
   AMBER = 28 AWG logic    (light -> dark) wire_link (motor controller <-> Pi),
                           wire_ui (the UI board's 14-way ribbon, ONE flat prism)
-  VIOLET = shielded USB-2 wire_usb: USB-C panel -> Pi 5
+  VIOLET = shielded USB-2 wire_usb: USB-C panel -> Pi 4
   GREY = factory jackets  motor_pigtail_N
 
 Analog architecture: NONE OF IT IS HERE. The AFE board is deleted and no audio
@@ -963,7 +963,7 @@ def build_wires():
         #     face and the Pi went flush to the bay wall, so the gap is now 4.68 and the
         #     y comes from _board_gap_y() rather than a number typed here.
         # So: run +Y at the rail's OWN x, which is east of the Pi and so misses the board that
-        # now sits over the trough (CHAN_Y -129.15 is inside pi5's y span -135..-50); turn west
+        # now sits over the trough (CHAN_Y -129.15 is inside pi4's y span -135..-50); turn west
         # into the gap only then; drop; and walk up the board's own face to J3.
         # The face height is -58 and NOT the connector's own z: at z -61.55 this runs alongside
         # the 5 V cable (which lives at z -64 since its own fix) for 31.6 mm3 per conductor.
@@ -1046,7 +1046,7 @@ def build_wires():
     # read SP(-575.0, 20.0, -44.0), which was on the Pi when it spanned y -50..35 and is 8.10 mm
     # off it now that the swap put the Pi at -135..-50. TWO leads to the Pi were stranded at its
     # old position; only wire_link happened to clip a wall and raise a gate pair. Derived from
-    # the USB/ethernet block pi5() builds at PI_FP[3] - 9.0, like wire_link's.
+    # the USB/ethernet block pi4() builds at PI_FP[3] - 9.0, like wire_link's.
     # ⚠ DERIVED FROM THE PORT NOW, not typed (user: "the USB for example enters the pi from
     # +x which doesn't seem like how the USB would be oriented"). The old point was tray
     # (-575, PI_FP[3]-9, -44) = world (-587.8, -55.18, -34.0), 1.8 mm inside the USB block's
@@ -1096,17 +1096,17 @@ def build_wires():
     _j5 = SP(*EL.mctrl_pt("J5"))
     # ⚠ THE RUN GOES UNDER THE PI, NOT ACROSS IT (2026-09-29). Once the two boards swapped ends
     # J5 and J2 ended up at nearly the same world x (-591.70 / -591.50) with 76 mm of y between
-    # them, and the old mid-plate leg at z -37.45 went straight THROUGH pi5: 48.3 mm3 per
+    # them, and the old mid-plate leg at z -37.45 went straight THROUGH pi4: 48.3 mm3 per
     # conductor over y -50..-68. Two fixes were tried and BOTH scored worse on the gate
     # (132 -> 136 each): outboard at x -583.5 lands in motor_0 and the chassis (+X is the motor
     # bank's), and x -597/z -34 lands in board_screw_2. See docs/bronner-work-items.md.
-    # The lane is UNDERNEATH: pi5 stops at z -62, and at these connectors' own x the only clear
+    # The lane is UNDERNEATH: pi4 stops at z -62, and at these connectors' own x the only clear
     # band is z -62..-68 (above the Pi, z -4, is clear elsewhere but blocked here by the cap).
     # Searched with scratchpad/lanefind.py and then checked SEGMENT BY SEGMENT with
     # scratchpad/segtest.py -- a lane search only clears the long run, and it was the vertical
     # ends that broke the two previous attempts. Both tools scan
     # src.build.collect_components(), which is what the gate scans; an earlier version walked
-    # src.build.PARTS and was blind to pi5, motor_ctrl AND motor_0 (it "cleared" a lane the
+    # src.build.PARTS and was blind to pi4, motor_ctrl AND motor_0 (it "cleared" a lane the
     # gate then rejected). What remains after this are the three connector-adjacent contacts
     # the baseline already had: the cable entering its own J5 and its own J2.
     # ⚠ AND THE MOTOR END LANDS PIN BY PIN TOO, WHICH IS WHAT THE OTHER HALF OF THIS
@@ -1160,7 +1160,7 @@ def build_wires():
     # after the swap it spans -135..-50 -- so this lead ended in OPEN AIR where the Pi used to
     # be, and grazed the chassis on the way (chassis_2 <-> wire_link). A cable that does not
     # reach its connector is worse than an overlap: the gate can see the overlap.
-    # Derived now, from the Pi's USB/ethernet block, which pi5() puts at PI_FP[3] - 9.0 -- so
+    # Derived now, from the Pi's USB/ethernet block, which pi4() puts at PI_FP[3] - 9.0 -- so
     # it follows the board instead of being falsified by it. That is the FIFTH constant this
     # swap invalidated (root_d's 13 beads, MCTRL_HOLE, the 5 V leg, _FEED2_X, and this).
     _lt = SP(*EL.mctrl_pt("J4"))
@@ -1320,21 +1320,21 @@ WIRE_OK = {
     # that is exactly what this table is for.
     "wire_pwr_hot":   {"output_panel", "tee_pcb", "motor_ctrl"},
     "wire_pwr_gnd":   {"output_panel", "tee_pcb", "motor_ctrl"},
-    # ⚠ pi_cap, NOT pi5, AND IT IS THE SAME FAULT AS THE BUS-B ENTRY BELOW: the declared
+    # ⚠ pi_cap, NOT pi4, AND IT IS THE SAME FAULT AS THE BUS-B ENTRY BELOW: the declared
     # far end was the wrong PART. This cable is drawn to EL.pi_cap_pin("J2", n) -- it lands
-    # on the cap's connector, pin by pin -- and pi5 is only what it passes under on the way,
-    # at 0.1 mm3 of graze. Declaring pi5 therefore did two wrong things at once: it made the
+    # on the cap's connector, pin by pin -- and pi4 is only what it passes under on the way,
+    # at 0.1 mm3 of graze. Declaring pi4 therefore did two wrong things at once: it made the
     # cable's real landing on pi_cap read as FOUR unintended overlaps of 40.5 mm3 each, and
     # it allow-listed the Pi, which is the part a future mistake would most like to hide in.
     # WIRE_OK is the overlap gate's allow-list as well as a wiring declaration, so a wrong
     # name here does not just mislabel -- it silences.
-    # pi5 is deliberately NOT added back. The 0.1 mm3 is residual, not designed (the note at
+    # pi4 is deliberately NOT added back. The 0.1 mm3 is residual, not designed (the note at
     # the cable says the under-Pi lane leaves "the three connector-adjacent contacts"), so it
     # stays visible as the small real thing it is rather than being covered over.
     "wire_5v":        {"motor_ctrl", "pi_cap"},
-    "wire_usb":       {"output_panel", "pi5"},
-    "wire_link":      {"motor_ctrl", "pi5"},
-    "wire_ui":        {"ui_pcb", "pi5"},
+    "wire_usb":       {"output_panel", "pi4"},
+    "wire_link":      {"motor_ctrl", "pi4"},
+    "wire_ui":        {"ui_pcb", "pi4"},
 }
 
 # ...and the body-side run of the same cable ends on the motor controller, which is the

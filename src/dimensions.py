@@ -730,7 +730,7 @@ MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 44.7 along-X step between 
 # belt clamp's whole travel; build.py asserts it.
 KEYHEAD_INBOARD_X = -607.8       # keyhead endplate inboard bearing face (its height-screw prism, keyhead_endplate.HS_X1);
                                  # asserted against keyhead_endplate in build.py
-ELEC_STACK_D    = 21.8           # standing electronics tray: plate + posts + tallest board (Pi 5);
+ELEC_STACK_D    = 21.8           # standing electronics tray: plate + posts + tallest board (Pi 4B);
                                  # asserted against the real boards in electronics.py
 # Sized like MOTOR_GAP so string 1's -X bay wall is a full 1.6 like every other motor's, rather
 # than the 1.2 that 1.6 of clearance left it (user: no special cases in the bank).

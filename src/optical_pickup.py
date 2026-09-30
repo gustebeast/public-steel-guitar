@@ -3461,7 +3461,7 @@ def pi_target():
     bridge_endplate, so a module-level import risks the cycle that already had to be
     untangled once in electronics.py."""
     from . import electronics as EL
-    bb = EL.pi5().val().BoundingBox()
+    bb = EL.pi4().val().BoundingBox()
     return ((bb.xmin + bb.xmax) / 2, (bb.ymin + bb.ymax) / 2, (bb.zmin + bb.zmax) / 2)
 
 
@@ -3480,7 +3480,7 @@ def pi_column_x():
     keeps it off the bay wiring's riser column (wiring.BAY_X, one mm inside the motor's
     -X face). Lazy import, as pi_target."""
     from . import electronics as EL
-    return EL.pi5().val().BoundingBox().xmax + 3 * 2.6
+    return EL.pi4().val().BoundingBox().xmax + 3 * 2.6
 
 
 def usb_run_length():

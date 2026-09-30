@@ -9,7 +9,7 @@ ep = solids[0]
 for q in solids[1:]:
     ep = ep.union(q)
 
-for name, body in (("pi5 alone", EL.pi5()), ("pi_cap alone", EL.pi_cap())):
+for name, body in (("pi4 alone", EL.pi4()), ("pi_cap alone", EL.pi_cap())):
     for mm in (0, 30):
         r = body.translate((0, 0, mm)).intersect(ep)
         if not r.solids().size():

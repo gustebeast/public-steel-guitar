@@ -10,7 +10,7 @@ ep = solids[0]
 for q in solids[1:]:
     ep = ep.union(q)
 
-pi = EL.pi5()
+pi = EL.pi4()
 swept = None
 for mm in range(0, 70, 2):                 # the whole +Z install stroke
     m = pi.translate((0, 0, mm))
