@@ -1308,6 +1308,21 @@ WIRE_OK = {
     "wire_usb":       {"output_panel", "pi5"},
     "wire_link":      {"motor_ctrl", "pi5"},
     "wire_oled":      {"oled", "pi5"},
+    # ⚠ THE LED HARNESS HAD NO ENTRY AT ALL, so even its OWN endpoints read as unintended
+    # overlaps -- the cable landing on the connector it is drawn to. Undeclared is not the
+    # same as declared-empty: the gate cannot tell "this cable may touch nothing" from
+    # "nobody has said what this cable touches", and it reported the second as if it were
+    # the first. Found while fixing the key lookup above; the six wire_led_* carry 19 overlap
+    # pairs each, and their own landings were part of that count.
+    # ⚠ THIS DELIBERATELY DOES NOT SILENCE THE REAL ONE. Declaring the endpoints leaves
+    # keyhead_endplate <-> wire_led_* (32.3 mm3 x 6) exactly where it is, which is the point:
+    # that harness runs THROUGH the endplate and that is a routing bug, not a landing. An
+    # allow-list entry wide enough to cover it would have hidden the only thing worth seeing.
+    "wire_led":       {"pi_cap", "led_strip"},
+    # a STUB, and its set says so: pi_cap's J4 shows the four pins and where they face,
+    # because the buck that would feed it does not fit on the motor controller yet (see the
+    # note at the cable). One part, because one part is all it reaches.
+    "wire_ledpwr":    {"pi_cap"},
     "wire_joy":       {"joystick", "pi5"},
 }
 
