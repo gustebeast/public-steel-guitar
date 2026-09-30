@@ -873,7 +873,10 @@ def _electronics_components():
     # The endplate has to come off with the boards left in place (user), which is the whole
     # reason they moved. One less printed part, and the boards gained retention they never
     # had on the tray's bare posts.
-    out = [("pi5", EL.pi5()), ("pi_cap", EL.pi_cap()),
+    # pi_spacer is the flat Pi's RETENTION -- a printed piece, not a dummy. It replaces the
+    # button head that used to clamp the laminate directly: no position beside the board had
+    # room for that screw's anchor below the floor (electronics.PI_SPACER_XY).
+    out = [("pi5", EL.pi5()), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
            *EL.led_sections(),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
@@ -1213,7 +1216,7 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-    "pi5", "pi_cap", "led_strip_", "motor_ctrl", "tee_", "wire_",
+    "pi5", "pi_cap", "pi_spacer", "led_strip_", "motor_ctrl", "tee_", "wire_",
     "output_panel", "joystick", "oled",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
@@ -1525,6 +1528,7 @@ _COLORS = {
 
     "pi5":             (0.05, 0.35, 0.15),   # PCB green
     "pi_cap":          (0.05, 0.35, 0.15),   # PCB green
+    "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
     "led_strip_":      (0.05, 0.35, 0.15),   # PCB green
     "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
