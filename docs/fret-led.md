@@ -920,6 +920,67 @@ None of that is done. What IS established is that the number §9.1 refused on wa
 one, and that the joint fails on a 4.50 mm landing on ONE board rather than on 1.60 mm of
 length across both.
 
+## 9.1b The side-mount pogo family, enumerated -- and what actually picks the part
+
+§9.1 chose C5203987 and §9.1a showed its stated reason was the wrong number. The family it
+chose from was never enumerated either. JLCPCB's parts API, 2026-09-30, filtered to
+side-mount (侧贴) pogos with stock: **17 parts, all gold-plated.**
+
+| stock | code | workH | overall | V | A | pins | price |
+|--:|---|--:|--:|--:|--:|--:|--:|
+| 1501 | C5203974 | 2.1 | 2.8 | 12 | 1 | 1 | $0.33 |
+| 1154 | C5203983 | 5.5 | 7.0 | 12 | 1 | 1 | $0.44 |
+| 902 | C5296819 | 4.0 | 5.5 | 12 | 1 | **4** | $1.61 |
+| **602** | **C5203987** | **6.0** | **8.0** | **24** | **12** | 1 | **$0.70** |
+| 492 | C5203981 | 5.5 | 6.5 | 12 | 1 | 1 | $0.59 |
+| 480 | C5203985 | 5.8 | 7.0 | 12 | 4 | 1 | $0.66 |
+| 312 | C5203984 | 6.0 | 7.0 | 12 | 4 | 1 | $0.37 |
+| ...10 more | | | | 12 | | | |
+
+**C5203987 IS PCBA.** JLCPCB's own part page: Assembly Type **SMT Assembly**, PCBA Type
+**Economic and Standard**, Extended library, gold, 602 in stock, $0.7022. ⚠ Assembly
+Difficulty is flagged **High** -- it is a small cylinder placed on its side, and rotation
+error on a connector whose alignment IS the joint is not rotation error on a capacitor.
+602 is 75 instruments at 8 a set; the LMR33630 already on four of our boards has 453.
+
+### ⚠ VOLTAGE PICKS THE PART, AND IT IS THE ONE THING 9.1 NEVER WROTE DOWN
+
+**C5203987 is the only side-mount pogo in the catalogue rated above 12 V.** Every other
+one of the seventeen is 12 V. Our seam carries the 24 V rail, because each board makes its
+own -- so if the joint is to carry power at all, there is exactly one candidate. 9.1 landed
+on the right part for a reason it did not state, having refused it on one that was wrong.
+
+### ⚠ AND THE SETBACK SPLIT DOES NOT RESCUE KEY
+
+The setback is ours to choose, and with a gap g the two only have to satisfy
+**a + b = 12.00 - g** -- so they can be split unevenly, most of it on mid, which has 9.70 mm
+of bay. It does not help, because **the body has to sit on the board**: b >= body length,
+full stop. The minimum land on key is the barrel, **4.50 mm**, however the setback is
+divided. That is what forces key's comb wall back 5.30 and costs fret 9's cell.
+
+### The fork that actually decides it
+
+| what crosses the seam | part | key's land | fret 9 | key's cable |
+|---|---|--:|---|---|
+| **everything** | **C5203987** 24 V | 4.50 | **cell lost** | **deleted** |
+| data only, power bussed | C5203974 12 V, body 1.50 | 1.50 | survives (wall moves 2.30, fret 9 is 2.88 away) | still needed |
+
+C5203974 is the better CONNECTOR by every measure -- 2.5x the stock, half the price, a
+third of the land, 2.80/2.10/2.00 free/working/limit off its drawing. It is the worse
+ANSWER, because a seam that carries only data still leaves key needing a power cable, and
+once that cable exists the joint has stopped earning its keep.
+
+**Recommendation: C5203987, and fret 9's cell is the price.** `SKIP_FRETS` already carries
+fret 1 on a similar trade.
+
+### One of 9.1's calls that survives
+
+§9.1 said C5296819 "is a MEZZANINE part: its four plungers fire PERPENDICULAR to the
+board". **Correct**, and worth recording because JLC files it under side-mount: its drawing
+shows four plungers standing up out of a PA46 housing, 5.50 free / 4.00 working measured
+vertically, over a recommended layout of four 1.60 x 2.30 pads. A 4-way part in one
+placement would have been ideal; it is not available to a coplanar joint, and it is 12 V.
+
 ## 9.2 The layout, and why it routes
 
 The whole board falls out of one observation: **the LED rows at |y| = 10.40 and 30.40 have
