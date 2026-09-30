@@ -1328,6 +1328,20 @@ BOARD_NOTES = {
     # escape vias made the PHY edge monotonically worse (2 -> 3 -> 5 unconnected) and were
     # reverted. The difference is that those were added on a hypothesis about congestion;
     # this one is aimed at a pad whose F.Cu reachable set was MEASURED at one cell.
+    # ⚠ TRIED AND REVERTED: ESCAPE VIAS ON 61/62, HUB_DN1's PAIR. With 27 escaped the
+    # pair came back beautifully length-matched -- 11.0 and 11.1 mm, 0.15 mm of skew against
+    # an 8.30 budget, where before it was 13.87 -- but still on different layer sets, DP on
+    # B.Cu and DM on In2.Cu. Escaping both looked like the same medicine, and each half
+    # already carries a via so it would have added no discontinuity.
+    # It was MEASURED BEFORE ROUTING RATHER THAN AFTER, and that is what killed it: the two
+    # vias land at 1.612 mm and 0.912 mm from their pads -- same direction, but 0.70 mm of
+    # STAGGER. The escape's radial search finds each pad's first free position independently
+    # and has no notion that these two belong to each other. A staggered pair of vias on a
+    # 480 Mbps pair is a mode-conversion fault, which is a worse thing to own than the layer
+    # split it was meant to fix. Cost: one layout run, no route.
+    # If this is ever wanted, the mechanism is escape_runs, not pin_escapes -- it takes the
+    # whole escape (stub + via + run) at coordinates chosen TOGETHER, which is the only way
+    # two vias on one pair get placed as a pair.
     "pin_escapes": ("U1.27",),
     "diff_pair_inner": "In2.Cu",
     "layers": 4,
