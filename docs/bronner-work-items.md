@@ -1,4 +1,22 @@
-# bronner — open work items (2026-09-28)
+# bronner — open work items (2026-09-30)
+
+**⚠ READ THIS FIRST, PROMPT-WRITERS AND AGENTS ALIKE.** Two items that tick prompts keep
+re-issuing are FINISHED: the `WIRE_OK` bus-B entry (`9303bd5`) and the chassis_2 mounting
+rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction pasted into a
+prompt. Where a prompt and this file disagree, this file is right — and where this file carries
+a stale marker, striking the marker is part of the work.
+
+**Current state, 2026-09-30:**
+
+| thing | state |
+|---|---|
+| optical route | **2 unconnected / 0 violations** — best ever; the whole remainder is ONE net, `+3V3D` at U6.36 |
+| optical pad sites | searched at placement time now (`b7bf011`), so they no longer rot between routes |
+| `finish.py` | a failed retry round is a no-op, not a baseline-destroyer (`e72c00e`) |
+| Pi retention | the user's printed spacer, built and gate-clean (`5c9a680`, `d14dd1d`) |
+| motor + I/O boards | `audit_board` clean; the I/O board's TRS/gain work is specified, not yet built |
+| scope | `optical_work_components`, now declaring every live part so nothing renders twice |
+
 
 **Priority: optical first.** Everything else is route-downtime work.
 
@@ -1020,7 +1038,19 @@ working top-down would act on stale text. The state of each claim:
         run to the KNEE LEVERS out of J2. Now J6. Nothing could catch this:
         check_cable_ends asks whether an end reaches its PART, and J2 and J6 are the same
         part -- the same blind spot as the two disconnected USB leads, one level finer.
-      * ⚠ NEXT TICK, FIRST ITEM: WIRE_OK declares wire_canbh/canbl as touching
+      * ✅ **DONE in 9303bd5 — DO NOT RE-ISSUE THIS.** src/wiring.py:1247-1248 now read
+        `{"motor_ctrl", "kl_pcb"}` and the comment block directly above them is the record
+        of the fix, written in the past tense. The gate held at 110 and check_cable_ends
+        stayed clean at 65 cables, so no graze was being absorbed by tee_pcb after all.
+        ⚠ THIS ENTRY IS WHY FOUR CONSECUTIVE TICK PROMPTS OPENED WITH A COMPLETED ITEM.
+        The words "NEXT TICK, FIRST ITEM" were still here after the work landed, and the
+        prompt is generated from this file, so the marker kept firing and each tick spent
+        its first minutes re-verifying a finished change against a stale instruction.
+        A status line elsewhere in the doc saying "ALREADY FIXED" (line ~975) did not help:
+        the generator reads the MARKER, not the prose. **When an item is done, strike the
+        marker itself** — a correction added somewhere else leaves the trigger armed.
+        The original text is kept below for the record, deliberately without its marker:
+      * (was) WIRE_OK declares wire_canbh/canbl as touching
         {motor_ctrl, tee_pcb}, and BUS B HAS NO TEES AT ALL -- that is the header comment
         four lines above it. The true far end is the LKL lever board (kl_pcb), which the
         trunk deliberately stops a few mm short of (a chassis follow-up, see _KNEE_B).
