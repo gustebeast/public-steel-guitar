@@ -335,7 +335,7 @@ _trrs_x = _WR_FUSE.TRRS_X
 # instrument's underside, with the leg's lead left hanging in free air. The user has a
 # wiring plan for it to be implemented later, and until then a board mounted here is a
 # guess that collides with real parts -- it was behind 6 of the model's 14 unintended
-# overlaps (keyhead_endplate, electronics_tray, pi5 and three nut_height screws).
+# overlaps (keyhead_endplate, electronics_tray, pi4 and three nut_height screws).
 #
 # NOTHING IS DELETED. wiring.trrs_cradle / trrs_port / trrs_hold_negatives /
 # trrs_components are all still there and still correct for the station as laid out;
@@ -900,7 +900,7 @@ def _electronics_components():
     # pi_spacer is the flat Pi's RETENTION -- a printed piece, not a dummy. It replaces the
     # button head that used to clamp the laminate directly: no position beside the board had
     # room for that screw's anchor below the floor (electronics.PI_SPACER_XY).
-    out = [("pi5", EL.pi5()), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
+    out = [("pi4", EL.pi4()), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
            *EL.led_sections(),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
@@ -1241,7 +1241,7 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-        "pi5", "pi_cap", "pi_spacer", "led_strip_", "motor_ctrl", "tee_", "wire_",
+        "pi4", "pi_cap", "pi_spacer", "led_strip_", "motor_ctrl", "tee_", "wire_",
         "output_panel", "ui_",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
@@ -1282,7 +1282,7 @@ def optical_work_components():
            ("optical_cable_pwr", OP.opt_cables("pwr")),
            ("bridge_endplate", PARTS["bridge_endplate"][0]()),
            ("motor_ctrl", EL.motor_ctrl()),
-           ("pi5", EL.pi5()), ("pi_spacer", EL.pi_spacer()),
+           ("pi4", EL.pi4()), ("pi_spacer", EL.pi_spacer()),
            ("keyhead_endplate", _KE.keyhead_endplate)]
     # ⚠ AND THE FASTENERS, BECAUSE THEY MOVE WITH THE RETENTION AND THE CACHE DOES NOT KNOW.
     # Left to the cache, board_screw_2/board_insert_2 stay at the hold position they had when
@@ -1805,7 +1805,7 @@ _COLORS = {
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
 
-    "pi5":             (0.05, 0.35, 0.15),   # PCB green
+    "pi4":             (0.05, 0.35, 0.15),   # PCB green
     "pi_cap":          (0.05, 0.35, 0.15),   # PCB green
     "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
     "led_strip_":      (0.05, 0.35, 0.15),   # PCB green

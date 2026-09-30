@@ -5,7 +5,7 @@
 
 ⚠ WHY THIS EXISTS. check_overlaps is a COLLISION check: it reports two solids sharing space and
 has no opinion whatever about two solids that SHOULD touch and do not. On 2026-09-29 the USB
-lead carrying the Pi's travel offsets (wire_link, motor_ctrl J4 -> pi5) was found terminating
+lead carrying the Pi's travel offsets (wire_link, motor_ctrl J4 -> pi4) was found terminating
 about 80 mm from the Pi, in the space the Pi occupied before the Y swap moved it -- its endpoint
 was a hardcoded SP(-585.0, 20.0, -58.0). The ONLY symptom was a 1.77 mm3 graze where the lead
 clipped a chassis wall on its way to nowhere, and "fixing" that graze with a millimetre nudge

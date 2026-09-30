@@ -6,10 +6,15 @@ already notifies on completion, so polling it buys nothing and costs the whole w
 
 So this is chained onto every route launch:
 
-    cd <worktree> && ( ...finish.py... & ) ; cd <worktree> && py -3.12 tools/next_work.py
+    launch the route with the TOOL's run_in_background, and issue this as a SEPARATE
+    parallel call in the same message
 
-⚠ THE SECOND `cd` IS NOT OPTIONAL. The shell's cwd resets between the chained halves,
-so without it the reminder runs in the wrong worktree and dies with 'No such file' --
+⚠ DO NOT BACKGROUND THE ROUTE WITH SHELL `&`. That takes it outside the harness's
+tracking, so no completion notification ever arrives -- which is how two finished routes
+sat unnoticed for an hour. The example above used to say `( ...finish.py... & )`; it was
+wrong, and it was wrong in the file whose whole job is to be read at launch time.
+⚠ EACH CALL GETS ITS OWN `cd`. The shell's cwd resets between calls, so a reminder
+without one runs in the wrong worktree and dies with 'No such file' --
 which is exactly how it failed the first time it was used.
 
 The backlog then lands in the same tool output as the launch, which is read, rather than in
@@ -18,6 +23,17 @@ must also START the next item -- not name it, start it.
 
 usage: next_work.py [n]        # n = how many open items to show (default 3)
 """
+# ⚠ STDOUT IS cp1252 ON THIS MACHINE AND THE DOC IS NOT. Every line this tool prints
+# comes out of bronner-work-items.md, which is full of "⚠" and en-dashes, so printing a
+# state cell raised UnicodeEncodeError and killed the whole reminder -- the one thing that
+# is supposed to run on every tick. Reconfigure rather than strip: losing the glyph would
+# also lose the marker that tells an item apart from a note about it.
+import sys as _sys
+try:
+    _sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 import os
 import re
 import sys

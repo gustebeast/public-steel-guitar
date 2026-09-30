@@ -32,7 +32,7 @@ def _box(w, l, h, x, y, z0):
 #   * `chassis_2` is the PARENT -- the cradle fuses into the chassis floor, so material
 #     shared with it is the attachment, not a collision. A free-floating cradle is the
 #     failure mode here, not an overlapping one.
-#   * `pi_cap` and `pi5*` ride ON the board and move with it.
+#   * `pi_cap` and `pi4*` ride ON the board and move with it.
 #   * `wire_*` are cables, and the Pi's harness waypoints are already known stale against
 #     this pose -- a cable is not a reason to choose an edge, but where it RUNS is.
 # ⚠⚠ AND `chassis_2` IS *NOT* BLANKET-EXCLUDED, WHICH IS THE MISTAKE THIS FILE MADE ONCE.
@@ -43,7 +43,7 @@ def _box(w, l, h, x, y, z0):
 # The split is by HEIGHT, not by name: chassis material at or below FLOOR_TOP is the slab the
 # cradle is meant to merge into; chassis material ABOVE it is a wall, and a wall is a blocker.
 def _own(name: str) -> bool:
-    return (name.startswith("pi5") or name.startswith("pi_cap")
+    return (name.startswith("pi4") or name.startswith("pi_cap")
             or name.startswith("wire_"))
 
 

@@ -140,7 +140,7 @@ GLOBAL_OK = {
     # touches either board, so an allowance for it would blind the gate to a real collision
     # the day something moves -- which is the argument the tee_pcb note below makes for
     # exactly this situation, one paragraph down.
-    frozenset({"chassis", "pi5"}),
+    frozenset({"chassis", "pi4"}),
     frozenset({"chassis", "motor_ctrl"}),   # teensy_ifc is deleted; the
                                             # merged controller took its place
     # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown
@@ -301,7 +301,7 @@ def _knee(n) -> bool:
 # listed would mean a regression that reintroduces it gets a polite "deferred" line
 # instead of failing the gate. The leg's TRRS cable pairs (deferred 2026-08-13) are
 # gone: chassis <-> chassis_trrs_cable left 2026-09-09 (the endplate rework moved the
-# -X leg station off it); the electronics_tray and pi5 pairs left 2026-09-11, when
+# -X leg station off it); the electronics_tray and pi4 pairs left 2026-09-11, when
 # brenner's one-leg merge (build #629) retired the old leg family and its cable. The
 # new leg's TRRS jack/cable must come in gate-clean.
 #
@@ -429,7 +429,7 @@ def intended(na, nb) -> bool:
     # than its index therefore fell outside the allow-list entirely: not allowed to touch the
     # parts it is DECLARED to connect, and not even allowed to touch another wire, which the
     # comment three lines up calls "physically fine (and not worth fighting in the model)".
-    # It was found by correcting wire_5v's declared far end from pi5 to pi_cap and watching
+    # It was found by correcting wire_5v's declared far end from pi4 to pi_cap and watching
     # the gate not move -- the allow-list had never been consulted for that cable at all.
     # So resolve a cable to the LONGEST WIRE_OK key it is a prefix-path of. Longest wins so
     # that a key which is a prefix of another cannot shadow it, and the "_" is required so

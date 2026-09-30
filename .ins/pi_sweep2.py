@@ -9,7 +9,7 @@ ep = solids[0]
 for q in solids[1:]:
     ep = ep.union(q)
 
-body = EL.pi5().union(EL.pi_cap())
+body = EL.pi4().union(EL.pi_cap())
 
 
 def overlap(d):

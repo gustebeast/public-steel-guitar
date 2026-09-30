@@ -6,7 +6,7 @@ import cadquery as cq                                   # noqa: E402
 from src import electronics as EL                       # noqa: E402
 from src import keyhead_endplate as KH                  # noqa: E402
 
-pi = EL.pi5()
+pi = EL.pi4()
 cap = EL.pi_cap()
 try:
     parts = KH.assembly()
@@ -22,7 +22,7 @@ except Exception as e:                                   # noqa: BLE001
     print('cannot build endplate (%s); exports: %s' % (e, names[:25]))
     raise SystemExit(1)
 
-for name, body in (("pi5", pi), ("pi_cap", cap)):
+for name, body in (("pi4", pi), ("pi_cap", cap)):
     bb = body.val().BoundingBox()
     print('%-7s rests at x %8.2f..%8.2f' % (name, bb.xmin, bb.xmax))
 
