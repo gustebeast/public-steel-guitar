@@ -802,6 +802,119 @@ The two remaining questions from the original plan:
    way the panel slides off, so a loose screw and a tug could walk it out — and it still
    wants checking against the cell walls' end stops.
 
+## 8.6 ⚠ RETRACTED: the lift-and-shift tabs cannot be engaged, and what I shipped did not retain
+
+§8.4 was written as a plan and built in commit `818bd8a` without the one measurement that
+decides it. Two defects, both mine, found on the next pass:
+
+### Defect 1: the notch was at the same X as its tab
+
+`_outline()` put a notch at every `tab_xs()` and `tabs()` put a tab at the same X. So at
+the board's DESIGN POSITION each tab sat inside its own notch and **the board lifted
+straight out**. The retention held nothing.
+
+⚠ **A solid intersection could never have caught it**, and my probe reported
+`tab vs board 0.00 mm3` which I read as "face to face, correct". The tab is BELOW the
+board: it reads 0.00 whether it laps the edge or sits in a hole. **Retention is a
+PLAN-VIEW question** and I asked it as a volume one. `tools/_probe_strip.py` now asks it
+properly, by lifting the strip into the board's own Z band and intersecting there.
+
+### Defect 2: the shift is geometrically impossible on the mid board
+
+§8.2 says the LEDs must enter their cells vertically because "the cell walls' undersides
+sit at the board's TOP FACE, and the LEDs stand 1.40 above that". That argument does not
+stop at insertion -- it applies to **any** X motion of a seated board, forever:
+
+    an LED and a cell wall share z BOARD_TOP .. BOARD_TOP + LED_H
+
+So the board's X freedom is whatever its tightest cell allows:
+
+| fret | pitch | cell clear | LED free | max shift each way |
+|--:|--:|--:|--:|--:|
+| **24** | 9.14 | 7.54 | 2.54 | **1.27** |
+| 12 | 18.28 | 16.68 | 11.68 | 5.84 |
+| 9 | 21.74 | 20.14 | 15.14 | 7.57 |
+
+§8.4 asked for **6.00 mm**, and a tab has to travel its **own length** to leave its notch,
+so the real requirement is **> TAB_LEN + clearance = 8.50**. The mid board has 1.27. The
+scheme was never installable, at any tab length that is also a useful tab.
+
+## 8.7 The retainer strip: move the STRIP, not the board
+
+The fix follows from the same fact that killed the tabs. The comb lives ABOVE `BOARD_TOP`;
+the board's underside is bare, every part being on its top face. So **a strip sliding along
+X BELOW the board meets no wall and no LED**, and the board itself never moves.
+
+    panel face down on the bench -> drop the board into the comb (gravity seats it
+    against the cell walls) -> slide a strip in along each long edge to trap it
+
+`src/fret_light.py`: `edge_walls()` (grooved), `strip_groove()` (cut from the comb by
+`top_plate`), `strips()` (two bars per panel). It deletes the notches, so the boards are
+plain rectangles again and `outline_poly` is gone.
+
+### One screw is not enough, which is where §8.3 was right
+
+The M4 sits 4.50 from the board's -X end, so the board cantilevers 206 mm. At
+EI = 576,000 N.mm2 (70.4 x 1.6 FR4) and ~35 g with parts:
+
+    sag = wL^4 / 8EI = 0.64 mm at the far end
+
+0.64 mm of the board hanging OFF the cell walls, leaking light between cells -- the one
+thing the comb exists to prevent. Distributed edge retention is required; §8.3's
+conclusion stands even though §8.4's mechanism did not.
+
+### ⚠ THREE STRIPS, NOT FOUR, and the CAN trunk picks which
+
+The room under each edge is measured, not assumed (`tools/_probe_fret_tab.py` and the
+band probe that followed):
+
+| edge | room under the board | strip |
+|---|--:|---|
+| mid +Y | 6.00 | ✅ 1.60 |
+| key -Y | 5.30 | ✅ 1.60 |
+| key +Y | 6.00 | ✅ 1.60 |
+| **mid -Y** | **1.00** (`wire_canl_6/7`) | ❌ none |
+
+**The trunk runs DIAGONALLY under the boards**, which is why three of the four are open
+and one is not: it passes under mid's -Y side and crosses to key's middle. A groove needs
+the strip PLUS a floor to hold it up -- two beads -- so 1.00 cannot host one.
+`has_strip()` decides it from `STRIP_ROOM` and `fret_light` says which edge lost out, once,
+on every import. Invert `wiring.py TRUNK_DZ` (§8.1) and mid's fourth strip appears with no
+edit here.
+
+### ⚠ ONE FULL-LENGTH EDGE STRIP IS ENOUGH, AND THE EXPONENT IS WHY
+
+§8.3's "one screw lets both ends hang" is right about a SCREW and wrong as a general
+claim, and the difference is worth having in writing because it is what makes mid's
+missing strip a non-event.
+
+    M4 alone:  cantilever 206 mm along X   ->  wL^4/8EI = 0.64 mm at the far end
+    one strip: cantilever = the board's WIDTH, 70.4 mm
+
+Deflection goes as the FOURTH power of the span, so (70.4/206)^4 = 0.0136 and the
+unsupported edge droops about **15 um**. Against a 17.75 mm optical depth that is 0.08%.
+A strip running the board's whole length does not need a partner; the second one is
+welcome where there is room and is not what makes this work.
+
+### ⚠ The wall's depth is a clearance, and asking it of a constant turned the gate red
+
+`edge_walls()` first hung a full `WALL` below the strip on every edge. On mid's -Y that put
+the wall floor at **-18.55** against a CAN conductor at **-17.15**, and the gate found it:
+
+    == UNINTENDED overlaps (1) ==
+             4.4 mm^3   top_plate_color_3 <-> wire_canl_7
+
+`wall_floor(panel, sgn)` now derives it from the same measurement the strip uses, so a wall
+can never hang past what was probed under it. **Fourth time on this feature that a depth
+was taken from a constant instead of a measurement**; the rule is in §9.1c and it applies
+to structure as much as to parts.
+
+### What this costs and what it buys
+
+Two extra printed parts per panel (four per instrument), each a plain bar that prints lying
+down with no orientation to get wrong. In exchange: no notches in either board, no
+`outline_poly`, no reach budget, no shift, and a retention that can actually be installed.
+
 ---
 
 # 9. THE BOARDS (2026-09-29)
@@ -854,6 +967,301 @@ the end of section 3, and which is also what the user originally described ("24 
 buck on each board"). It costs one extra cable and one extra buck (about $1.50) and it
 deletes a blind-mate joint, six notches through a light-cell wall, and two cantilevered
 board tongues. The install order is unchanged except that the plug happens twice.
+
+## 9.1a ⚠ CORRECTION TO 9.1: the 10.40 was the wrong number, and the joint may be open
+
+> "So the issue is that the pins are too long? Why can't we just mount them further from
+> the PCB edge then?" (user, 2026-09-30)
+
+The question is right and §9.1's tip-to-tip row is wrong. **12.00 is a SUM**: sliding a
+pogo inboard retreats its tip by the same amount, so the two pads stay 12.00 apart wherever
+they sit. What moves is WHERE the joint lands along X, not how much room it needs -- so the
+12.00 never had to fit inside the 10.40 bay. mid's pogo can sit in MID'S OWN BAY.
+
+Measured, `tools/_probe_seam.py`:
+
+    mid  board -X edge -360.50   its -X-most wall -350.00 (face -349.20)
+    key  board +X edge -362.00   its +X-most wall -362.00 (face -362.80)
+
+    CLEAR BOARD TOP at each facing end (a 4.50 mm C5203987 body needs):
+      mid    9.70 mm   OK
+      key   -0.80 mm   TOO SHORT
+
+    span the pads need, 2 x 6.00 = 12.00:
+      key board edge -362.00 to mid comb wall face -349.20 = 12.80
+
+**12.80 available against 12.00 needed.** Length was never the binding constraint; there is
+0.80 of margin. §9.1 quoted the clear run between the combs, which is the space the joint
+happens to cross, not the space it needs.
+
+**THE REAL BLOCKER IS ONE-SIDED**: `fret_led_key` has no clear board top at its +X end at
+all -- its last comb wall stands at the board's edge and overhangs it by 0.80. mid has 9.70.
+
+**And the stroke is comfortable.** Each pogo runs 8.00 free to 5.70 bottomed (datasheet
+YZF0002-38080-02, read 2026-09-30), so at a 12.80 span the pair sits at 6.40 each, inside
+the working window with about +-2.3 mm of panel tolerance -- which is what a blind mate
+across two sliding panels wants, and more than the joinery will ever give it.
+
+### What it would cost, and why 9.1 over-priced it
+
+Key's wall has to let four 3.00 x 3.80 bodies through. Two ways:
+
+| | cost |
+|---|---|
+| **notch the wall** | four plunger holes, 13.6 mm2 of aperture -- **this is the answer, see 9.1c** |
+| move the wall | ⚠ never needed; the claim that it was came from measuring the wrong side of it |
+
+⚠ **§9.1 listed "six notches through a light-cell wall" among the costs it was glad to
+delete, and I inherited that without noticing what is on the OTHER SIDE of that wall.** It
+is the seam bay, which has no LEDs in it. A notch there leaks a little of fret 9's light
+into dead space; it is NOT cell-to-cell crosstalk, which is what a notch costs anywhere
+else in the comb. That is a much smaller price than the retraction assumed.
+
+### Still to check before this is reopened
+
+1. **Four pogos across Y**, and whether their pads clear the LED rows at both board ends.
+2. **The optical cost of the notches**, through `check_optics` rather than by argument --
+   fret 9 is the cell that pays and it is already the panel's outermost.
+3. **Alignment.** Tip-to-tip is two R0.50 domes meeting; they need lateral registration the
+   panel joint may or may not give. §9.1's mechanism argument (the deck's slide is a
+   compression joint along the mating axis) still holds, but the LATERAL tolerance does not
+   follow from it.
+4. **Force.** 200 gf x 4 = 800 gf pushing the panels apart, against a dovetail that is not
+   preloaded along X.
+
+None of that is done. What IS established is that the number §9.1 refused on was the wrong
+one, and that the joint fails on a 4.50 mm landing on ONE board rather than on 1.60 mm of
+length across both.
+
+## 9.1b The side-mount pogo family, enumerated -- and what actually picks the part
+
+§9.1 chose C5203987 and §9.1a showed its stated reason was the wrong number. The family it
+chose from was never enumerated either. JLCPCB's parts API, 2026-09-30, filtered to
+side-mount (侧贴) pogos with stock: **17 parts, all gold-plated.**
+
+| stock | code | workH | overall | V | A | pins | price |
+|--:|---|--:|--:|--:|--:|--:|--:|
+| 1501 | C5203974 | 2.1 | 2.8 | 12 | 1 | 1 | $0.33 |
+| 1154 | C5203983 | 5.5 | 7.0 | 12 | 1 | 1 | $0.44 |
+| 902 | C5296819 | 4.0 | 5.5 | 12 | 1 | **4** | $1.61 |
+| **602** | **C5203987** | **6.0** | **8.0** | **24** | **12** | 1 | **$0.70** |
+| 492 | C5203981 | 5.5 | 6.5 | 12 | 1 | 1 | $0.59 |
+| 480 | C5203985 | 5.8 | 7.0 | 12 | 4 | 1 | $0.66 |
+| 312 | C5203984 | 6.0 | 7.0 | 12 | 4 | 1 | $0.37 |
+| ...10 more | | | | 12 | | | |
+
+**C5203987 IS PCBA.** JLCPCB's own part page: Assembly Type **SMT Assembly**, PCBA Type
+**Economic and Standard**, Extended library, gold, 602 in stock, $0.7022. ⚠ Assembly
+Difficulty is flagged **High** -- it is a small cylinder placed on its side, and rotation
+error on a connector whose alignment IS the joint is not rotation error on a capacitor.
+602 is 75 instruments at 8 a set; the LMR33630 already on four of our boards has 453.
+
+### ⚠ VOLTAGE PICKS THE PART, AND IT IS THE ONE THING 9.1 NEVER WROTE DOWN
+
+**C5203987 is the only side-mount pogo in the catalogue rated above 12 V.** Every other
+one of the seventeen is 12 V. Our seam carries the 24 V rail, because each board makes its
+own -- so if the joint is to carry power at all, there is exactly one candidate. 9.1 landed
+on the right part for a reason it did not state, having refused it on one that was wrong.
+
+### The setback split, and the constraint that is real but does not bind
+
+The setback is ours to choose, and with a gap g the two only have to satisfy
+**a + b = 12.00 - g**, so they can be split unevenly. There IS a floor on each side --
+**the barrel has to sit on the board**, so b >= body length, or its rear pads hang over the
+edge with no copper under them. ⚠ **But that floor never binds here**, and §9.1c is the
+measurement: land is counted INBOARD from the barrel's front face, and key's board runs
+211 mm in that direction.
+
+### The fork that actually decides it
+
+| what crosses the seam | part | fret 9 | key's cable |
+|---|---|---|---|
+| **everything** | **C5203987** 24 V | **keeps everything** -- see 9.1c | **deleted** |
+| data only, power bussed | C5203974 12 V | keeps everything | still needed |
+
+C5203974 is the better CONNECTOR by every measure -- 2.5x the stock, half the price, a
+third of the land, 2.80/2.10/2.00 free/working/limit off its drawing. It is the worse
+ANSWER, because a seam that carries only data still leaves key needing a power cable, and
+once that cable exists the joint has stopped earning its keep.
+
+**Recommendation: C5203987.** §9.1c prices it: four plunger holes through one wall, and
+nothing else moves.
+
+### One of 9.1's calls that survives
+
+§9.1 said C5296819 "is a MEZZANINE part: its four plungers fire PERPENDICULAR to the
+board". **Correct**, and worth recording because JLC files it under side-mount: its drawing
+shows four plungers standing up out of a PA46 housing, 5.50 free / 4.00 working measured
+vertically, over a recommended layout of four 1.60 x 2.30 pads. A 4-way part in one
+placement would have been ideal; it is not available to a coplanar joint, and it is 12 V.
+
+## 9.1c ⚠ SECOND CORRECTION: nothing is given up. Four plunger holes, and that is all.
+
+> "I'm not following why we have to give up fret 9" (user, 2026-09-30)
+
+Right not to follow. **We do not.** Two of my own errors stacked to produce that claim.
+
+**Error one: the land was measured on the wrong side of the wall.** `_probe_seam.py`
+computed key's clear board top between the wall's OUTER face and the board edge -- 0.80 mm
+of overhang, hence negative -- and concluded key needed 4.50 mm it did not have. The barrel
+does not go there. It goes INBOARD, where the board runs 211 mm.
+
+**Error two: the comb was not the one that gets built.** The first corrected run still hit
+44.19 mm3 at x -356.22..-355.25. That is a wall at the fret 9/10 midpoint, and it exists
+only because the probe called `FL.walls()` with no arguments. `top_plate` builds the comb
+PER PANEL, clamped to each panel's range, and no such wall is produced.
+
+Rebuilt the way top_plate does it, with the pogos placed as solids:
+
+    mid comb     CLEAR
+    key comb     21.76 mm3   x -362.80..-361.20   z -14.55..-10.75
+    key board    0.00        mid board   0.00
+    key LEDs     0.00        mid LEDs    0.00
+
+That x span is key's end wall, its whole 1.60 thickness; the z span is the pogo's body
+band. 21.76 mm3 through 1.60 of wall is 13.6 mm2 of cross-section -- **four O2.00 plungers
+passing through one wall**, and 0.05 mm of barrel nose.
+
+**So: the wall stays. Fret 9 keeps its cell, its wall and all four LEDs.** The boards do
+not grow, the setback needs no cleverness, and no LED is touched on either panel. The cost
+of the joint is four holes in the base of one comb wall, into a bay that has no LEDs in it.
+
+⚠ **THIS IS THE THIRD TIME THIS JOINT HAS BEEN PRICED FROM A DERIVATION RATHER THAN AN
+INTERSECTION** -- the pogo contact axis in §9.1, the seam bay in §9.1a, the land here. The
+method note is not advice: put the part where it would go and intersect it. Distances to
+things are not clearances, and a solid built with different arguments than the build uses
+is not the build.
+
+## 9.1d The install rule: the board must BLOCK assembly until the pogos are loaded
+
+> "The key here: the LED board needs to block endplate installation until the POGO are
+> loaded properly. If we allow endplate installation without POGO contact then we can't
+> guarantee both boards get connected." (user, 2026-09-30)
+
+This is the design rule for the seam joint, and it is a poka-yoke: it makes the failure
+mode -- pogos not engaged -- **physically impossible** rather than an assembly step
+somebody can skip. The boards float in X inside their panels; each is pushed back by
+whatever it lands against; and the LAST thing installed cannot seat until the chain has
+been pushed in far enough to compress the pogos.
+
+⚠ **The boards do not reach the endplates** (user, same session: "I forgot the LED board
+doesn't reach the +x endplate, it'll reach some other stop material but it's functionally
+the same"). Measured: mid's board ends 4.34 inside its panel's +X edge, key's **37.80**
+inside its panel's -X edge. So at least one stop is panel material, and that is what
+decides the tolerance stack.
+
+### The condition, as an inequality
+
+With setbacks summing to 10.50, the pogo pair's board-edge-to-board-edge gap is:
+
+| | gap | chain = mid + gap + key |
+|---|--:|--:|
+| free, 8.00 each | 5.50 | 427.3 |
+| **working, 6.00** | **1.50** | **423.3** |
+| bottomed, 5.70 | 0.90 | 422.7 |
+
+Measured chain at the design position, mid's +X end to key's -X end: **423.30** -- the
+working point exactly. The geometry is already where it should be; only the stops are
+missing. For a stop-to-stop distance D, with the board outline tolerance (+-0.2 each)
+taken off both ends:
+
+    must compress (pogos loaded)   D < 426.9
+    must not bottom out            D > 423.1
+    -> a 3.8 mm window
+
+⚠ **WHERE IN THE WINDOW MATTERS MORE THAN FITTING IN IT.** Contact force is what the
+joint is actually buying, and at the top of the window the pogos sit near free length with
+almost none. **Target D ~ 423.8**: each pogo at 6.25 +- 0.22 against a stack of about
++-0.45 (two printed ribs plus the 0.05 inter-panel gap), never below the 5.70 limit, force
+near its rated 200 gf, and **3.5 mm of protrusion** to push in before the last part seats.
+
+### ⚠ The one number this is missing
+
+The datasheet gives force AT WORKING HEIGHT (200 gf +-20%) and nothing else -- **no spring
+rate**. A pogo is preloaded, so force at free length is not zero and the rate cannot be
+extrapolated from one point. Everything above therefore assumes the pogos sit essentially
+AT 6.00, which is why D is targeted tightly rather than centred. Getting the rate from
+Xinyangze would let the tolerance open up, and it is the first thing to ask for.
+
+### Where the last stop should live
+
+| last stop | D is a... | poka-yoke lands on | cost |
+|---|---|---|---|
+| **-X endplate** | chassis-frame dimension | the genuinely last operation | needs a ~37.8 finger to reach key's board |
+| rib in each panel | two printed parts + the panel gap | the SECOND PANEL's install | none, but a looser stack |
+
+The endplate version is the better one and is what the user described. Growing key's board
+-X to meet it is tempting -- length is the cheap axis and key wants bay room -- but it has
+only **7 mm** before `wire_usb` crosses at -580.00 (see BOARD_BAY).
+
+### Consequences to carry
+
+1. **The M4 and the lift-and-shift may be redundant.** Section 8.4 locks the board's X with
+   a screw; this scheme locates it by the stack instead. The tabs still hold -Z, but their
+   engagement has to survive the board floating in X -- the notches are 15.00 long and the
+   tabs 8.00, so there is 7.00 of float before a tab meets a notch end, against 3.5 of
+   push-in. It fits, but it wants checking rather than assuming.
+2. **800 gf ends up in the deck stack**, taking up its 0.05 GAPs and pressing the panels
+   apart against the endplates.
+3. **The force may not need holding at all** (user: "in practice it may not actually
+   provide any force since the retention plastic may provide enough friction").
+
+## 9.1e FLUSH IS THE TARGET: preload defined by the panels butting
+
+> "Could we design it though such that if the top panels are flush then the pins are
+> preloaded the right amount? Then it's just a matter of getting the endplates to push the
+> panels flush together which we can do with print tuning and taking advantage of the
+> plastic's slight flex" (user, 2026-09-30)
+
+Yes, and it collapses the whole tolerance argument into one constant. It also gives the
+assembler a target they can SEE -- no gap -- instead of a force they cannot feel.
+
+**At flush the board-edge separation is just the two insets.** mid's board sits 0.65 inside
+its panel's -X edge, key's 0.80 inside its +X edge:
+
+    board separation at flush = 0.65 + 0.80 = 1.45
+    a + b = 2 x workH - 1.45 = 12.00 - 1.45 = 10.55
+
+⚠ **DERIVE IT, DO NOT TYPE IT.** Those insets are consequences of `board_span()` and the
+panel ranges; the setback must be computed from them, or the joint silently goes out of
+preload the next time a panel length moves. Same rule the whole module already follows.
+
+### ⚠ BIAS THE PRELOAD LONG, BECAUSE BOTTOMING IS THE UNRECOVERABLE FAILURE
+
+Do not aim at 6.00. The failure that makes FLUSH UNACHIEVABLE is bottoming: if the stack
+lands short, the pogos reach their 5.70 limit and become rigid brass struts holding the
+panels apart, and no endplate clamping or plastic flex closes that seam -- there is no
+spring left to compress. Losing contact force is recoverable and visible; bottoming is
+neither.
+
+| target at flush | worst case, +-0.8 stack | bottoms? |
+|---|--:|---|
+| 6.00 per pogo | 5.60 | **yes -- flush impossible** |
+| **6.30** | 5.90 | no, 0.20 clear |
+| 7.00 | 6.20 | no, but force is well below rated |
+
+**6.30, so a + b ~ 11.15.** It costs contact force at nominal and buys a joint that can
+always reach flush.
+
+### The 800 gf stops being a nuisance and becomes a deck preload
+
+If the pogos are compressed at flush they push outward permanently, closing every gap in
+the panel stack and leaving the deck preloaded rather than rattling. The seam gap in
+§9.1d is the symptom of a stack that is not clamped, not of the spring being there.
+
+⚠ **WHICH MEANS ONE DIMENSION HAS TO CHANGE SIGN.** `chassis.EP_TOP_CLR = 0.4` is
+CLEARANCE -- the keyhead deliberately slides in past the seated stack -- and that 0.4 is
+exactly what the pogos convert into seam gap (§9.1d: 0.05 + 0.15 + 0.40 = 0.60). This
+scheme needs the keyhead to arrive slightly PROUD and be pushed home. That is the user's
+print-tuning-and-flex point, and it is a chassis change, not a fret-light one:
+
+    today     keyhead clears the stack by 0.4, stack is free in -X
+    wanted    keyhead meets the stack with a light interference, stack is clamped
+
+**Not taken here.** `EP_TOP_CLR` is shared chassis geometry with its own reasons (the
+rail-end dovetails, the bridge L-joint), and this is the second time the fret lighting has
+wanted a number it does not own -- see §9.1c on `wiring.py TRUNK_DZ`. Raised, measured,
+and left for whoever owns it.
 
 ## 9.2 The layout, and why it routes
 

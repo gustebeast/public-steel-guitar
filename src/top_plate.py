@@ -547,7 +547,11 @@ def _band(xa, xb, *, ui=False, cells=False):
         from . import fret_light as FL
         # the tabs go in with the comb: they are opaque structure under the board's
         # edges, outboard of every LED courtyard, and _split treats them as comb
-        comb = FL.walls(xb, xa).union(FL.ramps(xb, xa)).union(FL.edge_walls(xb, xa)).union(FL.tabs(xb, xa))
+        comb = (FL.walls(xb, xa).union(FL.ramps(xb, xa))
+                .union(FL.edge_walls(xb, xa)).cut(FL.strip_groove(xb, xa)))
+        # the M4 boss is cut into the COMB (not the deck body) so _split keeps it
+        # opaque with the rest of the structure hanging below the transparent base
+        comb = FL.m4_boss(comb, xb, xa)
         return heal(body.union(comb)), comb
     return body, None
 

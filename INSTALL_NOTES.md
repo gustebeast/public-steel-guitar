@@ -359,3 +359,30 @@ number. Leave it unplugged.
 trough is 1.90 (the LED sets it) with a 1.50 relief under the component lane, and the
 board is installed face DOWN. That is why the connectors are JST SH rather than the PH
 used everywhere else on the instrument.
+
+
+## Fret lighting boards (2026-09-30)
+
+Each fret board is retained by two RETAINER STRIPS, not by tabs and not by the screw
+alone. Assemble the panel **face down on the bench**, before it goes on the instrument.
+
+1. **Lay the panel deck-face down.** The comb points up at you.
+2. **Drop the board into the comb**, LEDs into their cells. Gravity seats it against the
+   cell walls -- that is the +Z datum and it needs no force.
+3. **Slide a retainer strip along each long edge**, into the groove in the edge wall. They
+   go in along X from either end and trap the board's underside.
+4. **Fit the M4** through the board into the deck boss at the bay end.
+5. Turn the panel over and install it.
+
+⚠ **THE BOARD MUST NOT BE SLID ALONG X ONCE IT IS SEATED.** An LED and a cell wall share
+the same Z band, so any X motion drives every LED into a wall -- fret 24's cell allows the
+LED 1.27 mm and that is the whole budget. The strips move; the board does not. This is why
+the earlier lift-and-shift tab scheme was retracted (docs/fret-led.md 8.6).
+
+⚠ **THE MID PANEL TAKES ONE STRIP, THE KEYHEAD PANEL TWO.** The CAN trunk runs diagonally
+under the boards and leaves only 1.00 mm under the mid panel's -Y edge, which is not enough
+for a groove (docs/fret-led.md 8.7). Mid's single strip goes on its **+Y** edge. That is
+sufficient on its own -- it turns the 206 mm cantilever into the board's 70.4 mm width and
+deflection goes as the fourth power, so the unsupported edge droops about 15 um.
+
+All three strips are the same section, 1.60 thick, cut to their panel's board length.
