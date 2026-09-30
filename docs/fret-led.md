@@ -456,10 +456,41 @@ is closed by a deck rib at board level rather than by the PCB.
 
 ## 6.5 What this plan still needs
 
-1. ⚠ **TLC59711 OUTn absolute max voltage.** TI's parametric gives Vin 3-17 V and 60 mA a
-   channel, so 12 V is inside the family's range — but **the whole series-of-3 plan rests
-   on the OUT pin tolerating a 12 V rail**, and that number has to come off the datasheet,
-   not off a parametric table.
+1. ✅ **CLOSED — the TLC59711 takes 12 V and the parts do not change** (user asked whether
+   this was a change of course, 2026-09-29). It is not. The driver and the LED are both the
+   ones already selected; what moves is the RAIL, because three dice in series need 9.6 V.
+   Read off the datasheet rather than a parametric table:
+
+       ABSOLUTE MAXIMUM
+         Supply voltage VCC                         -0.3 to +18 V
+         Input voltage  OUTR0..OUTB3                -0.3 to +18 V
+         Output current (DC) OUTXn                         75 mA
+       RECOMMENDED OPERATING
+         VCC  Supply voltage, internal regulator used  4 to 17 V
+         VREG Supply voltage, VREG connected to VCC    3 to 5.5 V
+         VO   Voltage applied to output (OUTR0..OUTB3)     17 V
+         IOLC Constant output sink current                 60 mA
+
+   TI's own typicals are specified at **VCC = 12 V**, so 12 is mid-range, not a stretch.
+
+   ⚠ **LCSC'S SPEC TABLE IS WRONG ON THIS PART.** It lists "Voltage - Input(DC) 3V~5.5V",
+   which is the **VREG** row — the mode where you bypass the internal regulator and feed
+   3.3 V logic directly. The **VCC** row immediately above it is 4-17 V. Same class of trap
+   as the `TLV9061IDCKR` / `C693480` mix-up this project already records in `BOM.md`:
+   **the catalogue is not the datasheet.**
+
+   **And the "nothing above 5 V" finding does not apply to this architecture.** That was
+   about INTEGRATED ADDRESSABLE LEDs (SK6812 / SK9822 / WS2812-class), where the driver
+   silicon and the dice share one supply and the part is a 5 V part. With an external
+   constant-current SINK the LED anode rail is independent of the logic supply — that is
+   the defining property of the topology. The old strip's 5 V was a system choice for a
+   board driving one die per channel; series-of-3 is what asks for 12.
+
+   The four selection goals are all untouched: **ES-PWM ~19.5 kHz** (and still the reason
+   SK6812 stays rejected), **a white die** on the 5050, **16-bit GS** — note bronner's
+   `DRV_LED_OUTS` already handles BC being per COLOUR GROUP, so an RGBW LED mixes groups,
+   all three BC fields are set equal and trimming happens in GS, which is exactly why the
+   bit depth still buys the dim end — and **both parts Extended, no consignment**.
 2. **Whether to light frets 23 and 24 at all.** They are the two tightest gaps AND the two
    nearest the pickup. Dropping them removes the worst routing and the worst coupling in
    one move, at the cost of two markings at the extreme treble end. A real option, not a
