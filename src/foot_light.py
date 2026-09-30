@@ -48,7 +48,7 @@ drivers on each board. One LED coarser and the arithmetic stops dividing.
 """
 from __future__ import annotations
 
-from . import dimensions as D  # noqa: F401  (kept: bead-grid figures below)
+from . import dimensions as D
 
 # ── the window this lights, READ from the chassis ─────────────────────────────────────
 # ⚠ NOT COPIED. The band's Y comes from the +Y rail's centre-line and its X from where
@@ -84,8 +84,6 @@ FLOOR_NOM  = -71.35                 # window top = motor bay floor; asserted bel
 AIR_GAP    = 0.30                   # LED face to the PCTG: a print tolerance, not optics
 LED_H      = 1.60                   # XL-5050RGBW body (LCSC C7371891, and see fret_light)
 BOARD_T    = 1.60
-SLOT_CLR   = 0.20                   # board top to the retaining lip
-LIP_T      = 1.60                   # 2 beads
 # ⚠ THE CEILING IS THE BELT TENSIONERS AT -65.22, measured, not the bay's full height.
 # Their lowest feature reaches down to that across y 38.15..47.08 at several stations,
 # which is squarely over this channel's -Y half.
@@ -93,13 +91,23 @@ TENSIONER_BOT = -65.22
 
 
 def z_stack():
-    """(led_face, board_bot, board_top, lip_bot, lip_top) in world Z."""
+    """(led_face, board_bot, board_top, lip_foot, lip_top) in world Z.
+
+    ⚠ THE LIP'S FOOT IS THE BOARD'S OWN TOP PLANE, and that is the 45° ramp paying
+    for itself. The ramp starts on the slot wall at exactly board_top, so at the board's
+    EDGE -- SLOT_PLAY further in -- it stands SLOT_PLAY proud of the board, and the
+    clearance over the board is the lateral play, not a second figure to keep in step
+    with it. There is no SLOT_CLR any more because there is nothing left for it to mean."""
     floor = window()[4]
     led = floor + AIR_GAP
     bb = led + LED_H
     bt = bb + BOARD_T
-    lb = bt + SLOT_CLR
-    return led, bb, bt, lb, lb + LIP_T
+    return led, bb, bt, bt, bt + SLOT_PLAY + LIP_OVER + LIP_CAP
+
+
+def clear_top():
+    """The plane the slot has to be CUT clear to: the ramp over the board's edge."""
+    return z_stack()[2] + SLOT_PLAY
 
 
 def depth():
@@ -155,9 +163,16 @@ def led_y():
 # as the wall on the +Y side. Nothing in it is keyed to where a board ends, so the board
 # and the chassis sections stay independent of each other.
 #
-# ⚠ THE LIPS ARE NARROW ON PURPOSE. The chassis builds world +Z, so a lip is a horizontal
-# overhang over the slot: 2.00 mm bridges, and a continuous 16 mm ceiling would sag. Left
-# open down the middle, which also lets the drivers' heat out into the bay.
+# ⚠ THE LIPS ARE 45° RAMPS, AND THERE IS NO HORIZONTAL OVERHANG ANYWHERE IN THIS
+# CHANNEL. The chassis builds world +Z, so a lip that reached flat over the slot would be
+# an unsupported ceiling -- printable at 2 mm by bridging, but bridging is a sag and a
+# rough underside, and the underside is the face that holds the board down. Instead each
+# lip rises off its wall at 45°: every layer sits on the one below it, out to
+# SLOT_PLAY + LIP_OVER, and then a flat cap of LIP_CAP finishes it. Nothing bridges,
+# nothing droops, and the surface the board would lift into is solid.
+#
+# The middle of the slot stays open, which still lets the drivers' heat out into the bay.
+#
 # ⚠ AND A RELIEF GROOVE UNDER THE COMPONENT LANE, WITHOUT WHICH THIS BOARD CANNOT BE
 # BUILT. Everything that is not an LED hangs from the board's underside into the trough,
 # and the trough is only AIR_GAP + LED_H = 1.90 mm deep -- the LED sets it, because the
@@ -184,8 +199,10 @@ PART_H_MAX = 1.90 + RELIEF_D        # what may hang below the board, in the lane
 WALL_T     = 1.60
 WALL_Y0    = 36.10                  # the -Y wall's outer face
 SHOULDER   = 1.50                   # how far each shoulder reaches under the board
-LIP_REACH  = 1.70                   # how far each lip reaches over it
-SLOT_PLAY  = 0.30                   # board edge to the -Y wall's inner face
+SLOT_PLAY  = 0.30                   # board edge to the wall -- AND, via the 45° ramp,
+                                    # the clearance over the board's top face
+LIP_OVER   = 0.80                   # how far each lip reaches OVER the board: 1 bead
+LIP_CAP    = 0.80                   # the flat cap above the ramp: 1 bead
 
 
 def _slot_y():
@@ -304,7 +321,14 @@ def check_optics():
     assert abs(window()[4] - FLOOR_NOM) < 0.01, (
         "the window's top face is %.2f, not the %.2f the Z stack is written against"
         % (window()[4], FLOOR_NOM))
-    _led, _bb, bt, _lb, lip_top = z_stack()
+    _led, _bb, bt, lip_foot, lip_top = z_stack()
+    assert lip_foot == bt, (
+        "the lips' ramp starts at %.2f, not the board's top at %.2f -- the 45° face is "
+        "what sets the clearance over the board and it has come adrift of it"
+        % (lip_foot, bt))
+    assert min(LIP_OVER, LIP_CAP) >= D.MIN_WALL - 1e-9, (
+        "a %.2f lip reach and a %.2f cap against a %.2f bead" % (LIP_OVER, LIP_CAP,
+                                                                D.MIN_WALL))
     assert lip_top <= TENSIONER_BOT - 0.5, (
         "the channel's lip tops out at %.2f and the belt tensioners come down to %.2f"
         % (lip_top, TENSIONER_BOT))
@@ -328,6 +352,21 @@ import cadquery as cq                                            # noqa: E402
 from .helpers import box_at, heal                                # noqa: E402
 
 
+def _lip(xl, xm, y_wall, sgn, foot_z, top_z):
+    """One retaining lip: a 45° ramp off a slot wall, capped flat, run along X.
+
+    Authored as a cross-section in Y-Z and extruded, because a chamfered box would mean
+    picking an edge on a 572 mm prism by geometry search -- and the shape wanted here is
+    the cross-section, so that is what is drawn."""
+    reach = SLOT_PLAY + LIP_OVER
+    pts = [(y_wall, foot_z),
+           (y_wall + sgn * reach, foot_z + reach),
+           (y_wall + sgn * reach, top_z),
+           (y_wall, top_z)]
+    return (cq.Workplane("YZ", origin=(xm - xl / 2.0, 0, 0))
+            .polyline(pts).close().extrude(xl))
+
+
 def channel():
     """The slot the strip slides into, to be unioned into the chassis bottom.
 
@@ -337,7 +376,7 @@ def channel():
     connectors are, so nothing has to be threaded through a wall."""
     x0, x1 = window()[0], window()[1]
     floor = window()[4]
-    _led, board_bot, _bt, lip_bot, lip_top = z_stack()
+    _led, board_bot, _bt, lip_foot, lip_top = z_stack()
     sy0, sy1 = _slot_y()
     ty0, ty1 = trough_y()
     xm, xl = (x0 + x1) / 2.0, x1 - x0
@@ -348,8 +387,8 @@ def channel():
     out = run(WALL_Y0, sy0, floor, lip_top)                       # the -Y wall
     out = out.union(run(sy0, ty0, floor, board_bot))              # -Y shoulder
     out = out.union(run(ty1, sy1, floor, board_bot))              # +Y shoulder
-    out = out.union(run(sy0, sy0 + LIP_REACH + SLOT_PLAY, lip_bot, lip_top))
-    out = out.union(run(sy1 - LIP_REACH - (RAIL_IN - BOARD_Y1), sy1, lip_bot, lip_top))
+    out = out.union(_lip(xl, xm, sy0, +1.0, lip_foot, lip_top))
+    out = out.union(_lip(xl, xm, sy1, -1.0, lip_foot, lip_top))
     return heal(out)
 
 
@@ -365,10 +404,10 @@ def slot_cut():
     because that is how the board gets in."""
     x0, x1 = window()[0], window()[1]
     floor = window()[4]
-    _led, _bb, _bt, lip_bot, _lt = z_stack()
+    top = clear_top()
     sy0, sy1 = _slot_y()
-    return box_at(x1 - x0, sy1 - sy0, lip_bot - floor,
-                  x=(x0 + x1) / 2.0, y=(sy0 + sy1) / 2.0, z=(floor + lip_bot) / 2.0)
+    return box_at(x1 - x0, sy1 - sy0, top - floor,
+                  x=(x0 + x1) / 2.0, y=(sy0 + sy1) / 2.0, z=(floor + top) / 2.0)
 
 
 def relief():

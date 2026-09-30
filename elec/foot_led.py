@@ -2,7 +2,7 @@
 
     py -3.12 elec/foot_led.py       # -> elec/out/foot_led.{net,board.json}
 
-    286.36 x 17.20, 2 layers, 24 LEDs, 6 zones, 2 x TLC59711.  TWO PER INSTRUMENT.
+    286.36 x 17.20, 4 layers, 24 LEDs, 6 zones, 2 x TLC59711.  TWO PER INSTRUMENT.
 
 The other lighting job (elec/fret_led.py is the first). It lies on top of the transparent
 band through the chassis's bottom prism and shines into it; the 10.80 mm of PCTG is the
