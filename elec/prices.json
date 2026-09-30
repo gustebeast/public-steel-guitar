@@ -148,7 +148,117 @@
     "assembly_per_feeder_usd": 1.5,
     "assembly_per_joint_usd": 0.0017,
     "assembly_note": "setup and feeder are PER ORDER (so per ten instruments); joints are per board",
-    "verified": "m"
+    "verified": "m",
+    "fab_quotes": {
+      "_note": [
+        "MEASURED on jlcpcb.com's instant quote, 2026-09-30, at the form's DEFAULTS:",
+        "FR-4, 1.6 mm, green, HASL(with lead), 1 oz outer, tented vias, single PCB,",
+        "Industrial/Consumer. Price is for the WHOLE quantity, not per board.",
+        "",
+        "These replace a formula that was wrong by 2x to 12x. The old model charged a",
+        "$2.00 MINIMUM PER BOARD, so 100 small tee boards came to $200 against a real",
+        "$16.60 -- JLCPCB prices a batch, not a board, and the minimum is per ORDER.",
+        "The error was worst exactly where the instrument has most boards.",
+        "",
+        "⚠ Re-measure before ordering. Quotes move, and these are one day's numbers."
+      ],
+      "measured": [
+        {
+          "mm": [
+            49.5,
+            16.0
+          ],
+          "layers": 2,
+          "qty": 10,
+          "usd": 5.2,
+          "board": "can_tee"
+        },
+        {
+          "mm": [
+            49.5,
+            16.0
+          ],
+          "layers": 2,
+          "qty": 100,
+          "usd": 16.6,
+          "board": "can_tee"
+        },
+        {
+          "mm": [
+            72.0,
+            34.0
+          ],
+          "layers": 2,
+          "qty": 10,
+          "usd": 5.0,
+          "board": "ui_board"
+        },
+        {
+          "mm": [
+            139.0,
+            20.0
+          ],
+          "layers": 2,
+          "qty": 10,
+          "usd": 6.9,
+          "board": "led_strip"
+        },
+        {
+          "mm": [
+            286.4,
+            17.2
+          ],
+          "layers": 4,
+          "qty": 20,
+          "usd": 37.7,
+          "board": "foot_led"
+        },
+        {
+          "mm": [
+            210.8,
+            70.4
+          ],
+          "layers": 4,
+          "qty": 10,
+          "usd": 43.3,
+          "board": "fret_led_mid"
+        },
+        {
+          "mm": [
+            64.8,
+            188.5
+          ],
+          "layers": 4,
+          "qty": 10,
+          "usd": 40.1,
+          "board": "optical"
+        }
+      ],
+      "model": {
+        "_note": [
+          "Fitted to the rows above. base + area_rate x cm2, then extra boards beyond",
+          "the quoted 10 at per_extra_board. The 2-layer split at 100 mm is real and",
+          "visible in the data: 72x34 (both sides under 100) quotes $5.00 while the",
+          "LARGER-in-one-dimension 139x20 quotes $6.90 on LESS area."
+        ],
+        "2_small": {
+          "base": 4.5,
+          "area_rate": 0.02,
+          "per_extra_board": 0.127
+        },
+        "2_long": {
+          "base": 6.0,
+          "area_rate": 0.03,
+          "per_extra_board": 0.127
+        },
+        "4": {
+          "base": 25.2,
+          "area_rate": 0.122,
+          "per_extra_board": 0.65
+        }
+      },
+      "verified": "v"
+    }
   },
   "parts_by_footprint": {
     "_note": "generic passives, priced by package class. LCSC Basic-library rates.",
