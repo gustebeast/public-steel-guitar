@@ -211,6 +211,28 @@ def _by_substring(fpid, prices):
     return None
 
 
+def tht_joints(geom, prices):
+    """Through-hole PINS on one board -- the joints JLCPCB hand-solders.
+
+    Worth separating because the live quote form bills hand-soldering on its own line.
+    Most of our JST parts are the -SM4-TB / -SRSS-TB surface-mount variants and do NOT
+    count; what does is the XH A-series, the PH B*B-PH-K, headers, and the panel jacks."""
+    b = prices["boards"]
+    keys = b.get("tht_footprints", [])
+    fallback = b.get("tht_pins_fallback", {})
+    pins = 0
+    for fp in geom.get("footprints", []):
+        fpid = str(fp.get("fpid", fp.get("footprint", "")))
+        if not any(k in fpid for k in keys):
+            continue
+        m = re.search(r"(\d+)x(\d+)", fpid)
+        if m:
+            pins += int(m.group(1)) * int(m.group(2))
+        else:
+            pins += next((v for k, v in fallback.items() if k in fpid), 2)
+    return pins
+
+
 def board_fab_cost(geom, layers, boards_in_order, prices):
     """Fab + assembly for ONE board type across the whole ten-instrument order.
 
@@ -233,6 +255,7 @@ def board_fab_cost(geom, layers, boards_in_order, prices):
         fab += k["per_extra_board"] * (boards_in_order - 10)
     joints = len(geom.get("footprints", [])) * 2        # a rough two joints per part
     asm = b["assembly_per_joint_usd"] * joints * boards_in_order
+    asm += b["hand_solder_per_joint_usd"] * tht_joints(geom, prices) * boards_in_order
     return fab, asm
 
 
@@ -324,6 +347,10 @@ def main(argv=None):
                      p_each * in_order, fab, asm))
     per_order_asm = setup + feeder * order_lines
     boards_total = (parts_usd + fab_usd + asm_usd + per_order_asm) / ORDER_INSTRUMENTS
+    notes.append("ASSEMBLY is $%.2f of the $%.2f PCB line and NONE of it is measured. "
+                 "Fab was re-confirmed against the live JLCPCB form; assembly cannot be "
+                 "without uploading gerber+BOM+CPL. See elec/prices.json boards._assembly_note."
+                 % ((asm_usd + per_order_asm) / ORDER_INSTRUMENTS, boards_total))
     groups.append(("PCBs: parts + fab + assembly (%d instruments / %d)"
                    % (ORDER_INSTRUMENTS, ORDER_INSTRUMENTS), boards_total))
 
