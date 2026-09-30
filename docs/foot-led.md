@@ -144,14 +144,29 @@ bottom says nothing about what was already standing in the slot.
     z -71.35   the window's top face = the channel floor
        -71.05  the LED's emitting face (0.30 of print tolerance, not optics)
        -69.45  the board's underside
-       -67.85  the board's top
-       -67.65  the retaining lips' underside
-       -66.05  the lips' top -- 0.83 clear of the belt tensioners
+       -67.85  the board's top -- and the retaining lips' 45 deg ramp starts here
+       -67.55  the ramp over the board's EDGE: 0.30 of lift, = the lateral play
+       -66.75  the ramp reaches 0.80 over the board and the flat cap starts
+       -65.95  the cap's top -- 0.73 clear of the belt tensioners
 
 Shoulders under the board's edges, lips over them, a wall on -Y and the chassis's own body
-as the wall on +Y. **The lips are 1.70 wide and the middle is open**, because the chassis
-builds world +Z: a lip is a horizontal overhang and 1.70 bridges where a continuous 16 mm
-ceiling would sag. Nothing in the channel is keyed to where a board ends.
+as the wall on +Y.
+
+**The lips are 45 deg ramps, and there is no horizontal overhang anywhere in the channel.**
+The chassis builds world +Z, so a lip reaching flat over the slot is an unsupported
+ceiling: 2 mm of it bridges, but a bridge sags and its underside comes out rough -- and
+that underside is the face that holds the board down. So each lip rises off its wall at
+45 deg instead, 1.10 mm out and 1.10 mm up, then a flat 0.80 cap. Every layer lands on the
+one below it.
+
+**The ramp also deletes a number.** It starts at exactly the board's top plane on the wall
+face, which is SLOT_PLAY outboard of the board's edge -- so over the edge the ramp stands
+0.30 proud, and the clearance above the board IS the lateral play rather than a second
+figure to keep in step with it. The old flat lip had a separate `SLOT_CLR = 0.20`; there
+is nothing left for it to mean. Effective grip over the board: 0.80 mm each side against
+0.30 of Y play it could ever use.
+
+The middle of the slot is still open, which lets the drivers' heat out into the bay.
 
 **No mounting hole.** The channel holds five faces and the sixth is the sliding axis,
 which the -X endplate closes when it goes on — the same argument `elec/lever_sensor.py`
