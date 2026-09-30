@@ -4671,3 +4671,45 @@ it replaced.
 
 Boards kept: `optical.best-1unconn-0viol.kicad_pcb` (VDDIO open) and
 `optical.best-vddio-closed.kicad_pcb` (VDDIO closed, D5 unrouted).
+
+### THE LANE DIAGNOSIS CONFIRMED — VDDIO **AND** ULPI_D5 BOTH CLOSED (2026-09-30)
+
+Moving `C119` one millimetre further out did exactly what the pitch argument predicted:
+
+```
+3 unconnected, 0 violations
+open: +3V3A, SAI_FS          <- VDDIO closed, ULPI_D5 CLOSED
+166 of 166 multi-pin nets carry copper   (no more "no copper at all")
+```
+
+So the bypass cap solves the supply pin **and** the lane, once it sits past where the three
+escapes fan apart. Saved as `optical.best-vddio-and-d5-closed.kicad_pcb`.
+
+**The character of what remains has changed, and that is the real result.** VDDIO could not be
+repaired by anything — no via fitted at any size. `+3V3A` and `SAI_FS` both have documented
+post-route repair paths, which is the kind of problem this session's tooling work was for.
+
+### ⚠ `repair_search` HAS ONE GAP LEFT, AND IT IS THE SHAPE THIS BOARD NEEDS
+
+Run on `+3V3A` at `U11.5`, with correct pad capsules and real pour clearances at last:
+
+```
+same-layer paths (no via): 0      via paths: 755      best total 48.92 mm
+```
+
+**755 paths and the shortest is 48.92 mm, for a net whose nearest island is 6.97 mm away.** The
+tool aims at whatever point of the net it can reach, and on B.Cu that is 40 mm off — its own notes
+already say it has "no notion that its own net's copper is a destination rather than an obstacle".
+A 40 mm hand-laid trace is not a repair, it is a liability.
+
+The reason it cannot do better is structural: it models **one straight track**, or **one via plus
+one spur**. It does not model
+
+* a **dog-leg** (searched by hand: 0 legal here, so that is not the answer for `+3V3A` either), or
+* ⚠ **via → inner-layer run → via back up**, which is the shape this board's geometry actually
+  calls for: F.Cu is dense and **In2.Cu carries no pour at all**, making it, in the earlier note's
+  words, "the emptiest place to land".
+
+That two-via bridge is what is being searched now. If it works it should be productionised into
+`repair_search` as the third shape, alongside teaching it to prefer the NEAREST island — a 7 mm
+problem should not return a 49 mm answer.
