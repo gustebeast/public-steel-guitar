@@ -2008,14 +2008,15 @@
     "makerbase_motors": {
       "vendor": "Makerbase",
       "ships_from": "CN",
-      "order_usd": 339.9,
+      "order_usd": 3399.0,
       "shipping_usd": 0.0,
       "tax_usd": 0.0,
       "tax_pct": 0.0,
       "ddp": false,
       "verified": "v",
-      "what": "10 x SERVO42D CAN MT -- free shipping (10-16 d); paid options 4PX $8.99, DHL/UPS $22.80, standard $3.99. NO tax and NO duty collected at checkout. DUTY EXPOSURE IS UNPRICED, not zero.",
-      "counted_in_unit_price": false
+      "what": "100 x SERVO42D CAN MT (10 per instrument) = $3,399.00 -- free shipping (10-16 d); paid options 4PX $8.99, DHL/UPS $22.80, standard $3.99. NO tax and NO duty collected at checkout, so this is NOT landed cost. tariff_unpriced_upper_usd is a BOUND, not a measurement: 21.0% -- the one rate anybody has actually seen itemised, on Jameco's power supplies -- applied to the motor order, giving $713.79 an order or $71.38 an instrument. THE RATE IS BORROWED FROM THE WRONG COMMODITY CODE (8504.40 is power supplies; a driver-plus-motor is 8501.10 territory) and duty rates are policy, so treat it as an order of magnitude and the worst case, not a forecast. SEARCHED FOR A US-STOCKED ALTERNATIVE AND THERE IS NONE: the Amazon listings for this part are dropships -- 'SERVO42D CAN MB' at $53.71 is the DRIVER ALONE, no motor, ships in 6-7 days with delivery quoted three to four weeks out, i.e. from China anyway. So there is no way to buy this part with the duty already paid, and Makerbase direct stays the cheapest route even at the full borrowed rate ($41.13 landed worst case vs $53.71 for less hardware).",
+      "counted_in_unit_price": false,
+      "tariff_unpriced_upper_usd": 713.79
     },
     "jlcpcb_boards": {
       "vendor": "JLCPCB",

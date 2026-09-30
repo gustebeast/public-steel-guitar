@@ -404,14 +404,22 @@ def main(argv=None):
             landed_partial.append(vend)
         landed_usd += sum(v for v in got if v is not None)
         landed_seen.append(vend)
+    # Duty that a vendor does NOT collect at checkout is real money and an unknown
+    # amount of it. It is kept OUT of the total -- a bound is not a measurement --
+    # and printed as its own worst case underneath, so it cannot be quietly forgotten.
+    exposure = sum(float(e["tariff_unpriced_upper_usd"])
+                   for k, e in prices.get("landed", {}).items()
+                   if not k.startswith("_") and e.get("tariff_unpriced_upper_usd"))
+    exposure /= ORDER_INSTRUMENTS
     landed_usd /= ORDER_INSTRUMENTS
     groups.append(("Shipping + sales tax + duty (%d vendor%s measured)"
                    % (len(landed_seen), "" if len(landed_seen) == 1 else "s"), landed_usd))
     notes.append("The LANDED line is %d measured vendor checkout(s): %s. It is a FLOOR. "
                  "Nobody has measured freight or tax on the filament or on the listing-priced "
                  "mechanical hardware (~$213/instrument), most of which records no vendor "
-                 "at all, and the duty on $339.90 of China-shipped motors is named but "
-                 "unpriced -- see missing.landed_gaps.%s"
+                 "at all. The duty on the China-shipped motors is not in it either: it is "
+                 "a BOUND, printed as the worst-case line under the total -- see "
+                 "landed.makerbase_motors and missing.landed_gaps.%s"
                  % (len(landed_seen), ", ".join(landed_seen),
                     ("  PARTIAL: " + ", ".join(landed_partial)) if landed_partial else ""))
 
@@ -423,7 +431,12 @@ def main(argv=None):
     for g, usd in groups:
         print("%-*s  $%8.2f" % (width, g, usd))
     print("-" * (width + 12))
-    print("%-*s  $%8.2f" % (width, "TOTAL", sum(u for _, u in groups)))
+    total = sum(u for _, u in groups)
+    print("%-*s  $%8.2f" % (width, "TOTAL", total))
+    if exposure:
+        print("%-*s  $%8.2f" % (width, "  + worst-case uncollected duty (a BOUND, see below)",
+                                exposure))
+        print("%-*s  $%8.2f" % (width, "TOTAL, worst case", total + exposure))
 
     if unpriced_all:
         n = sum(len(u) for _, u in unpriced_all)
