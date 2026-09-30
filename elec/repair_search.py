@@ -805,6 +805,129 @@ def maze_via(board, layer_a, layer_b, start, goal, w=TRACK_W, step=MAZE_STEP,
             list(reversed(_walk(pb, k, x0, y0, step, goal))))
 
 
+def maze3d(board, layers, start, start_layer, goal, goal_layer, w=TRACK_W, step=MAZE_STEP,
+           clearance=None, reach=None, via_d=VIA_D, via_cost=2.0):
+    """The general repair: route over (x, y, LAYER), where a via is an EDGE between layers.
+
+    Returns (runs, vias) with runs = [(layer, [pts...]), ...] and vias = [(x, y), ...], or None.
+
+    ⚠ THIS SUBSUMES maze() AND maze_via(), AND SAI_FS IS WHY IT HAD TO EXIST. Both its islands
+    are on F.Cu with no F.Cu path at any clearance, so the repair needs to leave the layer AND
+    COME BACK -- two via transitions, which a one-via search cannot express by construction. The
+    old disabled SAI_FS repair went F.Cu -> B.Cu -> In2.Cu -> F.Cu, three of them.
+
+    ⚠ VIA COST IS NOT ZERO. At zero the search hops layers whenever a cell is momentarily
+    cheaper and returns a staircase of dozens of vias that is legal and absurd. `via_cost` is in
+    millimetres of equivalent track, so 2.0 says "a layer change is worth 2 mm of detour".
+    """
+    import heapq
+
+    clr = RULE_CLEAR if clearance is None else clearance
+    # the same half-diagonal guard band maze() documents: the grid guarantees r - step*sqrt2/2
+    r = w / 2.0 + clr + step * math.sqrt(2.0) / 2.0
+    reach = MAZE_PAD if reach is None else reach
+    x0 = min(start[0], goal[0]) - reach
+    x1 = max(start[0], goal[0]) + reach
+    y0 = min(start[1], goal[1]) - reach
+    y1 = max(start[1], goal[1]) + reach
+    nx = int((x1 - x0) / step) + 1
+    ny = int((y1 - y0) / step) + 1
+    idx = {L: _Index(board, L) for L in layers}
+    li = {L: i for i, L in enumerate(layers)}
+    vr = via_d / 2.0 + clr
+
+    def pos(k):
+        return (x0 + k[0] * step, y0 + k[1] * step)
+
+    def key(pt):
+        return (int(round((pt[0] - x0) / step)), int(round((pt[1] - y0) / step)))
+
+    sk, gk = key(start), key(goal)
+    S = (sk[0], sk[1], li[start_layer])
+    G = (gk[0], gk[1], li[goal_layer])
+    cost = {S: 0.0}
+    parent = {S: None}
+    pq = [(0.0, S)]
+    diag = math.sqrt(2.0) * step
+    via_ok_cache = {}
+    while pq:
+        g, n = heapq.heappop(pq)
+        if n == G:
+            break
+        if g > cost.get(n, 1e18):
+            continue
+        kx, ky, L = n
+        # in-plane
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                nk = (kx + dx, ky + dy, L)
+                if not (0 <= nk[0] < nx and 0 <= nk[1] < ny):
+                    continue
+                ng = g + (diag if dx and dy else step)
+                if ng >= cost.get(nk, 1e18):
+                    continue
+                q = pos(nk)
+                if nk != G and not idx[layers[L]].clear(q[0], q[1], r):
+                    continue
+                cost[nk] = ng
+                parent[nk] = n
+                heapq.heappush(pq, (ng, nk))
+        # layer change: one via, at this cell, through the whole stack
+        c = via_ok_cache.get((kx, ky))
+        if c is None:
+            q = pos((kx, ky))
+            c = board.via_ok(q[0], q[1], r=vr)
+            via_ok_cache[(kx, ky)] = c
+        if not c:
+            continue
+        for L2 in range(len(layers)):
+            if L2 == L:
+                continue
+            nk = (kx, ky, L2)
+            ng = g + via_cost
+            if ng >= cost.get(nk, 1e18):
+                continue
+            cost[nk] = ng
+            parent[nk] = n
+            heapq.heappush(pq, (ng, nk))
+    if G not in parent:
+        return None
+    chain = []
+    n = G
+    while n is not None:
+        chain.append(n)
+        n = parent[n]
+    chain.reverse()
+    runs, vias, cur, curL = [], [], [], chain[0][2]
+    for n in chain:
+        if n[2] != curL:
+            vias.append(pos((n[0], n[1])))
+            if len(cur) > 1:
+                runs.append((layers[curL], cur))
+            cur, curL = [pos((n[0], n[1]))], n[2]
+        cur.append(pos((n[0], n[1])))
+    if len(cur) > 1:
+        runs.append((layers[curL], cur))
+    # snap the two ends and drop collinear interior points
+    if runs:
+        runs[0][1][0] = start
+        runs[-1][1][-1] = goal
+    out = []
+    for L, pts in runs:
+        keep = [pts[0]]
+        for i in range(1, len(pts) - 1):
+            ax, ay = keep[-1]
+            bx, by = pts[i]
+            cx, cy = pts[i + 1]
+            if abs((bx - ax) * (cy - ay) - (by - ay) * (cx - ax)) > 1e-9:
+                keep.append(pts[i])
+        keep.append(pts[-1])
+        out.append((L, keep))
+    return out, vias
+
+
 def search(stem, net, pad_xy, top=5):
     """Return (board, direct_paths, via_paths).
 

@@ -3118,20 +3118,29 @@ BOARD_NOTES = {
         # the tip dangling. It is a WARNING, and the connection is real -- the board is at
         # 0 unconnected, which is the check that decides it. So it stays as the fourth line
         # in a warning list whose other three are deliberate spine ends.
-        ("SAI_FS", "F.Cu", 0.25, [(-6.5492, -27.315), (-5.00, -27.26), (-4.55, -26.81),
-                                  (-3.20, -26.81), (-1.85, -25.42), (-1.25, -25.42),
-                                  (0.70, -27.41)]),
-        ("SAI_FS", "B.Cu", 0.25, [(0.70, -27.41), (1.45, -28.16), (4.60, -28.16),
-                                  (5.05, -28.61), (6.25, -28.61)]),
-        ("SAI_FS", "In2.Cu", 0.25, [(6.25, -28.61), (15.40, -28.61), (18.40, -25.61),
-                                    (18.70, -25.61), (25.00, -19.31)]),
-        # ⚠ -18.80 AND NOT -18.86 ON THE TAIL: at -18.86 it clears a +3V3D pad at
-        # (24.075, -19.479) by 0.1237 mm, three microns under the rule. DRC forgave it --
-        # its roundrect corners are slightly smaller than the capsule audit_board models --
-        # and audit_board did not, which is the right way round for a repair. 0.09 mm north
-        # still overlaps the spine at -18.889 by most of a track width, so the join is
-        # untouched, and the gap becomes 0.184 mm.
-        ("SAI_FS", "F.Cu", 0.25, [(25.00, -19.31), (24.55, -18.80), (22.30, -18.80)]),
+        # ⚠ RE-SEARCHED AND RE-MEASURED AGAINST THE ROUTE OF 2026-09-30, AND IT CLOSES
+        # THE BOARD: DRC goes 1 unconnected item -> 0, with the violation list IDENTICAL to
+        # the baseline (20 declared sensor-triplet courtyards, 0 unexpected). This is the
+        # last open net on the optical board.
+        # ⚠ AND THE "BOXED IN EVERY TIME" VERDICT ABOVE WAS AN ARTEFACT OF THE SEARCH,
+        # NOT THE BOARD. Every one of those searches ran a tool that (a) modelled a pad as a
+        # stadium or a circle rather than its real rounded rectangle, (b) could not see the
+        # GND pours at all, and (c) could express at most ONE via -- while both SAI_FS
+        # islands sit on F.Cu with no F.Cu path at any clearance, so the repair MUST leave
+        # the layer and come back. A search that cannot represent the answer reports "no
+        # path" in exactly the same words as a board that has none. With maze3d (layers in
+        # the search space, vias as edges) the path falls out in 213 s at reach 12.0, and
+        # its worst gap against every obstacle class INCLUDING THE POURS is +0.2602 mm --
+        # not a near miss on a 0.127 rule, twice the headroom.
+        # The old 4-run/3-via path is deleted rather than kept: it was measured against a
+        # route that no longer exists, and re-deriving it costs 213 s.
+        ("SAI_FS", "F.Cu", 0.127, [(-6.5492, -27.3150), (-6.3992, -27.2887),
+                                   (-4.7492, -27.2887), (-4.5992, -27.1387)]),
+        ("SAI_FS", "B.Cu", 0.127, [(-4.5992, -27.1387), (0.0508, -22.4887),
+                                   (1.2508, -22.4887), (4.2508, -19.4887),
+                                   (12.2008, -19.4887), (12.9508, -18.7387)]),
+        ("SAI_FS", "F.Cu", 0.127, [(12.9508, -18.7387), (12.8008, -18.7387),
+                                   (12.6500, -18.8887)]),
         # ── +3V3D at U6 pin 36: a DOG-LEG, and the shape is the whole point ──────────
         # The 2/0 board's remaining unconnected items are two +3V3D pads, and repair_search
         # reported "0 same-layer paths, 0 via paths" for BOTH. That is the signature of a
@@ -3220,8 +3229,8 @@ BOARD_NOTES = {
             (-6.8492, -44.0150), (-6.0992, -44.0150), (-5.2992, -44.8150)]),
     ] + _shdnz_stubs(),
     "repair_vias": [("+3V3A", -10.2992, -43.2650),
-                    ("SAI_FS", 0.70, -27.41), ("SAI_FS", 6.25, -28.61),
-                    ("SAI_FS", 25.00, -19.31)] + _shdnz_vias(),
+                    ("SAI_FS", -4.5992, -27.1387),
+                    ("SAI_FS", 12.9508, -18.7387)] + _shdnz_vias(),
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.
@@ -3689,7 +3698,14 @@ BOARD_NOTES = {
 #   SAI_FS -- 4 tracks, 3 vias: fits ONE route and the route has moved. Re-search before use;
 #             ⚠ and its "boxed in every time" verdict is doubly suspect, having been reached
 #             with a search that tried only two shapes AND could not see the pours.
-STALE_REPAIRS = {"SAI_FS": (4, 3)}
+# ✅ SAI_FS IS OFF THIS LIST, AND THE BOARD IS AT ZERO. Its repair was re-searched against
+# the finished route of 2026-09-30 with maze3d and re-measured in place: 1 unconnected item
+# -> 0, violations identical to the baseline. The entry that used to sit here read "4 tracks,
+# 3 vias" and carried a note that its own "boxed in every time" verdict was doubly suspect --
+# it was, and for a third reason nobody had written down: the search could express one via and
+# the answer needs two. The list is now EMPTY, which is the point of keeping it typed rather
+# than commented: a gate with nothing in it still asserts its own arithmetic.
+STALE_REPAIRS = {}
 for _net, (_nt, _nv) in STALE_REPAIRS.items():
     _t_before = len(BOARD_NOTES["repair_tracks"])
     _v_before = len(BOARD_NOTES["repair_vias"])
