@@ -4814,3 +4814,39 @@ escape and a 1 mm nudge recovered it. C115 sits 1.5 mm below pad 5, in the regio
 outputs fan through. **Next attempt must pick the site with the lanes in mind**, not merely the
 nearest courtyard-clear spot, and should be tried with `--incremental` rather than a 35-minute
 full route.
+
+## WHY C115 COST THREE NETS — MEASURED, AND THE CRITERION WAS WRONG (2026-09-30)
+
+"Courtyard-clear" is the wrong test for where a part may go on a routed board. The right one is
+**how much routed copper the part would sit on top of**, because every track through its
+courtyard has to be re-routed and those are the nets that break.
+
+Scored every 0402 site on a 0.25 mm grid ±6.5 mm around U11 pad 5 by nets displaced:
+
+| site | distance | nets displaced |
+|---|---|---|
+| **(107.604, 159.630)** — the reverted C115 | 1.50 mm | **5** — `MID`, `ULPI_CK`, `ULPI_D0`, `ULPI_D2`, … |
+| best available | 6.50 mm | **1** — `ULPI_D0` |
+| sites displacing nothing | — | **none within ±6.5 mm** |
+
+So the cap was dropped on top of five routed nets and the route lost three. 175 sites passed
+"courtyard-clear"; the nearest one cost three nets. ⚠ **That criterion should not be used again on
+a routed board** — this is the third time the same shape of mistake has cost a route (escape vias,
+C119's first site, C115).
+
+**And the wider reading matters more than the fix:** there is **no free real estate around U11**.
+The best site is 6.50 mm from the pin — barely better than the 7.72 mm that made me call this an
+analog fault in the first place, and it still displaces a net. So `+3V3A` is **not** a
+missing-cap problem like VDDIO's. It is a congested region, which is what `route.py` means by "a
+board near its routing limit".
+
+**Left open deliberately rather than guessed at again.** The options, none of which is a spot fix:
+
+* a **placement rework** of the U11 / TIA-fan region, which is a large change
+* the **maze repair** (15.17 mm, 22 segments) — rejected once as a liability on an analog supply,
+  but it is at least measured and legal, and it is the fallback if the region is not reworked
+* accept `+3V3A` open and ship the analog rail on the pour — needs checking, not assuming
+
+⚠ **The electrical gap is separate and still real:** U11's V+ has no bypass within 7.72 mm and it
+feeds the mid-rail reference for twenty TIAs. Whatever happens to the routing, that wants fixing
+in a rework rather than by wedging a part into a full region.
