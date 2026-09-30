@@ -1066,7 +1066,16 @@ def build_wires():
     # -10.5 -> -7.0 held the +Y edge, so the boards leave y -46.18..-34.50. The approach
     # sits MID-GAP, where the plug body actually lives, instead of hugging the port face
     # because there was nowhere else to be.
-    _PORT_APR = EL.PI_FP[3] + 6.0                  # -40.18, mid-gap of the real 11.68
+    # ⚠ THE APPROACH IS IN +X NOW, NOT +Y, AND THAT IS THE HALF THAT WAS MISSING LAST TIME.
+    # Moving the ports to the +X end without moving this drove BOTH cables through the board
+    # to reach them: wire_usb 0.000 -> 134.864 mm^3 and wire_link 0.000 -> 71.444, and the
+    # GATE REPORTED AN IMPROVEMENT (17 -> 16) because pi4 is in both wires' allow-list. The
+    # ports and their approach are one change; they cannot land separately.
+    # ⚠ AND THE PORTS FACE +X BECAUSE NOTHING ELSE FITS -- measured, not chosen: motor_ctrl's
+    # +X face is 3.70 mm off the Pi's -X edge, and no USB-A plug fits in 3.70 (a right-angle
+    # one is ~10). The +X end is open. So the Pi does NOT rotate; the pose was right and only
+    # the port frame was wrong.
+    _PORT_APR_X = EL.PI_FP[1] + 20.0               # -483.0: clear of the +X face + a plug
     _ua = EL.op_pt("J2")
     _UA_PLUG = 25.0
     # ITS OWN COLUMN at the keyhead, 6 mm +X of the one the bay wires share: at a different
@@ -1080,8 +1089,8 @@ def build_wires():
         [(_ua_x, _ua[1], _ua[2]), (_USB_X, _ua[1], _ua[2]), (_USB_X, _ua[1], LANE_USB),
          (_USB_X, CHAN_Y, LANE_USB)]
         + _rail_pts(_USB_X, _USB_COL, LANE_USB)
-        + [(_USB_COL, CHAN_Y, _USB_FLY), (_USB_COL, _PORT_APR, _USB_FLY),
-           (_usb[0], _PORT_APR, _USB_FLY), (_usb[0], _PORT_APR, _usb[2]), _usb],
+        + [(_USB_COL, CHAN_Y, _USB_FLY), (_USB_COL, _usb[1], _USB_FLY),
+           (_PORT_APR_X, _usb[1], _USB_FLY), (_PORT_APR_X, _usb[1], _usb[2]), _usb],
         WIRE_OD["wire_usb"])))                          # over motor 0, then down into the Pi
 
     # -- 5 V to the Pi's GPIO header, from the merged board's J5. It was never
@@ -1174,8 +1183,8 @@ def build_wires():
     # 62 mm3 of cable inside string 1's motor.
     _LINK_X = BAY_X - 3.0
     out.append(("wire_link", _wire([
-        _lt, (_LINK_X, _lt[1], _lt[2]), (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _PORT_APR, BAYFLY),
-        (_lp[0], _PORT_APR, BAYFLY), (_lp[0], _PORT_APR, _lp[2]), _lp],
+        _lt, (_LINK_X, _lt[1], _lt[2]), (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _lp[1], BAYFLY),
+        (_PORT_APR_X, _lp[1], BAYFLY), (_PORT_APR_X, _lp[1], _lp[2]), _lp],
         WIRE_OD["wire_link"])))
 
     # (the Teensy <-> transceiver CAN jumper pair is GONE: the transceivers now sit
