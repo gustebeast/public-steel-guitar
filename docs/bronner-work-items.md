@@ -4713,3 +4713,43 @@ one spur**. It does not model
 That two-via bridge is what is being searched now. If it works it should be productionised into
 `repair_search` as the third shape, alongside teaching it to prefer the NEAREST island — a 7 mm
 problem should not return a 49 mm answer.
+
+### `+3V3A` NEEDS A MAZE ON In2, NOT A STRAIGHT ANYTHING — and the negative is now interpretable
+
+All three repair shapes were tried against `U11.5` and all returned nothing, so the question is
+**why**, not merely how many:
+
+| shape | result |
+|---|---|
+| straight on F.Cu | 0 of 8 nearest islands |
+| **dog-leg** on F.Cu | **0 legal** |
+| **via → In2.Cu → via** | **0 bridges** |
+
+⚠ **And the endpoints are NOT the constraint**, which is what makes the last row meaningful:
+
+```
+via sites near U11.5 reachable on F.Cu : 63
+island (100.636,161.080)  6.97 mm : 426 via_ok, 224 reachable
+island ( 96.738,161.080) 10.87 mm : 566 via_ok, 563 reachable
+island ( 94.835,161.130) 12.77 mm : 409 via_ok, 373 reachable
+```
+
+Hundreds of legal via sites at both ends, and **all ~8000 sampled pairs failed on the In2.Cu run
+between them**. So the blockage is the middle, not the escape.
+
+**Why In2 is not the free layer it looks like:** it carries no pour, which is what made it "the
+emptiest place to land" — but the board's **400 vias pierce every layer**, so a straight 7 mm run
+across In2 meets them. Emptiness of *pour* is not emptiness of *obstacles*.
+
+**So `+3V3A` wants a MAZE path on In2** — threading between vias — which is exactly what the
+deleted `scratchpad/maze.py` did and what nothing in `tools/` or `elec/` currently replaces. That
+is the next piece of tooling, and it is now well specified:
+
+* target the **NEAREST** island, not any reachable point (the existing via search returns 48.92 mm
+  for a 6.97 mm problem)
+* route on In2.Cu, treating **vias as obstacles on every layer**
+* pours honoured only where no refill follows — `track_ok(pours=False)` is right for a repair
+* verify by laying it, refilling, and re-running DRC, which is now a proven loop
+
+`SAI_FS` is the same class and should be re-searched with the same tool once it exists — its
+"boxed in every time" verdict predates all three tool fixes.
