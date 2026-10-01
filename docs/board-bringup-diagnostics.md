@@ -183,7 +183,7 @@ and `output_panel`'s are scattered differently again.
   rolls. The cure was to DECLARE the hop: one NRST via beside the pin, laid before routing.
   With it the board closes first pass with the chip-select in: 0 unconnected, 0 violations.
 * **4.1 / 4.2 (shared SWD pattern, +3V3 pad) and a `BOOT0` pull-down are still open** on this
-  board. They are now ordinary changes rather than a lottery, and the outline they must stay
+  board. The via helps but does not cure the corner (a perturbation test passed one of two), so budget a neighbour search for each; the outline they must stay
   inside is branner's re-spin spec (`docs/lever-sensor-respin.md`).
 * **4.6 is confirmed.** TI's SN65HVD230 datasheet (SLOS346O) has no dominant-timeout — the
   term does not appear in it. The independent watchdog is the only thing bounding a node that
