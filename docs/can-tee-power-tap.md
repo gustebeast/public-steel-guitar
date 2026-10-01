@@ -272,3 +272,17 @@ motor's plug instead of on the tee — which is where the trunk pair ends up any
 
 **Recommendation: 6b.** Same 6 A trunk as option 6, no outline change, no new header SKU
 beyond a 2-way, and it removes 20 series contacts from the CAN bus.
+
+### 6b open item 1 CLOSED (2026-10-01): the motor terminates the bus itself
+
+Read off Makerbase's own schematic (`MKS SERVO42D_CAN V1.0_003 Schematic.pdf`, repo
+makerbase-motor/MKS-SERVO42D-57D, Hardware/): the TJA1051T/3's CANH / CANL carry **R13,
+120 Ω, in series with SW1, a 2-pin header** ("排针2P"). Fit a jumper cap on SW1 of the
+LAST motor and bus A's far end is terminated on the motor's own board — no resistor in a
+crimp, no terminator on the tee. (An ESDA6V1L sits across the pair on every motor.)
+
+So the tee's R1 / JP1 were duplicating something every motor already carries. The same
+header on the other nine motors must be left OPEN; that is an INSTALL_NOTES line when 6b
+is built. The near end stays where it is, on the motor controller.
+
+Remaining before build: the 2 × AWG 26 test crimp. Nothing else is open.
