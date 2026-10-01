@@ -76,6 +76,10 @@ Like the optical board, the chain is serial: work in order, one new thing per st
 4. **`output_panel`.** First the USB tree as the Pi sees it (hub, then MCU, then the optical
    board behind it). Then the audio loopback: the TS lead from the output jack back into the
    pickup terminal tests ADC, Pi, DAC, relay and buffer in one measurement.
+   If the loopback is silent, meter the output panel's rails at the parts that already sit on
+   them — no test pads exist for these: `+5V` at **FB1 pin 2**, `DAC_VNEG` at **C33 pin 1**
+   (expect −3.3 V; if it is missing the DAC is silent with every digital signal correct),
+   `DAC_LDOO` at **C30 pin 1** (1.8 V), `ADC_VREF` at **C19 pin 1** (2.5 V).
 5. **Lever and pedal sensors.** Each board reports its ID; the magnet field status is in
    range; moving a lever moves its own ID and no other. A sensor that never answers on I2C:
    check its `MODE` strap (R5) is to +3V3 — to ground it is in ABZ mode and silent.
