@@ -149,7 +149,8 @@ LCSC = {
                                     # stock. Same shape as S4B-XH-SM4-TB and B4B-XH-A.
     "S4B-XH-A": "C157925",          # JST S4B-XH-A(LF)(SN), stock 88,547
     "LMR33630ADDAR": "C841384",     # TI, ESOP-8 (= HSOIC-8 PowerPAD), stock 6,730
-    "PJ-102AH": "C3096093",         # CUI PJ-102AH, stock 1,593
+    "KPJX-4S-S": "C2875467",        # Kycon KPJX-4S-S, 4-pin power jack; stock 44 on
+                                    # 2026-10-01 -- THIN: check before a build of 10
     "MX126-5.0-02P": "C5188434",    # MAX MX126-5.0-02P-GN01-Cu-S-A, stock 48,416
     # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
     # checked against it pin for pin rather than chosen by name:
