@@ -1572,6 +1572,12 @@ feeds to XT30, which the BOM currently restricts to PSU trunk joints.
 > conductors); `Rw` is ~15.4 mΩ of cable plus the motor board's J3→J1 copper plus the
 > bus-A lead.
 >
+> ✅ **FIXED 2026-10-01: J3 → J1 is a declared 2.0 mm B.Cu bar** (45.5 mm of 1 oz outer
+> copper, ~11 mΩ, ~4 A at a 10 °C rise; J3's two +24 V ways tied by 1.2 mm). Routed
+> 0 unconnected / 0 violations, audit passes. That takes ~80 mΩ out of `Rw` below, so the
+> west feed is no longer on under-rated copper and the split moves toward even; the 64 / 36
+> figure that follows is the BEFORE state, kept for the reasoning, and has not been re-derived.
+>
 > ⚠ **THE MOTOR BOARD'S SHARE IS NOW MEASURED, AND IT IS THE WHOLE STORY** (traced on the
 > routed board, 2026-09-30). J3 pin 2 reaches J1 pin 2 through **35.9 mm of 0.5 mm track on
 > In2.Cu** (0.5 oz inner copper, ~71 mΩ), a via, and 20.7 mm of 0.5 mm on F.Cu (~20 mΩ):

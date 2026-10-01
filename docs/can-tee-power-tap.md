@@ -6,6 +6,34 @@ two for power and ground, two for data" out of worry about the motor line's powe
 This is the version of that idea the numbers support. Nothing below is in the model yet
 except the tee's 2 mm trunk copper (`6346db5`), which is right either way.
 
+## ⚠ CORRECTED BY THE USER, 2026-10-01: 2 + 2, NOT 2 + 4
+
+> "I was saying 2 pin for CAN data not the 4 pin, so it would be 2 + 2 not 2 + 4"
+
+So the CAN pair is a continuous trunk with a tap at each tee too, exactly like power, and
+the tee carries **two 2-way taps and the drop**. Everything below that says "4-way XH CAN
+in/out" is superseded by this section; the power reasoning is unchanged.
+
+    power trunk   one continuous pair, a tap crimped at each tee      J3  2-way JST VH
+    CAN trunk     one continuous pair, a tap crimped at each tee      J1  2-way JST XH
+    drop          to the motor's own 6-pin plug, unchanged            J2  4-way JST XH
+
+**Better for CAN than what it replaces:** the bus becomes one unbroken pair with a ~60 mm
+stub per node instead of passing through two contacts and a board at every tee. The 120 Ω
+terminator and its jumper stay on the board; only the end tees close theirs.
+
+**The two taps are different families on purpose, and it is not optional for power.** A tap
+on a continuous wire is two conductors in one crimp. An XH contact takes AWG 30–22
+(0.05–0.33 mm² — from memory of JST's XH sheet, not re-read today), so it holds two AWG 26
+(0.26 mm²): fine for CAN, far too thin for a power trunk. Two AWG 22 need the VH contact.
+So power is VH and CAN is XH, which also means neither lead fits the other's socket.
+
+**Scratch prototype, 2 + 2 (same throw-away method as below):** 0 unconnected, 0 violations,
+first pass. The row is VH −18.97..−10.03, XH 2-way −9.25..−0.75, drop 4.95..18.44: **31.7 of
+40 mm**, with 5.7 mm free between the CAN tap and the drop. The VH overhang in Y is the same
+3.9 mm; working assumption is to KEEP the board 16 deep (the outline and the panel quote do
+not move) and let the header overhang.
+
 ## Why
 
 Today the trunk's 24 V passes THROUGH every tee: one XH contact in, board copper, one XH
@@ -67,6 +95,26 @@ re-route and no CAD change on it. The outline is intended to stay 49.5 × 16 wit
 the JLCPCB panel quote does not move; `tools/lcsc_prices.py` prices housings and crimps for
 XH/PH/SH only and needs the VH pair added (lead's, once this is confirmed).
 
+## Scratch prototype: it fits in X and routes; the VH body overhangs in Y (2026-09-30)
+
+A throw-away copy of the board (`can_tee_vh`, never tracked, never in the CAD; the script is
+kept in the session scratchpad only) with J3 = S2P-VH at x −14.5, J1 = 4-way XH at −2.5 and
+J2 unchanged at 11.7, power on the same 2 mm bars:
+
+| | |
+|---|---|
+| route | **0 unconnected, 0 violations**, first pass |
+| connector row | courtyards span x −18.97 .. 18.44 = **37.41 of the 40 mm** layout region; 0.78 and 0.70 between them, 1.03 and 1.56 to the ends |
+| VH in Y | its courtyard runs y −11.94 .. 4.55 with the pad row at 2.0, and the board's −Y edge is at −8.0: **the VH header's envelope stands 3.9 mm past the edge**, out over the motor. XH stops at −7.75, inside it |
+
+So the estimate held in X. In Y there are two honest options, and it is an outline question
+for the lead's panel quote either way:
+
+* **leave the board 16 deep** and let the VH body overhang — it is carried by its two posts
+  and ~7 mm of body on the laminate, with the motor's top face 2.4 mm below; or
+* **grow the board −Y to ~20** so the header sits wholly on it. That laps the motor 13.6
+  instead of 9.6 and changes `D.TEE_BOARD_Y`, the cradle and the JLCPCB outline.
+
 ## Not verified / open
 
 1. ~~LCSC stock~~ done, above.
@@ -82,3 +130,73 @@ XH/PH/SH only and needs the VH pair added (lead's, once this is confirmed).
    is built per conductor through `tee_pin`; power becomes its own pair with taps.
 3. `elec/harness.py`: a CAN-only trunk pinout; the bus-A lead from the motor board drops 24 V.
 4. BOM: VH parts in, 8-way XH out; delete the dual-feed leg table.
+
+## 2026-10-01 — the 2 + 2 tee was built, and the VH tap DOES NOT FIT (measured)
+
+The user corrected the tap to 2 + 2 (2-way VH power + 2-way XH CAN + the 4-way drop). It was
+built in full — netlist, 2 mm bars, CAD, per-conductor wiring — and routes `0 unconnected,
+0 violation(s)`, no FAIL. It is NOT committed: the work is in `git stash` on `agent/bronner`
+("2+2 tee with S2P-VH power tap"). The tree is back on the merged 8-way tee.
+
+**Item 2 above ("8.5 or 10.5: either clears") was wrong.** Read off the JST assembly drawing
+for the stopper-type side header (S2P-VH, the stocked one):
+
+| | value |
+|---|---|
+| mated housing, pin row → its rear | 19 mm (I had modelled 13.4) |
+| housing thickness incl. the latch | 10.5 mm, and it rides ~0.5 mm above the board → **~11.05 mm above the board top** (scaled off the drawing, ±0.3) |
+| housing body without the latch | ~9.1 mm above the board top |
+
+Headroom above the board top, measured on the built instrument per tee (`scratchpad/head.py`):
+
+| what is overhead | headroom | tees |
+|---|---|---|
+| fret LED board (`fret_pcb_key` / `fret_pcb_mid`) | 10.5 | 0–7 |
+| `ui_clamp` | 10.8 | 8, 9 |
+| top-plate rib at y −38.7..−35.5 (`top_plate_color_3`) | 9.7 | 5, 6, 7 |
+| `fret_strip_key_py` | 8.9 | 0 |
+| fret M4 (`fret_m4_mid`) | 8.3 | 5 |
+| chassis, immediately −X of every board | 0.3 | all — a −X-facing header is impossible |
+
+So 11.05 mm needs more than any tee has. Sliding the header in Y does not rescue it either:
+tee 5 needs the pin row > 2.4 mm toward +Y to get its latch off the rib, tee 6 needs < 0.6.
+The overlap gate caught two of these (tee 5 × fret M4, tee 6 × top plate) even with the
+too-small plug; with the true envelope it is all ten.
+
+**What still fits:** the XH side header (7.0 mm) — which is what the merged tee uses.
+
+**Options, for the user:**
+1. Stay on the merged tee: 8-way XH trunk (paralleled contacts), 2 mm copper, dual feed.
+2. 2 + 2 with the power tap on XH as well — only if the trunk wire can be AWG 22 (XH's
+   largest), which 8 A all-moving does not allow on one run. Not recommended.
+3. A lower ≥ 5 A crimp family for the tap (Molex Micro-Fit RA is the candidate; its mated
+   height and stock are NOT verified, and it cannot take a double crimp, so the trunk would
+   pass through board copper: power in + power out + CAN = 2 + 2 + 2).
+4. XT30PW right-angle (stocked, ~5 mm high) — but its cable half is solder-cup, against the
+   solder-only-on-PCBs rule.
+5. Buy headroom: ≥ 1 mm more between the motor tops and the fret board / rib (brenner's and
+   the deck's geometry, not bronner's).
+
+Also found on the way: the CAD's R1/JP1 box sat 2.5 mm off the routed position in the 2 + 2
+layout (the `!! MIRRORED` report from `cad_geom_check`); fixed inside the stash only.
+
+### Option 3 checked (2026-10-01): Micro-Fit fits in height, but buys almost nothing
+
+Read off the CJT C3030 (Micro-Fit 3.0 compatible) drawings; Molex's own site timed out.
+
+| | value |
+|---|---|
+| right-angle 2-way header (Molex 43650-0200, C192562, 3,576 in stock, $0.58) | 9.65 wide, ~4.6–5.6 high, 9.8 deep |
+| receptacle (43645-0200, C114089, 54,993) | body 5.26 thick, 14.0 long; mated ≈ 7 mm above the board (estimate) — under the 8.3 mm worst headroom |
+| crimp (43030-0001, C259786) | **AWG 20–24 only** — no double crimp, so the trunk must cross board copper: power in + power out |
+| current | ~7 A per contact at AWG 20 (Molex's 8.5 A figure is the family maximum) |
+| row | 2 × 9.65 + XH 2-way 7.4 + XH 4-way 12.4 = **39.1 mm of a 40 mm row** — no gaps, does not place |
+
+So it clears the fret board but (a) does not fit the row without growing the tee in X, and
+(b) rates ~7 A against the merged tee's 6 A (two paralleled XH contacts per rail), with the
+same two contact pairs in series per tee. Not worth a new connector family and crimp tool.
+
+**Standing recommendation: stay on the merged tee.** With the dual feed each end carries at
+most half of the 8 A all-moving case (4 A through 6 A of contact), and the thing that
+actually unbalances it is the motor board's J3 → J1 pass-through (~91 mΩ on 0.5 mm track) —
+fix THAT, which is in bronner's lane, rather than change the tee.
