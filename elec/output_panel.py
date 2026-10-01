@@ -1809,7 +1809,7 @@ BOARD_NOTES = {
         "R26": (-3.25, 2.00, 0.0),      # the 0.1% pair that sets the balanced CMRR --
         "R27": (-3.32, 4.35, 0.0),      # same reel, and they stay near each other
         "C41": (21.54, 5.06, 0.0),      # ring DC block, 1210 (C1's mirror)
-        "D7": (23.95, 8.05, 0.0),      # ring phantom clamp (D5's mirror) -- see above
+        "D7": (18.29, -3.91, 0.0),      # ring phantom clamp (D5's mirror) -- see above
         "R21": (21.19, 1.51, 0.0),      # ring bleed (R10's mirror)
         "R20": (7.76, 5.75, 0.0),       # ring series 220R (R9's mirror)
         "C42": (10.78, -5.29, 0.0),     # ring path coupling, off K1 pole B
