@@ -545,21 +545,16 @@ def _build_counter_model(n: int):
 # follows; the guide rod, screw and stops are fixed.
 DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL for i in (0, 1, 8, 9)}
 
-# BELT CLAMP TRAVEL (user, 2026-09-11). Each belt's tension clamp rides the belt, and the
-# belt moves PULLEY_TEETH x BELT_PITCH per screw turn over the carriage's whole travel, so
-# the clamp has to fit on the straight run between the two pulleys' flanges at both ends of
-# that travel. The motor bank is packed toward the keyhead for exactly this; if the shortest
-# run stops covering it, move the bank or shorten the travel -- do not just nudge this.
+# BELT CLAMP TRAVEL. Each belt's tension clamp rides the belt, so it has to stay on the
+# straight run between the two pulleys' flanges over the carriage's whole travel. The travel
+# is DERIVED from that (dimensions.CARRIAGE_TRAVEL) using the clamp's length as a number;
+# this is where that number is held to the solids.
 _CLAMP_XS = [v for _n, _s in BTn.clamp_components(with_lifters=True)
              for v in (_s.val().BoundingBox().xmin, _s.val().BoundingBox().xmax)]
 _CLAMP_L = max(_CLAMP_XS) - min(_CLAMP_XS)
-_BELT_TRAVEL = D.CARRIAGE_TRAVEL / D.SCREW_PITCH * D.PULLEY_TEETH * D.BELT_PITCH
-_CLAMP_RUN_NEED = _BELT_TRAVEL + _CLAMP_L + D.PULLEY_FLANGE_OD
-_SHORTEST_RUN = min(math.hypot(D.motor_pos(i)[0] - D.screw_x(i), D.screw_pulley_z(i) - D.motor_pos(i)[2])
-                    for i in range(D.N_STRINGS))
-assert _SHORTEST_RUN >= _CLAMP_RUN_NEED - 1e-6, (
-    f"the shortest belt run ({_SHORTEST_RUN:.1f}) cannot hold the clamp through its travel: "
-    f"{_BELT_TRAVEL:.1f} of belt travel + {_CLAMP_L:.1f} of clamp + two flanges = {_CLAMP_RUN_NEED:.1f}")
+assert abs(_CLAMP_L - D.BELT_CLAMP_L) < 0.05, (
+    f"the belt clamp measures {_CLAMP_L:.2f} along the belt but dimensions.BELT_CLAMP_L is "
+    f"{D.BELT_CLAMP_L}: the carriage travel and the nut's floor are sized from that number")
 
 
 def _string_components(i):
@@ -692,7 +687,28 @@ def _string_path(i, sy):
                      cz + R * math.sin(th0 + (th1 - th0) * k / N)) for k in range(N + 1)]
     # a bead at every vertex: a tangent join between two cylinders shares no volume, and OCC
     # hands back a compound with the pieces floating free (see the wrap below)
-    out = _rod(p0, pts[0], rad).union(_bead(pts[0], rad))
+    # THE RISE LEAVES THROUGH THE EAR'S HOLE, AND A HEAVY STRING DOES NOT FIT THROUGH IT
+    # STRAIGHT. The ball end seats centred under a Ø3.5 hole and the string leans ~9-13 deg
+    # toward the bearing, so by the flange's top face its centreline has walked up to 1.4
+    # off the hole's axis -- more the higher the nut sits, since the same ANCHOR_DX is spent
+    # over a shorter rise. Past (hole radius - string radius) it is ON THE BRASS. Drawn
+    # straight, the string simply passed through the nut: 0.96 mm3 on string 9 at the top of
+    # travel, and 0.22 where the old top of travel was -- which the demo pose hid by parking
+    # that string at the bottom. So the string is drawn the way it runs: up the hole to the
+    # rim, over the rim, then away to the bearing. That rim is a real break point on the
+    # heavy strings; see INSTALL_NOTES (deburr the ear holes).
+    z_ear = az + D.STRING_NUT_D / 2 + D.NUT_FLANGE_T + 0.1         # just over the flange's top face
+    reach = D.NUT_HOLE_D / 2.0 - rad - 0.05                        # centreline's room in the hole
+    lean = (pts[0].x - p0.x) * (z_ear - p0.z) / (pts[0].z - p0.z)  # ...and what it would take
+    if abs(lean) > reach:
+        rim = cq.Vector(p0.x + math.copysign(reach, lean), sy, z_ear)
+        th0 = _tangent_angle(cx, cz, rim.x, rim.z, R, +1)
+        pts = [cq.Vector(cx + R * math.cos(th0 + (th1 - th0) * k / N), sy,
+                         cz + R * math.sin(th0 + (th1 - th0) * k / N)) for k in range(N + 1)]
+        out = _rod(p0, rim, rad).union(_bead(rim, rad)).union(_rod(rim, pts[0], rad))
+    else:
+        out = _rod(p0, pts[0], rad)
+    out = out.union(_bead(pts[0], rad))
     for pa, pb in zip(pts, pts[1:]):
         out = out.union(_rod(pa, pb, rad)).union(_bead(pb, rad))
     out = out.union(_rod(pts[-1], brk, rad))
