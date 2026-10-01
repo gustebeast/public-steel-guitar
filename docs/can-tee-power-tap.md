@@ -130,3 +130,52 @@ for the lead's panel quote either way:
    is built per conductor through `tee_pin`; power becomes its own pair with taps.
 3. `elec/harness.py`: a CAN-only trunk pinout; the bus-A lead from the motor board drops 24 V.
 4. BOM: VH parts in, 8-way XH out; delete the dual-feed leg table.
+
+## 2026-10-01 — the 2 + 2 tee was built, and the VH tap DOES NOT FIT (measured)
+
+The user corrected the tap to 2 + 2 (2-way VH power + 2-way XH CAN + the 4-way drop). It was
+built in full — netlist, 2 mm bars, CAD, per-conductor wiring — and routes `0 unconnected,
+0 violation(s)`, no FAIL. It is NOT committed: the work is in `git stash` on `agent/bronner`
+("2+2 tee with S2P-VH power tap"). The tree is back on the merged 8-way tee.
+
+**Item 2 above ("8.5 or 10.5: either clears") was wrong.** Read off the JST assembly drawing
+for the stopper-type side header (S2P-VH, the stocked one):
+
+| | value |
+|---|---|
+| mated housing, pin row → its rear | 19 mm (I had modelled 13.4) |
+| housing thickness incl. the latch | 10.5 mm, and it rides ~0.5 mm above the board → **~11.05 mm above the board top** (scaled off the drawing, ±0.3) |
+| housing body without the latch | ~9.1 mm above the board top |
+
+Headroom above the board top, measured on the built instrument per tee (`scratchpad/head.py`):
+
+| what is overhead | headroom | tees |
+|---|---|---|
+| fret LED board (`fret_pcb_key` / `fret_pcb_mid`) | 10.5 | 0–7 |
+| `ui_clamp` | 10.8 | 8, 9 |
+| top-plate rib at y −38.7..−35.5 (`top_plate_color_3`) | 9.7 | 5, 6, 7 |
+| `fret_strip_key_py` | 8.9 | 0 |
+| fret M4 (`fret_m4_mid`) | 8.3 | 5 |
+| chassis, immediately −X of every board | 0.3 | all — a −X-facing header is impossible |
+
+So 11.05 mm needs more than any tee has. Sliding the header in Y does not rescue it either:
+tee 5 needs the pin row > 2.4 mm toward +Y to get its latch off the rib, tee 6 needs < 0.6.
+The overlap gate caught two of these (tee 5 × fret M4, tee 6 × top plate) even with the
+too-small plug; with the true envelope it is all ten.
+
+**What still fits:** the XH side header (7.0 mm) — which is what the merged tee uses.
+
+**Options, for the user:**
+1. Stay on the merged tee: 8-way XH trunk (paralleled contacts), 2 mm copper, dual feed.
+2. 2 + 2 with the power tap on XH as well — only if the trunk wire can be AWG 22 (XH's
+   largest), which 8 A all-moving does not allow on one run. Not recommended.
+3. A lower ≥ 5 A crimp family for the tap (Molex Micro-Fit RA is the candidate; its mated
+   height and stock are NOT verified, and it cannot take a double crimp, so the trunk would
+   pass through board copper: power in + power out + CAN = 2 + 2 + 2).
+4. XT30PW right-angle (stocked, ~5 mm high) — but its cable half is solder-cup, against the
+   solder-only-on-PCBs rule.
+5. Buy headroom: ≥ 1 mm more between the motor tops and the fret board / rib (brenner's and
+   the deck's geometry, not bronner's).
+
+Also found on the way: the CAD's R1/JP1 box sat 2.5 mm off the routed position in the 2 + 2
+layout (the `!! MIRRORED` report from `cad_geom_check`); fixed inside the stash only.
