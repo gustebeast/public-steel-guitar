@@ -1552,6 +1552,32 @@ feeds to XT30, which the BOM currently restricts to PSU trunk joints.
 
 ### Dual-feed 24 V trunk (option A, locked 2026-09-18 by user)
 
+> ⚠ **READ THIS FIRST — THE BALANCE ARITHMETIC BELOW IS SUPERSEDED (2026-09-30).** It treats
+> the chain as wire. It is not: per tee, per rail, the path is
+>
+> | element | resistance |
+> |---|--:|
+> | 45 mm of 22 AWG between tees | ~2.4 mΩ |
+> | tee copper, trunk-in → trunk-out | ~5.4 mΩ (was **~55 mΩ** as 0.25 mm router track until `6346db5`) |
+> | two XH contacts (in, out) | up to ~20 mΩ (10 mΩ each is JST's initial maximum — a ceiling, not a measurement) |
+> | **one hop** | **~28 mΩ**, so the nine-hop chain is ~250 mΩ per rail |
+>
+> With ten equal loads the east feed's share is `(10·Rw + 45·Rh) / (10·(Re + Rw + 9·Rh))`,
+> where `Re`, `Rw` are the two feed leads and `Rh` one hop. `Re` is ~4.8 mΩ (180 mm, two
+> conductors); `Rw` is ~15.4 mΩ of cable **plus the motor board's J3→J1 copper and the
+> bus-A lead, which nobody has measured**. That gives the east feed **52 %** if the west
+> path adds nothing and **56 %** if it adds 25 mΩ.
+>
+> **So the 111 mm coil is worth about ONE percentage point** (5.9 mΩ against a 250 mΩ
+> chain), not the six it was credited with, and the split is decided by the west path's
+> copper instead. Do not build or model the coil; if the split matters, widen J3→J1 on the
+> motor board. The **TODO to model the coil in the CAD is withdrawn** with it.
+>
+> **And the limit that actually binds is unchanged:** at the derived 0.8 A per moving
+> motor, half the fleet is 4 A through one 3 A XH contact whatever the split is. Either
+> firmware caps the number of motors slewing at once, or the trunk's power leaves the
+> 8-way connector — the open tee question (continuous power trunk, one tap per tee).
+
 The tee chain is fed from **both ends** so the worst-loaded segment carries about half
 the fleet instead of all of it. The single +24V contact between tees is a 3 A / 72 W
 ceiling, and this is what relieves it without touching the tee board — which matters,
