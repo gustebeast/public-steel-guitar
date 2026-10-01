@@ -67,6 +67,26 @@ re-route and no CAD change on it. The outline is intended to stay 49.5 × 16 wit
 the JLCPCB panel quote does not move; `tools/lcsc_prices.py` prices housings and crimps for
 XH/PH/SH only and needs the VH pair added (lead's, once this is confirmed).
 
+## Scratch prototype: it fits in X and routes; the VH body overhangs in Y (2026-09-30)
+
+A throw-away copy of the board (`can_tee_vh`, never tracked, never in the CAD; the script is
+kept in the session scratchpad only) with J3 = S2P-VH at x −14.5, J1 = 4-way XH at −2.5 and
+J2 unchanged at 11.7, power on the same 2 mm bars:
+
+| | |
+|---|---|
+| route | **0 unconnected, 0 violations**, first pass |
+| connector row | courtyards span x −18.97 .. 18.44 = **37.41 of the 40 mm** layout region; 0.78 and 0.70 between them, 1.03 and 1.56 to the ends |
+| VH in Y | its courtyard runs y −11.94 .. 4.55 with the pad row at 2.0, and the board's −Y edge is at −8.0: **the VH header's envelope stands 3.9 mm past the edge**, out over the motor. XH stops at −7.75, inside it |
+
+So the estimate held in X. In Y there are two honest options, and it is an outline question
+for the lead's panel quote either way:
+
+* **leave the board 16 deep** and let the VH body overhang — it is carried by its two posts
+  and ~7 mm of body on the laminate, with the motor's top face 2.4 mm below; or
+* **grow the board −Y to ~20** so the header sits wholly on it. That laps the motor 13.6
+  instead of 9.6 and changes `D.TEE_BOARD_Y`, the cradle and the JLCPCB outline.
+
 ## Not verified / open
 
 1. ~~LCSC stock~~ done, above.
