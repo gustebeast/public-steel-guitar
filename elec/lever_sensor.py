@@ -136,6 +136,8 @@ def lever_sensor():
     # (MCU + transceiver + sensor), so it drops (5 - 3.3) x 0.03 = 0.05 W -- nothing.
     # A LINEAR regulator is also the right call beside a magnetic angle sensor: the buck
     # was the one switching node on this board, 15 mm from the MT6701.
+    # Pins off Diodes DS39724 rev 2-2 "Pin Descriptions", SOT25 column, read 2026-09-30:
+    #   1 VIN  2 GND  3 EN (high = on)  4 NC  5 VOUT
     u1 = Part(name="AP2112K-3.3", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST",
               tool="skidl", value="AP2112K-3.3TRG1",
               description="600 mA LDO, 5 V -> 3V3 (LCSC C51118)",
@@ -154,6 +156,7 @@ def lever_sensor():
 
     # ── CAN transceiver, SN65HVD230DR (LCSC C12084) ──────────────────────────
     # SOIC-8: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 Rs.
+    # (TI SLOS346O section 7 "Pin Functions", read 2026-09-30. Rs hard to GND = high speed.)
     can_tx, can_rx = Net("CAN_TX"), Net("CAN_RX")
     # ⚠ ref= PINNED: this part has always been U2 on the board (skidl numbered it second,
     # after the buck), and with the buck gone creation order would make it U1.
@@ -389,12 +392,21 @@ def lever_sensor():
     v33 += c_bulk[1]; gnd += c_bulk[2]
 
     # ── the sensor, MT6701QT-STD QFN-16 (LCSC C2913974) ──────────────────────
-    # Pins off MagnTek MT6701 datasheet section 1.2 (QFN-16 pin list):
+    # Pins off MagnTek MT6701 datasheet rev 1.9 section 1.2 (QFN-16 pin list), re-read
+    # 2026-09-30 and matching pin for pin:
     #   5 PUSH  6 A(SDA)  7 B(SCL)  8 Z(CSN)  9 W  11 U  12 V
     #   13 VDD  14 MODE  15 OUT  16 GND ; 1-4 and 10 are NC
-    # MODE selects ABZ against I2C/SSI. It is strapped through a resistor rather
-    # than tied, because which level selects which is a datasheet detail to
-    # confirm on the first board -- a resistor is a jumper you can move.
+    # MODE selects ABZ against I2C/SSI: HIGH = I2C/SSI, LOW = ABZ. Read off the datasheet's
+    # reference circuits (rev 1.9, fig. 18 "QFN-16 I2C": pin 14 tied to VDD; fig. 7 "ABZ":
+    # pin 14 tied to GND) -- the pin table says only "selects", so the FIGURES are the source.
+    # ⚠ Until 2026-09-30 this strap went to GND "to confirm on the first board", which is ABZ:
+    # the sensor would never have answered on I2C. The pin has a 200k pull-up of its own, so
+    # the 0R is belt and braces, and still a jumper if SSI/ABZ is ever wanted.
+    # Z/CSN (pin 8) is left open: it carries its own 200k pull-up, and high is what I2C wants
+    # (fig. 18 ties it to VDD; SSI starts on its falling edge).
+    # ⚠ EEPROM programming needs 4.5 V < VDD < 5.5 V (section 8.2). This board runs the part
+    # at 3.3 V, so zero/direction/resolution CANNOT be burned in circuit -- offsets live in
+    # the MCU, which is the architecture anyway.
     u4 = Part(name="MT6701QT-STD", ref_prefix="U", ref="U4", tag="U4", dest="NETLIST",
               tool="skidl", value="MT6701QT-STD",
               description="14-bit Hall angle encoder, sensing centre = package centre",
@@ -406,8 +418,8 @@ def lever_sensor():
                     Pin(num=17, name="EP", func=PWR)])
     v33 += u4["VDD"]; gnd += u4["GND"], u4["EP"]
     sda += u4["A_SDA"]; scl += u4["B_SCL"]
-    r_mode = _r("R", "R5", "0R", "MODE strap -- confirm polarity on the first board")
-    u4["MODE"] += r_mode[1]; gnd += r_mode[2]
+    r_mode = _r("R", "R5", "0R", "MODE strap, HIGH = I2C (datasheet fig. 18)")
+    u4["MODE"] += r_mode[1]; v33 += r_mode[2]
     c_sens = _c("C11", "100nF", "sensor decoupling")
     v33 += c_sens[1]; gnd += c_sens[2]
     for tag, net in (("R6", sda), ("R7", scl)):
@@ -472,7 +484,7 @@ BOARD_NOTES = {
         "U3": (2.50, 3.00, 0.0),
         "C9": (7.00, 4.65, 0.0),
         "C8": (9.00, 4.65, 0.0),
-        "R5": (12.50, 4.35, 0.0),
+        "R5": (12.50, 4.05, 0.0),
         "C11": (8.50, 0.85, 0.0),
         "C10": (11.00, -2.45, 0.0),
         "Y1": (0.60, -1.55, 0.0),

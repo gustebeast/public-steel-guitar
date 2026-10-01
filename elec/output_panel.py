@@ -593,6 +593,7 @@ def output_panel():
 
     boot0 += u1[63]
 
+    # (PCM1808 and PCM5102A re-read 2026-09-30, all 14 and all 20 pins: they match.)
     # ══ THE ANALOG HALF, REWIRED FROM TI'S DATASHEETS (2026-09-21) ══════════════════════
     # The 2026-09-17 audit found it unbuildable: both converters' pinouts invented, the DAC on
     # 5 V (abs max 3.9), the ADC's SCKI tied to BCK, and both buffers unable to go below
@@ -673,6 +674,10 @@ def output_panel():
     # read the table): 1 OVCUR# 2 NC 3 XO 4 XI 5 DM4 6 DP4 7 DM3 8 DP3 9 DM2 10 DP2
     # 11 DM1 12 DP1 13 LED3/SCL 14 DMU 15 DPU 16 RESET# 17 NC 18 NC 19 V5 20 VDD33
     # 21 LED4/SDA 22 LED1/PSELF 23 LED2/PGANG 24 PWREN#, EP = GND.
+    # Re-read 2026-09-30 against V2.91 (LCSC's copy for C5187527): every pin this board USES
+    # is unchanged. One label moved: V2.91 lists pin 18 as PSELF, not NC (17 and 2 stay NC).
+    # It has its own pull-up and open = self-powered, which is what this board is, so
+    # leaving it on its own net is still right -- but do NOT ground it as a "spare NC".
     # Powered at 3.3 V on BOTH V5 ("5V or 3.3V power input") and VDD33 ("LDO output and
     # 3.3V input"). RESET# has its own pull-up and WCH says leave it open; PSELF and PGANG
     # default high (self-powered, ganged) through their own pull-ups -- both what this board
@@ -770,6 +775,8 @@ def output_panel():
     ring_att = Net("RING_ATT")
     dac_r_filt = Net("DAC_R_FILT")
     u7_in, pk_in, vmid = Net("OUT_BUF_IN"), Net("PICKUP_IN"), Net("VMID")
+    # TLV9061IDBVR x4 (U7, U8, U9, U11). Pins off TI SBOS839N Table 5-1, SOT-23 column,
+    # read 2026-09-30: 1 OUT  2 V-  3 IN+  4 IN-  5 V+. (The SC70 and X2SON columns differ.)
     u7 = Part(name="OPAMP", ref_prefix="U", ref="U7", tag="U7", dest="NETLIST", tool="skidl",
               value="TLV9061IDBVR", description="output buffer -- drives the TS jack",
               footprint="Package_TO_SOT_SMD:SOT-23-5",
@@ -989,6 +996,9 @@ def output_panel():
     direct += k1[7]
     ring_att += k1[5]
     ring_sel += k1[6]
+    # AO3400A SOT-23: 1 G  2 S  3 D -- AOS datasheet rev 3 p.1 package drawing (D alone on
+    # its side, G at the pin-1 dot), read 2026-09-30. K1 re-read the same day off Omron's
+    # G6K-2F-Y terminal diagram (p. B-83): matches the list above, contact for contact.
     q1 = Part(name="Q_NMOS", ref_prefix="Q", tag="Q1", dest="NETLIST", tool="skidl",
               value="AO3400A", description="relay coil driver (LCSC C20917)",
               footprint="Package_TO_SOT_SMD:SOT-23",

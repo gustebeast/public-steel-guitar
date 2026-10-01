@@ -10,6 +10,9 @@ a stale marker, striking the marker is part of the work.
 
 | thing | state |
 |---|---|
+| ✅ **PINOUT AUDIT COMPLETE 2026-09-30** — 14 part types read against datasheets, 2 faults | LMR33630 (fixed `c01c8ba`) and **the MT6701 `MODE` strap**: it went to GND = ABZ, so no lever sensor would have answered on I2C. R5 now to +3V3 (datasheet rev 1.9 fig. 18). Everything else matches; CH334F pin 18 is PSELF not NC (harmless open). Table in `docs/board-bringup-diagnostics.md` §0. Datasheets fetch cleanly via `wmsc.lcsc.com/ftps/wm/product/detail?productCode=Cxxxx` → `pdfUrl`; `fitz` renders pages when the pin diagram is a drawing |
+| ✅ lever_sensor routed with the strap fixed: **0 unconnected, 0 violations**, `audit_board` all checks pass | first try left NRST open (U3.4 sits between the two crystal pins, crystal one way and C7 the other, so the F.Cu crossing is inherent and the router must find the hop; `--rounds 2` did not). R5 moved 0.3 mm toward the chip — `(12.50, 4.05)` — and it closes in ONE pass. Still a re-roll, not a cure: the next netlist change may reopen it
+| lever_sensor CAD check: 18/23 parts, C1 C7 D2 D3 R6 MISSING from the CAD | pre-existing (HEAD geom has all five) and the lever CAD is branner's — handed over, not touched |
 | optical route | ✅ **0 unconnected / 0 unexpected violations**, `audit_board` all checks pass. 166/166 multi-pin nets carry copper, 21/21 declared repairs found and re-measured against the pours. `optical.best-0net.kicad_pcb`, committed at `f031f83` |
 | VDDIO (`U7.9`) | ✅ **CLOSED** — by a bypass cap at the pin (`C119`), not a via or a repair. No via fitted at any size and escape vias made the edge worse |
 | `ULPI_D5` | ✅ **CLOSED** — C119's first position took its escape lane (0.5 mm pitch vs a 1.010 mm courtyard); a 1 mm nudge outward recovered it |
