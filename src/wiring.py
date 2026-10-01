@@ -131,7 +131,9 @@ CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
 # as a flat set at 1.8, which clears the fattest neighbours (O1.8 beside O1.3 needs 1.55):
 # ...IN THE CONNECTOR'S OWN PIN ORDER (GND, 24 V, CAN-H, CAN-L on 1-4 / 5-8 -- can_tee J1),
 # so each conductor runs from its own pin to its own lane without crossing a neighbour.
-TRUNK_OFF = {"gnd": -2.7, "hot": -0.9, "canh": 0.9, "canl": 2.7}
+# (2026-10-01: all four runs share one height now -- see TRUNK_Z_RUN -- so the two O1.8
+#  power conductors need 2.0 between them, not 1.8, which had them tangent. Same 5.4 span.)
+TRUNK_OFF = {"gnd": -2.8, "hot": -0.8, "canh": 1.0, "canl": 2.6}
 # ...and each LANDS on its own pin. All of them used to end on the 8-way's centre, so the
 # cables arriving at a tee and leaving it ran through each other for 10-20 mm (nine pairs in
 # check_cable_pairs, the worst 9.5 mm3). In on 1-4 from the WEST, out on 5-8 to the EAST.
@@ -145,13 +147,23 @@ TRUNK_PIN = {_CAD_NAME[n]: i + 1 for i, n in enumerate(EH.XH_PINOUT)}
 assert set(TRUNK_PIN) == set(TRUNK_OFF), (
     "elec.harness.XH_PINOUT names a circuit this trunk has no lane for: %s"
     % (set(TRUNK_PIN) ^ set(TRUNK_OFF)))
-# ...and at its own HEIGHT between tees. With the same pin order at both ends, the four
-# conductors have to cross over one another near one connector or the other -- a crimped
-# harness of discrete wires does exactly that, one lying over the next -- and a model can only
-# show that as a height difference. 2.0 steps clear the fattest pair (O1.8 + O1.8), and the
-# stack starts 0.8 under the mouth, no lower: the bays' side walls stand to -25.45 (SEAT_TOP),
-# and a ground lane 3.0 under the mouth sat in all nine of them.
-TRUNK_DZ = {"gnd": -0.8, "hot": 1.2, "canh": 3.2, "canl": 5.2}
+# ...and the four have to CROSS once per hop. With the same pin order at both ends, the
+# flat set that leaves one connector without crossing arrives at the next in the wrong
+# order -- a crimped harness does exactly that, one wire lying over the next.
+#
+# ⚠ TWO LEVELS, NOT FOUR, AND NOTHING ABOVE THE PLUG (user, 2026-10-01: the plugs on the
+# tee boards are the real +Z extent of the harness, -19.65). This used to give every
+# conductor its own height (-0.8, 1.2, 3.2, 5.2 off the mouth), which stood CAN-L 2.5 mm
+# above the housing it leaves; a harness cannot do that, and the fret board's retainer
+# strip was being designed round a wire that is not there.
+#   RUN   every X run, and the leg out of the hop's WEST connector, lie side by side on
+#         their lanes at one height -- that end needs no crossing (the west-most pin
+#         takes the far lane);
+#   OVER  at the EAST connector each conductor rises at the end of its own lane and
+#         crosses the others' runs one level up, in to its pin.
+# 2.0 between the levels clears the fattest pair (O1.8 over O1.8). RUN is 0.8 under the
+# mouth, no lower: the bays' side walls stand to -25.45 (SEAT_TOP).
+TRUNK_Z_RUN, TRUNK_Z_OVER = -0.8, 1.2
 _XH_PITCH = 2.5
 PWR_OFF = 1.0         # 24 V hot/gnd separation. In X on the bank hops (see _seg) and in Z
                       # along the -Y corridor, where the pair rides one lane each. 2.0 apart
@@ -667,7 +679,7 @@ def _on_bank(p):
     return p[2] > HDR_Z + 20.0          # a tee on a motor sits far above the rail lanes
 
 
-def _seg(a, b, lane_z, d=WIRE_D, off=0.0, a_pin=None, b_pin=None, dz=0.0):
+def _seg(a, b, lane_z, d=WIRE_D, off=0.0, a_pin=None, b_pin=None):
     """One crimped trunk SEGMENT between two tee headers, each a 3D point (tee_point).
 
     Two tees ON THE BANK fly to each other at TOP_Z, over the motors. A segment with a RAIL
@@ -688,12 +700,14 @@ def _seg(a, b, lane_z, d=WIRE_D, off=0.0, a_pin=None, b_pin=None, dz=0.0):
         # leaving a connector lie side by side, not through each other.
         _lean = 2.0 if b[0] >= a[0] else -2.0
         if a_pin is not None and b_pin is not None:
-            # PIN TO PIN: straight out of each pin's own contact, then along its own lane at
-            # its own height (TRUNK_DZ) -- see TRUNK_PIN for why
-            z = a[2] + dz
+            # PIN TO PIN: out of the WEST pin and along its own lane at the RUN level, then
+            # up and OVER the other three into the EAST pin -- see TRUNK_Z_RUN
+            zr, zo = a[2] + TRUNK_Z_RUN, a[2] + TRUNK_Z_OVER
             ly = lane + off
-            return _wire([a_pin, (a_pin[0], a_pin[1] - 1.5, z), (a_pin[0], ly, z),
-                          (b_pin[0], ly, z), (b_pin[0], b_pin[1] - 1.5, z), b_pin], d)
+            w, e = (a_pin, b_pin) if a_pin[0] <= b_pin[0] else (b_pin, a_pin)
+            pts = [w, (w[0], w[1] - 1.5, zr), (w[0], ly, zr), (e[0], ly, zr),
+                   (e[0], ly, zo), (e[0], e[1] - 1.5, zo), e]
+            return _wire(pts if w is a_pin else pts[::-1], d)
         pts = [a, (a[0] + _lean, lane, a[2]), (b[0] - _lean, lane, b[2]), b]
     elif _on_bank(a) or _on_bank(b):
         t, r = (a, b) if _on_bank(a) else (b, a)          # t on the bank, r on the rail
@@ -767,8 +781,8 @@ def build_wires():
     def _pin(i, cond, out):
         return tee_pin(i, tees[i][0], tees[i][1], cond, out)
 
-    assert _w0[2] + TRUNK_DZ["gnd"] - WIRE_OD["wire_pwr_gnd"] / 2 > MB.SEAT_TOP + 0.3, (
-        "the trunk's ground lane has come down into the bay walls (SEAT_TOP)")
+    assert _w0[2] + TRUNK_Z_RUN - WIRE_OD["wire_pwr_gnd"] / 2 > MB.SEAT_TOP + 0.3, (
+        "the trunk's run level has come down into the bay walls (SEAT_TOP)")
 
     for _sfx, _co in (("h", -CAN_OFF), ("l", CAN_OFF)):
         _od = WIRE_OD[f"wire_can{_sfx}"]
@@ -782,8 +796,7 @@ def build_wires():
                         _seg(hdrA[west[k]], hdrA[west[k + 1]], LANE_CAN, _od,
                              off=TRUNK_OFF["can" + _sfx],
                              a_pin=_pin(west[k], "can" + _sfx, True),
-                             b_pin=_pin(west[k + 1], "can" + _sfx, False),
-                             dz=TRUNK_DZ["can" + _sfx])))
+                             b_pin=_pin(west[k + 1], "can" + _sfx, False))))
 
     # bus A drops: each motor's factory 4-pin XH pigtail (grey), from its -Y-facing PCB to its
     # OWN tee. For the nine tees on motors that is a short climb up behind the motor and over
@@ -1013,7 +1026,7 @@ def build_wires():
                         _seg(hdrA[west[k + 1]], hdrA[west[k]], LANE_PWR, WIRE_OD[_nm],
                              off=TRUNK_OFF[_cond],
                              a_pin=_pin(west[k + 1], _cond, False),
-                             b_pin=_pin(west[k], _cond, True), dz=TRUNK_DZ[_cond])))
+                             b_pin=_pin(west[k], _cond, True))))
         # _1 is vacant: it was the hop from tee 10 onto the rail, and tee 10 is gone.
         # the tail pair spaced like the others -- an X offset alone left its X-running leg
         # with both conductors on one line (98.5 mm3, on the committed model)
