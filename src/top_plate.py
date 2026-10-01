@@ -589,7 +589,7 @@ def _band(xa, xb, *, ui=False, cells=False):
         # ...and the seam pogos' notches through key's end wall go AFTER every union
         # that could refill them (docs: endplate cut order)
         comb = (FL.walls(xb, xa).union(FL.ramps(xb, xa))
-                .union(FL.edge_walls(xb, xa)).cut(FL.strip_groove(xb, xa)))
+                .union(FL.edge_walls(xb, xa)))
         notch = FL.pogo_notches(xb, xa)        # empty on the mid panel: no wall there
         if notch.vals():
             comb = comb.cut(notch)

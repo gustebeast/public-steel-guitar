@@ -1000,6 +1000,41 @@ the probe finding a collision and stepping round it, so it can see one).
 **What it does not prove:** the 0.10 seat is arithmetic on nominal parts. The board's
 outline tolerance and the print's go straight into it, and it wants one printed coupon.
 
+## 8.10 No loose parts: the strip goes, the M4 moves to +Y, and it is a ScrewJoint (2026-10-01)
+
+> "this retention piece on the +y side is both unprintable and not doing anything"
+> "The screws should be on the opposite side from the supported side, so on +y given the
+> -y lip you have now"
+> "You need to use cadkit's screw system which adds fitted inserts" (user)
+
+Three corrections, all to things 8.7 - 8.9 shipped.
+
+**The strip's groove could never be printed.** Its lower jaw is a flat ledge hanging
+inboard off the edge wall, in a deck that prints -Z -- the same overhang 8.9 gave the lip a
+45 degree ramp to avoid, left standing on the other edge. It was in every version since
+8.7. With the M4 on that side the strip has no job either, so the strip, its groove and
+the wall below the board's underside are all gone: the +Y wall is now a plain face beside
+the board's 1.60 of edge, flush with its underside.
+
+**The M4 is on +Y, at y 31.50, on both boards.** The lip carries -Y; the screw belongs on
+the edge that is otherwise free. Not at 28: the deck boss is O9.2 on the board's TOP face
+and mid's +Y seam lane puts a pogo barrel out to y 26.45. At 31.50 the boss clears it by
+0.45, the O4.50 hole keeps 1.45 of laminate to the board's edge, and the head laps 0.10
+past the edge under the wall's flush underside. On key the supply column stood exactly
+there, so it is turned half a turn, as one rigid body, into the -Y half -- a turn, not a
+mirror, so every part keeps the neighbours its loop needs.
+
+**The screw is a `cadkit.fasteners.ScrewJoint`** (`fret_light.m4_joint`): entry at the
+board's underside, M4 x 10, insert pocket opening on the boss's bottom face, 8.40 of bite,
+hole blind 2.0 past the tip. The boss cuts `joint.cutter(PIECE_UP)` and the assembly draws
+`joint.dummies()` -- screw AND heat-set insert, which the hand-placed version never had.
+
+⚠ **WHAT THIS LEAVES OPEN: the +Y edge is held at ONE point.** The M4 is in the bay at the
+board's -X end; the far +Y corner is 206 mm away with only the board's torsion under it,
+roughly 0.2 - 0.3 mm of droop there by estimate, not measurement. A second M4 at the far
+end is the fix if a printed panel shows light under fret 24's wall -- and that end has no
+bay, so it would stand in a cell.
+
 # 9. THE BOARDS (2026-09-29)
 
 `elec/fret_led.py`, one module, two boards, designed to the same bar as the other seven:
