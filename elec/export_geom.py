@@ -22,7 +22,8 @@ This file is the other direction: it reads what KiCad actually placed.
 
 FRAME: board-centred millimetres, +X right, +Y UP (KiCad's Y is down; flipped here so
 the numbers are the ones src/ uses). "fab" is the part's F.Fab outline -- the drawn
-BODY -- and "crtyd" its courtyard. A footprint with no F.Fab gets null and the CAD has to
+BODY -- and "crtyd" its courtyard. "x"/"y" are the footprint's ORIGIN and "pads_xy" its
+pad centroid, which is what the board modules place by; they differ for asymmetric pads. A footprint with no F.Fab gets null and the CAD has to
 say what to do about it rather than quietly use the courtyard.
 """
 import json
@@ -91,11 +92,22 @@ def export(stem):
     out["holes"] = [_pts(polys.Hole(0, h)) for h in range(polys.HoleCount(0))]
     for fp in board.GetFootprints():
         p = fp.GetPosition()
+        # ...AND THE PAD CENTROID, because that is the coordinate the BOARD MODULES place
+        # by (layout._anchor_on_pads), while "x"/"y" below are the footprint's ORIGIN --
+        # wherever its author put it. The two agree for a two-pad passive and do not for
+        # anything with asymmetric pads: 0.228 mm on a SOT-23-5, 3.75 on a JST header.
+        # Without this, a checker comparing a board module's request to the finished board
+        # is comparing two conventions and reports a difference that is not one.
+        _pads = list(fp.Pads())
+        _pc = ([round(sum(q.GetPosition().x for q in _pads) / len(_pads) / 1e6 - cx, 3),
+                round(-(sum(q.GetPosition().y for q in _pads) / len(_pads) / 1e6 - cy), 3)]
+               if _pads else None)
         out["footprints"].append({
             "ref": fp.GetReference(),
             "fpid": fp.GetFPIDAsString(),
             "x": round(p.x / 1e6 - cx, 3),
             "y": round(-(p.y / 1e6 - cy), 3),
+            "pads_xy": _pc,
             "rot": round(fp.GetOrientationDegrees(), 3),
             "side": "B" if fp.IsFlipped() else "F",
             "fab": _bbox(fp, "B.Fab" if fp.IsFlipped() else "F.Fab", cx, cy),

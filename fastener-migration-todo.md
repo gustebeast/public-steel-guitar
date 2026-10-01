@@ -27,47 +27,28 @@ Gates at `7121240`: `check_overlaps --full` green (1 inherited: `chassis_0 ↔ w
 
 ---
 
-## 1. Knee lever / foot pedal (needs a design decision)
+## 1. Knee lever / foot pedal
 
 These parts are shared by the left knee lever (`src/knee_lever.py`), the vertical knee lever (`src/knee_lever_vert.py`) and the foot pedal (`src/foot_pedal.py`), via `KL.feel_dummies` and `KL.cut_axle_bore`.
 
-### 1a. Spring-tension set screws: M4 cup-tip, **2 mm key**, 2 per housing
+### 1a. Feel-cartridge screws: DONE (2026-09-30)
 
-The screw threads an insert in the cartridge back wall (`HS_BACK_X`), and its cup pushes the guide post to set coil preload. A key reaches it **through the hollow printed backstop** (`_cart_backstop`, bore `HS_BSTOP_BORE` = 5.0). The backstop sets the cartridge's X home. The two adjustments must stay independent.
+All four screws per control (2 POSITION + 2 SPRING-TENSION) are **M4 × 10 button heads** in the same inserts.
 
-**Why a plain M4 button head doesn't fit:**
+- **Position:** head out, on its washer at the bottom of a 3.1-deep recess in the housing's rear wall (`HS_POS_RECESS`); key through a Ø3.4 way.
+- **Tension:** head out, riding a Ø8.4 way through the rear wall (`HS_HEAD_WAY_D`).
+- **Cost:** the rear wall is 6.4 (was 4.2) so no head ever stands out of the housing: every housing is **2.2 longer in −X**. Preload range is **4.2** (was 4.8).
+- **The 1.44 mm "leg clearance" on the old +X extent was never a constant or an assert** and is still unverified. Check it against the longer housing.
 
-- The head would have to sit outboard of the backstop flange. That face is the housing's +X extent (x 76.80 in the build frame).
-- A comment says only **1.44 mm** of leg clearance remains there. That number is **not** a constant or an assert, and it doesn't say whose leg (the instrument's or the player's). **Verify it.**
+### 1b. Axle axial retention: DONE (2026-09-30)
 
-**Why a button-head backstop beside a button-head tension screw doesn't fit (the user's idea, checked):**
+One **M4 × 10 button head + Ø9 M4 washer in the axle's −Y end** (`AXLE_END_PROUD`, `AXLE_TAP_L`). The washer laps the −Y bearing's inner race; the tip stands 0.2 proud so the screw seats on the axle and preloads nothing. It forms its own thread (an insert is Ø6 in a Ø8 shaft). The hub carries no fastener.
 
-1. Two solid screws can't share an axis, so the backstop would sit beside the tension screw's Ø8.4 head counterbore.
-2. Clearing that counterbore needs **≥ 6.4 mm between the two axes** (4.2 counterbore radius + 2.2 shank clearance).
-3. The backstop tip must still land on the cartridge back face: 10.5 wide (`HS_CART_WY`), spanning −3.0 / +5.0 about the coil axis (floor 3.8, cap top 11.8, axis 6.8).
-4. The farthest off-axis a Ø4 shank's centre can land on that face is about **4.4 mm**, so it misses.
-
-**Options:**
-
-- **(a)** Give the cartridge back a **tab** reaching past the counterbore, for a button-head backstop to land on. The Z room in the housing back wall is **unmeasured**. The cartridge is authored in a build frame and placed by `feel_place` (mirror YZ, +`_FEEL_DZ`), so measure in the placed frame.
-- **(b)** Keep the printed hollow backstop, and make the tension screw an **M5 set screw** (2.5 mm hex; the key passes the Ø5 bore). An M5 insert leaves about 1.75 mm of wall in the 10.5 cartridge back; confirm against the real insert OD. This costs a second insert SKU, which the priority order allows. *Recommended in-session as the smallest change.*
-- **(c)** Leave the M4 grub as a documented 2 mm exception.
-
-### 1b. Axle axial retention: M2 set screw, **0.9 mm key** (lever hub, onto the D-flat)
-
-- **Where:** `AXLE_SET_*` block and `cut_axle_bore` in `knee_lever.py` (~line 960).
-- **Why no M4:** the hub wall over the flat is 3.2 thick.
-- **What already stops what:** the +Y axle flange (`AXLE_SHOULDER_Y`) stops −Y travel against the housing contact rib. **+Y** travel is what the grub prevents.
-- **Why the +Y end can't be the stop:** the magnet cap turns with the axle, and the sensor chip is only `AIR_GAP` = 1.5 beyond the magnet.
-
-**Options:**
-
-- A **printed threaded cap on the −Y journal** that clamps the −Y bearing's inner race (a standard shaft-nut arrangement). This needs the −Y pocket's blind back wall (about 0.7 thick, −13.2 → −13.90) opened. It's unverified what sits −Y of the housing, and whether the knee-depth Y slide leaves room.
-- Keep the M2 as a documented exception.
+- **Head stands 3.2 proud of the housing's −Y face.** Nothing is there on LKL; re-check per pose.
 
 ### 1c. Depth lock (not built yet)
 
-- **Plan of record:** an M2 self-tapping set screw up through the housing top (`knee_lever.py` ~line 485; `chassis.py` ~line 318 comment).
+- **No plan of record.** The M2 set screw is out (no M2 anywhere).
 - **Constraint:** an M4 was already ruled out (the W=6 octagon leaves a 2 mm rib side column).
 - **Next step:** design it without a screw, or find another spot for an M4, when it lands.
 
@@ -151,7 +132,6 @@ For now these have **no fasteners and no plastic retention**, only plain support
   - Missing: 10 belt-tensioner insert-nuts, 2 optical grips, knee/pedal tension inserts.
   - **Recount before ordering.**
 - **Row "M4 mount screw":** the leg-sleeve pinch note waits on brenner's rework.
-- **Row "M2 grub screw":** knee-lever axle, pending §1b.
 - **NEMA17 motor screws, M3×10:** derived as the 6.4 plate plus 3.6 of thread. **The SERVO42D tap depth is unmeasured**; check one motor.
 - **Confirm stocked lengths at purchase:** M4×10, ×12, ×18 (16/20 are the common neighbours), ×20, ×35 button heads.
 
