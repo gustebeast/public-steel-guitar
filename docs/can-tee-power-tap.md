@@ -314,3 +314,33 @@ respin, so it is NOT started. What stands on its own, whatever is chosen:
 simultaneous slewing at six motors (5.5 A / 0.8 A, rounded down), or measure the real
 per-motor current first — the 0.8 A is still derived, not measured, and if a real move
 draws 0.5 A the merged tee already covers all ten.
+
+## The budget the instrument already has (2026-10-01) — and what it does to this question
+
+I had been sizing against "all ten motors moving, 8 A". That case does not exist:
+
+| limit | value | source |
+|---|---|---|
+| PSU | **6.5 A** (Mean Well LRS-150-24, 156 W) — for the WHOLE instrument, not just the motors | BOM `psu_24v_150w` |
+| the design budget for the motor bus | **< 5 A, fleet slew staggered** | BOM, 24 V bus row and its notes |
+| the merged tee's trunk contact, with the 54 / 46 dual feed | 3 A / 0.54 = **5.5 A** total | this doc + BOM dual-feed section |
+
+So the tee's single 3 A contact is NOT below the budget: at the budgeted 5 A the worst
+contact (east-most tee) carries **2.7 A of its 3 A**, and the supply itself gives out at
+6.5 A before a 6 A trunk would matter. The 8 A figure was ten motors × the derived 0.8 A —
+more than the PSU can deliver.
+
+What that leaves, honestly:
+* **The merged tee meets the documented budget, with 10 % margin on the worst contact**
+  — and only because the dual feed and the motor board's 2 mm bar are both in (before the
+  bar it was 64 / 36: 3.2 A at 5 A, over).
+* The budget itself is a FIRMWARE promise ("staggered"). Nothing in hardware enforces it,
+  and 0.8 A per moving motor is still unmeasured. The cap that keeps the worst contact at
+  3 A is 5.5 A, i.e. six motors at 0.8 A.
+* A power-only 8-way (6b) would raise the trunk to 6 A — more than the PSU's share for the
+  motors — so it buys margin, not capability. Not worth ten made-up cables on its own.
+
+**Recommendation, settled unless the user wants the margin:** keep the merged tee; write
+the stagger cap into the motor controller firmware as a hard limit (≤ 5 A commanded, six
+movers at the derived figure) and measure one motor's real slew current at bring-up
+(`docs/board-bringup-diagnostics.md`), which is the number every line above leans on.
