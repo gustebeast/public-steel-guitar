@@ -286,3 +286,31 @@ header on the other nine motors must be left OPEN; that is an INSTALL_NOTES line
 is built. The near end stays where it is, on the motor controller.
 
 Remaining before build: the 2 × AWG 26 test crimp. Nothing else is open.
+
+### 6b: two costs I had not counted (2026-10-01, on reading the harness model)
+
+Before touching the real board I read how the drop is actually made, and 6b is NOT the
+board-only change the section above makes it sound like:
+
+1. **The drop is the SERVO42D's FACTORY pigtail** (`motor_pigtail_N`; BOM: "over their
+   native XH pigtails — power AND CAN"). Its contacts are already crimped, so the CAN pair
+   cannot be double-crimped into it. 6b means REPLACING the pigtail with a made-up cable:
+   XHP-6 at the motor, two power wires to an XHP-2 on the tee, and the trunk pair
+   double-crimped into its H and L. Ten more cables to make, and the factory part unused.
+2. **The CAN trunk moves, and other agents designed against where it is.** `fret_light.py`
+   and `ui_panel.py` (brenner's) both take `wire_canl`'s height over the motor bank
+   (top −17.15) as their cable floor. A motor-to-motor CAN pair runs at the motors' backs
+   instead — probably lower and better for them, but it is their clearance to re-derive,
+   not mine to move under them.
+
+Neither kills it. Both make it a harness decision across three agents rather than a tee
+respin, so it is NOT started. What stands on its own, whatever is chosen:
+
+* the merged tee's limit is one 3 A contact per rail, ~5.5 A total with the 54 / 46 feed;
+* a tee whose 8-way is power-only (6 A) routes clean in today's outline;
+* the last motor can terminate the bus itself (R13 / SW1).
+
+**The cheapest thing that fixes the limit with NO harness change at all is firmware:** cap
+simultaneous slewing at six motors (5.5 A / 0.8 A, rounded down), or measure the real
+per-motor current first — the 0.8 A is still derived, not measured, and if a real move
+draws 0.5 A the merged tee already covers all ten.
