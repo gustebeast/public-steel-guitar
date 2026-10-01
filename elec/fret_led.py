@@ -654,7 +654,7 @@ BOARD_NOTES = {
 if __name__ == "__main__":
     tot_z = tot_d = 0
     for panel in ("mid", "key"):
-        z, d = build(panel, -28.0)
+        z, d = build(panel, FL.M4_Y[panel])     # deck geometry: read, not retyped
         tot_z += z
         tot_d += d
     print("%d zones, %d channels, %d drivers, %.2f A at %.0f V all-white"
