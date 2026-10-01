@@ -665,29 +665,31 @@ used everywhere else on the instrument.
 
 ## Fret lighting boards (2026-09-30)
 
-Each fret board is retained by two RETAINER STRIPS, not by tabs and not by the screw
-alone. Assemble the panel **face down on the bench**, before it goes on the instrument.
+Each fret board hooks under a fixed LIP along its -Y edge and is closed by ONE loose
+retainer strip along its +Y edge (docs/fret-led.md 8.9). Assemble the panel **face down on
+the bench**, before it goes on the instrument.
 
 1. **Lay the panel deck-face down.** The comb points up at you.
-2. **Drop the board into the comb**, LEDs into their cells. Gravity seats it against the
-   cell walls -- that is the +Z datum and it needs no force.
-3. **Slide a retainer strip along each long edge**, into the groove in the edge wall. They
-   go in along X from either end and trap the board's underside.
-4. **Fit the M4** through the board into the deck boss at the bay end.
-5. Turn the panel over and install it.
+2. **Tilt the board in.** Hold it about 15 degrees off flat with its -Y edge low, tuck that
+   edge under the lip, and swing the +Y edge down until the board lies on the cell walls,
+   LEDs in their cells. On the keyhead board the six seam plungers drop into their notches
+   in the end wall as it comes flat.
+3. **Push the board against the +Y wall.** That wall is the board's sideways datum -- on
+   both boards, which is what lines the seam pogos up.
+4. **Slide the retainer strip along the +Y edge**, into the groove in the edge wall. It goes
+   in along X from either end and traps the board's underside.
+5. **Fit the M4** through the board into the deck boss at the bay end.
+6. Turn the panel over and install it.
 
 ⚠ **THE BOARD MUST NOT BE SLID ALONG X ONCE IT IS SEATED.** An LED and a cell wall share
 the same Z band, so any X motion drives every LED into a wall -- fret 24's cell allows the
 LED 1.27 mm and that is the whole budget. The strips move; the board does not. This is why
 the earlier lift-and-shift tab scheme was retracted (docs/fret-led.md 8.6).
 
-⚠ **THE MID PANEL TAKES ONE STRIP, THE KEYHEAD PANEL TWO.** The CAN trunk runs diagonally
-under the boards and leaves only 1.00 mm under the mid panel's -Y edge, which is not enough
-for a groove (docs/fret-led.md 8.7). Mid's single strip goes on its **+Y** edge. That is
-sufficient on its own -- it turns the 206 mm cantilever into the board's 70.4 mm width and
-deflection goes as the fourth power, so the unsupported edge droops about 15 um.
+**Both long edges are carried on both panels**: the lip on -Y, the strip on +Y. Either
+alone is a hinge, not a clamp, and a board held along one edge can swing about it.
 
-All three strips are the same section, 1.60 thick, cut to their panel's board length.
+The two strips are the same section, 1.60 thick, cut to their panel's board length.
 
 ## Set the pickup's retention screw on the bench, before the pickup piece goes in
 

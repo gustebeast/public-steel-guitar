@@ -917,6 +917,89 @@ down with no orientation to get wrong. In exchange: no notches in either board, 
 
 ---
 
+## 8.8 FOUR strips: the plugs are the floor, and the boards go up 0.40 (2026-10-01)
+
+> "The wiring isn't modeled accurately, the plugs on the boards are the actual +z extents"
+> "I don't like the idea of having a super narrow clearance there anyway. Could we instead
+> move the LEDs slightly +z so there is room for the -y clamp?" ... "1.6 min" (user)
+
+**8.7's table was measured against a drawing error.** Its 1.00 mm under mid's -Y edge was
+`wire_canl_6/7`, and its 5.30 under key's was the motor pigtails -- both the wire MODEL,
+which `src/wiring.py` draws 2.5 mm above the plugs it lands in (8.1 said so and designed to
+it anyway). Re-probed against real parts only, `tools/_probe_fret_tab.py --no-wires`:
+
+    mid -Y           tee_pcb_6 / tee_pcb_7 mated plugs, top -19.65
+    the other three  clear for the full 6.00 probed
+
+So the Z stack is now built UP from the plugs, not down from a cable:
+
+| | | |
+|---|--:|---|
+| tee plugs, top | -19.65 | `TEE_TOP` |
+| sliding clearance | 1.50 | the panel slides over them; the board's own rule, applied to the wall |
+| edge wall's floor under the groove | 0.80 | one bead |
+| retainer strip | **1.60** | the user's minimum |
+| **board underside** | **-15.75** | was -16.15 |
+
+**0.40 up, and what it costs is small**: optical depth 17.75 -> 17.35, and the model's
+min/max along a fret goes 0.875 -> 0.864 (1.143 -> 1.157 : 1).
+
+**All four edges carry a full 1.60 strip**, asserted at import. That also retires 8.7's
+"one strip is enough": the argument was cantilever stiffness (15 um), which treats the
+strip as built-in. It is a hinge -- 2.30 of lap with clearance in a groove -- so a board
+held along one edge rotates about it, and mid's free edge was really being held by the M4
+at one end and the board's torsion over 206 mm (roughly 0.2 - 0.3 mm at the far corner,
+estimated, never measured). Two strips make it a plate supported on both long edges.
+
+**Mid's M4 is back at y -28.** It moved to -30 in 9.1f to keep its head out of
+`wire_canl_5` -- the same model error -- and at -30 the head would sit 0.6 into the new
+-Y strip. At -28 it clears the strip by 1.40.
+
+⚠ **The scoped gate is RED on `wire_*` pairs until `wiring.py` is corrected**, and only on
+those: the -Y edge wall now hangs to -18.15 through where the trunk is drawn. The lead has
+routed the wire-model fix to bronner; this is held unsubmitted until it lands.
+
+## 8.9 The tilt-in lip: one loose strip a board, and a Y datum for the seam (2026-10-01)
+
+> "For the +x board we could slot it into a slot running along x on the +y side while
+> it's angled towards -z -y and then rotate it back to flat." ... "Can you build the tilt
+> in slot on both?" (user)
+
+Built on both boards, on the **-Y** edge of each, with the loose 1.60 strip kept on +Y.
+
+**Why the lip is a ramp, and why that decides which edge.** A flat lip is an unsupported
+overhang in the deck's -Z print direction, so the bearing face is a 45 degree ramp off the
+wall -- the foot-light rule. A board resting on a slope walks sideways until something
+stops it. So that is made the design: the **+Y wall stands at the board's nominal edge**
+and all 0.60 of lateral play is on the hinge side, and the ramp wedges the board against
++Y and up against the cell walls.
+
+⚠ **BOTH BOARDS HINGE ON THE SAME EDGE, OR THE SEAM POGOS MISS.** The user's sketch had mid
+hinged on +Y. Each board wedges AWAY from its lip, so opposite hinges put the two boards
+0.60 apart in Y and the plungers tip to tip by that much. Same edge, same datum -- and -Y
+is the one, because key's plungers have to enter their notches as the board swings flat:
+hinged on -Y the nearest is 30 mm from the axis and drifts ~0.4 sideways on the way in
+(0.50 of float); hinged on +Y the nearest is 10 mm away and drifts ~1.2.
+
+| | |
+|---|--:|
+| ramp reach from the hinge wall | 2.10 = 0.60 play + 1.50 lap |
+| ramp start above the board's underside, at the wall | 0.50 |
+| board carried, nominal / 0.2 narrow / 0.1 wide | 0.10 low / 0.30 low / wedged tight |
+| lip depth below the board | 2.40 -- the same as a strip and its floor |
+
+That depth is exactly what mid's -Y edge has over the tee plugs with 1.50 of sliding
+clearance (8.8), which is why the lap is 1.50 and not the strip's 2.30.
+
+**The stroke was swept, not assumed.** `tools/_probe_tilt.py` poses the whole board --
+laminate, every routed body, LEDs, its six plungers -- at 15, 10, 7, 5, 3, 2, 1, 0.5 and 0
+degrees and intersects it with the panel's comb as `top_plate` builds it. Both boards: a
+clear pose at every angle, the steep ones needing 0.2 - 0.4 of inboard offset (which is
+the probe finding a collision and stepping round it, so it can see one).
+
+**What it does not prove:** the 0.10 seat is arithmetic on nominal parts. The board's
+outline tolerance and the print's go straight into it, and it wants one printed coupon.
+
 # 9. THE BOARDS (2026-09-29)
 
 `elec/fret_led.py`, one module, two boards, designed to the same bar as the other seven:

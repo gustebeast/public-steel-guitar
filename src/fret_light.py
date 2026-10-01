@@ -107,13 +107,27 @@ TEE_TOP   = -19.65                 # highest STRUCTURE under the fret field
 # Measured -- the tee board's own top face is -26.65, its side-entry XH plus a MATED plug
 # is XH_SIDE_H 7.00 on top of that, so the real envelope ends at -19.65. wire_canl runs to
 # -17.15, TWO AND A HALF MILLIMETRES ABOVE ITS OWN PLUG, because src/wiring.py stacks the
-# trunk's four conductors in Z (TRUNK_DZ: gnd -0.8, hot 1.2, canh 3.2, canl 5.2) and canl
+# trunk's four conductors in Z (its old TRUNK_DZ: gnd -0.8, hot 1.2, canh 3.2, canl 5.2) and canl
 # is the top one. So this floor is an artefact, not a part.
 # Holding to it anyway costs 1.5 mm of depth and takes the line 1.21 -> 1.28 : 1. Inverting
 # that stack is a wiring.py change on a shared trunk, so it is FLAGGED, not taken.
-CABLE_TOP = -17.15                 # highest CABLE as DRAWN -- see above
-SLIDE_CLR = 1.00
-BOARD_BOT = CABLE_TOP + SLIDE_CLR  # -16.15
+# HISTORY ONLY: wiring.py was corrected 2026-10-01 (bronner b5d3efff -- TRUNK_Z_RUN /
+# TRUNK_Z_OVER, highest conductor top -20.68, under the plugs). Nothing is set from this.
+CABLE_TOP = -17.15                 # where the cable WAS drawn
+# ⚠ THE PLUGS ARE THE FLOOR, AND THE BOARD IS SET FROM THEM (user, 2026-10-01: "the
+# wiring isn't modeled accurately, the plugs on the boards are the actual +z extents").
+# Re-probed against everything but the wire models (tools/_probe_fret_tab.py --no-wires):
+# the only real thing under any board edge is the mated plugs of tee boards 6 and 7 under
+# mid's -Y edge, at TEE_TOP. So the stack below the board is, from the plugs up:
+#     SLIDE_OVER    1.50   the panel SLIDES over the plugs, so this is a sliding clearance
+#                          (user: no "super narrow clearance there")
+#     D.MIN_WALL    0.80   the edge wall's floor under the retainer strip's groove
+#     STRIP_T_MAX   1.60   the strip itself -- user: "1.6 min"
+# and the board's underside sits on the strip. That is 0.40 ABOVE where the drawn cable
+# had put it, which costs the cells 0.40 of depth and gives mid its fourth strip.
+SLIDE_OVER = 1.50
+STRIP_T_MAX = D.MIN_WALL_2P        # 1.60: the retainer strip's thickness, every edge
+BOARD_BOT = TEE_TOP + SLIDE_OVER + D.MIN_WALL + STRIP_T_MAX   # -15.75
 BOARD_T   = 1.60
 BOARD_TOP = BOARD_BOT + BOARD_T    # -14.55
 # ⚠ 1.60, NOT THE 1.40 THIS LINE CARRIED. Read off the part's own listing while the
@@ -205,28 +219,25 @@ RAMP_DEG = 58.0
 # with ~35 g that is **0.64 mm** of sag at the far end -- the board hanging off the cell
 # walls there and leaking light between cells, which is what the comb exists to stop.
 STRIP_OVER = 2.30                  # how far a strip laps OVER the board's underside
-STRIP_T_MAX = 1.60                 # its thickness in Z where there is room: 2 beads
 STRIP_CLR  = 0.20                  # sliding fit in the groove
-STRIP_FLOOR_CLR = 0.20             # strip underside to whatever lies below it
+STRIP_FLOOR_CLR = SLIDE_OVER       # the edge wall's underside to whatever it slides over
 TAB_PLAY   = 0.30                  # board edge to the edge wall's inner face
-# ⚠ THE ROOM UNDER EACH EDGE IS MEASURED, AND ONLY ONE OF THE FOUR IS SHORT.
-# tools/_probe_fret_tab.py, both panels, boards and deck taken out, 2026-09-30:
-#     mid +Y, key +Y   clear for the full 6.00 probed
-#     key -Y           motor pigtails, top -21.45  ->  5.30
-#     mid -Y           wire_canl_6/7, top -17.15   ->  1.00
-# The CAN trunk runs DIAGONALLY under the boards, which is why three of the four edges are
-# open and mid's -Y is not. A groove needs the strip plus a floor under it -- two beads --
-# so 1.00 cannot host one, and mid carries a strip on its +Y edge only.
-STRIP_ROOM = {("mid", -1.0): 1.00, ("mid", 1.0): 6.00,
-              ("key", -1.0): 5.30, ("key", 1.0): 6.00}
+# ⚠ THE ROOM UNDER EACH EDGE, MEASURED AGAINST REAL PARTS ONLY. The first table here was
+# probed with the wire models in and read 1.00 under mid's -Y edge (wire_canl_6/7 at
+# -17.15) and 5.30 under key's (motor pigtails) -- both artefacts of src/wiring.py, which
+# draws the trunk 2.5 above its own plugs. tools/_probe_fret_tab.py --no-wires, 2026-10-01:
+#     mid -Y           tee_pcb_6 / tee_pcb_7 mated plugs, top TEE_TOP
+#     the other three  clear for the full 6.00 probed
+# Mid's -Y room is therefore the Z stack's own sum, and all four edges carry a full strip.
+STRIP_ROOM = {("mid", -1.0): BOARD_BOT - TEE_TOP, ("mid", 1.0): 6.00,
+              ("key", -1.0): 6.00, ("key", 1.0): 6.00}
 #
-# ⚠ ONE FULL-LENGTH EDGE STRIP IS ENOUGH, AND THE EXPONENT IS WHY. 8.3's "one screw lets
-# both ends hang" is right about a SCREW: the M4 sits 4.50 from the -X end, so the board
-# cantilevers 206 mm and sags wL^4/8EI = 0.64 mm at the far end -- off the cell walls,
-# leaking light between cells. A strip running the board's whole length changes the
-# cantilever from 206 mm along X to the board's 70.4 mm WIDTH, and deflection goes as the
-# FOURTH POWER: (70.4/206)^4 = 0.0136, so the far edge droops about **15 um**. Invisible.
-# The second strip is welcome where there is room; it is not what makes this work.
+# ⚠ BOTH EDGES, BECAUSE A STRIP IS A HINGE AND NOT A CLAMP. This said one full-length
+# strip was enough, on a cantilever-stiffness argument (15 um of droop). That treated the
+# strip as built-in. It laps 2.30 with clearance in its groove, so a board held along ONE
+# edge can rotate about it; what held mid's free edge was the M4 at one end and the board's
+# own torsion over 206 mm, roughly 0.2 - 0.3 mm at the far corner. Two strips make it a
+# plate supported on both long edges, which is what the cells need to stay light-tight.
 
 
 def strip_room(panel, sgn):
@@ -239,9 +250,49 @@ def strip_t(panel, sgn):
                strip_room(panel, sgn) - STRIP_FLOOR_CLR - D.MIN_WALL)
 
 
+# ── THE TILT-IN LIP (user, 2026-10-01) ────────────────────────────────────────────────
+# The -Y edge of BOTH boards hooks under a FIXED printed lip; the board goes in tilted,
+# +Y edge low, and swings up flat, and the one loose strip then closes the +Y edge. One
+# loose part a board instead of two, and both long edges still carried.
+#
+# ⚠ THE LIP IS A 45 DEGREE RAMP, AND THE BOARD IS MEANT TO SLIDE DOWN IT. A flat lip is
+# an unsupported overhang in the deck's -Z print direction (the foot-light rule), so the
+# bearing face slopes. A board resting on a slope walks sideways until something stops
+# it -- so the +Y wall is put AT the board's nominal edge and all the lateral play is given
+# to the hinge side. Gravity then wedges the board against the +Y wall and up against the
+# cell walls, and the +Y wall is the Y DATUM OF BOTH BOARDS, which is what lines the seam
+# pogos up tip to tip. (Hinged on opposite edges, the two boards would wedge opposite ways
+# and the tips would sit 2 x TAB_PLAY apart.)
+#
+# The ramp starts LIP_RISE above the board's underside at the wall face, so a board
+# sitting the full play out from that wall is carried within 0.10 of flat:
+#     drop = (gap to the hinge wall) - LIP_RISE = 0.60 - 0.50 = 0.10 nominal
+# A board 0.2 narrow drops 0.30; one 0.1 wide is wedged up tight. The strip's own groove
+# clearance was 0.20, so this is the same class of fit.
+HINGE_SGN = -1.0
+LIP_LAP = 1.50                     # lip under the board's edge once it is seated
+LIP_RISE = 2.0 * TAB_PLAY - 0.10   # 0.50: the ramp's start above the underside, at the wall
+LIP_CAP = D.MIN_WALL               # the flat under the ramp's tip: one bead
+
+
+def edge_play(sgn):
+    """Board edge to this side's wall: all of it on the hinge side, none on the datum."""
+    return 2.0 * TAB_PLAY if sgn == HINGE_SGN else 0.0
+
+
+def lip_reach():
+    """How far the ramp runs inboard from the hinge wall: the play, then the lap."""
+    return 2.0 * TAB_PLAY + LIP_LAP
+
+
+def lip_depth():
+    """How far the lip hangs below the board's underside."""
+    return lip_reach() - LIP_RISE + LIP_CAP
+
+
 def has_strip(panel, sgn):
-    """Is there room under this edge for a strip AND the floor that holds it up?"""
-    return strip_t(panel, sgn) >= D.MIN_WALL - 1e-9
+    """Does this edge take a loose strip? Not the hinge edge -- that one has the lip."""
+    return sgn != HINGE_SGN and strip_t(panel, sgn) >= D.MIN_WALL - 1e-9
 
 
 def strip_z(panel, sgn):
@@ -257,6 +308,8 @@ def wall_floor(panel, sgn):
     -17.15 and showed up as `top_plate_color_3 <-> wire_canl_7`, 4.4 mm3. A depth is a
     clearance question and it has to be asked of the measurement, not of a constant."""
     floor = BOARD_BOT - strip_room(panel, sgn) + STRIP_FLOOR_CLR
+    if sgn == HINGE_SGN:
+        return BOARD_BOT - lip_depth()         # the lip's own underside; asserted below
     if not has_strip(panel, sgn):
         return max(floor, BOARD_BOT - D.MIN_WALL)
     return max(floor, strip_z(panel, sgn)[1] - D.MIN_WALL)
@@ -264,19 +317,16 @@ def wall_floor(panel, sgn):
 
 def strip_y(sgn):
     """(inner, outer) Y of the strip on this edge; inner is how far it laps the board."""
-    wall = sgn * (BOARD_HALF_W + TAB_PLAY)
+    wall = sgn * (BOARD_HALF_W + edge_play(sgn))
     return wall - sgn * STRIP_OVER, wall + sgn * STRIP_GRIP
 
 
 STRIP_GRIP = 1.60                  # how far the strip sits INTO the edge wall's groove
 # the one M4's Y per board -- elec/fret_led.py cuts the hole there, reading THIS.
-# ⚠ MID'S IS -30, NOT -28, BECAUSE ITS HEAD HANGS 2.2 BELOW THE BOARD AND THE CAN TRUNK
-# IS THERE. tools/_probe_m4_room.py, a O7.6 head + 0.2 intersected with everything below
-# the bay: under mid, y -28 .. -22 hits wire_canl_5 (the same trunk that starves mid's -Y
-# strip, 8.7); -30 and -20 .. +32 are clear, and -30 is the one whose deck boss (O9.2, on
-# the board's TOP) stays off the arrival caps. Key is clear at -28 except y +20 .. +28.
-# Found when m4_screws() was first wired into the build: until then nothing intersected it.
-M4_Y       = {"mid": -30.00, "key": -28.00}
+# ⚠ BOTH AT -28. Mid's went to -30 for a day to keep its head out of wire_canl_5 -- which
+# is the wire MODEL, not a wire (see the Z stack). At -30 the O7.6 head would now sit
+# 0.6 into mid's new -Y strip (inner edge y -33.20); at -28 it clears it by 1.40.
+M4_Y       = {"mid": -28.00, "key": -28.00}
 M4_LEN     = 10.0                  # M4x10 button head, the instrument's standard
 M4_HEAD_CLR = 0.0                  # head sits on the board's underside
 DECK_UNDER = 0.0                   # the deck's own underside: above it is material the
@@ -355,9 +405,6 @@ def check_optics(pitches=()):
 
 
 # these need no deck datum, so they run at import
-assert BOARD_BOT - CABLE_TOP >= 0.8, (
-    "the LED board at %.2f leaves only %.2f over the CAN harness at %.2f"
-    % (BOARD_BOT, BOARD_BOT - CABLE_TOP, CABLE_TOP))
 assert BOARD_BOT - TEE_TOP >= 1.5, (
     "the LED board at %.2f leaves only %.2f over the tee PCBs at %.2f, and the panel has "
     "to SLIDE over them" % (BOARD_BOT, BOARD_BOT - TEE_TOP, TEE_TOP))
@@ -367,22 +414,14 @@ _PANELS = sorted({_k[0] for _k in STRIP_ROOM})
 assert any(has_strip(_p, _s) for _p in _PANELS for _s in (-1.0, 1.0)), (
     "no edge on either panel has room for a retainer strip")
 for _p in _PANELS:
-    assert any(has_strip(_p, _s) for _s in (-1.0, 1.0)), (
-        "%s has no retained edge at all" % _p)
-# ⚠ SAY WHICH EDGES LOST THEIR STRIP AND WHY, ONCE, LOUDLY. It is the CAN trunk every
-# time -- docs/fret-led.md 8.1: wiring.py TRUNK_DZ floats canl 2.50 above the plug it
-# lands in, and inverting that stack gives every one of these edges its strip back.
-_starved = [(p, s) for p in _PANELS for s in (-1.0, 1.0) if not has_strip(p, s)]
-if _starved:
-    import sys
-    print("  !! fret_light: no retainer strip on %s -- only %s mm under %s, and a groove "
-          "needs\n     a strip plus its floor (2 x %.2f). See docs/fret-led.md 8.1 on "
-          "wiring.py TRUNK_DZ."
-          % (", ".join("%s%sY" % (p, "+" if s > 0 else "-") for p, s in _starved),
-             ", ".join("%.2f" % strip_room(p, s) for p, s in _starved),
-             ", ".join("the %s trunk" % p for p, s in _starved), D.MIN_WALL),
-          file=sys.stderr)
-
+    for _s in (-1.0, 1.0):
+        assert _s == HINGE_SGN or (has_strip(_p, _s)
+                                   and strip_t(_p, _s) >= D.MIN_WALL_2P - 1e-9), (
+            "%s %+.0fY: the retainer strip is %.2f, and 1.60 is the minimum (user)"
+            % (_p, _s, strip_t(_p, _s)))
+        assert wall_floor(_p, _s) - (BOARD_BOT - strip_room(_p, _s)) >= SLIDE_OVER - 1e-9, (
+            "%s %+.0fY: the edge wall slides %.2f over what is under it"
+            % (_p, _s, wall_floor(_p, _s) - (BOARD_BOT - strip_room(_p, _s))))
 assert LED_Y_OUT + LED_CRTYD / 2.0 <= BOARD_HALF_W, (
     "the outer LEDs at +-%.2f plus a %.2f courtyard overhang a %.2f-half-width board"
     % (LED_Y_OUT, LED_CRTYD, BOARD_HALF_W))
@@ -524,13 +563,26 @@ def edge_walls(x_lo=None, x_hi=None):
             continue
         for sgn in (-1.0, 1.0):
             floor = wall_floor(panel, sgn)
-            y0 = sgn * (BOARD_HALF_W + TAB_PLAY)
-            y1 = y0 + sgn * (STRIP_GRIP + WALL)
+            y0 = sgn * (BOARD_HALF_W + edge_play(sgn))
+            # the OUTER face stays where it was for both sides; the play moves the inner
+            y1 = sgn * (BOARD_HALF_W + TAB_PLAY + STRIP_GRIP + WALL)
             w = box_at(bx1 - bx0, abs(y1 - y0), BOARD_TOP - floor,
                        x=(bx0 + bx1) / 2.0, y=(y0 + y1) / 2.0,
                        z=(BOARD_TOP + floor) / 2.0)
             out = w if out is None else out.union(w)
+            if sgn == HINGE_SGN:
+                out = out.union(_lip(bx0, bx1, y0, sgn))
     return heal(out) if out is not None else cq.Workplane("XY")
+
+
+def _lip(bx0, bx1, y_wall, sgn):
+    """The hinge edge's lip: a 45 degree ramp off the wall face, one bead of cap under it."""
+    r = lip_reach()
+    top = BOARD_BOT + LIP_RISE
+    bot = BOARD_BOT - lip_depth()
+    pts = [(y_wall, top), (y_wall - sgn * r, top - r), (y_wall - sgn * r, bot), (y_wall, bot)]
+    return (cq.Workplane("YZ", origin=(bx0, 0, 0)).polyline(pts).close()
+            .extrude(bx1 - bx0))
 
 
 def strip_groove(x_lo=None, x_hi=None):
@@ -774,7 +826,7 @@ POGO_PITCH = 4.50          # 4.00 courtyards with 0.50 between -- and 0.45 to th
 # ⚠ TWO LANES, THREE EACH, AND THE LED ROWS ARE WHAT DECIDE IT. key's pogos stand INSIDE
 # fret 9's cell (its seam end is a comb end, not a bay), so they must sit between LED
 # rows: 13.90 clear between two courtyards, which takes three 4.00 courtyards and not
-# four. The -Y lane is left for the M4 on mid (M4_Y["mid"] = -30.00 is in it).
+# four. The -Y lane is left for the M4 on mid (M4_Y["mid"] = -28.00 is in it).
 #     centre lane   +14V GND +14V     power doubled, its return in the middle
 #     +Y lane       SCK  GND SDT      each signal beside a ground, loop ~4.5 x 12
 POGO_LANES = ((0.0, ("+14V", "GND", "+14V")),
@@ -838,8 +890,9 @@ def _pogo_contact():
     return (pogo_pads("mid")[0][0] + pogo_pads("key")[0][0]) / 2.0
 
 
-def pogo_pins():
+def pogo_pins(only=None):
     """[(name, solid)] -- the twelve plungers, barrel front to the shared contact.
+    `only` keeps one board's six, for tools/_probe_tilt.py.
 
     The barrels are the boards' own (board_geom reads the pogo's F.Fab); the plungers are
     here because they leave the board and one set crosses key's end wall."""
@@ -847,6 +900,8 @@ def pogo_pins():
     xc = _pogo_contact()
     out = None
     for panel in BOARD_NAME:
+        if only is not None and panel != only:
+            continue
         f = pogo_fire(panel)
         for x, y, _net in pogo_pads(panel):
             x0 = x + f * (POGO_BODY_L + POGO_FAB_STROKE) / 2.0
