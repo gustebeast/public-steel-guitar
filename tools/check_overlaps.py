@@ -318,9 +318,8 @@ def _knee(n) -> bool:
 # other agents (user: these must not block merges), each with its owner named.
 # ⚠ THE PICKUP-PLATE ENTRY ABOVE IS RETIRED (2026-09-30): the +Y jacks moved one bead inboard
 # and their arms end at the boss, so the demo pose is clean and the gate GUARDS it again
-# rather than excusing it. What is still true and still unseen by this gate: the three jack
-# NUT bosses meet the solid deck underside as the plate rises for a pickup shallower than
-# ~17.6 mm -- that needs a travel sweep, not a parked pair.
+# rather than excusing it. The plate's TRAVEL is a different question this gate cannot ask
+# (it compares parts where they sit): that is tools/check_pickup_travel.py.
 DEFERRED = {
             # (chassis <-> optical_cable_usb/pwr, OWNER bronner, is UN-deferred 2026-09-21:
             # the USB run no longer goes to the Pi through the -Y rail -- both optical leads
