@@ -48,7 +48,7 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
                               seated_insert,
                               M4_BUTTON_HEAD_H,
                               m4_button_screw,
-                       M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
+                       M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
@@ -60,8 +60,8 @@ _insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
 _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
 
 # ── bought parts (assembly dummies). REUSE existing line items where possible so they buy in
-# bulk: MR85ZZ bearings + the M4×10 cup-tip set screws + M4 heat-set inserts are ALL already in
-# the BOM (nut-block / screw-support). New: the Ø6 magnet, the MT6701 board, the springs.
+# bulk: the 688ZZ bearings + the M4×10 button heads + M4 heat-set inserts are ALL already in
+# the BOM. New: the Ø6 magnet, the MT6701 board, the springs.
 AXLE_D  = D.BRG688_ID               # Ø8 axle journals (the 688ZZ bore, user 2026-09-10) — PCTG (user: no steel pin).
                                     # Zero torque lives on the axle (the springs act on
                                     # the LOBE; the magnet only co-rotates for the
@@ -210,8 +210,8 @@ CHIP_DISP_MAX = 0.3                 # datasheet DISP: max misalignment between t
                                     # (PCB_TOP / the board's Z extent live in the cradle
                                     # block below — they are set by the instrument's
                                     # underside, which isn't known this early.)
-INSERT_D, INSERT_L = M4_INSERT_D, M4_INSERT_L   # M4 heat-set insert Ø6 × 5 (standard set-screw process)
-SCREW_CLR = M4_SHAFT_CLR_D          # M4 set-screw shaft clearance (Ø4.4)
+INSERT_D, INSERT_L = M4_INSERT_D, M4_INSERT_L   # M4 heat-set insert Ø6 × 5
+SCREW_CLR = M4_SHAFT_CLR_D          # M4 shaft clearance (Ø4.4)
 
 # ── housing envelope ─────────────────────────────────────────────────────────
 WALL    = 4.0                       # bearing-wall thickness (Y)
@@ -303,7 +303,7 @@ LOBE_RC = 9.5                                # lobe axis radius (pivot -> lobe) 
                                              #   LOBE_RC costs 1mm of web, 0.8mm being the thin-wall floor).
                                              #   Ratio ARM_LEN/LOBE_RC = 100/9 = 11.1:1, follower travel =
                                              #   9*sin30 = 4.5mm. 9 (not 8) so the Ø1.4 feel coil keeps
-                                             #   fatigue headroom for the setscrew (10.3N knee ceiling vs
+                                             #   fatigue headroom for the tension screw (10.3N knee ceiling vs
                                              #   8N target). Raising THROW would swing the lobe higher,
                                              #   thinning the web -> raise LOBE_RC.
 LOBE_R  = 2 * D.BEAD                         # 1.6 rounded lobe radius
@@ -334,9 +334,9 @@ SWING_X = LOBE_RC * math.sin(_THR) + CAM_TX  # cam +X reach at full throw (sizes
 # protrusion > its travel), the cam never has to reach inside the cartridge, and the ROUNDED tip keeps
 # clean contact as the cam rotates through the throw. The coil is preloaded against the piston (held
 # forward by front side-lips), so contact makes a crisp force SHELF, then rises.
-#   * <lane>_spring_tension_setscrew -- cartridge back, on the axis: pushes the seat washer = PRELOAD
-#   * <lane>_position_setscrew       -- cartridge back, above it: socket end on the housing washer
-#                                       = the cartridge's X home (engagement angle / rest bias)
+#   * <lane>_spring_tension_screw -- cartridge back, on the axis: pushes the seat washer = PRELOAD
+#   * <lane>_position_screw       -- cartridge back, above it: head on the housing washer
+#                                    = the cartridge's X home (engagement angle / rest bias)
 # The cartridge prints as a BASE (U-channel, open top) + a ROOF that slides on via a Y sliding dovetail
 # -> no internal-roof overhang, and the piston drops into the base before the roof caps it. Rounded
 # anti-bind RIBS run along X on the floor + roof underside, giving the piston clean bearing lines
@@ -349,7 +349,7 @@ SWING_X = LOBE_RC * math.sin(_THR) + CAM_TX  # cam +X reach at full throw (sizes
 # uxcell B0B772B9V2, JIS light-load (blue), Ø10 hole / Ø5 rod x 30 free (+-2), 142.2 N at its
 # 40% max (12 mm) -> ~11.9 N/mm. It replaces the custom Ø6 x 1.4 music-wire coil, which had no
 # stock source (spring index 3.3) and topped out ~1 kg at the knee. Chosen range 0.5..1 kg at the
-# knee, set by the M4 tension screw. Rectangular wire, ground ends -> modelled as a TUBE, the
+# knee, set by the M4 tension screw (a button head, like every screw here). Rectangular wire, ground ends -> modelled as a TUBE, the
 # convention for every spring here. LENGTH is the costly dimension (it is X, and X decides where a
 # lever can mount); a die spring's length is fixed by the adjustable RANGE, its Ø by the top force.
 HS_SPR_OD   = 10.0                  # die-spring HOLE Ø (the spring's working OD)
@@ -363,17 +363,22 @@ HS_PILOT_D  = HS_SPR_ID - 0.4       # 4.6: piston pilot nosing into the spring's
 HS_PILOT_LX = 6 * D.BEAD            # 4.8 pilot length
 # SPRING SEAT = a steel WASHER, not a printed guide post (user: the printed post spent 3.2 of X).
 # McMaster 91100A120, DIN 9021 M3: Ø9, Ø3.2 hole, 0.7..0.9 thick (modelled at the 0.9 max, so the
-# housing recess always swallows it). The M4 set screw's Ø4 thread cannot pass the Ø3.2 hole, so its
-# cup nests in the hole and self-centres the washer on the axis, and the Ø9 face carries the
+# housing recess always swallows it). The M4 screw's Ø4 thread cannot pass the Ø3.2 hole, so its
+# chamfered end nests in the hole and self-centres the washer on the axis, and the Ø9 face carries the
 # spring's ground end (Ø5..10) across most of its width. 0.9 of X, not 3.2.
 WASHER_OD, WASHER_ID, WASHER_T = 9.0, 3.2, 0.9
-# TENSION: the M4 x 10 set screw threads an insert in the cartridge back wall and pushes the washer.
-# Max advance keeps 4.4 of thread (1.1 d) in the 5-long insert AND the spring inside its long-life
-# band: at 4.8 preload + the 4.75 throw a nominal spring sees 9.55 of its 12 (~80% = long-life).
+# TENSION: an M4 x 10 BUTTON HEAD (2.5 key -- the instrument's one tool) threads an insert in the
+# cartridge back wall, head out the back, and its end pushes the washer. The screw spans the whole
+# 5-long insert at every setting, and the advance ends when the head lands on the cartridge back:
+# 4.2 of preload + the 4.75 throw puts a nominal spring at 8.95 of its 12 (~75% = long-life).
 HS_BACKWALL = INSERT_L + D.MIN_WALL # 5.8 cartridge back wall: the 5.0 insert + a ONE-bead web to the bay
                                     #   (the web only stops the insert while it is melted in; in use the
                                     #   screw's reaction pulls the insert toward its mouth, off the web)
-HS_TEN_ADV  = 6 * D.BEAD            # 4.8 tension-screw advance (preload range)
+HS_TEN_ADV  = M4_SCREW_L - HS_BACKWALL   # 4.2 tension-screw advance (preload range): backed out
+                                    #   its end is flush with the wall's front, fully in its head is
+                                    #   on the wall's back
+HS_TEN_TAIL = HS_TEN_ADV + M4_BUTTON_HEAD_H    # 6.4: how far the head's top stands behind the
+                                    #   cartridge back with the screw backed out
 FOLL_H    = 7 * D.BEAD             # 5.6 follower FLAT-face height (Z). Centred (FOLL_DZ)
                                    #   so the window BOTTOM lands at the cartridge's already-open -Z bottom
                                    #   (no thin wall, no extra -Z) and the window TOP clears the +Z cap by
@@ -477,25 +482,36 @@ assert HS_DIVIDER >= D.MIN_WALL_2P - 1e-6, (          # 1e-6: this is a tier che
     f"and the merged ceiling is a wide unsupported span. The knob is LOBE_WY: the divider "
     f"is 2*(HS_YC - HS_POCKET_HW), and BOTH terms move with it, so a narrower lobe buys "
     f"divider at ~2 mm per mm.")
-# ── POSITION SCREW (user, 2026-09-21: metal M4, not the printed hollow back-stop) ─────────────────
-# An M4 x 10 set screw threads a SECOND insert in the cartridge back wall, straight ABOVE the tension
-# screw, SOCKET END OUT: that end bears on a steel washer seated in the housing pocket's back face, and
-# the hex key reaches it through a Ø3.2 hole behind the washer. So the thread lives inside the
-# cartridge's own back wall -- the housing carries no insert, no boss and no printed thread, and the
-# whole adjustment costs only its RANGE in X. (A screw in the housing needs insert + web + range
-# BEHIND the pocket.) The washer spreads the socket end's thin ring over Ø9 of printed face.
+# ── POSITION SCREW ────────────────────────────────────────────────────────────────────────────────
+# A second M4 x 10 BUTTON HEAD threads a SECOND insert in the cartridge back wall, straight ABOVE the
+# tension screw, HEAD OUT: the head's crown bears on a steel washer at the bottom of a recess in the
+# housing pocket's back face, and the 2.5 key reaches its socket through the washer's own Ø3.2 hole
+# and a key way behind it. So the thread lives inside the cartridge's own back wall -- the housing
+# carries no insert, no boss and no printed thread -- and the head is swallowed by the housing's rear
+# wall, so the adjustment costs only its RANGE in X. (A screw in the housing needs insert + web +
+# range BEHIND the pocket.) The washer spreads the crown's small contact ring over Ø9 of printed face.
 # Above, not beside: Y is free, but the two cartridges already sit side by side, while above the axis
-# the back wall is solid gable. The offset is the least that leaves a 2-bead web between the two
-# insert pockets -- each a TEARDROP (horizontal bore, -Z->+Z print), so the lower one reaches r*sqrt2.
+# the back wall is solid gable.
+# THE TWO HEADS SHARE THE REAR WALL, AND THEIR HOLES MEET. The tension head rides a Ø8.4 way straight
+# through that wall (HS_HEAD_WAY_D) and the position head sits in the washer's Ø9.4 recess above it.
+# A two-bead web between the two would put the position screw 2.8 higher, and the cartridge cap, the
+# pocket roof and the housing top all stand on that height -- the whole lever would hang lower to keep
+# a web that carries nothing. So the offset is the least that (a) leaves the two-bead web between the
+# two INSERT pockets in the cartridge (each a TEARDROP: horizontal bore, -Z->+Z print, so the lower
+# one reaches r*sqrt2) and (b) lands the washer's lowest point one bead above the round of the way
+# below it. The way's 45 deg print peak breaks into the recess floor in a narrow notch; the washer is
+# seated on the rest of its rim and the two heads stay 2 mm apart.
 _INS_R = INSERT_D / 2
-HS_WASH_RECESS_D = WASHER_OD + 0.4  # the housing's seat for the position washer
+HS_WASH_RECESS_D = WASHER_OD + 0.4  # the housing's seat for the position washer (and the head: Ø7.6)
+HS_HEAD_WAY_D = M4_BUTTON_HEAD_D + 2 * HS_CLR      # 8.4: the tension head's way through the rear wall
 HS_POS_DZ = max(_INS_R * math.sqrt(2.0) + D.MIN_WALL_2P + _INS_R,               # cartridge: insert webs
-                M4_SHAFT_CLR_D / 2 * math.sqrt(2.0) + D.MIN_WALL_2P + HS_WASH_RECESS_D / 2)  # housing:
-                # the washer recess over the tension screw's Ø4.4 teardrop -> 9.41 above the axis
+                HS_HEAD_WAY_D / 2 + D.MIN_WALL + HS_WASH_RECESS_D / 2)          # housing: 9.7
+HS_POS_RECESS = M4_BUTTON_HEAD_H + WASHER_T     # 3.1 deep: the washer at the bottom, the head on it
 HS_POS_RANGE = 4 * D.BEAD           # 3.2 of cartridge travel (+-1.6 about nominal)
 HS_POS_NOM   = HS_POS_RANGE / 2     # nominal gap: cartridge back -> pocket back face (HALF-STOP)
-HS_POS_FWD   = M4_SCREW_L - HS_BACKWALL + 0.4   # 4.8: how far the screw's point can reach -X of the back
-                                                #   wall (into the channel's roof) when fully retracted
+HS_POS_FWD   = M4_SCREW_L - HS_BACKWALL + 0.4   # 4.6: how far the screw's end can reach -X of the back
+                                                #   wall (into the channel's roof) with the head down
+                                                #   on the cartridge back
 # CAP: tall enough that the upper insert's teardrop keeps a 2-bead wall under the outer 45° gable.
 # Both are 45° faces, so the wall is the vertical gap /sqrt2 -- solve for the cap top, then round the
 # cap UP to whole beads over the channel eaves.
@@ -511,13 +527,14 @@ HS_CART_Z1  = HS_ROOF_SPLIT + HS_ROOF_TZ     # cartridge +Z CAP top (the outer g
 HS_POCKET_X0 = SWING_X              # housing pocket front (cartridge front cantilevers -X into the slot)
 # ── HOUSING REAR (behind the pockets). Both pockets end at ONE back face, HS_POS_NOM behind the
 # HALF-STOP cartridge's nominal back (the MAIN parks HS_SETBACK further forward on its own position
-# screw -- either cartridge still fits either slot). Behind that face: the position washer's recess,
-# then wall. The wall is sized by the TENSION screw's tail -- 4.2 proud of the cartridge back with the
-# screw backed out -- so neither screw ever stands out of the housing's back face.
+# screw -- either cartridge still fits either slot). Behind that face: the position head's recess,
+# then wall. The wall is sized by the TENSION head -- HS_TEN_TAIL proud of the cartridge back with
+# the screw backed out -- so neither screw ever stands out of the housing's back face, even with the
+# cartridge parked hard against the pocket back.
 HS_POCKET_BX = HS_BACK_X + HS_SETBACK + HS_POS_NOM
-HS_REAR_T = max(M4_SCREW_L - HS_BACKWALL, WASHER_T + D.MIN_WALL_2P)   # 4.2
-HS_KEY_D = WASHER_ID                # Ø3.2 key way to the position screw (the 2.0 hex key's corners are 2.3)
-
+HS_REAR_T = max(HS_TEN_TAIL, HS_POS_RECESS + D.MIN_WALL_2P)   # 6.4
+HS_KEY_D = WASHER_ID + 0.2          # Ø3.4 key way to the position head (a 2.5 key is 2.9 across its
+                                    #   corners; the washer's Ø3.2 hole is the tighter of the two)
 # ── MOUNT (user): the housing's TOP FACE is already FLUSH with the chassis underside
 # (HOUS_Z1 = BODY_Z = Z_BOT), so the mount needs no yoke, no boss and no floating part —
 # FUSED OCTAGON TENONS rise straight off that face into matching mortises in the chassis
@@ -610,13 +627,11 @@ MORT_Y_END = D.LIGHT_WIN_Y0
                                     # D constants chassis.Y_HI uses (import direction forbids
                                     # chassis; the old 54.75 had gone stale twice over)
 MORT_Y1   = MORT_Y_END - MOUNT_Y    # ...in the local frame
-# DEPTH LOCK — still DEFERRED (it lands with the sensor mount, which shares the same +Y
-# region). Plan of record: an M2 SELF-TAPPING set screw threading UP through the housing
-# top beside one tenon, its cup pressing the rib's side column so the Y slide friction-
-# locks. It needs no drilled pilot in the rib (it bears on the printed surface), and the
-# rib runs in Y, so the ledge is above the screw at EVERY depth setting. The octagon
-# carries the knee-strike load; this only holds the chosen depth. (The old M4 version
-# doesn't fit: the W=6 octagon leaves only a 2 mm rib side column.)
+# DEPTH LOCK — still DEFERRED, and UNDESIGNED (it lands with the sensor mount, which shares
+# the same +Y region). The octagon carries the knee-strike load; the lock only has to hold the
+# chosen depth. It is an M4 button head or it is no screw at all (user: one screw, one key),
+# and an M4 does not fit beside a tenon -- the octagon leaves the rib a 2 mm side column -- so
+# it wants its own site or a printed detent.
 
 
 def _bearing():
@@ -633,10 +648,10 @@ def feel_dummies(place, prefix="", hs_setback=None):
     Shared because all three levers carry the SAME cartridge: MAIN (at MAIN_YC)
     whose follower touches the lobe at REST (sets the rest angle), and HALF-STOP
     (at HS_YC, slid +X by HS_SETBACK) that engages partway. Each carries the Ø10
-    die spring, its steel seat WASHER, the TENSION set screw (preload) in the
-    cartridge's lower insert, and the POSITION set screw in the upper insert, whose
-    socket end bears on a second washer in the housing's pocket back face (that
-    screw's protrusion IS the cartridge's X home).
+    die spring, its steel seat WASHER, the TENSION screw (preload) in the
+    cartridge's lower insert, and the POSITION screw in the upper insert, whose
+    head bears on a second washer in the housing's pocket back face (that
+    screw's stand-off IS the cartridge's X home). Both are M4 x 10 button heads.
 
     Extracted so a lever cannot quietly show different hardware from its
     siblings: the vertical lever was emitting its cartridge bodies with NO
@@ -648,6 +663,10 @@ def feel_dummies(place, prefix="", hs_setback=None):
 
     def x_axis(solid, x, y, z):          # built along +Z from 0 -> along +X from x
         return solid.rotate((0, 0, 0), (0, 1, 0), 90).translate((x, y, z))
+
+    def _x_screw(x_under, y, z):         # M4 x 10 button: head's UNDERSIDE at x_under, shank -X
+        return (m4_button_screw(M4_SCREW_L).rotate((0, 0, 0), (0, 1, 0), 90)
+                .translate((x_under + M4_BUTTON_HEAD_H, y, z)))
 
     washer = cyl(WASHER_OD, WASHER_T, z=0.0).cut(cyl(WASHER_ID, WASHER_T + 2, z=-1.0))
     # hs_setback: where the HALF-STOP cartridge parks on its position screw -- a per-lever
@@ -662,18 +681,18 @@ def feel_dummies(place, prefix="", hs_setback=None):
             cyl(HS_SPR_OD, HS_SPR_INST, z=0.0).cut(cyl(HS_SPR_ID, HS_SPR_INST + 2, z=-1.0)),
             HS_BODY_BX + dx, yc, HS_Z))))
         out.append((f"{p}{nm}_spring_seat_washer", place(x_axis(washer, HS_SPR_TIPX + dx, yc, HS_Z))))
-        # TENSION: cup tip on the washer (nested in its Ø3.2 hole), socket out the cartridge back.
-        out.append((f"{p}{nm}_spring_tension_setscrew", place(C.set_screw().rotate((0, 0, 0), (0, 1, 0), 90)
-                    .translate((HS_WASH_BX + M4_SCREW_L + dx, yc, HS_Z)))))
+        # TENSION: end on the washer (nested in its Ø3.2 hole), head out the cartridge back.
+        out.append((f"{p}{nm}_spring_tension_screw",
+                    place(_x_screw(HS_WASH_BX + M4_SCREW_L + dx, yc, HS_Z))))
         out.append((f"{p}{nm}_spring_tension_insert",                    # Ø6×5 insert, flush at the back face
                     place(_seated_insert((HS_BACK_X + dx, yc, HS_Z), (0, 1, 0), -90))))
-        # POSITION: socket end ON the housing washer (whose face is flush with the pocket's back face),
-        # so the screw's -X reach is fixed by the POCKET, whichever cartridge it sits in.
-        out.append((f"{p}{nm}_position_setscrew", place(C.set_screw().rotate((0, 0, 0), (0, 1, 0), 90)
-                    .translate((HS_POCKET_BX, yc, zp)))))
+        # POSITION: head ON the housing washer at the bottom of its recess, so the screw's -X reach
+        # is fixed by the POCKET, whichever cartridge it sits in.
+        out.append((f"{p}{nm}_position_screw", place(_x_screw(HS_POCKET_BX, yc, zp))))
         out.append((f"{p}{nm}_position_insert",
                     place(_seated_insert((HS_BACK_X + dx, yc, zp), (0, 1, 0), -90))))
-        out.append((f"{p}{nm}_position_washer", place(x_axis(washer, HS_POCKET_BX, yc, zp))))
+        out.append((f"{p}{nm}_position_washer",
+                    place(x_axis(washer, HS_POCKET_BX + M4_BUTTON_HEAD_H, yc, zp))))
     return out
 
 
@@ -706,6 +725,13 @@ def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None, axle=Tru
     out = [(f"{prefix}_bearing_{i}", place(_bearing().translate((0, by, 0))))
            for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0))]   # inner faces at ±BRG_Y0
     out.append((f"{prefix}_magnet", place(cyl_y(MAG_D, MAG_T, y0=MAG_Y0))))
+    # the axle's END SCREW + washer, on the -Y tip (axisymmetric, so they need no swing)
+    out.append((f"{prefix}_axle_washer", place(
+        cyl_y(AXLE_WASHER_OD, AXLE_WASHER_T, y0=AXLE_Y0 - AXLE_WASHER_T)
+        .cut(cyl_y(AXLE_WASHER_ID, AXLE_WASHER_T + 2.0, y0=AXLE_Y0 - AXLE_WASHER_T - 1.0)))))
+    out.append((f"{prefix}_axle_screw", place(
+        m4_button_screw(AXLE_SCREW_L).rotate((0, 0, 0), (1, 0, 0), 90)     # shank -Z -> +Y
+        .translate((0.0, AXLE_Y0 - AXLE_WASHER_T - M4_BUTTON_HEAD_H, 0.0)))))
     out += [(n, place(s))
             for n, s in sensor_parts(z_bot, z_top, prefix=prefix, flip=flip)]
     _sh = pcb_shim(z_bot, z_top if shim_top is None else shim_top, flip)
@@ -743,8 +769,6 @@ def demo_parts():
                 # head's own 2.2 comes off the head end, not the tip
                 .translate((STOP_TIP_OUT - STOP_SCREW_L - M4_BUTTON_HEAD_H,
                             0.0, STOP_Z))))
-    # (no retention set-screw dummy: the rib-mount tenons + their M2 lock are
-    #  DEFERRED with the mount -- prism round; see _housing)
     return out
 
 
@@ -1223,28 +1247,41 @@ AXLE_FLAT_DEPTH = 0.5
 AXLE_FLAT_R = AXLE_D / 2 - AXLE_FLAT_DEPTH      # 2.0 from the axis
 AXLE_FLAT_Y = LEVER_HW + 0.1                    # flat's +Y end (hub ±10, bearings ±10.4)
 AXLE_BORE_D = AXLE_D + 0.2                      # lever's through D-bore (slip fit — the
-                                                # set screw below is what holds it)
-# AXIAL RETENTION, NO GLUE (user: every part comes apart). The axle cannot carry an
-# integral shoulder — it is slid +Y -> -Y through both Ø5 bearings, so nothing on it
-# may exceed Ø5 — and it ROTATES, so it cannot be pinned to the housing either. What
-# it CAN be pinned to is the LEVER, and the lever is already axially captive: its hub
-# ends (±10) sit 0.4 inside the two bearing INNER races (±10.4), which the housing
-# pockets capture. So one M2 set screw through the hub wall onto the D-FLAT fixes the
-# axle to the lever and the pair is trapped either way within that 0.4.
-# It self-taps rather than taking a heat-set insert (cadkit's usual preference for a
-# set screw): the hub wall over the flat is 2.4 (bore r 2.6 -> hub r 5.0) and an M2
-# pocket wants 3.5. 2.4 is six threads at 0.4 pitch, against a retention load that is
-# essentially the axle's own ~1 g — the screw stops a slide, it never carries the
-# pivot load, and the flat already carries what little torque there is.
-AXLE_SET_R  = HUB_D / 2                         # mouth: the hub's OD, on the +Z flat side
-AXLE_SET_L  = AXLE_SET_R - AXLE_FLAT_R + 0.2    # 3.2: through the wall, 0.2 past the flat
+                                                # end screw below is what holds it)
+# AXIAL RETENTION, NO GLUE (user: every part comes apart) — ONE M4 BUTTON HEAD IN THE AXLE'S
+# -Y END, the same screw and the same 2.5 key as everything else on the instrument. The axle is
+# slid +Y -> -Y through both bearings, so it can carry no integral shoulder at its leading end
+# (nothing there may exceed the Ø8 bore) and its flange already stops it going any further -Y.
+# What has to be stopped is the way it came: +Y. So once the tip is through the -Y bearing a
+# screw goes into it on the axis with a Ø9 washer under the head. The washer is wider than the
+# bore and narrower than the inner ring (the same shaft-abutment band the flange's land uses at
+# the other end), so it laps the -Y INNER RACE and nothing else, and it turns with the axle —
+# nothing rubs.
+# THE TIP STANDS AXLE_END_PROUD OF THE RACE, so the screw tightens against the AXLE'S OWN END and
+# clamps nothing between the two bearings: the washer hangs that far off the race as running
+# clearance. Tightened onto the race instead it would preload both bearings against each other
+# through the housing, and how hard would depend on the hand holding the key.
+# IT FORMS ITS OWN THREAD in the printed axle. An insert is Ø6 in a Ø8 shaft — a 1.0 wall — and
+# the load is the axle's own gram or two: the screw stops a slide, it never carries the pivot
+# (that is the journal in the bearing, which the steel core only stiffens). The axle prints
+# standing, so the bore runs up the build and the wall round it is whole perimeters.
+AXLE_END_PROUD = 0.2
+AXLE_SCREW_L = M4_SCREW_L                       # M4 x 10 button — the cartridges' SKU
+AXLE_WASHER_OD, AXLE_WASHER_ID, AXLE_WASHER_T = 9.0, 4.3, 0.8      # ISO 7089 M4
+AXLE_TAP_L = AXLE_SCREW_L - AXLE_WASHER_T + 2 * D.BEAD            # 10.8: the screw's reach + a
+                                                # chip well below its end
+assert AXLE_D < AXLE_WASHER_OD <= AXLE_LAND_D, (
+    f"the Ø{AXLE_WASHER_OD} retention washer must lap the inner race (bore Ø{AXLE_D}) and stay "
+    f"inside its abutment band (Ø{AXLE_LAND_D}) — outside it rubs the shield")
+assert AXLE_FLAT_R - M4.selftap_d / 2 >= D.MIN_WALL - 1e-9, (
+    f"the axle's wall between the end screw's bore and the D-flat is "
+    f"{AXLE_FLAT_R - M4.selftap_d / 2:.2f}, under one bead")
 PCB_Y   = MAG_Y1 + AIR_GAP + CHIP_H             # board face = magnet + gap + PACKAGE
-AXLE_Y0, AXLE_Y1 = -HOUS_HW, MAG_Y1             # axle: -Y journal tip FLUSH with the -Y bearing's
-                                                # outer face -- the full bearing width (user,
-                                                # 2026-09-21; it was a spelled -13.1 that went
-                                                # stale when the lever widened). Was: (stops INSIDE its
-                                                # bearing pocket, back wall -13.2) .. the
-                                                # magnet face at the +Y end
+AXLE_Y0, AXLE_Y1 = -HOUS_HW - AXLE_END_PROUD, MAG_Y1   # axle: the -Y journal runs the full
+                                                # bearing width (user, 2026-09-21) and its tip
+                                                # stands AXLE_END_PROUD past the race for the
+                                                # end screw to seat on .. the magnet face at
+                                                # the +Y end
 
 # ── SENSOR-BOARD CRADLE (user: "build material in the housing to hold the PCB").
 # Fused to the housing's +Y face, printed with it (-Z→+Z), and every feature stands
@@ -1736,17 +1773,17 @@ def _half_stop_cart_base() -> cq.Workplane:
     # Ø10 head in Y (window < head). The tongue rides up through it as the lobe rises over the throw
     base = base.cut(box_at(HS_BODY_X0 - HS_FRONT + 0.1, HS_WIN_WY, FOLL_H + 1.0,
                            x=(HS_FRONT + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z + FOLL_DZ))
-    # the two inserts, both mouths on the BACK face (set screws never self-tap -- they hold load):
-    #   TENSION (on the axis): Ø6×5 pocket + the 0.6 web's Ø4.4 way to the seat washer.
+    # the two inserts, both mouths on the BACK face (adjusters never self-tap -- they hold load):
+    #   TENSION (on the axis): Ø6×5 pocket + the one-bead web's Ø4.4 way to the seat washer.
     #   POSITION (HS_POS_DZ above): its Ø4.4 way runs on HS_POS_FWD past the wall, because the screw's
-    #   point reaches that far -X into the channel roof when the socket end is flush with the face.
+    #   end reaches that far -X into the channel roof when the head is down on the face.
     _up = CART_UP
     base = cut_insert_bore(M4, base, (HS_BACK_X, HS_YC, HS_Z), (-1, 0, 0),
                            clr_len=HS_BACKWALL - INSERT_L + 0.2, print_up=_up,
-                           reason="tension set screw: its cup pushes the spring-seat washer")
+                           reason="tension screw: its end pushes the spring-seat washer")
     base = cut_insert_bore(M4, base, (HS_BACK_X, HS_YC, HS_Z + HS_POS_DZ), (-1, 0, 0),
                            clr_len=HS_BACKWALL - INSERT_L + HS_POS_FWD, print_up=_up,
-                           reason="position set screw: its socket end is the cartridge's X stop")
+                           reason="position screw: its head is the cartridge's X stop")
     return heal(base)
 
 
@@ -1788,14 +1825,14 @@ def _hs_block(yc, x0, x1):
 # foot pedal in foot_pedal. All three are the same control core in different
 # POSES, so the three blocks below were three near-identical copies. They are
 # functions now, and one of them fixed a live bug on the way: LKL and the foot
-# pedal had the axle SET SCREW, LKV did not, so its axle had no axial retention
-# at all. The no-glue sweep missed it precisely because the block was pasted
-# rather than called. A copy that can drift, does.
+# pedal had the axle's retention, LKV did not, so its axle had none at all. The
+# no-glue sweep missed it precisely because the block was pasted rather than
+# called. A copy that can drift, does.
 # ════════════════════════════════════════════════════════════════════════════
 def cut_axle_bore(body, hw=None):
-    """The lever's axle interface: the D-BORE through the hub plus the M2 SET
-    SCREW onto the axle's flat (its only axial retention — see the AXLE_SET_*
-    block for why it self-taps rather than taking an insert).
+    """The lever's axle interface: the D-BORE through the hub. The flat is the
+    key; what holds the axle in axially is the screw in its own -Y end (see
+    AXLE_END_PROUD), so the hub carries no fastener at all.
 
     cadkit picks the bore shape from print_up: a lever prints lying on its -Y
     face, so this bore runs ALONG the build direction and correctly comes back a
@@ -1804,11 +1841,9 @@ def cut_axle_bore(body, hw=None):
     bore = printable_bore(AXLE_BORE_D, 2 * hw, (0.0, -hw, 0.0),
                           (0.0, 1.0, 0.0), LEVER_UP, overshoot=1.0)
     zhi, zlo = AXLE_FLAT_R + 0.1, -(AXLE_BORE_D / 2 + 1.0)
-    body = body.cut(bore.intersect(box_at(       # flatten the +Z side -> D
+    return body.cut(bore.intersect(box_at(       # flatten the +Z side -> D
         AXLE_BORE_D + 2.0, 2 * hw + 4.0, zhi - zlo,
         x=0.0, y=0.0, z=(zhi + zlo) / 2)))
-    return cut_selftap(M2, body, (0.0, 0.0, AXLE_SET_R), (0.0, 0.0, -1.0),
-                       AXLE_SET_L, overshoot=0.5)
 
 
 def cut_axle_stack(w):
@@ -1863,23 +1898,25 @@ def cut_feel_pockets(w, place, x_front=None):
 
 
 def cut_feel_rear(w, place, reach=0.0):
-    """The housing REAR behind each pocket: the position screw's washer recess +
-    its Ø3.2 key way, and the tension screw's Ø4.4 access (its tail rides in here
-    when backed out; the screw passes through it to be fitted or replaced).
+    """The housing REAR behind each pocket: the position head's recess (the washer
+    sits at its bottom) + the key way behind it, and the tension head's way
+    straight through (the head rides in here when backed out; the screw passes
+    through it to be fitted or replaced).
 
     `reach` carries both holes further out past HS_REAR_T -- the foot pedal's
     housing is fused into a bar that stands behind it, and the key has to get
     through that too. Plain bores along X, teardropped for the -Z->+Z print, so
-    they survive heal() (no threads here any more)."""
+    they survive heal() (no threads here)."""
     up = (0.0, 0.0, 1.0)
     run = HS_REAR_T + reach + 1.0
     for dy in (MAIN_YC - HS_YC, 0.0):
         yc = HS_YC + dy
         zp = HS_Z + HS_POS_DZ
         w = w.cut(place(cq.Workplane("XY").add(printable_bore(
-            M4_SHAFT_CLR_D, run + 0.5, (HS_POCKET_BX - 0.5, yc, HS_Z), (1.0, 0.0, 0.0), up))))
+            HS_HEAD_WAY_D, run + 0.5, (HS_POCKET_BX - 0.5, yc, HS_Z), (1.0, 0.0, 0.0), up))))
         w = w.cut(place(cq.Workplane("XY").add(printable_bore(
-            HS_WASH_RECESS_D, WASHER_T + 0.5, (HS_POCKET_BX - 0.5, yc, zp), (1.0, 0.0, 0.0), up))))
+            HS_WASH_RECESS_D, HS_POS_RECESS + 0.5, (HS_POCKET_BX - 0.5, yc, zp),
+            (1.0, 0.0, 0.0), up))))
         w = w.cut(place(cq.Workplane("XY").add(printable_bore(
             HS_KEY_D, run, (HS_POCKET_BX, yc, zp), (1.0, 0.0, 0.0), up))))
     return w
@@ -1913,7 +1950,7 @@ def cut_feel_rear(w, place, reach=0.0):
 # ceiling, and the nub's underside is the 45 deg this whole part is drawn to.
 #
 # ON THE CONNECTOR CHEEK, FLUSH WITH THE BACK END (user, both). Not the back face --
-# that is how a 2.0 key reaches both feel screws, and a coil parked across it covers
+# that is how the key reaches all four feel screws, and a coil parked across it covers
 # them for the life of the instrument. The +Y cheek is where the wire already is, since
 # J1's plug leaves the board -X in the gap between the board and this very face.
 # THE BUS-B CABLE, sized here because the KEEPER is sized from it -- and re-exported by
@@ -2496,7 +2533,7 @@ def _housing() -> cq.Workplane:
     on the sixth by the INSTRUMENT once the lever slides in, so there is no
     retaining screw. A Ø14 driver bore is RESERVED about the axle axis so
     kl_magnet_cap can still be socketed with all this printed.
-    DEFERRED: the M2 depth LOCK.
+    DEFERRED: the depth LOCK.
     NOTE — the tenons engage NOTHING at the modelled pose: MOUNT_Y puts the
     housing's +Y face at -134.85 and the chassis rails start at -133.75, so
     the whole housing hangs 1.1 mm OUTBOARD of the rib comb. That pose is the
@@ -2668,23 +2705,21 @@ def kl_axle() -> cq.Workplane:
     the -Y bearing, so nothing has to thread a rigid stub into an already-
     captured bearing.
 
-      * Ø5 journals at both bearings, kept fully ROUND.
-      * a D-FLAT over the hub band = the anti-rotation key (a protruding
-        tongue could not pass the Ø5 bearing bore on the way in). An M2 SET
-        SCREW through the hub wall onto that flat is what holds the axle
-        axially — no glue: the axle can carry no integral shoulder (nothing on
-        it may exceed Ø5, or it could not pass the bearings) and it rotates, so
-        it cannot be pinned to the housing either. Pinning it to the LEVER does
-        the job, because the lever's hub ends already sit 0.4 inside the two
-        bearing inner races.
+      * Ø8 journals at both bearings.
+      * a D-FLAT from the leading tip through the hub band = the anti-rotation
+        key (a protruding tongue could not pass the bearing bore on the way in).
+      * an M4 thread-forming BORE in the -Y tip: one button head and a washer
+        go in there once the axle is through, and that is the axial retention
+        (see AXLE_END_PROUD). No glue, and nothing in the hub.
       * a FLANGE that seats on the housing's contact rib — the axial datum
         that sets the magnet's Y, and with it the sensor air gap.
       * a magnet POCKET with a MALE thread on its OD; kl_magnet_cap screws
         over it and clamps the disc.
 
     Prints STANDING, POCKET-DOWN (collar face on the bed): that way the
-    Ø5 -> Ø9 flange step is an upward-facing floor rather than a 2 mm
-    overhanging ledge, and the 45° thread flanks self-support. Use a brim —
+    journal -> flange step is an upward-facing floor rather than an
+    overhanging ledge, the 45° thread flanks self-support, and the end screw's
+    bore is a plain hole down from the top. Use a brim —
     the bed footprint is only the collar's annulus under a ~31 mm column.
     Built along +Z, threaded, then rotated onto the lever's +Y axis; the flat
     is milled AFTER the thread (cadkit thread rule) and it is NEVER healed."""
@@ -2704,6 +2739,8 @@ def kl_axle() -> cq.Workplane:
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(     # magnet pocket
         MAG_POCKET_D / 2, MAG_COLLAR_H + 1.0,
         cq.Vector(0, 0, MAG_Y0), cq.Vector(0, 0, 1))))
+    b = cut_selftap(M4, b, (0.0, 0.0, AXLE_Y0), (0.0, 0.0, 1.0), AXLE_TAP_L,
+                    overshoot=0.5, print_up=(0.0, 0.0, -1.0))      # the end screw's bore
     b = heal(b)
     # MALE thread on the collar (blank is already at crest Ø), then the flat
     b = cut_thread(b, minor_d=MAG_TH_MINOR - MAG_TH_CLR,

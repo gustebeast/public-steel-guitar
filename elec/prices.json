@@ -86,13 +86,13 @@
       "what": "M4x8 18-8 button, 2.5 hex -- the two female pogo boards"
     },
     "m4_button_10": {
-      "usd": 0.1349,
+      "usd": 0.0958,
       "verified": "v",
-      "per_instrument": 14,
+      "per_instrument": 69,
       "vendor": "McMaster-Carr",
       "sku": "92095A190",
-      "order": "2 x $9.44 (pack of 100) = $18.88 for 140 needed",
-      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards"
+      "order": "7 x $9.44 (pack of 100) = $66.08 for 690 needed",
+      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
     },
     "m4_button_12": {
       "usd": 0.4923,
@@ -140,13 +140,13 @@
       "what": "M4x40 -- the four leg lock pins"
     },
     "m4_setscrew_10": {
-      "usd": 0.1032,
+      "usd": 0.929,
       "verified": "v",
-      "per_instrument": 45,
+      "per_instrument": 1,
       "vendor": "McMaster-Carr",
       "sku": "91390A114",
-      "order": "5 x $9.29 (pack of 100) = $46.45 for 450 needed",
-      "what": "M4x10 cup-point set screw -- 2 position + 2 spring-tension per control x 11, + 1 pickup retention. BOM.md also lists 10 string clamps; the model draws none, so they are NOT counted here."
+      "order": "1 x $9.29 (pack of 100) = $9.29 for 10 needed",
+      "what": "M4x10 cup-point set screw -- the pickup's -Y retention, the LAST one (2 mm key), and it is being replaced. The 44 in the feel cartridges are M4x10 button heads now."
     },
     "m4_insert": {
       "usd": 0.2187,
@@ -165,6 +165,14 @@
       "sku": "91100A120",
       "order": "5 x $2.97 (pack of 100) = $14.85 for 440 needed",
       "what": "DIN 9021 M3 washer O9 x 0.8 -- spring seat + position, 4 per control x 11"
+    },
+    "washer_m4_7089": {
+      "usd": 0.05,
+      "verified": "m",
+      "per_instrument": 11,
+      "vendor": "McMaster-Carr",
+      "sku": "-",
+      "what": "ISO 7089 / DIN 125 M4 washer O9 x 0.8, O4.3 hole -- under the axle's end screw, 1 per sensed control x 11. Price carried at a guess; pick the SKU at purchase."
     },
     "break_dowel": {
       "usd": 0.254,
@@ -247,14 +255,6 @@
       "verified": "m",
       "per_instrument": 1,
       "what": "one 10-string pedal steel set"
-    },
-    "m2_grub": {
-      "usd": 0.1,
-      "verified": "m",
-      "per_instrument": 5,
-      "vendor": "McMaster-Carr",
-      "sku": "-",
-      "what": "M2 x 3 cup set screw, axial retention -- IN BOM.md, NOT IN THE MODEL. Carried at a guess so it is not lost."
     }
   },
   "boards": {
