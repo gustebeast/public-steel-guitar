@@ -146,6 +146,23 @@ port, so a silent DAC and a silent pot look identical.
 | 3.4 | **`BOOT0` to a bare pad** — same argument and same ⚠ as 2.4; this MCU sits behind the hub, so the ROM loader would enumerate through it | 1 pad | 0 |
 | 3.5 | **Pot readback: wire `POT_SDO` to a MISO pin.** Proves the SPI link and the pot's registers. ⚠ Needs a net out of U1's 0.4 mm QFN, which a post-route repair cannot do (recorded limit) — so it is a placement-time change on a board that currently loses its route to any change. **Rank below 3.2, which answers the same question from outside** | 0 parts, 1 net | 0 (SPI idles between volume changes) |
 
+**Status 2026-09-30 — this board takes NO hardware changes, and that is the finding.** Six
+placement changes were routed on it (a diode move, five USB overhang values); every one split
+a USB pair, because `HUB_DN1` and `THRU` are routed one conductor at a time and the pair layer
+cannot yet declare them. So 3.4 and 3.5 wait on that tooling, and 3.3 is answered without pads:
+
+| rail | probe at | expect |
+|---|---|---|
+| `+5V` | **FB1 pin 2** (the bead's output), or relay K1 pin 1 | 5.0 V |
+| `V5_PRE` | **FB1 pin 1** / L1 pin 2 | 5.0 V, before the bead |
+| `DAC_VNEG` | **C33 pin 1** (it is the only other thing on the net) | **−3.3 V**; missing = a silent DAC with every digital signal correct |
+| `DAC_LDOO` | **C30 or C31 pin 1** | 1.8 V |
+| `ADC_VREF` | **C19 or C20 pin 1** | 2.5 V (half of 5 V) |
+
+Each is the hot pad of a decoupling part already sitting at the pin, which is exactly where a
+test pad would have gone. A meter probe on an 0402 pad is fiddly but it is a first-article
+measurement made once, not a production step.
+
 **Deliberately NOT done:** no pad on `VMID`, `PICKUP_IN` or any op-amp input. Read `VMID`
 indirectly — every buffer output rests at it — which is optical's `MID` rule for the same reason.
 
