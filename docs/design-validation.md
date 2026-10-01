@@ -34,7 +34,13 @@ Nothing here is fixed. This is a list.
 
 ## B1 — reach every pitch the copedent asks for
 
-**The travel budget is 8.35 mm** (`CARRIAGE_TRAVEL`, `src/dimensions.py:159-177`),
+> **2026-10-01: the travel is 7.97 mm now, not 8.35.** It is set by hardware: ceiling (top stop) to a
+> raised floor in the screw rail, sized so string 10's belt clamp stops 5 mm short of each pulley
+> (`CARRIAGE_TRAVEL`, `TRAVEL_WANT` in `src/dimensions.py`). 8.35 is what the string physics
+> below asks for; read every "8.35" in this section as that want. The 7.26 mm worst-string
+> estimate still fits, with 0.71 mm over instead of 1.09.
+
+**The travel budget is 8.35 mm** (`TRAVEL_WANT`, `src/dimensions.py`),
 and it is three terms:
 
 | Term | mm | For |

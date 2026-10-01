@@ -25,6 +25,8 @@ LAYOUT (under-string, vertical-screw):
 # ─────────────────────────────────────────────────────────────────────────
 # Print process — the min-material floor (cadkit.printing owns the rule)
 # ─────────────────────────────────────────────────────────────────────────
+import math
+
 from cadkit.fasteners import M4
 from cadkit.printing import min_wall
 NOZZLE_D        = 0.8       # the PROJECT DEFAULT nozzle. Most of this instrument is
@@ -167,14 +169,17 @@ DECK_TOP_Z      = 8 * BEAD  # 6.4 deck-plate top = playing-surface datum; the ch
 #   tightness; +6 semitones (3 whole steps) above open = DL_OPEN·(2^(6/6)−1) =
 #   DL_OPEN. So usable travel = DL_OPEN (slack→open) + DL_OPEN (+6 st) + margin.
 DL_OPEN         = 4.0
-# 4 SEMITONES of upward bend, not 6 (user) — traded for the travel it frees, which is
-# what lets the nut ride high enough for the thrust stack to move above the pulleys.
-# stretch ∝ f², so the bend costs DL_OPEN·(2^(n/6) − 1): 4.00 at six semitones, 2.35 at
-# four. The other two terms are unchanged — a full DL_OPEN of slack→open take-up (that
-# is the "hand tight" allowance, and it is bounded by DL_OPEN however loosely you pull)
-# plus 2.0 of margin for new-string break-in.
+# 4 SEMITONES of upward bend is the target (user). stretch ∝ f², so the bend costs
+# DL_OPEN·(2^(n/6) − 1): 2.35 at four. With a full DL_OPEN of slack→open take-up (the "hand
+# tight" allowance, bounded by DL_OPEN however loosely you pull) and 2.0 of new-string
+# break-in, that asks for TRAVEL_WANT of carriage travel.
+# IT IS A WANT, NOT THE TRAVEL. The travel is set by hardware -- CARRIAGE_TRAVEL, down where
+# the belt runs are known -- and comes out a little under this. What the difference costs:
+# a string wrapped fully slack and left to break in the full 2.0 reaches ~3.4 semitones
+# rather than 4; pulled hand-tight to a tenth of its open tension, or re-wrapped after
+# break-in, it reaches 4 with room over.
 PITCH_UP_ST     = 4
-CARRIAGE_TRAVEL = DL_OPEN * 2 ** (PITCH_UP_ST / 6) + 2.0    # 8.35
+TRAVEL_WANT     = DL_OPEN * 2 ** (PITCH_UP_ST / 6) + 2.0    # 8.35
 
 # ── THE NUT IS THE CARRIAGE (user) ─────────────────────────────────────────
 # There is no printed carriage any more. The H-nut's own two mounting ears do
@@ -200,9 +205,12 @@ CARRIAGE_TRAVEL = DL_OPEN * 2 ** (PITCH_UP_ST / 6) + 2.0    # 8.35
 # GUESSED hole pitch, dragging the rail, both pulley planes, ten belt runs and the
 # motor bank with it. This way a wrong guess costs a fraction of a degree on a dead
 # length and nothing else.
-NUT_TOP_Z       = -7.2      # flange TOP at the top of travel. A FROZEN datum, not a
-                            # derivation: it is asserted below against the THRUST STACK,
-                            # which now sits on top of the pulleys rather than under them.
+# THE TOP OF TRAVEL IS THE CEILING (user, 2026-10-01). The nut runs up until its flange
+# lands on the changer room's ceiling, and that hard stop is the restringing position --
+# a place the mechanism finds by itself, with no setting to get wrong. The ceiling is the
+# frozen datum; the nut's top of travel is simply it.
+CHANGER_CEIL_Z  = -4 * BEAD # -3.2, the changer room's ceiling = the nut's TOP STOP
+NUT_TOP_Z       = CHANGER_CEIL_Z    # flange TOP at the top of travel, on the ceiling
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -252,8 +260,8 @@ NUT_HOLE_DX     = 8.0       # ± from the axis (16 mm hole pitch)
 # the bottom of travel it stops well clear of the drive pulleys instead of reaching
 # down among them. The boss hangs below on the screw axis, where the pulley's own
 # swept circle is the only thing nearby and NUT_BOT_MIN is asserted against it.
-NUT_TOP_MAX     = NUT_TOP_Z                                            # -10.0
-NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H                  # -30.55, at BOTTOM of travel
+NUT_TOP_MAX     = NUT_TOP_Z                                            # -3.2
+# (NUT_BOT_MIN, the other end, is down with CARRIAGE_TRAVEL: it needs the belt runs.)
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -274,9 +282,10 @@ SCREW_OD        = 8.0       # Tr8x2: Ø8, SINGLE-start, 2 mm lead.
 # Tr8x2 is also a CATALOGUE part where Tr5x1 was a specialty one -- it is the base of
 # the ISO/DIN 103 series -- and single-start keeps the 5.2 deg lead angle that makes it
 # self-locking, which is what holds tuning with the motors unpowered.
-# TOP: the screw only has to clear the NUT, and the nut is now the whole moving
-# assembly — so the screw stops SCREW_RUNOUT above the flange's top face and nothing
-# else needs reaching. RUNOUT is pure insurance for build tolerance.
+# TOP: the screw stops SCREW_END_GAP under the ceiling, so it can never touch the
+# endplate. At the very top of travel the nut therefore stands that far past the screw's
+# end -- 13.4 of its 15 still threaded -- which is fine for the one job done up there,
+# restringing, with the string slack (user).
 # THREAD-FORMING BORE — shared by the retaining collar and the drive pulley. Both grip
 # a rod whose thread we cannot merely clamp (screw_collar.py has that arithmetic).
 #
@@ -311,7 +320,7 @@ FORM_MAJOR      = 7.8       # printed groove Ø (0.1 radial under the Ø8 crest)
                             # gave exactly 2.00 — both rejected. 0.80 leaves 1.80.
                             # Engagement is 0.80 of the rod's 1.25 radial full form,
                             # ~64%, reached by displacement rather than by hoping.
-SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at top of travel
+SCREW_END_GAP   = 2 * BEAD                          # 1.6 from the screw's top to the ceiling
 # TOP RADIAL BEARING. The screw runs on past the nut into one MR85 up in the endplate's
 # slab, and this is not a refinement — it is what makes anchoring the string off-axis
 # sound at all. The string pulls 147 N at the ear, NUT_HOLE_DX off the screw axis, which
@@ -321,17 +330,9 @@ SCREW_RUNOUT    = 3 * BEAD                          # 2.4 proud of the nut at to
 # It must FLOAT axially (a plain slip-fit seat, no shoulder either side) or it fights the
 # thrust stack for the string load and over-constrains the shaft: the classic
 # fixed/floating pair, thrust at one end, alignment at the other.
-# THE TOP BEARING IS GONE (see build._string_components), so this is no longer a seat
-# mouth — it is only the CHANGER ROOM'S CEILING, which is the other job it was doing.
-# Renamed to say so. Its formula is kept as-is deliberately: the ceiling wants to sit a
-# clear 2 beads over the screw's own top, which is exactly what it already computed.
-CHANGER_CEIL_Z  = NUT_TOP_Z + SCREW_RUNOUT + 2 * BEAD   # -3.2, changer room ceiling
-# THE SCREW ONLY HAS TO CLEAR THE NUT. It used to end flush inside the top bearing
-# (SCREW_TOP_Z = TOP_BRG_Z1, built on MR85_W — a bearing this design no longer uses at
-# all). With that bearing deleted the screw was still running up to where it had been,
-# 4.10 INTO the solid endplate slab (user saw it clipping). Nothing up there needs
-# reaching now, so it stops SCREW_RUNOUT proud of the flange's top face and no further.
-SCREW_TOP_Z     = NUT_TOP_Z + SCREW_RUNOUT              # -4.80
+# THE TOP BEARING IS GONE (see build._string_components), so nothing up there needs
+# reaching: the screw ends in the room, under the ceiling.
+SCREW_TOP_Z     = CHANGER_CEIL_Z - SCREW_END_GAP        # -4.80
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -589,16 +590,6 @@ PULLEY_TOP_MAX  = (SCREW_PULLEY_Z + BELT_PLANE_DZ
                    + PULLEY_END_A)                  # -38.6, BOTH SKUs' top (same Z)
 SUPPORT_BRG_BOT = PULLEY_TOP_MAX                    # the stack seats straight on it
 SUPPORT_BRG_Z   = SUPPORT_BRG_BOT + SUPPORT_BRG_W   # -33.6, thrust ledge underside
-# THE NUT'S LOWEST SWEEP. The deepest part of the nut is its Ø10.2 BOSS, and it descends
-# INSIDE the thrust ledge's bore (screw_rail.SEAT_LEDGE_D — asserted there, radially), so
-# the thing it has to clear vertically is the BEARING at the bottom of that bore, not the
-# ledge plane. The old form, NUT_BOT_MIN - (ledge top), stopped being true the moment the
-# ledge grew thicker than the gap: it would have blocked a change that collides with nothing.
-_NUT_BRG_GAP = NUT_BOT_MIN - SUPPORT_BRG_Z
-assert _NUT_BRG_GAP >= 1.0 - 1e-9, (
-    f"the nut boss's lowest sweep clears the thrust bearing by only {_NUT_BRG_GAP:.2f} "
-    f"(want 1.0): raise NUT_TOP_Z or shorten CARRIAGE_TRAVEL")
-
 
 # STRING ACCESS CHANNELS (user, 2026-09-10). With two screw rows, a string can no longer be
 # threaded into its nut ear from the +X face: the far row is buried behind the near one.
@@ -770,6 +761,38 @@ def motor_pos(i: int):
     """Return (x, y, z) of string i's motor pulley (on the string's Y line). The −Y
     string (last index) is closest to the bridge, stepping out toward +Y (see above)."""
     return (-(MOTOR_X0 + (N_STRINGS - 1 - i) * MOTOR_X_STEP), string_y(i), MOTOR_BELT_Z)
+
+
+# ── THE CARRIAGE'S TRAVEL IS SET BY THE SHORTEST BELT (user, 2026-10-01) ─────────────────
+# Each belt's tension clamp is spliced INTO the belt, so it rides along with it: BELT_PER_MM
+# of belt for every millimetre the nut moves. The clamp is destroyed if it reaches either
+# pulley, so the straight run between the two flanges, less the clamp itself, is all the
+# belt travel there is -- and the nut can run a great deal further than that (15.4 from the
+# ceiling to the thrust bearing, against 8.7 of clamp room on the shortest belt). Nothing
+# stopped it. A homing move or a long restring would have walked the clamp into a pulley.
+# So the nut gets a FLOOR (screw_rail's plate rises to NUT_BOT_MIN and the boss lands on
+# it), and the travel is what the shortest belt can carry with CLAMP_END_CLR left at each
+# end: the top stop is the ceiling, but where the clamp sits on the belt at that moment is
+# set by hand at assembly, and nobody wants the far end a hair off a pulley.
+# ONE FLOOR FOR ALL TEN (user). Only the three shortest belts need it -- the rest are
+# stopped by the nut long before the clamp -- but one travel is one number in the
+# firmware, one plate height, and the same range on every string.
+BELT_PER_MM     = PULLEY_TEETH * BELT_PITCH / SCREW_PITCH      # 14 of belt per mm of nut
+BELT_CLAMP_L    = 39.6      # the clamp along the belt, lifters and all. MEASURED off
+                            # belt_tensioner's solids; build.py asserts it still is.
+CLAMP_END_CLR   = 5.0       # belt left between the clamp and each pulley flange
+BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
+                                 screw_pulley_z(i) - motor_pos(i)[2])
+                      for i in range(N_STRINGS))               # 172.2, string 10
+CARRIAGE_TRAVEL = (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
+                   - 2 * CLAMP_END_CLR) / BELT_PER_MM          # 7.97
+NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -26.17, the FLOOR: the
+                                                               # boss's underside at the
+                                                               # bottom of travel
+assert NUT_BOT_MIN - SUPPORT_BRG_Z >= BRG_LEDGE_T - 1e-9, (
+    f"the nut's floor ({NUT_BOT_MIN:.2f}) is below the thrust ledge's top "
+    f"({SUPPORT_BRG_Z + BRG_LEDGE_T:.2f}): the stop would have to be cut INTO the ledge "
+    f"that carries the string load")
 
 
 # THE INSTRUMENT'S BOTTOM GRID (user, 2026-09-15). The bottom is one solid XBAR-tall prism
