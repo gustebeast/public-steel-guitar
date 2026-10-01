@@ -35,7 +35,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 384443.8
+   "volume_mm3": 374565.6
   },
   "cart_base": {
    "material": "pctg",
@@ -163,11 +163,11 @@
   },
   "screw_pulley_hi": {
    "material": "pctg",
-   "volume_mm3": 580.9
+   "volume_mm3": 831.0
   },
   "screw_pulley_lo": {
    "material": "pctg",
-   "volume_mm3": 1217.9
+   "volume_mm3": 1467.9
   },
   "tension_fork": {
    "material": "pctg",
