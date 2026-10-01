@@ -11,7 +11,10 @@ from src import fret_light as FL
 from src.build import collect_components
 
 REACH = 2.30            # docs/fret-led.md section 8: tab reach over the board's edge
-SKIP = ("fret_pcb", "fret_led", "top_plate")
+import sys
+# `--no-wires`: the wires are NOT modelled accurately (user, 2026-10-01) -- the PLUGS on
+# the boards are the real +Z extent of the harness, so measure against those alone.
+SKIP = ("fret_", "top_plate") + (("wire_", "motor_pigtail") if "--no-wires" in sys.argv else ())
 
 
 def main():

@@ -379,10 +379,8 @@ the same Z band, so any X motion drives every LED into a wall -- fret 24's cell 
 LED 1.27 mm and that is the whole budget. The strips move; the board does not. This is why
 the earlier lift-and-shift tab scheme was retracted (docs/fret-led.md 8.6).
 
-⚠ **THE MID PANEL TAKES ONE STRIP, THE KEYHEAD PANEL TWO.** The CAN trunk runs diagonally
-under the boards and leaves only 1.00 mm under the mid panel's -Y edge, which is not enough
-for a groove (docs/fret-led.md 8.7). Mid's single strip goes on its **+Y** edge. That is
-sufficient on its own -- it turns the 206 mm cantilever into the board's 70.4 mm width and
-deflection goes as the fourth power, so the unsupported edge droops about 15 um.
+**BOTH PANELS TAKE TWO STRIPS, one along each long edge** (docs/fret-led.md 8.8). A strip
+is a hinge, not a clamp, so a board held along one edge only can swing about it; two make
+it a plate supported on both sides and keep the cells light-tight.
 
-All three strips are the same section, 1.60 thick, cut to their panel's board length.
+All four strips are the same section, 1.60 thick, cut to their panel's board length.
