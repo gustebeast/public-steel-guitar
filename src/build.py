@@ -613,10 +613,16 @@ def _string_components(i):
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
     # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
-    so, sxd, sn = C.splice_frame((mx, my, mz), (D.screw_x(i), sy, spz))
+    # THE CLAMP IS POSED WHERE THE NUT HAS CARRIED IT. It is spliced on with the nut at the
+    # top of travel, CLAMP_END_CLR off the SCREW pulley's flange (INSTALL_NOTES), and from
+    # there it rides BELT_PER_MM of belt toward the motor for every mm the nut comes down.
+    # So a string posed at the floor shows its clamp at the far end of its run -- and on
+    # string 10 that is CLAMP_END_CLR short of the motor pulley, which is the whole reason
+    # the travel is what it is. (All tensioners shown FULLY LOOSE: splice take-up gap open.)
+    _from_screw = (D.PULLEY_FLANGE_OD / 2 + D.CLAMP_END_CLR - min(_CLAMP_XS)
+                   - DEMO_POSE_DZ.get(i, 0.0) * D.BELT_PER_MM)
+    so, sxd, sn = C.splice_frame((mx, my, mz), (D.screw_x(i), sy, spz), from_screw=_from_screw)
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
-    # all tensioners shown FULLY LOOSE (splice take-up gap open); the clamp's belt-position vs the
-    # carriage is a separate question (see the belt-travel note) — held at the flat-zone reference here.
     for _nm, _shp in BTn.clamp_components(with_lifters=(i == D.N_STRINGS - 1)):
         out.append((f"{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
@@ -1286,6 +1292,17 @@ def _lever_stations_components():
 
 SCREW_ROW_PARTS = ("leadscrew", "nut_", "string_", "guide_rod",
                    "screw_pulley", "screw_bearing")
+
+
+def travel_work_components():
+    """EVERYTHING THE NUT'S TRAVEL MOVES OR MEETS, as one live set: all ten strings' whole
+    drivetrains (screw, nut, guide rod, string, belt, clamp, motor) and the bridge endplate
+    whose ceiling and rail are the two stops. The screw rows alone leave the belts and their
+    clamps in grey cache, and the clamps reaching the pulleys is what the travel is about."""
+    out = [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)]
+    out.append(("bridge_endplate", PARTS["bridge_endplate"][0]()))
+    out.append(("bridge_bearings", C.bridge_bearings()))
+    return out
 
 
 def screw_rows_components():
