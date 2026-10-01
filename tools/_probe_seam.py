@@ -22,7 +22,7 @@ def comb(panel):
     """top_plate's comb for this panel, built the way top_plate builds it."""
     xb, xa = FL.panel_range(panel)
     c = (FL.walls(xb, xa).union(FL.ramps(xb, xa))
-         .union(FL.edge_walls(xb, xa)).cut(FL.strip_groove(xb, xa)))
+         .union(FL.edge_walls(xb, xa)))
     notch = FL.pogo_notches(xb, xa)
     return c.cut(notch) if notch.vals() else c
 

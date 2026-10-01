@@ -77,11 +77,17 @@ def _cad(board):
         for _n, part in KL.sensor_hardware():
             s = s.union(part)
         return s.union(KL.sensor_connector())
+    if board in ("fret_led_mid", "fret_led_key"):
+        # the two fret boards: the laminate with every routed body, and the LEDs, which
+        # src/fret_light.py draws as their own part so they read as lit
+        from src import fret_light as FL
+        panel = board.rsplit("_", 1)[1]
+        return FL.pcb(panel).union(FL.leds(panel))
     raise KeyError(board)
 
 
 BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
-          "pi_cap", "led_strip", "ui_board")
+          "pi_cap", "led_strip", "ui_board", "fret_led_mid", "fret_led_key")
 
 
 def _ui_rule_check():

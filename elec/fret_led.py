@@ -389,27 +389,36 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # column rather than the divider keeps the feedback pair WITH the buck, which is the
     # one thing about this cluster that is not negotiable: FB is its only high-impedance
     # node. check_notches is what found it, before the board was routed rather than after.
+    # ⚠ THE WHOLE COLUMN IS TURNED HALF A TURN INTO THE -Y HALF, AS ONE RIGID BODY. The
+    # M4 moved to the +Y side (opposite the tilt-in lip, fret_light.M4_Y) and its deck boss
+    # is O9.2 on the board's top face, exactly where the column's output end stood. A half
+    # turn about (col, 0) keeps every part's neighbours and every loop exactly as it was --
+    # C32 still against U10's VIN/GND, C33 still on BOOT/SW, the divider still with the
+    # buck -- which a plain mirror would not: a mirror swaps which side of U10 each sits on.
+    # F1, the one part that was already alone in the -Y half, goes to +Y for the same room.
+    def turned(dx, y):
+        return (col - dx, -y, 180.0)
+
     place.update({
         "J1": (mouth + 5.8125, 0.00, 270.0),
-        "C30": (col, 10.25, 0.0),
-        "C31": (col, 13.05, 0.0),
-        "C32": (col - pair, 15.17, 0.0),     # VIN HF bypass, against U10's VIN/GND
-        "C33": (col + pair, 15.17, 0.0),     # bootstrap, BOOT to SW
-        "U10": (col, 18.09, 0.0),
-        "C34": (col - pair, 21.01, 0.0),     # VCC bypass
-        "C38": (col + pair, 21.01, 0.0),     # output HF
-        "L1": (col, 24.23, 0.0),
-        "C36": (col, 28.13, 0.0),
-        "C37": (col, 30.93, 0.0),
+        "C30": turned(0.0, 10.25),
+        "C31": turned(0.0, 13.05),
+        "C32": turned(-pair, 15.17),         # VIN HF bypass, against U10's VIN/GND
+        "C33": turned(pair, 15.17),          # bootstrap, BOOT to SW
+        "U10": turned(0.0, 18.09),
+        "C34": turned(-pair, 21.01),         # VCC bypass
+        "C38": turned(pair, 21.01),          # output HF
+        "L1": turned(0.0, 24.23),
+        "C36": turned(0.0, 28.13),
+        "C37": turned(0.0, 30.93),
         # the feedback divider stays WITH the buck: FB is the one high-impedance node
         # here and a long trace to it is the classic way to make a switcher sing
-        "R10": (col - pair, 33.05, 0.0),
-        "R11": (col + pair, 33.05, 0.0),
-        # ...and the fuse goes in the EMPTY -Y half, because it is the only part of the
-        # supply that is NOT in a loop that matters: it sits upstream of the input bulk,
-        # so the hot loop closes without it and its feed from J1 can be as long as it
-        # likes. That buys the +Y column the room its 0.5 mm gaps need.
-        "F1": (col, -12.00, 0.0),
+        "R10": turned(-pair, 33.05),
+        "R11": turned(pair, 33.05),
+        # ...and the fuse sits apart, because it is the only part of the supply that is
+        # NOT in a loop that matters: it is upstream of the input bulk, so the hot loop
+        # closes without it and its feed from J1 can be as long as it likes.
+        "F1": turned(0.0, -12.00),
     })
     fps.update(dict(
         [("J1", J_FP), ("U10", BUCK_FP), ("L1", IND_FP),
