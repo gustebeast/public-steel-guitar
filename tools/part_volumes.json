@@ -35,7 +35,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 368337.5
+   "volume_mm3": 368347.9
   },
   "cart_base": {
    "material": "pctg",
@@ -87,7 +87,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 279176.3
+   "volume_mm3": 280942.7
   },
   "kl_axle": {
    "material": "pctg",
@@ -159,7 +159,7 @@
   },
   "pickup_zplate": {
    "material": "petg-gf",
-   "volume_mm3": 17569.3
+   "volume_mm3": 17270.7
   },
   "screw_pulley_hi": {
    "material": "pctg",
@@ -195,11 +195,11 @@
   },
   "top_plate_0": {
    "material": "pctg",
-   "volume_mm3": 70619.0
+   "volume_mm3": 69604.6
   },
   "top_plate_0_color": {
    "material": "pctg",
-   "volume_mm3": 21133.5
+   "volume_mm3": 20858.9
   },
   "top_plate_1": {
    "material": "pctg",

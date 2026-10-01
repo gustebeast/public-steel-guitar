@@ -95,13 +95,13 @@
       "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards"
     },
     "m4_button_12": {
-      "usd": 0.4923,
+      "usd": 0.3692,
       "verified": "v",
       "per_instrument": 4,
       "vendor": "McMaster-Carr",
       "sku": "92095A192",
       "order": "1 x $14.77 (pack of 100) = $14.77 for 40 needed",
-      "what": "M4x12 -- 2 optical board, 1 UI clamp, 1 pickup -Y retention (was a cup set screw until the one-key rule, 2026-09-30)"
+      "what": "M4x12 -- 2 optical board, 1 UI clamp, 1 pickup retention"
     },
     "m4_button_20": {
       "usd": 0.1894,
@@ -140,13 +140,13 @@
       "what": "M4x40 -- the four leg lock pins"
     },
     "m4_setscrew_10": {
-      "usd": 0.1032,
+      "usd": 0.1056,
       "verified": "v",
       "per_instrument": 44,
       "vendor": "McMaster-Carr",
       "sku": "91390A114",
       "order": "5 x $9.29 (pack of 100) = $46.45 for 440 needed",
-      "what": "M4x10 cup-point set screw -- 2 position + 2 spring-tension per control x 11. TAKES A 2.0 mm KEY, so every one of these breaks the one-key rule (user, 2026-09-30) and is to be designed out with the lever cartridges (branner). The pickup retention screw left this row for m4_button_12 that day."
+      "what": "M4x10 cup-point set screw -- 2 position + 2 spring-tension per control x 11. The pickup retention grub became an M4x12 button (d0e551da). ALL 44 TAKE A 2.0 KEY and so break the one-key rule; branner is designing them out."
     },
     "m4_insert": {
       "usd": 0.2187,
