@@ -121,13 +121,15 @@ CABLE_TOP = -17.15                 # where the cable WAS drawn
 # mid's -Y edge, at TEE_TOP. So the stack below the board is, from the plugs up:
 #     SLIDE_OVER    1.50   the panel SLIDES over the plugs, so this is a sliding clearance
 #                          (user: no "super narrow clearance there")
-#     D.MIN_WALL    0.80   the edge wall's floor under the retainer strip's groove
-#     STRIP_T_MAX   1.60   the strip itself -- user: "1.6 min"
-# and the board's underside sits on the strip. That is 0.40 ABOVE where the drawn cable
-# had put it, which costs the cells 0.40 of depth and gives mid its fourth strip.
+#     D.MIN_WALL    0.80   the flat cap under the tilt-in lip's tip
+#     LIP_DROP      1.60   the lip's 45 degree ramp, wall face to tip
+# and the board's underside is where the ramp starts. That is 0.40 ABOVE where the drawn
+# cable had put it, which costs the cells 0.40 of depth. (The 1.60 was first a retainer
+# STRIP's thickness -- user: "1.6 min" -- and the lip that replaced the strip on this edge
+# was sized to the same depth.)
 SLIDE_OVER = 1.50
-STRIP_T_MAX = D.MIN_WALL_2P        # 1.60: the retainer strip's thickness, every edge
-BOARD_BOT = TEE_TOP + SLIDE_OVER + D.MIN_WALL + STRIP_T_MAX   # -15.75
+LIP_DROP = D.MIN_WALL_2P           # 1.60
+BOARD_BOT = TEE_TOP + SLIDE_OVER + D.MIN_WALL + LIP_DROP   # -15.75
 BOARD_T   = 1.60
 BOARD_TOP = BOARD_BOT + BOARD_T    # -14.55
 # ⚠ 1.60, NOT THE 1.40 THIS LINE CARRIED. Read off the part's own listing while the
@@ -193,67 +195,18 @@ BOARD_HALF_W = 44 * D.BEAD         # 35.20 -> a 70.4 wide board. The outer LED's
 # at 58 degrees from horizontal it self-supports in this print direction.
 RAMP_DEG = 58.0
 
-# ── the -Z retention ────────────────────────────────────────────────────
+# ── the -Z retention: a lip on -Y, one screw on +Y, no loose parts ────────────────────
 # Five of the six directions come free (docs/fret-led.md 8.3): the comb's end walls take
-# +-X, the ramps and the edge walls take +-Y, and the cell walls' undersides take +Z at 23
-# places along the length. -Z is gravity's direction and this is it.
-#
-# ⚠ RETAINER STRIPS, NOT TABS, AND THE CELL PITCH IS WHY. Section 8.4's lift-and-shift
-# was retracted on measurement (docs/fret-led.md 8.6): an LED and a cell wall share
-# z BOARD_TOP..BOARD_TOP+LED_H, so ANY X motion of a seated board drives every LED into a
-# wall. Fret 24's cell leaves its LED 1.27 mm, and a tab must travel its own length --
-# 8.50 -- to leave its notch. The scheme could never have been engaged on the mid board.
-#
-# A STRIP MOVES INSTEAD OF THE BOARD, and that dissolves it. The comb lives ABOVE
-# BOARD_TOP and the board's underside is bare, every part being on its top face, so a strip
-# sliding along X BELOW the board meets no wall and no LED. The panel is assembled face
-# down: drop the board into the comb, gravity holds it against the cell walls, slide a
-# strip in along each long edge to trap it. The board never moves.
-#
-# ⚠ AND IT DELETES THE NOTCHES. The board is a plain rectangle again -- a tab needed a
-# notch through the edge and a notch removes substrate, so it was bounded by the outer
-# LED's courtyard; a strip runs under a bare underside and may lap as far as it likes.
-#
-# ONE SCREW IS NOT ENOUGH, which is where 8.3 was right even though 8.4 was not: the M4
-# sits 4.50 from the -X end, so the board cantilevers 206 mm, and at EI = 576,000 N.mm2
-# with ~35 g that is **0.64 mm** of sag at the far end -- the board hanging off the cell
-# walls there and leaking light between cells, which is what the comb exists to stop.
-STRIP_OVER = 2.30                  # how far a strip laps OVER the board's underside
-STRIP_CLR  = 0.20                  # sliding fit in the groove
-STRIP_FLOOR_CLR = SLIDE_OVER       # the edge wall's underside to whatever it slides over
-TAB_PLAY   = 0.30                  # board edge to the edge wall's inner face
-# ⚠ THE ROOM UNDER EACH EDGE, MEASURED AGAINST REAL PARTS ONLY. The first table here was
-# probed with the wire models in and read 1.00 under mid's -Y edge (wire_canl_6/7 at
-# -17.15) and 5.30 under key's (motor pigtails) -- both artefacts of src/wiring.py, which
-# draws the trunk 2.5 above its own plugs. tools/_probe_fret_tab.py --no-wires, 2026-10-01:
-#     mid -Y           tee_pcb_6 / tee_pcb_7 mated plugs, top TEE_TOP
-#     the other three  clear for the full 6.00 probed
-# Mid's -Y room is therefore the Z stack's own sum, and all four edges carry a full strip.
-STRIP_ROOM = {("mid", -1.0): BOARD_BOT - TEE_TOP, ("mid", 1.0): 6.00,
-              ("key", -1.0): 6.00, ("key", 1.0): 6.00}
-#
-# ⚠ BOTH EDGES, BECAUSE A STRIP IS A HINGE AND NOT A CLAMP. This said one full-length
-# strip was enough, on a cantilever-stiffness argument (15 um of droop). That treated the
-# strip as built-in. It laps 2.30 with clearance in its groove, so a board held along ONE
-# edge can rotate about it; what held mid's free edge was the M4 at one end and the board's
-# own torsion over 206 mm, roughly 0.2 - 0.3 mm at the far corner. Two strips make it a
-# plate supported on both long edges, which is what the cells need to stay light-tight.
-
-
-def strip_room(panel, sgn):
-    return STRIP_ROOM[(panel, sgn)]
-
-
-def strip_t(panel, sgn):
-    """How thick this edge's strip may be -- it and its groove floor must both fit."""
-    return min(STRIP_T_MAX,
-               strip_room(panel, sgn) - STRIP_FLOOR_CLR - D.MIN_WALL)
-
-
-# ── THE TILT-IN LIP (user, 2026-10-01) ────────────────────────────────────────────────
-# The -Y edge of BOTH boards hooks under a FIXED printed lip; the board goes in tilted,
-# +Y edge low, and swings up flat, and the one loose strip then closes the +Y edge. One
-# loose part a board instead of two, and both long edges still carried.
+# +-X, the edge walls take +-Y, and the cell walls' undersides take +Z at 23 places along
+# the length. -Z is gravity's direction and this is it. It took four tries (8.4 - 8.10):
+#   tabs + lift-and-shift   an LED shares its Z band with the cell walls, so the board
+#                           cannot travel in X to engage them (8.6)
+#   a loose strip per edge  works, but its groove's lower jaw is a flat ledge the deck
+#                           cannot print (user, from the render), and it is two loose parts
+#   tilt-in lip + a strip   the lip is right; the strip's groove was still that ledge
+#   TILT-IN LIP + THE M4    this: the -Y edge hooks under a fixed 45 degree lip, the board
+#                           swings flat, and the one M4 goes in on the +Y side -- "the
+#                           screws should be on the opposite side from the supported side"
 #
 # ⚠ THE LIP IS A 45 DEGREE RAMP, AND THE BOARD IS MEANT TO SLIDE DOWN IT. A flat lip is
 # an unsupported overhang in the deck's -Z print direction (the foot-light rule), so the
@@ -267,12 +220,26 @@ def strip_t(panel, sgn):
 # The ramp starts LIP_RISE above the board's underside at the wall face, so a board
 # sitting the full play out from that wall is carried within 0.10 of flat:
 #     drop = (gap to the hinge wall) - LIP_RISE = 0.60 - 0.50 = 0.10 nominal
-# A board 0.2 narrow drops 0.30; one 0.1 wide is wedged up tight. The strip's own groove
-# clearance was 0.20, so this is the same class of fit.
+# A board 0.2 narrow drops 0.30; one 0.1 wide is wedged up tight.
+#
+# ⚠ THE +Y EDGE IS HELD AT ONE POINT, AND THAT IS A KNOWN LIMIT. The M4 is in the bay, at
+# the board's -X end; from there to the far +Y corner is 206 mm with nothing under it but
+# the board's own torsion -- roughly 0.2 - 0.3 mm of droop at that corner, ESTIMATED, not
+# measured. One M4 through the board is the project's rule; a second is the fix if a
+# printed panel shows light under fret 24's wall.
+TAB_PLAY = 0.30                    # the board's lateral play, per side if it were shared
+# ⚠ THE ROOM UNDER EACH EDGE, MEASURED AGAINST REAL PARTS ONLY -- the wire models were in
+# the first probe and read 1.00 / 5.30 off conductors drawn above their own plugs.
+# tools/_probe_fret_tab.py --no-wires, 2026-10-01:
+#     mid -Y           tee_pcb_6 / tee_pcb_7 mated plugs, top TEE_TOP
+#     the other three  clear for the full 6.00 probed
+EDGE_ROOM = {("mid", -1.0): BOARD_BOT - TEE_TOP, ("mid", 1.0): 6.00,
+             ("key", -1.0): 6.00, ("key", 1.0): 6.00}
 HINGE_SGN = -1.0
 LIP_LAP = 1.50                     # lip under the board's edge once it is seated
 LIP_RISE = 2.0 * TAB_PLAY - 0.10   # 0.50: the ramp's start above the underside, at the wall
 LIP_CAP = D.MIN_WALL               # the flat under the ramp's tip: one bead
+EDGE_WALL_OUT = TAB_PLAY + 2.0 * WALL   # 3.50: board edge to an edge wall's OUTER face
 
 
 def edge_play(sgn):
@@ -290,45 +257,24 @@ def lip_depth():
     return lip_reach() - LIP_RISE + LIP_CAP
 
 
-def has_strip(panel, sgn):
-    """Does this edge take a loose strip? Not the hinge edge -- that one has the lip."""
-    return sgn != HINGE_SGN and strip_t(panel, sgn) >= D.MIN_WALL - 1e-9
-
-
-def strip_z(panel, sgn):
-    """(top, bottom) of the strip: its top face carries the board's underside."""
-    return BOARD_BOT, BOARD_BOT - strip_t(panel, sgn)
-
-
 def wall_floor(panel, sgn):
-    """How deep this edge's wall may hang -- NEVER past what was measured under it.
+    """How deep this edge's wall hangs.
 
-    ⚠ THIS IS WHAT TURNED THE GATE RED. The wall used to hang a full WALL below the
-    strip regardless of side, which put mid's -Y wall at -18.55 against a CAN conductor at
-    -17.15 and showed up as `top_plate_color_3 <-> wire_canl_7`, 4.4 mm3. A depth is a
-    clearance question and it has to be asked of the measurement, not of a constant."""
-    floor = BOARD_BOT - strip_room(panel, sgn) + STRIP_FLOOR_CLR
-    if sgn == HINGE_SGN:
-        return BOARD_BOT - lip_depth()         # the lip's own underside; asserted below
-    if not has_strip(panel, sgn):
-        return max(floor, BOARD_BOT - D.MIN_WALL)
-    return max(floor, strip_z(panel, sgn)[1] - D.MIN_WALL)
+    The hinge side goes down to the lip's own underside. The datum side stops FLUSH with
+    the board's underside: it only has to face the board's 1.60 of edge, and the M4's
+    head, which sits just inboard of it, laps under that face rather than into it."""
+    return BOARD_BOT - lip_depth() if sgn == HINGE_SGN else BOARD_BOT
 
 
-def strip_y(sgn):
-    """(inner, outer) Y of the strip on this edge; inner is how far it laps the board."""
-    wall = sgn * (BOARD_HALF_W + edge_play(sgn))
-    return wall - sgn * STRIP_OVER, wall + sgn * STRIP_GRIP
-
-
-STRIP_GRIP = 1.60                  # how far the strip sits INTO the edge wall's groove
 # the one M4's Y per board -- elec/fret_led.py cuts the hole there, reading THIS.
-# ⚠ BOTH AT -28. Mid's went to -30 for a day to keep its head out of wire_canl_5 -- which
-# is the wire MODEL, not a wire (see the Z stack). At -30 the O7.6 head would now sit
-# 0.6 into mid's new -Y strip (inner edge y -33.20); at -28 it clears it by 1.40.
-M4_Y       = {"mid": -28.00, "key": -28.00}
+# ⚠ ON +Y, OPPOSITE THE LIP (user, 2026-10-01), AND AT 31.50 RATHER THAN 28 BECAUSE OF
+# MID'S POGOS. The deck boss is O9.2 and stands on the board's TOP face; mid's +Y seam lane
+# puts a barrel out to y 26.45, so the boss centre must be past 31.05. At 31.50 it clears
+# the barrel by 0.45, leaves 1.45 of laminate between the O4.50 hole and the board's edge,
+# and the O7.6 head laps 0.10 past that edge, under the datum wall's flush underside.
+M4_Y       = {"mid": 31.50, "key": 31.50}
 M4_LEN     = 10.0                  # M4x10 button head, the instrument's standard
-M4_HEAD_CLR = 0.0                  # head sits on the board's underside
+M4_TIP_CLR = 2.0                   # blind hole past the screw's tip
 DECK_UNDER = 0.0                   # the deck's own underside: above it is material the
                                    # colour layer takes, below it is structure hanging free
 
@@ -408,20 +354,13 @@ def check_optics(pitches=()):
 assert BOARD_BOT - TEE_TOP >= 1.5, (
     "the LED board at %.2f leaves only %.2f over the tee PCBs at %.2f, and the panel has "
     "to SLIDE over them" % (BOARD_BOT, BOARD_BOT - TEE_TOP, TEE_TOP))
-assert STRIP_OVER >= D.MIN_WALL, (
-    "a %.2f strip lap against a %.2f bead" % (STRIP_OVER, D.MIN_WALL))
-_PANELS = sorted({_k[0] for _k in STRIP_ROOM})
-assert any(has_strip(_p, _s) for _p in _PANELS for _s in (-1.0, 1.0)), (
-    "no edge on either panel has room for a retainer strip")
-for _p in _PANELS:
-    for _s in (-1.0, 1.0):
-        assert _s == HINGE_SGN or (has_strip(_p, _s)
-                                   and strip_t(_p, _s) >= D.MIN_WALL_2P - 1e-9), (
-            "%s %+.0fY: the retainer strip is %.2f, and 1.60 is the minimum (user)"
-            % (_p, _s, strip_t(_p, _s)))
-        assert wall_floor(_p, _s) - (BOARD_BOT - strip_room(_p, _s)) >= SLIDE_OVER - 1e-9, (
-            "%s %+.0fY: the edge wall slides %.2f over what is under it"
-            % (_p, _s, wall_floor(_p, _s) - (BOARD_BOT - strip_room(_p, _s))))
+assert abs((lip_reach() - LIP_RISE) - LIP_DROP) < 1e-9, (
+    "the lip's ramp drops %.2f and the Z stack was built on %.2f"
+    % (lip_reach() - LIP_RISE, LIP_DROP))
+for (_p, _s), _room in EDGE_ROOM.items():
+    assert wall_floor(_p, _s) - (BOARD_BOT - _room) >= SLIDE_OVER - 1e-9, (
+        "%s %+.0fY: the edge wall slides %.2f over what is under it"
+        % (_p, _s, wall_floor(_p, _s) - (BOARD_BOT - _room)))
 assert LED_Y_OUT + LED_CRTYD / 2.0 <= BOARD_HALF_W, (
     "the outer LEDs at +-%.2f plus a %.2f courtyard overhang a %.2f-half-width board"
     % (LED_Y_OUT, LED_CRTYD, BOARD_HALF_W))
@@ -546,7 +485,7 @@ def ramps(x_lo=None, x_hi=None):
 
 
 def edge_walls(x_lo=None, x_hi=None):
-    """The wall each long edge of the board runs against, grooved for its retainer strip.
+    """The wall each long edge of the board runs against; the hinge side carries the lip.
 
     ⚠ SECTION 8.3 SAYS THE RAMPS HOLD +-Y AND THEY VERY NEARLY DO NOT. A ramp is a
     triangle from (BOARD_HALF_W, BOARD_TOP) out to the deck, so at the board's edge it is a
@@ -565,13 +504,25 @@ def edge_walls(x_lo=None, x_hi=None):
             floor = wall_floor(panel, sgn)
             y0 = sgn * (BOARD_HALF_W + edge_play(sgn))
             # the OUTER face stays where it was for both sides; the play moves the inner
-            y1 = sgn * (BOARD_HALF_W + TAB_PLAY + STRIP_GRIP + WALL)
+            y1 = sgn * (BOARD_HALF_W + EDGE_WALL_OUT)
             w = box_at(bx1 - bx0, abs(y1 - y0), BOARD_TOP - floor,
                        x=(bx0 + bx1) / 2.0, y=(y0 + y1) / 2.0,
                        z=(BOARD_TOP + floor) / 2.0)
             out = w if out is None else out.union(w)
             if sgn == HINGE_SGN:
                 out = out.union(_lip(bx0, bx1, y0, sgn))
+            # ⚠ THROUGH THE BAY THE WALL HAD NOTHING TO HANG FROM (user, from the render).
+            # Along the comb it grows down out of the reflector wedge's flat underside; the
+            # wedges stop at the comb's first wall and the board runs on into its bay, so
+            # for that stretch the wall began in mid-air -- since 8.7, on both edges of
+            # both boards. The same wedge is carried through the bay, down from the deck.
+            lo, hi = panel_range(panel)
+            first = min(_boundaries([x for _n, x in fret_xs() if lo <= x <= hi], lo, hi))
+            if first - bx0 > 1e-6:
+                pts = [(sgn * BOARD_HALF_W, BOARD_TOP), (sgn * half_len(), BOARD_TOP),
+                       (sgn * half_len(), 0.0)]
+                out = out.union(cq.Workplane("YZ", origin=(bx0, 0, 0)).polyline(pts)
+                                .close().extrude(first - bx0))
     return heal(out) if out is not None else cq.Workplane("XY")
 
 
@@ -583,50 +534,6 @@ def _lip(bx0, bx1, y_wall, sgn):
     pts = [(y_wall, top), (y_wall - sgn * r, top - r), (y_wall - sgn * r, bot), (y_wall, bot)]
     return (cq.Workplane("YZ", origin=(bx0, 0, 0)).polyline(pts).close()
             .extrude(bx1 - bx0))
-
-
-def strip_groove(x_lo=None, x_hi=None):
-    """The slot the retainer strip slides along -- CUT from the edge wall.
-
-    Runs the board's whole length and is open at both ends, because the strip goes in along
-    X and nothing keys it to a position."""
-    out = None
-    for panel in BOARD_NAME:
-        bx0, bx1 = board_span(panel)
-        if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
-            continue
-        for sgn in (-1.0, 1.0):
-            if not has_strip(panel, sgn):
-                continue
-            top, bot = strip_z(panel, sgn)
-            yi, yo = strip_y(sgn)
-            c = box_at(bx1 - bx0, abs(yo - yi) + STRIP_CLR,
-                       strip_t(panel, sgn) + STRIP_CLR,
-                       x=(bx0 + bx1) / 2.0,
-                       y=(yi + yo) / 2.0 + sgn * STRIP_CLR / 2.0,
-                       z=(top + bot) / 2.0)
-            out = c if out is None else out.union(c)
-    return heal(out) if out is not None else cq.Workplane("XY")
-
-
-def strips():
-    """[(name, solid)] -- the retainer strips, two per panel.
-
-    A plain bar: it prints lying down, has no orientation to get wrong, and its X is free
-    in the groove. The neighbouring panels close both ends once the deck is stacked."""
-    out = []
-    for panel in BOARD_NAME:
-        bx0, bx1 = board_span(panel)
-        for sgn, tag in ((-1.0, "ny"), (1.0, "py")):
-            if not has_strip(panel, sgn):
-                continue
-            top, bot = strip_z(panel, sgn)
-            yi, yo = strip_y(sgn)
-            out.append(("fret_strip_%s_%s" % (panel, tag),
-                        box_at(bx1 - bx0, abs(yo - yi), strip_t(panel, sgn),
-                               x=(bx0 + bx1) / 2.0, y=(yi + yo) / 2.0,
-                               z=(top + bot) / 2.0)))
-    return out
 
 
 def m4_xy(panel):
@@ -653,11 +560,15 @@ def m4_boss(w, x_lo=None, x_hi=None):
     bare post first, the same three booleans are against a single cylinder and the comb
     sees ONE union.
 
-    ⚠ THE POST IS LONGER THAN THE HELPER'S OWN BOSS. cut_m4_boss builds M4.boss_prot
-    (6.00) back from `pt`, and the board's top face is 14.55 below the deck's underside, so
-    the post is drawn here and the helper is handed a point inside it. Without that the
-    boss would float."""
-    from cadkit.fasteners import cut_m4_boss, M4
+    ⚠ THE HOLE IS THE JOINT'S, NOT THIS FUNCTION'S (user, 2026-10-01: "use cadkit's screw
+    system which adds fitted inserts"). `m4_joint` defines the screw once -- entry, stock
+    length, where the insert's pocket opens, where the hole stops -- and the boss cuts
+    `joint.cutter(print_up)`, so the pocket, the clearance and the dummies cannot drift
+    apart. What it replaced was a set-screw boss cutter handed a point inside a hand-drawn
+    post, and a screw dummy placed by its own arithmetic: no insert in the assembly, and
+    the screw's head inside the board until something finally intersected it (9.1f)."""
+    from cadkit.fasteners import M4
+    up = _tp().PIECE_UP
     for panel in BOARD_NAME:
         bx0, bx1 = board_span(panel)
         if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
@@ -665,26 +576,26 @@ def m4_boss(w, x_lo=None, x_hi=None):
         x, y = m4_xy(panel)
         boss = (cq.Workplane("XY").circle(M4.boss_od / 2.0)
                 .extrude(DECK_UNDER - BOARD_TOP).translate((x, y, BOARD_TOP)))
-        boss = cut_m4_boss(boss, (x, y, BOARD_TOP + M4.boss_prot), (1, 0, 0), 0.0)
-        w = w.union(boss)
+        w = w.union(boss.cut(m4_joint(panel).cutter(up)))
     return w
 
 
-def m4_screws():
-    """[(name, solid)] -- the dummy screws, for the assembly only.
+def m4_joint(panel):
+    """This board's one M4 as a cadkit ScrewJoint: head on the board's underside, up
+    through the board, into a heat-set insert whose pocket opens on the boss's bottom
+    face -- the face the board's top bears on, and the last one the deck prints."""
+    from cadkit.fasteners import ScrewJoint, M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
+    x, y = m4_xy(panel)
+    return ScrewJoint(M4, (x, y, BOARD_BOT), (0.0, 0.0, 1.0), M4_LEN,
+                      insert_at=BOARD_T, end_at=M4_LEN + M4_TIP_CLR,
+                      head_d=M4_BUTTON_HEAD_D, head_h=M4_BUTTON_HEAD_H)
 
-    ⚠ THE HEAD WAS INSIDE THE BOARD UNTIL THIS WAS FIRST WIRED INTO THE BUILD. The helper
-    puts the head's TOP face at z = 0 (shank -Z), so after the flip the head stood UP from
-    BOARD_BOT through the laminate: 47.2 mm3 into each board, and the tip 2.2 too deep in
-    the deck. The function was never called, so nothing had intersected it. The head's top
-    goes one head height BELOW the board, which puts the under-head face on its underside."""
-    from cadkit.fasteners import m4_button_screw, M4_BUTTON_HEAD_H
+
+def m4_screws():
+    """[(name, solid)] -- each board's screw and its insert, from the joint itself."""
     out = []
     for panel in BOARD_NAME:
-        x, y = m4_xy(panel)
-        out.append(("fret_m4_%s" % panel,
-                    m4_button_screw(M4_LEN).rotate((0, 0, 0), (1, 0, 0), 180.0)
-                    .translate((x, y, BOARD_BOT - M4_HEAD_CLR - M4_BUTTON_HEAD_H))))
+        out += m4_joint(panel).dummies("fret_m4_%s" % panel, "fret_m4_insert_%s" % panel)
     return out
 
 
