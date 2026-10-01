@@ -179,80 +179,108 @@ BOARD_HALF_W = 44 * D.BEAD         # 35.20 -> a 70.4 wide board. The outer LED's
 # at 58 degrees from horizontal it self-supports in this print direction.
 RAMP_DEG = 58.0
 
-# ── the -Z retention ─────────────────────────────────────────────────────────────
-# Five of the six directions come free (docs/fret-led.md section 8.3): the comb's end
-# walls take +-X, the ramps take +-Y, and the cell walls' undersides take +Z at 23 places
-# along the length. -Z is gravity's direction, it is held NOWHERE, and this is it.
+# ── the -Z retention ────────────────────────────────────────────────────
+# Five of the six directions come free (docs/fret-led.md 8.3): the comb's end walls take
+# +-X, the ramps and the edge walls take +-Y, and the cell walls' undersides take +Z at 23
+# places along the length. -Z is gravity's direction and this is it.
 #
-# ⚠ THE TABS ARE 45 DEGREE RAMPS, AND IT IS THE SAME SHAPE AS THE FOOT STRIP'S LIPS,
-# MIRRORED. `top_plate.PIECE_UP` is (0,0,-1) -- the deck face goes on the bed and the
-# underside is built LAST, growing in world -Z -- while the chassis builds world +Z. So a
-# tab reaching in over the board's underside is exactly the foot channel's retaining lip
-# turned over: its retention face is the overhang, which is why that one became a ramp.
-# Each tab rises off the ramp wall at 45 degrees, so every layer lands on the one below
-# it, and the clearance over the board's edge is TAB_PLAY rather than a second number.
-# docs/fret-led.md section 8.5.3 asked this question and this is the answer to it.
+# ⚠ RETAINER STRIPS, NOT TABS, AND THE CELL PITCH IS WHY. Section 8.4's lift-and-shift
+# was retracted on measurement (docs/fret-led.md 8.6): an LED and a cell wall share
+# z BOARD_TOP..BOARD_TOP+LED_H, so ANY X motion of a seated board drives every LED into a
+# wall. Fret 24's cell leaves its LED 1.27 mm, and a tab must travel its own length --
+# 8.50 -- to leave its notch. The scheme could never have been engaged on the mid board.
 #
-# ⚠ AND THE BOARD IS NOTCHED, BECAUSE A STRAIGHT EDGE CANNOT LIFT PAST A TAB. Section
-# 8.4's install is lift-then-shift, and a continuous 211 mm edge is already under any tab
-# that overhangs it -- there is nothing to lift past. So the board's long edges carry a
-# notch at each tab: the board rises with the tabs IN its notches, then shifts SHIFT along
-# X and the solid edge between the notches runs under them. The outline goes out as
-# `outline_poly` (elec/layout.py _edge_poly, which the motor tee's ear already uses), so
-# this costs a polygon in the board module and nothing at the fab.
+# A STRIP MOVES INSTEAD OF THE BOARD, and that dissolves it. The comb lives ABOVE
+# BOARD_TOP and the board's underside is bare, every part being on its top face, so a strip
+# sliding along X BELOW the board meets no wall and no LED. The panel is assembled face
+# down: drop the board into the comb, gravity holds it against the cell walls, slide a
+# strip in along each long edge to trap it. The board never moves.
 #
-# ⚠ THE REACH IS BOUNDED BY THE LED COURTYARD, NOT BY THE BODY. A notch removes
-# substrate, so what it may not reach is the outer LED's KEEPOUT -- LED_Y_OUT + LED_CRTYD/2
-# = 33.45 against the board's edge at 35.20. 1.75, not the 2.30 section 8.4 read off the
-# body. Both tab and notch are held to it.
-# ⚠ IT IS THE NOTCH THAT THE COURTYARD BOUNDS, NOT THE TAB, and the tab is one PLAY
-# shorter than it: the tab sits TAB_PLAY outboard of the board's edge, so the slot it has
-# to pass through is its own reach plus that play. Sizing the tab at 1.75 puts the notch
-# at 2.05 and takes 0.30 out of the outer LED's keepout.
-# ⚠ AND THE COURTYARD WANTS A CLEARANCE, NOT A TOUCH. The outer LED sits at every
-# fret, so the +Y edge is LINED with courtyards reaching 33.45 -- a notch cut exactly to
-# that line leaves the row standing on the lip of a hole for 23 frets. NOTCH_CLR holds it
-# off. What is left, 1.05 of tab reach, is what the LED spacing leaves at this board
-# width; buying more means buying width, which is ~13x length per mm.
-NOTCH_CLR = 0.40
-NOTCH_MAX = BOARD_HALF_W - (LED_Y_OUT + LED_CRTYD / 2.0) - NOTCH_CLR   # 1.35
-TAB_REACH_MAX = NOTCH_MAX - 0.30                                       # 1.05
-TAB_PLAY  = 0.30                   # board edge to the ramp wall -- and, via the 45
-                                   # degree face, the clearance under the board's edge
-TAB_CLR   = 0.40                   # tab tip to whatever lies below it
-TAB_LEN   = 8.00                   # along X, per tab
-TAB_SHIFT = 6.00                   # the install shift the M4 then locks
-TAB_PITCH = 52.0                   # nominal spacing; the real one divides the span
-# ⚠ THE FLOOR UNDER EACH EDGE IS MEASURED, NOT ASSUMED -- tools/_probe_fret_tab.py, run
-# 2026-09-30 over both panels' long edges with the boards and the deck taken out:
-#     key +Y, mid +Y   clear for the full 6.00 mm probed
-#     key -Y           motor pigtails, top -21.45  -> 5.30 free
-#     mid -Y           wire_canl_6/7, top -17.15  -> 1.00 free
-# A 45 degree tab is DEEPER than a flat one by exactly its own reach, so that 1.00 is what
-# decides the -Y side, and it is not enough: see tab_reach() and the assert below.
-TAB_FLOOR = {-1.0: CABLE_TOP, 1.0: -22.15}
+# ⚠ AND IT DELETES THE NOTCHES. The board is a plain rectangle again -- a tab needed a
+# notch through the edge and a notch removes substrate, so it was bounded by the outer
+# LED's courtyard; a strip runs under a bare underside and may lap as far as it likes.
+#
+# ONE SCREW IS NOT ENOUGH, which is where 8.3 was right even though 8.4 was not: the M4
+# sits 4.50 from the -X end, so the board cantilevers 206 mm, and at EI = 576,000 N.mm2
+# with ~35 g that is **0.64 mm** of sag at the far end -- the board hanging off the cell
+# walls there and leaking light between cells, which is what the comb exists to stop.
+STRIP_OVER = 2.30                  # how far a strip laps OVER the board's underside
+STRIP_T_MAX = 1.60                 # its thickness in Z where there is room: 2 beads
+STRIP_CLR  = 0.20                  # sliding fit in the groove
+STRIP_FLOOR_CLR = 0.20             # strip underside to whatever lies below it
+TAB_PLAY   = 0.30                  # board edge to the edge wall's inner face
+# ⚠ THE ROOM UNDER EACH EDGE IS MEASURED, AND ONLY ONE OF THE FOUR IS SHORT.
+# tools/_probe_fret_tab.py, both panels, boards and deck taken out, 2026-09-30:
+#     mid +Y, key +Y   clear for the full 6.00 probed
+#     key -Y           motor pigtails, top -21.45  ->  5.30
+#     mid -Y           wire_canl_6/7, top -17.15   ->  1.00
+# The CAN trunk runs DIAGONALLY under the boards, which is why three of the four edges are
+# open and mid's -Y is not. A groove needs the strip plus a floor under it -- two beads --
+# so 1.00 cannot host one, and mid carries a strip on its +Y edge only.
+STRIP_ROOM = {("mid", -1.0): 1.00, ("mid", 1.0): 6.00,
+              ("key", -1.0): 5.30, ("key", 1.0): 6.00}
+#
+# ⚠ ONE FULL-LENGTH EDGE STRIP IS ENOUGH, AND THE EXPONENT IS WHY. 8.3's "one screw lets
+# both ends hang" is right about a SCREW: the M4 sits 4.50 from the -X end, so the board
+# cantilevers 206 mm and sags wL^4/8EI = 0.64 mm at the far end -- off the cell walls,
+# leaking light between cells. A strip running the board's whole length changes the
+# cantilever from 206 mm along X to the board's 70.4 mm WIDTH, and deflection goes as the
+# FOURTH POWER: (70.4/206)^4 = 0.0136, so the far edge droops about **15 um**. Invisible.
+# The second strip is welcome where there is room; it is not what makes this work.
 
 
-def tab_reach(sgn):
-    """How far a tab on this edge may reach over the board, in mm.
-
-    DERIVED, so that the day the CAN trunk stops floating above its own plug (section 8.1)
-    the -Y tabs grow to the full reach with no edit here."""
-    room = BOARD_BOT - TAB_FLOOR[sgn] - TAB_CLR - TAB_PLAY
-    return min(TAB_REACH_MAX, max(0.0, room))
+def strip_room(panel, sgn):
+    return STRIP_ROOM[(panel, sgn)]
 
 
-def tab_xs(panel):
-    """World X centres of the tabs on one panel -- and so of the board's notches."""
-    x0, x1 = board_span(panel)
-    x0, x1 = x0 + TAB_LEN, x1 - TAB_LEN
-    n = max(2, int(round((x1 - x0) / TAB_PITCH)) + 1)
-    return [x0 + i * (x1 - x0) / (n - 1) for i in range(n)]
+def strip_t(panel, sgn):
+    """How thick this edge's strip may be -- it and its groove floor must both fit."""
+    return min(STRIP_T_MAX,
+               strip_room(panel, sgn) - STRIP_FLOOR_CLR - D.MIN_WALL)
 
 
-def notch(sgn):
-    """(depth, length) of the board-edge notch a tab passes through on the way in."""
-    return tab_reach(sgn) + TAB_PLAY, TAB_LEN + TAB_SHIFT + 1.0
+def has_strip(panel, sgn):
+    """Is there room under this edge for a strip AND the floor that holds it up?"""
+    return strip_t(panel, sgn) >= D.MIN_WALL - 1e-9
+
+
+def strip_z(panel, sgn):
+    """(top, bottom) of the strip: its top face carries the board's underside."""
+    return BOARD_BOT, BOARD_BOT - strip_t(panel, sgn)
+
+
+def wall_floor(panel, sgn):
+    """How deep this edge's wall may hang -- NEVER past what was measured under it.
+
+    ⚠ THIS IS WHAT TURNED THE GATE RED. The wall used to hang a full WALL below the
+    strip regardless of side, which put mid's -Y wall at -18.55 against a CAN conductor at
+    -17.15 and showed up as `top_plate_color_3 <-> wire_canl_7`, 4.4 mm3. A depth is a
+    clearance question and it has to be asked of the measurement, not of a constant."""
+    floor = BOARD_BOT - strip_room(panel, sgn) + STRIP_FLOOR_CLR
+    if not has_strip(panel, sgn):
+        return max(floor, BOARD_BOT - D.MIN_WALL)
+    return max(floor, strip_z(panel, sgn)[1] - D.MIN_WALL)
+
+
+def strip_y(sgn):
+    """(inner, outer) Y of the strip on this edge; inner is how far it laps the board."""
+    wall = sgn * (BOARD_HALF_W + TAB_PLAY)
+    return wall - sgn * STRIP_OVER, wall + sgn * STRIP_GRIP
+
+
+STRIP_GRIP = 1.60                  # how far the strip sits INTO the edge wall's groove
+# the one M4's Y per board -- elec/fret_led.py cuts the hole there, reading THIS.
+# ⚠ MID'S IS -30, NOT -28, BECAUSE ITS HEAD HANGS 2.2 BELOW THE BOARD AND THE CAN TRUNK
+# IS THERE. tools/_probe_m4_room.py, a O7.6 head + 0.2 intersected with everything below
+# the bay: under mid, y -28 .. -22 hits wire_canl_5 (the same trunk that starves mid's -Y
+# strip, 8.7); -30 and -20 .. +32 are clear, and -30 is the one whose deck boss (O9.2, on
+# the board's TOP) stays off the arrival caps. Key is clear at -28 except y +20 .. +28.
+# Found when m4_screws() was first wired into the build: until then nothing intersected it.
+M4_Y       = {"mid": -30.00, "key": -28.00}
+M4_LEN     = 10.0                  # M4x10 button head, the instrument's standard
+M4_HEAD_CLR = 0.0                  # head sits on the board's underside
+DECK_UNDER = 0.0                   # the deck's own underside: above it is material the
+                                   # colour layer takes, below it is structure hanging free
 
 
 def depth() -> float:
@@ -333,26 +361,26 @@ assert BOARD_BOT - CABLE_TOP >= 0.8, (
 assert BOARD_BOT - TEE_TOP >= 1.5, (
     "the LED board at %.2f leaves only %.2f over the tee PCBs at %.2f, and the panel has "
     "to SLIDE over them" % (BOARD_BOT, BOARD_BOT - TEE_TOP, TEE_TOP))
-assert tab_reach(1.0) >= D.MIN_WALL, (
-    "the +Y retaining tab reaches %.2f, under a %.2f bead -- with %.2f of room under that "
-    "edge it should have the full %.2f" % (tab_reach(1.0), D.MIN_WALL,
-                                           BOARD_BOT - TAB_FLOOR[1.0], TAB_REACH_MAX))
-# ⚠ THE -Y TAB IS STARVED AND THIS IS A WARNING, NOT AN ASSERT, ON PURPOSE. It is
-# short because the CAN trunk is drawn 2.5 mm above the plug it lands in -- section 8.1's
-# TRUNK_DZ finding, raised there for the 1.5 mm of optical depth it costs and unresolved
-# because the trunk is shared geometry. Inverting that stack puts the cable top at the
-# mated plug's -19.65 and this edge gets 3.50 mm, i.e. the full reach. Asserting would
-# stop every build over a number this module does not own; saying it once, loudly, at the
-# one moment someone is looking at fret geometry, is the useful thing.
-if tab_reach(-1.0) < D.MIN_WALL:
+assert STRIP_OVER >= D.MIN_WALL, (
+    "a %.2f strip lap against a %.2f bead" % (STRIP_OVER, D.MIN_WALL))
+_PANELS = sorted({_k[0] for _k in STRIP_ROOM})
+assert any(has_strip(_p, _s) for _p in _PANELS for _s in (-1.0, 1.0)), (
+    "no edge on either panel has room for a retainer strip")
+for _p in _PANELS:
+    assert any(has_strip(_p, _s) for _s in (-1.0, 1.0)), (
+        "%s has no retained edge at all" % _p)
+# ⚠ SAY WHICH EDGES LOST THEIR STRIP AND WHY, ONCE, LOUDLY. It is the CAN trunk every
+# time -- docs/fret-led.md 8.1: wiring.py TRUNK_DZ floats canl 2.50 above the plug it
+# lands in, and inverting that stack gives every one of these edges its strip back.
+_starved = [(p, s) for p in _PANELS for s in (-1.0, 1.0) if not has_strip(p, s)]
+if _starved:
     import sys
-    print("  !! fret_light: the -Y retaining tab reaches only %.2f (a %.2f bead is the "
-          "floor).\n     %.2f mm under that edge, and a 45 deg tab needs its reach plus "
-          "%.2f.\n     wiring.py TRUNK_DZ floats canl %.2f above its own plug -- invert "
-          "it and this\n     edge gets %.2f. See docs/fret-led.md 8.1 and 8.5."
-          % (tab_reach(-1.0), D.MIN_WALL, BOARD_BOT - TAB_FLOOR[-1.0],
-             TAB_CLR + TAB_PLAY, CABLE_TOP - TEE_TOP,
-             min(TAB_REACH_MAX, BOARD_BOT - TEE_TOP - TAB_CLR - TAB_PLAY)),
+    print("  !! fret_light: no retainer strip on %s -- only %s mm under %s, and a groove "
+          "needs\n     a strip plus its floor (2 x %.2f). See docs/fret-led.md 8.1 on "
+          "wiring.py TRUNK_DZ."
+          % (", ".join("%s%sY" % (p, "+" if s > 0 else "-") for p, s in _starved),
+             ", ".join("%.2f" % strip_room(p, s) for p, s in _starved),
+             ", ".join("the %s trunk" % p for p, s in _starved), D.MIN_WALL),
           file=sys.stderr)
 
 assert LED_Y_OUT + LED_CRTYD / 2.0 <= BOARD_HALF_W, (
@@ -479,58 +507,133 @@ def ramps(x_lo=None, x_hi=None):
 
 
 def edge_walls(x_lo=None, x_hi=None):
-    """The wall each long edge of the board runs against -- and what the tabs stand on.
+    """The wall each long edge of the board runs against, grooved for its retainer strip.
 
     ⚠ SECTION 8.3 SAYS THE RAMPS HOLD +-Y AND THEY VERY NEARLY DO NOT. A ramp is a
-    triangle from (BOARD_HALF_W, BOARD_TOP) out to the deck, so at the board's edge it is
-    a KNIFE EDGE: it meets the board's top corner and has nothing beside the board's
-    1.60 mm of thickness. This drops a real face past it, TAB_PLAY outboard, which is what
-    the board actually bears against in Y -- and it is the only thing a tab can hang from,
-    the ramp having no material at that Y to hold one.
+    triangle from (BOARD_HALF_W, BOARD_TOP) out to the deck, so at the board's edge it is a
+    KNIFE EDGE: it meets the board's top corner and has nothing beside the board's 1.60 mm
+    of thickness, nor any material to carry a retainer. This drops a real face past it,
+    TAB_PLAY outboard, which is what the board bears against in Y.
 
-    It costs nothing to print: it hangs from the ramp's flat underside at BOARD_TOP, in
-    the deck's own print direction."""
+    It costs nothing to print: it hangs from the ramp's flat underside at BOARD_TOP, in the
+    deck's own print direction."""
     out = None
     for panel in BOARD_NAME:
         bx0, bx1 = board_span(panel)
         if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
             continue
         for sgn in (-1.0, 1.0):
-            bot = BOARD_BOT - tab_reach(sgn) - TAB_PLAY
+            floor = wall_floor(panel, sgn)
             y0 = sgn * (BOARD_HALF_W + TAB_PLAY)
-            w = box_at(bx1 - bx0, WALL, BOARD_TOP - bot,
-                       x=(bx0 + bx1) / 2.0, y=y0 + sgn * WALL / 2.0,
-                       z=(BOARD_TOP + bot) / 2.0)
+            y1 = y0 + sgn * (STRIP_GRIP + WALL)
+            w = box_at(bx1 - bx0, abs(y1 - y0), BOARD_TOP - floor,
+                       x=(bx0 + bx1) / 2.0, y=(y0 + y1) / 2.0,
+                       z=(BOARD_TOP + floor) / 2.0)
             out = w if out is None else out.union(w)
     return heal(out) if out is not None else cq.Workplane("XY")
 
 
-def tabs(x_lo=None, x_hi=None):
-    """The -Z retaining tabs: short 45 degree ledges under the board's long edges.
+def strip_groove(x_lo=None, x_hi=None):
+    """The slot the retainer strip slides along -- CUT from the edge wall.
 
-    Cross-section in Y-Z, extruded along X, exactly as the foot channel's lips are built
-    -- and for the same reason, that the shape wanted is the cross-section. The face that
-    holds the board is the 45 degree one; it starts at the board's own underside on the
-    ramp wall, TAB_PLAY outboard of the board's edge, so over the edge it stands TAB_PLAY
-    proud and the clearance under the board IS the lateral play."""
+    Runs the board's whole length and is open at both ends, because the strip goes in along
+    X and nothing keys it to a position."""
     out = None
     for panel in BOARD_NAME:
         bx0, bx1 = board_span(panel)
         if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
             continue
         for sgn in (-1.0, 1.0):
-            r = tab_reach(sgn)
-            if r < D.MIN_WALL:
-                continue                      # starved: see TAB_FLOOR and section 8.1
-            yw = sgn * (BOARD_HALF_W + TAB_PLAY)
-            pts = [(yw, BOARD_BOT),
-                   (yw - sgn * (r + TAB_PLAY), BOARD_BOT - r - TAB_PLAY),
-                   (yw, BOARD_BOT - r - TAB_PLAY)]
-            for xc in tab_xs(panel):
-                w = (cq.Workplane("YZ").polyline(pts).close()
-                     .extrude(TAB_LEN).translate((xc - TAB_LEN / 2.0, 0, 0)))
-                out = w if out is None else out.union(w)
+            if not has_strip(panel, sgn):
+                continue
+            top, bot = strip_z(panel, sgn)
+            yi, yo = strip_y(sgn)
+            c = box_at(bx1 - bx0, abs(yo - yi) + STRIP_CLR,
+                       strip_t(panel, sgn) + STRIP_CLR,
+                       x=(bx0 + bx1) / 2.0,
+                       y=(yi + yo) / 2.0 + sgn * STRIP_CLR / 2.0,
+                       z=(top + bot) / 2.0)
+            out = c if out is None else out.union(c)
     return heal(out) if out is not None else cq.Workplane("XY")
+
+
+def strips():
+    """[(name, solid)] -- the retainer strips, two per panel.
+
+    A plain bar: it prints lying down, has no orientation to get wrong, and its X is free
+    in the groove. The neighbouring panels close both ends once the deck is stacked."""
+    out = []
+    for panel in BOARD_NAME:
+        bx0, bx1 = board_span(panel)
+        for sgn, tag in ((-1.0, "ny"), (1.0, "py")):
+            if not has_strip(panel, sgn):
+                continue
+            top, bot = strip_z(panel, sgn)
+            yi, yo = strip_y(sgn)
+            out.append(("fret_strip_%s_%s" % (panel, tag),
+                        box_at(bx1 - bx0, abs(yo - yi), strip_t(panel, sgn),
+                               x=(bx0 + bx1) / 2.0, y=(yi + yo) / 2.0,
+                               z=(top + bot) / 2.0)))
+    return out
+
+
+def m4_xy(panel):
+    """World (x, y) of this board's one M4, from where elec/ cut the hole.
+
+    ⚠ NOT RETYPED. elec/fret_led.py cuts it at board-local (x0 - cx + 4.50, -28.0) and
+    `_placed` translates board-local x by the board centre, so the world X is x0 + 4.50 --
+    4.50 in from the board's -X end, inside the BAY, where there is no cell to shadow."""
+    return board_span(panel)[0] + 4.50, M4_Y[panel]
+
+
+def m4_boss(w, x_lo=None, x_hi=None):
+    """Union this panel's M4 boss into the deck/comb solid `w`, and return it.
+
+    A post from the deck's underside down to the board's top face, with the melt-fit
+    pocket bored UP from its bottom. The screw comes from BELOW, through the board, so the
+    pocket's mouth is the boss's lowest face -- which is also the LAST face printed in the
+    deck's own direction (top_plate.PIECE_UP = -Z), so it needs no support and no bridging.
+
+    ⚠ THE BOSS IS FINISHED BEFORE IT MEETS THE COMB, AND THAT IS A BUILD-TIME FIX, NOT
+    A STYLE ONE. Cutting the pocket and the clearance bore out of the comb costs three
+    booleans against a 23-wall solid per panel, and it took the deck's build from about
+    4 minutes to over 20 -- enough to trip tools/build_profile.py on its own. Done on the
+    bare post first, the same three booleans are against a single cylinder and the comb
+    sees ONE union.
+
+    ⚠ THE POST IS LONGER THAN THE HELPER'S OWN BOSS. cut_m4_boss builds M4.boss_prot
+    (6.00) back from `pt`, and the board's top face is 14.55 below the deck's underside, so
+    the post is drawn here and the helper is handed a point inside it. Without that the
+    boss would float."""
+    from cadkit.fasteners import cut_m4_boss, M4
+    for panel in BOARD_NAME:
+        bx0, bx1 = board_span(panel)
+        if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
+            continue
+        x, y = m4_xy(panel)
+        boss = (cq.Workplane("XY").circle(M4.boss_od / 2.0)
+                .extrude(DECK_UNDER - BOARD_TOP).translate((x, y, BOARD_TOP)))
+        boss = cut_m4_boss(boss, (x, y, BOARD_TOP + M4.boss_prot), (1, 0, 0), 0.0)
+        w = w.union(boss)
+    return w
+
+
+def m4_screws():
+    """[(name, solid)] -- the dummy screws, for the assembly only.
+
+    ⚠ THE HEAD WAS INSIDE THE BOARD UNTIL THIS WAS FIRST WIRED INTO THE BUILD. The helper
+    puts the head's TOP face at z = 0 (shank -Z), so after the flip the head stood UP from
+    BOARD_BOT through the laminate: 47.2 mm3 into each board, and the tip 2.2 too deep in
+    the deck. The function was never called, so nothing had intersected it. The head's top
+    goes one head height BELOW the board, which puts the under-head face on its underside."""
+    from cadkit.fasteners import m4_button_screw, M4_BUTTON_HEAD_H
+    out = []
+    for panel in BOARD_NAME:
+        x, y = m4_xy(panel)
+        out.append(("fret_m4_%s" % panel,
+                    m4_button_screw(M4_LEN).rotate((0, 0, 0), (1, 0, 0), 180.0)
+                    .translate((x, y, BOARD_BOT - M4_HEAD_CLR - M4_BUTTON_HEAD_H))))
+    return out
 
 
 def columns(x_lo=None, x_hi=None):
@@ -628,3 +731,164 @@ def parts(panel):
     return [("fret_cell_%s" % panel, walls(lo, hi).union(ramps(lo, hi))),
             ("fret_pcb_%s" % panel, pcb(panel)),
             ("fret_led_%s" % panel, leds(panel))]
+
+
+# ── THE SEAM JOINT ────────────────────────────────────────────────────────────────────
+# docs/fret-led.md 9.1f. The two boards meet across the deck-panel seam TIP TO TIP: six
+# side-mount pogos on each, on one axis, 1.90 above each board's top face -- the boards
+# are coplanar, so both axes are at the same height by construction. The keyhead board
+# carries the harness plug and the buck; the seam carries +14V, GND and the TLC59711
+# chain from key's last driver into mid's first.
+#
+# Xinyangze YZF0002-38080-02 (LCSC C5203987), off LCSC's own EasyEDA footprint
+# CONN-SMD_YZF0002-38080-02 and the maker's drawing, both read 2026-09-30. Everything
+# is measured from the PAD CENTRE, because that is where elec/ places the part:
+#     pad         5.00 (along the axis) x 3.50
+#     barrel      4.50 x 3.00 x 3.80, centred on the pad: rear face 2.25 BEHIND the
+#                 centre, front face 2.25 AHEAD of it
+#     plunger     O2.00, 3.50 proud of the barrel at free length (8.00 rear-to-tip),
+#                 bottoms at 5.70, rated 200 gf at 6.00
+POGO_MPN = "YZF0002-38080-02"
+POGO_PAD_L, POGO_PAD_W = 5.00, 3.50
+POGO_BODY_L, POGO_BODY_W, POGO_BODY_H = 4.50, 3.00, 3.80
+POGO_AXIS_H = 1.90
+POGO_PLUNGER_D = 2.00
+# ⚠ THE BARREL AS BUILT IS 4.60, NOT 4.50. board_geom extrudes a part's F.Fab to KiCad's
+# bounding box, which includes the outline's 0.10 stroke -- 0.05 proud all round. The
+# plungers start at THAT face, or each one sits 0.05 inside its own barrel and the gate
+# reads 0.94 mm3 per board (tools/_probe_seam.py found it). Geometry of the pogo itself
+# (setbacks, working height) still uses the drawing's 4.50.
+POGO_FAB_STROKE = 0.10
+POGO_FREE, POGO_LIMIT = 8.00, 5.70
+# ⚠ 6.30 AT FLUSH, NOT THE CATALOGUE'S 6.00 -- 9.1e. Bottoming is the failure that
+# cannot be recovered: a pogo at its 5.70 limit is a brass strut holding the panels
+# apart, and no endplate clamping closes that seam. Losing a little force is not.
+POGO_WORK = 6.30
+POGO_STACK = 0.80          # +- the deck stack at the seam, both panels' ribs and the gap
+# key's barrels to key's end wall: elec/fret_led.py's WALL_CLR (0.30), plus 0.05 so its
+# strict float test is not decided by rounding when the two are equal
+POGO_WALL_CLR = 0.35
+POGO_EDGE_MIN = 0.50       # a pad's inboard edge to its board's edge
+POGO_NOTCH_CLR = 0.50      # the plunger's lateral float in its notch, each side
+POGO_PITCH = 4.50          # 4.00 courtyards with 0.50 between -- and 0.45 to the LEDs
+# ⚠ TWO LANES, THREE EACH, AND THE LED ROWS ARE WHAT DECIDE IT. key's pogos stand INSIDE
+# fret 9's cell (its seam end is a comb end, not a bay), so they must sit between LED
+# rows: 13.90 clear between two courtyards, which takes three 4.00 courtyards and not
+# four. The -Y lane is left for the M4 on mid (M4_Y["mid"] = -30.00 is in it).
+#     centre lane   +14V GND +14V     power doubled, its return in the middle
+#     +Y lane       SCK  GND SDT      each signal beside a ground, loop ~4.5 x 12
+POGO_LANES = ((0.0, ("+14V", "GND", "+14V")),
+              ((LED_Y_IN + LED_Y_OUT) / 2.0, ("SCK_SEAM", "GND", "SDT_SEAM")))
+# (which end of board_span faces the seam, which way is inboard)
+_SEAM = {"mid": (0, 1.0), "key": (1, -1.0)}
+
+
+def pogo_ys():
+    """[(y, net)] the six contacts, -Y to +Y -- the same on both boards, tip to tip."""
+    out = []
+    for yc, nets in POGO_LANES:
+        for i, net in enumerate(nets):
+            out.append((yc + (i - (len(nets) - 1) / 2.0) * POGO_PITCH, net))
+    return sorted(out)
+
+
+def _key_seam_wall():
+    """X of the comb wall at key's seam end -- it straddles the board's +X edge."""
+    lo, hi = panel_range("key")
+    return max(_boundaries([x for _n, x in fret_xs() if lo <= x <= hi], lo, hi))
+
+
+def pogo_sep_flush():
+    """Board edge to board edge across the seam with the two panels BUTTED (9.1e).
+
+    The two insets, derived: a panel length that moves moves this, and the setbacks
+    follow instead of the joint silently leaving preload."""
+    return ((board_span("mid")[0] - panel_range("mid")[0])
+            + (panel_range("key")[1] - board_span("key")[1]))
+
+
+def pogo_set():
+    """{panel: its pads' centre, inboard of its seam edge}.
+
+    The two must SUM to the tip-to-tip span at POGO_WORK, less the flush separation.
+    Key's is the one with a floor that is not the board edge: its barrels stand in fret
+    9's cell and must clear the end wall that straddles the edge. Mid takes the rest."""
+    reach = POGO_WORK - POGO_BODY_L / 2.0            # pad centre to tip
+    total = 2.0 * reach - pogo_sep_flush()
+    wall_in = board_span("key")[1] - (_key_seam_wall() - WALL / 2.0)
+    key = wall_in + POGO_WALL_CLR + POGO_BODY_L / 2.0
+    return {"mid": total - key, "key": key}
+
+
+def pogo_pads(panel):
+    """[(x, y, net)] world pad centres on this board, -Y to +Y."""
+    end, inb = _SEAM[panel]
+    x = board_span(panel)[end] + inb * pogo_set()[panel]
+    return [(x, y, net) for y, net in pogo_ys()]
+
+
+def pogo_fire(panel):
+    """+1 / -1: which way this board's plungers point in world X."""
+    return -_SEAM[panel][1]
+
+
+def _pogo_contact():
+    """World X where the tips meet AS MODELLED -- the panels' modelled 0.05 gap included,
+    so each pogo sits a hair past POGO_WORK here and at it when the panels butt."""
+    return (pogo_pads("mid")[0][0] + pogo_pads("key")[0][0]) / 2.0
+
+
+def pogo_pins():
+    """[(name, solid)] -- the twelve plungers, barrel front to the shared contact.
+
+    The barrels are the boards' own (board_geom reads the pogo's F.Fab); the plungers are
+    here because they leave the board and one set crosses key's end wall."""
+    z = BOARD_TOP + POGO_AXIS_H
+    xc = _pogo_contact()
+    out = None
+    for panel in BOARD_NAME:
+        f = pogo_fire(panel)
+        for x, y, _net in pogo_pads(panel):
+            x0 = x + f * (POGO_BODY_L + POGO_FAB_STROKE) / 2.0
+            c = (cq.Workplane("YZ").circle(POGO_PLUNGER_D / 2.0).extrude(abs(xc - x0))
+                 .translate((min(x0, xc), y, z)))
+            out = c if out is None else out.union(c)
+    return [("fret_pogo_pins", out)]
+
+
+def pogo_notches(x_lo=None, x_hi=None):
+    """The plungers' way through key's end wall -- CUT from the comb.
+
+    Open at the wall's base rather than a round hole: a hole with the plunger's float
+    around it would leave 0.40 of wall under it at a 1.90 axis, half a bead. Open, it
+    needs nothing below it, and in the deck's -Z print direction its roof is printed
+    before the notch starts, so it is not an overhang either. Fret 9 loses six 3.00 x
+    3.40 windows into the seam bay, which has no LEDs in it -- a light trap, not
+    crosstalk."""
+    bx = _key_seam_wall()
+    if x_lo is not None and not (x_lo <= bx <= x_hi):
+        return cq.Workplane("XY")
+    w = POGO_PLUNGER_D + 2.0 * POGO_NOTCH_CLR
+    top = POGO_AXIS_H + POGO_PLUNGER_D / 2.0 + POGO_NOTCH_CLR
+    out = None
+    for y, _net in pogo_ys():
+        c = box_at(WALL + 0.4, w, top + 0.2, x=bx, y=y, z=BOARD_TOP + (top - 0.2) / 2.0)
+        out = c if out is None else out.union(c)
+    return out
+
+
+_ps = pogo_set()
+assert min(_ps.values()) - POGO_PAD_L / 2.0 >= POGO_EDGE_MIN - 1e-9, (
+    "a seam pad hangs within %.2f of its board edge: %s" % (POGO_EDGE_MIN, _ps))
+assert POGO_WORK - POGO_STACK / 2.0 > POGO_LIMIT, (
+    "the seam pogos bottom out at the short end of the stack: %.2f vs %.2f"
+    % (POGO_WORK - POGO_STACK / 2.0, POGO_LIMIT))
+assert POGO_WORK + POGO_STACK / 2.0 < POGO_FREE, "the seam pogos lose contact"
+for _yc, _nets in POGO_LANES:
+    _half = (len(_nets) - 1) / 2.0 * POGO_PITCH + POGO_PAD_W / 2.0 + 0.25
+    _near = min(abs(_yc - _ly) for _ly in LED_YS)
+    assert _near - LED_CRTYD / 2.0 - _half >= 0.30 - 1e-9, (
+        "seam lane at y %.2f comes within %.2f of an LED courtyard"
+        % (_yc, _near - LED_CRTYD / 2.0 - _half))
+assert POGO_PITCH - POGO_PLUNGER_D - 2.0 * POGO_NOTCH_CLR >= D.MIN_WALL, (
+    "the wall between two seam notches is under a bead")

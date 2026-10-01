@@ -299,8 +299,14 @@ def main(argv=None):
     per_mat = {}
     for part, rec in vols.items():
         mat = (rec.get("material") or "?").lower()
-        if part.startswith("test_") or part.endswith("_light") or part == "assembly":
-            continue                    # coupons and the viewer's lightweight chassis
+        if (part.startswith("test_") or part.startswith("coil_mandrel")
+                or part.endswith("_light") or part == "assembly"):
+            continue                    # coupons, the viewer's lightweight chassis, and
+            # TOOLING. The mandrel and its sleeve are what you wind the knee-lever coils
+            # ON, not anything that ships inside the instrument -- 47 cm3 of print that
+            # was showing up under a material of "?" because it has no material folder.
+            # Shop infrastructure is bought once and never weighed against a design
+            # (user's standing rule), so it does not belong in a per-instrument cost.
         per_mat.setdefault(mat, 0.0)
         per_mat[mat] += float(rec.get("volume_mm3", 0.0))
     plastic = solid_usd = 0.0
@@ -362,7 +368,9 @@ def main(argv=None):
                    % (ORDER_INSTRUMENTS, ORDER_INSTRUMENTS), boards_total))
 
     # ---- purchased ----------------------------------------------------------
-    for label, key in (("Mechanical hardware", "mechanical"), ("Purchased modules", "modules")):
+    for label, key in (("Mechanical hardware", "mechanical"),
+                       ("Purchased modules", "modules"),
+                       ("Connectors: housings + crimps", "connectors")):
         tot = 0.0
         for name, ent in sorted(prices[key].items()):
             if name.startswith("_"):
@@ -377,6 +385,44 @@ def main(argv=None):
                          ent.get("what", "")))
         groups.append((label, tot))
 
+    # ---- landed: freight, sales tax, duty -----------------------------------
+    # A price on a product page is not what the money costs. These are measured at
+    # real checkouts with the real address (elec/prices.json "landed"), and they are
+    # per ORDER, so they divide by the order like everything else. Anything already
+    # folded into a unit price elsewhere is skipped -- see counted_in_unit_price.
+    landed_usd, landed_seen, landed_partial = 0.0, [], []
+    for vend, ent in sorted(prices.get("landed", {}).items()):
+        if vend.startswith("_"):
+            continue
+        if ent.get("counted_in_unit_price"):
+            continue
+        got = [ent.get(k) for k in ("shipping_usd", "tax_usd", "tariff_usd")]
+        if all(v is None for v in got):
+            landed_partial.append(vend)
+            continue
+        if any(v is None for v in got[:2]):        # some of it measured, some not
+            landed_partial.append(vend)
+        landed_usd += sum(v for v in got if v is not None)
+        landed_seen.append(vend)
+    # Duty that a vendor does NOT collect at checkout is real money and an unknown
+    # amount of it. It is kept OUT of the total -- a bound is not a measurement --
+    # and printed as its own worst case underneath, so it cannot be quietly forgotten.
+    exposure = sum(float(e["tariff_unpriced_upper_usd"])
+                   for k, e in prices.get("landed", {}).items()
+                   if not k.startswith("_") and e.get("tariff_unpriced_upper_usd"))
+    exposure /= ORDER_INSTRUMENTS
+    landed_usd /= ORDER_INSTRUMENTS
+    groups.append(("Shipping + sales tax + duty (%d vendor%s measured)"
+                   % (len(landed_seen), "" if len(landed_seen) == 1 else "s"), landed_usd))
+    notes.append("The LANDED line is %d measured vendor checkout(s): %s. It is a FLOOR. "
+                 "Nobody has measured freight or tax on the PCTG and TPU filament or on the listing-priced "
+                 "mechanical hardware (~$213/instrument), most of which records no vendor "
+                 "at all. The duty on the China-shipped motors is not in it either: it is "
+                 "a BOUND, printed as the worst-case line under the total -- see "
+                 "landed.makerbase_motors and missing.landed_gaps.%s"
+                 % (len(landed_seen), ", ".join(landed_seen),
+                    ("  PARTIAL: " + ", ".join(landed_partial)) if landed_partial else ""))
+
     # ---- the table ----------------------------------------------------------
     width = max(len(g) for g, _ in groups)
     print()
@@ -385,7 +431,12 @@ def main(argv=None):
     for g, usd in groups:
         print("%-*s  $%8.2f" % (width, g, usd))
     print("-" * (width + 12))
-    print("%-*s  $%8.2f" % (width, "TOTAL", sum(u for _, u in groups)))
+    total = sum(u for _, u in groups)
+    print("%-*s  $%8.2f" % (width, "TOTAL", total))
+    if exposure:
+        print("%-*s  $%8.2f" % (width, "  + worst-case uncollected duty (a BOUND, see below)",
+                                exposure))
+        print("%-*s  $%8.2f" % (width, "TOTAL, worst case", total + exposure))
 
     if unpriced_all:
         n = sum(len(u) for _, u in unpriced_all)
