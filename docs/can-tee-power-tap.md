@@ -344,3 +344,13 @@ What that leaves, honestly:
 the stagger cap into the motor controller firmware as a hard limit (≤ 5 A commanded, six
 movers at the derived figure) and measure one motor's real slew current at bring-up
 (`docs/board-bringup-diagnostics.md`), which is the number every line above leans on.
+
+## 2026-10-01, later — the motor has two connectors, and the tee still stands
+
+Makerbase's schematic and the user's video agree: the SERVO42D takes power on a 6-way screw
+terminal and CAN on a 5-way one on the opposite edge. There is no factory pigtail. That
+removes the objection that sank 6b ("it replaces the factory pigtail") -- and does not
+revive it, because the user has since chosen the supply: 160 W, ~4.6 A for the motors,
+inside the merged tee's 5.5 A. The pigtail becomes a made part (four ferruled wires into the
+two blocks, one XHP-4 at the tee) and the tee, the trunk and the pinout are unchanged.
+What the finding DOES cost is in the motor bay, not the harness: `docs/servo42d-fit.md`.
