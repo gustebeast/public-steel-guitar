@@ -22,38 +22,37 @@ a single LED, so four-per-fret costs rail VOLTS, not rail amps, and the channel 
 follows FRETS (24) rather than LEDs (92). A TLC59711 carries 3 RGBW zones, so zones
 come in threes and both boards land on a whole number of drivers with nothing wasted.
 
-⚠ TWO INDEPENDENT BOARDS, NOT A SEAM JOINT -- AND THAT IS A RETRACTION. docs/fret-led.md
-section 3 recommended joining the two boards across the deck seam with right-angle SMD
-pogo pins, on the strength of the deck's own sliding assembly being a compression joint.
-The mechanism argument still holds. THE GEOMETRY DOES NOT, and it was never measured:
+ONE CHAIN ACROSS TWO BOARDS, JOINED AT THE PANEL SEAM BY SIX TIP-TO-TIP POGOS
+(docs/fret-led.md 9.1f). The keyhead board carries the harness plug, the fuse and the
+24 V -> 14 V buck for BOTH; the seam carries +14V, GND and the TLC59711 chain out of
+key's last driver into mid's first:
 
-  * C5203987 (the recommended part) is an AXIAL pin whose barrel stands 3.80 tall with
-    its axis 1.90 ABOVE the board it is soldered to (maker's drawing YZF0002-38080-02,
-    front view 3.00 x 3.80 with the bore centred). The two LED boards are COPLANAR --
-    same comb pocket, same Z stack -- so the facing board presents a 1.6 mm laminate
-    edge spanning 0.00 to -1.60 below the pogo board's top face. The pin fires 1.90
-    ABOVE that edge and misses the other board entirely.
-  * TIP TO TIP (two pins facing each other, which does align, both axes being 1.90 up)
-    needs 16.00 - 4.00 = 12.00 mm between the two pads' outer edges. The seam bay --
-    the clear run between the two combs' end walls, measured -360.40 .. -350.80 -- is
-    9.60 mm, and both walls stand from the board's top face to the deck.
-  * OFFSETTING THE BOARDS IN Z to put the pin's axis inside the other board's edge
-    needs 2.70 mm. Up ruins the keyhead board's optics (h 17.95 -> 15.05, under the
-    1.18 : 1 the cells are solved for); down leaves 0.80 mm over the tee PCBs, and
-    fret_light asserts 1.50 because the panel SLIDES over them.
-  * The one 4-way module in the table, C5296819, is a MEZZANINE part: its four
-    plungers fire PERPENDICULAR to the board, 4.00 mm of working height, so it wants
-    the boards stacked 5.6 mm apart in Z, not butted.
+    Pi cap --J1--> fret_led_key: U1 (fret 2) .. U3 (fret 8)
+                     --SCK_SEAM/SDT_SEAM, +14V, GND over the seam-->
+                   fret_led_mid: U1 (fret 10) .. U5 (fret 24), chain end
 
-So each board takes its own 6-way harness drop to the Pi daughter board and its own
-24 V -> 14 V buck -- which is the fallback docs/fret-led.md already recorded, and is
-also what the user originally described ("24 V with a buck on each board"). It costs
-one extra cable and one extra buck (~$1.50) and it deletes a blind-mate joint, six
-notches through a light-cell wall, and two cantilevered board tongues.
+⚠ THE SUPPLY MOVED TO KEY BECAUSE MID'S BAY COULD NOT HOLD IT AND THE JOINT. The pads
+have to sit within ~3.3 mm of each board's seam edge -- the two setbacks SUM to the
+tip-to-tip span, 2 x (6.30 - 2.25) - 1.45 = 6.65, so neither can be generous -- and
+mid's seam end is its 9.70 mm bay, which already held J1, the buck column and L1.
+Key's bay is at the far (nut) end and has 17 mm. Moving the harness there also makes
+the whole fretboard ONE chain in ascending X with no trace doubling back: the harness
+lands at key's -X end, key's chain runs +X to the seam, crosses, and mid's runs +X to
+the bridge. And one SDT does both boards, so the Pi cap's second fret header goes.
 
-THE INSTALL ORDER IS UNCHANGED except that the plug happens twice: attach each board
-to its panel, slide the mid panel on, slide the keyhead panel on, plug both cables
-into the Pi cap, fit the endplate.
+⚠ AND THE SEAM CARRIES 14 V, NOT 24. §9.1b assumed each board made its own rail; with
+one buck the rail crosses instead, which is what lets mid lose its whole supply. The
+part is unchanged -- C5203987 is still the only side-mount pogo in the library rated
+above 12 V, and 14 is above 12.
+
+⚠ THE HISTORY, for whoever reads 9.1: the joint was retracted there on a contact-height
+argument that was right (a side-mount pin fires 1.90 above its own board and misses a
+coplanar neighbour's EDGE) and a length argument that was wrong (the 12.00 is a SUM of
+two setbacks, not a gap they must fit in). Tip to tip, both axes are 1.90 up.
+
+THE INSTALL ORDER: attach each board to its panel, slide the mid panel on, slide the
+keyhead panel on until the panels butt (the pogos load in that last few mm -- 9.1e),
+plug J1 on key, fit the endplate.
 """
 from __future__ import annotations
 
@@ -89,6 +88,9 @@ R_FP = "Resistor_SMD:R_0402_1005Metric"
 C_FP = "Capacitor_SMD:C_0402_1005Metric"
 C08_FP = "Capacitor_SMD:C_0805_2012Metric"
 C12_FP = "Capacitor_SMD:C_1206_3216Metric"
+POGO_FP = "Steel:Xinyangze_YZF0002-38080-02"
+# the board that carries the harness plug and the buck -- see the module docstring
+HARNESS = "key"
 
 # ⚠ THE LED IS TOP-MOUNT, WHICH IS THE ONE THING THIS BOARD NEEDS OF IT AND WHICH THIS
 # PROJECT HAD RECORDED WRONG. docs/fret-led.md section 5.3 called XL-5050RGBW "a
@@ -267,8 +269,10 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
 
     # The fuse protects the TRUNK, not the board: a shorted buck must not pull the
     # instrument's 24 V down. Same argument, same part class as motor_ctrl's F1.
+    # ⚠ 2 A, NOT 1: this buck feeds BOTH boards now. 23 zones x 4 x 15 mA = 1.38 A at
+    # 14 V is 0.89 A at 24 V at 90 %, and a 1 A fuse at 89 % of rating ages open.
     f1 = Part(name="Fuse", ref_prefix="F", ref="F1", tag="F1", dest="NETLIST",
-              tool="skidl", value="1A",
+              tool="skidl", value="2A",
               description="24 V fuse -- a shorted U10 must not feed the fault back out "
                           "into the trunk", footprint="Fuse:Fuse_1206_3216Metric",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
@@ -301,9 +305,9 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # ⚠ THE VALUE IS THE PART NUMBER, for the reason optical.py gives at its own L1:
     # "4.7uH" does not specify an inductor, and saturation is what decides whether this
     # supply works. Ripple at 14 V out, 24 V in, 2.1 MHz: Vout(1-D)/(f L) = 0.59 A
-    # pk-pk, so the peak at the mid board's 0.90 A full-white load is 1.20 A against
+    # pk-pk, so the peak at BOTH boards' 1.38 A full-white load is 1.68 A against
     # this part's 3.2 A saturation, and the IC's own ~4 A limit still acts first.
-    # KIND = 0.65 of the load current at full load, inside TI's band; below ~0.3 A the
+    # KIND = 0.43 of the load current at full load, inside TI's band; below ~0.3 A the
     # part leaves continuous conduction, which is the skip-mode case argued above.
     l1 = Part(name="L", ref_prefix="L", ref="L1", tag="L1", dest="NETLIST", tool="skidl",
               value="SWPA4030S4R7MT",
@@ -379,7 +383,7 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # two of a pair -- which the gap check above caught the moment it was tightened. At
     # 1.15 the pair spans 4.16, still inside a 1206's own 4.60.
     pair = 1.15
-    # ⚠ THE WHOLE COLUMN SITS 0.60 LOWER THAN IT DID, AND THE RETAINING NOTCHES ARE
+    # ⚠ THE WHOLE COLUMN SITS 0.60 LOWER THAN IT DID. THE RETAINING NOTCHES WERE
     # WHY. The +Y edge now carries a notch per deck tab (see _outline), 1.35 deep, so
     # nothing may stand past y 33.85 -- and the column's top two rows did. Moving the
     # column rather than the divider keeps the feedback pair WITH the buck, which is the
@@ -417,50 +421,42 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     return sck, sdt
 
 
-def _outline(panel, cx, x0, x1):
-    """The board outline in board-local mm: a rectangle with the tab notches taken out.
+def _seam(panel, place, fps, cx, nets):
+    """The six seam pogos at this board's seam edge -- geometry from fret_light.
 
-    ⚠ THE NOTCHES ARE ON +Y ONLY, and that is the CAN trunk's doing rather than a
-    choice. src/fret_light.tab_reach() derives each edge's tab from what was measured
-    under it (tools/_probe_fret_tab.py): the +Y edge has 6.00 mm of clear air and gets the
-    full tab, the -Y edge has 1.00 before wire_canl and gets 0.30, which is not a tab. So
-    fret_light builds no -Y tab, and a notch for a tab that does not exist would only be
-    substrate thrown away. Fix the trunk stack (section 8.1) and both sides grow together,
-    here and in the deck, off the same function."""
-    hw = FL.BOARD_HALF_W
-    d, ln = FL.notch(1.0)
-    pts = [(x0 - cx, -hw), (x1 - cx, -hw), (x1 - cx, hw)]
-    for xc in sorted((x - cx for x in FL.tab_xs(panel)), reverse=True):
-        pts += [(xc + ln / 2.0, hw), (xc + ln / 2.0, hw - d),
-                (xc - ln / 2.0, hw - d), (xc - ln / 2.0, hw)]
-    pts.append((x0 - cx, hw))
-    return [[round(a, 4), round(b, 4)] for a, b in pts]
+    ⚠ NOT PLACED HERE. The pad X is where the two setbacks sum to the tip-to-tip span
+    with the panels butted, and the lanes are between key's fret-9 LED rows; both are
+    deck facts, so src/fret_light.py owns them and this reads them (pogo_pads)."""
+    rot = 0.0 if FL.pogo_fire(panel) < 0 else 180.0     # the footprint fires -X
+    for i, (x, y, net) in enumerate(FL.pogo_pads(panel)):
+        ref = "J%d" % (11 + i)
+        j = Part(name="POGO", ref_prefix="J", ref=ref, tag=ref, dest="NETLIST",
+                 tool="skidl", value=FL.POGO_MPN,
+                 description="seam pogo, %s -- tip to tip with the other board's %s "
+                             "(LCSC C5203987)" % (net, ref),
+                 footprint=POGO_FP, pins=[Pin(num=1, func=P)])
+        nets[net] += j[1]
+        place[ref] = (x - cx, y, rot)
+        fps[ref] = POGO_FP
 
 
-def check_notches(name, panel, place, fps, cx, clr=0.30):
-    """No part may stand in a notch -- the notch is where the deck's tab comes through.
+def _arrival(place, fps, gnd, vrail, bay_x0, cx):
+    """Mid's end of the rail: bulk where it comes in over the seam.
 
-    DRC cannot see this: the notch is board outline, the parts are in the layout region,
-    and a courtyard hanging over a notch is a part sitting on a piece of plastic."""
-    d, ln = FL.notch(1.0)
-    hw = FL.BOARD_HALF_W
-    bad = []
-    for ref, (px, py, rot) in place.items():
-        w, h = fp_box(fps[ref])
-        if round(rot) % 180:
-            w, h = h, w
-        y1 = py + h / 2.0
-        if y1 < hw - d - clr:
-            continue
-        for xc in (x - cx for x in FL.tab_xs(panel)):
-            if abs(px) - w / 2.0 < abs(xc) + ln / 2.0 + clr and \
-               px - w / 2.0 < xc + ln / 2.0 + clr and px + w / 2.0 > xc - ln / 2.0 - clr:
-                bad.append("%s reaches y %.2f at x %.2f, inside the notch at %.2f"
-                           % (ref, y1, px, xc))
-                break
-    if bad:
-        raise SystemExit("%s: %d part(s) in a retaining-tab notch:\n  %s"
-                         % (name, len(bad), "\n  ".join(bad)))
+    Every driver has its own local bulk, which is what its zones' PWM draws from; this
+    is for the JOINT -- 0.90 A arriving through two spring contacts has an inductance a
+    plane does not, and the step each time a zone switches should not ring against it."""
+    bx0 = bay_x0 - cx
+    col = bx0 + FL.pogo_set()["mid"]          # the pogos' own column, in the -Y half
+    for ref, val, fp, xy, why in (
+            ("C36", "10uF/50V", C12_FP, (col, -9.40), "14 V arrival bulk"),
+            ("C37", "10uF/50V", C12_FP, (col, -12.60), "14 V arrival bulk"),
+            ("C38", "100nF", C_FP, (bx0 + 7.50, -4.50), "14 V arrival HF bypass")):
+        c = _c(ref, val, why + " -- the rail comes in over the seam pogos", fp)
+        vrail += c[1]
+        gnd += c[2]
+        place[ref] = xy + (0.0,)
+        fps[ref] = fp
 
 
 def build(panel, hole_y):
@@ -481,7 +477,15 @@ def build(panel, hole_y):
     for n in (gnd, v24, vrail):
         n.drive = Pin.drives.POWER
     place, fps = {}, {}
-    sck, sdt = _supply(place, fps, gnd, v24, vrail, x0, min(bnd), cx)
+    seam = {"+14V": vrail, "GND": gnd,
+            "SCK_SEAM": Net("SCK_SEAM"), "SDT_SEAM": Net("SDT_SEAM")}
+    if panel == HARNESS:
+        sck, sdt = _supply(place, fps, gnd, v24, vrail, x0, min(bnd), cx)
+    else:
+        # the chain comes in over the seam, from the harness board's last driver
+        sck, sdt = seam["SCK_SEAM"], seam["SDT_SEAM"]
+        _arrival(place, fps, gnd, vrail, x0, cx)
+    _seam(panel, place, fps, cx, seam)
 
     drivers = []
     for k in range(n_drv):
@@ -507,12 +511,15 @@ def build(panel, hole_y):
         vreg += u[20]
         sdt += u[9]
         sck += u[10]
-        # the LAST driver's re-buffered outputs go nowhere: the chain ends on the
-        # board because the two boards are independent (see the module docstring), so
-        # the names say NC rather than leaving netcheck to find a pin wired to nothing.
-        sck, sdt = ((Net("SCK_%d" % (k + 1)), Net("SDT_%d" % (k + 1)))
-                    if k < n_drv - 1 else (Net("SCKO_CHAIN_END_NC"),
-                                           Net("SDTO_CHAIN_END_NC")))
+        # the LAST driver's re-buffered outputs: on the harness board they ARE the
+        # chain's way across the seam; on the other they go nowhere, and the names say
+        # NC rather than leaving netcheck to find a pin wired to nothing.
+        if k < n_drv - 1:
+            sck, sdt = Net("SCK_%d" % (k + 1)), Net("SDT_%d" % (k + 1))
+        elif panel == HARNESS:
+            sck, sdt = seam["SCK_SEAM"], seam["SDT_SEAM"]
+        else:
+            sck, sdt = Net("SCKO_CHAIN_END_NC"), Net("SDTO_CHAIN_END_NC")
         sck += u[11]
         sdt += u[12]
         r = _r("R%d" % (k + 1), R_IREF, "U%d IREF -- 15.0 mA per channel" % (k + 1))
@@ -575,7 +582,6 @@ def build(panel, hole_y):
                 Net("Z%d_%s_RET" % (fret, col)).connect(leds[3][i + 5], u[outs[i]])
 
     # ⚠ BEFORE THE NETLIST, NOT AFTER THE ROUTE. See check_placement.
-    check_notches(name, panel, place, fps, cx)
     check_placement(name, place, fps)
     check_walls(name, place, fps, bnd, min(bnd), cx)
     ERC()
@@ -593,13 +599,12 @@ def build(panel, hole_y):
     # lift-and-shift retention in docs/fret-led.md section 8; the ramps' tabs are what
     # hold -Z along the length.
     notes["cutouts"] = [{"xy": [x0 - cx + 4.50, hole_y], "d": 4.50}]
-    # ⚠ THE OUTLINE IS NOT A RECTANGLE ANY MORE: the +Y edge carries a notch per
-    # retaining tab. docs/fret-led.md section 8.4's install is lift-then-shift, and a
-    # straight 211 mm edge cannot lift past a tab that already overhangs it -- the board
-    # rises with the tabs IN its notches and then shifts FL.TAB_SHIFT along X, running its
-    # solid edge under them. Every number comes from src/fret_light.py, which owns the
-    # deck side of the joint; nothing here is typed twice.
-    notes["outline_poly"] = _outline(panel, cx, x0, x1)
+    # ⚠ A PLAIN RECTANGLE AGAIN, AND THE CELL PITCH IS WHY. This carried an
+    # `outline_poly` with a notch per retaining tab. The tabs were retracted on measurement
+    # (docs/fret-led.md 8.6): engaging one needs the BOARD to travel a tab's length in X,
+    # and an LED shares z with the cell walls, so fret 24's cell allows it 1.27 mm against
+    # the 8.50 a tab needs. The retainer strip that replaced them moves instead of the
+    # board and runs under a bare underside, so this edge is solid again.
     notes["qty_per_instrument"] = 1
     notes["world_x"] = [round(x0, 3), round(x1, 3)]
     notes["board_frame"] = {"cx": round(cx, 4), "z_bot": FL.BOARD_BOT}
@@ -649,7 +654,7 @@ BOARD_NOTES = {
 if __name__ == "__main__":
     tot_z = tot_d = 0
     for panel in ("mid", "key"):
-        z, d = build(panel, -28.0)
+        z, d = build(panel, FL.M4_Y[panel])     # deck geometry: read, not retyped
         tot_z += z
         tot_d += d
     print("%d zones, %d channels, %d drivers, %.2f A at %.0f V all-white"

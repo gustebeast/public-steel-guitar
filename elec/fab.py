@@ -136,6 +136,7 @@ LCSC = {
                                     # and pi_cap J3, 5 V + SPI out to the strip
     "S4B-XH-SM4-TB": "C161861",     # S4B-XH-SM4-TB(LF)(SN), 20,777 -- pi_cap J2/J4,
                                     # side entry so they fit UNDER the cap (see there)
+    "YZF0002-38080-02": "C5203987", # side-mount SMD pogo, 24 V / 12 A: the fret seam, x6 a side
     # ⚠ THE FOOT STRIP'S, AND IT IS THERE FOR ITS HEIGHT. Everything on that board hangs
     # into a 3.40 mm trough; the PH above is 5.50 tall and does not fit. JST's own
     # drawing puts the side-entry SH at 2.95. 1.0 A / 50 V against 0.24 A at 24 V.
