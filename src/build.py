@@ -96,7 +96,7 @@ PARTS = {
     "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "petg-gf/keyhead_endplate.step", "PETG-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
     "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "petg-gf/knee_housing.step", "PETG-GF — knee-lever (LKL) housing: ONE parametric prism derived from the lever/cartridge/body extents, minus the house-pockets, backstop threads + lever room, plus FOUR fused octagon mount tenons on the top face (one per chassis rib crossing; the +X-most survives only as a stub over each cheek) and the MT6701 board CRADLE on the +Y face (grooves + plinth + floor; the board drops in from +Z with the lever OFF the instrument and the chassis underside becomes its lid — no retaining screw. Ø14 driver bore reserved for the magnet cap, plus a relief channel through the cheek and the -X web for the board's side-entry CAN connector and its plug). Retention is all on -X: the +X web stops at the plinth top so NOTHING stands +X of the prism face. Depth lock deferred"),
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness); the +Y axle journal + magnet stub print INTEGRAL (stand off the lying -Y bed face)"),
-    "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø5 round journals, D-FLAT key through the hub, flange seating on the housing contact rib (= the air-gap datum), threaded magnet pocket. Prints STANDING, POCKET-DOWN, with a brim"),
+    "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø8 journals, D-FLAT key through the hub, flange land seating on the +Y inner race (= the air-gap datum), threaded magnet pocket, M4 thread-forming bore in the −Y tip for the retention screw + washer. Prints STANDING, POCKET-DOWN, with a brim"),
     "kl_magnet_cap": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_magnet_cap, "pctg/kl_magnet_cap.step", "PCTG — magnet CAP ×1: female-threaded HEX nut (9.35 across flats, for a 3/8-inch driver) screwing over the axle's pocket collar to clamp the Ø6 diametric disc; centre stays open so nothing intrudes on the air gap. Fit it BEFORE the sensor board. Prints APERTURE-DOWN"),
     "kv_housing":      (lambda: __import__("src.knee_lever_vert", fromlist=["e"]).kv_housing, "petg-gf/kv_housing.step", "PETG-GF — VERTICAL knee-lever (LKV) housing: same prism derivation as LKL but with the feel block TRANSLATED above the axle (not mirrored — the pocket gable stays up for printability), so the axle sits 19.2 lower and the arm has room to swing UP. Y is asymmetric (-16.10..+13.90): the -Y wall is 2.2 wider to fit TWO octagon tenons at the 23mm rib pitch, while the +Y sensor face is untouched. Tenons slide along local X (= the guitar's Y once posed). Carries the SAME sensor cradle as LKL (knee_lever._cradle, parameterised by the housing Z extents) - the board is just taller here, 31.2 vs 19. Rest stop deferred"),
     "kv_lever":        (lambda: __import__("src.knee_lever_vert", fromlist=["e"]).kv_lever, "pctg/kv_lever.step", "PCTG — VERTICAL knee-lever (LKV) arm: an L. Hub on the axle, a LEG rising +Z carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as LKL's 30°), and a 50mm ARM running +X that the knee lifts — 17.1 of paddle rise"),
@@ -1180,7 +1180,7 @@ def _knee_lever_components():
     s_hs = (KL.LOBE_RC * (math.sin(thr) - math.sin(eng)) + 1.0) if throw > KL.HS_ENGAGE_DEG else 0.0  # engages @15°
     pose = KL.MOUNT_POSE
     out = [("knee_housing", KL.knee_housing), ("knee_lever", swing(KL.knee_lever)),
-           ("kl_axle", swing(KL.kl_axle)),                  # keyed + set screw -> turns with the lever
+           ("kl_axle", swing(KL.kl_axle)),                  # keyed on its D-flat -> turns with the lever
            ("kl_magnet_cap", swing(KL.kl_magnet_cap))]      # screwed to the axle
     for nm, off, s in (("main", KL.CART_MAIN_OFFSET, s_main), ("half_stop", KL.CART_HALFSTOP_OFFSET, s_hs)):
         out.append((f"{nm}_cart_base", KL.feel_place(KL.cart_base.translate(off))))
@@ -1189,6 +1189,40 @@ def _knee_lever_components():
         out.append((n, swing(s) if n == "kl_magnet" else s))
     # (the octagon mount tenons are FUSED onto knee_housing now -- no separate floating_tenon parts)
     return out
+
+
+def assert_storage_angle(tol=0.5):
+    """KL.STORAGE is MEASURED, not derived, so check it against the real poses.
+
+    The fold's limit is the VERTICAL lever's arm, and knee_lever cannot see either that
+    or this module's station table -- KV imports KL, so the arrow only points one way.
+    The number therefore lives where the sweep needs it and is verified here, where both
+    ends of the question are visible. A station that moves fails loudly.
+    """
+    from OCP.BRepExtrema import BRepExtrema_DistShapeShape
+    from . import knee_lever as KL
+    from . import knee_lever_vert as KV
+
+    vk = [st for st in LEVER_STATIONS if st[1] != "kl"][0]
+    vy = _vkl_mount_y() if vk[3] is None else vk[3]
+    arm = (KV.kv_lever.rotate((0, 0, 0), (0, 0, 1), -90)
+           .translate((vk[2], vy, KV.MOUNT_Z)).val())
+    worst = None
+    for name, kind, sx, sy, mirrored in LEVER_STATIONS:
+        if kind != "kl":
+            continue
+        s = KL.knee_lever.rotate((0, 0, 0), (0, 1, 0), -KL.STORAGE)
+        if mirrored:
+            s = s.mirror("YZ")
+        g = BRepExtrema_DistShapeShape(
+            s.translate((sx, sy if sy is not None else _vkl_mount_y(),
+                         KL.MOUNT_Z)).val().wrapped, arm.wrapped).Value()
+        worst = g if worst is None else min(worst, g)
+    assert worst <= tol, (
+        "KL.STORAGE is %.0f deg but the nearest knee lever still has %.2f mm to the "
+        "vertical lever's arm there -- the fold could go further, or a station moved"
+        % (KL.STORAGE, worst))
+    return worst
 
 
 def _lever_stations_components():
@@ -1216,6 +1250,7 @@ def _lever_stations_components():
     from . import knee_lever_vert as KV
 
     kl_parts, kv_parts = _knee_lever_components(), _knee_vert_components()
+    assert_storage_angle()
     out = []
     for name, kind, sx, sy, mirrored in LEVER_STATIONS:
         if sy is None:
@@ -1788,6 +1823,10 @@ _COLORS = {
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
     "knee_lever":      (0.27, 0.51, 0.71),   # PCTG lever/paddle
     "kl_axle":         (0.30, 0.54, 0.68),   # PCTG full-length axle (near the lever blue)
+    "kl_axle_screw":   (0.55, 0.55, 0.58),   # M4 x 10 button in the axle's -Y end
+    "kl_axle_washer":  (0.72, 0.72, 0.75),
+    "kv_axle_screw":   (0.55, 0.55, 0.58),
+    "kv_axle_washer":  (0.72, 0.72, 0.75),
     "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer
     "kl_chip":         (0.12, 0.12, 0.14),   # MT6701 package (black)
     # the rest of the sensor board's real population (knee_lever.SENSOR_BOM). The
@@ -1802,7 +1841,11 @@ _COLORS = {
     "kl_pcb":          (0.05, 0.35, 0.15),   # MT6701 board (green)
     "kl_can_header":   (0.95, 0.95, 0.90),   # JST S4B-XH-SM4-TB + mated XHP-4 (natural white)
     "kv_housing":      (0.30, 0.36, 0.42),   # LKV housing (PETG-GF, as LKL)
-    "kv_lever":        (0.92, 0.72, 0.20),   # LKV arm (PCTG, as LKL)
+    # ...THE SAME BLUE AS LKL'S ARM, not a colour of its own (user, 2026-09-25: "the
+    # levers are blue for LKL but yellow for LKV, we should color them consistently").
+    # The comment beside it already said "as LKL" while the number said otherwise, which
+    # is how it survived: same part, same job, same material, two colours.
+    "kv_lever":        (0.27, 0.51, 0.71),   # LKV arm (PCTG, as LKL -- the same blue)
     "kv_pcb":          (0.05, 0.35, 0.15),   # LKV MT6701 board (green, as LKL)
     "kv_chip":         (0.12, 0.12, 0.14),   # LKV MT6701 package (black)
     "kv_can_header":   (0.95, 0.95, 0.90),   # LKV S4B-XH-SM4-TB + mated XHP-4
@@ -1810,8 +1853,8 @@ _COLORS = {
     # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
     "main_spring":                        (0.55, 0.20, 0.75),
     "half_stop_spring":                   (0.75, 0.45, 0.88),
-    "main_spring_tension_setscrew":       (0.55, 0.55, 0.58),
-    "half_stop_spring_tension_setscrew":  (0.62, 0.62, 0.66),
+    "main_spring_tension_screw":          (0.55, 0.55, 0.58),
+    "half_stop_spring_tension_screw":     (0.62, 0.62, 0.66),
     "main_cart_base":                     (0.85, 0.65, 0.13),   # printed cartridge (shared part)
     "main_cart_piston":                   (0.95, 0.80, 0.30),
     "half_stop_cart_base":                (0.80, 0.60, 0.10),
@@ -1820,8 +1863,8 @@ _COLORS = {
     "half_stop_spring_seat_washer":       (0.72, 0.72, 0.75),
     "main_position_washer":               (0.72, 0.72, 0.75),
     "half_stop_position_washer":          (0.72, 0.72, 0.75),
-    "main_position_setscrew":             (0.55, 0.55, 0.58),
-    "half_stop_position_setscrew":        (0.62, 0.62, 0.66),
+    "main_position_screw":                (0.55, 0.55, 0.58),
+    "half_stop_position_screw":           (0.62, 0.62, 0.66),
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
 
@@ -1958,10 +2001,19 @@ def _color_for(name):
     # vkl_kv_lever, ...), so they ride this rule too — the alternative was six
     # copies of the same 29 entries, and any station left out would have gone grey
     # exactly the way the pedals did.
-    _st = re.match(r"(?:pedal\d+|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", base)
-    if _st:
+    # PEEL EVERY PREFIX, not one (user, 2026-09-25: "the cartridges/pistons are yellow
+    # for the LKL but white for LKV, we should color them consistently"). A vertical
+    # lever's cartridge is DOUBLY prefixed -- vkl_kv_main_cart_piston, station then
+    # design -- so a single strip reached kv_main_cart_piston, which is in no table, and
+    # the whole feel stack came out default white beside LKL's yellow one. Peeling until
+    # something matches costs nothing and is what "the same part at another station"
+    # actually means.
+    inner = base
+    for _ in range(3):
+        _st = re.match(r"(?:pedal\d+|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", inner)
+        if not _st:
+            break
         inner = _st.group(1)
-        # a KV station is doubly prefixed (vkl_kv_housing): peel to kv_housing too
         for k in (f"kl_{inner}", inner, f"kv_{inner}"):
             if k in _COLORS:
                 return cq.Color(*_COLORS[k])

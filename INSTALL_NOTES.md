@@ -15,32 +15,74 @@ Group notes by subassembly. Add to the end of a group; don't renumber old notes.
 
 Every knee lever and foot pedal carries two identical cartridges: MAIN and
 HALF-STOP. Hardware per cartridge: one Ø10 × 30 die spring, two M4 heat-set
-inserts, two M4 × 10 cup set screws (TENSION and POSITION), and two M3 DIN 9021
-washers (the spring seat, and the position stop in the housing). See `BOM.md` and
+inserts, two M4 × 10 button-head screws (TENSION and POSITION), and two M3 DIN 9021
+washers (the spring seat, and the position stop in the housing). Everything here
+turns on the 2.5 mm hex key. See `BOM.md` and
 `knee_lever.py` (`feel_dummies`).
 
-### KL-1 — Threadlock the POSITION set screws
+### KL-1 — Threadlock the POSITION screws
 
-- **Where:** `<lane>_position_setscrew`, the upper of the two set screws in each
+- **Where:** `<lane>_position_screw`, the upper of the two screws in each
   cartridge's back wall. Both lanes (`main_`, `half_stop_`), on every knee lever
   and pedal.
 - **What:** a reusable, **plastic-safe** thread locker: **Vibra-Tite VC-3**, or an
-  equivalent pre-applied nylon-patch set screw. Apply it to the screw's threads,
+  equivalent pre-applied nylon-patch screw. Apply it to the screw's threads,
   then thread the screw into the cartridge's insert **before** the cartridge goes
-  into its housing pocket. The screw's socket end must face out of the cartridge's
-  back face.
-- **Why:** this screw is the cartridge's X stop: its protrusion sets where the
-  follower meets the lever, which is the rest bias on MAIN and the engagement angle
-  on HALF-STOP. The HALF-STOP cartridge carries **no load at rest**, because its
-  follower is off the lobe until 15°. So nothing clamps its position screw, and
-  vibration can walk it and slowly move the engagement point. VC-3 resists that
-  while staying adjustable: the 2.0 hex key still turns it through the Ø3.2 hole in
-  the housing's back face.
+  into its housing pocket (see KL-3). The head faces out of the cartridge's back
+  face.
+- **Why:** this screw is the cartridge's X stop: how far its head stands off the
+  cartridge sets where the follower meets the lever, which is the rest bias on MAIN
+  and the engagement angle on HALF-STOP. The HALF-STOP cartridge carries **no load
+  at rest**, because its follower is off the lobe until 15°. So nothing clamps its
+  position screw, and vibration can walk it and slowly move the engagement point.
+  VC-3 resists that while staying adjustable: the 2.5 hex key still turns it
+  through the key way in the housing's back face.
 - **Don't** use an anaerobic threadlocker (the Loctite 2xx family) here. The
   insert is brass, but any liquid that wicks onto the printed PETG-GF / PCTG can
   stress-craze it.
 - **Not needed** on the TENSION screw: the spring loads it permanently, and that
   friction holds it.
+
+### KL-3 — Cartridge order: washer, position screw, cartridge, then the tension screw
+
+- **Where:** each feel cartridge and its housing pocket, every knee lever and pedal.
+- **Do, in this order:**
+  1. **Position washer first.** Push the 2.5 key in through the small (Ø3.4) key way
+     in the housing's back face until it shows in the pocket, hang the washer on it,
+     and draw the key back: the washer rides it down into the recess at the back of
+     the pocket. It cannot be fitted once the cartridge is in.
+  2. **Position screw into the cartridge**, upper insert, head out (KL-1). Leave the
+     head about 1.6 mm off the cartridge's back face for a first setting. Its head
+     is too big for the key way, so it also has to be in before the cartridge.
+  3. **Slide the cartridge in** from the front until the position head lands on the
+     washer.
+  4. **Tension screw last**, from behind, through the large (Ø8.4) way in the back
+     face into the lower insert. Run it in until its end just meets the spring's
+     seat washer; that is zero preload.
+- **Why:** the position head sits in a recess in the housing's rear wall with the
+  washer under it, so both are trapped by the cartridge. The tension screw is the
+  only one of the four parts that can go in, or come out, with the lever assembled.
+- **Range:** the tension screw has **4.2 mm** of travel, from its end flush with the
+  cartridge wall to its head down on the cartridge. Stop when the head lands; forcing
+  it further only strips the insert.
+
+### KL-4 — The axle's end screw: seat it on the AXLE, and hold the lever while you do
+
+- **Where:** `kl_axle_screw` / `kl_axle_washer` (and `kv_`, and each pedal's), in the
+  −Y end of the printed axle. One M4 × 10 button head and one **Ø9** M4 washer.
+- **Do:** after the axle is slid through bearing / lever / bearing and its flange is
+  home on the +Y bearing, put the washer on the screw and drive it into the bore in
+  the axle's −Y tip. **Hold the lever arm**, not the magnet cap, to take the torque.
+  The first fit forms the thread in the plastic: firm, steady turns, and stop when the
+  washer is tight on the axle's end.
+- **Check:** the washer should NOT be clamped on the bearing. The axle's tip stands
+  0.2 mm past the bearing's inner race, so a correctly seated washer leaves the axle
+  about that much end float, and the lever still swings freely. If the lever stiffens
+  as the screw comes tight, the axle is not fully home at the +Y end.
+- **Why:** this is the only thing that stops the axle sliding back out the way it
+  went in. It replaces the M2 grub that used to go through the lever's hub.
+- **Don't** substitute a larger washer: anything over Ø9.6 reaches the bearing's
+  shield and rubs.
 
 ## Guide rods go in BEFORE the optical pickup board
 
