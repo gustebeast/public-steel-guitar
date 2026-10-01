@@ -1307,6 +1307,13 @@ BOARD_W, BOARD_L = 74.0, 66.0
 # frame and re-centred in one pass at the bottom of this dict. Read a coordinate here as
 # "distance from the panel edge, as it always was".
 GROW_X = 12.0
+# The USB mouths stand PROUD of the -X edge rather than 0.5 mm inboard of it: a plug's
+# overmold is wider than the shell and its lower half sits below the board top (USB-A axis
+# 3.3 mm up, 8 mm overmold; USB-C worse at 1.63 mm up), so with the mouth inboard the
+# overmold lands on 0.5 mm of laminate (5.6 mm3 measured against J4's cable). Overhanging
+# the receptacle is the usual remedy. Pads stay well behind the edge: J2/J4 copper 8.48 mm,
+# J3 1.44 mm.
+USB_MOUTH_SHIFT = -0.9      # 0.5 inboard -> 0.4 proud. -1.0 and -1.1 each left one net open; this routes 0/0
 BOARD_W_GROWN = BOARD_W + GROW_X        # 86.0 -- the laminate that gets fabricated
 # How far each panel connector's body front stands past the +X edge: the fit clearance
 # between the board and the endplate's panel, plus the panel itself. src/electronics.py
@@ -1704,9 +1711,9 @@ BOARD_NOTES = {
         # place_check passes either way (the rotated courtyard lands in free space
         # both times), so nothing catches it but reading the offset. 270 turns the
         # mouth out through the -X edge, which is what these three are for.
-        "J2": (-24.32 - GROW_X, 24.00, 270.0),   # -> the Pi's gadget port
-        "J3": (-29.44 - GROW_X, 8.00, 270.0),    # hub upstream -> a Pi host port
-        "J4": (-24.32 - GROW_X, -8.00, 270.0),   # hub downstream -> the optical board
+        "J2": (-24.32 - GROW_X + USB_MOUTH_SHIFT, 24.00, 270.0),   # -> the Pi's gadget port
+        "J3": (-29.44 - GROW_X + USB_MOUTH_SHIFT, 8.00, 270.0),    # hub upstream -> a Pi host port
+        "J4": (-24.32 - GROW_X + USB_MOUTH_SHIFT, -8.00, 270.0),   # hub downstream -> the optical board
         # +Y BAND: THE ANALOG CHAIN. It is up here because the switcher is down
         # there -- 50 mm of board between a 24 V switching node and a magnetic
         # pickup's preamp is the cheapest noise measure available.
