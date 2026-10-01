@@ -269,7 +269,14 @@ def strip_y(sgn):
 
 
 STRIP_GRIP = 1.60                  # how far the strip sits INTO the edge wall's groove
-M4_Y       = -28.00                # the one M4's Y -- elec/fret_led.py cuts the hole there
+# the one M4's Y per board -- elec/fret_led.py cuts the hole there, reading THIS.
+# ⚠ MID'S IS -30, NOT -28, BECAUSE ITS HEAD HANGS 2.2 BELOW THE BOARD AND THE CAN TRUNK
+# IS THERE. tools/_probe_m4_room.py, a O7.6 head + 0.2 intersected with everything below
+# the bay: under mid, y -28 .. -22 hits wire_canl_5 (the same trunk that starves mid's -Y
+# strip, 8.7); -30 and -20 .. +32 are clear, and -30 is the one whose deck boss (O9.2, on
+# the board's TOP) stays off the arrival caps. Key is clear at -28 except y +20 .. +28.
+# Found when m4_screws() was first wired into the build: until then nothing intersected it.
+M4_Y       = {"mid": -30.00, "key": -28.00}
 M4_LEN     = 10.0                  # M4x10 button head, the instrument's standard
 M4_HEAD_CLR = 0.0                  # head sits on the board's underside
 DECK_UNDER = 0.0                   # the deck's own underside: above it is material the
@@ -576,7 +583,7 @@ def m4_xy(panel):
     ⚠ NOT RETYPED. elec/fret_led.py cuts it at board-local (x0 - cx + 4.50, -28.0) and
     `_placed` translates board-local x by the board centre, so the world X is x0 + 4.50 --
     4.50 in from the board's -X end, inside the BAY, where there is no cell to shadow."""
-    return board_span(panel)[0] + 4.50, M4_Y
+    return board_span(panel)[0] + 4.50, M4_Y[panel]
 
 
 def m4_boss(w, x_lo=None, x_hi=None):
@@ -612,14 +619,20 @@ def m4_boss(w, x_lo=None, x_hi=None):
 
 
 def m4_screws():
-    """[(name, solid)] -- the dummy screws, for the assembly only."""
-    from cadkit.fasteners import m4_button_screw
+    """[(name, solid)] -- the dummy screws, for the assembly only.
+
+    ⚠ THE HEAD WAS INSIDE THE BOARD UNTIL THIS WAS FIRST WIRED INTO THE BUILD. The helper
+    puts the head's TOP face at z = 0 (shank -Z), so after the flip the head stood UP from
+    BOARD_BOT through the laminate: 47.2 mm3 into each board, and the tip 2.2 too deep in
+    the deck. The function was never called, so nothing had intersected it. The head's top
+    goes one head height BELOW the board, which puts the under-head face on its underside."""
+    from cadkit.fasteners import m4_button_screw, M4_BUTTON_HEAD_H
     out = []
     for panel in BOARD_NAME:
         x, y = m4_xy(panel)
         out.append(("fret_m4_%s" % panel,
                     m4_button_screw(M4_LEN).rotate((0, 0, 0), (1, 0, 0), 180.0)
-                    .translate((x, y, BOARD_BOT - M4_HEAD_CLR))))
+                    .translate((x, y, BOARD_BOT - M4_HEAD_CLR - M4_BUTTON_HEAD_H))))
     return out
 
 
@@ -761,7 +774,7 @@ POGO_PITCH = 4.50          # 4.00 courtyards with 0.50 between -- and 0.45 to th
 # ⚠ TWO LANES, THREE EACH, AND THE LED ROWS ARE WHAT DECIDE IT. key's pogos stand INSIDE
 # fret 9's cell (its seam end is a comb end, not a bay), so they must sit between LED
 # rows: 13.90 clear between two courtyards, which takes three 4.00 courtyards and not
-# four. The -Y lane is left for the M4 on mid (M4_Y = -28.00 is in it).
+# four. The -Y lane is left for the M4 on mid (M4_Y["mid"] = -30.00 is in it).
 #     centre lane   +14V GND +14V     power doubled, its return in the middle
 #     +Y lane       SCK  GND SDT      each signal beside a ground, loop ~4.5 x 12
 POGO_LANES = ((0.0, ("+14V", "GND", "+14V")),

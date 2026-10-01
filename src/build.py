@@ -839,6 +839,7 @@ def _electronics_components():
     from . import foot_light as FOOT
     out += FL.strips()
     out += FL.pogo_pins()
+    out += FL.m4_screws()      # the one M4 per board, head on the board's underside
     out += FOOT.parts()
     out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
