@@ -3,30 +3,32 @@
 
 Why it exists: components.motor() is a 42.3 x 48 box with a smaller 36.3 x 22 box on its
 -Y end, and the user (2026-10-01) pointed out it does not look like the part. It does not:
-the driver is a full-square finned shell, its three connectors are screw terminals on three
-edges, and the coil lead loops OUTSIDE the motor's envelope.
+the driver is a BARE board the full size of the motor, standing on four short spacers,
+components and screw terminals facing AWAY from the motor, and the coil lead loops outside
+the motor's envelope.
 
 Frame, same as components.motor(): shaft along +Y, centred on X = Z = 0; here the
 FACEPLATE is y = 0 and everything else is -Y. The coil lead and the 4-way terminal are on
-+Z as drawn; the 5-way (CAN) and 6-way (power) terminals are then on -X and +X, wires
-entering from the SIDE.
++Z as drawn; the 5-way (comms) and 6-way (power) terminals are then on -X and +X, wires
+entering from the SIDE. The three buttons hang off the -Z edge.
 
 WHERE EVERY NUMBER COMES FROM -- nothing here was measured on a part:
   * NEMA17 frame (square, pilot, bolt circle, corner chamfer, shaft) -- the NEMA standard
     and the common 17HS-series drawings. Solid.
-  * BODY_L = 40 -- scaled off product photos against the 42.3 width (39.8 and 40.2 on two
-    photos). components.motor() says 48. THIS IS THE NUMBER TO MEASURE: dimensions.py hangs
-    the motor pockets AND the chassis' -Y rail off it.
-  * the driver board, its terminals and their positions -- scaled off Makerbase's own top
-    view using the 31.0 mm mounting holes as the ruler (20.6 px/mm). Good to ~0.5 mm in the
-    board plane.
-  * SHELL_L, the stand-off and every height along the motor axis -- ESTIMATED from an
-    oblique photo and the length of the kit's screws. +-2 mm. Measure.
+  * the LAYOUT (bare board, spacers, terminals outboard, OLED, buttons, coil plug in the
+    rear cap's side) -- two frames of the user's video of the unit, 2026-10-01.
+  * BODY_L = D.MOTOR_BODY_LEN (48) -- the video's side view scales to ~47 against the 42.3
+    width, so the existing 48 stands. (A first pass off a shop photo said 40; that was a
+    different, shorter motor.)
+  * PCB_GAP, TERM_H -- scaled off the same side view, +-1.5 mm. MEASURE: together they set
+    the length behind the motor, which dimensions.py hangs the pockets and the -Y rail off.
+  * terminal lengths -- 2.54 mm pitch blocks, by way count.
   * which connector is which -- Makerbase's schematic (MKS SERVO42D_CAN V1.0_003):
       6-way  V+  GND  COM  EN  STP  DIR      <- 24 V goes in here (3 A fuse)
       5-way  5V  GND  IN1  CANH  CANL        <- CAN is here, on the OPPOSITE edge
       4-way  A+ A- B+ B-                     <- the coil lead
-    So power and CAN are two cables per motor, not one 6-pin pigtail.
+    So power and CAN are two cables per motor, not one 6-pin pigtail. The RS485 variant
+    has the same 5-way block (A/B for H/L); the plain variant differs there.
 """
 from __future__ import annotations
 
@@ -36,7 +38,7 @@ from . import dimensions as D
 from .helpers import box_at, cyl_y
 
 # -- the motor (NEMA17) --------------------------------------------------------
-BODY_L = 40.0            # photo estimate -- see the docstring
+BODY_L = D.MOTOR_BODY_LEN
 CAP_F, CAP_R = 9.0, 10.0   # front and rear end caps; the lamination stack is between them
 STACK_INSET = 0.4        # the laminations sit this far inside the caps, per side
 CHAMFER = 4.1            # corner chamfer leg: 42.3 square inside a 54 mm circle
@@ -45,27 +47,29 @@ SHAFT_L = 24.0           # from the faceplate, pilot included (components.motor 
 BOLT_SQ = D.NEMA17_BOLT_SQ
 M3_TAP_D, M3_TAP_DEPTH = 3.0, 4.5
 
-# the motor's own coil connector: a JST header sunk in the rear cap, lead plug standing out
-MCONN_W, MCONN_L, MCONN_PROUD = 16.0, 6.0, 5.0
+# the motor's own coil connector: a JST header in the SIDE of the rear cap, plug standing out
+MCONN_W, MCONN_L, MCONN_PROUD = 8.0, 6.0, 4.0
 
 # -- the driver (SERVO42D) -----------------------------------------------------
-SHELL_L = 16.0           # estimate: motor back -> the shell's rear face
-SHELL_WALL = 2.0
-PCB_SQ, PCB_T = 37.6, 1.6
-PCB_GAP = 4.0            # estimate: motor back -> PCB (magnet + encoder air gap)
+PCB_SQ, PCB_T = 42.0, 1.6
+PCB_CORNER_R = 3.0
+PCB_GAP = 5.0            # estimate: motor back -> PCB, the spacer length
+SPACER_D = 6.0
 TERM_H = 8.5             # estimate: terminal block height off the board
 TERM_D = 6.6             # block depth, in the board plane
-TERM_OUT = 1.6           # how far a block's wire face stands outside the PCB edge
-TERM_5_L, TERM_5_OFF = 13.6, 1.3     # CAN block: length, centre offset toward the coil side
-TERM_6_L, TERM_6_OFF = 16.8, -0.35   # power block
-TERM_4_L = 10.9                      # coil block, centred
-SCREW_HEAD_D, SCREW_HEAD_H = 5.6, 2.0   # the four M3 pan heads at the rear corners
+TERM_OUT = 0.5           # how far a block's wire face stands outside the PCB edge
+TERM_5_L, TERM_6_L, TERM_4_L = 13.4, 16.0, 10.9   # 2.54 pitch
+SCREW_HEAD_D, SCREW_HEAD_H = 5.6, 2.0   # the four M3 pan heads at the corners
+OLED_W, OLED_H, OLED_T = 14.0, 10.0, 1.6   # the display, toward the button edge
+OLED_DZ = -7.0
+BTN_W, BTN_D, BTN_H, BTN_PITCH = 4.0, 3.5, 2.0, 6.5   # side-push buttons on the -Z edge
+BTN_OUT = 1.0
 
-# the coil lead: four wires from the 4-way terminal over the shell to the motor's plug
-LOOP_W, LOOP_PROUD = 12.0, 10.0
+# the coil lead: four wires from the 4-way terminal round the board edge to the motor's plug
+LOOP_W, LOOP_PROUD = 12.0, 8.0
 
 HALF = D.MOTOR_SQ / 2.0
-TOTAL_L = BODY_L + SHELL_L
+TOTAL_L = BODY_L + PCB_GAP + PCB_T + TERM_H
 
 
 def _square(length, y_far, inset=0.0):
@@ -93,35 +97,30 @@ def motor_body() -> cq.Workplane:
 
 def driver() -> cq.Workplane:
     y0 = -BODY_L                       # the motor's back face
-    shell = _square(SHELL_L, y0 - SHELL_L)
-    # hollow it from the motor side: it is a tray, open toward the motor
-    inner = (cq.Workplane("XZ").rect(D.MOTOR_SQ - 2 * SHELL_WALL, D.MOTOR_SQ - 2 * SHELL_WALL)
-             .extrude(-(SHELL_L - SHELL_WALL)).translate((0, y0 - (SHELL_L - SHELL_WALL), 0)))
-    shell = shell.cut(inner)
-    ypcb = y0 - PCB_GAP - PCB_T / 2
-    pcb = box_at(PCB_SQ, PCB_T, PCB_SQ, y=ypcb)
-    yterm = y0 - PCB_GAP - PCB_T - TERM_H / 2
-    out = PCB_SQ / 2 + TERM_OUT          # a block's wire face, from the axis
-    tx = out - TERM_D / 2
-    # windows through the shell's sides where the three blocks show
-    for (wx, wz, cx, cz) in ((TERM_D + 2, TERM_5_L + 1, -HALF, TERM_5_OFF),
-                             (TERM_D + 2, TERM_6_L + 1, HALF, TERM_6_OFF),
-                             (TERM_4_L + 1, TERM_D + 2, 0.0, HALF)):
-        shell = shell.cut(box_at(wx, TERM_H + 1.0, wz, x=cx, y=yterm, z=cz))
-    can = box_at(TERM_D, TERM_H, TERM_5_L, x=-tx, y=yterm, z=TERM_5_OFF)
-    pwr = box_at(TERM_D, TERM_H, TERM_6_L, x=tx, y=yterm, z=TERM_6_OFF)
-    coil = box_at(TERM_4_L, TERM_H, TERM_D, x=0.0, y=yterm, z=tx)
-    d = shell.union(pcb).union(can).union(pwr).union(coil)
+    ypcb = y0 - PCB_GAP - PCB_T        # the board's outward (-Y) face
+    d = (cq.Workplane("XZ").rect(PCB_SQ, PCB_SQ).extrude(-PCB_T).edges("|Y")
+         .fillet(PCB_CORNER_R).translate((0, ypcb, 0)))
     for sx in (1, -1):
         for sz in (1, -1):
-            d = d.union(cyl_y(SCREW_HEAD_D, SCREW_HEAD_H, y0=y0 - SHELL_L - SCREW_HEAD_H,
-                              x=sx * BOLT_SQ / 2, z=sz * BOLT_SQ / 2))
+            x, z = sx * BOLT_SQ / 2, sz * BOLT_SQ / 2
+            d = d.union(cyl_y(SPACER_D, PCB_GAP, y0=y0 - PCB_GAP, x=x, z=z))
+            d = d.union(cyl_y(SCREW_HEAD_D, SCREW_HEAD_H, y0=ypcb - SCREW_HEAD_H, x=x, z=z))
+    # everything below stands on the outward face
+    yterm = ypcb - TERM_H / 2
+    tx = PCB_SQ / 2 + TERM_OUT - TERM_D / 2
+    d = d.union(box_at(TERM_D, TERM_H, TERM_5_L, x=-tx, y=yterm, z=0.0))   # comms
+    d = d.union(box_at(TERM_D, TERM_H, TERM_6_L, x=tx, y=yterm, z=0.0))    # power
+    d = d.union(box_at(TERM_4_L, TERM_H, TERM_D, x=0.0, y=yterm, z=tx))    # coil
+    d = d.union(box_at(OLED_W, OLED_T, OLED_H, y=ypcb - OLED_T / 2, z=OLED_DZ))
+    for i in (-1, 0, 1):
+        d = d.union(box_at(BTN_W, BTN_H, BTN_D, x=i * BTN_PITCH, y=ypcb - BTN_H / 2,
+                           z=-(PCB_SQ / 2 + BTN_OUT - BTN_D / 2)))
     return d
 
 
 def coil_lead() -> cq.Workplane:
-    """The four-wire loop's ENVELOPE: from the 4-way terminal, up over the shell, to the
-    motor's plug. It stands LOOP_PROUD outside the 42.3 square on the coil side."""
+    """The four-wire loop's ENVELOPE: out of the 4-way terminal's +Z face, round the board
+    edge, to the plug in the rear cap. It stands LOOP_PROUD outside the 42.3 square."""
     y_term = -BODY_L - PCB_GAP - PCB_T - TERM_H / 2
     y_plug = -(BODY_L - CAP_R / 2)
     return box_at(LOOP_W, abs(y_term - y_plug) + 4.0, LOOP_PROUD, x=0.0,
@@ -137,16 +136,18 @@ def report() -> str:
     return ("SERVO42D dummy: %.1f long behind the faceplate (motor %.1f + driver %.1f); "
             "components.motor() says %.1f\n  envelope x %.2f..%.2f  z %.2f..%.2f  "
             "(the square is +-%.2f; the coil lead stands %.1f proud on +Z)\n"
-            "  terminal wire faces at x +-%.2f -- %.2f INSIDE the square, wires leave sideways"
+            "  terminal wire faces at x +-%.2f, wires leave sideways"
             % (-b.ymin, BODY_L, -b.ymin - BODY_L, D.MOTOR_BODY_L, b.xmin, b.xmax, b.zmin,
-               b.zmax, HALF, LOOP_PROUD, PCB_SQ / 2 + TERM_OUT, HALF - PCB_SQ / 2 - TERM_OUT))
+               b.zmax, HALF, LOOP_PROUD, PCB_SQ / 2 + TERM_OUT))
 
 
 if __name__ == "__main__":
     import pathlib
     from cadkit.step_export import export_step
     from cadkit.freecad import show
-    out = pathlib.Path(__file__).resolve().parent.parent / "test_servo42d.step"
+    # its own folder: the viewer hub names a tab after the STEP's parent folder
+    out = pathlib.Path(__file__).resolve().parent.parent / "servo42d" / "servo42d.step"
+    out.parent.mkdir(exist_ok=True)
     export_step(servo42d(), str(out))
     print(report())
     print("wrote", out)
