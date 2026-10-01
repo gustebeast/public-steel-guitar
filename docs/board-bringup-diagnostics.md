@@ -206,7 +206,8 @@ and `output_panel`'s are scattered differently again.
   * **A printed programming jig** — a nest the 31.0 × 21.9 board drops into, with four pogo
     pins at TP1–TP4's positions (read from `elec/geom/lever_sensor.geom.json`, so it follows a
     re-route) wired to the WCH-LinkE. Scattered pads stop mattering once nothing is
-    hand-probed; eleven boards become eleven drops. To design; listed in `BOM.md` Tools.
+    hand-probed; eleven boards become eleven drops. **Designed: `src/lever_jig.py`**, listed in
+    `BOM.md` Tools.
   * **`+3V3` is probed at U1 pin 5** (the AP2112K's output, a SOT-23-5 leg) — no pad needed.
     That is the "LDO dead vs MCU dead" measurement.
 * **4.6 is confirmed.** TI's SN65HVD230 datasheet (SLOS346O) has no dominant-timeout — the

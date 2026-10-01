@@ -168,6 +168,7 @@ DECLARED_UP = {
     "tension_fork":      ("src.tension_fork", "PRINT_UP"),
     "coil_mandrel":      ("src.coil_mandrel", "MANDREL_UP"),
     "coil_mandrel_sleeve": ("src.coil_mandrel", "SLEEVE_UP"),
+    "lever_prog_jig":    ("src.lever_jig", "JIG_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
     "ui_clamp":          ("src.ui_panel", "CLAMP_UP"),
@@ -362,6 +363,9 @@ def ceilings(part, up, bed: float, max_tilt: float = 44.0, tol: float = 1e-6):
     return sorted(out, reverse=True)
 
 
+AX = {"x": 0, "y": 1, "z": 2}      # lost in the bc58ba6 merge; curved_overhangs needs it
+
+
 def curved_overhangs(part, axis: str, bed: float, side: int, thresh_deg: float = 45.0,
                      tol: float = 1e-6, tess: float = 0.1):
     """Non-planar faces whose UNDERSIDE overhangs more than `thresh_deg`.
@@ -495,6 +499,16 @@ def main() -> int:
         # ⚠ AND THE CURVED ONES, in the same pass and labelled, because the whole finding was
         # that a report saying "no flat ceilings" reads to everyone as "no overhangs".
         if a.overhang < 90.0:
+            # ⚠ `axis` and `side` were names from before PARTS carried an `up` VECTOR; the
+            # main merge (bc58ba6) kept this call with them and every run died here with a
+            # NameError AFTER printing the flat ceilings -- so the curved pass silently
+            # never ran. curved_overhangs is axis-aligned, so derive both from `up`.
+            _i = max(range(3), key=lambda k: abs(up[k]))
+            if abs(abs(up[_i]) - 1.0) > 1e-6:
+                print("%-22s ...curved overhangs NOT CHECKED: build direction is not "
+                      "axis-aligned" % "")
+                continue
+            axis, side = "xyz"[_i], (1 if up[_i] > 0 else -1)
             curved = [c for c in curved_overhangs(part, axis, bed, side, a.overhang)
                       if c[1] >= a.min and c[2] >= a.min_span]
             if curved:
