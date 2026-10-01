@@ -65,11 +65,16 @@ OLED_DZ = -7.0
 BTN_W, BTN_D, BTN_H, BTN_PITCH = 4.0, 3.5, 2.0, 6.5   # side-push buttons on the -Z edge
 BTN_OUT = 1.0
 
+# the optional black plastic shroud (user's third photo, 2026-10-01): a tray the full motor
+# square, open toward the motor, notched where each terminal block shows
+SHROUD_WALL = 1.5
+SHROUD_L = PCB_GAP + PCB_T + TERM_H + SHROUD_WALL
+
 # the coil lead: four wires from the 4-way terminal round the board edge to the motor's plug
-LOOP_W, LOOP_PROUD = 12.0, 8.0
+LOOP_W, LOOP_PROUD = 12.0, 5.0
 
 HALF = D.MOTOR_SQ / 2.0
-TOTAL_L = BODY_L + PCB_GAP + PCB_T + TERM_H
+TOTAL_L = BODY_L + SHROUD_L
 
 
 def _square(length, y_far, inset=0.0):
@@ -118,6 +123,20 @@ def driver() -> cq.Workplane:
     return d
 
 
+def shroud() -> cq.Workplane:
+    y0 = -BODY_L
+    sh = _square(SHROUD_L, y0 - SHROUD_L)
+    inner = D.MOTOR_SQ - 2 * SHROUD_WALL
+    sh = sh.cut(cq.Workplane("XZ").rect(inner, inner).extrude(-(SHROUD_L - SHROUD_WALL))
+                .translate((0, y0 - (SHROUD_L - SHROUD_WALL), 0)))
+    yterm = y0 - PCB_GAP - PCB_T - TERM_H / 2
+    for (wx, wz, cx, cz) in ((8.0, TERM_5_L + 1, -HALF, 0.0), (8.0, TERM_6_L + 1, HALF, 0.0),
+                             (TERM_4_L + 1, 8.0, 0.0, HALF),
+                             (2 * BTN_PITCH + BTN_W + 1, 8.0, 0.0, -HALF)):
+        sh = sh.cut(box_at(wx, TERM_H + 2 * SHROUD_WALL + 0.2, wz, x=cx, y=yterm, z=cz))
+    return sh
+
+
 def coil_lead() -> cq.Workplane:
     """The four-wire loop's ENVELOPE: out of the 4-way terminal's +Z face, round the board
     edge, to the plug in the rear cap. It stands LOOP_PROUD outside the 42.3 square."""
@@ -127,8 +146,9 @@ def coil_lead() -> cq.Workplane:
                   y=(y_term + y_plug) / 2, z=HALF + LOOP_PROUD / 2)
 
 
-def servo42d() -> cq.Workplane:
-    return motor_body().union(driver()).union(coil_lead())
+def servo42d(shrouded: bool = True) -> cq.Workplane:
+    m = motor_body().union(driver()).union(coil_lead())
+    return m.union(shroud()) if shrouded else m
 
 
 def report() -> str:
