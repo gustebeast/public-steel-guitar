@@ -314,6 +314,8 @@ def pi_cap():
         gnd += c[2]
 
 
+_BAR_Y = 10.5      # the lighting bus bar, in the strip above the connector lands
+
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
     "layers": 2,
@@ -370,9 +372,24 @@ BOARD_NOTES = {
     # 10 C rise by IPC-2221) and this one carries 0.89 A to J3 and 0.73 A to J6.
     # 0.3 mm (~1.0 A) IS WHAT ROUTES, NOT WHAT WAS WANTED: 0.5, 0.4 and 0.35 each left one
     # GND island -- the wider rail cuts the pour in the band the UI ribbon already fans
-    # across. So the margin on the fret branch is thin at full white, which is the
-    # software-capped worst case; a deliberate wide strip is the real fix if it ever matters.
+    # across. The deliberate wide strip that sentence used to ask for is "tracks" below; this
+    # width now only governs what the router still lays (the two caps' stubs).
     "net_widths": {"+24V_LED": 0.3},
+    # ⚠ AND THE FRET BRANCH IS LAID BY HAND, BECAUSE THE NETCLASS COULD NOT GIVE IT MARGIN.
+    # J4 -> J3 is the stretch that carries everything (1.63 A in, 0.89 A on to the fret
+    # boards), and at 0.3 mm it was on a ~1.0 A track. It is one straight run in the strip
+    # ABOVE the connector lands, where nothing else goes: a 1.0 mm bar (~2.4 A) at y 10.5,
+    # 0.29 off J3's lands and 0.98 off the mounting pads, dropping into J4 way 3 and J3 way 2,
+    # with each connector's two 24 V ways tied across their lands. The router keeps the rest
+    # of the net -- the caps and the 0.73 A foot branch -- at 0.3 mm.
+    "tracks": [("+24V_LED", "B.Cu", 1.0, [(0.50, 7.13), (0.50, _BAR_Y), (14.35, _BAR_Y)]),
+               ("+24V_LED", "B.Cu", 0.8, [(14.35, _BAR_Y), (14.35, 7.96)]),
+               ("+24V_LED", "B.Cu", 0.8, [(14.35, 7.96), (16.35, 7.96)]),
+               ("+24V_LED", "B.Cu", 1.0, [(-2.00, 7.13), (0.50, 7.13)]),
+               # the foot branch, on the path the router found when the net was all its own
+               # (with the bar declared it left J6 way 1 open): 0.73 A at 0.4 mm
+               ("+24V_LED", "B.Cu", 0.4, [(14.35, 7.96), (14.35, 7.01), (20.25, 1.11),
+                                          (20.25, -6.96), (21.50, -8.21), (21.50, -9.71)])],
     # ⚠ TWO GND STITCHES IN THE RIBBON'S BAND. Growing the board and fanning 13 UI signals
     # across it cut the GND pour into the main body plus small fragments, and the fragments
     # are the band's own return path -- each one is what a switch line runs over. They are
@@ -413,7 +430,14 @@ BOARD_NOTES = {
     # clearance headroom. One via, not a fifth guess.
     "vias": [("GND", -21.50, -11.00), ("GND", -11.75, -7.00),
              ("GND", -20.00, -15.50), ("GND", 14.00, -15.50),
-             ("GND", -16.62, -10.91)],
+             ("GND", -16.62, -10.91),
+             # ⚠ AND ONE ON THE EAST SIDE, FOR THE SAME REASON AS THE BRIDGE ABOVE (2026-09-30).
+             # The foot drop's fan (R3/R4 -> J6) and its declared 24 V branch down x 20.25 cut
+             # a second cluster off east of the socket: B island x 6.5..19.6, y -5.1..3.0 and
+             # F island x 6.7..21.0, y -5.1..-1.2, anchored on each other and on nothing else.
+             # Five bar/branch variants all left it open, which is what a missing bridge looks
+             # like -- not router luck. This point is in the B cluster and the F main pour.
+             ("GND", 12.50, 1.20)],
     "router_passes": 12,
     # ⚠ THE SOCKET IS ON THE BACK, and that is the whole mechanical idea: its body is the
     # standoff the cap hangs off the Pi's header by. Mounted on the front it would be a
