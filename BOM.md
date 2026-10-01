@@ -461,7 +461,7 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 | Part | Per instrument | Vendor | SKU | $ / instrument | | Order arithmetic and notes |
 |---|---|---|---|---|---|---|
 | `servo42d` | 10 | — | — | $339.90 | [v] | MKS SERVO42D CAN MT (board + MOTOR) -- makerbase3d.com variant table, in stock 2026-09-30. MB is the BOARD ONLY at $22.99 and is the wrong SKU. The listing gives the motor as **40 mm long** (user, 2026-10-01) -- the CAD draws 48; see `src/servo42d.py`. |
-| `psu_24v_150w` | 1 | — | — | $20.69 | [v] | Mean Well LRS-150-24, 24 V 6.5 A 156 W -- Jameco $17.10 at qty 10, PLUS $3.59 of TARIFF ($35.91 on ten, itemised in the cart, HTS 8504.40.9530) = $20.69 landed. Sized from BOM.md power table: 120 W bus A + 16.7 W Pi = ~137 W peak. On backorder 2026-09-30, ships 11/16. |
+| `psu_24v_160w` | 1 | OnlineComponents | GST160A24-R7B | $47.70 | [v] | Mean Well **GST160A24-R7B**, a sealed DESKTOP adapter: 24 V 6.67 A 160 W, IEC C14 inlet, 1.2 m 18 AWG lead ending in a 4-pin locking power DIN (Kycon KPPX-4P). $52.40 at 1, **$47.70 at 10**, 891 in stock 2026-10-01 ([listing](https://www.onlinecomponents.com/en/productdetail/mean-well/gst160a24r7b-48236187.html)); before shipping and any tariff. The page calls it "no longer manufactured" -- Mean Well's own EOL list does not carry it and its datasheet was revised 2026-04; check at order. Fallback: TRC Electronics $61.12 at 10, 1,293 in stock. **Replaces the LRS-150-24** ($20.69), which is a chassis-mount supply with exposed mains terminals and has no home inside the instrument (user, 2026-10-01). Budget: 160 W less LED 25.3, Pi 16.7 and 7.3 of boards leaves ~111 W = **4.6 A for the motors** -- five slewing at the derived 0.8 A. ⚠ **Its plug does not fit the panel's barrel jack** -- see the DC inlet row. Mains cord: not confirmed included. |
 | `bearing_mr85zz` | 20 | — | — | $9.80 | [v] | MR85ZZ, the screws' bottom thrust pair |
 | `bearing_688zz` | 42 | — | — | $25.20 | [v] | 688ZZ O8xO16x5 -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls) |
 | `m4_button_8` | 2 | McMaster-Carr | 92095A189 | $1.11 | [v] | 1 x $11.11 (pack of 100) = $11.11 for 20 needed — M4x8 18-8 button, 2.5 hex -- the two female pogo boards |
@@ -484,7 +484,7 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 | `leadscrew_nut_h` | 10 | AliExpress | 3256804704147842 | $9.20 | [m] | Tr8x2 single-start H-flange brass nut, ~$11 per 3 x 4-pack per BOM.md. Not re-read today; was folded into the screw line before. |
 | `belt_gt2` | 8 | — | — | $6.40 | [v] | GT2 open belt, USD per metre; ~7.74 m per instrument |
 | `strings` | 1 | — | — | $25.00 | [m] | one 10-string pedal steel set |
-| **Total** | | | | **$561.83** | | |
+| **Total** | | | | **$588.84** | | |
 
 **Open, and they are design questions rather than prices:**
 
@@ -529,7 +529,7 @@ fitted on every instrument.
 | ~~Buck 24→5 V 1 A~~ | — | **DELETED** ($12.95, Pololu D24V10F5): it existed only to power the Teensy | — | — |
 | ~~Signal relay~~ / ~~Buffer op-amp~~ | — | **DELETED as separate lines** ($2.74 Omron G5V-1-DC5 + ~$11 OPA2134PA DIP). Both were AFE parts meant to be hand-wired; the true-bypass relay and the output buffer are now SMD parts on the output + panel PCB, placed by the assembler. A DIP op-amp on a board that has no through-hole assembly step was never going to work | — | — |
 | **1/4" TS jack** | B | Neutrik NMJ4HCD2 (Ø11.4 bushing) — **PCB-MOUNT, on the output + panel PCB**. Same part as before: it was always a PCB jack, and mounting it as a free-standing panel jack would have meant hand-soldered lugs | **$2.53** [v] | [DigiKey](https://www.digikey.com/en/products/detail/neutrik-americas-inc/NMJ4HCD2/29371256) |
-| **DC barrel jack** | B | Same Sky **PJ-102AH** (2.0 pin) — **PCB-MOUNT, on the output + panel PCB**. Replaces the PJ-005A, which was a SOLDER-LUG panel jack and carried the same hand-soldering violation the TS jack did. Same family, same vendor | **~$3** [m] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
+| **DC barrel jack** | B | Same Sky **PJ-102AH** (2.0 pin) — **PCB-MOUNT, on the output + panel PCB**. Replaces the PJ-005A, which was a SOLDER-LUG panel jack and carried the same hand-soldering violation the TS jack did. Same family, same vendor ⚠ **2026-10-01 — TO BE REPLACED.** This jack is rated **5 A**; the supply is now the GST160A24-R7B (6.67 A) whose lead ends in a Kycon KPPX-4P. The mating board jack is **Kycon KPJX-4S-S** (through-hole, right-angle, 7.5 A per pin, 48 V; [DigiKey](https://www.digikey.com/en/products/detail/kycon-inc/KPJX-4S-S/9990088)). NOT yet on the board: footprint, the brick's pin assignment and the panel cut-out are unchecked | **~$3** [m] | [DigiKey](https://www.digikey.com/en/products/detail/same-sky-formerly-cui-devices/PJ-005A/165838) |
 | ~~USB-C panel coupler~~ | — | **DELETED** ($7.50, Adafruit 4261 F↔F). ⚠ It would have caused the fault the USB panel PCB exists to prevent: a F↔F coupler passes VBUS, and with the Pi fed from its GPIO header that puts a laptop's VBUS straight onto the power board's output. On the Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the **same node**, with no polyfuse between them | — | — |
 | **Rotary encoder + 4-way** | B | Alps **RKJXT1F42001** (sole UI control) — **15 pulses / 30 detents** incremental encoder, **infinite both ways**, + 4-way directional + centre push, one 17.0×17.0×10.5 part | **$5.27** [v] (10+: $4.57) | [LCSC C160841](https://www.lcsc.com/product-detail/multi-directional-switches_alpsalpine-rkjxt1f42001_C160841.html) |
 | **OLED display** | B | **2.7" 128×64 SSD1322** — Newhaven **NHD-2.7-12864WDW3**, **WHITE on BLACK**, active **61.41×30.69** (viewing window 63.41×32.69), 0.48 dot pitch, module 82.0×47.5×5.5, 3.3 V. A module on a short lead; the **encoder** and its connector are what go on our UI board | **$38.08** [v] (2,057 in stock) | [DigiKey](https://www.digikey.com/en/products/detail/newhaven-display-intl/NHD-2-7-12864WDW3/7355953) |
@@ -1667,7 +1667,7 @@ them add up to what feeds the instrument. Itemised 2026-09-18, at the 24 V inlet
 | motor controller | 0.9 W | 0.9 W |
 | **total** | **169 W / 7.1 A** | **51 W / 2.1 A** |
 
-**Suggested: 24 V 150 W (6.25 A)** with the strip power-capped in firmware; 24 V 240 W
+**Chosen 2026-10-01: 24 V 160 W (6.67 A), Mean Well GST160A24-R7B desktop adapter** (row `psu_24v_160w`), with the strip power-capped in firmware; 24 V 240 W
 covers every load at maximum simultaneously, which nothing makes happen.
 
 **The 120 W motor line is a cap, not a draw.** The self-locking screw means there is no
