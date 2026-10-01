@@ -241,13 +241,13 @@ PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_bar_c",
 # touch/run on each other. Whitelist any pair WITHIN the family (this never masks a
 # housing<->chassis / housing<->motor clash, since those involve a non-family part).
 _CORE = {"bearing", "magnet", "pcb", "chip", "can_header", "pcb_shim", "axle",
-         "magnet_cap"}
+         "magnet_cap", "axle_screw", "axle_washer"}
 # the two feel lanes, each with the same hardware
 _LANE = {f"{lane}_{part}"
          for lane in ("main", "half_stop")
          for part in ("cart_base", "cart_piston", "cart_drag", "spring",
-                      "spring_seat_washer", "spring_tension_setscrew",
-                      "spring_tension_insert", "position_setscrew",
+                      "spring_seat_washer", "spring_tension_screw",
+                      "spring_tension_insert", "position_screw",
                       "position_insert", "position_washer")}
 # Built rather than typed out: the hand-written list had drifted badly. It was
 # missing every kv_* spring/screw/back-stop (those parts did not exist yet), and

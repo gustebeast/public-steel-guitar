@@ -242,6 +242,38 @@ def _lever_envelope() -> cq.Workplane:
     return heal(hub.union(leg).union(arm))
 
 
+# HOW FAR THE LEVER CAN ACTUALLY GO -- which is NOT how far it is driven (user: "LKV
+# will have shorter travel, we just need to ensure it isn't blocked until the lever tip
+# touches the chassis. The chassis sets the limit"). THROW_V is the driven range; the room
+# has to be carved to the PHYSICAL one, or the housing becomes the stop instead of the
+# instrument.
+#
+# THE CHASSIS IS HOUS_Z1. This housing's top is mounted FLUSH with the instrument's
+# underside -- that is what MOUNT_Z is -- so "the lever tip touches the chassis" is
+# "the lever reaches local z HOUS_Z1", and it needs no chassis import to say so. The tip
+# starts HOUS_Z1 - the envelope's own zmax below it, which measures 14.8 at the lever's
+# leg and 27.6 out at the tip the user read off the model; either way the angle falls out
+# of the same sweep rather than being typed.
+#
+# IT IS ABOUT 20 DEG, NOT 63, AND I HAD IT WRONG (user: "the lever will never sweep that
+# far, it will hit the chassis well before that"). I derived 63 from a probe that posed
+# the lever with KV.place -- MOUNT_POSE, y -130 -- while src.build poses this station at
+# sy -31.35. Ninety-nine millimetres of Y put the tip outboard of the chassis's -Y edge,
+# where of course nothing stopped it until 62.6. Re-measured through build's own pose the
+# gap closes at 20-21, which is THROW_V, as a sensibly-designed lever should be. The same
+# class of error as posing a cutter with the wrong transform, and the fix is the same:
+# derive it here, where the housing's own datum already says it.
+def _throw_max():
+    """Sweep until the lever reaches the instrument's underside; that angle is the limit."""
+    for i in range(1, 181):
+        if swing(_lever_envelope(), float(i)).val().BoundingBox().zmax >= HOUS_Z1:
+            return float(i)
+    raise AssertionError("the vertical lever never reaches the chassis")
+
+
+# ...assigned below, once swing() exists -- _housing() is the first thing that reads it
+
+
 def _housing() -> cq.Workplane:
     """The prism, derived from the lever + the raised cartridges exactly as LKL's
     is, minus the lever room, the two house pockets and the drag recesses, plus
@@ -258,9 +290,43 @@ def _housing() -> cq.Workplane:
     # above the arm's own rest underside and the lever fouled from 3° on. Sweeping
     # the real shape cannot make that mistake. 1° steps leave scallops well under
     # one nozzle; a closed-form polygon is the tidy-up, not a correctness fix.
+    # ...AND IT SWEEPS TO THE CHASSIS, not to THROW_V (user, 2026-09-25: "LKV will have
+    # shorter travel, we just need to ensure it isn't blocked until the lever tip touches
+    # the chassis. The chassis sets the limit"). THROW_V is how far the lever is DRIVEN;
+    # it is not how far it can go, and carving only the driven range left the housing
+    # stopping the arm 40 deg before anything physical did. The arm rises until it meets
+    # the instrument's underside, which is HOUS_Z1 -- measured at 62.6 deg, where the tip
+    # closes the 15.2 mm it starts with.
     _hw = LEVER_HW + KL.HS_CLR
+    # THE MOUNT GETS THE LAST WORD. The arm leaves through a slot in the +X face whose roof
+    # may not rise past a tenon stem's root, and the arm's reach inside that span climbs
+    # steeply once it is past ~44 deg: 17.95 at 44, 26.03 at 56, 33.73 at 63. So the room is
+    # swept as far as the roots allow and no further -- measured at 56 deg, against the
+    # chassis's 62.6. The last 6.6 deg would cost a tenon root, and the lever is DRIVEN 20.
+    _stem = min(abs(ty) - KL._JW / 4 for ty in TEN_Y if abs(ty) > 1e-9)
+    _x0 = -(KL.ARM_TX / 2 + KL.HS_CLR)
+    _x1 = HOUS_X1 + 1.0
+    _span = box_at(_x1 - _x0, 2 * _hw + 2.0, 400.0, x=(_x0 + _x1) / 2, y=0.0, z=0.0)
+    # THE SLOT IS SIZED BY THE LEVER'S OWN SECTION, not by where the lever GETS TO (user,
+    # 2026-09-25: "I'm confused why the lever would need to be that far +z during
+    # installation. It seems like it could slide in purely along Y and not need to go up in
+    # Z beyond where it is in the assembly"). Exactly right, and measured: the lever's
+    # section in this span is z -6.80..16.40 and it stays that for the whole withdrawal --
+    # a constant section, because sliding a part out does not move it in Z.
+    #
+    # Sized against the swept envelope's reach instead, the wall stood at 26.35: ten mm of
+    # opening nothing passes through, with a 45 deg roof adding another 13.2 above THAT. And
+    # it was self-defeating, because the roof then had to stay under a mount tenon's root,
+    # which is what capped the room's sweep at 56 deg. Proven by A/B, not argued: with the
+    # slot deleted entirely the lever still clears the housing at every angle to 63, and
+    # WITH it the lever slides straight out +X with zero contact. The envelope carries the
+    # sweep; the slot carries the INSTALL STROKE. They were conflated.
+    _zw = _lever_envelope().val().intersect(_span.val()).BoundingBox().zmax
+    _root = HOUS_Z1 - KL.TEN_ROOT - max(0.0, _hw - _stem)
+    assert _zw <= _root + 1e-6, (
+        "the slot's roof (%.2f) would undercut a mount tenon's root (%.2f)" % (_zw, _root))
     _env = None
-    for i in range(int(THROW_V) + 1):
+    for i in range(int(THROW_MAX) + 1):
         c = swing(_lever_envelope(), float(i))
         _env = c if _env is None else _env.union(c)
     # ...CAPPED AT THE HOUSING TOP (user, 2026-09-10). The top is flush with the instrument's
@@ -270,33 +336,52 @@ def _housing() -> cq.Workplane:
     _env = _env.intersect(box_at(400.0, 400.0, HOUS_Z1 - (HOUS_Z0 - 50.0),
                                  x=0.0, y=0.0, z=(HOUS_Z1 + HOUS_Z0 - 50.0) / 2))
     w = w.cut(_env)
-    # SLOT OVER THE ARM'S EXIT, out through the +X face, shaped as a HOUSE (user, 2026-09-10).
-    # It used to be a box open all the way up through the top face and the tenons. The arm
-    # meets the instrument's underside at ~15.7 deg, and inside this X span it never climbs
-    # above ~z 17.6, so the walls stop at the swept envelope's own top there (clearance is
-    # already in the envelope) and a 45 deg roof closes the rest. The roof's peak lands above
-    # the top face, so it opens through as a narrow slot with no flat ceiling anywhere (the
-    # reason the top was opened in the first place: a flat roof over the arm's full-throw
-    # position was a 53 mm2 overhang). Both mount tenons now stand on solid material.
-    _x0 = -(KL.ARM_TX / 2 + KL.HS_CLR)
-    _x1 = HOUS_X1 + 1.0
-    # WALL HEIGHT: as high as it can go WITHOUT cutting under a tenon stem's root, so the slot
-    # still takes everything it used to over the cartridge pockets while the stems stay rooted
-    # (the roof passes the nearest stem edge exactly at the bottom of its TEN_ROOT). The arm's
-    # real reach in this span, from the swept envelope, has to stay under it.
-    _reach = (_env.intersect(box_at(_x1 - _x0, 2 * _hw + 2.0, 400.0, x=(_x0 + _x1) / 2, y=0.0, z=0.0))
-              .val().BoundingBox().zmax)
-    # ...measured against the tenons that have to stay ROOTED ACROSS THIS SPAN, which is the
-    # outer pair. The centre one stands ON the slot's own centreline and is cut away here by
-    # design (see TEN_Y), so asking the roof to stay under a root that does not exist in this
-    # span would drop the wall for nothing.
-    _stem = min(abs(ty) - KL._JW / 4 for ty in TEN_Y if abs(ty) > 1e-9)
-    _zw = HOUS_Z1 - KL.TEN_ROOT - max(0.0, _hw - _stem)
-    assert _zw >= _reach - 1e-6, (
-        f"the slot wall ({_zw:.2f}) is under the arm's reach ({_reach:.2f}) in its own span")
-    _pts = [(-_hw, -HUB_D / 2), (_hw, -HUB_D / 2), (_hw, _zw), (0.0, _zw + _hw), (-_hw, _zw)]
-    w = w.cut(cq.Workplane("YZ", origin=(_x0, 0.0, 0.0)).polyline(_pts).close()
-              .extrude(_x1 - _x0))
+    # THE INSTALL ROOM = THE MOTION THAT INSTALLS IT, swept (user, 2026-09-25: "let's redo
+    # the arm exit slot based on the room we actually need for installation. That would mean
+    # moving the lever up just enough to clear the small indent it has in the floor below it
+    # and then sweeping it out towards -y").
+    #
+    # WHAT WAS THERE was a house-profile slot 26.4 wide running the full height, and it was
+    # a guess at the motion rather than the motion. Two faults followed from that, both
+    # found by the user in the viewer and neither visible to any check here:
+    #   its height was taken from the swept envelope's REACH, ten mm above anything that
+    #     passes through it, and since the roof then had to duck a mount tenon's root it
+    #     was what capped the lever's own sweep six degrees short of the chassis;
+    #   its inboard end was a vertical wall at _x0 standing on a 17 mm void -- 44.47 mm2
+    #     of face with nothing under it, and everything above it unsupported.
+    # A cut shaped like the motion cannot have either: it is bounded by the lever's own
+    # section, and it ENDS at the lever's rest pose, which is inside the room already.
+    #
+    # THE LIFT IS THE SEAT'S OWN DEPTH, read off the envelope rather than typed: the room
+    # follows the lever, so the dip the hub sits in IS the envelope's own dip, 2.78 here.
+    _at = lambda x: (_lever_envelope().val()
+                     .intersect(box_at(1.0, 400.0, 400.0, x=x, y=0.0, z=0.0).val())
+                     .BoundingBox().zmin)
+    _lift = _at(0.0) * -1 + _at(HUB_D / 2 + 2.0)      # seat bottom -> the floor outside it
+    _draw = (HOUS_X1 + 2.0) - _lever_envelope().val().BoundingBox().xmin
+    _ins = None
+    for dz in [j * 0.5 for j in range(0, int(_lift / 0.5) + 2)]:
+        c = _lever_envelope().translate((0.0, 0.0, min(dz, _lift)))
+        _ins = c if _ins is None else _ins.union(c)
+    _top = _lever_envelope().translate((0.0, 0.0, _lift))
+    for dx in [j * 2.0 for j in range(1, int(_draw / 2.0) + 2)]:
+        _ins = _ins.union(_top.translate((min(dx, _draw), 0.0, 0.0)))
+    # ...AND IT GETS A ROOF OF ITS OWN. The install stroke is the lever's own section
+    # swept, so its top is the lever's FLAT top, and a flat-topped hole is a ceiling: 7.2
+    # mm of it here, 38.7 mm2, the biggest on this part. helpers.corbel_close will trim
+    # that back to a 45, but only to within one of its courses -- it credits a course
+    # with a whole step of 45 growth at the course's own floor, and this jump happens AT
+    # a floor, so a lip exactly one step wide survives. 0.82 at a bead, 0.43 at half a
+    # bead, and never zero (user, 2026-09-29, twice: "there's an overhang here", "still a
+    # small overhang"). Chasing it with a finer step is chasing a limit.
+    #
+    # A hole in this project is not left flat-topped in the first place -- every pocket
+    # here is a house profile. So the CUTTER gets the gable, drafted up off its own top
+    # face at 45 until it closes to a ridge, and then there is nothing for the closure to
+    # find. It costs no strength: the material it takes is the material that could not
+    # have been printed anyway.
+    _ins = _ins.union(_gable_up(_ins))
+    w = w.cut(_ins)
     w = KL.cut_axle_stack(w)       # bearing seats + contact rib + axle way
     w = KL.cut_feel_pockets(w, vplace, HOUS_X1)
     # SENSOR CRADLE — knee_lever's, parameterised by this housing's Z extents
@@ -313,13 +398,96 @@ def _housing() -> cq.Workplane:
     # arriving cable can turn round THAT. A turn post was added when the approach was
     # coming round the front, into the arm's sweep; once it comes round the +Y back end
     # instead, the keeper is already sitting at that end and does the job.
-    return heal(w)                  # no printed back-stop threads any more (KL.cut_feel_rear)
+    # ...AND THE SAME 45 DEG KNEE RELIEF LKL GOT (user, 2026-09-25: "I would recommend
+    # adding the same 45 cut we added to the LKL yesterday to the LKV so we can get a bit
+    # more space for the knee"). Same construction, same constant: a plane TANGENT to a
+    # circle of bearing seat + KNEE_BRG_WALL about the axle, so the material that takes the
+    # spring's force and the knee's counter-force is sized by the bearing rather than by a
+    # printing minimum. This housing is 46.6 deep, so the corner it gives back is bigger
+    # than LKL's.
+    w = w.cut(_knee_relief())
+    # ...AND THE 45 DEG CLOSURE OVER BOTH VOIDS, last, on the finished solid. Same call and
+    # same reasons as LKL's (see KL.roof_close); this housing has two of them, the sweep
+    # and the install stroke, and the roof that has to be held up spans both.
+    return heal(KL.roof_close(w, _env, _ins, align=HOUS_Z1))
+
+
+def _gable_up(v):
+    """A 45 deg gable standing on every flat top face of a cutter, to its own ridge.
+
+    cadkit's house profile said as an operation instead of as a drawn section: OCC drafts
+    the wire, so the roof is exact planes and arcs whatever shape the face is. The height
+    is found by trying -- a draft that would close the face before it gets there is
+    refused by the kernel rather than clamped, and the footprint's inradius is not
+    something the bounding box knows."""
+    # HEALED FIRST. The install stroke is a union of forty-odd translated copies, so its
+    # roof arrives as forty-odd coplanar shards; drafting each one and fusing the results
+    # handed back a NULL shape. Merged into whole faces there is one roof to gable.
+    v = KL.heal(v)
+    out = []
+    for f in v.val().Faces():
+        if f.Area() < 1.0:                # a shard the merge could not absorb
+            continue
+        try:
+            n = f.normalAt()
+        except Exception:
+            continue
+        if n.z < 0.999:
+            continue
+        b = f.BoundingBox()
+        h = min(b.xlen, b.ylen) / 2.0
+        while h > KL.D.BEAD / 4:
+            g = None
+            try:
+                g = cq.Solid.extrudeLinear(f.outerWire(), list(f.innerWires()),
+                                           cq.Vector(0, 0, h), taper=45)
+                ok = g.isValid() and g.Volume() > 1e-6
+            except Exception:
+                ok = False                # ...and a REFUSAL is not the only failure:
+            if ok:                        #   OCC also hands back a null shape, which
+                out.append(g)             #   only raises later, inside the union
+                break
+            h *= 0.5
+    if not out:
+        return cq.Workplane("XY")
+    got = out[0]
+    for g in out[1:]:                     # one at a time, checked: a fuse can come back
+        try:                              #   null, and it only shows up much later
+            f = got.fuse(g)
+            if f.isValid() and f.Volume() >= got.Volume() - 1e-6:
+                got = f
+        except Exception:
+            pass
+    return cq.Workplane("XY").add(got)
+
+
+def _knee_relief():
+    """The 45 deg corner off the bottom +X end, across this housing's own width.
+
+    BOUNDED TO THE HOUSING, like LKL's, so the sensor cradle outboard of +HOUS_HW_P keeps
+    the board's grooves; and guarded around the board itself for the same reason as there
+    -- the arithmetic is about one pose of a board that has been turned over before."""
+    z0 = HOUS_Z0 - 1.0
+    xo = HOUS_X1 + 1.0
+    # ...AND IT RUNS OVER THE CRADLE, as LKL's does (user, 2026-09-25: "the 45 cut doesn't
+    # cut the PCB like you have it for the LKL"). Bounded at HOUS_HW_P it stopped at the
+    # cheek and left the cradle's corner standing proud of the relief on the very side the
+    # knee comes from. The board is guarded instead -- by ITS OWN installed height here,
+    # not LKL's, which is what KL.board_guard exists to get right.
+    y0, y1 = -HOUS_HW_N, KL.CR_Y1 + KL.D.MIN_WALL_2P
+    pts = [(z0 + KL.KNEE_CHAM_C, z0), (xo, z0), (xo, xo - KL.KNEE_CHAM_C)]
+    f = cq.Face.makeFromWires(cq.Wire.makePolygon(
+        [cq.Vector(x, y0, z) for x, z in pts] + [cq.Vector(pts[0][0], y0, pts[0][1])]))
+    wedge = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, y1 - y0, 0)))
+    return wedge.cut(KL.board_guard(HOUS_Z0, HOUS_Z1))
 
 
 def swing(s, throw=0.0):
     """Pose a lever-frame solid at a given throw. +throw pushes the +X arm UP."""
     return s.rotate((0, 0, 0), (0, 1, 0), -throw)
 
+
+THROW_MAX = _throw_max()
 
 kv_lever = _lever()
 kv_housing = _housing()

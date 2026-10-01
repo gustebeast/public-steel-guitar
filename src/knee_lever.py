@@ -41,10 +41,14 @@ from . import dimensions as D
 from . import components as C
 from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
                                         # (chassis imports knee_lever, so not chassis)
-from .helpers import box_at, cyl, cyl_y, heal
+from .helpers import box_at, corbel_close, cyl, cyl_y, heal
+from . import board_geom as BG
 
-from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D,
-                       M4_INSERT_L, M4_SCREW_L, M2, M4, cut_insert_bore,
+from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
+                              seated_insert,
+                              M4_BUTTON_HEAD_H,
+                              m4_button_screw,
+                       M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
                        cut_selftap,
                        cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
 from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
@@ -56,8 +60,8 @@ _insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
 _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
 
 # ── bought parts (assembly dummies). REUSE existing line items where possible so they buy in
-# bulk: MR85ZZ bearings + the M4×10 cup-tip set screws + M4 heat-set inserts are ALL already in
-# the BOM (nut-block / screw-support). New: the Ø6 magnet, the MT6701 board, the springs.
+# bulk: the 688ZZ bearings + the M4×10 button heads + M4 heat-set inserts are ALL already in
+# the BOM. New: the Ø6 magnet, the MT6701 board, the springs.
 AXLE_D  = D.BRG688_ID               # Ø8 axle journals (the 688ZZ bore, user 2026-09-10) — PCTG (user: no steel pin).
                                     # Zero torque lives on the axle (the springs act on
                                     # the LOBE; the magnet only co-rotates for the
@@ -206,8 +210,8 @@ CHIP_DISP_MAX = 0.3                 # datasheet DISP: max misalignment between t
                                     # (PCB_TOP / the board's Z extent live in the cradle
                                     # block below — they are set by the instrument's
                                     # underside, which isn't known this early.)
-INSERT_D, INSERT_L = M4_INSERT_D, M4_INSERT_L   # M4 heat-set insert Ø6 × 5 (standard set-screw process)
-SCREW_CLR = M4_SHAFT_CLR_D          # M4 set-screw shaft clearance (Ø4.4)
+INSERT_D, INSERT_L = M4_INSERT_D, M4_INSERT_L   # M4 heat-set insert Ø6 × 5
+SCREW_CLR = M4_SHAFT_CLR_D          # M4 shaft clearance (Ø4.4)
 
 # ── housing envelope ─────────────────────────────────────────────────────────
 WALL    = 4.0                       # bearing-wall thickness (Y)
@@ -255,6 +259,21 @@ LEVER_HW = ARM_WY / 2               # UNIFORM lever half-width: hub, lobe and ar
 PIVOT_BOSS_D = 8.0                  # ...the housing carries a small Ø8 thrust boss at each hub end for
 PIVOT_CLR = 0.2                     #   low-friction Y location (a ring, not the whole hub face)
 THROW   = 30.0                      # neutral -> full throw (deg, +theta about +Y). 30° is the useful max
+# ...and the OTHER way, for STORAGE (user, 2026-09-28: "for the LKL we want a storage
+# sweep angle as well. It should be able to sweep until it touches the LKV"). The lever
+# folds back out of the way; what stops it is the VERTICAL lever's own arm.
+#
+# MEASURED IN THE ASSEMBLY, because this one cannot be derived here: the angle depends on
+# where src.build puts the stations, and on knee_lever_vert's geometry, and this module
+# can import neither (KV imports KL, so the arrow only points one way). Swept through
+# build's own poses, the binding station is LKL itself at x -500 -- the one next to the
+# vertical lever -- and its gap to vkl_kv_lever closes as 2.37 at 44, 1.64 at 45, 0.91 at
+# 46, 0.17 at 47, 0.00 at 48. LKR, the next one over, still has 1.11 at 54.
+#
+# SO IT IS A NUMBER, AND src.build ASSERTS IT. That is the compromise: the value is
+# written once here where the sweep needs it, and checked every build against the real
+# poses, so a station that moves fails loudly instead of quietly closing the gap.
+STORAGE = 47.0                      # deg the other way: the fold, stopped by LKV's arm
                                     #   knee travel (this is a SENSOR input -- the MT6701 reads angle at
                                     #   14-bit; servos pull the strings). 45° drove the swinging arm into
                                     #   the -Z cartridges; 30° + the front-bottom relief (see _cam_swept)
@@ -284,7 +303,7 @@ LOBE_RC = 9.5                                # lobe axis radius (pivot -> lobe) 
                                              #   LOBE_RC costs 1mm of web, 0.8mm being the thin-wall floor).
                                              #   Ratio ARM_LEN/LOBE_RC = 100/9 = 11.1:1, follower travel =
                                              #   9*sin30 = 4.5mm. 9 (not 8) so the Ø1.4 feel coil keeps
-                                             #   fatigue headroom for the setscrew (10.3N knee ceiling vs
+                                             #   fatigue headroom for the tension screw (10.3N knee ceiling vs
                                              #   8N target). Raising THROW would swing the lobe higher,
                                              #   thinning the web -> raise LOBE_RC.
 LOBE_R  = 2 * D.BEAD                         # 1.6 rounded lobe radius
@@ -315,9 +334,9 @@ SWING_X = LOBE_RC * math.sin(_THR) + CAM_TX  # cam +X reach at full throw (sizes
 # protrusion > its travel), the cam never has to reach inside the cartridge, and the ROUNDED tip keeps
 # clean contact as the cam rotates through the throw. The coil is preloaded against the piston (held
 # forward by front side-lips), so contact makes a crisp force SHELF, then rises.
-#   * <lane>_spring_tension_setscrew -- cartridge back, on the axis: pushes the seat washer = PRELOAD
-#   * <lane>_position_setscrew       -- cartridge back, above it: socket end on the housing washer
-#                                       = the cartridge's X home (engagement angle / rest bias)
+#   * <lane>_spring_tension_screw -- cartridge back, on the axis: pushes the seat washer = PRELOAD
+#   * <lane>_position_screw       -- cartridge back, above it: head on the housing washer
+#                                    = the cartridge's X home (engagement angle / rest bias)
 # The cartridge prints as a BASE (U-channel, open top) + a ROOF that slides on via a Y sliding dovetail
 # -> no internal-roof overhang, and the piston drops into the base before the roof caps it. Rounded
 # anti-bind RIBS run along X on the floor + roof underside, giving the piston clean bearing lines
@@ -330,7 +349,7 @@ SWING_X = LOBE_RC * math.sin(_THR) + CAM_TX  # cam +X reach at full throw (sizes
 # uxcell B0B772B9V2, JIS light-load (blue), Ø10 hole / Ø5 rod x 30 free (+-2), 142.2 N at its
 # 40% max (12 mm) -> ~11.9 N/mm. It replaces the custom Ø6 x 1.4 music-wire coil, which had no
 # stock source (spring index 3.3) and topped out ~1 kg at the knee. Chosen range 0.5..1 kg at the
-# knee, set by the M4 tension screw. Rectangular wire, ground ends -> modelled as a TUBE, the
+# knee, set by the M4 tension screw (a button head, like every screw here). Rectangular wire, ground ends -> modelled as a TUBE, the
 # convention for every spring here. LENGTH is the costly dimension (it is X, and X decides where a
 # lever can mount); a die spring's length is fixed by the adjustable RANGE, its Ø by the top force.
 HS_SPR_OD   = 10.0                  # die-spring HOLE Ø (the spring's working OD)
@@ -344,17 +363,22 @@ HS_PILOT_D  = HS_SPR_ID - 0.4       # 4.6: piston pilot nosing into the spring's
 HS_PILOT_LX = 6 * D.BEAD            # 4.8 pilot length
 # SPRING SEAT = a steel WASHER, not a printed guide post (user: the printed post spent 3.2 of X).
 # McMaster 91100A120, DIN 9021 M3: Ø9, Ø3.2 hole, 0.7..0.9 thick (modelled at the 0.9 max, so the
-# housing recess always swallows it). The M4 set screw's Ø4 thread cannot pass the Ø3.2 hole, so its
-# cup nests in the hole and self-centres the washer on the axis, and the Ø9 face carries the
+# housing recess always swallows it). The M4 screw's Ø4 thread cannot pass the Ø3.2 hole, so its
+# chamfered end nests in the hole and self-centres the washer on the axis, and the Ø9 face carries the
 # spring's ground end (Ø5..10) across most of its width. 0.9 of X, not 3.2.
 WASHER_OD, WASHER_ID, WASHER_T = 9.0, 3.2, 0.9
-# TENSION: the M4 x 10 set screw threads an insert in the cartridge back wall and pushes the washer.
-# Max advance keeps 4.4 of thread (1.1 d) in the 5-long insert AND the spring inside its long-life
-# band: at 4.8 preload + the 4.75 throw a nominal spring sees 9.55 of its 12 (~80% = long-life).
+# TENSION: an M4 x 10 BUTTON HEAD (2.5 key -- the instrument's one tool) threads an insert in the
+# cartridge back wall, head out the back, and its end pushes the washer. The screw spans the whole
+# 5-long insert at every setting, and the advance ends when the head lands on the cartridge back:
+# 4.2 of preload + the 4.75 throw puts a nominal spring at 8.95 of its 12 (~75% = long-life).
 HS_BACKWALL = INSERT_L + D.MIN_WALL # 5.8 cartridge back wall: the 5.0 insert + a ONE-bead web to the bay
                                     #   (the web only stops the insert while it is melted in; in use the
                                     #   screw's reaction pulls the insert toward its mouth, off the web)
-HS_TEN_ADV  = 6 * D.BEAD            # 4.8 tension-screw advance (preload range)
+HS_TEN_ADV  = M4_SCREW_L - HS_BACKWALL   # 4.2 tension-screw advance (preload range): backed out
+                                    #   its end is flush with the wall's front, fully in its head is
+                                    #   on the wall's back
+HS_TEN_TAIL = HS_TEN_ADV + M4_BUTTON_HEAD_H    # 6.4: how far the head's top stands behind the
+                                    #   cartridge back with the screw backed out
 FOLL_H    = 7 * D.BEAD             # 5.6 follower FLAT-face height (Z). Centred (FOLL_DZ)
                                    #   so the window BOTTOM lands at the cartridge's already-open -Z bottom
                                    #   (no thin wall, no extra -Z) and the window TOP clears the +Z cap by
@@ -458,25 +482,36 @@ assert HS_DIVIDER >= D.MIN_WALL_2P - 1e-6, (          # 1e-6: this is a tier che
     f"and the merged ceiling is a wide unsupported span. The knob is LOBE_WY: the divider "
     f"is 2*(HS_YC - HS_POCKET_HW), and BOTH terms move with it, so a narrower lobe buys "
     f"divider at ~2 mm per mm.")
-# ── POSITION SCREW (user, 2026-09-21: metal M4, not the printed hollow back-stop) ─────────────────
-# An M4 x 10 set screw threads a SECOND insert in the cartridge back wall, straight ABOVE the tension
-# screw, SOCKET END OUT: that end bears on a steel washer seated in the housing pocket's back face, and
-# the hex key reaches it through a Ø3.2 hole behind the washer. So the thread lives inside the
-# cartridge's own back wall -- the housing carries no insert, no boss and no printed thread, and the
-# whole adjustment costs only its RANGE in X. (A screw in the housing needs insert + web + range
-# BEHIND the pocket.) The washer spreads the socket end's thin ring over Ø9 of printed face.
+# ── POSITION SCREW ────────────────────────────────────────────────────────────────────────────────
+# A second M4 x 10 BUTTON HEAD threads a SECOND insert in the cartridge back wall, straight ABOVE the
+# tension screw, HEAD OUT: the head's crown bears on a steel washer at the bottom of a recess in the
+# housing pocket's back face, and the 2.5 key reaches its socket through the washer's own Ø3.2 hole
+# and a key way behind it. So the thread lives inside the cartridge's own back wall -- the housing
+# carries no insert, no boss and no printed thread -- and the head is swallowed by the housing's rear
+# wall, so the adjustment costs only its RANGE in X. (A screw in the housing needs insert + web +
+# range BEHIND the pocket.) The washer spreads the crown's small contact ring over Ø9 of printed face.
 # Above, not beside: Y is free, but the two cartridges already sit side by side, while above the axis
-# the back wall is solid gable. The offset is the least that leaves a 2-bead web between the two
-# insert pockets -- each a TEARDROP (horizontal bore, -Z->+Z print), so the lower one reaches r*sqrt2.
+# the back wall is solid gable.
+# THE TWO HEADS SHARE THE REAR WALL, AND THEIR HOLES MEET. The tension head rides a Ø8.4 way straight
+# through that wall (HS_HEAD_WAY_D) and the position head sits in the washer's Ø9.4 recess above it.
+# A two-bead web between the two would put the position screw 2.8 higher, and the cartridge cap, the
+# pocket roof and the housing top all stand on that height -- the whole lever would hang lower to keep
+# a web that carries nothing. So the offset is the least that (a) leaves the two-bead web between the
+# two INSERT pockets in the cartridge (each a TEARDROP: horizontal bore, -Z->+Z print, so the lower
+# one reaches r*sqrt2) and (b) lands the washer's lowest point one bead above the round of the way
+# below it. The way's 45 deg print peak breaks into the recess floor in a narrow notch; the washer is
+# seated on the rest of its rim and the two heads stay 2 mm apart.
 _INS_R = INSERT_D / 2
-HS_WASH_RECESS_D = WASHER_OD + 0.4  # the housing's seat for the position washer
+HS_WASH_RECESS_D = WASHER_OD + 0.4  # the housing's seat for the position washer (and the head: Ø7.6)
+HS_HEAD_WAY_D = M4_BUTTON_HEAD_D + 2 * HS_CLR      # 8.4: the tension head's way through the rear wall
 HS_POS_DZ = max(_INS_R * math.sqrt(2.0) + D.MIN_WALL_2P + _INS_R,               # cartridge: insert webs
-                M4_SHAFT_CLR_D / 2 * math.sqrt(2.0) + D.MIN_WALL_2P + HS_WASH_RECESS_D / 2)  # housing:
-                # the washer recess over the tension screw's Ø4.4 teardrop -> 9.41 above the axis
+                HS_HEAD_WAY_D / 2 + D.MIN_WALL + HS_WASH_RECESS_D / 2)          # housing: 9.7
+HS_POS_RECESS = M4_BUTTON_HEAD_H + WASHER_T     # 3.1 deep: the washer at the bottom, the head on it
 HS_POS_RANGE = 4 * D.BEAD           # 3.2 of cartridge travel (+-1.6 about nominal)
 HS_POS_NOM   = HS_POS_RANGE / 2     # nominal gap: cartridge back -> pocket back face (HALF-STOP)
-HS_POS_FWD   = M4_SCREW_L - HS_BACKWALL + 0.4   # 4.8: how far the screw's point can reach -X of the back
-                                                #   wall (into the channel's roof) when fully retracted
+HS_POS_FWD   = M4_SCREW_L - HS_BACKWALL + 0.4   # 4.6: how far the screw's end can reach -X of the back
+                                                #   wall (into the channel's roof) with the head down
+                                                #   on the cartridge back
 # CAP: tall enough that the upper insert's teardrop keeps a 2-bead wall under the outer 45° gable.
 # Both are 45° faces, so the wall is the vertical gap /sqrt2 -- solve for the cap top, then round the
 # cap UP to whole beads over the channel eaves.
@@ -492,13 +527,14 @@ HS_CART_Z1  = HS_ROOF_SPLIT + HS_ROOF_TZ     # cartridge +Z CAP top (the outer g
 HS_POCKET_X0 = SWING_X              # housing pocket front (cartridge front cantilevers -X into the slot)
 # ── HOUSING REAR (behind the pockets). Both pockets end at ONE back face, HS_POS_NOM behind the
 # HALF-STOP cartridge's nominal back (the MAIN parks HS_SETBACK further forward on its own position
-# screw -- either cartridge still fits either slot). Behind that face: the position washer's recess,
-# then wall. The wall is sized by the TENSION screw's tail -- 4.2 proud of the cartridge back with the
-# screw backed out -- so neither screw ever stands out of the housing's back face.
+# screw -- either cartridge still fits either slot). Behind that face: the position head's recess,
+# then wall. The wall is sized by the TENSION head -- HS_TEN_TAIL proud of the cartridge back with
+# the screw backed out -- so neither screw ever stands out of the housing's back face, even with the
+# cartridge parked hard against the pocket back.
 HS_POCKET_BX = HS_BACK_X + HS_SETBACK + HS_POS_NOM
-HS_REAR_T = max(M4_SCREW_L - HS_BACKWALL, WASHER_T + D.MIN_WALL_2P)   # 4.2
-HS_KEY_D = WASHER_ID                # Ø3.2 key way to the position screw (the 2.0 hex key's corners are 2.3)
-
+HS_REAR_T = max(HS_TEN_TAIL, HS_POS_RECESS + D.MIN_WALL_2P)   # 6.4
+HS_KEY_D = WASHER_ID + 0.2          # Ø3.4 key way to the position head (a 2.5 key is 2.9 across its
+                                    #   corners; the washer's Ø3.2 hole is the tighter of the two)
 # ── MOUNT (user): the housing's TOP FACE is already FLUSH with the chassis underside
 # (HOUS_Z1 = BODY_Z = Z_BOT), so the mount needs no yoke, no boss and no floating part —
 # FUSED OCTAGON TENONS rise straight off that face into matching mortises in the chassis
@@ -591,13 +627,11 @@ MORT_Y_END = D.LIGHT_WIN_Y0
                                     # D constants chassis.Y_HI uses (import direction forbids
                                     # chassis; the old 54.75 had gone stale twice over)
 MORT_Y1   = MORT_Y_END - MOUNT_Y    # ...in the local frame
-# DEPTH LOCK — still DEFERRED (it lands with the sensor mount, which shares the same +Y
-# region). Plan of record: an M2 SELF-TAPPING set screw threading UP through the housing
-# top beside one tenon, its cup pressing the rib's side column so the Y slide friction-
-# locks. It needs no drilled pilot in the rib (it bears on the printed surface), and the
-# rib runs in Y, so the ledge is above the screw at EVERY depth setting. The octagon
-# carries the knee-strike load; this only holds the chosen depth. (The old M4 version
-# doesn't fit: the W=6 octagon leaves only a 2 mm rib side column.)
+# DEPTH LOCK — still DEFERRED, and UNDESIGNED (it lands with the sensor mount, which shares
+# the same +Y region). The octagon carries the knee-strike load; the lock only has to hold the
+# chosen depth. It is an M4 button head or it is no screw at all (user: one screw, one key),
+# and an M4 does not fit beside a tenon -- the octagon leaves the rib a 2 mm side column -- so
+# it wants its own site or a printed detent.
 
 
 def _bearing():
@@ -614,10 +648,10 @@ def feel_dummies(place, prefix="", hs_setback=None):
     Shared because all three levers carry the SAME cartridge: MAIN (at MAIN_YC)
     whose follower touches the lobe at REST (sets the rest angle), and HALF-STOP
     (at HS_YC, slid +X by HS_SETBACK) that engages partway. Each carries the Ø10
-    die spring, its steel seat WASHER, the TENSION set screw (preload) in the
-    cartridge's lower insert, and the POSITION set screw in the upper insert, whose
-    socket end bears on a second washer in the housing's pocket back face (that
-    screw's protrusion IS the cartridge's X home).
+    die spring, its steel seat WASHER, the TENSION screw (preload) in the
+    cartridge's lower insert, and the POSITION screw in the upper insert, whose
+    head bears on a second washer in the housing's pocket back face (that
+    screw's stand-off IS the cartridge's X home). Both are M4 x 10 button heads.
 
     Extracted so a lever cannot quietly show different hardware from its
     siblings: the vertical lever was emitting its cartridge bodies with NO
@@ -629,6 +663,10 @@ def feel_dummies(place, prefix="", hs_setback=None):
 
     def x_axis(solid, x, y, z):          # built along +Z from 0 -> along +X from x
         return solid.rotate((0, 0, 0), (0, 1, 0), 90).translate((x, y, z))
+
+    def _x_screw(x_under, y, z):         # M4 x 10 button: head's UNDERSIDE at x_under, shank -X
+        return (m4_button_screw(M4_SCREW_L).rotate((0, 0, 0), (0, 1, 0), 90)
+                .translate((x_under + M4_BUTTON_HEAD_H, y, z)))
 
     washer = cyl(WASHER_OD, WASHER_T, z=0.0).cut(cyl(WASHER_ID, WASHER_T + 2, z=-1.0))
     # hs_setback: where the HALF-STOP cartridge parks on its position screw -- a per-lever
@@ -643,18 +681,18 @@ def feel_dummies(place, prefix="", hs_setback=None):
             cyl(HS_SPR_OD, HS_SPR_INST, z=0.0).cut(cyl(HS_SPR_ID, HS_SPR_INST + 2, z=-1.0)),
             HS_BODY_BX + dx, yc, HS_Z))))
         out.append((f"{p}{nm}_spring_seat_washer", place(x_axis(washer, HS_SPR_TIPX + dx, yc, HS_Z))))
-        # TENSION: cup tip on the washer (nested in its Ø3.2 hole), socket out the cartridge back.
-        out.append((f"{p}{nm}_spring_tension_setscrew", place(C.set_screw().rotate((0, 0, 0), (0, 1, 0), 90)
-                    .translate((HS_WASH_BX + M4_SCREW_L + dx, yc, HS_Z)))))
+        # TENSION: end on the washer (nested in its Ø3.2 hole), head out the cartridge back.
+        out.append((f"{p}{nm}_spring_tension_screw",
+                    place(_x_screw(HS_WASH_BX + M4_SCREW_L + dx, yc, HS_Z))))
         out.append((f"{p}{nm}_spring_tension_insert",                    # Ø6×5 insert, flush at the back face
                     place(_seated_insert((HS_BACK_X + dx, yc, HS_Z), (0, 1, 0), -90))))
-        # POSITION: socket end ON the housing washer (whose face is flush with the pocket's back face),
-        # so the screw's -X reach is fixed by the POCKET, whichever cartridge it sits in.
-        out.append((f"{p}{nm}_position_setscrew", place(C.set_screw().rotate((0, 0, 0), (0, 1, 0), 90)
-                    .translate((HS_POCKET_BX, yc, zp)))))
+        # POSITION: head ON the housing washer at the bottom of its recess, so the screw's -X reach
+        # is fixed by the POCKET, whichever cartridge it sits in.
+        out.append((f"{p}{nm}_position_screw", place(_x_screw(HS_POCKET_BX, yc, zp))))
         out.append((f"{p}{nm}_position_insert",
                     place(_seated_insert((HS_BACK_X + dx, yc, zp), (0, 1, 0), -90))))
-        out.append((f"{p}{nm}_position_washer", place(x_axis(washer, HS_POCKET_BX, yc, zp))))
+        out.append((f"{p}{nm}_position_washer",
+                    place(x_axis(washer, HS_POCKET_BX + M4_BUTTON_HEAD_H, yc, zp))))
     return out
 
 
@@ -687,6 +725,13 @@ def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None, axle=Tru
     out = [(f"{prefix}_bearing_{i}", place(_bearing().translate((0, by, 0))))
            for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0))]   # inner faces at ±BRG_Y0
     out.append((f"{prefix}_magnet", place(cyl_y(MAG_D, MAG_T, y0=MAG_Y0))))
+    # the axle's END SCREW + washer, on the -Y tip (axisymmetric, so they need no swing)
+    out.append((f"{prefix}_axle_washer", place(
+        cyl_y(AXLE_WASHER_OD, AXLE_WASHER_T, y0=AXLE_Y0 - AXLE_WASHER_T)
+        .cut(cyl_y(AXLE_WASHER_ID, AXLE_WASHER_T + 2.0, y0=AXLE_Y0 - AXLE_WASHER_T - 1.0)))))
+    out.append((f"{prefix}_axle_screw", place(
+        m4_button_screw(AXLE_SCREW_L).rotate((0, 0, 0), (1, 0, 0), 90)     # shank -Z -> +Y
+        .translate((0.0, AXLE_Y0 - AXLE_WASHER_T - M4_BUTTON_HEAD_H, 0.0)))))
     out += [(n, place(s))
             for n, s in sensor_parts(z_bot, z_top, prefix=prefix, flip=flip)]
     _sh = pcb_shim(z_bot, z_top if shim_top is None else shim_top, flip)
@@ -704,9 +749,26 @@ def demo_parts():
     #  the lever, -Y journal = the kl_axle_insert part)
     out = axle_dummies(lambda s: s, "kl", HOUS_Z0, HOUS_Z1, axle=False)   # build adds them, swung
     out += feel_dummies(feel_place)
-    # (no travel-stop screw: the +Z-cam-era stop boss was removed -- see _housing)
-    # (no retention set-screw dummy: the rib-mount tenons + their M2 lock are
-    #  DEFERRED with the mount -- prism round; see _housing)
+    # THE TRAVEL STOP, shown at its BACKED-OUT setting = the housing's own maximum, so
+    # the assembly reads as the full throw rather than a random adjustment. (This line
+    # used to say "no travel-stop screw: the +Z-cam-era stop boss was removed" -- it is
+    # back, under the cartridges instead of over the cam, where there is room for it.)
+    # ...AND THE INSERT IN IT (user: "I still don't see the fitted insert"). cut_anchor
+    # leaves the pocket empty on purpose -- its whole idea is that the first build
+    # self-taps and the insert is the REPAIR. But this screw is turned to set the lever's
+    # travel and turned again whenever the feel changes, which is not what a formed
+    # thread in PETG-GF is for, so here the insert goes in at BUILD time and the self-tap
+    # below it is just the pilot it was always going to be. Seated from the same point
+    # and direction as the anchor, so the two cannot drift.
+    out.append(("kl_travel_stop_insert",
+                seated_insert(M4, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0))))
+    out.append(("kl_travel_stop_screw",
+                m4_button_screw(STOP_SCREW_L)
+                .rotate((0, 0, 0), (0, 1, 0), -90)          # head top -> -X, shank +X
+                # ...m4_button_screw measures its LENGTH from under the head, so the
+                # head's own 2.2 comes off the head end, not the tip
+                .translate((STOP_TIP_OUT - STOP_SCREW_L - M4_BUTTON_HEAD_H,
+                            0.0, STOP_Z))))
     return out
 
 
@@ -805,9 +867,16 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # bore, and its housing in two pieces.
     _far, _near = (((inner0, outer0), (inner1, outer1)) if abs(inner0) > abs(inner1)
                    else ((inner1, outer1), (inner0, outer0)))
-    # the NEAR side is the one that risks reaching past the housing's own +X face
+    # the NEAR side is the one that risks reaching past the housing's own +X face...
     _ni, _no = _near
-    _no = min(_no, x_max) if _no > 0 else max(_no, -x_max)
+    # ...AND THE ONE THAT NEEDS A LEG BESIDE THE DRIVER BORE. Running this web full
+    # height only works if something carries it past the socket, and at its drawn width
+    # nothing does: the web is 5.85 wide, the bore is 14, so the bore eats all of it but
+    # a 0.15 mm rind and everything above stood on that (check_thin, 602 samples at
+    # 0.15). Widened to clear SOCK_R by a two-bead wall it has a real column from the
+    # plinth to the ceiling, and the material over the socket becomes an arch springing
+    # off it -- which is what the teardrop roof is for.
+    _no = math.copysign(min(x_max, max(abs(_no), SOCK_R + D.MIN_WALL_2P)), _no)
     _near = (_ni, _no)
     # write the capped extents back, because the plinth and the floor span
     # outer0..outer1 and would otherwise be built to the UNcapped width
@@ -823,43 +892,24 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # carries the rest — which is the trade the user asked for, and it is a good
     # one: the -X web is 14 from the chip with a full-height groove, so it has far
     # more leverage on the board than a short +X one ever had.
-    # ...and WHICH part of the board's height the +X side can hold is derived, not
-    # fixed. The bore forbids printed material within SOCK_R of the axis, so the +X
-    # carrier has to live either below -SOCK_R or above +SOCK_R; the right answer is
-    # whichever of those two bands actually OVERLAPS THE BOARD. On this lever the
-    # board hangs low and it is the lower band (a 5 mm groove at the bottom); on the
-    # vertical lever the axle sits 19 lower, the board is entirely ABOVE the bore,
-    # and the upper band is the only one that touches it — pinning this to the lower
-    # band left that lever with NO +X retention at all, which the push probe caught.
-    _lo = (z_bot, min(pcb_z1, CR_PLINTH_Z1))
-    _hi = (max(z_bot, SOCK_R), z_top)
-    # Scored by the groove that SURVIVES the 45° underside ramp, not by the raw band: a band that
-    # does not start on the bed loses its lowest (CR_SLOT_Y1 - CR_Y0) at the groove to that ramp.
-    # Scoring the raw band picked LKL's upper band (4.3 of board) whose ramp then ate the whole
-    # web short of the groove -- a loose triangle that held nothing (user caught it in a render).
-    def _held(r):
-        z0 = r[0] if r[0] <= z_bot + 1e-6 else r[0] + (CR_SLOT_Y1 - CR_Y0)
-        return max(0.0, min(r[1], pcb_z1) - max(z0, pcb_z0))
-    _span = max(_lo, _hi, key=_held)
-    for a, b, z0, z1 in ((_far[0], _far[1], z_bot, z_top), _near + _span):
-        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, z1 - z0,
+    # ...and the near web runs FULL HEIGHT too, with the driver bore cut out of it.
+    # It used to stop at the bore, on the reasoning that everything above that was
+    # inside it. That is true of the band just above the plinth and false higher up: the
+    # socket is a TEARDROP, so its apex is at SOCK_R * sqrt(2) and the material above
+    # THAT is carried by the teardrop's own flanks, exactly as every sideways bore in
+    # this project is. Cut short, the near side ended 17 mm below the shim, which is why
+    # both shims could be lifted straight out sideways -- the far web was holding them
+    # alone, and the plug tunnel takes its groove flanks away at that height.
+    # BOTH WEBS STAND ON THE BED, so neither has an underside to ramp. There used to be
+    # a 45 deg ramp here for a web that started partway up, and with it a note about how
+    # it cost the groove its lowest CR_Y1-CR_Y0 of engagement -- which is exactly why a
+    # partway-up web is not worth having: on the horizontal lever the ramp would have
+    # eaten 8.35 mm of a 1.35 mm shim's worth of groove. The near web earns its full
+    # height from the leg beside the socket instead.
+    for a, b in (_far, _near):
+        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, z_top - z_bot,
                            x=(a + b) / 2, y=(CR_Y0 + CR_Y1) / 2,
-                           z=(z0 + z1) / 2))
-        if z0 > z_bot + 1e-6:
-            # This web does not start on the bed — it cantilevers off the housing's
-            # +Y cheek — so its underside is a CR_Y1-CR_Y0 deep unsupported ledge.
-            # Ramp it at 45° off the cheek instead. Costs the groove its lowest
-            # (CR_Y1-CR_Y0) of engagement and nothing else, and the band it takes
-            # is the far end from the board's seat anyway.
-            # The ramp starts ON the housing face (CR_Y0), never inside it: starting 1.0 in
-            # notched the cheek beside the +Y bearing once the bearings went flush (user).
-            _p = [(CR_Y0, z0 - 1.0), (CR_Y1 + 1.0, z0 - 1.0),
-                  (CR_Y1 + 1.0, z0 + (CR_Y1 + 1.0) - CR_Y0), (CR_Y0, z0)]
-            _f = cq.Face.makeFromWires(cq.Wire.makePolygon(
-                [cq.Vector(min(a, b) - 1.0, y, z) for y, z in _p]
-                + [cq.Vector(min(a, b) - 1.0, _p[0][0], _p[0][1])]))
-            w = w.cut(cq.Workplane("XY").add(cq.Solid.extrudeLinear(
-                _f, cq.Vector(abs(b - a) + 2.0, 0, 0))))
+                           z=(z_bot + z_top) / 2))
     # front plinth: the slab the board's -Y face seats on, and the body the screw
     # boss lives in. Its top IS the socket cone's floor.
     w = w.union(box_at(outer1 - outer0, CR_SLOT_Y0 - CR_Y0, CR_PLINTH_Z1 - z_bot,
@@ -906,12 +956,22 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # place. Cut rather than merely avoided: it is a guarantee, not an intention,
     # and anything a later round adds in this zone now gets removed instead of
     # silently blocking the driver. Teardrop, like every sideways bore here.
-    # It starts at MAG_Y0, NOT at the housing face: the socket only ever has to
-    # reach the cap's rim, and running it inboard of that would bore Ø14 straight
-    # through the two features that live there — the axle flange's CONTACT RIB
-    # (the air gap's whole datum) and the +Y bearing seat's 0.7 outboard skin
-    # (what stops the bearing walking out). Both are well inside Ø14.
-    w = w.cut(printable_bore(SOCK_D, (CR_Y1 + 1.0) - MAG_Y0, (0.0, MAG_Y0, 0.0),
+    # IT STARTS AT THE HOUSING FACE, which is also the AXLE's clearance through here.
+    # It used to start at MAG_Y0, the cap's rim, to protect two things that lived in the
+    # band below it: the axle flange's printed CONTACT RIB and the +Y bearing seat's
+    # outboard skin. Both are gone -- the bearings sit flush and the seats run out
+    # through both faces (see cut_axle_stack) -- and CR_Y0 IS the housing's +Y face, so
+    # starting there reaches nothing inside the housing at all.
+    #
+    # What it does reach is the 1.6 mm band between that face and the cap's rim, where
+    # the axle FLANGE stands at AXLE_FLANGE_D (Ø12.8, r 6.40). Nothing was clearing it:
+    # the socket started outboard of it and the webs used to stop below it. The moment
+    # the near web ran full height it went straight through the flange -- 56 mm3 on every
+    # lever station, which the overlap gate could not report because housing-vs-axle is
+    # allow-listed as a designed contact (user, 2026-09-29: "this wall is clipping the
+    # axel"). Ø14 clears Ø12.8 with 0.6 all round.
+    _sock_y0 = min(MAG_Y0, CR_Y0)
+    w = w.cut(printable_bore(SOCK_D, (CR_Y1 + 1.0) - _sock_y0, (0.0, _sock_y0, 0.0),
                              (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     return w
 
@@ -1020,6 +1080,13 @@ AXLE_UP = (0.0, -1.0, 0.0)
 # THE MAGNET CAP the same way and for the same reason: APERTURE-DOWN, drawn along +Z and
 # rotated onto the lever's +Y axis, so the flange face is the bed.
 MAGNET_CAP_UP = (0.0, -1.0, 0.0)
+# THE PISTON builds -X: it stands on its +X SPRING-SEAT face, the one flat 10 x 10 end,
+# and everything after it -- body, follower tongue, rounded nose -- grows along the build
+# rather than out of a side. Printed +Z with the cartridge it would lay its tongue out
+# sideways as a flat cantilever over air. It had no declaration at all until the pilot
+# came off: with a Ø4.6 boss on the bed face there was no good answer, which is the
+# tell that the boss was the problem (user).
+PISTON_UP = (-1.0, 0.0, 0.0)
 #
 # NOT DECLARED: the half-stop PISTON. Nothing in the module says which way it prints, it
 # takes no print_up, and its follower nose is a half-cylinder in X-Z that would be a
@@ -1180,28 +1247,41 @@ AXLE_FLAT_DEPTH = 0.5
 AXLE_FLAT_R = AXLE_D / 2 - AXLE_FLAT_DEPTH      # 2.0 from the axis
 AXLE_FLAT_Y = LEVER_HW + 0.1                    # flat's +Y end (hub ±10, bearings ±10.4)
 AXLE_BORE_D = AXLE_D + 0.2                      # lever's through D-bore (slip fit — the
-                                                # set screw below is what holds it)
-# AXIAL RETENTION, NO GLUE (user: every part comes apart). The axle cannot carry an
-# integral shoulder — it is slid +Y -> -Y through both Ø5 bearings, so nothing on it
-# may exceed Ø5 — and it ROTATES, so it cannot be pinned to the housing either. What
-# it CAN be pinned to is the LEVER, and the lever is already axially captive: its hub
-# ends (±10) sit 0.4 inside the two bearing INNER races (±10.4), which the housing
-# pockets capture. So one M2 set screw through the hub wall onto the D-FLAT fixes the
-# axle to the lever and the pair is trapped either way within that 0.4.
-# It self-taps rather than taking a heat-set insert (cadkit's usual preference for a
-# set screw): the hub wall over the flat is 2.4 (bore r 2.6 -> hub r 5.0) and an M2
-# pocket wants 3.5. 2.4 is six threads at 0.4 pitch, against a retention load that is
-# essentially the axle's own ~1 g — the screw stops a slide, it never carries the
-# pivot load, and the flat already carries what little torque there is.
-AXLE_SET_R  = HUB_D / 2                         # mouth: the hub's OD, on the +Z flat side
-AXLE_SET_L  = AXLE_SET_R - AXLE_FLAT_R + 0.2    # 3.2: through the wall, 0.2 past the flat
+                                                # end screw below is what holds it)
+# AXIAL RETENTION, NO GLUE (user: every part comes apart) — ONE M4 BUTTON HEAD IN THE AXLE'S
+# -Y END, the same screw and the same 2.5 key as everything else on the instrument. The axle is
+# slid +Y -> -Y through both bearings, so it can carry no integral shoulder at its leading end
+# (nothing there may exceed the Ø8 bore) and its flange already stops it going any further -Y.
+# What has to be stopped is the way it came: +Y. So once the tip is through the -Y bearing a
+# screw goes into it on the axis with a Ø9 washer under the head. The washer is wider than the
+# bore and narrower than the inner ring (the same shaft-abutment band the flange's land uses at
+# the other end), so it laps the -Y INNER RACE and nothing else, and it turns with the axle —
+# nothing rubs.
+# THE TIP STANDS AXLE_END_PROUD OF THE RACE, so the screw tightens against the AXLE'S OWN END and
+# clamps nothing between the two bearings: the washer hangs that far off the race as running
+# clearance. Tightened onto the race instead it would preload both bearings against each other
+# through the housing, and how hard would depend on the hand holding the key.
+# IT FORMS ITS OWN THREAD in the printed axle. An insert is Ø6 in a Ø8 shaft — a 1.0 wall — and
+# the load is the axle's own gram or two: the screw stops a slide, it never carries the pivot
+# (that is the journal in the bearing, which the steel core only stiffens). The axle prints
+# standing, so the bore runs up the build and the wall round it is whole perimeters.
+AXLE_END_PROUD = 0.2
+AXLE_SCREW_L = M4_SCREW_L                       # M4 x 10 button — the cartridges' SKU
+AXLE_WASHER_OD, AXLE_WASHER_ID, AXLE_WASHER_T = 9.0, 4.3, 0.8      # ISO 7089 M4
+AXLE_TAP_L = AXLE_SCREW_L - AXLE_WASHER_T + 2 * D.BEAD            # 10.8: the screw's reach + a
+                                                # chip well below its end
+assert AXLE_D < AXLE_WASHER_OD <= AXLE_LAND_D, (
+    f"the Ø{AXLE_WASHER_OD} retention washer must lap the inner race (bore Ø{AXLE_D}) and stay "
+    f"inside its abutment band (Ø{AXLE_LAND_D}) — outside it rubs the shield")
+assert AXLE_FLAT_R - M4.selftap_d / 2 >= D.MIN_WALL - 1e-9, (
+    f"the axle's wall between the end screw's bore and the D-flat is "
+    f"{AXLE_FLAT_R - M4.selftap_d / 2:.2f}, under one bead")
 PCB_Y   = MAG_Y1 + AIR_GAP + CHIP_H             # board face = magnet + gap + PACKAGE
-AXLE_Y0, AXLE_Y1 = -HOUS_HW, MAG_Y1             # axle: -Y journal tip FLUSH with the -Y bearing's
-                                                # outer face -- the full bearing width (user,
-                                                # 2026-09-21; it was a spelled -13.1 that went
-                                                # stale when the lever widened). Was: (stops INSIDE its
-                                                # bearing pocket, back wall -13.2) .. the
-                                                # magnet face at the +Y end
+AXLE_Y0, AXLE_Y1 = -HOUS_HW - AXLE_END_PROUD, MAG_Y1   # axle: the -Y journal runs the full
+                                                # bearing width (user, 2026-09-21) and its tip
+                                                # stands AXLE_END_PROUD past the race for the
+                                                # end screw to seat on .. the magnet face at
+                                                # the +Y end
 
 # ── SENSOR-BOARD CRADLE (user: "build material in the housing to hold the PCB").
 # Fused to the housing's +Y face, printed with it (-Z→+Z), and every feature stands
@@ -1246,12 +1326,23 @@ CR_BACK  = D.MIN_WALL_2P   # 1.6 (was 1.5)                      # web material B
 # the M4, which needs 1.4 of FR4 around its Ø4.4 hole. Since the chip's X is fixed at
 # the axle axis and the outline is ours, paying for the screw on one side only is
 # free — and it keeps the +X web from reaching much past the housing's knee face.
-PCB_X1  =  3.0                                  # +X edge: as close to the CHIP as the board
-                                                # house allows (user: pull the lever's +X extent
-                                                # in). The QFN body ends at 1.5, so this leaves
-                                                # 1.5 of edge keepout — comfortably over
-                                                # JLCPCB's 1.0 component-to-edge rule, on a
-                                                # board that panelises with the tee PCBs anyway.
+PCB_X1  =  4.025                                # +X edge: as close to the CHIP as the GROOVE
+                                                # allows, which is not the same as as close as
+                                                # the board house allows. It was 3.0, chosen
+                                                # against JLCPCB's 1.0 component-to-edge rule
+                                                # and the QFN's 1.5 body half-width -- and the
+                                                # groove does not grip 1.0, it grips CR_ENG.
+                                                # U4's courtyard reaches 2.175, so the groove's
+                                                # inner face at 1.30 was 0.87 inside it and 0.35
+                                                # inside the bare body: the sensor fouled the
+                                                # housing on the way down the slot, 3.05 mm3 at
+                                                # 11 mm up the stroke (user, 2026-09-29: "this
+                                                # component on the PCB looks like it will clip
+                                                # when trying to insert the board... we need a
+                                                # little bit of extra blank PCB at the edge for
+                                                # the retention piece to grip without touching
+                                                # PCB components"). Now the outermost part plus
+                                                # CR_ENG, asserted below against the real BOM.
                                                 # This used to be 8.70, set by the driver bore:
                                                 # a groove wall may not come inside SOCK_R. That
                                                 # no longer binds because the +X groove carrier
@@ -1311,47 +1402,60 @@ PCB_Z0 = PCB_Z1 - PCB_WZ                        # -12.0
 # run at 1 Mbps — 10 controls x 76-bit frames at 500 Hz is 38% loaded there,
 # against 76% at the BOM's 500 kbps.
 #
-#              LCSC        Lx    Wz    Hy      x       z
-# EVERY POPULATED PART, generated from the laid-out board (elec/lever_sensor.py
-# + elec/out/lever_sensor.board.json) rather than typed: ref, value, X, Z, HEIGHT
-# off the board face, and the centre in the CHIP's frame (the chip is the axle
-# axis, so that is the frame the housing cares about). Sizes are KiCad courtyards
-# -- the envelope the part actually needs, not its bare body. The CONNECTOR is
-# not here; it is modelled properly by cadkit (see sensor_connector).
+# ── EVERY POPULATED PART, READ OFF THE ROUTED BOARD ──────────────────────────────
+# (ref, footprint, X, Z, HEIGHT off the board face, and the centre in the CHIP's frame --
+# the chip is the axle axis, so that is the frame the housing cares about.)
 #
-# This used to be six parts and no passives at all, which made the board look
-# 43%% covered when the real circuit is 29 parts.
-SENSOR_BOM = (
-    ("C1",   "4.7uF/50V",          4.69,  2.39, 1.60,  -11.90,   6.20),
-    ("C2",   "10uF/16V",           3.49,  2.05, 1.45,   -7.60,   6.30),
-    ("C3",   "100nF",              1.91,  1.01, 0.55,   -4.50,   6.30),
-    ("C4",   "100nF",              1.91,  1.01, 0.55,   -5.00,  -5.70),
-    ("C5",   "12pF",               1.91,  1.01, 0.55,   -7.40,  -1.90),
-    ("C6",   "12pF",               1.91,  1.01, 0.55,   -7.40,  -3.70),
-    ("C7",   "100nF",              1.91,  1.01, 0.55,   -5.00,  -1.90),
-    ("C8",   "100nF",              1.91,  1.01, 0.55,   -3.50,   3.80),
-    ("C9",   "100nF",              1.91,  1.01, 0.55,   -5.50,   3.80),
-    ("C10",  "4.7uF",              3.49,  2.05, 1.45,   -1.50,  -3.30),
-    ("C11",  "100nF",              1.91,  1.01, 0.55,   -4.00,   0.00),
-    ("D1",   "B5819W",             4.79,  2.39, 1.10,   -3.40,   9.85),
-    ("D2",   "PESD1CAN-like",      2.59,  1.49, 0.75,   -5.20,  -9.20),
-    ("D3",   "PESD1CAN-like",      2.59,  1.49, 0.75,   -2.40,  -9.20),
-    ("JP1",  "TERM",               3.39,  2.59, 0.05,   -1.50,  -7.10),
-    ("L1",   "47uH",               3.69,  3.69, 1.50,   -8.00,   9.30),
-    ("R1",   "100k",               1.95,  1.03, 0.50,    0.10,   9.85),
-    ("R2",   "30k1",               1.95,  1.03, 0.50,   -2.40,   6.30),
-    ("R3",   "10k",                1.95,  1.03, 0.50,   -5.00,  -7.20),
-    ("R4",   "120R",               1.95,  1.03, 0.50,   -1.50,  -5.15),
-    ("R5",   "0R",                 1.95,  1.03, 0.50,    0.00,   3.50),
-    ("R6",   "4k7",                1.95,  1.03, 0.50,   -5.00,  -3.90),
-    ("R7",   "4k7",                1.95,  1.03, 0.50,   -0.10,   6.30),
-    ("U1",   "LMR16006XDDCR",      4.19,  3.49, 1.10,  -12.10,   9.35),
-    ("U2",   "SN65HVD230DR",       7.49,  5.49, 1.75,  -10.50,  -7.00),
-    ("U3",   "CH32V203G6U6",       5.29,  5.29, 0.90,  -10.00,   2.15),
-    ("U4",   "MT6701QT-STD",       4.35,  4.35, 0.80,    0.00,   0.00),
-    ("Y1",   "8MHz",               4.29,  3.59, 0.90,  -11.90,  -2.40),
-)
-CR_EDGE_KEEP = 1.85                 # the groove takes this much of each X edge — mechanical
+# IT WAS A TYPED TABLE, and the two copies drifted. It said it was "generated from the
+# laid-out board", and it had been, once: by 2026-09-30 it still carried the BUCK
+# CONVERTER and its inductor that the 2026-09-21 re-spin deleted, four parts that had no
+# placement at all, and five sitting up to 10.65 mm from where the router put them. The
+# CAD built and rendered perfectly the whole time, because nothing compared them
+# (tools/check_board_match now does, and that is how this was found).
+#
+# So it is read instead, from the same tracked export src/board_geom.py already uses for
+# every other board -- elec/geom/lever_sensor.geom.json, written back OUT of the finished
+# .kicad_pcb by elec/export_geom.py. Three things come from there and one does not:
+#   the POSITION and the BODY are the router's, measured off F.Fab rather than off a
+#     courtyard, which is the keep-out and not the part;
+#   the HEIGHT is not in a KiCad board at all, so it stays in board_geom.HEIGHT, keyed by
+#     FOOTPRINT rather than by ref -- a property of the part, not of this board.
+_SENSOR_BOARD = "lever_sensor"
+_BOM_SKIP = ("J1",)                 # cadkit models the real connector: sensor_connector
+
+
+def _sensor_bom():
+    fps = {f["ref"]: f for f in BG.load(_SENSOR_BOARD)["footprints"]}
+    chip = fps["U4"]                # THE DATUM IS THE SENSOR, not the board's centre:
+    out = []                        #   it is the axle axis, and it does not move when
+    for ref, f in sorted(fps.items()):        # an edge does
+        name = BG.fp_name(f["fpid"])
+        h = BG.HEIGHT[name]         # KeyError here means a new package needs a height
+        if ref in _BOM_SKIP or h <= 0.0 or f["fab"] is None:
+            continue                # bare copper, or modelled properly elsewhere
+        x0, x1, z0, z1 = f["fab"]
+        out.append((ref, name, x1 - x0, z1 - z0, h,
+                    round(f["x"] - chip["x"], 4), round(f["y"] - chip["y"], 4)))
+    return tuple(out)
+
+
+SENSOR_BOM = _sensor_bom()
+
+# NOTHING MAY STAND IN A GROOVE. Each X edge of the board is gripped CR_ENG deep, and
+# that band has to be bare copper -- not because of a fabrication rule (JLCPCB's
+# component-to-edge is 1.0 and every part clears that) but because the groove is
+# material and the part would have to pass through it on the way down the slot. The
+# board's outline is a SPEC rather than an output, so this is the thing that keeps the
+# spec honest when a part moves: it is how the sensor's own courtyard came to be 0.87
+# inside the +X groove without anything noticing.
+_BOM_X1 = max(x + lx / 2 for _, _, lx, _, _, x, _ in SENSOR_BOM)
+_BOM_X0 = min(x - lx / 2 for _, _, lx, _, _, x, _ in SENSOR_BOM)
+for _e, _p, _w in ((PCB_X1, _BOM_X1, "+X"), (PCB_X0, _BOM_X0, "-X")):
+    assert abs(_e) - abs(_p) >= CR_ENG - 1e-9, (
+        "a part reaches %.3f of the board's %s edge at %.3f -- the groove grips %.2f, so "
+        "it would be driven through the part. Move the edge to %.3f."
+        % (_p, _w, _e, CR_ENG, math.copysign(abs(_p) + CR_ENG, _e)))
+CR_EDGE_KEEP = CR_ENG               # the groove takes this much of each X edge — mechanical
 # The magnet cap's SWEEP, which is what forces the empty annulus around the chip
 # (user asked whether that gap was intentional — it is, and this is the number).
 # Measured off kl_magnet_cap: 5.312 true circumradius about the axle. The bare 5.4
@@ -1368,9 +1472,7 @@ def sensor_hardware():
     """(name, solid) for every populated part, on the board's -Y (magnet) face.
     Single-sided by design — one assembly setup."""
     out = []
-    for n, _lcsc, lx, wz, hy, cx, cz in SENSOR_BOM:
-        if n in RESPIN_MOVES:        # off the re-spin spec's outline: the re-layout moves it
-            continue
+    for n, _fp, lx, wz, hy, cx, cz in SENSOR_BOM:
         out.append((n, box_at(lx, hy, wz, x=cx, y=PCB_Y - hy / 2, z=cz)))
     return out
 
@@ -1508,17 +1610,21 @@ def _conn_keepout():
 
 
 CONN_PAD_CONFLICTS = []
-RESPIN_MOVES = {}                   # pre-route part -> why the re-spin must move it
+# ...AND THESE ARE ASSERTS NOW, not a list of handoff items. They were lenient because the
+# table was the PRE-ROUTE layout against a spec outline it had never been laid out to, so
+# a part off the edge was a note to whoever re-spun the board. The table is the ROUTED
+# board now (see _sensor_bom), so a part off the outline or in a groove band is not a
+# handoff item -- it is a part the housing would be driven through, on the board as it
+# would actually be ordered.
 for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
     _x0, _x1 = _cx - _lx / 2, _cx + _lx / 2
     _z0, _z1 = _cz - _wz / 2, _cz + _wz / 2
-    # The table is the PRE-ROUTE layout, and the outline is now the RE-SPIN SPEC, so a part
-    # that falls off it or into a groove band is a handoff item (RESPIN_MOVES), not an error.
-    # It is left out of the drawn board (sensor_hardware) rather than drawn hanging in air.
-    if not (PCB_Z0 <= _z0 and _z1 <= PCB_Z1):
-        RESPIN_MOVES[_n] = "off the spec outline in Z"
-    elif _n != _SENSOR_REF and not (PCB_X0 + CR_EDGE_KEEP <= _x0 and _x1 <= PCB_X1 - CR_EDGE_KEEP):
-        RESPIN_MOVES[_n] = f"in the {CR_EDGE_KEEP} groove band / off the outline in X"
+    assert PCB_Z0 <= _z0 and _z1 <= PCB_Z1, (
+        "%s spans z %.3f..%.3f, off the board's %.3f..%.3f" % (_n, _z0, _z1, PCB_Z0, PCB_Z1))
+    assert _n == _SENSOR_REF or (PCB_X0 + CR_EDGE_KEEP <= _x0
+                                 and _x1 <= PCB_X1 - CR_EDGE_KEEP), (
+        "%s spans x %.3f..%.3f, inside the %.2f the grooves grip of %.3f..%.3f"
+        % (_n, _x0, _x1, CR_EDGE_KEEP, PCB_X0, PCB_X1))
     if _hy > CAP_CLR_H:
         # the board is installed by dropping it PAST the rotating magnet cap, so a part
         # deeper than the gap must clear the cap's sweep — measured as the true distance
@@ -1606,9 +1712,13 @@ def _half_stop_piston() -> cq.Workplane:
                   x=(HS_NOSE_TIPX + _nose_r + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z + FOLL_DZ)
     foll = foll.union(cyl_y(2 * _nose_r, HS_FOLLOW_WY, y0=HS_YC - HS_FOLLOW_WY / 2)
                       .translate((HS_NOSE_TIPX + _nose_r, 0, HS_Z + FOLL_DZ)))    # rounded -X tip
-    pilot = (cyl(HS_PILOT_D, HS_PILOT_LX, z=HS_BODY_BX)                    # +X boss centring the coil ID
-             .rotate((0, 0, 0), (0, 1, 0), 90).translate((0, HS_YC, HS_Z)))
-    return heal(body.union(foll).union(pilot))
+    # NO SPRING PILOT. It was a Ø4.6 x 4.8 boss on the +X end nosing into the coil's ID to
+    # centre it, and it made the piston unprintable (user, 2026-09-25: "we need to remove
+    # this extra spring guide cylinder from the piston, it makes it unprintable"): the
+    # piston prints ON that end face, so the boss is the FIRST layer -- a Ø4.6 disc with
+    # the piston's whole 10 x 10 section landing on it one layer up. The coil is centred
+    # by the channel it sits in, which is what the side lips are for.
+    return heal(body.union(foll))
 
 
 HS_FLOOR_Z = HS_Z - HS_PISTON_WZ / 2               # piston underside = cartridge OPEN-bottom = housing floor
@@ -1663,17 +1773,17 @@ def _half_stop_cart_base() -> cq.Workplane:
     # Ø10 head in Y (window < head). The tongue rides up through it as the lobe rises over the throw
     base = base.cut(box_at(HS_BODY_X0 - HS_FRONT + 0.1, HS_WIN_WY, FOLL_H + 1.0,
                            x=(HS_FRONT + HS_BODY_X0) / 2, y=HS_YC, z=HS_Z + FOLL_DZ))
-    # the two inserts, both mouths on the BACK face (set screws never self-tap -- they hold load):
-    #   TENSION (on the axis): Ø6×5 pocket + the 0.6 web's Ø4.4 way to the seat washer.
+    # the two inserts, both mouths on the BACK face (adjusters never self-tap -- they hold load):
+    #   TENSION (on the axis): Ø6×5 pocket + the one-bead web's Ø4.4 way to the seat washer.
     #   POSITION (HS_POS_DZ above): its Ø4.4 way runs on HS_POS_FWD past the wall, because the screw's
-    #   point reaches that far -X into the channel roof when the socket end is flush with the face.
+    #   end reaches that far -X into the channel roof when the head is down on the face.
     _up = CART_UP
     base = cut_insert_bore(M4, base, (HS_BACK_X, HS_YC, HS_Z), (-1, 0, 0),
                            clr_len=HS_BACKWALL - INSERT_L + 0.2, print_up=_up,
-                           reason="tension set screw: its cup pushes the spring-seat washer")
+                           reason="tension screw: its end pushes the spring-seat washer")
     base = cut_insert_bore(M4, base, (HS_BACK_X, HS_YC, HS_Z + HS_POS_DZ), (-1, 0, 0),
                            clr_len=HS_BACKWALL - INSERT_L + HS_POS_FWD, print_up=_up,
-                           reason="position set screw: its socket end is the cartridge's X stop")
+                           reason="position screw: its head is the cartridge's X stop")
     return heal(base)
 
 
@@ -1715,14 +1825,14 @@ def _hs_block(yc, x0, x1):
 # foot pedal in foot_pedal. All three are the same control core in different
 # POSES, so the three blocks below were three near-identical copies. They are
 # functions now, and one of them fixed a live bug on the way: LKL and the foot
-# pedal had the axle SET SCREW, LKV did not, so its axle had no axial retention
-# at all. The no-glue sweep missed it precisely because the block was pasted
-# rather than called. A copy that can drift, does.
+# pedal had the axle's retention, LKV did not, so its axle had none at all. The
+# no-glue sweep missed it precisely because the block was pasted rather than
+# called. A copy that can drift, does.
 # ════════════════════════════════════════════════════════════════════════════
 def cut_axle_bore(body, hw=None):
-    """The lever's axle interface: the D-BORE through the hub plus the M2 SET
-    SCREW onto the axle's flat (its only axial retention — see the AXLE_SET_*
-    block for why it self-taps rather than taking an insert).
+    """The lever's axle interface: the D-BORE through the hub. The flat is the
+    key; what holds the axle in axially is the screw in its own -Y end (see
+    AXLE_END_PROUD), so the hub carries no fastener at all.
 
     cadkit picks the bore shape from print_up: a lever prints lying on its -Y
     face, so this bore runs ALONG the build direction and correctly comes back a
@@ -1731,11 +1841,9 @@ def cut_axle_bore(body, hw=None):
     bore = printable_bore(AXLE_BORE_D, 2 * hw, (0.0, -hw, 0.0),
                           (0.0, 1.0, 0.0), LEVER_UP, overshoot=1.0)
     zhi, zlo = AXLE_FLAT_R + 0.1, -(AXLE_BORE_D / 2 + 1.0)
-    body = body.cut(bore.intersect(box_at(       # flatten the +Z side -> D
+    return body.cut(bore.intersect(box_at(       # flatten the +Z side -> D
         AXLE_BORE_D + 2.0, 2 * hw + 4.0, zhi - zlo,
         x=0.0, y=0.0, z=(zhi + zlo) / 2)))
-    return cut_selftap(M2, body, (0.0, 0.0, AXLE_SET_R), (0.0, 0.0, -1.0),
-                       AXLE_SET_L, overshoot=0.5)
 
 
 def cut_axle_stack(w):
@@ -1790,23 +1898,25 @@ def cut_feel_pockets(w, place, x_front=None):
 
 
 def cut_feel_rear(w, place, reach=0.0):
-    """The housing REAR behind each pocket: the position screw's washer recess +
-    its Ø3.2 key way, and the tension screw's Ø4.4 access (its tail rides in here
-    when backed out; the screw passes through it to be fitted or replaced).
+    """The housing REAR behind each pocket: the position head's recess (the washer
+    sits at its bottom) + the key way behind it, and the tension head's way
+    straight through (the head rides in here when backed out; the screw passes
+    through it to be fitted or replaced).
 
     `reach` carries both holes further out past HS_REAR_T -- the foot pedal's
     housing is fused into a bar that stands behind it, and the key has to get
     through that too. Plain bores along X, teardropped for the -Z->+Z print, so
-    they survive heal() (no threads here any more)."""
+    they survive heal() (no threads here)."""
     up = (0.0, 0.0, 1.0)
     run = HS_REAR_T + reach + 1.0
     for dy in (MAIN_YC - HS_YC, 0.0):
         yc = HS_YC + dy
         zp = HS_Z + HS_POS_DZ
         w = w.cut(place(cq.Workplane("XY").add(printable_bore(
-            M4_SHAFT_CLR_D, run + 0.5, (HS_POCKET_BX - 0.5, yc, HS_Z), (1.0, 0.0, 0.0), up))))
+            HS_HEAD_WAY_D, run + 0.5, (HS_POCKET_BX - 0.5, yc, HS_Z), (1.0, 0.0, 0.0), up))))
         w = w.cut(place(cq.Workplane("XY").add(printable_bore(
-            HS_WASH_RECESS_D, WASHER_T + 0.5, (HS_POCKET_BX - 0.5, yc, zp), (1.0, 0.0, 0.0), up))))
+            HS_WASH_RECESS_D, HS_POS_RECESS + 0.5, (HS_POCKET_BX - 0.5, yc, zp),
+            (1.0, 0.0, 0.0), up))))
         w = w.cut(place(cq.Workplane("XY").add(printable_bore(
             HS_KEY_D, run, (HS_POCKET_BX, yc, zp), (1.0, 0.0, 0.0), up))))
     return w
@@ -1840,7 +1950,7 @@ def cut_feel_rear(w, place, reach=0.0):
 # ceiling, and the nub's underside is the 45 deg this whole part is drawn to.
 #
 # ON THE CONNECTOR CHEEK, FLUSH WITH THE BACK END (user, both). Not the back face --
-# that is how a 2.0 key reaches both feel screws, and a coil parked across it covers
+# that is how the key reaches all four feel screws, and a coil parked across it covers
 # them for the life of the instrument. The +Y cheek is where the wire already is, since
 # J1's plug leaves the board -X in the gap between the board and this very face.
 # THE BUS-B CABLE, sized here because the KEEPER is sized from it -- and re-exported by
@@ -2152,6 +2262,242 @@ def keeper_axis():
     return (0.0, 0.0, 1.0)
 
 
+# ── TRAVEL STOP = one M4 under the cartridge pockets (user, 2026-09-24) ──────────
+# "a screw to set the maximum lever travel... an M4 centered between the two cartridges
+# pointing +X so its head touches the lever and sets a stop point", adjustable over
+# "between 5 degrees and the maximum travel amount set by the housing".
+#
+# THE STOP IS THE HOUSING'S OWN DEFINITION OF FULL THROW. The lever room is bounded on
+# -X by the arm's face at THROW, and that plane is now a function of angle rather than
+# one lambda inlined in the cut -- so the screw's two extremes are literally the same
+# expression as the room it sits in. Back the screw all the way out and it lands ON the
+# room's own wall, which is why it can never permit more travel than the part does.
+STOP_MIN_DEG = 5.0                  # the shallowest travel the stop can be set to
+STOP_SCREW_L = 30.0                 # M4 x 30 BUTTON, an existing BOM SKU, 2.5 mm hex --
+                                    #   the instrument's one key (fastener_single_tool).
+                                    #   x20 was enough for the TRAVEL, but not to park the
+                                    #   head behind a cadkit ANCHOR: the pocket and its
+                                    #   bite need 12 of solid ahead of where the head sits
+                                    #   at the shallow stop, and x20 left 8.05
+STOP_CH_W = M4_BUTTON_HEAD_D + 2 * HS_CLR       # 8.4: the head drops in through this
+STOP_CH_SHOULDER = D.MIN_WALL_2P    # ...straight sides this far above the axis before
+                                    #   the 45 deg gable starts, so the ROUND head still
+                                    #   fits inside the gable (a gable springing from the
+                                    #   axis clears only 2.9 of the head's 3.8 radius)
+STOP_CH_FLAT = D.NOZZLE_D           # the gable's tip is DULLED to one bead, cadkit's
+                                    #   own teardrop tip: a printer cannot lay a point, and
+                                    #   a nozzle-wide flat bridges itself in one pass
+STOP_CH_RISE = STOP_CH_SHOULDER + STOP_CH_W / 2.0               # 5.8, axis -> virtual apex
+# THE SCREW GOES IN THROUGH cadkit's ANCHOR, not a bore of my own (user, 2026-09-24:
+# "your screw isn't using the cadkit screw hole cutter... we always want a fitted
+# insert"). cut_anchor is pocket-plus-bite: the Ø6 x 5 melt-fit pocket is cut NOW and
+# stands empty, the screw forms its own thread in the selftap below it, and when those
+# plastic threads strip a heat-set insert drops into the pocket that was always there.
+# No reprint, no redesign -- and the objection that killed the insert first time round
+# (nothing can melt one in 45 mm down a blind channel) is answered by the channel being
+# open along its whole bottom: the iron comes at it from below.
+STOP_ANCHOR_L = M4.insert_depth + 2 * 5 * M4.pitch      # 12: the pocket + the way out
+# WHY IT SITS THIS LOW, and it is the whole cost of the feature: the two cartridge
+# POCKETS run down to HS_FLOOR_Z - HS_CLR, so "between the cartridges" means BELOW them,
+# not beside them -- the rib they leave between them is only 2.1 wide and an M4 wants
+# seven. But that rib is REAL MATERIAL, and it is directly over the channel's peak (user,
+# 2026-09-24: "directly above it there is a wall that runs between the two cartridges so
+# that buys us a tiny bit more room to move the house cut up").
+#
+# So the wall that binds is not the vertical drop from the pocket FLOOR -- it is the
+# PERPENDICULAR distance from the pocket's inner bottom CORNER to the 45 deg gable face,
+# and a 45 deg face is only 1/sqrt(2) as far from a corner as its vertical offset makes
+# it look. Constraining the apex vertically, as this did, was both the wrong measurement
+# and the stingier one: it left 1.87 of wall where 1.6 was asked for, and paid 0.39 of
+# part depth for the difference.
+_STOP_RIB_HW = abs(HS_YC) - HS_POCKET_HW                        # 1.05: half the rib
+STOP_POCKET_Z0 = HS_FLOOR_Z - HS_CLR + _FEEL_DZ                 # the pockets' underside
+# the gable springs from the dulled tip, so the corner clears THAT line, not the point
+_STOP_APEX = (STOP_POCKET_Z0 + (_STOP_RIB_HW - STOP_CH_FLAT / 2.0)
+              - D.MIN_WALL_2P * math.sqrt(2.0)) + STOP_CH_FLAT / 2.0
+STOP_Z = _STOP_APEX - STOP_CH_RISE                              # the screw's axis
+# ...and the floor goes FLAT at the channel's own bottom (user: "thicken the lever
+# housing towards -z along the whole bottom (needs a flat print bed)"). Flat matters more
+# than thin here: a local boss under the channel alone would be a step in the bed face,
+# i.e. a downward flat in mid air, which is the exact fault check_ceilings now hunts.
+# ...and the bed clears whichever is deeper -- the channel, or the anchor's Ø6 pocket
+# with its own 2-bead wall under it. The pocket wins by 0.4, which is very nearly the
+# 0.39 the rib bought back above: a fitted insert costs what the better measurement saved.
+STOP_FLOOR_Z = STOP_Z - max(STOP_CH_W / 2.0,
+                            M4.insert_pilot_d / 2.0 + D.MIN_WALL_2P)
+
+
+def arm_face_x(deg, z):
+    """The arm's -X face (plus clearance) at depth `z`, with the lever at `deg`.
+
+    ONE expression for two jobs that must not drift: it is the -X boundary of the lever
+    room -- the housing's own statement of full throw -- and it is where the stop screw's
+    tip has to land to allow exactly that much. Reading the second off the first is what
+    makes "the maximum travel amount set by the housing" a fact rather than a matching
+    pair of numbers."""
+    t = math.radians(deg)
+    return (math.tan(t) * z
+            - ((ARM_TX / 2 + HS_CLR) + ARM_TX / 2 * (1 / math.cos(t) - 1) + 0.4))
+
+
+STOP_TIP_OUT = arm_face_x(THROW, STOP_Z)            # fully backed out = the housing's max
+STOP_TIP_IN = arm_face_x(STOP_MIN_DEG, STOP_Z)      # ...fully in = STOP_MIN_DEG of travel
+# THE ANCHOR ENDS AT THE ROOM WALL, so its bite is as deep as the part allows, and it
+# starts a whole anchor short of that. The channel runs out to meet it.
+STOP_ANCHOR_X = STOP_TIP_OUT - STOP_ANCHOR_L        # the pocket's mouth = channel's end
+STOP_HEAD_X = STOP_TIP_IN - STOP_SCREW_L            # where the head parks, screwed fully in
+# THE BORE HAS TO CLEAR THE ROOM WALL AT THE SCREW'S TOP EDGE, not at its axis (user:
+# "the screw cut doesn't extend far enough towards the lever, it leaves some material
+# blocking the way"). That wall is the 30 deg SLANT, so it stands further +X the higher
+# you measure it -- 3.07 further at the top of a Ø4.4 bore than on the centre line. Ending
+# the bore at the axis's wall left exactly that wedge over the hole, and the screw drove
+# into it 3.1 mm3 short of its own travel.
+# ...AND IT RUNS AS FAR AS THE SCREW DOES, not as far as the room's wall. Tying it to
+# arm_face_x tied it to the POLYGON room, and the moment the room became an honest sweep
+# the wall moved and the bore stopped 8.7 short of the screw's own reach -- a lip, exactly
+# where the tip has to pass (user, 2026-09-28: "the stop position setscrew still isn't
+# drilled far enough towards +x. it stops a bit short leaving a lip here"). The bore
+# serves the SCREW; its end is where the screw's tip can reach and nowhere else.
+STOP_BORE_END = STOP_TIP_IN
+assert STOP_HEAD_X <= STOP_ANCHOR_X + 1e-9, (
+    "screwed fully in, the travel stop's head reaches %.2f -- %.2f INTO its own anchor. "
+    "It needs a longer screw, not a deeper channel" % (STOP_HEAD_X, STOP_HEAD_X - STOP_ANCHOR_X))
+
+# the wall the rib actually leaves, measured perpendicular to the gable it faces
+_STOP_WALL = ((STOP_POCKET_Z0 - (STOP_Z + STOP_CH_RISE - STOP_CH_FLAT / 2.0))
+              + (_STOP_RIB_HW - STOP_CH_FLAT / 2.0)) / math.sqrt(2.0)
+assert _STOP_WALL >= D.MIN_WALL_2P - 1e-9, (
+    "the travel stop's channel leaves only %.2f between its gable and the cartridge "
+    "pocket's inner corner" % _STOP_WALL)
+
+
+
+def stop_screw_x(deg):
+    """Where the stop screw's TIP sits to allow `deg` of travel -- and so where its head
+    is, STOP_SCREW_L behind. Used by the dummy, so the assembly shows a real setting."""
+    return arm_face_x(deg, STOP_Z)
+
+
+def _stop_channel():
+    """The screw's way: a house profile (straight sides, 45 deg gable) along X, open out
+    the -X face AND down through the new floor.
+
+    OPEN AT THE BOTTOM because that is how the screw gets in (user: "a /\\ cut out in the
+    lever housing floor which ensures you can both install the screw and adjust its
+    rotation"). Threading a Ø7.6 head 45 mm down a blind bore would need the bore at head
+    diameter its whole length, and under the pocket floor that costs another 1.7 of part
+    depth; dropped in from below, the head only needs room where it actually parks. The
+    gable is not decoration -- a flat roof over an 8.4 channel is a bridge, and this part
+    prints -Z->+Z."""
+    zb = STOP_FLOOR_Z - 1.0
+    hw = STOP_CH_W / 2.0
+    zs = STOP_Z + STOP_CH_SHOULDER
+    fw = STOP_CH_FLAT / 2.0                       # ...the dulled tip, cadkit's teardrop
+    pts = [(-hw, zb), (-hw, zs), (-fw, zs + hw - fw), (fw, zs + hw - fw), (hw, zs), (hw, zb)]
+    # IT STOPS WHERE THE THREAD STARTS. Run out to STOP_PILOT_X1 instead and the channel
+    # swallows the pilot whole -- the screw then passes through 7.25 mm of nothing and
+    # forms its thread in air. Measured that way first: 0.9 mm3 of bite where there
+    # should be 17.
+    face = cq.Face.makeFromWires(cq.Wire.makePolygon(
+        [cq.Vector(STOP_ANCHOR_X, y, z) for y, z in pts]
+        + [cq.Vector(STOP_ANCHOR_X, pts[0][0], pts[0][1])]))
+    return cq.Workplane("XY").add(cq.Solid.extrudeLinear(
+        face, cq.Vector(STOP_ANCHOR_X - (HOUS_X0 - 1.0), 0, 0) * -1))
+
+
+# ── KNEE RELIEF: the bottom +X corner comes off at 45 (user, 2026-09-24) ─────────
+# There are two zones under this housing and only one of them costs anything. Zone A --
+# the -X length of it -- is free height: the player's knee never goes there, so it only
+# matters if it out-reaches the body adapter, which sets the instrument's Z extent and
+# has headroom to spare. ZONE B is the bit beside the lever arm, and that is exactly
+# where the top of a knee arrives. So the corner comes off at 45: self-supporting from
+# below in the -Z->+Z print, and it hands the knee back everything it takes.
+#
+# WHAT STOPS IT IS THE BEARING, not a printing rule (user: "we shouldn't jeopardize the
+# strength of the bearing which will be taking the force of the spring and the counter
+# force of the player's knee... I wouldn't recommend going for our minimum bead size of
+# 1.6mm"). So this wall is NOT D.MIN_WALL_2P. It is three times it, and the cut is a
+# plane TANGENT to a circle of seat + wall about the axle -- the same construction
+# _SEAT_ROOF_Z already uses for the seat's roof, so the two faces are the same idea
+# measured the same way, one above the axle and one below it.
+KNEE_BRG_WALL = 6 * D.BEAD          # 4.8 of backing behind the race, vs 1.6 elsewhere
+KNEE_CHAM_C = (BRG_SEAT_D / 2.0 + KNEE_BRG_WALL) * math.sqrt(2.0)
+
+
+def board_guard(z_bot=None, z_top=None, flip=None):
+    """The sensor board's envelope grown a 2-bead wall, AS INSTALLED in this housing.
+
+    Shared by both levers' knee reliefs. As it happens the two come out IDENTICAL today --
+    board_flip is False for both, so board_x/board_z return the same constants and a copied
+    wedge would have worked. That is not a reason to copy one: board_flip exists because
+    this board CAN be installed turned over, knee_lever_vert asserts that LKV must not be,
+    and the day either assertion moves, a guard that reads the housing follows the board
+    while a copied one silently guards the other lever's. Its Y comes off the board itself;
+    the cradle is the same part in both, so that dimension genuinely is shared.
+    """
+    z_bot = HOUS_Z0 if z_bot is None else z_bot
+    z_top = HOUS_Z1 if z_top is None else z_top
+    bx0, bx1 = board_x(z_bot, z_top, flip)
+    bz0, bz1 = board_z(z_bot, z_top, flip)
+    b = sensor_board().val().BoundingBox()
+    g = D.MIN_WALL_2P
+    return box_at(abs(bx1 - bx0) + 2 * g, b.ylen + 2 * g, abs(bz1 - bz0) + 2 * g,
+                  x=(bx0 + bx1) / 2.0, y=(b.ymin + b.ymax) / 2.0, z=(bz0 + bz1) / 2.0)
+
+
+def _knee_relief():
+    """The 45 deg corner cut, across the housing's own width only.
+
+    IT RUNS PAST THE CHEEKS AND OVER THE CRADLE (user, after seeing the -Y side: "ideally
+    we could cut away material on the +y side as well in the same region, but we are
+    limited somewhat by the PCB housing... without jeopardizing the PCB retention"). The
+    measurement says the two do not actually contend: the board sits x -28..3, and at its
+    own lowest the wedge does not begin until x 6.37, so the plane misses the board
+    entirely. What it takes outboard of the cheeks -- 1212 mm3 of it -- is cradle CORNER,
+    not anything that holds a board.
+
+    The board is guarded anyway, by its own envelope grown a 2-bead wall. Not because the
+    arithmetic above is in doubt, but because it is arithmetic about ONE pose of a board
+    that has already been turned over once this year: if the board moves, the guard moves
+    with it and the cut gives way, rather than quietly shaving a groove wall.
+    """
+    z0 = STOP_FLOOR_Z - 1.0
+    xo = HOUS_X1 + 1.0
+    y0, y1 = -HOUS_HW, CR_Y1 + D.MIN_WALL_2P
+    pts = [(z0 + KNEE_CHAM_C, z0), (xo, z0), (xo, xo - KNEE_CHAM_C)]
+    f = cq.Face.makeFromWires(cq.Wire.makePolygon(
+        [cq.Vector(x, y0, z) for x, z in pts] + [cq.Vector(pts[0][0], y0, pts[0][1])]))
+    wedge = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, y1 - y0, 0)))
+    return wedge.cut(board_guard())
+
+
+def _stop_skirt(w):
+    """The part's own BED FACE, carried down to the travel stop's floor.
+
+    The stop needs the housing deeper, and the naive way to get that is a deeper prism --
+    but the prism is not the whole footprint. The sensor cradle hangs off the +Y face and
+    the cable keeper stands beside it, both bottoming at HOUS_Z0, and a deeper prism left
+    the two of them 10 mm up in the air: 495 mm2 of flat ceiling over nothing, reported
+    the moment check_ceilings looked. Dropping each one by hand means teaching each one
+    the stop's floor -- and the cradle's z_bot is what the sensor BOARD's position is
+    derived from, so that particular hand would have moved the board off its magnet.
+
+    Taking the bed face itself and extruding it is the version with no hands in it. Every
+    slot and opening the part already has comes down with it, nothing needs to know why,
+    and HOUS_Z0 keeps its meaning for the cable keeper's winding datum.
+    """
+    out = w
+    for f in w.val().Faces():
+        try:
+            n = f.normalAt()
+        except Exception:
+            continue
+        if n.z < -0.99 and abs(f.Center().z - HOUS_Z0) < 1e-6:
+            out = out.union(cq.Workplane("XY").add(cq.Solid.extrudeLinear(
+                f, cq.Vector(0.0, 0.0, STOP_FLOOR_Z - HOUS_Z0))))
+    return out
+
+
 def _housing() -> cq.Workplane:
     """ONE PARAMETRIC PRISM (user simplification round): the box spanned by
     HOUS_* (every face derived from the lever / cartridge / body extents),
@@ -2187,7 +2533,7 @@ def _housing() -> cq.Workplane:
     on the sixth by the INSTRUMENT once the lever slides in, so there is no
     retaining screw. A Ø14 driver bore is RESERVED about the axle axis so
     kl_magnet_cap can still be socketed with all this printed.
-    DEFERRED: the M2 depth LOCK.
+    DEFERRED: the depth LOCK.
     NOTE — the tenons engage NOTHING at the modelled pose: MOUNT_Y puts the
     housing's +Y face at -134.85 and the chassis rails start at -133.75, so
     the whole housing hangs 1.1 mm OUTBOARD of the rib comb. That pose is the
@@ -2202,43 +2548,8 @@ def _housing() -> cq.Workplane:
     # middle with it and leaves only the two cheek-wall stubs.
     for _tx in TEN_X:
         w = w.union(_top_tenon(_tx))
-    # LEVER ROOM = ONE PLANAR SWEEP CUT (user round 3: 'solid everywhere
-    # except the house cut and a sweep cut for the lever range of motion' —
-    # the old full-width swing slot notched the front cheeks and the full-
-    # height hub band slotted the top face; both are gone, the followers'
-    # path lives inside the through house channels now). The cut is the
-    # planar envelope of the lever swept 0..THROW, lever Y-span only:
-    #   x +5.4 vertical  = the rest arm's +X face + clearance (the prism
-    #                      face at +5.0 is inside it, so the whole +X
-    #                      half-space stays open — the storage fold at +X
-    #                      swings into air)
-    #   OPEN OUT THE TOP = user round 4: the flat ceiling directly above
-    #                      the lever was a 10.8-wide print overhang — cut;
-    #                      the band exits the top face as a slot
-    #   30° slant        = the full-throw arm's -X face + clearance
-    _hw = LEVER_HW + HS_CLR
-    _e = ARM_TX / 2 + HS_CLR                          # 5.4: lever half-depth + clr
-    _zb = HOUS_Z0 - 1.0
-    _slant = lambda z: math.tan(_THR) * z - (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)
-    # -X boundary: x = tan(30°)·z − c, the rotated arm face + clearance;
-    # it crosses the hub band's -5.4 at z ≈ 1.5, so the polygon walks
-    # hub-top → hub-side → slant → bottom → rest-side
-    _zc = (-_e + (_e + ARM_TX / 2 * (1 / math.cos(_THR) - 1) + 0.4)) / math.tan(_THR)
-    _zt = HOUS_Z1 + TEN_H + 1.0                       # ABOVE the tenons, so the sweep
-    # +X EDGE OUT THROUGH THE +X FACE (user, 2026-09-10). The rest-side boundary used to be
-    # +_e, which left the whole +X half-space open only while the prism's +X face sat
-    # INSIDE it. The bearing rounds pushed HOUS_X1 out past it (8.1 for the 695ZZ race, 9.6
-    # for the 688ZZ), which quietly put a panel back between the cheeks, and the storage
-    # fold hit it from -3 deg. Carrying this edge out past HOUS_X1 opens the +X end between
-    # the cheeks again — there it is just the two walls. Lever Y-span only, so the cheeks
-    # and the bearing seats in them are untouched; open top and bottom, so no ceiling.
-    _xo = HOUS_X1 + 1.0
-    _p = [(_xo, _zt), (-_e, _zt), (-_e, _zc),         #   trims the x=0 station too
-          (_slant(_zb), _zb), (_xo, _zb)]
-    _face = cq.Face.makeFromWires(cq.Wire.makePolygon(
-        [cq.Vector(x, -_hw, z) for x, z in _p] + [cq.Vector(_p[0][0], -_hw, _p[0][1])]))
-    w = w.cut(cq.Workplane("XY").add(
-        cq.Solid.extrudeLinear(_face, cq.Vector(0, 2 * _hw, 0))))
+    _room = lever_room()        # built once: 31 unions is not free
+    w = w.cut(_room)            # the lever's own sweep, and nothing else
     # BEARING SEATS (user): Ø8.1 pockets for the MR85ZZ pair, opening
     # INBOARD at the lever-room walls (±BRG_Y0) and reaching 2.8 into the
     # cheeks (0.3 axial float over the 2.5 bearing — the proven old wall
@@ -2251,7 +2562,112 @@ def _housing() -> cq.Workplane:
     w = cut_feel_pockets(w, feel_place)
     w = _cradle(w)                                                  # the MT6701 board cradle (user)
     w = w.union(cable_keeper())     # ...and the bus-B keeper on the cheek
-    return heal(w)                  # no printed threads any more -- the whole part heals
+    w = _stop_skirt(w)              # ...the bed dropped to make room for the travel stop
+    w = w.cut(_room)            # ...and again, after the skirt re-added material
+    w = w.cut(_knee_relief())       # ...the bottom +X corner off at 45, for the knee
+    w = w.cut(_stop_channel())      # ...and the stop's own way in, under the pockets
+    # CLEARANCE AHEAD OF THE INSERT, not a self-tap (user: "the screw cut doesn't extend
+    # far enough towards the lever, it leaves some material blocking the way"). cut_anchor
+    # puts a Ø4.2 self-tapping bore beyond the pocket, which is right when the plastic IS
+    # the thread -- but the insert carries this one, so 7 mm of formed thread in front of
+    # it is just a second, tighter thread for the screw to fight through every time the
+    # travel is set. cut_insert_bore is the same pocket with the bore ahead of it opened
+    # to Ø4.4, so the screw spins free from the insert to the lever.
+    w = cut_insert_bore(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0),
+                        STOP_BORE_END - (STOP_ANCHOR_X + M4.insert_depth),
+                        reason="knee lever travel stop", print_up=PRINT_UP)
+    return heal(roof_close(w, _room))
+
+
+def roof_close(w, *rooms, z_top=None, align=None, step=None):
+    """The 45 deg closure over the lever room -- LAST, so it sees the finished solid.
+
+    THE ROOM LEAVES A ROOF AND THE ROOF HAS NOTHING UNDER IT. Now that the room is the
+    lever's sweep and nothing else (user, 2026-09-28), the prism's own material closes
+    back over the top of it, and a swept hub band's crown is flat: 326 mm2 of ceiling on
+    this housing, the worst of it 180 mm2 bridging 11.15 mm. The cheap answer is to pick
+    one wall and cut a 45 down to it, and it throws away everything the other walls could
+    have carried -- so this grows a 45 out of ALL of them at once (user: "there are three
+    walls which we can grow 45 supports out of, and ideally we would use all of them to
+    maximize the amount of material above the levers"). See helpers.corbel_close.
+
+    IT IS SCOPED TO THE ROOM, which is what makes it both right and cheap (user: "we can
+    focus it to just the area we need help with"). The room's own footprint is the only
+    place the prism was opened, so it is the only place a roof can be floating; and the
+    material outside that footprint -- the two cheeks and the -X end, the three walls --
+    is untouched and hands itself back in as support at every layer. The sweep then starts
+    at the PRINT BED, where "supported" is not an assumption at all.
+
+    A step of one BEAD is not a rounding of the layer height: each course of the corbel
+    steps out exactly one nozzle width, which is the ledge check_ceilings already calls
+    printable rather than a bridge.
+    """
+    bb = w.val().BoundingBox()
+    bed = bb.zmin
+    up = box_at(800.0, 800.0, 800.0, z=bed + 400.0).val()          # everything off the bed
+    bs = [r.val().intersect(up).BoundingBox() for r in rooms]
+    x0, x1 = min(b.xmin for b in bs), max(b.xmax for b in bs)
+    y0, y1 = min(b.ymin for b in bs), max(b.ymax for b in bs)
+    crop = box_at(x1 - x0, y1 - y0, 800.0, x=(x0 + x1) / 2, y=(y0 + y1) / 2)
+    # ...AND IT RUNS TO THE VERY TOP OF THE PART, mount tenons included. Stopping at the
+    # housing's top face left the tenon that stands over the lever sitting on the roof the
+    # closure had just carved out from under it: 27 mm2 of its underside bridging 3.30 mm,
+    # the worst ceiling left in the part. Carried on up, the tenon gives back 49 mm3 -- a
+    # nibble out of the one corner of it that was over the void -- and the mortise faces,
+    # which are its flanks, are untouched.
+    # THE STEP IS NOT THE SURFACE QUALITY any more -- the cut is drafted, so its faces
+    # are true planes whatever the step -- it is how finely the sweep TRACKS a change in
+    # support. One bead is enough wherever the walls are wide. It is not enough on the
+    # vertical lever, whose rib between the cartridge pockets is 2.1 wide: the support
+    # there changes inside a single course and the sweep stepped straight over it,
+    # leaving 1.72 mm2 of flat on the rib's underside (user, 2026-09-29: "there's an
+    # overhang here"). Half a bead closes it completely, and costs that part 9.7 s.
+    return corbel_close(w, crop, bed, bb.zmax if z_top is None else z_top,
+                        D.BEAD if step is None else step,
+                        align=HOUS_Z1 if align is None else align)
+
+
+def _lever_envelope() -> cq.Workplane:
+    """The lever grown by HS_CLR on every face -- the thing that gets swept to make the
+    lever room. Built from the same primitives as _lever rather than offset from it, so a
+    change to one is visibly a change to the other (the vertical lever's is the same)."""
+    c = HS_CLR
+    hub = cyl_y(HUB_D + 2 * c, 2 * (LEVER_HW + c), y0=-(LEVER_HW + c))
+    arm = box_at(ARM_TX + 2 * c, 2 * (LEVER_HW + c), ARM_LEN + c,
+                 x=0.0, y=HUB_YC, z=-(ARM_LEN + c) / 2.0)
+    lobe = (cyl_y(2 * LOBE_R + 2 * c, 2 * (LEVER_HW + c), y0=-(LEVER_HW + c))
+            .translate((0.0, 0.0, -LOBE_RC)))
+    return heal(hub.union(arm).union(lobe))
+
+
+def lever_room() -> cq.Workplane:
+    """THE LEVER ROOM, and it is now exactly what the name says: the lever's own shape
+    swept through its throw. Nothing else.
+
+    IT USED TO BE A DRAWN POLYGON -- a hub band, a 30 deg slant at the full-throw arm
+    face, a vertical at the rest arm's +X face, opened out through the top and carried
+    past the +X face. Every one of those was a decision about something OTHER than the
+    sweep: the top opening was there to avoid a ceiling, the +X extension to let a
+    storage fold swing, the vertical to keep the +X half-space clear. They are real
+    concerns, but folding them into the room made the room mean four things at once, and
+    then nobody could tell which part of it any given face came from -- the user asked
+    what made a vertical face and the honest answer took a measurement to find.
+
+    A room is one of two things (user, 2026-09-28): the sweep of the lever's rotation, or
+    the path that installs it. THIS lever needs only the first: its arm hangs -Z out of an
+    open floor, so the rest pose being cut IS an install path, straight down.
+
+    THE SWEEP RUNS BOTH WAYS -- -STORAGE to +THROW. Forward is the throw the knee drives;
+    back is the fold that puts the lever out of the way, and it is stopped by the VERTICAL
+    lever's arm rather than by anything here. The old polygon had a note about "the
+    storage fold at +X swings into air" and a vertical face to keep that half-space open;
+    this is that same intent, said as a sweep instead of as a wall.
+    """
+    env = None
+    for i in range(-int(STORAGE), int(THROW) + 1):
+        c = _lever_envelope().rotate((0, 0, 0), (0, 1, 0), float(i))
+        env = c if env is None else env.union(c)
+    return env
 
 
 def _lever() -> cq.Workplane:
@@ -2289,23 +2705,21 @@ def kl_axle() -> cq.Workplane:
     the -Y bearing, so nothing has to thread a rigid stub into an already-
     captured bearing.
 
-      * Ø5 journals at both bearings, kept fully ROUND.
-      * a D-FLAT over the hub band = the anti-rotation key (a protruding
-        tongue could not pass the Ø5 bearing bore on the way in). An M2 SET
-        SCREW through the hub wall onto that flat is what holds the axle
-        axially — no glue: the axle can carry no integral shoulder (nothing on
-        it may exceed Ø5, or it could not pass the bearings) and it rotates, so
-        it cannot be pinned to the housing either. Pinning it to the LEVER does
-        the job, because the lever's hub ends already sit 0.4 inside the two
-        bearing inner races.
+      * Ø8 journals at both bearings.
+      * a D-FLAT from the leading tip through the hub band = the anti-rotation
+        key (a protruding tongue could not pass the bearing bore on the way in).
+      * an M4 thread-forming BORE in the -Y tip: one button head and a washer
+        go in there once the axle is through, and that is the axial retention
+        (see AXLE_END_PROUD). No glue, and nothing in the hub.
       * a FLANGE that seats on the housing's contact rib — the axial datum
         that sets the magnet's Y, and with it the sensor air gap.
       * a magnet POCKET with a MALE thread on its OD; kl_magnet_cap screws
         over it and clamps the disc.
 
     Prints STANDING, POCKET-DOWN (collar face on the bed): that way the
-    Ø5 -> Ø9 flange step is an upward-facing floor rather than a 2 mm
-    overhanging ledge, and the 45° thread flanks self-support. Use a brim —
+    journal -> flange step is an upward-facing floor rather than an
+    overhanging ledge, the 45° thread flanks self-support, and the end screw's
+    bore is a plain hole down from the top. Use a brim —
     the bed footprint is only the collar's annulus under a ~31 mm column.
     Built along +Z, threaded, then rotated onto the lever's +Y axis; the flat
     is milled AFTER the thread (cadkit thread rule) and it is NEVER healed."""
@@ -2325,6 +2739,8 @@ def kl_axle() -> cq.Workplane:
     b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(     # magnet pocket
         MAG_POCKET_D / 2, MAG_COLLAR_H + 1.0,
         cq.Vector(0, 0, MAG_Y0), cq.Vector(0, 0, 1))))
+    b = cut_selftap(M4, b, (0.0, 0.0, AXLE_Y0), (0.0, 0.0, 1.0), AXLE_TAP_L,
+                    overshoot=0.5, print_up=(0.0, 0.0, -1.0))      # the end screw's bore
     b = heal(b)
     # MALE thread on the collar (blank is already at crest Ø), then the flat
     b = cut_thread(b, minor_d=MAG_TH_MINOR - MAG_TH_CLR,
