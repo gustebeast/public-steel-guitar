@@ -199,13 +199,13 @@ and `output_panel`'s are scattered differently again.
   both oscillator tracks at a 0.4 mm-pitch escape, and the router only found the hop on some
   rolls. The cure was to DECLARE the hop: one NRST via beside the pin, laid before routing.
   With it the board closes first pass with the chip-select in: 0 unconnected, 0 violations.
-* **4.1 / 4.2 (shared SWD pattern, +3V3 pad) and a `BOOT0` pull-down are still open** on this
+* **4.1 / 4.2 (shared SWD pattern, +3V3 pad) are still open** on this
   board. The via helps but does not cure the corner (a perturbation test passed one of two), so budget a neighbour search for each; the outline they must stay
   inside is branner's re-spin spec (`docs/lever-sensor-respin.md`).
 * **4.6 is confirmed.** TI's SN65HVD230 datasheet (SLOS346O) has no dominant-timeout — the
   term does not appear in it. The independent watchdog is the only thing bounding a node that
   hangs with its transmit pin dominant.
-* `BOOT0` (pin 1 on the QFN28) is unconnected, and whether the die pulls it down is not stated for packages that bring the pin out — hence the pull-down above.
+* **`BOOT0` is NOT open — I had this wrong.** Pin 1 (BOOT0, shared with PB8) is tied hard to GND in `lever_sensor.py`; I read a stale comment higher in the file and reported it as floating. WCH's datasheet (table 3-1-3, note 6) confirms pin 1 is BOOT0/PB8 and wants it low at power-on, which a hard tie does. **Two firmware rules follow from the same table:** never drive PB8 as an output (it is shorted to ground), and never drive PA10 — on the 28-pin package PA10 and PA11 are ONE pin (19), which this board uses as CAN RX (note 7).
 
 **Isolating a bad node** stays a matter of unplugging along the daisy chain — the buses are
 connectorised end to end, so a binary search is at most four unplugs for eleven boards. The
