@@ -169,6 +169,30 @@ and `output_panel`'s are scattered differently again.
 | 4.5 | **Report the MCU's unique ID and a firmware version on boot.** With eleven identical boards, "which one is misbehaving" is a diagnosis in itself; wiggle a lever, see which ID moves | 0 | 0 |
 | 4.6 | **Independent watchdog on, always.** One node whose firmware hangs with its transmit pin dominant silences the bus for all eleven, and the daisy chain means the only isolation is unplugging. ⚠ Check whether the SN65HVD230 has a dominant-timeout (I believe it does not — verify); if not, the watchdog is the only thing bounding that fault | 0 | 0 |
 
+**Checked against the datasheets 2026-09-30, and two rows above change:**
+
+* **4.4 is NOT available on the board as built.** The MT6701 reports field status (`Mg[1:0]`: too
+  strong / too weak; `Mg[3]`: over-speed) only in its **SSI** frame (§7.8); the I2C registers
+  carry the angle and nothing else. SSI uses the same two wires but needs `CSN` driven, and
+  pin 8 is open. The fix is one track — `Z/CSN` → PB5 (pin 26, table 3-1-3) — no parts, and the
+  bus stays plain I2C while PB5 is an input.
+  **Tried and reverted:** the chip-select itself routes, but `NRST` then fails, on five
+  placements running. That is not bad luck. `NRST` (U3 pin 4) sits between the crystal pins
+  (2, 3) and its own cap and pad (C7, TP4) are on the opposite side of the chip from the
+  crystal, so on F.Cu the reset line MUST cross both oscillator tracks at a 0.4 mm-pitch
+  escape. The router finds the hop on some rolls and not others; every added net re-rolls it.
+* **So 4.1 and 4.4 are one re-spin, and it has a specific shape:** move C7 and the NRST pad to
+  the CRYSTAL side of the MCU. Pins 2–5 then all leave the same way and nest instead of
+  crossing, the reset corner stops being a lottery, and the chip-select and the shared SWD
+  pattern (which moves TP4 anyway) land on a board that routes on purpose. With branner — the
+  outline and the lever housing are theirs.
+* **4.6 is confirmed.** TI's SN65HVD230 datasheet (SLOS346O) has no dominant-timeout — the
+  term does not appear in it. The independent watchdog is the only thing bounding a node that
+  hangs with its transmit pin dominant.
+* **Also still open on this board, from its own source file:** `BOOT0` (pin 1 on the QFN28) is
+  unconnected. Whether the die pulls it down is not stated for packages that bring the pin
+  out. One 0402 to ground belongs in the same re-spin.
+
 **Isolating a bad node** stays a matter of unplugging along the daisy chain — the buses are
 connectorised end to end, so a binary search is at most four unplugs for eleven boards. The
 optical board had no equivalent, which is why it needed item 6 there and this board does not.
