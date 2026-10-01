@@ -236,3 +236,39 @@ power lands, **0 unconnected, 0 violations, audit passes**.
 **Recommendation changes: option 6 over staying put.** It is the only option that fits
 under the fret board AND removes the 3 A contact from the trunk. Needs the user's go-ahead
 because it changes the tee's outline, pinout and both trunk cables.
+
+### Option 6 re-checked, and 6b (2026-10-01, later): take CAN off the tee altogether
+
+**Option 6 has a problem I had not checked: the retaining screw.** Growing the row to
+40.8 mm of body puts the 6-way's corner at x +21.6, and the M4 button head (Ø7.6, centred
+at +24.75, +3.65 in the ear) reaches +20.95: the head lands 0.57 mm INTO the connector
+body. Moving the hole +0.7 / +0.5 in the ear buys 0.05 mm. Option 6 is not clean as drawn.
+
+**6b: the tee becomes a pure power board, in the outline it already has.**
+
+| | merged tee | 6b |
+|---|---|---|
+| J1, 8-way XH (unchanged part, unchanged position) | GND 24 H L in / out | **power only**: GND 24 24 GND in / out — 2 contacts per rail, 6 A |
+| J2 | 4-way drop | **2-way** power drop (S2B-XH-A, C157931, 41,564 in stock), same centre |
+| R1 / JP1 terminator | on the board | gone from the board (see below) |
+| CAN | through 2 contacts per tee | **never touches the tee**: one continuous twisted pair, double-crimped (2 × AWG 26) into H and L of each MOTOR's own plug |
+| board | 40 × 16 + ear | **identical outline, seat, ear and screw** — the row shrinks to 30.8 mm |
+
+Scratch prototype (`scratchpad/can_tee_p6b.py`): **0 unconnected, 0 violations, zero DRC
+warnings, audit passes.** Two nets; the board could be single-sided.
+
+It is the user's "two for power, two for data" with the data pair's tap sitting in the
+motor's plug instead of on the tee — which is where the trunk pair ends up anyway.
+
+**Open before it can be built:**
+1. **Bus-A termination.** The far-end 120 R has no board to live on. Either the SERVO42D's
+   own termination (I believe the MKS board has a selectable 120 R — NOT verified against
+   its manual), or a leaded 120 R crimped across H / L in the last motor's plug, which is
+   solder-free and uses the same double-crimp. Verify before committing.
+2. The motor plug's H / L contacts take 2 × AWG 26 = 0.26 mm² (SXH-001T: 0.08–0.33) — in
+   range; the insulation crimp on two wires wants a test crimp.
+3. Harness, `wiring.py` (power trunk as its own 4-wire run, CAN pair motor-to-motor) and
+   BOM follow; the motor-bay seat and the cradle do NOT change.
+
+**Recommendation: 6b.** Same 6 A trunk as option 6, no outline change, no new header SKU
+beyond a 2-way, and it removes 20 series contacts from the CAN bus.
