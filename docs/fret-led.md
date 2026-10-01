@@ -1382,6 +1382,26 @@ KiCad's bounding box, which includes the outline's 0.10 stroke, so the barrel AS
 and routes more easily for it; key gained six pads at its +X end and its chain's last hop.
 `check_part_specs` carries the pogo's nine drawing numbers against the code, 0 disagreements.
 
+### ⚠ The M4 screws, wired into the build for the first time -- and both were wrong
+
+The lead's dead-code list caught `fret_light.m4_screws()`: defined, never called. Wired in,
+the gate went red four ways, because nothing had ever intersected it:
+
+    fret_pcb_mid <-> fret_m4_mid      47.2 mm3    the HEAD was inside the board
+    fret_m4_mid  <-> top_plate_color_3  10.3     ...so the tip was 2.2 too deep
+    (and the same pair on key)
+
+`m4_button_screw` puts the head's TOP at z = 0; after the flip the head stood up through
+the laminate. Seated properly -- head top one head height below the board -- the gate
+found the real problem underneath: **mid's head hangs into the CAN trunk** (`wire_canl_5`,
+5.0 mm3), the same trunk that costs mid its -Y strip (8.7).
+
+`tools/_probe_m4_room.py` intersects a O7.6 head (+0.2) with everything below each bay on
+a 2 mm grid: under mid, y -28 .. -22 is the trunk; under key, y +20 .. +28. **So mid's M4
+moves to y -30** (`M4_Y` is per-panel now, and elec reads it rather than retyping -28.0):
+clear underneath, and its O9.2 deck boss on top stays off the arrival caps. Key's stays at
+-28. Mid re-routed for the hole.
+
 ### Still open on the joint
 
 1. **The spring rate.** 9.1d's missing number, unchanged: force is published at 6.00 only.
