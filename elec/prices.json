@@ -158,12 +158,13 @@
       "what": "DIN 9021 M3 washer O9 x 0.8 -- spring seat + position, 4 per control x 11"
     },
     "washer_m4_7089": {
-      "usd": 0.05,
-      "verified": "m",
+      "usd": 0.0715,
+      "verified": "v",
       "per_instrument": 11,
       "vendor": "McMaster-Carr",
-      "sku": "-",
-      "what": "ISO 7089 / DIN 125 M4 washer O9 x 0.8, O4.3 hole -- under the axle's end screw, 1 per sensed control x 11. Price carried at a guess; pick the SKU at purchase."
+      "sku": "93475A230",
+      "what": "18-8 M4 washer, 4.3 ID x 9.0 OD -- one under each knee/pedal axle screw. Page read 2026-10-01; it IS the 9.0 OD part, not a fender.",
+      "order": "2 x $3.93 (pack of 100) = $7.86 for 110 needed"
     },
     "break_dowel": {
       "usd": 0.254,
