@@ -1015,6 +1015,38 @@ BOARD_NOTES = {
         ("+24V", "B.Cu", 2.0, [(12.85, 11.5), (12.85, 3.0), (11.85, 2.0), (-1.0, 2.0),
                                (-2.0, 1.0), (-2.0, -13.75), (-1.0, -14.75), (0.6, -14.75)]),
         ("+24V", "B.Cu", 1.2, [(10.35, 11.5), (12.85, 11.5)]),      # J3's two 24 V ways tied
+        # THE PI'S 5 V SUPPLY, DECLARED (2026-10-01). U5 is a 3 A buck behind a 4 A fuse and
+        # the router drew its whole power path -- 24 V in, the switch node, the inductor's
+        # output, the fuse, the run to J5 -- at the board default, 0.25 mm (0.88 A at a
+        # 10 C rise), and the feed to F1 at 0.2. `net_widths` is the wrong tool: these nets
+        # also land on 0402s (the FB divider, the boot cap) and freerouting does not neck
+        # into a land. So the CURRENT PATH is drawn here and the sense/boot branches stay
+        # the router's. Lanes sit in the gaps between the part columns at x -15.4 / -9.9:
+        #   24 V -> F1: 0.6 mm (1.6 A; the buck draws ~0.8 A at full load)
+        ("+24V", "F.Cu", 0.6, [(0.6, -14.75), (-7.9, -14.75), (-7.9, -22.9), (-9.9, -22.9)]),
+        #   F1 -> C16 -> C17, and round U5's south end to VIN and its 100 nF
+        ("+24V_BUCK", "F.Cu", 1.0, [(-9.9, -20.1), (-9.9, -16.97)]),
+        ("+24V_BUCK", "F.Cu", 0.6, [(-9.9, -20.1), (-11.6, -20.1)]),
+        ("+24V_BUCK", "F.Cu", 0.6, [(-9.9, -16.97), (-11.6, -16.97)]),
+        ("+24V_BUCK", "F.Cu", 0.6, [(-11.6, -24.4), (-11.6, -10.97), (-9.9, -10.97)]),
+        ("+24V_BUCK", "F.Cu", 0.5, [(-11.6, -24.4), (-18.8, -24.4), (-18.8, -22.46)]),
+        ("+24V_BUCK", "F.Cu", 0.5, [(-16.03, -24.4), (-16.03, -21.97)]),
+        #   the switch node: short and straight into the inductor's land
+        ("SW5", "F.Cu", 0.6, [(-17.31, -17.03), (-17.31, -12.85), (-15.4, -12.85)]),
+        #   inductor -> output caps -> F2: 2 mm (3.95 A)
+        ("+5V_RAW", "F.Cu", 2.0, [(-15.4, -8.15), (-12.525, -8.15), (-12.525, 8.1)]),
+        ("+5V_RAW", "F.Cu", 1.2, [(-12.525, 8.1), (-9.9, 8.1)]),
+        ("+5V_RAW", "F.Cu", 1.0, [(-12.525, 4.55), (-15.4, 4.55)]),
+        ("+5V_RAW", "F.Cu", 1.0, [(-12.525, 8.1), (-13.475, 9.05), (-15.4, 9.05)]),
+        #   F2 -> J5 (the Pi) and the TVS D9: 2 mm, over the top of the cap column
+        ("+5V", "F.Cu", 1.5, [(-9.9, 10.9), (-9.9, 13.8)]),
+        ("+5V", "F.Cu", 2.0, [(-9.9, 13.8), (-19.2, 13.8), (-19.2, -3.85)]),
+        ("+5V", "F.Cu", 1.5, [(-19.2, -3.85), (-22.9, -3.85)]),
+        ("+5V", "F.Cu", 1.5, [(-19.2, -1.35), (-22.9, -1.35)]),
+        ("+5V", "F.Cu", 1.5, [(-19.2, -3.65), (-15.4, -3.65)]),
+        #   the TVS D8 (and the EN divider behind it) straight off the 2 mm bar: the router
+        #   left that island open once the lanes above were in its way
+        ("+24V", "F.Cu", 0.6, [(-2.0, 1.0), (-2.75, 1.75), (-8.0, 1.75), (-8.0, 0.2), (-9.9, 0.2)]),
     ],
     # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
     # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
@@ -1036,6 +1068,9 @@ BOARD_NOTES = {
     "single_sided": True,
     "qty_per_instrument": 1,
 }
+
+# the via that drops the D8 link (see "tracks") onto the 2 mm B.Cu bar
+BOARD_NOTES["vias"] = list(BOARD_NOTES.get("vias", [])) + [("+24V", -2.0, 1.0)]
 
 
 if __name__ == "__main__":
