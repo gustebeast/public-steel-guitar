@@ -247,6 +247,7 @@ Every net on both boards is on a connector pin, so there is nothing a pad could 
 
 As in the optical doc, the cheapest item is writing the order down (into `INSTALL_NOTES.md`):
 
+0. **Meter the supply's plug BEFORE it ever meets the panel (added 2026-10-01).** The inlet is a 4-pin Kycon jack and the rails sit on its DIAGONALS: pins 1 and 4 are +24 V, 2 and 3 the return (Mean Well R7B). A mirrored footprint swaps both rails, and nothing on `output_panel` survives 24 V backwards. Looking into the PLUG with its key up, confirm which two pins are positive, then check them against J6's pads with the board unpowered: continuity from pads 1 and 4 to J7 pins 2/3, from pads 2 and 3 to J7 pins 1/4.
 1. **Bare board, bench supply at 24 V / 100 mA limit.** Current at rest, then each rail with a meter.
 2. **`motor_ctrl` alone:** SWD attaches → flash → USB enumerates on the Pi → 2.1's counters read "no ACK" (correct: nothing else is on the bus yet).
 3. **Add one node at a time**; the counters go clean when the first one acknowledges. Power off, **60 Ω** across each bus.
