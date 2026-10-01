@@ -2046,7 +2046,8 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
     if not gate:
         return 0
     # both gates always run, so one RED doesn't hide the other's result
-    return _report_overlaps(comps, full=gate_full) | _report_sweep(comps) | _report_dead()
+    return (_report_overlaps(comps, full=gate_full) | _report_sweep(comps)
+            | _report_travel(comps) | _report_dead())
 
 
 # The overlap gate's ACCEPTED baseline: the count of REAL defects tracked
@@ -2097,6 +2098,21 @@ def _report_sweep(comps) -> int:
         print(f"sweep gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
         return 0
     print(f"SWEEP GATE: {'green' if n == 0 else f'RED — {n} swept collision(s)'}", flush=True)
+    return 1 if n else 0
+
+
+def _report_travel(comps) -> int:
+    """The pickup height plate's TRAVEL, on the model we just built. The same blindness as
+    the sweep gate, for a part that slides instead of turning: the overlap gate sees the
+    plate at its lowest and nothing above. Baseline is 0. See tools/check_pickup_travel."""
+    try:
+        from tools.check_pickup_travel import gate
+        n = gate([(name, wp.val()) for name, wp in comps], quiet=True)
+    except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
+        print(f"travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"TRAVEL GATE: {'green' if n == 0 else f'RED -- {n} pair(s) meet in the pickup plate travel'}",
+          flush=True)
     return 1 if n else 0
 
 

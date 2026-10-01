@@ -20,18 +20,16 @@ FIXED = ("top_plate_0", "top_plate_color_0")
 TOL = 0.01      # mm3
 
 
-def main() -> int:
-    from src import build as B
+def gate(comps, quiet=False) -> int:
+    """Number of (moving, fixed) pairs that touch somewhere in the travel; 0 is clean.
+    ``comps`` is [(name, solid)] -- src.build hands over the model it just built, so the
+    gate costs ~90 small intersects and no second geometry pass."""
     from src import pickup_mount as PM
     travel = PM.PK_H - PM.PK_H_MIN
-    parts = {}
-    for name, obj in B.collect_components():
-        if name in MOVING + FIXED:
-            parts[name] = obj.val() if hasattr(obj, "val") else obj
+    parts = {n: s for n, s in comps if n in MOVING + FIXED}
     missing = [n for n in MOVING + FIXED if n not in parts]
     if missing:
-        print("check_pickup_travel: not in the assembly: %s" % ", ".join(missing))
-        return 2
+        raise KeyError("not in the assembly: %s" % ", ".join(missing))
     bad, n = [], int(round(travel / STEP))
     for k in range(n + 1):
         dz = min(k * STEP, travel)
@@ -44,17 +42,28 @@ def main() -> int:
                     v = 0.0
                 if v > TOL:
                     bad.append((dz, m, f, v))
-    print("check_pickup_travel: plate lifted 0 .. %.1f mm in %.1f steps" % (travel, STEP))
-    if not bad:
-        print("clean: the plate and its retention screw clear the deck through the whole travel.")
-        return 0
     first = {}
     for dz, m, f, v in bad:
-        first.setdefault((m, f), (dz, v))
-    for (m, f), (dz, v) in sorted(first.items()):
-        worst = max(x[3] for x in bad if x[1] == m and x[2] == f)
-        print("  %-24s meets %-18s from +%.1f mm (%.2f mm3 at full travel)" % (m, f, dz, worst))
-    return 1
+        first.setdefault((m, f), dz)
+    if not quiet:
+        print("check_pickup_travel: plate lifted 0 .. %.1f mm in %.1f steps" % (travel, STEP))
+        if not bad:
+            print("clean: the plate and its retention screw clear the deck through the "
+                  "whole travel.")
+        for (m, f), dz in sorted(first.items()):
+            worst = max(x[3] for x in bad if x[1] == m and x[2] == f)
+            print("  %-24s meets %-18s from +%.1f mm (%.2f mm3 worst)" % (m, f, dz, worst))
+    return len(first)
+
+
+def main() -> int:
+    from src import build as B
+    comps = [(n, o.val() if hasattr(o, "val") else o) for n, o in B.collect_components()]
+    try:
+        return 1 if gate(comps) else 0
+    except KeyError as e:
+        print("check_pickup_travel: %s" % e)
+        return 2
 
 
 if __name__ == "__main__":
