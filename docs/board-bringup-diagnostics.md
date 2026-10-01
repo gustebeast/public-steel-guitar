@@ -231,6 +231,14 @@ Every net on both boards is on a connector pin, so there is nothing a pad could 
   drop unpopulated). Bus A then has a place to plug the USB-CAN adapter without unplugging a
   motor — and unplugging a motor to listen changes the thing being listened to. Zero board
   change: it is a tenth copy of a board already being ordered in nines.
+- **`can_tee` — MEASURE ONE MOTOR'S SLEW CURRENT, FIRST BRING-UP, BEFORE THE FLEET MOVES.**
+  The trunk's +24 V crosses each tee on one 3 A XH contact. With the dual feed at 54 / 46
+  that allows **5.5 A** on bus A; the budget is < 5 A (slew staggered) and the supply is
+  6.5 A for the whole instrument. Every one of those rests on **0.8 A per moving motor,
+  which is derived, never measured.** Put a clamp meter (or the bench supply's readout) on
+  one motor's drop through a full-speed, full-load move and write the peak here. Then set
+  the firmware's hard cap on simultaneous movers to floor(5.0 / that number) — six at
+  0.8 A. `docs/can-tee-power-tap.md` has the arithmetic.
 - **`pi_cap`:** the diagnostic is on the Pi. `vcgencmd get_throttled` reports under-voltage
   **since boot**, which is the definitive test of the 5 V feed under real load and catches
   cable drop that a meter at the regulator never sees. Pair it with 2.2's PG.
