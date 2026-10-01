@@ -119,7 +119,11 @@ pins were unconnected (and until today mis-numbered).
 | 2.4 | **`BOOT0` to a bare pad.** With USB already on J4 that is a second way in (WCH's ROM ISP) that needs no probe on a board mounted in the keyhead. ⚠ **Verify against WCH's reference manual which USB port and which UART the ROM loader uses BEFORE routing to it** — optical lost four routing runs to exactly this assumption | 1 pad | 0 |
 | 2.5 | **Four pads on `CAN1_TX/RX`, `CAN2_TX/RX`**, post-route, on existing copper. The logic-analyser hook that separates MCU from transceiver | 4 pads | 0 |
 
-**Status 2026-09-30:** 2.2 and 2.3 are ON THE BOARD and routed 0 / 0 — PG → PC1 (Pi 5 V) and PC6 (LED 5 V) on the MCU's internal pull-ups (no parts), +24 V → PC0 through 100k/10k, +5 V → PA4 through 10k/10k (R18–R21, in two strips that were already free; the board did not grow). 2.4 and 2.5 are still open.
+**Status 2026-09-30:** 2.2 and 2.3 are ON THE BOARD and routed 0 / 0 — PG → PC1 (Pi 5 V) and PC6 (LED 5 V) on the MCU's internal pull-ups (no parts), +24 V → PC0 through 100k/10k, +5 V → PA4 through 10k/10k (R18–R21, in two strips that were already free; the board did not grow). The ADC channels are confirmed off the datasheet's pin drawing (PC0 = ADC10, PA4 = ADC4).
+
+**2.4 (BOOT0 pad) — NOT DONE, on purpose.** Reading WCH's datasheet first, as this item demanded, is what stopped it. §2.5.2 says only that the ROM loader works "through the USART1 and USB interface" — it does not say WHICH USB, and this part has two (PA11/PA12, which J4 uses, and PB6/PB7, which nothing here reaches). And on the QFN68 package BOOT1 is a real pin (PB2, pin 28) that floats on this board, so "boot from system memory" (BOOT0 = 1, BOOT1 = 0) is not even well defined without a second part. A pad that might select a loader on a port that might be the right one is not a second way in. SWD on TP1–TP5 is the way in, and the WCH-LinkE is on the tools list. If a USB-only reflash path is ever wanted: pull PB2 down with 10k, then test the ROM loader on J4 on a first-article board BEFORE relying on it.
+
+**2.5 (CAN TX/RX pads) — CLOSED WITH NO HARDWARE.** Both transceivers are SOIC-8 at 1.27 mm pitch with gull-wing leads: pin 1 (D) and pin 4 (R) take a logic-analyser grabber directly. The pads would have duplicated probe points the package already provides.
 
 **Not recommended:** pads on the buses themselves — they are already on five connectors.
 

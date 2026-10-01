@@ -716,9 +716,8 @@ def motor_ctrl():
     pg5, pg_led = Net("PG_5V"), Net("PG_LED")
     pg5 += u5["PG"], u1["PC1"]
     pg_led += u6["PG"], u1["PC6"]
-    # Rail sense into two ADC pins. PC0 = ADC_IN10, PA4 = ADC_IN4 (the STM32F1-family map
-    # this part follows -- ⚠ channel NUMBERS are from memory, confirm against WCH's
-    # reference manual when the firmware is written; the PINS are from the table).
+    # Rail sense into two ADC pins. PC0 = ADC10, PA4 = ADC4 -- read off the QFN68 pin
+    # drawing in WCH's CH32V307 datasheet ("PC0/ADC10", "PA4/ADC4/DAC0"), 2026-09-30.
     #   +24V: 100k / 10k -> 2.18 V at 24 V, 2.73 V at a 30 V overshoot: inside 3.3 V always.
     #   +5V : 10k / 10k  -> 2.50 V.
     # A sagging trunk under motor load is the fault no static meter reading shows.
