@@ -231,7 +231,13 @@ SKIRT_DEEP_BOT = JACK_HEAD_Z - JACK_SCREW_L        # the jack screws' tips: the 
 # nudged slightly off-CENTRE (JACK_MX_OFF) to free the CENTRE for the retention setscrew --
 # a plane is set by any 3 non-collinear points, so an off-centre tilt jack still levels fully.
 PICKUP_X_NOM  = OPEN_CTR                          # nominal pickup centre X
-JACK_INSET_X  = 39 * D.BEAD                       # 31.2: +Y jacks near the plate X-ends (toward the corners)
+# ⚠ 38 BEADS, NOT 39, AND THE ARM STOPS AT ITS BOSS (2026-09-30). At 31.2 the arm's outboard
+# end stood 0.72 INSIDE each of the piece's end walls -- 37.24 mm3, carried as a DEFERRED
+# overlap since the plate became a moving part. The jack cannot go far: its O9.2 boss has to
+# stay outboard of a pickup slid X_SLIDE its way (boss inner edge 25.8 against 25.3). So it
+# moves one bead in, and the arm ends at the boss's own radius instead of half a nub width
+# past the screw -- 0.83 of air to the wall, which a part that travels needs.
+JACK_INSET_X  = 38 * D.BEAD                       # 30.4: +Y jacks near the plate X-ends (toward the corners)
 JACK_YP       = 57 * D.BEAD                        # 45.6: +Y corner jacks outboard of string 1, on the nubs
 JACK_YM       = PK_MAX_YM - 13 * D.BEAD             # -Y jack deep in the -Y zone (~-62.3), below the room edge, on its nub
 JACK_MX_OFF   = 8.0                                # -Y jack X-nudge off centre (frees the centre for the setscrew)
@@ -625,9 +631,11 @@ def _pickup_zplate():
     for jx, jy in JACK_POS:
         dx, dy = jx - PICKUP_X_NOM, jy - PK_ROOM_CTR_Y
         if abs(dx) - PLATE_X / 2 >= abs(dy) - PLATE_Y / 2:      # jack juts past the green in X -> X-arm
-            xe = PICKUP_X_NOM + (PLATE_X / 2 if dx > 0 else -PLATE_X / 2)
-            plate = plate.union(box_at(abs(jx - xe) + NUB_W, NUB_W, ZPL_T,
-                                       x=(jx + xe) / 2, y=jy, z=(ZPL_BOT + ZPL_TOP) / 2))
+            sg = 1.0 if dx > 0 else -1.0
+            xe = PICKUP_X_NOM + sg * PLATE_X / 2
+            xa, xb = xe - sg * NUB_W / 2, jx + sg * M4.boss_od / 2    # root in the plate .. boss edge
+            plate = plate.union(box_at(abs(xb - xa), NUB_W, ZPL_T,
+                                       x=(xa + xb) / 2, y=jy, z=(ZPL_BOT + ZPL_TOP) / 2))
         else:                                                  # -> Y-arm
             ye = PK_ROOM_CTR_Y + (PLATE_Y / 2 if dy > 0 else -PLATE_Y / 2)
             plate = plate.union(box_at(NUB_W, abs(jy - ye) + NUB_W, ZPL_T,
