@@ -1550,7 +1550,7 @@ _OP = BG.load("output_panel")
 OP_BOARD_X, OP_BOARD_Y = _OP["outline_mm"]
 _OP_T = _OP["thickness_mm"]
 # the three connectors a player reaches through the panel, in the order they sit along it
-OP_PANEL_REFS = ("J5", "J1", "J6")          # 1/4 in jack, USB-C, 24 V barrel
+OP_PANEL_REFS = ("J5", "J1", "J6")          # 1/4 in jack, USB-C, 24 V inlet
 
 
 def output_panel_pcb() -> cq.Workplane:
@@ -1613,7 +1613,13 @@ def op_panel_fronts():
     panel. The through-mount parts are meant to reach the face (JACK_TIP); J1 falls short
     by the board's J1_SETBACK because its own shell legs would otherwise cross the edge."""
     cx = op_origin()[0]
-    return {ref: cx + BG.mouth("output_panel", ref)["front"] for ref in OP_PANEL_REFS}
+    out = {}
+    for ref in OP_PANEL_REFS:
+        m = BG.mouth("output_panel", ref)
+        # a part with a NOSE finishes at the nose's tip, not at its body (the 24 V inlet)
+        nose = m["spec"]["nose"]
+        out[ref] = cx + m["front"] + (nose[2] if nose else 0.0)
+    return out
 
 
 def _check_panel():

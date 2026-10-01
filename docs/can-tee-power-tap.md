@@ -321,7 +321,7 @@ I had been sizing against "all ten motors moving, 8 A". That case does not exist
 
 | limit | value | source |
 |---|---|---|
-| PSU | **6.5 A** (Mean Well LRS-150-24, 156 W) — for the WHOLE instrument, not just the motors | BOM `psu_24v_150w` |
+| PSU | **6.67 A** (Mean Well GST160A24-R7B desktop adapter, 160 W; was LRS-150-24, 6.5 A, until 2026-10-01) — for the WHOLE instrument, not just the motors | BOM `psu_24v_160w` |
 | the design budget for the motor bus | **< 5 A, fleet slew staggered** | BOM, 24 V bus row and its notes |
 | the merged tee's trunk contact, with the 54 / 46 dual feed | 3 A / 0.54 = **5.5 A** total | this doc + BOM dual-feed section |
 
