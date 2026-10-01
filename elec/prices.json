@@ -38,6 +38,17 @@
     }
   },
   "mechanical": {
+    "_note": [
+      "EVERY PURCHASED MECHANICAL PART, COUNTED FROM THE MODEL on 2026-09-30 -- the dummies",
+      "src.build.collect_components() places, measured by bounding box, not typed from memory.",
+      "Two scalings the model does not show: it draws 10 sensed controls where the instrument",
+      "has 11 (6 knee + 5 pedal), and ONE leg where there are four, so control hardware is",
+      "x11/10 and the latch springs follow BOM.md's 4 + 2.",
+      "",
+      "usd is the cost PER PIECE ON A TEN-INSTRUMENT ORDER, whole packs bought: a pack of 100",
+      "bought for 20 screws costs what the pack costs. 'order' spells the arithmetic out.",
+      "McMaster prices were read off each product page signed in, 2026-09-30."
+    ],
     "servo42d": {
       "usd": 33.99,
       "qty": 10,
@@ -45,19 +56,13 @@
       "per_instrument": 10,
       "what": "MKS SERVO42D CAN MT (board + MOTOR) -- makerbase3d.com variant table, in stock 2026-09-30. MB is the BOARD ONLY at $22.99 and is the wrong SKU."
     },
-    "leadscrew_tr8x2": {
-      "usd": 4.5,
-      "qty": 10,
-      "verified": "m",
-      "per_instrument": 10,
-      "what": "Tr8x2 screw + bronze nut, cut to length"
-    },
-    "bearing_688zz": {
-      "usd": 0.6,
-      "qty": 40,
+    "psu_24v_160w": {
+      "usd": 47.7,
       "verified": "v",
-      "per_instrument": 40,
-      "what": "688ZZ O8xO16x5 -- screw, bridge and knee axles"
+      "per_instrument": 1,
+      "vendor": "OnlineComponents",
+      "sku": "GST160A24-R7B",
+      "what": "Mean Well GST160A24-R7B sealed DESKTOP adapter, 24 V 6.67 A 160 W, IEC C14 in, 4-pin locking DIN out (mates the Kycon KPJX-4S-S on output_panel). USER'S CHOICE 2026-10-01, replacing the open-frame LRS-150-24 ($20.69 landed). $47.70 at 10, 891 in stock, page read by bronner. BEFORE shipping, tax and any tariff -- OnlineComponents' checkout has not been measured. The listing calls it 'no longer manufactured'; see BOM.md."
     },
     "bearing_mr85zz": {
       "usd": 0.49,
@@ -66,6 +71,171 @@
       "per_instrument": 20,
       "what": "MR85ZZ, the screws' bottom thrust pair"
     },
+    "bearing_688zz": {
+      "usd": 0.6,
+      "qty": 40,
+      "verified": "v",
+      "per_instrument": 42,
+      "what": "688ZZ O8xO16x5 -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls)"
+    },
+    "m4_button_8": {
+      "usd": 0.5555,
+      "verified": "v",
+      "per_instrument": 2,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A189",
+      "order": "1 x $11.11 (pack of 100) = $11.11 for 20 needed",
+      "what": "M4x8 18-8 button, 2.5 hex -- the two female pogo boards"
+    },
+    "m4_button_10": {
+      "usd": 0.0958,
+      "verified": "v",
+      "per_instrument": 69,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A190",
+      "order": "7 x $9.44 (pack of 100) = $66.08 for 690 needed",
+      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
+    },
+    "m4_button_12": {
+      "usd": 0.3692,
+      "verified": "v",
+      "per_instrument": 4,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A192",
+      "order": "1 x $14.77 (pack of 100) = $14.77 for 40 needed",
+      "what": "M4x12 -- 2 optical board, 1 UI clamp, 1 pickup retention"
+    },
+    "m4_button_20": {
+      "usd": 0.1894,
+      "verified": "v",
+      "per_instrument": 15,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A196",
+      "order": "3 x $9.47 (pack of 50) = $28.41 for 150 needed",
+      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards"
+    },
+    "m4_button_30": {
+      "usd": 0.732,
+      "verified": "v",
+      "per_instrument": 2,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A198",
+      "order": "1 x $14.64 (pack of 50) = $14.64 for 20 needed",
+      "what": "M4x30 -- pedal-bar latch collar, one per bar-to-leg joint (model draws one leg)"
+    },
+    "m4_button_35": {
+      "usd": 0.3356,
+      "verified": "v",
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A199",
+      "order": "4 x $8.39 (pack of 25) = $33.56 for 100 needed",
+      "what": "M4x35 -- belt-tensioner draw screws"
+    },
+    "m4_button_40": {
+      "usd": 0.5065,
+      "verified": "v",
+      "per_instrument": 4,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A200",
+      "order": "2 x $10.13 (pack of 25) = $20.26 for 40 needed",
+      "what": "M4x40 -- the four leg lock pins"
+    },
+    "m4_insert": {
+      "usd": 0.2187,
+      "verified": "v",
+      "per_instrument": 94,
+      "vendor": "McMaster-Carr",
+      "sku": "94459A150",
+      "order": "19 x $10.82 (pack of 50) = $205.58 for 940 needed",
+      "what": "M4 brass heat-set, 4.7 installed. 88 drawn + 4 for the eleventh control + 2 fret boards. AT 940 AN ORDER THIS IS THE DEAREST FASTENER LINE ($205.58) -- $0.22 each at McMaster against a few cents from an import seller; the obvious place to save if a second vendor is acceptable."
+    },
+    "washer_m3_9021": {
+      "usd": 0.0338,
+      "verified": "v",
+      "per_instrument": 44,
+      "vendor": "McMaster-Carr",
+      "sku": "91100A120",
+      "order": "5 x $2.97 (pack of 100) = $14.85 for 440 needed",
+      "what": "DIN 9021 M3 washer O9 x 0.8 -- spring seat + position, 4 per control x 11"
+    },
+    "washer_m4_7089": {
+      "usd": 0.0715,
+      "verified": "v",
+      "per_instrument": 11,
+      "vendor": "McMaster-Carr",
+      "sku": "93475A230",
+      "what": "18-8 M4 washer, 4.3 ID x 9.0 OD -- one under each knee/pedal axle screw. Page read 2026-10-01; it IS the 9.0 OD part, not a fender.",
+      "order": "2 x $3.93 (pack of 100) = $7.86 for 110 needed"
+    },
+    "break_dowel": {
+      "usd": 0.254,
+      "verified": "v",
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "91595A018",
+      "order": "2 x $12.70 (pack of 50) = $25.40 for 100 needed",
+      "what": "O2 x 4 dowel pin, 52100 -- the nut break pins"
+    },
+    "guide_rod_o3_5": {
+      "usd": 1.845,
+      "verified": "v",
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "2900A267",
+      "order": "50 x $3.69 (each) = $184.50 for 100 needed",
+      "what": "O3.5 M2 HSS drill blank, 73 mm long, Rockwell C60 -- CUT IN TWO for 2 x 34 mm rods, so 5 blanks an instrument. It is hardened: an abrasive wheel job, not a hacksaw. Was guessed at $0.50-1.20 a rod; it is $1.85."
+    },
+    "shaft_o8": {
+      "usd": 4.11,
+      "verified": "v",
+      "per_instrument": 2,
+      "vendor": "McMaster-Carr",
+      "sku": "6112K44",
+      "order": "10 x $8.22 (each) = $82.20 for 20 needed",
+      "what": "O8 x 200 hardened steel linear shaft, CUT IN HALF for the bridge axle + nut wrap rod (both O8 x 100). Pre-cut 100 mm is 5033N131 at $14.38 EACH or 6459K118 (420 SS) at $10.18, i.e. 2.5-3.5x the price for saving one abrasive cut."
+    },
+    "die_spring": {
+      "usd": 1.1,
+      "qty": 20,
+      "verified": "m",
+      "per_instrument": 22,
+      "what": "uxcell O10x30 blue die spring, the control feel cartridge"
+    },
+    "latch_spring": {
+      "usd": 0.699,
+      "verified": "m",
+      "per_instrument": 6,
+      "vendor": "Amazon (uxcell)",
+      "sku": "B0GCZVQFWN",
+      "order": "6 x $6.99 (pack of 10) = $41.94 for 60 needed",
+      "what": "O5 x 0.6 x 15 compression spring -- 4 leg + 2 bar latches (BOM.md). The model draws one leg, so two."
+    },
+    "magnet_o6": {
+      "usd": 0.332,
+      "verified": "m",
+      "per_instrument": 11,
+      "vendor": "DigiKey",
+      "sku": "Radial Magnets 8995",
+      "what": "O6 x 2.5 diametric N35, $0.332 at 10+ per BOM.md -- not re-read today. Was $1.00 here."
+    },
+    "leadscrew_tr8x2": {
+      "usd": 2.2412,
+      "verified": "m",
+      "per_instrument": 10,
+      "vendor": "Temu",
+      "sku": "goods 605822935500044",
+      "order": "4 x $56.03 (2 x 600 mm + 2 nuts) = $224.12 for 100 pieces of 37.7 mm",
+      "what": "Tr8x2 SINGLE-START, bought long and cut (user's plan). 100 pieces + a saw kerf each is 3.92 m; a 600 mm rod yields 15, so 7 rods, so 4 two-packs. PRICE IS FROM THE SEARCH PAGE, NOT THE PRODUCT PAGE -- Temu put a CAPTCHA in front of the listing and that is not something to click through. ALSO: nearly every T8 screw on Temu is the 3D-printer part, FOUR-START with an 8 mm LEAD, which does not self-lock and would let the strings back-drive the motors. This listing was the only true 1-start on the first two result pages. The round nuts in the pack are not the H-flange nut the carriage is cut for."
+    },
+    "leadscrew_nut_h": {
+      "usd": 0.92,
+      "verified": "m",
+      "per_instrument": 10,
+      "vendor": "AliExpress",
+      "sku": "3256804704147842",
+      "what": "Tr8x2 single-start H-flange brass nut, ~$11 per 3 x 4-pack per BOM.md. Not re-read today; was folded into the screw line before."
+    },
     "belt_gt2": {
       "usd": 0.8,
       "qty": 10,
@@ -73,67 +243,12 @@
       "per_instrument": 8,
       "what": "GT2 open belt, USD per metre; ~7.74 m per instrument"
     },
-    "shaft_o8": {
-      "usd": 6.0,
-      "qty": 2,
-      "verified": "m",
-      "per_instrument": 2,
-      "what": "O8 x 100 ground shaft -- bridge axle AND nut wrap rod, one SKU"
-    },
-    "guide_rod_o3_5": {
-      "usd": 1.2,
-      "qty": 10,
-      "verified": "m",
-      "per_instrument": 10,
-      "what": "O3.5 hardened drill blank, ~34 mm"
-    },
-    "m4_button": {
-      "usd": 0.12,
-      "qty": 100,
-      "verified": "m",
-      "per_instrument": 120,
-      "what": "M4 button head, 18-8 SS, 2.5 mm hex -- the one screw family"
-    },
-    "m4_insert": {
-      "usd": 0.15,
-      "qty": 100,
-      "verified": "m",
-      "per_instrument": 100,
-      "what": "M4 heat-set brass insert"
-    },
-    "m4_setscrew": {
-      "usd": 0.2,
-      "qty": 50,
-      "verified": "m",
-      "per_instrument": 30,
-      "what": "M4 set screw, cup point"
-    },
-    "die_spring": {
-      "usd": 1.1,
-      "qty": 20,
-      "verified": "m",
-      "per_instrument": 11,
-      "what": "uxcell O10x30 blue die spring, the control feel cartridge"
-    },
-    "magnet_o6": {
-      "usd": 1.0,
-      "qty": 20,
-      "verified": "m",
-      "per_instrument": 11,
-      "what": "O6 x 2.5 diametric NdFeB, one per sensed control"
-    },
     "strings": {
       "usd": 25.0,
       "qty": 1,
       "verified": "m",
       "per_instrument": 1,
       "what": "one 10-string pedal steel set"
-    },
-    "psu_24v_150w": {
-      "usd": 20.69,
-      "verified": "v",
-      "per_instrument": 1,
-      "what": "Mean Well LRS-150-24, 24 V 6.5 A 156 W -- Jameco $17.10 at qty 10, PLUS $3.59 of TARIFF ($35.91 on ten, itemised in the cart, HTS 8504.40.9530) = $20.69 landed. Sized from BOM.md power table: 120 W bus A + 16.7 W Pi = ~137 W peak. On backorder 2026-09-30, ships 11/16."
     }
   },
   "boards": {
@@ -358,12 +473,12 @@
       "editing by hand: the breaks move and so does stock."
     ],
     "motor_ctrl:U4": {
-      "usd": 2.6915,
+      "usd": 2.6921,
       "verified": "v",
       "what": "CH32V307WCU6 C5142795 -- JLCPCB parts API at qty 20"
     },
     "motor_ctrl:U5": {
-      "usd": 0.6274,
+      "usd": 0.6276,
       "verified": "v",
       "what": "LMR33630ADDAR C841384 -- JLCPCB parts API at qty 10"
     },
@@ -373,27 +488,27 @@
       "what": "LMR33630ADDAR, LED buck"
     },
     "output_panel:U1": {
-      "usd": 2.6915,
+      "usd": 2.6921,
       "verified": "v",
       "what": "CH32V307WCU6 C5142795 -- JLCPCB parts API at qty 20"
     },
     "output_panel:U2": {
-      "usd": 0.5624,
+      "usd": 0.5625,
       "verified": "v",
       "what": "PCM1808PWR C55513 -- JLCPCB parts API at qty 10"
     },
     "output_panel:U3": {
-      "usd": 1.2759,
+      "usd": 1.2762,
       "verified": "v",
       "what": "PCM5102APWR C107671 -- JLCPCB parts API at qty 10"
     },
     "output_panel:U4": {
-      "usd": 0.5299,
+      "usd": 0.53,
       "verified": "v",
       "what": "CH334F C5187527 -- JLCPCB parts API at qty 10"
     },
     "optical:U6": {
-      "usd": 9.9923,
+      "usd": 9.9946,
       "verified": "v",
       "what": "STM32H743IIT6 C89597 -- JLCPCB parts API at qty 10"
     },
@@ -403,137 +518,137 @@
       "what": "AP2112K-3.3TRG1 C51118 -- JLCPCB parts API at qty 120"
     },
     "lever_sensor:U2": {
-      "usd": 0.3852,
+      "usd": 0.3853,
       "verified": "v",
       "what": "SN65HVD230DR C12084 -- JLCPCB parts API at qty 130"
     },
     "lever_sensor:U3": {
-      "usd": 0.4486,
+      "usd": 0.4487,
       "verified": "v",
       "what": "CH32V203G6U6 C5142280 -- JLCPCB parts API at qty 110"
     },
     "foot_led:U1": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "foot_led:U2": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "foot_led:U3": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "foot_led:U4": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "fret_led_key:U1": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "fret_led_key:U2": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "fret_led_key:U3": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "fret_led_mid:U1": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "fret_led_mid:U2": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "fret_led_mid:U3": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "fret_led_mid:U4": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "fret_led_mid:U5": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "led_strip:U1": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "led_strip:U2": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "led_strip:U3": {
-      "usd": 2.0122,
+      "usd": 2.0126,
       "verified": "v",
       "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
     },
     "optical:U14": {
-      "usd": 3.6407,
+      "usd": 3.6415,
       "verified": "v",
       "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
     },
     "optical:U15": {
-      "usd": 3.6407,
+      "usd": 3.6415,
       "verified": "v",
       "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
     },
     "optical:U16": {
-      "usd": 3.6407,
+      "usd": 3.6415,
       "verified": "v",
       "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
     },
     "optical:U17": {
-      "usd": 3.6407,
+      "usd": 3.6415,
       "verified": "v",
       "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
     },
     "optical:U18": {
-      "usd": 3.6407,
+      "usd": 3.6415,
       "verified": "v",
       "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
     },
     "lever_sensor:U4": {
-      "usd": 1.3507,
+      "usd": 1.351,
       "verified": "v",
       "what": "MT6701QT-STD C2913974 -- JLCPCB parts API at qty 110"
     },
     "foot_led:U10": {
-      "usd": 1.6448,
+      "usd": 1.6452,
       "verified": "v",
       "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
     },
     "fret_led_key:U10": {
-      "usd": 1.6448,
+      "usd": 1.6452,
       "verified": "v",
       "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
     },
     "fret_led_mid:U10": {
-      "usd": 1.6448,
+      "usd": 1.6452,
       "verified": "v",
       "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
     },
     "optical:U13": {
-      "usd": 1.6448,
+      "usd": 1.6452,
       "verified": "v",
       "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
     },
@@ -1223,27 +1338,27 @@
       "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
     },
     "motor_ctrl:U2": {
-      "usd": 0.3852,
+      "usd": 0.3853,
       "verified": "v",
       "what": "SN65HVD230DR C12084 -- JLCPCB parts API at qty 130"
     },
     "motor_ctrl:U3": {
-      "usd": 0.3852,
+      "usd": 0.3853,
       "verified": "v",
       "what": "SN65HVD230DR C12084 -- JLCPCB parts API at qty 130"
     },
     "ui_board:SW1": {
-      "usd": 4.5167,
+      "usd": 4.5177,
       "verified": "v",
       "what": "RKJXT1F42001 C160841 -- JLCPCB parts API at qty 10"
     },
     "lever_sensor:J1": {
-      "usd": 0.2861,
+      "usd": 0.2862,
       "verified": "v",
       "what": "S8B-PH-SM4-TB C265121 -- JLCPCB parts API at qty 110"
     },
     "optical:U7": {
-      "usd": 2.8378,
+      "usd": 2.6222,
       "verified": "v",
       "what": "USB3343-CP C633347 -- JLCPCB parts API at qty 10"
     },
@@ -1273,7 +1388,7 @@
       "what": "AP2112K-3.3TRG1 C51118 -- JLCPCB parts API at qty 120"
     },
     "output_panel:K1": {
-      "usd": 1.614,
+      "usd": 1.6143,
       "verified": "v",
       "what": "G6K-2F-Y-DC5 C326376 -- JLCPCB parts API at qty 10"
     },
@@ -1408,29 +1523,29 @@
       "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
     },
     "foot_led:J1": {
-      "usd": 0.2609,
+      "usd": 0.261,
       "verified": "v",
       "what": "SM04B-SRSS-TB C160404 -- JLCPCB parts API at qty 40"
     },
     "foot_led:J2": {
-      "usd": 0.2609,
+      "usd": 0.261,
       "verified": "v",
       "what": "SM04B-SRSS-TB C160404 -- JLCPCB parts API at qty 40"
     },
     "motor_ctrl:U1": {
-      "usd": 0.4763,
+      "usd": 0.4764,
       "verified": "v",
       "what": "LMR16006XDDCR C87080 -- JLCPCB parts API at qty 20"
     },
     "output_panel:U5": {
-      "usd": 0.4763,
+      "usd": 0.4764,
       "verified": "v",
       "what": "LMR16006XDDCR C87080 -- JLCPCB parts API at qty 20"
     },
     "output_panel:J6": {
-      "usd": 0.8777,
+      "usd": 4.0983,
       "verified": "v",
-      "what": "PJ-102AH C3096093 -- JLCPCB parts API at qty 10"
+      "what": "KPJX-4S-S C2875467 -- JLCPCB parts API, first break, 2026-10-01"
     },
     "can_tee:J2": {
       "usd": 0.0698,
@@ -1533,7 +1648,7 @@
       "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
     },
     "optical:J2": {
-      "usd": 0.3495,
+      "usd": 0.3496,
       "verified": "v",
       "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 10"
     },
@@ -1558,7 +1673,7 @@
       "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
     },
     "optical:U9": {
-      "usd": 0.3009,
+      "usd": 0.301,
       "verified": "v",
       "what": "SPX3819M5-L-3-3/TR C9055 -- JLCPCB parts API at qty 10"
     },
@@ -1593,12 +1708,12 @@
       "what": "AO3400A C20917 -- JLCPCB parts API at qty 20"
     },
     "optical:U10": {
-      "usd": 0.1766,
+      "usd": 0.1767,
       "verified": "v",
       "what": "USBLC6-2SC6 C7519 -- JLCPCB parts API at qty 10"
     },
     "ui_board:J1": {
-      "usd": 0.1647,
+      "usd": 0.1648,
       "verified": "v",
       "what": "KH-2.54PH180-1X20P-L11.5 C2905493 -- JLCPCB parts API at qty 10"
     },
@@ -1608,7 +1723,7 @@
       "what": "B8B-PH-K-S C157974 -- JLCPCB parts API at qty 10"
     },
     "optical:Y1": {
-      "usd": 0.0683,
+      "usd": 0.0732,
       "verified": "v",
       "what": "TX322525M4LBDD2T C5308007 -- JLCPCB parts API at qty 10"
     },
@@ -1677,7 +1792,7 @@
       "KNOWN ABSENT, listed so the total is honest about its own holes. cost.py prints",
       "these under the table and refuses to call the number complete while any remain."
     ],
-    "psu": "PRICED NOW -- Mean Well LRS-150-24 at $20.69 landed, see mechanical.psu_24v_150w. What is still open is the DESIGN question, not the price: the slew budget that would confirm 150 W is enough is unmeasured (docs/design-validation.md B7).",
+    "psu": "PRICED: Mean Well GST160A24-R7B at $47.70, see mechanical.psu_24v_160w. Its shipping, tax and tariff are NOT measured. The design question stands: one motor's slew current is unmeasured, and the firmware mover cap is set from it (bring-up item).",
     "wire": "LENGTH IS MEASURED NOW, PRICE IS NOT. tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had. Its ~$35 estimate implies $2.29/m, far above hookup-wire rates -- almost certainly because you buy SPOOLS, not metres. Needs one product page and a spool-count, not another estimate.",
     "tariff_uncollected": "The motors are the exposure. Makerbase ships them from China collecting no tax and no duty at checkout, so $339.90 of an order is NOT landed cost. JLCPCB by contrast ships DHL DDP, duty included. See boards/landed.",
     "pogo": "The leg blind-mate pogo boards (src/leg_pogo.py, RA_N=4 + TG_N=4 pins) are custom PCBs that live outside elec/, so neither the board pipeline nor the connector derivation sees them. Small, but genuinely uncounted.",
@@ -2053,7 +2168,7 @@
       "tariff_usd": 35.91,
       "tariff_pct": 21.0,
       "verified": "v",
-      "what": "THE ONLY PLACE A TARIFF WAS ACTUALLY ITEMISED. 10 x LRS-150-24: $171.00 goods + $35.91 tariff = $206.91, i.e. 21.0% on HTS 8504.40.9530. A US distributor importing Chinese-made goods shows the duty as its own cart line. That is one measured rate for ONE commodity code -- do not spread it across the BOM, but it is the right order of magnitude for the China-made electronics in it.",
+      "what": "SUPERSEDED AS A PURCHASE (the supply is now the GST160A24-R7B from OnlineComponents), KEPT AS EVIDENCE: THE ONLY PLACE A TARIFF WAS ACTUALLY ITEMISED. 10 x LRS-150-24: $171.00 goods + $35.91 tariff = $206.91, i.e. 21.0% on HTS 8504.40.9530. A US distributor importing Chinese-made goods shows the duty as its own cart line. That is one measured rate for ONE commodity code -- do not spread it across the BOM, but it is the right order of magnitude for the China-made electronics in it.",
       "counted_in_unit_price": true
     },
     "tinmorry_filament": {

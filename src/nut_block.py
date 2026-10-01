@@ -1375,7 +1375,7 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 # ── HEIGHT ADJUST: ONE M4 SCREW UNDER EACH INSERT (user) ─────────────────────────────
 # The sliding insert clamps its string by rising against the coil, and until now nothing pushed it
 # up. Each insert now grows a tall EXTENSION down into a new prism in the keyhead endplate
-# (keyhead_endplate.HS_*), and an M4 x 18 button head -- the keyhead hold-down's own SKU, on the
+# (keyhead_endplate.HS_*), and an M4 x 20 button head -- the pickup jacks' own SKU, on the
 # instrument's one 2.5 mm key -- pushes its foot up from below.
 #
 # THE NUT IS IN THE ENDPLATE, NOT THE INSERT. An M4 heat-set wants ~8 of width (M4.boss_od); SKU A
@@ -1397,7 +1397,9 @@ def all_stow_channels(z_end: float) -> cq.Workplane:
 #     chassis.Z_BOT, where the leg's body adapter begins.
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
 from . import motor_bank as _MB                  # motor_bank imports only dimensions/helpers/components
-HS_SCREW_L     = 18.0                            # M4 x 18 button: the keyhead hold-down's SKU
+HS_SCREW_L     = 20.0                            # M4 x 20 button, a STOCKED length (18 is not: McMaster
+                                                 # has 16 and 20). 20 not 16: it is the pickup jacks' SKU
+                                                 # already, and leaves 8.2 of floor over the heat-set (16: 4.2)
 HS_HEAD_CLR    = 0.4                             # radial air round a head in its chassis cavity
 HS_HEAD_CAV_D  = M4_BUTTON_HEAD_D + 2 * HS_HEAD_CLR
 HS_ROD_OVERLAP = 2 * D.BEAD
@@ -1538,7 +1540,7 @@ def height_screw_negatives(i: int):
 
 
 def height_screw(i: int) -> cq.Workplane:
-    """Dummy M4 x 18 button head, head DOWN, tip on string i's clamped insert foot (local frame)."""
+    """Dummy M4 x 20 button head, head DOWN, tip on string i's clamped insert foot (local frame)."""
     from cadkit.fasteners import m4_button_screw
     x, y = height_screw_xy(i)
     tip = HS_FLOOR + screw_reach(i)

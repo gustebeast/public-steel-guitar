@@ -116,8 +116,12 @@ def price_at(code, qty, cache):
 # Housings are picked by stock as well as by name: the genuine JST SHR-04V-S-B had ONE
 # piece in the catalogue on 2026-09-30, so the SH row is the stocked HC-1.0-4Y instead.
 HOUSING = {("XH", 2): "C144401", ("XH", 4): "C493083", ("XH", 8): "C144407",
-           ("PH", 6): "C157952", ("PH", 8): "C157950", ("SH", 4): "C2962275"}
-CRIMP = {"XH": "C140573", "PH": "C111515", "SH": "C263995"}
+           ("PH", 6): "C157952", ("PH", 8): "C157950", ("SH", 4): "C2962275",
+           # VH: not on any board yet. Listed ahead of bronner's proposed 2-way power tap
+           # on the CAN tee (docs/can-tee-power-tap.md) so that the day the header lands,
+           # its mating half is priced instead of silently missing.
+           ("VH", 2): "C595405"}
+CRIMP = {"XH": "C140573", "PH": "C111515", "SH": "C263995", "VH": "C160350"}
 
 
 def mating_halves():
@@ -129,7 +133,7 @@ def mating_halves():
         if n is None:
             continue
         for ref, val, fp, code in netlist_parts(path):
-            m = re.search(r"JST_(XH|PH|SH)_.*?(\d+)x(\d+)", fp)
+            m = re.search(r"JST_(XH|PH|SH|VH)_.*?(\d+)x(\d+)", fp)
             if not m:
                 continue
             fam, ways = m.group(1), int(m.group(2)) * int(m.group(3))

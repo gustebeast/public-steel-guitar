@@ -1,0 +1,35 @@
+      stitched 68 pad(s) on GND straight to the plane
+    motor_ctrl.kicad_pcb: 78 parts, 40 nets (+1 single-pad, not placed), 54.0 x 58.0 mm
+    exported motor_ctrl.dsn (68 kB)
+      declared In1.Cu as plane layer(s) -- the router will not route on them
+      router clearance 137 um (fab rule 127 um + 10 um of rounding margin)
+      ?           Thank you for using Freerouting!                       ?
+      ?                                                                  ?
+      ?  If you would like to support the project, please visit          ?
+      ?  https://www.freerouting.app/donate.html                         ?
+      ?  Every contribution helps keep this project open and active!     ?
+      ????????????????????????????????????????????????????????????????????
+      ⚠ 1 stitch via(s) landed where the plane is not: GND at 93.88,103.81
+      ⚠ 1 stitch via(s) landed where the plane is not: GND at 93.88,103.81
+        (the rest have nowhere to go: move the part or except the pad -- another routing run will not help)
+      snapped 6 hairline gap(s) shut (no copper added)
+        ⚠ +24V changes layer at 89.99,97.50 and a 0.6 via does not fit there
+        ⚠ +24V changes layer at 89.99,97.50 and a 0.6 via does not fit there
+        ⚠ +24V changes layer at 89.99,97.50 and a 0.6 via does not fit there
+        ⚠ +24V changes layer at 89.99,97.50 and a 0.6 via does not fit there
+      dropped in 7 via(s) where a net changed layer with nothing to carry it
+      removed 5 redundant via(s) drilled into a through-hole pad: J1.2 [+24V], J2.2 [+5V], J5.2 [+5V], J2.4 [CANB_L], J4.2 [USB_DM]
+      joined 2 same-net pad pair(s) the router left in separate islands
+      dropped 2 degenerate track fragment(s) from the import
+    motor_ctrl.kicad_pcb: 622 track segments + vias imported
+  8 DRC warning(s): silk_edge_clearance x3, silk_over_copper x5
+     UNEXPECTED shorting_items: Pad 1 [+24V] of F1 on F.Cu + Pad 2 [+5V_LED] of L3 on F.Cu
+     UNEXPECTED courtyards_overlap: C18 + J6
+     UNEXPECTED courtyards_overlap: F1 + L3
+     UNEXPECTED courtyards_overlap: L3 + U5
+     UNEXPECTED courtyards_overlap: J6 + U5
+     UNEXPECTED solder_mask_bridge: Pad 1 [+24V] of F1 on F.Cu + Pad 2 [+5V_LED] of L3 on F.Cu
+  pass 1: 5 unconnected, 6 violation(s)
+    motor_ctrl: no matched-length groups declared -- nothing to check
+    motor_ctrl.geom.json: 78 footprints, board 54.00 x 66.70; NO F.Fab body on JP1
+motor_ctrl: 5 unconnected, 6 violation(s)

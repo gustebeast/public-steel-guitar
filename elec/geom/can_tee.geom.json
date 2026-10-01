@@ -10,6 +10,10 @@
    "fpid": "JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal",
    "x": -20.5,
    "y": 2.0,
+   "pads_xy": [
+    -11.75,
+    2.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -18,13 +22,23 @@
     -7.25,
     4.35
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    -21.35,
+    -2.15,
+    1.025,
+    2.975
+   ]
   },
   {
    "ref": "J2",
    "fpid": "JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal",
    "x": 3.2,
    "y": 2.0,
+   "pads_xy": [
+    6.95,
+    2.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -33,23 +47,38 @@
     -7.25,
     4.35
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    2.35,
+    11.55,
+    1.025,
+    2.975
+   ]
   },
   {
    "ref": "JP1",
    "fpid": "SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
    "x": -5.75,
    "y": 6.4,
+   "pads_xy": [
+    -5.75,
+    6.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": null,
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R1",
    "fpid": "R_0603_1608Metric",
    "x": -10.75,
    "y": 6.2,
+   "pads_xy": [
+    -10.75,
+    6.2
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -58,7 +87,8 @@
     5.737,
     6.662
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   }
  ],
  "outline_poly": [

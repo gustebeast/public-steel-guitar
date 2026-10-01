@@ -70,8 +70,17 @@ I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.P
 # the nearest stock KiCad lands, not read off the drawings -- resolve before ordering.
 MCU_FP = "Package_DFN_QFN:QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm"
 SENSOR_FP = "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm"
-BOARD_W, BOARD_L = 31.0, 21.9
-CHIP_XY = (12.5, 0.85)        # the axle axis, in board-local mm
+# THE SPEC'S FOUR EDGES, in the spec's own frame (origin on the MT6701, +X toward the
+# lever, +Z up). Everything else about the outline is derived from them, because it was
+# not: BOARD_W and CHIP_XY were both typed, and both encode the edges, so the +X edge
+# moving on 2026-09-29 left this file describing a board that no longer existed while
+# every number in it stayed self-consistent (tools/check_board_match.py now says so).
+SPEC_X0, SPEC_X1 = -28.0, 4.025
+SPEC_Z0, SPEC_Z1 = -11.8, 10.1
+BOARD_W, BOARD_L = SPEC_X1 - SPEC_X0, SPEC_Z1 - SPEC_Z0
+# the axle axis in board-local mm -- half the board, less the chip's distance to the far
+# edge. Grow the board on +X alone and the CENTRE moves, so this moves too.
+CHIP_XY = (BOARD_W / 2 - SPEC_X1, BOARD_L / 2 - SPEC_Z1)
 
 # Anything TALLER than 1.5 mm must keep its whole footprint outside the magnet
 # cap's swept circle, because the board installs by dropping straight down past
@@ -136,6 +145,8 @@ def lever_sensor():
     # (MCU + transceiver + sensor), so it drops (5 - 3.3) x 0.03 = 0.05 W -- nothing.
     # A LINEAR regulator is also the right call beside a magnetic angle sensor: the buck
     # was the one switching node on this board, 15 mm from the MT6701.
+    # Pins off Diodes DS39724 rev 2-2 "Pin Descriptions", SOT25 column, read 2026-09-30:
+    #   1 VIN  2 GND  3 EN (high = on)  4 NC  5 VOUT
     u1 = Part(name="AP2112K-3.3", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST",
               tool="skidl", value="AP2112K-3.3TRG1",
               description="600 mA LDO, 5 V -> 3V3 (LCSC C51118)",
@@ -154,6 +165,7 @@ def lever_sensor():
 
     # ── CAN transceiver, SN65HVD230DR (LCSC C12084) ──────────────────────────
     # SOIC-8: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 Rs.
+    # (TI SLOS346O section 7 "Pin Functions", read 2026-09-30. Rs hard to GND = high speed.)
     can_tx, can_rx = Net("CAN_TX"), Net("CAN_RX")
     # ⚠ ref= PINNED: this part has always been U2 on the board (skidl numbered it second,
     # after the buck), and with the buck gone creation order would make it U1.
@@ -217,6 +229,9 @@ def lever_sensor():
     #   19 PA11 = CAN1_RX    20 PA12 = CAN1_TX
     #   21 PA13 = SWDIO      22 PA14 = SWCLK
     #   27 PB6  = I2C1_SCL   28 PB7  = I2C1_SDA
+    # (HISTORY -- NO LONGER TRUE: pin 1 is now tied hard to GND, see "TIED HARD TO GND" below,
+    #  and WCH's own table confirms the pin: 3-1-3 note 6. Kept for the reasoning. This stale
+    #  heading was read as current on 2026-09-30 and BOOT0 was reported floating. It is not.)
     # ⚠ PIN 1 IS BOOT0/PB8, AND NOTHING ON THIS BOARD CONNECTS TO IT. This note used to
     # say pin 1 was unidentified and had to be resolved against the package drawing
     # before fabrication. A second source now answers it: KiCad's own MCU_WCH_RiscV
@@ -302,6 +317,7 @@ def lever_sensor():
                     Pin(num=20, name="PA12", func=O), Pin(num=21, name="PA13", func=P),
                     Pin(num=22, name="PA14", func=P), Pin(num=27, name="PB6", func=P),
                     Pin(num=28, name="PB7", func=P),
+                    Pin(num=26, name="PB5", func=P),   # sensor CSN -- table 3-1-3, QFN28
                     Pin(num=1, name="PB8", func=I)])   # BOOT0 -- see the note above
     gnd += u2["VSS"], u2["VSS_PAD"]
     v33 += u2["VDD"], u2["VDDA"]
@@ -341,6 +357,11 @@ def lever_sensor():
     # What a hard tie costs: forcing the bootloader later would mean cutting copper
     # rather than lifting a resistor. Against a board with no way to use the bootloader
     # and a working SWD route, that is not a cost worth one 0402 and three re-routes.
+    # ⚠ FIRMWARE, from WCH CH32V203 datasheet table 3-1-3 (read 2026-09-30):
+    #   note 6 -- pin 1 is BOOT0 AND PB8 on one pin. It is grounded here, so PB8 must NEVER
+    #             be driven as an output: that is a dead short through the pin driver.
+    #   note 7 -- on the 28-pin package PA10 and PA11 are ONE pin (19). This board uses it
+    #             as PA11 = CAN1_RX, so PA10 must stay an input.
     gnd += u2["PB8"]
 
 
@@ -389,12 +410,21 @@ def lever_sensor():
     v33 += c_bulk[1]; gnd += c_bulk[2]
 
     # ── the sensor, MT6701QT-STD QFN-16 (LCSC C2913974) ──────────────────────
-    # Pins off MagnTek MT6701 datasheet section 1.2 (QFN-16 pin list):
+    # Pins off MagnTek MT6701 datasheet rev 1.9 section 1.2 (QFN-16 pin list), re-read
+    # 2026-09-30 and matching pin for pin:
     #   5 PUSH  6 A(SDA)  7 B(SCL)  8 Z(CSN)  9 W  11 U  12 V
     #   13 VDD  14 MODE  15 OUT  16 GND ; 1-4 and 10 are NC
-    # MODE selects ABZ against I2C/SSI. It is strapped through a resistor rather
-    # than tied, because which level selects which is a datasheet detail to
-    # confirm on the first board -- a resistor is a jumper you can move.
+    # MODE selects ABZ against I2C/SSI: HIGH = I2C/SSI, LOW = ABZ. Read off the datasheet's
+    # reference circuits (rev 1.9, fig. 18 "QFN-16 I2C": pin 14 tied to VDD; fig. 7 "ABZ":
+    # pin 14 tied to GND) -- the pin table says only "selects", so the FIGURES are the source.
+    # ⚠ Until 2026-09-30 this strap went to GND "to confirm on the first board", which is ABZ:
+    # the sensor would never have answered on I2C. The pin has a 200k pull-up of its own, so
+    # the 0R is belt and braces, and still a jumper if SSI/ABZ is ever wanted.
+    # Z/CSN (pin 8) is left open: it carries its own 200k pull-up, and high is what I2C wants
+    # (fig. 18 ties it to VDD; SSI starts on its falling edge).
+    # ⚠ EEPROM programming needs 4.5 V < VDD < 5.5 V (section 8.2). This board runs the part
+    # at 3.3 V, so zero/direction/resolution CANNOT be burned in circuit -- offsets live in
+    # the MCU, which is the architecture anyway.
     u4 = Part(name="MT6701QT-STD", ref_prefix="U", ref="U4", tag="U4", dest="NETLIST",
               tool="skidl", value="MT6701QT-STD",
               description="14-bit Hall angle encoder, sensing centre = package centre",
@@ -406,8 +436,16 @@ def lever_sensor():
                     Pin(num=17, name="EP", func=PWR)])
     v33 += u4["VDD"]; gnd += u4["GND"], u4["EP"]
     sda += u4["A_SDA"]; scl += u4["B_SCL"]
-    r_mode = _r("R", "R5", "0R", "MODE strap -- confirm polarity on the first board")
-    u4["MODE"] += r_mode[1]; gnd += r_mode[2]
+    # Z/CSN -> PB5, so the MCU can ALSO read the sensor over SSI on the same two wires
+    # (A = DO, B = CLK, datasheet 7.8). Only the SSI frame carries Mg[3:0] -- field too
+    # strong / too weak / over-speed -- plus a CRC; the I2C registers give the angle alone.
+    # A missing, flipped or mis-gapped magnet is the likeliest MECHANICAL fault on a lever,
+    # and this is the only way to read it without opening the housing. CSN idles high on
+    # the part's own 200k pull-up, so with PB5 left as an input the bus is plain I2C.
+    csn = Net("SENS_CSN")
+    csn += u4["Z_CSN"], u2["PB5"]
+    r_mode = _r("R", "R5", "0R", "MODE strap, HIGH = I2C (datasheet fig. 18)")
+    u4["MODE"] += r_mode[1]; v33 += r_mode[2]
     c_sens = _c("C11", "100nF", "sensor decoupling")
     v33 += c_sens[1]; gnd += c_sens[2]
     for tag, net in (("R6", sda), ("R7", scl)):
@@ -422,6 +460,59 @@ def _sensor_qty():
 
 
 _SENSOR_QTY = _sensor_qty()
+
+# ── WHERE EVERY PART SITS, IN THE CHIP'S FRAME ───────────────────────────────
+# Authored about the CHIP, not the board's centre, because the chip is the axle axis:
+# it is the one datum the housing, the spec and this file all share, and it does not
+# move when an edge does. Board-local comes out of it below, once, via CHIP_XY.
+# (They were board-local until 2026-09-30. That is a frame whose origin moves whenever
+# the outline changes, so widening the +X edge by 1.025 would have shifted all 28 of
+# them 0.5125 mm sideways relative to the chip, silently, while every number here
+# stayed the same.)
+_PLACE_CHIP = {
+        "U4": (0.0000, 0.0000, 0.0),
+        # SWD: SWDIO / SWCLK / GND in a row for a clip, NRST stranded (recovery only)
+        "TP1": (-4.5000, 7.9500, 0.0),     # SWDIO
+        "TP2": (-2.1000, 7.9500, 0.0),    # SWCLK
+        "TP3": (-4.5000, 5.6500, 0.0),     # GND
+        "TP4": (-14.1500, 8.0500, 0.0),    # NRST
+        # J1 on end, mouth -X at x -12.45 (3.05 in from the -X edge, the spec's figure).
+        # Placements anchor on the PAD CENTROID: the footprint's mouth is its local +y 4.4,
+        # its pad centroid local y -1.70 (eight pins at -2.85, two tabs at +2.90), and rot
+        # 270 turns +y to -X -- so the centroid sits 6.10 +X of the mouth. Read back off
+        # the routed geom, not assumed: -8.05 put the mouth at -14.15.
+        "J1": (-18.8500, -0.8500, 270.0),
+        "U1": (-8.5000, 7.1500, 0.0),
+        "C1": (-11.9000, 7.7500, 0.0),
+        "C2": (-11.9000, 6.4500, 0.0),
+        "R7": (-0.1000, 6.3000, 0.0),
+        # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
+        # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
+        # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
+        "U3": (-10.0000, 2.1500, 0.0),
+        "C9": (-5.5000, 3.8000, 0.0),
+        "C8": (-3.5000, 3.8000, 0.0),
+        "R5": (0.0000, 3.2000, 0.0),
+        "C11": (-4.0000, 0.0000, 0.0),
+        "C10": (-1.5000, -3.3000, 0.0),
+        "Y1": (-11.9000, -2.4000, 0.0),
+        # C5/C6 stay east of the crystal: moving them west measured 1 -> 5 unconnected
+        "C5": (-7.4000, -1.9000, 0.0),
+        "C6": (-7.4000, -3.7000, 0.0),
+        # C7 (NRST) steps 2.8 +Y off the MCU's west edge: J1's pads now stand 1.9 from
+        # it rather than 3.6, and at its old site it sat squarely in OSC_OUT's escape
+        # (pin 3, the pin below NRST) -- 1 unconnected with no legal repair path.
+        "C7": (-13.5500, 4.4500, 90.0),
+        "R6": (0.4000, -3.3200, 270.0),
+        "U2": (-10.5000, -7.0000, 0.0),
+        "C4": (-5.0000, -5.7000, 0.0),
+        "R3": (-5.0000, -7.2000, 0.0),
+        "R4": (-1.5000, -5.1500, 0.0),
+        "JP1": (-1.5000, -7.1000, 0.0),
+        "D2": (-5.2000, -9.2000, 0.0),
+        "D3": (-2.4000, -9.2000, 0.0),
+    }
+
 
 BOARD_NOTES = {
     # ⚠ THE ONLY BOARD THERE IS MORE THAN ONE OF, AND IT USED TO DECLARE NO COUNT AT ALL.
@@ -449,49 +540,17 @@ BOARD_NOTES = {
     # changed: the buck is gone from the top, the LDO and its two caps take that corner,
     # R6 steps 0.57 -X out of the +X groove band, and the four SWD pads come in off the
     # trimmed +X edge into the top strip (one column of three plus NRST, as before).
-    "placements": {
-        "U4": (12.50, 0.85, 0.0),
-        # SWD: SWDIO / SWCLK / GND in a row for a clip, NRST stranded (recovery only)
-        "TP1": (8.00, 8.80, 0.0),     # SWDIO
-        "TP2": (10.40, 8.80, 0.0),    # SWCLK
-        "TP3": (8.00, 6.50, 0.0),     # GND
-        "TP4": (-1.65, 8.90, 0.0),    # NRST
-        # J1 on end, mouth -X at x -12.45 (3.05 in from the -X edge, the spec's figure).
-        # Placements anchor on the PAD CENTROID: the footprint's mouth is its local +y 4.4,
-        # its pad centroid local y -1.70 (eight pins at -2.85, two tabs at +2.90), and rot
-        # 270 turns +y to -X -- so the centroid sits 6.10 +X of the mouth. Read back off
-        # the routed geom, not assumed: -8.05 put the mouth at -14.15.
-        "J1": (-6.35, 0.00, 270.0),
-        "U1": (4.00, 8.00, 0.0),
-        "C1": (0.60, 8.60, 0.0),
-        "C2": (0.60, 7.30, 0.0),
-        "R7": (12.40, 7.15, 0.0),
-        # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
-        # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
-        # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
-        "U3": (2.50, 3.00, 0.0),
-        "C9": (7.00, 4.65, 0.0),
-        "C8": (9.00, 4.65, 0.0),
-        "R5": (12.50, 4.35, 0.0),
-        "C11": (8.50, 0.85, 0.0),
-        "C10": (11.00, -2.45, 0.0),
-        "Y1": (0.60, -1.55, 0.0),
-        # C5/C6 stay east of the crystal: moving them west measured 1 -> 5 unconnected
-        "C5": (5.10, -1.05, 0.0),
-        "C6": (5.10, -2.85, 0.0),
-        # C7 (NRST) steps 2.8 +Y off the MCU's west edge: J1's pads now stand 1.9 from
-        # it rather than 3.6, and at its old site it sat squarely in OSC_OUT's escape
-        # (pin 3, the pin below NRST) -- 1 unconnected with no legal repair path.
-        "C7": (-1.05, 5.30, 90.0),
-        "R6": (12.90, -2.47, 270.0),
-        "U2": (2.00, -6.15, 0.0),
-        "C4": (7.50, -4.85, 0.0),
-        "R3": (7.50, -6.35, 0.0),
-        "R4": (11.00, -4.30, 0.0),
-        "JP1": (11.00, -6.25, 0.0),
-        "D2": (7.30, -8.35, 0.0),
-        "D3": (10.10, -8.35, 0.0),
-    },
+    # ⚠ NRST's HOP IS DECLARED, NOT LEFT TO THE ROUTER (2026-09-30). U3 pin 4 sits between
+    # the crystal pins (2, 3) and its own cap and pad (C7, TP4) are on the far side of the
+    # chip from the crystal -- so on F.Cu the reset line MUST cross both oscillator tracks at
+    # a 0.4 mm-pitch escape. The router found that hop on some rolls and not others: one net
+    # added (the sensor's CSN) left NRST open on five placements out of five. One via in the
+    # pocket beside the pin, laid BEFORE routing so the crystal tracks go round it, and the
+    # same netlist closes first pass. CHIP frame like the placements (it was board-local
+    # (-0.90, 2.30) on the 31.0 board); 0.50/0.25 like the rest of the board.
+    "vias": [("NRST", -13.40 + CHIP_XY[0], 1.45 + CHIP_XY[1], 0.25, 0.50)],
+    "placements": {_r: (_x + CHIP_XY[0], _y + CHIP_XY[1], _rot)
+                    for _r, (_x, _y, _rot) in _PLACE_CHIP.items()},
     "cap_keepout": {"xy": list(CHIP_XY), "r": CAP_SWEEP_R, "tall": list(TALL_PARTS)},
     # FOUR LAYERS: an unbroken GND plane on In1 under a magnetic angle sensor, and the
     # layer set the 0.4 mm-pitch MCU's escape needs. (It was first argued against the 24 V

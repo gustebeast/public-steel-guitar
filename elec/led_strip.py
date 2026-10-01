@@ -48,8 +48,16 @@ P = Pin.types.PASSIVE
 # PH_PLUG_RUN 3.6 past its mouth and the mouths sit 1.0 inside the board ends, so two facing
 # plugs alone eat 5.2 before the jumper's U has anywhere to go. 139 + 8 x 3 = 580.0 fits with
 # 2.7 mm of air at each end.
-BOARD_W, BOARD_L = 139.0, 20.0          # X along the strip, Y = the strip's height (20: the
-                                        # PH tabs need 1.0 to the long edges)
+# ⚠ 20 -> 24 FOR THE CHASSIS SLOT (user, 2026-09-22: "add some extra PCB to the bottom").
+# The strip stands vertical in a channel on the +Y rail, its bottom edge trapped in a
+# 4.0 mm slot and a 45 deg roof over its top (chassis.LED_*). The slot has to grip BLANK
+# LAMINATE: the driver row ends only 2.15 mm above the old board's bottom edge, so a 4 mm
+# slot would have swallowed it. All 4 mm of the growth goes BELOW the drivers -- every part
+# keeps its distance from the TOP edge, which is where the LEDs and the roof are, via
+# SLOT_TAB / 2 added to each y below.
+SLOT_TAB = 4.0                          # blank laminate at the bottom, for chassis.LED_SLOT_D
+BOARD_W, BOARD_L = 139.0, 20.0 + SLOT_TAB   # X along the strip, Y = the strip's height
+_YO = SLOT_TAB / 2.0                    # every part shifts +Y by this as the board grows down
 SECTIONS = 4                            # 4 x 139 + 3 x JUNCTION_GAP = 580, in a 585.34 rail
 JUNCTION_GAP = 8.0                      # board end to board end: 2 x 2.6 of mated plug past
                                         # the ends, plus room for the jumper to turn
@@ -144,6 +152,23 @@ def led_strip():
         cc = _c("C%d" % (20 + k), "100nF", "U%d VCC bypass" % (k + 1))
         v5 += cc[1]
         gnd += cc[2]
+        # ⚠ THE BULK IS NOISE CONTROL, NOT SUPPLY SMOOTHING (2026-09-22). The strip's real
+        # emitter is not its data line, it is its SUPPLY: up to 2.2 A switched at the
+        # TLC59711's 19.5 kHz segment rate. Sourced from the motor board at the keyhead end,
+        # that current would circulate down the whole instrument and back -- a 19.5 kHz loop
+        # a metre long, passing a MAGNETIC pickup, which is orders of magnitude more field
+        # than a 3.3 V logic edge. Local charge keeps the switching current in a centimetre
+        # -scale loop on this board and leaves the cable carrying near-DC.
+        # SIZING: a section is 9 x 4 x 15 mA = 0.54 A; holding half a 19.5 kHz period at
+        # 100 mV of ripple needs ~138 uF EFFECTIVE. A 6.3 V X5R loses over half its value at
+        # 5 V of DC bias (BOM.md's 1206 note), so three 100 uF nominal, ONE PER DRIVER --
+        # distributed, because the point is a short loop, and a single lump at the input
+        # would leave the far driver's current running the length of the board to reach it.
+        cb = _c("C%d" % (30 + k), "100uF/6.3V", "U%d local bulk -- keeps the 19.5 kHz "
+                "switching current off the harness" % (k + 1),
+                "Capacitor_SMD:C_1206_3216Metric")
+        v5 += cb[1]
+        gnd += cb[2]
         for m, (rgb, w) in enumerate(DRV_LED_OUTS):
             n = 3 * k + m + 1
             d = Part(name="LED_RGBW", ref_prefix="D", ref="D%d" % n, dest="NETLIST",
@@ -169,12 +194,13 @@ def led_strip():
 # between the LEDs, the far LED's cathodes had to pass under its neighbour's pads and 9 of
 # the 14 first-route opens were exactly that.
 _MOUTH = BOARD_W / 2 - 1.0
-_LED_Y, _DRV_Y = 4.5, -4.6
+_LED_Y, _DRV_Y = 4.5 + _YO, -4.6 + _YO
 # the centroid sits on the INBOARD side of the origin (mouth + 4.4 + 1.4125 in from the
 # end); the first two layouts had the sign wrong and hung both connectors ~1.8 mm off the ends
 _J_ANCHOR = _MOUTH - 4.4 - 1.4125
 _LED_X = [(-(N_LED - 1) / 2 + i) * LED_PITCH for i in range(N_LED)]
-_place = {"J1": (-_J_ANCHOR, 0.0, 270.0), "J2": (_J_ANCHOR, 0.0, 90.0),
+_V5_SPINE_Y = 8.3 + _YO            # above the 5 mm LED packages (they end at 7.0), inside the edge
+_place = {"J1": (-_J_ANCHOR, _YO, 270.0), "J2": (_J_ANCHOR, _YO, 90.0),
           "C1": (_LED_X[0], _DRV_Y, 0.0)}
 for i, x in enumerate(_LED_X):
     _place["D%d" % (i + 1)] = (x, _LED_Y, 0.0)
@@ -188,9 +214,24 @@ for k in range(N_DRV):
     # path (those two nets failed in every layout that had them there)
     for ref, dy in (("R%d" % (k + 1), 1.6), ("C%d" % (10 + k), 0.0), ("C%d" % (20 + k), -1.6)):
         _place[ref] = (xm - LED_PITCH / 2, _LED_Y + dy, 0.0)
+    # ⚠ THE BULK CAP JOINS THE PASSIVE CLUSTER, it does not sit alone beside the driver.
+    # In the driver row the driver stands between it and everything else, so the F.Cu pour
+    # reached its ground pad only as an ISLAND (two zone-to-zone opens), and this board has
+    # no B.Cu pour to fall back on. Walking it home on a laid track went AROUND the driver
+    # and made things worse (four opens). In the cluster it lands on the spine that is
+    # already there -- the same one R/C10/C20 use, extended 2.2 further down for it.
+    _place["C%d" % (30 + k)] = (xm - LED_PITCH / 2, _LED_Y - 3.4, 0.0)
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    # ⚠ EXPORTED SO THE CAD CANNOT INVENT ITS OWN. src/electronics.py used to space the
+    # sections by dividing the chassis channel evenly, which silently produced 4.0 mm
+    # junctions against the 8.0 this file requires -- half what two facing plugs need, so
+    # the strip could not physically be assembled. Nothing caught it because the boards do
+    # not overlap each other: there is simply air where the plugs go. A number this file
+    # owns has to travel with the board, not be re-derived by whoever places it.
+    "junction_gap_mm": JUNCTION_GAP,
+    "sections": SECTIONS,
     "layers": 2,
     "thickness_mm": 1.6,
     "placements": _place,
@@ -210,14 +251,55 @@ BOARD_NOTES = {
     # round them, the pour cannot get in and their stitch stubs were left dangling.
     "tracks": [trk for k in range(N_DRV) for trk in (
         ("GND", "F.Cu", 0.25, [(_LED_X[3 * k + 1] - LED_PITCH / 2 + 0.48, _LED_Y + 1.6),
-                               (_LED_X[3 * k + 1] - LED_PITCH / 2 + 0.48, _LED_Y - 1.6)]),
+                               (_LED_X[3 * k + 1] - LED_PITCH / 2 + 0.48, _LED_Y - 3.8)]),
         ("GND", "F.Cu", 0.25, [(_LED_X[3 * k + 1] - LED_PITCH / 2 + 0.48, _LED_Y),
-                               (_LED_X[3 * k + 1] - LED_PITCH / 2 + 2.2, _LED_Y)]))],
+                               (_LED_X[3 * k + 1] - LED_PITCH / 2 + 2.2, _LED_Y)]),
+)]
+    # ⚠ +5V IS A BUS, AND LEAVING IT TO THE ROUTER COSTS THE SAME TWO NETS EVERY RUN. It
+    # fans to 36 LED anodes, three VCC pins and six caps; the router found most of it and
+    # dropped U2's VCC and a GND stub -- in the same place, at 30 passes and again at 60.
+    # (The optical board taught this exact lesson with +3V3D: a supply nobody lays down is
+    # a hundred traces the router has to rediscover every run.) Each LED's four anodes are
+    # ONE COLUMN at x - 2.14, y 2.52..6.48, so a stub up the column and a spine along the
+    # top of the LED row feeds every one deliberately -- above the packages (which end at
+    # y 7) and clear of the cluster GND spines (which stop at y 6.1).
+    + [("+5V", "F.Cu", 0.3, [(x - 2.14, 2.52 + _YO), (x - 2.14, _V5_SPINE_Y)]) for x in _LED_X]
+    + [("+5V", "F.Cu", 0.6, [(_LED_X[0] - 2.14, _V5_SPINE_Y),
+                             (_LED_X[-1] - 2.14, _V5_SPINE_Y)])]
+    # ⚠ AND THE DRIVERS' OWN VCC PINS, which the spine does not reach. The spine feeds the 36
+    # anodes; each TLC59711 still wants pin 19, and the router kept dropping exactly that one
+    # (U2's, at 30 passes, at 60 and at 90 -- passes are not the problem, a missing bus is).
+    # ⚠ IT HAS TO STEP SIDEWAYS BEFORE IT CLIMBS. VREG sits directly above VCC in the same
+    # pad column, 0.66 mm away, so a stub straight up off the pad fouls it. It steps +X clear
+    # of the column (outer pad edge 3.645) and rises at 4.30.
+    # ⚠ AND IT MUST NOT CLIMB ALL THE WAY TO THE SPINE. The band east of a driver is the
+    # CATHODE HIGHWAY -- its +X pad column feeds the LEDs either side -- and a full-height
+    # stub there walls it off (D5_K7 failed the moment one was laid). So it ducks along
+    # under the LED row instead and joins the NEXT LED's anode column, which is already on
+    # +5V. Cathodes cross that short run on B.Cu, which is the layer they use anyway.
+    + [("+5V", "F.Cu", 0.3, [(_LED_X[3 * k + 1] + 3.40, _DRV_Y + 2.27),
+                             (_LED_X[3 * k + 1] + 4.30, _DRV_Y + 2.27),
+                             (_LED_X[3 * k + 1] + 4.30, _LED_Y - 5.00),
+                             (_LED_X[3 * k + 2] - 2.14, _LED_Y - 5.00),
+                             (_LED_X[3 * k + 2] - 2.14, _LED_Y - 1.98)])
+       for k in range(N_DRV)]
+    # ⚠ AND A SHORT WESTWARD NUB ON THE DRIVER'S PIN-2 GROUND. Its thermal pad carries the
+    # heat and most of the current, but pin 2 sits in the -X column with D4's cathodes either
+    # side and the F.Cu pour could not reach in past them (one zone-to-zone open).
+    # ⚠ IT GOES SIDEWAYS ONLY. The first attempt dropped from here to the open band below the
+    # drivers and took the board from 1 unconnected to 21: the -X band is D4's cathode
+    # highway exactly as the +X band is D5/D6's, and a full-height stub walls it off. Two
+    # millimetres due west clears the pad column and reaches open pour without crossing
+    # anything.
+    + [("GND", "F.Cu", 0.3, [(_LED_X[3 * k + 1] - 3.40, _DRV_Y + 2.27),
+                             (_LED_X[3 * k + 1] - 5.40, _DRV_Y + 2.27)])
+       for k in range(N_DRV)],
+
     "stitch_nets": ("GND",),
     "single_sided": True,
     "no_mounting_holes": True,       # the rail's channel holds it (src/chassis.py)
     "qty_per_instrument": SECTIONS,
-    "router_passes": 30,
+    "router_passes": 60,
 }
 
 
@@ -230,5 +312,13 @@ if __name__ == "__main__":
     netcheck.no_orphan_pins(net)
     with open(os.path.join(OUT_DIR, "led_strip.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
+    # ...AND THE THREE NUMBERS THE CAD NEEDS GO TO A TRACKED FILE. elec/out is git-ignored,
+    # and src/electronics.py read junction_gap_mm straight out of the file above -- so a
+    # clean checkout could not build (main died on KeyError until the lead regenerated it).
+    # Design INTENT the CAD depends on lives in elec/geom beside the measured geometry.
+    with open(os.path.join(os.path.dirname(OUT_DIR), "geom", "led_strip.intent.json"),
+              "w", newline=chr(10)) as f:
+        json.dump({k: BOARD_NOTES[k] for k in ("junction_gap_mm", "sections", "outline_mm")},
+                  f, indent=1)
     print("section %.0f x %.0f mm, %d LEDs on %d drivers, x%d per instrument"
           % (BOARD_W, BOARD_L, N_LED, N_DRV, SECTIONS))
