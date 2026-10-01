@@ -2900,6 +2900,13 @@ pros/cons when weighing approaches** (project policy).
 | **2.5 mm hex key** | ball-end L-key (or a 2.5 mm bit in a driver) | commodity | THE ONE DRIVER the instrument is converging on: every M4 button head and the M3 motor socket caps take it. Not yet sufficient on its own — the remaining M4 grubs (2 mm) and M2 screws (0.9 / 1.5 mm) are being migrated off; ball end for the angled reach to the pickup's -Y retention screw |
 | **Hardened nozzle ≥0.4 (ideally 0.6)** | PETG-GF (vendor recommendation) | ~$15–30 | glass fiber eats brass nozzles |
 | **Wire strippers 20–30 AWG** | all harness work | — | presumed owned |
+| **Current-limited bench supply** (≥24 V, adjustable current limit) | FIRST POWER on every first-article board | ~$50–80 *(unverified)* | set 24 V / ~100 mA; a short becomes a reading instead of a blown fuse. Never first-power a board from the instrument's own supply. `docs/board-bringup-diagnostics.md` §1 |
+| **WCH-LinkE** | flashing + debugging every CH32V board (motor_ctrl, output_panel, 11 lever sensors) | ~$5–10 *(unverified)* | the ONLY probe that talks to CH32V parts — an ST-Link or J-Link will not. Also a USB-serial port |
+| **USB-CAN adapter** (CANable-class, works with `candump`) | seeing either CAN bus from outside the instrument | ~$15–30 *(unverified)* | motor_ctrl heads both buses and the Pi is on neither, so if motor_ctrl is the broken thing nothing in the instrument can see the bus |
+| **8-channel logic analyser** (24 MHz class) | CAN TX/RX at the MCU, SPI to the volume pot, I2S framing | ~$10–15 *(unverified)* | splits "MCU not transmitting" from "transceiver or wire dead" |
+| **Multimeter** | rails, continuity, 60 Ω across CAN_H/CAN_L | — | presumed owned |
+| **Oscilloscope** | buck ripple, CAN wave shape, I2S clock | — | only when the cheaper tools say "present but wrong"; presumed owned or borrowed |
+| **Bring-up leads, made once** | bus taps and the audio loopback | wire + housings on hand | one **XH** and one **PH** Y-cable (bus tap for the CAN adapter); one **¼″ TS → bare wire** loopback lead (output jack back into the pickup terminal) |
 
 ## Cost summary (per instrument)
 

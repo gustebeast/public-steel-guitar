@@ -58,6 +58,28 @@ washers (the spring seat, and the position stop in the housing). See `BOM.md` an
 - **Not an issue for the far row** (strings 2, 4, 6, 8, 10, at x +20.0): the board does
   not reach them.
 
+## Control boards first power-up (motor_ctrl, output_panel, lever sensors)
+
+Companion: `docs/board-bringup-diagnostics.md` (what each step can and cannot tell you, and
+the tools — all listed in `BOM.md` Tools). **No LEDs are used for diagnosis on any board.**
+Like the optical board, the chain is serial: work in order, one new thing per step.
+
+1. **Bare board on the bench supply, 24 V with the current limit at ~100 mA.** Read the
+   current at rest, then each rail with a meter. A supply that hits its limit is a short —
+   stop there. Do this for every first-article board, before it ever meets the instrument.
+2. **`motor_ctrl` alone.** WCH-LinkE attaches → flash → the board enumerates on the Pi's USB.
+   Its CAN error counters should read "no acknowledge" on both buses. That is CORRECT: nothing
+   else is on a bus yet.
+3. **Add one CAN node at a time.** The counters go clean when the first node acknowledges.
+   After each addition, power off and measure **60 Ω between CAN_H and CAN_L** on that bus —
+   120 Ω means one terminator is missing or the bus is open, 40 Ω means a third is fitted.
+4. **`output_panel`.** First the USB tree as the Pi sees it (hub, then MCU, then the optical
+   board behind it). Then the audio loopback: the TS lead from the output jack back into the
+   pickup terminal tests ADC, Pi, DAC, relay and buffer in one measurement.
+5. **Lever and pedal sensors.** Each board reports its ID; the magnet field status is in
+   range; moving a lever moves its own ID and no other. A sensor that never answers on I2C:
+   check its `MODE` strap (R5) is to +3V3 — to ground it is in ABZ mode and silent.
+
 ## Optical board first power-up (bring-up order)
 
 The board's diagnostic chain is **strictly serial**: power, MCU, I2C, converter framing,
