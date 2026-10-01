@@ -10,6 +10,10 @@
    "fpid": "JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal",
    "x": -20.5,
    "y": 2.0,
+   "pads_xy": [
+    -11.75,
+    2.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -31,6 +35,10 @@
    "fpid": "JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal",
    "x": 3.2,
    "y": 2.0,
+   "pads_xy": [
+    6.95,
+    2.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -52,6 +60,10 @@
    "fpid": "SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
    "x": -5.75,
    "y": 6.4,
+   "pads_xy": [
+    -5.75,
+    6.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": null,
@@ -63,6 +75,10 @@
    "fpid": "R_0603_1608Metric",
    "x": -10.75,
    "y": 6.2,
+   "pads_xy": [
+    -10.75,
+    6.2
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [

@@ -63,7 +63,7 @@ def footprint(board: str, ref: str) -> dict:
 # PART (one line per footprint, whatever board it is on) and the XY comes from the routed
 # board's F.Fab body instead of a courtyard.
 HEIGHT = {
-    "BarrelJack_CUI_PJ-102AH_Horizontal": 11.0,
+    "Kycon_KPJX-4S-S": 15.0,                     # 14.4 of body + the 0.6 top boss
     "C_0402_1005Metric": 0.55, "R_0402_1005Metric": 0.50,
     "C_0805_2012Metric": 1.45, "C_1206_3216Metric": 1.60, "C_1210_3225Metric": 1.80,
     "Crystal_SMD_3225-4Pin_3.2x2.5mm": 0.90,
@@ -182,6 +182,23 @@ _PH_MATED_H = 8.0
 # and it is the right order for any 2.00/2.54 header. Trimming is an assembly step nobody
 # has specified, so model the untrimmed case: it is the one that has to fit.
 _THT_TAIL = 3.4
+# ⚠ ...AND ONE SLAB UNDER EVERY PAD IS WRONG FOR A PART WHOSE LEGS ARE FAR APART. solid()
+# draws the tail as a box under the bounding box of all the through-hole pads, which is
+# right for a pin row and wrong for the 24 V inlet: its eleven lands span 13 x 18.6 mm,
+# and the slab's empty corner reached the endplate's board ledge (3.8 mm3 of a leg that
+# is not there). A footprint listed here gets one box per leg instead:
+#   (x, y, size_x, size_y) in the FOOTPRINT's own frame -- KiCad's, as the .kicad_mod
+#   has it -- about its origin, each the HOLE the leg passes through.
+THT_LEGS = {
+    "Kycon_KPJX-4S-S": [
+        (-2.9, -14.65, 0.6, 2.7), (2.9, -14.65, 0.6, 2.7),      # pins 1, 2
+        (-2.5, -11.0, 0.6, 2.7), (2.5, -11.0, 0.6, 2.7),        # pins 3, 4
+        (-7.8, -16.0, 0.6, 2.7), (7.8, -16.0, 0.6, 2.7),        # rear shell legs
+        (-7.8, -7.5, 2.2, 2.2), (7.8, -7.5, 2.2, 2.2),          # front shell legs
+        (0.0, -5.5, 2.2, 1.0),                                  # shell tab
+        (-2.5, -7.5, 1.7, 1.7), (2.5, -7.5, 1.7, 1.7),          # the two plastic pegs
+    ],
+}
 
 # ⚠ A SIDE-ENTRY CONNECTOR'S PLUG LEAVES THROUGH THE BOARD EDGE, and until now solid()
 # modelled none of it: the mated branch below tested for "Vertical" only, so every
@@ -239,16 +256,15 @@ PANEL = {
     "USB_C_Receptacle_HRO_TYPE-C-31-M-12": dict(
         mouth=(0.0, 1.0), axis_h=1.65, nose=None,
         opening=("stadium", 12.8, 7.0), mount="through"),
-    # CUI / Same Sky PJ-102AH, mechanical drawing dated 09/12/2024: body 9.00 wide x
-    # 11.00 tall x 14.40 long, axis 6.50 +-0.10 above the PCB, plug opening O6.5, O2.0
-    # centre pin, front face 7.70 ahead of pin 2 (10.70 - 3.00) -- which is what the
-    # KiCad footprint has, so the placement arithmetic stands. Mouth is the footprint's
-    # +Y: what faced the chassis rail at 0 degrees. It passes THROUGH the panel to the
-    # face, so the window is the body's own section plus 0.3 a side -- centred on the
-    # BODY (5.5 up), not the axis (6.5 up): the body is not symmetric about its bore.
-    "BarrelJack_CUI_PJ-102AH_Horizontal": dict(
-        mouth=(0.0, 1.0), axis_h=6.5, nose=None,
-        opening=("rect", 9.6, 11.6, 5.5), mount="through"),
+    # Kycon KPJX-4S-S, drawing rev A17 (08/15/22): body 16.0 wide x 13.4 long x 14.4 tall
+    # (15.0 over the top boss), axis 7.1 above the PCB, and a O12.9 x 4.0 NOSE in front
+    # of the body -- the shield barrel a KPPX plug's sliding shell latches into. F.Fab is
+    # the body alone (elec/footprints/Steel.pretty), so `front` is the body's shoulder and
+    # the nose is what passes through the panel to the face: a round hole, 0.3 a side.
+    # Mouth is the footprint's +Y.
+    "Kycon_KPJX-4S-S": dict(
+        mouth=(0.0, 1.0), axis_h=7.1, nose=("round", 12.9, 4.0),
+        opening=("round", 13.5), mount="through"),
 }
 
 
@@ -463,7 +479,15 @@ def solid(board: str, mated: bool = False, omit: tuple = (), skip=()) -> cq.Work
             h = _PH_MATED_H
         if h <= 0.0:
             continue
-        if f.get("tht"):
+        legs = THT_LEGS.get(fp_name(f["fpid"]))
+        if legs:
+            # each leg where it is, not one slab under all of them (see THT_LEGS)
+            for fx, fy, sx, sy in legs:
+                ox, oy = _rot((fx, fy), f["rot"])
+                wx, wy = (abs(v) for v in _rot((sx, sy), f["rot"]))
+                out = out.union(box_at(wx, wy, _THT_TAIL, x=f["x"] + ox, y=f["y"] + oy,
+                                       z=-_THT_TAIL / 2.0))
+        elif f.get("tht"):
             tx0, tx1, ty0, ty1 = f["tht"]
             out = out.union(box_at(tx1 - tx0, ty1 - ty0, _THT_TAIL,
                                    x=(tx0 + tx1) / 2.0, y=(ty0 + ty1) / 2.0,

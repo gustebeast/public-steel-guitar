@@ -85,9 +85,12 @@ USBA_FP = "Connector_USB:USB_A_Receptacle_GCT_USB1046"
 # 3.0 mm panel clamp, TS_SHOULDER_DEPTH, the endplate counterbore, _FRONT["J5"] -- all
 # still holds, and the change costs a footprint name.
 TRS_FP = "Connector_Audio:Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal"
-# PJ-102AH: the PCB-MOUNT sibling of the PJ-005A the BOM already specifies -- same
-# Same Sky/CUI family, same 2.0 mm pin, but board pins instead of solder lugs.
-DC_FP = "Connector_BarrelJack:BarrelJack_CUI_PJ-102AH_Horizontal"
+# Kycon KPJX-4S-S, the 4-pin snap-and-lock power jack (user, 2026-10-01). The supply is
+# a Mean Well GST160A24-R7B desktop adapter, 6.67 A, and its lead ends in a Kycon KPPX-4P;
+# the PJ-102AH barrel jack that stood here is rated 5 A and does not take that plug.
+# 7.5 A per pin, two pins per rail. Footprint drawn from Kycon's own land pattern:
+# elec/footprints/Steel.pretty.
+DC_FP = "Steel:Kycon_KPJX-4S-S"
 XH_FP = "Connector_JST:JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical"
 TERM_FP = "TerminalBlock:TerminalBlock_MaiXu_MX126-5.0-02P_1x02_P5.00mm"
 MCU_FP = "Package_DFN_QFN:QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm"
@@ -353,13 +356,21 @@ def output_panel():
     # written down.
     # THE RESPIN ADDS ONE TAP TO THAT ISLAND -- U5's input -- and that tap is the
     # only thing on it besides the two connectors.
-    j6 = Part(name="PJ-102AH", ref_prefix="J", ref="J6", tag="J6", dest="NETLIST", tool="skidl",
-              value="PJ-102AH", description="24 V inlet, PCB mount, panel bushing",
+    # ⚠ THE RAILS SIT ON THE DIAGONALS, and that is the supply's pinout, not a choice:
+    # Mean Well's R7B plug is 1 +V, 2 -V, 3 -V, 4 +V (GST160A-SPEC 2026-04-03, "KYCON
+    # KPPX-4P equivalent"). Mirror the footprint and both rails swap, so the handedness
+    # is written into the footprint's own description. METER THE PLUG BEFORE FIRST POWER
+    # (docs/board-bringup-diagnostics.md).
+    # The shell goes to PWR_GND: the same spec ties -V to the AC inlet's earth pin, so the
+    # shell is at that potential whatever this board does with it.
+    j6 = Part(name="KPJX-4S-S", ref_prefix="J", ref="J6", tag="J6", dest="NETLIST", tool="skidl",
+              value="KPJX-4S-S", description="24 V inlet, 4-pin snap-and-lock power jack",
               footprint=DC_FP,
-              pins=[Pin(num=1, name="TIP", func=P), Pin(num=2, name="SLEEVE", func=P),
-                    Pin(num=3, name="SWITCH", func=P)])
-    v24 += j6[1]
-    pgnd += j6[2], j6[3]      # the switch contact ties to the sleeve, not left open
+              pins=[Pin(num=1, name="V1", func=P), Pin(num=2, name="G2", func=P),
+                    Pin(num=3, name="G3", func=P), Pin(num=4, name="V4", func=P),
+                    Pin(num="SH", name="SHELL", func=P)])
+    v24 += j6[1], j6[4]
+    pgnd += j6[2], j6[3], j6["SH"]
     # Trunk out on the instrument's standard 4-way, TWO CONTACTS PER RAIL. XH is
     # rated 3 A per contact and BOM.md sizes the 24 V bus at under 5 A, so one
     # contact would sit over its rating and two sit comfortably under.
@@ -1321,7 +1332,11 @@ BOARD_W_GROWN = BOARD_W + GROW_X        # 86.0 -- the laminate that gets fabrica
 # reads the placed board back from <board>.geom.json rather than trusting these.
 PANEL_CLR, PANEL_T = 0.3, 1.6
 PANEL_OVERHANG = PANEL_CLR + PANEL_T
-_FRONT = {"J5": 13.40, "J1": 7.07, "J6": 10.70}
+_FRONT = {"J5": 13.40, "J1": 7.07, "J6": 6.80}
+# J6's O12.9 NOSE stands 4.0 in front of its body; it is the nose, not the body, that
+# reaches the panel face. And its axis: 16 mm of body has to clear J10 above it and keep
+# its shell legs 0.3 off the board's -Y edge, which leaves about a millimetre of choice.
+J6_NOSE, J6_Y = 4.0, -23.00
 J1_SETBACK = 0.40
 TS_CLAMP_T, TS_HEAD_T, TS_STUB = 4.0, 2.05, 3.0   # Neutrik: clamp 3.0..4.7; nut head; stub
 TS_SHOULDER_DEPTH = TS_CLAMP_T + TS_HEAD_T         # 6.05: face -> jack shoulder
@@ -1607,7 +1622,13 @@ BOARD_NOTES = {
     # router like the 101 GND stitches beside it, which the router has always routed
     # around. Same point, same size; the only change is that the router can see it.
     "vias": [("GND", -15.500, -7.300)],
+    # V5_PRE's last hop to C5 (2026-10-01, elec/repair_search.py on the board routed with
+    # the Kycon inlet): the router brings the rail to within 2.6 mm on B.Cu and stops.
+    # One via beside C5's pad and two short tracks. PINNED TO THAT ROUTING, like the rest.
+    "repair_vias": [("V5_PRE", 8.850, -23.400)],
     "repair_tracks": [
+        ("V5_PRE", "F.Cu", 0.25, [(8.050, -23.500), (8.850, -23.400)]),
+        ("V5_PRE", "B.Cu", 0.25, [(8.850, -23.400), (10.625, -23.246)]),
         # (the PWR_GND hop that stood first here is gone: since the mounting ear the router
         #  closes PWR_GND on its own, and the pinned copy crossed its V5_PRE, 2026-09-21)
         # ON B.Cu: the J7 -> J9 hop runs pad to pad UNDER the row. Both ends are THT pads,
@@ -1617,20 +1638,11 @@ BOARD_NOTES = {
         ("+24V", "B.Cu", 0.5, [(-1.250, -29.500), (17.250, -29.500)]),
         ("+24V", "B.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
         ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
-        # THE INLET'S OWN PIN. Turning J6 90 degrees so its mouth faces the panel put its
-        # +24V pin (1, the centre pin) at the REAR corner of the body, and the router could
-        # not get a trace out of it to either side -- the only two unconnected items on the
-        # board. It sits straight above the end of the bus run above, so the bus simply
-        # continues to it. Both runs pass under J6's plastic body, clear of its PWR_GND
-        # pins at x 28.2 and 31.2.
-        # ⚠ J10's +24V PADS ARE 2 AND 3 (x 28.45, 30.95), NOT PAD 1. Pad 1, straight above
-        # this pin at x 25.95, is PWR_GND -- the first draft of this run landed on it, which
-        # is a dead short across the 24 V bus. The run turns along y -12, below J10's pad
-        # row, and comes up into pad 2.
-        ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (25.200, -29.500)]),
-        ("+24V", "F.Cu", 0.5, [(25.200, -29.500), (25.200, -21.500)]),
-        ("+24V", "F.Cu", 0.5, [(25.200, -21.500), (25.200, -12.000), (28.450, -12.000),
-                               (28.450, -8.700)]),
+        # (THE INLET'S OWN RUNS ARE NOT HERE ANY MORE. As post-route repairs they were laid
+        # over whatever the router had put in the channel between J6's pin rows -- 3
+        # tracks_crossing against PWR_GND, or 3 unconnected once those were dropped. They
+        # are DECLARED copper now, at the bottom of this file, so the router plans round
+        # them.)
     ],
     "stitch_nets": ("GND",),
     # ⚠ THE USB SHIELD TABS REACH THE PLANE THROUGH THEIR OWN BARRELS. J2.SH and J4.SH
@@ -1680,8 +1692,8 @@ BOARD_NOTES = {
         # check compared a copy of these numbers to these numbers.
         #
         # _FRONT is the body front ahead of the pad-centroid anchor, MEASURED off the
-        # routed board's F.Fab (J6 after the 90-degree turn: 13.7 of body ahead of pin 1,
-        # pin 1 3.0 behind the centroid).
+        # routed board's F.Fab. (J6 is the Kycon power jack now: its F.Fab is the BODY, whose
+        # front is 6.80 ahead of the centroid of its eleven pads, and the nose is 4.0 more.)
         # ...AND J5 IS THE EXCEPTION THE OTHER WAY, set so its PLUG meets the face level with
         # the other two (user: "all at the same installation x value"). The NMJ4HCD2 is a
         # REAR-PANEL-MOUNT jack (Neutrik ST-NMJ4HCD2 + its STEP, read 2026-09-21): a 3.0 mm
@@ -1702,7 +1714,7 @@ BOARD_NOTES = {
         # behind the panel face, and the endplate opens an OVERMOLD-sized window for it so
         # a plug still seats fully (see electronics.OP_PANEL).
         "J1": (BOARD_W / 2 + PANEL_OVERHANG - J1_SETBACK - _FRONT["J1"], 4.00, 90.0),
-        "J6": (BOARD_W / 2 + PANEL_OVERHANG - _FRONT["J6"], -19.93, 90.0),  # 24 V barrel
+        "J6": (BOARD_W / 2 + PANEL_OVERHANG - J6_NOSE - _FRONT["J6"], J6_Y, 90.0),  # 24 V inlet
         # -X, FACING INTO THE INSTRUMENT.
         # ⚠ 270, NOT 180, AND THE DIFFERENCE IS NOT COSMETIC. This footprint's
         # courtyard runs -12.68..+3.90 in Y about the pad centroid, so its MOUTH is
@@ -1743,11 +1755,13 @@ BOARD_NOTES = {
         "R13": (10.60, -19.40, 0.0),      # output filter 470R
         "C34": (10.60, -20.60, 0.0),      # output filter 2.2nF
         "R14": (8.60, -20.60, 0.0),      # -6 dB
-        "C28": (21.00, -13.40, 0.0),      # DVDD 0.1
-        "C30": (21.00, -14.70, 0.0),      # LDOO 0.1
+        # (C28, C30 and C31 moved 2026-10-01: the Kycon inlet's body is 16 wide where the
+        #  barrel jack's was 9, and its corner and one shell leg landed on all three.)
+        "C28": (21.00, -12.50, 0.0),      # DVDD 0.1
+        "C30": (21.00, -13.70, 0.0),      # LDOO 0.1
         "C27": (13.60, -21.40, 0.0),     # CPVDD 10u
         "C29": (17.20, -21.40, 0.0),     # DVDD 10u
-        "C31": (20.80, -21.40, 0.0),     # LDOO 10u
+        "C31": (20.20, -21.70, 90.0),    # LDOO 10u, on end: 1.05 mm off the inlet's body
         "K1": (-13.00, 15.00, 0.0),
         "Q1": (-4.00, 15.00, 0.0),
         "R5": (-4.00, 12.00, 0.0),
@@ -1989,6 +2003,8 @@ BOARD_NOTES["vias"] = [
 BOARD_NOTES["repair_tracks"] = [
     (_net, _layer, _w, [(_x + GROW_X / 2.0, _y) for _x, _y in _pts])
     for _net, _layer, _w, _pts in BOARD_NOTES["repair_tracks"]]
+BOARD_NOTES["repair_vias"] = [
+    (_net, _x + GROW_X / 2.0, _y) for _net, _x, _y in BOARD_NOTES["repair_vias"]]
 
 # THE INVARIANT, ASSERTED: growth must not move any part relative to the edge it is
 # referenced to. Panel parts keep their distance to +X; the USB shells keep theirs to -X.
@@ -2028,6 +2044,25 @@ BOARD_NOTES["frozen_nets"] = list(_frozen["nets"])
 BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
     (_n, _layer, _w, [tuple(_p) for _p in _pts]) for _n, _layer, _w, _pts in _frozen["tracks"]]
 BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [tuple(_v) for _v in _frozen["vias"]]
+
+# ── THE 24 V INLET'S OWN COPPER, DECLARED (2026-10-01) ───────────────────────────────────
+# J6 is the Kycon 4-pin jack and its +24V pins are 1 and 4, on a DIAGONAL (the supply's
+# pinout), with PWR_GND's 2 and 3 on the other one. Three runs, all F.Cu, all passing under
+# the jack's body where no part can sit:
+#   * the bus's end at (17.25, -29.5) -> along y -29.5, 0.30 above the rear shell leg's
+#     land -> up into pin 1;
+#   * pin 1 -> pin 4 through the 3.5 mm channel between the two pin rows;
+#   * pin 4 -> J10, between the two +Y shell legs.
+# ⚠ J10's +24V PADS ARE 2 AND 3, NOT PAD 1 -- pad 1 is PWR_GND.
+# Authored in the PRE-growth frame like the placements, shifted here like the repairs.
+_g = GROW_X / 2.0
+_p1, _p4 = (24.250, J6_Y - 2.9), (27.900, J6_Y + 2.5)
+BOARD_NOTES["tracks"] += [
+    (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
+        ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (_p1[0], -29.500), _p1]),
+        ("+24V", "F.Cu", 0.5, [_p1, (_p1[0], J6_Y), (_p4[0], J6_Y), _p4]),
+        ("+24V", "F.Cu", 0.5, [_p4, (_p4[0], -12.000), (28.450, -12.000), (28.450, -8.700)]),
+    ]]
 
 
 if __name__ == "__main__":
