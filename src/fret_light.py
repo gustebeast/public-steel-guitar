@@ -250,9 +250,49 @@ def strip_t(panel, sgn):
                strip_room(panel, sgn) - STRIP_FLOOR_CLR - D.MIN_WALL)
 
 
+# ── THE TILT-IN LIP (user, 2026-10-01) ────────────────────────────────────────────────
+# The -Y edge of BOTH boards hooks under a FIXED printed lip; the board goes in tilted,
+# +Y edge low, and swings up flat, and the one loose strip then closes the +Y edge. One
+# loose part a board instead of two, and both long edges still carried.
+#
+# ⚠ THE LIP IS A 45 DEGREE RAMP, AND THE BOARD IS MEANT TO SLIDE DOWN IT. A flat lip is
+# an unsupported overhang in the deck's -Z print direction (the foot-light rule), so the
+# bearing face slopes. A board resting on a slope walks sideways until something stops
+# it -- so the +Y wall is put AT the board's nominal edge and all the lateral play is given
+# to the hinge side. Gravity then wedges the board against the +Y wall and up against the
+# cell walls, and the +Y wall is the Y DATUM OF BOTH BOARDS, which is what lines the seam
+# pogos up tip to tip. (Hinged on opposite edges, the two boards would wedge opposite ways
+# and the tips would sit 2 x TAB_PLAY apart.)
+#
+# The ramp starts LIP_RISE above the board's underside at the wall face, so a board
+# sitting the full play out from that wall is carried within 0.10 of flat:
+#     drop = (gap to the hinge wall) - LIP_RISE = 0.60 - 0.50 = 0.10 nominal
+# A board 0.2 narrow drops 0.30; one 0.1 wide is wedged up tight. The strip's own groove
+# clearance was 0.20, so this is the same class of fit.
+HINGE_SGN = -1.0
+LIP_LAP = 1.50                     # lip under the board's edge once it is seated
+LIP_RISE = 2.0 * TAB_PLAY - 0.10   # 0.50: the ramp's start above the underside, at the wall
+LIP_CAP = D.MIN_WALL               # the flat under the ramp's tip: one bead
+
+
+def edge_play(sgn):
+    """Board edge to this side's wall: all of it on the hinge side, none on the datum."""
+    return 2.0 * TAB_PLAY if sgn == HINGE_SGN else 0.0
+
+
+def lip_reach():
+    """How far the ramp runs inboard from the hinge wall: the play, then the lap."""
+    return 2.0 * TAB_PLAY + LIP_LAP
+
+
+def lip_depth():
+    """How far the lip hangs below the board's underside."""
+    return lip_reach() - LIP_RISE + LIP_CAP
+
+
 def has_strip(panel, sgn):
-    """Is there room under this edge for a strip AND the floor that holds it up?"""
-    return strip_t(panel, sgn) >= D.MIN_WALL - 1e-9
+    """Does this edge take a loose strip? Not the hinge edge -- that one has the lip."""
+    return sgn != HINGE_SGN and strip_t(panel, sgn) >= D.MIN_WALL - 1e-9
 
 
 def strip_z(panel, sgn):
@@ -268,6 +308,8 @@ def wall_floor(panel, sgn):
     -17.15 and showed up as `top_plate_color_3 <-> wire_canl_7`, 4.4 mm3. A depth is a
     clearance question and it has to be asked of the measurement, not of a constant."""
     floor = BOARD_BOT - strip_room(panel, sgn) + STRIP_FLOOR_CLR
+    if sgn == HINGE_SGN:
+        return BOARD_BOT - lip_depth()         # the lip's own underside; asserted below
     if not has_strip(panel, sgn):
         return max(floor, BOARD_BOT - D.MIN_WALL)
     return max(floor, strip_z(panel, sgn)[1] - D.MIN_WALL)
@@ -275,7 +317,7 @@ def wall_floor(panel, sgn):
 
 def strip_y(sgn):
     """(inner, outer) Y of the strip on this edge; inner is how far it laps the board."""
-    wall = sgn * (BOARD_HALF_W + TAB_PLAY)
+    wall = sgn * (BOARD_HALF_W + edge_play(sgn))
     return wall - sgn * STRIP_OVER, wall + sgn * STRIP_GRIP
 
 
@@ -373,7 +415,8 @@ assert any(has_strip(_p, _s) for _p in _PANELS for _s in (-1.0, 1.0)), (
     "no edge on either panel has room for a retainer strip")
 for _p in _PANELS:
     for _s in (-1.0, 1.0):
-        assert has_strip(_p, _s) and strip_t(_p, _s) >= D.MIN_WALL_2P - 1e-9, (
+        assert _s == HINGE_SGN or (has_strip(_p, _s)
+                                   and strip_t(_p, _s) >= D.MIN_WALL_2P - 1e-9), (
             "%s %+.0fY: the retainer strip is %.2f, and 1.60 is the minimum (user)"
             % (_p, _s, strip_t(_p, _s)))
         assert wall_floor(_p, _s) - (BOARD_BOT - strip_room(_p, _s)) >= SLIDE_OVER - 1e-9, (
@@ -520,13 +563,26 @@ def edge_walls(x_lo=None, x_hi=None):
             continue
         for sgn in (-1.0, 1.0):
             floor = wall_floor(panel, sgn)
-            y0 = sgn * (BOARD_HALF_W + TAB_PLAY)
-            y1 = y0 + sgn * (STRIP_GRIP + WALL)
+            y0 = sgn * (BOARD_HALF_W + edge_play(sgn))
+            # the OUTER face stays where it was for both sides; the play moves the inner
+            y1 = sgn * (BOARD_HALF_W + TAB_PLAY + STRIP_GRIP + WALL)
             w = box_at(bx1 - bx0, abs(y1 - y0), BOARD_TOP - floor,
                        x=(bx0 + bx1) / 2.0, y=(y0 + y1) / 2.0,
                        z=(BOARD_TOP + floor) / 2.0)
             out = w if out is None else out.union(w)
+            if sgn == HINGE_SGN:
+                out = out.union(_lip(bx0, bx1, y0, sgn))
     return heal(out) if out is not None else cq.Workplane("XY")
+
+
+def _lip(bx0, bx1, y_wall, sgn):
+    """The hinge edge's lip: a 45 degree ramp off the wall face, one bead of cap under it."""
+    r = lip_reach()
+    top = BOARD_BOT + LIP_RISE
+    bot = BOARD_BOT - lip_depth()
+    pts = [(y_wall, top), (y_wall - sgn * r, top - r), (y_wall - sgn * r, bot), (y_wall, bot)]
+    return (cq.Workplane("YZ", origin=(bx0, 0, 0)).polyline(pts).close()
+            .extrude(bx1 - bx0))
 
 
 def strip_groove(x_lo=None, x_hi=None):
@@ -834,8 +890,9 @@ def _pogo_contact():
     return (pogo_pads("mid")[0][0] + pogo_pads("key")[0][0]) / 2.0
 
 
-def pogo_pins():
+def pogo_pins(only=None):
     """[(name, solid)] -- the twelve plungers, barrel front to the shared contact.
+    `only` keeps one board's six, for tools/_probe_tilt.py.
 
     The barrels are the boards' own (board_geom reads the pogo's F.Fab); the plungers are
     here because they leave the board and one set crosses key's end wall."""
@@ -843,6 +900,8 @@ def pogo_pins():
     xc = _pogo_contact()
     out = None
     for panel in BOARD_NAME:
+        if only is not None and panel != only:
+            continue
         f = pogo_fire(panel)
         for x, y, _net in pogo_pads(panel):
             x0 = x + f * (POGO_BODY_L + POGO_FAB_STROKE) / 2.0
