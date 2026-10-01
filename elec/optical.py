@@ -117,11 +117,13 @@ FP = {
     "0603":     "Resistor_SMD:R_0603_1608Metric",
     "0805C":    "Capacitor_SMD:C_0805_2012Metric",
     "1206C":    "Capacitor_SMD:C_1206_3216Metric",
+    "0603OPT":  "LED_SMD:LED_0603_1608Metric",
     "0805OPT":  "LED_SMD:LED_0805_2012Metric",
     "PD15":     "Steel:Everlight_PD15-22B",           # elec/footprints/Steel.pretty
     "WQFN-24":  "Package_DFN_QFN:Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm",
     "RNX12":    "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm",
     "SOIC-14":  "Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
+    "VSSOP-8":  "Package_SO:VSSOP-8_3x3mm_P0.65mm",
     "LQFP144":  "Package_QFP:LQFP-144_20x20mm_P0.5mm",
     "LQFP176":  "Package_QFP:LQFP-176_24x24mm_P0.5mm",
     "QFN-24":   "Package_DFN_QFN:HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm",
@@ -135,6 +137,8 @@ FP = {
     # Bourns SRN4018 one that used to be here -- LCSC stocks no usable SRN4018 value.
     "IND-4040": "Inductor_SMD:L_Sunlord_SWPA4030S",  # 4030 since the LMR33630 swap (same land)
     "TP": "TestPoint:TestPoint_Pad_D1.5mm",
+    # ⚠ A SMALLER PAD IS NOT A COMPROMISE, IT IS WHERE THE ROOM IS. See TP6/TP7.
+    "TP_SMALL": "TestPoint:TestPoint_Pad_D1.0mm",
     "USB-C":    "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12",
     "XH-SM-4Y": "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
 }
@@ -412,22 +416,36 @@ def optical():
     for i in range(1, 11):
         # THE BALLAST IS PER-STRING AND THAT IS LEVER 2 OF THE SIGNAL BUDGET. A .014
         # plain string returns ~14 dB less than a .070 wound one because the string IS
-        # the reflective target, and with narrow-beam emitters unavailable in 0805
-        # (lever 1 is gone -- see src/optical_pickup.py) drive current is the first
-        # lever left. Values are set at bring-up, per string, not here.
-        # 180R = 20 mA, WHICH IS THE DATASHEET'S OWN OPERATING POINT and deliberately
-        # conservative. (5.0 - 1.2 VF) / 0.020 = 190; 180R gives 21 mA. The IR17-21C is
-        # rated 65 mA continuous, so there is 3x of headroom -- and taking it is a SYSTEM
-        # decision, not a resistor swap: ten emitters at 65 mA is 650 mA of peak rail
-        # against a 600 mA buck, and the board's recorded 24 V draw (~85 mA, i.e. ~2 W)
-        # assumes something near this value. Raising drive is the first SNR lever this
-        # board has left, and spending it means re-checking U13, C162's droop over a
-        # pulse, and the trunk's wire gauge together.
+        # the reflective target, so values are set at bring-up, per string, not here.
+        # ⚠ LEVER 1 IS NO LONGER GONE. This note used to say narrow-beam emitters were
+        # unavailable and the beam-angle lever was unspendable. That was true of the parts
+        # surveyed at the time; the LTE-C9901 is 65 deg FULL angle against the old part's
+        # 120, and combined with its 8 mW/sr typ that is where the +10.9 dB came from.
+        # 180R NOW GIVES EXACTLY 20 mA, the datasheet's own operating point: the LTE-C9901
+        # drops 1.4 V typ, so (5.0 - 1.4) / 180 = 20.0 mA on the nose. The old 1.2 V part
+        # made the same resistor 21 mA.
+        # ⚠ THE BUCK IS NOT THE CONSTRAINT AND A NOTE HERE BRIEFLY CLAIMED IT WAS. This
+        # part is rated 60 mA continuous against the old part's 65, and "ten emitters flat
+        # out is 600 mA against a 600 mA buck" was written from the 600 mA figure in the
+        # budget below -- which is the TPS560430's, kept there as HISTORY. U13 has been the
+        # 3 A LMR33630C since 2026-09-22, and the budget says so two lines above the number
+        # that got read. Ten emitters at 60 mA continuous is 600 mA, and the whole board's
+        # worst case then is 1068 mA: 36 % of the buck. There is no current problem.
+        # WHAT DOES BIND, if the drive is ever raised, is all local:
+        #   * the emitter's own 100 mW Pd -- 60 mA x 1.4 V is 84 mW, 84 % of it, and an
+        #     0603 has less copper to lose it into than the 0805 this replaced. This is
+        #     the real reason the part is rated 60 and not more.
+        #   * C162's droop over a pulse: 600 mA for a 10.4 us half-period at 48 kHz is
+        #     284 mV on 22 uF, 133 on 47, 62 on 100.
+        #   * Q1, one SOT-23 gating all ten.
+        # And the lever is smaller than it looks: 20 -> 60 mA is 3x optical = +2.4 dB of
+        # shot-limited SNR, against the +10.9 dB the emitter swap just banked. Spend it
+        # only if bring-up says the thin string needs it.
         r = _r("R%d" % i, "180R", "LED ballast, string %d -- 21 mA, tune per string" % i)
         d = Part(name="LED_IR", ref_prefix="D", ref="D%d" % i, dest="NETLIST",
-                 tool="skidl", value="IR17-21C/TR8",
-                 description="IR emitter 940 nm, string %d (LCSC C131250)" % i,
-                 footprint="LED_SMD:LED_0805_2012Metric",
+                 tool="skidl", value="LTE-C9901",
+                 description="IR emitter 940 nm, string %d (LCSC C2683614)" % i,
+                 footprint="LED_SMD:LED_0603_1608Metric",
                  pins=[Pin(num=1, name="K", func=P), Pin(num=2, name="A", func=P)])
         v5_pre += r[1]        # BUCK side of the bead -- see FB1
         # ⚠ NAMED, BECAUSE SKiDL'S AUTO-NAMES ARE POSITION-DEPENDENT. A two-pin local
@@ -453,37 +471,43 @@ def optical():
                       pins=[Pin(num=1, name="A", func=P), Pin(num=2, name="K", func=P)])
             store[i] = pd
 
-    # ── U1-U5: the transimpedance amps, four to a quad ───────────────────────
-    # TLV9064, SOIC-14. 500 fA input bias -- which is the spec that matters, because
-    # the signal is tens of nanoamps and an op-amp's bias current adds directly to it.
-    # Channel order within a quad follows the CAD's placement so the summing node
-    # stays a few millimetres long; that node is the noise-critical point on this
-    # board and the reason the quads sit immediately -X of the sensor row.
-    quads = {}
-    for q in range(1, 6):
-        quads[q] = Part(
-            name="TLV9064", ref_prefix="U", ref="U%d" % q, dest="NETLIST",
-            tool="skidl", value="TLV9064IDR",
-            description="quad op-amp, 4x transimpedance amp (LCSC C388176)",
-            footprint="Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
-            pins=[Pin(num=n, func=P) for n in range(1, 15)])
-    # SOIC-14 quad pinout: 1 OUT_A, 2 IN-_A, 3 IN+_A, 4 V+, 5 IN+_B, 6 IN-_B,
-    # 7 OUT_B, 8 OUT_C, 9 IN-_C, 10 IN+_C, 11 V-, 12 IN+_D, 13 IN-_D, 14 OUT_D
-    # ⚠ SECTIONS BY HEIGHT, NOT IN ORDER (2026-09-21). A quad serves two strings, and its
-    # four detectors run top to bottom 1A, 1B, 2A, 2B; the SOIC's sections sit A top-left,
-    # D top-right, C bottom-right, B bottom-left. Mapped in plain order, 2B -- the lowest
-    # detector -- went to D at the TOP, and its summing node and output crossed section
-    # C's pins: the pre-laid local nets shorted there. Mapped by height, every detector
-    # meets the pins level with it.
-    SEC = {0: (1, 2, 3), 1: (14, 13, 12), 2: (8, 9, 10), 3: (7, 6, 5)}
+    # ── U21-U30: the transimpedance amps, ONE DUAL PER STRING ────────────────
+    # TLV9062, VSSOP-8 (DGK). Same die as the TLV9064 this replaced -- one datasheet, one
+    # electrical table -- so 500 fA input bias, 10 MHz GBW and 10 nV/rtHz are unchanged.
+    # WHY NOT THE QUAD. Sourcing first: JLCPCB stocks 107 of the quad against 34,405 of
+    # the dual, at a third the price. But the electrical reason is the one that would have
+    # forced it anyway. A quad serves four detectors over 14.25 mm of y, so three of its
+    # four summing nodes -- the only high-z nets on this board -- run past neighbouring
+    # stations. Every station's emitter carries the SAME 192 kHz carrier, so charge
+    # coupled into a summing node arrives IN PHASE with the demodulator and integrates up
+    # as a fixed offset that is indistinguishable from string displacement. Measured on
+    # the CAD placement: all twenty nodes are now 5.13 mm with zero spread, against three
+    # of four at ~15 mm and four different lengths.
+    # AND THE DIFFERENCED PAIR IS ON ONE DIE. Supply, substrate and temperature perturb
+    # both halves of a dual together, so they are common mode and cancel in A-B. That is
+    # the whole measurement.
+    duals = {}
+    for i in range(1, 11):
+        duals[i] = Part(
+            name="TLV9062", ref_prefix="U", ref="U%d" % (20 + i), dest="NETLIST",
+            tool="skidl", value="TLV9062IDGKR",
+            description="dual op-amp, 2x TIA for string %d (LCSC C398356)" % i,
+            footprint="Package_SO:VSSOP-8_3x3mm_P0.65mm",
+            pins=[Pin(num=n, func=P) for n in range(1, 9)])
+    # VSSOP-8 dual pinout: 1 OUT_A, 2 IN-_A, 3 IN+_A, 4 V-, 5 IN+_B, 6 IN-_B, 7 OUT_B,
+    # 8 V+.  Section A takes the +Y detector and B the -Y one, which is also how the part
+    # is rotated in the CAD (OP_ROT 270 puts A's pins on the +Y side). No height mapping
+    # needed any more -- that was a quad problem, where four sections had to be matched to
+    # four detectors spread over two strings and a naive order crossed two of them.
+    SEC = {"A": (1, 2, 3), "B": (7, 6, 5)}      # (out, in-, in+)
 
     tia_out = {}
     for ch in range(20):                       # 0..19 -> (string, side)
         i, side = ch // 2 + 1, "A" if ch % 2 == 0 else "B"
-        q, sec = quads[ch // 4 + 1], SEC[ch % 4]
-        out_p, inn_p, inp_p = sec
-        # Rf<quad><section>, the CAD's scheme: Rf11..Rf14 for quad 1, Rf21.. for quad 2.
-        n = "%d%d" % (ch // 4 + 1, ch % 4 + 1)
+        q = duals[i]
+        out_p, inn_p, inp_p = SEC[side]
+        # Rf<string><side>, the CAD's scheme: Rf1A/Rf1B for string 1's dual.
+        n = "%d%s" % (i, side)
         pd = (pd_a if side == "A" else pd_b)[i]
         summing = Net("TIA_IN_%d%s" % (i, side))
         out = Net("TIA_OUT_%d%s" % (i, side))
@@ -537,12 +561,30 @@ def optical():
         # before the output rails. The converter's PGA (0..42 dB) takes the small end up
         # to its full scale, so the gain split is Rf for headroom, PGA for level.
         # Still per string: the plain strings can take 2M if ambient allows.
-        rf = _r("Rf%s" % n, "1M", "TIA feedback, string %d%s -- tune per string" % (i, side))
+        # ⚠ 250k / 2.2 pF SINCE 2026-09-23, AND THE REASON IS PHASE, NOT NOISE. At 1M the
+        # least stable Cf is sqrt(Ct / (2 pi Rf GBW)) = 0.70 pF on a ~31 pF Ct (the PD15 at
+        # ZERO bias, ~25 pF, plus the amp's 6). You cannot buy or hold 0.70 pF: the
+        # smallest real 0402 C0G is 0.5 at +-0.25, and an 0402's own stray is a few tenths,
+        # so the feedback capacitance would be set by layout parasitics and the pole would
+        # land anywhere. That scatters the CARRIER PHASE by about +-5.8 deg part to part,
+        # and a lock-in recovers amplitude from phase: two channels of one string that do
+        # not match in phase put a spurious term straight into DIFF, which is the signal
+        # pitch detection rides on. At 250k the part is 1.40 pF minimum, a real +-10% 2.2
+        # pF holds it, and the spread is +-1.2 deg.
+        # IT COSTS 0.31 dB, because this board is SHOT-NOISE limited -- the photodiode's
+        # own shot noise is 0.80 pA/rtHz against Rf's 0.13 at 1M and 0.26 at 250k, so Rf
+        # barely enters the total. Noise was never the axis this decision turned on.
+        # 2.2 pF not 1.5: 1.5 sits 1.07x over the stability minimum, which is no margin at
+        # all. 2.2 is 1.57x, puts the pole at 289 kHz -- still 4.3x the 68 kHz sideband
+        # edge -- and leaves ~60 deg of phase margin.
+        # AND THE NEW EMITTER FORCES IT ANYWAY: the LTE-C9901 is ~6x the incumbent's flux,
+        # so 1M saturates the output outright against a 0.33 V MID.
+        rf = _r("Rf%s" % n, "250k", "TIA feedback, string %d%s -- tune per string" % (i, side))
         # ⚠ Cf IS C0G, NOT X7R: it sets the pole, and an X7R part's capacitance moves with
         # bias and temperature, so twenty channels would stop matching -- which is exactly
         # what DIFF cannot tolerate. 1 pF is at the edge of what a part sets rather than
         # the layout (an 0402's own stray is a few tenths): measure the pole at bring-up.
-        cf = _c("Cf%s" % n, "1pF", "TIA feedback cap, string %d%s -- C0G, ~160 kHz pole"
+        cf = _c("Cf%s" % n, "2.2pF", "TIA feedback cap, string %d%s -- C0G, ~289 kHz pole"
                 % (i, side))
         summing += rf[1], cf[1]
         out += rf[2], cf[2]
@@ -562,13 +604,16 @@ def optical():
     # price of exceeding the ADC's limit. On +3V3A the TIA shares the ADC's own
     # reference -- ratiometric, so reference drift cancels instead of adding.
     # TLV9064: 1.8 V to 5.5 V supply, rail-to-rail in and out, so 3.3 V is in spec.
-    for q in range(1, 6):
-        v3a += quads[q][4]
-        gnd += quads[q][11]
-        for k in (1, 2):
-            c = _c("Cd%d%d" % (q, k), "100nF", "quad %d supply bypass" % q)
-            v3a += c[1]
-            gnd += c[2]
+    # TLV9062: 1.8 to 5.5 V, RRIO, so 3.3 V is in spec -- same die as the TLV9064 the
+    # note above was written for. ONE bypass per package now instead of two per quad: ten
+    # packages each get their own 100 nF beside its own V+ pin, which is ten caps for
+    # twenty channels against the quad's ten for twenty. Same count, half the distance.
+    for i in range(1, 11):
+        v3a += duals[i][8]
+        gnd += duals[i][4]
+        c = _c("Cd%d" % i, "100nF", "string %d dual supply bypass" % i)
+        v3a += c[1]
+        gnd += c[2]
 
     sai_sck, sai_fs = Net("SAI_SCK"), Net("SAI_FS")
     sai_sd = [Net("SAI_SD%d" % (k + 1)) for k in range(5)]
@@ -598,7 +643,42 @@ def optical():
         vref += u[3]
         gnd += u[4], u[25]
         Net("ADC%d_MICBIAS_NC" % tag).connect(u[5])
-        v3d += u[14]              # SHDNZ tied high locally -- see THE CONVERTERS
+        # ⚠ SHDNZ IS PULLED UP NOW, NOT TIED, AND THAT IS THE BOARD'S LAST DIAGNOSTIC GAP
+        # CLOSED. Five converters answer at one address on one bus, so a part holding SDA
+        # low killed the control bus with no way to say which part or to take it off --
+        # item 6 of docs/optical-bringup-diagnostics.md, and the only failure the
+        # per-device SDOUT lines do not already name. Ground this resistor's own SHDNZ
+        # land and that converter alone drops off the bus; with SDOUT already per device,
+        # that is complete localization.
+        # WHAT IT COSTS: one 0402 per cell, in a clear site 2 mm from pin 14 that exists
+        # at the SAME cell-frame offset in all five cells. NOT a shared SHDNZ spine -- that
+        # wants ~86 mm of digital line and 8 new vias through In1, whose 0 cuts and
+        # 0.266 mm thinnest web are a measured SI property of the analog reference.
+        # ⚠ AND THE PULL-UP IS WHY THE FIRMWARE RULE BELOW STILL HOLDS: 10k to IOVDD leaves
+        # the part out of shutdown as IOVDD rises, exactly as the hard tie did, so the
+        # software reset is still mandatory. A pulled-up pin is not a driven pin; nothing
+        # here changes the power-up sequence, it only gives a person a way to override it.
+        shdnz = Net("SHDNZ%d" % tag)
+        shdnz += u[14]
+        rs = _r("Rs%d1" % tag, "10k",
+                "U%d SHDNZ pull-up -- ground its pad 1 to drop this converter off the "
+                "I2C bus" % (14 + k,))
+        shdnz += rs[1]
+        v3d += rs[2]
+        # ⚠ NO SEPARATE PAD: THE PULL-UP'S OWN SHDNZ LAND IS THE ACCESS POINT, and that
+        # is a deliberate trade rather than a saving. A 1.0 mm pad does fit in these cells
+        # -- searched, (-3.810, +6.950) in cell frame, 0.348 mm of headroom -- but it lands
+        # 4 mm from the resistor and would need its OWN stub to reach the net, which is
+        # another ~4 mm of copper per cell inside the analog strip. Five pads would have
+        # cost 20 mm of it, and the whole reason this variant was chosen over a shared
+        # SHDNZ spine was to keep copper out of there.
+        # SO THE THING YOU GROUND IS Rs<k>1 PAD 1, a 0.54 x 0.64 land. That is smaller
+        # than the bring-up pads and the honest objection to it is the same one that
+        # justified those: probing a 0402 among fine-pitch parts is awkward. It is
+        # acceptable HERE and not there because this is a deliberate, one-off, last-resort
+        # action -- tack a wire to it, or hold a fine probe -- not a reading taken during
+        # normal bring-up. Stage 1 needed pads a meter could reach; this needs a way in
+        # that exists at all.
         a1, a0 = divmod(ADC_ADDR[k], 2)
         (v3d if a1 else gnd).__iadd__(u[15])
         (v3d if a0 else gnd).__iadd__(u[16])
@@ -624,10 +704,57 @@ def optical():
                    % (14 + k))
             net += c[1]
             gnd += c[2]
+    # ⚠ THE ANALOG BOTTLENECK IS THE Cs WALL, AND IT IS NOT THE MAPPING (2026-09-22).
+    # Fifteen of the twenty TIA_OUT runs have no straight path, and which of them the
+    # router drops changes every run -- 4 failures then 8, with nothing analog altered in
+    # between. Measured with .ins/lane.py rather than argued about:
+    #
+    #   ch1  op-amp pin 1  @ x 74.81   3.15 mm  CLEAR
+    #   ch2  pin 14 @ 79.76            9.28 mm  blocked by Ci<k>1
+    #   ch3  pin 8  @ 79.76           13.20 mm  blocked by U<k> pad 4, its OWN op-amp
+    #   ch4  pin 7  @ 74.81           10.48 mm  blocked by Cs<k>3
+    #
+    # The obvious suspect was this loop's assignment -- Ci marches west while the op-amp
+    # outputs alternate between two x columns, so three runs in four cross each other. It
+    # is not: ALL 24 permutations of (1A,1B,2A,2B) -> IN1..IN4 score 1 of 4 clear, and the
+    # order built here is already the shortest of them at 36.12 mm. Scored in seconds off
+    # the placed pads; do not spend a routing run on it again.
+    #
+    # What actually blocks them is a WALL of supply caps between the op-amp column and the
+    # converter, and its gaps are the whole story. Per quad, by y:
+    #
+    #   Cs<k>5  ][  0.340   intra-cap, can never be a door
+    #   Cs<k>5  ][  0.520   a 0.2 track needs 0.454 -- a door, barely
+    #   Cs<k>3  ][  0.340
+    #   Cs<k>3  ][  0.970   a door
+    #   Cs<k>1  ][  0.340
+    #   Cs<k>1
+    #
+    # Two doors, four runs, five quads. The wall's ENDS are open (nothing else sits in
+    # x 71.9..74.6), so the rest go the long way round, which is what the router is doing
+    # and why it is fragile rather than impossible.
+    # THE LEVER IS THE CAPS' ORIENTATION. They stand tall: 1.58 mm in y, 0.62 in x. Turned
+    # 90 they present 0.56 to the wall instead of 1.58 and give back ~3 mm of door across
+    # the column -- at the cost of 1.58 mm in x, which has to come out of the 73.16..74.50
+    # corridor. Not yet tried.
     # the couplings: quad q's section s -> converter q's input s+1
     for ch in range(20):
         i, side = ch // 2 + 1, "A" if ch % 2 == 0 else "B"
-        k, s_in = ch // 4, ch % 4 + 1
+        # ⚠ REVERSED WITHIN THE CONVERTER (2026-09-24), and the permutation study above is
+        # NOT the reason not to: that study is from the FIVE-QUAD era -- it cites op-amp
+        # "pin 14", which a VSSOP-8 dual does not have -- and it scored each run for a CLEAR
+        # STRAIGHT PATH past a wall of supply caps that no longer stands between the column
+        # and the converter. The criterion now is different and it is ORDER, not length.
+        #
+        # The four runs of a converter group leave the op-amp column at four different y and
+        # arrive at four caps on one row at four different x. They share the 4.00 mm lane
+        # between their own two strings' slots, and a trace peeling north out of that lane
+        # must be north of every trace still running east -- so a crossing-free assignment
+        # needs the north-to-south source order to match the west-to-east sink order.
+        # Sources run 1A,1B,2A,2B north to south; IN1..IN4's caps run EAST to west. The old
+        # mapping therefore made all four cross, in the tightest region on the board.
+        # One subtraction makes the two orders agree. Firmware channel order changes with it.
+        k, s_in = ch // 4, 4 - ch % 4
         pos = Net("ADC%d_IN%dP" % (k + 1, s_in))
         ci = _c("Ci%d%d" % (k + 1, s_in), "10nF C0G", "string %d%s -> U%d IN%dP"
                 % (i, side, 14 + k, s_in))
@@ -723,6 +850,28 @@ def optical():
                               % net.name,
                   footprint=FP["TP"], pins=[Pin(num=1, func=P)])
         net += tp[1]
+    # ⚠ THE SECOND WAY IN WAS ALREADY ON THIS BOARD, AND FOR MONTHS NOBODY LOOKED IT UP.
+    # The claim above -- "no USART/I2C/SPI/CAN bootloader pin is brought out" -- is FALSE,
+    # and AN2606 Rev 61 Table 113 says so: on STM32H74xxx the ROM bootloader's I2C2
+    # interface is SCL on PF1 and SDA on PF0, which is EXACTLY the pair this board already
+    # runs to all five converters as its control bus. It is routed, it reaches every corner
+    # of the digital half, and it has pull-ups.
+    #   bootloader I2C2 slave address  0b1001110  (0x4E)
+    #   TLV320ADC3140 x5               0b1001100  (0x4C)
+    # Different addresses, so the converters cannot answer for the bootloader and the
+    # bootloader cannot answer for them. Nothing has to be isolated, and the bus does not
+    # have to be free: I2C is multi-slave by design and only one of them is addressed.
+    #
+    # WHAT THAT REPLACES. Two pads on USART1 (PA9/PA10) were designed, placed and searched
+    # first, and they cannot be built: PA9/PA10 sit mid-row on the LQFP176's east face, the
+    # maze router explores 65 cells out of the pad and finds every lane walled by the
+    # escape fan, and the autorouter reached the same verdict four times in its own way.
+    # I2C2 needs no escape at all, because the escape already happened.
+    #
+    # ⚠ AND THIS IS WHY BOOT0 IS BROUGHT OUT NOW (TP8). It was left off because it "only
+    # helps if a ROM bootloader interface exists, and none does". A bootloader interface
+    # does exist, so the premise is gone: BOOT0 held HIGH against R30's 10k at reset is
+    # what selects the bootloader, and without it the I2C2 pads lead nowhere.
     led_gate = Net("LED_GATE")
     led_gate += u6[PIN["PB3"]]       # the emitter row's on/off, one GPIO for all ten
     # VCAP: the H7's internal core regulator needs its own capacitors, and leaving
@@ -987,6 +1136,21 @@ def optical():
     boot += u13[4]
     vcc_buck += u13[5]
     fb += u13[7]
+    # ⚠ POWER-GOOD STAYS A NO-CONNECT, AND THIS TIME THE REASON IS MEASURED. A pad on it
+    # was designed, sited and mazed: the site is fine (3.032 mm of headroom, 5.9 mm away),
+    # and the PIN CANNOT BE ESCAPED. Pad 8 sits mid-row on the VQFN-HR with the buck's own
+    # +24V pads 9 and 10 either side of the only way out, and C165's +24V land beyond them.
+    # Mazed at 0.05 mm over the finished board, on every layer, with a via hop allowed:
+    #   0.24, 0.20, 0.18 mm track   NO PATH AT ALL (326, 495, 669 cells explored)
+    #   0.16 mm                     a path, whose centreline comes 0.159 mm from +24V
+    #   0.14 mm                     a path, 0.135 mm
+    # A centreline at 0.159 mm with a 0.16 mm track is 0.079 mm of copper-to-copper, and
+    # DRC confirmed it: 0.0900 mm against the 0.127 rule, seven violations. For a
+    # 0.127 mm track the centreline would have to clear by 0.191 mm and the widest corridor
+    # out of that pin is 0.159. There is no width that fits, so this is a PLACEMENT or a
+    # part-choice question, not a routing one -- and a debug pad does not get to move the
+    # buck. (A via-in-pad is no better: a 0.6 mm annulus does not fit between 0.5 mm pitch
+    # pads either.)
     Net("BUCK_PG_NC").connect(u13[8])
     # EN tied to VIN, which the datasheet allows ("Can be connected directly to VIN; Do
     # not float") -- the same choice the TPS560430 had.
@@ -1056,6 +1220,42 @@ def optical():
                pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v5_pre += fb1[1]
     v5 += fb1[2]
+    # ⚠ THE BRING-UP PADS, AND THIS TIME THEY ARE PLACED AFTER ROUTING. Like TP1-5 they
+    # carry no paste and are excluded from the BOM and the pick-and-place by the footprint.
+    # WHY THEY ARE NEEDED. The diagnostic chain is strictly serial -- power, MCU, I2C,
+    # framing, analog, emitters, USB -- and stage ONE had no observability at all: no rail
+    # is reachable by a meter without probing a 0402 beside 0.5 mm-pitch parts, and with
+    # the MCU's own ADCs dropped and all 20 converter inputs used by photodiodes, a RUNNING
+    # MCU cannot read one of its own supplies. Three pads fix that, and BOOT0 is what
+    # selects the ROM bootloader when SWD will not attach.
+    # ⚠ WHY THE FIRST FOUR ATTEMPTS FAILED, AND WHAT CHANGED. Handed to the ROUTER these
+    # same pads cost a net every time -- 2 unconnected, then 2, then 4, then 2, always at
+    # the USB PHY, and +3V3A failed even in the run where its own pad had been REMOVED.
+    # That is not a placement problem and no re-siting fixes it: the south is re-solved
+    # from scratch every run and only just succeeds, so the cost is the PERTURBATION, not
+    # the area. These pads are now listed in post_route_refs and placed by route.py's
+    # repair block, after the router has finished, on copper their own net already has --
+    # which is the same timing argument that closed SAI_FS and +3V3A before them.
+    # ⚠ NO PAD ON MID. It is the reference all twenty TIAs sit on, so anything coupled into
+    # it appears on EVERY channel at once and calibration cannot separate it from signal.
+    # Firmware already reads it as the common rest level of all 20 channels.
+    # ⚠ TP6/TP7 ARE 1.0 mm, NOT 1.5, and the reason is measured rather than tidy: at D1.5
+    # the I2C2 pair has 26 legal sites on the whole board and the best one in the digital
+    # half clears by 0.074 mm, while at D1.0 the same search returns sites at 1.696 and
+    # 0.743 mm. A millimetre is still four times a 0402's pad and a probe tip does not
+    # care; half a fab tolerance does.
+    for _ref, _net, _why in (("TP6", i2c[0][0], "I2C2 SDA -- the ROM bootloader's bus"),
+                             ("TP7", i2c[0][1], "I2C2 SCL -- the ROM bootloader's bus"),
+                             ("TP8", boot0, "BOOT0 -- hold HIGH at reset for the bootloader"),
+                             ("TP9", v24, "+24V rail"),
+                             ("TP10", v5, "+5V rail -- the buck's output"),
+                             ("TP11", v3a, "+3V3A rail -- the quiet LDO")):
+        _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
+                   tool="skidl", value="BRINGUP",
+                   description="bring-up pad -- %s; bare copper, no component" % _why,
+                   footprint=FP["TP_SMALL" if _ref in ("TP6", "TP7") else "TP"],
+                   pins=[Pin(num=1, func=P)])
+        _net += _tp[1]
 
     # ── Q1: the emitter row's low-side switch ────────────────────────────────
     # All ten emitters share one gate. They are pulsed, not held on: pulsing lets the
@@ -1247,6 +1447,30 @@ def optical():
     v3a += r34[1]
     mid_raw += r34[2], r35[1]
     gnd += r35[2]
+    # ⚠ THE DIVIDER HAD NO BYPASS, AND IT IS THE ONE PATH THAT PUTS SUPPLY NOISE ON THE
+    # CARRIER, IN PHASE, ON ALL TWENTY CHANNELS AT ONCE.
+    #
+    # C133 bypasses MID -- U11's OUTPUT -- which is not the same thing and does not do this
+    # job. Inside its feedback loop the buffer forces its output to follow its input, so a
+    # capacitor there handles load transients and filters nothing that arrived at pin 3.
+    # Everything on MID_RAW is reproduced onto the reference flat to the amp's bandwidth.
+    #
+    # And MID_RAW carries a very specific noise. The LED row switches at 48 kHz, which is
+    # the carrier, drawing its current from V5_PRE; U9 feeds +3V3A from V5_PRE through FB1
+    # with perhaps 40-50 dB of PSRR at that frequency; the divider passes what is left to
+    # MID_RAW at 1k/10k09, so 20 dB. That lands on every channel's non-inverting input AT
+    # THE LOCK-IN'S OWN REFERENCE FREQUENCY AND IN PHASE WITH IT -- the one error the
+    # demodulator cannot reject, SUM cannot reject (both halves see it) and DIFF cannot
+    # reject (both halves see it equally). It reads as signal.
+    #
+    # 1 uF against the divider's 901 ohm source (9k09 || 1k) puts the pole at 177 Hz, so
+    # 48 kHz is down a further 48.6 dB -- about 69 dB total with the divider. It costs no
+    # new BOM line: 1 uF 0402 is already on this board (C127, and the converters' AVDD and
+    # VREF bulk). The 0.9 ms it adds to the reference's startup is nothing.
+    c114 = _c("C114", "1uF", "MID divider bypass -- keeps the LED's 48 kHz off the "
+              "reference all twenty channels share; see the note")
+    mid_raw += c114[1]
+    gnd += c114[2]
     r36 = _r("R36", "100R", "LED driver gate series")
     led_gate += r36[1]
     Net("LED_GATE_Q").connect(r36[2], q1[1])
@@ -1296,7 +1520,11 @@ def optical():
     # depends on its output capacitance. They were 100 nF bypass caps, the wrong part for
     # that job. C121 bypasses the 3V3 the PHY is fed from (VBAT and VDDIO).
     for tag, net, val, why in (("C120", phy_vdd33, "1uF", "PHY VDD33 regulator output"),
-                               ("C121", v3d, "100nF", "PHY VBAT/VDDIO bypass"),
+                               # C119 is the SECOND +3V3D bypass: C121 sits beside VBAT (16)
+                               # and 9.19 mm from VDDIO (9), which is on another face. See the
+                               # note at its placement in src/optical_pickup.py.
+                               ("C119", v3d, "100nF", "PHY VDDIO bypass -- AT pad 9"),
+                               ("C121", v3d, "100nF", "PHY VBAT bypass"),
                                ("C122", v1v8, "1uF", "PHY VDD18 regulator output")):
         c = _c(tag, val, why)
         net += c[1]
@@ -1399,6 +1627,43 @@ def _cell_pt(k, dx, dy):
     return (ux + sgn * dx, uy + sgn * dy)
 
 
+# ⚠ ULPI_D0's ESCAPE IS DECLARED WHOLE -- stub, via, inner run and landing via -- rather
+# than left to the stitcher plus an escape_run. The reason is the failure that came before
+# it: layout picks the escape via by ITS OWN criteria (clear of pads, nearest radius first)
+# with no idea where the run then has to go, and an escape_run is laid from THAT via. Here
+# it chose 1.25 mm SOUTH of the pad; the only site that also carries a clear inner run is
+# (-3.86, -52.48). Verified from the pad, the laid line was never the checked line -- it
+# crossed a GND via (short) and the via itself landed 0.075 mm from a GND stitch track.
+# So via site and run must be chosen TOGETHER, which means choosing the site here.
+# Found by a joint search over (via site, waypoint) -- scratchpad/joint_search.py, which
+# loads the board once and answers in memory; the per-query subprocess version could not
+# cover a nested search. Result needs NO bend at all: a straight 25.8 mm In2 run, shorter
+# than the 29.5 mm direct pad-to-pad line because the via is already along it.
+# Every leg measured against the unrouted board with the layer-aware checker (an F.Cu land
+# does not block an inner layer): 0.26 for the tracks, 0.50 for both via sites.
+# ⚠ AND THE LANDING VIA IS CHOSEN THE SAME WAY, for the same reason. Stopping the run
+# 2.0 mm short of U7.4 and leaving the router that hop does NOT work: U7.4 sits between
+# ULPI_D1 and ULPI_D2 on the PHY's north edge, so any approach from the west crosses its
+# own neighbours' pads and track. Measured: that 2 mm is blocked on F.Cu and clear on both
+# inner layers -- the stub has to come at the pad from OUTSIDE the package, not along it.
+# So the joint search was run again from the PHY end (pad U7.4, target the MCU-side via),
+# and (16.72, -68.61) is a site whose F.Cu stub to the pad is clear AND which the same
+# straight In2 run reaches. 26.1 mm, still no bend.
+# The net is now declared end to end and the router has nothing left to do on it.
+_D0_PAD  = (-3.62, -49.74)          # U6.47, the MCU
+_D0_VIA  = (-3.86, -52.48)
+_D0_LAND = (16.72, -68.61)          # 2.76 mm out from U7.4, on the package's open side
+_D0_PHY  = (16.48, -71.35)          # U7.4
+
+
+def _ulpi_d0_escape():
+    """(tracks, vias) for ULPI_D0, hand-routed end to end. See the notes above."""
+    return ([("ULPI_D0", "F.Cu", 0.25, [_D0_PAD, _D0_VIA]),
+             ("ULPI_D0", "In2.Cu", 0.25, [_D0_VIA, _D0_LAND]),
+             ("ULPI_D0", "F.Cu", 0.25, [_D0_LAND, _D0_PHY])],
+            [("ULPI_D0",) + _D0_VIA, ("ULPI_D0",) + _D0_LAND])
+
+
 def _cell_tracks():
     out = []
     for k in range(5):
@@ -1406,8 +1671,59 @@ def _cell_tracks():
         for dy in (0.25, -0.25):
             out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, -1.962, dy), _cell_pt(k, -0.9, dy)]))
         out.append(("GND", "F.Cu", 0.2, [_cell_pt(k, 1.962, 0.25), _cell_pt(k, 0.9, 0.25)]))
-    return out + _fan_tracks() + _shdn_tracks() + _v3_trunk()
+    return (out + _fan_tracks() + _shdn_tracks() + _v3_trunk() + _i2c_spine()
+            + _v5_spine() + _led_row_spine() + _mid_spine()
+            + _bus_spines() + _v3a_spine() + _sd_spines())
 
+
+# ⚠ THE +3V3D CLUSTERS CANNOT BE JOINED BY LAYING EITHER (2026-09-22). _v3_trunk links
+# each cluster internally and took that net from 5 failures to 2; the 2 that remain are the
+# annulus-to-wrap hop. Searched for a single-layer path from (-28.75, -36.04) to
+# (-22.06, 91.61), checking BOTH the pads and the outline: no straight lane exists, and no
+# 3-segment dogleg over a 26 x 60 x 26 grid of candidates exists either. The sensing strip is
+# genuinely full across its whole length. Crossing it needs In2 and therefore vias, and the
+# router will not connect to a pre-laid via here -- so that hop stays the router's.
+#
+# ⚠ AND SWAPPING THE CELL'S ROWS WAS TRIED AND IS WRONG (2026-09-22). The reasoning below
+# is sound as far as it goes -- Ci really does sit inboard of Cm, so a signal from the strip
+# really does meet the GND-local cap before its own coupling cap -- but swapping them routed
+# 14 unconnected and 28 VIOLATIONS against 9 and 0. The near/far split is not free to move:
+# the fan threads INxP and INxM between each other at 0.5 pin pitch, and which row a cap sits
+# in is what keeps those threads from crossing (the note above _fan_tracks says so, and says
+# an earlier wider-flung arrangement left 12 of them open). So the corridor stays 0.4 mm and
+# U15 needs a different answer -- more board, or a cell narrow enough to sit clear of the
+# jack. Reverted; kept here so the next reader does not spend another route finding out.
+# ORIGINAL REASONING, still true and still not actionable on its own:
+# ⚠ AND THE NEXT LEVER FOR U15 IS THE CELL'S ROW ORDER, WHICH IS BACKWARDS FOR SIGNAL FLOW.
+# In each cell the Ci coupling caps sit in the NEAR row (3.75 from the chip) and the Cm caps
+# in the FAR row (5.85) -- so a signal arriving from the strip meets Cm FIRST and has to get
+# past it to reach its own Ci. That is what closes the eastward corridor to 0.4 mm (Cm21
+# starts at y 81.4). Swapping the two rows would put Ci outermost, facing the incoming run.
+# It is not a one-line change: elec/optical.py's _fan_tracks lays the fan from these same
+# CELL_NEAR/CELL_FAR offsets and assigns rows per pin, so both have to move together, and it
+# touches all five cells including the three that route fine today.
+
+
+# ⚠ _u15_haul IS DELETED, AND ITS LESSON IS WORTH MORE THAN THE CODE WAS (2026-09-22).
+# It laid four F.Cu lanes from the strip to U15's coupling caps, through a corridor measured
+# "completely clear of pads" at x -16.5..-5.5 over y 45..83. It routed 11 unconnected and 3
+# violations, against 9 and 0 without it.
+#
+# ⚠ THE CORRIDOR WAS MOSTLY NOT BOARD. The scan asked the PADS and never asked the OUTLINE,
+# and this board is not a rectangle: below y ~80.9 it is only the sensing strip, x -32.42 ..
+# -13.14, and it is the HEAD above that which reaches x +32.42. Two of the four lanes (-13.8
+# and -12.6) were off the board edge entirely -- which is exactly what DRC said,
+# copper_edge_clearance 0.00 mm. The region scanned "clear" because it is AIR.
+#
+# What the CORRECTED scan says, for whoever picks this up:
+#   * vertical lanes x -16.5 .. -14.1 are clear AND inside the strip (2.4 mm; four lanes fit)
+#   * but only ONE horizontal lane runs east into the head -- y 80.9..81.3, about 0.4 mm,
+#     because Cm21 starts at 81.4 -- and four nets cannot share it
+#   * the last hop is fine: a vertical at each Ci's own x threads between the Cm caps with
+#     0.6 mm either side, which is what _fan_tracks already does inside the cell
+# So it needs either the eastward leg on another layer (which needs vias the router will not
+# connect to, so the path would have to be laid pad to pad) or the Cm row moved +Y to open a
+# second lane. MEASURE THE OUTLINE FIRST.
 
 def _v3_trunk():
     """Join each CLUSTER of converter cells' +3V3D stubs into one piece of B.Cu copper.
@@ -1424,9 +1740,670 @@ def _v3_trunk():
     pre-laid via on this board -- measured on SHDNZ and again on SAI). The two clusters
     are still the router's to join; this removes the four intra-cluster hops it keeps
     dropping, and gives the digital supply a real low-impedance spine while it is there."""
-    end = lambda k: _cell_pt(k, -2.85, -3.27)
-    return [("+3V3D", "B.Cu", 0.3, [end(0), end(1)]),          # the +Y wrap pair
-            ("+3V3D", "B.Cu", 0.3, [end(2), end(4)])]          # the annulus row of three
+    # ⚠ ONE TRUNK NOW, NOT TWO. The cells used to sit in two clusters -- a pair at the +Y
+    # wrap and three in the annulus -- and the hop between them had no single-layer path at
+    # all (searched: no straight lane, no dogleg). Since all five moved into the strip in one
+    # column at a common x, their B.Cu stubs line up and ONE track joins the lot.
+    end = lambda k: _cell_pt(k, _V3_CH_DX, -3.27)
+    return [("+3V3D", "B.Cu", 0.3, [end(0), end(4)])]
+
+
+# ⚠ THE +3V3D CHANNEL, hoisted from five copies of -2.85 (the trunk's own ends, the three
+# stub legs that reach it, and the via pair). It is ONE number -- the x, in cell-relative
+# terms, of the digital rail's vertical run -- and having it written out five times meant
+# moving it was five edits and a chance to miss one.
+#
+# ⚠ AND IT MOVED 0.20 WEST, 2026-09-24, TO GIVE Cm<k>4 ITS GROUND VIA BACK. The Cm caps in
+# the FAR row sit at cell x -2.30, so at -2.85 the trunk ran 0.55 mm from them. A 0.6 via
+# beside that pad needs via/2 + trunk/2 + clearance = 0.30 + 0.15 + 0.15 = 0.60, so it
+# missed by 0.05 mm -- and the stitcher, finding nothing legal to the west, put the via on
+# the far side of the coupling cap's door and ran its connecting track straight through the
+# door. That is what blocked the comb crossing in four of the five cells: not the channel
+# width, not the door, but 0.05 mm on a rail 26 mm away. The gap to the I2C spine is 1.13,
+# so the room was already there and nothing else has to move to use it.
+_V3_CH_DX = -3.05
+
+_I2C_SPINE_DX = -3.98           # x 65.60 on the placed board: see below
+_I2C_SCL_DY = -0.75             # pin 17. ⚠ NOT +0.75 -- the cell frame's y is
+                                # INVERTED in the board frame, so +0.75 is pin 14
+
+
+def _i2c_spine():
+    """Lay I2C2_SCL as ONE B.Cu spine down the converter column.
+
+    ⚠ THE SAME MISSING-BUS SHAPE AS +3V3D, and it arrived with the column. Four of the
+    twelve failures after the five converters moved into the strip were SCL, and every
+    one of them was a hop between neighbouring cells -- U14->U15, U16->U15, U17->U16,
+    U17->a stub. Left to the router a five-drop bus on a shared x came back as 133.5 mm
+    of copper and 7 vias with the board TO ITSELF (.ins/solo.py); the direct run is 75 mm.
+    That is not a router that needs more passes, it is a bus nobody drew.
+
+    ⚠ IT CANNOT BE THE OBVIOUS STRAIGHT LINE, which is what makes it worth a function.
+    All five pin 17s share x = 66.619 exactly, so a single track through them looks free
+    -- and it would short pins 17 through 24, the whole side of each QFN, which sit on
+    that same x at 0.5 mm pitch. Nor can the spine simply step outboard on F.Cu: pad 17
+    ends at x 66.207, and Cm24/34/44/54 sit at 66.28, so the first clear F.Cu x is
+    already inside the caps.
+
+    ⚠ AND THE FIRST ATTEMPT PUT THE SPINE OFF THE BOARD, which is the SECOND time on this
+    board that a lane was chosen by asking the pads and never the outline -- the first
+    cost eleven unconnected and three violations on U15's haul, and the warning written
+    then is forty lines above this one. x 62.0 .. 66.2 does carry no pad at all over the
+    column's whole y range. It carries no pad because the board edge is at 64.5817, and a
+    spine at 64.80 sits 0.22 mm from it against a 0.30 rule.
+    ASK THE OUTLINE. It is one call: the Edge.Cuts crossings at a given y.
+
+    ⚠ THE SECOND BUG WAS QUIETER AND WOULD HAVE SHIPPED. The stubs were written at cell
+    offset +0.75, read off pcbnew as pin 17's y -- but _cell_pt returns CAD coordinates
+    and the board frame INVERTS y, so +0.75 is pin 14, which is SHDNZ, which _shdn_tracks
+    ties to +3V3D. The DRC did not report a short; it simply relabelled every piece of
+    this copper [+3V3D], and the only reason it was caught is that two unrelated tracks
+    happened to share a length of 74.9077 mm and the coincidence did not sit right.
+
+    So: a stub out of each pin 17 to x 65.60, a via, and the spine on B.Cu, in a channel
+    that had to be WIDENED to exist -- see ADC_BUS_CH in src/optical_pickup.py. At the old
+    column x the gaps either side of the +3V3D via column were 0.55 and 0.18 mm and a
+    0.6 mm via needs 1.2: there was no lane here at all, for this net or any other.
+
+    ⚠ SDA IS NOT LEFT TO THE ROUTER ANY MORE, AND THIS SAID IT WAS. The reasoning was
+    sound when written -- SDA had failed zero times, and pin 18 shares pin 17's x so a
+    second spine beside this one would have to cross it. It failed later, _bus_spines grew
+    an SDA spine that goes round the west face instead of crossing, and nobody came back
+    here. A note that describes a decision the code no longer implements is worse than no
+    note: it is the reason I spent a pass looking for a missing SDA spine that exists.
+    """
+    out, DX, DY = [], _I2C_SPINE_DX, _I2C_SCL_DY
+    for k in range(5):
+        out += [("I2C2_SCL", "F.Cu", 0.2,
+                 [_cell_pt(k, -1.963, DY), _cell_pt(k, DX, DY)])]
+    # ⚠ THE SPINE RUNS ON PAST THE LAST CONVERTER, down to the border. Stopping at cell 5
+    # left the handover 5.36 mm up in the array, which is 5.36 mm of ratline the router
+    # draws across the strings for no reason -- the lane is empty below the cell.
+    out.append(("I2C2_SCL", "B.Cu", 0.25,
+                [_cell_pt(0, DX, DY), (_cell_pt(4, DX, DY)[0], _SD_BORDER)]))
+    return out
+
+
+# The three broadcast nets I2C2_SCL forgot. Pin offsets read off the placed board, which
+# has all five converters at rot 180 on an 18.727 pitch, so one set of offsets serves all.
+_SDA_DY, _SDA_JOG, _SDA_DX = -1.250, -1.60, -4.91      # pin 18, west face
+_SAI_ROW = -1.9628                                     # pins 19..24, south face
+_FS_DX, _FS_JOG, _FS_SPINE = 0.750, -6.00, 10.60       # pin 23
+_SD_DX, _SD_JOG = -0.250, -7.20                        # pin 21, one net per cell
+_SD_SPINE = (9.80, 9.00, 8.20, 7.40)                   # cells 0..3, north cell outermost
+_SD_BORDER = -19.00                                    # where the south half takes over
+_SCK_DX, _SCK_JOG, _SCK_SPINE = 0.250, -6.60, 6.40     # pin 22
+
+
+def _bus_spines(w=0.2, spine_w=0.25):
+    """I2C2_SDA, SAI_FS and SAI_SCK: the three buses that should look like I2C2_SCL.
+
+    ⚠ ALL FOUR ARE THE SAME NET SHAPE -- one MCU pin driving all five converters -- and
+    only SCL had a spine. The other three were five separate islands each, so their
+    ratsnest drew as one long line from the MCU to whichever pad happened to be nearest,
+    which is what made them look like nets "reaching up to strings 1 and 2" (user,
+    2026-09-24). They were not reaching anything; there was no copper to stop anywhere.
+
+    ⚠ THEY CANNOT ALL USE SCL's LANE. SDA is SCL's neighbour on the west face and takes
+    the west strip beside it, but SAI_SCK and SAI_FS are on the SOUTH face, and getting
+    them west means crossing +3V3D's B.Cu spine at x 8.85 and SCL's at 7.92 on those
+    spines' own layer. East is empty instead -- nothing at all between x 16.4 and the
+    board edge at 28.6 over the whole north half -- so they go that way.
+
+    ⚠ SDA's STUB DROPS 0.35 BEFORE IT RUNS WEST, and that jog is not cosmetic. Straight
+    out at pin 18's own y it passes SCL's via at dy -0.75 with 0.50 of clearance where a
+    via needs 0.55 (0.3 annulus, 0.1 track, 0.15 rule). Short by 0.05.
+
+    ⚠ A FEED MUST STAY ON F.Cu UNTIL IT REACHES ITS OWN SPINE, and that one rule is what
+    lets the strip carry more than one bus. A horizontal running east at constant y
+    crosses every spine between the pin and its destination, so on ONE layer only the
+    innermost spine can be fed from the west. But a feed that stays on F.Cu and vias down
+    AT its spine never touches B.Cu at all -- which is why I2C2_SCL and +3V3D have sat in
+    the same lane for months without fouling each other, and it generalises: B.Cu holds as
+    many spines as fit, F.Cu holds one, and each feed stops west of every F.Cu spine
+    outboard of it. So FS takes the outermost lane on F.Cu and SCK and +3V3A sit inboard
+    of it on B.Cu, each fed by an F.Cu horizontal that stops at its own via.
+
+    Laying SCK's jog on B.Cu instead was tried first and is wrong for exactly this reason:
+    it put a B.Cu horizontal across the strip and nothing else could share the layer.
+
+    Jog depths are set by the Cs row's own ground vias at dy -5.04: a horizontal wants
+    0.55 off those, so -6.00 is the first clear lane and the two buses take -6.00 and
+    -6.60. The deeper one turns east from the WESTERN pin, so neither vertical crosses the
+    other's horizontal -- the same ordering rule the comb lanes needed.
+    """
+    out = []
+    for k in range(5):
+        # SDA: west face, out past SCL's lane on F.Cu the whole way
+        out += [("I2C2_SDA", "F.Cu", w,
+                 [_cell_pt(k, -1.963, _SDA_DY), _cell_pt(k, -2.40, _SDA_DY)]),
+                ("I2C2_SDA", "F.Cu", w,
+                 [_cell_pt(k, -2.40, _SDA_DY), _cell_pt(k, -2.40, _SDA_JOG)]),
+                ("I2C2_SDA", "F.Cu", w,
+                 [_cell_pt(k, -2.40, _SDA_JOG), _cell_pt(k, _SDA_DX, _SDA_JOG)])]
+        # FS: south face, the INNER east spine, F.Cu throughout
+        out += [("SAI_FS", "F.Cu", w,
+                 [_cell_pt(k, _FS_DX, _SAI_ROW), _cell_pt(k, _FS_DX, _FS_JOG)]),
+                ("SAI_FS", "F.Cu", w,
+                 [_cell_pt(k, _FS_DX, _FS_JOG), _cell_pt(k, _FS_SPINE, _FS_JOG)])]
+        # SCK: south face, the OUTER east spine, so it hops to B.Cu at its own x
+        out += [("SAI_SCK", "F.Cu", w,
+                 [_cell_pt(k, _SCK_DX, _SAI_ROW), _cell_pt(k, _SCK_DX, _SCK_JOG)]),
+                ("SAI_SCK", "F.Cu", w,
+                 [_cell_pt(k, _SCK_DX, _SCK_JOG), _cell_pt(k, _SCK_SPINE, _SCK_JOG)])]
+    # ⚠ AND SDA RUNS ON TO THE BORDER, FOR THE REASON SCL'S SPINE ALREADY DOES. It used to
+    # stop at cell 4's jog, at y -14.49 -- 4.5 mm INSIDE the string array, among the comb
+    # slots and their keepouts. The router has to reach a fixed wire's open end to adopt
+    # it, and reaching that one means coming up into the array: measured, it did not. It
+    # laid SDA from R51 all the way to U6.16 on In2 and left U18.18 and the whole spine as
+    # a separate island, which is the ONE unconnected item on this net.
+    # Every other bus here already hands over AT the line (_SD_BORDER); SDA was the one
+    # that did not, because its spine was added later than the rule.
+    out += [("I2C2_SDA", "F.Cu", spine_w,
+             [_cell_pt(0, _SDA_DX, _SDA_JOG),
+              (_cell_pt(4, _SDA_DX, _SDA_JOG)[0], _SD_BORDER)]),
+            ("SAI_FS", "F.Cu", spine_w,
+             [_cell_pt(0, _FS_SPINE, _FS_JOG), _cell_pt(4, _FS_SPINE, _FS_JOG)]),
+            ("SAI_SCK", "B.Cu", spine_w,
+             [_cell_pt(0, _SCK_SPINE, _SCK_JOG), _cell_pt(4, _SCK_SPINE, _SCK_JOG)])]
+    return out
+
+
+def _pin_escapes():
+    """Escape vias for the pins the router leaves stranded -- see _PIN_ESCAPES.
+
+    The first was SAI_FS at the MCU, the only one of its three
+    neighbours that never got one (user spotted it in the routed board, 2026-09-25:
+    "this disconnected net SAI_FS doesn't have a via but seems like it needs one").
+
+    U6 pads 2/3/4 are SAI_SD2 / SAI_FS / SAI_SCK on a 0.5 mm pitch. The router escaped
+    SD2 at (-5.35, -26.81) and SD1 at (-5.36, -28.02) -- 1.21 mm apart, and two 0.6 vias
+    need 0.8 mm from each other, so there is no room for a THIRD between them. SAI_FS was
+    left on F.Cu and had to cross a pin field that is full on both sides (east is those
+    two vias, west is +3V3D's and SAI_SCK's surface runs), so it failed in every routing
+    this board has had -- five layouts, every corridor width, 10 passes and 50.
+
+    ⚠ MEASURED INTO A VERIFIED-EMPTY SITE, as every declared via on this board must be:
+    (-5.73, -27.09) is 0.85 mm from the pad and the nearest clear position to it, scanned
+    against the UNROUTED board (pads and declared copper) at 0.05 mm steps. It is inside
+    where SD2's escape landed, which is the point -- claiming the lane for the net that
+    cannot route pushes the two that can onto their own, and they have the whole belly.
+
+    The stub is laid WITH the via, not left for the router: an orphan via never gets
+    adopted on this board, so the pad reaches the via on F.Cu here and the router only
+    has to leave from the via on an inner layer. Same shape as _stitch_plane_pads.
+    """
+    return _escapes(_PIN_ESCAPES)
+
+
+# ⚠ THE NETS THAT FAIL ARE THE NETS WITH NO ESCAPE VIA. The user read three routings and
+# found the same thing each time (2026-09-25): "this disconnected net SAI_FS doesn't have
+# a via but seems like it needs one", then "5 ULPI_D1 is also disconnected and has no via",
+# then "ditto for 11 ULPI_D6". Every one of them is a pin whose neighbours took the escape
+# positions first and left it stranded on F.Cu in a pin field that is full on both sides.
+# It is not three coincidences; it is one mechanism, and the router does not go back and
+# make room once a lane is spent.
+# Each site was SCANNED against the unrouted board (pads + declared copper) at 0.05 mm
+# steps out from the pad, so it is measured rather than chosen -- the discipline every
+# declared via on this board needs, since none of them are clearance-checked when laid.
+#   pad                     via                  what it unblocks
+def _bus_vias():
+    """SAI_SCK's hop to B.Cu, one per converter, AT the spine and not at the pin -- the
+    feed has to stay on F.Cu the whole way across. See _bus_spines."""
+    return [("SAI_SCK",) + _cell_pt(k, _SCK_SPINE, _SCK_JOG) for k in range(5)]
+
+
+# +3V3A's lanes. The op-amp side goes 0.65 WEST of the Cd column and drops south of the
+# package before it dives, into the 1.3 mm corridor between Cd's own stitching via at
+# -19.28 and MID's pin-3 via at -20.58.
+# ⚠ IT MUST NOT GO EAST. 1.38 east puts the drop at -17.901, which is 0.11 from the
+# Rf*B.1 column -- and that is the one place TIA_IN_B's inner hop can put a via. The
+# summing node reaches its feedback resistor only through that hop, the op-amp's own
+# pin row being between them, so nine strings lost it. A power rail has the whole
+# board and the summing node has 0.97 mm; the rail yields. The older note stands:
+# of the B channel's escape vias at -18.54 rather than 0.06 from them -- 0.68 was the
+# first try and DRC caught it shorting TIA_OUT_*B on all ten strings. A via needs 0.60
+# (0.3 annulus, 0.15 spine, 0.15 rule) and the gap west of those vias is only 0.19.
+# The rest of the note stands: there is no room on the
+# 1.283 mm stub between pin 8 and Cd (0.163 mm of gap, against the 0.9 a 0.6 via needs), and
+# nothing else in the tile is clear -- the B-channel's own escape vias sit at x -18.54.
+_V3A_DX = -0.80
+_V3A_SPINE = 5.30           # converter side, INBOARD of SAI_FS at 7.20: see _bus_spines
+_V3A_CS_DY = -3.27          # the Cs*1 row, +3V3A's pad in each cell
+
+
+def _v3a_spine(w=0.2, spine_w=0.3):
+    """+3V3A: the analogue rail, ten op-amp stations and five converter stations.
+
+    ⚠ THE LAST NET REACHING NORTH OF THE BORDER, and the largest: 15 islands, 13 ratlines.
+    Every station is internally fine -- pin 8 to its own Cd, one 1.283 mm stub -- and
+    nothing joins the stations to each other. This was mis-read once as unconnected bypass
+    caps (the island report prints "Cd1.1,U21.8" as ONE island, a connected pair, and it
+    was read as two); the caps were never the problem. The rail between them was missing.
+
+    ⚠ IT HAS TO BE B.Cu, and that is measured rather than assumed. The op-amp column is
+    the obvious lane and cannot be used: pin 8 shares its x with pin 1, TIA_OUT_A, on the
+    other row, and the column between two stations is blocked by Cd's ground pad, Cd's
+    stitching via and the next op-amp's pin 1. Every neighbouring F.Cu lane is crossed
+    once per string by the A channel's own feedback:
+
+        x -18.60   the B channel's escape vias at -18.54, 0.06 away
+        x -18.90   0.131 to pin 8's pad edge, against the 0.25 a track needs
+        Rf..Cf     four crossings per string, TIA_IN and TIA_OUT, both halves
+        east of Cf the two TIA_OUT runs heading for the comb
+
+    In2 is no better: the B channel's two diagonals cross the column at every string. So
+    the rail goes under everything on B.Cu and pays a via per station, which is what a
+    power rail costs when the signal layers are full. The local bypass is unaffected --
+    each Cd still sits against its own pin 8 on F.Cu, which is the part that matters.
+    """
+    P = _placements(CX, CY)
+    strings = [n for n in range(1, 11) if ("Cd%d" % n) in P]
+    cds = sorted(((n, P["Cd%d" % n]) for n in strings), key=lambda kv: -kv[1][1])
+    assert cds, "no op-amp decoupling caps placed -- did Cd get renamed?"
+
+    # Cd's +3V3A land is its north pad; read the offset back rather than assuming it
+    cd_y = lambda q: q[1] + 0.48
+    x = cds[0][1][0] + _V3A_DX
+    out = [("+3V3A", "B.Cu", spine_w,
+            [(x, cd_y(cds[0][1]) - _V3A_DROP), (x, cd_y(cds[-1][1]) - _V3A_DROP)])]
+    for _n, q in cds:
+        out += [("+3V3A", "F.Cu", w, [(q[0], cd_y(q)), (x, cd_y(q))]),
+                ("+3V3A", "F.Cu", w, [(x, cd_y(q)), (x, cd_y(q) - _V3A_DROP)])]
+
+    # the converter stations, same shape one lane in from SAI_FS
+    for k in range(5):
+        out.append(("+3V3A", "F.Cu", w,
+                    [_cell_pt(k, 3.10, _V3A_CS_DY), _cell_pt(k, _V3A_SPINE, _V3A_CS_DY)]))
+    out.append(("+3V3A", "B.Cu", spine_w,
+                [_cell_pt(0, _V3A_SPINE, _V3A_CS_DY), _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)]))
+
+    # ⚠ ONE LINK BETWEEN THE TWO GROUPS, at the SOUTH end where both already finish. The
+    # op-amp column bottoms out at string 10's Cd and the converter column at cell 5's Cs,
+    # 1.06 mm apart in y and both within 3 mm of the border, so the crossing is a single
+    # B.Cu run under the bottom of the comb field rather than a second trip up the board.
+    # ⚠ THE LINK DROPS 1.0 BELOW Cd10 BEFORE IT RUNS EAST. Straight across at Cd10's own y
+    # it clips the BOTTOM EDGE OF SLOT 10 -- the comb slots are milled openings, not just
+    # keepouts, so that is a copper-to-edge violation and not a clearance one. y -18.2 is
+    # below every slot and still 0.8 north of the border.
+    # ⚠ BELOW EVERY ESCAPE JOG, not between two of them. At -1.385 the east via sat
+    # 0.289 from SAI_FS's jog, and the window between that jog and the Cs row's
+    # ground vias is 0.96 where a via and a track need 1.15. There is no lane in
+    # there; going under the lot costs nothing but 3.4 mm of B.Cu.
+    y_lnk = cd_y(cds[-1][1]) - 3.385
+    xe = _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)[0]
+    # ⚠ THE CROSSING IS ON In2, NOT B.Cu. B.Cu carries I2C2_SCL's and +3V3D's spines down
+    # the west of the converter column and both now run to the border, so a B.Cu run east
+    # from the op-amps hits them. In2 is empty along the bottom of the comb field -- the
+    # comb's own lanes all sit north of -17.2 -- so the link vias through and crosses
+    # there, and the two vias are the only ones the whole east-west journey costs.
+    out += [("+3V3A", "B.Cu", spine_w,
+             [(x, cd_y(cds[-1][1]) - _V3A_DROP), (x, y_lnk)]),
+            ("+3V3A", "In2.Cu", spine_w, [(x, y_lnk), (xe, y_lnk)]),
+            ("+3V3A", "B.Cu", spine_w, [(xe, y_lnk), _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)])]
+    return out
+
+
+def _v3a_vias():
+    """One via per +3V3A station: ten op-amps, five converters. See _v3a_spine."""
+    P = _placements(CX, CY)
+    out = [("+3V3A", P["Cd%d" % n][0] + _V3A_DX, P["Cd%d" % n][1] + 0.48 - _V3A_DROP)
+           for n in range(1, 11) if ("Cd%d" % n) in P]
+    out += [("+3V3A",) + _cell_pt(k, _V3A_SPINE, _V3A_CS_DY) for k in range(5)]
+    # the two ends of the In2 crossing -- see the note in _v3a_spine
+    cd = sorted((P["Cd%d" % n] for n in range(1, 11) if ("Cd%d" % n) in P),
+                key=lambda q: q[1])[0]
+    y_lnk = cd[1] + 0.48 - 3.385
+    out += [("+3V3A", cd[0] + _V3A_DX, y_lnk),
+            ("+3V3A", _cell_pt(4, _V3A_SPINE, _V3A_CS_DY)[0], y_lnk)]
+    return out
+
+
+def _sd_spines(w=0.2, spine_w=0.25):
+    """SAI_SD1..4: the serial data lines, each from its own converter down to the border.
+
+    ⚠ THESE WERE THE LONG DIAGONALS ACROSS THE ARRAY (user, 2026-09-24: "the rest stretch
+    from the south, those should go to the border instead"). Each SDn is point to point --
+    one converter's pin 21 to one MCU pin -- so it has exactly two pads and no reason to
+    fail a connectivity check, and it had NO north copper at all. The ratsnest therefore
+    drew it as a single line from the converter to the far south, straight over the string
+    array. Counting ratlines told us nothing about it: the net has one connection and it
+    crosses the border, which is the finished state for every OTHER crossing net. What
+    matters is WHERE it hands over, and it was handing over 79 mm too far north.
+
+    SD5 is left alone. Its converter is the southern one and its pad is already 4.15 mm
+    from the border, which is the handover.
+
+    ⚠ THE NORTHERN CELL TAKES THE OUTER LANE, which is the opposite of the intuition. Each
+    spine runs from its own cell SOUTHWARD, so at cell k's y the spines of cells k+1.. do
+    not exist yet -- only the ones from cells further north are in the way. Feeding the
+    northern cell outermost means every feed reaches its lane without meeting a spine that
+    has started. Reversed, cell 3's feed would cross all three of its neighbours.
+
+    ⚠ AND ONLY ONE SPINE IN THE STRIP CAN LIVE ON F.Cu. A feed crosses every same-layer
+    spine between the pin and its lane, so F.Cu holds exactly one and it has to be the
+    OUTERMOST -- SAI_FS, moved out to 10.60 for this. Everything else sits inboard on B.Cu
+    fed by an F.Cu horizontal that vias down at its own lane, which crosses nothing.
+    """
+    out = []
+    for k, dx in enumerate(_SD_SPINE):
+        net = "SAI_SD%d" % (k + 1)
+        x, y0 = _cell_pt(k, dx, _SD_JOG)
+        out += [(net, "F.Cu", w,
+                 [_cell_pt(k, _SD_DX, _SAI_ROW), _cell_pt(k, _SD_DX, _SD_JOG)]),
+                (net, "F.Cu", w, [_cell_pt(k, _SD_DX, _SD_JOG), (x, y0)]),
+                (net, "B.Cu", spine_w, [(x, y0), (x, _SD_BORDER)])]
+    return out
+
+
+def _sd_vias():
+    """One via per SAI_SD lane, at the lane and not at the pin. See _sd_spines."""
+    return [("SAI_SD%d" % (k + 1),) + _cell_pt(k, dx, _SD_JOG)
+            for k, dx in enumerate(_SD_SPINE)]
+
+
+def _door_keepout(pad=0.55, lo=0.50, hi=1.80):
+    """Fence the stitcher out of the coupling caps' DOORS.
+
+    Every TIA output reaches its coupling cap through the gap between two Cm pads -- Ci
+    sits on a 1.2 mm pitch and Cm on the same pitch offset 0.8, so each Ci pad has a
+    0.64 mm window straight above it and that window is the only way in (Ci's south pad
+    belongs to the converter, and its north pad has 0.52 mm to the Cm row).
+
+    The stitcher does not know that. It places a ground via 0.9 off each pad it grounds
+    and knows nothing about what the space is for, and in FOUR of the five cells it put
+    one in a door: 0.23 mm off the centre line against the 0.55 a 0.2 track needs. That
+    is the whole reason those four runs could not be laid -- 740 candidates each, all
+    stopped on the same last leg, while the one cell whose door happened to stay clear
+    laid first try.
+
+    Narrow strips at the door x, NOT a band across the row: the Cm caps' own GND vias sit
+    between the doors and are the thing being fenced off FROM, so a band would cost every
+    one of them its ground. Read back from the placed parts by reference so the fence
+    cannot drift off the door it is fencing.
+    """
+    P = _placements(CX, CY)
+    out = []
+    for k in range(1, 6):
+        for i in range(1, 5):
+            ci = P.get("Ci%d%d" % (k, i))
+            cm = P.get("Cm%d%d" % (k, i))
+            if ci is None or cm is None:
+                continue
+            out.append([round(ci[0] - pad, 4), round(min(ci[1], cm[1]) + lo, 4),
+                        round(ci[0] + pad, 4), round(max(ci[1], cm[1]) + hi, 4)])
+    assert len(out) == 20, "expected one door per channel, got %d" % len(out)
+    return out
+
+
+def _v5_spine(spine_w=0.8, tap_w=0.3, dx=-2.94):
+    """V5_PRE's NORTH HALF, laid: one spine down the reserved lane, one tap per ballast.
+
+    ⚠ THE NORTH SIDE SHOULD NOT BE THE ROUTER'S JOB AT ALL (user, 2026-09-24: "we should
+    route V5_PRE up to the border point"). V5_PRE had ZERO pre-laid copper, so the router
+    was drawing the whole thing -- ten ballast feeds scattered the length of a 90 mm array
+    -- and its ratsnest sprawled across every string. It is a RAIL: nine pads in a straight
+    column at one x, on the string pitch. A spine and nine taps is the whole net.
+
+    WHERE IT RUNS: the lane west of the detector lands that the board's own edge was pinned
+    to (see V5_LANE in src/optical_pickup.py). That lane exists precisely because this rail
+    needs it, and until now nothing put the rail in it. 5.3 mm of clear board, and each
+    ballast sits midway between two strings with 0.88 mm to the nearest detector land, so
+    every tap crosses open board.
+
+    ⚠ IT STOPS AT THE SOUTHERNMOST BALLAST, NOT AT AN IMAGINARY LINE. The border wanted
+    here is a place the ROUTER can pick the net up from, and this file records twice that
+    it will not: _sai_escape laid exactly this shape and every part came back open ("the
+    router never connected to a pre-laid via on this board"), and the corridor generator
+    failed three times the same way. Copper that reaches no pad is not adopted. Ending on
+    R10's pad makes the whole north half one connected piece hanging off a real pad, and
+    the router's remaining job is one hop from there to the buck.
+
+    Widths: the spine carries all ten emitters (1068 mA worst case) and each tap carries
+    one (107 mA).
+    """
+    P = _placements(CX, CY)
+    rs = sorted(((r, P[r]) for r in ("R%d" % i for i in range(1, 11)) if r in P),
+                key=lambda kv: -kv[1][1])
+    if not rs:
+        return []
+    # pad 1 sits 0.51 west of the part's centre (0402 on its side); read back, not assumed
+    pad = lambda q: (q[0] - 0.51, q[1])
+    x = pad(rs[0][1])[0] + dx
+    out = [("V5_PRE", "F.Cu", spine_w,
+            [(x, pad(rs[0][1])[1]), (x, pad(rs[-1][1])[1])])]
+    for _, q in rs:
+        px, py = pad(q)
+        out.append(("V5_PRE", "F.Cu", tap_w, [(x, py), (px, py)]))
+    return out
+
+
+_LED_VIA_DX = -0.913     # LED_ROW surfaces BETWEEN MID's anode link and D*.1
+
+
+def _led_row_spine(spine_w=0.8, tap_w=0.3, dx=-1.36):
+    """LED_ROW's north half: the emitters' switched low side, one spine and ten taps.
+
+    Same shape as _v5_spine and the same reason -- it is a rail with ten pads in a column
+    and the router was drawing all ten feeds. It carries the whole emitter string, so the
+    spine is sized like V5_PRE's.
+
+    ⚠ IT CANNOT RUN AT THE PADS' OWN x, which is the obvious thing to try since all ten are
+    collinear at -25.24: that column passes straight through the detector lands, which span
+    -27.31..-22.31. So the spine sits in its own lane WEST of the detectors, outboard of
+    V5_PRE's, and taps east to each emitter.
+
+    ⚠ AND IT RUNS ON In2 UNDER THE DETECTOR COLUMN, WHICH IS THE ONLY PLACE IT FITS.
+    Two earlier attempts put it west of the detectors alongside V5_PRE, and BOTH were off
+    the board: the lane between the outline and the detector lands is 1.296 mm -- exactly
+    V5_LANE, sized for ONE 0.8 track -- and there was never room for a second rail there.
+    The error came from reading the west edge off GetBoardEdgesBoundingBox(), which
+    includes the jack-access notch hanging 1.8 mm past the outline, so the board looked
+    4 mm wider than it is. The user caught it in the render by toggling In2. ASK THE
+    OUTLINE SEGMENTS, not the bounding box -- the same lesson _i2c_spine records, one note
+    above, about a spine that ended up 0.22 mm off the edge.
+
+      board west edge (Edge.Cuts)      -28.606
+      V5_PRE spine, in its own lane    -27.900
+      detector lands                   -27.310 .. -22.310
+      LED_ROW spine, UNDER them        -26.600   (In2, no tracks there at all)
+
+    In2 is empty under the detectors -- every local link is F.Cu and the comb crossings all
+    begin east of the feedback caps -- and the detectors are SMD, so they obstruct nothing
+    on an inner layer. The rail surfaces on its own spine at each emitter's y and crosses
+    the last 1.36 mm on F.Cu, through the 1.0 mm gap the string's two detectors leave.
+    The taps cross the detector band at the STRING's own y, where the two detectors of that
+    string (at string_y +-2.15, land half-height 1.65) leave a 1.0 mm gap -- 0.35 mm of
+    clearance either side of a 0.3 track. Tight and real; if a detector land ever grows,
+    this is the first thing that breaks.
+    """
+    P = _placements(CX, CY)
+    ds = sorted(((r, P[r]) for r in ("D%d" % i for i in range(1, 11)) if r in P),
+                key=lambda kv: -kv[1][1])
+    if not ds:
+        return []
+    # pad 1 sits 0.79 west of the emitter's centre; read back from the placement, not assumed
+    pad = lambda q: (q[0] - 0.79, q[1])
+    x = pad(ds[0][1])[0] + dx
+    # the spine carries on to the border rather than stopping at D10: same reason as
+    # _i2c_spine's, and In2 is empty down there.
+    out = [("LED_ROW", "In2.Cu", spine_w,
+            [(x, pad(ds[0][1])[1]), (x, _SD_BORDER)])]
+    for _, q in ds:
+        px, py = pad(q)
+        out.append(("LED_ROW", "In2.Cu", tap_w, [(x, py), (px + _LED_VIA_DX, py)]))
+        out.append(("LED_ROW", "F.Cu", tap_w, [(px + _LED_VIA_DX, py), (px, py)]))
+    return out
+
+
+def _led_row_vias():
+    """The via per emitter where LED_ROW surfaces, east of V5_PRE's spine."""
+    P = _placements(CX, CY)
+    return [("LED_ROW", P[r][0] - 0.79 + _LED_VIA_DX, P[r][1])
+            for r in ("D%d" % i for i in range(1, 11)) if r in P]
+
+
+# MID's lanes, all measured against things that are already on the board.
+#   _MID_VIA_DX    east of the anode column, clear of LED_ROW's In2 spine at -26.60 and
+#                  west of the emitter's land at -25.24
+#   _MID_VIA_DROP  below the lowest anode land, into the 0.931 window above the V5_PRE tap
+#   _MID_P5_DX     west of pin 5, clear of its land and of TIA_IN_B's run above it
+#   _MID_P3_DY     north of pin 3, above pin 4's land rather than beside it
+# ⚠ EVERY ONE OF THESE IS SET BY A VIA, not by a pad, and three of the four were wrong
+# on the first pass. Two 0.6 vias need 0.75 between centres and a via to a 0.25 track
+# needs 0.575, and the neighbourhood is dense with the stitcher's own ground vias:
+#   _MID_VIA_DX    1.10 east of the anode column, clear of LED_ROW's surfacing via
+#                  at -26.15 by 0.79 (0.756 put the B.Cu spine 0.287 from it)
+#   _MID_VIA_DROP  below the lowest anode land, into the 0.931 window above V5_PRE
+#   _MID_P5_DX     west of pin 5, under TIA_IN_B's run
+#   _MID_P3_DY     2.40 north of pin 3, clear of PIN 4's stitching via, which sits
+#                  1.313 north of pin 4 and left only 0.673 at the first value
+_MID_VIA_DX, _MID_VIA_DROP = 1.100, 0.970
+_MID_P5_DX = 1.744
+# ⚠ PIN 3's VIA IS 0.9 OFF PIN 3's COLUMN, and that offset is the whole of TIA_IN_B.
+# _hop_via_inner needs a STRAIGHT stub from pad to via, and pin 6 is boxed in by
+# pins 5 and 7 on its own row -- so its only straight escape is due south, down its
+# own column. Pin 3 shares that column (both are op_x - _OP_PIN_DX), so a via sitting
+# 2.4 north of pin 3 lands 2.738 south of the NEXT string's pin 6 and corks it. Nine
+# strings lost their summing node to it. There is 1.94 mm of room down there; the
+# column was simply occupied.
+#
+# Inside the package was tried instead and is worse (9 unlaid -> 18): the interior is
+# where TIA_IN_A's escape goes, so that just moves the cork to the A channel.
+_MID_P3_DX, _MID_P3_DY, _MID_P3_MID = 0.900, 2.964, 2.014
+# the anode link rides the WEST side of its own lands, to leave LED_ROW's via room
+_MID_COL_DX = -0.394
+# ⚠ +3V3A's op-amp via DROPS clear of the feedback band before it dives. Sitting
+# at Cd's own y it lands 0.79 from where TIA_IN_B's inner hop needs ITS via, and
+# that hop is the only way the B channel's summing node reaches its feedback
+# resistor -- the pin row is between them. Nine strings lost it that way.
+# ⚠ MEASURED FROM Cd, SO IT MOVES WHEN Cd DOES. Correcting VSSOP-8's courtyard took
+# Cd 0.475 south and this drop went with it, straight onto the NEXT op-amp's A row:
+# 2.55 became 2.075 to put the via back where it was. If Cd moves again, this
+# follows it, and the thing it must stay clear of is the A row below, not Cd.
+_V3A_DROP = 1.000
+
+# TLV9062 land geometry, read off the placed board rather than the datasheet drawing:
+# 0.65 pitch, the two pin rows 4.225 apart. MID is pins 3 and 5, which sit on OPPOSITE
+# rows and at different x -- pin 3 shares its x with pin 6 (TIA_IN_B) and pin 5 shares its
+# x with pin 4 (GND), so neither x is a free north-south lane THROUGH a package. The chain
+# below runs at pin 3's x BETWEEN packages and jogs west before it reaches the next pin 6.
+_OP_PIN_DX, _OP_ROW_DY = 0.325, 2.1125
+
+
+def _mid_spine(spine_w=0.3, w=0.25):
+    """MID: the bias reference, on B.Cu, three vias per string.
+
+    ⚠ IT EXISTS TO GET MID OUT OF THE SUMMING NODE'S LANE. In local_nets the MST linked
+    each string's anodes to its own op-amp, ten crossings of the only lane TIA_IN_*B has,
+    clearing it by 0.167 where 0.3 is needed. A DC bias reference feeding picoamps had the
+    short path and a 1 Mohm summing node did not. Putting MID back in local_nets was tried
+    again (2026-09-24) after TIA_IN_B got a clean route and was laid first: the MST went
+    straight back to the same crossing and dropped all ten B channels. The spine stays.
+
+    ⚠ AND IT HAS TO BE B.Cu, WHICH THE FIRST VERSION OF THIS FUNCTION DENIED. That version
+    ran an F.Cu spine down the anode column and chained the op-amps on F.Cu, and it was
+    committed without a DRC run. It was wrong in three places, each of them a short:
+
+      the anode column      crosses EVERY V5_PRE tap. The taps run from the rail at
+                            -27.90 east to each ballast at -24.96, so they cross the
+                            anode lands at -26.46 whatever x the spine takes. There is no
+                            F.Cu lane down that column, only the illusion of one.
+      pin 5 -> pin 3        crosses TIA_IN_B. The two MID pins are on OPPOSITE rows and
+                            TIA_IN_B's run to pin 6 passes between them; going round is
+                            worse, since pin 3 shares its row with pin 4 (GND) to the west
+                            and pin 2 (TIA_IN_A) to the east.
+      the inter-string run  lands 0.414 from the TIA_OUT_B escape vias, against 0.55.
+
+    B.Cu has none of those problems because it has no pads: V5_PRE is F.Cu, LED_ROW is
+    In2, and the op-amp's own pins obstruct nothing on the bottom layer. Only vias block,
+    and the lanes here clear every one. Three vias per string is what that costs -- the
+    anode group, pin 5 and pin 3 -- and on a DC reference it costs nothing electrically.
+    Each op-amp still has its own Cd against pin 8 on F.Cu, which is the part that matters.
+
+    ⚠ THE ANODE VIA GOES SOUTH OF THE DETECTOR, NOT BESIDE IT. The column looks like it
+    has room and has none: between LED_ROW's In2 spine at -26.60 and D*.1's land at
+    -25.24 the window is 0.523 and a 0.6 via needs 0.9, and the gaps between the detector
+    lands themselves are 0.4 and 0.475. The one opening is between the lower detector's
+    bottom land and the V5_PRE tap below it -- 0.931, which a via fits by 0.031.
+    """
+    P = _placements(CX, CY)
+    strings = [n for n in range(1, 11)
+               if ("PD%dA" % n) in P and ("PD%dB" % n) in P and ("U%d" % (20 + n)) in P]
+    assert strings, "no detector/op-amp pairs placed -- did the refs change?"
+
+    ax = P["PD%dA" % strings[0]][0] - 1.65          # the anode lands' own column
+    vx = ax + _MID_VIA_DX
+    ys = lambda n: sorted(P["PD%d%s" % (n, h)][1] + dy for h in "AB" for dy in (0.70, -0.70))
+    via_y = lambda n: ys(n)[0] - _MID_VIA_DROP
+    op = lambda n: P["U%d" % (20 + n)]
+    pin5 = lambda n: (op(n)[0] - 3 * _OP_PIN_DX, op(n)[1] - _OP_ROW_DY)
+    pin3 = lambda n: (op(n)[0] - _OP_PIN_DX, op(n)[1] + _OP_ROW_DY)
+    v5 = lambda n: (op(n)[0] - _MID_P5_DX, pin5(n)[1])
+    v3 = lambda n: (pin3(n)[0] - _MID_P3_DX, pin3(n)[1] + _MID_P3_DY)
+
+    order = sorted(strings, key=lambda n: -op(n)[1])
+    out = [("MID", "B.Cu", spine_w,
+            [(vx, via_y(order[0])), (vx, via_y(order[-1]))])]
+    for n in strings:
+        col = ys(n)
+        cx = ax + _MID_COL_DX
+        out += [("MID", "F.Cu", w, [(cx, col[-1]), (cx, via_y(n))]),
+                ("MID", "F.Cu", w, [(cx, via_y(n)), (vx, via_y(n))]),
+                ("MID", "B.Cu", w, [(vx, via_y(n)), v5(n)]),
+                ("MID", "F.Cu", w, [v5(n), pin5(n)]),
+                # ⚠ AN L, NOT A DIAGONAL. Straight between the two vias the run passes
+                # 0.408 from PIN 4's stitching via, against 0.575. North first in pin
+                # 5's own lane, which clears it by 0.769, then east above it.
+                ("MID", "B.Cu", w, [v5(n), (v5(n)[0], v3(n)[1])]),
+                ("MID", "B.Cu", w, [(v5(n)[0], v3(n)[1]), v3(n)]),
+                # down its own lane, east 0.354 clear of pin 4's land and 0.552 clear of
+                # pin 4's stitching via, then south into pin 3
+                ("MID", "F.Cu", w, [v3(n), (v3(n)[0], pin3(n)[1] + _MID_P3_MID)]),
+                ("MID", "F.Cu", w, [(v3(n)[0], pin3(n)[1] + _MID_P3_MID),
+                                    (pin3(n)[0], pin3(n)[1] + _MID_P3_MID)]),
+                ("MID", "F.Cu", w, [(pin3(n)[0], pin3(n)[1] + _MID_P3_MID), pin3(n)])]
+    return out
+
+
+def _mid_vias():
+    """Three per string: the anode group, pin 5 and pin 3. See _mid_spine for why none of
+    the three can be reached on a signal layer."""
+    P = _placements(CX, CY)
+    out = []
+    for n in range(1, 11):
+        if ("PD%dA" % n) not in P or ("U%d" % (20 + n)) not in P:
+            continue
+        ax = P["PD%dA" % n][0] - 1.65
+        lo = min(P["PD%d%s" % (n, h)][1] + dy for h in "AB" for dy in (0.70, -0.70))
+        ux, uy = P["U%d" % (20 + n)][0], P["U%d" % (20 + n)][1]
+        out += [("MID", ax + _MID_VIA_DX, lo - _MID_VIA_DROP),
+                ("MID", ux - _MID_P5_DX, uy - _OP_ROW_DY),
+                ("MID", ux - _OP_PIN_DX - _MID_P3_DX, uy + _OP_ROW_DY + _MID_P3_DY)]
+    return out
+
+
+def _spine_keepout(via_d=0.6, clr=0.127):
+    """Fence the stitcher off the B.Cu spines, sized from where the spines actually are.
+
+    The stitcher places a ground via 0.9 off its pad and knows nothing about pre-laid
+    copper; left alone it dropped one onto the +3V3D trunk at 0.100 mm. Excluding the pad
+    would cost that cap its ground, so the lane is fenced and the stitch kept."""
+    # ⚠ ONE BOX PER SPINE, NOT ONE BOX OVER ALL OF THEM. The first version took the
+    # bounding box of every B.Cu run at once, which was invisible while the only two
+    # spines were 0.93 apart and became a 10 mm wall the moment SAI_SCK's spine went into
+    # the empty strip east of the converters: 28 Cs caps lost their stitching via to a
+    # fence around copper that is nowhere near them.
+    runs = [t for t in _cell_tracks()
+            if t[1] == "B.Cu" and abs(t[3][0][1] - t[3][1][1]) > 10.0]
+    assert runs, "no B.Cu spine to fence -- did the trunks move layer?"
+    pad = via_d / 2 + clr
+    out = []
+    for t in runs:
+        x0, x1 = t[3][0][0] - t[2] / 2, t[3][0][0] + t[2] / 2
+        ys = (t[3][0][1], t[3][1][1])
+        out.append([x0 - pad, min(ys) - pad, x1 + pad, max(ys) + pad])
+    return out
 
 
 def _fan_tracks():
@@ -1465,22 +2442,113 @@ def _sai_escape(k):
 
 
 def _shdn_tracks():
-    """Each converter's SHDNZ to its own IOVDD: pin 14 (-1.96, +0.75) -> via at (-2.85, +0.75)
-    -> In2 down the channel -> via at (-2.85, -3.27) -> the IOVDD cap Cs<k>8's rail pad at
+    """Each converter's SHDNZ to its own IOVDD: pin 14 (-1.96, +0.75) -> via at (_V3_CH_DX, +0.75)
+    -> In2 down the channel -> via at (_V3_CH_DX, -3.27) -> the IOVDD cap Cs<k>8's rail pad at
     (-1.25, -3.27). Offsets from the part's centre, part turned 180."""
     out = []
     for k in range(5):
         P = lambda dx, dy, k=k: _cell_pt(k, dx, dy)
-        out += [("+3V3D", "F.Cu", 0.15, [P(-1.96, 0.75), P(-2.85, 0.75)]),
-                # on B.Cu, NOT In2: down the channel on In2 it fenced the one free signal
-                # layer off between every pair of cells, and the +3V3D rail itself then
-                # failed to cross from cell to cell (4 of 14 open). B.Cu is a GND pour; a
-                # 4 mm track in it costs the pour a slot, not the router a layer.
-                ("+3V3D", "B.Cu", 0.15, [P(-2.85, 0.75), P(-2.85, -3.27)]),
-                ("+3V3D", "F.Cu", 0.15, [P(-2.85, -3.27), P(-1.25, -3.27)]),
+        # ⚠ THE STUB FROM PIN 14 IS GONE FROM HERE, and it is the one thing in this
+        # routine that is no longer +3V3D. SHDNZ is pulled up per cell now (see THE
+        # CONVERTERS), so pin 14 belongs to SHDNZ<k> and reaches +3V3D only THROUGH the
+        # resistor. Both of its stubs -- pin 14 to the resistor, and the resistor to this
+        # channel -- are laid AFTER routing in repair_tracks, for the same reason the
+        # bring-up pads are placed then: the resistor is invisible to the router, so a
+        # site verified clear on the finished board cannot be perturbed by it.
+        # ⚠ AND THE CHANNEL ITSELF IS GONE WITH IT, WHICH THE FIRST ATTEMPT DID NOT DO.
+        # This channel existed for ONE purpose -- carrying pin 14 to IOVDD -- so with the
+        # pull-up in the way it feeds nothing. Left in place it did real damage twice:
+        # its head via went DANGLING and tidy_router_vias removed it, which orphaned the
+        # B.Cu run and read as ten unconnected +3V3D items; and when a repair track was
+        # attached to keep the via alive, the via came back as an obstacle SITTING IN THE
+        # ONLY ESCAPE FROM PIN 14 -- five shorts, SHDNZ against +3V3D, and no track width
+        # clears a 0.6 mm via 0.383 mm off the centreline. The pull-up reaches IOVDD by
+        # its own post-route hop instead (see _shdnz_stubs).
+        # ⚠ WHAT STAYS IS THE FOOT, AND IT IS NOT OPTIONAL: _v3_trunk's B.Cu spine lands on
+        # exactly this point in every cell, so the foot via and the F.Cu run to the cap pad
+        # are how each converter's IOVDD reaches the digital rail at all. Only the HEAD via
+        # and the B.Cu leg up to pin 14 are dead. Removing the foot with them would have
+        # disconnected all five converters' supply -- it was written that way for one edit
+        # and caught by reading _v3_trunk rather than by any check.
+        out += [("+3V3D", "F.Cu", 0.15, [P(_V3_CH_DX, -3.27), P(-1.25, -3.27)]),
                 # and IOVDD's own pin 19 straight down onto that same pad
                 ("+3V3D", "F.Cu", 0.2, [P(-1.25, -1.96), P(-1.25, -3.27)])]
     return out
+
+
+# ⚠ THE SHDNZ PULL-UPS' TWO STUBS PER CELL, LAID AFTER ROUTING. One cell-frame path,
+# copied five times by _cell_pt, exactly as _shdn_tracks does for the channel it replaces.
+# They are repairs rather than declared copper for the reason the bring-up pads are placed
+# late: the resistor is invisible to the router, so a path verified clear on the FINISHED
+# board cannot be perturbed by it -- and unlike declared copper, everything here is checked
+# (audit_board re-walks every segment of every repair, and DRC sees all of it).
+#   SHDNZ<k>  converter pin 14 -> the pull-up's pad 1
+#   +3V3D     the pull-up's pad 2 -> the via at the head of the existing IOVDD channel,
+#             which is why that via stops dangling and the rail closes again
+# ⚠ MAZED AGAINST THE FINISHED BOARD AT 0.05 mm AND VERIFIED CONTINUOUSLY AT 0.02 mm.
+# SHDNZ leaves pin 14 westward, under the part's own IN4M pad at 0.360 mm -- a DC-static
+# line beside an AC-grounded analog input, which is why 0.36 is comfortable rather than
+# marginal -- and climbs to the resistor's south pad. +3V3D leaves the north pad, goes
+# AROUND the west side and back down to the head of the existing IOVDD channel at
+# (_V3_CH_DX, +0.75), which is also what stops that via dangling now that pin 14 no longer
+# feeds it. Worst gap on either path 0.360 mm against the 0.127 rule.
+# ⚠ THE SECOND PATH HAD TO BE SEARCHED AGAINST THE FIRST. Mazed independently they cross:
+# the router cannot see copper that has not been laid yet, so SHDNZ went down with lay.py
+# and +3V3D was searched against a board carrying it. Its first path ran at x 9.1 and its
+# second goes round at x 7.7.
+_SHDNZ_STUB = [(-1.962, 0.750), (-2.510, 0.751), (-3.460, 1.701), (-3.462, 2.240)]
+# ⚠ AND +3V3D TAKES ONE VIA AND THE BACK SIDE, because there is no surface path at all.
+# Asked with a 500 mm penalty per layer change, the maze still needs a hop: the corridor
+# south from the pull-up to the rail is the converter's own west pad row. B.Cu and NOT In2
+# -- the note on the channel this replaces says why, and it is the same reason now: on In2
+# a run down the cell fences the one free signal layer off between every pair of cells,
+# while on B.Cu it costs a GND pour a slot.
+# ⚠ ONE VIA, NOT TWO: the maze's second via landed 0.52 mm from the foot via and the
+# laminate between them came out at -0.080 mm. A through via IS a B.Cu landing, so the run
+# ends ON the foot via instead -- which is also what reconnects this cell to _v3_trunk.
+# ⚠ AND +3V3D TAKES ONE VIA AND THE BACK SIDE, because there is no surface path at all:
+# asked with a 500 mm penalty per layer change the maze still needs a hop, since the
+# corridor south from the pull-up is the converter's own west pad row. B.Cu and NOT In2 --
+# the same reason the channel this replaces gave: on In2 a run down the cell fences the one
+# free signal layer off, while on B.Cu it costs a GND pour a slot.
+# ⚠ ONE VIA, NOT TWO: the maze's second via sat 0.52 mm from the foot via, -0.080 mm of
+# laminate between the drills. A through via IS a B.Cu landing, so the run ends ON the foot
+# via -- which is also what reconnects this cell to _v3_trunk.
+# ⚠⚠ AND IT WAS SEARCHED IN CELL 1, NOT CELL 0, WHICH IS THE WHOLE LESSON OF THE SECOND
+# ATTEMPT. The first path ran its B.Cu leg at cell x -3.960, which is 0.02 mm from the
+# I2C2_SCL spine -- and in cell 0 that is FINE, because the spine starts at y 61.269, below
+# it. In the other four cells it is a short, and DRC said so three times. Verifying one cell
+# and copying five is not verifying five: this path is checked in all five (0.227 mm
+# required, ALL CLEAR) and its B.Cu leg sits 0.77 mm off the spine.
+# ⚠ AND THE VIA MOVED 0.10 mm OUT, WHICH IS ABOUT In1 RATHER THAN CLEARANCE. At
+# (-3.210, -0.022) it sat 1.06 mm from the I2C2_SCL spine via in every cell, and the two
+# antipads left a 0.160 mm web in the analog reference plane where the board had documented
+# 0.266 -- legal, check_north_si still passed, and still a measurable halving of a property
+# this design states as measured. 0.10 mm further out along its own diagonal puts the web at
+# 0.301 mm, better than it was before this change. Measured with check_north_si on the board
+# before and after, not argued.
+_V3_STUB = [("F.Cu", [(-3.462, 3.260), (-3.910, 2.828), (-3.960, 2.828), (-4.160, 2.628),
+                      (-4.160, 1.828), (-3.960, 1.628), (-3.960, 0.828), (-3.110, 0.078)]),
+            ("B.Cu", [(-3.110, 0.078), (_V3_CH_DX, -3.270)])]
+_V3_VIA = (-3.110, 0.078)
+_STUB_W = 0.20
+
+
+def _shdnz_stubs():
+    out = []
+    for k in range(5):
+        P = lambda dx, dy, k=k: _cell_pt(k, dx, dy)
+        out.append(("SHDNZ%d" % (k + 1), "F.Cu", _STUB_W, [P(*q) for q in _SHDNZ_STUB]))
+        for _lay, _pts in _V3_STUB:
+            out.append(("+3V3D", _lay, _STUB_W, [P(*q) for q in _pts]))
+    return out
+
+
+def _shdnz_vias():
+    """The one layer change each pull-up's +3V3D run needs. Post-route, like the tracks."""
+    if not _V3_STUB:
+        return []
+    return [("+3V3D",) + _cell_pt(k, *_V3_VIA) for k in range(5)]
 
 
 def _outline_poly(cx, cy):
@@ -1540,6 +2608,98 @@ BOARD_W, BOARD_L = BOARD_X1 - BOARD_X0, BOARD_Y1 - BOARD_Y0
 BOARD_NOTES = {
     "outline_mm": (round(BOARD_W, 3), round(BOARD_L, 3)),
     "outline_poly": [[round(x, 4), round(y, 4)] for x, y in _outline_poly(CX, CY)],
+    # the O's HOLE: the bridge bearings and the block that carries them sit inside the
+    # ring, so the board has a 30 x 105 mm rectangular cutout. Edge.Cuts AND a keepout --
+    # freerouting cannot see Edge.Cuts (see layout._edge_hole).
+    # ⚠ THE COMB, NOT ONE BIG HOLE (2026-09-23). This emitted a SINGLE 16.41 x 101.6 mm
+    # rectangle spanning the whole slot band -- the old "O-shaped board with the bearing
+    # block inside the ring" design. The board has been a COMB since the axle redesign:
+    # ten L-shaped slots with 4.00 mm strips of copper between them, and those strips are
+    # how all twenty TIA outputs cross to the converters. The CAD had the comb and the fab
+    # data did not, so the GERBERS would have shipped a board with no comb at all -- and
+    # the router, seeing a hole where the strips are, could not connect across it. That is
+    # most of the 23 unconnected on the first route of this placement.
+    # A divergence like this is invisible to every check that reads one side only: the CAD
+    # gate was clean, ERC was clean, the netlist was clean, and BOM/CAD/netlist agreed.
+    # Nothing compares the CAD's cutouts against the board's.
+    "outline_holes": [],
+    # ⚠ y - CY, NOT -y - CY. layout._to_board already flips to KiCad's y-down
+    # (SHEET_ORIGIN[1] - y), and _placements feeds it an UNnegated y, so a second negation
+    # here mirrors the cutouts against the parts. The outline_holes line this replaced had
+    # exactly that error and it never showed, because a symmetric +-Y hole maps onto
+    # itself; so does the comb, which is why the first route improved anyway. The jack
+    # access hole below is the first asymmetric cutout on this board and would have landed
+    # 91.2 mm from its screw.
+    "outline_slots": ([{"poly": [[x - CX, y - CY] for x, y in _p],
+                        "rects": [[r[0] - CX, r[1] - CY, r[2] - CX, r[3] - CY]
+                                  for r in (OP.O_SLOTS[_i],
+                                            OP.O_SLOTS[len(OP.O_SLOTS) // 2 + _i])]}
+                       for _i, _p in enumerate(OP._slot_polys())] if OP.O_SHAPE else []),
+    # ⚠ AND NOT THE JACK'S ACCESS HOLE, WHICH WAS HERE AND WAS A FAB DEFECT. The CAD
+    # cut a O4.4 clearance hole for a driver to reach the pickup-height jack screw and
+    # nothing emitted it, so it was added here -- correctly, for the board that existed
+    # then. The strip has since moved -X twice and the jack is now OUTSIDE the board: its
+    # centre is 1.775 mm past the -X edge, so the circle straddles the edge instead of
+    # piercing the board.
+    #
+    # On Edge.Cuts that is not a hole, it is a broken outline. It is the "UNEXPECTED
+    # invalid_outline: Circle on Edge.Cuts + Segment on Edge.Cuts" that survived every
+    # route this week, AND the CAD/fab disagreement beside it -- the circle's rim reaches
+    # x -32.58 where the board ends at -28.61, which is how a 57.21 mm board came to
+    # export a 61.19 mm outline. I had written that off as a bounding-box quirk. It was
+    # this, and it would have been milled.
+    #
+    # The driver still reaches the screw, because the board is not in its way: 1.775 mm of
+    # air against the 1.444 a 2.5 mm hex key needs. optical_pickup.pcb() asserts that
+    # rather than trusting it, since the margin is 0.33 mm.
+    # ⚠⚠ THE BOARD'S OWN TWO MOUNTING HOLES, WHICH IT DID NOT HAVE (2026-09-29).
+    # `cutouts` was an empty list -- O_ROD_HOLES is `[]` and says so -- so the only holes
+    # this board exported were the ten sensor slots. Meanwhile src/build.py places an M4
+    # through EACH of OP.mount_points(): head above the laminate, shank down, insert
+    # seated immediately below. The overlap gate had been reporting the consequence all
+    # along as `optical_pcb <-> optical_screw_0` 20.11 mm3 and `_1` 20.38 -- a 4.0 mm
+    # cylinder crossing exactly 1.6 mm of laminate, centred on the mount point. Not a
+    # declared contact either: check_overlaps allows {optical_screw, optical_insert} and
+    # {optical_screw, bridge_endplate}, so the neighbouring pairs were considered and this
+    # one was simply absent. THE SCREW WAS RIGHT AND THE BOARD WAS WRONG: the fab would
+    # have shipped solid laminate at both points and neither screw could be fitted.
+    # build.py records the near-miss that set it up -- "the old optical M2 went up from
+    # below and did need [a flip]; copying that was what put this one through the board."
+    # The flip was removed and the screw's ORIENTATION fixed; nobody then asked whether
+    # the board had a hole for it.
+    # Driven off mount_points() rather than a pair of constants so the hole cannot drift
+    # from the screw, which is the same single-source rule the plinth's inserts follow.
+    # M4.shaft_clr_d (4.4) is the canonical clearance bore, NOT insert_pilot_d (6.0) --
+    # the plastic takes the insert, the board only has to let the shank past.
+    # ⚠ AND IT NO LONGER HANGS OFF O_ROD_HOLES, WHICH IS A LANDMINE. That list is a leftover
+    # from the abandoned O-shaped-board experiment (c50b68f): it is `[]` and its own comment
+    # says "nothing uses it". Building the mount holes as an append to a comprehension over it
+    # made a dead name look load-bearing while still reading as dead -- and main has already
+    # run one "delete dead code, drop unused imports" pass over this file. Deleting
+    # O_ROD_HOLES is the right call and it would have taken the mounting holes with it.
+    # The holes stand on their own now, so the dead list can go whenever anyone gets to it.
+    "cutouts": [{"xy": [round(x - CX, 4), round(y - CY, 4)], "d": OP.M4.shaft_clr_d}
+                for x, y in OP.mount_points()],
+    # ⚠ CORRIDORS ARE OFF, AND THE MEASUREMENT SAYS SO. The generator did what it was
+    # built to do -- 20 of 20 comb crossings placed on assigned gaps, A through the strip
+    # +Y of its string and B through the strip -Y -- and the BOARD GOT WORSE. Measured
+    # against the same board without it: TIA_OUT failures 7 -> 11, total unconnected
+    # 12 -> 16, and thirteen tracks left dangling.
+    # The premise was wrong. A pre-laid run that stops in open copper mid-net assumes the
+    # router will adopt it and route to both ends; it does not. route.py freezes only the
+    # DECLARED pairs (17 wires, "as (type fix)"), so an unfrozen stub is just copper in
+    # the way -- it costs the router the lane it occupies and gives nothing back. The
+    # local-net pass gets away with the same shape because its clusters are ATTACHED to
+    # the pads at one end and a few millimetres long; these were 18.8 mm and attached at
+    # neither. The loop's own standing warning -- pre-laid geometry is never connected by
+    # the router on this board -- was about vias, and I argued a track was different. It
+    # is not, and the argument cost two routing rounds.
+    # The code stays (layout._local_nets corridors=), documented and tested, because the
+    # IDEA is still right: the router cannot know that a string's A and B are a pair that
+    # must take different gaps, and that is a missing constraint no amount of search
+    # fixes. What is missing is a way to hand it a COMPLETE path, pad to pad, which needs
+    # the far end solved inside a converter cell. That is the next attempt, not this one.
+    "corridors": [],
     "layers": 4,
     "thickness_mm": 1.6,
     # FOUR LAYERS, and on this board it is the least negotiable of the five. In1.Cu
@@ -1811,7 +2971,266 @@ BOARD_NOTES = {
     # copper against F.Cu's 10.6% while the corridor was the thing that ran out of room.
     # A cost below 1.0 tells freerouting to prefer a layer; the bottom layer is the one
     # with headroom, so it gets 0.7. In1.Cu is absent because it is the ground plane.
-    "router_passes": 50,
+    # ⚠ TEN, NOT FIFTY, AND IT IS AN ITERATION DECISION (user, 2026-09-25: "let's try with
+    # just 10"). Fifty passes is 45 minutes and I spent six of them last night chasing the
+    # last three nets, which is the wrong use of the machine: the user's rule is that a
+    # board needing that many retries is telling you to move components, not to search
+    # harder. Ten passes is about 9 minutes, so a placement change can be MEASURED in the
+    # time it used to take to state one.
+    # ⚠ AND MEASURED RATHER THAN ASSUMED, because I guessed "about 9 minutes" twice and
+    # was wrong twice. On this board, with today's pre-lay:
+    #     10 passes   25.1 min   5 unconnected
+    #     50 passes   45.5 min   3 unconnected
+    # So the pass count is NOT most of the runtime -- five times the passes is 1.8x the
+    # wall clock, because the first route dominates and passes are the optimiser after it.
+    # Ten costs 45% less time for two nets, which is the right trade while placement is
+    # still moving and the wrong one for a board about to be ordered.
+    # (route.py's own curve -- 1 -> 105, 3 -> 50, 10 -> 13, 25 -> 6, 50 -> 3 -- is from
+    # before the pre-lay existed. Ten now lands at 5, not 13.)
+    "router_passes": 10,
+    # How far route.py's post-route repair may reach to join two ends of one net it finds
+    # in different islands. 7.0 because a route left I2C2_SDA 5.85 mm short of its own
+    # spine -- the router came the whole way from R51 and stopped just before the
+    # handover -- and the default 5.0 declined to finish it. This costs the router
+    # nothing: the repair runs after routing, on pairs that are already unconnected.
+    "repair_mm": 7.0,
+    # ⚠ THE BRING-UP PADS ARE PLACED AFTER ROUTING, AND THAT IS THE WHOLE REASON THEY
+    # EXIST AT ALL. Four routes with these pads in the DSN cost a net every time, always
+    # in the same neighbourhood (the USB PHY), and once on a rail whose own pad had been
+    # removed -- so the cost was never the pad's area, it was handing the router one more
+    # obstacle in the one region it re-solves from scratch and only just finishes. Placed
+    # here they are invisible to it: layout skips them, route.py drops them in after the
+    # session import, and DRC still checks every clearance.
+    # Each site was SEARCHED against the finished board (scratchpad/padsite.py): a clear
+    # 1.5 mm circle that already overlaps its own net's copper, so no track is needed, and
+    # outside every courtyard, because a pad under a part is legal and unprobeable.
+    #   TP8  BOOT0   headroom 0.492 mm    TP9  +24V   4.747
+    #   TP10 +5V     1.214               TP11 +3V3A  1.956
+    # ⚠ NONE OF THE SIX NEEDS A SINGLE MILLIMETRE OF NEW COPPER, which is the whole reason
+    # they exist. Each one sits on a net the router has already finished: the three rails,
+    # BOOT0 at its own pull-down, and the I2C2 pair on the converter control bus. TP6/TP7
+    # are 1.0 mm rather than 1.5, because that is what turns 0.074 mm of clearance into
+    # 1.696 and 0.743.
+    # The one pad that DID need copper -- the buck's power-good -- is not here: its pin
+    # cannot be escaped at any width. See the BUCK_PG_NC note for the numbers.
+    # ⚠ THE EDGE KEEP-OUT THAT MATTERS HERE IS THE CAD'S 1.2 mm, NOT DRC'S 0.300. The
+    # first USART lane found, x 27.55, clears copper by 2.6 mm and dies in
+    # _assert_field_clear at 0.31 mm inside the model's keep-out. Whichever rule is
+    # stricter is the rule.
+    # ⚠ BOOT0 HAS NO CLEAR SITE AT ALL and TP8 is the one exception on this list: at D1.5,
+    # D1.0 and even D0.8 the search returns ZERO sites, because every millimetre of BOOT0
+    # copper lies inside somebody's courtyard -- the net runs from the pin to R30 and
+    # stops. Its courtyard overlap with R30 is declared in netcheck (nothing is ever
+    # fitted on a bring-up pad, so that courtyard reserves room for a body that does not
+    # exist); its COPPER clears by 0.492 mm.
+    "post_route_refs": ("TP6", "TP7", "TP8", "TP9", "TP10", "TP11",
+                        # item 6: the five SHDNZ pull-ups. A RESISTOR being here is the
+                        # same argument one step further -- a part the router never sees
+                        # cannot cost it a net, and an 0402 in a site verified clear on the
+                        # finished board is as safe there as a bare pad. It is still
+                        # assembled: the fab builds from the board, not from the DSN.
+                        "Rs11", "Rs21", "Rs31", "Rs41", "Rs51"),
+    # ⚠ THE FIVE SHDNZ NETS DO NOT EXIST BEFORE ROUTING. Each is a converter pin and a
+    # pull-up, and BOTH are post-route -- so layout leaves pin 14 bare, exactly as the
+    # no-connect it used to be, the DSN gains nothing, and route.py builds the net over every
+    # node after the import. The mechanism also covers the general case of a pad whose net is
+    # new; the BUCK_PG attempt is what it was written for.
+    "post_route_nets": ("SHDNZ1", "SHDNZ2", "SHDNZ3", "SHDNZ4", "SHDNZ5"),
+    # ⚠ SAI_FS IS CLOSED HERE, AFTER ROUTING, AND THAT TIMING IS THE ENTIRE ANSWER.
+    # This net was the board's last unconnected item for a dozen routes. Everything tried
+    # BEFORE routing made it worse, every time, and the count is worth keeping because the
+    # trend is the lesson: declaring its whole path on F.Cu -> 4 unconnected; the same haul
+    # on B.Cu -> 6; a 1.2 mm stub and one via -> 3; moving its spine to B.Cu -> 6; swapping
+    # lanes with SAI_SCK -> 7. Baseline with none of it: 1. Every one of those was verified
+    # geometrically clear and every one produced 0 DRC violations -- they did not short
+    # anything, they crowded neighbours out of lanes those neighbours still needed.
+    # This is the same finding _add_via's note already records for +3V3A ("four successive
+    # attempts all reached for router SETTINGS and all four made the board worse") and the
+    # same one the repair block in route.py was built for. It was rediscovered the
+    # expensive way; it is written here so it is not rediscovered again.
+    #
+    # WHY THE NET COULD NOT ROUTE. Not congestion in general -- the ROUTER SEALS THE PAD.
+    # U6.3 sits between U6.2 (SAI_SD2) and U6.4 (SAI_SCK) on 0.5 mm pitch, both of which
+    # escape east across its row, and by the time the router reaches FS its own escape lane
+    # is gone. Measured on the finished board, the pad's reachable region is ~360 grid
+    # cells: it is enclosed. No amount of aiming helps a net that cannot leave its pin.
+    #
+    # WHY THIS PATH IS LEGAL WHEN NOTHING ELSE WAS. It was searched against the FINISHED
+    # board rather than the unrouted one, so it fits the copper that will actually be there
+    # instead of copper that has not been laid yet -- which is precisely the flaw in all
+    # five attempts above. It weaves F.Cu -> In2 -> B.Cu -> In2 -> B.Cu -> F.Cu, hopping
+    # layers at each blockage, because along y -27.31 B.Cu is 26.0 of 29.05 mm free while
+    # F.Cu is 21.2 and In2.Cu only 13.8. The one via site that gets off the pad is
+    # (-5.30, -27.26) with 0.515 mm where a 0.6 via needs 0.500 -- it clears by 0.015 mm,
+    # and a 0.06 mm search margin had been hiding it.
+    #
+    # ⚠ IT IS MEASURED AGAINST ONE PARTICULAR ROUTE, so anything that changes the route can
+    # invalidate it. That is SAFE rather than fragile: laid here it is checked by the DRC
+    # that follows, so a path that no longer fits appears as a clearance error and not as a
+    # silent short. If this ever lights up, re-search it against the new finished board with
+    # scratchpad/maze.py (MAZE_BOARD=elec/out/optical.kicad_pcb) and re-verify with
+    # verify_path.py. Verified clear at 0.02 mm steps: tracks >= 0.268 mm of 0.260, vias
+    # >= 0.503 mm of 0.500 on all four layers, and hole-to-hole >= 1.004 mm of 0.250.
+    # ⚠ AND IT DOES NOT DRILL ITS OWN ESCAPE VIA, because one is already there. The first
+    # version laid a via at (-5.30, -27.26) and it came out 0.055 mm from the via
+    # link_close_gaps puts at (-5.2992, -27.315) -- two holes with -0.245 mm of laminate
+    # between their walls, i.e. one broken-out hole. KiCad grades hole_to_hole a WARNING,
+    # so the pipeline still printed "0 unconnected, 0 violations" over a board no fab house
+    # would drill. The repair therefore STARTS at that existing via: the router's own F.Cu
+    # stub already carries the pad to it, so the pad is reached for free.
+    # ⚠ THE In2 HOP IS OFFSET 0.05 mm ALONG ITS OWN NORMAL, and the audit is why. Run
+    # straight between its vias it passes 0.118 mm from an unnetted MCU pad against this
+    # board's 0.127 mm rule -- a REAL violation, and one the DRC did not report. Offset it
+    # and it clears. Four B.Cu segments remain TIGHT BUT LEGAL at 0.142-0.145 mm against
+    # SWCLK and I2C2_SCL vias: over the 0.127 rule, under repair_search's 0.15 SEARCH
+    # margin. That is measured and deliberate -- NO path with 0.15 mm of headroom exists
+    # from this pin at all (searched at 0.28, 0.285 and 0.29 mm, with and without the
+    # border clamp and over a wider region: boxed in every time), so the choice was
+    # 0.143 mm or an unconnected frame clock.
+    "repair_tracks": [
+        # ⚠ RE-SEARCHED AGAINST THE ROUTE OF 2026-09-28 21:5x, AND THE OLD PATH SHORTED
+        # SWDIO. That is this mechanism's documented failure and not a surprise: a
+        # post-route repair fits ONE route, and freeing the converters' SHDNZ pins changed
+        # the route. The previous path came back as a track_crossing plus a shorting_items
+        # against SWDIO on B.Cu, which is exactly how it failed the last time too.
+        # ⚠ AND THE CORRIDOR THE OLD PATH USED IS GONE, WHICH IS THE LESSON. Searched at
+        # 0.26, 0.22 and 0.20 mm over the old region (~170,000 cells each): NO PATH. The
+        # router has no reason to leave a lane it cannot see a use for, and this time it
+        # took it. Widening the search region from 10 to 22 mm found one -- 40 mm and three
+        # vias, F.Cu to B.Cu to In2 and back up -- where the old repair needed 21 mm.
+        # The tail was truncated by hand from x 12.70 to 22.30: the maze was aimed at the
+        # far end of the spine and ran the last 9.6 mm ON TOP of it, since it has no notion
+        # that its own net's copper is a destination rather than an obstacle.
+        # ⚠ AND y -25.42 IS THE MIDDLE OF A 0.063 mm WINDOW, measured after DRC rejected
+        # -25.46 by 5.5 microns. maze.py's TRK is a WIDTH and it blocks cells within
+        # TRK/2 + 0.06 of an obstacle, so TRK 0.24 modelled 0.18 mm of clearance where a
+        # 0.25 mm track needs 0.127 + 0.125 = 0.252. Re-run with the honest TRK -- 0.384 --
+        # the search cannot even leave the start cell. So this path is kept and the one
+        # segment DRC caught was moved into the gap between the SAI_SCK via to its south
+        # (needs y >= -25.455) and the MCU's pads 169/170 to its north (needs y <= -25.392).
+        # -25.38 was tried first and failed the other way, against the pads, by 12 microns.
+        # ⚠ STARTS ON THE TRACK'S TIP, (-6.5492, -27.315), not 0.07 mm past it. The maze
+        # rounds to its grid, and a repair that lands mid-stub rather than on its end leaves
+        # the tip sticking out.
+        # ⚠ AND THE track_dangling WARNING ON THAT TIP SURVIVES ANYWAY -- chased, then
+        # dropped. Writing the fourth decimal does not reach the board: 93.4508 goes in and
+        # 93.4510 comes out, so the two ends sit ~0.2 microns apart and KiCad keeps grading
+        # the tip dangling. It is a WARNING, and the connection is real -- the board is at
+        # 0 unconnected, which is the check that decides it. So it stays as the fourth line
+        # in a warning list whose other three are deliberate spine ends.
+        # ⚠ RE-SEARCHED AND RE-MEASURED AGAINST THE ROUTE OF 2026-09-30, AND IT CLOSES
+        # THE BOARD: DRC goes 1 unconnected item -> 0, with the violation list IDENTICAL to
+        # the baseline (20 declared sensor-triplet courtyards, 0 unexpected). This is the
+        # last open net on the optical board.
+        # ⚠ AND THE "BOXED IN EVERY TIME" VERDICT ABOVE WAS AN ARTEFACT OF THE SEARCH,
+        # NOT THE BOARD. Every one of those searches ran a tool that (a) modelled a pad as a
+        # stadium or a circle rather than its real rounded rectangle, (b) could not see the
+        # GND pours at all, and (c) could express at most ONE via -- while both SAI_FS
+        # islands sit on F.Cu with no F.Cu path at any clearance, so the repair MUST leave
+        # the layer and come back. A search that cannot represent the answer reports "no
+        # path" in exactly the same words as a board that has none. With maze3d (layers in
+        # the search space, vias as edges) the path falls out in 213 s at reach 12.0, and
+        # its worst gap against every obstacle class INCLUDING THE POURS is +0.2602 mm --
+        # not a near miss on a 0.127 rule, twice the headroom.
+        # The old 4-run/3-via path is deleted rather than kept: it was measured against a
+        # route that no longer exists, and re-deriving it costs 213 s.
+        ("SAI_FS", "F.Cu", 0.127, [(-6.5492, -27.3150), (-6.3992, -27.2887),
+                                   (-4.7492, -27.2887), (-4.5992, -27.1387)]),
+        ("SAI_FS", "B.Cu", 0.127, [(-4.5992, -27.1387), (0.0508, -22.4887),
+                                   (1.2508, -22.4887), (4.2508, -19.4887),
+                                   (12.2008, -19.4887), (12.9508, -18.7387)]),
+        ("SAI_FS", "F.Cu", 0.127, [(12.9508, -18.7387), (12.8008, -18.7387),
+                                   (12.6500, -18.8887)]),
+        # ── +3V3D at U6 pin 36: a DOG-LEG, and the shape is the whole point ──────────
+        # The 2/0 board's remaining unconnected items are two +3V3D pads, and repair_search
+        # reported "0 same-layer paths, 0 via paths" for BOTH. That is the signature of a
+        # broken filter (padsite.py: "40548 of 40548 points failing the same criterion is a
+        # broken test, not a full board"), so it was measured rather than believed -- and the
+        # tool is right about what it TESTS. track_gap at this board's own 0.127 width, against
+        # the 0.127 rule, on every straight hop to the nearest own-net copper:
+        #     U6.36 -> (91.781,142.259) 2.282 mm   gap -0.2135  vs pad [no net]
+        #     U6.36 -> (91.781,145.402) 2.304 mm   gap -0.2135  vs pad [GND]
+        # NEGATIVE -- the straight track would sit INSIDE a pad, by 0.2 mm. Narrowing to
+        # 0.100 recovers only 0.0135, because the obstruction is a pad BODY, not a clearance.
+        # ⚠ BUT repair_search MODELS ONLY TWO SHAPES -- one straight track, or via-plus-spur
+        # (its own docstring: "TWO SHAPES OF REPAIR"). A DOG-LEG ROUND THE PAD IS NOT TRIED,
+        # and that is the obvious move when a single pad is 0.2 mm in the way. Searched with a
+        # knee on 0.1 mm rings: 2 legal paths, and the best has 0.1557 mm of headroom -- which
+        # CLEARS THE SEARCH'S OWN 0.15 MARGIN, so the tool would have accepted this path had it
+        # ever looked for it. The gap is measured at 0.127 width, so the width below must stay
+        # 0.127: the 0.25 the SAI_FS entries use would eat the clearance this was chosen for.
+        # (U7 pad 9, the other break, has NO legal dog-leg at 0.127 -- see the doc. It needs a
+        # third segment, a via smaller than 0.6, or a placement nudge, and it is still open.)
+        # ⚠⚠ COMMENTED OUT FOR THE 2026-09-30 RE-ROUTE, AND IT MUST BE RE-SEARCHED, NOT
+        # RE-ENABLED. These three points were measured against the route of 2026-09-29 23:55.
+        # A post-route repair fits ONE route -- that is this mechanism's documented failure
+        # mode, and SAI_FS has demonstrated it twice by coming back as a track_crossing plus a
+        # shorting_items after a placement change. Adding U7.9 to pin_escapes moves copper in
+        # the same QFN fan-out this dog-leg threads through, so its knee is the LAST thing that
+        # can be assumed still clear.
+        # It cannot be gated through STALE_REPAIRS either: that filter keys on the NET, and
+        # "+3V3D" names this one dog-leg plus the ten _shdnz_stubs() tracks and five
+        # _shdnz_vias() that feed the SHDNZ pull-ups. Gating the net would delete fifteen
+        # working pieces of copper to disable one, which the counted assert there now refuses.
+        # TO RESTORE: re-run the knee search against the NEW board (rings on 0.1 mm, both legs
+        # at 0.127 width and the 0.127 rule, pours ignored because repair_planes refills), lay
+        # it, refill, and check DRC shows no clearance violation. Last time that was
+        # 4 unconnected items -> 2 with violations identical to the baseline.
+        # ⚠ THE +3V3D DOG-LEG IS DELETED, AND IT WAS NOT WRONG -- IT BECAME UNNECESSARY.
+        # It closed U6 pad 36 when +3V3D had no copper nearby: knee at (-7.2470, -43.8660),
+        # measured on rings against the route of 2026-09-29, worth 4 unconnected items -> 2.
+        # Giving VDDIO its own bypass cap (C119, at pin 9) put a +3V3D pad in that region, and
+        # the ROUTER now closes pad 36 by itself. Tested rather than assumed: the two segments
+        # were deleted from the finished board and DRC came back IDENTICAL -- same 4 items, same
+        # violations, +3V3D still fully connected -- so they were carrying nothing.
+        # Keeping it would have been the worse kind of dead weight: hand-laid copper re-laid
+        # blind into every future route, at coordinates that only happened not to short this
+        # time. The repair mechanism is not in question; this particular repair is retired.
+        # +3V3A at U11 pad 5: a MAZE path, and the first repair this board has taken from
+        # the new search. 25 points, 15.541 mm, worst clearance +0.1804 against a 0.127 rule.
+        # Laid on the finished board and refilled, it takes DRC from 6 unconnected items to 4
+        # with violations IDENTICAL to the baseline.
+        # WHY 15.5 mm FOR A 6.97 mm GAP: straight is blocked, a dog-leg is blocked, and
+        # via->In2->via is blocked -- 63 legal via sites at the pad and 224-563 at the islands,
+        # but all ~8000 sampled pairs fail on the run BETWEEN them, because In2 carries no pour
+        # yet the board's 400 vias pierce every layer. The detour is what exists.
+        # ⚠ SEARCHED AT clearance 0.175, NOT THE 0.127 RULE, AND THAT IS NOT PADDING. At the
+        # rule itself the path grazed C114 pad 2 and DRC returned four clearance violations of
+        # 0.0864-0.1105 mm, because _pads models a pad as a STADIUM (a capsule with fully
+        # rounded ends) where KiCad pads are ROUNDED RECTANGLES, which reach further at the
+        # corners. 0.175 covers that underestimate; the model itself still wants fixing.
+        ("+3V3A", "F.Cu", 0.127, [
+            (7.6039, -61.1300), (7.3864, -60.9300), (3.0364, -56.5800),
+            (3.0364, -56.2800), (2.5864, -55.8300), (2.2864, -55.8300),
+            (2.1364, -55.9800), (1.8364, -55.9800), (1.6864, -55.8300),
+            (1.5364, -55.8300), (1.3864, -55.9800), (1.2364, -55.9800),
+            (1.0864, -56.1300), (0.7864, -55.8300), (0.4864, -55.8300),
+            (0.0364, -56.2800), (0.0364, -59.8800), (0.1864, -60.0300),
+            (0.1864, -60.1800), (0.3364, -60.3300), (0.3364, -60.4800),
+            (0.4864, -60.6300), (0.4864, -60.7800), (0.6364, -60.9300),
+            (0.6364, -61.0800)]),
+        # +3V3A's SECOND break: F.Cu -> via -> In2.Cu, from the cross-layer maze. This one
+        # closes the net: DRC goes from 4 unconnected items to 2, leaving only SAI_FS, with
+        # violations IDENTICAL to the baseline.
+        # ⚠ IT NEEDED A WIDE DETOUR. At reach 14 the two floods are DISJOINT -- 16,196 cells
+        # reachable on F.Cu, 5,321 on In2, and not one cell in both -- because the In2 island
+        # sits in a pocket walled off by the vias that pierce every layer. At reach 20 they
+        # meet. Reach was the constraint, not the board, for the third time.
+        ("+3V3A", "F.Cu", 0.127, [
+            (0.4864, -55.8300), (0.3508, -55.8650), (0.0508, -56.1650),
+            (0.0508, -57.5150), (-0.0992, -57.6650), (-0.0992, -59.3150),
+            (-4.4492, -63.6650), (-7.5992, -63.6650), (-8.0492, -64.1150),
+            (-8.1992, -64.1150), (-8.3492, -64.2650), (-9.9992, -64.2650),
+            (-10.1492, -64.4150), (-20.3492, -64.4150), (-21.3992, -63.3650),
+            (-21.5492, -63.3650), (-21.6992, -63.2150), (-23.3492, -63.2150),
+            (-23.7992, -62.7650), (-23.7992, -56.7650), (-10.2992, -43.2650)]),
+        ("+3V3A", "In2.Cu", 0.127, [
+            (-10.2992, -43.2650), (-9.3992, -42.3650), (-8.4992, -42.3650),
+            (-6.8492, -44.0150), (-6.0992, -44.0150), (-5.2992, -44.8150)]),
+    ] + _shdnz_stubs(),
+    "repair_vias": [("+3V3A", -10.2992, -43.2650),
+                    ("SAI_FS", -4.5992, -27.1387),
+                    ("SAI_FS", 12.9508, -18.7387)] + _shdnz_vias(),
     # ⚠ NO track_mm HERE: 0.15 was TESTED AND IS WORSE. It helps lever_sensor, whose
     # 0.4 mm pitch QFN needs the lane, and it hurt this board -- 12 unconnected and no
     # violations at the 0.25 default, against 15 and a real clearance violation at 0.15.
@@ -1898,7 +3317,52 @@ BOARD_NOTES = {
     # x -34..-28 is the column between U13 and L1, which the pair already travels; the
     # ground pads displaced from it fall back to the pour, which is what they had
     # before any of this existed.
-    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0]],
+    # ⚠ THE SECOND RECTANGLE FENCES THE TWO SPINES IN THE WEST CHANNEL. The stitcher
+    # places a ground via 0.9 off its pad and knows nothing about pre-laid copper, so it
+    # dropped Cm54's onto the +3V3D trunk -- 0.100 mm where the fab rule is 0.127, the
+    # single unexpected violation on an 8-unconnected board. Excluding the pad would have
+    # cost that cap its ground; fencing the lane keeps the stitch and moves the via, which
+    # is the same trade the escape fan already makes. Sized off the copper: the +3V3D
+    # trunk at -33.268 (0.30 wide) and the I2C spine at -34.398 (0.25) each need
+    # 0.127 + 0.30 + half their width of room for a 0.6 mm via.
+    # ⚠ THE SECOND ONE IS DERIVED, AND IT WAS NOT, WHICH BROKE IT SILENTLY. Written as
+    # literal coordinates it fenced the spines correctly -- until STRIP_GROW_MX moved the
+    # whole column 1.5 mm west and the fence stayed put, leaving the I2C spine at -35.148
+    # outside a keepout running to -34.95. Nothing failed: the DRC stayed at 0 violations
+    # and SCL simply came back unconnected, which reads like the spine not working rather
+    # than like a keepout that had quietly stopped covering it.
+    # A keepout around moving copper has to be computed FROM that copper.
+    # ⚠ _door_keepout() IS NOT IN THIS LIST, AND THAT IS THE MEASURED ANSWER, not an
+    # oversight. Fencing the stitcher out of the coupling-cap doors is the right idea --
+    # in four of five cells it puts ground copper straight through the only way into a
+    # Ci pad -- but it bought ZERO extra comb runs and cost four Cm caps their ground
+    # connection outright ("no room for a stitching via beside Cm24.2, Cm34.2, Cm44.2,
+    # Cm54.2"). Those pads are boxed between the +3V3D trunk at x 9.05 and the I2C spine
+    # at 7.92, 1.13 mm apart where a via needs 1.20, so with the door fenced there is no
+    # legal spot left in any direction. Ground through the pour alone is worse than a
+    # crossed door: routing can orphan a pour, and these are the converters' own
+    # reference caps. The function is kept because the diagnosis is sound and the fix
+    # belongs at the other end -- widening that channel, which is ADC_BUS_CH in
+    # src/optical_pickup.py and was already widened once (2.4 -> 4.2) for this column.
+    # ⚠ AND ONE MORE DOOR, THIS TIME THE MCU's (user spotted it in the routed board,
+    # 2026-09-25: "there are already ground vias directly to their west where these new
+    # vias ideally would go -- do the ground vias need to be so close?").
+    # SAI_FS is U6.3 at (-6.55,-27.31) and SAI_SCK is U6.4 at (-6.55,-27.81), and both
+    # need an escape via about a millimetre west. C106's ground via sits at (-8.22,-27.92),
+    # which leaves 0.62 between centres where two 0.6 vias need 0.75. Two of the four nets
+    # this board still fails on are the two pins that via is parked in front of.
+    #
+    # The answer to the user's question is yes AND no: it ties C106.2 at 0.81 mm and a
+    # bypass capacitor's via IS its loop, so it must stay that close -- but not on that
+    # SIDE. The stitcher tries eight directions at increasing radius and takes the first
+    # that clears other PADS; it knows nothing about a neighbour's escape. Measured at the
+    # same 0.81 mm radius, WEST has 0.95 mm and NORTH-WEST 1.32, so the loop is unchanged
+    # either way.
+    # The fence is the north spot only, and it stops short of x -8.55 so the west and
+    # north-west candidates stay legal -- see _door_keepout's note for what happens when a
+    # fence leaves a pad no direction at all.
+    "via_keepouts": [[-34.5, -101.0, -27.5, -78.0],
+                     [-8.55, -28.45, -7.00, -26.90]] + _spine_keepout(),
     # ⚠ THE FEEDBACK CLUSTERS, LAID HERE RATHER THAN SEARCHED FOR. Twenty identical
     # networks -- op-amp output, feedback R, feedback C, and the photodiode on the input
     # -- packed into the Y gaps of a 13.6 mm strip that already holds 107 parts. Nearly
@@ -1930,7 +3394,48 @@ BOARD_NOTES = {
     # same strip, and 122 fixed segments through it closed the corridor they were using.
     # The rail is better off routed than helped. Third time this lever has been tried and
     # lost -- treat "add one more net to the pre-lay" as measured-negative, not untested.
-    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]"),
+    # ⚠ MID IS A LOCAL NET TEN TIMES OVER, which is why it is in this list rather than
+    # being given a spine of its own. It has 63 pads -- six per station (both MID pads of
+    # each detector, and both non-inverting inputs of the dual) plus the buffer and its
+    # bypass in the south -- and the six per station are a CLUSTER a couple of millimetres
+    # across, exactly the shape this routine exists for. Hand-laying it was started and
+    # abandoned: the op-amp's MID pins sit either side of GND on a 0.65 mm pitch, so
+    # reaching them is a fan-out, and _local_nets already solves fan-outs. Single linkage
+    # finds the ten stations on its own; what it will NOT do is join station to station,
+    # and that is the rail, below.
+    # ⚠ AND THE CONVERTERS' OWN REGULATOR/REFERENCE PINS, which were unconnected in every
+    # cell -- AREG, DREG and VREF, two islands each, five cells, FIFTEEN connections the
+    # router was drawing. Each is a pin and the bypass cap sitting directly beside it: the
+    # shortest connection on the board, and the most obviously local. Found by the user
+    # noticing the same short ratsnest stub repeating in all five cells ("whenever I see
+    # that repetition I get suspicious"), which is a better detector for this class of
+    # fault than anything automated here -- a per-cell omission looks like nothing at all
+    # in a total, and like a pattern the moment you see the board.
+    # ⚠ MID IS NOT IN THIS LIST, AND MUST NOT GO BACK IN -- see _mid_spine. Put back
+    # (2026-09-24) to test whether the spine had become unnecessary now that TIA_IN_B
+    # is laid first and takes a clean route: it has not. The MST went straight back to
+    # crossing the TIA_IN lane and dropped all ten B channels again.
+    "local_nets": (r"TIA_IN_\d+[AB]", r"TIA_OUT_\d+[AB]", r"\+3V3A",
+                   r"ADC\d+_AREG", r"ADC\d+_DREG", r"ADC\d+_VREF",
+                   r"LED_A\d+"),
+    "local_mm": 6.8,
+
+    # ⚠ THE NORTH HALF IS FROZEN, and it is only safe to freeze now (2026-09-24). This
+    # turns every pre-laid run into freerouting's `(type fix)`, so the router is left with
+    # the south half and the seven border crossings -- which is what the user asked for:
+    # "scope the auto router to only check connections south of the border".
+    #
+    # route.py's note warns that freezing pre-laid copper is a TRADE, because fixed copper
+    # stops being negotiable and this project has measured that going the wrong way. The
+    # trade only pays when the frozen half is finished, and it now is: every net with pads
+    # in the string array reaches the border under its own steam, nothing hands over more
+    # than 5 mm up, and DRC reports no routing violation anywhere in it. Freezing an
+    # UNFINISHED north half would be the mistake that note is about.
+    #
+    # If this is ever turned off again, expect the router to rip up the spines: it has no
+    # idea that MID's B.Cu run is a bias reference or that the comb pattern is congruent
+    # by construction, and it will happily trade both for a shorter total.
+    "fix_prelaid": True,
     "stitch_nets": ("GND",),
     # ⚠ ONE GROUND PAD GIVES WAY TO THE USB PAIR, and it is the right way round. The
     # pair routes first and its escape vias occupy the copper beside the PHY, which
@@ -1960,6 +3465,128 @@ BOARD_NOTES = {
     # ...and pins 15/16 (ADDR1/ADDR0, both GND since the five parts share one address) the
     # same way, into the EP from the other side: stitched like ordinary GND pads, their vias
     # landed across the SHDNZ escape beside them and shorted it.
+    # ⚠ PINS THE ROUTER STRANDS, ESCAPED BY NAME (user found each one by eye, 2026-09-25:
+    # "this disconnected net SAI_FS doesn't have a via but seems like it needs one", then
+    # ULPI_D1, then ULPI_D6). They are fine-pitch pins whose neighbours took the escape
+    # positions first; the router spends the good spots on whichever net it reaches first
+    # and never goes back. layout's stitcher searches for a legal via beside a pad and lays
+    # the stub with it, which is exactly the operation needed, so these just name the pins.
+    # ⚠ BY REF.PAD, NOT BY COORDINATE -- the coordinates version went stale the moment the
+    # board's length changed and every pad moved 1.1 mm out from under its declared via.
+    # ⚠ MORE ESCAPES IS NOT MONOTONICALLY BETTER, and that is worth recording because the
+    # mechanism looks like it should be. These three took the board from 7 unconnected to
+    # 5 with no ULPI net failing at all. Adding U7.9 (+3V3D on the PHY) and U18.18
+    # (I2C2_SDA at the last converter) -- both the same "disconnected at a pad with no via"
+    # shape -- took it to EIGHT, and broke ULPI_NXT, SAI_SD2 and SAI_SD4, which had been
+    # fine. An escape via is not free: it claims a position in the same crowded fan the
+    # other pins escape through. Add one only for a pin that is actually failing, and
+    # measure after each.
+    # U7.16 added ALONE and measured, per the rule above. The PHY's two +3V3D pins (9 and
+    # 16) were unconnected to each other AND pad 16 had an In2 track 2.6 mm away it could
+    # not reach. They cannot be linked on F.Cu -- a straight run between them crosses the
+    # QFN's thermal pad and pins 10 and 15 -- so the join has to happen on an inner layer,
+    # which is exactly what an escape via is for.
+    # U6.38 added alone, and this one is an ELECTRICAL fix as much as a routing one: the
+    # MCU's analog supply pins (38 and 39, +3V3A) had NO local via -- the nearest was
+    # 27.32 mm away, so VDDA reached its rail across the board. That is poor decoupling
+    # whether or not the router ever closes it, and +3V3A has been in the failure list of
+    # nearly every routing this board has had.
+    # ⚠ U7.9 IS NOT HERE, AND IT WAS TESTED TWICE. In a pair with U18.18 it gave 8
+    # unconnected; alone it gave 6, against 3 without it. So the pair's bad result was not
+    # U18.18's fault -- U7.9 is simply a position the PHY's other nets need more than pad 9
+    # does. It is the clearest case on this board of an escape via costing more than it
+    # buys: pad 9 sits in the middle of the PHY's west fan, and taking a via there pushes
+    # ULPI_D0, ULPI_D5 and SAI_SD2 out of theirs.
+    # ⚠ U7.4 AND U7.10 WERE RE-ASKED AND STILL SAY NO. They had been ruled out by a scan of
+    # mine that treated every PAD as blocking on every LAYER, which is wrong, so the verdict
+    # was re-tested properly by letting layout's own stitcher place U7.4: 4 unconnected AND
+    # a clearance violation, against 3 and none without it. The original answer was right in
+    # effect even though the reasoning behind it was not -- worth recording, because "the
+    # tool was broken" is a reason to re-measure, not a reason to assume the opposite.
+    # The PHY's west fan is simply full: U7.9 costs more than it buys too (6 against 3).
+    # ⚠ U7.9 ADDED 2026-09-30: VDDIO, the ULPI PHY's I/O supply, and the last unconnected
+    # net on this board. It belongs here for exactly the reason the other six do -- it is a
+    # pin the router leaves stranded -- and the diagnosis says a via is precisely what it
+    # needs rather than copper threaded in afterwards:
+    #   * a track CAN leave the pad: 18 of 24 headings legal at r 0.15, best +0.2160 mm
+    #   * but the corridor DEAD-ENDS at ~1.05 mm, closed by ULPI_D4's and ULPI_D5's own
+    #     escape vias, and the nearest +3V3D copper on F.Cu is 3.094 mm away
+    #   * and no via fits inside that corridor at ANY size once those neighbours are routed:
+    #     O0.60 -0.0303, O0.50 +0.0197, O0.45 +0.0447, O0.40 +0.0697, all under the 0.127
+    #     rule -- and min_via_diameter is 0.6, so a smaller one breaks the fab class too
+    # So the pin is reachable but has nowhere to go AFTER its neighbours are routed. Placed
+    # as an escape, its via goes in BEFORE them and they route around it, which is the whole
+    # point of this list: every other entry is a pin of a net that could not otherwise close
+    # (SAI_FS, +3V3A, ULPI_NXT, ULPI_D1, ULPI_D6).
+    # ⚠ NO escape_runs ENTRY FOR IT, DELIBERATELY. A run is hand-typed waypoints laid
+    # verbatim and then FROZEN by route.py, and it is the one mechanism here that consults
+    # no guard -- that is how a run came to cross a mounting hole. The via alone needs no
+    # coordinates from me: layout searches it over 8 directions and 84 radial steps against
+    # the pads, the vias already placed, the keepouts and the outline.
+    # ⚠ AND U7.16 IS ALREADY HERE ON THE SAME NET (+3V3D), so this is not a new kind of use.
+    # ⚠⚠ ESCAPE VIAS ON THE PHY'S CONGESTED EDGE MADE THIS BOARD MONOTONICALLY WORSE, AND
+    # THE EXPERIMENT IS RECORDED HERE SO IT IS NOT REPEATED. Measured, three routes:
+    #     the six below alone                -> 2 unconnected, 0 violations
+    #     + U7.9  (VDDIO)                    -> 3 unconnected, 0 violations
+    #     + U7.3, U7.8, U7.10 (NXT, D4, D5)  -> 5 unconnected, 3 violations
+    # Escaping U7.9 DID close +3V3D completely -- its via landed 0.938 mm out and both breaks
+    # went -- so neither the mechanism nor the diagnosis was wrong. What was wrong was the
+    # reasoning that planning MORE pins would relieve the congestion. It does the opposite: a
+    # pre-placed via is an OBSTACLE THE ROUTER MUST RESPECT, so on an edge with no spare room
+    # each one competes with the router rather than helping it. Planning one pin decided who
+    # won (D4 had to run 11.205 mm before a layer change, D5 got no via at all); planning four
+    # lost +3V3A, I2C2_SDA and SAI_SD3 as well.
+    # This list is for pins the router leaves stranded IN ISOLATION -- which is what all six
+    # below are, spread across two packages -- not for a crowded fan-out.
+    # ⚠ SO VDDIO (U7.9) IS STILL OPEN AND IT IS A PLACEMENT PROBLEM, NOT A ROUTING ONE. The
+    # ULPI fan-out has no room for one more via at any size (measured: O0.40 reaches only
+    # +0.0697 mm against a 0.127 rule). The next thing to try is moving U7 or its decoupling so
+    # pin 9 has a corridor, NOT another via.
+    "pin_escapes": ("U6.3", "U7.5", "U7.11", "U7.16", "U6.38", "U6.45"),
+    # ⚠ U6.38 CARRIES ITS OWN INNER RUN TO THE +3V3A SPINE. The escape via gave the MCU's
+    # analog supply a local connection (27.32 mm -> 1.25) and took the board from 5
+    # unconnected to 3, but the router still would not join that via to the rail: +3V3A's
+    # In2 spine is 28 mm west at (-20.08, -21.08) and the direct line clips a GND via.
+    # MEASURED on In2 against the unrouted board, with a checker that knows an F.Cu LAND
+    # does not block an inner layer (it did not, at first, and walled off the MCU's whole
+    # pad field): one bend at (-9.0, -41.0) clears everything, 28.1 mm against 28.0 direct.
+    # So this costs the rail essentially nothing -- it is the straight line with a nudge.
+    # The run is laid by layout FROM THE VIA IT PLACED, not from coordinates written here:
+    # a hard-coded escape position went stale once already when the board's length changed.
+    # ⚠ ULPI_D0 IS NOT HERE, AND THE REASON IS WORTH THE SPACE, because the measurement
+    # that justified it was RIGHT and the attempt still failed. Its direct inner line is
+    # blocked by just two vias, not a wall; a bend at (10.0, -68.0) clears both at 30.1 mm
+    # against 29.5 direct; a via fits at (14.70, -70.43), 2 mm short of U7.4. Routed, it
+    # closed ULPI_D0 AND ULPI_D5 -- 2 unconnected, the best this board has measured.
+    # But it also laid a short and a clearance error, because an escape_run starts at the
+    # via LAYOUT CHOSE, 1.25 mm south of the pad, and the path was verified from the PAD.
+    # The line actually laid was a different one and it ran past a GND via; the escape via
+    # itself landed 0.075 mm from a GND stitch track (0.127 needed).
+    # 2 unconnected with 2 DRC ERRORS is worse than 3 with none -- a violation is a fab
+    # fault, an unrouted net is a known gap someone finishes by hand -- so this comes out
+    # until it can be done properly. A search for a via site that carries BOTH a clear
+    # F.Cu stub and a clear inner run found none within 2.8 mm of the pad, but the
+    # waypoint it was tested against was itself derived from the pad: the honest next step
+    # is a JOINT search over (via site, waypoint), not a sequential one.
+    # ⚠⚠ THE WAYPOINT AT (-12.00, -24.00) EXISTS TO DODGE THE TAIL MOUNTING HOLE, AND THIS
+    # ENTRY IS WHY THAT HOLE COULD NOT BE PLACED (2026-09-29). The straight run from
+    # (-9.00, -41.00) to (-20.08, -21.08) passes 0.385 mm from the hole's centre -- through
+    # it -- and produced two of the board's violations:
+    #     items_not_allowed:     Track [+3V3A] on In2.Cu, length 22.7941 mm
+    #     copper_edge_clearance: Circle on Edge.Cuts + Track [+3V3A], actual 0.0000 mm
+    # ⚠ AND NO GUARD COULD HAVE CAUGHT IT, which is the part worth keeping. The hole's
+    # keepout is emitted correctly -- verified in the board, a 24-point polygon of r 2.800
+    # centred on it -- but an escape_run is a pair of HAND-TYPED waypoints laid verbatim, and
+    # route.py then freezes all pre-laid wire as "(type fix)". A frozen wire ignores a rule
+    # area, so the router never had the option to move it. _local_nets is exonerated by
+    # construction: both its call sites pass holes=_hole_pts(notes) and seg_clear samples
+    # every 0.15 mm, so a 22.79 mm run gets ~152 samples and an r 2.8 hole cannot be missed.
+    # escape_runs is simply a pass that never consults _hole_pts.
+    # Searched, not chosen: 80 waypoints clear the hole; this one keeps +2.349 mm to it and
+    # +6.179 mm to the nearest other declared In2 copper (LED_ROW), and costs 3.06 mm of
+    # length. It goes NORTH of the hole, which is the side the spine corner is on anyway.
+    "escape_runs": {"U6.38": ("In2.Cu", [(-9.00, -41.00), (-12.00, -24.00),
+                                         (-20.08, -21.08)])},
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
@@ -1974,8 +3601,19 @@ BOARD_NOTES = {
     # AVSS -> EP, one per converter. Pin 4 sits at (+1.962, +0.25) from the EP centre with
     # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
     # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
-    "tracks": _cell_tracks(),
-    "vias": [("+3V3D",) + _cell_pt(k, -2.85, y) for k in range(5) for y in (0.75, -3.27)],
+    "tracks": _cell_tracks() + _ulpi_d0_escape()[0],
+    # ⚠ ONE +3V3D VIA PER CELL NOW, NOT TWO: the SHDNZ channel's HEAD via is gone with the
+    # channel (pin 14 is pulled up locally -- see _shdn_tracks), and it had to go, because
+    # it sat in the only escape from pin 14 and cost five SHDNZ-to-+3V3D shorts. The FOOT
+    # via at -3.27 STAYS: _v3_trunk's spine lands on it, so it is how every converter's
+    # IOVDD reaches the digital rail. Removing PRE-LAID copper is also the one change that
+    # can safely reuse a routing session -- a route legal with an obstacle present stays
+    # legal once it is gone.
+    "vias": ([("+3V3D",) + _cell_pt(k, _V3_CH_DX, -3.27) for k in range(5)]
+             + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
+                for k in range(5)]
+             + _led_row_vias() + _mid_vias() + _bus_vias() + _v3a_vias() + _sd_vias()
+             + _ulpi_d0_escape()[1]),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
@@ -2004,6 +3642,83 @@ BOARD_NOTES = {
     "qty_per_instrument": 1,
     "placements": _placements(CX, CY),
 }
+
+# ⚠⚠ THE SAI_FS POST-ROUTE REPAIR IS WITHDRAWN AS STALE (2026-09-29). Its own header says
+# what it is: "RE-SEARCHED AGAINST THE ROUTE OF 2026-09-28 21:5x ... a post-route repair fits
+# ONE route". The mount holes and the -X mount move changed the route, so the path it was cut
+# for no longer exists, and it now supplies THIRTEEN of the board's fifteen violations --
+# SAI_FS shorting or crossing SWCLK, SWDIO, I2C2_SCL, SAI_SD2/SD3 and ULPI_D7.
+# ⚠ THIS IS A DELIBERATE TRADE, TAKEN ON THIS PROJECT'S OWN RULE: "a violation is worse than
+# an unconnected pad -- one is a board that cannot be made, the other a board that is not
+# finished." Withdrawing it should cost SAI_FS its connection and buy back thirteen
+# violations, which converts an unmakeable board into an unfinished one.
+# ⚠ AND THE ORDER MATTERS, which is the lesson this keeps teaching. Re-searching the repair
+# against a route that is still moving is exactly what produced this: the path was fitted, the
+# placement then changed underneath it, and the fit became a short. Let the board settle
+# FIRST, then search the repair once against the final route.
+# ⚠ THE SEARCH TOOL NAMED IN THE TICK PROMPT DOES NOT EXIST. There is no scratchpad/
+# directory at all -- no maze.py, no verify_path.py, no repair_search.track_gap -- so
+# re-searching means rebuilding the search, not re-running it. Budget for that, and note the
+# repair's own finding when doing it: NO path from this pin has 0.15 mm of headroom (searched
+# at 0.28, 0.285 and 0.29, boxed in every time), so the answer was 0.143 mm or an unconnected
+# frame clock. The +3V3D and SHDNZ members are NOT implicated and stay.
+# Repairs that are RECORDED but must not be laid. Each one's analysis is kept beside its
+# coordinates in repair_tracks, because the measurement is the valuable part and re-deriving it
+# costs hours; what is switched off here is only the laying of copper.
+#   SAI_FS  -- fits ONE route and the route has moved since; re-search before re-enabling.
+#   +3V3D   -- the U6.36 dog-leg. It CLOSES the break (DRC: 4 unconnected items -> 2, verified
+#              in place with the real rules) and it costs TWO clearance violations, so it is a
+#              net loss as it stands. ⚠ AND THE REASON IS A HOLE IN repair_search, NOT A NEAR
+#              MISS: its Board parses segments, vias, pads and edges and NOT ZONES, so the
+#              +0.1557 mm headroom it measures is headroom against everything EXCEPT the GND
+#              pour -- and this board's ZONE clearance is 0.5000 mm, four times the 0.127 the
+#              search compares against. Measured after laying: 0.4892 mm (0.011 short) on the
+#              first leg and 0.0225 mm on the second. repair_planes.py does not rescue it.
+#              So a repair on this board has to be searched against the POURS as well, at
+#              0.5 mm, and neither leg of this dog-leg survives that. Re-enable only when the
+#              search knows about zones.
+# ✅ +3V3D IS OFF THIS LIST AGAIN, AND THE REASON IS THE REFILL, NOT A NEW PATH. The dog-leg
+# below is the SAME geometry that was gated here for costing two clearance violations against
+# the GND pour (0.4892 and 0.0225 against a 0.5000 rule). It was not the path that was wrong --
+# it was that nothing in the pipeline ever refilled the pour after laying a post-route repair.
+# The pour is computed in layout.py during PLACEMENT, before any track exists; repair_planes.py
+# reconnects copper the fill stranded but never updated the fill itself. With a genuine
+# ZONE_FILLER pass (now in repair_planes) the pour retreats around the new track and this repair
+# is clean: 4 unconnected items -> 2, violations IDENTICAL to the baseline, zero clearance.
+# ⚠⚠ GATING BY NET NAME IS THE WRONG GRANULARITY, AND IT NEARLY COST THE CONVERTER ISOLATION.
+# "+3V3D" was on this list for one tick, to disable ONE dog-leg. But _shdnz_stubs() emits TEN
+# +3V3D tracks -- two per converter cell -- and _shdnz_vias() five more +3V3D vias, so the
+# filter would have silently removed the whole SHDNZ supply: fifteen pieces of working,
+# verified copper, to gate one. Nothing noticed, because audit_board reads the DECLARATION from
+# <stem>.board.json and that file had not been regenerated since the edit, so it kept reporting
+# "15 declared, 15 found" from before.
+# So the filter now states HOW MANY repairs each name is expected to remove and fails if the
+# count is wrong. A gate that removes more than its author meant is exactly the kind of silent
+# damage this pipeline has been bitten by repeatedly, and it costs one integer to refuse.
+#   SAI_FS -- 4 tracks, 3 vias: fits ONE route and the route has moved. Re-search before use;
+#             ⚠ and its "boxed in every time" verdict is doubly suspect, having been reached
+#             with a search that tried only two shapes AND could not see the pours.
+# ✅ SAI_FS IS OFF THIS LIST, AND THE BOARD IS AT ZERO. Its repair was re-searched against
+# the finished route of 2026-09-30 with maze3d and re-measured in place: 1 unconnected item
+# -> 0, violations identical to the baseline. The entry that used to sit here read "4 tracks,
+# 3 vias" and carried a note that its own "boxed in every time" verdict was doubly suspect --
+# it was, and for a third reason nobody had written down: the search could express one via and
+# the answer needs two. The list is now EMPTY, which is the point of keeping it typed rather
+# than commented: a gate with nothing in it still asserts its own arithmetic.
+STALE_REPAIRS = {}
+for _net, (_nt, _nv) in STALE_REPAIRS.items():
+    _t_before = len(BOARD_NOTES["repair_tracks"])
+    _v_before = len(BOARD_NOTES["repair_vias"])
+    BOARD_NOTES["repair_tracks"] = [t for t in BOARD_NOTES["repair_tracks"] if t[0] != _net]
+    BOARD_NOTES["repair_vias"] = [v for v in BOARD_NOTES["repair_vias"] if v[0] != _net]
+    _t_gone = _t_before - len(BOARD_NOTES["repair_tracks"])
+    _v_gone = _v_before - len(BOARD_NOTES["repair_vias"])
+    assert (_t_gone, _v_gone) == (_nt, _nv), (
+        "gating %r removed %d track(s) and %d via(s), not the %d and %d it declares. A net "
+        "name can cover repairs that have nothing to do with each other -- +3V3D names one "
+        "dog-leg AND the ten stubs plus five vias that feed the SHDNZ pull-ups -- so either "
+        "the count is stale or this gate is about to delete working copper."
+        % (_net, _t_gone, _v_gone, _nt, _nv))
 
 
 def _assert_matches_cad(net_path):
@@ -2037,7 +3752,7 @@ def _assert_matches_cad(net_path):
     # FB1 is the one genuine exception: a ferrite bead sharing the 1608 land with an
     # 0603 resistor. Exempted BY NAME rather than by loosening the rule, because the
     # rule was right to flag it -- it is the CAD's package class that is imprecise.
-    class_pkgs = ("0402", "0805OPT")
+    class_pkgs = ("0402", "0603OPT")
     by_name = {"FB1"}
     bad = [(r, want[r], got[r]) for r in sorted(want)
            if want[r] not in class_pkgs and r not in by_name and got[r] != FP[want[r]]]

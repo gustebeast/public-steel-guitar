@@ -22,6 +22,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import sys
 
 import pcbnew
@@ -43,9 +44,35 @@ JAVA = os.path.expandvars(
     r"%LOCALAPPDATA%\Programs\temurin\jdk-25.0.4.1+1-jre\bin\java.exe")
 # Freerouting 2.4.1 is built for Java 25 (class file 69) -- a Java 21 runtime
 # fails to load it at all, which is the first thing to check if this breaks.
-JAR = os.path.expandvars(
-    r"%LOCALAPPDATA%\Temp\claude\C--Users-gus-Sync-Documents-Archive-3D-public-steel-guitar"
-    r"\d7576032-b257-4aee-8a45-89e587fe4007\scratchpad\freerouting.jar")
+def _find_jar():
+    r"""Locate freerouting.jar, and NOT in a session scratch directory.
+
+    ⚠⚠ THIS USED TO POINT INTO %LOCALAPPDATA%\Temp\claude\<session-id>\scratchpad, which
+    means the whole routing pipeline stopped working the moment that temp directory was
+    cleaned -- for the lead and every other agent who took the merge, not just the session
+    that happened to download it. Nothing would have said why: the jar simply is not there.
+    This project has already lost a tool that way (scratchpad/maze.py, whose own replacement
+    note reads "anything that has to be re-run every time the route changes cannot live in a
+    scratch directory"), and then the ROUTER itself did the same thing.
+    Order: an explicit override, then a stable per-machine install, then the old scratch path
+    so an existing checkout keeps working until the copy is made.
+    """
+    import glob
+    cands = [os.environ.get("FREEROUTING_JAR"),
+             os.path.expandvars(r"%LOCALAPPDATA%\Programs\freerouting\freerouting.jar")]
+    cands += sorted(glob.glob(os.path.expandvars(
+        r"%LOCALAPPDATA%\Temp\claude\*\*\scratchpad\freerouting.jar")), reverse=True)
+    for c in cands:
+        if c and os.path.isfile(c):
+            return c
+    raise SystemExit(
+        r"freerouting.jar not found. Put it at "
+        r"%LOCALAPPDATA%\Programs\freerouting\freerouting.jar, or set FREEROUTING_JAR. "
+        r"(~64 MB, so deliberately NOT in the repo -- but it must not live in a session "
+        r"scratch directory either: that is how this pipeline came to depend on a temp dir.)")
+
+
+JAR = _find_jar()
 # ⚠ PASSES BUY CONNECTIVITY ON A HARD BOARD, AND THIS COMMENT USED TO SAY THEY DO NOT.
 # The old claim was that freerouting finds connectivity in the first pass or two and
 # every pass after that only shortens track, so "the curve is flat after about 10". It
@@ -84,6 +111,143 @@ def failing_nets(stem):
             if m:
                 out.add(m.group(1))
     return sorted(out)
+
+
+# The bring-up pads are placed after routing, which is what makes them cheap and what
+# makes them ROT: a site that clears every track of one route is inside a track of the
+# next. Three separate runs have now lost real work to this -- most recently a pass that
+# routed TWO MORE NETS than the one we kept, thrown away because TP10's frozen site had
+# become a 6.02 mm short against V5_PRE.
+#
+# route.py's own comment above post_route_refs already says the right thing -- "THE SITE IS
+# SEARCHED AGAINST THE FINISHED BOARD, not chosen" -- and that was true when the site was
+# searched. Freezing the ANSWER into notes["placements"] is what broke it: the search was a
+# one-off by hand (tools/padsite.py) and the board moves underneath it. So do the search
+# HERE, where the finished board is in hand, and treat the recorded coordinate as a
+# PREFERENCE rather than a fact: if it still clears, nothing moves and this costs nothing.
+#
+# ⚠ ONLY THE TP PADS. Rs11..Rs51 are post-route too, but each carries a pull-up on a new
+# SHDNZ net that has to reach its converter's pin -- moving one is not free the way moving a
+# bare pad on a finished rail is.
+POST_PAD_CLR_MM = 0.127            # the fab copper rule this board is built to
+POST_PAD_REACH_MM = 20.0           # how far a stale site may be nudged before giving up
+POST_PAD_STEP_MM = 0.25
+
+
+def _resite_post_pads(board, refs, notes):
+    """Re-search each bring-up pad's site against the copper that is actually there.
+
+    A good site, in the original search's words: a clear circle that ALREADY OVERLAPS ITS
+    OWN NET'S COPPER, so the pad needs no track of its own. Rejected: too close to foreign
+    copper, or under a footprint's courtyard (a pad under a part is electrically legal and
+    physically unprobeable).
+
+    Returns a list of (ref, dx, dy) for the pads that had to move. Run AFTER the nets are
+    assigned -- the search needs to know which copper is the pad's own."""
+    import math
+
+    segs, vias = [], []
+    for t in board.Tracks():
+        n = t.GetNetname()
+        if isinstance(t, pcbnew.PCB_VIA):
+            a = t.GetStart()
+            vias.append((pcbnew.ToMM(a.x), pcbnew.ToMM(a.y),
+                         pcbnew.ToMM(t.GetWidth()) / 2.0, n))
+        else:
+            if t.GetLayer() != pcbnew.F_Cu:
+                continue           # a bare pad probes the front; other layers cannot short it
+            a, b = t.GetStart(), t.GetEnd()
+            segs.append((pcbnew.ToMM(a.x), pcbnew.ToMM(a.y),
+                         pcbnew.ToMM(b.x), pcbnew.ToMM(b.y),
+                         pcbnew.ToMM(t.GetWidth()) / 2.0, n))
+
+    courts = []
+    for fp in board.GetFootprints():
+        if fp.GetReference() in refs:
+            continue
+        try:
+            bb = fp.GetCourtyard(pcbnew.F_CrtYd).BBox()
+            if bb.GetWidth() <= 0:
+                bb = fp.GetBoundingBox(False, False)
+        except Exception:
+            bb = fp.GetBoundingBox(False, False)
+        courts.append((pcbnew.ToMM(bb.GetLeft()), pcbnew.ToMM(bb.GetRight()),
+                       pcbnew.ToMM(bb.GetTop()), pcbnew.ToMM(bb.GetBottom())))
+
+    def _seg_d(px, py, x1, y1, x2, y2):
+        dx, dy = x2 - x1, y2 - y1
+        l2 = dx * dx + dy * dy
+        t = 0.0 if l2 == 0 else max(0.0, min(1.0,
+                                             ((px - x1) * dx + (py - y1) * dy) / l2))
+        return math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+
+    def _ok(px, py, r, net):
+        own = 1e9
+        for x1, y1, x2, y2, hw, n in segs:
+            d = _seg_d(px, py, x1, y1, x2, y2) - hw
+            if n == net:
+                own = min(own, d)
+            elif d < r + POST_PAD_CLR_MM:
+                return None
+        for vx, vy, vr, n in vias:
+            d = math.hypot(px - vx, py - vy) - vr
+            if n == net:
+                own = min(own, d)
+            elif d < r + POST_PAD_CLR_MM:
+                return None
+        if own > r:
+            return None            # not on its own copper: the pad would need a track
+        keep = r + POST_PAD_CLR_MM
+        for cx0, cx1, cy0, cy1 in courts:
+            if cx0 - keep <= px <= cx1 + keep and cy0 - keep <= py <= cy1 + keep:
+                return None
+        return own
+
+    moved = []
+    for fp in board.GetFootprints():
+        ref = fp.GetReference()
+        if ref not in refs or not ref.startswith("TP"):
+            continue
+        pads = list(fp.Pads())
+        if len(pads) != 1:
+            continue               # a multi-pad post-route part is not a bare probe pad
+        pad = pads[0]
+        net = pad.GetNetname()
+        r = pcbnew.ToMM(max(pad.GetSize().x, pad.GetSize().y)) / 2.0
+        px = pcbnew.ToMM(pad.GetPosition().x)
+        py = pcbnew.ToMM(pad.GetPosition().y)
+        if _ok(px, py, r, net) is not None:
+            continue               # the recorded site still clears: nothing to do
+        # Ring search outwards, so a pad that has to move moves as little as possible --
+        # these coordinates were chosen next to the thing they help bring up, and that
+        # intent is worth keeping even when the copper no longer allows the exact point.
+        best = None
+        k = 1
+        while k * POST_PAD_STEP_MM <= POST_PAD_REACH_MM and best is None:
+            rad = k * POST_PAD_STEP_MM
+            n_th = max(8, int(2.0 * math.pi * rad / POST_PAD_STEP_MM))
+            for i in range(n_th):
+                th = 2.0 * math.pi * i / n_th
+                qx, qy = px + rad * math.cos(th), py + rad * math.sin(th)
+                if _ok(qx, qy, r, net) is not None:
+                    best = (qx, qy, rad)
+                    break
+            k += 1
+        if best is None:
+            print("      ⚠ %s (%s) has no clear site within %.1f mm of its recorded "
+                  "place ON THIS ROUTE -- left where it is, so DRC will report it"
+                  % (ref, net, POST_PAD_REACH_MM))
+            continue
+        qx, qy, rad = best
+        pos = fp.GetPosition()
+        fp.SetPosition(pcbnew.VECTOR2I(
+            pos.x + pcbnew.FromMM(qx - px), pos.y + pcbnew.FromMM(qy - py)))
+        moved.append((ref, net, rad))
+    if moved:
+        print("      re-sited %d bring-up pad(s) against THIS route's copper: %s"
+              % (len(moved), ", ".join("%s (%s) moved %.2f mm" % m for m in moved)))
+    return moved
+
 
 
 def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
@@ -208,7 +372,32 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     frozen = set()
     for spec in (notes or {}).get("diff_pairs", ()):
         frozen.update(spec.get("nets", ()))
+    # ...AND ANY NET THE BOARD DECLARES FROZEN OUTRIGHT (2026-09-30). `diff_pairs` freezes
+    # what layout._diff_pairs LAID; this freezes copper the board file supplies itself as
+    # notes["tracks"]/["vias"]. It exists for pairs _diff_pairs cannot escape (a QFN fan-out,
+    # a USB-C with its rows along Y): output_panel's THRU and HUB_DN1 were routed one
+    # conductor at a time, and six placement changes in a row split one or both across
+    # layers. Their copper is lifted from the one clean board and pinned here instead.
+    frozen.update((notes or {}).get("frozen_nets", ()))
     pair_nets = None if (notes or {}).get("fix_prelaid") else frozen
+    if (notes or {}).get("fix_prelaid"):
+        # ⚠ FREEZING AND RESTORING ARE TWO HALVES OF ONE THING, AND fix_prelaid ONLY DID
+        # THE FIRST. `pair_nets = None` fixes EVERY wire in the DSN so the router leaves
+        # the pre-lay alone -- but `frozen` was still just the declared pairs, and
+        # `frozen` is what the restore below re-lays. So the router obediently returned a
+        # session with none of the pre-laid copper in it (a session reports what the
+        # ROUTER did, and a fixed wire is not that) and the import deleted the lot.
+        #
+        # Measured on the optical board, north of the border only: 2952.6 mm of pre-laid
+        # copper and 207 vias went in, 818.7 mm and 2 vias came out. The north half --
+        # verified at 0 ratlines before the DSN was written -- came back with 127, and
+        # every one of them read as "the router failed", which is the opposite of what
+        # happened. It never touched them. We threw them away on import.
+        #
+        # So: everything that already has copper is frozen. That is exactly the set the
+        # DSN just fixed, which is the invariant that was missing -- the two halves are
+        # now derived from the same condition instead of happening to agree for pairs.
+        frozen = {t.GetNetname() for t in board.GetTracks() if t.GetNetname()}
     if incremental:
         # Everything that HAS copper is frozen except the nets still unfinished.
         free = set(failing_nets(stem))
@@ -301,6 +490,18 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     # So `threads` is exposed per board to be MEASURED rather than assumed. Raising it is
     # only defensible if the result is both violation-free and reproducible, and both are
     # checkable.
+    # ⚠ MEASURED 2026-09-23: ON THE OPTICAL BOARD THE STRATEGY CHANGES NOTHING AT ALL.
+    # Five trees routed in parallel -- no strategy, -us Hybrid, -us Global, -us Greedy,
+    # -is prioritized -- on the same placement. All five returned 9 unconnected and 0
+    # violations, the same nine NETS, 1983 segments, and BYTE-IDENTICAL .ses files (one
+    # md5 across all five). The flags reach freerouting: this function prints the command
+    # and the logs show `-us Hybrid` and the rest going in. They are simply ignored by
+    # this build.
+    # That is not the old case-sensitivity bug below, which was real and is fixed -- it is
+    # the same symptom from the opposite cause, and the note under it inherited a
+    # conclusion nobody had actually tested. So: do NOT spend routes on the strategy on
+    # this board. The claim that follows is kept because a different freerouting build may
+    # honour it, but it is an expectation, not a measurement.
     # ⚠ THE OPTIMISER'S STRATEGY IS A BOARD-LEVEL CHOICE, not a global constant. It
     # changes which nets freerouting revisits and in what order, and on a board that is
     # one or two connections short that is exactly the lever that matters -- far more
@@ -341,6 +542,12 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
               % os.path.basename(ses))
         r = subprocess.CompletedProcess(cmd, 0, "", "")
     else:
+      # ⚠ TIME THE ROUTER. "Did that change make it faster?" came up and
+      # nothing recorded a duration -- not the finish log, not the DRC json --
+      # so the only evidence was file mtimes. It matters most for fix_prelaid:
+      # frozen copper is cheaper per evaluation (nothing to rip up) but it also
+      # removes the room the router negotiates in, so it can go either way.
+      _t0 = time.time()
       try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
       except subprocess.TimeoutExpired:
@@ -350,6 +557,8 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
             "none. Lower the pass count or raise `timeout` -- and note that passes DO "
             "buy connectivity on this board, so lowering them has its own cost."
             % (timeout, os.path.basename(stem), passes))
+      print("  freerouting: %.1f s wall, %s pass(es)"
+            % (time.time() - _t0, passes))
     tail = (r.stdout or "").strip().splitlines()[-6:]
     print("\n".join("  " + t for t in tail))
     if not os.path.isfile(ses):
@@ -478,8 +687,24 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     # so finish.py's ERROR count stays at zero and nobody looks. See drop_redundant_pth_vias
     # for why removing them is safe HERE and was not before routing.
     layout.drop_redundant_pth_vias(board)
+    # ⚠ WITH THE INNER LAYER, WHICH THIS CALL LEFT OUT. link_close_gaps takes `inner` and
+    # falls back to a via hop when no surface path exists; omitting it silently disabled
+    # that half of the routine, so any pair separated by copper on its own layer was
+    # abandoned even where a hop had room. Measured at the four +3V3D pairs this board
+    # still fails on: 0.86, 1.03, 1.11 and 1.36 mm of via room against the 0.45 a 0.6 via
+    # needs, and not one of them was tried.
+    # ⚠ AND HOW FAR IT MAY REACH IS A BOARD'S OWN BUSINESS. The 5 mm default is a
+    # sensible floor, not a law: the optical board came out of a route with I2C2_SDA
+    # 5.85 mm short of the spine it was heading for -- the router got that close and
+    # stopped -- and 0.85 mm of policy was the only thing between it and a finished net.
+    # Raising it is free in the way the whole routine is free: this runs AFTER routing,
+    # so the only pairs it can act on are ones already left unconnected, and there is no
+    # counterfactual route being denied. `clear()` still refuses anything that would not
+    # pass DRC, so the cap is on ambition, not on safety.
     n_link = layout.link_close_gaps(board, layout._outline_pts(notes),
-                                   same_part_only=False)
+                                   same_part_only=False,
+                                   max_mm=(notes or {}).get("repair_mm", 5.0),
+                                   inner=layout._local_inner(notes))
     if n_link:
         print("  joined %d same-net pad pair(s) the router left in separate islands"
               % n_link)
@@ -499,6 +724,96 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     #
     # These are repairs, not hints: they are applied after the router has finished and
     # are never visible to it.
+    # ⚠ AND THE BRING-UP PADS GO IN HERE, FOR THE SAME REASON THE REPAIRS DO. A bare pad
+    # on a rail the router has already finished needs no route at all -- it is placed ON
+    # that rail's copper -- but given to the router BEFORE routing it is an obstacle, and
+    # six of them cost the optical board a net in four consecutive runs, always at the USB
+    # PHY, once even on a rail whose own pad had been removed. See layout.build's note on
+    # post_route_refs: the netlist and the CAD carry them, the DSN does not.
+    #
+    # THE SITE IS SEARCHED AGAINST THE FINISHED BOARD, not chosen: scratchpad/padsite.py
+    # sweeps a grid for a circle that clears every segment, via, pad, COURTYARD (a pad
+    # under a part is legal and unprobeable) and the outline, and that already sits on its
+    # own net's copper so no copper has to be added. What is left for DRC to check is a
+    # clearance, which is the check that caught every earlier version of this.
+    _post = list(notes.get("post_route_refs", ()))
+    if _post:
+        _comps, _nl = layout.read_netlist(stem + ".net")
+        # ⚠ EVERY PAD OF EVERY POST-ROUTE PART, NOT ONE PER REF. The first version of
+        # this kept a single (net, pad) per reference, which is true of a test pad and
+        # false of a resistor: the SHDNZ pull-ups have pad 1 on a brand-new net and pad 2
+        # on +3V3D, and one-per-ref silently dropped whichever came second.
+        _of = {}
+        for _nm, _nodes in _nl.items():
+            for _r, _pn in _nodes:
+                if _r in _post:
+                    _of.setdefault(_r, []).append((_nm, str(_pn)))
+        _newnets = set(notes.get("post_route_nets", ()))
+        for _ref in _post:
+            _fp = layout._load_footprint(_comps[_ref][0])
+            board.Add(_fp)
+            _fp.SetReference(_ref)
+            _fp.SetValue(_comps[_ref][1])
+            _fp.Value().SetVisible(False)
+            _x, _y, _rot = notes["placements"][_ref]
+            _fp.SetPosition(layout._to_board(_x, _y))
+            _fp.SetOrientationDegrees(_rot)
+            if notes.get("anchor") == "courtyard":
+                layout._anchor_on_courtyard(_fp, layout._to_board(_x, _y))
+            else:
+                layout._anchor_on_pads(_fp, layout._to_board(_x, _y))
+            if notes.get("refs_on_fab"):
+                _fp.Reference().SetLayer(pcbnew.F_Fab)
+            for _nm, _pn in _of[_ref]:
+                # ⚠ A NET MAY BE POST-ROUTE TOO, AND THAT IS WHAT KEEPS THE DSN IDENTICAL
+                # WHERE IT CAN BE. A pad on a rail joins a net the router has already
+                # finished; a converter's SHDNZ pin does not, because its net is new. So
+                # layout skips the nets named in post_route_nets -- those pins carry no net
+                # pre-route, which is what a no-connect carried -- and the net is built
+                # here, over every node it has, including the ones on parts that were
+                # placed normally.
+                _net = board.FindNet(_nm)
+                if _net is None:
+                    if _nm not in _newnets:
+                        raise SystemExit(
+                            "post-route pad %s.%s wants net %s, which is not on the "
+                            "board. A net that does not exist pre-route has to be "
+                            "declared in post_route_nets, so that layout skips it "
+                            "deliberately rather than by accident." % (_ref, _pn, _nm))
+                    _net = pcbnew.NETINFO_ITEM(board, _nm)
+                    board.Add(_net)
+                    _by = {_f.GetReference(): _f for _f in board.GetFootprints()}
+                    for _r2, _p2 in _nl[_nm]:
+                        if _r2 == _ref or _r2 not in _by:
+                            continue          # placed later in this same loop
+                        for _pad in _by[_r2].Pads():
+                            if _pad.GetNumber() == str(_p2):
+                                _pad.SetNet(_net)
+                _hit = 0
+                for _pad in _fp.Pads():
+                    if _pad.GetNumber() == _pn:
+                        _pad.SetNet(_net)
+                        _hit += 1
+                if not _hit:
+                    raise SystemExit("post-route part %s has no pad %s" % (_ref, _pn))
+        # ⚠ AND A SECOND PASS, BECAUSE A POST-ROUTE NET CAN JOIN TWO POST-ROUTE PARTS.
+        # SHDNZ<k> is a converter pin, a pull-up and a pad: when the pull-up created the
+        # net, the pad's footprint did not exist yet. Whichever order the refs come in, one
+        # of them would be missed -- so every node is re-asserted once they are all placed.
+        _by = {_f.GetReference(): _f for _f in board.GetFootprints()}
+        for _ref in _post:
+            for _nm, _pn in _of[_ref]:
+                _net = board.FindNet(_nm)
+                for _r2, _p2 in _nl[_nm]:
+                    for _pad in _by[_r2].Pads():
+                        if _pad.GetNumber() == str(_p2):
+                            _pad.SetNet(_net)
+        board.BuildConnectivity()
+        _resite_post_pads(board, set(_post), notes)
+        print("  placed %d part(s)/pad(s) AFTER routing, invisible to the router: %s"
+              % (len(_post), ", ".join(_post)))
+        board.BuildConnectivity()
+
     _nets = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
     for _rv in notes.get("repair_vias", []):
         assert _rv[0] in _nets, "repair_vias names unknown net %r" % (_rv[0],)
@@ -545,6 +860,15 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     if board.Zones():
         board.BuildConnectivity()
         pcbnew.ZONE_FILLER(board).Fill(board.Zones())
+    # ⚠ AND ONLY NOW CAN THE STRANDED COPPER BE FOUND. _check_stitches_landed runs in
+    # layout.py ~140 lines BEFORE the first pour and can only warn; even the retry above
+    # gives up on vias with "nowhere to go". This pass runs after tidy AND after the
+    # final pour, when the plane is a fact, and lays one short segment from each stranded
+    # track to real plane copper -- but only where the path crosses nothing, because a
+    # short is worse than the floating stub it would replace.
+    # ⚠ IT MUST BE HERE, NOT AT THE layout.py POUR. Put there first, it printed nothing
+    # on a board it then left at 1 unconnected: that pour happens during PLACEMENT, when
+    # the board has no tracks at all, so there is nothing stranded yet to find.
     board.Save(pcb)
     # ⚠ CANONICALISE THE ROUTED BOARD TOO, for the same reason layout.py does it --
     # and the reason is now MEASURED rather than argued. Two independent runs of the

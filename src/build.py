@@ -28,12 +28,15 @@ import cadquery as cq
 from cadkit.freecad import show
 from cadkit.step_export import export_step
 try:                                    # optional on-every-build face-count regression gate
-    from tools.build_profile import record_part, report_build_regressions
+    from tools.build_profile import (record_part, report_build_regressions,
+                                     write_part_volumes)
 except Exception:                       # a profiling hook must NEVER break a build
     def record_part(*a, **k): pass
     def report_build_regressions(): return 0
+    def write_part_volumes(*a, **k): return 0
 
 from . import dimensions as D
+from elec import harness as _EH           # the PCB's pin order, single-sourced
 from .helpers import heal
 from . import components as C
 from . import chassis as CH
@@ -44,10 +47,10 @@ from . import belt_tensioner as BTn
 from .chassis import segments as chassis_segments
 from .chassis import segments_light as chassis_light
 from . import nut_block as NB
+from . import ui_panel as UI
 from . import tension_fork as TF
 from . import pickup_mount as PM
 from . import legs as LG
-from . import latch as LT
 
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
@@ -108,6 +111,8 @@ PARTS = {
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
     # height plate lifted by 3 M4×20 button-head leadscrew jacks; a -Y M4 cup-tip grub
     # locks the pickup +Y against the plate's +Y wall. All hardware is stocked M4, all +Z.
+    "ui_clamp":        (lambda: heal(__import__("src.ui_panel", fromlist=["e"]).clamp()), "petg-gf/ui_clamp.step", "PETG-GF - the UI clamp plate. It lies against the BOARD'S UNDERSIDE (3.2 thick, a relief under every footprint for the through-hole tails) and two M4x16 pull it up into the deck panel's own bosses, gripping the board between its whole top face and four bearings on the deck. An arm steps up past the board and runs +Y under the display to its far mounting-hole row, where two posts press the module's back into the window ledge - the screen's only positive retention. GF because it is a stiffness part. Prints PLATE-DOWN, its own flat underside on the bed, so every rib and post grows straight up off it"),
+    "ui_knob":         (lambda: heal(__import__("src.ui_panel", fromlist=["e"]).knob()), "pctg/ui_knob.step", "PCTG - the UI cap: a O8 shank up through the deck and a O17 disc over it, bored O2.6x1.8 for the Alps shaft's tip. Prints DISC-DOWN (its own flat face on the bed), so the shank and the bore are both vertical and the bore's ceiling is the last thing printed. PCTG because it is the one part of the instrument a player touches every time they change a setting, and the deck it sits on is the same resin"),
     "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (green pickup area + nubs; 3 M4×20 button-head leadscrew jacks lift/tilt it via heat-set nuts on top, pickup rests on it and slides in X for tone; +Y retention wall + -Y cup-tip grub lock the pickup to the plate; GF keeps it flat on the point loads)"),
     # (the whole round-tube leg family — sockets, segments, thread couplers and
     #  washers — was DELETED 2026-08-01: 214 lines + 26 constants of unreachable
@@ -123,8 +128,6 @@ PARTS = {
     # ("leg_lid" export retired — the wired cable runs up the column CENTER
     # through the flush-octagon joints' Ø7 bores; no face channel to cover)
     # ("leg_washer_sq" export retired — ROUND 3: threadless, gasketless square legs)
-    "latch_slider":    (lambda: heal(LT.slider()), "pctg/latch_slider.step", "PCTG — LATCH SLIDER ×6 (4 leg—body + 2 bar—leg; ONE SKU): the whole quick-release. Push-to-connect (45° hook lead cams it in against the coil, springs out at depth); press the pad and pull to release, one-handed. Steel coil seats in its blind bore. Prints flat on its back face — the hook lead and the pad both face up, nothing to support"),
-    "latch_cover":     (lambda: heal(LT.cover()), "pctg/latch_cover.step", "PCTG — LATCH COVER ×6 (ONE SKU): closes the slider load window; its aperture lip is the slider outward stop AND its Z lock. Slides DOWN a 45° dovetail onto a hard stop and can only leave upward, which the mating half blocks once assembled — captive, zero fasteners. Prints flat"),
     # ("leg_washer" export retired — ROUND 3: threadless, gasketless square legs)
     # -- ONE LEG (user): the redesigned leg (src.leg_stack) at the -X/+Y corner, with its
     # body latch and the pedal bar's latch. The other three corners carry only a body
@@ -174,18 +177,6 @@ for _i in range(len(_TP.segments)):              # placed deck panels (piece + f
         f"print AS ONE OBJECT with top_plate_{_i}). PCTG, not PETG-GF: the deck is the "
         "forearm rest — no glass fiber on skin-contact surfaces, and same-resin pairs "
         "weld/purge cleanest")
-for _i in range(len(_TP.spare_fillers)):         # fillers for the other pickup-piece slots
-    PARTS[f"top_plate_spare_{_i}"] = (
-        (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).spare_fillers[i]))(_i),
-        f"pctg/top_plate_spare_{_i}.step",
-        "PCTG (transparent) — filler-band BASE for an alternate pickup-piece "
-        f"position (print AS ONE OBJECT with top_plate_spare_{_i}_color; install "
-        "the ones the piece doesn't cover)")
-    PARTS[f"top_plate_spare_{_i}_color"] = (
-        (lambda i: lambda: heal(__import__("src.top_plate", fromlist=["e"]).spare_fillers_color[i]))(_i),
-        f"pctg/top_plate_spare_{_i}_color.step",
-        f"PCTG (colour) — filler-band COLOUR layer (print AS ONE OBJECT with "
-        f"top_plate_spare_{_i}; skin-contact surface — no glass fiber)")
 # fuse each tee's drop-in PCB cradle (cadkit.pcb.pcb_cradle) into the chassis segment
 # whose X-band owns that tee, so the cradle PRINTS AS PART of that segment. Each cradle's
 # -Y wall merges into the -Y-rail inner face (a light cantilever bracket over the rib-top
@@ -196,6 +187,87 @@ for _i in range(len(_TP.spare_fillers)):         # fillers for the other pickup-
 from . import wiring as _WR_FUSE
 _seg_edges = [CH._SHELL_PX + CH.KH_DT_DEPTH + 2.0] + sorted(CH.SPLIT_X, reverse=True) + [CH.X_NUT]
 chassis_segments = list(chassis_segments)
+# ⚠ THE MOTOR CONTROLLER'S FLOOR PORTS ARE CUT HERE, NOT IN chassis.py. chassis builds its
+# segments at import and electronics imports chassis, so the chassis cannot ask where that
+# board is without a circular import. The assembly knows both, so it does it (see
+# electronics.mctrl_floor_ports).
+from . import electronics as _EL_ports
+# ⚠⚠ THE PI'S AND THE MOTOR BOARD'S CRADLES BELONG TO THE CHASSIS NOW, NOT TO THE ENDPLATE
+# (user, 2026-09-28: "we need to be able to remove the endplate while leaving the pi and
+# motor board in place"). Fused here for the same reason the floor ports are cut here -- the
+# chassis cannot ask electronics where those boards are without a circular import -- and by
+# the same route as wiring.tee_cradles below.
+#
+# ⚠ AND IT IS A DEFECT FIX AS WELL AS A FEATURE. Fused to the ENDPLATE, the motor frame's
+# side walls ran down inside the chassis floor: 2717 mm3 of two printed parts occupying the
+# same space, which check_overlaps never reported because {keyhead_endplate, chassis} is
+# allow-listed wholesale for the endplate's own seating and hold-down screw. Fused to the
+# CHASSIS the same walls are a root instead of an interference, and they are a better root
+# than the endplate ever was: the motor board passes through the floor, so the slab grips it
+# either side of its own port.
+#
+# BEFORE the port cuts, deliberately: the frames' walls sit outside the ports (walls at
+# y -114.9 and -49.1 against a port spanning -113..-51), so cutting afterwards cannot take
+# anything load-bearing away, and it guarantees the ports stay open whatever the frames do.
+_kh_cr = _EL_ports.keyhead_cradles()
+_kh_bb = _kh_cr.val().BoundingBox()
+# ⚠ THE CRADLES REFILLED THE LEVER MORTISES, and the knee housing's tenons live in them.
+# chassis.py cuts a mortise into every rib, then this union laid the cradles' feet back over
+# the same band: 1986.6 mm3 of chassis_2 inside knee_housing, a 68 x 17 x 4.2 slab at
+# z -77.5..-73.3. It is the endplate's cut-before-union fault in a new place (a union after a
+# cut silently refills it), and it sat in the gate as the largest pair for weeks because the
+# count was read as a baseline. The SAME cutters go through the cradles before they fuse.
+from .chassis import _mort_cutters as _kh_mort_cutters
+_kh_mc = _kh_mort_cutters(_kh_bb.xmin - 1.0, _kh_bb.xmax + 1.0)
+if _kh_mc is not None:
+    _kh_cr = _kh_cr.cut(_kh_mc)
+_kh_hit = 0
+for _csi, _cs in enumerate(chassis_segments):
+    _sb = _cs.val().BoundingBox()
+    if _sb.xmin <= _kh_bb.xmin and _kh_bb.xmax <= _sb.xmax + 1e-6:
+        chassis_segments[_csi] = _cs.union(_kh_cr)
+        _kh_hit += 1
+        break
+assert _kh_hit == 1, (
+    "the board cradles (x %.1f..%.1f) did not fall inside exactly one chassis segment -- "
+    "they landed in %d. A cradle that straddles a print split is two halves of a mount."
+    % (_kh_bb.xmin, _kh_bb.xmax, _kh_hit))
+# ⚠ AND ASK WHETHER THEY ATTACHED, because nothing else will. chassis._largest() bins the
+# non-largest solids in a segment, but it runs at IMPORT -- before this union -- so a cradle
+# that touches nothing survives here as a second solid and prints as a loose part. That is the
+# exact failure keyhead_endplate's own assert was written for when it carried them: "the motor
+# controller's came out a free-floating 18,121 mm3 lump, which the overlap gate cannot see --
+# two solids that never touch do not interpenetrate". The question moves with the cradles.
+_kh_n = len(chassis_segments[_csi].val().Solids())
+assert _kh_n == 1, (
+    "the chassis segment came out as %d disconnected solids after fusing the board cradles. "
+    "One of them is not touching: the motor frame's side walls should run INTO the floor slab "
+    "(board bottom edge z -80.85 against a floor top of -71.35) and the Pi's two legs should "
+    "reach it with one bead of overlap. Check electronics.keyhead_cradles's root_d/foot "
+    "against motor_bank.FLOOR_TOP." % _kh_n)
+for _mp in _EL_ports.mctrl_floor_ports():
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
+# ⚠ AND THE FLAT PI'S ANCHOR, WHICH MUST BE CUT HERE AND NOT IN THE CRADLE. pcb_cradle bores
+# its own boss, but that boss is EMBEDDED in the floor slab -- the M4 needs anchor_min_wall
+# below the board's underside, which is deeper than the standoff -- so the floor's own
+# material refills the bore the moment the cradle is unioned above. The gate caught exactly
+# that: 43.9 mm3 of board_screw_2 and 37.5 of board_insert_2 inside chassis_2.
+# Every segment, not `_csi`: that name was rebound by the loop just above, so it no longer
+# points at the segment the cradle went into -- and the other cutters here sweep all segments
+# for the same reason. A bore outside its own segment removes nothing.
+if not os.environ.get("PI_NO_CRADLE"):          # see keyhead_cradles; debug sweeps only
+    _pi_bore = _EL_ports.pi_hold_bore()
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_pi_bore)
+# (pi_cap_relief is GONE, and nothing replaces it. It pocketed 5.8 mm out of the bay's
+#  -Y wall to admit the Pi cap's overhang; the Pi now sits +3.82 with the cap's face FLUSH
+#  on that wall, so there is nothing to admit. The user's point was that the pocket cost
+#  wall strength -- the answer is to not need it, not to make it smaller. See PI_FP.)
+# ...and the LED strip's connector tails, for the same reason and by the same route.
+for _lr in _EL_ports.led_wall_reliefs():
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_lr)
 _fused_segs = set()
 for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
     for _csi in range(len(_seg_edges) - 1):
@@ -248,14 +320,21 @@ for _ctx, _cutters in _WR_FUSE.tee_hold_negatives():
 chassis_light = list(chassis_light)
 for _i, _lt in enumerate(chassis_light):        # the transparent under-rail band
     PARTS[f"chassis_{_i}_light"] = (
-        partial(heal, _lt), f"petg/chassis_{_i}_light.step",
-        "PETG (WHITE, translucent) — DOWNWARD LIGHT WINDOW: 8 mm across Y by the bottom "
+        partial(heal, _lt), f"pctg/chassis_{_i}_light.step",
+        "PCTG (WHITE, translucent) — DOWNWARD LIGHT WINDOW: 8 mm across Y by the bottom "
         f"prism's full XBAR, one XBAR inboard of the +Y rail (print AS ONE OBJECT with chassis_{_i}, "
         "the deck panels' base/colour pattern). The bottom is sealed now, which is what keeps the "
         "motor noise in; this is the one deliberate leak, and the rail stands outboard of it so "
         "nothing shows from the front -- it only aims DOWN, at the pedals. White to match the deck "
-        "panels, and it diffuses rather than glares. Same resin family as the PETG-GF body, so the "
-        "two weld and purge cleanly")
+        "panels, and it diffuses rather than glares. "
+        "⚠ PCTG, NOT PETG (user, 2026-09-30). These three were the ONLY parts in the instrument "
+        "asking for a fourth spool, and nothing else in the project is plain PETG -- the body is "
+        "PETG-GF, the deck and fine-feature parts are PCTG, the feet TPU. The deck panels are "
+        "already translucent/white PCTG, so the window is now the material it sits next to rather "
+        "than one bought for it. PCTG is the same glycol-modified polyester family as PETG-GF, so "
+        "the two still weld and purge cleanly in a one-object print. If a test print shows that "
+        "weld is worse than PETG's, that is a reason to revisit -- a spool is cheaper than a "
+        "delamination")
 # THE TRRS ADAPTER'S STATION over the -X/+Y leg (wiring.trrs_*): the same three-step
 # dance the tees do, and for the same reason -- fuse the cradle into the segment that
 # owns its X, THEN cut the things that live inside it, because the fuse fills them in.
@@ -266,7 +345,7 @@ _trrs_x = _WR_FUSE.TRRS_X
 # instrument's underside, with the leg's lead left hanging in free air. The user has a
 # wiring plan for it to be implemented later, and until then a board mounted here is a
 # guess that collides with real parts -- it was behind 6 of the model's 14 unintended
-# overlaps (keyhead_endplate, electronics_tray, pi5 and three nut_height screws).
+# overlaps (keyhead_endplate, electronics_tray, pi4 and three nut_height screws).
 #
 # NOTHING IS DELETED. wiring.trrs_cradle / trrs_port / trrs_hold_negatives /
 # trrs_components are all still there and still correct for the station as laid out;
@@ -298,6 +377,11 @@ PARTS["coil_mandrel_sleeve"] = (
     lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).sleeve()),
     "tools/coil_mandrel_sleeve.step",
     "TOOL — the mandrel's outer sleeve, bore Ø23.0. It caps the coil's diameter so the mean lands on arithmetic rather than on spring-back, and holds both axial tails against the barrel while they set. PA6-GF, printed SOLID")
+# LEVER PROGRAMMING JIG -- a SHOP TOOL like the mandrel: exported, never in the assembly.
+PARTS["lever_prog_jig"] = (
+    lambda: heal(__import__("src.lever_jig", fromlist=["e"]).jig()),
+    "tools/lever_prog_jig.step",
+    "TOOL — pogo nest for flashing the 11 lever/pedal sensor boards. The board drops in COMPONENT FACE DOWN onto four P75 pins standing at TP1–TP4 (positions read from the routed board), J1 is powered through the end window, and the pins seat themselves at height against the bench. PETG, printed as drawn")
 
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
@@ -338,13 +422,33 @@ PARTS["test_belt_tensioner"] = (
 OUT = pathlib.Path(__file__).resolve().parents[1]
 
 
+# The instrument's materials, and there are THREE (user, 2026-09-30): PETG-GF for the
+# body, PCTG for the deck and fine-feature parts, TPU for the feet. Plain PETG was here
+# for exactly three parts -- the chassis light windows -- and buying a fourth spool for
+# three translucent strips is the opposite of what this instrument is for.
+MATERIALS = ("petg-gf", "pctg", "tpu")
+
+
+def _material_of(path):
+    """The material folder a part exports into, or None.
+
+    ⚠ NOT path.split("/")[0]. Test coupons are written at the root and coil_mandrel into
+    tools/, so that returned "test_cover_plate.step" and "tools" as materials and
+    tools/cost.py then had no filament price for either (lead, 2026-09-30). A part
+    outside the material folders has no filament cost to attribute, and saying None is
+    how cost.py knows to leave it out rather than guess."""
+    head = path.split("/")[0]
+    return head if head in MATERIALS else None
+
+
 def _export(name):
     builder, path, note = PARTS[name]
     dest = OUT / path
     dest.parent.mkdir(parents=True, exist_ok=True)   # material folder (petg-gf/pctg/tpu)
     t = time.perf_counter(); wp = builder(); build_s = time.perf_counter() - t
     t = time.perf_counter(); export_step(wp, str(dest)); export_s = time.perf_counter() - t
-    record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp)   # ~free profiling hook
+    record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp,
+                material=_material_of(path))          # ~free profiling + volume hook
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
@@ -539,7 +643,7 @@ def _string_components(i):
     # viewing it, never saw one. Same placement as there, from the same module.
     out.append((f"nut_slide_insert_{i}",
                 NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
-    # ...and the M4 x 18 that pushes it up, threading its heat-set in the endplate slab
+    # ...and the M4 x 20 that pushes it up, threading its heat-set in the endplate slab
     out.append((f"nut_height_screw_{i}",
                 NB.height_screw(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
     out.append((f"nut_height_insert_{i}",
@@ -793,33 +897,48 @@ def _foot_pedal_components():
 
 
 def _electronics_components():
-    """The compute bay (PRO population shown; a basic build leaves the Pi /
-    CS stack / buck sockets empty) + panel jacks + the wire harness."""
+    """The compute bay + panel jacks + the wire harness.
+
+    (The old "PRO population shown; a basic build leaves the Pi / CS stack / buck
+    sockets empty" is retired with the basic/pro split itself -- there is ONE model,
+    fully populated, and BOM.md's cost summary says so. The CS stack and the buck
+    sockets it named are both gone besides.)"""
     from . import electronics as EL
     from . import wiring as WR
     from . import top_plate as TP
     # electronics_tray is gone: the Pi's and the motor controller's mounts are cradles
-    # fused into keyhead_endplate now (see electronics.keyhead_cradles). One less printed
-    # part, and the boards gained retention they never had on the tray's bare posts.
-    out = [("pi5", EL.pi5()),
+    # fused into the CHASSIS SEGMENT now (see electronics.keyhead_cradles and the union at
+    # the top of this file) -- NOT the endplate, which is what this said until 2026-09-29.
+    # The endplate has to come off with the boards left in place (user), which is the whole
+    # reason they moved. One less printed part, and the boards gained retention they never
+    # had on the tray's bare posts.
+    # pi_spacer is the flat Pi's RETENTION -- a printed piece, not a dummy. It replaces the
+    # button head that used to clamp the laminate directly: no position beside the board had
+    # room for that screw's anchor below the floor (electronics.PI_SPACER_XY).
+    out = [("pi4", EL.pi4()), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
+           *EL.led_sections(),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
-           ("oled", EL.oled()), ("joystick", EL.joystick())]
+           ]
+    out += UI.parts()
+    # the fret-light boards and their LEDs. The CELLS are not here -- they are deck
+    # geometry, built into top_plate's mid/keyhead panels (src/fret_light.py).
+    from . import fret_light as FL
+    for panel in ("mid", "key"):
+        out.append(("fret_pcb_%s" % panel, FL.pcb(panel)))
+        out.append(("fret_led_%s" % panel, FL.leds(panel)))
+    # the FOOT strip: one board placed twice, firing down through the chassis window.
+    # The channel it slides into is chassis geometry (src/foot_light.py).
+    from . import foot_light as FOOT
+    out += FL.strips()
+    out += FL.pogo_pins()
+    out += FL.m4_screws()      # the one M4 per board, head on the board's underside
+    out += FOOT.parts()
     out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
-    # the fillers the pickup piece displaced: show them slid +Y clear of the
-    # instrument (exploded), but at the true X/Z where they'd seat if the pickup
-    # weren't there -- so it reads as "pull these, drop in the pickup piece".
-    # Base + colour move by the SAME dy (from the base's bbox) so the pair stays
-    # aligned as printed.
-    from . import chassis as CH
-    rail_outer = CH.Y_HI + CH.T / 2
-    for i, (f, fc) in enumerate(zip(TP.spare_fillers, TP.spare_fillers_color)):
-        dy = (rail_outer + 8.0) - f.val().BoundingBox().ymin
-        out.append((f"top_plate_{len(TP.segments) + i}", f.translate((0, dy, 0))))
-        out.append((f"top_plate_color_{len(TP.segments_color) + i}",
-                    fc.translate((0, dy, 0))))
+    # (NO SPARE FILLERS to explode off to the side any more: the fillers are fret-free,
+    #  so one design fits any slot and the two installed ARE the whole set. See top_plate.)
     out += WR.tee_components()
     # out += WR.trrs_components()      # PARKED with the station above
     out += WR.build_wires()
@@ -1175,10 +1294,58 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-    "pi5", "motor_ctrl", "tee_", "wire_",
-    "output_panel", "joystick", "oled",
+        "pi4", "pi_cap", "pi_spacer", "led_strip_", "motor_ctrl", "tee_", "wire_",
+        "output_panel", "ui_",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
+
+
+def optical_work_components():
+    """The optical board and the two parts that SHAPE it -- for the O-band work.
+
+    ⚠ body_work_components WAS THE WRONG UNIT FOR THIS AND THE VIEW SHOWED IT. That set is
+    293 parts, essentially the whole instrument, and ScratchView only skips caching for
+    names matching `replaced` prefixes -- so with none declared every live part was ALSO
+    cached and rendered twice. The user saw the old C-shaped board sitting inside the new
+    O-shaped one. A live set that big also saves nothing: the cache exists to skip the
+    build, and there was almost nothing left to skip.
+
+    This is the actual unit of the work: the board, the endplate whose block it cuts into,
+    and the chassis it sits above. Scope it with
+        scope --set src.build --attr optical_work_components --crop bridge               --replaced optical_,bridge_endplate,chassis_
+    so the cache leaves those to the live build instead of duplicating them.
+
+    ⚠ BOTH ENDPLATE BOARDS, NOT JUST THE OPTICAL ONE (user, 2026-09-25). The instrument
+    carries a PCB at each end -- the optical strip in the bridge endplate and the motor
+    controller in the keyhead endplate's cradle -- and the work has crossed between them all
+    day (the bus-B connectors moved to the motor board's downward edge while the optical
+    board was routing). A scope holding one of them makes the other invisible exactly when
+    a change to the chassis has to suit both.
+    """
+    from . import optical_pickup as OP
+    from . import electronics as EL
+    _KE = __import__("src.keyhead_endplate", fromlist=["e"])
+    # ⚠ AND THE FLAT PI WITH ITS SPACER, FOR THE SAME REASON THE MOTOR BOARD IS HERE. The
+    # retention work crossed into the Pi's bay (its hold-down had to leave the board's edge
+    # entirely -- electronics.PI_SPACER_XY), and a scope that hides the part being designed is
+    # how the user came to report "the pi disappeared from your tab". The spacer is the point of
+    # the change, so it has to be visible in the view that reviews it.
+    out = [("optical_pcb", OP.opt_pcb()),
+           ("optical_cable_usb", OP.opt_cables("usb")),
+           ("optical_cable_pwr", OP.opt_cables("pwr")),
+           ("bridge_endplate", PARTS["bridge_endplate"][0]()),
+           ("motor_ctrl", EL.motor_ctrl()),
+           ("pi4", EL.pi4()), ("pi_spacer", EL.pi_spacer()),
+           ("keyhead_endplate", _KE.keyhead_endplate)]
+    # ⚠ AND THE FASTENERS, BECAUSE THEY MOVE WITH THE RETENTION AND THE CACHE DOES NOT KNOW.
+    # Left to the cache, board_screw_2/board_insert_2 stay at the hold position they had when
+    # it was built -- and a scoped gate then reports the OLD screw against the NEW chassis:
+    # 61.1 mm3 into chassis_2, 47.1 of insert, 36.5 into knee_housing and 112.8 through
+    # pi_spacer, every one of them an artefact of an 83-minute-old cache rather than a fault in
+    # the design. Live, they are checked where they actually are.
+    out += EL.board_screws()
+    out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    return out
 
 
 def body_work_components():
@@ -1355,6 +1522,16 @@ def lever_bus_nodes():
     return out
 
 
+def _ctrl_bus_components():
+    """Bus B's two ARRIVALS at the motor controller, drawn. See wiring.ctrl_bus_b.
+
+    Separate from _lever_bus_components because these are not lever-to-lever segments:
+    they are the pedal bar's cable coming in off the instrument's underside and the head
+    of the lever chain, and both cross the chassis floor through the one wiring port."""
+    from . import wiring as WR
+    return WR.ctrl_bus_b(lever_bus_nodes()[0])
+
+
 def _lever_bus_components():
     """The knee levers' bus-B harness, drawn. See wiring.lever_bus."""
     from . import wiring as WR
@@ -1375,7 +1552,8 @@ def lever_harness_box():
     cannot reach (user)."""
     from . import top_plate as TP
     bbs = [w.val().BoundingBox()
-           for _, w in _lever_stations_components() + _lever_bus_components()]
+           for _, w in (_lever_stations_components() + _lever_bus_components()
+                       + _ctrl_bus_components())]
     x0, x1 = min(b.xmin for b in bbs) - 25.0, max(b.xmax for b in bbs) + 25.0
     y0, y1 = min(b.ymin for b in bbs) - 25.0, max(b.ymax for b in bbs) + 25.0
     z0, z1 = min(b.zmin for b in bbs) - 15.0, TP.BZ
@@ -1386,7 +1564,8 @@ def lever_harness_components():
     """The knee levers and the bus-B harness between them, as ONE live set. The pedals
     and the bar are OUT: they are a separate subassembly that this work does not move,
     and leaving them in made every gate rebuild 500 solids to check 200."""
-    return _lever_stations_components() + _lever_bus_components()
+    return (_lever_stations_components() + _lever_bus_components()
+            + _ctrl_bus_components())
 
 
 def bus_b_components():
@@ -1400,7 +1579,42 @@ def bus_b_components():
     cropping to the levers is what left the pedal bar looking like a bar in empty
     space."""
     return (lever_components() + _pedal_bar_components()
-            + _lever_bus_components())
+            + _lever_bus_components() + _ctrl_bus_components())
+
+
+def ctrl_bus_work_components():
+    """BUS B'S CROSSING OF THE CHASSIS FLOOR as one live set: the two cables that arrive
+    at the motor controller, and everything they have to get past to do it.
+
+    It is body_work plus the bus, and it needs to be both. The pedal cable starts inside
+    the -X/+Y LEG, comes out of the body adapter onto the instrument's UNDERSIDE, crosses
+    it, passes through a port in the CHASSIS floor slab, and lands on a connector on the
+    standing ELECTRONICS tray; the lever half comes up from the knee-lever bay below. A
+    live set holding only the harness would gate a cable against nothing it can hit, and
+    one holding only the body would not gate the cable at all."""
+    out = body_work_components()
+    have = {n for n, _ in out}
+    for n, w in lever_components() + _lever_bus_components() + _ctrl_bus_components():
+        if n not in have:
+            out.append((n, w))
+    return out
+
+
+def ui_work_components():
+    """THE UI STATION as one live set: the deck panel it is cut into, the board, the
+    display, the knob, and everything under that part of the deck.
+
+    It has to be the whole body, not just the station. The UI board hangs 13 mm below a
+    deck panel that SLIDES OUT -X for service, so every part of its cradle sweeps the
+    length of the bay on the way out; and the -Y band it sits over is the band the motor
+    bank and its tee boards live under. A live set holding only the UI would gate it
+    against nothing it can reach."""
+    out = body_work_components()
+    have = {n for n, _ in out}
+    for n, w in _ctrl_bus_components():
+        if n not in have:
+            out.append((n, w))
+    return out
 
 
 def _tensioner_coupon_components():
@@ -1446,6 +1660,13 @@ def collect_components():
     comps += _foot_pedal_components()
     comps += _electronics_components()
     comps += _lever_stations_components()      # all five, LKL/VKL included
+    # ...AND THE HARNESS THAT RUNS BETWEEN THEM. Left out when the bus-B harness landed
+    # (2026-09-23), so all 36 conductors were built by lever_harness_components() for the
+    # agent's own scratch view and by NOTHING ELSE: absent from assembly.step, from the web
+    # preview, and -- the part that matters -- from the overlap gate, which takes its model
+    # from this function. The user spotted it as missing geometry in the viewer; the gate had
+    # been reporting green on an instrument with no lever wiring in it.
+    comps += _lever_bus_components() + _ctrl_bus_components()
     comps += _wrap_rod_component()
     comps += _tensioner_coupon_components()
     for i in range(D.N_STRINGS):
@@ -1494,7 +1715,7 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),
-    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 18 button, pushes the insert up
+    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 20 button, pushes the insert up
     "nut_height_insert": (0.72, 0.60, 0.30),  # M4 heat-set in the keyhead slab
     "nut_slide_insert": (0.86, 0.72, 0.30),   # the sliding insert -- brass-ish, so it
                                               # reads apart from the steel it presses on
@@ -1533,9 +1754,13 @@ _COLORS = {
     "pogo_female_screw": (0.62, 0.64, 0.67),
     "pogo_male_insert":  (0.72, 0.52, 0.20),   # the brass heat-set inserts
     "pogo_female_insert": (0.72, 0.52, 0.20),
-    "pogo_harness_leg":  (0.75, 0.15, 0.12),   # the leg's harness, two twisted pairs
-    "pogo_harness_body": (0.75, 0.15, 0.12),
-    "pogo_harness_bar":  (0.75, 0.15, 0.12),
+    # the leg's harness: FOUR conductors, in the same colours src.wiring gives every
+    # CAN run (black GND / red hot / yellow CAN-H / green CAN-L) -- INCLUDING through
+    # the slack coil, which used to be one red body at the bundle's diameter and is now
+    # four helices carrying their own places in the bundle (user)
+    # ...keyed BY PIN NUMBER off elec.harness, in wiring's colour order (return black,
+    # rail red, CAN-H yellow, CAN-L green), so the colours follow the pinout instead of
+    # being a fifth place the circuit names are written out
     "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
     "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
     "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
@@ -1558,9 +1783,6 @@ _COLORS = {
     "leg_coupler_m":   (0.36, 0.42, 0.46),
     "leg_coupler_f":   (0.36, 0.42, 0.46),
     "leg_head":        (0.36, 0.42, 0.46),
-    "latch_slider":    (0.85, 0.35, 0.20),   # latch accent
-    "latch_cover":     (0.55, 0.30, 0.22),
-    "latch_spring":    (0.62, 0.64, 0.67),   # stainless coil (purchased)
     "leg_pinch_gib":   (0.85, 0.35, 0.20),   # clamp accent (matches bolts)
     "leg_plug_retainer": (0.42, 0.48, 0.52),
     "chassis_trrs_jack": (0.62, 0.64, 0.67),
@@ -1640,7 +1862,10 @@ _COLORS = {
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
 
-    "pi5":             (0.05, 0.35, 0.15),   # PCB green
+    "pi4":             (0.05, 0.35, 0.15),   # PCB green
+    "pi_cap":          (0.05, 0.35, 0.15),   # PCB green
+    "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
+    "led_strip_":      (0.05, 0.35, 0.15),   # PCB green
     "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
     "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
@@ -1670,8 +1895,19 @@ _COLORS = {
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
     "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
-    "oled":            (0.05, 0.05, 0.08),   # screen (perfect-black OLED)
-    "joystick":        (0.15, 0.15, 0.17),   # UI control
+    "ui_pcb":          (0.05, 0.35, 0.18),   # the UI board, as fabbed
+    "ui_display":      (0.16, 0.16, 0.18),   # the module's metal bezel -- the part the
+                                             # deck's ledge bears on and covers
+    "ui_screen":       (0.64, 0.66, 0.68),   # the 128 x 64 of LIT AREA. Light enough to
+                                             # read against the bezel, so the render
+                                             # answers "how much of the screen does the
+                                             # deck cover" by looking -- but GREY, not
+                                             # white: at 0.92 it glared next to the
+                                             # near-black module around it
+    "ui_clamp":        (0.36, 0.30, 0.42),   # the printed clamp plate under the board
+    "ui_insert":       (0.72, 0.60, 0.38),   # brass heat-set
+    "ui_screw":        (0.62, 0.64, 0.67),
+    "ui_knob":         (0.15, 0.15, 0.17),   # the printed cap on the encoder
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
@@ -1694,19 +1930,37 @@ _COLORS = {
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
     "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
-    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
-                                             #   wire returns when the optical board is
-                                             #   designed and the pickup plugs into it
-    "wire_link":       (0.95, 0.72, 0.22),   # light amber - motor controller <-> Pi
+    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
+                                             #   shielded lead, coil underside -> the
+                                             #   output panel's J8 screw terminals
+    "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
-    "wire_oled":       (0.68, 0.36, 0.08),   # brown-amber - OLED -> Pi
-    "wire_joy":        (0.54, 0.28, 0.08),   # darkest amber - joystick -> Pi
+    # THE UI RIBBON, fourteen conductors. Grey is what 1.27 flat cable is; conductor 1
+    # is its red stripe, which is the only marking an IDC cable carries and the only
+    # thing that tells you which way round the plug goes.
+    # named per PANEL, not per index (_color_for strips digits, not words), because
+    # "mid" and "key" are what every other file calls these two boards
+    "fret_pcb_mid":    (0.05, 0.35, 0.15),   # PCB green
+    "fret_pcb_key":    (0.05, 0.35, 0.15),
+    "fret_led_mid":    (0.95, 0.95, 0.88),   # RGBW, lit
+    "fret_led_key":    (0.95, 0.95, 0.88),
+    "foot_pcb_a":      (0.05, 0.35, 0.15),
+    "foot_pcb_b":      (0.05, 0.35, 0.15),
+    "foot_led_a":      (0.95, 0.95, 0.88),
+    "foot_led_b":      (0.95, 0.95, 0.88),
+    "wire_ui":         (0.55, 0.56, 0.58),
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
 _TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (user rule)
 # every part whose output path is tpu/... -> black, regardless of instance prefix/suffix
 _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/")), key=len, reverse=True))
+
+
+_COLORS.update({
+    "pogo_wire_%s" % n.lower(): c for n, c in zip(
+        _EH.PH_PINOUT, ((0.05, 0.05, 0.05), (0.85, 0.12, 0.10),
+                        (0.95, 0.85, 0.10), (0.13, 0.72, 0.20)))})
 
 
 def _color_for(name):
@@ -1924,6 +2178,12 @@ def main() -> None:
 
     for name in PARTS:
         _export(name)
+    # ⚠ VOLUMES FIRST. report_build_regressions() ends by CLEARING the record list, so
+    # writing the volumes after it wrote an empty file (found by the file being 100
+    # bytes, lead 2026-09-30). Order matters here and nothing else would have said so.
+    _n = write_part_volumes()           # what the plastic costs, for tools/cost.py
+    if _n:
+        print(f"wrote tools/part_volumes.json  ({_n} parts)")
     report_build_regressions()          # ~free: flags any part whose face count grew vs baseline
     sys.exit(_export_assembly(gate=gate, gate_full=gate_full))
 

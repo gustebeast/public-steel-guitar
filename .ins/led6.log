@@ -1,0 +1,34 @@
+      stitched 23 pad(s) on GND straight to the plane
+    led_strip.kicad_pcb: 27 parts, 52 nets, 139.0 x 24.0 mm
+    exported led_strip.dsn (25 kB)
+      router clearance 137 um (fab rule 127 um + 10 um of rounding margin)
+      ?           Thank you for using Freerouting!                       ?
+      ?                                                                  ?
+      ?  If you would like to support the project, please visit          ?
+      ?  https://www.freerouting.app/donate.html                         ?
+      ?  Every contribution helps keep this project open and active!     ?
+      ????????????????????????????????????????????????????????????????????
+      widened 1 track(s) back up to the 0.127 mm floor
+      ⚠ 3 stitch via(s) landed where the plane is not: GND at 136.35,100.33, GND at 55.35,100.33, GND at 95.85,100.33
+        moved 1 of them into the plane and re-poured
+      ⚠ 2 stitch via(s) landed where the plane is not: GND at 55.35,100.33, GND at 95.85,100.33
+        (the rest have nowhere to go: move the part or except the pad -- another routing run will not help)
+      snapped 14 hairline gap(s) shut (no copper added)
+      tidied 23 router via(s) -- dangling GND; dangling GND; dangling GND; dangling GND; dangling GND; dangling GND
+      dropped 10 degenerate track fragment(s) from the import
+    led_strip.kicad_pcb: 663 track segments + vias imported
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'ZONE_FILLER *', no destructor found.
+  35 DRC warning(s): silk_over_copper x18, silk_overlap x15, track_dangling x2
+  pass 1: 1 unconnected, 0 violation(s)
+    led_strip: no matched-length groups declared -- nothing to check
+    led_strip.geom.json: 27 footprints, board 139.00 x 24.00
+led_strip: 1 unconnected, 0 violation(s)

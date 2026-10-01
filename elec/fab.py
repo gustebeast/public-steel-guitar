@@ -62,8 +62,13 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
+# ...plus the two FRET LIGHTING boards (2026-09-29), which are one design in
+# elec/fret_led.py cut to two panels -- see that module. `led_strip` is the OTHER
+# lighting job, the one that fires down at the player's feet; the two were a single
+# strip until the fret work split them.
 BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
-          "optical")
+          "pi_cap", "optical", "ui_board", "fret_led_mid", "fret_led_key",
+          "foot_led")
 
 # Layer sets by copper count. JLCPCB takes the KiCad extensions directly.
 L2 = "F.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
@@ -77,7 +82,13 @@ L4 = ("F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,"
 # made. See the module docstring on why blank beats a guess.
 LCSC = {
     "S8B-XH-A": "C157914",          # 8-way side-entry XH, motor tee trunk
+    "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
+    "B6B-PH-K-S": "C131342",        # B6B-PH-K-S(LF)(SN) -- pi_cap J3, 5 V + SPI to the strip
     "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
+    "S4B-PH-SM4-TB": "C265102",     # 4-way side-entry PH, motor_ctrl J2/J6 (bus B,
+                                    # split so each half unplugs from under the
+                                    # instrument). Same family as the 8-way above.
+                                    # Verified 2026-09-25: 28,934 in stock.
     "B8B-PH-K-S": "C157974",        # B8B-PH-K-S(LF)(SN), stock 21,709 -- motor_ctrl J2,
                                     # the same bus-B trunk on the vertical variant
     "PJ-320D-4A": "C95562",         # TRRS 4-pole socket
@@ -93,12 +104,14 @@ LCSC = {
     "STM32H743IIT6": "C89597",      # LQFP176; pins re-derived from ST's CubeMX symbol
     "USB3343-CP": "C633347",        # ULPI PHY; pinout was INVENTED before this check
     "USBLC6-2SC6": "C7519",         # ESD array, SOT23-6L: 1 IO1 2 GND 3 IO2 4 IO2 5 VBUS 6 IO1
-    "TLV9064IDR": "C388176",        # quad TIA, SOIC-14 (TI SBOS839 Table 5-5)
+    "TLV9062IDGKR": "C398356",      # dual TIA, VSSOP-8 -- same die as the TLV9064 it
+                                    # replaced (TI SBOS839); 34k stock vs the quad's 107
     "TLV9061IDBVR": "C398358",      # mid-rail buffer -- DBV, NOT the DCK part once ordered
     "AMS1117-3.3": "C6186",         # 3V3 digital LDO: 1 GND 2 VOUT/tab 3 VIN
     "SPX3819M5-L-3-3/TR": "C9055",  # 3V3 analog LDO: 1 IN 2 GND 3 EN 4 BYP 5 OUT
     "LMR33630CRNXR": "C2071783",    # 24->5 V sync buck, 2.1 MHz, 3 A, VQFN-HR RNX (optical U13)
-    "IR17-21C/TR8": "C131250",      # 940 nm emitter, 65 mA max, VF 1.2 typ
+    "LTE-C9901": "C2683614",        # 940 nm emitter, 0603, Lite-On DS50-2017-0074:
+                                    # 8 mW/sr typ @20 mA, 65 deg FULL, 0.98 tall, 60 mA DC
     "PD15-22B/TR8": "C161211",      # Everlight PIN photodiode, 940 nm peak, 11k stock (2026-09-21)
     "TLV320ADC3140IRTWT": "C1852021",  # TI 4-ch audio ADC, WQFN-24 RTW, 306 stock (2026-09-21)
     "S4B-XH-SM4-TB": "C161861",     # the (LF)(SN) form, 20,992; the bare listing is 0
@@ -120,6 +133,15 @@ LCSC = {
     "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (led_strip)
     "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (led_strip)
     "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector
+                                    # and pi_cap J3, 5 V + SPI out to the strip
+    "S4B-XH-SM4-TB": "C161861",     # S4B-XH-SM4-TB(LF)(SN), 20,777 -- pi_cap J2/J4,
+                                    # side entry so they fit UNDER the cap (see there)
+    "YZF0002-38080-02": "C5203987", # side-mount SMD pogo, 24 V / 12 A: the fret seam, x6 a side
+    # ⚠ THE FOOT STRIP'S, AND IT IS THERE FOR ITS HEIGHT. Everything on that board hangs
+    # into a 3.40 mm trough; the PH above is 5.50 tall and does not fit. JST's own
+    # drawing puts the side-entry SH at 2.95. 1.0 A / 50 V against 0.24 A at 24 V.
+    "SM04B-SRSS-TB": "C160404",     # JST SM04B-SRSS-TB(LF)(SN), 4-way side-entry SH,
+                                    # 3,495 in stock 2026-09-30
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the
                                     # (LF)(SN) trap again and not a preference: the BARE
@@ -145,6 +167,20 @@ LCSC = {
     "CH334F": "C5187527",           # WCH HS hub, QFN-24 4x4 (DS V2.5 Table 1-3, "4F")
     "G6K-2F-Y-DC5": "C326376",      # Omron DPDT, 5 V coil (terminal arrangement p.6), ~2.5k
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
+    # -- the UI board, 2026-09-25, every line read off the LCSC listing itself ------
+    "RKJXT1F42001": "C160841",      # Alps 4-way stick + encoder + push, 7,354 in stock.
+                                    # DigiKey's listing for the same part is 0 in stock
+                                    # at $9.22 and describes it as "non-continuous",
+                                    # which is wrong -- see the note in BOM.md.
+    "KH-2.54PH180-1X20P-L11.5": "C2905493",   # 1x20 male, insulation 2.5 / mating pin
+                                    # 6.0 / tail 3.0, all three read from the listing
+                                    # because src/ui_panel.py's Z stack is built on
+                                    # them. 1,131 in stock.
+    # 154 IN STOCK, AND IT IS THE THINNEST LINE ON THIS BOARD. The right-angle 2x7 is
+    # the only shrouded IDC that fits under the deck (see ui_board.py); if it is gone,
+    # the fallback is the VERTICAL DC3-2.54-14PAS, which needs the board re-laid for a
+    # different exit -- not a like-for-like swap. Check it before ordering.
+    "DC3-2.54-14PAL": "C5156673",
 }
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
 # branner's catch, and it is the right shape for the bug that happened: usb_panel's
@@ -160,7 +196,7 @@ LCSC = {
 # value that is neither sourced nor generic nor listed below FAILS THE BUILD,
 # which means changing a part number forces you to come here and say so.
 OPEN_VALUES = frozenset({
-    "NMJ4HCD2",            # 1/4 in jack. JLCPCB lists it (C18185363) at ZERO
+    "NMJ6HCD2",            # 1/4 in TRS jack (was the TS NMJ4HCD2). JLCPCB at ZERO
                            # stock, 2026-09-17 -- a listing is not a source
     "USB1046-GF-0180",     # GCT USB-A. Not listed at JLCPCB (2026-09-17); the
                            # nearest is -0190-L-B-A at 5 in stock. ⚠ THE ONE THAT WENT WRONG -- if this
@@ -666,7 +702,11 @@ def _sweep_stale(names):
         # and are kept on purpose for comparison; only an undotted stem is its own board.
         if "." in board:
             continue
-        if not os.path.isfile(os.path.join(HERE, "%s.py" % board)):
+        # ⚠ A BOARD'S GENERATOR NEED NOT BE NAMED AFTER IT. fret_led.py writes BOTH
+        # fret_led_mid and fret_led_key -- one design cut to two deck panels -- so the
+        # file-name test called them orphans. Being in BOARDS is the real proof that a
+        # stem is still in the design, which is what this check is for.
+        if board not in BOARDS and not os.path.isfile(os.path.join(HERE, "%s.py" % board)):
             n = len(glob.glob(os.path.join(OUT_DIR, board + ".*")))
             print("  !! elec/out holds %d file(s) for '%s', which has no generator -- a "
                   "board that is not in the design any more. Delete them or restore it."

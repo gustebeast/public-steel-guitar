@@ -1,0 +1,2193 @@
+{
+  "_note": [
+    "THE ONE PLACE A PRICE IS WRITTEN DOWN. tools/cost.py reads this and nothing else;",
+    "BOM.md's prose prices are for a human to read, and drifted from each other (three",
+    "different per-motor supply currents, two different junction gaps). A price here has",
+    "a source and a date, or it is marked unverified and the total says so.",
+    "",
+    "verified: 'v' = read off the supplier's own product page. 'm' = from a listing,",
+    "search result or memory, NOT the product page -- cost.py counts these separately",
+    "and prints the total twice, with and without them, because the user's rule is that",
+    "a price comes off the product page.",
+    "",
+    "qty: the price break this figure came from. cost.py does NOT interpolate breaks --",
+    "if the instrument needs 40 and the price is @10, it uses the @10 figure and says so."
+  ],
+  "filament_per_kg": {
+    "petg-gf": {
+      "usd": 17.71,
+      "verified": "v",
+      "source": "Tinmorry 10-roll pack, blended over the order basket",
+      "date": "2026-09-30",
+      "density_g_cm3": 1.32,
+      "what": "WAS $29.99/kg from a list price. The store sells a TEN-ROLL PACK -- 10 Rolls Glass Fiber PETG Filament, 1 KG 1 Spool, Frosted Black/White/Grey -- at $175.00, in stock, i.e. $17.50/kg. A ten-instrument order needs 41.0 kg, so the real basket is 4 packs + 1 single spool at $25.99 = $725.99, which blends to $17.71/kg. That is the number here. Measured at a real Tinmorry checkout 2026-09-30 (cart built, shipping quoted, cart cleared, nothing ordered): SHIPPING FREE on 57.35 kg gross, ships from the USA in 7-14 days, and NO SALES TAX LINE AT ALL -- total equalled subtotal. So this is already landed. One caveat: a SINGLE instrument cannot reach this rate (4.1 kg off singles is $31.70/kg); the ten-instrument basis is what buys it."
+    },
+    "pctg": {
+      "usd": 31.99,
+      "verified": "m",
+      "source": "3D-Fuel Pro PCTG",
+      "date": "2026-09-01",
+      "density_g_cm3": 1.23
+    },
+    "tpu": {
+      "usd": 28.0,
+      "verified": "m",
+      "source": "generic 95A",
+      "date": "2026-09-01",
+      "density_g_cm3": 1.21
+    }
+  },
+  "mechanical": {
+    "_note": [
+      "EVERY PURCHASED MECHANICAL PART, COUNTED FROM THE MODEL on 2026-09-30 -- the dummies",
+      "src.build.collect_components() places, measured by bounding box, not typed from memory.",
+      "Two scalings the model does not show: it draws 10 sensed controls where the instrument",
+      "has 11 (6 knee + 5 pedal), and ONE leg where there are four, so control hardware is",
+      "x11/10 and the latch springs follow BOM.md's 4 + 2.",
+      "",
+      "usd is the cost PER PIECE ON A TEN-INSTRUMENT ORDER, whole packs bought: a pack of 100",
+      "bought for 20 screws costs what the pack costs. 'order' spells the arithmetic out.",
+      "McMaster prices were read off each product page signed in, 2026-09-30."
+    ],
+    "servo42d": {
+      "usd": 33.99,
+      "qty": 10,
+      "verified": "v",
+      "per_instrument": 10,
+      "what": "MKS SERVO42D CAN MT (board + MOTOR) -- makerbase3d.com variant table, in stock 2026-09-30. MB is the BOARD ONLY at $22.99 and is the wrong SKU."
+    },
+    "psu_24v_150w": {
+      "usd": 20.69,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Mean Well LRS-150-24, 24 V 6.5 A 156 W -- Jameco $17.10 at qty 10, PLUS $3.59 of TARIFF ($35.91 on ten, itemised in the cart, HTS 8504.40.9530) = $20.69 landed. Sized from BOM.md power table: 120 W bus A + 16.7 W Pi = ~137 W peak. On backorder 2026-09-30, ships 11/16."
+    },
+    "bearing_mr85zz": {
+      "usd": 0.49,
+      "qty": 20,
+      "verified": "v",
+      "per_instrument": 20,
+      "what": "MR85ZZ, the screws' bottom thrust pair"
+    },
+    "bearing_688zz": {
+      "usd": 0.6,
+      "qty": 40,
+      "verified": "v",
+      "per_instrument": 42,
+      "what": "688ZZ O8xO16x5 -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls)"
+    },
+    "m4_button_8": {
+      "usd": 0.5555,
+      "verified": "v",
+      "per_instrument": 2,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A189",
+      "order": "1 x $11.11 (pack of 100) = $11.11 for 20 needed",
+      "what": "M4x8 18-8 button, 2.5 hex -- the two female pogo boards"
+    },
+    "m4_button_10": {
+      "usd": 0.1349,
+      "verified": "v",
+      "per_instrument": 14,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A190",
+      "order": "2 x $9.44 (pack of 100) = $18.88 for 140 needed",
+      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards"
+    },
+    "m4_button_12": {
+      "usd": 0.4923,
+      "verified": "v",
+      "per_instrument": 3,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A192",
+      "order": "1 x $14.77 (pack of 100) = $14.77 for 30 needed",
+      "what": "M4x12 -- 2 optical board, 1 UI clamp"
+    },
+    "m4_button_20": {
+      "usd": 0.1894,
+      "verified": "v",
+      "per_instrument": 15,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A196",
+      "order": "3 x $9.47 (pack of 50) = $28.41 for 150 needed",
+      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards"
+    },
+    "m4_button_30": {
+      "usd": 0.732,
+      "verified": "v",
+      "per_instrument": 2,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A198",
+      "order": "1 x $14.64 (pack of 50) = $14.64 for 20 needed",
+      "what": "M4x30 -- pedal-bar latch collar, one per bar-to-leg joint (model draws one leg)"
+    },
+    "m4_button_35": {
+      "usd": 0.3356,
+      "verified": "v",
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A199",
+      "order": "4 x $8.39 (pack of 25) = $33.56 for 100 needed",
+      "what": "M4x35 -- belt-tensioner draw screws"
+    },
+    "m4_button_40": {
+      "usd": 0.5065,
+      "verified": "v",
+      "per_instrument": 4,
+      "vendor": "McMaster-Carr",
+      "sku": "92095A200",
+      "order": "2 x $10.13 (pack of 25) = $20.26 for 40 needed",
+      "what": "M4x40 -- the four leg lock pins"
+    },
+    "m4_setscrew_10": {
+      "usd": 0.1032,
+      "verified": "v",
+      "per_instrument": 45,
+      "vendor": "McMaster-Carr",
+      "sku": "91390A114",
+      "order": "5 x $9.29 (pack of 100) = $46.45 for 450 needed",
+      "what": "M4x10 cup-point set screw -- 2 position + 2 spring-tension per control x 11, + 1 pickup retention. BOM.md also lists 10 string clamps; the model draws none, so they are NOT counted here."
+    },
+    "m4_insert": {
+      "usd": 0.2187,
+      "verified": "v",
+      "per_instrument": 94,
+      "vendor": "McMaster-Carr",
+      "sku": "94459A150",
+      "order": "19 x $10.82 (pack of 50) = $205.58 for 940 needed",
+      "what": "M4 brass heat-set, 4.7 installed. 88 drawn + 4 for the eleventh control + 2 fret boards. AT 940 AN ORDER THIS IS THE DEAREST FASTENER LINE ($205.58) -- $0.22 each at McMaster against a few cents from an import seller; the obvious place to save if a second vendor is acceptable."
+    },
+    "washer_m3_9021": {
+      "usd": 0.0338,
+      "verified": "v",
+      "per_instrument": 44,
+      "vendor": "McMaster-Carr",
+      "sku": "91100A120",
+      "order": "5 x $2.97 (pack of 100) = $14.85 for 440 needed",
+      "what": "DIN 9021 M3 washer O9 x 0.8 -- spring seat + position, 4 per control x 11"
+    },
+    "break_dowel": {
+      "usd": 0.254,
+      "verified": "v",
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "91595A018",
+      "order": "2 x $12.70 (pack of 50) = $25.40 for 100 needed",
+      "what": "O2 x 4 dowel pin, 52100 -- the nut break pins"
+    },
+    "guide_rod_o3_5": {
+      "usd": 1.845,
+      "verified": "v",
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "2900A267",
+      "order": "50 x $3.69 (each) = $184.50 for 100 needed",
+      "what": "O3.5 M2 HSS drill blank, 73 mm long, Rockwell C60 -- CUT IN TWO for 2 x 34 mm rods, so 5 blanks an instrument. It is hardened: an abrasive wheel job, not a hacksaw. Was guessed at $0.50-1.20 a rod; it is $1.85."
+    },
+    "shaft_o8": {
+      "usd": 4.11,
+      "verified": "v",
+      "per_instrument": 2,
+      "vendor": "McMaster-Carr",
+      "sku": "6112K44",
+      "order": "10 x $8.22 (each) = $82.20 for 20 needed",
+      "what": "O8 x 200 hardened steel linear shaft, CUT IN HALF for the bridge axle + nut wrap rod (both O8 x 100). Pre-cut 100 mm is 5033N131 at $14.38 EACH or 6459K118 (420 SS) at $10.18, i.e. 2.5-3.5x the price for saving one abrasive cut."
+    },
+    "die_spring": {
+      "usd": 1.1,
+      "qty": 20,
+      "verified": "m",
+      "per_instrument": 22,
+      "what": "uxcell O10x30 blue die spring, the control feel cartridge"
+    },
+    "latch_spring": {
+      "usd": 0.699,
+      "verified": "m",
+      "per_instrument": 6,
+      "vendor": "Amazon (uxcell)",
+      "sku": "B0GCZVQFWN",
+      "order": "6 x $6.99 (pack of 10) = $41.94 for 60 needed",
+      "what": "O5 x 0.6 x 15 compression spring -- 4 leg + 2 bar latches (BOM.md). The model draws one leg, so two."
+    },
+    "magnet_o6": {
+      "usd": 0.332,
+      "verified": "m",
+      "per_instrument": 11,
+      "vendor": "DigiKey",
+      "sku": "Radial Magnets 8995",
+      "what": "O6 x 2.5 diametric N35, $0.332 at 10+ per BOM.md -- not re-read today. Was $1.00 here."
+    },
+    "leadscrew_tr8x2": {
+      "usd": 2.2412,
+      "verified": "m",
+      "per_instrument": 10,
+      "vendor": "Temu",
+      "sku": "goods 605822935500044",
+      "order": "4 x $56.03 (2 x 600 mm + 2 nuts) = $224.12 for 100 pieces of 37.7 mm",
+      "what": "Tr8x2 SINGLE-START, bought long and cut (user's plan). 100 pieces + a saw kerf each is 3.92 m; a 600 mm rod yields 15, so 7 rods, so 4 two-packs. PRICE IS FROM THE SEARCH PAGE, NOT THE PRODUCT PAGE -- Temu put a CAPTCHA in front of the listing and that is not something to click through. ALSO: nearly every T8 screw on Temu is the 3D-printer part, FOUR-START with an 8 mm LEAD, which does not self-lock and would let the strings back-drive the motors. This listing was the only true 1-start on the first two result pages. The round nuts in the pack are not the H-flange nut the carriage is cut for."
+    },
+    "leadscrew_nut_h": {
+      "usd": 0.92,
+      "verified": "m",
+      "per_instrument": 10,
+      "vendor": "AliExpress",
+      "sku": "3256804704147842",
+      "what": "Tr8x2 single-start H-flange brass nut, ~$11 per 3 x 4-pack per BOM.md. Not re-read today; was folded into the screw line before."
+    },
+    "belt_gt2": {
+      "usd": 0.8,
+      "qty": 10,
+      "verified": "v",
+      "per_instrument": 8,
+      "what": "GT2 open belt, USD per metre; ~7.74 m per instrument"
+    },
+    "strings": {
+      "usd": 25.0,
+      "qty": 1,
+      "verified": "m",
+      "per_instrument": 1,
+      "what": "one 10-string pedal steel set"
+    },
+    "m2_grub": {
+      "usd": 0.1,
+      "verified": "m",
+      "per_instrument": 5,
+      "vendor": "McMaster-Carr",
+      "sku": "-",
+      "what": "M2 x 3 cup set screw, axial retention -- IN BOM.md, NOT IN THE MODEL. Carried at a guess so it is not lost."
+    }
+  },
+  "boards": {
+    "_fab_note": [
+      "JLCPCB, TEN INSTRUMENTS PER ORDER, divided by ten -- the user's basis. A board",
+      "needed 4 per instrument is ordered 40. These are the numbers to re-check on the",
+      "live quote form; every one is marked 'm' until somebody does.",
+      "",
+      "cost.py computes area from elec/geom/*.geom.json rather than taking it from here,",
+      "so a board that grows is re-priced without anyone editing this file."
+    ],
+    "fab_usd_per_cm2": {
+      "2": 0.03,
+      "4": 0.075,
+      "6": 0.17
+    },
+    "fab_min_usd": 2.0,
+    "assembly_setup_usd": 8.24,
+    "assembly_per_joint_usd": 0.0017,
+    "assembly_note": "setup and feeder are PER ORDER (so per ten instruments); joints are per board",
+    "verified": "v",
+    "fab_quotes": {
+      "_note": [
+        "MEASURED on jlcpcb.com's instant quote, 2026-09-30, at the form's DEFAULTS:",
+        "FR-4, 1.6 mm, green, HASL(with lead), 1 oz outer, tented vias, single PCB,",
+        "Industrial/Consumer. Price is for the WHOLE quantity, not per board.",
+        "",
+        "These replace a formula that was wrong by 2x to 12x. The old model charged a",
+        "$2.00 MINIMUM PER BOARD, so 100 small tee boards came to $200 against a real",
+        "$16.60 -- JLCPCB prices a batch, not a board, and the minimum is per ORDER.",
+        "The error was worst exactly where the instrument has most boards.",
+        "",
+        "\u26a0 Re-measure before ordering. Quotes move, and these are one day's numbers."
+      ],
+      "measured": [
+        {
+          "mm": [
+            49.5,
+            16.0
+          ],
+          "layers": 2,
+          "qty": 10,
+          "usd": 5.2,
+          "board": "can_tee"
+        },
+        {
+          "mm": [
+            49.5,
+            16.0
+          ],
+          "layers": 2,
+          "qty": 100,
+          "usd": 16.6,
+          "board": "can_tee"
+        },
+        {
+          "mm": [
+            72.0,
+            34.0
+          ],
+          "layers": 2,
+          "qty": 10,
+          "usd": 5.0,
+          "board": "ui_board"
+        },
+        {
+          "mm": [
+            139.0,
+            20.0
+          ],
+          "layers": 2,
+          "qty": 10,
+          "usd": 6.9,
+          "board": "led_strip"
+        },
+        {
+          "mm": [
+            286.4,
+            17.2
+          ],
+          "layers": 4,
+          "qty": 20,
+          "usd": 37.7,
+          "board": "foot_led"
+        },
+        {
+          "mm": [
+            210.8,
+            70.4
+          ],
+          "layers": 4,
+          "qty": 10,
+          "usd": 43.3,
+          "board": "fret_led_mid"
+        },
+        {
+          "mm": [
+            64.8,
+            188.5
+          ],
+          "layers": 4,
+          "qty": 10,
+          "usd": 40.1,
+          "board": "optical"
+        }
+      ],
+      "model": {
+        "_note": [
+          "Fitted to the rows above. base + area_rate x cm2, then extra boards beyond",
+          "the quoted 10 at per_extra_board. The 2-layer split at 100 mm is real and",
+          "visible in the data: 72x34 (both sides under 100) quotes $5.00 while the",
+          "LARGER-in-one-dimension 139x20 quotes $6.90 on LESS area."
+        ],
+        "2_small": {
+          "base": 4.5,
+          "area_rate": 0.02,
+          "per_extra_board": 0.127
+        },
+        "2_long": {
+          "base": 6.0,
+          "area_rate": 0.03,
+          "per_extra_board": 0.127
+        },
+        "4": {
+          "base": 25.2,
+          "area_rate": 0.122,
+          "per_extra_board": 0.65
+        }
+      },
+      "verified": "v"
+    },
+    "_assembly_note": [
+      "MEASURED 2026-09-30 on a real JLCPCB PCBA quote: can_tee's own gerber + BOM + CPL",
+      "uploaded, Economic PCBA, qty 50, 3 parts (2 THT connectors, 1 0603 resistor).",
+      "",
+      "  PCB Price                 $11.30   engineering 8.00 + film 0.30 + board 3.00",
+      "  Economic PCBA Price       $35.98",
+      "    Setup Fee                $8.24   per board DESIGN per order",
+      "    Stencil                  $1.55   per board DESIGN per order",
+      "    Components (3 items)    $10.79   50 boards' worth of parts",
+      "    SMT Assembly             $0.17   100 joints  -> $0.0017 each",
+      "    Hand-soldering           $3.61   600 THT pins -> $0.0060 each",
+      "    Manual Assembly          $9.97   100 THT parts -> $0.0997 each",
+      "    Nitrogen reflow          $1.65   an option, not modelled -- turn it off",
+      "  Total                     $47.28",
+      "",
+      "WHAT THIS OVERTURNED. The $0.0017 per SMT joint was right. Everything else was",
+      "not. Hand-soldering is $0.006 a pin, not the $0.20 guessed here yesterday -- 33x",
+      "out -- but THT also carries a SEPARATE $0.0997 per PART placed, which nothing in",
+      "the model knew about. Net for can_tee: $0.27 a board against $2.40 guessed.",
+      "Setup is $8.24 and it is PER DESIGN, not $25.00 once for the order, so ten board",
+      "designs pay it ten times.",
+      "",
+      "ONE DATA POINT, Economic, qty 50. Standard PCBA prices differently -- it shows a",
+      "'Feeders Loading fee' where Economic shows 'Setup Fee' -- and JLCPCB forces",
+      "Standard above a qty threshold, where a board under 70 mm a side then gets EDGE",
+      "RAILS added. Measured on can_tee at qty 100: the board charge went $6.00 -> $37.40",
+      "because the 49.5x16 outline was padded out to 71.5x70. See boards.rails_note."
+    ],
+    "hand_solder_per_joint_usd": 0.006,
+    "tht_footprints": [
+      "-XH-A_",
+      "-PH-K_",
+      "PinHeader",
+      "IDC-Header",
+      "TerminalBlock",
+      "BarrelJack",
+      "Jack_6.35"
+    ],
+    "tht_pins_fallback": {
+      "Jack_6.35": 4,
+      "BarrelJack": 3
+    },
+    "rails_note": [
+      "MEASURED: can_tee qty 100 was pushed to Standard PCBA, which requires every side",
+      "over 70 mm and adds edge rails. 49.5 x 16 became 71.5 x 70 and the board line went",
+      "from $6.00 to $37.40. At qty 50 the same board stays Economic, needs no rails, and",
+      "the board line is $3.00. This is a REAL cost cliff that depends on order quantity,",
+      "and it lands on our two smallest, most numerous boards: can_tee (10 per instrument)",
+      "and lever_sensor (11 per instrument, 31 x 21.9 mm). Panelising is the escape --",
+      "JLCPCB itself offered a 5 x 15 panel -- and nothing in this model represents it."
+    ],
+    "assembly_stencil_usd": 1.55,
+    "manual_assembly_per_tht_part_usd": 0.0997,
+    "_stock_note": [
+      "SOURCING RISK found while quoting can_tee: C157914 (S8B-XH-A, the 8-way CAN",
+      "connector) had 65 pieces in JLCPCB's library on 2026-09-30, against the 100 a",
+      "ten-instrument order needs. The quote would not proceed until the quantity came",
+      "down under stock. It is a stocked JST part, so this is a JLCPCB-library depth",
+      "problem rather than a dead part -- but assembly is only turnkey while they hold it."
+    ]
+  },
+  "parts_by_footprint": {
+    "_note": "generic passives, priced by package class. LCSC Basic-library rates.",
+    "R_0402": 0.002,
+    "R_0603": 0.003,
+    "R_0805": 0.004,
+    "C_0402": 0.002,
+    "C_0603": 0.003,
+    "C_0805": 0.01,
+    "C_1206": 0.02,
+    "L_0603": 0.03,
+    "L_0805": 0.04,
+    "L_1210": 0.12,
+    "D_SOD-323": 0.03,
+    "D_SOD-123": 0.03,
+    "LED_0603": 0.04,
+    "LED_0805": 0.05,
+    "SOT-23": 0.06,
+    "SOT-23-5": 0.08,
+    "SOT-23-6": 0.09,
+    "TestPoint": 0.0,
+    "SolderJumper": 0.0,
+    "MountingHole": 0.0,
+    "Fiducial": 0.0,
+    "C_1210": 0.02
+  },
+  "parts_by_ref": {
+    "_note": [
+      "Every 'v' line here is written by tools/lcsc_prices.py from JLCPCB's parts",
+      "API at the quantity a ten-instrument order needs. Re-run it rather than",
+      "editing by hand: the breaks move and so does stock."
+    ],
+    "motor_ctrl:U4": {
+      "usd": 2.6921,
+      "verified": "v",
+      "what": "CH32V307WCU6 C5142795 -- JLCPCB parts API at qty 20"
+    },
+    "motor_ctrl:U5": {
+      "usd": 0.6276,
+      "verified": "v",
+      "what": "LMR33630ADDAR C841384 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:U6": {
+      "usd": 1.05,
+      "verified": "v",
+      "what": "LMR33630ADDAR, LED buck"
+    },
+    "output_panel:U1": {
+      "usd": 2.6921,
+      "verified": "v",
+      "what": "CH32V307WCU6 C5142795 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:U2": {
+      "usd": 0.5625,
+      "verified": "v",
+      "what": "PCM1808PWR C55513 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:U3": {
+      "usd": 1.2762,
+      "verified": "v",
+      "what": "PCM5102APWR C107671 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:U4": {
+      "usd": 0.53,
+      "verified": "v",
+      "what": "CH334F C5187527 -- JLCPCB parts API at qty 10"
+    },
+    "optical:U6": {
+      "usd": 9.9946,
+      "verified": "v",
+      "what": "STM32H743IIT6 C89597 -- JLCPCB parts API at qty 10"
+    },
+    "lever_sensor:U1": {
+      "usd": 0.1356,
+      "verified": "v",
+      "what": "AP2112K-3.3TRG1 C51118 -- JLCPCB parts API at qty 120"
+    },
+    "lever_sensor:U2": {
+      "usd": 0.3853,
+      "verified": "v",
+      "what": "SN65HVD230DR C12084 -- JLCPCB parts API at qty 130"
+    },
+    "lever_sensor:U3": {
+      "usd": 0.4487,
+      "verified": "v",
+      "what": "CH32V203G6U6 C5142280 -- JLCPCB parts API at qty 110"
+    },
+    "foot_led:U1": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "foot_led:U2": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "foot_led:U3": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "foot_led:U4": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "fret_led_key:U1": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "fret_led_key:U2": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "fret_led_key:U3": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "fret_led_mid:U1": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "fret_led_mid:U2": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "fret_led_mid:U3": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "fret_led_mid:U4": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "fret_led_mid:U5": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "led_strip:U1": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "led_strip:U2": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "led_strip:U3": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+    },
+    "optical:U14": {
+      "usd": 3.6415,
+      "verified": "v",
+      "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U15": {
+      "usd": 3.6415,
+      "verified": "v",
+      "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U16": {
+      "usd": 3.6415,
+      "verified": "v",
+      "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U17": {
+      "usd": 3.6415,
+      "verified": "v",
+      "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U18": {
+      "usd": 3.6415,
+      "verified": "v",
+      "what": "TLV320ADC3140IRTWT C1852021 -- JLCPCB parts API at qty 50"
+    },
+    "lever_sensor:U4": {
+      "usd": 1.351,
+      "verified": "v",
+      "what": "MT6701QT-STD C2913974 -- JLCPCB parts API at qty 110"
+    },
+    "foot_led:U10": {
+      "usd": 1.6452,
+      "verified": "v",
+      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
+    },
+    "fret_led_key:U10": {
+      "usd": 1.6452,
+      "verified": "v",
+      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
+    },
+    "fret_led_mid:U10": {
+      "usd": 1.6452,
+      "verified": "v",
+      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U13": {
+      "usd": 1.6452,
+      "verified": "v",
+      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
+    },
+    "foot_led:D1": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D10": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D11": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D12": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D13": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D14": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D15": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D16": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D17": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D18": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D19": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D2": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D20": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D21": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D22": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D23": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D24": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D25": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D26": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D27": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D28": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D29": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D3": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D30": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D31": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D32": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D33": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D34": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D35": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D36": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D4": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D5": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D6": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D7": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D8": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "foot_led:D9": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D1": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D10": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D11": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D12": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D13": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D14": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D15": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D16": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D17": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D18": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D19": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D2": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D20": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D21": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D22": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D23": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D24": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D25": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D26": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D27": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D28": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D29": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D3": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D30": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D31": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D32": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D4": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D5": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D6": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D7": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D8": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_key:D9": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D1": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D10": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D11": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D12": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D13": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D14": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D15": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D16": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D17": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D18": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D19": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D2": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D20": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D21": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D22": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D23": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D24": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D25": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D26": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D27": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D28": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D29": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D3": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D30": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D31": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D32": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D33": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D34": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D35": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D36": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D37": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D38": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D39": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D4": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D40": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D41": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D42": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D43": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D44": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D45": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D46": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D47": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D48": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D49": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D5": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D50": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D51": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D52": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D53": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D54": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D55": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D56": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D57": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D58": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D59": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D6": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D60": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D7": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D8": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "fret_led_mid:D9": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "led_strip:D1": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "led_strip:D2": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "led_strip:D3": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "led_strip:D4": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "led_strip:D5": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "led_strip:D6": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "led_strip:D7": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "led_strip:D8": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "led_strip:D9": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+    },
+    "motor_ctrl:U2": {
+      "usd": 0.3853,
+      "verified": "v",
+      "what": "SN65HVD230DR C12084 -- JLCPCB parts API at qty 130"
+    },
+    "motor_ctrl:U3": {
+      "usd": 0.3853,
+      "verified": "v",
+      "what": "SN65HVD230DR C12084 -- JLCPCB parts API at qty 130"
+    },
+    "ui_board:SW1": {
+      "usd": 4.5177,
+      "verified": "v",
+      "what": "RKJXT1F42001 C160841 -- JLCPCB parts API at qty 10"
+    },
+    "lever_sensor:J1": {
+      "usd": 0.2862,
+      "verified": "v",
+      "what": "S8B-PH-SM4-TB C265121 -- JLCPCB parts API at qty 110"
+    },
+    "optical:U7": {
+      "usd": 2.6222,
+      "verified": "v",
+      "what": "USB3343-CP C633347 -- JLCPCB parts API at qty 10"
+    },
+    "fret_led_key:J1": {
+      "usd": 0.2455,
+      "verified": "v",
+      "what": "S6B-PH-SM4-TB C265405 -- JLCPCB parts API at qty 100"
+    },
+    "fret_led_mid:J1": {
+      "usd": 0.2455,
+      "verified": "v",
+      "what": "S6B-PH-SM4-TB C265405 -- JLCPCB parts API at qty 100"
+    },
+    "led_strip:J1": {
+      "usd": 0.2455,
+      "verified": "v",
+      "what": "S6B-PH-SM4-TB C265405 -- JLCPCB parts API at qty 100"
+    },
+    "led_strip:J2": {
+      "usd": 0.2455,
+      "verified": "v",
+      "what": "S6B-PH-SM4-TB C265405 -- JLCPCB parts API at qty 100"
+    },
+    "output_panel:U6": {
+      "usd": 0.1356,
+      "verified": "v",
+      "what": "AP2112K-3.3TRG1 C51118 -- JLCPCB parts API at qty 120"
+    },
+    "output_panel:K1": {
+      "usd": 1.6143,
+      "verified": "v",
+      "what": "G6K-2F-Y-DC5 C326376 -- JLCPCB parts API at qty 10"
+    },
+    "optical:U1": {
+      "usd": 0.3154,
+      "verified": "v",
+      "what": "TLV9064IDR C388176 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U2": {
+      "usd": 0.3154,
+      "verified": "v",
+      "what": "TLV9064IDR C388176 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U3": {
+      "usd": 0.3154,
+      "verified": "v",
+      "what": "TLV9064IDR C388176 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U4": {
+      "usd": 0.3154,
+      "verified": "v",
+      "what": "TLV9064IDR C388176 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U5": {
+      "usd": 0.3154,
+      "verified": "v",
+      "what": "TLV9064IDR C388176 -- JLCPCB parts API at qty 50"
+    },
+    "can_tee:J1": {
+      "usd": 0.1416,
+      "verified": "v",
+      "what": "S8B-XH-A C157914 -- JLCPCB parts API at qty 100"
+    },
+    "optical:PD10A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD10B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD1A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD1B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD2A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD2B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD3A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD3B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD4A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD4B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD5A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD5B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD6A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD6B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD7A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD7B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD8A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD8B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD9A": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "optical:PD9B": {
+      "usd": 0.0665,
+      "verified": "v",
+      "what": "PD15-22B/TR8 C161211 -- JLCPCB parts API at qty 200"
+    },
+    "foot_led:J1": {
+      "usd": 0.261,
+      "verified": "v",
+      "what": "SM04B-SRSS-TB C160404 -- JLCPCB parts API at qty 40"
+    },
+    "foot_led:J2": {
+      "usd": 0.261,
+      "verified": "v",
+      "what": "SM04B-SRSS-TB C160404 -- JLCPCB parts API at qty 40"
+    },
+    "motor_ctrl:U1": {
+      "usd": 0.4764,
+      "verified": "v",
+      "what": "LMR16006XDDCR C87080 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:U5": {
+      "usd": 0.4764,
+      "verified": "v",
+      "what": "LMR16006XDDCR C87080 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:J6": {
+      "usd": 0.8779,
+      "verified": "v",
+      "what": "PJ-102AH C3096093 -- JLCPCB parts API at qty 10"
+    },
+    "can_tee:J2": {
+      "usd": 0.0698,
+      "verified": "v",
+      "what": "S4B-XH-A C157925 -- JLCPCB parts API at qty 100"
+    },
+    "optical:J1": {
+      "usd": 0.1857,
+      "verified": "v",
+      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 30"
+    },
+    "output_panel:J1": {
+      "usd": 0.1857,
+      "verified": "v",
+      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 30"
+    },
+    "output_panel:J3": {
+      "usd": 0.1857,
+      "verified": "v",
+      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 30"
+    },
+    "optical:D1": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "optical:D10": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "optical:D2": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "optical:D3": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "optical:D4": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "optical:D5": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "optical:D6": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "optical:D7": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "optical:D8": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "optical:D9": {
+      "usd": 0.0457,
+      "verified": "v",
+      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+    },
+    "motor_ctrl:J1": {
+      "usd": 0.0615,
+      "verified": "v",
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+    },
+    "motor_ctrl:J3": {
+      "usd": 0.0615,
+      "verified": "v",
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+    },
+    "motor_ctrl:J4": {
+      "usd": 0.0615,
+      "verified": "v",
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+    },
+    "motor_ctrl:J5": {
+      "usd": 0.0615,
+      "verified": "v",
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+    },
+    "output_panel:J10": {
+      "usd": 0.0615,
+      "verified": "v",
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+    },
+    "output_panel:J7": {
+      "usd": 0.0615,
+      "verified": "v",
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+    },
+    "optical:J2": {
+      "usd": 0.3496,
+      "verified": "v",
+      "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 10"
+    },
+    "foot_led:L1": {
+      "usd": 0.0608,
+      "verified": "v",
+      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
+    },
+    "fret_led_key:L1": {
+      "usd": 0.0608,
+      "verified": "v",
+      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
+    },
+    "fret_led_mid:L1": {
+      "usd": 0.0608,
+      "verified": "v",
+      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
+    },
+    "optical:L1": {
+      "usd": 0.0608,
+      "verified": "v",
+      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
+    },
+    "optical:U9": {
+      "usd": 0.301,
+      "verified": "v",
+      "what": "SPX3819M5-L-3-3/TR C9055 -- JLCPCB parts API at qty 10"
+    },
+    "optical:U11": {
+      "usd": 0.0932,
+      "verified": "v",
+      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 30"
+    },
+    "output_panel:U7": {
+      "usd": 0.0932,
+      "verified": "v",
+      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 30"
+    },
+    "output_panel:U8": {
+      "usd": 0.0932,
+      "verified": "v",
+      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 30"
+    },
+    "optical:U8": {
+      "usd": 0.2073,
+      "verified": "v",
+      "what": "AMS1117-3.3 C6186 -- JLCPCB parts API at qty 10"
+    },
+    "optical:Q1": {
+      "usd": 0.0888,
+      "verified": "v",
+      "what": "AO3400A C20917 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:Q1": {
+      "usd": 0.0888,
+      "verified": "v",
+      "what": "AO3400A C20917 -- JLCPCB parts API at qty 20"
+    },
+    "optical:U10": {
+      "usd": 0.1767,
+      "verified": "v",
+      "what": "USBLC6-2SC6 C7519 -- JLCPCB parts API at qty 10"
+    },
+    "ui_board:J1": {
+      "usd": 0.1648,
+      "verified": "v",
+      "what": "KH-2.54PH180-1X20P-L11.5 C2905493 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:J2": {
+      "usd": 0.0937,
+      "verified": "v",
+      "what": "B8B-PH-K-S C157974 -- JLCPCB parts API at qty 10"
+    },
+    "optical:Y1": {
+      "usd": 0.0732,
+      "verified": "v",
+      "what": "TX322525M4LBDD2T C5308007 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:J8": {
+      "usd": 0.0659,
+      "verified": "v",
+      "what": "MX126-5.0-02P C5188434 -- JLCPCB parts API at qty 10"
+    },
+    "ui_board:J2": {
+      "usd": 0.0594,
+      "verified": "v",
+      "what": "DC3-2.54-14PAL C5156673 -- JLCPCB parts API at qty 10"
+    },
+    "optical:Y2": {
+      "usd": 0.0579,
+      "verified": "v",
+      "what": "K3A260002010 C2835957 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:J9": {
+      "usd": 0.0405,
+      "verified": "v",
+      "what": "B2B-XH-A C158012 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:D5": {
+      "usd": 0.0291,
+      "verified": "v",
+      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 10"
+    },
+    "optical:FB1": {
+      "usd": 0.0127,
+      "verified": "v",
+      "what": "GZ1608D601TF C1002 -- JLCPCB parts API at qty 10"
+    }
+  },
+  "modules": {
+    "_note": [
+      "ONLY the things no board's netlist already carries. The joystick, the DC barrel",
+      "jack and the Neutrik TS jack used to sit here AND on ui_board/output_panel, so",
+      "they were counted twice; tools/lcsc_prices.py pricing the board refs for real is",
+      "what exposed it. The board is the one source now.",
+      "",
+      "The joystick is also a case for asking the catalogue rather than a distributor:",
+      "this file had it at $9.22 from DigiKey, where the listing shows 0 in stock. JLCPCB",
+      "has the same Alps RKJXT1F42001 at $4.52 with 7,341 on the shelf."
+    ],
+    "oled_2_42": {
+      "usd": 17.0,
+      "verified": "m",
+      "per_instrument": 1,
+      "what": "2.42in 128x64 SSD1309"
+    },
+    "pickup": {
+      "usd": 147.0,
+      "verified": "v",
+      "what": "Lace Aluma Bass Bar 4.0 -- lacemusic.com, the maker, $147.00 2026-09-30"
+    },
+    "pi4_1gb": {
+      "usd": 35.0,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Raspberry Pi 4 Model B 1GB -- PiShop $35.00, SKU 1GB-9002. DECIDED 2026-09-30 by the user after the survey: the 2GB SKU caps at ONE unit per order across the trade (PiShop max 1; CanaKit max 1 per customer with multiple orders AUTO-CANCELLED; Adafruit and SparkFun cap-free but out of stock), so it cannot be bought ten at a time at all. The 1GB caps at TEN, which is exactly the order. That is -$20/instrument against the old 2GB line. THE RISK IS RAM, not price: Dexed + USB gadget + USB host has to fit 1GB headless. If it does not, the fallback is the 4GB at $100 (no cap), +$45/instrument."
+    }
+  },
+  "missing": {
+    "_note": [
+      "KNOWN ABSENT, listed so the total is honest about its own holes. cost.py prints",
+      "these under the table and refuses to call the number complete while any remain."
+    ],
+    "psu": "PRICED NOW -- Mean Well LRS-150-24 at $20.69 landed, see mechanical.psu_24v_150w. What is still open is the DESIGN question, not the price: the slew budget that would confirm 150 W is enough is unmeasured (docs/design-validation.md B7).",
+    "wire": "LENGTH IS MEASURED NOW, PRICE IS NOT. tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had. Its ~$35 estimate implies $2.29/m, far above hookup-wire rates -- almost certainly because you buy SPOOLS, not metres. Needs one product page and a spool-count, not another estimate.",
+    "tariff_uncollected": "The motors are the exposure. Makerbase ships them from China collecting no tax and no duty at checkout, so $339.90 of an order is NOT landed cost. JLCPCB by contrast ships DHL DDP, duty included. See boards/landed.",
+    "pogo": "The leg blind-mate pogo boards (src/leg_pogo.py, RA_N=4 + TG_N=4 pins) are custom PCBs that live outside elec/, so neither the board pipeline nor the connector derivation sees them. Small, but genuinely uncounted.",
+    "pi_ram": "DECIDED, with a risk attached. The user chose the 1GB at $35 because it is the only Pi 4 that can actually be bought ten at a time (the 2GB is capped at one per customer across the trade). What is NOT settled is whether Dexed + USB gadget + USB host fits 1GB headless -- a design question with bronner. If it does not, the fallback is the 4GB at $100, +$65/instrument on today's line.",
+    "landed_gaps": "SHIPPING AND TAX ARE MEASURED FOR FIVE VENDORS, NOT FOR THE BOM. Measured: Lace, JLCPCB, Makerbase, PiShop, Tinmorry, plus Jameco's tariff. UNMEASURED and therefore missing from the landed line: every listing-priced mechanical item (~$213/instrument of screws, bearings, belts, springs, shaft -- no vendor is even recorded for most of them, so there is nothing to check), the PCTG and TPU filament, and the uncollected duty on the $339.90 of motors. Expect the landed line to grow, not shrink."
+  },
+  "parts_by_footprint_substring": {
+    "_note": [
+      "Matched as a SUBSTRING of the footprint id, after the package-class table",
+      "fails. This is how a part with a real MPN in its footprint name gets priced",
+      "without an entry per board per designator -- there are ~90 RGBW LEDs and 20",
+      "photodiodes, and listing them individually would be a transcription exercise."
+    ],
+    "XL-5050RGBW": {
+      "usd": 0.05,
+      "verified": "m",
+      "what": "XINGLIGHT RGBW 5050 (C7371891) -- five cents each, measured in docs/fret-led.md"
+    },
+    "PD15-22B": {
+      "usd": 0.067,
+      "verified": "v",
+      "what": "Everlight PD15-22B/TR8 (C161211) @200, 11271 in stock"
+    },
+    "SOD-523": {
+      "usd": 0.03,
+      "verified": "m",
+      "what": "small-signal diode / ESD clamp"
+    },
+    "SMA": {
+      "usd": 0.09,
+      "verified": "m",
+      "what": "SMA-body diode"
+    },
+    "SWPA4030S": {
+      "usd": 0.12,
+      "verified": "m",
+      "what": "Sunlord shielded power inductor"
+    },
+    "USB_C_Receptacle": {
+      "usd": 0.3,
+      "verified": "m",
+      "what": "HRO TYPE-C-31-M-12"
+    },
+    "JST_XH_S4B": {
+      "usd": 0.0698,
+      "verified": "v",
+      "what": "JST XH 4-way, C157925 -- JLCPCB cart, 51 pcs $3.5598"
+    },
+    "JST_XH_S8B": {
+      "usd": 0.1416,
+      "verified": "v",
+      "what": "JST XH 8-way, C157914 -- JLCPCB cart, 50 pcs $7.08; ONLY 65 IN STOCK 2026-09-30"
+    },
+    "JST_XH_B4B": {
+      "usd": 0.11,
+      "verified": "m",
+      "what": "JST XH 4-way THT header"
+    },
+    "JST_PH_S4B": {
+      "usd": 0.15,
+      "verified": "m",
+      "what": "JST PH 4-way side-entry"
+    },
+    "JST_PH_S8B": {
+      "usd": 0.289,
+      "verified": "v",
+      "what": "S8B-PH-SM4-TB (C265121) @100"
+    },
+    "JST_PH_B": {
+      "usd": 0.14,
+      "verified": "m",
+      "what": "JST PH top-entry header"
+    },
+    "PinHeader": {
+      "usd": 0.18,
+      "verified": "m",
+      "what": "2.54 pin header, the Pi's own family"
+    },
+    "IDC-Header": {
+      "usd": 0.18,
+      "verified": "m",
+      "what": "2.54 IDC header"
+    },
+    "Alps_RKJXT": {
+      "usd": 0.0,
+      "verified": "v",
+      "what": "COUNTED IN modules.alps_rkjxt -- zero here so the one switch is not paid for twice"
+    },
+    "Crystal": {
+      "usd": 0.07,
+      "verified": "v",
+      "what": "X322525MSB4SI 25 MHz 3225 (C13740)"
+    },
+    "TLC5971": {
+      "usd": 0.85,
+      "verified": "m",
+      "what": "LED driver"
+    },
+    "TLC597": {
+      "usd": 0.85,
+      "verified": "m",
+      "what": "LED driver (prefix match)"
+    },
+    "S6B-PH": {
+      "usd": 0.23,
+      "verified": "m",
+      "what": "JST PH 6-way side-entry (the LED sections' joint)"
+    },
+    "Fuse_1206": {
+      "usd": 0.09,
+      "verified": "m",
+      "what": "1206 fuse"
+    },
+    "D_SMB": {
+      "usd": 0.12,
+      "verified": "m",
+      "what": "SMB-body diode"
+    },
+    "NR-3": {
+      "usd": 0.11,
+      "verified": "m",
+      "what": "Taiyo-Yuden NR-series inductor"
+    },
+    "USB_A_Receptacle": {
+      "usd": 0.32,
+      "verified": "m",
+      "what": "GCT USB1046 USB-A"
+    },
+    "Jack_6.35mm_Neutrik": {
+      "usd": 0.0,
+      "verified": "v",
+      "what": "COUNTED IN modules.ts_jack"
+    },
+    "QFN-16": {
+      "usd": 0.45,
+      "verified": "m",
+      "what": "QFN-16 IC, generic -- lever_sensor U4"
+    },
+    "SOIC-14": {
+      "usd": 0.3,
+      "verified": "m",
+      "what": "SOIC-14 IC, generic"
+    },
+    "VQFN-HR-12": {
+      "usd": 1.05,
+      "verified": "m",
+      "what": "TI VQFN-HR-12 buck"
+    },
+    "HT": {
+      "usd": 0.85,
+      "verified": "m",
+      "what": "LED driver (fret_led U1)"
+    },
+    "JST_SH_SM04B": {
+      "usd": 0.16,
+      "verified": "m",
+      "what": "JST SH 4-way 1.0 mm"
+    },
+    "SRN6028": {
+      "usd": 0.15,
+      "verified": "m",
+      "what": "Bourns SRN6028 inductor"
+    },
+    "SOIC-8": {
+      "usd": 0.25,
+      "verified": "m",
+      "what": "SOIC-8 IC, generic"
+    },
+    "WQFN-24": {
+      "usd": 1.9,
+      "verified": "m",
+      "what": "TLV320ADC3140 audio ADC (WQFN-24)"
+    },
+    "BarrelJack": {
+      "usd": 0.0,
+      "verified": "v",
+      "what": "COUNTED IN modules.dc_jack"
+    },
+    "MX126-5.0": {
+      "usd": 0.066,
+      "verified": "v",
+      "what": "MaiXu MX126-5.0-02P screw terminal (C5188434)"
+    },
+    "HVQFN-24": {
+      "usd": 1.2,
+      "verified": "m",
+      "what": "USB3300 ULPI PHY (HVQFN-24) -- optical U7"
+    },
+    "SOT-223": {
+      "usd": 0.18,
+      "verified": "m",
+      "what": "SOT-223 LDO"
+    },
+    "JST_XH_B2B": {
+      "usd": 0.09,
+      "verified": "m",
+      "what": "JST XH 2-way THT header"
+    },
+    "Relay_DPDT_Omron_G6K": {
+      "usd": 1.48,
+      "verified": "v",
+      "what": "Omron G6K-2F-Y-DC5 (C326376)"
+    }
+  },
+  "print_material_factor": {
+    "factor": 0.6,
+    "verified": "v",
+    "measured": {
+      "part": "chassis_2",
+      "sliced_g": 540.13,
+      "solid_cm3": 687.4,
+      "density_g_cm3": 1.32,
+      "solid_g": 907.3,
+      "date": "2026-09-30",
+      "by": "user, in the slicer"
+    },
+    "what": [
+      "Fraction of SOLID volume that becomes filament. MEASURED, not guessed: the user",
+      "sliced chassis_2 and got 540.13 g against 907.3 g solid, which is 0.595. Rounded",
+      "to 0.60.",
+      "",
+      "Previous value was 0.45, a guess, and it was 25% low -- the plastic line moves",
+      "$109 -> $146 on this one number. Walls dominate a part like the chassis, so it",
+      "packs denser than sparse-infill intuition suggests.",
+      "",
+      "\u26a0 ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
+      "will run HIGHER than 0.60; a large hollow one lower. Slicing a second part -- a",
+      "knee housing, say -- would show whether one factor is honest for the whole set."
+    ]
+  },
+  "connectors": {
+    "_note": [
+      "Housings and crimp contacts, DERIVED from the board headers by",
+      "tools/lcsc_prices.py -- one housing per header, one contact per way -- and",
+      "priced at the order quantity. No netlist holds these: a harness is not a",
+      "schematic, which is why this category used to be reported as not counted."
+    ],
+    "C140573": {
+      "usd": 0.0099,
+      "verified": "v",
+      "per_instrument": 150.0,
+      "what": "SXH-001T-P0.6 -- JLCPCB parts API at qty 1500"
+    },
+    "C111515": {
+      "usd": 0.0068,
+      "verified": "v",
+      "per_instrument": 156.0,
+      "what": "SPH-002T-P0.5S -- JLCPCB parts API at qty 1560"
+    },
+    "C493083": {
+      "usd": 0.0352,
+      "verified": "v",
+      "per_instrument": 17.0,
+      "what": "XHP-4-M -- JLCPCB parts API at qty 170"
+    },
+    "C157950": {
+      "usd": 0.029,
+      "verified": "v",
+      "per_instrument": 12.0,
+      "what": "PHR-8 -- JLCPCB parts API at qty 120"
+    },
+    "C144407": {
+      "usd": 0.0337,
+      "verified": "v",
+      "per_instrument": 10.0,
+      "what": "XHP-8 -- JLCPCB parts API at qty 100"
+    },
+    "C263995": {
+      "usd": 0.0196,
+      "verified": "v",
+      "per_instrument": 16.0,
+      "what": "SSH-003T-P0.2-H -- JLCPCB parts API at qty 160"
+    },
+    "C157952": {
+      "usd": 0.0202,
+      "verified": "v",
+      "per_instrument": 10.0,
+      "what": "PHR-6 -- JLCPCB parts API at qty 100"
+    },
+    "C2962275": {
+      "usd": 0.0251,
+      "verified": "v",
+      "per_instrument": 4.0,
+      "what": "HC-1.0-4Y -- JLCPCB parts API at qty 40"
+    },
+    "C144401": {
+      "usd": 0.02,
+      "verified": "v",
+      "per_instrument": 1.0,
+      "what": "XHP-2 -- JLCPCB parts API at qty 10"
+    }
+  },
+  "landed": {
+    "_note": [
+      "SHIPPING, SALES TAX AND TARIFF, measured at real checkouts on 2026-09-30 with the",
+      "user's own address (Berkeley CA 94702) and a TEN-INSTRUMENT order in the cart.",
+      "Nothing was purchased.",
+      "",
+      "THE ONE DISTINCTION THAT DECIDES THE TARIFF QUESTION is whether a vendor ships",
+      "DDP -- Delivered Duty Paid. JLCPCB's DHL line says DDP outright, so its quoted",
+      "shipping ALREADY CONTAINS the duty and there is nothing further to add. Makerbase",
+      "ships the motors from Liwan District on 'free shipping' and collects no US tax and",
+      "no duty at checkout, so that one is NOT landed cost: whatever duty applies arrives",
+      "later, from the carrier. That is an exposure this file can name but cannot price,",
+      "because the rate is policy and changes.",
+      "",
+      "SALES TAX IS NOT ONE NUMBER. Lace's checkout computed 8.00% on $1,470; PiShop's",
+      "computed 10.25% on $350, which IS the Berkeley headline rate. Same address, same",
+      "state, 2.25 points apart -- so tax is a per-vendor measurement like shipping, and",
+      "a single assumed rate across the BOM would be wrong in both directions.",
+      "",
+      "counted_in_unit_price says whether the money is ALREADY inside the unit price",
+      "elsewhere in this file. The Jameco tariff is (mechanical.psu_24v_150w carries its",
+      "$3.59 share), so cost.py must not add it twice."
+    ],
+    "lace_pickup": {
+      "vendor": "Lace Music",
+      "ships_from": "US (CA)",
+      "order_usd": 1470.0,
+      "shipping_usd": 0.0,
+      "tax_usd": 117.6,
+      "tax_pct": 8.0,
+      "ddp": null,
+      "verified": "v",
+      "what": "10 x Aluma Bass Bar 4.0 -- free shipping, estimated tax $117.60, total $1,587.60",
+      "counted_in_unit_price": false
+    },
+    "makerbase_motors": {
+      "vendor": "Makerbase",
+      "ships_from": "CN",
+      "order_usd": 3399.0,
+      "shipping_usd": 0.0,
+      "tax_usd": 0.0,
+      "tax_pct": 0.0,
+      "ddp": false,
+      "verified": "v",
+      "what": "100 x SERVO42D CAN MT (10 per instrument) = $3,399.00 -- free shipping (10-16 d); paid options 4PX $8.99, DHL/UPS $22.80, standard $3.99. NO tax and NO duty collected at checkout, so this is NOT landed cost. tariff_unpriced_upper_usd is a BOUND, not a measurement: 21.0% -- the one rate anybody has actually seen itemised, on Jameco's power supplies -- applied to the motor order, giving $713.79 an order or $71.38 an instrument. THE RATE IS BORROWED FROM THE WRONG COMMODITY CODE (8504.40 is power supplies; a driver-plus-motor is 8501.10 territory) and duty rates are policy, so treat it as an order of magnitude and the worst case, not a forecast. SEARCHED FOR A US-STOCKED ALTERNATIVE AND THERE IS NONE: the Amazon listings for this part are dropships -- 'SERVO42D CAN MB' at $53.71 is the DRIVER ALONE, no motor, ships in 6-7 days with delivery quoted three to four weeks out, i.e. from China anyway. So there is no way to buy this part with the duty already paid, and Makerbase direct stays the cheapest route even at the full borrowed rate ($41.13 landed worst case vs $53.71 for less hardware).",
+      "counted_in_unit_price": false,
+      "tariff_unpriced_upper_usd": 713.79
+    },
+    "jlcpcb_boards": {
+      "vendor": "JLCPCB",
+      "ships_from": "CN",
+      "order_usd": null,
+      "shipping_usd": 39.6,
+      "tax_usd": null,
+      "tax_pct": null,
+      "ddp": true,
+      "verified": "v",
+      "what": "DHL Express (DDP) -- duty INCLUDED in the shipping line. Measured $30.86 on a 2L qty-10 quote, $32.26 on the 4L optical, $39.60 on the qty-100 PCBA. Ten board designs ship as ONE order, so this is per ORDER, not per board.",
+      "counted_in_unit_price": false
+    },
+    "pishop_pi": {
+      "vendor": "PiShop",
+      "ships_from": "US (DE)",
+      "order_usd": 350.0,
+      "shipping_usd": 14.58,
+      "tax_usd": 35.88,
+      "tax_pct": 10.25,
+      "ddp": null,
+      "counted_in_unit_price": false,
+      "verified": "v",
+      "what": "10 x Pi 4 Model B 1GB (SKU 1GB-9002, product 639, max 10 units) = $350.00 goods. Measured 2026-09-30 by creating a real guest cart and a real consignment to 2103 West Street Berkeley CA 94702 through the storefront checkout API, then DELETING the cart. Nothing ordered. Cheapest shipping USPS Priority $14.58; FedEx Ground $21.85, Express Saver $33.48, 2Day $67.65. Tax $35.88. LANDED $400.46, i.e. $40.05 per instrument against a $35.00 list price -- the freight and tax are 14% on top."
+    },
+    "jameco_psu": {
+      "vendor": "Jameco",
+      "ships_from": "US (CA)",
+      "order_usd": 171.0,
+      "shipping_usd": null,
+      "tax_usd": null,
+      "tax_pct": null,
+      "ddp": null,
+      "tariff_usd": 35.91,
+      "tariff_pct": 21.0,
+      "verified": "v",
+      "what": "THE ONLY PLACE A TARIFF WAS ACTUALLY ITEMISED. 10 x LRS-150-24: $171.00 goods + $35.91 tariff = $206.91, i.e. 21.0% on HTS 8504.40.9530. A US distributor importing Chinese-made goods shows the duty as its own cart line. That is one measured rate for ONE commodity code -- do not spread it across the BOM, but it is the right order of magnitude for the China-made electronics in it.",
+      "counted_in_unit_price": true
+    },
+    "tinmorry_filament": {
+      "vendor": "Tinmorry",
+      "ships_from": "US",
+      "order_usd": 725.99,
+      "shipping_usd": 0.0,
+      "tax_usd": 0.0,
+      "tax_pct": 0.0,
+      "ddp": null,
+      "counted_in_unit_price": true,
+      "verified": "v",
+      "what": "41.0 kg of PETG-GF as 4 x 10-roll packs + 1 spool. Free shipping, NO California sales tax collected, total = subtotal $725.99. counted_in_unit_price is true because both are zero and the blended $17.71/kg already IS the landed rate -- there is nothing for the landed line to add. Recorded so the zero is a MEASUREMENT and not an omission."
+    }
+  }
+}

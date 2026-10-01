@@ -1,7 +1,6 @@
 """Route a board, then hand the router's own failures back to the generator.
 
     "C:/Program Files/KiCad/10.0/bin/python.exe" elec/finish.py elec/out/optical
-    "C:/Program Files/KiCad/10.0/bin/python.exe" elec/finish.py --rounds=2 elec/out/lever_sensor
 
 ⚠ THIS EXISTS BECAUSE PRE-LAYING COPPER IS A TRADE, NOT AN IMPROVEMENT, and the trade
 only pays on the nets the router cannot do. Measured on three boards, freezing every
@@ -184,6 +183,7 @@ def finish(stem, rounds=1):
         os.remove(retry)          # always start from the board as designed
     _run("layout.py", stem)
     _run("route.py", stem)
+    _run("repair_planes.py", stem)
     best_n, nets, best_v = _drc(stem)
     print("  pass 1: %d unconnected, %d violation(s)" % (best_n, best_v))
     # ⚠ THE DRC FILE TRAVELS WITH THE BOARD, because otherwise it does not. This routine
@@ -200,8 +200,29 @@ def finish(stem, rounds=1):
         if not best_n:
             break
         json.dump(nets, open(retry, "w", encoding="utf-8"))
-        _run("layout.py", stem)
-        _run("route.py", stem)
+        # ⚠⚠ A FAILED RETRY ROUND MUST NOT TAKE THE GOOD BOARD WITH IT, AND IT DID.
+        # _run raises SystemExit on a non-zero exit, so a round that died anywhere in
+        # layout/route/repair skipped the restore at the end of this function -- and the FIRST
+        # thing a round does is re-run layout, which overwrites <stem>.kicad_pcb with a fresh
+        # UNROUTED board. So a failed round left the baseline in the worst possible state: the
+        # best board existed only as <stem>.best.kicad_pcb, a file nothing else reads, and
+        # elec/out is NOT under git -- there is no second copy anywhere.
+        # Seen for real on optical, 2026-09-29: pass 2 reached 2 unconnected / 0 violations --
+        # the best this board has ever routed -- and pass 3's freerouting produced no session
+        # file, leaving an unrouted optical.kicad_pcb as the committed baseline and the SES
+        # import reference. Recovered by hand from .best.kicad_pcb (byte-identical to
+        # .lastrouted), which is exactly the recovery this makes unnecessary.
+        # A retry round is OPTIONAL WORK: it either improves on what we have or it does not
+        # happen. Failing is 'does not happen', not 'lose the board'.
+        try:
+            _run("layout.py", stem)
+            _run("route.py", stem)
+            _run("repair_planes.py", stem)
+        except SystemExit as exc:
+            print("  ⚠ pass %d FAILED (%s) -- keeping pass %d's board and stopping the "
+                  "retries. The best board is restored below, as if this round never ran."
+                  % (k, exc, k - 1))
+            break
         n, nets_now, v = _drc(stem)
         print("  pass %d: %d unconnected, %d violation(s)" % (k, n, v))
         # ⚠ STRICTLY BETTER OR IT DOES NOT COUNT. A violation is worse than an
@@ -234,6 +255,12 @@ def finish(stem, rounds=1):
     # routing result over a skew number -- and the board would still be the best one we
     # have. fab.py is where refusing belongs, because that is the step that produces
     # something orderable; it already refuses a package built from an unrouted board.
+    # ⚠ ...BUT THE LAST LINE MUST SAY SO. "Reported, not enforced" left the verdict forty
+    # lines up while the summary read "0 unconnected, 0 violation(s)" -- and on 2026-09-30 a
+    # board whose THRU pair was split across layers with one via too many was committed AND
+    # submitted on the strength of that line. The count rides on the summary now, so a
+    # script (or a person) reading only the summary cannot miss it.
+    verify_fails = 0
     try:
         proc = subprocess.run([PY, os.path.join(HERE, "verify.py"), stem],
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -243,6 +270,8 @@ def finish(stem, rounds=1):
                 continue
             if line.strip():
                 print("    " + line)
+            if line.lstrip().startswith("FAIL"):
+                verify_fails += 1
     except Exception as exc:                      # a check that breaks must not break the
         print("    verify.py did not run: %r" % (exc,))   # board it was checking
 
@@ -260,23 +289,81 @@ def finish(stem, rounds=1):
     except Exception as exc:
         print("    export_geom.py did not run: %r" % (exc,))
 
-    print("%s: %d unconnected, %d violation(s)"
-          % (os.path.basename(stem), best_n, best_v))
+    # ...AND THEN COMPARE THE TWO SIDES, every run. Writing the geometry out is only half
+    # of it: export_geom has faithfully recorded a board whose CUTOUTS disagreed with the
+    # CAD's since the comb replaced the single big hole, and nothing compared them.
+    # ⚠ THE OPTICAL BOARD'S GERBERS WOULD HAVE SHIPPED WITH NO COMB. Ten slots were
+    # emitted to Edge.Cuts as one 16.41 x 101.6 mm rectangle, so the fab would have cut
+    # away the nine copper strips that carry all twenty TIA outputs. The CAD gate was
+    # clean, ERC was clean, the netlist was clean, and the CAD/netlist/BOM part
+    # reconciliation agreed on all 241 parts -- because every one of those reads a SINGLE
+    # SIDE. The router found it by failing to route across copper the fab data denied.
+    # cad_geom_check existed and compared the right things; it was simply never run here.
+    # A check that has to be remembered is not a guarantee, so it runs with the board.
+    # It needs CadQuery, which KiCad's bundled python does not have -- hence a different
+    # interpreter from PY, and a LOUD message if none of them works. Silence here is the
+    # failure mode this whole note is about.
+    _name = os.path.basename(stem)
+    for _cq in (["py", "-3.12"], ["python3"], ["python"]):
+        try:
+            proc = subprocess.run(_cq + [os.path.join(HERE, "cad_geom_check.py"), _name],
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                  text=True)
+        except OSError:
+            continue
+        for line in proc.stdout.splitlines():
+            if line.strip() and "memory leak" not in line:
+                print("    " + line)
+        if proc.returncode:
+            print("    !! THE CAD AND THE FAB DATA DISAGREE -- see above")
+        break
+    else:
+        print("    !! cad_geom_check DID NOT RUN: no CadQuery interpreter found. "
+              "THE CAD AND THE FAB DATA ARE UNCHECKED.")
+
+    print("%s: %d unconnected, %d violation(s)%s"
+          % (os.path.basename(stem), best_n, best_v,
+             (" -- AND %d verify.py FAIL(s): NOT A CLEAN BOARD" % verify_fails)
+             if verify_fails else ""))
     return best_n, best_v
 
 
 if __name__ == "__main__":
-    # ...AND THE RETRY IS REACHABLE FROM HERE, because on one board it is the difference
-    # between orderable and not. It was a keyword nobody could pass: the docstring says
-    # it has never paid, which was measured on the optical board and is not true of
-    # lever_sensor -- pass 1 leaves NRST 0.85 mm short of U3 pad 4, pass 2 closes it and
-    # costs nothing (0 unconnected, 0 violations, same 2 cosmetic warnings). A board that
-    # only routes when someone edits a default is not reproducible, which is the one
-    # claim this pipeline makes about itself.
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    rounds = next((int(a.split("=")[1]) for a in sys.argv[1:]
-                   if a.startswith("--rounds=")), 1)
-    if not args:
-        raise SystemExit("usage: finish.py [--rounds=N] <stem> [<stem> ...]")
-    for st in args:
-        finish(os.path.abspath(st), rounds=rounds)
+    # ⚠ --rounds WAS UNREACHABLE, AND IT IS THE MECHANISM FOR THE LAST FEW UNCONNECTED NETS.
+    # finish() has taken `rounds` since it was written -- round 2+ hands the nets the router
+    # could not finish back to _local_nets with local_mm=1e9, which is the one pass that will
+    # lay a long run deterministically -- but this block called finish(stem) with no second
+    # argument, so no invocation could ever reach it. The retry loop, the retry.json
+    # plumbing, the strictly-better comparison and the .best.kicad_pcb snapshots were all
+    # dead code from the command line.
+    # Kept at 1 by default: a round is a full route, so asking for 3 asks for three routes.
+    _rounds = None                 # None = not given: take the board's own finish_rounds
+    _stems = []
+    _argv = sys.argv[1:]
+    _i = 0
+    while _i < len(_argv):
+        if _argv[_i] == "--rounds":
+            _rounds = int(_argv[_i + 1])
+            _i += 2
+        elif _argv[_i].startswith("--rounds="):
+            _rounds = int(_argv[_i].split("=", 1)[1])
+            _i += 1
+        else:
+            _stems.append(_argv[_i])
+            _i += 1
+    if not _stems:
+        raise SystemExit("usage: finish.py [--rounds N] <stem> [<stem> ...]")
+    for st in _stems:
+        # ⚠ A BOARD CAN SAY HOW MANY ROUNDS IT NEEDS (BOARD_NOTES["finish_rounds"]), because
+        # a result that only exists under a flag is a result the next plain run loses.
+        # output_panel is the case: pass 1 leaves one net open and pass 2 closes it, so a
+        # default invocation would hand back a WORSE board than the committed one and
+        # report it as the route. An explicit --rounds still wins.
+        _r = _rounds
+        if _r is None:
+            try:
+                with open(os.path.abspath(st) + ".board.json", encoding="utf-8") as _fh:
+                    _r = int(json.load(_fh).get("finish_rounds", 1))
+            except OSError:
+                _r = 1
+        finish(os.path.abspath(st), rounds=_r)

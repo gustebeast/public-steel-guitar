@@ -28,6 +28,21 @@ XH_PINOUT = ("GND", "V24", "CAN_H", "CAN_L")
 # lever_sensor.py had already spelled this tuple inline rather than import a wrong name.
 PH_PINOUT = ("GND", "V5", "CAN_H", "CAN_L")
 
+# BUS B's own pinout, and it is a SEPARATE constant on purpose. Bus B runs at 5 V, not
+# 24, so pin 2 carries a different rail -- and the whole argument above is that a pin
+# order which is wrong is invisible until it puts a rail into a signal. Sharing XH's
+# tuple to save four words would mean bus B's pin 2 reading "V24" forever.
+#
+# The ORDER is deliberately the same shape (return, rail, H, L), so one crimp habit
+# still covers the instrument; it is only the rail's NAME that differs.
+PH_PINOUT = ("GND", "V5", "CAN_H", "CAN_L")
+
+
+def ph_drop_pins():
+    """Pin names for a 4-way bus-B drop: the leg blind-mate's PH and ZH housings, and
+    the lever/pedal sensor boards' PH. Pin 1 is GND at every one of them."""
+    return tuple(PH_PINOUT)
+
 
 def xh_drop_pins():
     """Pin names for a 4-way drop: one node hanging off the bus."""

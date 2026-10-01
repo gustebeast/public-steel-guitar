@@ -17,3 +17,4 @@ scratch.step
 elec/out/
 .overlap-cache.json
 skidl_REPL.*
+*.rpt

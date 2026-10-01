@@ -1,0 +1,262 @@
+{
+ "outline_mm": [
+  56.0,
+  34.0
+ ],
+ "thickness_mm": 1.6,
+ "footprints": [
+  {
+   "ref": "C1",
+   "fpid": "C_0805_2012Metric",
+   "x": -20.0,
+   "y": 1.0,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    -21.05,
+    -18.95,
+    0.325,
+    1.675
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C2",
+   "fpid": "C_0805_2012Metric",
+   "x": -6.0,
+   "y": 1.0,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    -7.05,
+    -4.95,
+    0.325,
+    1.675
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C3",
+   "fpid": "C_0402_1005Metric",
+   "x": -15.0,
+   "y": 1.0,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    -15.55,
+    -14.45,
+    0.7,
+    1.3
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C4",
+   "fpid": "C_0402_1005Metric",
+   "x": -1.0,
+   "y": 1.0,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    -1.55,
+    -0.45,
+    0.7,
+    1.3
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "J1",
+   "fpid": "PinSocket_2x20_P2.54mm_Vertical",
+   "x": 24.13,
+   "y": -3.23,
+   "rot": 90.0,
+   "side": "B",
+   "fab": [
+    -25.45,
+    25.45,
+    -7.09,
+    -1.91
+   ],
+   "crtyd": null,
+   "tht": [
+    -24.98,
+    24.98,
+    -6.62,
+    -2.38
+   ]
+  },
+  {
+   "ref": "J2",
+   "fpid": "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
+   "x": -18.6,
+   "y": 10.383,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    -25.35,
+    -11.85,
+    8.633,
+    15.733
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "J3",
+   "fpid": "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal",
+   "x": 17.35,
+   "y": 10.812,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    9.35,
+    25.35,
+    7.562,
+    15.263
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "J4",
+   "fpid": "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
+   "x": -0.75,
+   "y": 10.383,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    -7.5,
+    6.0,
+    8.633,
+    15.733
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "J5",
+   "fpid": "PinHeader_2x07_P1.27mm_Horizontal",
+   "x": -7.61,
+   "y": -10.365,
+   "rot": -90.0,
+   "side": "B",
+   "fab": [
+    -8.295,
+    0.695,
+    -17.185,
+    -10.115
+   ],
+   "crtyd": null,
+   "tht": [
+    -8.11,
+    0.51,
+    -12.135,
+    -9.865
+   ]
+  },
+  {
+   "ref": "J6",
+   "fpid": "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal",
+   "x": 20.0,
+   "y": -11.708,
+   "rot": 180.0,
+   "side": "B",
+   "fab": [
+    16.95,
+    23.05,
+    -14.333,
+    -9.983
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "R1",
+   "fpid": "R_0402_1005Metric",
+   "x": 5.0,
+   "y": 1.0,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    4.425,
+    5.575,
+    0.68,
+    1.32
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "R2",
+   "fpid": "R_0402_1005Metric",
+   "x": 8.0,
+   "y": 1.0,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    7.425,
+    8.575,
+    0.68,
+    1.32
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "R3",
+   "fpid": "R_0402_1005Metric",
+   "x": 12.5,
+   "y": -9.0,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    11.925,
+    13.075,
+    -9.32,
+    -8.68
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "R4",
+   "fpid": "R_0402_1005Metric",
+   "x": 12.5,
+   "y": -11.0,
+   "rot": 0.0,
+   "side": "B",
+   "fab": [
+    11.925,
+    13.075,
+    -11.32,
+    -10.68
+   ],
+   "crtyd": null,
+   "tht": null
+  }
+ ],
+ "outline_poly": [
+  [
+   28.0,
+   -17.0
+  ],
+  [
+   -28.0,
+   -17.0
+  ],
+  [
+   -28.0,
+   17.0
+  ],
+  [
+   28.0,
+   17.0
+  ]
+ ],
+ "holes": []
+}

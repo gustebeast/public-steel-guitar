@@ -1,6 +1,56 @@
       diff pair USB_DP: laid 28 segment(s) as a coupled pair over 2 hop(s)
       stitched 141 pad(s) on GND straight to the plane
-      local nets: laid 134 segment(s), 1 left to the router
+      local nets: laid 139 segment(s), 1 left to the router
           not placeable: TIA_OUT_9A: Rf51.2 -> Cf51.2 (3.10 mm)
-          placed 10 explicit via(s)
-    optical.kicad_pcb: 236 parts, 161 nets (+127 single-pad, not placed), 64.8 x 188.5 mm
+          placed 15 explicit via(s)
+    optical.kicad_pcb: 236 parts, 161 nets (+127 single-pad, not placed), 72.3 x 188.5 mm
+    exported optical.dsn (140 kB)
+      declared In1.Cu as plane layer(s) -- the router will not route on them
+      froze 15 pre-laid wire(s) as (type fix) -- the declared pair(s)
+      router clearance 137 um (fab rule 127 um + 10 um of rounding margin)
+      ?           Thank you for using Freerouting!                       ?
+      ?                                                                  ?
+      ?  If you would like to support the project, please visit          ?
+      ?  https://www.freerouting.app/donate.html                         ?
+      ?  Every contribution helps keep this project open and active!     ?
+      ????????????????????????????????????????????????????????????????????
+      re-laid 30 frozen wire(s) the session file does not carry
+      ⚠ 16 stitch via(s) landed where the plane is not: GND at 106.48,163.91, GND at 111.05,153.29, GND at 117.54,162.95, GND at 121.36,162.95, GND at 67.53,102.00, GND at 67.53,27.09
+        moved 8 of them into the plane and re-poured
+      ⚠ 8 stitch via(s) landed where the plane is not: GND at 111.05,153.29, GND at 117.54,162.95, GND at 121.36,162.95, GND at 67.53,27.09, GND at 68.73,102.00, GND at 68.73,27.09
+        (the rest have nowhere to go: move the part or except the pad -- another routing run will not help)
+      snapped 74 hairline gap(s) shut (no copper added)
+        ⚠ SAI_FS changes layer at 100.00,124.76 and a 0.6 via does not fit there
+        ⚠ SAI_FS changes layer at 100.00,124.76 and a 0.6 via does not fit there
+        ⚠ SAI_FS changes layer at 100.00,124.76 and a 0.6 via does not fit there
+        ⚠ SAI_FS changes layer at 100.00,124.76 and a 0.6 via does not fit there
+      dropped in 1 via(s) where a net changed layer with nothing to carry it
+      dropped 49 degenerate track fragment(s) from the import
+    optical.kicad_pcb: 2370 track segments + vias imported
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'PCB_TRACK *', no destructor found.
+    swig/python detected a memory leak of type 'ZONE_FILLER *', no destructor found.
+  10 DRC warning(s): silk_over_copper x5, silk_overlap x5
+  20 declared violation(s) (sensor triplets), 0 unexpected
+  pass 1: 10 unconnected, 0 violation(s)
+    ⚠ optical has 10 unconnected item(s): the board is NOT fully routed, so the lengths below measure how far the router got, not how well matched the groups are. Finish routing before reading them as skew.
+    ok   ULPI       skew  51.27 mm (budget 80.00)  24.4..75.7 mm over 12 nets
+    ok   USB_HS     skew   0.18 mm (budget  8.30)  11.6..11.8 mm over 2 nets
+    optical: 2 group(s) checked, 0 problem(s)
+    optical.geom.json: 236 footprints, board 72.34 x 188.53
+optical: 10 unconnected, 0 violation(s)
