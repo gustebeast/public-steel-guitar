@@ -25,7 +25,7 @@ DZS = (0.0, -0.3, -0.8, -1.5)
 def comb(panel):
     xb, xa = FL.panel_range(panel)
     c = (FL.walls(xb, xa).union(FL.ramps(xb, xa))
-         .union(FL.edge_walls(xb, xa)).cut(FL.strip_groove(xb, xa)))
+         .union(FL.edge_walls(xb, xa)))
     notch = FL.pogo_notches(xb, xa)
     if notch.vals():
         c = c.cut(notch)

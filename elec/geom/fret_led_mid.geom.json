@@ -10,6 +10,10 @@
    "fpid": "C_0402_1005Metric",
    "x": -69.285,
    "y": 15.4,
+   "pads_xy": [
+    -69.285,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -18,13 +22,18 @@
     15.1,
     15.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C11",
    "fpid": "C_0402_1005Metric",
    "x": -72.585,
    "y": 25.6,
+   "pads_xy": [
+    -72.585,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -33,13 +42,18 @@
     25.3,
     25.9
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C12",
    "fpid": "C_0402_1005Metric",
    "x": -20.751,
    "y": 25.6,
+   "pads_xy": [
+    -20.751,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -48,13 +62,18 @@
     25.3,
     25.9
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C13",
    "fpid": "C_0402_1005Metric",
    "x": 22.835,
    "y": 25.6,
+   "pads_xy": [
+    22.835,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -63,13 +82,18 @@
     25.3,
     25.9
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C14",
    "fpid": "C_0402_1005Metric",
    "x": 59.487,
    "y": 25.6,
+   "pads_xy": [
+    59.487,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -78,13 +102,18 @@
     25.3,
     25.9
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C15",
    "fpid": "C_0402_1005Metric",
    "x": 90.308,
    "y": 25.6,
+   "pads_xy": [
+    90.308,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -93,13 +122,18 @@
     25.3,
     25.9
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C2",
    "fpid": "C_0402_1005Metric",
    "x": -17.451,
    "y": 15.4,
+   "pads_xy": [
+    -17.451,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -108,13 +142,18 @@
     15.1,
     15.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C21",
    "fpid": "C_0805_2012Metric",
    "x": -69.285,
    "y": 25.6,
+   "pads_xy": [
+    -69.285,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -123,13 +162,18 @@
     24.925,
     26.275
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C22",
    "fpid": "C_0805_2012Metric",
    "x": -17.451,
    "y": 25.6,
+   "pads_xy": [
+    -17.451,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -138,13 +182,18 @@
     24.925,
     26.275
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C23",
    "fpid": "C_0805_2012Metric",
    "x": 26.135,
    "y": 25.6,
+   "pads_xy": [
+    26.135,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -153,13 +202,18 @@
     24.925,
     26.275
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C24",
    "fpid": "C_0805_2012Metric",
    "x": 62.787,
    "y": 25.6,
+   "pads_xy": [
+    62.787,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -168,13 +222,18 @@
     24.925,
     26.275
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C25",
    "fpid": "C_0805_2012Metric",
    "x": 93.607,
    "y": 25.6,
+   "pads_xy": [
+    93.607,
+    25.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -183,13 +242,18 @@
     24.925,
     26.275
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C3",
    "fpid": "C_0402_1005Metric",
    "x": 26.135,
    "y": 15.4,
+   "pads_xy": [
+    26.135,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -198,13 +262,18 @@
     15.1,
     15.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C36",
    "fpid": "C_1206_3216Metric",
    "x": -102.15,
    "y": -9.4,
+   "pads_xy": [
+    -102.15,
+    -9.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -213,13 +282,18 @@
     -10.25,
     -8.55
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C37",
    "fpid": "C_1206_3216Metric",
    "x": -102.15,
    "y": -12.6,
+   "pads_xy": [
+    -102.15,
+    -12.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -228,13 +302,18 @@
     -13.45,
     -11.75
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C38",
    "fpid": "C_0402_1005Metric",
    "x": -97.9,
    "y": -4.5,
+   "pads_xy": [
+    -97.9,
+    -4.5
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -243,13 +322,18 @@
     -4.8,
     -4.2
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C4",
    "fpid": "C_0402_1005Metric",
    "x": 62.787,
    "y": 15.4,
+   "pads_xy": [
+    62.787,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -258,13 +342,18 @@
     15.1,
     15.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C5",
    "fpid": "C_0402_1005Metric",
    "x": 93.607,
    "y": 15.4,
+   "pads_xy": [
+    93.607,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -273,13 +362,18 @@
     15.1,
     15.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D1",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -90.057,
    "y": -30.4,
+   "pads_xy": [
+    -90.057,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -288,13 +382,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D10",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -52.4,
    "y": -10.4,
+   "pads_xy": [
+    -52.4,
+    -10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -303,13 +402,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D11",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -52.4,
    "y": 10.4,
+   "pads_xy": [
+    -52.4,
+    10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -318,13 +422,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D12",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -52.4,
    "y": 30.4,
+   "pads_xy": [
+    -52.4,
+    30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -333,13 +442,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D13",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -35.141,
    "y": -30.4,
+   "pads_xy": [
+    -35.141,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -348,13 +462,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D14",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -35.141,
    "y": -10.4,
+   "pads_xy": [
+    -35.141,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -363,13 +482,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D15",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -35.141,
    "y": 10.4,
+   "pads_xy": [
+    -35.141,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -378,13 +502,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D16",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -35.141,
    "y": 30.4,
+   "pads_xy": [
+    -35.141,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -393,13 +522,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D17",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -18.851,
    "y": -30.4,
+   "pads_xy": [
+    -18.851,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -408,13 +542,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D18",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -18.851,
    "y": -10.4,
+   "pads_xy": [
+    -18.851,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -423,13 +562,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D19",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -18.851,
    "y": 10.4,
+   "pads_xy": [
+    -18.851,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -438,13 +582,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D2",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -90.057,
    "y": -10.4,
+   "pads_xy": [
+    -90.057,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -453,13 +602,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D20",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -18.851,
    "y": 30.4,
+   "pads_xy": [
+    -18.851,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -468,13 +622,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D21",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -3.476,
    "y": -30.4,
+   "pads_xy": [
+    -3.476,
+    -30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -483,13 +642,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D22",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -3.476,
    "y": -10.4,
+   "pads_xy": [
+    -3.476,
+    -10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -498,13 +662,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D23",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -3.476,
    "y": 10.4,
+   "pads_xy": [
+    -3.476,
+    10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -513,13 +682,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D24",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -3.476,
    "y": 30.4,
+   "pads_xy": [
+    -3.476,
+    30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -528,13 +702,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D25",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 11.037,
    "y": -30.4,
+   "pads_xy": [
+    11.037,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -543,13 +722,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D26",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 11.037,
    "y": -10.4,
+   "pads_xy": [
+    11.037,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -558,13 +742,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D27",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 11.037,
    "y": 10.4,
+   "pads_xy": [
+    11.037,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -573,13 +762,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D28",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 11.037,
    "y": 30.4,
+   "pads_xy": [
+    11.037,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -588,13 +782,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D29",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 24.735,
    "y": -30.4,
+   "pads_xy": [
+    24.735,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -603,13 +802,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D3",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -90.057,
    "y": 10.4,
+   "pads_xy": [
+    -90.057,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -618,13 +822,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D30",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 24.735,
    "y": -10.4,
+   "pads_xy": [
+    24.735,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -633,13 +842,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D31",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 24.735,
    "y": 10.4,
+   "pads_xy": [
+    24.735,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -648,13 +862,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D32",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 24.735,
    "y": 30.4,
+   "pads_xy": [
+    24.735,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -663,13 +882,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D33",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 37.665,
    "y": -30.4,
+   "pads_xy": [
+    37.665,
+    -30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -678,13 +902,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D34",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 37.665,
    "y": -10.4,
+   "pads_xy": [
+    37.665,
+    -10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -693,13 +922,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D35",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 37.665,
    "y": 10.4,
+   "pads_xy": [
+    37.665,
+    10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -708,13 +942,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D36",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 37.665,
    "y": 30.4,
+   "pads_xy": [
+    37.665,
+    30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -723,13 +962,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D37",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 49.868,
    "y": -30.4,
+   "pads_xy": [
+    49.868,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -738,13 +982,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D38",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 49.868,
    "y": -10.4,
+   "pads_xy": [
+    49.868,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -753,13 +1002,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D39",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 49.868,
    "y": 10.4,
+   "pads_xy": [
+    49.868,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -768,13 +1022,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D4",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -90.057,
    "y": 30.4,
+   "pads_xy": [
+    -90.057,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -783,13 +1042,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D40",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 49.868,
    "y": 30.4,
+   "pads_xy": [
+    49.868,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -798,13 +1062,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D41",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 61.387,
    "y": -30.4,
+   "pads_xy": [
+    61.387,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -813,13 +1082,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D42",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 61.387,
    "y": -10.4,
+   "pads_xy": [
+    61.387,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -828,13 +1102,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D43",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 61.387,
    "y": 10.4,
+   "pads_xy": [
+    61.387,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -843,13 +1122,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D44",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 61.387,
    "y": 30.4,
+   "pads_xy": [
+    61.387,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -858,13 +1142,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D45",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 72.259,
    "y": -30.4,
+   "pads_xy": [
+    72.259,
+    -30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -873,13 +1162,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D46",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 72.259,
    "y": -10.4,
+   "pads_xy": [
+    72.259,
+    -10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -888,13 +1182,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D47",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 72.259,
    "y": 10.4,
+   "pads_xy": [
+    72.259,
+    10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -903,13 +1202,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D48",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 72.259,
    "y": 30.4,
+   "pads_xy": [
+    72.259,
+    30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -918,13 +1222,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D49",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 82.522,
    "y": -30.4,
+   "pads_xy": [
+    82.522,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -933,13 +1242,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D5",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -70.685,
    "y": -30.4,
+   "pads_xy": [
+    -70.685,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -948,13 +1262,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D50",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 82.522,
    "y": -10.4,
+   "pads_xy": [
+    82.522,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -963,13 +1282,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D51",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 82.522,
    "y": 10.4,
+   "pads_xy": [
+    82.522,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -978,13 +1302,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D52",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 82.522,
    "y": 30.4,
+   "pads_xy": [
+    82.522,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -993,13 +1322,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D53",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 92.208,
    "y": -30.4,
+   "pads_xy": [
+    92.208,
+    -30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1008,13 +1342,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D54",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 92.208,
    "y": -10.4,
+   "pads_xy": [
+    92.208,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1023,13 +1362,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D55",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 92.208,
    "y": 10.4,
+   "pads_xy": [
+    92.208,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1038,13 +1382,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D56",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 92.208,
    "y": 30.4,
+   "pads_xy": [
+    92.208,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1053,13 +1402,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D57",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 101.35,
    "y": -30.4,
+   "pads_xy": [
+    101.35,
+    -30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -1068,13 +1422,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D58",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 101.35,
    "y": -10.4,
+   "pads_xy": [
+    101.35,
+    -10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -1083,13 +1442,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D59",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 101.35,
    "y": 10.4,
+   "pads_xy": [
+    101.35,
+    10.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -1098,13 +1462,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D6",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -70.685,
    "y": -10.4,
+   "pads_xy": [
+    -70.685,
+    -10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1113,13 +1482,18 @@
     -12.95,
     -7.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D60",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": 101.35,
    "y": 30.4,
+   "pads_xy": [
+    101.35,
+    30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -1128,13 +1502,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D7",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -70.685,
    "y": 10.4,
+   "pads_xy": [
+    -70.685,
+    10.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1143,13 +1522,18 @@
     7.85,
     12.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D8",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -70.685,
    "y": 30.4,
+   "pads_xy": [
+    -70.685,
+    30.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1158,13 +1542,18 @@
     27.85,
     32.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D9",
    "fpid": "XINGLIGHT_XL-5050RGBW",
    "x": -52.4,
    "y": -30.4,
+   "pads_xy": [
+    -52.4,
+    -30.4
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
@@ -1173,13 +1562,18 @@
     -32.95,
     -27.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J11",
    "fpid": "Xinyangze_YZF0002-38080-02",
    "x": -102.15,
    "y": -4.5,
+   "pads_xy": [
+    -102.15,
+    -4.5
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1188,13 +1582,18 @@
     -6.05,
     -2.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J12",
    "fpid": "Xinyangze_YZF0002-38080-02",
    "x": -102.15,
    "y": -0.0,
+   "pads_xy": [
+    -102.15,
+    -0.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1203,13 +1602,18 @@
     -1.55,
     1.55
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J13",
    "fpid": "Xinyangze_YZF0002-38080-02",
    "x": -102.15,
    "y": 4.5,
+   "pads_xy": [
+    -102.15,
+    4.5
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1218,13 +1622,18 @@
     2.95,
     6.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J14",
    "fpid": "Xinyangze_YZF0002-38080-02",
    "x": -102.15,
    "y": 15.9,
+   "pads_xy": [
+    -102.15,
+    15.9
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1233,13 +1642,18 @@
     14.35,
     17.45
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J15",
    "fpid": "Xinyangze_YZF0002-38080-02",
    "x": -102.15,
    "y": 20.4,
+   "pads_xy": [
+    -102.15,
+    20.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1248,13 +1662,18 @@
     18.85,
     21.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J16",
    "fpid": "Xinyangze_YZF0002-38080-02",
    "x": -102.15,
    "y": 24.9,
+   "pads_xy": [
+    -102.15,
+    24.9
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1263,13 +1682,18 @@
     23.35,
     26.45
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R1",
    "fpid": "R_0402_1005Metric",
    "x": -72.085,
    "y": 15.4,
+   "pads_xy": [
+    -72.085,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1278,13 +1702,18 @@
     15.08,
     15.72
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R2",
    "fpid": "R_0402_1005Metric",
    "x": -20.251,
    "y": 15.4,
+   "pads_xy": [
+    -20.251,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1293,13 +1722,18 @@
     15.08,
     15.72
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R3",
    "fpid": "R_0402_1005Metric",
    "x": 23.335,
    "y": 15.4,
+   "pads_xy": [
+    23.335,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1308,13 +1742,18 @@
     15.08,
     15.72
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R4",
    "fpid": "R_0402_1005Metric",
    "x": 59.987,
    "y": 15.4,
+   "pads_xy": [
+    59.987,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1323,13 +1762,18 @@
     15.08,
     15.72
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R5",
    "fpid": "R_0402_1005Metric",
    "x": 90.808,
    "y": 15.4,
+   "pads_xy": [
+    90.808,
+    15.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1338,13 +1782,18 @@
     15.08,
     15.72
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U1",
    "fpid": "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm",
    "x": -70.685,
    "y": 20.4,
+   "pads_xy": [
+    -70.685,
+    20.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1353,13 +1802,18 @@
     17.1,
     23.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U2",
    "fpid": "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm",
    "x": -18.851,
    "y": 20.4,
+   "pads_xy": [
+    -18.851,
+    20.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1368,13 +1822,18 @@
     17.1,
     23.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U3",
    "fpid": "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm",
    "x": 24.735,
    "y": 20.4,
+   "pads_xy": [
+    24.735,
+    20.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1383,13 +1842,18 @@
     17.1,
     23.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U4",
    "fpid": "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm",
    "x": 61.387,
    "y": 20.4,
+   "pads_xy": [
+    61.387,
+    20.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1398,13 +1862,18 @@
     17.1,
     23.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U5",
    "fpid": "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm",
    "x": 92.208,
    "y": 20.4,
+   "pads_xy": [
+    92.208,
+    20.4
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -1413,7 +1882,8 @@
     17.1,
     23.7
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   }
  ],
  "outline_poly": [
@@ -1438,195 +1908,195 @@
   [
    [
     -101.125,
-    -25.759
+    33.741
    ],
    [
     -101.422,
-    -25.809
+    33.691
    ],
    [
     -101.71,
-    -25.898
+    33.602
    ],
    [
     -101.983,
-    -26.025
+    33.475
    ],
    [
     -102.236,
-    -26.187
+    33.313
    ],
    [
     -102.466,
-    -26.381
+    33.119
    ],
    [
     -102.668,
-    -26.604
+    32.896
    ],
    [
     -102.838,
-    -26.852
+    32.648
    ],
    [
     -102.974,
-    -27.121
+    32.379
    ],
    [
     -103.072,
-    -27.405
+    32.095
    ],
    [
     -103.132,
-    -27.7
+    31.8
    ],
    [
     -103.153,
-    -28.0
+    31.5
    ],
    [
     -103.132,
-    -28.3
+    31.2
    ],
    [
     -103.072,
-    -28.595
+    30.905
    ],
    [
     -102.974,
-    -28.879
+    30.621
    ],
    [
     -102.838,
-    -29.148
+    30.352
    ],
    [
     -102.668,
-    -29.396
+    30.104
    ],
    [
     -102.466,
-    -29.619
+    29.881
    ],
    [
     -102.236,
-    -29.813
+    29.687
    ],
    [
     -101.983,
-    -29.975
+    29.525
    ],
    [
     -101.71,
-    -30.102
+    29.398
    ],
    [
     -101.422,
-    -30.191
+    29.309
    ],
    [
     -101.125,
-    -30.241
+    29.259
    ],
    [
     -100.825,
-    -30.251
+    29.249
    ],
    [
     -100.525,
-    -30.221
+    29.279
    ],
    [
     -100.233,
-    -30.151
+    29.349
    ],
    [
     -99.952,
-    -30.043
+    29.457
    ],
    [
     -99.688,
-    -29.899
+    29.601
    ],
    [
     -99.446,
-    -29.72
+    29.78
    ],
    [
     -99.229,
-    -29.511
+    29.989
    ],
    [
     -99.043,
-    -29.275
+    30.225
    ],
    [
     -98.89,
-    -29.016
+    30.484
    ],
    [
     -98.772,
-    -28.739
+    30.761
    ],
    [
     -98.693,
-    -28.449
+    31.051
    ],
    [
     -98.653,
-    -28.15
+    31.35
    ],
    [
     -98.65,
-    -28.0
+    31.5
    ],
    [
     -98.653,
-    -27.85
+    31.65
    ],
    [
     -98.693,
-    -27.551
+    31.949
    ],
    [
     -98.772,
-    -27.261
+    32.239
    ],
    [
     -98.89,
-    -26.984
+    32.516
    ],
    [
     -99.043,
-    -26.725
+    32.775
    ],
    [
     -99.229,
-    -26.489
+    33.011
    ],
    [
     -99.446,
-    -26.28
+    33.22
    ],
    [
     -99.688,
-    -26.101
+    33.399
    ],
    [
     -99.952,
-    -25.957
+    33.543
    ],
    [
     -100.233,
-    -25.849
+    33.651
    ],
    [
     -100.525,
-    -25.779
+    33.721
    ],
    [
     -100.825,
-    -25.749
+    33.751
    ]
   ]
  ]
