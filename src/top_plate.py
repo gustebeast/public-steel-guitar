@@ -266,6 +266,13 @@ RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL_2P   # 1.6 (2-
 X_SLIDE   = 6.0                                    # pickup X-position room on the plate (+/-)
 PLATE_X   = PM.PK_W + 2 * X_SLIDE                  # green X (pickup + slide) ~50.6
 PLATE_Y   = (PK_YP - PK_MAX_YM) + 2 * RET_WALL_T   # green Y (LONGEST pickup + wall room each side) ~106.0
+# THE PICKUP'S LEAD LEAVES ITS UNDERSIDE, SO THE PLATE IT RESTS ON NEEDS A WAY THROUGH.
+# A slot rather than a hole because the pickup slides +/-X_SLIDE on the plate and takes its
+# lead with it. It sits under the pickup's own -Y end at every slide position, so the pickup
+# lids it and the plate stays a light block. wiring.py draws the lead through this Y.
+LEAD_SLOT_W = 4 * D.BEAD                           # 3.2: the 2.4 lead + a 0.4 bead-half each side
+LEAD_SLOT_L = 2 * X_SLIDE + LEAD_SLOT_W            # the lead's whole X travel
+LEAD_SLOT_Y = PK_YM + 5 * D.BEAD                   # 4.0 in from the demo pickup's -Y edge
 NUB_W     = 14 * D.NOZZLE_D                        # 11.2 (was 11.0) nub/arm width (>= boss Ø8)
 CAVITY_X  = PLATE_X + 1.5                          # pickup cavity in the deck (green + clearance)
 CAVITY_Y  = PLATE_Y + 1.5
@@ -648,6 +655,9 @@ def _pickup_zplate():
     plate = cut_insert_bore(M4, plate, (RET_SCREW_X, ret_face_y, RET_SCREW_Z), (0, 1, 0),
                             clr_len=RET_BOSS_L - M4.insert_depth + 1.0,
                             reason="set screw: -Y pickup-retention grub, must not self-tap")
+    # the lead slot, LAST: every union above would refill it (see LEAD_SLOT_W)
+    plate = plate.cut(box_at(LEAD_SLOT_L, LEAD_SLOT_W, ZPL_T + 2.0,
+                             x=PICKUP_X_NOM, y=LEAD_SLOT_Y, z=(ZPL_BOT + ZPL_TOP) / 2))
     return plate
 
 
