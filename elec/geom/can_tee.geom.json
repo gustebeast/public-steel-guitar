@@ -18,7 +18,13 @@
     -7.25,
     4.35
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    -21.35,
+    -2.15,
+    1.025,
+    2.975
+   ]
   },
   {
    "ref": "J2",
@@ -33,7 +39,13 @@
     -7.25,
     4.35
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    2.35,
+    11.55,
+    1.025,
+    2.975
+   ]
   },
   {
    "ref": "JP1",
@@ -43,7 +55,8 @@
    "rot": 0.0,
    "side": "F",
    "fab": null,
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R1",
@@ -58,7 +71,8 @@
     5.737,
     6.662
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   }
  ],
  "outline_poly": [
