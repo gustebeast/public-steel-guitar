@@ -460,7 +460,7 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 
 | Part | Per instrument | Vendor | SKU | $ / instrument | | Order arithmetic and notes |
 |---|---|---|---|---|---|---|
-| `servo42d` | 10 | — | — | $339.90 | [v] | MKS SERVO42D CAN MT (board + MOTOR) -- makerbase3d.com variant table, in stock 2026-09-30. MB is the BOARD ONLY at $22.99 and is the wrong SKU. |
+| `servo42d` | 10 | — | — | $339.90 | [v] | MKS SERVO42D CAN MT (board + MOTOR) -- makerbase3d.com variant table, in stock 2026-09-30. MB is the BOARD ONLY at $22.99 and is the wrong SKU. The listing gives the motor as **40 mm long** (user, 2026-10-01) -- the CAD draws 48; see `src/servo42d.py`. |
 | `psu_24v_150w` | 1 | — | — | $20.69 | [v] | Mean Well LRS-150-24, 24 V 6.5 A 156 W -- Jameco $17.10 at qty 10, PLUS $3.59 of TARIFF ($35.91 on ten, itemised in the cart, HTS 8504.40.9530) = $20.69 landed. Sized from BOM.md power table: 120 W bus A + 16.7 W Pi = ~137 W peak. On backorder 2026-09-30, ships 11/16. |
 | `bearing_mr85zz` | 20 | — | — | $9.80 | [v] | MR85ZZ, the screws' bottom thrust pair |
 | `bearing_688zz` | 42 | — | — | $25.20 | [v] | 688ZZ O8xO16x5 -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls) |
