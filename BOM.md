@@ -1574,9 +1574,12 @@ feeds to XT30, which the BOM currently restricts to PSU trunk joints.
 >
 > ✅ **FIXED 2026-10-01: J3 → J1 is a declared 2.0 mm B.Cu bar** (45.5 mm of 1 oz outer
 > copper, ~11 mΩ, ~4 A at a 10 °C rise; J3's two +24 V ways tied by 1.2 mm). Routed
-> 0 unconnected / 0 violations, audit passes. That takes ~80 mΩ out of `Rw` below, so the
-> west feed is no longer on under-rated copper and the split moves toward even; the 64 / 36
-> figure that follows is the BEFORE state, kept for the reasoning, and has not been re-derived.
+> 0 unconnected / 0 violations, audit passes. `Rw` falls from ~110 to **~30 mΩ**, and with
+> the same model as below (uniform load on a 250 mΩ chain, east share =
+> (Rw + chain/2) / (Re + Rw + chain); it reproduces the old 64 %) the split is now
+> **east 54 % / west 46 %**: all ten moving is 4.4 A east, 3.6 A west, and the west share
+> rides copper rated for it. The paragraphs that follow are the BEFORE state, kept for the
+> reasoning; "it is not done here either" is no longer true.
 >
 > ⚠ **THE MOTOR BOARD'S SHARE IS NOW MEASURED, AND IT IS THE WHOLE STORY** (traced on the
 > routed board, 2026-09-30). J3 pin 2 reaches J1 pin 2 through **35.9 mm of 0.5 mm track on
