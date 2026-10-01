@@ -1311,9 +1311,9 @@ GROW_X = 12.0
 # overmold is wider than the shell and its lower half sits below the board top (USB-A axis
 # 3.3 mm up, 8 mm overmold; USB-C worse at 1.63 mm up), so with the mouth inboard the
 # overmold lands on 0.5 mm of laminate (5.6 mm3 measured against J4's cable). Overhanging
-# the receptacle is the usual remedy. Pads stay well behind the edge: J2/J4 copper 8.48 mm,
-# J3 1.44 mm.
-USB_MOUTH_SHIFT = 0.0      # ⚠ NOT APPLIED. Every overhang tried (-0.6 .. -1.3) splits HUB_DN1 and/or THRU across layers; see docs/bronner-work-items.md
+# the receptacle is the usual remedy. Pads stay well behind the edge: J2/J4 copper 8.38 mm,
+# J3 1.34 mm.
+USB_MOUTH_SHIFT = -1.0     # 0.5 inboard -> 0.5 proud. Routes clean ONLY with THRU/HUB_DN1 frozen (see the bottom of this file)
 BOARD_W_GROWN = BOARD_W + GROW_X        # 86.0 -- the laminate that gets fabricated
 # How far each panel connector's body front stands past the +X edge: the fit clearance
 # between the board and the endplate's panel, plus the panel itself. src/electronics.py
@@ -2005,6 +2005,29 @@ for _ref, (_x, _y, _rot) in BOARD_NOTES["placements"].items():
     assert abs(_was - _now) < 1e-9, (
         "-X growth moved %s relative to the %s: %.3f mm -> %.3f mm. The re-centring pass "
         "and the per-part offsets disagree." % (_ref, _which, _was, _now))
+
+
+# ── THE TWO PAIRS THE ROUTER MAY NOT RE-ROLL (2026-09-30) ────────────────────────────────
+# HUB_DN2 is laid as a coupled pair by layout._diff_pairs and frozen. THRU (J1 -> J2) and
+# HUB_DN1 (U4 -> U1) cannot be -- _diff_pairs reports an ESCAPE failure on both (J1's rows
+# run along Y; U1 is a 0.4 mm QFN) -- so freerouting routed each conductor on its own, and
+# every placement change since has split one or both across layers: D7's re-site and five
+# USB overhang values, six of six, all with a DRC-clean board. verify.py is what saw it.
+#
+# So their copper is LIFTED FROM THE ONE BOARD THAT PASSES (overhang 0.0, D7 at its old
+# site: four pairs `ok`) and laid before routing as fixed wires. output_panel.frozen.json
+# holds it in the POST-growth frame, which is why it is added down here, after the
+# re-centring pass, and not in BOARD_NOTES above.
+# ⚠ IT IS A SNAPSHOT. If J1, J2, U1 or U4 moves, the copper no longer meets its pads:
+# re-extract it with elec/freeze_pairs.py from a board that passes verify.py (see
+# docs/bronner-work-items.md) rather than editing the json by hand.
+import json as _json
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "output_panel.frozen.json"), encoding="utf-8") as _fh:
+    _frozen = _json.load(_fh)
+BOARD_NOTES["frozen_nets"] = list(_frozen["nets"])
+BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
+    (_n, _layer, _w, [tuple(_p) for _p in _pts]) for _n, _layer, _w, _pts in _frozen["tracks"]]
+BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [tuple(_v) for _v in _frozen["vias"]]
 
 
 if __name__ == "__main__":

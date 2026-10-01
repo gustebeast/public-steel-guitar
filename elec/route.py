@@ -372,6 +372,13 @@ def route(stem, passes=None, timeout=14400, incremental=False, dsn_only=False):
     frozen = set()
     for spec in (notes or {}).get("diff_pairs", ()):
         frozen.update(spec.get("nets", ()))
+    # ...AND ANY NET THE BOARD DECLARES FROZEN OUTRIGHT (2026-09-30). `diff_pairs` freezes
+    # what layout._diff_pairs LAID; this freezes copper the board file supplies itself as
+    # notes["tracks"]/["vias"]. It exists for pairs _diff_pairs cannot escape (a QFN fan-out,
+    # a USB-C with its rows along Y): output_panel's THRU and HUB_DN1 were routed one
+    # conductor at a time, and six placement changes in a row split one or both across
+    # layers. Their copper is lifted from the one clean board and pinned here instead.
+    frozen.update((notes or {}).get("frozen_nets", ()))
     pair_nets = None if (notes or {}).get("fix_prelaid") else frozen
     if (notes or {}).get("fix_prelaid"):
         # ⚠ FREEZING AND RESTORING ARE TWO HALVES OF ONE THING, AND fix_prelaid ONLY DID
