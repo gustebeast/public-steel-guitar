@@ -873,10 +873,10 @@ TRRS_DX = 5.0                  # the flipped TRRS axis (local +x offset).
                                # opens east into the open-top chassis box
                                # during assembly, and the WIDE corner
                                # rib's Ø10.5 well guides it + sleeves the
-                               # barrel), seats on the mouth boss, and is
-                               # clamped by an M2 SET SCREW reached from
-                               # the stub's inboard-y face (below the
-                               # body — accessible even assembled).
+                               # barrel) and seats on the mouth boss.
+                               # NOTHING CLAMPS IT YET: this stub is not in
+                               # the build, and when it returns the clamp
+                               # is an M4 button head (one screw, one key).
 
 
 def _stub_ridge(length: float = SQ_W) -> cq.Workplane:
@@ -1209,8 +1209,7 @@ def _body_stub(wired: bool, eps: float, latch: bool = False, mid_cut: float = 0.
     quick-release ledge pocket and bolt tail window are gone). Wired: + the mouth-seat boss,
     barrel way and the Ø9.7 jack way opening through the FLAT top face
     (see TRRS_DX — no fin/chimney: the naked 10-03404 drops in through
-    the wide rib's well AFTER the stub seats, and an M2 set screw from
-    the inboard-y face clamps it)."""
+    the wide rib's well AFTER the stub seats; its clamp is undesigned)."""
     b = box_at(SQ_W, SQ_W, STUB_H, z=STUB_H / 2)
     # SOCKET: the flush OCTAGON mortise (net 40 deep from the mouth,
     # spigot 38 → mouth-butt hard stop), opening through the bottom face AND
@@ -1265,15 +1264,6 @@ def _body_stub(wired: bool, eps: float, latch: bool = False, mid_cut: float = 0.
         #                                    notches the +0.667 crossing
         #                                    ridge (jack drops in after the
         #                                    slide through the rib's well)
-        # M2 SET-SCREW way from the inboard +y face, re-derived for the new
-        # axis (the way's +y wall is now at y 17.85): Ø4.2 access bore to
-        # the wall + Ø1.6 thread-forming pilot poking into the Ø9.7 way
-        b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            2.1, 13.5, cq.Vector(TRRS_DX, SQ_W / 2 + 1.5, 43.0),
-            cq.Vector(0, -1, 0))))
-        b = b.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            0.8, 3.5, cq.Vector(TRRS_DX, 10.3, 43.0),
-            cq.Vector(0, -1, 0))))
     return b
 
 

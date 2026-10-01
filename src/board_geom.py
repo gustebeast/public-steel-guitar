@@ -121,7 +121,11 @@ HEIGHT = {
     "USB_A_Receptacle_GCT_USB1046": 6.60,
     # measured off HRO's own model (KiCad demo royalblue54L_feather): shell z 0.05..3.25
     "USB_C_Receptacle_HRO_TYPE-C-31-M-12": 3.25,
-    "TestPoint_Pad_D1.5mm": 0.0,       # bare copper
+    "TestPoint_Pad_D1.5mm": 0.0, "TestPoint_Pad_D1.0mm": 0.0,       # bare copper
+    # ...and so is a solder jumper: two pads and a gap. It has no F.Fab body either,
+    # which is right -- there is no part. A zero here is what keeps it out of the solids
+    # a housing has to clear, rather than a special case at each call site.
+    "SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm": 0.0,
     # the motor controller's (2026-09-21), package max heights off the JEDEC outlines / the
     # makers' drawings -- the old hand table carried the same 1.75 / 1.10 for these
     "SOIC-8_3.9x4.9mm_P1.27mm": 1.75, "SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm": 1.75,
