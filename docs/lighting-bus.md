@@ -12,7 +12,7 @@ side, so `elec/pi_cap.py` (bronner) and the motor board can be built against it.
 `docs/fret-led.md` §9.1f. The two fret boards are ONE drop now: the harness lands on
 `fret_led_key`, whose buck feeds both, and the chain continues into `fret_led_mid` over six
 tip-to-tip pogos at the panel seam. So everything below that says three is history, and §4
-is rewritten: **two LED headers, three GPIO (1 SCK + 2 SDT)**. The fret header's pin-out
+is rewritten: **two LED headers, four GPIO (two SPI buses, one per chain)**. The fret header's pin-out
 does not change -- one SDT drives both boards, because the chain now runs through.
 
 ## 1. ⚠ THREE DROPS, NOT TWO (superseded by §0)
@@ -192,7 +192,14 @@ thing to revisit if the foot strip ever grows again.
    - foot, 4-way SH: `V24, GND, SCK, SDT`, with **V24 on an end pad** (the SH is 1.00 mm
      pitch and an interior pad cannot be entered by a 0.15 track past two 0.127
      clearances — three separate routes failed on it before it moved).
-3. **Three GPIO**: one SCK fanned to both headers, two separate SDT.
+3. **Four GPIO, two hardware SPI buses** (bronner, 2026-09-30, and it corrects this
+   document): a Pi's hardware SPI has ONE MOSI per clock, so "one SCK fanned, two SDT" can
+   only be bit-banged, which breaks the stream-continuously rule of §2. Fret is SPI0 (SCLK
+   pin 23, MOSI pin 19), foot is SPI5 (SCLK GPIO15 pin 10, MOSI GPIO14 pin 8), each clock
+   through its own 68R into ONE cable -- which also closes §5 item 3. The two chains no
+   longer latch on one edge, and that does not matter: a TLC59711 latches itself when its
+   own clock pauses, the fret and foot lights are separate fixtures, and the offset is
+   well under a PWM period.
 4. **24 V in from the motor board**, 2 A of headroom, bussed to both headers. The fret
    header now carries 0.89 A of it over its two V24 contacts (0.45 A each, PH is 2 A).
 

@@ -56,11 +56,13 @@
       "per_instrument": 10,
       "what": "MKS SERVO42D CAN MT (board + MOTOR) -- makerbase3d.com variant table, in stock 2026-09-30. MB is the BOARD ONLY at $22.99 and is the wrong SKU."
     },
-    "psu_24v_150w": {
-      "usd": 20.69,
+    "psu_24v_160w": {
+      "usd": 47.7,
       "verified": "v",
       "per_instrument": 1,
-      "what": "Mean Well LRS-150-24, 24 V 6.5 A 156 W -- Jameco $17.10 at qty 10, PLUS $3.59 of TARIFF ($35.91 on ten, itemised in the cart, HTS 8504.40.9530) = $20.69 landed. Sized from BOM.md power table: 120 W bus A + 16.7 W Pi = ~137 W peak. On backorder 2026-09-30, ships 11/16."
+      "vendor": "OnlineComponents",
+      "sku": "GST160A24-R7B",
+      "what": "Mean Well GST160A24-R7B sealed DESKTOP adapter, 24 V 6.67 A 160 W, IEC C14 in, 4-pin locking DIN out (mates the Kycon KPJX-4S-S on output_panel). USER'S CHOICE 2026-10-01, replacing the open-frame LRS-150-24 ($20.69 landed). $47.70 at 10, 891 in stock, page read by bronner. BEFORE shipping, tax and any tariff -- OnlineComponents' checkout has not been measured. The listing calls it 'no longer manufactured'; see BOM.md."
     },
     "bearing_mr85zz": {
       "usd": 0.49,
@@ -158,12 +160,13 @@
       "what": "DIN 9021 M3 washer O9 x 0.8 -- spring seat + position, 4 per control x 11"
     },
     "washer_m4_7089": {
-      "usd": 0.05,
-      "verified": "m",
+      "usd": 0.0715,
+      "verified": "v",
       "per_instrument": 11,
       "vendor": "McMaster-Carr",
-      "sku": "-",
-      "what": "ISO 7089 / DIN 125 M4 washer O9 x 0.8, O4.3 hole -- under the axle's end screw, 1 per sensed control x 11. Price carried at a guess; pick the SKU at purchase."
+      "sku": "93475A230",
+      "what": "18-8 M4 washer, 4.3 ID x 9.0 OD -- one under each knee/pedal axle screw. Page read 2026-10-01; it IS the 9.0 OD part, not a fender.",
+      "order": "2 x $3.93 (pack of 100) = $7.86 for 110 needed"
     },
     "break_dowel": {
       "usd": 0.254,
@@ -1540,9 +1543,9 @@
       "what": "LMR16006XDDCR C87080 -- JLCPCB parts API at qty 20"
     },
     "output_panel:J6": {
-      "usd": 0.8779,
+      "usd": 4.0983,
       "verified": "v",
-      "what": "PJ-102AH C3096093 -- JLCPCB parts API at qty 10"
+      "what": "KPJX-4S-S C2875467 -- JLCPCB parts API, first break, 2026-10-01"
     },
     "can_tee:J2": {
       "usd": 0.0698,
@@ -1789,7 +1792,7 @@
       "KNOWN ABSENT, listed so the total is honest about its own holes. cost.py prints",
       "these under the table and refuses to call the number complete while any remain."
     ],
-    "psu": "PRICED NOW -- Mean Well LRS-150-24 at $20.69 landed, see mechanical.psu_24v_150w. What is still open is the DESIGN question, not the price: the slew budget that would confirm 150 W is enough is unmeasured (docs/design-validation.md B7).",
+    "psu": "PRICED: Mean Well GST160A24-R7B at $47.70, see mechanical.psu_24v_160w. Its shipping, tax and tariff are NOT measured. The design question stands: one motor's slew current is unmeasured, and the firmware mover cap is set from it (bring-up item).",
     "wire": "LENGTH IS MEASURED NOW, PRICE IS NOT. tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had. Its ~$35 estimate implies $2.29/m, far above hookup-wire rates -- almost certainly because you buy SPOOLS, not metres. Needs one product page and a spool-count, not another estimate.",
     "tariff_uncollected": "The motors are the exposure. Makerbase ships them from China collecting no tax and no duty at checkout, so $339.90 of an order is NOT landed cost. JLCPCB by contrast ships DHL DDP, duty included. See boards/landed.",
     "pogo": "The leg blind-mate pogo boards (src/leg_pogo.py, RA_N=4 + TG_N=4 pins) are custom PCBs that live outside elec/, so neither the board pipeline nor the connector derivation sees them. Small, but genuinely uncounted.",
@@ -2165,7 +2168,7 @@
       "tariff_usd": 35.91,
       "tariff_pct": 21.0,
       "verified": "v",
-      "what": "THE ONLY PLACE A TARIFF WAS ACTUALLY ITEMISED. 10 x LRS-150-24: $171.00 goods + $35.91 tariff = $206.91, i.e. 21.0% on HTS 8504.40.9530. A US distributor importing Chinese-made goods shows the duty as its own cart line. That is one measured rate for ONE commodity code -- do not spread it across the BOM, but it is the right order of magnitude for the China-made electronics in it.",
+      "what": "SUPERSEDED AS A PURCHASE (the supply is now the GST160A24-R7B from OnlineComponents), KEPT AS EVIDENCE: THE ONLY PLACE A TARIFF WAS ACTUALLY ITEMISED. 10 x LRS-150-24: $171.00 goods + $35.91 tariff = $206.91, i.e. 21.0% on HTS 8504.40.9530. A US distributor importing Chinese-made goods shows the duty as its own cart line. That is one measured rate for ONE commodity code -- do not spread it across the BOM, but it is the right order of magnitude for the China-made electronics in it.",
       "counted_in_unit_price": true
     },
     "tinmorry_filament": {
