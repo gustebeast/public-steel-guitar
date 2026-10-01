@@ -907,7 +907,28 @@ def build_wires():
     _mc24 = SP(*EL.mctrl_pt("J3"))
     # the tail leaves the first tee's IN pins and runs west ABOVE the CAN head, which comes
     # in along the same stretch at the tee's own height (the two crossed at x -582)
-    _TAIL_DZ = 3.5
+    _TAIL_DZ = 4.5        # 3.5 left 1.25 between the tail's ground and feed 2's ground leg
+
+    # ── THE KEYHEAD CORNER IS FIVE CONDUCTORS IN ONE SLOT, SO IT HAS A SLOT PLAN ──
+    # Both 24 V pairs and the Pi link turn down (or up) in the 3.3 mm between the motor
+    # board's face (x -591.7) and the Pi cap's edge (-588.4), at one y. Each cable had been
+    # fitted there on its own, against the parts, and each was clean against the parts --
+    # and the five ran through each other (8 pairs, up to 57 mm3: check_cable_pairs).
+    # Columns are (x slot, y row); a conductor's entry leg arrives from +X, so IN A ROW THE
+    # HIGHER ENTRY TAKES THE MORE -X SLOT and passes over the other's column top. On the
+    # face run the pair landing further +Y (feed 2) rides ABOVE the one landing first (the
+    # tail), and within a pair the +X conductor lands LOWER, so its last -X leg goes under
+    # its partner's drop instead of through it.
+    #   slot A x -590.7  the link only (O1.4), from J4 up to the fly lane
+    #   slot B x -589.05, slot C x -587.15 (1.9 apart; C is 0.25 off the chassis at x -586)
+    #   row y: tail = gap - 1.5, feed 2 = gap + 0.4 (the link sits at J4's own y, between)
+    # AND BUS A's HEAD IS THE SIXTH AND SEVENTH: wire_canh_0 / canl_0 leave J1 at z -51.1 and
+    # climb at (-588.3, -79.95) and (-586.9, -78.55), 2 mm +Y of these rows. So the rows sit
+    # -Y of the gap's middle to clear those columns, and every face run passes UNDER J1's
+    # leads (<= -52.8) and OVER the cap (top -57.3, so >= -56.2): a 3.5 mm window that holds
+    # exactly two heights, -52.8 (feed 2) and -54.7 (tail), in each of slots B and C.
+    _SLOT_A, _SLOT_B, _SLOT_C = -590.7, -589.05, -587.15
+    _ROW_TAIL, _ROW_FEED = _board_gap_y() - 1.5, _board_gap_y() + 0.4
 
     def _tail(cond, do):
         # hot (pin 2, do -1) runs HIGH and INBOARD, gnd (pin 1, do +1) low and outboard: each
@@ -928,13 +949,12 @@ def build_wires():
         _p = _pin(west[0], cond, False)
         zt = _w0[2] + _TAIL_DZ - do
         xt = BAY_X - do
-        _TGX, _TGY, _TFZ = -588.4, _board_gap_y(), -52.0
-        return [_p, (_p[0], _p[1], zt), (xt, _p[1], zt), (xt, _TGY, zt),
-                (_TGX - do, _TGY, zt),
-                (_TGX - do, _TGY, _TFZ + do),
-                (_TGX - do, _mc24[1], _TFZ + do),
-                (_TGX - do, _mc24[1], _mc24[2] + do),
-                (_mc24[0], _mc24[1], _mc24[2] + do)]
+        # hot: slot B, lands HIGH; ground: slot C, lands LOW; both run the face at -54.7
+        xc, zr = (_SLOT_B if do < 0 else _SLOT_C), -54.7
+        zf = _mc24[2] - do
+        return [_p, (_p[0], _p[1], zt), (xt, _p[1], zt), (xt, _ROW_TAIL, zt),
+                (xc, _ROW_TAIL, zt), (xc, _ROW_TAIL, zr), (xc, _mc24[1], zr),
+                (xc, _mc24[1], zf), (_mc24[0], _mc24[1], zf)]
 
     # ── the SECOND 24 V feed: panel J10 -> motor_ctrl J3, bypassing the tees ──
     # ITS OWN COLUMN at the keyhead, 3 mm +X of the bay column the bay wires climb: run
@@ -971,18 +991,17 @@ def build_wires():
         # so that leg ran its ground conductor 0.6 INTO the cap's top face and its hot one 0.3
         # into the edge (17.9 and 2.2 mm3). One conductor now passes OVER the cap and the other
         # BESIDE it, in the 3.3 mm between the cap and the motor board (x -591.7).
-        _GAP_X, _GAP_Y, _FACE_Z = -589.0, _board_gap_y(), -56.5
+        xc, zface = (_SLOT_B if dz > 0 else _SLOT_C), -52.8
         _jy = _mc24[1] + _J3_PITCH2
         return _pair([_j10, (_j10[0], _j10[1], zr), (_j10[0], _REC_Y, zr),
                       (_BAY_X10, _REC_Y, zr), (_BAY_X10, CHAN_Y, zr), (_RISE10, CHAN_Y, zr),
                       (_RISE10, CHAN_Y, zl)]
                      + _rail_pts(_RISE10, _FEED2_X, zl)
-                     + [(_FEED2_X, _GAP_Y, zl),
-                        (_GAP_X, _GAP_Y, zl),
-                        (_GAP_X, _GAP_Y, _FACE_Z + dz),
-                        (_GAP_X, _jy, _FACE_Z + dz),
-                        (_GAP_X, _jy, _mc24[2] + dz),
-                        (_mc24[0], _jy, _mc24[2] + dz)], dz)
+                     + [(_FEED2_X, _ROW_FEED, zl)], dz) + [
+                        # ground (dz +1, the higher entry): slot B, lands high; hot: slot C,
+                        # lands low; both run the face at -52.8. See the slot plan above.
+                        (xc, _ROW_FEED, zl), (xc, _ROW_FEED, zface), (xc, _jy, zface),
+                        (xc, _jy, _mc24[2] + dz), (_mc24[0], _jy, _mc24[2] + dz)]
 
     for _nm, _do in (("wire_pwr_hot", -PWR_OFF), ("wire_pwr_gnd", PWR_OFF)):
         def _off(pts, _do=_do):
@@ -1190,7 +1209,8 @@ def build_wires():
     # 62 mm3 of cable inside string 1's motor.
     _LINK_X = BAY_X - 3.0
     out.append(("wire_link", _wire([
-        _lt, (_LINK_X, _lt[1], _lt[2]), (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _lp[1], BAYFLY),
+        _lt, (_SLOT_A, _lt[1], _lt[2]), (_SLOT_A, _lt[1], BAYFLY),      # slot A: see the slot plan
+        (_LINK_X, _lt[1], BAYFLY), (_LINK_X, _lp[1], BAYFLY),
         (_PORT_APR_X, _lp[1], BAYFLY), (_PORT_APR_X, _lp[1], _lp[2]), _lp],
         WIRE_OD["wire_link"])))
 
