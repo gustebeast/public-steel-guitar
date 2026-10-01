@@ -10,6 +10,10 @@
    "fpid": "C_0805_2012Metric",
    "x": -20.0,
    "y": 1.0,
+   "pads_xy": [
+    -20.0,
+    1.0
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -26,6 +30,10 @@
    "fpid": "C_0805_2012Metric",
    "x": -6.0,
    "y": 1.0,
+   "pads_xy": [
+    -6.0,
+    1.0
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -42,6 +50,10 @@
    "fpid": "C_0402_1005Metric",
    "x": -15.0,
    "y": 1.0,
+   "pads_xy": [
+    -15.0,
+    1.0
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -58,6 +70,10 @@
    "fpid": "C_0402_1005Metric",
    "x": -1.0,
    "y": 1.0,
+   "pads_xy": [
+    -1.0,
+    1.0
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -74,6 +90,10 @@
    "fpid": "PinSocket_2x20_P2.54mm_Vertical",
    "x": 24.13,
    "y": -3.23,
+   "pads_xy": [
+    0.0,
+    -4.5
+   ],
    "rot": 90.0,
    "side": "B",
    "fab": [
@@ -95,6 +115,10 @@
    "fpid": "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
    "x": -18.6,
    "y": 10.383,
+   "pads_xy": [
+    -18.6,
+    9.4
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -111,6 +135,10 @@
    "fpid": "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal",
    "x": 17.35,
    "y": 10.812,
+   "pads_xy": [
+    17.35,
+    9.4
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -127,6 +155,10 @@
    "fpid": "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
    "x": -0.75,
    "y": 10.383,
+   "pads_xy": [
+    -0.75,
+    9.4
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -143,6 +175,10 @@
    "fpid": "PinHeader_2x07_P1.27mm_Horizontal",
    "x": -7.61,
    "y": -10.365,
+   "pads_xy": [
+    -3.8,
+    -11.0
+   ],
    "rot": -90.0,
    "side": "B",
    "fab": [
@@ -164,6 +200,10 @@
    "fpid": "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal",
    "x": 20.0,
    "y": -11.708,
+   "pads_xy": [
+    20.0,
+    -11.0
+   ],
    "rot": 180.0,
    "side": "B",
    "fab": [
@@ -180,6 +220,10 @@
    "fpid": "R_0402_1005Metric",
    "x": 5.0,
    "y": 1.0,
+   "pads_xy": [
+    5.0,
+    1.0
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -196,6 +240,10 @@
    "fpid": "R_0402_1005Metric",
    "x": 8.0,
    "y": 1.0,
+   "pads_xy": [
+    8.0,
+    1.0
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -212,6 +260,10 @@
    "fpid": "R_0402_1005Metric",
    "x": 12.5,
    "y": -9.0,
+   "pads_xy": [
+    12.5,
+    -9.0
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
@@ -228,6 +280,10 @@
    "fpid": "R_0402_1005Metric",
    "x": 12.5,
    "y": -11.0,
+   "pads_xy": [
+    12.5,
+    -11.0
+   ],
    "rot": 0.0,
    "side": "B",
    "fab": [
