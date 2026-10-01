@@ -168,6 +168,43 @@ def _xcvr(tag, desc):
                       Pin(num=7, name="CANH", func=P), Pin(num=8, name="Rs", func=I)])
 
 
+def _LMR33630_DDA_PINS():
+    """The LMR33630's HSOIC-8 (DDA) pinout, from TI SNVSAN3F Table 6-1 -- READ, not recalled.
+
+    ⚠⚠ THIS BOARD CARRIED A PINOUT WITH SEVEN OF EIGHT PINS WRONG UNTIL 2026-09-30, on both
+    U5 (the Pi's 5 V) and U6 (the LED 5 V):
+
+        pin   TI            what was here
+         1    PGND          VIN      <- +24 V on the power-ground pin
+         2    VIN           EN
+         3    EN            "NC"     <- the part has no NC on this package
+         4    PG            FB
+         5    FB            GND
+         6    VCC           SW
+         7    BOOT          BOOT     (the one that was right)
+         8    SW            VCC
+
+    It carried no datasheet citation, unlike the LMR16006 forty lines up ("TI SNVSA24
+    section 6"), and it routed, passed DRC and passed ERC: every check in this pipeline
+    compares the board to the NETLIST, and the netlist was the thing that was wrong. As
+    built, F1 would have blown at first power and neither 5 V rail would ever have come up.
+    The VQFN instances (optical U13, fret_led/foot_led U10) were checked against the same
+    table the same day and are correct.
+
+    Found while asking what a first-article board would need for DIAGNOSIS -- the "NC" on
+    a part whose feature list includes a power-good flag was the thread. The cheapest
+    diagnostic there is turns out to be reading the pin table before the board is made.
+
+    Connections are made BY NAME below so the numbers live in exactly one place. PG (4) is
+    open-drain and "can be left open when not used"; it is the hook for a rail-status
+    pad -- see docs/board-bringup-diagnostics.md."""
+    return [Pin(num=1, name="PGND", func=Pin.types.PWRIN), Pin(num=2, name="VIN", func=Pin.types.PWRIN),
+            Pin(num=3, name="EN", func=Pin.types.PASSIVE), Pin(num=4, name="PG", func=Pin.types.PASSIVE),
+            Pin(num=5, name="FB", func=Pin.types.PASSIVE), Pin(num=6, name="VCC", func=Pin.types.PASSIVE),
+            Pin(num=7, name="BOOT", func=Pin.types.PASSIVE), Pin(num=8, name="SW", func=Pin.types.PASSIVE),
+            Pin(num=9, name="AGND", func=Pin.types.PWRIN)]
+
+
 @subcircuit
 def motor_ctrl():
     gnd, v24, v33 = Net("GND"), Net("+24V"), Net("+3V3")
@@ -497,19 +534,15 @@ def motor_ctrl():
               tool="skidl", value="LMR33630ADDAR",
               description="36 V 3 A synchronous buck, 24 V -> 5 V for the Pi",
               footprint="Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm",
-              pins=[Pin(num=1, name="VIN", func=PWR), Pin(num=2, name="EN", func=P),
-                    Pin(num=3, name="NC", func=P), Pin(num=4, name="FB", func=P),
-                    Pin(num=5, name="GND", func=PWR), Pin(num=6, name="SW", func=P),
-                    Pin(num=7, name="BOOT", func=P), Pin(num=8, name="VCC", func=P),
-                    Pin(num=9, name="EP", func=PWR)])
-    v24_buck += u5[1]
-    en5 += u5[2]
-    fb5 += u5[4]
+              pins=_LMR33630_DDA_PINS())
+    v24_buck += u5["VIN"]
+    en5 += u5["EN"]
+    fb5 += u5["FB"]
     # The exposed pad is the ground connection AND the only heat path off the die.
-    gnd += u5[5], u5[9]
-    sw5 += u5[6]
-    boot5 += u5[7]
-    vcc5 += u5[8]
+    gnd += u5["PGND"], u5["AGND"]
+    sw5 += u5["SW"]
+    boot5 += u5["BOOT"]
+    vcc5 += u5["VCC"]
     l2 = Part(name="L", ref_prefix="L", tag="L2", dest="NETLIST", tool="skidl",
               value="6.8uH", description="5 V buck output inductor, shielded 6x6",
               footprint="Inductor_SMD:L_Bourns-SRN6028",
@@ -633,18 +666,14 @@ def motor_ctrl():
               tool="skidl", value="LMR33630ADDAR",
               description="36 V 3 A synchronous buck, 24 V -> 5 V for the LED strip",
               footprint="Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm",
-              pins=[Pin(num=1, name="VIN", func=PWR), Pin(num=2, name="EN", func=P),
-                    Pin(num=3, name="NC", func=P), Pin(num=4, name="FB", func=P),
-                    Pin(num=5, name="GND", func=PWR), Pin(num=6, name="SW", func=P),
-                    Pin(num=7, name="BOOT", func=P), Pin(num=8, name="VCC", func=P),
-                    Pin(num=9, name="EP", func=PWR)])
-    v24_led += u6[1]
-    en_l += u6[2]
-    fb_l += u6[4]
-    gnd += u6[5], u6[9]
-    sw_l += u6[6]
-    boot_l += u6[7]
-    vcc_l += u6[8]
+              pins=_LMR33630_DDA_PINS())
+    v24_led += u6["VIN"]
+    en_l += u6["EN"]
+    fb_l += u6["FB"]
+    gnd += u6["PGND"], u6["AGND"]
+    sw_l += u6["SW"]
+    boot_l += u6["BOOT"]
+    vcc_l += u6["VCC"]
     l3 = Part(name="L", ref_prefix="L", ref="L3", tag="L3", dest="NETLIST", tool="skidl",
               value="6.8uH", description="LED buck output inductor, shielded 6x6",
               footprint="Inductor_SMD:L_Bourns-SRN6028",

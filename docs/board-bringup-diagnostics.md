@@ -1,0 +1,194 @@
+# The other boards: bring-up diagnostics — work items
+
+**The question (user, 2026-09-30):** do for the other PCBs the analysis
+`docs/optical-bringup-diagnostics.md` did for the optical board. *"What tools will we want to
+have to be able to diagnose failures and how can we plan them into the boards ahead of time.
+Like with optical we should avoid LEDs as diagnosing tools."*
+
+**Answer, in one paragraph.** The three MCU boards can already be debugged once their MCU runs
+(all three have SWD pads). What they lack is the same thing optical lacked — observability
+**upstream of a running MCU** — plus two things optical did not need: a way to see a **CAN bus**
+from outside it, and a way to program **eleven identical sensor boards** without hand-probing
+each one. Most of the value is in things that cost no board area at all: a pinout audit, a
+written procedure, firmware that reports what it already knows, and six tools on the bench.
+
+**Scope.** `motor_ctrl`, `output_panel`, `lever_sensor`, `can_tee`, `pi_cap` are analysed and
+are bronner's to change. The LED boards (`led_strip`, `fret_led`, `foot_led`) and `ui_board`
+are **brenner's**: section 7 is recommendations only, nothing here modifies them.
+
+## The constraints every item is gated on
+
+Carried over from optical unchanged, plus the user's LED rule:
+
+- **No board growth** for a debug feature, and nothing that hurts pitch detection or audio.
+- **No LEDs as diagnostic tools.** Optical's sequencing argument applies to every board here: a
+  virgin board has no firmware to drive one, and by the time firmware is on it you are holding
+  a probe that reports more than one bit. (The LED boards' own LEDs are the product, not a
+  diagnostic — see section 7.)
+- **Nothing new switches in the audio band** on `output_panel`, and **no pad on a high-impedance
+  audio node** (`PICKUP_IN`, `VMID`, the op-amp inputs). A pad there is an antenna.
+- **Pads go down AFTER routing** (`post_route_refs`, the mechanism optical's TP9–TP11 use).
+  This matters more here than it did there: `output_panel`'s route does not survive
+  perturbation (three changes, three dirty routes, 2026-09-30), so a pad the router can see is
+  a pad that can cost a net.
+
+Each item carries an **area** cost and a **signal** risk, as in the optical doc.
+
+---
+
+## 0. Read every pin table before the board is made  *(0 area, 0 risk — and it already paid)*
+
+**This analysis found a board-killing fault before it wrote a single recommendation.** Asking
+"what would report the 5 V rail?" led to the LMR33630's power-good pin, which `motor_ctrl.py`
+listed as `NC`. TI SNVSAN3F Table 6-1 says otherwise — and says **seven of the eight pins were
+wrong**, on both U5 (the Pi's 5 V) and U6 (the LED 5 V): +24 V was on the power-ground pin. The
+board routed, passed DRC and passed ERC, because every check in the pipeline compares the board
+to the netlist and the netlist was the thing that was wrong. First power would have blown F1.
+**Fixed 2026-09-30** (`_LMR33630_DDA_PINS`, connections now by name).
+
+So the first diagnostic tool is the datasheet, and the audit is not finished:
+
+| part | boards | status |
+|---|---|---|
+| LMR33630 HSOIC (DDA) | motor_ctrl U5, U6 | ❌ **was wrong, fixed**, read from SNVSAN3F Table 6-1 |
+| LMR33630 VQFN (RNX) | optical U13, fret/foot U10 | ✅ checked against the same table: correct |
+| LMR16006 | motor_ctrl, output_panel | ✅ cited in-file (SNVSA24 §6) |
+| SN74LVC1G3157 | output_panel U12 | ✅ cited in-file (SCES424O Table 4-1) — after being wrong once |
+| CH32V307 / CH32V203 | all three MCU boards | ✅ read from `.ins/*.json` |
+| SN65HVD230, PCM1808, PCM5102A, AP2112K, TLV9061, MCP4261, G6K-2F, AO3400A | various | ⚠ **uncited.** Each matches my recollection of its datasheet — which is the method that produced the LMR33630 fault. **A datasheet read is still owed on every one** |
+| **CH334F** (hub), **MT6701** (angle sensor) | output_panel U4, lever_sensor U4 | ⚠⚠ **uncited and I cannot vouch for them from memory.** Read these two first |
+
+**The rule that falls out:** a pin list in `elec/*.py` carries its datasheet document number and
+table, or it is unverified. Two of the three wrong pinouts this project has had were typed from
+memory, and both looked exactly like the right ones.
+
+---
+
+## 1. The bench: six tools, none of them on a board
+
+Tool purchases are shop infrastructure (the project's standing rule) — list them in `BOM.md`'s
+Tools section; they are not weighed against anything.
+
+| tool | what it answers | why it is not optional |
+|---|---|---|
+| **Current-limited bench supply** (24 V, set to ~100 mA for first power) | is anything shorted, before it burns | the LMR33630 fault above becomes a number on a display instead of a blown fuse. First power on every first article goes through this, not the instrument's own supply |
+| **WCH-LinkE** | everything downstream of a live MCU | CH32V parts use WCH's two-wire debug; an ST-Link or J-Link will not talk to them. It also carries a USB-serial port |
+| **USB-CAN adapter** (CANable-class, `candump`) | what is actually on the bus, from outside it | `motor_ctrl` is the head of BOTH buses and the Pi is not on either — so if `motor_ctrl` is the thing that is broken, nothing in the instrument can see the bus at all |
+| **8-channel logic analyser** | CAN TX/RX at the MCU side, SPI to the pot, I2S framing | splits "the MCU is not transmitting" from "the transceiver or the wire is dead" |
+| **Multimeter** | rails, continuity, and **60 Ω across CAN_H/CAN_L with power off** | that one reading proves both terminators are present and the bus is unbroken, on either bus, from any connector |
+| **Oscilloscope** | buck ripple, CAN wave shape, I2S clock quality | only needed when the cheaper tools say "present but wrong" |
+
+Plus three cables to make once: an **XH and a PH Y-cable** (the bus tap for the CAN adapter),
+and a **¼″ TS → bare-wire loopback lead** (section 3).
+
+---
+
+## 2. `motor_ctrl` — head of both CAN buses, three regulators, the Pi's 5 V
+
+**What exists:** TP1–TP5 (SWDIO, SWCLK, NRST, GND, +3V3). `+24V`, `+5V`, `+5V_LED` and both
+buses are on connector pins. USB to the Pi on J4.
+
+**What is missing:** no access to `CAN1/2_TX/RX` (the MCU ↔ transceiver side), none to the
+pre-filter `+5V_RAW` / `+5V_LED_RAW`, `BOOT0` goes only to its pull-down, and the bucks' PG
+pins were unconnected (and until today mis-numbered).
+
+| # | item | area | signal risk |
+|---|---|---|---|
+| 2.1 | **Firmware reports the CAN controllers' own error state over USB** — TEC/REC, bus-off, and the last-error code per bus. "No ACK" means nobody else is on the bus; "bit/stuff error" means a short or a missing terminator; clean counters with no data means the far end is silent. This distinguishes most bus faults with no hardware at all | 0 | 0 |
+| 2.2 | **PG → two MCU GPIOs** (U5.4, U6.4, each with a pull-up to +3V3). PG is open-drain and on an SOIC gull-wing pin, so unlike optical's VQFN it escapes trivially. Firmware can then say *"the Pi's 5 V is out of regulation"* — the single most likely reason a Pi misbehaves | 2× 0402 | 0 (no audio here) |
+| 2.3 | **Rail sense into two spare ADC pins** (dividers on +24V and +5V). Optical's MCU "cannot measure one of its own rails"; this one can, for four resistors. Catches a sagging trunk under motor load, which no static meter reading shows | 4× 0402 | 0 |
+| 2.4 | **`BOOT0` to a bare pad.** With USB already on J4 that is a second way in (WCH's ROM ISP) that needs no probe on a board mounted in the keyhead. ⚠ **Verify against WCH's reference manual which USB port and which UART the ROM loader uses BEFORE routing to it** — optical lost four routing runs to exactly this assumption | 1 pad | 0 |
+| 2.5 | **Four pads on `CAN1_TX/RX`, `CAN2_TX/RX`**, post-route, on existing copper. The logic-analyser hook that separates MCU from transceiver | 4 pads | 0 |
+
+**Not recommended:** pads on the buses themselves — they are already on five connectors.
+
+---
+
+## 3. `output_panel` — USB hub, MCU, ADC, DAC, the analog output chain
+
+**What exists:** TP1–TP5. `+24V` on four connectors. The jack and the pickup terminal are the
+two ends of the whole audio chain.
+
+**What is missing:** `+5V` is reachable only on J4's VBUS pin; `V5_PRE`, `ADC_VREF`, `DAC_LDOO`,
+`DAC_VNEG` have no access; the pot is write-only (`POT_SDO_NC`); neither converter has a control
+port, so a silent DAC and a silent pot look identical.
+
+| # | item | area | signal risk |
+|---|---|---|---|
+| 3.1 | **The USB tree is a free three-stage probe.** From the Pi: the hub enumerates → U4, its 12 MHz crystal and +3V3 are alive. The MCU appears behind it → firmware is running. The optical board appears on the other port → that cable and board are alive. Each absence localises to one stage. Write it into the procedure; it costs nothing | 0 | 0 |
+| 3.2 | **Analog loopback with a cable, not a circuit.** A TS lead from the output jack back into the pickup terminal (J8): play a tone from the DAC, record it on the ADC. One measurement exercises DAC → filter → pot → buffer → relay → jack → input buffer → ADC → I2S, and repeating it across the relay states, both jack modes and a pot sweep tests every switched path and reads the gain. It replaces most of the pads this board would otherwise want — and adds nothing to a board that cannot spare the area | 0 (one cable) | 0 — it is not connected in use |
+| 3.3 | **Rail pads, post-route: `+5V`, `DAC_VNEG`, `ADC_VREF`.** `DAC_VNEG` is the PCM5102's charge-pump output: if it is missing the DAC is silent with every digital signal correct, which is otherwise a long hunt. All three are low-impedance DC nodes | 3 pads | none on `+5V`; `DAC_VNEG`/`ADC_VREF` are decoupled DC nodes — site the pad AT the cap, no stub |
+| 3.4 | **`BOOT0` to a bare pad** — same argument and same ⚠ as 2.4; this MCU sits behind the hub, so the ROM loader would enumerate through it | 1 pad | 0 |
+| 3.5 | **Pot readback: wire `POT_SDO` to a MISO pin.** Proves the SPI link and the pot's registers. ⚠ Needs a net out of U1's 0.4 mm QFN, which a post-route repair cannot do (recorded limit) — so it is a placement-time change on a board that currently loses its route to any change. **Rank below 3.2, which answers the same question from outside** | 0 parts, 1 net | 0 (SPI idles between volume changes) |
+
+**Deliberately NOT done:** no pad on `VMID`, `PICKUP_IN` or any op-amp input. Read `VMID`
+indirectly — every buffer output rests at it — which is optical's `MID` rule for the same reason.
+
+---
+
+## 4. `lever_sensor` — eleven of them, buried in the chassis and the legs
+
+**What exists:** TP1–TP4 (SWDIO, SWCLK, GND, NRST). `+5V` and the bus on J1.
+
+**What is missing:** **no `+3V3` pad** — the only MCU board without one. No bootloader path at
+all (no USB, no UART, `BOOT0` strapped): SWD is the only way in, and it needs the board in hand.
+And the four pads are scattered — pitches of 2.40, 3.32 and **9.94 mm** — where `motor_ctrl`'s
+and `output_panel`'s are scattered differently again.
+
+| # | item | area | signal risk |
+|---|---|---|---|
+| 4.1 | **One SWD pad pattern, the same on every board.** Eleven boards flashed by hand-probing four scattered pads is eleven chances to slip; a fixed footprint (say 5 pads on a 2.54 mm line: 3V3, SWDIO, SWCLK, NRST, GND) takes one pogo clip for all thirteen MCU boards in the instrument. Same pads, moved — the outline is branner's re-spin spec and does not change | 0 net (adds the +3V3 pad, item 4.2) | 0 |
+| 4.2 | **`+3V3` pad** — folded into 4.1's pattern. Separates "LDO dead" from "MCU dead" with a meter | 1 pad | 0 |
+| 4.3 | **A CAN bootloader in flash** (firmware, not ROM — WCH's ROM loader is USB/UART only). These boards sit inside knee-lever housings and pedal legs; without this, every firmware fix is a disassembly ×11. It is the highest-value item on this board and it is not hardware | 0 | 0 |
+| 4.4 | **Report the MT6701's field-strength status over CAN.** The sensor flags a magnet that is too weak or too strong. A missing magnet, a wrong gap or a flipped magnet is the likeliest *mechanical* fault on a lever, and this reads it out without opening anything | 0 | 0 |
+| 4.5 | **Report the MCU's unique ID and a firmware version on boot.** With eleven identical boards, "which one is misbehaving" is a diagnosis in itself; wiggle a lever, see which ID moves | 0 | 0 |
+| 4.6 | **Independent watchdog on, always.** One node whose firmware hangs with its transmit pin dominant silences the bus for all eleven, and the daisy chain means the only isolation is unplugging. ⚠ Check whether the SN65HVD230 has a dominant-timeout (I believe it does not — verify); if not, the watchdog is the only thing bounding that fault | 0 | 0 |
+
+**Isolating a bad node** stays a matter of unplugging along the daisy chain — the buses are
+connectorised end to end, so a binary search is at most four unplugs for eleven boards. The
+optical board had no equivalent, which is why it needed item 6 there and this board does not.
+
+---
+
+## 5. `can_tee` ×9 and `pi_cap` — passive, nothing hidden
+
+Every net on both boards is on a connector pin, so there is nothing a pad could add.
+
+- **`can_tee`:** build **one spare tee into the harness as a permanent sniff port** (or leave a
+  drop unpopulated). Bus A then has a place to plug the USB-CAN adapter without unplugging a
+  motor — and unplugging a motor to listen changes the thing being listened to. Zero board
+  change: it is a tenth copy of a board already being ordered in nines.
+- **`pi_cap`:** the diagnostic is on the Pi. `vcgencmd get_throttled` reports under-voltage
+  **since boot**, which is the definitive test of the 5 V feed under real load and catches
+  cable drop that a meter at the regulator never sees. Pair it with 2.2's PG.
+
+## 6. The procedure  *(0 parts, 0 area — and worth more than any pad)*
+
+As in the optical doc, the cheapest item is writing the order down (into `INSTALL_NOTES.md`):
+
+1. **Bare board, bench supply at 24 V / 100 mA limit.** Current at rest, then each rail with a meter.
+2. **`motor_ctrl` alone:** SWD attaches → flash → USB enumerates on the Pi → 2.1's counters read "no ACK" (correct: nothing else is on the bus yet).
+3. **Add one node at a time**; the counters go clean when the first one acknowledges. Power off, **60 Ω** across each bus.
+4. **`output_panel`:** the USB tree (3.1), then the loopback (3.2).
+5. **Levers:** IDs appear (4.5), field status is in range (4.4), each lever moves its own ID.
+
+## 7. Recommendations only — brenner's boards
+
+Not mine to change; offered because the same lens applies.
+
+- **The TLC59711 chain is write-only**, so there is no readback — but a broken chain localises
+  itself: everything past the break is dark. That is the one case where the product's own LEDs
+  do the diagnosing, and it needs no added part.
+- **`fret_led` / `foot_led` bucks:** their LMR33630 (VQFN) pinout is correct (section 0). PG is
+  parked on `BUCK_PG_NC`; optical measured that pin unescapable on its own layout, so a rail
+  pad at each buck's output is the realistic equivalent.
+- **`ui_board`:** no MCU; the Pi reads every line directly, so a Pi-side script that reports
+  each switch and encoder edge is the whole test.
+
+## Ordering
+
+1. **Finish section 0** — CH334F and MT6701 first, then the eight uncited parts. Nothing else on this list is worth doing on a board with a wrong pinout.
+2. **Section 6**, and the firmware items (2.1, 4.3–4.6, 3.1): no hardware, no route.
+3. **`motor_ctrl` 2.2–2.5** as one change. That board routes cleanly and is being re-routed for the pinout fix anyway.
+4. **`lever_sensor` 4.1–4.2** with branner, since the outline is theirs.
+5. **`output_panel` 3.3–3.4** only as post-route pads, and only once that board routes clean under change.

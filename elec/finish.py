@@ -327,7 +327,7 @@ if __name__ == "__main__":
     # plumbing, the strictly-better comparison and the .best.kicad_pcb snapshots were all
     # dead code from the command line.
     # Kept at 1 by default: a round is a full route, so asking for 3 asks for three routes.
-    _rounds = 1
+    _rounds = None                 # None = not given: take the board's own finish_rounds
     _stems = []
     _argv = sys.argv[1:]
     _i = 0
@@ -344,4 +344,16 @@ if __name__ == "__main__":
     if not _stems:
         raise SystemExit("usage: finish.py [--rounds N] <stem> [<stem> ...]")
     for st in _stems:
-        finish(os.path.abspath(st), rounds=_rounds)
+        # ⚠ A BOARD CAN SAY HOW MANY ROUNDS IT NEEDS (BOARD_NOTES["finish_rounds"]), because
+        # a result that only exists under a flag is a result the next plain run loses.
+        # output_panel is the case: pass 1 leaves one net open and pass 2 closes it, so a
+        # default invocation would hand back a WORSE board than the committed one and
+        # report it as the route. An explicit --rounds still wins.
+        _r = _rounds
+        if _r is None:
+            try:
+                with open(os.path.abspath(st) + ".board.json", encoding="utf-8") as _fh:
+                    _r = int(json.load(_fh).get("finish_rounds", 1))
+            except OSError:
+                _r = 1
+        finish(os.path.abspath(st), rounds=_r)

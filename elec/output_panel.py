@@ -1579,7 +1579,17 @@ BOARD_NOTES = {
     # UNCONNECTED. This via sits in the pad's north half, 0.7 clear of DM on In2 at y -8.41.
     # The pair is laid deterministically by _diff_pairs, so this does not drift with the
     # router the way the repairs below do.
-    "repair_vias": [("GND", -15.500, -7.300)],
+    # ⚠⚠ BUT IT WAS A *REPAIR* VIA, LAID AFTER ROUTING, AND THAT IS NOT THE SAME THING AS
+    # NOT DRIFTING. The 0.7 mm above was checked against DM on In2 only -- and a through
+    # via is on EVERY layer, while B.Cu under the QFN is open ground to a router that does
+    # not know the via is coming. It held on one route by luck. On 2026-09-30 a one-diode
+    # move elsewhere re-rolled the router, a +3V3 B.Cu track ran through this spot, and the
+    # via was stamped onto it afterwards: a dead short across the hub's supply, reported
+    # as "shorting_items" with nothing near the part that had actually moved.
+    # So it is DECLARED copper now ("vias", layout.py), laid before the searches and the
+    # router like the 101 GND stitches beside it, which the router has always routed
+    # around. Same point, same size; the only change is that the router can see it.
+    "vias": [("GND", -15.500, -7.300)],
     "repair_tracks": [
         # (the PWR_GND hop that stood first here is gone: since the mounting ear the router
         #  closes PWR_GND on its own, and the pinned copy crossed its V5_PRE, 2026-09-21)
@@ -1906,6 +1916,14 @@ BOARD_NOTES = {
     "refs_on_fab": True,
     "single_sided": True,
     "qty_per_instrument": 1,
+    # ⚠ THIS BOARD NEEDS THE RETRY, AND IT IS THE FIRST ONE THAT HAS (2026-09-30). With
+    # U4's belly via declared, pass 1 leaves INV_OUT (U12 -> U11) open -- 0 violations, every
+    # pair clean, one net -- and repair_search finds no via-plus-two-track path for it. Pass
+    # 2 hands that one net back to the generator and comes out 0 unconnected / 0 violations
+    # with all four USB groups on matching layers. finish.py's own note says the retry "HAS
+    # NEVER YET PAID"; that was measured on optical, whose failures were a congested strip.
+    # Here every failure has been a SINGLE long net, which is the case the retry is for.
+    "finish_rounds": 2,
 }
 
 # ── RE-CENTRE THE FRAME ON THE GROWN LAMINATE (one pass, nothing re-placed) ───────────
@@ -1942,15 +1960,15 @@ BOARD_NOTES["placements"] = {
 }
 
 # ⚠ AND THE HAND-LAID COPPER RIDES THE SAME FRAME, OR IT LANDS 6 mm FROM ITS PADS.
-# repair_vias and repair_tracks are raw board coordinates, authored against the same
+# vias and repair_tracks are raw board coordinates, authored against the same
 # pre-growth origin as the placements. The first route after the growth shifted the parts
 # and not these, and came back 3 unconnected / 18 violations against a committed 0 / 0 --
 # every one of the eighteen was the SAME +24V repair run, now drawn straight across U3
 # (the DAC) and C31 six millimetres from the J7 -> J9 -> J6 -> J10 pads it was laid to
 # join. One pass, one frame, for everything that carries an x.
 # None of these repairs touches J2/J3/J4, so none of them has to follow the -X edge.
-BOARD_NOTES["repair_vias"] = [
-    (_net, _x + GROW_X / 2.0, _y) for _net, _x, _y in BOARD_NOTES["repair_vias"]]
+BOARD_NOTES["vias"] = [
+    (_net, _x + GROW_X / 2.0, _y) for _net, _x, _y in BOARD_NOTES["vias"]]
 BOARD_NOTES["repair_tracks"] = [
     (_net, _layer, _w, [(_x + GROW_X / 2.0, _y) for _x, _y in _pts])
     for _net, _layer, _w, _pts in BOARD_NOTES["repair_tracks"]]
