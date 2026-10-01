@@ -2085,6 +2085,54 @@ BOARD_NOTES["tracks"] += [
                                   (33.450, _J10_Y)]),
     ]]
 
+# ── THE BUCK'S CORNER, DECLARED TOO (2026-10-01) ─────────────────────────────────────────
+# Three things were wrong west of J7, all found by tracing the 0.2 mm tracks the retry laid:
+#   * D6, THE SURGE DIODE, hung off 14 mm of 0.2 mm track. A clamp is only as good as the
+#     copper to it: it is on 1.0 mm now, straight off J7's +24V pins and the PWR_GND lane.
+#   * THE BUCK'S HOT LOOP (C2 -> U5 -> SW -> D1 -> C2) returned from D1 through ten vias,
+#     hopping F.Cu / In2 at 0.2 mm -- the "worst switcher loop in the fleet" the J6/J7 note
+#     records. D1's anode now goes to C2's ground pad on 0.8 mm of F.Cu, 6 mm, no via.
+#   * THE FEED AND RETURN were 0.2 mm where the board asks for 0.5 (`net_widths`).
+# How it fits: the PWR_GND lane carries on west along the row on F.Cu, so every ground
+# pad drops straight onto it; the +24V feed comes along UNDER it on B.Cu and rises through
+# one via beside C2, which keeps F.Cu between D1 and C2 clear for the loop's return.
+BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("+24V", -21.470 + _g, -29.550)]
+BOARD_NOTES["tracks"] += [
+    (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
+        # D6: +24V over the top of J7's pad 1, PWR_GND straight down to the lane
+        ("+24V", "F.Cu", 1.0, [(-1.250, _ROW_Y), (-1.250, -26.200), (-14.000, -26.200),
+                               (-14.000, _ROW_Y)]),
+        ("PWR_GND", "F.Cu", 1.2, [(-10.000, _ROW_Y), (-10.000, _LANE_Y)]),
+        # the lane, west of J7: 1.2 mm, to the far side of U5 and round into its pin 2
+        ("PWR_GND", "F.Cu", 1.2, [(-3.750, _LANE_Y), (-32.600, _LANE_Y)]),
+        ("PWR_GND", "F.Cu", 0.4, [(-32.600, _LANE_Y), (-32.600, _ROW_Y), (-31.140, _ROW_Y)]),
+        ("PWR_GND", "F.Cu", 0.4, [(-24.520, _ROW_Y), (-24.520, _LANE_Y)]),          # C3
+        ("PWR_GND", "F.Cu", 0.8, [(-18.530, _ROW_Y), (-18.530, _LANE_Y)]),          # C2
+        # the buck's feed: B.Cu under the lane -> the via -> C2 -> C3 -> U5 pin 5
+        ("+24V", "B.Cu", 0.8, [(-1.250, _LANE_Y), (-21.470, _LANE_Y), (-21.470, -29.550)]),
+        ("+24V", "F.Cu", 0.6, [(-21.470, -29.550), (-21.470, _ROW_Y)]),
+        ("+24V", "F.Cu", 0.5, [(-21.470, _ROW_Y), (-21.470, -26.750), (-25.480, -26.750),
+                               (-25.480, _ROW_Y)]),
+        ("+24V", "F.Cu", 0.4, [(-25.480, _ROW_Y), (-28.860, _ROW_Y)]),
+        # the hot loop's return: D1 anode -> C2's ground pad
+        ("PWR_GND", "F.Cu", 0.8, [(-22.350, -23.500), (-22.350, -25.400), (-18.530, -25.400),
+                                  (-18.530, _ROW_Y)]),
+        # the output capacitors' return to J9's ground pin (was 0.2)
+        ("PWR_GND", "F.Cu", 0.4, [(9.950, -23.500), (9.950, -24.700), (13.950, -24.700),
+                                  (13.950, -23.500)]),
+        ("PWR_GND", "F.Cu", 0.6, [(13.950, -23.500), (13.950, -26.200), (14.750, -27.000),
+                                  (14.750, _ROW_Y)]),
+    ]]
+
+
+# ── I2S_SDI'S WAY OUT OF U1 (2026-10-01) ─────────────────────────────────────────────────
+# U1.37 sits in a 0.4 mm-pitch run of five I2S pins and the router escapes them in whatever
+# order it likes; with the buck's corner declared it closed SDO and CK over pin 37 and left
+# the net open, 38.8 mm, no repair path on any layer. The pin gets its own exit INWARD,
+# under the package beside MCK's, laid before the router starts.
+BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("I2S_SDI", -2.94 + _g, -10.40)]
+BOARD_NOTES["tracks"] += [("I2S_SDI", "F.Cu", 0.2, [(-2.06 + _g, -10.40), (-2.94 + _g, -10.40)])]
+
 
 if __name__ == "__main__":
     output_panel(tag="panel")
