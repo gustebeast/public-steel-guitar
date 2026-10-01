@@ -687,7 +687,28 @@ def _string_path(i, sy):
                      cz + R * math.sin(th0 + (th1 - th0) * k / N)) for k in range(N + 1)]
     # a bead at every vertex: a tangent join between two cylinders shares no volume, and OCC
     # hands back a compound with the pieces floating free (see the wrap below)
-    out = _rod(p0, pts[0], rad).union(_bead(pts[0], rad))
+    # THE RISE LEAVES THROUGH THE EAR'S HOLE, AND A HEAVY STRING DOES NOT FIT THROUGH IT
+    # STRAIGHT. The ball end seats centred under a Ø3.5 hole and the string leans ~9-13 deg
+    # toward the bearing, so by the flange's top face its centreline has walked up to 1.4
+    # off the hole's axis -- more the higher the nut sits, since the same ANCHOR_DX is spent
+    # over a shorter rise. Past (hole radius - string radius) it is ON THE BRASS. Drawn
+    # straight, the string simply passed through the nut: 0.96 mm3 on string 9 at the top of
+    # travel, and 0.22 where the old top of travel was -- which the demo pose hid by parking
+    # that string at the bottom. So the string is drawn the way it runs: up the hole to the
+    # rim, over the rim, then away to the bearing. That rim is a real break point on the
+    # heavy strings; see INSTALL_NOTES (deburr the ear holes).
+    z_ear = az + D.STRING_NUT_D / 2 + D.NUT_FLANGE_T + 0.1         # just over the flange's top face
+    reach = D.NUT_HOLE_D / 2.0 - rad - 0.05                        # centreline's room in the hole
+    lean = (pts[0].x - p0.x) * (z_ear - p0.z) / (pts[0].z - p0.z)  # ...and what it would take
+    if abs(lean) > reach:
+        rim = cq.Vector(p0.x + math.copysign(reach, lean), sy, z_ear)
+        th0 = _tangent_angle(cx, cz, rim.x, rim.z, R, +1)
+        pts = [cq.Vector(cx + R * math.cos(th0 + (th1 - th0) * k / N), sy,
+                         cz + R * math.sin(th0 + (th1 - th0) * k / N)) for k in range(N + 1)]
+        out = _rod(p0, rim, rad).union(_bead(rim, rad)).union(_rod(rim, pts[0], rad))
+    else:
+        out = _rod(p0, pts[0], rad)
+    out = out.union(_bead(pts[0], rad))
     for pa, pb in zip(pts, pts[1:]):
         out = out.union(_rod(pa, pb, rad)).union(_bead(pb, rad))
     out = out.union(_rod(pts[-1], brk, rad))
