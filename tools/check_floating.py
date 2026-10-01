@@ -260,11 +260,20 @@ def main() -> int:
     names = list(PARTS)
     if a.only:
         want = {s.strip() for s in a.only.split(",")}
+        missing = sorted(want - set(names))
+        if missing:
+            # A name that matches nothing used to fall through to "nothing found", which
+            # reads as a PASS. It is not one: no part was looked at.
+            import difflib
+            for m in missing:
+                near = difflib.get_close_matches(m, names, n=4, cutoff=0.5) or                        [n for n in names if n.startswith(m)][:6]
+                print("--only %r is not a part%s" % (m, (" -- did you mean: " + ", ".join(near)) if near else ""))
+            raise SystemExit(2)
         names = [n for n in names if n in want]
 
     total = 0
     for nm in names:
-        build, up, bed, _ = PARTS[nm]
+        build, up, bed = PARTS[nm][:3]      # check_ceilings owns the tuple; it is 3 long now
         part = build()
         if bed is None:
             bed = bed_plane(part, up)
