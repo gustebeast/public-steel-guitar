@@ -57,6 +57,17 @@ def _cad(board):
     if board == "can_tee":
         from src import electronics as EL
         return EL.tee_pcb(0.0, 0.0)
+    if board == "led_strip":
+        # ⚠ CHECKED FLAT, NOT IN THE SEAT, AND THAT IS A LIMIT OF THIS CHECK. The sections
+        # lie at 45 deg in the chassis seat, so their board face projects 14.14 mm where the
+        # routed outline says 20 and this comparison reads it as the wrong board. Handing it
+        # the untilted solid keeps the PART check (every routed part present, in the right
+        # place on the board) honest; what it does NOT check is the placement in the seat,
+        # which the overlap gate covers instead.
+        return BG.solid("led_strip")
+    if board == "pi_cap":
+        from src import electronics as EL
+        return EL.pi_cap()
     if board == "optical":
         from src import optical_pickup as OP
         return OP.opt_pcb()
@@ -70,7 +81,7 @@ def _cad(board):
 
 
 BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
-          "ui_board")
+          "pi_cap", "led_strip", "ui_board")
 
 
 def _ui_rule_check():
@@ -124,7 +135,7 @@ def _plates(solid, w, l):
             # an L, and its mass centre sits millimetres off the frame the geom is written in
             # (both ear boards fell from 60/60 to ~20/60 on that alone)
             found.append((cq.Vector((bb.xmin + bb.xmax) / 2, (bb.ymin + bb.ymax) / 2,
-                                    (bb.zmin + bb.zmax) / 2), f.normalAt()))
+                                    (bb.zmin + bb.zmax) / 2), f.normalAt(), f))
     if not found:
         # the CAD's plate is not the routed board's size at all -- report both, because
         # that IS the finding (the lever sensor grew 28 x 21.4 -> 34 x 28 and its CAD did not)
@@ -137,6 +148,87 @@ def _plates(solid, w, l):
     return found
 
 
+def _through_wires(plate, others, up):
+    """The inner wires of `plate` that are CUTOUTS rather than parts sitting on it.
+
+    ⚠ WHY THIS IS NOT JUST innerWires(). The CAD's board solid is the laminate FUSED WITH
+    every part body, so a connector standing on the plate face leaves its own footprint as
+    an inner wire of that face -- indistinguishable, by count, from a hole. pi_cap reported
+    "the CAD plate has 10 hole(s), the routed board 0" for exactly that reason, and the
+    number tracked how many parts were on the face rather than anything about cutouts: it
+    was 4 with the connectors on the back, and 10 once every part moved there.
+
+    The discriminator is the one thing a cutout has and a part does not: a cutout goes
+    THROUGH, so it appears on BOTH plate faces at the same in-plane position. A part body
+    appears on the face it stands on and nowhere else. So a wire counts only if the
+    opposite face carries one whose offset from it is purely along the normal.
+    """
+    def _c(wr):
+        bb = wr.BoundingBox()
+        return cq.Vector((bb.xmin + bb.xmax) / 2, (bb.ymin + bb.ymax) / 2,
+                         (bb.zmin + bb.zmax) / 2)
+    # ⚠ `f is not plate` IS NOT AN IDENTITY TEST HERE. The caller re-runs _plates() to get
+    # this list, so the plate's own twin is a DIFFERENT Python object wrapping the SAME face
+    # -- and every wire then matches itself at zero offset, which reported all ten of
+    # pi_cap's part outlines as through-cutouts. The face has to be excluded GEOMETRICALLY.
+    opp = []
+    for f in others:
+        if abs(f.normalAt().dot(up)) > 0.9:
+            opp.extend(_c(wr) for wr in f.innerWires())
+    out = []
+    for wr in plate.innerWires():
+        c = _c(wr)
+        for o in opp:
+            d = o - c
+            # in-plane offset ~0 (same hole) AND a real through-thickness offset (other face)
+            if (d - up * d.dot(up)).Length < 0.20 and abs(d.dot(up)) > 0.5:
+                out.append(wr)
+                break
+    return out
+
+
+def _hole_check(board, plate, g, verbose, through=None):
+    """Does the CAD's plate have the same CUTOUTS as the routed board?
+
+    ⚠ THIS IS THE GAP THAT SHIPPED A BOARD WITH NO COMB. The footprint probe above asks
+    whether every routed PART lands on CAD material, and it cannot see a cutout that is
+    wrong in a region with no parts -- which is exactly what a cutout region is. The
+    optical board's ten slots were emitted to Edge.Cuts as ONE rectangle spanning all of
+    them, so the gerbers had a 16.41 x 101.6 mm hole where the CAD has ten slots and nine
+    copper strips. Every check was green: the CAD gate, ERC, the netlist, and the
+    CAD/netlist/BOM part reconciliation. They each read one side. The router found it, by
+    failing to route across copper that the fab data said was not there.
+
+    A plate face carries its holes as INNER WIRES, and the routed board's holes come back
+    from export_geom via SHAPE_POLY_SET.Hole(). Comparing the two counts would have caught
+    this on the first run; comparing areas catches a hole that is the right count and the
+    wrong size. Both are cheap and need no per-board bookkeeping.
+    """
+    wires = plate.innerWires() if through is None else through
+    cad_n = len(wires)
+    routed = g.get("holes", [])
+    def _area(pts):
+        return abs(sum(pts[i][0] * pts[(i + 1) % len(pts)][1]
+                       - pts[(i + 1) % len(pts)][0] * pts[i][1]
+                       for i in range(len(pts)))) / 2.0
+    cad_a = sum(abs(cq.Face.makeFromWires(wr).Area()) for wr in wires)
+    routed_a = sum(_area(h) for h in routed)
+    bad = 0
+    if cad_n != len(routed):
+        bad += 1
+        if verbose:
+            print("      CUTOUTS DISAGREE: the CAD plate has %d hole(s), the routed board "
+                  "%d" % (cad_n, len(routed)))
+    elif cad_a > 0 and abs(cad_a - routed_a) / max(cad_a, routed_a) > 0.05:
+        bad += 1
+        if verbose:
+            print("      CUTOUT AREA DISAGREES: CAD %.1f mm2, routed %.1f mm2 (%.0f%%)"
+                  % (cad_a, routed_a, 100 * abs(cad_a - routed_a) / max(cad_a, routed_a)))
+    elif verbose:
+        print("%-13s %3d cutout(s) match, %.1f mm2 vs %.1f" % ("", cad_n, cad_a, routed_a))
+    return bad
+
+
 def check(board, verbose=True):
     g = BG.load(board)
     w, l = g["outline_mm"]
@@ -145,7 +237,7 @@ def check(board, verbose=True):
     parts = [f for f in g["footprints"]
              if f["fab"] and not f["ref"].startswith(NO_BODY_PREFIX)]
     best = None
-    for c, down in _plates(cq.Workplane(obj=solid), w, l):
+    for c, down, plate in _plates(cq.Workplane(obj=solid), w, l):
         up = cq.Vector(-down.x, -down.y, -down.z)
         inplane = [q for q in AX.values() if abs(q.dot(up)) < 0.5]
         for a, b, sa, sb in ((a, b, sa, sb) for a, b in itertools.permutations(inplane, 2)
@@ -163,15 +255,18 @@ def check(board, verbose=True):
             # perfectly could be reported as mirrored just because that pose was tried first
             key = (len(misses), mirrored)
             if best is None or key < (len(best[0]), best[1]):
-                best = (misses, mirrored)
-    misses, mirrored = best
+                best = (misses, mirrored, plate)
+    misses, mirrored, plate = best
+    _faces = [pl for _c, _d, pl in _plates(cq.Workplane(obj=solid), w, l)]
+    holes = _hole_check(board, plate, g, verbose,
+                        through=_through_wires(plate, _faces, plate.normalAt()))
     ok = len(parts) - len(misses)
     if verbose:
         print("%-13s %3d / %3d routed parts present in the CAD%s"
               % (board, ok, len(parts), "   !! MIRRORED" if mirrored else ""))
         for ref, name, bx, by in misses:
             print("      MISSING %-6s %-44s routed at (%.2f, %.2f)" % (ref, name[:44], bx, by))
-    return len(misses) + (1 if mirrored else 0)
+    return len(misses) + (1 if mirrored else 0) + holes
 
 
 def main(argv):

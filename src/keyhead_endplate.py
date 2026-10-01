@@ -101,26 +101,13 @@ def _height_negatives():
     return out.translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))
 
 
-def _slot_shadow():
-    """The insert slots, plus everything straight above them in +X (this part's build
-    direction) -- what the Pi's cradle columns must not stand in or hang over.
-
-    The Pi's columns rise from this part's wall to the board, and most of them land on the
-    height-adjust prism, whose +X face (HS_X1) is cut through by the insert slots. A column
-    in a slot fills it; a column continuing ABOVE a slot is a ceiling with nothing under it.
-    So: the slot negatives themselves, and each slot's opening in the HS_X1 face swept
-    +X past the board. What survives stands on a fin, the band, or the wall."""
-    from OCP.BRepPrimAPI import BRepPrimAPI_MakePrism
-    from OCP.gp import gp_Vec
-    neg = _height_negatives()
-    skin = neg.intersect(box_at(2.0, 400.0, 400.0, x=HS_X1 - 1.0 + 0.01, y=0.0, z=0.0))
-    out = neg
-    for f in skin.faces().vals():
-        n = f.normalAt()
-        if n.x > 0.99 and abs(f.Center().x - (HS_X1 + 0.01)) < 0.02:
-            out = out.union(cq.Workplane("XY").add(cq.Shape.cast(
-                BRepPrimAPI_MakePrism(f.wrapped, gp_Vec(40.0, 0.0, 0.0)).Shape())))
-    return out
+# ⚠ _slot_shadow() IS GONE WITH THE CRADLES, and it was 20 lines of real machinery: the
+# insert slots plus each slot's opening in the HS_X1 face swept +X past the board, so the
+# Pi's columns could stand on a fin between slots without filling one or roofing over one.
+# It existed only because those columns landed on the height-adjust prism. Rooted in the
+# chassis floor the Pi's frame stops 0.6 mm short of that prism's face, so there is nothing
+# left to carve around. If the cradles ever come back onto this part, this is what they
+# needed -- see git history rather than re-deriving it.
 
 
 def _build():
@@ -199,14 +186,17 @@ def _build():
     # the bore back in (the gate: 905 mm3 of rod inside the endplate). Same cutter as the
     # nut block's own, from the module that owns the rod.
     w = w.cut(NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
-    # ⚠ THE PI AND MOTOR CONTROLLER MOUNT ON THIS PART NOW, not on a separate tray that
-    # stood against it. electronics_tray was a printed plate carrying four bare posts per
-    # board and no retention at all -- _support_posts said so and said this revisit was
-    # coming. Each board now gets its own pcb_cradle fused here, independent of the other,
-    # plastic on every side but the install face and one M4 button to close that.
-    # Fused AFTER the cuts above so nothing takes it back out again.
-    from .electronics import keyhead_cradles
-    w = w.union(keyhead_cradles(pi_cut=_slot_shadow()))
+    # ⚠ THE BOARD CRADLES USED TO BE FUSED HERE AND ARE THE CHASSIS'S NOW (user, 2026-09-28:
+    # "we need to be able to remove the endplate while leaving the pi and motor board in
+    # place"). They are unioned into the chassis segment in build.py, beside the floor ports
+    # and for the same circular-import reason.
+    # WHAT THAT ALSO FIXED: fused here, the motor frame's side walls ran down INSIDE the
+    # chassis floor -- 2717 mm3 of two printed parts in the same space, invisible because
+    # {keyhead_endplate, chassis} is allow-listed for this part's seating and hold-down
+    # screw. On the chassis those walls are a root.
+    # AND _slot_shadow() WENT WITH IT. It existed to carve the Pi frame's columns around the
+    # height-adjust insert slots they used to land on; a frame rooted in the floor stops
+    # 0.6 mm short of that block's face and never reaches them.
     # ONE SOLID, CHECKED. The cradles are fused to a ledge 22 mm inboard of this plate's
     # face, and the first version of them reached nowhere near it: the motor controller's
     # came out as a free-floating 18,121 mm3 lump and the part was quietly TWO pieces. The

@@ -132,12 +132,17 @@ GLOBAL_OK = {
     frozenset({"leg_body_stub", "keyhead_endplate"}),
     frozenset({"leg_body_stub", "bridge_endplate"}),
     # the electronics tray's snap nubs/fingers bite their boards by design
-    # the tray is gone -- both boards now rest on cradles fused into the keyhead
-    # endplate (electronics.keyhead_cradles), so the designed board-on-pads contact
-    # is against that part instead.
-    frozenset({"keyhead_endplate", "pi5"}),
-    frozenset({"keyhead_endplate", "motor_ctrl"}),   # teensy_ifc is deleted; the
-                                                    # merged controller took its place
+    # the tray is gone -- both boards rest on cradles, and as of 2026-09-28 those cradles
+    # are fused into the CHASSIS rather than the keyhead endplate (user: the endplate has to
+    # come off with the boards left in place), so the designed board-on-lip contact is
+    # against the chassis now.
+    # ⚠ AND THE OLD PAIRS ARE DELETED RATHER THAN KEPT "just in case". The endplate no longer
+    # touches either board, so an allowance for it would blind the gate to a real collision
+    # the day something moves -- which is the argument the tee_pcb note below makes for
+    # exactly this situation, one paragraph down.
+    frozenset({"chassis", "pi4"}),
+    frozenset({"chassis", "motor_ctrl"}),   # teensy_ifc is deleted; the
+                                            # merged controller took its place
     # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown
     # into 1621 mm3 of board buried in motor 9. The tees now sit ON the motors, lapping them
     # with 0.8 of air, so a touch there is a bug again and the gate must say so.)
@@ -296,7 +301,7 @@ def _knee(n) -> bool:
 # listed would mean a regression that reintroduces it gets a polite "deferred" line
 # instead of failing the gate. The leg's TRRS cable pairs (deferred 2026-08-13) are
 # gone: chassis <-> chassis_trrs_cable left 2026-09-09 (the endplate rework moved the
-# -X leg station off it); the electronics_tray and pi5 pairs left 2026-09-11, when
+# -X leg station off it); the electronics_tray and pi4 pairs left 2026-09-11, when
 # brenner's one-leg merge (build #629) retired the old leg family and its cable. The
 # new leg's TRRS jack/cable must come in gate-clean.
 #
@@ -345,27 +350,39 @@ DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
 # being plain boxes and started carrying their real parts -- the boards doing their job
 # for the first time, not new faults. The user's call, today: these must not block merges.
 DEFERRED_RULES = (
-    # THE LEVER FEED'S OWN CONDUCTORS WHERE ITS TWO HALVES MEET IN THE WIRING PORT --
-    # 6 pairs, ~32 mm^3. OWNER bronner from 2026-09-25 (the user's call): this whole run
-    # is being redrawn, because the two outside cables will plug into 4-way sockets on
-    # the MOTOR CONTROLLER's own bottom edge instead of threading up to it.
+    # (THE LEVER FEED'S OWN CONDUCTORS -- wire_canb_(gnd|v5|h|l)_lkl_0 against each other,
+    #  6 pairs, ~32 mm^3 -- WERE DEFERRED HERE FROM 2026-09-25 AND ARE NOW RETIRED, 2026-09-30.
+    #  Three reasons, in the order they settle it:
     #
-    # A cadkit.cables.bundle_paths bug was ONE cause and is fixed (505ea15): the frame
-    # was advanced by a projection that returns noise when the old axis lies near the
-    # new direction, collapsing the bundle to a line at a vertex. It is not the whole
-    # cause -- these pairs still touch with it fixed, so the earlier note claiming the
-    # workarounds were all chasing that bug was too strong. What remains is the real
-    # thing underneath: this cable has a connector at BOTH ends with perpendicular rows,
-    # so its section must turn, and it is drawn as two halves meeting mid-air.
+    #  1. ITS PREMISE HAS ARRIVED. The deferral read "superseded by the controller-mounted
+    #     4-way sockets ... this whole run is being redrawn, because the two outside cables
+    #     will plug into 4-way sockets on the MOTOR CONTROLLER's own bottom edge instead of
+    #     threading up to it". Those sockets EXIST (J2/J6, S4B-PH-SM4-TB, flush on the
+    #     board's downward edge) and ctrl_bus_b already draws the cable into them. It was
+    #     waiting on a future that had already happened.
     #
-    # Ruled out already, with what each measured, so they are not re-tried: a different
-    # `across` seed (103 and 114 mm^3), reversing J2's way order (134, then 25), a 2x2
-    # section instead of a ribbon (132), widening the ribbon (114), and taking the turn
-    # at the port's rise as a chord (25.1 against 16.6).
-    (re.compile(r"^wire_canb_(gnd|v5|h|l)_lkl_0$"),
-     re.compile(r"^wire_canb_(gnd|v5|h|l)_lkl_0$"),
-     "the lever feed's own conductors where its two halves meet (6 pairs, ~32 mm3). "
-     "OWNER bronner: superseded by the controller-mounted 4-way sockets"),
+    #  2. IT CONTRADICTED THIS FILE'S OWN DOCTRINE, forty lines below: both names resolve to
+    #     WIRE_OK keys, so `if ka and kb` returns True under the comment "wires are insulated
+    #     cables: crossing/touching ANOTHER wire is physically fine (and not worth fighting in
+    #     the model)". DEFERRED_RULES is tested FIRST, so the same file was shouting "must be
+    #     fixed before the instrument is finalised" at a pair it otherwise calls fine. The
+    #     deferral predates the _wire_key fix that re-enabled that doctrine for conductors
+    #     named for their function rather than their index.
+    #
+    #  3. AND THE REAL VERSION OF THIS FAULT IS WATCHED ELSEWHERE, WHICH IS WHY DROPPING IT
+    #     LOSES NOTHING. tools/check_cable_pairs.py exists precisely because this gate
+    #     allow-lists wire against wire, and its threshold is the physical one: a contact
+    #     under 4 mm across is a TOUCH (cables converging on a connector, or a crossing), a
+    #     contact that RUNS is two cables occupying the same length of space. Measured
+    #     2026-09-30: its 10 runs are all wire_pwr_* / wire_usb / wire_link, and NO
+    #     wire_canb_*_lkl_0 pair appears in the run list at all -- they are touches.
+    #     ⚠ The "~2 x 2.6 x 19 mm column" in the work-items doc is the bounding box of all
+    #     six pairs TOGETHER, not the extent of one contact. Reading it as a single 19 mm
+    #     run is what made this look like a 4 mm-rule violation; it is not one.
+    #
+    #  So: not declared away, RECLASSIFIED -- by the tool that owns the distinction. If these
+    #  conductors ever start to RUN through each other, check_cable_pairs fails on it with a
+    #  length, which is a better signal than this rule ever gave.)
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
@@ -417,12 +434,37 @@ def intended(na, nb) -> bool:
     # fine (and not worth fighting in the model). A wire may otherwise only clip
     # its declared source/destination bodies; clipping any OTHER solid (a motor,
     # a board, the chassis) is a real routing bug.
-    a_wire, b_wire = base(na) in WIRE_OK, base(nb) in WIRE_OK
-    if a_wire and b_wire:
+    # ⚠ base() IS NOT ENOUGH TO FIND A CABLE'S WIRE_OK ENTRY, and this silently disabled
+    # the whole wire doctrine for most of the harness. base() strips trailing DIGIT groups --
+    # "(_\d+)+$" -- so wire_canbl_0 reduces to wire_canbl and matches, while wire_5v_gnd_a
+    # reduces to ITSELF and matches nothing. Every conductor named for its function rather
+    # than its index therefore fell outside the allow-list entirely: not allowed to touch the
+    # parts it is DECLARED to connect, and not even allowed to touch another wire, which the
+    # comment three lines up calls "physically fine (and not worth fighting in the model)".
+    # It was found by correcting wire_5v's declared far end from pi4 to pi_cap and watching
+    # the gate not move -- the allow-list had never been consulted for that cable at all.
+    # So resolve a cable to the LONGEST WIRE_OK key it is a prefix-path of. Longest wins so
+    # that a key which is a prefix of another cannot shadow it, and the "_" is required so
+    # wire_link never claims wire_linkage.
+    def _wire_key(name):
+        best = None
+        for k in WIRE_OK:
+            if name == k or name.startswith(k + "_"):
+                if best is None or len(k) > len(best):
+                    best = k
+        return best
+
+    ka, kb = _wire_key(na), _wire_key(nb)
+    if ka and kb:
         return True
-    for w, o in ((na, nb), (nb, na)):
-        if base(w) in WIRE_OK:
-            return base(o) in WIRE_OK[base(w)]
+    for w, o in ((ka, nb), (kb, na)):
+        if w:
+            return base(o) in WIRE_OK[w] or o in WIRE_OK[w]
+    # ⚠ THE electronics_tray <-> chassis ALLOWANCE IS GONE, AND THAT IS MAIN'S CALL KEPT.
+    # It was still on this branch and main had deleted it; the note beside the tee_pcb
+    # removal above states the rule -- "MAIN'S REMOVAL WINS OVER MY KEEP ... re-adding it
+    # would silently re-blind the gate to the exact overlap that decision was meant to
+    # expose". The wire-key lookup above is an independent change and survives the merge.
     # bus tee PCBs mount flat on the chassis floor (christmas-tree boss TBD)
     if frozenset({base(na), base(nb)}) == frozenset({"tee_pcb", "chassis"}):
         return True
