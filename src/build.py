@@ -545,21 +545,16 @@ def _build_counter_model(n: int):
 # follows; the guide rod, screw and stops are fixed.
 DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL for i in (0, 1, 8, 9)}
 
-# BELT CLAMP TRAVEL (user, 2026-09-11). Each belt's tension clamp rides the belt, and the
-# belt moves PULLEY_TEETH x BELT_PITCH per screw turn over the carriage's whole travel, so
-# the clamp has to fit on the straight run between the two pulleys' flanges at both ends of
-# that travel. The motor bank is packed toward the keyhead for exactly this; if the shortest
-# run stops covering it, move the bank or shorten the travel -- do not just nudge this.
+# BELT CLAMP TRAVEL. Each belt's tension clamp rides the belt, so it has to stay on the
+# straight run between the two pulleys' flanges over the carriage's whole travel. The travel
+# is DERIVED from that (dimensions.CARRIAGE_TRAVEL) using the clamp's length as a number;
+# this is where that number is held to the solids.
 _CLAMP_XS = [v for _n, _s in BTn.clamp_components(with_lifters=True)
              for v in (_s.val().BoundingBox().xmin, _s.val().BoundingBox().xmax)]
 _CLAMP_L = max(_CLAMP_XS) - min(_CLAMP_XS)
-_BELT_TRAVEL = D.CARRIAGE_TRAVEL / D.SCREW_PITCH * D.PULLEY_TEETH * D.BELT_PITCH
-_CLAMP_RUN_NEED = _BELT_TRAVEL + _CLAMP_L + D.PULLEY_FLANGE_OD
-_SHORTEST_RUN = min(math.hypot(D.motor_pos(i)[0] - D.screw_x(i), D.screw_pulley_z(i) - D.motor_pos(i)[2])
-                    for i in range(D.N_STRINGS))
-assert _SHORTEST_RUN >= _CLAMP_RUN_NEED - 1e-6, (
-    f"the shortest belt run ({_SHORTEST_RUN:.1f}) cannot hold the clamp through its travel: "
-    f"{_BELT_TRAVEL:.1f} of belt travel + {_CLAMP_L:.1f} of clamp + two flanges = {_CLAMP_RUN_NEED:.1f}")
+assert abs(_CLAMP_L - D.BELT_CLAMP_L) < 0.05, (
+    f"the belt clamp measures {_CLAMP_L:.2f} along the belt but dimensions.BELT_CLAMP_L is "
+    f"{D.BELT_CLAMP_L}: the carriage travel and the nut's floor are sized from that number")
 
 
 def _string_components(i):
