@@ -93,7 +93,7 @@ def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
 
 
 def _xh(tag, desc):
-    return Part(name="B4B-XH-A", ref_prefix="J", tag=tag, dest="NETLIST", tool="skidl",
+    return Part(name="B4B-XH-A", ref_prefix="J", tag=tag, ref=tag, dest="NETLIST", tool="skidl",
                 value="B4B-XH-A", description=desc, footprint=XH_FP,
                 pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(XH_PINOUT)])
 
@@ -111,6 +111,38 @@ def _xh(tag, desc):
 # PH here, and the side-entry part needs a board EDGE with its mouth off it. Placed at J2's
 # existing site the side-entry body took C10's stitching-via room and layout refused it.
 PH_FP = "Connector_JST:JST_PH_B8B-PH-K_1x08_P2.00mm_Vertical"
+# ⚠ AND THE 4-WAY SIDE-ENTRY PAIR THAT REPLACED IT (user, 2026-09-25). See _ph4.
+PH4_FP = "Connector_JST:JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal"
+
+
+def _ph4(tag, desc):
+    """Bus B's trunk, as TWO 4-way side-entry PH instead of one 8-way vertical.
+
+    ⚠ THE REASON IS SERVICE, NOT ELECTRONICS (user, 2026-09-25): "instead of having an
+    8 pin which is locked inaccessible inside the instrument I'd like to put two 4 pin
+    JSTs on the board such that we can drop the board down z, cut a hole in the instrument
+    and have access to plug (and unplug) the 4 pins in from below".
+
+    The tray STANDS: electronics.stand() rotates it +90 deg about Y, which maps the board's
+    flat +X edge to world -Z. So the flat +X edge is the one facing the instrument's
+    underside, and a SIDE-ENTRY connector there -- mouth off that edge -- mates straight
+    down. A vertical part on the same edge would mate along world +X, into the instrument,
+    which is exactly the connector nobody can reach.
+
+    Splitting is free electrically because bus B was ALREADY a pass-through: ways 1-4 in,
+    5-8 out, the same four nets on both halves. Two 4-ways are the same two harnesses with
+    the same crimps in the same order; what changes is that each can be unplugged on its
+    own. The 8-way's own note argued for one part on the grounds that a mid-bus node is a
+    pass-through by construction -- true, and it is why this costs nothing to undo.
+
+    S4B-PH-SM4-TB (LCSC C265102, 28.9k in stock) is the 4-way of the S8B-PH-SM4-TB the
+    eleven lever boards already use: same family, same PHR housing, same SPH-002T-P0.5S
+    crimps, same pin order. 11.9 mm of board edge each.
+    """
+    return Part(name="S4B-PH-SM4-TB", ref_prefix="J", tag=tag, ref=tag, dest="NETLIST", tool="skidl",
+                value="S4B-PH-SM4-TB", description=desc, footprint=PH4_FP,
+                pins=[Pin(num=i + 1, name=n, func=P)
+                      for i, n in enumerate(harness.PH_PINOUT)])
 
 
 def _ph(tag, desc):
@@ -119,14 +151,16 @@ def _ph(tag, desc):
     the whole harness, but a different FAMILY, so a lever harness cannot mate a 24 V XH
     header and vice versa -- and way 2 is +5 V here, which is why bus B has its own
     pinout name rather than borrowing the 24 V one."""
-    return Part(name="B8B-PH-K-S", ref_prefix="J", tag=tag, dest="NETLIST",
+    return Part(name="B8B-PH-K-S", ref_prefix="J", tag=tag, ref=tag, dest="NETLIST",
                 tool="skidl", value="B8B-PH-K-S", description=desc, footprint=PH_FP,
                 pins=[Pin(num=i + 1, name=n, func=P)
                       for i, n in enumerate(harness.ph_trunk_pins())])
 
 
 def _xcvr(tag, desc):
-    """SN65HVD230DR, SOIC-8: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 Rs."""
+    """SN65HVD230DR, SOIC-8: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 Rs.
+
+    TI SLOS346O section 7 "Pin Functions", read 2026-09-30."""
     return Part(name="SN65HVD230DR", ref_prefix="U", tag=tag, dest="NETLIST", tool="skidl",
                 value="SN65HVD230DR", description=desc,
                 footprint="Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
@@ -134,6 +168,43 @@ def _xcvr(tag, desc):
                       Pin(num=3, name="VCC", func=PWR), Pin(num=4, name="R", func=O),
                       Pin(num=5, name="Vref", func=O), Pin(num=6, name="CANL", func=P),
                       Pin(num=7, name="CANH", func=P), Pin(num=8, name="Rs", func=I)])
+
+
+def _LMR33630_DDA_PINS():
+    """The LMR33630's HSOIC-8 (DDA) pinout, from TI SNVSAN3F Table 6-1 -- READ, not recalled.
+
+    ⚠⚠ THIS BOARD CARRIED A PINOUT WITH SEVEN OF EIGHT PINS WRONG UNTIL 2026-09-30, on both
+    U5 (the Pi's 5 V) and U6 (the LED 5 V):
+
+        pin   TI            what was here
+         1    PGND          VIN      <- +24 V on the power-ground pin
+         2    VIN           EN
+         3    EN            "NC"     <- the part has no NC on this package
+         4    PG            FB
+         5    FB            GND
+         6    VCC           SW
+         7    BOOT          BOOT     (the one that was right)
+         8    SW            VCC
+
+    It carried no datasheet citation, unlike the LMR16006 forty lines up ("TI SNVSA24
+    section 6"), and it routed, passed DRC and passed ERC: every check in this pipeline
+    compares the board to the NETLIST, and the netlist was the thing that was wrong. As
+    built, F1 would have blown at first power and neither 5 V rail would ever have come up.
+    The VQFN instances (optical U13, fret_led/foot_led U10) were checked against the same
+    table the same day and are correct.
+
+    Found while asking what a first-article board would need for DIAGNOSIS -- the "NC" on
+    a part whose feature list includes a power-good flag was the thread. The cheapest
+    diagnostic there is turns out to be reading the pin table before the board is made.
+
+    Connections are made BY NAME below so the numbers live in exactly one place. PG (4) is
+    open-drain and "can be left open when not used"; it is the hook for a rail-status
+    pad -- see docs/board-bringup-diagnostics.md."""
+    return [Pin(num=1, name="PGND", func=Pin.types.PWRIN), Pin(num=2, name="VIN", func=Pin.types.PWRIN),
+            Pin(num=3, name="EN", func=Pin.types.PASSIVE), Pin(num=4, name="PG", func=Pin.types.PASSIVE),
+            Pin(num=5, name="FB", func=Pin.types.PASSIVE), Pin(num=6, name="VCC", func=Pin.types.PASSIVE),
+            Pin(num=7, name="BOOT", func=Pin.types.PASSIVE), Pin(num=8, name="SW", func=Pin.types.PASSIVE),
+            Pin(num=9, name="AGND", func=Pin.types.PWRIN)]
 
 
 @subcircuit
@@ -161,13 +232,22 @@ def motor_ctrl():
     # different family from the 24 V XH motor tees so no harness can cross them. J2's +V
     # comes off this board's own +5V (the Pi rail, after F2) -- wired further down, once
     # that net exists.
-    j2 = _ph("J2", "bus B out -- the eleven lever/pedal boards, 5 V, JST PH")
+    j2 = _ph4("J2", "bus B IN -- from the pedals at the leg, 5 V, JST PH side entry")
+    # ⚠ J6, AND NOT J5, WHICH THIS BOARD ALREADY USES (the Pi's 5 V XH). Taking a
+    # ref that exists does not collide loudly -- SKiDL renumbers the OTHER part, so
+    # the Pi's two connectors silently became J8 and J9 and their placements stopped
+    # matching. The only symptom was "no placement given for: J8, J9".
+    # Every connector here now passes ref= as well as tag=, which is the fix
+    # lever_sensor.py already documents: "passing ref= makes the tag authoritative,
+    # so where a part is CREATED stops mattering."
+    j6 = _ph4("J6", "bus B OUT -- to the lever chain, 5 V, JST PH side entry")
     j3 = _xh("J3", "24 V in from the rail (2 contacts populated)")
-    gnd += j1[1], j2[1], j2[5], j3[1], j3[4]
+    gnd += j1[1], j2[1], j6[1], j3[1], j3[4]
     v24 += j1[2], j3[2], j3[3]
     a_h += j1[3]; a_l += j1[4]
-    # bus B passes THROUGH: ways 1-4 in, 5-8 out, same four nets on both halves
-    b_h += j2[3], j2[7]; b_l += j2[4], j2[8]
+    # bus B still passes THROUGH -- it is now two connectors rather than two halves of
+    # one, which is the same node with a service joint in the middle of it
+    b_h += j2[3], j6[3]; b_l += j2[4], j6[4]
     # ⚠ J3 NOW DOUBLES ITS CONTACTS, AND IT IS A RATING FIX RATHER THAN TIDINESS. This
     # is the sink end of the instrument's whole 24 V trunk. BOM.md sizes that bus at
     # under 5 A and XH is rated 3 A per contact, which is exactly why the SOURCE (the
@@ -316,7 +396,10 @@ def motor_ctrl():
             (17, "VIO_4", PWR), (31, "VIO_1", PWR), (51, "VIO_2", PWR), (67, "VIO_3", PWR),
             (35, "PB12", I), (36, "PB13", O), (46, "PA11", P), (47, "PA12", P),
             (48, "PA13", P), (52, "PA14", P), (63, "BOOT0", I),
-            (64, "PB8", I), (65, "PB9", O), (1, "VBAT", PWR)]
+            (64, "PB8", I), (65, "PB9", O), (1, "VBAT", PWR),
+            # bring-up sense pins (docs/board-bringup-diagnostics.md 2.2, 2.3). Numbers off
+            # the same QFN68 column (.ins/ch32v307_qfn68.json): 8 PC0, 9 PC1, 20 PA4, 39 PC6.
+            (8, "PC0", I), (9, "PC1", I), (20, "PA4", I)]
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6", description="RISC-V MCU, 2x hardware CAN",
               footprint=MCU_FP,
@@ -383,7 +466,8 @@ def motor_ctrl():
     # VBUS IS DELIBERATELY UNCONNECTED, as it was on the USB-C: the board runs off the 24 V
     # rail, and taking VBUS as well would leave the Pi's supply and the instrument's
     # arguing over who holds the rail. It is a landing for a future VBUS-present sense.
-    usb = Part(name="B4B-XH-A", ref_prefix="J", tag="J4", dest="NETLIST", tool="skidl",
+    usb = Part(name="B4B-XH-A", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
+               tool="skidl",
                value="B4B-XH-A", footprint=XH_FP,
                description="USB 2.0 link to the Pi (USB-A -> XH lead): VBUS n/c, D-, D+, GND",
                pins=[Pin(num=i + 1, name=n, func=P)
@@ -455,19 +539,15 @@ def motor_ctrl():
               tool="skidl", value="LMR33630ADDAR",
               description="36 V 3 A synchronous buck, 24 V -> 5 V for the Pi",
               footprint="Package_SO:SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm",
-              pins=[Pin(num=1, name="VIN", func=PWR), Pin(num=2, name="EN", func=P),
-                    Pin(num=3, name="NC", func=P), Pin(num=4, name="FB", func=P),
-                    Pin(num=5, name="GND", func=PWR), Pin(num=6, name="SW", func=P),
-                    Pin(num=7, name="BOOT", func=P), Pin(num=8, name="VCC", func=P),
-                    Pin(num=9, name="EP", func=PWR)])
-    v24_buck += u5[1]
-    en5 += u5[2]
-    fb5 += u5[4]
+              pins=_LMR33630_DDA_PINS())
+    v24_buck += u5["VIN"]
+    en5 += u5["EN"]
+    fb5 += u5["FB"]
     # The exposed pad is the ground connection AND the only heat path off the die.
-    gnd += u5[5], u5[9]
-    sw5 += u5[6]
-    boot5 += u5[7]
-    vcc5 += u5[8]
+    gnd += u5["PGND"], u5["AGND"]
+    sw5 += u5["SW"]
+    boot5 += u5["BOOT"]
+    vcc5 += u5["VCC"]
     l2 = Part(name="L", ref_prefix="L", tag="L2", dest="NETLIST", tool="skidl",
               value="6.8uH", description="5 V buck output inductor, shielded 6x6",
               footprint="Inductor_SMD:L_Bourns-SRN6028",
@@ -513,7 +593,8 @@ def motor_ctrl():
     v5_raw += f2[1]; v5 += f2[2]
     # 5 V out on TWO contacts and GND on two: XH is rated 3 A per contact and the
     # design draw IS 3 A, so a single contact would sit exactly on its rating.
-    j5 = Part(name="B4B-XH-A", ref_prefix="J", tag="J5", dest="NETLIST", tool="skidl",
+    j5 = Part(name="B4B-XH-A", ref_prefix="J", tag="J5", ref="J5", dest="NETLIST",
+              tool="skidl",
               value="B4B-XH-A", description="5 V to the Pi's GPIO pins 2/4 + 6/9",
               footprint=XH_FP,
               pins=[Pin(num=i + 1, name=n, func=P)
@@ -527,7 +608,7 @@ def motor_ctrl():
     # are not a free expansion slot" limit F1's note already names. And a D9 crowbar
     # event now also drops the lever bus, which is the right way round: nothing senses
     # while the Pi is dark anyway.
-    v5 += j2[2], j2[6]
+    v5 += j2[2], j6[2]
 
     for tag, net in (("D6", dp), ("D7", dm)):
         d = Part(name="TVS", ref_prefix="D", tag=tag, dest="NETLIST", tool="skidl",
@@ -553,6 +634,79 @@ def motor_ctrl():
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v5 += d9[1]; gnd += d9[2]
 
+    # â”€â”€ THE LED STRIP'S 5 V: A SECOND BUCK, NOT A BIGGER ONE (user, 2026-09-28) â”€â”€â”€â”€â”€â”€
+    # The strip is 36 RGBW LEDs over four sections and draws 2.2 A at full white. Feeding
+    # it from U5 was considered and does not fit: U5 is a 3 A part already budgeted at 3 A
+    # for the Pi, and F1 -- a 1 A fuse on the 24 V side -- already sits at 69-78 % of
+    # rating at that draw. Pi + strip is 5.2 A on a 3 A buck and ~1.27 A through a 1 A
+    # fuse. F1's own note names this exact limit ("the Pi's ports are not a free expansion
+    # slot"), so the answer is a separate converter rather than a larger shared one.
+    #
+    # âš  AND SEPARATE IS BETTER THAN SHARED HERE FOR TWO MORE REASONS, not just current.
+    # A shared rail would put the strip's PWM current steps on the Pi's supply, and it
+    # would mean a crowbar event on either one taking out the other. Two bucks off the
+    # same 24 V trunk keep those faults apart, and cost one IC: the part is the SAME
+    # LMR33630ADDAR as U5, so this adds a placement and not an SKU.
+    #
+    # âš  THE RAIL IS +5V_LED AND IT NEVER MEETS +5V. It leaves on J7, crosses to pi_cap's
+    # J4, and pi_cap passes it to the strip on J3 beside the SPI pair -- so ONE cable
+    # reaches the strip carrying both, which is what pi_cap was built for. The two 5 V
+    # rails share only GND.
+    # ⚠ SUPERSEDED 2026-09-30 (docs/lighting-bus.md 3-4): THERE IS NO LED BUCK ANY MORE.
+    # Everything above this line is the history of U6, a second LMR33630 that made 5 V for
+    # one LED strip. The strip is gone; the lights are now the two fret boards and the foot
+    # strip, and EVERY lit board carries its own buck (a made rail sent down 600 mm of cable
+    # drops a third of the sink headroom, and drops more the brighter it gets). So what this
+    # board owes the lights is 24 V AND NOTHING ELSE: a fuse, local bulk, and J7.
+    # Gone with U6: L3, C25, C27-C31, R14-R17, F4, D10 and the PG_LED line into PC6.
+    # 1.63 A with every zone of all three boards at full white (software-capped worst case),
+    # so 3 A: 54 % of rating, inside the 75 % continuous rule. Same SKU as F2. D8 already
+    # clamps the trunk this branches from.
+    v24_led = Net("+24V_LED")
+    v24_led.drive = Pin.drives.POWER
+    f3 = Part(name="Fuse", ref_prefix="F", ref="F3", tag="F3", dest="NETLIST",
+              tool="skidl", value="3A",
+              description="24 V fuse for the lighting bus -- a short on a 600 mm LED "
+                          "cable must not take the motor trunk down",
+              footprint="Fuse:Fuse_1206_3216Metric",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    v24 += f3[1]; v24_led += f3[2]
+    c24 = _c("C24", "10uF/50V", "lighting-bus local bulk, after the fuse",
+             "Capacitor_SMD:C_1206_3216Metric")
+    v24_led += c24[1]; gnd += c24[2]
+    c26 = _c("C26", "100nF", "lighting-bus HF bypass at J7")
+    v24_led += c26[1]; gnd += c26[2]
+    # Two contacts each way, as J5 has: XH is 3 A per contact against 1.63 A.
+    j7 = Part(name="B4B-XH-A", ref_prefix="J", ref="J7", tag="J7", dest="NETLIST",
+              tool="skidl", value="B4B-XH-A",
+              description="24 V to the lights, via pi_cap J4",
+              footprint=XH_FP,
+              pins=[Pin(num=i + 1, name=n, func=P)
+                    for i, n in enumerate(("GND", "+24V_LED", "+24V_LED", "GND"))])
+    gnd += j7[1], j7[4]
+    v24_led += j7[2], j7[3]
+
+    # ── BRING-UP SENSE: the board reports its own rails (2026-09-30) ─────────────────────
+    # docs/board-bringup-diagnostics.md 2.2 and 2.3. No LEDs: the MCU reads these and says
+    # so over USB, which works with the board shut inside the keyhead.
+    # PG is OPEN-DRAIN and each line uses the MCU's INTERNAL pull-up, so power-good costs
+    # two tracks and no parts. (Until the pinout fix both PG pins were listed "NC".)
+    # ⚠ FIRMWARE: PC1 must be an input WITH PULL-UP, or it reads low for ever.
+    pg5 = Net("PG_5V")
+    pg5 += u5["PG"], u1["PC1"]
+    # Rail sense into two ADC pins. PC0 = ADC10, PA4 = ADC4 -- read off the QFN68 pin
+    # drawing in WCH's CH32V307 datasheet ("PC0/ADC10", "PA4/ADC4/DAC0"), 2026-09-30.
+    #   +24V: 100k / 10k -> 2.18 V at 24 V, 2.73 V at a 30 V overshoot: inside 3.3 V always.
+    #   +5V : 10k / 10k  -> 2.50 V.
+    # A sagging trunk under motor load is the fault no static meter reading shows.
+    sense24, sense5 = Net("SENSE_24V"), Net("SENSE_5V")
+    r20 = _r("R20", "100k", "+24V sense divider, top")
+    r21 = _r("R21", "10k", "+24V sense divider, bottom")
+    v24 += r20[1]; sense24 += r20[2], r21[1], u1["PC0"]; gnd += r21[2]
+    r18 = _r("R18", "10k", "+5V sense divider, top")
+    r19 = _r("R19", "10k", "+5V sense divider, bottom")
+    v5 += r18[1]; sense5 += r18[2], r19[1], u1["PA4"]; gnd += r19[2]
+
 
 
 # ── the board ────────────────────────────────────────────────────────────────
@@ -561,28 +715,76 @@ def motor_ctrl():
 # two transceivers and three headers. The tray has the room -- deleting the Teensy
 # and its audio shield freed far more than this needs -- but the tray must be
 # rebuilt around this outline rather than the other way round.
-BOARD_W, BOARD_L = 46.0, 58.0
+# ⚠ 10 mm LONGER IN +Y (user, 2026-09-25: "feel free to make the PCB larger given the need
+# for this extra space"). Reserving the -Y edge for the bus-B pair left J4 with NO legal
+# site anywhere above y -12 -- sitesearch returned 984 legal sites and not one of them
+# clear of the band the JSTs now own. The board was simply full.
+# +Y and not +X, because board +X IS the downward edge, so growing
+# there would lengthen the very edge we shortened by rotating. board +Y is world UP, which
+# costs nothing -- the bay has headroom once the board drops to the chassis floor.
+# ⚠ AUTHORED IN THE ORIENTATION IT IS BUILT IN, WITH NO ROTATION APPLIED LATER (user
+# rule, standing: "we shouldn't define one orientation and then a rotation, we should just
+# define the proper orientation from the start"). This board hangs in the keyhead endplate
+# with its +X EDGE FACING THE CHASSIS FLOOR -- electronics.stand() maps flat +X to world
+# -Z -- and that edge carries the two bus-B JSTs and nothing else, because anything on it
+# would have its cable pointing down through the service hole.
+# So the +X EDGE is the 46 mm one (the narrow edge: a shorter downward edge sterilises
+# less of the board), which makes BOARD_W the 68 mm span ACROSS the board and BOARD_L
+# the 46 mm edge itself. The ear is at the -X end, which stands at the TOP.
+# It was briefly written the other way up with electronics.MCTRL_ROT = 90 and a swap
+# branch; that is the mapping-bolted-on-the-end this rule exists to prevent, and it is
+# gone -- MCTRL_ROT with it.
+# ⚠ THE DOWNWARD EDGE IS SET BY THE JST FACE, NOT BY A ROUND NUMBER (user, 2026-09-25:
+# "there appears to be a fair amount of PCB -z of the JST connectors ... we would want the
+# PCB to extend at most to the edge of the connector and perhaps sit a touch back").
+# At 68.0 the +X edge stood at x 34.00 while J2/J6's bodies ended at 28.30 -- 5.70 mm of
+# bare laminate hanging below the plugs, with nothing on it (D6/D7, the next parts out,
+# stop at 25.00). That is 5.70 mm of extra hole the chassis floor has to give up for no
+# board, and the downward edge is the one length we have been paying to keep short.
+# The frame had to shrink rather than the edge move: outline_mm is the POUR's layout
+# region and it is centred on the origin, so an asymmetric board would pour off-centre.
+# So BOARD_W drops 6.20 and all 64 placements moved +3.10 in x to re-centre -- the parts
+# did not move relative to each other or to the -X end, only the origin did.
+# The 0.50 is the "touch back": J2/J6 now overhang the edge by that much, so the plug
+# face is the lowest thing on the board and no laminate reaches past it.
+# ⚠ BOARD_L 62.0 -> 55.0 (2026-09-29): 7.00 mm OF BARE LAMINATE CAME OFF THE PI-FACING
+# EDGE so a plug can reach the Pi's USB ports. Measured on this file's own placements: the 82
+# parts occupied y -22.00..28.50, 50.50 of a 62.00 board, leaving 9.00 mm empty below the
+# lowest part (D6/D7, the USB ESD clamps) and 2.50 above the highest. _MCTRL_CY maps
+# board-local -31.00 to world y -41.50, which is the edge sitting 4.68 mm off the Pi's port
+# face -- so the empty 9 mm was exactly where the gap had to come from.
+# ALL 82 PLACEMENTS MOVED y -3.50 with it, which keeps every part where it was relative to
+# the +Y edge: new span -25.50..25.00 inside +-27.50, so 2.00 of edge clearance at -Y
+# (D6/D7) and 2.50 at +Y. Nothing was re-placed; the board was re-centred.
+# ⚠ src/electronics.py's _MCTRL_CY must go -10.5 -> -7.0 to match, or the board shrinks
+# from BOTH ends and the +Y edge walks into body_adapter_0 (inner face y 21.15, and the old
+# +Y edge at 20.50 had only 0.65 mm of slack). Route FIRST, then move the centre, so a
+# routing failure stays separable from a placement failure.
+BOARD_W, BOARD_L = 61.8, 55.0
 
-# THE MOUNTING EAR (user, 2026-09-21): an M4 THROUGH the board, not beside it -- "having the
-# screw adjacent ... doesn't provide as strong of retention". A tab off the +Y edge at the +X
-# corner: that corner is clear (J5 stops at x 6.2, J3 below y -2.2), and standing on the
-# keyhead endplate the +Y edge faces the gap toward the Pi, which is where the side screw was.
-# Bare laminate under the head (the pours cover only the outline_mm layout region). Same ear
-# and hole as the CAN tee's and the output board's.
-EAR_W, EAR_H = 9.5, 8.7
-EAR_HOLE_D = 4.5                                   # M4 clearance
-_EAR_X0 = BOARD_W / 2 - EAR_W
-_EAR_Y1 = BOARD_L / 2 + EAR_H
-EAR_HOLE_XY = (_EAR_X0 + EAR_W / 2, BOARD_L / 2 + EAR_H / 2)
+# THE MOUNTING EAR was added 2026-09-21 on the user's "having the screw adjacent ...
+# doesn't provide as strong of retention", and removed 2026-09-29 on their own report that
+# its hole was never used. Both are right: a screw through the board IS better retention,
+# and this one could not be reached -- see below. If a through-board mount is wanted again
+# it needs a corner whose BOSS clears the nut height-adjust block, which is the thing that
+# actually decided it, and that is a placement question before it is an outline one.
+# ⚠ THE EAR IS GONE (user, 2026-09-29: this board "has a hole designed for an M4 screw
+# that isn't being used"). It was right, and the hole was worse than merely spare:
+#   * its boss cannot be used from where it is -- it projects into the nut height-adjust
+#     block, 625 mm3 through nut_slide_insert_2 when it was tried, so the one fastening
+#     point the board offered was a fastening point that could not be fastened; and
+#   * it made the board 70.50 wide instead of 61.80, and src/electronics.py hands that
+#     width to pcb_hold_xy. Every hold point on this board was therefore computed against
+#     a rectangle the laminate does not occupy -- an unused hole steering the fastener
+#     that replaced it.
+# The board is a plain rectangle now and the M4 lives beside its edge, same as the Pi's.
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
-    "outline_poly": [(-BOARD_W / 2, -BOARD_L / 2), (BOARD_W / 2, -BOARD_L / 2),
-                     (BOARD_W / 2, _EAR_Y1), (_EAR_X0, _EAR_Y1), (_EAR_X0, BOARD_L / 2),
-                     (-BOARD_W / 2, BOARD_L / 2)],
-    "cutouts": [{"xy": EAR_HOLE_XY, "d": EAR_HOLE_D}],
-    "mounting_hole_xy": EAR_HOLE_XY,
-    # J4 going XH moved the router's first pass and OSC_OUT (Y1 -> U4) came back open at the
+    # (no outline_poly and no cutouts: with the ear gone the board is exactly outline_mm, and
+    # a rectangle is better said by its absence than by four points restating it. No
+    # mounting_hole_xy either -- there is no hole in this board to mount through.)
+        # J4 going XH moved the router's first pass and OSC_OUT (Y1 -> U4) came back open at the
     # default ten; more passes let it rip up and re-lay (route.py PASSES note)
     "router_passes": 20,
     "layers": 4,
@@ -597,85 +799,189 @@ BOARD_NOTES = {
     # proven is disturbed as little as possible; the 5 V section lives entirely in
     # the strip the growth added.
     "placements": {
-        "J1": (-10.00, 2.50, 0.0),
+        "J1": (0.60, -13.50, 90.0),
         # ⚠ J2 MOVED WHEN IT GREW 4-WAY -> 8-WAY (2026-09-22). At its old mid-board site the
         # 17.9 mm body overlapped J1's courtyard and put a PTH pad inside it. This site is
         # elec/sitesearch.py's top-ranked of 672 legal ones, which is the tool that exists
         # because this board "keeps being placed by eye and keeps being wrong" -- and it
         # puts bus B's trunk beside J3's 24 V inlet on the +X edge, where bus A's already is.
-        "J2": (18.25, 14.25, 90.0),
-        "J3": (15.50, -8.50, 90.0),
+        # ⚠ J2 AND J5 SIT ON THE +X EDGE BECAUSE THAT EDGE FACES THE FLOOR. The tray
+        # stands (electronics.stand(), +90 about Y), which maps flat +X to world -Z: the
+        # board hangs with this edge downward at Z -59.0, with 22.85 mm of air under it
+        # before the chassis floor at -81.85. Side entry here mates straight DOWN, through
+        # an access hole, which is the whole point of the change -- see _ph4.
+        # Nothing else may live on this edge: a cable leaving any other part on it has
+        # nowhere to go but into the instrument.
+        # ⚠ BOTH PLUGS MUST LAND IN THE ONE FREE BAND, AND THAT SETS THE SPACING. The
+        # three mortise stations -X of the full-length lever one are SPLIT: at x -618.10,
+        # -607.70 and -597.30 the slot runs y -151.2..-97.1 and again y ~21..67, with the
+        # middle free. Only that middle is available to cut into (user, 2026-09-25, with a
+        # diagram) -- the full-length mortise at x -586.90 runs y -151.2..46.4 unbroken and
+        # a lever has to be installable anywhere along it.
+        # The board reaches world y -60.8 at its +Y end, so the usable band is
+        # y -97.1..-60.8 = 36.3 mm. At 30 mm centres the pair needs 42 and the -Y one lands
+        # at y -109.2, straight over a body-adapter slot. 14 mm centres put both inside:
+        # board y 8 and 22 -> world y -86.2 and -72.2, with 31.3 mm of span used of 36.3.
+        # The chassis keeps ~4.7 mm between the two holes rather than the 8 I wanted, which
+        # is the price of the band being 36 mm wide.
+        # ⚠ ON THE +X EDGE, WHICH IS THE NARROW ONE AND THE ONE THAT FACES THE FLOOR, AND THAT IS THE POINT (user,
+        # 2026-09-25: "the two JSTs don't take that much room so it seems sensible to put
+        # them on the narrower board edge so we have a smaller keep out zone"). The
+        # downward edge is sterilised -- no other connector may sit on it, because its
+        # cable would point into the chassis through the service hole -- so the cost is
+        # proportional to that edge's LENGTH. 46 mm instead of 66.7 to carry the same
+        # 24 mm of connector. The board is authored with +X as that edge; see BOARD_W.
+        #
+        # y -22.92 puts the MOUTHS on the Edge.Cuts at y -29.00: the courtyard reaches
+        # 6.08 past the origin on the mouth side, measured off the placed part rather
+        # than assumed. (At 20.90 on the +X edge they overhung the board by 3.98 mm --
+        # that placement was written against a 54 mm outline that the re-export corrected
+        # to 46, and nothing recomputed it.)
+        "J2": (24.92, -11.50, 90.0),
+        "J6": (24.92, 4.50, 90.0),
+        "J3": (11.60, 11.50, 180.0),
         # SWD pads -- nearest free 2.5 mm sites to U4; see the note in motor_ctrl()
-        "TP1": (-10.10, -12.85, 0.0),
-        "TP2": (2.40, -15.60, 0.0),
-        "TP3": (-10.85, -3.10, 0.0),
-        "TP4": (5.40, -15.60, 0.0),
-        "TP5": (-6.85, -21.35, 0.0),
-        "J4": (3.00, -25.20, 0.0),      # XH now (see the link's note): down on the -Y edge,
-                                         # clear of Y1 / C15 / TP5
-        "U4": (-4.00, -9.50, 0.0),
-        "U2": (6.30, -5.00, 0.0),
-        "U3": (6.30, -11.50, 0.0),
-        "U1": (-16.00, -3.50, 0.0),
-        "L1": (-16.00, -8.00, 0.0),
-        "D1": (-16.00, -11.50, 0.0),
-        "C1": (-16.50, -15.00, 0.0),
+        "TP1": (15.95, -13.60, 90.0),
+        "TP2": (18.70, -1.10, 90.0),
+        "TP3": (6.20, -14.35, 90.0),
+        "TP4": (18.70, 1.90, 90.0),
+        # ⚠ J2/J6 IN BY 1.10, AND TP5/C15 OUT OF THEIR WAY -- three shorts, three mask
+        # bridges and four edge-clearance errors, all pre-existing and all hidden behind a
+        # motor_ctrl-drc.rpt dated 2026-09-20 that predates three reworks of this board.
+        # The XH mounting pads reached x 31.55 against a +X edge at 30.90 with a 0.30 rule:
+        # 0.65 mm of copper off the side of the board. And TP5's pad (23.70..25.20) sat
+        # INSIDE J2 pad 3's (22.35..25.85) -- not a near miss, an overlap -- with C15 pad 1
+        # doing the same against J2 pad 2.
+        # TP5 is a bare SWD pad and C15 is MCU bulk, so neither is pinned to a pin the way
+        # an HF bypass is; both move to the nearest site that clears every neighbour by the
+        # 0.30 rule.
+        "TP5": (24.45, -20.10, 90.0),
+        # ⚠ J4 IS OFF THE -Y EDGE NOW: that edge belongs to the bus-B pair alone (see J2).
+        # It keeps its top-entry XH and its mating direction -- world +X once standing --
+        # so the USB lead still leaves toward the bay; only its seat moved.
+        "J4": (-25.90, -16.50, 90.0),
+        "U4": (12.60, -7.50, 90.0),
+        "U2": (8.10, 2.80, 90.0),
+        "U3": (14.60, 2.80, 90.0),
+        "U1": (6.60, -19.50, 90.0),
+        "L1": (11.10, -19.50, 90.0),
+        "D1": (14.60, -19.50, 90.0),
+        "C1": (18.10, -20.00, 90.0),
         # ⚠ C23 SITS AS CLOSE TO U1's VIN PIN AS A COURTYARD ALLOWS, and that is the
         # whole specification. Vertical so it clears U1 (right edge -13.905) and TP3
         # (left edge -12.145); its pads land 1.73 mm from the VIN pad, against C1's
         # 11.50 mm through two vias.
-        "C23": (-13.20, -3.50, 90.0),
-        "C2": (-16.00, -18.00, 0.0),
-        "C3": (-12.50, -15.00, 0.0),
-        "R1": (-12.50, -17.50, 0.0),
-        "R2": (-12.50, -19.00, 0.0),
-        "C6": (-11.00, -9.50, 0.0),
-        "R7": (-11.00, -11.00, 0.0),
-        "C7": (-11.00, -6.50, 0.0),
-        "C8": (-11.00, -5.00, 0.0),
-        "C9": (-8.60, -3.00, 0.0),
-        "C10": (-6.60, -3.00, 0.0),
-        "C11": (-4.60, -3.00, 0.0),
-        "C12": (-2.60, -3.00, 0.0),
-        "C13": (-0.60, -3.00, 0.0),
-        "C14": (1.40, -3.00, 0.0),
-        "Y1": (-4.00, -16.50, 0.0),
-        "C4": (-8.00, -16.50, 0.0),
-        "C5": (0.00, -16.50, 0.0),
-        "C15": (-8.00, -19.00, 0.0),
-        "R3": (11.20, -5.00, 0.0),
-        "R4": (11.20, -11.50, 0.0),
-        "R5": (16.50, 3.50, 0.0),
-        "JP1": (16.50, -17.50, 0.0),
-        "D2": (12.30, 1.00, 0.0),
-        "D3": (15.30, 1.00, 0.0),
-        "D4": (10.00, -17.00, 0.0),
-        "D5": (13.00, -17.00, 0.0),
-        "D6": (-7.00, -24.50, 0.0),     # the USB clamps take R8/R9's old slots
-        "D7": (-10.00, -24.50, 0.0),
-        "C19": (-17.00, 9.00, 0.0),
-        "C20": (-13.00, 9.00, 0.0),
-        "R10": (-9.00, 9.00, 0.0),
-        "R11": (-5.00, 9.00, 0.0),
-        "R12": (-1.00, 9.00, 0.0),
-        "R13": (3.00, 9.00, 0.0),
-        "F1": (-18.00, 13.00, 0.0),
-        "C16": (-12.00, 13.00, 0.0),
-        "C17": (-6.00, 13.00, 0.0),
+        "C23": (6.60, -16.70, 180.0),
+        "C2": (21.10, -19.50, 90.0),
+        "C3": (18.10, -16.00, 90.0),
+        "R1": (16.10, -16.00, 90.0),
+        "R2": (19.65, -16.00, 90.0),
+        "C6": (12.60, -14.50, 90.0),
+        "R7": (14.10, -14.50, 90.0),
+        "C7": (9.60, -14.50, 90.0),
+        "C8": (8.10, -14.50, 90.0),
+        "C9": (6.10, -12.10, 90.0),
+        "C10": (6.10, -10.10, 90.0),
+        "C11": (6.10, -8.10, 90.0),
+        "C12": (6.10, -6.10, 90.0),
+        "C13": (6.10, -4.10, 90.0),
+        "C14": (6.10, -2.10, 90.0),
+        # ⚠ ABOVE U4, BECAUSE THE CORRIDOR BESIDE IT IS 3.46 mm AND THE CRYSTAL IS 3.58.
+        # Y1 sat at x 19.60 between U4's courtyard (right edge 17.25) and J2's body
+        # (left edge 20.71) and overlapped J2 by 0.69 -- and there is no x that clears
+        # both, which is why nudging it failed twice. North of U4 is no better: U2 and
+        # U3 sit shoulder to shoulder there with 1.02 mm between them, and EVERY
+        # corridor on that side of the board measures 3.37..3.46 mm. This site is the
+        # NEAREST of 9974 that a free-space search found -- 2.81 mm off U4's package
+        # edge, and nothing on this board is closer. Searched, not guessed: three
+        # hand-picked spots in a row landed on C3, then U2/U3, then J1. The alternative was spreading
+        # J2/J6 apart in y to open the gap, and that swallows C2 under J2 and JP1 under
+        # J6: the +X edge is full. So the crystal moves instead, to free board directly
+        # WEST of U4 -- still a short hop to the oscillator pins. ⚠ IF OSC_IN/OSC_OUT
+        # COME BACK UNCONNECTED, THIS IS WHY (it happened once before, see the J4 note).
+        "Y1": (3.35, -4.25, 90.0),
+        "C4": (19.60, -11.50, 90.0),
+        "C5": (-0.40, -4.25, 90.0),
+        "C15": (28.60, -20.25, 90.0),
+        "R3": (8.10, 7.70, 90.0),
+        "R4": (14.60, 7.70, 90.0),
+        "R5": (-0.40, 13.00, 90.0),
+        "JP1": (20.60, 13.00, 90.0),
+        "D2": (2.10, 8.80, 90.0),
+        "D3": (2.10, 11.80, 90.0),
+        "D4": (19.60, 6.50, 90.0),
+        "D5": (19.60, 9.50, 90.0),
+        # ⚠ BESIDE J4, THE USB CONNECTOR THEY CLAMP. They sat at x 27.60, which is
+        # 53 mm from it and INSIDE J2's courtyard -- J2 is side entry, so its body lies
+        # on the board across x 20.71..31.00 and these were underneath it. The comment
+        # they carried ("take R8/R9's old slots") recorded where they were put, not what
+        # they are for: an ESD clamp 53 mm downstream of the connector protects the
+        # board from nothing, because the transient is already past it. Both faults have
+        # the same fix, so the courtyard error was the one that made the other visible.
+        "D6": (-27.00, -25.50, 90.0),
+        "D7": (-24.00, -25.50, 90.0),
+        "C19": (-5.90, -20.50, 90.0),
+        "C20": (-5.90, -16.50, 90.0),
+        "R10": (-5.90, -12.50, 90.0),
+        "R11": (-5.90, -8.50, 90.0),
+        "R12": (-5.90, -4.50, 90.0),
+        "R13": (-5.90, -0.50, 90.0),
+        "F1": (-9.90, -21.50, 90.0),
+        "C16": (-9.90, -15.50, 90.0),
+        "C17": (-9.90, -9.50, 90.0),
         # ⚠ C18 WAS 18.08 mm FROM THE PIN IT EXISTS TO BYPASS -- the FARTHEST of the
         # three caps on +24V_BUCK, behind the 10 uF bulk at 8.93 and C17 at 13.26. Its
         # own description says "nearest VIN/GND". Nothing checks that a placement honours
         # what a part is FOR, so it drifted and read as decoupling that was present.
         # Now north of U5's VIN pad (-18.475, 20.405), clear of the courtyard's y 21.25.
-        "C18": (-18.475, 21.90, 0.0),
-        "D8": (5.00, 13.00, 0.0),
-        "F2": (13.00, 13.00, 0.0),
-        "U5": (-16.00, 18.50, 0.0),
-        "L2": (-7.00, 18.50, 0.0),
-        "D9": (2.00, 18.50, 0.0),
-        "C21": (9.00, 18.50, 0.0),
-        "C22": (13.50, 18.50, 0.0),
-        "J5": (0.00, 26.00, 0.0),
+        "C18": (-18.80, -21.98, 90.0),
+        "D8": (-9.90, 1.50, 90.0),
+        "F2": (-9.90, 9.50, 90.0),
+        "U5": (-15.40, -19.50, 90.0),
+        "L2": (-15.40, -10.50, 90.0),
+        "D9": (-15.40, -1.50, 90.0),
+        "C21": (-15.40, 5.50, 90.0),
+        "C22": (-15.40, 10.00, 90.0),
+        "J5": (-22.90, -2.60, 90.0),
+        # â”€â”€ the LED strip's buck â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # âš  TWO ROWS, AND THE LAND SIZES ARE WHY. Measured off the routed board rather
+        # than assumed from the body: L3 (Bourns SRN6028) lands 6.92 x 8.11 and U6's
+        # SOIC-8-1EP lands 7.45 x 6.97. Spacing them on the 6x6 BODY put L3's pad 0.69 mm
+        # inside U6's and swallowed C27 whole -- four shorting_items and four
+        # solder_mask_bridges, on a board that was 0/0 before the buck arrived.
+        # Those two parts are ~7-8 mm tall in Y, so they fill a single row by themselves:
+        # row A carries them and the other large bodies, row B the passives.
+        # âš  THE DIVIDERS STAY AT THEIR PINS. An earlier version put FB and EN 20 mm away
+        # and EN_LED came back unconnected; both sit directly above U6 in row B now.
+        # âš  HOT LOOP FIRST: C24/C25 sit against U6's VIN and SW runs straight into L3.
+        # That loop is what radiates, and this board shares an instrument with a magnetic
+        # pickup.
+        "F3": (-27.00, 19.70, 0.0),
+        "C24": (-21.93, 19.70, 0.0),
+        # ⚠ J7 IS OFF THE DOWNWARD EDGE, AND IT WAS OVER IT (user, measured 2026-09-30).
+        # board +X is world -Z -- electronics.stand() maps the flat +X edge to the chassis
+        # floor -- and the rule written 20 lines above is that this edge "carries the two
+        # bus-B JSTs and nothing else, because anything on it would have its cable pointing
+        # down through the service hole". J7 was not merely near that edge: its courtyard
+        # ran to x 130.96 against an outline at 130.95, so it OVERHUNG the board by 0.01 mm
+        # and sat 0.26 mm inside its own clearance. The rule was stated and then not applied
+        # to the part added after it, which is the ordinary way a design rule fails.
+        # Moved 3.00 mm inboard to the NEAREST site that passes a courtyard sweep with a
+        # 2.50 mm keep-off on +X (1.00 elsewhere); it now clears that edge by 2.74 mm, and
+        # J2/J6 have it to themselves as intended.
+        "J7": (21.21, 19.83, 0.0),
+        # row B: the passives, above row A. U6 and L3 are ~7-8 mm tall in Y and fill
+        # row A by themselves, so nothing else fits beside them.
+        "C26": (11.70, 25.00, 0.0),      # at J7, on C31's old site
+        # ⚠ 3.2 mm PITCH, NOT 3.0. At 3.0 the output bulk caps left 0.100 mm between
+        # adjacent pads against a 0.127 rule -- 0.027 short, and DRC is right to say so.
+        # bring-up sense dividers, in the two strips the board already had free:
+        # +5V between U4's courtyard (x 17.25) and J2's (20.71), C4 above and C5 below;
+        # +24V between the decoupling row (y -15.46) and L1 (y -17.66), beside C23's +24V.
+        "R18": (19.00, -9.00, 90.0),
+        "R19": (19.00, -6.50, 90.0),
+        "R20": (9.20, -16.55, 0.0),
+        "R21": (11.40, -16.55, 0.0),
     },
     "refs_on_fab": True,
     # THE GROUND PLANE is why this is four layers, same as the lever board: the
@@ -695,7 +1001,21 @@ BOARD_NOTES = {
     # The J3 -> J1/J2 path still wants deliberate copper; see the trunk note on
     # output_panel for why that is a pinout decision rather than a routing one.
     # GND needs nothing: it has plane copper on In1.Cu and a pour on B.Cu.
-    "net_widths": {"+24V": 0.5},
+    # +24V_LED is the lighting bus after F3: 1.63 A worst case, so it gets the same 0.5 mm
+    # (1.45 A at a 10 C rise; the worst case is every LED at full white, software-capped).
+    "net_widths": {"+24V": 0.5, "+24V_LED": 0.5},
+    # THE BUS-A WEST FEED CROSSES THIS BOARD: J3 (inlet) -> J1 (bus A out). The router laid
+    # it as 35.9 mm of In2.Cu + 20.7 mm of F.Cu at 0.5 mm, ~91 mOhm, which split the dual
+    # feed ~64 / 36 and put up to 2.9 A (ten movers) on copper good for 1.45 A. So that one
+    # path is DECLARED: a 2.0 mm B.Cu bar (1 oz outer, ~4 A at a 10 C rise), 45.5 mm,
+    # ~11 mOhm, down the one B.Cu corridor that was empty on the routed board except for a
+    # four-track band at y -7..-8 the router now has to hop. The rest of the net (fuses,
+    # buck input, sense divider) stays the router's at 0.5 mm.
+    "tracks": [
+        ("+24V", "B.Cu", 2.0, [(12.85, 11.5), (12.85, 3.0), (11.85, 2.0), (-1.0, 2.0),
+                               (-2.0, 1.0), (-2.0, -13.75), (-1.0, -14.75), (0.6, -14.75)]),
+        ("+24V", "B.Cu", 1.2, [(10.35, 11.5), (12.85, 11.5)]),      # J3's two 24 V ways tied
+    ],
     # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
     # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
     # signals straight through the plane, which is exactly what it did here. The damage

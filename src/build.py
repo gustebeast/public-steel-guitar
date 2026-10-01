@@ -96,7 +96,7 @@ PARTS = {
     "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "petg-gf/keyhead_endplate.step", "PETG-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
     "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "petg-gf/knee_housing.step", "PETG-GF — knee-lever (LKL) housing: ONE parametric prism derived from the lever/cartridge/body extents, minus the house-pockets, backstop threads + lever room, plus FOUR fused octagon mount tenons on the top face (one per chassis rib crossing; the +X-most survives only as a stub over each cheek) and the MT6701 board CRADLE on the +Y face (grooves + plinth + floor; the board drops in from +Z with the lever OFF the instrument and the chassis underside becomes its lid — no retaining screw. Ø14 driver bore reserved for the magnet cap, plus a relief channel through the cheek and the -X web for the board's side-entry CAN connector and its plug). Retention is all on -X: the +X web stops at the plinth top so NOTHING stands +X of the prism face. Depth lock deferred"),
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness); the +Y axle journal + magnet stub print INTEGRAL (stand off the lying -Y bed face)"),
-    "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø5 round journals, D-FLAT key through the hub, flange seating on the housing contact rib (= the air-gap datum), threaded magnet pocket. Prints STANDING, POCKET-DOWN, with a brim"),
+    "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø8 journals, D-FLAT key through the hub, flange land seating on the +Y inner race (= the air-gap datum), threaded magnet pocket, M4 thread-forming bore in the −Y tip for the retention screw + washer. Prints STANDING, POCKET-DOWN, with a brim"),
     "kl_magnet_cap": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_magnet_cap, "pctg/kl_magnet_cap.step", "PCTG — magnet CAP ×1: female-threaded HEX nut (9.35 across flats, for a 3/8-inch driver) screwing over the axle's pocket collar to clamp the Ø6 diametric disc; centre stays open so nothing intrudes on the air gap. Fit it BEFORE the sensor board. Prints APERTURE-DOWN"),
     "kv_housing":      (lambda: __import__("src.knee_lever_vert", fromlist=["e"]).kv_housing, "petg-gf/kv_housing.step", "PETG-GF — VERTICAL knee-lever (LKV) housing: same prism derivation as LKL but with the feel block TRANSLATED above the axle (not mirrored — the pocket gable stays up for printability), so the axle sits 19.2 lower and the arm has room to swing UP. Y is asymmetric (-16.10..+13.90): the -Y wall is 2.2 wider to fit TWO octagon tenons at the 23mm rib pitch, while the +Y sensor face is untouched. Tenons slide along local X (= the guitar's Y once posed). Carries the SAME sensor cradle as LKL (knee_lever._cradle, parameterised by the housing Z extents) - the board is just taller here, 31.2 vs 19. Rest stop deferred"),
     "kv_lever":        (lambda: __import__("src.knee_lever_vert", fromlist=["e"]).kv_lever, "pctg/kv_lever.step", "PCTG — VERTICAL knee-lever (LKV) arm: an L. Hub on the axle, a LEG rising +Z carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as LKL's 30°), and a 50mm ARM running +X that the knee lifts — 17.1 of paddle rise"),
@@ -187,6 +187,87 @@ for _i in range(len(_TP.segments)):              # placed deck panels (piece + f
 from . import wiring as _WR_FUSE
 _seg_edges = [CH._SHELL_PX + CH.KH_DT_DEPTH + 2.0] + sorted(CH.SPLIT_X, reverse=True) + [CH.X_NUT]
 chassis_segments = list(chassis_segments)
+# ⚠ THE MOTOR CONTROLLER'S FLOOR PORTS ARE CUT HERE, NOT IN chassis.py. chassis builds its
+# segments at import and electronics imports chassis, so the chassis cannot ask where that
+# board is without a circular import. The assembly knows both, so it does it (see
+# electronics.mctrl_floor_ports).
+from . import electronics as _EL_ports
+# ⚠⚠ THE PI'S AND THE MOTOR BOARD'S CRADLES BELONG TO THE CHASSIS NOW, NOT TO THE ENDPLATE
+# (user, 2026-09-28: "we need to be able to remove the endplate while leaving the pi and
+# motor board in place"). Fused here for the same reason the floor ports are cut here -- the
+# chassis cannot ask electronics where those boards are without a circular import -- and by
+# the same route as wiring.tee_cradles below.
+#
+# ⚠ AND IT IS A DEFECT FIX AS WELL AS A FEATURE. Fused to the ENDPLATE, the motor frame's
+# side walls ran down inside the chassis floor: 2717 mm3 of two printed parts occupying the
+# same space, which check_overlaps never reported because {keyhead_endplate, chassis} is
+# allow-listed wholesale for the endplate's own seating and hold-down screw. Fused to the
+# CHASSIS the same walls are a root instead of an interference, and they are a better root
+# than the endplate ever was: the motor board passes through the floor, so the slab grips it
+# either side of its own port.
+#
+# BEFORE the port cuts, deliberately: the frames' walls sit outside the ports (walls at
+# y -114.9 and -49.1 against a port spanning -113..-51), so cutting afterwards cannot take
+# anything load-bearing away, and it guarantees the ports stay open whatever the frames do.
+_kh_cr = _EL_ports.keyhead_cradles()
+_kh_bb = _kh_cr.val().BoundingBox()
+# ⚠ THE CRADLES REFILLED THE LEVER MORTISES, and the knee housing's tenons live in them.
+# chassis.py cuts a mortise into every rib, then this union laid the cradles' feet back over
+# the same band: 1986.6 mm3 of chassis_2 inside knee_housing, a 68 x 17 x 4.2 slab at
+# z -77.5..-73.3. It is the endplate's cut-before-union fault in a new place (a union after a
+# cut silently refills it), and it sat in the gate as the largest pair for weeks because the
+# count was read as a baseline. The SAME cutters go through the cradles before they fuse.
+from .chassis import _mort_cutters as _kh_mort_cutters
+_kh_mc = _kh_mort_cutters(_kh_bb.xmin - 1.0, _kh_bb.xmax + 1.0)
+if _kh_mc is not None:
+    _kh_cr = _kh_cr.cut(_kh_mc)
+_kh_hit = 0
+for _csi, _cs in enumerate(chassis_segments):
+    _sb = _cs.val().BoundingBox()
+    if _sb.xmin <= _kh_bb.xmin and _kh_bb.xmax <= _sb.xmax + 1e-6:
+        chassis_segments[_csi] = _cs.union(_kh_cr)
+        _kh_hit += 1
+        break
+assert _kh_hit == 1, (
+    "the board cradles (x %.1f..%.1f) did not fall inside exactly one chassis segment -- "
+    "they landed in %d. A cradle that straddles a print split is two halves of a mount."
+    % (_kh_bb.xmin, _kh_bb.xmax, _kh_hit))
+# ⚠ AND ASK WHETHER THEY ATTACHED, because nothing else will. chassis._largest() bins the
+# non-largest solids in a segment, but it runs at IMPORT -- before this union -- so a cradle
+# that touches nothing survives here as a second solid and prints as a loose part. That is the
+# exact failure keyhead_endplate's own assert was written for when it carried them: "the motor
+# controller's came out a free-floating 18,121 mm3 lump, which the overlap gate cannot see --
+# two solids that never touch do not interpenetrate". The question moves with the cradles.
+_kh_n = len(chassis_segments[_csi].val().Solids())
+assert _kh_n == 1, (
+    "the chassis segment came out as %d disconnected solids after fusing the board cradles. "
+    "One of them is not touching: the motor frame's side walls should run INTO the floor slab "
+    "(board bottom edge z -80.85 against a floor top of -71.35) and the Pi's two legs should "
+    "reach it with one bead of overlap. Check electronics.keyhead_cradles's root_d/foot "
+    "against motor_bank.FLOOR_TOP." % _kh_n)
+for _mp in _EL_ports.mctrl_floor_ports():
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
+# ⚠ AND THE FLAT PI'S ANCHOR, WHICH MUST BE CUT HERE AND NOT IN THE CRADLE. pcb_cradle bores
+# its own boss, but that boss is EMBEDDED in the floor slab -- the M4 needs anchor_min_wall
+# below the board's underside, which is deeper than the standoff -- so the floor's own
+# material refills the bore the moment the cradle is unioned above. The gate caught exactly
+# that: 43.9 mm3 of board_screw_2 and 37.5 of board_insert_2 inside chassis_2.
+# Every segment, not `_csi`: that name was rebound by the loop just above, so it no longer
+# points at the segment the cradle went into -- and the other cutters here sweep all segments
+# for the same reason. A bore outside its own segment removes nothing.
+if not os.environ.get("PI_NO_CRADLE"):          # see keyhead_cradles; debug sweeps only
+    _pi_bore = _EL_ports.pi_hold_bore()
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_pi_bore)
+# (pi_cap_relief is GONE, and nothing replaces it. It pocketed 5.8 mm out of the bay's
+#  -Y wall to admit the Pi cap's overhang; the Pi now sits +3.82 with the cap's face FLUSH
+#  on that wall, so there is nothing to admit. The user's point was that the pocket cost
+#  wall strength -- the answer is to not need it, not to make it smaller. See PI_FP.)
+# ...and the LED strip's connector tails, for the same reason and by the same route.
+for _lr in _EL_ports.led_wall_reliefs():
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_lr)
 _fused_segs = set()
 for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
     for _csi in range(len(_seg_edges) - 1):
@@ -264,7 +345,7 @@ _trrs_x = _WR_FUSE.TRRS_X
 # instrument's underside, with the leg's lead left hanging in free air. The user has a
 # wiring plan for it to be implemented later, and until then a board mounted here is a
 # guess that collides with real parts -- it was behind 6 of the model's 14 unintended
-# overlaps (keyhead_endplate, electronics_tray, pi5 and three nut_height screws).
+# overlaps (keyhead_endplate, electronics_tray, pi4 and three nut_height screws).
 #
 # NOTHING IS DELETED. wiring.trrs_cradle / trrs_port / trrs_hold_negatives /
 # trrs_components are all still there and still correct for the station as laid out;
@@ -296,6 +377,11 @@ PARTS["coil_mandrel_sleeve"] = (
     lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).sleeve()),
     "tools/coil_mandrel_sleeve.step",
     "TOOL — the mandrel's outer sleeve, bore Ø23.0. It caps the coil's diameter so the mean lands on arithmetic rather than on spring-back, and holds both axial tails against the barrel while they set. PA6-GF, printed SOLID")
+# LEVER PROGRAMMING JIG -- a SHOP TOOL like the mandrel: exported, never in the assembly.
+PARTS["lever_prog_jig"] = (
+    lambda: heal(__import__("src.lever_jig", fromlist=["e"]).jig()),
+    "tools/lever_prog_jig.step",
+    "TOOL — pogo nest for flashing the 11 lever/pedal sensor boards. The board drops in COMPONENT FACE DOWN onto four P75 pins standing at TP1–TP4 (positions read from the routed board), J1 is powered through the end window, and the pins seat themselves at height against the bench. PETG, printed as drawn")
 
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
@@ -459,21 +545,16 @@ def _build_counter_model(n: int):
 # follows; the guide rod, screw and stops are fixed.
 DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL for i in (0, 1, 8, 9)}
 
-# BELT CLAMP TRAVEL (user, 2026-09-11). Each belt's tension clamp rides the belt, and the
-# belt moves PULLEY_TEETH x BELT_PITCH per screw turn over the carriage's whole travel, so
-# the clamp has to fit on the straight run between the two pulleys' flanges at both ends of
-# that travel. The motor bank is packed toward the keyhead for exactly this; if the shortest
-# run stops covering it, move the bank or shorten the travel -- do not just nudge this.
+# BELT CLAMP TRAVEL. Each belt's tension clamp rides the belt, so it has to stay on the
+# straight run between the two pulleys' flanges over the carriage's whole travel. The travel
+# is DERIVED from that (dimensions.CARRIAGE_TRAVEL) using the clamp's length as a number;
+# this is where that number is held to the solids.
 _CLAMP_XS = [v for _n, _s in BTn.clamp_components(with_lifters=True)
              for v in (_s.val().BoundingBox().xmin, _s.val().BoundingBox().xmax)]
 _CLAMP_L = max(_CLAMP_XS) - min(_CLAMP_XS)
-_BELT_TRAVEL = D.CARRIAGE_TRAVEL / D.SCREW_PITCH * D.PULLEY_TEETH * D.BELT_PITCH
-_CLAMP_RUN_NEED = _BELT_TRAVEL + _CLAMP_L + D.PULLEY_FLANGE_OD
-_SHORTEST_RUN = min(math.hypot(D.motor_pos(i)[0] - D.screw_x(i), D.screw_pulley_z(i) - D.motor_pos(i)[2])
-                    for i in range(D.N_STRINGS))
-assert _SHORTEST_RUN >= _CLAMP_RUN_NEED - 1e-6, (
-    f"the shortest belt run ({_SHORTEST_RUN:.1f}) cannot hold the clamp through its travel: "
-    f"{_BELT_TRAVEL:.1f} of belt travel + {_CLAMP_L:.1f} of clamp + two flanges = {_CLAMP_RUN_NEED:.1f}")
+assert abs(_CLAMP_L - D.BELT_CLAMP_L) < 0.05, (
+    f"the belt clamp measures {_CLAMP_L:.2f} along the belt but dimensions.BELT_CLAMP_L is "
+    f"{D.BELT_CLAMP_L}: the carriage travel and the nut's floor are sized from that number")
 
 
 def _string_components(i):
@@ -557,7 +638,7 @@ def _string_components(i):
     # viewing it, never saw one. Same placement as there, from the same module.
     out.append((f"nut_slide_insert_{i}",
                 NB.slide_insert(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
-    # ...and the M4 x 18 that pushes it up, threading its heat-set in the endplate slab
+    # ...and the M4 x 20 that pushes it up, threading its heat-set in the endplate slab
     out.append((f"nut_height_screw_{i}",
                 NB.height_screw(i).translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))))
     out.append((f"nut_height_insert_{i}",
@@ -606,7 +687,28 @@ def _string_path(i, sy):
                      cz + R * math.sin(th0 + (th1 - th0) * k / N)) for k in range(N + 1)]
     # a bead at every vertex: a tangent join between two cylinders shares no volume, and OCC
     # hands back a compound with the pieces floating free (see the wrap below)
-    out = _rod(p0, pts[0], rad).union(_bead(pts[0], rad))
+    # THE RISE LEAVES THROUGH THE EAR'S HOLE, AND A HEAVY STRING DOES NOT FIT THROUGH IT
+    # STRAIGHT. The ball end seats centred under a Ø3.5 hole and the string leans ~9-13 deg
+    # toward the bearing, so by the flange's top face its centreline has walked up to 1.4
+    # off the hole's axis -- more the higher the nut sits, since the same ANCHOR_DX is spent
+    # over a shorter rise. Past (hole radius - string radius) it is ON THE BRASS. Drawn
+    # straight, the string simply passed through the nut: 0.96 mm3 on string 9 at the top of
+    # travel, and 0.22 where the old top of travel was -- which the demo pose hid by parking
+    # that string at the bottom. So the string is drawn the way it runs: up the hole to the
+    # rim, over the rim, then away to the bearing. That rim is a real break point on the
+    # heavy strings; see INSTALL_NOTES (deburr the ear holes).
+    z_ear = az + D.STRING_NUT_D / 2 + D.NUT_FLANGE_T + 0.1         # just over the flange's top face
+    reach = D.NUT_HOLE_D / 2.0 - rad - 0.05                        # centreline's room in the hole
+    lean = (pts[0].x - p0.x) * (z_ear - p0.z) / (pts[0].z - p0.z)  # ...and what it would take
+    if abs(lean) > reach:
+        rim = cq.Vector(p0.x + math.copysign(reach, lean), sy, z_ear)
+        th0 = _tangent_angle(cx, cz, rim.x, rim.z, R, +1)
+        pts = [cq.Vector(cx + R * math.cos(th0 + (th1 - th0) * k / N), sy,
+                         cz + R * math.sin(th0 + (th1 - th0) * k / N)) for k in range(N + 1)]
+        out = _rod(p0, rim, rad).union(_bead(rim, rad)).union(_rod(rim, pts[0], rad))
+    else:
+        out = _rod(p0, pts[0], rad)
+    out = out.union(_bead(pts[0], rad))
     for pa, pb in zip(pts, pts[1:]):
         out = out.union(_rod(pa, pb, rad)).union(_bead(pb, rad))
     out = out.union(_rod(pts[-1], brk, rad))
@@ -737,14 +839,16 @@ def _pickup_mount_components():
                               head_h=TP.JACK_HEAD_H, socket_af=2.5)
         out.append((f"pickup_jack_screw_{_i}",
                     _screw.translate((_jx, _jy, TP.JACK_HEAD_Z + TP.JACK_HEAD_H))))  # head top over the shoulder
-    # PICKUP RETENTION (user): a -Y horizontal M4 cup-tip SET SCREW (existing BOM nut-block part;
-    # cadkit screw dummy, hex socket) threads a heat-set insert and pushes the pickup +Y against the
+    # PICKUP RETENTION (user): a -Y horizontal M4 x 12 BUTTON HEAD (2.5 mm key; it was a cup-tip
+    # set screw until the one-key rule, 2026-09-30) threads a heat-set insert and pushes the pickup +Y against the
     # +Y wall, locking it to the PLATE only. Threading it in/out meets any pickup in the ~5.5 mm
     # length window; shown here at the DEMO Alumitone (longest, so nearly backed out): tip at PK_YM.
     _ret_face_y = TP.PK_MAX_YM - TP.RET_BOSS_L                        # boss/insert mouth (-Y, at the room edge)
-    _ret_grub = f_screw(M4).rotate((0, 0, 0), (1, 0, 0), 90)          # drive/hex end -Y, cup tip +Y
+    from cadkit.fasteners import m4_button_screw, M4_BUTTON_HEAD_H
+    _ret_grub = m4_button_screw(TP.RET_SCREW_L).rotate((0, 0, 0), (1, 0, 0), 90)   # head -Y, tip +Y
+    _ret_bb = _ret_grub.val().BoundingBox()
     out.append(("pickup_retention_screw",
-                _ret_grub.translate((TP.RET_SCREW_X, TP.PK_YM - M4.screw_l, TP.RET_SCREW_Z))))  # tip at the pickup
+                _ret_grub.translate((TP.RET_SCREW_X, TP.PK_YM - _ret_bb.ymax, TP.RET_SCREW_Z))))  # tip at the pickup
     out.append(("pickup_retention_insert",
                 seated_insert(M4, (TP.RET_SCREW_X, _ret_face_y, TP.RET_SCREW_Z), (0, 1, 0))))
     return out
@@ -821,9 +925,16 @@ def _electronics_components():
     from . import wiring as WR
     from . import top_plate as TP
     # electronics_tray is gone: the Pi's and the motor controller's mounts are cradles
-    # fused into keyhead_endplate now (see electronics.keyhead_cradles). One less printed
-    # part, and the boards gained retention they never had on the tray's bare posts.
-    out = [("pi5", EL.pi5()),
+    # fused into the CHASSIS SEGMENT now (see electronics.keyhead_cradles and the union at
+    # the top of this file) -- NOT the endplate, which is what this said until 2026-09-29.
+    # The endplate has to come off with the boards left in place (user), which is the whole
+    # reason they moved. One less printed part, and the boards gained retention they never
+    # had on the tray's bare posts.
+    # pi_spacer is the flat Pi's RETENTION -- a printed piece, not a dummy. It replaces the
+    # button head that used to clamp the laminate directly: no position beside the board had
+    # room for that screw's anchor below the floor (electronics.PI_SPACER_XY).
+    out = [("pi4", EL.pi4()), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
+           *EL.led_sections(),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            ]
@@ -1085,7 +1196,7 @@ def _knee_lever_components():
     s_hs = (KL.LOBE_RC * (math.sin(thr) - math.sin(eng)) + 1.0) if throw > KL.HS_ENGAGE_DEG else 0.0  # engages @15°
     pose = KL.MOUNT_POSE
     out = [("knee_housing", KL.knee_housing), ("knee_lever", swing(KL.knee_lever)),
-           ("kl_axle", swing(KL.kl_axle)),                  # keyed + set screw -> turns with the lever
+           ("kl_axle", swing(KL.kl_axle)),                  # keyed on its D-flat -> turns with the lever
            ("kl_magnet_cap", swing(KL.kl_magnet_cap))]      # screwed to the axle
     for nm, off, s in (("main", KL.CART_MAIN_OFFSET, s_main), ("half_stop", KL.CART_HALFSTOP_OFFSET, s_hs)):
         out.append((f"{nm}_cart_base", KL.feel_place(KL.cart_base.translate(off))))
@@ -1094,6 +1205,40 @@ def _knee_lever_components():
         out.append((n, swing(s) if n == "kl_magnet" else s))
     # (the octagon mount tenons are FUSED onto knee_housing now -- no separate floating_tenon parts)
     return out
+
+
+def assert_storage_angle(tol=0.5):
+    """KL.STORAGE is MEASURED, not derived, so check it against the real poses.
+
+    The fold's limit is the VERTICAL lever's arm, and knee_lever cannot see either that
+    or this module's station table -- KV imports KL, so the arrow only points one way.
+    The number therefore lives where the sweep needs it and is verified here, where both
+    ends of the question are visible. A station that moves fails loudly.
+    """
+    from OCP.BRepExtrema import BRepExtrema_DistShapeShape
+    from . import knee_lever as KL
+    from . import knee_lever_vert as KV
+
+    vk = [st for st in LEVER_STATIONS if st[1] != "kl"][0]
+    vy = _vkl_mount_y() if vk[3] is None else vk[3]
+    arm = (KV.kv_lever.rotate((0, 0, 0), (0, 0, 1), -90)
+           .translate((vk[2], vy, KV.MOUNT_Z)).val())
+    worst = None
+    for name, kind, sx, sy, mirrored in LEVER_STATIONS:
+        if kind != "kl":
+            continue
+        s = KL.knee_lever.rotate((0, 0, 0), (0, 1, 0), -KL.STORAGE)
+        if mirrored:
+            s = s.mirror("YZ")
+        g = BRepExtrema_DistShapeShape(
+            s.translate((sx, sy if sy is not None else _vkl_mount_y(),
+                         KL.MOUNT_Z)).val().wrapped, arm.wrapped).Value()
+        worst = g if worst is None else min(worst, g)
+    assert worst <= tol, (
+        "KL.STORAGE is %.0f deg but the nearest knee lever still has %.2f mm to the "
+        "vertical lever's arm there -- the fold could go further, or a station moved"
+        % (KL.STORAGE, worst))
+    return worst
 
 
 def _lever_stations_components():
@@ -1121,6 +1266,7 @@ def _lever_stations_components():
     from . import knee_lever_vert as KV
 
     kl_parts, kv_parts = _knee_lever_components(), _knee_vert_components()
+    assert_storage_angle()
     out = []
     for name, kind, sx, sy, mirrored in LEVER_STATIONS:
         if sy is None:
@@ -1166,10 +1312,58 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-    "pi5", "motor_ctrl", "tee_", "wire_",
-    "output_panel", "ui_",
+        "pi4", "pi_cap", "pi_spacer", "led_strip_", "motor_ctrl", "tee_", "wire_",
+        "output_panel", "ui_",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
+
+
+def optical_work_components():
+    """The optical board and the two parts that SHAPE it -- for the O-band work.
+
+    ⚠ body_work_components WAS THE WRONG UNIT FOR THIS AND THE VIEW SHOWED IT. That set is
+    293 parts, essentially the whole instrument, and ScratchView only skips caching for
+    names matching `replaced` prefixes -- so with none declared every live part was ALSO
+    cached and rendered twice. The user saw the old C-shaped board sitting inside the new
+    O-shaped one. A live set that big also saves nothing: the cache exists to skip the
+    build, and there was almost nothing left to skip.
+
+    This is the actual unit of the work: the board, the endplate whose block it cuts into,
+    and the chassis it sits above. Scope it with
+        scope --set src.build --attr optical_work_components --crop bridge               --replaced optical_,bridge_endplate,chassis_
+    so the cache leaves those to the live build instead of duplicating them.
+
+    ⚠ BOTH ENDPLATE BOARDS, NOT JUST THE OPTICAL ONE (user, 2026-09-25). The instrument
+    carries a PCB at each end -- the optical strip in the bridge endplate and the motor
+    controller in the keyhead endplate's cradle -- and the work has crossed between them all
+    day (the bus-B connectors moved to the motor board's downward edge while the optical
+    board was routing). A scope holding one of them makes the other invisible exactly when
+    a change to the chassis has to suit both.
+    """
+    from . import optical_pickup as OP
+    from . import electronics as EL
+    _KE = __import__("src.keyhead_endplate", fromlist=["e"])
+    # ⚠ AND THE FLAT PI WITH ITS SPACER, FOR THE SAME REASON THE MOTOR BOARD IS HERE. The
+    # retention work crossed into the Pi's bay (its hold-down had to leave the board's edge
+    # entirely -- electronics.PI_SPACER_XY), and a scope that hides the part being designed is
+    # how the user came to report "the pi disappeared from your tab". The spacer is the point of
+    # the change, so it has to be visible in the view that reviews it.
+    out = [("optical_pcb", OP.opt_pcb()),
+           ("optical_cable_usb", OP.opt_cables("usb")),
+           ("optical_cable_pwr", OP.opt_cables("pwr")),
+           ("bridge_endplate", PARTS["bridge_endplate"][0]()),
+           ("motor_ctrl", EL.motor_ctrl()),
+           ("pi4", EL.pi4()), ("pi_spacer", EL.pi_spacer()),
+           ("keyhead_endplate", _KE.keyhead_endplate)]
+    # ⚠ AND THE FASTENERS, BECAUSE THEY MOVE WITH THE RETENTION AND THE CACHE DOES NOT KNOW.
+    # Left to the cache, board_screw_2/board_insert_2 stay at the hold position they had when
+    # it was built -- and a scoped gate then reports the OLD screw against the NEW chassis:
+    # 61.1 mm3 into chassis_2, 47.1 of insert, 36.5 into knee_housing and 112.8 through
+    # pi_spacer, every one of them an artefact of an 83-minute-old cache rather than a fault in
+    # the design. Live, they are checked where they actually are.
+    out += EL.board_screws()
+    out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    return out
 
 
 def body_work_components():
@@ -1539,7 +1733,7 @@ _COLORS = {
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),
-    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 18 button, pushes the insert up
+    "nut_height_screw": (0.72, 0.74, 0.78),   # M4 x 20 button, pushes the insert up
     "nut_height_insert": (0.72, 0.60, 0.30),  # M4 heat-set in the keyhead slab
     "nut_slide_insert": (0.86, 0.72, 0.30),   # the sliding insert -- brass-ish, so it
                                               # reads apart from the steel it presses on
@@ -1645,6 +1839,10 @@ _COLORS = {
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
     "knee_lever":      (0.27, 0.51, 0.71),   # PCTG lever/paddle
     "kl_axle":         (0.30, 0.54, 0.68),   # PCTG full-length axle (near the lever blue)
+    "kl_axle_screw":   (0.55, 0.55, 0.58),   # M4 x 10 button in the axle's -Y end
+    "kl_axle_washer":  (0.72, 0.72, 0.75),
+    "kv_axle_screw":   (0.55, 0.55, 0.58),
+    "kv_axle_washer":  (0.72, 0.72, 0.75),
     "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer
     "kl_chip":         (0.12, 0.12, 0.14),   # MT6701 package (black)
     # the rest of the sensor board's real population (knee_lever.SENSOR_BOM). The
@@ -1659,7 +1857,11 @@ _COLORS = {
     "kl_pcb":          (0.05, 0.35, 0.15),   # MT6701 board (green)
     "kl_can_header":   (0.95, 0.95, 0.90),   # JST S4B-XH-SM4-TB + mated XHP-4 (natural white)
     "kv_housing":      (0.30, 0.36, 0.42),   # LKV housing (PETG-GF, as LKL)
-    "kv_lever":        (0.92, 0.72, 0.20),   # LKV arm (PCTG, as LKL)
+    # ...THE SAME BLUE AS LKL'S ARM, not a colour of its own (user, 2026-09-25: "the
+    # levers are blue for LKL but yellow for LKV, we should color them consistently").
+    # The comment beside it already said "as LKL" while the number said otherwise, which
+    # is how it survived: same part, same job, same material, two colours.
+    "kv_lever":        (0.27, 0.51, 0.71),   # LKV arm (PCTG, as LKL -- the same blue)
     "kv_pcb":          (0.05, 0.35, 0.15),   # LKV MT6701 board (green, as LKL)
     "kv_chip":         (0.12, 0.12, 0.14),   # LKV MT6701 package (black)
     "kv_can_header":   (0.95, 0.95, 0.90),   # LKV S4B-XH-SM4-TB + mated XHP-4
@@ -1667,8 +1869,8 @@ _COLORS = {
     # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
     "main_spring":                        (0.55, 0.20, 0.75),
     "half_stop_spring":                   (0.75, 0.45, 0.88),
-    "main_spring_tension_setscrew":       (0.55, 0.55, 0.58),
-    "half_stop_spring_tension_setscrew":  (0.62, 0.62, 0.66),
+    "main_spring_tension_screw":          (0.55, 0.55, 0.58),
+    "half_stop_spring_tension_screw":     (0.62, 0.62, 0.66),
     "main_cart_base":                     (0.85, 0.65, 0.13),   # printed cartridge (shared part)
     "main_cart_piston":                   (0.95, 0.80, 0.30),
     "half_stop_cart_base":                (0.80, 0.60, 0.10),
@@ -1677,12 +1879,15 @@ _COLORS = {
     "half_stop_spring_seat_washer":       (0.72, 0.72, 0.75),
     "main_position_washer":               (0.72, 0.72, 0.75),
     "half_stop_position_washer":          (0.72, 0.72, 0.75),
-    "main_position_setscrew":             (0.55, 0.55, 0.58),
-    "half_stop_position_setscrew":        (0.62, 0.62, 0.66),
+    "main_position_screw":                (0.55, 0.55, 0.58),
+    "half_stop_position_screw":           (0.62, 0.62, 0.66),
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
 
-    "pi5":             (0.05, 0.35, 0.15),   # PCB green
+    "pi4":             (0.05, 0.35, 0.15),   # PCB green
+    "pi_cap":          (0.05, 0.35, 0.15),   # PCB green
+    "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
+    "led_strip_":      (0.05, 0.35, 0.15),   # PCB green
     "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
     "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
@@ -1747,10 +1952,10 @@ _COLORS = {
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
     "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
-    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
-                                             #   wire returns when the optical board is
-                                             #   designed and the pickup plugs into it
-    "wire_link":       (0.95, 0.72, 0.22),   # light amber - motor controller <-> Pi
+    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
+                                             #   shielded lead, coil underside -> the
+                                             #   output panel's J8 screw terminals
+    "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
     # THE UI RIBBON, fourteen conductors. Grey is what 1.27 flat cable is; conductor 1
     # is its red stripe, which is the only marking an IDC cable carries and the only
@@ -1812,10 +2017,19 @@ def _color_for(name):
     # vkl_kv_lever, ...), so they ride this rule too — the alternative was six
     # copies of the same 29 entries, and any station left out would have gone grey
     # exactly the way the pedals did.
-    _st = re.match(r"(?:pedal\d+|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", base)
-    if _st:
+    # PEEL EVERY PREFIX, not one (user, 2026-09-25: "the cartridges/pistons are yellow
+    # for the LKL but white for LKV, we should color them consistently"). A vertical
+    # lever's cartridge is DOUBLY prefixed -- vkl_kv_main_cart_piston, station then
+    # design -- so a single strip reached kv_main_cart_piston, which is in no table, and
+    # the whole feel stack came out default white beside LKL's yellow one. Peeling until
+    # something matches costs nothing and is what "the same part at another station"
+    # actually means.
+    inner = base
+    for _ in range(3):
+        _st = re.match(r"(?:pedal\d+|lkr|vkl|rkl|rkr|kv|kl)_(.+)$", inner)
+        if not _st:
+            break
         inner = _st.group(1)
-        # a KV station is doubly prefixed (vkl_kv_housing): peel to kv_housing too
         for k in (f"kl_{inner}", inner, f"kv_{inner}"):
             if k in _COLORS:
                 return cq.Color(*_COLORS[k])
@@ -1848,7 +2062,8 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
     if not gate:
         return 0
     # both gates always run, so one RED doesn't hide the other's result
-    return _report_overlaps(comps, full=gate_full) | _report_sweep(comps) | _report_dead()
+    return (_report_overlaps(comps, full=gate_full) | _report_sweep(comps)
+            | _report_travel(comps) | _report_dead())
 
 
 # The overlap gate's ACCEPTED baseline: the count of REAL defects tracked
@@ -1899,6 +2114,21 @@ def _report_sweep(comps) -> int:
         print(f"sweep gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
         return 0
     print(f"SWEEP GATE: {'green' if n == 0 else f'RED — {n} swept collision(s)'}", flush=True)
+    return 1 if n else 0
+
+
+def _report_travel(comps) -> int:
+    """The pickup height plate's TRAVEL, on the model we just built. The same blindness as
+    the sweep gate, for a part that slides instead of turning: the overlap gate sees the
+    plate at its lowest and nothing above. Baseline is 0. See tools/check_pickup_travel."""
+    try:
+        from tools.check_pickup_travel import gate
+        n = gate([(name, wp.val()) for name, wp in comps], quiet=True)
+    except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
+        print(f"travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"TRAVEL GATE: {'green' if n == 0 else f'RED -- {n} pair(s) meet in the pickup plate travel'}",
+          flush=True)
     return 1 if n else 0
 
 

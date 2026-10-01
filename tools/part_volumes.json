@@ -35,19 +35,19 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 365651.3
+   "volume_mm3": 384443.8
   },
   "cart_base": {
    "material": "pctg",
-   "volume_mm3": 5511.7
+   "volume_mm3": 5506.2
   },
   "cart_piston": {
    "material": "pctg",
-   "volume_mm3": 852.1
+   "volume_mm3": 772.3
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 640110.6
+   "volume_mm3": 644453.9
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -55,7 +55,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 611110.8
+   "volume_mm3": 615892.9
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -63,7 +63,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 687379.5
+   "volume_mm3": 693274.3
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -87,11 +87,11 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 307371.0
+   "volume_mm3": 280942.7
   },
   "kl_axle": {
    "material": "pctg",
-   "volume_mm3": 1978.2
+   "volume_mm3": 1838.3
   },
   "kl_magnet_cap": {
    "material": "pctg",
@@ -99,19 +99,19 @@
   },
   "knee_housing": {
    "material": "petg-gf",
-   "volume_mm3": 45577.9
+   "volume_mm3": 71675.3
   },
   "knee_lever": {
    "material": "pctg",
-   "volume_mm3": 34465.9
+   "volume_mm3": 34478.0
   },
   "kv_housing": {
    "material": "petg-gf",
-   "volume_mm3": 92080.6
+   "volume_mm3": 97805.0
   },
   "kv_lever": {
    "material": "pctg",
-   "volume_mm3": 20827.2
+   "volume_mm3": 20841.3
   },
   "leg_foot": {
    "material": "tpu",
@@ -121,17 +121,21 @@
    "material": "pctg",
    "volume_mm3": 4125.3
   },
+  "lever_prog_jig": {
+   "material": null,
+   "volume_mm3": 10322.1
+  },
   "motor_pulley": {
    "material": "pctg",
    "volume_mm3": 286.5
   },
   "pedal_bar_a": {
    "material": "petg-gf",
-   "volume_mm3": 392784.6
+   "volume_mm3": 401331.9
   },
   "pedal_bar_b": {
    "material": "petg-gf",
-   "volume_mm3": 419749.8
+   "volume_mm3": 432570.7
   },
   "pedal_bar_c": {
    "material": "petg-gf",
@@ -143,7 +147,7 @@
   },
   "pedal_lever": {
    "material": "pctg",
-   "volume_mm3": 36540.6
+   "volume_mm3": 36554.7
   },
   "pedal_lid_a": {
    "material": "petg-gf",
@@ -155,7 +159,7 @@
   },
   "pickup_zplate": {
    "material": "petg-gf",
-   "volume_mm3": 17686.0
+   "volume_mm3": 17270.7
   },
   "screw_pulley_hi": {
    "material": "pctg",
@@ -191,11 +195,11 @@
   },
   "top_plate_0": {
    "material": "pctg",
-   "volume_mm3": 70619.0
+   "volume_mm3": 69604.6
   },
   "top_plate_0_color": {
    "material": "pctg",
-   "volume_mm3": 21133.5
+   "volume_mm3": 20858.9
   },
   "top_plate_1": {
    "material": "pctg",
@@ -223,11 +227,11 @@
   },
   "top_plate_4": {
    "material": "pctg",
-   "volume_mm3": 256903.7
+   "volume_mm3": 259153.7
   },
   "top_plate_4_color": {
    "material": "pctg",
-   "volume_mm3": 120815.9
+   "volume_mm3": 120718.0
   },
   "ui_clamp": {
    "material": "petg-gf",

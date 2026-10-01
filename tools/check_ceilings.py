@@ -63,10 +63,10 @@ which is the only reason the area is big. A genuinely frightening 12 x 12 bridge
 mm^2 and used to sort BELOW it. So the span -- the shorter in-plane extent -- is printed
 first and sorted on, and --min-span is the filter you actually want.
 
-(The span comes from the face's bounding box, so it is honest for the strips and slabs
-this finds and PESSIMISTIC for an L or a ring, whose box is bigger than anything the
-slicer has to bridge. It over-reports rather than under-reports, which is the right way
-round for a checker.)
+(The span is 4 x area / perimeter, capped by the bounding box -- see _span. The box
+alone was honest for a strip or a slab and wildly pessimistic for a ring, and a ring is
+what a 45 deg corbel is made of. It reads double on a strip or a ring, so a one-bead
+ledge reports 1.6 and the note below is written against two beads.)
 
 DEPTH IS REPORTED TOO, because it changes what a ceiling means. One at the bed plane
 bridges over the plate on layer one -- the worst case, and usually a real defect.
@@ -83,6 +83,8 @@ from __future__ import annotations
 import argparse
 import importlib
 import math
+
+import cadquery as cq
 
 from src import legs as LG
 from src.dimensions import NOZZLE_D as D_NOZZLE
@@ -160,6 +162,7 @@ DECLARED_UP = {
     "kl_axle":           ("src.knee_lever", "AXLE_UP"),
     "kl_magnet_cap":     ("src.knee_lever", "MAGNET_CAP_UP"),
     "cart_base":         ("src.knee_lever", "CART_UP"),
+    "cart_piston":       ("src.knee_lever", "PISTON_UP"),
     "pedal_lid_a":       ("src.pedal_bar", "LID_UP"),
     "pedal_lid_b":       ("src.pedal_bar", "LID_UP"),
     "motor_pulley":      ("src.components", "MOTOR_PULLEY_UP"),
@@ -168,6 +171,7 @@ DECLARED_UP = {
     "tension_fork":      ("src.tension_fork", "PRINT_UP"),
     "coil_mandrel":      ("src.coil_mandrel", "MANDREL_UP"),
     "coil_mandrel_sleeve": ("src.coil_mandrel", "SLEEVE_UP"),
+    "lever_prog_jig":    ("src.lever_jig", "JIG_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
     "ui_clamp":          ("src.ui_panel", "CLAMP_UP"),
@@ -283,6 +287,33 @@ def _dot(a, b):
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 
 
+def _span(f, box_span):
+    """How far the nozzle really has to bridge: the HYDRAULIC DIAMETER, 4 x area over
+    perimeter, capped by the bounding box.
+
+    The box alone was honest for a strip or a slab and wildly pessimistic for a ring --
+    and a ring is what a 45 deg corbel is made of. Each course of helpers.corbel_close is
+    a one-bead ledge closing in around a void, and the box round it measures the VOID:
+    seventy-four of them came back as 21 mm bridges.
+
+    4A/P is exact for a blob (a disc reads its diameter, a square its side) and reads
+    DOUBLE for a long strip or a thin ring, so a one-bead course reports 1.6. That is the
+    right way round for a checker -- it over-reports rather than under-reports -- and it
+    is the reason the ledge note below is written against two beads rather than one.
+
+    (The exact answer is the largest inscribed circle, and it was tried: bisect on the
+    face shrunk by r, outer wire in and holes out. It is right on clean geometry and it
+    cannot be trusted on the rest -- offset2D works in the workplane it is called from,
+    not the face's own plane, so on every part that does not build along Z it failed
+    outright; and on a comb-shaped face on the vertical lever's housing it returned a
+    POSITIVE area for an inward offset of 16 mm on a face 132 mm2 in total, reporting a
+    17.7 mm bridge that does not exist. A measurement that needs its own measurement
+    checked is not one to put in a checker.)
+    """
+    per = sum(e.Length() for e in f.Edges())
+    return min(box_span, 4.0 * f.Area() / per) if per > 1e-9 else box_span
+
+
 def _cross(a, b):
     return (a[1] * b[2] - a[2] * b[1],
             a[2] * b[0] - a[0] * b[2],
@@ -358,7 +389,92 @@ def ceilings(part, up, bed: float, max_tilt: float = 44.0, tol: float = 1e-6):
             ea = [_dot(v, fa) for v in vs]
             eb = [_dot(v, fb) for v in vs]
             span = min(max(ea) - min(ea), max(eb) - min(eb))
-            out.append((span, f.Area(), depth, tilt, c))
+            out.append((_span(f, span), f.Area(), depth, tilt, c))
+    return sorted(out, reverse=True)
+
+
+AX = {"x": 0, "y": 1, "z": 2}      # lost in the bc58ba6 merge; curved_overhangs needs it
+
+
+def curved_overhangs(part, axis: str, bed: float, side: int, thresh_deg: float = 45.0,
+                     tol: float = 1e-6, tess: float = 0.1):
+    """Non-planar faces whose UNDERSIDE overhangs more than `thresh_deg`.
+
+    ⚠ THE CLASS THIS TOOL WAS BLIND TO, AND THE USER FOUND IT BY EYE. The motor board's M4
+    boss was a Ø9.2 cylinder built along a local axis that stand() maps to world +X, so on a
+    Z-up chassis it is a HORIZONTAL cylinder -- and a horizontal cylinder's underside sweeps
+    from 0° at its sides to 90° at its lowest line. `check_ceilings --only chassis` reported
+    "no flat ceilings above the threshold" the whole time, correctly: there is no facet to
+    trip, because the surface is curved. The user read it off a render instead.
+
+    ⚠ AND normalAt() ALONE CANNOT DO THIS, which is why the old code's `except: continue`
+    ("non-planar: no flat ceiling to have") was not merely incomplete but misleading. It
+    returns the normal at ONE parameter: on a full horizontal cylinder that happens to be
+    (0,0,-1), straight down, so the face would pass the axis-aligned test and then be measured
+    with a Center() sitting on the cylinder's AXIS and a span of the whole diameter. On a
+    partial face left by a union it points somewhere else entirely and the face is dropped. One
+    sample of a curved surface is a coin toss either way.
+
+    So the face is TESSELLATED and every triangle's own normal is measured. That needs no UV
+    parameter maths, is exact for the mesh the slicer will see, and gives area weighting for
+    free. Checked against a Ø9.2 horizontal cylinder: triangle area totals 578.0 against a
+    face area of 578.1, worst overhang 88.6°, and 146.8 mm² beyond 45° -- located at the
+    bottom of the barrel, which is where it is.
+
+    Returns [(worst_deg, area_beyond, span, depth, centre)], worst first. `span` and `depth`
+    mean what they do for flat ceilings, measured over the offending triangles only.
+    """
+    import math
+
+    i = AX[axis]
+    # the unit vector pointing TOWARD the bed: the flat check calls a face bed-facing when
+    # comp[i] * side > 0, so that direction is side along the build axis.
+    bed_dir = [0.0, 0.0, 0.0]
+    bed_dir[i] = float(side)
+    out = []
+    for f in part.faces().vals():
+        if f.geomType() == "PLANE":
+            continue                       # flat ceilings are ceilings(); this is the rest
+        try:
+            vs, ts = f.tessellate(tess)
+        except Exception:
+            continue
+        worst, area_over = 0.0, 0.0
+        lo = [1e18, 1e18, 1e18]
+        hi = [-1e18, -1e18, -1e18]
+        acc = [0.0, 0.0, 0.0]
+        for tri in ts:
+            p0, p1, p2 = vs[tri[0]], vs[tri[1]], vs[tri[2]]
+            u = (p1.x - p0.x, p1.y - p0.y, p1.z - p0.z)
+            v = (p2.x - p0.x, p2.y - p0.y, p2.z - p0.z)
+            n = (u[1] * v[2] - u[2] * v[1],
+                 u[2] * v[0] - u[0] * v[2],
+                 u[0] * v[1] - u[1] * v[0])
+            L = math.sqrt(n[0] ** 2 + n[1] ** 2 + n[2] ** 2)
+            if L < 1e-12:
+                continue
+            # + = facing the bed squarely (90° is a flat roof), - = facing away
+            dot = sum(n[k] * bed_dir[k] for k in range(3)) / L
+            deg = math.degrees(math.asin(max(-1.0, min(1.0, dot))))
+            if deg <= thresh_deg:
+                continue
+            a = L / 2.0
+            worst = max(worst, deg)
+            area_over += a
+            for q in (p0, p1, p2):
+                for k, c in enumerate((q.x, q.y, q.z)):
+                    lo[k] = min(lo[k], c)
+                    hi[k] = max(hi[k], c)
+                    acc[k] += c * a
+        if area_over <= tol:
+            continue
+        ctr = tuple(acc[k] / (area_over * 3.0) for k in range(3))
+        depth = (bed - ctr[i]) * side
+        if depth <= tol:
+            continue                       # at the bed plane: printed on the plate, not over air
+        ext = [hi[k] - lo[k] for k in range(3)]
+        span = min(e for k, e in enumerate(ext) if k != i)
+        out.append((worst, area_over, span, depth, ctr))
     return sorted(out, reverse=True)
 
 
@@ -371,6 +487,10 @@ def main() -> int:
     ap.add_argument("--only", help="comma-separated part names")
     ap.add_argument("--min", type=float, default=1.0,
                     help="ignore ceilings smaller than this (mm^2)")
+    ap.add_argument("--overhang", type=float, default=45.0,
+                    help="curved-face overhang threshold in degrees (90 = a flat roof). "
+                         "45 is the usual self-supporting limit; pass 90 to switch the "
+                         "curved check off.")
     ap.add_argument("--min-span", type=float, default=0.0,
                     help="ignore ceilings that bridge less than this (mm). A span at or "
                          "under one nozzle width is a bead-wide ledge, not a bridge.")
@@ -400,14 +520,40 @@ def main() -> int:
               % (nm, up[0], up[1], up[2], bed, len(found), area, worst))
         for span, ar, depth, tilt, c in found:
             flag = "  <-- ON THE BED" if depth < 0.6 else ""
-            if span <= D_NOZZLE + 1e-6:
+            # TWO beads, not one: the span is a hydraulic diameter, which reads double
+            # on exactly the strips and rings this note is for (see _span).
+            if span <= 2 * D_NOZZLE + 1e-6:
                 flag += "  (one bead wide: a ledge, not a bridge)"
             print("    span %6.2f mm  %8.1f mm^2  %5.1f deg off flat  %6.2f mm in from "
                   "the bed  at (%.1f, %.1f, %.1f)%s"
                   % (span, ar, tilt, depth, c[0], c[1], c[2], flag))
         total += len(found)
+        # ⚠ AND THE CURVED ONES, in the same pass and labelled, because the whole finding was
+        # that a report saying "no flat ceilings" reads to everyone as "no overhangs".
+        if a.overhang < 90.0:
+            # ⚠ `axis` and `side` were names from before PARTS carried an `up` VECTOR; the
+            # main merge (bc58ba6) kept this call with them and every run died here with a
+            # NameError AFTER printing the flat ceilings -- so the curved pass silently
+            # never ran. curved_overhangs is axis-aligned, so derive both from `up`.
+            _i = max(range(3), key=lambda k: abs(up[k]))
+            if abs(abs(up[_i]) - 1.0) > 1e-6:
+                print("%-22s ...curved overhangs NOT CHECKED: build direction is not "
+                      "axis-aligned" % "")
+                continue
+            axis, side = "xyz"[_i], (1 if up[_i] > 0 else -1)
+            curved = [c for c in curved_overhangs(part, axis, bed, side, a.overhang)
+                      if c[1] >= a.min and c[2] >= a.min_span]
+            if curved:
+                print("%-22s ...and %d CURVED overhang(s) past %.0f deg"
+                      % ("", len(curved), a.overhang))
+                for worst_d, ar, span, depth, c in curved:
+                    flag = "  <-- ON THE BED" if depth < 0.6 else ""
+                    print("    %5.1f deg  span %6.2f mm  %8.1f mm^2  %6.2f mm in from the bed"
+                          "  at (%.1f, %.1f, %.1f)%s"
+                          % (worst_d, span, ar, depth, c[0], c[1], c[2], flag))
+            total += len(curved)
     if not total:
-        print("\nno flat ceilings above the threshold.")
+        print("\nno flat ceilings and no curved overhang above the thresholds.")
     if not a.only:
         _coverage()
     return 0        # advisory: depth decides severity, so this never gates

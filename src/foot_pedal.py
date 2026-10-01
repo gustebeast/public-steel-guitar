@@ -515,7 +515,7 @@ _BAR_REACH = 1.0
 
 def cut_feel_access(piece, x0: float, x1: float):
     """The feel cartridges' REAR ACCESS per pedal, cut into the fused bar piece:
-    the tension screw's Ø4.4 way and the position screw's washer recess + key way
+    the tension head's Ø8.4 way and the position head's recess + key way
     (KL.cut_feel_rear), carried on THROUGH the bar behind the housing.
 
     Separate from fuse_into_bar and cut AFTER the union, because the bar stands

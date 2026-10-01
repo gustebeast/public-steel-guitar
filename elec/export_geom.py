@@ -22,7 +22,8 @@ This file is the other direction: it reads what KiCad actually placed.
 
 FRAME: board-centred millimetres, +X right, +Y UP (KiCad's Y is down; flipped here so
 the numbers are the ones src/ uses). "fab" is the part's F.Fab outline -- the drawn
-BODY -- and "crtyd" its courtyard. A footprint with no F.Fab gets null and the CAD has to
+BODY -- and "crtyd" its courtyard. "x"/"y" are the footprint's ORIGIN and "pads_xy" its
+pad centroid, which is what the board modules place by; they differ for asymmetric pads. A footprint with no F.Fab gets null and the CAD has to
 say what to do about it rather than quietly use the courtyard.
 """
 import json
@@ -40,6 +41,20 @@ def _bbox(fp, layer, cx, cy):
         if it.GetLayerName() != layer:
             continue
         b = it.GetBoundingBox()
+        xs += [b.GetLeft() / 1e6 - cx, b.GetRight() / 1e6 - cx]
+        ys += [-(b.GetTop() / 1e6 - cy), -(b.GetBottom() / 1e6 - cy)]
+    if not xs:
+        return None
+    return [round(min(xs), 3), round(max(xs), 3), round(min(ys), 3), round(max(ys), 3)]
+
+
+def _tht_bbox(fp, cx, cy):
+    """Bounding box of this footprint's THROUGH-HOLE pads, or None if it is pure SMD."""
+    xs, ys = [], []
+    for p in fp.Pads():
+        if p.GetAttribute() not in (pcbnew.PAD_ATTRIB_PTH, pcbnew.PAD_ATTRIB_NPTH):
+            continue
+        b = p.GetBoundingBox()
         xs += [b.GetLeft() / 1e6 - cx, b.GetRight() / 1e6 - cx]
         ys += [-(b.GetTop() / 1e6 - cy), -(b.GetBottom() / 1e6 - cy)]
     if not xs:
@@ -77,15 +92,35 @@ def export(stem):
     out["holes"] = [_pts(polys.Hole(0, h)) for h in range(polys.HoleCount(0))]
     for fp in board.GetFootprints():
         p = fp.GetPosition()
+        # ...AND THE PAD CENTROID, because that is the coordinate the BOARD MODULES place
+        # by (layout._anchor_on_pads), while "x"/"y" below are the footprint's ORIGIN --
+        # wherever its author put it. The two agree for a two-pad passive and do not for
+        # anything with asymmetric pads: 0.228 mm on a SOT-23-5, 3.75 on a JST header.
+        # Without this, a checker comparing a board module's request to the finished board
+        # is comparing two conventions and reports a difference that is not one.
+        _pads = list(fp.Pads())
+        _pc = ([round(sum(q.GetPosition().x for q in _pads) / len(_pads) / 1e6 - cx, 3),
+                round(-(sum(q.GetPosition().y for q in _pads) / len(_pads) / 1e6 - cy), 3)]
+               if _pads else None)
         out["footprints"].append({
             "ref": fp.GetReference(),
             "fpid": fp.GetFPIDAsString(),
             "x": round(p.x / 1e6 - cx, 3),
             "y": round(-(p.y / 1e6 - cy), 3),
+            "pads_xy": _pc,
             "rot": round(fp.GetOrientationDegrees(), 3),
             "side": "B" if fp.IsFlipped() else "F",
             "fab": _bbox(fp, "B.Fab" if fp.IsFlipped() else "F.Fab", cx, cy),
             "crtyd": _bbox(fp, "B.CrtYd" if fp.IsFlipped() else "F.CrtYd", cx, cy),
+            # ⚠ THROUGH-HOLE PADS, BECAUSE THEIR TAILS ARE GEOMETRY NOBODY WAS MODELLING.
+            # board_geom extrudes each part UPWARD from the board's top face and stops, so
+            # a THT connector's posts -- 3.4 mm below the board on an XH -- did not exist
+            # in the CAD at all. Every overlap check therefore passed on boards whose posts
+            # run into whatever the board is mounted against, which for the LED strip is
+            # the rail wall its back sits ON. This is the same defect the project already
+            # recorded once as "post tails collide along the INSTALL STROKE, not at rest".
+            # The extent is enough to place a tail block; the drill sizes are not needed.
+            "tht": _tht_bbox(fp, cx, cy),
         })
     out["footprints"].sort(key=lambda f: f["ref"])
     dst = os.path.join(GEOM_DIR, os.path.basename(stem) + ".geom.json")

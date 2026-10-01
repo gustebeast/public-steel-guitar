@@ -107,11 +107,13 @@ TEE_TOP   = -19.65                 # highest STRUCTURE under the fret field
 # Measured -- the tee board's own top face is -26.65, its side-entry XH plus a MATED plug
 # is XH_SIDE_H 7.00 on top of that, so the real envelope ends at -19.65. wire_canl runs to
 # -17.15, TWO AND A HALF MILLIMETRES ABOVE ITS OWN PLUG, because src/wiring.py stacks the
-# trunk's four conductors in Z (TRUNK_DZ: gnd -0.8, hot 1.2, canh 3.2, canl 5.2) and canl
+# trunk's four conductors in Z (its old TRUNK_DZ: gnd -0.8, hot 1.2, canh 3.2, canl 5.2) and canl
 # is the top one. So this floor is an artefact, not a part.
 # Holding to it anyway costs 1.5 mm of depth and takes the line 1.21 -> 1.28 : 1. Inverting
 # that stack is a wiring.py change on a shared trunk, so it is FLAGGED, not taken.
-CABLE_TOP = -17.15                 # highest CABLE as DRAWN -- an artefact, see above
+# HISTORY ONLY: wiring.py was corrected 2026-10-01 (bronner b5d3efff -- TRUNK_Z_RUN /
+# TRUNK_Z_OVER, highest conductor top -20.68, under the plugs). Nothing is set from this.
+CABLE_TOP = -17.15                 # where the cable WAS drawn
 # ⚠ THE PLUGS ARE THE FLOOR, AND THE BOARD IS SET FROM THEM (user, 2026-10-01: "the
 # wiring isn't modeled accurately, the plugs on the boards are the actual +z extents").
 # Re-probed against everything but the wire models (tools/_probe_fret_tab.py --no-wires):
@@ -377,20 +379,6 @@ for _p in _PANELS:
         assert wall_floor(_p, _s) - (BOARD_BOT - strip_room(_p, _s)) >= SLIDE_OVER - 1e-9, (
             "%s %+.0fY: the edge wall slides %.2f over what is under it"
             % (_p, _s, wall_floor(_p, _s) - (BOARD_BOT - strip_room(_p, _s))))
-# ⚠ SAY WHICH EDGES LOST THEIR STRIP AND WHY, ONCE, LOUDLY. It is the CAN trunk every
-# time -- docs/fret-led.md 8.1: wiring.py TRUNK_DZ floats canl 2.50 above the plug it
-# lands in, and inverting that stack gives every one of these edges its strip back.
-_starved = [(p, s) for p in _PANELS for s in (-1.0, 1.0) if not has_strip(p, s)]
-if _starved:
-    import sys
-    print("  !! fret_light: no retainer strip on %s -- only %s mm under %s, and a groove "
-          "needs\n     a strip plus its floor (2 x %.2f). See docs/fret-led.md 8.1 on "
-          "wiring.py TRUNK_DZ."
-          % (", ".join("%s%sY" % (p, "+" if s > 0 else "-") for p, s in _starved),
-             ", ".join("%.2f" % strip_room(p, s) for p, s in _starved),
-             ", ".join("the %s trunk" % p for p, s in _starved), D.MIN_WALL),
-          file=sys.stderr)
-
 assert LED_Y_OUT + LED_CRTYD / 2.0 <= BOARD_HALF_W, (
     "the outer LEDs at +-%.2f plus a %.2f courtyard overhang a %.2f-half-width board"
     % (LED_Y_OUT, LED_CRTYD, BOARD_HALF_W))

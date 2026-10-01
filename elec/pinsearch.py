@@ -40,9 +40,7 @@ STEM = os.path.join(HERE, "out", "optical")
 SRC = os.path.join(HERE, "optical.py")
 KI = r"C:\Program Files\KiCad\10.0\bin\python.exe"
 JAVA = os.path.expandvars(r"%LOCALAPPDATA%\Programs\temurin\jdk-25.0.4.1+1-jre\bin\java.exe")
-JAR = (r"C:\Users\gus\AppData\Local\Temp\claude"
-       r"\C--Users-gus-Sync-Documents-Archive-3D-public-steel-guitar"
-       r"\d7576032-b257-4aee-8a45-89e587fe4007\scratchpad\freerouting.jar")
+from route import JAR  # one resolver, not two
 ANALOG = re.compile(r"^TIA_OUT_[0-9]+[AB]$")
 PAIR_RE = re.compile(r'\("([^"]+)",\s*"([^"]+)"\)')
 

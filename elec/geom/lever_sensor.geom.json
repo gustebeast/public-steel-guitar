@@ -1,6 +1,6 @@
 {
  "outline_mm": [
-  31.0,
+  32.025,
   21.9
  ],
  "thickness_mm": 1.6,
@@ -8,434 +8,574 @@
   {
    "ref": "C1",
    "fpid": "C_0402_1005Metric",
-   "x": 0.6,
+   "x": 0.088,
    "y": 8.6,
+   "pads_xy": [
+    0.088,
+    8.6
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    0.05,
-    1.15,
+    -0.463,
+    0.638,
     8.3,
     8.9
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C10",
    "fpid": "C_0402_1005Metric",
-   "x": 11.0,
+   "x": 10.487,
    "y": -2.45,
+   "pads_xy": [
+    10.487,
+    -2.45
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    10.45,
-    11.55,
+    9.938,
+    11.037,
     -2.75,
     -2.15
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C11",
    "fpid": "C_0402_1005Metric",
-   "x": 8.5,
+   "x": 7.987,
    "y": 0.85,
+   "pads_xy": [
+    7.987,
+    0.85
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    7.95,
-    9.05,
+    7.438,
+    8.537,
     0.55,
     1.15
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C2",
    "fpid": "C_0402_1005Metric",
-   "x": 0.6,
+   "x": 0.088,
    "y": 7.3,
+   "pads_xy": [
+    0.088,
+    7.3
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    0.05,
-    1.15,
+    -0.463,
+    0.638,
     7.0,
     7.6
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C4",
    "fpid": "C_0402_1005Metric",
-   "x": 7.5,
+   "x": 6.987,
    "y": -4.85,
+   "pads_xy": [
+    6.987,
+    -4.85
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    6.95,
-    8.05,
+    6.438,
+    7.537,
     -5.15,
     -4.55
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C5",
    "fpid": "C_0402_1005Metric",
-   "x": 5.1,
+   "x": 4.588,
    "y": -1.05,
+   "pads_xy": [
+    4.588,
+    -1.05
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    4.55,
-    5.65,
+    4.037,
+    5.138,
     -1.35,
     -0.75
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C6",
    "fpid": "C_0402_1005Metric",
-   "x": 5.1,
+   "x": 4.588,
    "y": -2.85,
+   "pads_xy": [
+    4.588,
+    -2.85
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    4.55,
-    5.65,
+    4.037,
+    5.138,
     -3.15,
     -2.55
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C7",
    "fpid": "C_0402_1005Metric",
-   "x": -1.05,
+   "x": -1.562,
    "y": 5.3,
+   "pads_xy": [
+    -1.562,
+    5.3
+   ],
    "rot": 90.0,
    "side": "F",
    "fab": [
-    -1.35,
-    -0.75,
+    -1.862,
+    -1.263,
     4.75,
     5.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C8",
    "fpid": "C_0402_1005Metric",
-   "x": 9.0,
+   "x": 8.487,
    "y": 4.65,
+   "pads_xy": [
+    8.487,
+    4.65
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    8.45,
-    9.55,
+    7.938,
+    9.037,
     4.35,
     4.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C9",
    "fpid": "C_0402_1005Metric",
-   "x": 7.0,
+   "x": 6.487,
    "y": 4.65,
+   "pads_xy": [
+    6.487,
+    4.65
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    6.45,
-    7.55,
+    5.938,
+    7.037,
     4.35,
     4.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D2",
    "fpid": "D_SOD-523",
-   "x": 7.3,
+   "x": 6.787,
    "y": -8.35,
+   "pads_xy": [
+    6.787,
+    -8.35
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    6.199,
-    8.401,
+    5.686,
+    7.889,
     -8.85,
     -6.202
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D3",
    "fpid": "D_SOD-523",
-   "x": 10.1,
+   "x": 9.588,
    "y": -8.35,
+   "pads_xy": [
+    9.588,
+    -8.35
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    8.999,
-    11.201,
+    8.486,
+    10.689,
     -8.85,
     -6.202
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J1",
    "fpid": "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal",
-   "x": -8.05,
+   "x": -8.562,
    "y": -0.0,
+   "pads_xy": [
+    -6.862,
+    -0.0
+   ],
    "rot": -90.0,
    "side": "F",
    "fab": [
-    -12.5,
-    -4.8,
+    -13.013,
+    -5.312,
     -10.0,
     10.0
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "JP1",
    "fpid": "SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
-   "x": 11.0,
+   "x": 10.487,
    "y": -6.25,
+   "pads_xy": [
+    10.487,
+    -6.25
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": null,
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R3",
    "fpid": "R_0402_1005Metric",
-   "x": 7.5,
+   "x": 6.987,
    "y": -6.35,
+   "pads_xy": [
+    6.987,
+    -6.35
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    6.925,
-    8.075,
+    6.412,
+    7.562,
     -6.67,
     -6.03
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R4",
    "fpid": "R_0402_1005Metric",
-   "x": 11.0,
+   "x": 10.487,
    "y": -4.3,
+   "pads_xy": [
+    10.487,
+    -4.3
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    10.425,
-    11.575,
+    9.912,
+    11.062,
     -4.62,
     -3.98
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R5",
    "fpid": "R_0402_1005Metric",
-   "x": 12.5,
-   "y": 4.35,
+   "x": 11.987,
+   "y": 4.05,
+   "pads_xy": [
+    11.987,
+    4.05
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    11.925,
-    13.075,
-    4.03,
-    4.67
+    11.412,
+    12.562,
+    3.73,
+    4.37
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R6",
    "fpid": "R_0402_1005Metric",
-   "x": 12.9,
+   "x": 12.388,
    "y": -2.47,
+   "pads_xy": [
+    12.388,
+    -2.47
+   ],
    "rot": -90.0,
    "side": "F",
    "fab": [
-    12.58,
-    13.22,
+    12.067,
+    12.707,
     -3.045,
     -1.895
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R7",
    "fpid": "R_0402_1005Metric",
-   "x": 12.4,
+   "x": 11.888,
    "y": 7.15,
+   "pads_xy": [
+    11.888,
+    7.15
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    11.825,
-    12.975,
+    11.312,
+    12.463,
     6.83,
     7.47
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP1",
    "fpid": "TestPoint_Pad_D1.0mm",
-   "x": 8.0,
+   "x": 7.487,
    "y": 8.8,
+   "pads_xy": [
+    7.487,
+    8.8
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    6.518,
-    9.482,
+    6.005,
+    8.97,
     9.402,
     11.098
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP2",
    "fpid": "TestPoint_Pad_D1.0mm",
-   "x": 10.4,
+   "x": 9.888,
    "y": 8.8,
+   "pads_xy": [
+    9.888,
+    8.8
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    8.918,
-    11.882,
+    8.405,
+    11.37,
     9.402,
     11.098
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP3",
    "fpid": "TestPoint_Pad_D1.0mm",
-   "x": 8.0,
+   "x": 7.487,
    "y": 6.5,
+   "pads_xy": [
+    7.487,
+    6.5
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    6.518,
-    9.482,
+    6.005,
+    8.97,
     7.102,
     8.798
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP4",
    "fpid": "TestPoint_Pad_D1.0mm",
-   "x": -1.65,
+   "x": -2.162,
    "y": 8.9,
+   "pads_xy": [
+    -2.162,
+    8.9
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -3.132,
-    -0.168,
+    -3.645,
+    -0.68,
     9.502,
     11.198
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U1",
    "fpid": "SOT-23-5",
-   "x": 4.228,
+   "x": 3.715,
    "y": 8.0,
+   "pads_xy": [
+    3.487,
+    8.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    3.377,
-    5.078,
+    2.865,
+    4.565,
     6.5,
     9.5
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U2",
    "fpid": "SOIC-8_3.9x4.9mm_P1.27mm",
-   "x": 2.0,
+   "x": 1.487,
    "y": -6.15,
+   "pads_xy": [
+    1.487,
+    -6.15
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    0.0,
-    4.0,
+    -0.513,
+    3.487,
     -8.65,
     -3.65
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U3",
    "fpid": "QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm",
-   "x": 2.5,
+   "x": 1.987,
    "y": 3.0,
+   "pads_xy": [
+    1.987,
+    3.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    0.45,
-    4.55,
+    -0.062,
+    4.037,
     0.95,
     5.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U4",
    "fpid": "QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm",
-   "x": 12.5,
+   "x": 11.987,
    "y": 0.85,
+   "pads_xy": [
+    11.987,
+    0.85
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    10.95,
-    14.05,
+    10.438,
+    13.537,
     -0.7,
     2.4
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Y1",
    "fpid": "Crystal_SMD_3225-4Pin_3.2x2.5mm",
-   "x": 0.6,
+   "x": 0.088,
    "y": -1.55,
+   "pads_xy": [
+    0.088,
+    -1.55
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
-    -1.05,
-    2.25,
+    -1.562,
+    1.737,
     -2.85,
     -0.25
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   }
  ],
  "outline_poly": [
   [
-   15.5,
+   16.013,
    -10.95
   ],
   [
-   -15.5,
+   -16.013,
    -10.95
   ],
   [
-   -15.5,
+   -16.013,
    10.95
   ],
   [
-   15.5,
+   16.013,
    10.95
   ]
  ],

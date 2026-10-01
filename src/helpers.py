@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
+from OCP.ShapeUpgrade import ShapeUpgrade_UnifySameDomain  # type: ignore[import]
 
 from .dimensions import NEMA17_BOLT_SQ, NEMA17_PILOT_D, M3_CLR_D, BOOL_OVERSHOOT
 
@@ -33,6 +36,286 @@ def cyl_x(d: float, length: float, x0: float, *, y: float = 0.0,
     centred on (y, z). Off-axis coordinates keyword-only -- see cyl_y."""
     return cq.Workplane("XY").add(cq.Solid.makeCylinder(
         d / 2, length, pnt=cq.Vector(x0, y, z), dir=cq.Vector(1, 0, 0)))
+
+
+_BIAS = 0.02        # see the draft call: insurance against an exact-45 coincidence
+
+
+def corbel_close(w, crop, z0, z1, step, align=None, keep_frac=0.5, debug=False):
+    r"""Cut ONE REGION of a part back to what the 45 deg rule can support, growing the
+    support out of EVERY wall around it at once.
+
+    THE RULE, AND WHY ONE PLANE IS NOT ENOUGH. Material prints if it is within 45 deg of
+    material below it, transitively -- each layer may step out one layer-height. The cheap
+    fix for a roof over a void is to pick one wall and cut a 45 down to it, but that
+    throws away everything the OTHER walls could have carried. Here the supported set is
+    grown from every wall there is, at once, so the roof survives wherever ANY of them can
+    reach it (user, 2026-09-28: "ideally we would use all of them to maximize the amount
+    of material above the levers").
+
+    HOW. Layer by layer, inside `crop` only:
+
+        supported(z) = dilate_xy( supported(z - step) U material_outside_crop(z), step )
+                       AND material(z)
+
+    THE `crop` IS NOT AN OPTIMISATION, IT IS THE SEED (user, 2026-09-28: "we can focus it
+    to just the area we need help with"). Run over a whole part the sweep has to start at
+    the print bed, because anywhere else something begins higher up, has no seed, and gets
+    cut -- measured on this housing as 5 solids and 17% of the volume gone. Sweeping from
+    the bed then timed out past 500 s. Confined to the region that actually has the
+    overhang, the material OUTSIDE it is by definition untouched, so it can be handed in
+    as support at every layer -- which is both correct and cheap, because the walls that
+    re-seed the sweep are exactly the walls the user wants the 45s grown from.
+
+    AND IT DOES NO BOOLEANS ON THE REAL PART. The obvious 3D form -- eight translated
+    copies fused per layer -- ran past 600 s on one housing against a 30 s budget for the
+    instrument. The work is all in the booleans, so this takes a 0.02 thick SECTION per
+    layer (0.3 s for nine), dilates those faces with a 2D offset, and only ever intersects
+    thin prisms of faces against each other.
+
+    IT UNDER-CUTS RATHER THAN OVER-CUTS. The dilation is an outward 2D offset, exact for
+    straight walls and slightly generous on a convex corner; the intersection against the
+    real section clips whatever that generosity invented. `keep_frac` asserts the result
+    is not a collapse: a sweep that silently returns almost nothing is the failure mode
+    this project has already been bitten by once (see the note on the 16-way growth fuse).
+    """
+    sol = w.val() if hasattr(w, "val") else w
+    crop_s = crop.val() if hasattr(crop, "val") else crop
+    big = 400.0
+    # THE BAND ENDS AT z1 EXACTLY, and the courses are laid out to land on `align`.
+    #
+    # Rounding the course count instead left the band 0.11 short of the housing's top
+    # face, so the last 0.11 of the roof was never in the sweep: an untouched slab on
+    # top of the carved course below it, 104 mm2 bridging 10.13 mm. Filling that in with
+    # a leftover course of its own was no better -- a course is allowed to step out by
+    # its own height, and a 0.11 mm course carrying a 0.8 mm ledge is an 82 deg overhang
+    # with 0.11 mm of material in it, which check_thin duly found.
+    #
+    # The cure is to put a course boundary ON the face that matters (`align` -- the
+    # housing's roof), so the roof's top is a course top and nothing is left over above
+    # it. The remainder goes to the BOTTOM course instead, where it is harmless: that
+    # one sits on the print bed and steps out nowhere.
+    bnds = [z0]
+    g = z1 if align is None else align - step * math.ceil((align - z0) / step - 1e-9)
+    if align is None:
+        while bnds[-1] + step < z1 - 1e-9:
+            bnds.append(bnds[-1] + step)
+    else:
+        while g < z1 - 1e-9:
+            if g > z0 + 1e-9:
+                bnds.append(g)
+            g += step
+    bnds.append(z1)
+    band = crop_s.intersect(box_at(big, big, z1 - z0, x=0.0, y=0.0,
+                                   z=(z0 + z1) / 2.0).val())
+    cb = crop_s.BoundingBox()
+    region = sol.intersect(band)            # the only material this may change
+    # ...AND THE WALLS IT GROWS THE 45s OUT OF -- but only a COLLAR of them. Outside
+    # material re-seeds the sweep at every course, so its reach into the region is one
+    # course and no more; the rest of the housing behind it can never matter. Sectioning
+    # and drafting the whole part per course instead of a 1.6 mm collar was most of the
+    # run time and none of the answer.
+    grab = 2 * step
+    outside = sol.cut(crop_s).intersect(
+        box_at(cb.xlen + 2 * grab, cb.ylen + 2 * grab, cb.zlen + 2 * grab,
+               x=(cb.xmin + cb.xmax) / 2, y=(cb.ymin + cb.ymax) / 2,
+               z=(cb.zmin + cb.zmax) / 2).val())
+
+    def faces_at(shape, z):
+        """The cross-section at `z`, as the bottom faces of a hair-thin slab ABOVE it.
+
+        Above, not centred on it: the region is clipped to the band, so a slab centred on
+        z0 is half outside it and the section comes back at the band's own bottom face,
+        z0 exactly -- which a `< z` test then discards. The seed layer came out EMPTY and
+        the sweep kept 2% of the first layer before anything was wrong with the rule."""
+        sl = shape.intersect(box_at(big, big, 0.02, x=0.0, y=0.0, z=z + 0.01).val())
+        return [f for f in sl.Faces()
+                if abs(f.normalAt().z) > 0.999 and f.Center().z < z + 0.005]
+
+    def draft(fs, z, t):
+        """The faces stood up `t` tall at `z` and SPREAD at 45 deg on the way -- the
+        support's own reach through the course, as a solid with exact faces.
+
+        OCC drafts the wire, so a straight edge gives a true plane and an arc a true
+        cone; this is the smooth form of the same 45 the 2D offset does per course.
+        None if any of it refuses (a wire too tight to draft), so the caller can fall
+        back to the stepped form for that course."""
+        out = []
+        for f in fs:
+            g = f.translate((0, 0, z - f.Center().z))
+            try:
+                out.append(cq.Solid.extrudeLinear(g.outerWire(), list(g.innerWires()),
+                                                  cq.Vector(0, 0, t), taper=-45))
+            except Exception:
+                return None
+        return None if not out else (out[0] if len(out) == 1 else out[0].fuse(*out[1:]))
+
+    def prism(fs, z, t):
+        """The faces stood up as one solid `t` tall at `z` -- in ONE multi-fuse.
+
+        Fusing them on at a time is quadratic, and it is the whole cost of this: the
+        supported set fragments as it grows, and by the top layer a one-at-a-time fuse of
+        its pieces took 96 s against 0.1 s at the bottom."""
+        prs = [cq.Solid.extrudeLinear(f.translate((0, 0, z - f.Center().z)),
+                                      cq.Vector(0, 0, t)) for f in fs]
+        return None if not prs else (prs[0] if len(prs) == 1 else prs[0].fuse(*prs[1:]))
+
+    def _top_faces(sh, z):
+        """The course's TOP section -- what the next course is allowed to step out from.
+
+        Its BOTTOM section is the obvious thing to carry and it is wrong by one course: a
+        slice that reaches z + t may overhang the material at z by t, so the support for
+        it is the section at z, which is the top of the course below. Carrying the bottom
+        instead shaved the upper half of every step off a 45 deg face that was already
+        perfect -- a clean gable came back staircased, 1.1% of the block gone."""
+        return [f for f in sh.Faces()
+                if abs(f.normalAt().z) > 0.999 and f.Center().z > z - 1e-6]
+
+    def unify(sh):
+        """Merge the coplanar faces an intersection leaves behind.
+
+        Same reason as the multi-fuse: each layer is cut out of the one below it, so its
+        underside comes back as dozens of coplanar shards, and the NEXT layer offsets and
+        stands up every one of them. Merging them back into whole faces keeps the count
+        flat instead of compounding."""
+        try:
+            u = ShapeUpgrade_UnifySameDomain(sh.wrapped, True, True, False)
+            u.Build()
+            return cq.Shape.cast(u.Shape())
+        except Exception:
+            return sh
+
+    def _off(wire, d):
+        return cq.Workplane(obj=wire).wires().toPending().offset2D(d, kind="intersection").vals()
+
+    def dilate(fs, d):
+        """Each face grown by `d` in XY -- OUTER wire out, INNER wires in.
+
+        Offsetting every wire of a face the same way, which is what a plain offset2D on
+        the face does, grows the HOLES as well and then rebuilds them as solid faces: a
+        Ø6 bore came back as a Ø8 disc of support. That is the wrong direction -- it
+        invents support over a hole -- so the outer and inner wires are offset with
+        opposite signs, and a hole narrower than 2d simply closes.
+        """
+        out = []
+        for f in fs:
+            try:
+                inner = []
+                for iw in f.innerWires():
+                    try:
+                        inner += [v for v in _off(iw, -d) if isinstance(v, cq.Wire)]
+                    except Exception:
+                        pass              # a hole smaller than the step: it closes up
+                for ow in _off(f.outerWire(), d):
+                    if isinstance(ow, cq.Face):
+                        out.append(ow)
+                        continue
+                    try:
+                        out.append(cq.Face.makeFromWires(ow, inner))
+                    except Exception:
+                        out.append(cq.Face.makeFromWires(ow))
+            except Exception:
+                out.append(f)             # un-offsettable (a sliver): leave it as it is
+        return out
+
+    keep, segs, area_kept, area_all = [], [], 0.0, 0.0
+    t0 = bnds[1] - bnds[0]                # the bottom course stands as it is: it is the
+    seed = faces_at(region, z0)           #   print bed, or the floor under the region
+    lay = prism(seed, z0, t0)
+    if lay is not None:
+        keep.append(lay)
+    sup = seed
+    for i in range(1, len(bnds) - 1):
+        z, t = bnds[i], bnds[i + 1] - bnds[i]   # a course steps out by its OWN height
+        out_f = faces_at(outside, z)
+        allowed = prism(faces_at(region, z), z, t)
+        if allowed is None:
+            sup = []
+            continue
+        base = dilate(sup + out_f, t)     # what holds this course up, AT ITS OWN FLOOR:
+        grown = prism(base, z, t)         #   the course below, reached out by one step
+        lay = allowed if grown is None else unify(allowed.intersect(grown))
+        # WHAT THE COURSE REMOVES, cut by the support's DRAFTED reach rather than its
+        # stepped one. Drafting the support OUTWARD is the right way round: drafting the
+        # removal inward instead pulls it back off the part's own outer face, where
+        # there is no support to pull back towards, and leaves a wedge of roof standing
+        # there -- one loose plate per course, eighteen solids on LKL.
+        # ── WHAT THIS COURSE REMOVES ──────────────────────────────────────────────
+        # EVERY COURSE, not just the ones the STEPS find something in. Screening on the
+        # stepped cut looks safe -- the smooth cut is a subset of it -- and it is not:
+        # a course whose own floor is fully supported can still carry material that
+        # appears ABOVE that floor and is not. It saved 8 s and cost a loose solid.
+        bare = None
+        if grown is not None:
+            # FROM THE COURSE'S OWN FLOOR, not from the course below it: drafting from
+            # the one below starts the spread a whole step too tight and eats a step off
+            # every sloped face (the 45 deg gable that must come back bit for bit lost
+            # 1.1%). And with a hair of BIAS, because the draft is EXACT: on a face that
+            # is already 45 deg the cut can land exactly tangent to the material, and a
+            # tangent boolean is where a kernel produces slivers. Both levers carry a
+            # 45 deg knee relief, so the coincidence is not hypothetical. Measured, it
+            # changes nothing today -- 426 faces against 431, same volumes, same one
+            # solid -- so it is insurance at a distance no printer can express, not a
+            # fix for anything currently broken.
+            spread = draft(base, z - _BIAS, t + 2 * _BIAS)
+            # ...AND IT CUTS THE REAL SLICE, not the section stood up. A course removes
+            # material that never touches its own floor -- a roof starting mid-course has
+            # no section down there -- and cutting only the prism left that material
+            # behind as loose plates, one per course, thirteen solids on LKL.
+            slice_ = region.intersect(
+                box_at(big, big, t, x=0.0, y=0.0, z=z + t / 2.0).val())
+            bare = slice_.cut(spread if spread is not None else grown)
+        area_kept += lay.Volume(); area_all += allowed.Volume()
+        if debug:
+            print("   z %7.2f  kept %6.1f of %6.1f mm3  (%3.0f%%)"
+                  % (z, lay.Volume(), allowed.Volume(),
+                     100 * lay.Volume() / max(allowed.Volume(), 1e-9)), flush=True)
+        keep.append(lay)                  # ONE multi-fuse at the end, not N unions:
+                                          #   fusing layer onto layer took this housing
+                                          #   past 600 s on its own
+        if bare is not None and bare.Solids():
+            segs.append(bare)
+        sup = _top_faces(lay, z + t)
+    assert area_all > 0 and area_kept / area_all >= keep_frac, (
+        "the 45 deg closure kept only %.0f%% of the material in %.2f..%.2f -- that is a "
+        "collapsed sweep, not a roof" % (100 * area_kept / max(area_all, 1e-9), z0, z1))
+    # ...and the part is CUT by what the courses removed, not rebuilt out of them
+    cut = _taper_cut(segs)
+    return cq.Workplane("XY").add(sol.cut(cut) if cut is not None else sol)
+
+
+def _taper_cut(segs):
+    r"""The courses' removals, rebuilt as ONE solid with true 45 deg faces.
+
+    Stacking the kept courses works and it LOOKS like Minecraft (user, 2026-09-29: "the
+    cuts look like minecraft. Is there a way we can reproduce this with clean cuts?").
+    It also re-facets every other face in the band on the way past.
+
+    THE COURSES ARE THE ANALYSIS; WHAT GETS BUILT IS WHAT THEY SAY TO REMOVE. Each one
+    hands over its unsupported FOOTPRINT, and that footprint is extruded with a 45 deg
+    inward TAPER rather than stood up as a prism. The taper is not an approximation --
+    OCC drafts the wire, so a straight edge gives an exact plane and an arc an exact
+    cone -- and it is exactly what the course means: material one course higher is
+    supported only if it is a course further in.
+
+    Consecutive courses then AGREE: tapering a footprint by t lands on the next course's
+    footprint, so the faces are coplanar across the whole run and heal() merges them into
+    single planes. The staircase collapses into the flat it was approximating.
+
+    (A ruled LOFT between consecutive footprints was tried first and is the wrong tool:
+    it rules by parameter, not by offset, so wherever two outlines do not correspond the
+    surface skews. It left 20 mm2 of roof at 10.3 deg off flat and several more at 6-15,
+    which is worse than the staircase it replaced.)
+
+    A footprint too narrow to taper by a whole course self-intersects and OCC refuses it;
+    that course falls back to the prism it always was, and the two meet on the section
+    they share."""
+    out = []
+    for bare in segs:
+        out += bare.Solids()
+    if not out:
+        return None
+    return out[0] if len(out) == 1 else out[0].fuse(*out[1:])
 
 
 def pose_dir(rots, v):

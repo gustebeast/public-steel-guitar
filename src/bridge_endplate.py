@@ -43,7 +43,7 @@ in any other and something either will not fit or will not stay:
      until its top clears the rail into the changer room, spin the nut on THERE, then
      carry on up into the top bearing — so the room has to stay reachable at that
      moment, and anything that later claims that space has to answer for this.
-  2. bearings and comb fingers aligned, then the AXLE from +Y (see AXLE_BORE)
+  2. each bearing laid in its own slot, then the AXLE DROPPED IN from +Z (see AXLE_BORE)
   3. the GUIDE RODS, dropped in from +Z (see GUIDE_DROP_Z1) — last before stringing,
      since the strings then run over their tops
   4. the OPTICAL STRIP, screwed down: it closes the axle's install channel, which
@@ -51,6 +51,8 @@ in any other and something either will not fit or will not stay:
 """
 
 from __future__ import annotations
+
+import math
 
 import cadquery as cq
 
@@ -155,10 +157,23 @@ ARM_W = D.BRIDGE_ARM_W             # arm / edge-web thickness (Y) — kept clear
 # tail (string-termination → +X tip) is a solid prism filled to that height — no more
 # drop-down cap. BEAR_TOP is single-sourced from the bearing OD so it tracks the string plane.
 BEAR_TOP = D.STRING_Z                                              # 16.0 = bearing top = string plane
-ARM_TOP = BEAR_TOP                                                # side walls flush to the flat top
-#   (was 15.70 = bore + a 2 mm cap; now the arms rise the last 0.3 to the bearing top so the
-#    side walls match the filled tail. There is no axle grub any more to care -- the optical
-#    strip is the +Y stop; see AXLE_END_WALL)
+# ⚠ THE ARMS STOP AT THE BOARD'S SEAT NOW, NOT AT THE BEARING TOP (user, 2026-09-23, who
+# put the cursor on the offending block: X 0.95, Y -50.65, Z 16.00). They used to rise the
+# last 0.3 to BEAR_TOP so their side walls matched the filled tail -- a flat-top cosmetic --
+# and to host the TIE BAR, which no longer exists (only a stale comment in _build still
+# mentions it). Nothing above the bore's crown at 12.2 was holding the axle.
+#
+# What it cost was real, and the layer walk is what showed it: standing to 16.0 the arms had
+# to poke through slots in the board, and at each slot's +X edge the arm re-appeared from the
+# relief floor to 15.80 IN ONE LAYER -- a 4.8 x 3.8 wall printing over air, twice. A face
+# normal check cannot see that; both faces are vertical.
+#
+# Stopping at the board's seat deletes the whole problem rather than ramping round it: there
+# is no step because there is nothing to step up to, the board needs no arm slots (two more
+# solid strips for the router), and the arm's bore just becomes an open-topped U like every
+# comb finger's -- a 2.29 mm slot against a 8.00 shaft, so it still cannot lift out, and the
+# wrap resultant at 7:20..7:42 is nowhere near the material removed.
+ARM_TOP = OP.PLINTH_TOP                                           # 12.04, the board's seat
 MIN_ADDED = D.MIN_WALL_2P         # 1.6 -- two-bead QUALITY floor for material this
                                   # feature ADDS (single-sourced via dimensions)
 
@@ -216,8 +231,9 @@ ROOM_Z1      = D.CHANGER_CEIL_Z               # -3.2 — the changer room's
                                               # seat mouth. The screw no longer stops
                                               # under the ceiling; it runs on past the
                                               # nut INTO the slab, to its top bearing.
-assert D.NUT_TOP_MAX < ROOM_Z1 - 1.0 + 1e-9, (
-    f"the nut's top of travel ({D.NUT_TOP_MAX}) does not clear the room ceiling")
+assert abs(D.NUT_TOP_MAX - ROOM_Z1) < 1e-9, (
+    f"the nut's top of travel ({D.NUT_TOP_MAX}) is not the room ceiling ({ROOM_Z1}): the "
+    f"ceiling IS the top stop (dimensions.NUT_TOP_Z)")
 # Fingers and braces — everything INSIDE the endplate — put their underside on the
 # ceiling, so no later union can hang back down into the room.
 UNDER_Z      = ROOM_Z1
@@ -254,38 +270,66 @@ AXLE_BORE = D.BRIDGE_AXLE_D + 0.4
 # carry no shoulder and nothing can be fitted to it afterwards from the side.
 #
 #   -Y stop: the -Y arm's bore is BLIND. That AXLE_END_WALL of material is the stop.
-#   +Y stop: the OPTICAL STRIP (user). Its +X head turns over the endplate at
-#            OP.HEAD_Y0, 0.75 outboard of the arm face the shaft ends flush with, and
-#            its underside is 2.34 BELOW the shaft's crown -- so with the board screwed
-#            down the shaft cannot move +Y without driving its crown into FR4. See
-#            _AXLE_STOP_PLAY / _AXLE_STOP_BITE, which is what those two asserts check.
+#   +Y stop: THE WRAP PLINTH, a full-face butt.
+#   +Z:      the optical strip, 0.20 over the crown.
 #
-# That replaces an M2 grub through the +Y arm's top. The grub worked, but it was a
-# fastener bearing on a precision shaft, reachable only with the strings off, in an arm
-# with 2.0 mm between bore crown and top face. The board has to come off for service
-# anyway and is already held by two M4 anchors -- so the retention is free.
+# ⚠ THE AXLE DROPS IN FROM +Z NOW, AND THAT IS A CONSEQUENCE OF PRINTABILITY, NOT A GOAL.
+# Nobody set out to make it a drop-in. The board's relief cut the bore's roof; fixing the
+# overhangs that left -- the run-out to the teardrop apex, and shaving the sub-bead feather
+# on the +X lip back to MIN_WALL_2B -- widened the opening until the shaft simply fits
+# through it. Measured at all eleven stations (nine fingers, two arms): a 175 deg opening,
+# chord 8.39 against a 8.00 shaft, 0.39 to spare and identical at every one.
 #
-# WHAT IT COSTS: an install PATH. Outboard of the +Y arm the board's wrap plinth fills
-# the shaft's lower half (its top is 9.501, the shaft centre 9.5), so AXLE_CHAN opens a
-# channel through it -- open upward, since there was never any plinth above the axle
-# line to keep. That channel is only reachable with the board off, which is precisely
-# why the board closes it: the escape route and the install route are the same one.
+# So the INSTALL CHANNEL IS GONE. It existed only so the shaft could be threaded in
+# axially, +Y -> -Y, which meant cutting through the plinth outboard of the +Y arm -- the
+# escape route and the install route were the same hole, which is why the board had to
+# close it. Now the plinth stays solid: the shaft butts a wall covering its whole
+# cross-section (z 4.00..12.00 against a plinth top of 12.04), end-on. That is a better
+# stop than the old one, which relied on the board overlapping 2.34 of a 8.00 diameter.
+#
+# WHAT RETAINS IT IN +Z IS THE BOARD, and that is the user's ruling: "the PCB can serve as
+# the axle Y axis retention. It doesn't need to be locked super tight in place." There is
+# no axial load on this shaft at all -- the wrap seats it at 7:20..7:43, down and -X -- so
+# retention here means "cannot fall out", not "cannot move". The board sits 0.20 over the
+# crown and covers the whole line.
+#
+# It also retires the assembly fixture. "Slide the axle through arms + eleven finger bores
+# + ten bearing bores in one pass" needed 23 bores concentric to within the shaft's fit,
+# which is why the bearings were held in an off-instrument jig. Dropping it in needs them
+# only coplanar, and each bearing can be laid in its own slot by hand.
+#
+# It replaced an M2 grub through the +Y arm's top. The grub worked, but it was a fastener
+# bearing on a precision shaft, reachable only with the strings off, in an arm with 2.0 mm
+# between bore crown and top face -- and it was a second hex size (0.9) in a build that
+# holds itself to one 2.5.
 AXLE_END_WALL = MIN_ADDED                             # -Y blind-bore wall (the 2-bead tier)
-AXLE_CHAN_Y1  = OP.PCB_YP + 1.0                       # channel runs out past the plinth end
-_AXLE_STOP_PLAY = OP.HEAD_Y0 - D.BRIDGE_AXLE_Y1       # 0.75 of +Y travel before it stops
-_AXLE_STOP_BITE = (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2) - OP.PCB_BOT   # 2.34 of overlap
-assert 0.0 <= _AXLE_STOP_PLAY <= 1.0, (
-    f"the axle's +Y stop is the optical strip's head edge, and it is {_AXLE_STOP_PLAY:.2f} "
-    f"from the shaft end -- either the shaft rattles or it fouls the board on assembly")
+# ⚠ ENDS ON THE ARM'S OUTER FACE. Do not "tidy" this back out to the plinth end: that
+# re-cuts the install channel, and the solid beyond it is the +Y stop.
+# the pocket's +Y face, and it is the PLINTH -- the shaft ends 0.15 proud of the arm now,
+# so this is 0.30 past the arm face rather than flush with it. That is still solid plinth
+# (it runs to OP.PCB_YP), and it is the shaft's +Y stop.
+AXLE_CHAN_Y1  = D.BRIDGE_AXLE_Y1 + D.BRIDGE_AXLE_END_CLR
+_AXLE_END_PLAY = AXLE_CHAN_Y1 - D.BRIDGE_AXLE_Y1
+assert abs(_AXLE_END_PLAY - D.BRIDGE_AXLE_END_CLR) < 1e-9, (
+    f"the +Y pocket face gives the shaft {_AXLE_END_PLAY:.2f} of float, not the "
+    f"{D.BRIDGE_AXLE_END_CLR} asked for")
+_AXLE_STOP_WALL = OP.PLINTH_TOP - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2)
+assert _AXLE_STOP_WALL >= 0.0, (
+    f"the +Y stop is the wrap plinth and its top is {-_AXLE_STOP_WALL:.2f} BELOW the "
+    f"shaft's crown, so the shaft would ride over it")
+_AXLE_CAP_GAP = OP.PCB_BOT - (D.BRIDGE_BEARING_Z + D.BRIDGE_AXLE_D / 2)
+assert 0.0 <= _AXLE_CAP_GAP <= 0.6, (
+    f"the board sits {_AXLE_CAP_GAP:.2f} off the axle crown -- under 0 it fouls the shaft, "
+    f"over 0.6 it stops being a cap and the shaft can lift out of a 175 deg opening")
 # ...and the -Y wall has to SURVIVE every other cut in this part, not merely be drawn.
 # The comb-finger bores used to eat it whole -- see the clamp in _build's comb loop.
-_AXLE_BLIND_WALL = D.BRIDGE_AXLE_Y0 - -D.BRIDGE_ARM_OUT
+# measured to the BORE FLOOR, not to the shaft's end: those differ by
+# BRIDGE_AXLE_END_CLR now, and measuring to the shaft would read the wall 0.15
+# thicker than it is -- an assert that flatters itself is worse than none.
+_AXLE_BLIND_WALL = (D.BRIDGE_AXLE_Y0 - D.BRIDGE_AXLE_END_CLR) - -D.BRIDGE_ARM_OUT
 assert _AXLE_BLIND_WALL >= D.MIN_WALL_2P - 1e-9, (
     f"the axle's -Y blind wall is {_AXLE_BLIND_WALL:.2f}, under the {D.MIN_WALL_2P} floor -- "
     f"that wall is the shaft's install stop")
-assert _AXLE_STOP_BITE >= 1.0, (
-    f"the board's underside is only {_AXLE_STOP_BITE:.2f} below the axle crown; it has to "
-    f"overlap the shaft properly to stop it, or the shaft slides out under it")
 
 Z6     = CH.TP_GZ1                 # deck/top-plate level = the bridge's general top
 # ── GUIDE RODS: SOCKETED FROM ABOVE, HANGING DOWN (user) ────────────────────
@@ -488,9 +532,9 @@ def _axle_negative() -> cq.Workplane:
     """The shaft's whole path -- arms AND comb fingers -- as ONE bore, CUT LAST.
 
     It runs from the -Y blind floor (AXLE_END_WALL short of that arm's outer face: the
-    shaft's -Y stop) straight out through the +Y arm and on through the board's wrap
-    plinth to AXLE_CHAN_Y1. That last stretch is the INSTALL path, open upward because
-    the plinth top sits level with the axle centre; the board closes it.
+    shaft's -Y stop) out to the +Y arm's outer face and STOPS THERE. There is no install
+    channel any more: the shaft drops in from +Z, so it never has to pass through the
+    plinth, and the solid plinth beyond this bore is what stops it going +Y.
 
     IT USED TO BE THREE CUTS FOR ONE HOLE: this function bored the two arms, and the comb
     loop bored each finger separately as it unioned it. They did not even agree on the
@@ -583,6 +627,156 @@ def _pcb_pad() -> cq.Workplane:
                   z=(PCB_PAD_BOT + PCB_PAD_TOP) / 2)
 
 
+# ── THE O-BAND'S RELIEF ──────────────────────────────────────────────────────
+# The optical board is an O rather than a C now (optical_pickup.O_BAND_X0): its sensing
+# strip runs +X past the deck band and across this block, to give the digital nets a path
+# that does not cross the analog strip. Everything the band would hit comes out.
+#
+# ⚠ THE CUT RUNS TO THE SKY, NOT TO THE BOARD'S TOP. Stopping at the board would leave a
+# roof of endplate over it -- the block tops out at 13.88 across the strip and the board's
+# top is 11.13 -- and that roof is an unsupported span the printer has to bridge. Taken to
+# O_RELIEF_Z1 instead the notch is open upward, which is the only shape here that prints
+# without support (user's constraint, and the reason this is a notch and not a pocket).
+#
+# ⚠ THE FIT GAP COMES OUT OF THE BOARD, NOT THIS WALL. The relief stops at -17.6 because
+# -17.6..-16.0 is the 1.6 mm of arm that wraps the bridge bearings, and those carry string
+# tension. The board was pulled back to -18.0 to pay for its own 0.4 of air. Cutting to
+# -17.2 instead would have left 1.2 -- legal by MIN_WALL, and not what should be holding
+# a bearing under load.
+#
+# The rod bores are untouched: they are open to z 14.5 but the rods sit with their tops at
+# GUIDE_ROD_TOP = 2.80, and this floor is PLINTH_TOP = 9.37, so the cut never reaches the
+# guided length. It does open the bores' mouths sideways into the notch, which is where
+# the board's own Ø3.9 access holes then line up.
+O_RELIEF_CLR = 0.4                       # the board's fit gap, on the board's side
+O_RELIEF_Z1  = 16.8                      # clear over the block top (16.0): no roof left
+
+
+def _o_band_relief():
+    """Open this block wherever the O-shaped board runs, from its seat to the sky.
+
+    ⚠ THE BOARD IS ITS OWN CUTTER, which is the only version of this that stays correct.
+    Earlier this was a hand-written box for a band on the -X side alone; the board is now a
+    RING -- sensing strip at -X, a 16 mm band at +X, the bearings in the hole between them
+    -- and any box I write by hand will be wrong the next time the outline moves. Grown by
+    the fit clearance and extruded up, the board's own footprint removes exactly what it
+    occupies and nothing else.
+
+    ⚠ AND IT RUNS TO THE SKY, NOT TO THE BOARD'S TOP. The block stands to z 16.0 and the
+    board's top is 12.15, so stopping at the board would leave ~5700 mm3 of roof over the
+    +X band -- an unsupported span the printer has to bridge. Taken clear of 16.0 the cut
+    is open upward and prints without support, which is the user's constraint.
+
+    What is deliberately NOT cut is the block between the strip and the band: that is the
+    O's hole, it carries the bearings and the string tension through them, and the board's
+    outline is sized around it (see O_HOLE_* in optical_pickup) with MIN_WALL_2P of
+    material and a 45 deg run to spare.
+
+    ⚠ AND THE FOOTPRINT ALONE LEAVES TWO OVERHANGS, because a prism cut has vertical
+    walls and this part builds along -X (PRINT_UP). Wherever the cut STOPS, material
+    re-forms with nothing under it -- and a face-normal check cannot see it, because the
+    faces involved are vertical. tools.check_ceilings passes both of these. They were
+    found by walking the solid layer by layer and asking what each layer grows FROM
+    (user: "it may look like it is printable but it critically does not have anything
+    supporting the tip of the 45 triangle which it grows from"):
+
+      * the ARMS stand back up through their slots at x +1.35, from the relief floor to
+        15.80 -- a 4.8 x 3.8 wall appearing in mid-air, twice;
+      * each of the ten COMB FINGERS re-closes over the axle bore at x -9.15, a 3.2 mm
+        strip 0.35 thick, where the bore's top drops back below the relief floor.
+
+    Both get a 45 deg RUN-OUT, which is the one shape that fixes an overhang without
+    removing anything the part needs:
+
+      * SLOT_RAMP takes the relief on -X past each slot's +X edge at 45 deg, so the arm
+        grows back over 3.8 mm of travel instead of all at once;
+      * AXLE_RUNOUT opens the bore's upper -X quadrant (9 to 12 oclock) from the -X
+        tangent, and closes at 45 deg beyond the bore.
+
+    ⚠ THE AXLE RUN-OUT IS SAFE BECAUSE OF WHERE THE LOAD IS, and that had to be measured
+    rather than assumed. The wrap resultant is NOT straight down: the string arrives
+    horizontally from the nut and leaves down the bearing's +X side to a ball end at
+    x -/+4, z -13.20, so the resultant bisects to 7:20 (even strings) .. 7:42 (odd) -- 78%
+    -X and 63% -Z. That is BELOW the equator on the -X side. This cut only takes material
+    ABOVE the axle centre, so it removes none of the arc that carries the string."""
+    if not OP.O_SHAPE:
+        return None
+    cut = OP._outline(grow=O_RELIEF_CLR,
+                      t=(O_RELIEF_Z1 - OP.PLINTH_TOP),
+                      zc=(OP.PLINTH_TOP + O_RELIEF_Z1) / 2)
+    # ── 1. a 45 deg run-out off each slot's +X edge ──────────────────────────
+    _h = O_RELIEF_Z1 - OP.PLINTH_TOP
+    for sx0, sy0, sx1, sy1 in OP.O_SLOTS:
+        x1 = sx1 + O_RELIEF_CLR                      # the relief's own +X wall
+        wedge = (cq.Workplane("XZ")
+                 .polyline([(x1, OP.PLINTH_TOP), (x1, O_RELIEF_Z1),
+                            (x1 - _h, O_RELIEF_Z1)])
+                 .close().extrude((sy1 - sy0) / 2 + O_RELIEF_CLR, both=True)
+                 .translate((0, (sy0 + sy1) / 2, 0)))
+        cut = cut.union(wedge)
+    # ── 2. the bore's upper -X quadrant, with a 45 deg close beyond it ───────
+    _az, _ar = D.BRIDGE_BEARING_Z, AXLE_BORE / 2
+    _xt = D.BRIDGE_AXLE_X - math.sqrt(max(_ar ** 2 - (OP.PLINTH_TOP - _az) ** 2, 0.0))
+    # ⚠ THE RUN-OUT HAS TO REACH THE TEARDROP'S APEX, NOT THE CIRCLE'S -X EXTENT, and the
+    # difference is a floating band (user, who put the cursor on both ends of it: the cut
+    # edge at X -13.07 Z 8.87 and the teardrop edge at X -13.54 Z 7.60). Closing from the
+    # circle at -12.20 sends the cut's floor UP at 45 deg while the teardrop's own upper
+    # edge is still coming DOWN at 45 deg -- the two are perpendicular, they cross at
+    # -13.07, and past the crossing the bore roof sits BELOW the cut floor. What is left
+    # between them is material with bore under it and cut over it: a band printing on air.
+    # Run the cut down to the apex instead ("keep the 45 going instead of turning towards
+    # +z") and only climb back from there, so the notch is a V that follows the bore.
+    _xr = D.BRIDGE_AXLE_X - _ar * math.sqrt(2.0)     # teardrop apex, not the circle
+    # ⚠ CLAMPED TO THE BORE'S OWN SPAN, NOT A MILLIMETRE PAST IT. These two cutters used to
+    # run -BRIDGE_ARM_OUT-1.0 .. AXLE_CHAN_Y1+1.0, a lazy overshoot to be sure of clearing
+    # the ends. The ends are exactly what must NOT be cleared: -Y is the blind wall that
+    # stops the shaft, +Y is the plinth that stops it the other way, and the overshoot took
+    # 2.60 mm off one and 1.00 off the other -- above the axle centre, so the stops measured
+    # 92% and 96% solid instead of 100%. The user found it in the viewer twice, first as a
+    # "2.60 mm" dimension and then by handing me the corner vertex itself
+    # (-13.94, -51.80, 8.00) -- all three of those numbers are constants from this cutter.
+    # An overshoot is only safe where there is nothing at the end worth keeping.
+    _y0, _y1 = -D.BRIDGE_ARM_OUT + AXLE_END_WALL, AXLE_CHAN_Y1
+    # ⚠ extrude() ON AN "XZ" WORKPLANE GOES -Y (its normal is (0,-1,0)), so a plain
+    # extrude(depth) put this entire cutter at y -51.8..-169 -- clean off the part, removing
+    # nothing, while the code read as though it worked. Same shape of bug as a harness
+    # printing a tidy row for a route that never ran. Centre it and grow both ways instead.
+    cut = cut.union(cq.Workplane("XZ")
+                    .polyline([(_xt, OP.PLINTH_TOP), (_xr, _az),
+                               (_xr - (OP.PLINTH_TOP - _az), OP.PLINTH_TOP)])
+                    .close().extrude((_y1 - _y0) / 2, both=True)
+                    .translate((0, (_y0 + _y1) / 2, 0)))
+    # ── 3. the +X lip, cut back to a lip that actually prints ───────────────
+    # ⚠ THIS IS WHAT LETS THE AXLE GO IN FROM +Z, and it is on the OPPOSITE side from the
+    # load. Where the relief floor slices the bore it leaves a wedge that tapers to
+    # nothing: measured 0.20 mm at 12:50, 0.40 at 1:00, 0.65 at 1:10 -- all under one
+    # BEAD, so the slicer will not build them. That is the user's argument for deleting
+    # the install channel ("it goes to a sharp point which won't print as far as modeled
+    # and what does print will be small and slightly flexible so we can likely push the
+    # axel into position"), and the arithmetic backs it: as MODELLED the opening spans
+    # 140 deg and its chord is 7.89 against a 8.00 shaft, so the shaft is trapped; with
+    # the sub-bead feather gone it is ~155 deg and 8.20, and the shaft passes.
+    #
+    # Relying on a feature failing to print is not a fit though -- it is a coincidence
+    # that a slicer setting could take away. So cut the wedge back to MIN_WALL_2P in CAD
+    # and the model becomes the part: a printable lip, a known opening, and an escape
+    # test that can be run on the geometry instead of on a guess.
+    #
+    # ⚠ AND ONLY ON THIS SIDE. The user first read the lost arc as being at 7:30, which
+    # would have been the load path -- the wrap seats at 7:20..7:43 and the plastic there
+    # is what carries 1683 N. The arc actually opened is 8:10 round through 12 to 12:50,
+    # and this cut extends the 12:50 end. Nothing here touches the seat.
+    _lip_z = OP.PLINTH_TOP - D.MIN_WALL_2P
+    _xl = D.BRIDGE_AXLE_X + math.sqrt(max(_ar ** 2 - (_lip_z - _az) ** 2, 0.0))
+    _xi = D.BRIDGE_AXLE_X + math.sqrt(max(_ar ** 2 - (OP.PLINTH_TOP - _az) ** 2, 0.0))
+    cut = cut.union(cq.Workplane("XZ")
+                    .polyline([(_xi, OP.PLINTH_TOP), (_xl, _lip_z), (_xl, OP.PLINTH_TOP)])
+                    .close().extrude((_y1 - _y0) / 2, both=True)
+                    .translate((0, (_y0 + _y1) / 2, 0)))
+    return cut
+
+
+
 def _build() -> cq.Workplane:
     body = _cap()
     for sy in (-D.BRIDGE_ARM_Y, D.BRIDGE_ARM_Y):
@@ -608,6 +802,10 @@ def _build() -> cq.Workplane:
     # so the same cutter the board uses comes through here -- which is what keeps the two
     # concentric. Grown half a bead: the pad is structure, the board is not, and a driver
     # that just clears the board should not scrape the plastic.
+    # ⚠ STAYS AT HALF A BEAD -- see OP.JACK_ACCESS_D for the sweep that settled it. This was
+    # briefly grown to a driver's size and REVERTED: the requirement is reaching the head, not
+    # withdrawing the screw, and jack 0 already passes a O4.0 column against a O2.887 key.
+    # Widening it would take structure out of the pad for a problem that is not there.
     body = body.cut(OP.jack_access(grow=D.MIN_WALL / 2))
     # ...and the board's M4 ANCHORS, back now that there is something to sink them into.
     # The screw enters from ABOVE, down through the board's clearance hole, into the pad.
@@ -720,9 +918,18 @@ def _build() -> cq.Workplane:
     # away. 11 fingers, one half-pitch outboard of strings 1 and 10 -- close enough to the
     # arms that they merge into them, which is exactly the tie the end bearings wanted.
     _pitch = abs(D.string_y(1) - D.string_y(0))
-    _comb_y = ([D.string_y(0) + _pitch / 2]
-               + [(D.string_y(k) + D.string_y(k + 1)) / 2 for k in range(D.N_STRINGS - 1)]
-               + [D.string_y(D.N_STRINGS - 1) - _pitch / 2])
+    # ⚠ NINE FINGERS, ONE PER GAP -- THE TWO END ONES ARE GONE (user, 2026-09-23:
+    # "we can also remove the extra material on either side of strings 1 and 10").
+    # They used to sit half a pitch OUTBOARD of strings 1 and 10 so that all ten bearings
+    # were flanked on both sides rather than the outer two leaning on an arm 4.5 mm away.
+    # That was the user's call then and its reversal is the user's call now: those two
+    # fingers land close enough to the arms to FUSE with them, so what they actually
+    # produced was a solid block outboard of each end bearing -- visible in the viewer as
+    # a bar twice the width of a finger -- rather than a flank with air either side.
+    # The arms take over as the outer flank. What that costs is the end spans: they go
+    # from half a pitch to the full 4.5 mm arm gap, which is still under one string pitch,
+    # and the deflection that the comb exists to stop goes as span^3 off a 9.5 mm base.
+    _comb_y = [(D.string_y(k) + D.string_y(k + 1)) / 2 for k in range(D.N_STRINGS - 1)]
     for yc in _comb_y:
         body = body.union(_fpro.translate((0, yc, 0)))
         body = body.union(_comb_brace(yc, CB_W))
@@ -771,7 +978,9 @@ def _build() -> cq.Workplane:
                         .close().extrude((Z6 + 1.0) - _SR_TOP))
     # LIGHT COVER for the optical strip, unioned in: its roof lands on the comb
     # brace at XLO and its slots sit over the sensor triplets.
-    body = body.union(OP.opt_cover())
+    _cov = OP.opt_cover()                    # None once the lid was deleted
+    if _cov is not None:
+        body = body.union(_cov)
     # BEARING + STRING opening: ONE cut per string owns the whole opening (user). Constant ±BR_HW
     # width in Y over the whole rectangle, flat +X face — but a HOUSE plan (user), not a plain
     # prism: the −X end closes at 45° in plan to a ridge on the string line, because that end IS
@@ -958,6 +1167,16 @@ def _build() -> cq.Workplane:
                            x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
                            y=(OP.CONDUIT_Y0 + OP.CONDUIT_Y1) / 2,
                            z=CH.TP_GZ0 - LIP_DZ / 2))
+    # ── AND THE O-BAND'S NOTCH, LAST FOR THE SAME REASON THE CONDUIT IS ──────────
+    # ⚠ THIS WAS FIRST PUT WITH THE EARLY CUTS AND SILENTLY DID ALMOST NOTHING. Placed
+    # before the unions it removed 151 mm3 of the ~1100 it should, because _screw_rail,
+    # opt_cover, op_cradle and the retention lip are all unioned after it and refilled
+    # the notch. The board still collided by 1042 mm3 and the part still LOOKED built.
+    # That is the failure this file already warns about twice (see the conduit above,
+    # and the header's assembly-order note); it now has a third instance.
+    _rel = _o_band_relief()
+    if _rel is not None:
+        body = body.cut(_rel)
     return body
 
 
@@ -1037,7 +1256,12 @@ def op_cradle():
     _pyc = _hl - _pad / 2.0
     cr = cr.cut(box_at(_pad + 0.02, _pad + 0.02, standoff + 0.01,
                        x=-_hw + _pad / 2.0, y=_pyc, z=standoff / 2.0))
-    _PY_X0 = -17.85 - rcx                           # the moved pad's -X edge, cradle frame
+    # the moved pad's -X edge, cradle frame: 0.34 mm past J2's body, READ OFF J2.
+    # ⚠ IT WAS THE LITERAL -17.85, i.e. J2's body end (-18.19) plus 0.34 as the board stood
+    # on 2026-09-21. The -X growth moved J2 12 mm relative to everything else (its mouth
+    # rides the -X edge), so the literal would have silently re-described an empty patch of
+    # board. Derived, it stays "the clear strip past J2" whatever the outline does.
+    _PY_X0 = _BG.footprint("output_panel", "J2")["fab"][1] + 0.34 - rcx
     cr = cr.union(box_at(_pad, _pad, standoff, x=_PY_X0 + _pad / 2.0, y=_pyc,
                          z=standoff / 2.0))
     # 45 DEG GUSSETS under the -X pads. This part builds -X off a bed at the panel face, so
