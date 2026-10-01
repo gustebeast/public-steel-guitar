@@ -46,7 +46,7 @@ board routed, passed DRC and passed ERC, because every check in the pipeline com
 to the netlist and the netlist was the thing that was wrong. First power would have blown F1.
 **Fixed 2026-09-30** (`_LMR33630_DDA_PINS`, connections now by name).
 
-So the first diagnostic tool is the datasheet, and the audit is not finished:
+So the first diagnostic tool is the datasheet. The audit, finished 2026-09-30:
 
 | part | boards | status |
 |---|---|---|
@@ -55,8 +55,27 @@ So the first diagnostic tool is the datasheet, and the audit is not finished:
 | LMR16006 | motor_ctrl, output_panel | ✅ cited in-file (SNVSA24 §6) |
 | SN74LVC1G3157 | output_panel U12 | ✅ cited in-file (SCES424O Table 4-1) — after being wrong once |
 | CH32V307 / CH32V203 | all three MCU boards | ✅ read from `.ins/*.json` |
-| SN65HVD230, PCM1808, PCM5102A, AP2112K, TLV9061, MCP4261, G6K-2F, AO3400A | various | ⚠ **uncited.** Each matches my recollection of its datasheet — which is the method that produced the LMR33630 fault. **A datasheet read is still owed on every one** |
-| **CH334F** (hub), **MT6701** (angle sensor) | output_panel U4, lever_sensor U4 | ⚠⚠ **uncited and I cannot vouch for them from memory.** Read these two first |
+| SN65HVD230 | motor_ctrl, lever_sensor | ✅ read 2026-09-30, TI SLOS346O §7: matches |
+| PCM1808, PCM5102A | output_panel U2, U3 | ✅ read, SLES177B §5 and SLAS859C §7, all 14 + 20 pins: match |
+| TLV9061 (SOT-23) | output_panel U7/U8/U9/U11 | ✅ read, SBOS839N Table 5-1: matches (the SC70 column differs — same part number, different pins) |
+| AP2112K (SOT25) | lever_sensor U1, output_panel U6 | ✅ read, Diodes DS39724: matches |
+| MCP4261 | output_panel U10 | ✅ already cited (DS22059 Table 3-1) and cross-checked against KiCad's symbol |
+| G6K-2F-Y, AO3400A | output_panel K1, Q1 | ✅ read off the rendered drawings (Omron p. B-83, AOS rev 3 p.1): match, including coil polarity and which contact is NC |
+| CH334F | output_panel U4 | ✅ read, WCH V2.91 Table 1-3: every pin the board uses matches. One label differs from the V2.5 the file cites — **pin 18 is PSELF, not NC**. Harmless as built (own pull-up, open = self-powered) but it must never be grounded as a spare |
+| **MT6701QT** | lever_sensor U4 | ❌ **pins right, STRAP WRONG — fixed.** All eight pin numbers match rev 1.9 §1.2. But `MODE` was strapped to **GND**, and the reference circuits (fig. 18 vs fig. 7) show GND = **ABZ**, VDD = I2C: all eleven sensors would have been silent on I2C. The file said "confirm polarity on the first board"; the pin *table* does not say, the *figures* do. R5 now goes to +3V3 |
+
+**The audit is complete: 14 part types read, 2 faults.** Both faults were in places the file
+itself flagged as unsure (`NC`, "confirm on the first board") — an honest doubt in a comment is
+a work item, and both of these sat as comments for weeks.
+
+Two things the MT6701 read turned up that are not pin errors:
+* **Its EEPROM cannot be programmed on this board.** §8.2 requires 4.5 V < VDD < 5.5 V for
+  programming and the board runs it at 3.3 V. Zero position, direction and hysteresis therefore
+  stay at factory values and the MCU holds the offsets — which is the architecture anyway, but it
+  means "fix it in the sensor's EEPROM" is not an available bring-up move.
+* `Z/CSN` (pin 8) is left open. Fig. 18 ties it to VDD; the pin has its own 200 k pull-up, so open
+  reads high, which is what I2C wants. If a sensor ever answers intermittently, this is the first
+  pad to tie up.
 
 **The rule that falls out:** a pin list in `elec/*.py` carries its datasheet document number and
 table, or it is unverified. Two of the three wrong pinouts this project has had were typed from

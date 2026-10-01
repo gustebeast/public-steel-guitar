@@ -158,7 +158,9 @@ def _ph(tag, desc):
 
 
 def _xcvr(tag, desc):
-    """SN65HVD230DR, SOIC-8: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 Rs."""
+    """SN65HVD230DR, SOIC-8: 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, 6 CANL, 7 CANH, 8 Rs.
+
+    TI SLOS346O section 7 "Pin Functions", read 2026-09-30."""
     return Part(name="SN65HVD230DR", ref_prefix="U", tag=tag, dest="NETLIST", tool="skidl",
                 value="SN65HVD230DR", description=desc,
                 footprint="Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
