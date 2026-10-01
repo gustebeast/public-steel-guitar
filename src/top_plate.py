@@ -266,6 +266,13 @@ RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL_2P   # 1.6 (2-
 X_SLIDE   = 6.0                                    # pickup X-position room on the plate (+/-)
 PLATE_X   = PM.PK_W + 2 * X_SLIDE                  # green X (pickup + slide) ~50.6
 PLATE_Y   = (PK_YP - PK_MAX_YM) + 2 * RET_WALL_T   # green Y (LONGEST pickup + wall room each side) ~106.0
+# THE PICKUP'S LEAD LEAVES ITS UNDERSIDE, SO THE PLATE IT RESTS ON NEEDS A WAY THROUGH.
+# A slot rather than a hole because the pickup slides +/-X_SLIDE on the plate and takes its
+# lead with it. It sits under the pickup's own -Y end at every slide position, so the pickup
+# lids it and the plate stays a light block. wiring.py draws the lead through this Y.
+LEAD_SLOT_W = 4 * D.BEAD                           # 3.2: the 2.4 lead + a 0.4 bead-half each side
+LEAD_SLOT_L = 2 * X_SLIDE + LEAD_SLOT_W            # the lead's whole X travel
+LEAD_SLOT_Y = PK_YM + 5 * D.BEAD                   # 4.0 in from the demo pickup's -Y edge
 NUB_W     = 14 * D.NOZZLE_D                        # 11.2 (was 11.0) nub/arm width (>= boss Ø8)
 CAVITY_X  = PLATE_X + 1.5                          # pickup cavity in the deck (green + clearance)
 CAVITY_Y  = PLATE_Y + 1.5
@@ -648,6 +655,9 @@ def _pickup_zplate():
     plate = cut_insert_bore(M4, plate, (RET_SCREW_X, ret_face_y, RET_SCREW_Z), (0, 1, 0),
                             clr_len=RET_BOSS_L - M4.insert_depth + 1.0,
                             reason="set screw: -Y pickup-retention grub, must not self-tap")
+    # the lead slot, LAST: every union above would refill it (see LEAD_SLOT_W)
+    plate = plate.cut(box_at(LEAD_SLOT_L, LEAD_SLOT_W, ZPL_T + 2.0,
+                             x=PICKUP_X_NOM, y=LEAD_SLOT_Y, z=(ZPL_BOT + ZPL_TOP) / 2))
     return plate
 
 
@@ -701,8 +711,39 @@ _piece_pair   = _split(_pickup_piece(), PIECE_X0, PIECE_X1, lines=False, cavity=
 # asserted below rather than asserted in prose.
 _filler_pairs = [_split(_filler(i), SLOT_X[i], SLOT_X[i] - BAND_W, frets=False)
                  for i in range(N_SLOTS)]
+def _mctrl_capture():
+    """A rib down from the keyhead panel to just above the motor board's top edge, so the
+    PANEL retains that board and it needs no screw (user, 2026-09-29).
+
+    ⚠ THIS REPLACES AN M4 AND ITS BOSS, which is the point -- and the boss was also the part
+    the user found printing as an overhang: keyhead_cradles builds it as a column along LOCAL
+    +Z, and stand() maps that to WORLD +X, so it is a horizontal O9.2 cylinder in a chassis
+    that prints Z-up. check_ceilings cannot see it (it looks for FLAT ceilings; a cylinder's
+    underside is curved), so deleting it beats buttressing it.
+    ⚠ THE RIB REACHES DOWN; THE BOARD DOES NOT COME UP. See electronics.mctrl_capture_target
+    for why the board's Z cannot move -- its plug latches have to stay reachable from outside.
+    ⚠ SIZED FROM MEASUREMENT. Within the laminate's own footprint the board's top 10 mm is
+    PURE LAMINATE (880.0 mm3, exactly 1.6 x 55 x 10), and the whole board's zmax equals the
+    laminate's, so nothing stands proud of the edge the rib lands on. The column above the
+    board is empty but for this panel. The rib is therefore wider than the 1.6 laminate --
+    it bears on the edge, and the extra width is section rather than contact.
+    It prints the right way up: top_plate builds DECK-DOWN, so this points UP off the bed.
+    """
+    x0, x1, y0, y1, ztop = EL.mctrl_capture_target()
+    return box_at(EL.MCTRL_CAP_T, EL.MCTRL_CAP_L,
+                  BZ - (ztop + EL.MCTRL_CAP_GAP),
+                  x=(x0 + x1) / 2.0, y=(y0 + y1) / 2.0,
+                  z=(BZ + ztop + EL.MCTRL_CAP_GAP) / 2.0)
+
+
 _mid_body, _mid_comb = _band(MID_X0, MID_X1, ui=True, cells=True)
 _key_body, _key_comb = _band(KEY_X0, KEY_X1, cells=True)
+# ⚠ THE CAPTURE RIB GOES INTO THE KEY BAND'S BODY, NOT ITS COMB. main split _band into
+# (body, comb) so the lit cells can be drawn as their own colour; this rib is structure --
+# it reaches down to retain the motor board -- so it belongs to the body the comb is cut
+# from. Unioning it into the pair after the split would have put a structural rib in the
+# part that exists to be a different colour.
+_key_body = _key_body.union(_mctrl_capture())
 _mid_pair     = _split(_mid_body, MID_X0, MID_X1, opaque=_mid_comb)
 _key_pair     = _split(_key_body, KEY_X0, KEY_X1, opaque=_key_comb)
 

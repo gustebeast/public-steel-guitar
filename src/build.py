@@ -187,6 +187,87 @@ for _i in range(len(_TP.segments)):              # placed deck panels (piece + f
 from . import wiring as _WR_FUSE
 _seg_edges = [CH._SHELL_PX + CH.KH_DT_DEPTH + 2.0] + sorted(CH.SPLIT_X, reverse=True) + [CH.X_NUT]
 chassis_segments = list(chassis_segments)
+# ⚠ THE MOTOR CONTROLLER'S FLOOR PORTS ARE CUT HERE, NOT IN chassis.py. chassis builds its
+# segments at import and electronics imports chassis, so the chassis cannot ask where that
+# board is without a circular import. The assembly knows both, so it does it (see
+# electronics.mctrl_floor_ports).
+from . import electronics as _EL_ports
+# ⚠⚠ THE PI'S AND THE MOTOR BOARD'S CRADLES BELONG TO THE CHASSIS NOW, NOT TO THE ENDPLATE
+# (user, 2026-09-28: "we need to be able to remove the endplate while leaving the pi and
+# motor board in place"). Fused here for the same reason the floor ports are cut here -- the
+# chassis cannot ask electronics where those boards are without a circular import -- and by
+# the same route as wiring.tee_cradles below.
+#
+# ⚠ AND IT IS A DEFECT FIX AS WELL AS A FEATURE. Fused to the ENDPLATE, the motor frame's
+# side walls ran down inside the chassis floor: 2717 mm3 of two printed parts occupying the
+# same space, which check_overlaps never reported because {keyhead_endplate, chassis} is
+# allow-listed wholesale for the endplate's own seating and hold-down screw. Fused to the
+# CHASSIS the same walls are a root instead of an interference, and they are a better root
+# than the endplate ever was: the motor board passes through the floor, so the slab grips it
+# either side of its own port.
+#
+# BEFORE the port cuts, deliberately: the frames' walls sit outside the ports (walls at
+# y -114.9 and -49.1 against a port spanning -113..-51), so cutting afterwards cannot take
+# anything load-bearing away, and it guarantees the ports stay open whatever the frames do.
+_kh_cr = _EL_ports.keyhead_cradles()
+_kh_bb = _kh_cr.val().BoundingBox()
+# ⚠ THE CRADLES REFILLED THE LEVER MORTISES, and the knee housing's tenons live in them.
+# chassis.py cuts a mortise into every rib, then this union laid the cradles' feet back over
+# the same band: 1986.6 mm3 of chassis_2 inside knee_housing, a 68 x 17 x 4.2 slab at
+# z -77.5..-73.3. It is the endplate's cut-before-union fault in a new place (a union after a
+# cut silently refills it), and it sat in the gate as the largest pair for weeks because the
+# count was read as a baseline. The SAME cutters go through the cradles before they fuse.
+from .chassis import _mort_cutters as _kh_mort_cutters
+_kh_mc = _kh_mort_cutters(_kh_bb.xmin - 1.0, _kh_bb.xmax + 1.0)
+if _kh_mc is not None:
+    _kh_cr = _kh_cr.cut(_kh_mc)
+_kh_hit = 0
+for _csi, _cs in enumerate(chassis_segments):
+    _sb = _cs.val().BoundingBox()
+    if _sb.xmin <= _kh_bb.xmin and _kh_bb.xmax <= _sb.xmax + 1e-6:
+        chassis_segments[_csi] = _cs.union(_kh_cr)
+        _kh_hit += 1
+        break
+assert _kh_hit == 1, (
+    "the board cradles (x %.1f..%.1f) did not fall inside exactly one chassis segment -- "
+    "they landed in %d. A cradle that straddles a print split is two halves of a mount."
+    % (_kh_bb.xmin, _kh_bb.xmax, _kh_hit))
+# ⚠ AND ASK WHETHER THEY ATTACHED, because nothing else will. chassis._largest() bins the
+# non-largest solids in a segment, but it runs at IMPORT -- before this union -- so a cradle
+# that touches nothing survives here as a second solid and prints as a loose part. That is the
+# exact failure keyhead_endplate's own assert was written for when it carried them: "the motor
+# controller's came out a free-floating 18,121 mm3 lump, which the overlap gate cannot see --
+# two solids that never touch do not interpenetrate". The question moves with the cradles.
+_kh_n = len(chassis_segments[_csi].val().Solids())
+assert _kh_n == 1, (
+    "the chassis segment came out as %d disconnected solids after fusing the board cradles. "
+    "One of them is not touching: the motor frame's side walls should run INTO the floor slab "
+    "(board bottom edge z -80.85 against a floor top of -71.35) and the Pi's two legs should "
+    "reach it with one bead of overlap. Check electronics.keyhead_cradles's root_d/foot "
+    "against motor_bank.FLOOR_TOP." % _kh_n)
+for _mp in _EL_ports.mctrl_floor_ports():
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
+# ⚠ AND THE FLAT PI'S ANCHOR, WHICH MUST BE CUT HERE AND NOT IN THE CRADLE. pcb_cradle bores
+# its own boss, but that boss is EMBEDDED in the floor slab -- the M4 needs anchor_min_wall
+# below the board's underside, which is deeper than the standoff -- so the floor's own
+# material refills the bore the moment the cradle is unioned above. The gate caught exactly
+# that: 43.9 mm3 of board_screw_2 and 37.5 of board_insert_2 inside chassis_2.
+# Every segment, not `_csi`: that name was rebound by the loop just above, so it no longer
+# points at the segment the cradle went into -- and the other cutters here sweep all segments
+# for the same reason. A bore outside its own segment removes nothing.
+if not os.environ.get("PI_NO_CRADLE"):          # see keyhead_cradles; debug sweeps only
+    _pi_bore = _EL_ports.pi_hold_bore()
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_pi_bore)
+# (pi_cap_relief is GONE, and nothing replaces it. It pocketed 5.8 mm out of the bay's
+#  -Y wall to admit the Pi cap's overhang; the Pi now sits +3.82 with the cap's face FLUSH
+#  on that wall, so there is nothing to admit. The user's point was that the pocket cost
+#  wall strength -- the answer is to not need it, not to make it smaller. See PI_FP.)
+# ...and the LED strip's connector tails, for the same reason and by the same route.
+for _lr in _EL_ports.led_wall_reliefs():
+    for _csi in range(len(chassis_segments)):
+        chassis_segments[_csi] = chassis_segments[_csi].cut(_lr)
 _fused_segs = set()
 for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
     for _csi in range(len(_seg_edges) - 1):
@@ -264,7 +345,7 @@ _trrs_x = _WR_FUSE.TRRS_X
 # instrument's underside, with the leg's lead left hanging in free air. The user has a
 # wiring plan for it to be implemented later, and until then a board mounted here is a
 # guess that collides with real parts -- it was behind 6 of the model's 14 unintended
-# overlaps (keyhead_endplate, electronics_tray, pi5 and three nut_height screws).
+# overlaps (keyhead_endplate, electronics_tray, pi4 and three nut_height screws).
 #
 # NOTHING IS DELETED. wiring.trrs_cradle / trrs_port / trrs_hold_negatives /
 # trrs_components are all still there and still correct for the station as laid out;
@@ -296,6 +377,11 @@ PARTS["coil_mandrel_sleeve"] = (
     lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).sleeve()),
     "tools/coil_mandrel_sleeve.step",
     "TOOL — the mandrel's outer sleeve, bore Ø23.0. It caps the coil's diameter so the mean lands on arithmetic rather than on spring-back, and holds both axial tails against the barrel while they set. PA6-GF, printed SOLID")
+# LEVER PROGRAMMING JIG -- a SHOP TOOL like the mandrel: exported, never in the assembly.
+PARTS["lever_prog_jig"] = (
+    lambda: heal(__import__("src.lever_jig", fromlist=["e"]).jig()),
+    "tools/lever_prog_jig.step",
+    "TOOL — pogo nest for flashing the 11 lever/pedal sensor boards. The board drops in COMPONENT FACE DOWN onto four P75 pins standing at TP1–TP4 (positions read from the routed board), J1 is powered through the end window, and the pins seat themselves at height against the bench. PETG, printed as drawn")
 
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
@@ -821,9 +907,16 @@ def _electronics_components():
     from . import wiring as WR
     from . import top_plate as TP
     # electronics_tray is gone: the Pi's and the motor controller's mounts are cradles
-    # fused into keyhead_endplate now (see electronics.keyhead_cradles). One less printed
-    # part, and the boards gained retention they never had on the tray's bare posts.
-    out = [("pi5", EL.pi5()),
+    # fused into the CHASSIS SEGMENT now (see electronics.keyhead_cradles and the union at
+    # the top of this file) -- NOT the endplate, which is what this said until 2026-09-29.
+    # The endplate has to come off with the boards left in place (user), which is the whole
+    # reason they moved. One less printed part, and the boards gained retention they never
+    # had on the tray's bare posts.
+    # pi_spacer is the flat Pi's RETENTION -- a printed piece, not a dummy. It replaces the
+    # button head that used to clamp the laminate directly: no position beside the board had
+    # room for that screw's anchor below the floor (electronics.PI_SPACER_XY).
+    out = [("pi4", EL.pi4()), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
+           *EL.led_sections(),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            ]
@@ -1166,10 +1259,58 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-    "pi5", "motor_ctrl", "tee_", "wire_",
-    "output_panel", "ui_",
+        "pi4", "pi_cap", "pi_spacer", "led_strip_", "motor_ctrl", "tee_", "wire_",
+        "output_panel", "ui_",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
+
+
+def optical_work_components():
+    """The optical board and the two parts that SHAPE it -- for the O-band work.
+
+    ⚠ body_work_components WAS THE WRONG UNIT FOR THIS AND THE VIEW SHOWED IT. That set is
+    293 parts, essentially the whole instrument, and ScratchView only skips caching for
+    names matching `replaced` prefixes -- so with none declared every live part was ALSO
+    cached and rendered twice. The user saw the old C-shaped board sitting inside the new
+    O-shaped one. A live set that big also saves nothing: the cache exists to skip the
+    build, and there was almost nothing left to skip.
+
+    This is the actual unit of the work: the board, the endplate whose block it cuts into,
+    and the chassis it sits above. Scope it with
+        scope --set src.build --attr optical_work_components --crop bridge               --replaced optical_,bridge_endplate,chassis_
+    so the cache leaves those to the live build instead of duplicating them.
+
+    ⚠ BOTH ENDPLATE BOARDS, NOT JUST THE OPTICAL ONE (user, 2026-09-25). The instrument
+    carries a PCB at each end -- the optical strip in the bridge endplate and the motor
+    controller in the keyhead endplate's cradle -- and the work has crossed between them all
+    day (the bus-B connectors moved to the motor board's downward edge while the optical
+    board was routing). A scope holding one of them makes the other invisible exactly when
+    a change to the chassis has to suit both.
+    """
+    from . import optical_pickup as OP
+    from . import electronics as EL
+    _KE = __import__("src.keyhead_endplate", fromlist=["e"])
+    # ⚠ AND THE FLAT PI WITH ITS SPACER, FOR THE SAME REASON THE MOTOR BOARD IS HERE. The
+    # retention work crossed into the Pi's bay (its hold-down had to leave the board's edge
+    # entirely -- electronics.PI_SPACER_XY), and a scope that hides the part being designed is
+    # how the user came to report "the pi disappeared from your tab". The spacer is the point of
+    # the change, so it has to be visible in the view that reviews it.
+    out = [("optical_pcb", OP.opt_pcb()),
+           ("optical_cable_usb", OP.opt_cables("usb")),
+           ("optical_cable_pwr", OP.opt_cables("pwr")),
+           ("bridge_endplate", PARTS["bridge_endplate"][0]()),
+           ("motor_ctrl", EL.motor_ctrl()),
+           ("pi4", EL.pi4()), ("pi_spacer", EL.pi_spacer()),
+           ("keyhead_endplate", _KE.keyhead_endplate)]
+    # ⚠ AND THE FASTENERS, BECAUSE THEY MOVE WITH THE RETENTION AND THE CACHE DOES NOT KNOW.
+    # Left to the cache, board_screw_2/board_insert_2 stay at the hold position they had when
+    # it was built -- and a scoped gate then reports the OLD screw against the NEW chassis:
+    # 61.1 mm3 into chassis_2, 47.1 of insert, 36.5 into knee_housing and 112.8 through
+    # pi_spacer, every one of them an artefact of an 83-minute-old cache rather than a fault in
+    # the design. Live, they are checked where they actually are.
+    out += EL.board_screws()
+    out += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    return out
 
 
 def body_work_components():
@@ -1682,7 +1823,10 @@ _COLORS = {
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
 
-    "pi5":             (0.05, 0.35, 0.15),   # PCB green
+    "pi4":             (0.05, 0.35, 0.15),   # PCB green
+    "pi_cap":          (0.05, 0.35, 0.15),   # PCB green
+    "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
+    "led_strip_":      (0.05, 0.35, 0.15),   # PCB green
     "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
     "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
@@ -1747,10 +1891,10 @@ _COLORS = {
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
     "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
-    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - shielded. DORMANT: the
-                                             #   wire returns when the optical board is
-                                             #   designed and the pickup plugs into it
-    "wire_link":       (0.95, 0.72, 0.22),   # light amber - motor controller <-> Pi
+    "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
+                                             #   shielded lead, coil underside -> the
+                                             #   output panel's J8 screw terminals
+    "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
     # THE UI RIBBON, fourteen conductors. Grey is what 1.27 flat cable is; conductor 1
     # is its red stripe, which is the only marking an IDC cable carries and the only

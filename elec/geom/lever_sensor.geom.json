@@ -18,7 +18,8 @@
     8.3,
     8.9
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C10",
@@ -33,7 +34,8 @@
     -2.75,
     -2.15
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C11",
@@ -48,7 +50,8 @@
     0.55,
     1.15
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C2",
@@ -63,7 +66,8 @@
     7.0,
     7.6
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C4",
@@ -78,7 +82,8 @@
     -5.15,
     -4.55
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C5",
@@ -93,7 +98,8 @@
     -1.35,
     -0.75
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C6",
@@ -108,7 +114,8 @@
     -3.15,
     -2.55
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C7",
@@ -123,7 +130,8 @@
     4.75,
     5.85
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C8",
@@ -138,7 +146,8 @@
     4.35,
     4.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C9",
@@ -153,7 +162,8 @@
     4.35,
     4.95
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D2",
@@ -168,7 +178,8 @@
     -8.85,
     -6.202
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "D3",
@@ -183,7 +194,8 @@
     -8.85,
     -6.202
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J1",
@@ -198,7 +210,8 @@
     -10.0,
     10.0
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "JP1",
@@ -208,7 +221,8 @@
    "rot": 0.0,
    "side": "F",
    "fab": null,
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R3",
@@ -223,7 +237,8 @@
     -6.67,
     -6.03
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R4",
@@ -238,22 +253,24 @@
     -4.62,
     -3.98
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R5",
    "fpid": "R_0402_1005Metric",
    "x": 12.5,
-   "y": 4.35,
+   "y": 4.05,
    "rot": 0.0,
    "side": "F",
    "fab": [
     11.925,
     13.075,
-    4.03,
-    4.67
+    3.73,
+    4.37
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R6",
@@ -268,7 +285,8 @@
     -3.045,
     -1.895
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R7",
@@ -283,7 +301,8 @@
     6.83,
     7.47
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP1",
@@ -298,7 +317,8 @@
     9.402,
     11.098
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP2",
@@ -313,7 +333,8 @@
     9.402,
     11.098
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP3",
@@ -328,7 +349,8 @@
     7.102,
     8.798
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "TP4",
@@ -343,7 +365,8 @@
     9.502,
     11.198
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U1",
@@ -358,7 +381,8 @@
     6.5,
     9.5
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U2",
@@ -373,7 +397,8 @@
     -8.65,
     -3.65
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U3",
@@ -388,7 +413,8 @@
     0.95,
     5.05
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "U4",
@@ -403,7 +429,8 @@
     -0.7,
     2.4
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "Y1",
@@ -418,7 +445,8 @@
     -2.85,
     -0.25
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   }
  ],
  "outline_poly": [

@@ -1,0 +1,15 @@
+      stitched 10 pad(s) on GND straight to the plane
+    pi_cap.kicad_pcb: 10 parts, 7 nets (+28 single-pad, not placed), 56.0 x 26.0 mm
+    exported pi_cap.dsn (16 kB)
+      router clearance 137 um (fab rule 127 um + 10 um of rounding margin)
+      ?           Thank you for using Freerouting!                       ?
+      ?                                                                  ?
+      ?  If you would like to support the project, please visit          ?
+      ?  https://www.freerouting.app/donate.html                         ?
+      ?  Every contribution helps keep this project open and active!     ?
+      ????????????????????????????????????????????????????????????????????
+    pi_cap.kicad_pcb: 67 track segments + vias imported
+  pass 1: 0 unconnected, 0 violation(s)
+    pi_cap: no matched-length groups declared -- nothing to check
+    pi_cap.geom.json: 10 footprints, board 56.00 x 26.00
+pi_cap: 0 unconnected, 0 violation(s)
