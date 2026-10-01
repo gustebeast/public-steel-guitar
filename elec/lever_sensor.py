@@ -305,6 +305,7 @@ def lever_sensor():
                     Pin(num=20, name="PA12", func=O), Pin(num=21, name="PA13", func=P),
                     Pin(num=22, name="PA14", func=P), Pin(num=27, name="PB6", func=P),
                     Pin(num=28, name="PB7", func=P),
+                    Pin(num=26, name="PB5", func=P),   # sensor CSN -- table 3-1-3, QFN28
                     Pin(num=1, name="PB8", func=I)])   # BOOT0 -- see the note above
     gnd += u2["VSS"], u2["VSS_PAD"]
     v33 += u2["VDD"], u2["VDDA"]
@@ -418,6 +419,14 @@ def lever_sensor():
                     Pin(num=17, name="EP", func=PWR)])
     v33 += u4["VDD"]; gnd += u4["GND"], u4["EP"]
     sda += u4["A_SDA"]; scl += u4["B_SCL"]
+    # Z/CSN -> PB5, so the MCU can ALSO read the sensor over SSI on the same two wires
+    # (A = DO, B = CLK, datasheet 7.8). Only the SSI frame carries Mg[3:0] -- field too
+    # strong / too weak / over-speed -- plus a CRC; the I2C registers give the angle alone.
+    # A missing, flipped or mis-gapped magnet is the likeliest MECHANICAL fault on a lever,
+    # and this is the only way to read it without opening the housing. CSN idles high on
+    # the part's own 200k pull-up, so with PB5 left as an input the bus is plain I2C.
+    csn = Net("SENS_CSN")
+    csn += u4["Z_CSN"], u2["PB5"]
     r_mode = _r("R", "R5", "0R", "MODE strap, HIGH = I2C (datasheet fig. 18)")
     u4["MODE"] += r_mode[1]; v33 += r_mode[2]
     c_sens = _c("C11", "100nF", "sensor decoupling")
@@ -461,6 +470,14 @@ BOARD_NOTES = {
     # changed: the buck is gone from the top, the LDO and its two caps take that corner,
     # R6 steps 0.57 -X out of the +X groove band, and the four SWD pads come in off the
     # trimmed +X edge into the top strip (one column of three plus NRST, as before).
+    # ⚠ NRST's HOP IS DECLARED, NOT LEFT TO THE ROUTER (2026-09-30). U3 pin 4 sits between
+    # the crystal pins (2, 3) and its own cap and pad (C7, TP4) are on the far side of the
+    # chip from the crystal -- so on F.Cu the reset line MUST cross both oscillator tracks at
+    # a 0.4 mm-pitch escape. The router found that hop on some rolls and not others: one net
+    # added (the sensor's CSN) left NRST open on five placements out of five. One via in the
+    # pocket beside the pin, laid BEFORE routing so the crystal tracks go round it, and the
+    # same netlist closes first pass. Placement frame; 0.50/0.25 like the rest of the board.
+    "vias": [("NRST", -0.90, 2.30, 0.25, 0.50)],
     "placements": {
         "U4": (12.50, 0.85, 0.0),
         # SWD: SWDIO / SWCLK / GND in a row for a clip, NRST stranded (recovery only)
