@@ -614,3 +614,12 @@ sufficient on its own -- it turns the 206 mm cantilever into the board's 70.4 mm
 deflection goes as the fourth power, so the unsupported edge droops about 15 um.
 
 All three strips are the same section, 1.60 thick, cut to their panel's board length.
+
+## Set the pickup's retention screw on the bench, before the pickup piece goes in
+
+The pickup is locked to its height plate by ONE horizontal M4 x 12 button head at the plate's
+-Y end (2.5 mm key). Its head faces -Y and is reached through the key slot in the pickup
+piece's -Y skirt, on the screw's axis. Once the piece is in the deck that slot faces the
+chassis, so: seat the pickup against the plate's +Y wall, run the screw in until its tip
+bears on the pickup, and only then slide the piece in. Height and tilt (the three jack
+screws, from above) stay adjustable afterwards; this one does not.

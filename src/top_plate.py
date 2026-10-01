@@ -240,7 +240,7 @@ PICKUP_X_NOM  = OPEN_CTR                          # nominal pickup centre X
 JACK_INSET_X  = 38 * D.BEAD                       # 30.4: +Y jacks near the plate X-ends (toward the corners)
 JACK_YP       = 57 * D.BEAD                        # 45.6: +Y corner jacks outboard of string 1, on the nubs
 JACK_YM       = PK_MAX_YM - 13 * D.BEAD             # -Y jack deep in the -Y zone (~-62.3), below the room edge, on its nub
-JACK_MX_OFF   = 8.0                                # -Y jack X-nudge off centre (frees the centre for the setscrew)
+JACK_MX_OFF   = 12 * D.BEAD                        # 9.6 -Y jack X-nudge off centre: its boss clears the retention screw's HEAD by 1.2
 JACK_POS      = [(PICKUP_X_NOM + JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM - JACK_INSET_X, JACK_YP),
                  (PICKUP_X_NOM + JACK_MX_OFF, JACK_YM)]
@@ -254,8 +254,18 @@ HEIGHT_HOLE = PICKUP_X_NOM
 # from the plate; a horizontal M4 grub through a -Y boss pushes the pickup +Y against it.
 RET_WALL_T = 3 * D.NOZZLE_D                        # 2.4 +Y wall thickness (was 2.0)
 RET_WALL_H = 8.0                                   # +Y wall height above the plate top (enough to lock, not tall)
-RET_SCREW_Z = ZPL_TOP + 4 * D.BEAD                 # 3.2 grub axis height (bears low on the pickup base)
-RET_BOSS_L = D.NUT_INSERT_L + 1.0                  # -Y grub boss length (Y): insert pocket + 1 to the boss +Y
+# ⚠ THE RETENTION SCREW IS AN M4 x 12 BUTTON HEAD NOW, NOT A CUP-TIP GRUB (user, 2026-09-30:
+# "everything should be M4 with 2.5mm hex" -- an M4 set screw takes a 2.0 key). A head changes
+# three things the grub never had to care about:
+#   * the head is O7.6 and turns just over the plate, so the axis rises to 6 beads: the head's
+#     underside clears the plate top by 1.0 (at 4 beads it was 0.6 INTO it);
+#   * the -Y jack's O9.2 boss stood 0.4 inside the head's swing, so JACK_MX_OFF goes 8.0 -> 9.6;
+#   * it can only be driven from -Y, through the piece's skirt: RET_KEY_* is the slot for the key.
+# The reach is unchanged: seated, the tip stands RET_SCREW_L - RET_BOSS_L = GRUB_SWEEP past the
+# room's -Y edge, which is what the 96.5-102 pickup window was sized on.
+RET_SCREW_L = 12.0                                 # M4 x 12 button (m4_button_12, already a BOM line)
+RET_SCREW_Z = ZPL_TOP + 6 * D.BEAD                 # 4.8 screw axis height (head clears the plate by 1.0)
+RET_BOSS_L = RET_SCREW_L - GRUB_SWEEP              # 6.5 -Y screw boss length (Y): the insert pocket + its floor to the boss +Y
                                                    # face at PK_MAX_YM (the LONGEST supported pickup's -Y face).
                                                    # Shorter pickups butt the +Y wall, so their -Y face sits +Y of
                                                    # here and the grub protrudes across open cavity to reach it.
@@ -268,6 +278,11 @@ RET_SCREW_X = PICKUP_X_NOM                          # CENTRED (the -Y jack was n
 # The -Y grub is an M4 cup-tip SET SCREW threading a heat-set insert (cadkit set-screw bore), so the
 # boss ceiling must clear the Ø6 insert pocket by MIN_WALL_2P (2 beads) on EVERY side (the reported
 # thin-ceiling fix). Ceiling = axis + pocket radius + MIN_WALL_2P.
+RET_RELIEF_Y0 = -HY_CLAMP                          # from the skirt's inner face ...
+RET_RELIEF_Y1 = PK_MAX_YM                          # ... to the boss's +Y face (the room edge)
+RET_RELIEF_Z1 = TZ - D.MIN_WALL_2P                 # leaves a two-bead skin of deck over it
+RET_KEY_W     = 5 * D.BEAD                         # 4.0: a 2.5 mm key is 2.9 across its corners
+RET_KEY_Z0    = RET_SCREW_Z - RET_KEY_W / 2        # slot floor, half a slot under the axis
 RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL_2P   # 1.6 (2-bead quality floor) over the bore
 X_SLIDE   = 6.0                                    # pickup X-position room on the plate (+/-)
 PLATE_X   = PM.PK_W + 2 * X_SLIDE                  # green X (pickup + slide) ~50.6
@@ -280,6 +295,7 @@ LEAD_SLOT_W = 4 * D.BEAD                           # 3.2: the 2.4 lead + a 0.4 b
 LEAD_SLOT_L = 2 * X_SLIDE + LEAD_SLOT_W            # the lead's whole X travel
 LEAD_SLOT_Y = PK_YM + 5 * D.BEAD                   # 4.0 in from the demo pickup's -Y edge
 NUB_W     = 14 * D.NOZZLE_D                        # 11.2 (was 11.0) nub/arm width (>= boss Ø8)
+RET_RELIEF_W  = NUB_W + 2 * D.BEAD                 # the boss (NUB_W) + a bead of air each side
 CAVITY_X  = PLATE_X + 1.5                          # pickup cavity in the deck (green + clearance)
 CAVITY_Y  = PLATE_Y + 1.5
 # LIGHT FLANGE (user, 2026-09-17): the plate's BOTTOM reaches this far PAST the deck opening on
@@ -600,6 +616,21 @@ def _pickup_piece():
         body = body.cut(box_at(_step_x1 - _x0, OPEN_YW + 2 * SKIRT_T, FLOOR_BOT - SKIRT_DEEP_BOT,
                                x=(_x0 + _step_x1) / 2, y=OPEN_YC,
                                z=(SKIRT_DEEP_BOT + FLOOR_BOT) / 2))
+    # THE RETENTION SCREW'S TWO CUTS, after every union above (a later union would refill them).
+    # (1) A RELIEF in the deck's underside over the screw's boss and head. The boss top stands
+    #     RET_BOSS_TOP_Z, 1.6 under the deck at the lowest plate, so without this the plate could
+    #     rise 1.6 and no further; the relief leaves a two-bead skin of deck and gives it
+    #     RET_RELIEF_Z1 - RET_BOSS_TOP_Z. Blind from below, so the top surface is untouched, and
+    #     this piece prints deck-down, so it is an open pocket on the bed side: no ceiling.
+    # (2) THE KEY SLOT through the -Y skirt, on the screw's axis: a 2.5 mm key reaches the head
+    #     from -Y with the piece on the bench (INSTALL_NOTES: set the pickup before the piece
+    #     goes in). Open up to the deck so the one slot serves the plate at any bench height.
+    body = body.cut(box_at(RET_RELIEF_W, RET_RELIEF_Y1 - RET_RELIEF_Y0, RET_RELIEF_Z1 - BZ + 0.5,
+                           x=RET_SCREW_X, y=(RET_RELIEF_Y0 + RET_RELIEF_Y1) / 2,
+                           z=(BZ - 0.5 + RET_RELIEF_Z1) / 2))
+    body = body.cut(box_at(RET_KEY_W, SKIRT_T + 2.0, BZ - RET_KEY_Z0,
+                           x=RET_SCREW_X, y=-(HY_CLAMP + SKIRT_T / 2),
+                           z=(BZ + RET_KEY_Z0) / 2))
     # LEADSCREW BORES through the solid deck: head pocket (Ø7.5, opens at the bed TZ, down
     # to the shoulder) + shaft bore (Ø4.6, on down into the open bay where the plate nut is)
     # LEADSCREW BORES, through cadkit's counterbore so the PRINT DIRECTION is checked (user,

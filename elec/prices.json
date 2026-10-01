@@ -97,11 +97,11 @@
     "m4_button_12": {
       "usd": 0.4923,
       "verified": "v",
-      "per_instrument": 3,
+      "per_instrument": 4,
       "vendor": "McMaster-Carr",
       "sku": "92095A192",
-      "order": "1 x $14.77 (pack of 100) = $14.77 for 30 needed",
-      "what": "M4x12 -- 2 optical board, 1 UI clamp"
+      "order": "1 x $14.77 (pack of 100) = $14.77 for 40 needed",
+      "what": "M4x12 -- 2 optical board, 1 UI clamp, 1 pickup -Y retention (was a cup set screw until the one-key rule, 2026-09-30)"
     },
     "m4_button_20": {
       "usd": 0.1894,
@@ -142,11 +142,11 @@
     "m4_setscrew_10": {
       "usd": 0.1032,
       "verified": "v",
-      "per_instrument": 45,
+      "per_instrument": 44,
       "vendor": "McMaster-Carr",
       "sku": "91390A114",
-      "order": "5 x $9.29 (pack of 100) = $46.45 for 450 needed",
-      "what": "M4x10 cup-point set screw -- 2 position + 2 spring-tension per control x 11, + 1 pickup retention. BOM.md also lists 10 string clamps; the model draws none, so they are NOT counted here."
+      "order": "5 x $9.29 (pack of 100) = $46.45 for 440 needed",
+      "what": "M4x10 cup-point set screw -- 2 position + 2 spring-tension per control x 11. TAKES A 2.0 mm KEY, so every one of these breaks the one-key rule (user, 2026-09-30) and is to be designed out with the lever cartridges (branner). The pickup retention screw left this row for m4_button_12 that day."
     },
     "m4_insert": {
       "usd": 0.2187,
