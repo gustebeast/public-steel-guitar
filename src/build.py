@@ -574,7 +574,7 @@ def _string_components(i):
     # guide rod: dropped in from +Z through the slab, through the -X ear, into a blind
     # socket in the screw rail — SUPPORTED AT BOTH ENDS, so it is a beam and not a
     # cantilever. Gravity seats it; the string overhead keeps it there.
-    rod_top = BE.GUIDE_ROD_TOP          # stops under the bridge bearing, not at the bore's top
+    rod_top = BE.GUIDE_ROD_TOP          # just under the optical board
     rod_bot = BE.GUIDE_SOCKET_Z
     out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
         (D.guide_rod_x(i), sy, rod_bot))))
@@ -613,10 +613,17 @@ def _string_components(i):
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
     # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
+    # THE CLAMP IS DRAWN AT ITS REFERENCE SPOT, NOT WHERE THE NUT HAS CARRIED IT -- and that is
+    # a known gap, not a choice. Posing it by travel (splice_frame's from_screw: spliced on
+    # CLAMP_END_CLR off the screw pulley with the nut at the top, then BELT_PER_MM toward the
+    # motor per mm of nut) was tried on 2026-10-01 and showed real trouble the reference pose
+    # hides: near the screw end the belt is turned 90 deg, so the clamp lies across its
+    # neighbours' lanes (clamp<->next belt up to 26 mm3, clamps 9<->10 31 mm3), and string 9's
+    # clamp grazes string 10's motor pulley in its last millimetre of travel. Where on each
+    # belt the clamp may live, over the whole travel, is an open study; until it is settled
+    # the pose stays here so the gate is not red on a question it cannot answer.
     so, sxd, sn = C.splice_frame((mx, my, mz), (D.screw_x(i), sy, spz))
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
-    # all tensioners shown FULLY LOOSE (splice take-up gap open); the clamp's belt-position vs the
-    # carriage is a separate question (see the belt-travel note) — held at the flat-zone reference here.
     for _nm, _shp in BTn.clamp_components(with_lifters=(i == D.N_STRINGS - 1)):
         out.append((f"{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
@@ -1286,6 +1293,17 @@ def _lever_stations_components():
 
 SCREW_ROW_PARTS = ("leadscrew", "nut_", "string_", "guide_rod",
                    "screw_pulley", "screw_bearing")
+
+
+def travel_work_components():
+    """EVERYTHING THE NUT'S TRAVEL MOVES OR MEETS, as one live set: all ten strings' whole
+    drivetrains (screw, nut, guide rod, string, belt, clamp, motor) and the bridge endplate
+    whose ceiling and rail are the two stops. The screw rows alone leave the belts and their
+    clamps in grey cache, and the clamps reaching the pulleys is what the travel is about."""
+    out = [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)]
+    out.append(("bridge_endplate", PARTS["bridge_endplate"][0]()))
+    out.append(("bridge_bearings", C.bridge_bearings()))
+    return out
 
 
 def screw_rows_components():

@@ -88,7 +88,7 @@ BELT_PLANE_DZ   = 11 * BEAD  # 8.8 — the two screw-pulley planes' Z separation
 # the 2.5 half-width) PLUS the rise of its centreline toward the motor plane by the time it
 # gets to the near row — asserted after motor_pos, which the run length needs. A first
 # pass at 8.0 used the half-width and no rise, and left two belts grazing at 0 clearance. It costs nothing
-# at the thrust stack (the pulley TOP is the frozen datum, see PULLEY_TOP_Z); the LOW band
+# at the thrust stack (a change here moves the bands; see SCREW_PULLEY_Z); the LOW band
 # drops instead, and the motors, riding midway between the planes, drop half of that.
 # Declared up here because the pulleys' plane split is exactly this, and the thrust stack
 # sits on top of the pulleys.
@@ -495,26 +495,12 @@ PULLEY_BOSS_H   = 1 * BEAD          # 0.8
 # the column can be as fat as the boss — which it must be: at Ø7.2 it could not even
 # contain the Ø7.8 socket.
 PULLEY_COL_D    = PULLEY_BOSS_D                                         # 9.6
-# HIGH SKU's column is the SHORT one, and the only new height this design spends: it is
-# the socket's depth budget on the tighter SKU. It comes out of the pulley PLANE, not the
-# thrust stack — see SCREW_PULLEY_Z. 3 beads gives a 4.1 socket at ~2.0 MPa on the formed
-# thread, under a third of the 6.5 MPa the old collar was accepted at.
-PULLEY_COL_HI   = 3 * BEAD                                              # 2.4, HIGH
-PULLEY_COL_H    = PULLEY_COL_HI + BELT_PLANE_DZ                         # 11.2, LOW
-PULLEY_END_A    = (PULLEY_GAP / 2 + PULLEY_CONE
-                   + PULLEY_COL_HI + PULLEY_BOSS_H)                     # 7.2, HIGH band→top
-PULLEY_END_B    = PULLEY_END_A + BELT_PLANE_DZ                          # 16.0, LOW band→top
+# (The COLUMN heights, and with them the socket's depth, are down with the thrust stack:
+# they are whatever is left between the band planes and the bearing -- see PULLEY_COL_HI.)
 # BOTH FLANGES CHAMFER TOWARD THE BELT (user): each presents a 45° face, so the pair is a
 # shallow V and the belt self-centres. Below the lower cone a full disc is the bed face.
 PULLEY_BOT      = (PULLEY_GAP / 2 + PULLEY_FLANGE_T
                    + PULLEY_CONE)                                       # 4.8, both, bed face
-# BLIND SOCKET, bored down from the top. Its floor stops above the band's top, inside the
-# upper cone: that cone flares 45° from the band's Ø8.4, so the wall over the Ø7.8 groove is
-# 0.3 at the band and grows 1:1 going up — 0.4 above it gives 0.7, three-and-a-half traces
-# of this part's 0.2 nozzle. Identical on both SKUs, so the rod ends at the same Z on every
-# station and there is still ONE screw length.
-PULLEY_SOCKET_FLOOR_CLR = 2 * 0.2                                       # 0.4, 0.2-nozzle part
-PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 4.1
 # ─────────────────────────────────────────────────────────────────────────
 # BOTTOM OF THE SCREW — drive pulley, thrust bearings, retaining collar (axis Z)
 # ─────────────────────────────────────────────────────────────────────────
@@ -524,17 +510,12 @@ PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 4.1
 # would have dragged the entire motor bank down with it for no reason at all.
 # Frozen here at the value belt-plane centring settled on; the nut clearance that
 # expression used to guarantee is now an assert (below, once PULLEY_W exists).
-# THE FROZEN DATUM IS THE PULLEY TOP — the thrust seat the nut-sweep gap depends on — and
-# the band plane DERIVES from it, so a change to BELT_PLANE_DZ or to the pulley column moves
-# the band and never the thrust stack. (It used to be frozen the other way round, at -49.0;
-# the warning above against deriving it from the NUT still stands.)
-# The band has moved twice for the endcap pulleys (user, 2026-09-10): -49.0 -> -51.4 for
-# the socket's column, then -> -54.6 when BELT_PLANE_DZ went back up to 8.8. Every belt
-# stays aligned with its motor, because MOTOR_BELT_Z rides midway between the planes. The
-# cost is that the chassis floor hangs off MOTOR_BELT_Z (-> motor_bank.FLOOR_TOP -> BED_Z
-# -> chassis.Z_BOT and the knee-lever mounts): 4.0 deeper than before the endcap.
-PULLEY_TOP_Z    = -38.6
-SCREW_PULLEY_Z  = PULLEY_TOP_Z - BELT_PLANE_DZ - PULLEY_END_A   # -54.6, LOW-plane band
+# THE FROZEN DATUM IS THE BAND PLANE. The motors, the bank's floor and the chassis hang off
+# it, so it does not move for anything up here. What sits ABOVE it does: the thrust bearing
+# is placed by the nut's floor (see SUPPORT_BRG_Z), and each pulley's column is however much
+# height that leaves over its band. (It was frozen at the pulley TOP, -38.6, with the band
+# derived downward; the band's value is the same, it is only which end is the datum.)
+SCREW_PULLEY_Z  = -54.6     # LOW-plane band centre
 # THRUST STACK: TWO MR85ZZ (Ø5×8×2.5) in TANDEM per screw, not one bearing.
 # Sizing is by STATIC capacity, not life. Per-string tension runs 88–147 N and a
 # single MR85's permissible static axial load is ~130 N (C0r ≈ 260 N — a typical
@@ -578,18 +559,9 @@ BRG_LEDGE_T     = 5 * BEAD                          # 4.0 of rail over the outer
 # ring on a face that prints sideways, i.e. an overhang. Thickening the whole plate to the
 # collar's top deletes the collar and gives each rod a 1.6 socket in solid plate instead.
 # It does NOT count against the nut — see the nut assert below.
-# THE STACK SITS ON THE PULLEYS, and moving it here is what deleted the retaining
-# collar. The screw is pulled +Z, so whatever grips it has to bottom against something
-# grounded ABOVE; put the bearings on the pulley tops and the PULLEY is that thing.
-# The belts do not object, which was the objection: they wrap the toothed band, whose
-# top is 1.5 mm below the pulley's own top (measured), so a rail seated on the tops
-# clears them. Everything that used to live under the pulley is gone with it — no
-# collar, no fight for the 10.7 mm between the bottom flange and the chassis end block,
-# and ~9 mm off the screw.
-PULLEY_TOP_MAX  = (SCREW_PULLEY_Z + BELT_PLANE_DZ
-                   + PULLEY_END_A)                  # -38.6, BOTH SKUs' top (same Z)
-SUPPORT_BRG_BOT = PULLEY_TOP_MAX                    # the stack seats straight on it
-SUPPORT_BRG_Z   = SUPPORT_BRG_BOT + SUPPORT_BRG_W   # -33.6, thrust ledge underside
+# (PULLEY_TOP_MAX / SUPPORT_BRG_BOT / SUPPORT_BRG_Z are down with CARRIAGE_TRAVEL: the bearing
+# is placed by the nut's floor, and the floor needs the belt runs.)
+
 
 # STRING ACCESS CHANNELS (user, 2026-09-10). With two screw rows, a string can no longer be
 # threaded into its nut ear from the +X face: the far row is buried behind the near one.
@@ -630,12 +602,6 @@ def string_access_x(i: int) -> float:
         apex = seat_r + _ACCESS_PASS_R - _ACCESS_PASS_R * 2 ** 0.5   # circle touches the bore
         off = apex + STRING_ACCESS_H            # house_hole's apex is `wall` above its axis
     return screw_x(i) + toward * off
-# BOTTOM of the rod: it ends in the pulley's BLIND SOCKET, a hair short of the floor so it
-# never bottoms and preloads the formed thread. Both SKUs share the top (PULLEY_TOP_MAX)
-# and the socket depth, so the rod ends at the same Z on every station.
-SCREW_SOCKET_GAP = 0.2
-SCREW_BOT_Z     = PULLEY_TOP_MAX - PULLEY_SOCKET_L + SCREW_SOCKET_GAP   # -42.5
-SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 37.7 — the CUT length (see BOM).
 # Not a purchasable length: Tr5x1 stock starts at 100 mm, so every screw is cut from a
 # longer blank. That is fine because the requirement is a WINDOW, not a number — the
 # rod has to clear the nut's top at the top of travel and fill the collar at the
@@ -770,8 +736,8 @@ def motor_pos(i: int):
 # belt travel there is -- and the nut can run a great deal further than that (15.4 from the
 # ceiling to the thrust bearing, against 8.7 of clamp room on the shortest belt). Nothing
 # stopped it. A homing move or a long restring would have walked the clamp into a pulley.
-# So the nut gets a FLOOR (screw_rail's plate rises to NUT_BOT_MIN and the boss lands on
-# it), and the travel is what the shortest belt can carry with CLAMP_END_CLR left at each
+# So the nut gets a FLOOR -- the thrust bearing itself, brought up to NUT_BOT_MIN so the
+# boss lands on its inner ring -- and the travel is what the shortest belt can carry with CLAMP_END_CLR left at each
 # end: the top stop is the ceiling, but where the clamp sits on the belt at that moment is
 # set by hand at assembly, and nobody wants the far end a hair off a pulley.
 # ONE FLOOR FOR ALL TEN (user). Only the three shortest belts need it -- the rest are
@@ -789,10 +755,51 @@ CARRIAGE_TRAVEL = (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
 NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -26.17, the FLOOR: the
                                                                # boss's underside at the
                                                                # bottom of travel
-assert NUT_BOT_MIN - SUPPORT_BRG_Z >= BRG_LEDGE_T - 1e-9, (
-    f"the nut's floor ({NUT_BOT_MIN:.2f}) is below the thrust ledge's top "
-    f"({SUPPORT_BRG_Z + BRG_LEDGE_T:.2f}): the stop would have to be cut INTO the ledge "
-    f"that carries the string load")
+# THE THRUST BEARING IS THAT FLOOR (user, 2026-10-01). The nut's boss comes down through
+# the rail's ledge and lands on the bearing's INNER RING -- steel, not printed plate -- so
+# the bearing's top face is simply where the nut stops. And the stop loads nothing printed:
+# the screw pulls the nut down onto the ring, the ring sits on the pulley's boss, and the
+# pulley hangs on the same screw, so the whole reaction closes through the screw like a
+# jam nut. The housing never sees it.
+# The bearing did not stay where it was with plastic piled on top (the first version: a
+# ledge 3.4 thicker, then a ledge at all). It comes UP to the floor, and every millimetre
+# it rises is a millimetre of pulley column underneath it -- see PULLEY_COL_HI.
+# ⚠ The boss is Ø10.2 off the seller's drawing and the 688's inner ring is ~Ø10.2 by the
+# usual rule: a boss that measures wider reaches the SHIELD. Measure both.
+SUPPORT_BRG_Z   = NUT_BOT_MIN                       # -26.17, the bearing's top = thrust ledge
+                                                    # underside = the nut's floor
+SUPPORT_BRG_BOT = SUPPORT_BRG_Z - SUPPORT_BRG_W     # -31.17
+# THE STACK SITS ON THE PULLEYS. The screw is pulled +Z, so whatever grips it has to bottom
+# against something grounded ABOVE; with the bearing on the pulley top the PULLEY is that
+# thing, and there is no retaining collar. The belts do not object: they wrap the toothed
+# band, well below the pulley's own top.
+PULLEY_TOP_MAX  = SUPPORT_BRG_BOT                   # BOTH SKUs' top (same Z)
+# ...AND THE PULLEYS GROW TO MEET IT, which is where the freed height is worth something:
+# the column over each band is the socket's depth budget, and the socket's formed thread is
+# what grips the screw against the whole string load. The HIGH SKU's column is the short one
+# and it sets the socket for both (one screw length, rod ends at the same Z everywhere). It
+# was 3 beads -- a 4.1 socket, barely two turns of a 2 mm lead. It is 9.83 now and the
+# socket 11.53: nearly six turns, at ~0.7 MPa on the formed thread instead of ~2.0.
+PULLEY_END_A    = PULLEY_TOP_MAX - (SCREW_PULLEY_Z + BELT_PLANE_DZ)     # 14.63, HIGH band→top
+PULLEY_END_B    = PULLEY_END_A + BELT_PLANE_DZ                          # 23.43, LOW band→top
+PULLEY_COL_HI   = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_CONE - PULLEY_BOSS_H   # 9.83, HIGH
+PULLEY_COL_H    = PULLEY_COL_HI + BELT_PLANE_DZ                         # 18.63, LOW
+assert PULLEY_COL_HI >= 3 * BEAD - 1e-9, (
+    f"the HIGH pulley's column is {PULLEY_COL_HI:.2f}: under three beads the socket is too "
+    f"shallow to grip the screw. The nut's floor has come down onto the pulley plane.")
+# BLIND SOCKET, bored down from the top. Its floor stops above the band's top, inside the
+# upper cone: that cone flares 45° from the band's Ø8.4, so the wall over the Ø7.8 groove is
+# 0.3 at the band and grows 1:1 going up — 0.4 above it gives 0.7, three-and-a-half traces
+# of this part's 0.2 nozzle. Identical on both SKUs.
+PULLEY_SOCKET_FLOOR_CLR = 2 * 0.2                                       # 0.4, 0.2-nozzle part
+PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 11.53
+# BOTTOM of the rod: it ends in the socket a hair short of the floor, so it never bottoms and
+# preloads the formed thread. The socket's FLOOR hangs off the band, not the top, so a deeper
+# socket takes more of the same screw and SCREW_LEN does not change.
+SCREW_SOCKET_GAP = 0.2
+SCREW_BOT_Z     = PULLEY_TOP_MAX - PULLEY_SOCKET_L + SCREW_SOCKET_GAP   # -42.5
+SCREW_LEN       = SCREW_TOP_Z - SCREW_BOT_Z         # 37.7 — the CUT length (see BOM).
+
 
 
 # THE INSTRUMENT'S BOTTOM GRID (user, 2026-09-15). The bottom is one solid XBAR-tall prism
