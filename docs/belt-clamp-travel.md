@@ -51,7 +51,60 @@ measurement that says so. Reproduce with `py -3.12 -m tools.clamp_study 8 out.js
 5. The three conflicts first seen by posing the clamps:
    - clamp ↔ neighbouring belt: **real**, and it is the governing constraint everywhere.
    - clamp 9 ↔ string 10's motor pulley: **real on run B** (up to 10.6 mm3); avoided on run A.
-   - clamp 9 ↔ clamp 10: not measured here.
+   - clamp 9 ↔ clamp 10: **clear** — see the next section.
+
+## Clamp against clamp (`py -3.12 -m tools.clamp_pair 8 A 9 B 10`)
+
+Both clamps move, and independently, so every position of one was tried against every
+position of the other (8 mm grid, each on its right run).
+
+| pair | worst overlap | where |
+|---|---|---|
+| 9 (A) ↔ 10 (B) | **none**; closest approach 6.7 mm | — |
+| 1↔2, 3↔4, 5↔6, 7↔8 (near A ↔ next far B) | none | — |
+| 2↔3, 4↔5, 6↔7 (far B ↔ next near A) | 0.9–1.1 mm³ | both clamps at their screw ends |
+| 8 (B) ↔ 9 (A) | 0.5 mm³ | clamp 8 within 29–83 mm of its screw pulley AND clamp 9 within 29–37 of its own |
+
+The touching corner is always both clamps hard against the screw end, where the belt is a
+vertical ribbon and the two rows' clamps point at each other. Every clear span in the table
+above already starts further out than that, so clamp-to-clamp adds no new limit.
+
+## Twist margin (user, 2026-10-01)
+
+The clamp turns with the belt as it travels: sideways (deep side into the next lane) at
+the screw end, flat at the motor end. The table above poses it at ONE angle per position,
+from the assumption that the 90° spreads evenly over the free belt. A real belt will not be
+that tidy, so the study was re-run with the clamp also posed **20° either side**; a position
+counts only if all three poses are clear (`clamp_study 8 out.json A 20 1,3,5,7,9`).
+
+| string | run | nominal twist | with ±20° | what stops it |
+|---|---|---|---|---|
+| 1 | B / A | 9.6 | **1.1 / 2.8** | chassis |
+| 2 | B | 25.6 | 21.6 | next belt |
+| 3 | A | 20.8 | 16.8 | next belt |
+| 4 | B | 20.9 | 16.4 | next belt |
+| 5 | A | 16.0 | 12.5 | next belt |
+| 6 | B | 15.7 | 11.2 | next belt |
+| 7 | A | 11.3 | 9.0 | next belt |
+| 8 | B | 8.3 | **6.1** | next belt, chassis |
+| 9 | A | 6.7 | **5.0** | next belt |
+| 10 | B | 3.4 | **1.1** | bridge endplate, chassis |
+
+So allowing for twist error costs every string 2–4 mm of travel, and takes strings 1 and 8
+below 7.97 as well as 9 and 10. String 1's limit is the chassis, not a neighbour. ±20° is a
+guess at the error; nothing has been measured on a real belt.
+
+## The sizing rule was wrong in kind
+
+`CARRIAGE_TRAVEL` is derived from the shortest pulley-to-pulley distance. The clamp's room
+is not that: it is the span its neighbours, the chassis and the endplate leave clear, which
+differs per string and is a measured quantity. The number should come from the measured
+clear span, per string, with the twist margin in it.
+
+## Install rule
+
+**Near row (odd strings): clamp on the UPPER run. Far row (even strings): clamp on the
+LOWER run.** Also in INSTALL_NOTES.md.
 
 ## Not decided
 
