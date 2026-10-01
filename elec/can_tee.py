@@ -174,6 +174,22 @@ _HW, _HL = BOARD_W / 2.0, BOARD_L / 2.0
 _EAR_X1 = _HW + EAR_W                    # +29.5
 _EAR_Y0 = _HL - EAR_H                    # -0.7
 
+BAR_Y, BAR_W, STUB_W = -1.5, 2.0, 1.2
+# pad x of each rail's three lands, off the footprints: J1 at -7.0 spans 8 ways about its
+# centre, J2 at 11.7 spans 4, both on 2.50 pitch
+_J1_X0, _J2_X0, _PITCH = -7.0 - 3.5 * 2.5, 11.7 - 1.5 * 2.5, 2.5
+
+
+def _power_copper():
+    out = []
+    for net, layer, way in (("GND", "B.Cu", 0), ("+24V", "F.Cu", 1)):
+        xs = [_J1_X0 + way * _PITCH, _J1_X0 + (way + 4) * _PITCH, _J2_X0 + way * _PITCH]
+        out.append((net, layer, BAR_W, [(xs[0], BAR_Y), (xs[-1], BAR_Y)]))
+        for x in xs:
+            out.append((net, layer, STUB_W, [(x, BAR_Y), (x, ROW_Y)]))
+    return out
+
+
 BOARD_NOTES = {
     # THE LAYOUT REGION, not the outline: every part lives in the original 40 x 16
     # and place_check measures against this. The board EDGE is outline_poly below.
@@ -207,6 +223,19 @@ BOARD_NOTES = {
     # board buys nothing the track does not.
     # NO LONGER a screw beside the board: the ear carries a real through-hole, so
     # hold_edge is gone and the cradle's job is locating, not gripping.
+    # ⚠ THE TRUNK'S POWER IS DELIBERATE COPPER NOW, AND IT WAS THE WEAKEST LINK ON BUS A
+    # (measured 2026-09-30 on the routed board). The router laid +24V from trunk-in to
+    # trunk-out as 27.9 mm of the 0.25 mm default: ~55 mOhm per rail per tee against
+    # ~2.4 mOhm for the 45 mm of 22 AWG between tees, rated ~0.88 A, and there are ten in
+    # series carrying up to half the fleet from each end. The 3 A contact everyone worried
+    # about was never the limit; this was. No netclass can fix it -- freerouting will not
+    # choose a path for its resistance -- so the two rails are laid here:
+    #   a 2.0 mm BAR under the connector bodies at y BAR_Y, +24V on F.Cu and GND on B.Cu,
+    #   and a 1.2 mm stub up to each through-hole pad (1.7 wide, so the stub fits inside it
+    #   and leaves 1.05 to the neighbouring pads).
+    # ~5 mOhm per rail per tee. CAN keeps the +Y strip and both layers above the pad row.
+    "tracks": _power_copper(),
+    "frozen_nets": ("+24V", "GND"),
     "mounting_hole_xy": (_EAR_X1 - EAR_W / 2.0, _HL - EAR_H / 2.0),
     "single_sided": True,
     "tail_band_from_plus_y": BOARD_L / 2.0 - ROW_Y,   # 6.0, against a 6.4 limit
