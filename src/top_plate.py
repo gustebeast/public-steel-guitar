@@ -201,8 +201,17 @@ FLG_TOP  = ZPL_TOP + PM.PK_H_MIN                          # -Y guide wall top (c
 # through a cadkit heat-set-insert NUT on a plate NUB. Turning the head from +Z (axially
 # fixed, free to rotate; gravity holds it on the shoulder) walks the plate up/down.
 JACK_D         = 4.0                             # M4 (cadkit heat-set-insert nut on the plate)
-BOSS_H         = 8 * D.NOZZLE_D   # 6.4 (was 6.0)                              # NUT boss height ABOVE the plate top (nut boss is on TOP now,
+# ⚠ 5 BEADS, NOT 8, AND THE DECK IS RELIEVED OVER EACH BOSS (2026-09-30, swept not assumed:
+# scratchpad sweep.py lifted the plate in 1 mm steps against both deck solids). At 6.4 the
+# three bosses met the solid deck underside after 4.6 mm of the 7.0 the pickup window needs
+# (PK_H 22 down to PK_H_MIN 15) -- 69-75 mm3 each at full travel, invisible to a gate that
+# only sees the demo pose. The insert does not need the height: its 5.0 pocket now starts
+# 4.0 up and runs 1.0 INTO the 2.4 plate, leaving 1.4 under it, and the plate hangs on its
+# nuts so the load seats the insert rather than pulling it. With JACK_BOSS_RELIEF in the deck
+# the plate travels 8.6 before anything touches.
+BOSS_H         = 5 * D.BEAD       # 4.0 (was 6.4)                              # NUT boss height ABOVE the plate top (nut boss is on TOP now,
                                                  # so the plate BOTTOM stays flat -> prints -Z->+Z, user)
+JACK_BOSS_RELIEF = 2 * D.BEAD                      # 1.6 blind pocket in the deck underside over each boss
 JACK_MOUTH_Z   = ZPL_TOP + BOSS_H                  # plate NUT mouth = the boss TOP (screw threads down into it)
 # The leadscrew is a real M4 BUTTON-HEAD cap screw (headed, hex-socket drive) captured in the
 # deck: a counterbore seats the head, the shoulder bears on its floor, the shank threads down
@@ -280,7 +289,8 @@ RET_SCREW_X = PICKUP_X_NOM                          # CENTRED (the -Y jack was n
 # thin-ceiling fix). Ceiling = axis + pocket radius + MIN_WALL_2P.
 RET_RELIEF_Y0 = -HY_CLAMP                          # from the skirt's inner face ...
 RET_RELIEF_Y1 = PK_MAX_YM                          # ... to the boss's +Y face (the room edge)
-RET_RELIEF_Z1 = TZ - D.MIN_WALL_2P                 # leaves a two-bead skin of deck over it
+RET_RELIEF_Z1 = TZ - D.MIN_WALL                    # leaves a ONE-bead skin: at two the boss met it
+                                                   # after 6.4 of the 7.0 travel (swept)
 RET_KEY_W     = 5 * D.BEAD                         # 4.0: a 2.5 mm key is 2.9 across its corners
 RET_KEY_Z0    = RET_SCREW_Z - RET_KEY_W / 2        # slot floor, half a slot under the axis
 RET_BOSS_TOP_Z = RET_SCREW_Z + M4.insert_pilot_d / 2 + D.MIN_WALL_2P   # 1.6 (2-bead quality floor) over the bore
@@ -622,6 +632,7 @@ def _pickup_piece():
     #     rise 1.6 and no further; the relief leaves a two-bead skin of deck and gives it
     #     RET_RELIEF_Z1 - RET_BOSS_TOP_Z. Blind from below, so the top surface is untouched, and
     #     this piece prints deck-down, so it is an open pocket on the bed side: no ceiling.
+    #     The three jack NUT bosses get the same treatment, JACK_BOSS_RELIEF deep.
     # (2) THE KEY SLOT through the -Y skirt, on the screw's axis: a 2.5 mm key reaches the head
     #     from -Y with the piece on the bench (INSTALL_NOTES: set the pickup before the piece
     #     goes in). Open up to the deck so the one slot serves the plate at any bench height.
@@ -644,6 +655,9 @@ def _pickup_piece():
                                M4.shaft_clr_d + 0.4, TZ - (BZ - 1.0),
                                (jx, jy, TZ), (0.0, 0.0, -1.0),
                                print_up=PIECE_UP, overshoot=1.0)
+    for jx, jy in JACK_POS:
+        body = body.cut(cyl(M4.boss_od + D.BEAD, JACK_BOSS_RELIEF + 0.5, z=BZ - 0.5)
+                        .translate((jx, jy, 0.0)))
     return heal(body)
 
 
