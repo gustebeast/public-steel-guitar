@@ -1468,6 +1468,9 @@ BOARD_NOTES = {
     # ⚠ SO THIS IS AN IMPROVEMENT AND NOT THE FIX. The J6 -> J7 pass-through still carries
     # the fleet's whole <5 A and wants about 2.8 mm at a 10 C rise, or 1.8 mm if a 20 C
     # rise is accepted. That is deliberate trunk copper, not a netclass number.
+    # (2026-10-01: THAT TRUNK COPPER NOW EXISTS -- "THE 24 V POWER PATH, DECLARED AND SIZED"
+    #  at the bottom of this file, 2.0 mm with the rails on a layer each. The netclass
+    #  width below is what the router uses for the BRANCHES: the buck's input and D6.)
     "net_widths": {"+24V": 0.5, "PWR_GND": 0.5},
     # ⚠ THE TRUNK NEEDS DELIBERATE COPPER AND ONE LAYER CANNOT CARRY IT -- THE RAILS ARE
     # INTERLEAVED ON THE CONNECTOR. J6 -> J7 passes the fleet's whole <5 A and wants about
@@ -1622,27 +1625,16 @@ BOARD_NOTES = {
     # router like the 101 GND stitches beside it, which the router has always routed
     # around. Same point, same size; the only change is that the router can see it.
     "vias": [("GND", -15.500, -7.300)],
-    # V5_PRE's last hop to C5 (2026-10-01, elec/repair_search.py on the board routed with
-    # the Kycon inlet): the router brings the rail to within 2.6 mm on B.Cu and stops.
-    # One via beside C5's pad and two short tracks. PINNED TO THAT ROUTING, like the rest.
-    "repair_vias": [("V5_PRE", 8.850, -23.400)],
+    # (V5_PRE's hop to C5 was repaired here for one route. With the 24 V path declared the
+    #  router closes it itself -- 0.18 mm from where the repair via stood, so the two holes
+    #  overlapped. Gone; the list is kept because the re-centring pass reads it.)
+    "repair_vias": [],
     "repair_tracks": [
-        ("V5_PRE", "F.Cu", 0.25, [(8.050, -23.500), (8.850, -23.400)]),
-        ("V5_PRE", "B.Cu", 0.25, [(8.850, -23.400), (10.625, -23.246)]),
         # (the PWR_GND hop that stood first here is gone: since the mounting ear the router
         #  closes PWR_GND on its own, and the pinned copy crossed its V5_PRE, 2026-09-21)
-        # ON B.Cu: the J7 -> J9 hop runs pad to pad UNDER the row. Both ends are THT pads,
-        # so it needs no via, and B.Cu is empty there -- where on F.Cu the router's own
-        # PWR_GND edge run (at y -30.05 since the board grew its mounting ear) crossed it.
-        ("+24V", "B.Cu", 0.5, [(-1.250, -28.000), (-1.250, -29.500)]),
-        ("+24V", "B.Cu", 0.5, [(-1.250, -29.500), (17.250, -29.500)]),
-        ("+24V", "B.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
-        ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (17.250, -28.000)]),
-        # (THE INLET'S OWN RUNS ARE NOT HERE ANY MORE. As post-route repairs they were laid
-        # over whatever the router had put in the channel between J6's pin rows -- 3
-        # tracks_crossing against PWR_GND, or 3 unconnected once those were dropped. They
-        # are DECLARED copper now, at the bottom of this file, so the router plans round
-        # them.)
+        # (THE 24 V BUS IS NOT HERE ANY MORE. The J7 -> J9 hop and the inlet's own runs were
+        #  0.5 mm post-route repairs; the whole power path is DECLARED copper now, sized for
+        #  the supply -- see the bottom of this file.)
     ],
     "stitch_nets": ("GND",),
     # ⚠ THE USB SHIELD TABS REACH THE PLANE THROUGH THEIR OWN BARRELS. J2.SH and J4.SH
@@ -2045,23 +2037,52 @@ BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
     (_n, _layer, _w, [tuple(_p) for _p in _pts]) for _n, _layer, _w, _pts in _frozen["tracks"]]
 BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [tuple(_v) for _v in _frozen["vias"]]
 
-# ── THE 24 V INLET'S OWN COPPER, DECLARED (2026-10-01) ───────────────────────────────────
-# J6 is the Kycon 4-pin jack and its +24V pins are 1 and 4, on a DIAGONAL (the supply's
-# pinout), with PWR_GND's 2 and 3 on the other one. Three runs, all F.Cu, all passing under
-# the jack's body where no part can sit:
-#   * the bus's end at (17.25, -29.5) -> along y -29.5, 0.30 above the rear shell leg's
-#     land -> up into pin 1;
-#   * pin 1 -> pin 4 through the 3.5 mm channel between the two pin rows;
-#   * pin 4 -> J10, between the two +Y shell legs.
+# ── THE 24 V POWER PATH, DECLARED AND SIZED (2026-10-01) ─────────────────────────────────
+# The supply is 6.67 A now (GST160A24-R7B) and everything it delivers crosses this board:
+# in at J6, out at J7 (the motor trunk's head), J10 (feed 2: the motor controller, the Pi
+# and the lights) and J9 (the optical board, 0.12 A). Until today that path was 0.5 mm of
+# netclass and post-route repair -- 1.45 A at a 10 C rise, flagged above as "an improvement
+# and not the fix". This is the fix: 2.0 mm (3.95 A at 10 C, about 5.5 A at 20 C) on every
+# leg that carries a trunk.
+#
+# THE RAILS TAKE A LAYER EACH UNDER THE CONNECTOR ROW, which is the way out of the trap the
+# net_widths note describes: J7 and J10 are wired PWR_GND, +24V, +24V, PWR_GND, so two lanes
+# on ONE layer cannot both tap down. +24V runs on B.Cu, PWR_GND on F.Cu, both along
+# y -31 -- 1.0 below the pad row and 1.0 off the board edge -- and every pad is
+# through-hole, so each lane reaches its own pads with a plain stub and no via.
+#
+# J6 is the Kycon 4-pin jack: +24V on pins 1 and 4, PWR_GND on 2 and 3, on the DIAGONALS
+# (the supply's pinout). Pin 1 joins pin 4 on F.Cu through the 3.5 mm channel between the
+# two pin rows; pin 3 joins pin 2 the same way on B.Cu, under it.
 # ⚠ J10's +24V PADS ARE 2 AND 3, NOT PAD 1 -- pad 1 is PWR_GND.
 # Authored in the PRE-growth frame like the placements, shifted here like the repairs.
 _g = GROW_X / 2.0
-_p1, _p4 = (24.250, J6_Y - 2.9), (27.900, J6_Y + 2.5)
+_p1, _p2 = (24.250, J6_Y - 2.9), (24.250, J6_Y + 2.9)
+_p3, _p4 = (27.900, J6_Y - 2.5), (27.900, J6_Y + 2.5)
+_LANE_Y, _ROW_Y, _J10_Y = -31.0, -28.0, -8.7
 BOARD_NOTES["tracks"] += [
     (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
-        ("+24V", "F.Cu", 0.5, [(17.250, -29.500), (_p1[0], -29.500), _p1]),
-        ("+24V", "F.Cu", 0.5, [_p1, (_p1[0], J6_Y), (_p4[0], J6_Y), _p4]),
-        ("+24V", "F.Cu", 0.5, [_p4, (_p4[0], -12.000), (28.450, -12.000), (28.450, -8.700)]),
+        # +24V, B.Cu: J7 pads 2 and 3 -> the lane -> up the west side of J6 -> pin 1
+        ("+24V", "B.Cu", 1.2, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
+        ("+24V", "B.Cu", 1.2, [(1.250, _ROW_Y), (1.250, _LANE_Y)]),
+        ("+24V", "B.Cu", 1.0, [(17.250, _ROW_Y), (17.250, _LANE_Y)]),          # J9
+        ("+24V", "B.Cu", 2.0, [(-1.250, _LANE_Y), (20.000, _LANE_Y), (20.000, _p1[1]), _p1]),
+        # +24V, F.Cu: pin 1 -> pin 4 through the channel, pin 4 -> J10 pads 2 and 3
+        ("+24V", "F.Cu", 2.0, [_p1, (_p1[0], J6_Y), (_p4[0], J6_Y), _p4]),
+        ("+24V", "F.Cu", 2.0, [_p4, (_p4[0], -11.500), (30.950, -11.500)]),
+        ("+24V", "F.Cu", 1.2, [(28.450, -11.500), (28.450, _J10_Y)]),
+        ("+24V", "F.Cu", 1.2, [(30.950, -11.500), (30.950, _J10_Y)]),
+        # PWR_GND, F.Cu: J7 pads 1 and 4 and J9 -> the lane -> pin 3
+        ("PWR_GND", "F.Cu", 1.2, [(-3.750, _ROW_Y), (-3.750, _LANE_Y)]),
+        ("PWR_GND", "F.Cu", 1.2, [(3.750, _ROW_Y), (3.750, _LANE_Y)]),
+        ("PWR_GND", "F.Cu", 1.0, [(14.750, _ROW_Y), (14.750, _LANE_Y)]),       # J9
+        ("PWR_GND", "F.Cu", 2.0, [(-3.750, _LANE_Y), (_p3[0], _LANE_Y), _p3]),
+        # PWR_GND: pin 3 -> pin 2 on B.Cu under the +24V link; pin 2 -> J10 pad 1 on F.Cu,
+        # through the +Y rear shell leg's land (same net); pad 1 -> pad 4 on B.Cu
+        ("PWR_GND", "B.Cu", 1.5, [_p3, (_p3[0], J6_Y), (_p2[0], J6_Y), _p2]),
+        ("PWR_GND", "F.Cu", 2.0, [_p2, (_p2[0], -10.400), (25.950, _J10_Y)]),
+        ("PWR_GND", "B.Cu", 1.0, [(25.950, _J10_Y), (25.950, -10.900), (33.450, -10.900),
+                                  (33.450, _J10_Y)]),
     ]]
 
 
