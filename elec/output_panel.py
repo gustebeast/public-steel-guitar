@@ -1313,7 +1313,7 @@ GROW_X = 12.0
 # overmold lands on 0.5 mm of laminate (5.6 mm3 measured against J4's cable). Overhanging
 # the receptacle is the usual remedy. Pads stay well behind the edge: J2/J4 copper 8.48 mm,
 # J3 1.44 mm.
-USB_MOUTH_SHIFT = -0.9      # 0.5 inboard -> 0.4 proud. -1.0 and -1.1 each left one net open; this routes 0/0
+USB_MOUTH_SHIFT = 0.0      # ⚠ NOT APPLIED. Every overhang tried (-0.6 .. -1.3) splits HUB_DN1 and/or THRU across layers; see docs/bronner-work-items.md
 BOARD_W_GROWN = BOARD_W + GROW_X        # 86.0 -- the laminate that gets fabricated
 # How far each panel connector's body front stands past the +X edge: the fit clearance
 # between the board and the endplate's panel, plus the panel itself. src/electronics.py
