@@ -17,11 +17,13 @@ WHERE EVERY NUMBER COMES FROM -- nothing here was measured on a part:
     and the common 17HS-series drawings. Solid.
   * the LAYOUT (bare board, spacers, terminals outboard, OLED, buttons, coil plug in the
     rear cap's side) -- two frames of the user's video of the unit, 2026-10-01.
-  * BODY_L = 40 and the ~11 mm shroud -- scaled off the user's SIDE-ON photo of two shrouded
-    units (the only square-on view; 39 and 44 for the bodies, 9.5 and 11 for the shrouds,
-    against the 42.3 width). A close-up video frame scaled to 47, but its perspective
-    stretches the near end. components.motor() says 48 + 22. +-3 mm: MEASURE -- dimensions.py
-    hangs the motor pockets and the chassis' -Y rail off this length.
+  * BODY_L = 40 -- makerbase3d.com's listing for the MT kit says "nema17 motor 40mm long"
+    (read by the user, 2026-10-01). components.motor() says 48. (Other sellers also offer a
+    48 mm kit; ours is the 40.)
+  * the ~11 mm shrouded driver -- scaled off the user's SIDE-ON photo of two shrouded units
+    (9.5 and 11 against the 42.3 width); PCB_GAP, TERM_H and SHROUD_WALL are guesses that
+    sum to it. components.motor() says 22. +-2 mm: MEASURE -- dimensions.py hangs the
+    motor pockets and the chassis' -Y rail off this length.
   * terminal lengths -- 2.54 mm pitch blocks, by way count.
   * which connector is which -- Makerbase's schematic (MKS SERVO42D_CAN V1.0_003):
       6-way  V+  GND  COM  EN  STP  DIR      <- 24 V goes in here (3 A fuse)
@@ -38,7 +40,7 @@ from . import dimensions as D
 from .helpers import box_at, cyl_y
 
 # -- the motor (NEMA17) --------------------------------------------------------
-BODY_L = 40.0            # photo estimate -- see the docstring
+BODY_L = 40.0            # the vendor listing -- see the docstring
 CAP_F, CAP_R = 9.0, 10.0   # front and rear end caps; the lamination stack is between them
 STACK_INSET = 0.4        # the laminations sit this far inside the caps, per side
 CHAMFER = 4.1            # corner chamfer leg: 42.3 square inside a 54 mm circle
