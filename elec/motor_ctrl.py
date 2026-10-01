@@ -396,7 +396,10 @@ def motor_ctrl():
             (17, "VIO_4", PWR), (31, "VIO_1", PWR), (51, "VIO_2", PWR), (67, "VIO_3", PWR),
             (35, "PB12", I), (36, "PB13", O), (46, "PA11", P), (47, "PA12", P),
             (48, "PA13", P), (52, "PA14", P), (63, "BOOT0", I),
-            (64, "PB8", I), (65, "PB9", O), (1, "VBAT", PWR)]
+            (64, "PB8", I), (65, "PB9", O), (1, "VBAT", PWR),
+            # bring-up sense pins (docs/board-bringup-diagnostics.md 2.2, 2.3). Numbers off
+            # the same QFN68 column (.ins/ch32v307_qfn68.json): 8 PC0, 9 PC1, 20 PA4, 39 PC6.
+            (8, "PC0", I), (9, "PC1", I), (20, "PA4", I), (39, "PC6", I)]
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6", description="RISC-V MCU, 2x hardware CAN",
               footprint=MCU_FP,
@@ -703,6 +706,29 @@ def motor_ctrl():
     r16 = _r("R16", "137k 1%", "LED buck EN/UVLO divider, top -- turn-on at 18.1 V")
     r17 = _r("R17", "10k 1%", "LED buck EN/UVLO divider, bottom")
     v24 += r16[1]; en_l += r16[2], r17[1]; gnd += r17[2]
+
+    # ── BRING-UP SENSE: the board reports its own rails (2026-09-30) ─────────────────────
+    # docs/board-bringup-diagnostics.md 2.2 and 2.3. No LEDs: the MCU reads these and says
+    # so over USB, which works with the board shut inside the keyhead.
+    # PG is OPEN-DRAIN and each line uses the MCU's INTERNAL pull-up, so power-good costs
+    # two tracks and no parts. (Until the pinout fix both PG pins were listed "NC".)
+    # ⚠ FIRMWARE: PC1 and PC6 must be inputs WITH PULL-UP, or both read low for ever.
+    pg5, pg_led = Net("PG_5V"), Net("PG_LED")
+    pg5 += u5["PG"], u1["PC1"]
+    pg_led += u6["PG"], u1["PC6"]
+    # Rail sense into two ADC pins. PC0 = ADC_IN10, PA4 = ADC_IN4 (the STM32F1-family map
+    # this part follows -- ⚠ channel NUMBERS are from memory, confirm against WCH's
+    # reference manual when the firmware is written; the PINS are from the table).
+    #   +24V: 100k / 10k -> 2.18 V at 24 V, 2.73 V at a 30 V overshoot: inside 3.3 V always.
+    #   +5V : 10k / 10k  -> 2.50 V.
+    # A sagging trunk under motor load is the fault no static meter reading shows.
+    sense24, sense5 = Net("SENSE_24V"), Net("SENSE_5V")
+    r20 = _r("R20", "100k", "+24V sense divider, top")
+    r21 = _r("R21", "10k", "+24V sense divider, bottom")
+    v24 += r20[1]; sense24 += r20[2], r21[1], u1["PC0"]; gnd += r21[2]
+    r18 = _r("R18", "10k", "+5V sense divider, top")
+    r19 = _r("R19", "10k", "+5V sense divider, bottom")
+    v5 += r18[1]; sense5 += r18[2], r19[1], u1["PA4"]; gnd += r19[2]
     # 3 A against a 2.2 A load, the same ratio F2 has against the Pi's 3 A.
     f4 = Part(name="Fuse", ref_prefix="F", ref="F4", tag="F4", dest="NETLIST",
               tool="skidl", value="3A",
@@ -1012,6 +1038,13 @@ BOARD_NOTES = {
         # ⚠ 3.2 mm PITCH, NOT 3.0. At 3.0 the output bulk caps left 0.100 mm between
         # adjacent pads against a 0.127 rule -- 0.027 short, and DRC is right to say so.
         "C31": (11.70, 25.00, 0.0),
+        # bring-up sense dividers, in the two strips the board already had free:
+        # +5V between U4's courtyard (x 17.25) and J2's (20.71), C4 above and C5 below;
+        # +24V between the decoupling row (y -15.46) and L1 (y -17.66), beside C23's +24V.
+        "R18": (19.00, -9.00, 90.0),
+        "R19": (19.00, -6.50, 90.0),
+        "R20": (9.20, -16.55, 0.0),
+        "R21": (11.40, -16.55, 0.0),
     },
     "refs_on_fab": True,
     # THE GROUND PLANE is why this is four layers, same as the lever board: the
