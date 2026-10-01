@@ -220,6 +220,9 @@ def lever_sensor():
     #   19 PA11 = CAN1_RX    20 PA12 = CAN1_TX
     #   21 PA13 = SWDIO      22 PA14 = SWCLK
     #   27 PB6  = I2C1_SCL   28 PB7  = I2C1_SDA
+    # (HISTORY -- NO LONGER TRUE: pin 1 is now tied hard to GND, see "TIED HARD TO GND" below,
+    #  and WCH's own table confirms the pin: 3-1-3 note 6. Kept for the reasoning. This stale
+    #  heading was read as current on 2026-09-30 and BOOT0 was reported floating. It is not.)
     # ⚠ PIN 1 IS BOOT0/PB8, AND NOTHING ON THIS BOARD CONNECTS TO IT. This note used to
     # say pin 1 was unidentified and had to be resolved against the package drawing
     # before fabrication. A second source now answers it: KiCad's own MCU_WCH_RiscV
@@ -345,6 +348,11 @@ def lever_sensor():
     # What a hard tie costs: forcing the bootloader later would mean cutting copper
     # rather than lifting a resistor. Against a board with no way to use the bootloader
     # and a working SWD route, that is not a cost worth one 0402 and three re-routes.
+    # ⚠ FIRMWARE, from WCH CH32V203 datasheet table 3-1-3 (read 2026-09-30):
+    #   note 6 -- pin 1 is BOOT0 AND PB8 on one pin. It is grounded here, so PB8 must NEVER
+    #             be driven as an output: that is a dead short through the pin driver.
+    #   note 7 -- on the 28-pin package PA10 and PA11 are ONE pin (19). This board uses it
+    #             as PA11 = CAN1_RX, so PA10 must stay an input.
     gnd += u2["PB8"]
 
 
