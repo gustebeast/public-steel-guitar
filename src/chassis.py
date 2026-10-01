@@ -30,6 +30,8 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
+from cadkit.pcb import PH_SIDE_H as _PH_S_H, ph_side_length as _ph_side_length
+from elec.harness import ph_trunk_pins as _ph_trunk_pins
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at
@@ -515,11 +517,104 @@ def _wt_solid(x0, x1):
             .polyline(pts).close().extrude(x1 - x0))
 
 
+# ── +Y rail LED STRIP CHANNEL ──────────────────────────────────────
+# The RGBW strip (elec/led_strip.py) stands VERTICAL against the +Y rail's inner face,
+# facing -Y, as high as the pickup plate allows.
+#
+# ⚠ SLOT AT THE BOTTOM, 45 DEG ROOF OVER THE TOP (user, 2026-09-22, sketch). This is what
+# makes a -Y-facing board retainable at all. A lip over the board's top edge cannot be
+# printed off a vertical wall -- it needs a downward-facing horizontal face, which this
+# body's 45 deg rule forbids. The way out is to stop trying to hold the top and instead
+# TRAP the board: its bottom edge sits in a slot, and a roof sits just above it. To escape
+# the slot the board has to RISE by the slot's depth, and the roof is what stops it rising.
+# It cannot tip out either -- rotating a tall board about its bottom edge lifts its far top
+# corner, straight into the same roof.
+# The roof's underside slopes UP as it leaves the wall, so printing +Z it is an overhang
+# that grows outward at 45 -- self-supporting, and the aperture below it stays open.
+#
+# ⚠ THE BOARD CARRIES A BLANK TAB FOR THE SLOT (user: "add some extra PCB to the bottom").
+# The slot must grip laminate, not parts: the driver row ends 2.15 mm above the old 20 mm
+# board's bottom edge, so a 4 mm slot would have swallowed it. led_strip.BOARD_L is 24 now,
+# the extra 4 all below the drivers.
+#
+# ⚠ HEIGHT IS SET BY THE PICKUP PLATE, AT ANY SLOT. top_plate.pickup_zplate reaches y 55.25
+# -- 0.3 from this wall -- and its underside sits at ZPL_BOT -13.432. That IS its low end:
+# the jacks span 15..22 mm of pickup depth and the Alumitone is 22, so a shallower pickup
+# only lifts it. The plate installs at any of 8 X slots spanning -25..-165, so the whole run
+# has to clear it. Everything here therefore stops 2 mm under that underside.
+LED_PLATE_Z = -13.432                     # top_plate.ZPL_BOT -- read below, not duplicated
+LED_PLATE_CLR = 2.0                       # air under the plate at its lowest
+LED_ROOF_R = 3.5                          # how far the roof reaches off the wall (= its rise)
+LED_SLOT_D = 4.0                          # slot depth: the blank tab on the board
+LED_SLOT_W = 1.9                          # 1.6 board + 0.3 to slide
+LED_RIB = 2 * D.BEAD                      # 1.6 front slot wall
+LED_BOARD_H = 24.0                        # elec/led_strip.BOARD_L
+LED_CLR_TOP = 0.3                         # board top to roof underside
+LED_Y0 = Y_HI - T / 2                     # 55.55, the wall's inner face
+LED_ROOF_TOP = LED_PLATE_Z - LED_PLATE_CLR                    # -15.43, the highest material
+LED_ROOF_Z = LED_ROOF_TOP - LED_ROOF_R                        # -18.93, roof underside at the wall
+LED_BOARD_TOP = LED_ROOF_Z - LED_CLR_TOP                      # -19.23
+LED_BOARD_BOT = LED_BOARD_TOP - LED_BOARD_H                   # -43.23, the slot floor
+# ⚠ 580.0, NOT 568.0, AND THE BOARD FILE SAID SO ALL ALONG (2026-09-28). These were round
+# numbers inset from the rail, and nothing reconciled them with the strip they carry:
+# led_strip.py sizes four 139 mm sections plus three 8.0 mm junctions = 580.0 and states
+# "fits with 2.7 mm of air at each end" in a rail whose clear run is KH_RAIL_X..TP_EP_GX =
+# 585.3. The channel offered 568.0, so electronics.led_sections() -- which divided the
+# channel evenly instead of reading the board's own gap -- produced 4.00 mm junctions.
+# That is half what two facing PH plugs need: each projects PH_PLUG_RUN 3.6 past its mouth
+# and the mouths sit 1.0 inside the board ends, so 5.2 of the 8.0 is gone before the
+# jumper's U has anywhere to turn. The strip could not have been assembled, and nothing
+# caught it because the boards never overlap each other -- there is only air where the
+# plugs go. The lead found it by measuring a junction (2026-09-28).
+# 17.3 mm of rail was simply unused. Taking 580.0 of it leaves 2.8 at the -X end and 2.5
+# at the +X, which is the board file's own 2.7 to rounding.
+# ⚠ THIS IS THE LED CHANNEL ONLY. Two constants, scoped to the strip's own slot; the seam
+# question it does NOT fix is recorded in the note at led_channel_runs().
+LED_X0, LED_X1 = -608.0, -28.0
+LED_SEAM_GAP = 0.2
+
+
+def _led_channel(x0, x1):
+    """The channel over [x0, x1]: slot, aperture, roof. Section in Y-Z, extruded along X."""
+    w, d, rib, r = LED_SLOT_W, LED_SLOT_D, LED_RIB, LED_ROOF_R
+    y0 = LED_Y0                                   # the wall
+    yf = y0 - w                                   # the board's front face
+    yr = yf - rib                                 # the slot rib's outer face
+    zb, zt = LED_BOARD_BOT, LED_ROOF_Z
+    # slot: a floor off the wall with a 45 deg gusset under it, and the rib standing on it
+    pts = [(y0, zb - rib - r), (yr, zb - rib),    # gusset, wall down-and-out to the rib root
+           (yr, zb + d), (yf, zb + d),            # rib outer face, then its top
+           (yf, zb), (y0, zb)]                    # rib inner face = slot front, then the floor
+    slot = (cq.Workplane("YZ").workplane(offset=x0)
+            .polyline(pts).close().extrude(x1 - x0))
+    # roof: a right triangle on the wall whose HYPOTENUSE is the 45 deg underside
+    roof = (cq.Workplane("YZ").workplane(offset=x0)
+            .polyline([(y0, zt), (y0 - r, zt + r), (y0, zt + r)]).close().extrude(x1 - x0))
+    return slot.union(roof)
+
+
+def _led_runs():
+    """[(x0, x1)] the channel's pieces: LED_X0..LED_X1 broken at each printed seam."""
+    runs, x = [], LED_X0
+    for sx in sorted(SPLIT_X):
+        if LED_X0 < sx < LED_X1:
+            runs.append((x, sx - LED_SEAM_GAP))
+            x = sx + LED_SEAM_GAP
+    runs.append((x, LED_X1))
+    return runs
+
+
+LED_RUNS = _led_runs()
+
+
 def _build_full() -> cq.Workplane:
     body = _rail(Y_HI).union(_rail(Y_LO))
     # ...and the wiring trough standing off the -Y wall above the motors (see WT_*).
     for _wx0, _wx1 in WT_RUNS:
         body = body.union(_wt_solid(_wx0, _wx1))
+    # ...and the LED strip channel on the +Y wall: slot, aperture, 45 deg roof (see LED_*).
+    for _lx0, _lx1 in LED_RUNS:
+        body = body.union(_led_channel(_lx0, _lx1))
     # THE BOTTOM IS ONE PRISM (user, 2026-09-15), XBAR tall, rail to rail, instead of a comb of
     # cross-ribs with air between them. The mortises cut below take most of it back out, so it
     # costs little; what it buys is a lever mounting place every 8.8 instead of every 22.35, and
@@ -992,6 +1087,65 @@ def _light_band():
                   z=(Z_BOT + MB.FLOOR_TOP) / 2)
 
 
+# ── BUS B'S -X END: the wiring port through the chassis floor ─────────────
+# TWO CABLES MEET THE CONTROLLER HERE and only one of them comes from outside. The
+# pedal bar's four conductors arrive up the -X/+Y leg and out of the body adapter's
+# channel onto the instrument's UNDERSIDE (leg_pogo.chan_ends); the knee-lever chain
+# starts at LKL and is inside the body already. The controller is a MID-BUS node --
+# bus in on J2 ways 1-4, out on 5-8 (elec/motor_ctrl) -- so both land on the one
+# connector and this port is what gets the outside half in.
+#
+# IT SITS ON MORTISE STATION 3'S OWN SLOT LINE, and that placement is the whole point
+# of the number rather than a clearance that was chosen (user: "-x of mortise 4 ...
+# this ensures that we don't block a lever installation position"). Stations 1-3 are
+# the ones the -X/+Y leg's foot tenons take, so no lever can stand there whatever this
+# port does; station 4 is the first one a lever can use. Putting the port ON station
+# 3's centre at station 3's own width means the wall to station 4 is the GRID's wall --
+# LEVER_PITCH - LEVER_MORT_W, 3.20 -- so there is no clearance to pick and nothing to
+# keep in step if the pitch ever moves.
+#
+# ...and in the Y GAP, not through the leg's mortise. chassis.mort_segments(station 3)
+# cuts y 21.15..66.95 for the foot tenon and y -151.15..-97.15 at the other end; the
+# middle is solid slab, measured on the built chassis rather than reasoned about. The
+# port stays 4 beads short of the foot mortise's own end so that end stays a face.
+#
+# THE SLAB IS 10.0 THICK, z -81.5 (the instrument's underside, and this segment's print
+# bed) to -71.5, measured. Above it the cavity is open to the standing tray.
+_PORT_ST = 2                        # station 3, 0-based: the -X/+Y leg's middle foot
+PORT_X = _MORT_X[_PORT_ST]
+PORT_W = D.LEVER_MORT_W             # 7.2 ACROSS X: the port IS this station's slot
+# ...AND IT PASSES THE CONNECTOR, not just the wires (user). A cable threaded bare has
+# to be crimped in place, which is what the leg's own tunnel makes you do and is the
+# fiddliest step in INSTALL_NOTES; a port that admits a made-up head lets the harness be
+# built on the bench and fed through. The head goes through on its SMALLEST section --
+# its length by its height, 19.9 x 5.5 for the 8-way (cadkit.pcb) -- so the port is sized
+# on that, long way along Y because that is the way the slab has room.
+PORT_L = 27 * D.BEAD                # 21.6 along Y: the 8-way head plus 0.85 a side
+assert PORT_L >= _ph_side_length(len(_ph_trunk_pins())) + 1.2, (
+    "the wiring port is %.1f long and the %d-way PH head is %.1f: it would pass wires "
+    "but not a made-up connector" % (PORT_L, len(_ph_trunk_pins()), _ph_side_length(len(_ph_trunk_pins()))))
+assert PORT_W >= _PH_S_H + 1.2, (
+    "the wiring port is %.1f across and the PH head stands %.1f: see above"
+    % (PORT_W, _PH_S_H))
+
+
+def port_y():
+    """(y0, y1) of the port: 4 beads -Y of the leg foot mortise's own end, running -Y."""
+    near = min(y0 for y0, y1 in mort_segments(PORT_X) if y0 > -50.0)
+    y1 = near - 4 * D.BEAD
+    return y1 - PORT_L, y1
+
+
+def port_cutter(bed_z, floor_top):
+    """The port, as a through-cut in the floor slab -- cut by chassis.py, dimensioned
+    here beside the station it serves. Over-run at both ends in Z so it opens into the
+    underside and into the cavity rather than touching either."""
+    y0, y1 = port_y()
+    return cq.Workplane("XY").add(cq.Solid.makeBox(
+        PORT_W, y1 - y0, (floor_top + 1.0) - (bed_z - 1.0),
+        cq.Vector(PORT_X - PORT_W / 2.0, y0, bed_z - 1.0)))
+
+
 def _floor_negatives():
     """The chassis' OWN features that pass through the floor band, as a list of cutters.
 
@@ -1019,6 +1173,12 @@ def _floor_negatives():
         out.append(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
             cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
+    # THE BUS-B WIRING PORT, which is the chassis' own the same way the raceway is: the
+    # pedal bar's four conductors arrive on the instrument's UNDERSIDE out of the body
+    # adapter's channel and have to get inside to reach the motor controller. It is cut
+    # here for the same reason the lock pins are -- cut in the main builder the fresh
+    # slab fills it straight back in.
+    out.append(port_cutter(Z_BOT, MB.FLOOR_TOP))
     return out
 
 
@@ -1162,6 +1322,33 @@ def _segments():
         _segmc = _mort_cutters(b - 30.0, a + 30.0)
         if _segmc is not None:
             seg = seg.cut(_segmc)
+        # THE FOOT-LIGHT CHANNEL, clipped to this segment. It stands on the bottom
+        # prism's top face over the light window and the strip SLIDES into it along X
+        # once the chassis is together -- so it is deliberately featureless: nothing in
+        # it is keyed to where a board ends, and the boards do not know where the
+        # segments are (user, 2026-09-30). src/foot_light.py owns every number.
+        from . import foot_light as FL
+        # CUT THE SLOT FIRST, then build the channel into the hole -- see FL.slot_cut.
+        _fs = FL.slot_cut().intersect(
+            box_at(a - b, (FL.RAIL_IN - FL.WALL_Y0) + 4.0, 40.0,
+                   x=(a + b) / 2, y=(FL.WALL_Y0 + FL.RAIL_IN) / 2, z=MB.FLOOR_TOP + 15.0))
+        if _fs.solids().size():
+            seg = seg.cut(_fs)
+        _fc = FL.channel().intersect(
+            box_at(a - b, (FL.RAIL_IN - FL.WALL_Y0) + 4.0, 40.0,
+                   x=(a + b) / 2, y=(FL.WALL_Y0 + FL.RAIL_IN) / 2, z=MB.FLOOR_TOP + 15.0))
+        if _fc.solids().size():
+            seg = seg.union(_fc)
+        # ...and the RELIEF under the component lane, cut AFTER the union: everything on
+        # the strip that is not an LED hangs into a trough the LED's own height sets at
+        # 1.90 mm, which fits a driver and nothing else. 1.50 mm of relief over a 6.50
+        # strip buys 3.40 and is what lets the connector and the buck's inductor exist.
+        _fr = FL.relief().intersect(
+            box_at(a - b, (FL.RELIEF_Y1 - FL.RELIEF_Y0) + 4.0, 20.0,
+                   x=(a + b) / 2, y=(FL.RELIEF_Y0 + FL.RELIEF_Y1) / 2,
+                   z=MB.FLOOR_TOP - 5.0))
+        if _fr.solids().size():
+            seg = seg.cut(_fr)
         segs.append(_largest(seg))
     return segs
 

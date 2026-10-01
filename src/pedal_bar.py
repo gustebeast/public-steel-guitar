@@ -111,6 +111,17 @@ YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
 # the legs were left in when the old quick-release came out. Set to a FEET index
 # to put the mechanism back on that tower.
 LATCH_FOOT = None
+# ...and if it is ever set, this mechanism has to come back facing the same way as
+# every other latch (user): they are all worked in one pass, with the instrument
+# upside down in its case. It does NOT today -- LT is authored button-at-+y and the
+# tower poses it through a 180 rotation, so it would land on -Y while leg_latch and
+# bar_latch are both on +Y. Measured, not read off the comments: latch.py's own
+# docstring disagreed with its geometry about which side the button was on.
+assert LATCH_FOOT is None or -LT.BUTTON_SIDE == BL.PAD_SIDE, (
+    "LATCH_FOOT puts src.latch's button on %+.0fY (authored %+.0fy through the "
+    "tower's 180), but the other latches face %+.0fY -- they must all face the same "
+    "way, so flip latch.BUTTON_SIDE's frame or drop the tower's rotation"
+    % (-LT.BUTTON_SIDE, LT.BUTTON_SIDE, BL.PAD_SIDE))
 
 FEET = ((LEG_STATIONS_X[0], -1.0),     # +X leg → plain tower
         (LEG_STATIONS_X[1], +1.0))     # -X leg → wired (TRRS) tower
@@ -485,8 +496,24 @@ def _stub_tower(lx: float, wired: bool, latch: bool = False) -> cq.Workplane:
     the spigot is a plain sliding fit). Authored at the ORIGIN and ROTATED 180°
     like the +Y leg stacks. The wired tower's captive CA-354S threads UP
     from the foot-mortise access below; its cable enters from the trough
-    side way. Prints WITH the bar, bottom-down — plain standing
-    geometry, no overhangs."""
+    side way.
+
+    ⚠ "Prints WITH the bar, bottom-down — plain standing geometry, no overhangs"
+    is what this said, and it STOPPED BEING TRUE when the bar flipped to lying on
+    its -Y face (BAR_UP). This tower is BLK_W = 36.4 square about YC, so its -Y
+    face sits at y 25.35 — 7.40 ABOVE the bed — and the whole face therefore starts
+    in mid-air: 1405 mm^2 laid down in one layer with nothing under it but the
+    0.8 strip where it meets the bar's top. It is the largest unsupported area in
+    the model (tools/check_floating reports it FLOATING; check_ceilings calls it a
+    span-36.40 bridge).
+
+    IT IS NOT FIXABLE HERE, and that is the point of saying so precisely. The
+    neighbouring _mortise_tower has no such face because it is TOWER_WY = 51.2 —
+    the bar's full width — so it reaches the bed on layer one. Growing this tower
+    to match is what the fix would be, and the space it would grow into is exactly
+    where the leg block's -Y wall wraps it. So the tower cannot widen until the
+    leg it mates with is redesigned, which is the same pending change the FEET[0]
+    comment in _bar_full already records. Print it with support until then."""
     b = box_at(LG.BLK_W, LG.BLK_W, STUB_Z0 - BAR_H, z=(BAR_H + STUB_Z0) / 2)
     # spigot: the flush OCTAGON section tenon (round 3 — the lying leg
     # block's bed face turned the old house floor into a 28-wide ceiling

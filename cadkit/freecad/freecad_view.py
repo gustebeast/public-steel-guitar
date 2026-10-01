@@ -39,6 +39,24 @@ FREECAD_DOWNLOAD_URL = "https://www.freecad.org/downloads.php"
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _MACRO = os.path.join(_HERE, "view.FCMacro")
 _MARKER = os.path.join(tempfile.gettempdir(), "freecad_viewer_hub.pid")
+# ⚠ NOTHING HERE FORCE-KILLS FREECAD, AND THE PID FILE IS NOT FOR THIS MODULE.
+# This module never reads _MARKER; it is written purely so a PRE-REWORK launcher in
+# an un-synced worktree can see that a hub is up (see _compat_marker) instead of
+# spawning a second FreeCAD on every build.
+# The hub used to record its process id so the launcher could taskkill /F /T a hub whose
+# watch loop had stopped. That answered exactly one question -- "which process do I kill" --
+# and the kill itself became the worst bug in the viewer: a big STEP import blocks the
+# QTimer, so a healthy hub mid-reload looked wedged and got destroyed BY THE BUILD THAT
+# ASKED FOR THE REFRESH, taking every open tab with it. The .busy marker stopped the
+# misdiagnosis; this removes the weapon.
+# What each question is actually answered by now:
+#     is our watcher alive?          .heartbeat freshness
+#     is it mid-load, not wedged?    .busy
+#     is my tab there and current?   .status
+#     open a new tab                 a request in the inbox
+#     is new code in the hub yet?    .codestamp vs code_stamp() on disk
+#     a wedged or stale hub          RE-RUN THE MACRO (--single-instance), in place
+# A FreeCAD holding someone's unsaved work is theirs to close, not ours to kill.
 _INBOX = os.path.join(tempfile.gettempdir(), "freecad_viewer_inbox")
 _HEARTBEAT = os.path.join(tempfile.gettempdir(), "freecad_viewer_hub.heartbeat")
 # The hub's watch loop refreshes the heartbeat every poll (~1 s). If the process
@@ -47,6 +65,14 @@ _HEARTBEAT = os.path.join(tempfile.gettempdir(), "freecad_viewer_hub.heartbeat")
 # is restarted. Generous vs both the poll period and FreeCAD's cold-boot time, so
 # a healthy-but-busy hub is never killed by mistake.
 _HEARTBEAT_STALE_S = 30.0
+# …unless the hub has told us it is inside a blocking load (freecad_viewer's
+# BUSY marker). The watch loop is a QTimer on FreeCAD's main thread, so a big
+# STEP import stops the heartbeat for as long as it takes — on a large
+# assembly that is comfortably past the staleness limit, and the hub was
+# being killed MID-RELOAD by the very build that asked for the refresh. A
+# raised marker means "not ticking on purpose". It still has a bound, so a
+# load that hangs forever is not immortal.
+_BUSY_MAX_S = 600.0
 
 
 def _config_path():
@@ -126,20 +152,131 @@ def _freecad_exe(override=None):
     return found
 
 
-def _hub_running():
-    """Return True if the marker points at a live freecad process. The image-name
-    check guards against a recycled PID now belonging to some other program."""
+def _warn_multi(n):
+    """Say so, loudly, when more than one hub is up -- and name the one-line cure.
+
+    ⚠ THE USUAL CAUSE IS NOW FIXED (see _compat_marker): an un-synced worktree's old
+    launcher is shown a pid marker and no .codestamp, so it sees a healthy hub and uses the
+    inbox instead of spawning. This warning stays because more than one hub is still WRONG
+    however it arises -- a window opened by hand, a copy older than even the marker
+    convention, a hub that outlived its heartbeat -- and because the fault is otherwise
+    entirely silent at ~2 GB a head."""
+    if not n or n < 2:
+        return
+    for line in (
+            "[freecad] WARNING: %d FreeCAD processes are running, and the hub is a" % n,
+            "          SINGLE-instance design -- they share one .heartbeat/.status/.busy,",
+            "          so those markers mean nothing while this lasts, and the busy guard",
+            "          cannot protect an import it is not tracking.",
+            "          Usual cause: a worktree whose vendored cadkit predates the hub",
+            "          rework. Its launcher looks for a pid marker this one no longer",
+            "          writes, decides nothing is running, and spawns another FreeCAD",
+            "          EVERY BUILD.",
+            "          Fix it IN THAT WORKTREE:",
+            "              py -3.12 -m cadkit.tools.agent_sync sync",
+            "          then close the extra windows."):
+        print(line, file=sys.stderr)
+
+
+def _first_freecad_pid():
+    """The pid of a running FreeCAD, or None. Used ONLY for the compatibility marker."""
     try:
-        pid = int(open(_MARKER).read().strip())
-    except (OSError, ValueError):
-        return False
-    try:
-        out = subprocess.run(
-            ["tasklist", "/FI", "PID eq %d" % pid, "/NH", "/FO", "CSV"],
-            capture_output=True, text=True, timeout=10).stdout.lower()
+        if os.name != "nt":
+            r = subprocess.run(["pgrep", "-f", "[Ff]reeCAD"],
+                               capture_output=True, text=True, timeout=10)
+            out = [ln for ln in r.stdout.split() if ln.strip().isdigit()]
+            return int(out[0]) if out else None
+        r = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq freecad.exe", "/NH", "/FO", "CSV"],
+            capture_output=True, text=True, timeout=10)
+        for line in r.stdout.splitlines():
+            parts = [c.strip().strip('"') for c in line.split('","')]
+            if len(parts) > 1 and parts[1].isdigit():
+                return int(parts[1])
     except Exception:
-        return False
-    return ("freecad" in out) and (str(pid) in out)
+        pass
+    return None
+
+
+def _compat_marker():
+    """Let a PRE-REWORK launcher see this hub, so it neither spawns nor kills. Never raises.
+
+    THIS IS WHY A SECOND FreeCAD WINDOW USED TO APPEAR. propagate.py skips linked worktrees
+    by design, so an un-synced one still runs the old launcher, whose _hub_running() looks
+    for a PID MARKER. This module had stopped writing that marker, so the old code concluded
+    nothing was running and spawned another FreeCAD on EVERY BUILD -- three hubs and 6 GB,
+    observed 2026-09-30 (user: "if a freecad window is open the system should see it and
+    avoid opening another one").
+
+    The old code's own escape hatch makes coexistence possible. Its _code_is_stale() says
+    "Unknown/absent stamp reads as NOT stale" and returns False when the file is missing. So
+    present it with:
+        a pid marker naming a LIVE FreeCAD   -> its _hub_running() is True
+        NO .codestamp                        -> not stale
+        a fresh .heartbeat                   -> not wedged
+    and it drops its project in the inbox, which is exactly the right behaviour. This module
+    keeps its own stamp under .codestamp2, so refresh-in-place is untouched.
+
+    THE OLD NAME MUST BE ABSENT, NOT MERELY STALE. Left in place it reads as a mismatch
+    against the old copy's own viewer hash, and the old answer to a mismatch is taskkill --
+    the very thing this hub work exists to stop.
+    AND THE MARKER IS REMOVED WHEN NOTHING IS RUNNING, so a dead pid never persuades an old
+    launcher that a hub exists when it does not."""
+    try:
+        os.remove(_HEARTBEAT + ".codestamp")
+    except OSError:
+        pass
+    pid = _first_freecad_pid()
+    if pid is None:
+        try:
+            os.remove(_MARKER)
+        except OSError:
+            pass
+        return
+    try:
+        with open(_MARKER, "w") as f:
+            f.write(str(pid))
+    except OSError:
+        pass
+
+
+def _freecad_count():
+    """How many FreeCAD processes exist. None when it cannot be told.
+
+    ⚠ THE COUNT, NOT A BOOLEAN, BECAUSE MORE THAN ONE IS A REAL FAULT AND IT IS SILENT.
+    The hub is a single-instance design: every instance writes the SAME .heartbeat, .status
+    and .busy, so with two of them those markers stop meaning anything -- whichever ticks
+    last wins, and the busy guard cannot protect an import it is not tracking. Observed
+    2026-09-30: three hubs, 6 GB, and nothing said a word. show() warns via _warn_multi.
+
+    By IMAGE NAME, with no stored pid -- which is all the launcher needs, because the
+    question is no longer "which process do I kill" but "do I launch, or talk to what is
+    already there". Whether that FreeCAD is a HEALTHY hub is a separate question, answered
+    by the heartbeat; whether it is OUR hub at all does not matter, because every response
+    from here on is non-destructive.
+
+    None (cannot tell) is distinct from False on purpose: treating "I could not run
+    tasklist" as "nothing is running" would spawn a second FreeCAD every build."""
+    try:
+        if os.name == "nt":
+            out = subprocess.run(
+                ["tasklist", "/FI", "IMAGENAME eq freecad.exe", "/NH", "/FO", "CSV"],
+                capture_output=True, text=True, timeout=10).stdout.lower()
+            return out.count("freecad.exe")
+        r = subprocess.run(["pgrep", "-f", "[Ff]reeCAD"],
+                           capture_output=True, text=True, timeout=10)
+        return len([ln for ln in r.stdout.split() if ln.strip()])
+    except Exception:
+        return None
+
+
+def _busy_age():
+    """Seconds since the hub raised its BUSY marker, or None if it is not
+    inside a blocking load."""
+    try:
+        return max(0.0, time.time() - os.path.getmtime(_HEARTBEAT + ".busy"))
+    except OSError:
+        return None
 
 
 def _heartbeat_age():
@@ -150,54 +287,79 @@ def _heartbeat_age():
         return None
 
 
+def _code_stamp():
+    """The hash the hub stamps when it starts: freecad_viewer.py + view.FCMacro.
+
+    Must stay byte-identical to freecad_viewer.code_stamp() -- same files, same order.
+    Both are in the stamp because BOTH are now updatable in place: re-running the macro
+    executes the macro from disk and reloads the viewer module."""
+    import hashlib
+    h = hashlib.sha1()
+    for name in ("freecad_viewer.py", "view.FCMacro"):
+        try:
+            with open(os.path.join(_HERE, name), "rb") as f:
+                h.update(f.read())
+        except OSError:
+            pass
+    return h.hexdigest()
+
+
 def _code_is_stale():
-    """True if the running hub is executing DIFFERENT freecad_viewer.py CODE than
-    the copy on disk (compared by content hash, not mtime -- propagating cadkit
-    rewrites identical bytes with a fresh mtime, and comparing timestamps meant every
-    propagate killed a healthy hub and closed every open tab). FreeCAD runs that file once at launch and keeps it in memory,
-    so a code change reaches a live hub only by restarting it — and nothing used to
-    notice, which let a two-day-old hub keep raising its window long after that was
-    deleted. Unknown/absent stamp reads as NOT stale: this may only ever cost a
-    restart, never suppress one incorrectly on a healthy hub."""
-    viewer = os.path.join(_HERE, "freecad_viewer.py")
+    """True if the running hub is executing DIFFERENT code than the copy on disk.
+
+    Compared by CONTENT hash, never mtime: propagating cadkit rewrites every vendored file,
+    so identical bytes get a fresh mtime -- and comparing timestamps meant every propagate
+    declared a healthy hub stale and closed every open tab (user, 2026-09-07).
+
+    An unknown or absent stamp reads as NOT stale. That used to matter a great deal, because
+    the answer to "stale" was a force-kill; now the answer is a macro re-run, so a false
+    positive costs a reload instead of a window full of tabs."""
     try:
-        running = open(_HEARTBEAT + ".codestamp").read().strip()
+        running = open(_HEARTBEAT + ".codestamp2").read().strip()
     except OSError:
         return False
     if not running:
         return False
-    try:
-        import hashlib
-        with open(viewer, "rb") as f:
-            on_disk = hashlib.sha1(f.read()).hexdigest()
-    except OSError:
-        return False
+    on_disk = _code_stamp()
     if len(running) != len(on_disk):
-        return False      # an mtime-era stamp: don't kill a healthy hub over a format change
+        return False      # a stamp from an older format: not a reason to act
     return on_disk != running
 
 
-def _kill_hub():
-    """Force a wedged hub process down and clear its markers so the next launch
-    starts a clean one. Never raises."""
+def _refresh_hub(exe, step):
+    """Push the on-disk code into the RUNNING FreeCAD, and rebuild its watch loop.
+
+    `freecad.exe --single-instance <macro>` executes the macro inside the already-running
+    instance -- measured, not assumed: the process count stays at 1 and the hub's codestamp
+    is rewritten, which only happens inside start_hub(). FreeCAD reads the macro from disk
+    each time, and the macro reloads freecad_viewer, so this lands both files.
+
+    That single call is the replacement for _kill_hub() in BOTH of the situations that used
+    to justify one:
+      - the hub predates the code on disk  -> the reload replaces it
+      - its watch loop has stopped         -> shutdown() + reload builds a fresh QTimer
+    Nothing is killed, no tab closes, and a FreeCAD holding unsaved work is left alone.
+
+    Spawned DETACHED and never waited on: show() must not be able to stall a build, and the
+    outcome is observable next build through the heartbeat and codestamp anyway. Returns
+    True if the request was launched, False if it could not be."""
+    if not exe or not os.path.exists(exe):
+        return False
     try:
-        pid = int(open(_MARKER).read().strip())
-    except (OSError, ValueError):
-        pid = None
-    if pid is not None:
-        try:
-            if os.name == "nt":
-                subprocess.run(["taskkill", "/PID", str(pid), "/F", "/T"],
-                               capture_output=True, timeout=10)
-            else:
-                os.kill(pid, 9)
-        except Exception:
-            pass
-    for p in (_MARKER, _HEARTBEAT, _HEARTBEAT + ".codestamp"):
-        try:
-            os.remove(p)
-        except OSError:
-            pass
+        flags = 0
+        if os.name == "nt":
+            flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        # The full environment, not just the macro dir: --single-instance runs the macro
+        # inside the EXISTING process (using THAT process's env), but if that process has
+        # exited since we read the process table, the same call LAUNCHES FreeCAD -- and
+        # then this env is the one the macro reads. Correct either way.
+        env = dict(os.environ, FREECAD_VIEW_STEP=step, FREECAD_VIEW_INBOX=_INBOX,
+                   FREECAD_VIEW_HEARTBEAT=_HEARTBEAT, FREECAD_VIEW_MACRO_DIR=_HERE)
+        subprocess.Popen([exe, "--single-instance", _MACRO], env=env,
+                         close_fds=True, creationflags=flags)
+        return True
+    except Exception:
+        return False
 
 
 def _resolve_step(step_path=None, project=None):
@@ -230,8 +392,18 @@ def show(step_path=None, project=None, freecad_exe=None):
             print("[freecad] %s not found - skipping viewer" % step, file=sys.stderr)
             return False
         os.makedirs(_INBOX, exist_ok=True)
+        _compat_marker()
 
-        if _hub_running():
+        exe = _freecad_exe(freecad_exe)
+        running = _freecad_count()
+        _warn_multi(running)
+        if running is None:
+            # Cannot tell from the process table. Fall back to the heartbeat: a fresh one
+            # is positive proof a hub is up, and treating "unknown" as "nothing running"
+            # would spawn a second FreeCAD on every build.
+            running = _heartbeat_age() is not None and _heartbeat_age() <= _HEARTBEAT_STALE_S
+
+        if running:
             age = _heartbeat_age()
             why = None
             if _code_is_stale():
@@ -239,22 +411,35 @@ def show(step_path=None, project=None, freecad_exe=None):
             elif age is None:
                 why = "has no heartbeat"
             elif age > _HEARTBEAT_STALE_S:
-                why = "watcher unresponsive (%.0fs since last tick)" % age
+                busy = _busy_age()
+                if busy is not None and busy <= _BUSY_MAX_S:
+                    why = None          # loading, not wedged — leave it alone
+                else:
+                    why = "watcher unresponsive (%.0fs since last tick)" % age
+
+            # The request goes in FIRST, either way. The hub drains the inbox on every tick
+            # AND inside start_hub, so this is picked up whether the hub is already healthy
+            # or is about to be refreshed below — and if the refresh fails, the request
+            # simply waits there for whenever the hub next ticks. Nothing is lost.
+            req = os.path.join(_INBOX, uuid.uuid4().hex + ".txt")
+            with open(req, "w", encoding="utf-8") as f:
+                f.write(step)
             if why is None:
-                # Hub alive, ticking, and running the code that is on disk — hand it
-                # the project as a tab. One file per request (unique name) so
-                # concurrent builds never clobber each other; the hub opens it, or
-                # ignores it if that project is already a tab, then deletes it.
-                req = os.path.join(_INBOX, uuid.uuid4().hex + ".txt")
-                with open(req, "w", encoding="utf-8") as f:
-                    f.write(step)
                 return True
-            # Two ways a live hub is still useless, and both are fixed by a restart:
-            # its watch loop has stopped (requests would pile up unseen), or it
-            # predates the viewer code on disk — FreeCAD runs that file once at
-            # launch, so an old hub keeps its old behaviour no matter what we edit.
-            print("[freecad] hub %s - restarting viewer" % why, file=sys.stderr)
-            _kill_hub()
+
+            # Two ways a live hub is still useless -- its watch loop has stopped, or it
+            # predates the code on disk -- and ONE non-destructive answer to both: re-run
+            # the macro inside that same process. It reloads the viewer module and rebuilds
+            # the watch loop, so no window closes and no tab is lost. This used to be a
+            # taskkill /F /T, which is how a mid-reload hub got destroyed by the very build
+            # that wanted the refresh.
+            if _refresh_hub(exe, step):
+                print("[freecad] hub %s - reloading it in place" % why, file=sys.stderr)
+                return True
+            print("[freecad] hub %s and could not be reloaded (FreeCAD not found). "
+                  "Your tab may be stale; close FreeCAD to get a fresh hub."
+                  % why, file=sys.stderr)
+            return False
 
         # No (working) hub: start one. Clear stale requests so a previous session's
         # tabs don't resurrect, then launch FreeCAD with this project as the first tab.
@@ -263,7 +448,6 @@ def show(step_path=None, project=None, freecad_exe=None):
                 os.remove(f)
             except OSError:
                 pass
-        exe = _freecad_exe(freecad_exe)
         if not exe or not os.path.exists(exe):
             print("[freecad] FreeCAD not found. Install it from %s, then point cadkit at it once:\n"
                   "          py -m cadkit.freecad --set-path \"<path to the freecad executable>\"\n"
@@ -275,9 +459,8 @@ def show(step_path=None, project=None, freecad_exe=None):
         flags = 0
         if os.name == "nt":
             flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
-        proc = subprocess.Popen([exe, _MACRO], env=env, close_fds=True, creationflags=flags)
-        with open(_MARKER, "w") as f:
-            f.write(str(proc.pid))
+        subprocess.Popen([exe, _MACRO], env=env, close_fds=True, creationflags=flags)
+        # Nothing records the pid: see the note by _INBOX. Liveness is the heartbeat.
         # Stamp an initial heartbeat so a build that lands during FreeCAD's boot
         # doesn't mistake the not-yet-ticking hub for a wedged one; the hub takes
         # over refreshing it once its watch loop starts.

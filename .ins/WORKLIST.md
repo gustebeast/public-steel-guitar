@@ -17,12 +17,30 @@ mark it here. Items needing the user go to NEEDS USER, not skipped silently.
     * Stale header comment: bus B has 11 sensor boards (6 knee levers + 5 pedals), not 8.
     * Board spec: docs/lever-sensor-respin.md. cad_geom_check lever_sensor MISMATCHES until
       the lever board is re-spun -- that is the handoff, not a regression.
-12. LED strip re-spin for direct board-to-board (user, 2026-09-22): 2x3 right-angle
-    2.54 mm pair (male PZ254R-12-6P C492431 / female C56182 or SMD C22373944) at both ends,
-    in the DRIVER band where the board is empty, so the LED band runs to 5.75 mm of each
-    edge and the pitch (~15.9) is UNIFORM ACROSS THE JUNCTION. PH stays on EVERY board
-    (user: fit it if spacing allows, else a special section 1) -- it fits in the same free
-    driver band, -69.5..-40.5 is empty until driver 1.
+12. LED strip re-spin for direct board-to-board (user, 2026-09-22). BLOCKED ON PART
+    GEOMETRY -- do not place by eye, that is what hung both connectors off the ends last time.
+    * SETTLED: the pitch that makes a junction invisible is DERIVED, not chosen --
+      2*(W/2 - 4P) + G = P  ->  P = (W + G)/9, where G is the mated board-edge gap. The
+      connectors go in the DRIVER band (empty at both ends: the first driver is 3 pitches
+      in), so the LED band runs past them to within half a pitch of each edge.
+      With G = 2.0 and the chassis seat's 568.0 clear run: W = 140, P = 15.778, four
+      sections + three junctions = 566.0, and LED-to-LED across a junction = 15.78 = P.
+    * SETTLED: the mating PIN MAP mirrors. Derived from the two KiCad footprints' pads --
+      male pin 1 meets female pin 5, 3 meets 3, 5 meets 1, 2-6, 4-4, 6-2. Generate both
+      pinouts from ONE column list (as harness.py does for the trunk), never type them twice.
+      Suggested columns: (GND,V5), (SCK,SDI), (GND,V5) -- signals flanked by rails.
+    * BLOCKER: G itself is unknown. KiCad's courtyards (header x -1.77..13.09, socket
+      x -13.10..1.75) are NOT mating depths, and worked through end to end they say a
+      coplanar edge-to-edge mate needs the socket body to overhang its board edge by ~4 mm
+      into a 2 mm gap -- i.e. the two parts collide. Either the real insertion depth is
+      shorter than the courtyard implies, or these generic horizontal parts are not meant to
+      mate each other coplanar. NEEDS the actual drawing for PZ254R-12-6P (C492431) and the
+      chosen socket (C56182 / C22373944) before anything is placed.
+    * ALTERNATIVE worth pricing if the drawings disappoint: CARD EDGE -- board B's own gold
+      fingers into a card-edge socket on board A. One part instead of two, and the mating
+      depth is just the socket's slot, so the geometry is knowable without a drawing.
+    * PH: fits on EVERY board in the same free driver band (user asked for this if it costs
+      no LED spacing) -- its 15.9 body spans +-7.95 against a lip inner edge at +-8.4.
 10. Next checkpoint submit after 3-7 land.
 
 ## DONE
@@ -41,7 +59,59 @@ mark it here. Items needing the user go to NEEDS USER, not skipped silently.
 - Pi cradle = column frame cut by keyhead_endplate._slot_shadow (bbda046); ceilings 6587->2582
 - M4 through-board ears (a98762e), motor controller frame cradle + ear screws (f52686c)
 
+## IN THE BACK POCKET
+- **O-SHAPED OPTICAL PCB** (user, 2026-09-22): "keep it in your back pocket in case that is
+  our only way out". Today the board is a C -- the +Y wrap reaches the main body only
+  through the sensing strip on the -X side. Adding a second band on the +X side closes it
+  into an O and gives the DIGITAL nets a path that does not cross the analog strip.
+  * WHAT IT WOULD FIX: the two +3V3D opens for certain -- that annulus-to-wrap hop has NO
+    single-layer path across the strip (searched: no straight lane, and no 3-segment dogleg
+    over a 26 x 60 x 26 grid, checking pads AND outline). Probably SAI_SCK too, plus
+    whatever the freed strip space recovers.
+  * WHAT IT WOULD NOT FIX: U15's analog inputs. Those come from the strip and a +X band sits
+    ~32 mm away from them. (Moot if the five-in-the-strip column works -- see below.)
+  * WHAT IT COSTS: the opening is not empty. bridge_endplate fills it with 20,268 mm3 at
+    z 9.3..16.0, which IS the board's own z band. So this is an endplate redesign, and the
+    endplate has to be able to grow back to that +z height without overhangs (user).
+  * ⚠ AND IT NO LONGER BUYS ROD RETENTION. The idea of letting the PCB hold the guide rods
+    down died with the rod-ring support cap (2026-09-22): PCB_X0 now stops 1.6 mm short of
+    the rod holes so their bearing rings can close, so the board never reaches the rods.
+    Ring support wins -- an unsupported bore is structural, retention was convenience.
+  * PREFER FIRST: all five converters in the strip beside their own quads (committed
+    2026-09-22, 8.7 mm runs). If that routes clean the O is not needed at all.
+
 ## NEEDS USER
+- **THE OPTICAL BOARD HAS NO MOUNTING HOLES, AND PARTS SIT WHERE THEY GO** (found 2026-09-23,
+  chasing the user's question about why the CAD holes are square). Both are real and the
+  second is why this is not a five-minute fix.
+  * opt_pcb() cuts the two M4 clearances with `box_at(M4.shaft_clr_d, M4.shaft_clr_d, ...)`
+    -- a SQUARE prism where a drilled hole belongs. Nothing justifies it in the file; it
+    reads as "a box was easier to type than a cylinder". It is conservative for clearance
+    (it removes more material than a round hole), which is likely why nobody caught it.
+  * THE FABRICATED BOARD HAS NO HOLES AT ALL. elec/out has zero Edge.Cuts circles and the
+    only drilled features are J1's USB-C pins and shield tabs. mount_points() are 24.4 and
+    37.2 mm inside the outline, so they are not notches either -- the gerbers would come
+    back with two M4 screws driving into solid FR4.
+  * AND THE PLACEMENT DOES NOT KNOW ABOUT THEM. Against a Ø4.40 clearance hole:
+    head mount -- Cd11 pad 1 at 0.47 mm and pad 2 at 0.69 mm, both INSIDE it;
+    tail mount -- TP1 pad 1 at 2.10 mm, inside it.
+    So adding the holes destroys Cd11 and clips TP1. Either those parts move, or the
+    mounts do, and both change a placement that took many routes to settle.
+  * Worth deciding together with the O-band, since that is the other open placement
+    question on this board.
+
+- LED strip 5 V buck ON THE MOTOR BOARD (user asked, 2026-09-22): the circuit is worked out
+  (second LMR33630 off the same 24 V, own fuse + EN/UVLO, XH out to pi_cap J4, ~0.5 A more
+  on a 24 V bus sized under 5 A) and the REASON is settled -- a separate buck keeps a
+  lighting cue from browning out the Pi, and the board sits at the keyhead end, furthest
+  from the bridge pickup. IT DOES NOT FIT. Measured on the placed board, the only clear X
+  bands are -27.0..-20.3 (6.7 mm) and 21.6..27.0 (5.4 mm); the buck needs ~8.5 for the 6x6
+  inductor alone. Growing 46 -> 54 in X was not enough, and +Y is blocked by the mounting
+  EAR, which reaches 8.7 into the 10.8 mm gap to the Pi. Options: (a) grow X to ~60 and
+  rework the tray/cradle margins, (b) move the ear and grow +Y, (c) put the buck on its own
+  small board beside the Pi cap. Reverted for now -- the committed motor_ctrl routes 0/0.
+  The pi_cap already has J4 waiting for whatever generates it.
+
 - Optical re-route after grounding the USB-C shell tabs (layout.py: stitch exceptions skip PTH
   pads too): 25 passes -> TIA_OUT_1B open, 28 -> TIA_IN_8A open (freerouting re-plans every
   net). UNCOMMITTED in the tree (layout.py, optical.py passes 28, optical geom). Superseded by
@@ -62,3 +132,254 @@ mark it here. Items needing the user go to NEEDS USER, not skipped silently.
   (pre-existing; the Pi plate used to cover it). Roof takes the inserts' string load; a 45 deg
   gable needs 9.2 mm and the Pi board is 7.8 above. Options: move the Pi +X ~2 mm, or reshape
   the 8-10 slots (owner of nut_block geometry?).
+
+## NEEDS USER — the axle bore's bearing stress is 4.9 MPa, and nobody had computed it
+The endplate's creep margin was quoted as 14x. That figure is the BULK section resisting
+-X through the block: 1683 N over 2014 mm2 = 0.84 MPa. It answers the wrong question.
+The creep-critical number is the LOCAL bearing stress where the shaft presses into its
+bore, and that is 1683 N over a projected 343 mm2 (9 fingers x 3.70 + 2 arms x 4.80, times
+the 8.0 shaft) = **4.90 MPa**, roughly 6x higher.
+
+It is NOT a regression from the comb work -- the run-outs only removed material above the
+axle centre and the load seats at 7:20..7:43, below the equator. It is a number that had
+never been taken at the bore.
+
+Whether 4.9 MPa is safe for PCTG over years is not something I can settle from datasheets:
+short-term yield is ~45-50 MPa but the sustained-load limit is far lower and vendor creep
+curves for PCTG are thin. This wants a COUPON, which this project already does for
+material questions.
+
+The geometric levers are nearly exhausted: fingers are 3.70 wide because the bearing takes
+5.0 of a 9.5 pitch, and the shaft is 8.0 because the bridge bearing is a 688ZZ. Dropping
+the bearing side clearance 0.4 -> 0.25 buys CB_W 4.00 and takes it to ~4.5 MPa. That is
+all that is free.
+
+## optical: the last three unconnected items (2026-09-25, 03:30)
+
+State: 3 unconnected, 0 violations, both SI groups pass, CAD and fab data agree.
+Board on disk = elec/out/optical.p50.kicad_pcb (elec/out/ is gitignored, so it is NOT in
+git -- regenerate with `finish.py elec/out/optical`, which reproduces it).
+
+The three, and they are two connections plus one:
+    +3V3A   the LDO's island (U9.5, U11.5, R34.1, C132.1)  ->  the array's island   31.76 mm
+    +3V3A   U6.38/39 (the H7's VDDA pair)                  ->  the LDO's island     15.84 mm
+    SAI_FS  U6.3                                           ->  the FS spine's end   20.97 mm
+
+⚠ THE ANALOG RAIL HAS NO TRUNK, AND THAT IS THE FINDING. +3V3A comes back as THREE
+islands: the LDO with its local caps at y -61, the MCU's two VDDA pins on their own, and
+all twenty channels' decoupling at y -34 and north. Nothing carries the rail from its
+regulator to its load; the router has been asked to improvise a power distribution
+network and has declined three times.
+
+What is NOT the reason:
+    room       the west strip is 23 x 30 mm at 4.3% copper on In2 and 4.1% on F.Cu, eight
+               capacitors and nothing else. B.Cu is the GND pour and In1 the plane, so
+               two layers are free there and nearly empty.
+    escape     all three pads have a via site with room over: 0.98, 1.14 and 0.60 mm
+               against the 0.45 a 0.6 via needs.
+    passes     50 -> 3, 100 -> 3, byte-for-byte the same 2072 segments. Converged.
+    a straight lane
+               there is none. Widest clear vertical lane over y -61.5..-21.0 is 0.046 mm
+               on F.Cu at x -23.75, and NEGATIVE on In2 -- the strip's 4% of copper lies
+               ACROSS it. Same on the east side over y -60..-34.5. Any trunk has to dodge.
+
+TWO WAYS, AND THE USER SHOULD PICK:
+
+  A. MOVE THE ANALOG SUPPLY NORTH. U9/U11/R34/R35/C132 sit at y -61 while everything they
+     feed is north of -34.5. An analog regulator belongs near its load, and this is the
+     same principle that just fixed MID_RAW (25 mm -> 2 mm) and the two LDOs' output caps
+     (26.2 mm -> at the pin) -- both of which were in this row for the same reason: the
+     packer spreads a row evenly and knows nothing about what serves what.
+     Knock-ons: FB1, Q1 (the LED driver) and the USB-C CC resistors share that row, and
+     V5_PRE feeds it. Costs a re-route.
+
+  B. DRAW THE TRUNK. A deliberate wide (0.5+) +3V3A run from the regulator to the border,
+     dodging as it must, picking up U6.38/39 on the way. Gives the rail a defined
+     impedance instead of whatever the router improvises. Costs a generator function and a
+     re-route, and pre-laid copper in the south has measured badly twice.
+
+⚠ AND THE RETRY MECHANISM CANNOT HELP, FOR A REASON WORTH FIXING SEPARATELY. layout.py's
+retry (and _local_nets) builds an MST over ALL PADS OF THE NET, not over what is actually
+unconnected. Handed +3V3A and SAI_FS it laid 65 segments and skipped 13, and the skipped
+ones are edges the spines ALREADY carry -- U30.8 -> Cd9.1, U18.23 -> U17.23. It is
+island-blind, so on a net that is 95% finished it spends its budget re-laying copper that
+exists and adds it as an obstacle in the tightest part of the board. That is why the
+four-net retry took 6 unconnected to 9.
+    The fix is known and small: retry the ISLAND-TO-ISLAND edges, which check_border.py
+    already computes (its islands() + ratlines()). Not done at 03:30 on a shared routine
+    every board uses, with a 45-minute verification cycle.
+
+## optical: open a north-south lane on the EAST board edge (user, 2026-09-25) -- TRIED, NO GAIN
+The crystal/oscillator column at the board's east edge -- Y1 (OSC_IN/OSC_OUT), the MID
+divider, PHY_XI/PHY_XO/PHY_RBIAS and their GND pads -- sits hard against the edge, so the
+strip between it and Edge.Cuts carries nothing. Moving that column slightly WEST opens a
+full-height routing lane along the east edge, which is exactly the direction the ULPI and
+SAI traffic wants to run. The MCU (U6) likely has to move west with it, since the column's
+x is set off the MCU's east face.
+TRIED 2026-09-25 and it did not pay. Two findings worth keeping:
+ * the column is anchored to the ROW BAND's east limit (x1 = TAIL_X1 - EDGE_KEEP), NOT to
+   _part_x("U6"). Backing the MCU off its mount 3.0 mm moved the MCU and the lane not at
+   all. The user's reading that the MCU would have to move was reasonable and the
+   measurement says otherwise.
+ * reserving the lane costs BOARD LENGTH, which was capped by the USB-C overmold. Freeing
+   that (see PLUG_L) let a 3 mm lane and a 9 mm corridor in, and the result was 5
+   unconnected / 0 unexpected -- exactly what the shorter board gives. No gain.
+So the lane is available if something else ever makes it worth 2.2 mm of board, but it is
+not the lever it looked like.
+
+## optical: hand-place the vias instead of letting the router pick (user, 2026-09-25)
+"consider moving automatic via generation to manually specified positions. There are also
+short F.Cu runs that connect component pads to vias that you could hard code, although some
+F.Cu runs are longer and perhaps make more sense for auto routing. Some of the via
+placements to an untrained eye seem suboptimal."
+This is the generalisation of elec/optical.py's `_PIN_ESCAPES`, which was written after the
+user found the SAME defect three times by eye -- SAI_FS, ULPI_D1 and ULPI_D6 were each
+disconnected AND had no escape via. The router spends the good positions on whichever net
+it reaches first and never goes back to make room, so the pin that loses the race is
+stranded on F.Cu in a field that is full on both sides.
+Plan: extend _PIN_ESCAPES to every fine-pitch pin that needs a layer change -- the MCU's
+west and south flanks and the whole PHY -- with each site SCANNED against the unrouted
+board (the helper in _escapes' note), and let the router keep only the long runs between
+escape vias. Declared copper is NOT clearance-checked when laid, so every site must be
+measured, never chosen by eye.
+
+## optical: the +3V3A In2-crossing via is in the SAI diagonal (user, 2026-09-25)
+"This +3V3A via looks like a bottle neck, could it move slightly west?" It is the link via
+at x 17.20 from _v3a_vias() -- the converter-spine end of the In2 crossing -- and it sits
+where SAI_SCK/SD1/SD2/SD4 run diagonally. Moving it west needs the crossing's declared
+track endpoint to move with it, and the lane west must be measured empty first.
+
+## LED strip: interboard connectors are inconsistent, and the Pi lead is unmodelled
+(user, 2026-09-25) The lead has NOT taken the LED work because the interboard connectors
+do not make sense as drawn. Two things:
+ 1. BOARD-TO-BOARD, NO WIRE. The strips should mate to each other directly -- a plug on
+    one board entering a socket on the next -- rather than through a flying lead. Pick a
+    pair whose mated length matches the gap the strips already sit at, so the joint is the
+    spacing rather than something the spacing has to accommodate.
+ 2. THE PI LEAD IS NOT MODELLED. One connector leaves the chain for the Pi and there is no
+    cable in the assembly for it, so nothing checks where it runs or what it collides with.
+    Model it like the other harnesses (src/wiring.py) so the route is real geometry.
+Resubmit once both are right so the lead can take the LED work.
+
+## LED strip: connector bodies fouled the slot tab (2026-09-25, RESOLVED)
+After the board-to-board joint went in, every section overlaps the chassis in a thin band
+at y 52.05..53.65, z -40.28..-39.23 -- 0.3..1.9 mm in FRONT of the board face and about
+3 mm up from the slot floor (LED_BOARD_BOT -43.23). The patches sit at the -X end of each
+section, i.e. at J1, so the 4.3 mm socket body is the suspect; led_strip_0's overlap runs
+the board's WHOLE length, which is a different feature and may pre-date the connector work.
+RESOLVED: it was (b), and it was mine. The bottom SLOT_TAB (4.0) is blank laminate that
+sits DOWN IN the chassis groove, so nothing may be fitted below y -8.0 -- and centring the
+12.1 mm connector body on _YO put it at -9.05, 1.05 into the groove. The row is placed
+against the TAB now, not the board, and the LED sections measure 0.00 mm3 against the
+chassis. STILL OPEN from this item: the 4.3 mm connector heights are ESTIMATES and the
+LCSC codes are unverified, so nothing may be ordered; and the parts are THROUGH-HOLE while
+the board's back sits on the rail wall, so the tails still need a relief.
+
+## optical: the USB cable clipped the endplate (2026-09-25, RESOLVED)
+94.2 mm3, optical_cable_usb <-> bridge_endplate, at y -126.78..-125.30 -- the 1.5 mm band
+of endplate just +Y of the conduit mouth. NOT caused by shrinking the conduit: it is the
+BOARD GROWING. CONDUIT_Y1 = PCB_YM - 2.0, so lengthening the board (188.53 -> 190.73 for
+the 9 mm corridor + 3 mm east lane) walked the conduit mouth south with it and left
+material between the board's edge and the shaft, which the cable's horizontal run crosses.
+RESOLVED by that measurement. Both configurations give 5 unconnected / 0 unexpected --
+identical -- so the 2.2 mm bought nothing and the corridor, the east lane and the 14.0 mm
+cable requirement all reverted together. Collision 0.00 mm3, board back to 188.53, and no
+constraint on which USB-C cable the owner may use.
+
+
+## LED strip: 2.00 mm was unsourceable, joint is 2.54 now (2026-09-25)
+The 2.00 mm right-angle FEMALE is stocked (LCSC lists several 1x6, e.g. HX PM2.0-1x6P WC,
+C22465680, 602 in stock, gold, 4.3 mm insulation height). The matching right-angle MALE is
+NOT -- LCSC answers "No exact matches". A joint needs both halves, so the pitch moved to
+2.54 where both are stocked everywhere. The row still fits: 16.33 mm of courtyard in the
+20.0 mm of board above the slot tab, gap 3.0, engagement 5.84 measured.
+SOURCED 2026-09-26, both halves in stock and verified by elec/lcsc_check.py (47/47 codes
+"point at the part it claims"):
+  male    C32713265  HX PZ2.54-1x6P WZ        16451 in stock
+  female  C50878477  HX FH254-01-06-W-H8.5     1962 in stock
+Found through the LCSC JSON API that lcsc_check already talks to, not the web UI -- the UI
+would not render results for these queries at all and answered "No exact matches" for a
+part that does exist. A keyword search helper is in the session scratchpad.
+⚠ ONE THING STILL UNVERIFIED, and it is the one that decides whether the joint works: the
+MATING AXIS HEIGHT. The female states 8.5 mm; the male's is not in the catalogue. Two
+right-angle connectors mate only if their contact axes sit at the same height above their
+boards, and these sections are coplanar in the rail so nothing absorbs a difference.
+board_geom carries 8.5 for BOTH as a claim to be checked, not a measurement. Read the
+male's drawing before ordering. (The 5.0 that stood there was a guess carried over from
+the 2.00 mm part and was wrong by 3.5 mm.)
+
+## optical: SAI_FS -- the one net that has failed EVERY routing (re-measured 2026-09-26)
+⚠ THE EARLIER ENTRY HERE WAS WRONG. It said the FS and SCK spines had to be separated, a
+placement change, and that they were wedged between the converter's SAI_SD5 pads and GND
+copper. That came from a path checker that compared against tracks AND pads on every
+LAYER, so a B.Cu spine appeared to block an F.Cu descent and an F.Cu land appeared to block
+an inner layer. Both are fixed (see the checker in the session scratchpad, pathchk.py).
+
+WHAT IS ACTUALLY TRUE, measured with the corrected tool:
+ * MCU escape via -> the spine's open end (12.65, -18.89) is CLEAR ON B.Cu. The spines
+   never needed separating; a B.Cu run gets there directly.
+ * but no VIA fits at that end to rejoin the F.Cu spine: cell 4's SAI_SCK stub runs
+   parallel at x 12.15 over y -14.85..-19.49, leaving 0.10 mm where 0.50 is needed, and
+   SCK's horizontal leg at y -19.49 crosses any descent below it.
+ * a via DOES fit further north at (12.65, -3.00), but the run there is blocked on BOTH
+   B.Cu and In2 by the TIA output field, and a 2-leg dogleg search over the 150 shortest
+   waypoints found nothing on either layer.
+So the constraint is the VIA SITE at the spine's south end, not the spine separation. The
+promising directions, none yet tried: move cell 4's SCK jog so its vertical stops short of
+the FS spine's end; or give the FS spine its own via pad by jogging its last 1-2 mm east
+away from SCK before turning; or let SAI_FS hand over at a converter stub rather than at
+the spine end.
+
+## optical: the SAI_FS spine has NO reachable via site (searched 2026-09-26, CLOSED)
+Swept the entire FS spine (x 12.65, y -18.89 .. +60) at 0.5 mm steps for a point that both
+(a) has room for a 0.6 via at 0.50 clearance and (b) is reachable from SAI_FS's MCU escape
+via by a clear straight run on B.Cu or In2. NONE. So the "B.Cu run to the spine" idea is
+closed: the corridor to the spine's south END is clear, but no via can land there (cell 4's
+SCK stub), and every site that could take a via cannot be reached.
+What is left for SAI_FS, none tried: stop cell 4's SCK vertical short of the FS spine's
+end; jog the FS spine's last millimetres east away from SCK before it turns; or hand over
+at a converter STUB rather than at the spine. All three are placement changes in
+elec/optical.py's _bus_spines / _SCK_JOG / _FS_SPINE.
+
+## LED strip: a WIRE-FREE coplanar joint is not sourceable at 6 positions (2026-09-26)
+The user asked for connectors that "fit directly together" with no wire, IDEALLY. Chased it
+properly through LCSC's API and the answer is no, for a reason that is about parts rather
+than about this board:
+ * RIGHT-ANGLE MALE + RIGHT-ANGLE FEMALE does not mate coplanar. Every stocked 2.54 1x6
+   right-angle male has a 2.5 mm insulation height (C32713265, C2894948 and the rest);
+   every stocked 2.54 1x6 right-angle female is H8.5 (C50878477, C54876735, C51018241,
+   C2932681). There is no H2.5 female. Two right-angle connectors mate only if their
+   contact axes sit at the same height above their boards, and these sections are coplanar
+   in the rail, so nothing absorbs the difference. The H is sold in a range precisely
+   because it sets that axis -- the mismatch is the point, not an oversight.
+ * CARD EDGE does not mate coplanar either. ED06BGFBK (C5173287, 6P 2.54 gold, 35 in
+   stock) has "Height Above Board 15.6mm": the slot faces UP and takes a card inserted
+   downward, not a board butted against it in-plane.
+ * A MEZZANINE pair would be wire-free and standard, but needs the boards to OVERLAP, and
+   these lie flat in one channel.
+DECISION: go back to a socket at each end and a short stock jumper between sections -- the
+S6B-PH-SM4-TB that was already there and already in the BOM (C265405). It is sourceable and
+certain, which a joint resting on an unverifiable axis height is not.
+⚠ AND THE ORIGINAL COMPLAINT WAS PROBABLY NOT THE CONNECTOR TYPE AT ALL. Two PH sockets
+plus a double-ended PHR-to-PHR cable is a perfectly ordinary joint; what is missing is that
+the three INTER-SECTION CABLES were never modelled -- only the Pi lead was. A chain of
+connectors with no cable drawn between them is exactly what "the connectors don't make
+sense" looks like from a render. Model those three, then resubmit.
+
+## optical: ULPI_D0 and ULPI_D5 ARE separable from SAI_FS (measured 2026-09-26)
+I had asserted all three remaining nets were one MCU-to-PHY congestion problem. Per-net
+measurement says otherwise, and the run that tested it reached 2 unconnected -- the best
+this board has managed:
+ * ULPI_D5 CLOSED on its own once ULPI_D0 stopped competing for the same lane.
+ * ULPI_D0's direct inner line is blocked by just TWO VIAS, not a wall. A bend at
+   (10.0, -68.0) clears both at 30.1 mm against 29.5 direct, and a via fits at
+   (14.70, -70.43), 2.0 mm short of U7.4 -- leaving the router a 2 mm hop, not a 29 mm one.
+ * SAI_FS remains the only one with a verified structural block.
+⚠ BUT THE RUN MUST BE VERIFIED FROM THE VIA, NOT THE PAD. layout lays an escape_run from
+the via IT chose, 1-2 mm off the pad, so a pad-to-target check measures a different line.
+Verified from the pad, ULPI_D0's run was laid past a GND via: 1 short + 1 clearance error,
+and the escape via itself landed 0.075 mm from a GND stitch track (0.127 needed) because
+_stitch_plane_pads has no knowledge of a neighbour's escape.
+So EITHER lay out once and re-verify from the via that appears, OR declare the whole
+escape -- F.Cu stub, via, inner run -- at coordinates checked together. The placement is
+stable at 188.53 now, so the second is viable; it was only unsafe when board length moved.
