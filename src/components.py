@@ -307,15 +307,19 @@ def _belt_samples(motor_xyz, screw_xyz):
     return samples
 
 
-def splice_frame(motor_xyz, screw_xyz):
+def splice_frame(motor_xyz, screw_xyz, from_screw=None):
     """Placement for the splice clamp: a point in run B's flat zone with the belt's
-    tangent and (flat) normal. Returns (origin, xDir=tangent, normal=n) tuples."""
+    tangent and (flat) normal. Returns (origin, xDir=tangent, normal=n) tuples.
+
+    `from_screw` puts the origin that far along the run from the SCREW pulley's tangent
+    point, which is how the assembly poses the clamp where the nut's travel has carried
+    it. Left out, it sits _CLAMP_DIST from the motor (the coupon's reference)."""
     V = cq.Vector
     M, S = V(*motor_xyz), V(*screw_xyz)
     r = D.PULLEY_OD / 2 + D.BELT_T / 2
     m_bot, s_my = V(M.x, M.y, M.z - r), V(S.x, S.y - r, S.z)
     L_B = m_bot.sub(s_my).Length
-    t = 1 - _CLAMP_DIST / L_B                          # clamp centre, clear of the pulley
+    t = (1 - _CLAMP_DIST / L_B) if from_screw is None else from_screw / L_B
     p = s_my.add(m_bot.sub(s_my).multiply(t))
     tan = m_bot.sub(s_my).normalized()
     n = V(0, 0, 1)
