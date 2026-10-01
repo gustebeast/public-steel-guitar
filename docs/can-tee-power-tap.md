@@ -6,6 +6,34 @@ two for power and ground, two for data" out of worry about the motor line's powe
 This is the version of that idea the numbers support. Nothing below is in the model yet
 except the tee's 2 mm trunk copper (`6346db5`), which is right either way.
 
+## ⚠ CORRECTED BY THE USER, 2026-10-01: 2 + 2, NOT 2 + 4
+
+> "I was saying 2 pin for CAN data not the 4 pin, so it would be 2 + 2 not 2 + 4"
+
+So the CAN pair is a continuous trunk with a tap at each tee too, exactly like power, and
+the tee carries **two 2-way taps and the drop**. Everything below that says "4-way XH CAN
+in/out" is superseded by this section; the power reasoning is unchanged.
+
+    power trunk   one continuous pair, a tap crimped at each tee      J3  2-way JST VH
+    CAN trunk     one continuous pair, a tap crimped at each tee      J1  2-way JST XH
+    drop          to the motor's own 6-pin plug, unchanged            J2  4-way JST XH
+
+**Better for CAN than what it replaces:** the bus becomes one unbroken pair with a ~60 mm
+stub per node instead of passing through two contacts and a board at every tee. The 120 Ω
+terminator and its jumper stay on the board; only the end tees close theirs.
+
+**The two taps are different families on purpose, and it is not optional for power.** A tap
+on a continuous wire is two conductors in one crimp. An XH contact takes AWG 30–22
+(0.05–0.33 mm² — from memory of JST's XH sheet, not re-read today), so it holds two AWG 26
+(0.26 mm²): fine for CAN, far too thin for a power trunk. Two AWG 22 need the VH contact.
+So power is VH and CAN is XH, which also means neither lead fits the other's socket.
+
+**Scratch prototype, 2 + 2 (same throw-away method as below):** 0 unconnected, 0 violations,
+first pass. The row is VH −18.97..−10.03, XH 2-way −9.25..−0.75, drop 4.95..18.44: **31.7 of
+40 mm**, with 5.7 mm free between the CAN tap and the drop. The VH overhang in Y is the same
+3.9 mm; working assumption is to KEEP the board 16 deep (the outline and the panel quote do
+not move) and let the header overhang.
+
 ## Why
 
 Today the trunk's 24 V passes THROUGH every tee: one XH contact in, board copper, one XH
