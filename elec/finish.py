@@ -255,6 +255,12 @@ def finish(stem, rounds=1):
     # routing result over a skew number -- and the board would still be the best one we
     # have. fab.py is where refusing belongs, because that is the step that produces
     # something orderable; it already refuses a package built from an unrouted board.
+    # ⚠ ...BUT THE LAST LINE MUST SAY SO. "Reported, not enforced" left the verdict forty
+    # lines up while the summary read "0 unconnected, 0 violation(s)" -- and on 2026-09-30 a
+    # board whose THRU pair was split across layers with one via too many was committed AND
+    # submitted on the strength of that line. The count rides on the summary now, so a
+    # script (or a person) reading only the summary cannot miss it.
+    verify_fails = 0
     try:
         proc = subprocess.run([PY, os.path.join(HERE, "verify.py"), stem],
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -264,6 +270,8 @@ def finish(stem, rounds=1):
                 continue
             if line.strip():
                 print("    " + line)
+            if line.lstrip().startswith("FAIL"):
+                verify_fails += 1
     except Exception as exc:                      # a check that breaks must not break the
         print("    verify.py did not run: %r" % (exc,))   # board it was checking
 
@@ -313,8 +321,10 @@ def finish(stem, rounds=1):
         print("    !! cad_geom_check DID NOT RUN: no CadQuery interpreter found. "
               "THE CAD AND THE FAB DATA ARE UNCHECKED.")
 
-    print("%s: %d unconnected, %d violation(s)"
-          % (os.path.basename(stem), best_n, best_v))
+    print("%s: %d unconnected, %d violation(s)%s"
+          % (os.path.basename(stem), best_n, best_v,
+             (" -- AND %d verify.py FAIL(s): NOT A CLEAN BOARD" % verify_fails)
+             if verify_fails else ""))
     return best_n, best_v
 
 
