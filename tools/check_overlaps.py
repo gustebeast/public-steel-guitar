@@ -316,7 +316,12 @@ def _knee(n) -> bool:
 # pairs appeared only when the two landed together, which is exactly what the lead's
 # build exists to find. Parked so branner's chassis/leg/deck round is not held behind two
 # other agents (user: these must not block merges), each with its owner named.
-DEFERRED = {frozenset({"pickup_zplate", "top_plate"}),
+# ⚠ THE PICKUP-PLATE ENTRY ABOVE IS RETIRED (2026-09-30): the +Y jacks moved one bead inboard
+# and their arms end at the boss, so the demo pose is clean and the gate GUARDS it again
+# rather than excusing it. What is still true and still unseen by this gate: the three jack
+# NUT bosses meet the solid deck underside as the plate rises for a pickup shallower than
+# ~17.6 mm -- that needs a travel sweep, not a parked pair.
+DEFERRED = {
             # (chassis <-> optical_cable_usb/pwr, OWNER bronner, is UN-deferred 2026-09-21:
             # the USB run no longer goes to the Pi through the -Y rail -- both optical leads
             # now end a few cm away on the output board, J4 and J9 -- so the gate checks them
