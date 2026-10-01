@@ -122,8 +122,9 @@ turns on the 2.5 mm hex key. See `BOM.md` and
 - **Why:** the board is an O rather than a C -- its sensing strip runs +X across the
   endplate block to give the digital nets a path that does not cross the analog strip --
   and that band passes straight over the near-row bores. The rods themselves never touch
-  it: they top out at z 2.80, and the board's underside is at 9.53, so there is 6.73 mm
-  of air between them. What the band covers is the MOUTH each rod is dropped through.
+  it, but only just: they top out 0.15 mm under the board (z 12.05 against 12.20), which
+  is deliberate -- the board is what stops a rod lifting out. So a rod that is not fully
+  down in its socket will hold the board off its seat: press every rod home first.
 - **The alternative was measured and is worse.** Ø3.9 access holes in the band let the
   rods go in afterwards, and they neck it to 1.40 mm at five points -- about three traces
   past each rod. Fitting the rods first buys the band its full 5.35 mm for its whole

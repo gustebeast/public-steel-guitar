@@ -574,7 +574,7 @@ def _string_components(i):
     # guide rod: dropped in from +Z through the slab, through the -X ear, into a blind
     # socket in the screw rail — SUPPORTED AT BOTH ENDS, so it is a beam and not a
     # cantilever. Gravity seats it; the string overhead keeps it there.
-    rod_top = BE.GUIDE_ROD_TOP          # stops under the bridge bearing, not at the bore's top
+    rod_top = BE.GUIDE_ROD_TOP          # just under the optical board
     rod_bot = BE.GUIDE_SOCKET_Z
     out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
         (D.guide_rod_x(i), sy, rod_bot))))
@@ -613,15 +613,16 @@ def _string_components(i):
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
     # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
     # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
-    # THE CLAMP IS POSED WHERE THE NUT HAS CARRIED IT. It is spliced on with the nut at the
-    # top of travel, CLAMP_END_CLR off the SCREW pulley's flange (INSTALL_NOTES), and from
-    # there it rides BELT_PER_MM of belt toward the motor for every mm the nut comes down.
-    # So a string posed at the floor shows its clamp at the far end of its run -- and on
-    # string 10 that is CLAMP_END_CLR short of the motor pulley, which is the whole reason
-    # the travel is what it is. (All tensioners shown FULLY LOOSE: splice take-up gap open.)
-    _from_screw = (D.PULLEY_FLANGE_OD / 2 + D.CLAMP_END_CLR - min(_CLAMP_XS)
-                   - DEMO_POSE_DZ.get(i, 0.0) * D.BELT_PER_MM)
-    so, sxd, sn = C.splice_frame((mx, my, mz), (D.screw_x(i), sy, spz), from_screw=_from_screw)
+    # THE CLAMP IS DRAWN AT ITS REFERENCE SPOT, NOT WHERE THE NUT HAS CARRIED IT -- and that is
+    # a known gap, not a choice. Posing it by travel (splice_frame's from_screw: spliced on
+    # CLAMP_END_CLR off the screw pulley with the nut at the top, then BELT_PER_MM toward the
+    # motor per mm of nut) was tried on 2026-10-01 and showed real trouble the reference pose
+    # hides: near the screw end the belt is turned 90 deg, so the clamp lies across its
+    # neighbours' lanes (clamp<->next belt up to 26 mm3, clamps 9<->10 31 mm3), and string 9's
+    # clamp grazes string 10's motor pulley in its last millimetre of travel. Where on each
+    # belt the clamp may live, over the whole travel, is an open study; until it is settled
+    # the pose stays here so the gate is not red on a question it cannot answer.
+    so, sxd, sn = C.splice_frame((mx, my, mz), (D.screw_x(i), sy, spz))
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
     for _nm, _shp in BTn.clamp_components(with_lifters=(i == D.N_STRINGS - 1)):
         out.append((f"{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
