@@ -179,3 +179,24 @@ too-small plug; with the true envelope it is all ten.
 
 Also found on the way: the CAD's R1/JP1 box sat 2.5 mm off the routed position in the 2 + 2
 layout (the `!! MIRRORED` report from `cad_geom_check`); fixed inside the stash only.
+
+### Option 3 checked (2026-10-01): Micro-Fit fits in height, but buys almost nothing
+
+Read off the CJT C3030 (Micro-Fit 3.0 compatible) drawings; Molex's own site timed out.
+
+| | value |
+|---|---|
+| right-angle 2-way header (Molex 43650-0200, C192562, 3,576 in stock, $0.58) | 9.65 wide, ~4.6–5.6 high, 9.8 deep |
+| receptacle (43645-0200, C114089, 54,993) | body 5.26 thick, 14.0 long; mated ≈ 7 mm above the board (estimate) — under the 8.3 mm worst headroom |
+| crimp (43030-0001, C259786) | **AWG 20–24 only** — no double crimp, so the trunk must cross board copper: power in + power out |
+| current | ~7 A per contact at AWG 20 (Molex's 8.5 A figure is the family maximum) |
+| row | 2 × 9.65 + XH 2-way 7.4 + XH 4-way 12.4 = **39.1 mm of a 40 mm row** — no gaps, does not place |
+
+So it clears the fret board but (a) does not fit the row without growing the tee in X, and
+(b) rates ~7 A against the merged tee's 6 A (two paralleled XH contacts per rail), with the
+same two contact pairs in series per tee. Not worth a new connector family and crimp tool.
+
+**Standing recommendation: stay on the merged tee.** With the dual feed each end carries at
+most half of the 8 A all-moving case (4 A through 6 A of contact), and the thing that
+actually unbalances it is the motor board's J3 → J1 pass-through (~91 mΩ on 0.5 mm track) —
+fix THAT, which is in bronner's lane, rather than change the tee.
