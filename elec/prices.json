@@ -103,23 +103,14 @@
       "order": "1 x $14.77 (pack of 100) = $14.77 for 30 needed",
       "what": "M4x12 -- 2 optical board, 1 UI clamp"
     },
-    "m4_button_18": {
-      "usd": 0.1894,
-      "verified": "m",
-      "per_instrument": 10,
-      "vendor": "McMaster-Carr",
-      "sku": "92095A196 (20 mm -- SEE NOTE)",
-      "order": "2 x $9.47 (pack of 50) = $18.94 for 100 needed",
-      "what": "M4x18 nut-height screws, 10. McMASTER DOES NOT STOCK 18 mm in this family: 92095A194 is 16 ($15.50/100), 92095A196 is 20, and A195 does not exist. Priced as the 20. Either the design takes a 16 or a 20, or this one length comes from somewhere else -- a DESIGN question for the keyhead owner."
-    },
     "m4_button_20": {
       "usd": 0.1894,
       "verified": "v",
-      "per_instrument": 5,
+      "per_instrument": 15,
       "vendor": "McMaster-Carr",
       "sku": "92095A196",
-      "order": "1 x $9.47 (pack of 50) = $9.47 for 50 needed",
-      "what": "M4x20 -- 3 pickup jacks, 2 male pogo boards"
+      "order": "3 x $9.47 (pack of 50) = $28.41 for 150 needed",
+      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards"
     },
     "m4_button_30": {
       "usd": 0.732,
