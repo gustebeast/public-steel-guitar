@@ -17,11 +17,11 @@ WHERE EVERY NUMBER COMES FROM -- nothing here was measured on a part:
     and the common 17HS-series drawings. Solid.
   * the LAYOUT (bare board, spacers, terminals outboard, OLED, buttons, coil plug in the
     rear cap's side) -- two frames of the user's video of the unit, 2026-10-01.
-  * BODY_L = D.MOTOR_BODY_LEN (48) -- the video's side view scales to ~47 against the 42.3
-    width, so the existing 48 stands. (A first pass off a shop photo said 40; that was a
-    different, shorter motor.)
-  * PCB_GAP, TERM_H -- scaled off the same side view, +-1.5 mm. MEASURE: together they set
-    the length behind the motor, which dimensions.py hangs the pockets and the -Y rail off.
+  * BODY_L = 40 and the ~11 mm shroud -- scaled off the user's SIDE-ON photo of two shrouded
+    units (the only square-on view; 39 and 44 for the bodies, 9.5 and 11 for the shrouds,
+    against the 42.3 width). A close-up video frame scaled to 47, but its perspective
+    stretches the near end. components.motor() says 48 + 22. +-3 mm: MEASURE -- dimensions.py
+    hangs the motor pockets and the chassis' -Y rail off this length.
   * terminal lengths -- 2.54 mm pitch blocks, by way count.
   * which connector is which -- Makerbase's schematic (MKS SERVO42D_CAN V1.0_003):
       6-way  V+  GND  COM  EN  STP  DIR      <- 24 V goes in here (3 A fuse)
@@ -38,7 +38,7 @@ from . import dimensions as D
 from .helpers import box_at, cyl_y
 
 # -- the motor (NEMA17) --------------------------------------------------------
-BODY_L = D.MOTOR_BODY_LEN
+BODY_L = 40.0            # photo estimate -- see the docstring
 CAP_F, CAP_R = 9.0, 10.0   # front and rear end caps; the lamination stack is between them
 STACK_INSET = 0.4        # the laminations sit this far inside the caps, per side
 CHAMFER = 4.1            # corner chamfer leg: 42.3 square inside a 54 mm circle
@@ -53,9 +53,9 @@ MCONN_W, MCONN_L, MCONN_PROUD = 8.0, 6.0, 4.0
 # -- the driver (SERVO42D) -----------------------------------------------------
 PCB_SQ, PCB_T = 42.0, 1.6
 PCB_CORNER_R = 3.0
-PCB_GAP = 5.0            # estimate: motor back -> PCB, the spacer length
+PCB_GAP = 2.5            # estimate: motor back -> PCB, the spacer length
 SPACER_D = 6.0
-TERM_H = 8.5             # estimate: terminal block height off the board
+TERM_H = 6.0             # estimate: terminal block height off the board
 TERM_D = 6.6             # block depth, in the board plane
 TERM_OUT = 0.5           # how far a block's wire face stands outside the PCB edge
 TERM_5_L, TERM_6_L, TERM_4_L = 13.4, 16.0, 10.9   # 2.54 pitch
@@ -67,7 +67,7 @@ BTN_OUT = 1.0
 
 # the optional black plastic shroud (user's third photo, 2026-10-01): a tray the full motor
 # square, open toward the motor, notched where each terminal block shows
-SHROUD_WALL = 1.5
+SHROUD_WALL = 1.0
 SHROUD_L = PCB_GAP + PCB_T + TERM_H + SHROUD_WALL
 
 # the coil lead: four wires from the 4-way terminal round the board edge to the motor's plug
