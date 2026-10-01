@@ -440,6 +440,60 @@ the constraint is stock, not selection. See the optical-pickup section.
 | **M2 grub screw** | M2 × 0.4 cup-tip set screw, 3 mm | 5 | [McMaster](https://www.mcmaster.com/) | commodity | axial retention where no shoulder can exist because the shaft installs THROUGH its bearings: 1 per knee-lever axle (onto the D-flat) × 5 knee levers (2026-09-11: five levers, the inner ILKL removed; the foot pedals' axles still to be counted here). *(A third used to close the bridge axle's +Y end; the optical strip does that job now for free — see the Bridge axle row. A tenth-and-more were proposed for the screw pulleys and then rejected — see the M2 clamp screw row.)* |
 | **Threadlocker, plastic-rated** | surface-curing threadlocker for plastic fasteners, e.g. **Loctite 425** — NOT anaerobic 242/243 | 1 small bottle | Loctite / Henkel via industrial supply (McMaster, Grainger) | TBD [m] | Locks each screw-drive **endcap pulley** onto its Tr8×2 rod (10 joints, a drop each). **A deliberate exception** to the no-adhesive joints elsewhere (bridge axle, sensor magnet): with the brass nut run dry for self-locking, friction cannot also keep the pulley from backing off in the lowering direction (0.8–1.0× margin), and there is no room for a set-screw insert under the near-row pulleys. **Why not 242/243:** anaerobic methacrylates can craze thermoplastics and cure poorly in the near-zero gap of a formed thread. **Procedure:** screw the pulley on DRY first so the rod forms its thread, back it off, apply, screw home. ⚠️ **Test on a spare printed pulley first** (crazing, breakaway torque). The pulley is **sacrificial on disassembly** — breaking a locked plastic thread will likely wreck it; it is a cheap 0.2-nozzle reprint. |
 
+## Mechanical hardware — every purchased part, counted from the model (2026-09-30)
+
+**This table is generated from `elec/prices.json` → `mechanical`, which is what
+`tools/cost.py` prices.** It supersedes the per-row quantities in the table at the top of
+this file wherever the two disagree: these counts come from the dummies the assembly
+actually places (`src.build.collect_components()`), measured by bounding box, scaled for
+the two things the model does not draw — the eleventh sensed control and three of the
+four legs. Cost is per instrument on a **ten-instrument order with whole packs bought**.
+[v] = read off the product page that day; [m] = carried from a listing or an older row.
+
+| Part | Per instrument | Vendor | SKU | $ / instrument | | Order arithmetic and notes |
+|---|---|---|---|---|---|---|
+| `servo42d` | 10 | — | — | $339.90 | [v] | MKS SERVO42D CAN MT (board + MOTOR) -- makerbase3d.com variant table, in stock 2026-09-30. MB is the BOARD ONLY at $22.99 and is the wrong SKU. |
+| `psu_24v_150w` | 1 | — | — | $20.69 | [v] | Mean Well LRS-150-24, 24 V 6.5 A 156 W -- Jameco $17.10 at qty 10, PLUS $3.59 of TARIFF ($35.91 on ten, itemised in the cart, HTS 8504.40.9530) = $20.69 landed. Sized from BOM.md power table: 120 W bus A + 16.7 W Pi = ~137 W peak. On backorder 2026-09-30, ships 11/16. |
+| `bearing_mr85zz` | 20 | — | — | $9.80 | [v] | MR85ZZ, the screws' bottom thrust pair |
+| `bearing_688zz` | 42 | — | — | $25.20 | [v] | 688ZZ O8xO16x5 -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls) |
+| `m4_button_8` | 2 | McMaster-Carr | 92095A189 | $1.11 | [v] | 1 x $11.11 (pack of 100) = $11.11 for 20 needed — M4x8 18-8 button, 2.5 hex -- the two female pogo boards |
+| `m4_button_10` | 14 | McMaster-Carr | 92095A190 | $1.89 | [v] | 2 x $9.44 (pack of 100) = $18.88 for 140 needed — M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards |
+| `m4_button_12` | 3 | McMaster-Carr | 92095A192 | $1.48 | [v] | 1 x $14.77 (pack of 100) = $14.77 for 30 needed — M4x12 -- 2 optical board, 1 UI clamp |
+| `m4_button_18` | 10 | McMaster-Carr | 92095A196 (20 mm -- SEE NOTE) | $1.89 | [m] | 2 x $9.47 (pack of 50) = $18.94 for 100 needed — M4x18 nut-height screws, 10. McMASTER DOES NOT STOCK 18 mm in this family: 92095A194 is 16 ($15.50/100), 92095A196 is 20, and A195 does not exist. Priced as the 20. Either the design takes a 16 or a 20, or this one length comes from somewhere else -- a DESIGN question for the keyhead owner. |
+| `m4_button_20` | 5 | McMaster-Carr | 92095A196 | $0.95 | [v] | 1 x $9.47 (pack of 50) = $9.47 for 50 needed — M4x20 -- 3 pickup jacks, 2 male pogo boards |
+| `m4_button_30` | 2 | McMaster-Carr | 92095A198 | $1.46 | [v] | 1 x $14.64 (pack of 50) = $14.64 for 20 needed — M4x30 -- pedal-bar latch collar, one per bar-to-leg joint (model draws one leg) |
+| `m4_button_35` | 10 | McMaster-Carr | 92095A199 | $3.36 | [v] | 4 x $8.39 (pack of 25) = $33.56 for 100 needed — M4x35 -- belt-tensioner draw screws |
+| `m4_button_40` | 4 | McMaster-Carr | 92095A200 | $2.03 | [v] | 2 x $10.13 (pack of 25) = $20.26 for 40 needed — M4x40 -- the four leg lock pins |
+| `m4_setscrew_10` | 45 | McMaster-Carr | 91390A114 | $4.64 | [v] | 5 x $9.29 (pack of 100) = $46.45 for 450 needed — M4x10 cup-point set screw -- 2 position + 2 spring-tension per control x 11, + 1 pickup retention. BOM.md also lists 10 string clamps; the model draws none, so they are NOT counted here. |
+| `m4_insert` | 94 | McMaster-Carr | 94459A150 | $20.56 | [v] | 19 x $10.82 (pack of 50) = $205.58 for 940 needed — M4 brass heat-set, 4.7 installed. 88 drawn + 4 for the eleventh control + 2 fret boards. AT 940 AN ORDER THIS IS THE DEAREST FASTENER LINE ($205.58) -- $0.22 each at McMaster against a few cents from an import seller; the obvious place to save if a second vendor is acceptable. |
+| `washer_m3_9021` | 44 | McMaster-Carr | 91100A120 | $1.49 | [v] | 5 x $2.97 (pack of 100) = $14.85 for 440 needed — DIN 9021 M3 washer O9 x 0.8 -- spring seat + position, 4 per control x 11 |
+| `break_dowel` | 10 | McMaster-Carr | 91595A018 | $2.54 | [v] | 2 x $12.70 (pack of 50) = $25.40 for 100 needed — O2 x 4 dowel pin, 52100 -- the nut break pins |
+| `guide_rod_o3_5` | 10 | McMaster-Carr | 2900A267 | $18.45 | [v] | 50 x $3.69 (each) = $184.50 for 100 needed — O3.5 M2 HSS drill blank, 73 mm long, Rockwell C60 -- CUT IN TWO for 2 x 34 mm rods, so 5 blanks an instrument. It is hardened: an abrasive wheel job, not a hacksaw. Was guessed at $0.50-1.20 a rod; it is $1.85. |
+| `shaft_o8` | 2 | McMaster-Carr | 6112K44 | $8.22 | [v] | 10 x $8.22 (each) = $82.20 for 20 needed — O8 x 200 hardened steel linear shaft, CUT IN HALF for the bridge axle + nut wrap rod (both O8 x 100). Pre-cut 100 mm is 5033N131 at $14.38 EACH or 6459K118 (420 SS) at $10.18, i.e. 2.5-3.5x the price for saving one abrasive cut. |
+| `die_spring` | 22 | — | — | $24.20 | [m] | uxcell O10x30 blue die spring, the control feel cartridge |
+| `latch_spring` | 6 | Amazon (uxcell) | B0GCZVQFWN | $4.19 | [m] | 6 x $6.99 (pack of 10) = $41.94 for 60 needed — O5 x 0.6 x 15 compression spring -- 4 leg + 2 bar latches (BOM.md). The model draws one leg, so two. |
+| `magnet_o6` | 11 | DigiKey | Radial Magnets 8995 | $3.65 | [m] | O6 x 2.5 diametric N35, $0.332 at 10+ per BOM.md -- not re-read today. Was $1.00 here. |
+| `leadscrew_tr8x2` | 10 | Temu | goods 605822935500044 | $22.41 | [m] | 4 x $56.03 (2 x 600 mm + 2 nuts) = $224.12 for 100 pieces of 37.7 mm — Tr8x2 SINGLE-START, bought long and cut (user's plan). 100 pieces + a saw kerf each is 3.92 m; a 600 mm rod yields 15, so 7 rods, so 4 two-packs. PRICE IS FROM THE SEARCH PAGE, NOT THE PRODUCT PAGE -- Temu put a CAPTCHA in front of the listing and that is not something to click through. ALSO: nearly every T8 screw on Temu is the 3D-printer part, FOUR-START with an 8 mm LEAD, which does not self-lock and would let the strings back-drive the motors. This listing was the only true 1-start on the first two result pages. The round nuts in the pack are not the H-flange nut the carriage is cut for. |
+| `leadscrew_nut_h` | 10 | AliExpress | 3256804704147842 | $9.20 | [m] | Tr8x2 single-start H-flange brass nut, ~$11 per 3 x 4-pack per BOM.md. Not re-read today; was folded into the screw line before. |
+| `belt_gt2` | 8 | — | — | $6.40 | [v] | GT2 open belt, USD per metre; ~7.74 m per instrument |
+| `strings` | 1 | — | — | $25.00 | [m] | one 10-string pedal steel set |
+| `m2_grub` | 5 | McMaster-Carr | - | $0.50 | [m] | M2 x 3 cup set screw, axial retention -- IN BOM.md, NOT IN THE MODEL. Carried at a guess so it is not lost. |
+| **Total** | | | | **$561.21** | | |
+
+**Open, and they are design questions rather than prices:**
+
+- **M4 × 18 is not a length McMaster stocks** in 18-8 button head (16 and 20 are). Ten of
+  them hold the nut-height inserts. Change the design to 16 or 20, or buy that one length
+  elsewhere.
+- **Lead screw:** nearly every "T8" screw on Temu is the 3D-printer part — four-start,
+  8 mm lead — which does not self-lock. Only one true Tr8×2 single-start listing turned up,
+  and its price is from the search page because the listing sits behind a CAPTCHA.
+- **Heat-set inserts are $205.58 an order** at McMaster, the dearest fastener line by far.
+- **Hardened stock gets cut twice** (Ø8 shaft in half, Ø3.5 drill blank in half): an
+  abrasive wheel, not a hacksaw.
+- **10 string-clamp set screws and 5 M2 grubs** are in the older rows above but are not
+  drawn in the model; the grubs are carried at a guess, the clamps are not counted.
+
 ## Electronics (compute bay)
 
 The printed tray in the keyhead bay carries tool-free snap mounts for the whole
