@@ -1439,12 +1439,14 @@ def _led_junction_gap() -> float:
     """
     from . import chassis as CH
     import json as _json, os as _os
-    # ⚠ board.json, NOT geom.json. BG.load() returns the ROUTED board's measured geometry
-    # -- its outline comes off Edge.Cuts -- and a junction gap is design INTENT, which is
-    # never measurable from a board that does not contain the gap. The two files answer
-    # different questions and this one belongs to the generator.
+    # ⚠ THE GENERATOR'S INTENT, NOT geom.json. BG.load() returns the ROUTED board's measured
+    # geometry -- its outline comes off Edge.Cuts -- and a junction gap is design INTENT,
+    # never measurable from a board that does not contain the gap.
+    # ⚠ AND FROM A TRACKED FILE. This read elec/out/led_strip.board.json, which is
+    # git-ignored: a clean checkout could not build. elec/led_strip.py now writes the three
+    # numbers needed here to elec/geom/led_strip.intent.json every time it runs.
     _bj = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
-                        "elec", "out", "led_strip.board.json")
+                        "elec", "geom", "led_strip.intent.json")
     with open(_bj, encoding="utf-8") as _fh:
         notes = _json.load(_fh)
     gap = notes["junction_gap_mm"]
