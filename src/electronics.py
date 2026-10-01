@@ -1159,6 +1159,10 @@ PI_PORT_IN = 1.0                       # end the lead 1 mm inside the face so it
 # lands on which port and nothing else, and it is stated here for the same reason _j2_pin
 # states "WAY 1 IS AT -Y": so it is one statement rather than a pattern spread over two files.
 PI_PORTS   = {"usb2": 9.0, "usb3": 27.0, "eth": 45.75}
+# each port's body: (width across the end, depth along the board, height over the board's top
+# face, how far it stands proud of the board end) -- scaled off the same drawing
+PI_PORT_BODY = {"usb2": (13.1, 17.1, 16.0, 2.5), "usb3": (13.1, 17.1, 16.0, 2.5),
+                "eth": (15.5, 21.4, 13.5, 3.0)}
 
 
 def pi_port_pt(which: str):
@@ -1171,33 +1175,32 @@ def pi_port_pt(which: str):
 
 
 def pi4() -> cq.Workplane:
-    """Raspberry Pi 4B dummy: board + USB/eth block + SoC. WORLD frame, lying FLAT.
+    """Raspberry Pi 4B dummy: board + its three +X-end ports + SoC. WORLD frame, lying FLAT.
 
-    ⚠ THE NAME IS A Pi 4B; THE I/O BLOCK'S GEOMETRY IS STILL THE Pi 5'S. Renamed
-    2026-09-30 to follow BOM.md, which specifies a Pi 4 (2 GB) -- the Pi 5 and its 6 A buck
-    were dropped to save ~$130 once audio->MIDI moved onto the optical pickup's own MCU, so
-    the Pi's jobs are Dexed, USB gadget duty and hosting the optical board. The 85 x 56
-    laminate is right either way: both boards are 85 x 56, and the assert on PI_FP says so.
-    The 50 x 18 x 14 I/O BLOCK IS NOT VERIFIED. Its height and its position on the board's
-    end were taken from a Pi 5, and the two boards do not place USB and Ethernet
-    identically. That block is load-bearing: `wire_usb`, `wire_link` and `wire_ui` all
-    terminate on it (see wiring.WIRE_OK), `_PI_TOP` derives the tray depth from its height,
-    and pi_relief/pi_slide cut plastic against it. Check it against a real Pi 4B mechanical
-    drawing before those runs or that pocket are trusted -- PI_PORTS and PI_PORT_IN are
-    where the fix goes, as the note further down already says.
+    THE PORTS ARE THE Pi 4B's, read off the official mechanical drawing
+    (datasheets.raspberrypi.com/rpi4/raspberry-pi-4-mechanical-drawing.pdf, 2026-10-01):
+    two USB stacks and the Ethernet jack on a 56 mm end, centred PI_PORTS from the board's
+    -Y edge, each standing PROUD of the board end. `Z=` on that drawing is height above the
+    board's top face (its GPIO header reads 8.5, the standard 2x20 height). Until now this
+    was one 50 x 18 x 14 block inherited from a Pi 5: 2 mm short of the USB stacks and
+    flush with an end the real ports overhang. Measured before it was changed: nothing but
+    the two cables that plug in here occupies the proud 3 mm, and there is over 10 mm of
+    air above the 16.0.
+
+    ⚠ `_PI_TOP` (top of this file) still says 14.0 and is NOT touched: it is a term in the
+    STANDING tray's depth budget, D.ELEC_STACK_D, which packs the motor bank -- and this
+    board has not stood in that tray since it was laid on the chassis floor. Whether that
+    term should exist at all is a datum question (it moves MOTOR_X0), not a port dimension.
 
     ⚠ NO stand(). This board is not in the tray any more -- it lies on the chassis floor,
-    so it is authored where it sits, the way the output board already is. `_board` and
-    `box_at` were always frame-agnostic; the stand() on this function's last line was the
-    only thing that made the Pi a tray part.
-    ⚠ THE SOLID IS UNCHANGED -- same 85 x 56 laminate, same 50 x 18 x 14 I/O block, same
-    15 x 15 SoC. Only the frame and the block's END moved: the block is on the +X end now
-    (user: "with the I/O facing +x"), looking down the instrument into open floor instead
-    of into the keyhead endplate."""
+    so it is authored where it sits, the way the output board already is. The I/O is on the
+    +X end (user: "with the I/O facing +x"), looking down the instrument into open floor."""
     cx, cy = _ctr(PI_FP)
     b = _board(PI_FP, PI_Z)
-    b = b.union(box_at(18.0, 50.0, 14.0, x=PI_FP[1] - 9.0, y=cy,
-                       z=PI_Z + BD_T + 7.0))
+    top = PI_Z + BD_T
+    for which, (w, d, h, proud) in PI_PORT_BODY.items():
+        b = b.union(box_at(d, w, h, x=PI_FP[1] + proud - d / 2.0,
+                           y=PI_FP[2] + PI_PORTS[which], z=top + h / 2.0))
     b = b.union(box_at(15.0, 15.0, 2.5, x=cx, y=cy, z=PI_Z + BD_T + 1.25))
     return b
 
