@@ -84,6 +84,38 @@ turns on the 2.5 mm hex key. See `BOM.md` and
 - **Don't** substitute a larger washer: anything over Ø9.6 reaches the bearing's
   shield and rubs.
 
+## Belt clamps: splice each one with the nut ON THE CEILING, 5 mm off the pulley
+
+- **Where:** every string's belt-tension clamp (`belt_tensioner_*`), all ten belts.
+- **Do:** run the string's nut UP until it stops against the endplate ceiling (the hard top
+  stop, and the restringing position). Then splice the clamp onto the belt **5 mm from the
+  pulley it has just been travelling toward**. From there the nut's whole travel carries the
+  clamp away from that pulley and stops it about 5 mm short of the other one on string 10.
+- **Why:** the clamp is part of the belt and moves 14 mm for every 1 mm of nut travel. The
+  nut's travel (7.97 mm, ceiling to floor) is sized so the clamp on the SHORTEST belt
+  (string 10) uses 111.6 of the 121.6 mm it has between pulleys. Those two 5 mm gaps are the
+  whole margin, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
+  with the nut somewhere in mid-travel, and it reaches a pulley before the nut reaches its stop.
+- **Strings 1-8 are forgiving** (their belts are longer; string 9 has about 15 mm per end),
+  but use the same rule everywhere so there is one procedure.
+- **Restringing:** always wrap a new string with the nut on the ceiling. Pull it as tight by
+  hand as you can: every tenth of open tension taken up by hand is 0.4 mm of travel kept
+  for raising pitch. A string wrapped slack and left to break in reaches about 3.4 semitones
+  above open; re-wrapped after break-in it reaches 4 with room over.
+
+## Leadscrew nuts: break the top edge of each string ear hole
+
+- **Where:** every H-nut (`nut_*`), the ear the string passes through (the ear WITHOUT the
+  guide rod), top face.
+- **Do:** before fitting, break that hole's top edge with a countersink or a round file --
+  a small chamfer, no burr.
+- **Why:** the ball end seats centred under a Ø3.5 hole and the string leans 9-13° toward the
+  bridge bearing, so it does not pass through the 4 mm flange straight. Any string heavier than
+  about .030 bears on the hole's top rim on the bearing side, and the rim becomes a break point
+  under full tension. A sharp brass edge there is where a wound string would fail first.
+- **Applies to:** roughly strings 5-10 at playing height, and more of them near the top of
+  travel, where the lean is steepest.
+
 ## Guide rods go in BEFORE the optical pickup board
 
 - **Do:** seat all five near-row guide rods (strings 1, 3, 5, 7, 9) in their endplate

@@ -231,8 +231,9 @@ ROOM_Z1      = D.CHANGER_CEIL_Z               # -3.2 — the changer room's
                                               # seat mouth. The screw no longer stops
                                               # under the ceiling; it runs on past the
                                               # nut INTO the slab, to its top bearing.
-assert D.NUT_TOP_MAX < ROOM_Z1 - 1.0 + 1e-9, (
-    f"the nut's top of travel ({D.NUT_TOP_MAX}) does not clear the room ceiling")
+assert abs(D.NUT_TOP_MAX - ROOM_Z1) < 1e-9, (
+    f"the nut's top of travel ({D.NUT_TOP_MAX}) is not the room ceiling ({ROOM_Z1}): the "
+    f"ceiling IS the top stop (dimensions.NUT_TOP_Z)")
 # Fingers and braces — everything INSIDE the endplate — put their underside on the
 # ceiling, so no later union can hang back down into the room.
 UNDER_Z      = ROOM_Z1
