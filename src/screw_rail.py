@@ -48,14 +48,13 @@ SEAT_CLR = 0.3                              # slop under the stack (it seats UP 
 # below -- and a Ø16 bearing does not pass through Ø11.8. This is half of what replaced the drive
 # relief, which bought the same access by rebating 3.24 off the WHOLE inner face of the end wall.
 BRG_DROP = D.BRG688_W                       # 5.0
-BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -38.9, rail underside = seat mouth
-# THE PLATE'S TOP IS THE NUT'S FLOOR (user, 2026-10-01). It rises to where the boss's
-# underside sits at the bottom of travel, and the boss LANDS on it: that is the hard stop
-# which keeps every belt clamp off its pulley (dimensions.CARRIAGE_TRAVEL has the why).
-# It was BRG_LEDGE_T over the bearings with a bore wide enough for the boss to pass down
-# through, and the nut ran on to the bearing itself, 7.4 lower.
-TOP      = D.NUT_BOT_MIN                    # -26.17
-HEIGHT   = TOP - BOT                        # 12.73
+BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -31.47, rail underside = seat mouth
+TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -22.17
+HEIGHT   = TOP - BOT                        # 9.3
+# (No plane-vs-plane nut check here. The nut's lowest part is its Ø10.2 boss, which passes
+# DOWN THROUGH the ledge bore and stops on the BEARING at the bottom of it -- that is the
+# nut's floor, dimensions.SUPPORT_BRG_Z. The check that matters is the bore's radial
+# clearance, below.)
 
 # TOP-LEDGE BORE. It has to be a window that lands on the OUTER rings and NOTHING
 # else: the ledge is part of the endplate and never turns, while the inner rings turn
@@ -77,22 +76,20 @@ assert SEAT_LEDGE_D >= 13.8, "the ledge would press the 688's SHIELD, not its ou
 assert SEAT_LEDGE_D <= 15.4, "the ledge no longer backs the 688's outer ring"
 
 # STEPPED BORE (user). The Ø14.4 window only has to exist where the plate actually lands on
-# the outer ring, so it is a 1.6 LIP right on the bearing. Above the lip the bore steps IN to
-# the SCREW's passage and nothing wider: the nut's boss never enters the plate any more -- it
-# stops on the plate's top -- so the ring of plate round the screw is the stop face itself.
+# the outer ring, so it is a 1.6 LIP right on the bearing. Above the lip the bore steps IN as
+# tight as the nut's boss allows — the boss is the only thing that ever comes down into it,
+# all the way to the bearing's inner ring, which is its stop — and that puts back the plate
+# material a full-height Ø14.4 would take out from under the guide-rod sockets.
 LEDGE_LIP_T  = 2 * D.BEAD                  # 1.6 of Ø14.4 lip on the outer ring
-LEDGE_TOP    = D.SUPPORT_BRG_Z + LEDGE_LIP_T   # -32.0, where the bore steps in
-SCREW_PASS_CLR = 0.4                       # radial air round the turning Ø8 screw (the pulley
-                                           # channel's figure). The 688 directly below locates
-                                           # the screw, so runout here is small.
-SCREW_PASS_D = D.SCREW_OD + 2 * SCREW_PASS_CLR      # 8.8
+LEDGE_TOP    = D.SUPPORT_BRG_Z + LEDGE_LIP_T   # -24.57, where the bore steps in
+NUT_BOSS_CLR = 0.5                         # radial air round the Ø10.2 boss: ~0.2 print
+                                           # tolerance + runout.
+                                           # ⚠ the boss is off the seller's ±0.5-1 drawing, so
+                                           # re-check this once one is measured.
+NUT_PASS_D   = D.NUT_BOSS_D + 2 * NUT_BOSS_CLR   # 11.2
 assert LEDGE_TOP < TOP - D.BEAD + 1e-9, "the lip has eaten the whole plate"
-# THE STOP FACE: the boss's annulus outside the screw's passage. Small, and it only ever
-# sees a homing touch or a runaway -- never the string load, which pulls the nut UP.
-STOP_LAND = (D.NUT_BOSS_D - SCREW_PASS_D) / 2.0     # 0.7 radial
-assert STOP_LAND >= 0.5, (
-    f"the nut boss overlaps its floor by only {STOP_LAND:.2f} radially -- it would slip "
-    f"into the screw's passage instead of stopping on the plate")
+assert NUT_PASS_D > D.SCREW_OD + 2 * D.BEAD, "the stepped bore no longer clears the Ø8 screw"
+assert NUT_PASS_D < SEAT_LEDGE_D, "the boss passage is wider than the lip it steps in from"
 
 # WHY THE LEDGE IS ON TOP, not underneath (user asked, and the answer is the load).
 # The string pulls every carriage +Z, so the screw is pulled +Z at 88-147 N. The
@@ -136,8 +133,8 @@ def seat_cutter() -> cq.Workplane:
         # the 1.6 LIP window (Ø < the bearing OD — that step IS the face the outer ring
         # pushes against, and the whole string load with it)
         lip = _bore(SEAT_LEDGE_D, LEDGE_TOP - (BOT - 1), (D.screw_x(i), y, BOT - 1))
-        # above the lip: stepped in to the screw's passage, out through the plate top
-        boss = _bore(SCREW_PASS_D, (TOP + 1) - (LEDGE_TOP - 0.01), (D.screw_x(i), y, LEDGE_TOP - 0.01))
+        # above the lip: stepped in to the nut boss's passage, out through the plate top
+        boss = _bore(NUT_PASS_D, (TOP + 1) - (LEDGE_TOP - 0.01), (D.screw_x(i), y, LEDGE_TOP - 0.01))
         cut = seat.union(lip).union(boss)
         tool = cut if tool is None else tool.union(cut)
     return tool

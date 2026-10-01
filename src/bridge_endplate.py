@@ -64,7 +64,7 @@ from . import optical_pickup as OP
 from .endplate_base import endplate_base
 from .screw_rail import (screw_rail as _screw_rail, seat_cutter as _seat_cutter,
                          pulley_channel as _pulley_channel)
-from .screw_rail import BOT as _SR_BOT, TOP as _SR_TOP
+from .screw_rail import BOT as _SR_BOT, TOP as _SR_TOP, LEDGE_TOP as _SR_LEDGE_TOP
 from .screw_rail import PRINT_UP as _SR_PRINT_UP
 from .helpers import box_at
 from cadkit.fasteners import M4, cut_anchor
@@ -367,12 +367,16 @@ GUIDE_DROP_Z1  = BEAR_TOP + 1.0                 # 17.0, out through the endplate
 # unaffected; only 0.025 of a slot wall is grazed, which is nothing.
 # TWO ROWS moved every rod OUTBOARD of the bridge bearing in X (rods at ±20, the bearing
 # spans the axle ± OD/2), so that cap only applies while a rod line is still inside the
-# bearing's X extent. Otherwise the top sits where it keeps the ~34 mm rod: 2.0 on the
-# 3.2 plate, 2.8 since the plate went 4.0 and lifted the socket floor 0.8 with it.
+# bearing's X extent.
+# OTHERWISE THE ROD RUNS AS FAR UP AS IT CAN (user, 2026-10-01): to GUIDE_PCB_CLR under the
+# optical board, which lies across the top of the bores. That is also what keeps it in --
+# the board goes on after the rods (INSTALL_NOTES) and then there is nowhere for one to go.
 _ROD_UNDER_BRG = any(abs(D.guide_rod_x(i) - D.BRIDGE_AXLE_X)
                      < D.BRIDGE_BEARING_OD / 2 + D.GUIDE_ROD_D / 2 + 1.0
                      for i in range(D.N_STRINGS))
-GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0 if _ROD_UNDER_BRG else 2.8
+GUIDE_PCB_CLR  = 0.15                           # rod top -> the board's underside
+GUIDE_ROD_TOP  = ((D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0 if _ROD_UNDER_BRG
+                  else OP.PCB_BOT - GUIDE_PCB_CLR)              # 12.05
 # THE ROD NO LONGER SOCKETS INTO THE RAIL. It used to drop 4.0 into a blind socket so
 # it was a beam supported at both ends. At Ø8 bore the thrust bearing is Ø16 OD, and its
 # radius reaches EXACTLY the rod line at NUT_HOLE_DX 8.0 — there is no rail material
@@ -383,16 +387,18 @@ GUIDE_ROD_TOP  = (D.STRING_Z - D.BRIDGE_BEARING_OD) - 1.0 if _ROD_UNDER_BRG else
 # the ear, ~17 mm from the slab, not the rod's free end: ~0.02 mm under the 11 N
 # anti-rotation load. The rod runs on past the ear purely to stay engaged at the bottom
 # of travel.
-# THE ROD SOCKETS 1.6 INTO THE PLATE, and its length is unchanged. The plate it stands in
-# used to be only 1.6 thick (BRG_LEDGE_T), so the rod bottomed on its top face and a printed
-# collar was built up round its base for engagement — a free-standing ring on a face that
-# prints sideways, which is an overhang (user). The plate went to 3.2 (the collar's top), so
-# the collar is gone; then to 4.0 (user), so the 1.6 socket stands on 0.8 of SOLID FLOOR above
-# the bearing lip's Ø14.4 window, whose teardrop otherwise undercut the near row's sockets.
-# GUIDE_SOCKET_Z is pinned to the OLD top, so a thicker plate moves the socket's mouth, not
-# the rod's bottom.
-GUIDE_SOCKET_H = 2 * D.BEAD                     # 1.6 of blind socket
-GUIDE_SOCKET_Z = _SR_TOP - GUIDE_SOCKET_H       # -32.0, the rod's bottom (unchanged)
+# ...AND AS FAR DOWN AS IT CAN (user, 2026-10-01): until GUIDE_FLOOR_T of plate is left under
+# it as its stop. "Plate" means the SOLID plate. The bottom 1.6 of the rail is the lip band,
+# whose Ø14.4 window reaches under the rod line on both rows (the rod's inner edge is 6.2
+# from the screw axis, the window's radius 7.2, and on the near row its print peak runs
+# further still), so the floor is measured up from the top of that band, not from the
+# bearing. On a BRG_LEDGE_T plate that leaves a 0.8 socket.
+GUIDE_FLOOR_T  = 2 * D.BEAD                     # 1.6 of solid plate under the rod
+GUIDE_SOCKET_Z = _SR_LEDGE_TOP + GUIDE_FLOOR_T  # -22.97, the rod's bottom
+GUIDE_SOCKET_H = _SR_TOP - GUIDE_SOCKET_Z       # 0.8 of blind socket
+assert GUIDE_SOCKET_H >= D.BEAD - 1e-9, (
+    f"the guide rod's socket is {GUIDE_SOCKET_H:.2f} deep: the rail plate is too thin to "
+    f"leave {GUIDE_FLOOR_T} under the rod and still locate it")
 # The web between this bore and the top bearing's pocket is the tight spot, and it is
 # a teardrop-apex-to-bore-wall distance, not a wall anyone chose:
 _GUIDE_WEB = ((-D.SCREW_ROW_DX - D.NUT_HOLE_DX + (D.GUIDE_ROD_D + D.GUIDE_ROD_FIT) / 2)
@@ -644,10 +650,9 @@ def _pcb_pad() -> cq.Workplane:
 # -17.2 instead would have left 1.2 -- legal by MIN_WALL, and not what should be holding
 # a bearing under load.
 #
-# The rod bores are untouched: they are open to z 14.5 but the rods sit with their tops at
-# GUIDE_ROD_TOP = 2.80, and this floor is PLINTH_TOP = 9.37, so the cut never reaches the
-# guided length. It does open the bores' mouths sideways into the notch, which is where
-# the board's own Ø3.9 access holes then line up.
+# The rod bores are untouched below this floor, which is where the rods are guided. Above
+# it the cut opens the bores sideways into the notch, and the rods' top ends stand up
+# through that opening to GUIDE_PCB_CLR under the board (GUIDE_ROD_TOP).
 O_RELIEF_CLR = 0.4                       # the board's fit gap, on the board's side
 O_RELIEF_Z1  = 16.8                      # clear over the block top (16.0): no roof left
 
