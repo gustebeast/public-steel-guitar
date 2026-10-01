@@ -103,6 +103,19 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   for raising pitch. A string wrapped slack and left to break in reaches about 3.4 semitones
   above open; re-wrapped after break-in it reaches 4 with room over.
 
+## Leadscrew nuts: break the top edge of each string ear hole
+
+- **Where:** every H-nut (`nut_*`), the ear the string passes through (the ear WITHOUT the
+  guide rod), top face.
+- **Do:** before fitting, break that hole's top edge with a countersink or a round file --
+  a small chamfer, no burr.
+- **Why:** the ball end seats centred under a Ø3.5 hole and the string leans 9-13° toward the
+  bridge bearing, so it does not pass through the 4 mm flange straight. Any string heavier than
+  about .030 bears on the hole's top rim on the bearing side, and the rim becomes a break point
+  under full tension. A sharp brass edge there is where a wound string would fail first.
+- **Applies to:** roughly strings 5-10 at playing height, and more of them near the top of
+  travel, where the lean is steepest.
+
 ## Guide rods go in BEFORE the optical pickup board
 
 - **Do:** seat all five near-row guide rods (strings 1, 3, 5, 7, 9) in their endplate
