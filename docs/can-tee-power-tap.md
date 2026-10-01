@@ -200,3 +200,117 @@ same two contact pairs in series per tee. Not worth a new connector family and c
 most half of the 8 A all-moving case (4 A through 6 A of contact), and the thing that
 actually unbalances it is the motor board's J3 → J1 pass-through (~91 mΩ on 0.5 mm track) —
 fix THAT, which is in bronner's lane, rather than change the tee.
+
+## Option 6 (2026-10-01): all-XH — power owns the 8-way, CAN taps on a 6-way drop. ROUTES.
+
+The thing the user is worried about is real and still there on the merged tee: the trunk's
++24 V crosses each tee on ONE 3 A XH contact in and one out, and with the dual feed at
+54 / 46 all ten motors moving puts **4.4 A** through the east-most one (so today the honest
+limit is ~5.5 A total, about six motors slewing at once). VH would have fixed it and does
+not fit. This does, with the connector family that already clears the deck (7.0 mm):
+
+| | merged tee | option 6 |
+|---|---|---|
+| J1, 8-way XH | trunk: GND 24 H L in, same out | **power only**: GND 24 24 GND in, same out — the instrument's standard 4-way power order, as on J7 / J10 / motor J3 |
+| J2 | 4-way drop | **6-way** (S6B-XH-A, C157919, 22,452 in stock, $0.17; XHP-6 C144405, 22,775): 1–4 the motor drop, 5–6 a CAN tap |
+| trunk +24 V per tee | 1 contact, 3 A | **2 contacts, 6 A** — against 4.4 A worst case |
+| CAN trunk | through 2 contacts per tee, 20 in series | **continuous pair**, one double-crimped tap per tee (2 × AWG 26 = 0.26 mm², inside SXH-001T's 0.33) — nothing in series |
+| board | 40 × 16 layout + ear | **42 × 16** layout + ear: the row is 22.4 + 1.0 + 17.4 = 40.8 of body |
+
+Scratch prototype (`scratchpad/can_tee_p6.py`, not in the tree): 2 mm bars to all nine
+power lands, **0 unconnected, 0 violations, audit passes**.
+
+**What it costs, and what is NOT yet checked:**
+1. **+2 mm of board in X.** It has to go +X, into the notch under the ear: −X has only
+   1.65 mm before the neighbouring motor (the note in `elec/can_tee.py`). The next tee's
+   board is 4.7 mm past today's edge, so 2.7 mm would remain — room for a 1.6 mm locating
+   wall with ~0.5 each side, but the cradle (`wiring.tee_cradles`) and `D.TEE_BOARD_X`
+   have to be re-cut and re-gated. Not done.
+2. The fabbed outline stays 49.5 × 16 overall (the ear already reaches there), so the
+   lead's panel quote does not change; the L just gets a shallower notch.
+3. A second SKU of cable: the power trunk becomes its own 4-wire run (2 × 24 V, 2 × GND),
+   and CAN a separate twisted pair with taps. Harness, `wiring.py` and BOM follow.
+4. The far limit moves to the cables' own contacts at the panel (J7 / J10: 2 contacts per
+   rail, 6 A) — matched, no longer exceeded.
+
+**Recommendation changes: option 6 over staying put.** It is the only option that fits
+under the fret board AND removes the 3 A contact from the trunk. Needs the user's go-ahead
+because it changes the tee's outline, pinout and both trunk cables.
+
+### Option 6 re-checked, and 6b (2026-10-01, later): take CAN off the tee altogether
+
+**Option 6 has a problem I had not checked: the retaining screw.** Growing the row to
+40.8 mm of body puts the 6-way's corner at x +21.6, and the M4 button head (Ø7.6, centred
+at +24.75, +3.65 in the ear) reaches +20.95: the head lands 0.57 mm INTO the connector
+body. Moving the hole +0.7 / +0.5 in the ear buys 0.05 mm. Option 6 is not clean as drawn.
+
+**6b: the tee becomes a pure power board, in the outline it already has.**
+
+| | merged tee | 6b |
+|---|---|---|
+| J1, 8-way XH (unchanged part, unchanged position) | GND 24 H L in / out | **power only**: GND 24 24 GND in / out — 2 contacts per rail, 6 A |
+| J2 | 4-way drop | **2-way** power drop (S2B-XH-A, C157931, 41,564 in stock), same centre |
+| R1 / JP1 terminator | on the board | gone from the board (see below) |
+| CAN | through 2 contacts per tee | **never touches the tee**: one continuous twisted pair, double-crimped (2 × AWG 26) into H and L of each MOTOR's own plug |
+| board | 40 × 16 + ear | **identical outline, seat, ear and screw** — the row shrinks to 30.8 mm |
+
+Scratch prototype (`scratchpad/can_tee_p6b.py`): **0 unconnected, 0 violations, zero DRC
+warnings, audit passes.** Two nets; the board could be single-sided.
+
+It is the user's "two for power, two for data" with the data pair's tap sitting in the
+motor's plug instead of on the tee — which is where the trunk pair ends up anyway.
+
+**Open before it can be built:**
+1. **Bus-A termination.** The far-end 120 R has no board to live on. Either the SERVO42D's
+   own termination (I believe the MKS board has a selectable 120 R — NOT verified against
+   its manual), or a leaded 120 R crimped across H / L in the last motor's plug, which is
+   solder-free and uses the same double-crimp. Verify before committing.
+2. The motor plug's H / L contacts take 2 × AWG 26 = 0.26 mm² (SXH-001T: 0.08–0.33) — in
+   range; the insulation crimp on two wires wants a test crimp.
+3. Harness, `wiring.py` (power trunk as its own 4-wire run, CAN pair motor-to-motor) and
+   BOM follow; the motor-bay seat and the cradle do NOT change.
+
+**Recommendation: 6b.** Same 6 A trunk as option 6, no outline change, no new header SKU
+beyond a 2-way, and it removes 20 series contacts from the CAN bus.
+
+### 6b open item 1 CLOSED (2026-10-01): the motor terminates the bus itself
+
+Read off Makerbase's own schematic (`MKS SERVO42D_CAN V1.0_003 Schematic.pdf`, repo
+makerbase-motor/MKS-SERVO42D-57D, Hardware/): the TJA1051T/3's CANH / CANL carry **R13,
+120 Ω, in series with SW1, a 2-pin header** ("排针2P"). Fit a jumper cap on SW1 of the
+LAST motor and bus A's far end is terminated on the motor's own board — no resistor in a
+crimp, no terminator on the tee. (An ESDA6V1L sits across the pair on every motor.)
+
+So the tee's R1 / JP1 were duplicating something every motor already carries. The same
+header on the other nine motors must be left OPEN; that is an INSTALL_NOTES line when 6b
+is built. The near end stays where it is, on the motor controller.
+
+Remaining before build: the 2 × AWG 26 test crimp. Nothing else is open.
+
+### 6b: two costs I had not counted (2026-10-01, on reading the harness model)
+
+Before touching the real board I read how the drop is actually made, and 6b is NOT the
+board-only change the section above makes it sound like:
+
+1. **The drop is the SERVO42D's FACTORY pigtail** (`motor_pigtail_N`; BOM: "over their
+   native XH pigtails — power AND CAN"). Its contacts are already crimped, so the CAN pair
+   cannot be double-crimped into it. 6b means REPLACING the pigtail with a made-up cable:
+   XHP-6 at the motor, two power wires to an XHP-2 on the tee, and the trunk pair
+   double-crimped into its H and L. Ten more cables to make, and the factory part unused.
+2. **The CAN trunk moves, and other agents designed against where it is.** `fret_light.py`
+   and `ui_panel.py` (brenner's) both take `wire_canl`'s height over the motor bank
+   (top −17.15) as their cable floor. A motor-to-motor CAN pair runs at the motors' backs
+   instead — probably lower and better for them, but it is their clearance to re-derive,
+   not mine to move under them.
+
+Neither kills it. Both make it a harness decision across three agents rather than a tee
+respin, so it is NOT started. What stands on its own, whatever is chosen:
+
+* the merged tee's limit is one 3 A contact per rail, ~5.5 A total with the 54 / 46 feed;
+* a tee whose 8-way is power-only (6 A) routes clean in today's outline;
+* the last motor can terminate the bus itself (R13 / SW1).
+
+**The cheapest thing that fixes the limit with NO harness change at all is firmware:** cap
+simultaneous slewing at six motors (5.5 A / 0.8 A, rounded down), or measure the real
+per-motor current first — the 0.8 A is still derived, not measured, and if a real move
+draws 0.5 A the merged tee already covers all ten.
