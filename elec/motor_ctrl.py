@@ -1004,6 +1004,18 @@ BOARD_NOTES = {
     # +24V_LED is the lighting bus after F3: 1.63 A worst case, so it gets the same 0.5 mm
     # (1.45 A at a 10 C rise; the worst case is every LED at full white, software-capped).
     "net_widths": {"+24V": 0.5, "+24V_LED": 0.5},
+    # THE BUS-A WEST FEED CROSSES THIS BOARD: J3 (inlet) -> J1 (bus A out). The router laid
+    # it as 35.9 mm of In2.Cu + 20.7 mm of F.Cu at 0.5 mm, ~91 mOhm, which split the dual
+    # feed ~64 / 36 and put up to 2.9 A (ten movers) on copper good for 1.45 A. So that one
+    # path is DECLARED: a 2.0 mm B.Cu bar (1 oz outer, ~4 A at a 10 C rise), 45.5 mm,
+    # ~11 mOhm, down the one B.Cu corridor that was empty on the routed board except for a
+    # four-track band at y -7..-8 the router now has to hop. The rest of the net (fuses,
+    # buck input, sense divider) stays the router's at 0.5 mm.
+    "tracks": [
+        ("+24V", "B.Cu", 2.0, [(12.85, 11.5), (12.85, 3.0), (11.85, 2.0), (-1.0, 2.0),
+                               (-2.0, 1.0), (-2.0, -13.75), (-1.0, -14.75), (0.6, -14.75)]),
+        ("+24V", "B.Cu", 1.2, [(10.35, 11.5), (12.85, 11.5)]),      # J3's two 24 V ways tied
+    ],
     # ⚠ IN1 IS A PLANE, AND THE ROUTER HAS TO BE TOLD. A zone is just copper as far
     # as freerouting is concerned: pour GND on In1 and say nothing, and it will route
     # signals straight through the plane, which is exactly what it did here. The damage
