@@ -823,14 +823,16 @@ def _pickup_mount_components():
                               head_h=TP.JACK_HEAD_H, socket_af=2.5)
         out.append((f"pickup_jack_screw_{_i}",
                     _screw.translate((_jx, _jy, TP.JACK_HEAD_Z + TP.JACK_HEAD_H))))  # head top over the shoulder
-    # PICKUP RETENTION (user): a -Y horizontal M4 cup-tip SET SCREW (existing BOM nut-block part;
-    # cadkit screw dummy, hex socket) threads a heat-set insert and pushes the pickup +Y against the
+    # PICKUP RETENTION (user): a -Y horizontal M4 x 12 BUTTON HEAD (2.5 mm key; it was a cup-tip
+    # set screw until the one-key rule, 2026-09-30) threads a heat-set insert and pushes the pickup +Y against the
     # +Y wall, locking it to the PLATE only. Threading it in/out meets any pickup in the ~5.5 mm
     # length window; shown here at the DEMO Alumitone (longest, so nearly backed out): tip at PK_YM.
     _ret_face_y = TP.PK_MAX_YM - TP.RET_BOSS_L                        # boss/insert mouth (-Y, at the room edge)
-    _ret_grub = f_screw(M4).rotate((0, 0, 0), (1, 0, 0), 90)          # drive/hex end -Y, cup tip +Y
+    from cadkit.fasteners import m4_button_screw, M4_BUTTON_HEAD_H
+    _ret_grub = m4_button_screw(TP.RET_SCREW_L).rotate((0, 0, 0), (1, 0, 0), 90)   # head -Y, tip +Y
+    _ret_bb = _ret_grub.val().BoundingBox()
     out.append(("pickup_retention_screw",
-                _ret_grub.translate((TP.RET_SCREW_X, TP.PK_YM - M4.screw_l, TP.RET_SCREW_Z))))  # tip at the pickup
+                _ret_grub.translate((TP.RET_SCREW_X, TP.PK_YM - _ret_bb.ymax, TP.RET_SCREW_Z))))  # tip at the pickup
     out.append(("pickup_retention_insert",
                 seated_insert(M4, (TP.RET_SCREW_X, _ret_face_y, TP.RET_SCREW_Z), (0, 1, 0))))
     return out
