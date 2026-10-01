@@ -730,8 +730,14 @@ MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 44.7 along-X step between 
 # belt clamp's whole travel; build.py asserts it.
 KEYHEAD_INBOARD_X = -607.8       # keyhead endplate inboard bearing face (its height-screw prism, keyhead_endplate.HS_X1);
                                  # asserted against keyhead_endplate in build.py
-ELEC_STACK_D    = 21.8           # standing electronics tray: plate + posts + tallest board (Pi 4B);
-                                 # asserted against the real boards in electronics.py
+# A PINNED DATUM, NOT A MEASUREMENT OF WHAT STANDS THERE (lead, 2026-10-01). It was sized by
+# the Pi standing in the tray; the Pi has lain flat on the chassis floor since the Y swap, and
+# the standing boards alone need 16.8. The 5.0 left over is NOT free: the flat Pi starts at
+# x -588 and the seven-conductor cable slot lives beside the motor board. And the number feeds
+# MOTOR_X0, so "fixing" it moves the motor bank, the belts and the chassis floor. The motors
+# do not move for a tidier derivation -- so it stays 21.8 until something needs that strip.
+ELEC_STACK_D    = 21.8           # keyhead face -> string 1's motor clearance: standing boards (16.8)
+                                 # + the cable slot + the flat Pi's end; see electronics.py's assert
 # Sized like MOTOR_GAP so string 1's -X bay wall is a full 1.6 like every other motor's, rather
 # than the 1.2 that 1.6 of clearance left it (user: no special cases in the bank).
 MOTOR_ELEC_CLR  = MIN_WALL_2P + 2 * MOTOR_CLR   # 2.4 between the electronics and string 1's motor
