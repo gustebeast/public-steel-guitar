@@ -211,6 +211,16 @@ from . import electronics as _EL_ports
 # anything load-bearing away, and it guarantees the ports stay open whatever the frames do.
 _kh_cr = _EL_ports.keyhead_cradles()
 _kh_bb = _kh_cr.val().BoundingBox()
+# ⚠ THE CRADLES REFILLED THE LEVER MORTISES, and the knee housing's tenons live in them.
+# chassis.py cuts a mortise into every rib, then this union laid the cradles' feet back over
+# the same band: 1986.6 mm3 of chassis_2 inside knee_housing, a 68 x 17 x 4.2 slab at
+# z -77.5..-73.3. It is the endplate's cut-before-union fault in a new place (a union after a
+# cut silently refills it), and it sat in the gate as the largest pair for weeks because the
+# count was read as a baseline. The SAME cutters go through the cradles before they fuse.
+from .chassis import _mort_cutters as _kh_mort_cutters
+_kh_mc = _kh_mort_cutters(_kh_bb.xmin - 1.0, _kh_bb.xmax + 1.0)
+if _kh_mc is not None:
+    _kh_cr = _kh_cr.cut(_kh_mc)
 _kh_hit = 0
 for _csi, _cs in enumerate(chassis_segments):
     _sb = _cs.val().BoundingBox()

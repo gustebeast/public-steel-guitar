@@ -967,7 +967,11 @@ def build_wires():
         # into the gap only then; drop; and walk up the board's own face to J3.
         # The face height is -58 and NOT the connector's own z: at z -61.55 this runs alongside
         # the 5 V cable (which lives at z -64 since its own fix) for 31.6 mm3 per conductor.
-        _GAP_X, _GAP_Y, _FACE_Z = -588.0, _board_gap_y(), -58.0
+        # ⚠ AND NOT -58 EITHER, NOR x -588: the cap's top is z -57.3 and its -X edge x -588.4,
+        # so that leg ran its ground conductor 0.6 INTO the cap's top face and its hot one 0.3
+        # into the edge (17.9 and 2.2 mm3). One conductor now passes OVER the cap and the other
+        # BESIDE it, in the 3.3 mm between the cap and the motor board (x -591.7).
+        _GAP_X, _GAP_Y, _FACE_Z = -589.0, _board_gap_y(), -56.5
         _jy = _mc24[1] + _J3_PITCH2
         return _pair([_j10, (_j10[0], _j10[1], zr), (_j10[0], _REC_Y, zr),
                       (_BAY_X10, _REC_Y, zr), (_BAY_X10, CHAN_Y, zr), (_RISE10, CHAN_Y, zr),
@@ -1134,7 +1138,9 @@ def build_wires():
     # is also palindromic, which is why a mirrored pin axis would have been invisible here --
     # see mctrl_pin, where the axis is verified against the routed board rather than assumed
     # precisely because the next connector to use it may not be so forgiving.
-    _FLY_Z = -64.0
+    # -63.6, not -64: at -64 the conductors' undersides (z -64.9) sat 0.1 into the Pi's
+    # own parts under the cap (top z -64.8), four grazes of 0.1 mm3.
+    _FLY_Z = -63.6
     for _n, _nm in ((1, "gnd_a"), (2, "hot_a"), (3, "hot_b"), (4, "gnd_b")):
         _pin = EL.pi_cap_pin("J2", _n)
         _lead = (_pin[0], _pin[1], _pin[2] - CAP_LEAD_IN)     # mouths face -Z (see pi_cap.py)
@@ -1252,7 +1258,9 @@ def build_wires():
     # pads) so if that is ever shown to be backwards it is an 8 mm correction here
     # and nothing else moves.
     from . import pickup_mount as _PM, top_plate as _TP
-    _pk_x, _pk_y = _TP.PICKUP_X_NOM, _TP.PK_YM + 4.0      # coil underside, -Y end
+    # ...and THROUGH THE HEIGHT PLATE'S LEAD SLOT: the pickup rests on that plate, so a lead
+    # off its underside went straight through 2.4 mm of plastic (11.5 mm3) until the slot.
+    _pk_x, _pk_y = _TP.PICKUP_X_NOM, _TP.LEAD_SLOT_Y    # coil underside, -Y end
     _j8 = EL.op_pt("J8")
     out.append(("wire_pickup", _wire([
         (_pk_x, _pk_y, _PM.PK_BOT),        # leaves the coil's underside
@@ -1772,9 +1780,22 @@ def ctrl_bus_b(lkl):
     lo, hi = _port_lane(-1)
     j2 = [_j2_pin(1 + j) for j in range(n)]
     j2c = (j2[0][0], sum(p[1] for p in j2) / n, j2[0][2])
-    centre = ([_PG.chan_ends()[1], lo] + _to_j2(hi, j2c)
-              + _ends(j2c, (1.0, 0.0, 0.0)))
-    legs = bundle_paths(centre, offs, across=(0.0, 1.0, 0.0))
+    # ⚠ THE PEDAL HALF STAYS UNDER THE FLOOR TOO (2026-09-30). It used to rise through the
+    # port on `hi`, run -Y in the cavity and come back down to a connector that is BELOW the
+    # floor -- the lever half's old topology, fixed there in c07cc16 and left here because the
+    # pedal cable was "not mine". It is the same cable family on the same connector, and it
+    # cost eight gate pairs: chassis_2 x 4 (6.5-7.8 mm3) and pi4 x 4 (2.6-6.2), all in one
+    # column at x -589.9..-579.3, y -82, z -81.9..-67.6 -- the rise, through the floor and
+    # into the Pi's underside. Same cure: out of the pin along -Z, a lane below the floor, +Y
+    # to the port's own xy, and up only as far as `lo`.
+    # ITS LANE IS 4.0 BELOW THE LEVER HALF'S. Ways 1-4 sit at lower y than ways 5-8 and both
+    # run +Y at the pins' x, so at one height the pedal bundle would pass through the lever
+    # half's fan. (Both lanes must be at or below pin_z - CANB_LEAD: a lane above the crimp
+    # lead's end makes the path reverse, and bundle_paths collapses its section there.)
+    _pedal_lane_z = j2c[2] - CANB_LEAD - 4.0
+    centre = [_PG.chan_ends()[1], lo, (lo[0], lo[1], _pedal_lane_z),
+              (j2c[0], j2c[1] + CTRL_FAN, _pedal_lane_z), j2c]
+    legs = bundle_paths(centre, offs, across=(0.0, 0.0, 1.0))
     for j, q in enumerate(legs):
         step = max(abs(q[0][m] - ends[j][m]) for m in range(3))
         assert step < 1.5, (
@@ -1785,7 +1806,7 @@ def ctrl_bus_b(lkl):
     # as "where a lead LEAVES the connector" and returns the mated plug's outer face, and
     # the tray's stand() carries the board's +Z there onto world +X. Pointed -X the fan
     # ran back into the board it had just left: 26-31 mm^3 a conductor, into motor_ctrl.
-    for q, (nm, _pl) in zip(_fan(legs, -1, j2, (1.0, 0.0, 0.0), CANB_LEAD),
+    for q, (nm, _pl) in zip(_fan(legs, -1, j2, (0.0, 0.0, -1.0), CANB_LEAD),
                             _PG.HARNESS_WIRES):
         out.append(("pogo_wire_%s_5" % nm, _wire(q, _PG.HARNESS_WIRE_OD)))
     # ── the LEVER chain's head: J2 ways 5-8 -> port -> LKL's J1 ways 1-4 ──
