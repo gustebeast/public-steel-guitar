@@ -50,10 +50,26 @@ Measured on the placed model: tee connector tops are at z −19.7 (XH, 7.0 over 
 the pickup piece's shallow run and the height plate bottom are at z −13.4. That is 6.3 mm
 of air today. A VH header at 8.5 leaves 4.8; a mated housing at up to 10.5 leaves 2.8.
 
+## Stock: all three halves, read from JLCPCB's parts catalogue 2026-09-30
+
+| part | LCSC | stock | price |
+|---|---|--:|--:|
+| S2P-VH(LF)(SN), side-entry header, JST | C160355 | 6,950 | $0.1259 @50 |
+| VHR-2N-BK, housing, JST | C595405 | 30,543 | $0.0402 @100 |
+| SVH-41T-P1.1, contact AWG 20–16, JST | C160350 | 98,611 | $0.0293 @1000 |
+| SVH-21T-P1.1, contact AWG 22–18, JST | C160349 | 265,205 | $0.0223 @1000 |
+
+All "extended" library. KiCad footprint: `Connector_JST:JST_VH_S2P-VH_1x02_P3.96mm_Horizontal`.
+LCSC's own search endpoint refuses automated requests; JLCPCB's catalogue API answers.
+
+⚠ **HOLD (lead, 2026-09-30): this stays a document until the user confirms it.** No board
+re-route and no CAD change on it. The outline is intended to stay 49.5 × 16 with its ear, so
+the JLCPCB panel quote does not move; `tools/lcsc_prices.py` prices housings and crimps for
+XH/PH/SH only and needs the VH pair added (lead's, once this is confirmed).
+
 ## Not verified / open
 
-1. LCSC stock and price for S2P-VH, VHR-2N, SVH-41T -- check BOTH halves before committing
-   (the connector-family rule).
+1. ~~LCSC stock~~ done, above.
 2. The mated height of VHR-2N lying on a side-entry header (8.5 or 10.5): either clears.
 3. The output panel's J7 is 2 × XH contacts per rail = 6 A; ten motors at the derived
    0.8 A is 8 A. J7 becomes the limit, so it wants VH too or a firmware cap of 7 movers.
