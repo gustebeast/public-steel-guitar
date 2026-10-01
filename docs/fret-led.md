@@ -917,6 +917,48 @@ down with no orientation to get wrong. In exchange: no notches in either board, 
 
 ---
 
+## 8.8 FOUR strips: the plugs are the floor, and the boards go up 0.40 (2026-10-01)
+
+> "The wiring isn't modeled accurately, the plugs on the boards are the actual +z extents"
+> "I don't like the idea of having a super narrow clearance there anyway. Could we instead
+> move the LEDs slightly +z so there is room for the -y clamp?" ... "1.6 min" (user)
+
+**8.7's table was measured against a drawing error.** Its 1.00 mm under mid's -Y edge was
+`wire_canl_6/7`, and its 5.30 under key's was the motor pigtails -- both the wire MODEL,
+which `src/wiring.py` draws 2.5 mm above the plugs it lands in (8.1 said so and designed to
+it anyway). Re-probed against real parts only, `tools/_probe_fret_tab.py --no-wires`:
+
+    mid -Y           tee_pcb_6 / tee_pcb_7 mated plugs, top -19.65
+    the other three  clear for the full 6.00 probed
+
+So the Z stack is now built UP from the plugs, not down from a cable:
+
+| | | |
+|---|--:|---|
+| tee plugs, top | -19.65 | `TEE_TOP` |
+| sliding clearance | 1.50 | the panel slides over them; the board's own rule, applied to the wall |
+| edge wall's floor under the groove | 0.80 | one bead |
+| retainer strip | **1.60** | the user's minimum |
+| **board underside** | **-15.75** | was -16.15 |
+
+**0.40 up, and what it costs is small**: optical depth 17.75 -> 17.35, and the model's
+min/max along a fret goes 0.875 -> 0.864 (1.143 -> 1.157 : 1).
+
+**All four edges carry a full 1.60 strip**, asserted at import. That also retires 8.7's
+"one strip is enough": the argument was cantilever stiffness (15 um), which treats the
+strip as built-in. It is a hinge -- 2.30 of lap with clearance in a groove -- so a board
+held along one edge rotates about it, and mid's free edge was really being held by the M4
+at one end and the board's torsion over 206 mm (roughly 0.2 - 0.3 mm at the far corner,
+estimated, never measured). Two strips make it a plate supported on both long edges.
+
+**Mid's M4 is back at y -28.** It moved to -30 in 9.1f to keep its head out of
+`wire_canl_5` -- the same model error -- and at -30 the head would sit 0.6 into the new
+-Y strip. At -28 it clears the strip by 1.40.
+
+⚠ **The scoped gate is RED on `wire_*` pairs until `wiring.py` is corrected**, and only on
+those: the -Y edge wall now hangs to -18.15 through where the trunk is drawn. The lead has
+routed the wire-model fix to bronner; this is held unsubmitted until it lands.
+
 # 9. THE BOARDS (2026-09-29)
 
 `elec/fret_led.py`, one module, two boards, designed to the same bar as the other seven:
