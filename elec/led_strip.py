@@ -312,5 +312,13 @@ if __name__ == "__main__":
     netcheck.no_orphan_pins(net)
     with open(os.path.join(OUT_DIR, "led_strip.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
+    # ...AND THE THREE NUMBERS THE CAD NEEDS GO TO A TRACKED FILE. elec/out is git-ignored,
+    # and src/electronics.py read junction_gap_mm straight out of the file above -- so a
+    # clean checkout could not build (main died on KeyError until the lead regenerated it).
+    # Design INTENT the CAD depends on lives in elec/geom beside the measured geometry.
+    with open(os.path.join(os.path.dirname(OUT_DIR), "geom", "led_strip.intent.json"),
+              "w", newline=chr(10)) as f:
+        json.dump({k: BOARD_NOTES[k] for k in ("junction_gap_mm", "sections", "outline_mm")},
+                  f, indent=1)
     print("section %.0f x %.0f mm, %d LEDs on %d drivers, x%d per instrument"
           % (BOARD_W, BOARD_L, N_LED, N_DRV, SECTIONS))
