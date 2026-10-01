@@ -200,3 +200,39 @@ same two contact pairs in series per tee. Not worth a new connector family and c
 most half of the 8 A all-moving case (4 A through 6 A of contact), and the thing that
 actually unbalances it is the motor board's J3 → J1 pass-through (~91 mΩ on 0.5 mm track) —
 fix THAT, which is in bronner's lane, rather than change the tee.
+
+## Option 6 (2026-10-01): all-XH — power owns the 8-way, CAN taps on a 6-way drop. ROUTES.
+
+The thing the user is worried about is real and still there on the merged tee: the trunk's
++24 V crosses each tee on ONE 3 A XH contact in and one out, and with the dual feed at
+54 / 46 all ten motors moving puts **4.4 A** through the east-most one (so today the honest
+limit is ~5.5 A total, about six motors slewing at once). VH would have fixed it and does
+not fit. This does, with the connector family that already clears the deck (7.0 mm):
+
+| | merged tee | option 6 |
+|---|---|---|
+| J1, 8-way XH | trunk: GND 24 H L in, same out | **power only**: GND 24 24 GND in, same out — the instrument's standard 4-way power order, as on J7 / J10 / motor J3 |
+| J2 | 4-way drop | **6-way** (S6B-XH-A, C157919, 22,452 in stock, $0.17; XHP-6 C144405, 22,775): 1–4 the motor drop, 5–6 a CAN tap |
+| trunk +24 V per tee | 1 contact, 3 A | **2 contacts, 6 A** — against 4.4 A worst case |
+| CAN trunk | through 2 contacts per tee, 20 in series | **continuous pair**, one double-crimped tap per tee (2 × AWG 26 = 0.26 mm², inside SXH-001T's 0.33) — nothing in series |
+| board | 40 × 16 layout + ear | **42 × 16** layout + ear: the row is 22.4 + 1.0 + 17.4 = 40.8 of body |
+
+Scratch prototype (`scratchpad/can_tee_p6.py`, not in the tree): 2 mm bars to all nine
+power lands, **0 unconnected, 0 violations, audit passes**.
+
+**What it costs, and what is NOT yet checked:**
+1. **+2 mm of board in X.** It has to go +X, into the notch under the ear: −X has only
+   1.65 mm before the neighbouring motor (the note in `elec/can_tee.py`). The next tee's
+   board is 4.7 mm past today's edge, so 2.7 mm would remain — room for a 1.6 mm locating
+   wall with ~0.5 each side, but the cradle (`wiring.tee_cradles`) and `D.TEE_BOARD_X`
+   have to be re-cut and re-gated. Not done.
+2. The fabbed outline stays 49.5 × 16 overall (the ear already reaches there), so the
+   lead's panel quote does not change; the L just gets a shallower notch.
+3. A second SKU of cable: the power trunk becomes its own 4-wire run (2 × 24 V, 2 × GND),
+   and CAN a separate twisted pair with taps. Harness, `wiring.py` and BOM follow.
+4. The far limit moves to the cables' own contacts at the panel (J7 / J10: 2 contacts per
+   rail, 6 A) — matched, no longer exceeded.
+
+**Recommendation changes: option 6 over staying put.** It is the only option that fits
+under the fret board AND removes the 3 A contact from the trunk. Needs the user's go-ahead
+because it changes the tee's outline, pinout and both trunk cables.
