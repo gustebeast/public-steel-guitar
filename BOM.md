@@ -2906,6 +2906,7 @@ pros/cons when weighing approaches** (project policy).
 | **8-channel logic analyser** (24 MHz class) | CAN TX/RX at the MCU, SPI to the volume pot, I2S framing | ~$10–15 *(unverified)* | splits "MCU not transmitting" from "transceiver or wire dead" |
 | **Multimeter** | rails, continuity, 60 Ω across CAN_H/CAN_L | — | presumed owned |
 | **Oscilloscope** | buck ripple, CAN wave shape, I2S clock | — | only when the cheaper tools say "present but wrong"; presumed owned or borrowed |
+| **Lever-board programming jig** (printed nest + 4 pogo pins) | flashing the 11 lever/pedal sensor boards without hand-probing four scattered SWD pads | PRINT IT + 4 pogo pins | **to design.** Pin positions come from `elec/geom/lever_sensor.geom.json` (TP1–TP4); wires to the WCH-LinkE. The board has no room for a standard debug header |
 | **Bring-up leads, made once** | bus taps and the audio loopback | wire + housings on hand | one **XH** and one **PH** Y-cable (bus tap for the CAN adapter); one **¼″ TS → bare wire** loopback lead (output jack back into the pickup terminal) |
 
 ## Cost summary (per instrument)

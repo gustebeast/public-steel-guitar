@@ -199,9 +199,16 @@ and `output_panel`'s are scattered differently again.
   both oscillator tracks at a 0.4 mm-pitch escape, and the router only found the hop on some
   rolls. The cure was to DECLARE the hop: one NRST via beside the pin, laid before routing.
   With it the board closes first pass with the chip-select in: 0 unconnected, 0 violations.
-* **4.1 / 4.2 (shared SWD pattern, +3V3 pad) are still open** on this
-  board. The via helps but does not cure the corner (a perturbation test passed one of two), so budget a neighbour search for each; the outline they must stay
-  inside is branner's re-spin spec (`docs/lever-sensor-respin.md`).
+* **4.1 / 4.2 — CLOSED AS A JIG, NOT A PAD PATTERN.** A shared 5-pad line at 2.54 mm is
+  10.2 mm of pads, and this board's own source records it as full (six free 2.0 mm sites, four
+  already spent on TP1–TP4; a single extra 0402 failed to place three times). The pads stay
+  where they are. Two things replace the recommendation:
+  * **A printed programming jig** — a nest the 31.0 × 21.9 board drops into, with four pogo
+    pins at TP1–TP4's positions (read from `elec/geom/lever_sensor.geom.json`, so it follows a
+    re-route) wired to the WCH-LinkE. Scattered pads stop mattering once nothing is
+    hand-probed; eleven boards become eleven drops. To design; listed in `BOM.md` Tools.
+  * **`+3V3` is probed at U1 pin 5** (the AP2112K's output, a SOT-23-5 leg) — no pad needed.
+    That is the "LDO dead vs MCU dead" measurement.
 * **4.6 is confirmed.** TI's SN65HVD230 datasheet (SLOS346O) has no dominant-timeout — the
   term does not appear in it. The independent watchdog is the only thing bounding a node that
   hangs with its transmit pin dominant.
