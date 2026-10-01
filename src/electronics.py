@@ -336,13 +336,15 @@ def stand_pt(x: float, y: float, z: float):
     return (TRAY_X0 + STAND_DX + dz, y, TRAY_Z0 + STAND_DZ - dx)
 
 
-# the dimensions datum the motor bank is packed against has to hold the real boards:
-# tallest part above the plate's underside in the flat frame = depth in X once standing
-_PI_TOP = BOARD_Z + BD_T + 14.0                # I/O block top (see pi4, and its ⚠)
+# the dimensions datum the motor bank is packed against has to hold what actually STANDS
+# against the keyhead: tallest part above the plate's underside in the flat frame = depth in
+# X once standing. The Pi is NOT a term any more -- it has lain flat on the chassis floor
+# since the Y swap -- so this checks the standing boards (16.8) against a datum that is
+# pinned at 21.8 on purpose (dimensions.py: the rest is the cable slot and the flat Pi's end).
 _MCTRL_TOP = MCTRL_BOARD_Z + BD_T + 9.8        # a MATED XH on the motor controller
-_STACK = max(_PI_TOP, _MCTRL_TOP, BOARD_Z + BD_T + 9.0) - TRAY_Z0   # (+ buck caps)
+_STACK = max(_MCTRL_TOP, BOARD_Z + BD_T + 9.0) - TRAY_Z0   # (+ buck caps)
 assert _STACK <= D.ELEC_STACK_D + 1e-6, (
-    f"the electronics stack is {_STACK:.2f} deep standing, over dimensions.ELEC_STACK_D "
+    f"the standing electronics are {_STACK:.2f} deep, over dimensions.ELEC_STACK_D "
     f"{D.ELEC_STACK_D} -- the motor bank is packed against that number")
 
 # ---- panel jacks (through the endplate recess wall, kept 4 mm thick) ----
@@ -1186,11 +1188,6 @@ def pi4() -> cq.Workplane:
     flush with an end the real ports overhang. Measured before it was changed: nothing but
     the two cables that plug in here occupies the proud 3 mm, and there is over 10 mm of
     air above the 16.0.
-
-    ⚠ `_PI_TOP` (top of this file) still says 14.0 and is NOT touched: it is a term in the
-    STANDING tray's depth budget, D.ELEC_STACK_D, which packs the motor bank -- and this
-    board has not stood in that tray since it was laid on the chassis floor. Whether that
-    term should exist at all is a datum question (it moves MOTOR_X0), not a port dimension.
 
     ⚠ NO stand(). This board is not in the tray any more -- it lies on the chassis floor,
     so it is authored where it sits, the way the output board already is. The I/O is on the
