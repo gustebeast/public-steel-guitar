@@ -212,12 +212,20 @@ def output_panel():
     thru_dp += j1["A6"], j1["B6"]
     thru_dm += j1["A7"], j1["B7"]
 
-    j2 = _usba("J2", "to the Pi's USB-C gadget port, via a stock A-to-C lead")
+    # ⚠ J2 AND J4 ARE USB-C NOW, NOT USB-A (user, 2026-10-02: "why do we need USB A, I
+    # would expect C"). Nothing ever needed A: both are INTERNAL ports, chosen as A only so
+    # the leads could be stock A-to-C. The GCT USB1046 they used had 3 in stock at JLCPCB
+    # and no drop-in; the TYPE-C-31-M-12 is the part J1 and J3 already are, so the board
+    # now carries ONE USB connector and the leads are stock C-to-C.
+    # D+ and D- are tied across both rows, as on J1, so the lead works either way up.
+    j2 = _usbc("J2", "to the Pi's USB-C gadget port, via a stock C-to-C lead")
     vbus_pi = Net("VBUS_PI_NC")
-    vbus_pi += j2[1]                      # the lead's VBUS conductor ends here, dead
-    thru_dm += j2[2]
-    thru_dp += j2[3]
-    gnd += j2[4], j2["SH"]
+    vbus_pi += j2["A4"], j2["B4"], j2["A9"], j2["B9"]   # the lead's VBUS ends here, dead
+    thru_dp += j2["A6"], j2["B6"]
+    thru_dm += j2["A7"], j2["B7"]
+    gnd += j2["A1"], j2["A12"], j2["B1"], j2["B12"], j2["SH"]
+    # CC left open on purpose: this port neither sources nor sinks, it is a wire to J1,
+    # and J1's own pull-downs are what the player's computer sees.
 
     # ── J3/J4: the hub's upstream, and the optical board's downstream ────────
     hub_dn1_dp, hub_dn1_dm = Net("HUB_DN1_DP"), Net("HUB_DN1_DM")   # -> U1, no cable
@@ -233,14 +241,21 @@ def output_panel():
     hub_up_dp += j3["A6"], j3["B6"]
     hub_up_dm += j3["A7"], j3["B7"]
 
-    j4 = _usba("J4", "hub downstream -> the optical board, ~100 mm")
+    j4 = _usbc("J4", "hub downstream -> the optical board, ~100 mm, stock C-to-C lead")
     # ⚠ THIS one DOES source VBUS -- it is a host port. The optical board runs off
     # its own 24 V and ignores the current, but a device that is not OFFERED VBUS
     # never enumerates, so the pin is fed rather than dead-ended.
-    v5 += j4[1]
-    hub_dn2_dm += j4[2]
-    hub_dn2_dp += j4[3]
-    gnd += j4[4], j4["SH"]
+    v5 += j4["A4"], j4["B4"], j4["A9"], j4["B9"]
+    hub_dn2_dp += j4["A6"], j4["B6"]
+    hub_dn2_dm += j4["A7"], j4["B7"]
+    gnd += j4["A1"], j4["A12"], j4["B1"], j4["B12"], j4["SH"]
+    # A USB-C HOST PORT SAYS SO WITH A PULL-UP ON EACH CC PIN: 56k to 5 V is the
+    # "default USB power" advertisement. Over a C-to-C lead the optical board's own
+    # 5k1 pull-downs see it and attach; the USB-A this replaces needed neither.
+    for _tag, _pin in (("R29", "A5"), ("R30", "B5")):
+        _rp = _r(_tag, "56k", "J4 CC pull-up: this port is a host (default USB power)")
+        j4[_pin] += _rp[1]
+        v5 += _rp[2]
 
     # ── J5: the 1/4 in jack. PCB-MOUNT, so no hand-soldered lug. ─────────────
     # BOM.md already specifies this Neutrik; it is a PCB part with a panel bushing,
@@ -1364,7 +1379,7 @@ BOARD_NOTES = {
     # the ear moved the router's first-pass choices and BOOT0 (a one-resistor strap across
     # the digital block) came back unrouted at the default pass count; more passes let the
     # optimiser rip up and re-lay rather than freeze the early mess (route.py PASSES note)
-    "router_passes": 20,
+    "router_passes": 20,   # 40 was tried with the USB-C sockets (2026-10-02): no better, see close_last.py
     # THE HUB'S THREE PAIRS ARE LAID AS PAIRS (2026-09-21). With the CH334F's real pinout the
     # upstream and downstream pins sit on different faces of the package than the invented
     # one put them, and freerouting -- which has no notion of a pair -- came back with
@@ -1377,8 +1392,12 @@ BOARD_NOTES = {
     #  MCU's 0.4 mm-pitch QFN -- it reports an ESCAPE failure, a placement limit of the
     #  routine. With U4 turned to face U1 and the SWD pads moved off the MCU's top edge, the
     #  router has a direct corridor for it.)
-    "diff_pairs": [{"nets": ["HUB_DN2_DP", "HUB_DN2_DM"], "chain": ["U4", "J4"],
-                    "gap": 0.2, "width": 0.2}],
+    # ⚠ HUB_DN2 IS WITH THE ROUTER TOO SINCE J4 BECAME A USB-C (2026-10-02). It was the one
+    # pair _diff_pairs could lay, because a USB-A's four pads sit in one row; a USB-C at
+    # 270 deg has the same A/B rows along Y that stop it at J3, and it reports the same
+    # ESCAPE failure ("no clear path U4->J4"). verify.py is what says whether the router
+    # kept the two conductors together.
+    "diff_pairs": [],
     # ⚠ U1.27 GETS AN ESCAPE VIA, AND THE MEASUREMENT SAYS WHY. JACK_MODE was the one net
     # the router left unconnected after the TRS parts went in, and it could not be repaired
     # afterwards either -- maze3d found no path at 0.127 mm on any of three layers at any
@@ -1437,7 +1456,10 @@ BOARD_NOTES = {
     # Board to beat remains output_panel.best-0-0.kicad_pcb: 0 unconnected, 0 violations,
     # one layer-set problem -- which is strictly better than 1 unconnected, 1 violation and
     # one layer-set problem somewhere else.
-    "pin_escapes": ("U1.27",),
+    # U1.26 (POT_SDI) joined 2026-10-02: with the USB-C sockets the router laid +3V3 across the
+    # inner side of this pad row and vias for 25 and 27 across the outer, and left 26 boxed in
+    # on F.Cu through three rounds. Same fault as 27, same medicine.
+    "pin_escapes": ("U1.27", "U1.26"),   # U1.7 (NRST) was tried too: it closed NRST and opened OSC_IN, its neighbour
     "diff_pair_inner": "In2.Cu",
     "layers": 4,
     "thickness_mm": 1.6,
@@ -1715,9 +1737,12 @@ BOARD_NOTES = {
         # place_check passes either way (the rotated courtyard lands in free space
         # both times), so nothing catches it but reading the offset. 270 turns the
         # mouth out through the -X edge, which is what these three are for.
-        "J2": (-24.32 - GROW_X + USB_MOUTH_SHIFT, 24.00, 270.0),   # -> the Pi's gadget port
+        "J2": (-29.44 - GROW_X + USB_MOUTH_SHIFT, 24.00, 270.0),   # -> the Pi's gadget port
         "J3": (-29.44 - GROW_X + USB_MOUTH_SHIFT, 8.00, 270.0),    # hub upstream -> a Pi host port
-        "J4": (-24.32 - GROW_X + USB_MOUTH_SHIFT, -8.00, 270.0),   # hub downstream -> the optical board
+        "J4": (-29.44 - GROW_X + USB_MOUTH_SHIFT, -8.00, 270.0),   # hub downstream -> the optical board
+        # J4's two CC pull-ups, in the board the USB-A shell used to cover
+        "R29": (-35.50, -5.50, 0.0),
+        "R30": (-35.50, -10.50, 0.0),
         # +Y BAND: THE ANALOG CHAIN. It is up here because the switcher is down
         # there -- 50 mm of board between a 24 V switching node and a magnetic
         # pickup's preamp is the cheapest noise measure available.

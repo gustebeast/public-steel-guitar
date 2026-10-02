@@ -244,6 +244,32 @@ def finish(stem, rounds=1):
     shutil.copy(stem + ".best.drc.json", stem + ".finish.drc.json")
     os.remove(stem + ".best.drc.json")
 
+    # ⚠ THE LAST NET OR TWO, BY MAZE, ON THE BOARD THAT WON (close_last.py says why at
+    # length). Only on a board with no violations: a search for copper on a board that
+    # already breaks a rule would be judged against a moving baseline. And the same
+    # "strictly better or it does not count" test as a routing round -- the search works
+    # to the netclass rule on a grid, DRC is the judge, and a repair that buys a
+    # connection with a violation is put back.
+    if best_n and not best_v:
+        shutil.copy(stem + ".kicad_pcb", stem + ".preclose.kicad_pcb")
+        shutil.copy(stem + ".finish.drc.json", stem + ".preclose.drc.json")
+        try:
+            _run("close_last.py", stem)
+            _run("repair_planes.py", stem)
+            _n3, _nets3, _v3 = _drc(stem)
+            print("  close_last: %d unconnected, %d violation(s)" % (_n3, _v3))
+        except SystemExit as exc:
+            print("  close_last did not run (%s)" % (exc,))
+            _n3, _v3 = best_n, best_v + 1
+        if (_v3, _n3) < (best_v, best_n):
+            best_n, best_v, nets = _n3, _v3, _nets3
+        else:
+            print("  close_last did not improve the board -- putting it back")
+            shutil.copy(stem + ".preclose.kicad_pcb", stem + ".kicad_pcb")
+            shutil.copy(stem + ".preclose.drc.json", stem + ".finish.drc.json")
+        os.remove(stem + ".preclose.kicad_pcb")
+        os.remove(stem + ".preclose.drc.json")
+
     # THE SILKSCREEN GOES ON THE BOARD THAT WON, and only there: name and revision, the
     # test pads' nets, the connectors' pinouts (silk.py). It moves no copper, and every
     # label is dropped rather than squeezed -- but "cannot add a finding" is a claim, so
