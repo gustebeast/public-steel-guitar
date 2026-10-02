@@ -466,8 +466,8 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 | `bearing_688zz` | 42 | — | — | $25.20 | [v] | 688ZZ O8xO16x5 -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls) |
 | `m4_button_8` | 2 | McMaster-Carr | 92095A189 | $1.11 | [v] | 1 x $11.11 (pack of 100) = $11.11 for 20 needed — M4x8 18-8 button, 2.5 hex -- the two female pogo boards |
 | `m4_button_10` | 69 | McMaster-Carr | 92095A190 | $6.61 | [v] | 7 x $9.44 (pack of 100) = $66.08 for 690 needed — M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end |
-| `m4_button_12` | 4 | McMaster-Carr | 92095A192 | $1.97 | [v] | 1 x $14.77 (pack of 100) = $14.77 for 40 needed — M4x12 -- 2 optical board, 1 UI clamp, 1 pickup -Y retention (was a cup set screw; 2.5 mm key now) |
-| `m4_button_20` | 15 | McMaster-Carr | 92095A196 | $2.84 | [v] | 3 x $9.47 (pack of 50) = $28.41 for 150 needed — M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; `nut_block.HS_SCREW_L` = 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards |
+| `m4_button_12` | 2 | McMaster-Carr | 92095A192 | $1.48 | [v] | 1 x $14.77 (pack of 100) = $14.77 for 20 needed — M4x12 -- 1 UI clamp, 1 pickup -Y retention (was a cup set screw; 2.5 mm key now) |
+| `m4_button_20` | 17 | McMaster-Carr | 92095A196 | $3.79 | [v] | 4 x $9.47 (pack of 50) = $37.88 for 170 needed — M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; `nut_block.HS_SCREW_L` = 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards, 2 optical board through its hand guard (were M4x12 on the bare board) |
 | `m4_button_30` | 2 | McMaster-Carr | 92095A198 | $1.46 | [v] | 1 x $14.64 (pack of 50) = $14.64 for 20 needed — M4x30 -- pedal-bar latch collar, one per bar-to-leg joint (model draws one leg) |
 | `m4_button_35` | 10 | McMaster-Carr | 92095A199 | $3.36 | [v] | 4 x $8.39 (pack of 25) = $33.56 for 100 needed — M4x35 -- belt-tensioner draw screws |
 | `m4_button_40` | 4 | McMaster-Carr | 92095A200 | $2.03 | [v] | 2 x $10.13 (pack of 25) = $20.26 for 40 needed — M4x40 -- the four leg lock pins |
@@ -484,7 +484,7 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 | `leadscrew_nut_h` | 10 | AliExpress | 3256804704147842 | $9.20 | [m] | Tr8x2 single-start H-flange brass nut, ~$11 per 3 x 4-pack per BOM.md. Not re-read today; was folded into the screw line before. |
 | `belt_gt2` | 8 | — | — | $6.40 | [v] | GT2 open belt, USD per metre; ~7.74 m per instrument |
 | `strings` | 1 | — | — | $25.00 | [m] | one 10-string pedal steel set |
-| **Total** | | | | **$588.84** | | |
+| **Total** | | | | **$589.30** | | |
 
 **Open, and they are design questions rather than prices:**
 
