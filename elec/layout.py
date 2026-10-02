@@ -1844,6 +1844,22 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                         continue
                     if way is None:
                         continue
+                    # ⚠ THE LAYER THE TWO TERMINALS SHARE, NOT `a`'s. A through-hole pad
+                    # answers F.Cu to GetLayer(), so a join from one to a B.Cu track end
+                    # was laid on F.Cu and ended over the track with nothing through the
+                    # board: copper added, net still open (output_panel, J6's shell to
+                    # the declared PWR_GND bar, 2026-10-02). A through pad is on every
+                    # layer, so it takes the OTHER terminal's; two single-layer terminals
+                    # on different layers share none and are not a surface join at all.
+                    def _thru(q):
+                        return (isinstance(q, pcbnew.PAD) and q.IsOnLayer(pcbnew.F_Cu)
+                                and q.IsOnLayer(pcbnew.B_Cu))
+                    if _thru(a) and not _thru(b):
+                        lay = b.GetLayer()
+                    elif _thru(b) or a.GetLayer() == b.GetLayer():
+                        lay = a.GetLayer()
+                    else:
+                        continue
                     for q0, q1 in zip(way, way[1:]):
                         if q0 == q1:
                             continue
@@ -1851,11 +1867,10 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                         t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
                         t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
                         t.SetWidth(pcbnew.FromMM(width))
-                        t.SetLayer(a.GetLayer())
+                        t.SetLayer(lay)
                         t.SetNet(a.GetNet())
                         board.Add(t)
-                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, net,
-                                     a.GetLayer()))
+                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, net, lay))
                         made += 1
                     board.BuildConnectivity()
                     cc = board.GetConnectivity()

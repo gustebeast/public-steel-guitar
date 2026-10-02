@@ -4,7 +4,7 @@
 # the bottom of output_panel.py.
 import pcbnew, json, sys
 b=pcbnew.LoadBoard("elec/out/output_panel.kicad_pcb"); mm=pcbnew.ToMM
-NETS=("THRU_DP","THRU_DM","HUB_DN1_DP","HUB_DN1_DM")
+NETS=("THRU_DP","THRU_DM","HUB_DN1_DP","HUB_DN1_DM","HUB_DN2_DP","HUB_DN2_DM","HUB_UP_DP","HUB_UP_DM")
 out={"nets":list(NETS),"tracks":[],"vias":[]}
 P=lambda p:(round(mm(p.x)-100.0,4), round(100.0-mm(p.y),4))
 for t in b.GetTracks():
