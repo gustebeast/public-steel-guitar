@@ -153,6 +153,16 @@ def servo42d(shrouded: bool = True) -> cq.Workplane:
     return m.union(shroud()) if shrouded else m
 
 
+def parts(shrouded: bool = True) -> dict:
+    """The unit as SEPARATE named solids, so the viewer can hide the driver or the shroud
+    and the motor reads on its own (user, 2026-10-01)."""
+    p = {"servo42d_motor": motor_body(), "servo42d_driver": driver(),
+         "servo42d_coil_lead": coil_lead()}
+    if shrouded:
+        p["servo42d_shroud"] = shroud()
+    return p
+
+
 def report() -> str:
     b = servo42d().val().BoundingBox()
     return ("SERVO42D dummy: %.1f long behind the faceplate (motor %.1f + driver %.1f); "
@@ -170,7 +180,11 @@ if __name__ == "__main__":
     # its own folder: the viewer hub names a tab after the STEP's parent folder
     out = pathlib.Path(__file__).resolve().parent.parent / "servo42d" / "servo42d.step"
     out.parent.mkdir(exist_ok=True)
-    export_step(servo42d(), str(out))
+    assy = cq.Assembly(name="servo42d")
+    for (name, wp), rgb in zip(parts().items(), ((0.25, 0.25, 0.27), (0.05, 0.35, 0.15),
+                                                 (0.8, 0.2, 0.2), (0.08, 0.08, 0.08))):
+        assy.add(wp, name=name, color=cq.Color(*rgb))
+    assy.save(str(out))
     print(report())
     print("wrote", out)
     show(str(out))

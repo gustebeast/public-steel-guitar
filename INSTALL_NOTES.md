@@ -102,6 +102,12 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   hand as you can: every tenth of open tension taken up by hand is 0.4 mm of travel kept
   for raising pitch. A string wrapped slack and left to break in reaches about 3.4 semitones
   above open; re-wrapped after break-in it reaches 4 with room over.
+- **Which run:** odd strings (near row, the high belt plane) take the clamp on the **upper**
+  run of the belt; even strings (far row) on the **lower** run. The clamp's deep side hangs
+  off the belt's outer face and turns sideways near the screw; on the other run it sits in
+  the next string's belt for most of the span.
+- **OPEN (2026-10-01):** strings 1, 8, 9 and 10 do not have room for the full travel yet
+  (`docs/belt-clamp-travel.md`). The 5 mm rule above is not enough on those four.
 
 ## Leadscrew nuts: LOOK at the top edge of each string ear hole
 

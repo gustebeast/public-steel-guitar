@@ -4226,9 +4226,40 @@ def build(stem):
     if os.path.isfile(retry):
         want = json.load(open(retry, encoding="utf-8"))
         if want:
-            n_laid, n_left, n_why, _cl, _cw = _local_nets(
-                board, [re.escape(n) for n in want], _outline_pts(notes),
-                local_mm=1e9, inner=_local_inner(notes), holes=_hole_pts(notes))
+            # ⚠ AT THE NET'S OWN WIDTH, NOT AT 0.2 (2026-10-01). This call used to take
+            # _local_nets' default, so a net the board had asked to be 0.5 mm
+            # (`net_widths`) came back from the retry at 0.2 -- and the nets the router
+            # fails on are disproportionately the wide ones, because wide is what is hard
+            # to fit. Found on output_panel (the buck's 24 V feed and its return, 30 and
+            # 35 mm at 0.2) and motor_ctrl (67 mm of +24V at 0.2); DRC cannot see it, since
+            # the netlist has no concept of width.
+            # Widest first, each group at its width; whatever will not go at that width is
+            # then tried at 0.2 and SAID, because a thin connection beats an open one and
+            # a silent thin one is how this was missed.
+            import fnmatch
+            _nw = notes.get("net_widths") or {}
+            _groups = {}
+            for _n in want:
+                _w = max([0.2] + [w for pat, w in _nw.items() if fnmatch.fnmatchcase(_n, pat)])
+                _groups.setdefault(_w, []).append(_n)
+            n_laid = n_left = 0
+            n_why = []
+            for _w in sorted(_groups, reverse=True):
+                _pats = [re.escape(n) for n in _groups[_w]]
+                _a, _b, _c, _cl, _cw = _local_nets(
+                    board, _pats, _outline_pts(notes), local_mm=1e9, width=_w,
+                    inner=_local_inner(notes), holes=_hole_pts(notes))
+                n_laid += _a
+                if _b and _w > 0.2:
+                    _a2, _b, _c, _cl, _cw = _local_nets(
+                        board, _pats, _outline_pts(notes), local_mm=1e9,
+                        inner=_local_inner(notes), holes=_hole_pts(notes))
+                    n_laid += _a2
+                    print("  retry: ⚠ %d segment(s) of %s laid at 0.20 mm, not the %.2f mm "
+                          "the board asks for -- no room at that width"
+                          % (_a2, ", ".join(_groups[_w]), _w))
+                n_left += _b
+                n_why += list(_c)
             print("  retry: laid %d segment(s) for %d net(s) the router could not finish"
                   "%s" % (n_laid, len(want),
                           ", %d edge(s) still not placeable" % n_left if n_left else ""))
