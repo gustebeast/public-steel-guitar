@@ -500,13 +500,13 @@ def slot_cut():
     top = clear_top()
     foot = z_stack()[3]
     sy0, sy1 = _slot_y()
-    box = box_at(x1 - x0, sy1 - sy0, top - floor,
-                 x=(x0 + x1) / 2.0, y=(sy0 + sy1) / 2.0, z=(floor + top) / 2.0)
     yr = MOTOR_FACE + ROOF_REACH
-    roof = (cq.Workplane("YZ", origin=(x0, 0, 0))
-            .polyline([(sy0, foot), (yr, foot), (yr, foot + (yr - sy0))])
+    # ONE section: up the slot wall to the board's top, then the ramp -- so even the fit's
+    # 0.30 over the board is under the 45° line and no flat is left at the wall
+    return (cq.Workplane("YZ", origin=(x0, 0, 0))
+            .polyline([(sy0, floor), (sy1, floor), (sy1, top), (yr, top),
+                       (yr, foot + (yr - sy0)), (sy0, foot)])
             .close().extrude(x1 - x0))
-    return box.union(roof)
 
 
 MOUTH_CUT = 16.0     # how far -X of the window the corridor is cut: past the wall's end
