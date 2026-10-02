@@ -105,8 +105,9 @@ BOARD_W, BOARD_L = 56.0, 34.0
 # ⚠ THE UI RIBBON IS A PLAIN HEADER, NOT A SHROUDED ONE, AND THAT IS A SOURCING FACT RATHER
 # THAN A PREFERENCE. LCSC stocks no shrouded 1.27 mm 2x7; the nearest shrouded part is
 # 2.54 mm and 2x13, and 2.54 is what does not fit the 8.5 mm standoff in the first place
-# (a 2.54 male header is 8.54 BEFORE its socket goes over it). So: HX PZ1.27-2x7P ZZ,
-# LCSC C22438122, 10535 in stock, the same HX family as the LED connector already here.
+# (a 2.54 male header is 8.54 BEFORE its socket goes over it). So: HX PZ1.27-2x7P WZ,
+# LCSC C22438113, the RIGHT-ANGLE one (2902 in stock 2026-10-02). The note here used to
+# name C22438122, which is the same family's VERTICAL header and not this footprint.
 # ⚠ WHICH MEANS THE KEYING IS THE CABLE'S LENGTH, and that is a real constraint rather
 # than a hope: the run is fixed and short, pin 1 is on the silk, and a cable cut to reach
 # only one way cannot be fitted reversed. The alternative was FFC/ZIF, keyed by the
@@ -121,10 +122,18 @@ UI_FP = "Connector_PinHeader_1.27mm:PinHeader_2x07_P1.27mm_Horizontal"
 # the spi1-1cs overlay claims it as MISO and a switch there would work until the overlay
 # loads. The order puts the clock beside the ground and keeps the two fast lines away from
 # the seven switch lines, which are static on a human timescale.
-UI_WAYS = (("GND", 6), ("UI_SCLK", 40), ("UI_SDIN", 38), ("UI_CS_N", 12),
-           ("UI_DC", 37), ("UI_RES_N", 33), ("+3V3_PI", 1), ("UI_ENC_A", 29),
-           ("UI_ENC_B", 31), ("UI_SW_PUSH", 18), ("UI_SW_A", 11), ("UI_SW_B", 13),
-           ("UI_SW_C", 15), ("UI_SW_D", 16))
+# ⚠ THE WAY ORDER IS harness.UI_RIBBON's (2026-10-02), which is the UI board's: that board
+# could not route this cap's original order. Each signal keeps its Pi header pin; only
+# the way it rides changes.
+UI_WAYS = (("UI_SW_A", 11), ("UI_SW_B", 13), ("UI_SW_C", 15), ("UI_SW_D", 16),
+           ("UI_SW_PUSH", 18), ("UI_ENC_A", 29), ("UI_ENC_B", 31), ("GND", 6),
+           ("UI_SCLK", 40), ("+3V3_PI", 1), ("UI_SDIN", 38), ("UI_DC", 37),
+           ("UI_CS_N", 12), ("UI_RES_N", 33))
+
+import harness as _H  # noqa: E402
+assert tuple(s.replace("UI_", "").replace("+3V3_PI", "+3V3") for s, _ in UI_WAYS) == _H.UI_RIBBON, (
+    "the cap's ribbon order is not harness.UI_RIBBON -- the UI board is built from that "
+    "list, so the two ends of one cable would disagree")
 
 XH_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
 PH6_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
@@ -247,7 +256,7 @@ def pi_cap():
     # module it needs its own regulator rather than creeping up on the Pi's budget.
     j5 = Part(name="PinHeader_2x07", ref_prefix="J", ref="J5", tag="J5", dest="NETLIST",
               tool="skidl", value="PZ1.27-2x7P",
-              description="UI board ribbon, 14-way 1.27 mm 2x7 right-angle (LCSC C22438122)",
+              description="UI board ribbon, 14-way 1.27 mm 2x7 right-angle (LCSC C22438113)",
               footprint=UI_FP, pins=[Pin(num=i + 1, func=P) for i in range(14)])
     ui_nets = {}
     for _way, (_sig, _hdr) in enumerate(UI_WAYS, start=1):
@@ -355,7 +364,12 @@ BOARD_NOTES = {
         # ~7.6 x 1.3 of pads with its body 3.07 beyond them. ROT 270 turns the body -Y, so
         # the ribbon leaves on the opposite edge from J2/J3/J4 -- which carry up to 3 A to
         # the Pi and 1.6 A at 24 V to the lights, and this one carries a display clock.
-        "J5": (-3.80, -11.00, 270.0),
+        # ⚠ ITS PLASTIC STOPS AT THE BOARD EDGE AND ITS PINS HANG PAST IT (2026-10-02). At
+        # y -11.00 the pin TIPS were at the edge and the 4 mm of pin lay over the board --
+        # where the IDC socket has to go, and that socket is ~5.5 mm across its rows on
+        # pins standing ~1.4 and ~2.7 off the laminate: it would have had to sink 0.7 mm
+        # into the board to seat. -17.00 (edge) + 2.135 (pad centroid -> plastic face).
+        "J5": (-3.80, -BOARD_L / 2.0 + 2.135, 270.0),
     },
     # ⚠ THE SOCKET'S GROUND PADS TAKE NO STITCHING VIA, AND DO NOT NEED ONE. The check
     # exists because an SMD pad touching only a pour can be orphaned when routing carves
@@ -368,6 +382,7 @@ BOARD_NOTES = {
     # strip, and the return for both shares it.
     "zones": [("GND", "F.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     "stitch_nets": ("GND",),
+    "edge_escape": ("J5",),       # the ribbon header's edge-side row: layout._edge_row_escape
     # ⚠ THE LIGHTING BUS IS NOT A SIGNAL. Every net here was the 0.25 mm default (0.88 A at a
     # 10 C rise by IPC-2221) and this one carries 0.89 A to J3 and 0.73 A to J6.
     # 0.3 mm (~1.0 A) IS WHAT ROUTES, NOT WHAT WAS WANTED: 0.5, 0.4 and 0.35 each left one

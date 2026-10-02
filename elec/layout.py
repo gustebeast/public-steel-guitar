@@ -1844,6 +1844,22 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                         continue
                     if way is None:
                         continue
+                    # ⚠ THE LAYER THE TWO TERMINALS SHARE, NOT `a`'s. A through-hole pad
+                    # answers F.Cu to GetLayer(), so a join from one to a B.Cu track end
+                    # was laid on F.Cu and ended over the track with nothing through the
+                    # board: copper added, net still open (output_panel, J6's shell to
+                    # the declared PWR_GND bar, 2026-10-02). A through pad is on every
+                    # layer, so it takes the OTHER terminal's; two single-layer terminals
+                    # on different layers share none and are not a surface join at all.
+                    def _thru(q):
+                        return (isinstance(q, pcbnew.PAD) and q.IsOnLayer(pcbnew.F_Cu)
+                                and q.IsOnLayer(pcbnew.B_Cu))
+                    if _thru(a) and not _thru(b):
+                        lay = b.GetLayer()
+                    elif _thru(b) or a.GetLayer() == b.GetLayer():
+                        lay = a.GetLayer()
+                    else:
+                        continue
                     for q0, q1 in zip(way, way[1:]):
                         if q0 == q1:
                             continue
@@ -1851,11 +1867,10 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                         t.SetStart(pcbnew.VECTOR2I(int(q0[0]), int(q0[1])))
                         t.SetEnd(pcbnew.VECTOR2I(int(q1[0]), int(q1[1])))
                         t.SetWidth(pcbnew.FromMM(width))
-                        t.SetLayer(a.GetLayer())
+                        t.SetLayer(lay)
                         t.SetNet(a.GetNet())
                         board.Add(t)
-                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, net,
-                                     a.GetLayer()))
+                        segs.append((q0, q1, pcbnew.FromMM(width) / 2.0, net, lay))
                         made += 1
                     board.BuildConnectivity()
                     cc = board.GetConnectivity()
@@ -3881,6 +3896,89 @@ def _add_track(board, net, layer, width, pts):
         board.Add(t)
 
 
+def _edge_row_escape(board, ref, outline, width=0.15, clr=0.15, back=1.5):
+    """Fan the EDGE-SIDE row of a two-row through-hole header out round its ends.
+
+    ⚠ WHY THIS EXISTS (2026-10-02). A right-angle pin header has to stand with its plastic
+    at the board edge and its pins overhanging, or the socket that goes on them fouls the
+    laminate. That puts the outer pad row 1.0 mm from the edge with the inner row 1.27
+    behind it: 0.27 between pads, and a lane in front that takes one default-width track.
+    The router was handed that on the Pi cap and the UI board the same day and left four
+    and three ways open -- every one of them a pad in that row.
+    It is a PLACEMENT-shaped problem with one answer, so it is drawn rather than searched:
+    the lane takes TWO 0.15 tracks per layer, each end of the row has a way round, and
+    that is eight ways for a row of seven. From the row's end inward:
+        k=0  B.Cu  straight out sideways, then back past the inner row
+        k=1  F.Cu  inner lane, inner column        k=2  F.Cu  outer lane, outer column
+        k=3  B.Cu  inner lane, outer column
+    Each track stops `back` mm behind the inner row, on open board, for the router --
+    and the two columns stand 0.6 apart and stop 1.0 apart, because the router arrives
+    with a 0.25 track and at the lane's own 0.3 pitch it could not land on one column's
+    end without fouling the other (first run: all seven laid, six left unconnected).
+    ⚠ `outline` IS PASSED IN, NOT READ OFF THE BOARD: Edge.Cuts is drawn AFTER this runs,
+    so the board's own edge box is empty here -- which on the UI board picked the INNER
+    row and drove seven tracks out across the edge.
+    Read off the PLACED pads, not derived from the placement: the Pi cap's header is on
+    the back of the board and the UI board's is on the front, turned differently.
+    """
+    fp = next(f for f in board.GetFootprints() if f.GetReference() == ref)
+    pads = [q for q in fp.Pads() if q.GetNumber().isdigit()]
+    xs = sorted({q.GetPosition().x for q in pads})
+    ys = sorted({q.GetPosition().y for q in pads})
+    assert 2 in (len(xs), len(ys)), "%s is not a two-row header on a 90 degree turn" % ref
+    rows_along_y = len(xs) == 2          # the two rows differ in x; pads run along y
+    _ob = [_to_board(x, y) for x, y in outline]
+    lo, hi = ((xs[0], xs[1]) if rows_along_y else (ys[0], ys[1]))
+    _oc = [q.x for q in _ob] if rows_along_y else [q.y for q in _ob]
+    e_lo, e_hi = min(_oc), max(_oc)
+    assert min(lo - e_lo, e_hi - hi) < pcbnew.FromMM(2.5), (
+        "%s is not at a board edge: nothing for an edge-row fan to do" % ref)
+    outer, sgn = (lo, -1) if lo - e_lo < e_hi - hi else (hi, 1)      # sgn: toward the edge
+
+    def pt(n, u):                         # (across the rows, along the row) -> board
+        return pcbnew.VECTOR2I(int(n), int(u)) if rows_along_y else pcbnew.VECTOR2I(int(u), int(n))
+
+    def nu(q):
+        c = q.GetPosition()
+        return (c.x, c.y) if rows_along_y else (c.y, c.x)
+    row = sorted((q for q in pads if nu(q)[0] == outer), key=lambda q: nu(q)[1])
+    rad = max(q.GetSize().x for q in row) / 2
+    w, c = pcbnew.FromMM(width), pcbnew.FromMM(clr)
+    lane = [rad + c + w // 2, rad + c + w // 2 + w + c]
+    colu = [lane[0], lane[0] + pcbnew.FromMM(0.6)]
+    inner_n = outer - sgn * abs(hi - lo)
+    stop = inner_n - sgn * pcbnew.FromMM(back)
+    plan = [("B.Cu", None, 0), ("F.Cu", 0, 0), ("F.Cu", 1, 1), ("B.Cu", 0, 1)]
+    half = (len(row) + 1) // 2
+    assert half <= len(plan), "%s: a row of %d is more than this fan can turn" % (ref, len(row))
+    n_laid = 0
+    for side, group in ((-1, row[:half]), (1, row[half:][::-1])):
+        u_end = nu(group[0])[1]
+        for k, q in enumerate(group):
+            layer, ln, col = plan[k]
+            n0, u0 = nu(q)
+            ucol = u_end + side * colu[col]
+            pts = [pt(n0, u0)]
+            if ln is not None:
+                pts += [pt(n0 + sgn * lane[ln], u0), pt(n0 + sgn * lane[ln], ucol)]
+            else:
+                pts += [pt(n0, ucol)]
+            # F.Cu columns run 1.2 further than B.Cu ones: a column on each layer shares
+            # one XY, and an end stacked on the other layer's end has nowhere to via
+            _far = col * 1.0 + (1.2 if layer == "F.Cu" else 0.0)
+            pts += [pt(stop - sgn * pcbnew.FromMM(_far), ucol)]
+            for p0, p1 in zip(pts, pts[1:]):
+                t = pcbnew.PCB_TRACK(board)
+                t.SetStart(p0)
+                t.SetEnd(p1)
+                t.SetWidth(w)
+                t.SetLayer(_LAYERS[layer])
+                t.SetNet(q.GetNet())
+                board.Add(t)
+            n_laid += 1
+    return n_laid
+
+
 def _add_via(board, net, x, y, drill=0.3, diameter=0.6):
     """One explicit through via, in board-local mm.
 
@@ -4160,6 +4258,9 @@ def build(stem):
     nets_by_name = {n.GetNetname(): n for n in board.GetNetInfo().NetsByName().values()}
     for net_name, layer, width, pts in notes.get("tracks", []):
         _add_track(board, nets_by_name[net_name], layer, width, pts)
+    for _ref in notes.get("edge_escape", ()):
+        print("      %s: edge-side row fanned round its ends, %d way(s)"
+              % (_ref, _edge_row_escape(board, _ref, _outline_pts(notes))))
     for _v in notes.get("vias", []):
         _net, _vx, _vy = _v[0], _v[1], _v[2]
         _drill = _v[3] if len(_v) > 3 else 0.3
