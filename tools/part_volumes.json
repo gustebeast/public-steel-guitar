@@ -23,7 +23,7 @@
   },
   "body_adapter_mx_my": {
    "material": "petg-gf",
-   "volume_mm3": 85843.5
+   "volume_mm3": 85245.8
   },
   "body_adapter_px_my": {
    "material": "petg-gf",
@@ -35,7 +35,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 374424.9
+   "volume_mm3": 374258.6
   },
   "cart_base": {
    "material": "pctg",
@@ -47,7 +47,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 640110.6
+   "volume_mm3": 622810.6
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -55,19 +55,19 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 611110.8
+   "volume_mm3": 685497.3
   },
   "chassis_1_light": {
    "material": "pctg",
-   "volume_mm3": 16598.4
+   "volume_mm3": 18345.6
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 688354.1
+   "volume_mm3": 632763.8
   },
   "chassis_2_light": {
    "material": "pctg",
-   "volume_mm3": 15755.0
+   "volume_mm3": 14007.8
   },
   "coil_mandrel": {
    "material": null,
@@ -167,11 +167,11 @@
   },
   "screw_pulley_hi": {
    "material": "pctg",
-   "volume_mm3": 831.0
+   "volume_mm3": 818.3
   },
   "screw_pulley_lo": {
    "material": "pctg",
-   "volume_mm3": 1467.9
+   "volume_mm3": 1455.2
   },
   "tension_fork": {
    "material": "pctg",
@@ -199,7 +199,7 @@
   },
   "top_plate_0": {
    "material": "pctg",
-   "volume_mm3": 69604.6
+   "volume_mm3": 71009.5
   },
   "top_plate_0_color": {
    "material": "pctg",
