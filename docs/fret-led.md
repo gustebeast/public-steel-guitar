@@ -1035,6 +1035,44 @@ roughly 0.2 - 0.3 mm of droop there by estimate, not measurement. A second M4 at
 end is the fix if a printed panel shows light under fret 24's wall -- and that end has no
 bay, so it would stand in a cell.
 
+## 8.11 A second M4 on an ear, and the bay wall is a wall (2026-10-01)
+
+> "I think we need two screws, one on each x end of the +y side. Having just one means the
+> opposite side is likely to flex out of position" (user)
+
+8.10 left the +Y edge held at one point and said a second screw was the fix. It is in.
+
+**Where it can stand was measured, and the answer is not on the board's rectangle.**
+`tools/_probe_m4_far.py` puts the real O9.2 boss, the button head and the laminate at each
+candidate and intersects them with the whole build:
+
+| candidate | result |
+|---|---|
+| on mid's last cell wall, y 31.5 | boss lands on two LEDs, 35.4 mm3 -- the cells there are 8.6 wide |
+| on a cell wall between the LED rows | clear of parts, but it stands in the light of two cells |
+| past the board's +X end | that is the next deck panel; mid's boss cannot hang from it |
+| **off the +Y edge, y 44.0** | **clear of everything** but the edge wall the ear passes through |
+
+So each board grows an **ear**: 9.60 along X, flush with the board's +X end, 13.60 out
+from the +Y edge. It passes under the reflector wedge (whose underside is the board's top
+face anyway) and the boss stands just outboard of the wedge, fused 0.40 into its outer
+face. Neither hole takes anything off a cell. The +Y edge wall stops 0.30 short of the ear.
+Both boards re-routed 0 unconnected / 0 violations with the second cutout; the tilt-in
+stroke was re-swept with the ear on (clear at every angle).
+
+⚠ **The routed board's origin moved.** `export_geom` centres a board on its edge BOX, and
+the ear grows the box 13.60 in +Y, so `fret_light._placed` adds half of that. Checked on
+the placed solid, not the arithmetic: laminate y -35.20 on the hinge edge, LEDs +-32.95.
+
+⚠ **Not swept: the deck panel's own install stroke with the ear and its head on.** They
+were intersected with the build at rest.
+
+**The bay end of the edge walls is a straight wall now.** 8.10 carried the reflector wedge's
+triangle through the bay to give the wall something to hang from. A wedge is a reflector;
+the bay has no light, and the triangle tapered to nothing at the deck -- under the 1.60
+rule. It is the wall's own two faces carried straight up to the deck: 2.90 thick on the
+hinge side, 3.50 on the datum side.
+
 # 9. THE BOARDS (2026-09-29)
 
 `elec/fret_led.py`, one module, two boards, designed to the same bar as the other seven:

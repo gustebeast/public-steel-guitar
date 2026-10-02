@@ -665,12 +665,12 @@ used everywhere else on the instrument.
 
 ## Fret lighting boards (2026-09-30)
 
-Each fret board hooks under a fixed LIP along its -Y edge and is held by ONE M4 near its
-+Y edge (docs/fret-led.md 8.9, 8.10). No loose retaining parts. Assemble the panel **face
+Each fret board hooks under a fixed LIP along its -Y edge and is held by TWO M4s on its
++Y side, one at each end (docs/fret-led.md 8.9 - 8.11). No loose retaining parts. Assemble the panel **face
 down on the bench**, before it goes on the instrument.
 
-0. **Melt an M4 heat-set insert into each panel's boss** -- the pocket opens on the boss's
-   end face, the one the board will sit on.
+0. **Melt an M4 heat-set insert into each of the panel's two bosses** -- the pocket opens
+   on the boss's end face, the one the board will sit on.
 1. **Lay the panel deck-face down.** The comb points up at you.
 2. **Tilt the board in.** Hold it about 15 degrees off flat with its -Y edge low, tuck that
    edge under the lip, and swing the +Y edge down until the board lies on the cell walls,
@@ -678,17 +678,15 @@ down on the bench**, before it goes on the instrument.
    in the end wall as it comes flat.
 3. **Push the board against the +Y wall.** That wall is the board's sideways datum -- on
    both boards, which is what lines the seam pogos up.
-4. **Fit the M4 x 10** through the board into the insert. It is in the bay at the board's
-   -X end, 3.7 mm in from the +Y edge.
+4. **Fit both M4 x 10s** through the board into the inserts: one in the bay at the board's
+   -X end, 3.7 mm in from the +Y edge, and one through the ear that stands off the +Y edge
+   at the +X end.
 5. Turn the panel over and install it.
 
 ⚠ **THE BOARD MUST NOT BE SLID ALONG X ONCE IT IS SEATED.** An LED and a cell wall share
 the same Z band, so any X motion drives every LED into a wall -- fret 24's cell allows the
 LED 1.27 mm and that is the whole budget. The strips move; the board does not. This is why
 the earlier lift-and-shift tab scheme was retracted (docs/fret-led.md 8.6).
-
-⚠ **The +Y edge is held by the one screw, at the bay end.** If a printed panel shows light
-under the far cell walls on that side, the board is drooping there (docs/fret-led.md 8.10).
 
 ## Set the pickup's retention screw on the bench, before the pickup piece goes in
 

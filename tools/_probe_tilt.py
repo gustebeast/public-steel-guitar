@@ -33,7 +33,7 @@ def comb(panel):
 
 
 def body(panel):
-    parts = [FL.pcb(panel).val(), FL.leds(panel).val(), FL.pogo_pins(panel)[0][1].val()]
+    parts = [FL.pcb(panel).val(), FL.pogo_pins(panel)[0][1].val()]
     return cq.Compound.makeCompound(parts)
 
 
