@@ -1457,7 +1457,14 @@ CANB_LEAD = 8 * D.BEAD              # 6.4
 # two neighbours moving two steps apart each is 4 * D.LEVER_PITCH; the rest is the
 # service slack to unplug a board and lift it out of its cradle. INSTALL_NOTES KL-2.
 CANB_SLACK = 4 * D.LEVER_PITCH + 25.0            # 66.6
-CANB_COIL_R = _KL.KEEP_COIL_R       # the keeper barrel's own wound radius
+# ⚠ WOUND 0.4 OFF THE BARREL, NOT ON IT (lead, 2026-10-01). At the barrel's own wound
+# radius the coil is in EXACT tangent contact with the housing's post along its whole
+# length -- BRepExtrema 2.4e-13 mm -- and a pair that is tangent to 1e-13 survives a fresh
+# intersect (0.0) but SEGFAULTS it after a BREP save/reload, which is what the scratch
+# cache does. A real hank is not a press fit on its post either. One bead of air.
+CANB_COIL_CLR = D.MIN_WALL / 2.0    # 0.4
+CANB_COIL_R = _KL.KEEP_COIL_R + CANB_COIL_CLR
+CANB_COIL_UP = 2 * D.BEAD            # 1.6 -- see lever_bus
 CANB_COIL_PITCH = 4 * D.BEAD        # 3.2 march per turn -- a bundle laid beside itself
 def _coil_layers():
     """[(radius, turns)] -- the slack wound in LAYERS, outer wraps riding on inner ones.
@@ -1562,7 +1569,12 @@ def lever_bus(nodes):
         # housing's top corner instead. Left low, and recorded so it is not re-tried.
         # ONE HELIX PER LAYER, walked up the post and back down again -- the wire is
         # not cut between layers.
-        base = tuple(l0[i] + ka0[i] * 0.2 for i in range(3))
+        # ...and CANB_COIL_UP above the lace point, not 0.2: on the vertical lever the
+        # helix's first quarter-turn ran INTO the post's support at web level (0.046 mm3,
+        # hidden as a "0.0" beside three tangent ones). Swept 0.2..2.5 against all four
+        # housings: 1.3 and up clears every one by the full 0.4; the post has 18.9 of
+        # winding height and three turns use 12.1.
+        base = tuple(l0[i] + ka0[i] * CANB_COIL_UP for i in range(3))
         c0 = c1 = None
         for li, (lr, ln) in enumerate(layers):
             lp = _coil_path(base, ka0, lr, ln, up=(li % 2 == 0))

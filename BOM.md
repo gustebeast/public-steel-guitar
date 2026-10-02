@@ -466,8 +466,8 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 | `bearing_688zz` | 42 | — | — | $25.20 | [v] | 688ZZ O8xO16x5 -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls) |
 | `m4_button_8` | 2 | McMaster-Carr | 92095A189 | $1.11 | [v] | 1 x $11.11 (pack of 100) = $11.11 for 20 needed — M4x8 18-8 button, 2.5 hex -- the two female pogo boards |
 | `m4_button_10` | 69 | McMaster-Carr | 92095A190 | $6.61 | [v] | 7 x $9.44 (pack of 100) = $66.08 for 690 needed — M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end |
-| `m4_button_12` | 4 | McMaster-Carr | 92095A192 | $1.97 | [v] | 1 x $14.77 (pack of 100) = $14.77 for 40 needed — M4x12 -- 2 optical board, 1 UI clamp, 1 pickup -Y retention (was a cup set screw; 2.5 mm key now) |
-| `m4_button_20` | 15 | McMaster-Carr | 92095A196 | $2.84 | [v] | 3 x $9.47 (pack of 50) = $28.41 for 150 needed — M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; `nut_block.HS_SCREW_L` = 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards |
+| `m4_button_12` | 2 | McMaster-Carr | 92095A192 | $1.48 | [v] | 1 x $14.77 (pack of 100) = $14.77 for 20 needed — M4x12 -- 1 UI clamp, 1 pickup -Y retention (was a cup set screw; 2.5 mm key now) |
+| `m4_button_20` | 17 | McMaster-Carr | 92095A196 | $3.79 | [v] | 4 x $9.47 (pack of 50) = $37.88 for 170 needed — M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; `nut_block.HS_SCREW_L` = 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards, 2 optical board through its hand guard (were M4x12 on the bare board) |
 | `m4_button_30` | 2 | McMaster-Carr | 92095A198 | $1.46 | [v] | 1 x $14.64 (pack of 50) = $14.64 for 20 needed — M4x30 -- pedal-bar latch collar, one per bar-to-leg joint (model draws one leg) |
 | `m4_button_35` | 10 | McMaster-Carr | 92095A199 | $3.36 | [v] | 4 x $8.39 (pack of 25) = $33.56 for 100 needed — M4x35 -- belt-tensioner draw screws |
 | `m4_button_40` | 4 | McMaster-Carr | 92095A200 | $2.03 | [v] | 2 x $10.13 (pack of 25) = $20.26 for 40 needed — M4x40 -- the four leg lock pins |
@@ -484,7 +484,7 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 | `leadscrew_nut_h` | 10 | AliExpress | 3256804704147842 | $9.20 | [m] | Tr8x2 single-start H-flange brass nut, ~$11 per 3 x 4-pack per BOM.md. Not re-read today; was folded into the screw line before. |
 | `belt_gt2` | 8 | — | — | $6.40 | [v] | GT2 open belt, USD per metre; ~7.74 m per instrument |
 | `strings` | 1 | — | — | $25.00 | [m] | one 10-string pedal steel set |
-| **Total** | | | | **$588.84** | | |
+| **Total** | | | | **$589.30** | | |
 
 **Open, and they are design questions rather than prices:**
 
@@ -1660,31 +1660,32 @@ them add up to what feeds the instrument. Itemised 2026-09-18, at the 24 V inlet
 |---|---|---|
 | 10 × SERVO42D, bus A (the <5 A budget cap) | 120.0 W | 30.0 W |
 | Raspberry Pi + USB, via buck | 16.7 W | 5.6 W |
-| **LED strip, 580 mm @ 100/m, via buck** | **25.3 W** | **8.9 W** |
+| **Lighting: 2 fret boards + 2 foot boards, on the fused 24 V bus (F3, 3 A)** | **39.1 W** (1.63 A: frets 0.89 + feet 0.73, every LED full white) | firmware cap, **not yet set** |
 | optical board | 2.9 W | 1.9 W |
 | 11 sensor boards | 2.5 W | 2.5 W |
 | output panel | 1.0 W | 0.9 W |
 | motor controller | 0.9 W | 0.9 W |
-| **total** | **169 W / 7.1 A** | **51 W / 2.1 A** |
+| **total** | **183 W / 7.6 A** | **42 W / 1.7 A + lighting** |
 
-**Chosen 2026-10-01: 24 V 160 W (6.67 A), Mean Well GST160A24-R7B desktop adapter** (row `psu_24v_160w`), with the strip power-capped in firmware; 24 V 240 W
+**Chosen 2026-10-01: 24 V 160 W (6.67 A), Mean Well GST160A24-R7B desktop adapter** (row `psu_24v_160w`), with the lighting power-capped in firmware; 24 V 240 W
 covers every load at maximum simultaneously, which nothing makes happen.
+
+⚠ **WHAT THE 160 W LEAVES THE MOTORS DEPENDS ON THE LIGHTING CAP (re-worked 2026-10-01, after the
+5 V strip was deleted).** Supply 6.67 A, less Pi 0.70, less optical + sensors + panel + controller
+0.30: **5.67 A to share between motors and lights.** Lights uncapped (1.63 A) leave the motors
+**4.04 A**; the 4.6 A the tee and supply discussion assumed needs the lights held to **1.07 A
+(25.7 W, 66 % of full white)** — which is the old strip's figure, so the daemon's cap should be
+set there, or lower while motors slew.
 
 **The 120 W motor line is a cap, not a draw.** The self-locking screw means there is no
 holding current, so motors pull only while a pedal moves, and moves stagger. See the
 bus-A contact-current note above, which is the same figure viewed as a connector problem.
 
-**The LED strip is the only load that is on continuously**, so it matters more for heat
-and for the supply's continuous rating than its 20 % share of the peak suggests. Strip
-figures are HD108 RGBW 5050 at 5 V, 80 mA per pixel with all four dice lit (user's
-`led-lighting-summary.md`, Sept 2026; 580 mm, user). 57 pixels at full white is 4.6 A on
-the 5 V rail — **cap it in the effects daemon's output stage** (sum the frame and scale)
-rather than buying a 5 A buck for a state no musical content produces.
-
-⚠ **AND THE LED NOTE ASSUMES A Pi 5; THIS BOM SPECIFIES A Pi 4, 1 GB.** The Pi 4 and its
-buck replaced a Pi 5 and a 6 A buck to save ~$130 (see the Pi row). SPI at 10–20 MHz is
-fine on a Pi 4 so the LED plan survives intact, but the two documents disagree about
-which board is in the instrument. Resolve before ordering either.
+**The lighting is the only load that is on continuously**, so it matters more for heat and
+for the supply's continuous rating than its share of the peak suggests. Every lit board makes its
+own LED rail from the 24 V bus (TLC59711 constant-current drivers; `docs/lighting-bus.md`,
+`docs/fret-led.md`), so the cap is one number in the effects daemon's output stage: sum the frame
+and scale.
 
 **PCB buying plan**: tee PCBs + sensor PCBs ship as ONE panel (V-score /
 mouse-bite, snap apart — never hand-cut FR4), ONE assembly job, **full paid

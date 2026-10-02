@@ -309,24 +309,6 @@ Enumerate over `J1`. The path is 20 channels -> 5 converters -> SAI TDM -> H743 
 -> USB-C, carrying the audio plus MIDI from on-chip pitch detection. If it does not
 enumerate, SWD is the only way to inspect it, and the only way to reflash.
 
-### 8. Dress the LED strip cable around the nut height-adjust block
-
-The six-conductor lead from the Pi cap's `J3` to LED section 0's `J1` runs 171 mm along the
-keyhead, and the model draws it as a STRAIGHT LINE through the nut height-adjust block
-(y -38.91..33.20). That is a modelling artefact, not a routing instruction: **dress it around
-the block during assembly**, on whichever side the harness falls, and clip it clear of the ten
-slide inserts so nothing bears on the height screws.
-
-WHY IT IS NOT MODELLED AS A DRESSED CABLE -- the same reason the pickup lead gives one function
-away in src/wiring.py: modelling a service loop "would only invent a shape nobody has to build
-to". The straight line is honest about the ENDPOINTS, which are what the build has to match.
-
-AND WHY THERE IS NO CHANNEL FOR IT. Measured, 2026-09-29: a channel at the cable's own envelope
-would pass through ALL TEN nut slide inserts (~594 mm3 of heat-set brass, the height adjustment
-for every string). Going round the block is no better -- every x from -613 to -634 and every z
-from -56 to -18 still crosses keyhead_endplate, 57..539 mm3. There is nowhere for a machined
-route to go, which is exactly why this is an assembly step instead.
-
 ## The flat Pi: seat it, then clamp it with the spacer (2026-09-29)
 
 The Pi is **not** held by a screw head on its laminate any more. It is held by a printed
@@ -702,3 +684,14 @@ piece's -Y skirt, on the screw's axis. Once the piece is in the deck that slot f
 chassis, so: seat the pickup against the plate's +Y wall, run the screw in until its tip
 bears on the pickup, and only then slide the piece in. Height and tilt (the three jack
 screws, from above) stay adjustable afterwards; this one does not.
+
+## The optical board's hand guard goes on LAST, over both plugs
+
+* Plug the USB-C and the 24 V lead into the optical board first; the guard's -Y end is open
+  for them and J2 stands up through its notch.
+* Lower the guard straight down: its lip drops over the board's edge on three sides and
+  locates it. Two **M4x20** button screws go through the guard AND the board into the
+  endplate's inserts (the board has no screws of its own any more), heads flush in the wells.
+* The guard covers the bring-up pads. Take it off to probe; the board stays located by the
+  plinth and the cables while it is off, but is not clamped.
+* Nothing covers the sensor row or the slots -- strings go on and off with the guard fitted.
