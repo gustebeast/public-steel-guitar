@@ -17,6 +17,16 @@ V = cq.Vector
 r = D.PULLEY_OD / 2 + D.BELT_T / 2
 XS = B._CLAMP_XS; LO, HI = min(XS), max(XS)            # clamp extent about its origin
 clamp = cq.Compound.makeCompound([s.val() for _n, s in BTn.clamp_components(with_lifters=True)])
+# CLAMP_BOX="L,W,T,below": study a STAND-IN clamp instead -- a box L along the belt, W across
+# its width, T through it with `below` of that on the tooth side -- to size a clamp that
+# does not exist yet (e.g. a screwless clip: CLAMP_BOX=26,8.2,5.35,1.6). +z of the box is
+# the INSIDE of the belt loop (the tooth side); `below` is what stands outside it.
+import os
+if os.environ.get("CLAMP_BOX"):
+    _L, _W, _T, _b, *_yo = [float(v) for v in os.environ["CLAMP_BOX"].split(",")]
+    clamp = (cq.Workplane("XY").box(_L, _W, _T, centered=(True, True, False))
+             .translate((0, _yo[0] if _yo else 0.0, -_b)).val())      # 5th value: offset across the belt
+    LO, HI = -_L / 2, _L / 2
 B.DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL / 2 for i in range(10)}
 static = {}
 for i in range(10):
