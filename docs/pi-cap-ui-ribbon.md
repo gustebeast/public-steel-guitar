@@ -208,3 +208,23 @@ board one-sided. What decides the invoice is `back_refs`. Do not trust the flag 
 
 Board census at the time of writing: optical F 253, motor_ctrl F 81, led_strip F 27,
 pi_cap F 0 / B 11. Every board single-sided.
+
+## SUPERSEDED IN PART — both ends built, one way order (2026-10-02)
+
+The user's ruling: both ends of this cable are our own boards, so pick one connector that is
+in stock and use it twice. What is built now:
+
+* **Connector, both ends:** right-angle 1.27 mm 2×7 pin header, LCSC **C22438113**
+  (`PinHeader_2x07_P1.27mm_Horizontal`). The UI board's 2.54 mm IDC header is gone. It is
+  unshrouded; pin 1 is marked in silk and `INSTALL_NOTES.md` says to check the stripe.
+* **Way order:** `elec/harness.UI_RIBBON`, asserted by both `pi_cap.py` and `ui_board.py`.
+  It is the UI board's original order, NOT the table above: the cap's order would not
+  route on the single-layer-dense UI board (CS_N and RES_N stayed open over three runs),
+  and the cap routes either order clean. The GPIO map is unchanged — only which way each
+  signal rides.
+* **Placement:** the header's plastic sits AT the board edge and the pins overhang it, so
+  the IDC socket hangs off the board (pad centroid to plastic face 2.135 mm).
+* **Routing:** the row nearest the edge has no way inboard except round the ends of the
+  other row. `BOARD_NOTES["edge_escape"] = ("J5",)` makes `layout._edge_row_escape` lay
+  those seven stubs before the router starts. Both boards: 0 unconnected, 0 violations.
+* **Cable:** 0.635 mm pitch flat cable, 8.89 mm wide (`src/ui_panel.RIBBON_PITCH`).

@@ -269,8 +269,10 @@ SPIGOT_DEPTH = 1.6
 # module and can be held to it: the conductor count is J2's way count and the pitch is
 # half the header's, which is what an IDC ribbon is.
 RIBBON_N = 14
-RIBBON_PITCH = 1.27
-RIBBON_T = 0.9                     # 1.27 flat cable, and each conductor's pitch circle:
+RIBBON_PITCH = 0.635               # was 1.27: the header is a 1.27 mm 2x7 now, the same
+                                   # part as the Pi cap's end (2026-10-02), and its ribbon
+                                   # is half ITS pitch
+RIBBON_T = 0.65                    # 0.635 flat cable, and each conductor's pitch circle:
                                    # neighbouring ways touch, which is what makes it a
                                    # ribbon rather than fourteen wires
 # ...AND IT TURNS TWO CORNERS BY BEING FOLDED. The run is flat under the deck -- width
@@ -280,7 +282,7 @@ RIBBON_T = 0.9                     # 1.27 flat cable, and each conductor's pitch
 # assembly step somebody has to get the right way round, so the count is declared here
 # and cadkit.cables.flat_bends holds the modelled path to it.
 RIBBON_FOLDS = 2
-RIBBON_W = RIBBON_N * RIBBON_PITCH  # 17.78, the cable's own width. Every way's insulation
+RIBBON_W = RIBBON_N * RIBBON_PITCH  # 8.89, the cable's own width. Every way's insulation
                                     # touches its neighbour's, so the ribbon is exactly as
                                     # wide as the ways it has -- which is also the width
                                     # the CAD sweeps, as ONE prism rather than fourteen
