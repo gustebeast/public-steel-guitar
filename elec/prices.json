@@ -1795,7 +1795,7 @@
     "psu": "PRICED: Mean Well GST160A24-R7B at $47.70, see mechanical.psu_24v_160w. Its shipping, tax and tariff are NOT measured. The design question stands: one motor's slew current is unmeasured, and the firmware mover cap is set from it (bring-up item).",
     "wire": "LENGTH IS MEASURED NOW, PRICE IS NOT. tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had. Its ~$35 estimate implies $2.29/m, far above hookup-wire rates -- almost certainly because you buy SPOOLS, not metres. Needs one product page and a spool-count, not another estimate.",
     "tariff_uncollected": "The motors are the exposure. Makerbase ships them from China collecting no tax and no duty at checkout, so $339.90 of an order is NOT landed cost. JLCPCB by contrast ships DHL DDP, duty included. See boards/landed.",
-    "pogo": "DESIGNED 2026-10-01, NOT YET PRICED: the leg blind-mate boards are now elec/leg_pogo.py -- four stems (leg_pogo_male_bottom/_top, leg_pogo_female_bottom/_top; each joint's pair is the mirror of the other's), in elec/fab.py's BOARDS, fab packages built. tools/cost.py has not been taught about a generator that emits four boards, so their fab and parts (~$3.5 of connectors a board) are still outside the total.",
+    "pogo": "PRICED NOW: the four leg pogo boards (elec/leg_pogo.py) are in the PCB line -- fab, assembly and their spring-pin parts. What they do not have is a measured JLCPCB quote; at 10 x 17.6 and 13 x 19.3 mm they are well under the 70 mm rail threshold, so expect the same edge-rail penalty as can_tee if ordered by the hundred.",
     "pi_ram": "DECIDED, with a risk attached. The user chose the 1GB at $35 because it is the only Pi 4 that can actually be bought ten at a time (the 2GB is capped at one per customer across the trade). What is NOT settled is whether Dexed + USB gadget + USB host fits 1GB headless -- a design question with bronner. If it does not, the fallback is the 4GB at $100, +$65/instrument on today's line.",
     "landed_gaps": "SHIPPING AND TAX ARE MEASURED FOR FIVE VENDORS, NOT FOR THE BOM. Measured: Lace, JLCPCB, Makerbase, PiShop, Tinmorry, plus Jameco's tariff. UNMEASURED and therefore missing from the landed line: every listing-priced mechanical item (~$213/instrument of screws, bearings, belts, springs, shaft -- no vendor is even recorded for most of them, so there is nothing to check), the PCTG and TPU filament, and the uncollected duty on the $339.90 of motors. Expect the landed line to grow, not shrink."
   },
@@ -1995,6 +1995,26 @@
       "usd": 1.48,
       "verified": "v",
       "what": "Omron G6K-2F-Y-DC5 (C326376)"
+    },
+    "YZF0002-38080": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 (C5203987) -- fret-seam side-mount pogo, 12 per instrument; JLCPCB parts API at qty 120, 602 in stock 2026-10-01"
+    },
+    "YZ165615055F": {
+      "usd": 1.4761,
+      "verified": "v",
+      "what": "YZ165615055F-04025-02 (C54799748) -- leg pogo male, right-angle 1x4 spring-pin header, 2 per instrument; JLCPCB parts API at qty 20, 1467 in stock 2026-10-01"
+    },
+    "YZ185115035T": {
+      "usd": 1.0226,
+      "verified": "v",
+      "what": "YZ185115035T-04025-01 (C54930022) -- leg pogo female, vertical 1x4 gold target, 2 per instrument; JLCPCB parts API at qty 20, 210 in stock 2026-10-01"
+    },
+    "S4B-ZR-SM4A": {
+      "usd": 0.2706,
+      "verified": "v",
+      "what": "S4B-ZR-SM4A-TF(LF)(SN) (C485354) -- JST ZR 4-way side entry on the female pogo board; JLCPCB parts API at qty 20, 26844 in stock 2026-10-01"
     }
   },
   "print_material_factor": {
