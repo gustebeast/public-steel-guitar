@@ -49,6 +49,8 @@ drivers on each board. One LED coarser and the arithmetic stops dividing.
 from __future__ import annotations
 
 from . import dimensions as D
+from . import pogo_part as PG
+from .components import MOTOR_PULLEY_STANDOFF
 
 # ── the window this lights, READ from the chassis ─────────────────────────────────────
 # ⚠ NOT COPIED. The band's Y comes from the +Y rail's centre-line and its X from where
@@ -78,16 +80,33 @@ def run_len():
 
 
 # ── the Z stack ───────────────────────────────────────────────────────────────────────
-# Bottom up from the window's own top face. The LED fires DOWN, so it hangs from the
-# board's underside and is the LOWEST thing on the assembly.
+# Bottom up from the window's own top face. Everything on the board hangs from its
+# underside, and the board stands just high enough for the TALLEST of them to clear the
+# floor -- so the floor is not cut at all (user, 2026-10-02: "raise so we don't have to
+# cut into the chassis floor"). The tallest is the seam pogo's barrel at 3.80; the buck's
+# inductor is 3.00 and the LED 1.60.
+#
+# ⚠ THE LED IS 2.50 OFF THE WINDOW NOW, NOT 0.30, and that is the price. It used to set
+# the trough itself (1.90) with a relief groove under the taller parts. Raised, the row is
+# further from an 8 mm window: roughly a fifth of the light that used to enter directly
+# now lands on the trough floor either side of it first. Along the run it is BETTER -- the
+# depth the pitch is judged against grows from 10.80 to 13.00.
 FLOOR_NOM  = -71.35                 # window top = motor bay floor; asserted below
-AIR_GAP    = 0.30                   # LED face to the PCTG: a print tolerance, not optics
+AIR_GAP    = 0.30                   # the tallest hanging part to the floor: a print tolerance
 LED_H      = 1.60                   # XL-5050RGBW body (LCSC C7371891, and see fret_light)
 BOARD_T    = 1.60
-# ⚠ THE CEILING IS THE BELT TENSIONERS AT -65.22, measured, not the bay's full height.
-# Their lowest feature reaches down to that across y 38.15..47.08 at several stations,
-# which is squarely over this channel's -Y half.
-TENSIONER_BOT = -65.22
+HANG_MAX   = PG.POGO_BODY_H         # 3.80, the seam pogo's barrel
+TROUGH     = HANG_MAX + AIR_GAP     # 4.10: floor to the board's underside
+SLOT_PLAY  = 0.30                   # board edge to the wall -- AND, via the 45° ramp,
+                                    # the clearance over the board's top face
+LIP_OVER   = 0.80                   # how far each lip reaches OVER the board: 1 bead
+LIP_CAP    = 0.80                   # the flat cap above the ramp: 1 bead
+# ⚠ WHAT THIS ASKS OF THE BELT CLAMPS, WHICH ARE BEING REDESIGNED (user, 2026-10-02). The
+# lips top out at floor + 7.60 = -63.75. Today's tensioners come down to -65.22..-65.34
+# over y 20..48 at their stations, so the -Y lip (y 30.75..31.85) stands 1.6 INTO
+# tensioner_1 as it is drawn now. The board itself (top -65.65) clears them. The number
+# the new clamps have to respect is ceiling_needed().
+CEILING_CLR = 0.50
 
 
 def z_stack():
@@ -97,12 +116,17 @@ def z_stack():
     for itself. The ramp starts on the slot wall at exactly board_top, so at the board's
     EDGE -- SLOT_PLAY further in -- it stands SLOT_PLAY proud of the board, and the
     clearance over the board is the lateral play, not a second figure to keep in step
-    with it. There is no SLOT_CLR any more because there is nothing left for it to mean."""
+    with it."""
     floor = window()[4]
-    led = floor + AIR_GAP
-    bb = led + LED_H
+    bb = floor + TROUGH
+    led = bb - LED_H
     bt = bb + BOARD_T
     return led, bb, bt, bt, bt + SLOT_PLAY + LIP_OVER + LIP_CAP
+
+
+def ceiling_needed():
+    """The lowest anything above the channel may come: the lips' tops plus a gap."""
+    return z_stack()[4] + CEILING_CLR
 
 
 def clear_top():
@@ -131,24 +155,28 @@ def depth():
 # fab and assembly setup; the dip would have shown in four places.
 RAIL_IN    = 55.55                  # chassis body's inner face (measured)
 BOARD_Y1   = 55.20                  # board's +Y edge: 0.35 of play against the rail
-# ⚠ 38.00, AND THE CONNECTOR IS WHAT SET IT. The board started at 39.30 and 15.90 wide,
-# which left the lane 8.00 mm between the LED row's courtyard and the board edge -- and
-# the 4-way SH's courtyard is 7.80 across its ways, so it fitted with 0.05 to spare on
-# one side. 0.05 is not a gap (see elec/placecheck.py on what that costs). 17.20 wide
-# gives the lane 9.30 and every part in it a real margin. Width is ~$0.02 a board here.
-BOARD_Y0   = 38.00                  # board's -Y edge
-# ⚠ 42.55, MOVED 0.40 OFF THE LED ROW AFTER THE SECOND ROUTE. Everything the drivers
-# and the connectors have to talk to is in the LED row, so the gap between the lane's
-# courtyards and the row's is the hole every return and every rail tap goes through. At
-# 0.45 the router left 3 zone returns and a +24V pad unconnected; 0.85 is what it had
-# room for. The lane is 9.30 tall and the parts are 7.0-7.8, so this costs nothing but
-# 0.40 of the margin to the board's own edge.
-DRV_Y      = 42.55                  # the component lane's centre: drivers, the buck and
-                                    # the supply row sit on it, spaced along X
-J_Y        = 42.40                  # ...and the two connectors 0.15 further off again:
-                                    # their courtyard is 7.80 against the driver's 7.00,
-                                    # and their pads are on a 1.00 pitch
-BOARD_W    = BOARD_Y1 - BOARD_Y0    # 17.20
+# ⚠ THE -Y EDGE IS STRING 1'S MOTOR, PLUS ONE WALL (user, 2026-10-02: "there's 9.25 mm
+# currently between the motor and the PCB. What if we drop that to 1.6"). The board was at
+# 38.00 because that was all the lane needed for a cable socket. The seam is four pogos
+# now and their lands are 3.50 wide, so the lane wants every millimetre there is -- and
+# the only thing standing in it is that motor's faceplate wall, 6.40 thick. The slot is
+# cut INTO the wall and leaves WALL_T of it against the motor; the board's edge is one
+# sliding fit further out. Everywhere else along the run the same 1.60 stands alone as
+# the channel's own wall.
+WALL_T     = D.MIN_WALL_2P          # 1.60
+# ⚠ THE WALL'S FACE, NOT THE MOTOR'S. The motor's faceplate is at 28.75 and the pocket is
+# cut D.MOTOR_CLR larger all round (motor_bank.lift_prism), so the plastic starts at
+# 29.15. Measuring the 1.60 from the motor itself left 1.20 of wall in the mouth and, in
+# the run, a channel wall unioned back INTO the motor's fit -- found by sampling the
+# finished chassis (tools/_probe_foot_mouth.py), not by the gate: the motor's body ends
+# at 28.75 and never touched it.
+MOTOR_FACE = D.motor_pos(0)[1] - MOTOR_PULLEY_STANDOFF + D.MOTOR_CLR   # 29.15
+WALL_Y0    = MOTOR_FACE             # the -Y wall's outer face IS the pocket's own face
+BOARD_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 31.05
+# The component lane's centre is where it was: drivers, the buck and the supply row sit
+# on it, spaced along X. The 6.45 gained on the -Y side belongs to the pogos' first two.
+DRV_Y      = 42.55
+BOARD_W    = BOARD_Y1 - BOARD_Y0    # 24.15
 
 
 def led_y():
@@ -173,36 +201,18 @@ def led_y():
 #
 # The middle of the slot stays open, which still lets the drivers' heat out into the bay.
 #
-# ⚠ AND A RELIEF GROOVE UNDER THE COMPONENT LANE, WITHOUT WHICH THIS BOARD CANNOT BE
-# BUILT. Everything that is not an LED hangs from the board's underside into the trough,
-# and the trough is only AIR_GAP + LED_H = 1.90 mm deep -- the LED sets it, because the
-# LED has to end up 0.30 off the window. That fits a driver (1.20) and an 0805 (1.45)
-# and nothing else: the buck's inductor is 3.00 and the smallest side-entry connector
-# that will carry the drop is 2.95 (JST SH, off JST's own drawing -- the PH the rest of
-# the instrument uses is 5.50).
+# ⚠ NO RELIEF GROOVE ANY MORE. The opaque bottom used to be relieved 1.50 under the
+# component lane, because the LED set the trough at 1.90 and the inductor and connector
+# did not fit in it. The board is raised instead (see the Z stack), the trough is 4.10
+# from wall to wall, and the floor under it is whole.
 #
-# So the opaque bottom is relieved 1.50 mm under the lane ONLY. It is 6.50 wide and runs
-# the WHOLE length, which is the point: a local pocket would tie the board's layout to an
-# X in the chassis, and the user asked for the opposite ("we don't have to align the
-# board to the chassis sections"). It takes the bottom prism from 10.50 to 9.00 over a
-# 6.50 mm strip, nowhere near the light window, and buys 3.40 mm of headroom.
-RELIEF_D   = 1.50
-RELIEF_Y0  = 39.20
-# ⚠ 46.20, NOT 47.20: the window's -Y edge is at 46.35, and a relief that reached
-# past it would take a 0.85 x 1.50 notch out of the top of the LIGHT GUIDE itself.
-# Optically it would not matter -- the LED row starts at 47.85 -- but it would put
-# a two-material step in the one part of this design that is about light. 7.00 mm
-# of relief still covers every part in the lane with margin.
-RELIEF_Y1  = 46.20
-PART_H_MAX = 1.90 + RELIEF_D        # what may hang below the board, in the lane
-
-WALL_T     = 1.60
-WALL_Y0    = 36.10                  # the -Y wall's outer face
-SHOULDER   = 1.50                   # how far each shoulder reaches under the board
-SLOT_PLAY  = 0.30                   # board edge to the wall -- AND, via the 45° ramp,
-                                    # the clearance over the board's top face
-LIP_OVER   = 0.80                   # how far each lip reaches OVER the board: 1 bead
-LIP_CAP    = 0.80                   # the flat cap above the ramp: 1 bead
+# ⚠ THE TWO SHOULDERS ARE DIFFERENT, AND THE POGOS ARE WHY. A barrel hangs the trough's
+# full depth and travels the channel's whole length on the way in, so a shoulder may only
+# stand where no barrel ever passes. On the -Y side that leaves 1.20 from the wall: 0.90
+# under the board after the fit, then 0.35 of air to the first barrel.
+SHOULDER_LO = 1.20                  # -Y shoulder's reach from the slot wall
+SHOULDER_HI = 1.50                  # +Y shoulder's reach from the rail
+SHOULDER_AIR = 0.35                 # a shoulder to the nearest barrel
 
 
 def _slot_y():
@@ -213,7 +223,7 @@ def _slot_y():
 def trough_y():
     """(y0, y1) of the clear trough between the shoulders -- what may hang below."""
     y0, _y1 = _slot_y()
-    return y0 + SHOULDER, RAIL_IN - SHOULDER
+    return y0 + SHOULDER_LO, RAIL_IN - SHOULDER_HI
 
 
 # ── the boards ────────────────────────────────────────────────────────────────────────
@@ -264,19 +274,49 @@ HALVES     = ("a", "b")
 BOARD_NAME = "foot_led"
 BOARD_QTY  = 2
 # ⚠ THE STRIP IS A CHAIN, AND -X-ONLY INSERTION IS WHAT MAKES IT ONE. The +X board is
-# pushed the full length of the channel first, so its own connector ends up 286 mm inside
-# and its cable can never reach the mouth. Nor can it rise out of the channel: below the
-# board is the trough, and the trough is under a board everywhere except at a board EDGE.
-# So each board carries an IN connector at its -X end and an OUT at its +X end, both in
-# the component lane, and a short jumper joins them in the relief groove. Only the -X
-# board's IN leaves the instrument.
+# pushed the full length of the channel first, so nothing can be plugged into it once it
+# is home. So the two boards meet TIP TO TIP, the way the fret boards do across the deck
+# seam: four side-mount pogos at each end of each board, on one axis under the board, and
+# pushing the second board home against the first is what makes the joint. No cable.
 #
-# J_INSET is how far in from each end those two sit. 12.0 is what gives the jumper
-# somewhere to be: mouth to mouth across the BUTTED seam is 2 x 12 = 24 mm and the two
-# mated plugs take about 8 of it, leaving ~16 mm of free wire lying in the relief groove
-# UNDER the two boards. The boards themselves touch, so the LED pitch runs through the
-# seam unbroken and the joint costs no light at all.
-J_INSET    = 12.0
+# FOUR CIRCUITS, ONE PIN EACH: +24V, GND, SCK, SDT. The part is rated 12 A a pin and the
+# far board draws 0.37.
+#
+# WHERE THEY CAN STAND WAS MEASURED, AND IT IS A TIGHT ROW. A land is 3.50 wide. On the
+# -Y side the first barrel has to clear the shoulder; on the +Y side the last land has to
+# clear the end LED's courtyard, and that LED sits at exactly the X a pogo needs, so the
+# LED row's own Y is closed to them. Between the two:
+#     shoulder  31.95 | 0.35 | barrel 1 ... four at POGO_PITCH 3.80 ... land 4 ends 47.00
+#     | 0.30 | LED courtyard 47.30
+# 3.80 leaves 0.30 of bare board between neighbouring lands and 0.70 between barrels. It
+# is under the 4.50 the fret seam uses and under the courtyards' own 4.00, which is why
+# elec/foot_led.py exempts these pairs from the courtyard check and asserts the copper.
+#
+# ⚠ BOTH ENDS OF BOTH BOARDS CARRY THEM, because it is one part number. The -X board's
+# -X set is the strip's INLET (see the open item on the inlet piece); the +X board's +X
+# set mates nothing and stands 1.70 past the board's end at free length.
+POGO_NETS  = ("+24V", "GND", "SCK", "SDT")      # -Y first
+POGO_PITCH = 3.80
+# pad centre to the board's end: the barrel is centred on its pad and a plunger at its
+# working length ends exactly at the board's edge, so two butted boards meet at the seam
+POGO_SETBACK = PG.POGO_WORK - PG.POGO_BODY_L / 2.0        # 4.05
+
+
+def pogo_ys():
+    """World Y of the four pogo axes, -Y first."""
+    y0 = (_slot_y()[0] + SHOULDER_LO + SHOULDER_AIR
+          + (PG.POGO_BODY_W + PG.POGO_FAB_STROKE) / 2.0)
+    return [y0 + i * POGO_PITCH for i in range(len(POGO_NETS))]
+
+
+def pogo_pads(sgn):
+    """[(board_x, board_y, net)] for one END of the board, in elec/'s board frame.
+
+    `sgn` is -1 for the -X end, +1 for the +X end. One list, so the two ends -- and so
+    the two boards either side of the seam -- cannot disagree about which lane is which."""
+    half = (board_span("a")[1] - board_span("a")[0]) / 2.0
+    return [(sgn * (half - POGO_SETBACK), to_board_y(y), net)
+            for y, net in zip(pogo_ys(), POGO_NETS)]
 
 
 def pitch():
@@ -362,20 +402,24 @@ def check_optics():
     assert min(LIP_OVER, LIP_CAP) >= D.MIN_WALL - 1e-9, (
         "a %.2f lip reach and a %.2f cap against a %.2f bead" % (LIP_OVER, LIP_CAP,
                                                                 D.MIN_WALL))
-    assert lip_top <= TENSIONER_BOT - 0.5, (
-        "the channel's lip tops out at %.2f and the belt tensioners come down to %.2f"
-        % (lip_top, TENSIONER_BOT))
     ty0, ty1 = trough_y()
-    assert ty0 <= BOARD_Y0 + SHOULDER + 1e-9 and ty1 >= BOARD_Y1 - SHOULDER - 1e-9, (
-        "the trough %.2f..%.2f does not leave the board's edges anything to stand on"
+    assert ty0 - BOARD_Y0 >= D.MIN_WALL - 1e-9 and BOARD_Y1 - ty1 >= D.MIN_WALL - 1e-9, (
+        "the trough %.2f..%.2f leaves a board edge under one bead to stand on"
         % (ty0, ty1))
     assert BOARD_Y1 <= RAIL_IN, (
         "the board's +Y edge at %.2f is inside the rail at %.2f" % (BOARD_Y1, RAIL_IN))
-    assert RELIEF_Y0 >= ty0 and RELIEF_Y1 <= ty1, (
-        "the relief groove %.2f..%.2f is not inside the trough %.2f..%.2f -- it would "
-        "undercut a shoulder" % (RELIEF_Y0, RELIEF_Y1, ty0, ty1))
-    assert RELIEF_D <= window()[4] - window()[5] - 6.0, (
-        "a %.2f relief leaves under 6 mm of the bottom prism" % RELIEF_D)
+    # the pogo row, as BODIES rather than courtyards -- see POGO_PITCH
+    ys = pogo_ys()
+    hb = (PG.POGO_BODY_W + PG.POGO_FAB_STROKE) / 2.0
+    assert ys[0] - hb - ty0 >= SHOULDER_AIR - 1e-9, (
+        "the first barrel is %.2f off the -Y shoulder" % (ys[0] - hb - ty0))
+    assert POGO_PITCH - PG.POGO_PAD_W >= 0.30 - 1e-9, (
+        "%.2f of board between neighbouring pogo lands" % (POGO_PITCH - PG.POGO_PAD_W))
+    led_crtyd = led_y() - 6.10 / 2.0
+    assert led_crtyd - (ys[-1] + PG.POGO_PAD_W / 2.0) >= 0.30 - 1e-9, (
+        "the last pogo land ends %.2f from the end LED's courtyard"
+        % (led_crtyd - (ys[-1] + PG.POGO_PAD_W / 2.0)))
+    assert TROUGH - PG.POGO_BODY_H >= AIR_GAP - 1e-9
     return u
 
 
@@ -400,6 +444,10 @@ def _lip(xl, xm, y_wall, sgn, foot_z, top_z):
             .polyline(pts).close().extrude(xl))
 
 
+STOP_T  = 4 * D.BEAD                # 3.20 along X
+STOP_Y0 = 47.60                     # ...from just past the last pogo land to the rail
+
+
 def channel():
     """The slot the strip slides into, to be unioned into the chassis bottom.
 
@@ -418,6 +466,13 @@ def channel():
         return box_at(xl, y1 - y0, z1 - z0, x=xm, y=(y0 + y1) / 2.0, z=(z0 + z1) / 2.0)
 
     out = run(WALL_Y0, sy0, floor, lip_top)                       # the -Y wall
+    # THE +X STOP. The seam pogos push the two boards apart with about 0.8 kgf, so the
+    # far board needs something to be pushed AGAINST. A block across the slot's end, on
+    # the LED row's side only: the +X board's own unused plungers stand 1.70 past its end
+    # across the pogo lane and must find air there.
+    out = out.union(box_at(STOP_T, sy1 - STOP_Y0, lip_foot - floor,
+                           x=x1 + STOP_T / 2.0, y=(STOP_Y0 + sy1) / 2.0,
+                           z=(floor + lip_foot) / 2.0))
     out = out.union(run(sy0, ty0, floor, board_bot))              # -Y shoulder
     out = out.union(run(ty1, sy1, floor, board_bot))              # +Y shoulder
     out = out.union(_lip(xl, xm, sy0, +1.0, lip_foot, lip_top))
@@ -430,26 +485,65 @@ def slot_cut():
     channel is unioned back in.
 
     ⚠ THE CHANNEL IS ADDITIVE, SO IT CANNOT MAKE ROOM BY ITSELF. Unioning walls and lips
-    onto the bottom says nothing about what was already standing in the slot, and the
-    motor bay's own structure comes in somewhere below y 40. Cutting the envelope first
-    and building the channel into the hole makes the board's space a fact rather than a
-    hope -- and it is also the INSERTION CORRIDOR, which runs the channel's whole length
-    because that is how the board gets in."""
-    x0, x1 = window()[0], window()[1]
+    onto the bottom says nothing about what was already standing in the slot. Cutting the
+    envelope first and building the channel into the hole makes the board's space a fact
+    rather than a hope -- and it is also the INSERTION CORRIDOR, which runs the channel's
+    whole length because that is how the board gets in.
+
+    ⚠ IT CUTS INTO STRING 1'S FACEPLATE WALL, AND TAKES ONLY WHAT IT MUST (user,
+    2026-10-02: "remains printable and keeps as much material as possible, only removing
+    what we need to fit the PCB and avoid print overhangs"). The wall is 6.40 thick and
+    the slot takes all but WALL_T of it over the board's height. What is left ABOVE the
+    slot would be a flat ceiling 4.80 deep in a chassis that prints +Z, so the cut's roof
+    rises at 45° from the slot wall instead: the same ramp as the -Y lip, simply carried
+    on up through the wall until it leaves it. Nothing above that line is touched."""
+    # ⚠ THE CORRIDOR STARTS BEFORE THE WINDOW DOES. String 1's faceplate wall runs 13.7 mm
+    # past the window's -X end, and the slot cut used to stop AT that end -- so the wall
+    # stood whole across the mouth and no board could have been slid in past it. Found as
+    # 5.3 mm3 of one free plunger inside chassis_2 (tools/_probe_foot_cut.py).
+    x0, x1 = window()[0] - MOUTH_CUT, window()[1]
     floor = window()[4]
     top = clear_top()
+    foot = z_stack()[3]
     sy0, sy1 = _slot_y()
-    return box_at(x1 - x0, sy1 - sy0, top - floor,
-                  x=(x0 + x1) / 2.0, y=(sy0 + sy1) / 2.0, z=(floor + top) / 2.0)
+    yr = MOTOR_FACE + ROOF_REACH
+    # ONE section: up the slot wall to the board's top, then the ramp -- so even the fit's
+    # 0.30 over the board is under the 45° line and no flat is left at the wall
+    return (cq.Workplane("YZ", origin=(x0, 0, 0))
+            .polyline([(sy0, floor), (sy1, floor), (sy1, top), (yr, top),
+                       (yr, foot + (yr - sy0)), (sy0, foot)])
+            .close().extrude(x1 - x0))
 
 
-def relief():
-    """The groove under the component lane -- CUT from the chassis, not added to it."""
-    x0, x1 = window()[0], window()[1]
-    top = window()[4]
-    return box_at(x1 - x0, RELIEF_Y1 - RELIEF_Y0, RELIEF_D + 0.02,
-                  x=(x0 + x1) / 2.0, y=(RELIEF_Y0 + RELIEF_Y1) / 2.0,
-                  z=top - RELIEF_D / 2.0 + 0.01)
+MOUTH_CUT = 16.0     # how far -X of the window the corridor is cut: past the wall's end
+
+# how far +Y of the motor's face the 45° roof is carried: the faceplate wall (6.40) and a
+# little, so the cut leaves the wall through its far face rather than stopping inside it
+ROOF_REACH = 8 * D.NOZZLE_D + 0.50
+
+
+def pogo_pins():
+    """[(name, solid)] -- the sixteen plungers, barrel front to tip.
+
+    The barrels are the boards' own (board_geom reads the pogo's F.Fab); the plungers are
+    here because they leave the board. At the seam each pair meets on the seam plane; at
+    the strip's two outer ends they stand at free length."""
+    _led, bb, _bt, _lf, _lt = z_stack()
+    z = bb - PG.POGO_AXIS_H
+    out = None
+    for half in HALVES:
+        bx0, bx1 = board_span(half)
+        for sgn, edge in ((-1.0, bx0), (1.0, bx1)):
+            at_seam = abs(edge - seam_x()) < 1e-6
+            pad = edge - sgn * POGO_SETBACK
+            front = pad + sgn * (PG.POGO_BODY_L + PG.POGO_FAB_STROKE) / 2.0
+            rear = pad - sgn * PG.POGO_BODY_L / 2.0
+            tip = edge if at_seam else rear + sgn * PG.POGO_FREE
+            for y in pogo_ys():
+                c = (cq.Workplane("YZ").circle(PG.POGO_PLUNGER_D / 2.0)
+                     .extrude(abs(tip - front)).translate((min(front, tip), y, z)))
+                out = c if out is None else out.union(c)
+    return [("foot_pogo_pins", out)]
 
 
 def _led_refs():
@@ -505,4 +599,4 @@ def parts():
         print("  (no %s.geom.json yet -- the foot strip is left out of this build; "
               "route and export it, see elec/foot_led.py)" % BOARD_NAME)
         return []
-    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES]
+    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES] + pogo_pins()
