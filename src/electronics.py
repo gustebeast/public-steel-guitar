@@ -273,7 +273,18 @@ MCTRL_FLOOR_EDGE_X = -528.15           # tray +X edge == world z -80.85, the flo
 # (z -71.35..-29.05) while the below-floor cradle passes UNDER it, and above the floor the two
 # are 8.1 mm apart in X. They already overlap in Y today without colliding.
 # -58.75 leaves 2.0 mm to the adapter and drops the Y overlap with motor_0 from 55 mm to 3.
-_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, -65.75
+# ⚠ -71.05, BEHIND STRING 1'S MOTOR (user, 2026-10-02). The motor bank moved up to the
+# keyhead endplate, so the board no longer stands between the two: it stands -Y of that
+# motor, and ONE two-bead wall is both the motor's back stop and this board's +Y locating
+# wall. The Y is dimensions' (MCTRL_Y0 / MCTRL_Y1) because the chassis' mortises, the motor
+# bay and the -X/-Y body adapter all have to keep off it and none of them can import this
+# file. Its -Y edge is now 1.40 PAST the adapter's +Y face (-97.15): the mortise over that
+# foot stops a wall short of the board's port and the adapter is relieved under its edge.
+_MCTRL_CX, _MCTRL_CY = MCTRL_FLOOR_EDGE_X - MCTRL_BOARD_X / 2.0, (D.MCTRL_Y0 + D.MCTRL_Y1) / 2.0
+assert abs(MCTRL_BOARD_Y - D.MCTRL_L) < 1e-6, (
+    "the motor board's routed length is %.2f; dimensions.MCTRL_L is %.2f"
+    % (MCTRL_BOARD_Y, D.MCTRL_L))
+assert abs(CRADLE_CLR - D.MCTRL_FIT) < 1e-9
 MCTRL_FP  = (_MCTRL_CX - MCTRL_BOARD_X / 2, _MCTRL_CX + MCTRL_BOARD_X / 2,
              _MCTRL_CY - MCTRL_BOARD_Y / 2, _MCTRL_CY + MCTRL_BOARD_Y / 2)
 
@@ -336,16 +347,10 @@ def stand_pt(x: float, y: float, z: float):
     return (TRAY_X0 + STAND_DX + dz, y, TRAY_Z0 + STAND_DZ - dx)
 
 
-# the dimensions datum the motor bank is packed against has to hold what actually STANDS
-# against the keyhead: tallest part above the plate's underside in the flat frame = depth in
-# X once standing. The Pi is NOT a term any more -- it has lain flat on the chassis floor
-# since the Y swap -- so this checks the standing boards (16.8) against a datum that is
-# pinned at 21.8 on purpose (dimensions.py: the rest is the cable slot and the flat Pi's end).
-_MCTRL_TOP = MCTRL_BOARD_Z + BD_T + 9.8        # a MATED XH on the motor controller
-_STACK = max(_MCTRL_TOP, BOARD_Z + BD_T + 9.0) - TRAY_Z0   # (+ buck caps)
-assert _STACK <= D.ELEC_STACK_D + 1e-6, (
-    f"the standing electronics are {_STACK:.2f} deep, over dimensions.ELEC_STACK_D "
-    f"{D.ELEC_STACK_D} -- the motor bank is packed against that number")
+# (the standing stack's depth is no longer a datum the motor bank is packed against: the bank
+# runs up to the keyhead endplate and the board stands -Y of string 1's motor. What has to
+# hold instead -- the board clear of that motor's bay -- is dimensions.MCTRL_Y1, asserted
+# against the placed board in build.py.)
 
 # ---- panel jacks (through the endplate recess wall, kept 4 mm thick) ----
 # The real connectors are deep (TS ~22 mm, DC ~15.5 mm). Behind the endplate
@@ -606,11 +611,21 @@ def pi_cradle() -> cq.Workplane:
 # needs (tools/_probe_pi_spacer): driver column CLEAR, nothing foreign in the 1.6 mm shell,
 # 7 mm from the board's +X (open, I/O) end -- the end that takes cable insertion force, which
 # is the same reasoning that put the old hold at +30.
-PI_SPACER_XY   = (-510.0, -58.50)  # WORLD x,y of the anchor -- 12.50 mm out from the +Y edge
+# ⚠ TWO MORTISE PITCHES -X OF WHERE THAT SEARCH PUT IT (2026-10-02). The motor bank moved up
+# to the keyhead endplate, which stood string 3's motor over the old site (x -510). Behind
+# string 2's motor the same conditions hold -- its bay's back wall is the y -53.95 the tail
+# was sized against -- and stepping by whole pitches keeps the anchor's place in the mortise
+# grid, which is what the search was about. It is now 27.8 from the board's +X end, not 7.
+_PI_SPACER_DX  = -2 * D.LEVER_PITCH
+PI_SPACER_XY   = (-510.0 + _PI_SPACER_DX, -58.50)  # WORLD x,y of the anchor -- 12.50 mm out from the +Y edge
 PI_SPACER_T    = 3 * D.BEAD        # 2.40 over the laminate. 1.2 was rejected as under the
                                    # quality bar for retention; this is the same 3-bead
                                    # thickness the rest of this file uses for it.
-PI_SPACER_W    = 20.0              # along X -- the run of edge it clamps
+# ⚠ 13.8, AND THE NEW SITE IS WHAT SETS IT (2026-10-02). Behind string 2's motor the bar has
+# the Pi cap on its -X side -- the cap overhangs the Pi's +Y edge out to y -63.08 and ends at
+# x -532.37 -- and string 3's bay wall on its +X side (x -518.0). 13.8 is what stands between
+# them with a fit each end: 34.5 mm2 of laminate held, still over four times a head's arc.
+PI_SPACER_W    = 13.8              # along X -- the run of edge it clamps
 # ⚠ AND THE BAR IS NOT CENTRED ON ITS SCREW, WHICH IS WHAT MAKES THE RUN AFFORDABLE. Centred,
 # a bar this long reaches x -504..-524 -- fine -- but every wider option ran to x -498 and hit
 # chassis_2 there (50.9 mm3 at W 24 against 23.0 at W 16, i.e. the wall that limits it sits off
@@ -620,7 +635,9 @@ PI_SPACER_W    = 20.0              # along X -- the run of edge it clamps
 # buys 20.0 mm of run inside both limits -- 50.0 mm2 of laminate held, against a O7.6 head's
 # 1.30 mm on one arc -- with the head 2.2 mm inside the +X end, so it bears on plastic all round.
 # Swept as ONE STEPPED SOLID over five (centre, W) pairs: tools/_probe_pi_spacer_bar.
-PI_SPACER_CX   = -514.0            # WORLD x of the BAR's centre (the screw is at -510.0)
+PI_SPACER_CX   = -525.1            # WORLD x of the BAR's centre: x -532.0..-518.2. The screw
+                                   # (-530.8) is near its -X end, so the head gets a PAD of its
+                                   # own outboard of the cap's y (see pi_spacer)
 # ⚠ THE LAP IS SET BY THE PI'S OWN I/O BLOCK, NOT CHOSEN. pi4() models the USB/ethernet
 # block as box_at(18, 50, 14) reaching y -74.00 and standing 14 mm off the laminate, so the
 # clear laminate between it and the board's +Y edge (-71.00) is 3.00 mm and that is the whole
@@ -703,7 +720,15 @@ def pi_spacer() -> cq.Workplane:
     y_out = hy + PI_SPACER_TAIL
     shank = box_at(PI_SPACER_W, y_out - y_edge, z_top - PI_Z,
                    PI_SPACER_CX, (y_edge + y_out) / 2.0, (PI_Z + z_top) / 2.0)
-    return lap.union(shank).cut(
+    # THE HEAD'S PAD. The bar stops at the Pi cap's +X end, and the screw is 1.2 inside that
+    # end -- so half the head would bear on air. Outboard of the cap's +Y edge (y -63.08)
+    # nothing is in the way, so the bar widens there to carry the head all the way round.
+    from cadkit.fasteners import M4_BUTTON_HEAD_D as _HD
+    _px0, _py0 = hx - _HD / 2.0 - 0.2, hy - _HD / 2.0 - 0.2
+    pad = box_at((PI_SPACER_CX - PI_SPACER_W / 2.0) - _px0 + 0.01, y_out - _py0, z_top - PI_Z,
+                 (_px0 + PI_SPACER_CX - PI_SPACER_W / 2.0 + 0.01) / 2.0, (_py0 + y_out) / 2.0,
+                 (PI_Z + z_top) / 2.0)
+    return lap.union(shank).union(pad).cut(
         cyl(_M4.shaft_clr_d, (z_top - PI_Z) + 2.0, PI_Z - 1.0).translate((hx, hy, 0.0)))
 
 
@@ -926,7 +951,11 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # user found printing as an overhang. It also retires three separately-recorded headaches
     # that all belonged to this one screw: the ear that landed inside the nut height-adjust
     # block, the M4x6-instead-of-x10 length, and the head buried in the locating wall.
-    cr = _frame(bw, bl, None, slide_in_x=True, harness_w=HARNESS_W,
+    # NO HARNESS NOTCH (user, 2026-10-02). It was a 24 mm gap in the -Y wall, which in the
+    # chassis' build direction is a wall that stops and starts again in mid-air: an overhang,
+    # for a cable that does not go that way -- this board's plugs are on its face and its
+    # bottom edge. The -Y wall is one column now, like the +Y one.
+    cr = _frame(bw, bl, None, slide_in_x=True, harness_w=0.0,
                 post_h=MCTRL_POST_H, open_down=True, root_d=4 * D.BEAD)
     # ⚠ AND THE HEAD NEEDS ITS OWN HOLE, exactly as the Pi's does 50 lines below. The boss
     # stands BESIDE the board, and the locating wall rises past the board's top face at
@@ -1297,6 +1326,11 @@ def pi_cap() -> cq.Workplane:
     return _cap_place(BG.solid("pi_cap"))
 
 
+def pi_cap_silk():
+    """The cap's lettering, where the cap is -- its own part, so it can be white."""
+    return _cap_place(BG.silk("pi_cap"))
+
+
 def _cap_place(shape):
     """Put anything authored in the CAP'S BOARD FRAME where the cap is.
 
@@ -1444,6 +1478,11 @@ def output_panel() -> cq.Workplane:
     through the wall at +X. See op_origin for how each axis is set."""
     _check_panel()
     return output_panel_pcb().translate(op_origin())
+
+
+def output_panel_silk():
+    """The output board's lettering, where the board is -- its own part (white ink)."""
+    return BG.silk("output_panel").translate(op_origin())
 
 
 def op_top(ref: str):
@@ -1628,7 +1667,7 @@ def mctrl_pin(ref: str, n: int, count: int = 4, pitch=None):
     return (cx + lx, cy + ly + _MCTRL_DY, MCTRL_BOARD_Z + lz)
 
 
-MCTRL_PORT_CLR = 0.5                 # around whatever of the board enters the floor
+MCTRL_PORT_CLR = D.MCTRL_PORT_CLR    # around whatever of the board enters the floor
 
 
 MCTRL_CAP_GAP = CRADLE_CLR                  # 0.3, how far the board may lift before the rib
@@ -1714,6 +1753,13 @@ def mctrl_floor_ports():
 # deliberate and reasoned when it was written -- what changed is the board's position, and
 # a reader finding the old call in history should see why it went rather than assume it was
 # lost in a merge.
+def motor_ctrl_silk():
+    """The motor controller's lettering, through the SAME pose as the board itself."""
+    cx, cy = _ctr(MCTRL_FP)
+    return stand(BG.silk("motor_ctrl").translate((0.0, _MCTRL_DY, 0.0))
+                 .translate((cx, cy, MCTRL_BOARD_Z)))
+
+
 def motor_ctrl() -> cq.Workplane:
     """The motor controller posed in the standing tray (see MCTRL_FP)."""
     cx, cy = _ctr(MCTRL_FP)

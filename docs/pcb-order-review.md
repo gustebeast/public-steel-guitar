@@ -46,8 +46,10 @@ boards everything but the name (plus one pinout on the male bottom board).
 
 ## Still open before ordering
 
-* Three parts cannot be ordered assembled: the 1/4 in jack and USB-A on the output panel
-  (stock), and the Pi cap's ribbon header (no part number checked).
+* ONE part cannot be ordered assembled: the two internal USB-A sockets on the output panel
+  (GCT USB1046, 3 in stock). The 1/4 in jack is back in stock (C368502) and the Pi cap's
+  ribbon header is C22438113; both entered 2026-10-02. The UI board's end of that ribbon is
+  still a 2.54 mm IDC header, which takes a different cable -- the two ends do not yet agree.
 * MCP4261 had 96 in stock on 2026-10-01; the gold pogo target 210; S8B-XH-A 65 against
   100 needed.
 * The leg boards' pogo pins overhang the board edge. The fab's rails must go on the other
