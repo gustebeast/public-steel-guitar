@@ -3595,13 +3595,15 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         return out
     # USB: out through the conduit's mouth into the bay -- the only part of that mouth the
     # rail leaves open is y -128.75..-124.58 -- over the output board, down, and into the
-    # USB-A plug standing in J4's mouth on the board's -X edge.
+    # USB-C plug standing in J4's mouth on the board's -X edge (a USB-A until 2026-10-02).
     xu = CONDUIT_XC + 2.2
     # J4's own mouth. It used to be the tip of the mounting ear, 10.000 mm short -- see
     # electronics.op_mouth, which exists because wiring.py's wire_usb made the same mistake.
+    from .board_geom import HEIGHT as _H, footprint as _fp, fp_name as _fpn
+    _BGH = _H[_fpn(_fp("output_panel", "J4")["fpid"])]
     ua_mouth = op_mouth("J4")[0]
     ua_end = ua_mouth - USBA_PLUG_L
-    zc4 = op_top("J4")[2] - 3.3                         # USB-A shell axis, mid-height
+    zc4 = op_top("J4")[2] - _BGH / 2.0                  # the shell's axis, mid-height
     y4 = op_top("J4")[1]
     add(box_at(USBA_PLUG_L, USBA_PLUG_W, USBA_PLUG_H, x=(ua_mouth + ua_end) / 2, y=y4, z=zc4))
     _path["J1"] += [(xu, USB_Y, USB_Z), (BAND_X0 - 1.0, USB_Y, USB_Z),
@@ -3621,7 +3623,9 @@ PWR_Z_REC = -25.5                       # the 24 V lead crossing into the board 
                                         # 0.3 under its roof at FOOT_Z
 USB_DROP_X = -84.0                      # the USB drops to J4's height out in the bay, -X of
                                         # the 24 V loop and clear of the board-to-Pi lead
-USBA_PLUG_L, USBA_PLUG_W, USBA_PLUG_H = 25.0, 16.0, 8.0   # USB-A male, past the mouth
+# a USB-C male's overmould past the mouth (was a USB-A's 25 x 16 x 8 until J4 became a
+# USB-C, 2026-10-02). The name is kept: three call sites read it.
+USBA_PLUG_L, USBA_PLUG_W, USBA_PLUG_H = 20.0, 12.4, 6.5
 XH_OD = 4.0                             # the 24 V lead (6x 26 AWG), as opt_cables draws it
 
 
@@ -3902,13 +3906,20 @@ GUARD_SCREW_L = 20.0     # was 12: the head now sits on the guard, 2.96 higher. 
 _G_X0, _G_X1 = min(s[2] for s in _SECTIONS), max(s[3] for s in _SECTIONS)
 _G_Y0, _G_Y1 = min(s[0] for s in _SECTIONS), max(s[1] for s in _SECTIONS)
 GUARD_OPEN_X = O_SLOT_X1 + GUARD_OPEN_CLR        # 1.85: the string is below the board here
-GUARD_OPEN_Y = HEAD_Y0                           # 51.55: the wraps are covered whole
 GUARD_Z0 = PCB_TOP + max(PKG[p["pkg"]][2] for p in PARTS
                          if p["ref"] not in GUARD_WINDOW) + GUARD_CLR
 GUARD_Z1 = GUARD_Z0 + GUARD_T
 GUARD_SEAT_Z = GUARD_Z1 - TP.JACK_HEAD_H         # the button head finishes FLUSH
 GUARD_WELL_D = TP.JACK_HEAD_D + 2 * GUARD_HEAD_CLR
 GUARD_BOSS_D = GUARD_WELL_D + 2 * D.MIN_WALL_2P
+# ⚠ THE ROOF REACHES IN PAST THE SCREW BOSSES (user, 2026-10-02, with a marked-up
+# screenshot: "extend the top cover a bit ... so that the screw boss material doesn't
+# create a print overhang"). The opening used to stop at the wrap seam, HEAD_Y0 51.55, and
+# the 11.4 boss at y 56.15 reaches 50.45 -- so 1.1 mm of boss stood out past the roof it
+# grows from, in mid-air on a roof-down print. The edge is the boss's own, plus a bead.
+GUARD_OPEN_Y = min(HEAD_Y0, min(abs(_my) for _mx, _my in mount_points())
+                   - GUARD_BOSS_D / 2 - D.BEAD)
+assert GUARD_OPEN_Y >= _OUTER_Y + _BRG_HY + D.MIN_WALL_2P, "the roof has reached the slots"
 assert GUARD_SEAT_Z - GUARD_T >= PCB_TOP, "no room for a 1.6 floor under the screw head"
 
 

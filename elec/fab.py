@@ -215,11 +215,6 @@ LCSC = {
 # value that is neither sourced nor generic nor listed below FAILS THE BUILD,
 # which means changing a part number forces you to come here and say so.
 OPEN_VALUES = frozenset({
-    "USB1046-GF-0180",     # GCT USB-A. Not listed at JLCPCB (2026-09-17); the
-                           # nearest is -0190-L-B-A at 5 in stock. ⚠ THE ONE THAT WENT WRONG -- if this
-                           # string ever changes, that is the footprint moving
-                           # under it, and the build should stop until someone
-                           # confirms the two still agree
     # (The placeholders that stood here -- "FRT5-class 5V", "PCM5102A-class", "CH334-class HS
     #  hub" -- and PCM1808PWR's hold are gone with the 2026-09-21 rewrite: real parts, real
     #  pinouts, sourced above. What still wants a second pair of eyes is the ANALOG DESIGN
