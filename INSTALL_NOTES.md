@@ -689,8 +689,8 @@ screws, from above) stay adjustable afterwards; this one does not.
 
 * Plug the USB-C and the 24 V lead into the optical board first; the guard's -Y end is open
   for them and J2 stands up through its notch.
-* Lower the guard straight down: its lip drops over the board's edge on three sides and
-  locates it. Two **M4x20** button screws go through the guard AND the board into the
+* Lower the guard straight down onto its posts; the two screws locate it (it has no
+  sides). Two **M4x20** button screws go through the guard AND the board into the
   endplate's inserts (the board has no screws of its own any more), heads flush in the wells.
 * The guard covers the bring-up pads. Take it off to probe; the board stays located by the
   plinth and the cables while it is off, but is not clamped.
