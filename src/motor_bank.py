@@ -203,7 +203,7 @@ def side_room(i, sgn):
     makes both bays describe the SAME 1.6 wall, which is the honest description of it: one wall
     between two motors, not two half walls. The chassis cuts every motor's lift path out of the
     fused result, so a bay reaching across the gap never fills its neighbour's fit."""
-    other = D.MOTOR_ELEC_CLR if (sgn < 0 and i == 0) else D.MOTOR_GAP
+    other = D.MOTOR_END_CLR if (sgn < 0 and i == 0) else D.MOTOR_GAP
     if sgn > 0 and i == D.N_STRINGS - 1:
         return MOTOR_CLR + D.MIN_WALL_2P          # open air past the last motor
     return other - MOTOR_CLR
@@ -230,7 +230,10 @@ def pocket(i) -> cq.Workplane:
     body = _wall(i)                                     # the faceplate wall (runs on to the bed)
 
     x0, x1 = bx0 - side_room(i, -1), bx1 + side_room(i, 1)
-    y0, y1 = by0 - BACK_T, by1 + PLATE_T
+    # STRING 1'S BACK STOP IS THE MOTOR BOARD'S +Y WALL (user, 2026-10-02): the board stands
+    # directly behind this motor, a two-bead wall off its back face, so the stop is that wall
+    # and no thicker -- 3.2 here would stand in the board.
+    y0, y1 = by0 - (D.MIN_WALL_2P + MOTOR_CLR if i == 0 else BACK_T), by1 + PLATE_T
     # FROM THE BOTTOM PRISM'S TOP FACE UP (user, 2026-09-16). It reached the BED for a while,
     # because the cross-ribs it used to stand on were a comb and a bay wall bridged every gap
     # between them. The bottom is one solid XBAR-tall prism now, so there is nothing to bridge:
