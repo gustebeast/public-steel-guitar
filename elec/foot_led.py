@@ -26,24 +26,26 @@ ends, which cost a second fab and assembly setup and put one harness at the brid
 600 mm from the Pi. Sliding both from -X deletes all of that.
 
 HOW THE POWER GETS TO THE FAR BOARD, which is the one thing -X-only insertion makes hard.
-The +X board is pushed the full length of the channel first, so its own connector ends up
-286 mm inside and its cable can never reach the mouth on its own -- and it cannot rise out
-of the channel either, because it is UNDER a board everywhere except at a board edge. So
-the strip is a CHAIN: every board carries an IN connector at its -X end and an OUT at its
-+X end, both in the component lane, and a short jumper joins them in the relief groove.
-The -X board's IN is the only thing that leaves the instrument.
+The +X board is pushed the full length of the channel first, so nothing can be plugged
+into it once it is home. So the strip is a CHAIN joined by POGOS: every board carries four
+side-mount pogos at its -X end (IN) and four at its +X end (OUT), under the board, and
+they meet the next board's tip to tip when the second board is pushed home (user,
+2026-10-02). No cable anywhere in the channel.
 
-    Pi -> J1 [board A] J2 -> jumper -> J1 [board B] J2 (unused)
+    inlet -> J11..J14 [board A] J21..J24 -><- J11..J14 [board B] J21..J24 (unused)
 
-Both connectors are populated on both boards because they are the same board; the far
-board's J2 is a 21-cent spare. 24 V passes straight through and the SPI chain runs
-J1 -> U1 -> U2 -> J2, so all four drivers are one stream from one Pi pin.
+Both sets are populated on both boards because they are the same board. 24 V passes
+straight through behind the fuse and the SPI chain runs IN -> U1 .. U4 -> OUT, so all
+eight drivers are one stream from one Pi pin.
 
-⚠ AND THE SEAM COSTS NO LIGHT. The connectors are in the LANE, not at the board ends, so
-the LED row runs to within half a pitch of both edges and the two boards butt: 48 LEDs at
-one pitch from end to end, with the seam falling exactly half a pitch past LED 23. The
-jumper's wires run -X in the relief groove UNDER the far board for the 12 mm to its edge,
-which is the whole reason the lane is relieved.
+⚠ AND THE SEAM COSTS NO LIGHT. The pogos stand beside the LED row, not in it, so the row
+runs to within half a pitch of both edges and the two boards butt: one pitch from end to
+end, with the seam falling exactly half a pitch past the last LED of the first board.
+
+⚠ THE INLET IS NOT ON THIS BOARD. The -X board's IN set is how the strip is fed, and a
+cable socket cannot share that end with it: its lead would have to leave -X through a
+row of four barrels that fill the trough from wall to LED. What mates that set is the
+open item in .ins/WORKLIST-brenner.md.
 """
 from __future__ import annotations
 
@@ -67,7 +69,7 @@ from placecheck import check_placement, fp_box  # noqa: E402
 
 P = Pin.types.PASSIVE
 
-# ── the parts: all but J1/J2 are already bought for another board ────────────────────
+# ── the parts: every one is already bought for another board ────────────────────
 LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
 DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm"
 BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
@@ -77,49 +79,25 @@ C_FP = "Capacitor_SMD:C_0402_1005Metric"
 C08_FP = "Capacitor_SMD:C_0805_2012Metric"
 C12_FP = "Capacitor_SMD:C_1206_3216Metric"
 FUSE_FP = "Fuse:Fuse_1206_3216Metric"
-# ⚠ JST SH, AND THE HEIGHT IS WHY -- the one new sourcing line on this board. Everything
-# on the strip hangs from the board's underside into a trough that the LED sets the depth
-# of: AIR_GAP + LED_H = 1.90 mm, relieved to 3.40 under the lane. The PH the rest of the
-# instrument uses is 5.50 tall and does not fit at any relief worth cutting; the SH is
-# **2.95**, read off JST's own drawing (side-entry side view, not a catalogue field).
-# ⚠ 1.0 A / 50 V AGAINST 0.37 A A BOARD AT 24 V -- AND 0.73 A THROUGH THE -X BOARD'S
-# J1 AND THE SEAM JUMPER, which carry both boards. That is the tightest number on this
-# strip, 73% of a contact's rating, and it is the price of the 72-LED row. It is also a
-# worst case the firmware never has to reach: it is every zone at full white at once,
-# which the effects daemon caps the same way it caps the fret boards' 1.38 A. S4B is 4-way: GND, 24V, SCK, SDT.
-# SM04B-SRSS-TB(LF)(SN), C160404, JST, 3,495 in stock at $0.2131@50.
-J_FP = "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
+# (No cable socket: the JST SH this board carried at each end went with the jumper. The
+#  -X board still passes both boards' 0.73 A, through one pogo rated 12 A.)
 
 R_IREF = "3k3"                       # 15.0 mA per channel, as the fret boards
 # ⚠ 11.00 V, AND THE STRING LENGTH IS THE ONLY THING THAT SETS IT. A channel sinks
 # constant current from the rail down through its series string, so the rail has to sit one
 # string plus the sink's headroom above ground -- and every volt above that is heat in the
 # driver rather than light. Three dice in series (src/foot_light.N_SERIES) is 9.6 V at the
-# LED's 3.2 max, so 11.00 leaves 1.40 V of headroom, a little more than the 1.27 the
-# earlier 4-in-series/14 V board ran on.
+# LED's 3.2 max, so 11.00 leaves 1.40 V of headroom.
 #
 # The whole rail change is R11: 100k / 10k on the LMR33630's 1.000 V reference is 11.00 V.
-#
-# ⚠ RAIL CURRENT DOES NOT MOVE WHEN THE LED COUNT DOES, and that is the fact the whole
-# strip is designed around. A channel draws 15.0 mA whether it feeds two dice or three, and
-# the channel count is set by ZONES: 48 a board, before and after. Going from 48 LEDs to 72
-# bought half again the light for 3.3 V of rail and $1.56 of LEDs -- no more drivers, no
-# more amps, no more board.
-#
-# Each driver dissipates 0.39 W here: red's string is 6.6 V so its sink drops 4.4, and
-# W/G/B drop the 1.40 headroom. 1.55 W a board, in a bay with 572 mm of aluminium-free
-# plastic around it -- the four packages spread over 286 mm, not stacked.
 V_RAIL = 11.00
 I_CHAN = 0.015
 COLOURS = ("R", "G", "B", "W")
-# ⚠ +24V ON AN END PAD, AND IT IS THE ONE THING THAT KEPT FAILING. The SH is a 1.00 mm
-# pitch part: its pads are ~0.60 wide with 0.40 between them, so an INTERIOR pad can only
-# be entered by a track narrow enough to pass its neighbours -- 0.15 plus two 0.127
-# clearances is 0.40, which is the whole gap. +24V sat on pin 2 and three separate routes
-# left it 0.27..0.37 mm short of that pad, including an incremental run with every other
-# net frozen. GND can live on an interior pad because it drops straight to its own plane;
-# the traces want the ends.
-J_PINS = ("V24", "GND", "SCK", "SDT")
+# THE SEAM AND THE INLET ARE POGOS: four Xinyangze YZF0002-38080-02 (LCSC C5203987) at
+# each end, tip to tip with the next board's -- src/foot_light.py owns where they stand
+# and src/pogo_part.py what they are. The 4-way SH sockets this board carried are gone,
+# and with them the jumper nothing stocked was short enough to be.
+POGO_FP = "Steel:Xinyangze_YZF0002-38080-02"
 
 # ── the two lanes ────────────────────────────────────────────────────────────────────
 # ⚠ BOARD-LOCAL Y IS A MIRROR OF WORLD Y, because this board is installed FACE DOWN: the
@@ -129,7 +107,6 @@ J_PINS = ("V24", "GND", "SCK", "SDT")
 # notice -- the board routes, the CAD renders, and the light misses the slot.
 LED_Y = FL.to_board_y(FL.led_y())           # -3.75
 LANE_Y = FL.to_board_y(FL.DRV_Y)            # +4.05
-J_Y = FL.to_board_y(FL.J_Y)                 # +4.20
 BOARD_W = FL.BOARD_W                        # 17.20
 
 # ⚠ THE MIDDLE ZONE TAKES THE PINS NEAREST THE LED ROW, and getting that backwards is
@@ -145,14 +122,8 @@ BOARD_W = FL.BOARD_W                        # 17.20
 # the tops because they arrive from the sides and can climb on the way in.
 ZONE_OUTS = {-1: (3, 4, 5, 6), 0: (7, 8, 13, 14), 1: (15, 16, 17, 18)}
 
-# J1/J2 sit J_INSET in from their board ends. 12.0 is what gives the jumper somewhere to
-# be: mouth to mouth across the butted seam is 2 x 12 = 24 mm, and the two mated plugs
-# take about 8 of it, so ~16 mm of free wire lies in the relief groove under the boards.
-J_INSET = FL.J_INSET
 SUPPLY_LEN = 47.31                   # the thirteen supply parts plus their gaps,
                                      # measured by Row itself on the first run
-J_ANCHOR = 4.4 + 0.7083              # mouth (local +Y 4.4) to the PAD CENTROID, read out
-                                     # of the .kicad_mod -- NOT the PH's 5.8125
 
 
 def _r(ref, value, desc, fp=R_FP):
@@ -215,28 +186,26 @@ def build(passes=20):
     place, fps = {}, {}
 
     # ── the two ends of the chain ────────────────────────────────────────────────────
-    js = {}
-    for ref, sgn, what in (("J1", -1.0, "in: from the Pi, or from the previous board"),
-                           ("J2", +1.0, "out: to the next board (-X board only; the +X "
-                                        "board's is a spare)")):
-        js[ref] = Part(name="SM04B-SRSS-TB", ref_prefix="J", ref=ref, tag=ref,
-                       dest="NETLIST", tool="skidl", value="SM04B-SRSS-TB",
-                       description="%s -- GND, +24V, SCK, SDT (LCSC C160404)" % what,
-                       footprint=J_FP,
-                       pins=[Pin(num=i + 1, name=n, func=P)
-                             for i, n in enumerate(J_PINS)])
-        # mouth faces OUTBOARD on both: rot 270 turns it -X, rot 90 turns it +X, and the
-        # placement anchors on the pad centroid J_ANCHOR behind the mouth
-        mouth = sgn * (half - J_INSET)
-        place[ref] = (mouth - sgn * J_ANCHOR, J_Y, 270.0 if sgn < 0 else 90.0)
-        fps[ref] = J_FP
+    # J11..J14 at the -X end are IN, J21..J24 at the +X end are OUT, one per net in
+    # foot_light.POGO_NETS' order. The footprint fires -X as drawn, so the +X set is
+    # turned half a turn.
     v24_in = Net("+24V_IN")
-    gnd += js["J1"][1], js["J2"][1]
-    v24_in += js["J1"][2]
-    v24 += js["J2"][2]                       # 24 V passes THROUGH to the next board
     sck, sdt = Net("SCK_IN"), Net("SDT_IN")
-    sck += js["J1"][3]
-    sdt += js["J1"][4]
+    sck_out, sdt_out = Net("SCK_OUT"), Net("SDT_OUT")
+    ends = {-1.0: {"+24V": v24_in, "GND": gnd, "SCK": sck, "SDT": sdt},
+            +1.0: {"+24V": v24, "GND": gnd, "SCK": sck_out, "SDT": sdt_out}}
+    pogo_refs = {}
+    for sgn, base, what in ((-1.0, 10, "in"), (+1.0, 20, "out")):
+        for i, (px, py, net) in enumerate(FL.pogo_pads(sgn)):
+            ref = "J%d" % (base + i + 1)
+            j = Part(name="YZF0002-38080-02", ref_prefix="J", ref=ref, tag=ref,
+                     dest="NETLIST", tool="skidl", value="YZF0002-38080-02",
+                     description="seam pogo, %s: %s (LCSC C5203987)" % (what, net),
+                     footprint=POGO_FP, pins=[Pin(num=1, func=P)])
+            ends[sgn][net] += j[1]
+            place[ref] = (px, py, 0.0 if sgn < 0 else 180.0)
+            fps[ref] = POGO_FP
+            pogo_refs.setdefault(sgn, []).append(ref)
 
     f1 = Part(name="Fuse", ref_prefix="F", ref="F1", tag="F1", dest="NETLIST",
               tool="skidl", value="1A",
@@ -290,7 +259,7 @@ def build(passes=20):
     # ⚠ THE SUPPLY SITS IN THE MIDDLE OF THE BOARD, AND THE RETURNS ARE WHY. Each
     # driver's outer two zones return along the lane from +-2.5 pitches away, so the
     # lane between a driver and its outer zones -- x -101..-41 and +41..+101 -- is a
-    # traffic corridor carrying four returns each way. Parked next to J1, the supply
+    # traffic corridor carrying four returns each way. Parked at the -X end, the supply
     # sat squarely in the -X one, and route after route left exactly one of zone 0's
     # four returns unconnected -- a different colour each time, which is what a board
     # at its limit looks like. The middle 82 mm carries no returns at all.
@@ -332,7 +301,7 @@ def build(passes=20):
         sdt += u[9]
         sck += u[10]
         sck, sdt = ((Net("SCK_%d" % (k + 1)), Net("SDT_%d" % (k + 1)))
-                    if k < n_drv - 1 else (Net("SCK_OUT"), Net("SDT_OUT")))
+                    if k < n_drv - 1 else (sck_out, sdt_out))
         sck += u[11]
         sdt += u[12]
         r = _r("R%d" % (k + 1), R_IREF, "U%d IREF -- 15.0 mA per channel" % (k + 1))
@@ -385,11 +354,21 @@ def build(passes=20):
                                                             leds[a + 1][c + 1])
                 Net("Z%d_%s_RET" % (zi, col)).connect(leds[-1][c + 5], u[outs[c]])
 
-    # the chain leaves on J2
-    sck += js["J2"][3]
-    sdt += js["J2"][4]
-
-    check_placement(name, place, fps)
+    # ⚠ THE POGO ROW IS CHECKED AS COPPER, NOT AS COURTYARDS. Four 3.50 lands stand at a
+    # 3.90 pitch because that is all the lane between the -Y shoulder and the end LED
+    # allows (foot_light.POGO_PITCH), which puts neighbouring 4.00 courtyards 0.10 INTO
+    # each other and the last one 0.05 off the end LED's. The courtyard rule is there to
+    # leave the router a lane; nothing routes between two pogos. foot_light.check_optics
+    # asserts what matters instead: 0.40 of board between lands, 0.30 to the LED.
+    xs_sorted = sorted(xs)
+    end_led = {-1.0: "D%d" % (xs.index(xs_sorted[0]) + 1),
+               +1.0: "D%d" % (xs.index(xs_sorted[-1]) + 1)}
+    exempt = []
+    for sgn, refs in pogo_refs.items():
+        exempt += [(refs[i], refs[i + 1]) for i in range(len(refs) - 1)]
+        exempt.append((refs[-1], end_led[sgn]))
+    FL.check_optics()
+    check_placement(name, place, fps, exempt=exempt)
     ERC()
     net = os.path.join(OUT_DIR, "%s.net" % name)
     generate_netlist(file_=net)
@@ -452,7 +431,7 @@ BOARD_NOTES = {
     # fact, which is why it is repeated in order_options below.
     "via_mm": (0.50, 0.25),
     # ⚠ 0.15 mm TRACK, for the same reason lever_sensor takes it: the tightest parts here
-    # are a 1.00 mm pitch SH and a 0.65 mm pitch HTSSOP-20 with twelve outputs, and the
+    # is a 0.65 mm pitch HTSSOP-20 with twelve outputs, and the
     # default 0.25 does not leave either escape room to turn. 0.15 on 1 oz carries ~0.5 A
     # at a 10 C rise against this board's largest signal load of 15 mA -- the constraint
     # is geometry, not current. The rails keep their own width below.

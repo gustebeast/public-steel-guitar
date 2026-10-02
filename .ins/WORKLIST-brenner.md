@@ -88,3 +88,20 @@ OPEN; an item moves to DONE with the commit that closed it.
 
 12. **Re-finish ui_board, fret_led_mid/key, foot_led** after syncing d3134042+: finish.py
     now runs silk.py and each board gets a white `<board>_silk` part from geom.json.
+
+13. **FOOT STRIP POGO SEAM -- BUILT 2026-10-02, THREE THINGS OPEN** (supersedes 2 and 10).
+    Built: board edge at string 1's motor + 1.60 wall + 0.30 fit (y 30.65, board 24.55
+    wide); raised so the floor is uncut (trough 4.10, LED 2.50 off the window, lips top
+    -63.75); four C5203987 per end at 3.90 pitch; SH sockets gone; +X stop block; the
+    slot cut into the faceplate wall with a 45 deg roof.
+    a. **THE INLET.** A cable socket cannot share the -X end with the pogo row (its lead
+       would have to cross four barrels that fill the trough). Proposal: a short third
+       board in the same channel -- four pogos facing +X, one SH socket facing -X -- that
+       slides in last. New PCB SKU; needs the user's yes.
+    b. **THE -X STOP.** ~0.8 kgf pushes the boards apart. Nothing fixed may stand in the
+       mouth (every hanging part sweeps it), so it has to be a removable printed block
+       with one M4 into an insert flush in the floor, behind the last board.
+    c. **THE CLAMPS.** ceiling_needed() = -63.25. Today's tensioner_1 reaches -65.33 over
+       the -Y lip (y 30.35..31.45): the gate shows that overlap until the redesigned
+       clamps land. NOT SUBMITTED for that reason.
+    Also: light lost to the raise is an ESTIMATE (~a fifth), not measured.
