@@ -337,8 +337,12 @@ def main(argv=None):
     stencil = float(prices["boards"]["assembly_stencil_usd"])
     designs = 0
     for board, geom in sorted(geoms.items()):
-        if board == "optalt":
-            continue                                   # an alternative, not fitted
+        if board in ("optalt", "led_strip"):
+            # optalt is an alternative, not fitted. led_strip is SUPERSEDED (brenner,
+            # 2026-10-01): one instrument carries foot_led x2 + the two fret boards and
+            # nothing else lights it. It was being priced at ~$29 an instrument for as
+            # long as its geom file sat in elec/geom.
+            continue
         qty = board_qty(board)
         if qty is None:
             notes.append("board %r: qty_per_instrument could not be resolved -- EXCLUDED" % board)
