@@ -111,7 +111,7 @@ PARTS = {
     # pickup carrier: the deck pickup-piece (a top_plate panel) holds the pickup on a
     # height plate lifted by 3 M4×20 button-head leadscrew jacks; a -Y M4 cup-tip grub
     # locks the pickup +Y against the plate's +Y wall. All hardware is stocked M4, all +Z.
-    "optical_guard":   (lambda: heal(__import__("src.optical_pickup", fromlist=["e"]).opt_guard()), "petg-gf/optical_guard.step", "PETG-GF - the hand guard over the optical board: a 1.6 roof over every part of the board with no string above it, standing on the board's bare edge and five searched posts, a lip down the board's edge on three sides. The board's own two M4s hold it (x20 now, heads flush in wells); J2 stands through a notch. Prints ROOF-DOWN, the palm's face on the bed"),
+    "optical_guard":   (lambda: heal(__import__("src.optical_pickup", fromlist=["e"]).opt_guard()), "petg-gf/optical_guard.step", "PETG-GF - the hand guard over the optical board: a 1.6 roof over every part of the board with no string above it, standing on searched posts and the two screw bosses; TOP ONLY, the sides are open, and nothing in it is under two beads. The board's own two M4s hold it (x20 now, heads flush in wells); J2 stands through a notch. Prints ROOF-DOWN, the palm's face on the bed"),
     "ui_clamp":        (lambda: heal(__import__("src.ui_panel", fromlist=["e"]).clamp()), "petg-gf/ui_clamp.step", "PETG-GF - the UI clamp plate. It lies against the BOARD'S UNDERSIDE (3.2 thick, a relief under every footprint for the through-hole tails) and two M4x16 pull it up into the deck panel's own bosses, gripping the board between its whole top face and four bearings on the deck. An arm steps up past the board and runs +Y under the display to its far mounting-hole row, where two posts press the module's back into the window ledge - the screen's only positive retention. GF because it is a stiffness part. Prints PLATE-DOWN, its own flat underside on the bed, so every rib and post grows straight up off it"),
     "ui_knob":         (lambda: heal(__import__("src.ui_panel", fromlist=["e"]).knob()), "pctg/ui_knob.step", "PCTG - the UI cap: a O8 shank up through the deck and a O17 disc over it, bored O2.6x1.8 for the Alps shaft's tip. Prints DISC-DOWN (its own flat face on the bed), so the shank and the bore are both vertical and the bore's ceiling is the last thing printed. PCTG because it is the one part of the instrument a player touches every time they change a setting, and the deck it sits on is the same resin"),
     "pickup_zplate":   (lambda: heal(__import__("src.top_plate", fromlist=["e"]).pickup_zplate), "petg-gf/pickup_zplate.step", "PETG-GF — pickup height plate (green pickup area + nubs; 3 M4×20 button-head leadscrew jacks lift/tilt it via heat-set nuts on top, pickup rests on it and slides in X for tone; +Y retention wall + -Y cup-tip grub lock the pickup to the plate; GF keeps it flat on the point loads)"),
@@ -930,6 +930,10 @@ def _electronics_components():
     out = [("pi4", EL.pi4()), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
+           # each board's LETTERING is its own part: white ink the viewer can hide
+           ("pi_cap_silk", EL.pi_cap_silk()),
+           ("motor_ctrl_silk", EL.motor_ctrl_silk()),
+           ("output_panel_silk", EL.output_panel_silk()),
            ]
     out += UI.parts()
     # the fret-light boards and their LEDs. The CELLS are not here -- they are deck
@@ -1286,6 +1290,9 @@ def _optical_fasteners():
     from . import top_plate as TP
     from cadkit.fasteners import M4, headed_screw, seated_insert
     out = []
+    _silk = OP.opt_silk()
+    if _silk is not None:
+        out.append(("optical_silk", _silk))
     from . import bridge_endplate as _BE
     _ohh = TP.JACK_HEAD_H                             # the jacks' ISO 7380 button head
     # headed_screw draws head-top-at-0 with the shank running -Z, which is ALREADY the
@@ -1380,6 +1387,7 @@ def optical_work_components():
            ("optical_cable_pwr", OP.opt_cables("pwr")),
            ("bridge_endplate", PARTS["bridge_endplate"][0]()),
            ("motor_ctrl", EL.motor_ctrl()),
+           ("motor_ctrl_silk", EL.motor_ctrl_silk()),
            ("pi4", EL.pi4()), ("pi_spacer", EL.pi_spacer()),
            ("keyhead_endplate", _KE.keyhead_endplate)]
     # ⚠ AND THE FASTENERS, BECAUSE THEY MOVE WITH THE RETENTION AND THE CACHE DOES NOT KNOW.
@@ -1938,6 +1946,10 @@ _COLORS = {
     "optical_cable_pwr": (0.85, 0.12, 0.10),  # red, as wire_pwr_hot - 24 V in at J2
     "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
     "optical_screw":   (0.72, 0.74, 0.78),   # M4x20 button, through the guard and the board
+    "optical_silk":    (0.95, 0.95, 0.93),   # silkscreen ink, its own part on each board
+    "pi_cap_silk":     (0.95, 0.95, 0.93),
+    "motor_ctrl_silk": (0.95, 0.95, 0.93),
+    "output_panel_silk": (0.95, 0.95, 0.93),
     "optical_guard":   (0.18, 0.18, 0.20),   # the hand guard over the board -- print it
                                              # DARK: it is the one surface facing the
                                              # detectors, so a light one would bounce IR
