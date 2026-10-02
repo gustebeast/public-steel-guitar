@@ -244,6 +244,20 @@ def finish(stem, rounds=1):
     shutil.copy(stem + ".best.drc.json", stem + ".finish.drc.json")
     os.remove(stem + ".best.drc.json")
 
+    # THE SILKSCREEN GOES ON THE BOARD THAT WON, and only there: name and revision, the
+    # test pads' nets, the connectors' pinouts (silk.py). It moves no copper, and every
+    # label is dropped rather than squeezed -- but "cannot add a finding" is a claim, so
+    # the DRC is run again and the claim is checked rather than trusted.
+    try:
+        _run("silk.py", stem)
+        _n2, _nets2, _v2 = _drc(stem)
+        if (_v2, _n2) != (best_v, best_n):
+            print("  !! THE SILKSCREEN CHANGED THE DRC RESULT: %d unconnected, %d "
+                  "violation(s) after it, %d and %d before" % (_n2, _v2, best_n, best_v))
+            best_n, best_v = max(best_n, _n2), max(best_v, _v2)
+    except SystemExit as exc:
+        print("  silk.py did not run (%s): the board has no labels" % (exc,))
+
     # ⚠ verify.py HAD NEVER BEEN RUN BY ANYTHING. Its own docstring says "THE POINT IS
     # TO REMOVE THE HUMAN, NOT TO ADVISE ONE" and that it exits non-zero when a budget is
     # missed -- and nothing called it. It is the only check in this pipeline that asks
