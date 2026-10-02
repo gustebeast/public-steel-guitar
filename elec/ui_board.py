@@ -78,7 +78,14 @@ P = Pin.types.PASSIVE
 
 ENC_FP = "Steel:Alps_RKJXT1F42001"
 DISP_FP = "Connector_PinHeader_2.54mm:PinHeader_1x20_P2.54mm_Vertical"
-RIBBON_FP = "Connector_IDC:IDC-Header_2x07_P2.54mm_Horizontal"
+# ⚠ THE SAME HEADER AS THE PI CAP'S END (user, 2026-10-02: "both ends of the connection are
+# our custom PCB so we can pick whatever connector we want"). This was a 2.54 mm IDC box
+# header, which takes 1.27 ribbon; the cap's end is a 1.27 mm header, which takes 0.635.
+# No cable joins those. The cap cannot take 2.54 (it lives in an 8.5 mm gap), so this end
+# moves: HX PZ1.27-2x7P WZ, LCSC C22438113, right-angle, in stock. The cable is a stock
+# 14-way 1.27 mm IDC socket-to-socket lead. It is NOT shrouded -- nobody stocks a shrouded
+# 1.27 2x7 -- so pin 1 is marked in silk at both ends.
+RIBBON_FP = "Connector_PinHeader_1.27mm:PinHeader_2x07_P1.27mm_Horizontal"
 
 PULLUP = "10k"
 
@@ -126,11 +133,11 @@ DISP_PINS = {
 # where it buys the most: conductor 8 sits beside SCLK on 9, and +3V3 on 10 sits on its
 # other side. Both are AC grounds at the Pi, so the clock runs between two quiet
 # conductors for the whole length. The switch lines are slow and share the far end.
-RIBBON_PINS = {
-    1: "SW_A", 2: "SW_B", 3: "SW_C", 4: "SW_D", 5: "SW_PUSH", 6: "ENC_A",
-    7: "ENC_B", 8: "GND", 9: "SCLK", 10: "+3V3", 11: "SDIN", 12: "DC",
-    13: "CS_N", 14: "RES_N",
-}
+# ⚠ THE ORDER IS harness.UI_RIBBON NOW, the list the Pi cap's J5 is also held to. The
+# order that stood here (switches on 1-7, ground on 8) was this board's own and matched
+# nothing at the far end.
+import harness as _H  # noqa: E402
+RIBBON_PINS = {_i + 1: _n for _i, _n in enumerate(_H.UI_RIBBON)}
 
 # -- SW1: the Alps part's own pin names, off its drawing and LCSC's symbol --
 ENC_PINS = {
@@ -150,8 +157,8 @@ PULLED_UP = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B")
 assert len(RIBBON_PINS) == UI.RIBBON_N, (
     "J2 has %d ways and the CAD draws a %d-way ribbon"
     % (len(RIBBON_PINS), UI.RIBBON_N))
-assert abs(UI.RIBBON_PITCH * 2 - 2.54) < 1e-9, (
-    "the ribbon's %.2f pitch is not half the header's 2.54" % UI.RIBBON_PITCH)
+assert abs(UI.RIBBON_PITCH * 2 - 1.27) < 1e-9, (
+    "the ribbon's %.3f pitch is not half the header's 1.27" % UI.RIBBON_PITCH)
 
 
 def _r(tag, value, desc):
@@ -195,9 +202,10 @@ def ui_board():
     for pin, net in DISP_PINS.items():
         nets[net] += j1[pin]
 
-    j2 = Part(name="DC3-2.54-14P", ref_prefix="J", ref="J2", tag="J2",
-              dest="NETLIST", tool="skidl", value="DC3-2.54-14PAL",
-              description="2x7 right-angle IDC: the 14-way ribbon to the Pi's GPIO",
+    j2 = Part(name="PinHeader_2x07", ref_prefix="J", ref="J2", tag="J2",
+              dest="NETLIST", tool="skidl", value="PZ1.27-2x7P",
+              description="1.27 mm 2x7 right-angle header (LCSC C22438113): the 14-way "
+                          "ribbon to the Pi cap's J5, way for way",
               footprint=RIBBON_FP,
               pins=[Pin(num=k, name=v, func=P) for k, v in RIBBON_PINS.items()])
     for pin, net in RIBBON_PINS.items():
@@ -239,9 +247,13 @@ _SW_X, _SW_Y = _SW_BODY_X + _ENC_OFF[0], _SW_BODY_Y + _ENC_OFF[1]
 
 # J2: its shroud's mouth flush with the board's -X edge, facing -X.
 # Rotated 180, so the body lies -X of the pad centroid.
-_J2_FAB_AHEAD = 12.06      # KiCad IDC-Header_2x07..Horizontal, measured from the PAD
-_J2_FAB_BACK = 1.64        #   CENTROID: the shroud reaches 12.06 toward its mouth and
-_J2_FAB_HALF = 12.77       #   1.64 behind the rows; 12.77 either way along the rows
+# ⚠ THE PINS OVERHANG THE EDGE ON PURPOSE. The mating IDC socket is about 5.5 mm across
+# its two rows and the rows stand ~1.4 and ~2.7 off the board, so a socket pushed on over
+# laminate would have to go 0.7 mm INTO it. The header's plastic stops at the edge and its
+# 4 mm of pin, and the socket on them, hang past it.
+_J2_FAB_AHEAD = 2.135      # KiCad PinHeader_2x07_P1.27mm_Horizontal, from the PAD CENTROID:
+_J2_FAB_BACK = 1.775       #   2.135 to the plastic's front face (the pins run 4.0 further),
+_J2_FAB_HALF = 4.95        #   1.775 behind the rows; 4.95 either way along the rows
 _J2_X = -_HW + _J2_FAB_AHEAD
 # ...and its +Y end has to stay clear of the display module hanging over the board.
 # The module's -Y edge, in board coordinates:
@@ -308,9 +320,10 @@ BOARD_NOTES = {
     "layers": 2,
     "thickness_mm": UI.BOARD_T,
     "placements": PLACEMENTS,
+    "edge_escape": ("J2",),       # the ribbon header's edge-side row: layout._edge_row_escape
     "ref_pos": {
         "J1": (round(_J1_X - 12.0, 3), round(_J1_Y - 2.8, 3)),
-        "J2": (round(_J2_X - 2.0, 3), round(_J2_Y - 14.2, 3)),
+        "J2": (round(_J2_X + 3.0, 3), round(_J2_Y - 6.4, 3)),
         "SW1": (round(_SW_X, 3), round(_SW_Y - 10.4, 3)),
         "C1": (19.0, 8.2), "C2": (24.5, 8.2),
         **{"R%d" % (i + 1): (round(_R_X0 + i * _R_DX, 3), _R_Y + 1.6) for i in range(7)},

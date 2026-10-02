@@ -544,8 +544,8 @@ off the instrument**, and the panel then goes on with all of it attached.
 
    **The ribbon is creased twice, 45° each, and the creases are not optional.** The run
    is flat all the way — width across the instrument, thickness vertical, because there
-   is only 10.70 mm of headroom under the deck and 17.78 mm of ribbon on edge does not
-   fit — so both of its 90° turns are in the cable's own plane, and flat cable turns in
+   is only 10.70 mm of headroom under the deck and the ribbon is routed flat under it
+   (8.89 mm wide: 14 ways of 0.635 mm cable, since 2026-10-02) — so both of its 90° turns are in the cable's own plane, and flat cable turns in
    plane by being folded. Fold them before the panel goes on, with the red stripe on the
    outside of each turn, and the cable lies flat the whole way; fold them after and you
    are creasing a cable that is already plugged in at both ends. 500 mm of cable against
@@ -563,11 +563,12 @@ off the instrument**, and the panel then goes on with all of it attached.
 **Onto the instrument**
 
 8. Slide the mid panel on, station and all.
-9. Plug the ribbon's other end onto the Pi's GPIO header. ⚠ **WHICH SEVEN PIN-PAIRS IS
-   NOT DECIDED YET** — see the UI board section of `BOM.md`. No block of seven on the
-   Pi's header carries all fourteen of these ways, so this step is waiting on either an
-   adapter or a shorter signal list, and a socket pushed onto pins 1–14 would land on the
-   motor controller's 5 V feed.
+9. Plug the ribbon's other end onto J5 of the Pi cap, at the cap's board edge. Both ends
+   are the SAME right-angle 1.27 mm 2×7 pin header (LCSC C22438113) with the same way
+   order (`elec/harness.UI_RIBBON`), so the cable is a plain straight-through 14-way
+   IDC lead. ⚠ **The header has no shroud, so nothing stops the socket going on
+   reversed**: the red stripe goes to pin 1, which the silkscreen marks on both boards.
+   Check both ends before the first power-up — way 10 is 3V3.
 10. Slide the keyhead panel on.
 11. Fit the keyhead endplate.
 
@@ -580,9 +581,10 @@ connector happens with the panel off or with the keyhead end open.
   because that is the one region of a module's back guaranteed to be clear of
   components. Newhaven's rear view shows parts and their drawing does not dimension
   them — check it.
-* **The right-angle ribbon header's height.** `src/board_geom.HEIGHT` carries 10.0 mm for
-  it as an ESTIMATE (ZHOURI publish no drawing through LCSC) and there is 11.40 mm
-  between the board's top face and the deck's underside.
+* **The ribbon socket against the board edge.** The header's pins overhang the edge so
+  the IDC socket hangs off the board rather than sitting on it; the socket's ~5.5 mm
+  across the rows is a typical figure, not one read off a drawing. Check that the
+  socket seats fully with the board in its cradle.
 
 
 ## Fret lighting boards (2026-09-30, seam joint built the same day)
@@ -608,27 +610,33 @@ sit at 6.30 when the panels touch, only 0.60 above that limit.
 anything tall to the fret field without asking what it does to that cell's floor bounce.
 
 
-## Foot lighting strip (2026-09-30)
+## Foot lighting strip (2026-09-30, pogo seam 2026-10-02)
 
 Two boards of one design, end to end in a channel on the chassis bottom, firing down
-through the light window. **It goes in before the −X endplate.**
+through the light window. **It goes in before the −X endplate.** There is no cable between
+the two boards: four spring pins under each board's end meet the next board's tip to tip.
 
-1. **Join the two boards with the SH jumper**, outside the instrument: the −X board's J2
-   to the +X board's J1. Attach the −X board's J1 cable at the same time.
-2. **Assemble the chassis, leaving the −X endplate off.**
-3. **Slide the pair in from −X, far board first**, until the −X board's end is flush with
-   the window's −X end. The channel holds it on five faces; nothing screws down.
-4. **Run the J1 cable to the Pi daughter board** and plug it.
-5. **Fit the −X endplate**, which closes the channel and is what stops the strip sliding
-   back out.
+1. **Assemble the chassis, leaving the −X endplate off.**
+2. **Slide the far (+X) board in from −X**, LEDs down, all the way to the stop block at
+   the channel's +X end.
+3. **Slide the near (−X) board in behind it and push it home.** The last 3.4 mm is against
+   the eight spring pins (about 0.8 kgf); the boards' ends touch when it is seated.
+4. ⚠ **OPEN: what holds the near board pushed in, and what feeds it.** The near board's
+   −X pin set is the strip's inlet. The piece that mates it and takes the spring load is
+   not designed yet (.ins/WORKLIST-brenner.md). Until it is, the strip is not powered and
+   the near board will sit 3.4 mm back.
 
-⚠ **The +X board's J2 is a spare** — it exists because both boards are the same part
-number. Leave it unplugged.
+⚠ **The pins at the strip's two outer ends stand 1.7 mm past the board.** Do not stand a
+board on its end, and keep the +X end's lane clear: the far board's unused set is live at
+24 V whenever the strip is.
 
-⚠ **Nothing on these boards may stand more than 3.40 mm off the PCB.** The channel's
-trough is 1.90 (the LED sets it) with a 1.50 relief under the component lane, and the
-board is installed face DOWN. That is why the connectors are JST SH rather than the PH
-used everywhere else on the instrument.
+⚠ **Nothing on these boards may stand more than 3.80 mm off the PCB.** The board is
+installed face DOWN, 4.10 above an uncut floor; the tallest part is the spring pin's
+barrel at 3.80.
+
+⚠ **The channel's −Y wall is string 1's motor wall where the two meet.** The slot is cut
+into the foot of that motor's faceplate wall, leaving 1.6 mm against the motor, with a
+45° roof over the board.
 
 
 ## Fret lighting boards (2026-09-30)
