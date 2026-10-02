@@ -163,6 +163,9 @@ LCSC = {
     "MX126-5.0-02P": "C5188434",    # MAX MX126-5.0-02P-GN01-Cu-S-A, stock 48,416
     # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
     # checked against it pin for pin rather than chosen by name:
+    "MCP4261-103E/ST": "C185580",   # dual 10k digital pot, TSSOP-14 -- ⚠ 96 in stock on
+                                    # 2026-10-01; re-check before ordering
+    "SN74LVC1G3157DCKR": "C38663",  # SPDT analog switch, SC-70-6
     "TLV9061IDBVR": "C398358",      # TI, SOT-23-5: 1 OUT 2 V- 3 IN+ 4 IN- 5 V+ -- exact
                                     # match to U7/U8. Stock 301,906. Same family as the
                                     # optical board's TIAs. RRIO, 5.5 V max on a 5 V rail.
@@ -213,11 +216,25 @@ OPEN_VALUES = frozenset({
                            # string ever changes, that is the footprint moving
                            # under it, and the build should stop until someone
                            # confirms the two still agree
+    "PZ1.27-2x7P",         # the pi_cap's UI ribbon header, 1.27 mm 2x7 RIGHT-ANGLE. No
+                           # part number has been checked against this footprint
+                           # (2026-10-02); the connector choice is the UI board's.
     # (The placeholders that stood here -- "FRT5-class 5V", "PCM5102A-class", "CH334-class HS
     #  hub" -- and PCM1808PWR's hold are gone with the 2026-09-21 rewrite: real parts, real
     #  pinouts, sourced above. What still wants a second pair of eyes is the ANALOG DESIGN
     #  -- bias, coupling, the pickup's 1M load -- not a part number.)
 })
+
+# ORDER-FORM CHOICES THAT APPLY TO EVERY BOARD (2026-10-02 review). None is in a gerber.
+ORDER_EVERY_BOARD = (
+    ("mark", "Remove Mark (the fab's order number). Left on, it is printed wherever the "
+             "fab finds room -- on the optical board that can be beside the sensors."),
+    ("rails", "Edge rails and fiducials: Added by JLCPCB. No board carries its own "
+              "fiducials, and the small ones are assembled in a panel the fab makes."),
+    ("placement", "Confirm Parts Placement: Yes. An engineer checks polarity and rotation "
+                  "before the run; ROTATION-CHECK.txt is the list to compare against."),
+    ("prod file", "Confirm Production File: Yes. The last look at the panel before it is cut."),
+)
 
 # Generic passives are JLCPCB BASIC parts chosen at order time from the package and
 # value, which is normal practice and not an omission -- an 0402 100nF is not a
@@ -421,11 +438,15 @@ def fab(board):
     # order_options gets them written into its own zip, next to the gerbers, where
     # whoever opens it to place the order will see them.
     opts = json.load(open(stem + ".board.json", encoding="utf-8")).get("order_options")
-    if opts:
-        with open(os.path.join(d, "ORDER.txt"), "w", encoding="utf-8") as f:
-            f.write("%s -- order form settings that are NOT in the gerbers\n\n" % board)
-            for k in sorted(opts):
-                f.write("  %-12s %s\n" % (k + ":", opts[k]))
+    # EVERY package gets an ORDER.txt now: the four settings in ORDER_EVERY_BOARD apply to
+    # all of them, and a board with none of its own used to ship with no note at all.
+    with open(os.path.join(d, "ORDER.txt"), "w", encoding="utf-8") as f:
+        f.write("%s -- order form settings that are NOT in the gerbers\n\n" % board)
+        for k in sorted(opts or {}):
+            f.write("  %-12s %s\n" % (k + ":", opts[k]))
+        f.write("\n  on every board:\n")
+        for k, v in ORDER_EVERY_BOARD:
+            f.write("  %-12s %s\n" % (k + ":", v))
     crit, _total = _rotation_critical(pcb)
     with open(os.path.join(d, "ROTATION-CHECK.txt"), "w", encoding="utf-8") as f:
         f.write("%s -- the placements a rotation difference can DAMAGE\n\n" % board)
@@ -675,7 +696,9 @@ def _sweep_stale(names):
     for z in sorted(glob.glob(os.path.join(FAB_DIR, "*.zip"))):
         board = os.path.splitext(os.path.basename(z))[0]
         gen = os.path.join(HERE, "%s.py" % board)
-        if not os.path.isfile(gen):
+        # BOARDS first, as the second sweep below already does: leg_pogo.py writes four
+        # boards and none is named after it, so this deleted all four packages every run.
+        if board not in BOARDS and not os.path.isfile(gen):
             os.remove(z)
             print("  removed %s.zip -- no generator; that board is not in the design"
                   % board)
