@@ -281,6 +281,10 @@ TAIL = {
     "Alps_RKJXT1F42001": 3.5,                    # ten terminals + the position lug
     "PinHeader_1x20_P2.54mm_Vertical": 3.0,      # Kinghelm's "end connection pin"
     "IDC-Header_2x07_P2.54mm_Horizontal": 3.0,
+    # the UI ribbon header since 2026-10-02 (LCSC C22438113). ESTIMATE: 1.27 mm headers
+    # are drawn with ~3 mm of solder tail from the seating plane, so ~1.4 shows under a
+    # 1.6 mm board; 1.5 here. No drawing was read for this part -- measure one.
+    "PinHeader_2x07_P1.27mm_Horizontal": 1.5,
     "R_0402_1005Metric": 0.0, "C_0402_1005Metric": 0.0, "C_0805_2012Metric": 0.0,
     # the fret LED boards are SURFACE MOUNT THROUGHOUT, and that is a requirement
     # rather than a preference: the board's underside sits 1.00 mm over the CAN
