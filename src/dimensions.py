@@ -770,16 +770,15 @@ BELT_CLAMP_L    = 39.6      # the clamp along the belt, lifters and all. MEASURE
 CLAMP_END_CLR   = 5.0       # belt left between the clamp and each pulley flange
 BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
                                  screw_pulley_z(i) - motor_pos(i)[2])
-                      for i in range(N_STRINGS))               # 172.2, string 10
-# !!!! DEFERRED -- THIS NUMBER IS NOT SUPPORTED ON EVERY STRING (2026-10-01, owner: branner,
-# BLOCKED on the user's choice of fix). It is sized pulley-to-pulley, which is wrong IN KIND:
-# the clamp's free span is what its neighbours, the chassis and the bridge endplate leave it,
+                      for i in range(N_STRINGS))               # 194.0, string 10
+# !!!! DEFERRED -- THE CLAMP AS DRAWN CANNOT RUN THIS TRAVEL (owner: branner; BLOCKED on the
+# user's choice of clamp, 2026-10-02). The sum below is pulley-to-pulley, which is wrong IN
+# KIND: a clamp's free span is what its neighbours, the chassis and the endplate leave it,
 # and that is a MEASUREMENT, per string (tools/clamp_study.py, docs/belt-clamp-travel.md).
-# Measured clear travel, clamp at its nominal twist: strings 2-8 >= 8.3, string 1 9.6,
-# STRING 9 6.7, STRING 10 3.4 (its clamp is inside bridge_endplate for the first 93 mm).
-# With +-20 deg of twist error allowed for (user: the clamp turns with the belt and needs
-# room for it) it is WORSE: 1 -> 2.8, 8 -> 6.1, 9 -> 5.0, 10 -> 1.1.
-# Do not build on 7.97 for strings 1, 8, 9 or 10 until this note is gone.
+# Measured there: the screw-under-the-belt clamp does not fit on EITHER side of the belt
+# (inside the loop the two runs close to 4.0 and the next string's belt passes through;
+# outside, strings 1, 8, 9 and 10 fall short); a screw BESIDE the belt carries 6.2 / 6.5 on
+# strings 9 / 10; a slim screwless clip carries the whole travel on all ten.
 # ...AND NO MORE THAN IS WANTED. With the bank against the endplate the shortest run is
 # 194.0 and this sum allows 9.53; the nut does not get travel it has no use for.
 CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD

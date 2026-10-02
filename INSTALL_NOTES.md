@@ -92,9 +92,8 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   pulley it has just been travelling toward**. From there the nut's whole travel carries the
   clamp away from that pulley and stops it about 5 mm short of the other one on string 10.
 - **Why:** the clamp is part of the belt and moves 14 mm for every 1 mm of nut travel. The
-  nut's travel (7.97 mm, ceiling to floor) is sized so the clamp on the SHORTEST belt
-  (string 10) uses 111.6 of the 121.6 mm it has between pulleys. Those two 5 mm gaps are the
-  whole margin, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
+  nut's travel (8.35 mm, ceiling to floor) has the clamp on the SHORTEST belt (string 10)
+  use 116.9 of the 143.4 mm it has between pulleys. The 5 mm gap at this end is yours to set, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
   with the nut somewhere in mid-travel, and it reaches a pulley before the nut reaches its stop.
 - **Strings 1-8 are forgiving** (their belts are longer; string 9 has about 15 mm per end),
   but use the same rule everywhere so there is one procedure.
@@ -496,33 +495,18 @@ termination jumper.
 
 ---
 
-## Bus B into the body (the wiring port)
+## Bus B under the body (no port)
 
-Everything on bus B lives **below** the chassis floor and the motor controller lives
-above it. The knee levers hang under the body (LKL's J1 sits at z −95, the floor slab is
-−81.9 to −71.4) and the pedal bar's four conductors come up the −X/+Y leg and out of the
-body adapter onto the **underside**. So bus B crosses the floor exactly once, through one
-port, and both cables make that crossing.
-
-### BB-1 — The port
-
-- **Where:** in the floor slab on **mortise station 3's own slot line** (x −597.3), 7.2
-  wide like the station itself, running 21.6 along Y from y 17.95 down to −3.65.
-- **Why there:** stations 1–3 are the ones the −X/+Y leg's foot tenons take, so no lever
-  can stand there whatever the port does; station 4 is the first one a lever can use.
-  Putting the port on station 3's centre at station 3's width leaves the **grid's own
-  wall** (3.20) to station 4 — there is no clearance to pick and nothing to keep in step
-  if the pitch moves.
-- **It passes a made-up connector**, not just bare wire: 21.6 × 7.2 takes the 8-way PH
-  head (19.9 × 5.5) with 0.85 a side. Build the harness on the bench, crimp it, and feed
-  the head through — unlike the leg's own channel, which is a 2.4 tunnel and has to be
-  threaded bare.
+Everything on bus B lives **below** the chassis floor, and so does the connector it lands
+on: the motor controller stands through the floor behind string 1's motor, and its J2
+hangs below the slab where a hand reaches it from outside. So bus B **never crosses the
+floor**. (There was a 7.2 × 21.6 port through the slab at x −597.3 for it; it went on
+2026-10-02, when string 1's motor moved over that spot.)
 
 ### BB-2 — The pedal cable
 
 One cable from the female pogo board's ZR, down the leg, out of the body adapter's
-channel, across ~32 mm of the instrument's **underside**, up through the port, and onto
-J2 ways 1–4. 28 AWG the whole way — the leg's 2.4 channel is what sets the gauge, not the
+channel, along the instrument's **underside**, and onto J2 ways 1–4 from below. 28 AWG the whole way — the leg's 2.4 channel is what sets the gauge, not the
 26 AWG the lever segments use between boards. **There is no connector at the adapter's
 face**, so the run is continuous; the only exposed length is the underside crossing.
 
@@ -530,12 +514,8 @@ face**, so the run is continuous; the only exposed length is the underside cross
 
 Four new conductors from J2 ways 5–8 to **LKL's J1 ways 1–4** — the end of the lever
 chain the controller feeds. Out of LKL along its plug's axis past the housing, along
-under the instrument, up through the port beside the pedal cable, then inboard to the
-controller.
+under the instrument beside the pedal cable to the controller's J2, from below.
 
-- **Route it −Y first, then inboard.** Motor 0 fills x −583.6..−541.3 over y −41.2..28.8
-  at this height. The run stays outboard of the bank until it is past it in Y.
-- **Order:** both cables want to be in before the tray goes in over them.
 
 > ⚠ **The controller has ONE 8-way J2, not two jacks.** Both cables land on it — pedals
 > on ways 1–4, levers on 5–8 — which is the mid-bus pass-through its netlist describes,

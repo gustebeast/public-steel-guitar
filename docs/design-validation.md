@@ -34,11 +34,7 @@ Nothing here is fixed. This is a list.
 
 ## B1 — reach every pitch the copedent asks for
 
-> **2026-10-01: the travel is 7.97 mm now, not 8.35.** It is set by hardware: ceiling (top stop) to a
-> raised floor in the screw rail, sized so string 10's belt clamp stops 5 mm short of each pulley
-> (`CARRIAGE_TRAVEL`, `TRAVEL_WANT` in `src/dimensions.py`). 8.35 is what the string physics
-> below asks for; read every "8.35" in this section as that want. The 7.26 mm worst-string
-> estimate still fits, with 0.71 mm over instead of 1.09.
+> **2026-10-02: the travel is 8.35 mm.** Ceiling (top stop) to the bearing (floor), `CARRIAGE_TRAVEL` in `src/dimensions.py`. It was 7.97 for a day, cut down to what string 10's belt run allowed; the motor bank has since moved up to the keyhead endplate and the run (194.0) allows more than is wanted. Whether the belt CLAMP can run that travel is a separate and open question: `docs/belt-clamp-travel.md`.
 
 **The travel budget is 8.35 mm** (`TRAVEL_WANT`, `src/dimensions.py`),
 and it is three terms:
