@@ -469,6 +469,36 @@ BOARD_NOTES = {
 }
 
 
+# ── THE PI'S 5 V, DECLARED (2026-10-01) ──────────────────────────────────────────────────
+# J2 (from motor_ctrl's J5) -> J1 pins 2 and 4 is the Pi's ENTIRE supply, up to ~3 A, and
+# the router laid it as 67 mm of 0.25 mm (0.88 A at a 10 C rise) through ONE 0.3 mm via.
+# Same fault, same day, as motor_ctrl's side of this cable. It is now one F.Cu lane:
+# two 0.4 mm vias in each of J2's two 5 V lands (J2 is on the back), 2 mm (3.95 A) across
+# the board between the cap row's stitch vias and the header, round the east end of the
+# header outside pin 1, and into pins 2 and 4. The return is the two GND pours.
+# The caps' stubs stay the router's.
+BOARD_NOTES["vias"] = list(BOARD_NOTES.get("vias", [])) + [
+    ("+5V_PI", x, y, 0.4, 0.8) for x in (-19.85, -17.35) for y in (6.0, 8.2)]
+BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
+    ("+5V_PI", "F.Cu", 1.2, [(-19.85, 8.2), (-19.85, 6.0), (-17.35, 6.0), (-17.35, 8.2)]),
+    ("+5V_PI", "F.Cu", 2.0, [(-18.6, 6.0), (-18.6, 2.5), (1.5, 2.5), (4.4, -0.4),
+                             (25.3, -0.4)]),
+    ("+5V_PI", "F.Cu", 1.6, [(25.3, -0.4), (26.1, -1.2), (26.1, -5.77), (24.13, -5.77)]),
+    ("+5V_PI", "F.Cu", 1.2, [(24.13, -5.77), (21.59, -5.77)]),
+]
+
+# ⚠ AND THE HEADER'S WEST HALF NEEDS ITS OWN GROUND BRIDGE. The F.Cu pour cannot pass
+# between J1's pads (0.84 mm gaps, less two clearances), so the ground south of the header
+# reaches the rest only where the router happens to leave B.Cu open -- and with the lane in
+# it did not: UI_SW_PUSH ran a U round the whole west cluster (three B fragments, two F,
+# J1.30 and J1.34 in them) and no via site joins it to the main pour on either face
+# (searched: 0 sites). So the link is DRAWN, before routing, where no route has used
+# F.Cu: from J1.30 up through the gap between pins 29 and 31 into the strip the lane leaves
+# north of the header. 0.25 mm in a 0.84 mm gap, 0.295 a side.
+BOARD_NOTES["tracks"] += [("GND", "F.Cu", 0.25, [(-11.43, -5.77), (-12.70, -4.50),
+                                                (-12.70, -1.20)])]
+
+
 if __name__ == "__main__":
     pi_cap(tag="picap")
     ERC()

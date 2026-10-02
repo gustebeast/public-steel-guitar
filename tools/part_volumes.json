@@ -7,7 +7,7 @@
   },
   "adjust_tenon": {
    "material": "petg-gf",
-   "volume_mm3": 124944.2
+   "volume_mm3": 124967.6
   },
   "bar_latch_collar": {
    "material": "petg-gf",
@@ -19,7 +19,7 @@
   },
   "body_adapter": {
    "material": "petg-gf",
-   "volume_mm3": 84077.9
+   "volume_mm3": 84084.5
   },
   "body_adapter_mx_my": {
    "material": "petg-gf",
@@ -83,7 +83,7 @@
   },
   "fixed_tenon": {
    "material": "petg-gf",
-   "volume_mm3": 131860.6
+   "volume_mm3": 131884.0
   },
   "keyhead_endplate": {
    "material": "petg-gf",
@@ -131,7 +131,7 @@
   },
   "pedal_bar_a": {
    "material": "petg-gf",
-   "volume_mm3": 401331.9
+   "volume_mm3": 401336.5
   },
   "pedal_bar_b": {
    "material": "petg-gf",

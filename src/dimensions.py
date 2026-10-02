@@ -648,6 +648,15 @@ TEE_TAIL_CY     = 2.0       # THT tail line, board-local +Y (6.0 in from the +Y 
 TEE_TAIL_DROP   = 1.8       # how far those tails hang below the board's underside
 TEE_FIT         = 0.3       # board fit in its seat
 TEE_WALL_OVER   = 1.2       # seat walls stand this far over the board's top face
+# ⚠⚠ DEFERRED -- THIS 70 IS NOT THE PART, AND A GREEN GATE DOES NOT MEAN THE MOTOR FITS OR
+# WIRES (2026-10-01; owner: LEAD; blocked on ONE MEASURED MOTOR). The SERVO42D MT we buy is
+# a 40 mm motor (makerbase3d listing) with a ~11 mm driver behind it: ~51, not 70. It also
+# has things the box below does not -- a coil plug ~5 mm proud of one side, and power and
+# CAN on SCREW TERMINALS on two opposite edges, which in the only rotation that drops into
+# a bay face the bay's side walls with 0.05 mm. Every driver dimension is scaled off
+# photographs (+-2 mm), so nothing here or in motor_bank / chassis changes until a unit is
+# measured. The study and the candidate arrangement: docs/servo42d-fit.md; the detailed
+# standalone model: src/servo42d.py (not in the build).
 MOTOR_BODY_L    = 70.0      # faceplate -> back of the driver box (the SERVO42D's 42.3 motor
                             # plus its driver stack). The pocket and the CAN pigtail's exit
                             # both hang off it; asserted against components.motor in build.py
@@ -750,6 +759,15 @@ CLAMP_END_CLR   = 5.0       # belt left between the clamp and each pulley flange
 BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
                                  screw_pulley_z(i) - motor_pos(i)[2])
                       for i in range(N_STRINGS))               # 172.2, string 10
+# !!!! DEFERRED -- THIS NUMBER IS NOT SUPPORTED ON EVERY STRING (2026-10-01, owner: branner,
+# BLOCKED on the user's choice of fix). It is sized pulley-to-pulley, which is wrong IN KIND:
+# the clamp's free span is what its neighbours, the chassis and the bridge endplate leave it,
+# and that is a MEASUREMENT, per string (tools/clamp_study.py, docs/belt-clamp-travel.md).
+# Measured clear travel, clamp at its nominal twist: strings 2-8 >= 8.3, string 1 9.6,
+# STRING 9 6.7, STRING 10 3.4 (its clamp is inside bridge_endplate for the first 93 mm).
+# With +-20 deg of twist error allowed for (user: the clamp turns with the belt and needs
+# room for it) it is WORSE: 1 -> 2.8, 8 -> 6.1, 9 -> 5.0, 10 -> 1.1.
+# Do not build on 7.97 for strings 1, 8, 9 or 10 until this note is gone.
 CARRIAGE_TRAVEL = (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
                    - 2 * CLAMP_END_CLR) / BELT_PER_MM          # 7.97
 NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -26.17, the FLOOR: the
