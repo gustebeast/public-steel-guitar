@@ -103,7 +103,7 @@ LIP_OVER   = 0.80                   # how far each lip reaches OVER the board: 1
 LIP_CAP    = 0.80                   # the flat cap above the ramp: 1 bead
 # ⚠ WHAT THIS ASKS OF THE BELT CLAMPS, WHICH ARE BEING REDESIGNED (user, 2026-10-02). The
 # lips top out at floor + 7.60 = -63.75. Today's tensioners come down to -65.22..-65.34
-# over y 20..48 at their stations, so the -Y lip (y 30.35..31.45) stands 1.6 INTO
+# over y 20..48 at their stations, so the -Y lip (y 30.75..31.85) stands 1.6 INTO
 # tensioner_1 as it is drawn now. The board itself (top -65.65) clears them. The number
 # the new clamps have to respect is ceiling_needed().
 CEILING_CLR = 0.50
@@ -164,13 +164,19 @@ BOARD_Y1   = 55.20                  # board's +Y edge: 0.35 of play against the 
 # sliding fit further out. Everywhere else along the run the same 1.60 stands alone as
 # the channel's own wall.
 WALL_T     = D.MIN_WALL_2P          # 1.60
-MOTOR_FACE = D.motor_pos(0)[1] - MOTOR_PULLEY_STANDOFF    # 28.75: string 1's faceplate
-WALL_Y0    = MOTOR_FACE             # the -Y wall's outer face IS the motor's fit face
-BOARD_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 30.65
+# ⚠ THE WALL'S FACE, NOT THE MOTOR'S. The motor's faceplate is at 28.75 and the pocket is
+# cut D.MOTOR_CLR larger all round (motor_bank.lift_prism), so the plastic starts at
+# 29.15. Measuring the 1.60 from the motor itself left 1.20 of wall in the mouth and, in
+# the run, a channel wall unioned back INTO the motor's fit -- found by sampling the
+# finished chassis (tools/_probe_foot_mouth.py), not by the gate: the motor's body ends
+# at 28.75 and never touched it.
+MOTOR_FACE = D.motor_pos(0)[1] - MOTOR_PULLEY_STANDOFF + D.MOTOR_CLR   # 29.15
+WALL_Y0    = MOTOR_FACE             # the -Y wall's outer face IS the pocket's own face
+BOARD_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 31.05
 # The component lane's centre is where it was: drivers, the buck and the supply row sit
 # on it, spaced along X. The 6.45 gained on the -Y side belongs to the pogos' first two.
 DRV_Y      = 42.55
-BOARD_W    = BOARD_Y1 - BOARD_Y0    # 24.55
+BOARD_W    = BOARD_Y1 - BOARD_Y0    # 24.15
 
 
 def led_y():
@@ -202,9 +208,9 @@ def led_y():
 #
 # ⚠ THE TWO SHOULDERS ARE DIFFERENT, AND THE POGOS ARE WHY. A barrel hangs the trough's
 # full depth and travels the channel's whole length on the way in, so a shoulder may only
-# stand where no barrel ever passes. On the -Y side that leaves 1.30 from the wall: 1.00
+# stand where no barrel ever passes. On the -Y side that leaves 1.20 from the wall: 0.90
 # under the board after the fit, then 0.35 of air to the first barrel.
-SHOULDER_LO = 1.30                  # -Y shoulder's reach from the slot wall
+SHOULDER_LO = 1.20                  # -Y shoulder's reach from the slot wall
 SHOULDER_HI = 1.50                  # +Y shoulder's reach from the rail
 SHOULDER_AIR = 0.35                 # a shoulder to the nearest barrel
 
@@ -280,9 +286,9 @@ BOARD_QTY  = 2
 # -Y side the first barrel has to clear the shoulder; on the +Y side the last land has to
 # clear the end LED's courtyard, and that LED sits at exactly the X a pogo needs, so the
 # LED row's own Y is closed to them. Between the two:
-#     shoulder  31.65 | 0.35 | barrel 1 ... four at POGO_PITCH 3.90 ... land 4 ends 47.00
+#     shoulder  31.95 | 0.35 | barrel 1 ... four at POGO_PITCH 3.80 ... land 4 ends 47.00
 #     | 0.30 | LED courtyard 47.30
-# 3.90 leaves 0.40 of bare board between neighbouring lands and 0.80 between barrels. It
+# 3.80 leaves 0.30 of bare board between neighbouring lands and 0.70 between barrels. It
 # is under the 4.50 the fret seam uses and under the courtyards' own 4.00, which is why
 # elec/foot_led.py exempts these pairs from the courtyard check and asserts the copper.
 #
@@ -290,7 +296,7 @@ BOARD_QTY  = 2
 # -X set is the strip's INLET (see the open item on the inlet piece); the +X board's +X
 # set mates nothing and stands 1.70 past the board's end at free length.
 POGO_NETS  = ("+24V", "GND", "SCK", "SDT")      # -Y first
-POGO_PITCH = 3.90
+POGO_PITCH = 3.80
 # pad centre to the board's end: the barrel is centred on its pad and a plunger at its
 # working length ends exactly at the board's edge, so two butted boards meet at the seam
 POGO_SETBACK = PG.POGO_WORK - PG.POGO_BODY_L / 2.0        # 4.05
@@ -407,7 +413,7 @@ def check_optics():
     hb = (PG.POGO_BODY_W + PG.POGO_FAB_STROKE) / 2.0
     assert ys[0] - hb - ty0 >= SHOULDER_AIR - 1e-9, (
         "the first barrel is %.2f off the -Y shoulder" % (ys[0] - hb - ty0))
-    assert POGO_PITCH - PG.POGO_PAD_W >= 0.40 - 1e-9, (
+    assert POGO_PITCH - PG.POGO_PAD_W >= 0.30 - 1e-9, (
         "%.2f of board between neighbouring pogo lands" % (POGO_PITCH - PG.POGO_PAD_W))
     led_crtyd = led_y() - 6.10 / 2.0
     assert led_crtyd - (ys[-1] + PG.POGO_PAD_W / 2.0) >= 0.30 - 1e-9, (

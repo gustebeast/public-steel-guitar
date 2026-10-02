@@ -105,3 +105,11 @@ OPEN; an item moves to DONE with the commit that closed it.
        the -Y lip (y 30.35..31.45): the gate shows that overlap until the redesigned
        clamps land. NOT SUBMITTED for that reason.
     Also: light lost to the raise is an ESTIMATE (~a fifth), not measured.
+
+14. 2026-10-02 later: item 13 SUBMITTED with the four tensioner_1 pairs deferred (lead +
+    branner). The -Y wall is measured from the POCKET's face (29.15), not the motor's
+    (28.75): board edge 31.05, board 24.15 wide, pogo pitch 3.80 (0.30 between lands),
+    -Y shoulder 1.20. 13a (inlet) and 13b (-X stop) are still open and still mine.
+15. `board_geom.TAIL` for C22438113 (UI ribbon header) is a 1.5 mm ESTIMATE the ui_clamp
+    relief uses (lead, 2026-10-02): verify against the datasheet. Item 11 is DONE by
+    bronner (main 3daadfb7); sync before touching ui_board / ui_panel.

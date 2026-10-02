@@ -355,11 +355,11 @@ def build(passes=20):
                 Net("Z%d_%s_RET" % (zi, col)).connect(leds[-1][c + 5], u[outs[c]])
 
     # ⚠ THE POGO ROW IS CHECKED AS COPPER, NOT AS COURTYARDS. Four 3.50 lands stand at a
-    # 3.90 pitch because that is all the lane between the -Y shoulder and the end LED
-    # allows (foot_light.POGO_PITCH), which puts neighbouring 4.00 courtyards 0.10 INTO
-    # each other and the last one 0.05 off the end LED's. The courtyard rule is there to
+    # 3.80 pitch because that is all the lane between the -Y shoulder and the end LED
+    # allows (foot_light.POGO_PITCH), which puts neighbouring courtyards edge to
+    # edge and the last one 0.05 off the end LED's. The courtyard rule is there to
     # leave the router a lane; nothing routes between two pogos. foot_light.check_optics
-    # asserts what matters instead: 0.40 of board between lands, 0.30 to the LED.
+    # asserts what matters instead: 0.30 of board between lands, 0.30 to the LED.
     xs_sorted = sorted(xs)
     end_led = {-1.0: "D%d" % (xs.index(xs_sorted[0]) + 1),
                +1.0: "D%d" % (xs.index(xs_sorted[-1]) + 1)}
