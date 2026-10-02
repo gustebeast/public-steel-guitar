@@ -126,3 +126,41 @@ Every string clears 7.97, and nothing blocks the right-run span at all: each is 
 only by the 5 mm end clearances. The screw, not the clamp's length, was the problem. The
 clip is not designed; clip-against-clip is not re-measured; tension adjustment without a
 screw is open.
+
+## 2026-10-02: the bank moved, and where a screw can and cannot go
+
+**The motor bank is packed against the keyhead endplate now** (the motor board stands
+behind string 1's motor instead of between it and the endplate). Every belt run is 21.8
+longer; string 10's is 194.0. `CARRIAGE_TRAVEL` is `TRAVEL_WANT` (8.35) again. Every table
+above this line was measured on the OLD runs.
+
+**The clamp has been drawn on the wrong side of the belt all along.** Its screw and lifter
+are on the TOOTH side (the lifter's ridges mesh the teeth), and a belt's teeth face the
+inside of its loop. The build and every study above pose that deep side OUTSIDE the loop.
+Posed the way the teeth require:
+
+- the two runs of one loop face each other across 9.8 at each pulley and **6.9 mid-span**
+  (centre to centre: each has turned 45° toward the other). Tooth tip to tooth tip that is
+  6.9 at the pulleys and **4.0 mid-span**. The clamp is 8.8 deep on that side. It does not
+  fit anywhere along the run, with a button head or without one.
+- and the loop's inside is not empty: the loops are 9.8 wide on a 9.5 pitch, so **the next
+  string's belt runs through it**. A clamp spanning both runs of its own belt (stand-in
+  40 × 8.8 × 14.7) has no clear position at all on nine strings.
+
+So no screw goes under (or over) the belt. **A set screw in place of the button head does
+not change this**: the depth is set by the lifter stack plus the screw's diameter, not by
+the head, and an M5 (the set screw that takes the 2.5 key) is thicker than the M4. A set
+screw also only PUSHES, where this clamp's screw pulls the halves together.
+
+**A screw BESIDE the belt** (stand-in 36 long, 15.2 across the belt with the screw on one
+side, 7.0 thick, ±20° twist margin, new runs), each string on its right run:
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 20.4 | 21.1 | 18.0 | 17.0 | 14.0 | 13.0 | 10.2 | 8.9 | **6.2** | **6.5** |
+
+It lies flat near the motor and its width reaches the next belt there, so it only has the
+screw-end half of each run. Strings 9 and 10 are about 2 short of 8.35.
+
+**The slim clip** (26 × 8.2 × 5.35) was clear end to end on the old runs; on the new ones
+string 10 has (194.0 − 26 − 11 − 10) / 14 = 10.5 of travel.
