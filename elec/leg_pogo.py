@@ -165,7 +165,7 @@ def design(kind, joint):
         zr_at = _anchor(_ZR, zr_rot, (X(P.FB_T0), Y(0.0)), (0.0, _ZR_MOUTH))
         hole = (X(P.F_HOLE_T), Y(P.F_HOLE_S))
         # test pads: the corner the screw's head and the ZR leave free
-        tp = [(X(t), Y(s)) for t, s in ((-2.2, -8.5), (-4.2, -8.5), (-2.2, -10.7), (-4.2, -10.7))]
+        tp = [(X(t), Y(s)) for t, s in ((-2.4, -8.5), (-4.4, -8.5), (-2.4, -10.7), (-4.4, -10.7))]
         parts.append(("J1", "YZ185115035T-04025-01", TGT_FP,
                       "vertical 1x4 gold contact target, LCSC C54930022",
                       nets_by_s(_TGT, tgt_at, 90.0, lambda x, y: y)))
@@ -174,22 +174,6 @@ def design(kind, joint):
                       conn_nets))
         place = {"J1": tgt_at + (90.0,), "J2": zr_at + (zr_rot,)}
         s_axis = "y"
-        # ⚠ THE FEMALE'S M4 HOLE IS A NOTCH, NOT A HOLE. The CAD puts it on the pin line
-        # (t = PIN_T) and ends the board EDGE (0.5) past the target's housing, which is
-        # 1.75 from the hole's centre: a O4.5 hole there breaks out of the +t edge by 0.5.
-        # It still captures the screw -- the opening is a 2.83 chord and the shank is 4.0 --
-        # but a circle drawn across the Edge.Cuts is not an outline, so the notch is drawn
-        # INTO the outline here. (Growing the board is not available: the pocket's +t wall
-        # is the tenon's, asserted in src/leg_pogo.py.)
-        r = hole_d / 2.0
-        xe = X(P.FB_T1)                                  # the +t edge, +-W/2
-        a0 = math.degrees(math.acos(abs(xe - hole[0]) / r))
-        arc = [(hole[0] + m * r * math.cos(math.radians(-a)),
-                hole[1] + r * math.sin(math.radians(-a)))
-               for a in [a0] + list(range(45, 316, 15)) + [360.0 - a0]]
-        notes["outline_poly"] = [(-xe, -L / 2.0), (xe, -L / 2.0)] + arc + [
-            (xe, L / 2.0), (-xe, L / 2.0)]
-        notes["notch_chord"] = 2.0 * r * math.sin(math.radians(a0))
 
     for i, n in enumerate(PINOUT):
         ref = "TP%d" % (i + 1)
@@ -241,12 +225,7 @@ def _check_against_cad():
         W, L = notes["outline_mm"]
         hx, hy = notes["hole"]["xy"]
         r = notes["hole"]["d"] / 2.0
-        if "notch_chord" in notes:
-            assert notes["notch_chord"] < 4.0 - 0.5, (
-                "%s: the notch is %.2f wide and would let the M4's shank out"
-                % (stem, notes["notch_chord"]))
-        else:
-            assert abs(hx) + r + P.EDGE <= W / 2.0 + 1e-9, "%s: the M4 hole leaves the board" % stem
+        assert abs(hx) + r + P.EDGE <= W / 2.0 + 1e-9, "%s: the M4 hole leaves the board" % stem
         assert abs(hy) + r + P.EDGE <= L / 2.0 + 1e-9, "%s: the M4 hole leaves the board" % stem
         for ref, (x, y, _r) in notes["placements"].items():
             if ref.startswith("TP"):
