@@ -1322,6 +1322,18 @@ def travel_work_components():
     return out
 
 
+def drivetrain_components():
+    """THE DRIVETRAIN ALONE, as one live set: every string's motor, pulleys, belt, clamp,
+    leadscrew, nut, bearing and guide rod -- and nothing that covers them. For the scratch
+    view with the top of the instrument taken off (scope --replaced drops the deck, the
+    boards on it and the bridge endplate from the context), so the belts can be followed
+    from motor to screw."""
+    keep = ("motor", "belt", "screw_pulley", "leadscrew", "nut_", "screw_bearing", "guide_rod",
+            "string_nut")
+    return [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
+            if n.startswith(keep) and not n.startswith(("nut_slide", "nut_height"))]
+
+
 def screw_rows_components():
     """The +X drivetrain as ONE named set: both Tr8x2 screw rows and the endplate that
     hosts them.
