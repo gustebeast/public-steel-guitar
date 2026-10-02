@@ -123,6 +123,25 @@ def export(stem):
             "tht": _tht_bbox(fp, cx, cy),
         })
     out["footprints"].sort(key=lambda f: f["ref"])
+    # THE BOARD'S OWN LETTERING (elec/silk.py), so the CAD can draw it as a part of its own
+    # in ink white: what each label says, where its centre is, how tall, which way it runs,
+    # and the box it occupies. Board-level text only -- footprint silk is not lettering.
+    out["silk"] = []
+    for d in board.GetDrawings():
+        if d.GetClass() != "PCB_TEXT" or d.GetLayerName() not in ("F.Silkscreen", "B.Silkscreen"):
+            continue
+        bb = d.GetBoundingBox()
+        out["silk"].append({
+            "text": d.GetText(),
+            "side": "F" if d.GetLayerName() == "F.Silkscreen" else "B",
+            "x": round(bb.GetCenter().x / 1e6 - cx, 3),
+            "y": round(-(bb.GetCenter().y / 1e6 - cy), 3),
+            "size": round(d.GetTextHeight() / 1e6, 3),
+            "angle": round(d.GetTextAngleDegrees(), 1),
+            "box": [round(bb.GetLeft() / 1e6 - cx, 3), round(bb.GetRight() / 1e6 - cx, 3),
+                    round(-(bb.GetBottom() / 1e6 - cy), 3), round(-(bb.GetTop() / 1e6 - cy), 3)],
+        })
+    out["silk"].sort(key=lambda t: (t["side"], t["text"]))
     dst = os.path.join(GEOM_DIR, os.path.basename(stem) + ".geom.json")
     os.makedirs(GEOM_DIR, exist_ok=True)
     with open(dst, "w", encoding="utf-8", newline="\n") as fh:

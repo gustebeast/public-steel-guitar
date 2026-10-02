@@ -315,7 +315,6 @@ from the board it has to hold.
 | `lever_sensor` | one per control — an MT6701 reading a diametric magnet on the control's axle |
 | `can_tee` | a bus junction so unplugging any device never breaks the trunk |
 | `ui_board` | the deck's display + multi-control station |
-| `led_strip` | body lighting, four sections along the +Y rail |
 | `fret_led_mid` / `fret_led_key` | fret-marker lighting, one board per deck panel |
 | `foot_led` | down-firing foot lighting |
 

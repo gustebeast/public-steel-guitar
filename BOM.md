@@ -466,8 +466,8 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 | `bearing_688zz` | 42 | — | — | $25.20 | [v] | 688ZZ O8xO16x5 -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls) |
 | `m4_button_8` | 2 | McMaster-Carr | 92095A189 | $1.11 | [v] | 1 x $11.11 (pack of 100) = $11.11 for 20 needed — M4x8 18-8 button, 2.5 hex -- the two female pogo boards |
 | `m4_button_10` | 69 | McMaster-Carr | 92095A190 | $6.61 | [v] | 7 x $9.44 (pack of 100) = $66.08 for 690 needed — M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end |
-| `m4_button_12` | 4 | McMaster-Carr | 92095A192 | $1.97 | [v] | 1 x $14.77 (pack of 100) = $14.77 for 40 needed — M4x12 -- 2 optical board, 1 UI clamp, 1 pickup -Y retention (was a cup set screw; 2.5 mm key now) |
-| `m4_button_20` | 15 | McMaster-Carr | 92095A196 | $2.84 | [v] | 3 x $9.47 (pack of 50) = $28.41 for 150 needed — M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; `nut_block.HS_SCREW_L` = 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards |
+| `m4_button_12` | 2 | McMaster-Carr | 92095A192 | $1.48 | [v] | 1 x $14.77 (pack of 100) = $14.77 for 20 needed — M4x12 -- 1 UI clamp, 1 pickup -Y retention (was a cup set screw; 2.5 mm key now) |
+| `m4_button_20` | 17 | McMaster-Carr | 92095A196 | $3.79 | [v] | 4 x $9.47 (pack of 50) = $37.88 for 170 needed — M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; `nut_block.HS_SCREW_L` = 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards, 2 optical board through its hand guard (were M4x12 on the bare board) |
 | `m4_button_30` | 2 | McMaster-Carr | 92095A198 | $1.46 | [v] | 1 x $14.64 (pack of 50) = $14.64 for 20 needed — M4x30 -- pedal-bar latch collar, one per bar-to-leg joint (model draws one leg) |
 | `m4_button_35` | 10 | McMaster-Carr | 92095A199 | $3.36 | [v] | 4 x $8.39 (pack of 25) = $33.56 for 100 needed — M4x35 -- belt-tensioner draw screws |
 | `m4_button_40` | 4 | McMaster-Carr | 92095A200 | $2.03 | [v] | 2 x $10.13 (pack of 25) = $20.26 for 40 needed — M4x40 -- the four leg lock pins |
@@ -484,7 +484,7 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 | `leadscrew_nut_h` | 10 | AliExpress | 3256804704147842 | $9.20 | [m] | Tr8x2 single-start H-flange brass nut, ~$11 per 3 x 4-pack per BOM.md. Not re-read today; was folded into the screw line before. |
 | `belt_gt2` | 8 | — | — | $6.40 | [v] | GT2 open belt, USD per metre; ~7.74 m per instrument |
 | `strings` | 1 | — | — | $25.00 | [m] | one 10-string pedal steel set |
-| **Total** | | | | **$588.84** | | |
+| **Total** | | | | **$589.30** | | |
 
 **Open, and they are design questions rather than prices:**
 
@@ -517,7 +517,7 @@ fitted on every instrument.
 |------|-----|-------------|--------|-----|
 | **Foot lighting PCB** | B | Custom, `elec/foot_led.py` — **ONE design, TWO per instrument**: 286.36 × 17.20, 4-layer, 36 LEDs, **12 zones**, 4× TLC59711 each. Lies in a channel on the chassis bottom and fires DOWN through the 572.72 mm light window at the player’s feet. 72 LEDs at a 7.95 pitch run the whole window **unbroken across the seam** (1.008 : 1). Two boards because JLCPCB’s assembly limit is 470 mm, one DESIGN because both slide in from −X the same way round. Per board: **TLC59711PWPR** C116842 ×4 + **XL-5050RGBW** C7371891 ×36 + **LMR33630CRNXR** C2071783 + **SWPA4030S4R7MT** C57269 + **2× SM04B-SRSS-TB** C160404 (in and out — the strip is a chain). SMT throughout; nothing on the board may exceed 3.40 mm, which is what the channel’s relief groove leaves. No mounting hole: the channel holds five faces and the −X endplate closes the sixth. **Three LEDs in series per channel, so 24 addressable zones of 23.9 mm per instrument** — and the rail is **11.00 V**, not the fret boards’ 14, because the string sets the rail and a sink drops whatever the string does not use. 72 LEDs is the densest the 5050’s courtyard allows; the extra light over 48 cost $1.56 an instrument and not one more driver (docs/foot-led.md §4a) | **~$19 of parts** [m] per board; 4-layer fab ~$19 / 5 | — |
 | **Foot LED harness + jumper** | B | One 4-way JST SH cable from the −X board to the Pi daughter board, and one short SH jumper (~16 mm of free wire) between the two boards, lying in the relief groove. **SH, not PH**, and the reason is height: JST’s drawing puts the side-entry PH at 5.50 mm and the SH at **2.95** against a 3.40 budget | ~$2 [m] | LCSC custom cable, MOQ 1 |
-| **Fret board retention** | B | **No loose parts.** Each LED board tilts in under a fixed 45° lip printed on its panel’s −Y edge and is held by **one M4 × 10 button head into an M4 heat-set insert** in a deck boss near its +Y edge — `fret_light.m4_joint`, a cadkit ScrewJoint (docs/fret-led.md §8.9, §8.10). The retainer strips this row used to list are gone: their groove was an unprintable ledge | 2 × M4 × 10 + 2 × M4 insert, from the instrument’s stock | — |
+| **Fret board retention** | B | **No loose parts.** Each LED board tilts in under a fixed 45° lip printed on its panel’s −Y edge and is held by **two M4 × 10 button heads into M4 heat-set inserts** on its +Y side: one in the bay at the −X end, one through an ear off the +Y edge at the +X end, outside the lit line — `fret_light.m4_joint`, cadkit ScrewJoints (docs/fret-led.md §8.9 – §8.11) | 4 × M4 × 10 + 4 × M4 insert, from the instrument’s stock | — |
 | **Fret lighting PCBs** | B | Custom, `elec/fret_led.py` — **TWO boards, one per deck panel, ONE chain**: `fret_led_key` 211.0 × 70.4 (frets 9–2, 8 zones, 32 LEDs, 3× TLC59711) carries the harness inlet and the only supply, and feeds `fret_led_mid` 210.8 × 70.4 (frets 24–10, 15 zones, 60 LEDs, 5×) over the deck-panel seam through **six tip-to-tip side-mount pogos a side** (+14V ×2, GND ×2, SCK, SDT; docs/fret-led.md §9.1f). **4-layer**, 1.6 mm, SMT throughout (the underside clears the CAN harness by 1.00 mm, so a through-hole tail would be in the cable). One RGBW zone per fret, **four LEDs in series per channel**. Parts: **TLC59711PWPR** C116842 ×8 + **XL-5050RGBW** C7371891 ×92 + **LMR33630CRNXR** C2071783 ×1 (24→14 V for both boards) + **SWPA4030S4R7MT** C57269 + **S6B-PH-SM4-TB** C265405 ×1 + **YZF0002-38080-02** **C5203987 ×12** + one M4 through each board. ⚠ **C5203987 IS THE ONE NEW SOURCING LINE**: Extended, SMT-assemblable, gold, 24 V / 12 A — the only side-mount pogo in the library rated above 12 V — **602 in stock = 50 instruments at 12 each**, and JLCPCB flag it High assembly difficulty. 92 channels, **1.38 A at 14 V** with every fret at full white (the absolute worst case; the effects daemon caps it) | **~$31 of parts** [m] — 92 LEDs $4.30, 8 drivers $19.28, 12 pogos $8.43, 1 supply ~$1.50; 4-layer fab ~$13/instrument (docs/fret-led.md §6.3) | — |
 | **Fret LED harness** | B | 6-way JST PH, the Pi daughter board to `fret_led_key`’s J1: GND, 24 V ×2, GND, SCK, SDT. **ONE cable** — the seam pogo joint carries the rail and the chain on into `fret_led_mid` (docs/fret-led.md §9.1f), so the second harness the retraction in §9.1 had added is gone. 0.89 A over the two 24 V contacts at full white. Crimped PH, no hand soldering | ~$1 [m] | commodity |
 | **Motor controller PCB** | B | Custom, `elec/motor_ctrl.py` — ⚠ **2026-09-30: the SECOND buck (U6, the LED strip's 5 V) and its inductor, fuse F4, crowbar D10 and nine passives are GONE** — the lights take fused 24 V from J7 (F3, 3 A) and each lit board regulates its own (`docs/lighting-bus.md`); what follows predates that where it mentions U6. CH32V307WCU6 + 2× SN65HVD230 + LMR16006 buck + **LMR33630ADDAR** C841384 $0.8138, U5 — the merged power PCB's 36 V 3 A synchronous buck, 24 V → 5 V for the Pi; full MPN named here 2026-09-19, it had no row anywhere + **5× B4B-XH** (the USB link to the Pi is one of them since 2026-09-21: the USB-C it replaced faced the −Y rail 5.5 mm away and no plug could reach it) + an **M4 mounting ear** (46 × 58 + 9.5 × 8.7 tab). **46 × 58**, 4-layer — size and connector count corrected 2026-09-19 from "3× XH. 40 × 35", which was **1,400 mm² against the real 2,668**, nearly double the area, on the row somebody sizes an enclosure from. Read from the board itself (`BOARD_W, BOARD_L`) and its built fab BOM, not retyped | **~$5 of parts** [m]; fab + assembly not yet quoted | — |
@@ -1660,31 +1660,32 @@ them add up to what feeds the instrument. Itemised 2026-09-18, at the 24 V inlet
 |---|---|---|
 | 10 × SERVO42D, bus A (the <5 A budget cap) | 120.0 W | 30.0 W |
 | Raspberry Pi + USB, via buck | 16.7 W | 5.6 W |
-| **LED strip, 580 mm @ 100/m, via buck** | **25.3 W** | **8.9 W** |
+| **Lighting: 2 fret boards + 2 foot boards, on the fused 24 V bus (F3, 3 A)** | **39.1 W** (1.63 A: frets 0.89 + feet 0.73, every LED full white) | firmware cap, **not yet set** |
 | optical board | 2.9 W | 1.9 W |
 | 11 sensor boards | 2.5 W | 2.5 W |
 | output panel | 1.0 W | 0.9 W |
 | motor controller | 0.9 W | 0.9 W |
-| **total** | **169 W / 7.1 A** | **51 W / 2.1 A** |
+| **total** | **183 W / 7.6 A** | **42 W / 1.7 A + lighting** |
 
-**Chosen 2026-10-01: 24 V 160 W (6.67 A), Mean Well GST160A24-R7B desktop adapter** (row `psu_24v_160w`), with the strip power-capped in firmware; 24 V 240 W
+**Chosen 2026-10-01: 24 V 160 W (6.67 A), Mean Well GST160A24-R7B desktop adapter** (row `psu_24v_160w`), with the lighting power-capped in firmware; 24 V 240 W
 covers every load at maximum simultaneously, which nothing makes happen.
+
+⚠ **WHAT THE 160 W LEAVES THE MOTORS DEPENDS ON THE LIGHTING CAP (re-worked 2026-10-01, after the
+5 V strip was deleted).** Supply 6.67 A, less Pi 0.70, less optical + sensors + panel + controller
+0.30: **5.67 A to share between motors and lights.** Lights uncapped (1.63 A) leave the motors
+**4.04 A**; the 4.6 A the tee and supply discussion assumed needs the lights held to **1.07 A
+(25.7 W, 66 % of full white)** — which is the old strip's figure, so the daemon's cap should be
+set there, or lower while motors slew.
 
 **The 120 W motor line is a cap, not a draw.** The self-locking screw means there is no
 holding current, so motors pull only while a pedal moves, and moves stagger. See the
 bus-A contact-current note above, which is the same figure viewed as a connector problem.
 
-**The LED strip is the only load that is on continuously**, so it matters more for heat
-and for the supply's continuous rating than its 20 % share of the peak suggests. Strip
-figures are HD108 RGBW 5050 at 5 V, 80 mA per pixel with all four dice lit (user's
-`led-lighting-summary.md`, Sept 2026; 580 mm, user). 57 pixels at full white is 4.6 A on
-the 5 V rail — **cap it in the effects daemon's output stage** (sum the frame and scale)
-rather than buying a 5 A buck for a state no musical content produces.
-
-⚠ **AND THE LED NOTE ASSUMES A Pi 5; THIS BOM SPECIFIES A Pi 4, 1 GB.** The Pi 4 and its
-buck replaced a Pi 5 and a 6 A buck to save ~$130 (see the Pi row). SPI at 10–20 MHz is
-fine on a Pi 4 so the LED plan survives intact, but the two documents disagree about
-which board is in the instrument. Resolve before ordering either.
+**The lighting is the only load that is on continuously**, so it matters more for heat and
+for the supply's continuous rating than its share of the peak suggests. Every lit board makes its
+own LED rail from the 24 V bus (TLC59711 constant-current drivers; `docs/lighting-bus.md`,
+`docs/fret-led.md`), so the cap is one number in the effects daemon's output stage: sum the frame
+and scale.
 
 **PCB buying plan**: tee PCBs + sensor PCBs ship as ONE panel (V-score /
 mouse-bite, snap apart — never hand-cut FR4), ONE assembly job, **full paid

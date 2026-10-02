@@ -99,20 +99,20 @@
     "m4_button_12": {
       "usd": 0.3692,
       "verified": "v",
-      "per_instrument": 4,
+      "per_instrument": 2,
       "vendor": "McMaster-Carr",
       "sku": "92095A192",
-      "order": "1 x $14.77 (pack of 100) = $14.77 for 40 needed",
-      "what": "M4x12 -- 2 optical board, 1 UI clamp, 1 pickup retention"
+      "order": "1 x $14.77 (pack of 100) = $14.77 for 20 needed",
+      "what": "M4x12 -- 1 UI clamp, 1 pickup retention"
     },
     "m4_button_20": {
       "usd": 0.1894,
       "verified": "v",
-      "per_instrument": 15,
+      "per_instrument": 17,
       "vendor": "McMaster-Carr",
       "sku": "92095A196",
-      "order": "3 x $9.47 (pack of 50) = $28.41 for 150 needed",
-      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards"
+      "order": "4 x $9.47 (pack of 50) = $37.88 for 170 needed",
+      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards, 2 optical board through its hand guard"
     },
     "m4_button_30": {
       "usd": 0.732,
@@ -438,7 +438,8 @@
       "connector) had 65 pieces in JLCPCB's library on 2026-09-30, against the 100 a",
       "ten-instrument order needs. The quote would not proceed until the quantity came",
       "down under stock. It is a stocked JST part, so this is a JLCPCB-library depth",
-      "problem rather than a dead part -- but assembly is only turnkey while they hold it."
+      "problem rather than a dead part -- but assembly is only turnkey while they hold it.",
+      "ALSO THIN, 2026-10-01: MCP4261-103E/ST (C185580, output_panel U10) has 96 in stock against 10 an order; the leg pogo gold target C54930022 has 210 against 20."
     ]
   },
   "parts_by_footprint": {
@@ -1756,6 +1757,71 @@
       "usd": 0.0127,
       "verified": "v",
       "what": "GZ1608D601TF C1002 -- JLCPCB parts API at qty 10"
+    },
+    "optical:U21": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "optical:U22": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "optical:U23": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "optical:U24": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "optical:U25": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "optical:U26": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "optical:U27": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "optical:U28": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "optical:U29": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "optical:U30": {
+      "usd": 0.1475,
+      "verified": "v",
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+    },
+    "output_panel:U10": {
+      "usd": 2.3069,
+      "verified": "v",
+      "what": "MCP4261-103E/ST C185580 -- JLCPCB parts API at qty 10, 96 in stock 2026-10-01"
+    },
+    "output_panel:U12": {
+      "usd": 0.0776,
+      "verified": "v",
+      "what": "SN74LVC1G3157DCKR C38663 -- JLCPCB parts API at qty 10, 216248 in stock 2026-10-01"
+    },
+    "pi_cap:J1": {
+      "usd": 0.3279,
+      "verified": "v",
+      "what": "2x20 female socket C5124634 -- JLCPCB parts API at qty 10, 10681 in stock 2026-10-01"
     }
   },
   "modules": {

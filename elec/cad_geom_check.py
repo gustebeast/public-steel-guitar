@@ -57,14 +57,6 @@ def _cad(board):
     if board == "can_tee":
         from src import electronics as EL
         return EL.tee_pcb(0.0, 0.0)
-    if board == "led_strip":
-        # ⚠ CHECKED FLAT, NOT IN THE SEAT, AND THAT IS A LIMIT OF THIS CHECK. The sections
-        # lie at 45 deg in the chassis seat, so their board face projects 14.14 mm where the
-        # routed outline says 20 and this comparison reads it as the wrong board. Handing it
-        # the untilted solid keeps the PART check (every routed part present, in the right
-        # place on the board) honest; what it does NOT check is the placement in the seat,
-        # which the overlap gate covers instead.
-        return BG.solid("led_strip")
     if board == "pi_cap":
         from src import electronics as EL
         return EL.pi_cap()
@@ -82,12 +74,27 @@ def _cad(board):
         # src/fret_light.py draws as their own part so they read as lit
         from src import fret_light as FL
         panel = board.rsplit("_", 1)[1]
-        return FL.pcb(panel).union(FL.leds(panel))
+        return FL.pcb(panel)
+    if board.startswith("leg_pogo_"):
+        # the leg's blind-mate boards: src/leg_pogo.py draws each as board + contacts +
+        # connector at its joint. They stand on the tenon's DIAGONAL, and this check looks
+        # for axis-aligned plates, so the joint is turned 45 deg about the leg's axis first
+        # (t onto +X). That changes nothing the check measures -- parts against their board.
+        from src import leg_pogo as P
+        _, kind, joint = board.rsplit("_", 2)
+        j = P.BOTTOM if joint == "bottom" else P.TOP
+        parts = P.male(j) if kind == "male" else P.female(j)
+        s = parts[0][1]
+        for _n, part in parts[1:]:
+            s = s.union(part)
+        return s.rotate((j.x, j.y, 0.0), (j.x, j.y, 1.0), -j.ang)
     raise KeyError(board)
 
 
 BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
-          "pi_cap", "led_strip", "ui_board", "fret_led_mid", "fret_led_key")
+          "pi_cap", "ui_board", "fret_led_mid", "fret_led_key",
+          "leg_pogo_male_bottom", "leg_pogo_male_top",
+          "leg_pogo_female_bottom", "leg_pogo_female_top")
 
 
 def _ui_rule_check():

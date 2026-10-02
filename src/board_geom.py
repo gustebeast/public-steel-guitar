@@ -79,8 +79,7 @@ HEIGHT = {
                                                     # pass-through; same 6.0 body as the
                                                     # 4-way it replaced, 17.9 long)
     "JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical": 6.0,   # JST PH top entry (pi_cap J3)
-    # LED strip section (elec/led_strip.py). The 5050 LED is the part that has to be right:
-    # it is what the chassis seat aims, and the seat's lips clear the board face by 1.9.
+    # The lighting boards (elec/fret_led.py, elec/foot_led.py).
     "XINGLIGHT_XL-5050RGBW": 1.6,                   # 5.0 x 5.0 x 1.6 (LCSC C7371891)
     "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm": 1.2,   # TLC59711 PWP
     "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H
@@ -440,6 +439,46 @@ def bodies(board: str, refs) -> cq.Workplane:
     if out is None:
         raise KeyError("%s has none of %s" % (board, sorted(want)[:6]))
     return out
+
+
+SILK_T = 0.02            # ink, drawn proud of the laminate so it is a solid of its own
+SILK_CAP = 0.72          # a KiCad text "size" is its capital height; a font size is its em
+
+
+def silk(board: str, side: str = "F"):
+    """The board's own lettering as ONE part, in solid()'s frame -- a SEPARATE part so the
+    viewer can colour it white against the mask and hide it (user, 2026-10-02). Read from
+    the routed board (export_geom's "silk"), so it cannot say something the fab's ink does
+    not. Front side only by default: the back's pinouts face plastic in every mount.
+    None where the board has no lettering on that side."""
+    g = load(board)
+    t = g["thickness_mm"]
+    out = []
+    for lab in g.get("silk", []):
+        if lab["side"] != side:
+            continue
+        lines = lab["text"].split("\n")
+        pitch = lab["size"] * 1.62                     # KiCad's line spacing
+        for k, line in enumerate(lines):
+            if not line.strip():
+                continue
+            w = (cq.Workplane("XY").text(line, lab["size"] / SILK_CAP, SILK_T,
+                                         halign="center", valign="center")
+                 .translate((0.0, ((len(lines) - 1) / 2.0 - k) * pitch, 0.0))
+                 .rotate((0, 0, 0), (0, 0, 1), lab["angle"])
+                 .translate((lab["x"], lab["y"], t)))
+            out += [s for s in w.vals() if s.Volume() > 0] if hasattr(w.val(), "Volume") else []
+    if not out:
+        return None
+    solids = []
+    for s in out:
+        solids += s.Solids()
+    return cq.Workplane("XY").newObject([cq.Compound.makeCompound(solids)])
+
+
+def silk_boxes(board: str, side: str = "F"):
+    """[(x0, x1, y0, y1)] of every label on that side, in solid()'s frame."""
+    return [tuple(lab["box"]) for lab in load(board).get("silk", []) if lab["side"] == side]
 
 
 def solid(board: str, mated: bool = False, omit: tuple = (), skip=()) -> cq.Workplane:
