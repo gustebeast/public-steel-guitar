@@ -746,7 +746,12 @@ def build_wires():
     # it turns -X onto its board. Board pins stay authored in the tray's FLAT frame and are
     # posed with EL.stand_pt, so they follow the tray. Wire-vs-wire crossings are fine
     # (insulated); only solids (motors/boards/chassis) are avoided.
-    BAY_X = D.motor_pos(0)[0] - D.MOTOR_SQ / 2 + 1.0    # -585.0
+    # ⚠ THE COLUMN IS HUNG OFF THE BOARD IT SERVES, NOT OFF THE MOTOR (2026-10-02). It was
+    # string 1's -X face + 1.0, which is the same place only while that motor stood 8 mm
+    # +X of the standing board. The bank is packed against the endplate now and that motor
+    # stands OVER this column's x; the rule above is unchanged -- rise -Y of the motor, fly
+    # its Y band at BAYFLY -- and the column stays where the board's connectors are.
+    BAY_X = D.MCTRL_X[1] + 9.1                          # -582.6
     BAYFLY = -12.0                                      # over motor 0, under the deck
     assert BAYFLY - max(WIRE_OD.values()) / 2 > D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + 1.0, (
         "the bay fly lane has come down onto string 1's motor")

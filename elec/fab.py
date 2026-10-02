@@ -163,6 +163,12 @@ LCSC = {
     "MX126-5.0-02P": "C5188434",    # MAX MX126-5.0-02P-GN01-Cu-S-A, stock 48,416
     # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
     # checked against it pin for pin rather than chosen by name:
+    "NMJ6HCD2": "C368502",          # Neutrik 1/4 in TRS jack, THT. 1350 in stock 2026-10-02
+                                    # (it was at ZERO on 2026-09-17 and sat in OPEN_VALUES)
+    "PZ1.27-2x7P": "C22438113",     # HX PZ1.27-2x7P WZ: 1.27 mm 2x7 RIGHT-ANGLE pin header,
+                                    # THT, 2902 in stock 2026-10-02 -- the pi_cap's UI ribbon.
+                                    # (C22438122, named in pi_cap.py, is the VERTICAL one and
+                                    # does not match the Horizontal footprint.)
     "MCP4261-103E/ST": "C185580",   # dual 10k digital pot, TSSOP-14 -- ⚠ 96 in stock on
                                     # 2026-10-01; re-check before ordering
     "SN74LVC1G3157DCKR": "C38663",  # SPDT analog switch, SC-70-6
@@ -209,16 +215,11 @@ LCSC = {
 # value that is neither sourced nor generic nor listed below FAILS THE BUILD,
 # which means changing a part number forces you to come here and say so.
 OPEN_VALUES = frozenset({
-    "NMJ6HCD2",            # 1/4 in TRS jack (was the TS NMJ4HCD2). JLCPCB at ZERO
-                           # stock, 2026-09-17 -- a listing is not a source
     "USB1046-GF-0180",     # GCT USB-A. Not listed at JLCPCB (2026-09-17); the
                            # nearest is -0190-L-B-A at 5 in stock. ⚠ THE ONE THAT WENT WRONG -- if this
                            # string ever changes, that is the footprint moving
                            # under it, and the build should stop until someone
                            # confirms the two still agree
-    "PZ1.27-2x7P",         # the pi_cap's UI ribbon header, 1.27 mm 2x7 RIGHT-ANGLE. No
-                           # part number has been checked against this footprint
-                           # (2026-10-02); the connector choice is the UI board's.
     # (The placeholders that stood here -- "FRT5-class 5V", "PCM5102A-class", "CH334-class HS
     #  hub" -- and PCM1808PWR's hold are gone with the 2026-09-21 rewrite: real parts, real
     #  pinouts, sourced above. What still wants a second pair of eyes is the ANALOG DESIGN

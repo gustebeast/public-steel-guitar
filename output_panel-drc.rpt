@@ -1,24 +1,32 @@
 ** Drc report for output_panel.kicad_pcb **
-** Created on 2026-09-21T14:43:36 **
+** Created on 2026-10-02T11:48:50 **
 ** Report includes: Errors, Warnings **
 
-** Found 4 DRC violations **
+** Found 6 DRC violations **
 [silk_edge_clearance]: Silkscreen clipped by board edge
     Rule: board setup constraints silk; warning
-    @(137.0000 mm, 133.0000 mm): Segment on Edge.Cuts
-    @(130.0000 mm, 116.8967 mm): Segment of J6 on F.Silkscreen
+    @(57.0000 mm, 67.0000 mm): Segment on Edge.Cuts
+    @(58.1927 mm, 87.3000 mm): Segment of J3 on F.Silkscreen
 [silk_edge_clearance]: Silkscreen clipped by board edge
     Rule: board setup constraints silk; warning
-    @(137.0000 mm, 133.0000 mm): Segment on Edge.Cuts
-    @(139.0000 mm, 126.0967 mm): Segment of J6 on F.Silkscreen
+    @(57.0000 mm, 67.0000 mm): Segment on Edge.Cuts
+    @(58.1927 mm, 96.7000 mm): Segment of J3 on F.Silkscreen
 [silk_edge_clearance]: Silkscreen clipped by board edge
     Rule: board setup constraints silk; warning
-    @(137.0000 mm, 133.0000 mm): Segment on Edge.Cuts
-    @(136.7973 mm, 91.3000 mm): Segment of J1 on F.Silkscreen
+    @(143.0000 mm, 133.0000 mm): Segment on Edge.Cuts
+    @(142.7973 mm, 91.3000 mm): Segment of J1 on F.Silkscreen
 [silk_edge_clearance]: Silkscreen clipped by board edge
     Rule: board setup constraints silk; warning
-    @(137.0000 mm, 133.0000 mm): Segment on Edge.Cuts
-    @(136.7973 mm, 100.7000 mm): Segment of J1 on F.Silkscreen
+    @(143.0000 mm, 133.0000 mm): Segment on Edge.Cuts
+    @(142.7973 mm, 100.7000 mm): Segment of J1 on F.Silkscreen
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(127.4000 mm, 131.1000 mm): Segment of J6 on F.Silkscreen
+    @(128.9000 mm, 130.8000 mm): PTH pad SH [PWR_GND] of J6
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(127.4000 mm, 131.1000 mm): Segment of J6 on F.Silkscreen
+    @(128.9000 mm, 115.2000 mm): PTH pad SH [PWR_GND] of J6
 
 ** Found 0 unconnected pads **
 
