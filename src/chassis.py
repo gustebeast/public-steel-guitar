@@ -256,11 +256,12 @@ _MORT_X = list(D.lever_grid_x())
 # 43.9 pitch, so it reaches 31.15 past its own motor and the segment that OWNS that motor
 # carries the whole overhang. A segment's real footprint is therefore its end motors +-31.15,
 # not the split planes -- the old targets left segment 0 at 265.5, over the bed. These put one
-# motor in segment 0 and five/four in the others. BED_X asserts the lengths; wiring asserts
+# motor in segment 0 and five/four in the others (the -X plane moved with the bank,
+# 2026-10-02: it sits between strings 4 and 5 again). BED_X asserts the lengths; wiring asserts
 # that neither plane lands in the RAIL NOTCH at motor 9, where the trunk dips outboard -- a
 # split there puts its tenon back through the dip (5 wires were buried in it).
 SPLIT_X  = [D.lever_wall_x(_t)
-            for _t in (-205.0, -409.5)]  # 2 cuts → 3 segments < BED_X, each on the centre of one of the grid's 1.6 WALLS, so the
+            for _t in (-205.0, -428.0)]  # 2 cuts → 3 segments < BED_X, each on the centre of one of the grid's 1.6 WALLS, so the
                                        # plane itself misses every mortise (the seam JOINT is wider than a wall,
                                        # so the stations it covers are dropped instead -- see _seam_blocked). Was a
                                        # 13 mm gap BETWEEN two ribs. The cut straddles a 43-wide motor
@@ -1129,21 +1130,17 @@ assert PORT_W >= _PH_S_H + 1.2, (
     % (PORT_W, _PH_S_H))
 
 
+# ⚠ THERE IS NO HOLE HERE ANY MORE (user, 2026-10-02). Both bus-B cables stay UNDER the floor
+# now -- the controller's J2 is below the slab, reached from outside -- so nothing passed
+# through the port, and string 1's motor stands over where it was. What is left is the
+# WAYPOINT: wiring still turns both cables at this xy under the floor, so the station and
+# the y run stay as the description of that turn.
 def port_y():
-    """(y0, y1) of the port: 4 beads -Y of the leg foot mortise's own end, running -Y."""
+    """(y0, y1) of the bus-B turn under the floor: 4 beads -Y of the leg foot mortise's own
+    end, running -Y."""
     near = min(y0 for y0, y1 in mort_segments(PORT_X) if y0 > -50.0)
     y1 = near - 4 * D.BEAD
     return y1 - PORT_L, y1
-
-
-def port_cutter(bed_z, floor_top):
-    """The port, as a through-cut in the floor slab -- cut by chassis.py, dimensioned
-    here beside the station it serves. Over-run at both ends in Z so it opens into the
-    underside and into the cavity rather than touching either."""
-    y0, y1 = port_y()
-    return cq.Workplane("XY").add(cq.Solid.makeBox(
-        PORT_W, y1 - y0, (floor_top + 1.0) - (bed_z - 1.0),
-        cq.Vector(PORT_X - PORT_W / 2.0, y0, bed_z - 1.0)))
 
 
 def _floor_negatives():
@@ -1173,12 +1170,6 @@ def _floor_negatives():
         out.append(cq.Workplane("XY").add(cq.Solid.makeCylinder(
             _NB.HS_HEAD_CAV_D / 2.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
             cq.Vector(D.NUT_BLOCK_X + _hx, _hy, Z_BOT - 1.0), cq.Vector(0, 0, 1))))
-    # THE BUS-B WIRING PORT, which is the chassis' own the same way the raceway is: the
-    # pedal bar's four conductors arrive on the instrument's UNDERSIDE out of the body
-    # adapter's channel and have to get inside to reach the motor controller. It is cut
-    # here for the same reason the lock pins are -- cut in the main builder the fresh
-    # slab fills it straight back in.
-    out.append(port_cutter(Z_BOT, MB.FLOOR_TOP))
     return out
 
 

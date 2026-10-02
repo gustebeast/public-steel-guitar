@@ -485,6 +485,19 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
         _ped, _neg = PG.adapter_features()
         b = (b.union(_ped) if _ped is not None else b).cut(_neg)
     b = b.translate((sx - LEG_X, ly - LEG_Y, 0.0))
+    # THE MOTOR BOARD'S BOTTOM EDGE (user, 2026-10-02). The standing motor controller hangs
+    # D.MCTRL_DIP below the floor so its bus-B plugs can be reached from outside, and since
+    # it moved behind string 1's motor its -Y end reaches 1.40 over the -X/-Y adapter's
+    # top face. A rebate along that edge of this one adapter, the board's dip plus its port
+    # clearance deep; the mortise above stops short the same way (dimensions.floor_block_y).
+    _ry0 = D.MCTRL_Y0 - D.MCTRL_PORT_CLR
+    if (sx - LEG_W / 2.0 < D.MCTRL_X[1] and sx + LEG_W / 2.0 > D.MCTRL_X[0]
+            and ly - LEG_W / 2.0 < _ry0 < ly + LEG_W / 2.0):
+        _rx0, _rx1 = D.MCTRL_X[0] - D.MCTRL_PORT_CLR, sx + LEG_W / 2.0 + 1.0
+        _rz0 = Z_TOP - D.MCTRL_DIP - D.MCTRL_PORT_CLR
+        b = b.cut(box_at(_rx1 - _rx0, (ly + LEG_W / 2.0 + 1.0) - _ry0, (Z_TOP + 1.0) - _rz0,
+                         x=(_rx0 + _rx1) / 2.0, y=(_ry0 + ly + LEG_W / 2.0 + 1.0) / 2.0,
+                         z=(_rz0 + Z_TOP + 1.0) / 2.0))
     # BODY TENONS, on the top face (see BODY JOINERY). Both ridges and the tongue
     # run the full LEG_W along Y, the slide axis.
     # THE RIDGES FIT THE CHASSIS, not the other way round (user, 2026-09-16). The chassis cuts
