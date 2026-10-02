@@ -8,7 +8,7 @@ port, and on a Pi 4B the USB-C VBUS pin and the GPIO 5 V pins are the same node)
 GPIO header is 2.54 mm MALE PINS, and nothing in the instrument bridged a crimped JST cable
 to them. That left the single least-defined joint in the build: either somebody solders
 wires to a header, or the 5 V arrives on friction-fit crimp housings pushed onto pins in a
-box full of stepper vibration. The LED strip made it worse rather than causing it, by adding
+box full of stepper vibration. The lighting made it worse rather than causing it, by adding
 a clocked SPI pair to the same crossing.
 
 So: one small board with a 2x20 socket that plugs onto the header, and JST connectors for
@@ -33,7 +33,7 @@ pickup. Four things are done about it here, cheapest first, because a clocked ed
 300-600 mm unshielded cable is exactly what an inductive sensor is built to hear:
 
   ⚠ FIRST, TWO CLOCKS THAT ARE NOT THE SAME CLOCK, because conflating them gets the
-  advice backwards. The STRIP was chosen for a high PWM rate -- the frequency its driver
+  advice backwards. The LED DRIVER was chosen for a high PWM rate -- the frequency its driver
   switches LED current at, which has to sit above the audio band or the pickup simply hears
   it (SK6812 at 1.2 kHz and SK9822 at 4.7 kHz were rejected for this; the TLC59711's
   enhanced-spectrum PWM spreads each period over 128 segments at ~19.5 kHz). Nothing below
@@ -50,7 +50,7 @@ pickup. Four things are done about it here, cheapest first, because a clocked ed
   2. STREAM CONTINUOUSLY; DO NOT BURST. ⚠ THIS REPLACES AN EARLIER "cap the clock at
      1 MHz" NOTE, WHICH WAS WRONG, and wrong in the direction that matters. The audio-band
      threat is not the clock frequency -- it is the ENVELOPE. A TLC59711 packet is 224 bits
-     and the strip is twelve of them = 2688 bits per frame; at 1 MHz that frame takes
+     and a chain of twelve of them is 2688 bits per frame; at 1 MHz that frame takes
      2.69 ms, so refreshing at 200 Hz gives 2.69 ms of activity and 2.3 ms of silence,
      repeating 200 times a second. That envelope sits squarely in the audio band, and
      anything that rectifies it turns it into a 200 Hz buzz. Slowing the clock makes the
@@ -62,16 +62,16 @@ pickup. Four things are done about it here, cheapest first, because a clocked ed
      (GND V24 V24 GND SCK SDT matches fret_led's own J1), so the pair has a return
      conductor in the same cable instead of finding its way home through the chassis. Loop
      AREA is what couples to a coil, not wire length.
-  4. DISTANCE, which is the harness's job, not this board's: the run should reach the strip
-     along the +Y rail, not across the deck past the pickup. See INSTALL_NOTES.md.
+  4. DISTANCE, which is the harness's job, not this board's: the run should reach the lit
+     boards without crossing the deck past the pickup. See INSTALL_NOTES.md.
 
   ⚠ NONE OF THIS TOUCHES THE ONE KNOWN AUDIO-BAND TERM. At grey levels under 128/65535
-  the TLC59711's own PWM energy lands at sub-audio multiples of its 152 Hz full cycle (see
-  elec/led_strip.py). That is inside the driver, on the strip, not on this cable -- bench it
+  the TLC59711's own PWM energy lands at sub-audio multiples of its 152 Hz full cycle (the
+  working was in elec/led_strip.py, deleted 2026-10-01 -- git history). That is inside the driver, on the lit board, not on this cable -- bench it
   beside the pickup before committing, because no cable discipline can reach it.
 
-  If a bench test beside the pickup still shows the strip in the audio, the escalation is a
-  differential pair (RS-422 driver here, receiver at the strip) -- NOT more filtering. That
+  If a bench test beside the pickup still shows the lighting in the audio, the escalation is a
+  differential pair (RS-422 driver here, receiver at the lit board) -- NOT more filtering. That
   costs two parts and a board change, so it is worth measuring before it is worth building.
 """
 from __future__ import annotations
@@ -116,8 +116,8 @@ BOARD_W, BOARD_L = 56.0, 34.0
 UI_FP = "Connector_PinHeader_1.27mm:PinHeader_2x07_P1.27mm_Horizontal"
 
 # way -> (signal, Pi header pin). Decided in docs/pi-cap-ui-ribbon.md: the display is on
-# SPI1 because SPI0 belongs to the LED strip and a TLC59711 has no chip select, so any
-# display byte on that bus becomes strip data. GPIO19 (pin 35) stays EMPTY on purpose --
+# SPI1 because SPI0 belongs to the LED chain and a TLC59711 has no chip select, so any
+# display byte on that bus becomes LED data. GPIO19 (pin 35) stays EMPTY on purpose --
 # the spi1-1cs overlay claims it as MISO and a switch there would work until the overlay
 # loads. The order puts the clock beside the ground and keeps the two fast lines away from
 # the seven switch lines, which are static on a human timescale.
@@ -169,7 +169,7 @@ PI_SCLK_FOOT = 10                 # GPIO 15, SPI5
 PI_MOSI_FOOT = 8                  # GPIO 14
 SERIES_R = "68R"                  # see note 1 in the docstring
 
-# The strip's cable. SAME ORDER as led_strip.J_PINS -- one crimp order, and GND lands on
+# The fret boards' cable. SAME ORDER as fret_led's J1 -- one crimp order, and GND lands on
 # both ends of the row so each signal has a return beside it (note 3).
 # ⚠ V24, NOT V5 (2026-09-30, docs/lighting-bus.md 3-4): every lit board carries its own buck
 # now, so what crosses this board is the 24 V bus and nothing is regulated for the LEDs

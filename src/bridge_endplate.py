@@ -818,13 +818,17 @@ def _build() -> cq.Workplane:
     # THE PAD IS THIN -- 3.10 -- BUT THE ANCHOR IS NOT, because the pad lands on the fill
     # slab and the two are one solid: probed at both points, there is 19.9 mm of material
     # under the pad's top face. So the insert pocket and a real bite past it both sit in
-    # solid plastic. 11.0 is deeper than M4's anchor_min_wall (8.5) so a stock M4x12 --
-    # the length already in the BOM -- cannot bottom out.
+    # solid plastic. The depth is derived from the screw below (it was a typed 11.0 for an
+    # M4x12 on the bare board), a bead past its tip, so it cannot bottom out.
     #
     # This is what fusing the pad to the slab bought, beyond closing the void: an anchor
     # into a 3.10 pad hovering over a 1.0 gap would have had 3.10 of thread and then air.
     for _mx, _my in OP.mount_points():
-        body = cut_anchor(M4, body, (_mx, _my, PCB_PAD_TOP), (0, 0, -1), depth=11.0)
+        # the bore follows the SCREW: x20 through the hand guard reaches 5.04 further down
+        # than the x12 that sat on the board did (was a typed 11.0)
+        _tip = OP.GUARD_SEAT_Z - OP.GUARD_SCREW_L
+        body = cut_anchor(M4, body, (_mx, _my, PCB_PAD_TOP), (0, 0, -1),
+                          depth=PCB_PAD_TOP - _tip + D.BEAD)
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.

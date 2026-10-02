@@ -63,10 +63,10 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
 # ...plus the two FRET LIGHTING boards (2026-09-29), which are one design in
-# elec/fret_led.py cut to two panels -- see that module. `led_strip` is the OTHER
-# lighting job, the one that fires down at the player's feet; the two were a single
-# strip until the fret work split them.
-BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
+# elec/fret_led.py cut to two panels -- see that module. `foot_led` is the OTHER
+# lighting job, the one that fires down at the player's feet. (The single side-mount
+# `led_strip` both replaced is gone, 2026-10-01.)
+BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
           "pi_cap", "optical", "ui_board", "fret_led_mid", "fret_led_key",
           "foot_led",
           # the leg's blind-mate boards (elec/leg_pogo.py, 2026-10-01): two joints, and each
@@ -134,8 +134,8 @@ LCSC = {
     # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
     # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
     "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
-    "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (led_strip)
-    "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (led_strip)
+    "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (fret_led, foot_led)
+    "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (fret_led, foot_led)
     "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector
                                     # and pi_cap J3, 5 V + SPI out to the strip
     "S4B-XH-SM4-TB": "C161861",     # S4B-XH-SM4-TB(LF)(SN), 20,777 -- pi_cap J2/J4,
@@ -163,6 +163,15 @@ LCSC = {
     "MX126-5.0-02P": "C5188434",    # MAX MX126-5.0-02P-GN01-Cu-S-A, stock 48,416
     # The two CLASS lines whose pinout the netlist actually writes out, so a part can be
     # checked against it pin for pin rather than chosen by name:
+    "NMJ6HCD2": "C368502",          # Neutrik 1/4 in TRS jack, THT. 1350 in stock 2026-10-02
+                                    # (it was at ZERO on 2026-09-17 and sat in OPEN_VALUES)
+    "PZ1.27-2x7P": "C22438113",     # HX PZ1.27-2x7P WZ: 1.27 mm 2x7 RIGHT-ANGLE pin header,
+                                    # THT, 2902 in stock 2026-10-02 -- the pi_cap's UI ribbon.
+                                    # (C22438122, named in pi_cap.py, is the VERTICAL one and
+                                    # does not match the Horizontal footprint.)
+    "MCP4261-103E/ST": "C185580",   # dual 10k digital pot, TSSOP-14 -- ⚠ 96 in stock on
+                                    # 2026-10-01; re-check before ordering
+    "SN74LVC1G3157DCKR": "C38663",  # SPDT analog switch, SC-70-6
     "TLV9061IDBVR": "C398358",      # TI, SOT-23-5: 1 OUT 2 V- 3 IN+ 4 IN- 5 V+ -- exact
                                     # match to U7/U8. Stock 301,906. Same family as the
                                     # optical board's TIAs. RRIO, 5.5 V max on a 5 V rail.
@@ -206,8 +215,6 @@ LCSC = {
 # value that is neither sourced nor generic nor listed below FAILS THE BUILD,
 # which means changing a part number forces you to come here and say so.
 OPEN_VALUES = frozenset({
-    "NMJ6HCD2",            # 1/4 in TRS jack (was the TS NMJ4HCD2). JLCPCB at ZERO
-                           # stock, 2026-09-17 -- a listing is not a source
     "USB1046-GF-0180",     # GCT USB-A. Not listed at JLCPCB (2026-09-17); the
                            # nearest is -0190-L-B-A at 5 in stock. ⚠ THE ONE THAT WENT WRONG -- if this
                            # string ever changes, that is the footprint moving
@@ -218,6 +225,17 @@ OPEN_VALUES = frozenset({
     #  pinouts, sourced above. What still wants a second pair of eyes is the ANALOG DESIGN
     #  -- bias, coupling, the pickup's 1M load -- not a part number.)
 })
+
+# ORDER-FORM CHOICES THAT APPLY TO EVERY BOARD (2026-10-02 review). None is in a gerber.
+ORDER_EVERY_BOARD = (
+    ("mark", "Remove Mark (the fab's order number). Left on, it is printed wherever the "
+             "fab finds room -- on the optical board that can be beside the sensors."),
+    ("rails", "Edge rails and fiducials: Added by JLCPCB. No board carries its own "
+              "fiducials, and the small ones are assembled in a panel the fab makes."),
+    ("placement", "Confirm Parts Placement: Yes. An engineer checks polarity and rotation "
+                  "before the run; ROTATION-CHECK.txt is the list to compare against."),
+    ("prod file", "Confirm Production File: Yes. The last look at the panel before it is cut."),
+)
 
 # Generic passives are JLCPCB BASIC parts chosen at order time from the package and
 # value, which is normal practice and not an omission -- an 0402 100nF is not a
@@ -421,11 +439,15 @@ def fab(board):
     # order_options gets them written into its own zip, next to the gerbers, where
     # whoever opens it to place the order will see them.
     opts = json.load(open(stem + ".board.json", encoding="utf-8")).get("order_options")
-    if opts:
-        with open(os.path.join(d, "ORDER.txt"), "w", encoding="utf-8") as f:
-            f.write("%s -- order form settings that are NOT in the gerbers\n\n" % board)
-            for k in sorted(opts):
-                f.write("  %-12s %s\n" % (k + ":", opts[k]))
+    # EVERY package gets an ORDER.txt now: the four settings in ORDER_EVERY_BOARD apply to
+    # all of them, and a board with none of its own used to ship with no note at all.
+    with open(os.path.join(d, "ORDER.txt"), "w", encoding="utf-8") as f:
+        f.write("%s -- order form settings that are NOT in the gerbers\n\n" % board)
+        for k in sorted(opts or {}):
+            f.write("  %-12s %s\n" % (k + ":", opts[k]))
+        f.write("\n  on every board:\n")
+        for k, v in ORDER_EVERY_BOARD:
+            f.write("  %-12s %s\n" % (k + ":", v))
     crit, _total = _rotation_critical(pcb)
     with open(os.path.join(d, "ROTATION-CHECK.txt"), "w", encoding="utf-8") as f:
         f.write("%s -- the placements a rotation difference can DAMAGE\n\n" % board)
@@ -675,7 +697,9 @@ def _sweep_stale(names):
     for z in sorted(glob.glob(os.path.join(FAB_DIR, "*.zip"))):
         board = os.path.splitext(os.path.basename(z))[0]
         gen = os.path.join(HERE, "%s.py" % board)
-        if not os.path.isfile(gen):
+        # BOARDS first, as the second sweep below already does: leg_pogo.py writes four
+        # boards and none is named after it, so this deleted all four packages every run.
+        if board not in BOARDS and not os.path.isfile(gen):
             os.remove(z)
             print("  removed %s.zip -- no generator; that board is not in the design"
                   % board)

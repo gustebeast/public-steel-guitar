@@ -509,6 +509,11 @@ def main() -> int:
             # reads as a PASS. It is not one: no part was looked at.
             import difflib
             for m in missing:
+                host = FUSED_INTO.get(m)
+                if host:                       # a colour layer or light band: no orientation
+                    print("--only %r prints fused into %r and is checked AS PART OF it -- "
+                          "ask for that instead" % (m, host))
+                    continue
                 near = difflib.get_close_matches(m, names, n=4, cutoff=0.5) or                        [n for n in names if n.startswith(m)][:6]
                 print("--only %r is not a part%s" % (m, (" -- did you mean: " + ", ".join(near)) if near else ""))
             raise SystemExit(2)
