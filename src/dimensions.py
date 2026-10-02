@@ -690,25 +690,37 @@ MOTOR_CLR       = 0.4       # slip fit round a PURCHASED motor body (42.3 nomina
 # bank 7.2 of length -- string 10's belt run still clears the clamp's travel by 5.5 (asserted).
 MOTOR_GAP       = MIN_WALL_2P + 2 * MOTOR_CLR       # 2.4 between neighbouring motor bodies
 MOTOR_X_STEP    = MOTOR_SQ + MOTOR_GAP              # 44.7 along-X step between motors
-# BANK ANCHOR (user, 2026-09-11): the -X end of the bank is pinned to the electronics, which
-# stand against the keyhead endplate, and the bank is packed toward them -- so the SHORTEST
-# belt (string 10, next to the bridge) gets all the run there is. That run has to cover the
-# belt clamp's whole travel; build.py asserts it.
+# BANK ANCHOR (user, 2026-10-02): the -X end of the bank is the KEYHEAD ENDPLATE itself.
+# String 1's bay wall stands a fit off the endplate's inboard face and the bank is packed
+# from there, so the SHORTEST belt (string 10, next to the bridge) gets all the run there
+# is -- that run is what the belt clamp's travel is cut from. The standing motor board
+# used to sit between the endplate and string 1's motor and cost every belt 21.8 of run;
+# it now stands -Y of that motor instead, behind its back face (MCTRL_Y1 below).
 KEYHEAD_INBOARD_X = -607.8       # keyhead endplate inboard bearing face (its height-screw prism, keyhead_endplate.HS_X1);
                                  # asserted against keyhead_endplate in build.py
-# A PINNED DATUM, NOT A MEASUREMENT OF WHAT STANDS THERE (lead, 2026-10-01). It was sized by
-# the Pi standing in the tray; the Pi has lain flat on the chassis floor since the Y swap, and
-# the standing boards alone need 16.8. The 5.0 left over is NOT free: the flat Pi starts at
-# x -588 and the seven-conductor cable slot lives beside the motor board. And the number feeds
-# MOTOR_X0, so "fixing" it moves the motor bank, the belts and the chassis floor. The motors
-# do not move for a tidier derivation -- so it stays 21.8 until something needs that strip.
-ELEC_STACK_D    = 21.8           # keyhead face -> string 1's motor clearance: standing boards (16.8)
-                                 # + the cable slot + the flat Pi's end; see electronics.py's assert
-# Sized like MOTOR_GAP so string 1's -X bay wall is a full 1.6 like every other motor's, rather
-# than the 1.2 that 1.6 of clearance left it (user: no special cases in the bank).
-MOTOR_ELEC_CLR  = MIN_WALL_2P + 2 * MOTOR_CLR   # 2.4 between the electronics and string 1's motor
-MOTOR_X0        = (-(KEYHEAD_INBOARD_X + ELEC_STACK_D + MOTOR_ELEC_CLR + MOTOR_SQ / 2)
-                   - (N_STRINGS - 1) * MOTOR_X_STEP)   # ~169.75: the nearest motor's -X offset
+# Sized like MOTOR_GAP: string 1's -X bay wall is a full 1.6 like every other motor's, with
+# the motor's fit on one side of it and the same fit to the endplate on the other.
+MOTOR_END_CLR   = MIN_WALL_2P + 2 * MOTOR_CLR   # 2.4 from the endplate's face to string 1's motor
+MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
+                   - (N_STRINGS - 1) * MOTOR_X_STEP)   # 181.95: the nearest motor's -X offset
+# THE STANDING MOTOR BOARD'S PLACE IN THE FLOOR, pinned here because three modules that
+# cannot import electronics need it: the chassis (its mortises keep off the board's floor
+# port), motor_bank (string 1's back stop IS the board's +Y wall) and leg_stack (the -X/-Y
+# body adapter is relieved under the board's bottom edge). build.py asserts all of it
+# against the placed board.
+#   Y1  the board's +Y edge: string 1's motor back, less its fit, ONE two-bead wall and the
+#       board's own fit. That wall is the motor's back stop and the board's locating wall.
+#   Y0  ...less the board's routed length.
+#   X   the standing board with its mated plugs, in world X.
+#   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
+#       reached from outside), before the plugs.
+MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
+MCTRL_Y1        = string_y(0) - 14.0 - MOTOR_BODY_L - MOTOR_CLR - MIN_WALL_2P - MCTRL_FIT   # -43.55
+MCTRL_L         = 55.0           # routed outline, along Y
+MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -98.55
+MCTRL_X         = (-606.5, -591.7)
+MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
+MCTRL_DIP       = 2.0
 # Belt-plane cascade: a Ø8.4 pulley + belt wrap is wider than the 9.5 mm string
 # pitch, so adjacent screw pulleys' belts would collide. Raise the ODD pulleys
 # into a second Z plane so neighbours always differ by BELT_PLANE_DZ. Only the
@@ -768,8 +780,10 @@ BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
 # With +-20 deg of twist error allowed for (user: the clamp turns with the belt and needs
 # room for it) it is WORSE: 1 -> 2.8, 8 -> 6.1, 9 -> 5.0, 10 -> 1.1.
 # Do not build on 7.97 for strings 1, 8, 9 or 10 until this note is gone.
-CARRIAGE_TRAVEL = (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
-                   - 2 * CLAMP_END_CLR) / BELT_PER_MM          # 7.97
+# ...AND NO MORE THAN IS WANTED. With the bank against the endplate the shortest run is
+# 194.0 and this sum allows 9.53; the nut does not get travel it has no use for.
+CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
+                                    - 2 * CLAMP_END_CLR) / BELT_PER_MM)   # 8.35
 NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -26.17, the FLOOR: the
                                                                # boss's underside at the
                                                                # bottom of travel
@@ -962,6 +976,12 @@ def floor_block_y(station_x: float) -> tuple:
     if hys:
         lo.append(min(hys) - hs_half)
         hi.append(max(hys) + hs_half)
+    # ...and a THIRD at the keyhead end: the standing motor board's floor port (MCTRL_*). The
+    # board passes through the floor on its own two-bead-walled port, so a mortise in its X
+    # band stops a wall short of it.
+    if MCTRL_X[0] - LEVER_MORT_W / 2 < station_x < MCTRL_X[1] + LEVER_MORT_W / 2:
+        lo.append(MCTRL_Y0 - MCTRL_PORT_CLR - MIN_WALL_2P)
+        hi.append(MCTRL_Y1 + MCTRL_PORT_CLR + MIN_WALL_2P)
     return (min(lo), max(hi)) if lo else None
 MORT_FULL_Y1 = RAIL_HI_INNER_Y + WALL_THICKNESS + 1.0     # out past the +Y rail's outer face
 

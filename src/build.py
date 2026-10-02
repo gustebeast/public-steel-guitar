@@ -1683,6 +1683,23 @@ def collect_components():
     assert abs(_KE.HS_X1 - D.KEYHEAD_INBOARD_X) < 1e-6, (
         f"the keyhead's inboard face moved to {_KE.HS_X1:.2f}; dimensions.KEYHEAD_INBOARD_X is "
         f"{D.KEYHEAD_INBOARD_X:.2f} -- update it and the motor bank follows")
+    # ...and the standing motor board is where dimensions.MCTRL_* says it is: the chassis'
+    # mortises, string 1's motor bay and the -X/-Y body adapter are all cut from those numbers
+    # without being able to see the board.
+    from . import motor_bank as MB
+    _mcb = _EL_ports.motor_ctrl().val().BoundingBox()
+    _mlam = _EL_ports.mctrl_capture_target()
+    assert abs(_mlam[2] - D.MCTRL_Y0) < 1e-6 and abs(_mlam[3] - D.MCTRL_Y1) < 1e-6, (
+        "the motor board's laminate spans y %.2f..%.2f; dimensions says %.2f..%.2f"
+        % (_mlam[2], _mlam[3], D.MCTRL_Y0, D.MCTRL_Y1))
+    assert _mcb.xmin >= D.MCTRL_X[0] - 1e-6 and _mcb.xmax <= D.MCTRL_X[1] + 1e-6, (
+        "the motor board spans x %.2f..%.2f, outside dimensions.MCTRL_X %s"
+        % (_mcb.xmin, _mcb.xmax, D.MCTRL_X))
+    assert _mcb.ymin >= D.MCTRL_Y0 - 1e-6 and _mcb.ymax <= D.MCTRL_Y1 + 1e-6, (
+        "the motor board's parts overhang its laminate in y: %.2f..%.2f" % (_mcb.ymin, _mcb.ymax))
+    assert D.MCTRL_Y1 + D.MCTRL_FIT + D.MIN_WALL_2P + D.MOTOR_CLR <= MB.back_y(0) + 1e-6, (
+        "the motor board (+Y edge %.2f) no longer leaves a wall behind string 1's motor "
+        "(back %.2f)" % (D.MCTRL_Y1, MB.back_y(0)))
     comps = [
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),
