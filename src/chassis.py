@@ -1239,16 +1239,6 @@ def _segments():
                    x=(a + b) / 2, y=(FL.WALL_Y0 + FL.RAIL_IN) / 2, z=MB.FLOOR_TOP + 15.0))
         if _fc.solids().size():
             seg = seg.union(_fc)
-        # ...and the RELIEF under the component lane, cut AFTER the union: everything on
-        # the strip that is not an LED hangs into a trough the LED's own height sets at
-        # 1.90 mm, which fits a driver and nothing else. 1.50 mm of relief over a 6.50
-        # strip buys 3.40 and is what lets the connector and the buck's inductor exist.
-        _fr = FL.relief().intersect(
-            box_at(a - b, (FL.RELIEF_Y1 - FL.RELIEF_Y0) + 4.0, 20.0,
-                   x=(a + b) / 2, y=(FL.RELIEF_Y0 + FL.RELIEF_Y1) / 2,
-                   z=MB.FLOOR_TOP - 5.0))
-        if _fr.solids().size():
-            seg = seg.cut(_fr)
         segs.append(_largest(seg))
     return segs
 
