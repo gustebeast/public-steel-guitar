@@ -468,7 +468,7 @@ def _arrival(place, fps, gnd, vrail, bay_x0, cx):
         fps[ref] = fp
 
 
-def build(panel, hole_y):
+def build(panel):
     """One board: its netlist and its board.json."""
     name = FL.BOARD_NAME[panel]
     skidl.reset()
@@ -602,18 +602,18 @@ def build(panel, hole_y):
     notes = dict(BOARD_NOTES)
     notes["outline_mm"] = (round(length, 3), BOARD_W)
     notes["placements"] = {k: list(v) for k, v in place.items()}
-    # ⚠ ONE M4 THROUGH THE BOARD (the project's rule for our own boards), in the BAY --
-    # outside every light cell, so its keepout takes nothing off a cell's floor and the
-    # deck's boss hangs where there is no optics to shadow. It locks the X shift of the
-    # lift-and-shift retention in docs/fret-led.md section 8; the ramps' tabs are what
-    # hold -Z along the length.
-    notes["cutouts"] = [{"xy": [x0 - cx + 4.50, hole_y], "d": 4.50}]
-    # ⚠ A PLAIN RECTANGLE AGAIN, AND THE CELL PITCH IS WHY. This carried an
-    # `outline_poly` with a notch per retaining tab. The tabs were retracted on measurement
-    # (docs/fret-led.md 8.6): engaging one needs the BOARD to travel a tab's length in X,
-    # and an LED shares z with the cell walls, so fret 24's cell allows it 1.27 mm against
-    # the 8.50 a tab needs. The retainer strip that replaced them moves instead of the
-    # board and runs under a bare underside, so this edge is solid again.
+    # ⚠ TWO M4s, BOTH ON THE +Y SIDE, opposite the tilt-in lip (fret_light.m4_xys): one in
+    # the BAY at the -X end, and one on an EAR off the +Y edge at the +X end, outside the
+    # lit line -- so neither keepout takes anything off a cell's floor and neither boss
+    # stands in a cell. Both positions are READ from the deck, not retyped.
+    notes["cutouts"] = [{"xy": [round(wx - cx, 4), round(wy, 4)], "d": 4.50}
+                        for wx, wy in FL.m4_xys(panel)]
+    # the rectangle, plus the ear. outline_mm above stays the LAYOUT REGION.
+    hl, hw = length / 2.0, BOARD_W / 2.0
+    ex0, ex1, ey = FL.ear_span(panel)
+    assert abs((ex1 - cx) - hl) < 1e-6, (ex1 - cx, hl)
+    notes["outline_poly"] = [[round(v, 4) for v in pt] for pt in (
+        (-hl, -hw), (hl, -hw), (hl, ey), (ex0 - cx, ey), (ex0 - cx, hw), (-hl, hw))]
     notes["qty_per_instrument"] = 1
     notes["world_x"] = [round(x0, 3), round(x1, 3)]
     notes["board_frame"] = {"cx": round(cx, 4), "z_bot": FL.BOARD_BOT}
@@ -663,7 +663,7 @@ BOARD_NOTES = {
 if __name__ == "__main__":
     tot_z = tot_d = 0
     for panel in ("mid", "key"):
-        z, d = build(panel, FL.M4_Y[panel])     # deck geometry: read, not retyped
+        z, d = build(panel)
         tot_z += z
         tot_d += d
     print("%d zones, %d channels, %d drivers, %.2f A at %.0f V all-white"

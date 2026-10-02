@@ -471,13 +471,15 @@ def _placed(half, wp):
 
 
 def pcb(half):
-    """The PCB and every part on it EXCEPT the LEDs, as routed -- ONE board, placed twice."""
+    """The PCB and every part on it, LEDs included, as routed -- ONE board, placed twice,
+    and one PART each so a board and its LEDs hide and show together."""
     from . import board_geom as BG
-    return _placed(half, BG.solid(BOARD_NAME, skip=_led_refs()))
+    return _placed(half, BG.solid(BOARD_NAME))
 
 
 def leds(half):
-    """The strip's LEDs, as their routed bodies -- their own part so they read as lit."""
+    """The strip's LEDs alone, as their routed bodies -- for probes; the build draws
+    them as part of pcb()."""
     from . import board_geom as BG
     return _placed(half, BG.bodies(BOARD_NAME, _led_refs()))
 
@@ -503,5 +505,4 @@ def parts():
         print("  (no %s.geom.json yet -- the foot strip is left out of this build; "
               "route and export it, see elec/foot_led.py)" % BOARD_NAME)
         return []
-    return [(n, f(h)) for h in HALVES
-            for n, f in (("foot_pcb_%s" % h, pcb), ("foot_led_%s" % h, leds))]
+    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES]

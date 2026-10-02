@@ -222,11 +222,9 @@ RAMP_DEG = 58.0
 #     drop = (gap to the hinge wall) - LIP_RISE = 0.60 - 0.50 = 0.10 nominal
 # A board 0.2 narrow drops 0.30; one 0.1 wide is wedged up tight.
 #
-# ⚠ THE +Y EDGE IS HELD AT ONE POINT, AND THAT IS A KNOWN LIMIT. The M4 is in the bay, at
-# the board's -X end; from there to the far +Y corner is 206 mm with nothing under it but
-# the board's own torsion -- roughly 0.2 - 0.3 mm of droop at that corner, ESTIMATED, not
-# measured. One M4 through the board is the project's rule; a second is the fix if a
-# printed panel shows light under fret 24's wall.
+# ⚠ THE +Y EDGE IS HELD AT BOTH ENDS (user, 2026-10-01: "one on each x end of the +y
+# side. Having just one means the opposite side is likely to flex out of position").
+# One M4 in the bay at the -X end, and one on an EAR at the +X end -- see M4_FAR_*.
 TAB_PLAY = 0.30                    # the board's lateral play, per side if it were shared
 # ⚠ THE ROOM UNDER EACH EDGE, MEASURED AGAINST REAL PARTS ONLY -- the wire models were in
 # the first probe and read 1.00 / 5.30 off conductors drawn above their own plugs.
@@ -273,6 +271,17 @@ def wall_floor(panel, sgn):
 # the barrel by 0.45, leaves 1.45 of laminate between the O4.50 hole and the board's edge,
 # and the O7.6 head laps 0.10 past that edge, under the datum wall's flush underside.
 M4_Y       = {"mid": 31.50, "key": 31.50}
+# ...AND THE FAR ONE, AT THE +X END, STANDS ON AN EAR OUTSIDE THE LIT LINE. There is no bay
+# at that end, and nowhere inside the board's rectangle for an O9.2 boss: mid's last cells
+# are 8.6 wide with a 5.0 LED in each, so a boss on a cell wall lands on two LEDs
+# (tools/_probe_m4_far.py: 35.4 mm3) and one between the LED rows stands in the light. Past
+# the board's +X end is the next deck panel, which mid's boss cannot hang from. So the
+# board grows an ear off its +Y edge, under the reflector wedge and out past it, and the
+# boss stands just outboard of the wedge's outer face, fused 0.40 into it. Probed there
+# with the real boss, head and ear: clear of everything but the edge wall the ear passes
+# through, which stops short of it.
+EAR_W      = 9.60                  # the ear along X, flush with the board's +X end
+M4_FAR_FUSE = 0.40                 # the far boss's overlap into the wedge's outer face
 M4_LEN     = 10.0                  # M4x10 button head, the instrument's standard
 M4_TIP_CLR = 2.0                   # blind hole past the screw's tip
 DECK_UNDER = 0.0                   # the deck's own underside: above it is material the
@@ -505,8 +514,10 @@ def edge_walls(x_lo=None, x_hi=None):
             y0 = sgn * (BOARD_HALF_W + edge_play(sgn))
             # the OUTER face stays where it was for both sides; the play moves the inner
             y1 = sgn * (BOARD_HALF_W + EDGE_WALL_OUT)
-            w = box_at(bx1 - bx0, abs(y1 - y0), BOARD_TOP - floor,
-                       x=(bx0 + bx1) / 2.0, y=(y0 + y1) / 2.0,
+            # the datum wall stops short of the EAR, which leaves the board through it
+            wx1 = bx1 if sgn == HINGE_SGN else ear_span(panel)[0] - TAB_PLAY
+            w = box_at(wx1 - bx0, abs(y1 - y0), BOARD_TOP - floor,
+                       x=(bx0 + wx1) / 2.0, y=(y0 + y1) / 2.0,
                        z=(BOARD_TOP + floor) / 2.0)
             out = w if out is None else out.union(w)
             if sgn == HINGE_SGN:
@@ -514,15 +525,18 @@ def edge_walls(x_lo=None, x_hi=None):
             # ⚠ THROUGH THE BAY THE WALL HAD NOTHING TO HANG FROM (user, from the render).
             # Along the comb it grows down out of the reflector wedge's flat underside; the
             # wedges stop at the comb's first wall and the board runs on into its bay, so
-            # for that stretch the wall began in mid-air -- since 8.7, on both edges of
-            # both boards. The same wedge is carried through the bay, down from the deck.
+            # for that stretch the wall began in mid-air. It is carried up to the deck
+            # there AS A WALL: its own two faces, straight up. (It was first the wedge's
+            # triangle copied through, which is a reflector where there is no light to
+            # reflect and tapers to nothing at the deck -- user: "the 1.6mm thickness
+            # rule is violated here. Why is this a triangle and not a straight wall?")
             lo, hi = panel_range(panel)
             first = min(_boundaries([x for _n, x in fret_xs() if lo <= x <= hi], lo, hi))
             if first - bx0 > 1e-6:
-                pts = [(sgn * BOARD_HALF_W, BOARD_TOP), (sgn * half_len(), BOARD_TOP),
-                       (sgn * half_len(), 0.0)]
-                out = out.union(cq.Workplane("YZ", origin=(bx0, 0, 0)).polyline(pts)
-                                .close().extrude(first - bx0))
+                assert abs(y1 - y0) >= D.MIN_WALL_2P - 1e-9, abs(y1 - y0)
+                out = out.union(box_at(first - bx0, abs(y1 - y0), -BOARD_TOP,
+                                       x=(bx0 + first) / 2.0, y=(y0 + y1) / 2.0,
+                                       z=BOARD_TOP / 2.0))
     return heal(out) if out is not None else cq.Workplane("XY")
 
 
@@ -536,13 +550,30 @@ def _lip(bx0, bx1, y_wall, sgn):
             .extrude(bx1 - bx0))
 
 
-def m4_xy(panel):
-    """World (x, y) of this board's one M4, from where elec/ cut the hole.
+def far_y():
+    """World Y of the far M4: its boss just outboard of the reflector wedge."""
+    from cadkit.fasteners import M4
+    return half_len() + M4.boss_od / 2.0 - M4_FAR_FUSE
 
-    ⚠ NOT RETYPED. elec/fret_led.py cuts it at board-local (x0 - cx + 4.50, -28.0) and
-    `_placed` translates board-local x by the board centre, so the world X is x0 + 4.50 --
-    4.50 in from the board's -X end, inside the BAY, where there is no cell to shadow."""
-    return board_span(panel)[0] + 4.50, M4_Y[panel]
+
+def ear_span(panel):
+    """(x0, x1, y_top) of the board's ear: EAR_W of its +X end, out to past the far M4."""
+    bx1 = board_span(panel)[1]
+    return bx1 - EAR_W, bx1, far_y() + EAR_W / 2.0
+
+
+def ear_h():
+    """How far the ear stands off the board's +Y edge."""
+    return far_y() + EAR_W / 2.0 - BOARD_HALF_W
+
+
+def m4_xys(panel):
+    """World (x, y) of this board's two M4s, which is where elec/ cuts the holes.
+
+    ⚠ NOT RETYPED. elec/fret_led.py reads THIS for its cutouts. [0] is 4.50 in from the
+    board's -X end, inside the BAY; [1] is centred in the ear at the +X end."""
+    x0, x1 = board_span(panel)
+    return [(x0 + 4.50, M4_Y[panel]), (x1 - EAR_W / 2.0, far_y())]
 
 
 def m4_boss(w, x_lo=None, x_hi=None):
@@ -573,29 +604,31 @@ def m4_boss(w, x_lo=None, x_hi=None):
         bx0, bx1 = board_span(panel)
         if x_lo is not None and not (x_lo <= (bx0 + bx1) / 2.0 <= x_hi):
             continue
-        x, y = m4_xy(panel)
-        boss = (cq.Workplane("XY").circle(M4.boss_od / 2.0)
-                .extrude(DECK_UNDER - BOARD_TOP).translate((x, y, BOARD_TOP)))
-        w = w.union(boss.cut(m4_joint(panel).cutter(up)))
+        for i, (x, y) in enumerate(m4_xys(panel)):
+            boss = (cq.Workplane("XY").circle(M4.boss_od / 2.0)
+                    .extrude(DECK_UNDER - BOARD_TOP).translate((x, y, BOARD_TOP)))
+            w = w.union(boss.cut(m4_joint(panel, i).cutter(up)))
     return w
 
 
-def m4_joint(panel):
-    """This board's one M4 as a cadkit ScrewJoint: head on the board's underside, up
+def m4_joint(panel, i):
+    """This board's M4 number `i` as a cadkit ScrewJoint: head on the board's underside, up
     through the board, into a heat-set insert whose pocket opens on the boss's bottom
     face -- the face the board's top bears on, and the last one the deck prints."""
     from cadkit.fasteners import ScrewJoint, M4, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H
-    x, y = m4_xy(panel)
+    x, y = m4_xys(panel)[i]
     return ScrewJoint(M4, (x, y, BOARD_BOT), (0.0, 0.0, 1.0), M4_LEN,
                       insert_at=BOARD_T, end_at=M4_LEN + M4_TIP_CLR,
                       head_d=M4_BUTTON_HEAD_D, head_h=M4_BUTTON_HEAD_H)
 
 
 def m4_screws():
-    """[(name, solid)] -- each board's screw and its insert, from the joint itself."""
+    """[(name, solid)] -- each board's screws and their inserts, from the joints themselves."""
     out = []
     for panel in BOARD_NAME:
-        out += m4_joint(panel).dummies("fret_m4_%s" % panel, "fret_m4_insert_%s" % panel)
+        for i in range(len(m4_xys(panel))):
+            out += m4_joint(panel, i).dummies("fret_m4_%s_%d" % (panel, i),
+                                              "fret_m4_insert_%s_%d" % (panel, i))
     return out
 
 
@@ -666,11 +699,14 @@ def _led_refs(panel):
 
 
 def _placed(panel, wp):
-    return wp.translate((board_cx(panel), 0.0, BOARD_BOT))
+    # ⚠ THE ROUTED BOARD'S ORIGIN IS THE CENTRE OF ITS EDGE BOX, EAR INCLUDED
+    # (elec/export_geom.py), so it sits half the ear's height +Y of the rectangle's centre.
+    return wp.translate((board_cx(panel), ear_h() / 2.0, BOARD_BOT))
 
 
 def pcb(panel):
-    """The PCB and every part on it EXCEPT the LEDs, as routed.
+    """The PCB and every part on it, LEDs included, as routed -- ONE part, so the board
+    and its LEDs hide and show together in the viewer (user, 2026-10-01).
 
     ⚠ READ BACK FROM THE ROUTED BOARD (src/board_geom.py), not drawn from a table. The
     slab this used to be was 70.4 x 200 x 1.6 with four boxes per fret on top, and it
@@ -679,11 +715,12 @@ def pcb(panel):
     thing fits under the deck. The same argument board_geom's own docstring makes about
     the output board, and the same three classes of error waiting in it."""
     from . import board_geom as BG
-    return _placed(panel, BG.solid(BOARD_NAME[panel], skip=_led_refs(panel)))
+    return _placed(panel, BG.solid(BOARD_NAME[panel]))
 
 
 def leds(panel):
-    """The panel's LEDs, as their routed bodies -- their own part so they read as lit."""
+    """The panel's LEDs alone, as their routed bodies -- for the probes that ask about
+    the LEDs specifically. The build draws them as part of pcb()."""
     from . import board_geom as BG
     return _placed(panel, BG.bodies(BOARD_NAME[panel], _led_refs(panel)))
 
@@ -692,8 +729,7 @@ def parts(panel):
     """[(name, solid)] for build.py, so the idea renders in the viewer."""
     lo, hi = panel_range(panel)
     return [("fret_cell_%s" % panel, walls(lo, hi).union(ramps(lo, hi))),
-            ("fret_pcb_%s" % panel, pcb(panel)),
-            ("fret_led_%s" % panel, leds(panel))]
+            ("fret_pcb_%s" % panel, pcb(panel))]
 
 
 # ── THE SEAM JOINT ────────────────────────────────────────────────────────────────────
