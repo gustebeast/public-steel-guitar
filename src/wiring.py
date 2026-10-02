@@ -1113,7 +1113,8 @@ def build_wires():
     # the port frame was wrong.
     _PORT_APR_X = EL.PI_FP[1] + 20.0               # -483.0: clear of the +X face + a plug
     _ua = EL.op_mouth("J2")          # was op_pt: J2's +Y FACE, 7.300 mm off its axis
-    _UA_PLUG = 25.0
+    _UA_PLUG = 20.0                  # a USB-C plug's overmould (J2 was a USB-A, 25, until
+                                     # 2026-10-02)
     # ITS OWN COLUMN at the keyhead, 6 mm +X of the one the bay wires share: at a different
     # fly height in the shared column it met the OLED lead's drop instead (24.9 mm3). Here it
     # flies over string 1's motor, well above its top.
