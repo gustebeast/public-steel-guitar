@@ -110,3 +110,19 @@ LOWER run.** Also in INSTALL_NOTES.md.
 
 Whether to relieve the endplate along string 10's belt lane, shorten the clamp, move the
 motor bank, or accept a shorter travel on strings 9 and 10. `CARRIAGE_TRAVEL` is unchanged.
+
+## A screwless clip, as a stand-in (2026-10-02)
+
+`CLAMP_BOX=26,8.2,5.35,1.6 py -3.12 -m tools.clamp_study 8 out.json A 20` studies a box in
+place of the real clamp: 26 along the belt, 8.2 across its width, 5.35 through it. That is
+the envelope of a one-piece toothed clip with no screw. Motors as they are today, twist
+margin ±20°, each string on its right run:
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 36.0 | 32.8 | 29.6 | 26.4 | 23.2 | 18.9 | 16.8 | 11.9 | 10.4 | 8.9 |
+
+Every string clears 7.97, and nothing blocks the right-run span at all: each is limited
+only by the 5 mm end clearances. The screw, not the clamp's length, was the problem. The
+clip is not designed; clip-against-clip is not re-measured; tension adjustment without a
+screw is open.
