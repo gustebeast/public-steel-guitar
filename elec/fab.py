@@ -63,10 +63,10 @@ FAB_DIR = os.path.join(OUT_DIR, "fab")
 # SIX boards: the power board merged into motor_ctrl, and the optical pickup landed
 # (both 2026-09-15). This is now the whole instrument.
 # ...plus the two FRET LIGHTING boards (2026-09-29), which are one design in
-# elec/fret_led.py cut to two panels -- see that module. `led_strip` is the OTHER
-# lighting job, the one that fires down at the player's feet; the two were a single
-# strip until the fret work split them.
-BOARDS = ("can_tee", "led_strip", "lever_sensor", "motor_ctrl", "output_panel",
+# elec/fret_led.py cut to two panels -- see that module. `foot_led` is the OTHER
+# lighting job, the one that fires down at the player's feet. (The single side-mount
+# `led_strip` both replaced is gone, 2026-10-01.)
+BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
           "pi_cap", "optical", "ui_board", "fret_led_mid", "fret_led_key",
           "foot_led",
           # the leg's blind-mate boards (elec/leg_pogo.py, 2026-10-01): two joints, and each
@@ -134,8 +134,8 @@ LCSC = {
     # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
     # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
     "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
-    "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (led_strip)
-    "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (led_strip)
+    "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (fret_led, foot_led)
+    "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (fret_led, foot_led)
     "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector
                                     # and pi_cap J3, 5 V + SPI out to the strip
     "S4B-XH-SM4-TB": "C161861",     # S4B-XH-SM4-TB(LF)(SN), 20,777 -- pi_cap J2/J4,

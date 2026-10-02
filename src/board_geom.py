@@ -79,8 +79,7 @@ HEIGHT = {
                                                     # pass-through; same 6.0 body as the
                                                     # 4-way it replaced, 17.9 long)
     "JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical": 6.0,   # JST PH top entry (pi_cap J3)
-    # LED strip section (elec/led_strip.py). The 5050 LED is the part that has to be right:
-    # it is what the chassis seat aims, and the seat's lips clear the board face by 1.9.
+    # The lighting boards (elec/fret_led.py, elec/foot_led.py).
     "XINGLIGHT_XL-5050RGBW": 1.6,                   # 5.0 x 5.0 x 1.6 (LCSC C7371891)
     "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm": 1.2,   # TLC59711 PWP
     "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": 5.5,   # cadkit PH_SIDE_H

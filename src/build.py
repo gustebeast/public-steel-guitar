@@ -264,10 +264,6 @@ if not os.environ.get("PI_NO_CRADLE"):          # see keyhead_cradles; debug swe
 #  -Y wall to admit the Pi cap's overhang; the Pi now sits +3.82 with the cap's face FLUSH
 #  on that wall, so there is nothing to admit. The user's point was that the pocket cost
 #  wall strength -- the answer is to not need it, not to make it smaller. See PI_FP.)
-# ...and the LED strip's connector tails, for the same reason and by the same route.
-for _lr in _EL_ports.led_wall_reliefs():
-    for _csi in range(len(chassis_segments)):
-        chassis_segments[_csi] = chassis_segments[_csi].cut(_lr)
 _fused_segs = set()
 for _cnm, _cr, (_ctx, _cty, _ctd) in _WR_FUSE.tee_cradles():
     for _csi in range(len(_seg_edges) - 1):
@@ -941,7 +937,6 @@ def _electronics_components():
     # button head that used to clamp the laminate directly: no position beside the board had
     # room for that screw's anchor below the floor (electronics.PI_SPACER_XY).
     out = [("pi4", EL.pi4()), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
-           *EL.led_sections(),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            ]
@@ -951,7 +946,6 @@ def _electronics_components():
     from . import fret_light as FL
     for panel in ("mid", "key"):
         out.append(("fret_pcb_%s" % panel, FL.pcb(panel)))
-        out.append(("fret_led_%s" % panel, FL.leds(panel)))
     # the FOOT strip: one board placed twice, firing down through the chassis window.
     # The channel it slides into is chassis geometry (src/foot_light.py).
     from . import foot_light as FOOT
@@ -1329,7 +1323,7 @@ BODY_WORK_PARTS = SCREW_ROW_PARTS + (
     # parts while this branch deleted teensy_/adc_stack/buck/analog_frontend and the
     # three free-standing panel jacks (they are PCB parts on the output+panel board
     # now). Keep main's additions, keep the deletions.
-        "pi4", "pi_cap", "pi_spacer", "led_strip_", "motor_ctrl", "tee_", "wire_",
+        "pi4", "pi_cap", "pi_spacer", "motor_ctrl", "tee_", "wire_",
         "output_panel", "ui_",
     "body_adapter", "lock_pin_", "adjust_", "fixed_", "bar_latch_", "leg_latch_",
     "top_plate", "pickup", "optical")   # the deck piece too: its skirt sets the bay's headroom
@@ -1904,7 +1898,6 @@ _COLORS = {
     "pi4":             (0.05, 0.35, 0.15),   # PCB green
     "pi_cap":          (0.05, 0.35, 0.15),   # PCB green
     "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
-    "led_strip_":      (0.05, 0.35, 0.15),   # PCB green
     "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
     "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
@@ -1981,12 +1974,8 @@ _COLORS = {
     # "mid" and "key" are what every other file calls these two boards
     "fret_pcb_mid":    (0.05, 0.35, 0.15),   # PCB green
     "fret_pcb_key":    (0.05, 0.35, 0.15),
-    "fret_led_mid":    (0.95, 0.95, 0.88),   # RGBW, lit
-    "fret_led_key":    (0.95, 0.95, 0.88),
     "foot_pcb_a":      (0.05, 0.35, 0.15),
     "foot_pcb_b":      (0.05, 0.35, 0.15),
-    "foot_led_a":      (0.95, 0.95, 0.88),
-    "foot_led_b":      (0.95, 0.95, 0.88),
     "wire_ui":         (0.55, 0.56, 0.58),
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
