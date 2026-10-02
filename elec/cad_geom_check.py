@@ -57,6 +57,9 @@ def _cad(board):
     if board == "can_tee":
         from src import electronics as EL
         return EL.tee_pcb(0.0, 0.0)
+    if board == "foot_led":
+        from src import foot_light as FOOT
+        return FOOT.pcb("a")
     if board == "pi_cap":
         from src import electronics as EL
         return EL.pi_cap()
@@ -92,7 +95,7 @@ def _cad(board):
 
 
 BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
-          "pi_cap", "ui_board", "fret_led_mid", "fret_led_key",
+          "pi_cap", "ui_board", "fret_led_mid", "fret_led_key", "foot_led",
           "leg_pogo_male_bottom", "leg_pogo_male_top",
           "leg_pogo_female_bottom", "leg_pogo_female_top")
 
