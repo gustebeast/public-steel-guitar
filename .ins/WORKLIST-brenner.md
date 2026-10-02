@@ -67,3 +67,24 @@ OPEN; an item moves to DONE with the commit that closed it.
 
 9. **`src/ui_panel.py:909` is a hand-rolled M4 clearance bore** (check_fasteners; lead,
    2026-10-01). Make it a cadkit ScrewJoint with its insert when next in that file.
+
+10. **Foot strip seam by POGO (user, 2026-10-02) -- supersedes the cable plan in item 2.**
+    Measured (tools/_probe_foot_y.py): FOUR circuits are needed (24V, GND, SCK, SDT) and
+    only THREE C5203987 fit under the board. Lands are 3.50 wide; the lane is the board's
+    -Y edge (35.15, the motor retention -- user) to the end LED's courtyard at 47.30 =
+    12.15, and four lands need 14.0 before any gap. The end LED sits at exactly the X a
+    pogo needs (1.5..6.5 from the board end), so the LED row's Y is closed to them.
+    Height is NOT the blocker: barrel 3.80 vs 3.40 of trough, fixed by 0.70 more relief
+    (solid floor there) or 0.70 of raise.
+    Ceiling over the board, whole run: tensioners reach -65.22..-65.34 over y 20..48;
+    y 48..54 is CLEAR to -62. A top-side pogo needs -63.75 (board top -67.85 + 3.80 + 0.30).
+    OPTIONS put to the user: (A) 3 underneath + 1 on TOP at y ~51, fits today, two-sided
+    assembly; (B) all 4 on top, needs the redesigned clamps to clear -63.75 over y 36..52.
+    AWAITING the user's pick / the new clamp's lowest Z.
+
+11. **`elec/ui_board.py` J2 -> 1.27 mm 2x7** (lead, 2026-10-02): pi_cap's ribbon end is now
+    C22438113 (1.27 mm 2x7 right-angle pin header); J2 is still a 2.54 IDC box header.
+    Check BOTH halves' stock first. One ribbon must mate both ends.
+
+12. **Re-finish ui_board, fret_led_mid/key, foot_led** after syncing d3134042+: finish.py
+    now runs silk.py and each board gets a white `<board>_silk` part from geom.json.
