@@ -1297,6 +1297,11 @@ def pi_cap() -> cq.Workplane:
     return _cap_place(BG.solid("pi_cap"))
 
 
+def pi_cap_silk():
+    """The cap's lettering, where the cap is -- its own part, so it can be white."""
+    return _cap_place(BG.silk("pi_cap"))
+
+
 def _cap_place(shape):
     """Put anything authored in the CAP'S BOARD FRAME where the cap is.
 
@@ -1444,6 +1449,11 @@ def output_panel() -> cq.Workplane:
     through the wall at +X. See op_origin for how each axis is set."""
     _check_panel()
     return output_panel_pcb().translate(op_origin())
+
+
+def output_panel_silk():
+    """The output board's lettering, where the board is -- its own part (white ink)."""
+    return BG.silk("output_panel").translate(op_origin())
 
 
 def op_top(ref: str):
@@ -1714,6 +1724,13 @@ def mctrl_floor_ports():
 # deliberate and reasoned when it was written -- what changed is the board's position, and
 # a reader finding the old call in history should see why it went rather than assume it was
 # lost in a merge.
+def motor_ctrl_silk():
+    """The motor controller's lettering, through the SAME pose as the board itself."""
+    cx, cy = _ctr(MCTRL_FP)
+    return stand(BG.silk("motor_ctrl").translate((0.0, _MCTRL_DY, 0.0))
+                 .translate((cx, cy, MCTRL_BOARD_Z)))
+
+
 def motor_ctrl() -> cq.Workplane:
     """The motor controller posed in the standing tray (see MCTRL_FP)."""
     cx, cy = _ctr(MCTRL_FP)

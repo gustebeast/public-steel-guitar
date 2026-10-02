@@ -3880,16 +3880,21 @@ _assert_field_clear()
 # for one connector at the far end of the board.
 GUARD_T = 2 * D.BEAD                             # 1.6, the user's number
 GUARD_CLR = 0.4                                  # roof underside over the tallest part
-GUARD_EDGE = 0.3                                 # lip <-> routed board edge (fab is +-0.2)
-GUARD_RIM = D.MIN_WALL                           # 0.8 landing on the board's part-free edge
-GUARD_LIP = D.MIN_WALL                           # 0.8 hanging outside it, down the edge
+# ⚠ TOP ONLY, AND NOTHING UNDER TWO BEADS (user, 2026-10-02: "the PCB cover breaks the
+# 1.6mm bead width rule. We can skip covering the sides and just cover the top"). The first
+# version stood on a 0.8 rim along the board's edge and hung a 0.8 lip down past it; both
+# are gone. The roof stands on POSTS and the two screw bosses, and the sides are open.
 GUARD_PART_CLR = 0.3                             # any foot <-> any part body
 GUARD_OPEN_CLR = 0.5                             # roof edge past the slots' +X end
 GUARD_WINDOW = ("J2",)                           # parts that come THROUGH the roof
-GUARD_POST_D = 3.0
-GUARD_SPAN = 16.0     # no roof point further than this from a foot. Set by the MCU: a
-#                       26 mm square with no bare board inside it, so its centre is ~14.5
-#                       from the nearest post however they are placed
+GUARD_POST_D = 3.0                               # > MIN_WALL_2P; a round post, not a wall
+GUARD_POST_IN = D.MIN_WALL_2P                    # roof left outboard of a post
+assert GUARD_POST_D >= D.MIN_WALL_2P
+GUARD_SPAN = 12.0     # no roof point further than this from a post, WHERE THERE IS BARE
+#                       BOARD FOR ONE. Tighter than the 16 the rimmed version used (user:
+#                       "we'll probably want more standoffs ... it won't be supported along
+#                       the edges anymore"). The MCU is the exception nothing can fix: a
+#                       26 mm square with no bare board inside it, ringed instead.
 GUARD_HEAD_CLR = 0.3                             # radial, well <-> button head
 GUARD_SCREW_L = 20.0     # was 12: the head now sits on the guard, 2.96 higher. x16 would
 #                          do, but x20 is already a BOM line and x16 is not
@@ -3903,7 +3908,7 @@ GUARD_Z0 = PCB_TOP + max(PKG[p["pkg"]][2] for p in PARTS
 GUARD_Z1 = GUARD_Z0 + GUARD_T
 GUARD_SEAT_Z = GUARD_Z1 - TP.JACK_HEAD_H         # the button head finishes FLUSH
 GUARD_WELL_D = TP.JACK_HEAD_D + 2 * GUARD_HEAD_CLR
-GUARD_BOSS_D = GUARD_WELL_D + 2 * D.MIN_WALL
+GUARD_BOSS_D = GUARD_WELL_D + 2 * D.MIN_WALL_2P
 assert GUARD_SEAT_Z - GUARD_T >= PCB_TOP, "no room for a 1.6 floor under the screw head"
 
 
@@ -3913,32 +3918,41 @@ def _guard_windows():
     out = []
     for ref in GUARD_WINDOW:
         x0, x1, y0, y1 = part_span(part(ref))
-        out.append((x0 - GUARD_OPEN_CLR, _G_Y0 - 5.0, x1 + GUARD_OPEN_CLR,
-                    y1 + GUARD_OPEN_CLR))
+        a, c = x0 - GUARD_OPEN_CLR, x1 + GUARD_OPEN_CLR
+        # a strip of roof under two walls wide beside the notch is not worth keeping
+        if a - _G_X0 < 2 * D.MIN_WALL_2P:
+            a = _G_X0 - 5.0
+        if _G_X1 - c < 2 * D.MIN_WALL_2P:
+            c = _G_X1 + 5.0
+        out.append((a, _G_Y0 - 5.0, c, y1 + GUARD_OPEN_CLR))
     return out
 
 
-def _guard_rims():
-    """The perimeter feet, (x0, y0, x1, y1, lip) -- `lip` is the outward unit direction the
-    wall carries on DOWN past the board's edge, or None for an inner foot that only lands.
-    The -Y end is open but for one stretch between the two connectors: both plugs enter
-    there. The string field's own edges get feet where there is bare board for them."""
-    r, x0, x1, y0, y1 = GUARD_RIM, _G_X0, _G_X1, _G_Y0, _G_Y1
-    oy, ox = GUARD_OPEN_Y, GUARD_OPEN_X
-    j1, j2 = part_span(part("J1")), part_span(part("J2"))
-    return [
-        (x1 - r, y0, x1, y1, (1, 0)),                              # +X, end to end
-        (x0, y1 - r, x1, y1, (0, 1)),                              # +Y end
-        (x0, oy, x0 + r, y1, (-1, 0)),                             # -X, +Y wrap
-        (x0, j2[3] + GUARD_OPEN_CLR, x0 + r, -oy, (-1, 0)),        # -X, -Y wrap to J2's notch
-        (j2[1] + 2.0, y0, j1[0] - 2.0, y0 + r, (0, -1)),           # -Y, between the plugs
-        (ox, -oy, ox + r, oy, None),                               # along the slots' +X end
-        (x0, oy, ox, oy + r, None),                                # +Y wrap's inner edge
-    ]
+def _silk_to_world():
+    """(dx, dy): the routed board's own frame (centred on its outline) -> this module's."""
+    return (_G_X0 + _G_X1) / 2.0, (_G_Y0 + _G_Y1) / 2.0
+
+
+def opt_silk():
+    """The board's lettering as its OWN part (white ink; user, 2026-10-02), read from the
+    routed board. None if the board has not been lettered."""
+    from . import board_geom as BG
+    w = BG.silk("optical")
+    if w is None:
+        return None
+    dx, dy = _silk_to_world()
+    return w.translate((dx, dy, PCB_TOP - BG.load("optical")["thickness_mm"]))
 
 
 def _guard_free(x, y, rad):
-    """True where a foot of radius `rad` at (x, y) touches no part, pad or screw head."""
+    """True where a foot of radius `rad` at (x, y) touches no part, pad, LABEL or screw
+    head. Labels because a post standing on a test pad's name hides it for good, and
+    because the lettering is a solid in the model now."""
+    from . import board_geom as BG
+    dx, dy = _silk_to_world()
+    for a, b, c, d in BG.silk_boxes("optical"):
+        if math.hypot(max(a + dx - x, x - b - dx, 0.0), max(c + dy - y, y - d - dy, 0.0)) < rad + GUARD_PART_CLR:
+            return False
     for p in PARTS:
         a, b, c, d = part_span(p)
         if math.hypot(max(a - x, x - b, 0.0), max(c - y, y - d, 0.0)) < rad + 2 * GUARD_PART_CLR:
@@ -3959,16 +3973,14 @@ def guard_posts():
     """Where the roof stands on the board between its edges. SEARCHED, not typed: greedy
     farthest-point over the bare board, until no covered point is more than GUARD_SPAN from
     a foot. A 1.6 roof spanning the board's 57 mm on its rims alone sags ~1.4 mm under a
-    resting hand, and the tallest part is GUARD_CLR under it."""
+    resting hand, and the tallest part is GUARD_CLR under it. The posts are ALL of the
+    support now: there is no rim."""
     step = 1.0
     feet = [(mx, my) for mx, my in mount_points()]
-    for a, b, c, d, _ in _guard_rims():
-        n = max(1, int(max(c - a, d - b) / step))
-        feet += [(a + (c - a) * k / n, b + (d - b) * k / n) for k in range(n + 1)]
     nx, ny = int((_G_X1 - _G_X0) / step), int((_G_Y1 - _G_Y0) / step)
     grid = [(_G_X0 + i * step, _G_Y0 + j * step) for i in range(nx + 1) for j in range(ny + 1)]
     cov = [g for g in grid if _guard_covered(*g)]
-    edge = GUARD_POST_D / 2 + GUARD_RIM
+    edge = GUARD_POST_D / 2 + GUARD_POST_IN
     cand = [g for g in cov if _guard_free(g[0], g[1], GUARD_POST_D / 2)
             and all(_guard_covered(g[0] + sx * edge, g[1] + sy * edge)
                     for sx in (-1, 1) for sy in (-1, 1))]
@@ -3978,10 +3990,17 @@ def guard_posts():
         worst = max(cov, key=lambda g: (dist[g], g))
         if dist[worst] <= GUARD_SPAN:
             return posts
-        best = min(cand, key=lambda g: (math.hypot(g[0] - worst[0], g[1] - worst[1]), g))
-        assert math.hypot(best[0] - worst[0], best[1] - worst[1]) < dist[worst], (
-            "hand guard: no bare board near (%.1f, %.1f) for a post -- the roof spans "
-            "%.1f mm there" % (worst[0], worst[1], dist[worst]))
+        # a post right beside another one buys nothing: the first draft of this fallback
+        # walked a row of 1 mm-spaced posts down each side of the MCU, 79 in all
+        near = [g for g in cand
+                if all(math.hypot(g[0] - q[0], g[1] - q[1]) >= GUARD_SPAN / 2 for q in posts)]
+        best = min(near, key=lambda g: (math.hypot(g[0] - worst[0], g[1] - worst[1]), g),
+                   default=None)
+        if best is None or math.hypot(best[0] - worst[0], best[1] - worst[1]) > dist[worst] - 1.0:
+            # no bare board nearer than the support this point already has (over the
+            # MCU): it is as well held as it can be -- set it aside and go on
+            dist[worst] = 0.0
+            continue
         posts.append(best)
         for g in cov:
             dist[g] = min(dist[g], math.hypot(g[0] - best[0], g[1] - best[1]))
@@ -3989,15 +4008,6 @@ def guard_posts():
 
 def _assert_guard_clear():
     """What the overlap gate cannot say usefully: WHICH part a foot landed on."""
-    for a, b, c, d, _ in _guard_rims():
-        for p in PARTS:
-            x0, x1, y0, y1 = part_span(p)
-            if PKG[p["pkg"]][2] <= 0.0:
-                continue                       # a bare pad under a foot is only covered
-            gap = math.hypot(max(x0 - c, a - x1, 0.0), max(y0 - d, b - y1, 0.0))
-            assert gap >= GUARD_PART_CLR - 1e-9, (
-                "hand guard: the foot (%.2f, %.2f)..(%.2f, %.2f) is %.2f from %s"
-                % (a, b, c, d, gap, p["ref"]))
     for mx, my in mount_points():
         for p in PARTS:
             x0, x1, y0, y1 = part_span(p)
@@ -4015,9 +4025,8 @@ def opt_guard() -> cq.Workplane:
     """The hand guard: a 1.6 roof over every part of the board that has no string above it,
     held by the board's own two M4s (now x20, heads flush in wells). Prints roof-down."""
     zc = (GUARD_Z0 + GUARD_Z1) / 2
-    out = GUARD_EDGE + GUARD_LIP
-    roof = box_at(_G_X1 - _G_X0 + 2 * out, _G_Y1 - _G_Y0 + out, GUARD_T,
-                  x=(_G_X0 + _G_X1) / 2, y=(_G_Y0 + _G_Y1 + out) / 2, z=zc)
+    roof = box_at(_G_X1 - _G_X0, _G_Y1 - _G_Y0, GUARD_T,
+                  x=(_G_X0 + _G_X1) / 2, y=(_G_Y0 + _G_Y1) / 2, z=zc)
     big = 20.0
     roof = roof.cut(box_at(GUARD_OPEN_X - _G_X0 + big, 2 * GUARD_OPEN_Y, GUARD_T + 2,
                            x=(GUARD_OPEN_X + _G_X0 - big) / 2, y=0.0, z=zc))
@@ -4026,25 +4035,6 @@ def opt_guard() -> cq.Workplane:
     roof = roof.faces(">Z").chamfer(D.BEAD)      # the palm's edge, and a 45 off the bed
     g = roof
     h = GUARD_Z0 - PCB_TOP
-    for a, b, c, d, lip in _guard_rims():
-        g = g.union(box_at(c - a, d - b, h + 0.01, x=(a + c) / 2, y=(b + d) / 2,
-                           z=PCB_TOP + (h + 0.01) / 2))
-        if lip is None:
-            continue
-        ux, uy = lip
-        # the outer wall: from the roof down the board's edge to its underside
-        la, lc = (a, c) if ux == 0 else ((c + GUARD_EDGE, c + out) if ux > 0
-                                         else (a - out, a - GUARD_EDGE))
-        lb, ld = (b, d) if uy == 0 else ((d + GUARD_EDGE, d + out) if uy > 0
-                                         else (b - out, b - GUARD_EDGE))
-        hz = GUARD_Z0 - PCB_BOT
-        g = g.union(box_at(lc - la, ld - lb, hz + 0.01, x=(la + lc) / 2, y=(lb + ld) / 2,
-                           z=PCB_BOT + (hz + 0.01) / 2))
-        # ...and a strip under the roof that joins the two across the edge gap
-        ja, jc = (a, c) if ux == 0 else (min(a, la), max(c, lc))
-        jb, jd = (b, d) if uy == 0 else (min(b, lb), max(d, ld))
-        g = g.union(box_at(jc - ja, jd - jb, GUARD_CLR, x=(ja + jc) / 2, y=(jb + jd) / 2,
-                           z=GUARD_Z0 - GUARD_CLR / 2 + 0.005))
     for px, py in guard_posts():
         g = g.union(cyl(GUARD_POST_D, h + 0.01, PCB_TOP).translate((px, py, 0.0)))
     floor_z = GUARD_SEAT_Z - GUARD_T
