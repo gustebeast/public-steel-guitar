@@ -131,7 +131,7 @@
   },
   "optical_guard": {
    "material": "petg-gf",
-   "volume_mm3": 12381.2
+   "volume_mm3": 12663.1
   },
   "pedal_bar_a": {
    "material": "petg-gf",
@@ -239,7 +239,7 @@
   },
   "ui_clamp": {
    "material": "petg-gf",
-   "volume_mm3": 11615.4
+   "volume_mm3": 12537.8
   },
   "ui_knob": {
    "material": "pctg",

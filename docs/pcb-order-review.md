@@ -13,7 +13,7 @@ design-for-manufacture and design-for-bring-up lists and JLCPCB's own assembly p
 | **Bare test pads had no labels.** | The bring-up guide says "probe SWCLK"; the board did not say which pad that was. | Each test pad is labelled with its net (`SWDIO`, `+3V3A`, `BOOT0`...) where there is room, its `TP` number where the net name will not fit. |
 | **Connector pins had no legend.** | The harness is crimped by hand against these pins. | Each connector of 8 pins or fewer gets its pinout printed, on the back where the through-hole tails are. |
 | **The fab's order number** would have been printed wherever the fab chose. | On the optical board that can be beside the sensors, which the design keeps free of ink on purpose. | Every fab package's `ORDER.txt` now says "Remove Mark", with three other order-form settings. |
-| **Two parts on the output panel and one on the Pi cap had no part number in the order files**, so their packages did not build. | The order would have stopped at the upload. | MCP4261 and SN74LVC1G3157 sourced (codes were found 2026-10-01 but never entered); the Pi cap's 2x7 ribbon header is declared OPEN. |
+| **Two parts on the output panel and one on the Pi cap had no part number in the order files**, so their packages did not build. | The order would have stopped at the upload. | MCP4261 and SN74LVC1G3157 sourced (codes were found 2026-10-01 but never entered); the Pi cap's 2x7 ribbon header was declared OPEN, then sourced (C22438113). |
 | `fab.py` deleted the four pogo packages on every run. | They would have been missing from the order folder. | Fixed. |
 
 Labels are searched for a free site and dropped when there is none; none moves copper, and
@@ -46,10 +46,13 @@ boards everything but the name (plus one pinout on the male bottom board).
 
 ## Still open before ordering
 
-* ONE part cannot be ordered assembled: the two internal USB-A sockets on the output panel
-  (GCT USB1046, 3 in stock). The 1/4 in jack is back in stock (C368502) and the Pi cap's
-  ribbon header is C22438113; both entered 2026-10-02. The UI board's end of that ribbon is
-  still a 2.54 mm IDC header, which takes a different cable -- the two ends do not yet agree.
+* Nothing is declared OPEN any more (2026-10-02). The output panel's two internal USB
+  sockets are USB-C now, the same stocked part as its other ports, so the leads inside
+  the instrument are C-to-C. The 1/4 in jack is C368502. The ribbon is the same
+  right-angle 1.27 mm 2x7 header (C22438113) on the Pi cap AND the UI board, with one
+  way order held in `elec/harness.UI_RIBBON`; its pins overhang the board edge, like
+  the pogo boards', so the same order remark about rails applies to both.
+* That header is unshrouded: the cable can go on reversed. Pin 1 is marked in silk.
 * MCP4261 had 96 in stock on 2026-10-01; the gold pogo target 210; S8B-XH-A 65 against
   100 needed.
 * The leg boards' pogo pins overhang the board edge. The fab's rails must go on the other

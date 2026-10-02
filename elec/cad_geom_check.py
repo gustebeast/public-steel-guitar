@@ -187,16 +187,28 @@ def _through_wires(plate, others, up):
     # this list, so the plate's own twin is a DIFFERENT Python object wrapping the SAME face
     # -- and every wire then matches itself at zero offset, which reported all ten of
     # pi_cap's part outlines as through-cutouts. The face has to be excluded GEOMETRICALLY.
+    # ⚠ ...AND THE SAME SIZE. Position alone passed a through-hole PART as a cutout: its body
+    # stands on one face and its tail slab hangs off the other, centred on each other
+    # because both are boxes about the same pad row. The UI board read "5 hole(s), the
+    # routed board 3" the day its ribbon header changed -- the two extra were the pin
+    # header (49.96 x 1.7 of tails under 50.9 x 2.64 of body) and the switch. A cutout is
+    # one prism through the laminate, so its two wires are the same shape; a body and its
+    # tails are not.
+    def _s(wr):
+        bb = wr.BoundingBox()
+        return sorted((bb.xlen, bb.ylen, bb.zlen))[1:]
     opp = []
     for f in others:
         if abs(f.normalAt().dot(up)) > 0.9:
-            opp.extend(_c(wr) for wr in f.innerWires())
+            opp.extend((_c(wr), _s(wr)) for wr in f.innerWires())
     out = []
     for wr in plate.innerWires():
-        c = _c(wr)
-        for o in opp:
+        c, sz = _c(wr), _s(wr)
+        for o, osz in opp:
             d = o - c
             # in-plane offset ~0 (same hole) AND a real through-thickness offset (other face)
+            if max(abs(p - q) for p, q in zip(sz, osz)) > 0.10:
+                continue
             if (d - up * d.dot(up)).Length < 0.20 and abs(d.dot(up)) > 0.5:
                 out.append(wr)
                 break
