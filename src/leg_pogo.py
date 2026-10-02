@@ -248,9 +248,12 @@ WIRE_T0 = ZR_MOUTH - ZR_PLUG - HARNESS_D                # -9.75 the harness drop
 # the M4 sits BEYOND the end of the target along the row -- nothing on the -t side has
 # room for its head, and the +t side is the tenon's wall
 F_HOLE_S = -(TG_BODY_S / 2.0 + CLR + HEAD_D / 2.0)      # -9.2 from the row's centre
-F_HOLE_T = PIN_T
 FB_T0 = ZR_MOUTH                                        # the plug overhangs this edge
 FB_T1 = PIN_T + TG_BODY_T / 2.0 + EDGE                  # 4.65
+# A CLOSED hole: EDGE of board all round it, in t as it already had in s. On the pin line
+# (t = PIN_T) the O4.5 broke out of this edge by 0.5 and the board was only notched.
+F_HOLE_T = FB_T1 - EDGE - HOLE_D / 2.0                  # 1.9
+assert F_HOLE_T - HEAD_D / 2.0 >= FB_T0, "the female's head overhangs the board's -t edge"
 FB_S0 = F_HOLE_S - HOLE_D / 2.0 - EDGE                  # -11.95: past the screw
 FB_S1 = TG_BODY_S / 2.0 + EDGE                          # 5.6: just past the target
 F_SCREW_L = 8.0                 # M4 x 8 button: 1.6 of board, then 6.4 of insert bite
@@ -632,9 +635,8 @@ def host_negatives(j, up=None, deep=F_DEEP):
     # down the same axis the screw uses -- but its pocket is O6 and everything above
     # it was the board pocket's local wall, which leaves 2.20 of radius against the
     # 2.95 the insert needs. It could not physically reach its bore (user spotted it).
-    # So the pilot is carried out to the host's face. It notches the pocket's +t wall
-    # beside the screw, which is the cheap half of the trade: the wall is 18 long in s
-    # and the board is still held by the rest of it.
+    # So the pilot is carried out to the host's face. (With the hole on the pin line it
+    # notched the pocket's +t wall; 1.0 further in, it stays inside the pocket.)
     # ...and it starts at F_BOT - 0.01, NOT F_BOT + 0.01. That sign left a 0.01 mm
     # film of plastic, 3.79 mm^2 of it, lying exactly in the board pocket's own plane:
     # the bore began one hundredth of a millimetre short of the cavity it was supposed
