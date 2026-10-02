@@ -1379,7 +1379,7 @@ BOARD_NOTES = {
     # the ear moved the router's first-pass choices and BOOT0 (a one-resistor strap across
     # the digital block) came back unrouted at the default pass count; more passes let the
     # optimiser rip up and re-lay rather than freeze the early mess (route.py PASSES note)
-    "router_passes": 20,
+    "router_passes": 20,   # 40 was tried with the USB-C sockets (2026-10-02): no better, see close_last.py
     # THE HUB'S THREE PAIRS ARE LAID AS PAIRS (2026-09-21). With the CH334F's real pinout the
     # upstream and downstream pins sit on different faces of the package than the invented
     # one put them, and freerouting -- which has no notion of a pair -- came back with
@@ -1456,7 +1456,10 @@ BOARD_NOTES = {
     # Board to beat remains output_panel.best-0-0.kicad_pcb: 0 unconnected, 0 violations,
     # one layer-set problem -- which is strictly better than 1 unconnected, 1 violation and
     # one layer-set problem somewhere else.
-    "pin_escapes": ("U1.27",),
+    # U1.26 (POT_SDI) joined 2026-10-02: with the USB-C sockets the router laid +3V3 across the
+    # inner side of this pad row and vias for 25 and 27 across the outer, and left 26 boxed in
+    # on F.Cu through three rounds. Same fault as 27, same medicine.
+    "pin_escapes": ("U1.27", "U1.26"),   # U1.7 (NRST) was tried too: it closed NRST and opened OSC_IN, its neighbour
     "diff_pair_inner": "In2.Cu",
     "layers": 4,
     "thickness_mm": 1.6,
