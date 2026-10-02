@@ -83,11 +83,26 @@ def _cad(board):
         from src import fret_light as FL
         panel = board.rsplit("_", 1)[1]
         return FL.pcb(panel).union(FL.leds(panel))
+    if board.startswith("leg_pogo_"):
+        # the leg's blind-mate boards: src/leg_pogo.py draws each as board + contacts +
+        # connector at its joint. They stand on the tenon's DIAGONAL, and this check looks
+        # for axis-aligned plates, so the joint is turned 45 deg about the leg's axis first
+        # (t onto +X). That changes nothing the check measures -- parts against their board.
+        from src import leg_pogo as P
+        _, kind, joint = board.rsplit("_", 2)
+        j = P.BOTTOM if joint == "bottom" else P.TOP
+        parts = P.male(j) if kind == "male" else P.female(j)
+        s = parts[0][1]
+        for _n, part in parts[1:]:
+            s = s.union(part)
+        return s.rotate((j.x, j.y, 0.0), (j.x, j.y, 1.0), -j.ang)
     raise KeyError(board)
 
 
 BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
-          "pi_cap", "led_strip", "ui_board", "fret_led_mid", "fret_led_key")
+          "pi_cap", "led_strip", "ui_board", "fret_led_mid", "fret_led_key",
+          "leg_pogo_male_bottom", "leg_pogo_male_top",
+          "leg_pogo_female_bottom", "leg_pogo_female_top")
 
 
 def _ui_rule_check():
