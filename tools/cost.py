@@ -89,8 +89,10 @@ def board_qty(board):
     times is exactly the kind of quiet error this file exists to stop.
     """
     src = os.path.join(ROOT, "elec", "%s.py" % board)
-    if not os.path.isfile(src):                       # fret_led_mid/key share one generator
-        src = os.path.join(ROOT, "elec", "%s.py" % board.rsplit("_", 1)[0])
+    stem = board                                      # fret_led_mid/key share one generator,
+    while not os.path.isfile(src) and "_" in stem:    # and leg_pogo_female_top is two deep
+        stem = stem.rsplit("_", 1)[0]
+        src = os.path.join(ROOT, "elec", "%s.py" % stem)
     if not os.path.isfile(src):
         return None
     with open(src, encoding="utf-8") as fh:
