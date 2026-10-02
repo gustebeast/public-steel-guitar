@@ -10,6 +10,10 @@
    "fpid": "C_0402_1005Metric",
    "x": 19.0,
    "y": 10.5,
+   "pads_xy": [
+    19.0,
+    10.5
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -18,13 +22,18 @@
     10.2,
     10.8
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "C2",
    "fpid": "C_0805_2012Metric",
    "x": 24.5,
    "y": 10.5,
+   "pads_xy": [
+    24.5,
+    10.5
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -33,13 +42,18 @@
     9.825,
     11.175
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "J1",
    "fpid": "PinHeader_1x20_P2.54mm_Vertical",
    "x": -24.13,
    "y": 14.019,
+   "pads_xy": [
+    0.0,
+    14.019
+   ],
    "rot": 90.0,
    "side": "F",
    "fab": [
@@ -48,28 +62,48 @@
     12.699,
     15.339
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    -24.98,
+    24.98,
+    13.169,
+    14.869
+   ]
   },
   {
    "ref": "J2",
-   "fpid": "IDC-Header_2x07_P2.54mm_Horizontal",
-   "x": -22.67,
-   "y": -10.12,
+   "fpid": "PinHeader_2x07_P1.27mm_Horizontal",
+   "x": -33.23,
+   "y": -6.31,
+   "pads_xy": [
+    -33.865,
+    -2.5
+   ],
    "rot": 180.0,
    "side": "F",
    "fab": [
-    -36.0,
-    -22.3,
-    -15.27,
-    10.27
+    -40.05,
+    -32.98,
+    -6.995,
+    1.995
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    -35.0,
+    -32.73,
+    -6.81,
+    1.81
+   ]
   },
   {
    "ref": "R1",
    "fpid": "R_0402_1005Metric",
    "x": -20.0,
    "y": 10.0,
+   "pads_xy": [
+    -20.0,
+    10.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -78,13 +112,18 @@
     9.68,
     10.32
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R2",
    "fpid": "R_0402_1005Metric",
    "x": -16.0,
    "y": 10.0,
+   "pads_xy": [
+    -16.0,
+    10.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -93,13 +132,18 @@
     9.68,
     10.32
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R3",
    "fpid": "R_0402_1005Metric",
    "x": -12.0,
    "y": 10.0,
+   "pads_xy": [
+    -12.0,
+    10.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -108,13 +152,18 @@
     9.68,
     10.32
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R4",
    "fpid": "R_0402_1005Metric",
    "x": -8.0,
    "y": 10.0,
+   "pads_xy": [
+    -8.0,
+    10.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -123,13 +172,18 @@
     9.68,
     10.32
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R5",
    "fpid": "R_0402_1005Metric",
    "x": -4.0,
    "y": 10.0,
+   "pads_xy": [
+    -4.0,
+    10.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -138,13 +192,18 @@
     9.68,
     10.32
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R6",
    "fpid": "R_0402_1005Metric",
    "x": 0.0,
    "y": 10.0,
+   "pads_xy": [
+    0.0,
+    10.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -153,13 +212,18 @@
     9.68,
     10.32
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "R7",
    "fpid": "R_0402_1005Metric",
    "x": 4.0,
    "y": 10.0,
+   "pads_xy": [
+    4.0,
+    10.0
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -168,13 +232,18 @@
     9.68,
     10.32
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": null
   },
   {
    "ref": "SW1",
    "fpid": "Alps_RKJXT1F42001",
    "x": 24.5,
    "y": -4.263,
+   "pads_xy": [
+    24.642,
+    -4.14
+   ],
    "rot": 0.0,
    "side": "F",
    "fab": [
@@ -183,7 +252,13 @@
     -12.813,
     4.287
    ],
-   "crtyd": null
+   "crtyd": null,
+   "tht": [
+    15.8,
+    33.2,
+    -12.963,
+    4.437
+   ]
   }
  ],
  "outline_poly": [
@@ -795,5 +870,21 @@
     11.298
    ]
   ]
+ ],
+ "silk": [
+  {
+   "text": "UI BOARD r1",
+   "side": "F",
+   "x": 0.0,
+   "y": 4.0,
+   "size": 1.5,
+   "angle": 0.0,
+   "box": [
+    -7.218,
+    7.218,
+    2.859,
+    5.141
+   ]
+  }
  ]
 }

@@ -38,6 +38,23 @@ PH_PINOUT = ("GND", "V5", "CAN_H", "CAN_L")
 PH_PINOUT = ("GND", "V5", "CAN_H", "CAN_L")
 
 
+# THE UI RIBBON, way by way -- ONE list for both ends (2026-10-02). The Pi cap's J5 and the
+# UI board's J2 are the same 1.27 mm 2x7 header joined by a straight 14-way IDC cable, so
+# way n at one end IS way n at the other. Until today each board carried its own order:
+# the cap had the clock beside the ground on ways 1-2, the UI board had the switches on
+# 1-5, and the UI board's connector was a 2.54 mm IDC that takes a different ribbon
+# altogether. Neither board's DRC could see the other.
+# ⚠ THE ORDER IS THE UI BOARD'S, AND THE ROUTER CHOSE IT. The cap's order was tried first
+# (clock on ways 1-2) and the UI board would not route: its header's pin 1 is at the end
+# AWAY from the display, so every display net had to cross every switch net on two layers
+# -- CS_N and RES_N left open on three runs out of three. This order puts the display's
+# six lines at the display's end. The clock still runs between two quiet conductors:
+# GND on 8, +3V3 (an AC ground) on 10. The cap has a 40-pin header to fan into and can
+# take either order; the UI board cannot.
+UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
+             "GND", "SCLK", "+3V3", "SDIN", "DC", "CS_N", "RES_N")
+
+
 def ph_drop_pins():
     """Pin names for a 4-way bus-B drop: the leg blind-mate's PH and ZH housings, and
     the lever/pedal sensor boards' PH. Pin 1 is GND at every one of them."""
