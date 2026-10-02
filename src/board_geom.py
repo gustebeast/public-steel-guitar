@@ -441,6 +441,46 @@ def bodies(board: str, refs) -> cq.Workplane:
     return out
 
 
+SILK_T = 0.02            # ink, drawn proud of the laminate so it is a solid of its own
+SILK_CAP = 0.72          # a KiCad text "size" is its capital height; a font size is its em
+
+
+def silk(board: str, side: str = "F"):
+    """The board's own lettering as ONE part, in solid()'s frame -- a SEPARATE part so the
+    viewer can colour it white against the mask and hide it (user, 2026-10-02). Read from
+    the routed board (export_geom's "silk"), so it cannot say something the fab's ink does
+    not. Front side only by default: the back's pinouts face plastic in every mount.
+    None where the board has no lettering on that side."""
+    g = load(board)
+    t = g["thickness_mm"]
+    out = []
+    for lab in g.get("silk", []):
+        if lab["side"] != side:
+            continue
+        lines = lab["text"].split("\n")
+        pitch = lab["size"] * 1.62                     # KiCad's line spacing
+        for k, line in enumerate(lines):
+            if not line.strip():
+                continue
+            w = (cq.Workplane("XY").text(line, lab["size"] / SILK_CAP, SILK_T,
+                                         halign="center", valign="center")
+                 .translate((0.0, ((len(lines) - 1) / 2.0 - k) * pitch, 0.0))
+                 .rotate((0, 0, 0), (0, 0, 1), lab["angle"])
+                 .translate((lab["x"], lab["y"], t)))
+            out += [s for s in w.vals() if s.Volume() > 0] if hasattr(w.val(), "Volume") else []
+    if not out:
+        return None
+    solids = []
+    for s in out:
+        solids += s.Solids()
+    return cq.Workplane("XY").newObject([cq.Compound.makeCompound(solids)])
+
+
+def silk_boxes(board: str, side: str = "F"):
+    """[(x0, x1, y0, y1)] of every label on that side, in solid()'s frame."""
+    return [tuple(lab["box"]) for lab in load(board).get("silk", []) if lab["side"] == side]
+
+
 def solid(board: str, mated: bool = False, omit: tuple = (), skip=()) -> cq.Workplane:
     """The board in its OWN frame: centred on the origin in XY, underside at z = 0, parts
     rising +Z. Every part is its routed F.Fab body extruded to its HEIGHT, and a panel
