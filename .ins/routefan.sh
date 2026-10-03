@@ -31,7 +31,7 @@ pids=""
 NICE="${FAN_NICE:-/low}"
 SRC="$(cd "$(dirname "$0")/.." && pwd)"
 KI="C:/Program Files/KiCad/10.0/bin/python.exe"
-FAN="${SCRATCH:-/c/Users/gus/AppData/Local/Temp/claude/C--Users-gus-Sync-Documents-Archive-3D-public-steel-guitar/d7576032-b257-4aee-8a45-89e587fe4007/scratchpad}/fan"
+FAN="${SCRATCH:?set SCRATCH to a scratch directory}/fan"
 mkdir -p "$FAN"
 
 for spec in "$@"; do

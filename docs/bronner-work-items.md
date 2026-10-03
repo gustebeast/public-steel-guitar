@@ -5227,7 +5227,7 @@ Found while reading `pinsearch.py` for its subset-routing trick. **`route.py` lo
 freerouting.jar from a session scratch directory:**
 
 ```
-JAR = %LOCALAPPDATA%\Temp\claude\C--Users-...\<session-id>\scratchpad\freerouting.jar
+JAR = %LOCALAPPDATA%\Temp\...\<session-id>\scratchpad\freerouting.jar
 ```
 
 That is this session's temp folder. When it is cleaned, **the entire routing pipeline stops

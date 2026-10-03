@@ -47,7 +47,7 @@ JAVA = os.path.expandvars(
 def _find_jar():
     r"""Locate freerouting.jar, and NOT in a session scratch directory.
 
-    ⚠⚠ THIS USED TO POINT INTO %LOCALAPPDATA%\Temp\claude\<session-id>\scratchpad, which
+    ⚠⚠ THIS USED TO POINT INTO a session scratch directory under %LOCALAPPDATA%\Temp, which
     means the whole routing pipeline stopped working the moment that temp directory was
     cleaned -- for the lead and every other agent who took the merge, not just the session
     that happened to download it. Nothing would have said why: the jar simply is not there.
@@ -61,7 +61,7 @@ def _find_jar():
     cands = [os.environ.get("FREEROUTING_JAR"),
              os.path.expandvars(r"%LOCALAPPDATA%\Programs\freerouting\freerouting.jar")]
     cands += sorted(glob.glob(os.path.expandvars(
-        r"%LOCALAPPDATA%\Temp\claude\*\*\scratchpad\freerouting.jar")), reverse=True)
+        r"%LOCALAPPDATA%\Temp\*\*\*\scratchpad\freerouting.jar")), reverse=True)
     for c in cands:
         if c and os.path.isfile(c):
             return c

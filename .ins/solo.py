@@ -47,9 +47,8 @@ ROOT = os.path.dirname(HERE)
 STEM = os.path.join(ROOT, "elec", "out", "optical")
 JAVA = os.path.expandvars(
     r"%LOCALAPPDATA%\Programs\temurin\jdk-25.0.4.1+1-jre\bin\java.exe")
-JAR = (r"C:\Users\gus\AppData\Local\Temp\claude"
-       r"\C--Users-gus-Sync-Documents-Archive-3D-public-steel-guitar"
-       r"\d7576032-b257-4aee-8a45-89e587fe4007\scratchpad\freerouting.jar")
+JAR = os.path.expandvars(
+    r"%LOCALAPPDATA%\Programs\freerouting\freerouting.jar")
 
 
 def failing_nets(drc=STEM + ".finish.drc.json"):
