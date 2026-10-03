@@ -113,3 +113,7 @@ OPEN; an item moves to DONE with the commit that closed it.
 15. `board_geom.TAIL` for C22438113 (UI ribbon header) is a 1.5 mm ESTIMATE the ui_clamp
     relief uses (lead, 2026-10-02): verify against the datasheet. Item 11 is DONE by
     bronner (main 3daadfb7); sync before touching ui_board / ui_panel.
+
+16. 2026-10-03: the board pipeline moved to `cadkit/pcbflow/` (elec/ files are forwards).
+    Pipeline edits go in canonical ../cadkit/pcbflow -> commit -> propagate.py -> sync;
+    NEVER edit the vendored copy. New part heights/tails: src/board_geom._HEIGHT/_TAIL.
