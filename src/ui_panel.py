@@ -268,13 +268,13 @@ SPIGOT_DEPTH = 1.6
 # Its shape lives here rather than in wiring.py because elec/ui_board.py imports this
 # module and can be held to it: the conductor count is J2's way count and the pitch is
 # half the header's, which is what an IDC ribbon is.
-RIBBON_N = 14
+RIBBON_N = 16                      # 14 for the station + the power button's two throws
 RIBBON_PITCH = 0.635               # was 1.27: the header is a 1.27 mm 2x7 now, the same
                                    # part as the Pi cap's end (2026-10-02), and its ribbon
                                    # is half ITS pitch
 RIBBON_T = 0.65                    # 0.635 flat cable, and each conductor's pitch circle:
                                    # neighbouring ways touch, which is what makes it a
-                                   # ribbon rather than fourteen wires
+                                   # ribbon rather than sixteen wires
 # ...AND IT TURNS TWO CORNERS BY BEING FOLDED. The run is flat under the deck -- width
 # in Y, thickness in Z, because there is only 10.70 of headroom and 17.78 of it on edge
 # does not fit -- so both of its 90 degree turns are IN THE RIBBON'S OWN PLANE, and flat
@@ -282,10 +282,10 @@ RIBBON_T = 0.65                    # 0.635 flat cable, and each conductor's pitc
 # assembly step somebody has to get the right way round, so the count is declared here
 # and cadkit.cables.flat_bends holds the modelled path to it.
 RIBBON_FOLDS = 2
-RIBBON_W = RIBBON_N * RIBBON_PITCH  # 8.89, the cable's own width. Every way's insulation
+RIBBON_W = RIBBON_N * RIBBON_PITCH  # 10.16, the cable's own width. Every way's insulation
                                     # touches its neighbour's, so the ribbon is exactly as
                                     # wide as the ways it has -- which is also the width
-                                    # the CAD sweeps, as ONE prism rather than fourteen
+                                    # the CAD sweeps, as ONE prism rather than sixteen
 SCREW_CLR_D = 4.5                  # its clearance hole in the board
 
 # -- THE DECK ---------------------------------------------------------------
@@ -358,6 +358,29 @@ POST_CLR   = 0.3
 
 
 ENC_FOOTPRINT = "Alps_RKJXT1F42001"
+
+# -- THE POWER BUTTON (user, 2026-10-04) -----------------------------------------------
+# A round cap that sits at one of two heights: proud is off, flush with the deck is on. Under it is
+# a self-locking push switch on the board, Legion PB-22E85-S-5.7C-C-W (LCSC C22462024),
+# and everything below except the cap is off its drawing:
+PWR_FOOTPRINT = "Legion_PB-22E85"
+PWR_BODY_H = 8.5                   # the case, which board_geom draws
+PWR_STEM_SQ = 3.3                  # the stem the cap presses onto
+PWR_STEM_H = 5.7                   # its top over the case, button OUT
+PWR_LOCK = 1.5                     # how far down it sits latched
+PWR_TRAVEL = 2.5                   # ...and how far it has to be pushed to latch or release
+# ESTIMATE, scaled off the drawing rather than dimensioned on it: the stem is 3.3 square
+# for roughly its top half and wider below. The cap's socket takes only this much of it,
+# so the cap's skirt stops above the shoulder whatever the shoulder turns out to be.
+PWR_STEM_GRIP = 2.5
+# THE CAP'S DIAMETER IS A THUMB'S. It has to be followed a millimetre below the deck to
+# release it, which the user put at about 15 (2026-10-04); 19 beads is that on the grid.
+# ⚠ AND IT SETS THE SWITCH'S X, because the cap's -X edge is on the window's (the user's
+# alignment): a smaller cap walks the switch toward the ribbon header, and the clamp
+# plate has to keep a two-bead web between the reliefs it cuts under the two of them.
+# elec/ui_board.py asserts that web.
+PWR_CAP_D = 19 * D.BEAD            # 15.2, against the knob's 17
+PWR_HOLE_CLR = 0.3                 # per side, in the deck
 
 
 @lru_cache(maxsize=None)
@@ -492,6 +515,19 @@ def knob_x():
     the deck happens to be divided, and the module is under the deck where nobody sees
     it. Two visible things, one edge, one distance."""
     return ui_x() + OPEN_W / 2.0 - KNOB_D / 2.0
+
+
+def power_x():
+    """THE RULE for the power button's X: its cap's -X edge is level with the WINDOW's
+    -X edge, as the knob's +X edge is with the window's +X (user's sketch, 2026-10-04).
+    Its Y is the knob's, y_layout()[1]."""
+    return ui_x() - OPEN_W / 2.0 + PWR_CAP_D / 2.0
+
+
+def power_centre():
+    """Where the button ACTUALLY is: the routed switch's body centre. See knob_centre()
+    for why the rule and the route are compared after the route and not here."""
+    return routed("SW2")
 
 
 def knob_centre():
@@ -690,10 +726,53 @@ def encoder_shaft():
     return s.union(shaft).translate((kx, ky, 0))
 
 
+def power_geometry():
+    """(stem_z0, stem_top, cap_z0, cap_top) with the button OUT.
+
+    THE CAP IS FLUSH WITH THE DECK WHEN IT IS ON (user, 2026-10-04): nothing stands proud
+    of the playing surface while the instrument is in use. Off, it stands PWR_LOCK
+    (1.5) proud, which is how you see it is off. To release it the cap has to go
+    PWR_TRAVEL - PWR_LOCK (1.0) BELOW the deck, so the hole is a thumb's width -- that,
+    and not the cap's looks, is the floor on PWR_CAP_D.
+    """
+    tz, _bz, _face, _back, board_top, _bb = z_stack()
+    stem_z0 = board_top + PWR_BODY_H
+    stem_top = stem_z0 + PWR_STEM_H
+    cap_z0 = stem_top - PWR_STEM_GRIP
+    assert cap_z0 - PWR_TRAVEL >= stem_z0 + 0.3, (
+        "the power cap's skirt comes down to %.2f at full travel and the switch's case "
+        "tops out at %.2f" % (cap_z0 - PWR_TRAVEL, stem_z0))
+    return stem_z0, stem_top, cap_z0, tz + PWR_LOCK
+
+
+def power_cap():
+    """The printed button: a plain disc, pressed onto the switch's square stem and guided
+    by its hole in the deck. Drawn OUT, which is off and the taller of its two states.
+
+    It prints top face down with the socket opening upward. The socket bottoms on the
+    stem's end, so a push goes through the cap's full thickness into the stem rather
+    than through the press fit."""
+    px, py = power_centre()
+    _z0, stem_top, cap_z0, cap_top = power_geometry()
+    s = cyl(PWR_CAP_D, cap_top - cap_z0, z=cap_z0)
+    sq = PWR_STEM_SQ + 2 * KNOB_BORE_CLR
+    s = s.cut(box_at(sq, sq, stem_top - cap_z0 + 0.1, x=0.0, y=0.0,
+                     z=(stem_top + cap_z0 - 0.1) / 2.0))
+    return s.translate((px, py, 0))
+
+
+def power_stem():
+    """The switch's stem above its case, drawn OUT. board_geom draws the 8.5 cube only."""
+    px, py = power_centre()
+    stem_z0, stem_top, _c0, _c1 = power_geometry()
+    return box_at(PWR_STEM_SQ, PWR_STEM_SQ, stem_top - stem_z0,
+                  x=px, y=py, z=(stem_z0 + stem_top) / 2.0)
+
+
 # -- the deck ---------------------------------------------------------------
 def deck_cutter():
     """Everything the UI takes out of its deck panel: the module's pocket, the window
-    through the ledge over it, and the knob's hole."""
+    through the ledge over it, the knob's hole and the power button's."""
     tz, bz, face, _back, _bt, _bb = z_stack()
     hx, hy = routed("J1")
     mx, my = hx, hy + (MOD_L / 2.0 - HDR_EDGE_DY)
@@ -709,6 +788,9 @@ def deck_cutter():
     kx, ky = knob_centre()
     out = out.union(cyl(knob_geometry()[3], tz - bz + 2.0, z=bz - 1.0)
                     .translate((kx, ky, 0)))
+    px, py = power_centre()
+    out = out.union(cyl(PWR_CAP_D + 2 * PWR_HOLE_CLR, tz - bz + 2.0, z=bz - 1.0)
+                    .translate((px, py, 0)))
     return out
 
 
@@ -728,7 +810,9 @@ FOUR, spread as widely as the routed board allows, because the single M4 no long
     the overlap gate -- it caught two of these at 0.8 mm3 when the pull-ups moved into a
     row -- but as an anonymous solid-on-solid finding, and what you want to be told is
     WHICH post and WHICH part."""
-    return [(29.5, 9.0), (-18.0, -9.0), (-18.0, 6.0), (10.0, -9.0)]
+    # (-16, -13) was (-18, -9) until the power button: its hole in the deck took the
+    # corner off a column there, so the column moved to the board's -Y edge.
+    return [(29.5, 9.0), (-16.0, -13.0), (-18.0, 6.0), (10.0, -9.0)]
 
 
 def bearings():
@@ -935,4 +1019,5 @@ def parts():
     """[(name, solid)] everything the assembly shows for the UI station."""
     return [("ui_pcb", ui_pcb()), ("ui_display", display_module()),
             ("ui_screen", screen()), ("ui_clamp", clamp()),
-            ("ui_shaft", encoder_shaft()), ("ui_knob", knob())] + hardware()
+            ("ui_shaft", encoder_shaft()), ("ui_knob", knob()),
+            ("ui_pwr_stem", power_stem()), ("ui_pwr_cap", power_cap())] + hardware()
