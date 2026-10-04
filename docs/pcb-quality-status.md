@@ -1,6 +1,6 @@
 # PCB quality pass: where each board stands
 
-The standard is `cadkit/PCB_QUALITY.md` (rules A1–A8 automated, M1–M32 manual). Run it with
+The standard is `cadkit/PCB_QUALITY.md` (rules A1–A9 automated, M1–M38 manual). Run it with
 
 ```bash
 "C:/Program Files/KiCad/10.0/bin/python.exe" elec/quality.py elec/out/<board>
@@ -66,12 +66,23 @@ A7 (I2C pull-ups) and A8 (exposed pads) pass everywhere. One new finding:
 The manual list is now M1-M32 (32 OPEN per board). M13 onward are per-circuit-kind and
 most boards sign several in one line as not applicable.
 
+## Third batch (A9, M33-M38)
+
+From sources read through the browser (an open review checklist, a first-board guide, TI
+notes in full). One new automated rule, and it found something:
+
+* **`optical` Y1** - the crystal is **35 mm** from the STM32's oscillator pins (U6.29/30);
+  the rule's limit is 10 mm. A trace that long is stray load capacitance and a pickup,
+  and this clock sets the audio sample rate and USB timing. Move Y1 and its load
+  capacitors up against U6 before the order.
+* **`motor_ctrl` Y1** - 12.2 mm to U4.6: marginal, tighten it when the board is next placed.
+
 ## What each board still needs
 
 1. Declare `power_paths` (entry pad, load pads, amps) for every rail; fix what A1 then
    measures.
 2. Fix or waive the A2 list above (move / add capacitors, regenerate, re-route).
 3. Read every multi-pin part's pinout against its datasheet and cite it (`pinouts`).
-4. Work the manual list M1–M32 and sign each with what was checked against.
+4. Work the manual list M1–M38 and sign each with what was checked against.
 
 The optical board goes first: it is the next order.
