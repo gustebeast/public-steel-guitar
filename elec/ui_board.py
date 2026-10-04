@@ -85,7 +85,10 @@ DISP_FP = "Connector_PinHeader_2.54mm:PinHeader_1x20_P2.54mm_Vertical"
 # moves: HX PZ1.27-2x7P WZ, LCSC C22438113, right-angle, in stock. The cable is a stock
 # 14-way 1.27 mm IDC socket-to-socket lead. It is NOT shrouded -- nobody stocks a shrouded
 # 1.27 2x7 -- so pin 1 is marked in silk at both ends.
-RIBBON_FP = "Connector_PinHeader_1.27mm:PinHeader_2x07_P1.27mm_Horizontal"
+# ⚠ 2x8 SINCE THE POWER BUTTON (2026-10-04): the same family's next size, HX PZ1.27-2x8P WZ,
+# LCSC C22438114, and a stock 16-way lead. Ways 1-14 are where they were.
+RIBBON_FP = "Connector_PinHeader_1.27mm:PinHeader_2x08_P1.27mm_Horizontal"
+PWR_FP = "Steel:Legion_PB-22E85"
 
 PULLUP = "10k"
 
@@ -150,10 +153,28 @@ ENC_PINS = {
 }
 PULLED_UP = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B")
 
+# -- SW2: the power button (user, 2026-10-04) --------------------------------
+# A self-locking 2P2T push switch. It switches NOTHING on this board: both poles are
+# paralleled, their commons go to the ribbon's GND, and each throw rides its own way to
+# the output board, which is where the supply comes in and the only place it can be cut.
+# So the state arrives there as one line shorted to GND and the other open, and that
+# board picks whichever polarity fails the way it wants.
+# ⚠ NO PULL-UP HERE, on purpose. The seven above hang off +3V3, which is the Pi's rail and
+# is DEAD when this switch has done its job; a pull-up to it would be a path from the
+# output board's standby supply back into an unpowered Pi.
+# ⚠ 12 V 0.3 A IS THE SWITCH'S RATING, so what pulls these lines up at the far end has to
+# be a logic-level standby node, never the 24 V rail.
+# ⚠ WHICH THROW IS WHICH IS OFF THE DRAWING'S SCHEMATIC, NOT A METER: it shows each common
+# joined to one end terminal, taken here as the button-OUT state and as pads 3 and 6.
+# Check the first one with a meter. If it is the other way round the button's sense
+# inverts, nothing worse -- and a part fitted half a turn round does the same thing.
+PWR_PINS = {1: "PWR_SW_DN", 2: "GND", 3: "PWR_SW_UP",
+            4: "PWR_SW_DN", 5: "GND", 6: "PWR_SW_UP"}
 
-# THE RIBBON'S SHAPE IS THE CAD'S AND THE NETLIST'S BOTH. src/ui_panel.py draws fourteen
+
+# THE RIBBON'S SHAPE IS THE CAD'S AND THE NETLIST'S BOTH. src/ui_panel.py draws sixteen
 # conductors at 1.27; this is the connector they come off. If a way is ever added here,
-# the drawing has to follow or it is fourteen conductors on a sixteen-way plug.
+# the drawing has to follow or the cable drawn is not the cable the header takes.
 assert len(RIBBON_PINS) == UI.RIBBON_N, (
     "J2 has %d ways and the CAD draws a %d-way ribbon"
     % (len(RIBBON_PINS), UI.RIBBON_N))
@@ -178,7 +199,8 @@ def _c(tag, value, desc, pkg="Capacitor_SMD:C_0402_1005Metric"):
 def ui_board():
     nets = {n: Net(n) for n in ("GND", "+3V3", "SCLK", "SDIN", "DC", "CS_N", "RES_N",
                                 "ENC_A", "ENC_B", "SW_PUSH",
-                                "SW_A", "SW_B", "SW_C", "SW_D")}
+                                "SW_A", "SW_B", "SW_C", "SW_D",
+                                "PWR_SW_UP", "PWR_SW_DN")}
     for n in ("GND", "+3V3"):
         nets[n].drive = Pin.drives.POWER
     # the module's three no-connects, each on a net of its own so nothing shorts them
@@ -202,9 +224,18 @@ def ui_board():
     for pin, net in DISP_PINS.items():
         nets[net] += j1[pin]
 
-    j2 = Part(name="PinHeader_2x07", ref_prefix="J", ref="J2", tag="J2",
-              dest="NETLIST", tool="skidl", value="PZ1.27-2x7P",
-              description="1.27 mm 2x7 right-angle header (LCSC C22438113): the 14-way "
+    sw2 = Part(name="PB-22E85", ref_prefix="SW", ref="SW2", tag="SW2",
+               dest="NETLIST", tool="skidl", value="PB-22E85-S-5.7C-C-W",
+               description="Legion self-locking push switch, 2P2T (LCSC C22462024): "
+                           "the power button",
+               footprint=PWR_FP,
+               pins=[Pin(num=k, name=v, func=P) for k, v in PWR_PINS.items()])
+    for pin, net in PWR_PINS.items():
+        nets[net] += sw2[pin]
+
+    j2 = Part(name="PinHeader_2x08", ref_prefix="J", ref="J2", tag="J2",
+              dest="NETLIST", tool="skidl", value="PZ1.27-2x8P",
+              description="1.27 mm 2x8 right-angle header (LCSC C22438114): the 16-way "
                           "ribbon to the Pi cap's J5, way for way",
               footprint=RIBBON_FP,
               pins=[Pin(num=k, name=v, func=P) for k, v in RIBBON_PINS.items()])
@@ -251,9 +282,9 @@ _SW_X, _SW_Y = _SW_BODY_X + _ENC_OFF[0], _SW_BODY_Y + _ENC_OFF[1]
 # its two rows and the rows stand ~1.4 and ~2.7 off the board, so a socket pushed on over
 # laminate would have to go 0.7 mm INTO it. The header's plastic stops at the edge and its
 # 4 mm of pin, and the socket on them, hang past it.
-_J2_FAB_AHEAD = 2.135      # KiCad PinHeader_2x07_P1.27mm_Horizontal, from the PAD CENTROID:
+_J2_FAB_AHEAD = 2.135      # KiCad PinHeader_2x08_P1.27mm_Horizontal, from the PAD CENTROID:
 _J2_FAB_BACK = 1.775       #   2.135 to the plastic's front face (the pins run 4.0 further),
-_J2_FAB_HALF = 4.95        #   1.775 behind the rows; 4.95 either way along the rows
+_J2_FAB_HALF = 5.08        #   1.775 behind the rows; 5.08 either way along the rows
 _J2_X = -_HW + _J2_FAB_AHEAD
 # ...and its +Y end has to stay clear of the display module hanging over the board.
 # The module's -Y edge, in board coordinates:
@@ -265,6 +296,20 @@ assert _J2_Y + _J2_FAB_HALF <= _MOD_EDGE_Y - 1.0, (
     % (_J2_Y + _J2_FAB_HALF, _MOD_EDGE_Y))
 assert _J2_Y - _J2_FAB_HALF >= -_HL + 1.0, (
     "J2's shroud reaches y %+.2f against a -Y edge at %+.2f" % (_J2_Y - _J2_FAB_HALF, -_HL))
+
+# SW2, the power button: its cap's -X edge on the window's -X edge and its centre on the
+# knob's Y (user's sketch, 2026-10-04) -- ui_panel.power_x() is the rule. The footprint is
+# symmetric about its centre, so the placement IS the body's.
+_PWR_X, _PWR_Y = UI.board_local(UI.power_x(), UI.y_layout()[1])
+_PWR_HALF = 4.25
+# ...and that X is what the cap's diameter was chosen for: the clamp plate under this
+# board takes a relief round each through-hole part, and the web left between this one's
+# and J2's has to be two beads.
+assert (_PWR_X - _PWR_HALF) - (_J2_X + _J2_FAB_BACK) - 2 * UI.CLAMP_RELIEF \
+    >= UI.D.MIN_WALL_2P - 1e-9, (
+    "the power switch's body starts at x %+.2f and the ribbon header's ends at %+.2f: "
+    "the clamp plate's web between their reliefs is under two beads"
+    % (_PWR_X - _PWR_HALF, _J2_X + _J2_FAB_BACK))
 
 # ONE M4, and it only holds Z: the two spigots that come down off the deck through the
 # board into the clamp plate are what hold the station in X, Y and rotation. Central,
@@ -300,12 +345,16 @@ for _hx, _hy, _d, _what in _HOLES:
     assert (abs(_hx - _SW_BODY_X) > _ENC_CRTYD + _rad
             or abs(_hy - _SW_BODY_Y) > _ENC_CRTYD + _rad),         "the %s at (%+.1f, %+.1f) laps the encoder" % (_what, _hx, _hy)
     assert _hx - _rad > _J2_X + _J2_FAB_BACK or abs(_hy - _J2_Y) > _J2_FAB_HALF + _rad,         "the %s at (%+.1f, %+.1f) laps the ribbon header" % (_what, _hx, _hy)
+    assert (abs(_hx - _PWR_X) > _PWR_HALF + 0.25 + _rad
+            or abs(_hy - _PWR_Y) > _PWR_HALF + 0.25 + _rad), \
+        "the %s at (%+.1f, %+.1f) laps the power switch" % (_what, _hx, _hy)
     assert abs(_hy - _J1_Y) > 1.32 + _rad,         "the %s at (%+.1f, %+.1f) laps the display header" % (_what, _hx, _hy)
 
 PLACEMENTS = {
     "J1": (round(_J1_X, 3), round(_J1_Y, 3), 90.0),
     "J2": (round(_J2_X, 3), round(_J2_Y, 3), 180.0),
     "SW1": (round(_SW_X, 3), round(_SW_Y, 3), 0.0),
+    "SW2": (round(_PWR_X, 3), round(_PWR_Y, 3), 0.0),
     "C1": (19.0, 10.5, 0.0),
     "C2": (24.5, 10.5, 0.0),
 }
@@ -321,10 +370,35 @@ BOARD_NOTES = {
     "thickness_mm": UI.BOARD_T,
     "placements": PLACEMENTS,
     "edge_escape": ("J2",),       # the ribbon header's edge-side row: layout._edge_row_escape
+    # no via among the power switch's six lands: the first route put one 0.26 from a
+    # terminal's hole, against the fab's 0.45 hole-to-hole
+    "via_keepouts": [[round(_PWR_X - 4.0, 3), round(_PWR_Y - 4.2, 3),
+                      round(_PWR_X + 4.0, 3), round(_PWR_Y + 4.2, 3)]],
+    "quality": {
+        # the display module's logic and its own boost converter: C2's note has ~100 mA
+        "power_paths": [{"net": "+3V3", "from": "J2.10", "to": ["J1.2", "J1.18"],
+                         "amps": 0.15}],
+        # a switch's two throws, each shorted to GND or open: signal, not supply
+        "not_power": ["PWR_SW_UP", "PWR_SW_DN"],
+        "pinouts": {
+            "J1": "Newhaven NHD-2.7-12864WDW3 datasheet p.4, Serial Interface pin table; "
+                  "header pin n is module pin n",
+            "J2": "way n is header pin n is IDC conductor n, both ends the same family "
+                  "(HX PZ1.27-2xNP WZ); the order is harness.UI_RIBBON",
+            "SW1": "Alps RKJXT1F42001 product drawing (terminal names A-D, 5-10) and "
+                   "LCSC's symbol for C160841",
+            "SW2": "Legion PB-22E85-S-5.7C-C-W drawing, P.C.B LAYOUT and SCHEMATIC: the "
+                   "middle terminal of each row is its common. Which end is closed with "
+                   "the button out is read off the schematic, NOT metered",
+        },
+        "waive": {"A2:J2": "J2 is where +3V3 arrives off the ribbon, not a load; the "
+                           "bulk and the 100n are at the display header, which is"},
+    },
     "ref_pos": {
         "J1": (round(_J1_X - 12.0, 3), round(_J1_Y - 2.8, 3)),
         "J2": (round(_J2_X + 3.0, 3), round(_J2_Y - 6.4, 3)),
         "SW1": (round(_SW_X, 3), round(_SW_Y - 10.4, 3)),
+        "SW2": (round(_PWR_X, 3), round(_PWR_Y - 5.8, 3)),
         "C1": (19.0, 8.2), "C2": (24.5, 8.2),
         **{"R%d" % (i + 1): (round(_R_X0 + i * _R_DX, 3), _R_Y + 1.6) for i in range(7)},
     },
@@ -337,6 +411,7 @@ BOARD_NOTES = {
     # would be perforated anyway, by twenty through-hole pins at 2.54 leaving 0.7 mm webs
     # straight across it. So GND is a routed net like every other one, which on a 72 mm
     # board with a metre of ribbon either side is what it was always going to be worth.
+    "silk_labels": {"SW2": "POWER"},
     "mounting_hole_xy": UI.SCREW_XY,
     "single_sided": True,      # every part on the deck-facing face
     "qty_per_instrument": 1,
@@ -360,6 +435,7 @@ def _check_against_cad():
     extents = {
         "J1": (_J1_X, _J1_Y, UI.HDR_PITCH * (UI.HDR_N - 1) / 2.0 + 1.32, 1.32, 1.0, 1.0),
         "SW1": (_SW_BODY_X, _SW_BODY_Y, UI.ENC_SQ / 2.0, UI.ENC_SQ / 2.0, 1.0, 1.0),
+        "SW2": (_PWR_X, _PWR_Y, _PWR_HALF, _PWR_HALF, 1.0, 1.0),
         "J2": (_J2_X - (_J2_FAB_AHEAD - _J2_FAB_BACK) / 2.0, _J2_Y,
                (_J2_FAB_AHEAD + _J2_FAB_BACK) / 2.0, _J2_FAB_HALF, 0.0, 1.0),
     }

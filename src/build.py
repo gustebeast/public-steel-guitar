@@ -415,7 +415,7 @@ PARTS["test_belt_tensioner"] = (
     "the grip holds and tension sets fine without creep")
 
 
-# Anchor ALL outputs to the project folder (never the cwd — see Archive/3D/CLAUDE.md)
+# Anchor ALL outputs to the project folder (never the cwd)
 OUT = pathlib.Path(__file__).resolve().parents[1]
 
 

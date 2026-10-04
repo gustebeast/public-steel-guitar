@@ -13,8 +13,8 @@ module paths and everything else are identical.
 ## Skills & shared code
 Two layers of reusable capability back a cadkit project:
 
-- **The `parametric-3d-printing` skill** lives in the Claude **skills folder**
-  (`~/.claude/skills/`). Skills are self-contained playbooks Claude Code loads on
+- **The `parametric-3d-printing` skill** lives in the agent's **skills folder**
+  (under the home directory). Skills are self-contained playbooks the agent loads on
   demand; this one is the general CadQuery-for-3D-printing workflow (requirements
   gathering, real-world dimension research, print-friendly rules, tolerances,
   supports). It's the "CAD skill" / "cad-skill" the notes here refer to, and it
@@ -41,6 +41,28 @@ Two layers of reusable capability back a cadkit project:
     (+Y build) mating a mortise printed flat (−Z→+Z) is `ramp=True, hook_h=…`
     (print-validated); plain 45°-everywhere profiles cam apart along the up-ramp
     diagonal — don't reinvent this joint, call the library.
+  - `cadkit.board_geom` / `cadkit.board_check` / `cadkit/kicad_geom.py` /
+    `cadkit/kicad_silk.py` — **circuit boards shared between KiCad and the CAD**; read
+    **`cadkit/PCB_README.md`** before designing or modelling any PCB. The board in the
+    assembly is READ BACK from the routed `.kicad_pcb` (`kicad_geom.py` under KiCad's
+    Python → a tracked `<board>.geom.json` → `Boards(geom_dir).solid(board)`), never
+    typed in by hand, and `board_check.check` gates that the CAD draws the routed board.
+    **To MAKE a board, do not write a pipeline and do not hand-route: `cadkit/pcbflow`
+    already is one.** Copy `cadkit/pcbflow/example/blinky.py` to `elec/<board>.py`,
+    state the circuit (SKiDL) and where each part goes (`BOARD_NOTES`, derived from the
+    mechanical model), run it, then run `cadkit/pcbflow/finish.py elec/out/<board>`
+    under KiCad's Python: placed, autorouted, DRC-checked, labelled, exported. PCB_README
+    §0 is the walkthrough.
+    **Every board is held to `cadkit/PCB_QUALITY.md`** — the standard validation pass:
+    automated rules (`cadkit/pcbflow/quality.py`, run by `finish.py`) and a manual
+    checklist you perform against the datasheets and sign, with evidence, in the
+    board's `BOARD_NOTES["quality"]`. Do not order, or call a board done, above
+    `0 FAIL, 0 OPEN`. When a board comes back wrong, or a review finds what no rule
+    caught, add the rule THERE (in the canonical cadkit repo) — that file's "Adding a
+    learning" section is the procedure.
+    The same README carries the PCB design guidance (mounting, connector choice,
+    layout, pre-order checklist). `cadkit.pcb` is the plastic side: `pcb_cradle` and
+    drawing-accurate JST headers.
   - `cadkit.fasteners` — shared M2/M4 hole/insert dims · `cadkit.cq_colors` — baked STEP colours
   - `cadkit.freecad` — the FreeCAD viewer hub (`from cadkit.freecad import show`) + `view_assembly.cmd` launcher
   - `cadkit.scratch` — the fast per-part iteration loop: cache the surroundings,
@@ -470,7 +492,7 @@ solid** with a point-probe / cross-section, not on paper.
 ## Token efficiency
 Delegate heavy, read-only exploration to **subagents**; run **`/compact`** at
 natural breakpoints (after a part is finalised) rather than near the limit.
-Claude Code has no fixed-percentage auto-compact threshold, so this is a habit,
+The agent harness has no fixed-percentage auto-compact threshold, so this is a habit,
 not a setting.
 
 ## Multi-agent collaboration (git worktrees + merge requests)
