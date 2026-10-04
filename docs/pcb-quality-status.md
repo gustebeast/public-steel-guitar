@@ -7,8 +7,60 @@ The standard is `cadkit/PCB_QUALITY.md` (rules A1–A11 automated, M1–M42 manu
 ```
 
 `elec/finish.py` runs it on every route and ends its last line `| quality: N FAIL, M OPEN`.
-A board may be ordered only at `0 FAIL, 0 OPEN`. **No board is there yet** — the pass is
-new (2026-10-04) and no board has declared its `BOARD_NOTES["quality"]` record.
+A board may be ordered only at `0 FAIL, 0 OPEN`. **No board is there yet**; the scoreboard
+below is current, the sections after it are the history of how the rules arrived.
+
+## THE LOOP: scoreboard and what is next (updated every tick)
+
+A 15-minute loop is working every board to `0 FAIL, 0 OPEN`. Rules of the road: a hard
+finding is fixed, never waived; a soft one is waived only for a case on its rule's
+"Break it when" list; a sign-off is written only after the thing was actually read.
+
+| board | FAIL | OPEN | state |
+|---|--:|--:|---|
+| `can_tee` | 0 | 9 | record declared 2026-10-04; rail stubs widened 1.2 -> 1.5 mm and re-routed 0 / 0 |
+| `leg_pogo_female_bottom` | 3 | 22 | not started |
+| `leg_pogo_female_top` | 3 | 22 | not started |
+| `leg_pogo_male_bottom` | 3 | 22 | not started |
+| `leg_pogo_male_top` | 3 | 22 | not started |
+| `ui_board` | 5 | 22 | not started |
+| `pi_cap` | 8 | 21 | not started |
+| `lever_sensor` | 10 | 36 | not started |
+| `led_strip` | 11 | 35 | not started |
+| `motor_ctrl` | 26 | 39 | not started |
+| `optical` | 40 | 41 | not started |
+| `output_panel` | 42 | 42 | not started |
+
+**NEXT:** the shared evidence that closes the same five rules on every board, once:
+M29 (read the fab's capability page and compare with the rules loaded in the `.kicad_pro`),
+M12 / M42 (run `elec/lcsc_check.py`, stock and lifecycle today), M30 (assembly tier and
+extended-part count from the fab BOM), M37 (run `elec/fab.py` on a board and look at the
+gerbers layer by layer). Then `can_tee` M31 (the solder jumper JP1 has no silk saying
+what it is for: add "TERM"), then the four pogo boards, then upward by size.
+
+### Needs the user (cannot be signed from files on hand)
+
+* **Two pinouts share the 4-way XH housing (M1, every board with an XH).** Pattern A is
+  `GND +24V CAN_H CAN_L` (tee drop, motor_ctrl J1/J2), pattern B is `GND +24V +24V GND`
+  (panel J7/J9/J10, motor_ctrl J3, optical J2). The plugs are interchangeable, and a
+  power lead in a CAN socket puts 24 V on CAN_H (SN65HVD230 bus pin: 16 V). Open in
+  `BOM.md` since 2026-09-18 with three options. M1 stays OPEN on those boards until one
+  is chosen; the loop's working recommendation is option (a), a different way count for
+  the power-only leads, and it will take that if nothing else is said by the time the
+  other items are closed.
+* **Motor current (M33, `can_tee`, `motor_ctrl`, `output_panel`).** The trunk contact is
+  3 A; the budget case is 2.7 A, and that rests on 0.8 A per moving motor (derived, never
+  measured) and a firmware cap on simultaneous movers (not written). Needs one
+  measurement of a SERVO42D's supply current while slewing.
+
+### What the loop has changed
+
+* `can_tee`: the pass measured the 1.2 mm stubs from the 2 mm rail bar to each connector
+  pad as a choke point at the 3 A contact rating (1.37 mm needed at a 10 C rise, and the
+  stub is 3.5 mm long, so it is not a short neck). Widened to 1.5 mm, 0.90 mm to the
+  neighbouring pads; re-routed `0 unconnected, 0 violation(s)`.
+* `can_tee` pinouts read against JST eXH.pdf p.5 (side-entry drawing): No. 1 circuit and
+  KiCad pad 1 are the same post. Covers every other board's S4B / S8B-XH-A.
 
 ## First run, 2026-10-04 (nothing declared yet)
 
