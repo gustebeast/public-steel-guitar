@@ -31,12 +31,32 @@ finding is fixed, never waived; a soft one is waived only for a case on its rule
 | `optical` | 40 | 41 | not started |
 | `output_panel` | 42 | 42 | not started |
 
-**NEXT:** the shared evidence that closes the same five rules on every board, once:
-M29 (read the fab's capability page and compare with the rules loaded in the `.kicad_pro`),
-M12 / M42 (run `elec/lcsc_check.py`, stock and lifecycle today), M30 (assembly tier and
-extended-part count from the fab BOM), M37 (run `elec/fab.py` on a board and look at the
-gerbers layer by layer). Then `can_tee` M31 (the solder jumper JP1 has no silk saying
-what it is for: add "TERM"), then the four pogo boards, then upward by size.
+**NEXT:** (1) read the result of the kept-route re-finish of the other eleven boards
+(logs in `%TEMP%/qbak/<board>.log`, board backups beside them): each must report the same
+unconnected / violation count it had, and A12's silk finding must be gone; refresh the
+scoreboard from it and commit the changed `elec/geom/*.geom.json`. (2) Fix the two hard
+A12 findings below (`ui_board` J2 and `pi_cap` J5 rings; `pi_cap` via beside J5.8).
+(3) `can_tee`: sign M29 (table read today; no via in a pad; R1 has a track on each pad and
+no pour), add "TERM" silk beside JP1 for M31. (4) M12 / M30 / M37 / M42 are order-time
+checks: run `elec/fab.py` on `can_tee` and see what the package step already proves.
+(5) the four pogo boards, then upward by size.
+
+### New automated rule, 2026-10-04: A12, the board measured against the fab's page
+
+The fab's capability page was read (JLCPCB, standard service) and compared with the rules
+loaded in the boards. The rule file was looser than the fab in five places, so the pass
+now measures the finished board instead of trusting it (cadkit `efdd75f`). First run:
+
+* **silk text was 0.8 mm on every board; the fab's legible minimum is 1.0 mm.** Fixed in
+  cadkit (`kicad_silk` and the layout's designators). `finish.py --keep-route` (cadkit
+  `bc45fad`) re-does everything after the route without placing or routing, so the hard
+  routes are not disturbed.
+* **`ui_board` J2 and `pi_cap` J5 (1.27 mm 2x7 header): annular ring 0.175 mm, the fab's
+  absolute minimum on two layers is 0.18** (14 pads each). Hard.
+* **`pi_cap`: a via 0.296 mm from the hole of J5.8; the fab wants 0.45 between a pad hole
+  and any other hole.** Hard.
+* `lever_sensor`: 20 vias drilled under 0.30 mm, which the fab charges for (a note: the
+  order form has to say so).
 
 ### Needs the user (cannot be signed from files on hand)
 
