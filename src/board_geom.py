@@ -42,9 +42,17 @@ from cadkit.board_geom import Boards, SILK_CAP, SILK_T, fp_name  # noqa: F401  (
 GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                         "elec", "geom")          # tracked: elec/out is git-ignored
 
-# Laid OVER cadkit's tables (project wins). Empty: every part we use is in the shared set.
-_HEIGHT: dict = {}
-_TAIL: dict = {}
+# Laid OVER cadkit's tables (project wins).
+_HEIGHT: dict = {
+    # the UI ribbon's 2x8, the 2x7's sibling (HX PZ1.27-2x8P WZ): the same LISTED 3.9
+    "PinHeader_2x08_P1.27mm_Horizontal": 4.0,
+    # the power button's CASE, off Legion's drawing; src/ui_panel.py draws the stem
+    "Legion_PB-22E85": 8.5,
+}
+_TAIL: dict = {
+    "PinHeader_2x08_P1.27mm_Horizontal": 1.5,    # the 2x7's ESTIMATE, same family
+    "Legion_PB-22E85": 1.8,                      # 3.4 of terminal less a 1.6 board
+}
 _THT_LEGS: dict = {}
 _PANEL: dict = {}
 

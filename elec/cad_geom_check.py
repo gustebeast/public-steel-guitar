@@ -109,6 +109,14 @@ def _ui_rule_check():
         print("   ui_board: the routed switch is at (%.3f, %.3f) and the spacing rule "
               "wants (%.3f, %.3f) -- %.3f off" % (kx, ky, wx, wy, off))
         return 1
+    # ...and the power button's: its cap's -X edge on the window's, its centre on the
+    # knob's Y (ui_panel.power_x)
+    px, py = UIP.routed("SW2")
+    p_off = max(abs(px - UIP.power_x()), abs(py - wy))
+    if p_off > 0.05:
+        print("   ui_board: the routed power switch is at (%.3f, %.3f) and its rule "
+              "wants (%.3f, %.3f) -- %.3f off" % (px, py, UIP.power_x(), wy, p_off))
+        return 1
     bad = 0
     for complaint in UIP.check_posts():
         print("   ui_board: %s" % complaint)
