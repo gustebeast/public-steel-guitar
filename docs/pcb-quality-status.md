@@ -18,28 +18,36 @@ finding is fixed, never waived; a soft one is waived only for a case on its rule
 
 | board | FAIL | OPEN | state |
 |---|--:|--:|---|
-| `can_tee` | 0 | 9 | record declared 2026-10-04; rail stubs widened 1.2 -> 1.5 mm and re-routed 0 / 0 |
-| `leg_pogo_female_bottom` | 3 | 22 | not started |
-| `leg_pogo_female_top` | 3 | 22 | not started |
-| `leg_pogo_male_bottom` | 3 | 22 | not started |
-| `leg_pogo_male_top` | 3 | 22 | not started |
-| `ui_board` | 5 | 22 | not started |
-| `pi_cap` | 8 | 21 | not started |
-| `lever_sensor` | 10 | 36 | not started |
-| `led_strip` | 11 | 35 | not started |
-| `motor_ctrl` | 26 | 39 | not started |
+| `can_tee` | 0 | 7 | open: M1 (user), M33 (user), M36, and the order-time four M12 M30 M37 M42 |
+| `leg_pogo_female_top` | 3 | 22 | not started; test-pad and pinout labels have no site even at 0.8 mm |
+| `leg_pogo_male_top` | 3 | 22 | not started; same |
+| `leg_pogo_female_bottom` | 4 | 22 | not started; name only fits at 0.8 mm; CAD plate has a hole the routed board lacks |
+| `leg_pogo_male_bottom` | 4 | 22 | not started; name only fits at 0.8 mm |
+| `ui_board` | 7 | 22 | brenner is changing it (power button, 2x8 header): leave until that merges |
+| `pi_cap` | 10 | 21 | waits on brenner's ribbon change (J5 becomes 2x8); ring and via findings go with the re-route |
+| `lever_sensor` | 11 | 36 | not started; J1 pinout legend only fits at 0.8 mm: make room |
+| `led_strip` | 11 | 35 | not started; CAD and fab data disagree (pre-existing) |
+| `motor_ctrl` | 27 | 39 | not started; J1 pinout legend at 0.8 mm |
 | `optical` | 40 | 41 | not started |
-| `output_panel` | 42 | 42 | not started |
+| `output_panel` | 43 | 42 | not started; power-button inlet switch to design (see bronner-work-items) |
 
-**NEXT:** (1) read the result of the kept-route re-finish of the other eleven boards
-(logs in `%TEMP%/qbak/<board>.log`, board backups beside them): each must report the same
-unconnected / violation count it had, and A12's silk finding must be gone; refresh the
-scoreboard from it and commit the changed `elec/geom/*.geom.json`. (2) Fix the two hard
-A12 findings below (`ui_board` J2 and `pi_cap` J5 rings; `pi_cap` via beside J5.8).
-(3) `can_tee`: sign M29 (table read today; no via in a pad; R1 has a track on each pad and
-no pour), add "TERM" silk beside JP1 for M31. (4) M12 / M30 / M37 / M42 are order-time
-checks: run `elec/fab.py` on `can_tee` and see what the package step already proves.
-(5) the four pogo boards, then upward by size.
+All twelve were re-finished with `--keep-route` on 2026-10-04: every one still reads
+`0 unconnected, 0 violation(s)`; silk is 1.0 mm wherever a site exists.
+
+**NEXT:** (1) the four pogo boards: declare power_paths and pinouts (pogo pin C5280862
+datasheet), find room for the test-pad names and pinouts or decide what replaces them,
+and look at the female-bottom cutout disagreement. (2) `can_tee` M36 (what limits a short
+on a motor drop: read the PSU's protection from BOM.md) and the order-time four -- run
+`elec/fab.py` on `can_tee` and see what the package step already proves for M12 / M30 /
+M37 / M42. (3) `lever_sensor`. (4) `output_panel` power-button design (lead's request)
+together with its quality record, since the board is re-routed for it anyway; `pi_cap`
+when brenner's `harness.UI_RIBBON` change is on main. (5) `motor_ctrl`, `led_strip`,
+`optical`. (6) the XH power-lead way count (user: fine if it creates no other issue and
+stays in the XH family): try 2-way / 6-way inside the current outlines.
+
+cadkit changes this loop has made (all propagated): A12 fab check `efdd75f`;
+`finish.py --keep-route` `bc45fad`; jumper / `silk_labels` labels `fff67d7`; small-label
+fallback `3a67ff7`; automatic annular-ring growth in the layout `ea916d4`.
 
 ### New automated rule, 2026-10-04: A12, the board measured against the fab's page
 
