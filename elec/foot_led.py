@@ -324,8 +324,18 @@ def build(passes=20):
         # board's middle, which is where the supply block sits. See Row on the direction.
         sgn = -1.0 if xd < 0 else 1.0
         prow = Row(place, fps, xd + sgn * (fp_box(DRV_FP)[0] / 2.0 + 0.45), dirn=sgn)
+        # ⚠ THE 100 nF GOES ON THE CHIP'S +X SIDE WHICHEVER WAY THE ROW RUNS, because that
+        # is the side VCC (pin 19) is on. In the outboard row it sat third from the chip,
+        # and on the two -X drivers the row is on the far side of the package: 13.4 mm
+        # from the pin it bypasses, against 5 (cadkit quality A2). For those two it stands
+        # alone on the inboard side instead.
+        vcc_cap = "C%d" % (10 + k + 1)
+        if sgn > 0:
+            prow.add(vcc_cap, C_FP)
+        else:
+            Row(place, fps, xd + (fp_box(DRV_FP)[0] / 2.0 + 0.45), dirn=1.0).add(vcc_cap, C_FP)
         for ref, fp in (("R%d" % (k + 1), R_FP), ("C%d" % (k + 1), C_FP),
-                        ("C%d" % (10 + k + 1), C_FP), ("C%d" % (20 + k + 1), C08_FP)):
+                        ("C%d" % (20 + k + 1), C08_FP)):
             prow.add(ref, fp)
 
         for s, zone in enumerate(trio):
@@ -379,6 +389,35 @@ def build(passes=20):
     notes["outline_mm"] = (round(length, 3), round(BOARD_W, 3))
     notes["placements"] = {k: list(v) for k, v in place.items()}
     notes["router_passes"] = passes
+    # WHAT EACH SUPPLY NET CARRIES, all-white. A board's own rail is its channels; its
+    # 24 V draw is that through the buck at 90 %; and the -X board's inlet and
+    # pass-through carry BOTH boards', which is the figure every board is held to
+    # because the two are one design.
+    i_rail = 4 * n_zone * I_CHAN
+    i_24 = FL.BOARD_QTY * i_rail * V_RAIL / 24.0 / 0.90
+    notes["quality"] = {
+        "power_paths": [
+            {"net": "+24V_IN", "from": "J11.1", "to": "F1.1", "amps": round(i_24, 3)},
+            {"net": "+24V", "from": "F1.2", "to": ["U10.2", "J21.1"],
+             "amps": round(i_24, 3)},
+            {"net": "+11V", "from": "L1.2",
+             "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": round(i_rail, 3)},
+        ],
+        "pinouts": {
+            "XL-5050RGBW": "XINGLIGHT XL-5050RGBW datasheet, package drawing: pads 1-4 the "
+                           "four anodes, 5-8 their cathodes; Steel:XINGLIGHT_XL-5050RGBW "
+                           "is drawn from it",
+            "TLC59711PWPR": "TI TLC59711 datasheet, Terminal Functions table, PWP "
+                            "(HTSSOP-20) column, top view",
+            "LMR33630CRNXR": "TI LMR33630 datasheet SNVSB08, Table 6-1, VQFN (RNX) column",
+        },
+        "waive": {
+            "A2:J21": "a pogo handing 24 V to the next board, not a load: that board's "
+                      "own input capacitors (C30-C32) are behind its fuse",
+            "A2:J11": "the inlet pogo, ahead of the fuse; the input capacitors C30-C32 "
+                      "are on the fused side so a shorted one blows F1",
+        },
+    }
     with open(os.path.join(OUT_DIR, "%s.board.json" % name), "w") as f:
         json.dump(notes, f, indent=2)
     print("%-9s %6.1f x %.2f mm, %2d LEDs, %d zones, %d drivers, x%d per instrument"
