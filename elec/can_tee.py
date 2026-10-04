@@ -305,6 +305,16 @@ BOARD_NOTES = {
             "M28": "the placed parts are JST S8B-XH-A(LF)(SN) C157914 and S4B-XH-A(LF)(SN) "
                    "C157925 -- JST's own, so the pinout cited above IS the exact part's. "
                    "R1 and JP1 are unpolarised two-pad parts",
+            "M29": "A12 measures the board against JLCPCB's capability page, read "
+                   "2026-10-04 (2-layer, 1 oz, standard service): all pass. No SMD pad has "
+                   "a via in or touching it: the board's one via is beside a through-hole "
+                   "post. R1 has one track on each pad and there is no pour, so its two "
+                   "pads see the same copper",
+            "M31": "name and revision 'CAN TEE r1' on the back at 1.5 mm; both connectors' "
+                   "pin names on the back beside their tails; JP1 says TERM on the front, "
+                   "beside its designator; J1 / J2 designators and the footprints' pin-1 "
+                   "marks are in the strip behind the bodies, outside them. All text is "
+                   "1.0 mm x 0.15 or larger (A12)",
             "M32": "footprint pitch read from the KiCad file: 2.50 (pads at 0 / 2.5 / 5.0 / "
                    "7.5), XH's pitch, and the 8-way spans 17.5 = JST's dimension A for 8 "
                    "circuits. Contact 3 A at AWG 22 (eXH.pdf p.1). Pad 1 against the JST "
