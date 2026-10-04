@@ -174,7 +174,7 @@ _HW, _HL = BOARD_W / 2.0, BOARD_L / 2.0
 _EAR_X1 = _HW + EAR_W                    # +29.5
 _EAR_Y0 = _HL - EAR_H                    # -0.7
 
-BAR_Y, BAR_W, STUB_W = -1.5, 2.0, 1.2
+BAR_Y, BAR_W, STUB_W = -1.5, 2.0, 1.5
 # pad x of each rail's three lands, off the footprints: J1 at -7.0 spans 8 ways about its
 # centre, J2 at 11.7 spans 4, both on 2.50 pitch
 _J1_X0, _J2_X0, _PITCH = -7.0 - 3.5 * 2.5, 11.7 - 1.5 * 2.5, 2.5
@@ -231,8 +231,9 @@ BOARD_NOTES = {
     # about was never the limit; this was. No netclass can fix it -- freerouting will not
     # choose a path for its resistance -- so the two rails are laid here:
     #   a 2.0 mm BAR under the connector bodies at y BAR_Y, +24V on F.Cu and GND on B.Cu,
-    #   and a 1.2 mm stub up to each through-hole pad (1.7 wide, so the stub fits inside it
-    #   and leaves 1.05 to the neighbouring pads).
+    #   and a 1.5 mm stub up to each through-hole pad (1.7 wide, so the stub fits inside it
+    #   and leaves 0.90 to the neighbouring pads). 1.5 because the quality pass measured the
+    #   first 1.2 as a choke: 3 A (the XH contact rating) wants 1.37 mm at a 10 C rise.
     # ~5 mOhm per rail per tee. CAN keeps the +Y strip and both layers above the pad row.
     "tracks": _power_copper(),
     "frozen_nets": ("+24V", "GND"),
@@ -246,6 +247,79 @@ BOARD_NOTES = {
     # give a MOTOR power and CAN", which is why tee 10 went: it served none), so it is
     # now the motor count and not a number.
     "qty_per_instrument": _TEE_QTY,
+    # ── THE QUALITY RECORD (cadkit/PCB_QUALITY.md) ───────────────────────────────────
+    # Each line says what it was checked AGAINST. A rule that is not here is OPEN, and
+    # the reason it is open is in docs/pcb-quality-status.md.
+    "quality": {
+        # 3 A is the XH contact's rating and therefore the most the trunk may ever be
+        # asked to pass; the budget case is 2.7 A (BOM.md, dual feed 54 / 46 at < 5 A).
+        # The drop is one motor, 1-1.5 A input; declared at the same 3 A so the stub is
+        # sized for the contact, not the load.
+        "power_paths": [
+            {"net": "+24V", "from": "J1.2", "to": ["J1.6", "J2.2"], "amps": 3.0},
+        ],
+        "pinouts": {
+            "S8B-XH-A": "JST eXH.pdf p.5, Header / Side entry type, <3 circuits or more>: "
+                        "seen from above with the mouth pointing away, No. 1 circuit is the "
+                        "RIGHT-hand post. KiCad JST_XH_S8B-XH-A pad 1 is at the origin with "
+                        "the body toward +Y and pads 2-8 toward +X -- the same end. Ways "
+                        "bound from harness.xh_trunk_pins(), read 2026-10-04",
+            "S4B-XH-A": "JST eXH.pdf p.5, same drawing and same view as the 8-way: No. 1 "
+                        "circuit is the right-hand post seen from above, mouth away; KiCad "
+                        "JST_XH_S4B-XH-A pad 1 at the origin, 2-4 at +2.5 / +5.0 / +7.5. "
+                        "Ways bound from harness.XH_PINOUT, read 2026-10-04",
+        },
+        "manual": {
+            "M3": "done: GND is the same copper as +24V by construction -- _power_copper() "
+                  "lays both rails from one loop, a 2.0 mm bar plus a 1.5 mm stub per pad, "
+                  "GND on B.Cu directly under +24V on F.Cu. No via and no plane slot in "
+                  "either; no analog reference on this board",
+            "M4": "no capacitor, no regulator and no load on this board: both rails pass "
+                  "between connectors (A2 reports the same). The bulk for the motor's "
+                  "current step is on the SERVO42D itself, which this board does not own",
+            "M5": "voltage: the only parts on +24V are JST XH headers, 250 V (eXH.pdf p.1). "
+                  "R1 sits across CAN_H / CAN_L only: a dominant bit is ~2 V differential, "
+                  "33 mW in 120 R against 100 mW for an 0603. Contact CURRENT is M33",
+            "M9": "decision: no test pads. There is no MCU, and all four nets are on "
+                  "through-hole posts whose tails stand 3.4 mm proud on the back -- a "
+                  "probe or clip lands on any of twelve of them, GND included",
+            "M10": "decision: no TVS and no reverse-polarity part here. Both connectors are "
+                   "inside the instrument and mate only to its own harness; XH is polarised "
+                   "so the plug cannot be reversed; the trunk's clamp is D6 (SMAJ30A) on "
+                   "the output panel, at the 24 V inlet, and each CAN transceiver board "
+                   "carries its own bus protection",
+            "M11": "finish.py: 3 / 3 routed parts present in the CAD, every one where the "
+                   "CAD draws it. Mated height: XH side header 7.0 mm against 8.3 mm worst "
+                   "headroom (docs/can-tee-power-tap.md, measured per tee). Tails: asserted "
+                   "above, 6.0 of a 6.4 mm wall strip. Screw: the ear is bare laminate -- "
+                   "no track reaches past x +15.5 and the ear starts at +20 -- so an M4 "
+                   "button head (7.6 dia) on the 9.5 x 8.7 ear touches no copper on either "
+                   "face. Mouths face -Y into free air over the motor",
+            "M16": "decision: nothing to damp. The board has no capacitor, so a live plug "
+                   "rings into nothing here; the ring is a property of the inputs that DO "
+                   "have ceramics (motor driver, motor_ctrl J3) and is signed on those",
+            "M20": "R1 = 120 R 1 % behind JP1, closed on the LAST tee only; the other end "
+                   "of bus A is motor_ctrl's own 120 R behind its jumper (motor_ctrl.py, "
+                   "'TERMINATION -- BUS A ONLY'). Two terminations, at the two ends. Stub "
+                   "per node is the motor pigtail; no clock on this board",
+            "M28": "the placed parts are JST S8B-XH-A(LF)(SN) C157914 and S4B-XH-A(LF)(SN) "
+                   "C157925 -- JST's own, so the pinout cited above IS the exact part's. "
+                   "R1 and JP1 are unpolarised two-pad parts",
+            "M32": "footprint pitch read from the KiCad file: 2.50 (pads at 0 / 2.5 / 5.0 / "
+                   "7.5), XH's pitch, and the 8-way spans 17.5 = JST's dimension A for 8 "
+                   "circuits. Contact 3 A at AWG 22 (eXH.pdf p.1). Pad 1 against the JST "
+                   "drawing: see pinouts. Every connector carries GND on way 1 (and 5)",
+            "M34": "no active part. CAN_H lands on way 3 and CAN_L on way 4 of every "
+                   "housing from one constant (harness.XH_PINOUT), so H meets H and L "
+                   "meets L by construction; R1 + JP1 bridge H to L and nothing else",
+            "M38": "no ceramic capacitor on the board. R1 (0603) lies along X, parallel to "
+                   "the +Y edge 1.8 mm away, 26 mm from the screw. No V-score: routed "
+                   "outline. Plugs enter from -Y over the motor (see M11). The mounting "
+                   "hole is unplated and has no copper round it: deliberately isolated",
+            "M40": "120 R is an E24 value. R1 is the only part chosen for a parameter (bus "
+                   "termination, 1 %) and its description says so. Nothing needs a heatsink",
+        },
+    },
 }
 
 
