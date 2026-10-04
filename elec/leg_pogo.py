@@ -185,7 +185,11 @@ def design(kind, joint):
     notes.update({k: v for k, v in notes.items()})
     notes.update({
         "outline_mm": (W, L),
-        "cutouts": [] if "outline_poly" in notes else [{"xy": hole, "d": hole_d}],
+        # The FEMALE's screw head bears on the board (the male's is recessed in the tenon's
+        # flat and never touches it), so its head -- 7.6 -- keeps copper out from under it.
+        # The quality pass found tracks and a via 0.6-0.8 mm inside that circle.
+        "cutouts": [dict({"xy": hole, "d": hole_d},
+                         **({} if kind == "male" else {"head_d": P.HEAD_D}))],
         "hole": {"xy": hole, "d": hole_d},
         "layers": 2,
         "thickness_mm": 1.6,
@@ -285,6 +289,42 @@ def _quality(kind, parts):
                    "test pads repeat it from the lettered pad, and it is written in "
                    "elec/harness.py and the bring-up notes. JST's own pin-1 marks are "
                    "moulded on the housings",
+            "M11": ("finish.py's CAD check: both routed parts present where the CAD draws "
+                    "them, the M4 cutout matches (15.9 mm2). "
+                    + ("The screw's head is recessed in the tenon's flat and bears on "
+                       "plastic, never on the board" if male else
+                       "The screw's 7.6 mm head bears on the front face: tracks and vias "
+                       "are kept out to 4.0 mm from the hole's centre on that face "
+                       "(cutout head_d), measured 4.18 on the routed boards; the test "
+                       "pads start at the head's edge by the generator's own assert")
+                    + ". Every part is one the fab places; no hand soldering"),
+            "M28": ("JST's own parts for J2 (see pinouts). J1: "
+                    + ("YZ165615055F-04025-02, LCSC C54799748 -- the land was read today "
+                       "from LCSC's footprint for this exact code (EasyEDA CONN-SMD_4P-"
+                       "L11.0-W5.5-P2.50): four pads at 2.50 pitch, 1.6 x 2.3, pegs 0.70 "
+                       "at +-5.25; ours is the same with the pads trimmed 0.2 at the "
+                       "board-edge end (the footprint says why). The maker's spec sheet "
+                       "for the code has no dimensioned drawing" if male else
+                       "YZ185115035T-04025-01, LCSC C54930022 -- maker's drawing D.0 "
+                       "(2025-08-30) read today: 2.54 pitch, housing 10.20 x 2.50, faces "
+                       "1.20 dia at 3.50, recommended lands 4 x 2.20 dia; ours are 2.10 "
+                       "on the same centres (0.44 between lands instead of 0.34)")),
+            "M29": "A12 measures the board against JLCPCB's capability page, read "
+                   "2026-10-04 (2-layer, 1 oz, standard service): tracks, holes, rings, "
+                   "hole spacing, pad gaps pass, and no via hole is inside a soldered pad. "
+                   "There is no two-pad part to tombstone",
+            "M32": ("J2 is JST " + ("PH, 2.0 pitch, 2 A / 100 V" if male else
+                                    "ZH (ZR header), 1.5 pitch, 1 A / 50 V")
+                    + " -- pitch read from the footprint's pads, ratings from the JST "
+                    "sheet's first page; it takes the "
+                    + ("PHR-4" if male else "ZHR-4") + " housing the leg harness is "
+                    "crimped with. The joint's own pair is rated 12 V / 1 A (maker's "
+                    "spec sheet for C54799748, read today). Ground is on way 1 of both"),
+            "M38": "no ceramic capacitor and no two-pad part on the board. Routed outline, "
+                   "no V-score. The harness connector's mouth is on the board's edge, "
+                   "facing the way the lead runs; the test pads are bare and in a block "
+                   "of their own. The M4 hole is unplated with no copper round it: "
+                   "isolated on purpose",
             "M16": "decision: nothing to damp here. The board has no capacitor; what a "
                    "live leg joint rings into is the sensor boards' inputs, signed there",
             "M20": "no terminator and no pull-up on this board, by design: it is a joint "
