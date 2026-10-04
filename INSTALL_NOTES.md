@@ -559,14 +559,20 @@ off the instrument**, and the panel then goes on with all of it attached.
 7. Press the printed knob onto the switch's shaft through the hole in the deck. **The
    shaft is a D** — Ø2.5 milled to 1.79 across — and so is the knob's bore. The cap is
    unindexed, so any clocking is fine; it only has to go on square.
+7a. Press the printed power cap onto the power switch's square stem through its own hole
+   in the deck, socket down, until it bottoms. **Out (1.5 mm proud) is off; flush with
+   the deck is on.** To switch off, push it about a millimetre below the deck and let go.
+   ⚠ **Meter the first switch before trusting that sense** (`elec/ui_board.py`, SW2): which
+   throw closes with the button out is read off the maker's schematic, not measured.
 
 **Onto the instrument**
 
 8. Slide the mid panel on, station and all.
 9. Plug the ribbon's other end onto J5 of the Pi cap, at the cap's board edge. Both ends
-   are the SAME right-angle 1.27 mm 2×7 pin header (LCSC C22438113) with the same way
-   order (`elec/harness.UI_RIBBON`), so the cable is a plain straight-through 14-way
-   IDC lead. ⚠ **The header has no shroud, so nothing stops the socket going on
+   are the SAME right-angle 1.27 mm 2×8 pin header (LCSC C22438114) with the same way
+   order (`elec/harness.UI_RIBBON`), so the cable is a plain straight-through 16-way
+   IDC lead. (Ways 15 and 16 are the power button's; until the Pi cap is re-made with the
+   2×8 its J5 is still the 2×7.) ⚠ **The header has no shroud, so nothing stops the socket going on
    reversed**: the red stripe goes to pin 1, which the silkscreen marks on both boards.
    Check both ends before the first power-up — way 10 is 3V3.
 10. Slide the keyhead panel on.

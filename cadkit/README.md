@@ -25,6 +25,23 @@ cadkit/
   contact.py         minimal-contact rub features: contact_rib_size(nozzle)
                      = exactly one nozzle (width AND proud; Arachne keeps
                      exact-nozzle lines); contact_ring() = ring + teardrop tail
+  pcb.py             PCB mounting (one-screw cradle) + drawing-accurate JST headers
+  board_geom.py      a ROUTED KiCad board as CAD solids: laminate, part bodies,
+                     through-hole tails, mated plugs, connector mouths, silk
+                     (read PCB_README.md first)
+  board_check.py     gate: is the board the CAD draws the board that was routed?
+  kicad_geom.py      KiCad-side exporter (run under KiCad's Python): routed
+                     .kicad_pcb -> <board>.geom.json, the file board_geom reads
+  kicad_silk.py      KiCad-side labeller: board name + revision, test-pad nets,
+                     connector pinouts, each only where it fits
+  pcbflow/           MAKE a board from code: one `elec/<board>.py` (SKiDL circuit +
+                     placements) -> placed, autorouted, DRC-clean, labelled board,
+                     its geom file and its fab package. gen.py (generator helpers),
+                     layout/route/finish/verify/close_last, fab_package.py, example/
+  PCB_QUALITY.md     THE standard PCB validation pass and the one place PCB lessons
+                     go: automated rules (pcbflow/quality.py -- supply choke points
+                     and drop, bypass capacitors, matched pairs, pinout citations)
+                     plus a manual checklist each board signs with evidence
   step_export.py     export_step(obj, path) — names the STEP product after the file
   overlap_check.py   parallel interpenetration gate (wrap in tools/check_overlaps.py)
   cq_colors.py       hex / 0..255 / name -> cq.Color, for baking colours into a STEP
@@ -89,4 +106,6 @@ git subtree pull --prefix=cadkit cadkit main --squash` — but do not hand-run i
 across N repos; that is exactly the step people forget, which is what drift is.)
 
 See `THREADS_README.md` and `JOINERY_README.md` before changing threads or joinery —
-both encode FDM-specific rules that fail silently if broken.
+both encode FDM-specific rules that fail silently if broken. See `PCB_README.md` before
+putting a circuit board in a project: it holds the KiCad ⇄ CAD loop and the board-design
+guidance (mounting, connectors, layout, pre-order checks) that no tool can enforce.
