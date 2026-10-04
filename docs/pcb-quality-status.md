@@ -19,10 +19,10 @@ finding is fixed, never waived; a soft one is waived only for a case on its rule
 | board | FAIL | OPEN | state |
 |---|--:|--:|---|
 | `can_tee` | 0 | 7 | open: M1 (user), M33 (user), M36, and the order-time four M12 M30 M37 M42 |
-| `leg_pogo_female_top` | 0 | 12 | record declared; re-routed 0 / 0; open: M10 M11 M12 M28 M29 M30 M32 M33 M36 M37 M38 M42 |
-| `leg_pogo_male_top` | 0 | 12 | record declared; re-routed 0 / 0; open: M10 M11 M12 M28 M29 M30 M32 M33 M36 M37 M38 M42 |
-| `leg_pogo_female_bottom` | 0 | 12 | record declared; re-routed 0 / 0; open: M10 M11 M12 M28 M29 M30 M32 M33 M36 M37 M38 M42 |
-| `leg_pogo_male_bottom` | 0 | 12 | record declared; re-routed 0 / 0; open: M10 M11 M12 M28 M29 M30 M32 M33 M36 M37 M38 M42 |
+| `leg_pogo_female_top` | 0 | 7 | open: M10 M33 M36 (bus B protection and limit, `motor_ctrl`'s) and the order-time four M12 M30 M37 M42 |
+| `leg_pogo_male_top` | 0 | 7 | open: M10 M33 M36 (bus B protection and limit, `motor_ctrl`'s) and the order-time four M12 M30 M37 M42 |
+| `leg_pogo_female_bottom` | 0 | 7 | open: M10 M33 M36 (bus B protection and limit, `motor_ctrl`'s) and the order-time four M12 M30 M37 M42 |
+| `leg_pogo_male_bottom` | 0 | 7 | open: M10 M33 M36 (bus B protection and limit, `motor_ctrl`'s) and the order-time four M12 M30 M37 M42 |
 | `ui_board` | 7 | 22 | brenner is changing it (power button, 2x8 header): leave until that merges |
 | `pi_cap` | 10 | 21 | waits on brenner's ribbon change (J5 becomes 2x8); ring and via findings go with the re-route |
 | `lever_sensor` | 11 | 36 | not started; J1 pinout legend only fits at 0.8 mm: make room |
@@ -34,16 +34,29 @@ finding is fixed, never waived; a soft one is waived only for a case on its rule
 All twelve were re-finished with `--keep-route` on 2026-10-04: every one still reads
 `0 unconnected, 0 violation(s)`; silk is 1.0 mm wherever a site exists.
 
-**NEXT:** (1) pogo boards' remaining twelve: read the Xinyangze drawings for C54799748 /
-C54930022 against the local footprints (M28, M32); M10 / M36 depend on what protects and
-limits bus B, which is `motor_ctrl`'s (see the finding below); M11 from the finish log
-(CAD check passes on all four now); M29 / M38 by inspection. (2) `can_tee` M36 and the
-order-time four (M12 M30 M37 M42): run `elec/fab.py` on `can_tee` and see what the
-package step already proves. (3) `lever_sensor`. (4) `output_panel` power-button design
-(lead's request) with its quality record; `pi_cap` when brenner's `harness.UI_RIBBON`
-change is on main. (5) `motor_ctrl` (including a current limit on bus B's 5 V),
-`led_strip`, `optical`. (6) the XH power-lead way count: try 2-way / 6-way inside the
-current outlines.
+**NEXT:** (1) `pi_cap`: brenner's 16-way ribbon is on main (`3828cb38`) -- J5 becomes the
+2x8 (HX PZ1.27-2x8P WZ, C22438114), ways 15 / 16 (PWR_SW_UP / PWR_SW_DN) passed to the
+output board's cable, which becomes 4-wire; re-route (the ring growth and the J5.8 via
+finding go with it), then its quality record. Check `tools/cost.py` / `tools/lcsc_prices.py`
+pick up SW2 (C22462024) and the 2x8 (lead's note: the total did not move). (2)
+`output_panel` power-button inlet switch + its quality record. (3) the order-time four
+(M12 M30 M37 M42) on `can_tee`: run `elec/fab.py` and see what the package step proves.
+(4) `lever_sensor`. (5) `motor_ctrl` (bus B current limit; closes M33 / M36 / M10 on the
+pogo boards), `led_strip`, `optical`. (6) the XH power-lead way count.
+
+### New in A12 this tick: vias in pads, and copper under a screw head
+
+* **A via hole inside a soldered SMD pad now fails** (cadkit `c6013c5`): the barrel takes
+  the paste. Excepted by arithmetic: exposed pads, pads with no paste (test pads), lands
+  of 4 mm2 or more. Found on `lever_sensor` (3), `optical` (8), `output_panel` (7),
+  `motor_ctrl` (2) -- mostly crystal ground pads, where the layout's own ground-stitch
+  rule put them; that rule now uses the same area test, so they move off the pad at each
+  board's next route. `close_last` can still close a net with a via in a pad (it did on
+  `leg_pogo_female_top`): to fix in cadkit.
+* **Copper under a screw head** (cadkit `d3ff0c5`, cutout `head_d`): the female pogo
+  boards had tracks and a via up to 0.8 mm inside the M4 head's circle on the face it
+  bears on. Kept out now, re-routed 0 / 0. EVERY board with a screw through it needs the
+  same look (M11): `can_tee`'s ear is bare (checked); the others are to do.
 
 ### Findings from the pogo boards, 2026-10-04
 
