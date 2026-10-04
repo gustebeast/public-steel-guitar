@@ -52,7 +52,15 @@ PH_PINOUT = ("GND", "V5", "CAN_H", "CAN_L")
 # GND on 8, +3V3 (an AC ground) on 10. The cap has a 40-pin header to fan into and can
 # take either order; the UI board cannot.
 UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
-             "GND", "SCLK", "+3V3", "SDIN", "DC", "CS_N", "RES_N")
+             "GND", "SCLK", "+3V3", "SDIN", "DC", "CS_N", "RES_N",
+             # THE POWER BUTTON'S TWO THROWS, appended so ways 1-14 stay where both
+             # boards routed them. They are NOT the Pi's: the cap passes them through to
+             # the output board, which is where the supply comes in and the only place it
+             # can be cut. Each is shorted to GND (way 8) in one of the button's two
+             # states and open in the other -- UP with the button out, DN with it latched
+             # in -- and whatever pulls them up has to stay at or under the switch's
+             # 12 V 0.3 A (elec/ui_board.py, SW2).
+             "PWR_SW_UP", "PWR_SW_DN")
 
 
 def ph_drop_pins():
