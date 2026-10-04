@@ -6,6 +6,21 @@ rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction 
 prompt. Where a prompt and this file disagree, this file is right — and where this file carries
 a stale marker, striking the marker is part of the work.
 
+**POWER BUTTON (lead, relaying the user's decision, 2026-10-04) -- OPEN, bronner's half:**
+the UI ribbon grows 14 -> 16 ways (15 = PWR_SW_UP, 16 = PWR_SW_DN; brenner's MR changes
+`harness.UI_RIBBON` and `ui_board`). Mine: (1) `pi_cap` J5 -> the 2x8 (HX PZ1.27-2x8P WZ,
+C22438114), the two new ways passed straight to the output board's cable, the Pi does not
+read them -- START WHEN brenner's change is on main (pi_cap's assert fires until then, on
+purpose). (2) `output_panel`: a switch element on the 24 V inlet, ahead of everything
+including the Pi's supply, sized for the full supply current, driven by the switch state;
+the pi_cap <-> output_panel power cable becomes 4-wire (power pair + two switch lines).
+(3) The switch is 12 V 0.3 A: the pull-up stays <= 12 V and a few mA, never the 24 V rail
+(clamp or divide the gate drive). (4) OFF is the asserted state (PWR_SW_UP low = off), so
+a missing ribbon or cable leaves the instrument ON; both throws are on the cable, with a
+0R / jumper to choose the throw; state the off-state current in the MR. Also BOM / prices,
+quality declarations for the new parts, INSTALL_NOTES if the cable changes assembly.
+Fold into the PCB quality loop: both boards are being reworked for it anyway.
+
 **Current state, 2026-09-30 (end of the SAI_FS tick — THE OPTICAL BOARD IS AT ZERO):**
 
 | thing | state |
