@@ -19,10 +19,10 @@ finding is fixed, never waived; a soft one is waived only for a case on its rule
 | board | FAIL | OPEN | state |
 |---|--:|--:|---|
 | `can_tee` | 0 | 7 | open: M1 (user), M33 (user), M36, and the order-time four M12 M30 M37 M42 |
-| `leg_pogo_female_top` | 3 | 22 | not started; test-pad and pinout labels have no site even at 0.8 mm |
-| `leg_pogo_male_top` | 3 | 22 | not started; same |
-| `leg_pogo_female_bottom` | 4 | 22 | not started; name only fits at 0.8 mm; CAD plate has a hole the routed board lacks |
-| `leg_pogo_male_bottom` | 4 | 22 | not started; name only fits at 0.8 mm |
+| `leg_pogo_female_top` | 0 | 12 | record declared; re-routed 0 / 0; open: M10 M11 M12 M28 M29 M30 M32 M33 M36 M37 M38 M42 |
+| `leg_pogo_male_top` | 0 | 12 | record declared; re-routed 0 / 0; open: M10 M11 M12 M28 M29 M30 M32 M33 M36 M37 M38 M42 |
+| `leg_pogo_female_bottom` | 0 | 12 | record declared; re-routed 0 / 0; open: M10 M11 M12 M28 M29 M30 M32 M33 M36 M37 M38 M42 |
+| `leg_pogo_male_bottom` | 0 | 12 | record declared; re-routed 0 / 0; open: M10 M11 M12 M28 M29 M30 M32 M33 M36 M37 M38 M42 |
 | `ui_board` | 7 | 22 | brenner is changing it (power button, 2x8 header): leave until that merges |
 | `pi_cap` | 10 | 21 | waits on brenner's ribbon change (J5 becomes 2x8); ring and via findings go with the re-route |
 | `lever_sensor` | 11 | 36 | not started; J1 pinout legend only fits at 0.8 mm: make room |
@@ -34,20 +34,37 @@ finding is fixed, never waived; a soft one is waived only for a case on its rule
 All twelve were re-finished with `--keep-route` on 2026-10-04: every one still reads
 `0 unconnected, 0 violation(s)`; silk is 1.0 mm wherever a site exists.
 
-**NEXT:** (1) the four pogo boards: declare power_paths and pinouts (pogo pin C5280862
-datasheet), find room for the test-pad names and pinouts or decide what replaces them,
-and look at the female-bottom cutout disagreement. (2) `can_tee` M36 (what limits a short
-on a motor drop: read the PSU's protection from BOM.md) and the order-time four -- run
-`elec/fab.py` on `can_tee` and see what the package step already proves for M12 / M30 /
-M37 / M42. (3) `lever_sensor`. (4) `output_panel` power-button design (lead's request)
-together with its quality record, since the board is re-routed for it anyway; `pi_cap`
-when brenner's `harness.UI_RIBBON` change is on main. (5) `motor_ctrl`, `led_strip`,
-`optical`. (6) the XH power-lead way count (user: fine if it creates no other issue and
-stays in the XH family): try 2-way / 6-way inside the current outlines.
+**NEXT:** (1) pogo boards' remaining twelve: read the Xinyangze drawings for C54799748 /
+C54930022 against the local footprints (M28, M32); M10 / M36 depend on what protects and
+limits bus B, which is `motor_ctrl`'s (see the finding below); M11 from the finish log
+(CAD check passes on all four now); M29 / M38 by inspection. (2) `can_tee` M36 and the
+order-time four (M12 M30 M37 M42): run `elec/fab.py` on `can_tee` and see what the
+package step already proves. (3) `lever_sensor`. (4) `output_panel` power-button design
+(lead's request) with its quality record; `pi_cap` when brenner's `harness.UI_RIBBON`
+change is on main. (5) `motor_ctrl` (including a current limit on bus B's 5 V),
+`led_strip`, `optical`. (6) the XH power-lead way count: try 2-way / 6-way inside the
+current outlines.
+
+### Findings from the pogo boards, 2026-10-04
+
+* **Bus B's 5 V is not current-limited.** `src/leg_pogo.py` and the wiring notes say bus B
+  runs "behind a current-limited switch"; `elec/motor_ctrl.py` ties J2 / J6 way 2 straight
+  to the Pi's `+5V` rail, behind only the 4 A output fuse. The leg joints expose that rail
+  on gold lands whenever a leg is off, through 1 A contacts. To fix on `motor_ctrl`: a
+  current-limited load switch on the bus-B feed (about 0.5 A: eleven boards at ~30 mA is
+  0.33 A). Until then M33 / M36 stay open on the pogo boards.
+* The female boards' 0.30 mm rails measured a hair under what 1 A (the contact rating)
+  needs; now 0.35 mm, re-routed 0 / 0, contact order re-proved on all four.
+* `leg_pogo_female_top` had been routed before its M4 hole was cut (the CAD check said
+  so); the re-route fixed it. All four now pass the CAD check.
+* No room for test-pad names or pin legends on a 10-13 mm board: each carries a short
+  name (`POGO FEM BOT r1`, 1.0 mm or larger) and a `G` at the ground pad; recorded as a
+  marking decision (M31) with what is relied on instead.
 
 cadkit changes this loop has made (all propagated): A12 fab check `efdd75f`;
 `finish.py --keep-route` `bc45fad`; jumper / `silk_labels` labels `fff67d7`; small-label
-fallback `3a67ff7`; automatic annular-ring growth in the layout `ea916d4`.
+fallback `3a67ff7`; automatic annular-ring growth in the layout `ea916d4`; short silk name,
+squarer name blocks and legible footprint text `7195078`.
 
 ### New automated rule, 2026-10-04: A12, the board measured against the fab's page
 
