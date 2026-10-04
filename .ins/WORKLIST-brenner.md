@@ -117,3 +117,11 @@ OPEN; an item moves to DONE with the commit that closed it.
 16. 2026-10-03: the board pipeline moved to `cadkit/pcbflow/` (elec/ files are forwards).
     Pipeline edits go in canonical ../cadkit/pcbflow -> commit -> propagate.py -> sync;
     NEVER edit the vendored copy. New part heights/tails: src/board_geom._HEIGHT/_TAIL.
+
+17. **Power switch on the UI board** (user question, 2026-10-04) -- ANSWERED, not built.
+    The asked-for spot (window's -X edge, knob's Y) is where the ribbon header J2 sits
+    (board-local -33.2, -6.3). The ribbon is 14 of 14 ways used and cannot carry 24 V
+    supply current anyway, so the switch can only be a low-current ENABLE; nothing on the
+    24 V path can be switched today (no FET / eFuse on output_panel or motor_ctrl).
+    Needs: a switched element at the inlet (bronner's boards), two conductors back to it,
+    and J2 moved or the switch moved. Awaiting the user's choice.
