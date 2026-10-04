@@ -88,6 +88,19 @@ From a community review FAQ (schematic, layout and bill-of-materials pages).
   is 1-10 uF on a USB device's VBUS; over 10 uF is the hard limit).
 * A11 (one value, one spelling) passes on every board.
 
+## Review pass on the rules themselves (same day)
+
+The rules were checked against how these boards are actually made, and four were changed:
+
+* A1's voltage-drop limit is 2 % of the rail (was a flat 50 mV, meaningless on 24 V).
+* A2 no longer fails a rail that only passes between connectors (`can_tee`, `pi_cap`,
+  the pogo boards): reported as a note.
+* A9 reports a via on a crystal net as a note instead of failing it; the distance limit
+  still fails (`optical` Y1 at 35 mm, `motor_ctrl` Y1 at 12 mm).
+* Manual rules about a kind of circuit are marked `n/a` by the script when the board has
+  none of its parts: `can_tee` and `ui_board` drop to 22 open items, `pi_cap` 21,
+  `lever_sensor` 36, `optical` 41.
+
 ## What each board still needs
 
 1. Declare `power_paths` (entry pad, load pads, amps) for every rail; fix what A1 then
