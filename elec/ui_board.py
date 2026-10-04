@@ -411,6 +411,7 @@ BOARD_NOTES = {
     # would be perforated anyway, by twenty through-hole pins at 2.54 leaving 0.7 mm webs
     # straight across it. So GND is a routed net like every other one, which on a 72 mm
     # board with a metre of ribbon either side is what it was always going to be worth.
+    "silk_labels": {"SW2": "POWER"},
     "mounting_hole_xy": UI.SCREW_XY,
     "single_sided": True,      # every part on the deck-facing face
     "qty_per_instrument": 1,
