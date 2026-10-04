@@ -124,6 +124,10 @@ LCSC = {
                                     # THT, 2902 in stock 2026-10-02 -- the pi_cap's UI ribbon.
                                     # (C22438122, named in pi_cap.py, is the VERTICAL one and
                                     # does not match the Horizontal footprint.)
+    "PZ1.27-2x8P": "C22438114",     # the same family's 2x8, for the UI board's 16-way
+                                    # ribbon; 2050 in stock 2026-10-04
+    "PB-22E85-S-5.7C-C-W": "C22462024",   # Legion self-locking push switch, 2P2T, THT,
+                                    # 12 V 0.3 A; 2535 in stock 2026-10-04. The power button.
     "MCP4261-103E/ST": "C185580",   # dual 10k digital pot, TSSOP-14 -- ⚠ 96 in stock on
                                     # 2026-10-01; re-check before ordering
     "SN74LVC1G3157DCKR": "C38663",  # SPDT analog switch, SC-70-6
