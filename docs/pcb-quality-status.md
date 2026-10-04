@@ -1,6 +1,6 @@
 # PCB quality pass: where each board stands
 
-The standard is `cadkit/PCB_QUALITY.md` (rules A1–A4 automated, M1–M12 manual). Run it with
+The standard is `cadkit/PCB_QUALITY.md` (rules A1–A8 automated, M1–M32 manual). Run it with
 
 ```bash
 "C:/Program Files/KiCad/10.0/bin/python.exe" elec/quality.py elec/out/<board>
@@ -53,12 +53,25 @@ How to read it:
 * Passive pass-through boards (`can_tee`, the leg pogo boards) fail A2 because a tee has
   no capacitor. That is a waiver with a reason, or a decision to add one per tee.
 
+## Second batch of rules, same day (A5-A8, M13-M32)
+
+Added from a survey of published design-review checklists. On our boards A5 (net labels),
+A7 (I2C pull-ups) and A8 (exposed pads) pass everywhere. One new finding:
+
+* **`output_panel` J2 (USB-C)** - both CC pins are unconnected (A6). If J2 is a
+  downstream port that a USB-C device plugs into with a C-to-C cable, it needs a pull-up
+  on each CC pin to advertise itself as a source; if it only ever takes an A-to-C cable
+  from a host, it needs 5.1 k to ground on each. Decide which, then fix or waive.
+
+The manual list is now M1-M32 (32 OPEN per board). M13 onward are per-circuit-kind and
+most boards sign several in one line as not applicable.
+
 ## What each board still needs
 
 1. Declare `power_paths` (entry pad, load pads, amps) for every rail; fix what A1 then
    measures.
 2. Fix or waive the A2 list above (move / add capacitors, regenerate, re-route).
 3. Read every multi-pin part's pinout against its datasheet and cite it (`pinouts`).
-4. Work the manual list M1–M12 and sign each with what was checked against.
+4. Work the manual list M1–M32 and sign each with what was checked against.
 
 The optical board goes first: it is the next order.
