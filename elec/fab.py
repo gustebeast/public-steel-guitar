@@ -124,6 +124,12 @@ LCSC = {
                                     # THT, 2902 in stock 2026-10-02 -- the pi_cap's UI ribbon.
                                     # (C22438122, named in pi_cap.py, is the VERTICAL one and
                                     # does not match the Horizontal footprint.)
+    "0805L020YR": "C126816",        # Littelfuse 0805 PTC, 200 mA hold / 500 mA trip, 9 V;
+                                    # 6,224 in stock 2026-10-04 -- pi_cap F1
+    "B6B-XH-A": "C144397",          # JST B6B-XH-A(LF)(SN), 38,933 in stock 2026-10-04 --
+                                    # the motor board / output panel power + switch cable
+    "TPS2553DBVR": "C55266",        # TI current-limited switch, SOT-23-6; 58,077 in stock
+                                    # 2026-10-04 -- motor_ctrl U6, bus B's 5 V
     "PZ1.27-2x8P": "C22438114",     # the same family's 2x8, for the UI board's 16-way
                                     # ribbon; 2050 in stock 2026-10-04
     "PB-22E85-S-5.7C-C-W": "C22462024",   # Legion self-locking push switch, 2P2T, THT,
