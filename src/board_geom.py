@@ -19,9 +19,9 @@ PROJECT NOTES ON PARTICULAR PARTS (the numbers themselves are in cadkit):
   * PinSocket_2x20 8.5 IS THE STRUCTURE, not a bump: the pi_cap hangs off the Pi's header
     by it, so the figure is the standoff between the Pi's top face and the cap's
     underside. src/electronics.py places the cap by the same number.
-  * PinHeader_2x07_P1.27mm_Horizontal (the UI ribbon, both ends): height from the LCSC
-    listing and tail ESTIMATED, neither off a drawing -- measure one. The tail sizes the
-    UI clamp plate's relief (src/ui_panel.py).
+  * PinHeader_2x07/2x08_P1.27mm_Horizontal (the UI ribbon's two ends): tail off the
+    maker's drawing (_TAIL below); height still the LCSC listing's. The tail hangs into
+    the UI clamp plate's relief (src/ui_panel.py).
   * Alps_RKJXT1F42001 8.30 is the CASE only; src/ui_panel.py draws the collar and the
     D-shaft, which pass through the deck.
   * XINGLIGHT_XL-5050RGBW stands inside a fret light cell: its height is floor taken out
@@ -50,7 +50,11 @@ _HEIGHT: dict = {
     "Legion_PB-22E85": 8.5,
 }
 _TAIL: dict = {
-    "PinHeader_2x08_P1.27mm_Horizontal": 1.5,    # the 2x7's ESTIMATE, same family
+    # READ, not estimated (2026-10-04): HX's PZ1.27-2xNP WZ drawing gives the solder leg
+    # as 3.40 +-0.25 under the insulator, so 1.8 shows under a 1.6 board. One drawing
+    # covers every way count, so the 2x7 on the Pi cap takes the same figure.
+    "PinHeader_2x08_P1.27mm_Horizontal": 1.8,
+    "PinHeader_2x07_P1.27mm_Horizontal": 1.8,
     "Legion_PB-22E85": 1.8,                      # 3.4 of terminal less a 1.6 board
 }
 _THT_LEGS: dict = {}

@@ -606,7 +606,11 @@ def build(panel):
     # the BAY at the -X end, and one on an EAR off the +Y edge at the +X end, outside the
     # lit line -- so neither keepout takes anything off a cell's floor and neither boss
     # stands in a cell. Both positions are READ from the deck, not retyped.
-    notes["cutouts"] = [{"xy": [round(wx - cx, 4), round(wy, 4)], "d": 4.50}
+    # head_d: the M4's button head bears on the UNDERSIDE (fret_light.m4_joint), so no
+    # copper runs under it on that face
+    from cadkit.fasteners import M4_BUTTON_HEAD_D
+    notes["cutouts"] = [{"xy": [round(wx - cx, 4), round(wy, 4)], "d": 4.50,
+                         "head_d": M4_BUTTON_HEAD_D, "head_side": "back"}
                         for wx, wy in FL.m4_xys(panel)]
     # the rectangle, plus the ear. outline_mm above stays the LAYOUT REGION.
     hl, hw = length / 2.0, BOARD_W / 2.0
@@ -615,6 +619,48 @@ def build(panel):
     notes["outline_poly"] = [[round(v, 4) for v in pt] for pt in (
         (-hl, -hw), (hl, -hw), (hl, ey), (ex0 - cx, ey), (ex0 - cx, hw), (-hl, hw))]
     notes["qty_per_instrument"] = 1
+    # WHAT EACH SUPPLY NET CARRIES, all-white. The 14 V rail is made on the key board and
+    # crosses the seam pogos to the mid board, so the key board's rail is held to BOTH
+    # boards' channels and the mid board's to its own.
+    i_own = 4 * len(zs) * I_CHAN
+    i_all = 4 * I_CHAN * sum(len(zones_for(*FL.panel_range(q))) for q in ("mid", "key"))
+    if panel == "key":
+        i_24 = i_all * V_RAIL / 24.0 / 0.90
+        paths = [
+            {"net": "+24V_IN", "from": "J1.2", "to": "F1.1", "amps": round(i_24, 3)},
+            {"net": "+24V", "from": "F1.2", "to": "U10.2", "amps": round(i_24, 3)},
+            {"net": "+14V", "from": "L1.2",
+             "to": ["U%d.19" % (k + 1) for k in range(n_drv)] + ["J11.1", "J13.1"],
+             "amps": round(i_all, 3)},
+        ]
+        pin = {"S6B-PH-SM4-TB": "JST PH S6B-PH-SM4-TB drawing for pin 1; the way order is "
+                                "this file's bay table, the harness's own",
+            "LMR33630CRNXR": "TI LMR33630 datasheet SNVSB08, Table 6-1, VQFN (RNX) column",
+        }
+        waive = {
+            "A2:J11": "a seam pogo handing the rail to the mid board, not a load; the "
+                      "rail is a plane with C36-C38 on it",
+            "A2:J13": "a seam pogo handing the rail to the mid board, not a load; the "
+                      "rail is a plane with C36-C38 on it",
+            "A2:J1": "the harness plug, ahead of the fuse; the input capacitors C30-C32 "
+                     "are on the fused side so a shorted one blows F1",
+        }
+    else:
+        paths = [{"net": "+14V", "from": "J11.1",
+                  "to": ["U%d.19" % (k + 1) for k in range(n_drv)],
+                  "amps": round(i_own, 3)}]
+        pin, waive = {}, {}
+    notes["quality"] = {
+        "power_paths": paths,
+        "pinouts": dict({
+            "XL-5050RGBW": "XINGLIGHT XL-5050RGBW datasheet, package drawing: pads 1-4 the "
+                           "four anodes, 5-8 their cathodes; Steel:XINGLIGHT_XL-5050RGBW "
+                           "is drawn from it",
+            "TLC59711PWPR": "TI TLC59711 datasheet, Terminal Functions table, PWP "
+                            "(HTSSOP-20) column, top view",
+        }, **pin),
+        "waive": waive,
+    }
     notes["world_x"] = [round(x0, 3), round(x1, 3)]
     notes["board_frame"] = {"cx": round(cx, 4), "z_bot": FL.BOARD_BOT}
     with open(os.path.join(OUT_DIR, "%s.board.json" % name), "w") as f:

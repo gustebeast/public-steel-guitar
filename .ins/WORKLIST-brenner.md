@@ -138,3 +138,28 @@ OPEN; an item moves to DONE with the commit that closed it.
     d. pi_cap J5 (2x8, pass-through) and output_panel (inlet switch, 4-wire cable, node
        <= 12 V) are bronner's; the CAD ribbon lands 16 ways on a 14-way J5 until then.
     e. elec/prices.json has no SW2 / 2x8 line until tools/cost.py is re-run.
+
+19. 2026-10-04: item 15 CLOSED -- header tail read off HX's drawing: 3.40 leg, 1.8 under
+    the board (was a 1.5 estimate); src/board_geom._TAIL, both way counts.
+20. 2026-10-04: cadkit quality rules on my boards (item 1 is now this). ui_board 0 FAIL.
+    fret_led_mid/key and foot_led: power_paths, pinouts and waivers declared in their
+    generators; fret M4 cutouts carry head_d (back face). foot_led's 100 nF VCC caps
+    moved to the chip's pin-19 side. Still to clear per board: whatever A1 says about
+    width/drop now that the currents are declared, and any via-in-pad the route leaves.
+    The 22-37 OPEN manual items per board are unsigned -- sign before any order.
+
+21. **STITCH VIAS CUT OFF FROM THE PLANE -- found 2026-10-04, REPORTED to lead (pipeline).**
+    Quality A1 "no copper joins" is REAL, not a checker artefact: the pre-placed stitch
+    via of a driver's VCC pin (U*.19) ends up 0.7-0.8 mm from a via the router adds for
+    another net, whose antipad voids the plane round it ("N stitch via(s) landed where
+    the plane is not ... nowhere to go"). Seen on fret_led_key U1.19, fret_led_mid
+    U2-U5.19 (+ U3.2/U5.2 GND), foot_led U3/U4.19, C11/C14. Needs the router kept off
+    stitch vias (cadkit), or the stitch moved; a re-route alone does not fix it.
+    WITH IT, when the boards are next routed:
+    a. net_widths: fret key "+24V_IN"/"+24V" 0.30 (0.26 needed at 0.89 A), "+14V" 0.50
+       (0.47 needed at 1.38 A out of L1.2 -- today ONE 0.25 track and one via carry the
+       whole rail); fret mid "+14V" 0.50; foot "+24V_IN" 0.30 (0.20 needed, routed 0.15).
+    b. via-in-pad: foot C36.1 (stitch via 0.28 from the pad centre), mid D37.2.
+    c. foot_led leaves 1-2 zone-return nets open under today's pipeline (Z0_W_RET, then
+       Z5_G_RET + Z11_G_RET); it routed 0 before. Tracked elec/geom/foot_led.* is still
+       the earlier clean route and does NOT have the 100 nF caps' new positions.
