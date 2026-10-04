@@ -125,3 +125,16 @@ OPEN; an item moves to DONE with the commit that closed it.
     24 V path can be switched today (no FET / eFuse on output_panel or motor_ctrl).
     Needs: a switched element at the inlet (bronner's boards), two conductors back to it,
     and J2 moved or the switch moved. Awaiting the user's choice.
+
+18. **POWER BUTTON -- BUILT 2026-10-04** (closes 17). SW2 = Legion PB-22E85-S-5.7C-C-W
+    (C22462024) at board-local (-25.40, -4.26): cap O15.2, -X edge on the window's -X
+    edge, centre on the knob's Y; flush with the deck = on, 1.5 proud = off (user). J2 is
+    the 2x8 (C22438114); harness.UI_RIBBON ways 15/16 = PWR_SW_UP / PWR_SW_DN, each
+    shorted to GND in one state. Board did not grow. One deck column moved to (-16, -13).
+    OPEN on it:
+    a. METER the first switch: throw order is off the drawing's schematic.
+    b. PWR_STEM_GRIP 2.5 is scaled off the drawing; measure the stem's square length.
+    c. The cap is held by a 2.5 mm press fit only -- print one and pull on it.
+    d. pi_cap J5 (2x8, pass-through) and output_panel (inlet switch, 4-wire cable, node
+       <= 12 V) are bronner's; the CAD ribbon lands 16 ways on a 14-way J5 until then.
+    e. elec/prices.json has no SW2 / 2x8 line until tools/cost.py is re-run.
