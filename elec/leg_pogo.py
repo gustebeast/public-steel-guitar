@@ -204,6 +204,10 @@ def design(kind, joint):
         "mounting_hole_xy": hole,
         "single_sided": True,
         "qty_per_instrument": 1,
+        # The female's first pass leaves one net open on the top mirror once the screw
+        # head's keepout is in; the retry closes it cleanly. Left to close_last instead, it
+        # was closed with a via inside a ZR tail pad, which the quality pass rejects.
+        "finish_rounds": 1 if kind == "male" else 2,
         # for check_pogo_nets(): which board axis is the CAD's s, and its sign
         "pogo": {"kind": kind, "joint": joint, "s_axis": s_axis, "s_sign": m if kind == "male" else 1.0,
                  "pinout": [NET_NAME[n] for n in PINOUT]},
