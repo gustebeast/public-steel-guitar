@@ -5259,3 +5259,17 @@ somewhere temporary.
 ⚠ Verified: `route.py` compiles with **zero SyntaxWarning** (the Windows paths in the new
 docstring and message needed raw strings — a warning printed on every route is noise this
 pipeline does not need), and both modules resolve to the same existing file.
+
+## PCB QUALITY PASS LIVES IN CADKIT (2026-10-04)
+
+The standard validation pass every board is held to is `cadkit/PCB_QUALITY.md` +
+`cadkit/pcbflow/quality.py` (canonical cadkit `aefaf49`): automated rules A1-A4 (supply
+choke points and drop, bypass capacitors, pairs, pinout citations) and a manual checklist
+M1-M12 signed with evidence in `BOARD_NOTES["quality"]`. `elec/finish.py` now ends
+`| quality: N FAIL, M OPEN`; `elec/quality.py` is the forward. A lesson from an ordered
+board becomes a rule THERE (its "Adding a learning" section), then `propagate.py`.
+
+Where our boards stand, and the real findings of the first run (supply pins far from any
+capacitor on optical U6, output_panel U1, motor_ctrl +5V): `docs/pcb-quality-status.md`.
+NEXT: declare the `quality` record for `optical` and work it to `0 FAIL, 0 OPEN` before
+the order.
