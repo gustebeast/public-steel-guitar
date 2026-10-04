@@ -5263,9 +5263,9 @@ pipeline does not need), and both modules resolve to the same existing file.
 ## PCB QUALITY PASS LIVES IN CADKIT (2026-10-04)
 
 The standard validation pass every board is held to is `cadkit/PCB_QUALITY.md` +
-`cadkit/pcbflow/quality.py` (canonical cadkit `aefaf49`): automated rules A1-A4 (supply
+`cadkit/pcbflow/quality.py` (canonical cadkit `789cc10`): automated rules A1-A8 (supply
 choke points and drop, bypass capacitors, pairs, pinout citations) and a manual checklist
-M1-M12 signed with evidence in `BOARD_NOTES["quality"]`. `elec/finish.py` now ends
+M1-M32 signed with evidence in `BOARD_NOTES["quality"]`. `elec/finish.py` now ends
 `| quality: N FAIL, M OPEN`; `elec/quality.py` is the forward. A lesson from an ordered
 board becomes a rule THERE (its "Adding a learning" section), then `propagate.py`.
 
