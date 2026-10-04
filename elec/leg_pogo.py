@@ -35,7 +35,8 @@ computing where each pad ends up -- and check_pogo_nets() re-reads the ROUTED bo
 proves it, because a hand-derived frame mapping returns believable wrong numbers and this
 one would put 5 V on CAN_L.
 
-DEBUG. Each board carries four bare test pads, one per conductor, labelled on silk. With
+DEBUG. Each board carries four bare test pads, one per conductor, in the harness order
+(TP1-TP4 = GND, +5V, CAN_H, CAN_L); only the ground pad's letter fits on the silk. With
 the leg off, the pins are spring-loaded gold you do not want to slip a probe on, and the
 target's faces are 0.44 mm apart; the pads are where a meter, a scope ground or a CAN
 analyser clips on. Bring-up use: continuity pad-to-pad through a mated joint is the test
@@ -193,7 +194,9 @@ def design(kind, joint):
         # 0.5 mm is what a 0.7 mm ZR tail pad will take without necking.
         # The female is 10 mm wide with a connector, a target and four pads on it; at 0.5 the
         # router stranded a test pad on one mirror or the other. 0.3 mm is 1.0 A.
-        "net_widths": {"+5V": 0.5, "GND": 0.5} if kind == "male" else {"+5V": 0.3, "GND": 0.3},
+        # 0.35, not 0.3: the quality pass measured 0.30 as a hair under what 1 A needs at a
+        # 10 C rise (IPC-2221, 1 oz outer), and 1 A is what the contacts may be asked for.
+        "net_widths": {"+5V": 0.5, "GND": 0.5} if kind == "male" else {"+5V": 0.35, "GND": 0.35},
         "mounting_hole_xy": hole,
         "single_sided": True,
         "qty_per_instrument": 1,
@@ -201,7 +204,100 @@ def design(kind, joint):
         "pogo": {"kind": kind, "joint": joint, "s_axis": s_axis, "s_sign": m if kind == "male" else 1.0,
                  "pinout": [NET_NAME[n] for n in PINOUT]},
     })
+    # ONE LETTER PER TEST PAD, because that is what fits: the pads are 2.7 mm apart on a
+    # board 10 mm wide, and "CAN_H" at the legible 1.0 mm is 4.4 mm long. G, 5V, H, L in
+    # the harness order; kicad_silk places each beside its pad or reports that it could not.
+    notes["silk_labels"] = {"TP1": "G", "TP2": "5V", "TP3": "H", "TP4": "L"}
+    # The stem is 22 characters and the back is 10-13 mm wide with vias across it.
+    notes["silk_name"] = "POGO %s %s" % ("MALE" if kind == "male" else "FEM",
+                                         "BOT" if joint == "bottom" else "TOP")
+    notes["quality"] = _quality(kind, parts)
     return stem, parts, notes
+
+
+# ── THE QUALITY RECORD (cadkit/PCB_QUALITY.md), one text for the four boards ─────────────
+# Each line says what it was checked AGAINST. A rule that is not here is OPEN, and why it
+# is open is in docs/pcb-quality-status.md.
+def _quality(kind, parts):
+    j1_5v = [pad for pad, net in parts[0][4].items() if net == "+5V"][0]
+    male = kind == "male"
+    width = "0.5" if male else "0.35"
+    return {
+        # 1 A is the spring header's rating (and the ZH contact's): the most this joint
+        # may ever be asked to pass. Bus B's real load is a handful of sensor boards.
+        "power_paths": [{"net": "+5V", "from": "J2.2", "to": "J1.%s" % j1_5v, "amps": 1.0}],
+        "pinouts": {
+            "S4B-PH-SM4-TB": "JST ePH.pdf p.4, Header (SMT type) / Side entry: looking INTO "
+                             "the mouth with the board below, the No. 1 circuit mark is on "
+                             "the left. KiCad JST_PH_S4B-PH-SM4-TB has the mouth toward +Y "
+                             "and pad 1 at -X: the same end. The local copy changes only "
+                             "the reinforcement lands' length. Read 2026-10-04",
+            "S4B-ZR-SM4A-TF": "JST eZH.pdf p.5, Header / SMT type / SM4 type, Side entry: "
+                              "looking INTO the mouth with the board below, No. 1 circuit "
+                              "is on the left. KiCad JST_ZH_S4B-ZR-SM4A-TF has the mouth "
+                              "toward +Y and pad 1 at -X: the same end. The local copy "
+                              "changes only the courtyard. Read 2026-10-04",
+            "YZ165615055F-04025-02": "a symmetric 1 x 4 row: there is no pin order to get "
+                                     "wrong, only POSITION. The k-th contact along the row "
+                                     "carries harness.PH_PINOUT[k]; `leg_pogo.py --check` "
+                                     "re-reads the ROUTED board and proves it (run "
+                                     "2026-10-04: GND, +5V, CAN_H, CAN_L on all four)",
+            "YZ185115035T-04025-01": "a symmetric 1 x 4 row of lands: position, not pad "
+                                     "number, decides the net. `leg_pogo.py --check` proves "
+                                     "the routed order on all four boards (run 2026-10-04)",
+        },
+        # A12 "Break it when" (b): no site at the legible size, and the text is not
+        # needed to assemble or wire the board.
+        "waive": {"A12:silk text height":
+                  "the front face is all courtyard and the back is 10-13 mm wide with vias "
+                  "across it: the ground test pad's letter (and a pin legend, on the one "
+                  "board where one fits at all) has no site at 1.0 mm and is printed at "
+                  "0.8. Neither is needed to build or wire the board -- the order is "
+                  "fixed by the polarised housings and written down (M31) -- and the "
+                  "board's name, which is, is at 1.0 mm or larger on all four"},
+        "manual": {
+            "M1": "across the joint: `leg_pogo.py --check` reads the four ROUTED boards and "
+                  "finds GND, +5V, CAN_H, CAN_L along the row on every one, so male and "
+                  "female agree contact for contact at both joints. Harness side: J2's ways "
+                  "1-4 are harness.PH_PINOUT, the one constant every bus-B connector binds "
+                  "to; the leads are crimped 1:1. PH and ZH are both polarised housings, "
+                  "and the joint itself cannot mate offset: the leg's joinery is engaged "
+                  "before the pins touch",
+            "M3": "measured on the routed board: GND and +5V are the same width (%s mm, "
+                  "set together in net_widths), both plain tracks, no pour and no slot. "
+                  "There is no analog reference on this board" % width,
+            "M4": "no capacitor, no regulator and no load: four conductors straight "
+                  "through (A2 reports the same)",
+            "M5": "bus B is 5 V. Spring header 12 V DC / 1 A (maker's drawing, as recorded "
+                  "in src/leg_pogo.py RA_V); JST PH 100 V / 2 A (ePH.pdf p.1); JST ZH "
+                  "50 V / 1 A (eZH.pdf p.1). Current is M33",
+            "M9": "four bare 1.0 mm test pads, one per conductor, in a 2 x 2 block in the "
+                  "harness order TP1-TP4 = GND, +5V, CAN_H, CAN_L. Only TP1's letter (G) "
+                  "finds a silk site on every board, so the ORDER is the label: G marks "
+                  "the first pad. No MCU on the board",
+            "M31": "decision: the board carries a short name and revision (back, e.g. "
+                   "'POGO FEM BOT r1') and a G beside the ground test pad, and nothing "
+                   "else that is promised. There is no site for "
+                   "more: kicad_silk reports no room for the other three pad letters or "
+                   "either connector's pin legend on a board 10-13 mm wide whose front is "
+                   "all courtyard. Relied on instead: both connectors are polarised and "
+                   "carry the one bus-B order (GND, +5V, CAN_H, CAN_L from pin 1), the "
+                   "test pads repeat it from the lettered pad, and it is written in "
+                   "elec/harness.py and the bring-up notes. JST's own pin-1 marks are "
+                   "moulded on the housings",
+            "M16": "decision: nothing to damp here. The board has no capacitor; what a "
+                   "live leg joint rings into is the sensor boards' inputs, signed there",
+            "M20": "no terminator and no pull-up on this board, by design: it is a joint "
+                   "in the middle of bus B, whose two 120 R are fixed at the far ends. The "
+                   "stub it adds is its own ~15 mm of track",
+            "M34": "no active part. CAN_H meets CAN_H and CAN_L meets CAN_L across the "
+                   "joint and at the harness connector (M1's check reads both)",
+            "M40": "no resistor or capacitor value on the board. The spring header and "
+                   "the gold target are chosen as a mating PAIR (2.5 against 2.54 pitch, "
+                   "lands 2.1 wide): substituting either needs the other's drawing, and "
+                   "the generator's header says so",
+        },
+    }
 
 
 VARIANTS = tuple((k, j) for k in ("male", "female") for j in ("bottom", "top"))
