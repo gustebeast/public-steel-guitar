@@ -1,6 +1,6 @@
 # PCB quality pass: where each board stands
 
-The standard is `cadkit/PCB_QUALITY.md` (rules A1–A9 automated, M1–M38 manual). Run it with
+The standard is `cadkit/PCB_QUALITY.md` (rules A1–A11 automated, M1–M42 manual). Run it with
 
 ```bash
 "C:/Program Files/KiCad/10.0/bin/python.exe" elec/quality.py elec/out/<board>
@@ -77,12 +77,23 @@ notes in full). One new automated rule, and it found something:
   capacitors up against U6 before the order.
 * **`motor_ctrl` Y1** - 12.2 mm to U4.6: marginal, tighten it when the board is next placed.
 
+## Fourth batch (A10, A11, M39-M42; A9 extended)
+
+From a community review FAQ (schematic, layout and bill-of-materials pages).
+
+* **Crystal traces change layer** (A9 now fails a via on a crystal net): `optical`
+  OSC_IN 3 vias, OSC_OUT 4, PHY_XO 2; `output_panel` OSC_IN/OSC_OUT 2 each; `motor_ctrl`
+  OSC_IN 3; `lever_sensor` OSC_OUT 2. With the crystal beside its pins these go away.
+* **`optical` J1 VBUS** has 0.1 uF directly on it (a note, not a failure: common guidance
+  is 1-10 uF on a USB device's VBUS; over 10 uF is the hard limit).
+* A11 (one value, one spelling) passes on every board.
+
 ## What each board still needs
 
 1. Declare `power_paths` (entry pad, load pads, amps) for every rail; fix what A1 then
    measures.
 2. Fix or waive the A2 list above (move / add capacitors, regenerate, re-route).
 3. Read every multi-pin part's pinout against its datasheet and cite it (`pinouts`).
-4. Work the manual list M1–M38 and sign each with what was checked against.
+4. Work the manual list M1–M42 and sign each with what was checked against.
 
 The optical board goes first: it is the next order.
