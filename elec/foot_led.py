@@ -70,14 +70,22 @@ FUSE_FP = "Fuse:Fuse_1206_3216Metric"
 #  -X board still passes both boards' 0.73 A, through one pogo rated 12 A.)
 
 R_IREF = "3k3"                       # 15.0 mA per channel, as the fret boards
-# ⚠ 11.00 V, AND THE STRING LENGTH IS THE ONLY THING THAT SETS IT. A channel sinks
+# ⚠ 11.50 V, AND THE STRING LENGTH IS THE ONLY THING THAT SETS IT. A channel sinks
 # constant current from the rail down through its series string, so the rail has to sit one
 # string plus the sink's headroom above ground -- and every volt above that is heat in the
-# driver rather than light. Three dice in series (src/foot_light.N_SERIES) is 9.6 V at the
-# LED's 3.2 max, so 11.00 leaves 1.40 V of headroom.
+# driver rather than light.
+# ⚠ THE STRING IS 10.2 V, NOT 9.6 (manual quality pass, 2026-10-05). XINGLIGHT's sheet
+# gives green, blue and white 3.0 to 3.4 V at 20 mA, +-0.1 -- this file said "3.2 max".
+# Three in series (src/foot_light.N_SERIES) is 10.2 V at the top of the bin. The sink is
+# flat from about 0.3 V at 15 mA (TI SBVS181A figure 12). At the 11.00 V this rail was,
+# its low tolerance (10.64 V: 0.985 V reference, 1 % resistors) left 0.44 V; at 11.50 it
+# leaves 0.92.
 #
-# The whole rail change is R11: 100k / 10k on the LMR33630's 1.000 V reference is 11.00 V.
-V_RAIL = 11.00
+# R10 over (R11 parallel R12) on the LMR33630's 1.000 V reference: 100k / (10k || 200k).
+# Two stock values instead of one 9.53k, which JLCPCB only carries as an extended part.
+R_FBT, R_FBB, R_FBP = 100e3, 10e3, 200e3
+V_RAIL = round(1.0 * (1.0 + R_FBT / (R_FBB * R_FBP / (R_FBB + R_FBP))), 2)      # 11.50
+assert abs(V_RAIL - 11.50) < 0.005, V_RAIL
 I_CHAN = 0.015
 COLOURS = ("R", "G", "B", "W")
 # THE SEAM AND THE INLET ARE POGOS: four Xinyangze YZF0002-38080-02 (LCSC C5203987) at
@@ -129,8 +137,30 @@ BOARD_W = FL.BOARD_W                        # 17.20
 # the tops because they arrive from the sides and can climb on the way in.
 ZONE_OUTS = {-1: (3, 4, 5, 6), 0: (7, 8, 13, 14), 1: (15, 16, 17, 18)}
 
-SUPPLY_LEN = 47.31                   # the thirteen supply parts plus their gaps,
-                                     # measured by Row itself on the first run
+# ── THE BUCK'S CELL: where each of its parts stands, measured from U10 ────────────────
+# ⚠ COPIED FROM THE OPTICAL BOARD'S U13, WHICH WAS MEASURED AGAINST TI'S LAYOUT EXAMPLE
+# on a routed board (elec/optical.py M13): the same IC in the same package. The RNX has a
+# VIN and a PGND pin on EACH long side, and TI puts a small 50 V capacitor across each
+# pair (SNVSAN3F 9.2.2.6); this board had one, on one side. C32 and C35 are the pair.
+# (dx, dy, rot) from U10's centre; every two-pad part is wired pin 1 = its net, pin 2 =
+# ground (C33: BOOT / SW; R10: rail / FB), which is what puts the right pad at the pin.
+BUCK_CELL = {
+    "C32": (-2.115, +0.80, 90.0),      # VIN / PGND, pins 2 and 1
+    "C35": (+2.115, +0.80, 90.0),      # VIN / PGND, pins 10 and 11
+    "C33": (-2.115, -1.32, 90.0),      # bootstrap, BOOT (pin 4) to the SW pin TI provides (3)
+    "C34": (-3.295, -1.32, 90.0),      # VCC, pin 5
+    "R11": (+2.115, -1.32, 90.0),      # feedback, bottom: 1.2 mm from FB (pin 7)
+    "R10": (+3.295, -1.32, 270.0),     # feedback, top
+    "R12": (+2.115, -3.25, 270.0),     # across R11, its FB pad towards R11's
+    "C30": (-6.305, 0.0, 0.0),         # input bulk
+    "C31": (-10.955, 0.0, 0.0),
+    "F1": (-15.585, 0.0, 0.0),
+    "L1": (+6.535, 0.0, 0.0),
+    "C36": (+11.185, 0.0, 0.0),        # output bulk
+    "C37": (+15.835, 0.0, 0.0),
+    "C38": (+19.10, 0.0, 90.0),
+}
+BUCK_X = -1.75                       # U10 itself: centres the cell on the board
 
 
 def _r(ref, value, desc, fp=R_FP):
@@ -189,7 +219,7 @@ def build(board, passes=20):
         "and strings in N_SERIES" % (name, len(xs), n_zone))
     half = length / 2.0
 
-    gnd, v24, vrail = Net("GND"), Net("+24V"), Net("+11V")
+    gnd, v24, vrail = Net("GND"), Net("+24V"), Net("+11V5")
     for n in (gnd, v24, vrail):
         n.drive = Pin.drives.POWER
     place, fps = {}, {}
@@ -234,10 +264,19 @@ def build(board, passes=20):
         fps[ref] = POGO_FP
         pogo_refs.setdefault(sgn, []).append(ref)
 
+    # ⚠ A PART, NOT "1A": a fuse is chosen for its voltage and its speed as well as its
+    # current, and a value string picks none of them. JDT JFC1206 fast-acting, 63 V.
+    # Board A's carries BOTH boards (0.73 A all-white), so it is the 2 A part at 37 %;
+    # board B's carries its own 0.37 A on the 1 A part, so a fault on B opens B's fuse
+    # and leaves A lit.
+    f_val = {"a": "JFC1206-1200FS", "b": "JFC1206-1100FS"}[board]
     f1 = Part(name="Fuse", ref_prefix="F", ref="F1", tag="F1", dest="NETLIST",
-              tool="skidl", value="1A",
-              description="24 V fuse -- a shorted U10 must not feed the fault back out "
-                          "into the trunk, nor into the next board", footprint=FUSE_FP,
+              tool="skidl", value=f_val,
+              description="24 V fuse, fast, 63 V, %s (LCSC %s) -- a shorted U10 must not "
+                          "feed the fault back out into the trunk, nor into the next "
+                          "board" % ({"a": "2 A", "b": "1 A"}[board],
+                                     {"a": "C136345", "b": "C136343"}[board]),
+              footprint=FUSE_FP,
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v24_in += f1[1]
     v24 += f1[2]
@@ -245,7 +284,8 @@ def build(board, passes=20):
     # ── the buck: the fret boards', unchanged ────────────────────────────────────────
     u10 = Part(name="LMR33630CRNX", ref_prefix="U", ref="U10", tag="U10", dest="NETLIST",
                tool="skidl", value="LMR33630CRNXR",
-               description="24 V -> 11.00 V synchronous buck, 2.1 MHz, 3 A (LCSC C2071783)",
+               description="24 V -> %.2f V synchronous buck, 2.1 MHz, 3 A "
+                           "(LCSC C2071783)" % V_RAIL,
                footprint=BUCK_FP, pins=[Pin(num=n, func=P) for n in range(1, 13)])
     sw, boot, vcc, fb = Net("SW"), Net("BOOT"), Net("BUCK_VCC"), Net("FB")
     gnd += u10[1], u10[11], u10[6]
@@ -265,23 +305,29 @@ def build(board, passes=20):
     for ref, val, fp, net, why in (
             ("C30", "10uF/50V", C12_FP, v24, "buck input bulk"),
             ("C31", "10uF/50V", C12_FP, v24, "buck input bulk"),
-            ("C32", "100nF", C_FP, v24, "buck input HF bypass -- at U10's VIN/GND pins"),
-            ("C34", "1uF", C_FP, vcc, "buck VCC bypass"),
-            ("C36", "10uF/50V", C12_FP, vrail, "11 V output bulk"),
-            ("C37", "10uF/50V", C12_FP, vrail, "11 V output bulk"),
-            ("C38", "100nF", C_FP, vrail, "11 V output HF bypass")):
+            # 50 V SAID IN THE VALUE: the fab picks a passive by its value text and a bare
+            # "100nF" 0402 is its 16 V part (C1525). 100nF/50V is CL05B104KB54PNC, C307331,
+            # also a basic part -- so every 100 nF on the board is that one line.
+            ("C32", "100nF/50V", C_FP, v24, "buck input HF bypass -- VIN/PGND, pins 2 and 1"),
+            ("C35", "100nF/50V", C_FP, v24, "buck input HF bypass -- VIN/PGND, pins 10 "
+                                            "and 11, the pair on the other side"),
+            ("C34", "1uF/25V", C_FP, vcc, "buck VCC bypass (TI: 1 uF, 16 V or more)"),
+            ("C36", "10uF/50V", C12_FP, vrail, "rail output bulk"),
+            ("C37", "10uF/50V", C12_FP, vrail, "rail output bulk"),
+            ("C38", "100nF/50V", C_FP, vrail, "rail output HF bypass")):
         c = _c(ref, val, why, fp)
         net += c[1]
         gnd += c[2]
-    c33 = _c("C33", "100nF", "buck bootstrap -- BOOT to SW")
+    c33 = _c("C33", "100nF/50V", "buck bootstrap -- BOOT to SW (TI: 100 nF, 10 V or more)")
     boot += c33[1]
     sw += c33[2]
-    r10 = _r("R10", "100k", "11 V feedback divider, top")
-    r11 = _r("R11", "10k 1%", "11 V feedback divider, bottom -- 11.00 V with R10, "
-                              "against a 9.60 V string at the LED's max Vf")
+    r10 = _r("R10", "100k 1%", "rail feedback divider, top (TI: 100k)")
+    r11 = _r("R11", "10k 1%", "rail feedback divider, bottom")
+    r12 = _r("R12", "200k 1%", "across R11: 10k || 200k = 9.524k, %.2f V with R10"
+                               % V_RAIL)
     vrail += r10[1]
-    fb += r10[2], r11[1]
-    gnd += r11[2]
+    fb += r10[2], r11[1], r12[1]
+    gnd += r11[2], r12[2]
 
     # ⚠ THE SUPPLY SITS IN THE MIDDLE OF THE BOARD, AND THE RETURNS ARE WHY. Each
     # driver's outer two zones return along the lane from +-2.5 pitches away, so the
@@ -296,12 +342,13 @@ def build(board, passes=20):
     # is still the quieter of the two things on this board: a tight 2.1 MHz hot loop
     # of ~5 mm2 at 73 mm is 4x below the LED loop's 15 mm2 at 66 mm that shares the
     # board with it, and its spectrum is nowhere near the audio band.
-    row = Row(place, fps, -SUPPLY_LEN / 2.0)
-    for ref, fp in (("F1", FUSE_FP), ("C30", C12_FP), ("C31", C12_FP), ("C32", C_FP),
-                    ("U10", BUCK_FP), ("C33", C_FP), ("C34", C_FP), ("L1", IND_FP),
-                    ("C36", C12_FP), ("C37", C12_FP), ("C38", C_FP), ("R10", R_FP),
-                    ("R11", R_FP)):
-        row.add(ref, fp)
+    place["U10"] = (BUCK_X, LANE_Y, 0.0)
+    fps["U10"] = BUCK_FP
+    cell_fp = {"F1": FUSE_FP, "C30": C12_FP, "C31": C12_FP, "C36": C12_FP, "C37": C12_FP,
+               "L1": IND_FP, "R10": R_FP, "R11": R_FP, "R12": R_FP}
+    for ref, (dx, dy, rot) in BUCK_CELL.items():
+        place[ref] = (BUCK_X + dx, LANE_Y + dy, rot)
+        fps[ref] = cell_fp.get(ref, C_FP)
 
     # ── the zones ────────────────────────────────────────────────────────────────────
     # A zone is N_SERIES consecutive LEDs in series on one channel; a driver serves three
@@ -334,10 +381,10 @@ def build(board, passes=20):
         r = _r("R%d" % (k + 1), R_IREF, "U%d IREF -- 15.0 mA per channel" % (k + 1))
         iref += r[1]
         gnd += r[2]
-        cv = _c("C%d" % (k + 1), "1uF", "U%d VREG (datasheet: 1 uF required)" % (k + 1))
+        cv = _c("C%d" % (k + 1), "1uF/25V", "U%d VREG (datasheet: 1 uF required)" % (k + 1))
         vreg += cv[1]
         gnd += cv[2]
-        cc = _c("C%d" % (10 + k + 1), "100nF", "U%d VCC bypass" % (k + 1))
+        cc = _c("C%d" % (10 + k + 1), "100nF/50V", "U%d VCC bypass" % (k + 1))
         vrail += cc[1]
         gnd += cc[2]
         cb = _c("C%d" % (20 + k + 1), "4.7uF/25V", "U%d local bulk -- its zones' PWM "
@@ -423,6 +470,10 @@ def build(board, passes=20):
             "the socket's signal lands are %.2f from the first LED's courtyard"
             % (lands_y - (ly + led_half)))
         exempt.append(("J1", end_led[-1.0]))
+    # the buck's cell is laid out to TI's figure, closer than the lane-keeping gap this
+    # check enforces; real courtyard overlaps are still DRC's to refuse
+    cell = ["U10"] + sorted(BUCK_CELL)
+    exempt += [(a, b) for i, a in enumerate(cell) for b in cell[i + 1:]]
     FL.check_optics()
     check_placement(name, place, fps, exempt=exempt)
     ERC()
@@ -435,6 +486,26 @@ def build(board, passes=20):
     notes["outline_mm"] = (round(length, 3), round(BOARD_W, 3))
     notes["placements"] = {k: list(v) for k, v in place.items()}
     notes["router_passes"] = passes
+    # THE SWITCH NODE IS LAID, NOT ROUTED: the one net here that radiates. Out of U10's
+    # top pad (pin 12), over C35, into L1's near land -- optical.py's own track.
+    ux, uy, _ur = place["U10"]
+    lx = place["L1"][0] - 1.50
+    notes["tracks"] = [("SW", "F.Cu", 0.5, [(ux, uy + 1.20), (ux, uy + 2.00),
+                                            (lx - 0.25, uy + 2.00), (lx, uy + 1.40)])]
+    # ...AND SO ARE THE TWO INPUT LOOPS, pin to capacitor pad, 0.6 mm each. Left to
+    # itself the plane stitcher ran pin 11's ground stub down the gap between the package
+    # and C35 and walled pins 9 and 10 off from the rest of +24V: two unconnected, on the
+    # shortest connections on the board.
+    # ⚠ MEASURED FROM THE PLACEMENT POINT, WHICH IS THE PAD CENTROID AND NOT THE
+    # FOOTPRINT'S ORIGIN: layout anchors a part on the mean of its pads, and the RNX's is
+    # 0.159 below its origin. Read off the laid-out board: VIN pins at +0.634, PGND at
+    # +1.284, x +-0.90; a capacitor's pads at +0.32 and +1.28, x +-2.115.
+    for sx in (-1.0, 1.0):
+        notes["tracks"] += [
+            ("+24V", "F.Cu", 0.25, [(ux + sx * 0.90, uy + 0.634), (ux + sx * 1.50, uy + 0.634),
+                                    (ux + sx * 2.115, uy + 0.32)]),
+            ("GND", "F.Cu", 0.25, [(ux + sx * 0.90, uy + 1.284), (ux + sx * 2.115, uy + 1.284)]),
+        ]
     # WHAT EACH SUPPLY NET CARRIES, all-white. A board's own rail is its channels and
     # its 24 V draw is that through the buck at 90 %. Board A's inlet and fuse carry
     # BOTH boards' and it hands B's share across the seam; B carries its own.
@@ -467,7 +538,7 @@ def build(board, passes=20):
             # ⚠ HELD TO THE WHOLE RAIL, though a driver's VCC is only its logic supply:
             # the stretch that matters is L1's own exit onto the plane, all of the rail
             # leaves there, and every one of these paths starts with it.
-            {"net": "+11V", "from": "L1.2",
+            {"net": "+11V5", "from": "L1.2",
              "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": round(i_rail, 3)},
         ],
         "pinouts": {
@@ -476,7 +547,7 @@ def build(board, passes=20):
                            "is drawn from it",
             "TLC59711PWPR": "TI TLC59711 datasheet, Terminal Functions table, PWP "
                             "(HTSSOP-20) column, top view",
-            "LMR33630CRNXR": "TI LMR33630 datasheet SNVSB08, Table 6-1, VQFN (RNX) column",
+            "LMR33630CRNXR": "TI LMR33630 datasheet SNVSAN3F, Table 6-1, VQFN (RNX) column",
         },
         "waive": waive,
     }
@@ -514,15 +585,19 @@ BOARD_NOTES = {
     # gives both outer layers back to routing, and turns every anode and every GND pad
     # into a via -- for about $19 on an order of five.
     #
-    # In1 = +14V and In2 = GND, for the reason fret_led.py records: the conductor that
+    # In1 = the rail and In2 = GND, for the reason fret_led.py records: the conductor that
     # mirrors a zone's long F.Cu run is the RAIL, not ground, because the local bulk sits
     # at the driver.
     "layers": 4,
     "thickness_mm": 1.6,
-    "zones": [("+11V", "In1.Cu", 0.3), ("GND", "In2.Cu", 0.3)],
+    "zones": [("+11V5", "In1.Cu", 0.3), ("GND", "In2.Cu", 0.3)],
     "plane_layers": ("In1.Cu", "In2.Cu"),
     "local_inner": "B.Cu",
-    "stitch_nets": ("+11V", "GND"),
+    "stitch_nets": ("+11V5", "GND"),
+    # U10's two PGND pins reach the plane through the input capacitor beside each: a laid
+    # 0.25 track, pin to capacitor pad, 0.6 mm, and the capacitor's own stitch via. TI's
+    # layout wants no via inside that loop, and there is no room for one anyway.
+    "stitch_exceptions": ("U10.1", "U10.11"),
     # ⚠ A SMALLER VIA, AND IT IS THE DRIVER'S ESCAPE FAN THAT ASKS FOR IT. Twelve outputs
     # leave one HTSSOP-20 on a 0.65 mm pitch and every one of them has to dive to an
     # outer layer beside the package: six vias have to fit in the 5.85 mm the pin column

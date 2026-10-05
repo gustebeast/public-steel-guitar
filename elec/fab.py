@@ -92,6 +92,7 @@ LCSC = {
     "VLS6045EX-6R8M": "C415364",     # TDK 6.8 uH 6045, Isat 4.7 A, 36 mOhm; 4,123 (5 V buck
                                      # L2). Nearest: Sunlord SWPA6045S6R8MT C57254 (4.3 A)
     "JFC1206-1100FS": "C136343",     # JDT 1206 fuse 1 A 63 V; 96,232
+    "JFC1206-1200FS": "C136345",     # JDT 1206 fuse 2 A 63 V; 11,363 on 2026-10-05 (foot_led_a F1)
     "JFC1206-1300FS": "C136347",     # JDT 1206 fuse 3 A 63 V; 37,944
     "JFC1206-1400FS": "C136349",     # JDT 1206 fuse 4 A 63 V; 45,541
     "B5819W": "C8598",               # CJ B5819W SL, SOD-123 1 A 40 V Schottky, JLC basic
