@@ -145,7 +145,7 @@ assert tuple(s.replace("UI_", "").replace("+3V3_PI", "+3V3") for s, _ in UI_WAYS
     "list, so the two ends of one cable would disagree")
 
 XH_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
-PH4_FP = "Connector_JST:JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal"
+PH6_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
 SOCKET_FP = "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical"
 
 # Raspberry Pi 40-way header, PHYSICAL pin numbers -- which is also how the 2x20 footprint
@@ -192,23 +192,27 @@ SERIES_R = "68R"                  # see note 1 in the docstring
 # ⚠ V24, NOT V5 (2026-09-30, docs/lighting-bus.md 3-4): every lit board carries its own buck
 # now, so what crosses this board is the 24 V bus and nothing is regulated for the LEDs
 # upstream. Same connector, same six ways, same order -- only the rail's name and voltage.
-# ⚠ FOUR WAYS, IN THIS ORDER, AND THE ORDER IS A SAFETY DECISION (user + lead, 2026-10-04).
-# The fret boards went to a 4-way PH, and a 4-way PH is also bus B's drop (GND, V5, CAN_H,
-# CAN_L: motor_ctrl J2 / J6, the leg boards). The two plugs interchange, so the order is
-# chosen for what a wrong mate does:
-#   fret lead (this J3, live) on a bus-B socket   way 1  +24V_LED onto bus GND: a dead short
-#       of the lighting feed, cleared by motor_ctrl's F3; way 2 this GND onto +5V_BUSB: the
-#       bus's current-limited switch folds back; ways 3 / 4 the Pi's SPI pins, through
-#       68 ohm, onto CAN_H / CAN_L (0-3.3 V on a 3V3 transceiver). No 24 V on any sensor pin.
-#   bus-B lead (live) on this J3 or a fret board   the same two shorts from the other side
-#       (bus GND onto +24V_LED, +5V_BUSB onto GND), and CAN_H / CAN_L onto SCK / SDT: the
-#       Pi's two SPI pins drive the 60 ohm bus through 68 ohm each, about 25 mA against
-#       16 mA a pin -- a stress for as long as it is left plugged, not an over-voltage.
-# With GND on way 1 instead, 24 V would land on bus B's 5 V pin. DO NOT REORDER.
-STRIP_PINS = ("V24", "GND", "SCK", "SDT")     # = fret_led J1 = FOOT_PINS
-# the foot strip's inlet, in foot_led.J_PINS order -- V24 on an END pad, as that board needs
-FOOT_PINS = ("V24", "GND", "SCK", "SDT")
-SH4_FP = "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
+# ⚠ FOUR WAYS, IN THE INSTRUMENT'S ONE ORDER (user, 2026-10-04; harness.py has the rule):
+# GND, power, data, data -- and because the power is 24 V the fret drop is an XH, like
+# every other 24 V lead. It was a PH for a day, with 24 V on way 1 so that swapping it with
+# bus B's PH drop could not put 24 V on a sensor's 5 V pin; the family now does that job
+# outright (no XH plug enters a PH header) and the order no longer has to.
+#   What a wrong mate does now, XH for XH: on a CAN drop or a tee, GND meets GND and
+#   24 V meets 24 V, and the Pi's two SPI pins, through 68 ohm each, meet CAN_H / CAN_L --
+#   0 to 3.3 V on a bus that idles at 2.5 V. On the lights inlet J4 the same, with the two
+#   switch lines instead of CAN. Nothing is over-volted by any of them.
+STRIP_PINS = _H.LED_DROP          # = fret_led J1
+# ⚠ THE FOOT DROP IS AN XH TOO, AND IT IS THE THROUGH-HOLE ONE BECAUSE THE SURFACE-MOUNT ONE
+# DOES NOT FIT. The band it sits in is 9.4 mm between the socket's courtyard and the board
+# edge. The side-entry SMT part every other XH here uses (S4B-XH-SM4-TB) needs its lands
+# across 10.3 mm of board -- signal tails at the back, hold-down tabs at the mouth -- so it
+# would have cost ~3 mm of board toward the endplate. S4B-XH-A is the same header on four
+# posts and nothing else: 2 mm of land at the back, and the body may hang past the edge
+# because nothing of it is soldered there. It overhangs by 2.7 mm, into the space the
+# ribbon's plug and both cables already leave through. Same housing, same crimp, same
+# 6.1 mm height (under the socket's 8.5 mm gap).
+FOOT_PINS = _H.LED_DROP           # = foot_led_a J1
+XH_THT_FP = "Connector_JST:JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal"
 
 
 def _r(tag, value, desc):
@@ -234,9 +238,9 @@ def _xh(tag, desc, rail="V5", ways=None):
 # ⚠ THE LIGHTING CABLE CARRIES THE POWER BUTTON TOO (2026-10-04), AND IT GAVE UP ITS DOUBLED
 # CONTACTS TO DO IT. The two switch lines have to reach the output panel, and the only
 # cables that leave this board for the motor controller (which holds the far end of the
-# panel's supply cable) are J2 and J4. The connector row is full -- 50.9 of the board's
-# 56 mm -- so nothing longer than a 4-way fits, and J2 needs both its 5 V contacts (3 A to
-# the Pi against XH's 3 A per contact). J4 does not: the lighting bus is 1.63 A at full
+# panel's supply cable) are J2 and J4. The connector row is full -- 50.6 of the board's
+# 56 mm -- so J4 cannot grow past a 4-way, and J2 needs both its 5 V contacts (3 A to
+# the Pi against PH's 2 A per contact). J4 does not: the lighting bus is 1.63 A at full
 # white, 54 % of ONE contact. So J4 is GND, 24 V, switch UP, switch DN -- ways 1 and 2
 # where every 4-way XH in the instrument has them.
 # The lines are the switch's own contacts to ground and nothing else: whatever pulls them
@@ -327,10 +331,16 @@ def pi_cap():
         if _hdr:                     # the power button's two ways reach no header pin
             n += j1[_hdr]
 
-    j2 = _xh("J2", "Pi 5 V in, from motor_ctrl J5 (GPIO pins 2/4 + 6/9)",
-             ways=_H.PI_5V_LINK)
-    gnd += j2[1], j2[4]
-    v5_pi += j2[2], j2[3]
+    # 5 V is a PH (harness.py: XH carries 24 V, PH carries 5 V) and a 6-way, because the
+    # Pi's 3 A needs two contacts and the second power pair lives on ways 5 and 6. Ways 3
+    # and 4 are the standard's data ways; this lead has no data, so they join nothing.
+    j2 = Part(name="S6B-PH-SM4-TB", ref_prefix="J", ref="J2", tag="J2",
+              dest="NETLIST", tool="skidl", value="S6B-PH-SM4-TB",
+              description="Pi 5 V in, from motor_ctrl J5 (GPIO pins 2/4 + 6/9), LCSC C265405",
+              footprint=PH6_FP,
+              pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(_H.PI_5V_LINK)])
+    gnd += j2[1], j2[6]
+    v5_pi += j2[2], j2[5]
 
     j4 = _xh("J4", "LED 24 V in + the power button's two throws out, to motor_ctrl J7",
              ways=LED_IN_PINS)
@@ -340,23 +350,19 @@ def pi_cap():
     ui_nets["PWR_SW_DN"] += j4[4]
 
     # the fret drop: power and both signals, in fret_led's J1 order
-    j3 = Part(name="S4B-PH-SM4-TB", ref_prefix="J", ref="J3", tag="J3",
-              dest="NETLIST", tool="skidl", value="S4B-PH-SM4-TB",
-              description="to fret_led_key J1 -- 24 V and SPI0, LCSC C265102",
-              footprint=PH4_FP,
-              pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(STRIP_PINS)])
-    v24_led += j3[1]
-    gnd += j3[2]
+    j3 = _xh("J3", "to fret_led_key J1 -- 24 V and SPI0", ways=STRIP_PINS)
+    gnd += j3[1]
+    v24_led += j3[2]
 
-    # the foot drop: SM04B-SRSS, the foot board's own inlet part, so the cable is a stock
-    # SH-to-SH lead. 0.73 A through its one V24 contact (1 A rated) -- lighting-bus.md 3.
-    j6 = Part(name="SM04B-SRSS-TB", ref_prefix="J", ref="J6", tag="J6",
-              dest="NETLIST", tool="skidl", value="SM04B-SRSS-TB",
-              description="to foot_led_a J1 -- 24 V and SPI5, LCSC C160404",
-              footprint=SH4_FP,
+    # the foot drop: S4B-XH-A, the through-hole side-entry XH (why that one: the note at
+    # FOOT_PINS). 0.73 A through its one V24 contact (3 A rated) -- lighting-bus.md 3.
+    j6 = Part(name="S4B-XH-A", ref_prefix="J", ref="J6", tag="J6",
+              dest="NETLIST", tool="skidl", value="S4B-XH-A",
+              description="to foot_led_a J1 -- 24 V and SPI5, LCSC C157925",
+              footprint=XH_THT_FP,
               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(FOOT_PINS)])
-    v24_led += j6[1]
-    gnd += j6[2]
+    gnd += j6[1]
+    v24_led += j6[2]
     sck_ft, sdt_ft = Net("SCK_FOOT"), Net("SDT_FOOT")
     r3 = _r("R3", SERIES_R, "foot SCLK series source termination")
     sck_ft_pi += r3[1]
@@ -404,16 +410,18 @@ BOARD_NOTES = {
         # kept their distances. electronics._cap_place's j1_y moved with them, because that
         # is the number the whole board is positioned by.
         "J1": (0.00, -4.50, 90.0),   # 4.5 from the board edge = the Pi header's own margin
-        # ⚠ RE-TILED FOR THE SIDE-ENTRY BODIES. They are 16.8 x 12.1 (XH) and 17.3 x 10.3
-        # (PH) against the 12.4 x 5.75 of the vertical parts they replace, so the three
-        # together take 50.9 of the board's 56: ~1 mm of margin at each edge, 1.05 between
-        # them. Their courtyards sit 6.05 ABOVE the placement point, which is why y is 5.4
+        # ⚠ RE-TILED FOR THE SIDE-ENTRY BODIES. Courtyards are 16.7 x 12.0 (4-way XH) and
+        # 17.2 x 10.2 (6-way PH) against the 12.4 x 5.75 of the vertical parts they
+        # replace, so the three together take 50.6 of the board's 56: 0.9 mm at the west
+        # edge, 0.8 and 1.4 between them, 2.3 at the east edge. Their courtyards sit 6.05 ABOVE the placement point, which is why y is 5.4
         # and not 8 -- at 8 they overhung the +Y edge by 2 mm.
-        "J2": (-18.60, 9.40, 0.0),      # Pi 5 V in
+        "J2": (-18.50, 9.40, 0.0),      # Pi 5 V in (6-way PH, courtyard 17.2 wide)
         "J4": (-0.75, 9.40, 0.0),       # LED 24 V in
         "J3": (17.35, 9.40, 0.0),       # out to the fret boards
         # the foot drop goes in the ribbon's band, mouth -Y like the ribbon, at the +X end
-        "J6": (20.00, -11.00, 180.0),
+        # (placed by its post row: posts at y -10.50, 2.9 below the socket's pads, ways at
+        # x 24.50 / 22.00 / 19.50 / 17.00; the body runs out to y -19.7, 2.7 past the edge)
+        "J6": (20.75, -10.50, 180.0),
         "R3": (12.50, -9.00, 0.0),
         "R4": (12.50, -11.00, 0.0),
         # the passives drop into the band between J1's socket and the connector row
@@ -479,14 +487,16 @@ BOARD_NOTES = {
     # of the net -- the caps and the 0.73 A foot branch -- at 0.3 mm.
     # (2026-10-04: J4's 24 V is way 2 ALONE now -- ways 3 and 4 are the power button's --
     # so the bar comes down at x -2.00 and the tie across to way 3 is gone.)
-    "tracks": [("+24V_LED", "B.Cu", 1.0, [(-2.00, 7.13), (-2.00, _BAR_Y), (14.35, _BAR_Y)]),
-               ("+24V_LED", "B.Cu", 0.8, [(14.35, _BAR_Y), (14.35, 7.96)]),
+    # (2026-10-04, later: J3 is an XH with 24 V on way 2, at x 16.10. The bar is 1.75 mm
+    # longer and comes down there; the foot branch leaves from the same land.)
+    "tracks": [("+24V_LED", "B.Cu", 1.0, [(-2.00, 7.13), (-2.00, _BAR_Y), (16.10, _BAR_Y)]),
+               ("+24V_LED", "B.Cu", 0.8, [(16.10, _BAR_Y), (16.10, 7.13)]),
                # the foot branch, on the path the router found when the net was all its own
                # (with the bar declared it left J6 way 1 open): 0.73 A at 0.4 mm
                # (2026-10-04: it leaves J3's land 0.8 mm lower than it did, because the land
                # beside it is GND now and the old diagonal passed its corner at 0.06 mm)
-               ("+24V_LED", "B.Cu", 0.4, [(14.35, 7.96), (14.35, 6.20), (19.44, 1.11), (20.25, 1.11),
-                                          (20.25, -6.96), (21.50, -8.21), (21.50, -9.71)])],
+               ("+24V_LED", "B.Cu", 0.4, [(16.10, 7.13), (16.10, 4.45), (19.44, 1.11), (20.25, 1.11),
+                                          (20.25, -8.40), (22.00, -10.15), (22.00, -10.50)])],
     # ⚠ TWO GND STITCHES IN THE RIBBON'S BAND. Growing the board and fanning 13 UI signals
     # across it cut the GND pour into the main body plus small fragments, and the fragments
     # are the band's own return path -- each one is what a switch line runs over. They are
@@ -572,8 +582,8 @@ BOARD_NOTES = {
             {"net": "+5V_PI", "from": "J2.2", "to": ["J1.2", "J1.4"], "amps": 3.0},
             # lighting bus, every zone at full white (software-capped): 1.63 A in,
             # 0.89 A on to the fret boards, 0.73 A to the foot strip (docs/lighting-bus.md)
-            {"net": "+24V_LED", "from": "J4.2", "to": ["J3.1"], "amps": 1.63},
-            {"net": "+24V_LED", "from": "J4.2", "to": ["J6.1"], "amps": 0.73},
+            {"net": "+24V_LED", "from": "J4.2", "to": ["J3.2"], "amps": 1.63},
+            {"net": "+24V_LED", "from": "J4.2", "to": ["J6.2"], "amps": 0.73},
             # the display's logic supply, behind F1 (200 mA hold)
             {"net": "+3V3_PI", "from": "J1.1", "to": ["F1.1"], "amps": 0.2},
             {"net": "+3V3_UI", "from": "F1.2", "to": ["J5.10"], "amps": 0.2},
@@ -606,15 +616,18 @@ BOARD_NOTES = {
                              "circuit is the right-hand post. KiCad JST_XH_S4B-XH-SM4-TB "
                              "has its tails at -Y, mouth +Y and pad 1 at -X: the same end. "
                              "Read 2026-10-04",
-            "S4B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
+            "S6B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
                              "the board below, No. 1 circuit is on the left. KiCad "
-                             "JST_PH_S4B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
-                             "Ways are STRIP_PINS (V24 GND SCK SDT), the order fret_led's "
-                             "J1 uses. Read 2026-10-04",
-            "SM04B-SRSS-TB": "JST eSH.pdf p.3, Header / Side entry type: looking into the "
-                             "mouth with the board below, No. 1 circuit is on the left. "
-                             "KiCad JST_SH_SM04B-SRSS-TB: mouth +Y, pad 1 at -X -- the same "
-                             "end. Way names bound from foot_led's FOOT_PINS. Read 2026-10-04",
+                             "JST_PH_S6B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
+                             "Ways are harness.PI_5V_LINK (GND 5V nc nc 5V GND), which "
+                             "reads the same from either end. Read 2026-10-04",
+            "S4B-XH-A": "JST eXH.pdf p.5, Header / Side entry type, 3 circuits or more: "
+                        "seen from above with the mouth pointing away and the posts toward "
+                        "the viewer, No. 1 circuit is the right-hand post. KiCad "
+                        "JST_XH_S4B-XH-A: pad 1 at the origin, the others toward +X, body "
+                        "toward +Y (down the screen) -- turned mouth-up, pad 1 is on the "
+                        "right: the same end. Ways are harness.LED_DROP (GND V24 SCK SDT). "
+                        "Read 2026-10-04",
             "PZ1.27-2x8P": "a plain two-row header: the maker numbers nothing, so the "
                            "numbering is the footprint's (KiCad PinHeader_2x08 Horizontal: "
                            "odd pads on the inner row, even on the edge row, 1 / 2 at one "
@@ -633,7 +646,7 @@ BOARD_NOTES = {
                   "value at 24 V, which is why it is local HF bulk only: each lit board "
                   "carries its own buck and its own input capacitors",
             "M5": "5 V rail: 16 V capacitor, XH 250 V. 24 V rail: 50 V capacitors, XH 250 V, "
-                  "PH 100 V, SH 50 V. 3V3: F1 is a 9 V part. R1-R4 are 68 R in series with "
+                  "PH 100 V. 3V3: F1 is a 9 V part. R1-R4 are 68 R in series with "
                   "3.3 V logic. The two switch lines carry the output panel's pull-up, "
                   "which that board holds at or under the switch's 12 V. Contact current "
                   "is M33",
@@ -650,23 +663,23 @@ BOARD_NOTES = {
                    "assembly with the supply off -- they are inside the closed instrument "
                    "and nothing in service unplugs them. Were one plugged live: 5 V rings "
                    "toward 10 V on a 16 V capacitor, 24 V toward 48 V on 50 V parts",
-            "M28": "JST's own parts: S4B-XH-SM4-TB(LF)(SN) C161861, S4B-PH-SM4-TB C265102, "
-                   "SM04B-SRSS-TB(LF)(SN) C160404 -- the cited drawings are theirs. The "
+            "M28": "JST's own parts: S4B-XH-SM4-TB(LF)(SN) C161861, S6B-PH-SM4-TB(LF)(SN) C265405, "
+                   "S4B-XH-A(LF)(SN) C157925 -- the cited drawings are theirs. The "
                    "2x20 socket and the 2x8 header are symmetric pin fields with no maker "
                    "numbering. No transistor, regulator or IC on the board",
             "M31": "name and revision on the front; J2 / J3 / J4 / J6 pin names beside each "
                    "connector; designators at 1.0 mm or larger (A12). The ribbon header's "
                    "pin-1 mark is the footprint's, outside the body",
-            "M32": "pitches read from the KiCad files: XH 2.50, PH 2.00, SH 1.00, socket "
-                   "2.54, ribbon header 1.27. XH 3 A per contact at AWG 22, PH 2 A, SH 1 A "
-                   "(JST eXH / ePH / eSH p.1). The XH carry GND on way 1; J3 and J6 "
-                   "carry V24 on way 1 and GND on way 2, on purpose: J3 shares its "
-                   "housing with bus B's drop, and that order keeps 24 V off the sensor "
-                   "bus's 5 V pin if the two are ever swapped (the note at STRIP_PINS)",
-            "M33": "5 V: 3 A through J2's two contacts (1.5 A each, 3 A rated) and socket "
+            "M32": "pitches read from the KiCad files: XH 2.50, PH 2.00, socket "
+                   "2.54, ribbon header 1.27. XH 3 A per contact at AWG 22, PH 2 A "
+                   "(JST eXH / ePH p.1). Every connector is in the instrument's one order "
+                   "(harness.py): GND on way 1, power on way 2, data or nothing on 3 and "
+                   "4, and J2's second power pair on 5 and 6. 24 V is on XH and 5 V on "
+                   "PH. J6 is the through-hole side-entry XH (same housing; the SMT one "
+                   "does not fit its band -- the note at FOOT_PINS)",
+            "M33": "5 V: 3 A through J2's two PH contacts (1.5 A each, 75 % of 2 A) and socket "
                    "pins 2 + 4. 24 V: 1.63 A through J4's one contact (54 %), 0.89 A through "
-                   "J3's one PH contact (45 % of 2 A), 0.73 A through J6's one SH contact (73 % of 1 A -- "
-                   "inside the rating, without the first-board margin; the figure is a "
+                   "J3's one XH contact (30 % of 3 A), 0.73 A through J6's one XH contact (24 %; both figures are a "
                    "software cap with every zone at full white). 3V3: under 0.1 A of the "
                    "Pi regulator's 0.5 A",
             "M34": "no active part. SPI0 SCLK / MOSI and SPI5 SCLK / MOSI leave the Pi as "
@@ -674,9 +687,7 @@ BOARD_NOTES = {
                    "keep one name from the header pin to the ribbon way. The two switch "
                    "lines touch nothing here",
             "M36": "3V3 to the ribbon: F1, 200 mA hold. 24 V to the lit boards: fused at "
-                   "its source, motor_ctrl F3 (3 A) -- above J6's 1 A contact, so F3 "
-                   "protects against a short (which opens it) and not against a 2 A "
-                   "overload, which the lit boards' own bucks cannot draw. 5 V does not "
+                   "its source, motor_ctrl F3 (3 A), which is every XH contact's own rating. 5 V does not "
                    "leave this board except into the Pi",
             "M38": "every part is on the back, under the board, inside the socket's 8.5 mm "
                    "standoff; the 0805s lie along X, parallel to the long edges, and the "
@@ -707,9 +718,12 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES.get("vias", [])) + [
     # lands on B.Cu and to the lane on F.Cu.
     ("+5V_PI", x, y, 0.4, 0.8) for x in (-20.4, -19.3, -18.2, -17.1) for y in (3.75, 2.65)]
 BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
-    ("+5V_PI", "B.Cu", 1.3, [(-19.85, 5.2), (-19.85, 3.2)]),
-    ("+5V_PI", "B.Cu", 1.3, [(-17.35, 5.2), (-17.35, 3.2)]),
-    ("+5V_PI", "B.Cu", 2.2, [(-20.4, 3.2), (-17.1, 3.2)]),
+    # (2026-10-04: J2 is a 6-way PH. Its two 5 V lands are ways 2 and 5, 6 mm apart at
+    # x -21.5 and -15.5 with the two unused ways between them, so the patch is 6 mm long
+    # and each land drops onto one end of it; the via field has not moved.)
+    ("+5V_PI", "B.Cu", 1.0, [(-21.5, 6.5), (-21.5, 3.2)]),
+    ("+5V_PI", "B.Cu", 1.0, [(-15.5, 6.5), (-15.5, 3.2)]),
+    ("+5V_PI", "B.Cu", 2.2, [(-21.5, 3.2), (-15.5, 3.2)]),
     ("+5V_PI", "F.Cu", 2.2, [(-20.4, 3.2), (-17.1, 3.2)]),
     # the two capacitors, straight onto the B.Cu patch: left to the router they came back
     # joined through a via in C3's land and 46 mm of 0.2 mm track to C1

@@ -1171,29 +1171,30 @@ def build_wires():
     # docs/bronner-work-items.md is filed as "5 V pair still one lane, 229-243 mm3 over
     # ~78 mm", and its two failed fixes both moved the shared lane instead of un-sharing it.
     # Four cables inside each other do not need a better lane, they need four leads.
-    # ⚠ THE PIN ORDER IS THE SAME AT BOTH ENDS AND THAT IS NOT LUCK: J5 is GND, +5V, +5V,
-    # GND and so is the cap's J2, so conductor k joins pin k to pin k with no crossover. It
+    # ⚠ THE PIN ORDER IS THE SAME AT BOTH ENDS AND THAT IS NOT LUCK: J5 is a 6-way PH -- GND,
+    # +5V, two empty ways, +5V, GND (elec/harness.PI_5V_LINK) -- and so is the cap's J2, so
+    # conductor k joins pin k to pin k with no crossover and ways 3 and 4 carry no wire. It
     # is also palindromic, which is why a mirrored pin axis would have been invisible here --
     # see mctrl_pin, where the axis is verified against the routed board rather than assumed
     # precisely because the next connector to use it may not be so forgiving.
     # -63.6, not -64: at -64 the conductors' undersides (z -64.9) sat 0.1 into the Pi's
     # own parts under the cap (top z -64.8), four grazes of 0.1 mm3.
     _FLY_Z = -63.6
-    for _n, _nm in ((1, "gnd_a"), (2, "hot_a"), (3, "hot_b"), (4, "gnd_b")):
+    for _n, _nm in ((1, "gnd_a"), (2, "hot_a"), (5, "hot_b"), (6, "gnd_b")):
         _pin = EL.pi_cap_pin("J2", _n)
         _lead = (_pin[0], _pin[1], _pin[2] - CAP_LEAD_IN)     # mouths face -Z (see pi_cap.py)
-        # ⚠ 5 - _n, NOT _n, AND IT REMOVES THE LAST OF THE OVERLAP. Landing pin-for-pin
+        # ⚠ 7 - _n, NOT _n, AND IT REMOVES THE LAST OF THE OVERLAP. Landing pin-for-pin
         # dropped each pair from ~228 mm3 to 4.22, and what was left was the four conductors
         # CROSSING in the fly plane: they all run +x at their own y, then each turns -y at
         # its own cap-pin x. The one that turns FIRST (smallest x) was the one at the
         # least-negative y, so its turn cut across every horizontal below it. Give the first
         # turn to the conductor at the MOST negative y and the four paths nest instead of
         # crossing -- no lane change, no extra height, just the order they are assigned in.
-        # ⚠ AND THIS IS FREE ONLY BECAUSE THE CONNECTOR IS PALINDROMIC. J5 is GND, +5V, +5V,
-        # GND, so 1<->4 and 2<->3 swap like for like and the cable is electrically identical
+        # ⚠ AND THIS IS FREE ONLY BECAUSE THE CONNECTOR IS PALINDROMIC. J5 is GND, +5V, -, -,
+        # +5V, GND, so 1<->6 and 2<->5 swap like for like and the cable is electrically identical
         # either way. On a connector that is not symmetric this reversal would be a wiring
         # fault, so it is written as a deliberate choice with its reason, not as an index.
-        _src = EL.mctrl_pin("J5", 5 - _n)
+        _src = EL.mctrl_pin("J5", 7 - _n, count=6)
         out.append(("wire_5v_%s" % _nm, _wire(
             [_src, (_src[0], _src[1], _FLY_Z), (_lead[0], _src[1], _FLY_Z),
              (_lead[0], _lead[1], _FLY_Z), _lead, _pin], WIRE_OD["wire_5v"])))

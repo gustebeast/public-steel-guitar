@@ -46,20 +46,27 @@ rather than ticking them.
    note: the USB grounds now parallel the trunk return, so about a tenth of the stepper
    return current crosses the panel's ground between the USB sockets and R60, both on the
    -X edge and away from the audio section. R60 can become a bead or come off.
-2. **One pin scheme for the wire-to-board leads** (low priority; only where it does not
-   force a worse board): two ways that are data or unused, two that are a power / ground
-   pair, and on a 6-way two more that are a second power / ground pair. A 4-way then
-   carries one pair and a 6-way two, and the extra power never sits where a 4-way's data
-   would. Today's leads against it:
-   * conforming already: the CAN drops (`GND +24V CAN_H CAN_L`), the lights lead, the
-     optical inlet (`GND +24V` with ways 3 / 4 empty);
-   * not conforming: the three leads that use all four ways for power, because one XH
-     contact is 3 A -- the motor trunk (`output_panel` J7, 2.9 A), the Pi's 5 V
-     (`motor_ctrl` J5, 3 A) and the power link's first four ways (J10 / J3, 3.8 A). Under
-     the scheme each becomes a 6-way, about 5 mm more board edge at both ends.
-   To do, after the boards in hand are closed: try each of the three as a 6-way and keep
-   the change only where the outline and the route do not suffer. Until then `can_tee` M1
-   stays open and the INSTALL_NOTES warning stands.
+2. **One pin scheme for the wire-to-board leads, and the family set by the voltage.** Ways
+   are `GND, power, data, data`; a 6-way adds `power, GND` on ways 5 and 6 (so it reads the
+   same from either end). **XH carries 24 V, PH carries 5 V.** The tuples are in
+   `elec/harness.py`; the lead table and what every wrong plug does are in
+   `INSTALL_NOTES.md` ("Every JST lead"). What changed to meet it:
+   * `output_panel` J7 (motor trunk head): was `GND 24 24 GND`, now `GND 24 - -`. Its far
+     end was always one contact per rail (the tee's trunk header), so nothing was lost.
+   * `output_panel` J10 / `motor_ctrl` J3 (power link, 6-way XH): reordered to
+     `GND 24 button button 24 GND`.
+   * `motor_ctrl` J5 / `pi_cap` J2 (the Pi's 5 V): 4-way XH -> 6-way PH, `GND 5 - - 5 GND`;
+     1.5 A per contact against PH's 2 A.
+   * `motor_ctrl` J4 (USB lead): 4-way XH in USB's own order -> 4-way PH, `GND VBUS D- D+`.
+     As an XH it was the one lead that could put the motor bus's 24 V on the Pi's D-.
+   * `pi_cap` J3 (fret drop) and J6 (foot drop): 4-way XH, `GND 24 SCK SDT`. J6 is the
+     through-hole side-entry part (S4B-XH-A) because the surface-mount one needs 10.3 mm of
+     lands in a 9.4 mm band; its body overhangs the board edge by 2.7 mm.
+   No board outline changed. Already conforming: the CAN drops and trunks (both buses),
+   the lights lead, the optical inlet, the leg boards.
+   Audit of the rule (every JST on every board of mine): no XH carries only 5 V or 3V3; no
+   PH or SH carries 24 V. Outside the two families on purpose: the leg boards' ZH tail
+   (5 V, inside the leg) and the UI ribbon (IDC).
 
 ### Needs the user
 

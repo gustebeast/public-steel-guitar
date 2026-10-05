@@ -3155,7 +3155,7 @@
  ],
  "silk": [
   {
-   "text": "J10\n1 PWR_GND\n2 +24V\n3 +24V\n4 PWR_GND\n5 PWR_SW_UP\n6 PWR_SW_DN",
+   "text": "J10\n1 PWR_GND\n2 +24V\n3 PWR_SW_UP\n4 PWR_SW_DN\n5 +24V\n6 PWR_GND",
    "side": "B",
    "x": 35.7,
    "y": -2.15,
@@ -3169,17 +3169,17 @@
    ]
   },
   {
-   "text": "J7\n1 PWR_GND\n2 +24V\n3 +24V\n4 PWR_GND",
+   "text": "J7\n1 PWR_GND\n2 +24V",
    "side": "B",
    "x": 7.0,
-   "y": -22.5,
+   "y": -24.0,
    "size": 1.0,
    "angle": 0.0,
    "box": [
     2.542,
     11.458,
-    -26.568,
-    -18.432
+    -26.458,
+    -21.542
    ]
   },
   {

@@ -42,9 +42,12 @@ BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
 LCSC = {
     "S8B-XH-A": "C157914",          # 8-way side-entry XH, motor tee trunk
     "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
-    "B6B-PH-K-S": "C131342",        # B6B-PH-K-S(LF)(SN) -- pi_cap J3, 5 V + SPI to the strip
+    "B6B-PH-K-S": "C131342",        # B6B-PH-K-S(LF)(SN) -- motor_ctrl J5, the Pi's 5 V out
+    "B4B-PH-K-S": "C131334",        # B4B-PH-K-S(LF)(SN) -- motor_ctrl J4, the USB lead; 110k stock
+    "S6B-PH-SM4-TB": "C265405",     # S6B-PH-SM4-TB(LF)(SN) -- pi_cap J2, the Pi's 5 V in; 5,510 stock
+    "S4B-XH-A": "C157925",          # S4B-XH-A(LF)(SN), through-hole side entry -- pi_cap J6 (foot drop)
     "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
-    "S4B-PH-SM4-TB": "C265102",     # 4-way side-entry PH: pi_cap J3 (fret drop) and motor_ctrl J2/J6 (bus B,
+    "S4B-PH-SM4-TB": "C265102",     # 4-way side-entry PH: motor_ctrl J2/J6 (bus B,
                                     # split so each half unplugs from under the
                                     # instrument). Same family as the 8-way above.
                                     # Verified 2026-09-25: 28,934 in stock.
