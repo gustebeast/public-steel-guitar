@@ -531,15 +531,14 @@ def _build_counter_model(n: int):
         return None
 
 
-# DEMO POSE: per-string carriage offset from nominal (0 = top of travel, the
-# default). Strings 1, 2, 9 and 10 — both edge pairs; string N = index + 1
-# (string 1 = index 0 = thinnest/highest, the far edge; string 10 = index 9 =
-# thickest/lowest, nearest the player) — are kept PERMANENTLY at full
-# down-travel, feet on the bottom stop: the maximum stretch/tension the
-# mechanism can pull, so the travel extremes are always visible from either
-# side. Everything riding the carriage (string nut, brass nut, string anchor)
-# follows; the guide rod, screw and stops are fixed.
-DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL for i in (0, 1, 8, 9)}
+# THE ASSEMBLY IS DRAWN AS IT IS ASSEMBLED (user, 2026-10-05): every nut on the ceiling,
+# the top of its travel, which is where a string is wrapped and where each belt's clamp is
+# spliced -- because the build is what someone holds the real thing up against to check
+# it is set up right. DEMO_POSE_DZ is the per-string carriage offset from that (0 = top);
+# it is empty. Strings 1, 2, 9 and 10 used to be drawn at full down-travel to show the
+# extremes. ⚠ That also meant the overlap gate saw the bottom of travel on four strings;
+# it no longer does. tools/clamp_range.py covers the clamps over their whole travel.
+DEMO_POSE_DZ = {}
 
 # BELT CLAMP TRAVEL. Each belt's tension clamp rides the belt, so it has to stay on the
 # straight run between the two pulleys' flanges over the carriage's whole travel. The travel
@@ -607,12 +606,14 @@ def _string_components(i):
             f"the motor body is {-_mb.ymin - MOTOR_PULLEY_STANDOFF:.2f} deep, not "
             f"dimensions.MOTOR_BODY_L {D.MOTOR_BODY_L} -- the pockets are built from that")
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
-    # belt-tension clamp (half A + half B + M3 screw + insert), in line with the belt and on
-    # the run it is installed on: odd strings (the near row) on the upper run, even strings
-    # on the lower (INSTALL_NOTES). ⚠ DRAWN AT MID-RUN, NOT WHERE THE NUT HAS CARRIED IT.
-    # Where it may live over the whole travel is measured by tools/clamp_study.py
-    # (docs/belt-clamp-travel.md); mid-run is inside every string's clear span.
-    so, sxd, sn = C.clamp_frame((mx, my, mz), (D.screw_x(i), sy, spz), upper=not D.screw_far(i))
+    # belt-tension clamp (half A + half B + M3 screw + insert), in line with the belt, on the
+    # run it is installed on (odd strings, the near row, on the upper run; even strings on
+    # the lower) and WHERE IT IS SPLICED: nut on the ceiling, clamp CLAMP_END_CLR off the
+    # pulley it has been travelling toward. The nut's travel carries it away from there;
+    # that whole travel is checked by tools/clamp_range.py and tools/clamp_study.py.
+    so, sxd, sn = C.clamp_frame((mx, my, mz), (D.screw_x(i), sy, spz),
+                                upper=not D.screw_far(i), at_ceiling=i not in DEMO_POSE_DZ,
+                                x0=min(_CLAMP_XS), x1=max(_CLAMP_XS))
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
     for _nm, _shp in BTn.clamp_components():
         out.append((f"{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
