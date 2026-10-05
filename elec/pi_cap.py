@@ -420,10 +420,15 @@ BOARD_NOTES = {
         "J3": (17.35, 9.40, 0.0),       # out to the fret boards
         # the foot drop goes in the ribbon's band, mouth -Y like the ribbon, at the +X end
         # (placed by its post row: posts at y -10.50, 2.9 below the socket's pads, ways at
-        # x 24.50 / 22.00 / 19.50 / 17.00; the body runs out to y -19.7, 2.7 past the edge)
-        "J6": (20.75, -10.50, 180.0),
-        "R3": (12.50, -9.00, 0.0),
-        "R4": (12.50, -11.00, 0.0),
+        # x 22.50 / 20.00 / 17.50 / 15.00; the body runs out to y -19.7, 2.7 past the edge)
+        # (2026-10-05: 2 mm in from where it was. In the instrument the mated XHP-4 housing
+        # stood in the slot the trunk's ground and feed-2 conductors drop through onto
+        # motor_ctrl J3 -- 3.5 mm3 into each. The gate could not see it: a plug is not a
+        # built solid.)
+        "J6": (18.75, -10.50, 180.0),
+        # (and its two series resistors 2 mm in with it, out of its courtyard)
+        "R3": (10.50, -9.00, 0.0),
+        "R4": (10.50, -11.00, 0.0),
         # the passives drop into the band between J1's socket and the connector row
         "C1": (-20.00, 1.00, 0.0),
         "C3": (-15.00, 1.00, 0.0),
@@ -496,7 +501,9 @@ BOARD_NOTES = {
                # (2026-10-04: it leaves J3's land 0.8 mm lower than it did, because the land
                # beside it is GND now and the old diagonal passed its corner at 0.06 mm)
                ("+24V_LED", "B.Cu", 0.4, [(16.10, 7.13), (16.10, 4.45), (19.44, 1.11), (20.25, 1.11),
-                                          (20.25, -8.40), (22.00, -10.15), (22.00, -10.50)])],
+                                          # x 20.25 is the gap between two of the socket's
+                                          # pads, and the only one: the last step is to J6
+                                          (20.25, -9.90), (20.00, -10.15), (20.00, -10.50)])],
     # ⚠ TWO GND STITCHES IN THE RIBBON'S BAND. Growing the board and fanning 13 UI signals
     # across it cut the GND pour into the main body plus small fragments, and the fragments
     # are the band's own return path -- each one is what a switch line runs over. They are
@@ -637,6 +644,17 @@ BOARD_NOTES = {
             "0805L020YR": "two-pad, unpolarised",
         },
         "manual": {
+            "M1": "done 2026-10-05, read off both ROUTED boards. UI ribbon: J5 here and J2 "
+                  "on ui_board (main, c9159a48) are the same footprint (PinHeader_2x08 "
+                  "P1.27 Horizontal, C22438114) and carry the same net on every pad, 1 to "
+                  "16 (SW_A SW_B SW_C SW_D SW_PUSH ENC_A ENC_B GND SCLK +3V3 SDIN DC CS_N "
+                  "RES_N PWR_SW_UP PWR_SW_DN), so a straight-through 16-way IDC lead joins "
+                  "them pin for pin. The header has no shroud: a reversed socket is an "
+                  "assembly error the stripe-to-pin-1 step in INSTALL_NOTES guards, not a "
+                  "wiring one. The four JST leads, pad nets read at both ends, all crimped "
+                  "1:1: J2 <-> motor_ctrl J5 (GND 5V - - 5V GND, PI_5V_LINK); J4 <-> "
+                  "motor_ctrl J7 (GND 24 SW_UP SW_DN, LIGHTS_LINK); J3 <-> fret_led_key J1 "
+                  "and J6 <-> foot_led_a J1 (GND 24 SCK SDT, LED_DROP)",
             "M3": "done: In1 is an unbroken GND plane under the whole board (plane_layers), "
                   "with GND pours on F.Cu and B.Cu stitched to it. Every supply path above "
                   "runs over it; no slot, and no return necks through a single via",

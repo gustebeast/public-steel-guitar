@@ -3743,8 +3743,13 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         # the endplate's board recess, and onto J9 from above -- J9 is a top-entry XH.
         xd = CONDUIT_XC - 2.2
         j9 = op_top("J9")
+        # J9 stands out in the bay since the power-button work (it was in the recess), inside
+        # the plan of the J7 pair's balancing loop. So the lead leaves the recess under its
+        # roof, RISES once it is clear of the endplate's -X face, and crosses the J7 pair
+        # and the top of its loop from above before it drops onto J9.
         _path["J2"] += [(xd, PWR_Y, PWR_Z_TURN), (xd, PWR_Y, PWR_Z_REC),
-                        (j9[0], PWR_Y, PWR_Z_REC), (j9[0], j9[1], PWR_Z_REC), j9]
+                        (PWR_X_RISE, PWR_Y, PWR_Z_REC), (PWR_X_RISE, PWR_Y, PWR_Z_BAY),
+                        (j9[0], PWR_Y, PWR_Z_BAY), (j9[0], j9[1], PWR_Z_BAY), j9]
         add(oct_cable(_path["J2"], _od["J2"]))
     if "J1" not in _WANT:
         return out
@@ -3776,6 +3781,10 @@ USB_Y = -126.6                          # both leads' y in the conduit's open mo
 PWR_Y = -126.4                          # (y -128.75..-124.58, the rail on one side)
 PWR_Z_REC = -25.5                       # the 24 V lead crossing into the board recess,
                                         # 0.3 under its roof at FOOT_Z
+PWR_X_RISE = -27.5                      # the 24 V lead's riser: its skin 0.44 off the
+                                        # endplate's -X face (-25.06)
+PWR_Z_BAY = -18.5                       # ...and its height over the bay: 1.0 over the J7
+                                        # pair's loop where the two cross (loop top -21.5)
 USB_DROP_X = -84.0                      # the USB drops to J4's height out in the bay, -X of
                                         # the 24 V loop and clear of the board-to-Pi lead
 # a USB-C male's overmould past the mouth (was a USB-A's 25 x 16 x 8 until J4 became a
