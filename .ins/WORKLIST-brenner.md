@@ -180,3 +180,10 @@ OPEN; an item moves to DONE with the commit that closed it.
     fret_led_mid, fret_led_key are 0 unconnected / 0 DRC / 0 automated FAIL; their
     22-37 manual items are unsigned. foot_led: route still main's (cadkit c6013c5 moved
     GND stitch vias beside their pads into Z0_W_RET's room) -- waiting on bronner.
+
+24. 2026-10-04: foot_led ROUTES CLEAN AGAIN (closes 21c): 0 unconnected / 0 DRC /
+    quality 0 FAIL, first pass. Fix was placement only -- each driver's four passives
+    moved from beside the package to a row ABOVE it (away from the LEDs, at the pins
+    they serve). Beside it, their stitch vias fenced the lane the outboard pin column
+    escapes by. A 2 mm lift of the old row made it worse (6 open): it sat on the pins.
+    All four of my boards are now 0 automated FAIL; manual items unsigned.
