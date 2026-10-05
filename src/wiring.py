@@ -871,7 +871,9 @@ def build_wires():
     _j7, _j10 = EL.op_top("J7"), EL.op_top("J10")
     _REC_Y = -121.5                       # along the board's -Y edge, inside the recess
     _REC_Z7, _REC_Z10 = -27.0, -31.0      # each pair's centre height crossing it
-    _BAY_X7, _BAY_X10 = -28.0, -31.0      # out of the endplate's -X face (-25.06)
+    _BAY_X7, _BAY_X10 = -36.0, -31.0      # out of the endplate's -X face (-25.06); J7's
+                                          # pair turns 8 mm further out than feed 2's, past
+                                          # the optical 24 V lead's riser (OP.PWR_X_RISE)
     # THE LOOP: the J7 cable's 111 mm of balancing slack (see below) as ONE flat turn in the
     # bay above the output board. A full turn adds its whole circumference to the conductor
     # -- none of it is "the direct line" -- so its radius is 111 / 2 pi. It climbs 4 mm over
@@ -1171,32 +1173,45 @@ def build_wires():
     # docs/bronner-work-items.md is filed as "5 V pair still one lane, 229-243 mm3 over
     # ~78 mm", and its two failed fixes both moved the shared lane instead of un-sharing it.
     # Four cables inside each other do not need a better lane, they need four leads.
-    # ⚠ THE PIN ORDER IS THE SAME AT BOTH ENDS AND THAT IS NOT LUCK: J5 is GND, +5V, +5V,
-    # GND and so is the cap's J2, so conductor k joins pin k to pin k with no crossover. It
+    # ⚠ THE PIN ORDER IS THE SAME AT BOTH ENDS AND THAT IS NOT LUCK: J5 is a 6-way PH -- GND,
+    # +5V, two empty ways, +5V, GND (elec/harness.PI_5V_LINK) -- and so is the cap's J2, so
+    # conductor k joins pin k to pin k with no crossover and ways 3 and 4 carry no wire. It
     # is also palindromic, which is why a mirrored pin axis would have been invisible here --
     # see mctrl_pin, where the axis is verified against the routed board rather than assumed
     # precisely because the next connector to use it may not be so forgiving.
     # -63.6, not -64: at -64 the conductors' undersides (z -64.9) sat 0.1 into the Pi's
     # own parts under the cap (top z -64.8), four grazes of 0.1 mm3.
-    _FLY_Z = -63.6
-    for _n, _nm in ((1, "gnd_a"), (2, "hot_a"), (3, "hot_b"), (4, "gnd_b")):
+    # (-63.5 since 2026-10-05: -63.6 measured 0.35 mm to the Pi's tallest part, under the
+    # 0.4 the cap's other clearances are held to; this is 0.45.)
+    _FLY_Z = -63.5
+    # ⚠ THE LEAD GOES OVER THE CAP AND IN ROUND ITS -Y EDGE (2026-10-05). The motor board's
+    # J5 became a top-entry PH whose mouth points +X from the board's face, 7.6 mm ABOVE
+    # the cap -- and this path still dropped from the pin to the fly height under the cap,
+    # which is straight down through the cap's board beside J6. The gate could not see
+    # it: wire_5v against pi_cap is an allowed contact, because the lead ends there.
+    # So each conductor leaves at the plug's own height, runs +X over the cap to its own
+    # cap-pin x, runs -Y to 1.5 past the cap's edge, and only then drops to the fly height
+    # and comes back in under the cap to J2, whose mouth faces that edge.
+    _CAP_YM = EL.pi_cap().val().BoundingBox().ymin - 1.5
+    for _n, _nm in ((1, "gnd_a"), (2, "hot_a"), (5, "hot_b"), (6, "gnd_b")):
         _pin = EL.pi_cap_pin("J2", _n)
         _lead = (_pin[0], _pin[1], _pin[2] - CAP_LEAD_IN)     # mouths face -Z (see pi_cap.py)
-        # ⚠ 5 - _n, NOT _n, AND IT REMOVES THE LAST OF THE OVERLAP. Landing pin-for-pin
+        # ⚠ 7 - _n, NOT _n, AND IT REMOVES THE LAST OF THE OVERLAP. Landing pin-for-pin
         # dropped each pair from ~228 mm3 to 4.22, and what was left was the four conductors
         # CROSSING in the fly plane: they all run +x at their own y, then each turns -y at
         # its own cap-pin x. The one that turns FIRST (smallest x) was the one at the
         # least-negative y, so its turn cut across every horizontal below it. Give the first
         # turn to the conductor at the MOST negative y and the four paths nest instead of
         # crossing -- no lane change, no extra height, just the order they are assigned in.
-        # ⚠ AND THIS IS FREE ONLY BECAUSE THE CONNECTOR IS PALINDROMIC. J5 is GND, +5V, +5V,
-        # GND, so 1<->4 and 2<->3 swap like for like and the cable is electrically identical
+        # ⚠ AND THIS IS FREE ONLY BECAUSE THE CONNECTOR IS PALINDROMIC. J5 is GND, +5V, -, -,
+        # +5V, GND, so 1<->6 and 2<->5 swap like for like and the cable is electrically identical
         # either way. On a connector that is not symmetric this reversal would be a wiring
         # fault, so it is written as a deliberate choice with its reason, not as an index.
-        _src = EL.mctrl_pin("J5", 5 - _n)
+        _src = EL.mctrl_pin("J5", 7 - _n, count=6)
         out.append(("wire_5v_%s" % _nm, _wire(
-            [_src, (_src[0], _src[1], _FLY_Z), (_lead[0], _src[1], _FLY_Z),
-             (_lead[0], _lead[1], _FLY_Z), _lead, _pin], WIRE_OD["wire_5v"])))
+            [_src, (_lead[0], _src[1], _src[2]), (_lead[0], _CAP_YM, _src[2]),
+             (_lead[0], _CAP_YM, _FLY_Z), (_lead[0], _lead[1], _FLY_Z), _lead, _pin],
+            WIRE_OD["wire_5v"])))
 
     # ── THE LED HARNESS IS NOT DRAWN HERE ANY MORE, AND THAT IS BRENNER'S CALL ────
     # Three blocks stood here: the cap's J3 to strip section 0, the three section-to-
