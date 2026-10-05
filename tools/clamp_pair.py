@@ -15,7 +15,7 @@ from src import build as B, dimensions as D, belt_tensioner as BTn
 V = cq.Vector
 _R = D.PULLEY_OD / 2 + D.BELT_T / 2
 LO, HI = min(B._CLAMP_XS), max(B._CLAMP_XS)
-CLAMP = cq.Compound.makeCompound([s.val() for _n, s in BTn.clamp_components(with_lifters=True)])
+CLAMP = cq.Compound.makeCompound([s.val() for _n, s in BTn.clamp_components()])
 
 
 def geom(i, run):

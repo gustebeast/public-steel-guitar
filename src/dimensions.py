@@ -765,20 +765,17 @@ def motor_pos(i: int):
 # stopped by the nut long before the clamp -- but one travel is one number in the
 # firmware, one plate height, and the same range on every string.
 BELT_PER_MM     = PULLEY_TEETH * BELT_PITCH / SCREW_PITCH      # 14 of belt per mm of nut
-BELT_CLAMP_L    = 39.6      # the clamp along the belt, lifters and all. MEASURED off
+BELT_CLAMP_L    = 49.2      # the clamp along the belt, fully loose. MEASURED off
                             # belt_tensioner's solids; build.py asserts it still is.
 CLAMP_END_CLR   = 5.0       # belt left between the clamp and each pulley flange
 BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
                                  screw_pulley_z(i) - motor_pos(i)[2])
                       for i in range(N_STRINGS))               # 194.0, string 10
-# !!!! DEFERRED -- THE CLAMP AS DRAWN CANNOT RUN THIS TRAVEL (owner: branner; BLOCKED on the
-# user's choice of clamp, 2026-10-02). The sum below is pulley-to-pulley, which is wrong IN
-# KIND: a clamp's free span is what its neighbours, the chassis and the endplate leave it,
-# and that is a MEASUREMENT, per string (tools/clamp_study.py, docs/belt-clamp-travel.md).
-# Measured there: the screw-under-the-belt clamp does not fit on EITHER side of the belt
-# (inside the loop the two runs close to 4.0 and the next string's belt passes through;
-# outside, strings 1, 8, 9 and 10 fall short); a screw BESIDE the belt carries 6.2 / 6.5 on
-# strings 9 / 10; a slim screwless clip carries the whole travel on all ten.
+# THE SUM BELOW IS PULLEY-TO-PULLEY, WHICH IS ONLY RIGHT FOR A CLAMP NO WIDER THAN ITS BELT'S
+# OWN LANE. A clamp's free span is what its neighbours, the chassis and the endplate leave
+# it, and that is a MEASUREMENT, per string (tools/clamp_study.py,
+# docs/belt-clamp-travel.md). The in-line M3 clamp (belt_tensioner, 2026-10-05) is that
+# slim: measured there, every string's span is limited by the ends of its run alone.
 # ...AND NO MORE THAN IS WANTED. With the bank against the endplate the shortest run is
 # 194.0 and this sum allows 9.53; the nut does not get travel it has no use for.
 CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD

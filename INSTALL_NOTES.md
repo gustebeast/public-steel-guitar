@@ -93,7 +93,7 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   clamp away from that pulley and stops it about 5 mm short of the other one on string 10.
 - **Why:** the clamp is part of the belt and moves 14 mm for every 1 mm of nut travel. The
   nut's travel (8.35 mm, ceiling to floor) has the clamp on the SHORTEST belt (string 10)
-  use 116.9 of the 143.4 mm it has between pulleys. The 5 mm gap at this end is yours to set, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
+  use 116.9 of the 133.8 mm it has between pulleys. The 5 mm gap at this end is yours to set, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
   with the nut somewhere in mid-travel, and it reaches a pulley before the nut reaches its stop.
 - **Strings 1-8 are forgiving** (their belts are longer; string 9 has about 15 mm per end),
   but use the same rule everywhere so there is one procedure.
@@ -102,11 +102,19 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   for raising pitch. A string wrapped slack and left to break in reaches about 3.4 semitones
   above open; re-wrapped after break-in it reaches 4 with room over.
 - **Which run:** odd strings (near row, the high belt plane) take the clamp on the **upper**
-  run of the belt; even strings (far row) on the **lower** run. The clamp's deep side hangs
-  off the belt's outer face and turns sideways near the screw; on the other run it sits in
-  the next string's belt for most of the span.
-- **OPEN (2026-10-01):** strings 1, 8, 9 and 10 do not have room for the full travel yet
-  (`docs/belt-clamp-travel.md`). The 5 mm rule above is not enough on those four.
+  run of the belt; even strings (far row) on the **lower** run.
+- **Which way round:** the belt's teeth face the INSIDE of its loop and the clamp's ribs are
+  on that side, so the key channel in half A ends up on the OUTSIDE of the loop. If the
+  channel faces into the loop, the clamp is upside down.
+- **Fitting it:** push one cut end of the belt SIDEWAYS into half A's slot until it is in
+  past the slot's mouth and against the slot's inner end, teeth between the ribs. Do the
+  same with the other end in half B: its slot opens on the opposite face. Drop the M3
+  insert into the side pocket in half B. Bring the halves together so half A's rail lies
+  on half B's flat (it covers the insert), and run the M3 × 12 in through half A.
+- **Tensioning:** the screw's head faces the belt, so use the BALL END of the 2.5 mm key,
+  laid down the channel in the back of half A at about 25° to the belt. The halves start
+  4 mm apart and each turn closes them 0.5 mm. If they meet before the belt is tight,
+  move one end of the belt one tooth (2 mm) further into its slot and start again.
 
 ## Leadscrew nuts: LOOK at the top edge of each string ear hole
 

@@ -82,6 +82,10 @@ PER_STRING_OK = {
     # a belt connects its OWN motor and screw, so it touches both there
     frozenset({"belt", "motor"}), frozenset({"belt", "leadscrew"}),
     frozenset({"belt", "belt_clamp"}),   # splice clamp grips its own belt
+    # the in-line tension clamp IS a splice: the belt is drawn as one unbroken loop, so it
+    # runs through the clamp's halves, screw and insert where the real belt is cut
+    frozenset({"belt", "belt_tensioner_half_a"}), frozenset({"belt", "belt_tensioner_half_b"}),
+    frozenset({"belt", "belt_tensioner_screw"}), frozenset({"belt", "belt_tensioner_insert"}),
 }
 # The bridge endplate hosts the whole drive top end (screw rail fused in, axle
 # comb, guide ledges), so most per-string hardware legitimately touches it.
@@ -90,8 +94,6 @@ GLOBAL_OK = {
     # heat-set insert, which is seated in the endplate's wrap plinth. Both are designed
     # thread engagement, not interference.
     frozenset({"optical_screw", "optical_insert"}),
-    # belt-tensioner coupon: the M4 brass insert seats INSIDE the slider's bore (designed)
-    frozenset({"belt_tensioner_slider_coupon", "belt_tensioner_insert_coupon"}),
     frozenset({"optical_screw", "bridge_endplate"}),
     frozenset({"screw_bearing", "bridge_endplate"}), frozenset({"leadscrew", "bridge_endplate"}),
     frozenset({"screw_top_bearing", "bridge_endplate"}),
@@ -387,23 +389,6 @@ DEFERRED_RULES = (
     #  So: not declared away, RECLASSIFIED -- by the tool that owns the distinction. If these
     #  conductors ever start to RUN through each other, check_cable_pairs fails on it with a
     #  length, which is a better signal than this rule ever gave.)
-    # THE FOOT STRIP'S -Y LIP INTO STRING 2'S PLACEHOLDER BELT CLAMP, 4 pairs, ~115 mm3
-    # (deferred 2026-10-02 by the lead, agreed by branner, who owns the clamp). The strip
-    # was raised so the chassis floor is not cut (user), which puts the channel's lip top
-    # at z -63.75; the clamp as drawn reaches -65.33. Exactly these four parts of that one clamp -- any
-    # other clamp or segment touching the channel is still a failure.
-    (re.compile(r"^chassis_2$"), re.compile(r"^belt_tensioner_(half_a|half_b|screw|insert)_1$"),
-     "foot strip lip vs the placeholder belt clamp. OWNER branner: the clamp is on the "
-     "wrong side of the belt and is being redesigned; both candidates stop at z -57.6 / "
-     "-58.7, clear of the strip's -61.30 ceiling (foot_light.ceiling_needed) (see the DEFERRED note at D.CARRIAGE_TRAVEL)"),
-    # THE FOOT BOARD ITSELF INTO STRING 1's AND STRING 2's PLACEHOLDER BELT CLAMPS, 8 pairs,
-    # ~640 mm3 (user, 2026-10-04: "we can ignore collision with the belt clamp and move the
-    # board further +z until the XH connector fits"). The strip went up 1.95 for board A's
-    # 5.75-tall XH socket, so its top is at z -63.70 and the clamps as drawn come down to
-    # -65.2..-65.3. Board A only, and only these two clamps -- board B is nowhere near one.
-    (re.compile(r"^foot_pcb_a$"), re.compile(r"^belt_tensioner_(half_a|half_b|screw|insert)_[01]$"),
-     "foot board A vs the placeholder belt clamps. OWNER branner: the clamps are being "
-     "redesigned and must stop above foot_light.ceiling_needed() (z -61.30)"),
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
