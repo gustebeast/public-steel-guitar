@@ -1,8 +1,8 @@
 """FOOT LIGHTING board -- a 572.72 mm strip firing DOWN through the chassis window.
 
-    py -3.12 elec/foot_led.py       # -> elec/out/foot_led.{net,board.json}
+    py -3.12 elec/foot_led.py       # -> elec/out/foot_led_{a,b}.{net,board.json}
 
-    286.36 x 17.20, 4 layers, 36 LEDs, 12 zones, 4 x TLC59711.  TWO PER INSTRUMENT.
+    286.36 x 24.15, 4 layers, 36 LEDs, 12 zones, 4 x TLC59711 each.  TWO BOARDS.
 
 The other lighting job (elec/fret_led.py is the first). It lies on top of the transparent
 band through the chassis's bottom prism and shines into it; the 10.80 mm of PCTG is the
@@ -17,35 +17,21 @@ the page 2026-09-30: **Economic PCBA takes a single PCB from 10x10 to 470x500 mm
 Standard from 70x70 to 460x500.** 572.72 is past both, so one board cannot be built at
 any price. Two of 286.36 are a long way inside.
 
-⚠ BUT ONE PART NUMBER, BUILT TWICE -- and that is the install talking (user, 2026-09-30:
-"we install this LED before we put the -x endplate on so it can slide in from -x"). Both
-halves go in the same way up and the same way round, one after the other through the same
-mouth, so the +X board is not a mirror of the -X board: it is the SAME board, 286.36
-further along. A first draft had them as mirror images with their drops at opposite outer
-ends, which cost a second fab and assembly setup and put one harness at the bridge end,
-600 mm from the Pi. Sliding both from -X deletes all of that.
+⚠ AND TWO DESIGNS, WHICH DIFFER ONLY AT THEIR ENDS (user, 2026-10-04). Both slide in from
+-X, the far one first, so nothing can be plugged into the far board once it is home and
+the joint between them is POGOS, tip to tip, made by pushing the second board against
+the first. The near board is the one a cable can reach:
 
-HOW THE POWER GETS TO THE FAR BOARD, which is the one thing -X-only insertion makes hard.
-The +X board is pushed the full length of the channel first, so nothing can be plugged
-into it once it is home. So the strip is a CHAIN joined by POGOS: every board carries four
-side-mount pogos at its -X end (IN) and four at its +X end (OUT), under the board, and
-they meet the next board's tip to tip when the second board is pushed home (user,
-2026-10-02). No cable anywhere in the channel.
+    Pi cap J6 --cable--> J1 [board A] J21..J24 -><- J11..J14 [board B]
 
-    inlet -> J11..J14 [board A] J21..J24 -><- J11..J14 [board B] J21..J24 (unused)
-
-Both sets are populated on both boards because they are the same board. 24 V passes
-straight through behind the fuse and the SPI chain runs IN -> U1 .. U4 -> OUT, so all
-eight drivers are one stream from one Pi pin.
+A is fed by a 4-way JST SH at its -X end and carries the seam's four pogos at its +X end;
+B carries the seam's four at its -X end and nothing at the other. 24 V passes straight
+through A behind its fuse and the SPI chain runs J1 -> U1 .. U4 -> seam -> U1 .. U4, so
+all eight drivers are one stream from one Pi pin.
 
 ⚠ AND THE SEAM COSTS NO LIGHT. The pogos stand beside the LED row, not in it, so the row
 runs to within half a pitch of both edges and the two boards butt: one pitch from end to
 end, with the seam falling exactly half a pitch past the last LED of the first board.
-
-⚠ THE INLET IS NOT ON THIS BOARD. The -X board's IN set is how the strip is fed, and a
-cable socket cannot share that end with it: its lead would have to leave -X through a
-row of four barrels that fill the trough from wall to LED. What mates that set is the
-open item in .ins/WORKLIST-brenner.md.
 """
 from __future__ import annotations
 
@@ -98,6 +84,16 @@ COLOURS = ("R", "G", "B", "W")
 # and src/pogo_part.py what they are. The 4-way SH sockets this board carried are gone,
 # and with them the jumper nothing stocked was short enough to be.
 POGO_FP = "Steel:Xinyangze_YZF0002-38080-02"
+# THE INLET, board A only: JST SH SM04B-SRSS-TB (LCSC C160404), the part on the other end
+# of the cable (elec/pi_cap.py J6), so the lead is a stock SH-to-SH one.
+# ⚠ +24V ON AN END PAD. The SH is a 1.00 mm pitch part: its pads are ~0.60 wide with 0.40
+# between them, so an interior pad can only be entered by a track narrow enough to pass
+# its neighbours. GND can live on an interior pad because it drops straight to its plane.
+# The order is the Pi cap's FOOT_PINS.
+J_FP = "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
+J_PINS = ("+24V_IN", "GND", "SCK_IN", "SDT_IN")
+J_ANCHOR = 4.4 + 0.7083              # mouth to the PAD CENTROID, read out of the .kicad_mod
+J_Y = FL.to_board_y(FL.J_Y)
 
 # ── the two lanes ────────────────────────────────────────────────────────────────────
 # ⚠ BOARD-LOCAL Y IS A MIRROR OF WORLD Y, because this board is installed FACE DOWN: the
@@ -168,12 +164,13 @@ class Row(object):
         return self
 
 
-def build(passes=20):
-    name = FL.BOARD_NAME
+def build(board, passes=20):
+    """One of the two boards: "a" is the near (-X) one with the cable socket."""
+    name = FL.BOARD_NAME[board]
     skidl.reset()
-    x0, x1 = FL.board_span("a")
+    x0, x1 = FL.board_span(board)
     length = x1 - x0
-    xs = [FL.to_board_x("a", x) for x in FL.board_leds("a")]
+    xs = [FL.to_board_x(board, x) for x in FL.board_leds(board)]
     n_zone = len(xs) // FL.N_SERIES
     n_drv = (n_zone + 2) // 3
     assert len(xs) % FL.N_SERIES == 0 and n_zone % 3 == 0, (
@@ -187,26 +184,44 @@ def build(passes=20):
     place, fps = {}, {}
 
     # ── the two ends of the chain ────────────────────────────────────────────────────
-    # J11..J14 at the -X end are IN, J21..J24 at the +X end are OUT, one per net in
-    # foot_light.POGO_NETS' order. The footprint fires -X as drawn, so the +X set is
-    # turned half a turn.
+    # Board A: J1 (the cable) IN at -X, J21..J24 (the seam) OUT at +X.
+    # Board B: J11..J14 (the seam) IN at -X, and its last driver's outputs go nowhere.
+    # The pogo footprint fires -X as drawn, so A's set is turned half a turn.
     v24_in = Net("+24V_IN")
     sck, sdt = Net("SCK_IN"), Net("SDT_IN")
-    sck_out, sdt_out = Net("SCK_OUT"), Net("SDT_OUT")
-    ends = {-1.0: {"+24V": v24_in, "GND": gnd, "SCK": sck, "SDT": sdt},
-            +1.0: {"+24V": v24, "GND": gnd, "SCK": sck_out, "SDT": sdt_out}}
     pogo_refs = {}
-    for sgn, base, what in ((-1.0, 10, "in"), (+1.0, 20, "out")):
-        for i, (px, py, net) in enumerate(FL.pogo_pads(sgn)):
-            ref = "J%d" % (base + i + 1)
-            j = Part(name="YZF0002-38080-02", ref_prefix="J", ref=ref, tag=ref,
-                     dest="NETLIST", tool="skidl", value="YZF0002-38080-02",
-                     description="seam pogo, %s: %s (LCSC C5203987)" % (what, net),
-                     footprint=POGO_FP, pins=[Pin(num=1, func=P)])
-            ends[sgn][net] += j[1]
-            place[ref] = (px, py, 0.0 if sgn < 0 else 180.0)
-            fps[ref] = POGO_FP
-            pogo_refs.setdefault(sgn, []).append(ref)
+    if board == "a":
+        sck_out, sdt_out = Net("SCK_OUT"), Net("SDT_OUT")
+        j1 = Part(name="SM04B-SRSS-TB", ref_prefix="J", ref="J1", tag="J1",
+                  dest="NETLIST", tool="skidl", value="SM04B-SRSS-TB",
+                  description="in, from the Pi cap's J6 -- +24V, GND, SCK, SDT "
+                              "(LCSC C160404)",
+                  footprint=J_FP,
+                  pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(J_PINS)])
+        v24_in += j1[1]
+        gnd += j1[2]
+        sck += j1[3]
+        sdt += j1[4]
+        # mouth faces -X (rot 270), J_INSET in from the board's end; the placement
+        # anchors on the pad centroid, J_ANCHOR behind the mouth
+        place["J1"] = (-(half - FL.J_INSET) + J_ANCHOR, J_Y, 270.0)
+        fps["J1"] = J_FP
+        seam = (+1.0, 20, "out", {"+24V": v24, "GND": gnd, "SCK": sck_out, "SDT": sdt_out})
+    else:
+        # named NC rather than leaving netcheck to find two pins wired to nothing
+        sck_out, sdt_out = Net("SCK_OUT_NC"), Net("SDT_OUT_NC")
+        seam = (-1.0, 10, "in", {"+24V": v24_in, "GND": gnd, "SCK": sck, "SDT": sdt})
+    sgn, base, what, nets_of = seam
+    for i, (px, py, net) in enumerate(FL.pogo_pads(sgn)):
+        ref = "J%d" % (base + i + 1)
+        j = Part(name="YZF0002-38080-02", ref_prefix="J", ref=ref, tag=ref,
+                 dest="NETLIST", tool="skidl", value="YZF0002-38080-02",
+                 description="seam pogo, %s: %s (LCSC C5203987)" % (what, net),
+                 footprint=POGO_FP, pins=[Pin(num=1, func=P)])
+        nets_of[net] += j[1]
+        place[ref] = (px, py, 0.0 if sgn < 0 else 180.0)
+        fps[ref] = POGO_FP
+        pogo_refs.setdefault(sgn, []).append(ref)
 
     f1 = Part(name="Fuse", ref_prefix="F", ref="F1", tag="F1", dest="NETLIST",
               tool="skidl", value="1A",
@@ -391,17 +406,35 @@ def build(passes=20):
     notes["outline_mm"] = (round(length, 3), round(BOARD_W, 3))
     notes["placements"] = {k: list(v) for k, v in place.items()}
     notes["router_passes"] = passes
-    # WHAT EACH SUPPLY NET CARRIES, all-white. A board's own rail is its channels; its
-    # 24 V draw is that through the buck at 90 %; and the -X board's inlet and
-    # pass-through carry BOTH boards', which is the figure every board is held to
-    # because the two are one design.
+    # WHAT EACH SUPPLY NET CARRIES, all-white. A board's own rail is its channels and
+    # its 24 V draw is that through the buck at 90 %. Board A's inlet and fuse carry
+    # BOTH boards' and it hands B's share across the seam; B carries its own.
     i_rail = 4 * n_zone * I_CHAN
-    i_24 = FL.BOARD_QTY * i_rail * V_RAIL / 24.0 / 0.90
-    notes["quality"] = {
-        "power_paths": [
-            {"net": "+24V_IN", "from": "J11.1", "to": "F1.1", "amps": round(i_24, 3)},
+    i_own = i_rail * V_RAIL / 24.0 / 0.90
+    if board == "a":
+        i_24 = len(FL.HALVES) * i_own
+        paths_24 = [
+            {"net": "+24V_IN", "from": "J1.1", "to": "F1.1", "amps": round(i_24, 3)},
             {"net": "+24V", "from": "F1.2", "to": ["U10.2", "J21.1"],
              "amps": round(i_24, 3)},
+        ]
+        waive = {
+            "A2:J21": "a pogo handing 24 V to board B, not a load: that board's own "
+                      "input capacitors (C30-C32) are behind its fuse",
+            "A2:J1": "the cable socket, ahead of the fuse; the input capacitors C30-C32 "
+                     "are on the fused side so a shorted one blows F1",
+        }
+    else:
+        paths_24 = [
+            {"net": "+24V_IN", "from": "J11.1", "to": "F1.1", "amps": round(i_own, 3)},
+            {"net": "+24V", "from": "F1.2", "to": "U10.2", "amps": round(i_own, 3)},
+        ]
+        waive = {
+            "A2:J11": "the seam pogo, ahead of the fuse; the input capacitors C30-C32 "
+                      "are on the fused side so a shorted one blows F1",
+        }
+    notes["quality"] = {
+        "power_paths": paths_24 + [
             # ⚠ HELD TO THE WHOLE RAIL, though a driver's VCC is only its logic supply:
             # the stretch that matters is L1's own exit onto the plane, all of the rail
             # leaves there, and every one of these paths starts with it.
@@ -416,17 +449,16 @@ def build(passes=20):
                             "(HTSSOP-20) column, top view",
             "LMR33630CRNXR": "TI LMR33630 datasheet SNVSB08, Table 6-1, VQFN (RNX) column",
         },
-        "waive": {
-            "A2:J21": "a pogo handing 24 V to the next board, not a load: that board's "
-                      "own input capacitors (C30-C32) are behind its fuse",
-            "A2:J11": "the inlet pogo, ahead of the fuse; the input capacitors C30-C32 "
-                      "are on the fused side so a shorted one blows F1",
-        },
+        "waive": waive,
     }
+    if board == "a":
+        notes["quality"]["pinouts"]["SM04B-SRSS-TB"] = (
+            "JST SH SM04B-SRSS-TB drawing for pin 1; the way order is the Pi cap's "
+            "FOOT_PINS (elec/pi_cap.py J6), +24V on the end pad")
     with open(os.path.join(OUT_DIR, "%s.board.json" % name), "w") as f:
         json.dump(notes, f, indent=2)
     print("%-9s %6.1f x %.2f mm, %2d LEDs, %d zones, %d drivers, x%d per instrument"
-          % (name, length, BOARD_W, len(xs), n_zone, n_drv, FL.BOARD_QTY))
+          % (name, length, BOARD_W, len(xs), n_zone, n_drv, 1))
     return len(xs), n_zone, n_drv
 
 
@@ -496,13 +528,14 @@ BOARD_NOTES = {
     # sixth is the sliding axis, which the -X endplate closes when it goes on. The same
     # argument elec/lever_sensor.py records for its grooves.
     "no_mounting_holes": True,
-    "qty_per_instrument": FL.BOARD_QTY,
+    "qty_per_instrument": 1,
 }
 
 
 if __name__ == "__main__":
-    n_led, n_zone, n_drv = build()
-    q = FL.BOARD_QTY
+    for _b in FL.HALVES:
+        n_led, n_zone, n_drv = build(_b)
+    q = len(FL.HALVES)
     print("%d LEDs, %d zones, %d channels, %d drivers per instrument, %.2f A at %.2f V"
           % (n_led * q, n_zone * q, 4 * n_zone * q, n_drv * q,
              4 * n_zone * q * I_CHAN, V_RAIL))
