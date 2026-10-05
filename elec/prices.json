@@ -1666,9 +1666,9 @@
       "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
     },
     "fret_led_key:L1": {
-      "usd": 0.0608,
+      "usd": 0.0886,
       "verified": "v",
-      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 40"
+      "what": "SWPA5040S3R3NT C305173 -- JLCPCB parts API, 1 to 99, read 2026-10-05"
     },
     "fret_led_mid:L1": {
       "usd": 0.0608,
@@ -2521,14 +2521,14 @@
       "what": "0805L020YR C126816 -- JLCPCB parts API at qty 10"
     },
     "foot_led_a:L1": {
-      "usd": 0.0608,
+      "usd": 0.0886,
       "verified": "v",
-      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 40"
+      "what": "SWPA5040S3R3NT C305173 -- JLCPCB parts API, 1 to 99, read 2026-10-05"
     },
     "foot_led_b:L1": {
-      "usd": 0.0608,
+      "usd": 0.0886,
       "verified": "v",
-      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 40"
+      "what": "SWPA5040S3R3NT C305173 -- JLCPCB parts API, 1 to 99, read 2026-10-05"
     },
     "motor_ctrl:J7": {
       "usd": 0.0592,
