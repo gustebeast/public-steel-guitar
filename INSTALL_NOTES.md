@@ -636,6 +636,11 @@ under B's near end, tip to tip.
    across the TOP of string 1's motor, and down between that motor and the Pi.
    ⚠ XH plugs are the 24 V family on this instrument and PH plugs the 5 V one; the two do
    not fit each other's sockets.
+   **Making the lead (both lighting leads are the same):** four 24 AWG conductors, XHP-4
+   housing on each end, way 1 to way 1 -- **black GND, red 24 V, white SCK, blue SDT**.
+   The model draws each conductor in that colour on its own contact; use it as the
+   reference. The fret lead runs from the Pi cap's J3 out over the Pi, up, and along
+   under the deck to the socket on the keyhead fret board's -X end.
 5. ⚠ **OPEN: what holds board A pushed in.** The springs push it back out 3.4 mm. The
    stop that takes that load (a printed block and one M4 behind the board, with a notch
    for the lead) is not designed yet (.ins/WORKLIST-brenner.md).
