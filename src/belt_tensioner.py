@@ -15,12 +15,19 @@ this section cleared all ten.
   • HALF B — the INSERT half. Same slot; the screw threads a brass insert that sits in a
     side-entry pocket BEHIND a shoulder, so belt tension presses the insert onto solid
     plastic. It is dropped in, not melted in: the pocket only has to stop it turning.
-  • One rail on A rides a flat on B so the halves cannot turn on the screw.
+  • Each half carries a CHANNEL RAIL that slides over the other half's slot mouth as the
+    two are brought together (user, 2026-10-05). It does three jobs: it closes the way the
+    belt went in, so the belt cannot back out sideways; its two flanges hook the slot's
+    lips, so belt tension on the ribs cannot creep the slot open and lose the teeth; and
+    the pair stop the halves turning on the screw.
 
 GRIP: each slot is the belt's own profile, open on one side face. The belt is pushed in
 SIDEWAYS and its teeth sit between six ribs; tension pulls it along the slot, which the
-ribs take. Nothing pinches and nothing creeps. The two slots open on OPPOSITE faces (see
-PRINT), which is also what keeps the belt from leaving both at once.
+ribs take. Nothing pinches. The two slots open on OPPOSITE faces (see PRINT).
+
+WIDTH: A's rail runs INSIDE the section (B's mouth is set back for it). B's rail runs
+OUTSIDE A, because A's head window needs both of its side rails to carry the tension
+past the head. So the assembly is 0.95 wider on A's mouth side: 9.15 across.
 
 THE KEY: the head faces the belt, so a straight key cannot reach it. A channel runs from
 the socket out through the back of half A at KEY_DEG, for the BALL END of the instrument's
@@ -33,7 +40,8 @@ width; z through it, belt centreline on z = 0, +z = the TOOTH side = INSIDE the 
 PRINT: both halves at a 0.4 nozzle (the ribs), lying on their CLOSED side face so every
 slot is a through-profile in the build direction and opens upward: A builds +y → −y, B
 builds −y → +y. That is why the slots open on opposite faces: A's rail is on its bed face
-and B's flat for it is on its top face, and in the assembly those are the same side.
+and the lips it hooks on B are on B's top face, and in the assembly those are the same
+side; likewise B's rail and A's lips.
 
 ⚠ NOT YET PROVEN, in the order a coupon should answer them: the side-entry grip under a
 twisting belt; the dropped-in insert staying still while the screw is turned; the ball
@@ -102,14 +110,18 @@ RUNOUT   = SCREW_L - SEAT_T - SHOULDER - INS_L - INS_FIT # 3.8 screw tip past th
 INNER_B  = SHOULDER + INS_L + INS_FIT + RUNOUT + B       # 10.0 inner face to the belt's end wall
 LEN_B    = INNER_B + END_WALL + GRIP                     # 23.2
 
-RAIL_T   = 2 * B                             # 0.8 anti-rotation rail on A
-RAIL_CLR = 0.15
-RAIL_LAP = 6 * B                             # 2.4 still engaged with the halves fully apart
-RAIL_L   = GAP + RAIL_LAP                    # 6.4
-FLAT_L   = RAIL_L + B                        # 6.8 the flat on B it rides
+RAIL_T   = 2 * B                             # 0.8 a channel rail's web
+RAIL_CLR = 0.15                              # web to the mouth it covers
+FLANGE   = 2 * B                             # 0.8 each flange's reach over a lip (y)
+FLANGE_T = 0.75                              # flange through z; the lip is cut back for it
+LIP_CLR  = 0.1                               # flange to lip: all the slot can open by
+LIP_HT   = HT - FLANGE_T - LIP_CLR           # 2.35 half-thickness of a lip under a flange
+RAIL_STEP = RAIL_T + RAIL_CLR                # 0.95 B's mouth set back / B's rail stood off A
+RAIL_A_L = LEN_B                             # A's rail: flush with B's outer end, halves closed
+RAIL_B_L = LEN_A                             # B's rail: likewise over A
+BODY_Y   = BODY_W + RAIL_STEP                # 9.15 across the assembled clamp
 
 assert RUNOUT >= 0, "the screw is too long for half B at the closed position"
-assert FLAT_L <= INNER_B, "the rail's flat runs into half B's belt slot"
 # the key's channel must be clear of the belt's back where the grip begins
 _KEY_RUN = SEAT_T + HEAD_ZONE + END_WALL - (SEAT_T + SOCKET_IN)
 _KEY_Z   = (-_KEY_RUN * math.tan(math.radians(KEY_DEG))
@@ -143,8 +155,32 @@ def _belt_slot(x0: float, x1: float, open_y: int) -> tuple:
     return cut, (ya, yb)
 
 
+def _rail(x0: float, x1: float, y_web: float, toward: int) -> cq.Workplane:
+    """A channel rail over [x0, x1]: the web's outer face on y_web, its flanges reaching
+    `toward` (±1, in y) over the lips of the half it covers."""
+    L, xc = x1 - x0, (x0 + x1) / 2
+    out = box_at(L, RAIL_T, BODY_T, x=xc, y=y_web + toward * RAIL_T / 2)
+    for sz in (1, -1):
+        out = out.union(box_at(L, FLANGE, FLANGE_T, x=xc,
+                               y=y_web + toward * (RAIL_T + FLANGE / 2),
+                               z=sz * (HT - FLANGE_T / 2)))
+    return out
+
+
+def _lips(x0: float, x1: float, y_from: float, toward: int) -> cq.Workplane:
+    """Cutter that thins a half's two lips to LIP_HT from y_from outward (`toward` ±1),
+    so a rail's flanges pass over them."""
+    L, xc, d = x1 - x0, (x0 + x1) / 2, 3.0
+    out = None
+    for sz in (1, -1):
+        c = box_at(L, d, HT, x=xc, y=y_from + toward * d / 2, z=sz * (LIP_HT + HT / 2))
+        out = c if out is None else out.union(c)
+    return out
+
+
 def half_a() -> cq.Workplane:
-    """The HEAD half, inner face on x = 0, body toward −x. Slot opens −y; rail on +y."""
+    """The HEAD half, inner face on x = 0, body toward −x. Slot opens −y, where its lips
+    are thinned for B's rail; its own rail is on +y and reaches over B."""
     body = box_at(LEN_A, BODY_W, BODY_T, x=-LEN_A / 2)
     gx0, gx1 = -LEN_A, -LEN_A + GRIP                              # grip: outer end .. end wall
     cut, (ya, yb) = _belt_slot(gx0 - 1.0, gx1, -1)
@@ -161,23 +197,25 @@ def half_a() -> cq.Workplane:
     pts = [(px + nx, nz), (ex + nx, ez + nz), (ex, -40.0), (px, -40.0)]
     key = (cq.Workplane("XZ").polyline(pts).close().extrude(KEY_W / 2, both=True))
     body = body.cut(key)
-    rail = box_at(RAIL_L, RAIL_T, BODY_T, x=RAIL_L / 2, y=HW - RAIL_T / 2)
-    return body.union(rail)
+    body = body.cut(_lips(-LEN_A - 1.0, 1.0, -HW + FLANGE, -1))
+    return body.union(_rail(0.0, RAIL_A_L, HW, -1))
 
 
 def half_b() -> cq.Workplane:
     """The INSERT half, inner face on x = 0, body toward +x. Slot and insert pocket open
-    +y; the flat A's rail rides is on +y too."""
-    body = box_at(LEN_B, BODY_W, BODY_T, x=LEN_B / 2)
-    body = body.cut(box_at(FLAT_L + 1.0, RAIL_T + RAIL_CLR + 1.0, BODY_T + 2.0,
-                           x=(FLAT_L - 1.0) / 2, y=HW - (RAIL_T + RAIL_CLR) + (RAIL_T + RAIL_CLR + 1.0) / 2))
+    +y, where the mouth is set back RAIL_STEP and its lips thinned for A's rail; its own
+    rail is on −y, stood RAIL_STEP off the section so it passes OUTSIDE half A."""
+    body = box_at(LEN_B, BODY_W, BODY_T, x=LEN_B / 2, y=-RAIL_STEP)
     body = body.cut(cyl_x(SCR_CLR, INNER_B - B + 0.1, -0.1))        # clearance + runout
     ix0, il = SHOULDER, INS_L + INS_FIT                            # insert pocket, side entry
     body = body.cut(cyl_x(INS_D, il, ix0))
     body = body.cut(box_at(il, HW + 1.0, INS_D, x=ix0 + il / 2, y=(HW + 1.0) / 2))
     gx0, gx1 = INNER_B + END_WALL, LEN_B
     cut, (ya, yb) = _belt_slot(gx0, gx1 + 1.0, +1)
-    return body.cut(cut).union(_ribs(gx0, max(ya, -HW), min(yb, HW)))
+    mouth = HW - RAIL_STEP
+    body = body.cut(cut).union(_ribs(gx0, max(ya, -HW), mouth))
+    body = body.cut(_lips(-1.0, LEN_B + 1.0, mouth - FLANGE, +1))
+    return body.union(_rail(-RAIL_B_L, 0.0, -HW - RAIL_STEP, +1))
 
 
 def screw_dummy() -> cq.Workplane:

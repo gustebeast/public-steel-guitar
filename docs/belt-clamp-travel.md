@@ -207,3 +207,18 @@ screw's head faces the belt, so a channel in the back of half A takes the ball e
 All ten carry the 8.35. String 10 is the tight one and is limited only by the ends of its
 run. Clamp against clamp is still not re-measured, and the build still draws every clamp
 at its reference spot on the lower run.
+
+## 2026-10-05, later: channel rails over the slot mouths (user)
+
+Each half carries a channel rail that slides over the other half's slot mouth: it closes
+the way the belt went in and hooks the slot's two lips so tension on the ribs cannot creep
+the slot open. A's rail runs inside the section; B's runs outside A (the head window
+needs both its side walls), so the clamp is 9.15 across, 6.4 through, 49.2 long. Real
+solids, ±20° twist margin, step 4:
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 33.0 | 33.0 | 26.9 | 26.6 | 23.1 | 17.6 | 16.7 | 11.3 | 10.3 | 8.8 |
+
+Still clear on all ten; the extra width only costs strings 1 and 3 some span near their
+motor pulleys.

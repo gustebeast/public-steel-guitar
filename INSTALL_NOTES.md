@@ -109,8 +109,9 @@ turns on the 2.5 mm hex key. See `BOM.md` and
 - **Fitting it:** push one cut end of the belt SIDEWAYS into half A's slot until it is in
   past the slot's mouth and against the slot's inner end, teeth between the ribs. Do the
   same with the other end in half B: its slot opens on the opposite face. Drop the M3
-  insert into the side pocket in half B. Bring the halves together so half A's rail lies
-  on half B's flat (it covers the insert), and run the M3 × 12 in through half A.
+  insert into the side pocket in half B. Slide the halves together end to end: each half's
+  channel rail runs over the other half's slot mouth and hooks its two lips, which is what
+  keeps the belt in and the slot from opening. Then run the M3 × 12 in through half A.
 - **Tensioning:** the screw's head faces the belt, so use the BALL END of the 2.5 mm key,
   laid down the channel in the back of half A at about 25° to the belt. The halves start
   4 mm apart and each turn closes them 0.5 mm. If they meet before the belt is tight,
