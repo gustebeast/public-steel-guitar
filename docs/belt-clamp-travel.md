@@ -164,3 +164,32 @@ screw-end half of each run. Strings 9 and 10 are about 2 short of 8.35.
 
 **The slim clip** (26 × 8.2 × 5.35) was clear end to end on the old runs; on the new ones
 string 10 has (194.0 − 26 − 11 − 10) / 14 = 10.5 of travel.
+
+## 2026-10-05: M3 socket head (2.5 key), beside the belt and in line with it
+
+Stand-ins, ±20° twist margin, step 4, each string on its right run, current main (the foot
+strip is in the chassis now).
+
+**Beside the belt** (`CLAMP_BOX=36,13.7,5.6,2.4,-2.75`; the other side is worse everywhere
+but string 1):
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 24.5 | **6.6** | 20.2 | 19.6 | 15.8 | 15.1 | 11.4 | 10.5 | **6.8** | **7.5** |
+
+Strings 9 and 10 stop on each other's belt once the clamp has turned past about 55°;
+string 2 is cut short by the foot strip's lips under it. Short of 8.35 on three strings.
+
+**In line with the belt** (`CLAMP_BOX=40,8.2,6.2,2.4`): the screw sits BETWEEN the two cut
+ends of the belt, on the belt's own line, so the section is the slim clip's plus 0.85 of
+thickness.
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 36.5 | 33.6 | 30.1 | 26.7 | 23.8 | 19.7 | 17.4 | 11.6 | 11.0 | 9.5 |
+
+Clear on all ten, limited only by the ends of each run. Every 14 of extra clamp length
+costs 1.0 of travel, so string 10 has room for a clamp about 56 long. Not designed, and
+clamp against clamp is not re-measured. Open: the head faces the belt, so the key has to
+come in at an angle (ball end) over a gap left behind the head, or the head needs another
+way to be turned.
