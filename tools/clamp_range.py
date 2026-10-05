@@ -25,7 +25,7 @@ import time
 
 import cadquery as cq
 
-from src import build as B, dimensions as D, belt_tensioner as BTn
+from src import build as B, components as C, dimensions as D, belt_tensioner as BTn
 
 V = cq.Vector
 N = D.N_STRINGS
@@ -48,32 +48,29 @@ RUNS = os.environ.get("CLAMP_RUNS", "")     # e.g. UUUUUUUUUU: which run each st
 
 
 def upper(i):
-    return (RUNS[i] == "U") if RUNS else (not D.screw_far(i))
+    return (RUNS[i] == "U") if RUNS else B.clamp_upper(i)
+
+
+def _ends(i):
+    return D.motor_pos(i), (D.screw_x(i), D.string_y(i), D.screw_pulley_z(i))
 
 
 def geom(i):
-    M = V(*D.motor_pos(i))
-    S = V(D.screw_x(i), D.string_y(i), D.screw_pulley_z(i))
-    sg = 1.0 if upper(i) else -1.0
-    mb, sm = V(M.x, M.y, M.z + sg * R), V(S.x, S.y + sg * R, S.z)
-    return sm, mb.sub(sm).normalized(), mb.sub(sm).Length, sg, M, S
+    """(sign, motor centre, screw-pulley centre) for string i's clamp run."""
+    m, s = _ends(i)
+    return (1.0 if upper(i) else -1.0), V(*m), V(*s)
 
 
 def posed(i, p, da):
-    sm, tan, L, sg, _M, _S = geom(i)
-    ls, lm = p + X0, L - (p + X1)
-    a = (math.pi / 2) * ls / (ls + lm) + math.radians(da)
-    n = V(0, math.cos(a), math.sin(a)).multiply(-sg)
-    n = n.sub(tan.multiply(n.dot(tan))).normalized()
-    o = sm.add(tan.multiply(p))
-    return cq.Location(cq.Plane(origin=(o.x, o.y, o.z), xDir=(tan.x, tan.y, tan.z),
-                                normal=(n.x, n.y, n.z)))
+    """The clamp's placement: src.components.clamp_frame, the model the build draws with."""
+    m, s = _ends(i)
+    o, xd, n = C.clamp_frame(m, s, upper(i), p, X0, X1, da)
+    return cq.Location(cq.Plane(origin=o, xDir=xd, normal=n))
 
 
 def steps(i):
-    L = geom(i)[2]
-    p0 = D.PULLEY_FLANGE_OD / 2 + D.CLAMP_END_CLR - X0
-    p1 = L - D.PULLEY_FLANGE_OD / 2 - D.CLAMP_END_CLR - X1
+    m, s = _ends(i)
+    p0, p1 = C.clamp_span(m, s, upper(i), X0, X1)
     n = max(1, int(math.ceil((p1 - p0) / STEP)))
     return [p0 + (p1 - p0) * k / n for k in range(n + 1)]
 
@@ -81,7 +78,7 @@ def steps(i):
 def other_run(i, belt):
     """The half of string i's belt that its clamp is NOT on: the loop split by the plane
     through the motor and screw axes' centres that separates the two runs."""
-    _sm, _t, _L, sg, M, S = geom(i)
+    sg, M, S = geom(i)
     d = S.sub(M).normalized()
     n = V(0, 1, 1)
     n = n.sub(d.multiply(n.dot(d))).normalized().multiply(-sg)       # toward the other run

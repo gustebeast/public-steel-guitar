@@ -552,6 +552,22 @@ assert abs(_CLAMP_L - D.BELT_CLAMP_L) < 0.05, (
     f"{D.BELT_CLAMP_L}: the carriage travel and the nut's floor are sized from that number")
 
 
+def clamp_upper(i):
+    """Is string i's clamp on its belt's UPPER run? Near-row strings (the odd ones) are."""
+    return not D.screw_far(i)
+
+
+def clamp_location(i, down=0.0, da=0.0, p=None):
+    """cq.Location of string i's belt clamp with the nut `down` mm below the ceiling (or
+    at an explicit p along its run), plus `da` degrees of twist error."""
+    m, s = D.motor_pos(i), (D.screw_x(i), D.string_y(i), D.screw_pulley_z(i))
+    x0, x1 = min(_CLAMP_XS), max(_CLAMP_XS)
+    if p is None:
+        p = C.clamp_p(m, s, clamp_upper(i), x0, x1, down)
+    o, xd, n = C.clamp_frame(m, s, clamp_upper(i), p, x0, x1, da)
+    return cq.Location(cq.Plane(origin=o, xDir=xd, normal=n))
+
+
 def _string_components(i):
     sy = D.string_y(i)
     mx, my, mz = D.motor_pos(i)
@@ -611,10 +627,7 @@ def _string_components(i):
     # the lower) and WHERE IT IS SPLICED: nut on the ceiling, clamp CLAMP_END_CLR off the
     # pulley it has been travelling toward. The nut's travel carries it away from there;
     # that whole travel is checked by tools/clamp_range.py and tools/clamp_study.py.
-    so, sxd, sn = C.clamp_frame((mx, my, mz), (D.screw_x(i), sy, spz),
-                                upper=not D.screw_far(i), at_ceiling=i not in DEMO_POSE_DZ,
-                                x0=min(_CLAMP_XS), x1=max(_CLAMP_XS))
-    cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
+    cloc = clamp_location(i, -DEMO_POSE_DZ.get(i, 0.0))
     for _nm, _shp in BTn.clamp_components():
         out.append((f"{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
@@ -2114,7 +2127,7 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
         return 0
     # both gates always run, so one RED doesn't hide the other's result
     return (_report_overlaps(comps, full=gate_full) | _report_sweep(comps)
-            | _report_travel(comps) | _report_dead())
+            | _report_travel(comps) | _report_carriage_travel(comps) | _report_dead())
 
 
 # The overlap gate's ACCEPTED baseline: the count of REAL defects tracked
@@ -2179,6 +2192,22 @@ def _report_travel(comps) -> int:
         print(f"travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
         return 0
     print(f"TRAVEL GATE: {'green' if n == 0 else f'RED -- {n} pair(s) meet in the pickup plate travel'}",
+          flush=True)
+    return 1 if n else 0
+
+
+def _report_carriage_travel(comps) -> int:
+    """Every string's CARRIAGE over its whole travel, on the model we just built: the nut,
+    the string's ball end, the string and the belt clamp, from the ceiling to the floor.
+    The assembly is drawn with every nut on the ceiling, so the overlap gate sees nothing
+    below it. Baseline is 0. See tools/check_carriage_travel."""
+    try:
+        from tools.check_carriage_travel import gate
+        n = gate([(name, wp.val()) for name, wp in comps], quiet=True)
+    except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
+        print(f"carriage travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
+    print(f"CARRIAGE TRAVEL GATE: {'green' if n == 0 else f'RED -- {n} pair(s) meet somewhere in a carriage travel'}",
           flush=True)
     return 1 if n else 0
 
