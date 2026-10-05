@@ -154,12 +154,27 @@ def lever_sensor():
               pins=[Pin(num=1, name="IN", func=PWR), Pin(num=2, name="GND", func=PWR),
                     Pin(num=3, name="EN", func=I), Pin(num=4, name="NC", func=P),
                     Pin(num=5, name="OUT", func=P)])
-    v5 += u1["IN"], u1["EN"]
+    # THE REGULATOR SITS BEHIND 2.2 OHM (2026-10-04). The pedal boards are reached through
+    # the leg's spring pins, a joint a player can make with the instrument on. A live 5 V
+    # bus, a metre of 26 AWG (about 1 uH and 0.3 ohm) and a bare 1 uF ceramic is a tank
+    # with a damping ratio near 0.2: it rings to about 7.6 V, and the AP2112's input is
+    # 6.5 V absolute maximum. With 2.2 ohm in the branch the ratio is about 0.9 and there
+    # is no overshoot to speak of. It costs 0.18 V at 80 mA, against 1.2 V of headroom,
+    # and it is in the branch only: the bus itself passes J1 untouched.
+    # The bus keeps a 100 nF of its own at the connector (the regulator's capacitor is on
+    # the far side of the resistor now). It rings on a hot plug like any bare ceramic and
+    # does not mind: nothing else is on this net but the connector and the resistor.
+    c_bus = _c("C3", "100nF", "bus HF bypass at J1")
+    v5 += c_bus[1]; gnd += c_bus[2]
+    v5_ldo = Net("+5V_LDO")
+    r_in = _r("R", "R8", "2R2", "damps the input capacitor against a hot-plugged bus")
+    v5 += r_in[1]; v5_ldo += r_in[2]
+    v5_ldo += u1["IN"], u1["EN"]
     gnd += u1["GND"]
     v33 += u1["OUT"]
     Net("U1_NC").connect(u1["NC"])
     cin = _c("C1", "1uF", "LDO input")
-    v5 += cin[1]; gnd += cin[2]
+    v5_ldo += cin[1]; gnd += cin[2]
     cout = _c("C2", "1uF", "LDO output")
     v33 += cout[1]; gnd += cout[2]
 
@@ -496,6 +511,12 @@ _PLACE_CHIP = {
         # the 0.03 mm of slack
         "C1": (-11.3500, 7.7500, 0.0),
         "C2": (-11.3500, 6.4500, 0.0),
+        # the input damper, above C1 against the +Y edge: pad 2 (the regulator side) over
+        # C1's input pad, pad 1 toward the regulator where the bus comes round to it
+        "R8": (-11.3500, 8.8500, 180.0),
+        # the bus bypass, behind the connector tails between the outgoing 5 V and GND ways
+        # (6 and 5): pad 1 (+5V) toward way 6
+        "C3": (-14.8400, -3.0000, 90.0),
         # SCL pull-up: 0.6 +X and 0.9 -Y of where it was, clear of the SWD row and the
         # name under it. (Tried beside the transceiver and between MCU and sensor: each
         # left a net open on some runs.)
@@ -706,7 +727,8 @@ BOARD_NOTES = {
             {"net": "+5V", "from": "J1.2", "to": ["J1.6"], "amps": 0.57},
             # this board: MCU ~10 mA at 48 MHz, sensor 10 mA, transceiver 17 mA dominant
             # plus ~35 mA into the bus while it drives -- 80 mA with margin
-            {"net": "+5V", "from": "J1.2", "to": ["U1.1"], "amps": 0.08},
+            {"net": "+5V", "from": "J1.2", "to": ["R8.1"], "amps": 0.08},
+            {"net": "+5V_LDO", "from": "R8.2", "to": ["U1.1"], "amps": 0.08},
             {"net": "+3V3", "from": "U1.5", "to": ["U3.17", "U3.5", "U2.3", "U4.13"],
              "amps": 0.08},
         ],
@@ -717,8 +739,8 @@ BOARD_NOTES = {
                              "Ways 1-4 and 5-8 are each harness.PH_PINOUT (GND, 5 V, CAN_H, "
                              "CAN_L); the two MP tabs carry no net. Read 2026-10-04",
             "AP2112K-3.3TRG1": "Diodes DS39724 p.1-2, Pin Descriptions, SOT25 column: 1 VIN, "
-                               "2 GND, 3 EN (high = on), 4 NC, 5 VOUT. Board: 1 +5V, 2 GND, "
-                               "3 +5V, 4 open, 5 +3V3. Read 2026-10-04",
+                               "2 GND, 3 EN (high = on), 4 NC, 5 VOUT. Board: 1 +5V_LDO, 2 GND, "
+                               "3 +5V_LDO, 4 open, 5 +3V3. Read 2026-10-04",
             "SN65HVD230DR": "TI SLOS346 Pin Functions (SOIC-8): 1 D, 2 GND, 3 VCC, 4 R, "
                             "5 Vref, 6 CANL, 7 CANH, 8 RS. Board: 1 CAN_TX, 2 GND, 3 +3V3, "
                             "4 CAN_RX, 5 open, 6 CAN_L, 7 CAN_H, 8 slope resistor. Re-read "
