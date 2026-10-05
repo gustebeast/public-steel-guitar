@@ -2676,6 +2676,10 @@ BOARD_NOTES["quality"] = {
     # unmeasured motor current), M11 (CAD fit after the build), M35 (errata) and the
     # order-time items M12, M29, M30, M37, M42.
     "manual": {
+        "M35": "read 2026-10-05. " + 'WCH publishes no errata sheet: its product page lists the datasheet and the reference manual (CH32FV2x_V3xRM) and nothing else, read 2026-10-05. ' + "The CH334F hub "
+               "has a datasheet only (its product page was not found under that name). "
+               "The USB chapter of the manual was read for motor_ctrl's M23 and holds "
+               "here too",
         "M3": "24 V: in on J6's two +V contacts and back on its two -V contacts, out and "
               "back on J7 / J10 / J9, each pair side by side; measured on the routed "
               "board the return's narrowest copper is 1.2 mm to J7 and 1.0 mm to J10 "
