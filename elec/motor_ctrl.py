@@ -1373,6 +1373,18 @@ BOARD_NOTES["quality"] = {
         "PNR3015-470M": "two-pad, unpolarised",
     },
     "manual": {
+        "M35": "read 2026-10-05. " + 'WCH publishes no errata sheet: its product page lists the datasheet and the reference manual (CH32FV2x_V3xRM) and nothing else, read 2026-10-05. ' + "The manual's USB "
+               "chapter was read for M23; nothing in the datasheet's notes touches a pin "
+               "this board uses",
+        "M23": "read off the routed board and WCH's reference manual V2.2, chapter 23, "
+               "2026-10-05. D6 / D7 are 4.8 mm from J4's pins, ahead of everything else. "
+               "USB_DP 49.4 mm with 3 vias, USB_DM 52.6 mm with 1: unequal, and left so -- "
+               "3.2 mm is about 20 ps on a full-speed link whose edges are 4 ns or slower. "
+               "The D+ pull-up is INSIDE the MCU (R8_USB_CTRL, RB_UC_DEV_PU_EN; table "
+               "23-2 '1.5K pull-up'), and WCH's own connection drawing (figure 23-1) "
+               "takes PA11 / PA12 straight to the socket with no series parts, as here. "
+               "48 MHz from the 8 MHz crystal through the PLL. VBUS is not connected, so "
+               "nothing is fed backwards",
         "M1": "five cables, each a straight lead, each end built from one list. J1 -> the "
               "motor tees: harness.XH_PINOUT (GND, 24 V, CAN_H, CAN_L). J2 / J6 -> the "
               "pedal and lever chains: harness.PH_PINOUT (GND, 5 V, CAN_H, CAN_L). J3 <- "
