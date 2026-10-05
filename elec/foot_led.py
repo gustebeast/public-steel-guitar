@@ -400,6 +400,9 @@ def build(passes=20):
             {"net": "+24V_IN", "from": "J11.1", "to": "F1.1", "amps": round(i_24, 3)},
             {"net": "+24V", "from": "F1.2", "to": ["U10.2", "J21.1"],
              "amps": round(i_24, 3)},
+            # ⚠ HELD TO THE WHOLE RAIL, though a driver's VCC is only its logic supply:
+            # the stretch that matters is L1's own exit onto the plane, all of the rail
+            # leaves there, and every one of these paths starts with it.
             {"net": "+11V", "from": "L1.2",
              "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": round(i_rail, 3)},
         ],
@@ -477,7 +480,8 @@ BOARD_NOTES = {
     "track_mm": 0.15,
     # ...and the two power nets are widened back up. +11V and GND are planes, so this is
     # really just the 24 V pass-through, which carries 0.24 A the length of the board.
-    "net_widths": {"+24V": 0.30},
+    "net_widths": {"+24V": 0.30, "+24V_IN": 0.30},   # the inlet stub was routed at 0.15
+                                                      # for 0.73 A, which wants 0.20
     "order_options": {
         "via size": "0.25 mm hole / 0.50 mm diameter -- SELECT THIS ON THE ORDER FORM. "
                     "Inside standard capability and not surcharged. The driver fan does "
