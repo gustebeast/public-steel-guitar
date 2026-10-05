@@ -1674,9 +1674,9 @@
       "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
     },
     "optical:U9": {
-      "usd": 0.301,
+      "usd": 0.2151,
       "verified": "v",
-      "what": "SPX3819M5-L-3-3/TR C9055 -- JLCPCB parts API at qty 10"
+      "what": "TPS7A2033PDBVR C2862740 -- JLCPCB parts API at qty 10"
     },
     "optical:U11": {
       "usd": 0.0932,
@@ -1754,9 +1754,9 @@
       "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 10"
     },
     "optical:FB1": {
-      "usd": 0.0127,
+      "usd": 0.0178,
       "verified": "v",
-      "what": "GZ1608D601TF C1002 -- JLCPCB parts API at qty 10"
+      "what": "BLM18KG601SN1D C85833 -- JLCPCB parts API at qty 10"
     },
     "optical:U21": {
       "usd": 0.1475,

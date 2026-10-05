@@ -163,6 +163,8 @@ converter bus and these two pads. Prove it on the first article while SWD still 
 copper, so not one millimetre of track was added; headroom over the 0.127 rule is 4.747, 1.214
 and 1.956 mm. No pad on `MID` (see item 6) and none on `+3V3D`, which already has `TP5`.
 
+**TP9 reads the 24 V as it ARRIVES (2026-10-05).** The input now passes through R44, a 2 Ω 2512 that damps a live plug-in (the buck is a 36 V part and a live lead rings ceramics toward 48 V). TP9 is on the connector's side of it (`V24_IN`); the buck's own input is the far pad of R44 or C160. The two differ by 2 Ω × the input current: about 0.16 V at the typical 79 mA, so the drop across R44 IS the board's 24 V current, readable with a meter and no clamp. NRST also gained its 100 nF (C135, beside R31): a probe connecting under reset drives it as usual.
+
 **They only work because they are placed AFTER routing.** The same three pads, in the DSN, cost
 a net in four consecutive runs — always at the USB PHY, once on a rail whose own pad had been
 REMOVED. See `post_route_refs` in `elec/optical.py`: layout skips them, `route.py` drops them in
