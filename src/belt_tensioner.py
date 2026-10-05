@@ -25,9 +25,14 @@ GRIP: each slot is the belt's own profile, open on one side face. The belt is pu
 SIDEWAYS and its teeth sit between six ribs; tension pulls it along the slot, which the
 ribs take. Nothing pinches. The two slots open on OPPOSITE faces (see PRINT).
 
-WIDTH: A's rail runs INSIDE the section (B's mouth is set back for it). B's rail runs
-OUTSIDE A, because A's head window needs both of its side rails to carry the tension
-past the head. So the assembly is 0.95 wider on A's mouth side: 9.15 across.
+WIDTH, AND WHICH SIDE IS WHICH. Two neighbouring clamps can meet (tools/clamp_range.py):
+an even string's clamp on its lower run and the next odd string's on its upper run pass
+8.8 apart near the screws, each presenting its +y side to the other. So +y is kept as
+thin as it can be: A's rail there IS the slot's side wall, 3.5 from the belt's centre, with
+its two outer edges chamfered. Everything that needs room is on −y, which faces away:
+B's rail runs OUTSIDE A on that side (A's head window needs both its side rails to carry
+tension past the head), and the screw sits 0.3 toward −y so those two rails are equal.
+8.55 across in all.
 
 THE KEY: the head faces the belt, so a straight key cannot reach it. A channel runs from
 the socket out through the back of half A at KEY_DEG, for the BALL END of the instrument's
@@ -96,7 +101,11 @@ END_WALL = 2 * B                             # 0.8 the wall the belt's cut end s
 GAP      = 4.0                               # between the halves, fully loose = tension travel (2 teeth)
 SEAT_T   = 6 * B                             # 2.4 the wall the head bears on
 HEAD_CLR = 0.15                              # head to the window's side rails
-HEAD_RAIL = HW - HEAD_D / 2 - HEAD_CLR       # 1.2 each side rail of the head window
+IN_HW    = BW / 2 + EDGE_CLR + 2 * B         # 3.5 belt centre to the +y face, the side that
+                                             # meets the neighbouring clamp: A's rail web alone
+SCREW_Y  = (IN_HW - HW) / 2                  # -0.3 the screw, midway across half A
+HEAD_RAIL = (IN_HW + HW - HEAD_D) / 2 - HEAD_CLR   # 0.9 each side rail of the head window
+EDGE_CH  = B                                 # 0.4 chamfer on A's two +y edges
 KEY_DEG  = 25.0                              # ball-end key off the screw's axis
 KEY_W    = 8 * B                             # 3.2 channel for the 2.5 key (2.9 over its corners)
 SOCKET_IN = HEAD_H / 2                       # the ball's centre below the head's top
@@ -116,10 +125,11 @@ FLANGE   = 2 * B                             # 0.8 each flange's reach over a li
 FLANGE_T = 0.75                              # flange through z; the lip is cut back for it
 LIP_CLR  = 0.1                               # flange to lip: all the slot can open by
 LIP_HT   = HT - FLANGE_T - LIP_CLR           # 2.35 half-thickness of a lip under a flange
-RAIL_STEP = RAIL_T + RAIL_CLR                # 0.95 B's mouth set back / B's rail stood off A
+RAIL_STEP = RAIL_T + RAIL_CLR                # 0.95 B's rail stood off A's −y face
+MOUTH_B  = IN_HW - RAIL_STEP                 # 2.55 B's slot mouth, under A's rail
 RAIL_A_L = LEN_B                             # A's rail: flush with B's outer end, halves closed
 RAIL_B_L = LEN_A                             # B's rail: likewise over A
-BODY_Y   = BODY_W + RAIL_STEP                # 9.15 across the assembled clamp
+BODY_Y   = IN_HW + HW + RAIL_STEP            # 8.55 across the assembled clamp
 
 assert RUNOUT >= 0, "the screw is too long for half B at the closed position"
 # the key's channel must be clear of the belt's back where the grip begins
@@ -181,47 +191,56 @@ def _lips(x0: float, x1: float, y_from: float, toward: int) -> cq.Workplane:
 def half_a() -> cq.Workplane:
     """The HEAD half, inner face on x = 0, body toward −x. Slot opens −y, where its lips
     are thinned for B's rail; its own rail is on +y and reaches over B."""
-    body = box_at(LEN_A, BODY_W, BODY_T, x=-LEN_A / 2)
+    body = box_at(LEN_A, IN_HW + HW, BODY_T, x=-LEN_A / 2, y=(IN_HW - HW) / 2)
     gx0, gx1 = -LEN_A, -LEN_A + GRIP                              # grip: outer end .. end wall
     cut, (ya, yb) = _belt_slot(gx0 - 1.0, gx1, -1)
-    body = body.cut(cut).union(_ribs(gx0, max(ya, -HW), min(yb, HW)))
+    body = body.cut(cut).union(_ribs(gx0, -HW, yb))
     wx1 = -SEAT_T                                                  # head window
-    body = body.cut(box_at(HEAD_ZONE, BODY_W - 2 * HEAD_RAIL, BODY_T + 2.0,
-                           x=wx1 - HEAD_ZONE / 2))
-    body = body.cut(cyl_x(SCR_CLR, SEAT_T + 0.2, -SEAT_T - 0.1))   # screw clearance
+    body = body.cut(box_at(HEAD_ZONE, HEAD_D + 2 * HEAD_CLR, BODY_T + 2.0,
+                           x=wx1 - HEAD_ZONE / 2, y=SCREW_Y))
+    body = body.cut(cyl_x(SCR_CLR, SEAT_T + 0.2, -SEAT_T - 0.1, y=SCREW_Y))   # screw clearance
     # key channel: from the socket, down and outward through the back (−z)
     a = math.radians(KEY_DEG)
     px = -SEAT_T - SOCKET_IN
     ex, ez = px - 40.0 * math.cos(a), -40.0 * math.sin(a)
     nx, nz = -math.sin(a) * KEY_W / 2, math.cos(a) * KEY_W / 2
     pts = [(px + nx, nz), (ex + nx, ez + nz), (ex, -40.0), (px, -40.0)]
-    key = (cq.Workplane("XZ").polyline(pts).close().extrude(KEY_W / 2, both=True))
+    key = (cq.Workplane("XZ").polyline(pts).close().extrude(KEY_W / 2, both=True)
+           .translate((0.0, SCREW_Y, 0.0)))
     body = body.cut(key)
     body = body.cut(_lips(-LEN_A - 1.0, 1.0, -HW + FLANGE, -1))
-    return body.union(_rail(0.0, RAIL_A_L, HW, -1))
+    body = body.union(_rail(0.0, RAIL_A_L, IN_HW, -1))
+    for sz in (1, -1):                                             # the two +y edges
+        tri = [(IN_HW + 0.1, sz * (HT - EDGE_CH - 0.1)), (IN_HW + 0.1, sz * (HT + 0.1)),
+               (IN_HW - EDGE_CH - 0.1, sz * (HT + 0.1))]
+        body = body.cut(cq.Workplane("YZ").polyline(tri).close()
+                        .extrude(LEN_A + RAIL_A_L + 2.0).translate((-LEN_A - 1.0, 0.0, 0.0)))
+    return body
 
 
 def half_b() -> cq.Workplane:
     """The INSERT half, inner face on x = 0, body toward +x. Slot and insert pocket open
-    +y, where the mouth is set back RAIL_STEP and its lips thinned for A's rail; its own
-    rail is on −y, stood RAIL_STEP off the section so it passes OUTSIDE half A."""
-    body = box_at(LEN_B, BODY_W, BODY_T, x=LEN_B / 2, y=-RAIL_STEP)
-    body = body.cut(cyl_x(SCR_CLR, INNER_B - B + 0.1, -0.1))        # clearance + runout
+    +y, under A's rail, where its lips are thinned for the rail's flanges; its own rail is
+    on −y, stood RAIL_STEP off half A so it passes OUTSIDE it."""
+    y0, y1 = -HW - RAIL_STEP, MOUTH_B
+    body = box_at(LEN_B, y1 - y0, BODY_T, x=LEN_B / 2, y=(y0 + y1) / 2)
+    body = body.cut(cyl_x(SCR_CLR, INNER_B - B + 0.1, -0.1, y=SCREW_Y))       # clearance + runout
     ix0, il = SHOULDER, INS_L + INS_FIT                            # insert pocket, side entry
-    body = body.cut(cyl_x(INS_D, il, ix0))
-    body = body.cut(box_at(il, HW + 1.0, INS_D, x=ix0 + il / 2, y=(HW + 1.0) / 2))
+    body = body.cut(cyl_x(INS_D, il, ix0, y=SCREW_Y))
+    body = body.cut(box_at(il, 6.0, INS_D, x=ix0 + il / 2, y=SCREW_Y + 3.0))
     gx0, gx1 = INNER_B + END_WALL, LEN_B
     cut, (ya, yb) = _belt_slot(gx0, gx1 + 1.0, +1)
-    mouth = HW - RAIL_STEP
-    body = body.cut(cut).union(_ribs(gx0, max(ya, -HW), mouth))
-    body = body.cut(_lips(-1.0, LEN_B + 1.0, mouth - FLANGE, +1))
+    body = body.cut(cut).union(_ribs(gx0, ya, MOUTH_B))
+    lip0 = MOUTH_B - FLANGE
+    body = body.cut(_lips(-1.0, LEN_B + 1.0, lip0, +1))
+    body = body.cut(box_at(il, 3.0, BODY_T + 2.0, x=ix0 + il / 2, y=lip0 + 1.5))   # no skin left there
     return body.union(_rail(-RAIL_B_L, 0.0, -HW - RAIL_STEP, +1))
 
 
 def screw_dummy() -> cq.Workplane:
     """M3 × SCREW_L socket head in half A's frame: bearing face on the seat wall, shank +x."""
     scr = headed_screw(M3, SCREW_L, head_d=HEAD_D, head_h=HEAD_H, socket_af=2.5)
-    return scr.rotate((0, 0, 0), (0, 1, 0), -90).translate((-SEAT_T - HEAD_H, 0.0, 0.0))
+    return scr.rotate((0, 0, 0), (0, 1, 0), -90).translate((-SEAT_T - HEAD_H, SCREW_Y, 0.0))
 
 
 # ── coupon: the two halves in their print poses ───────────────────────────────────────────
@@ -247,7 +266,7 @@ def clamp_components(gap: float = GAP):
     origin, belt centreline on z = 0, +z inside the loop), at a given tension gap:
     gap = GAP is fully loose, gap = 0 has the halves closed."""
     def at(p, dx): return p.translate((dx, 0.0, 0.0))
-    nut = seated_insert(M3, (gap / 2 + SHOULDER, 0.0, 0.0), (1.0, 0.0, 0.0))
+    nut = seated_insert(M3, (gap / 2 + SHOULDER, SCREW_Y, 0.0), (1.0, 0.0, 0.0))
     P = "belt_tensioner_"
     return [(P + "half_a", at(_HALF_A, -gap / 2)), (P + "half_b", at(_HALF_B, gap / 2)),
             (P + "screw", at(_SCREW, -gap / 2)), (P + "insert", nut)]

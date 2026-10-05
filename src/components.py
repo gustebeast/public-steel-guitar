@@ -327,26 +327,43 @@ def splice_frame(motor_xyz, screw_xyz, from_screw=None):
     return (p.x, p.y, p.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
 
 
-def clamp_frame(motor_xyz, screw_xyz, upper, frac=0.5):
+def clamp_frame(motor_xyz, screw_xyz, upper, at_ceiling, x0, x1):
     """Placement for the in-line belt clamp ON THE RUN IT IS INSTALLED ON, turned with the
-    belt. `upper` picks the run (the one that leaves the motor pulley's top); `frac` is how
-    far along it from the screw pulley. Returns (origin, xDir = toward the motor, normal =
-    into the loop).
+    belt, WHERE IT IS SPLICED: the nut on the ceiling and the clamp D.CLAMP_END_CLR off the
+    pulley it has just been travelling toward (INSTALL_NOTES). `upper` picks the run (the
+    one that leaves the motor pulley's top); x0, x1 are the clamp's own extent along the
+    belt about its origin. `at_ceiling=False` gives the other end of its travel instead.
+    Returns (origin, xDir = toward the motor, normal = into the loop).
+
+    WHICH PULLEY THAT IS. The screw is right-hand, so the nut rises when the screw turns
+    clockwise seen from above; the pulley's +y side then moves toward +x. The upper run
+    leaves the screw pulley on its +y side, so a clamp on it is carried TOWARD THE SCREW as
+    the nut rises, and one on the lower run toward the motor. ⚠ Derived, not yet seen on
+    a bench: a left-hand screw swaps the two.
 
     The belt turns 90 deg between the pulleys -- flat at the screw (normal across the
-    instrument), on edge at the motor (normal vertical) -- and the turn is taken as even
-    along the run, which is the same assumption tools/clamp_study.py makes."""
+    instrument), on edge at the motor (normal vertical) -- and the clamp is rigid, so the
+    turn is shared between the free belt either side of it in proportion to length. That
+    is the same assumption tools/clamp_study.py and tools/clamp_range.py make."""
     V = cq.Vector
     M, S = V(*motor_xyz), V(*screw_xyz)
     r = D.PULLEY_OD / 2 + D.BELT_T / 2
     sgn = 1.0 if upper else -1.0
     m_t, s_t = V(M.x, M.y, M.z + sgn * r), V(S.x, S.y + sgn * r, S.z)
+    L = m_t.sub(s_t).Length
     tan = m_t.sub(s_t).normalized()
-    a = (math.pi / 2) * frac
+    off = D.PULLEY_FLANGE_OD / 2 + D.CLAMP_END_CLR
+    travel = D.CARRIAGE_TRAVEL * D.BELT_PER_MM
+    if upper:
+        p = off - x0 + (0.0 if at_ceiling else travel)
+    else:
+        p = L - off - x1 - (0.0 if at_ceiling else travel)
+    ls, lm = p + x0, L - (p + x1)
+    a = (math.pi / 2) * ls / (ls + lm)
     n = V(0, math.cos(a), math.sin(a)).multiply(-sgn)
     n = n.sub(tan.multiply(n.dot(tan))).normalized()
-    p = s_t.add(m_t.sub(s_t).multiply(frac))
-    return (p.x, p.y, p.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
+    o = s_t.add(tan.multiply(p))
+    return (o.x, o.y, o.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
 
 
 def _belt_smooth(samples):
