@@ -16,7 +16,7 @@ from src import build as B, dimensions as D, belt_tensioner as BTn
 V = cq.Vector
 r = D.PULLEY_OD / 2 + D.BELT_T / 2
 XS = B._CLAMP_XS; LO, HI = min(XS), max(XS)            # clamp extent about its origin
-clamp = cq.Compound.makeCompound([s.val() for _n, s in BTn.clamp_components(with_lifters=True)])
+clamp = cq.Compound.makeCompound([s.val() for _n, s in BTn.clamp_components()])
 # CLAMP_BOX="L,W,T,below": study a STAND-IN clamp instead -- a box L along the belt, W across
 # its width, T through it with `below` of that on the tooth side -- to size a clamp that
 # does not exist yet (e.g. a screwless clip: CLAMP_BOX=26,8.2,5.35,1.6). +z of the box is
