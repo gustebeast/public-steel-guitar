@@ -321,17 +321,8 @@ LIGHT_FLANGE = 2.0
 MARKER_FRETS = {3, 5, 7, 9, 12, 15, 17, 19, 21, 24}
 # ── fret lines + fretboard border as a MATERIAL split, not an engraving ──────
 FRET_T  = 1.6      # colour-layer thickness = embossed inlay height (Z)
-INLAY_W = 2.4      # SHARED in-plane width: transparent fret-line width (to fret 24) AND the border-frame band
+INLAY_W = 2.4      # SHARED in-plane width: every transparent fret line AND the border-frame band
 MIN_WEB = D.MIN_WALL   # smallest colour web left between lines (1-bead floor; stops dense micro-lines at the bridge)
-# The high frets crowd toward the bridge, so from fret HI_FRET UP the LINES go THIN (user): a 2.4 line there
-# needs a 3.2 gap and culls early; 1.6 (2-bead min) reads cleaner in the crowd and renders a few frets closer.
-HI_FRET    = 24
-HI_INLAY_W = D.MIN_WALL_2P
-
-
-def _inlay_w(n):
-    """Fret-LINE width for fret n: full INLAY_W below HI_FRET, thin HI_INLAY_W at HI_FRET and above."""
-    return HI_INLAY_W if n >= HI_FRET else INLAY_W
 # border X: the fretted length — from the bridge end of the fretboard (just -X of the pickup region) to
 # the nut/keyhead end. Absolute coords; _split gives each panel its portion so the frame is continuous.
 FRET_AREA_X0 = SLOT_X[PIECE_SHOWN + PIECE_SLOTS]   # +X (bridge) end of the FRET FIELD (lines + markers)
@@ -373,7 +364,7 @@ def _fret_positions(x0, x1):
     while True:
         fx = nut + scale * (1 - 2 ** (-n / 12.0))
         nxt = nut + scale * (1 - 2 ** (-(n + 1) / 12.0))
-        if fx > FRET_AREA_X0 or nxt - fx < (_inlay_w(n) + _inlay_w(n + 1)) / 2 + MIN_WEB:
+        if fx > FRET_AREA_X0 or nxt - fx < INLAY_W + MIN_WEB:
             break
         if x1 + 0.8 < fx < x0 - 0.8:
             out.append((n, fx))
@@ -405,9 +396,6 @@ def _border_frame():
 # every octave: circle, triangle, square, pentagon, and a 4-circle octave marker (12 & 24).
 MARK_D     = 6 * D.BEAD                # 4.8 marker circumscribed size
 MARK_SHAPE = {3: "circle", 5: "triangle", 7: "square", 9: "pentagon", 0: "quad"}
-# Per-marker X nudge for panel-edge printability: the fret-24 quad sits right at the mid panel's +X
-# edge (its dots were 0.12 mm off it); shift it -X so ≥0.8 mm of material backs the dots (0.8 nozzle).
-MARK_X_ADJ = {24: -0.7}
 
 
 def _fret_x(n):
@@ -415,7 +403,7 @@ def _fret_x(n):
 
 
 def _mark_x(n):
-    return (_fret_x(n) + _fret_x(n - 1)) / 2 + MARK_X_ADJ.get(n, 0.0)   # fret-space centre + edge nudge
+    return (_fret_x(n) + _fret_x(n - 1)) / 2        # the centre of the space behind fret n
 
 
 def _reg_prism(nsides, r, x, ang0):
@@ -468,7 +456,7 @@ def _fret_solids(x0, x1, frets=True):
         return out
     out = out.union(_MARKERS)
     for n, fx in _fret_positions(x0, x1):
-        out = out.union(box_at(_inlay_w(n), 2 * FRET_HY, FRET_T, x=fx, y=0.0, z=TZ - FRET_T / 2))
+        out = out.union(box_at(INLAY_W, 2 * FRET_HY, FRET_T, x=fx, y=0.0, z=TZ - FRET_T / 2))
     return out
 
 
@@ -739,10 +727,10 @@ for _n, _xa, _xb in (("mid", MID_X0, MID_X1), ("keyhead", KEY_X0, KEY_X1)):
 # ...AND THE SEAM BETWEEN THEM CLEARS EVERY MARKING. This is what MID's length was chosen
 # for and it was only ever written down: a seam through a fret line or a marker dot reads as
 # a broken inlay on a deck somebody looks at all day. Checked against the real solids rather
-# than against the fret numbers, so a marker nudge (MARK_X_ADJ) cannot sneak past it.
+# than against the fret numbers.
 _SEAM_CLR = D.MIN_WALL              # 0.8, one bead of material either side of the cut
 for _n, _fx in _fret_positions(MID_X0 + 50.0, MID_X1 - 50.0):
-    assert abs(_fx - MID_X1) > _inlay_w(_n) / 2.0 + _SEAM_CLR, (
+    assert abs(_fx - MID_X1) > INLAY_W / 2.0 + _SEAM_CLR, (
         "the mid/key seam at %.2f runs through fret %d's line at %.2f"
         % (MID_X1, _n, _fx))
 for _s in _MARKERS.val().Solids():
