@@ -719,10 +719,16 @@ existing ones:
   bridged 1-2 (off with the button out), from the switch maker's drawing. If a real switch
   works the other way round, cut 1-2 and bridge 2-3.
 
-## The output panel does nothing on the bench with only the power inlet connected
+## The fret-light lead and the sensor-bus drops use the same 4-way PH plug
 
-The panel's 5 V supply returns through the power ground, and its logic and audio sit on a
-separate ground that is joined to it only at another board (see
-docs/pcb-quality-status.md, "Needs the user", item 1). Until that is decided, bench-test
-the panel with the power link to the motor board fitted, or bridge `GND` to `PWR_GND` with
-a clip lead.
+The fret boards' lead (Pi cap J3: `24V, GND, SCK, SDT`) and a bus-B drop (motor board
+J2 / J6 and the leg boards: `GND, 5V, CAN_H, CAN_L`) are both 4-way JST PH and fit each
+other's sockets. The way order was chosen so that a swap is a short, not an over-voltage:
+
+* a fret lead on a bus-B socket shorts the lighting 24 V to ground (the motor board's F3
+  opens) and grounds the bus's 5 V (its current-limited switch folds back);
+* a bus-B lead on the Pi cap's J3 or on a fret board does the same from the other side.
+
+Either way nothing on the sensor bus sees 24 V. The lights and the pedals go dead, and F3
+may need replacing. Label the two leads; do not leave a wrong mate plugged in, because the
+Pi's two SPI pins are then driving the CAN pair.

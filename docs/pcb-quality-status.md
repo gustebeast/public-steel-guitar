@@ -36,32 +36,37 @@ needs the lead's build with the new board geometry. M35 needs each MCU's errata 
 None of these can be closed from the files on hand, so the loop leaves them OPEN on purpose
 rather than ticking them.
 
+### Decided by the user, 2026-10-04
+
+1. **The grounds meet on the output panel.** `GND` (audio, MCU, USB) and `PWR_GND` (the
+   24 V return) are joined once, by R60 (0 ohm, 0603) beside the 5 V buck's output
+   capacitor. Before this the panel's own supply current (up to 257 mA) had no return on
+   the board: it left through a USB ground to whichever board bonds the two, and the panel
+   was dead with only the inlet plugged in. Cost, stated in the board file at the J6 / J7
+   note: the USB grounds now parallel the trunk return, so about a tenth of the stepper
+   return current crosses the panel's ground between the USB sockets and R60, both on the
+   -X edge and away from the audio section. R60 can become a bead or come off.
+2. **One pin scheme for the wire-to-board leads** (low priority; only where it does not
+   force a worse board): two ways that are data or unused, two that are a power / ground
+   pair, and on a 6-way two more that are a second power / ground pair. A 4-way then
+   carries one pair and a 6-way two, and the extra power never sits where a 4-way's data
+   would. Today's leads against it:
+   * conforming already: the CAN drops (`GND +24V CAN_H CAN_L`), the lights lead, the
+     optical inlet (`GND +24V` with ways 3 / 4 empty);
+   * not conforming: the three leads that use all four ways for power, because one XH
+     contact is 3 A -- the motor trunk (`output_panel` J7, 2.9 A), the Pi's 5 V
+     (`motor_ctrl` J5, 3 A) and the power link's first four ways (J10 / J3, 3.8 A). Under
+     the scheme each becomes a 6-way, about 5 mm more board edge at both ends.
+   To do, after the boards in hand are closed: try each of the three as a 6-way and keep
+   the change only where the outline and the route do not suffer. Until then `can_tee` M1
+   stays open and the INSTALL_NOTES warning stands.
+
 ### Needs the user
 
-1. **Where the instrument's grounds meet (`output_panel` M3 / M21).** The panel keeps `GND`
-   (audio, MCU, USB) and `PWR_GND` (the 24 V return) apart and never joins them. Its own
-   5 V buck returns to `PWR_GND`, so the current the board's logic draws (up to 257 mA)
-   has no way home on the board: it leaves through whichever cable ground reaches a board
-   that does join the two (the optical lead, or a USB shield to the Pi, which is bonded to
-   the trunk return at `motor_ctrl`). Three consequences: on the bench, with only the
-   power inlet plugged in, the board is dead; the audio reference carries the logic
-   supply's return current down a signal cable; and the USB link to the Pi already closes
-   a loop that lets stepper return current share the audio ground, which is what the split
-   was meant to prevent. The choices are (a) one tie on the panel (a 0 ohm link or a bead
-   at the buck's output capacitor), making the panel the star point and accepting that the
-   USB shield path then parallels the trunk return; (b) an isolated 5 V supply for the
-   audio side; (c) keep the split and move the audio reference's bond to the optical board
-   only, with the Pi's USB link isolated. (a) is the small change and the loop's
-   recommendation; it is not made because it is a decision about the whole instrument.
-2. **Motor supply current while slewing** (`motor_ctrl` M32 / M33, `output_panel` M32,
+1. **Motor supply current while slewing** (`motor_ctrl` M32 / M33, `output_panel` M32,
    `can_tee` M33 / M36). Every trunk figure rests on 0.8 A per moving SERVO42D, derived and
    never measured, and on a firmware cap on simultaneous movers that is not written. One
    bench measurement closes all five items.
-3. **Two pinouts share the 4-way XH housing** (`can_tee` M1): CAN drops are
-   `GND +24V CAN_H CAN_L`, power leads are `GND +24V +24V GND`, and the plugs interchange;
-   a power lead in a CAN socket puts 24 V on CAN_H. `motor_ctrl` now carries three
-   different 4-way XH sockets. Open in `BOM.md` since 2026-09-18; the recommendation is a
-   different way count for the power-only leads.
 
 ### What changed on the boards this loop (all routed 0 / 0)
 
