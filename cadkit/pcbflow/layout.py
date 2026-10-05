@@ -1115,8 +1115,14 @@ def add_missing_vias(board, eps_mm=0.05, via_d=0.6, via_drill=0.3, clr=0.14):
                 xj, yj, lj, tj = items[j]
                 if li == lj or math.hypot(xi - xj, yi - yj) > eps:
                     continue
-                # already carried across? then there is nothing missing
-                if any(onet == net and math.hypot(xi - vx2, yi - vy2) <= vr
+                # already carried across? then there is nothing missing.
+                # ⚠ "ACROSS" INCLUDES A VIA THE TWO TRACKS BOTH COVER (pi_cap, 2026-10-04).
+                # Two declared 2.2 mm patches, one per layer, shared an endpoint with eight
+                # declared vias under them, the nearest 0.55 mm from that point: the test
+                # was "a via exactly here", so a ninth was dropped in -- and the tidy pass
+                # then removed four of the DECLARED ones for crowding it.
+                _reach = min(ti.GetWidth(), tj.GetWidth()) / 2.0
+                if any(onet == net and math.hypot(xi - vx2, yi - vy2) <= vr + _reach
                        for vx2, vy2, vr, onet in vias):
                     continue
                 if not clear(xi, yi, net):
@@ -1202,6 +1208,79 @@ def drop_redundant_pth_vias(board):
     return len(doomed)
 
 
+def drop_redundant_pad_vias(board, notes):
+    """Delete a router via drilled into a small soldered land when the net holds without it.
+
+    The through-hole case above is safe by construction: the barrel was already there.
+    A surface land has no barrel, so a via in it MAY be the only thing carrying the net
+    to another layer, and no geometric test says which. So ask the board the question
+    directly -- take the via off its net, rebuild connectivity, and count. If the count
+    of unconnected items did not rise, the via carried nothing its neighbours do not.
+
+    The usual origin is a layer change the router put under the pad and then duplicated
+    0.7 mm away with a second via and a stub back to the land: both are legal copper,
+    and the first one wicks the joint's paste down an open hole.
+
+    Only lands under 4 mm2 that print paste are looked at (a larger land is a thermal
+    or power pad and quality counts its barrels separately), and a via declared in the
+    board file is somebody's decision, not a leaving. A via that IS needed is left in
+    place for quality to report -- too strict here would trade a soldering fault for an
+    open net.
+
+    Nothing is removed until every test is done, and the removal re-finds each via by
+    UUID on a fresh walk (see tidy_router_vias for why).
+    """
+    import math
+    declared_xy = {(round(rv[1], 3), round(rv[2], 3))
+                   for rv in list(notes.get("repair_vias", [])) + list(notes.get("vias", []))}
+    lands = []
+    for fp in board.GetFootprints():
+        for pad in fp.Pads():
+            if pad.GetAttribute() != pcbnew.PAD_ATTRIB_SMD or not pad.GetNetCode():
+                continue
+            if not (pad.IsOnLayer(pcbnew.F_Paste) or pad.IsOnLayer(pcbnew.B_Paste)):
+                continue
+            sz = pad.GetSize()
+            if pcbnew.ToMM(sz.x) * pcbnew.ToMM(sz.y) >= 4.0:
+                continue
+            lands.append((pad, pad.GetNetCode(), "%s.%s" % (fp.GetReference(), pad.GetNumber())))
+    cand = []
+    for t in board.GetTracks():
+        if not isinstance(t, pcbnew.PCB_VIA):
+            continue
+        vp = t.GetPosition()
+        if (round(pcbnew.ToMM(vp.x) - 100.0, 3), round(100.0 - pcbnew.ToMM(vp.y), 3)) in declared_xy:
+            continue
+        for pad, nc, name in lands:
+            if nc == t.GetNetCode() and pad.HitTest(vp, int(t.GetDrillValue() / 2)):
+                cand.append((t, nc, "%s [%s]" % (name, t.GetNetname())))
+                break
+    if not cand:
+        return 0
+    conn = board.GetConnectivity()
+    board.BuildConnectivity()
+    base = conn.GetUnconnectedCount(False)
+    doomed = {}
+    for t, nc, why in cand:
+        t.SetNetCode(0)
+        board.BuildConnectivity()
+        if board.GetConnectivity().GetUnconnectedCount(False) > base:
+            t.SetNetCode(nc)                   # it was carrying the net: keep it
+        else:
+            doomed[t.m_Uuid.AsString()] = why  # stays off the net for the tests that follow
+    del cand, lands
+    for u in list(doomed):
+        for t in board.GetTracks():
+            if isinstance(t, pcbnew.PCB_VIA) and t.m_Uuid.AsString() == u:
+                board.Remove(t)
+                break
+    board.BuildConnectivity()
+    if doomed:
+        print("  removed %d redundant via(s) drilled into a small soldered land: %s"
+              % (len(doomed), ", ".join(list(doomed.values())[:8])))
+    return len(doomed)
+
+
 def tidy_router_vias(board, notes, min_gap_mm=0.25):
     """Remove vias the router left carrying nothing, and merge ones drilled too close.
 
@@ -1279,8 +1358,10 @@ def tidy_router_vias(board, notes, min_gap_mm=0.25):
     # whatever they look like to a dangling test.
     # NOT "keep" -- the merge loop below binds that name to the surviving VIA, and this
     # closure then tested membership in a PCB_VIA.
+    # (and so is one laid BEFORE routing, in "vias": a declared via field lost four of its
+    # eight to this pass, each "crowding" a router via that had been dropped beside it)
     declared_xy = {(round(rv[1], 3), round(rv[2], 3))
-                   for rv in notes.get("repair_vias", [])}
+                   for rv in list(notes.get("repair_vias", [])) + list(notes.get("vias", []))}
 
     def _declared(v):
         p = v.GetPosition()
@@ -1592,6 +1673,33 @@ def repair_plane_orphans(board, notes, probe_mm=12.0, max_items=24):
     return laid
 
 
+def via_plane_contact(via, poly):
+    """How much of a via's annular ring sits in a filled pour: 0.0 .. 1.0.
+
+    ⚠ THE CENTRE OF A VIA IS A HOLE, AND TESTING IT ANSWERS THE WRONG QUESTION. A
+    neighbouring via's antipad is a circle of (its radius + the plane's clearance), and
+    with a 0.5 mm plane clearance that circle reaches 0.8 mm -- past the CENTRE of a
+    stitch via 0.76 mm away, while half of that via's ring still sits in solid plane.
+    The centre test called five such vias "landed where the plane is not" and the
+    quality pass called their pins unfed, on boards KiCad's own connectivity (which
+    asks whether copper overlaps copper) correctly reported as joined. What matters is
+    how much of the ring the plane touches, so measure that: sixteen points round the
+    middle of the ring, between the drill wall and the land's edge.
+    """
+    import math
+    c = via.GetPosition()
+    r = (via.GetDrillValue() / 2.0 + via.GetWidth(pcbnew.F_Cu) / 2.0) / 2.0
+    hit = sum(1 for k in range(16) if poly.Collide(pcbnew.VECTOR2I(
+        int(c.x + r * math.cos(k * math.pi / 8.0)),
+        int(c.y + r * math.sin(k * math.pi / 8.0)))))
+    return hit / 16.0
+
+
+# a stitch counts as landed with a quarter of its ring in the plane: at 0.6 / 0.3 that is
+# 0.35 mm of copper into a barrel whose own wall is the narrower conductor
+VIA_CONTACT_MIN = 0.25
+
+
 def _check_stitches_landed(board, notes):
     """Did every stitch via actually land IN the plane it was aiming at?
 
@@ -1636,7 +1744,8 @@ def _check_stitches_landed(board, notes):
         zs = planes.get(t.GetNetname())
         if not zs:
             continue
-        if not any(z.GetFilledPolysList(z.GetLayer()).Collide(t.GetPosition()) for z in zs):
+        if not any(via_plane_contact(t, z.GetFilledPolysList(z.GetLayer())) >= VIA_CONTACT_MIN
+                   for z in zs):
             stray.append((t.GetNetname(), pcbnew.ToMM(t.GetPosition().x),
                           pcbnew.ToMM(t.GetPosition().y)) + _plane_gap(t.GetPosition(), zs))
     if stray:
@@ -1931,10 +2040,19 @@ def link_close_gaps(board, outline, max_mm=5.0, width=0.25, clr=0.2,
                     def _thru(q):
                         return (isinstance(q, pcbnew.PAD) and q.IsOnLayer(pcbnew.F_Cu)
                                 and q.IsOnLayer(pcbnew.B_Cu))
+                    # ⚠ AND AN SMD PAD'S LAYER IS THE ONE IT IS ON, NOT GetLayer(). A pad on
+                    # a back-side part answered F.Cu, so two back-side capacitors were
+                    # "joined" to their rail with F.Cu copper ending over pads on the other
+                    # face: six dangling tracks, net still open, and the closing step then
+                    # drilled into a pad to finish what this had started (pi_cap).
+                    def _lay(q):
+                        if isinstance(q, pcbnew.PAD) and not _thru(q):
+                            return pcbnew.B_Cu if q.IsOnLayer(pcbnew.B_Cu) else pcbnew.F_Cu
+                        return q.GetLayer()
                     if _thru(a) and not _thru(b):
-                        lay = b.GetLayer()
-                    elif _thru(b) or a.GetLayer() == b.GetLayer():
-                        lay = a.GetLayer()
+                        lay = _lay(b)
+                    elif _thru(b) or _lay(a) == _lay(b):
+                        lay = _lay(a)
                     else:
                         continue
                     for q0, q1 in zip(way, way[1:]):
@@ -3322,7 +3440,8 @@ def _inside(outline, x, y, margin):
 
 def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                        clr=0.2, max_reach=3.0, allow=(), keepouts=(),
-                       escape_pins=(), escape_runs=None):
+                       escape_pins=(), escape_runs=None, declared=(), declared_vias=(),
+                       net_widths=None):
     """Give every pad on a plane net its own via down to the plane layers.
 
     ⚠ WITHOUT THIS, A GROUND PAD'S CONNECTION DEPENDS ON THE POUR'S ISLAND TOPOLOGY,
@@ -3384,6 +3503,21 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
     segs += [((t.GetPosition().x, t.GetPosition().y),
               (t.GetPosition().x, t.GetPosition().y), _via_r(t),
               t.GetNetname(), None) for t in board.GetTracks() if t.GetClass() == "PCB_VIA"]
+    # ⚠ AND THE DECLARED COPPER, WHICH IS NOT ON THE BOARD YET. Stitching runs before
+    # notes["tracks"] / notes["vias"] are laid (see the ordering note in layout()), so the
+    # search could not see them: a capacitor's ground stitch went 1.4 mm north into a
+    # declared 2 mm +5 V bar and the first anyone knew was two shorting_items on the
+    # routed board. A declared rail is a decision already made; it is an obstacle here
+    # exactly as if it had been drawn, and the order of laying stays what it was.
+    for _dn, _dl, _dw, _dpts in declared:
+        _lid = board.GetLayerID(_dl)
+        _q = [_to_board(px_, py_) for px_, py_ in _dpts]
+        segs += [((a_.x, a_.y), (b_.x, b_.y), pcbnew.FromMM(_dw) / 2.0, _dn, _lid)
+                 for a_, b_ in zip(_q, _q[1:])]
+    for _dv in declared_vias:
+        _c = _to_board(_dv[1], _dv[2])
+        segs.append(((_c.x, _c.y), (_c.x, _c.y),
+                     pcbnew.FromMM(_dv[4] if len(_dv) > 4 else 0.6) / 2.0, _dv[0], None))
 
     # ⚠ HOLE-VS-HOLE ON EVERY NET WAS TRIED HERE AND REVERTED -- IT BROKE THE BUILD.
     # The idea is sound: copper on one net may touch, two DRILLS may never, and
@@ -3404,6 +3538,33 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
     # making holes obstacles, and re-measure all three boards. Left undone rather than
     # half-done, because the remaining co-located drills are warnings and a broken layout
     # is not.
+    # ⚠ A DRILL IN A SMALL LAND IS NOT A SAME-NET NICETY. _clear_of skips copper on the
+    # stitch's own net, which is right for copper and wrong for the HOLE: an open barrel
+    # in a pasted 0402 or SOT land wicks the joint's solder down the hole. Two cases
+    # reached a finished board -- a pin's own stitch via overlapping the edge of its own
+    # land, and one part's stitch landing in the ground land of the capacitor beside it.
+    # So every small pasted SMD land is a keep-out for the hole on EVERY net, its own
+    # included. Large lands (thermal tabs) are left to the quality pass, which weighs the
+    # barrel volume against the paste.
+    small_lands = []
+    for _fp in board.GetFootprints():
+        for _p in _fp.Pads():
+            if _p.GetAttribute() != pcbnew.PAD_ATTRIB_SMD:
+                continue
+            _bb = _p.GetBoundingBox()
+            if pcbnew.ToMM(_bb.GetWidth()) * pcbnew.ToMM(_bb.GetHeight()) >= 4.0:
+                continue
+            small_lands.append(_bb)
+
+    def _hole_off_lands(x, y):
+        lim = pcbnew.FromMM(via_drill / 2.0 + 0.05)
+        for bb in small_lands:
+            dx = max(bb.GetLeft() - x, 0, x - bb.GetRight())
+            dy = max(bb.GetTop() - y, 0, y - bb.GetBottom())
+            if math.hypot(dx, dy) < lim:
+                return False
+        return True
+
     def _clear_of(x, y, netname, margin, layer=None):
         """True if (x, y) keeps `margin` from every pad or track NOT on `netname`.
 
@@ -3592,9 +3753,21 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
             # track to the via's margin is what made the search fail on every fine-pitch
             # VSS pin: the first sample sits at the pad's own centre, 0.35 mm from the
             # neighbouring land, which clears a 0.25 track easily and never a 0.6 via.
+            # ⚠ THE STUB IS AS WIDE AS ITS NET IS DECLARED (2026-10-04). It was 0.25 mm
+            # whatever net_widths said, so a rail the router drew at 0.5 mm left its
+            # inductor through a 0.25 mm neck 1.2 mm long -- the narrowest copper on the
+            # path, and the one piece nobody had drawn (fret_led_key +14V, 1.38 A, quality
+            # A1). Capped by the land it leaves: copper wider than its own pad is a bridge
+            # to the next one.
+            import fnmatch as _fn
+            _sw = max([0.25] + [w for pat, w in (net_widths or {}).items()
+                                if _fn.fnmatchcase(pad_.GetNetname(), pat)])
+            _sw = max(0.25, min(_sw, pcbnew.ToMM(min(pad_.GetSize().x, pad_.GetSize().y))))
             via_lim = pcbnew.FromMM(via_d / 2.0 + clr)
-            trk_lim = pcbnew.FromMM(0.25 / 2.0 + 0.127)
+            trk_lim = pcbnew.FromMM(_sw / 2.0 + 0.127)
             if not _clear_of(x_, y_, pad_.GetNetname(), via_lim):
+                return False
+            if not _hole_off_lands(x_, y_):
                 return False
             if not all(_clear_of(px, py, pad_.GetNetname(), trk_lim, pad_.GetLayer())
                        for px, py in samples[1:]):
@@ -3615,7 +3788,7 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                 t_ = pcbnew.PCB_TRACK(board)
                 t_.SetStart(pcbnew.VECTOR2I(int(q0_[0]), int(q0_[1])))
                 t_.SetEnd(pcbnew.VECTOR2I(int(q1_[0]), int(q1_[1])))
-                t_.SetWidth(pcbnew.FromMM(0.25))
+                t_.SetWidth(pcbnew.FromMM(_sw))
                 t_.SetLayer(pad_.GetLayer())
                 t_.SetNet(net_)
                 board.Add(t_)
@@ -3642,7 +3815,7 @@ def _stitch_plane_pads(board, nets_wanted, outline, via_d=0.6, via_drill=0.3,
                     _t = pcbnew.PCB_TRACK(board)
                     _t.SetStart(pcbnew.VECTOR2I(int(_prev[0]), int(_prev[1])))
                     _t.SetEnd(_q)
-                    _t.SetWidth(pcbnew.FromMM(0.25))
+                    _t.SetWidth(pcbnew.FromMM(_sw))
                     _t.SetLayer(board.GetLayerID(_lay_name))
                     _t.SetNet(net_)
                     board.Add(_t)
@@ -4311,7 +4484,10 @@ def build(stem):
                                allow=set(notes.get("stitch_exceptions", ())),
                                keepouts=notes.get("via_keepouts", ()),
                                escape_pins=set(notes.get("pin_escapes", ())),
-                               escape_runs=notes.get("escape_runs"))
+                               escape_runs=notes.get("escape_runs"),
+                               declared=notes.get("tracks", ()),
+                               declared_vias=notes.get("vias", ()),
+                               net_widths=notes.get("net_widths"))
         print("  stitched %d pad(s) on %s straight to the plane"
               % (n, "/".join(sorted(stitch))))
 
