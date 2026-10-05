@@ -1883,7 +1883,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | J2 | **24 V in** from the instrument trunk — side entry, −X edge, 2 cavities empty ⚠ **no source yet, see below** | XH-SM-4 | 6.10 × 15.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
 | 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-24 | 4.00 × 4.00 × 0.90 |
-| 1 | U8 | LDO — 3V3 digital, **AMS1117-3.3, tab = VOUT not GND** (0.51 W) | **SOT-223** | 6.50 × 3.50 × 1.80 |
+| 1 | U8 | LDO — 3V3 digital, **AP2114H-3.3, tab = VOUT not GND** (0.51 W) | **SOT-223** | 6.50 × 3.50 × 1.80 |
 | 1 | U9 | LDO — 3V3 analog (low noise, **needs C127 on BYP**) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
 | 1 | C127 | analog LDO noise bypass — 1 µF, **the reason U9 is this part** | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | U11 | single op-amp — TIA mid-rail reference buffer | SOT-23-5 | 2.90 × 2.80 × 1.45 |
@@ -2118,8 +2118,8 @@ Basic classes (no feeder charge):
 | U6 | `STM32H743IIT6` | C89597 | 1 | $10.01 | 548 in stock (2026-09-17) |
 | U7 | `USB3343-CP` | C633347 | 1 | $1.78 | ULPI PHY, QFN-24 ✓ |
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
-| U9 | `SPX3819M5-L-3-3/TR` | C9055 | 1 | $0.30 | 3V3 **analog**, 40 µVrms ✓ |
-| U8 | `AMS1117-3.3` | C6186 | 1 | $0.10 | 3V3 **digital**, SOT-223 tab — 0.51 W ✓ |
+| U9 | `TPS7A2033PDBVR` | C2862740 | 1 | $0.22 | 3V3 **analog**, 7 µVrms, ceramic-stable ✓ (was `SPX3819`, which needs an electrolytic or tantalum output capacitor) |
+| U8 | `AP2114H-3.3TRG1` | C150716 | 1 | $0.23 | 3V3 **digital**, SOT-223 tab — 0.51 W ✓. Replaces the AMS1117 (2026-10-04): that part needs a tantalum's ESR on its output and this board is all ceramic |
 | J2 | `S4B-XH-SM4-TB` | C161861 | 1 | $0.4379 | **4-way, not 6** — corrected 2026-09-19. The row still described the connector from before the optical feed became TWO WIRES: it listed 2×5V, 2×PWR_GND, AUDIO and AUDIO_GND, and the board now wires only PWR_GND and +24V, with ways 3–4 as declared no-connects. 20,952 in stock ✓ |
 | U11 | `TLV9061IDBVR` | C398358 | 1 | $0.0935 | **SOT-23-5, not the SC-70 IDCKR** — corrected 2026-09-19. The old row named `TLV9061IDCKR` against **C693480, which THIS FILE already records as a P6KE39CA TVS diode** (see the sourcing-trap note above): a known-bad code left sitting in the parts table. The board uses IDBVR, whose pinout fab.py checks pin-for-pin against the netlist. 297,517 in stock ✓ |
 | U12 | `PCM1808PWR` | C55513 | 1 | $0.34 | 24-bit audio ADC — magnetic pickup → I²S ✓ |
@@ -2133,9 +2133,10 @@ Basic classes (no feeder charge):
 | R×29 | 0402 thick-film | Basic | 29 | $0.06 | TIA feedback + pulls |
 | Q1 | `AO3400A` | C20917 | 1 | $0.05 | logic-level FET ✓ |
 | R1–R10 | 0603 thick-film | Basic | 10 | $0.03 | per-string LED ballast |
-| FB1 | `GZ1608D601TF` | C1002 | 1 | $0.0197 | 600 Ω @100 MHz, **0603 not 0805** — corrected 2026-09-19; the row named the 2012 (0805) body, the board places a 1608 (0603). 901,019 in stock ✓ |
-| Y1 | `TX322525M4LBDD2T` | C5308007 | 1 | $0.0684 | **MCU HSE 25 MHz**, 3225, CL 20 pF, ESR ≤ 30 Ω — added 2026-09-19; the board has placed it since the crystal work and this table never listed either crystal. A BOM line reading just "25MHz" lets the fab pick any 3225 part, and at JLCPCB those run CL 7.5–20 pF and ESR 30–80 Ω — which is why the MPN is pinned. 5,554 in stock ✓ |
-| Y2 | `K3A260002010` | C2835957 | 1 | $0.1190 | **PHY REFCLK 26 MHz** — not 24, not 25. The USB334x ordering table gives REFCLK 26 MHz, and the CAD (24) and an MPN table (25) once disagreed with each other and with the part; neither would have produced a working USB link. CL 20 pF, ESR 30 Ω, the PHY's own limits. ⚠ **108 in stock** 2026-09-19 — 1 per instrument, so 108 builds, but it has no second source in the catalogue |
+| FB1 | `BLM18KG601SN1D` | C85833 | 1 | $0.0178 | 600 Ω @100 MHz, 0603, **1.3 A** (the 200 mA `GZ1608D601TF` carried 166 mA worst case) ✓ |
+| R44 | `RK73B3ATTE2R0J` | C5139521 | 1 | $0.57 | 2 Ω **2512** in series with the 24 V input: damps a live plug (48 V ring against the buck's 38 V). KOA, for its single-pulse rating — not a generic part ✓ |
+| Y1 | `TAXM25M4RDBCCT2T` | C403946 | 1 | $0.0765 | **MCU HSE 25 MHz**, 3225, CL 10 pF, ESR ≤ 30 Ω (the 20 pF part was outside the H7's start-up guarantee) ✓ |
+| Y2 | `TAXM26M4RLBCDT2T` | C5143383 | 1 | $0.0737 | **PHY REFCLK 26 MHz**, 3225, CL 20 pF, ESR ≤ 30 Ω by the maker's own sheet ✓ |
 | | | | **148** | **$26.96** | **`open_lines()` is empty** |
 
 **The op-amp is the happy surprise.** `TLV9064IDR` is a 4× CMOS RRIO part with

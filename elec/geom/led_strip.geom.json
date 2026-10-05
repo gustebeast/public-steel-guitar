@@ -1,0 +1,612 @@
+{
+ "outline_mm": [
+  139.0,
+  24.0
+ ],
+ "thickness_mm": 1.6,
+ "footprints": [
+  {
+   "ref": "C1",
+   "fpid": "C_0805_2012Metric",
+   "x": -54.0,
+   "y": -2.6,
+   "pads_xy": [
+    -54.0,
+    -2.6
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -55.05,
+    -52.95,
+    -3.275,
+    -1.925
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C10",
+   "fpid": "C_0402_1005Metric",
+   "x": -47.25,
+   "y": 6.5,
+   "pads_xy": [
+    -47.25,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -47.8,
+    -46.7,
+    6.2,
+    6.8
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C11",
+   "fpid": "C_0402_1005Metric",
+   "x": -6.75,
+   "y": 6.5,
+   "pads_xy": [
+    -6.75,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -7.3,
+    -6.2,
+    6.2,
+    6.8
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C12",
+   "fpid": "C_0402_1005Metric",
+   "x": 33.75,
+   "y": 6.5,
+   "pads_xy": [
+    33.75,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    33.2,
+    34.3,
+    6.2,
+    6.8
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C20",
+   "fpid": "C_0402_1005Metric",
+   "x": -47.25,
+   "y": 4.9,
+   "pads_xy": [
+    -47.25,
+    4.9
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -47.8,
+    -46.7,
+    4.6,
+    5.2
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C21",
+   "fpid": "C_0402_1005Metric",
+   "x": -6.75,
+   "y": 4.9,
+   "pads_xy": [
+    -6.75,
+    4.9
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -7.3,
+    -6.2,
+    4.6,
+    5.2
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C22",
+   "fpid": "C_0402_1005Metric",
+   "x": 33.75,
+   "y": 4.9,
+   "pads_xy": [
+    33.75,
+    4.9
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    33.2,
+    34.3,
+    4.6,
+    5.2
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C30",
+   "fpid": "C_1206_3216Metric",
+   "x": -47.25,
+   "y": 3.1,
+   "pads_xy": [
+    -47.25,
+    3.1
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -48.9,
+    -45.6,
+    2.25,
+    3.95
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C31",
+   "fpid": "C_1206_3216Metric",
+   "x": -6.75,
+   "y": 3.1,
+   "pads_xy": [
+    -6.75,
+    3.1
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -8.4,
+    -5.1,
+    2.25,
+    3.95
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "C32",
+   "fpid": "C_1206_3216Metric",
+   "x": 33.75,
+   "y": 3.1,
+   "pads_xy": [
+    33.75,
+    3.1
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    32.1,
+    35.4,
+    2.25,
+    3.95
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "D1",
+   "fpid": "XINGLIGHT_XL-5050RGBW",
+   "x": -54.0,
+   "y": 6.5,
+   "pads_xy": [
+    -54.0,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -56.55,
+    -51.45,
+    3.95,
+    9.05
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "D2",
+   "fpid": "XINGLIGHT_XL-5050RGBW",
+   "x": -40.5,
+   "y": 6.5,
+   "pads_xy": [
+    -40.5,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -43.05,
+    -37.95,
+    3.95,
+    9.05
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "D3",
+   "fpid": "XINGLIGHT_XL-5050RGBW",
+   "x": -27.0,
+   "y": 6.5,
+   "pads_xy": [
+    -27.0,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -29.55,
+    -24.45,
+    3.95,
+    9.05
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "D4",
+   "fpid": "XINGLIGHT_XL-5050RGBW",
+   "x": -13.5,
+   "y": 6.5,
+   "pads_xy": [
+    -13.5,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -16.05,
+    -10.95,
+    3.95,
+    9.05
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "D5",
+   "fpid": "XINGLIGHT_XL-5050RGBW",
+   "x": 0.0,
+   "y": 6.5,
+   "pads_xy": [
+    0.0,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -2.55,
+    2.55,
+    3.95,
+    9.05
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "D6",
+   "fpid": "XINGLIGHT_XL-5050RGBW",
+   "x": 13.5,
+   "y": 6.5,
+   "pads_xy": [
+    13.5,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    10.95,
+    16.05,
+    3.95,
+    9.05
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "D7",
+   "fpid": "XINGLIGHT_XL-5050RGBW",
+   "x": 27.0,
+   "y": 6.5,
+   "pads_xy": [
+    27.0,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    24.45,
+    29.55,
+    3.95,
+    9.05
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "D8",
+   "fpid": "XINGLIGHT_XL-5050RGBW",
+   "x": 40.5,
+   "y": 6.5,
+   "pads_xy": [
+    40.5,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    37.95,
+    43.05,
+    3.95,
+    9.05
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "D9",
+   "fpid": "XINGLIGHT_XL-5050RGBW",
+   "x": 54.0,
+   "y": 6.5,
+   "pads_xy": [
+    54.0,
+    6.5
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    51.45,
+    56.55,
+    3.95,
+    9.05
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "J1",
+   "fpid": "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal",
+   "x": -64.1,
+   "y": 2.0,
+   "pads_xy": [
+    -62.688,
+    2.0
+   ],
+   "rot": -90.0,
+   "side": "F",
+   "fab": [
+    -68.55,
+    -60.85,
+    -6.0,
+    10.0
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "J2",
+   "fpid": "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal",
+   "x": 64.1,
+   "y": 2.0,
+   "pads_xy": [
+    62.688,
+    2.0
+   ],
+   "rot": 90.0,
+   "side": "F",
+   "fab": [
+    60.85,
+    68.55,
+    -6.0,
+    10.0
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "R1",
+   "fpid": "R_0402_1005Metric",
+   "x": -47.25,
+   "y": 8.1,
+   "pads_xy": [
+    -47.25,
+    8.1
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -47.825,
+    -46.675,
+    7.78,
+    8.42
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "R2",
+   "fpid": "R_0402_1005Metric",
+   "x": -6.75,
+   "y": 8.1,
+   "pads_xy": [
+    -6.75,
+    8.1
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -7.325,
+    -6.175,
+    7.78,
+    8.42
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "R3",
+   "fpid": "R_0402_1005Metric",
+   "x": 33.75,
+   "y": 8.1,
+   "pads_xy": [
+    33.75,
+    8.1
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    33.175,
+    34.325,
+    7.78,
+    8.42
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "U1",
+   "fpid": "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm",
+   "x": -40.5,
+   "y": -2.6,
+   "pads_xy": [
+    -40.5,
+    -2.6
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -42.75,
+    -38.25,
+    -5.9,
+    0.7
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "U2",
+   "fpid": "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm",
+   "x": 0.0,
+   "y": -2.6,
+   "pads_xy": [
+    0.0,
+    -2.6
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    -2.25,
+    2.25,
+    -5.9,
+    0.7
+   ],
+   "crtyd": null,
+   "tht": null
+  },
+  {
+   "ref": "U3",
+   "fpid": "HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm",
+   "x": 40.5,
+   "y": -2.6,
+   "pads_xy": [
+    40.5,
+    -2.6
+   ],
+   "rot": 0.0,
+   "side": "F",
+   "fab": [
+    38.25,
+    42.75,
+    -5.9,
+    0.7
+   ],
+   "crtyd": null,
+   "tht": null
+  }
+ ],
+ "outline_poly": [
+  [
+   69.5,
+   -12.0
+  ],
+  [
+   -69.5,
+   -12.0
+  ],
+  [
+   -69.5,
+   12.0
+  ],
+  [
+   69.5,
+   12.0
+  ]
+ ],
+ "holes": [],
+ "silk": [
+  {
+   "text": "J1\n1 GND\n2 +5V\n3 +5V\n4 GND\n5 SCK_IN\n6 SDI_IN",
+   "side": "B",
+   "x": -64.1,
+   "y": 2.0,
+   "size": 1.0,
+   "angle": 0.0,
+   "box": [
+    -67.701,
+    -60.499,
+    -3.678,
+    7.678
+   ]
+  },
+  {
+   "text": "J2\n1 GND\n2 +5V\n3 +5V\n4 GND\n5 SCK_OUT\n6 SDI_OUT",
+   "side": "B",
+   "x": 64.1,
+   "y": 2.0,
+   "size": 1.0,
+   "angle": 0.0,
+   "box": [
+    59.832,
+    68.368,
+    -3.678,
+    7.678
+   ]
+  },
+  {
+   "text": "LED STRIP r1",
+   "side": "F",
+   "x": 7.0,
+   "y": 0.0,
+   "size": 1.5,
+   "angle": 90.0,
+   "box": [
+    5.859,
+    8.141,
+    -7.575,
+    7.575
+   ]
+  }
+ ]
+}

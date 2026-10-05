@@ -56,6 +56,9 @@ _TAIL: dict = {
     "PinHeader_2x08_P1.27mm_Horizontal": 1.8,
     "PinHeader_2x07_P1.27mm_Horizontal": 1.8,
     "Legion_PB-22E85": 1.8,                      # 3.4 of terminal less a 1.6 board
+    # the Pi cap's 2x20 socket. ESTIMATED: 2.54 mm sockets are sold with a 3.0 mm solder
+    # tail, so 1.4 shows through a 1.6 board; read the chosen part's drawing at order
+    "PinSocket_2x20_P2.54mm_Vertical": 1.4,
     "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": 0.0,   # surface mount
 }
 _THT_LEGS: dict = {}

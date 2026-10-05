@@ -491,9 +491,9 @@
       "what": "LMR33630ADDAR C841384 -- JLCPCB parts API at qty 10"
     },
     "motor_ctrl:U6": {
-      "usd": 1.05,
+      "usd": 0.4455,
       "verified": "v",
-      "what": "LMR33630ADDAR, LED buck"
+      "what": "TPS2553DBVR C55266 -- JLCPCB parts API at qty 10"
     },
     "output_panel:U1": {
       "usd": 2.6921,
@@ -558,42 +558,42 @@
     "fret_led_key:U1": {
       "usd": 2.0126,
       "verified": "v",
-      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
     },
     "fret_led_key:U2": {
       "usd": 2.0126,
       "verified": "v",
-      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
     },
     "fret_led_key:U3": {
       "usd": 2.0126,
       "verified": "v",
-      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
     },
     "fret_led_mid:U1": {
       "usd": 2.0126,
       "verified": "v",
-      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
     },
     "fret_led_mid:U2": {
       "usd": 2.0126,
       "verified": "v",
-      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
     },
     "fret_led_mid:U3": {
       "usd": 2.0126,
       "verified": "v",
-      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
     },
     "fret_led_mid:U4": {
       "usd": 2.0126,
       "verified": "v",
-      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
     },
     "fret_led_mid:U5": {
       "usd": 2.0126,
       "verified": "v",
-      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 280"
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
     },
     "led_strip:U1": {
       "usd": 2.0126,
@@ -646,9 +646,9 @@
       "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
     },
     "fret_led_key:U10": {
-      "usd": 1.6452,
+      "usd": 1.6989,
       "verified": "v",
-      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
+      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 40"
     },
     "fret_led_mid:U10": {
       "usd": 1.6452,
@@ -656,9 +656,9 @@
       "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
     },
     "optical:U13": {
-      "usd": 1.6452,
+      "usd": 1.6989,
       "verified": "v",
-      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
+      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 40"
     },
     "foot_led:D1": {
       "usd": 0.0404,
@@ -843,462 +843,462 @@
     "fret_led_key:D1": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D10": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D11": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D12": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D13": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D14": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D15": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D16": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D17": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D18": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D19": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D2": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D20": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D21": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D22": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D23": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D24": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D25": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D26": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D27": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D28": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D29": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D3": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D30": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D31": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D32": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D4": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D5": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D6": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D7": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D8": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_key:D9": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D1": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D10": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D11": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D12": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D13": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D14": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D15": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D16": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D17": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D18": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D19": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D2": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D20": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D21": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D22": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D23": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D24": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D25": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D26": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D27": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D28": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D29": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D3": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D30": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D31": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D32": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D33": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D34": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D35": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D36": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D37": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D38": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D39": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D4": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D40": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D41": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D42": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D43": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D44": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D45": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D46": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D47": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D48": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D49": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D5": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D50": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D51": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D52": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D53": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D54": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D55": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D56": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D57": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D58": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D59": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D6": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D60": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D7": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D8": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "fret_led_mid:D9": {
       "usd": 0.0404,
       "verified": "v",
-      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 2000"
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
     },
     "led_strip:D1": {
       "usd": 0.0404,
@@ -1371,9 +1371,9 @@
       "what": "USB3343-CP C633347 -- JLCPCB parts API at qty 10"
     },
     "fret_led_key:J1": {
-      "usd": 0.2455,
+      "usd": 0.3089,
       "verified": "v",
-      "what": "S6B-PH-SM4-TB C265405 -- JLCPCB parts API at qty 100"
+      "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 50"
     },
     "fret_led_mid:J1": {
       "usd": 0.2455,
@@ -1426,9 +1426,9 @@
       "what": "TLV9064IDR C388176 -- JLCPCB parts API at qty 50"
     },
     "can_tee:J1": {
-      "usd": 0.1416,
+      "usd": 0.126,
       "verified": "v",
-      "what": "S8B-XH-A C157914 -- JLCPCB parts API at qty 100"
+      "what": "S8B-XH-A C157914 -- JLCPCB parts API at qty 300"
     },
     "optical:PD10A": {
       "usd": 0.0665,
@@ -1551,114 +1551,114 @@
       "what": "LMR16006XDDCR C87080 -- JLCPCB parts API at qty 20"
     },
     "output_panel:J6": {
-      "usd": 4.0983,
+      "usd": 3.5131,
       "verified": "v",
-      "what": "KPJX-4S-S C2875467 -- JLCPCB parts API, first break, 2026-10-01"
+      "what": "KPJX-4S-S C2875467 -- JLCPCB parts API at qty 10"
     },
     "can_tee:J2": {
-      "usd": 0.0698,
+      "usd": 0.073,
       "verified": "v",
-      "what": "S4B-XH-A C157925 -- JLCPCB parts API at qty 100"
+      "what": "S4B-XH-A C157925 -- JLCPCB parts API at qty 410"
     },
     "optical:J1": {
-      "usd": 0.1857,
+      "usd": 0.1467,
       "verified": "v",
-      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 30"
+      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 50"
     },
     "output_panel:J1": {
-      "usd": 0.1857,
+      "usd": 0.1467,
       "verified": "v",
-      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 30"
+      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 50"
     },
     "output_panel:J3": {
-      "usd": 0.1857,
+      "usd": 0.1467,
       "verified": "v",
-      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 30"
+      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 50"
     },
     "optical:D1": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "optical:D10": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "optical:D2": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "optical:D3": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "optical:D4": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "optical:D5": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "optical:D6": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "optical:D7": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "optical:D8": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "optical:D9": {
-      "usd": 0.0457,
+      "usd": 0.1577,
       "verified": "v",
-      "what": "IR17-21C/TR8 C131250 -- JLCPCB parts API at qty 100"
+      "what": "LTE-C9901 C2683614 -- JLCPCB parts API at qty 100"
     },
     "motor_ctrl:J1": {
-      "usd": 0.0615,
+      "usd": 0.0592,
       "verified": "v",
-      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 30"
     },
     "motor_ctrl:J3": {
-      "usd": 0.0615,
+      "usd": 0.0911,
       "verified": "v",
-      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+      "what": "B6B-XH-A C144397 -- JLCPCB parts API at qty 20"
     },
     "motor_ctrl:J4": {
-      "usd": 0.0615,
+      "usd": 0.0454,
       "verified": "v",
-      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+      "what": "B4B-PH-K-S C131334 -- JLCPCB parts API at qty 10"
     },
     "motor_ctrl:J5": {
-      "usd": 0.0615,
+      "usd": 0.0722,
       "verified": "v",
-      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+      "what": "B6B-PH-K-S C131342 -- JLCPCB parts API at qty 10"
     },
     "output_panel:J10": {
-      "usd": 0.0615,
+      "usd": 0.0911,
       "verified": "v",
-      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+      "what": "B6B-XH-A C144397 -- JLCPCB parts API at qty 20"
     },
     "output_panel:J7": {
-      "usd": 0.0615,
+      "usd": 0.0592,
       "verified": "v",
-      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 60"
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 30"
     },
     "optical:J2": {
-      "usd": 0.3496,
+      "usd": 0.3089,
       "verified": "v",
-      "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 10"
+      "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 50"
     },
     "foot_led:L1": {
       "usd": 0.0608,
@@ -1668,7 +1668,7 @@
     "fret_led_key:L1": {
       "usd": 0.0608,
       "verified": "v",
-      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
+      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 40"
     },
     "fret_led_mid:L1": {
       "usd": 0.0608,
@@ -1678,32 +1678,32 @@
     "optical:L1": {
       "usd": 0.0608,
       "verified": "v",
-      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
+      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 40"
     },
     "optical:U9": {
-      "usd": 0.301,
+      "usd": 0.2151,
       "verified": "v",
-      "what": "SPX3819M5-L-3-3/TR C9055 -- JLCPCB parts API at qty 10"
+      "what": "TPS7A2033PDBVR C2862740 -- JLCPCB parts API at qty 10"
     },
     "optical:U11": {
-      "usd": 0.0932,
+      "usd": 0.075,
       "verified": "v",
-      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 30"
+      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 50"
     },
     "output_panel:U7": {
-      "usd": 0.0932,
+      "usd": 0.075,
       "verified": "v",
-      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 30"
+      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 50"
     },
     "output_panel:U8": {
-      "usd": 0.0932,
+      "usd": 0.075,
       "verified": "v",
-      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 30"
+      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 50"
     },
     "optical:U8": {
-      "usd": 0.2073,
+      "usd": 0.2299,
       "verified": "v",
-      "what": "AMS1117-3.3 C6186 -- JLCPCB parts API at qty 10"
+      "what": "AP2114H-3.3TRG1 C150716 -- JLCPCB parts API at qty 10"
     },
     "optical:Q1": {
       "usd": 0.0888,
@@ -1726,14 +1726,14 @@
       "what": "KH-2.54PH180-1X20P-L11.5 C2905493 -- JLCPCB parts API at qty 10"
     },
     "motor_ctrl:J2": {
-      "usd": 0.0937,
+      "usd": 0.3066,
       "verified": "v",
-      "what": "B8B-PH-K-S C157974 -- JLCPCB parts API at qty 10"
+      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40"
     },
     "optical:Y1": {
-      "usd": 0.0732,
+      "usd": 0.0765,
       "verified": "v",
-      "what": "TX322525M4LBDD2T C5308007 -- JLCPCB parts API at qty 10"
+      "what": "TAXM25M4RDBCCT2T C403946 -- JLCPCB parts API at qty 10"
     },
     "output_panel:J8": {
       "usd": 0.0659,
@@ -1741,14 +1741,14 @@
       "what": "MX126-5.0-02P C5188434 -- JLCPCB parts API at qty 10"
     },
     "ui_board:J2": {
-      "usd": 0.0594,
+      "usd": 0.1911,
       "verified": "v",
-      "what": "DC3-2.54-14PAL C5156673 -- JLCPCB parts API at qty 10"
+      "what": "PZ1.27-2x8P C22438114 -- JLCPCB parts API at qty 20"
     },
     "optical:Y2": {
-      "usd": 0.0579,
+      "usd": 0.0737,
       "verified": "v",
-      "what": "K3A260002010 C2835957 -- JLCPCB parts API at qty 10"
+      "what": "TAXM26M4RLBCDT2T C5143383 -- JLCPCB parts API at qty 10"
     },
     "output_panel:J9": {
       "usd": 0.0405,
@@ -1756,79 +1756,884 @@
       "what": "B2B-XH-A C158012 -- JLCPCB parts API at qty 10"
     },
     "output_panel:D5": {
-      "usd": 0.0291,
+      "usd": 0.0225,
       "verified": "v",
-      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 10"
+      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 280"
     },
     "optical:FB1": {
-      "usd": 0.0127,
+      "usd": 0.0178,
       "verified": "v",
-      "what": "GZ1608D601TF C1002 -- JLCPCB parts API at qty 10"
+      "what": "BLM18KG601SN1D C85833 -- JLCPCB parts API at qty 20"
     },
     "optical:U21": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "optical:U22": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "optical:U23": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "optical:U24": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "optical:U25": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "optical:U26": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "optical:U27": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "optical:U28": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "optical:U29": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "optical:U30": {
       "usd": 0.1475,
       "verified": "v",
-      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100, 31980 in stock 2026-10-01"
+      "what": "TLV9062IDGKR C398356 -- JLCPCB parts API at qty 100"
     },
     "output_panel:U10": {
       "usd": 2.3069,
       "verified": "v",
-      "what": "MCP4261-103E/ST C185580 -- JLCPCB parts API at qty 10, 96 in stock 2026-10-01"
+      "what": "MCP4261-103E/ST C185580 -- JLCPCB parts API at qty 10"
     },
     "output_panel:U12": {
-      "usd": 0.0776,
+      "usd": 0.3746,
       "verified": "v",
-      "what": "SN74LVC1G3157DCKR C38663 -- JLCPCB parts API at qty 10, 216248 in stock 2026-10-01"
+      "what": "TS5A3159DCKR C46388 -- JLCPCB parts API at qty 10"
     },
     "pi_cap:J1": {
       "usd": 0.3279,
       "verified": "v",
-      "what": "2x20 female socket C5124634 -- JLCPCB parts API at qty 10, 10681 in stock 2026-10-01"
+      "what": "2.54-2*20P C5124634 -- JLCPCB parts API at qty 10"
+    },
+    "foot_led_a:U1": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:U2": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:U3": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:U4": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:U1": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:U2": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:U3": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:U4": {
+      "usd": 2.0126,
+      "verified": "v",
+      "what": "TLC59711PWPR C116842 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:J21": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:J22": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:J23": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:J24": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:J11": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:J12": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:J13": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:J14": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_key:J11": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_key:J12": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_key:J13": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_key:J14": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_mid:J11": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_mid:J12": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_mid:J13": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_mid:J14": {
+      "usd": 0.4341,
+      "verified": "v",
+      "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:U10": {
+      "usd": 1.6989,
+      "verified": "v",
+      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 40"
+    },
+    "foot_led_b:U10": {
+      "usd": 1.6989,
+      "verified": "v",
+      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 40"
+    },
+    "foot_led_a:D1": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D10": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D11": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D12": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D13": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D14": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D15": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D16": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D17": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D18": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D19": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D2": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D20": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D21": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D22": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D23": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D24": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D25": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D26": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D27": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D28": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D29": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D3": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D30": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D31": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D32": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D33": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D34": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D35": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D36": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D4": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D5": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D6": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D7": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D8": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_a:D9": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D1": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D10": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D11": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D12": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D13": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D14": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D15": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D16": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D17": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D18": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D19": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D2": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D20": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D21": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D22": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D23": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D24": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D25": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D26": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D27": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D28": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D29": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D3": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D30": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D31": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D32": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D33": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D34": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D35": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D36": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D4": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D5": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D6": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D7": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D8": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "foot_led_b:D9": {
+      "usd": 0.0404,
+      "verified": "v",
+      "what": "XL-5050RGBW C7371891 -- JLCPCB parts API at qty 1640"
+    },
+    "can_tee_p6:J1": {
+      "usd": 0.126,
+      "verified": "v",
+      "what": "S8B-XH-A C157914 -- JLCPCB parts API at qty 300"
+    },
+    "can_tee_p6b:J1": {
+      "usd": 0.126,
+      "verified": "v",
+      "what": "S8B-XH-A C157914 -- JLCPCB parts API at qty 300"
+    },
+    "can_tee_22:J2": {
+      "usd": 0.073,
+      "verified": "v",
+      "what": "S4B-XH-A C157925 -- JLCPCB parts API at qty 410"
+    },
+    "can_tee_vh:J1": {
+      "usd": 0.073,
+      "verified": "v",
+      "what": "S4B-XH-A C157925 -- JLCPCB parts API at qty 410"
+    },
+    "can_tee_vh:J2": {
+      "usd": 0.073,
+      "verified": "v",
+      "what": "S4B-XH-A C157925 -- JLCPCB parts API at qty 410"
+    },
+    "pi_cap:J6": {
+      "usd": 0.073,
+      "verified": "v",
+      "what": "S4B-XH-A C157925 -- JLCPCB parts API at qty 410"
+    },
+    "leg_pogo_male_bottom:J1": {
+      "usd": 1.4761,
+      "verified": "v",
+      "what": "YZ165615055F-04025-02 C54799748 -- JLCPCB parts API at qty 20"
+    },
+    "leg_pogo_male_top:J1": {
+      "usd": 1.4761,
+      "verified": "v",
+      "what": "YZ165615055F-04025-02 C54799748 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:J5": {
+      "usd": 2.9165,
+      "verified": "v",
+      "what": "NMJ6HCD2 C368502 -- JLCPCB parts API at qty 10"
+    },
+    "leg_pogo_female_bottom:J1": {
+      "usd": 1.0226,
+      "verified": "v",
+      "what": "YZ185115035T-04025-01 C54930022 -- JLCPCB parts API at qty 20"
+    },
+    "leg_pogo_female_top:J1": {
+      "usd": 1.0226,
+      "verified": "v",
+      "what": "YZ185115035T-04025-01 C54930022 -- JLCPCB parts API at qty 20"
+    },
+    "lever_sensor:Y1": {
+      "usd": 0.1197,
+      "verified": "v",
+      "what": "TAXM8M4RFDCET2T C403948 -- JLCPCB parts API at qty 130"
+    },
+    "motor_ctrl:Y1": {
+      "usd": 0.1197,
+      "verified": "v",
+      "what": "TAXM8M4RFDCET2T C403948 -- JLCPCB parts API at qty 130"
+    },
+    "output_panel:Y1": {
+      "usd": 0.1197,
+      "verified": "v",
+      "what": "TAXM8M4RFDCET2T C403948 -- JLCPCB parts API at qty 130"
+    },
+    "foot_led_a:J1": {
+      "usd": 0.3089,
+      "verified": "v",
+      "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 50"
+    },
+    "pi_cap:J3": {
+      "usd": 0.3089,
+      "verified": "v",
+      "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 50"
+    },
+    "pi_cap:J4": {
+      "usd": 0.3089,
+      "verified": "v",
+      "what": "S4B-XH-SM4-TB C161861 -- JLCPCB parts API at qty 50"
+    },
+    "leg_pogo_male_bottom:J2": {
+      "usd": 0.3066,
+      "verified": "v",
+      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40"
+    },
+    "leg_pogo_male_top:J2": {
+      "usd": 0.3066,
+      "verified": "v",
+      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40"
+    },
+    "motor_ctrl:J6": {
+      "usd": 0.3066,
+      "verified": "v",
+      "what": "S4B-PH-SM4-TB C265102 -- JLCPCB parts API at qty 40"
+    },
+    "output_panel:Q2": {
+      "usd": 0.9706,
+      "verified": "v",
+      "what": "SQD50P06-15L C3281500 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:J2": {
+      "usd": 0.1467,
+      "verified": "v",
+      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 50"
+    },
+    "output_panel:J4": {
+      "usd": 0.1467,
+      "verified": "v",
+      "what": "TYPE-C-31-M-12 C165948 -- JLCPCB parts API at qty 50"
+    },
+    "lever_sensor:D2": {
+      "usd": 0.0225,
+      "verified": "v",
+      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 280"
+    },
+    "lever_sensor:D3": {
+      "usd": 0.0225,
+      "verified": "v",
+      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 280"
+    },
+    "motor_ctrl:D2": {
+      "usd": 0.0225,
+      "verified": "v",
+      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 280"
+    },
+    "motor_ctrl:D3": {
+      "usd": 0.0225,
+      "verified": "v",
+      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 280"
+    },
+    "motor_ctrl:D4": {
+      "usd": 0.0225,
+      "verified": "v",
+      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 280"
+    },
+    "motor_ctrl:D5": {
+      "usd": 0.0225,
+      "verified": "v",
+      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 280"
+    },
+    "output_panel:D7": {
+      "usd": 0.0225,
+      "verified": "v",
+      "what": "ESD5B5.0ST1G C93623 -- JLCPCB parts API at qty 280"
+    },
+    "optical:R44": {
+      "usd": 0.5723,
+      "verified": "v",
+      "what": "RK73B3ATTE2R0J C5139521 -- JLCPCB parts API at qty 10"
+    },
+    "leg_pogo_female_bottom:J2": {
+      "usd": 0.2706,
+      "verified": "v",
+      "what": "S4B-ZR-SM4A-TF C485354 -- JLCPCB parts API at qty 20"
+    },
+    "leg_pogo_female_top:J2": {
+      "usd": 0.2706,
+      "verified": "v",
+      "what": "S4B-ZR-SM4A-TF C485354 -- JLCPCB parts API at qty 20"
+    },
+    "pi_cap:J5": {
+      "usd": 0.1911,
+      "verified": "v",
+      "what": "PZ1.27-2x8P C22438114 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:U11": {
+      "usd": 0.075,
+      "verified": "v",
+      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 50"
+    },
+    "output_panel:U9": {
+      "usd": 0.075,
+      "verified": "v",
+      "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 50"
+    },
+    "pi_cap:J2": {
+      "usd": 0.3159,
+      "verified": "v",
+      "what": "S6B-PH-SM4-TB C265405 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:D8": {
+      "usd": 0.1452,
+      "verified": "v",
+      "what": "SMAJ30A C148230 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:D6": {
+      "usd": 0.1452,
+      "verified": "v",
+      "what": "SMAJ30A C148230 -- JLCPCB parts API at qty 20"
+    },
+    "pi_cap:F1": {
+      "usd": 0.2559,
+      "verified": "v",
+      "what": "0805L020YR C126816 -- JLCPCB parts API at qty 10"
+    },
+    "foot_led_a:L1": {
+      "usd": 0.0608,
+      "verified": "v",
+      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 40"
+    },
+    "foot_led_b:L1": {
+      "usd": 0.0608,
+      "verified": "v",
+      "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 40"
+    },
+    "motor_ctrl:J7": {
+      "usd": 0.0592,
+      "verified": "v",
+      "what": "B4B-XH-A C144395 -- JLCPCB parts API at qty 30"
+    },
+    "output_panel:D8": {
+      "usd": 0.1684,
+      "verified": "v",
+      "what": "BZT52C10T-7 C248313 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:D6": {
+      "usd": 0.0418,
+      "verified": "v",
+      "what": "LESD5L5.0CT1G C5274293 -- JLCPCB parts API at qty 40"
+    },
+    "motor_ctrl:D7": {
+      "usd": 0.0418,
+      "verified": "v",
+      "what": "LESD5L5.0CT1G C5274293 -- JLCPCB parts API at qty 40"
+    },
+    "output_panel:D2": {
+      "usd": 0.0418,
+      "verified": "v",
+      "what": "LESD5L5.0CT1G C5274293 -- JLCPCB parts API at qty 40"
+    },
+    "output_panel:D3": {
+      "usd": 0.0418,
+      "verified": "v",
+      "what": "LESD5L5.0CT1G C5274293 -- JLCPCB parts API at qty 40"
+    },
+    "ui_board:SW2": {
+      "usd": 0.1517,
+      "verified": "v",
+      "what": "PB-22E85-S-5.7C-C-W C22462024 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:L1": {
+      "usd": 0.0745,
+      "verified": "v",
+      "what": "PNR3015-470M C19634068 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:L1": {
+      "usd": 0.0745,
+      "verified": "v",
+      "what": "PNR3015-470M C19634068 -- JLCPCB parts API at qty 20"
+    },
+    "motor_ctrl:L2": {
+      "usd": 0.1446,
+      "verified": "v",
+      "what": "VLS6045EX-6R8M C415364 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:D9": {
+      "usd": 0.1116,
+      "verified": "v",
+      "what": "SMBJ5.0A C83333 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:F1": {
+      "usd": 0.0436,
+      "verified": "v",
+      "what": "JFC1206-1100FS C136343 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:F1": {
+      "usd": 0.0436,
+      "verified": "v",
+      "what": "JFC1206-1100FS C136343 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:Y2": {
+      "usd": 0.0763,
+      "verified": "v",
+      "what": "TAXM12M4RFBCCT2T C133337 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:F2": {
+      "usd": 0.0643,
+      "verified": "v",
+      "what": "JFC1206-1400FS C136349 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:F3": {
+      "usd": 0.0597,
+      "verified": "v",
+      "what": "JFC1206-1300FS C136347 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:D1": {
+      "usd": 0.028,
+      "verified": "v",
+      "what": "B5819W C8598 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:D1": {
+      "usd": 0.028,
+      "verified": "v",
+      "what": "B5819W C8598 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:FB1": {
+      "usd": 0.0178,
+      "verified": "v",
+      "what": "BLM18KG601SN1D C85833 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:Q3": {
+      "usd": 0.0178,
+      "verified": "v",
+      "what": "2N7002 C8545 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:D4": {
+      "usd": 0.0107,
+      "verified": "v",
+      "what": "1N4148WT C917006 -- JLCPCB parts API at qty 10"
     }
   },
   "modules": {
@@ -2124,58 +2929,70 @@
       "schematic, which is why this category used to be reported as not counted."
     ],
     "C140573": {
-      "usd": 0.0099,
+      "usd": 0.0088,
       "verified": "v",
-      "per_instrument": 150.0,
-      "what": "SXH-001T-P0.6 -- JLCPCB parts API at qty 1500"
+      "per_instrument": 550.0,
+      "what": "SXH-001T-P0.6 -- JLCPCB parts API at qty 5500"
+    },
+    "C493083": {
+      "usd": 0.0329,
+      "verified": "v",
+      "per_instrument": 49.0,
+      "what": "XHP-4-M -- JLCPCB parts API at qty 490"
+    },
+    "C160350": {
+      "usd": 0.0365,
+      "verified": "v",
+      "per_instrument": 40.0,
+      "what": "SVH-41T-P1.1 -- JLCPCB parts API at qty 400"
+    },
+    "C595405": {
+      "usd": 0.0402,
+      "verified": "v",
+      "per_instrument": 20.0,
+      "what": "VHR-2N-BK -- JLCPCB parts API at qty 200"
+    },
+    "C144407": {
+      "usd": 0.0265,
+      "verified": "v",
+      "per_instrument": 30.0,
+      "what": "XHP-8 -- JLCPCB parts API at qty 300"
     },
     "C111515": {
       "usd": 0.0068,
       "verified": "v",
-      "per_instrument": 156.0,
-      "what": "SPH-002T-P0.5S -- JLCPCB parts API at qty 1560"
-    },
-    "C493083": {
-      "usd": 0.0352,
-      "verified": "v",
-      "per_instrument": 17.0,
-      "what": "XHP-4-M -- JLCPCB parts API at qty 170"
-    },
-    "C157950": {
-      "usd": 0.029,
-      "verified": "v",
-      "per_instrument": 12.0,
-      "what": "PHR-8 -- JLCPCB parts API at qty 120"
-    },
-    "C144407": {
-      "usd": 0.0337,
-      "verified": "v",
-      "per_instrument": 10.0,
-      "what": "XHP-8 -- JLCPCB parts API at qty 100"
-    },
-    "C263995": {
-      "usd": 0.0196,
-      "verified": "v",
-      "per_instrument": 16.0,
-      "what": "SSH-003T-P0.2-H -- JLCPCB parts API at qty 160"
-    },
-    "C157952": {
-      "usd": 0.0202,
-      "verified": "v",
-      "per_instrument": 10.0,
-      "what": "PHR-6 -- JLCPCB parts API at qty 100"
-    },
-    "C2962275": {
-      "usd": 0.0251,
-      "verified": "v",
-      "per_instrument": 4.0,
-      "what": "HC-1.0-4Y -- JLCPCB parts API at qty 40"
+      "per_instrument": 112.0,
+      "what": "SPH-002T-P0.5S -- JLCPCB parts API at qty 1120"
     },
     "C144401": {
       "usd": 0.02,
       "verified": "v",
-      "per_instrument": 1.0,
-      "what": "XHP-2 -- JLCPCB parts API at qty 10"
+      "per_instrument": 21.0,
+      "what": "XHP-2 -- JLCPCB parts API at qty 210"
+    },
+    "C144405": {
+      "usd": 0.0278,
+      "verified": "v",
+      "per_instrument": 12.0,
+      "what": "XHP-6 -- JLCPCB parts API at qty 120"
+    },
+    "C157950": {
+      "usd": 0.0288,
+      "verified": "v",
+      "per_instrument": 11.0,
+      "what": "PHR-8 -- JLCPCB parts API at qty 110"
+    },
+    "C111514": {
+      "usd": 0.0166,
+      "verified": "v",
+      "per_instrument": 3.0,
+      "what": "PHR-4 -- JLCPCB parts API at qty 30"
+    },
+    "C157952": {
+      "usd": 0.0202,
+      "verified": "v",
+      "per_instrument": 2.0,
+      "what": "PHR-6 -- JLCPCB parts API at qty 20"
     }
   },
   "landed": {

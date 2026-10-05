@@ -63,7 +63,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 634402.3
+   "volume_mm3": 634364.2
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -123,7 +123,7 @@
   },
   "lever_prog_jig": {
    "material": null,
-   "volume_mm3": 10322.1
+   "volume_mm3": 10323.5
   },
   "motor_pulley": {
    "material": "pctg",
@@ -131,7 +131,7 @@
   },
   "optical_guard": {
    "material": "petg-gf",
-   "volume_mm3": 12663.1
+   "volume_mm3": 12638.0
   },
   "pedal_bar_a": {
    "material": "petg-gf",
