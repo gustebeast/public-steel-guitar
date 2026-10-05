@@ -180,7 +180,7 @@ and an 0805 (1.45) and nothing else:
 | XL-5050RGBW | 1.60 | ✅ (it sets the budget) |
 | TLC59711 HTSSOP-20 | 1.20 | ✅ |
 | LMR33630 VQFN-HR | 0.90 | ✅ |
-| SWPA4030 inductor | 3.00 | ❌ |
+| SWPA4030 inductor (SWPA5040S, 4.00, since 2026-10-05) | 3.00 | ❌ |
 | **JST PH side-entry** | **5.50** | ❌ |
 | **JST SH side-entry** | **2.95** | ❌ without relief |
 
@@ -300,3 +300,14 @@ Read against the makers' sheets and the routed boards (cadkit/PCB_QUALITY.md, M1
 5. **Values carry their ratings and the fuses are part numbers**: board A JFC1206-1200FS
    (2 A, it carries both boards), board B JFC1206-1100FS (1 A).
 6. **Three labelled test pads** by the buck on each board: +24V, +11V5, GND.
+7. **The inductor is SWPA5040S3R3NT** (C305173; 3.3 uH, 5 x 5 x 4 mm), not the 4 x 4
+   SWPA4030S4R7MT. The old part saturates at 2.90 A guaranteed (3.20 typical) and TI
+   require an inductor that does not saturate below the regulator's low-side limit,
+   3.5 A typical. The new one is 3.95 A guaranteed at less than half the resistance, and
+   3.3 uH is TI's own table value for 12 V out at 2.1 MHz.
+8. **1 k in series with SCK and SDT at the cable socket** (R21, R22). A Pi that is up
+   while this board is dark -- a fuse open, the 24 V lead off, a Pi on USB power on the
+   bench -- would otherwise power the first driver's logic through its input protection
+   diodes. 1 k holds that to 2.7 mA.
+9. **The regulator's VCC capacitor stands at its pin**, with its ground pad on the track
+   from the pin beside it; it was reached through two vias.

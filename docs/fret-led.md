@@ -1720,7 +1720,7 @@ Every part on both boards is already sourced in `elec/fab.py`:
 | LED | XL-5050RGBW | C7371891 | already selected; top-mount confirmed |
 | driver | TLC59711PWPR | C116842 | ES-PWM ~19.5 kHz, 16-bit GS, a white channel |
 | buck | LMR33630CRNXR | C2071783 | the **optical board's** buck, and the "C" is **2.1 MHz** |
-| inductor | SWPA4030S4R7MT | C57269 | the optical board's, 4.7 uH, Isat 3.2 A |
+| inductor | SWPA5040S3R3NT | C305173 | 3.3 uH, Isat 3.95 A min (was the optical board's SWPA4030S4R7MT until 2026-10-05) |
 | harness | S6B-PH-SM4-TB | C265405 | the LED strip's own connector, 4.80 deep |
 
 **Why the 2.1 MHz variant matters here.** A 400 kHz part beside a magnetic pickup puts its
@@ -1823,3 +1823,14 @@ now.
 4. **Local bulk is 4.7 uF / 50 V** (was 25 V on a 14.5 V rail), every 100 nF is the 50 V
    part, the fuse is JFC1206-1200FS (2 A, 63 V, fast).
 5. **Three labelled test pads** in the bay: +24V, +14V5, GND.
+6. **The inductor is SWPA5040S3R3NT** (C305173; 3.3 uH, 5 x 5 x 4 mm), not the 4 x 4
+   SWPA4030S4R7MT. The old part saturates at 2.90 A guaranteed (3.20 typical) and TI
+   require an inductor that does not saturate below the regulator's low-side limit,
+   3.5 A typical. The new one is 3.95 A guaranteed at less than half the resistance, and
+   3.3 uH is TI's own table value for 12 V out at 2.1 MHz.
+7. **1 k in series with SCK and SDT at the cable socket** (R21, R22). A Pi that is up
+   while this board is dark -- a fuse open, the 24 V lead off, a Pi on USB power on the
+   bench -- would otherwise power the first driver's logic through its input protection
+   diodes. 1 k holds that to 2.7 mA.
+8. **The regulator's VCC capacitor stands at its pin**, with its ground pad on the track
+   from the pin beside it; it was reached through two vias.
