@@ -645,7 +645,27 @@ def build(panel):
                                 "this file's bay table, the harness's own",
             "LMR33630CRNXR": "TI LMR33630 datasheet SNVSB08, Table 6-1, VQFN (RNX) column",
         }
+        # ⚠ A SECOND BARREL, IN THE INDUCTOR'S OWN LAND. All 1.38 A of the rail leaves L1.2,
+        # and the stitcher gives a pad one via because it does not know currents. The
+        # land is 1.1 x 3.7 (over the 4 mm2 at which a via in a soldered land is
+        # accepted), so one more goes straight down through it to the plane.
+        # ONE, NOT TWO: two open barrels hold 0.23 of the 0.49 mm3 of paste printed on
+        # the land, and a quarter is the limit (cadkit quality A12).
+        import math
+        lx, ly, lrot = place["L1"]
+        px2 = lx + 1.5 * math.cos(math.radians(lrot))
+        notes["vias"] = list(notes.get("vias", [])) + [
+            ("+14V", round(px2, 3), round(ly + 1.2, 3))]
         waive = {
+            # IPC-2221, 1 oz outer: 0.225 mm carries 0.81 A at a 10 C rise and 0.250 mm
+            # 0.875 A, so 0.89 A is 12 C and 10.4 C -- over lengths of 2 mm, between
+            # lands that are each a heat sink.
+            "A1:+24V_IN J1.2>F1.1": "the router necks to 0.225 for 1.7 mm to pass J1.1's "
+                                    "land 0.5 away; the rest of the path is 0.30. 12 C "
+                                    "rise over that length, by IPC-2221",
+            "A1:+24V F1.2>U10.2": "U10.2's land is 0.25 mm wide, so the 2 mm of track "
+                                  "into it cannot be wider; pins 9 and 10 take the same "
+                                  "rail at 0.30. 10.4 C rise, by IPC-2221",
             "A2:J11": "a seam pogo handing the rail to the mid board, not a load; the "
                       "rail is a plane with C36-C38 on it",
             "A2:J13": "a seam pogo handing the rail to the mid board, not a load; the "
