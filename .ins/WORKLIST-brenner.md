@@ -216,3 +216,21 @@ OPEN; an item moves to DONE with the commit that closed it.
     -> up the endplate -> over motor 0 at x -595.5 -> down at y -50 -> Pi cap J6. Its cap
     end reads J6 off the routed pi_cap, so it follows bronner's re-route. LEAD_AXIS (the
     wire row's height in the XH housing) is an estimate. The FRET lead is still not drawn.
+
+30. 2026-10-05: both channel shoulders are two beads (were 1.20 / 1.50). The -Y one grew
+    toward +Y, so the seam pogo row moved 0.40 toward the LEDs; land 4 is 0.45 from the
+    LED body, 0.10 inside its courtyard (declared per board in elec/pcb_declared.py).
+    User asked to grow it -Y into the motor wall instead: NOT done, only WALL_T 1.60 is
+    left against the motor pocket there. Baffle wall at the window edge: not built, pogo
+    4 slides through that line (only 1.95 of height is free under the barrels).
+
+31. 2026-10-05: BOTH LIGHTING LEADS DRAWN AS FOUR CONDUCTORS (src/led_leads.py), colour per
+    way (black GND, red 24 V, white SCK, blue SDT), each on its own contact; contact
+    positions derived from the routed geometry and checked against the boards' pads.
+    Replaces the single wire_foot_led bundle. Scoped gate green.
+    - Wire-row height in the housings is still an estimate (half the socket's height).
+    - electronics.pi_cap_pin("J6", n) counts the wrong way (J6 is at 180: way 1 is at the
+      HIGH board x). Not used by led_leads; told the lead.
+    - STALE after the new belt clamp merges: foot_light.py's text about the placeholder
+      tensioners (~lines 20, 111) and docs/foot-led.md -- re-read the clamp's lowest
+      point from the merged model (lead's request).

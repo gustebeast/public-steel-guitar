@@ -941,6 +941,7 @@ def _electronics_components():
     out += FL.pogo_pins()
     out += FL.m4_screws()      # the one M4 per board, head on the board's underside
     out += FOOT.parts()
+    out += _LL.parts()         # the fret and foot leads to the Pi cap, a conductor a part
     out += EL.board_screws()
     out += [(f"top_plate_{i}", seg) for i, seg in enumerate(TP.segments)]
     out += [(f"top_plate_color_{i}", seg) for i, seg in enumerate(TP.segments_color)]
@@ -1987,7 +1988,6 @@ _COLORS = {
     # CAN + power trunk = its 4 colour-coded conductors (user override):
     #   black = gnd | red = 24 V | yellow = CAN-H | green = CAN-L
     "wire_pwr_hot":    (0.85, 0.12, 0.10),   # red         - CAN 24 V
-    "wire_foot_led":   (0.90, 0.90, 0.86),   # off-white   - the foot strip's 4-way XH lead
     "wire_pwr_gnd":    (0.05, 0.05, 0.05),   # black       - CAN ground/return
     "wire_canh":       (0.95, 0.85, 0.10),   # yellow      - bus A CAN-H
     "wire_canl":       (0.13, 0.72, 0.20),   # green       - bus A CAN-L
@@ -2026,6 +2026,10 @@ _TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (u
 _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/")), key=len, reverse=True))
 
 
+# the two lighting leads, a conductor a part: black GND, red 24 V, white SCK, blue SDT
+from . import led_leads as _LL                                   # noqa: E402
+_COLORS.update({"wire_%s_led_%s" % (_lead, _w.lower()): _LL.COLORS[_w]
+                for _lead in ("foot", "fret") for _w in _LL.WAYS})
 _COLORS.update({
     "pogo_wire_%s" % n.lower(): c for n, c in zip(
         _EH.PH_PINOUT, ((0.05, 0.05, 0.05), (0.85, 0.12, 0.10),
