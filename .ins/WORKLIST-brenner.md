@@ -216,3 +216,10 @@ OPEN; an item moves to DONE with the commit that closed it.
     -> up the endplate -> over motor 0 at x -595.5 -> down at y -50 -> Pi cap J6. Its cap
     end reads J6 off the routed pi_cap, so it follows bronner's re-route. LEAD_AXIS (the
     wire row's height in the XH housing) is an estimate. The FRET lead is still not drawn.
+
+30. 2026-10-05: both channel shoulders are two beads (were 1.20 / 1.50). The -Y one grew
+    toward +Y, so the seam pogo row moved 0.40 toward the LEDs; land 4 is 0.45 from the
+    LED body, 0.10 inside its courtyard (declared per board in elec/pcb_declared.py).
+    User asked to grow it -Y into the motor wall instead: NOT done, only WALL_T 1.60 is
+    left against the motor pocket there. Baffle wall at the window edge: not built, pogo
+    4 slides through that line (only 1.95 of height is free under the barrels).
