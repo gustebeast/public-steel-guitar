@@ -2,6 +2,8 @@
 
     py -3.12 -m tools.clamp_range [step_mm] [twist_err_deg] [out.json]
 
+Run it with -m from the repo root (it imports src). Exits 1 when it prints NOT CLEAR.
+
 Belts, pulleys and clamps ONLY (user, 2026-10-05); the chassis, endplates, boards and
 wiring are tools.clamp_study's and the overlap gate's business.
 
@@ -16,7 +18,13 @@ it is tried at the nominal twist and twist_err either side. Three questions per 
   static  every other string's belt, and every pulley
   clamps  every other string's clamp, at EVERY one of that clamp's own steps and twists
 
-A string passes when all three are clear at every step."""
+THE VERDICT IS ON WHAT A CLAMP CAN REACH, not on the whole run. A clamp is spliced with
+the nut on the ceiling (src.components.clamp_p) and the nut's travel carries it
+CARRIAGE_TRAVEL * BELT_PER_MM from there; REACHABLE is that stretch plus REACH_MARGIN at
+its far end. A string passes when nothing blocks it inside its reach, counting another
+clamp only where THAT clamp is inside its own reach. Steps blocked outside the reach are
+counted and reported, not failed: on most strings they are a neighbour's pulley near the
+end of the run the clamp never visits. CLAMP_RANGE_ALL=1 lists them."""
 import json
 import math
 import os
@@ -28,8 +36,11 @@ import cadquery as cq
 from src import build as B, components as C, dimensions as D, belt_tensioner as BTn
 
 V = cq.Vector
+KIN = C                 # main() has a local C (the posed boxes)
 N = D.N_STRINGS
 R = D.PULLEY_OD / 2 + D.BELT_T / 2
+REACH_MARGIN = D.CLAMP_END_CLR   # mm of belt past the far end of the travel: a clamp spliced
+                                 # off its mark by as much as its whole end clearance
 STEP = float(sys.argv[1]) if len(sys.argv) > 1 else 4.0
 ERR = float(sys.argv[2]) if len(sys.argv) > 2 else 20.0
 OUT = sys.argv[3] if len(sys.argv) > 3 else None
@@ -160,27 +171,55 @@ def main():
                 print("clamp %d x clamp %d: worst %.2f mm3" % (i + 1, j + 1, worst), flush=True)
     print("pairs done %.0fs" % (time.time() - t0), flush=True)
     need = D.CARRIAGE_TRAVEL * D.BELT_PER_MM
+    win = {}
+    for i in range(N):
+        m, sc = _ends(i)
+        a = KIN.clamp_p(m, sc, upper(i), X0, X1, 0.0)
+        b = KIN.clamp_p(m, sc, upper(i), X0, X1, D.CARRIAGE_TRAVEL)
+        b += REACH_MARGIN if b > a else -REACH_MARGIN
+        win[i] = (min(a, b), max(a, b))
+
+    def inside(i, p):
+        return win[i][0] - 1e-6 <= p <= win[i][1] + 1e-6
+
     ok_all = True
     for i in range(N):
-        bad = [r for r in res[i] if r["own"] > 1e-3 or r["static"] or r["clamps"]]
         run = P[i][-1] - P[i][0]
-        print("string %2d  %s run  steps %3d  end-to-end %.1f = %.1f mm travel (need %.2f)  %s"
-              % (i + 1, "upper" if upper(i) else "lower", len(P[i]), run, run / D.BELT_PER_MM,
-                 D.CARRIAGE_TRAVEL, "CLEAR at every step" if not bad else "%d step(s) BLOCKED" % len(bad)))
-        for r in bad:
-            ok_all = False
+        hit, out = [], []
+        for r in res[i]:
             what = []
             if r["own"] > 1e-3:
                 what.append("own belt %.2f" % r["own"])
             what += ["%s %.2f" % kv for kv in sorted(r["static"].items())]
-            what += ["clamp %s at %s" % (j, ("%.0f..%.0f" % (min(q), max(q)))) for j, q in sorted(r["clamps"].items())]
-            print("      p %6.1f  %s" % (r["p"], "; ".join(what)))
-        if run < need - 1e-6:
+            reach = bool(what) and inside(i, r["p"])
+            for j, q in sorted(r["clamps"].items()):
+                qin = [x for x in q if inside(int(j) - 1, x)]
+                what.append("clamp %s at %.0f..%.0f" % (j, min(q), max(q)))
+                reach = reach or (inside(i, r["p"]) and bool(qin))
+            if what:
+                (hit if reach else out).append("      p %6.1f  %s" % (r["p"], "; ".join(what)))
+        short = run < need - 1e-6 or win[i][0] < P[i][0] - 1e-6 or win[i][1] > P[i][-1] + 1e-6
+        verdict = ("CLEAR" if not hit and not short else
+                   "BLOCKED IN REACH (%d step(s))" % len(hit) if hit else "RUN TOO SHORT")
+        print("string %2d  %s run %.1f..%.1f  REACHABLE %.1f..%.1f  spare %.1f  %s"
+              % (i + 1, "upper" if upper(i) else "lower", P[i][0], P[i][-1], win[i][0], win[i][1],
+                 run - need, verdict))
+        for line in hit:
+            print(line + "   <-- IN REACH")
+        if out:
+            print("      outside reach, never visited: %d step(s), p %s .. %s"
+                  % (len(out), out[0].split()[1], out[-1].split()[1]))
+            if os.environ.get("CLAMP_RANGE_ALL"):
+                for line in out:
+                    print(line)
+        if hit or short:
             ok_all = False
-    print("ALL CLEAR" if ok_all else "NOT CLEAR")
+    print("ALL CLEAR: every clamp is clear over everything it can reach, wherever the other "
+          "clamps are in THEIR reach" if ok_all else "NOT CLEAR")
     if OUT:
         json.dump({str(i + 1): res[i] for i in range(N)}, open(OUT, "w"))
+    return 0 if ok_all else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
