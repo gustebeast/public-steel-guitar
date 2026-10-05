@@ -293,11 +293,9 @@ test pads, TP1-TP4 in that order, so nothing has to probe a spring pin or a gold
 
 ## Output panel: three things to know before the first power-up (2026-10-04)
 
-* **It needs a ground return.** `GND` and `PWR_GND` are not joined on the panel, and the
-  5 V buck returns to `PWR_GND`. With only the inlet plugged in nothing on the logic side
-  has a complete circuit. Fit the power link to the motor board, or clip `GND` to
-  `PWR_GND`, before concluding the buck is dead. (An open decision: see
-  pcb-quality-status.md.)
+* **The two grounds meet at R60.** `GND` and `PWR_GND` are joined by one 0 ohm link beside
+  the 5 V buck (2026-10-04), so the board runs from the inlet alone. If hum from the
+  motors ever shows in the audio, R60 is the part to swap for a bead.
 * **The inlet is switched, and it fails on.** Q2 passes 24 V unless the UI board's power
   button shorts its wire (J10 way 5 or 6, picked by JP1) to ground. With J10's button ways
   open, as on a bench, the panel is on whenever the supply is plugged in. To test OFF, short
