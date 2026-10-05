@@ -327,6 +327,28 @@ def splice_frame(motor_xyz, screw_xyz, from_screw=None):
     return (p.x, p.y, p.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
 
 
+def clamp_frame(motor_xyz, screw_xyz, upper, frac=0.5):
+    """Placement for the in-line belt clamp ON THE RUN IT IS INSTALLED ON, turned with the
+    belt. `upper` picks the run (the one that leaves the motor pulley's top); `frac` is how
+    far along it from the screw pulley. Returns (origin, xDir = toward the motor, normal =
+    into the loop).
+
+    The belt turns 90 deg between the pulleys -- flat at the screw (normal across the
+    instrument), on edge at the motor (normal vertical) -- and the turn is taken as even
+    along the run, which is the same assumption tools/clamp_study.py makes."""
+    V = cq.Vector
+    M, S = V(*motor_xyz), V(*screw_xyz)
+    r = D.PULLEY_OD / 2 + D.BELT_T / 2
+    sgn = 1.0 if upper else -1.0
+    m_t, s_t = V(M.x, M.y, M.z + sgn * r), V(S.x, S.y + sgn * r, S.z)
+    tan = m_t.sub(s_t).normalized()
+    a = (math.pi / 2) * frac
+    n = V(0, math.cos(a), math.sin(a)).multiply(-sgn)
+    n = n.sub(tan.multiply(n.dot(tan))).normalized()
+    p = s_t.add(m_t.sub(s_t).multiply(frac))
+    return (p.x, p.y, p.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
+
+
 def _belt_smooth(samples):
     """Single smooth sweep of the strip profile along the loop centreline, the
     twist driven by an auxiliary spine (offset along the inward normal). One solid,
