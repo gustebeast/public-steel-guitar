@@ -102,8 +102,14 @@ class Side:
                     self.rects.append(_grow(_box(pad), MM(PAD_CLR)))
             if same:
                 # the part's own body: ink under a fitted part is ink nobody reads
+                # ...which a bare test pad does not have. Its courtyard is a 2 mm square
+                # round a 1 mm pad with nothing fitted on it, and treating that as a body
+                # pushed every name half a millimetre further off than the pad needs --
+                # on a row of pads at 2.4 mm that left no site beside any of them, and the
+                # names went down beside each other's pads instead. The pad itself (and
+                # its clearance) is already in the list above.
                 cy = fp.GetCourtyard(pcbnew.B_CrtYd if back else pcbnew.F_CrtYd)
-                if cy.OutlineCount():
+                if cy.OutlineCount() and not fp.GetReference().startswith("TP"):
                     b = cy.BBox()
                     self.rects.append([b.GetLeft(), b.GetTop(), b.GetRight(), b.GetBottom()])
                 for g in fp.GraphicalItems():
@@ -111,7 +117,17 @@ class Side:
                         self.rects.append(_box(g))
                 if fp.Reference().IsVisible() and fp.Reference().GetLayer() == self.layer:
                     self.rects.append(_box(fp.Reference()))
+        # A via HOLE swallows ink, so a label keeps off it -- unless the via is tented on
+        # this side, where the hole is under mask and a stroke across it prints. Ask the
+        # via (KiCad's board default is tented, and a fab follows the mask layer it is
+        # sent). On a board a few centimetres square this decides whether a name stands
+        # beside its own pad or its neighbour's: the router scatters vias differently
+        # every run, and the nearest site clear of all of them was not reliably the
+        # adjacent one -- lever_sensor's DIO went down under the CLK pad.
+        mask = pcbnew.B_Mask if back else pcbnew.F_Mask
         for t in board.GetTracks():
+            if t.GetClass() == "PCB_VIA" and t.IsTented(mask):
+                continue
             if t.GetClass() == "PCB_VIA":
                 p, r = t.GetPosition(), t.GetDrillValue() // 2 + MM(0.1)
                 self.rects.append([p.x - r, p.y - r, p.x + r, p.y + r])
@@ -300,7 +316,11 @@ def silk(stem, rev=REV, dark=(), labels=None, short=None):
                 pins[int(pad.GetNumber())] = _net(pad)
         if not pins or len(pins) > LEGEND_MAX_PINS:
             continue
-        legend = ref + "\n" + "\n".join("%d %s" % kv for kv in sorted(pins.items()))
+        # `silk_labels` may give a NET a shorter word too ({"+24V_LED": "24V"}): a legend
+        # is as wide as its longest net name, and on a small board that width is what
+        # decides whether it goes down at a legible size or at all.
+        legend = ref + "\n" + "\n".join(
+            "%d %s" % (k, (labels or {}).get(v, v)) for k, v in sorted(pins.items()))
         for size, back in [(z, b) for z in (SIZE_J, SIZE_SMALL) for b in (True, False)]:
             if sides[back].place(legend, size, fp.GetPosition(), 14.0, step=0.5):
                 done.append("%s pinout (%s)" % (ref, "back" if back else "front"))

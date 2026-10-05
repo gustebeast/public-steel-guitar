@@ -54,5 +54,18 @@ def optical_declared(vtype, refs):
     return kinds == {"D", "PD"} and m[0].group(2) == m[1].group(2)
 
 
+def foot_a_declared(vtype, refs):
+    """Foot board A: its cable socket against the first LED of the row.
+
+    The side-entry XH's courtyard is 16.7 x 12.0 because it takes in the plug's approach
+    and both mounting lands; the parts themselves clear. elec/foot_led.py asserts the two
+    gaps that matter before it writes the netlist -- the socket's body ends at least
+    0.30 short of the LED's courtyard along the board, and its four signal lands at least
+    0.30 from it across -- so this accepts a courtyard and nothing else. Only this pair."""
+    return vtype == "courtyards_overlap" and set(refs) == {"J1", "D1"}
+
+
 def declared(board, vtype, refs):
+    if board.endswith("foot_led_a"):
+        return foot_a_declared(vtype, refs)
     return "optical" in board and optical_declared(vtype, refs)

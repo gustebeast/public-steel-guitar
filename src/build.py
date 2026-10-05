@@ -2005,6 +2005,7 @@ _COLORS = {
     # CAN + power trunk = its 4 colour-coded conductors (user override):
     #   black = gnd | red = 24 V | yellow = CAN-H | green = CAN-L
     "wire_pwr_hot":    (0.85, 0.12, 0.10),   # red         - CAN 24 V
+    "wire_foot_led":   (0.90, 0.90, 0.86),   # off-white   - the foot strip's 4-way XH lead
     "wire_pwr_gnd":    (0.05, 0.05, 0.05),   # black       - CAN ground/return
     "wire_canh":       (0.95, 0.85, 0.10),   # yellow      - bus A CAN-H
     "wire_canl":       (0.13, 0.72, 0.20),   # green       - bus A CAN-L

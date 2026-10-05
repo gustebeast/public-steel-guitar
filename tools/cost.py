@@ -147,7 +147,7 @@ def _sibling_sources(board):
     generator imported it from."""
     out = []
     # elec/ AND src/: a board's count is often a property of the INSTRUMENT rather than
-    # of the board, so the constant lives with the geometry -- foot_led's BOARD_QTY is
+    # of the board, so the constant lives with the geometry -- a board count can be
     # in src/foot_light.py, not in elec/ at all.
     for d in ("elec", "src"):
         for p in sorted(glob.glob(os.path.join(ROOT, d, "*.py"))):
@@ -339,7 +339,7 @@ def main(argv=None):
     for board, geom in sorted(geoms.items()):
         if board in ("optalt", "led_strip"):
             # optalt is an alternative, not fitted. led_strip is SUPERSEDED (brenner,
-            # 2026-10-01): one instrument carries foot_led x2 + the two fret boards and
+            # 2026-10-01): one instrument carries the two foot boards + the two fret boards and
             # nothing else lights it. It was being priced at ~$29 an instrument for as
             # long as its geom file sat in elec/geom.
             continue
