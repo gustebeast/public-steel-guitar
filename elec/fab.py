@@ -71,7 +71,8 @@ LCSC = {
     "TLV9061IDBVR": "C398358",      # mid-rail buffer -- DBV, NOT the DCK part once ordered
     "AP2114H-3.3TRG1": "C150716",   # 3V3 digital LDO, ceramic-stable: 1 GND 2 VOUT/tab 3 VIN;
                                     # 11,540 in stock 2026-10-04 (optical U8)
-    "SPX3819M5-L-3-3/TR": "C9055",  # 3V3 analog LDO: 1 IN 2 GND 3 EN 4 BYP 5 OUT
+    "TPS7A2033PDBVR": "C2862740",   # 3V3 analog LDO, ceramic-stable: 1 IN 2 GND 3 EN 4 N/C 5 OUT;
+                                    # 203,032 in stock 2026-10-04 (optical U9)
     "LMR33630CRNXR": "C2071783",    # 24->5 V sync buck, 2.1 MHz, 3 A, VQFN-HR RNX (optical U13)
     "LTE-C9901": "C2683614",        # 940 nm emitter, 0603, Lite-On DS50-2017-0074:
                                     # 8 mW/sr typ @20 mA, 65 deg FULL, 0.98 tall, 60 mA DC
@@ -99,6 +100,8 @@ LCSC = {
     "LESD5L5.0CT1G": "C5274293",     # LRC 0.5 pF bidirectional 5 V clamp, SOD-523; 12,023
     "TAXM12M4RFBCCT2T": "C133337",   # Yajingxin 12 MHz 3225, CL 12 pF, ESR 80 ohm max
     "TS5A3159DCKR": "C46388",        # SPDT analog switch, VIH 2.4 V at 5 V
+    "RK73B3ATTE2R0J": "C5139521",    # 2 ohm 2512, KOA: optical R44, the 24 V input damper,
+                                     # chosen for its one-pulse curve; 3,354 in stock 2026-10-05
     "BLM18KG601SN1D": "C85833",      # 0603 bead, 600R@100MHz, 1.3 A, DCR 150 mohm
     "1N4148WT": "C917006",           # SOD-523 switching diode, 75 V 150 mA
     "TAXM8M4RFDCET2T": "C403948",    # Yajingxin 8 MHz 3225, CL 12 pF, ESR 250 ohm max;

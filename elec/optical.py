@@ -117,6 +117,7 @@ FP = {
     "0603":     "Resistor_SMD:R_0603_1608Metric",
     "0805C":    "Capacitor_SMD:C_0805_2012Metric",
     "1206C":    "Capacitor_SMD:C_1206_3216Metric",
+    "2512R":    "Resistor_SMD:R_2512_6332Metric",
     "0603OPT":  "LED_SMD:LED_0603_1608Metric",
     "0805OPT":  "LED_SMD:LED_0805_2012Metric",
     "PD15":     "Steel:Everlight_PD15-22B",           # elec/footprints/Steel.pretty
@@ -974,24 +975,30 @@ def optical():
     gnd += u8[1]
     v3d += u8[2]
     v5_pre += u8[3]           # BUCK side: this LDO feeds the MCU and PHY
-    u9 = Part(name="SPX3819", ref_prefix="U", ref="U9", dest="NETLIST", tool="skidl",
-              value="SPX3819M5-L-3-3/TR",
-              description="3V3 ANALOG LDO, 40 uVrms (LCSC C9055)",
+    # ⚠ TPS7A2033, NOT THE SPX3819 THAT STOOD HERE (2026-10-04, quality M15). The SPX3819's
+    # sheet gives no ceramic-capacitor stability at all: its application section asks for
+    # "a high quality 2.2 uF aluminum electrolytic" or "a 1 uF tantalum" and says bench
+    # testing is the way to choose. It is the MIC5205 class of PNP regulator, compensated
+    # by its output capacitor's ESR -- and this rail is 18 uF of ceramic and nothing else.
+    # Same fault as the AMS1117 that U8 replaced, found a day later.
+    # TPS7A20 (TI SBVS338, DBV): stable with 1 to 200 uF of ceramic at up to 100 mohm,
+    # 300 mA against this rail's 166 mA worst case, 6.7 uVrms 10 Hz - 100 kHz at 100 mA
+    # (the SPX3819 managed 40 with its bypass capacitor), 6.0 V maximum input against the
+    # 5 V it is fed. Same package, same pins: 1 IN, 2 GND, 3 EN, 4 N/C, 5 OUT.
+    # 0.28 W at 166 mA and 187 C/W: 53 C of rise.
+    u9 = Part(name="TPS7A20", ref_prefix="U", ref="U9", dest="NETLIST", tool="skidl",
+              value="TPS7A2033PDBVR",
+              description="3V3 ANALOG LDO, 7 uVrms, ceramic-stable (LCSC C2862740). Chosen "
+                          "for stability on ceramic output capacitors and for noise: do "
+                          "not substitute an ESR-compensated part (SPX3819, MIC5205, 1117)",
               footprint="Package_TO_SOT_SMD:SOT-23-5",
               pins=[Pin(num=n, func=P) for n in range(1, 6)])
-    # SPX3819 SOT-23-5: 1 IN, 2 GND, 3 EN, 4 BYP, 5 OUT
+    # TPS7A20 DBV: 1 IN, 2 GND, 3 EN, 4 N/C, 5 OUT
     v5 += u9[1], u9[3]
     gnd += u9[2]
-    # ⚠ PIN 4 IS THE NOISE BYPASS AND IT WAS LEFT FLOATING -- which threw away the only
-    # reason this part is here. The SPX3819 datasheet gives 300 uVrms without a bypass
-    # capacitor and 40 uVrms with 1 uF on this pin (10 Hz - 100 kHz). The BOM line for
-    # U9 says "chosen for noise (40 uVrms)"; as wired it was a 300 uVrms part feeding
-    # the reference and supply of twenty transimpedance amplifiers.
-    ldo_byp = Net("LDO_BYP")
-    ldo_byp += u9[4]
-    c127 = _c("C127", "1uF", "SPX3819 reference bypass -- 40 uVrms instead of 300")
-    ldo_byp += c127[1]
-    gnd += c127[2]
+    # Pin 4 has no internal connection on this part. (On the SPX3819 it was the noise
+    # bypass, with C127 on it; C127 went with that part.)
+    Net("U9_NC_4").connect(u9[4])
     v3a += u9[5]
 
     # ── U10: USB ESD, at the connector ───────────────────────────────────────
@@ -1024,7 +1031,24 @@ def optical():
                      Pin(num=3, name="IN+", func=P), Pin(num=4, name="IN-", func=P),
                      Pin(num=5, name="V+", func=P)])
     mid_raw = Net("MID_RAW")
-    mid += u11[1], u11[4]       # unity-gain follower
+    # ⚠ THE FOLLOWER DOES NOT DRIVE C133 DIRECTLY (2026-10-04, quality M22). It did: output
+    # and inverting input both on MID, and MID carries a 10 uF bypass. TI's sheet (SBOS839
+    # p.1 and fig. 33) gives this amplifier 100 pF of capacitive load and an open-loop
+    # output impedance of about 100 ohm, resistive. 100 ohm into 10 uF is a second pole at
+    # 160 Hz under a 10 MHz gain-bandwidth: the loop crosses unity near 40 kHz with almost
+    # no phase left -- a reference ringing or oscillating beside the 48 kHz carrier, on
+    # the one node all twenty channels share.
+    # R42 isolates it, and the feedback is taken BEFORE the resistor: above a few hundred
+    # hertz the amplifier sees 100 ohm, not a capacitor, so its loop is the unloaded one
+    # at half the gain. C133 still does the bypassing (0.33 ohm at 48 kHz); the buffer
+    # sets the DC level through 100 ohm, and the only DC on MID is the photodiodes' return,
+    # under 0.1 mA for all twenty: 8 mV on a reference the converters are AC-coupled from.
+    mid_buf = Net("MID_BUF")
+    mid_buf += u11[1], u11[4]   # unity-gain follower, closed at its own pin
+    r42 = _r("R42", "100R", "MID buffer isolation -- between U11's output and the 10 uF "
+             "on MID; the follower's feedback is taken on U11's side of it")
+    mid_buf += r42[1]
+    mid += r42[2]
     gnd += u11[2]
     mid_raw += u11[3]
     v3a += u11[5]              # same rail as the quads it references -- see above
@@ -1044,7 +1068,7 @@ def optical():
     # Every figure below is from the part's own datasheet, at the operating point this
     # board actually uses.
     #
-    #   +3V3A  (U9, SPX3819, off the QUIET side of FB1)
+    #   +3V3A  (U9, TPS7A2033 since 2026-10-04, off the QUIET side of FB1)
     #     5x TLV9064 quad          538 uA/amp typ, 750 max  ->  10.8 / 15.0 mA
     #     U11 TLV9061 single                                ->   0.54 / 0.75
     #     R34/R35 mid-rail divider 3.3 V / 10.09 k          ->   0.33 / 0.33
@@ -1052,7 +1076,7 @@ def optical():
     #       (SBAS993B 7.5; 19.7 at 16 kHz, so it scales weakly) -- NO figure at 192 kHz;
     #       ~26 each assumed                                 ->  ~130 / ~150
     #                                                   subtotal ~142 / ~166 mA
-    #     ⚠ THE CONVERTERS MULTIPLY THIS RAIL TENFOLD. U9 (SPX3819, 500 mA) carries it,
+    #     ⚠ THE CONVERTERS MULTIPLY THIS RAIL TENFOLD. U9 (then an SPX3819, 500 mA; now a 300 mA TPS7A20) carries it,
     #       but it burns (5 - 3.3) x 0.14 = 0.24 W in a SOT-23-5 -- ~45 C of rise -- and
     #       the buck's worst case below grows by the same ~150 mA. MEASURE AVDD current
     #       at 192 kHz on first boards before trusting either margin.
@@ -1138,6 +1162,8 @@ def optical():
                pins=[Pin(num=n, func=P) for n in range(1, 13)])
     v24 = Net("+24V")
     v24.drive = Pin.drives.POWER
+    # the connector side of R44 -- see J2
+    v24_in = Net("V24_IN")
     boot, vcc_buck = Net("BOOT"), Net("BUCK_VCC")
     pgnd += u13[1], u13[11], u13[6]
     v24 += u13[2], u13[10]
@@ -1212,7 +1238,13 @@ def optical():
     # "600R@100MHz" on a BOM line invites exactly the wrong part -- same package, same
     # footprint, a tenth of the filtering, and nothing downstream that could notice.
     fb1 = Part(name="FerriteBead", ref_prefix="FB", ref="FB1", dest="NETLIST",
-               tool="skidl", value="GZ1608D601TF",
+               # ⚠ BLM18KG601SN1D, NOT THE GZ1608D601TF THAT STOOD HERE (2026-10-04). That
+               # part is rated 200 mA and this bead carries the whole analog rail: 142 mA
+               # typical, 166 at the worst case, and the converters' draw at 192 kHz is an
+               # assumption. A bead's impedance collapses as its DC current nears the
+               # rating, so at 83 % it was not doing the job it is drawn for. Same 0603,
+               # 600 ohm at 100 MHz, 1.3 A, 150 mohm (25 mV dropped instead of 75).
+               tool="skidl", value="BLM18KG601SN1D",
                # ⚠ WHAT IS ON WHICH SIDE WAS THE WHOLE POINT AND IT WAS WRONG. The bead
                # splits a noisy 5 V from a quiet one, and the TEN EMITTERS -- pulsed at
                # 48 kHz, synchronously with sampling, the one noise source ambient
@@ -1229,6 +1261,24 @@ def optical():
                pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v5_pre += fb1[1]
     v5 += fb1[2]
+    # ⚠ THE BEAD HAS A DAMPER (2026-10-04, quality M17). A bead into ceramics is a resonant
+    # filter: about 1.5 uH (the BLM18KG601's low-frequency inductance) against the 1.3 uF
+    # on +5V (C140 1 uF + C141-C143) peaks near 115 kHz, and with 0.15 ohm of bead and
+    # milliohms of capacitor to lose it in, by a factor of five or more. U9's input is a
+    # constant-current load and damps nothing. The emitter row pulls a 48 kHz square wave
+    # from V5_PRE, whose third harmonic is 144 kHz: the filter that is there to keep the
+    # row's current off the analog rail was amplifying its strongest harmonic.
+    # R43 + C134, 1 ohm in series with 10 uF across the rail: the capacitor is several
+    # times the 1.3 uF it damps and the resistor is the filter's characteristic
+    # impedance, sqrt(1.5 uH / 1.3 uF) = 1.07 ohm, which flattens the peak to about 1.
+    damp = Net("V5_DAMP")
+    r43 = _r("R43", "1R", "FB1 damper -- in series with C134 across +5V; the value is "
+             "the bead filter's characteristic impedance, do not fit 0 ohm")
+    c134 = _c("C134", "10uF", "FB1 damper capacitor, behind R43",
+              "Capacitor_SMD:C_0805_2012Metric")
+    v5 += r43[1]
+    damp += r43[2], c134[1]
+    gnd += c134[2]
     # ⚠ THE BRING-UP PADS, AND THIS TIME THEY ARE PLACED AFTER ROUTING. Like TP1-5 they
     # carry no paste and are excluded from the BOM and the pick-and-place by the footprint.
     # WHY THEY ARE NEEDED. The diagnostic chain is strictly serial -- power, MCU, I2C,
@@ -1256,7 +1306,7 @@ def optical():
     for _ref, _net, _why in (("TP6", i2c[0][0], "I2C2 SDA -- the ROM bootloader's bus"),
                              ("TP7", i2c[0][1], "I2C2 SCL -- the ROM bootloader's bus"),
                              ("TP8", boot0, "BOOT0 -- hold HIGH at reset for the bootloader"),
-                             ("TP9", v24, "+24V rail"),
+                             ("TP9", v24_in, "24 V as it arrives at J2, ahead of R44"),
                              ("TP10", v5, "+5V rail -- the buck's output"),
                              ("TP11", v3a, "+3V3A rail -- the quiet LDO")):
         _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
@@ -1385,7 +1435,34 @@ def optical():
               pins=[Pin(num=i + 1, name=n, func=P)
                     for i, n in enumerate(("PWR_GND", "+24V", "NC3", "NC4"))])
     pgnd += j2[1]
-    v24 += j2[2]
+    v24_in += j2[2]
+    # ⚠ R44: THE INPUT IS DAMPED, BECAUSE A LIVE PLUG WOULD OTHERWISE KILL THE BUCK
+    # (2026-10-05, quality M16). J2 fed 10 uF of ceramic and U13 directly. A live 24 V
+    # lead plugged into ceramics rings toward twice the supply: 48 V, against U13's 36 V
+    # operating and 38 V absolute maximum. In the instrument the rail arrives through the
+    # output panel's switch at about 2 V/ms and nothing rings -- but the first thing this
+    # board meets is a bench supply on a metre of lead, plugged live, which is the classic
+    # way a ceramic-input buck dies (TI SNVA489).
+    # 2 ohm in series, ahead of every capacitor. With about 5 uF left of C160 at 24 V of
+    # bias, a metre of lead (1 uH) has a characteristic impedance of 0.45 ohm and the
+    # 150 mm harness (0.15 uH) 0.17: 2 ohm is a damping ratio of 2.2 and 5.8. No
+    # overshoot at all. It also keeps the buck's 2.1 MHz input ripple off the harness.
+    # ⚠ THE PART IS CHOSEN FOR THE PULSE AND MUST NOT BE SHRUNK. A live plug puts the
+    # whole 24 V across it for the first microseconds: 288 W peak, falling with a 10 to
+    # 20 us time constant, 1.5 to 3 mJ in all. KOA's one-pulse limit (RK73B sheet, "One-
+    # Pulse Limiting Electric Power") is 400 W for the 2512 (W3A) below 10 us, 200 W for
+    # the 2010 and 40 W for the 1206 -- so it is a 2512, and of that maker, because the
+    # curve is theirs. A 1206 would need 15 ohm to stand the same plug.
+    # Cost in service: 0.52 V and 0.14 W at the 0.26 A worst case, 0.16 V at the typical
+    # 79 mA; U13 regulates from 23.5 V as it does from 24. A dead short behind it draws
+    # 12 A and opens the output panel's 1 A fuse (F1 there) in well under a millisecond.
+    r44 = _r("R44", "RK73B3ATTE2R0J",
+             "24 V input damping, 2 ohm 2512 (LCSC C5139521) -- sized for the plug-in "
+             "pulse (288 W peak): do not substitute a smaller case or another maker "
+             "without its single-pulse curve",
+             "Resistor_SMD:R_2512_6332Metric")
+    v24_in += r44[1]
+    v24 += r44[2]
     Net("J2_NC_3").connect(j2[3])   # documented no-connects; netcheck
     Net("J2_NC_4").connect(j2[4])   # exempts <REF>_NC_<pin> by name
 
@@ -1403,6 +1480,16 @@ def optical():
     r31 = _r("R31", "10k", "NRST pull-up")
     nrst += r31[1]
     v3d += r31[2]
+    # C135: the reset pin's capacitor (2026-10-05, quality M7). ST draws 100 nF from NRST
+    # to ground (DS12110, "Recommended NRST pin protection") and this board had none: the
+    # pin was a 25 mm track, a pull-up and a probe pad, on a board with a 2.1 MHz buck and
+    # 0.2 A of emitter current switching at 48 kHz. A reset pin that glitches does not
+    # fail loudly -- the audio stream drops and comes back. Beside R31, on the same node.
+    # A probe that connects under reset drives it through the capacitor, as every SWD
+    # probe expects to.
+    c135 = _c("C135", "100nF", "NRST filter -- ST's recommended reset-pin capacitor")
+    nrst += c135[1]
+    gnd += c135[2]
     # BOTH CC pins get their OWN 5k1 -- not one resistor on a joined pair. The pair is
     # what tells the host which way round the cable went in, and joining them makes the
     # port undetectable in one orientation.
@@ -1488,7 +1575,7 @@ def optical():
     #
     # 1 uF against the divider's 901 ohm source (9k09 || 1k) puts the pole at 177 Hz, so
     # 48 kHz is down a further 48.6 dB -- about 69 dB total with the divider. It costs no
-    # new BOM line: 1 uF 0402 is already on this board (C127, and the converters' AVDD and
+    # new BOM line: 1 uF 0402 is already on this board (C140, and the converters' AVDD and
     # VREF bulk). The 0.9 ms it adds to the reference's startup is nothing.
     c114 = _c("C114", "1uF", "MID divider bypass -- keeps the LED's 48 kHz off the "
               "reference all twenty channels share; see the note")
@@ -1605,8 +1692,11 @@ def optical():
         net += c[1]
         gnd += c[2]
     # C140-C143: decoupling at the power inputs, ANALOG side of the bead.
+    # C140, the one at U9's input pin, is 1 uF (2026-10-04): the bead isolates U9 from the
+    # buck's bulk on purpose, which left its input with 0.4 uF; the TPS7A20 asks for 1 uF
+    # at its input (as the SPX3819 before it did).
     for tag in ("C140", "C141", "C142", "C143"):
-        c = _c(tag, "100nF", "power-input decoupling")
+        c = _c(tag, "1uF" if tag == "C140" else "100nF", "power-input decoupling")
         v5 += c[1]
         gnd += c[2]
     # the buck's furniture, keeping the CAD's C16x names
@@ -1705,6 +1795,26 @@ def _ulpi_d0_escape():
              ("ULPI_D0", "In2.Cu", 0.25, [_D0_VIA, _D0_LAND]),
              ("ULPI_D0", "F.Cu", 0.25, [_D0_LAND, _D0_PHY])],
             [("ULPI_D0",) + _D0_VIA, ("ULPI_D0",) + _D0_LAND])
+
+
+def _ulpi_fan():
+    """(tracks, vias): the first millimetre of U7's pins 1-3 (DIR, CLKOUT, NXT), laid.
+
+    Pins 1 to 5 leave one face on 0.5 mm pitch and four of them need a via within 3 mm.
+    D0's escape above takes the ground beside pin 4, which leaves NXT (pin 3) exactly one
+    way out: north 1.3 mm, then north-east to a via standing in CLKOUT's column -- so
+    CLKOUT has to have changed layer before that, and DIR has to step 0.24 mm aside to
+    pass the via. The router found this arrangement once and, after an unrelated change
+    at the far end of the board, ran DIR and CLKOUT straight out instead and left NXT
+    with no exit at any width (2026-10-05). It is three pins' worth of copper and it is
+    the same every time, so it is drawn. The router takes each net on from its via or
+    its stub end."""
+    return ([("ULPI_NXT", "F.Cu", 0.25, [(16.98, -71.35), (17.05, -71.29), (17.05, -70.05),
+                                          (17.58, -69.52)]),
+             ("ULPI_CK", "F.Cu", 0.25, [(17.48, -71.35), (17.48, -70.41), (17.61, -70.28)]),
+             ("ULPI_DIR", "F.Cu", 0.25, [(17.98, -71.35), (17.98, -70.71), (18.22, -70.47),
+                                          (18.22, -68.60)])],
+            [("ULPI_NXT", 17.58, -69.52), ("ULPI_CK", 17.61, -70.28)])
 
 
 def _cell_tracks():
@@ -2647,6 +2757,20 @@ BOARD_X0, BOARD_X1 = min(_XS), max(_XS)
 BOARD_Y0, BOARD_Y1 = min(_YS), max(_YS)
 CX, CY = (BOARD_X0 + BOARD_X1) / 2.0, (BOARD_Y0 + BOARD_Y1) / 2.0
 BOARD_W, BOARD_L = BOARD_X1 - BOARD_X0, BOARD_Y1 - BOARD_Y0
+
+def _buck_sw():
+    """The buck's switch node, laid rather than routed: the one net on this board that
+    radiates, so its copper is the shortest that reaches the inductor and no more. Out
+    of U13's top pad (pin 12), 0.5 mm, along the top of the regulator's row above C165
+    and R40, into L1's near land: 6.5 mm. Positions come from the CAD's U13 and L1, so
+    the track moves with them."""
+    at = {q["ref"]: (q["x"] - CX, q["y"] - CY) for q in OP.PARTS}
+    ux, uy = at["U13"]
+    lx = at["L1"][0] - 1.50                       # L1's SW land
+    top = uy + 2.00
+    return [("SW", "F.Cu", 0.5, [(ux, uy + 1.20), (ux, top), (lx - 0.25, top),
+                                 (lx, top - 0.60)])]
+
 
 BOARD_NOTES = {
     "outline_mm": (round(BOARD_W, 3), round(BOARD_L, 3)),
@@ -3640,7 +3764,7 @@ BOARD_NOTES = {
                                          (-20.08, -21.08)])},
     # +3V3A's last link is U9 -> the analog field, the whole rail (about 150 mA), and
     # the maze that closes it after routing lays 0.2 mm unless told otherwise.
-    "close_widths": {"+3V3A": 0.5},
+    "close_widths": {"+3V3A": 0.5, "V5_PRE": 0.5},   # V5_PRE: the emitter row's feed, 0.21 A
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
@@ -3655,7 +3779,7 @@ BOARD_NOTES = {
     # AVSS -> EP, one per converter. Pin 4 sits at (+1.962, +0.25) from the EP centre with
     # the part turned 180 (read off the placed board through pcbnew); the track ends 0.9
     # in from the EP centre, well inside the 2.7 pad. Neighbour pins 3/5 clear by 0.27.
-    "tracks": _cell_tracks() + _ulpi_d0_escape()[0],
+    "tracks": _cell_tracks() + _ulpi_d0_escape()[0] + _ulpi_fan()[0] + _buck_sw(),
     # ⚠ ONE +3V3D VIA PER CELL NOW, NOT TWO: the SHDNZ channel's HEAD via is gone with the
     # channel (pin 14 is pulled up locally -- see _shdn_tracks), and it had to go, because
     # it sat in the only escape from pin 14 and cost five SHDNZ-to-+3V3D shorts. The FOOT
@@ -3667,7 +3791,7 @@ BOARD_NOTES = {
              + [("I2C2_SCL",) + _cell_pt(k, _I2C_SPINE_DX, _I2C_SCL_DY)
                 for k in range(5)]
              + _led_row_vias() + _mid_vias() + _bus_vias() + _v3a_vias() + _sd_vias()
-             + _ulpi_d0_escape()[1]),
+             + _ulpi_d0_escape()[1] + _ulpi_fan()[1]),
     # ⚠ ORDER OPTIONS ARE PART OF THE DESIGN, and nothing in a gerber records them.
     # Mask colour is usually cosmetic and on this board it is not: twenty photodiodes
     # look up through a 0.30 mm gap that runs 5.40 mm to the cover's aperture, and that
@@ -3784,13 +3908,18 @@ for _net, (_nt, _nv) in STALE_REPAIRS.items():
 BOARD_NOTES["quality"] = {
     "power_paths": [
         # 24 V in: 1.07 A of 5 V at the board's worst case is 0.26 A here at 85 %
-        {"net": "+24V", "from": "J2.2", "to": ["U13.2", "U13.10"], "amps": 0.26},
+        {"net": "V24_IN", "from": "J2.2", "to": ["R44.1"], "amps": 0.26},
+        {"net": "+24V", "from": "R44.2", "to": ["U13.2", "U13.10"], "amps": 0.26},
         # the buck's output: U8 (digital 3V3, 452 mA at 85 C), the bead to U9, and the
         # ten emitter ballasts at 21 mA each while the row is on
+        # the switch node carries the inductor's current: the whole 5 V load, 1.07 A worst
+        # case. It is a laid 0.5 mm track (_buck_sw) because routed it came back as
+        # 0.25 mm through two vias and an inner layer
+        {"net": "SW", "from": "U13.12", "to": ["L1.1"], "amps": 1.07},
         {"net": "V5_PRE", "from": "L1.2", "to": ["U8.3"], "amps": 0.45},
         {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.17},
         {"net": "V5_PRE", "from": "L1.2",
-         "to": ["R%d.1" % k for k in range(1, 11)], "amps": 0.021},
+         "to": ["R%d.1" % k for k in range(1, 11)], "amps": 0.21, "split": True},
         {"net": "+5V", "from": "FB1.2", "to": ["U9.1"], "amps": 0.17},
         # The MCU's sixteen supply pins together ("split"). 0.35 A: ST's maxima are 220 mA
         # at TJ 25 C and 400 at 85 C with every peripheral clocked; this part dissipates
@@ -3822,6 +3951,271 @@ BOARD_NOTES["quality"] = {
         "U7.22": "RESETB, a logic input tied to +3V3D so the PHY runs whenever the rail is "
                  "up (USB334x table 2-2, pin 22); it draws no supply current",
     }},
+    "manual": {
+        "M1": "two cables. J2 <- output_panel J9: two wires. That end is a 2-way XH (1 GND, "
+              "2 +24 V), this a 4-way housing with the same two ways crimped and ways 3 / 4 "
+              "empty (JST makes no 2-way SMT side-entry XH; the note at J2). It is the "
+              "first two ways of the instrument's one order (harness.py: GND, power, ...) "
+              "and the XH family says 24 V. Polarised; a CAN drop plugged here lands its "
+              "ground and 24 V on the same two ways and its data on empty cavities. J1 <- "
+              "the output panel's hub: a stock USB-C lead; D+ on A6 and B6, D- on A7 and "
+              "B7, CC1 and CC2 each on its own 5k1, so either way up is the same circuit",
+        "M2": "D1-D10 (LTE-C9901): pin 1 K on LED_ROW, the switched low side; pin 2 A on "
+              "its ballast; KiCad's LED_0603 pad 1 is K. PD1A-PD10B (PD15-22B): pad 1 A on "
+              "MID, pad 2 K on the summing node, Everlight DTD-152-002 p.2, on the "
+              "footprint drawn from that page. No other two-pad polarised part: no TVS, no "
+              "electrolytic, no tantalum. Reel rotation is checked at order (M12)",
+        "M3": "one ground net (the note at the top of optical()): In1 is an unbroken GND "
+              "plane with GND pours on F.Cu and B.Cu, and every ground pad is stitched to "
+              "it. The 24 V feed returns on J2 way 1 beside way 2; the buck's loop closes "
+              "in its own cell; the emitter row's 0.21 A returns from Q1's source through "
+              "the plane directly under its V5_PRE spine. No slot and no split under any "
+              "path above",
+        "M4": "U13 (LMR33630C, ZHCSHQ3F 9.2.2.6 and its RNX layout example): asks 10 uF of "
+              "ceramic in total plus a 100 nF at each VIN / PGND pair for 3 A; this board "
+              "draws 1.07 A of the 3 and fits C160 10 uF / 50 V 1206 (about 5 uF at 24 V of "
+              "bias) + C161 / C165 100 nF / 50 V, one at each pair. Output: 2 x 22 uF / 16 "
+              "V 0805 + C164 10 uF at U8, about 28 uF at 5 V of bias, against the table's 2 "
+              "x 22 uF nominal for 5 V at 2.1 MHz. BOOT 100 nF, VCC 1 uF. U8 (AP2114H): "
+              "asks 4.7 uF ceramic; C164 10 uF in, C131 10 uF + the 3V3D field out. U9 "
+              "(TPS7A20): asks 1 uF in and 1 to 200 uF out; C140 1 uF in, C132 10 uF + the "
+              "converters' 5 x 1 uF out. PHY: 1 uF on each of its two regulator outputs. "
+              "MCU: 2.2 uF on each VCAP, 1 uF + 100 nF on VDDA / VREF+. Converters: TI's "
+              "figure 165 less its four paralleled 100 nF (the note at the Cs parts). Every "
+              "capacitor on a 24 V net is a 50 V part and says so in its value",
+        "M5": "24 V nets: capacitors 50 V, R44 200 V, U13 36 V operating / 38 V absolute. "
+              "The rail is clamped at the panel (D6 there, SMAJ30A: stands off 30 V, breaks "
+              "down at 33 to 37 V) and at the motor board, and reaches U13 through the "
+              "panel's 1 A fuse and R44's 2 ohm with 5 uF behind it, so a fast spike has to "
+              "charge that first; the same exposure as the motor board's buck of this "
+              "family. 5 V nets: 16 V bulk, U8 6 V maximum input, U9 6.0 V (6.5 absolute), "
+              "fed 5.02 V. 3V3: converters 3.0 to 3.6 V, op-amps 5.5 V, MCU 3.6 V, PHY 3.0 "
+              "to 3.6 on VDDIO. The TIAs run on +3V3A so a saturated channel cannot exceed "
+              "the converter's AVDD + 0.3 V. Emitters: 20 mA of 60 continuous, 28 mW of "
+              "100. Q1: 30 V, 5.7 A against 5 V and 0.21 A. Ballasts 72 mW peak, 36 mW "
+              "average, in 0603 parts rated 100 mW",
+        "M6": "ULPI, 60 MHz, clocked by the PHY: twelve nets, 23.6 to 76.9 mm, a spread of "
+              "53.3 mm (about 0.35 ns) against the 80 mm the board file budgets from the "
+              "PHY's setup time (its table 4-4); the pass checks it on every route. All of "
+              "it runs over the In1 ground plane, mostly on In2 directly beneath it. D0, "
+              "and the first millimetre of DIR / CLKOUT / NXT at the PHY, are laid by hand "
+              "(the notes at _ulpi_d0_escape and _ulpi_fan). The SAI lanes are 12.288 MHz, "
+              "an 81 ns bit: not length-critical. USB is M23",
+        "M7": "U13: 1.0 V x (1 + 100k / 24.9k) = 5.02 V, TI's own 5 V divider; 4.7 uH "
+              "against the table's 1.5 on purpose (0.40 A of ripple instead of 1.25, so the "
+              "part stays at fixed frequency down to 0.2 A: the note at U13); EN tied to "
+              "VIN, which the sheet allows; NC joined to SW as the pin table asks; PG open. "
+              "U7: RBIAS 8.06k 1 %, ID to VDD33 (a device), VBUS through 20 k (the "
+              "device-only value, table 5-6), RESETB to VDDIO, VBAT on 3V3 (3.0 to 5.5 "
+              "allowed). U14-U18: figure 165, MICBIAS left open and powered down, inputs "
+              "single-ended and AC-coupled as figure 31 draws them, each INxM to ground "
+              "through its own 10 nF. U6: VCAP pair, PDR_ON to VDD, VBAT to VDD, 100 nF on "
+              "NRST (C135), BOOT0 pulled down. TIAs: 250k / 2.2 pF, 1.57 times the least "
+              "stable feedback capacitance (the arithmetic is at Rf). MID: 9k09 / 1k from "
+              "+3V3A, bypassed at the divider (C114), buffered by U11, isolated from its 10 "
+              "uF by R42. Q1: 100 ohm in the gate, 100k to ground",
+        "M8": "BOOT0: R30, 10k to ground (TP8 to hold it high). NRST: R31 10k up, C135. "
+              "PDR_ON: tied to VDD. Converter ADDR1 / ADDR0: all ten to ground -- the five "
+              "share address 0x4C deliberately and are written together (the note above "
+              "SAI_CLK); firmware cannot read one back alone, and one PGA setting serves "
+              "the same input position on all five. SHDNZ: 10k to IOVDD on each converter, "
+              "so they leave shutdown as the rail rises: firmware MUST issue the software "
+              "reset before configuring. U7 ID: to VDD33. RESETB: to +3V3D. U13 EN: to VIN. "
+              "U9 EN: to IN. Q1 gate: 100k to ground, so the emitters are off in reset",
+        "M9": "SWD on bare 1.5 mm pads: TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND, TP5 +3V3D. "
+              "A second way in that needs no probe: the ROM bootloader's I2C2 is this "
+              "board's own control bus, on TP6 / TP7, selected by holding TP8 (BOOT0) high. "
+              "Rails: TP9 the 24 V as it arrives (ahead of R44, so the drop across R44 "
+              "reads the input current), TP10 +5V, TP11 +3V3A, TP5 the digital 3V3. Each "
+              "converter can be taken off the bus alone by grounding its SHDNZ pull-up's "
+              "pad. No pad on MID, on purpose. docs/optical-bringup-diagnostics.md has the "
+              "order of work",
+        "M10": "USB: U10 (USBLC6-2SC6) is the first thing on the pair, 1.9 mm from the "
+               "receptacle's pads, with VBUS on its rail pin; the PHY carries its own ESD "
+               "cells behind it. This is an internal port (a 100 mm lead to the panel's hub, "
+               "inside the instrument), so the CC pins have only their resistors. 24 V: an "
+               "internal lead from the panel, fused there at 1 A (F1) and clamped there "
+               "(D6); polarised housing; R44 in series. Nothing on this board is reached by "
+               "a hand in use: the guard covers it and the photodiodes look up through its "
+               "slots",
+        "M13": "measured on the routed board, pad edge to pad edge, against TI's RNX layout "
+               "example: C161 and C165, the two 100 nF, are each 0.60 mm from their VIN pin "
+               "and 0.60 from the PGND pin beside it, on the part's layer, no via in either "
+               "loop; the bulk C160 is 6.0 mm from pin 2 in the same row. The switch node is "
+               "a laid 0.5 mm F.Cu track with no via, 6.5 mm from the top pad to L1 over the "
+               "top of the cell, away from the feedback parts, which sit at the opposite "
+               "(bottom) edge: R41 1.2 mm and R40 2.4 mm from FB, their node two pads long. "
+               "Bootstrap C163 0.9 mm from BOOT and 0.7 from the SW pin TI provides for it; "
+               "VCC's C166 2.4 mm. No copper pour on SW: it is not a heatsink here",
+        "M14": "L1 (SWPA4030S4R7MT, 4.7 uH): ripple (24 - 5) x (5 / 24) / (4.7 uH x 2.1 MHz) "
+               "= 0.40 A, peak 1.07 + 0.20 = 1.27 A at the board's worst case against 3.2 A "
+               "saturation (Sunlord, 30 % drop). The IC's high-side limit is 3.85 to 5.05 A, "
+               "above the inductor's saturation: accepted and recorded -- a shorted 5 V rail "
+               "saturates L1 and the part goes into hiccup (94 ms), and no 4 x 4 mm part "
+               "reaches 5 A. Shielded, which the twenty TIAs need more than the margin",
+        "M15": "U13 is internally compensated for ceramic outputs; about 28 uF effective "
+               "against the 2 x 22 uF nominal row, and 19 V of headroom. U8 (AP2114H) is "
+               "specified stable with 4.7 uF of ceramic and has 10 uF + about 2 uF of 100 nF "
+               "parts; 1.7 V in hand against 0.45 V of dropout at 1 A. U9 (TPS7A20) is "
+               "stable with 1 to 200 uF of ceramic at up to 100 milliohm and has about 18 uF "
+               "nominal; its input is 5.02 V less 25 mV in the bead, 1.7 V over the output "
+               "against well under 0.2 V of dropout at 166 mA. Both replaced ESR-compensated "
+               "parts (an AMS1117 and an SPX3819) that this board's all-ceramic rails would "
+               "have left unstable. The PHY's two internal regulators each have the 1 uF its "
+               "sheet names",
+        "M16": "J2 is damped. R44, 2 ohm, is in series ahead of every capacitor: against the "
+               "5 uF C160 keeps at 24 V, a metre of bench lead (1 uH) is a damping ratio of "
+               "2.2 and the 150 mm harness more, so a live plug does not overshoot at all; "
+               "without it the input rings toward 48 V on a part whose absolute maximum is "
+               "38. The resistor is a KOA 2512 because the plug puts 288 W across it for "
+               "microseconds and KOA's one-pulse curve allows 400 W below 10 us in that case "
+               "(40 W in a 1206). USB: VBUS is a sense line into 100 nF and 20 k, nothing to "
+               "ring",
+        "M17": "FB1 (BLM18KG601SN1D, 1.3 A) carries 166 mA at the worst case, 13 % of its "
+               "rating. Its resonance with the 1.3 uF on +5V was near 115 kHz, beside the "
+               "emitter carrier's third harmonic (144 kHz), and undamped; R43 + C134 (1 ohm "
+               "in series with 10 uF, the filter's characteristic impedance and several "
+               "times its capacitance) flatten it. Arithmetic at FB1",
+        "M18": "one supply: everything here hangs off the 24 V input, so no part of the "
+               "board is up while another is down. The one foreign domain is the USB host. "
+               "With the host up and this board down, VBUS reaches only the clamp array's "
+               "rail pin, 100 nF and the PHY's VBUS pin through the 20 k its sheet specifies "
+               "for exactly that; D+ / D- carry only the host's 15 k pull-downs. With this "
+               "board up and the host down nothing is driven: VBUS is not sourced, and the "
+               "PHY does not attach without it. A debug probe is used with the board powered "
+               "(TP5 tells it so)",
+        "M19": "Q1 (AO3400A): driven from a 3.3 V pin through 100 ohm; AOS specifies 52 "
+               "milliohm maximum at VGS 2.5 V, so it is fully on with 0.8 V to spare and "
+               "drops 11 mV at 0.21 A. Gate rating 12 V. R38, 100k to ground, holds the row "
+               "off in reset and with the MCU unprogrammed",
+        "M20": "I2C2: R50 / R51, 4.7 k to +3V3D, one pair for the bus. Lower bound (3.3 - "
+               "0.4) / 3 mA = 0.97 k; upper for about 60 pF (six parts, two pads, 200 mm of "
+               "track) is 300 ns / (0.8473 x 60 pF) = 5.9 k at 400 kHz, so 4.7 k serves "
+               "standard and fast mode. SAI: BCLK is 12.288 MHz to five loads over the "
+               "strip, FSYNC 192 kHz; no series resistor, decided: there is no room for one "
+               "at pins 3 / 4, and firmware sets those two pins to MEDIUM drive speed "
+               "(OSPEEDR 01: 5.2 ns edges into 50 pF, DS12110 table 63, where LOW tops out "
+               "at 12 MHz), several times the line's 1 ns delay -- never high or very high. "
+               "If the clock rings at bring-up, that setting is the first thing to check. No "
+               "CAN on this board",
+        "M21": "the converters' AVSS pin and pad and the MCU's VSSA are on the one In1 "
+               "plane, unbroken under the whole analog strip; there is no analog / digital "
+               "split (the ground note). Each converter's VREF and AREG capacitors are in "
+               "its cell at their pins. The twenty summing nodes are 5.1 mm each and "
+               "identical; the TIA outputs run in the comb lanes over solid ground to their "
+               "coupling capacitors. The switcher is at the -Y tail, over 50 mm from the "
+               "nearest photodiode, and the emitter current is on the buck's side of FB1",
+        "M22": "twenty TIA sections in ten duals and one follower: no unused section. Inputs "
+               "sit at MID, 0.33 V, inside a rail-to-rail input range; outputs swing up from "
+               "MID toward 3.2 V into 250k and an AC-coupled converter input (2.5 to 20 k by "
+               "register), a resistive load. TIA stability: Cf 2.2 pF against a 1.40 pF "
+               "minimum (at Rf). The follower U11 does not drive MID's 10 uF directly: R42, "
+               "100 ohm, isolates it and its feedback is taken at its own pin (TI gives the "
+               "part 100 pF of capacitive load)",
+        "M23": "clamp array first, 1.9 mm from the receptacle, the pair passing through its "
+               "pads. Through path receptacle -> U10 -> PHY: F.Cu only, no via on either "
+               "half, 11.6 and 11.8 mm (0.18 mm apart, A3). The two vias on USB_DP are not "
+               "on that path: they tie the receptacle's second D+ contact (B6) to the first "
+               "with 2.5 mm of In2, as D- ties its own round on F.Cu -- the stub the unused "
+               "cable orientation leaves, 5 mm, harmless at 480 Mbit/s. No series resistors "
+               "and no external pull-up: the USB334x has both internally. Clock: Y2 is +-10 "
+               "ppm at 25 C and +-20 over temperature against the +-500 ppm the PHY asks of "
+               "its reference. VBUS is sensed, never sourced. C130 on VBUS is 0.1 uF on "
+               "purpose (a sense line; the note at C130)",
+        "M24": "Y1 (TAXM25M4RDBCCT2T): CL 10 pF, ESR 30 ohm max, C0 3 pF max. C123 = C124 = "
+               "12 pF C0G; (12 + about 7 per leg) / 2 = 9.5 pF. gm_crit = 4 x 30 x (2 pi 25 "
+               "MHz)^2 x (13 pF)^2 = 0.50 mA/V against the 1.5 the H7 guarantees to start: 3 "
+               "times. Y2 (TAXM26M4RLBCDT2T): CL 20 pF, 30 ohm max -- both the PHY's own "
+               "requirements (table 4-13); C125 = C126 = 33 pF C0G, (33 + 5) / 2 = 19 pF. "
+               "Measured: Y1 is 1.9 mm from OSC_IN and 4.1 from OSC_OUT, Y2 3.9 and 5.6 mm "
+               "from its pins, each load capacitor 0.7 mm from its crystal pad (C126 2.4). "
+               "NOT ideal and recorded: OSC_OUT and PHY_XO each reach the crystal's far pad "
+               "through two vias and a short In2 run under the part, over the ground plane. "
+               "It is 1 to 2 pF on the output leg: inside the gain margin, and a few ppm the "
+               "firmware's audio clock does not care about; the PHY's 500 ppm budget is "
+               "untouched. The load capacitors are trimmed on the first board either way",
+        "M25": "no part here depends on a pad for its life. Converters: about 0.1 W each, "
+               "pad on GND (VSS) with one via to the plane 0.2 mm below (A8). PHY: about "
+               "0.15 W, flag on GND, one via. U13 is a flip-chip-on-lead package with no "
+               "pad: 0.45 W at the worst case leaves through its pins into the row's copper. "
+               "U8's tab is VOUT (+3V3D), not ground, on its own land: 0.35 W typical. At "
+               "ST's 85 C all-peripherals maximum it would be 0.77 W, which a SOT-223 on "
+               "this little copper should not be asked to hold: firmware does not enable "
+               "that set, and U8's temperature is on the bring-up list. U9: 0.28 W worst, 53 "
+               "C of rise by TI's 187 C/W. Paste on the QFN pads is the footprints' windowed "
+               "pattern",
+        "M26": "SAI: BCLK and FSYNC leave the MCU (SAI1 block A, master) and enter the "
+               "converters' BCLK / FSYNC pins, which are inputs in slave mode; each "
+               "converter's SDOUT, its output, enters one SAI data pin configured as a "
+               "receiver (SAI1 A / B, SAI2 A / B, SAI3 A). ULPI: DIR and NXT are PHY outputs "
+               "into PI11 and PH4; STP is the MCU's output on PC0 into the PHY's STP input; "
+               "CLKOUT, the PHY's 60 MHz output, enters PA5 (OTG_HS_ULPI_CK); D0-D7 are "
+               "bidirectional. Pin functions from DS12110 table 9 and USB334x table 2-2 (the "
+               "pinouts above). I2C is bidirectional",
+        "M27": "BOOT0: R30 and TP8, nothing else. NRST: R31, C135 and TP3. SWDIO / SWCLK: "
+               "their pads only; PA13 / PA14 are used for nothing else. PF0 / PF1, the "
+               "bootloader's I2C2, also carry the five converters, at 0x4C against the "
+               "bootloader's 0x4E: they cannot answer for it. The PHY's ID and RESETB are "
+               "tied, not shared",
+        "M28": "every active part's pinout above is from its maker's sheet for the ordering "
+               "code in elec/fab.py: STM32H743IIT6 C89597 (LQFP176), USB3343-CP C633347, "
+               "TLV320ADC3140IRTWT C1852021, TLV9062IDGKR C398356 (VSSOP), TLV9061IDBVR "
+               "C398358 (the SOT-23 pinout, not the SC70's), LMR33630CRNXR C2071783 (the "
+               "VQFN column), AP2114H-3.3TRG1 C150716 (the H order: tab and pin 2 are VOUT, "
+               "and the tab's copper is +3V3D), TPS7A2033PDBVR C2862740 (pin 4 not "
+               "connected), AO3400A C20917, USBLC6-2SC6 C7519, both crystals, S4B-XH-SM4-TB, "
+               "TYPE-C-31-M-12",
+        "M31": "printed by kicad_silk on every route: the board's name and r1 on the front, "
+               "every test pad's net beside it (TP1-TP11, TP9 reads V24_IN), J2's way names "
+               "on the back under its tails. Pin-1 and polarity marks are the footprints' "
+               "own, outside the bodies; the emitters' cathode marks included. DRC's silk "
+               "warnings (five overlaps, five over copper) are reference designators in the "
+               "0402 fields, which the fab clips; none is a label a person needs",
+        "M32": "J2 is JST XH, 2.50 mm, on KiCad's JST_XH_S4B-XH-SM4-TB land; pad 1 checked "
+               "against JST's drawing from the mating face (pinouts above); 3 A contacts and "
+               "AWG 22-28 for 0.26 A. J1 is a 16-pin USB 2.0 Type-C receptacle numbered as "
+               "the standard numbers it, on the footprint drawn for this exact part. Both "
+               "carry ground. The plug envelopes and their leads are in the CAD (M11)",
+        "M33": "added up at U13 in optical(), from each part's own sheet. +3V3A: 142 mA "
+               "typical, 166 worst, of U9's 300 (the converters' draw at 192 kHz is assumed "
+               "at 26 mA each: MEASURE IT on the first board). +3V3D: 207 typical, 452 at "
+               "ST's 85 C all-peripherals maximum, of U8's 1 A; 0.77 W in the SOT-223 at "
+               "that corner. 5 V: 0.45 A typical, 1.07 A worst, of U13's 3 A. 24 V: 79 mA "
+               "typical, 0.26 A worst, through 3 A contacts, R44 (0.14 W of 1 W) and the "
+               "panel's 1 A fuse. Those are the amps declared in power_paths",
+        "M34": "one logic level throughout, 3.3 V: MCU, PHY VDDIO, converter IOVDD. SHDNZ is "
+               "active low and pulled high (run); RESETB active low, tied high; U13 EN and "
+               "U9 EN active high, tied to their inputs; Q1 is on with LED_GATE high and "
+               "held low by R38. Converter interrupt pins are not used. USB D+ to DP (pin "
+               "13), D- to DM (14) through the clamp array, same polarity at the receptacle. "
+               "Each TIA's feedback returns to its inverting input (pins 2 and 6 of the "
+               "dual); the follower's to pin 4. I2C is open-drain with its one pair of "
+               "pull-ups",
+        "M36": "no power leaves this board. VBUS is an input (sensed, never sourced) and the "
+               "24 V input feeds only the buck",
+        "M38": "ceramics larger than 0805: C160 only (1206), lying across the strip, at "
+               "right angles to the direction this 188 mm board bends. R44, the one 2512, "
+               "lies the same way for its solder joints. The outline is routed, no V-score "
+               "and no break-off tab. The two M4 holes are unplated cut-outs with no copper "
+               "at them (isolated on purpose: the screws go into printed plastic), and the "
+               "CAD keeps every part clear of their heads. Both connectors are on the -Y "
+               "edge with their plugs and leads modelled; every test pad is on the open face",
+        "M39": "MCU: the unused pins have no pads' worth of copper and firmware sets them to "
+               "analog or pulled inputs at start-up; no spare was brought out (the strip has "
+               "no room, and I2C2 + SWD already reach the part). Converters: MICBIAS open "
+               "(powered down); GPIO1 open -- it resets to an interrupt OUTPUT with a weak "
+               "pull-up (GPIO_CFG0 reset 22h), so nothing floats. U13 PG open (open-drain "
+               "output). U9 pin 4 has no internal connection. J2 ways 3 / 4 and the USB-C's "
+               "SBU pins are not connected, on purpose",
+        "M40": "the generator carries it at each part: the crystals, L1, FB1, U8, U9 and R44 "
+               "have the part number as their value with the parameter that chose them and "
+               "'do not substitute' where a look-alike fails (R44's pulse rating, U9's "
+               "ceramic stability, the 60-ohm-not-600 bead trap, the crystals' CL and ESR). "
+               "R37 is 1 % by specification. Cf and the crystal load capacitors are C0G. "
+               "U8's tab is live at 3V3 and says so. Values are E24 / E96: 9k09, 8k06, 24k9, "
+               "5k1, 250k",
+        "M41": "no switch or button on the board",
+    },
     "pinouts": {
         "TYPE-C-31-M-12": "KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 names each land by "
                           "its USB Type-C contact (A1 ... B12), the names Korean Hroparts' "
@@ -3874,8 +4268,10 @@ BOARD_NOTES["quality"] = {
                            "(H): 1 GND, 2 VOUT, 3 VIN, tab VOUT = KiCad "
                            "SOT-223-3_TabPin2 (the HA suffix is a different order: "
                            "not this part). Read 2026-10-04",
-        "SPX3819M5-L-3-3/TR": "MaxLinear SPX3819 datasheet, SOT-23-5: 1 VIN, 2 GND, 3 EN, "
-                              "4 BYP, 5 VOUT. Board: EN tied to VIN. Audit of 2026-09-17",
+        "TPS7A2033PDBVR": "TI TPS7A20 datasheet (SBVS338 / ZHCSKY8G) fig. 5-4, DBV 5-pin "
+                          "SOT-23 top view, and its pin table: 1 IN, 2 GND, 3 EN, 4 N/C (no "
+                          "internal connection), 5 OUT. Board: 1 and 3 on +5V (EN tied to "
+                          "IN), 2 GND, 4 open, 5 +3V3A. Read 2026-10-04",
         "TAXM25M4RDBCCT2T": "Yajingxin TAXM25M4RDBCCT2T sheet (LCSC C403946) p.7, outline: "
                             "lands 1 and 3 are the crystal, 2 and 4 the can. Board: "
                             "1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read 2026-10-04",

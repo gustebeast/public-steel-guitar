@@ -240,6 +240,7 @@ PKG = {
     "IND-4040": (4.10, 4.10, 3.10),   # 4x4 shielded power inductor, buck output (SWPA4030,
                                       # 3.0 tall since the LMR33630 swap)
     "RNX12":    (2.00, 3.00, 1.00),   # TI VQFN-HR RNX0012, the LMR33630CRNXR buck
+    "2512R":    (6.50, 3.35, 0.75),   # 6332 metric thick film, KOA RK73B W3A at its maxima
     "1206C":    (3.40, 1.85, 1.60),   # 50 V X7R -- the 24 V input bulk wants the voltage
                                       # rating AND the derating headroom; an 0805 50 V part
                                       # loses most of its capacitance at 24 V bias
@@ -353,6 +354,7 @@ CRTYD = {
     "PD15":     (5.00, 3.30),   # elec/footprints/Steel.pretty/Everlight_PD15-22B
     "WQFN-24":  (5.26, 5.26),   # KiCad Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm
     "1206C":    (4.69, 2.39),
+    "2512R":    (7.66, 3.86),   # KiCad R_2512_6332Metric
     "SOT-23":   (3.95, 3.49),
     "SOT-23-5": (4.19, 3.49),
     "SOT-23-6": (4.19, 3.49),
@@ -1691,6 +1693,11 @@ def _parts():
     add("R30", "BOOT0 pull-down -- at the pin, stepped clear of the tail mount's head",
         "0402", -17.55, -60.50, rot=90.0)
     add("R31", "NRST pull-up -- at the pin", "0402", -17.55, -69.63, rot=90.0)
+    # C135, the reset pin's capacitor: end to end with R31 on its -Y side, NRST pad to
+    # NRST pad (R31's pad 1 is its -Y end, C135's pad 1 its +Y end at rot 270). Same CAD x,
+    # so it too stays west of the bridge bearings' strip.
+    add("C135", "NRST filter capacitor -- beside R31, on the reset node", "0402",
+        -17.55, -69.63 - CRTYD["0402"][0] - CRTYD_GAP, rot=270.0)
 
     # ⚠ THE BRING-UP PADS, AND EVERY ONE OF THESE FOUR NUMBERS WAS SEARCHED, NOT CHOSEN.
     # An earlier attempt lined them up in a convenient empty row, which left the router an
@@ -1884,16 +1891,9 @@ def _parts():
                      # overflow, so what fits here is what actually fits.
                      reserve=(9.70, 16.70))
 
-    # ⚠ C127 GOES IN THE CRYSTAL ROW, NOT THE POWER ROW, AND THE BOARD LENGTH IS WHY.
-    # It belongs beside U9 (it is the SPX3819's noise bypass, the reason that part was
-    # chosen), but the power row was exactly full: adding a nineteenth part spilled the
-    # packer into a new row, grew the board 2.2 mm at the -Y end and broke the conduit's
-    # exterior-wall assert by 0.62. The crystal row above has free width, so the cap sits
-    # in it at U9's OWN X -- read back, not re-derived -- which puts it one row away
-    # instead of one row longer.
-    add("C127", "analog LDO noise bypass -- 1 uF on the SPX3819's BYP pin", "0402",
-        _part_x("U9"), _y1_y)
-    # ⚠ AND C114 GOES THE SAME WAY, FOR THE SAME REASON, MEASURED THE SAME WAY. Putting
+    # (C127, the SPX3819's noise-bypass capacitor, stood in the crystal row at U9's own X
+    # until 2026-10-04; U9 is a TPS7A20 now and has no such pin.)
+    # ⚠ C114 GOES IN THE CRYSTAL ROW, NOT THE POWER ROW, AND THE BOARD LENGTH IS WHY. Putting
     # the MID divider's bypass in the power row beside R34 spilled the packer into a new
     # row and broke the conduit's exterior-wall assert by 1.07 mm -- 0.62 last time, and
     # the row has not got any emptier since. The board's -Y end is where the connectors
@@ -2225,27 +2225,52 @@ def _parts():
     # LMR33630CRNXR since 2026-09-22 (see U13 in elec/optical.py): its two VIN/PGND pairs
     # sit on OPPOSITE sides, so each gets a 100 nF hard against it (C161 -X, C165 +X), and
     # VCC's 1 uF (C166) and a second output 22 uF (C167) join the row.
-    _buck_order = (("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C"),
-                   ("C161", "24 V input HF bypass -- the VIN/PGND pair on U13's -X side", "0402"),
-                   ("U13", "buck -- 24V -> 5V, the board's only switcher", "RNX12"),
-                   ("C165", "24 V input HF bypass -- the VIN/PGND pair on U13's +X side", "0402"),
-                   ("C163", "bootstrap -- BOOT to SW", "0402"),
-                   ("C166", "buck VCC bypass, 1 uF", "0402"),
-                   ("L1", "buck output inductor", "IND-4040"),
-                   ("C162", "5 V output bulk", "0805C"),
-                   ("C167", "5 V output bulk, second", "0805C"),
-                   ("R40", "feedback divider -- top, at the output node", "0402"),
-                   ("R41", "feedback divider -- bottom", "0402"))
+    # ⚠ A CELL ROUND THE PACKAGE, NOT A ROW PAST IT (2026-10-04, the regulator review). The
+    # row above put every part in a line along X in the order the current flows, and the
+    # routed board measured what a line costs a twelve-pin part with pins on all four
+    # sides: FB 21 mm from its divider (an 8 k node beside a 2.1 MHz switch node), VCC's
+    # capacitor 6.4 mm from VCC, the bootstrap 4.5 mm from BOOT, the inductor 8.3 mm from
+    # SW. The row is 4.59 tall (the inductor) and an 0402 on end is 1.95, so two stand in
+    # it, one above the other, on each side of the package -- which is where the pins are:
+    #     -X side, top     C161   VIN / PGND pins 2 / 1
+    #     -X side, bottom  C163   SW (pin 3, the pad TI provides for exactly this) / BOOT 4
+    #     -X, second col.  C166   VCC, pin 5, by a track under C163
+    #     +X side, top     C165   VIN / PGND pins 10 / 11
+    #     +X side, bottom  R41    FB, pin 7: the divider's node is two pads and 1.4 mm
+    #     +X, second col.  R40    its FB pad beside R41's
+    # then the inductor, then both output capacitors; the bulk input capacitor leads.
+    # Offsets are from U13's centre; its pads (KiCad RNX0012, CAD y up): side columns at
+    # x +-0.90 with y +1.125 PGND, +0.475 VIN, -0.175 NC(SW) / EN, -0.675 BOOT / PG; the
+    # bottom row at y -1.40 with x -0.50 VCC, 0 AGND, +0.50 FB; SW the long pad on top.
+    _c4h = CRTYD["0402"][1]                       # an 0402 on end: this wide, [0] tall
+    _colA = CRTYD["RNX12"][0] / 2 + CRTYD_GAP + _c4h / 2
+    _colB = _colA + _c4h + CRTYD_GAP
+    _l1_dx = _colB + _c4h / 2 + CRTYD_GAP + CRTYD["IND-4040"][0] / 2
+    _c162_dx = _l1_dx + CRTYD["IND-4040"][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0] / 2
+    _c160_dx = -(_colB + _c4h / 2 + CRTYD_GAP + CRTYD["1206C"][0] / 2)
+    _top, _bot = 0.80, -(CRTYD["IND-4040"][1] / 2 - CRTYD["0402"][0] / 2)
+    _buck_cell = (
+        ("C160", "24 V input bulk -- 50 V part, see 1206C", "1206C", _c160_dx, 0.0, 0.0),
+        ("C161", "24 V input HF bypass -- AT pins 2 / 1", "0402", -_colA, _top, 90.0),
+        ("C163", "bootstrap -- BOOT to SW, AT pins 4 / 3", "0402", -_colA, _bot, 90.0),
+        ("C166", "buck VCC bypass, 1 uF -- pin 5, under C163", "0402", -_colB, _bot, 90.0),
+        ("U13", "buck -- 24V -> 5V, the board's only switcher", "RNX12", 0.0, 0.0, 0.0),
+        ("C165", "24 V input HF bypass -- AT pins 10 / 11", "0402", _colA, _top, 90.0),
+        ("R41", "feedback divider -- bottom, AT pin 7", "0402", _colA, _bot, 90.0),
+        ("R40", "feedback divider -- top, its FB pad beside R41's", "0402", _colB, _bot,
+         270.0),
+        ("L1", "buck output inductor", "IND-4040", _l1_dx, 0.0, 0.0),
+        ("C162", "5 V output bulk", "0805C", _c162_dx, 0.0, 0.0),
+        ("C167", "5 V output bulk, second", "0805C",
+         _c162_dx + CRTYD["0805C"][0] + CRTYD_GAP, 0.0, 0.0))
     # ⚠ DERIVED, NOT TYPED. This was -37.10, a hardcoded absolute left behind when the
     # board's -X edge moved; the row then sat 6.14 mm outside the board and only
     # _assert_field_clear caught it. Pinned to the edge so the two cannot drift again.
-    _BUCK_X0 = COMPUTE_X0 + EDGE_KEEP    # the row's -X edge, on the board's own keep-out
-    _buck, _bx = [], _BUCK_X0
-    for _r, _d, _p in _buck_order:
-        _w = CRTYD[_p][0]
-        _buck.append((_r, _d, _p, _bx + _w / 2.0))
-        _bx += _w + CRTYD_GAP
-    _buck_h = max(CRTYD[_p][1] for _, _, _p, _ in _buck)
+    _BUCK_X0 = COMPUTE_X0 + EDGE_KEEP    # the cell's -X edge, on the board's own keep-out
+    _u13_x = _BUCK_X0 + CRTYD["1206C"][0] / 2 - _c160_dx
+    _buck = [(_r, _d, _p, _u13_x + _dx, _dy, _rot)
+             for _r, _d, _p, _dx, _dy, _rot in _buck_cell]
+    _buck_h = max(CRTYD[_p][1] for _, _, _p, _, _, _ in _buck)
     y -= CRTYD_GAP
     _buck_y = y - _buck_h / 2.0
     y -= _buck_h
@@ -2311,6 +2336,17 @@ def _parts():
         "XH-SM-4Y",
         COMPUTE_X0 + EDGE_KEEP + CRTYD["XH-SM-4Y"][0] / 2,
         edge_y + CRTYD["XH-SM-4Y"][1] / 2)
+    # R44, the 24 V input's damping resistor (elec/optical.py, at J2): in the open field
+    # between the inlet and the buck row, on the -X keep-out, LYING ALONG X. A 2512 is the
+    # one part here long enough for board flex to work its solder joints, and this board
+    # is a 188 mm strip that bends along Y: across the strip the part sees none of it.
+    # Turned 180 so pad 1 (the connector's side) is the +X pad, straight above J2's way 2
+    # and the 24 V bring-up pad (TP9, which stands 1.15 to 3.74 above the inlet's
+    # courtyard and is cleared by 0.4); pad 2 is then 8 mm under C160, which it feeds.
+    add("R44", "24 V input damping -- 2 ohm 2512, between J2 and the buck's capacitors",
+        "2512R", _BUCK_X0 + CRTYD["2512R"][0] / 2 + 0.30,
+        edge_y + CRTYD["XH-SM-4Y"][1] + 3.74 + 0.40 + CRTYD["2512R"][1] / 2,
+        180.0)
     # ⚠ THE CHAIN SITS INBOARD OF THE +X EDGE, AND THE PHY'S PINOUT IS WHY. With DP/DM
     # facing the socket, the USB3343's cyclic pin order puts pins 19-24 -- RBIAS, the
     # crystal's XO/XI, RESETB, VDD18 -- on the face toward +X. Hard against the edge that
@@ -2513,6 +2549,19 @@ def _parts():
     # the conduit assert refuses the longer board.
     add("C144", "U11 supply bypass -- AT its V+ pin", "0402", _part_x("U11") + 1.14,
         _part_y("U11") + CRTYD["SOT-23-5"][1] / 2 + CRTYD_GAP + CRTYD["0402"][0] / 2, 90.0)
+    # R43 + C134, the bead's damper (elec/optical.py, at FB1): in the strip above U9, whose
+    # input is the rail they damp. Placed by hand for the same reason as C144.
+    _damp_y = (_part_y("U9") + CRTYD["SOT-23-5"][1] / 2 + CRTYD_GAP
+               + CRTYD["0805C"][1] / 2)
+    add("C134", "FB1 damper capacitor -- behind R43, on +5V at U9", "0805C",
+        _part_x("U9") - 1.20, _damp_y, 0.0)
+    add("R43", "FB1 damper resistor, 1 ohm", "0402",
+        _part_x("U9") - 1.20 - CRTYD["0805C"][0] / 2 - CRTYD_GAP - CRTYD["0402"][0] / 2,
+        _damp_y, 0.0)
+    # R42, the buffer's isolation resistor (elec/optical.py, at U11): end-on above pin 1
+    # (OUT), the mirror of C144 above pin 5, pad 1 toward the pin.
+    add("R42", "MID buffer isolation -- AT U11's output pin", "0402", _part_x("U11") - 1.14,
+        _part_y("U11") + CRTYD["SOT-23-5"][1] / 2 + CRTYD_GAP + CRTYD["0402"][0] / 2, 90.0)
 
     # ⚠ AND NOW IT IS AT U10's VBUS PIN (2026-10-04). Beside R39 it was 6.8 mm from the
     # clamp array's rail pin, which needs it more: a rail-clamp dumps a strike into this
@@ -2540,8 +2589,8 @@ def _parts():
     add("C125", "crystal load cap -- Y2 XI", "0402", _c3, _phy_y - 1.50, rot=90.0)
     add("C126", "crystal load cap -- Y2 XO", "0402", _c3, _phy_y + 0.60, rot=90.0)
 
-    for _ref, _desc, _pkg, _bx in _buck:
-        add(_ref, _desc, _pkg, _bx, _buck_y)
+    for _ref, _desc, _pkg, _bx, _bdy, _brot in _buck:
+        add(_ref, _desc, _pkg, _bx, _buck_y + _bdy, _brot)
 
     return P
 
@@ -2618,8 +2667,8 @@ _MPN_RULES = (
     ("U8",   ("AP2114H-3.3TRG1", "C150716",  0.2299, "3V3 DIGITAL, SOT-223 tab, @5+. 0.51 W will "
                                                     "not fit a SOT-23-5. Noisy, but it feeds "
                                                     "the MCU, not the front end")),
-    ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.1903, "3V3 ANALOG, 40 uVrms, SOT-23-5, @10+. Low load "
-                                                    "(~40 mA) so the small package is fine")),
+    ("U9",   ("TPS7A2033PDBVR", "C2862740", 0.2151, "3V3 ANALOG, 7 uVrms, ceramic-stable, "
+                                                    "SOT-23-5. 166 mA worst case of 300")),
     # ⚠ THE DUAL, NOT THE QUAD (2026-09-23). Same die, same datasheet, same 10 MHz /
     # 10 nV/rtHz / 500 fA -- the packaging was the entire sourcing problem. JLCPCB stocks
     # 34,405 of this against 107 of the TLV9064SIRTER, "Economic and Standard" either way,
@@ -2666,8 +2715,8 @@ _MPN_RULES = (
     # The rail behind it draws about 11 mA (five TLV9064 at 2 mA, U11, and the 327 uA
     # mid-rail divider), so 200 mA is thirteen times over and the bead drops 7 mV
     # against an LDO with volts of headroom.
-    ("FB1",  ("GZ1608D601TF",    "C1002",    0.05,  "0603 ferrite bead, 600R@100MHz, 200 mA, "
-                                                    "DCR 450 mohm -- splits the buck's 5 V from "
+    ("FB1",  ("BLM18KG601SN1D",  "C85833",   0.0178,  "0603 ferrite bead, 600R@100MHz, 1.3 A, "
+                                                    "DCR 150 mohm -- splits the buck's 5 V from "
                                                     "the analog LDO's")),
     # --- generic passives: JLCPCB BASIC classes, exact value set at schematic capture ---
     ("Rf",   ("0402 thick-film R", "BASIC",  0.002, "TIA feedback, per-string value")),
@@ -2758,7 +2807,7 @@ _MPN_RULES = (
 # ambiguous group is spelled out instead of pattern-matched.
 _MPN_EXACT = {r: ("0402 thick-film R", "BASIC", 0.002, "pulls / divider / gate")
               for r in ("R30", "R31", "R32", "R33", "R34", "R35", "R36", "R37", "R38", "R39",
-                        "R50", "R51")}
+                        "R42", "R43", "R50", "R51")}
 # The five SHDNZ pull-ups. Spelled out for the same reason as the group above: "Rs11" is
 # not in any R-prefix group's namespace and should not be quietly adopted by one.
 _MPN_EXACT.update({"Rs%d1" % k: ("0402 thick-film R", "BASIC", 0.002,
@@ -2792,7 +2841,11 @@ _MPN_EXACT["C164"] = ("0805 X7R MLCC", "BASIC", 0.01,
 # The output stage (3d). Same namespace hazards again -- R42-R45 would fall to the
 # 0603 ballast rule and C171-C173 to the 0402 line by accident rather than decision.
 _MPN_EXACT.update({r: ("0402 thick-film R", "BASIC", 0.002, "output stage -- series / gain / filter")
-                   for r in ("R42", "R43", "R44", "R45")})
+                   for r in ("R45",)})
+_MPN_EXACT["C135"] = ("0402 X7R MLCC", "BASIC", 0.004, "NRST filter capacitor")
+_MPN_EXACT["R44"] = ("RK73B3ATTE2R0J", "C5139521", 0.6438,
+                     "24 V input damping, 2 ohm 2512 -- KOA, for its single-pulse rating "
+                     "(400 W under 10 us); not a generic 2512")
 _MPN_EXACT.update({r: ("0402 X7R MLCC", "BASIC", 0.004, "DAC bypass / output filter")
                    for r in ("C172", "C173")})
 _MPN_EXACT["C171"] = ("0805 X7R MLCC", "BASIC", 0.01, "DAC analog supply bypass")
