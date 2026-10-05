@@ -61,7 +61,7 @@ P = Pin.types.PASSIVE
 LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
 DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm"
 BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
-IND_FP = "Inductor_SMD:L_Sunlord_SWPA4030S"
+IND_FP = BC.L1_FP                    # with its reason, in buck_cell
 R_FP = "Resistor_SMD:R_0402_1005Metric"
 C_FP = "Capacitor_SMD:C_0402_1005Metric"
 C08_FP = "Capacitor_SMD:C_0805_2012Metric"
@@ -103,7 +103,20 @@ POGO_FP = "Steel:Xinyangze_YZF0002-38080-02"
 # powers the board correctly and lays CAN on the two SPI inputs, and this lead on a
 # motor-bus socket lays 3.3 V logic on CAN. Neither reverses a supply.
 J_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
-J_PINS = ("GND", "+24V_IN", "SCK_IN", "SDT_IN")
+J_PINS = ("GND", "+24V_IN", "SCK_CABLE", "SDT_CABLE")
+# ── 1 k IN SERIES WITH EACH SIGNAL AT THE CABLE (manual quality pass M18, 2026-10-05) ────
+# The Pi drives SCK and SDT at 3.3 V through 68 ohm (pi_cap R1..R4), and this board can be
+# dark while the Pi is up: its fuse open, the lights' fuse on the motor board open, the
+# 24 V lead off, or a Pi on its own USB supply on the bench. A TLC59711's inputs are rated
+# to VREG + 0.6 V (SBVS181A 7.1), and VREG is 0 V then: the pin's protection diode
+# conducts and the Pi powers the driver's logic through it, as much as a GPIO will give.
+# 1 k limits that to 2.7 mA. Against the pin's few pF it is a 10 ns corner, on a clock
+# TI allow to 10 MHz and edges the source resistor has already slowed.
+R_SERIES = "1k 1%"
+# They stand just past the socket's courtyard, each on its own land's line. Measured on the
+# routed board from J1's pad centroid: the lands' centres are 3.25 towards +X, the
+# courtyard ends at 6.05, and ways 3 and 4 are 1.24 and 3.74 towards the LED row.
+J_SERIES = (("R21", 7.30, -1.24), ("R22", 7.30, -3.74))
 J_ANCHOR = 5.30 + 0.9833             # mouth (local +Y 5.30) to the PAD CENTROID (the mean
                                      # of its six pads), both read out of the .kicad_mod
 J_Y = FL.to_board_y(FL.J_Y)
@@ -174,8 +187,8 @@ BUCK_CELL.update({
     # THREE TEST PADS, bare copper, labelled by kicad_silk with their nets (M9): the two
     # rails a first power-up is checked on, and a ground beside them for the other probe.
     "TP1": (-13.40, 0.0, 0.0),         # +24V, after the fuse
-    "TP2": (+17.00, 0.0, 0.0),         # the rail
-    "TP3": (+19.60, 0.0, 0.0),         # GND
+    "TP2": (+18.00, 0.0, 0.0),         # the rail
+    "TP3": (+20.60, 0.0, 0.0),         # GND
 })
 TP_FP = "TestPoint:TestPoint_Pad_D1.5mm"
 BUCK_X = -1.75                       # U10 itself: centres the cell on the board
@@ -259,12 +272,18 @@ def build(board, passes=20):
                   pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(J_PINS)])
         gnd += j1[1]
         v24_in += j1[2]
-        sck += j1[3]
-        sdt += j1[4]
         # mouth faces -X (rot 270), J_INSET in from the board's end; the placement
         # anchors on the pad centroid, J_ANCHOR behind the mouth
         place["J1"] = (-(half - FL.J_INSET) + J_ANCHOR, J_Y, 270.0)
         fps["J1"] = J_FP
+        for (ref, dx, dy), way, net in zip(J_SERIES, (3, 4), (sck, sdt)):
+            cable = Net(J_PINS[way - 1])
+            rs = _r(ref, R_SERIES, "%s in series at the cable: limits what a live Pi can "
+                                   "push into a dark driver's input" % J_PINS[way - 1][:3])
+            cable += j1[way], rs[1]
+            net += rs[2]
+            place[ref] = (place["J1"][0] + dx, J_Y + dy, 0.0)
+            fps[ref] = R_FP
         seam = (+1.0, 20, "out", {"+24V": v24, "GND": gnd, "SCK": sck_out, "SDT": sdt_out})
     else:
         # named NC rather than leaving netcheck to find two pins wired to nothing
@@ -314,9 +333,7 @@ def build(board, passes=20):
     fb += u10[7]
     Net("BUCK_PG_NC").connect(u10[8])
     l1 = Part(name="L", ref_prefix="L", ref="L1", tag="L1", dest="NETLIST", tool="skidl",
-              value="SWPA4030S4R7MT",
-              description="buck output inductor, 4.7 uH shielded, Isat 3.2 A, "
-                          "DCR 78 mohm, 4.0 x 4.0 x 3.0 (LCSC C57269)",
+              value=BC.L1_VALUE, description=BC.L1_DESC,
               footprint=IND_FP, pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
     vrail += l1[2]

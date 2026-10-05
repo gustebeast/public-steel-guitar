@@ -33,13 +33,31 @@ CORE = {
     "CIN_A": (-2.115, +0.80, 90.0),
     "CIN_B": (+2.115, +0.80, 90.0),
     "CBOOT": (-2.115, -1.32, 90.0),
-    "CVCC": (-3.295, -1.32, 90.0),
+    # CVCC STANDS UNDER ITS OWN PIN, pad 1 up against pin 5 and its ground pad beside the
+    # track that comes down from pin 6: the gate drivers' supply loop is 3 mm of front
+    # copper. Beside CBOOT, where it stood until 2026-10-05, the bootstrap capacitor
+    # walled it in and the router took it through two vias and 4.6 mm of 0.15 track.
+    "CVCC": (-0.75, -2.72, 270.0),
     "RFBB": (+2.115, -1.32, 90.0),
     "RFBT": (+3.295, -1.32, 270.0),
     "RFBP": (+2.115, -3.25, 270.0),
 }
-L1_DX = 6.535                # the inductor's centre, a 4 x 4 mm part with lands at +-1.50
-L1_LAND = 1.50
+# ⚠ THE INDUCTOR IS SUNLORD SWPA5040S3R3NT, 5 x 5 x 4 (manual quality pass M14, 2026-10-05).
+# It was the 4 x 4 SWPA4030S4R7MT, whose saturation current is 2.90 A guaranteed and 3.20
+# typical (Sunlord's table; a 30 % drop in inductance). TI: "the inductor saturation
+# current must not be less than the device low-side current limit", which is 3.5 A
+# typical, 2.9 to 4.1 (SNVSAN3F 7.5 and 9.2.2.4) -- so a shorted rail saturated it. This
+# one is 3.95 A guaranteed and 4.60 typical, at 31 milliohm instead of 78; and 3.3 uH is
+# the value TI's own table gives for 12 V out at 2.1 MHz (ripple 0.83 to 0.86 A at these
+# boards' 11.5 and 14.5 V: 28 % of the part's 3 A, where TI asks for 20 to 40).
+L1_VALUE = "SWPA5040S3R3NT"
+L1_LCSC = "C305173"
+L1_FP = "Inductor_SMD:L_Sunlord_SWPA5040S"
+L1_DESC = ("buck output inductor, 3.3 uH +-30 % shielded, Isat 3.95 A min / 4.60 typ, "
+           "DCR 31 mohm max, 5.0 x 5.0 x 4.0 (LCSC C305173)")
+L1_UH, L1_ISAT = 3.3, 3.95
+L1_DX = 7.035                # the inductor's centre, a 5 x 5 mm part with lands at +-1.85
+L1_LAND = 1.85
 SW_W = 0.50
 
 # ── THE BULK, in a row along the cell's own axis ───────────────────────────────────────
@@ -50,11 +68,11 @@ BULK = {
     "CIN_1": (-5.25, 0.0, 90.0),
     "CIN_2": (-7.85, 0.0, 90.0),
     "L1": (L1_DX, 0.0, 0.0),
-    "COUT_1": (+10.20, 0.0, 90.0),
-    "COUT_2": (+12.80, 0.0, 90.0),
-    "COUT_HF": (+14.70, 0.0, 90.0),
+    "COUT_1": (+11.20, 0.0, 90.0),
+    "COUT_2": (+13.80, 0.0, 90.0),
+    "COUT_HF": (+15.70, 0.0, 90.0),
 }
-X_MIN, X_MAX = -9.15, +15.20     # the cell's reach along its axis, copper and courtyards
+X_MIN, X_MAX = -9.15, +16.20     # the cell's reach along its axis, copper and courtyards
 
 
 def at(origin, turn, dx, dy, rot=0.0):
@@ -90,7 +108,7 @@ def at(origin, turn, dx, dy, rot=0.0):
 # ⚠ AND THE STITCHER MUST LEAVE THE TWO PGND PINS ALONE (STITCH_EXCEPTIONS). Left to itself
 # it ran pin 11's ground stub down the gap between the package and CIN_B and walled pins
 # 9 and 10 off from the rest of the input net.
-def copper(origin, turn, v_in="+24V", v_out=None):
+def copper(origin, turn, v_in="+24V", v_out=None, v_cc="BUCK_VCC"):
     """BOARD_NOTES["tracks"] entries. `v_out` (the rail's net) adds the output side: the
     inductor's far land to both output capacitors, and their grounds to each other."""
     def run(net, w, *pts):
@@ -110,6 +128,10 @@ def copper(origin, turn, v_in="+24V", v_out=None):
         run(v_in, 0.40, (0.95, 0.60), (1.60, 0.60), (2.115, 0.35)),
         run(v_in, 0.70, (2.115, 0.35), (3.70, 0.35)),
         run(v_in, 0.25, (0.95, -0.016), (1.65, -0.016), (1.65, 0.35)),
+        # VCC (pin 5) into its capacitor, and AGND (pin 6) round to the capacitor's
+        # other pad: see CORE["CVCC"]
+        run(v_cc, 0.25, (-0.50, -1.24), (-0.50, -2.00), (-0.75, -2.24)),
+        run("GND", 0.25, (0.0, -1.24), (0.0, -3.20), (-0.75, -3.20)),
         # ...and the two input sides joined UNDER the package, on the back: the right-hand
         # pair is walled in by the ground bar and the switch node, and the router found
         # no way out for it (one unconnected, 1.8 mm long). Via to via, see vias().
