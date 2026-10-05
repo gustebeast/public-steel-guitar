@@ -1322,8 +1322,24 @@ def pi_cap() -> cq.Workplane:
     The board is turned -90 so its socket (which runs along the board's X) lies along the
     header's axis, and lifted by the socket's own body height so the socket fills the
     standoff between the two boards -- which is why board_geom carries that 8.5 once and
-    both this and the flipped footprint read it from there."""
-    return _cap_place(BG.solid("pi_cap"))
+    both this and the flipped footprint read it from there.
+
+    ⚠ ITS THROUGH-HOLE PINS ARE PART OF IT (2026-10-05). Every part on the cap is on the
+    face toward the Pi, so the three through-hole parts -- the 2x20 socket, the ribbon
+    header and J6, the foot drop's side-entry XH -- put their solder ends out of the
+    OTHER face, the one toward the deck. They were not drawn, so nothing could say what
+    they clear. One slab per part over its own pad row, as tall as board_geom's TAIL."""
+    s = _cap_place(BG.solid("pi_cap"))
+    top = s.val().BoundingBox().zmax              # the cap's far face: nothing stands on it
+    for ref, fab, tail in BG.tails("pi_cap"):
+        if tail <= 0.0:
+            continue
+        x0, x1, y0, y1 = BG.footprint("pi_cap", ref).get("tht") or fab
+        m = _cap_place(box_at(x1 - x0, abs(y1 - y0), 0.01, x=(x0 + x1) / 2.0,
+                              y=(y0 + y1) / 2.0, z=0.0)).val().BoundingBox()
+        s = s.union(box_at(m.xlen, m.ylen, tail, x=m.center.x, y=m.center.y,
+                           z=top + tail / 2.0))
+    return s
 
 
 def pi_cap_silk():
@@ -1366,7 +1382,7 @@ def pi_cap_pin(ref, n):
     f = BG.footprint("pi_cap", ref)
     x0, x1, y0, y1 = f["fab"]
     pitch = 2.5 if "XH" in BG.fp_name(f["fpid"]) else 2.0
-    cnt = {"J2": 4, "J4": 4, "J3": 6}[ref]
+    cnt = {"J2": 6, "J4": 4, "J3": 4, "J6": 4}[ref]
     px = (x0 + x1) / 2.0 + (n - (cnt + 1) / 2.0) * pitch
     py = (y0 + y1) / 2.0
     marker = box_at(0.01, 0.01, 0.01, x=px, y=py, z=0.0)

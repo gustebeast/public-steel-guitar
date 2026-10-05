@@ -154,12 +154,27 @@ def lever_sensor():
               pins=[Pin(num=1, name="IN", func=PWR), Pin(num=2, name="GND", func=PWR),
                     Pin(num=3, name="EN", func=I), Pin(num=4, name="NC", func=P),
                     Pin(num=5, name="OUT", func=P)])
-    v5 += u1["IN"], u1["EN"]
+    # THE REGULATOR SITS BEHIND 2.2 OHM (2026-10-04). The pedal boards are reached through
+    # the leg's spring pins, a joint a player can make with the instrument on. A live 5 V
+    # bus, a metre of 26 AWG (about 1 uH and 0.3 ohm) and a bare 1 uF ceramic is a tank
+    # with a damping ratio near 0.2: it rings to about 7.6 V, and the AP2112's input is
+    # 6.5 V absolute maximum. With 2.2 ohm in the branch the ratio is about 0.9 and there
+    # is no overshoot to speak of. It costs 0.18 V at 80 mA, against 1.2 V of headroom,
+    # and it is in the branch only: the bus itself passes J1 untouched.
+    # The bus keeps a 100 nF of its own at the connector (the regulator's capacitor is on
+    # the far side of the resistor now). It rings on a hot plug like any bare ceramic and
+    # does not mind: nothing else is on this net but the connector and the resistor.
+    c_bus = _c("C3", "100nF/16V", "bus HF bypass at J1 -- rated for the hot-plug ring")
+    v5 += c_bus[1]; gnd += c_bus[2]
+    v5_ldo = Net("+5V_LDO")
+    r_in = _r("R", "R8", "2R2", "damps the input capacitor against a hot-plugged bus")
+    v5 += r_in[1]; v5_ldo += r_in[2]
+    v5_ldo += u1["IN"], u1["EN"]
     gnd += u1["GND"]
     v33 += u1["OUT"]
     Net("U1_NC").connect(u1["NC"])
     cin = _c("C1", "1uF", "LDO input")
-    v5 += cin[1]; gnd += cin[2]
+    v5_ldo += cin[1]; gnd += cin[2]
     cout = _c("C2", "1uF", "LDO output")
     v33 += cout[1]; gnd += cout[2]
 
@@ -214,7 +229,8 @@ def lever_sensor():
     # player-handled lever mostly sees.)
     for tag, net in (("D2", can_h), ("D3", can_l)):
         d = Part(name="TVS", ref_prefix="D", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
-                 value="PESD1CAN-like", description="bidirectional TVS, bus pin to GND",
+                 value="ESD5B5.0ST1G", description="bidirectional 5 V TVS, bus pin to GND "
+                 "(LCSC C93623, the part motor_ctrl clamps the same bus with)",
                  # SOD-523, not SOD-123: these are signal-line ESD clamps, not power
                  # TVS, and the big package cost 18 mm2 the board no longer has once
                  # the foot pedal's Y budget capped its height at 22.55.
@@ -366,14 +382,16 @@ def lever_sensor():
 
 
     y1 = Part(name="Crystal", ref_prefix="Y", ref="Y1", tag="Y1", dest="NETLIST", tool="skidl",
-              value="8MHz", description="HSE -- CAN bit timing wants a crystal, not the RC",
+              value="TAXM8M4RFDCET2T", description="HSE 8 MHz, CL 12 pF (LCSC C403948, the "
+              "crystal motor_ctrl and output_panel use) -- CAN bit timing wants a "
+              "crystal, not the RC",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P),
                     Pin(num=3, func=P), Pin(num=4, func=P)])
     osc1 += y1[1]; osc2 += y1[3]
     gnd += y1[2], y1[4]
     for tag, net in (("C5", osc1), ("C6", osc2)):
-        c = _c(tag, "12pF", "crystal load")
+        c = _c(tag, "15pF", "crystal load: 7.5 in series + ~4.5 of pin and track = CL 12")
         net += c[1]; gnd += c[2]
     c_nrst = _c("C7", "100nF", "NRST filter")
     nrst += c_nrst[1]; gnd += c_nrst[2]
@@ -472,10 +490,14 @@ _SENSOR_QTY = _sensor_qty()
 _PLACE_CHIP = {
         "U4": (0.0000, 0.0000, 0.0),
         # SWD: SWDIO / SWCLK / GND in a row for a clip, NRST stranded (recovery only)
-        "TP1": (-4.5000, 7.9500, 0.0),     # SWDIO
-        "TP2": (-2.1000, 7.9500, 0.0),    # SWCLK
-        "TP3": (-4.5000, 5.6500, 0.0),     # GND
-        "TP4": (-14.1500, 8.0500, 0.0),    # NRST
+        # one row on a 2.4 mm pitch, 3 mm in from the +Y edge so a name fits on either side
+        # of a pad: the names are 3 mm wide at 1.0 mm, wider than the pitch, so they
+        # alternate above and below. As a 2 x 2 block they had nowhere to go: DIO landed
+        # beside the CLK pad, GND 5 mm from its own, and CLK only fitted at 0.8
+        "TP1": (-4.8000, 7.1000, 0.0),     # SWDIO
+        "TP2": (-2.4000, 7.1000, 0.0),     # SWCLK
+        "TP3": (0.0000, 7.1000, 0.0),      # GND
+        "TP4": (-14.1100, 8.0500, 0.0),    # NRST
         # J1 on end, mouth -X at x -12.45 (3.05 in from the -X edge, the spec's figure).
         # Placements anchor on the PAD CENTROID: the footprint's mouth is its local +y 4.4,
         # its pad centroid local y -1.70 (eight pins at -2.85, two tabs at +2.90), and rot
@@ -483,9 +505,22 @@ _PLACE_CHIP = {
         # the routed geom, not assumed: -8.05 put the mouth at -14.15.
         "J1": (-18.8500, -0.8500, 270.0),
         "U1": (-8.5000, 7.1500, 0.0),
-        "C1": (-11.9000, 7.7500, 0.0),
-        "C2": (-11.9000, 6.4500, 0.0),
-        "R7": (-0.1000, 6.3000, 0.0),
+        # 0.55 toward the regulator (courtyards 0.03 apart), which leaves 3.10 mm between
+        # J1 and these two for the reset pad's name at 1.0 mm: RST is 3.07 wide and only
+        # went down at 0.8. TP4 sits 0.04 off its old x so the placer's 0.25 grid lands in
+        # the 0.03 mm of slack
+        "C1": (-11.3500, 7.7500, 0.0),
+        "C2": (-11.3500, 6.4500, 0.0),
+        # the input damper, above C1 against the +Y edge: pad 2 (the regulator side) over
+        # C1's input pad, pad 1 toward the regulator where the bus comes round to it
+        "R8": (-11.3500, 8.8500, 180.0),
+        # the bus bypass, behind the connector tails between the outgoing 5 V and GND ways
+        # (6 and 5): pad 1 (+5V) toward way 6
+        "C3": (-14.8400, -3.0000, 90.0),
+        # SCL pull-up: 0.6 +X and 0.9 -Y of where it was, clear of the SWD row and the
+        # name under it. (Tried beside the transceiver and between MCU and sensor: each
+        # left a net open on some runs.)
+        "R7": (0.5000, 5.4000, 0.0),
         # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
         # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
         # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
@@ -493,7 +528,9 @@ _PLACE_CHIP = {
         "C9": (-5.5000, 3.8000, 0.0),
         "C8": (-3.5000, 3.8000, 0.0),
         "R5": (0.0000, 3.2000, 0.0),
-        "C11": (-4.0000, 0.0000, 0.0),
+        # the sensor bypass sits AT the sensor supply pin (13, the north-east corner),
+        # pad 1 (+3V3) toward it and beside the MODE strap; it was 5 mm away, west of the chip
+        "C11": (1.6000, 3.4000, 90.0),
         "C10": (-1.5000, -3.3000, 0.0),
         "Y1": (-11.9000, -2.4000, 0.0),
         # C5/C6 stay east of the crystal: moving them west measured 1 -> 5 unconnected
@@ -505,7 +542,10 @@ _PLACE_CHIP = {
         "C7": (-13.5500, 4.4500, 90.0),
         "R6": (0.4000, -3.3200, 270.0),
         "U2": (-10.5000, -7.0000, 0.0),
-        "C4": (-5.0000, -5.7000, 0.0),
+        # the transceiver bypass is on the side VCC and GND are (pins 3 and 2, west), in
+        # the 1.2 mm strip between U2 and the connector tails: pad 1 (+3V3) faces pin 3.
+        # It was on the far side of the package, 7.7 mm from the pin
+        "C4": (-14.8400, -7.1000, 90.0),
         "R3": (-5.0000, -7.2000, 0.0),
         "R4": (-1.5000, -5.1500, 0.0),
         "JP1": (-1.5000, -7.1000, 0.0),
@@ -637,6 +677,14 @@ BOARD_NOTES = {
     #     checks was failing a house default and not a fab limit -- it is manufacturable
     #     too. 0.50/0.25 is used because it needs no rule relaxed to prove it.
     "via_mm": (0.50, 0.25),
+    # the lever bus passes THROUGH this board (J1 1-4 in, 5-8 out), so the first board of
+    # a chain carries every later board supply: up to bus B limit, 0.57 A
+    "net_widths": {"+5V": 0.4},
+    # the words the silkscreen uses. A legend is as wide as its longest line and this
+    # board is 32 x 22: at the full net names the J1 legend and one SWD label only went
+    # down at 0.8 mm, under the fab minimum of 1.0
+    "silk_labels": {"TP1": "DIO", "TP2": "CLK", "TP4": "RST",
+                    "CAN_H": "H", "CAN_L": "L", "+5V": "5V"},
     # ⚠ THE VIA SIZE IS AN ORDER-FORM FIELD, NOT JUST A GERBER FACT. JLCPCB's own
     # capability page says "please select corresponding via size option when placing
     # order" for 0.2/0.25 mm hole sizes. The gerbers carry the geometry; the process is
@@ -671,6 +719,179 @@ BOARD_NOTES = {
     # J1's zone (spec rule 4): its body, its solder tabs and the mated plug's 3.6 run past
     # the mouth, over J1's length -- x -16.05..-3.85 here, clipped to the board.
     "conn_keepout": {"box": [-15.5, -9.95, -3.85, 9.95], "exempt": ["J1", "U4"]},
+    # ── the quality pass (cadkit/PCB_QUALITY.md) ─────────────────────────────
+    "quality": {
+        "power_paths": [
+            # the bus passes through: the first board of a chain carries the rest, up to
+            # the 565 mA maximum of motor_ctrl's TPS2553 at 49.9 k
+            {"net": "+5V", "from": "J1.2", "to": ["J1.6"], "amps": 0.57},
+            # this board: MCU ~10 mA at 48 MHz, sensor 10 mA, transceiver 17 mA dominant
+            # plus ~35 mA into the bus while it drives -- 80 mA with margin
+            {"net": "+5V", "from": "J1.2", "to": ["R8.1"], "amps": 0.08},
+            {"net": "+5V_LDO", "from": "R8.2", "to": ["U1.1"], "amps": 0.08},
+            {"net": "+3V3", "from": "U1.5", "to": ["U3.17", "U3.5", "U2.3", "U4.13"],
+             "amps": 0.08},
+        ],
+        "pinouts": {
+            "S8B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
+                             "the board below, No. 1 circuit is on the left. KiCad "
+                             "JST_PH_S8B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
+                             "Ways 1-4 and 5-8 are each harness.PH_PINOUT (GND, 5 V, CAN_H, "
+                             "CAN_L); the two MP tabs carry no net. Read 2026-10-04",
+            "AP2112K-3.3TRG1": "Diodes DS39724 p.1-2, Pin Descriptions, SOT25 column: 1 VIN, "
+                               "2 GND, 3 EN (high = on), 4 NC, 5 VOUT. Board: 1 +5V_LDO, 2 GND, "
+                               "3 +5V_LDO, 4 open, 5 +3V3. Read 2026-10-04",
+            "SN65HVD230DR": "TI SLOS346 Pin Functions (SOIC-8): 1 D, 2 GND, 3 VCC, 4 R, "
+                            "5 Vref, 6 CANL, 7 CANH, 8 RS. Board: 1 CAN_TX, 2 GND, 3 +3V3, "
+                            "4 CAN_RX, 5 open, 6 CAN_L, 7 CAN_H, 8 slope resistor. Re-read "
+                            "2026-10-04",
+            "CH32V203G6U6": "WCH CH32V203 datasheet V2.8 table 3-1-3 (pp. 8-10), the QFN28 "
+                            "(G6) column, read off the page image because the text layer "
+                            "scrambles it: 0 VSS (the exposed pad, KiCad pad 29), 1 BOOT0 / "
+                            "PB8, 2 OSC_IN, 3 OSC_OUT, 4 NRST, 5 VDDA, 16 VSS, 17 VDD, "
+                            "19 PA10 and PA11 on ONE pin (note 7) = CAN1_RX, 20 PA12 = "
+                            "CAN1_TX, 21 PA13 = SWDIO, 22 PA14 = SWCLK, 26 PB5, 27 PB6 = "
+                            "I2C1_SCL, 28 PB7 = I2C1_SDA. Board: the same fifteen pins, "
+                            "pin 1 to GND, pin 26 the sensor CSN. Read 2026-10-04",
+            "MT6701QT-STD": "MagnTek MT6701 datasheet rev 1.9 (2024.05) p.4, section 1.2 "
+                            "QFN-16, top view and pin table: 1-4 NC, 5 PUSH, 6 A (I2C SDA), "
+                            "7 B (I2C SCL), 8 Z (SSI CSN), 9 W, 10 NC, 11 U, 12 V, 13 VDD, "
+                            "14 MODE, 15 OUT, 16 GND, pad = GND. Board: 6 SDA, 7 SCL, "
+                            "8 SENS_CSN, 13 +3V3, 14 to +3V3 through R5 (I2C / SSI), 16 and "
+                            "the pad GND, the rest open. Read 2026-10-04",
+            "TAXM8M4RFDCET2T": "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948), 'Connection' "
+                               "drawing: lands 1 and 3 are the crystal, 2 and 4 the can "
+                               "(GND). Board: 1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read "
+                               "2026-10-04",
+        },
+        # The manual review, 2026-10-04. Each entry is the evidence, not a tick. Left OPEN on
+        # purpose: M11 (the CAD fit, after these placements reach the build), M35 (errata)
+        # and the order-time items M12, M29, M30, M37, M42.
+        "manual": {
+            "M1": "one PHR-8 housing carries both cables (INSTALL_NOTES, 'one PHR-8 "
+                  "housing'): ways 1-4 are the bus in and 5-8 the bus out, each in "
+                  "harness.PH_PINOUT order (GND, 5 V, CAN_H, CAN_L), the list motor_ctrl "
+                  "J2 / J6 and the leg boards are built from. Both halves are the same "
+                  "four nets on this board, so in and out may be swapped without effect. "
+                  "The housing is polarised and a PH cannot enter an XH, so a lever lead "
+                  "cannot reach a 24 V motor tee",
+            "M2": "no polarised two-pad part: D2 / D3 are bidirectional, every capacitor "
+                  "is ceramic",
+            "M3": "In1 is an unbroken GND plane under the whole board and B.Cu carries a "
+                  "second GND pour. The pass-through's return (up to 0.57 A) goes J1.5 -> "
+                  "plane -> J1.1, 8 mm, directly under its own +5V track. No slot, no "
+                  "split; the regulator and every IC ground drop into the plane on their "
+                  "own vias",
+            "M4": "U1 (AP2112K, DS39724): asks 1 uF ceramic at IN and at OUT. C1 1 uF at "
+                  "IN behind R8; C2 1 uF at OUT plus C10 4.7 uF and four 100 nF on the same "
+                  "rail. Nothing on this board steps current. No rating is written on a "
+                  "value here because the highest rail is 5 V and the fab's 0402 parts at "
+                  "these values are 6.3 V or more; C3, the one capacitor that can see a "
+                  "hot-plug ring (about 10 V), is called out as a 16 V part",
+            "M5": "+5V bus: C3 (16 V), R8 and the connector only. +5V_LDO: U1, absolute "
+                  "maximum 6.5 V, behind R8 (M16). +3V3: MCU 3.6 V max operating, sensor "
+                  "3.3-5 V, transceiver 3.6 V. CAN pins: the SN65HVD230 stands -4..16 V "
+                  "and the bus supply is 5 V, so no fault on this bus exceeds it; D2 / D3 "
+                  "clamp ESD. R4 carries 17 mA: 34 mW in an 0402 rated 62 mW. R8 carries "
+                  "80 mA: 14 mW",
+            "M6": "nothing fast: CAN at 1 Mbit/s with slope control, I2C at 400 kHz, an "
+                  "8 MHz crystal 3.4 and 5.5 mm from its pins",
+            "M7": "U1: EN tied to IN, fixed 3.3 V part. U2 (SLOS346): RS through 10 k to "
+                  "GND = slope control; Vref left open, as the sheet allows. U4 (MT6701 "
+                  "rev 1.9 fig. 18): MODE high through R5 selects the I2C / SSI port, pad "
+                  "to GND, 100 nF at VDD. U3: 8 MHz crystal on OSC_IN / OSC_OUT (M24), "
+                  "100 nF on NRST, VDDA and VDD on the same rail with a capacitor each",
+            "M8": "BOOT0 (pin 1) hard to GND: the board is programmed over SWD only. NRST: "
+                  "the MCU's internal pull-up and C7. U1 EN: tied to IN. U2 RS: R3 to GND. "
+                  "U4 MODE: R5 to +3V3. SENS_CSN is an MCU output and floats until "
+                  "firmware drives it; nothing reads the sensor before then",
+            "M9": "SWD on bare 1 mm pads in a row on the magnet face, each with its name "
+                  "beside it at 1.0 mm: DIO, CLK, GND, and RST by the connector. No 3V3 "
+                  "pad: the rail is probed on C10 or C2, and the board reports itself "
+                  "over CAN once it runs",
+            "M10": "CAN_H / CAN_L: D2 / D3 (ESD5B5.0ST1G, bidirectional) from each line to "
+                   "GND. They sit 2.3 and 3.8 mm PAST the transceiver's bus pins, not at J1: the "
+                   "only strip beside the connector tails is 1.16 mm wide and holds the two "
+                   "bypass capacitors. Accepted because the transceiver's bus pins are "
+                   "themselves rated 16 kV HBM and the fault this pair was first fitted "
+                   "for (24 V swept onto the bus by a plug) cannot happen on a 5 V bus. "
+                   "Reverse polarity: one polarised housing. Over-current: the bus is "
+                   "limited to 0.52 A by motor_ctrl's U6",
+            "M15": "AP2112K is ceramic-stable from 1 uF. Effective output capacitance at "
+                   "3.3 V of bias is about 0.6 uF (C2) + 2.5 uF (C10) + 0.3 uF (the four "
+                   "100 nF): over 3 uF. Headroom: 5 V less 0.3 V of harness less 0.18 V "
+                   "in R8 is 4.5 V at the pin, against 3.3 V + 0.25 V of dropout. It "
+                   "dissipates 1.2 V x 80 mA = 0.1 W at most",
+            "M16": "a pedal board is reached through the leg's spring pins, a joint that "
+                   "can be made with the bus live. R8, 2.2 ohm, is in series with the "
+                   "regulator's input capacitor: a metre of 26 AWG (about 1 uH, 0.3 ohm) "
+                   "into 1 uF has a damping ratio near 0.2 without it (a ring to about "
+                   "7.6 V against 6.5 V absolute maximum) and about 0.9 with it. C3 on the "
+                   "bus side rings freely and is a 16 V part with nothing else on its net",
+            "M18": "every board on bus B takes its 5 V from the same switch, so they rise "
+                   "and fall together; a board left unplugged presents no supply and the "
+                   "SN65HVD230's bus pins are high-impedance unpowered (SLOS346). An SWD "
+                   "probe is the one outside driver and is connected with the board "
+                   "powered",
+            "M20": "I2C: R6 / R7 4.7 k to 3.3 V, one pair, on a 15 mm bus: above the "
+                   "967 ohm floor (3 mA sink) and far under the ceiling for 400 kHz. "
+                   "CAN: R4 120 ohm behind JP1, closed only on the board at each far end "
+                   "of bus B (two in all; the controller sits mid-bus and carries "
+                   "none). This board's stub from J1 to the transceiver is about 15 mm",
+            "M21": "the sensor's ground pin and pad drop into the In1 plane on their own "
+                   "vias, C11 is 0.9 mm from its supply pin, and the only regulator is "
+                   "linear -- chosen for that, in place of the buck that stood 15 mm "
+                   "from the sensor",
+            "M22": "no op-amp on this board",
+            "M24": "Y1 TAXM8M4RFDCET2T, CL 12 pF. C5 = C6 = 15 pF: 7.5 pF in series plus "
+                   "about 4.5 pF of pin and track = 12 pF. The same crystal and capacitors "
+                   "as motor_ctrl and output_panel",
+            "M25": "two exposed pads, both GND, both on vias to the plane (A8). The MCU "
+                   "dissipates about 35 mW and the sensor about 35 mW: neither needs the "
+                   "pad for heat",
+            "M26": "CAN_TX: MCU pin 20 (PA12, CAN1_TX) to U2 pin 1, D, the driver input. "
+                   "CAN_RX: U2 pin 4, R, the receiver output, to MCU pin 19 (PA11, "
+                   "CAN1_RX). SDA to the sensor's pin 6 (A / SDA), SCL to pin 7 (B / SCL)",
+            "M27": "BOOT0: tied to GND, nothing else on the pin (the package shares it "
+                   "with PB8, which is therefore unused). SWDIO / SWCLK: a test pad each, "
+                   "nothing else. NRST: C7 and a test pad. Pin 19 is PA10 and PA11 bonded "
+                   "together (datasheet note 7): it is CAN1_RX here and firmware must "
+                   "leave PA10 an input",
+            "M28": "CH32V203G6U6 is the QFN28 'G6' column of table 3-1-3, not the QSOP28 "
+                   "G8 one (different numbering). MT6701QT-STD is the QFN-16, not the "
+                   "SOP-8 MT6701CT. AP2112K-3.3TRG1 is the SOT-25 part and SN65HVD230DR "
+                   "the SOIC-8. Each read against the footprint "
+                   "the board places (quality.pinouts)",
+            "M31": "no polarised two-pad part to mark. Each IC's pin-1 mark is the KiCad "
+                   "footprint's own silk, outside the body; J1 and the four SWD pads are "
+                   "named in silk at 1.0 mm; the pinout legend and the board name are on "
+                   "the back",
+            "M32": "J1 is JST PH, 2.0 mm, the family the lever harness is crimped in "
+                   "(harness.PH_PINOUT). PH contacts are rated 2 A; the most this bus can "
+                   "deliver is 0.57 A",
+            "M33": "5 V in: MCU about 10 mA, sensor 10 mA, transceiver 17 mA dominant "
+                   "plus about 35 mA into the bus while it transmits: 25 mA idle, 75 mA "
+                   "peak, through a 600 mA regulator. Bus B: eleven boards idle at 25 mA "
+                   "and one transmitting is about 0.33 A against U6's 0.475 A minimum "
+                   "limit",
+            "M34": "CAN_TX / CAN_RX, I2C and SWD are all 3.3 V at both ends. The sensor "
+                   "runs from 3.3 V, so its outputs cannot exceed the MCU's rail",
+            "M36": "the pass-through on ways 5-8 is the bus itself: limited upstream to "
+                   "0.52 A by motor_ctrl's U6, carried here on 0.4 mm copper and 2 A "
+                   "contacts. This board adds no source",
+            "M38": "the board is held by printed grooves on its two long edges; every "
+                   "part stands at least 1.85 mm in from them (groove_keepout_x). J1 "
+                   "takes plug force on its two soldered tabs. Every part and pad is on "
+                   "the magnet face (single_sided)",
+            "M39": "MCU: unused GPIO are left open and set by firmware to pulled inputs; "
+                   "PB8 is grounded with BOOT0. U4: PUSH, OUT, U / V / W are outputs, left "
+                   "open; its NC pins are open. U2 Vref: an output, open. U1 pin 4: NC",
+            "M40": "the generator carries the record beside each value: the crystal and "
+                   "its capacitors (M24), R8 (M16), the 0.50 / 0.25 via the MCU's fan "
+                   "needs, the row of SWD pads, the capacitor at each supply pin, and "
+                   "the MCU rotation (measured, not chosen)",
+        },
+    },
 }
 
 

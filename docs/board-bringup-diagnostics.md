@@ -53,7 +53,7 @@ So the first diagnostic tool is the datasheet. The audit, finished 2026-09-30:
 | LMR33630 HSOIC (DDA) | motor_ctrl U5, U6 | ❌ **was wrong, fixed**, read from SNVSAN3F Table 6-1 |
 | LMR33630 VQFN (RNX) | optical U13, fret/foot U10 | ✅ checked against the same table: correct |
 | LMR16006 | motor_ctrl, output_panel | ✅ cited in-file (SNVSA24 §6) |
-| SN74LVC1G3157 | output_panel U12 | ✅ cited in-file (SCES424O Table 4-1) — after being wrong once |
+| TS5A3159 (was SN74LVC1G3157) | output_panel U12 | ✅ replaced 2026-10-04 (the logic-level review): same SC-70-6 land pattern, pinout cited in-file |
 | CH32V307 / CH32V203 | all three MCU boards | ✅ read from `.ins/*.json` |
 | SN65HVD230 | motor_ctrl, lever_sensor | ✅ read 2026-09-30, TI SLOS346O §7: matches |
 | PCM1808, PCM5102A | output_panel U2, U3 | ✅ read, SLES177B §5 and SLAS859C §7, all 14 + 20 pins: match |
@@ -248,7 +248,7 @@ Every net on both boards is on a connector pin, so there is nothing a pad could 
 As in the optical doc, the cheapest item is writing the order down (into `INSTALL_NOTES.md`):
 
 0. **Meter the supply's plug BEFORE it ever meets the panel (added 2026-10-01).** The inlet is a 4-pin Kycon jack and the rails sit on its DIAGONALS: pins 1 and 4 are +24 V, 2 and 3 the return (Mean Well R7B). A mirrored footprint swaps both rails, and nothing on `output_panel` survives 24 V backwards. Looking into the PLUG with its key up, confirm which two pins are positive, then check them against J6's pads with the board unpowered: continuity from pads 1 and 4 to J7 pins 2/3, from pads 2 and 3 to J7 pins 1/4.
-1. **Bare board, bench supply at 24 V / 100 mA limit.** Current at rest, then each rail with a meter.
+1. **Bare board, bench supply at 24 V / 100 mA limit.** Current at rest, then each rail with a meter. **Plug the lead first, THEN switch the supply's output on** — never push a live 24 V lead into a board. A live lead into ceramic input capacitors rings toward 48 V, and the LMR33630 on `motor_ctrl` is a 36 V part (38 V absolute). In the instrument the rail arrives through the output panel's switch at about 2 V/ms and cannot ring; on the bench nothing stops it but this habit. (`optical` has a 2 Ω series resistor, R44, for exactly this and survives it; `motor_ctrl` carries 3 A on that input and cannot have one — its TVS and fuse are not a substitute for the order of operations.)
 2. **`motor_ctrl` alone:** SWD attaches → flash → USB enumerates on the Pi → 2.1's counters read "no ACK" (correct: nothing else is on the bus yet).
 3. **Add one node at a time**; the counters go clean when the first one acknowledges. Power off, **60 Ω** across each bus.
 4. **`output_panel`:** the USB tree (3.1), then the loopback (3.2).
@@ -290,3 +290,18 @@ test pads, TP1-TP4 in that order, so nothing has to probe a spring pin or a gold
    meter is the proof.
 3. **Loaded.** With bus B powered, +5V at the far female's TP2 should sit within 0.1 V of
    the near one. More than that is a contact, not copper (the boards are under 20 mOhm).
+
+## Output panel: three things to know before the first power-up (2026-10-04)
+
+* **The two grounds meet at R60.** `GND` and `PWR_GND` are joined by one 0 ohm link beside
+  the 5 V buck (2026-10-04), so the board runs from the inlet alone. If hum from the
+  motors ever shows in the audio, R60 is the part to swap for a bead.
+* **The inlet is switched, and it fails on.** Q2 passes 24 V unless the UI board's power
+  button shorts its wire (J10 way 5 or 6, picked by JP1) to ground. With J10's button ways
+  open, as on a bench, the panel is on whenever the supply is plugged in. To test OFF, short
+  the selected way to `PWR_GND` (J10 way 1): the output should fall and the supply current
+  drop to 2.55 mA. Turn-on is a 16 ms ramp, not a step.
+* **The audio ADC is on I2S3, not I2S2.** The CH32V307 has two standard I2S blocks and no
+  full-duplex extension, so the DAC is I2S2 (master transmit) and the ADC's data is I2S3
+  (PB5) as a slave receiver, with I2S3's clock pins (PA15 word clock, PB3 bit clock) tied
+  on the board to I2S2's. Firmware has to enable both and start I2S3 before I2S2.
