@@ -199,3 +199,20 @@ OPEN; an item moves to DONE with the commit that closed it.
     24 V on the 5 V bus. pi_cap J3 (bronner) must follow: 4-way S4B, same order.
 27. 2026-10-04: every fret line is INLAY_W now (fret 24 was the thin one) and the
     24th-fret quad is centred in its space (a stale -0.7 nudge removed) -- src/top_plate.py.
+
+28. **BOTH LED BOARDS ON XH (user, 2026-10-04: "PH is for 5V and XH for 24V").**
+    fret_led_key J1 and foot_led_a J1 = S4B-XH-SM4-TB (C161861), GND, V24, SCK, SDT.
+    Foot board A has a 7 mm tail past the window's -X end for the socket; the strip sits
+    1.95 higher (trough 6.05). The J1/D1 courtyard overlap on board A is declared
+    (elec/pcb_declared.py) and backed by two asserted part gaps in elec/foot_led.py.
+    - Supersedes 26's PH order. pi_cap J3/J6 follow on bronner's branch (J6 is the
+      through-hole S4B-XH-A); after that merges, import harness.LED_DROP for J_PINS
+      in both generators instead of the local tuples.
+    - The raise puts the strip further into today's placeholder belt tensioners (user:
+      ignore; lead defers the pairs if the full gate names them).
+    - Light cost of the raise is ESTIMATED (about 2/3 direct into the window, was ~85 %).
+      Alternative not taken: keep 4.10 and pocket the floor 1.95 under the socket.
+29. **FOOT LEAD MODELLED**: `wire_foot_led` (src/foot_light.lead), one 3.4 bundle, socket
+    -> up the endplate -> over motor 0 at x -595.5 -> down at y -50 -> Pi cap J6. Its cap
+    end reads J6 off the routed pi_cap, so it follows bronner's re-route. LEAD_AXIS (the
+    wire row's height in the XH housing) is an estimate. The FRET lead is still not drawn.
