@@ -138,3 +138,81 @@ OPEN; an item moves to DONE with the commit that closed it.
     d. pi_cap J5 (2x8, pass-through) and output_panel (inlet switch, 4-wire cable, node
        <= 12 V) are bronner's; the CAD ribbon lands 16 ways on a 14-way J5 until then.
     e. elec/prices.json has no SW2 / 2x8 line until tools/cost.py is re-run.
+
+19. 2026-10-04: item 15 CLOSED -- header tail read off HX's drawing: 3.40 leg, 1.8 under
+    the board (was a 1.5 estimate); src/board_geom._TAIL, both way counts.
+20. 2026-10-04: cadkit quality rules on my boards (item 1 is now this). ui_board 0 FAIL.
+    fret_led_mid/key and foot_led: power_paths, pinouts and waivers declared in their
+    generators; fret M4 cutouts carry head_d (back face). foot_led's 100 nF VCC caps
+    moved to the chip's pin-19 side. Still to clear per board: whatever A1 says about
+    width/drop now that the currents are declared, and any via-in-pad the route leaves.
+    The 22-37 OPEN manual items per board are unsigned -- sign before any order.
+
+21. **STITCH VIAS CUT OFF FROM THE PLANE -- found 2026-10-04, REPORTED to lead (pipeline).**
+    Quality A1 "no copper joins" is REAL, not a checker artefact: the pre-placed stitch
+    via of a driver's VCC pin (U*.19) ends up 0.7-0.8 mm from a via the router adds for
+    another net, whose antipad voids the plane round it ("N stitch via(s) landed where
+    the plane is not ... nowhere to go"). Seen on fret_led_key U1.19, fret_led_mid
+    U2-U5.19 (+ U3.2/U5.2 GND), foot_led U3/U4.19, C11/C14. Needs the router kept off
+    stitch vias (cadkit), or the stitch moved; a re-route alone does not fix it.
+    WITH IT, when the boards are next routed:
+    a. net_widths: fret key "+24V_IN"/"+24V" 0.30 (0.26 needed at 0.89 A), "+14V" 0.50
+       (0.47 needed at 1.38 A out of L1.2 -- today ONE 0.25 track and one via carry the
+       whole rail); fret mid "+14V" 0.50; foot "+24V_IN" 0.30 (0.20 needed, routed 0.15).
+    b. via-in-pad: foot C36.1 (stitch via 0.28 from the pad centre), mid D37.2.
+    c. foot_led leaves 1-2 zone-return nets open under today's pipeline (Z0_W_RET, then
+       Z5_G_RET + Z11_G_RET); it routed 0 before. Tracked elec/geom/foot_led.* is still
+       the earlier clean route and does NOT have the 100 nF caps' new positions.
+
+22. 2026-10-04 later: fret boards RE-ROUTED on the stitch-via fix (cadkit 5906a86).
+    fret_led_mid: quality 0 FAIL. fret_led_key: 4 soft FAILs left, all one cause --
+    the pipeline lays its pad-to-plane stub at 0.25 whatever net_widths says:
+    L1.2's exit (ONE 0.25 stub + via for the whole 1.38 A rail, 0.47 needed), the stub at
+    U10.2 and one near J1.1 on the 24 V side (0.23-0.25 for 0.89 A, 0.26 needed).
+    net_widths (+24V_IN/+24V 0.30, +14V 0.50) are declared and did not reach those stubs.
+    REPORTED to lead. Item 21a/b are otherwise closed for the fret boards; 21c (foot
+    route) is bronner's bisect -- foot's generator has its widths and declarations ready.
+
+23. 2026-10-04 last: fret_led_key quality 0 FAIL (item 22 closed). Stitch stubs follow
+    net_widths (cadkit c555469); ONE declared via in L1.2's land (two took half its
+    paste); the two 24 V neck-downs (0.225 past J1.1, 0.25 into U10.2's 0.25 land) are
+    router copper and waived with the IPC-2221 arithmetic. All three of ui_board,
+    fret_led_mid, fret_led_key are 0 unconnected / 0 DRC / 0 automated FAIL; their
+    22-37 manual items are unsigned. foot_led: route still main's (cadkit c6013c5 moved
+    GND stitch vias beside their pads into Z0_W_RET's room) -- waiting on bronner.
+
+24. 2026-10-04: foot_led ROUTES CLEAN AGAIN (closes 21c): 0 unconnected / 0 DRC /
+    quality 0 FAIL, first pass. Fix was placement only -- each driver's four passives
+    moved from beside the package to a row ABOVE it (away from the LEDs, at the pins
+    they serve). Beside it, their stitch vias fenced the lane the outboard pin column
+    escapes by. A 2 mm lift of the old row made it worse (6 open): it sat on the pins.
+    All four of my boards are now 0 automated FAIL; manual items unsigned.
+
+25. **FOOT STRIP = TWO DESIGNS (user, 2026-10-04) -- closes 13a (the inlet).**
+    foot_led_a: JST SH socket J1 at -X (the Pi cap's J6 lead), seam pogos at +X.
+    foot_led_b: seam pogos at -X, nothing at +X. 8 pogos, not 16; no third board.
+    Both route 0 unconnected / 0 DRC / quality 0 FAIL. `foot_led` (one design) is gone.
+    STILL OPEN: 13b the -X stop block (now with a notch for the lead); the lead's length.
+26. **FRET BOARDS: 4 seam pogos (was 6) and a 4-way PH J1 (was 6-way)** (user, 2026-10-04).
+    Ratings: pogo 12 A vs 0.90 A; PH 2 A/contact vs 0.89 A. J1 order V24, GND, SCK, SDT --
+    V24 on way 1 so the lead on a bus-B PH socket shorts into fuses rather than putting
+    24 V on the 5 V bus. pi_cap J3 (bronner) must follow: 4-way S4B, same order.
+27. 2026-10-04: every fret line is INLAY_W now (fret 24 was the thin one) and the
+    24th-fret quad is centred in its space (a stale -0.7 nudge removed) -- src/top_plate.py.
+
+28. **BOTH LED BOARDS ON XH (user, 2026-10-04: "PH is for 5V and XH for 24V").**
+    fret_led_key J1 and foot_led_a J1 = S4B-XH-SM4-TB (C161861), GND, V24, SCK, SDT.
+    Foot board A has a 7 mm tail past the window's -X end for the socket; the strip sits
+    1.95 higher (trough 6.05). The J1/D1 courtyard overlap on board A is declared
+    (elec/pcb_declared.py) and backed by two asserted part gaps in elec/foot_led.py.
+    - Supersedes 26's PH order. pi_cap J3/J6 follow on bronner's branch (J6 is the
+      through-hole S4B-XH-A); after that merges, import harness.LED_DROP for J_PINS
+      in both generators instead of the local tuples.
+    - The raise puts the strip further into today's placeholder belt tensioners (user:
+      ignore; lead defers the pairs if the full gate names them).
+    - Light cost of the raise is ESTIMATED (about 2/3 direct into the window, was ~85 %).
+      Alternative not taken: keep 4.10 and pocket the floor 1.95 under the socket.
+29. **FOOT LEAD MODELLED**: `wire_foot_led` (src/foot_light.lead), one 3.4 bundle, socket
+    -> up the endplate -> over motor 0 at x -595.5 -> down at y -50 -> Pi cap J6. Its cap
+    end reads J6 off the routed pi_cap, so it follows bronner's re-route. LEAD_AXIS (the
+    wire row's height in the XH housing) is an estimate. The FRET lead is still not drawn.

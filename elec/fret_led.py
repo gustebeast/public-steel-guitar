@@ -22,7 +22,7 @@ a single LED, so four-per-fret costs rail VOLTS, not rail amps, and the channel 
 follows FRETS (24) rather than LEDs (92). A TLC59711 carries 3 RGBW zones, so zones
 come in threes and both boards land on a whole number of drivers with nothing wasted.
 
-ONE CHAIN ACROSS TWO BOARDS, JOINED AT THE PANEL SEAM BY SIX TIP-TO-TIP POGOS
+ONE CHAIN ACROSS TWO BOARDS, JOINED AT THE PANEL SEAM BY FOUR TIP-TO-TIP POGOS
 (docs/fret-led.md 9.1f). The keyhead board carries the harness plug, the fuse and the
 24 V -> 14 V buck for BOTH; the seam carries +14V, GND and the TLC59711 chain out of
 key's last driver into mid's first:
@@ -73,6 +73,7 @@ import skidl  # noqa: E402
 from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 
 import netcheck  # noqa: E402
+import harness as _H  # noqa: E402
 import placecheck  # noqa: E402
 from placecheck import check_placement, fp_box  # noqa: E402
 
@@ -83,7 +84,10 @@ LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
 DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm"
 BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
 IND_FP = "Inductor_SMD:L_Sunlord_SWPA4030S"
-J_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
+J_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
+# mouth (the footprint's local +Y 5.30) to the PAD CENTROID layout anchors on (the mean of
+# its six pads, -0.9833), both read out of the .kicad_mod
+J_ANCHOR = 5.30 + 0.9833
 R_FP = "Resistor_SMD:R_0402_1005Metric"
 C_FP = "Capacitor_SMD:C_0402_1005Metric"
 C08_FP = "Capacitor_SMD:C_0805_2012Metric"
@@ -123,6 +127,9 @@ R_IREF = "3k3"
 # trimming down for colour balance, so the fix and the calibration are one knob (6.2).
 V_RAIL = 14.0
 I_CHAN = 0.015
+I_VCC = 0.03                         # a TLC59711's own supply current, with margin: what
+                                     # its VCC pin's stub carries. The LED current does not
+                                     # pass through it.
 
 # ── the deck's own numbers, read not copied ──────────────────────────────────────────
 # Everything below comes out of src/fret_light.py. A board-local X is a world X minus
@@ -248,24 +255,29 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     comes within 14.08 mm of the MID board's +X edge at its neck-most slide; putting
     the switcher 210 mm away leaves nothing but smoothed 14 V at that end. It is also
     where the harness has to land, so one region carries all the service access."""
-    # ⚠ THE 6-WAY PH, AND IT IS THE STRIP'S OWN CONNECTOR (C265405), not a new line.
-    # Four circuits are needed and six are taken because the part is already sourced and
-    # the two extra contacts double the rail: PH is 2 A per contact against this board's
-    # 0.60 A, so the doubling buys a lost-contact margin rather than current. It was an
-    # XH here for one draft; PH is 2.00 mm pitch against XH's 2.50 and 4.80 deep against
-    # 7.50, and the mid board's bay is 9.50 mm long -- the XH fitted only on paper.
-    J_PINS = ("GND", "V24", "V24", "GND", "SCK", "SDT")
-    j = Part(name="S6B-PH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
-             tool="skidl", value="S6B-PH-SM4-TB",
-             description="harness in from the Pi daughter board: 24 V, GND, SCK, SDT "
-                         "(LCSC C265405)", footprint=J_FP,
+    # A 4-WAY XH, ONE CONTACT A CIRCUIT (user, 2026-10-04). It was a 6-way PH with the rail
+    # and its return doubled. XH is 3 A per contact against the 0.89 A both boards draw
+    # at 24 V.
+    # ⚠ XH BECAUSE IT IS 24 V. The instrument's rule (user, 2026-10-04): PH carries 5 V
+    # and XH carries 24 V, so no lead can put the higher rail on the lower one's socket.
+    # ⚠ AND THE ORDER IS harness.XH_PINOUT's -- GND, V24, then the two signals -- so the one
+    # mistake still possible is harmless both ways round: a motor-bus lead on this socket
+    # powers the board correctly and lays CAN on the two SPI inputs, and this lead on a
+    # motor-bus socket lays 3.3 V logic on CAN. Neither reverses a supply.
+    J_PINS = ("GND", "V24", "SCK", "SDT")
+    assert J_PINS[:2] == tuple(_H.XH_PINOUT[:2]), (
+        "the fret harness plug is an XH and its supply ways are not the XH bus's own")
+    j = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
+             tool="skidl", value="S4B-XH-SM4-TB",
+             description="harness in from the Pi daughter board: GND, 24 V, SCK, SDT",
+             footprint=J_FP,
              pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(J_PINS)])
     v24_in = Net("+24V_IN")
-    gnd += j[1], j[4]
-    v24_in += j[2], j[3]
+    gnd += j[1]
+    v24_in += j[2]
     sck, sdt = Net("SCK_IN"), Net("SDT_IN")
-    sck += j[5]
-    sdt += j[6]
+    sck += j[3]
+    sdt += j[4]
 
     # The fuse protects the TRUNK, not the board: a shorted buck must not pull the
     # instrument's 24 V down. Same argument, same part class as motor_ctrl's F1.
@@ -400,7 +412,7 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
         return (col - dx, -y, 180.0)
 
     place.update({
-        "J1": (mouth + 5.8125, 0.00, 270.0),
+        "J1": (mouth + J_ANCHOR, 0.00, 270.0),
         "C30": turned(0.0, 10.25),
         "C31": turned(0.0, 13.05),
         "C32": turned(-pair, 15.17),         # VIN HF bypass, against U10's VIN/GND
@@ -431,7 +443,7 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
 
 
 def _seam(panel, place, fps, cx, nets):
-    """The six seam pogos at this board's seam edge -- geometry from fret_light.
+    """The four seam pogos at this board's seam edge -- geometry from fret_light.
 
     ⚠ NOT PLACED HERE. The pad X is where the two setbacks sum to the tip-to-tip span
     with the panels butted, and the lanes are between key's fret-9 LED rows; both are
@@ -606,7 +618,11 @@ def build(panel):
     # the BAY at the -X end, and one on an EAR off the +Y edge at the +X end, outside the
     # lit line -- so neither keepout takes anything off a cell's floor and neither boss
     # stands in a cell. Both positions are READ from the deck, not retyped.
-    notes["cutouts"] = [{"xy": [round(wx - cx, 4), round(wy, 4)], "d": 4.50}
+    # head_d: the M4's button head bears on the UNDERSIDE (fret_light.m4_joint), so no
+    # copper runs under it on that face
+    from cadkit.fasteners import M4_BUTTON_HEAD_D
+    notes["cutouts"] = [{"xy": [round(wx - cx, 4), round(wy, 4)], "d": 4.50,
+                         "head_d": M4_BUTTON_HEAD_D, "head_side": "back"}
                         for wx, wy in FL.m4_xys(panel)]
     # the rectangle, plus the ear. outline_mm above stays the LAYOUT REGION.
     hl, hw = length / 2.0, BOARD_W / 2.0
@@ -615,6 +631,71 @@ def build(panel):
     notes["outline_poly"] = [[round(v, 4) for v in pt] for pt in (
         (-hl, -hw), (hl, -hw), (hl, ey), (ex0 - cx, ey), (ex0 - cx, hw), (-hl, hw))]
     notes["qty_per_instrument"] = 1
+    # WHAT EACH SUPPLY NET CARRIES, all-white. The 14 V rail is made on the key board and
+    # crosses the seam pogos to the mid board, so the key board's rail is held to BOTH
+    # boards' channels and the mid board's to its own.
+    i_own = 4 * len(zs) * I_CHAN
+    rail_j = ["J%d" % (11 + i) for i, (_x, _y, _net) in enumerate(FL.pogo_pads(panel))
+              if _net == "+14V"]            # the seam pogo(s) the rail crosses on
+    i_all = 4 * I_CHAN * sum(len(zones_for(*FL.panel_range(q))) for q in ("mid", "key"))
+    if panel == "key":
+        i_24 = i_all * V_RAIL / 24.0 / 0.90
+        paths = [
+            {"net": "+24V_IN", "from": "J1.2", "to": "F1.1", "amps": round(i_24, 3)},
+            {"net": "+24V", "from": "F1.2", "to": "U10.2", "amps": round(i_24, 3)},
+            # the rail: out of the inductor, onto the plane, across the seam pogos. Held
+            # to the WHOLE rail rather than the mid board's share, because the stretch
+            # that matters is L1's own exit and all of it leaves there. A driver's VCC is
+            # only its logic supply (the LED current enters at the anodes, off the plane).
+            {"net": "+14V", "from": "L1.2", "to": [r + ".1" for r in rail_j],
+             "amps": round(i_all, 3)},
+            {"net": "+14V", "from": "L1.2",
+             "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": I_VCC},
+        ]
+        pin = {"S4B-XH-SM4-TB": "JST XH S4B-XH-SM4-TB drawing for pin 1; the way order is "
+                                "J_PINS in _supply(), the Pi cap's end to match",
+            "LMR33630CRNXR": "TI LMR33630 datasheet SNVSB08, Table 6-1, VQFN (RNX) column",
+        }
+        # ⚠ A SECOND BARREL, IN THE INDUCTOR'S OWN LAND. All 1.38 A of the rail leaves L1.2,
+        # and the stitcher gives a pad one via because it does not know currents. The
+        # land is 1.1 x 3.7 (over the 4 mm2 at which a via in a soldered land is
+        # accepted), so one more goes straight down through it to the plane.
+        # ONE, NOT TWO: two open barrels hold 0.23 of the 0.49 mm3 of paste printed on
+        # the land, and a quarter is the limit (cadkit quality A12).
+        import math
+        lx, ly, lrot = place["L1"]
+        px2 = lx + 1.5 * math.cos(math.radians(lrot))
+        notes["vias"] = list(notes.get("vias", [])) + [
+            ("+14V", round(px2, 3), round(ly + 1.2, 3))]
+        waive = {
+            # IPC-2221, 1 oz outer: 0.250 mm carries 0.875 A at a 10 C rise, so 0.89 A is
+            # 10.4 C -- over 2 mm, between lands that are each a heat sink.
+            "A1:+24V F1.2>U10.2": "U10.2's land is 0.25 mm wide, so the 2 mm of track "
+                                  "into it cannot be wider; pins 9 and 10 take the same "
+                                  "rail at 0.30. 10.4 C rise, by IPC-2221",
+            "A2:J1": "the harness plug, ahead of the fuse; the input capacitors C30-C32 "
+                     "are on the fused side so a shorted one blows F1",
+        }
+        for _rj in rail_j:
+            waive["A2:" + _rj] = ("a seam pogo handing the rail to the mid board, not a "
+                                 "load; the rail is a plane with C36-C38 on it")
+    else:
+        # the rail arrives on a pogo land that is stitched straight to the plane; what
+        # leaves the plane by a track is a driver's logic supply
+        paths = [{"net": "+14V", "from": rail_j[0] + ".1",
+                  "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": I_VCC}]
+        pin, waive = {}, {}
+    notes["quality"] = {
+        "power_paths": paths,
+        "pinouts": dict({
+            "XL-5050RGBW": "XINGLIGHT XL-5050RGBW datasheet, package drawing: pads 1-4 the "
+                           "four anodes, 5-8 their cathodes; Steel:XINGLIGHT_XL-5050RGBW "
+                           "is drawn from it",
+            "TLC59711PWPR": "TI TLC59711 datasheet, Terminal Functions table, PWP "
+                            "(HTSSOP-20) column, top view",
+        }, **pin),
+        "waive": waive,
+    }
     notes["world_x"] = [round(x0, 3), round(x1, 3)]
     notes["board_frame"] = {"cx": round(cx, 4), "z_bot": FL.BOARD_BOT}
     with open(os.path.join(OUT_DIR, "%s.board.json" % name), "w") as f:
@@ -657,6 +738,11 @@ BOARD_NOTES = {
     "refs_on_fab": True,       # 92 LEDs: silkscreen refs would be ink over copper
     "no_mounting_holes": True,  # the hole is declared per board, in the bay
     "router_passes": 20,
+    # THE RAILS' OWN WIDTHS, from the currents in build()'s quality block (IPC-2221, 1 oz,
+    # 10 C): 0.89 A of 24 V wants 0.26 and was routed at 0.19-0.25; the 14 V rail's whole
+    # 1.38 A left L1 on ONE 0.25 track and wants 0.47. The plane carries the rail the
+    # length of the board -- these are the stubs that reach it.
+    "net_widths": {"+24V_IN": 0.30, "+24V": 0.30, "+14V": 0.50},
 }
 
 

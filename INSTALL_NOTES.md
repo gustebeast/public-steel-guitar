@@ -616,29 +616,33 @@ sit at 6.30 when the panels touch, only 0.60 above that limit.
 anything tall to the fret field without asking what it does to that cell's floor bounce.
 
 
-## Foot lighting strip (2026-09-30, pogo seam 2026-10-02)
+## Foot lighting strip (2026-09-30; two board designs 2026-10-04)
 
-Two boards of one design, end to end in a channel on the chassis bottom, firing down
-through the light window. **It goes in before the −X endplate.** There is no cable between
-the two boards: four spring pins under each board's end meet the next board's tip to tip.
+Two boards end to end in a channel on the chassis bottom, firing down through the light
+window. **They go in before the −X endplate, and they are NOT interchangeable:** board B
+(`foot_led_b`, spring pins at one end only) goes in first and ends up at +X; board A
+(`foot_led_a`, spring pins at one end and a small cable socket at the other) goes in
+second. There is no cable between them: four spring pins under A's far end meet four
+under B's near end, tip to tip.
 
 1. **Assemble the chassis, leaving the −X endplate off.**
-2. **Slide the far (+X) board in from −X**, LEDs down, all the way to the stop block at
-   the channel's +X end.
-3. **Slide the near (−X) board in behind it and push it home.** The last 3.4 mm is against
-   the eight spring pins (about 0.8 kgf); the boards' ends touch when it is seated.
-4. ⚠ **OPEN: what holds the near board pushed in, and what feeds it.** The near board's
-   −X pin set is the strip's inlet. The piece that mates it and takes the spring load is
-   not designed yet (.ins/WORKLIST-brenner.md). Until it is, the strip is not powered and
-   the near board will sit 3.4 mm back.
+2. **Slide board B in from −X**, LEDs down, pin end LAST, all the way to the stop block
+   at the channel's +X end.
+3. **Slide board A in behind it, pin end FIRST, and push it home.** The last 3.4 mm is
+   against the eight spring pins (about 0.8 kgf); the boards' ends touch when it is seated.
+4. **Plug the 4-way XH lead from the Pi cap's J6 into board A's socket.** The socket is
+   under the board's −X end, on the 7 mm of board that sticks out past the light window,
+   and its mouth faces the keyhead endplate. Dress the lead straight up the endplate,
+   across the TOP of string 1's motor, and down between that motor and the Pi.
+   ⚠ XH plugs are the 24 V family on this instrument and PH plugs the 5 V one; the two do
+   not fit each other's sockets.
+5. ⚠ **OPEN: what holds board A pushed in.** The springs push it back out 3.4 mm. The
+   stop that takes that load (a printed block and one M4 behind the board, with a notch
+   for the lead) is not designed yet (.ins/WORKLIST-brenner.md).
 
-⚠ **The pins at the strip's two outer ends stand 1.7 mm past the board.** Do not stand a
-board on its end, and keep the +X end's lane clear: the far board's unused set is live at
-24 V whenever the strip is.
-
-⚠ **Nothing on these boards may stand more than 3.80 mm off the PCB.** The board is
-installed face DOWN, 4.10 above an uncut floor; the tallest part is the spring pin's
-barrel at 3.80.
+⚠ **Nothing on these boards may stand more than 5.75 mm off the PCB.** The board is
+installed face DOWN, 6.05 above an uncut floor; the tallest part is board A's cable
+socket at 5.75 (the spring pin's barrel is 3.80).
 
 ⚠ **The channel's −Y wall is string 1's motor wall where the two meet.** The slot is cut
 into the foot of that motor's faceplate wall, leaving 1.6 mm against the motor, with a
