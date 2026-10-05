@@ -214,7 +214,8 @@ def lever_sensor():
     # player-handled lever mostly sees.)
     for tag, net in (("D2", can_h), ("D3", can_l)):
         d = Part(name="TVS", ref_prefix="D", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
-                 value="PESD1CAN-like", description="bidirectional TVS, bus pin to GND",
+                 value="ESD5B5.0ST1G", description="bidirectional 5 V TVS, bus pin to GND "
+                 "(LCSC C93623, the part motor_ctrl clamps the same bus with)",
                  # SOD-523, not SOD-123: these are signal-line ESD clamps, not power
                  # TVS, and the big package cost 18 mm2 the board no longer has once
                  # the foot pedal's Y budget capped its height at 22.55.
@@ -366,14 +367,16 @@ def lever_sensor():
 
 
     y1 = Part(name="Crystal", ref_prefix="Y", ref="Y1", tag="Y1", dest="NETLIST", tool="skidl",
-              value="8MHz", description="HSE -- CAN bit timing wants a crystal, not the RC",
+              value="TAXM8M4RFDCET2T", description="HSE 8 MHz, CL 12 pF (LCSC C403948, the "
+              "crystal motor_ctrl and output_panel use) -- CAN bit timing wants a "
+              "crystal, not the RC",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P),
                     Pin(num=3, func=P), Pin(num=4, func=P)])
     osc1 += y1[1]; osc2 += y1[3]
     gnd += y1[2], y1[4]
     for tag, net in (("C5", osc1), ("C6", osc2)):
-        c = _c(tag, "12pF", "crystal load")
+        c = _c(tag, "15pF", "crystal load: 7.5 in series + ~4.5 of pin and track = CL 12")
         net += c[1]; gnd += c[2]
     c_nrst = _c("C7", "100nF", "NRST filter")
     nrst += c_nrst[1]; gnd += c_nrst[2]
@@ -472,10 +475,14 @@ _SENSOR_QTY = _sensor_qty()
 _PLACE_CHIP = {
         "U4": (0.0000, 0.0000, 0.0),
         # SWD: SWDIO / SWCLK / GND in a row for a clip, NRST stranded (recovery only)
-        "TP1": (-4.5000, 7.9500, 0.0),     # SWDIO
-        "TP2": (-2.1000, 7.9500, 0.0),    # SWCLK
-        "TP3": (-4.5000, 5.6500, 0.0),     # GND
-        "TP4": (-14.1500, 8.0500, 0.0),    # NRST
+        # one row on a 2.4 mm pitch, 3 mm in from the +Y edge so a name fits on either side
+        # of a pad: the names are 3 mm wide at 1.0 mm, wider than the pitch, so they
+        # alternate above and below. As a 2 x 2 block they had nowhere to go: DIO landed
+        # beside the CLK pad, GND 5 mm from its own, and CLK only fitted at 0.8
+        "TP1": (-4.8000, 7.1000, 0.0),     # SWDIO
+        "TP2": (-2.4000, 7.1000, 0.0),     # SWCLK
+        "TP3": (0.0000, 7.1000, 0.0),      # GND
+        "TP4": (-14.1100, 8.0500, 0.0),    # NRST
         # J1 on end, mouth -X at x -12.45 (3.05 in from the -X edge, the spec's figure).
         # Placements anchor on the PAD CENTROID: the footprint's mouth is its local +y 4.4,
         # its pad centroid local y -1.70 (eight pins at -2.85, two tabs at +2.90), and rot
@@ -483,9 +490,16 @@ _PLACE_CHIP = {
         # the routed geom, not assumed: -8.05 put the mouth at -14.15.
         "J1": (-18.8500, -0.8500, 270.0),
         "U1": (-8.5000, 7.1500, 0.0),
-        "C1": (-11.9000, 7.7500, 0.0),
-        "C2": (-11.9000, 6.4500, 0.0),
-        "R7": (-0.1000, 6.3000, 0.0),
+        # 0.55 toward the regulator (courtyards 0.03 apart), which leaves 3.10 mm between
+        # J1 and these two for the reset pad's name at 1.0 mm: RST is 3.07 wide and only
+        # went down at 0.8. TP4 sits 0.04 off its old x so the placer's 0.25 grid lands in
+        # the 0.03 mm of slack
+        "C1": (-11.3500, 7.7500, 0.0),
+        "C2": (-11.3500, 6.4500, 0.0),
+        # SCL pull-up: 0.6 +X and 0.9 -Y of where it was, clear of the SWD row and the
+        # name under it. (Tried beside the transceiver and between MCU and sensor: each
+        # left a net open on some runs.)
+        "R7": (0.5000, 5.4000, 0.0),
         # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
         # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
         # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
@@ -493,7 +507,9 @@ _PLACE_CHIP = {
         "C9": (-5.5000, 3.8000, 0.0),
         "C8": (-3.5000, 3.8000, 0.0),
         "R5": (0.0000, 3.2000, 0.0),
-        "C11": (-4.0000, 0.0000, 0.0),
+        # the sensor bypass sits AT the sensor supply pin (13, the north-east corner),
+        # pad 1 (+3V3) toward it and beside the MODE strap; it was 5 mm away, west of the chip
+        "C11": (1.6000, 3.4000, 90.0),
         "C10": (-1.5000, -3.3000, 0.0),
         "Y1": (-11.9000, -2.4000, 0.0),
         # C5/C6 stay east of the crystal: moving them west measured 1 -> 5 unconnected
@@ -505,7 +521,10 @@ _PLACE_CHIP = {
         "C7": (-13.5500, 4.4500, 90.0),
         "R6": (0.4000, -3.3200, 270.0),
         "U2": (-10.5000, -7.0000, 0.0),
-        "C4": (-5.0000, -5.7000, 0.0),
+        # the transceiver bypass is on the side VCC and GND are (pins 3 and 2, west), in
+        # the 1.2 mm strip between U2 and the connector tails: pad 1 (+3V3) faces pin 3.
+        # It was on the far side of the package, 7.7 mm from the pin
+        "C4": (-14.8400, -7.1000, 90.0),
         "R3": (-5.0000, -7.2000, 0.0),
         "R4": (-1.5000, -5.1500, 0.0),
         "JP1": (-1.5000, -7.1000, 0.0),
@@ -637,6 +656,14 @@ BOARD_NOTES = {
     #     checks was failing a house default and not a fab limit -- it is manufacturable
     #     too. 0.50/0.25 is used because it needs no rule relaxed to prove it.
     "via_mm": (0.50, 0.25),
+    # the lever bus passes THROUGH this board (J1 1-4 in, 5-8 out), so the first board of
+    # a chain carries every later board supply: up to bus B limit, 0.57 A
+    "net_widths": {"+5V": 0.4},
+    # the words the silkscreen uses. A legend is as wide as its longest line and this
+    # board is 32 x 22: at the full net names the J1 legend and one SWD label only went
+    # down at 0.8 mm, under the fab minimum of 1.0
+    "silk_labels": {"TP1": "DIO", "TP2": "CLK", "TP4": "RST",
+                    "CAN_H": "H", "CAN_L": "L", "+5V": "5V"},
     # ⚠ THE VIA SIZE IS AN ORDER-FORM FIELD, NOT JUST A GERBER FACT. JLCPCB's own
     # capability page says "please select corresponding via size option when placing
     # order" for 0.2/0.25 mm hole sizes. The gerbers carry the geometry; the process is
@@ -671,6 +698,51 @@ BOARD_NOTES = {
     # J1's zone (spec rule 4): its body, its solder tabs and the mated plug's 3.6 run past
     # the mouth, over J1's length -- x -16.05..-3.85 here, clipped to the board.
     "conn_keepout": {"box": [-15.5, -9.95, -3.85, 9.95], "exempt": ["J1", "U4"]},
+    # ── the quality pass (cadkit/PCB_QUALITY.md) ─────────────────────────────
+    "quality": {
+        "power_paths": [
+            # the bus passes through: the first board of a chain carries the rest, up to
+            # the 565 mA maximum of motor_ctrl's TPS2553 at 49.9 k
+            {"net": "+5V", "from": "J1.2", "to": ["J1.6"], "amps": 0.57},
+            # this board: MCU ~10 mA at 48 MHz, sensor 10 mA, transceiver 17 mA dominant
+            # plus ~35 mA into the bus while it drives -- 80 mA with margin
+            {"net": "+5V", "from": "J1.2", "to": ["U1.1"], "amps": 0.08},
+            {"net": "+3V3", "from": "U1.5", "to": ["U3.17", "U3.5", "U2.3", "U4.13"],
+             "amps": 0.08},
+        ],
+        "pinouts": {
+            "S8B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
+                             "the board below, No. 1 circuit is on the left. KiCad "
+                             "JST_PH_S8B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
+                             "Ways 1-4 and 5-8 are each harness.PH_PINOUT (GND, 5 V, CAN_H, "
+                             "CAN_L); the two MP tabs carry no net. Read 2026-10-04",
+            "AP2112K-3.3TRG1": "Diodes DS39724 p.1-2, Pin Descriptions, SOT25 column: 1 VIN, "
+                               "2 GND, 3 EN (high = on), 4 NC, 5 VOUT. Board: 1 +5V, 2 GND, "
+                               "3 +5V, 4 open, 5 +3V3. Read 2026-10-04",
+            "SN65HVD230DR": "TI SLOS346 Pin Functions (SOIC-8): 1 D, 2 GND, 3 VCC, 4 R, "
+                            "5 Vref, 6 CANL, 7 CANH, 8 RS. Board: 1 CAN_TX, 2 GND, 3 +3V3, "
+                            "4 CAN_RX, 5 open, 6 CAN_L, 7 CAN_H, 8 slope resistor. Re-read "
+                            "2026-10-04",
+            "CH32V203G6U6": "WCH CH32V203 datasheet V2.8 table 3-1-3 (pp. 8-10), the QFN28 "
+                            "(G6) column, read off the page image because the text layer "
+                            "scrambles it: 0 VSS (the exposed pad, KiCad pad 29), 1 BOOT0 / "
+                            "PB8, 2 OSC_IN, 3 OSC_OUT, 4 NRST, 5 VDDA, 16 VSS, 17 VDD, "
+                            "19 PA10 and PA11 on ONE pin (note 7) = CAN1_RX, 20 PA12 = "
+                            "CAN1_TX, 21 PA13 = SWDIO, 22 PA14 = SWCLK, 26 PB5, 27 PB6 = "
+                            "I2C1_SCL, 28 PB7 = I2C1_SDA. Board: the same fifteen pins, "
+                            "pin 1 to GND, pin 26 the sensor CSN. Read 2026-10-04",
+            "MT6701QT-STD": "MagnTek MT6701 datasheet rev 1.9 (2024.05) p.4, section 1.2 "
+                            "QFN-16, top view and pin table: 1-4 NC, 5 PUSH, 6 A (I2C SDA), "
+                            "7 B (I2C SCL), 8 Z (SSI CSN), 9 W, 10 NC, 11 U, 12 V, 13 VDD, "
+                            "14 MODE, 15 OUT, 16 GND, pad = GND. Board: 6 SDA, 7 SCL, "
+                            "8 SENS_CSN, 13 +3V3, 14 to +3V3 through R5 (I2C / SSI), 16 and "
+                            "the pad GND, the rest open. Read 2026-10-04",
+            "TAXM8M4RFDCET2T": "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948), 'Connection' "
+                               "drawing: lands 1 and 3 are the crystal, 2 and 4 the can "
+                               "(GND). Board: 1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read "
+                               "2026-10-04",
+        },
+    },
 }
 
 
