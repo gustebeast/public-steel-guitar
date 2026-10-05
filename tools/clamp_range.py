@@ -214,8 +214,11 @@ def main():
                     print(line)
         if hit or short:
             ok_all = False
-    print("ALL CLEAR: every clamp is clear over everything it can reach, wherever the other "
-          "clamps are in THEIR reach" if ok_all else "NOT CLEAR")
+    tight = min(range(N), key=lambda i: P[i][-1] - P[i][0])
+    print("%s (%s screw). Tightest: string %d, %.1f mm of belt to spare beyond its travel."
+          % ("ALL CLEAR: every clamp is clear over everything it can reach, wherever the "
+             "other clamps are in THEIR reach" if ok_all else "NOT CLEAR", D.SCREW_HAND,
+             tight + 1, P[tight][-1] - P[tight][0] - need))
     if OUT:
         json.dump({str(i + 1): res[i] for i in range(N)}, open(OUT, "w"))
     return 0 if ok_all else 1

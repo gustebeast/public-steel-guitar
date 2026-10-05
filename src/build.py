@@ -665,8 +665,12 @@ def _wrap_rod_component():
              NB.rod().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))]
 
 
-def _string_path(i, sy):
-    """Vertical rise → 90° wrap around the bridge bearing → speaking length."""
+def _string_path(i, sy, rise_only=False):
+    """Vertical rise → 90° wrap around the bridge bearing → speaking length.
+
+    `rise_only` stops after the rise, ball end to the bearing: the only part of a string
+    that moves with its nut. tools/check_carriage_travel redraws that at every station of
+    the travel and has no use for the wrap and the speaking length, which cost the most."""
     r = D.BRIDGE_BEARING_OD / 2
     cx, cz = D.BRIDGE_AXLE_X, D.BRIDGE_BEARING_Z      # bearing centre
     # anchor = the ball end hanging under the nut's +X ear
@@ -720,6 +724,8 @@ def _string_path(i, sy):
     else:
         out = _rod(p0, pts[0], rad)
     out = out.union(_bead(pts[0], rad))
+    if rise_only:
+        return out
     for pa, pb in zip(pts, pts[1:]):
         out = out.union(_rod(pa, pb, rad)).union(_bead(pb, rad))
     out = out.union(_rod(pts[-1], brk, rad))
@@ -2207,7 +2213,9 @@ def _report_carriage_travel(comps) -> int:
     except Exception as e:               # noqa: BLE001 -- never let a gate eat the geometry
         print(f"carriage travel gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
         return 0
-    print(f"CARRIAGE TRAVEL GATE: {'green' if n == 0 else f'RED -- {n} pair(s) meet somewhere in a carriage travel'}",
+    _t = getattr(gate, "last", {})
+    print(f"CARRIAGE TRAVEL GATE: {'green' if n == 0 else f'RED -- {n} pair(s) meet somewhere in a carriage travel'}"
+          f"  ({_t.get('seconds', 0.0):.1f}s, {_t.get('computed', 0)} of {_t.get('pairs', 0)} pairs computed)",
           flush=True)
     return 1 if n else 0
 
