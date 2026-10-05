@@ -389,26 +389,6 @@ DEFERRED_RULES = (
     #  So: not declared away, RECLASSIFIED -- by the tool that owns the distinction. If these
     #  conductors ever start to RUN through each other, check_cable_pairs fails on it with a
     #  length, which is a better signal than this rule ever gave.)
-<<<<<<< HEAD
-=======
-    # THE FOOT STRIP'S -Y LIP INTO STRING 2'S PLACEHOLDER BELT CLAMP, 4 pairs, ~115 mm3
-    # (deferred 2026-10-02 by the lead, agreed by branner, who owns the clamp). The strip
-    # was raised so the chassis floor is not cut (user), which puts the channel's lip top
-    # at z -63.75; the clamp as drawn reaches -65.33. Exactly these four parts of that one clamp -- any
-    # other clamp or segment touching the channel is still a failure.
-    (re.compile(r"^chassis_2$"), re.compile(r"^belt_tensioner_(half_a|half_b|screw|insert)_1$"),
-     "foot strip lip vs the placeholder belt clamp. OWNER branner: the clamp is on the "
-     "wrong side of the belt and is being redesigned; both candidates stop at z -57.6 / "
-     "-58.7, clear of the strip's -61.30 ceiling (foot_light.ceiling_needed) (see the DEFERRED note at D.CARRIAGE_TRAVEL)"),
-    # THE FOOT BOARD ITSELF INTO STRING 1's AND STRING 2's PLACEHOLDER BELT CLAMPS, 8 pairs,
-    # ~640 mm3 (user, 2026-10-04: "we can ignore collision with the belt clamp and move the
-    # board further +z until the XH connector fits"). The strip went up 1.95 for board A's
-    # 5.75-tall XH socket, so its top is at z -63.70 and the clamps as drawn come down to
-    # -65.2..-65.3. Board A only, and only these two clamps -- board B is nowhere near one.
-    (re.compile(r"^foot_pcb_a$"), re.compile(r"^belt_tensioner_(half_a|half_b|screw|insert)_[01]$"),
-     "foot board A vs the placeholder belt clamps. OWNER branner: the clamps are being "
-     "redesigned and must stop above foot_light.ceiling_needed() (z -61.30)"),
->>>>>>> main
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
