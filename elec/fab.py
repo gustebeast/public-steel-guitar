@@ -94,6 +94,8 @@ LCSC = {
     "SMBJ5.0A": "C83333",            # Littelfuse, SMB, unidirectional; 26,310
     "LESD5L5.0CT1G": "C5274293",     # LRC 0.5 pF bidirectional 5 V clamp, SOD-523; 12,023
     "TAXM12M4RFBCCT2T": "C133337",   # Yajingxin 12 MHz 3225, CL 12 pF, ESR 80 ohm max
+    "TS5A3159DCKR": "C46388",        # SPDT analog switch, VIH 2.4 V at 5 V
+    "BLM18KG601SN1D": "C85833",      # 0603 bead, 600R@100MHz, 1.3 A, DCR 150 mohm
     "1N4148WT": "C917006",           # SOD-523 switching diode, 75 V 150 mA
     "TAXM8M4RFDCET2T": "C403948",    # Yajingxin 8 MHz 3225, CL 12 pF, ESR 250 ohm max;
                                      # 75,154 in stock 2026-10-04 (motor_ctrl HSE)
