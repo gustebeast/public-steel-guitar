@@ -247,9 +247,13 @@ def ui_board():
         nets[sig] += r[1]
         nets["+3V3"] += r[2]
 
-    c1 = _c("C1", "100n", "3V3 decoupling at the display header")
-    c2 = _c("C2", "10u", "3V3 bulk: the module's boost converter pulls ~100 mA",
-            pkg="Capacitor_SMD:C_0805_2012Metric")
+    # THE MODULE'S WHOLE SUPPLY IS PIN 2: logic, and the boost converter that makes the
+    # panel's 15 V. Newhaven's table (datasheet p.6, default jumpers): 345 mA typical,
+    # 375 mA maximum at 3.3 V with every pixel lit. A white-on-black screen lights a
+    # fraction of them, but the copper here is sized for the table.
+    c1 = _c("C1", "100nF", "3V3 decoupling at the display header's VDD pin")
+    c2 = _c("C2", "10uF/25V", "3V3 bulk at the display's VDD pin: its boost converter "
+            "draws up to 375 mA", pkg="Capacitor_SMD:C_0805_2012Metric")
     for c in (c1, c2):
         nets["+3V3"] += c[1]
         nets["GND"] += c[2]
@@ -323,8 +327,11 @@ _ENC_CRTYD = UI.ENC_SQ / 2.0 + 0.25
 # cross it to reach J2 at the -X edge: the router left SW_PUSH 0.42 mm short on the far
 # side of it. A row turns the same seven parts into a +3V3 rail with the pull-ups hanging
 # off it and an empty lane underneath for the signals. It routed clean. The two
-# decoupling parts sit beside J1's +X VDD pin (18), which is the one place on this board
-# where position IS the value.
+# decoupling parts sit beside J1's VDD pin, which is the one place on this board where
+# position IS the value.
+# ⚠ PIN 2, AT THE ROW'S -X END (manual quality pass, 2026-10-05). They stood at the +X end
+# beside pin 18, which is /SHDN -- tied to +3V3, drawing nothing -- 40 mm of 0.25 mm track
+# from the pin the module's whole 345 mA goes in at.
 _R_Y = 10.0
 _R_X0, _R_DX = -20.0, 4.0
 assert _R_X0 + 6 * _R_DX + 0.5 <= _SW_BODY_X - _ENC_CRTYD - 1.0,     "the pull-up row laps the encoder"
@@ -355,8 +362,8 @@ PLACEMENTS = {
     "J2": (round(_J2_X, 3), round(_J2_Y, 3), 180.0),
     "SW1": (round(_SW_X, 3), round(_SW_Y, 3), 0.0),
     "SW2": (round(_PWR_X, 3), round(_PWR_Y, 3), 0.0),
-    "C1": (19.0, 10.5, 0.0),
-    "C2": (24.5, 10.5, 0.0),
+    "C1": (-23.5, 10.5, 0.0),
+    "C2": (-27.0, 10.5, 0.0),
 }
 for _i in range(7):
     PLACEMENTS["R%d" % (_i + 1)] = (round(_R_X0 + _i * _R_DX, 3), _R_Y, 0.0)
@@ -369,15 +376,18 @@ BOARD_NOTES = {
     "layers": 2,
     "thickness_mm": UI.BOARD_T,
     "placements": PLACEMENTS,
+    # 0.375 A out on +3V3 and back on GND, and the module wants 3.0 V at its pin: 0.25 mm
+    # the length of this board was 0.13 V there and back on its own
+    "net_widths": {"+3V3": 0.40, "GND": 0.40},   # 0.50 left PWR_SW_DN no way past SW2
     "edge_escape": ("J2",),       # the ribbon header's edge-side row: layout._edge_row_escape
     # no via among the power switch's six lands: the first route put one 0.26 from a
     # terminal's hole, against the fab's 0.45 hole-to-hole
     "via_keepouts": [[round(_PWR_X - 4.0, 3), round(_PWR_Y - 4.2, 3),
                       round(_PWR_X + 4.0, 3), round(_PWR_Y + 4.2, 3)]],
     "quality": {
-        # the display module's logic and its own boost converter: C2's note has ~100 mA
-        "power_paths": [{"net": "+3V3", "from": "J2.10", "to": ["J1.2", "J1.18"],
-                         "amps": 0.15}],
+        # the display module's logic and its own boost converter, every pixel lit:
+        # Newhaven's maximum (the note at C1). Pin 18 is /SHDN, a logic input.
+        "power_paths": [{"net": "+3V3", "from": "J2.10", "to": ["J1.2"], "amps": 0.375}],
         # a switch's two throws, each shorted to GND or open: signal, not supply
         "not_power": ["PWR_SW_UP", "PWR_SW_DN"],
         "pinouts": {
@@ -393,13 +403,136 @@ BOARD_NOTES = {
         },
         "waive": {"A2:J2": "J2 is where +3V3 arrives off the ribbon, not a load; the "
                            "bulk and the 100n are at the display header, which is"},
+        # Signed 2026-10-05 against the routed board and the makers' sheets. M12 stays
+        # open on purpose: what is left of it can only be done on the day of the order.
+        "manual": {
+            "M1": "two joints. J2 to the Pi cap's J5: the same footprint both ends "
+                  "(PinHeader_2x08 P1.27 Horizontal, C22438114) and the same net on every "
+                  "pad 1 to 16, read off this routed board (SW_A SW_B SW_C SW_D SW_PUSH "
+                  "ENC_A ENC_B GND SCLK +3V3 SDIN DC CS_N RES_N PWR_SW_UP PWR_SW_DN) and "
+                  "off the cap's (its own M1); the order is one constant, "
+                  "harness.UI_RIBBON, asserted in both generators. A straight-through "
+                  "16-way 1.27 mm IDC lead. The header has no shroud: pin 1 is marked in "
+                  "silk and INSTALL_NOTES has the stripe-to-pin-1 step. J1 to the display "
+                  "module: header pin n is module pin n (1 GND, 2 VDD, 4 D/C, 7 SCLK, 8 "
+                  "SDIN, 16 /RES, 17 /CS, 18 /SHDN, 19 BS1, 20 BS0), Newhaven's table p.4; "
+                  "the module sits in its deck pocket, so the row cannot go on reversed "
+                  "or one pin along",
+            "M3": "decision: no plane (the note at silk_labels says why). +3V3 and GND "
+                  "are routed at the same 0.40 mm from J2 to J1 pins 2 and 1, each with "
+                  "10.4 mm of 0.15 in J2's edge fan and one 0.6 / 0.3 via; the return "
+                  "is as wide as the supply everywhere and necks nowhere the supply does "
+                  "not. About 0.1 V there and back at 375 mA",
+            "M4": "no regulator. C2 10 uF / 25 V 0805 (Samsung CL21A106KAYNNNE, C15850: "
+                  "barely derated at 3.3 V) and C1 100 nF, 5.4 and 2.7 mm from J1's VDD "
+                  "pin, for a module that carries its own boost converter and its own "
+                  "capacitors",
+            "M5": "+3V3: capacitors 25 V and 16 V or more, 0402 resistors 50 V, the module "
+                  "3.0 to 3.5 V. J2's contacts are 1 A and J1's 3 A against 0.375 A. "
+                  "Encoder and stick contacts: 10 mA at 5 V DC maximum (Alps), carrying "
+                  "0.33 mA from a 10k pull-up to 3.3 V. Power switch: 12 V 0.3 A (Legion), "
+                  "seeing the output board's 10 V zener (9.4 to 10.6 V) open and 2.55 mA "
+                  "closed -- output_panel.py, at D8",
+            "M9": "no MCU, nothing to program. Every net is on a through-hole pin of J1, "
+                  "J2, SW1 or SW2, all open to a probe from the back of the board; "
+                  "ground is on J1 pins 1, 5, 6, 10 to 14, 19 and 20",
+            "M10": "decision: no clamp here. A hand reaches two things, both printed "
+                   "plastic: the knob on the encoder's shaft and the power button's cap. "
+                   "The encoder's metal frame is on GND through its lug (pin 10), so a "
+                   "strike that gets past the knob lands on ground, not on a contact. "
+                   "The ribbon is inside the instrument, to our own board; the 3.3 V it "
+                   "brings is limited at the Pi cap. Nothing here can back-feed a rail",
+            "M11": "elec/cad_geom_check.py ui_board, 2026-10-05: 13 of 13 routed parts "
+                   "present in the CAD, the three cut-outs match (49.1 mm2), the switch "
+                   "is on the deck's spacing rule and the cradle's posts stand on bare "
+                   "board. The M4 hole and the two spigot holes are unplated with no "
+                   "copper at them, and the generator asserts no part stands under the "
+                   "deck boss or a spigot. The ribbon leaves over the -X edge with the "
+                   "socket hanging past the laminate. All four through-hole parts have "
+                   "LCSC codes; none is left for hand fitting",
+            "M16": "decision: no added damping, and none is needed. The only supply is "
+                   "3.3 V over the ribbon: about 0.4 uH and 0.34 ohm of AWG 30 pair "
+                   "into 10 uF is a characteristic impedance of 0.2 ohm against 0.34 "
+                   "ohm in series plus the cap's switch -- overdamped, no overshoot. The "
+                   "source is a current-limited switch on the Pi cap",
+            "M28": "Alps RKJXT1F42001 (C160841), Legion PB-22E85-S-5.7C-C-W (C22462024), "
+                   "hanxia HX PZ1.27-2x8P WZ (C22438114), Kinghelm "
+                   "KH-2.54PH180-1X20P-L11.5 (C2905493): each listing read 2026-10-05 and "
+                   "each pinout above taken from that maker's own drawing. No transistor, "
+                   "regulator or IC on the board",
+            "M29": "two layers, 1.6 mm, 1 oz, inside JLCPCB's standard table (cadkit "
+                   "quality FAB, capabilities page read 2026-10-04; A12 measured 15 "
+                   "things against it). No pour on either layer, so every 0402 and the "
+                   "0805 have a track on each pad and nothing to tombstone them",
+            "M30": "JLCPCB's assembly capabilities page, read 2026-10-05: Economic PCBA "
+                   "takes single-sided SMT and through-hole on 2 layers at 1.6 mm, a "
+                   "single board from 10 x 10 mm, 0402 and larger. This board is 72 x "
+                   "34, all parts on one face, nine 0402 / 0805 passives and four "
+                   "through-hole parts. Standard PCBA starts at 70 x 70 and would need "
+                   "rails. Seven BOM lines: three basic passives and four extended "
+                   "parts. 'Confirm Production File' and 'Confirm Parts Placement' are "
+                   "in the package's ORDER.txt",
+            "M31": "'UI BOARD r1' and 'POWER' on the front, every designator at 1.0 mm. "
+                   "J1's and J2's pin-1 marks are the footprints', outside the bodies. "
+                   "Decision: no pin names at J2 or J1 -- sixteen ways at 1.27 mm and "
+                   "twenty at 2.54 leave no room at a legible size, neither is wired by "
+                   "hand, and the order is in harness.UI_RIBBON and Newhaven's table",
+            "M32": "pitches read off the KiCad footprints: J2 1.27 x 1.27, J1 2.54. J2 is "
+                   "the 0.635 mm-ribbon IDC family the Pi cap's J5 is (1 A a contact, "
+                   "0.375 A on the one supply way and the one ground way); J1 is a "
+                   "plain 2.54 header for the module's own row, 3 A. The ribbon carries "
+                   "a ground with its single-ended signals (way 8, beside SCLK)",
+            "M33": "one rail. +3V3: the display module, 345 mA typical and 375 mA maximum "
+                   "with every pixel lit (Newhaven p.6, default jumpers), plus seven 10k "
+                   "pull-ups at 0.33 mA each when closed. 0.375 A is declared, and every "
+                   "contact and track here carries it (A1). The rail is the Pi's own "
+                   "3.3 V through the Pi cap's limiter: that budget is the cap's M33",
+            "M34": "the module wants 0.8 x VDD high and 0.2 x VDD low (Newhaven p.6): "
+                   "2.64 V at 3.3. The Pi drives its 3.3 V rail into inputs that draw "
+                   "microamps, and the module's own VDD is the same rail less the ribbon, "
+                   "so the threshold falls with it. /RES and /CS are active low, D/C is "
+                   "high for data: wired to nets of those names, driven by the Pi. /SHDN "
+                   "is active low and tied high; BS1 = BS0 = 0 is 4-wire SPI (p.5). The "
+                   "seven contacts close to ground against a pull-up: low is active",
+            "M36": "no supply leaves this board: it is the far end of the ribbon",
+            "M37": "elec/fab.py ui_board, 2026-10-05: zones refilled and DRC re-run by "
+                   "finish.py, gerbers and drill written together by fab_package. Opened "
+                   "outside KiCad: every layer rendered with pygerber 2.4.3 and looked "
+                   "at, the Excellon file parsed separately and laid over both copper "
+                   "layers -- 72 of 72 plated holes have copper all round them on each, "
+                   "the one unplated hole is the encoder's peg, and paste is on the nine "
+                   "surface-mount parts only. Stack-up and finish are in ORDER.txt",
+            "M38": "the one ceramic over 0603 is C2, an 0805, 6.5 mm from the nearest "
+                   "edge of a 72 x 34 board held by a screw and two spigots; routed "
+                   "outline, no V-score, no tab. The M4 and both spigot holes are "
+                   "unplated and isolated on purpose (they meet printed plastic). The "
+                   "knob, the button and the display all face the player; the ribbon "
+                   "plugs from the open -X edge",
+            "M40": "10k, 100 nF and 10 uF are stock values. The encoder, the power "
+                   "switch and both headers carry their part numbers as their values; "
+                   "the generator says at each why it is that part (the header heights "
+                   "and the switch's 12 V limit are the ones that must not change)",
+            "M41": "decision, stated in the module docstring: the seven encoder and "
+                   "stick contacts are debounced in the Pi's software, with no capacitor "
+                   "across them (the contact is rated 10 mA and a capacitor's charge "
+                   "would be spent through it at every make). None of them wakes or "
+                   "resets anything. The power switch latches mechanically and is "
+                   "filtered where it is read: R35 / C50, 1 ms, on the output board",
+            "M42": "stock at JLCPCB on 2026-10-05: encoder 7,310, power switch 2,537, "
+                   "ribbon header 2,050, display header 1,131, all three passives basic "
+                   "parts in the millions. The display module is bought, not placed. "
+                   "Single-maker parts: the Alps encoder has no drop-in alternate (the "
+                   "footprint is its own); the switch and both headers are generic "
+                   "outlines other makers fill. Three passive values, none odd",
+        },
     },
     "ref_pos": {
-        "J1": (round(_J1_X - 12.0, 3), round(_J1_Y - 2.8, 3)),
+        # past the row's +X end: under the row it printed on top of R3's own
+        "J1": (round(_J1_X + 28.5, 3), round(_J1_Y, 3)),
         "J2": (round(_J2_X + 3.0, 3), round(_J2_Y - 6.4, 3)),
         "SW1": (round(_SW_X, 3), round(_SW_Y - 10.4, 3)),
         "SW2": (round(_PWR_X, 3), round(_PWR_Y - 5.8, 3)),
-        "C1": (19.0, 8.2), "C2": (24.5, 8.2),
+        "C1": (-23.5, 8.2), "C2": (-27.0, 8.2),
         **{"R%d" % (i + 1): (round(_R_X0 + i * _R_DX, 3), _R_Y + 1.6) for i in range(7)},
     },
     # NO GROUND POUR, and it was tried. A B.Cu pour is the obvious thing to want here --

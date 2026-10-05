@@ -53,6 +53,7 @@ from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 
 import netcheck  # noqa: E402
 from placecheck import check_placement, fp_box  # noqa: E402
+import buck_cell as BC  # noqa: E402
 
 P = Pin.types.PASSIVE
 
@@ -67,7 +68,7 @@ C08_FP = "Capacitor_SMD:C_0805_2012Metric"
 C12_FP = "Capacitor_SMD:C_1206_3216Metric"
 FUSE_FP = "Fuse:Fuse_1206_3216Metric"
 # (No cable socket: the JST SH this board carried at each end went with the jumper. The
-#  -X board still passes both boards' 0.73 A, through one pogo rated 12 A.)
+#  -X board still passes both boards' 0.77 A, through one pogo rated 12 A.)
 
 R_IREF = "3k3"                       # 15.0 mA per channel, as the fret boards
 # ⚠ 11.50 V, AND THE STRING LENGTH IS THE ONLY THING THAT SETS IT. A channel sinks
@@ -137,29 +138,46 @@ BOARD_W = FL.BOARD_W                        # 17.20
 # the tops because they arrive from the sides and can climb on the way in.
 ZONE_OUTS = {-1: (3, 4, 5, 6), 0: (7, 8, 13, 14), 1: (15, 16, 17, 18)}
 
+# ── THE DRIVER'S HEAT PAD: SEVEN VIAS, NOT ONE (manual quality pass M25, 2026-10-05) ────
+# The stitcher gives an exposed pad one via at its centre, which is a ground connection
+# and not a heat path: one 0.25 mm barrel down 1.28 mm to the ground plane is about
+# 200 C/W, under a part that dissipates most of a watt at full white. TI's land pattern
+# for this package (SBVS181A, PWP land pattern data) draws fifteen 0.3 mm vias on a 1.3 mm
+# grid across the 3.4 x 6.5 copper.
+# ⚠ SIX MORE, AND ONLY UNDER THE SOLDER MASK. The pad's copper is 6.5 long but only the
+# middle 3.43 is opened and pasted; the two ends are mask over copper. Vias there cost no
+# paste, where each one inside the opening would drink a tenth of what is printed. Three
+# across each end, on TI's own 1.3 mm pitch: with the centre one about 30 C/W to the plane.
+DRV_PAD_VIAS = tuple((dx, dy) for dy in (-2.60, +2.60) for dx in (-1.30, 0.0, +1.30))
+
 # ── THE BUCK'S CELL: where each of its parts stands, measured from U10 ────────────────
-# ⚠ COPIED FROM THE OPTICAL BOARD'S U13, WHICH WAS MEASURED AGAINST TI'S LAYOUT EXAMPLE
-# on a routed board (elec/optical.py M13): the same IC in the same package. The RNX has a
-# VIN and a PGND pin on EACH long side, and TI puts a small 50 V capacitor across each
-# pair (SNVSAN3F 9.2.2.6); this board had one, on one side. C32 and C35 are the pair.
-# (dx, dy, rot) from U10's centre; every two-pad part is wired pin 1 = its net, pin 2 =
-# ground (C33: BOOT / SW; R10: rail / FB), which is what puts the right pad at the pin.
-BUCK_CELL = {
-    "C32": (-2.115, +0.80, 90.0),      # VIN / PGND, pins 2 and 1
-    "C35": (+2.115, +0.80, 90.0),      # VIN / PGND, pins 10 and 11
-    "C33": (-2.115, -1.32, 90.0),      # bootstrap, BOOT (pin 4) to the SW pin TI provides (3)
-    "C34": (-3.295, -1.32, 90.0),      # VCC, pin 5
-    "R11": (+2.115, -1.32, 90.0),      # feedback, bottom: 1.2 mm from FB (pin 7)
-    "R10": (+3.295, -1.32, 270.0),     # feedback, top
-    "R12": (+2.115, -3.25, 270.0),     # across R11, its FB pad towards R11's
-    "C30": (-6.305, 0.0, 0.0),         # input bulk
-    "C31": (-10.955, 0.0, 0.0),
-    "F1": (-15.585, 0.0, 0.0),
-    "L1": (+6.535, 0.0, 0.0),
-    "C36": (+11.185, 0.0, 0.0),        # output bulk
-    "C37": (+15.835, 0.0, 0.0),
-    "C38": (+19.10, 0.0, 90.0),
-}
+# ⚠ THE OPTICAL BOARD'S U13 CELL, WHICH WAS MEASURED AGAINST TI'S LAYOUT EXAMPLE on a
+# routed board (elec/optical.py M13): the same IC in the same package. The RNX has a VIN
+# and a PGND pin on EACH long side, and TI puts a small 50 V capacitor across each pair
+# (SNVSAN3F 9.2.2.6); this board had one, on one side. C32 and C35 are the pair.
+# (dx, dy, rot) from U10's placement point.
+# The package's seven close parts, the bulk row and the laid copper are all
+# elec/buck_cell.py's, shared with the keyhead fret board. This board adds a fuse and
+# three test pads, in the same row: X is the only axis a strip has.
+# ⚠ EVERY 1206 STANDS ACROSS THE STRIP (manual quality pass M38, 2026-10-05), the fuse
+# included. A 290 x 17 mm board bends along its length when it is handled, and a large
+# ceramic lying along that bend takes the strain through its two solder joints and
+# cracks. Turned a quarter turn the same bend only rocks it.
+BUCK_REFS = {"CIN_A": "C32", "CIN_B": "C35", "CBOOT": "C33", "CVCC": "C34",
+             "RFBB": "R11", "RFBT": "R10", "RFBP": "R12"}
+BULK_REFS = {"CIN_1": "C30", "CIN_2": "C31", "L1": "L1",
+             "COUT_1": "C36", "COUT_2": "C37", "COUT_HF": "C38"}
+BUCK_CELL = dict({ref: BC.CORE[role] for role, ref in BUCK_REFS.items()},
+                 **{ref: BC.BULK[role] for role, ref in BULK_REFS.items()})
+BUCK_CELL.update({
+    "F1": (-10.75, 0.0, 270.0),        # its +24V end beside the input bulk's own
+    # THREE TEST PADS, bare copper, labelled by kicad_silk with their nets (M9): the two
+    # rails a first power-up is checked on, and a ground beside them for the other probe.
+    "TP1": (-13.40, 0.0, 0.0),         # +24V, after the fuse
+    "TP2": (+17.00, 0.0, 0.0),         # the rail
+    "TP3": (+19.60, 0.0, 0.0),         # GND
+})
+TP_FP = "TestPoint:TestPoint_Pad_D1.5mm"
 BUCK_X = -1.75                       # U10 itself: centres the cell on the board
 
 
@@ -266,8 +284,8 @@ def build(board, passes=20):
 
     # ⚠ A PART, NOT "1A": a fuse is chosen for its voltage and its speed as well as its
     # current, and a value string picks none of them. JDT JFC1206 fast-acting, 63 V.
-    # Board A's carries BOTH boards (0.73 A all-white), so it is the 2 A part at 37 %;
-    # board B's carries its own 0.37 A on the 1 A part, so a fault on B opens B's fuse
+    # Board A's carries BOTH boards (0.77 A all-white), so it is the 2 A part at 38 %;
+    # board B's carries its own 0.38 A on the 1 A part, so a fault on B opens B's fuse
     # and leaves A lit.
     f_val = {"a": "JFC1206-1200FS", "b": "JFC1206-1100FS"}[board]
     f1 = Part(name="Fuse", ref_prefix="F", ref="F1", tag="F1", dest="NETLIST",
@@ -344,7 +362,15 @@ def build(board, passes=20):
     # board with it, and its spectrum is nowhere near the audio band.
     place["U10"] = (BUCK_X, LANE_Y, 0.0)
     fps["U10"] = BUCK_FP
-    cell_fp = {"F1": FUSE_FP, "C30": C12_FP, "C31": C12_FP, "C36": C12_FP, "C37": C12_FP,
+    for ref, net, what in (("TP1", v24, "+24V behind the fuse"),
+                           ("TP2", vrail, "the LED rail, %.2f V" % V_RAIL),
+                           ("TP3", gnd, "ground for the probe")):
+        tp = Part(name="TestPoint", ref_prefix="TP", ref=ref, tag=ref, dest="NETLIST",
+                  tool="skidl", value="TP",
+                  description="test pad -- %s; bare copper, no component" % what,
+                  footprint=TP_FP, pins=[Pin(num=1, func=P)])
+        net += tp[1]
+    cell_fp = {"TP1": TP_FP, "TP2": TP_FP, "TP3": TP_FP, "F1": FUSE_FP, "C30": C12_FP, "C31": C12_FP, "C36": C12_FP, "C37": C12_FP,
                "L1": IND_FP, "R10": R_FP, "R11": R_FP, "R12": R_FP}
     for ref, (dx, dy, rot) in BUCK_CELL.items():
         place[ref] = (BUCK_X + dx, LANE_Y + dy, rot)
@@ -486,26 +512,15 @@ def build(board, passes=20):
     notes["outline_mm"] = (round(length, 3), round(BOARD_W, 3))
     notes["placements"] = {k: list(v) for k, v in place.items()}
     notes["router_passes"] = passes
-    # THE SWITCH NODE IS LAID, NOT ROUTED: the one net here that radiates. Out of U10's
-    # top pad (pin 12), over C35, into L1's near land -- optical.py's own track.
+    # THE BUCK'S COPPER IS LAID, NOT ROUTED (buck_cell.copper says what and why), and
+    # each driver's heat pad gets its six vias (DRV_PAD_VIAS).
     ux, uy, _ur = place["U10"]
-    lx = place["L1"][0] - 1.50
-    notes["tracks"] = [("SW", "F.Cu", 0.5, [(ux, uy + 1.20), (ux, uy + 2.00),
-                                            (lx - 0.25, uy + 2.00), (lx, uy + 1.40)])]
-    # ...AND SO ARE THE TWO INPUT LOOPS, pin to capacitor pad, 0.6 mm each. Left to
-    # itself the plane stitcher ran pin 11's ground stub down the gap between the package
-    # and C35 and walled pins 9 and 10 off from the rest of +24V: two unconnected, on the
-    # shortest connections on the board.
-    # ⚠ MEASURED FROM THE PLACEMENT POINT, WHICH IS THE PAD CENTROID AND NOT THE
-    # FOOTPRINT'S ORIGIN: layout anchors a part on the mean of its pads, and the RNX's is
-    # 0.159 below its origin. Read off the laid-out board: VIN pins at +0.634, PGND at
-    # +1.284, x +-0.90; a capacitor's pads at +0.32 and +1.28, x +-2.115.
-    for sx in (-1.0, 1.0):
-        notes["tracks"] += [
-            ("+24V", "F.Cu", 0.25, [(ux + sx * 0.90, uy + 0.634), (ux + sx * 1.50, uy + 0.634),
-                                    (ux + sx * 2.115, uy + 0.32)]),
-            ("GND", "F.Cu", 0.25, [(ux + sx * 0.90, uy + 1.284), (ux + sx * 2.115, uy + 1.284)]),
-        ]
+    v_dia, v_drill = BOARD_NOTES["via_mm"]
+    notes["tracks"] = BC.copper((ux, uy), 0.0, v_out="+11V5")
+    notes["vias"] = [v + (v_drill, v_dia) for v in BC.vias((ux, uy), 0.0)] + [
+        ("GND", round(place["U%d" % (k + 1)][0] + dx, 3),
+         round(place["U%d" % (k + 1)][1] + dy, 3), v_drill, v_dia)
+        for k in range(n_drv) for dx, dy in DRV_PAD_VIAS]
     # WHAT EACH SUPPLY NET CARRIES, all-white. A board's own rail is its channels and
     # its 24 V draw is that through the buck at 90 %. Board A's inlet and fuse carry
     # BOTH boards' and it hands B's share across the seam; B carries its own.
@@ -597,7 +612,7 @@ BOARD_NOTES = {
     # U10's two PGND pins reach the plane through the input capacitor beside each: a laid
     # 0.25 track, pin to capacitor pad, 0.6 mm, and the capacitor's own stitch via. TI's
     # layout wants no via inside that loop, and there is no room for one anyway.
-    "stitch_exceptions": ("U10.1", "U10.11"),
+    "stitch_exceptions": BC.STITCH_EXCEPTIONS,
     # ⚠ A SMALLER VIA, AND IT IS THE DRIVER'S ESCAPE FAN THAT ASKS FOR IT. Twelve outputs
     # leave one HTSSOP-20 on a 0.65 mm pitch and every one of them has to dive to an
     # outer layer beside the package: six vias have to fit in the 5.85 mm the pin column
@@ -619,7 +634,7 @@ BOARD_NOTES = {
     # ...and the two power nets are widened back up. +11V and GND are planes, so this is
     # really just the 24 V pass-through, which carries 0.24 A the length of the board.
     "net_widths": {"+24V": 0.30, "+24V_IN": 0.30},   # the inlet stub was routed at 0.15
-                                                      # for 0.73 A, which wants 0.20
+                                                      # for 0.77 A, which wants 0.20
     "order_options": {
         "via size": "0.25 mm hole / 0.50 mm diameter -- SELECT THIS ON THE ORDER FORM. "
                     "Inside standard capability and not surcharged. The driver fan does "
