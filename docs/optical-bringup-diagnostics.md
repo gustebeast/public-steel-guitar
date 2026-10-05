@@ -250,3 +250,16 @@ against the finished board in two minutes rather than thirty.**
 3. Items **1-5** as one change, with its own route. None of them touches the analog region or the
    converter fan.
 4. Item **6** as its own change, with its own route and its own before/after SI comparison.
+
+
+## First USB plug-in: it must enumerate HIGH speed (2026-10-05)
+
+Microchip's errata for the USB334x (DS80000645A, module 2): as a high-speed device behind
+some USB cores the PHY fails the chirp and comes up at full speed only. The STM32's core
+is one of them. The fix is one bit in firmware: set `XCVRDLY` in `OTG_DCFG` before the
+port is enabled. That is proven on an STM32F446 with this same USB3343; nobody has been
+found reporting it on an H743.
+
+So the first thing to read after plugging in is the negotiated speed. Full speed with the
+bit set means the workaround does not carry to this MCU, and the fallback Microchip
+itself names is a USB332x PHY, which is a different footprint: a board change.

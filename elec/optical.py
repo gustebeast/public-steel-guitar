@@ -3952,6 +3952,23 @@ BOARD_NOTES["quality"] = {
                  "up (USB334x table 2-2, pin 22); it draws no supply current",
     }},
     "manual": {
+        "M35": "read 2026-10-05. ST ES0392 rev 15 (STM32H742/743/750/753), every entry, "
+               "against this board: nothing in it needs a part or a track changed. Not "
+               "used here: the internal OTG PHYs (2.2.13 drive limit, pull-up drift), LSE "
+               "and PC13, the DAC, the MCU's ADCs, Ethernet, FMC, QUADSPI, SDMMC. No pin "
+               "is driven above VDD (2.2.14). PDR_ON is tied high. For the firmware: 400 "
+               "MHz ceiling on revision Y / W parts (2.2.21); I2C kernel clock at least "
+               "10 MHz for fast mode (2.19.3); SAI master stop truncates the last clock "
+               "(2.23, rev Y). "
+               "Microchip DS80000645A (USB334x rev B), both modules: Module 1 is host "
+               "only. MODULE 2 APPLIES AND IS THE ONE TO KNOW: as a high-speed DEVICE "
+               "behind some link cores the PHY fails the chirp and enumerates full speed "
+               "only; the STM32's core is one of them (reported on F2 / F4). The fix is "
+               "firmware -- set XCVRDLY in OTG_DCFG before the chirp, proven on an F446 "
+               "with this PHY, NOT yet on an H743. Bring-up must see a high-speed "
+               "enumeration; Microchip's own fallback is a USB332x, which is a different "
+               "footprint (docs/optical-bringup-diagnostics.md). "
+               "TI publishes no errata sheet for the TLV320ADC3140 (searched, none found)",
         "M1": "two cables. J2 <- output_panel J9: two wires. That end is a 2-way XH (1 GND, "
               "2 +24 V), this a 4-way housing with the same two ways crimped and ways 3 / 4 "
               "empty (JST makes no 2-way SMT side-entry XH; the note at J2). It is the "

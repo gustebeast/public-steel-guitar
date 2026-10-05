@@ -768,6 +768,8 @@ BOARD_NOTES = {
         # purpose: M11 (the CAD fit, after these placements reach the build), M35 (errata)
         # and the order-time items M12, M29, M30, M37, M42.
         "manual": {
+            "M35": "read 2026-10-05. " + 'WCH publishes no errata sheet: its product page lists the datasheet and the reference manual (CH32FV2x_V3xRM) and nothing else, read 2026-10-05. ' + "(CH32V203: same "
+                   "manual.) The other parts were not searched for errata sheets",
             "M1": "one PHR-8 housing carries both cables (INSTALL_NOTES, 'one PHR-8 "
                   "housing'): ways 1-4 are the bus in and 5-8 the bus out, each in "
                   "harness.PH_PINOUT order (GND, 5 V, CAN_H, CAN_L), the list motor_ctrl "
