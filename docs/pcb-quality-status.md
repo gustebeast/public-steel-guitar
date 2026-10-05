@@ -24,7 +24,7 @@ Scoreboard, 2026-10-05 (every board listed is `0 unconnected, 0 violation(s)`):
 | `leg_pogo_*` (four boards) | 0 | 4 | order-time M12 M30 M37 M42 |
 | `pi_cap` | 0 | 6 | M11 (CAD fit after the build), M29, order-time four. M1 signed 2026-10-05 against the routed `ui_board`, `motor_ctrl`, fret and foot boards |
 | `lever_sensor` | 0 | 7 | M11, M35, M29, order-time four |
-| `motor_ctrl` | 0 | 10 | M32 / M33 (user: motor current), M23 (USB details), M11, M35, M29, order-time four |
+| `motor_ctrl` | 0 | 10 | M32 / M33 (user: motor current), M23 (one line left, below), M11, M35, M29, order-time four |
 | `output_panel` | 0 | 8 | M32 (user: motor current), M11, M35, M29, order-time four |
 | `optical` | 0 | 7 | M11, M35, M29, order-time four. Two things to measure at bring-up, recorded in its M-notes: U8's case temperature (0.77 W worst case) and the AVDD current |
 | `ui_board`, `fret_led`, `foot_led` | - | - | brenner's boards, not touched by this loop |
@@ -36,6 +36,17 @@ needs the lead's build with the new board geometry. M35 needs each MCU's errata 
 (st.com could not be fetched from here on 2026-10-05: the sheets have to be opened by hand).
 None of these can be closed from the files on hand, so the loop leaves them OPEN on purpose
 rather than ticking them.
+
+### `motor_ctrl` M23 (USB), 2026-10-05: everything but one sentence
+
+Read off the routed board: D6 / D7 are 4.8 mm from J4's pins and ahead of everything else;
+`USB_DP` is 49.4 mm with 3 vias, `USB_DM` 52.6 mm with 1 (3.2 mm apart, about 20 ps, on a
+full-speed link whose edges are 4 ns or slower); VBUS is not connected; the 48 MHz comes
+from the 8 MHz crystal through the PLL. **Not signed**, because WCH's datasheet (V3.4, the
+copy on hand) does not say where the D+ pull-up and the series resistors are: the board
+has neither, on the understanding that the CH32V307's full-speed port has both inside.
+That sentence is in WCH's reference manual, which has not been read here. Read it, or see
+the board enumerate, and M23 can be signed.
 
 ### Decided by the user, 2026-10-04
 
