@@ -179,7 +179,7 @@
   },
   "test_belt_tensioner": {
    "material": null,
-   "volume_mm3": 1951.0
+   "volume_mm3": 1786.0
   },
   "test_cover_plate": {
    "material": null,
