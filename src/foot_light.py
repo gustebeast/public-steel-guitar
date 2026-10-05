@@ -97,6 +97,7 @@ def run_len():
 FLOOR_NOM  = -71.35                 # window top = motor bay floor; asserted below
 AIR_GAP    = 0.30                   # the tallest hanging part to the floor: a print tolerance
 LED_H      = 1.60                   # XL-5050RGBW body (LCSC C7371891, and see fret_light)
+LED_BODY   = 5.00                   # ...and its plan size, square (the footprint's F.Fab)
 BOARD_T    = 1.60
 XH_H       = 5.75                   # JST S4B-XH-SM4-TB above its board (board_geom's
                                     # figure; elec/foot_led.py asserts the two agree)
@@ -213,10 +214,13 @@ def led_y():
 #
 # ⚠ THE TWO SHOULDERS ARE DIFFERENT, AND THE POGOS ARE WHY. A barrel hangs the trough's
 # full depth and travels the channel's whole length on the way in, so a shoulder may only
-# stand where no barrel ever passes. On the -Y side that leaves 1.20 from the wall: 0.90
-# under the board after the fit, then 0.35 of air to the first barrel.
-SHOULDER_LO = 1.20                  # -Y shoulder's reach from the slot wall
-SHOULDER_HI = 1.50                  # +Y shoulder's reach from the rail
+# stand where no barrel ever passes.
+# ⚠ BOTH ARE TWO BEADS (user, 2026-10-05: they were 1.20 and 1.50, neither a whole number
+# of beads). The -Y one is what positions the pogo row -- 1.60 of shoulder, 0.35 of air,
+# then the first barrel -- so widening it moved all four pogos 0.40 toward the LED row;
+# see check_optics for what that row is now held clear of.
+SHOULDER_LO = D.MIN_WALL_2P          # 1.60, -Y shoulder's reach from the slot wall
+SHOULDER_HI = D.MIN_WALL_2P          # 1.60, +Y shoulder's reach from the rail
 SHOULDER_AIR = 0.35                 # a shoulder to the nearest barrel
 
 
@@ -296,10 +300,10 @@ BOARD_NAME = {"a": "foot_led_a", "b": "foot_led_b"}
 #
 # WHERE THEY CAN STAND WAS MEASURED, AND IT IS A TIGHT ROW. A land is 3.50 wide. On the
 # -Y side the first barrel has to clear the shoulder; on the +Y side the last land has to
-# clear the end LED's courtyard, and that LED sits at exactly the X a pogo needs, so the
-# LED row's own Y is closed to them. Between the two:
-#     shoulder  31.95 | 0.35 | barrel 1 ... four at POGO_PITCH 3.80 ... land 4 ends 47.00
-#     | 0.30 | LED courtyard 47.30
+# clear the end LED, and that LED sits at exactly the X a pogo needs, so the LED row's own
+# Y is closed to them. Between the two:
+#     shoulder  32.35 | 0.35 | barrel 1 ... four at POGO_PITCH 3.80 ... land 4 ends 47.40
+#     | 0.45 | LED body 47.85     (and 0.10 INSIDE its 6.10 courtyard -- see check_optics)
 # 3.80 leaves 0.30 of bare board between neighbouring lands and 0.70 between barrels. It
 # is under the 4.50 the fret seam uses and under the courtyards' own 4.00, which is why
 # elec/foot_led.py exempts these pairs from the courtyard check and asserts the copper.
@@ -442,10 +446,16 @@ def check_optics():
         "the first barrel is %.2f off the -Y shoulder" % (ys[0] - hb - ty0))
     assert POGO_PITCH - PG.POGO_PAD_W >= 0.30 - 1e-9, (
         "%.2f of board between neighbouring pogo lands" % (POGO_PITCH - PG.POGO_PAD_W))
-    led_crtyd = led_y() - 6.10 / 2.0
-    assert led_crtyd - (ys[-1] + PG.POGO_PAD_W / 2.0) >= 0.30 - 1e-9, (
-        "the last pogo land ends %.2f from the end LED's courtyard"
-        % (led_crtyd - (ys[-1] + PG.POGO_PAD_W / 2.0)))
+    # ⚠ AGAINST THE LED'S BODY, NOT ITS COURTYARD. This was 0.30 to the courtyard (6.10
+    # square) until the -Y shoulder went to two beads and took 0.40 of the lane; the land
+    # now stands 0.10 INSIDE that courtyard. What is physically there is the XL-5050's
+    # 5.00 body, and its own lands stop 2.26 from its centre in Y -- so the pogo's land is
+    # 0.45 from the LED's body and 0.69 from its nearest copper. elec/pcb_declared.py
+    # accepts exactly that courtyard pair on each board.
+    led_body = led_y() - LED_BODY / 2.0
+    assert led_body - (ys[-1] + PG.POGO_PAD_W / 2.0) >= 0.30 - 1e-9, (
+        "the last pogo land ends %.2f from the end LED's body"
+        % (led_body - (ys[-1] + PG.POGO_PAD_W / 2.0)))
     assert TROUGH - HANG_MAX >= AIR_GAP - 1e-9
     # the cable socket: its tail and its plug stay inside the corridor cut for the boards
     assert TAIL_A <= MOUTH_CUT, (
@@ -605,12 +615,8 @@ def leds(half):
 
 
 # ── the lead: board A's socket to the Pi cap ────────────────────────────────────────────
-# One 4-way XH-to-XH lead (GND, 24 V, SCK, SDT), drawn as ONE round bundle and not as four
-# conductors: 24 AWG is 1.4 over its insulation and four of them laid up round are
-# 2.41 x 1.4 across.
-LEAD_OD    = 3.4
-LEAD_AXIS  = XH_H / 2.0             # the socket's wire row below its board, ESTIMATED as the
-                                    # middle of the housing (no drawing figure taken yet)
+# One 4-way XH-to-XH lead (GND, 24 V, SCK, SDT). It is DRAWN in src/led_leads.py, as four
+# conductors each on its own contact; what is here is where it may go.
 LEAD_STUB  = 4.0                    # straight out of the mouth before the first bend: the
                                     # XHP-4 housing stands about 4.3 past it
 # ⚠ IT GOES OVER STRING 1's MOTOR, BECAUSE THERE IS NO WAY ROUND IT. The socket is +Y of
@@ -626,44 +632,9 @@ LEAD_COL_X = -595.5                 # the column it crosses in. 2.5 further -X i
                                     # motor board's corner post (x -599.7..-598.3, up to
                                     # z -21.95); 1.5 further +X it grazes the 24 V trunk's
                                     # drop into the motor board (3.5 mm3)
-LEAD_DROP_Y = -50.0                 # where it comes back down: between the motor's -Y face
-                                    # (-41.25) and the Pi cap's +Y edge (-59.2)
-
-
-def lead_ends():
-    """((x, y, z) at the socket's mouth, (x, y, z) at the Pi cap's J6 mouth), world.
-
-    ⚠ THE CAP'S END IS READ OFF THE ROUTED CAP, not copied: J6's fab box, the edge of it
-    nearer the board's own edge being the mouth, through electronics._cap_place -- the one
-    transform everything on that board goes through."""
-    from . import board_geom as BG
-    from . import electronics as EL
-    _led, board_bot, _bt, _lb, _lt = z_stack()
-    a = (board_span("a")[0] + J_INSET, J_Y, board_bot - LEAD_AXIS)
-    f = BG.footprint("pi_cap", "J6")
-    x0, x1, y0, y1 = f["fab"]
-    my = y0 if abs(y0) > abs(y1) else y1
-    bb = EL._cap_place(box_at(0.01, 0.01, 0.01, x=(x0 + x1) / 2.0, y=my, z=0.0)
-                       ).val().BoundingBox()
-    b = ((bb.xmin + bb.xmax) / 2.0, (bb.ymin + bb.ymax) / 2.0,
-         (bb.zmin + bb.zmax) / 2.0 - LEAD_AXIS)
-    return a, b
-
-
-def lead():
-    """[(name, solid)] the lead from board A's socket to the Pi cap's J6."""
-    from .helpers import oct_cable
-    a, b = lead_ends()
-    fly = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + LEAD_FLY
-    xs = a[0] - LEAD_STUB
-    # D.MCTRL_Y1 is the motor board's +Y edge, which is derived from the motor's back
-    assert b[1] < LEAD_DROP_Y - LEAD_OD / 2.0 and LEAD_DROP_Y + LEAD_OD / 2.0 < D.MCTRL_Y1, (
-        "the lead comes down at y %.1f, which is not between the Pi cap's socket (%.1f) "
-        "and the motor's back (%.1f)" % (LEAD_DROP_Y, b[1], D.MCTRL_Y1))
-    pts = [a, (xs, a[1], a[2]), (xs, a[1], fly), (LEAD_COL_X, a[1], fly),
-           (LEAD_COL_X, LEAD_DROP_Y, fly), (LEAD_COL_X, LEAD_DROP_Y, b[2]),
-           (b[0], LEAD_DROP_Y, b[2]), b]
-    return [("wire_foot_led", oct_cable(pts, LEAD_OD))]
+# (Where it comes back down is no longer a number here: led_leads drops each conductor
+#  a plug length and 1.0 out of the Pi cap's J6, which puts the four at y -54.5 to -49.7
+#  -- between the motor's -Y face at -41.25 and the cap's +Y edge at -59.2.)
 
 
 def routed():
@@ -683,10 +654,10 @@ def routed():
 
 
 def parts():
-    """[(name, solid)] for build.py -- the two boards, the seam's plungers and the
-    lead to the Pi cap."""
+    """[(name, solid)] for build.py -- the two boards and the seam's plungers. The lead
+    to the Pi cap is src/led_leads.py."""
     if not routed():
         print("  (no %s.geom.json yet -- the foot strip is left out of this build; "
               "route and export it, see elec/foot_led.py)" % "/".join(BOARD_NAME.values()))
         return []
-    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES] + pogo_pins() + lead()
+    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES] + pogo_pins()
