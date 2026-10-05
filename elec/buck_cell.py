@@ -79,8 +79,8 @@ def at(origin, turn, dx, dy, rot=0.0):
 # So each VIN and PGND pin now sits IN copper as wide as the pin pitch allows (0.4 and
 # 0.8 mm), and that copper runs straight out into a slab: ground along the top of the
 # input side, the input rail beside it, both taking the bulk capacitors' pads in on the
-# way. About 30 mm2 of copper 0.2 mm above the first plane, plus seven vias to the ground
-# plane -- TI's own arrangement, drawn with tracks because this flow has no local pours.
+# way. About 30 mm2 of copper 0.2 mm above the first plane, plus eight vias to the ground
+# plane (four declared, four the stitcher's) -- TI's own arrangement, drawn with tracks because this flow has no local pours.
 #
 # THE SWITCH NODE STAYS A TRACK: the one net here that radiates, never a heatsink. Out of
 # the top pad (pin 12), over the right-hand ground bar, into the inductor's near land.
@@ -110,6 +110,11 @@ def copper(origin, turn, v_in="+24V", v_out=None):
         run(v_in, 0.40, (0.95, 0.60), (1.60, 0.60), (2.115, 0.35)),
         run(v_in, 0.70, (2.115, 0.35), (3.70, 0.35)),
         run(v_in, 0.25, (0.95, -0.016), (1.65, -0.016), (1.65, 0.35)),
+        # ...and the two input sides joined UNDER the package, on the back: the right-hand
+        # pair is walled in by the ground bar and the switch node, and the router found
+        # no way out for it (one unconnected, 1.8 mm long). Via to via, see vias().
+        (v_in, "B.Cu", 0.50, [at(origin, turn, *VIN_LINK[0])[:2],
+                              at(origin, turn, *VIN_LINK[1])[:2]]),
     ]
     if v_out:
         out += [
@@ -119,10 +124,20 @@ def copper(origin, turn, v_in="+24V", v_out=None):
     return out
 
 
-def vias(origin, turn):
-    """[(net, x, y)] the ground slabs' own way down to the plane; a board adds its via size."""
-    pts = [(x, 3.00) for x in (-2.60, -3.80, -5.00, -6.20, -7.40)] + [(2.90, 1.50), (3.60, 1.50)]
-    return [("GND",) + at(origin, turn, x, y)[:2] for x, y in pts]
+VIN_LINK = ((-3.40, 0.15), (+3.40, 0.35))        # a via in each input slab
+
+
+def vias(origin, turn, v_in="+24V"):
+    """[(net, x, y)]: the ground slabs' own way down to the plane, and the two ends of the
+    input link. A board adds its via size.
+
+    ⚠ FOUR GROUND VIAS, PLACED BETWEEN THE STITCHER'S. Every capacitor's ground pad gets a
+    stitch via of its own beside it (at x -7.85, -5.25 and -2.1 on the input slab, 2.9 on
+    the right-hand bar), and the first set declared here landed on top of three of them:
+    two drills 0.05 mm INTO each other."""
+    gnd = [(-2.60, 3.00), (-3.80, 3.00), (-6.55, 3.00), (3.60, 1.50)]
+    return ([("GND",) + at(origin, turn, x, y)[:2] for x, y in gnd]
+            + [(v_in,) + at(origin, turn, x, y)[:2] for x, y in VIN_LINK])
 
 
 STITCH_EXCEPTIONS = ("U10.1", "U10.11")
