@@ -264,7 +264,7 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # mistake still possible is harmless both ways round: a motor-bus lead on this socket
     # powers the board correctly and lays CAN on the two SPI inputs, and this lead on a
     # motor-bus socket lays 3.3 V logic on CAN. Neither reverses a supply.
-    J_PINS = ("GND", "V24", "SCK", "SDT")
+    J_PINS = tuple(_H.LED_DROP)          # GND, V24, SCK, SDT: the Pi cap's J3, way for way
     assert J_PINS[:2] == tuple(_H.XH_PINOUT[:2]), (
         "the fret harness plug is an XH and its supply ways are not the XH bus's own")
     j = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",

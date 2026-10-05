@@ -1415,8 +1415,10 @@ WIRE_OK = {
 # one part outside the leg that a pogo_wire_* is allowed to touch (wiring.ctrl_bus_b).
 WIRE_OK.update({"pogo_wire_%s" % n.lower(): set(_POGO_ENDS) | {"motor_ctrl"}
                 for n in EH.PH_PINOUT})
-# the foot strip's lead (src/foot_light.lead): board A's socket to the Pi cap's J6
+# the two lighting leads (src/led_leads.py), four conductors each: the foot strip's board
+# A to the Pi cap's J6, and the keyhead fret board to its J3
 WIRE_OK["wire_foot_led"] = {"foot_pcb_a", "pi_cap"}
+WIRE_OK["wire_fret_led"] = {"fret_pcb_key", "pi_cap"}
 
 
 # THE BAYS' BACK WALLS reach to MB.HARNESS_Y1 now, so a tee still ON THE RAIL must not fall
