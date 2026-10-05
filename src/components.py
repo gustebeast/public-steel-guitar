@@ -327,39 +327,54 @@ def splice_frame(motor_xyz, screw_xyz, from_screw=None):
     return (p.x, p.y, p.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
 
 
-def clamp_frame(motor_xyz, screw_xyz, upper, at_ceiling, x0, x1):
-    """Placement for the in-line belt clamp ON THE RUN IT IS INSTALLED ON, turned with the
-    belt, WHERE IT IS SPLICED: the nut on the ceiling and the clamp D.CLAMP_END_CLR off the
-    pulley it has just been travelling toward (INSTALL_NOTES). `upper` picks the run (the
-    one that leaves the motor pulley's top); x0, x1 are the clamp's own extent along the
-    belt about its origin. `at_ceiling=False` gives the other end of its travel instead.
-    Returns (origin, xDir = toward the motor, normal = into the loop).
-
-    WHICH PULLEY THAT IS. The screw is right-hand, so the nut rises when the screw turns
-    clockwise seen from above; the pulley's +y side then moves toward +x. The upper run
-    leaves the screw pulley on its +y side, so a clamp on it is carried TOWARD THE SCREW as
-    the nut rises, and one on the lower run toward the motor. ⚠ Derived, not yet seen on
-    a bench: a left-hand screw swaps the two.
-
-    The belt turns 90 deg between the pulleys -- flat at the screw (normal across the
-    instrument), on edge at the motor (normal vertical) -- and the clamp is rigid, so the
-    turn is shared between the free belt either side of it in proportion to length. That
-    is the same assumption tools/clamp_study.py and tools/clamp_range.py make."""
+def _clamp_run(motor_xyz, screw_xyz, upper):
+    """(screw-end tangent point, unit tangent toward the motor, run length, sign) of the
+    belt run a clamp rides: the upper one leaves the motor pulley's top."""
     V = cq.Vector
     M, S = V(*motor_xyz), V(*screw_xyz)
     r = D.PULLEY_OD / 2 + D.BELT_T / 2
     sgn = 1.0 if upper else -1.0
     m_t, s_t = V(M.x, M.y, M.z + sgn * r), V(S.x, S.y + sgn * r, S.z)
-    L = m_t.sub(s_t).Length
-    tan = m_t.sub(s_t).normalized()
+    return s_t, m_t.sub(s_t).normalized(), m_t.sub(s_t).Length, sgn
+
+
+def clamp_span(motor_xyz, screw_xyz, upper, x0, x1):
+    """(p_min, p_max): the clamp origin's distance from the screw-end tangent point with
+    the clamp D.CLAMP_END_CLR off each pulley's flange. x0, x1 are the clamp's own extent
+    along the belt about its origin."""
+    L = _clamp_run(motor_xyz, screw_xyz, upper)[2]
     off = D.PULLEY_FLANGE_OD / 2 + D.CLAMP_END_CLR
-    travel = D.CARRIAGE_TRAVEL * D.BELT_PER_MM
-    if upper:
-        p = off - x0 + (0.0 if at_ceiling else travel)
-    else:
-        p = L - off - x1 - (0.0 if at_ceiling else travel)
+    return off - x0, L - off - x1
+
+
+def clamp_p(motor_xyz, screw_xyz, upper, x0, x1, down=0.0):
+    """Where the clamp is with the nut `down` mm below the ceiling. It is SPLICED with the
+    nut on the ceiling, D.CLAMP_END_CLR off the pulley it has just been travelling toward
+    (INSTALL_NOTES), and the nut's travel carries it D.BELT_PER_MM per mm away from there.
+
+    WHICH PULLEY THAT IS. The screw is right-hand, so the nut rises when the screw turns
+    clockwise seen from above; the pulley's +y side then moves toward +x. The upper run
+    leaves the screw pulley on its +y side, so a clamp on it is carried TOWARD THE SCREW as
+    the nut rises, and one on the lower run toward the motor. ⚠ Derived, not yet seen on
+    a bench: a left-hand screw swaps the two."""
+    p0, p1 = clamp_span(motor_xyz, screw_xyz, upper, x0, x1)
+    return p0 + down * D.BELT_PER_MM if upper else p1 - down * D.BELT_PER_MM
+
+
+def clamp_frame(motor_xyz, screw_xyz, upper, p, x0, x1, da=0.0):
+    """Placement for the in-line belt clamp on its run, its origin p from the screw-end
+    tangent point, turned with the belt (plus `da` degrees of twist error). Returns
+    (origin, xDir = toward the motor, normal = into the loop).
+
+    THE ONE KINEMATIC MODEL: src.build draws the clamp with it, and tools/clamp_range.py
+    and tools/check_carriage_travel.py step it. The belt turns 90 deg between the pulleys
+    -- flat at the screw (normal across the instrument), on edge at the motor (normal
+    vertical) -- and the clamp is rigid, so the turn is shared between the free belt
+    either side of it in proportion to length."""
+    V = cq.Vector
+    s_t, tan, L, sgn = _clamp_run(motor_xyz, screw_xyz, upper)
     ls, lm = p + x0, L - (p + x1)
-    a = (math.pi / 2) * ls / (ls + lm)
+    a = (math.pi / 2) * ls / (ls + lm) + math.radians(da)
     n = V(0, math.cos(a), math.sin(a)).multiply(-sgn)
     n = n.sub(tan.multiply(n.dot(tan))).normalized()
     o = s_t.add(tan.multiply(p))
