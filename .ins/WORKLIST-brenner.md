@@ -187,3 +187,15 @@ OPEN; an item moves to DONE with the commit that closed it.
     they serve). Beside it, their stitch vias fenced the lane the outboard pin column
     escapes by. A 2 mm lift of the old row made it worse (6 open): it sat on the pins.
     All four of my boards are now 0 automated FAIL; manual items unsigned.
+
+25. **FOOT STRIP = TWO DESIGNS (user, 2026-10-04) -- closes 13a (the inlet).**
+    foot_led_a: JST SH socket J1 at -X (the Pi cap's J6 lead), seam pogos at +X.
+    foot_led_b: seam pogos at -X, nothing at +X. 8 pogos, not 16; no third board.
+    Both route 0 unconnected / 0 DRC / quality 0 FAIL. `foot_led` (one design) is gone.
+    STILL OPEN: 13b the -X stop block (now with a notch for the lead); the lead's length.
+26. **FRET BOARDS: 4 seam pogos (was 6) and a 4-way PH J1 (was 6-way)** (user, 2026-10-04).
+    Ratings: pogo 12 A vs 0.90 A; PH 2 A/contact vs 0.89 A. J1 order V24, GND, SCK, SDT --
+    V24 on way 1 so the lead on a bus-B PH socket shorts into fuses rather than putting
+    24 V on the 5 V bus. pi_cap J3 (bronner) must follow: 4-way S4B, same order.
+27. 2026-10-04: every fret line is INLAY_W now (fret 24 was the thin one) and the
+    24th-fret quad is centred in its space (a stale -0.7 nudge removed) -- src/top_plate.py.

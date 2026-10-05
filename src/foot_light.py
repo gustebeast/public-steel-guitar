@@ -271,13 +271,20 @@ HALVES     = ("a", "b")
 # their connectors at opposite outer ends, which cost a second fab and assembly setup
 # and put one harness at the bridge end, 600 mm from the Pi. Sliding both from -X
 # deletes all of that.
-BOARD_NAME = "foot_led"
-BOARD_QTY  = 2
-# ⚠ THE STRIP IS A CHAIN, AND -X-ONLY INSERTION IS WHAT MAKES IT ONE. The +X board is
-# pushed the full length of the channel first, so nothing can be plugged into it once it
-# is home. So the two boards meet TIP TO TIP, the way the fret boards do across the deck
-# seam: four side-mount pogos at each end of each board, on one axis under the board, and
-# pushing the second board home against the first is what makes the joint. No cable.
+# ⚠ TWO BOARDS, TWO DESIGNS (user, 2026-10-04). They were one design built twice, and that
+# is what put four pogos on each board's OUTER end, mating nothing, and left the strip
+# with no way in: a cable socket cannot share an end with a pogo row. So the ends are
+# populated for what they do --
+#     board A (-X):  a cable socket at its -X end, the seam's four pogos at its +X end
+#     board B (+X):  the seam's four pogos at its -X end, nothing at its +X end
+# -- eight pogos instead of sixteen, and the Pi's cable plugs straight into board A.
+# Everything between the ends is the same on both.
+BOARD_NAME = {"a": "foot_led_a", "b": "foot_led_b"}
+# ⚠ THE SEAM IS POGOS BECAUSE -X-ONLY INSERTION MAKES IT SO. The +X board is pushed the
+# full length of the channel first, so nothing can be plugged into it once it is home.
+# The two boards meet TIP TO TIP, the way the fret boards do across the deck seam: four
+# side-mount pogos on one axis under each board, and pushing the second board home
+# against the first is what makes the joint.
 #
 # FOUR CIRCUITS, ONE PIN EACH: +24V, GND, SCK, SDT. The part is rated 12 A a pin and the
 # far board draws 0.37.
@@ -291,10 +298,11 @@ BOARD_QTY  = 2
 # 3.80 leaves 0.30 of bare board between neighbouring lands and 0.70 between barrels. It
 # is under the 4.50 the fret seam uses and under the courtyards' own 4.00, which is why
 # elec/foot_led.py exempts these pairs from the courtyard check and asserts the copper.
-#
-# ⚠ BOTH ENDS OF BOTH BOARDS CARRY THEM, because it is one part number. The -X board's
-# -X set is the strip's INLET (see the open item on the inlet piece); the +X board's +X
-# set mates nothing and stands 1.70 past the board's end at free length.
+# THE INLET: a 4-way JST SH on board A, its mouth facing -X, J_INSET in from the board's
+# end so the mated plug's body lies over the board and only its wires leave the channel.
+# It stands in the component lane, clear of the LED row.
+J_Y        = DRV_Y - 0.15           # world Y of the socket's centreline
+J_INSET    = 6.0
 POGO_NETS  = ("+24V", "GND", "SCK", "SDT")      # -Y first
 POGO_PITCH = 3.80
 # pad centre to the board's end: the barrel is centred on its pad and a plunger at its
@@ -310,10 +318,11 @@ def pogo_ys():
 
 
 def pogo_pads(sgn):
-    """[(board_x, board_y, net)] for one END of the board, in elec/'s board frame.
+    """[(board_x, board_y, net)] for one END of a board, in elec/'s board frame.
 
-    `sgn` is -1 for the -X end, +1 for the +X end. One list, so the two ends -- and so
-    the two boards either side of the seam -- cannot disagree about which lane is which."""
+    `sgn` is -1 for the -X end (board B's seam end), +1 for the +X end (board A's). One
+    list, so the two boards either side of the seam cannot disagree about which lane is
+    which."""
     half = (board_span("a")[1] - board_span("a")[0]) / 2.0
     return [(sgn * (half - POGO_SETBACK), to_board_y(y), net)
             for y, net in zip(pogo_ys(), POGO_NETS)]
@@ -523,32 +532,27 @@ ROOF_REACH = 8 * D.NOZZLE_D + 0.50
 
 
 def pogo_pins():
-    """[(name, solid)] -- the sixteen plungers, barrel front to tip.
+    """[(name, solid)] -- the seam's eight plungers, barrel front to seam plane.
 
     The barrels are the boards' own (board_geom reads the pogo's F.Fab); the plungers are
-    here because they leave the board. At the seam each pair meets on the seam plane; at
-    the strip's two outer ends they stand at free length."""
+    here because they leave the board. Each pair meets on the seam plane."""
     _led, bb, _bt, _lf, _lt = z_stack()
     z = bb - PG.POGO_AXIS_H
     out = None
-    for half in HALVES:
-        bx0, bx1 = board_span(half)
-        for sgn, edge in ((-1.0, bx0), (1.0, bx1)):
-            at_seam = abs(edge - seam_x()) < 1e-6
-            pad = edge - sgn * POGO_SETBACK
-            front = pad + sgn * (PG.POGO_BODY_L + PG.POGO_FAB_STROKE) / 2.0
-            rear = pad - sgn * PG.POGO_BODY_L / 2.0
-            tip = edge if at_seam else rear + sgn * PG.POGO_FREE
-            for y in pogo_ys():
-                c = (cq.Workplane("YZ").circle(PG.POGO_PLUNGER_D / 2.0)
-                     .extrude(abs(tip - front)).translate((min(front, tip), y, z)))
-                out = c if out is None else out.union(c)
+    edge = seam_x()
+    for sgn in (1.0, -1.0):                 # board A's +X end, board B's -X end
+        pad = edge - sgn * POGO_SETBACK
+        front = pad + sgn * (PG.POGO_BODY_L + PG.POGO_FAB_STROKE) / 2.0
+        for y in pogo_ys():
+            c = (cq.Workplane("YZ").circle(PG.POGO_PLUNGER_D / 2.0)
+                 .extrude(abs(edge - front)).translate((min(front, edge), y, z)))
+            out = c if out is None else out.union(c)
     return [("foot_pogo_pins", out)]
 
 
-def _led_refs():
+def _led_refs(half):
     from . import board_geom as BG
-    return [f["ref"] for f in BG.load(BOARD_NAME)["footprints"]
+    return [f["ref"] for f in BG.load(BOARD_NAME[half])["footprints"]
             if f["ref"].startswith("D")]
 
 
@@ -565,21 +569,21 @@ def _placed(half, wp):
 
 
 def pcb(half):
-    """The PCB and every part on it, LEDs included, as routed -- ONE board, placed twice,
-    and one PART each so a board and its LEDs hide and show together."""
+    """One board and every part on it, LEDs included, as routed -- one PART, so a board
+    and its LEDs hide and show together."""
     from . import board_geom as BG
-    return _placed(half, BG.solid(BOARD_NAME))
+    return _placed(half, BG.solid(BOARD_NAME[half]))
 
 
 def leds(half):
     """The strip's LEDs alone, as their routed bodies -- for probes; the build draws
     them as part of pcb()."""
     from . import board_geom as BG
-    return _placed(half, BG.bodies(BOARD_NAME, _led_refs()))
+    return _placed(half, BG.bodies(BOARD_NAME[half], _led_refs(half)))
 
 
 def routed():
-    """Has the board been routed and exported yet?
+    """Have both boards been routed and exported yet?
 
     ⚠ THE FIRST RUN OF A FRESH CHECKOUT HAS NO BOARD. elec/geom/<board>.geom.json is
     written by export_geom AFTER a route, and elec/foot_led.py imports THIS module to
@@ -590,13 +594,14 @@ def routed():
     late. So the CAD leaves the strip out and says why, instead of failing the build."""
     import os
     from . import board_geom as BG
-    return os.path.isfile(os.path.join(BG.GEOM_DIR, BOARD_NAME + ".geom.json"))
+    return all(os.path.isfile(os.path.join(BG.GEOM_DIR, n + ".geom.json"))
+               for n in BOARD_NAME.values())
 
 
 def parts():
-    """[(name, solid)] for build.py -- one board, placed twice."""
+    """[(name, solid)] for build.py -- the two boards and the seam's plungers."""
     if not routed():
         print("  (no %s.geom.json yet -- the foot strip is left out of this build; "
-              "route and export it, see elec/foot_led.py)" % BOARD_NAME)
+              "route and export it, see elec/foot_led.py)" % "/".join(BOARD_NAME.values()))
         return []
     return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES] + pogo_pins()
