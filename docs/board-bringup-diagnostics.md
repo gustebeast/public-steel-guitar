@@ -53,7 +53,7 @@ So the first diagnostic tool is the datasheet. The audit, finished 2026-09-30:
 | LMR33630 HSOIC (DDA) | motor_ctrl U5, U6 | ❌ **was wrong, fixed**, read from SNVSAN3F Table 6-1 |
 | LMR33630 VQFN (RNX) | optical U13, fret/foot U10 | ✅ checked against the same table: correct |
 | LMR16006 | motor_ctrl, output_panel | ✅ cited in-file (SNVSA24 §6) |
-| SN74LVC1G3157 | output_panel U12 | ✅ cited in-file (SCES424O Table 4-1) — after being wrong once |
+| TS5A3159 (was SN74LVC1G3157) | output_panel U12 | ✅ replaced 2026-10-04 (the logic-level review): same SC-70-6 land pattern, pinout cited in-file |
 | CH32V307 / CH32V203 | all three MCU boards | ✅ read from `.ins/*.json` |
 | SN65HVD230 | motor_ctrl, lever_sensor | ✅ read 2026-09-30, TI SLOS346O §7: matches |
 | PCM1808, PCM5102A | output_panel U2, U3 | ✅ read, SLES177B §5 and SLAS859C §7, all 14 + 20 pins: match |
@@ -290,3 +290,20 @@ test pads, TP1-TP4 in that order, so nothing has to probe a spring pin or a gold
    meter is the proof.
 3. **Loaded.** With bus B powered, +5V at the far female's TP2 should sit within 0.1 V of
    the near one. More than that is a contact, not copper (the boards are under 20 mOhm).
+
+## Output panel: three things to know before the first power-up (2026-10-04)
+
+* **It needs a ground return.** `GND` and `PWR_GND` are not joined on the panel, and the
+  5 V buck returns to `PWR_GND`. With only the inlet plugged in nothing on the logic side
+  has a complete circuit. Fit the power link to the motor board, or clip `GND` to
+  `PWR_GND`, before concluding the buck is dead. (An open decision: see
+  pcb-quality-status.md.)
+* **The inlet is switched, and it fails on.** Q2 passes 24 V unless the UI board's power
+  button shorts its wire (J10 way 5 or 6, picked by JP1) to ground. With J10's button ways
+  open, as on a bench, the panel is on whenever the supply is plugged in. To test OFF, short
+  the selected way to `PWR_GND` (J10 way 1): the output should fall and the supply current
+  drop to 2.55 mA. Turn-on is a 16 ms ramp, not a step.
+* **The audio ADC is on I2S3, not I2S2.** The CH32V307 has two standard I2S blocks and no
+  full-duplex extension, so the DAC is I2S2 (master transmit) and the ADC's data is I2S3
+  (PB5) as a slave receiver, with I2S3's clock pins (PA15 word clock, PB3 bit clock) tied
+  on the board to I2S2's. Firmware has to enable both and start I2S3 before I2S2.

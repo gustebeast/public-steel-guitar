@@ -7,8 +7,8 @@ The standard is `cadkit/PCB_QUALITY.md` (rules A1–A11 automated, M1–M42 manu
 ```
 
 `elec/finish.py` runs it on every route and ends its last line `| quality: N FAIL, M OPEN`.
-A board may be ordered only at `0 FAIL, 0 OPEN`. **No board is there yet**; the scoreboard
-below is current, the sections after it are the history of how the rules arrived.
+A board may be ordered only at `0 FAIL, 0 OPEN`. **No board is there yet**: what is left on each is listed
+below, and the sections after the scoreboard are the history of how the rules arrived.
 
 ## THE LOOP: scoreboard and what is next (updated every tick)
 
@@ -16,33 +16,93 @@ A 15-minute loop is working every board to `0 FAIL, 0 OPEN`. Rules of the road: 
 finding is fixed, never waived; a soft one is waived only for a case on its rule's
 "Break it when" list; a sign-off is written only after the thing was actually read.
 
-| board | FAIL | OPEN | state |
+Scoreboard, 2026-10-04 (every board listed is `0 unconnected, 0 violation(s)`):
+
+| board | FAIL | OPEN | what is still open |
 |---|--:|--:|---|
-| `can_tee` | 0 | 7 | open: M1 (user), M33 (user), M36, and the order-time four M12 M30 M37 M42 |
-| `leg_pogo_female_top` | 0 | 7 | open: M10 M33 M36 (bus B protection and limit, `motor_ctrl`'s) and the order-time four M12 M30 M37 M42 |
-| `leg_pogo_male_top` | 0 | 7 | open: M10 M33 M36 (bus B protection and limit, `motor_ctrl`'s) and the order-time four M12 M30 M37 M42 |
-| `leg_pogo_female_bottom` | 0 | 7 | open: M10 M33 M36 (bus B protection and limit, `motor_ctrl`'s) and the order-time four M12 M30 M37 M42 |
-| `leg_pogo_male_bottom` | 0 | 7 | open: M10 M33 M36 (bus B protection and limit, `motor_ctrl`'s) and the order-time four M12 M30 M37 M42 |
-| `ui_board` | 7 | 22 | brenner is changing it (power button, 2x8 header): leave until that merges |
-| `pi_cap` | 10 | 21 | waits on brenner's ribbon change (J5 becomes 2x8); ring and via findings go with the re-route |
-| `lever_sensor` | 11 | 36 | not started; J1 pinout legend only fits at 0.8 mm: make room |
-| `led_strip` | 11 | 35 | not started; CAD and fab data disagree (pre-existing) |
-| `motor_ctrl` | 27 | 39 | not started; J1 pinout legend at 0.8 mm |
-| `optical` | 40 | 41 | not started |
-| `output_panel` | 43 | 42 | not started; power-button inlet switch to design (see bronner-work-items) |
+| `can_tee` | 0 | 7 | M1 (user: the XH pinout decision), M33 / M36 (user: motor current), order-time M12 M30 M37 M42 |
+| `leg_pogo_*` (four boards) | 0 | 4 | order-time M12 M30 M37 M42 |
+| `pi_cap` | 0 | 7 | M1 (which end of the UI ribbon is way 1: against brenner's `ui_board`), M11 (CAD fit after the build), M29, order-time four |
+| `lever_sensor` | 0 | 7 | M11, M35, M29, order-time four |
+| `motor_ctrl` | 0 | 10 | M32 / M33 (user: motor current), M23 (USB details), M11, M35, M29, order-time four |
+| `output_panel` | 0 | 10 | M3 / M21 (user: grounding, below), M32 (user: motor current), M11, M35, M29, order-time four |
+| `optical` | - | - | being re-placed and re-routed: see "Optical" below |
+| `ui_board`, `fret_led`, `foot_led` | - | - | brenner's boards, not touched by this loop |
 
-All twelve were re-finished with `--keep-route` on 2026-10-04: every one still reads
-`0 unconnected, 0 violation(s)`; silk is 1.0 mm wherever a site exists.
+"Order-time" items (M12 the order form, M30 the assembly order, M37 the files sent are the
+files checked, M42 stock on the day) can only be signed when an order is being placed. M29
+(buildable by this fab) is signed from the fab's own DFM report on the uploaded files. M11
+needs the lead's build with the new board geometry. M35 needs each MCU's errata sheet read.
+None of these can be closed from the files on hand, so the loop leaves them OPEN on purpose
+rather than ticking them.
 
-**NEXT:** (1) `pi_cap`: brenner's 16-way ribbon is on main (`3828cb38`) -- J5 becomes the
-2x8 (HX PZ1.27-2x8P WZ, C22438114), ways 15 / 16 (PWR_SW_UP / PWR_SW_DN) passed to the
-output board's cable, which becomes 4-wire; re-route (the ring growth and the J5.8 via
-finding go with it), then its quality record. Check `tools/cost.py` / `tools/lcsc_prices.py`
-pick up SW2 (C22462024) and the 2x8 (lead's note: the total did not move). (2)
-`output_panel` power-button inlet switch + its quality record. (3) the order-time four
-(M12 M30 M37 M42) on `can_tee`: run `elec/fab.py` and see what the package step proves.
-(4) `lever_sensor`. (5) `motor_ctrl` (bus B current limit; closes M33 / M36 / M10 on the
-pogo boards), `led_strip`, `optical`. (6) the XH power-lead way count.
+### Needs the user
+
+1. **Where the instrument's grounds meet (`output_panel` M3 / M21).** The panel keeps `GND`
+   (audio, MCU, USB) and `PWR_GND` (the 24 V return) apart and never joins them. Its own
+   5 V buck returns to `PWR_GND`, so the current the board's logic draws (up to 257 mA)
+   has no way home on the board: it leaves through whichever cable ground reaches a board
+   that does join the two (the optical lead, or a USB shield to the Pi, which is bonded to
+   the trunk return at `motor_ctrl`). Three consequences: on the bench, with only the
+   power inlet plugged in, the board is dead; the audio reference carries the logic
+   supply's return current down a signal cable; and the USB link to the Pi already closes
+   a loop that lets stepper return current share the audio ground, which is what the split
+   was meant to prevent. The choices are (a) one tie on the panel (a 0 ohm link or a bead
+   at the buck's output capacitor), making the panel the star point and accepting that the
+   USB shield path then parallels the trunk return; (b) an isolated 5 V supply for the
+   audio side; (c) keep the split and move the audio reference's bond to the optical board
+   only, with the Pi's USB link isolated. (a) is the small change and the loop's
+   recommendation; it is not made because it is a decision about the whole instrument.
+2. **Motor supply current while slewing** (`motor_ctrl` M32 / M33, `output_panel` M32,
+   `can_tee` M33 / M36). Every trunk figure rests on 0.8 A per moving SERVO42D, derived and
+   never measured, and on a firmware cap on simultaneous movers that is not written. One
+   bench measurement closes all five items.
+3. **Two pinouts share the 4-way XH housing** (`can_tee` M1): CAN drops are
+   `GND +24V CAN_H CAN_L`, power leads are `GND +24V +24V GND`, and the plugs interchange;
+   a power lead in a CAN socket puts 24 V on CAN_H. `motor_ctrl` now carries three
+   different 4-way XH sockets. Open in `BOM.md` since 2026-09-18; the recommendation is a
+   different way count for the power-only leads.
+
+### What changed on the boards this loop (all routed 0 / 0)
+
+* **`output_panel`**
+  * The audio ADC's data came in on a pin with no I2S receiver (PB14 is SPI2_MISO only on
+    the CH32V307; the part has two standard I2S blocks and no full-duplex extension). It
+    is now on I2S3 (PA15 / PB3 / PB5) as a slave receiver clocked from I2S2's pins.
+    Firmware: I2S2 master transmit, I2S3 slave receive, same word clock.
+  * The 24 V to 5 V buck was strung out over 15-36 mm; it is now one cell: input capacitors
+    0.6 and 1.7 mm from VIN, catch diode 0.8 mm from SW, output capacitor 1.15 mm from the
+    inductor, feedback sensed at the output capacitor.
+  * A bypass capacitor at every power connector, pin-exact decoupling on the MCU and hub,
+    hub crystal capacitors corrected, the power-button switch (a soft-start P-FET in the inlet that
+    fails on; 2.55 mA with the instrument off), TS5A3159 in place of SN74LVC1G3157.
+* **`lever_sensor`**: MCU and sensor decoupling at the pins, a 2R2 + 100 nF input filter
+  ahead of the LDO, SWD pads in a labelled row, crystal changed to a stocked 8 MHz part
+  with the right load capacitors, bus ESD diodes with a real part number.
+* **`motor_ctrl`**, **`pi_cap`**: power-button pass-through on the existing cables, bus B
+  5 V behind a current-limited switch, decoupling and crystal moved to the pins.
+* **`leg_pogo_*`**: rails widened to the contact rating, copper cleared from under the M4
+  head, short board names on silk.
+
+### Optical
+
+Found by the pass and being fixed in one re-placement (the board was `0 / 0` before it and
+has to get back there):
+
+* Sixteen of the STM32H743's supply pins had no capacitor within 5 mm (the decoupling ring
+  was evenly spaced on two sides only). Now one 100 nF per VDD pair on all four sides,
+  six capacitors added, VDDA / VREF+ capacitors at pins 38 / 39.
+* The MCU crystal was 35 mm from its pins through 3-4 vias; it is now 2 mm away. It was
+  also a 20 pF part, at or past the H7's start-up limit (gm_crit 1.37-1.85 mA/V against a
+  guaranteed 1.5); now a 10 pF, 30 ohm part (0.50 mA/V worst case).
+* The PHY crystal's ESR was 30 ohm only in the distributor's listing; its maker's sheet
+  says 40, and the PHY's limit is 30. Replaced by a part whose own sheet says 30.
+* U11 (the reference buffer all twenty channels share) had no supply bypass; one added.
+  The VBUS clamp's capacitor moved to its rail pin; VCAP1's capacitor moved from 8 mm to
+  2.6 mm from its pin.
+* All fourteen pinouts read against the makers' documents and cited; supply paths declared.
+
+## Earlier ticks (history)
 
 ### New in A12 this tick: vias in pads, and copper under a screw head
 
@@ -96,22 +156,7 @@ now measures the finished board instead of trusting it (cadkit `efdd75f`). First
 * `lever_sensor`: 20 vias drilled under 0.30 mm, which the fab charges for (a note: the
   order form has to say so).
 
-### Needs the user (cannot be signed from files on hand)
-
-* **Two pinouts share the 4-way XH housing (M1, every board with an XH).** Pattern A is
-  `GND +24V CAN_H CAN_L` (tee drop, motor_ctrl J1/J2), pattern B is `GND +24V +24V GND`
-  (panel J7/J9/J10, motor_ctrl J3, optical J2). The plugs are interchangeable, and a
-  power lead in a CAN socket puts 24 V on CAN_H (SN65HVD230 bus pin: 16 V). Open in
-  `BOM.md` since 2026-09-18 with three options. M1 stays OPEN on those boards until one
-  is chosen; the loop's working recommendation is option (a), a different way count for
-  the power-only leads, and it will take that if nothing else is said by the time the
-  other items are closed.
-* **Motor current (M33, `can_tee`, `motor_ctrl`, `output_panel`).** The trunk contact is
-  3 A; the budget case is 2.7 A, and that rests on 0.8 A per moving motor (derived, never
-  measured) and a firmware cap on simultaneous movers (not written). Needs one
-  measurement of a SERVO42D's supply current while slewing.
-
-### What the loop has changed
+### What the loop changed first
 
 * `can_tee`: the pass measured the 1.2 mm stubs from the 2 mm rail bar to each connector
   pad as a choke point at the 3 A contact rating (1.37 mm needed at a 10 C rise, and the

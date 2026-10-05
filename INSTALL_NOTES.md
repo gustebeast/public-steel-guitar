@@ -689,3 +689,40 @@ screws, from above) stay adjustable afterwards; this one does not.
 * The guard covers the bring-up pads. Take it off to probe; the board stays located by the
   plinth and the cables while it is off, but is not clamped.
 * Nothing covers the sensor row or the slots -- strings go on and off with the guard fitted.
+
+## The power button's wiring rides on cables that already exist
+
+The power button is on the UI board, and the switch it controls is on the output panel
+(it switches the 24 V inlet). No new cable was added; its two wires travel on three
+existing ones:
+
+| cable | from | to | ways |
+|---|---|---|---|
+| UI ribbon, 16-way IDC | UI board J2 | Pi cap J5 | ways 15 / 16 are the button |
+| lights lead, 4-way XH | Pi cap J4 | motor board J7 | `GND, 24V, button, button` |
+| power link, **6-way** XH | motor board J3 | output panel J10 | `GND, 24V, 24V, GND, button, button` |
+
+* All three are straight leads: way 1 at one end is way 1 at the other.
+* The power link is the only 6-way XH in the instrument, so it cannot go in a wrong socket.
+* ⚠ **The motor board has four 4-way XH sockets with four different pinouts** (J1 CAN bus A,
+  J4 USB, J5 the Pi's 5 V, J7 the lights lead). The plugs fit any of them. Each socket's way
+  names are printed beside it; label each lead at the motor-board end before the first fit,
+  and meter the plug against the legend the first time. A 24 V lead in J1 puts 24 V on
+  CAN_H.
+* With the button out the instrument is off and draws 2.55 mA from the supply (through the
+  button's own pull-up). The supply brick can stay plugged in.
+* **It fails ON.** The button says "off" by shorting its wire to ground, so with the UI
+  ribbon or either lead unplugged, or a wire broken, the instrument runs whenever the
+  supply is plugged in and the button does nothing. An instrument that will not turn OFF
+  has an open in this chain.
+* The output panel's jumper JP1 picks which of the button's two throws is used. It is made
+  bridged 1-2 (off with the button out), from the switch maker's drawing. If a real switch
+  works the other way round, cut 1-2 and bridge 2-3.
+
+## The output panel does nothing on the bench with only the power inlet connected
+
+The panel's 5 V supply returns through the power ground, and its logic and audio sit on a
+separate ground that is joined to it only at another board (see
+docs/pcb-quality-status.md, "Needs the user", item 1). Until that is decided, bench-test
+the panel with the power link to the motor board fitted, or bridge `GND` to `PWR_GND` with
+a clip lead.
