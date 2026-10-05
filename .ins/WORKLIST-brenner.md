@@ -234,3 +234,43 @@ OPEN; an item moves to DONE with the commit that closed it.
     - STALE after the new belt clamp merges: foot_light.py's text about the placeholder
       tensioners (~lines 20, 111) and docs/foot-led.md -- re-read the clamp's lowest
       point from the merged model (lead's request).
+
+## MANUAL QUALITY PASS (started 2026-10-05; a 15-min loop keeps prompting it)
+
+Order of work: foot_led_a/b -> fret_led_key/mid -> ui_board. Evidence sources cached in
+the session scratchpad `ds/` (TI TLC59711 SBVS181A, TI LMR33630 SNVSAN3F as row text);
+`scratchpad/jlc.py <keyword>` asks JLCPCB's parts API (code, model, basic/extended, stock).
+fab packages must be built with KiCad's python: `"C:/Program Files/KiCad/10.0/bin/python.exe" elec/fab.py <board>`.
+
+FINDINGS THAT CHANGE THE BOARD (batch them, then regenerate + re-route once):
+- [ ] foot + fret: C32 is "100nF" on +24V -- the BOM's generic 0402 100 nF is a 16 V part
+      (C1525). Make it "100nF/50V" (CL05B104KB54PNC, C307331, basic).
+- [ ] foot + fret: F1 is value "1A" with no part number. Name it: JFC1206-1100FS (C136343,
+      1 A 63 V) -- and foot board A's F1 carries BOTH boards' 0.73 A, so A wants the 2 A
+      JFC1206-1200FS (C136345, 11k stock). Add both to fab.LCSC if missing.
+- [ ] foot + fret pinouts cite "SNVSB08" for the LMR33630; the datasheet is SNVSAN3F.
+- [ ] foot_led.py BOARD_NOTES comment says "In1 = +14V" (it is +11V here).
+CHECKED OK SO FAR (foot): TLC59711 pin map vs SBVS181A p.8 (IREF1 GND2 OUT3-8,13-18 SDTI9
+SCKI10 SCKO11 SDTO12 VCC19 VREG20, pad GND); VCC 4-17 V rec / 18 abs vs 11 V rail;
+IOLCmax = 1.21/3300*41 = 15.03 mA; VIH 0.7*VREG(3.1-3.5) = 2.45 max vs Pi 3.3 V;
+LMR33630 RNX pin map vs SNVSAN3F Table 6-1 (PGND 1,11; VIN 2,10; NC 3 + SW 12 joined;
+BOOT 4; VCC 5; AGND 6; FB 7; PG 8 open is allowed; EN 9 to VIN is allowed); VIN abs 38.
+lcsc_check 2026-10-05: every code matches its MPN except the two HX ribbon headers, whose
+catalogue name carries a brand prefix ("HX PZ1.27-2x8P WZ") -- same part.
+NEEDS USER: (nothing yet)
+MORE FINDINGS (2026-10-05, from the datasheets -- these change the boards):
+- [ ] LED Vf: XINGLIGHT sheet p.4 gives G/B/W 3.0-3.4 V at 20 mA (+-0.1), not the 3.2 max
+      both generators assume. Foot (3 in series, 11.0 V rail): worst string 10.2 V, rail
+      min 10.64 -> 0.44 V over a ~0.3 V knee (SBVS181A fig 12). FIX: R12 200k across R11
+      -> 11.50 V (both basic parts). FRET (4 in series, 14.0 V): worst string 13.6 V --
+      NO headroom at the rail's low tolerance. Needs ~15 V and a heat check (red strings
+      then drop 7 V in the driver). DO THIS IN THE FRET PASS.
+- [ ] LMR33630 input: TI wants an HF cap at EACH VIN/PGND pair of the RNX package (9.2.2.6).
+      Both LED boards have one 100 nF on one side. Adopt optical.py's verified cell
+      (offsets from U13: C161 -2.115,+0.8,90 / C165 +2.115,+0.8,90 / boot -2.115,-1.32,90 /
+      VCC -3.295,-1.32,90 / FB bottom +2.115,-1.32,90 / FB top +3.295,-1.32,270 / bulk
+      -6.305 / L1 +6.535 / SW laid as a declared 0.5 track) on foot and fret.
+- [ ] Spell ratings in values: 100nF/50V everywhere (C307331 is basic), 1uF/25V (C52923),
+      resistors "... 1%".
+- Inductor: Isat 3.2 A is under the IC's low-side limit (2.9-4.1 A) and high-side
+      (3.85-5.05). Same acceptance as optical/motor M14: peak here ~1.0 A.
