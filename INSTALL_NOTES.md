@@ -630,15 +630,19 @@ under B's near end, tip to tip.
    at the channel's +X end.
 3. **Slide board A in behind it, pin end FIRST, and push it home.** The last 3.4 mm is
    against the eight spring pins (about 0.8 kgf); the boards' ends touch when it is seated.
-4. **Plug the 4-way lead from the Pi cap's J6 into board A's socket**, 6 mm in from its
-   −X end.
+4. **Plug the 4-way XH lead from the Pi cap's J6 into board A's socket.** The socket is
+   under the board's −X end, on the 7 mm of board that sticks out past the light window,
+   and its mouth faces the keyhead endplate. Dress the lead straight up the endplate,
+   across the TOP of string 1's motor, and down between that motor and the Pi.
+   ⚠ XH plugs are the 24 V family on this instrument and PH plugs the 5 V one; the two do
+   not fit each other's sockets.
 5. ⚠ **OPEN: what holds board A pushed in.** The springs push it back out 3.4 mm. The
    stop that takes that load (a printed block and one M4 behind the board, with a notch
    for the lead) is not designed yet (.ins/WORKLIST-brenner.md).
 
-⚠ **Nothing on these boards may stand more than 3.80 mm off the PCB.** The board is
-installed face DOWN, 4.10 above an uncut floor; the tallest part is the spring pin's
-barrel at 3.80.
+⚠ **Nothing on these boards may stand more than 5.75 mm off the PCB.** The board is
+installed face DOWN, 6.05 above an uncut floor; the tallest part is board A's cable
+socket at 5.75 (the spring pin's barrel is 3.80).
 
 ⚠ **The channel's −Y wall is string 1's motor wall where the two meet.** The slot is cut
 into the foot of that motor's faceplate wall, leaving 1.6 mm against the motor, with a

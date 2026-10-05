@@ -83,28 +83,33 @@ def run_len():
 # Bottom up from the window's own top face. Everything on the board hangs from its
 # underside, and the board stands just high enough for the TALLEST of them to clear the
 # floor -- so the floor is not cut at all (user, 2026-10-02: "raise so we don't have to
-# cut into the chassis floor"). The tallest is the seam pogo's barrel at 3.80; the buck's
-# inductor is 3.00 and the LED 1.60.
+# cut into the chassis floor"). The tallest is board A's cable socket, a side-entry JST XH
+# at 5.75 (user, 2026-10-04: XH is the instrument's 24 V connector, "move the board
+# further +z until the XH connector fits"); the seam pogo's barrel is 3.80, the buck's
+# inductor 3.00 and the LED 1.60.
 #
-# ⚠ THE LED IS 2.50 OFF THE WINDOW NOW, NOT 0.30, and that is the price. It used to set
-# the trough itself (1.90) with a relief groove under the taller parts. Raised, the row is
-# further from an 8 mm window: roughly a fifth of the light that used to enter directly
-# now lands on the trough floor either side of it first. Along the run it is BETTER -- the
-# depth the pitch is judged against grows from 10.80 to 13.00.
+# ⚠ THE LED IS 4.45 OFF THE WINDOW NOW, and that is the price, paid twice over. It was
+# 0.30 when the LED set the trough, 2.50 when the pogo did. The window is 8 mm wide, so a
+# Lambertian row 4.45 above it puts about two thirds of its light straight into the
+# opening where at 2.50 it was about 85 % -- the rest lands on the trough floor either
+# side first. ESTIMATED from the geometry, not measured. Along the run it is BETTER: the
+# depth the pitch is judged against grows with it.
 FLOOR_NOM  = -71.35                 # window top = motor bay floor; asserted below
 AIR_GAP    = 0.30                   # the tallest hanging part to the floor: a print tolerance
 LED_H      = 1.60                   # XL-5050RGBW body (LCSC C7371891, and see fret_light)
 BOARD_T    = 1.60
-HANG_MAX   = PG.POGO_BODY_H         # 3.80, the seam pogo's barrel
-TROUGH     = HANG_MAX + AIR_GAP     # 4.10: floor to the board's underside
+XH_H       = 5.75                   # JST S4B-XH-SM4-TB above its board (board_geom's
+                                    # figure; elec/foot_led.py asserts the two agree)
+HANG_MAX   = max(PG.POGO_BODY_H, XH_H)
+TROUGH     = HANG_MAX + AIR_GAP     # 6.05: floor to the board's underside
 SLOT_PLAY  = 0.30                   # board edge to the wall -- AND, via the 45° ramp,
                                     # the clearance over the board's top face
 LIP_OVER   = 0.80                   # how far each lip reaches OVER the board: 1 bead
 LIP_CAP    = 0.80                   # the flat cap above the ramp: 1 bead
-# ⚠ WHAT THIS ASKS OF THE BELT CLAMPS, WHICH ARE BEING REDESIGNED (user, 2026-10-02). The
-# lips top out at floor + 7.60 = -63.75. Today's tensioners come down to -65.22..-65.34
-# over y 20..48 at their stations, so the -Y lip (y 30.75..31.85) stands 1.6 INTO
-# tensioner_1 as it is drawn now. The board itself (top -65.65) clears them. The number
+# ⚠ WHAT THIS ASKS OF THE BELT CLAMPS, WHICH ARE BEING REDESIGNED (user, 2026-10-02, and
+# 2026-10-04: "we can ignore collision with the belt clamp"). The lips top out at floor +
+# 9.55 = -61.80 and the board's top is at -63.70. Today's placeholder tensioners come down
+# to -65.22..-65.34 over y 20..48, so string 1's stands INTO the strip as drawn. The number
 # the new clamps have to respect is ceiling_needed().
 CEILING_CLR = 0.50
 
@@ -298,11 +303,22 @@ BOARD_NAME = {"a": "foot_led_a", "b": "foot_led_b"}
 # 3.80 leaves 0.30 of bare board between neighbouring lands and 0.70 between barrels. It
 # is under the 4.50 the fret seam uses and under the courtyards' own 4.00, which is why
 # elec/foot_led.py exempts these pairs from the courtyard check and asserts the copper.
-# THE INLET: a 4-way JST SH on board A, its mouth facing -X, J_INSET in from the board's
-# end so the mated plug's body lies over the board and only its wires leave the channel.
-# It stands in the component lane, clear of the LED row.
-J_Y        = DRV_Y - 0.15           # world Y of the socket's centreline
-J_INSET    = 6.0
+# THE INLET: a 4-way side-entry JST XH on board A, its mouth facing -X.
+# ⚠ IT STANDS ON A TAIL, -X OF THE WINDOW, AND THAT IS WHERE ITS WIDTH GOES (user,
+# 2026-10-04: "extend the board towards -x and put the connector fully -x of the led").
+# The socket is 13.4 across its body and 15.7 across its two mounting lands; the lane
+# beside the LED row is 15.3 between the -Y shoulder and the end LED's courtyard. So the
+# body's front and both mounting lands sit on TAIL_A of extra board past the window's -X
+# end, where there is neither a shoulder nor an LED, and only its four signal lands --
+# 8.8 across -- reach back beside the first LED.
+# ⚠ AND NOT FURTHER -X THAN THIS. The keyhead endplate's face is 15.3 from the window's
+# end. The mouth is J_MOUTH out, which leaves 8.8 for the mated plug (about 4.3 past the
+# mouth) and the lead's first bend.
+TAIL_A     = 7.0                    # board A's extra length past the window's -X end
+J_INSET    = 0.5                    # the socket's mouth, in from that end: its mounting
+                                    # lands stand 0.2 proud of the mouth
+J_Y        = 41.50                  # world Y of the socket's centreline: its signal lands
+                                    # end 0.85 short of the end LED's courtyard
 POGO_NETS  = ("+24V", "GND", "SCK", "SDT")      # -Y first
 POGO_PITCH = 3.80
 # pad centre to the board's end: the barrel is centred on its pad and a plunger at its
@@ -323,7 +339,8 @@ def pogo_pads(sgn):
     `sgn` is -1 for the -X end (board B's seam end), +1 for the +X end (board A's). One
     list, so the two boards either side of the seam cannot disagree about which lane is
     which."""
-    half = (board_span("a")[1] - board_span("a")[0]) / 2.0
+    a, b = board_span("a" if sgn > 0 else "b")      # each end belongs to one board
+    half = (b - a) / 2.0
     return [(sgn * (half - POGO_SETBACK), to_board_y(y), net)
             for y, net in zip(pogo_ys(), POGO_NETS)]
 
@@ -344,12 +361,13 @@ def seam_x():
 
 
 def board_span(half):
-    """(x0, x1) of one board in world X -- exactly its half of the window.
+    """(x0, x1) of one board in world X: its half of the window, and for board A the
+    tail its cable socket stands on.
 
-    No tail on either end: the connector is inboard, in the component lane, so the LED
-    row runs to within half a pitch of both edges and the seam costs no light at all."""
+    The LED row runs to within half a pitch of the window's two ends and of the seam, so
+    the seam costs no light at all; the tail carries no LED."""
     x0, x1 = window()[0], window()[1]
-    return (x0, seam_x()) if half == "a" else (seam_x(), x1)
+    return (x0 - TAIL_A, seam_x()) if half == "a" else (seam_x(), x1)
 
 
 def board_cx(half):
@@ -428,7 +446,11 @@ def check_optics():
     assert led_crtyd - (ys[-1] + PG.POGO_PAD_W / 2.0) >= 0.30 - 1e-9, (
         "the last pogo land ends %.2f from the end LED's courtyard"
         % (led_crtyd - (ys[-1] + PG.POGO_PAD_W / 2.0)))
-    assert TROUGH - PG.POGO_BODY_H >= AIR_GAP - 1e-9
+    assert TROUGH - HANG_MAX >= AIR_GAP - 1e-9
+    # the cable socket: its tail and its plug stay inside the corridor cut for the boards
+    assert TAIL_A <= MOUTH_CUT, (
+        "board A's tail is %.1f and the corridor is cut %.1f past the window"
+        % (TAIL_A, MOUTH_CUT))
     return u
 
 
@@ -582,6 +604,68 @@ def leds(half):
     return _placed(half, BG.bodies(BOARD_NAME[half], _led_refs(half)))
 
 
+# ── the lead: board A's socket to the Pi cap ────────────────────────────────────────────
+# One 4-way XH-to-XH lead (GND, 24 V, SCK, SDT), drawn as ONE round bundle and not as four
+# conductors: 24 AWG is 1.4 over its insulation and four of them laid up round are
+# 2.41 x 1.4 across.
+LEAD_OD    = 3.4
+LEAD_AXIS  = XH_H / 2.0             # the socket's wire row below its board, ESTIMATED as the
+                                    # middle of the housing (no drawing figure taken yet)
+LEAD_STUB  = 4.0                    # straight out of the mouth before the first bend: the
+                                    # XHP-4 housing stands about 4.3 past it
+# ⚠ IT GOES OVER STRING 1's MOTOR, BECAUSE THERE IS NO WAY ROUND IT. The socket is +Y of
+# that motor and the Pi is -Y of it; the motor is a 42 mm square from the bay floor up, its
+# back 2.4 from the endplate's wall and its side 2.4 from the next motor. Measured on
+# sections of the built parts, 2026-10-04.
+LEAD_FLY   = 12.0                   # above the motor's top, and what sets it is string 1's
+                                    # CAN tee, which lies ON that motor at y 18..35 and tops
+                                    # out 9.35 above it: the lead crosses 1.0 over the board.
+                                    # (At 6.0 it cleared the chassis rib and ran straight
+                                    # through the tee, 130 mm3 -- the gate found it.)
+LEAD_COL_X = -595.5                 # the column it crosses in. 2.5 further -X it meets the
+                                    # motor board's corner post (x -599.7..-598.3, up to
+                                    # z -21.95); 1.5 further +X it grazes the 24 V trunk's
+                                    # drop into the motor board (3.5 mm3)
+LEAD_DROP_Y = -50.0                 # where it comes back down: between the motor's -Y face
+                                    # (-41.25) and the Pi cap's +Y edge (-59.2)
+
+
+def lead_ends():
+    """((x, y, z) at the socket's mouth, (x, y, z) at the Pi cap's J6 mouth), world.
+
+    ⚠ THE CAP'S END IS READ OFF THE ROUTED CAP, not copied: J6's fab box, the edge of it
+    nearer the board's own edge being the mouth, through electronics._cap_place -- the one
+    transform everything on that board goes through."""
+    from . import board_geom as BG
+    from . import electronics as EL
+    _led, board_bot, _bt, _lb, _lt = z_stack()
+    a = (board_span("a")[0] + J_INSET, J_Y, board_bot - LEAD_AXIS)
+    f = BG.footprint("pi_cap", "J6")
+    x0, x1, y0, y1 = f["fab"]
+    my = y0 if abs(y0) > abs(y1) else y1
+    bb = EL._cap_place(box_at(0.01, 0.01, 0.01, x=(x0 + x1) / 2.0, y=my, z=0.0)
+                       ).val().BoundingBox()
+    b = ((bb.xmin + bb.xmax) / 2.0, (bb.ymin + bb.ymax) / 2.0,
+         (bb.zmin + bb.zmax) / 2.0 - LEAD_AXIS)
+    return a, b
+
+
+def lead():
+    """[(name, solid)] the lead from board A's socket to the Pi cap's J6."""
+    from .helpers import oct_cable
+    a, b = lead_ends()
+    fly = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + LEAD_FLY
+    xs = a[0] - LEAD_STUB
+    # D.MCTRL_Y1 is the motor board's +Y edge, which is derived from the motor's back
+    assert b[1] < LEAD_DROP_Y - LEAD_OD / 2.0 and LEAD_DROP_Y + LEAD_OD / 2.0 < D.MCTRL_Y1, (
+        "the lead comes down at y %.1f, which is not between the Pi cap's socket (%.1f) "
+        "and the motor's back (%.1f)" % (LEAD_DROP_Y, b[1], D.MCTRL_Y1))
+    pts = [a, (xs, a[1], a[2]), (xs, a[1], fly), (LEAD_COL_X, a[1], fly),
+           (LEAD_COL_X, LEAD_DROP_Y, fly), (LEAD_COL_X, LEAD_DROP_Y, b[2]),
+           (b[0], LEAD_DROP_Y, b[2]), b]
+    return [("wire_foot_led", oct_cable(pts, LEAD_OD))]
+
+
 def routed():
     """Have both boards been routed and exported yet?
 
@@ -599,9 +683,10 @@ def routed():
 
 
 def parts():
-    """[(name, solid)] for build.py -- the two boards and the seam's plungers."""
+    """[(name, solid)] for build.py -- the two boards, the seam's plungers and the
+    lead to the Pi cap."""
     if not routed():
         print("  (no %s.geom.json yet -- the foot strip is left out of this build; "
               "route and export it, see elec/foot_led.py)" % "/".join(BOARD_NAME.values()))
         return []
-    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES] + pogo_pins()
+    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES] + pogo_pins() + lead()

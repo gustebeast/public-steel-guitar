@@ -2,7 +2,7 @@
 
     py -3.12 elec/foot_led.py       # -> elec/out/foot_led_{a,b}.{net,board.json}
 
-    286.36 x 24.15, 4 layers, 36 LEDs, 12 zones, 4 x TLC59711 each.  TWO BOARDS.
+    286.36 (B) and 293.36 (A) x 24.15, 4 layers, 36 LEDs, 12 zones, 4 x TLC59711 each.
 
 The other lighting job (elec/fret_led.py is the first). It lies on top of the transparent
 band through the chassis's bottom prism and shines into it; the 10.80 mm of PCTG is the
@@ -24,7 +24,8 @@ the first. The near board is the one a cable can reach:
 
     Pi cap J6 --cable--> J1 [board A] J21..J24 -><- J11..J14 [board B]
 
-A is fed by a 4-way JST SH at its -X end and carries the seam's four pogos at its +X end;
+A is fed by a 4-way JST XH on a 7 mm tail at its -X end (XH is the instrument's 24 V
+connector; PH is its 5 V one) and carries the seam's four pogos at its +X end;
 B carries the seam's four at its -X end and nothing at the other. 24 V passes straight
 through A behind its fuse and the SPI chain runs J1 -> U1 .. U4 -> seam -> U1 .. U4, so
 all eight drivers are one stream from one Pi pin.
@@ -84,16 +85,26 @@ COLOURS = ("R", "G", "B", "W")
 # and src/pogo_part.py what they are. The 4-way SH sockets this board carried are gone,
 # and with them the jumper nothing stocked was short enough to be.
 POGO_FP = "Steel:Xinyangze_YZF0002-38080-02"
-# THE INLET, board A only: JST SH SM04B-SRSS-TB (LCSC C160404), the part on the other end
-# of the cable (elec/pi_cap.py J6), so the lead is a stock SH-to-SH one.
-# ⚠ +24V ON AN END PAD. The SH is a 1.00 mm pitch part: its pads are ~0.60 wide with 0.40
-# between them, so an interior pad can only be entered by a track narrow enough to pass
-# its neighbours. GND can live on an interior pad because it drops straight to its plane.
-# The order is the Pi cap's FOOT_PINS.
-J_FP = "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
-J_PINS = ("+24V_IN", "GND", "SCK_IN", "SDT_IN")
-J_ANCHOR = 4.4 + 0.7083              # mouth to the PAD CENTROID, read out of the .kicad_mod
+# THE INLET, board A only: a side-entry JST XH, S4B-XH-SM4-TB (LCSC C161861) -- the Pi
+# cap's own XH part.
+# ⚠ XH BECAUSE IT IS 24 V. The instrument's rule (user, 2026-10-04): PH carries 5 V and XH
+# carries 24 V, so no lead can put the higher rail on the lower one's socket.
+# ⚠ AND THE ORDER IS harness.XH_PINOUT's -- GND, V24, then the two signals -- so the one
+# mistake still possible is harmless both ways round: a motor-bus lead on this socket
+# powers the board correctly and lays CAN on the two SPI inputs, and this lead on a
+# motor-bus socket lays 3.3 V logic on CAN. Neither reverses a supply.
+J_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
+J_PINS = ("GND", "+24V_IN", "SCK_IN", "SDT_IN")
+J_ANCHOR = 5.30 + 0.9833             # mouth (local +Y 5.30) to the PAD CENTROID (the mean
+                                     # of its six pads), both read out of the .kicad_mod
 J_Y = FL.to_board_y(FL.J_Y)
+import harness as _H                                  # noqa: E402
+assert tuple(n.replace("+24V_IN", "V24") for n in J_PINS[:2]) == tuple(_H.XH_PINOUT[:2]), (
+    "the foot strip's socket is an XH and its supply ways are not the XH bus's own")
+from src import board_geom as _BG                     # noqa: E402
+assert abs(_BG.HEIGHT[_BG.fp_name(J_FP)] - FL.XH_H) < 1e-9, (
+    "foot_light.XH_H is %.2f and board_geom draws the socket %.2f tall"
+    % (FL.XH_H, _BG.HEIGHT[_BG.fp_name(J_FP)]))
 
 # ── the two lanes ────────────────────────────────────────────────────────────────────
 # ⚠ BOARD-LOCAL Y IS A MIRROR OF WORLD Y, because this board is installed FACE DOWN: the
@@ -192,14 +203,14 @@ def build(board, passes=20):
     pogo_refs = {}
     if board == "a":
         sck_out, sdt_out = Net("SCK_OUT"), Net("SDT_OUT")
-        j1 = Part(name="SM04B-SRSS-TB", ref_prefix="J", ref="J1", tag="J1",
-                  dest="NETLIST", tool="skidl", value="SM04B-SRSS-TB",
-                  description="in, from the Pi cap's J6 -- +24V, GND, SCK, SDT "
-                              "(LCSC C160404)",
+        j1 = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J1", tag="J1",
+                  dest="NETLIST", tool="skidl", value="S4B-XH-SM4-TB",
+                  description="in, from the Pi cap's J6 -- GND, +24V, SCK, SDT "
+                              "(LCSC C161861)",
                   footprint=J_FP,
                   pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(J_PINS)])
-        v24_in += j1[1]
-        gnd += j1[2]
+        gnd += j1[1]
+        v24_in += j1[2]
         sck += j1[3]
         sdt += j1[4]
         # mouth faces -X (rot 270), J_INSET in from the board's end; the placement
@@ -394,6 +405,24 @@ def build(board, passes=20):
     for sgn, refs in pogo_refs.items():
         exempt += [(refs[i], refs[i + 1]) for i in range(len(refs) - 1)]
         exempt.append((refs[-1], end_led[sgn]))
+    if board == "a":
+        # ⚠ THE SOCKET AND THE FIRST LED ARE CHECKED AS PARTS, NOT AS COURTYARDS, for the
+        # reason the pogo row is. The XH's courtyard is 16.7 x 12.0 because it includes
+        # the plug's approach and both mounting lands; what actually comes near the LED
+        # is the back of its body in X and its four signal lands in Y.
+        jx, jy, _rot = place["J1"]
+        mouth = jx - J_ANCHOR
+        lx, ly, _lrot = place[end_led[-1.0]]
+        led_half = 6.10 / 2.0                      # the LED's courtyard, as check_optics
+        body_back = mouth + 7.00                   # F.Fab: 7.00 deep from the mouth
+        lands_y = jy - (3.75 + 1.30 / 2.0)         # the signal lands' edge nearest the row
+        assert (lx - led_half) - body_back >= 0.30 - 1e-9, (
+            "the socket's body ends %.2f from the first LED's courtyard"
+            % ((lx - led_half) - body_back))
+        assert lands_y - (ly + led_half) >= 0.30 - 1e-9, (
+            "the socket's signal lands are %.2f from the first LED's courtyard"
+            % (lands_y - (ly + led_half)))
+        exempt.append(("J1", end_led[-1.0]))
     FL.check_optics()
     check_placement(name, place, fps, exempt=exempt)
     ERC()
@@ -414,7 +443,7 @@ def build(board, passes=20):
     if board == "a":
         i_24 = len(FL.HALVES) * i_own
         paths_24 = [
-            {"net": "+24V_IN", "from": "J1.1", "to": "F1.1", "amps": round(i_24, 3)},
+            {"net": "+24V_IN", "from": "J1.2", "to": "F1.1", "amps": round(i_24, 3)},
             {"net": "+24V", "from": "F1.2", "to": ["U10.2", "J21.1"],
              "amps": round(i_24, 3)},
         ]
@@ -452,9 +481,9 @@ def build(board, passes=20):
         "waive": waive,
     }
     if board == "a":
-        notes["quality"]["pinouts"]["SM04B-SRSS-TB"] = (
-            "JST SH SM04B-SRSS-TB drawing for pin 1; the way order is the Pi cap's "
-            "FOOT_PINS (elec/pi_cap.py J6), +24V on the end pad")
+        notes["quality"]["pinouts"]["S4B-XH-SM4-TB"] = (
+            "JST XH S4B-XH-SM4-TB drawing for pin 1; the way order is J_PINS above, "
+            "harness.XH_PINOUT's supply ways first")
     with open(os.path.join(OUT_DIR, "%s.board.json" % name), "w") as f:
         json.dump(notes, f, indent=2)
     print("%-9s %6.1f x %.2f mm, %2d LEDs, %d zones, %d drivers, x%d per instrument"
