@@ -344,7 +344,25 @@ def output_panel():
     # the fleet's four switchers this is the one with the least margin, so if EMI ever
     # shows up in the audio path, this loop is the first thing to look at and the fix is
     # a local PWR_GND pour under the buck, tied to the split's single joining point.
-    # ⚠ PWR_GND IS A SEPARATE NET AND IS NEVER JOINED TO THE SIGNAL GROUND HERE. The
+    # ⚠⚠ SUPERSEDED 2026-10-04 (user): THE TWO GROUNDS ARE JOINED HERE, ONCE, BY R60 (0 ohm)
+    # AT THE BUCK'S OUTPUT CAPACITOR. The notes below are kept because their reasoning about
+    # LAYOUT still holds (the 24 V pair keeps its own island and no pour floods across it),
+    # but their conclusion -- never tie on this board -- did not survive the quality review:
+    #   * U5 is a buck, and a buck's input return and output return are one node. Its
+    #     output feeds +5V and every load on this board, and those loads return to GND. With
+    #     no tie the board's own supply current (up to 257 mA) had no way home on the board:
+    #     it went out through a USB cable's ground to whichever board bonds the two, and
+    #     with only the inlet plugged in the board was dead.
+    #   * "Loop-free" was true with ONE downstream bond. There are two -- the optical board
+    #     (its 24 V lead and its USB) and the Pi (USB here, trunk return at motor_ctrl) --
+    #     so the loop the notes warn about already existed, through two USB grounds.
+    # R60 makes this board the star point the first draft said existed "elsewhere". What
+    # it costs: the USB grounds now parallel the trunk return, so a share of the stepper
+    # return current (roughly the ratio of a trunk conductor to a USB ground wire, about a
+    # tenth) crosses this board's GND between the USB sockets and R60. Both are on the
+    # board's -X edge, and the audio section is at the other end. R60 is an 0603 so it can
+    # become a bead, or come off to restore the old arrangement, without a re-spin.
+    # ⚠ (the older note) PWR_GND IS A SEPARATE NET AND IS NEVER JOINED TO THE SIGNAL GROUND HERE. The
     # trunk feeds ten stepper drivers and its return current is chopped at their
     # switching rate; sharing a plane with the audio reference would put that
     # current under the one signal a listener hears.
@@ -1352,6 +1370,12 @@ def output_panel():
                "Capacitor_SMD:C_0805_2012Metric")
         v5_pre += c[1]
         pgnd += c[2]
+    # THE GROUND TIE (see the J6/J7 note): the one place PWR_GND and GND meet, beside C5,
+    # where the buck's output current comes back.
+    r60 = _r("R60", "0R", "ground tie, PWR_GND to GND -- the instrument's star point",
+             "Resistor_SMD:R_0603_1608Metric")
+    pgnd += r60[1]
+    agnd += r60[2]
     for tag, val, net, ref, desc in (
             ("C7", "10uF", v5, agnd, "5 V bulk, board side of the bead"),
             ("C8", "100nF", v5, agnd, "5 V HF bypass"),
@@ -2219,6 +2243,8 @@ BOARD_NOTES = {
         "R11": (-33.10, -27.85, 0.0),
         "R12": (-33.10, -28.95, 180.0),
         "C5": (-34.00, -25.00, 180.0),
+        # the ground tie, just west of C5's return, its PWR_GND pad on the lane's end
+        "R60": (-36.60, -29.00, 180.0),
         # the second bulk cap and THE BEAD sit at the island's +X end, which is where the
         # rail leaves for the rest of the board
         "C6": (13.00, -23.50, 0.0),
@@ -2441,6 +2467,8 @@ BOARD_NOTES["tracks"] += [
         ("PWR_GND", "F.Cu", 0.4, [(-27.300, -28.960), (-27.300, _LANE_Y)]),         # C3
         ("PWR_GND", "F.Cu", 0.4, [(-33.610, -28.950), (-33.610, _LANE_Y)]),         # R12
         ("PWR_GND", "F.Cu", 0.5, [(-34.950, -25.000), (-34.950, _LANE_Y)]),         # C5
+        ("PWR_GND", "F.Cu", 0.5, [(-34.950, _LANE_Y), (-35.800, _LANE_Y),
+                                  (-35.800, -29.000)]),                             # R60
         # the buck's feed: B.Cu under the lane -> a via under D1 -> C2 -> C3 -> U5 pin 5
         ("+24V", "B.Cu", 0.8, [(-1.250, _LANE_Y), (-25.925, _LANE_Y), (-25.925, -26.600)]),
         ("+24V", "F.Cu", 0.6, [(-25.925, -26.600), (-25.925, _ROW_Y)]),
@@ -2629,11 +2657,30 @@ BOARD_NOTES["quality"] = {
         "A6:J2.B5": "as J2.A5",
     },
     # The manual review, 2026-10-04. Each entry is the evidence, not a tick. Left OPEN on
-    # purpose: M3 and M21 (the 5 V rail's return leaves the board -- a grounding decision
-    # for the whole instrument, see docs/pcb-quality-status.md), M32 (the split of the
-    # trunk current between J7 and J10 rests on an unmeasured motor current), M11 (CAD
-    # fit after the build), M35 (errata) and the order-time items M12, M29, M30, M37, M42.
+    # purpose: M32 (the split of the trunk current between J7 and J10 rests on an
+    # unmeasured motor current), M11 (CAD fit after the build), M35 (errata) and the
+    # order-time items M12, M29, M30, M37, M42.
     "manual": {
+        "M3": "24 V: in on J6's two +V contacts and back on its two -V contacts, out and "
+              "back on J7 / J10 / J9, each pair side by side; measured on the routed "
+              "board the return's narrowest copper is 1.2 mm to J7 and 1.0 mm to J10 "
+              "(15 and 7 mohm from the jack). 5 V: the buck's output returns through R60 "
+              "(0 ohm, the one join of PWR_GND and GND, beside C5), 0.5 mm from the lane "
+              "to its pad; every load is on the GND planes (In1 whole, B.Cu) under its "
+              "supply track. Before R60 that current left the board by a USB ground. "
+              "C55, the inlet's 100 nF, returns by 8.7 mm of 0.2 mm track the closer "
+              "laid: a bypass ahead of the switch, carrying no load current",
+        "M21": "one ground plane under the converters, joined to the power return at ONE "
+               "point (R60, at x -36.6, y -29, the board's -X / -Y corner). What crosses "
+               "the plane besides the board's own return: the share of the motors' "
+               "return that comes back along the USB grounds instead of the trunk, about "
+               "a tenth by conductor resistance, entering at J2 / J3 / J4 on the -X edge "
+               "(x -42) and leaving at R60 on the same edge. The pickup terminals, their "
+               "buffer and the ADC are at x -13 to +3, y +28, and the DAC and output "
+               "stage at x +2 to +16: none lies between the sockets and R60, and each "
+               "takes its reference from the plane under itself. The ADC's and DAC's "
+               "analog supply pins are bypassed to that plane at the pins (A2). If motor "
+               "noise is ever heard, R60 becomes a bead; that is why it is an 0603",
         "M1": "J6: Mean Well's R7B plug, 1 +V, 2 -V, 3 -V, 4 +V (GST160A-SPEC), on a jack "
               "whose footprint was drawn from Kycon's land pattern; metered before first "
               "power (bring-up step 0). J10 <-> motor_ctrl J3: harness.PWR_LINK (GND, 24, "
@@ -2809,28 +2856,8 @@ if __name__ == "__main__":
     output_panel(tag="panel")
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "output_panel.net"))
-    # ⚠ THIS BOARD'S SPLIT IS DELIBERATE AND ITS CLOSURE IS NOT ON THIS BOARD, so it
-    # is declared rather than fixed -- see the J6/J7 note above for why the 24 V return
-    # is kept off the audio reference.
-    #
-    # ⚠ AND THE STAR POINT IT NAMES DOES NOT EXIST YET. Checked across every board's
-    # netlist on 2026-09-17: this is the ONLY board in the instrument with a PWR_GND,
-    # and the two boards the trunk feeds (motor_ctrl J3, optical J2) tie the trunk
-    # return straight to their own signal ground. So "the two meet at the instrument's
-    # star point, elsewhere" currently resolves to "the two meet at whichever board the
-    # cable reaches first", which is not a star point and not a decision anybody made.
-    # Left as a declared split, loudly, until that is settled -- it is a system-level
-    # call about where the instrument's single ground reference lives, not something to
-    # fix quietly inside one board.
-    netcheck.grounds_meet(
-        os.path.join(OUT_DIR, "output_panel.net"),
-        declared_split={
-            "shape": "GND | PWR_GND",
-            "why": "the 24 V return is chopped by ten stepper drivers and is kept "
-                   "off the audio reference. NOT a star point -- the two domains bond "
-                   "ONCE PER LEAF at the downstream boards, and a tie on THIS board "
-                   "would close a loop through a USB ground. See the J6/J7 note",
-        })
+    # R60 joins them (2026-10-04): one group, nothing to declare.
+    netcheck.grounds_meet(os.path.join(OUT_DIR, "output_panel.net"))
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "output_panel.net"))
     with open(os.path.join(OUT_DIR, "output_panel.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
