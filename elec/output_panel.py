@@ -1167,7 +1167,7 @@ def output_panel():
     osc_out += y1[3]
     gnd += y1[2], y1[4]
     y2 = Part(name="Crystal", ref_prefix="Y", ref="Y2", tag="Y2", dest="NETLIST", tool="skidl",
-              value="12MHz", description="hub reference",
+              value="TAXM12M4RFBCCT2T", description="hub reference, 12 MHz, CL 12 pF (LCSC C133337)",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=i, func=P) for i in range(1, 5)])
     hub_xi += y2[1]
@@ -1176,7 +1176,7 @@ def output_panel():
 
     # ── L1 / FB1: the buck's output, and the ONE place the rails join ────────
     l1 = Part(name="L", ref_prefix="L", ref="L1", tag="L1", dest="NETLIST", tool="skidl",
-              value="47uH", description="buck output inductor, SHIELDED -- it sits on "
+              value="PNR3015-470M", description="47 uH buck output inductor, SHIELDED -- it sits on "
               "the same board as a magnetic pickup's preamp",
               footprint="Inductor_SMD:L_Taiyo-Yuden_NR-30xx",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
@@ -1201,13 +1201,19 @@ def output_panel():
     sw += d1[1]
     pgnd += d1[2]
     for tag, net in (("D2", thru_dp), ("D3", thru_dm)):
-        d = _d(tag, "ESD", "panel USB data-line clamp -- J1 is the port a stranger "
-               "plugs into")
+        d = _d(tag, "LESD5L5.0CT1G", "panel USB data-line clamp, 0.5 pF, bidirectional "
+               "(LCSC C5274293) -- J1 is the port a stranger plugs into")
         net += d[1]
         gnd += d[2]
-    d4 = _d("D4", "flyback", "coil flyback -- the coil is an inductor and the FET is not")
-    coil += d4[1]
-    v5 += d4[2]
+    # ⚠ PAD 1 IS THE CATHODE AND IT GOES TO +5V (2026-10-04). It was drawn the other way
+    # round -- cathode on the FET's drain, anode on the rail -- which is a diode forward
+    # across the supply every time the relay is switched on: 5 V through a 150 mA diode
+    # into a FET that is fully enhanced. Nothing in the build could see it (two nets, two
+    # pads, either way round routes clean); the manual polarity review did.
+    d4 = _d("D4", "1N4148WT", "coil flyback, cathode to +5V (LCSC C917006) -- the coil is "
+            "an inductor and the FET is not")
+    v5 += d4[1]
+    coil += d4[2]
     # D5 IS THE PHANTOM GUARD'S CLAMP and it sits INSIDE the DC block: a blocking
     # capacitor stops the 48 V but passes the insertion edge straight through.
     blocked = Net("OUT_BLOCKED")
@@ -1292,10 +1298,12 @@ def output_panel():
             "Capacitor_SMD:C_1206_3216Metric")
     v24 += c2[1]
     pgnd += c2[2]
-    c3 = _c("C3", "100nF", "24 V input HF bypass")
+    c3 = _c("C3", "100nF/50V", "24 V input HF bypass")
     v24 += c3[1]
     pgnd += c3[2]
-    c4 = _c("C4", "10nF", "buck bootstrap")
+    # 100 nF, not the 10 nF that stood here: SNVSA24's pin table and its application
+    # circuit both ask for 0.1 uF between CB and SW
+    c4 = _c("C4", "100nF", "buck bootstrap")
     boot += c4[1]
     sw += c4[2]
     for tag in ("C5", "C6"):
@@ -1315,6 +1323,15 @@ def output_panel():
             ("C51", "100nF", v3v3, gnd, "MCU bypass"),
             ("C52", "100nF", v3v3, gnd, "MCU bypass"),
             ("C53", "100nF", v3v3, gnd, "MCU bypass"),
+            # Supply pins that had no capacitor of their own (quality A2, 2026-10-04): the
+            # inlet ahead of the switch had none on its net at all, the LDO's input shared
+            # an op-amp's 100 nF 5 mm away, and two op-amps borrowed a neighbour's.
+            ("C55", "100nF/50V", v24_in, pgnd, "inlet HF bypass, ahead of the switch"),
+            ("C56", "100nF/50V", v24, pgnd, "24 V HF bypass at J10"),
+            ("C57", "100nF", v5, gnd, "VBUS bypass at J4"),
+            ("C58", "1uF", v5, gnd, "LDO input -- AP2112 asks for 1 uF at IN"),
+            ("C59", "100nF", v5, agnd, "U8 bypass"),
+            ("C60", "100nF", v5, agnd, "U7 bypass"),
             ("C12", "100nF", v3v3, gnd, "hub bypass"),
             ("C13", "100nF", v5, agnd, "ADC analog bypass"),
             ("C14", "100nF", v3v3, agnd, "DAC AVDD bypass -- 3V3, never 5 V (abs max 3.9)")):
@@ -1897,9 +1914,12 @@ BOARD_NOTES = {
         "R8": (-3.20, 24.90, 0.0),
         "U2": (2.50, 29.00, 0.0),       # ADC
         # the ADC's supports fill the strip under it that the DAC vacated (2026-09-21)
-        "C19": (0.00, 25.30, 0.0),      # VREF 0.1
-        "C13": (2.20, 25.30, 0.0),      # VCC 0.1
-        "C22": (4.40, 25.30, 0.0),      # VDD 0.1
+        # the row sits 1.8 mm further west than it did: U2's supply pins are the top of its
+        # WEST column, and at 4.40 the VDD capacitor was 5.7 mm from its pin
+        "C19": (-1.25, 25.30, 0.0),     # VREF 0.1
+        "C13": (0.67, 25.30, 0.0),      # VCC 0.1
+        "C22": (2.59, 25.30, 0.0),      # VDD 0.1
+        "C59": (-3.60, 31.50, 180.0),   # U8's own, above its V+ pin
         "C20": (-0.40, 22.90, 0.0),      # VREF 10u
         "C21": (3.10, 22.90, 0.0),      # VCC 10u
         "C23": (6.60, 22.90, 0.0),      # VDD 10u
@@ -1914,7 +1934,7 @@ BOARD_NOTES = {
         "C32": (8.60, -14.30, 0.0),       # charge-pump flying 2.2u
         "C33": (8.60, -16.40, 0.0),       # VNEG 2.2u
         "C25": (7.40, -18.60, 0.0),      # AVDD 10u
-        "C14": (10.60, -18.20, 0.0),      # AVDD 0.1
+        "C14": (10.60, -18.20, 180.0),    # AVDD 0.1 -- its 3V3 pad TOWARD pin 8 (turned away, it was walled in and left open)
         "R13": (10.60, -19.40, 0.0),      # output filter 470R
         "C34": (10.60, -20.60, 0.0),      # output filter 2.2nF
         "R14": (8.60, -20.60, 0.0),      # -6 dB
@@ -1965,8 +1985,8 @@ BOARD_NOTES = {
         # respun, the +X edge cannot move (it is the panel) so the growth is -X, and it
         # wants the USB block at that end spread out to free the middle for the audio.
         "U10": (14.00, 2.00, 0.0),      # MCP4261, between the two legs it drives
-        "C44": (16.75, 9.96, 0.0),      # pot bypass. 8.4 mm, and the least bad of the four:
-                                        # the pot is written on a volume change, not an edge
+        "C44": (13.60, 5.60, 180.0),    # pot bypass, 3.2 mm from VDD (it stood 8.4 mm away); nearer is the THRU pair's via
+        "C60": (5.40, 10.40, 180.0),    # U7's own, above its V+ pin
         "U9": (6.76, 0.43, 0.0),        # ring buffer, matched to U7
         "C43": (11.49, -2.53, 0.0),     # U9 bypass -- 5.7 mm, the worst of the op-amp three
         # ⚠ THESE SIX WERE RE-SWEPT AGAINST THEIR **REAL** COURTYARDS, AND THE FIRST
@@ -2055,6 +2075,10 @@ BOARD_NOTES = {
         "C17": (-17.50, -16.50, 0.0),
         "C18": (-14.50, -16.50, 0.0),
         "U6": (6.00, -8.00, 0.0),
+        "C58": (3.20, -7.50, 270.0),    # across IN and GND, where the SWD pads stood
+        "C55": (27.90, -13.40, 90.0),   # between the inlet and J10, off the PWR_GND bar
+        "C56": (29.70, -4.40, 0.0),     # above J10's two +24V ways
+        "C57": (-39.50, -3.80, 90.0),   # behind J4, north of the DN2 pair
         "C9": (11.00, -8.00, 0.0),
         "C10": (-1.90, -14.55, 90.0),    # pins 13 + 17
         "C11": (-11.50, -12.60, 90.0),   # pin 1
@@ -2282,24 +2306,33 @@ _LANE_Y, _ROW_Y = -31.0, -28.0
 # The +24V / PWR_GND pair to J10 is 4.4 mm apart for its whole run (x 19.9 against 24.25).
 _QS = (19.90, -26.22)          # Q2 source pad;  tab spans x 10.40..16.80, y -31.4..-25.6
 _J10_PADS = (33.45, 30.95, 28.45, 25.95)      # ways 1..4 with the part turned 180
+# EIGHT 0.3 mm VIAS, TWO IN EACH OF THE TAB'S FOUR PASTE WINDOWS (2026-10-04). They were
+# four 0.4 mm ones in the two northern windows: 0.40 mm3 of barrel under 1.01 mm3 of paste,
+# enough to starve the joint that carries the whole supply (quality A12). Two 0.3 mm
+# barrels take 0.23 mm3, under a quarter of what each window prints, and eight of them
+# carry more than the four did.
 BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [
-    ("+24V", _x + _g, -27.4, 0.4, 0.8) for _x in (11.6, 12.9, 14.2, 15.5)]
+    ("+24V", _x + _g, _y, 0.3, 0.6) for _y in (-27.5, -29.2)
+    for _x in (11.3, 12.6, 14.6, 15.9)]
 BOARD_NOTES["tracks"] += [
     (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
         # +24V_IN: pin 1 <-> pin 4 through the channel; pin 1 -> Q2 source
         ("+24V_IN", "F.Cu", 2.0, [_p1, (_p1[0], J6_Y), (_p4[0], J6_Y), _p4]),
-        ("+24V_IN", "F.Cu", 3.0, [(_p1[0], -26.6), (_QS[0], -26.6)]),
+        # 4.2 mm: the one stretch that carries the whole 6.67 A (4.12 mm for a 10 C rise)
+        ("+24V_IN", "F.Cu", 4.2, [(_p1[0], -26.6), (_QS[0], -26.6)]),
         # +24V on F.Cu: the tab -> the lane -> J7 pads 2 and 3
         ("+24V", "F.Cu", 2.0, [(11.5, _LANE_Y), (-1.250, _LANE_Y)]),
-        ("+24V", "F.Cu", 1.2, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
-        ("+24V", "F.Cu", 1.2, [(1.250, _ROW_Y), (1.250, _LANE_Y)]),
+        ("+24V", "F.Cu", 1.4, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
+        ("+24V", "F.Cu", 1.4, [(1.250, _ROW_Y), (1.250, _LANE_Y)]),
         # (the buck's feed leaves J7 pad 2 on B.Cu, in the buck's-corner block below)
-        ("+24V", "B.Cu", 1.2, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
+        ("+24V", "B.Cu", 1.4, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
         # +24V on B.Cu: the tab's vias -> east -> north -> under J10 -> pads 2 and 3
         # ⚠ x 19.9, NOT 21.2: the inlet's rear shell legs are through-hole lands on PWR_GND
         # at x 21.30..24.50 (y -15.2 and -30.8), and a through-hole land is on EVERY layer.
         # At 21.2 this bar ran straight through the north one.
-        ("+24V", "B.Cu", 2.0, [(11.6, -27.4), (19.9, -27.4), (19.9, -12.9), (20.9, -11.9),
+        # (2.6 mm under the tab, to take both rows of vias; 0.35 mm above the PWR_GND lane)
+        ("+24V", "B.Cu", 2.6, [(11.3, -28.35), (19.9, -28.35)]),
+        ("+24V", "B.Cu", 2.0, [(19.9, -28.35), (19.9, -12.9), (20.9, -11.9),
                                (_J10_PADS[1], -11.9)]),
         ("+24V", "B.Cu", 1.2, [(_J10_PADS[1], -11.9), (_J10_PADS[1], _J10_Y)]),
         ("+24V", "B.Cu", 1.2, [(_J10_PADS[2], -11.9), (_J10_PADS[2], _J10_Y)]),
@@ -2369,7 +2402,11 @@ BOARD_NOTES["tracks"] += [
 # order it likes; with the buck's corner declared it closed SDO and CK over pin 37 and left
 # the net open, 38.8 mm, no repair path on any layer. The pin gets its own exit INWARD,
 # under the package beside MCK's, laid before the router starts.
-# (Gone with U1's turn: the five I2S pins face north into open board now.)
+# U1.37 again, in the new orientation: the middle one of five I2S pins on a 0.4 mm pitch.
+# The router fans the other four outward and closes over it (open, 32.75 mm, twice). It
+# leaves INWARD, to a via between the pad row and the exposed pad, as motor_ctrl's do.
+BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("I2S_SDI", -2.60 + _g, -4.94)]
+BOARD_NOTES["tracks"] += [("I2S_SDI", "F.Cu", 0.15, [(-2.60 + _g, -4.06), (-2.60 + _g, -4.94)])]
 
 
 # ── HUB_DN1, DRAWN (2026-10-04) ──────────────────────────────────────────────────────────
@@ -2392,6 +2429,132 @@ BOARD_NOTES["tracks"] += [
         ("HUB_DN1_DP", "B.Cu", 0.2, [(-10.55, -5.80), (-10.55, -8.40), (-10.75, -8.60)]),
         ("HUB_DN1_DP", "F.Cu", 0.2, [(-10.75, -8.60), (-10.55, -8.80), (-8.938, -8.80)]),
     ]]
+
+
+# ── THE QUALITY RECORD (cadkit/PCB_QUALITY.md) ───────────────────────────────────────────
+BOARD_NOTES["quality"] = {
+    "power_paths": [
+        # the whole supply, ahead of the switch: two jack contacts in, one FET source
+        {"net": "+24V_IN", "from": "J6.1", "to": ["Q2.3"], "amps": 6.67},
+        {"net": "+24V_IN", "from": "J6.4", "to": ["Q2.3"], "amps": 3.34},   # one of two contacts
+        # behind the switch. J7 heads the motor trunk (bus A's east feed, 2.9 A with ten
+        # movers slewing); J10 is feed 2, two contacts at 2.7 A each -- motor_ctrl's own
+        # record splits that into bus A's west feed, the Pi's buck and the lights
+        {"net": "+24V", "from": "Q2.2", "to": ["J7.2", "J7.3"], "amps": 2.9},
+        # ⚠ 3.8 A, NOT THE 5.4 THAT motor_ctrl's FOUR LOADS ADD UP TO: the supply is 6.67 A
+        # and bus A is fed from both ends, so with J7 carrying its 2.9 A share there is
+        # 3.77 A left for this connector whatever is switched on behind it.
+        {"net": "+24V", "from": "Q2.2", "to": ["J10.2", "J10.3"], "amps": 3.8},
+        {"net": "+24V", "from": "Q2.2", "to": ["J9.2"], "amps": 0.12},
+        {"net": "+24V", "from": "Q2.2", "to": ["U5.5"], "amps": 0.1},
+        # the board's own 5 V: 257 mA worst case (the budget at U5), through the bead
+        {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.3},
+        {"net": "+5V", "from": "FB1.2", "to": ["U6.1"], "amps": 0.2},
+        {"net": "+5V", "from": "FB1.2", "to": ["K1.1"], "amps": 0.04},
+        {"net": "+5V", "from": "FB1.2", "to": ["J4.A4", "J4.B4"], "amps": 0.1},
+        {"net": "+5V", "from": "FB1.2", "to": ["U2.3", "U7.5", "U8.5", "U9.5", "U11.5",
+                                               "U10.14", "U12.5"], "amps": 0.02},
+        # 3V3: the hub is the big one (100 mA), then the MCU with its PHY running
+        {"net": "+3V3", "from": "U6.5", "to": ["U4.19", "U4.20"], "amps": 0.1},
+        {"net": "+3V3", "from": "U6.5", "to": ["U1.1", "U1.13", "U1.17", "U1.31", "U1.32",
+                                               "U1.50", "U1.51", "U1.67", "U1.68"],
+         "amps": 0.06},
+        {"net": "+3V3", "from": "U6.5", "to": ["U3.1", "U3.8", "U3.20", "U2.4"],
+         "amps": 0.03},
+    ],
+    "not_power": {
+        "PWR_GATE": "Q2's gate: 34 uA through the 330k / 150k divider",
+        "PWR_PULL": "Q3's drain to the gate divider, the same 34 uA",
+        "PWR_SW_UP": "a throw of the power button: 2.55 mA at most, through R33 + R34",
+        "PWR_SW_DN": "the button's other throw, as PWR_SW_UP",
+    },
+    "pinouts": {
+        "TYPE-C-31-M-12": "KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 names each land by "
+                          "its USB Type-C contact (A1 ... B12), the names Korean Hroparts' "
+                          "drawing for the part prints beside the same lands; every net "
+                          "here is attached by that name (A4/A9/B4/B9 VBUS, A5/B5 CC, "
+                          "A6/B6 D+, A7/B7 D-, A1/A12/B1/B12 GND). Checked 2026-10-04",
+        "B6B-XH-A": "JST eXH.pdf p.5, Header / Top entry type: seen from the slotted wall, "
+                    "No. 1 circuit is the right-hand post; KiCad's footprint has that wall "
+                    "at -Y and pad 1 at -X. Way names are harness.PWR_LINK, the list "
+                    "motor_ctrl J3 is built from. Read 2026-10-04",
+        "B4B-XH-A": "the same JST drawing and KiCad family as the 6-way (eXH.pdf p.5). "
+                    "J7: 1 PWR_GND, 2 +24V, 3 +24V, 4 PWR_GND -- symmetric, so the trunk "
+                    "lead cannot be plugged wrong way round electrically",
+        "NMJ6HCD2": "Neutrik NMJ6HCD2 drawing: T / R / S contacts and their normalling "
+                    "contacts TN / RN / SN. KiCad's Jack_6.35mm_Neutrik_NMJ6HCD2 names the "
+                    "lands by those letters and was checked pad by pad against the "
+                    "drawing, 2026-09-30 (note at TRS_FP). Board: T tip, R ring, S sleeve "
+                    "to GND, normals grounded or open as the jack section says",
+        "KPJX-4S-S": "Kycon KPJX-4S-S land pattern (footprint Steel:Kycon_KPJX-4S-S was "
+                     "drawn from it); the rails are Mean Well's GST160A-SPEC (2026-04-03) "
+                     "for the R7B plug: 1 +V, 2 -V, 3 -V, 4 +V, shell to -V. Board: 1 and "
+                     "4 +24V_IN, 2 and 3 PWR_GND, SH PWR_GND. The plug is metered before "
+                     "first power (docs/board-bringup-diagnostics.md)",
+        "THROW": "KiCad SolderJumper-3 bridged 1-2: pad 2 is the common. Board: 1 "
+                 "PWR_SW_UP, 2 SW_SENSE, 3 PWR_SW_DN",
+        "G6K-2F-Y-DC5": "Omron G6K-2F-Y datasheet p.6 (p. B-83 in the catalogue), terminal "
+                        "arrangement, top view: coil 1 (+) / 8 (-); pole A COM 3, NC 2, "
+                        "NO 4; pole B COM 6, NC 7, NO 5. Read 2026-09-30, re-read the "
+                        "same day against the netlist contact for contact",
+        "AO3400A": "AOS AO3400A datasheet rev 3 p.1, package drawing: 1 G, 2 S, 3 D. Read "
+                   "2026-09-30",
+        "SQD50P06-15L": "Vishay 69098 rev. E p.1: TO-252, seen from above with the leads "
+                        "down, G left / D tab / S right = KiCad TO-252-2 pads 1 G, 2 D, "
+                        "3 S. Read 2026-10-04",
+        "2N7002": "CJ 2N7002 datasheet p.1 (LCSC C8545), marking diagram: 1 G, 2 S, 3 D",
+        "CH32V307WCU6": "WCH CH32V303/305/307/317 datasheet V3.4 p.21, the CH32V307WCU6 "
+                        "pin drawing, and V3.8 Table 3-1 QFN68 column (2026-09-21): 1 VBAT, "
+                        "5 OSC_IN, 6 OSC_OUT, 7 NRST, 12 VSSA, 13 VDDA, 17/31/51/67 VIO, "
+                        "18/49 VSS, 32/50/68 VDD, 25 PA7, 26 PB0, 27 PB1, 35 PB12, 36 PB13, "
+                        "37 PB14, 38 PB15, 39 PC6, 48 PA13/SWDIO, 52 PA14/SWCLK, 61 PB6 = "
+                        "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, 64 PB8, 65 PB9, pad VSS",
+        "MCP4261-103E/ST": "Microchip DS22059 Table 3-1, 14-lead column: 1 CS, 2 SCK, "
+                           "3 SDI, 4 VSS, 5 P1B, 6 P1W, 7 P1A, 8 P0A, 9 P0W, 10 P0B, 11 WP, "
+                           "12 SHDN, 13 SDO, 14 VDD. Read 2026-09-30 and confirmed from a "
+                           "second source (note at U10)",
+        "TLV9061IDBVR": "TI SBOS839N Table 5-1, SOT-23 (DBV) column: 1 OUT, 2 V-, 3 IN+, "
+                        "4 IN-, 5 V+. Read 2026-09-30",
+        "SN74LVC1G3157DCKR": "TI SCES424O Table 4-1: 1 B2, 2 GND, 3 B1, 4 A, 5 VCC, 6 S; "
+                             "B1 conducts with S low. Read 2026-09-30",
+        "PCM1808PWR": "TI SLES177B Pin Functions: 1 VREF, 2 AGND, 3 VCC, 4 VDD, 5 DGND, "
+                      "6 SCKI, 7 LRCK, 8 BCK, 9 DOUT, 10 MD0, 11 MD1, 12 FMT, 13 VINL, "
+                      "14 VINR. Read 2026-09-21, re-read 2026-09-30, all 14",
+        "PCM5102APWR": "TI SLAS859C Pin Functions: 1 CPVDD, 2 CAPP, 3 CPGND, 4 CAPM, "
+                       "5 VNEG, 6 OUTL, 7 OUTR, 8 AVDD, 9 AGND, 10 DEMP, 11 FLT, 12 SCK, "
+                       "13 BCK, 14 DIN, 15 LRCK, 16 FMT, 17 XSMT, 18 LDOO, 19 DGND, "
+                       "20 DVDD. Read 2026-09-21, re-read 2026-09-30, all 20",
+        "CH334F": "WCH CH334 datasheet V2.5 Table 1-3, the 4F column, re-read against "
+                  "V2.91 2026-09-30: 1 OVCUR#, 3 XO, 4 XI, 9 DM2, 10 DP2, 11 DM1, 12 DP1, "
+                  "14 DMU, 15 DPU, 16 RESET#, 19 V5, 20 VDD33, EP GND (the figure's "
+                  "package labels are offset by one block: the table is the source)",
+        "LMR16006XDDCR": "TI SNVSA24 section 6, Pin Functions (SOT-23-6): 1 CB, 2 GND, "
+                         "3 FB, 4 SHDN, 5 VIN, 6 SW. Re-read 2026-10-04",
+        "AP2112K-3.3TRG1": "Diodes DS39724 rev. 2-2 p.1 Pin Assignments and p.2 Pin "
+                           "Descriptions, SOT25: 1 VIN, 2 GND, 3 EN, 4 NC, 5 VOUT. Board: "
+                           "1 and 3 +5V, 2 GND, 4 alone, 5 +3V3. Read 2026-10-04",
+        "TAXM8M4RFDCET2T": "Yajingxin TAXM8M4RFDCET2T sheet (LCSC C403948): lands 1 and 3 "
+                           "are the crystal, 2 and 4 the can. Board: 1 OSC_IN, 3 OSC_OUT, "
+                           "2 / 4 GND. Read 2026-10-04",
+        "TAXM12M4RFBCCT2T": "the same maker's 3225 four-land outline as Y1 (LCSC C133337): "
+                            "1 and 3 the crystal, 2 and 4 the can. Board: 1 HUB_XI, "
+                            "3 HUB_XO, 2 / 4 GND",
+        "PNR3015-470M": "two-pad, unpolarised",
+    },
+    "waive": {
+        # A1 reports one barrel and does not add parallel vias up. The tab has eight.
+        "A1:+24V Q2.2>J10.2": "eight 0.3 mm vias join the tab to the B.Cu bar, two in each "
+                              "paste window: 8 x 0.67 mm of equivalent barrel = 5.4 mm "
+                              "against 2.0 mm for 3.8 A, and 4.12 mm if the whole supply "
+                              "went this way; any four carry it",
+        "A1:+24V Q2.2>J10.3": "as J10.2: the same eight vias",
+        "A6:J2.A5": "J2 is not a port: it is the far end of a wire from J1 to the Pi's "
+                    "gadget socket, with VBUS dead-ended on purpose (the note at J2). "
+                    "Nothing behind it sources or sinks, so there is no VBUS for a CC "
+                    "resistor to ask for; the player's computer sees J1's two pull-downs",
+        "A6:J2.B5": "as J2.A5",
+    },
+}
 
 
 if __name__ == "__main__":
