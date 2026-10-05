@@ -44,7 +44,7 @@ LCSC = {
     "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
     "B6B-PH-K-S": "C131342",        # B6B-PH-K-S(LF)(SN) -- pi_cap J3, 5 V + SPI to the strip
     "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
-    "S4B-PH-SM4-TB": "C265102",     # 4-way side-entry PH, motor_ctrl J2/J6 (bus B,
+    "S4B-PH-SM4-TB": "C265102",     # 4-way side-entry PH: pi_cap J3 (fret drop) and motor_ctrl J2/J6 (bus B,
                                     # split so each half unplugs from under the
                                     # instrument). Same family as the 8-way above.
                                     # Verified 2026-09-25: 28,934 in stock.
@@ -66,7 +66,8 @@ LCSC = {
     "TLV9062IDGKR": "C398356",      # dual TIA, VSSOP-8 -- same die as the TLV9064 it
                                     # replaced (TI SBOS839); 34k stock vs the quad's 107
     "TLV9061IDBVR": "C398358",      # mid-rail buffer -- DBV, NOT the DCK part once ordered
-    "AMS1117-3.3": "C6186",         # 3V3 digital LDO: 1 GND 2 VOUT/tab 3 VIN
+    "AP2114H-3.3TRG1": "C150716",   # 3V3 digital LDO, ceramic-stable: 1 GND 2 VOUT/tab 3 VIN;
+                                    # 11,540 in stock 2026-10-04 (optical U8)
     "SPX3819M5-L-3-3/TR": "C9055",  # 3V3 analog LDO: 1 IN 2 GND 3 EN 4 BYP 5 OUT
     "LMR33630CRNXR": "C2071783",    # 24->5 V sync buck, 2.1 MHz, 3 A, VQFN-HR RNX (optical U13)
     "LTE-C9901": "C2683614",        # 940 nm emitter, 0603, Lite-On DS50-2017-0074:
@@ -99,8 +100,10 @@ LCSC = {
     "1N4148WT": "C917006",           # SOD-523 switching diode, 75 V 150 mA
     "TAXM8M4RFDCET2T": "C403948",    # Yajingxin 8 MHz 3225, CL 12 pF, ESR 250 ohm max;
                                      # 75,154 in stock 2026-10-04 (motor_ctrl HSE)
-    "TX322525M4LBDD2T": "C5308007",  # 25 MHz, CL 20 pF, ESR 30 ohm (MCU HSE)
-    "K3A260002010": "C2835957",      # 26 MHz, CL 20 pF, ESR 30 ohm (the PHY's limits)
+    "TAXM25M4RDBCCT2T": "C403946",   # Yajingxin 25 MHz 3225, CL 10 pF, ESR 30 ohm max;
+                                     # 7,232 in stock 2026-10-04 (optical MCU HSE)
+    "TAXM26M4RLBCDT2T": "C5143383",  # Yajingxin 26 MHz 3225, CL 20 pF, ESR 30 ohm max (the
+                                     # PHY's limits); 30,405 in stock 2026-10-04
     # ── sourced 2026-09-17 from JLCPCB's own parts API, not from memory ──────────
     # Each line names the listing's exact model and the stock it showed, because a code
     # with no source is the thing this file exists to refuse. Picked by EXACT model and

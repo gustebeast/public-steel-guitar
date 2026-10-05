@@ -1881,7 +1881,7 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | J2 | **24 V in** from the instrument trunk — side entry, −X edge, 2 cavities empty ⚠ **no source yet, see below** | XH-SM-4 | 6.10 × 15.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
 | 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-24 | 4.00 × 4.00 × 0.90 |
-| 1 | U8 | LDO — 3V3 digital, **AMS1117-3.3, tab = VOUT not GND** (0.51 W) | **SOT-223** | 6.50 × 3.50 × 1.80 |
+| 1 | U8 | LDO — 3V3 digital, **AP2114H-3.3, tab = VOUT not GND** (0.51 W) | **SOT-223** | 6.50 × 3.50 × 1.80 |
 | 1 | U9 | LDO — 3V3 analog (low noise, **needs C127 on BYP**) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
 | 1 | C127 | analog LDO noise bypass — 1 µF, **the reason U9 is this part** | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | U11 | single op-amp — TIA mid-rail reference buffer | SOT-23-5 | 2.90 × 2.80 × 1.45 |
@@ -2117,7 +2117,7 @@ Basic classes (no feeder charge):
 | U7 | `USB3343-CP` | C633347 | 1 | $1.78 | ULPI PHY, QFN-24 ✓ |
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
 | U9 | `SPX3819M5-L-3-3/TR` | C9055 | 1 | $0.30 | 3V3 **analog**, 40 µVrms ✓ |
-| U8 | `AMS1117-3.3` | C6186 | 1 | $0.10 | 3V3 **digital**, SOT-223 tab — 0.51 W ✓ |
+| U8 | `AP2114H-3.3TRG1` | C150716 | 1 | $0.23 | 3V3 **digital**, SOT-223 tab — 0.51 W ✓. Replaces the AMS1117 (2026-10-04): that part needs a tantalum's ESR on its output and this board is all ceramic |
 | J2 | `S4B-XH-SM4-TB` | C161861 | 1 | $0.4379 | **4-way, not 6** — corrected 2026-09-19. The row still described the connector from before the optical feed became TWO WIRES: it listed 2×5V, 2×PWR_GND, AUDIO and AUDIO_GND, and the board now wires only PWR_GND and +24V, with ways 3–4 as declared no-connects. 20,952 in stock ✓ |
 | U11 | `TLV9061IDBVR` | C398358 | 1 | $0.0935 | **SOT-23-5, not the SC-70 IDCKR** — corrected 2026-09-19. The old row named `TLV9061IDCKR` against **C693480, which THIS FILE already records as a P6KE39CA TVS diode** (see the sourcing-trap note above): a known-bad code left sitting in the parts table. The board uses IDBVR, whose pinout fab.py checks pin-for-pin against the netlist. 297,517 in stock ✓ |
 | U12 | `PCM1808PWR` | C55513 | 1 | $0.34 | 24-bit audio ADC — magnetic pickup → I²S ✓ |

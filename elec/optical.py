@@ -951,12 +951,21 @@ def optical():
     # is chosen for noise (40 uVrms) rather than current (~40 mA). Sharing one rail
     # would put the MCU's switching transients on the reference the TIAs measure
     # against, which is the one place on this board that cannot absorb them.
-    u8 = Part(name="AMS1117-3.3", ref_prefix="U", ref="U8", dest="NETLIST",
-              tool="skidl", value="AMS1117-3.3",
-              description="3V3 DIGITAL LDO, SOT-223 tab (LCSC C6186)",
+    # ⚠ AP2114H, NOT THE AMS1117 THAT STOOD HERE (2026-10-04, the regulator review). An
+    # AMS1117's output capacitor is part of its compensation and its sheet asks for 22 uF
+    # of solid TANTALUM: it wants the ESR. This board gives it 10 uF of ceramic and a
+    # field of 100 nF ceramics, a few milliohms, which is outside every condition the part
+    # is characterised under -- the classic way an 1117 ends up oscillating at a few
+    # hundred kHz on a rail that looks fine on a meter. The AP2114H-3.3 is a CMOS 1 A
+    # part in the same SOT-223 with the same three pins (1 GND, 2 VOUT and the tab,
+    # 3 VIN: Diodes AP2114 "Pin Descriptions", column H), specified stable with 4.7 uF
+    # CERAMIC, 6 V in, 450 mV dropout at 1 A against the 1.7 V available.
+    u8 = Part(name="AP2114H-3.3", ref_prefix="U", ref="U8", dest="NETLIST",
+              tool="skidl", value="AP2114H-3.3TRG1",
+              description="3V3 DIGITAL LDO, SOT-223 tab, ceramic-stable (LCSC C150716)",
               footprint="Package_TO_SOT_SMD:SOT-223-3_TabPin2",
               # SOT-223-3_TabPin2: the TAB *is* pin 2, so there is no pad 4. That is
-              # also the right electrical answer for an AMS1117 -- its tab is VOUT, not
+              # also the right electrical answer for this part -- its tab is VOUT, not
               # ground -- which is worth knowing before anyone pours a heatsink area
               # under it and assumes it is at 0 V. The 0.51 W this part burns is shed
               # into whatever copper that tab sits on, and that copper is at 3V3.
@@ -1277,8 +1286,18 @@ def optical():
     # package: the 3225 26 MHz parts at JLCPCB run from CL 7.5 pF to 20 pF and ESR 30 to
     # 80 ohm. A BOM line reading "25MHz" lets the fab pick any of them.
     y1 = Part(name="Crystal", ref_prefix="Y", ref="Y1", dest="NETLIST", tool="skidl",
-              value="TX322525M4LBDD2T",
-              description="MCU HSE 25 MHz, CL 20 pF, ESR <= 30 ohm (LCSC C5308007)",
+              # ⚠ CL 10 pF, NOT THE 20 pF PART THAT WAS HERE (2026-10-04). The H7's HSE is
+              # specified by the largest critical transconductance it will start:
+              # Gm_crit_max 1.5 mA/V (DS12110, HSE oscillator characteristics), where
+              # gm_crit = 4 x ESR x (2 pi f)^2 x (C0 + CL)^2. TX322525M4LBDD2T (20 pF,
+              # 30 ohm, C0 up to 5 pF) is 1.37 mA/V at a typical C0 and 1.85 at its limits:
+              # past the MCU's guarantee at worst case and inside it by 9 % otherwise. The
+              # PHY's crystal is 20 pF because the PHY asks for that; this one was 20 pF
+              # only by resemblance. TAXM25M4RDBCCT2T (10 pF, 30 ohm max, C0 3 pF max: its
+              # own sheet) is 0.50 at its limits. ST's own H7 boards fit 8 pF parts for the
+              # same reason.
+              value="TAXM25M4RDBCCT2T",
+              description="MCU HSE 25 MHz, CL 10 pF, ESR <= 30 ohm (LCSC C403946)",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=n, func=P) for n in range(1, 5)])
     osc_in += y1[1]
@@ -1292,10 +1311,14 @@ def optical():
     # USB334x Table 4.13 gives CL 20 pF typ and R1 30 ohm MAX. The obvious 26 MHz 3225
     # part (C15192) is CL 10 pF / ESR 50 ohm and fails both -- a mismatched load pulls
     # the frequency off the +-500 ppm budget, and 50 ohm against a 30 ohm limit is an
-    # oscillator that may not start. K3A260002010 meets both.
+    # oscillator that may not start.
+    # ⚠ AND K3A260002010, WHICH WAS HERE, MEETS IT ONLY IN THE DISTRIBUTOR'S LISTING
+    # (2026-10-04). The listing says 30 ohm; KYX's own sheet for the part says 40 max.
+    # The maker's sheet outranks the listing, so the part is TAXM26M4RLBCDT2T, whose own
+    # sheet gives CL 20 pF, 30 ohm max, C0 5 pF max -- and five times the stock.
     y2 = Part(name="Crystal", ref_prefix="Y", ref="Y2", dest="NETLIST", tool="skidl",
-              value="K3A260002010",
-              description="PHY reference 26 MHz, CL 20 pF, ESR <= 30 ohm (LCSC C2835957)",
+              value="TAXM26M4RLBCDT2T",
+              description="PHY reference 26 MHz, CL 20 pF, ESR <= 30 ohm (LCSC C5143383)",
               footprint="Crystal:Crystal_SMD_3225-4Pin_3.2x2.5mm",
               pins=[Pin(num=n, func=P) for n in range(1, 5)])
     phy_xi += y2[1]
@@ -1390,7 +1413,7 @@ def optical():
     Net("USB_CC2").connect(j1["B5"], r33[1])
     gnd += r33[2]
     # ⚠ MID SITS NEAR THE BOTTOM OF THE RANGE, NOT IN THE MIDDLE, because the signal
-    # only goes ONE WAY. The photodiode's anode is on the virtual earth and its cathode
+    # only goes ONE WAY. The photodiode's cathode is on the virtual earth and its anode
     # on MID, so photocurrent drives the TIA output UP from MID and never below it. A
     # mid-supply reference would throw away half the ADC's range on a swing that cannot
     # happen. 0.33 V leaves ~2.9 V of usable swing and keeps the op-amp's input common
@@ -1504,9 +1527,20 @@ def optical():
     # -- the CAD's capacitor groups, each wired to the rail its placement sits on --
     # C100-C111: twelve MCU rail decouplers. The last two sit on the ANALOG 3V3,
     # because VDDA and VREF+ are the pins the twenty channels are measured against.
+    # C111 is 1 uF (2026-10-04): ST draws VDDA / VREF+ with 1 uF beside the 100 nF
+    # (DS12110, "Power supply and reference decoupling"), and both were 100 nF.
     for k in range(12):
-        c = _c("C1%02d" % k, "100nF", "MCU decoupling")
+        c = _c("C1%02d" % k, "1uF" if k == 11 else "100nF", "MCU decoupling")
         rail = v3a if k >= 10 else v3d
+        rail += c[1]
+        gnd += c[2]
+    # C115-C118, C128, C129: six more on +3V3D (2026-10-04), so every VDD pair on all
+    # four sides of the package has a capacitor at it -- see the ring in the CAD.
+    # C144: U11's own supply bypass.
+    for tag, rail, why in ([(t, v3d, "MCU decoupling") for t in
+                            ("C115", "C116", "C117", "C118", "C128", "C129")]
+                           + [("C144", v3a, "U11 supply bypass")]):
+        c = _c(tag, "100nF", why)
         rail += c[1]
         gnd += c[2]
     # C112/C113: the H7 core regulator's VCAP pair. ADDED with R37/R38 -- see above.
@@ -1540,8 +1574,15 @@ def optical():
     # property of the finished board, so the frequency is measured on the first article
     # and the caps trimmed -- that is normal for a crystal and it is not an admission
     # that the arithmetic is wrong.
-    for tag, net, val in (("C123", osc_in, "27pF"), ("C124", osc_out, "27pF"),
-                          ("C125", phy_xi, "30pF"), ("C126", phy_xo, "30pF")):
+    # ⚠ RE-DONE 2026-10-04, BECAUSE THE FORMULA ABOVE SUBTRACTED THE STRAY TWICE. Each leg
+    # carries its capacitor plus that leg's stray, and the crystal sees the two legs in
+    # series: CL = (C + Cleg) / 2, so C = 2 x CL - Cleg. The 5 and 7 pF above are PER LEG,
+    # and "2 x (CL - Cstray)" took each of them off both legs.
+    #   PHY   2 x 20 - 5 = 35 pF -> 33 pF (30 pF loaded the crystal with 17.5, not 20)
+    #   MCU   2 x 10 - 7 = 13 pF -> 12 pF, with its 10 pF crystal (see Y1); the track is
+    #         2 mm now rather than 35, so its stray is at the low end
+    for tag, net, val in (("C123", osc_in, "12pF"), ("C124", osc_out, "12pF"),
+                          ("C125", phy_xi, "33pF"), ("C126", phy_xo, "33pF")):
         c = _c(tag, val, "crystal load -- C0G")
         net += c[1]
         gnd += c[2]
@@ -1573,7 +1614,9 @@ def optical():
               "Capacitor_SMD:C_1206_3216Metric")
     v24 += c160[1]
     pgnd += c160[2]
-    c161 = _c("C161", "100nF", "24 V input HF bypass")
+    # 50 V, SAID IN THE VALUE (2026-10-04): the fab picks a passive by its value text, and
+    # a bare "100nF" 0402 is its 16 V basic part -- on a 24 V rail the panel clamps at 48.
+    c161 = _c("C161", "100nF/50V", "24 V input HF bypass")
     v24 += c161[1]
     pgnd += c161[2]
     c162 = _c("C162", "22uF/16V", "buck 5 V output bulk",
@@ -1600,7 +1643,7 @@ def optical():
     # LMR33630 extras (SNVSB08 Table 6-1 / 9.2.2): VCC needs its own 1 uF; the two VIN
     # pins sit on OPPOSITE sides of the RNX package, so each gets its own 100 nF (TI's
     # layout puts one beside each VIN/PGND pair); and a second 22 uF at the output.
-    c165 = _c("C165", "100nF", "24 V HF bypass -- the second VIN/PGND pair (pins 10/11)")
+    c165 = _c("C165", "100nF/50V", "24 V HF bypass -- the second VIN/PGND pair (pins 10/11)")
     v24 += c165[1]
     pgnd += c165[2]
     c166 = _c("C166", "1uF", "buck VCC bypass (internal 5 V LDO)")
@@ -3586,8 +3629,18 @@ BOARD_NOTES = {
     # Searched, not chosen: 80 waypoints clear the hole; this one keeps +2.349 mm to it and
     # +6.179 mm to the nearest other declared In2 copper (LED_ROW), and costs 3.06 mm of
     # length. It goes NORTH of the hole, which is the side the spine corner is on anyway.
-    "escape_runs": {"U6.38": ("In2.Cu", [(-9.00, -41.00), (-12.00, -24.00),
+    # ⚠ THE FIRST THREE WAYPOINTS ARE NEW (2026-10-04), because the crystal and the VDDA
+    # capacitors now stand where the old bend at (-9.00, -41.00) was and brought their
+    # ground vias with them: the old line ran through C103's and 0.006 mm from C123's.
+    # Measured on In2 against the placed board the same way: this one keeps 0.77 mm to the
+    # nearest via (C123's old neighbour at (-9.08, -42.26)) and 1.0 or more to the rest,
+    # and still passes north of the hole.
+    "escape_runs": {"U6.38": ("In2.Cu", [(-10.10, -43.00), (-11.40, -39.00),
+                                         (-11.40, -35.00), (-12.00, -24.00),
                                          (-20.08, -21.08)])},
+    # +3V3A's last link is U9 -> the analog field, the whole rail (about 150 mA), and
+    # the maze that closes it after routing lays 0.2 mm unless told otherwise.
+    "close_widths": {"+3V3A": 0.5},
     "stitch_exceptions": ("J1.SH",) + tuple("U%d.%d" % (u, p) for u in range(14, 19)
                                             for p in (4, 15, 16)),
     # THE CONVERTERS' INPUT FAN, laid rather than routed: from each top pin straight up to
@@ -3706,7 +3759,11 @@ BOARD_NOTES = {
 # it was, and for a third reason nobody had written down: the search could express one via and
 # the answer needs two. The list is now EMPTY, which is the point of keeping it typed rather
 # than commented: a gate with nothing in it still asserts its own arithmetic.
-STALE_REPAIRS = {}
+# ⚠ BOTH ARE BACK ON IT (2026-10-04): the decoupling ring and the crystal moved to the MCU's
+# pins, which is a new placement and therefore a new route. The +3V3A trunk's B.Cu leg runs up
+# x -10.08 through what is now C123's ground via; SAI_FS's was fitted to the old route's gaps.
+# Re-search each against the new finished board, or let close_last have them.
+STALE_REPAIRS = {"+3V3A": (4, 2), "SAI_FS": (3, 2)}
 for _net, (_nt, _nv) in STALE_REPAIRS.items():
     _t_before = len(BOARD_NOTES["repair_tracks"])
     _v_before = len(BOARD_NOTES["repair_vias"])
@@ -3720,6 +3777,113 @@ for _net, (_nt, _nv) in STALE_REPAIRS.items():
         "dog-leg AND the ten stubs plus five vias that feed the SHDNZ pull-ups -- so either "
         "the count is stale or this gate is about to delete working copper."
         % (_net, _t_gone, _v_gone, _nt, _nv))
+
+
+# ── the quality pass (cadkit/PCB_QUALITY.md) ──────────────────────────────────────────────
+# Currents are the budget at U8 / U9 above, at its worst-case column.
+BOARD_NOTES["quality"] = {
+    "power_paths": [
+        # 24 V in: 1.07 A of 5 V at the board's worst case is 0.26 A here at 85 %
+        {"net": "+24V", "from": "J2.2", "to": ["U13.2", "U13.10"], "amps": 0.26},
+        # the buck's output: U8 (digital 3V3, 452 mA at 85 C), the bead to U9, and the
+        # ten emitter ballasts at 21 mA each while the row is on
+        {"net": "V5_PRE", "from": "L1.2", "to": ["U8.3"], "amps": 0.45},
+        {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.17},
+        {"net": "V5_PRE", "from": "L1.2",
+         "to": ["R%d.1" % k for k in range(1, 11)], "amps": 0.021},
+        {"net": "+5V", "from": "FB1.2", "to": ["U9.1"], "amps": 0.17},
+        # The MCU's sixteen supply pins together ("split"). 0.35 A: ST's maxima are 220 mA
+        # at TJ 25 C and 400 at 85 C with every peripheral clocked; this part dissipates
+        # about 0.7 W into ~40 C/W, so it sits near 70 C in a 40 C enclosure, and it runs
+        # three SAI blocks, USB, one I2C and one timer. Solved as a network the far side
+        # of the ring (pins 62-136) loses 58 mV at that current against the 66 mV limit:
+        # inside it, and the thinnest margin on the board. If the rail is ever re-routed,
+        # give +3V3D 0.4 mm.
+        {"net": "+3V3D", "from": "U8.2",
+         "to": ["U6.%d" % n for n in (6, 15, 23, 36, 49, 62, 72, 82, 91, 103, 114, 127,
+                                      136, 149, 159, 172)], "amps": 0.35, "split": True},
+        {"net": "+3V3D", "from": "U8.2", "to": ["U7.9", "U7.16"], "amps": 0.05},
+        {"net": "+3V3D", "from": "U8.2", "to": ["U%d.19" % u for u in range(14, 19)],
+         "amps": 0.005},
+        # the analog rail: 26 mA a converter (assumed at 192 kHz -- see the budget),
+        # 1.5 mA a dual op-amp
+        {"net": "+3V3A", "from": "U9.5", "to": ["U%d.1" % u for u in range(14, 19)],
+         "amps": 0.03},
+        {"net": "+3V3A", "from": "U9.5", "to": ["U%d.8" % u for u in range(21, 31)],
+         "amps": 0.002},
+        {"net": "+3V3A", "from": "U9.5", "to": ["U6.38", "U6.39", "U11.5"], "amps": 0.002},
+    ],
+    "not_power": {
+        "VBUS": "a sense line: this board is powered from the 24 V trunk, and VBUS reaches "
+                "only the clamp array's rail pin, C130 and R39's 20 k into the PHY's "
+                "comparator (0.25 mA)",
+    },
+    "decoupling": {"exempt": {
+        "U7.22": "RESETB, a logic input tied to +3V3D so the PHY runs whenever the rail is "
+                 "up (USB334x table 2-2, pin 22); it draws no supply current",
+    }},
+    "pinouts": {
+        "TYPE-C-31-M-12": "KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 names each land by "
+                          "its USB Type-C contact (A1 ... B12), the names Korean Hroparts' "
+                          "drawing prints beside the same lands; every net is attached by "
+                          "that name (A4/A9/B4/B9 VBUS, A5/B5 CC, A6/B6 D+, A7/B7 D-, "
+                          "A1/A12/B1/B12 GND). Checked 2026-10-04",
+        "S4B-XH-SM4-TB": "JST eXH.pdf p.6, Header / SMT type: seen from above with the "
+                         "mouth pointing away and the tails toward the viewer, No. 1 "
+                         "circuit is the right-hand post. KiCad JST_XH_S4B-XH-SM4-TB has "
+                         "its tails at -Y, mouth +Y and pad 1 at -X: the same end. Board: "
+                         "1 GND, 2 +24V, 3 and 4 not crimped. Read 2026-10-04",
+        "AO3400A": "AOS AO3400A datasheet rev 3 p.1, package drawing: 1 G, 2 S, 3 D. Read "
+                   "2026-09-30",
+        "USBLC6-2SC6": "ST USBLC6-2 datasheet, SOT23-6L pin configuration: 1 I/O1, 2 GND, "
+                       "3 I/O2, 4 I/O2, 5 VBUS, 6 I/O1. Board: D+ on 1 and 6, D- on 3 and "
+                       "4, so each line passes through the part. Datasheet audit of "
+                       "2026-09-17 (elec/fab.py)",
+        "TLV9061IDBVR": "TI SBOS839, DBV (SOT-23-5): 1 OUT, 2 V-, 3 IN+, 4 IN-, 5 V+. "
+                        "Board: a follower, 4 tied to 1, MID_RAW on 3. Audit of 2026-09-17",
+        "TLV9062IDGKR": "TI SBOS839, DGK (VSSOP-8): 1 OUT1, 2 IN1-, 3 IN1+, 4 V-, 5 IN2+, "
+                        "6 IN2-, 7 OUT2, 8 V+. Board: MID on both IN+, a photodiode on "
+                        "each IN-. Audit of 2026-09-17",
+        "LMR33630CRNXR": "TI LMR33630 datasheet (ZHCSHQ3F) section 6, figure 6-2 and "
+                         "table 6-1, RNX: 1 PGND, 2 VIN, 3 NC (tied to SW on the board, as "
+                         "the table asks), 4 BOOT, 5 VCC, 6 AGND, 7 FB, 8 PG, 9 EN, "
+                         "10 VIN, 11 PGND, 12 SW. Board: EN on +24V, PG open. Read "
+                         "2026-10-04",
+        "TLV320ADC3140IRTWT": "TI SBAS993, RTW: 1 AVDD, 2 AREG, 3 VREF, 4 AVSS, "
+                              "5 MICBIAS, 6-13 IN1P/M ... IN4P/M, 14 SHDNZ, 15 ADDR1, "
+                              "16 ADDR0, 17 SCL, 18 SDA, 19 IOVDD, 20 GPIO1, 21 SDOUT, "
+                              "22 BCLK, 23 FSYNC, 24 DREG, pad VSS (the pin list at "
+                              "the converters' Part in this file). Audit of 2026-09-17",
+        "STM32H743IIT6": "ST DS12110 figure 9 (LQFP176 pinout) and table 9, read pin by "
+                         "pin 2026-10-04 for every pin this board uses: 2-5 PE3-PE6 "
+                         "(SAI1 SD_B / FS_A / SCK_A / SD_A), 6 VBAT, 13 PI11 (ULPI_DIR), "
+                         "16 / 17 PF0 / PF1 (I2C2), 29 / 30 PH0 / PH1 (HSE), 31 NRST, "
+                         "32 PC0 (ULPI_STP), 37 VSSA, 38 VREF+, 39 VDDA, 40 PA0 "
+                         "(SAI2_SD_B), 45 PH4 (ULPI_NXT), 47 PA3 (D0), 51 PA5 (CK), "
+                         "56 / 57 PB0 / PB1 (D1 / D2), 79 / 80 PB10 / PB11 (D3 / D4), "
+                         "81 and 125 VCAP, 92 / 93 PB12 / PB13 (D5 / D6), 114 VDD33USB, "
+                         "124 PA13, 137 PA14, 166 BOOT0, 171 PDR_ON (to VDD), and VDD at "
+                         "15, 23, 36, 49, 62, 72, 82, 91, 103, 127, 136, 149, 159, 172 "
+                         "each beside its VSS",
+        "USB3343-CP": "Microchip DS00002646A figure 2-2 and table 2-2: 1 DIR, 2 CLKOUT, "
+                      "3 NXT, 4-8 DATA0-4, 9 VDDIO, 10-12 DATA5-7, 13 DP, 14 DM, "
+                      "15 VDD33, 16 VBAT, 17 VBUS, 18 ID (to VDD33: a device), 19 RBIAS, "
+                      "20 XO, 21 REFCLK / XI, 22 RESETB, 23 VDD18, 24 STP, flag GND. "
+                      "Read 2026-10-04",
+        "AP2114H-3.3TRG1": "Diodes AP2114 datasheet, 'Pin Descriptions', column SOT-223 "
+                           "(H): 1 GND, 2 VOUT, 3 VIN, tab VOUT = KiCad "
+                           "SOT-223-3_TabPin2 (the HA suffix is a different order: "
+                           "not this part). Read 2026-10-04",
+        "SPX3819M5-L-3-3/TR": "MaxLinear SPX3819 datasheet, SOT-23-5: 1 VIN, 2 GND, 3 EN, "
+                              "4 BYP, 5 VOUT. Board: EN tied to VIN. Audit of 2026-09-17",
+        "TAXM25M4RDBCCT2T": "Yajingxin TAXM25M4RDBCCT2T sheet (LCSC C403946) p.7, outline: "
+                            "lands 1 and 3 are the crystal, 2 and 4 the can. Board: "
+                            "1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read 2026-10-04",
+        "TAXM26M4RLBCDT2T": "Yajingxin TAXM26M4RLBCDT2T sheet (LCSC C5143383) p.2, "
+                            "'Connection' drawing: 1 and 3 the crystal, 2 and 4 GND. "
+                            "Board: 1 PHY_XI, 3 PHY_XO, 2 / 4 GND. Read 2026-10-04",
+    },
+}
 
 
 def _assert_matches_cad(net_path):
