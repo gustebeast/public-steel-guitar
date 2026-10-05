@@ -7,8 +7,182 @@ The standard is `cadkit/PCB_QUALITY.md` (rules A1–A11 automated, M1–M42 manu
 ```
 
 `elec/finish.py` runs it on every route and ends its last line `| quality: N FAIL, M OPEN`.
-A board may be ordered only at `0 FAIL, 0 OPEN`. **No board is there yet** — the pass is
-new (2026-10-04) and no board has declared its `BOARD_NOTES["quality"]` record.
+A board may be ordered only at `0 FAIL, 0 OPEN`. **No board is there yet**: what is left on each is listed
+below, and the sections after the scoreboard are the history of how the rules arrived.
+
+## THE LOOP: scoreboard and what is next (updated every tick)
+
+A 15-minute loop is working every board to `0 FAIL, 0 OPEN`. Rules of the road: a hard
+finding is fixed, never waived; a soft one is waived only for a case on its rule's
+"Break it when" list; a sign-off is written only after the thing was actually read.
+
+Scoreboard, 2026-10-05 (every board listed is `0 unconnected, 0 violation(s)`):
+
+| board | FAIL | OPEN | what is still open |
+|---|--:|--:|---|
+| `can_tee` | 0 | 7 | M1 (the drop's way order at the MOTOR end: needs a SERVO42D in hand), M33 / M36 (user: motor current), order-time M12 M30 M37 M42 |
+| `leg_pogo_*` (four boards) | 0 | 4 | order-time M12 M30 M37 M42 |
+| `pi_cap` | 0 | 6 | M11 (CAD fit after the build), M29, order-time four. M1 signed 2026-10-05 against the routed `ui_board`, `motor_ctrl`, fret and foot boards |
+| `lever_sensor` | 0 | 6 | M11, M29, order-time four |
+| `motor_ctrl` | 0 | 8 | M32 / M33 (user: motor current), M11, M29, order-time four. M23 and M35 signed 2026-10-05 from WCH's reference manual |
+| `output_panel` | 0 | 7 | M32 (user: motor current), M11, M29, order-time four |
+| `optical` | 0 | 6 | M11, M29, order-time four. **Bring-up must see a HIGH-speed USB enumeration** (USB334x errata, firmware workaround unproven on the H743: `docs/optical-bringup-diagnostics.md`); also U8's case temperature and the AVDD current |
+| `ui_board`, `fret_led`, `foot_led` | - | - | brenner's boards, not touched by this loop |
+
+"Order-time" items (M12 the order form, M30 the assembly order, M37 the files sent are the
+files checked, M42 stock on the day) can only be signed when an order is being placed. M29
+(buildable by this fab) is signed from the fab's own DFM report on the uploaded files. M11
+needs the lead's build with the new board geometry.
+None of these can be closed from the files on hand, so the loop leaves them OPEN on purpose
+rather than ticking them.
+
+### Errata and the motor board's USB, read 2026-10-05
+
+ST ES0392 rev 15, Microchip DS80000645A (USB334x) and WCH's reference manual V2.2 were
+fetched and read; each board's M35 (and `motor_ctrl` M23) carries what was found. WCH
+publishes no errata sheets. The one finding with teeth is the USB334x high-speed chirp
+erratum on the optical board, above.
+
+### Decided by the user, 2026-10-04
+
+1. **The grounds meet on the output panel.** `GND` (audio, MCU, USB) and `PWR_GND` (the
+   24 V return) are joined once, by R60 (0 ohm, 0603) beside the 5 V buck's output
+   capacitor. Before this the panel's own supply current (up to 257 mA) had no return on
+   the board: it left through a USB ground to whichever board bonds the two, and the panel
+   was dead with only the inlet plugged in. Cost, stated in the board file at the J6 / J7
+   note: the USB grounds now parallel the trunk return, so about a tenth of the stepper
+   return current crosses the panel's ground between the USB sockets and R60, both on the
+   -X edge and away from the audio section. R60 can become a bead or come off.
+2. **One pin scheme for the wire-to-board leads, and the family set by the voltage.** Ways
+   are `GND, power, data, data`; a 6-way adds `power, GND` on ways 5 and 6 (so it reads the
+   same from either end). **XH carries 24 V, PH carries 5 V.** The tuples are in
+   `elec/harness.py`; the lead table and what every wrong plug does are in
+   `INSTALL_NOTES.md` ("Every JST lead"). What changed to meet it:
+   * `output_panel` J7 (motor trunk head): was `GND 24 24 GND`, now `GND 24 - -`. Its far
+     end was always one contact per rail (the tee's trunk header), so nothing was lost.
+   * `output_panel` J10 / `motor_ctrl` J3 (power link, 6-way XH): reordered to
+     `GND 24 button button 24 GND`.
+   * `motor_ctrl` J5 / `pi_cap` J2 (the Pi's 5 V): 4-way XH -> 6-way PH, `GND 5 - - 5 GND`;
+     1.5 A per contact against PH's 2 A.
+   * `motor_ctrl` J4 (USB lead): 4-way XH in USB's own order -> 4-way PH, `GND VBUS D- D+`.
+     As an XH it was the one lead that could put the motor bus's 24 V on the Pi's D-.
+   * `pi_cap` J3 (fret drop) and J6 (foot drop): 4-way XH, `GND 24 SCK SDT`. J6 is the
+     through-hole side-entry part (S4B-XH-A) because the surface-mount one needs 10.3 mm of
+     lands in a 9.4 mm band; its body overhangs the board edge by 2.7 mm.
+   No board outline changed. Already conforming: the CAN drops and trunks (both buses),
+   the lights lead, the optical inlet, the leg boards.
+   Audit of the rule (every JST on every board of mine): no XH carries only 5 V or 3V3; no
+   PH or SH carries 24 V. Outside the two families on purpose: the leg boards' ZH tail
+   (5 V, inside the leg) and the UI ribbon (IDC).
+
+### Needs the user
+
+1. **Motor supply current while slewing** (`motor_ctrl` M32 / M33, `output_panel` M32,
+   `can_tee` M33 / M36). Every trunk figure rests on 0.8 A per moving SERVO42D, derived and
+   never measured, and on a firmware cap on simultaneous movers that is not written. One
+   bench measurement closes all five items.
+
+### What changed on the boards this loop (all routed 0 / 0)
+
+* **`output_panel`**
+  * The audio ADC's data came in on a pin with no I2S receiver (PB14 is SPI2_MISO only on
+    the CH32V307; the part has two standard I2S blocks and no full-duplex extension). It
+    is now on I2S3 (PA15 / PB3 / PB5) as a slave receiver clocked from I2S2's pins.
+    Firmware: I2S2 master transmit, I2S3 slave receive, same word clock.
+  * The 24 V to 5 V buck was strung out over 15-36 mm; it is now one cell: input capacitors
+    0.6 and 1.7 mm from VIN, catch diode 0.8 mm from SW, output capacitor 1.15 mm from the
+    inductor, feedback sensed at the output capacitor.
+  * A bypass capacitor at every power connector, pin-exact decoupling on the MCU and hub,
+    hub crystal capacitors corrected, the power-button switch (a soft-start P-FET in the inlet that
+    fails on; 2.55 mA with the instrument off), TS5A3159 in place of SN74LVC1G3157.
+* **`lever_sensor`**: MCU and sensor decoupling at the pins, a 2R2 + 100 nF input filter
+  ahead of the LDO, SWD pads in a labelled row, crystal changed to a stocked 8 MHz part
+  with the right load capacitors, bus ESD diodes with a real part number.
+* **`motor_ctrl`**, **`pi_cap`**: power-button pass-through on the existing cables, bus B
+  5 V behind a current-limited switch, decoupling and crystal moved to the pins.
+* **`leg_pogo_*`**: rails widened to the contact rating, copper cleared from under the M4
+  head, short board names on silk.
+
+### Optical
+
+Found by the pass and being fixed in one re-placement (the board was `0 / 0` before it and
+has to get back there):
+
+* Sixteen of the STM32H743's supply pins had no capacitor within 5 mm (the decoupling ring
+  was evenly spaced on two sides only). Now one 100 nF per VDD pair on all four sides,
+  six capacitors added, VDDA / VREF+ capacitors at pins 38 / 39.
+* The MCU crystal was 35 mm from its pins through 3-4 vias; it is now 2 mm away. It was
+  also a 20 pF part, at or past the H7's start-up limit (gm_crit 1.37-1.85 mA/V against a
+  guaranteed 1.5); now a 10 pF, 30 ohm part (0.50 mA/V worst case).
+* The PHY crystal's ESR was 30 ohm only in the distributor's listing; its maker's sheet
+  says 40, and the PHY's limit is 30. Replaced by a part whose own sheet says 30.
+* U11 (the reference buffer all twenty channels share) had no supply bypass; one added.
+  The VBUS clamp's capacitor moved to its rail pin; VCAP1's capacitor moved from 8 mm to
+  2.6 mm from its pin.
+* All fourteen pinouts read against the makers' documents and cited; supply paths declared.
+
+## Earlier ticks (history)
+
+### New in A12 this tick: vias in pads, and copper under a screw head
+
+* **A via hole inside a soldered SMD pad now fails** (cadkit `c6013c5`): the barrel takes
+  the paste. Excepted by arithmetic: exposed pads, pads with no paste (test pads), lands
+  of 4 mm2 or more. Found on `lever_sensor` (3), `optical` (8), `output_panel` (7),
+  `motor_ctrl` (2) -- mostly crystal ground pads, where the layout's own ground-stitch
+  rule put them; that rule now uses the same area test, so they move off the pad at each
+  board's next route. `close_last` can still close a net with a via in a pad (it did on
+  `leg_pogo_female_top`): to fix in cadkit.
+* **Copper under a screw head** (cadkit `d3ff0c5`, cutout `head_d`): the female pogo
+  boards had tracks and a via up to 0.8 mm inside the M4 head's circle on the face it
+  bears on. Kept out now, re-routed 0 / 0. EVERY board with a screw through it needs the
+  same look (M11): `can_tee`'s ear is bare (checked); the others are to do.
+
+### Findings from the pogo boards, 2026-10-04
+
+* **Bus B's 5 V is not current-limited.** `src/leg_pogo.py` and the wiring notes say bus B
+  runs "behind a current-limited switch"; `elec/motor_ctrl.py` ties J2 / J6 way 2 straight
+  to the Pi's `+5V` rail, behind only the 4 A output fuse. The leg joints expose that rail
+  on gold lands whenever a leg is off, through 1 A contacts. To fix on `motor_ctrl`: a
+  current-limited load switch on the bus-B feed (about 0.5 A: eleven boards at ~30 mA is
+  0.33 A). Until then M33 / M36 stay open on the pogo boards.
+* The female boards' 0.30 mm rails measured a hair under what 1 A (the contact rating)
+  needs; now 0.35 mm, re-routed 0 / 0, contact order re-proved on all four.
+* `leg_pogo_female_top` had been routed before its M4 hole was cut (the CAD check said
+  so); the re-route fixed it. All four now pass the CAD check.
+* No room for test-pad names or pin legends on a 10-13 mm board: each carries a short
+  name (`POGO FEM BOT r1`, 1.0 mm or larger) and a `G` at the ground pad; recorded as a
+  marking decision (M31) with what is relied on instead.
+
+cadkit changes this loop has made (all propagated): A12 fab check `efdd75f`;
+`finish.py --keep-route` `bc45fad`; jumper / `silk_labels` labels `fff67d7`; small-label
+fallback `3a67ff7`; automatic annular-ring growth in the layout `ea916d4`; short silk name,
+squarer name blocks and legible footprint text `7195078`.
+
+### New automated rule, 2026-10-04: A12, the board measured against the fab's page
+
+The fab's capability page was read (JLCPCB, standard service) and compared with the rules
+loaded in the boards. The rule file was looser than the fab in five places, so the pass
+now measures the finished board instead of trusting it (cadkit `efdd75f`). First run:
+
+* **silk text was 0.8 mm on every board; the fab's legible minimum is 1.0 mm.** Fixed in
+  cadkit (`kicad_silk` and the layout's designators). `finish.py --keep-route` (cadkit
+  `bc45fad`) re-does everything after the route without placing or routing, so the hard
+  routes are not disturbed.
+* **`ui_board` J2 and `pi_cap` J5 (1.27 mm 2x7 header): annular ring 0.175 mm, the fab's
+  absolute minimum on two layers is 0.18** (14 pads each). Hard.
+* **`pi_cap`: a via 0.296 mm from the hole of J5.8; the fab wants 0.45 between a pad hole
+  and any other hole.** Hard.
+* `lever_sensor`: 20 vias drilled under 0.30 mm, which the fab charges for (a note: the
+  order form has to say so).
+
+### What the loop changed first
+
+* `can_tee`: the pass measured the 1.2 mm stubs from the 2 mm rail bar to each connector
+  pad as a choke point at the 3 A contact rating (1.37 mm needed at a 10 C rise, and the
+  stub is 3.5 mm long, so it is not a short neck). Widened to 1.5 mm, 0.90 mm to the
+  neighbouring pads; re-routed `0 unconnected, 0 violation(s)`.
+* `can_tee` pinouts read against JST eXH.pdf p.5 (side-entry drawing): No. 1 circuit and
+  KiCad pad 1 are the same post. Covers every other board's S4B / S8B-XH-A.
 
 ## First run, 2026-10-04 (nothing declared yet)
 

@@ -116,6 +116,8 @@ def price_at(code, qty, cache):
 # Housings are picked by stock as well as by name: the genuine JST SHR-04V-S-B had ONE
 # piece in the catalogue on 2026-09-30, so the SH row is the stocked HC-1.0-4Y instead.
 HOUSING = {("XH", 2): "C144401", ("XH", 4): "C493083", ("XH", 8): "C144407",
+           ("XH", 6): "C144405",          # XHP-6: the power link (output_panel J10, motor_ctrl J3)
+           ("PH", 4): "C111514",          # PHR-4: bus B drops, the USB lead
            ("PH", 6): "C157952", ("PH", 8): "C157950", ("SH", 4): "C2962275",
            # VH: not on any board yet. Listed ahead of bronner's proposed 2-way power tap
            # on the CAN tee (docs/can-tee-power-tap.md) so that the day the header lands,

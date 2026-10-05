@@ -163,6 +163,8 @@ converter bus and these two pads. Prove it on the first article while SWD still 
 copper, so not one millimetre of track was added; headroom over the 0.127 rule is 4.747, 1.214
 and 1.956 mm. No pad on `MID` (see item 6) and none on `+3V3D`, which already has `TP5`.
 
+**TP9 reads the 24 V as it ARRIVES (2026-10-05).** The input now passes through R44, a 2 Ω 2512 that damps a live plug-in (the buck is a 36 V part and a live lead rings ceramics toward 48 V). TP9 is on the connector's side of it (`V24_IN`); the buck's own input is the far pad of R44 or C160. The two differ by 2 Ω × the input current: about 0.16 V at the typical 79 mA, so the drop across R44 IS the board's 24 V current, readable with a meter and no clamp. NRST also gained its 100 nF (C135, beside R31): a probe connecting under reset drives it as usual.
+
 **They only work because they are placed AFTER routing.** The same three pads, in the DSN, cost
 a net in four consecutive runs — always at the USB PHY, once on a rail whose own pad had been
 REMOVED. See `post_route_refs` in `elec/optical.py`: layout skips them, `route.py` drops them in
@@ -248,3 +250,16 @@ against the finished board in two minutes rather than thirty.**
 3. Items **1-5** as one change, with its own route. None of them touches the analog region or the
    converter fan.
 4. Item **6** as its own change, with its own route and its own before/after SI comparison.
+
+
+## First USB plug-in: it must enumerate HIGH speed (2026-10-05)
+
+Microchip's errata for the USB334x (DS80000645A, module 2): as a high-speed device behind
+some USB cores the PHY fails the chirp and comes up at full speed only. The STM32's core
+is one of them. The fix is one bit in firmware: set `XCVRDLY` in `OTG_DCFG` before the
+port is enabled. That is proven on an STM32F446 with this same USB3343; nobody has been
+found reporting it on an H743.
+
+So the first thing to read after plugging in is the negotiated speed. Full speed with the
+bit set means the workaround does not carry to this MCU, and the fallback Microchip
+itself names is a USB332x PHY, which is a different footprint: a board change.
