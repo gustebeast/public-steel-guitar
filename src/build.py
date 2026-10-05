@@ -402,17 +402,16 @@ PARTS["test_cover_plate"] = (
     "TEST COUPON — 40-long slice of the leg sleeve cover (44-wide plate + both W5 "
     "octagon rails); prints lying on its outer face")
 
-# Belt-tensioner mechanism coupon — TWO identical clamp_halves + two identical lifter bars, real
-# geometry, print orientation. Step 1 of the fixed-motor rework: prove the belt drops in
-# free with the screw out, LOCKS on a positive tooth mesh when the M4 lifts the bars, and
-# the tension winds in smoothly and holds without creep.
+# Belt-tension clamp coupon: the two halves in their print poses (0.4 nozzle). It has to
+# show that the side-entry ribbed slot holds a GT2 end under tension, that the dropped-in
+# M3 insert stays still while the screw is turned, and that the ball end of the 2.5 key
+# reaches the socket down its channel.
 PARTS["test_belt_tensioner"] = (
     lambda: heal(__import__("src.belt_tensioner", fromlist=["e"]).tensioner_coupon()),
     "test_belt_tensioner.step",
-    "TEST COUPON — belt-tension clamp: 2 identical clamp_half (one turned 180°) + 2 identical "
-    "lifter bars. Drop a GT2 scrap through with the M4×35 out (bars low = free), seat the screw "
-    "(bars ride the crest up → teeth mesh), and wind it against the external insert-nut to check "
-    "the grip holds and tension sets fine without creep")
+    "TEST COUPON — belt-tension clamp: half A (head) and half B (insert), each lying on its "
+    "closed side face, 0.4 nozzle. Push a GT2 end sideways into each slot, drop the M3 insert "
+    "into B, run the M3×12 in with the ball end of the 2.5 key, and pull on the belt")
 
 
 # Anchor ALL outputs to the project folder (never the cwd)
@@ -500,8 +499,8 @@ def geometry_report() -> str:
         total += cut
         lines.append(f"    {i:>4} {span:>6.0f} {90.0 / span:>6.2f}°/mm {cut:>8.0f}")
     lines.append(f"  total open GT2 to buy: ~{total/1000:.2f} m "
-                 f"(+ {2 * D.N_STRINGS} printed clamp_half + {2 * D.N_STRINGS} lifter bars, "
-                 f"{D.N_STRINGS}× M4×35 + insert-nut)")
+                 f"(+ {D.N_STRINGS} printed half A + {D.N_STRINGS} half B, "
+                 f"{D.N_STRINGS}× M3×12 socket head + M3 insert)")
     lines.append("")
     return "\n".join(lines)
 
@@ -546,7 +545,7 @@ DEMO_POSE_DZ = {i: -D.CARRIAGE_TRAVEL for i in (0, 1, 8, 9)}
 # straight run between the two pulleys' flanges over the carriage's whole travel. The travel
 # is DERIVED from that (dimensions.CARRIAGE_TRAVEL) using the clamp's length as a number;
 # this is where that number is held to the solids.
-_CLAMP_XS = [v for _n, _s in BTn.clamp_components(with_lifters=True)
+_CLAMP_XS = [v for _n, _s in BTn.clamp_components()
              for v in (_s.val().BoundingBox().xmin, _s.val().BoundingBox().xmax)]
 _CLAMP_L = max(_CLAMP_XS) - min(_CLAMP_XS)
 assert abs(_CLAMP_L - D.BELT_CLAMP_L) < 0.05, (
@@ -608,20 +607,14 @@ def _string_components(i):
             f"the motor body is {-_mb.ymin - MOTOR_PULLEY_STANDOFF:.2f} deep, not "
             f"dimensions.MOTOR_BODY_L {D.MOTOR_BODY_L} -- the pockets are built from that")
     out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
-    # belt-tension clamp (unified clamp_half ×2 + screw + external nut), oriented to the belt's flat
-    # zone. Lifter bars only on the last string (build-time saver — same geometry, hidden elsewhere).
-    # THE CLAMP IS DRAWN AT ITS REFERENCE SPOT, NOT WHERE THE NUT HAS CARRIED IT -- and that is
-    # a known gap, not a choice. Posing it by travel (splice_frame's from_screw: spliced on
-    # CLAMP_END_CLR off the screw pulley with the nut at the top, then BELT_PER_MM toward the
-    # motor per mm of nut) was tried on 2026-10-01 and showed real trouble the reference pose
-    # hides: near the screw end the belt is turned 90 deg, so the clamp lies across its
-    # neighbours' lanes (clamp<->next belt up to 26 mm3, clamps 9<->10 31 mm3), and string 9's
-    # clamp grazes string 10's motor pulley in its last millimetre of travel. Where on each
-    # belt the clamp may live, over the whole travel, is an open study; until it is settled
-    # the pose stays here so the gate is not red on a question it cannot answer.
-    so, sxd, sn = C.splice_frame((mx, my, mz), (D.screw_x(i), sy, spz))
+    # belt-tension clamp (half A + half B + M3 screw + insert), in line with the belt and on
+    # the run it is installed on: odd strings (the near row) on the upper run, even strings
+    # on the lower (INSTALL_NOTES). ⚠ DRAWN AT MID-RUN, NOT WHERE THE NUT HAS CARRIED IT.
+    # Where it may live over the whole travel is measured by tools/clamp_study.py
+    # (docs/belt-clamp-travel.md); mid-run is inside every string's clear span.
+    so, sxd, sn = C.clamp_frame((mx, my, mz), (D.screw_x(i), sy, spz), upper=not D.screw_far(i))
     cloc = cq.Location(cq.Plane(origin=so, xDir=sxd, normal=sn))
-    for _nm, _shp in BTn.clamp_components(with_lifters=(i == D.N_STRINGS - 1)):
+    for _nm, _shp in BTn.clamp_components():
         out.append((f"{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the nut block.
@@ -1684,13 +1677,12 @@ def ui_work_components():
 
 
 def _tensioner_coupon_components():
-    """The unified belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
-    clamps ride each string's belt). ONE SKU per half (`clamp_half`; half-B is it turned 180° about
-    Z), the M4 head on half-A's −X face, the insert used as a plain EXTERNAL nut on half-B's +X face.
-    Reuses the pre-built clamp parts (no extra geometry) so it can't drift from the real placements."""
+    """The belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
+    clamps ride each string's belt). Reuses the pre-built parts, so it cannot drift from the
+    real placements."""
     o = cq.Vector(150.0, 90.0, 40.0)
     return [(f"{nm}_coupon", cq.Workplane("XY").add(shp.val().translate((o.x, o.y, o.z))))
-            for nm, shp in BTn.clamp_components(with_lifters=True)]
+            for nm, shp in BTn.clamp_components()]
 
 
 def collect_components():
@@ -1762,27 +1754,16 @@ def collect_components():
 _COLORS = {
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
-    # belt-tension clamp — real per-string parts (PETG halves, PCTG 0.2 mm lifter, steel/brass fasteners)
-    # ONE HUE PER SKU (user). The a/b pairs are deliberately EQUAL, not an oversight
-    # to be "fixed": clamp_half is one printed part fitted twice (half-B is it turned
-    # 180 about Z) and both lifter bars are one part, so colouring the pair members
-    # differently would assert a distinction that does not exist in the BOM. What has
-    # to be distinguishable is the four SKUs, which is what the old table got wrong --
-    # the lifter tan sat next to the brass insert, and the two halves differed by 0.05
-    # in a single channel while every one of them fell through to grey anyway.
-    "belt_tensioner_half_a": (0.95, 0.55, 0.15),    # clamp_half  x2  printed
-    "belt_tensioner_half_b": (0.95, 0.55, 0.15),    #   ""  same SKU, same colour
-    "belt_tensioner_lifter_a": (0.30, 0.75, 0.40),  # lifter bar  x2  printed (0.2 nozzle)
-    "belt_tensioner_lifter_b": (0.30, 0.75, 0.40),  #   ""  same SKU, same colour
-    "belt_tensioner_screw":  (0.55, 0.55, 0.58),   # steel M4
-    "belt_tensioner_insert": (0.72, 0.60, 0.30),   # brass insert (used as an external nut)
+    # belt-tension clamp: two printed halves (0.4 nozzle), steel M3, brass insert
+    "belt_tensioner_half_a": (0.95, 0.55, 0.15),    # head half    printed
+    "belt_tensioner_half_b": (0.95, 0.70, 0.25),    # insert half  printed
+    "belt_tensioner_screw":  (0.55, 0.55, 0.58),   # steel M3 socket head
+    "belt_tensioner_insert": (0.72, 0.60, 0.30),   # brass M3 insert (dropped in behind a shoulder)
     # …and the parked assembled coupon (green = clearly a reference, not a product part)
     # The coupon keeps its own COOL family so the parked copy never reads as a real
     # clamp; same one-hue-per-SKU rule within it.
     "belt_tensioner_half_a_coupon": (0.20, 0.70, 0.45),
     "belt_tensioner_half_b_coupon": (0.20, 0.70, 0.45),
-    "belt_tensioner_lifter_a_coupon": (0.15, 0.50, 0.75),
-    "belt_tensioner_lifter_b_coupon": (0.15, 0.50, 0.75),
     "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),
     "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),
     "screw_pulley":    (0.00, 0.55, 0.55),

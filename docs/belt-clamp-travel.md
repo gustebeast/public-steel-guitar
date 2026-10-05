@@ -193,3 +193,17 @@ costs 1.0 of travel, so string 10 has room for a clamp about 56 long. Not design
 clamp against clamp is not re-measured. Open: the head faces the belt, so the key has to
 come in at an angle (ball end) over a gap left behind the head, or the head needs another
 way to be turned.
+
+## 2026-10-05: the in-line M3 clamp, as modelled (`src/belt_tensioner.py`)
+
+Two halves, 8.2 across the belt, 6.4 through it, 49.2 long fully loose (45.2 closed). The
+screw's head faces the belt, so a channel in the back of half A takes the ball end of the
+2.5 mm key at 25°. The real solids, ±20° twist margin, step 4, each string on its right run:
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 35.9 | 33.0 | 29.5 | 26.6 | 23.1 | 17.4 | 16.7 | 11.0 | 10.3 | 8.8 |
+
+All ten carry the 8.35. String 10 is the tight one and is limited only by the ends of its
+run. Clamp against clamp is still not re-measured, and the build still draws every clamp
+at its reference spot on the lower run.
