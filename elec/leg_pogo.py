@@ -302,6 +302,25 @@ def _quality(kind, parts):
                        "(cutout head_d), measured 4.18 on the routed boards; the test "
                        "pads start at the head's edge by the generator's own assert")
                     + ". Every part is one the fab places; no hand soldering"),
+            # Signed 2026-10-04, once motor_ctrl had its bus-B switch (U6, TPS2553 at
+            # 49.9 k): until then the joint's 5 V was the Pi's rail behind a 4 A fuse.
+            "M10": "decision: no part on this board. The joint's four lands are bare gold "
+                   "whenever a leg is off, and what stands behind them is on motor_ctrl: "
+                   "the 5 V comes through U6, a constant-current switch at 0.52 A (0.565 "
+                   "max) that reports a fault, so a coin across the lands is a limited "
+                   "short on 1 A contacts; CAN_H / CAN_L are clamped by D4 / D5 1.3 mm "
+                   "from motor_ctrl's J6 and by D2 / D3 on every lever board. A lever "
+                   "board plugged live through this joint is damped at its own regulator "
+                   "(lever_sensor R8). There is no room here for a clamp and nothing on "
+                   "this board for one to protect",
+            "M33": "this board is four conductors and draws nothing. Through it: the "
+                   "boards beyond the joint, 25 mA each idle and 75 mA while one "
+                   "transmits (lever_sensor M33) -- five pedal boards is 0.18 A -- and at "
+                   "most the 0.565 A the switch will pass, against 1 A for the spring "
+                   "header and the ZH contact and 2 A for PH",
+            "M36": "the 5 V this board hands on is limited upstream to 0.52 A typical, "
+                   "0.565 A maximum (motor_ctrl U6); the rails here are sized for the 1 A "
+                   "contact rating (M3)",
             "M28": ("JST's own parts for J2 (see pinouts). J1: "
                     + ("YZ165615055F-04025-02, LCSC C54799748 -- the land was read today "
                        "from LCSC's footprint for this exact code (EasyEDA CONN-SMD_4P-"
