@@ -646,15 +646,34 @@ def output_panel():
               pins=[Pin(num=i + 1, name=n, func=P)
                     for i, n in enumerate(("PWR_GND", "+24V"))])
     pgnd += j9[1]
-    v24 += j9[2]
+    # ⚠ FUSED (2026-10-04). This outlet is ONE XH contact and a thin lead to a board that
+    # has no fuse of its own, fed from a supply that will hold 6.67 A into a fault there:
+    # 160 W into whatever failed. 1 A against a 0.12 A load -- the SKU motor_ctrl's F1 is.
+    v24_opt = Net("+24V_OPT")
+    f1 = Part(name="Fuse", ref_prefix="F", ref="F1", tag="F1", dest="NETLIST", tool="skidl",
+              value="JFC1206-1100FS", description="1 A 63 V chip fuse: the optical board's "
+              "24 V feed (LCSC C136343)",
+              footprint="Fuse:Fuse_1206_3216Metric",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    v24 += f1[1]
+    v24_opt += f1[2], j9[2]
 
-    # ── U1: the MCU. USB HS to the hub, full-duplex I2S, one GPIO for the relay ──
+    # ── U1: the MCU. USB HS to the hub, two I2S units on one clock pair, one GPIO for the relay ──
     # Pin numbers off WCH's QFN-68 column (CH32V303/305/307/317 V3.9, table 3-1):
     #   61 PB6  = USBHS_DM      62 PB7  = USBHS_DP
     #   35 PB12 = I2S2 WS       36 PB13 = I2S2 CK       38 PB15 = I2S2 SD  (to DAC)
-    #   37 PB14 = I2S2ext SD (FROM the ADC) -- full duplex on ONE clock pair, which
-    #            is what lets the ADC and the DAC share BCK/LRCK and stay sample-
-    #            aligned with each other without a resampler in between.
+    #   53 PA15 = I2S3 WS       58 PB3  = I2S3 CK       60 PB5  = I2S3 SD  (FROM the ADC)
+    # ⚠ THIS MCU HAS NO FULL-DUPLEX I2S (found 2026-10-04). The ADC's data used to land on
+    # pin 37, PB14, written down here as "I2S2ext SD". There is no such function: WCH's
+    # table gives PB14 SPI2_MISO, USART3_RTS and TIM1_CH2N, and section 2.5.18 says "2 sets
+    # of standard I2S interfaces" -- each one-way, as on the F1 parts this peripheral is
+    # modelled on. Wired that way the board would have played and never recorded.
+    # So the two units each take one direction off the SAME wires: I2S2 is the master
+    # transmitter (it makes MCK, CK and WS, and sends to the DAC), I2S3 is a slave receiver
+    # whose WS and CK pins are tied on the board to I2S2's. One clock pair still serves
+    # both converters, so they stay sample-aligned with no resampler between them.
+    # Note 10 of the same table: I2S3_SD is PB5 unless 10M Ethernet is enabled, which
+    # this board never does. PB14 is left unconnected.
     #   25 PC5 relay (the comment said PB0 until 2026-09-21; PB0 is pin 26 -- the WIRING was
     #            always pin 25, so firmware drives PC5), 48 PA13 SWDIO, 52 PA14 SWCLK, 63 BOOT0
     #   39 PC6  = I2S2_MCK -> the ADC's SCKI and the DAC's SCK (256 fS)
@@ -676,7 +695,8 @@ def output_panel():
                 (32, 50, 68, 17, 31, 51, 67, 13,        # VDD
                  18, 49, 12, 69,                        # VSS + the exposed pad
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
-                 61, 62, 35, 36, 37, 38, 25, 48, 52, 63, 39, 1,
+                 61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
+                 53, 58, 60,                            # I2S3: WS, CK, SD
                  64, 65, 26, 27)]   # PB8, PB9, PB0 pot SPI; PB1 the jack mode
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
@@ -692,9 +712,9 @@ def output_panel():
     nrst += u1[7]
     hub_dn1_dm += u1[61]      # the MCU is a hub DOWNSTREAM -- no connector needed
     hub_dn1_dp += u1[62]
-    i2s_ws += u1[35]
-    i2s_ck += u1[36]
-    i2s_sdi += u1[37]
+    i2s_ws += u1[35], u1[53]      # I2S2 WS out, and I2S3 WS in
+    i2s_ck += u1[36], u1[58]      # I2S2 CK out, and I2S3 CK in
+    i2s_sdi += u1[60]
     i2s_sdo += u1[38]
     relay += u1[25]
     # ⚠ BIT-BANGED, AND DELIBERATELY. SPI1 (PA5/6/7) and SPI2 (PB13/14/15) are both
@@ -1017,10 +1037,19 @@ def output_panel():
     # analog switch's on-resistance varies with signal voltage, so passing CURRENT through
     # one is what turns it into distortion. U9's input draws picoamps, so Ron modulation has
     # nothing to act on.
-    u12 = Part(name="SN74LVC1G3157", ref_prefix="U", ref="U12", tag="U12", dest="NETLIST",
-               tool="skidl", value="SN74LVC1G3157DCKR",
-               description="SPDT analog switch -- ring = inverted tip (balanced) or the "
-               "right-hand channel (stereo)",
+    # ⚠ TS5A3159, NOT THE SN74LVC1G3157 THAT STOOD HERE (2026-10-04, the level review).
+    # The switch runs on 5 V because the audio swings 0..5 V through it, and its control
+    # pin is driven by a 3.3 V MCU output. The LVC part's control threshold is 0.7 x VCC
+    # (SCES424 p.6): 3.48 V at this rail, ABOVE anything a 3.3 V pin can reach -- it would
+    # have worked on most parts on most days. The TS5A3159 is the same SC-70-6 with the
+    # same pin for pin function (TI SCDS174 p.3: 1 NO, 2 GND, 3 NC, 4 COM, 5 V+, 6 IN;
+    # IN high joins COM to NO) and reads 2.4 V as high at 4.5-5.5 V (p.4). 1 ohm instead
+    # of 6, same rail-to-rail signal range. Pin NAMES below are still the LVC part's:
+    # B2 = NO, B1 = NC, A = COM, S = IN.
+    u12 = Part(name="TS5A3159", ref_prefix="U", ref="U12", tag="U12", dest="NETLIST",
+               tool="skidl", value="TS5A3159DCKR",
+               description="SPDT analog switch, 2.4 V logic at a 5 V supply (LCSC C46388) "
+               "-- ring = inverted tip (balanced) or the right-hand channel (stereo)",
                footprint="Package_TO_SOT_SMD:SOT-363_SC-70-6",
                # ⚠ READ OFF TI'S OWN TABLE 4-1 (SCES424O, rev June 2025), NOT REMEMBERED.
                # It was remembered first, as 1 B1 / 3 A / 4 B2, and ALL THREE SIGNAL PINS
@@ -1188,8 +1217,10 @@ def output_panel():
     # single crossing it is -- if copper joins the rails anywhere else, this part
     # is decoration.
     fb1 = Part(name="FerriteBead", ref_prefix="FB", ref="FB1", tag="FB1", dest="NETLIST",
-               tool="skidl", value="600R@100MHz",
-               description="5 V rail split: buck side to board side",
+               tool="skidl", value="BLM18KG601SN1D",
+               description="5 V rail split: buck side to board side. 600 ohm at "
+               "100 MHz, 1.3 A, 150 mohm (LCSC C85833) -- the 200 mA bead this replaces "
+               "sat under the board's 257 mA worst case",
                footprint="Inductor_SMD:L_0603_1608Metric",
                pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v5_pre += fb1[1]
@@ -1251,6 +1282,11 @@ def output_panel():
     r5 = _r("R5", "100R", "relay gate series")
     relay += r5[1]
     r5[2] += q1[1]
+    # The MCU pin floats until firmware sets it, and so did this gate: a relay free to
+    # chatter in the audio path at every power-up. Held OFF (= the direct path) by 100k.
+    r36 = _r("R36", "100k", "relay gate pull-down -- off through reset")
+    q1[1] += r36[1]
+    gnd += r36[2]
     r6 = _r("R6", "10k", "NRST pull-up")
     nrst += r6[1]
     v3v3 += r6[2]
@@ -1261,6 +1297,11 @@ def output_panel():
     r7 = _r("R7", "10k", "BOOT0 pull-down -- run from flash unless deliberately held")
     boot0 += r7[1]
     gnd += r7[2]
+    # JACK_MODE floats through reset too, and it is an analog switch's control: low =
+    # balanced until firmware says otherwise, instead of whatever the pin picks up.
+    r37 = _r("R37", "100k", "JACK_MODE pull-down -- balanced through reset")
+    jack_mode += r37[1]
+    gnd += r37[2]
     r8 = _r("R8", "1M", "pickup input bias to VMID -- and the LOAD the pickup sees, which "
             "sets its tone: 1M is a typical amplifier input")
     pk_in += r8[1]
@@ -1329,6 +1370,7 @@ def output_panel():
             ("C55", "100nF/50V", v24_in, pgnd, "inlet HF bypass, ahead of the switch"),
             ("C56", "100nF/50V", v24, pgnd, "24 V HF bypass at J10"),
             ("C57", "100nF", v5, gnd, "VBUS bypass at J4"),
+            ("C61", "100nF/50V", v24_opt, pgnd, "HF bypass at the J9 outlet, after the fuse"),
             ("C58", "1uF", v5, gnd, "LDO input -- AP2112 asks for 1 uF at IN"),
             ("C59", "100nF", v5, agnd, "U8 bypass"),
             ("C60", "100nF", v5, agnd, "U7 bypass"),
@@ -1653,7 +1695,7 @@ BOARD_NOTES = {
     # (2026-10-01: THAT TRUNK COPPER NOW EXISTS -- "THE 24 V POWER PATH, DECLARED AND SIZED"
     #  at the bottom of this file, 2.0 mm with the rails on a layer each. The netclass
     #  width below is what the router uses for the BRANCHES: the buck's input and D6.)
-    "net_widths": {"+24V": 0.5, "PWR_GND": 0.5, "+24V_IN": 0.5},
+    "net_widths": {"+24V": 0.5, "PWR_GND": 0.5, "+24V_IN": 0.5, "+24V_OPT": 0.5},
     # ⚠ THE TRUNK NEEDS DELIBERATE COPPER AND ONE LAYER CANNOT CARRY IT -- THE RAILS ARE
     # INTERLEAVED ON THE CONNECTOR. J6 -> J7 passes the fleet's whole <5 A and wants about
     # 2.8 mm at a 10 C rise; 0.5 mm of netclass is 1.45 A. Tried it: 2.0 mm lanes on B.Cu,
@@ -1916,9 +1958,9 @@ BOARD_NOTES = {
         # the ADC's supports fill the strip under it that the DAC vacated (2026-09-21)
         # the row sits 1.8 mm further west than it did: U2's supply pins are the top of its
         # WEST column, and at 4.40 the VDD capacitor was 5.7 mm from its pin
-        "C19": (-1.25, 25.30, 0.0),     # VREF 0.1
-        "C13": (0.67, 25.30, 0.0),      # VCC 0.1
-        "C22": (2.59, 25.30, 0.0),      # VDD 0.1
+        "C19": (-0.90, 32.35, 180.0),   # VREF 0.1, 1.4 mm above pin 1 (it was 5.7 mm below)
+        "C13": (-1.25, 25.30, 0.0),     # VCC 0.1
+        "C22": (0.67, 25.30, 0.0),      # VDD 0.1
         "C59": (-3.60, 31.50, 180.0),   # U8's own, above its V+ pin
         "C20": (-0.40, 22.90, 0.0),      # VREF 10u
         "C21": (3.10, 22.90, 0.0),      # VCC 10u
@@ -1948,6 +1990,9 @@ BOARD_NOTES = {
         "K1": (-13.00, 15.00, 0.0),
         "Q1": (-4.00, 15.00, 0.0),
         "R5": (-4.00, 12.00, 0.0),
+        "R36": (-6.60, 12.00, 0.0),
+        "R37": (1.20, -9.60, 0.0),      # at U1's east side, where JACK_MODE leaves
+        "F1": (-35.20, -21.50, 0.0),    # below J9
         "D4": (0.00, 15.00, 0.0),
         # the output chain runs BELOW the jack, not beside it: J5's courtyard owns
         # everything above y 11.34 out to the +X edge
@@ -2079,6 +2124,7 @@ BOARD_NOTES = {
         "C55": (27.90, -13.40, 90.0),   # between the inlet and J10, off the PWR_GND bar
         "C56": (29.70, -4.40, 0.0),     # above J10's two +24V ways
         "C57": (-39.50, -3.80, 90.0),   # behind J4, north of the DN2 pair
+        "C61": (-31.60, -20.50, 0.0),   # between F1 and L1, pad 1 toward the fuse
         "C9": (11.00, -8.00, 0.0),
         "C10": (-1.90, -14.55, 90.0),    # pins 13 + 17
         "C11": (-11.50, -12.60, 90.0),   # pin 1
@@ -2397,16 +2443,6 @@ BOARD_NOTES["tracks"] += [
     ]]
 
 
-# ── I2S_SDI'S WAY OUT OF U1 (2026-10-01) ─────────────────────────────────────────────────
-# U1.37 sits in a 0.4 mm-pitch run of five I2S pins and the router escapes them in whatever
-# order it likes; with the buck's corner declared it closed SDO and CK over pin 37 and left
-# the net open, 38.8 mm, no repair path on any layer. The pin gets its own exit INWARD,
-# under the package beside MCK's, laid before the router starts.
-# U1.37 again, in the new orientation: the middle one of five I2S pins on a 0.4 mm pitch.
-# The router fans the other four outward and closes over it (open, 32.75 mm, twice). It
-# leaves INWARD, to a via between the pad row and the exposed pad, as motor_ctrl's do.
-BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("I2S_SDI", -2.60 + _g, -4.94)]
-BOARD_NOTES["tracks"] += [("I2S_SDI", "F.Cu", 0.15, [(-2.60 + _g, -4.06), (-2.60 + _g, -4.94)])]
 
 
 # ── HUB_DN1, DRAWN (2026-10-04) ──────────────────────────────────────────────────────────
@@ -2432,6 +2468,18 @@ BOARD_NOTES["tracks"] += [
 
 
 # ── THE QUALITY RECORD (cadkit/PCB_QUALITY.md) ───────────────────────────────────────────
+# -- I2S3'S CK AND SD LEAVE U1 INWARD (2026-10-04) --
+# Pins 58 and 60 face west, 0.4 mm apart either side of an unused pin and directly above
+# the hub pair's two (61, 62). The pair's hand-drawn DM runs north past them 0.75 mm off
+# the pad ends, so there is no room for a via on that side and no way round on F.Cu.
+# Each gets a via between the pad row and the exposed pad, the exit the old pin-37 escape
+# used on the north row: 0.88 mm in from the pad centre, 0.16 off the pad's copper.
+BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [
+    ("I2S_CK", -8.058 + _g, -7.20), ("I2S_SDI", -8.058 + _g, -8.00)]
+BOARD_NOTES["tracks"] += [
+    ("I2S_CK", "F.Cu", 0.15, [(-8.938 + _g, -7.20), (-8.058 + _g, -7.20)]),
+    ("I2S_SDI", "F.Cu", 0.15, [(-8.938 + _g, -8.00), (-8.058 + _g, -8.00)])]
+
 BOARD_NOTES["quality"] = {
     "power_paths": [
         # the whole supply, ahead of the switch: two jack contacts in, one FET source
@@ -2445,7 +2493,8 @@ BOARD_NOTES["quality"] = {
         # and bus A is fed from both ends, so with J7 carrying its 2.9 A share there is
         # 3.77 A left for this connector whatever is switched on behind it.
         {"net": "+24V", "from": "Q2.2", "to": ["J10.2", "J10.3"], "amps": 3.8},
-        {"net": "+24V", "from": "Q2.2", "to": ["J9.2"], "amps": 0.12},
+        {"net": "+24V", "from": "Q2.2", "to": ["F1.1"], "amps": 0.12},
+        {"net": "+24V_OPT", "from": "F1.2", "to": ["J9.2"], "amps": 0.12},
         {"net": "+24V", "from": "Q2.2", "to": ["U5.5"], "amps": 0.1},
         # the board's own 5 V: 257 mA worst case (the budget at U5), through the bead
         {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.3},
@@ -2506,8 +2555,8 @@ BOARD_NOTES["quality"] = {
         "CH32V307WCU6": "WCH CH32V303/305/307/317 datasheet V3.4 p.21, the CH32V307WCU6 "
                         "pin drawing, and V3.8 Table 3-1 QFN68 column (2026-09-21): 1 VBAT, "
                         "5 OSC_IN, 6 OSC_OUT, 7 NRST, 12 VSSA, 13 VDDA, 17/31/51/67 VIO, "
-                        "18/49 VSS, 32/50/68 VDD, 25 PA7, 26 PB0, 27 PB1, 35 PB12, 36 PB13, "
-                        "37 PB14, 38 PB15, 39 PC6, 48 PA13/SWDIO, 52 PA14/SWCLK, 61 PB6 = "
+                        "18/49 VSS, 32/50/68 VDD, 25 PC5, 26 PB0, 27 PB1, 35 PB12, 36 PB13, "
+                        "38 PB15, 39 PC6, 48 PA13/SWDIO, 52 PA14/SWCLK, 53 PA15, 58 PB3, 60 PB5, 61 PB6 = "
                         "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, 64 PB8, 65 PB9, pad VSS",
         "MCP4261-103E/ST": "Microchip DS22059 Table 3-1, 14-lead column: 1 CS, 2 SCK, "
                            "3 SDI, 4 VSS, 5 P1B, 6 P1W, 7 P1A, 8 P0A, 9 P0W, 10 P0B, 11 WP, "
@@ -2515,8 +2564,10 @@ BOARD_NOTES["quality"] = {
                            "second source (note at U10)",
         "TLV9061IDBVR": "TI SBOS839N Table 5-1, SOT-23 (DBV) column: 1 OUT, 2 V-, 3 IN+, "
                         "4 IN-, 5 V+. Read 2026-09-30",
-        "SN74LVC1G3157DCKR": "TI SCES424O Table 4-1: 1 B2, 2 GND, 3 B1, 4 A, 5 VCC, 6 S; "
-                             "B1 conducts with S low. Read 2026-09-30",
+        "TS5A3159DCKR": "TI SCDS174 p.3 Pin Functions (DBV and DCK): 1 NO, 2 GND, 3 NC, "
+                        "4 COM, 5 V+, 6 IN; IN low joins COM to NC. Board: 1 RING_GAIN "
+                        "(stereo), 2 GND, 3 INV_OUT (balanced), 4 the ring buffer's "
+                        "input, 5 +5V, 6 JACK_MODE. Read 2026-10-04",
         "PCM1808PWR": "TI SLES177B Pin Functions: 1 VREF, 2 AGND, 3 VCC, 4 VDD, 5 DGND, "
                       "6 SCKI, 7 LRCK, 8 BCK, 9 DOUT, 10 MD0, 11 MD1, 12 FMT, 13 VINL, "
                       "14 VINR. Read 2026-09-21, re-read 2026-09-30, all 14",
