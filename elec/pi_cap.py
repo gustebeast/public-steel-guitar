@@ -58,10 +58,10 @@ pickup. Four things are done about it here, cheapest first, because a clocked ed
      BACK TO BACK and keep writing, so the line carries a steady inaudible carrier with no
      audio-band modulation. The chip latches per packet, so continuous writes are fine.
      ⚠ FIRMWARE: continuous streaming, not a timed refresh. Rate is then free to choose.
-  3. A GROUND RETURN BESIDE EACH SIGNAL. J3's order puts GND on both ends of the six ways
-     (GND V24 V24 GND SCK SDT matches fret_led's own J1), so the pair has a return
-     conductor in the same cable instead of finding its way home through the chassis. Loop
-     AREA is what couples to a coil, not wire length.
+  3. A GROUND RETURN IN THE SAME CABLE. J3's four ways (V24 GND SCK SDT, fret_led's own
+     J1) put GND beside the clock, so the pair has a return conductor in the lead instead
+     of finding its way home through the chassis. Loop AREA is what couples to a coil, not
+     wire length.
   4. DISTANCE, which is the harness's job, not this board's: the run should reach the lit
      boards without crossing the deck past the pickup. See INSTALL_NOTES.md.
 
@@ -145,7 +145,7 @@ assert tuple(s.replace("UI_", "").replace("+3V3_PI", "+3V3") for s, _ in UI_WAYS
     "list, so the two ends of one cable would disagree")
 
 XH_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
-PH6_FP = "Connector_JST:JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal"
+PH4_FP = "Connector_JST:JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal"
 SOCKET_FP = "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical"
 
 # Raspberry Pi 40-way header, PHYSICAL pin numbers -- which is also how the 2x20 footprint
@@ -192,7 +192,20 @@ SERIES_R = "68R"                  # see note 1 in the docstring
 # ⚠ V24, NOT V5 (2026-09-30, docs/lighting-bus.md 3-4): every lit board carries its own buck
 # now, so what crosses this board is the 24 V bus and nothing is regulated for the LEDs
 # upstream. Same connector, same six ways, same order -- only the rail's name and voltage.
-STRIP_PINS = ("GND", "V24", "V24", "GND", "SCK", "SDT")     # = fret_led J1
+# ⚠ FOUR WAYS, IN THIS ORDER, AND THE ORDER IS A SAFETY DECISION (user + lead, 2026-10-04).
+# The fret boards went to a 4-way PH, and a 4-way PH is also bus B's drop (GND, V5, CAN_H,
+# CAN_L: motor_ctrl J2 / J6, the leg boards). The two plugs interchange, so the order is
+# chosen for what a wrong mate does:
+#   fret lead (this J3, live) on a bus-B socket   way 1  +24V_LED onto bus GND: a dead short
+#       of the lighting feed, cleared by motor_ctrl's F3; way 2 this GND onto +5V_BUSB: the
+#       bus's current-limited switch folds back; ways 3 / 4 the Pi's SPI pins, through
+#       68 ohm, onto CAN_H / CAN_L (0-3.3 V on a 3V3 transceiver). No 24 V on any sensor pin.
+#   bus-B lead (live) on this J3 or a fret board   the same two shorts from the other side
+#       (bus GND onto +24V_LED, +5V_BUSB onto GND), and CAN_H / CAN_L onto SCK / SDT: the
+#       Pi's two SPI pins drive the 60 ohm bus through 68 ohm each, about 25 mA against
+#       16 mA a pin -- a stress for as long as it is left plugged, not an over-voltage.
+# With GND on way 1 instead, 24 V would land on bus B's 5 V pin. DO NOT REORDER.
+STRIP_PINS = ("V24", "GND", "SCK", "SDT")     # = fret_led J1 = FOOT_PINS
 # the foot strip's inlet, in foot_led.J_PINS order -- V24 on an END pad, as that board needs
 FOOT_PINS = ("V24", "GND", "SCK", "SDT")
 SH4_FP = "Connector_JST:JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal"
@@ -327,19 +340,19 @@ def pi_cap():
     ui_nets["PWR_SW_DN"] += j4[4]
 
     # the fret drop: power and both signals, in fret_led's J1 order
-    j3 = Part(name="S6B-PH-SM4-TB", ref_prefix="J", ref="J3", tag="J3",
-              dest="NETLIST", tool="skidl", value="S6B-PH-SM4-TB",
-              description="to fret_led_key J1 -- 24 V and SPI0, LCSC C265405",
-              footprint=PH6_FP,
+    j3 = Part(name="S4B-PH-SM4-TB", ref_prefix="J", ref="J3", tag="J3",
+              dest="NETLIST", tool="skidl", value="S4B-PH-SM4-TB",
+              description="to fret_led_key J1 -- 24 V and SPI0, LCSC C265102",
+              footprint=PH4_FP,
               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(STRIP_PINS)])
-    gnd += j3[1], j3[4]
-    v24_led += j3[2], j3[3]
+    v24_led += j3[1]
+    gnd += j3[2]
 
     # the foot drop: SM04B-SRSS, the foot board's own inlet part, so the cable is a stock
     # SH-to-SH lead. 0.73 A through its one V24 contact (1 A rated) -- lighting-bus.md 3.
     j6 = Part(name="SM04B-SRSS-TB", ref_prefix="J", ref="J6", tag="J6",
               dest="NETLIST", tool="skidl", value="SM04B-SRSS-TB",
-              description="to foot_led J1 -- 24 V and SPI5, LCSC C160404",
+              description="to foot_led_a J1 -- 24 V and SPI5, LCSC C160404",
               footprint=SH4_FP,
               pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(FOOT_PINS)])
     v24_led += j6[1]
@@ -355,10 +368,10 @@ def pi_cap():
     sck, sdi = Net("SCK"), Net("SDT")
     r1 = _r("R1", SERIES_R, "SCLK series source termination (see docstring note 1)")
     sck_pi += r1[1]
-    sck += r1[2], j3[5]
+    sck += r1[2], j3[3]
     r2 = _r("R2", SERIES_R, "MOSI series source termination (see docstring note 1)")
     sdi_pi += r2[1]
-    sdi += r2[2], j3[6]
+    sdi += r2[2], j3[4]
 
     for tag, net, what in (("C1", v5_pi, "Pi 5 V bulk at the header"),
                            ("C2", v24_led, "LED 24 V local bulk -- 50 V part on a 24 V rail; "
@@ -459,17 +472,20 @@ BOARD_NOTES = {
     # J4 -> J3 is the stretch that carries everything (1.63 A in, 0.89 A on to the fret
     # boards), and at 0.3 mm it was on a ~1.0 A track. It is one straight run in the strip
     # ABOVE the connector lands, where nothing else goes: a 1.0 mm bar (~2.4 A) at y 10.5,
-    # 0.29 off J3's lands and 0.98 off the mounting pads, dropping into J4 way 3 and J3 way 2,
-    # with each connector's two 24 V ways tied across their lands. The router keeps the rest
+    # 0.29 off J3's lands and clear of the mounting pads, dropping into J4 way 2 and J3 way 1
+    # (2026-10-04: J3 is a 4-way with ONE 24 V way, which stands at the same x the 6-way's
+    # way 2 did, so the bar did not move and the tie across to a second way is gone -- that
+    # land is GND now). The router keeps the rest
     # of the net -- the caps and the 0.73 A foot branch -- at 0.3 mm.
     # (2026-10-04: J4's 24 V is way 2 ALONE now -- ways 3 and 4 are the power button's --
     # so the bar comes down at x -2.00 and the tie across to way 3 is gone.)
     "tracks": [("+24V_LED", "B.Cu", 1.0, [(-2.00, 7.13), (-2.00, _BAR_Y), (14.35, _BAR_Y)]),
                ("+24V_LED", "B.Cu", 0.8, [(14.35, _BAR_Y), (14.35, 7.96)]),
-               ("+24V_LED", "B.Cu", 0.8, [(14.35, 7.96), (16.35, 7.96)]),
                # the foot branch, on the path the router found when the net was all its own
                # (with the bar declared it left J6 way 1 open): 0.73 A at 0.4 mm
-               ("+24V_LED", "B.Cu", 0.4, [(14.35, 7.96), (14.35, 7.01), (20.25, 1.11),
+               # (2026-10-04: it leaves J3's land 0.8 mm lower than it did, because the land
+               # beside it is GND now and the old diagonal passed its corner at 0.06 mm)
+               ("+24V_LED", "B.Cu", 0.4, [(14.35, 7.96), (14.35, 6.20), (19.44, 1.11), (20.25, 1.11),
                                           (20.25, -6.96), (21.50, -8.21), (21.50, -9.71)])],
     # ⚠ TWO GND STITCHES IN THE RIBBON'S BAND. Growing the board and fanning 13 UI signals
     # across it cut the GND pour into the main body plus small fragments, and the fragments
@@ -556,7 +572,7 @@ BOARD_NOTES = {
             {"net": "+5V_PI", "from": "J2.2", "to": ["J1.2", "J1.4"], "amps": 3.0},
             # lighting bus, every zone at full white (software-capped): 1.63 A in,
             # 0.89 A on to the fret boards, 0.73 A to the foot strip (docs/lighting-bus.md)
-            {"net": "+24V_LED", "from": "J4.2", "to": ["J3.2", "J3.3"], "amps": 1.63},
+            {"net": "+24V_LED", "from": "J4.2", "to": ["J3.1"], "amps": 1.63},
             {"net": "+24V_LED", "from": "J4.2", "to": ["J6.1"], "amps": 0.73},
             # the display's logic supply, behind F1 (200 mA hold)
             {"net": "+3V3_PI", "from": "J1.1", "to": ["F1.1"], "amps": 0.2},
@@ -590,10 +606,11 @@ BOARD_NOTES = {
                              "circuit is the right-hand post. KiCad JST_XH_S4B-XH-SM4-TB "
                              "has its tails at -Y, mouth +Y and pad 1 at -X: the same end. "
                              "Read 2026-10-04",
-            "S6B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
+            "S4B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
                              "the board below, No. 1 circuit is on the left. KiCad "
-                             "JST_PH_S6B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
-                             "Way names bound from fret_led's STRIP_PINS. Read 2026-10-04",
+                             "JST_PH_S4B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
+                             "Ways are STRIP_PINS (V24 GND SCK SDT), the order fret_led's "
+                             "J1 uses. Read 2026-10-04",
             "SM04B-SRSS-TB": "JST eSH.pdf p.3, Header / Side entry type: looking into the "
                              "mouth with the board below, No. 1 circuit is on the left. "
                              "KiCad JST_SH_SM04B-SRSS-TB: mouth +Y, pad 1 at -X -- the same "
@@ -633,7 +650,7 @@ BOARD_NOTES = {
                    "assembly with the supply off -- they are inside the closed instrument "
                    "and nothing in service unplugs them. Were one plugged live: 5 V rings "
                    "toward 10 V on a 16 V capacitor, 24 V toward 48 V on 50 V parts",
-            "M28": "JST's own parts: S4B-XH-SM4-TB(LF)(SN) C161861, S6B-PH-SM4-TB C265405, "
+            "M28": "JST's own parts: S4B-XH-SM4-TB(LF)(SN) C161861, S4B-PH-SM4-TB C265102, "
                    "SM04B-SRSS-TB(LF)(SN) C160404 -- the cited drawings are theirs. The "
                    "2x20 socket and the 2x8 header are symmetric pin fields with no maker "
                    "numbering. No transistor, regulator or IC on the board",
@@ -642,11 +659,13 @@ BOARD_NOTES = {
                    "pin-1 mark is the footprint's, outside the body",
             "M32": "pitches read from the KiCad files: XH 2.50, PH 2.00, SH 1.00, socket "
                    "2.54, ribbon header 1.27. XH 3 A per contact at AWG 22, PH 2 A, SH 1 A "
-                   "(JST eXH / ePH / eSH p.1). Every JST carries GND on way 1 except J6, "
-                   "which follows foot_led's own inlet order",
+                   "(JST eXH / ePH / eSH p.1). The XH carry GND on way 1; J3 and J6 "
+                   "carry V24 on way 1 and GND on way 2, on purpose: J3 shares its "
+                   "housing with bus B's drop, and that order keeps 24 V off the sensor "
+                   "bus's 5 V pin if the two are ever swapped (the note at STRIP_PINS)",
             "M33": "5 V: 3 A through J2's two contacts (1.5 A each, 3 A rated) and socket "
                    "pins 2 + 4. 24 V: 1.63 A through J4's one contact (54 %), 0.89 A through "
-                   "J3's two PH contacts, 0.73 A through J6's one SH contact (73 % of 1 A -- "
+                   "J3's one PH contact (45 % of 2 A), 0.73 A through J6's one SH contact (73 % of 1 A -- "
                    "inside the rating, without the first-board margin; the figure is a "
                    "software cap with every zone at full white). 3V3: under 0.1 A of the "
                    "Pi regulator's 0.5 A",
