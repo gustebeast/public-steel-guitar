@@ -615,12 +615,8 @@ def leds(half):
 
 
 # ── the lead: board A's socket to the Pi cap ────────────────────────────────────────────
-# One 4-way XH-to-XH lead (GND, 24 V, SCK, SDT), drawn as ONE round bundle and not as four
-# conductors: 24 AWG is 1.4 over its insulation and four of them laid up round are
-# 2.41 x 1.4 across.
-LEAD_OD    = 3.4
-LEAD_AXIS  = XH_H / 2.0             # the socket's wire row below its board, ESTIMATED as the
-                                    # middle of the housing (no drawing figure taken yet)
+# One 4-way XH-to-XH lead (GND, 24 V, SCK, SDT). It is DRAWN in src/led_leads.py, as four
+# conductors each on its own contact; what is here is where it may go.
 LEAD_STUB  = 4.0                    # straight out of the mouth before the first bend: the
                                     # XHP-4 housing stands about 4.3 past it
 # ⚠ IT GOES OVER STRING 1's MOTOR, BECAUSE THERE IS NO WAY ROUND IT. The socket is +Y of
@@ -636,44 +632,9 @@ LEAD_COL_X = -595.5                 # the column it crosses in. 2.5 further -X i
                                     # motor board's corner post (x -599.7..-598.3, up to
                                     # z -21.95); 1.5 further +X it grazes the 24 V trunk's
                                     # drop into the motor board (3.5 mm3)
-LEAD_DROP_Y = -50.0                 # where it comes back down: between the motor's -Y face
-                                    # (-41.25) and the Pi cap's +Y edge (-59.2)
-
-
-def lead_ends():
-    """((x, y, z) at the socket's mouth, (x, y, z) at the Pi cap's J6 mouth), world.
-
-    ⚠ THE CAP'S END IS READ OFF THE ROUTED CAP, not copied: J6's fab box, the edge of it
-    nearer the board's own edge being the mouth, through electronics._cap_place -- the one
-    transform everything on that board goes through."""
-    from . import board_geom as BG
-    from . import electronics as EL
-    _led, board_bot, _bt, _lb, _lt = z_stack()
-    a = (board_span("a")[0] + J_INSET, J_Y, board_bot - LEAD_AXIS)
-    f = BG.footprint("pi_cap", "J6")
-    x0, x1, y0, y1 = f["fab"]
-    my = y0 if abs(y0) > abs(y1) else y1
-    bb = EL._cap_place(box_at(0.01, 0.01, 0.01, x=(x0 + x1) / 2.0, y=my, z=0.0)
-                       ).val().BoundingBox()
-    b = ((bb.xmin + bb.xmax) / 2.0, (bb.ymin + bb.ymax) / 2.0,
-         (bb.zmin + bb.zmax) / 2.0 - LEAD_AXIS)
-    return a, b
-
-
-def lead():
-    """[(name, solid)] the lead from board A's socket to the Pi cap's J6."""
-    from .helpers import oct_cable
-    a, b = lead_ends()
-    fly = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + LEAD_FLY
-    xs = a[0] - LEAD_STUB
-    # D.MCTRL_Y1 is the motor board's +Y edge, which is derived from the motor's back
-    assert b[1] < LEAD_DROP_Y - LEAD_OD / 2.0 and LEAD_DROP_Y + LEAD_OD / 2.0 < D.MCTRL_Y1, (
-        "the lead comes down at y %.1f, which is not between the Pi cap's socket (%.1f) "
-        "and the motor's back (%.1f)" % (LEAD_DROP_Y, b[1], D.MCTRL_Y1))
-    pts = [a, (xs, a[1], a[2]), (xs, a[1], fly), (LEAD_COL_X, a[1], fly),
-           (LEAD_COL_X, LEAD_DROP_Y, fly), (LEAD_COL_X, LEAD_DROP_Y, b[2]),
-           (b[0], LEAD_DROP_Y, b[2]), b]
-    return [("wire_foot_led", oct_cable(pts, LEAD_OD))]
+# (Where it comes back down is no longer a number here: led_leads drops each conductor
+#  a plug length and 1.0 out of the Pi cap's J6, which puts the four at y -54.5 to -49.7
+#  -- between the motor's -Y face at -41.25 and the cap's +Y edge at -59.2.)
 
 
 def routed():
@@ -693,10 +654,10 @@ def routed():
 
 
 def parts():
-    """[(name, solid)] for build.py -- the two boards, the seam's plungers and the
-    lead to the Pi cap."""
+    """[(name, solid)] for build.py -- the two boards and the seam's plungers. The lead
+    to the Pi cap is src/led_leads.py."""
     if not routed():
         print("  (no %s.geom.json yet -- the foot strip is left out of this build; "
               "route and export it, see elec/foot_led.py)" % "/".join(BOARD_NAME.values()))
         return []
-    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES] + pogo_pins() + lead()
+    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES] + pogo_pins()

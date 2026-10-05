@@ -223,3 +223,14 @@ OPEN; an item moves to DONE with the commit that closed it.
     User asked to grow it -Y into the motor wall instead: NOT done, only WALL_T 1.60 is
     left against the motor pocket there. Baffle wall at the window edge: not built, pogo
     4 slides through that line (only 1.95 of height is free under the barrels).
+
+31. 2026-10-05: BOTH LIGHTING LEADS DRAWN AS FOUR CONDUCTORS (src/led_leads.py), colour per
+    way (black GND, red 24 V, white SCK, blue SDT), each on its own contact; contact
+    positions derived from the routed geometry and checked against the boards' pads.
+    Replaces the single wire_foot_led bundle. Scoped gate green.
+    - Wire-row height in the housings is still an estimate (half the socket's height).
+    - electronics.pi_cap_pin("J6", n) counts the wrong way (J6 is at 180: way 1 is at the
+      HIGH board x). Not used by led_leads; told the lead.
+    - STALE after the new belt clamp merges: foot_light.py's text about the placeholder
+      tensioners (~lines 20, 111) and docs/foot-led.md -- re-read the clamp's lowest
+      point from the merged model (lead's request).
