@@ -228,7 +228,7 @@ def _xh(tag, desc, rail="V5", ways=None):
 # where every 4-way XH in the instrument has them.
 # The lines are the switch's own contacts to ground and nothing else: whatever pulls them
 # up lives on the output panel and stays at or under the switch's 12 V / 0.3 A.
-LED_IN_PINS = ("GND", "V24", "PWR_SW_UP", "PWR_SW_DN")      # = motor_ctrl J7
+LED_IN_PINS = _H.LIGHTS_LINK                                 # = motor_ctrl J7, one list
 
 
 @subcircuit
@@ -314,7 +314,8 @@ def pi_cap():
         if _hdr:                     # the power button's two ways reach no header pin
             n += j1[_hdr]
 
-    j2 = _xh("J2", "Pi 5 V in, from motor_ctrl J5 (GPIO pins 2/4 + 6/9)")
+    j2 = _xh("J2", "Pi 5 V in, from motor_ctrl J5 (GPIO pins 2/4 + 6/9)",
+             ways=_H.PI_5V_LINK)
     gnd += j2[1], j2[4]
     v5_pi += j2[2], j2[3]
 

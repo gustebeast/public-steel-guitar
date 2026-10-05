@@ -63,6 +63,26 @@ UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
              "PWR_SW_UP", "PWR_SW_DN")
 
 
+# THE THREE CABLES BETWEEN THE KEYHEAD BOARDS AND THE OUTPUT PANEL, way by way (2026-10-04).
+# Each is a straight XH lead, so way n at one end is way n at the other, and each end's
+# generator asserts its connector against the tuple here rather than typing its own.
+# Rails are named by voltage; a board maps them onto its own net names.
+#   PWR_LINK     output_panel J10 <-> motor_ctrl J3   6-way: the 24 V trunk on two contacts
+#                each way, and the power button's two throws going back to the panel
+#   LIGHTS_LINK  motor_ctrl J7 <-> pi_cap J4          4-way: fused 24 V for the lights out,
+#                the two throws in
+#   PI_5V_LINK   motor_ctrl J5 <-> pi_cap J2          4-way: the Pi's 5 V on two contacts
+PWR_LINK = ("GND", "V24", "V24", "GND", "PWR_SW_UP", "PWR_SW_DN")
+LIGHTS_LINK = ("GND", "V24", "PWR_SW_UP", "PWR_SW_DN")
+PI_5V_LINK = ("GND", "V5", "V5", "GND")
+
+
+def same_ways(ways, link, rails):
+    """True if a connector's pin names are `link`, once `rails` ({"+24V": "V24", ...})
+    has mapped the board's own net names onto the link's."""
+    return tuple(rails.get(w, w) for w in ways) == tuple(link)
+
+
 def ph_drop_pins():
     """Pin names for a 4-way bus-B drop: the leg blind-mate's PH and ZH housings, and
     the lever/pedal sensor boards' PH. Pin 1 is GND at every one of them."""
