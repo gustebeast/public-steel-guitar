@@ -107,6 +107,10 @@ their barrel's equivalent width, pours as unlimited) and the widest-bottleneck p
 nearest. The drop is the least-resistance path's track resistance (pours counted as zero).
 Parallel vias and parallel tracks are not summed — add them up yourself and waive with
 the arithmetic if that is the design.
+A path may say `"split": true` when its `amps` is what the listed pads draw **together**
+(the supply pins of one IC): the drop is then solved on the whole copper network with the
+current shared equally between those pads, so a trunk is charged with what is downstream
+of it and no more. The narrowest-point check still uses the full figure.
 
 **Fix.** Size the net in `net_widths`, or lay the path as declared copper (`tracks`), or
 pour it. Then check **M3** (the return path).
@@ -366,7 +370,10 @@ pad-to-pad gap, silk text height and stroke. No via hole sits inside an SMD pad 
 order is for filled-and-capped vias (`quality.fab` `via_in_pad`).
 Excepted: an exposed pad (vias belong in it, **A8**), a pad with no paste (a test pad), and
 any land of 4 mm² or more — a 0.3 mm barrel through a 1.6 mm board holds about a quarter of
-the paste printed on 4 mm², and half of what a small crystal or 0603 pad gets.
+the paste printed on 4 mm², and half of what a small crystal or 0603 pad gets. A large land
+is exempt only for as many barrels as it can feed: the open vias in it, added up, may hold
+no more than a quarter of the paste printed on it (area × 0.12 mm). Two 0.4 mm vias in a
+1.3 × 4.5 connector land are over half of it — put the vias beside the land instead.
 
 **Why.** The numbers a board is routed to are typed into its rule file by someone, and
 DRC then proves the board against *those*. On the first boards this was run on, the rule

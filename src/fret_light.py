@@ -756,14 +756,17 @@ POGO_PITCH = 4.50          # 4.00 courtyards with 0.50 between -- and 0.45 to th
 # four. The -Y lane is left for the M4 on mid (M4_Y["mid"] = -28.00 is in it).
 #     centre lane   +14V GND +14V     power doubled, its return in the middle
 #     +Y lane       SCK  GND SDT      each signal beside a ground, loop ~4.5 x 12
-POGO_LANES = ((0.0, ("+14V", "GND", "+14V")),
-              ((LED_Y_IN + LED_Y_OUT) / 2.0, ("SCK_SEAM", "GND", "SDT_SEAM")))
+# FOUR CIRCUITS, ONE PIN EACH (user, 2026-10-04): the rail and its return in one lane, the
+# clock and the data in the other. The part is rated 12 A a pin against the 0.90 A that
+# crosses this seam, so a second pin on the rail bought nothing but a lost-contact margin.
+POGO_LANES = ((0.0, ("+14V", "GND")),
+              ((LED_Y_IN + LED_Y_OUT) / 2.0, ("SCK_SEAM", "SDT_SEAM")))
 # (which end of board_span faces the seam, which way is inboard)
 _SEAM = {"mid": (0, 1.0), "key": (1, -1.0)}
 
 
 def pogo_ys():
-    """[(y, net)] the six contacts, -Y to +Y -- the same on both boards, tip to tip."""
+    """[(y, net)] the four contacts, -Y to +Y -- the same on both boards, tip to tip."""
     out = []
     for yc, nets in POGO_LANES:
         for i, net in enumerate(nets):
@@ -818,8 +821,8 @@ def _pogo_contact():
 
 
 def pogo_pins(only=None):
-    """[(name, solid)] -- the twelve plungers, barrel front to the shared contact.
-    `only` keeps one board's six, for tools/_probe_tilt.py.
+    """[(name, solid)] -- the eight plungers, barrel front to the shared contact.
+    `only` keeps one board's four, for tools/_probe_tilt.py.
 
     The barrels are the boards' own (board_geom reads the pogo's F.Fab); the plungers are
     here because they leave the board and one set crosses key's end wall."""
@@ -844,7 +847,7 @@ def pogo_notches(x_lo=None, x_hi=None):
     Open at the wall's base rather than a round hole: a hole with the plunger's float
     around it would leave 0.40 of wall under it at a 1.90 axis, half a bead. Open, it
     needs nothing below it, and in the deck's -Z print direction its roof is printed
-    before the notch starts, so it is not an overhang either. Fret 9 loses six 3.00 x
+    before the notch starts, so it is not an overhang either. Fret 9 loses four 3.00 x
     3.40 windows into the seam bay, which has no LEDs in it -- a light trap, not
     crosstalk."""
     bx = _key_seam_wall()

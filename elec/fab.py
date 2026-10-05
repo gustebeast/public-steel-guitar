@@ -28,7 +28,7 @@ from cadkit.pcbflow import fab_package as _fab  # noqa: E402
 # `led_strip` both replaced is gone, 2026-10-01.)
 BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
           "pi_cap", "optical", "ui_board", "fret_led_mid", "fret_led_key",
-          "foot_led",
+          "foot_led_a", "foot_led_b",
           # the leg's blind-mate boards (elec/leg_pogo.py, 2026-10-01): two joints, and each
           # joint's pair is the MIRROR of the other's, so four designs
           "leg_pogo_male_bottom", "leg_pogo_male_top",
