@@ -123,6 +123,9 @@ R_IREF = "3k3"
 # trimming down for colour balance, so the fix and the calibration are one knob (6.2).
 V_RAIL = 14.0
 I_CHAN = 0.015
+I_VCC = 0.03                         # a TLC59711's own supply current, with margin: what
+                                     # its VCC pin's stub carries. The LED current does not
+                                     # pass through it.
 
 # ── the deck's own numbers, read not copied ──────────────────────────────────────────
 # Everything below comes out of src/fret_light.py. A board-local X is a world X minus
@@ -629,9 +632,14 @@ def build(panel):
         paths = [
             {"net": "+24V_IN", "from": "J1.2", "to": "F1.1", "amps": round(i_24, 3)},
             {"net": "+24V", "from": "F1.2", "to": "U10.2", "amps": round(i_24, 3)},
-            {"net": "+14V", "from": "L1.2",
-             "to": ["U%d.19" % (k + 1) for k in range(n_drv)] + ["J11.1", "J13.1"],
+            # the rail: out of the inductor, onto the plane, across the seam pogos. Held
+            # to the WHOLE rail rather than the mid board's share, because the stretch
+            # that matters is L1's own exit and all of it leaves there. A driver's VCC is
+            # only its logic supply (the LED current enters at the anodes, off the plane).
+            {"net": "+14V", "from": "L1.2", "to": ["J11.1", "J13.1"],
              "amps": round(i_all, 3)},
+            {"net": "+14V", "from": "L1.2",
+             "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": I_VCC},
         ]
         pin = {"S6B-PH-SM4-TB": "JST PH S6B-PH-SM4-TB drawing for pin 1; the way order is "
                                 "this file's bay table, the harness's own",
@@ -646,9 +654,10 @@ def build(panel):
                      "are on the fused side so a shorted one blows F1",
         }
     else:
+        # the rail arrives on a pogo land that is stitched straight to the plane; what
+        # leaves the plane by a track is a driver's logic supply
         paths = [{"net": "+14V", "from": "J11.1",
-                  "to": ["U%d.19" % (k + 1) for k in range(n_drv)],
-                  "amps": round(i_own, 3)}]
+                  "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": I_VCC}]
         pin, waive = {}, {}
     notes["quality"] = {
         "power_paths": paths,
@@ -703,6 +712,11 @@ BOARD_NOTES = {
     "refs_on_fab": True,       # 92 LEDs: silkscreen refs would be ink over copper
     "no_mounting_holes": True,  # the hole is declared per board, in the bay
     "router_passes": 20,
+    # THE RAILS' OWN WIDTHS, from the currents in build()'s quality block (IPC-2221, 1 oz,
+    # 10 C): 0.89 A of 24 V wants 0.26 and was routed at 0.19-0.25; the 14 V rail's whole
+    # 1.38 A left L1 on ONE 0.25 track and wants 0.47. The plane carries the rail the
+    # length of the board -- these are the stubs that reach it.
+    "net_widths": {"+24V_IN": 0.30, "+24V": 0.30, "+14V": 0.50},
 }
 
 
