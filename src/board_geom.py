@@ -56,7 +56,7 @@ _TAIL: dict = {
     "PinHeader_2x08_P1.27mm_Horizontal": 1.8,
     "PinHeader_2x07_P1.27mm_Horizontal": 1.8,
     "Legion_PB-22E85": 1.8,                      # 3.4 of terminal less a 1.6 board
-    "JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal": 0.0,   # surface mount, as the 6-way
+    "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": 0.0,   # surface mount
 }
 _THT_LEGS: dict = {}
 _PANEL: dict = {}

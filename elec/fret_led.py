@@ -73,6 +73,7 @@ import skidl  # noqa: E402
 from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 
 import netcheck  # noqa: E402
+import harness as _H  # noqa: E402
 import placecheck  # noqa: E402
 from placecheck import check_placement, fp_box  # noqa: E402
 
@@ -83,7 +84,10 @@ LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
 DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm"
 BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
 IND_FP = "Inductor_SMD:L_Sunlord_SWPA4030S"
-J_FP = "Connector_JST:JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal"
+J_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
+# mouth (the footprint's local +Y 5.30) to the PAD CENTROID layout anchors on (the mean of
+# its six pads, -0.9833), both read out of the .kicad_mod
+J_ANCHOR = 5.30 + 0.9833
 R_FP = "Resistor_SMD:R_0402_1005Metric"
 C_FP = "Capacitor_SMD:C_0402_1005Metric"
 C08_FP = "Capacitor_SMD:C_0805_2012Metric"
@@ -251,26 +255,26 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     comes within 14.08 mm of the MID board's +X edge at its neck-most slide; putting
     the switcher 210 mm away leaves nothing but smoothed 14 V at that end. It is also
     where the harness has to land, so one region carries all the service access."""
-    # A 4-WAY PH, ONE CONTACT A CIRCUIT (user, 2026-10-04; it was the 6-way with the rail
-    # and its return doubled). PH is 2 A per contact against the 0.89 A both boards draw
-    # at 24 V, so one contact carries it at under half its rating. PH rather than XH
-    # because it is 2.00 mm pitch against 2.50 and 4.80 deep against 7.50.
-    # ⚠ THE ORDER IS CHOSEN FOR THE WRONG SOCKET. A 4-way PH is also what bus B's drops
-    # are (harness.PH_PINOUT: GND, V5, CAN_H, CAN_L), and this lead carries 24 V. With V24
-    # on way 1 and GND on way 2, this lead pushed onto a bus-B socket puts its 24 V on that
-    # bus's GROUND and its ground on that bus's 5 V: two dead shorts, one into the motor
-    # board's LED fuse and one into bus B's current-limited switch, and nothing on the
-    # sensor bus ever sees 24 V. Any order with GND on way 1 would put 24 V on a 5 V pin.
-    # It is also the foot strip's order (elec/pi_cap.py FOOT_PINS).
-    J_PINS = ("V24", "GND", "SCK", "SDT")
-    j = Part(name="S4B-PH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
-             tool="skidl", value="S4B-PH-SM4-TB",
-             description="harness in from the Pi daughter board: 24 V, GND, SCK, SDT "
-                         "(LCSC C265102)", footprint=J_FP,
+    # A 4-WAY XH, ONE CONTACT A CIRCUIT (user, 2026-10-04). It was a 6-way PH with the rail
+    # and its return doubled. XH is 3 A per contact against the 0.89 A both boards draw
+    # at 24 V.
+    # ⚠ XH BECAUSE IT IS 24 V. The instrument's rule (user, 2026-10-04): PH carries 5 V
+    # and XH carries 24 V, so no lead can put the higher rail on the lower one's socket.
+    # ⚠ AND THE ORDER IS harness.XH_PINOUT's -- GND, V24, then the two signals -- so the one
+    # mistake still possible is harmless both ways round: a motor-bus lead on this socket
+    # powers the board correctly and lays CAN on the two SPI inputs, and this lead on a
+    # motor-bus socket lays 3.3 V logic on CAN. Neither reverses a supply.
+    J_PINS = ("GND", "V24", "SCK", "SDT")
+    assert J_PINS[:2] == tuple(_H.XH_PINOUT[:2]), (
+        "the fret harness plug is an XH and its supply ways are not the XH bus's own")
+    j = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
+             tool="skidl", value="S4B-XH-SM4-TB",
+             description="harness in from the Pi daughter board: GND, 24 V, SCK, SDT",
+             footprint=J_FP,
              pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(J_PINS)])
     v24_in = Net("+24V_IN")
-    v24_in += j[1]
-    gnd += j[2]
+    gnd += j[1]
+    v24_in += j[2]
     sck, sdt = Net("SCK_IN"), Net("SDT_IN")
     sck += j[3]
     sdt += j[4]
@@ -408,7 +412,7 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
         return (col - dx, -y, 180.0)
 
     place.update({
-        "J1": (mouth + 5.8125, 0.00, 270.0),
+        "J1": (mouth + J_ANCHOR, 0.00, 270.0),
         "C30": turned(0.0, 10.25),
         "C31": turned(0.0, 13.05),
         "C32": turned(-pair, 15.17),         # VIN HF bypass, against U10's VIN/GND
@@ -637,7 +641,7 @@ def build(panel):
     if panel == "key":
         i_24 = i_all * V_RAIL / 24.0 / 0.90
         paths = [
-            {"net": "+24V_IN", "from": "J1.1", "to": "F1.1", "amps": round(i_24, 3)},
+            {"net": "+24V_IN", "from": "J1.2", "to": "F1.1", "amps": round(i_24, 3)},
             {"net": "+24V", "from": "F1.2", "to": "U10.2", "amps": round(i_24, 3)},
             # the rail: out of the inductor, onto the plane, across the seam pogos. Held
             # to the WHOLE rail rather than the mid board's share, because the stretch
@@ -648,7 +652,7 @@ def build(panel):
             {"net": "+14V", "from": "L1.2",
              "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": I_VCC},
         ]
-        pin = {"S4B-PH-SM4-TB": "JST PH S4B-PH-SM4-TB drawing for pin 1; the way order is "
+        pin = {"S4B-XH-SM4-TB": "JST XH S4B-XH-SM4-TB drawing for pin 1; the way order is "
                                 "J_PINS in _supply(), the Pi cap's end to match",
             "LMR33630CRNXR": "TI LMR33630 datasheet SNVSB08, Table 6-1, VQFN (RNX) column",
         }
