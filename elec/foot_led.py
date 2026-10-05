@@ -153,15 +153,16 @@ class Row(object):
     symmetrically and needs no clamp.
     """
 
-    def __init__(self, place, fps, x, gap=0.45, dirn=1.0):
+    def __init__(self, place, fps, x, gap=0.45, dirn=1.0, y=None):
         self.place, self.fps, self.x, self.gap, self.dirn = place, fps, x, gap, dirn
+        self.y = LANE_Y if y is None else y
 
     def add(self, ref, fp, rot=0.0):
         w, h = fp_box(fp)
         if round(rot) % 180:
             w = h
         self.x += self.dirn * w / 2.0
-        self.place[ref] = (self.x, LANE_Y, rot)
+        self.place[ref] = (self.x, self.y, rot)
         self.fps[ref] = fp
         self.x += self.dirn * (w / 2.0 + self.gap)
         return self
@@ -320,22 +321,23 @@ def build(passes=20):
         gnd += cb[2]
         place["U%d" % (k + 1)] = (xd, LANE_Y, 0.0)
         fps["U%d" % (k + 1)] = DRV_FP
-        # the driver's own four passives go OUTBOARD of it, in the lane -- away from the
-        # board's middle, which is where the supply block sits. See Row on the direction.
-        sgn = -1.0 if xd < 0 else 1.0
-        prow = Row(place, fps, xd + sgn * (fp_box(DRV_FP)[0] / 2.0 + 0.45), dirn=sgn)
-        # ⚠ THE 100 nF GOES ON THE CHIP'S +X SIDE WHICHEVER WAY THE ROW RUNS, because that
-        # is the side VCC (pin 19) is on. In the outboard row it sat third from the chip,
-        # and on the two -X drivers the row is on the far side of the package: 13.4 mm
-        # from the pin it bypasses, against 5 (cadkit quality A2). For those two it stands
-        # alone on the inboard side instead.
-        vcc_cap = "C%d" % (10 + k + 1)
-        if sgn > 0:
-            prow.add(vcc_cap, C_FP)
-        else:
-            Row(place, fps, xd + (fp_box(DRV_FP)[0] / 2.0 + 0.45), dirn=1.0).add(vcc_cap, C_FP)
-        for ref, fp in (("R%d" % (k + 1), R_FP), ("C%d" % (k + 1), C_FP),
-                        ("C%d" % (20 + k + 1), C08_FP)):
+        # THE DRIVER'S FOUR PASSIVES STAND IN A ROW ABOVE IT, on the side away from the
+        # LEDs, in the order of the pins they serve: IREF is pin 1 and VCC / VREG are 19
+        # and 20, the top of the package's two columns.
+        # ⚠ NOT BESIDE IT, WHICH IS WHERE THEY WERE. Every one of them has a pad on a
+        # plane net, and its stitch via now stands beside the pad rather than in it
+        # (cadkit quality A12: no open via in a small soldered land). Beside the driver
+        # that is a row of fenced vias across the mouth of the one lane the package's
+        # outboard column escapes by, and its outer zones' returns stopped routing --
+        # two nets, then six when the row was only lifted 2 mm and sat on the pins.
+        # Above the package nothing has to pass.
+        row = (("R%d" % (k + 1), R_FP), ("C%d" % (20 + k + 1), C08_FP),
+               ("C%d" % (10 + k + 1), C_FP), ("C%d" % (k + 1), C_FP))
+        gap = 0.45
+        span = sum(fp_box(fp)[0] for _r, fp in row) + gap * (len(row) - 1)
+        row_y = LANE_Y + fp_box(DRV_FP)[1] / 2.0 + gap + fp_box(C08_FP)[1] / 2.0
+        prow = Row(place, fps, xd - span / 2.0, gap=gap, dirn=1.0, y=row_y)
+        for ref, fp in row:
             prow.add(ref, fp)
 
         for s, zone in enumerate(trio):
