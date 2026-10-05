@@ -81,6 +81,20 @@ LCSC = {
     "SWPA4030S4R7MT": "C57269",      # 4.7 uH, 4x4x3.0 shielded, Isat 3.2 A (optical L1)
     # ⚠ "600" IS 60 OHM in Murata/Sunlord bead numbering. 601 is the 600 ohm part.
     "GZ1608D601TF": "C1002",         # 0603 bead, 600R@100MHz, 200 mA, DCR 450 mohm
+    # -- motor_ctrl's parts that were values and not parts until the 2026-10-04 review --
+    "PNR3015-470M": "C19634068",     # APV 47 uH 3015, Isat 0.88 A; 2,263 (3V3 buck L1).
+                                     # Fits: ANR3015T470M C7427088 (0.43 A, 14.9k)
+    "VLS6045EX-6R8M": "C415364",     # TDK 6.8 uH 6045, Isat 4.7 A, 36 mOhm; 4,123 (5 V buck
+                                     # L2). Nearest: Sunlord SWPA6045S6R8MT C57254 (4.3 A)
+    "JFC1206-1100FS": "C136343",     # JDT 1206 fuse 1 A 63 V; 96,232
+    "JFC1206-1300FS": "C136347",     # JDT 1206 fuse 3 A 63 V; 37,944
+    "JFC1206-1400FS": "C136349",     # JDT 1206 fuse 4 A 63 V; 45,541
+    "B5819W": "C8598",               # CJ B5819W SL, SOD-123 1 A 40 V Schottky, JLC basic
+    "SMAJ30A": "C148230",            # Littelfuse, SMA, unidirectional; 27,577
+    "SMBJ5.0A": "C83333",            # Littelfuse, SMB, unidirectional; 26,310
+    "LESD5L5.0CT1G": "C5274293",     # LRC 0.5 pF bidirectional 5 V clamp, SOD-523; 12,023
+    "TAXM8M4RFDCET2T": "C403948",    # Yajingxin 8 MHz 3225, CL 12 pF, ESR 250 ohm max;
+                                     # 75,154 in stock 2026-10-04 (motor_ctrl HSE)
     "TX322525M4LBDD2T": "C5308007",  # 25 MHz, CL 20 pF, ESR 30 ohm (MCU HSE)
     "K3A260002010": "C2835957",      # 26 MHz, CL 20 pF, ESR 30 ohm (the PHY's limits)
     # ── sourced 2026-09-17 from JLCPCB's own parts API, not from memory ──────────
@@ -126,6 +140,13 @@ LCSC = {
                                     # does not match the Horizontal footprint.)
     "0805L020YR": "C126816",        # Littelfuse 0805 PTC, 200 mA hold / 500 mA trip, 9 V;
                                     # 6,224 in stock 2026-10-04 -- pi_cap F1
+    "SQD50P06-15L": "C3281500",     # Vishay SQD50P06-15L_GE3, P-ch 60 V 15.5 mOhm TO-252;
+                                    # 6,668 in stock 2026-10-04 -- the output panel's power
+                                    # switch. Same pinout: NCE60P50K (28 mOhm), AOD409 (40)
+    "2N7002": "C8545",              # CJ 2N7002 SOT-23, JLC basic part, 1.6 M in stock
+    "BZT52C10T-7": "C248313",       # Diodes Inc 10 V zener, SOD-523; 3,376 in stock
+                                    # 2026-10-04. Alternates in the footprint: BZX584C10,
+                                    # MM5Z10VT1G
     "B6B-XH-A": "C144397",          # JST B6B-XH-A(LF)(SN), 38,933 in stock 2026-10-04 --
                                     # the motor board / output panel power + switch cable
     "TPS2553DBVR": "C55266",        # TI current-limited switch, SOT-23-6; 58,077 in stock
