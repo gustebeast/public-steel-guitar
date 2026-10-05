@@ -16,23 +16,24 @@ A 15-minute loop is working every board to `0 FAIL, 0 OPEN`. Rules of the road: 
 finding is fixed, never waived; a soft one is waived only for a case on its rule's
 "Break it when" list; a sign-off is written only after the thing was actually read.
 
-Scoreboard, 2026-10-04 (every board listed is `0 unconnected, 0 violation(s)`):
+Scoreboard, 2026-10-05 (every board listed is `0 unconnected, 0 violation(s)`):
 
 | board | FAIL | OPEN | what is still open |
 |---|--:|--:|---|
-| `can_tee` | 0 | 7 | M1 (user: the XH pinout decision), M33 / M36 (user: motor current), order-time M12 M30 M37 M42 |
+| `can_tee` | 0 | 7 | M1 (the drop's way order at the MOTOR end: needs a SERVO42D in hand), M33 / M36 (user: motor current), order-time M12 M30 M37 M42 |
 | `leg_pogo_*` (four boards) | 0 | 4 | order-time M12 M30 M37 M42 |
 | `pi_cap` | 0 | 7 | M1 (which end of the UI ribbon is way 1: against brenner's `ui_board`), M11 (CAD fit after the build), M29, order-time four |
 | `lever_sensor` | 0 | 7 | M11, M35, M29, order-time four |
 | `motor_ctrl` | 0 | 10 | M32 / M33 (user: motor current), M23 (USB details), M11, M35, M29, order-time four |
-| `output_panel` | 0 | 10 | M3 / M21 (user: grounding, below), M32 (user: motor current), M11, M35, M29, order-time four |
-| `optical` | - | - | being re-placed and re-routed: see "Optical" below |
+| `output_panel` | 0 | 8 | M32 (user: motor current), M11, M35, M29, order-time four |
+| `optical` | 0 | 7 | M11, M35, M29, order-time four. Two things to measure at bring-up, recorded in its M-notes: U8's case temperature (0.77 W worst case) and the AVDD current |
 | `ui_board`, `fret_led`, `foot_led` | - | - | brenner's boards, not touched by this loop |
 
 "Order-time" items (M12 the order form, M30 the assembly order, M37 the files sent are the
 files checked, M42 stock on the day) can only be signed when an order is being placed. M29
 (buildable by this fab) is signed from the fab's own DFM report on the uploaded files. M11
-needs the lead's build with the new board geometry. M35 needs each MCU's errata sheet read.
+needs the lead's build with the new board geometry. M35 needs each MCU's errata sheet read
+(st.com could not be fetched from here on 2026-10-05: the sheets have to be opened by hand).
 None of these can be closed from the files on hand, so the loop leaves them OPEN on purpose
 rather than ticking them.
 
