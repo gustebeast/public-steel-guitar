@@ -172,3 +172,11 @@ OPEN; an item moves to DONE with the commit that closed it.
     net_widths (+24V_IN/+24V 0.30, +14V 0.50) are declared and did not reach those stubs.
     REPORTED to lead. Item 21a/b are otherwise closed for the fret boards; 21c (foot
     route) is bronner's bisect -- foot's generator has its widths and declarations ready.
+
+23. 2026-10-04 last: fret_led_key quality 0 FAIL (item 22 closed). Stitch stubs follow
+    net_widths (cadkit c555469); ONE declared via in L1.2's land (two took half its
+    paste); the two 24 V neck-downs (0.225 past J1.1, 0.25 into U10.2's 0.25 land) are
+    router copper and waived with the IPC-2221 arithmetic. All three of ui_board,
+    fret_led_mid, fret_led_key are 0 unconnected / 0 DRC / 0 automated FAIL; their
+    22-37 manual items are unsigned. foot_led: route still main's (cadkit c6013c5 moved
+    GND stitch vias beside their pads into Z0_W_RET's room) -- waiting on bronner.
