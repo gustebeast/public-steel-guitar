@@ -2132,7 +2132,7 @@ Basic classes (no feeder charge):
 | Q1 | `AO3400A` | C20917 | 1 | $0.05 | logic-level FET ✓ |
 | R1–R10 | 0603 thick-film | Basic | 10 | $0.03 | per-string LED ballast |
 | FB1 | `BLM18KG601SN1D` | C85833 | 1 | $0.0178 | 600 Ω @100 MHz, 0603, **1.3 A** (the 200 mA `GZ1608D601TF` carried 166 mA worst case) ✓ |
-| R44 | `RK73B3ATTE2R0J` | C5139521 | 1 | $0.64 | 2 Ω **2512** in series with the 24 V input: damps a live plug (48 V ring against the buck's 38 V). KOA, for its single-pulse rating — not a generic part ✓ |
+| R44 | `RK73B3ATTE2R0J` | C5139521 | 1 | $0.57 | 2 Ω **2512** in series with the 24 V input: damps a live plug (48 V ring against the buck's 38 V). KOA, for its single-pulse rating — not a generic part ✓ |
 | Y1 | `TAXM25M4RDBCCT2T` | C403946 | 1 | $0.0765 | **MCU HSE 25 MHz**, 3225, CL 10 pF, ESR ≤ 30 Ω (the 20 pF part was outside the H7's start-up guarantee) ✓ |
 | Y2 | `TAXM26M4RLBCDT2T` | C5143383 | 1 | $0.0737 | **PHY REFCLK 26 MHz**, 3225, CL 20 pF, ESR ≤ 30 Ω by the maker's own sheet ✓ |
 | | | | **148** | **$26.96** | **`open_lines()` is empty** |

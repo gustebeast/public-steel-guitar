@@ -6,11 +6,16 @@ rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction 
 prompt. Where a prompt and this file disagree, this file is right — and where this file carries
 a stale marker, striking the marker is part of the work.
 
-**PCB QUALITY LOOP, state 2026-10-04:** the scoreboard and the three decisions that need the
-user are in `docs/pcb-quality-status.md` (top section). `can_tee`, the four pogo boards,
-`pi_cap`, `lever_sensor`, `motor_ctrl` and `output_panel` are at 0 FAIL with only items that
-cannot be signed from files (order-time, CAD fit, errata, the user's three). `optical` is
-being re-placed (pin-exact decoupling, crystal at its pins, both crystals re-chosen).
+**PCB QUALITY LOOP -- FINISHED 2026-10-05 as far as files can take it (DO NOT RE-ISSUE).**
+Every board of mine is `0 unconnected, 0 violations, 0 FAIL`: `can_tee` 7 OPEN, pogo x4 4,
+`pi_cap` 6, `lever_sensor` 7, `motor_ctrl` 10, `output_panel` 8, `optical` 7. What is OPEN
+cannot be signed from files; the scoreboard in `docs/pcb-quality-status.md` names each:
+order-time M12 / M30 / M37 / M42, the fab's DFM report (M29), the lead's full build (M11),
+the MCU errata sheets (M35: st.com could not be fetched here, they must be opened by hand),
+and the user's: the motor current figure (M32 / M33 / M36) and the SERVO42D's connector
+order against a unit in hand (`can_tee` M1), plus `motor_ctrl` M23.
+`pi_cap` J6 moved 2 mm in on 2026-10-05 (its mated plug stood in two power conductors);
+the cap's through-hole solder ends are modelled now, the 2x20 socket's at an ESTIMATED 1.4.
 
 **POWER BUTTON -- DONE on the boards 2026-10-04 (DO NOT RE-ISSUE).** Chain: UI ribbon ->
 `pi_cap` J5 -> J4 -> `motor_ctrl` J7 -> J3 (6-way XH) <-> `output_panel` J10; Q2 in the
