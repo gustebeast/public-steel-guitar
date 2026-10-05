@@ -14,8 +14,8 @@ Split into focused modules:
                     dovetailed segments; absorbs motor_bank
   motor_bank      — under-string staircase motor faceplate walls
   nut_block       — removable gauged keyhead string termination
-  belt_tensioner  — unified clamp_half (×2/clamp) + lifter: splices each cut belt
-                    into a loop AND sets its tension (retires belt_clamp)
+  belt_tensioner  — in-line belt clamp (half A + half B, one M3 on the 2.5 key): splices
+                    each cut belt into a loop and sets its tension
   tension_fork    — graded belt-tension lock plugs for the motor slots
   build           — composes everything into a colour-coded assembly, writes
                     per-part STEPs + assembly.step (the refresh signal for the

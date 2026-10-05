@@ -123,14 +123,21 @@
       "order": "1 x $14.64 (pack of 50) = $14.64 for 20 needed",
       "what": "M4x30 -- pedal-bar latch collar, one per bar-to-leg joint (model draws one leg)"
     },
-    "m4_button_35": {
-      "usd": 0.3356,
-      "verified": "v",
+    "m3_shcs_12": {
+      "usd": 0.08,
+      "verified": "m",
       "per_instrument": 10,
       "vendor": "McMaster-Carr",
-      "sku": "92095A199",
-      "order": "4 x $8.39 (pack of 25) = $33.56 for 100 needed",
-      "what": "M4x35 -- belt-tensioner draw screws"
+      "sku": "91292A114",
+      "what": "M3x12 socket head cap screw (ISO 4762, 2.5 mm key) -- the belt clamps' draw screws, one per string. Price and SKU carried at a guess; confirm at purchase."
+    },
+    "m3_insert": {
+      "usd": 0.15,
+      "verified": "m",
+      "per_instrument": 10,
+      "vendor": "McMaster-Carr",
+      "sku": "-",
+      "what": "M3 brass insert, about O4.6 x 4 -- dropped into each belt clamp's half B as a captive nut (not heat-set). NO SKU PICKED: belt_tensioner.INS_D / INS_L are a typical short insert; choose one, measure it, set those two numbers."
     },
     "m4_button_40": {
       "usd": 0.5065,
@@ -142,13 +149,13 @@
       "what": "M4x40 -- the four leg lock pins"
     },
     "m4_insert": {
-      "usd": 0.2187,
+      "usd": 0.2190,
       "verified": "v",
-      "per_instrument": 94,
+      "per_instrument": 84,
       "vendor": "McMaster-Carr",
       "sku": "94459A150",
-      "order": "19 x $10.82 (pack of 50) = $205.58 for 940 needed",
-      "what": "M4 brass heat-set, 4.7 installed. 88 drawn + 4 for the eleventh control + 2 fret boards. AT 940 AN ORDER THIS IS THE DEAREST FASTENER LINE ($205.58) -- $0.22 each at McMaster against a few cents from an import seller; the obvious place to save if a second vendor is acceptable."
+      "order": "17 x $10.82 (pack of 50) = $183.94 for 840 needed",
+      "what": "M4 brass heat-set, 4.7 installed. 78 drawn + 4 for the eleventh control + 2 fret boards (the 10 belt clamps take an M3 insert now). AT 840 AN ORDER THIS IS THE DEAREST FASTENER LINE ($183.94) -- $0.22 each at McMaster against a few cents from an import seller; the obvious place to save if a second vendor is acceptable."
     },
     "washer_m3_9021": {
       "usd": 0.0338,
