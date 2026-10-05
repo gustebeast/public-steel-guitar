@@ -1801,3 +1801,25 @@ clean-up to a board already on disk. Re-running a whole route to pick up an impr
 the clean-up throws away a good board and gambles on freerouting giving another one -- the
 non-determinism `elec/README.md` warns about. ⚠ It is not a repair tool and must not become
 one; anything needing judgement about where copper goes belongs in route.py's repair block.
+
+
+## The manual quality pass, 2026-10-05: what changed and why
+
+Read against the makers' sheets and the routed boards (cadkit/PCB_QUALITY.md, M1-M42).
+Everything above that says 14 V, 0.89 A or 396 mW is the history; these are the numbers
+now.
+
+1. **Rail 14.02 -> 14.52 V** (100k over 7k68 || 200k). XINGLIGHT give green, blue and
+   white 3.0 to 3.4 V at 20 mA, not 3.2: four in series is 13.6 V, and the old rail could
+   sit as low as 13.6 itself. 14.52 leaves 0.44 V at its own low limit. The net is
+   `+14V5`. 24 V draw, every fret full white: 0.93 A.
+2. **Driver heat, recomputed:** 0.68 W typical and 0.86 W worst per TLC59711 at full
+   white (it was written as 0.40 W on the old voltages, without the driver's own supply
+   current). Seven vias under each heat pad instead of one.
+3. **The buck's layout is TI's now** (`elec/buck_cell.py`): a 100 nF / 50 V at each
+   VIN/PGND pair and the feedback divider at the FB pin -- it stood 15 mm away, past the
+   inductor. Copper slabs under the input side carry the heat: about 1.25 W in a package
+   with no thermal pad.
+4. **Local bulk is 4.7 uF / 50 V** (was 25 V on a 14.5 V rail), every 100 nF is the 50 V
+   part, the fuse is JFC1206-1200FS (2 A, 63 V, fast).
+5. **Three labelled test pads** in the bay: +24V, +14V5, GND.
