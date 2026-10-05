@@ -1694,9 +1694,9 @@
       "what": "TLV9061IDBVR C398358 -- JLCPCB parts API at qty 30"
     },
     "optical:U8": {
-      "usd": 0.2073,
+      "usd": 0.2299,
       "verified": "v",
-      "what": "AMS1117-3.3 C6186 -- JLCPCB parts API at qty 10"
+      "what": "AP2114H-3.3TRG1 C150716 -- JLCPCB parts API at qty 10"
     },
     "optical:Q1": {
       "usd": 0.0888,
@@ -1724,9 +1724,9 @@
       "what": "B8B-PH-K-S C157974 -- JLCPCB parts API at qty 10"
     },
     "optical:Y1": {
-      "usd": 0.0732,
+      "usd": 0.0765,
       "verified": "v",
-      "what": "TX322525M4LBDD2T C5308007 -- JLCPCB parts API at qty 10"
+      "what": "TAXM25M4RDBCCT2T C403946 -- JLCPCB parts API at qty 10"
     },
     "output_panel:J8": {
       "usd": 0.0659,
@@ -1739,9 +1739,9 @@
       "what": "DC3-2.54-14PAL C5156673 -- JLCPCB parts API at qty 10"
     },
     "optical:Y2": {
-      "usd": 0.0579,
+      "usd": 0.0737,
       "verified": "v",
-      "what": "K3A260002010 C2835957 -- JLCPCB parts API at qty 10"
+      "what": "TAXM26M4RLBCDT2T C5143383 -- JLCPCB parts API at qty 10"
     },
     "output_panel:J9": {
       "usd": 0.0405,

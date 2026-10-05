@@ -1495,8 +1495,17 @@ def _parts():
     # ruled out by this file's own note: 2.2 uF in an 0402 is marginal.
     _c112_x = _part_x("U6") + CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0] / 2
     _c112_y = (_part_y("U6") - CRTYD[_MCU_PKG][1] / 2) + CRTYD["0805C"][1] / 2
-    add("C112", "H7 core regulator cap, VCAP1 -- REQUIRED; in the +X strip at the -Y "
-        "end, nearest its own pin", "0805C", _c112_x, _c112_y)
+    # ⚠ C112 IS UNDER ITS PIN NOW (2026-10-04), end-on, 1.7 mm below the courtyard. The
+    # notes above explain why it could not go hard against the package: ULPI_D3 / D4 are
+    # the two pins beside VCAP1 and a capacitor there takes their lanes, and the band
+    # used to be full. The band is empty now (the decoupling row and the crystal row have
+    # both left it), and 1.7 mm of stand-off is the room D3 / D4 need to pass: it is
+    # 0.5 mm +X of the pin so D4 runs straight down beside its land. 2.6 mm of track from
+    # VCAP1 instead of 8.
+    _c112_x = _part_x("U6") + _lqfp_pin_offset(VCAP1_PIN)[0] + 0.50
+    _c112_y = (_part_y("U6") - CRTYD[_MCU_PKG][1] / 2 - 1.70 - CRTYD["0805C"][0] / 2)
+    add("C112", "H7 core regulator cap, VCAP1 -- REQUIRED; end-on under its own pin",
+        "0805C", _c112_x, _c112_y, 270.0)
 
     # ⚠ AND THE TAIL MOUNT OWNS THE PIN'S OWN Y. The M4's button head is 7.6 across, so
     # a part has to stay _head_r + PKG_CLR + its own half-height clear of the screw axis
@@ -1566,14 +1575,92 @@ def _parts():
     # ⚠ AND THIS IS WHY _assert_mount_heads_clear() EXISTS RATHER THAN A GUARD HERE. A rule
     # written into this loop would have to be rewritten every time the mount moves; the assert
     # simply refuses any placement that puts a part under a head, wherever either one goes.
-    for _k in range(8):
-        add("C%d" % (100 + _k), "MCU decoupling -- -X edge of the package", "0402",
-            _part_x("U6") - _dec_off,
-            _part_y("U6") + (_k - 3.5) / 3.5 * 11.0, 90.0)
-    for _k in range(4):
-        add("C%d" % (108 + _k), "MCU decoupling -- +X edge, outboard of C112/C113",
-            "0402", _part_x("U6") + _dec_off_e,
-            _part_y("U6") + (_k - 1.5) / 1.5 * 9.0, 90.0)
+    # ⚠ PIN-EXACT NOW (2026-10-04), AND ON ALL FOUR SIDES. The even ring above was written
+    # without the pin list ("I will not invent pin numbers") and the quality pass measured
+    # what that cost: sixteen of the MCU's supply pins had no capacitor within 5 mm --
+    # every pin on the +Y and -Y edges (6 to 13 mm), the four on +X (5.3 to 12.9, behind
+    # C112 / C113), and VDDA / VREF+ 17 mm from the two capacitors meant for them, which
+    # stood on the opposite side of the package. The pin list is the footprint's own
+    # (_lqfp_pin_offset, checked against all 176 pads), and the supply pins are read off
+    # the routed board's netlist:
+    #   -X  6, 14/15, 22/23, 36/37      VDDA / VREF+ 38, 39 (VSSA 37)
+    #   -Y  48/49, 61/62, 71/72, 82     VCAP1 81
+    #   +X  90/91, 102/103, 113/114, 126/127    VCAP2 125
+    #   +Y  135/136, 148/149, 158/159, 171, 172
+    # One 100 nF per pair, hard against the courtyard, its supply pad at the supply pin.
+    # Where a SIGNAL pin stands beside the pair the capacitor is turned end-on or shifted
+    # so that pin keeps its lane straight out (ULPI_D0 / CK at 47 / 51, D5 / D6 at 92 / 93,
+    # SWCLK at 137, SWDIO at 124, SAI_SD3 at 40). This MCU uses about thirty of its pins,
+    # so the four strips are mostly empty: the ring costs lanes nobody was using.
+    # An 0402's pads are 0.48 either side of its centre: rot 0 puts pad 1 (the rail) at
+    # -x, 90 at -y, 180 at +x, 270 at +y.
+    _ux6, _uy6 = _part_x("U6"), _part_y("U6")
+    _hx6, _hy6 = CRTYD[_MCU_PKG][0] / 2, CRTYD[_MCU_PKG][1] / 2
+    _cl, _cs = CRTYD["0402"]
+    _PAD = 0.48
+
+    def _pin6(n):
+        _dx, _dy = _lqfp_pin_offset(n)
+        return _ux6 + _dx, _uy6 - _dy                 # CAD y = -footprint y
+
+    def _mid6(a, b, axis):
+        return (_pin6(a)[axis] + _pin6(b)[axis]) / 2.0
+
+    _w6 = _ux6 - _dec_off                             # the -X column, as it always was
+    _e6 = _ux6 + _hx6 + CRTYD_GAP + _cs / 2
+    _n6h, _n6v = _uy6 + _hy6 + CRTYD_GAP + _cs / 2, _uy6 + _hy6 + CRTYD_GAP + _cl / 2
+    _s6h, _s6v = _uy6 - _hy6 - CRTYD_GAP - _cs / 2, _uy6 - _hy6 - CRTYD_GAP - _cl / 2
+    for _ref, _desc, _x, _y, _rot in (
+            # -X: C105 and C106 stay exactly where the even ring put them (pins 14/15 and
+            # 6; C106's ground via is part of a measured repair, see elec/optical.py)
+            ("C105", "MCU decoupling -- pins 14/15", _w6, _uy6 + 1.5 / 3.5 * 11.0, 90.0),
+            ("C106", "MCU decoupling -- pin 6", _w6, _uy6 + 2.5 / 3.5 * 11.0, 90.0),
+            ("C104", "MCU decoupling -- pins 22/23", _w6, _mid6(22, 23, 1), 90.0),
+            ("C103", "MCU decoupling -- pin 36", _w6, _pin6(36)[1] + _PAD, 90.0),
+            # -Y: 48/49 end-on between ULPI_D0 (47) and ULPI_CK (51)
+            ("C100", "MCU decoupling -- pins 48/49, end-on between D0 and CK",
+             _mid6(48, 49, 0), _s6v, 270.0),
+            ("C101", "MCU decoupling -- pins 61/62", _mid6(61, 62, 0), _s6h, 180.0),
+            ("C102", "MCU decoupling -- pins 71/72", _mid6(71, 72, 0), _s6h, 180.0),
+            # pin 82: 0.24 +X of the pin, so VCAP1's track (pin 81) passes its pad
+            ("C107", "MCU decoupling -- pin 82, clear of VCAP1's track",
+             _pin6(82)[0] + 0.24 + _PAD, _s6h, 0.0),
+            # +X: 90/91 stepped 0.25 -Y so ULPI_D5 (92) runs straight out above it
+            ("C108", "MCU decoupling -- pins 90/91, below D5's lane",
+             _e6, _pin6(91)[1] - 0.25 - _PAD, 270.0),
+            ("C109", "MCU decoupling -- pins 102/103", _e6, _mid6(102, 103, 1), 270.0),
+            ("C115", "MCU decoupling -- pins 113/114", _e6, _mid6(113, 114, 1), 270.0),
+            # +Y: 135/136 end-on, east of SWCLK (137)
+            ("C117", "MCU decoupling -- pins 135/136, end-on beside SWCLK",
+             _mid6(135, 136, 0), _n6v, 90.0),
+            ("C118", "MCU decoupling -- pins 148/149", _mid6(148, 149, 0), _n6h, 0.0),
+            ("C128", "MCU decoupling -- pins 158/159", _mid6(158, 159, 0), _n6h, 0.0),
+            ("C129", "MCU decoupling -- pins 171/172", _mid6(171, 172, 0) + _PAD, _n6h, 0.0),
+            # VDDA / VREF+: a second column -X of the first, supply pads toward the pins,
+            # and SAI_SD3 (pin 40, 0.5 mm -Y of VDDA) keeps its lane under them
+            ("C110", "MCU VDDA / VREF+ bypass -- AT pins 38/39",
+             _w6 - _cs / 2 - CRTYD_GAP - _cl / 2, _mid6(38, 39, 1), 180.0),
+            ("C111", "MCU VDDA / VREF+ bypass, second -- beside C110",
+             _w6 - _cs / 2 - CRTYD_GAP - _cl / 2, _mid6(38, 39, 1) + _cs + CRTYD_GAP, 180.0)):
+        add(_ref, _desc, "0402", _x, _y, _rot)
+    # pins 126/127 sit behind C113 (VCAP2, pin 125, hand-placed at its pin): their
+    # capacitor stands just +Y of it, supply pad down toward pin 127
+    add("C116", "MCU decoupling -- pins 126/127, +Y of C113", "0402", _e6,
+        _part_y("C113") + CRTYD["0805C"][1] / 2 + CRTYD_GAP + _cl / 2, 90.0)
+
+    # ⚠ THE CRYSTAL IS AT ITS PINS (2026-10-04). It stood in a row 20 mm below the package
+    # at the +X end, and OSC_IN / OSC_OUT are pins 29 / 30 on the -X edge: 35 and 36 mm of
+    # track round two sides of the MCU, through three and four vias, on a high-impedance
+    # oscillator node. It is now directly -X of the two pins, outboard of the capacitor
+    # column (which leaves a window there), turned 180 so its OSC_IN land faces pin 29.
+    # Each load capacitor stands off the land it loads.
+    _y1x = _w6 - _cs / 2 - CRTYD_GAP - CRTYD["3225"][0] / 2
+    _y1y = _mid6(29, 30, 1)
+    add("Y1", "25 MHz crystal -- MCU HSE, AT pins 29/30", "3225", _y1x, _y1y, 180.0)
+    add("C123", "crystal load cap -- Y1 OSC_IN", "0402", _y1x + 1.10,
+        _y1y + CRTYD["3225"][1] / 2 + CRTYD_GAP + _cl / 2, 90.0)
+    add("C124", "crystal load cap -- Y1 OSC_OUT", "0402", _y1x - 1.10,
+        _y1y - CRTYD["3225"][1] / 2 - CRTYD_GAP - _cl / 2, 270.0)
 
     # ⚠ THE TWO STRAPS GO TO THEIR PINS. They were loose items in the row below, which put
     # R30 26 mm from the BOOT0 pin it pulls down and R31 14 mm from NRST -- so the router
@@ -1717,11 +1804,9 @@ def _parts():
     _y1_h = CRTYD["3225"][1]
     _y1_y = y - _y1_h / 2
     _y1_x = x1 - CRTYD["3225"][0] / 2
-    add("Y1", "25 MHz crystal -- MCU HSE", "3225", _y1_x, _y1_y)
-    _c_dx = CRTYD["3225"][0] / 2 + CRTYD_GAP + CRTYD["0402"][0] / 2
-    add("C123", "crystal load cap -- Y1 OSC_IN", "0402", _y1_x - _c_dx, _y1_y)
-    add("C124", "crystal load cap -- Y1 OSC_OUT", "0402",
-        _y1_x - _c_dx - CRTYD["0402"][0] - CRTYD_GAP, _y1_y)
+    # ⚠ AND NOW THE ROW IS EMPTY: Y1, C123 and C124 are at the MCU's pins 29 / 30 (see the
+    # decoupling ring). The row KEEPS ITS HEIGHT, because every row below is placed from
+    # this y and the board is routed against where they are.
     y = _y1_y - _y1_h / 2 - CRTYD_GAP
     # U11 is the mid-rail reference the 20 TIAs sit on: single-supply transimpedance needs
     # a bias for the non-inverting inputs, and all 20 quad channels are spoken for.
@@ -2374,8 +2459,11 @@ def _parts():
     _row_x0 = _ux + 0.30
     for _k, (_ref, _desc) in enumerate((
             ("C120", "PHY VDD33 regulator output cap, 1 uF -- pads 15 and 18"),
-            ("R39", "PHY VBUS series 20 k, device-only -- pad 17"),
-            ("C121", "PHY VBAT/VDDIO bypass -- pad 16 and 9"))):
+            # C121 before R39 (2026-10-04): third in the row it was 6.2 mm from VBAT, the
+            # pin it bypasses; second it is 4.5. A 20 k series resistor does not care
+            # which end of the row it is at
+            ("C121", "PHY VBAT bypass -- pad 16"),
+            ("R39", "PHY VBUS series 20 k, device-only -- pad 17"))):
         add(_ref, _desc, "0402", _row_x0 + _r_w / 2 + _k * (_r_w + CRTYD_GAP), _row_y)
     # ⚠ C119: A SECOND BYPASS, AT PIN 9, BECAUSE ONE CAP CANNOT SERVE BOTH PINS IT NAMES.
     # C121's description reads "pad 16 and 9" and the row above is ordered "by the pad each
@@ -2418,8 +2506,21 @@ def _parts():
     # is where the packer happened to put a part called "bulk cap". Beside R39 it does its
     # job, and the 2.8 mm it gives back is what lets the corridor below be 5.5 mm instead
     # of the 2.7 the row could otherwise afford.
-    add("C130", "VBUS sense filter -- the C of R39's RC; see the note", "0805C",
-        _part_x("R39") + 2.6, _part_y("R39") - 2.9)
+    # U11's own supply bypass (2026-10-04). It had none: the nearest capacitor on +3V3A
+    # was 9 mm away, on the amplifier whose output is the reference all twenty channels
+    # share. End-on above pin 5 (V+), in the gap between its row and the next one up --
+    # placed by hand because a fourth member in U11's packer group spills the row and
+    # the conduit assert refuses the longer board.
+    add("C144", "U11 supply bypass -- AT its V+ pin", "0402", _part_x("U11") + 1.14,
+        _part_y("U11") + CRTYD["SOT-23-5"][1] / 2 + CRTYD_GAP + CRTYD["0402"][0] / 2, 90.0)
+
+    # ⚠ AND NOW IT IS AT U10's VBUS PIN (2026-10-04). Beside R39 it was 6.8 mm from the
+    # clamp array's rail pin, which needs it more: a rail-clamp dumps a strike into this
+    # capacitor, and the inductance between them is what the data lines see. It is still
+    # 5 mm from R39, and an RC with a 2 ms time constant is indifferent to that.
+    add("C130", "VBUS bypass at the clamp array's rail pin; also the C of R39's RC",
+        "0805C", _part_x("U10") + CRTYD["SOT-563"][0] / 2 + CRTYD_GAP
+        + CRTYD["0805C"][0] / 2 + 0.05, _part_y("U10") + 1.06)
 
 
     # +X POCKET, three columns out from the +X face.
@@ -2514,7 +2615,7 @@ _MPN_RULES = (
                                                     "C693480 was WRONG: that is a P6KE39CA TVS")),
     # (U12, the PCM1808, is GONE with the magnetic channel -- it is on the output panel
     #  now, where the pickup lands. Same part, same reasoning, different board.)
-    ("U8",   ("AMS1117-3.3",     "C6186",    0.2028, "3V3 DIGITAL, SOT-223 tab, @5+. 0.51 W will "
+    ("U8",   ("AP2114H-3.3TRG1", "C150716",  0.2299, "3V3 DIGITAL, SOT-223 tab, @5+. 0.51 W will "
                                                     "not fit a SOT-23-5. Noisy, but it feeds "
                                                     "the MCU, not the front end")),
     ("U9",   ("SPX3819M5-L-3-3/TR", "C9055", 0.1903, "3V3 ANALOG, 40 uVrms, SOT-23-5, @10+. Low load "
@@ -2531,9 +2632,10 @@ _MPN_RULES = (
     # the netlist and left this table saying "confirm vs USB3343". Per-ref now, and the
     # frequency is the least of it -- CL and ESR are what decide whether an oscillator
     # starts and runs on frequency, and the USB334x fixes both (CL 20 pF, ESR <= 30 ohm).
-    ("Y1",   ("TX322525M4LBDD2T", "C5308007", 0.0959, "25 MHz 3225, CL 20 pF, ESR <= 30 ohm "
-                                                    "-- MCU HSE")),
-    ("Y2",   ("K3A260002010",    "C2835957", 0.0959, "26 MHz 3225, CL 20 pF, ESR <= 30 ohm "
+    ("Y1",   ("TAXM25M4RDBCCT2T", "C403946", 0.0765, "25 MHz 3225, CL 10 pF, ESR <= 30 ohm "
+                                                   "-- MCU HSE; see elec/optical.py for why "
+                                                   "not the 20 pF part")),
+    ("Y2",   ("TAXM26M4RLBCDT2T", "C5143383", 0.0737, "26 MHz 3225, CL 20 pF, ESR <= 30 ohm "
                                                     "-- the USB334x's own limits, T4.13")),
     ("Q1",   ("AO3400A",         "C20917",   0.0849, "N-ch logic-level FET, SOT-23, LED row gate, @5+")),
     # Bare copper. It is a PLACED part as far as the CAD is concerned -- it occupies
