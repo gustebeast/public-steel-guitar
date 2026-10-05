@@ -352,13 +352,14 @@ def clamp_p(motor_xyz, screw_xyz, upper, x0, x1, down=0.0):
     nut on the ceiling, D.CLAMP_END_CLR off the pulley it has just been travelling toward
     (INSTALL_NOTES), and the nut's travel carries it D.BELT_PER_MM per mm away from there.
 
-    WHICH PULLEY THAT IS. The screw is right-hand, so the nut rises when the screw turns
-    clockwise seen from above; the pulley's +y side then moves toward +x. The upper run
-    leaves the screw pulley on its +y side, so a clamp on it is carried TOWARD THE SCREW as
-    the nut rises, and one on the lower run toward the motor. ⚠ Derived, not yet seen on
-    a bench: a left-hand screw swaps the two."""
+    WHICH PULLEY THAT IS depends on the thread's hand, D.SCREW_HAND. A right-hand screw
+    raises its nut when it turns clockwise seen from above; the pulley's +y side then
+    moves toward +x. The upper run leaves the screw pulley on its +y side, so a clamp on
+    it is carried TOWARD THE SCREW as the nut rises, and one on the lower run toward the
+    motor. A left-hand screw swaps the two. ⚠ Derived, not yet seen on a bench."""
     p0, p1 = clamp_span(motor_xyz, screw_xyz, upper, x0, x1)
-    return p0 + down * D.BELT_PER_MM if upper else p1 - down * D.BELT_PER_MM
+    at_screw_end = upper == (D.SCREW_HAND == "RH")       # where it is with the nut on the ceiling
+    return p0 + down * D.BELT_PER_MM if at_screw_end else p1 - down * D.BELT_PER_MM
 
 
 def clamp_frame(motor_xyz, screw_xyz, upper, p, x0, x1, da=0.0):
