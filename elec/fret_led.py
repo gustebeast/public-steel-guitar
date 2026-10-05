@@ -736,8 +736,8 @@ def build(panel):
              round(ly + BC.L1_LAND * _ks + 1.2 * _kc, 3))]
         # the switch node and the two input loops are laid, not routed (buck_cell.tracks)
         notes["tracks"] = list(notes.get("tracks", [])) + BC.copper(
-            *cell_org, v_out="+14V5")
-        notes["vias"] = notes["vias"] + BC.vias(*cell_org)
+            *cell_org, v_out="+14V5") + BC.heat_copper(*cell_org)
+        notes["vias"] = notes["vias"] + BC.vias(*cell_org) + BC.heat_vias(*cell_org)
         notes["stitch_exceptions"] = BC.STITCH_EXCEPTIONS
         waive = {
             # IPC-2221, 1 oz outer: 0.250 mm carries 0.875 A at a 10 C rise, so 0.89 A is

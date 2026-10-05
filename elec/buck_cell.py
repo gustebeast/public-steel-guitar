@@ -163,3 +163,32 @@ def vias(origin, turn, v_in="+24V"):
 
 
 STITCH_EXCEPTIONS = ("U10.1", "U10.11")
+
+
+# ── MORE GROUND COPPER, for the board whose buck runs hot ─────────────────────────────
+# The RNX package has no pad: its heat leaves through the pins, mostly the two PGND
+# pins, into whatever copper they are soldered to, and 35 um copper is 74 C/W a SQUARE.
+# The ground slab under the input side is 14 mm2 with six vias. This lays a second band
+# beside it, joined to it, on the front and again on the back, with nine vias between
+# them and the ground plane: about three times the copper within 5 mm of pin 1.
+# ⚠ ONLY ON THE +y SIDE AND ONLY FROM THE INPUT SLAB. The right-hand PGND pin is walled
+# in by the switch node, which leaves the package at +y and turns over it.
+# The keyhead fret board asks for it (1.15 W at full white); the foot boards' 0.9 W
+# does not need it and their lane has no room beside the cell.
+HEAT_Y = 4.50                                    # the band's centre line, 2.0 wide
+HEAT_X = (-4.30, +10.20)                         # clear of a test pad at -6.5 and at 12.5
+HEAT_VIAS_X = (-4.00, -2.50, -1.00, 0.50, 4.20, 5.70, 7.20, 8.70, 10.20)   # none in 2.5's pad
+
+
+def heat_copper(origin, turn):
+    """BOARD_NOTES["tracks"] entries: see above."""
+    a = at(origin, turn, HEAT_X[0], HEAT_Y)[:2]
+    b = at(origin, turn, HEAT_X[1], HEAT_Y)[:2]
+    return [("GND", "F.Cu", 2.00, [a, b]), ("GND", "B.Cu", 2.00, [a, b]),
+            # and a fat join into the input slab, which the band only overlaps by 0.2
+            ("GND", "F.Cu", 1.60, [at(origin, turn, -3.20, 2.40)[:2],
+                                   at(origin, turn, -3.20, HEAT_Y)[:2]])]
+
+
+def heat_vias(origin, turn):
+    return [("GND",) + at(origin, turn, x, HEAT_Y)[:2] for x in HEAT_VIAS_X]
