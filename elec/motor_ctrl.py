@@ -250,10 +250,11 @@ def motor_ctrl():
     # nothing on them: the pull-up lives on the output panel (the switch is a 12 V / 0.3 A
     # part), so with this board dark the lines still work -- which they must, because they
     # are what turns it on.
-    # Ways 1-4 are what they were (the two 24 V contacts stay doubled: 3 A per XH contact),
-    # so the declared 24 V copper under this connector did not move. A 6-way plug also
-    # cannot enter any 4-way header on the instrument, which retires this link's share of
-    # the "two pinouts on one 4-way XH" finding.
+    # The ways are the instrument's one order (harness.py): GND, 24 V, the two switch lines
+    # where a 4-way has its data, then the second 24 V and GND on ways 5 and 6. The two
+    # 24 V contacts stay doubled (3 A per XH contact); they are 7.5 mm apart now with the
+    # switch posts between them, so the tie runs round the posts on B.Cu. A 6-way plug
+    # cannot enter any 4-way header on the instrument.
     j3 = Part(name="B6B-XH-A", ref_prefix="J", tag="J3", ref="J3", dest="NETLIST",
               tool="skidl", value="B6B-XH-A",
               description="24 V in from output_panel J10 + the power button's two throws out",
@@ -265,9 +266,9 @@ def motor_ctrl():
     c29 = _c("C29", "100nF/50V", "24 V HF bypass at the inlet J3")
     v24 += c29[1]; gnd += c29[2]
     sw_up, sw_dn = Net("PWR_SW_UP"), Net("PWR_SW_DN")
-    sw_up += j3[5]; sw_dn += j3[6]
-    gnd += j1[1], j2[1], j6[1], j3[1], j3[4]
-    v24 += j1[2], j3[2], j3[3]
+    sw_up += j3[3]; sw_dn += j3[4]
+    gnd += j1[1], j2[1], j6[1], j3[1], j3[6]
+    v24 += j1[2], j3[2], j3[5]
     a_h += j1[3]; a_l += j1[4]
     # bus B still passes THROUGH -- it is now two connectors rather than two halves of
     # one, which is the same node with a service joint in the middle of it
@@ -499,26 +500,32 @@ def motor_ctrl():
     # goes in. Every other edge is as tight (9 mm to the deck, 10 to the floor, 8 to the Pi).
     # The only direction with room is straight off the board's face into the bay, which is
     # the direction every OTHER lead on this board already leaves by: a top-entry XH.
-    # So the link is a stock USB-A -> 4-way XH lead (Amazon B0H9QTYT83), plugged into the
-    # Pi's USB-A like the old cable was. XH is what every board-level connector in the
-    # instrument is (user), the cable's crimps re-pin in the housing without solder if a
-    # batch arrives in another order, and nothing here needed USB-C: no CC (a USB-A host has
+    # So the link is a USB-A lead ending in a 4-way PH housing, plugged into the Pi's
+    # USB-A like the old cable was. Nothing here needed USB-C: no CC (a USB-A host has
     # none, so R8/R9 went with it), no orientation, and full speed is all the link uses.
-    # Pin order is USB's own: 1 VBUS, 2 D-, 3 D+, 4 GND.
+    # ⚠ PH, AND GND FIRST (user's connector rule, 2026-10-04: XH carries 24 V, PH carries
+    # 5 V; ways are GND, power, data, data). This was an XH in USB's own order -- VBUS, D-,
+    # D+, GND -- which made it a fourth thing a 4-way XH plug could be, and the worst one:
+    # seated in a motor-bus drop it put the bus's 24 V on the Pi's D- and the Pi's VBUS on
+    # ground. As a PH the only header it can enter by mistake is a bus-B drop (GND, 5 V,
+    # CAN_H, CAN_L): ground on ground, the Pi's 5 V on the bus's 5 V, and a 3.3 V CAN pair
+    # on the data lines.
     # VBUS IS DELIBERATELY UNCONNECTED, as it was on the USB-C: the board runs off the 24 V
     # rail, and taking VBUS as well would leave the Pi's supply and the instrument's
     # arguing over who holds the rail. It is a landing for a future VBUS-present sense.
-    usb = Part(name="B4B-XH-A", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
+    usb = Part(name="B4B-PH-K-S", ref_prefix="J", tag="J4", ref="J4", dest="NETLIST",
                tool="skidl",
-               value="B4B-XH-A", footprint=XH_FP,
-               description="USB 2.0 link to the Pi (USB-A -> XH lead): VBUS n/c, D-, D+, GND",
+               value="B4B-PH-K-S",
+               footprint="Connector_JST:JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical",
+               description="USB 2.0 link to the Pi (USB-A -> PH lead): GND, VBUS n/c, D-, D+, "
+                           "LCSC C131334",
                pins=[Pin(num=i + 1, name=n, func=P)
-                     for i, n in enumerate(("VBUS", "D-", "D+", "GND"))])
+                     for i, n in enumerate(("GND", "VBUS", "D-", "D+"))])
     vbus = Net("VBUS_NC")
-    vbus += usb[1]
-    dm += usb[2]
-    dp += usb[3]
-    gnd += usb[4]
+    gnd += usb[1]
+    vbus += usb[2]
+    dm += usb[3]
+    dp += usb[4]
     # ── 24 V -> 5 V FOR THE Pi, AND THE CROWBAR THAT MATTERS MORE ────────────
     # THE POWER BOARD IS GONE AND THIS IS IT (user, 2026-09-15). It was its own
     # PCB in the tray; merging it here deletes a board, a connector and a cable --
@@ -646,17 +653,19 @@ def motor_ctrl():
               "U5 fails short", footprint="Fuse:Fuse_1206_3216Metric",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v5_raw += f2[1]; v5 += f2[2]
-    # 5 V out on TWO contacts and GND on two: XH is rated 3 A per contact and the
-    # design draw IS 3 A, so a single contact would sit exactly on its rating.
-    j5 = Part(name="B4B-XH-A", ref_prefix="J", tag="J5", ref="J5", dest="NETLIST",
+    # 5 V out on TWO contacts and GND on two. It is a PH because it is 5 V (harness.py:
+    # XH carries 24 V, PH carries 5 V) and a 6-way because PH is 2 A per contact and the
+    # design draw is 3 A: ways 2 and 5 carry 1.5 A each, ways 3 and 4 carry nothing.
+    j5 = Part(name="B6B-PH-K-S", ref_prefix="J", tag="J5", ref="J5", dest="NETLIST",
               tool="skidl",
-              value="B4B-XH-A", description="5 V to the Pi's GPIO pins 2/4 + 6/9",
-              footprint=XH_FP,
+              value="B6B-PH-K-S",
+              description="5 V to the Pi's GPIO pins 2/4 + 6/9, LCSC C131342",
+              footprint="Connector_JST:JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical",
               pins=[Pin(num=i + 1, name=n, func=P)
                     for i, n in enumerate(                 # = pi_cap J2, one list
                         {"V5": "+5V"}.get(w, w) for w in harness.PI_5V_LINK)])
-    gnd += j5[1], j5[4]
-    v5 += j5[2], j5[3]
+    gnd += j5[1], j5[6]
+    v5 += j5[2], j5[5]
     # THE LEVER BUS'S 5 V. Eleven boards at ~30 mA each (CH32V203 + SN65HVD230 + MT6701,
     # through each board's own AP2112K) is ~0.33 A on U5, which is a 3 A part sized for
     # the Pi. At a typical Pi draw (0.6-1.5 A) that is comfortable; at the full 3 A the
@@ -1002,7 +1011,9 @@ BOARD_NOTES = {
         # ⚠ J4 IS OFF THE -Y EDGE NOW: that edge belongs to the bus-B pair alone (see J2).
         # It keeps its top-entry XH and its mating direction -- world +X once standing --
         # so the USB lead still leaves toward the bay; only its seat moved.
-        "J4": (-25.90, -16.50, 90.0),
+        # (4-way PH since 2026-10-04: posts at y -22.5 / -20.5 / -18.5 / -16.5, so D- and D+
+        # stand level with their clamps D7 and D6)
+        "J4": (-25.90, -19.50, 90.0),
         "U4": (12.60, -7.50, 90.0),
         "U2": (8.10, 2.80, 90.0),
         "U3": (14.60, 2.80, 90.0),
@@ -1085,7 +1096,7 @@ BOARD_NOTES = {
         "D9": (-15.40, -1.50, 90.0),
         "C21": (-15.40, 5.50, 90.0),
         "C22": (-15.40, 10.30, 90.0),
-        "J5": (-22.90, -2.60, 90.0),
+        "J5": (-22.90, -0.85, 90.0),    # 6-way PH: posts at y -5.85 ... 4.15, way 2 where it was
         # â”€â”€ the LED strip's buck â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         # âš  TWO ROWS, AND THE LAND SIZES ARE WHY. Measured off the routed board rather
         # than assumed from the body: L3 (Bourns SRN6028) lands 6.92 x 8.11 and U6's
@@ -1158,7 +1169,9 @@ BOARD_NOTES = {
     "tracks": [
         ("+24V", "B.Cu", 2.0, [(12.85, 11.5), (12.85, 3.0), (11.85, 2.0), (-1.0, 2.0),
                                (-2.0, 1.0), (-2.0, -13.75), (-1.0, -14.75), (0.6, -14.75)]),
-        ("+24V", "B.Cu", 1.2, [(10.35, 11.5), (12.85, 11.5)]),      # J3's two 24 V ways tied
+        # J3's two 24 V ways tied: way 2 at x 12.85, way 5 at x 5.35, round the north of
+        # the two switch posts between them (0.33 mm off their lands)
+        ("+24V", "B.Cu", 1.2, [(5.35, 11.5), (5.35, 13.4), (12.85, 13.4), (12.85, 11.5)]),
         # THE PI'S 5 V SUPPLY, DECLARED (2026-10-01). U5 is a 3 A buck behind a 4 A fuse and
         # the router drew its whole power path -- 24 V in, the switch node, the inductor's
         # output, the fuse, the run to J5 -- at the board default, 0.25 mm (0.88 A at a
@@ -1185,8 +1198,8 @@ BOARD_NOTES = {
         #   F2 -> J5 (the Pi) and the TVS D9: 2 mm, over the top of the cap column
         ("+5V", "F.Cu", 1.5, [(-9.9, 10.9), (-9.9, 13.8)]),
         ("+5V", "F.Cu", 2.0, [(-9.9, 13.8), (-19.2, 13.8), (-19.2, -3.85)]),
-        ("+5V", "F.Cu", 1.5, [(-19.2, -3.85), (-22.9, -3.85)]),
-        ("+5V", "F.Cu", 1.5, [(-19.2, -1.35), (-22.9, -1.35)]),
+        ("+5V", "F.Cu", 1.5, [(-19.2, -3.85), (-22.9, -3.85)]),     # J5 way 2
+        ("+5V", "F.Cu", 1.5, [(-19.2, 2.15), (-22.9, 2.15)]),       # J5 way 5
         ("+5V", "F.Cu", 1.5, [(-19.2, -3.65), (-15.4, -3.65)]),
         #   the TVS D8 (and the EN divider behind it) straight off the 2 mm bar: the router
         #   left that island open once the lanes above were in its way
@@ -1260,9 +1273,9 @@ BOARD_NOTES["tracks"] += [("PG_5V", "F.Cu", 0.25, [(-13.50, -21.98), (-12.52, -2
 #   sit beside the lands, then 0.5 mm along y 18.94 to C25 and into U6's IN (pin 1)
 BOARD_NOTES["vias"] += [("+5V", -14.95, 15.2), ("+5V", -16.2, 17.5)]
 BOARD_NOTES["tracks"] += [
-    ("+24V", "F.Cu", 0.7, [(10.35, 11.5), (10.35, 14.7), (8.95, 16.1), (-24.8, 16.1),
+    ("+24V", "F.Cu", 0.7, [(5.35, 11.5), (5.35, 14.7), (3.95, 16.1), (-24.8, 16.1),
                            (-28.4, 19.7)]),
-    ("+24V", "F.Cu", 0.3, [(7.52, 16.1), (7.52, 17.0)]),                # C29
+    ("+24V", "F.Cu", 0.3, [(5.35, 14.7), (7.52, 16.87), (7.52, 17.0)]),  # C29
     ("+24V_LED", "F.Cu", 0.6, [(-25.6, 19.7), (-23.41, 19.7), (-22.08, 18.37),
                                (-19.31, 18.37), (-12.69, 25.0), (9.9, 25.0),
                                (13.53, 21.37), (19.96, 21.37), (19.96, 19.83)]),
@@ -1284,7 +1297,7 @@ BOARD_NOTES["quality"] = {
         # the inlet from output_panel, two XH contacts. Bus A's west feed is the big one:
         # up to 2.9 A with ten movers slewing (the dual-feed split, see "tracks")
         {"net": "+24V", "from": "J3.2", "to": ["J1.2"], "amps": 2.9},
-        {"net": "+24V", "from": "J3.2", "to": ["J3.3"], "amps": 2.7},
+        {"net": "+24V", "from": "J3.2", "to": ["J3.5"], "amps": 2.7},
         # the Pi's buck: 15 W out at ~88 % is 0.71 A at 24 V; F1 is 1 A
         {"net": "+24V", "from": "J3.2", "to": ["F1.1"], "amps": 0.8},
         {"net": "+24V_BUCK", "from": "F1.2", "to": ["U5.2"], "amps": 0.8},
@@ -1295,7 +1308,7 @@ BOARD_NOTES["quality"] = {
         {"net": "+24V", "from": "J3.2", "to": ["U1.5"], "amps": 0.1},
         # U5's output, 3 A rated, through F2 (4 A) to the Pi on J5's two contacts
         {"net": "+5V_RAW", "from": "L2.2", "to": ["F2.1"], "amps": 3.0},
-        {"net": "+5V", "from": "F2.2", "to": ["J5.2", "J5.3"], "amps": 3.0},
+{"net": "+5V", "from": "F2.2", "to": ["J5.2", "J5.5"], "amps": 3.0},
         # bus B's limiter: 565 mA is the TPS2553's maximum limit at 49.9 k
         {"net": "+5V", "from": "F2.2", "to": ["U6.1"], "amps": 0.57},
         {"net": "+5V_BUSB", "from": "U6.6", "to": ["J2.2", "J6.2"], "amps": 0.57},
@@ -1313,12 +1326,21 @@ BOARD_NOTES["quality"] = {
         "B4B-XH-A": "JST eXH.pdf p.5, Header / Top entry type: seen from the slotted wall "
                     "(the wall 2.35 mm from the posts), No. 1 circuit is the right-hand "
                     "post. KiCad JST_XH_B4B-XH-A has that wall at -Y and pad 1 at the -X "
-                    "end: the same post. Way names from harness (XH_PINOUT, LIGHTS_LINK, "
-                    "PI_5V_LINK); J4 is USB's own order, 1 VBUS 2 D- 3 D+ 4 GND. Read "
-                    "2026-10-04",
+                    "end: the same post. Way names from harness (XH_PINOUT, LIGHTS_LINK). "
+                    "Read 2026-10-04",
         "B6B-XH-A": "the same JST drawing and the same KiCad family as the 4-way (eXH.pdf "
                     "p.5; pad 1 at the -X end, slotted wall -Y). Way names are "
                     "harness.PWR_LINK, the list output_panel J10 is built from",
+        "B4B-PH-K-S": "JST ePH.pdf p.2, Through-hole type shrouded header / Top entry "
+                      "type, 3 circuits or more: seen from the slotted wall (the wall "
+                      "1.7 mm from the posts), No. 1 circuit is the right-hand post. KiCad "
+                      "JST_PH_B4B-PH-K has that wall at -Y (courtyard -2.2 against +3.3) "
+                      "and pad 1 at the -X end: the same post. J4's ways are 1 GND, 2 VBUS "
+                      "(open), 3 D-, 4 D+. Read 2026-10-04",
+        "B6B-PH-K-S": "the same JST drawing and the same KiCad family as the 4-way "
+                      "(ePH.pdf p.2; pad 1 at the -X end, slotted wall -Y). Way names are "
+                      "harness.PI_5V_LINK (GND 5V nc nc 5V GND), the list pi_cap J2 is "
+                      "built from; it reads the same from either end",
         "S4B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with the "
                          "board below, No. 1 circuit is on the left. KiCad "
                          "JST_PH_S4B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
@@ -1354,20 +1376,23 @@ BOARD_NOTES["quality"] = {
         "M1": "five cables, each a straight lead, each end built from one list. J1 -> the "
               "motor tees: harness.XH_PINOUT (GND, 24 V, CAN_H, CAN_L). J2 / J6 -> the "
               "pedal and lever chains: harness.PH_PINOUT (GND, 5 V, CAN_H, CAN_L). J3 <- "
-              "output_panel J10: harness.PWR_LINK (GND, 24, 24, GND, SW_UP, SW_DN). J7 -> "
+              "output_panel J10: harness.PWR_LINK (GND, 24, SW_UP, SW_DN, 24, GND). J7 -> "
               "pi_cap J4: harness.LIGHTS_LINK (GND, 24, SW_UP, SW_DN). J5 -> pi_cap J2: "
-              "harness.PI_5V_LINK (GND, 5, 5, GND). J4 is a bought USB-A lead: 1 VBUS "
-              "(open here), 2 D-, 3 D+, 4 GND. Every housing is polarised; the 6-way "
-              "cannot enter a 4-way; PH cannot enter XH. Three 4-way XH on this board "
-              "carry three different things (J1, J5, J7) and J4 a fourth: each is named "
-              "on the silk beside it and in INSTALL_NOTES",
+              "harness.PI_5V_LINK, a 6-way PH (GND, 5, nc, nc, 5, GND). J4 is the USB-A "
+              "lead on a 4-way PH: 1 GND, 2 VBUS (open here), 3 D-, 4 D+. Every lead is "
+              "in the instrument's one order (GND, power, data, data, then power, GND "
+              "on a 6-way) and XH carries 24 V, PH 5 V: every housing is polarised, a "
+              "6-way cannot enter a 4-way and PH cannot enter XH. The two 4-way XH (J1 "
+              "bus A, J7 lights) and the three 4-way PH (J2 / J6 bus B, J4 USB) agree on "
+              "ground and power way for way; what a swap does to ways 3 and 4 is "
+              "tabled in INSTALL_NOTES",
         "M2": "D1 (B5819W): pad 1 is K in KiCad's D_SOD-123 and is on SW, anode on GND. "
               "D8 (SMAJ30A) pad 1 = K on +24V; D9 (SMBJ5.0A) pad 1 = K on +5V; both "
               "unidirectional, anode to GND. D2-D7 are bidirectional. No electrolytic or "
               "tantalum part. Reel rotation is ROTATION-CHECK.txt's job at order (M12)",
         "M3": "In1 is an unbroken GND plane (plane_layers) under every supply path above, "
               "with a GND pour on B.Cu; every ground pad has its own via to the plane. "
-              "The 2.9 A bus-A feed returns J1.1 -> plane -> J3.1 / J3.4 directly under "
+              "The 2.9 A bus-A feed returns J1.1 -> plane -> J3.1 / J3.6 directly under "
               "its own B.Cu bar. No slot, no split",
         "M4": "U1 (LMR16006, SNVSA24 9.2.2): CIN 4.7 uF / 50 V + 100 nF at the pin "
               "(asks 1-10 uF); COUT 10 uF / 16 V at 3.3 V plus the MCU's 10 uF and nine "
@@ -1474,7 +1499,7 @@ BOARD_NOTES["quality"] = {
         "M28": "TI: LMR16006XDDCR C87080, LMR33630ADDAR C841384 (the DDA / HSOIC column, "
                "not the VQFN one), TPS2553DBVR C55266 (the constant-current part, not "
                "the -1 latch-off), SN65HVD230DR C12084. WCH CH32V307WCU6 C5142795. "
-               "Yajingxin TAXM8M4RFDCET2T C403948. JST B4B / B6B-XH-A, S4B-PH-SM4-TB. "
+               "Yajingxin TAXM8M4RFDCET2T C403948. JST B4B / B6B-XH-A, B4B / B6B-PH-K-S, S4B-PH-SM4-TB. "
                "Each pinout above is from that maker's sheet for that ordering code",
         "M31": "name and revision on the front; every connector's way names on the back "
                "beside its tails; the five SWD pads and JP1 (TERM) labelled on the "

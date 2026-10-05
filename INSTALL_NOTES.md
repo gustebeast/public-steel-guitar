@@ -700,15 +700,14 @@ existing ones:
 |---|---|---|---|
 | UI ribbon, 16-way IDC | UI board J2 | Pi cap J5 | ways 15 / 16 are the button |
 | lights lead, 4-way XH | Pi cap J4 | motor board J7 | `GND, 24V, button, button` |
-| power link, **6-way** XH | motor board J3 | output panel J10 | `GND, 24V, 24V, GND, button, button` |
+| power link, **6-way** XH | motor board J3 | output panel J10 | `GND, 24V, button, button, 24V, GND` |
 
 * All three are straight leads: way 1 at one end is way 1 at the other.
 * The power link is the only 6-way XH in the instrument, so it cannot go in a wrong socket.
-* ⚠ **The motor board has four 4-way XH sockets with four different pinouts** (J1 CAN bus A,
-  J4 USB, J5 the Pi's 5 V, J7 the lights lead). The plugs fit any of them. Each socket's way
-  names are printed beside it; label each lead at the motor-board end before the first fit,
-  and meter the plug against the legend the first time. A 24 V lead in J1 puts 24 V on
-  CAN_H.
+* The 4-way XH plugs on the motor board (J1 bus A, J7 lights) and on the Pi cap (J4 lights,
+  J3 / J6 light drops) fit each other's sockets. None of the swaps damages anything; what
+  each one does is in the table in the next section. Each socket's way names are printed
+  beside it.
 * With the button out the instrument is off and draws 2.55 mA from the supply (through the
   button's own pull-up). The supply brick can stay plugged in.
 * **It fails ON.** The button says "off" by shorting its wire to ground, so with the UI
@@ -719,16 +718,65 @@ existing ones:
   bridged 1-2 (off with the button out), from the switch maker's drawing. If a real switch
   works the other way round, cut 1-2 and bridge 2-3.
 
-## The fret-light lead and the sensor-bus drops use the same 4-way PH plug
+## Every JST lead: one way order, and the family tells you the voltage
 
-The fret boards' lead (Pi cap J3: `24V, GND, SCK, SDT`) and a bus-B drop (motor board
-J2 / J6 and the leg boards: `GND, 5V, CAN_H, CAN_L`) are both 4-way JST PH and fit each
-other's sockets. The way order was chosen so that a swap is a short, not an over-voltage:
+The rule (user, 2026-10-04; the tuples are in `elec/harness.py`):
 
-* a fret lead on a bus-B socket shorts the lighting 24 V to ground (the motor board's F3
-  opens) and grounds the bus's 5 V (its current-limited switch folds back);
-* a bus-B lead on the Pi cap's J3 or on a fret board does the same from the other side.
+* **XH (2.5 mm, white, the bigger one) carries 24 V. PH (2.0 mm) carries 5 V.** An XH plug
+  does not enter a PH socket or the other way round, so 24 V cannot reach a 5 V contact.
+* **Ways are always `GND, power, data, data`.** A 6-way adds `power, GND` on ways 5 and 6,
+  so it reads the same from either end. A lead with no data leaves ways 3 and 4 empty.
+* Every lead is straight: way 1 at one end is way 1 at the other.
 
-Either way nothing on the sensor bus sees 24 V. The lights and the pedals go dead, and F3
-may need replacing. Label the two leads; do not leave a wrong mate plugged in, because the
-Pi's two SPI pins are then driving the CAN pair.
+| lead | family, ways | from | to | ways |
+|---|---|---|---|---|
+| motor trunk head | XH 4 | output panel J7 | east tee trunk | `GND, 24V, -, -` |
+| power link | XH 6 | output panel J10 | motor board J3 | `GND, 24V, button, button, 24V, GND` |
+| optical feed | XH 2 / XH 4 | output panel J9 | optical board J2 | `GND, 24V` (`-, -`) |
+| bus A head and every motor drop | XH 4 | motor board J1, tee J2 | tees, motors | `GND, 24V, CAN_H, CAN_L` |
+| tee trunk | XH 8 | tee J1 | next tee | the 4-way order twice, in then out |
+| lights lead | XH 4 | motor board J7 | Pi cap J4 | `GND, 24V, button, button` |
+| fret light drop | XH 4 | Pi cap J3 | fret board J1 | `GND, 24V, SCK, SDT` |
+| foot light drop | XH 4 | Pi cap J6 | foot board J1 | `GND, 24V, SCK, SDT` |
+| Pi 5 V | PH 6 | motor board J5 | Pi cap J2 | `GND, 5V, -, -, 5V, GND` |
+| USB to the Pi | PH 4 | motor board J4 | Pi USB-A | `GND, VBUS (unused), D-, D+` |
+| bus B drops | PH 4 | motor board J2 / J6, leg boards | pedal and lever chains | `GND, 5V, CAN_H, CAN_L` |
+| lever / pedal trunk | PH 8 | sensor board J1 | next sensor board | the 4-way order twice |
+
+Not JST, and not confusable with any of the above: the UI ribbon (16-way IDC), the leg
+boards' ZH tail (5 V, inside the leg only), the inlet barrel jack.
+
+### What a wrong plug does
+
+Ground meets ground and power meets power in every case below; only ways 3 and 4 differ.
+"24 V" is two nets, the trunk and the fused lighting feed; joining them through a wrong
+lead bypasses the motor board's lighting fuse F3 for as long as it is plugged, and nothing
+else.
+
+**4-way XH** (five kinds of socket: CAN drop, lights, light drop, trunk head, optical inlet):
+
+| ways 3 / 4 of the lead | meet | result |
+|---|---|---|
+| CAN_H, CAN_L | button lines (lights sockets) | The button lines idle at 10 V behind 9.4 k (2.6 mA at most), which the bus's 60 ohm swallows. The panel reads the line as held low: **the instrument turns off or will not turn on**, and bus A does not talk. No damage. |
+| CAN_H, CAN_L | SCK, SDT at the Pi cap's J3 / J6 | The Pi's two SPI pins, each behind 68 ohm, meet the CAN pair. A 5 V CAN transceiver (the motor drivers', if they are 5 V parts -- not checked) drives CAN_H to 3.5 V typical, 4.5 V worst case, against a 3.3 V pin: up to about 9 mA into the pin's clamp, and the pin itself drives about 25 mA into the bus against its 16 mA. **A stress for as long as it is left plugged, not an over-voltage**; lights and bus A both misbehave at once. |
+| CAN_H, CAN_L | SCK, SDT inputs of a fret / foot board | The LED driver's inputs see the bus's 1.5 to 3.5 V. No damage; the lights show noise. |
+| button, button | SCK, SDT at the Pi cap's J3 / J6 (the plug next to its own socket) | 10 V behind 9.4 k through 68 ohm into a Pi pin: 0.7 mA into its clamp. When the Pi drives the pin low the panel reads "off": **the instrument turns itself off.** No damage. |
+| button, button | SCK, SDT inputs of a fret / foot board | The same 0.7 mA at most into the LED driver's input clamps. No damage. |
+| button, button | CAN_H, CAN_L | as the first row |
+| SCK, SDT (a light drop, live) | CAN drop, lights socket | as the rows above, from the other side |
+| anything | trunk head (panel J7) or optical inlet (J2) | Ways 3 and 4 are empty on the board: nothing. The lead is powered from the wrong 24 V point (see F3 above). |
+| trunk head or optical feed lead | any socket | The lead has no wire on ways 3 and 4: nothing. |
+
+**6-way XH**: only the power link. It enters no 4-way socket and there is no second 6-way XH.
+
+**4-way PH** (bus B drops, the USB lead):
+
+| lead | in | result |
+|---|---|---|
+| USB lead | a bus-B drop | The Pi's USB 5 V meets the bus's 5 V (the bus side is behind a 0.5 A limited switch); CAN_H / CAN_L, 0 to 3.3 V, meet the Pi's D- / D+. No damage; neither link works. |
+| bus-B drop | motor board J4 (USB) | Way 2 is not connected on the board; the CAN pair meets the MCU's USB pins at 0 to 3.3 V. No damage. |
+
+**6-way PH**: only the Pi's 5 V lead. **8-way** XH and PH: only the two trunks.
+
+The one row worth a label is the second: a motor drop or the bus-A head plugged into a light
+drop on the Pi cap. Mark the two light-drop leads at the Pi cap end.

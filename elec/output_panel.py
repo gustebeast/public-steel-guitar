@@ -410,16 +410,25 @@ def output_panel():
     v24_in.drive = Pin.drives.POWER
     v24_in += j6[1], j6[4]
     pgnd += j6[2], j6[3], j6["SH"]
-    # Trunk out on the instrument's standard 4-way, TWO CONTACTS PER RAIL. XH is
-    # rated 3 A per contact and BOM.md sizes the 24 V bus at under 5 A, so one
-    # contact would sit over its rating and two sit comfortably under.
+    # Trunk out on the instrument's standard 4-way: GND, 24 V, and NOTHING on ways 3 and 4.
+    # ⚠ IT CARRIED BOTH RAILS TWICE (GND, 24, 24, GND) UNTIL 2026-10-04, and that put 24 V
+    # and ground on the two ways where every other 4-way XH in the instrument has its
+    # data. Any 4-way XH lead seats here: a motor drop would have had 24 V on CAN_H (a
+    # transceiver rated -4 to +16 V) and the lights lead 24 V on a switch line whose
+    # switch is a 12 V part. The user's rule (harness.py) is GND, power, data, data --
+    # so on a lead with no data, ways 3 and 4 are empty and a wrong plug finds nothing
+    # on them.
+    # What the doubling was for, and why it was not buying it: this lead's far end is the
+    # east tee's trunk header, which takes the rail on ONE contact (ways 1-4 of the 8 are
+    # GND, 24, CAN_H, CAN_L). The pair was always limited by that contact; this end now
+    # matches it. 2.9 A with ten motors moving, on a 3 A contact at each end.
     j7 = Part(name="B4B-XH-A", ref_prefix="J", ref="J7", tag="J7", dest="NETLIST", tool="skidl",
-              value="B4B-XH-A", description="24 V trunk out (2 contacts per rail)",
+              value="B4B-XH-A", description="24 V trunk out: GND, 24 V, two empty ways",
               footprint=XH_FP,
               pins=[Pin(num=i + 1, name=n, func=P)
-                    for i, n in enumerate(("PWR_GND", "+24V", "+24V", "PWR_GND"))])
-    pgnd += j7[1], j7[4]
-    v24 += j7[2], j7[3]
+                    for i, n in enumerate(("PWR_GND", "+24V", "NC3", "NC4"))])
+    pgnd += j7[1]
+    v24 += j7[2]
 
     # ⚠ J10 -- THE SECOND 24 V TRUNK OUTLET, WHICH FEEDS THE CHAIN'S FAR END (user,
     # 2026-09-18, "option A"). J7 feeds the tee chain at the EAST end; this one runs the
@@ -446,9 +455,9 @@ def output_panel():
     # and motor and just put the power switch signal on the same cable carrying power from
     # the output board to the motor board"). A 6-way plug cannot enter a 4-way header, so
     # this link no longer needs a dyed housing to tell it from a CAN drop.
-    # Ways 1-4 are what they were. The part is TURNED 180 on the board so the two new ways
-    # land on the WEST side, where there is room; the four power pads keep their sites
-    # because GND, 24, 24, GND reads the same from either end.
+    # The ways are the instrument's one order (harness.py): GND, 24 V, the two switch
+    # lines where a 4-way has its data, then 24 V and GND again on ways 5 and 6 -- so the
+    # row reads the same from either end and each rail still has two contacts.
     j10 = Part(name="B6B-XH-A", ref_prefix="J", ref="J10", dest="NETLIST", tool="skidl",
                value="B6B-XH-A",
                description="24 V trunk out #2 + the power button's throws in -- to "
@@ -458,12 +467,12 @@ def output_panel():
                    # harness.PWR_LINK: the same list motor_ctrl J3 is built from
                    tuple({"GND": "PWR_GND", "V24": "+24V"}.get(w, w)
                          for w in harness.PWR_LINK))])
-    pgnd += j10[1], j10[4]
-    v24 += j10[2], j10[3]
+    pgnd += j10[1], j10[6]
+    v24 += j10[2], j10[5]
 
     # ── THE POWER BUTTON (user, 2026-10-04) ──────────────────────────────────────────────
     # The button is SW2 on the UI board: a latching 2P2T rated 12 V / 0.3 A, so it cannot
-    # break the supply itself. Its two throws arrive here on J10 ways 5 and 6 (UI ribbon ->
+    # break the supply itself. Its two throws arrive here on J10 ways 3 and 4 (UI ribbon ->
     # pi_cap -> lights cable -> motor_ctrl -> this cable), and what breaks the supply is Q2,
     # a P-channel MOSFET in the +24 V line between the inlet jack and everything else.
     #
@@ -531,8 +540,8 @@ def output_panel():
     pwr_pull, sw_sense, sw_gate = Net("PWR_PULL"), Net("SW_SENSE"), Net("SW_GATE")
     sw_mid = Net("SW_PU_MID")
     sw_up, sw_dn = Net("PWR_SW_UP"), Net("PWR_SW_DN")
-    sw_up += j10[5]
-    sw_dn += j10[6]
+    sw_up += j10[3]
+    sw_dn += j10[4]
     pgnd += q3["S"]
     pwr_pull += q3["D"]
     sw_gate += q3["G"]
@@ -2386,13 +2395,16 @@ _LANE_Y, _ROW_Y = -31.0, -28.0
 #            trunk head (J7) gets there with no via -- and to J10 on B.Cu: four vias in the
 #            tab (0.8 mm3 of barrel in a land printed with 4.5), east under Q2's leads at
 #            y -27.4, north at x 19.9 beside the inlet's return, and along under J10's row.
-#   PWR_GND  therefore swaps layer east of J7: B.Cu along the lane from J7 pad 4 to the
-#            inlet's pin 3, under Q2. West of J7 it stays on F.Cu, where every ground pad
-#            of the buck's corner drops onto it; the two halves join through J7's own
-#            through-hole pads 1 and 4 and a B.Cu link over the top of pads 2 and 3.
+#   PWR_GND  therefore swaps layer east of J7: B.Cu along the lane from the inlet's pin 3,
+#            under Q2, to x 6.0 -- just east of J7's row. West of J7 it stays on F.Cu,
+#            where every ground pad of the buck's corner drops onto it. The two halves
+#            join through J7's through-hole pad 1: the B.Cu half turns north at x 6.0,
+#            passes over the top of the row at y -25.6 and comes down into pad 1.
+#            (Until 2026-10-04 it went through pad 4 as well; ways 3 and 4 are empty now.)
 # The +24V / PWR_GND pair to J10 is 4.4 mm apart for its whole run (x 19.9 against 24.25).
 _QS = (19.90, -26.22)          # Q2 source pad;  tab spans x 10.40..16.80, y -31.4..-25.6
-_J10_PADS = (33.45, 30.95, 28.45, 25.95)      # ways 1..4 with the part turned 180
+# ways 1..6 with the part turned 180: GND, 24 V, switch, switch, 24 V, GND
+_J10_PADS = (33.45, 30.95, 28.45, 25.95, 23.45, 20.95)
 # EIGHT 0.3 mm VIAS, TWO IN EACH OF THE TAB'S FOUR PASTE WINDOWS (2026-10-04). They were
 # four 0.4 mm ones in the two northern windows: 0.40 mm3 of barrel under 1.01 mm3 of paste,
 # enough to starve the joint that carries the whole supply (quality A12). Two 0.3 mm
@@ -2407,10 +2419,9 @@ BOARD_NOTES["tracks"] += [
         ("+24V_IN", "F.Cu", 2.0, [_p1, (_p1[0], J6_Y), (_p4[0], J6_Y), _p4]),
         # 4.2 mm: the one stretch that carries the whole 6.67 A (4.12 mm for a 10 C rise)
         ("+24V_IN", "F.Cu", 4.2, [(_p1[0], -26.6), (_QS[0], -26.6)]),
-        # +24V on F.Cu: the tab -> the lane -> J7 pads 2 and 3
+        # +24V on F.Cu: the tab -> the lane -> J7 pad 2
         ("+24V", "F.Cu", 2.0, [(11.5, _LANE_Y), (-1.250, _LANE_Y)]),
         ("+24V", "F.Cu", 1.4, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
-        ("+24V", "F.Cu", 1.4, [(1.250, _ROW_Y), (1.250, _LANE_Y)]),
         # (the buck's feed leaves J7 pad 2 on B.Cu, in the buck's-corner block below)
         ("+24V", "B.Cu", 1.4, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
         # +24V on B.Cu: the tab's vias -> east -> north -> under J10 -> pads 2 and 3
@@ -2422,24 +2433,27 @@ BOARD_NOTES["tracks"] += [
         ("+24V", "B.Cu", 2.0, [(19.9, -28.35), (19.9, -12.9), (20.9, -11.9),
                                (_J10_PADS[1], -11.9)]),
         ("+24V", "B.Cu", 1.2, [(_J10_PADS[1], -11.9), (_J10_PADS[1], _J10_Y)]),
-        ("+24V", "B.Cu", 1.2, [(_J10_PADS[2], -11.9), (_J10_PADS[2], _J10_Y)]),
-        # PWR_GND on B.Cu: J7 pad 4 -> the lane -> the inlet's pin 3
-        ("PWR_GND", "B.Cu", 1.2, [(3.750, _ROW_Y), (3.750, _LANE_Y)]),
-        ("PWR_GND", "B.Cu", 2.0, [(3.750, _LANE_Y), (_p3[0], _LANE_Y), _p3]),
-        # ...and J7 pad 4 <-> pad 1, over the top of the two +24V pads
-        ("PWR_GND", "B.Cu", 1.5, [(3.750, _ROW_Y), (3.750, -25.6), (-3.750, -25.6),
+        ("+24V", "B.Cu", 1.2, [(_J10_PADS[4], -11.9), (_J10_PADS[4], _J10_Y)]),
+        # PWR_GND on B.Cu: the inlet's pin 3 -> the lane -> x 6.0, 0.65 mm east of J7's
+        # empty way 4 ...
+        ("PWR_GND", "B.Cu", 2.0, [(6.000, _LANE_Y), (_p3[0], _LANE_Y), _p3]),
+        # ...north past the row, west over the top of it, and down into pad 1
+        ("PWR_GND", "B.Cu", 1.5, [(6.000, _LANE_Y), (6.000, -25.6), (-3.750, -25.6),
                                   (-3.750, _ROW_Y)]),
         ("PWR_GND", "F.Cu", 1.2, [(-3.750, _ROW_Y), (-3.750, _LANE_Y)]),
-        # PWR_GND: pin 3 -> pin 2 on B.Cu in the channel; pin 2 -> J10 pad 4 on F.Cu,
-        # through the +Y rear shell leg's land (same net); pad 4 -> pad 1 on F.Cu
+        # PWR_GND: pin 3 -> pin 2 on B.Cu in the channel; pin 2 north on F.Cu, through the
+        # +Y rear shell leg's land (same net), onto a bar under J10's row that ends in
+        # the row's two outside pads, ways 6 and 1
         ("PWR_GND", "B.Cu", 1.5, [_p3, (_p3[0], J6_Y), (_p2[0], J6_Y), _p2]),
-        # (it stops short of J10's row and comes into pad 4 from below at 1.5 mm: way 5,
-        # the switch line, is the next land west and a 2 mm bar's end cap reached it)
-        ("PWR_GND", "F.Cu", 2.0, [_p2, (_p2[0], -13.000)]),
-        ("PWR_GND", "F.Cu", 1.5, [(_p2[0], -13.000), (_J10_PADS[3], -11.300),
-                                  (_J10_PADS[3], _J10_Y)]),
-        ("PWR_GND", "F.Cu", 1.0, [(_J10_PADS[3], _J10_Y), (_J10_PADS[3], -11.4),
-                                  (_J10_PADS[0], -11.4), (_J10_PADS[0], _J10_Y)]),
+        # (the bar is 1.5 mm at y -11.5: 0.6 mm under the lands of the four ways it passes)
+        ("PWR_GND", "F.Cu", 2.0, [_p2, (_p2[0], -11.500)]),
+        ("PWR_GND", "F.Cu", 1.5, [(_p2[0], -11.5), (_J10_PADS[0], -11.5),
+                                  (_J10_PADS[0], _J10_Y)]),
+        # ...and on from way 1 to way 6 round the NORTH of the row, 1.0 mm (half the
+        # return, 1.9 A). Not along the south: C28's ground via has exactly one site, 1.3 mm
+        # west of way 6 and below it, and a leg coming in under the row closes it.
+        ("PWR_GND", "F.Cu", 1.0, [(_J10_PADS[0], _J10_Y), (_J10_PADS[0], -6.9),
+                                  (_J10_PADS[5], -6.9), (_J10_PADS[5], _J10_Y)]),
     ]]
 
 # ── THE BUCK'S CORNER, DECLARED TOO (2026-10-01) ─────────────────────────────────────────
@@ -2488,10 +2502,11 @@ BOARD_NOTES["tracks"] += [
         ("V5_PRE", "F.Cu", 0.5, [(-31.000, -24.300), (-31.700, -25.000), (-33.050, -25.000)]),
         ("V5_PRE", "F.Cu", 0.25, [(-33.050, -25.000), (-33.610, -25.560), (-33.610, -27.850)]),
         # C6's return (the second output capacitor, at the bead): west above the gate
-        # parts and down into J7 pad 4
-        ("PWR_GND", "F.Cu", 0.6, [(13.950, -23.500), (13.950, -24.700), (5.200, -24.700),
-                                  (3.750, -26.150), (3.750, _ROW_Y)]),
+        # parts and down through a via onto the B.Cu return where it turns over J7's row
+        ("PWR_GND", "F.Cu", 0.6, [(13.950, -23.500), (13.950, -24.700), (6.900, -24.700),
+                                  (6.000, -25.600)]),
     ]]
+BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("PWR_GND", 6.000 + _g, -25.600)]
 
 
 
@@ -2539,11 +2554,11 @@ BOARD_NOTES["quality"] = {
         # behind the switch. J7 heads the motor trunk (bus A's east feed, 2.9 A with ten
         # movers slewing); J10 is feed 2, two contacts at 2.7 A each -- motor_ctrl's own
         # record splits that into bus A's west feed, the Pi's buck and the lights
-        {"net": "+24V", "from": "Q2.2", "to": ["J7.2", "J7.3"], "amps": 2.9},
+        {"net": "+24V", "from": "Q2.2", "to": ["J7.2"], "amps": 2.9},
         # ⚠ 3.8 A, NOT THE 5.4 THAT motor_ctrl's FOUR LOADS ADD UP TO: the supply is 6.67 A
         # and bus A is fed from both ends, so with J7 carrying its 2.9 A share there is
         # 3.77 A left for this connector whatever is switched on behind it.
-        {"net": "+24V", "from": "Q2.2", "to": ["J10.2", "J10.3"], "amps": 3.8},
+        {"net": "+24V", "from": "Q2.2", "to": ["J10.2", "J10.5"], "amps": 3.8},
         {"net": "+24V", "from": "Q2.2", "to": ["F1.1"], "amps": 0.12},
         {"net": "+24V_OPT", "from": "F1.2", "to": ["J9.2"], "amps": 0.12},
         {"net": "+24V", "from": "Q2.2", "to": ["U5.5"], "amps": 0.1},
@@ -2579,8 +2594,8 @@ BOARD_NOTES["quality"] = {
                     "at -Y and pad 1 at -X. Way names are harness.PWR_LINK, the list "
                     "motor_ctrl J3 is built from. Read 2026-10-04",
         "B4B-XH-A": "the same JST drawing and KiCad family as the 6-way (eXH.pdf p.5). "
-                    "J7: 1 PWR_GND, 2 +24V, 3 +24V, 4 PWR_GND -- symmetric, so the trunk "
-                    "lead cannot be plugged wrong way round electrically",
+                    "J7: 1 PWR_GND, 2 +24V, 3 and 4 empty -- the instrument's order "
+                    "(harness.py) with no data ways used",
         "NMJ6HCD2": "Neutrik NMJ6HCD2 drawing: T / R / S contacts and their normalling "
                     "contacts TN / RN / SN. KiCad's Jack_6.35mm_Neutrik_NMJ6HCD2 names the "
                     "lands by those letters and was checked pad by pad against the "
@@ -2649,7 +2664,7 @@ BOARD_NOTES["quality"] = {
                               "paste window: 8 x 0.67 mm of equivalent barrel = 5.4 mm "
                               "against 2.0 mm for 3.8 A, and 4.12 mm if the whole supply "
                               "went this way; any four carry it",
-        "A1:+24V Q2.2>J10.3": "as J10.2: the same eight vias",
+        "A1:+24V Q2.2>J10.5": "as J10.2: the same eight vias",
         "A6:J2.A5": "J2 is not a port: it is the far end of a wire from J1 to the Pi's "
                     "gadget socket, with VBUS dead-ended on purpose (the note at J2). "
                     "Nothing behind it sources or sinks, so there is no VBUS for a CC "
@@ -2685,7 +2700,7 @@ BOARD_NOTES["quality"] = {
               "whose footprint was drawn from Kycon's land pattern; metered before first "
               "power (bring-up step 0). J10 <-> motor_ctrl J3: harness.PWR_LINK (GND, 24, "
               "24, GND, SW_UP, SW_DN), a 6-way straight lead, both ends built from that "
-              "list. J7 -> the trunk's far end: GND, 24, 24, GND, symmetric. J9 -> the "
+              "list. J7 -> the trunk's far end: GND, 24, and two empty ways. J9 -> the "
               "optical board: 2-way here, 1 GND, 2 +24V_OPT; the optical board's J2 is "
               "a 4-way housing with ways 1 and 2 crimped in the same order (JST makes "
               "no 2-way SMT side-entry XH; the note at that J2). J1 / "

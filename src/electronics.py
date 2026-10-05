@@ -1366,7 +1366,7 @@ def pi_cap_pin(ref, n):
     f = BG.footprint("pi_cap", ref)
     x0, x1, y0, y1 = f["fab"]
     pitch = 2.5 if "XH" in BG.fp_name(f["fpid"]) else 2.0
-    cnt = {"J2": 4, "J4": 4, "J3": 6}[ref]
+    cnt = {"J2": 6, "J4": 4, "J3": 4, "J6": 4}[ref]
     px = (x0 + x1) / 2.0 + (n - (cnt + 1) / 2.0) * pitch
     py = (y0 + y1) / 2.0
     marker = box_at(0.01, 0.01, 0.01, x=px, y=py, z=0.0)
