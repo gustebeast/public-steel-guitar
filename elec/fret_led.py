@@ -84,7 +84,7 @@ P = Pin.types.PASSIVE
 LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
 DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm"
 BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
-IND_FP = "Inductor_SMD:L_Sunlord_SWPA4030S"
+IND_FP = "Inductor_SMD:L_Sunlord_SWPA5040S"   # = buck_cell.L1_FP, asserted in _supply
 J_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
 # mouth (the footprint's local +Y 5.30) to the PAD CENTROID layout anchors on (the mean of
 # its six pads, -0.9833), both read out of the .kicad_mod
@@ -238,6 +238,16 @@ WALL_CLR = 0.3
 # across each end, on TI's own 1.3 mm pitch: with the centre one about 30 C/W to the plane.
 DRV_PAD_VIAS = tuple((dx, dy) for dy in (-2.60, +2.60) for dx in (-1.30, 0.0, +1.30))
 
+# ── 1 k IN SERIES WITH EACH SIGNAL AT THE CABLE (manual quality pass M18, 2026-10-05) ────
+# The Pi drives SCK and SDT at 3.3 V through 68 ohm (pi_cap R1..R4), and this board can be
+# dark while the Pi is up: its fuse open, the lights' fuse on the motor board open, the
+# 24 V lead off, or a Pi on its own USB supply on the bench. A TLC59711's inputs are rated
+# to VREG + 0.6 V (SBVS181A 7.1), and VREG is 0 V then: the pin's protection diode
+# conducts and the Pi powers the driver's logic through it, as much as a GPIO will give.
+# 1 k limits that to 2.7 mA. Against the pin's few pF it is a 10 ns corner, on a clock
+# TI allow to 10 MHz and edges the source resistor has already slowed.
+R_SERIES = "1k 1%"
+
 # ── the buck's cell in the bay: buck_cell's frame, +x towards the inductor ────────────
 CELL_Y = -17.80                      # U10: the input slab ends 0.5 short of J1's courtyard
                                      # and the output HF capacitor 2.2 from the -Y edge
@@ -248,7 +258,7 @@ BULK_REFS = {"CIN_1": "C30", "CIN_2": "C31", "L1": "L1",
 CELL_BULK = dict({ref: BC.BULK[role] for role, ref in BULK_REFS.items()}, **{
     "TP1": (-6.50, +5.00, 0.0),      # +24V, beside the input bulk
     "TP3": (+2.50, +5.00, 0.0),      # GND
-    "TP2": (+11.50, +5.00, 0.0),     # the rail, beside the output bulk
+    "TP2": (+12.50, +5.00, 0.0),     # the rail, beside the output bulk
 })
 cell_org = []                        # (origin, turn) of the cell as _supply placed it
 
@@ -318,8 +328,14 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     gnd += j[1]
     v24_in += j[2]
     sck, sdt = Net("SCK_IN"), Net("SDT_IN")
-    sck += j[3]
-    sdt += j[4]
+    series = []
+    for ref, way, net in (("R21", 3, sck), ("R22", 4, sdt)):
+        cable = Net("%s_CABLE" % J_PINS[way - 1])
+        rs = _r(ref, R_SERIES, "%s in series at the cable: limits what a live Pi can push "
+                               "into a dark driver's input" % J_PINS[way - 1])
+        cable += j[way], rs[1]
+        net += rs[2]
+        series.append(ref)
 
     # The fuse protects the TRUNK, not the board: a shorted buck must not pull the
     # instrument's 24 V down. Same argument, same part class as motor_ctrl's F1.
@@ -361,16 +377,13 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     Net("BUCK_PG_NC").connect(u[8])
 
     # ⚠ THE VALUE IS THE PART NUMBER, for the reason optical.py gives at its own L1:
-    # "4.7uH" does not specify an inductor, and saturation is what decides whether this
-    # supply works. Ripple at 14.52 V out, 24 V in, 2.1 MHz: Vout(1-D)/(f L) = 0.58 A
-    # pk-pk, so the peak at BOTH boards' 1.38 A full-white load is 1.67 A against
-    # this part's 3.2 A saturation, and the IC's own ~4 A limit still acts first.
-    # KIND = 0.43 of the load current at full load, inside TI's band; below ~0.3 A the
-    # part leaves continuous conduction, which is the skip-mode case argued above.
+    # "3.3uH" does not specify an inductor, and saturation is what decides whether this
+    # supply survives a fault. buck_cell.L1_VALUE says which part and why. Ripple at
+    # 14.52 V out, 24 V in, 2.1 MHz: Vout(1-D)/(f L) = 0.83 A pk-pk, so the peak at BOTH
+    # boards' 1.38 A full-white load is 1.79 A against 3.95 A of guaranteed saturation.
+    assert IND_FP == BC.L1_FP
     l1 = Part(name="L", ref_prefix="L", ref="L1", tag="L1", dest="NETLIST", tool="skidl",
-              value="SWPA4030S4R7MT",
-              description="buck output inductor, 4.7 uH shielded, Isat 3.2 A, "
-                          "DCR 78 mohm, 4.0 x 4.0 x 3.0 (LCSC C57269)",
+              value=BC.L1_VALUE, description=BC.L1_DESC,
               footprint=IND_FP, pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
     vrail += l1[2]
@@ -465,6 +478,12 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     for ref, (dx, dy, rot) in CELL_BULK.items():
         place[ref] = BC.at(org, turn, dx, dy, rot)
     place["F1"] = (col, 12.00, 180.0)
+    # the two series resistors, just past J1's courtyard on their own lands' lines (the
+    # lands' centres are 3.25 +X of the pad centroid, the courtyard ends at 6.05, and
+    # ways 3 and 4 are 1.25 and 3.75 towards -Y)
+    for ref, dy in zip(series, (-1.25, -3.75)):
+        place[ref] = (mouth + J_ANCHOR + 7.30, dy, 0.0)
+        fps[ref] = R_FP
     fps.update(dict(
         [("J1", J_FP), ("U10", BUCK_FP), ("L1", IND_FP),
          ("F1", "Fuse:Fuse_1206_3216Metric"), ("R10", R_FP), ("R11", R_FP), ("R12", R_FP)]
@@ -704,16 +723,17 @@ def build(panel):
         }
         # ⚠ A SECOND BARREL, IN THE INDUCTOR'S OWN LAND. All 1.38 A of the rail leaves L1.2,
         # and the stitcher gives a pad one via because it does not know currents. The
-        # land is 1.1 x 3.7 (over the 4 mm2 at which a via in a soldered land is
+        # land is 1.4 x 4.2 (over the 4 mm2 at which a via in a soldered land is
         # accepted), so one more goes straight down through it to the plane.
         # ONE, NOT TWO: two open barrels hold 0.23 of the 0.49 mm3 of paste printed on
         # the land, and a quarter is the limit (cadkit quality A12).
-        # (1.5 along the part to the land's centre, 1.2 along the land from there)
+        # (L1_LAND along the part to the land's centre, 1.2 along the land from there)
         import math
         lx, ly, lrot = place["L1"]
         _kc, _ks = math.cos(math.radians(lrot)), math.sin(math.radians(lrot))
         notes["vias"] = list(notes.get("vias", [])) + [
-            ("+14V5", round(lx + 1.5 * _kc - 1.2 * _ks, 3), round(ly + 1.5 * _ks + 1.2 * _kc, 3))]
+            ("+14V5", round(lx + BC.L1_LAND * _kc - 1.2 * _ks, 3),
+             round(ly + BC.L1_LAND * _ks + 1.2 * _kc, 3))]
         # the switch node and the two input loops are laid, not routed (buck_cell.tracks)
         notes["tracks"] = list(notes.get("tracks", [])) + BC.copper(
             *cell_org, v_out="+14V5")

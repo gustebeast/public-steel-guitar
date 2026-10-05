@@ -83,6 +83,7 @@ LCSC = {
     # Inductors are specified by PART too -- see the note beside L1. Isat 1.35 A
     # worst case against the TPS560430's 1.4 A maximum current limit, which is the
     # number TI tells you to size against.
+    "SWPA5040S3R3NT": "C305173",     # 3.3 uH, 5x5x4.0 shielded, Isat 3.95 A min (both LED bucks)
     "SWPA4030S4R7MT": "C57269",      # 4.7 uH, 4x4x3.0 shielded, Isat 3.2 A (optical L1)
     # ⚠ "600" IS 60 OHM in Murata/Sunlord bead numbering. 601 is the 600 ohm part.
     "GZ1608D601TF": "C1002",         # 0603 bead, 600R@100MHz, 200 mA, DCR 450 mohm
