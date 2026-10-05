@@ -1223,8 +1223,22 @@ def output_panel():
 
     # ── L1 / FB1: the buck's output, and the ONE place the rails join ────────
     l1 = Part(name="L", ref_prefix="L", ref="L1", tag="L1", dest="NETLIST", tool="skidl",
-              value="PNR3015-470M", description="47 uH buck output inductor, SHIELDED -- it sits on "
-              "the same board as a magnetic pickup's preamp",
+              # ⚠ A PART, CHOSEN FOR SATURATION AT THE IC'S LIMIT (2026-10-05). TI SNVSA24
+              # 9.2.2.2: "Using a rating near 1.6 A will enable the LMR16006 to current
+              # limit without saturating the inductor. This is preferable to the LMR16006
+              # going into thermal shutdown mode and the possibility of damaging the
+              # inductor if the output is shorted". The limit is 1.2 A typical, 1.7 max.
+              # APV PNR3015 (its sheet, 2023-12; guaranteed / typical, 30 % drop):
+              #   47 uH  0.65 / 0.88 A saturation, 0.45 / 0.58 A rms   <- what was here
+              #   22 uH  1.15 / 1.40,  0.75 / 0.90
+              #   15 uH  1.40 / 1.80,  1.00 / 1.20                     <- this
+              #   10 uH  1.50 / 2.00,  1.50 / 2.00 (10,880 in stock: the alternate)
+              # 15 uH is the largest value whose GUARANTEED saturation clears the typical
+              # limit, and its typical clears the maximum. Same series, same land.
+              # Ripple 5 x (1 - 5 / 24) / (15 uH x 700 kHz) = 0.38 A, so the 0.257 A worst
+              # load peaks at 0.45 A. LCSC C19634062, 3 x 3 x 1.5.
+              value="PNR3015-150M", description="15 uH buck output inductor, Isat 1.4 A, SHIELDED "
+              "-- it sits on the same board as a magnetic pickup's preamp",
               footprint="Inductor_SMD:L_Taiyo-Yuden_NR-30xx",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
@@ -2647,7 +2661,7 @@ BOARD_NOTES["quality"] = {
         "TAXM12M4RFBCCT2T": "the same maker's 3225 four-land outline as Y1 (LCSC C133337): "
                             "1 and 3 the crystal, 2 and 4 the can. Board: 1 HUB_XI, "
                             "3 HUB_XO, 2 / 4 GND",
-        "PNR3015-470M": "two-pad, unpolarised",
+        "PNR3015-150M": "two-pad, unpolarised",
     },
     "waive": {
         # A1 reports one barrel and does not add parallel vias up. The tab has eight.
@@ -2724,15 +2738,15 @@ BOARD_NOTES["quality"] = {
               "plane, matched (verify: 4 groups, 0 problems). HUB_DN1 crosses once, on "
               "B.Cu, by construction (the note beside its tracks). I2S is 12.288 MHz MCK "
               "and 3 MHz BCK over 20-30 mm: not a length-matched bus",
-        "M7": "U5: 0.765 V x (1 + 100k / 18.2k) = 4.97 V; 47 uH at 700 kHz gives 120 mA "
-              "of ripple; bootstrap 100 nF (the sheet's value; it was 10 nF); SHDN open "
-              "= enabled; catch diode 40 V / 1 A. U6: EN tied to IN. U2 (PCM1808): MD0 = "
-              "MD1 = 0, slave; FMT = 0, I2S; SCKI from the MCU's MCK at 256 fS. U3 "
-              "(PCM5102A): FMT = 0 I2S, DEMP = 0, FLT = 0, XSMT high, charge-pump and "
-              "LDO capacitors at the sheet's values. U4 (CH334F): V5 tied to VDD33 for "
-              "3.3 V supply, as WCH allows; 12 MHz crystal; unused ports open. U10 "
-              "(MCP4261): WP and SHDN high. U12 (TS5A3159): IN from the MCU, COM to the "
-              "ring buffer",
+        "M7": "U5: 0.765 V x (1 + 100k / 18.2k) = 4.97 V; 15 uH at 700 kHz gives 0.38 A of ripple, "
+              "63 % of the IC's 0.6 A against the 30 to 40 % the sheet suggests (the smaller value "
+              "is for saturation, M14); bootstrap 100 nF (the sheet's value; it was 10 nF); SHDN "
+              "open = enabled; catch diode 40 V / 1 A. U6: EN tied to IN. U2 (PCM1808): MD0 = MD1 = "
+              "0, slave; FMT = 0, I2S; SCKI from the MCU's MCK at 256 fS. U3 (PCM5102A): FMT = 0 "
+              "I2S, DEMP = 0, FLT = 0, XSMT high, charge-pump and LDO capacitors at the sheet's "
+              "values. U4 (CH334F): V5 tied to VDD33 for 3.3 V supply, as WCH allows; 12 MHz "
+              "crystal; unused ports open. U10 (MCP4261): WP and SHDN high. U12 (TS5A3159): IN from "
+              "the MCU, COM to the ring buffer",
         "M8": "BOOT0: R7, 10 k to GND. NRST: R6 10 k to 3V3 and C54. Relay gate: R36, "
               "100 k to GND, so the relay is released (the direct, unprocessed path) "
               "while the MCU is in reset. JACK_MODE: R37, 100 k to GND, so the ring is "
@@ -2761,10 +2775,16 @@ BOARD_NOTES["quality"] = {
                "1.15 mm from L1's output pad; C6 stays at the bead, 45 mm on. (Before "
                "this review the same parts stood 2.4-15 mm from their pins and C5 36 mm "
                "from the inductor.)",
-        "M14": "L1 PNR3015-470M, 47 uH, saturation 0.88 A. Peak = 0.257 A worst-case "
-               "load + 60 mA (half of 120 mA ripple) = 0.32 A. In a hard short the "
-               "converter's own limit (1.2 A typical) is above the inductor's "
-               "saturation: a fault case the part survives, not an operating one",
+        "M14": "L1 PNR3015-150M, 15 uH: ripple 5 x (1 - 5 / 24) / (15 uH x 700 kHz) = 0.38 A, peak "
+               "0.257 A worst-case load + 0.19 = 0.45 A, against 1.40 A guaranteed / 1.80 typical "
+               "saturation and 1.00 / 1.20 A rms (APV, 30 % drop). TI SNVSA24 9.2.2.2 on the "
+               "inductor: 'Using a rating near 1.6 A will enable the LMR16006 to current limit "
+               "without saturating the inductor. This is preferable to the LMR16006 going into "
+               "thermal shutdown mode and the possibility of damaging the inductor if the output is "
+               "shorted' -- advice, against a limit of 1.2 A typical / 1.7 max. So the guaranteed "
+               "figure clears the typical limit and the typical one the maximum; in a held short "
+               "the IC limits near 1.2 A, at about the part's rms rating, and its thermal cut-out "
+               "cycles it. Shielded, beside a magnetic pickup's preamp",
         "M15": "U5 is internally compensated for ceramic output capacitors of 10 uF and "
                "up: about 18 uF effective fitted. U6 (AP2112K) is ceramic-stable from "
                "1 uF: 10 uF at its output. Headroom: 4.97 V less 40 mV in the bead "

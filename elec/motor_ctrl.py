@@ -304,11 +304,21 @@ def motor_ctrl():
     sw, fb, cb = Net("SW"), Net("FB"), Net("CB")
     v24 += u4["VIN"]; gnd += u4["GND"]; sw += u4["SW"]; fb += u4["FB"]; cb += u4["CB"]
     l1 = Part(name="L", ref_prefix="L", tag="L1", dest="NETLIST", tool="skidl",
-              # A PART (LCSC C19634068, APV): 47 uH, 0.58 A rms, 0.88 A saturation, 3x3x1.5.
-              # Peak here is 0.25 A load + half of 87 mA ripple (700 kHz) = 0.29 A. The
-              # common 3015 47 uH parts saturate at 0.43 A (ANR3015T470M, FNR3015S470MT):
-              # they fit this land and clear the peak, but sit under the IC's 0.9 A limit.
-              value="PNR3015-470M", description="47 uH buck inductor, Isat 0.88 A",
+              # ⚠ A PART, CHOSEN FOR SATURATION AT THE IC'S LIMIT (2026-10-05). TI SNVSA24
+              # 9.2.2.2: "Using a rating near 1.6 A will enable the LMR16006 to current
+              # limit without saturating the inductor. This is preferable to the LMR16006
+              # going into thermal shutdown mode and the possibility of damaging the
+              # inductor if the output is shorted". The limit is 1.2 A typical, 1.7 max.
+              # APV PNR3015 (its sheet, 2023-12; guaranteed / typical, 30 % drop):
+              #   47 uH  0.65 / 0.88 A saturation, 0.45 / 0.58 A rms   <- what was here
+              #   22 uH  1.15 / 1.40,  0.75 / 0.90
+              #   15 uH  1.40 / 1.80,  1.00 / 1.20                     <- this
+              #   10 uH  1.50 / 2.00,  1.50 / 2.00 (10,880 in stock: the alternate)
+              # 15 uH is the largest value whose GUARANTEED saturation clears the typical
+              # limit, and its typical clears the maximum. Same series, same land.
+              # Ripple 3.3 x (1 - 3.3 / 24) / (15 uH x 700 kHz) = 0.27 A, so the 0.25 A load
+              # peaks at 0.39 A. LCSC C19634062, 3 x 3 x 1.5.
+              value="PNR3015-150M", description="15 uH buck inductor, Isat 1.4 A",
               footprint="Inductor_SMD:L_Taiyo-Yuden_NR-30xx",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]; v33 += l1[2]
@@ -1370,7 +1380,7 @@ BOARD_NOTES["quality"] = {
                            "drawing: lands 1 and 3 are the crystal, 2 and 4 the can (GND). "
                            "Board: 1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read 2026-10-04",
         "VLS6045EX-6R8M": "two-pad, unpolarised",
-        "PNR3015-470M": "two-pad, unpolarised",
+        "PNR3015-150M": "two-pad, unpolarised",
     },
     "manual": {
         "M35": "read 2026-10-05. " + 'WCH publishes no errata sheet: its product page lists the datasheet and the reference manual (CH32FV2x_V3xRM) and nothing else, read 2026-10-05. ' + "The manual's USB "
@@ -1425,13 +1435,13 @@ BOARD_NOTES["quality"] = {
               "at 36 V; SENSE_5V 2.5 V. CAN pins: -4..16 V, clamped by D2-D5 near 10 V",
         "M6": "nothing here is fast: CAN at 1 Mbit/s and full-speed USB (A3 has the "
               "arithmetic). No clocked parallel bus",
-        "M7": "U1: 0.765 V x (1 + 100k / 30.1k) = 3.31 V; 47 uH gives 87 mA of ripple, "
-              "35 % of the 0.25 A load (asks 30-40 %); bootstrap 100 nF; SHDN floating = "
-              "enabled; catch diode 40 V / 1 A (asks 1.25 x VIN and the load current). "
-              "U5: 1.0 V x (1 + 100k / 24.9k) = 5.02 V, TI's own 5 V divider; 6.8 uH "
-              "against the table's 8; BOOT 100 nF, VCC 1 uF; EN from a 137k / 10k divider "
-              "(on at 18.1 V); pad on GND. U6: RILIM 49.9k is inside 15k-232k; EN tied "
-              "to IN. U2 / U3: RS through 10k to GND = slope control; Vref open",
+        "M7": "U1: 0.765 V x (1 + 100k / 30.1k) = 3.31 V; 15 uH gives 0.27 A of ripple, 45 % of the "
+              "IC's 0.6 A (the sheet suggests 30 to 40 %; the smaller value is for saturation, "
+              "M14); bootstrap 100 nF; SHDN floating = enabled; catch diode 40 V / 1 A (asks 1.25 x "
+              "VIN and the load current). U5: 1.0 V x (1 + 100k / 24.9k) = 5.02 V, TI's own 5 V "
+              "divider; 6.8 uH against the table's 8; BOOT 100 nF, VCC 1 uF; EN from a 137k / 10k "
+              "divider (on at 18.1 V); pad on GND. U6: RILIM 49.9k is inside 15k-232k; EN tied to "
+              "IN. U2 / U3: RS through 10k to GND = slope control; Vref open",
         "M8": "BOOT0: R7, 10k to GND. NRST: the MCU's own 40k pull-up + C6 100 nF. "
               "BOOT1 (PB2) is read only when BOOT0 is high. U5 EN: divider. U6 EN: tied "
               "to IN; ILIM: R22. U2 / U3 RS: 10k to GND. FAULT and PG are open-drain "
@@ -1459,12 +1469,17 @@ BOARD_NOTES["quality"] = {
                "from VCC; R10 / R11 0.6 and 0.7 mm from FB. Neither feedback node runs "
                "under an inductor or beside a switch node: U5's leaves on the far side "
                "of the package from SW",
-        "M14": "L1 (PNR3015-470M): peak 0.25 + 0.087 / 2 = 0.29 A against 0.88 A "
-               "saturation, 0.58 A rms; the IC's limit is 1.2 A, above it -- accepted, "
-               "no 3015 part reaches that and a shorted 3V3 trips the IC thermally. "
-               "L2 (VLS6045EX-6R8M): ripple 1.46 A, peak 3.73 A at 3 A, against 4.7 A "
-               "saturation (TDK, 30 % drop) and 3.6 A rms; the high-side limit is 4.5 A "
-               "typical, 5.05 maximum",
+        "M14": "L1 (PNR3015-150M, 15 uH): ripple 3.3 x (1 - 3.3 / 24) / (15 uH x 700 kHz) = 0.27 A, "
+               "peak 0.25 + 0.14 = 0.39 A, against 1.40 A guaranteed / 1.80 typical saturation and "
+               "1.00 / 1.20 A rms (APV, 30 % drop). TI SNVSA24 9.2.2.2 on the inductor: 'Using a "
+               "rating near 1.6 A will enable the LMR16006 to current limit without saturating the "
+               "inductor. This is preferable to the LMR16006 going into thermal shutdown mode and "
+               "the possibility of damaging the inductor if the output is shorted' -- advice, "
+               "against a limit of 1.2 A typical / 1.7 max. So the guaranteed figure clears the "
+               "typical limit and the typical one the maximum; in a held short the IC limits near "
+               "1.2 A, at about the part's rms rating, and its thermal cut-out cycles it. L2 "
+               "(VLS6045EX-6R8M): ripple 1.46 A, peak 3.73 A at 3 A, against 4.7 A saturation (TDK, "
+               "30 % drop) and 3.6 A rms; the high-side limit is 4.5 A typical, 5.05 maximum",
         "M15": "both converters are internally compensated for ceramic outputs. U1: "
                "about 17 uF effective on 3V3 against the 4.7-100 uF the datasheet gives. "
                "U5: about 37 uF effective against a table row of 4 x 22 uF nominal "
