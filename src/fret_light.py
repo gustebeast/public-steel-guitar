@@ -736,7 +736,7 @@ def parts(panel):
 # docs/fret-led.md 9.1f. The two boards meet across the deck-panel seam TIP TO TIP: six
 # side-mount pogos on each, on one axis, 1.90 above each board's top face -- the boards
 # are coplanar, so both axes are at the same height by construction. The keyhead board
-# carries the harness plug and the buck; the seam carries +14V, GND and the TLC59711
+# carries the harness plug and the buck; the seam carries +14V5, GND and the TLC59711
 # chain from key's last driver into mid's first.
 #
 # The part's own numbers live in src/pogo_part.py, shared with the foot strip's seam.
@@ -754,12 +754,12 @@ POGO_PITCH = 4.50          # 4.00 courtyards with 0.50 between -- and 0.45 to th
 # fret 9's cell (its seam end is a comb end, not a bay), so they must sit between LED
 # rows: 13.90 clear between two courtyards, which takes three 4.00 courtyards and not
 # four. The -Y lane is left for the M4 on mid (M4_Y["mid"] = -28.00 is in it).
-#     centre lane   +14V GND +14V     power doubled, its return in the middle
+#     centre lane   +14V5 GND +14V5     power doubled, its return in the middle
 #     +Y lane       SCK  GND SDT      each signal beside a ground, loop ~4.5 x 12
 # FOUR CIRCUITS, ONE PIN EACH (user, 2026-10-04): the rail and its return in one lane, the
 # clock and the data in the other. The part is rated 12 A a pin against the 0.90 A that
 # crosses this seam, so a second pin on the rail bought nothing but a lost-contact margin.
-POGO_LANES = ((0.0, ("+14V", "GND")),
+POGO_LANES = ((0.0, ("+14V5", "GND")),
               ((LED_Y_IN + LED_Y_OUT) / 2.0, ("SCK_SEAM", "SDT_SEAM")))
 # (which end of board_span faces the seam, which way is inboard)
 _SEAM = {"mid": (0, 1.0), "key": (1, -1.0)}

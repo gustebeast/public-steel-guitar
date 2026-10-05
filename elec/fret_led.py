@@ -24,11 +24,11 @@ come in threes and both boards land on a whole number of drivers with nothing wa
 
 ONE CHAIN ACROSS TWO BOARDS, JOINED AT THE PANEL SEAM BY FOUR TIP-TO-TIP POGOS
 (docs/fret-led.md 9.1f). The keyhead board carries the harness plug, the fuse and the
-24 V -> 14 V buck for BOTH; the seam carries +14V, GND and the TLC59711 chain out of
+24 V -> 14.5 V buck for BOTH; the seam carries +14V5, GND and the TLC59711 chain out of
 key's last driver into mid's first:
 
     Pi cap --J1--> fret_led_key: U1 (fret 2) .. U3 (fret 8)
-                     --SCK_SEAM/SDT_SEAM, +14V, GND over the seam-->
+                     --SCK_SEAM/SDT_SEAM, +14V5, GND over the seam-->
                    fret_led_mid: U1 (fret 10) .. U5 (fret 24), chain end
 
 ⚠ THE SUPPLY MOVED TO KEY BECAUSE MID'S BAY COULD NOT HOLD IT AND THE JOINT. The pads
@@ -40,10 +40,10 @@ the whole fretboard ONE chain in ascending X with no trace doubling back: the ha
 lands at key's -X end, key's chain runs +X to the seam, crosses, and mid's runs +X to
 the bridge. And one SDT does both boards, so the Pi cap's second fret header goes.
 
-⚠ AND THE SEAM CARRIES 14 V, NOT 24. §9.1b assumed each board made its own rail; with
+⚠ AND THE SEAM CARRIES 14.5 V, NOT 24. §9.1b assumed each board made its own rail; with
 one buck the rail crosses instead, which is what lets mid lose its whole supply. The
 part is unchanged -- C5203987 is still the only side-mount pogo in the library rated
-above 12 V, and 14 is above 12.
+above 12 V, and 14.5 is above 12.
 
 ⚠ THE HISTORY, for whoever reads 9.1: the joint was retracted there on a contact-height
 argument that was right (a side-mount pin fires 1.90 above its own board and misses a
@@ -75,6 +75,7 @@ from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 import netcheck  # noqa: E402
 import harness as _H  # noqa: E402
 import placecheck  # noqa: E402
+import buck_cell as BC  # noqa: E402
 from placecheck import check_placement, fp_box  # noqa: E402
 
 P = Pin.types.PASSIVE
@@ -93,6 +94,7 @@ C_FP = "Capacitor_SMD:C_0402_1005Metric"
 C08_FP = "Capacitor_SMD:C_0805_2012Metric"
 C12_FP = "Capacitor_SMD:C_1206_3216Metric"
 POGO_FP = "Steel:Xinyangze_YZF0002-38080-02"
+TP_FP = "TestPoint:TestPoint_Pad_D1.5mm"
 # the board that carries the harness plug and the buck -- see the module docstring
 HARNESS = "key"
 
@@ -115,17 +117,31 @@ LED_MPN = "XL-5050RGBW"
 R_IREF = "3k3"
 
 # ── the rail ─────────────────────────────────────────────────────────────────────────
-# FOUR DICE IN SERIES: W/G/B are 3.0-3.2 V each, so 12.8 V, and red is 2.0-2.2, so 8.8.
-# 14 V leaves the sinks 1.2 V of headroom on the tall strings, which is what a constant
-# current sink needs to regulate, and 5.2 V on red.
+# FOUR DICE IN SERIES, AND THE TOP OF THE BIN SETS THE RAIL.
+# ⚠ THE STRING IS 13.6 V, NOT 12.8 (manual quality pass, 2026-10-05). XINGLIGHT's sheet
+# gives green, blue and white 3.0 to 3.4 V at 20 mA, +-0.1, and red 2.0 to 2.4 -- this
+# file said "3.0-3.2". Four at 3.4 is 13.6 V, and the 14.02 V this rail was could sit as
+# low as 13.6 itself (0.985 V reference, 1 % resistors): no headroom at all on a
+# top-of-bin string, where the sink needs about 0.3 V at 15 mA to stay flat (TI SBVS181A
+# figure 12).
 #
-# ⚠ RED IS WHAT SETS THE DRIVER'S DISSIPATION, and it is the price of one shared rail:
-#     red     (14.0 - 8.8) x 15 mA = 78 mW per channel
-#     W/G/B   (14.0 - 12.8) x 15 mA = 18 mW per channel
-#     per TLC59711, 3 zones x (78 + 3 x 18) = 396 mW, all frets at full white
-# 396 mW into an HTSSOP-20 with its pad on a plane is a rise of ~13 C. Red also wants
-# trimming down for colour balance, so the fix and the calibration are one knob (6.2).
-V_RAIL = 14.0
+# 14.52 V: R10 over (R11 parallel R12) on the LMR33630's 1.000 V reference, 100k over
+# (7k68 || 200k). The rail's own low limit is then 14.04 V, 0.44 V over the worst string
+# -- and the sheet's 3.4 V is at 20 mA, where these run at 15.
+# ⚠ AND NOT HIGHER, BECAUSE EVERY EXTRA VOLT IS HEAT IN THE DRIVER. One shared rail means
+# red drops the difference:
+#     red     (14.52 - 4 x 2.1) x 15 mA = 92 mW per channel, typical dice
+#     W/G/B   (14.52 - 4 x 3.1) x 15 mA = 32 mW per channel
+#     per TLC59711, 3 zones x (92 + 3 x 32) = 0.56 W, plus about 0.12 W of its own supply
+#     current at 14.5 V: 0.68 W typical, 0.86 W with every die at the bottom of its bin
+# At 68.6 C/W (SBVS181A thermal table) that is 47 to 59 C over the air under the deck,
+# with every fret at full white: 99 C at the junction in 40 C air, against 125 operating
+# and 150 shutdown. 15.0 V would have matched the foot strip's 0.9 V of worst-case
+# headroom and cost another 7 C here. Red also wants trimming down for colour balance,
+# which takes its share off again (docs/fret-led.md 6.2).
+R_FBT, R_FBB, R_FBP = 100e3, 7.68e3, 200e3
+V_RAIL = round(1.0 * (1.0 + R_FBT / (R_FBB * R_FBP / (R_FBB + R_FBP))), 2)      # 14.52
+assert abs(V_RAIL - 14.52) < 0.005, V_RAIL
 I_CHAN = 0.015
 I_VCC = 0.03                         # a TLC59711's own supply current, with margin: what
                                      # its VCC pin's stub carries. The LED current does not
@@ -210,6 +226,32 @@ def check_walls(name, place, fps, walls, bay_x1, cx):
 
 WALL_CLR = 0.3
 
+# ── THE DRIVER'S HEAT PAD: SEVEN VIAS, NOT ONE (manual quality pass M25, 2026-10-05) ────
+# The stitcher gives an exposed pad one via at its centre, which is a ground connection
+# and not a heat path: one 0.25 mm barrel down 1.28 mm to the ground plane is about
+# 200 C/W, under a part that dissipates most of a watt at full white. TI's land pattern
+# for this package (SBVS181A, PWP land pattern data) draws fifteen 0.3 mm vias on a 1.3 mm
+# grid across the 3.4 x 6.5 copper.
+# ⚠ SIX MORE, AND ONLY UNDER THE SOLDER MASK. The pad's copper is 6.5 long but only the
+# middle 3.43 is opened and pasted; the two ends are mask over copper. Vias there cost no
+# paste, where each one inside the opening would drink a tenth of what is printed. Three
+# across each end, on TI's own 1.3 mm pitch: with the centre one about 30 C/W to the plane.
+DRV_PAD_VIAS = tuple((dx, dy) for dy in (-2.60, +2.60) for dx in (-1.30, 0.0, +1.30))
+
+# ── the buck's cell in the bay: buck_cell's frame, +x towards the inductor ────────────
+CELL_Y = -17.80                      # U10: the input slab ends 0.5 short of J1's courtyard
+                                     # and the output HF capacitor 2.2 from the -Y edge
+CELL_REFS = {"CIN_A": "C32", "CIN_B": "C35", "CBOOT": "C33", "CVCC": "C34",
+             "RFBB": "R11", "RFBT": "R10", "RFBP": "R12"}
+BULK_REFS = {"CIN_1": "C30", "CIN_2": "C31", "L1": "L1",
+             "COUT_1": "C36", "COUT_2": "C37", "COUT_HF": "C38"}
+CELL_BULK = dict({ref: BC.BULK[role] for role, ref in BULK_REFS.items()}, **{
+    "TP1": (-6.50, +5.00, 0.0),      # +24V, beside the input bulk
+    "TP3": (+2.50, +5.00, 0.0),      # GND
+    "TP2": (+11.50, +5.00, 0.0),     # the rail, beside the output bulk
+})
+cell_org = []                        # (origin, turn) of the cell as _supply placed it
+
 
 def _r(ref, value, desc, fp=R_FP):
     return Part(name="R", ref_prefix="R", ref=ref, tag=ref, dest="NETLIST", tool="skidl",
@@ -248,15 +290,15 @@ def zones_for(x_lo, x_hi):
 
 
 def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
-    """The bay: harness in, fused, 24 V -> 14 V, at the board's -X end.
+    """The bay: harness in, fused, 24 V -> 14.5 V, at the board's -X end.
 
     ⚠ AT THE -X END BECAUSE THAT IS THE FAR END FROM THE PICKUP (docs/fret-led.md 6.3
     item 3). The buck is the highest di/dt thing on the board and the magnetic pickup
     comes within 14.08 mm of the MID board's +X edge at its neck-most slide; putting
-    the switcher 210 mm away leaves nothing but smoothed 14 V at that end. It is also
+    the switcher 210 mm away leaves nothing but the smoothed rail at that end. It is also
     where the harness has to land, so one region carries all the service access."""
     # A 4-WAY XH, ONE CONTACT A CIRCUIT (user, 2026-10-04). It was a 6-way PH with the rail
-    # and its return doubled. XH is 3 A per contact against the 0.89 A both boards draw
+    # and its return doubled. XH is 3 A per contact against the 0.93 A both boards draw
     # at 24 V.
     # ⚠ XH BECAUSE IT IS 24 V. The instrument's rule (user, 2026-10-04): PH carries 5 V
     # and XH carries 24 V, so no lead can put the higher rail on the lower one's socket.
@@ -282,11 +324,14 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # The fuse protects the TRUNK, not the board: a shorted buck must not pull the
     # instrument's 24 V down. Same argument, same part class as motor_ctrl's F1.
     # ⚠ 2 A, NOT 1: this buck feeds BOTH boards now. 23 zones x 4 x 15 mA = 1.38 A at
-    # 14 V is 0.89 A at 24 V at 90 %, and a 1 A fuse at 89 % of rating ages open.
+    # 14.52 V is 0.93 A at 24 V at 90 %, and a 1 A fuse at 93 % of rating ages open.
+    # ⚠ A PART, NOT "2A": a fuse is chosen for its voltage and its speed as well as its
+    # current, and a value string picks none of them. JDT JFC1206 fast-acting, 63 V.
     f1 = Part(name="Fuse", ref_prefix="F", ref="F1", tag="F1", dest="NETLIST",
-              tool="skidl", value="2A",
-              description="24 V fuse -- a shorted U10 must not feed the fault back out "
-                          "into the trunk", footprint="Fuse:Fuse_1206_3216Metric",
+              tool="skidl", value="JFC1206-1200FS",
+              description="24 V fuse, fast, 63 V, 2 A (LCSC C136345) -- a shorted U10 "
+                          "must not feed the fault back out into the trunk",
+              footprint="Fuse:Fuse_1206_3216Metric",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v24_in += f1[1]
     v24 += f1[2]
@@ -298,12 +343,13 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # Measured against THIS board's floor: the eight drivers' own ICC is tens of mA
     # even with every LED dark, which puts the skip rate in the hundreds of kHz. It
     # only reaches the audio band at loads this board cannot present while powered.
-    # Pinout, SNVSB08 Table 6-1 (VQFN column): 1 PGND, 2 VIN, 3 NC, 4 BOOT, 5 VCC,
+    # Pinout, SNVSAN3F Table 6-1 (VQFN column): 1 PGND, 2 VIN, 3 NC, 4 BOOT, 5 VCC,
     # 6 AGND, 7 FB, 8 PG, 9 EN, 10 VIN, 11 PGND, 12 SW. TI: "connect the SW pin to NC
     # on the PCB". PG unused. EN to VIN, which the datasheet allows.
     u = Part(name="LMR33630CRNX", ref_prefix="U", ref="U10", tag="U10", dest="NETLIST",
              tool="skidl", value="LMR33630CRNXR",
-             description="24 V -> 14 V synchronous buck, 2.1 MHz, 3 A (LCSC C2071783)",
+             description="24 V -> %.2f V synchronous buck, 2.1 MHz, 3 A "
+                         "(LCSC C2071783)" % V_RAIL,
              footprint=BUCK_FP, pins=[Pin(num=n, func=P) for n in range(1, 13)])
     sw, boot, vcc, fb = Net("SW"), Net("BOOT"), Net("BUCK_VCC"), Net("FB")
     gnd += u[1], u[11], u[6]
@@ -316,8 +362,8 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
 
     # ⚠ THE VALUE IS THE PART NUMBER, for the reason optical.py gives at its own L1:
     # "4.7uH" does not specify an inductor, and saturation is what decides whether this
-    # supply works. Ripple at 14 V out, 24 V in, 2.1 MHz: Vout(1-D)/(f L) = 0.59 A
-    # pk-pk, so the peak at BOTH boards' 1.38 A full-white load is 1.68 A against
+    # supply works. Ripple at 14.52 V out, 24 V in, 2.1 MHz: Vout(1-D)/(f L) = 0.58 A
+    # pk-pk, so the peak at BOTH boards' 1.38 A full-white load is 1.67 A against
     # this part's 3.2 A saturation, and the IC's own ~4 A limit still acts first.
     # KIND = 0.43 of the load current at full load, inside TI's band; below ~0.3 A the
     # part leaves continuous conduction, which is the skip-mode case argued above.
@@ -335,24 +381,40 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     for ref, val, fp, net, why in (
             ("C30", "10uF/50V", C12_FP, v24, "buck input bulk"),
             ("C31", "10uF/50V", C12_FP, v24, "buck input bulk"),
-            ("C32", "100nF", C_FP, v24, "buck input HF bypass -- at U10's VIN/GND pins"),
-            ("C34", "1uF", C_FP, vcc, "buck VCC bypass"),
-            ("C36", "10uF/50V", C12_FP, vrail, "14 V output bulk"),
-            ("C37", "10uF/50V", C12_FP, vrail, "14 V output bulk"),
-            ("C38", "100nF", C_FP, vrail, "14 V output HF bypass")):
+            # 50 V SAID IN THE VALUE: the fab picks a passive by its value text and a bare
+            # "100nF" 0402 is its 16 V part (C1525). 100nF/50V is CL05B104KB54PNC, C307331,
+            # also a basic part -- so every 100 nF on the board is that one line.
+            ("C32", "100nF/50V", C_FP, v24, "buck input HF bypass -- VIN/PGND, pins 2 and 1"),
+            ("C35", "100nF/50V", C_FP, v24, "buck input HF bypass -- VIN/PGND, pins 10 "
+                                            "and 11, the pair on the other side"),
+            ("C34", "1uF/25V", C_FP, vcc, "buck VCC bypass (TI: 1 uF, 16 V or more)"),
+            ("C36", "10uF/50V", C12_FP, vrail, "rail output bulk"),
+            ("C37", "10uF/50V", C12_FP, vrail, "rail output bulk"),
+            ("C38", "100nF/50V", C_FP, vrail, "rail output HF bypass")):
         c = _c(ref, val, why, fp)
         net += c[1]
         gnd += c[2]
-    c33 = _c("C33", "100nF", "buck bootstrap -- BOOT to SW")
+    c33 = _c("C33", "100nF/50V", "buck bootstrap -- BOOT to SW (TI: 100 nF, 10 V or more)")
     boot += c33[1]
     sw += c33[2]
-    # VREF is 1.0 V (LMR33630 datasheet SNVSB08), so RFBB = RFBT / (VOUT/VREF - 1) =
-    # 100k / 13 = 7.69k. 7k68 is the E96 value and gives 14.02 V.
-    r10 = _r("R10", "100k", "14 V feedback divider, top")
-    r11 = _r("R11", "7k68 1%", "14 V feedback divider, bottom -- 14.02 V with R10")
+    # VREF is 1.0 V (SNVSAN3F 7.5: 0.985 to 1.015), and the divider is V_RAIL's, above.
+    r10 = _r("R10", "100k 1%", "rail feedback divider, top (TI: 100k)")
+    r11 = _r("R11", "7k68 1%", "rail feedback divider, bottom")
+    r12 = _r("R12", "200k 1%", "across R11: 7k68 || 200k = 7.396k, %.2f V with R10"
+                               % V_RAIL)
     vrail += r10[1]
-    fb += r10[2], r11[1]
-    gnd += r11[2]
+    fb += r10[2], r11[1], r12[1]
+    gnd += r11[2], r12[2]
+    # THREE TEST PADS, bare copper, labelled by kicad_silk with their nets (M9): the two
+    # rails a first power-up is checked on, and a ground beside them for the other probe.
+    for ref, net, what in (("TP1", v24, "+24V behind the fuse"),
+                           ("TP2", vrail, "the LED rail, %.2f V" % V_RAIL),
+                           ("TP3", gnd, "ground for the probe")):
+        tp = Part(name="TestPoint", ref_prefix="TP", ref=ref, tag=ref, dest="NETLIST",
+                  tool="skidl", value="TP",
+                  description="test pad -- %s; bare copper, no component" % what,
+                  footprint=TP_FP, pins=[Pin(num=1, func=P)])
+        net += tp[1]
 
     # ── THE BAY, the only part of this board laid out by hand ────────────────────────
     # J1's mouth is its footprint's +Y and the placement anchors on the PAD CENTROID, so
@@ -369,74 +431,47 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # keep-out against other PARTS; the deck is not one, and check_walls measures the
     # deck against bodies for exactly that reason.
     #
-    # ⚠ AND THE REST GOES IN ONE COLUMN DOWN THE MIDDLE, NOT THREE.
-    # Three columns fit the mid board's 10.50 bay only on paper: a 1206 is 4.6 wide, so
-    # the centre column eats 4.6 of the 8.50 usable, and the two 0402 columns beside it
-    # were left with a 0.10 mm lane. Legal by the overlap test, and not enough room for
-    # the router to bring a stitch via down to the plane -- it came back with a via
-    # 0.1084 mm from a GND track against a 0.127 floor, in exactly that lane.
+    # ⚠ AND THE REST IS THE BUCK'S OWN CELL, TURNED TO RUN DOWN THE BAY (manual quality
+    # pass M13, 2026-10-05). It was one column of parts in the supply's own order, which
+    # put the feedback divider 15 mm from the FB pin, at the far end past the inductor and
+    # the output bulk, and gave the package one input capacitor where TI asks for one at
+    # each of its two VIN/PGND pairs. elec/buck_cell.py is the placement the optical board
+    # measured against TI's layout example; here it is turned so its inductor end points
+    # -Y, away from J1, with the feedback parts on the board-edge side and the switch node
+    # on the other.
     #
-    # One column instead, with the 0402s PAIRED across it (two of them plus a gap is
-    # 3.94, inside a 1206's own 4.6), which leaves ~1.95 mm of clear lane down BOTH sides
-    # of the whole bay for the router and the stitching. Y is the axis with room: 26.6 mm
-    # between J1's courtyard and the board edge, and the stack below uses 24.4 of it.
+    # ⚠ IT STAYS IN THE -Y HALF: the M4's deck boss is O9.2 on the board's top face in
+    # the +Y half of the bay (fret_light.M4_Y), and the +Y edge carries the retaining
+    # notches. F1 is alone in +Y because it is the only part of the supply that is NOT in
+    # a loop that matters: it is upstream of the input bulk, so the hot loop closes
+    # without it and its feed from J1 can be as long as it likes.
     #
-    # The order is the supply's own: input bulk, input HF, the IC, VCC/output HF, the
-    # inductor, output bulk, feedback. What has to be TIGHT is C32 to U10's VIN/GND and
-    # C33 to BOOT/SW, and both sit directly against the package.
+    # ⚠ THE FOUR 1206s LIE ALONG X HERE, WHICH IS THE BOARD'S LONG AXIS, AND THAT IS A
+    # DECISION (M38). On the foot strip the same cell stands them across a 290 x 17 mm
+    # board that bends. This board is 211 x 70, held by two M4s and a lip, and these four
+    # are within 10 mm of its -X end, where a bend along X has no moment to give them. In
+    # exchange the cell keeps one shape on both boards, with its ground and input slabs
+    # taking the bulk capacitors in.
     bx0, bx1 = bay_x0 - cx, bay_x1 - cx
     mouth = bx0 + 1.0
-    # 5.25 from the board edge on BOTH boards, not the bay's midpoint: the mid bay is
-    # 10.50 and the keyhead's 17.41, and a column centred in each would put them in
-    # different places for no reason. 5.25 leaves 2.95 of clear lane either side of the
-    # widest part in the column (a 1206) on the tighter of the two.
+    # 5.25 from the board edge: 1.07 between the board edge and the feedback pair's far
+    # courtyard on one side, and the whole rest of the bay for the test pads on the other
     col = bx0 + 5.25
-    # 1.15, not 1.06: a 0402's courtyard is 1.86 wide, so 1.06 leaves 0.26 between the
-    # two of a pair -- which the gap check above caught the moment it was tightened. At
-    # 1.15 the pair spans 4.16, still inside a 1206's own 4.60.
-    pair = 1.15
-    # ⚠ THE WHOLE COLUMN SITS 0.60 LOWER THAN IT DID. THE RETAINING NOTCHES WERE
-    # WHY. The +Y edge now carries a notch per deck tab (see _outline), 1.35 deep, so
-    # nothing may stand past y 33.85 -- and the column's top two rows did. Moving the
-    # column rather than the divider keeps the feedback pair WITH the buck, which is the
-    # one thing about this cluster that is not negotiable: FB is its only high-impedance
-    # node. check_notches is what found it, before the board was routed rather than after.
-    # ⚠ THE WHOLE COLUMN IS TURNED HALF A TURN INTO THE -Y HALF, AS ONE RIGID BODY. The
-    # M4 moved to the +Y side (opposite the tilt-in lip, fret_light.M4_Y) and its deck boss
-    # is O9.2 on the board's top face, exactly where the column's output end stood. A half
-    # turn about (col, 0) keeps every part's neighbours and every loop exactly as it was --
-    # C32 still against U10's VIN/GND, C33 still on BOOT/SW, the divider still with the
-    # buck -- which a plain mirror would not: a mirror swaps which side of U10 each sits on.
-    # F1, the one part that was already alone in the -Y half, goes to +Y for the same room.
-    def turned(dx, y):
-        return (col - dx, -y, 180.0)
-
-    place.update({
-        "J1": (mouth + J_ANCHOR, 0.00, 270.0),
-        "C30": turned(0.0, 10.25),
-        "C31": turned(0.0, 13.05),
-        "C32": turned(-pair, 15.17),         # VIN HF bypass, against U10's VIN/GND
-        "C33": turned(pair, 15.17),          # bootstrap, BOOT to SW
-        "U10": turned(0.0, 18.09),
-        "C34": turned(-pair, 21.01),         # VCC bypass
-        "C38": turned(pair, 21.01),          # output HF
-        "L1": turned(0.0, 24.23),
-        "C36": turned(0.0, 28.13),
-        "C37": turned(0.0, 30.93),
-        # the feedback divider stays WITH the buck: FB is the one high-impedance node
-        # here and a long trace to it is the classic way to make a switcher sing
-        "R10": turned(-pair, 33.05),
-        "R11": turned(pair, 33.05),
-        # ...and the fuse sits apart, because it is the only part of the supply that is
-        # NOT in a loop that matters: it is upstream of the input bulk, so the hot loop
-        # closes without it and its feed from J1 can be as long as it likes.
-        "F1": turned(0.0, -12.00),
-    })
+    org, turn = (col, CELL_Y), 270.0
+    place["J1"] = (mouth + J_ANCHOR, 0.00, 270.0)
+    place["U10"] = BC.at(org, turn, 0.0, 0.0)
+    for role, ref in CELL_REFS.items():
+        place[ref] = BC.at(org, turn, *BC.CORE[role])
+    for ref, (dx, dy, rot) in CELL_BULK.items():
+        place[ref] = BC.at(org, turn, dx, dy, rot)
+    place["F1"] = (col, 12.00, 180.0)
     fps.update(dict(
         [("J1", J_FP), ("U10", BUCK_FP), ("L1", IND_FP),
-         ("F1", "Fuse:Fuse_1206_3216Metric"), ("R10", R_FP), ("R11", R_FP)]
+         ("F1", "Fuse:Fuse_1206_3216Metric"), ("R10", R_FP), ("R11", R_FP), ("R12", R_FP)]
         + [(r, C12_FP) for r in ("C30", "C31", "C36", "C37")]
-        + [(r, C_FP) for r in ("C32", "C33", "C34", "C38")]))
+        + [(r, C_FP) for r in ("C32", "C33", "C34", "C35", "C38")]
+        + [(r, TP_FP) for r in ("TP1", "TP2", "TP3")]))
+    cell_org[:] = [org, turn]
     assert bx1 - bx0 >= 9.0, "the bay is %.2f mm long and J1 plus the buck needs 9" % (
         bx1 - bx0)
     return sck, sdt
@@ -470,9 +505,9 @@ def _arrival(place, fps, gnd, vrail, bay_x0, cx):
     bx0 = bay_x0 - cx
     col = bx0 + FL.pogo_set()["mid"]          # the pogos' own column, in the -Y half
     for ref, val, fp, xy, why in (
-            ("C36", "10uF/50V", C12_FP, (col, -9.40), "14 V arrival bulk"),
-            ("C37", "10uF/50V", C12_FP, (col, -12.60), "14 V arrival bulk"),
-            ("C38", "100nF", C_FP, (bx0 + 7.50, -4.50), "14 V arrival HF bypass")):
+            ("C36", "10uF/50V", C12_FP, (col, -9.40), "rail arrival bulk"),
+            ("C37", "10uF/50V", C12_FP, (col, -12.60), "rail arrival bulk"),
+            ("C38", "100nF/50V", C_FP, (bx0 + 7.50, -4.50), "rail arrival HF bypass")):
         c = _c(ref, val, why + " -- the rail comes in over the seam pogos", fp)
         vrail += c[1]
         gnd += c[2]
@@ -494,11 +529,11 @@ def build(panel):
     cx = FL.board_cx(panel)
     length = x1 - x0
 
-    gnd, v24, vrail = Net("GND"), Net("+24V"), Net("+14V")
+    gnd, v24, vrail = Net("GND"), Net("+24V"), Net("+14V5")
     for n in (gnd, v24, vrail):
         n.drive = Pin.drives.POWER
     place, fps = {}, {}
-    seam = {"+14V": vrail, "GND": gnd,
+    seam = {"+14V5": vrail, "GND": gnd,
             "SCK_SEAM": Net("SCK_SEAM"), "SDT_SEAM": Net("SDT_SEAM")}
     if panel == HARNESS:
         sck, sdt = _supply(place, fps, gnd, v24, vrail, x0, min(bnd), cx)
@@ -546,16 +581,18 @@ def build(panel):
         r = _r("R%d" % (k + 1), R_IREF, "U%d IREF -- 15.0 mA per channel" % (k + 1))
         iref += r[1]
         gnd += r[2]
-        cv = _c("C%d" % (k + 1), "1uF", "U%d VREG (datasheet: 1 uF required)" % (k + 1))
+        cv = _c("C%d" % (k + 1), "1uF/25V", "U%d VREG (datasheet: 1 uF required)" % (k + 1))
         vreg += cv[1]
         gnd += cv[2]
-        cc = _c("C%d" % (10 + k + 1), "100nF", "U%d VCC bypass" % (k + 1))
+        cc = _c("C%d" % (10 + k + 1), "100nF/50V", "U%d VCC bypass" % (k + 1))
         vrail += cc[1]
         gnd += cc[2]
         # ⚠ LOCAL BULK AT EVERY DRIVER, and it is item 4 of the noise plan, not tidiness.
         # Without it each zone's PWM current is drawn down the full-length rail and the
         # supply loop becomes the whole board, which undoes the plane.
-        cb = _c("C%d" % (20 + k + 1), "4.7uF/25V", "U%d local bulk -- its zones' PWM "
+        # 50 V: twice the rail and more (M4). The 25 V part this was keeps about a
+        # third of its marking at 14.5 V of bias.
+        cb = _c("C%d" % (20 + k + 1), "4.7uF/50V", "U%d local bulk -- its zones' PWM "
                 "current must come from here, not from the far end of the rail" % (k + 1),
                 C08_FP)
         vrail += cb[1]
@@ -603,7 +640,12 @@ def build(panel):
                 Net("Z%d_%s_RET" % (fret, col)).connect(leds[3][i + 5], u[outs[i]])
 
     # ⚠ BEFORE THE NETLIST, NOT AFTER THE ROUTE. See check_placement.
-    check_placement(name, place, fps)
+    # the buck's cell is laid out to TI's figure, closer than the lane-keeping gap this
+    # check enforces; real courtyard overlaps are still DRC's to refuse
+    cell = ["U10"] + sorted(CELL_REFS.values()) + sorted(CELL_BULK)
+    exempt = ([(a, b) for i, a in enumerate(cell) for b in cell[i + 1:]]
+              if panel == HARNESS else [])
+    check_placement(name, place, fps, exempt=exempt)
     check_walls(name, place, fps, bnd, min(bnd), cx)
     ERC()
     net = os.path.join(OUT_DIR, "%s.net" % name)
@@ -631,12 +673,16 @@ def build(panel):
     notes["outline_poly"] = [[round(v, 4) for v in pt] for pt in (
         (-hl, -hw), (hl, -hw), (hl, ey), (ex0 - cx, ey), (ex0 - cx, hw), (-hl, hw))]
     notes["qty_per_instrument"] = 1
+    # each driver's heat pad gets its six vias (DRV_PAD_VIAS)
+    notes["vias"] = list(notes.get("vias", [])) + [
+        ("GND", round(xd + dx, 3), round(DRV_Y + dy, 3))
+        for _u, xd, _trio in drivers for dx, dy in DRV_PAD_VIAS]
     # WHAT EACH SUPPLY NET CARRIES, all-white. The 14 V rail is made on the key board and
     # crosses the seam pogos to the mid board, so the key board's rail is held to BOTH
     # boards' channels and the mid board's to its own.
     i_own = 4 * len(zs) * I_CHAN
     rail_j = ["J%d" % (11 + i) for i, (_x, _y, _net) in enumerate(FL.pogo_pads(panel))
-              if _net == "+14V"]            # the seam pogo(s) the rail crosses on
+              if _net == "+14V5"]            # the seam pogo(s) the rail crosses on
     i_all = 4 * I_CHAN * sum(len(zones_for(*FL.panel_range(q))) for q in ("mid", "key"))
     if panel == "key":
         i_24 = i_all * V_RAIL / 24.0 / 0.90
@@ -647,14 +693,14 @@ def build(panel):
             # to the WHOLE rail rather than the mid board's share, because the stretch
             # that matters is L1's own exit and all of it leaves there. A driver's VCC is
             # only its logic supply (the LED current enters at the anodes, off the plane).
-            {"net": "+14V", "from": "L1.2", "to": [r + ".1" for r in rail_j],
+            {"net": "+14V5", "from": "L1.2", "to": [r + ".1" for r in rail_j],
              "amps": round(i_all, 3)},
-            {"net": "+14V", "from": "L1.2",
+            {"net": "+14V5", "from": "L1.2",
              "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": I_VCC},
         ]
         pin = {"S4B-XH-SM4-TB": "JST XH S4B-XH-SM4-TB drawing for pin 1; the way order is "
                                 "J_PINS in _supply(), the Pi cap's end to match",
-            "LMR33630CRNXR": "TI LMR33630 datasheet SNVSB08, Table 6-1, VQFN (RNX) column",
+            "LMR33630CRNXR": "TI LMR33630 datasheet SNVSAN3F, Table 6-1, VQFN (RNX) column",
         }
         # ⚠ A SECOND BARREL, IN THE INDUCTOR'S OWN LAND. All 1.38 A of the rail leaves L1.2,
         # and the stitcher gives a pad one via because it does not know currents. The
@@ -662,11 +708,17 @@ def build(panel):
         # accepted), so one more goes straight down through it to the plane.
         # ONE, NOT TWO: two open barrels hold 0.23 of the 0.49 mm3 of paste printed on
         # the land, and a quarter is the limit (cadkit quality A12).
+        # (1.5 along the part to the land's centre, 1.2 along the land from there)
         import math
         lx, ly, lrot = place["L1"]
-        px2 = lx + 1.5 * math.cos(math.radians(lrot))
+        _kc, _ks = math.cos(math.radians(lrot)), math.sin(math.radians(lrot))
         notes["vias"] = list(notes.get("vias", [])) + [
-            ("+14V", round(px2, 3), round(ly + 1.2, 3))]
+            ("+14V5", round(lx + 1.5 * _kc - 1.2 * _ks, 3), round(ly + 1.5 * _ks + 1.2 * _kc, 3))]
+        # the switch node and the two input loops are laid, not routed (buck_cell.tracks)
+        notes["tracks"] = list(notes.get("tracks", [])) + BC.copper(
+            *cell_org, v_out="+14V5")
+        notes["vias"] = notes["vias"] + BC.vias(*cell_org)
+        notes["stitch_exceptions"] = BC.STITCH_EXCEPTIONS
         waive = {
             # IPC-2221, 1 oz outer: 0.250 mm carries 0.875 A at a 10 C rise, so 0.89 A is
             # 10.4 C -- over 2 mm, between lands that are each a heat sink.
@@ -682,7 +734,7 @@ def build(panel):
     else:
         # the rail arrives on a pogo land that is stitched straight to the plane; what
         # leaves the plane by a track is a driver's logic supply
-        paths = [{"net": "+14V", "from": rail_j[0] + ".1",
+        paths = [{"net": "+14V5", "from": rail_j[0] + ".1",
                   "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": I_VCC}]
         pin, waive = {}, {}
     notes["quality"] = {
@@ -709,19 +761,19 @@ def build(panel):
 BOARD_NOTES = {
     "layers": 4,
     "thickness_mm": 1.6,
-    # ⚠ +14V ON In1, GND ON In2 -- AND THAT INVERTS docs/fret-led.md 6.3, ON PURPOSE.
+    # ⚠ +14V5 ON In1, GND ON In2 -- AND THAT INVERTS docs/fret-led.md 6.3, ON PURPOSE.
     # That section says "GND plane directly under the LED layer", having assumed the
     # LED loop's return conductor is ground. It is not. A zone's switched current runs
-    # local bulk -> +14V -> four LEDs in series along 60 mm of fret -> the driver's
+    # local bulk -> +14V5 -> four LEDs in series along 60 mm of fret -> the driver's
     # output pin -> through the chip to its GND pad -> back to the cap, and the cap sits
     # AT the driver. So the conductor that mirrors the long F.Cu run is the RAIL, and
     # the loop is the area between the chain and the rail plane beneath it:
-    #     In1 = +14V   0.21 mm under F.Cu    ~15 mm2      (this board)
-    #     In2 = +14V   1.28 mm under F.Cu    ~90 mm2
+    #     In1 = +14V5   0.21 mm under F.Cu    ~15 mm2      (this board)
+    #     In2 = +14V5   1.28 mm under F.Cu    ~90 mm2
     # Six times smaller, for a swap that costs nothing. GND is still a solid plane one
     # layer down, which is all the SPI chain (a few MHz) asks for, and the two planes
     # face each other across 1.065 mm of core, which is free interplane decoupling.
-    "zones": [("+14V", "In1.Cu", 0.3), ("GND", "In2.Cu", 0.3)],
+    "zones": [("+14V5", "In1.Cu", 0.3), ("GND", "In2.Cu", 0.3)],
     # ⚠ BOTH INNERS ARE PLANES AND THE ROUTER HAS TO BE TOLD. A zone is just copper to
     # freerouting: pour and say nothing and it routes signals straight through the
     # reference, which splits the return path of every trace that crosses it -- here
@@ -733,16 +785,16 @@ BOARD_NOTES = {
     "local_inner": "B.Cu",
     # A plane needs stitching to it, or nothing connects the pads. Every anode on the
     # rail and every GND pad gets its own via down.
-    "stitch_nets": ("+14V", "GND"),
+    "stitch_nets": ("+14V5", "GND"),
     "single_sided": True,      # every part on the face that fires into the cells
     "refs_on_fab": True,       # 92 LEDs: silkscreen refs would be ink over copper
     "no_mounting_holes": True,  # the hole is declared per board, in the bay
     "router_passes": 20,
     # THE RAILS' OWN WIDTHS, from the currents in build()'s quality block (IPC-2221, 1 oz,
-    # 10 C): 0.89 A of 24 V wants 0.26 and was routed at 0.19-0.25; the 14 V rail's whole
+    # 10 C): 0.93 A of 24 V wants 0.27 and was routed at 0.19-0.25; the 14 V rail's whole
     # 1.38 A left L1 on ONE 0.25 track and wants 0.47. The plane carries the rail the
     # length of the board -- these are the stubs that reach it.
-    "net_widths": {"+24V_IN": 0.30, "+24V": 0.30, "+14V": 0.50},
+    "net_widths": {"+24V_IN": 0.30, "+24V": 0.30, "+14V5": 0.50},
 }
 
 
@@ -752,5 +804,5 @@ if __name__ == "__main__":
         z, d = build(panel)
         tot_z += z
         tot_d += d
-    print("%d zones, %d channels, %d drivers, %.2f A at %.0f V all-white"
+    print("%d zones, %d channels, %d drivers, %.2f A at %.2f V all-white"
           % (tot_z, 4 * tot_z, tot_d, 4 * tot_z * I_CHAN, V_RAIL))
