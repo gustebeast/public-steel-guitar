@@ -617,8 +617,11 @@ LEAD_STUB  = 4.0                    # straight out of the mouth before the first
 # that motor and the Pi is -Y of it; the motor is a 42 mm square from the bay floor up, its
 # back 2.4 from the endplate's wall and its side 2.4 from the next motor. Measured on
 # sections of the built parts, 2026-10-04.
-LEAD_FLY   = 6.0                    # above the motor's top: over the chassis rib between the
-                                    # socket and the motor (it tops out ~3 above the motor)
+LEAD_FLY   = 12.0                   # above the motor's top, and what sets it is string 1's
+                                    # CAN tee, which lies ON that motor at y 18..35 and tops
+                                    # out 9.35 above it: the lead crosses 1.0 over the board.
+                                    # (At 6.0 it cleared the chassis rib and ran straight
+                                    # through the tee, 130 mm3 -- the gate found it.)
 LEAD_COL_X = -595.5                 # the column it crosses in. 2.5 further -X it meets the
                                     # motor board's corner post (x -599.7..-598.3, up to
                                     # z -21.95); 1.5 further +X it grazes the 24 V trunk's
