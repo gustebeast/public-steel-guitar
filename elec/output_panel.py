@@ -78,7 +78,6 @@ import netcheck                                     # noqa: E402
 P = Pin.types.PASSIVE
 
 USBC_FP = "Connector_USB:USB_C_Receptacle_HRO_TYPE-C-31-M-12"
-USBA_FP = "Connector_USB:USB_A_Receptacle_GCT_USB1046"
 # ⚠ NMJ6HCD2, NOT NMJ4HCD2: the 4 is the TS part and the 6 is its TRS sibling.
 # Same body, same bushing, same panel cut-out, same mounting -- the TRS simply adds the
 # RING and RING_N lands, and its pad set is a strict SUPERSET of the TS one (checked pad
@@ -146,14 +145,6 @@ def _usbc(tag, desc):
     return Part(name="USB_C_Receptacle", ref_prefix="J", tag=tag, dest="NETLIST",
                 tool="skidl", value="TYPE-C-31-M-12", description=desc,
                 footprint=USBC_FP, pins=pins)
-
-
-def _usba(tag, desc):
-    return Part(name="USB_A", ref_prefix="J", tag=tag, dest="NETLIST", tool="skidl",
-                value="USB1046-GF-0180", description=desc, footprint=USBA_FP,
-                pins=[Pin(num=1, name="VBUS", func=P), Pin(num=2, name="D-", func=P),
-                      Pin(num=3, name="D+", func=P), Pin(num=4, name="GND", func=P),
-                      Pin(num="SH", name="SHIELD", func=P)])
 
 
 @subcircuit

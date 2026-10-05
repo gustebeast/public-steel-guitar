@@ -1383,7 +1383,21 @@ def pi_cap_pin(ref, n):
     x0, x1, y0, y1 = f["fab"]
     pitch = 2.5 if "XH" in BG.fp_name(f["fpid"]) else 2.0
     cnt = {"J2": 6, "J4": 4, "J3": 4, "J6": 4}[ref]
-    px = (x0 + x1) / 2.0 + (n - (cnt + 1) / 2.0) * pitch
+    # ⚠ THE WAYS COUNT ALONG THE PART'S OWN AXIS, WHICH TURNS WITH IT. These headers are
+    # all on the cap's back with way 1 at the low-x end unturned (J2, J3, J4) and at the
+    # HIGH-x end turned 180 (J6: ways at x 22.5 / 20.0 / 17.5 / 15.0 on the routed board).
+    # Counting +x regardless put J6's way 1 on way 4. The row is centred on the PADS, not
+    # on the fab box, which only happens to share that centre on these parts. Checked
+    # against the routed board's pads for all four, 2026-10-05.
+    rot = float(f.get("rot") or 0.0) % 360.0
+    if abs(rot) < 1e-6:
+        sgn = 1.0
+    elif abs(rot - 180.0) < 1e-6:
+        sgn = -1.0
+    else:
+        raise ValueError("pi_cap_pin: %s is turned %s, a case not checked against its pads"
+                         % (ref, rot))
+    px = f["pads_xy"][0] + sgn * (n - (cnt + 1) / 2.0) * pitch
     py = (y0 + y1) / 2.0
     marker = box_at(0.01, 0.01, 0.01, x=px, y=py, z=0.0)
     bb = _cap_place(marker).val().BoundingBox()
