@@ -1382,10 +1382,11 @@ def output_panel():
         c = _c(tag, val, desc, fp)
         net += c[1]
         ref += c[2]
-    # Y1 is a CL 12 pF part: 15 pF each side is 7.5 in series plus about 4 pF of pin and
-    # track. The hub crystal keeps 12 pF until its own part is chosen.
+    # Y1 and Y2 are both CL 12 pF parts: 15 pF each side is 7.5 in series plus about
+    # 4.5 pF of pin and track. (The hub's pair was 12 pF "until its own part is chosen";
+    # it is chosen, and 12 pF left it 1.5 pF light.)
     for tag, net in (("C15", osc_in), ("C16", osc_out), ("C17", hub_xi), ("C18", hub_xo)):
-        c = _c(tag, "15pF" if tag in ("C15", "C16") else "12pF", "crystal load")
+        c = _c(tag, "15pF", "crystal load")
         net += c[1]
         gnd += c[2]
 
@@ -2195,17 +2196,31 @@ BOARD_NOTES = {
         "D8": (-24.00, -15.60, 0.0),
         "JP1": (-20.25, -13.20, 90.0),
         "D6": (-12.00, -28.00, 0.0),
-        "C2": (-20.00, -28.00, 0.0),
-        "C3": (-25.00, -28.00, 0.0),
+        # THE BUCK AS ONE CELL (2026-10-04). Its nine parts stood in a row on a 5 mm grid:
+        # the bootstrap capacitor 11 mm from CB, the feedback divider 15 mm from FB, the
+        # catch diode 3.4 mm from SW and the first output capacitor 36 mm from the
+        # inductor -- beside an audio converter. Measured pad to pad now:
+        #   C3 (100 nF) 0.6 mm from VIN, C2 (10 uF) 1.6; both hang off one 2.8 mm rail.
+        #     C2 lies ALONG the board edge, 4 mm in: a 1206 across 24 V stood on end
+        #     2 mm from an edge is the part that cracks when the board flexes
+        #   D1 cathode 0.7 mm from SW, its anode straight down to the ground lane
+        #   C4 between CB and SW, 0.75 mm from each, in the strip under the inductor
+        #   L1's SW pad 2.1 mm above the pin; C5 1.15 mm from L1's output pad
+        #   R12 / R11 0.5 and 0.7 mm west of FB, the FB node 2.6 mm of track in all
+        # Pin 2's ground leaves UNDER the package (the 0.95 mm channel between the pad
+        # rows) straight to the lane, so the hot loop C3 -> VIN .. SW -> D1 -> lane -> pin 2
+        # is 7 mm of F.Cu with no via in it.
+        "C2": (-24.45, -28.00, 0.0),
+        "C3": (-27.30, -28.48, 270.0),
         "U5": (-30.00, -28.00, 0.0),
-        "L1": (-30.00, -23.50, 0.0),
-        "D1": (-24.00, -23.50, 0.0),
-        "C4": (-19.00, -23.50, 0.0),
-        "R11": (-16.00, -23.50, 0.0),
-        "R12": (-16.00, -25.50, 0.0),
-        # the bulk caps and THE BEAD sit at the island's +X end, which is where the
+        "L1": (-29.90, -23.30, 180.0),
+        "D1": (-25.50, -25.60, 0.0),
+        "C4": (-30.00, -25.70, 0.0),
+        "R11": (-33.10, -27.85, 0.0),
+        "R12": (-33.10, -28.95, 180.0),
+        "C5": (-34.00, -25.00, 180.0),
+        # the second bulk cap and THE BEAD sit at the island's +X end, which is where the
         # rail leaves for the rest of the board
-        "C5": (9.00, -23.50, 0.0),
         "C6": (13.00, -23.50, 0.0),
         "FB1": (17.00, -23.50, 0.0),
     },
@@ -2412,34 +2427,42 @@ BOARD_NOTES["tracks"] += [
 # How it fits: the PWR_GND lane carries on west along the row on F.Cu, so every ground
 # pad drops straight onto it; the +24V feed comes along UNDER it on B.Cu and rises through
 # one via beside C2, which keeps F.Cu between D1 and C2 clear for the loop's return.
-BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("+24V", -21.470 + _g, -29.550)]
+BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("+24V", -25.925 + _g, -26.600)]
 BOARD_NOTES["tracks"] += [
     (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
         # D6: +24V over the top of J7's pad 1, PWR_GND straight down to the lane
         ("+24V", "F.Cu", 1.0, [(-1.250, _ROW_Y), (-1.250, -26.200), (-14.000, -26.200),
                                (-14.000, _ROW_Y)]),
         ("PWR_GND", "F.Cu", 1.2, [(-10.000, _ROW_Y), (-10.000, _LANE_Y)]),
-        # the lane, west of J7: 1.2 mm, to the far side of U5 and round into its pin 2
-        ("PWR_GND", "F.Cu", 1.2, [(-3.750, _LANE_Y), (-32.600, _LANE_Y)]),
-        ("PWR_GND", "F.Cu", 0.4, [(-32.600, _LANE_Y), (-32.600, _ROW_Y), (-31.140, _ROW_Y)]),
-        ("PWR_GND", "F.Cu", 0.4, [(-24.520, _ROW_Y), (-24.520, _LANE_Y)]),          # C3
-        ("PWR_GND", "F.Cu", 0.8, [(-18.530, _ROW_Y), (-18.530, _LANE_Y)]),          # C2
-        # the buck's feed: B.Cu under the lane -> the via -> C2 -> C3 -> U5 pin 5
-        ("+24V", "B.Cu", 0.8, [(-1.250, _LANE_Y), (-21.470, _LANE_Y), (-21.470, -29.550)]),
-        ("+24V", "F.Cu", 0.6, [(-21.470, -29.550), (-21.470, _ROW_Y)]),
-        ("+24V", "F.Cu", 0.5, [(-21.470, _ROW_Y), (-21.470, -26.750), (-25.480, -26.750),
-                               (-25.480, _ROW_Y)]),
-        ("+24V", "F.Cu", 0.4, [(-25.480, _ROW_Y), (-28.860, _ROW_Y)]),
-        # the hot loop's return: D1 anode -> C2's ground pad
-        ("PWR_GND", "F.Cu", 0.8, [(-22.350, -23.500), (-22.350, -25.400), (-18.530, -25.400),
-                                  (-18.530, _ROW_Y)]),
-        # the output capacitors' return to J9's ground pin (was 0.2)
-        ("PWR_GND", "F.Cu", 0.4, [(9.950, -23.500), (9.950, -24.700), (13.950, -24.700),
-                                  (13.950, -23.500)]),
-        # (it ended on J9's ground pin; with J9 gone it runs west, above the gate parts,
-        #  and drops into J7 pad 4)
-        ("PWR_GND", "F.Cu", 0.6, [(9.950, -24.700), (5.200, -24.700), (3.750, -26.150),
-                                  (3.750, _ROW_Y)]),
+        # the lane, west of J7: 1.2 mm, on under the buck cell to C5's ground pad. Pin 2
+        # reaches it under the package; C2's ground pad shares D1's drop to it
+        ("PWR_GND", "F.Cu", 1.2, [(-3.750, _LANE_Y), (-34.950, _LANE_Y)]),
+        ("PWR_GND", "F.Cu", 0.4, [(-30.000, _LANE_Y), (-30.000, _ROW_Y), (-31.140, _ROW_Y)]),
+        ("PWR_GND", "F.Cu", 0.4, [(-27.300, -28.960), (-27.300, _LANE_Y)]),         # C3
+        ("PWR_GND", "F.Cu", 0.4, [(-33.610, -28.950), (-33.610, _LANE_Y)]),         # R12
+        ("PWR_GND", "F.Cu", 0.5, [(-34.950, -25.000), (-34.950, _LANE_Y)]),         # C5
+        # the buck's feed: B.Cu under the lane -> a via under D1 -> C2 -> C3 -> U5 pin 5
+        ("+24V", "B.Cu", 0.8, [(-1.250, _LANE_Y), (-25.925, _LANE_Y), (-25.925, -26.600)]),
+        ("+24V", "F.Cu", 0.6, [(-25.925, -26.600), (-25.925, _ROW_Y)]),
+        ("+24V", "F.Cu", 0.5, [(-25.925, _ROW_Y), (-28.860, _ROW_Y)]),
+        # the hot loop's return: D1 anode straight down to the lane, through C2's
+        # ground pad on the way
+        ("PWR_GND", "F.Cu", 0.8, [(-23.850, -25.600), (-23.850, _LANE_Y)]),
+        ("PWR_GND", "F.Cu", 0.8, [(-22.975, _ROW_Y), (-23.850, _ROW_Y)]),
+        # the switch node: pin 6 up to the inductor, a spur to the diode, one to C4
+        ("SW", "F.Cu", 0.5, [(-28.862, -27.050), (-28.862, -24.300)]),
+        ("SW", "F.Cu", 0.5, [(-28.862, -25.600), (-27.150, -25.600)]),
+        ("SW", "F.Cu", 0.3, [(-29.520, -25.700), (-28.862, -25.700)]),
+        ("BOOT", "F.Cu", 0.25, [(-30.480, -25.700), (-31.138, -26.360), (-31.138, -27.050)]),
+        # feedback: the pin, R12's pad, R11's pad
+        ("FB", "F.Cu", 0.25, [(-31.138, -28.950), (-32.590, -28.950), (-32.590, -27.850)]),
+        # the output: inductor to C5, and the divider senses AT the capacitor
+        ("V5_PRE", "F.Cu", 0.5, [(-31.000, -24.300), (-31.700, -25.000), (-33.050, -25.000)]),
+        ("V5_PRE", "F.Cu", 0.25, [(-33.050, -25.000), (-33.610, -25.560), (-33.610, -27.850)]),
+        # C6's return (the second output capacitor, at the bead): west above the gate
+        # parts and down into J7 pad 4
+        ("PWR_GND", "F.Cu", 0.6, [(13.950, -23.500), (13.950, -24.700), (5.200, -24.700),
+                                  (3.750, -26.150), (3.750, _ROW_Y)]),
     ]]
 
 
@@ -2604,6 +2627,180 @@ BOARD_NOTES["quality"] = {
                     "Nothing behind it sources or sinks, so there is no VBUS for a CC "
                     "resistor to ask for; the player's computer sees J1's two pull-downs",
         "A6:J2.B5": "as J2.A5",
+    },
+    # The manual review, 2026-10-04. Each entry is the evidence, not a tick. Left OPEN on
+    # purpose: M3 and M21 (the 5 V rail's return leaves the board -- a grounding decision
+    # for the whole instrument, see docs/pcb-quality-status.md), M32 (the split of the
+    # trunk current between J7 and J10 rests on an unmeasured motor current), M11 (CAD
+    # fit after the build), M35 (errata) and the order-time items M12, M29, M30, M37, M42.
+    "manual": {
+        "M1": "J6: Mean Well's R7B plug, 1 +V, 2 -V, 3 -V, 4 +V (GST160A-SPEC), on a jack "
+              "whose footprint was drawn from Kycon's land pattern; metered before first "
+              "power (bring-up step 0). J10 <-> motor_ctrl J3: harness.PWR_LINK (GND, 24, "
+              "24, GND, SW_UP, SW_DN), a 6-way straight lead, both ends built from that "
+              "list. J7 -> the trunk's far end: GND, 24, 24, GND, symmetric. J9 -> the "
+              "optical board: 2-way here, 1 GND, 2 +24V_OPT; the optical board's J2 is "
+              "a 4-way housing with ways 1 and 2 crimped in the same order (JST makes "
+              "no 2-way SMT side-entry XH; the note at that J2). J1 / "
+              "J2 / J3 / J4 are USB-C receptacles on stock C-to-C leads with D+ / D- tied "
+              "across both rows. J8: two screw terminals, hot and ground, marked on the "
+              "silk. J5: tip / ring / sleeve. The 6-way cannot enter a 4-way or a 2-way",
+        "M2": "D1 (B5819W) pad 1 = K on SW, anode on PWR_GND. D4 (1N4148WT) pad 1 = K on "
+              "+5V, anode on RELAY_COIL: it conducts the coil's turn-off current back to "
+              "the rail (it was fitted the other way round until this review). D6 "
+              "(SMAJ30A) pad 1 = K on +24V. D8 (BZT52C10) pad 1 = K on SW_SENSE. D2 / D3 / "
+              "D5 / D7 are bidirectional. No electrolytic or tantalum part",
+        "M4": "U5 (LMR16006, SNVSA24): CIN 10 uF / 50 V 1206 + 100 nF / 50 V at the pin "
+              "(asks 1-10 uF); COUT 2 x 22 uF / 16 V 0805, about 2 x 9 uF at 5 V of "
+              "bias (asks 4.7-100 uF, ESR under 0.7 ohm); bootstrap 100 nF. U6 (AP2112K): 1 uF at IN "
+              "(C58), 10 uF at OUT (C9) with the rail's other capacitors. Every capacitor "
+              "on a 24 V net is a 50 V part; C1 / C41 at the jack are 100 V against 48 V "
+              "phantom power; C48 on Q2's gate is 25 V against 7.5 V",
+        "M5": "+24V_IN and +24V: Q2 60 V, U5 60 V operating, capacitors 50 V, F1 63 V, "
+              "D6 stands off 30 V and breaks down at 33-37 V. Q2's gate sees 7.5 V of its "
+              "20 V; Q3's sees 10 V (D8) of its 20 V. R33 / R34 dissipate 31 mW each "
+              "with the switch held off, in 0402 parts rated 62 mW. 5 V rail: 16 V "
+              "capacitors, op-amps and switch 5.5 V, the pot 5.5 V. 3V3: the DAC (3.9 V "
+              "absolute) is on 3V3, not 5 V. Jack: 100 V blocking capacitors, then 220 "
+              "ohm and a 5 V clamp ahead of each buffer",
+        "M6": "USB 2.0 high speed on four pairs, each a declared diff pair over the In1 "
+              "plane, matched (verify: 4 groups, 0 problems). HUB_DN1 crosses once, on "
+              "B.Cu, by construction (the note beside its tracks). I2S is 12.288 MHz MCK "
+              "and 3 MHz BCK over 20-30 mm: not a length-matched bus",
+        "M7": "U5: 0.765 V x (1 + 100k / 18.2k) = 4.97 V; 47 uH at 700 kHz gives 120 mA "
+              "of ripple; bootstrap 100 nF (the sheet's value; it was 10 nF); SHDN open "
+              "= enabled; catch diode 40 V / 1 A. U6: EN tied to IN. U2 (PCM1808): MD0 = "
+              "MD1 = 0, slave; FMT = 0, I2S; SCKI from the MCU's MCK at 256 fS. U3 "
+              "(PCM5102A): FMT = 0 I2S, DEMP = 0, FLT = 0, XSMT high, charge-pump and "
+              "LDO capacitors at the sheet's values. U4 (CH334F): V5 tied to VDD33 for "
+              "3.3 V supply, as WCH allows; 12 MHz crystal; unused ports open. U10 "
+              "(MCP4261): WP and SHDN high. U12 (TS5A3159): IN from the MCU, COM to the "
+              "ring buffer",
+        "M8": "BOOT0: R7, 10 k to GND. NRST: R6 10 k to 3V3 and C54. Relay gate: R36, "
+              "100 k to GND, so the relay is released (the direct, unprocessed path) "
+              "while the MCU is in reset. JACK_MODE: R37, 100 k to GND, so the ring is "
+              "the balanced inverse in reset. Hub: OVCUR# pulled high by R19; RESET#, "
+              "PSELF and PGANG on WCH's internal pulls. U5 SHDN: open = on. Q3's gate: "
+              "pulled up to 10 V from the inlet (R33 / R34 / D8) with no cable fitted, "
+              "so the instrument is ON with the switch lead missing",
+        "M9": "SWD on bare 1.5 mm pads TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND, TP5 3V3, "
+              "all named in silk. 24 V is probed on J7's through-hole pins, 5 V on J4's "
+              "VBUS pins or K1 pin 1. The MCU is also reachable over USB through the hub",
+        "M10": "the jack (the one connector a player handles): 100 V capacitor, 220 ohm "
+               "and a bidirectional 5 V clamp per conductor, proof against 48 V phantom "
+               "power. The panel USB-C (J1): D2 / D3 on the pair, 8.6 and 10.5 mm along "
+               "it with nothing between them and the connector. J3 / J4 / J2 are leads "
+               "inside the instrument to our own boards: no clamps, by decision. J8 is a "
+               "screw terminal inside the enclosure, hand-wired to the pickup: no clamp. "
+               "24 V inlet: D6, and the supply's own limit; reverse polarity is prevented "
+               "by the keyed 4-pin plug and the meter check (M1)",
+        "M13": "U5, measured pad to pad on the routed board. C3 (100 nF) 0.6 mm from VIN "
+               "and C2 (10 uF) 1.7 mm, both on one F.Cu rail; pin 2's ground leaves "
+               "under the package straight to the ground lane, so the loop C3 -> VIN .. "
+               "SW -> D1 -> lane -> pin 2 is about 7 mm of F.Cu with no via. D1's "
+               "cathode 0.8 mm from SW. L1's SW pad 2.1 mm from the pin; the SW copper "
+               "is three short declared tracks. C4 0.75 mm from CB and from SW. R12 / "
+               "R11 0.5 and 0.7 mm from FB, the node 2.6 mm of track, sensing at C5. C5 "
+               "1.15 mm from L1's output pad; C6 stays at the bead, 45 mm on. (Before "
+               "this review the same parts stood 2.4-15 mm from their pins and C5 36 mm "
+               "from the inductor.)",
+        "M14": "L1 PNR3015-470M, 47 uH, saturation 0.88 A. Peak = 0.257 A worst-case "
+               "load + 60 mA (half of 120 mA ripple) = 0.32 A. In a hard short the "
+               "converter's own limit (1.2 A typical) is above the inductor's "
+               "saturation: a fault case the part survives, not an operating one",
+        "M15": "U5 is internally compensated for ceramic output capacitors of 10 uF and "
+               "up: about 18 uF effective fitted. U6 (AP2112K) is ceramic-stable from "
+               "1 uF: 10 uF at its output. Headroom: 4.97 V less 40 mV in the bead "
+               "against 3.3 V + 0.25 V. It dissipates 1.67 V x 0.18 A = 0.3 W worst "
+               "case (0.18 W typical) in a SOT-23-5: about 70 C of rise at the worst",
+        "M16": "the inlet is hot-plugged by design. Ahead of the switch there is only "
+               "C55 (100 nF / 50 V), Q2 (60 V) and the sense divider; a ring to 48 V is "
+               "inside all three. Behind it the rail is raised by Q2 at about 2 V/ms "
+               "(C49 across gate and drain, 44 uA into it), so nothing downstream sees "
+               "an edge: about 2 A of inrush per 1000 uF on the trunk. J9 / J7 / J10 are "
+               "plugged with the supply off",
+        "M17": "FB1 BLM18KG601SN1D: 600 ohm at 100 MHz, 150 mohm, rated 1.3 A against "
+               "0.26 A (the 200 mA part it replaces was past its rating). Between 18 uF "
+               "on one side and 10 uF + the rail's bypass on the other, with 150 mohm in "
+               "series, the pair is damped (Q about 0.9)",
+        "M18": "the board's 3V3 and 5 V rise together from one buck. The Pi and the "
+               "optical board are powered separately, and what joins them to this board "
+               "is USB (pairs through the hub, which is built for it) -- VBUS from the "
+               "panel and from the Pi is dead-ended here on purpose (the notes at J1 / "
+               "J2 / J3), so neither can back-feed this board's 5 V. The switch lines on "
+               "J10 are pulled from this board's inlet only",
+        "M19": "Q2 (SQD50P06-15L): gate driven to -7.5 V by R32 / R31, 15-20 mohm there; "
+               "0.76 W at the supply's full 6.67 A. Off when Q3 is off (R32 to source). "
+               "Q3 (2N7002): 10 V on its gate when on. Q1 (AO3400A): 3.3 V on its gate "
+               "against a 1.45 V maximum threshold, 21 mA of coil; held off in reset by "
+               "R36",
+        "M20": "no I2C and no CAN here. USB: CC resistors per port role (A6). I2S: the "
+               "clock tracks are 20-30 mm, a small fraction of an edge's length, so no "
+               "series resistors. The I2S clocks reach two MCU pins each (I2S2 out, "
+               "I2S3 in) as short stubs at the package",
+        "M22": "four TLV9061, all single, all used: three followers and one unity "
+               "inverter about VMID (2.5 V, from R17 / R18 with C40). Inputs and "
+               "outputs stay inside the 0-5 V rails by construction (rail-to-rail "
+               "parts, signals biased at mid-rail). Each output drives its cable "
+               "through 220 ohm, which isolates the capacitance",
+        "M23": "panel port J1: clamps on the pair (M10), 5k1 on each CC, VBUS not "
+               "connected. Hub (self-powered, 3.3 V): upstream on J3 with 5k1 per CC, "
+               "downstream J4 with 56 k pull-ups per CC and VBUS from this board's 5 V "
+               "(limited by the buck, M36), 100 nF on it at the connector (C57). The "
+               "MCU hangs on hub port 1 with no connector: its high-speed PHY is "
+               "internal and its speed is set in software (datasheet 2.5.22), so there "
+               "is no external pull-up to fit. Port 1's pair has no via on one "
+               "conductor and two on the other: recorded at the pair",
+        "M24": "Y1 (8 MHz, CL 12 pF): 15 pF each side = 7.5 + about 4.5 pF of pin and "
+               "track. Y2 (12 MHz, CL 12 pF): the same 15 pF (it was 12 pF, 1.5 pF "
+               "light, from before the crystal was chosen)",
+        "M25": "U1 and U4: exposed pads on GND with vias to the plane (A8). Q2: the tab "
+               "is its drain, on eight vias to a 2.6 mm B.Cu bar and the F.Cu land: "
+               "0.76 W at 6.67 A, about 0.2 W at the 3.5 A the instrument is budgeted "
+               "to draw. U6: 0.3 W worst case through its leads (M15)",
+        "M26": "I2S_SDO: MCU pin 38 (PB15, I2S2_SD, transmit) to the DAC's DIN. I2S_SDI: "
+               "the ADC's DOUT to MCU pin 60 (PB5, I2S3_SD, receive). It used to land "
+               "on PB14, which is not an I2S pin on this part. POT_SDI: MCU out to the "
+               "pot's SDI; the pot's SDO is unused",
+        "M27": "BOOT0: R7 only. SWDIO / SWCLK: a test pad each. NRST: R6, C54, a test "
+               "pad. PA15, PB3 (I2S3) are plain GPIO at reset on this RISC-V part: SWD "
+               "is two-wire, so they are not debug pins. The hub's strap pins are open",
+        "M28": "CH32V307WCU6 is the QFN68 column (not the VCT6's LQFP100 numbering). "
+               "TS5A3159DCKR is the SC-70 with IN on pin 6. PCM1808PWR / PCM5102APWR "
+               "are the TSSOPs. AP2112K is the SOT-25. Each read against the footprint "
+               "the board places (quality.pinouts)",
+        "M31": "the jack, the screw terminal's hot and ground, each connector's name and "
+               "the five SWD pads are in silk at 1.0 mm or more. Diode cathodes and IC "
+               "pin 1 are the KiCad footprints' own marks, outside the bodies",
+        "M33": "5 V: 257 mA at the doubled worst case against the buck's 600 mA (the "
+               "itemised table at U5). 3V3: MCU 22 mA, ADC 19, DAC 31, hub up to 100, "
+               "pulls 5: about 0.18 A through a 600 mA regulator. 24 V: this board's "
+               "own draw is under 0.1 A; the rest passes through to J7 / J10 / J9 on "
+               "copper checked for it (A1)",
+        "M34": "MCU (3.3 V) to the 5 V pot: the MCP4261's input-high is 0.45 x VDD = "
+               "2.25 V. MCU to the analog switch: the TS5A3159 needs 2.4 V at 5 V (the "
+               "SN74LVC1G3157 it replaces needed 3.5 V and would not have switched). "
+               "MCU to both converters: all 3.3 V. The DAC's XSMT, the ADC's mode "
+               "pins: tied",
+        "M36": "J9 (the optical board, a thin lead): F1, 1 A. J4's VBUS: the buck's own "
+               "limit, behind a 1.3 A bead. J7 and J10 are the trunk itself: limited "
+               "by the supply (6.67 A), on copper sized for all of it at the inlet and "
+               "3.8 / 2.9 A at each outlet; the contact loading is M32",
+        "M38": "ceramics larger than 0805 are C2 (1206, in the buck cell, lying "
+               "parallel to the nearest edge) and the two 100 V jack capacitors. All "
+               "connectors are on the panel edge or reachable from above",
+        "M39": "MCU: unused GPIO open, set by firmware; PB14 (the old ADC data pin) is "
+               "one of them now. Hub: ports 3 / 4 and the LED / strap pins open, as "
+               "WCH's sheet allows. Pot: SDO open. U5 SHDN open (= on). J1 / J2 / J3 "
+               "VBUS pins dead-ended on purpose",
+        "M40": "the generator carries it beside each value: the feedback divider, the "
+               "bead, the soft-start parts, the relay's default state, the CC "
+               "resistors, the crystal capacitors, the buck cell's placement and why "
+               "the ground domains are not tied here",
+        "M41": "the power button is debounced by R35 / C50 (10 k x 100 nF = 1 ms) ahead "
+               "of Q3, and Q2's own gate network (0.1 s) behind it. The button is a "
+               "latching 2P2T rated 12 V / 0.3 A: it switches 10 V (D8) at 2.6 mA. No "
+               "other contact on this board",
     },
 }
 
