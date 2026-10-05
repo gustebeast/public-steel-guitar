@@ -22,7 +22,7 @@ Scoreboard, 2026-10-05 (every board listed is `0 unconnected, 0 violation(s)`):
 |---|--:|--:|---|
 | `can_tee` | 0 | 7 | M1 (the drop's way order at the MOTOR end: needs a SERVO42D in hand), M33 / M36 (user: motor current), order-time M12 M30 M37 M42 |
 | `leg_pogo_*` (four boards) | 0 | 4 | order-time M12 M30 M37 M42 |
-| `pi_cap` | 0 | 7 | M1 (which end of the UI ribbon is way 1: against brenner's `ui_board`), M11 (CAD fit after the build), M29, order-time four |
+| `pi_cap` | 0 | 6 | M11 (CAD fit after the build), M29, order-time four. M1 signed 2026-10-05 against the routed `ui_board`, `motor_ctrl`, fret and foot boards |
 | `lever_sensor` | 0 | 7 | M11, M35, M29, order-time four |
 | `motor_ctrl` | 0 | 10 | M32 / M33 (user: motor current), M23 (USB details), M11, M35, M29, order-time four |
 | `output_panel` | 0 | 8 | M32 (user: motor current), M11, M35, M29, order-time four |
