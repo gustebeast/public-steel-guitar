@@ -6,7 +6,17 @@ rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction 
 prompt. Where a prompt and this file disagree, this file is right — and where this file carries
 a stale marker, striking the marker is part of the work.
 
-**POWER BUTTON (lead, relaying the user's decision, 2026-10-04) -- OPEN, bronner's half:**
+**PCB QUALITY LOOP, state 2026-10-04:** the scoreboard and the three decisions that need the
+user are in `docs/pcb-quality-status.md` (top section). `can_tee`, the four pogo boards,
+`pi_cap`, `lever_sensor`, `motor_ctrl` and `output_panel` are at 0 FAIL with only items that
+cannot be signed from files (order-time, CAD fit, errata, the user's three). `optical` is
+being re-placed (pin-exact decoupling, crystal at its pins, both crystals re-chosen).
+
+**POWER BUTTON -- DONE on the boards 2026-10-04 (DO NOT RE-ISSUE).** Chain: UI ribbon ->
+`pi_cap` J5 -> J4 -> `motor_ctrl` J7 -> J3 (6-way XH) <-> `output_panel` J10; Q2 in the
+inlet, fails on, 2.55 mA off-state; JP1 picks the throw. INSTALL_NOTES and the bring-up doc
+carry the assembly and bench notes. The original brief, kept for reference:
+**(lead, relaying the user's decision, 2026-10-04):**
 the UI ribbon grows 14 -> 16 ways (15 = PWR_SW_UP, 16 = PWR_SW_DN; brenner's MR changes
 `harness.UI_RIBBON` and `ui_board`). Mine: (1) `pi_cap` J5 -> the 2x8 (HX PZ1.27-2x8P WZ,
 C22438114), the two new ways passed straight to the output board's cable, the Pi does not
