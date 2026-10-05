@@ -48,6 +48,10 @@ _HEIGHT: dict = {
     "PinHeader_2x08_P1.27mm_Horizontal": 4.0,
     # the power button's CASE, off Legion's drawing; src/ui_panel.py draws the stem
     "Legion_PB-22E85": 8.5,
+    # the optical board's ULPI PHY, USB3300-EZK: "5 x 5 x 0.9 mm body" (DS00001783C fig. 8-1)
+    "QFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm": 0.9,
+    # the optical board's 24 MHz oscillator, JSCJ CJO05: "1.2 max" (its outline drawing)
+    "Oscillator_SMD_Abracon_ASE-4Pin_3.2x2.5mm": 1.2,
 }
 _TAIL: dict = {
     # READ, not estimated (2026-10-04): HX's PZ1.27-2xNP WZ drawing gives the solder leg
@@ -60,6 +64,7 @@ _TAIL: dict = {
     # tail, so 1.4 shows through a 1.6 board; read the chosen part's drawing at order
     "PinSocket_2x20_P2.54mm_Vertical": 1.4,
     "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": 0.0,   # surface mount
+    "SOT-23-6": 0.0,                             # surface mount (the Pi cap's U1)
 }
 _THT_LEGS: dict = {}
 _PANEL: dict = {}

@@ -771,8 +771,8 @@ def motor_ctrl():
     # drops a third of the sink headroom, and drops more the brighter it gets). So what this
     # board owes the lights is 24 V AND NOTHING ELSE: a fuse, local bulk, and J7.
     # Gone with U6: L3, C25, C27-C31, R14-R17, F4, D10 and the PG_LED line into PC6.
-    # 1.63 A with every zone of all three boards at full white (software-capped worst case),
-    # so 3 A: 54 % of rating, inside the 75 % continuous rule. Same SKU as F2. D8 already
+    # 1.70 A with every zone of all three boards at full white (software-capped worst case),
+    # so 3 A: 57 % of rating, inside the 75 % continuous rule. Same SKU as F2. D8 already
     # clamps the trunk this branches from.
     v24_led = Net("+24V_LED")
     v24_led.drive = Pin.drives.POWER
@@ -788,7 +788,7 @@ def motor_ctrl():
     v24_led += c24[1]; gnd += c24[2]
     c26 = _c("C26", "100nF/50V", "lighting-bus HF bypass at J7")
     v24_led += c26[1]; gnd += c26[2]
-    # ONE contact each way since 2026-10-04: 1.63 A is 54 % of an XH contact's 3 A, and
+    # ONE contact each way since 2026-10-04: 1.70 A is 57 % of an XH contact's 3 A, and
     # ways 3 and 4 are the power button's two throws, arriving from pi_cap J4 and leaving
     # on J3. See J3.
     j7 = Part(name="B4B-XH-A", ref_prefix="J", ref="J7", tag="J7", dest="NETLIST",
@@ -1155,7 +1155,7 @@ BOARD_NOTES = {
     # The J3 -> J1/J2 path still wants deliberate copper; see the trunk note on
     # output_panel for why that is a pinout decision rather than a routing one.
     # GND needs nothing: it has plane copper on In1.Cu and a pour on B.Cu.
-    # +24V_LED is the lighting bus after F3: 1.63 A worst case, so it gets the same 0.5 mm
+    # +24V_LED is the lighting bus after F3: 1.70 A worst case, so it gets the same 0.5 mm
     # (1.45 A at a 10 C rise; the worst case is every LED at full white, software-capped).
     # +5V_BUSB: 0.52 A limited, 0.4 mm (1.2 A).
     "net_widths": {"+24V": 0.5, "+24V_LED": 0.5, "+5V_BUSB": 0.4},
@@ -1264,7 +1264,7 @@ BOARD_NOTES["tracks"] += [
 BOARD_NOTES["tracks"] += [("PG_5V", "F.Cu", 0.25, [(-13.50, -21.98), (-12.52, -21.98)])]
 
 # THE NORTH STRIP'S THREE SUPPLY PATHS, DECLARED (quality A1 / A12, 2026-10-04). Left to the
-# router: the lighting bus's 1.63 A ran on 0.5 mm (0.59 wanted) and squeezed between two of
+# router: the lighting bus (1.63 A then) ran on 0.5 mm (0.59 wanted) and squeezed between two of
 # J3's pins; that feed, drawn straight across at y 16.3, walled U6 and C27 off from the 5 V
 # bar, so their 0.57 A came up through a via INSIDE C27's land and 0.2 mm of inner copper.
 #   24 V to F3: out of J3's second 24 V pin northward, 0.7 mm, along y 16.1
@@ -1276,8 +1276,8 @@ BOARD_NOTES["tracks"] += [
     ("+24V", "F.Cu", 0.7, [(5.35, 11.5), (5.35, 14.7), (3.95, 16.1), (-24.8, 16.1),
                            (-28.4, 19.7)]),
     ("+24V", "F.Cu", 0.3, [(5.35, 14.7), (7.52, 16.87), (7.52, 17.0)]),  # C29
-    ("+24V_LED", "F.Cu", 0.6, [(-25.6, 19.7), (-23.41, 19.7), (-22.08, 18.37),
-                               (-19.31, 18.37), (-12.69, 25.0), (9.9, 25.0),
+    ("+24V_LED", "F.Cu", 0.65, [(-25.6, 19.7), (-23.41, 19.7), (-22.03, 18.32),
+                               (-19.36, 18.32), (-12.69, 25.0), (9.9, 25.0),
                                (13.53, 21.37), (19.96, 21.37), (19.96, 19.83)]),
     ("+24V_LED", "F.Cu", 0.5, [(9.9, 25.0), (11.22, 25.0)]),            # C26
     ("+5V", "F.Cu", 0.6, [(-14.95, 13.8), (-14.95, 15.2)]),
@@ -1302,8 +1302,8 @@ BOARD_NOTES["quality"] = {
         {"net": "+24V", "from": "J3.2", "to": ["F1.1"], "amps": 0.8},
         {"net": "+24V_BUCK", "from": "F1.2", "to": ["U5.2"], "amps": 0.8},
         # the lighting bus, every zone at full white (docs/lighting-bus.md); F3 is 3 A
-        {"net": "+24V", "from": "J3.2", "to": ["F3.1"], "amps": 1.63},
-        {"net": "+24V_LED", "from": "F3.2", "to": ["J7.2"], "amps": 1.63},
+        {"net": "+24V", "from": "J3.2", "to": ["F3.1"], "amps": 1.70},
+        {"net": "+24V_LED", "from": "F3.2", "to": ["J7.2"], "amps": 1.70},
         # the 3V3 buck's input: 0.2 A of 3V3 is 30 mA at 24 V
         {"net": "+24V", "from": "J3.2", "to": ["U1.5"], "amps": 0.1},
         # U5's output, 3 A rated, through F2 (4 A) to the Pi on J5's two contacts
