@@ -163,3 +163,12 @@ OPEN; an item moves to DONE with the commit that closed it.
     c. foot_led leaves 1-2 zone-return nets open under today's pipeline (Z0_W_RET, then
        Z5_G_RET + Z11_G_RET); it routed 0 before. Tracked elec/geom/foot_led.* is still
        the earlier clean route and does NOT have the 100 nF caps' new positions.
+
+22. 2026-10-04 later: fret boards RE-ROUTED on the stitch-via fix (cadkit 5906a86).
+    fret_led_mid: quality 0 FAIL. fret_led_key: 4 soft FAILs left, all one cause --
+    the pipeline lays its pad-to-plane stub at 0.25 whatever net_widths says:
+    L1.2's exit (ONE 0.25 stub + via for the whole 1.38 A rail, 0.47 needed), the stub at
+    U10.2 and one near J1.1 on the 24 V side (0.23-0.25 for 0.89 A, 0.26 needed).
+    net_widths (+24V_IN/+24V 0.30, +14V 0.50) are declared and did not reach those stubs.
+    REPORTED to lead. Item 21a/b are otherwise closed for the fret boards; 21c (foot
+    route) is bronner's bisect -- foot's generator has its widths and declarations ready.
