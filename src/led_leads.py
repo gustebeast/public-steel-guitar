@@ -47,7 +47,7 @@ PLUG_L = 5.0                     # straight out of a mouth before any bend: the 
                                  # housing stands about 4.3 past it
 COLORS = {"GND": (0.05, 0.05, 0.05), "V24": (0.85, 0.12, 0.10),
           "SCK": (0.92, 0.92, 0.88), "SDT": (0.15, 0.35, 0.85)}
-_CHECKED = {("F", -90.0), ("B", 0.0), ("B", 180.0)}
+_CHECKED = {("F", -90.0), ("F", 0.0), ("F", 180.0)}
 
 
 def _socket(board, ref, place, axis_z):
@@ -135,7 +135,7 @@ def _foot_ends():
     a = _socket("foot_led_a", "J1", lambda w: FOOT._placed("a", w),
                 FOOT.BOARD_T + FOOT.XH_H / 2.0)
     hb = BG.HEIGHT[BG.fp_name(BG.footprint("pi_cap", "J6")["fpid"])]
-    b = _socket("pi_cap", "J6", EL._cap_place, -hb / 2.0)
+    b = _socket("pi_cap", "J6", EL._cap_place, EL._CAP_T + hb / 2.0)
     return a, b
 
 
@@ -169,7 +169,7 @@ def _fret_ends():
     ha = BG.HEIGHT[BG.fp_name(BG.footprint("fret_led_key", "J1")["fpid"])]
     a = _socket("fret_led_key", "J1", lambda w: FL._placed("key", w), t + ha / 2.0)
     hb = BG.HEIGHT[BG.fp_name(BG.footprint("pi_cap", "J3")["fpid"])]
-    b = _socket("pi_cap", "J3", EL._cap_place, -hb / 2.0)
+    b = _socket("pi_cap", "J3", EL._cap_place, EL._CAP_T + hb / 2.0)
     return a, b
 
 
