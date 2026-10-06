@@ -332,7 +332,8 @@ def main(argv=None):
                    % (factor, solid_usd), plastic))
 
     # ---- boards -------------------------------------------------------------
-    parts_usd = fab_usd = asm_usd = 0.0
+    parts_usd = fab_usd = asm_usd = fees_usd = 0.0
+    order_fees = prices["boards"].get("order_fees", {})
     setup = float(prices["boards"]["assembly_setup_usd"])
     stencil = float(prices["boards"]["assembly_stencil_usd"])
     designs = 0
@@ -355,15 +356,25 @@ def main(argv=None):
         fab_usd += fab
         asm_usd += asm
         designs += 1                                   # setup and stencil are PER DESIGN
+        # fees read on the fab's quote that no rate produces: per design, per order
+        fees = sum(float(f["usd"]) for f in order_fees.get(board, [])
+                   if keep or f.get("verified") == "v")
+        fees_usd += fees
         if unp:
             unpriced_all.append((board, unp))
         if a.detail:
             w, h = geom["outline_mm"][:2]
-            print("  %-14s x%-3d %3d parts %6.1fx%-6.1f mm %dL  parts $%6.2f  fab $%6.2f  asm $%5.2f"
+            print("  %-14s x%-3d %3d parts %6.1fx%-6.1f mm %dL  parts $%6.2f  fab $%6.2f  asm $%5.2f  fees $%6.2f"
                   % (board, qty, len(geom.get("footprints", [])), w, h, layers,
-                     p_each * in_order, fab, asm))
+                     p_each * in_order, fab, asm, fees))
     per_order_asm = (setup + stencil) * designs
-    boards_total = (parts_usd + fab_usd + asm_usd + per_order_asm) / ORDER_INSTRUMENTS
+    boards_total = (parts_usd + fab_usd + asm_usd + per_order_asm + fees_usd) / ORDER_INSTRUMENTS
+    notes.append("QUOTED FEES are $%.2f of the PCB line: extended-part fees, the Standard "
+                 "assembly tier on three boards, one via charge -- boards.order_fees. "
+                 "Boards with no entry there (%s) have not had theirs entered."
+                 % (fees_usd / ORDER_INSTRUMENTS,
+                    ", ".join(sorted(b for b in geoms if b not in order_fees
+                                     and b not in ("optalt", "led_strip"))) or "none"))
     notes.append("ASSEMBLY is $%.2f of the $%.2f PCB line. The RATES are measured (one "
                  "real JLCPCB PCBA quote, can_tee, Economic, qty 50) and the model "
                  "reproduces that quote to 1%%. What is NOT modelled is the edge-rail "
