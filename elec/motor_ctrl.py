@@ -1450,6 +1450,14 @@ BOARD_NOTES["quality"] = {
               "all labelled, on the front. 24 V and 5 V are probed on the through-hole "
               "pins of J3 and J5, and the board reports both itself (SENSE_24V, SENSE_5V, "
               "PG_5V, BUSB_FAULT_N) over USB",
+        "M11": "finish.py's CAD check: 73 of 73 routed parts present in the CAD, every "
+               "one where the CAD draws it. The lead's full build on main 45eeb5b8 "
+               "(2026-10-06) with this board's geometry: 1010 components, 0 unintended "
+               "overlaps, the rotating-part sweep clean -- the board, its parts at "
+               "their drawn heights, its mated plugs and its cables against the "
+               "plastic and the fasteners round it. No hole in this board: the M4 that "
+               "holds it sits beside its edge. Parts the fab cannot place: none (M30 "
+               "is the tier)",
         "M10": "bus A and bus B pins: D2-D5, bidirectional 5 V clamps 4 mm from J1 and "
                "1.3 mm from J6 (J2 shares J6's node, 15 mm of track away). USB: D6 / D7, "
                "0.5 pF, on the pair 5 mm from J4. 24 V in: D8; this board does not fuse "
