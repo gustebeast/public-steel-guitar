@@ -2,7 +2,7 @@
 
     py -3.12 elec/foot_led.py       # -> elec/out/foot_led_{a,b}.{net,board.json}
 
-    286.36 (B) and 293.36 (A) x 24.15, 4 layers, 36 LEDs, 12 zones, 4 x TLC59711 each.
+    286.36 (B) and 293.36 (A) x 24.15, 4 layers, 36 LEDs, 12 zones, 4 x TLC5971 each.
 
 The other lighting job (elec/fret_led.py is the first). It lies on top of the transparent
 band through the chassis's bottom prism and shines into it; the 10.80 mm of PCTG is the
@@ -59,7 +59,9 @@ P = Pin.types.PASSIVE
 
 # ── the parts: every one is already bought for another board ────────────────────
 LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
-DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm"
+DRV_FP = "Package_DFN_QFN:Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm"
+DRV_ROT = 90.0
+DRV_OUT_PINS = tuple(range(7, 13)) + tuple(range(19, 25))    # SBVS146D: OUTR2..B3, R0..B1
 BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
 IND_FP = BC.L1_FP                    # with its reason, in buck_cell
 R_FP = "Resistor_SMD:R_0402_1005Metric"
@@ -78,7 +80,7 @@ R_IREF = "3k3"                       # 15.0 mA per channel, as the fret boards
 # ⚠ THE STRING IS 10.2 V, NOT 9.6 (manual quality pass, 2026-10-05). XINGLIGHT's sheet
 # gives green, blue and white 3.0 to 3.4 V at 20 mA, +-0.1 -- this file said "3.2 max".
 # Three in series (src/foot_light.N_SERIES) is 10.2 V at the top of the bin. The sink is
-# flat from about 0.3 V at 15 mA (TI SBVS181A figure 12). At the 11.00 V this rail was,
+# flat from about 0.3 V at 15 mA (TI SBVS146D figures 7 and 8). At the 11.00 V this rail was,
 # its low tolerance (10.64 V: 0.985 V reference, 1 % resistors) left 0.44 V; at 11.50 it
 # leaves 0.92.
 #
@@ -107,8 +109,8 @@ J_PINS = ("GND", "+24V_IN", "SCK_CABLE", "SDT_CABLE")
 # ── 1 k IN SERIES WITH EACH SIGNAL AT THE CABLE (manual quality pass M18, 2026-10-05) ────
 # The Pi drives SCK and SDT at 3.3 V through 68 ohm (pi_cap R1..R4), and this board can be
 # dark while the Pi is up: its fuse open, the lights' fuse on the motor board open, the
-# 24 V lead off, or a Pi on its own USB supply on the bench. A TLC59711's inputs are rated
-# to VREG + 0.6 V (SBVS181A 7.1), and VREG is 0 V then: the pin's protection diode
+# 24 V lead off, or a Pi on its own USB supply on the bench. A TLC5971's inputs are rated
+# to VREG + 0.6 V (SBVS146D 6.1), and VREG is 0 V then: the pin's protection diode
 # conducts and the Pi powers the driver's logic through it, as much as a GPIO will give.
 # 1 k limits that to 2.7 mA. Against the pin's few pF it is a 10 ns corner, on a clock
 # TI allow to 10 MHz and edges the source resistor has already slowed.
@@ -139,29 +141,30 @@ LANE_Y = FL.to_board_y(FL.DRV_Y)            # +4.05
 BOARD_W = FL.BOARD_W                        # 17.20
 
 # ⚠ THE MIDDLE ZONE TAKES THE PINS NEAREST THE LED ROW, and getting that backwards is
-# what left the last net unrouted for three attempts. At rot 0 the HTSSOP's pins run in
-# Y: the -X column is pins 1..10 top to bottom, the +X column 11..20 bottom to top, so
-# outputs 8 and 13 are the LOWEST -- and LOW is where the LED row is, 7.80 mm below the
-# lane. Every return on this board comes up from there.
+# what left the last net unrouted for three attempts. The RGE is turned a quarter turn
+# (DRV_ROT) so its two output sides face -X and +X: 19..24 run DOWN the -X side and 7..12
+# UP the +X side, so 23, 24, 7 and 8 are the LOWEST -- and LOW is where the LED row is,
+# 7.80 mm below the lane. Every return on this board comes up from there. The data side
+# (1 SDTI, 2 SCKI, 5 SCKO, 6 SDTO) faces the LEDs and the supply side faces away.
 #
 # The table was copied from fret_led.py, where the driver sits BETWEEN two LED rows and
 # "the tops of both columns" is the right answer for the zone underneath it. Here there
 # is one row, below, so the middle zone -- whose four returns arrive in the package's own
 # shadow with nowhere to go round -- wants the bottom pins, and the +-X zones can take
 # the tops because they arrive from the sides and can climb on the way in.
-ZONE_OUTS = {-1: (3, 4, 5, 6), 0: (7, 8, 13, 14), 1: (15, 16, 17, 18)}
+ZONE_OUTS = {-1: (19, 20, 21, 22), 0: (23, 24, 7, 8), 1: (9, 10, 11, 12)}
 
-# ── THE DRIVER'S HEAT PAD: SEVEN VIAS, NOT ONE (manual quality pass M25, 2026-10-05) ────
+# ── THE DRIVER'S HEAT PAD: FIVE VIAS, NOT ONE (manual quality pass M25) ───────────────
 # The stitcher gives an exposed pad one via at its centre, which is a ground connection
-# and not a heat path: one 0.25 mm barrel down 1.28 mm to the ground plane is about
-# 200 C/W, under a part that dissipates most of a watt at full white. TI's land pattern
-# for this package (SBVS181A, PWP land pattern data) draws fifteen 0.3 mm vias on a 1.3 mm
-# grid across the 3.4 x 6.5 copper.
-# ⚠ SIX MORE, AND ONLY UNDER THE SOLDER MASK. The pad's copper is 6.5 long but only the
-# middle 3.43 is opened and pasted; the two ends are mask over copper. Vias there cost no
-# paste, where each one inside the opening would drink a tenth of what is printed. Three
-# across each end, on TI's own 1.3 mm pitch: with the centre one about 30 C/W to the plane.
-DRV_PAD_VIAS = tuple((dx, dy) for dy in (-2.60, +2.60) for dx in (-1.30, 0.0, +1.30))
+# and not a heat path: one 0.30 mm barrel down 1.28 mm to the ground plane is about
+# 190 C/W, under a part that dissipates most of a watt at full white. TI's land pattern
+# for the RGE package (SBVS146D, RGE0024H example board layout) draws nine on a 1.1 mm
+# grid across the 2.7 x 2.7 copper.
+# ⚠ FOUR MORE, ON THE CROSS BETWEEN THE PASTE PANES. The footprint prints the pad's paste
+# as four panes with a gap down each axis; TI's four corner vias stand in the middle of a
+# pane each and would drink it. These four stand on the axes, on TI's own 1.1 mm pitch:
+# with the centre one about 40 C/W to the plane.
+DRV_PAD_VIAS = ((-1.10, 0.0), (+1.10, 0.0), (0.0, -1.10), (0.0, +1.10))
 
 # ── THE BUCK'S CELL: where each of its parts stands, measured from U10 ────────────────
 # ⚠ THE OPTICAL BOARD'S U13 CELL, WHICH WAS MEASURED AGAINST TI'S LAYOUT EXAMPLE on a
@@ -300,7 +303,7 @@ def _manual(board, n_drv):
               "signals M18",
         "M6": "no parallel bus and nothing matched. SCK and SDT are a 10 MHz-capable "
               "pair that the Pi clocks far slower; each driver re-drives both (10 ns "
-              "edges) to the next, 66 mm on, which is 0.45 ns of flight. Both run over "
+              "edges) to the next, up to 78 mm on, which is 0.5 ns of flight. Both run over "
               "the unbroken rail plane, and where SCK_2 / SDT_2 drop to the back to "
               "pass the buck they run against the ground plane with both planes "
               "between them and the switch node",
@@ -310,11 +313,11 @@ def _manual(board, n_drv):
               "0.91 A, 30 % of the 3 A they size it on. EN (pin 9) is tied to VIN on laid copper (TI: "
               "may go straight to VIN, must not float). PG (pin 8) is an open drain "
               "that 'can be left open when not used', and is. The RNX has no exposed "
-              "pad. TLC59711: IREF 3k3 gives 41 x 1.21 V / 3.3k = 15.0 mA; its "
-              "PowerPAD is on GND",
-        "M8": "nothing here has a reset, boot or address pin. A TLC59711 powers up with "
+              "pad. TLC5971: IREF 3k3 gives 41 x 1.21 V / 3.3k = 15.0 mA; its "
+              "thermal pad is on GND",
+        "M8": "nothing here has a reset, boot or address pin. A TLC5971 powers up with "
               "BLANK set, every output off, and stays so until a write that begins "
-              "with command 25h (SBVS181A, 'BLANK bit'). Its two inputs are driven, "
+              "with command 25h (SBVS146D 8.5.2). Its two inputs are driven, "
               + ("through R21 / R22, by Pi pins whose reset state is a pull-down "
                  "(GPIO 9 to 27); with the lead off, the board has no supply either"
                  if a else
@@ -387,7 +390,7 @@ def _manual(board, n_drv):
                 "with about 11 uF of biased ceramic: overdamped"),
         "M18": ("decision, and two resistors. The Pi can be up while this board is "
                 "dark (F1 open, the motor board's lights fuse open, a Pi on USB power "
-                "on the bench), and a TLC59711 input is rated to VREG + 0.6 V with "
+                "on the bench), and a TLC5971 input is rated to VREG + 0.6 V with "
                 "VREG then 0. R21 and R22, 1 k at the socket, hold what the Pi can "
                 "push through the input's protection diode to 2.7 mA. The other way "
                 "round nothing is driven: this board has no output towards the Pi"
@@ -398,17 +401,19 @@ def _manual(board, n_drv):
                 "fault being repaired, not a state it is run in. In normal use both "
                 "boards take their 24 V through the same socket"),
         "M20": "no I2C and no CAN. SCK and SDT are terminated at their source: 68 ohm "
-               "in series at the Pi cap. On the board each hop is 66 mm from a driver "
+               "in series at the Pi cap. On the board each hop is up to 78 mm from a driver "
                "with 10 ns edges, a twentieth of the edge in flight: lumped, nothing to "
                "terminate",
         "M21": "no ADC, DAC, codec or analog reference on the board",
         "M22": "no op-amp or comparator on the board",
-        "M25": "TLC59711: the pad is on GND, as TI name it, solid, with seven vias "
-               "(six under the mask at the pad's ends, one in the pasted middle; TI "
-               "draw fifteen) and paste in four panes. At full white a driver burns "
+        "M25": "TLC5971 (RGE): the pad is on GND, as TI name it, solid, with five vias "
+               "(the centre and four on the axes between the paste panes; TI draw "
+               "nine) and paste in four panes. At full white a driver burns "
                "0.57 W typical and 0.75 W worst (12 x 15 mA across the rail less three "
-               "LEDs, plus its own supply current); at TI's 68.6 C/W that is 39 to "
-               "51 C over ambient, 96 C at 45 C against 150 C. U10 has no pad: its "
+               "LEDs, plus its own supply current); at TI's 38 C/W for this package "
+               "that is 22 to 29 C over ambient, 74 C at 45 C against 150 C -- and "
+               "at the 68.6 of the HTSSOP it replaced, on fewer vias than TI draw, "
+               "still 96 C. U10 has no pad: its "
                "heat leaves through the pins into the laid slabs and their vias. "
                "Loss, read off TI's 24 V curve for this package at 1.4 MHz (figure "
                "9-15) at 0.7 A: 0.9 W, all of it charged to the IC. Thermal "
@@ -419,21 +424,24 @@ def _manual(board, n_drv):
                "165 C shutdown. The 2.1 MHz part these boards had loses 1.2 W at the "
                "same load, 117 C: that is why it was changed (elec/buck_cell.py). No "
                "tab on the board",
-        "M26": "one link, a daisy chain. Read off TI's pin table: 9 SDTI, 10 SCKI, "
-               "11 SCKO, 12 SDTO. " + ("SDT_IN and SCK_IN (from the cable through R22 "
-               "/ R21) reach U1 pins 9 and 10" if a else "SDT_IN and SCK_IN (the seam) "
-               "reach U1 pins 9 and 10") + "; each driver's 12 and 11 go to the next "
-               "one's 9 and 10 as SDT_n / SCK_n; " + ("U4's leave as SDT_OUT / SCK_OUT "
+        "M26": "one link, a daisy chain. Read off TI's pin table (RGE): 1 SDTI, 2 SCKI, "
+               "5 SCKO, 6 SDTO. " + ("SDT_IN and SCK_IN (from the cable through R22 "
+               "/ R21) reach U1 pins 1 and 2" if a else "SDT_IN and SCK_IN (the seam) "
+               "reach U1 pins 1 and 2") + "; each driver's 6 and 5 go to the next "
+               "one's 1 and 2 as SDT_n / SCK_n; " + ("U4's leave as SDT_OUT / SCK_OUT "
                "on J24 / J23" if a else "U4's are the end of the chain, named _NC") +
                ". At the Pi the two are an SPI's MOSI and SCLK",
         "M27": "no strap, reset or debug net on the board",
         "M28": "no transistor or small regulator. The three ICs' pin orders are read "
-               "from their own sheets (pinouts, above), and each placed footprint was "
-               "compared pad for pad with the fab's library footprint for that exact "
-               "LCSC code: TLC59711PWPR C116842, LMR33630BRNXR C2071384 (and the "
-               "alternate C part's, C2071783: the same frame), XL-5050RGBW "
-               "C7371891" + (", S4B-XH-SM4-TB C161861" if a else "") + " -- all match "
-               "under a pure rotation",
+               "from their own sheets (pinouts, above). Compared pad for pad with the "
+               "fab's library footprint for the exact LCSC code: LMR33630BRNXR "
+               "C2071384 (and the alternate C part's, C2071783: the same frame), "
+               "XL-5050RGBW C7371891" + (", S4B-XH-SM4-TB C161861" if a else "") +
+               " -- all match under a pure rotation. NOT compared: TLC5971RGER "
+               "C543004, new on this board 2026-10-06. Its land is KiCad's "
+               "Texas_RGE0024H, TI's own drawing for the package; a square QFN can "
+               "only be wrong by a quarter turn, and that is M12's to see in the "
+               "placement preview (pin-1 dot on the board's pin-1 mark)",
         "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
                "table, read 2026-10-04 (A12 measured against it). The 0.30 / 0.55 via "
                "is the fab's standard, uncharged hole. %s x 24.15 mm is inside "
@@ -463,8 +471,8 @@ def _manual(board, n_drv):
                "3.80 mm, 12 A each against " + ("0.38 A handed on" if a else "0.38 A") +
                ", and ground has a pin beside the supply and the two signals",
         "M33": "the rail: 48 channels x 15 mA = 0.72 A, plus four drivers at no more "
-               "than 18 mA (TI's maximum at twice this current setting), 0.79 A of a "
-               "3 A regulator: 26 %%. That is the 0.72 A declared "
+               "than 22 mA (TI's maximum at twice this current setting, with data "
+               "clocking), 0.81 A of a 3 A regulator: 27 %%. That is the 0.72 A declared "
                "on +11V5. The 24 V side at 90 %%: 0.38 A a board" + (
                ", and this one carries both, 0.77 A: J1's contact is 3 A, F1 2 A, "
                "the seam pin 12 A" if a else ": F1 here is 1 A, the seam pin 12 A"),
@@ -473,8 +481,8 @@ def _manual(board, n_drv):
                "between drivers it is a VREG-level output into the same input. The "
                "protocol has no chip select and no enable. U10's EN is active high, "
                "1.23 V threshold, tied to VIN as its sheet allows",
-        "M35": "TI's product pages for TLC59711 and LMR33630, read 2026-10-05: both "
-               "active, no errata document listed for either",
+        "M35": "TI's product pages for LMR33630 (read 2026-10-05) and TLC5971 (read "
+               "2026-10-06): both active, no errata document listed for either",
         "M36": ("24 V is offered to board B at the seam, from behind F1 (2 A); B has "
                 "its own 1 A fuse behind its lands. The rail does not leave the board"
                 if a else "no supply leaves this board"),
@@ -484,7 +492,7 @@ def _manual(board, n_drv):
                "separately and laid over the copper -- all %d plated holes have copper "
                "all round them on both outer layers. Paste only on soldered lands; "
                "the stack-up is in ORDER.txt"
-               % (FL.BOARD_NAME[board], 260 if a else 251),
+               % (FL.BOARD_NAME[board], 244 if a else 243),
         "M38": "the board bends along its length when it is handled, so every 1206 -- "
                "four capacitors and the fuse -- stands across it. Decision: the four "
                "4.7 uF 0805s lie along it, in the row over each driver that keeps the "
@@ -527,7 +535,7 @@ def build(board, passes=20):
     n_zone = len(xs) // FL.N_SERIES
     n_drv = (n_zone + 2) // 3
     assert len(xs) % FL.N_SERIES == 0 and n_zone % 3 == 0, (
-        "%s: %d LEDs is %d zones -- zones come in threes (a TLC59711 carries three) "
+        "%s: %d LEDs is %d zones -- zones come in threes (a TLC5971 carries three) "
         "and strings in N_SERIES" % (name, len(xs), n_zone))
     half = length / 2.0
 
@@ -688,21 +696,23 @@ def build(board, passes=20):
         xd = sum(xs[i] for i in mid) / len(mid)   # the middle zone's centre
         # (no clamp against the supply row any more: it is in the middle, and the
         # drivers are what it has to stay clear of rather than the other way round)
-        u = Part(name="TLC59711", ref_prefix="U", ref="U%d" % (k + 1),
-                 tag="U%d" % (k + 1), dest="NETLIST", tool="skidl", value="TLC59711PWPR",
-                 description="12-ch 16-bit constant-current LED driver (LCSC C116842)",
-                 footprint=DRV_FP, pins=[Pin(num=n, func=P) for n in range(1, 22)])
+        u = Part(name="TLC5971", ref_prefix="U", ref="U%d" % (k + 1),
+                 tag="U%d" % (k + 1), dest="NETLIST", tool="skidl", value="TLC5971RGER",
+                 description="12-ch 16-bit constant-current LED driver (LCSC C543004)",
+                 footprint=DRV_FP, pins=[Pin(num=n, func=P) for n in range(1, 26)])
         iref, vreg = Net("IREF%d" % (k + 1)), Net("VREG%d" % (k + 1))
-        u[1] += iref
-        gnd += u[2], u[21]
-        vrail += u[19]
-        vreg += u[20]
-        sdt += u[9]
-        sck += u[10]
+        u[16] += iref
+        gnd += u[18], u[25]
+        vrail += u[13]
+        vreg += u[15]
+        sdt += u[1]
+        sck += u[2]
+        for n in (3, 4, 14, 17):          # no internal connection (SBVS146D, pin functions)
+            Net("U%d_P%d_NC" % (k + 1, n)).connect(u[n])
         sck, sdt = ((Net("SCK_%d" % (k + 1)), Net("SDT_%d" % (k + 1)))
                     if k < n_drv - 1 else (sck_out, sdt_out))
-        sck += u[11]
-        sdt += u[12]
+        sck += u[5]
+        sdt += u[6]
         r = _r("R%d" % (k + 1), R_IREF, "U%d IREF -- 15.0 mA per channel" % (k + 1))
         iref += r[1]
         gnd += r[2]
@@ -717,11 +727,11 @@ def build(board, passes=20):
                 C08_FP)
         vrail += cb[1]
         gnd += cb[2]
-        place["U%d" % (k + 1)] = (xd, LANE_Y, 0.0)
+        place["U%d" % (k + 1)] = (xd, LANE_Y, DRV_ROT)
         fps["U%d" % (k + 1)] = DRV_FP
         # THE DRIVER'S FOUR PASSIVES STAND IN A ROW ABOVE IT, on the side away from the
-        # LEDs, in the order of the pins they serve: IREF is pin 1 and VCC / VREG are 19
-        # and 20, the top of the package's two columns.
+        # LEDs, over the pins they serve: the package's top side is GND 18, IREF 16,
+        # VREG 15, VCC 13.
         # ⚠ NOT BESIDE IT, WHICH IS WHERE THEY WERE. Every one of them has a pad on a
         # plane net, and its stitch via now stands beside the pad rather than in it
         # (cadkit quality A12: no open via in a small soldered land). Beside the driver
@@ -729,12 +739,16 @@ def build(board, passes=20):
         # outboard column escapes by, and its outer zones' returns stopped routing --
         # two nets, then six when the row was only lifted 2 mm and sat on the pins.
         # Above the package nothing has to pass.
-        row = (("R%d" % (k + 1), R_FP), ("C%d" % (20 + k + 1), C08_FP),
-               ("C%d" % (10 + k + 1), C_FP), ("C%d" % (k + 1), C_FP))
+        row = (("C%d" % (20 + k + 1), C08_FP), ("R%d" % (k + 1), R_FP),
+               ("C%d" % (k + 1), C_FP), ("C%d" % (10 + k + 1), C_FP))
         gap = 0.45
-        span = sum(fp_box(fp)[0] for _r, fp in row) + gap * (len(row) - 1)
         row_y = LANE_Y + fp_box(DRV_FP)[1] / 2.0 + gap + fp_box(C08_FP)[1] / 2.0
-        prow = Row(place, fps, xd - span / 2.0, gap=gap, dirn=1.0, y=row_y)
+        # the VREG capacitor stands over VREG (pin 15, +0.25 of the package centre), with
+        # IREF's resistor and VCC's capacitor either side of it over theirs; the bulk
+        # capacitor serves the strings through the planes and takes the end
+        x0 = (xd + 0.25 - fp_box(C_FP)[0] / 2.0 - gap - fp_box(R_FP)[0] - gap
+              - fp_box(C08_FP)[0])
+        prow = Row(place, fps, x0, gap=gap, dirn=1.0, y=row_y)
         for ref, fp in row:
             prow.add(ref, fp)
 
@@ -812,7 +826,7 @@ def build(board, passes=20):
     notes["placements"] = {k: list(v) for k, v in place.items()}
     notes["router_passes"] = passes
     # THE BUCK'S COPPER IS LAID, NOT ROUTED (buck_cell.copper says what and why), and
-    # each driver's heat pad gets its six vias (DRV_PAD_VIAS).
+    # each driver's heat pad gets its four more vias (DRV_PAD_VIAS).
     ux, uy, _ur = place["U10"]
     v_dia, v_drill = BOARD_NOTES["via_mm"]
     notes["tracks"] = BC.copper((ux, uy), 0.0, v_out="+11V5")
@@ -863,18 +877,43 @@ def build(board, passes=20):
             # the stretch that matters is L1's own exit onto the plane, all of the rail
             # leaves there, and every one of these paths starts with it.
             {"net": "+11V5", "from": "L1.2",
-             "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": round(i_rail, 3)},
+             "to": ["U%d.13" % (k + 1) for k in range(n_drv)], "amps": round(i_rail, 3)},
         ],
         "pinouts": {
             "XL-5050RGBW": "XINGLIGHT XL-5050RGBW datasheet, package drawing: pads 1-4 the "
                            "four anodes, 5-8 their cathodes; Steel:XINGLIGHT_XL-5050RGBW "
                            "is drawn from it",
-            "TLC59711PWPR": "TI TLC59711 datasheet, Terminal Functions table, PWP "
-                            "(HTSSOP-20) column, top view",
+            "TLC5971RGER": "TI TLC5971 datasheet SBVS146D, Pin Functions table, RGE "
+                           "(VQFN-24) column",
             BC.U_VALUE: "TI LMR33630 datasheet SNVSAN3F, Table 6-1, VQFN (RNX) column",
         },
         "waive": waive,
         "manual": _manual(board, n_drv),
+        # WHAT THE DESIGN MEANS, for cadkit quality A13 to hold the routed board to:
+        # written from the counts (drivers, zones, LEDs in a string), not read off it.
+        "unconnected": dict({
+            "U[1-%d]" % n_drv: {"pins": "3 4 14 17",
+                                "why": "TLC5971 RGE: no internal connection (SBVS146D)"},
+            "U10.8": "LMR33630 PG: an open drain, left open as its sheet allows",
+        }, **({"J1.MP": "the socket's two mounting lands: solder only"} if board == "a"
+              else {"U%d.[56]" % n_drv: "SCKO / SDTO of the last driver in the chain"})),
+        "net_groups": [
+            {"name": "driver outputs: twelve a driver, every one on its own return",
+             "pins": ["U%d.%d" % (k + 1, p) for k in range(n_drv) for p in DRV_OUT_PINS],
+             "nets": 4 * n_zone, "each": 1, "pins_count": 12 * n_drv},
+            {"name": "string returns: one a colour a zone, last cathode to a driver output",
+             "nets_like": "Z[0-9]+_[RGBW]_RET", "count": 4 * n_zone, "pads": 2},
+            {"name": "string links: LEDs in a string less one, a colour a zone",
+             "nets_like": "Z[0-9]+_[RGBW]_[0-9]+",
+             "count": 4 * n_zone * (FL.N_SERIES - 1), "pads": 2},
+            {"name": "each driver's own IREF and VREG",
+             "pins": ["U[1-%d].1[56]" % n_drv], "nets": 2 * n_drv, "each": 1},
+            {"name": "the chain between drivers: SCK and SDT, driver to driver",
+             "nets_like": "S(CK|DT)_[0-9]+", "count": 2 * (n_drv - 1), "pads": 2},
+            {"name": "the seam: four pins, four ways",
+             "pins": ["J[12][1-4].1"], "nets": 4, "each": 1, "pins_count": 4},
+        ] + ([{"name": "the cable socket: four ways", "pins": ["J1.[1-4]"],
+               "nets": 4, "each": 1}] if board == "a" else []),
     }
     if board == "a":
         notes["quality"]["pinouts"]["S4B-XH-SM4-TB"] = (
@@ -924,11 +963,12 @@ BOARD_NOTES = {
     # layout wants no via inside that loop, and there is no room for one anyway.
     "stitch_exceptions": BC.STITCH_EXCEPTIONS,
     # ⚠ A SMALLER VIA PAD, AND IT IS THE DRIVER'S ESCAPE FAN THAT ASKS FOR IT. Twelve
-    # outputs leave one HTSSOP-20 on a 0.65 mm pitch and every one of them has to dive to
-    # an outer layer beside the package: six vias have to fit in the 5.85 mm the pin
-    # column spans, which is 0.98 apiece. At the 0.60/0.30 default that is 0.38 of air and
-    # the router left two returns 1.1 mm short of their pads; at 0.55 it is 0.43 and both
-    # boards close with no violation (2026-10-06).
+    # outputs leave one driver and every one of them has to dive to an outer layer
+    # beside the package. On the HTSSOP-20 this board had (0.65 mm pitch: six vias in the
+    # 5.85 mm a pin column spans) the 0.60/0.30 default left two returns 1.1 mm short of
+    # their pads and 0.55 closed. The VQFN-24 it has now is 0.5 mm pitch, six outputs
+    # in 2.5 mm a side, and closes at 0.55 as well (2026-10-06); the default was not
+    # tried again.
     #
     # ⚠ THE HOLE STAYS 0.30. These boards were 0.50/0.25, and the order page charges for a
     # 0.25 hole: about 17 USD for the via, and the form then adds a 4-wire Kelvin test
@@ -939,7 +979,7 @@ BOARD_NOTES = {
     # other board here has.
     "via_mm": (0.55, 0.30),
     # ⚠ 0.15 mm TRACK, for the same reason lever_sensor takes it: the tightest parts here
-    # is a 0.65 mm pitch HTSSOP-20 with twelve outputs, and the
+    # is a 0.5 mm pitch VQFN-24 with twelve outputs, and the
     # default 0.25 does not leave either escape room to turn. 0.15 on 1 oz carries ~0.5 A
     # at a 10 C rise against this board's largest signal load of 15 mA -- the constraint
     # is geometry, not current. The rails keep their own width below.

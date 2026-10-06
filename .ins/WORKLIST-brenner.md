@@ -296,6 +296,15 @@ Projects > Quotes. What it found, and what the order needs because of it:
 - The seam pogo pins arrive UNSELECTED on every LED board (a "difficult" part, +0.08 USD
   each). Tick the row (it can take two clicks); pressing Next without it raises
   "Project has unselected parts". In the 2D preview all four rows point off their board end.
+- ⚠ 2026-10-06, LATER: ALL FOUR LED BOARDS RE-ROUTED on TLC5971RGER C543004 (VQFN-24,
+  rot 90: data side toward the LEDs / the band's lower edge). fret_led_key's zone short
+  (frets 3+4, 6+7 on one set of outputs; stale `di`) fixed. A13 declarations in all five
+  generators. Packages rebuilt; gerbers re-rendered, holes 244 / 243 / 366 / 601 all ringed.
+  EVERY PROJECT SAVED ON JLCPCB FOR THE FOUR LED BOARDS IS STALE: upload the new zips.
+  Order-day checks that are new: the QFN's pin-1 dot on the board's mark (no fab frame
+  measured; CPL carries KiCad's 90), and the quotes (not re-read). The HTSSOP routes are
+  kept in elec/out/_htssop/, the 0.25 mm via ones in elec/out/_via025/.
+  Docs: section 5 of docs/connector-and-polarity-audit.md is the five boards re-derived.
 - ⚠ SUPERSEDED 2026-10-06: the foot boards are re-routed at 0.55 / 0.30 (elec/foot_led.py
   via_mm), clean, repackaged; order them with the standard 0.3 mm via. The projects saved
   on JLCPCB still hold the OLD gerbers: upload the new zips. The 0.25 routes are kept in
