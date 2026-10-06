@@ -779,7 +779,7 @@ def _manual(panel, n_drv, n_zone, facts):
                 "C36 and C37 (1206) are 3.3 mm from the seam edge and lie along the "
                 "board's length; the board is 211 x 70, held by two M4s and a lip, and "
                 "is ordered as a routed single with no V-score or tab. The 0805s are "
-                "20 mm and more from any edge. ") +
+                "13 mm and more from any edge. ") +
                "Both M4 holes are unplated and isolated, with no copper under the "
                "button head. " + ("J1's plug goes on from the open -X end; the test "
                "pads are 1.5 mm, 9 mm apart" if key else "Nothing is plugged in"),
@@ -835,10 +835,22 @@ def _manual(panel, n_drv, n_zone, facts):
 # What was measured on the routed boards after the last route (scratch scripts in the
 # session; the figures are re-read whenever a board is re-routed).
 MEASURED = {
-    "key": {"hop_mm": "@KEY_HOP@", "hop_ns": "@KEY_NS@", "cin": "@CIN@", "sw": "@SW@",
-            "r11": "@R11@", "r10": "@R10@", "boot": "@BOOT@", "vcc": "@VCC@",
-            "m37": "@KEY_M37@"},
-    "mid": {"hop_mm": "@MID_HOP@", "hop_ns": "@MID_NS@", "m37": "@MID_M37@"},
+    "key": {"hop_mm": "77", "hop_ns": "0.5", "cin": "0.60", "sw": "4.4",
+            "r11": "1.17", "r10": "2.35", "boot": "1.07", "vcc": "0.42",
+            "m37": (
+                "elec/fab.py fret_led_key, 2026-10-05, run after finish.py's refill and DRC; "
+                "gerbers and drill written together. Opened outside KiCad: every layer "
+                "rendered with pygerber 2.4.3 and looked at, the Excellon file parsed "
+                "separately and laid over the copper -- all 344 plated holes have copper all "
+                "round them on both outer layers. Paste only on soldered lands; stack-up and "
+                "the via choice are in ORDER.txt")},
+    "mid": {"hop_mm": "46", "hop_ns": "0.3", "m37": (
+                "elec/fab.py fret_led_mid, 2026-10-05, run after finish.py's refill and DRC; "
+                "gerbers and drill written together. Opened outside KiCad: every layer "
+                "rendered with pygerber 2.4.3 and looked at, the Excellon file parsed "
+                "separately and laid over the copper -- all 625 plated holes have copper all "
+                "round them on both outer layers. Paste only on soldered lands; stack-up and "
+                "the via choice are in ORDER.txt")},
 }
 
 def build(panel):
