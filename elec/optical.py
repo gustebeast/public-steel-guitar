@@ -464,8 +464,14 @@ def optical():
             # and the placements are keyed by ref, so the two orderings are not
             # interchangeable -- they quietly produce a board whose parts sit in the
             # right places under the wrong names.
-            # Everlight PD15-22B/TR8: pad 1 ANODE, pad 2 CATHODE (DTD-152-002 p.2), two
-            # pads each -- elec/layout.py nets every pad that shares a number.
+            # Everlight PD15-22B/TR8, two lands a terminal -- elec/layout.py nets every pad
+            # that shares a number. THE PAD NUMBERS ARE OURS, NOT EVERLIGHT'S: pad 1 is the
+            # ANODE pair and pad 2 the CATHODE pair. Everlight (DPD-0000195 rev 4, p.2)
+            # numbers the four lands 1..4 with 1 and 4 the cathode, the side that carries
+            # the body's stripe, and 2 and 3 the anode; the fab's footprint follows
+            # Everlight. So the stripe goes on OUR PAD 2, and the placement frame in
+            # fab_frames.json turns the part to put it there (seen in the fab's preview,
+            # 2026-10-06: by pin number alone all twenty went on backwards).
             pd = Part(name="PHOTODIODE", ref_prefix="PD", ref="PD%d%s" % (i, tag),
                       dest="NETLIST", tool="skidl", value="PD15-22B/TR8",
                       description="filtered Si PIN photodiode, string %d side %s "
@@ -4016,8 +4022,9 @@ BOARD_NOTES["quality"] = {
               "B7, CC1 and CC2 each on its own 5k1, so either way up is the same circuit",
         "M2": "D1-D10 (LTE-C9901): pin 1 K on LED_ROW, the switched low side; pin 2 A on "
               "its ballast; KiCad's LED_0603 pad 1 is K. PD1A-PD10B (PD15-22B): pad 1 A on "
-              "MID, pad 2 K on the summing node, Everlight DTD-152-002 p.2, on the "
-              "footprint drawn from that page. No other two-pad polarised part: no TVS, no "
+              "MID, pad 2 K on the summing node; the pad numbers are ours, Everlight's "
+              "DPD-0000195 rev 4 p.2 calls the cathode lands 1 and 4 and stripes that "
+              "side of the body, so the stripe sits on our pad 2, toward the op-amp. No other two-pad polarised part: no TVS, no "
               "electrolytic, no tantalum. Reel rotation is checked at order (M12)",
         "M3": "one ground net (the note at the top of optical()): In1 is an unbroken GND "
               "plane with GND pours on F.Cu and B.Cu, and every ground pad is stitched to "
