@@ -76,6 +76,9 @@ ROTATION-CHECK.txt lists what was corrected and what could not be measured.
 * `ORDER.txt` no longer says the 0.25 mm via is free: it is about +17 USD and brings a
   Kelvin test and Tg155 with it; every package now warns that the form carries the
   previous board's options over, and the seam pogo pin's row has to be ticked by hand.
+* The foot boards no longer need that option (2026-10-06): re-routed with a 0.55 mm pad on
+  the standard 0.30 mm hole, 0 unconnected and 0 violations on both, which takes about
+  38 USD off each order of five.
 
 ### Every BOM row names its part, 2026-10-06
 

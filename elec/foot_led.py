@@ -435,8 +435,8 @@ def _manual(board, n_drv):
                "C7371891" + (", S4B-XH-SM4-TB C161861" if a else "") + " -- all match "
                "under a pure rotation",
         "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
-               "table, read 2026-10-04 (A12 measured against it). The 0.25 / 0.50 via "
-               "is an order-form choice and is in ORDER.txt. %s x 24.15 mm is inside "
+               "table, read 2026-10-04 (A12 measured against it). The 0.30 / 0.55 via "
+               "is the fab's standard, uncharged hole. %s x 24.15 mm is inside "
                "the size limits. Every 0402's plane-side pad reaches its plane through "
                "a via beside the pad on a short track, as the other pad has: no pad "
                "sits in a pour" % ("293.4" if a else "286.4"),
@@ -478,13 +478,13 @@ def _manual(board, n_drv):
         "M36": ("24 V is offered to board B at the seam, from behind F1 (2 A); B has "
                 "its own 1 A fuse behind its lands. The rail does not leave the board"
                 if a else "no supply leaves this board"),
-        "M37": "elec/fab.py %s, 2026-10-05, run after finish.py's refill and DRC; "
+        "M37": "elec/fab.py %s, 2026-10-06, run after finish.py's refill and DRC; "
                "gerbers and drill written together. Opened outside KiCad: every layer "
                "rendered with pygerber 2.4.3 and looked at, the Excellon file parsed "
                "separately and laid over the copper -- all %d plated holes have copper "
                "all round them on both outer layers. Paste only on soldered lands; "
-               "stack-up and the via choice are in ORDER.txt"
-               % (FL.BOARD_NAME[board], 262 if a else 255),
+               "the stack-up is in ORDER.txt"
+               % (FL.BOARD_NAME[board], 260 if a else 251),
         "M38": "the board bends along its length when it is handled, so every 1206 -- "
                "four capacitors and the fuse -- stands across it. Decision: the four "
                "4.7 uF 0805s lie along it, in the row over each driver that keeps the "
@@ -923,18 +923,21 @@ BOARD_NOTES = {
     # 0.25 track, pin to capacitor pad, 0.6 mm, and the capacitor's own stitch via. TI's
     # layout wants no via inside that loop, and there is no room for one anyway.
     "stitch_exceptions": BC.STITCH_EXCEPTIONS,
-    # ⚠ A SMALLER VIA, AND IT IS THE DRIVER'S ESCAPE FAN THAT ASKS FOR IT. Twelve outputs
-    # leave one HTSSOP-20 on a 0.65 mm pitch and every one of them has to dive to an
-    # outer layer beside the package: six vias have to fit in the 5.85 mm the pin column
-    # spans, which is 0.98 apiece. At the 0.60/0.30 default that is 0.38 of air and the
-    # router left two returns 1.1 mm short of their pads; at 0.50/0.25 it is 0.48.
+    # ⚠ A SMALLER VIA PAD, AND IT IS THE DRIVER'S ESCAPE FAN THAT ASKS FOR IT. Twelve
+    # outputs leave one HTSSOP-20 on a 0.65 mm pitch and every one of them has to dive to
+    # an outer layer beside the package: six vias have to fit in the 5.85 mm the pin
+    # column spans, which is 0.98 apiece. At the 0.60/0.30 default that is 0.38 of air and
+    # the router left two returns 1.1 mm short of their pads; at 0.55 it is 0.43 and both
+    # boards close with no violation (2026-10-06).
     #
-    # elec/lever_sensor.py records the same lever with the measurement behind it, and
-    # the cost: 0.50/0.25 is inside JLCPCB's standard capability ("Multilayer: 0.15 mm
-    # hole / 0.25 mm diameter"). That file read the capability page as "not surcharged";
-    # the order page charged for it (2026-10-06, see order_options below). It is an
-    # order-form field, not just a gerber fact, which is why it is repeated there.
-    "via_mm": (0.50, 0.25),
+    # ⚠ THE HOLE STAYS 0.30. These boards were 0.50/0.25, and the order page charges for a
+    # 0.25 hole: about 17 USD for the via, and the form then adds a 4-wire Kelvin test
+    # (17) and Tg155 material (3.5 to 7.8) by itself -- 38 USD an order of five, on each
+    # board. 0.45/0.30 also routes and is also free, but its 0.075 ring and 0.20 from hole
+    # to foreign copper sit ON the fab's minimums and fail this board's own rules (148
+    # annular, 77 hole clearance). 0.55 keeps the 0.125 ring and 0.25 hole clearance every
+    # other board here has.
+    "via_mm": (0.55, 0.30),
     # ⚠ 0.15 mm TRACK, for the same reason lever_sensor takes it: the tightest parts here
     # is a 0.65 mm pitch HTSSOP-20 with twelve outputs, and the
     # default 0.25 does not leave either escape room to turn. 0.15 on 1 oz carries ~0.5 A
@@ -945,13 +948,6 @@ BOARD_NOTES = {
     # really just the 24 V pass-through, which carries 0.24 A the length of the board.
     "net_widths": {"+24V": 0.30, "+24V_IN": 0.30},   # the inlet stub was routed at 0.15
                                                       # for 0.77 A, which wants 0.20
-    "order_options": {
-        "via size": "0.25 mm hole / 0.50 mm diameter -- SELECT THIS ON THE ORDER FORM. It is "
-                    "CHARGED FOR, whatever the capability page suggests (order page, "
-                    "2026-10-06): about +17 USD for the via size, and choosing it makes "
-                    "the form add a 4-wire Kelvin test (+17) and Tg155 material (+3.5 "
-                    "to 7.8) by itself. The driver fan does not route at the 0.60/0.30 default.",
-    },
     "single_sided": True,        # every part on the face that fires at the floor
     "refs_on_fab": True,
     # ⚠ NO MOUNTING HOLE, AND NOT BECAUSE IT WAS FORGOTTEN. The channel holds five faces

@@ -296,6 +296,10 @@ Projects > Quotes. What it found, and what the order needs because of it:
 - The seam pogo pins arrive UNSELECTED on every LED board (a "difficult" part, +0.08 USD
   each). Tick the row (it can take two clicks); pressing Next without it raises
   "Project has unselected parts". In the 2D preview all four rows point off their board end.
+- ⚠ SUPERSEDED 2026-10-06: the foot boards are re-routed at 0.55 / 0.30 (elec/foot_led.py
+  via_mm), clean, repackaged; order them with the standard 0.3 mm via. The projects saved
+  on JLCPCB still hold the OLD gerbers: upload the new zips. The 0.25 routes are kept in
+  elec/out/_via025/. Expect about 160 USD a foot board order, not 197 (not re-quoted).
 - The 0.25 mm via option on the foot boards IS surcharged, whatever ORDER.txt says:
   +17.1 via, +17.0 4-wire Kelvin test and +3.5 to 7.8 Tg155 material, both added by the
   form itself. PCB 68 / 72 USD against 37 for a fret board at 0.30.
