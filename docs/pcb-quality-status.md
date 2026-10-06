@@ -56,19 +56,19 @@ part's angle and origin by laying the fab's library pads over ours, the package 
 applies the table (`elec/fab_frames.json`) to every placement file, and each package's
 ROTATION-CHECK.txt lists what was corrected and what could not be measured.
 
-* Measured so far: the three parts whose pads were already in the repository (the
-  SMD 4-way XH, the LED buck, and by hand the 2x8 ribbon header, which the two libraries
-  number opposite ways). **Every other part is still "not measured"**: the fab's library
-  refused the script (HTTP 403) and its data carries a licence notice, so reading more of
-  it waits for the owner's decision. Until then those parts are the list to check by eye
-  in the preview, exactly as before.
-* **`pi_cap` is the first board that tests the back-side rule.** Every part on it is on
-  the back, where the builder subtracts the frame rotation instead of adding it (KiCad
-  flips a footprint top to bottom). That is exact if JLCPCB reads a back-side angle the
-  way KiCad writes one, and no board has shown it in the previewer yet: `ui_board`, where
-  the 2x8 header's frame (KiCad + 90) was seen, has it on the front. The package places
-  J5 at 180 (KiCad 270). In the preview look at J5, J3 / J4 and the SOT-23-6 (U1): if J5
-  sits a half turn out, the back-side sign is what is wrong, not the table.
+* Every asymmetric part on the ten boards walked here is measured (owner's decision,
+  2026-10-06: the library may be read through the browser, with attribution). Source:
+  JLCEDA/EasyEDA Official Library -- https://lceda.cn/ , https://easyeda.com . The table
+  keeps the rotation and offset only. One part has no library footprint (LESD5L5.0CT1G,
+  a symmetric two-pad clamp) and stays in the "not corrected" list.
+* **The back-side rule is settled on the order page.** `pi_cap` (every part on the back)
+  previewed a half turn out with the frame rotation merely subtracted: the fab turns a
+  back-side part over left to right, KiCad top to bottom. The builder now adds the half
+  turn, and the second preview had every connector on its pads with its mouth off the
+  board. Seen for parts whose KiCad angle and frame rotation are 0 or 180 apart; none 90
+  apart exists on a back side yet.
+* All ten boards were walked to the quote: `docs/jlcpcb-order-walk.md` has what the
+  page showed and every price line.
 * The lever sensor board is ONE part in the CAD now (laminate plus every placed part,
   fused), like the other boards; its mated connector stays separate because the plug
   half belongs to the cable. `elec/cad_geom_check.py`, run over all fifteen boards
