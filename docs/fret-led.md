@@ -1719,18 +1719,19 @@ Every part on both boards is already sourced in `elec/fab.py`:
 |---|---|---|---|
 | LED | XL-5050RGBW | C7371891 | already selected; top-mount confirmed |
 | driver | TLC59711PWPR | C116842 | ES-PWM ~19.5 kHz, 16-bit GS, a white channel |
-| buck | LMR33630CRNXR | C2071783 | the **optical board's** buck, and the "C" is **2.1 MHz** |
+| buck | LMR33630BRNXR | C2071384 | **1.4 MHz**, for heat (2026-10-05); it was the optical board's 2.1 MHz C part, which stays the alternate on the same land |
 | inductor | SWPA5040S4R7MT | C48496 | 4.7 uH, Isat 3.50 A min (was the optical board's SWPA4030S4R7MT until 2026-10-05) |
-| harness | S6B-PH-SM4-TB | C265405 | the LED strip's own connector, 4.80 deep |
+| harness | S4B-XH-SM4-TB | C161861 | 4-way XH: the inlet is 24 V, and 24 V goes on XH (it was a 6-way PH while the board took a made rail) |
 
-**Why the 2.1 MHz variant matters here.** A 400 kHz part beside a magnetic pickup puts its
-fundamental four octaves nearer the audio band, and at light load every LMR33630 pulse-skips
+**Why a megahertz variant matters here** (1.4 MHz as built). A 400 kHz part beside a
+magnetic pickup puts its fundamental two octaves nearer the audio band, and at light load every LMR33630 pulse-skips
 -- which drops the switching energy to a load-dependent rate. Measured against this board's
 own floor: the eight drivers' ICC is tens of milliamps even with every LED dark, which puts
 the skip rate in the hundreds of kHz. It only reaches the audio band at loads this board
 cannot present while it is powered.
 
-**And the connector was an XH for one draft.** PH is 2.00 mm pitch against XH's 2.50 and
+**And the connector was an XH for one draft** (history: it is an XH again, on the key
+board, since the inlet became 24 V). PH is 2.00 mm pitch against XH's 2.50 and
 **4.80 mm deep against 7.50** -- the mid board's bay is 9.50 mm long, and the XH fitted only
 on paper. Six ways rather than four because the part is already sourced and the two spare
 contacts double the rail: PH is 2 A per contact against this board's 0.60 A, so the doubling
