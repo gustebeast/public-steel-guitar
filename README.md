@@ -114,12 +114,12 @@ choice between a clever part and an obtainable one, the obtainable one won.
   its +X ear anchors the string (ball end underneath, tension pulling it up
   against the ear, exactly a guitar bridge plate) and its -X ear rides the
   guide rod. That deleted a printed part ×10, twenty M2 screws and ten spacers.
-- ⚠ **Travel stops are NOT built.** Both hard stops and the guide rod's upper
-  retention are deferred, so nothing mechanical bounds a commanded move and the
-  instrument needs firmware soft limits before it is driven. The nut stays
-  fully engaged for 17.4 mm of over-travel — twice the whole travel — and the
-  ears reach structure 4 mm up, so a runaway stalls rather than escapes, but
-  that is a backstop and not a design. See `docs/design-validation.md` B11.
+- **Both ends of travel are hard stops on metal.** Up, the nut's flange lands on
+  the changer room's ceiling (the restringing position). Down, the nut's boss
+  lands on the thrust bearing's inner ring, so the reaction closes through the
+  screw and loads nothing printed. Firmware soft limits are still wanted so a
+  normal move never reaches either, and the guide rod's upper retention is
+  deferred. See `docs/design-validation.md` B11.
 
 ## How the mechanism works
 
