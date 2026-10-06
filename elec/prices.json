@@ -2300,6 +2300,11 @@
       "usd": 0.0604,
       "verified": "v",
       "what": "JFC1206-1200FS C136345 -- JLCPCB parts API at qty 20"
+    },
+    "can_tee:SW1": {
+      "usd": 0.4682,
+      "verified": "v",
+      "what": "DSHP01TSGER C3293141 -- JLCPCB parts API at qty 100"
     }
   },
   "modules": {

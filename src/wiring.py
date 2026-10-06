@@ -6,7 +6,7 @@ TRUNK-AND-DROP over TEE PCBs (electronics.tee_pcb, flat on the floor):
 crimped XH jumper SEGMENTS run tee-to-tee (each drawn as its own component,
 suffix _N — a segment IS a separate physical cable), and each device hangs
 by ONE drop, so unplugging a device never breaks a bus. 120 Ω termination
-lives on the boards (motor_ctrl's is permanent; each bus's LAST tee has its jumper closed).
+lives on the boards (motor_ctrl's is permanent; bus A's LAST tee has its switch ON).
 
   bus A (motors): motor_ctrl -> tee 9..0 (one per motor; LAST = tee 0,
         easternmost — its jumper is closed). Drop = the SERVO42D's own
@@ -773,8 +773,8 @@ def build_wires():
     _WEST0 = west[-1]                 # the trunk's landing: the EAST-most tee, nearest J7
 
     # bus A CAN head: motor_ctrl J1 -> bay corridor -> -Y rail -> westernmost motor tee;
-    # then one crimped segment per hop east. Termination: the controller's JP1 + tee 0's
-    # closed jumper -- one at each END of the trunk and nowhere else (ISO 11898).
+    # then one crimped segment per hop east. Termination: the controller's fixed R5 + the
+    # last tee's switch ON -- one at each END of the trunk and nowhere else (ISO 11898).
     # Drawn as the CAN-H (yellow) + CAN-L (green) pair, offset +-CAN_OFF (user).
     _w0 = hdrA[west[0]]                                      # string 1's tee, on its motor
     # ⚠ MAIN'S PATH, THIS BRANCH'S ENDPOINT. Main is right about the SHAPE -- with the

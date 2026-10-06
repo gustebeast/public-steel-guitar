@@ -1847,7 +1847,7 @@ def tee_board_cy(y: float) -> float:
 def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Workplane:
     """CAN bus TEE PCB dummy, flat on the chassis floor. THREE 4-pin TOP-ENTRY XH
     (B4B-XH-A; cadkit jst_xh_header, drawn MATED) -- trunk-in / drop / trunk-out,
-    L-to-R, cables up -- plus the 120 Ω-behind-jumper terminator (closed only on
+    L-to-R, cables up -- plus the 120 Ω terminator behind its slide switch (ON only on
     each bus's LAST tee). Serves the 10 bus-A motor tees on the open -Y rail. `drop`
     = ±1 marks the device side (cables are top-entry, so it doesn't change the board
     geometry). Mount: ONE M4 THROUGH the bare ear off its +X end (wiring.tee_hold). `accurate=False` -> the compact bus-B
@@ -1873,7 +1873,8 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     for n, dx in ((TEE_TRUNK_N, -run / 2 + l8 / 2), (TEE_CONN_N, run / 2 - l4 / 2)):
         b = b.union(jst_xh_side_header(n, smt=False, mated=True)
                     .translate((xl + dx, cy + TEE_CONN_CY - TEE_MOUTH_DY, top)))
-    b = b.union(box_at(3.5, 2.0, 1.8, x=xl - run / 2 - 1.5, y=cy - 4.0, z=top + 0.9))  # 120R + jumper
+    for px, py, sx, sy, h in (D.TEE_TERM_R, D.TEE_TERM_SW):       # 120 R and its switch
+        b = b.union(box_at(sx, sy, h, x=xl + px, y=cy + py, z=top + h / 2))
     return b
 
 
