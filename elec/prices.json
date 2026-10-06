@@ -2305,6 +2305,2441 @@
       "usd": 0.4682,
       "verified": "v",
       "what": "DSHP01TSGER C3293141 -- JLCPCB parts API at qty 100"
+    },
+    "motor_ctrl:C16": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "motor_ctrl:C17": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "motor_ctrl:C24": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "output_panel:C2": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "optical:C160": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "fret_led_mid:C36": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "fret_led_mid:C37": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "fret_led_key:C30": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "fret_led_key:C31": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "fret_led_key:C36": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "fret_led_key:C37": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "foot_led_a:C30": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "foot_led_a:C31": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "foot_led_a:C36": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "foot_led_a:C37": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "foot_led_b:C30": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "foot_led_b:C31": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "foot_led_b:C36": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "foot_led_b:C37": {
+      "usd": 0.2028,
+      "verified": "v",
+      "what": "10uF/50V C13585 -- JLCPCB parts API at qty 190"
+    },
+    "optical:Ci11": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci12": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci13": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci14": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci21": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci22": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci23": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci24": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci31": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci32": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci33": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci34": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci41": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci42": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci43": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci44": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci51": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci52": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci53": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Ci54": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm11": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm12": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm13": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm14": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm21": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm22": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm23": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm24": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm31": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm32": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm33": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm34": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm41": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm42": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm43": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm44": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm51": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm52": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm53": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "optical:Cm54": {
+      "usd": 0.0726,
+      "verified": "v",
+      "what": "10nF C0G C22400107 -- JLCPCB parts API at qty 400"
+    },
+    "lever_sensor:C11": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "lever_sensor:C3": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/16V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "lever_sensor:C4": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "lever_sensor:C7": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "lever_sensor:C8": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "lever_sensor:C9": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C10": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C11": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C12": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C13": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C14": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C18": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C20": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C23": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C25": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C26": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C29": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C3": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C6": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C7": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C8": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "motor_ctrl:C9": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C10": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C11": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C12": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C13": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C14": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C19": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C22": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C26": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C28": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C3": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C30": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C4": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C43": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C44": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C46": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C47": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C50": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C51": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C52": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C53": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C54": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C55": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C56": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C57": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C59": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C60": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C61": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C8": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "pi_cap:C3": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "pi_cap:C4": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "pi_cap:C6": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C100": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C101": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C102": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C103": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C104": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C105": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C106": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C107": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C108": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C109": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C110": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C115": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C116": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C117": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C118": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C119": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C121": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C125": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C128": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C129": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C135": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C136": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C137": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C138": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C139": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C141": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C142": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C143": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C144": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C145": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C161": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C163": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:C165": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd1": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd10": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd2": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd3": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd4": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd5": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd6": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd7": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd8": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "optical:Cd9": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "ui_board:C1": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_mid:C11": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_mid:C12": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_mid:C13": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_mid:C14": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_mid:C15": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_mid:C38": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_key:C11": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_key:C12": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_key:C13": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_key:C32": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_key:C33": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_key:C35": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "fret_led_key:C38": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_a:C11": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_a:C12": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_a:C13": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_a:C14": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_a:C32": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_a:C33": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_a:C35": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_a:C38": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_b:C11": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_b:C12": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_b:C13": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_b:C14": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_b:C32": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_b:C33": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_b:C35": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "foot_led_b:C38": {
+      "usd": 0.007,
+      "verified": "v",
+      "what": "100nF/50V C307331 -- JLCPCB parts API at qty 1860"
+    },
+    "output_panel:C5": {
+      "usd": 0.2202,
+      "verified": "v",
+      "what": "22uF/16V C45783 -- JLCPCB parts API at qty 50"
+    },
+    "output_panel:C6": {
+      "usd": 0.2202,
+      "verified": "v",
+      "what": "22uF/16V C45783 -- JLCPCB parts API at qty 50"
+    },
+    "pi_cap:C1": {
+      "usd": 0.2202,
+      "verified": "v",
+      "what": "22uF/16V C45783 -- JLCPCB parts API at qty 50"
+    },
+    "optical:C162": {
+      "usd": 0.2202,
+      "verified": "v",
+      "what": "22uF/16V C45783 -- JLCPCB parts API at qty 50"
+    },
+    "optical:C167": {
+      "usd": 0.2202,
+      "verified": "v",
+      "what": "22uF/16V C45783 -- JLCPCB parts API at qty 50"
+    },
+    "motor_ctrl:C15": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "motor_ctrl:C2": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF/16V C15850 -- JLCPCB parts API at qty 210"
+    },
+    "motor_ctrl:C27": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF/16V C15850 -- JLCPCB parts API at qty 210"
+    },
+    "motor_ctrl:C28": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF/16V C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C20": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C21": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C23": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C25": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C27": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C29": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C31": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C36": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C40": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C7": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C9": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "optical:C131": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "optical:C132": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "optical:C133": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "optical:C134": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF C15850 -- JLCPCB parts API at qty 210"
+    },
+    "optical:C164": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF/16V C15850 -- JLCPCB parts API at qty 210"
+    },
+    "ui_board:C2": {
+      "usd": 0.0472,
+      "verified": "v",
+      "what": "10uF/25V C15850 -- JLCPCB parts API at qty 210"
+    },
+    "output_panel:C1": {
+      "usd": 0.4507,
+      "verified": "v",
+      "what": "2.2uF/100V C92775 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:C41": {
+      "usd": 0.4507,
+      "verified": "v",
+      "what": "2.2uF/100V C92775 -- JLCPCB parts API at qty 20"
+    },
+    "pi_cap:C2": {
+      "usd": 0.0953,
+      "verified": "v",
+      "what": "4.7uF/50V C98192 -- JLCPCB parts API at qty 90"
+    },
+    "fret_led_mid:C21": {
+      "usd": 0.0953,
+      "verified": "v",
+      "what": "4.7uF/50V C98192 -- JLCPCB parts API at qty 90"
+    },
+    "fret_led_mid:C22": {
+      "usd": 0.0953,
+      "verified": "v",
+      "what": "4.7uF/50V C98192 -- JLCPCB parts API at qty 90"
+    },
+    "fret_led_mid:C23": {
+      "usd": 0.0953,
+      "verified": "v",
+      "what": "4.7uF/50V C98192 -- JLCPCB parts API at qty 90"
+    },
+    "fret_led_mid:C24": {
+      "usd": 0.0953,
+      "verified": "v",
+      "what": "4.7uF/50V C98192 -- JLCPCB parts API at qty 90"
+    },
+    "fret_led_mid:C25": {
+      "usd": 0.0953,
+      "verified": "v",
+      "what": "4.7uF/50V C98192 -- JLCPCB parts API at qty 90"
+    },
+    "fret_led_key:C21": {
+      "usd": 0.0953,
+      "verified": "v",
+      "what": "4.7uF/50V C98192 -- JLCPCB parts API at qty 90"
+    },
+    "fret_led_key:C22": {
+      "usd": 0.0953,
+      "verified": "v",
+      "what": "4.7uF/50V C98192 -- JLCPCB parts API at qty 90"
+    },
+    "fret_led_key:C23": {
+      "usd": 0.0953,
+      "verified": "v",
+      "what": "4.7uF/50V C98192 -- JLCPCB parts API at qty 90"
+    },
+    "lever_sensor:C1": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "lever_sensor:C2": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "motor_ctrl:C19": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "motor_ctrl:C30": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/16V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "output_panel:C35": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "output_panel:C48": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "output_panel:C58": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "pi_cap:C5": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/16V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:C111": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:C114": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:C140": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:C166": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs11": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs15": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs21": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs25": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs31": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs35": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs41": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs45": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs51": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs55": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF C52923 -- JLCPCB parts API at qty 610"
+    },
+    "fret_led_mid:C1": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "fret_led_mid:C2": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "fret_led_mid:C3": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "fret_led_mid:C4": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "fret_led_mid:C5": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "fret_led_key:C1": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "fret_led_key:C2": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "fret_led_key:C3": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "fret_led_key:C34": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_a:C1": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_a:C2": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_a:C3": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_a:C34": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_a:C4": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_b:C1": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_b:C2": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_b:C3": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_b:C34": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "foot_led_b:C4": {
+      "usd": 0.0083,
+      "verified": "v",
+      "what": "1uF/25V C52923 -- JLCPCB parts API at qty 610"
+    },
+    "optical:Cs13": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs16": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs18": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs23": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs26": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs28": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs33": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs36": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs38": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs43": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs46": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs48": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs53": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs56": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "optical:Cs58": {
+      "usd": 0.0256,
+      "verified": "v",
+      "what": "10uF C15525 -- JLCPCB parts API at qty 150"
+    },
+    "motor_ctrl:C21": {
+      "usd": 0.1733,
+      "verified": "v",
+      "what": "22uF/25V C12891 -- JLCPCB parts API at qty 20"
+    },
+    "motor_ctrl:C22": {
+      "usd": 0.1733,
+      "verified": "v",
+      "what": "22uF/25V C12891 -- JLCPCB parts API at qty 20"
+    },
+    "optical:C120": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF C1779 -- JLCPCB parts API at qty 100"
+    },
+    "optical:C122": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF C1779 -- JLCPCB parts API at qty 100"
+    },
+    "foot_led_a:C21": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF/25V C1779 -- JLCPCB parts API at qty 100"
+    },
+    "foot_led_a:C22": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF/25V C1779 -- JLCPCB parts API at qty 100"
+    },
+    "foot_led_a:C23": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF/25V C1779 -- JLCPCB parts API at qty 100"
+    },
+    "foot_led_a:C24": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF/25V C1779 -- JLCPCB parts API at qty 100"
+    },
+    "foot_led_b:C21": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF/25V C1779 -- JLCPCB parts API at qty 100"
+    },
+    "foot_led_b:C22": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF/25V C1779 -- JLCPCB parts API at qty 100"
+    },
+    "foot_led_b:C23": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF/25V C1779 -- JLCPCB parts API at qty 100"
+    },
+    "foot_led_b:C24": {
+      "usd": 0.0345,
+      "verified": "v",
+      "what": "4.7uF/25V C1779 -- JLCPCB parts API at qty 100"
+    },
+    "output_panel:C32": {
+      "usd": 0.053,
+      "verified": "v",
+      "what": "2.2uF C377773 -- JLCPCB parts API at qty 40"
+    },
+    "output_panel:C33": {
+      "usd": 0.053,
+      "verified": "v",
+      "what": "2.2uF C377773 -- JLCPCB parts API at qty 40"
+    },
+    "optical:C112": {
+      "usd": 0.053,
+      "verified": "v",
+      "what": "2.2uF C377773 -- JLCPCB parts API at qty 40"
+    },
+    "optical:C113": {
+      "usd": 0.053,
+      "verified": "v",
+      "what": "2.2uF C377773 -- JLCPCB parts API at qty 40"
+    },
+    "lever_sensor:C10": {
+      "usd": 0.0166,
+      "verified": "v",
+      "what": "4.7uF C23733 -- JLCPCB parts API at qty 110"
+    },
+    "motor_ctrl:C1": {
+      "usd": 0.1671,
+      "verified": "v",
+      "what": "4.7uF/50V C29823 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:C37": {
+      "usd": 0.1667,
+      "verified": "v",
+      "what": "100nF C0G C170182 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:C24": {
+      "usd": 0.0399,
+      "verified": "v",
+      "what": "1uF C28323 -- JLCPCB parts API at qty 40"
+    },
+    "output_panel:C38": {
+      "usd": 0.0399,
+      "verified": "v",
+      "what": "1uF C28323 -- JLCPCB parts API at qty 40"
+    },
+    "output_panel:C39": {
+      "usd": 0.0399,
+      "verified": "v",
+      "what": "1uF C28323 -- JLCPCB parts API at qty 40"
+    },
+    "output_panel:C42": {
+      "usd": 0.0399,
+      "verified": "v",
+      "what": "1uF C28323 -- JLCPCB parts API at qty 40"
+    },
+    "lever_sensor:R3": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "motor_ctrl:R13": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k 1% C25744 -- JLCPCB parts API at qty 440"
+    },
+    "motor_ctrl:R18": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "motor_ctrl:R19": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "motor_ctrl:R21": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "motor_ctrl:R3": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "motor_ctrl:R4": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "motor_ctrl:R7": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "output_panel:R14": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "output_panel:R15": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "output_panel:R19": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "output_panel:R24": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "output_panel:R25": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "output_panel:R28": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "output_panel:R35": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "output_panel:R6": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "output_panel:R7": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "optical:R30": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "optical:R31": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "optical:R39": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "optical:Rs11": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "optical:Rs21": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "optical:Rs31": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "optical:Rs41": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "optical:Rs51": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "ui_board:R1": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "ui_board:R2": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "ui_board:R3": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "ui_board:R4": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "ui_board:R5": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "ui_board:R6": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "ui_board:R7": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k C25744 -- JLCPCB parts API at qty 440"
+    },
+    "foot_led_a:R11": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k 1% C25744 -- JLCPCB parts API at qty 440"
+    },
+    "foot_led_b:R11": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "10k 1% C25744 -- JLCPCB parts API at qty 440"
+    },
+    "optical:Rf10A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf10B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf1A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf1B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf2A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf2B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf3A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf3B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf4A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf4B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf5A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf5B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf6A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf6B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf7A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf7B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf8A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf8B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf9A": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Rf9B": {
+      "usd": 0.0062,
+      "verified": "v",
+      "what": "249k 1% C2076822 -- JLCPCB parts API at qty 200"
+    },
+    "lever_sensor:C5": {
+      "usd": 0.0038,
+      "verified": "v",
+      "what": "15pF C1548 -- JLCPCB parts API at qty 280"
+    },
+    "lever_sensor:C6": {
+      "usd": 0.0038,
+      "verified": "v",
+      "what": "15pF C1548 -- JLCPCB parts API at qty 280"
+    },
+    "motor_ctrl:C4": {
+      "usd": 0.0038,
+      "verified": "v",
+      "what": "15pF C1548 -- JLCPCB parts API at qty 280"
+    },
+    "motor_ctrl:C5": {
+      "usd": 0.0038,
+      "verified": "v",
+      "what": "15pF C1548 -- JLCPCB parts API at qty 280"
+    },
+    "output_panel:C15": {
+      "usd": 0.0038,
+      "verified": "v",
+      "what": "15pF C1548 -- JLCPCB parts API at qty 280"
+    },
+    "output_panel:C16": {
+      "usd": 0.0038,
+      "verified": "v",
+      "what": "15pF C1548 -- JLCPCB parts API at qty 280"
+    },
+    "output_panel:C17": {
+      "usd": 0.0038,
+      "verified": "v",
+      "what": "15pF C1548 -- JLCPCB parts API at qty 280"
+    },
+    "output_panel:C18": {
+      "usd": 0.0038,
+      "verified": "v",
+      "what": "15pF C1548 -- JLCPCB parts API at qty 280"
+    },
+    "output_panel:C34": {
+      "usd": 0.0454,
+      "verified": "v",
+      "what": "2.2nF C0G C2987940 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:C45": {
+      "usd": 0.0454,
+      "verified": "v",
+      "what": "2.2nF C0G C2987940 -- JLCPCB parts API at qty 20"
+    },
+    "optical:Cf10A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf10B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf1A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf1B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf2A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf2B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf3A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf3B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf4A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf4B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf5A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf5B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf6A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf6B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf7A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf7B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf8A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf8B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf9A": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "optical:Cf9B": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "2.2pF C325452 -- JLCPCB parts API at qty 200"
+    },
+    "lever_sensor:R6": {
+      "usd": 0.0027,
+      "verified": "v",
+      "what": "4k7 C25900 -- JLCPCB parts API at qty 260"
+    },
+    "lever_sensor:R7": {
+      "usd": 0.0027,
+      "verified": "v",
+      "what": "4k7 C25900 -- JLCPCB parts API at qty 260"
+    },
+    "output_panel:R33": {
+      "usd": 0.0027,
+      "verified": "v",
+      "what": "4k7 C25900 -- JLCPCB parts API at qty 260"
+    },
+    "output_panel:R34": {
+      "usd": 0.0027,
+      "verified": "v",
+      "what": "4k7 C25900 -- JLCPCB parts API at qty 260"
+    },
+    "optical:R50": {
+      "usd": 0.0027,
+      "verified": "v",
+      "what": "4k7 C25900 -- JLCPCB parts API at qty 260"
+    },
+    "optical:R51": {
+      "usd": 0.0027,
+      "verified": "v",
+      "what": "4k7 C25900 -- JLCPCB parts API at qty 260"
+    },
+    "fret_led_mid:R1": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_mid:R2": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_mid:R3": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_mid:R4": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_mid:R5": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_key:R1": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_key:R2": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "fret_led_key:R3": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:R1": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:R2": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:R3": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_a:R4": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:R1": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:R2": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:R3": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "foot_led_b:R4": {
+      "usd": 0.0035,
+      "verified": "v",
+      "what": "3k3 C25890 -- JLCPCB parts API at qty 160"
+    },
+    "output_panel:R26": {
+      "usd": 0.0252,
+      "verified": "v",
+      "what": "10k 0.1% C190095 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:R27": {
+      "usd": 0.0252,
+      "verified": "v",
+      "what": "10k 0.1% C190095 -- JLCPCB parts API at qty 20"
+    },
+    "motor_ctrl:R1": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "motor_ctrl:R10": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "motor_ctrl:R20": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "output_panel:R10": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "output_panel:R11": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "output_panel:R16": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "output_panel:R17": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "output_panel:R18": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "output_panel:R21": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "output_panel:R22": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "output_panel:R36": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "output_panel:R37": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "optical:R38": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k C25741 -- JLCPCB parts API at qty 170"
+    },
+    "optical:R40": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k 1% C25741 -- JLCPCB parts API at qty 170"
+    },
+    "fret_led_key:R10": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k 1% C25741 -- JLCPCB parts API at qty 170"
+    },
+    "foot_led_a:R10": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k 1% C25741 -- JLCPCB parts API at qty 170"
+    },
+    "foot_led_b:R10": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "100k 1% C25741 -- JLCPCB parts API at qty 170"
+    },
+    "lever_sensor:R4": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "120R C25079 -- JLCPCB parts API at qty 110"
+    },
+    "lever_sensor:R8": {
+      "usd": 0.0031,
+      "verified": "v",
+      "what": "2R2 C327251 -- JLCPCB parts API at qty 110"
+    },
+    "can_tee:R1": {
+      "usd": 0.0031,
+      "verified": "v",
+      "what": "120R C22787 -- JLCPCB parts API at qty 110"
+    },
+    "motor_ctrl:R5": {
+      "usd": 0.0031,
+      "verified": "v",
+      "what": "120R C22787 -- JLCPCB parts API at qty 110"
+    },
+    "lever_sensor:R5": {
+      "usd": 0.0025,
+      "verified": "v",
+      "what": "0R C17168 -- JLCPCB parts API at qty 110"
+    },
+    "optical:R1": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:R10": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:R2": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:R3": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:R4": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:R5": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:R6": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:R7": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:R8": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:R9": {
+      "usd": 0.0022,
+      "verified": "v",
+      "what": "180R C138045 -- JLCPCB parts API at qty 100"
+    },
+    "optical:C130": {
+      "usd": 0.0189,
+      "verified": "v",
+      "what": "100nF C49678 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:R1": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "5k1 C25905 -- JLCPCB parts API at qty 60"
+    },
+    "output_panel:R2": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "5k1 C25905 -- JLCPCB parts API at qty 60"
+    },
+    "output_panel:R3": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "5k1 C25905 -- JLCPCB parts API at qty 60"
+    },
+    "output_panel:R4": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "5k1 C25905 -- JLCPCB parts API at qty 60"
+    },
+    "optical:R32": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "5k1 C25905 -- JLCPCB parts API at qty 60"
+    },
+    "optical:R33": {
+      "usd": 0.0024,
+      "verified": "v",
+      "what": "5k1 C25905 -- JLCPCB parts API at qty 60"
+    },
+    "output_panel:C49": {
+      "usd": 0.0091,
+      "verified": "v",
+      "what": "22nF/50V C1532 -- JLCPCB parts API at qty 10"
+    },
+    "optical:R35": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "1k 1% C11702 -- JLCPCB parts API at qty 50"
+    },
+    "fret_led_key:R21": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "1k 1% C11702 -- JLCPCB parts API at qty 50"
+    },
+    "fret_led_key:R22": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "1k 1% C11702 -- JLCPCB parts API at qty 50"
+    },
+    "foot_led_a:R21": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "1k 1% C11702 -- JLCPCB parts API at qty 50"
+    },
+    "foot_led_a:R22": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "1k 1% C11702 -- JLCPCB parts API at qty 50"
+    },
+    "pi_cap:R1": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "68R C163455 -- JLCPCB parts API at qty 40"
+    },
+    "pi_cap:R2": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "68R C163455 -- JLCPCB parts API at qty 40"
+    },
+    "pi_cap:R3": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "68R C163455 -- JLCPCB parts API at qty 40"
+    },
+    "pi_cap:R4": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "68R C163455 -- JLCPCB parts API at qty 40"
+    },
+    "optical:C123": {
+      "usd": 0.0036,
+      "verified": "v",
+      "what": "12pF C1547 -- JLCPCB parts API at qty 20"
+    },
+    "optical:C124": {
+      "usd": 0.0036,
+      "verified": "v",
+      "what": "12pF C1547 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:R20": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "220R C25091 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:R9": {
+      "usd": 0.0034,
+      "verified": "v",
+      "what": "220R C25091 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:R29": {
+      "usd": 0.003,
+      "verified": "v",
+      "what": "56k C25796 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:R30": {
+      "usd": 0.003,
+      "verified": "v",
+      "what": "56k C25796 -- JLCPCB parts API at qty 20"
+    },
+    "motor_ctrl:R2": {
+      "usd": 0.0059,
+      "verified": "v",
+      "what": "30k1 C2076806 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:R13": {
+      "usd": 0.0027,
+      "verified": "v",
+      "what": "470R C25117 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:R23": {
+      "usd": 0.0027,
+      "verified": "v",
+      "what": "470R C25117 -- JLCPCB parts API at qty 20"
+    },
+    "fret_led_key:R12": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "200k 1% C25764 -- JLCPCB parts API at qty 30"
+    },
+    "foot_led_a:R12": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "200k 1% C25764 -- JLCPCB parts API at qty 30"
+    },
+    "foot_led_b:R12": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "200k 1% C25764 -- JLCPCB parts API at qty 30"
+    },
+    "output_panel:R12": {
+      "usd": 0.0052,
+      "verified": "v",
+      "what": "18k2 1% C2076827 -- JLCPCB parts API at qty 10"
+    },
+    "optical:R43": {
+      "usd": 0.0039,
+      "verified": "v",
+      "what": "1R C25086 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:R5": {
+      "usd": 0.0012,
+      "verified": "v",
+      "what": "100R C25076 -- JLCPCB parts API at qty 30"
+    },
+    "optical:R36": {
+      "usd": 0.0012,
+      "verified": "v",
+      "what": "100R C25076 -- JLCPCB parts API at qty 30"
+    },
+    "optical:R42": {
+      "usd": 0.0012,
+      "verified": "v",
+      "what": "100R C25076 -- JLCPCB parts API at qty 30"
+    },
+    "motor_ctrl:R22": {
+      "usd": 0.0015,
+      "verified": "v",
+      "what": "49k9 1% C25897 -- JLCPCB parts API at qty 20"
+    },
+    "pi_cap:R5": {
+      "usd": 0.0015,
+      "verified": "v",
+      "what": "49k9 1% C25897 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:R31": {
+      "usd": 0.0029,
+      "verified": "v",
+      "what": "330k C25778 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:R12": {
+      "usd": 0.0028,
+      "verified": "v",
+      "what": "137k 1% C138058 -- JLCPCB parts API at qty 10"
+    },
+    "motor_ctrl:R11": {
+      "usd": 0.0014,
+      "verified": "v",
+      "what": "24k9 1% C138027 -- JLCPCB parts API at qty 20"
+    },
+    "optical:R41": {
+      "usd": 0.0014,
+      "verified": "v",
+      "what": "24k9 1% C138027 -- JLCPCB parts API at qty 20"
+    },
+    "output_panel:R8": {
+      "usd": 0.0026,
+      "verified": "v",
+      "what": "1M C26083 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:R60": {
+      "usd": 0.0023,
+      "verified": "v",
+      "what": "0R C21189 -- JLCPCB parts API at qty 10"
+    },
+    "optical:R34": {
+      "usd": 0.0019,
+      "verified": "v",
+      "what": "9k09 1% C274897 -- JLCPCB parts API at qty 10"
+    },
+    "fret_led_key:R11": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "7k68 1% C25919 -- JLCPCB parts API at qty 10"
+    },
+    "optical:R37": {
+      "usd": 0.0018,
+      "verified": "v",
+      "what": "12k 1% C25752 -- JLCPCB parts API at qty 10"
+    },
+    "output_panel:R32": {
+      "usd": 0.0014,
+      "verified": "v",
+      "what": "150k C25755 -- JLCPCB parts API at qty 10"
     }
   },
   "modules": {

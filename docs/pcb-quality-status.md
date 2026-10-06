@@ -36,7 +36,29 @@ needs the lead's build with the new board geometry.
 None of these can be closed from the files on hand, so the loop leaves them OPEN on purpose
 rather than ticking them.
 
-### The paperwork against the boards, 2026-10-06
+### Every BOM row names its part, 2026-10-06
+
+Found by brenner in a dry run of `ui_board` on JLCPCB's order page: passive rows went out
+with no part number, and the fab's matcher filled them in by itself. It read
+`C_0402_1005Metric` as 01005 and chose 01005 parts, which Economic assembly does not
+place, so the rows came up unselected at quantity 0 and the order would have built the
+board without them.
+
+* `elec/fab.py` `PASSIVES`: a code for every passive on all fifteen boards, keyed on
+  (value, footprint) -- 63 rows, 54 parts, each read on JLCPCB's catalogue for package,
+  value, voltage, dielectric and tolerance. Basic parts wherever one exists.
+* cadkit's package builder refuses a package with an uncoded row, and writes the plain
+  package ("0402") in the BOM's Footprint column.
+* `elec/bom_audit.py` fails on an uncoded row; `elec/lcsc_check.py` re-reads every
+  passive's code and compares it with what its row asks for (63 of 63 agree).
+* One part could not be bought at all: the optical board's twenty TIA feedback resistors
+  were `250k`, which is not an E96 value (JLCPCB lists one, at zero stock). They are
+  `249k 1%` now. No copper moved.
+* The five packages for the first order (`can_tee`, `pi_cap`, `motor_ctrl`,
+  `output_panel`, `optical`) rebuild with no blank row. On the order page each row should
+  still be looked at once: a selected part on every line, none at quantity 0 (M30).
+
+## The paperwork against the boards, 2026-10-06
 
 An order-day stock list named a photodiode that is on no board: it had been replaced
 weeks earlier and BOM.md still named it where it was first chosen. The checks that existed
