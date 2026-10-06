@@ -87,7 +87,8 @@ CHIP_XY = (BOARD_W / 2 - SPEC_X1, BOARD_L / 2 - SPEC_Z1)
 # the cap. Only the connector and the transceiver (SOIC-8, 1.75) qualify now that the
 # inductor went with the buck; every passive here is under 1.5, the LDO is 1.45.
 CAP_SWEEP_R = 5.66
-TALL_PARTS = ("J1", "U2")
+TALL_PARTS = ("J1", "U2", "SW1")
+SW1_XY = (-3.7000, -7.9500)       # the terminator switch's centre, chip frame
 
 
 # ⚠ THE REF IS PINNED FROM THE TAG, AND IT HAS TO BE. Every call already passes a tag
@@ -202,22 +203,24 @@ def lever_sensor():
     c_xcvr = _c("C4", "100nF", "transceiver decoupling")
     v33 += c_xcvr[1]; gnd += c_xcvr[2]
 
-    # BUS-B FAR-END TERMINATION, behind a solder jumper: populated on all eight,
-    # closed on the ONE board that ends the bus.
-    # 0402, NOT the 0603 this was. When the board came down to 21.4 (the foot pedal
-    # housing's floor, see knee_lever.PCB_WZ) R4 ended up in a 1.48 mm gap between JP1
-    # and C10 needing 1.55, and every column on this board is full -- there is nowhere
-    # else for it. 0402 fits with 0.45 to spare and is not a compromise: a single 120R
-    # across the pair sees ~17 mA, i.e. 0.034 W against 0402's 0.063 W rating. It also
-    # makes this board ALL-0402 for resistors, dropping a feeder.
-    rt = _r("R", "R4", "120R", "CAN termination, closed only on the last board",
+    # BUS-B FAR-END TERMINATION, behind a slide switch placed by the fab: fitted on all
+    # eleven, ON on the ONE board at each far end of the bus. A switch, not a solder
+    # bridge, so that ending the bus needs no iron (user rule: no hand soldering).
+    # R4 is 0402: a single 120R across the pair sees ~17 mA, 0.034 W against 0.063 W.
+    rt = _r("R", "R4", "120R", "CAN termination, in circuit only with SW1 ON",
             "Resistor_SMD:R_0402_1005Metric")
-    jp1 = Part(name="SolderJumper_2_Open", ref_prefix="JP", ref="JP1", tag="JP1", dest="NETLIST",
-               tool="skidl", value="TERM", description="close on the bus's LAST board only",
-               footprint="Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
-               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+    # Nidec CAS-120TA (LCSC C2921534): single pole, top slide, J-hook, 5.4 x 2.8 x 2.5.
+    # The motor tee's switch is 8.9 long over its lands and does not fit between the
+    # transceiver and the +X groove band (8.87 of bare board); this one is 4.5.
+    # SPDT used as on/off: common (2) to the resistor, throw 1 to CAN_L, throw 3 open.
+    sw1 = Part(name="SW_SPDT", ref_prefix="SW", ref="SW1", tag="SW1", dest="NETLIST",
+               tool="skidl", value="CAS-120TA",
+               description="bus B terminator: ON on the LAST board only (LCSC C2921534)",
+               footprint="Button_Switch_SMD:Nidec_Copal_CAS-120A",
+               pins=[Pin(num=1, name="A", func=P), Pin(num=2, name="C", func=P),
+                     Pin(num=3, name="B", func=Pin.types.NOCONNECT)])
     term = Net("TERM_MID")
-    can_h += rt[1]; term += rt[2], jp1[1]; can_l += jp1[2]
+    can_h += rt[1]; term += rt[2], sw1[2]; can_l += sw1[1]
 
     # BUS-PIN CLAMPS. Two SEPARATE bidirectional TVS rather than one three-pin
     # CAN array, on purpose: a 2-pin bidirectional part is symmetric, so there is
@@ -546,11 +549,17 @@ _PLACE_CHIP = {
         # the 1.2 mm strip between U2 and the connector tails: pad 1 (+3V3) faces pin 3.
         # It was on the far side of the package, 7.7 mm from the pin
         "C4": (-14.8400, -7.1000, 90.0),
-        "R3": (-5.0000, -7.2000, 0.0),
+        # THE TERMINATOR CORNER, re-packed round the switch (2026-10-06). SW1 is 2.5 tall,
+        # so its body has to clear the magnet cap's sweep (CAP_SWEEP_R about the chip): it
+        # lies along X with its top edge 6.7 below the axle. R3 steps up beside R4, and the
+        # two bus clamps stack in the column between the switch and the +X groove.
+        "R3": (-5.0200, -5.1700, 0.0),
         "R4": (-1.5000, -5.1500, 0.0),
-        "JP1": (-1.5000, -7.1000, 0.0),
-        "D2": (-5.2000, -9.2000, 0.0),
-        "D3": (-2.4000, -9.2000, 0.0),
+        # (placements anchor on the PAD CENTROID, and this part's is 0.383 off its centre:
+        # two lands on one side, one on the other)
+        "SW1": (SW1_XY[0], SW1_XY[1] - 0.3833, 90.0),
+        "D2": (0.7500, -6.4000, 0.0),
+        "D3": (0.7500, -9.1000, 0.0),
     }
 
 
@@ -662,6 +671,11 @@ BOARD_NOTES = {
     # The drill only shrinks to keep the annulus wide enough for KiCad's DEFAULT 0.25 mm
     # hole-clearance constraint, which the 0.30 drill misses by 0.011 mm.
     #
+    # ⚠ (2026-10-06: THE ORDER PAGE DISAGREES WITH WHAT FOLLOWS. The reading of the
+    # capability page below concluded "not surcharged"; a real order of a board with the
+    # same 0.50/0.25 via was charged about 17 USD for it, plus a Kelvin test and Tg155 the
+    # form adds with it. The geometry argument stands; the cost claim does not, and
+    # order_options below says what the form actually does.)
     # ⚠ AND IT COSTS NOTHING, WHICH WAS WORTH CHECKING RATHER THAN ASSUMING. The via
     # note in layout.py chose 0.6/0.3 because it is JLCPCB's standard capability, so the
     # obvious reading is that this leaves it. Their published capabilities (2026-09-19)
@@ -683,17 +697,18 @@ BOARD_NOTES = {
     # the words the silkscreen uses. A legend is as wide as its longest line and this
     # board is 32 x 22: at the full net names the J1 legend and one SWD label only went
     # down at 0.8 mm, under the fab minimum of 1.0
-    "silk_labels": {"TP1": "DIO", "TP2": "CLK", "TP4": "RST",
+    "silk_labels": {"TP1": "DIO", "TP2": "CLK", "TP4": "RST", "SW1": "TERM",
                     "CAN_H": "H", "CAN_L": "L", "+5V": "5V"},
     # ⚠ THE VIA SIZE IS AN ORDER-FORM FIELD, NOT JUST A GERBER FACT. JLCPCB's own
     # capability page says "please select corresponding via size option when placing
     # order" for 0.2/0.25 mm hole sizes. The gerbers carry the geometry; the process is
     # chosen on the form, and nothing in the drill file makes the operator pick it.
     "order_options": {
-        "via size": "0.25 mm hole / 0.50 mm diameter -- SELECT THIS ON THE ORDER FORM. "
-                    "Inside standard capability and NOT surcharged (the surcharge is for "
-                    "a 0.25 hole with a diameter under 0.45; this is 0.50). The board "
-                    "does not route at the 0.6/0.3 default -- see the CAN fan note.",
+        "via size": "0.25 mm hole / 0.50 mm diameter -- SELECT THIS ON THE ORDER FORM. It is "
+                    "CHARGED FOR, whatever the capability page suggests (order page, "
+                    "2026-10-06): about +17 USD for the via size, and choosing it makes "
+                    "the form add a 4-wire Kelvin test (+17) and Tg155 material (+3.5 "
+                    "to 7.8) by itself. The board does not route at the 0.6/0.3 default -- see the CAN fan note.",
     },
     # ⚠ THE ONE DRC WARNING THIS BOARD KEEPS IS COSMETIC, AND IS KEPT ON PURPOSE.
     # silk_overlap x1: the segment of Y1's silkscreen OUTLINE against U2's outline
@@ -733,6 +748,13 @@ BOARD_NOTES = {
              "amps": 0.08},
         ],
         "pinouts": {
+            "CAS-120TA": "Nidec CAS series sheet, Outline Dimensions, CAS-120A1 (the J-hook "
+                         "single pole; -TA is its washable, taped form): terminals 1 and 3 "
+                         "on one long side 3.5 apart, the common C (2) alone on the other; "
+                         "recommended pad outline, A type: 1.0 x 1.6 lands, rows 0.7 apart. "
+                         "KiCad Nidec_Copal_CAS-120A: pads 1 and 3 at x -1.15, y -/+1.75, "
+                         "pad 2 at x +1.15, 1.0 x 1.6 -- the same pattern. Wired C to R4, "
+                         "1 to CAN_L, 3 open. Read 2026-10-06",
             "S8B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
                              "the board below, No. 1 circuit is on the left. KiCad "
                              "JST_PH_S8B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
@@ -812,7 +834,7 @@ BOARD_NOTES = {
                   "pad: the rail is probed on C10 or C2, and the board reports itself "
                   "over CAN once it runs",
             "M10": "CAN_H / CAN_L: D2 / D3 (ESD5B5.0ST1G, bidirectional) from each line to "
-                   "GND. They sit 2.3 and 3.8 mm PAST the transceiver's bus pins, not at J1: the "
+                   "GND. They sit about 8 mm PAST the transceiver's bus pins, beyond the terminator switch, not at J1: the "
                    "only strip beside the connector tails is 1.16 mm wide and holds the two "
                    "bypass capacitors. Accepted because the transceiver's bus pins are "
                    "themselves rated 16 kV HBM and the fault this pair was first fitted "
@@ -837,7 +859,7 @@ BOARD_NOTES = {
                    "powered",
             "M20": "I2C: R6 / R7 4.7 k to 3.3 V, one pair, on a 15 mm bus: above the "
                    "967 ohm floor (3 mA sink) and far under the ceiling for 400 kHz. "
-                   "CAN: R4 120 ohm behind JP1, closed only on the board at each far end "
+                   "CAN: R4 120 ohm behind SW1, ON only on the board at each far end "
                    "of bus B (two in all; the controller sits mid-bus and carries "
                    "none). This board's stub from J1 to the transceiver is about 15 mm",
             "M21": "the sensor's ground pin and pad drop into the In1 plane on their own "
@@ -866,8 +888,11 @@ BOARD_NOTES = {
                    "the board places (quality.pinouts)",
             "M31": "no polarised two-pad part to mark. Each IC's pin-1 mark is the KiCad "
                    "footprint's own silk, outside the body; J1 and the four SWD pads are "
-                   "named in silk at 1.0 mm; the pinout legend and the board name are on "
-                   "the back",
+                   "named in silk at 1.0 mm; the terminator switch says TERM; the pinout "
+                   "legend and the board name are on the back",
+            "M41": "SW1 is not read by anything: it puts R4 across the pair or does not, "
+                   "and is set once, on the bench, before the board goes into its "
+                   "housing. Nothing to debounce",
             "M32": "J1 is JST PH, 2.0 mm, the family the lever harness is crimped in "
                    "(harness.PH_PINOUT). PH contacts are rated 2 A; the most this bus can "
                    "deliver is 0.57 A",
