@@ -98,7 +98,7 @@ multiple of three. **24 zones, three LEDs each** is where this landed:
 | zones | 24, of 23.86 mm |
 | channels | 96 |
 | TLC59711 | 8 (4 per board) |
-| rail | 11.00 V |
+| rail | 11.50 V (11.00 until 2026-10-05, see the last section) |
 | rail current | 1.44 A |
 
 > "I'd like to have closer to 24 controllable zones" (user, 2026-09-30)
@@ -115,20 +115,22 @@ where they were. A channel draws 15.0 mA whether it feeds two dice or three:
 | zones / channels / drivers | 24 / 96 / 8 | **24 / 96 / 8** |
 | driver cost | $19.28 | **$19.28** |
 | LED cost | $3.12 | $4.68 |
-| rail | 7.67 V | 11.00 V |
+| rail | 7.67 V | 11.50 V |
 | rail current | 1.44 A | **1.44 A** |
 | light | 1x | **1.5x** |
 | ripple | 1.095 : 1 | 1.008 : 1 |
 
 Half again the light for **$1.56 an instrument**, paid for in rail volts -- the one thing
-this rail has spare. The whole electrical change is R11: 100k / 10k on the LMR33630's
-1.000 V reference is 11.00 V, against a 9.60 V string at the LED's 3.2 V maximum.
+this rail has spare. The whole electrical change is the feedback divider: 100k over
+10k || 200k on the LMR33630's 1.000 V reference is 11.50 V, against a 10.2 V string at the
+LED's 3.4 V maximum (it was 100k / 10k = 11.00 V against a "3.2 V maximum" the datasheet
+does not give -- corrected 2026-10-05).
 
 ### What 3 a zone costs, stated plainly
 
 | | 2 a zone | 3 a zone |
 |---|--:|--:|
-| through the -X J1 and the seam jumper | 0.52 A | **0.73 A** of a 1.0 A contact |
+| through the -X J1 and the seam pogo | 0.52 A | **0.77 A** of a 3 A XH contact and a 12 A pogo |
 | LED dissipation per board | 4.25 W | **6.37 W** (14.8 -> 22.2 mW per mm of strip) |
 | dissipation per driver | 0.32 W | 0.39 W |
 | clear lane between LED courtyards | 5.83 mm | **1.85 mm** |
@@ -137,8 +139,9 @@ this rail has spare. The whole electrical change is R11: 100k / 10k on the LMR33
 
 Four of those are worth keeping in mind rather than merely noting:
 
-1. **0.73 A through one contact** is the tightest number on this strip, 73% of the
-   SM04B-SRSS's rating, because the -X board's inlet and the seam jumper carry BOTH boards.
+1. **0.77 A through one contact**, because the -X board's inlet and the seam carry BOTH
+   boards. It was the tightest number on the strip when the inlet was a 1 A JST SH; on the
+   XH socket it is 26 % of the rating.
    It is an every-zone-full-white worst case that the effects daemon caps, the same way it
    caps the fret boards' 1.38 A -- but it is the number that would have to be solved first
    if the strip ever grew again.
@@ -177,7 +180,7 @@ and an 0805 (1.45) and nothing else:
 | XL-5050RGBW | 1.60 | ✅ (it sets the budget) |
 | TLC59711 HTSSOP-20 | 1.20 | ✅ |
 | LMR33630 VQFN-HR | 0.90 | ✅ |
-| SWPA4030 inductor | 3.00 | ❌ |
+| SWPA4030 inductor (SWPA5040S, 4.00, since 2026-10-05) | 3.00 | ❌ |
 | **JST PH side-entry** | **5.50** | ❌ |
 | **JST SH side-entry** | **2.95** | ❌ without relief |
 
@@ -275,3 +278,53 @@ records for its grooves.
 3. **The jumper is not specified.** ~16 mm of free wire between two SH plugs, in the
    relief groove. LCSC do custom cables at MOQ 1; the length wants fixing off the routed
    boards rather than off this document.
+
+
+## The manual quality pass, 2026-10-05: what changed and why
+
+Read against the makers' sheets and the routed boards (cadkit/PCB_QUALITY.md, M1-M42):
+
+1. **Rail 11.00 -> 11.50 V.** XINGLIGHT give green, blue and white 3.0 to 3.4 V at 20 mA,
+   not 3.2. Three in series is 10.2 V; the old rail's low limit (10.64 V) left the sink
+   0.44 V, the new one's (11.12 V) leaves 0.92. 24 V draw, every zone full white: 0.77 A
+   for both boards.
+2. **The buck's layout is TI's now** (`elec/buck_cell.py`, shared with the keyhead fret
+   board): a 100 nF / 50 V at each of the package's two VIN/PGND pairs, the feedback
+   divider at the FB pin, and copper slabs under the input side. The slabs are for heat:
+   the RNX package has no thermal pad and loses about 0.9 W here whatever the load
+   (24 V in, 2.1 MHz).
+3. **Seven vias under each TLC59711**, not one: about 0.6 W typical, 0.75 W worst, per
+   driver at full white.
+4. **Every 1206 stands across the strip**, the fuse included: a 290 x 24 mm board bends
+   along its length.
+5. **Values carry their ratings and the fuses are part numbers**: board A JFC1206-1200FS
+   (2 A, it carries both boards), board B JFC1206-1100FS (1 A).
+6. **Three labelled test pads** by the buck on each board: +24V, +11V5, GND.
+7. **The regulator is the 1.4 MHz LMR33630BRNXR** (C2071384), not the 2.1 MHz
+   LMR33630CRNXR, on the same land. Read off TI's 24 V curves for this package the 2.1 MHz
+   part loses 1.2 W at 0.7 A and 1.45 W at 1.4 A, about 0.75 W of it at any load, and it
+   has no thermal pad. The 1.4 MHz part loses 0.9 W and 1.1 W. JLCPCB held only 260 of
+   it on 2026-10-05: the C part is the named alternate, same land, no other change, and
+   then full white has to be capped in firmware.
+8. **The inductor is SWPA5040S4R7MT** (C48496; 4.7 uH, 5 x 5 x 4 mm), not the 4 x 4
+   SWPA4030S4R7MT. The old part saturates at 2.90 A guaranteed (3.20 typical) and TI
+   require an inductor that does not saturate below the regulator's low-side limit,
+   3.5 A typical. The new one is 3.50 A guaranteed, 3.90 typical, at half the
+   resistance, and 4.7 uH is TI's table value for 12 V out at 1.4 MHz.
+9. **1 k in series with SCK and SDT at the cable socket** (R21, R22). A Pi that is up
+   while this board is dark -- a fuse open, the 24 V lead off, a Pi on USB power on the
+   bench -- would otherwise power the first driver's logic through its input protection
+   diodes. 1 k holds that to 2.7 mA.
+10. **The regulator's VCC capacitor stands at its pin**, with its ground pad on the track
+   from the pin beside it; it was reached through two vias.
+11. **No supply enters a plane through one via**: three in each seam land that carries
+   the rail or its return, and a second at the socket's ground way.
+
+**Junction temperatures at full white, 45 C inside the chassis** (estimates: the thermal
+resistance is TI's 23.5 C/W junction-to-board plus this board's copper, about 60 C/W in
+all; TI's own figure for the package on four heavier layers is 50 to 63):
+
+| | loss | junction | limit |
+|---|--:|--:|--:|
+| LMR33630B, 0.72 A rail | 0.9 W | 99 C | 125 C operating, 165 C shutdown |
+| TLC59711, twelve channels | 0.57 to 0.75 W | 84 to 96 C | 150 C |

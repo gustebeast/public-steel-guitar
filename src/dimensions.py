@@ -310,6 +310,15 @@ SCREW_OD        = 8.0       # Tr8x2: Ø8, SINGLE-start, 2 mm lead.
 # bead) — both parts are 0.2-NOZZLE prints and therefore unfilled, the same call
 # belt_clamp already makes for GT2 ridges. At 0.2 the groove is a 1.5-bead feature.
 SCREW_PITCH     = 2.0       # Tr8x2: 2 mm pitch, single start => 2 mm LEAD
+# THE THREAD'S HAND IS A DESIGN INPUT, NOT A DETAIL OF THE PART (2026-10-05). It decides
+# which way each belt runs as a nut rises, and so which END of its run each belt clamp is
+# spliced at and travels away from (components.clamp_p). With "RH" the even strings start
+# at the motor end and never visit the 16-20 mm by the screw pulleys where their clamps
+# meet the next string's pulley; with "LH" they would start there. Flip this and the
+# build redraws the clamps and tools/clamp_range.py and the carriage travel gate re-judge.
+# RH is the stock part (BOM). ⚠ The direction is derived, not yet seen on a bench.
+SCREW_HAND      = "RH"
+assert SCREW_HAND in ("RH", "LH")
 FORM_MINOR      = 6.2       # printed ridge Ø (Tr8x2 root is Ø5.5; 0.35 radial clear)
 FORM_MAJOR      = 7.8       # printed groove Ø (0.1 radial under the Ø8 crest)
                             # Depth (7.8-6.2)/2 = 0.80, NOT the pitch/2 = 1.0 ceiling.
@@ -765,20 +774,17 @@ def motor_pos(i: int):
 # stopped by the nut long before the clamp -- but one travel is one number in the
 # firmware, one plate height, and the same range on every string.
 BELT_PER_MM     = PULLEY_TEETH * BELT_PITCH / SCREW_PITCH      # 14 of belt per mm of nut
-BELT_CLAMP_L    = 39.6      # the clamp along the belt, lifters and all. MEASURED off
+BELT_CLAMP_L    = 49.2      # the clamp along the belt, fully loose. MEASURED off
                             # belt_tensioner's solids; build.py asserts it still is.
 CLAMP_END_CLR   = 5.0       # belt left between the clamp and each pulley flange
 BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
                                  screw_pulley_z(i) - motor_pos(i)[2])
                       for i in range(N_STRINGS))               # 194.0, string 10
-# !!!! DEFERRED -- THE CLAMP AS DRAWN CANNOT RUN THIS TRAVEL (owner: branner; BLOCKED on the
-# user's choice of clamp, 2026-10-02). The sum below is pulley-to-pulley, which is wrong IN
-# KIND: a clamp's free span is what its neighbours, the chassis and the endplate leave it,
-# and that is a MEASUREMENT, per string (tools/clamp_study.py, docs/belt-clamp-travel.md).
-# Measured there: the screw-under-the-belt clamp does not fit on EITHER side of the belt
-# (inside the loop the two runs close to 4.0 and the next string's belt passes through;
-# outside, strings 1, 8, 9 and 10 fall short); a screw BESIDE the belt carries 6.2 / 6.5 on
-# strings 9 / 10; a slim screwless clip carries the whole travel on all ten.
+# THE SUM BELOW IS PULLEY-TO-PULLEY, WHICH IS ONLY RIGHT FOR A CLAMP NO WIDER THAN ITS BELT'S
+# OWN LANE. A clamp's free span is what its neighbours, the chassis and the endplate leave
+# it, and that is a MEASUREMENT, per string (tools/clamp_study.py,
+# docs/belt-clamp-travel.md). The in-line M3 clamp (belt_tensioner, 2026-10-05) is that
+# slim: measured there, every string's span is limited by the ends of its run alone.
 # ...AND NO MORE THAN IS WANTED. With the bank against the endplate the shortest run is
 # 194.0 and this sum allows 9.53; the nut does not get travel it has no use for.
 CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD

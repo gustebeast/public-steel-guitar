@@ -93,7 +93,7 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   clamp away from that pulley and stops it about 5 mm short of the other one on string 10.
 - **Why:** the clamp is part of the belt and moves 14 mm for every 1 mm of nut travel. The
   nut's travel (8.35 mm, ceiling to floor) has the clamp on the SHORTEST belt (string 10)
-  use 116.9 of the 143.4 mm it has between pulleys. The 5 mm gap at this end is yours to set, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
+  use 116.9 of the 133.8 mm it has between pulleys. The 5 mm gap at this end is yours to set, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
   with the nut somewhere in mid-travel, and it reaches a pulley before the nut reaches its stop.
 - **Strings 1-8 are forgiving** (their belts are longer; string 9 has about 15 mm per end),
   but use the same rule everywhere so there is one procedure.
@@ -101,12 +101,35 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   hand as you can: every tenth of open tension taken up by hand is 0.4 mm of travel kept
   for raising pitch. A string wrapped slack and left to break in reaches about 3.4 semitones
   above open; re-wrapped after break-in it reaches 4 with room over.
-- **Which run:** odd strings (near row, the high belt plane) take the clamp on the **upper**
-  run of the belt; even strings (far row) on the **lower** run. The clamp's deep side hangs
-  off the belt's outer face and turns sideways near the screw; on the other run it sits in
-  the next string's belt for most of the span.
-- **OPEN (2026-10-01):** strings 1, 8, 9 and 10 do not have room for the full travel yet
-  (`docs/belt-clamp-travel.md`). The 5 mm rule above is not enough on those four.
+- **Which run, and which end:** odd strings (near row, the high belt plane) take the clamp on
+  the **upper** run of the belt, 5 mm off the **screw** pulley; even strings (far row) on the
+  **lower** run, 5 mm off the **motor** pulley. That is the same rule as above, spelled out:
+  with the nut on the ceiling those are the pulleys each clamp has been travelling toward.
+  The assembly model is drawn in exactly this state. **Check it on the first string:** run
+  the nut down a little and the clamp must move AWAY from the pulley it was set beside. If
+  it moves toward it, stop: the clamp belongs at the other end of that run.
+- **This assumes a RIGHT-HAND leadscrew**, which is the stock part and what the BOM asks for.
+  A left-hand screw reverses every belt: odd strings would start at the motor end and even
+  strings at the screw end, and strings 2, 4, 6 and 8 would then sit inside the 16-20 mm
+  beside their screw pulleys where the clamp meets the next string's pulley. The model
+  follows `dimensions.SCREW_HAND`; if the hand ever changes, change it there, rebuild, and
+  re-run `tools/clamp_range.py` before trusting any of this.
+- **Why the run and the end matter:** neighbouring clamps pass close near the screws, and a
+  clamp on the wrong run, or started from the wrong end, can meet its neighbour or a
+  neighbour's pulley (`tools/clamp_range.py`, `docs/belt-clamp-travel.md`).
+- **Which way round:** the belt's teeth face the INSIDE of its loop and the clamp's ribs are
+  on that side, so the key channel in half A ends up on the OUTSIDE of the loop. If the
+  channel faces into the loop, the clamp is upside down.
+- **Fitting it:** push one cut end of the belt SIDEWAYS into half A's slot until it is in
+  past the slot's mouth and against the slot's inner end, teeth between the ribs. Do the
+  same with the other end in half B: its slot opens on the opposite face. Drop the M3
+  insert into the side pocket in half B. Slide the halves together end to end: each half's
+  channel rail runs over the other half's slot mouth and hooks its two lips, which is what
+  keeps the belt in and the slot from opening. Then run the M3 × 12 in through half A.
+- **Tensioning:** the screw's head faces the belt, so use the BALL END of the 2.5 mm key,
+  laid down the channel in the back of half A at about 25° to the belt. The halves start
+  4 mm apart and each turn closes them 0.5 mm. If they meet before the belt is tight,
+  move one end of the belt one tooth (2 mm) further into its slot and start again.
 
 ## Leadscrew nuts: LOOK at the top edge of each string ear hole
 
@@ -596,7 +619,7 @@ connector happens with the panel off or with the keyhead end open.
 ## Fret lighting boards (2026-09-30, seam joint built the same day)
 
 Two boards, one per deck panel, ONE cable: it lands on the keyhead board, and the mid board
-is fed across the panel seam by six tip-to-tip pogo pins (`docs/fret-led.md` §9.1f).
+is fed across the panel seam by four tip-to-tip pogo pins (`docs/fret-led.md` §9.1f).
 
 1. **Attach each LED board to its own panel, off the instrument** -- the retainer strips
    and the one M4, below. The board must not move in X once seated.
@@ -636,6 +659,11 @@ under B's near end, tip to tip.
    across the TOP of string 1's motor, and down between that motor and the Pi.
    ⚠ XH plugs are the 24 V family on this instrument and PH plugs the 5 V one; the two do
    not fit each other's sockets.
+   **Making the lead (both lighting leads are the same):** four 24 AWG conductors, XHP-4
+   housing on each end, way 1 to way 1 -- **black GND, red 24 V, white SCK, blue SDT**.
+   The model draws each conductor in that colour on its own contact; use it as the
+   reference. The fret lead runs from the Pi cap's J3 out over the Pi, up, and along
+   under the deck to the socket on the keyhead fret board's -X end.
 5. ⚠ **OPEN: what holds board A pushed in.** The springs push it back out 3.4 mm. The
    stop that takes that load (a printed block and one M4 behind the board, with a notch
    for the lead) is not designed yet (.ins/WORKLIST-brenner.md).

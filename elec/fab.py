@@ -83,6 +83,8 @@ LCSC = {
     # worst case against the TPS560430's 1.4 A maximum current limit, which is the
     # number TI tells you to size against.
     "WPN4020H4R7MT": "C98363",       # 4.7 uH, 4x4x2.0 closed-circuit, Isat 4.0 A (optical L1)
+    "SWPA5040S4R7MT": "C48496",      # 4.7 uH, 5x5x4.0 shielded, Isat 3.50 A min (the LED bucks)
+    "LMR33630BRNXR": "C2071384",     # the 1.4 MHz RNX part (the LED bucks, elec/buck_cell.py; optical U13)
     # ⚠ "600" IS 60 OHM in Murata/Sunlord bead numbering. 601 is the 600 ohm part.
     "GZ1608D601TF": "C1002",         # 0603 bead, 600R@100MHz, 200 mA, DCR 450 mohm
     # -- motor_ctrl's parts that were values and not parts until the 2026-10-04 review --
@@ -91,6 +93,7 @@ LCSC = {
     "VLS6045EX-6R8M": "C415364",     # TDK 6.8 uH 6045, Isat 4.7 A, 36 mOhm; 4,123 (5 V buck
                                      # L2). Nearest: Sunlord SWPA6045S6R8MT C57254 (4.3 A)
     "JFC1206-1100FS": "C136343",     # JDT 1206 fuse 1 A 63 V; 96,232
+    "JFC1206-1200FS": "C136345",     # JDT 1206 fuse 2 A 63 V; 11,363 on 2026-10-05 (foot_led_a F1)
     "JFC1206-1300FS": "C136347",     # JDT 1206 fuse 3 A 63 V; 37,944
     "JFC1206-1400FS": "C136349",     # JDT 1206 fuse 4 A 63 V; 45,541
     "B5819W": "C8598",               # CJ B5819W SL, SOD-123 1 A 40 V Schottky, JLC basic
@@ -137,7 +140,6 @@ LCSC = {
                                     # "B2B-XH-A" listing is C19272845 with ONE piece in
                                     # stock. Same shape as S4B-XH-SM4-TB and B4B-XH-A.
     "S4B-XH-A": "C157925",          # JST S4B-XH-A(LF)(SN), stock 88,547
-    "LMR33630BRNXR": "C2071384",     # the 1.4 MHz RNX part (optical U13, and the LED bucks)
     "LMR33630ADDAR": "C841384",     # TI, ESOP-8 (= HSOIC-8 PowerPAD), stock 6,730
     "KPJX-4S-S": "C2875467",        # Kycon KPJX-4S-S, 4-pin power jack; stock 44 on
                                     # 2026-10-01 -- THIN: check before a build of 10
