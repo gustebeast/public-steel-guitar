@@ -236,6 +236,280 @@ class Row(object):
         return self
 
 
+
+def _manual(board, n_drv):
+    """The manual quality items (cadkit/PCB_QUALITY.md), signed 2026-10-05 against the
+    routed boards and the makers' sheets. M12 is left open on purpose: what remains of
+    it can only be done on the day of the order (.ins/WORKLIST-brenner.md, NEEDS USER)."""
+    a = board == "a"
+    seam = ("J21..J24" if a else "J11..J14")
+    m = {
+        "M1": ("two joints. J1 to the Pi cap's J6: a 4-way JST XH lead, straight through, "
+               "way n to way n -- 1 GND, 2 24 V, 3 SCK, 4 SDT at both ends "
+               "(harness.LED_DROP; pi_cap.py wires J6 pins 1 to 4 in that order, and this "
+               "board's lands read GND, +24V_IN, SCK_CABLE, SDT_CABLE on the routed "
+               "board). XH is shrouded and keyed: it goes on one way and cannot sit one "
+               "pin along. The seam, J21..J24 to board B's J11..J14: spring pins tip to "
+               "tip, both boards face down in one channel, so equal Y is the same pin -- "
+               "+24V at 8.88, GND 5.08, SCK 1.28, SDT -2.52 on BOTH routed boards. "
+               "SCK_OUT here is U4's SCKO and lands on B's SCK_IN, its U1's SCKI"
+               if a else
+               "one joint, the seam: J11..J14 meet board A's J21..J24 tip to tip, both "
+               "boards face down in one channel, so equal Y is the same pin -- +24V at "
+               "8.88, GND 5.08, SCK 1.28, SDT -2.52 on BOTH routed boards. A's SCK_OUT "
+               "(its U4's SCKO) lands on SCK_IN here, U1's SCKI. The channel's walls "
+               "hold both boards in Y; nothing else plugs into this board"),
+        "M2": "the only polarised parts are the LEDs. XINGLIGHT's drawing: pads 1 to 4 "
+              "are the four anodes, 5 to 8 their cathodes; the netlist takes the rail to "
+              "pad c+1 and pad c+5 on to the next LED or the driver's sinking output. "
+              "The fab's own library footprint for C7371891 was compared with ours pad "
+              "for pad: identical at 0 degrees (worst pad 0.03 mm), so the reel's "
+              "orientation is the CPL's angle unchanged. No diode, electrolytic or "
+              "tantalum on the board",
+        "M3": "ground is a whole inner layer (In2) and the rail another (In1), each "
+              "broken only by via clearances; every ground pad has its own via beside "
+              "it and the buck's ground slab has six. 24 V arrives on a 0.30 mm track "
+              "(A1: 0.08 needed) and returns through that plane to "
+              + ("J1's ground land, which is 1.3 x 4.5 with a via in it" if a else
+                 "J12, a 5.0 x 3.5 land") +
+              ". The feedback divider's ground (R11, R12) goes down its own vias 2 mm "
+              "from the AGND pin, not along the power slab",
+        "M4": "LMR33630 (SNVSAN3F 9.2.2.6 to 9.2.2.8). Input: TI ask 10 uF ceramic rated "
+              "at least the input, preferably twice -- C30 + C31 are 2 x 10 uF / 50 V "
+              "1206 on 24 V; and, for the RNX package, a small capacitor at each of its "
+              "two VIN/PGND pairs -- C32 and C35, 100 nF / 50 V, 0.60 mm from their pins. "
+              "Bootstrap 100 nF (asked: 100 nF, 10 V or more; fitted 50 V). VCC 1 uF / "
+              "25 V (asked: 1 uF, 16 V). Output: TI's table for 12 V at 2.1 MHz is 3.3 uH "
+              "and 4 x 10 uF; this rail has 2 x 10 uF / 50 V at the inductor plus "
+              "%d x 4.7 uF / 25 V on the same plane, 38.8 uF by the "
+              "markings. The 25 V parts sit at 46 %% of their rating and the 50 V ones "
+              "at 23 %%. TI's equation 6 for the whole 0.72 A arriving as one step with "
+              "a 2 %% dip asks 3.5 uF. Each driver: 1 uF on VREG (its sheet requires "
+              "it), 100 nF on VCC, and its own 4.7 uF for the 0.18 A its twelve "
+              "channels switch together" % n_drv,
+        "M5": "24 V bus: U10 is rated 36 V operating and 38 V absolute, every capacitor "
+              "on it 50 V, F1 63 V. The spring pin's catalogue line is 24 V, which is "
+              "the bus itself: it is a bare barrel with no insulation of its own, and "
+              "what stands off the voltage is 0.30 mm of masked board between the +24V "
+              "and GND lands and 0.8 mm of air between barrels. The rail: 11.50 V, "
+              "11.12 to 11.88 with the 1.5 % reference and 1 % resistors, on drivers "
+              "rated 17 V (18 absolute) at VCC and at every output; 25 V and 50 V "
+              "capacitors. Logic: SCK and SDT are 3.3 V, into inputs rated VREG + 0.6 V "
+              "with VREG 3.1 to 3.5 V. A live plug is M16, a dark board with live "
+              "signals M18",
+        "M6": "no parallel bus and nothing matched. SCK and SDT are a 10 MHz-capable "
+              "pair that the Pi clocks far slower; each driver re-drives both (10 ns "
+              "edges) to the next, 66 mm on, which is 0.45 ns of flight. Both run over "
+              "the unbroken rail plane, and where SCK_2 / SDT_2 drop to the back to "
+              "pass the buck they run against the ground plane with both planes "
+              "between them and the switch node",
+        "M7": "divider: 100k over 10k || 200k = 9.524k on the 1.000 V reference is "
+              "11.50 V. Inductor 3.3 uH: TI's table value; their floor of 0.28 x Vout / "
+              "fsw is 1.53 uH against 2.31 at the part's -30 %; ripple 0.86 A, 29 % of "
+              "the 3 A they size it on. EN (pin 9) is tied to VIN on laid copper (TI: "
+              "may go straight to VIN, must not float). PG (pin 8) is an open drain "
+              "that 'can be left open when not used', and is. The RNX has no exposed "
+              "pad. TLC59711: IREF 3k3 gives 41 x 1.21 V / 3.3k = 15.0 mA; its "
+              "PowerPAD is on GND",
+        "M8": "nothing here has a reset, boot or address pin. A TLC59711 powers up with "
+              "BLANK set, every output off, and stays so until a write that begins "
+              "with command 25h (SBVS181A, 'BLANK bit'). Its two inputs are driven, "
+              + ("through R21 / R22, by Pi pins whose reset state is a pull-down "
+                 "(GPIO 9 to 27); with the lead off, the board has no supply either"
+                 if a else
+                 "by board A's last driver, which shares this board's supply joint") +
+              ". IREF has its resistor to ground; the buck's EN is tied",
+        "M9": "no MCU. Three bare 1.5 mm pads by the buck, each named in silk: +24V "
+              "(after the fuse), +11V5 and GND. SCK and SDT can be probed at "
+              + ("R21 / R22 and at the seam lands" if a else "the seam lands") +
+              ", which are 5.0 x 3.5",
+        "M10": ("decision: no TVS. J1 is inside the instrument, on a 4-way lead from the "
+                "Pi cap that is plugged with the instrument off. Over-current: F1, "
+                "2 A fast, 63 V, ahead of everything. Reverse supply: the XH housing "
+                "is keyed, and the two supply ways are the XH bus's own order so even "
+                "the wrong lead feeds it the right way round. The two signal ways "
+                "have 1 k in series 2.0 mm from the socket's lands (R21, R22), which "
+                "is what an ESD strike or a foreign lead sees before a driver's "
+                "input. Nothing on this board can back-feed 24 V: it only consumes it"
+                if a else
+                "decision: no TVS. No cable reaches this board: its four lands meet "
+                "board A's spring pins inside the channel. Over-current: its own F1, "
+                "1 A fast, 63 V, so a fault here opens this fuse and leaves A lit. "
+                "It cannot back-feed anything"),
+        "M11": "elec/cad_geom_check.py %s, 2026-10-05: every routed part is where "
+               "the CAD draws it. Tallest hanging part %s against a 6.05 mm trough "
+               "(src/foot_light.py asserts the air gap). No mounting hole by design: "
+               "the channel holds five faces and the endplate the sixth. %s"
+               % (FL.BOARD_NAME[board],
+                  "is J1 at 5.75 mm, then the inductor at 4.0" if a else
+                  "is the inductor at 4.0 mm",
+                  "J1's mouth is at the -X end and is plugged before the "
+                  "endplate goes on (INSTALL_NOTES)" if a else
+                  "It goes in first and nothing is plugged into it"),
+        "M13": "measured on the routed board, pad edge to pad edge, against TI's RNX "
+               "layout: C32 and C35 0.60 mm from VIN and 0.60 from PGND at their own "
+               "pair, on the part's layer, on laid copper with no via in either loop; "
+               "the bulk pair 3.5 and 6.0 mm away on the same slabs. The switch node is "
+               "a laid 0.5 mm track, 4.4 mm from the pin to the inductor's land, no "
+               "via, no pour. The feedback parts are on the opposite side of the "
+               "package from it: R11 1.17 mm and R10 2.35 mm from FB, R12 on R11, the "
+               "whole node 4.3 mm of track and none of it under the inductor. "
+               "Bootstrap 1.07 mm from BOOT and 0.74 from SW. VCC's capacitor 0.42 mm "
+               "from its pin on 1.1 mm of 0.25 track, its ground pad on the track from "
+               "AGND",
+        "M14": "L1 SWPA5040S3R3NT, 3.3 uH +-30 %%. Ripple 11.5 x (1 - 11.5/24) / (3.3 uH "
+               "x 2.1 MHz) = 0.86 A, so the peak at this board's 0.72 A is 1.15 A. "
+               "Saturation (Sunlord: 30 %% inductance drop, 20 C) 3.95 A guaranteed, "
+               "4.60 typical; heating current 3.4 A. TI: saturation 'must not be less "
+               "than the device low-side current limit', 3.5 A typical (2.9 to 4.1) -- "
+               "met at the guarantee. The high-side limit is 4.5 A typical (3.85 to "
+               "5.05), inside the part's typical figure and above its guarantee: "
+               "accepted. A dead short on the rail pulls FB under 0.4 V and the part "
+               "hiccups at 94 ms. The 4 x 4 part this replaced saturated at 2.90 A",
+        "M15": "U10 is internally compensated for ceramic outputs and TI give no ESR "
+               "window, only the table's inductance and capacitance (M4). Capacitance "
+               "under bias is NOT read off a curve here: the 1206 and 0805 parts are "
+               "at 23 %% and 46 %% of their ratings, and a tenth of the marked 38.8 uF "
+               "still covers TI's equation 6. No linear regulator, so no dropout: the "
+               "buck is at 48 %% duty against a 98 %% maximum",
+        "M16": ("J1 is plugged with the instrument off, and the 24 V then arrives "
+                "through the output panel's switch at about 1.5 V/ms (motor_ctrl's "
+                "M16): no ring. Plugged live it would be a lead of about 0.4 uH into "
+                "about 11 uF of biased ceramic, 0.19 ohm characteristic, against "
+                "0.13 ohm in F1 alone (JDT's cold resistance) plus the lead and four "
+                "contacts: close to critically damped, a few percent over 24 V. U10's "
+                "38 V is the lowest limit on the net"
+                if a else
+                "this board's 24 V arrives across the seam, which is made by sliding "
+                "board A home with the instrument off; the supply then ramps at about "
+                "1.5 V/ms. Were it made live, F1 here is 0.49 ohm cold (JDT) in series "
+                "with about 11 uF of biased ceramic: overdamped"),
+        "M18": ("decision, and two resistors. The Pi can be up while this board is "
+                "dark (F1 open, the motor board's lights fuse open, a Pi on USB power "
+                "on the bench), and a TLC59711 input is rated to VREG + 0.6 V with "
+                "VREG then 0. R21 and R22, 1 k at the socket, hold what the Pi can "
+                "push through the input's protection diode to 2.7 mA. The other way "
+                "round nothing is driven: this board has no output towards the Pi"
+                if a else
+                "decision: nothing added. This board's inputs are driven by board A's "
+                "last driver, a 3.3 V output of a few mA. They can only be live while "
+                "this board is dark if this board's own F1 has opened, which is a "
+                "fault being repaired, not a state it is run in. In normal use both "
+                "boards take their 24 V through the same socket"),
+        "M20": "no I2C and no CAN. SCK and SDT are terminated at their source: 68 ohm "
+               "in series at the Pi cap. On the board each hop is 66 mm from a driver "
+               "with 10 ns edges, a twentieth of the edge in flight: lumped, nothing to "
+               "terminate",
+        "M21": "no ADC, DAC, codec or analog reference on the board",
+        "M22": "no op-amp or comparator on the board",
+        "M25": "TLC59711: the pad is on GND, as TI name it, solid, with seven vias "
+               "(six under the mask at the pad's ends, one in the pasted middle; TI "
+               "draw fifteen) and paste in four panes. At full white a driver burns "
+               "0.57 W typical and 0.75 W worst (12 x 15 mA across the rail less three "
+               "LEDs, plus its own supply current); at TI's 68.6 C/W that is 39 to "
+               "51 C over ambient, 96 C at 45 C against 150 C. U10 has no pad: its "
+               "heat leaves through the pins into the laid slabs and their vias. About "
+               "0.85 W at 0.72 A (TI figure 9-17's losses, which do not depend on the "
+               "output voltage) at an estimated 60 C/W -- TI's figure 9-4 gives 50 to "
+               "63 for this package on four layers with heavier copper -- is about "
+               "96 C at 45 C ambient, against 125 C operating and a 165 C shutdown. "
+               "No tab on the board",
+        "M26": "one link, a daisy chain. Read off TI's pin table: 9 SDTI, 10 SCKI, "
+               "11 SCKO, 12 SDTO. " + ("SDT_IN and SCK_IN (from the cable through R22 "
+               "/ R21) reach U1 pins 9 and 10" if a else "SDT_IN and SCK_IN (the seam) "
+               "reach U1 pins 9 and 10") + "; each driver's 12 and 11 go to the next "
+               "one's 9 and 10 as SDT_n / SCK_n; " + ("U4's leave as SDT_OUT / SCK_OUT "
+               "on J24 / J23" if a else "U4's are the end of the chain, named _NC") +
+               ". At the Pi the two are an SPI's MOSI and SCLK",
+        "M27": "no strap, reset or debug net on the board",
+        "M28": "no transistor or small regulator. The three ICs' pin orders are read "
+               "from their own sheets (pinouts, above), and each placed footprint was "
+               "compared pad for pad with the fab's library footprint for that exact "
+               "LCSC code: TLC59711PWPR C116842, LMR33630CRNXR C2071783, XL-5050RGBW "
+               "C7371891" + (", S4B-XH-SM4-TB C161861" if a else "") + " -- all match "
+               "under a pure rotation",
+        "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
+               "table, read 2026-10-04 (A12 measured against it). The 0.25 / 0.50 via "
+               "is an order-form choice and is in ORDER.txt. %s x 24.15 mm is inside "
+               "the size limits. Every 0402's plane-side pad reaches its plane through "
+               "a via beside the pad on a short track, as the other pad has: no pad "
+               "sits in a pour" % ("293.4" if a else "286.4"),
+        "M30": "JLCPCB's assembly page, read 2026-10-05: Economic PCBA takes "
+               "single-sided assembly on 2, 4 or 6 layers at 1.6 mm, a single board "
+               "from 10 x 10 to 470 x 500 mm, parts from 0402 and IC pitch from 0.4 mm. "
+               "This board is 24 mm wide, under Standard's 70 x 70 minimum, so "
+               "Economic is the tier it must be accepted in (or it is panelised with "
+               "rails): confirming that on the quote page is in M12. Finest pitch "
+               "here 0.5 mm (U10). Every part is in the assembly library; the "
+               "extended ones are the LED, the driver, the buck, the inductor, the "
+               "fuse, the spring pin" + (" and the socket" if a else ""),
+        "M31": "'FOOT LED %s r1' on the front. The three test pads are named (+24V, "
+               "+11V5, GND). " % board.upper() + ("J1's four ways are named on the "
+               "BACK, which is the face that looks up at whoever plugs it: 1 GND, "
+               "2 +24V_IN, 3 SCK_CABLE, 4 SDT_CABLE. " if a else "") + "Each seam land "
+               "is named on the back with its net. All text 1.0 mm or more with a "
+               "0.15 stroke (A12). Pin-1 and LED polarity marks are the footprints', "
+               "outside the bodies. The legend is cut back from every mask opening: "
+               "the gerber carries the pads in clear polarity",
+        "M32": ("J1: lands 2.50 mm apart measured on the footprint, which is XH (PH is "
+                "2.00); 3 A a contact against 0.77 A; pad 1 per JST's drawing. " if a
+                else "") + "The spring pins are not a pitch series: single lands at "
+               "3.80 mm, 12 A each against " + ("0.38 A handed on" if a else "0.38 A") +
+               ", and ground has a pin beside the supply and the two signals",
+        "M33": "the rail: 48 channels x 15 mA = 0.72 A, plus four drivers at no more "
+               "than 18 mA (TI's maximum at twice this current setting), 0.79 A of a "
+               "3 A regulator: 26 %%. That is the 0.72 A declared "
+               "on +11V5. The 24 V side at 90 %%: 0.38 A a board" + (
+               ", and this one carries both, 0.77 A: J1's contact is 3 A, F1 2 A, "
+               "the seam pin 12 A" if a else ": F1 here is 1 A, the seam pin 12 A"),
+        "M34": "SCK and SDT: the Pi's 3.3 V output into an input that wants 0.7 x "
+               "VREG, 2.45 V at VREG's 3.5 V maximum, with 0.2 x VREG of hysteresis; "
+               "between drivers it is a VREG-level output into the same input. The "
+               "protocol has no chip select and no enable. U10's EN is active high, "
+               "1.23 V threshold, tied to VIN as its sheet allows",
+        "M35": "TI's product pages for TLC59711 and LMR33630, read 2026-10-05: both "
+               "active, no errata document listed for either",
+        "M36": ("24 V is offered to board B at the seam, from behind F1 (2 A); B has "
+                "its own 1 A fuse behind its lands. The rail does not leave the board"
+                if a else "no supply leaves this board"),
+        "M37": "elec/fab.py %s, 2026-10-05, run after finish.py's refill and DRC; "
+               "gerbers and drill written together. Opened outside KiCad: every layer "
+               "rendered with pygerber 2.4.3 and looked at, the Excellon file parsed "
+               "separately and laid over the copper -- all %d plated holes have copper "
+               "all round them on both outer layers. Paste only on soldered lands; "
+               "stack-up and the via choice are in ORDER.txt"
+               % (FL.BOARD_NAME[board], 259 if a else 253),
+        "M38": "the board bends along its length when it is handled, so every 1206 -- "
+               "four capacitors and the fuse -- stands across it. Decision: the four "
+               "4.7 uF 0805s lie along it, in the row over each driver that keeps the "
+               "driver's escape lane open; they are 6.6 mm from the long edges, the "
+               "board is ordered as a routed single with no V-score or tab, and in "
+               "service the channel holds it flat along its whole length. Test pads: "
+               "1.5 mm, 1.1 mm apart. No mounting hole. " + (
+               "J1's plug is pushed on from the open -X end of the channel" if a else
+               "Nothing is plugged into it"),
+        "M39": "no unused input. All 48 outputs are used. " + (
+               "" if a else "U4's SCKO and SDTO are the end of the chain: push-pull "
+               "outputs, left open. ") + "U10's PG is an open drain left open, as its "
+               "sheet allows",
+        "M40": "3k3, 10k, 100k, 200k" + (", 1k" if a else "") + ", 100 nF, 1 uF, "
+               "4.7 uF and 10 uF are stock values, and every capacitor's voltage is "
+               "in its value. Do-not-substitute parts say so where they are defined: "
+               "L1 (elec/buck_cell.py: saturation), F1 (a part number: speed and "
+               "63 V), the 100 nF / 50 V at VIN, and the LED, whose 3.0 to 3.4 V sets "
+               "the rail",
+        "M42": "JLCPCB stock on 2026-10-05: LED 40,185, driver 3,826, buck 3,453, "
+               "inductor C305173 2,389, fuse " + ("11 k" if a else "96 k") + ", spring "
+               "pin 594" + (", socket 20,309" if a else "") + "; passives are basic "
+               "parts. Both TI parts active. Single-maker parts: the spring pin "
+               "(Xinyangze, no second source on this land: the thin one, eight a "
+               "pair of boards) and the LED (other 5050 RGBW parts exist but their "
+               "pad order must be read first). The inductor has a second line, "
+               "SWPA5040S3R3MT C14656",
+    }
+    return m
+
+
 def build(board, passes=20):
     """One of the two boards: "a" is the near (-X) one with the cable socket."""
     name = FL.BOARD_NAME[board]
@@ -582,6 +856,7 @@ def build(board, passes=20):
             "LMR33630CRNXR": "TI LMR33630 datasheet SNVSAN3F, Table 6-1, VQFN (RNX) column",
         },
         "waive": waive,
+        "manual": _manual(board, n_drv),
     }
     if board == "a":
         notes["quality"]["pinouts"]["S4B-XH-SM4-TB"] = (
