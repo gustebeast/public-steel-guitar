@@ -646,9 +646,9 @@
       "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 50"
     },
     "fret_led_key:U10": {
-      "usd": 1.6989,
+      "usd": 2.5702,
       "verified": "v",
-      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 40"
+      "what": "LMR33630BRNXR C2071384 -- JLCPCB parts API, 1 to 9, read 2026-10-05"
     },
     "fret_led_mid:U10": {
       "usd": 1.6452,
@@ -1666,9 +1666,9 @@
       "what": "SWPA4030S4R7MT C57269 -- JLCPCB parts API at qty 50"
     },
     "fret_led_key:L1": {
-      "usd": 0.0886,
+      "usd": 0.0761,
       "verified": "v",
-      "what": "SWPA5040S3R3NT C305173 -- JLCPCB parts API, 1 to 99, read 2026-10-05"
+      "what": "SWPA5040S4R7MT C48496 -- JLCPCB parts API, 1 to 99, read 2026-10-05"
     },
     "fret_led_mid:L1": {
       "usd": 0.0608,
@@ -1951,14 +1951,14 @@
       "what": "YZF0002-38080-02 C5203987 -- JLCPCB parts API at qty 160"
     },
     "foot_led_a:U10": {
-      "usd": 1.6989,
+      "usd": 2.5702,
       "verified": "v",
-      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 40"
+      "what": "LMR33630BRNXR C2071384 -- JLCPCB parts API, 1 to 9, read 2026-10-05"
     },
     "foot_led_b:U10": {
-      "usd": 1.6989,
+      "usd": 2.5702,
       "verified": "v",
-      "what": "LMR33630CRNXR C2071783 -- JLCPCB parts API at qty 40"
+      "what": "LMR33630BRNXR C2071384 -- JLCPCB parts API, 1 to 9, read 2026-10-05"
     },
     "foot_led_a:D1": {
       "usd": 0.0404,
@@ -2521,14 +2521,14 @@
       "what": "0805L020YR C126816 -- JLCPCB parts API at qty 10"
     },
     "foot_led_a:L1": {
-      "usd": 0.0886,
+      "usd": 0.0761,
       "verified": "v",
-      "what": "SWPA5040S3R3NT C305173 -- JLCPCB parts API, 1 to 99, read 2026-10-05"
+      "what": "SWPA5040S4R7MT C48496 -- JLCPCB parts API, 1 to 99, read 2026-10-05"
     },
     "foot_led_b:L1": {
-      "usd": 0.0886,
+      "usd": 0.0761,
       "verified": "v",
-      "what": "SWPA5040S3R3NT C305173 -- JLCPCB parts API, 1 to 99, read 2026-10-05"
+      "what": "SWPA5040S4R7MT C48496 -- JLCPCB parts API, 1 to 99, read 2026-10-05"
     },
     "motor_ctrl:J7": {
       "usd": 0.0592,

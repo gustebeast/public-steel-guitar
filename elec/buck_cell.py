@@ -42,20 +42,39 @@ CORE = {
     "RFBT": (+3.295, -1.32, 270.0),
     "RFBP": (+2.115, -3.25, 270.0),
 }
-# ⚠ THE INDUCTOR IS SUNLORD SWPA5040S3R3NT, 5 x 5 x 4 (manual quality pass M14, 2026-10-05).
-# It was the 4 x 4 SWPA4030S4R7MT, whose saturation current is 2.90 A guaranteed and 3.20
-# typical (Sunlord's table; a 30 % drop in inductance). TI: "the inductor saturation
-# current must not be less than the device low-side current limit", which is 3.5 A
-# typical, 2.9 to 4.1 (SNVSAN3F 7.5 and 9.2.2.4) -- so a shorted rail saturated it. This
-# one is 3.95 A guaranteed and 4.60 typical, at 31 milliohm instead of 78; and 3.3 uH is
-# the value TI's own table gives for 12 V out at 2.1 MHz (ripple 0.83 to 0.86 A at these
-# boards' 11.5 and 14.5 V: 28 % of the part's 3 A, where TI asks for 20 to 40).
-L1_VALUE = "SWPA5040S3R3NT"
-L1_LCSC = "C305173"
+# ⚠ THE REGULATOR IS THE 1.4 MHz PART, LMR33630BRNXR, AND HEAT IS WHY (manual quality
+# pass M25, 2026-10-05). These boards carried the 2.1 MHz LMR33630CRNXR, the optical
+# board's. Read off TI's own curves at 24 V in (SNVSAN3F figures 9-15 and 9-17, RNX
+# package), the converter loses
+#     2.1 MHz   1.2 W at 0.7 A   1.25 W at 1 A   1.45 W at 1.4 A
+#     1.4 MHz   0.9 W            0.95 W          1.1 W
+# and about 0.75 W of the 2.1 MHz figure is there at any load: it is what switching 24 V
+# two million times a second costs. The RNX package has no thermal pad, so on this copper
+# (about 57 to 60 C/W, see heat_copper) the C part sat at about 117 to 127 C at 45 C
+# ambient with every LED at full white, against 125 C. The B part is the same package,
+# the same pins and the same sheet: 99 to 107 C.
+# ⚠ THE C PART STILL FITS THIS BOARD, with this inductor (ripple 0.6 A at 2.1 MHz, 20 %).
+# It is the named alternate if the B is out of stock on the day -- JLCPCB held 260 on
+# 2026-10-05 against 3,453 of the C -- and then full white must be capped in firmware.
+U_VALUE = "LMR33630BRNXR"
+U_LCSC = "C2071384"
+U_ALT = "LMR33630CRNXR (C2071783): same land, 2.1 MHz, about 0.35 W hotter"
+U_FSW = 1.4e6
+# ⚠ THE INDUCTOR IS SUNLORD SWPA5040S4R7MT, 5 x 5 x 4, and both its numbers were chosen.
+# 4.7 uH is the value TI's table gives for 12 V out at 1.4 MHz; their floor, 0.28 x
+# Vout / fsw, is 2.3 uH on the foot boards' 11.5 V and 2.9 uH on the fret board's 14.5 V
+# against this part's 3.76 at -20 %. Ripple is 0.87 to 0.91 A, 30 % of the IC's 3 A.
+# SATURATION: 3.50 A guaranteed, 3.90 typical (Sunlord's table; a 30 % drop in
+# inductance). TI: "the inductor saturation current must not be less than the device
+# low-side current limit", 3.5 A typical, 2.9 to 4.1 (SNVSAN3F 7.5, 9.2.2.4). The 4 x 4
+# SWPA4030S4R7MT these boards started with is 2.90 guaranteed and 3.20 typical, so a
+# shorted rail saturated it; it also had twice the resistance (78 against 39 milliohm).
+L1_VALUE = "SWPA5040S4R7MT"
+L1_LCSC = "C48496"
 L1_FP = "Inductor_SMD:L_Sunlord_SWPA5040S"
-L1_DESC = ("buck output inductor, 3.3 uH +-30 % shielded, Isat 3.95 A min / 4.60 typ, "
-           "DCR 31 mohm max, 5.0 x 5.0 x 4.0 (LCSC C305173)")
-L1_UH, L1_ISAT = 3.3, 3.95
+L1_DESC = ("buck output inductor, 4.7 uH +-20 % shielded, Isat 3.50 A min / 3.90 typ, "
+           "DCR 39 mohm max, 5.0 x 5.0 x 4.0 (LCSC C48496)")
+L1_UH, L1_ISAT = 4.7, 3.50
 L1_DX = 7.035                # the inductor's centre, a 5 x 5 mm part with lands at +-1.85
 L1_LAND = 1.85
 SW_W = 0.50
