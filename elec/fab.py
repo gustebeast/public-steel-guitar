@@ -113,7 +113,7 @@ LCSC = {
     # genuine manufacturer; where a listing was the bare MPN at 0 stock and its (LF)(SN)
     # tin-plated form was stocked, the stocked form is the same part as ordered from JST.
     "B4B-XH-A": "C144395",          # JST B4B-XH-A(LF)(SN), stock 60,424
-    "TLC59711PWPR": "C116842",      # 12-ch 16-bit constant-current LED driver (fret_led, foot_led)
+    "TLC5971RGER": "C543004",       # 12-ch 16-bit constant-current LED driver, VQFN-24 (fret_led, foot_led)
     "XL-5050RGBW": "C7371891",      # XINGLIGHT RGBW 5050, separate anodes/cathodes (fret_led, foot_led)
     "S6B-PH-SM4-TB": "C265405",     # 6-way side-entry PH, the LED strip's chain connector
                                     # and pi_cap J3, 5 V + SPI out to the strip
