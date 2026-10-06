@@ -82,7 +82,8 @@ P = Pin.types.PASSIVE
 
 # ── the parts ────────────────────────────────────────────────────────────────────────
 LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
-DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm"
+DRV_FP = "Package_DFN_QFN:Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm"
+DRV_ROT = 90.0
 BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
 IND_FP = "Inductor_SMD:L_Sunlord_SWPA5040S"   # = buck_cell.L1_FP, asserted in _supply
 J_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
@@ -203,7 +204,7 @@ ROT_TOWARD_DRIVER = {-1: 0.0, 0: 0.0, 1: 180.0}
 # and this mapping puts one zone's four dice in different groups, so all three BC
 # fields are set equal and every per-fret adjustment happens in GS -- which is also
 # what keeps the 16-bit depth useful at the dim end (docs/fret-led.md 6.5, 6.6).
-ZONE_OUTS = {-1: (5, 6, 7, 8), 0: (3, 4, 17, 18), 1: (13, 14, 15, 16)}
+ZONE_OUTS = {-1: (21, 22, 23, 24), 0: (19, 20, 11, 12), 1: (7, 8, 9, 10)}
 COLOURS = ("R", "G", "B", "W")
 
 
@@ -236,7 +237,7 @@ WALL_CLR = 0.3
 # middle 3.43 is opened and pasted; the two ends are mask over copper. Vias there cost no
 # paste, where each one inside the opening would drink a tenth of what is printed. Three
 # across each end, on TI's own 1.3 mm pitch: with the centre one about 30 C/W to the plane.
-DRV_PAD_VIAS = tuple((dx, dy) for dy in (-2.60, +2.60) for dx in (-1.30, 0.0, +1.30))
+DRV_PAD_VIAS = ((-1.10, 0.0), (+1.10, 0.0), (0.0, -1.10), (0.0, +1.10))
 
 # ── 1 k IN SERIES WITH EACH SIGNAL AT THE CABLE (manual quality pass M18, 2026-10-05) ────
 # The Pi drives SCK and SDT at 3.3 V through 68 ohm (pi_cap R1..R4), and this board can be
@@ -895,17 +896,19 @@ def build(panel):
         # exactly where a comb wall stands: every boundary between two frets carries one.
         di = 1 if len(trio) == 3 else 0
         xd = trio[di][1] - cx
-        u = Part(name="TLC59711", ref_prefix="U", ref="U%d" % (k + 1), tag="U%d" % (k + 1),
-                 dest="NETLIST", tool="skidl", value="TLC59711PWPR",
-                 description="12-ch 16-bit constant-current LED driver (LCSC C116842)",
-                 footprint=DRV_FP, pins=[Pin(num=n, func=P) for n in range(1, 22)])
+        u = Part(name="TLC5971", ref_prefix="U", ref="U%d" % (k + 1), tag="U%d" % (k + 1),
+                 dest="NETLIST", tool="skidl", value="TLC5971RGER",
+                 description="12-ch 16-bit constant-current LED driver (LCSC C543004)",
+                 footprint=DRV_FP, pins=[Pin(num=n, func=P) for n in range(1, 26)])
         iref, vreg = Net("IREF%d" % (k + 1)), Net("VREG%d" % (k + 1))
-        u[1] += iref
-        gnd += u[2], u[21]
-        vrail += u[19]
-        vreg += u[20]
-        sdt += u[9]
-        sck += u[10]
+        u[16] += iref
+        gnd += u[18], u[25]
+        vrail += u[13]
+        vreg += u[15]
+        sdt += u[1]
+        sck += u[2]
+        for n in (3, 4, 14, 17):          # no internal connection (SBVS146D, pin functions)
+            Net("U%d_P%d_NC" % (k + 1, n)).connect(u[n])
         # the LAST driver's re-buffered outputs: on the harness board they ARE the
         # chain's way across the seam; on the other they go nowhere, and the names say
         # NC rather than leaving netcheck to find a pin wired to nothing.
@@ -915,8 +918,8 @@ def build(panel):
             sck, sdt = seam["SCK_SEAM"], seam["SDT_SEAM"]
         else:
             sck, sdt = Net("SCKO_CHAIN_END_NC"), Net("SDTO_CHAIN_END_NC")
-        sck += u[11]
-        sdt += u[12]
+        sck += u[5]
+        sdt += u[6]
         r = _r("R%d" % (k + 1), R_IREF, "U%d IREF -- 15.0 mA per channel" % (k + 1))
         iref += r[1]
         gnd += r[2]
@@ -941,7 +944,7 @@ def build(panel):
         # INSIDE the comb's wall at the bridge end (see check_walls). Everything now
         # sits within 2.7 mm of its driver's fret centre, against the 3.77 the tightest
         # gap allows, in two rows clear of the driver's own courtyard.
-        place["U%d" % (k + 1)] = (xd, DRV_Y, 0.0)
+        place["U%d" % (k + 1)] = (xd, DRV_Y, DRV_ROT)
         fps["U%d" % (k + 1)] = DRV_FP
         # ⚠ THE THREE SMALL ONES STAND AT THE PIN-1 END, +Y, each over the pin it serves
         # (manual quality pass, 2026-10-05): IREF is pin 1, the top of the -X column, and
@@ -950,15 +953,25 @@ def build(panel):
         # reference TI ask to have "close to the device" and a regulator output. They
         # are 1.2 mm away now. The bulk capacitor, which serves the LED strings through
         # the planes and not a pin, takes the far end alone.
-        for ref, dx, dy, rot, fp in (("R%d" % (k + 1), -2.30, 4.60, 0.0, R_FP),
-                                     ("C%d" % (10 + k + 1), 0.00, 4.60, 0.0, C_FP),
-                                     ("C%d" % (k + 1), 2.30, 4.60, 180.0, C_FP),
+        for ref, dx, dy, rot, fp in (("R%d" % (k + 1), -2.30, 3.75, 180.0, R_FP),
+                                     ("C%d" % (k + 1), 0.00, 3.75, 180.0, C_FP),
+                                     ("C%d" % (10 + k + 1), 2.30, 3.75, 0.0, C_FP),
                                      ("C%d" % (20 + k + 1), 0.00, -5.20, 0.0, C08_FP)):
             place[ref] = (xd + dx, DRV_Y + dy, rot)
             fps[ref] = fp
-        drivers.append((u, xd, trio))
+        drivers.append((u, xd, trio, di))
 
-    for k, (u, xd, trio) in enumerate(drivers):
+    # ⚠ EACH DRIVER'S OWN di. This loop read the one left over from the loop above -- the
+    # LAST driver's -- and on the keyhead board that driver has the short trio, so every
+    # full trio there was keyed as (0, +1, +1): two frets on the same four outputs and
+    # four outputs idle. Frets 3 + 4 and 6 + 7 were one zone each, 24 return nets where
+    # 32 were meant, on a board that routed clean and passed every check (found
+    # 2026-10-06). `used` below is the check that would have caught it.
+    for k, (u, xd, trio, di) in enumerate(drivers):
+        used = [p for s in range(len(trio))
+                for p in ZONE_OUTS[max(-1, min(1, s - di))]]
+        assert len(set(used)) == 4 * len(trio), (
+            "%s U%d: its %d zones share driver outputs %s" % (name, k + 1, len(trio), used))
         for s, (fret, xf) in enumerate(trio):
             zi = 3 * k + s
             side = s - di
@@ -1022,7 +1035,15 @@ def build(panel):
     # each driver's heat pad gets its six vias (DRV_PAD_VIAS)
     notes["vias"] = list(notes.get("vias", [])) + [
         ("GND", round(xd + dx, 3), round(DRV_Y + dy, 3))
-        for _u, xd, _trio in drivers for dx, dy in DRV_PAD_VIAS] + list(seam_vias)
+        for _u, xd, _trio, _di in drivers for dx, dy in DRV_PAD_VIAS] + list(seam_vias)
+    # ⚠ IREF IS LAID, NOT ROUTED: 3 mm from pin 16 to its resistor. Left to the router it
+    # was the one net unrouted at EVERY driver, because the stitcher runs first and stood
+    # the VREG capacitor's ground via in the only gap the track had (2026-10-06).
+    notes["tracks"] = list(notes.get("tracks", [])) + [
+        ("IREF%d" % (k + 1), "F.Cu", 0.25,
+         [(round(xd + dx, 3), round(DRV_Y + dy, 3))
+          for dx, dy in ((-0.25, 1.96), (-0.25, 2.75), (-1.79, 2.75), (-1.79, 3.75))])
+        for k, (_u, xd, _trio, _di) in enumerate(drivers)]
     if panel == HARNESS:
         # ...and the socket's ground way, which is the whole instrument's fret-light return
         _trk, _via = BC.xh_ground_via(*place["J1"][:2])
@@ -1047,7 +1068,7 @@ def build(panel):
             {"net": "+14V5", "from": "L1.2", "to": [r + ".1" for r in rail_j],
              "amps": round(i_all, 3)},
             {"net": "+14V5", "from": "L1.2",
-             "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": I_VCC},
+             "to": ["U%d.13" % (k + 1) for k in range(n_drv)], "amps": I_VCC},
         ]
         pin = {"S4B-XH-SM4-TB": "JST XH S4B-XH-SM4-TB drawing for pin 1; the way order is "
                                 "J_PINS in _supply(), the Pi cap's end to match",
@@ -1088,7 +1109,7 @@ def build(panel):
         # the rail arrives on a pogo land that is stitched straight to the plane; what
         # leaves the plane by a track is a driver's logic supply
         paths = [{"net": "+14V5", "from": rail_j[0] + ".1",
-                  "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": I_VCC}]
+                  "to": ["U%d.13" % (k + 1) for k in range(n_drv)], "amps": I_VCC}]
         pin, waive = {}, {}
     notes["quality"] = {
         "power_paths": paths,
@@ -1096,8 +1117,8 @@ def build(panel):
             "XL-5050RGBW": "XINGLIGHT XL-5050RGBW datasheet, package drawing: pads 1-4 the "
                            "four anodes, 5-8 their cathodes; Steel:XINGLIGHT_XL-5050RGBW "
                            "is drawn from it",
-            "TLC59711PWPR": "TI TLC59711 datasheet, Terminal Functions table, PWP "
-                            "(HTSSOP-20) column, top view",
+            "TLC5971RGER": "TI TLC5971 datasheet SBVS146D, Pin Functions table, RGE "
+                           "(VQFN-24) column",
         }, **pin),
         "waive": waive,
         "manual": _manual(panel, n_drv, len(zs), MEASURED[panel]),

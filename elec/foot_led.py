@@ -59,7 +59,8 @@ P = Pin.types.PASSIVE
 
 # ── the parts: every one is already bought for another board ────────────────────
 LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
-DRV_FP = "Package_SO:HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm"
+DRV_FP = "Package_DFN_QFN:Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm"
+DRV_ROT = 90.0
 BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
 IND_FP = BC.L1_FP                    # with its reason, in buck_cell
 R_FP = "Resistor_SMD:R_0402_1005Metric"
@@ -149,7 +150,7 @@ BOARD_W = FL.BOARD_W                        # 17.20
 # is one row, below, so the middle zone -- whose four returns arrive in the package's own
 # shadow with nowhere to go round -- wants the bottom pins, and the +-X zones can take
 # the tops because they arrive from the sides and can climb on the way in.
-ZONE_OUTS = {-1: (3, 4, 5, 6), 0: (7, 8, 13, 14), 1: (15, 16, 17, 18)}
+ZONE_OUTS = {-1: (19, 20, 21, 22), 0: (23, 24, 7, 8), 1: (9, 10, 11, 12)}
 
 # ── THE DRIVER'S HEAT PAD: SEVEN VIAS, NOT ONE (manual quality pass M25, 2026-10-05) ────
 # The stitcher gives an exposed pad one via at its centre, which is a ground connection
@@ -161,7 +162,7 @@ ZONE_OUTS = {-1: (3, 4, 5, 6), 0: (7, 8, 13, 14), 1: (15, 16, 17, 18)}
 # middle 3.43 is opened and pasted; the two ends are mask over copper. Vias there cost no
 # paste, where each one inside the opening would drink a tenth of what is printed. Three
 # across each end, on TI's own 1.3 mm pitch: with the centre one about 30 C/W to the plane.
-DRV_PAD_VIAS = tuple((dx, dy) for dy in (-2.60, +2.60) for dx in (-1.30, 0.0, +1.30))
+DRV_PAD_VIAS = ((-1.10, 0.0), (+1.10, 0.0), (0.0, -1.10), (0.0, +1.10))
 
 # ── THE BUCK'S CELL: where each of its parts stands, measured from U10 ────────────────
 # ⚠ THE OPTICAL BOARD'S U13 CELL, WHICH WAS MEASURED AGAINST TI'S LAYOUT EXAMPLE on a
@@ -688,21 +689,23 @@ def build(board, passes=20):
         xd = sum(xs[i] for i in mid) / len(mid)   # the middle zone's centre
         # (no clamp against the supply row any more: it is in the middle, and the
         # drivers are what it has to stay clear of rather than the other way round)
-        u = Part(name="TLC59711", ref_prefix="U", ref="U%d" % (k + 1),
-                 tag="U%d" % (k + 1), dest="NETLIST", tool="skidl", value="TLC59711PWPR",
-                 description="12-ch 16-bit constant-current LED driver (LCSC C116842)",
-                 footprint=DRV_FP, pins=[Pin(num=n, func=P) for n in range(1, 22)])
+        u = Part(name="TLC5971", ref_prefix="U", ref="U%d" % (k + 1),
+                 tag="U%d" % (k + 1), dest="NETLIST", tool="skidl", value="TLC5971RGER",
+                 description="12-ch 16-bit constant-current LED driver (LCSC C543004)",
+                 footprint=DRV_FP, pins=[Pin(num=n, func=P) for n in range(1, 26)])
         iref, vreg = Net("IREF%d" % (k + 1)), Net("VREG%d" % (k + 1))
-        u[1] += iref
-        gnd += u[2], u[21]
-        vrail += u[19]
-        vreg += u[20]
-        sdt += u[9]
-        sck += u[10]
+        u[16] += iref
+        gnd += u[18], u[25]
+        vrail += u[13]
+        vreg += u[15]
+        sdt += u[1]
+        sck += u[2]
+        for n in (3, 4, 14, 17):          # no internal connection (SBVS146D, pin functions)
+            Net("U%d_P%d_NC" % (k + 1, n)).connect(u[n])
         sck, sdt = ((Net("SCK_%d" % (k + 1)), Net("SDT_%d" % (k + 1)))
                     if k < n_drv - 1 else (sck_out, sdt_out))
-        sck += u[11]
-        sdt += u[12]
+        sck += u[5]
+        sdt += u[6]
         r = _r("R%d" % (k + 1), R_IREF, "U%d IREF -- 15.0 mA per channel" % (k + 1))
         iref += r[1]
         gnd += r[2]
@@ -717,7 +720,7 @@ def build(board, passes=20):
                 C08_FP)
         vrail += cb[1]
         gnd += cb[2]
-        place["U%d" % (k + 1)] = (xd, LANE_Y, 0.0)
+        place["U%d" % (k + 1)] = (xd, LANE_Y, DRV_ROT)
         fps["U%d" % (k + 1)] = DRV_FP
         # THE DRIVER'S FOUR PASSIVES STAND IN A ROW ABOVE IT, on the side away from the
         # LEDs, in the order of the pins they serve: IREF is pin 1 and VCC / VREG are 19
@@ -729,12 +732,16 @@ def build(board, passes=20):
         # outboard column escapes by, and its outer zones' returns stopped routing --
         # two nets, then six when the row was only lifted 2 mm and sat on the pins.
         # Above the package nothing has to pass.
-        row = (("R%d" % (k + 1), R_FP), ("C%d" % (20 + k + 1), C08_FP),
-               ("C%d" % (10 + k + 1), C_FP), ("C%d" % (k + 1), C_FP))
+        row = (("C%d" % (20 + k + 1), C08_FP), ("R%d" % (k + 1), R_FP),
+               ("C%d" % (k + 1), C_FP), ("C%d" % (10 + k + 1), C_FP))
         gap = 0.45
-        span = sum(fp_box(fp)[0] for _r, fp in row) + gap * (len(row) - 1)
         row_y = LANE_Y + fp_box(DRV_FP)[1] / 2.0 + gap + fp_box(C08_FP)[1] / 2.0
-        prow = Row(place, fps, xd - span / 2.0, gap=gap, dirn=1.0, y=row_y)
+        # the VREG capacitor stands over VREG (pin 15, +0.25 of the package centre), with
+        # IREF's resistor and VCC's capacitor either side of it over theirs; the bulk
+        # capacitor serves the strings through the planes and takes the end
+        x0 = (xd + 0.25 - fp_box(C_FP)[0] / 2.0 - gap - fp_box(R_FP)[0] - gap
+              - fp_box(C08_FP)[0])
+        prow = Row(place, fps, x0, gap=gap, dirn=1.0, y=row_y)
         for ref, fp in row:
             prow.add(ref, fp)
 
@@ -863,14 +870,14 @@ def build(board, passes=20):
             # the stretch that matters is L1's own exit onto the plane, all of the rail
             # leaves there, and every one of these paths starts with it.
             {"net": "+11V5", "from": "L1.2",
-             "to": ["U%d.19" % (k + 1) for k in range(n_drv)], "amps": round(i_rail, 3)},
+             "to": ["U%d.13" % (k + 1) for k in range(n_drv)], "amps": round(i_rail, 3)},
         ],
         "pinouts": {
             "XL-5050RGBW": "XINGLIGHT XL-5050RGBW datasheet, package drawing: pads 1-4 the "
                            "four anodes, 5-8 their cathodes; Steel:XINGLIGHT_XL-5050RGBW "
                            "is drawn from it",
-            "TLC59711PWPR": "TI TLC59711 datasheet, Terminal Functions table, PWP "
-                            "(HTSSOP-20) column, top view",
+            "TLC5971RGER": "TI TLC5971 datasheet SBVS146D, Pin Functions table, RGE "
+                           "(VQFN-24) column",
             BC.U_VALUE: "TI LMR33630 datasheet SNVSAN3F, Table 6-1, VQFN (RNX) column",
         },
         "waive": waive,
