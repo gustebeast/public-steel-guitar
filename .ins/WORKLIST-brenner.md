@@ -251,14 +251,14 @@ board). Declare it in the generator and re-route.
 ⚠ `finish.py --keep-route` keeps the board file's old part VALUES; the BOM is built from
 the .net so the package is right, but sync the board (scratch /tmp/setval.py) or re-lay.
 
-STATE (2026-10-05 night) -- target on every board: 0 FAIL, 1 OPEN (M12, order day)
-- ui_board: signed, 0 FAIL / 1 OPEN. Pending: one re-layout to move J1's designator off
-  R3's, then fab.py and the independent render again.
-- foot_led_a / foot_led_b: signed (elec/foot_led.py `_manual`), were 0 FAIL / 1 OPEN and
-  packaged; re-routing once more for the supply-land vias. After the route: re-measure
-  (M13's figures), finish, fab.py, render + drill overlay, update M37's hole counts.
-- fret_led_key / fret_led_mid: sign-off written (elec/fret_led.py `_manual`) with
-  `MEASURED` placeholders (@...@) to fill from the final route; then as the foot boards.
+STATE (2026-10-05, late) -- DONE: every board 0 FAIL, 1 OPEN (M12, order day)
+- ui_board, foot_led_a, foot_led_b, fret_led_key, fret_led_mid: routed (0 unconnected,
+  0 DRC), signed, CAD fit check clean, packaged in elec/out/fab/<board>.zip, gerbers
+  rendered outside KiCad and the drill file laid over the copper (plated holes 72, 262,
+  255, 344, 625: all on copper on both outer layers).
+- The pre-split single `foot_led` package is in elec/out/fab/_stale/ (not orderable).
+- Re-routing any board means: re-measure, update the figures in its `_manual` /
+  `MEASURED`, finish --keep-route, fab.py, render again.
 
 WHAT THE PASS CHANGED (all in the generators, with the reason at each)
 - LED Vf is 3.0-3.4 V (XINGLIGHT p.4), not 3.2 max: foot rail 11.0 -> 11.50 V, fret rail
@@ -290,7 +290,7 @@ NEEDS USER -- the one item left open on every board is M12, and only these parts
      ui_board   J1 90 -> 0, J2 180 -> 90, SW1 0 -> 0, SW2 0 -> 0 (or 180: only the
                 button's sense inverts, and JP1 on the output board picks the throw)
      foot_led   U1-U4 0 -> 270, U10 0 -> 270, J1 270 -> 270, every LED unchanged
-     fret_led   U1-Un 0 -> 270, U10 (re-run rot.py after the last route), J1 270 -> 270,
+     fret_led   U1-Un 0 -> 270, U10 (key) 270 -> 180, J1 270 -> 270,
                 every LED unchanged
    ⚠ THE SEAM POGO PINS (J11-J14, J21-J24) CANNOT BE PRE-CHECKED: one pad, so only the
    picture shows which way the barrel points. Each must point OFF its board's end.

@@ -721,8 +721,8 @@ def _manual(panel, n_drv, n_zone, facts):
                "own sheet (pinouts, above), and each placed footprint was compared pad "
                "for pad with the fab's library footprint for that LCSC code: "
                "TLC59711PWPR C116842, XL-5050RGBW C7371891" + (
-               ", the RNX0012 land of LMR33630CRNXR C2071783 (the B part is the same "
-               "package), S4B-XH-SM4-TB C161861" if key else "") + " -- all match under "
+               ", LMR33630BRNXR C2071384 (and the alternate C part's, C2071783: the "
+               "same frame), S4B-XH-SM4-TB C161861" if key else "") + " -- all match under "
                "a pure rotation",
         "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
                "table, read 2026-10-04 (A12 measured against it). 211 x 70.4 mm plus "
