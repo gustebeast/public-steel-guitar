@@ -747,6 +747,53 @@ BOARD_NOTES = {
             {"net": "+3V3", "from": "U1.5", "to": ["U3.17", "U3.5", "U2.3", "U4.13"],
              "amps": 0.08},
         ],
+        # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
+        # repeated structure is on. The pass fails on any difference from the routed board.
+        "unconnected": {
+            "J1.MP": "JST reinforcement tab: soldered, on no net",
+            "U1.4": "the maker's NC pin",
+            "U2.5": "SN65HVD230 Vref output: nothing here uses the reference",
+            "U3": {
+                "pins": "6 7 8 9 10 11 12 13 14 15 18 23 24 25",
+                "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
+            },
+            "U4": {
+                "pins": "1 2 3 4 5 9 10 11 12 15",
+                "why": "MT6701: the ABZ / UVW / analog / PWM outputs and its NC pins; the angle is read over I2C only"
+            }
+        },
+        "net_groups": [
+            {
+                "name": "bus B in and out are the same four ways",
+                "pins": [
+                    "J1.[1-8]"
+                ],
+                "nets": 4,
+                "each": 2
+            },
+            {
+                "name": "one CAN transceiver: TX and RX each reach the MCU",
+                "nets_like": "CAN_(TX|RX)",
+                "count": 2,
+                "pads": 2
+            },
+            {
+                "name": "the transceiver's bus pins",
+                "pins": [
+                    "U2.[67]"
+                ],
+                "nets": 2,
+                "each": 1
+            },
+            {
+                "name": "one angle sensor: its three interface pins",
+                "pins": [
+                    "U4.[678]"
+                ],
+                "nets": 3,
+                "each": 1
+            }
+        ],
         "pinouts": {
             "S8B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
                              "the board below, No. 1 circuit is on the left. KiCad "
