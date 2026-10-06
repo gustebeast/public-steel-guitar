@@ -1,4 +1,11 @@
-# pi_cap → UI board: the 14-way ribbon
+# pi_cap → UI board: the ribbon
+
+> **As built (2026-10-04): a 16-way ribbon.** Both ends are the right-angle 1.27 mm 2×8
+> pin header `PZ1.27-2x8P`, LCSC **C22438114** (`pi_cap` J5, `ui_board` J2), joined by a
+> straight 16-way IDC lead. Ways 1 to 14 are the order this document arrives at; ways 15
+> and 16 carry the power button's two throws. The way order is `elec/harness.UI_RIBBON`.
+> Everything below is the record of how the 14-way version was decided, kept for its
+> reasoning: where it says 2×7, 14 ways or C22438113 / C22438122, read the line above.
 
 **Answer to brenner's request, 2026-09-28.** Measured on `agent/bronner`.
 
@@ -214,8 +221,9 @@ pi_cap F 0 / B 11. Every board single-sided.
 The user's ruling: both ends of this cable are our own boards, so pick one connector that is
 in stock and use it twice. What is built now:
 
-* **Connector, both ends:** right-angle 1.27 mm 2×7 pin header, LCSC **C22438113**
-  (`PinHeader_2x07_P1.27mm_Horizontal`). The UI board's 2.54 mm IDC header is gone. It is
+* **Connector, both ends:** right-angle 1.27 mm 2×8 pin header, LCSC **C22438114**
+  (`PinHeader_2x08_P1.27mm_Horizontal`; a 2×7, C22438113, until the power button's two
+  throws were added on 2026-10-04). The UI board's 2.54 mm IDC header is gone. It is
   unshrouded; pin 1 is marked in silk and `INSTALL_NOTES.md` says to check the stripe.
 * **Way order:** `elec/harness.UI_RIBBON`, asserted by both `pi_cap.py` and `ui_board.py`.
   It is the UI board's original order, NOT the table above: the cap's order would not

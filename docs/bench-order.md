@@ -73,19 +73,20 @@ A CAN bus wants 120 ohm at each end: 60 ohm between CAN_H and CAN_L with the pow
 
 | End | Terminator | How it is switched in |
 |---|---|---|
-| `motor_ctrl` | R5 | JP1, a solder bridge, made open |
+| `motor_ctrl` | R5 | always in: wired straight across the pair |
 | the last tee | R1 | JP1, a solder bridge, made open |
 | the motor | its own 120 ohm | a push-on jumper beside the CAN terminals (manual section 1.1: "JUMPER ON = CAN 120") |
 
-With one motor the tee is the last tee, so the designed answer is both JP1s bridged and
-the motor's jumper OFF.
+`motor_ctrl` terminates its end with nothing to do. For the far end, with one motor, there
+are two ways and they are alternatives:
 
-**Both JP1s are solder bridges, so closing them is a touch of hand solder**, which the
-project otherwise avoids. The solder-free bench arrangement is the motor's own jumper ON
-and both JP1s left open: one terminator, 120 ohm across the pair. Makerbase's manual says a
-single motor needs no terminator at all, so one on a lead this short is on the safe side
-of that. Three terminators (40 ohm) is the arrangement to avoid: do not fit the motor's
-jumper as well as both JP1s.
+* **the motor's own jumper ON, the tee's JP1 left open** -- no solder. This is the bench
+  arrangement.
+* the tee's JP1 bridged with solder and the motor's jumper OFF -- what a full instrument
+  does on its last tee.
+
+Do not do both: three terminators load the pair to 40 ohm. Either way the meter reads
+60 ohm between CAN_H and CAN_L with the power off.
 
 ## Stock on the day (read 2026-10-06, JLCPCB parts API)
 

@@ -1011,21 +1011,6 @@
    ]
   },
   {
-   "ref": "JP1",
-   "fpid": "SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
-   "x": 20.6,
-   "y": 13.0,
-   "pads_xy": [
-    20.6,
-    13.0
-   ],
-   "rot": 90.0,
-   "side": "F",
-   "fab": null,
-   "crtyd": null,
-   "tht": null
-  },
-  {
    "ref": "L1",
    "fpid": "L_Taiyo-Yuden_NR-30xx",
    "x": 11.8,
@@ -1904,20 +1889,6 @@
     5.535,
     -5.848,
     -4.152
-   ]
-  },
-  {
-   "text": "TERM",
-   "side": "F",
-   "x": 22.85,
-   "y": 13.25,
-   "size": 1.0,
-   "angle": 90.0,
-   "box": [
-    22.002,
-    23.698,
-    11.22,
-    15.28
    ]
   }
  ]
