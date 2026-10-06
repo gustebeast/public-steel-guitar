@@ -300,14 +300,31 @@ Read against the makers' sheets and the routed boards (cadkit/PCB_QUALITY.md, M1
 5. **Values carry their ratings and the fuses are part numbers**: board A JFC1206-1200FS
    (2 A, it carries both boards), board B JFC1206-1100FS (1 A).
 6. **Three labelled test pads** by the buck on each board: +24V, +11V5, GND.
-7. **The inductor is SWPA5040S3R3NT** (C305173; 3.3 uH, 5 x 5 x 4 mm), not the 4 x 4
+7. **The regulator is the 1.4 MHz LMR33630BRNXR** (C2071384), not the 2.1 MHz
+   LMR33630CRNXR, on the same land. Read off TI's 24 V curves for this package the 2.1 MHz
+   part loses 1.2 W at 0.7 A and 1.45 W at 1.4 A, about 0.75 W of it at any load, and it
+   has no thermal pad. The 1.4 MHz part loses 0.9 W and 1.1 W. JLCPCB held only 260 of
+   it on 2026-10-05: the C part is the named alternate, same land, no other change, and
+   then full white has to be capped in firmware.
+8. **The inductor is SWPA5040S4R7MT** (C48496; 4.7 uH, 5 x 5 x 4 mm), not the 4 x 4
    SWPA4030S4R7MT. The old part saturates at 2.90 A guaranteed (3.20 typical) and TI
    require an inductor that does not saturate below the regulator's low-side limit,
-   3.5 A typical. The new one is 3.95 A guaranteed at less than half the resistance, and
-   3.3 uH is TI's own table value for 12 V out at 2.1 MHz.
-8. **1 k in series with SCK and SDT at the cable socket** (R21, R22). A Pi that is up
+   3.5 A typical. The new one is 3.50 A guaranteed, 3.90 typical, at half the
+   resistance, and 4.7 uH is TI's table value for 12 V out at 1.4 MHz.
+9. **1 k in series with SCK and SDT at the cable socket** (R21, R22). A Pi that is up
    while this board is dark -- a fuse open, the 24 V lead off, a Pi on USB power on the
    bench -- would otherwise power the first driver's logic through its input protection
    diodes. 1 k holds that to 2.7 mA.
-9. **The regulator's VCC capacitor stands at its pin**, with its ground pad on the track
+10. **The regulator's VCC capacitor stands at its pin**, with its ground pad on the track
    from the pin beside it; it was reached through two vias.
+11. **No supply enters a plane through one via**: three in each seam land that carries
+   the rail or its return, and a second at the socket's ground way.
+
+**Junction temperatures at full white, 45 C inside the chassis** (estimates: the thermal
+resistance is TI's 23.5 C/W junction-to-board plus this board's copper, about 60 C/W in
+all; TI's own figure for the package on four heavier layers is 50 to 63):
+
+| | loss | junction | limit |
+|---|--:|--:|--:|
+| LMR33630B, 0.72 A rail | 0.9 W | 99 C | 125 C operating, 165 C shutdown |
+| TLC59711, twelve channels | 0.57 to 0.75 W | 84 to 96 C | 150 C |

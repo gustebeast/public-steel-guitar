@@ -545,6 +545,302 @@ def _arrival(place, fps, gnd, vrail, bay_x0, cx):
         fps[ref] = fp
 
 
+
+def _manual(panel, n_drv, n_zone, facts):
+    """The manual quality items (cadkit/PCB_QUALITY.md), signed 2026-10-05 against the
+    routed boards and the makers' sheets. M12 is left open on purpose: what remains of
+    it can only be done on the day of the order (.ins/WORKLIST-brenner.md, NEEDS USER).
+    `facts` are the numbers measured after the last route (MEASURED, below)."""
+    key = panel == HARNESS
+    n_ch = 4 * n_zone
+    seam_y = "+14V5 at -9.05, GND -4.55, SCK 11.35, SDT 15.85"
+    m = {
+        "M1": ("two joints. J1 to the Pi cap's J3: a 4-way JST XH lead, straight through, "
+               "way n to way n -- 1 GND, 2 24 V, 3 SCK, 4 SDT at both ends "
+               "(harness.LED_DROP, asserted here and in pi_cap.py; this board's lands "
+               "read GND, +24V_IN, SCK_CABLE, SDT_CABLE on the routed board). XH is "
+               "shrouded and keyed. The seam, J11..J14 to the mid board's J11..J14: "
+               "spring pins tip to tip, both boards face up under one deck, so equal Y "
+               "is the same pin -- %s on BOTH routed boards. SCK_SEAM here is U3's SCKO "
+               "and is the mid board's U1 SCKI" % seam_y
+               if key else
+               "one joint, the seam: J11..J14 meet the keyhead board's J11..J14 tip to "
+               "tip, both boards face up under one deck, so equal Y is the same pin -- "
+               "%s on BOTH routed boards. SCK_SEAM is key's U3 SCKO and this board's U1 "
+               "SCKI. Each board is screwed to its own panel and the panels butt on "
+               "the deck's rails, which is what holds the pins in line; nothing else "
+               "plugs into this board" % seam_y),
+        "M2": "the only polarised parts are the LEDs. XINGLIGHT's drawing: pads 1 to 4 "
+              "are the four anodes, 5 to 8 their cathodes; the netlist takes the rail to "
+              "an anode and the cathode on to the next LED or the driver's sinking "
+              "output. The fab's own library footprint for C7371891 was compared with "
+              "ours pad for pad: identical at 0 degrees, so the reel's orientation is "
+              "the CPL's angle unchanged. No diode, electrolytic or tantalum",
+        "M3": "ground is a whole inner layer (In2) and the rail another (In1), each "
+              "broken only by via clearances and the two M4 keep-outs. "
+              + ("24 V arrives on a 0.30 mm track and returns through the ground plane "
+                 "to J1's ground land, which has a via in it and a second 0.8 mm past "
+                 "its toe. The rail leaves L1 on 1.0 mm of laid copper to both output "
+                 "capacitors, four vias down, and crosses to the mid board on J11 with "
+                 "three vias in the land; its return comes back on J12, three vias"
+                 if key else
+                 "The rail's 0.90 A arrives on J11 and returns on J12, each a 5.0 x 3.5 "
+                 "land with THREE vias to its plane (it was one, the stitcher's)") +
+              ". Each driver's ground is its pad's seven vias",
+        "M4": ("LMR33630 (SNVSAN3F 9.2.2.6 to 9.2.2.8). Input: 2 x 10 uF / 50 V 1206 on "
+               "24 V (asked: 10 uF, rated twice the input if possible) and 100 nF / 50 V "
+               "at each of the RNX package's two VIN/PGND pairs. Bootstrap 100 nF / 50 V "
+               "(asked 100 nF, 10 V). VCC 1 uF / 25 V (asked 1 uF, 16 V). Output: TI's "
+               "table for 12 V at 1.4 MHz is 4.7 uH and 4 x 10 uF; this rail has 2 x "
+               "10 uF at the inductor, 2 x 10 uF where it lands on the mid board and "
+               "eight 4.7 uF at the drivers, 77.6 uF by the markings, all 50 V parts at "
+               "29 % of their rating. TI's equation 6 for all 1.38 A arriving as one "
+               "step with a 2 % dip asks 6.1 uF. " if key else
+               "no regulator here: the rail is made on the keyhead board. Where it "
+               "lands, 2 x 10 uF / 50 V (C36, C37) and 100 nF stand beside the two "
+               "supply pins for the joint's own inductance. ") +
+              "Each driver: 1 uF on VREG (its sheet requires it), 100 nF on VCC and its "
+              "own 4.7 uF / 50 V for the 0.18 A its twelve channels switch together",
+        "M5": ("24 V bus: U10 36 V operating and 38 V absolute, capacitors 50 V, F1 "
+               "63 V. " if key else "") +
+              "The rail: 14.52 V, 14.0 to 15.0 with the 1.5 % reference and 1 % "
+              "resistors, on drivers rated 17 V (18 absolute) at VCC and at every "
+              "output, 50 V capacitors, and a spring pin whose catalogue line is 24 V. "
+              "Logic: SCK and SDT are 3.3 V into inputs rated VREG + 0.6 V, VREG 3.1 to "
+              "3.5 V" + ("; a live plug is M16, a dark board with live signals M18"
+                         if key else ""),
+        "M6": "no parallel bus and nothing matched. SCK and SDT are a 10 MHz-capable "
+              "pair that the Pi clocks far slower; each driver re-drives both (10 ns "
+              "edges) to the next, %s mm at the longest, which is %s ns of flight. They "
+              "run over the unbroken rail plane or, on the back, against the ground "
+              "plane" % (facts["hop_mm"], facts["hop_ns"]),
+        "M7": ("divider: 100k over 7k68 || 200k = 7.396k on the 1.000 V reference is "
+               "14.52 V. Inductor 4.7 uH: TI's table value at 1.4 MHz; their floor of "
+               "0.28 x Vout / fsw is 2.9 uH against 3.76 at the part's -20 %; ripple "
+               "0.87 A, 29 % of the 3 A they size it on. EN is tied to VIN on laid "
+               "copper (TI: may go straight to VIN, must not float); PG is an open "
+               "drain that 'can be left open when not used'. The RNX has no exposed "
+               "pad. " if key else "") +
+              "TLC59711: IREF 3k3 gives 41 x 1.21 V / 3.3k = 15.0 mA; its PowerPAD is "
+              "on GND",
+        "M8": "nothing here has a reset, boot or address pin. A TLC59711 powers up with "
+              "BLANK set, every output off, until a write that begins with command 25h. "
+              "Its two inputs are driven, "
+              + ("through R21 / R22, by Pi pins whose reset state is a pull-down (GPIO "
+                 "9 to 27); with the lead off the board has no supply either" if key else
+                 "by the keyhead board's last driver, which is on the same rail") +
+              ". IREF has its resistor to ground" + ("; the buck's EN is tied" if key else ""),
+        "M9": ("no MCU. Three bare 1.5 mm pads in the bay, each named in silk: +24V "
+               "(after the fuse), +14V5 and GND. SCK and SDT can be probed at R21 / "
+               "R22 and at the seam lands" if key else
+               "no MCU. The rail and ground are the seam lands J11 and J12, 5.0 x 3.5 "
+               "and named on the back; C36's pads are the same two nets from the "
+               "front. SCK and SDT are J13 and J14"),
+        "M10": ("decision: no TVS. J1 is inside the instrument, on a 4-way lead from the "
+                "Pi cap that is plugged with the instrument off. Over-current: F1, 2 A "
+                "fast, 63 V, ahead of everything. Reverse supply: the XH housing is "
+                "keyed and its two supply ways are the XH bus's own order. The two "
+                "signal ways have 1 k in series beside the socket (R21, R22), which is "
+                "what an ESD strike or a foreign lead meets before a driver's input. "
+                "The seam lands are only reachable with the panels apart and the "
+                "instrument off" if key else
+                "decision: no TVS and no fuse of its own. No cable reaches this board: "
+                "its four lands meet the keyhead board's spring pins under the deck, "
+                "and they can only be touched with the panels apart and the "
+                "instrument off. Its supply is the keyhead board's buck, which limits "
+                "at 3.85 to 5.05 A and hiccups into a short, behind that board's 2 A "
+                "fuse"),
+        "M11": "elec/cad_geom_check.py %s, 2026-10-05: every routed part is where the "
+               "CAD draws it and the cut-outs match. check_walls (this file): no part's "
+               "body under a wall of the light-cell comb. Two M4s through 4.5 mm "
+               "unplated holes with a keep-out on every layer, the button heads on the "
+               "back; the lip takes the -Y edge. %s"
+               % ("fret_led_" + panel,
+                  "J1's mouth is at the -X end, plugged last, before the endplate "
+                  "(INSTALL_NOTES). Tallest part: J1 at 5.75 mm, then the inductor at 4.0"
+                  if key else "Nothing is plugged into it"),
+        "M15": ("U10 is internally compensated for ceramic outputs and TI give no ESR "
+                "window, only the table's inductance and capacitance (M4). Capacitance "
+                "under bias is NOT read off a curve: every part is at 29 % of its "
+                "rating, and a tenth of the marked 77.6 uF still covers TI's equation "
+                "6. No linear regulator: the buck is at 61 % duty against a 98 % "
+                "maximum" if key else "no regulator on this board"),
+        "M16": ("J1 is plugged with the instrument off, and 24 V then arrives through "
+                "the output panel's switch at about 1.5 V/ms: no ring. Plugged live it "
+                "would be a lead of about 0.5 uH into about 11 uF of biased ceramic, "
+                "0.2 ohm characteristic, against 0.13 ohm in F1 alone (JDT's cold "
+                "resistance) plus the lead and four contacts: close to critically "
+                "damped, a few percent over 24 V. U10's 38 V is the lowest limit on "
+                "the net" if key else
+                "no cable. The rail arrives across the seam, which is made by sliding "
+                "the keyhead panel home with the instrument off; it then rises with "
+                "the buck's 4 ms soft start"),
+        "M18": ("decision, and two resistors. The Pi can be up while this board is "
+                "dark (F1 open, the motor board's lights fuse open, a Pi on USB power "
+                "on the bench), and a TLC59711 input is rated to VREG + 0.6 V with "
+                "VREG then 0. R21 and R22, 1 k at the socket, hold what the Pi can "
+                "push through the input's protection diode to 2.7 mA. Nothing here "
+                "drives back towards the Pi" if key else
+                "one supply: this board's drivers are fed by the same rail, over the "
+                "same joint, as the keyhead board's last driver that drives their "
+                "inputs. Neither can be up without the other"),
+        "M20": "no I2C and no CAN. SCK and SDT are terminated at their source: 68 ohm "
+               "in series at the Pi cap. On the board each hop is from a driver with "
+               "10 ns edges and a small fraction of the edge in flight (M6): lumped, "
+               "nothing to terminate",
+        "M21": "no ADC, DAC, codec or analog reference on the board",
+        "M22": "no op-amp or comparator on the board",
+        "M25": "TLC59711: the pad is on GND, as TI name it, solid, with seven vias (six "
+               "under the mask at the pad's ends, one in the pasted middle; TI draw "
+               "fifteen) and paste in four panes. At full white a driver burns 0.68 W "
+               "typical and 0.86 W worst (12 x 15 mA across the rail less four LEDs, "
+               "plus its own supply current); at TI's 68.6 C/W that is 47 to 59 C over "
+               "ambient, 104 C at 45 C against 150 C. " + (
+               "U10 has no pad: its heat leaves through the pins into the laid slabs, "
+               "a second ground band front and back, and nine more vias. Loss, off "
+               "TI's 24 V curve for this package at 1.4 MHz (figure 9-15) at 1.4 A: "
+               "1.1 W, all of it charged to the IC. Thermal resistance is an "
+               "ESTIMATE, 57 C/W: TI's 23.5 junction to board, then this board's "
+               "copper; their figure 9-4 gives 50 to 63 for the package on four "
+               "layers of heavier copper. 45 C ambient (under the deck, over the "
+               "motors) + 1.1 x 57 = 107 C against 125 C operating, 165 C shutdown. "
+               "That is every fret at full white, which the firmware's lights cap "
+               "does NOT prevent (this board alone at full is 0.93 A of the 1.07 A "
+               "cap). The 2.1 MHz part it had loses 1.45 W, 127 C: that is why it "
+               "was changed (elec/buck_cell.py)" if key else "No regulator and no "
+               "tab on this board"),
+        "M26": "one link, a daisy chain. Read off TI's pin table: 9 SDTI, 10 SCKI, "
+               "11 SCKO, 12 SDTO. " + ("SDT_IN and SCK_IN (from the cable through R22 "
+               "/ R21) reach U1 pins 9 and 10; each driver's 12 and 11 go to the next "
+               "one's 9 and 10; U3's leave as SDT_SEAM / SCK_SEAM on J14 / J13. At the "
+               "Pi the two are an SPI's MOSI and SCLK" if key else "SDT_SEAM and "
+               "SCK_SEAM (J14, J13) reach U1 pins 9 and 10; each driver's 12 and 11 "
+               "go to the next one's 9 and 10; U5's are the end of the chain"),
+        "M27": "no strap, reset or debug net on the board",
+        "M28": "no transistor or small regulator. Each IC's pin order is read from its "
+               "own sheet (pinouts, above), and each placed footprint was compared pad "
+               "for pad with the fab's library footprint for that LCSC code: "
+               "TLC59711PWPR C116842, XL-5050RGBW C7371891" + (
+               ", the RNX0012 land of LMR33630CRNXR C2071783 (the B part is the same "
+               "package), S4B-XH-SM4-TB C161861" if key else "") + " -- all match under "
+               "a pure rotation",
+        "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
+               "table, read 2026-10-04 (A12 measured against it). 211 x 70.4 mm plus "
+               "the ear is inside the size limits. Every 0402's plane-side pad reaches "
+               "its plane through a via beside the pad on a short track, as the other "
+               "pad has: no pad sits in a pour",
+        "M30": "JLCPCB's assembly page, read 2026-10-05: Economic PCBA takes "
+               "single-sided assembly on 2, 4 or 6 layers at 1.6 mm, a single board "
+               "from 10 x 10 to 470 x 500 mm, parts from 0402 and IC pitch from 0.4 mm; "
+               "Standard starts at 70 x 70, which this board (70.4 wide) also clears. "
+               "Finest pitch here " + ("0.5 mm (U10)" if key else "0.65 mm (the "
+               "drivers)") + ". Every part is in the assembly library; the extended "
+               "ones are the LED, the driver, the spring pin, the 4.7 uF / 50 V" + (
+               ", the buck, the inductor, the fuse, the socket and the 7k68" if key
+               else ""),
+        "M31": "'FRET LED %s r1' on the front. " % panel.upper() + (
+               "The three test pads are named (+24V, +14V5, GND). J1's four ways are "
+               "named on the back: 1 GND, 2 +24V_IN, 3 SCK_CABLE, 4 SDT_CABLE. "
+               if key else "") + "Each seam land is named on the back with its net. "
+               "All text 1.0 mm or more with a 0.15 stroke (A12). Pin-1 and LED "
+               "polarity marks are the footprints', outside the bodies. The legend is "
+               "cut back from every mask opening: the gerber carries the pads in "
+               "clear polarity",
+        "M32": ("J1: lands 2.50 mm apart measured on the footprint, which is XH (PH is "
+                "2.00); 3 A a contact against 0.93 A; pad 1 per JST's drawing. " if key
+                else "") + "The spring pins are not a pitch series: single lands, 12 A "
+               "each against 0.90 A on the rail pin and on the ground pin",
+        "M33": ("the rail, both boards: 92 channels x 15 mA = 1.38 A, plus eight "
+                "drivers at no more than 18 mA (TI's maximum at twice this current "
+                "setting), 1.52 A of a 3 A regulator: 51 %. 1.38 A is what is declared "
+                "on +14V5. The 24 V side at 90 %: 0.93 A, through J1's 3 A contact and "
+                "the 2 A fuse" if key else
+                "this board's share of the keyhead board's rail: %d channels x 15 mA "
+                "= %.2f A, plus five drivers at no more than 18 mA. It arrives on one "
+                "12 A spring pin and returns on another; the regulator's budget is "
+                "the keyhead board's M33 (51 %% of 3 A for both boards)"
+                % (n_ch, n_ch * 0.015)),
+        "M34": "SCK and SDT: a 3.3 V output into an input that wants 0.7 x VREG, "
+               "2.45 V at VREG's 3.5 V maximum, with 0.2 x VREG of hysteresis -- the "
+               "Pi's at the head of the chain, a VREG-level output between drivers. "
+               "The protocol has no chip select and no enable" + (
+               ". U10's EN is active high, 1.23 V threshold, tied to VIN as its sheet "
+               "allows" if key else ""),
+        "M35": "TI's product pages for TLC59711" + (" and LMR33630" if key else "") +
+               ", read 2026-10-05: active, no errata document listed",
+        "M36": ("the rail is offered to the mid board at the seam. It is U10's output: "
+                "limited at 3.85 to 5.05 A, hiccup into a short, and behind F1 (2 A) "
+                "on the 24 V side. 24 V itself does not leave the board" if key else
+                "no supply leaves this board"),
+        "M38": ("decision, stated at the cell: the four 1206s lie along the board's "
+                "length, within 10 mm of its -X end, on a 211 x 70 board held by two "
+                "M4s and a lip -- not a strip that bends. The 0805s are in the "
+                "drivers' rows, 20 mm and more from any edge. " if key else
+                "C36 and C37 (1206) are 3.3 mm from the seam edge and lie along the "
+                "board's length; the board is 211 x 70, held by two M4s and a lip, and "
+                "is ordered as a routed single with no V-score or tab. The 0805s are "
+                "20 mm and more from any edge. ") +
+               "Both M4 holes are unplated and isolated, with no copper under the "
+               "button head. " + ("J1's plug goes on from the open -X end; the test "
+               "pads are 1.5 mm, 9 mm apart" if key else "Nothing is plugged in"),
+        "M39": "no unused input. " + ("Four of the 36 outputs are unused (eight zones "
+               "of four on three drivers): constant-current sinks, left open, which "
+               "need no load. U10's PG is an open drain left open, as its sheet "
+               "allows" if key else "All 60 outputs are used. U5's SCKO and SDTO are "
+               "the end of the chain: push-pull outputs, left open"),
+        "M40": "3k3" + (", 7k68 (an E96 value), 100k, 200k, 1k" if key else "") +
+               ", 100 nF, 1 uF, 4.7 uF and 10 uF are stock values, and every "
+               "capacitor's voltage is in its value. Do-not-substitute parts say so "
+               "where they are defined: " + ("L1 and U10 (elec/buck_cell.py: "
+               "saturation, and heat), F1 (a part number: speed and 63 V), " if key
+               else "") + "the 4.7 uF, which must be the 50 V part on this rail, and "
+               "the LED, whose 3.0 to 3.4 V sets the rail",
+        "M42": "JLCPCB stock on 2026-10-05: LED 40,185, driver 3,826, spring pin 594, "
+               "4.7 uF / 50 V 343 k" + (", buck LMR33630BRNXR 260 (THIN: the "
+               "alternate is the 2.1 MHz LMR33630CRNXR, 3,453, on the same land with "
+               "no other change, and then full white is capped in firmware -- "
+               "elec/buck_cell.py), inductor C48496 8,632, fuse 11 k, socket 20,309" if
+               key else "") + "; the other passives are basic parts. TI parts active. "
+               "Single-maker parts: the spring pin (Xinyangze, no second source on "
+               "this land: the thin one, eight a pair of boards) and the LED (other "
+               "5050 RGBW parts exist but their pad order must be read first)",
+    }
+    if key:
+        m["M13"] = ("measured on the routed board, pad edge to pad edge, against TI's RNX "
+                    "layout: C32 and C35 %s mm from VIN and from PGND at their own pair, "
+                    "on the part's layer, on laid copper with no via in either loop; the "
+                    "bulk pair on the same slabs. The switch node is a laid 0.5 mm "
+                    "track, %s mm from the pin to the inductor's land, no via, no pour. "
+                    "The feedback parts are on the opposite side of the package from "
+                    "it: R11 %s mm and R10 %s mm from FB, R12 on R11, none of it under "
+                    "the inductor. Bootstrap %s mm from BOOT. VCC's capacitor %s mm "
+                    "from its pin, its ground pad on the track from AGND"
+                    % (facts["cin"], facts["sw"], facts["r11"], facts["r10"],
+                       facts["boot"], facts["vcc"]))
+        m["M14"] = ("L1 SWPA5040S4R7MT, 4.7 uH +-20 %. Ripple 14.52 x (1 - 14.52/24) / "
+                    "(4.7 uH x 1.4 MHz) = 0.87 A, so the peak at both boards' 1.38 A is "
+                    "1.82 A. Saturation (Sunlord: 30 % inductance drop, 20 C) 3.50 A "
+                    "guaranteed, 3.90 typical; heating current 3.0 A. TI: saturation "
+                    "'must not be less than the device low-side current limit', 3.5 A "
+                    "typical (2.9 to 4.1) -- met at the guarantee, with nothing over. "
+                    "The high-side limit is 4.5 A typical, above this part: accepted. "
+                    "A dead short on the rail pulls FB under 0.4 V and the part "
+                    "hiccups at 94 ms. The 4 x 4 part this replaced saturated at 2.90 A")
+        m["M37"] = facts["m37"]
+    else:
+        m["M37"] = facts["m37"]
+    return {k: v for k, v in m.items() if v}
+
+
+# What was measured on the routed boards after the last route (scratch scripts in the
+# session; the figures are re-read whenever a board is re-routed).
+MEASURED = {
+    "key": {"hop_mm": "@KEY_HOP@", "hop_ns": "@KEY_NS@", "cin": "@CIN@", "sw": "@SW@",
+            "r11": "@R11@", "r10": "@R10@", "boot": "@BOOT@", "vcc": "@VCC@",
+            "m37": "@KEY_M37@"},
+    "mid": {"hop_mm": "@MID_HOP@", "hop_ns": "@MID_NS@", "m37": "@MID_M37@"},
+}
+
 def build(panel):
     """One board: its netlist and its board.json."""
     name = FL.BOARD_NAME[panel]
@@ -778,6 +1074,7 @@ def build(panel):
                             "(HTSSOP-20) column, top view",
         }, **pin),
         "waive": waive,
+        "manual": _manual(panel, n_drv, len(zs), MEASURED[panel]),
     }
     notes["world_x"] = [round(x0, 3), round(x1, 3)]
     notes["board_frame"] = {"cx": round(cx, 4), "z_bot": FL.BOARD_BOT}
