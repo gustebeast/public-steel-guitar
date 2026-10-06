@@ -1130,7 +1130,7 @@ def output_panel():
     u10 = Part(name="MCP4261-103E_ST", ref_prefix="U", ref="U10", tag="U10",
                dest="NETLIST", tool="skidl", value="MCP4261-103E/ST",
                description="dual 10k SPI digital pot -- the OUTPUT GAIN, analog so it "
-               "works in the direct mode too (LCSC C132173)",
+               "works in the direct mode too (LCSC C185580)",
                footprint="Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
                pins=[Pin(num=n, func=P) for n in range(1, 15)])
     pot_cs += u10[1]

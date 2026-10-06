@@ -110,7 +110,6 @@ def _xh(tag, desc):
 # board's connectors are top-entry and mid-board (J1 is), it already had the 4-way vertical
 # PH here, and the side-entry part needs a board EDGE with its mouth off it. Placed at J2's
 # existing site the side-entry body took C10's stitching-via room and layout refused it.
-PH_FP = "Connector_JST:JST_PH_B8B-PH-K_1x08_P2.00mm_Vertical"
 # ⚠ AND THE 4-WAY SIDE-ENTRY PAIR THAT REPLACED IT (user, 2026-09-25). See _ph4.
 PH4_FP = "Connector_JST:JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal"
 
@@ -143,18 +142,6 @@ def _ph4(tag, desc):
                 value="S4B-PH-SM4-TB", description=desc, footprint=PH4_FP,
                 pins=[Pin(num=i + 1, name=n, func=P)
                       for i, n in enumerate(harness.PH_PINOUT)])
-
-
-def _ph(tag, desc):
-    """The LEVER bus's TRUNK connector: JST PH, 8-way, vertical top entry. Same pin ORDER as
-    the XH buses (GND / +V / CAN_H / CAN_L, harness.PH_PINOUT) so one crimp order serves
-    the whole harness, but a different FAMILY, so a lever harness cannot mate a 24 V XH
-    header and vice versa -- and way 2 is +5 V here, which is why bus B has its own
-    pinout name rather than borrowing the 24 V one."""
-    return Part(name="B8B-PH-K-S", ref_prefix="J", tag=tag, ref=tag, dest="NETLIST",
-                tool="skidl", value="B8B-PH-K-S", description=desc, footprint=PH_FP,
-                pins=[Pin(num=i + 1, name=n, func=P)
-                      for i, n in enumerate(harness.ph_trunk_pins())])
 
 
 def _xcvr(tag, desc):
@@ -832,7 +819,6 @@ def motor_ctrl():
     r18 = _r("R18", "10k", "+5V sense divider, top")
     r19 = _r("R19", "10k", "+5V sense divider, bottom")
     v5 += r18[1]; sense5 += r18[2], r19[1], u1["PA4"]; gnd += r19[2]
-
 
 
 # ── the board ────────────────────────────────────────────────────────────────
