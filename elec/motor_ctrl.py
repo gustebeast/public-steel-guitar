@@ -357,15 +357,11 @@ def motor_ctrl():
     # ends -- the +X-end lever board and the far-end pedal board, on the JP1 + R4 each
     # lever/pedal board already carries, so exactly two jumpers are closed in the
     # instrument and every board in between stays open.
-    # Bus A is unchanged: this board IS its end, the last motor tee is the other.
-    for tag, (ch, cl), jtag in (("R5", (a_h, a_l), "JP1"),):
-        rt = _r(tag, "120R", "CAN termination, 1%", "Resistor_SMD:R_0603_1608Metric")
-        jp = Part(name="SolderJumper_2_Open", ref_prefix="JP", tag=jtag, dest="NETLIST",
-                  tool="skidl", value="TERM", description="close at the bus end",
-                  footprint="Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
-                  pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
-        mid = Net("TERM_%s" % tag)
-        ch += rt[1]; mid += rt[2], jp[1]; cl += jp[2]
+    # Bus A: this board IS one end of it in every build, so its 120 ohm is wired straight
+    # across the pair with nothing to close. The last motor tee is the other end.
+    rt = _r("R5", "120R", "CAN termination, bus A, 1%", "Resistor_SMD:R_0603_1608Metric")
+    a_h += rt[1]
+    a_l += rt[2]
 
     # BUS-PIN CLAMPS, two per pair. Separate BIDIRECTIONAL parts rather than a
     # 3-pin CAN array: a 2-pin bidirectional device is symmetric, so there is no
@@ -1045,8 +1041,8 @@ BOARD_NOTES = {
         # NEAREST of 9974 that a free-space search found -- 2.81 mm off U4's package
         # edge, and nothing on this board is closer. Searched, not guessed: three
         # hand-picked spots in a row landed on C3, then U2/U3, then J1. The alternative was spreading
-        # J2/J6 apart in y to open the gap, and that swallows C2 under J2 and JP1 under
-        # J6: the +X edge is full. So the crystal moves instead, to free board directly
+        # J2/J6 apart in y to open the gap, and that swallows C2 under J2: the +X edge
+        # is full. So the crystal moves instead, to free board directly
         # WEST of U4 -- still a short hop to the oscillator pins. ⚠ IF OSC_IN/OSC_OUT
         # COME BACK UNCONNECTED, THIS IS WHY (it happened once before, see the J4 note).
         "Y1": (11.20, -14.05, 0.0),
@@ -1056,7 +1052,6 @@ BOARD_NOTES = {
         "R3": (8.10, 7.70, 90.0),
         "R4": (14.60, 7.70, 90.0),
         "R5": (-3.60, 13.00, 90.0),      # R5 / D2 / D3 moved -3.20 to make room for J3's 6-way
-        "JP1": (20.60, 13.00, 90.0),
         "D2": (-3.60, -12.60, 90.0),
         "D3": (-3.60, -9.40, 90.0),
         "D4": (19.60, 6.50, 90.0),
@@ -1436,14 +1431,14 @@ BOARD_NOTES["quality"] = {
               "all labelled, on the front. 24 V and 5 V are probed on the through-hole "
               "pins of J3 and J5, and the board reports both itself (SENSE_24V, SENSE_5V, "
               "PG_5V, BUSB_FAULT_N) over USB",
-        "M11": "finish.py's CAD check: 73 of 73 routed parts present in the CAD, every "
-               "one where the CAD draws it. The lead's full build on main 45eeb5b8 "
-               "(2026-10-06) with this board's geometry: 1010 components, 0 unintended "
-               "overlaps, the rotating-part sweep clean -- the board, its parts at "
-               "their drawn heights, its mated plugs and its cables against the "
-               "plastic and the fasteners round it. No hole in this board: the M4 that "
-               "holds it sits beside its edge. Parts the fab cannot place: none (M30 "
-               "is the tier)",
+        "M11": "finish.py's CAD check: 73 of 73 routed parts present in the CAD, every one where "
+               "the CAD draws it. The lead's full build on main 45eeb5b8 (2026-10-06) with this "
+               "board's geometry: 1010 components, 0 unintended overlaps, the rotating-part sweep "
+               "clean -- the board, its parts at their drawn heights, its mated plugs and its "
+               "cables against the plastic and the fasteners round it. Since that build the bus A "
+               "jumper was removed (2026-10-06): copper only, no part of the CAD model moved, and "
+               "the scoped overlap gate was re-run clean. No hole in this board: the M4 that holds "
+               "it sits beside its edge. Parts the fab cannot place: none (M30 is the tier)",
         "M10": "bus A and bus B pins: D2-D5, bidirectional 5 V clamps 4 mm from J1 and "
                "1.3 mm from J6 (J2 shares J6's node, 15 mm of track away). USB: D6 / D7, "
                "0.5 pF, on the pair 5 mm from J4. 24 V in: D8; this board does not fuse "
@@ -1487,10 +1482,10 @@ BOARD_NOTES["quality"] = {
                "USB cannot be up while this board is down; every CAN node is on the same "
                "24 V. The two switch lines touch no pin here. A debug probe on the SWD "
                "pads is used with the board powered",
-        "M20": "bus A ends here: R5, 120 ohm 1 %, across the pair through JP1 (closed at "
-               "assembly -- INSTALL_NOTES); the other 120 is on the last motor tee. Bus B "
-               "passes through (J2 in, J6 out) and is NOT terminated here: its two fixed "
-               "120 ohm sit at the far ends. Stubs to U2 / U3 are under 25 mm",
+        "M20": "bus A ends here: R5, 120 ohm 1 %, wired straight across the pair, since this board "
+               "is an end of bus A in every build; the other 120 is on the last motor tee. Bus B "
+               "passes through (J2 in, J6 out) and is NOT terminated here: its two fixed 120 ohm "
+               "sit at the far ends. Stubs to U2 / U3 are under 25 mm",
         "M21": "the only converter is the MCU's ADC reading two dividers. VSSA and VSS "
                "join at the part on the In1 plane; VDDA has its own 100 nF. SENSE_24V "
                "leaves pin 8 on a declared escape and runs on an inner layer away from "
@@ -1528,9 +1523,9 @@ BOARD_NOTES["quality"] = {
                "the -1 latch-off), SN65HVD230DR C12084. WCH CH32V307WCU6 C5142795. "
                "Yajingxin TAXM8M4RFDCET2T C403948. JST B4B / B6B-XH-A, B4B / B6B-PH-K-S, S4B-PH-SM4-TB. "
                "Each pinout above is from that maker's sheet for that ordering code",
-        "M31": "name and revision on the front; every connector's way names on the back "
-               "beside its tails; the five SWD pads and JP1 (TERM) labelled on the "
-               "front. Pin-1 marks are the footprints', outside the bodies",
+        "M31": "name and revision on the front; every connector's way names on the back beside its "
+               "tails; the five SWD pads labelled on the front. Pin-1 marks are the footprints', "
+               "outside the bodies",
         "M34": "U5 EN is active high (on above 1.23 V); U6 EN active high, tied to IN; "
                "U1 SHDN is active low and floats high. FAULT and PG are open-drain, "
                "active low, into 3.3 V pins with internal pull-ups, never above 3.3 V. "

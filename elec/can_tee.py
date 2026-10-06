@@ -298,10 +298,10 @@ BOARD_NOTES = {
             "M16": "decision: nothing to damp. The board has no capacitor, so a live plug "
                    "rings into nothing here; the ring is a property of the inputs that DO "
                    "have ceramics (motor driver, motor_ctrl J3) and is signed on those",
-            "M20": "R1 = 120 R 1 % behind JP1, closed on the LAST tee only; the other end "
-                   "of bus A is motor_ctrl's own 120 R behind its jumper (motor_ctrl.py, "
-                   "'TERMINATION -- BUS A ONLY'). Two terminations, at the two ends. Stub "
-                   "per node is the motor pigtail; no clock on this board",
+            "M20": "R1 = 120 R 1 % behind JP1, closed on the LAST tee only; the other end of bus A "
+                   "is motor_ctrl's own 120 R, wired in permanently (motor_ctrl.py, 'TERMINATION -- "
+                   "BUS A ONLY'). Two terminations, at the two ends. Stub per node is the motor "
+                   "pigtail; no clock on this board",
             "M28": "the placed parts are JST S8B-XH-A(LF)(SN) C157914 and S4B-XH-A(LF)(SN) "
                    "C157925 -- JST's own, so the pinout cited above IS the exact part's. "
                    "R1 and JP1 are unpolarised two-pad parts",
