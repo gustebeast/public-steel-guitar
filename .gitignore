@@ -18,3 +18,4 @@ elec/out/
 .overlap-cache.json
 skidl_REPL.*
 *.rpt
+.carriage-travel-cache.json

@@ -222,3 +222,39 @@ solids, ±20° twist margin, step 4:
 
 Still clear on all ten; the extra width only costs strings 1 and 3 some span near their
 motor pulleys.
+
+## 2026-10-05: clamp against clamp, own belt and pulleys, exhaustively (`tools/clamp_range.py`)
+
+Belts, pulleys and clamps only (user). Every clamp stepped end to end of its run (4 mm
+steps), at the nominal twist and a margin either side, against the other run of its own
+belt, every other belt and pulley, and every other clamp at every one of ITS steps and
+twists. Bounding boxes first; clamp against clamp settled on the real solids.
+
+**First result, the 9.15-wide clamp: NOT clear.** Clamps 2↔3, 4↔5, 6↔7 and 8↔9 (an even
+string's lower run against the next odd string's upper run) pass 8.8 apart near the
+screws, each presenting its +y side to the other. Clear at nominal twist by about 0.6,
+grazing at ±5°, 10 mm³ at ±10°, 39 mm³ at ±20°. No other run assignment is better: all
+upper, all lower and the swapped rule each collide on every neighbouring pair.
+
+**Fix:** the +y side went from 4.1 to 3.5 off the belt's centre (A's rail is the slot's
+side wall there), its two edges are chamfered 0.4, and the screw moved 0.3 toward −y so
+the head window keeps two equal 0.9 rails. 8.55 across.
+
+**Result now:** no clamp meets another clamp, or its own belt, at any pair of positions,
+at ±10° or at ±20°. At ±10° every string is clear at every step. At ±20° the only hits
+are a neighbour's pulley near one end of six runs (bounding box, so slightly pessimistic):
+strings 2, 4, 6 and 8 in the first 16-20 mm at the screw end, strings 1 and 3 over
+10-35 mm near the motor end. Each still has a clear stretch far longer than the 116.9 it
+needs (string 8, the shortest affected: about 198).
+
+**And the install rule keeps each clamp in it.** With a right-hand screw the nut rises as
+an upper-run clamp is carried toward the screw and a lower-run clamp toward the motor. So
+spliced with the nut on the ceiling, odd strings start at the screw end and even strings
+at the motor end, and both travel away from their blocked ends. ⚠ That direction is
+derived, not yet seen on a bench.
+
+`tools/clamp_study.py` (chassis and endplate included) on the same solids, ±20°:
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 33.0 | 33.0 | 26.9 | 26.6 | 23.1 | 20.5 | 16.7 | 14.1 | 10.3 | 8.8 |

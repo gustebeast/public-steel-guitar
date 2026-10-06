@@ -310,6 +310,15 @@ SCREW_OD        = 8.0       # Tr8x2: Ø8, SINGLE-start, 2 mm lead.
 # bead) — both parts are 0.2-NOZZLE prints and therefore unfilled, the same call
 # belt_clamp already makes for GT2 ridges. At 0.2 the groove is a 1.5-bead feature.
 SCREW_PITCH     = 2.0       # Tr8x2: 2 mm pitch, single start => 2 mm LEAD
+# THE THREAD'S HAND IS A DESIGN INPUT, NOT A DETAIL OF THE PART (2026-10-05). It decides
+# which way each belt runs as a nut rises, and so which END of its run each belt clamp is
+# spliced at and travels away from (components.clamp_p). With "RH" the even strings start
+# at the motor end and never visit the 16-20 mm by the screw pulleys where their clamps
+# meet the next string's pulley; with "LH" they would start there. Flip this and the
+# build redraws the clamps and tools/clamp_range.py and the carriage travel gate re-judge.
+# RH is the stock part (BOM). ⚠ The direction is derived, not yet seen on a bench.
+SCREW_HAND      = "RH"
+assert SCREW_HAND in ("RH", "LH")
 FORM_MINOR      = 6.2       # printed ridge Ø (Tr8x2 root is Ø5.5; 0.35 radial clear)
 FORM_MAJOR      = 7.8       # printed groove Ø (0.1 radial under the Ø8 crest)
                             # Depth (7.8-6.2)/2 = 0.80, NOT the pitch/2 = 1.0 ceiling.
