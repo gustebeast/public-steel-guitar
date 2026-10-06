@@ -160,6 +160,18 @@ turns on the 2.5 mm hex key. See `BOM.md` and
 - **Not an issue for the far row** (strings 2, 4, 6, 8, 10, at x +20.0): the board does
   not reach them.
 
+## Motor tees: ONE switch ON, nine OFF
+
+Every motor tee carries a 120 ohm terminator behind a small slide switch marked TERM
+(SW1, in the strip behind the connectors). The boards arrive with it OFF. Slide it to ON
+on **one** tee only: the last one on the trunk, furthest along the cable from the motor
+board. A toothpick or a small screwdriver moves it; the switch body prints ON at the end
+that closes it. No solder, and it can be reached with every plug in.
+
+Check before the first power-up: 60 ohm between CAN_H and CAN_L on any tee's tails with
+the power off. 120 means no tee is ON; 40 means two are, or a motor's own terminator
+jumper is fitted (leave those off).
+
 ## Control boards first power-up (motor_ctrl, output_panel, lever sensors)
 
 Companion: `docs/board-bringup-diagnostics.md` (what each step can and cannot tell you, and

@@ -20,7 +20,7 @@ in/out" is superseded by this section; the power reasoning is unchanged.
 
 **Better for CAN than what it replaces:** the bus becomes one unbroken pair with a ~60 mm
 stub per node instead of passing through two contacts and a board at every tee. The 120 Ω
-terminator and its jumper stay on the board; only the end tees close theirs.
+terminator and its switch stay on the board; only the end tee has its switch ON.
 
 **The two taps are different families on purpose, and it is not optional for power.** A tap
 on a continuous wire is two conductors in one crimp. An XH contact takes AWG 30–22

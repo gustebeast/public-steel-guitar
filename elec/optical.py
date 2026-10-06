@@ -582,7 +582,9 @@ def optical():
         # edge -- and leaves ~60 deg of phase margin.
         # AND THE NEW EMITTER FORCES IT ANYWAY: the LTE-C9901 is ~6x the incumbent's flux,
         # so 1M saturates the output outright against a 0.33 V MID.
-        rf = _r("Rf%s" % n, "250k", "TIA feedback, string %d%s -- tune per string" % (i, side))
+        # THE PART IS 249k: 250k is not an E96 value and no catalogue stocks it (JLCPCB
+        # lists one 250k 0402, at zero). 0.4 % under the figure every sum above uses.
+        rf = _r("Rf%s" % n, "249k 1%", "TIA feedback, string %d%s -- tune per string" % (i, side))
         # ⚠ Cf IS C0G, NOT X7R: it sets the pole, and an X7R part's capacitance moves with
         # bias and temperature, so twenty channels would stop matching -- which is exactly
         # what DIFF cannot tolerate. 1 pF is at the edge of what a part sets rather than
@@ -4067,7 +4069,7 @@ BOARD_NOTES["quality"] = {
               "pull-up, EXTVBUS its own pull-down). U14-U18: figure 165, MICBIAS left open and "
               "powered down, inputs single-ended and AC-coupled as figure 31 draws them, each INxM "
               "to ground through its own 10 nF. U6: VCAP pair, PDR_ON to VDD, VBAT to VDD, 100 nF "
-              "on NRST (C135), BOOT0 pulled down. TIAs: 250k / 2.2 pF, 1.57 times the least stable "
+              "on NRST (C135), BOOT0 pulled down. TIAs: 249k / 2.2 pF, 1.57 times the least stable "
               "feedback capacitance (the arithmetic is at Rf). MID: 9k09 / 1k from +3V3A, bypassed "
               "at the divider (C114), buffered by U11, isolated from its 10 uF by R42. Q1: 100 ohm "
               "in the gate, 100k to ground",
@@ -4289,7 +4291,7 @@ BOARD_NOTES["quality"] = {
                "the 60-ohm-not-600 bead trap, Y1's CL and ESR, Y2 being an oscillator and not a "
                "crystal). R37 is 1 % by specification. Cf and the crystal load capacitors are C0G. "
                "U8's tab is live at 3V3 and says so. Values are E24 / E96: 9k09, 12k, 24k9, 5k1, "
-               "250k",
+               "249k",
         "M41": "no switch or button on the board",
     },
     "pinouts": {

@@ -79,10 +79,9 @@ import netcheck                                     # noqa: E402
 XH_PINOUT = harness.XH_PINOUT
 
 # 120 R, 1%. ISO 11898 wants 120 ohm at each END of the trunk and nowhere else,
-# so every board carries the resistor and leaves the jumper OPEN; the one that
-# lands at the bus end gets its closed. One layout, one BOM, one assembly file
-# for all nine -- populating R1 on only one would mean two JLCPCB variants to
-# save two cents of resistor.
+# so every board carries the resistor behind a switch that ships OFF; the one that
+# lands at the bus end gets its slid to ON. One layout, one BOM, one assembly file
+# for all ten -- populating R1 on only one would mean two JLCPCB variants.
 TERM_OHMS = "120R"
 
 # SPLIT TERMINATION (2x 60R + 4.7nF to GND) is the textbook EMC answer and is
@@ -95,7 +94,7 @@ TERM_OHMS = "120R"
 @subcircuit
 def can_tee():
     """Trunk in and out through one 8-way, the motor on its own 4-way, and the
-    terminator behind its jumper."""
+    terminator behind its switch."""
     gnd, v24 = Net("GND"), Net("+24V")
     can_h, can_l = Net("CAN_H"), Net("CAN_L")
     for n in (gnd, v24, can_h, can_l):
@@ -120,25 +119,37 @@ def can_tee():
               value=TERM_OHMS, description="CAN termination, 1%",
               footprint="Resistor_SMD:R_0603_1608Metric",
               pins=[Pin(num=1, func=Pin.types.PASSIVE), Pin(num=2, func=Pin.types.PASSIVE)])
-    # SOLDER jumper, not a shunt on a header: which board terminates is fixed
-    # when the harness is built, a 2.54 shunt is taller than everything here bar
-    # the connectors, and one that falls off is a bus that fails intermittently.
-    jp1 = Part(name="SolderJumper_2_Open", ref_prefix="JP", tag="JP1", dest="NETLIST",
-               tool="skidl", value="TERM", description="close on the bus's LAST tee only",
-               footprint="Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm",
+    # A SWITCH, placed by the fab: which tee ends the bus is chosen with a toothpick,
+    # not an iron (user rule: no hand soldering anywhere on the instrument). Not a
+    # shunt on a header either: a 2.54 shunt is taller than everything here bar the
+    # connectors, and one that falls off is a bus that fails intermittently. A slide
+    # DIP switch is detented, 2.3 mm tall and has nothing to lose.
+    # DSHP01TSGER (LCSC C3293141): 1 position, SPST, recessed slide, gull wing, body
+    # 5.4 x 2.88, lands 0.76 x 1.27 on 7.62 centres (elec/footprints/Steel.pretty, drawn
+    # from the maker's sheet). 25 mA at 24 V switching, 100 mA carrying;
+    # the terminator passes 17 mA at a 2 V dominant bit and is never switched live.
+    sw1 = Part(name="SW_DIP_x01", ref_prefix="SW", tag="SW1", dest="NETLIST",
+               tool="skidl", value="DSHP01TSGER",
+               description="bus A terminator: ON on the LAST tee only (LCSC C3293141)",
+               footprint="Steel:Kangshen_DSHP01TSGER",
                pins=[Pin(num=1, func=Pin.types.PASSIVE), Pin(num=2, func=Pin.types.PASSIVE)])
     term = Net("TERM_MID")
     can_h += r1[1]
-    term += r1[2], jp1[1]
-    can_l += jp1[2]
+    term += r1[2], sw1[1]
+    can_l += sw1[2]
 
 
-# ── the board ────────────────────────────────────────────────────────────────
 # 40 x 16. The connector row is 36.98 of courtyard, so 40 leaves a full 1.0 mm
 # component-to-edge margin at both ends AND stays inside the 40.5 that lets the
 # seat have locating walls on BOTH X edges -- at 42 only +X could be located, the
 # -X side having 1.65 mm before the neighbouring motor's body.
 BOARD_W, BOARD_L = 40.0, 16.0
+# The terminator's two parts, in the strip behind the connector bodies.
+R1_X, R1_Y = -10.5, 6.2
+SW_X, SW_Y = 1.0, 6.30
+SW_BODY = (5.4, 2.88, 0.3)               # along the leads, across them, +/- on the latter
+SW_LAND_SPAN = 8.89                      # outer end to outer end of the two lands
+XH_BACK = 2.3                            # header body behind its pin row (JST eXH.pdf)
 # Pin rows COLLINEAR at this Y, which is what keeps the through-hole tails in a
 # narrow band 4.0 mm from the +Y edge -- over the faceplate wall, not the motor.
 ROW_Y = 2.0
@@ -203,13 +214,22 @@ BOARD_NOTES = {
     "placements": {
         "J1": (-7.0, ROW_Y, 0.0),      # trunk, 8-way
         "J2": (11.7, ROW_Y, 0.0),      # motor drop, 4-way
-        # both connector courtyards now cover y -7.74..+4.85 of a 16 mm board,
-        # so the terminator pair lives in the strip above them
-        "R1": (-6.0, 6.2, 0.0),
-        "JP1": (-1.0, 6.4, 0.0),
+        # both connector courtyards cover y -7.74..+4.85 of a 16 mm board, so the
+        # terminator pair lives in the strip above them, the switch lying along X.
+        # THE SWITCH IS THE ONE PART INSIDE THE 1.0 mm EDGE MARGIN, and by measurement.
+        # The headers' courtyard ends at y +4.85 (their BODY at +4.30: pin row + 2.3,
+        # JST's drawing). The switch body is 2.88 +/- 0.3 across, so at SW_Y it spans
+        # 4.86..7.74: its edge on the headers' courtyard line, 0.56 from their bodies
+        # and 0.26 from the board edge -- 0.41 and 0.11 at the widest body the drawing
+        # allows. Its LANDS (0.76 across) are 1.32 from the edge, and copper is what the
+        # fab's edge rule measures. The seat wall stands 0.3 outside the board, so the
+        # body is 0.4 from plastic at its widest. _strip_check() holds all of it.
+        "R1": (R1_X, R1_Y, 0.0),
+        "SW1": (SW_X, SW_Y, 0.0),
     },
-    "ref_pos": {"J1": (-14.0, 6.4), "J2": (15.5, 6.4),
-                "R1": (-9.5, 6.2), "JP1": (2.5, 6.4)},
+    "ref_pos": {"J1": (-17.5, 6.4), "J2": (17.0, 6.4),
+                "R1": (-14.0, 6.2), "SW1": (10.5, 6.4)},
+    "silk_labels": {"SW1": "TERM"},
     # AUTOROUTED. Four nets across twelve pads on one line cannot run without
     # crossings, so the hand-laid tracks the three-connector version used do not
     # survive the reshape. GND is the B.Cu pour; route.py refills it after the
@@ -288,31 +308,39 @@ BOARD_NOTES = {
                    "so the plug cannot be reversed; the trunk's clamp is D6 (SMAJ30A) on "
                    "the output panel, at the 24 V inlet, and each CAN transceiver board "
                    "carries its own bus protection",
-            "M11": "finish.py: 3 / 3 routed parts present in the CAD, every one where the "
+            "M11": "finish.py: 4 / 4 routed parts present in the CAD, every one where the "
                    "CAD draws it. Mated height: XH side header 7.0 mm against 8.3 mm worst "
                    "headroom (docs/can-tee-power-tap.md, measured per tee). Tails: asserted "
                    "above, 6.0 of a 6.4 mm wall strip. Screw: the ear is bare laminate -- "
                    "no track reaches past x +15.5 and the ear starts at +20 -- so an M4 "
                    "button head (7.6 dia) on the 9.5 x 8.7 ear touches no copper on either "
-                   "face. Mouths face -Y into free air over the motor",
+                   "face. Mouths face -Y into free air over the motor. SW1 stands 2.5 mm in the strip "
+                   "behind the header bodies (7.0): measured clearances are at its placement, "
+                   "and it is reached from above with the plugs in",
             "M16": "decision: nothing to damp. The board has no capacitor, so a live plug "
                    "rings into nothing here; the ring is a property of the inputs that DO "
                    "have ceramics (motor driver, motor_ctrl J3) and is signed on those",
-            "M20": "R1 = 120 R 1 % behind JP1, closed on the LAST tee only; the other end of bus A "
+            "M20": "R1 = 120 R 1 % behind SW1, ON on the LAST tee only and OFF on the other nine; "
+                   "the other end of bus A "
                    "is motor_ctrl's own 120 R, wired in permanently (motor_ctrl.py, 'TERMINATION -- "
                    "BUS A ONLY'). Two terminations, at the two ends. Stub per node is the motor "
                    "pigtail; no clock on this board",
             "M28": "the placed parts are JST S8B-XH-A(LF)(SN) C157914 and S4B-XH-A(LF)(SN) "
                    "C157925 -- JST's own, so the pinout cited above IS the exact part's. "
-                   "R1 and JP1 are unpolarised two-pad parts",
+                   "R1 is an unpolarised two-pad part. SW1 is DSHP01TSGER C3293141, a single "
+                   "SPST: either way round it is the same circuit, and the body prints ON "
+                   "at the end that closes it (maker's drawing DSHP-001-S-A, read "
+                   "2026-10-06: lands 0.76 x 1.27 at 6.35 inside / 8.89 outside, the "
+                   "footprint's 7.62 centres; the footprint is drawn from that sheet, "
+                   "Steel:Kangshen_DSHP01TSGER)",
             "M29": "A12 measures the board against JLCPCB's capability page, read "
                    "2026-10-04 (2-layer, 1 oz, standard service): all pass. No SMD pad has "
                    "a via in or touching it: the board's one via is beside a through-hole "
                    "post. R1 has one track on each pad and there is no pour, so its two "
                    "pads see the same copper",
             "M31": "name and revision 'CAN TEE r1' on the back at 1.5 mm; both connectors' "
-                   "pin names on the back beside their tails; JP1 says TERM on the front, "
-                   "beside its designator; J1 / J2 designators and the footprints' pin-1 "
+                   "pin names on the back beside their tails; SW1 says TERM on the front, "
+                   "beside its designator, and the switch body itself prints ON; J1 / J2 designators and the footprints' pin-1 "
                    "marks are in the strip behind the bodies, outside them. All text is "
                    "1.0 mm x 0.15 or larger (A12)",
             "M32": "footprint pitch read from the KiCad file: 2.50 (pads at 0 / 2.5 / 5.0 / "
@@ -321,11 +349,15 @@ BOARD_NOTES = {
                    "drawing: see pinouts. Every connector carries GND on way 1 (and 5)",
             "M34": "no active part. CAN_H lands on way 3 and CAN_L on way 4 of every "
                    "housing from one constant (harness.XH_PINOUT), so H meets H and L "
-                   "meets L by construction; R1 + JP1 bridge H to L and nothing else",
+                   "meets L by construction; R1 + SW1 bridge H to L and nothing else",
             "M38": "no ceramic capacitor on the board. R1 (0603) lies along X, parallel to "
-                   "the +Y edge 1.8 mm away, 26 mm from the screw. No V-score: routed "
+                   "the +Y edge 1.8 mm away, 35 mm from the screw. SW1 is a moulded "
+                   "switch on two gull-wing leads, not a ceramic. No V-score: routed "
                    "outline. Plugs enter from -Y over the motor (see M11). The mounting "
                    "hole is unplated and has no copper round it: deliberately isolated",
+            "M41": "SW1 is not read by anything: it puts R1 across the pair or does not, "
+                   "is set once when the harness is built and never moved with the bus live. "
+                   "Nothing to debounce",
             "M40": "120 R is an E24 value. R1 is the only part chosen for a parameter (bus "
                    "termination, 1 %) and its description says so. Nothing needs a heatsink",
         },
@@ -346,7 +378,28 @@ assert BOARD_NOTES["tail_band_from_plus_y"] <= WALL_STRIP, (
     "%.2f deep -- the tails would hang over the motor with no support"
     % (BOARD_NOTES["tail_band_from_plus_y"], WALL_STRIP))
 
-# ⚠ AND SIX NUMBERS ARE TYPED TWICE, ONCE HERE AND ONCE IN src/dimensions.py. The CAD
+
+
+def _strip_check():
+    """The switch against the two things either side of it, at its widest body."""
+    half = (SW_BODY[1] + SW_BODY[2]) / 2.0
+    back = ROW_Y + XH_BACK
+    to_header = (SW_Y - half) - back
+    to_edge = BOARD_L / 2.0 - (SW_Y + half)
+    assert to_header >= 0.25 and to_edge >= 0.10, (
+        "the terminator switch no longer fits its strip: %.2f mm to the header bodies, "
+        "%.2f mm to the +Y edge at the widest body the drawing allows (want 0.25 / 0.10)"
+        % (to_header, to_edge))
+    assert SW_Y - SW_BODY[1] / 2.0 >= ROW_Y + 2.85, "the switch is in the headers' courtyard"
+    gap = (SW_X - SW_LAND_SPAN / 2.0) - (R1_X + 0.83 + 0.25)
+    assert gap >= 0.5, "R1 and the switch's land are %.2f mm apart" % gap
+    assert SW_X + SW_LAND_SPAN / 2.0 <= BOARD_W / 2.0 - 1.0
+    return to_header, to_edge
+
+
+_strip_check()
+
+# ⚠ AND TWELVE NUMBERS ARE TYPED TWICE, ONCE HERE AND ONCE IN src/dimensions.py. The CAD
 # cuts the motor bay's seat from ITS copy; this file fabs the board from this one. They
 # agree today, and nothing anywhere would notice if they stopped: the netlist does not
 # know the board's outline, DRC compares copper to the netlist, and the overlap gate
@@ -362,7 +415,13 @@ def _check_against_cad():
             ("ear X", EAR_W, D.TEE_EAR_X),
             ("ear Y", EAR_H, D.TEE_EAR_Y),
             ("fabbed outline X", BOARD_OUTLINE_W, D.TEE_OUTLINE_X),
-            ("tail row Y", ROW_Y, D.TEE_TAIL_CY)):
+            ("tail row Y", ROW_Y, D.TEE_TAIL_CY),
+            ("terminator R1 X", R1_X, D.TEE_TERM_R[0]),
+            ("terminator R1 Y", R1_Y, D.TEE_TERM_R[1]),
+            ("terminator switch X", SW_X, D.TEE_TERM_SW[0]),
+            ("terminator switch Y", SW_Y, D.TEE_TERM_SW[1]),
+            ("terminator switch length", SW_BODY[0], D.TEE_TERM_SW[2]),
+            ("terminator switch width", SW_BODY[1], D.TEE_TERM_SW[3])):
         assert abs(mine - theirs) < 1e-9, (
             "%s: elec/can_tee.py says %.3f, src/dimensions.py says %.3f -- the fabbed "
             "board and the seat cut for it would not match" % (name, mine, theirs))

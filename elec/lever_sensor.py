@@ -202,8 +202,8 @@ def lever_sensor():
     c_xcvr = _c("C4", "100nF", "transceiver decoupling")
     v33 += c_xcvr[1]; gnd += c_xcvr[2]
 
-    # BUS-B FAR-END TERMINATION, behind a solder jumper exactly as the motor tee
-    # does it: populated on all eight, closed on the ONE board that ends the bus.
+    # BUS-B FAR-END TERMINATION, behind a solder jumper: populated on all eight,
+    # closed on the ONE board that ends the bus.
     # 0402, NOT the 0603 this was. When the board came down to 21.4 (the foot pedal
     # housing's floor, see knee_lever.PCB_WZ) R4 ended up in a 1.48 mm gap between JP1
     # and C10 needing 1.55, and every column on this board is full -- there is nowhere
