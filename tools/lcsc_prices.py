@@ -15,9 +15,9 @@ PCBA quote. This asks for the break covering the quantity a TEN-INSTRUMENT ORDER
 (tools/cost.py's basis), so a part used 11 times per instrument is priced at 110, not
 at one. That matters: the breaks move 30-40% across the range.
 
-WHAT IT CANNOT PRICE. Anything with no LCSC code in elec/fab.py -- generic passives,
-mostly, where a shape really does set the price. Those stay on the footprint table and
-are counted and reported rather than silently left stale.
+WHAT IT CANNOT PRICE. A part with no LCSC code in elec/fab.py. Since 2026-10-06 that
+should be nothing: the passives have codes too (fab.PASSIVES, keyed on value and
+footprint). Anything left is counted and reported rather than silently left stale.
 """
 from __future__ import annotations
 
@@ -43,6 +43,26 @@ def lcsc_map():
     src = io.open(os.path.join(ROOT, "elec", "fab.py"), encoding="utf-8").read()
     body = re.search(r"^LCSC = \{(.*?)^\}", src, re.S | re.M).group(1)
     return dict(re.findall(r'"([^"]+)":\s*"(C\d+)"', body))
+
+
+def passive_map():
+    """{(value, footprint name) -> LCSC code}: fab.py's PASSIVES table."""
+    src = io.open(os.path.join(ROOT, "elec", "fab.py"), encoding="utf-8").read()
+    body = re.search(r"^PASSIVES = \{(.*?)^\}", src, re.S | re.M).group(1)
+    return {(v, f): c for v, f, c in
+            re.findall(r'\("([^"]+)",\s*"([^"]+)"\):\s*"(C\d+)"', body)}
+
+
+class Codes:
+    """The code a BOM row is ordered under: (value, footprint) first, then the value, then
+    a code cited in the part's own description. The same order cadkit's builder uses."""
+
+    def __init__(self):
+        self.by_value, self.by_pair = lcsc_map(), passive_map()
+
+    def get(self, val, fp="", inline=None):
+        return (self.by_pair.get((val, fp.split(":")[-1])) or self.by_value.get(val)
+                or inline)
 
 
 def netlist_parts(path):
@@ -168,7 +188,7 @@ def mating_halves():
 
 def collect():
     """(demand, used, unpriceable) across every netlist in elec/out."""
-    codes = lcsc_map()
+    codes = Codes()
     demand = collections.Counter()
     used = collections.defaultdict(list)
     unpriceable = collections.Counter()
@@ -178,7 +198,7 @@ def collect():
         if n is None:
             continue
         for ref, val, fp, inline in netlist_parts(path):
-            code = codes.get(val) or inline
+            code = codes.get(val, fp, inline)
             if code is None:
                 unpriceable[val or fp.split(":")[-1]] += n
                 continue

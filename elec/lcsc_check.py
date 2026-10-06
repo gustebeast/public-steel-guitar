@@ -98,6 +98,107 @@ def lookup(code):
     return None, None
 
 
+# ── THE PASSIVES: a code keyed on (value, footprint) has no part number to compare ────
+# So what is compared is what the row ASKS for against what the catalogue says the code
+# IS: the package, the value, and -- where the row states them -- the voltage (at least),
+# the dielectric and the tolerance (at most).
+_MULT = {"p": 1e-12, "n": 1e-9, "u": 1e-6, "R": 1.0, "k": 1e3, "M": 1e6}
+
+
+def _ask(value):
+    """A row's value string -> (number in F or ohm, min volts, dielectric, max tol %)."""
+    head = value.split()[0].split("/")[0]
+    m = re.match(r"^(\d+(?:\.\d+)?)(p|n|u)F$", head)
+    if m:
+        num = float(m.group(1)) * _MULT[m.group(2)]
+    else:
+        m = re.match(r"^(\d+)([RkM])(\d*)$", head)
+        if not m:
+            return None
+        num = float(m.group(1) + ("." + m.group(3) if m.group(3) else "")) * _MULT[m.group(2)]
+    volts = re.search(r"/(\d+)V", value)
+    diel = re.search(r"\b(C0G|X7R|X5R)\b", value)
+    tol = re.search(r"(\d+(?:\.\d+)?)\s*%", value)
+    return (num, float(volts.group(1)) if volts else None, diel.group(1) if diel else None,
+            float(tol.group(1)) if tol else None)
+
+
+def _says(describe):
+    """The catalogue's description -> (number, volts, dielectric, tol %)."""
+    d = describe.replace("NP0", "C0G")
+    num = None
+    m = re.search(r"(?<![\w.])(\d+(?:\.\d+)?)(p|n|u)F\b", d)
+    if m:
+        num = float(m.group(1)) * _MULT[m.group(2)]
+    else:
+        m = re.search(r"(?<![\w.])(\d+(?:\.\d+)?)(k|M|m)?\u03a9", d)
+        if m:
+            num = float(m.group(1)) * {"k": 1e3, "M": 1e6, "m": 1e-3, None: 1.0}[m.group(2)]
+    volts = re.search(r"(?<![\w.])(\d+(?:\.\d+)?)V\b", d)
+    diel = re.search(r"\b(C0G|X7R|X5R|X6S|X7S|Y5V)\b", d)
+    tol = re.search(r"\u00b1(\d+(?:\.\d+)?)%", d)
+    return (num, float(volts.group(1)) if volts else None, diel.group(1) if diel else None,
+            float(tol.group(1)) if tol else None)
+
+
+def lookup_full(code):
+    req = urllib.request.Request(URL, data=json.dumps(
+        {"keyword": code, "currentPage": 1, "pageSize": 3}).encode(),
+        headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"})
+    d = json.load(urllib.request.urlopen(req, timeout=30))
+    for c in d["data"]["componentPageInfo"]["list"] or []:
+        if c["componentCode"] == code:
+            return c
+    return None
+
+
+def check_passives(low_stock=2000):
+    """Every fab.PASSIVES row against the catalogue. Returns the list of disagreements."""
+    src = io.open(os.path.join(HERE, "fab.py"), encoding="utf-8").read()
+    body = re.search(r"^PASSIVES = \{(.*?)^\}", src, re.S | re.M).group(1)
+    rows = re.findall(r'\("([^"]+)",\s*"([^"]+)"\):\s*"(C\d+)"', body)
+    bad, seen = [], {}
+    for value, fp, code in rows:
+        want_pkg = re.match(r"^[A-Z]_(\d{4})_", fp).group(1)
+        if code not in seen:
+            try:
+                seen[code] = lookup_full(code)
+            except Exception as e:
+                print("  %-12s %-6s %-10s -> lookup failed: %r" % (value, want_pkg, code, e))
+                continue
+            time.sleep(0.15)
+        c = seen[code]
+        if c is None:
+            bad.append((value, fp, code, "NOT IN THE CATALOGUE"))
+            continue
+        ask, got = _ask(value), _says(c.get("describe") or "")
+        why = []
+        if (c.get("componentSpecificationEn") or "") != want_pkg:
+            why.append("package is %s" % c.get("componentSpecificationEn"))
+        if ask is None:
+            why.append("cannot read the row's value")
+        else:
+            if got[0] is None or abs(got[0] - ask[0]) > 1e-6 * max(ask[0], 1e-15) + 1e-18:
+                if not (ask[0] == 0 and got[0] == 0):
+                    why.append("value is %r" % (got[0],))
+            if ask[1] is not None and fp.startswith("C_") and (got[1] is None or got[1] < ask[1]):
+                why.append("rated %s V, the row asks %g" % (got[1], ask[1]))
+            if ask[2] and got[2] != ask[2]:
+                why.append("dielectric is %s" % got[2])
+            if ask[3] is not None and (got[3] is None or got[3] > ask[3]):
+                why.append("tolerance is %s %%, the row asks %g" % (got[3], ask[3]))
+        if (c.get("stockCount") or 0) < low_stock:
+            why.append("stock %s" % c.get("stockCount"))
+        if why:
+            bad.append((value, fp, code, "; ".join(why) + "  [" + (c.get("describe") or "")[:60] + "]"))
+    print("%d passive row(s) checked against %d code(s)" % (len(rows), len(seen)))
+    for value, fp, code, why in bad:
+        print("  !! %-12s %-20s %-10s %s" % (value, fp, code, why))
+    if not bad:
+        print("  every one is the package, value, voltage, dielectric and tolerance its row asks for")
+    return bad
+
+
 def main(low_stock=200):
     src = io.open(os.path.join(HERE, "fab.py"), encoding="utf-8").read()
     body = re.search(r"^LCSC = \{(.*?)^\}", src, re.S | re.M).group(1)
@@ -117,6 +218,7 @@ def main(low_stock=200):
             thin.append((mpn, code, stock))
         time.sleep(0.15)
     print("%d code(s) checked" % len(pairs))
+    bad += [(v + " @ " + f, c, why) for v, f, c, why in check_passives()]
     if thin:
         # ⚠ DIVIDE BY THE PER-INSTRUMENT COUNT, WHICH THIS FILE USED TO ASK A HUMAN TO
         # DO. Its own note says "a threshold that does not know the BOM quantity cannot

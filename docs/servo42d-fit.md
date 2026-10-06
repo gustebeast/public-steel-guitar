@@ -79,4 +79,5 @@ supply the user chose (160 W, ~4.6 A for the motors) is inside what the merged t
 (5.5 A), and 6b only pays if all ten motors must slew together.
 
 Termination: the driver carries its own 120 R behind a jumper (R13 / SW1 on the schematic).
-The tee's R1 / JP1 does the same job at the same two ends; use one or the other, not both.
+The tee's R1 behind its own slide switch (also SW1, marked TERM) does the same job at
+the far end; the build uses the tee's and leaves every motor's jumper off. Never both.

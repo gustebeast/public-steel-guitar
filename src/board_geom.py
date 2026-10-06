@@ -54,6 +54,8 @@ _HEIGHT: dict = {
     "Oscillator_SMD_Abracon_ASE-4Pin_3.2x2.5mm": 1.2,
     # both LED supplies' inductor (elec/buck_cell.py): Sunlord's table, C = 4.0 max
     "L_Sunlord_SWPA5040S": 4.0,
+    # the CAN tee's terminator switch, DSHP01TSGER: 2.30 +-0.20 off the board (its drawing)
+    "Kangshen_DSHP01TSGER": 2.5,
 }
 _TAIL: dict = {
     # READ, not estimated (2026-10-04): HX's PZ1.27-2xNP WZ drawing gives the solder leg
@@ -68,6 +70,7 @@ _TAIL: dict = {
     "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": 0.0,   # surface mount
     "SOT-23-6": 0.0,                             # surface mount (the Pi cap's U1)
     "L_Sunlord_SWPA5040S": 0.0,
+    "Kangshen_DSHP01TSGER": 0.0,                 # gull wing
 }
 _THT_LEGS: dict = {}
 _PANEL: dict = {}

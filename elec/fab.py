@@ -41,6 +41,7 @@ BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
 # made. See the module docstring on why blank beats a guess.
 LCSC = {
     "S8B-XH-A": "C157914",          # 8-way side-entry XH, motor tee trunk
+    "DSHP01TSGER": "C3293141",      # 1-position slide DIP switch, the tee's terminator; 21,200 stock
     "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
     "B6B-PH-K-S": "C131342",        # B6B-PH-K-S(LF)(SN) -- motor_ctrl J5, the Pi's 5 V out
     "B4B-PH-K-S": "C131334",        # B4B-PH-K-S(LF)(SN) -- motor_ctrl J4, the USB lead; 110k stock
@@ -179,6 +180,89 @@ LCSC = {
                                     # because src/ui_panel.py's Z stack is built on
                                     # them. 1,131 in stock.
 }
+# ── EVERY PASSIVE, BY (VALUE, FOOTPRINT) ──────────────────────────────────────────────
+# These rows used to go to the fab with no part number -- "a generic passive, chosen at
+# order time". On 2026-10-06 a dry run of a real order showed who does the choosing:
+# JLCPCB's matcher read `C_0402_1005Metric` as 01005 and put a 01005 6.3 V capacitor on the
+# 100 nF row and a 01005 resistor on the 10 k row. Economic assembly does not place 01005,
+# so both came up unselected at quantity 0 and the order would have built the board without
+# them. So each row names its part, and cadkit's builder refuses a package with a blank.
+#
+# KEYED ON THE PAIR because the value alone is not a part: "100nF" is an 0402 on six boards
+# and an 0805 on the optical board; "4.7uF/50V" is an 0805 on the lighting boards and a
+# 1206 on the motor board. Two spellings of one part ("100nF", "100nF/50V") are two keys
+# to one code: the higher rating covers the bare value, and every bare-value capacitor was
+# checked to sit on 5 V or less (2026-10-06, from the netlists).
+#
+# Every code was read on JLCPCB's parts catalogue on 2026-10-06: package, value, voltage,
+# dielectric, tolerance. `elec/lcsc_check.py` re-reads them all and compares. Basic parts
+# wherever one exists (no extended-part fee, placed by Economic assembly).
+PASSIVES = {
+    ("100nF", "C_0402_1005Metric"):          "C307331",   # Samsung CL05B104KB54PNC, 50 V X7R 10 %; basic
+    ("100nF/16V", "C_0402_1005Metric"):      "C307331",
+    ("100nF/50V", "C_0402_1005Metric"):      "C307331",
+    ("10nF C0G", "C_0402_1005Metric"):       "C22400107",   # Murata GRM1555C1H103JE01D, 50 V C0G 5 %; 66,861 in stock
+    ("10uF", "C_0402_1005Metric"):           "C15525",   # Samsung CL05A106MQ5NUNC, 6.3 V X5R 20 %; basic. Every one sits on 3.3 V or a 1.8 V regulator pin
+    ("12pF", "C_0402_1005Metric"):           "C1547",   # FH 0402CG120J500NT, 50 V C0G 5 %; basic
+    ("15pF", "C_0402_1005Metric"):           "C1548",   # FH 0402CG150J500NT, 50 V C0G 5 %; basic
+    ("1uF", "C_0402_1005Metric"):            "C52923",   # Samsung CL05A105KA5NQNC, 25 V X5R 10 %; basic
+    ("1uF/16V", "C_0402_1005Metric"):        "C52923",
+    ("1uF/25V", "C_0402_1005Metric"):        "C52923",
+    ("2.2nF C0G", "C_0402_1005Metric"):      "C2987940",   # Murata GRM1555C1H222GA01D, 50 V C0G 2 %; 103,502 in stock
+    ("2.2pF", "C_0402_1005Metric"):          "C325452",   # Yageo CC0402BRNPO9BN2R2, 50 V NP0 +-0.1 pF: the TIA's Cf, tighter than the +-10 % its stability sum assumes
+    ("22nF/50V", "C_0402_1005Metric"):       "C1532",   # FH 0402B223K500NT, 50 V X7R 10 %; basic
+    ("4.7uF", "C_0402_1005Metric"):          "C23733",   # Samsung CL05A475MP5NRNC, 10 V X5R 20 %; basic. On 3.3 V
+    ("100nF", "C_0805_2012Metric"):          "C49678",   # Yageo CC0805KRX7R9BB104, 50 V X7R 10 %; basic
+    ("10uF", "C_0805_2012Metric"):           "C15850",   # Samsung CL21A106KAYNNNE, 25 V X5R 10 %; basic
+    ("10uF/16V", "C_0805_2012Metric"):       "C15850",
+    ("10uF/25V", "C_0805_2012Metric"):       "C15850",
+    ("1uF", "C_0805_2012Metric"):            "C28323",   # Samsung CL21B105KBFNNNE, 50 V X7R 10 %; basic
+    ("2.2uF", "C_0805_2012Metric"):          "C377773",   # Samsung CL21A225KBQNNNE, 50 V X5R 10 %; basic
+    ("22uF/16V", "C_0805_2012Metric"):       "C45783",   # Samsung CL21A226MAQNNNE, 25 V X5R 20 %; basic (25 V where 16 is asked)
+    ("4.7uF", "C_0805_2012Metric"):          "C1779",   # Samsung CL21A475KAQNNNE, 25 V X5R 10 %; basic
+    ("4.7uF/25V", "C_0805_2012Metric"):      "C1779",
+    ("4.7uF/50V", "C_0805_2012Metric"):      "C98192",   # Samsung CL21A475KBQNNNE, 50 V X5R 10 %; extended, 340,236 in stock
+    ("100nF C0G", "C_1206_3216Metric"):      "C170182",   # FH 1206N104J500CT, 50 V NP0 5 %; 175,852 in stock
+    ("10uF/50V", "C_1206_3216Metric"):       "C13585",   # Samsung CL31A106KBHNNNE, 50 V X5R 10 %; basic
+    ("22uF/25V", "C_1206_3216Metric"):       "C12891",   # Samsung CL31A226KAHNNNE, 25 V X5R 10 %; basic
+    ("4.7uF/50V", "C_1206_3216Metric"):      "C29823",   # FH 1206B475K500NT, 50 V X7R 10 %; basic
+    ("2.2uF/100V", "C_1210_3225Metric"):     "C92775",   # Taiyo Yuden HMK325B7225KN-T, 100 V X7R 10 %; 81,275 in stock
+    ("0R", "R_0402_1005Metric"):             "C17168",   # UniOhm 0402WGF0000TCE; basic
+    ("100R", "R_0402_1005Metric"):           "C25076",   # UniOhm 0402WGF1000TCE, 1 %; basic
+    ("100k", "R_0402_1005Metric"):           "C25741",   # UniOhm 0402WGF1003TCE, 1 %; basic
+    ("100k 1%", "R_0402_1005Metric"):        "C25741",
+    ("10k", "R_0402_1005Metric"):            "C25744",   # UniOhm 0402WGF1002TCE, 1 %; basic
+    ("10k 1%", "R_0402_1005Metric"):         "C25744",
+    ("10k 0.1%", "R_0402_1005Metric"):       "C190095",   # Yageo RT0402BRD0710KL, thin film 0.1 % 25 ppm; 729,784 in stock
+    ("120R", "R_0402_1005Metric"):           "C25079",   # UniOhm 0402WGF1200TCE, 1 %; basic
+    ("12k 1%", "R_0402_1005Metric"):         "C25752",   # UniOhm 0402WGF1202TCE, 1 %; basic
+    ("137k 1%", "R_0402_1005Metric"):        "C138058",   # Yageo RC0402FR-07137KL, 1 %; 27,854 in stock
+    ("150k", "R_0402_1005Metric"):           "C25755",   # UniOhm 0402WGF1503TCE, 1 %; preferred extended
+    ("180R", "R_0402_1005Metric"):           "C138045",   # Yageo RC0402FR-07180RL, 1 %; 264,305 in stock
+    ("18k2 1%", "R_0402_1005Metric"):        "C2076827",   # Panasonic ERJ2RKF1822X, 1 %; 37,043 in stock
+    ("1M", "R_0402_1005Metric"):             "C26083",   # UniOhm 0402WGF1004TCE, 1 %; basic
+    ("1R", "R_0402_1005Metric"):             "C25086",   # UniOhm 0402WGF100KTCE, 1 %; preferred extended
+    ("1k 1%", "R_0402_1005Metric"):          "C11702",   # UniOhm 0402WGF1001TCE, 1 %; basic
+    ("200k 1%", "R_0402_1005Metric"):        "C25764",   # UniOhm 0402WGF2003TCE, 1 %; basic
+    ("220R", "R_0402_1005Metric"):           "C25091",   # UniOhm 0402WGF2200TCE, 1 %; basic
+    ("24k9 1%", "R_0402_1005Metric"):        "C138027",   # Yageo RC0402FR-0724K9L, 1 %; 356,026 in stock
+    ("249k 1%", "R_0402_1005Metric"):        "C2076822",   # Panasonic ERJ2RKF2493X, 1 %; 30,031 in stock
+    ("2R2", "R_0402_1005Metric"):            "C327251",   # Yageo RC0402FR-072R2L, 1 %; 758,197 in stock
+    ("30k1", "R_0402_1005Metric"):           "C2076806",   # Panasonic ERJ2RKF3012X, 1 %; 29,132 in stock
+    ("330k", "R_0402_1005Metric"):           "C25778",   # UniOhm 0402WGF3303TCE, 1 %; preferred extended
+    ("3k3", "R_0402_1005Metric"):            "C25890",   # UniOhm 0402WGF3301TCE, 1 %; basic
+    ("470R", "R_0402_1005Metric"):           "C25117",   # UniOhm 0402WGF4700TCE, 1 %; basic
+    ("49k9 1%", "R_0402_1005Metric"):        "C25897",   # UniOhm 0402WGF4992TCE, 1 %; preferred extended, 31,254 in stock
+    ("4k7", "R_0402_1005Metric"):            "C25900",   # UniOhm 0402WGF4701TCE, 1 %; basic
+    ("56k", "R_0402_1005Metric"):            "C25796",   # UniOhm 0402WGF5602TCE, 1 %; preferred extended
+    ("5k1", "R_0402_1005Metric"):            "C25905",   # UniOhm 0402WGF5101TCE, 1 %; basic
+    ("68R", "R_0402_1005Metric"):            "C163455",   # Yageo RC0402FR-0768RL, 1 %; 396,451 in stock
+    ("7k68 1%", "R_0402_1005Metric"):        "C25919",   # UniOhm 0402WGF7681TCE, 1 %; 106,451 in stock
+    ("9k09 1%", "R_0402_1005Metric"):        "C274897",   # Yageo RC0402FR-079K09L, 1 %; 47,319 in stock
+    ("0R", "R_0603_1608Metric"):             "C21189",   # UniOhm 0603WAF0000T5E; basic
+    ("120R", "R_0603_1608Metric"):           "C22787",   # UniOhm 0603WAF1200T5E, 1 %, 100 mW; basic
+}
+
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
 # branner's catch, and it is the right shape for the bug that happened: usb_panel's
 # J2 kept its OLD part number in `value` after its footprint moved to a different
@@ -269,7 +353,8 @@ def _check_bom_md(names):
               % (val, LCSC[val]))
 
 
-_fab.configure(HERE, BOARDS, LCSC, OPEN_VALUES, ORDER_EVERY_BOARD, after=_check_bom_md)
+_fab.configure(HERE, BOARDS, {**LCSC, **PASSIVES}, OPEN_VALUES, ORDER_EVERY_BOARD,
+               after=_check_bom_md)
 fab = _fab.fab
 main = _fab.main
 
