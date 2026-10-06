@@ -145,16 +145,16 @@ def _fixed(parts):
     """The refs this routine may not move, each with the reason, so the report can say."""
     why = {}
     ics = [r for r, p in parts.items()
-           if p["pkg"] in ("LQFP176", "QFN-24", "WQFN-24", "SOT-223", "SOT-23-5",
+           if p["pkg"] in ("LQFP176", "QFN-24", "QFN-32", "WQFN-24", "SOT-223", "SOT-23-5",
                            "SOT-23", "SOT-563", "USB-C", "XH-SM-4Y", "RNX12", "IND-4040",
-                           "3225", "PD15", "0603OPT", "VSSOP-8", "TP")]
+                           "3225", "OSC3225", "PD15", "0603OPT", "VSSOP-8", "TP")]
     for ref, p in parts.items():
         if p["y"] > BORDER_LOCAL:
             why[ref] = "north of the border"
         elif ref in KEEP:
             why[ref] = "noise-critical"
-        elif p["pkg"] in ("LQFP176", "QFN-24", "WQFN-24", "SOT-223", "SOT-23-5", "SOT-23",
-                          "SOT-563", "USB-C", "XH-SM-4Y", "RNX12", "IND-4040", "3225"):
+        elif p["pkg"] in ("LQFP176", "QFN-24", "QFN-32", "WQFN-24", "SOT-223", "SOT-23-5", "SOT-23",
+                          "SOT-563", "USB-C", "XH-SM-4Y", "RNX12", "IND-4040", "3225", "OSC3225"):
             why[ref] = "an IC, a connector or an inductor"
     for ref in _bypass(parts):
         if ref in parts and ref not in why and parts[ref]["y"] <= BORDER_LOCAL:
@@ -185,8 +185,8 @@ def clusters(parts, why, byp):
     """
     own = {}
     ics = [r for r, p in parts.items()
-           if p["pkg"] in ("LQFP176", "QFN-24", "WQFN-24", "SOT-223", "SOT-23-5",
-                           "SOT-23", "SOT-563", "USB-C", "XH-SM-4Y", "RNX12", "3225")]
+           if p["pkg"] in ("LQFP176", "QFN-24", "QFN-32", "WQFN-24", "SOT-223", "SOT-23-5",
+                           "SOT-23", "SOT-563", "USB-C", "XH-SM-4Y", "RNX12", "3225", "OSC3225")]
     for ref in byp:
         if ref not in parts:
             continue

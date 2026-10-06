@@ -304,11 +304,21 @@ def motor_ctrl():
     sw, fb, cb = Net("SW"), Net("FB"), Net("CB")
     v24 += u4["VIN"]; gnd += u4["GND"]; sw += u4["SW"]; fb += u4["FB"]; cb += u4["CB"]
     l1 = Part(name="L", ref_prefix="L", tag="L1", dest="NETLIST", tool="skidl",
-              # A PART (LCSC C19634068, APV): 47 uH, 0.58 A rms, 0.88 A saturation, 3x3x1.5.
-              # Peak here is 0.25 A load + half of 87 mA ripple (700 kHz) = 0.29 A. The
-              # common 3015 47 uH parts saturate at 0.43 A (ANR3015T470M, FNR3015S470MT):
-              # they fit this land and clear the peak, but sit under the IC's 0.9 A limit.
-              value="PNR3015-470M", description="47 uH buck inductor, Isat 0.88 A",
+              # ⚠ A PART, CHOSEN FOR SATURATION AT THE IC'S LIMIT (2026-10-05). TI SNVSA24
+              # 9.2.2.2: "Using a rating near 1.6 A will enable the LMR16006 to current
+              # limit without saturating the inductor. This is preferable to the LMR16006
+              # going into thermal shutdown mode and the possibility of damaging the
+              # inductor if the output is shorted". The limit is 1.2 A typical, 1.7 max.
+              # APV PNR3015 (its sheet, 2023-12; guaranteed / typical, 30 % drop):
+              #   47 uH  0.65 / 0.88 A saturation, 0.45 / 0.58 A rms   <- what was here
+              #   22 uH  1.15 / 1.40,  0.75 / 0.90
+              #   15 uH  1.40 / 1.80,  1.00 / 1.20                     <- this
+              #   10 uH  1.50 / 2.00,  1.50 / 2.00 (10,880 in stock: the alternate)
+              # 15 uH is the largest value whose GUARANTEED saturation clears the typical
+              # limit, and its typical clears the maximum. Same series, same land.
+              # Ripple 3.3 x (1 - 3.3 / 24) / (15 uH x 700 kHz) = 0.27 A, so the 0.25 A load
+              # peaks at 0.39 A. LCSC C19634062, 3 x 3 x 1.5.
+              value="PNR3015-150M", description="15 uH buck inductor, Isat 1.4 A",
               footprint="Inductor_SMD:L_Taiyo-Yuden_NR-30xx",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]; v33 += l1[2]
@@ -771,8 +781,8 @@ def motor_ctrl():
     # drops a third of the sink headroom, and drops more the brighter it gets). So what this
     # board owes the lights is 24 V AND NOTHING ELSE: a fuse, local bulk, and J7.
     # Gone with U6: L3, C25, C27-C31, R14-R17, F4, D10 and the PG_LED line into PC6.
-    # 1.63 A with every zone of all three boards at full white (software-capped worst case),
-    # so 3 A: 54 % of rating, inside the 75 % continuous rule. Same SKU as F2. D8 already
+    # 1.70 A with every zone of all three boards at full white (software-capped worst case),
+    # so 3 A: 57 % of rating, inside the 75 % continuous rule. Same SKU as F2. D8 already
     # clamps the trunk this branches from.
     v24_led = Net("+24V_LED")
     v24_led.drive = Pin.drives.POWER
@@ -788,7 +798,7 @@ def motor_ctrl():
     v24_led += c24[1]; gnd += c24[2]
     c26 = _c("C26", "100nF/50V", "lighting-bus HF bypass at J7")
     v24_led += c26[1]; gnd += c26[2]
-    # ONE contact each way since 2026-10-04: 1.63 A is 54 % of an XH contact's 3 A, and
+    # ONE contact each way since 2026-10-04: 1.70 A is 57 % of an XH contact's 3 A, and
     # ways 3 and 4 are the power button's two throws, arriving from pi_cap J4 and leaving
     # on J3. See J3.
     j7 = Part(name="B4B-XH-A", ref_prefix="J", ref="J7", tag="J7", dest="NETLIST",
@@ -1155,7 +1165,7 @@ BOARD_NOTES = {
     # The J3 -> J1/J2 path still wants deliberate copper; see the trunk note on
     # output_panel for why that is a pinout decision rather than a routing one.
     # GND needs nothing: it has plane copper on In1.Cu and a pour on B.Cu.
-    # +24V_LED is the lighting bus after F3: 1.63 A worst case, so it gets the same 0.5 mm
+    # +24V_LED is the lighting bus after F3: 1.70 A worst case, so it gets the same 0.5 mm
     # (1.45 A at a 10 C rise; the worst case is every LED at full white, software-capped).
     # +5V_BUSB: 0.52 A limited, 0.4 mm (1.2 A).
     "net_widths": {"+24V": 0.5, "+24V_LED": 0.5, "+5V_BUSB": 0.4},
@@ -1264,7 +1274,7 @@ BOARD_NOTES["tracks"] += [
 BOARD_NOTES["tracks"] += [("PG_5V", "F.Cu", 0.25, [(-13.50, -21.98), (-12.52, -21.98)])]
 
 # THE NORTH STRIP'S THREE SUPPLY PATHS, DECLARED (quality A1 / A12, 2026-10-04). Left to the
-# router: the lighting bus's 1.63 A ran on 0.5 mm (0.59 wanted) and squeezed between two of
+# router: the lighting bus (1.63 A then) ran on 0.5 mm (0.59 wanted) and squeezed between two of
 # J3's pins; that feed, drawn straight across at y 16.3, walled U6 and C27 off from the 5 V
 # bar, so their 0.57 A came up through a via INSIDE C27's land and 0.2 mm of inner copper.
 #   24 V to F3: out of J3's second 24 V pin northward, 0.7 mm, along y 16.1
@@ -1276,8 +1286,8 @@ BOARD_NOTES["tracks"] += [
     ("+24V", "F.Cu", 0.7, [(5.35, 11.5), (5.35, 14.7), (3.95, 16.1), (-24.8, 16.1),
                            (-28.4, 19.7)]),
     ("+24V", "F.Cu", 0.3, [(5.35, 14.7), (7.52, 16.87), (7.52, 17.0)]),  # C29
-    ("+24V_LED", "F.Cu", 0.6, [(-25.6, 19.7), (-23.41, 19.7), (-22.08, 18.37),
-                               (-19.31, 18.37), (-12.69, 25.0), (9.9, 25.0),
+    ("+24V_LED", "F.Cu", 0.65, [(-25.6, 19.7), (-23.41, 19.7), (-22.03, 18.32),
+                               (-19.36, 18.32), (-12.69, 25.0), (9.9, 25.0),
                                (13.53, 21.37), (19.96, 21.37), (19.96, 19.83)]),
     ("+24V_LED", "F.Cu", 0.5, [(9.9, 25.0), (11.22, 25.0)]),            # C26
     ("+5V", "F.Cu", 0.6, [(-14.95, 13.8), (-14.95, 15.2)]),
@@ -1302,8 +1312,8 @@ BOARD_NOTES["quality"] = {
         {"net": "+24V", "from": "J3.2", "to": ["F1.1"], "amps": 0.8},
         {"net": "+24V_BUCK", "from": "F1.2", "to": ["U5.2"], "amps": 0.8},
         # the lighting bus, every zone at full white (docs/lighting-bus.md); F3 is 3 A
-        {"net": "+24V", "from": "J3.2", "to": ["F3.1"], "amps": 1.63},
-        {"net": "+24V_LED", "from": "F3.2", "to": ["J7.2"], "amps": 1.63},
+        {"net": "+24V", "from": "J3.2", "to": ["F3.1"], "amps": 1.70},
+        {"net": "+24V_LED", "from": "F3.2", "to": ["J7.2"], "amps": 1.70},
         # the 3V3 buck's input: 0.2 A of 3V3 is 30 mA at 24 V
         {"net": "+24V", "from": "J3.2", "to": ["U1.5"], "amps": 0.1},
         # U5's output, 3 A rated, through F2 (4 A) to the Pi on J5's two contacts
@@ -1370,7 +1380,7 @@ BOARD_NOTES["quality"] = {
                            "drawing: lands 1 and 3 are the crystal, 2 and 4 the can (GND). "
                            "Board: 1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read 2026-10-04",
         "VLS6045EX-6R8M": "two-pad, unpolarised",
-        "PNR3015-470M": "two-pad, unpolarised",
+        "PNR3015-150M": "two-pad, unpolarised",
     },
     "manual": {
         "M35": "read 2026-10-05. " + 'WCH publishes no errata sheet: its product page lists the datasheet and the reference manual (CH32FV2x_V3xRM) and nothing else, read 2026-10-05. ' + "The manual's USB "
@@ -1425,13 +1435,13 @@ BOARD_NOTES["quality"] = {
               "at 36 V; SENSE_5V 2.5 V. CAN pins: -4..16 V, clamped by D2-D5 near 10 V",
         "M6": "nothing here is fast: CAN at 1 Mbit/s and full-speed USB (A3 has the "
               "arithmetic). No clocked parallel bus",
-        "M7": "U1: 0.765 V x (1 + 100k / 30.1k) = 3.31 V; 47 uH gives 87 mA of ripple, "
-              "35 % of the 0.25 A load (asks 30-40 %); bootstrap 100 nF; SHDN floating = "
-              "enabled; catch diode 40 V / 1 A (asks 1.25 x VIN and the load current). "
-              "U5: 1.0 V x (1 + 100k / 24.9k) = 5.02 V, TI's own 5 V divider; 6.8 uH "
-              "against the table's 8; BOOT 100 nF, VCC 1 uF; EN from a 137k / 10k divider "
-              "(on at 18.1 V); pad on GND. U6: RILIM 49.9k is inside 15k-232k; EN tied "
-              "to IN. U2 / U3: RS through 10k to GND = slope control; Vref open",
+        "M7": "U1: 0.765 V x (1 + 100k / 30.1k) = 3.31 V; 15 uH gives 0.27 A of ripple, 45 % of the "
+              "IC's 0.6 A (the sheet suggests 30 to 40 %; the smaller value is for saturation, "
+              "M14); bootstrap 100 nF; SHDN floating = enabled; catch diode 40 V / 1 A (asks 1.25 x "
+              "VIN and the load current). U5: 1.0 V x (1 + 100k / 24.9k) = 5.02 V, TI's own 5 V "
+              "divider; 6.8 uH against the table's 8; BOOT 100 nF, VCC 1 uF; EN from a 137k / 10k "
+              "divider (on at 18.1 V); pad on GND. U6: RILIM 49.9k is inside 15k-232k; EN tied to "
+              "IN. U2 / U3: RS through 10k to GND = slope control; Vref open",
         "M8": "BOOT0: R7, 10k to GND. NRST: the MCU's own 40k pull-up + C6 100 nF. "
               "BOOT1 (PB2) is read only when BOOT0 is high. U5 EN: divider. U6 EN: tied "
               "to IN; ILIM: R22. U2 / U3 RS: 10k to GND. FAULT and PG are open-drain "
@@ -1459,12 +1469,17 @@ BOARD_NOTES["quality"] = {
                "from VCC; R10 / R11 0.6 and 0.7 mm from FB. Neither feedback node runs "
                "under an inductor or beside a switch node: U5's leaves on the far side "
                "of the package from SW",
-        "M14": "L1 (PNR3015-470M): peak 0.25 + 0.087 / 2 = 0.29 A against 0.88 A "
-               "saturation, 0.58 A rms; the IC's limit is 1.2 A, above it -- accepted, "
-               "no 3015 part reaches that and a shorted 3V3 trips the IC thermally. "
-               "L2 (VLS6045EX-6R8M): ripple 1.46 A, peak 3.73 A at 3 A, against 4.7 A "
-               "saturation (TDK, 30 % drop) and 3.6 A rms; the high-side limit is 4.5 A "
-               "typical, 5.05 maximum",
+        "M14": "L1 (PNR3015-150M, 15 uH): ripple 3.3 x (1 - 3.3 / 24) / (15 uH x 700 kHz) = 0.27 A, "
+               "peak 0.25 + 0.14 = 0.39 A, against 1.40 A guaranteed / 1.80 typical saturation and "
+               "1.00 / 1.20 A rms (APV, 30 % drop). TI SNVSA24 9.2.2.2 on the inductor: 'Using a "
+               "rating near 1.6 A will enable the LMR16006 to current limit without saturating the "
+               "inductor. This is preferable to the LMR16006 going into thermal shutdown mode and "
+               "the possibility of damaging the inductor if the output is shorted' -- advice, "
+               "against a limit of 1.2 A typical / 1.7 max. So the guaranteed figure clears the "
+               "typical limit and the typical one the maximum; in a held short the IC limits near "
+               "1.2 A, at about the part's rms rating, and its thermal cut-out cycles it. L2 "
+               "(VLS6045EX-6R8M): ripple 1.46 A, peak 3.73 A at 3 A, against 4.7 A saturation (TDK, "
+               "30 % drop) and 3.6 A rms; the high-side limit is 4.5 A typical, 5.05 maximum",
         "M15": "both converters are internally compensated for ceramic outputs. U1: "
                "about 17 uF effective on 3V3 against the 4.7-100 uF the datasheet gives. "
                "U5: about 37 uF effective against a table row of 4 x 22 uF nominal "
@@ -1494,14 +1509,20 @@ BOARD_NOTES["quality"] = {
                "17 mA/V (WCH V3.4 table 4-12): 23 times, where 5 is the test. The crystal "
                "is 0.8 mm from OSC_OUT and 2.5 mm from OSC_IN with its capacitors beside it; A9 "
                "measures the distance",
-        "M25": "U5 is the only part that needs its pad: about 1.7 W at 3 A out (TI's "
-               "efficiency curve, 24 V in, 5 V, 400 kHz: 90 %). The pad is on GND with "
-               "five vias to the In1 plane 0.2 mm below -- one inside it and two at each "
-               "open end, joined to it by 0.8 mm copper (declared, see the vias note) -- "
-               "about 22 C/W each over that depth, 4.4 C/W together, 7 C at full load, "
-               "into an unbroken 62 x 55 mm plane. More vias INSIDE the pad would take "
-               "the paste (A12): the four are beside it for that reason. The MCU's pad "
-               "is its ground, about 0.1 W; nothing else on the board has one",
+        "M25": "U5 is the only part that needs its pad. LMR33630A, 400 kHz (the slowest variant "
+               "made), HSOIC with a pad, 5 V out from 24 V. Loss from TI's 24 V curve for the DDA "
+               "package (SNVSAN3F figure 9-7): 0.8 W at 2 A (92.5 %), 1.5 W at the 3 A the part is "
+               "rated for (91 %); the Pi, its display and bus B together are about 2.2 A. Thermal "
+               "resistance is an ESTIMATE, 35 C/W: TI's figure 9-3 gives 27 at this board's 34 cm2 "
+               "on 2 oz / 1 oz copper, and this board is 1 oz / 0.5 oz. At 45 C in the motor bay "
+               "that is 73 C at 2 A and 97 C at 3 A, against 125: 28 C in hand at the rating. If "
+               "the bay runs hotter than 45 C the margin shrinks degree for degree; U5's case "
+               "temperature goes on the first-unit checklist. The pad is on GND with five vias to "
+               "the In1 plane 0.2 mm below -- one inside it and two at each open end, joined to it "
+               "by 0.8 mm copper (declared, see the vias note) -- about 22 C/W each over that "
+               "depth, 4.4 C/W together, 7 C at full load, into an unbroken 62 x 55 mm plane. More "
+               "vias INSIDE the pad would take the paste (A12): the four are beside it for that "
+               "reason. The MCU's pad is its ground, about 0.1 W; nothing else on the board has one",
         "M26": "bus A: PB9 = CAN1_TX (remap) -> U2 pin 1 D, the driver INPUT; U2 pin 4 R, "
                "the receiver OUTPUT -> PB8 = CAN1_RX. Bus B: PB13 = CAN2_TX -> U3 D; U3 R "
                "-> PB12 = CAN2_RX. MCU functions from WCH's table 3-1, transceiver pins "

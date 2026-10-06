@@ -1663,21 +1663,21 @@ them add up to what feeds the instrument. Itemised 2026-09-18, at the 24 V inlet
 |---|---|---|
 | 10 × SERVO42D, bus A (the <5 A budget cap) | 120.0 W | 30.0 W |
 | Raspberry Pi + USB, via buck | 16.7 W | 5.6 W |
-| **Lighting: 2 fret boards + 2 foot boards, on the fused 24 V bus (F3, 3 A)** | **39.1 W** (1.63 A: frets 0.89 + feet 0.73, every LED full white) | firmware cap, **not yet set** |
+| **Lighting: 2 fret boards + 2 foot boards, on the fused 24 V bus (F3, 3 A)** | **40.8 W** (1.70 A: frets 0.93 + feet 0.77, every LED full white, green / blue / white at their 3.4 V maximum) | firmware cap, **not yet set** |
 | optical board | 2.9 W | 1.9 W |
 | 11 sensor boards | 2.5 W | 2.5 W |
 | output panel | 1.0 W | 0.9 W |
 | motor controller | 0.9 W | 0.9 W |
-| **total** | **183 W / 7.6 A** | **42 W / 1.7 A + lighting** |
+| **total** | **185 W / 7.7 A** | **42 W / 1.7 A + lighting** |
 
 **Chosen 2026-10-01: 24 V 160 W (6.67 A), Mean Well GST160A24-R7B desktop adapter** (row `psu_24v_160w`), with the lighting power-capped in firmware; 24 V 240 W
 covers every load at maximum simultaneously, which nothing makes happen.
 
 ⚠ **WHAT THE 160 W LEAVES THE MOTORS DEPENDS ON THE LIGHTING CAP (re-worked 2026-10-01, after the
 5 V strip was deleted).** Supply 6.67 A, less Pi 0.70, less optical + sensors + panel + controller
-0.30: **5.67 A to share between motors and lights.** Lights uncapped (1.63 A) leave the motors
-**4.04 A**; the 4.6 A the tee and supply discussion assumed needs the lights held to **1.07 A
-(25.7 W, 66 % of full white)** — which is the old strip's figure, so the daemon's cap should be
+0.30: **5.67 A to share between motors and lights.** Lights uncapped (1.70 A) leave the motors
+**3.97 A**; the 4.6 A the tee and supply discussion assumed needs the lights held to **1.07 A
+(25.7 W, 63 % of full white)** — which is the old strip's figure, so the daemon's cap should be
 set there, or lower while motors slew.
 
 **The 120 W motor line is a cap, not a draw.** The self-locking screw means there is no
@@ -1882,24 +1882,24 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 1 | J1 | USB-C receptacle — 10 ch audio + MIDI + DFU | USB-C | 8.94 × 7.35 × 3.16 |
 | 1 | J2 | **24 V in** from the instrument trunk — side entry, −X edge, 2 cavities empty ⚠ **no source yet, see below** | XH-SM-4 | 6.10 × 15.00 × 7.00 |
 | 5 | U1–U5 | quad op-amp — 4× transimpedance amp | SOIC-14 | 6.00 × 8.65 × 1.75 |
-| 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-24 | 4.00 × 4.00 × 0.90 |
+| 1 | U7 | USB 2.0 high-speed ULPI PHY | QFN-32 | 5.00 × 5.00 × 0.90 |
 | 1 | U8 | LDO — 3V3 digital, **AP2114H-3.3, tab = VOUT not GND** (0.51 W) | **SOT-223** | 6.50 × 3.50 × 1.80 |
 | 1 | U9 | LDO — 3V3 analog (low noise, **needs C127 on BYP**) | SOT-23-5 | 2.90 × 2.80 × 1.45 |
 | 1 | C127 | analog LDO noise bypass — 1 µF, **the reason U9 is this part** | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | U11 | single op-amp — TIA mid-rail reference buffer | SOT-23-5 | 2.90 × 2.80 × 1.45 |
-| 1 | U13 | **LMR33630CRNXR** 24→5 V synchronous buck, 2.1 MHz, 3 A (was the 600 mA TPS560430, 105 % used worst case once the five converters landed; user 2026-09-22). No forced-PWM variant is stocked; at 2.1 MHz with 4.7 µH it stays in continuous conduction above ~0.2 A | RNX-12 | 2.00 × 3.00 × 1.00 |
-| 1 | L1 | buck inductor — **SWPA4030S4R7MT** (C57269), 4.7 µH shielded, **Isat 3.2 A** | 4040 | 4.00 × 4.00 × 3.00 |
+| 1 | U13 | **LMR33630BRNXR** (C2071384) 24→5 V synchronous buck, 1.4 MHz, 3 A (was the 600 mA TPS560430, 105 % used worst case once the five converters landed; user 2026-09-22). 1.4 MHz for heat: about 98 °C worst case where the 2.1 MHz variant read 124 °C. No forced-PWM variant is stocked; with 4.7 µH it stays in continuous conduction above 0.30 A | RNX-12 | 2.00 × 3.00 × 1.00 |
+| 1 | L1 | buck inductor — **WPN4020H4R7MT** (C98363), 4.7 µH shielded, **Isat 4.0 A** (at or over the converter's typical current limit) | 4040 | 4.00 × 4.00 × 2.00 |
 | 1 | C160 | 24 V input bulk — 10 µF/50 V, **1206 for the DC-bias derating** | 1206 | 3.20 × 1.60 × 1.45 |
 | 1 | C162 | buck 5 V output bulk — 22 µF/16 V | 0805 | 2.00 × 1.25 × 1.45 |
 | 1 | C164 | **U8 input bulk** — 10 µF/16 V; V5_PRE had no local capacitor at all | 0805 | 2.00 × 1.25 × 1.45 |
 | 2 | C161, C163 | 24 V HF bypass; buck bootstrap CB→SW, 100 nF | 0402 | 1.00 × 0.50 × 0.55 |
 | 2 | R40–R41 | buck feedback divider — 40k2/10k 1%, 5.02 V | 0402 | 1.00 × 0.50 × 0.55 |
 | 2 | C112–C113 | H7 core regulator caps (VCAP1/2), 2.2 µF — **required, not optional** | 0805 | 2.00 × 1.25 × 1.45 |
-| 1 | R37 | PHY RBIAS — **8k06 1%**, sets the USB transmitter's drive current | 0402 | 1.00 × 0.50 × 0.55 |
-| 1 | R39 | PHY VBUS series — 20k, device-only value | 0402 | 1.00 × 0.50 × 0.55 |
+| 1 | R37 | PHY RBIAS — **12k 1%**, sets the USB transmitter's drive current | 0402 | 1.00 × 0.50 × 0.55 |
+| 1 | R39 | PHY VBUS series — 10k | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | R38 | LED gate pull-down — 100k, emitters OFF while the MCU is in reset | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | Y1 | 25 MHz crystal — MCU HSE, **CL 20 pF, ESR ≤ 30 Ω** | 3225 | 3.20 × 2.50 × 0.90 |
-| 1 | Y2 | **26 MHz** crystal — PHY reference, **CL 20 pF, ESR ≤ 30 Ω** | 3225 | 3.20 × 2.50 × 0.90 |
+| 1 | Y2 | **24 MHz oscillator** — PHY reference, 3.3 V CMOS into XI | OSC3225 | 3.20 × 2.50 × 1.20 |
 | 1 | Q1 | N-ch MOSFET — LED row driver | SOT-23 | 2.90 × 2.40 × 1.30 |
 | 1 | U10 | USB data-line ESD array — USBLC6-2SC6 | **SOT-23-6** | 2.90 × 2.80 × 1.45 |
 | 10 | D1–D10 | IR emitter, 940 nm — `LTE-C9901` (Lite-On), **65° view angle FULL (2θ½)**, Ie **5 min / 8 typ / 10 max** mW/sr @20 mA, VF 1.4, 60 mA DC, MSL 3 | 0603 (opto) | 1.60 × 0.80 × 0.98 |
@@ -1929,8 +1929,10 @@ ADC inputs plus a 12-signal ULPI bus will not fit a 64-pin part.
 | 20 | Cf11–Cf54 | TIA feedback cap — **1 pF** C0G, ~160 kHz pole (was 2.2 pF / 15.4 kHz) | 0402 | 1.00 × 0.50 × 0.55 |
 | 12 | C100–C111 | MCU decoupling | 0402 | 1.00 × 0.50 × 0.55 |
 | 10 | Cd11–Cd52 | op-amp decoupling | 0402 | 1.00 × 0.50 × 0.55 |
-| 4 | C123–C126 | crystal load caps | 0402 | 1.00 × 0.50 × 0.55 |
-| 3 | C120–C122 | PHY decoupling | 0402 | 1.00 × 0.50 × 0.55 |
+| 2 | C123, C124 | crystal load caps (Y1) | 0402 | 1.00 × 0.50 × 0.55 |
+| 1 | C125 | 24 MHz oscillator supply bypass, 100 nF | 0402 | 1.00 × 0.50 × 0.55 |
+| 2 | C120, C122 | PHY 1.8 V regulator output caps, 4.7 µF (one per rail) | 0805 | 2.00 × 1.25 × 1.45 |
+| 7 | C119, C121, C136–C139, C145 | PHY supply bypass, 100 nF at each supply pin | 0402 | 1.00 × 0.50 × 0.55 |
 | 2 | R34–R35 | mid-rail divider | 0402 | 1.00 × 0.50 × 0.55 |
 | 2 | R32–R33 | USB-C CC pull-downs, 5k1 | 0402 | 1.00 × 0.50 × 0.55 |
 | 1 | R30 | BOOT0 pull-down | 0402 | 1.00 × 0.50 × 0.55 |
@@ -2059,7 +2061,8 @@ JLCPCB BOM line. And all three that did have numbers failed:
 **Two items closed that had been open for a while:** the **ULPI PHY** is
 Microchip `USB3343-CP`, in LCSC stock at **$1.78** (C633347; `-TR` reel C112967
 at $2.07), QFN-24, matching the modelled envelope — the part the survey table
-assumed existed. And the **quad op-amp** is `TLV9064IDR`, below.
+assumed existed. (Since 2026-10-05 the PHY is `USB3300-EZK`, C108383, QFN-32:
+see the optical board's parts table.) And the **quad op-amp** is `TLV9064IDR`, below.
 
 ### ⚠ Search snippets report the VOLUME-FLOOR price — every one of them was wrong
 
@@ -2116,7 +2119,7 @@ Basic classes (no feeder charge):
 | PD1A–PD10B | `PD15-22B/TR8` | C161211 | 20 | **$1.33** | filtered ✓ · 11,271 in stock 2026-09-21 · replaced the VEMD4110X01 ($11.60, 95 in stock) |
 | U14–U18 | `TLV320ADC3140IRTWT` | C1852021 | 5 | **$18.23** | 4-ch audio ADC ✓ · 306 in stock 2026-09-21 (the IRTWR reel C882863 is ~$1 less each but had 67) |
 | U6 | `STM32H743IIT6` | C89597 | 1 | $10.01 | 548 in stock (2026-09-17) |
-| U7 | `USB3343-CP` | C633347 | 1 | $1.78 | ULPI PHY, QFN-24 ✓ |
+| U7 | `USB3300-EZK-TR` | C108383 | 1 | $1.455 | ULPI PHY, QFN-32 5×5, single 3.3 V supply; no link power management, so outside the USB334x chirp erratum ✓ |
 | U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
 | U9 | `TPS7A2033PDBVR` | C2862740 | 1 | $0.22 | 3V3 **analog**, 7 µVrms, ceramic-stable ✓ (was `SPX3819`, which needs an electrolytic or tantalum output capacitor) |
 | U8 | `AP2114H-3.3TRG1` | C150716 | 1 | $0.23 | 3V3 **digital**, SOT-223 tab — 0.51 W ✓. Replaces the AMS1117 (2026-10-04): that part needs a tantalum's ESR on its output and this board is all ceramic |
@@ -2136,7 +2139,7 @@ Basic classes (no feeder charge):
 | FB1 | `BLM18KG601SN1D` | C85833 | 1 | $0.0178 | 600 Ω @100 MHz, 0603, **1.3 A** (the 200 mA `GZ1608D601TF` carried 166 mA worst case) ✓ |
 | R44 | `RK73B3ATTE2R0J` | C5139521 | 1 | $0.57 | 2 Ω **2512** in series with the 24 V input: damps a live plug (48 V ring against the buck's 38 V). KOA, for its single-pulse rating — not a generic part ✓ |
 | Y1 | `TAXM25M4RDBCCT2T` | C403946 | 1 | $0.0765 | **MCU HSE 25 MHz**, 3225, CL 10 pF, ESR ≤ 30 Ω (the 20 pF part was outside the H7's start-up guarantee) ✓ |
-| Y2 | `TAXM26M4RLBCDT2T` | C5143383 | 1 | $0.0737 | **PHY REFCLK 26 MHz**, 3225, CL 20 pF, ESR ≤ 30 Ω by the maker's own sheet ✓ |
+| Y2 | `CJO05-240003320B30` | C712738 | 1 | $0.3723 | **PHY reference 24 MHz**, a 3225 clock oscillator (3.3 V CMOS, ±20 ppm, 1 ps rms). An oscillator because the PHY asks for a crystal rated for 0.5 mW of drive and the stocked 3225 crystals are rated 0.1 mW ✓ |
 | | | | **148** | **$26.96** | **`open_lines()` is empty** |
 
 **The op-amp is the happy surprise.** `TLV9064IDR` is a 4× CMOS RRIO part with
@@ -2844,7 +2847,8 @@ above says is already covered.
 **Still open** (project rule: NO consignment, all PCB parts LCSC-library):
 - ~~a **ULPI PHY** in JLC's library~~ — **CLOSED 2026-08-01.** Microchip
   **`USB3343-CP`** is in LCSC stock at **$1.78** (C633347), QFN-24, exactly the
-  envelope modelled. The `-TR` reel variant is C112967 at $2.07.
+  envelope modelled. The `-TR` reel variant is C112967 at $2.07. Since 2026-10-05
+  the PHY is `USB3300-EZK` (C108383, QFN-32, 17,000 in stock).
 - ~~the **IR emitter's beam angle**~~ — **CLOSED, unfavourably.** ±20–30° at
   940 nm **is not made in 0805**. `IR17-21C/TR8` (C131250) is the chosen part at
   ~120°. See "the three blockers" above for why the cover cannot make this up.

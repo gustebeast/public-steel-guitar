@@ -18,8 +18,8 @@ crimped end to end.
 WHAT CROSSES HERE
   * Pi 5 V IN, from motor_ctrl J5 -- GPIO pins 2/4 (5 V) and 6/9 (GND). Up to 3 A.
   * LED 24 V, passing through to both lighting drops (docs/lighting-bus.md, 2026-09-30).
-    It arrives on J4 from the motor board's fused J7 and leaves on J3 (fret boards, 0.89 A
-    over two contacts) and J6 (foot strip, 0.73 A over one). Every lit board makes its own
+    It arrives on J4 from the motor board's fused J7 and leaves on J3 (fret boards, 0.93 A
+    over two contacts) and J6 (foot strip, 0.77 A over one). Every lit board makes its own
     rail from it, so nothing here is regulated for the LEDs and the rail meets the Pi's
     5 V nowhere but GND.
     HISTORY: until that date J4 carried a 5 V LED rail made by a second buck (U6) on the
@@ -240,8 +240,8 @@ def _xh(tag, desc, rail="V5", ways=None):
 # cables that leave this board for the motor controller (which holds the far end of the
 # panel's supply cable) are J2 and J4. The connector row is full -- 50.6 of the board's
 # 56 mm -- so J4 cannot grow past a 4-way, and J2 needs both its 5 V contacts (3 A to
-# the Pi against PH's 2 A per contact). J4 does not: the lighting bus is 1.63 A at full
-# white, 54 % of ONE contact. So J4 is GND, 24 V, switch UP, switch DN -- ways 1 and 2
+# the Pi against PH's 2 A per contact). J4 does not: the lighting bus is 1.70 A at full
+# white, 57 % of ONE contact. So J4 is GND, 24 V, switch UP, switch DN -- ways 1 and 2
 # where every 4-way XH in the instrument has them.
 # The lines are the switch's own contacts to ground and nothing else: whatever pulls them
 # up lives on the output panel and stays at or under the switch's 12 V / 0.3 A.
@@ -304,26 +304,44 @@ def pi_cap():
             continue
         n = ui_nets.setdefault(_sig, Net(_sig))
         if _sig == "+3V3_PI":
-            # ⚠ THE RIBBON'S 3V3 LEAVES THROUGH A RESETTABLE FUSE (quality M36, 2026-10-04).
-            # It is the Pi's OWN 3V3 rail going out on a cable, and a short anywhere along
-            # that cable or on the UI board was a short on the rail the Pi's SD card and
-            # SoC I/O run from. 200 mA hold / 500 mA trip against a display that draws
-            # tens of mA; 0.5 to 3.5 ohm, so 0.02 to 0.14 V lost at 40 mA.
-            f1 = Part(name="Polyfuse", ref_prefix="F", ref="F1", tag="F1", dest="NETLIST",
-                      tool="skidl", value="0805L020YR",
-                      description="3V3 to the UI ribbon: PTC, 200 mA hold / 500 mA trip, 9 V "
-                                  "(Littelfuse, LCSC C126816; 0805 200 mA PTCs are a "
-                                  "multi-source footprint)",
-                      footprint="Fuse:Fuse_0805_2012Metric",
-                      pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
+            # ⚠ THE RIBBON'S 3V3 LEAVES THROUGH A CURRENT-LIMITED SWITCH. It is the Pi's
+            # OWN 3V3 rail going out on a cable, and a short anywhere along that cable or
+            # on the UI board is a short on the rail the Pi's SD card and SoC I/O run from.
+            # ⚠ A SWITCH AND NOT A POLYFUSE, BECAUSE THE BUDGET HERE IS VOLTS. The display
+            # (Newhaven NHD-2.7-12864WDW3, its sheet p.6) draws 345 mA typical / 375 max
+            # at 3.3 V with every pixel lit and wants 3.0 V at its pin: 0.30 V to lose
+            # between the Pi and the module, of which half a metre of ribbon takes about
+            # 0.13 and the UI board's copper about 0.06. An 0805 polyfuse is 0.15 to 0.85
+            # ohm (a 200 mA one 0.65 to 3.5): 0.06 to 0.32 V at 375 mA, so no polyfuse
+            # guarantees a full-white frame. TPS2553 (TI SLVS841): 85 mohm typical, 135
+            # hot, so 0.03 to 0.05 V, and the total is 0.24 V at the worst.
+            # RILIM 49.9k -> 475 / 520 / 565 mA (the sheet's own row): the least limit is
+            # 27 % over the display's most, and a dead short draws at most 0.57 A from
+            # the Pi until the part's thermal cut-out cycles it. Same part and resistor
+            # as motor_ctrl's bus-B switch. EN (active high) is tied to IN. FAULT is
+            # open-drain and left open: every GPIO on the ribbon is spoken for.
+            # Constant-current, not latch-off: the module's own capacitors are a start
+            # into a capacitive load.
+            u1 = Part(name="TPS2553DBVR", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST",
+                      tool="skidl", value="TPS2553DBVR",
+                      description="3V3 to the UI ribbon: current-limited switch, 0.52 A "
+                                  "(LCSC C55266)",
+                      footprint="Package_TO_SOT_SMD:SOT-23-6",
+                      pins=[Pin(num=1, name="IN", func=P), Pin(num=2, name="GND", func=P),
+                            Pin(num=3, name="EN", func=P), Pin(num=4, name="FAULT", func=P),
+                            Pin(num=5, name="ILIM", func=P), Pin(num=6, name="OUT", func=P)])
             v33_ui = Net("+3V3_UI")
-            n += j1[_hdr], f1[1]
-            v33_ui += f1[2], j5[_way]
-            # one 100 nF each side of the fuse: the UI board's end of a 3.5 ohm source
-            # wants a local reservoir, and the Pi's side keeps the ribbon's edges off 3V3
-            for _t, _net, _what in (("C5", v33_ui, "ribbon 3V3 bypass, after F1"),
-                                    ("C6", n, "Pi 3V3 bypass at F1")):
-                _cc = _c(_t, "100nF", _what)
+            n += j1[_hdr], u1["IN"], u1["EN"]
+            gnd += u1["GND"]
+            v33_ui += u1["OUT"], j5[_way]
+            Net("U1_NC_4").connect(u1["FAULT"])
+            r5 = _r("R5", "49k9 1%", "ribbon 3V3 current limit: 520 mA typ (TPS2553 p.7)")
+            Net("UI_ILIM").connect(u1["ILIM"], r5[1])
+            gnd += r5[2]
+            for _t, _net, _val, _what in (
+                    ("C5", v33_ui, "1uF/16V", "TPS2553 OUT bypass, at the pin"),
+                    ("C6", n, "100nF", "TPS2553 IN bypass -- 0.1 uF or more, at the pin")):
+                _cc = _c(_t, _val, _what)
                 _net += _cc[1]
                 gnd += _cc[2]
             continue
@@ -355,7 +373,7 @@ def pi_cap():
     v24_led += j3[2]
 
     # the foot drop: S4B-XH-A, the through-hole side-entry XH (why that one: the note at
-    # FOOT_PINS). 0.73 A through its one V24 contact (3 A rated) -- lighting-bus.md 3.
+    # FOOT_PINS). 0.77 A through its one V24 contact (3 A rated) -- lighting-bus.md 3.
     j6 = Part(name="S4B-XH-A", ref_prefix="J", ref="J6", tag="J6",
               dest="NETLIST", tool="skidl", value="S4B-XH-A",
               description="to foot_led_a J1 -- 24 V and SPI5, LCSC C157925",
@@ -451,11 +469,14 @@ BOARD_NOTES = {
         # left at -3.80 every one of the fourteen routed ways shifted 0.635 and the first
         # route came back with UI_DC and UI_RES_N open. The new pair lands at x +1.28.
         "J5": (-3.80 + 0.635, -BOARD_L / 2.0 + 2.135, 270.0),
-        # the ribbon's 3V3 fuse, off the header's +X end, turned so pad 1 (the Pi's side)
-        # faces the socket's pin 1 and pad 2 faces the ribbon; a 100 nF each side of it
-        "F1": (8.00, -13.50, 180.0),
-        "C5": (5.60, -13.50, 90.0),
-        "C6": (10.60, -13.50, 90.0),
+        # the ribbon's 3V3 switch, off the header's +X end, turned 180 so IN / EN (the
+        # Pi's side) face the socket's pin 1 and OUT / ILIM face the ribbon; its output
+        # capacitor and limit resistor on the ribbon side, its input bypass on the other,
+        # each with its live pad toward the pin it serves
+        "U1": (8.00, -13.50, 180.0),
+        "C5": (4.90, -14.30, 180.0),
+        "R5": (4.90, -12.60, 180.0),
+        "C6": (11.00, -14.30, 0.0),
     },
     # ⚠ THE SOCKET'S GROUND PADS TAKE NO STITCHING VIA, AND DO NOT NEED ONE. The check
     # exists because an SMD pad touching only a pour can be orphaned when routing carves
@@ -475,29 +496,34 @@ BOARD_NOTES = {
     "stitch_nets": ("GND",),
     "edge_escape": ("J5",),       # the ribbon header's edge-side row: layout._edge_row_escape
     # ⚠ THE LIGHTING BUS IS NOT A SIGNAL. Every net here was the 0.25 mm default (0.88 A at a
-    # 10 C rise by IPC-2221) and this one carries 0.89 A to J3 and 0.73 A to J6.
+    # 10 C rise by IPC-2221) and this one carries 0.93 A to J3 and 0.77 A to J6.
     # 0.3 mm (~1.0 A) IS WHAT ROUTES, NOT WHAT WAS WANTED: 0.5, 0.4 and 0.35 each left one
     # GND island -- the wider rail cuts the pour in the band the UI ribbon already fans
     # across. The deliberate wide strip that sentence used to ask for is "tracks" below; this
     # width now only governs what the router still lays (the two caps' stubs).
     "net_widths": {"+24V_LED": 0.3},
     # ⚠ AND THE FRET BRANCH IS LAID BY HAND, BECAUSE THE NETCLASS COULD NOT GIVE IT MARGIN.
-    # J4 -> J3 is the stretch that carries everything (1.63 A in, 0.89 A on to the fret
+    # J4 -> J3 is the stretch that carries everything (1.70 A in, 0.93 A on to the fret
     # boards), and at 0.3 mm it was on a ~1.0 A track. It is one straight run in the strip
     # ABOVE the connector lands, where nothing else goes: a 1.0 mm bar (~2.4 A) at y 10.5,
     # 0.29 off J3's lands and clear of the mounting pads, dropping into J4 way 2 and J3 way 1
     # (2026-10-04: J3 is a 4-way with ONE 24 V way, which stands at the same x the 6-way's
     # way 2 did, so the bar did not move and the tie across to a second way is gone -- that
     # land is GND now). The router keeps the rest
-    # of the net -- the caps and the 0.73 A foot branch -- at 0.3 mm.
+    # of the net -- the caps and the 0.77 A foot branch -- at 0.3 mm.
     # (2026-10-04: J4's 24 V is way 2 ALONE now -- ways 3 and 4 are the power button's --
     # so the bar comes down at x -2.00 and the tie across to way 3 is gone.)
     # (2026-10-04, later: J3 is an XH with 24 V on way 2, at x 16.10. The bar is 1.75 mm
     # longer and comes down there; the foot branch leaves from the same land.)
-    "tracks": [("+24V_LED", "B.Cu", 1.0, [(-2.00, 7.13), (-2.00, _BAR_Y), (16.10, _BAR_Y)]),
+    # U1's ground pin stands between its IN and EN pins, both on the Pi's 3V3: the pour
+    # cannot reach it and neither could the stitcher (2026-10-05, a 1.0 x 0.3 island and
+    # the pin open). It goes inward, to a via under the middle of the package, 0.31 from
+    # the ILIM pad opposite and 0.33 from the pads either side.
+    "tracks": [("GND", "B.Cu", 0.3, [(9.14, -13.50), (8.00, -13.50)]),
+               ("+24V_LED", "B.Cu", 1.0, [(-2.00, 7.13), (-2.00, _BAR_Y), (16.10, _BAR_Y)]),
                ("+24V_LED", "B.Cu", 0.8, [(16.10, _BAR_Y), (16.10, 7.13)]),
                # the foot branch, on the path the router found when the net was all its own
-               # (with the bar declared it left J6 way 1 open): 0.73 A at 0.4 mm
+               # (with the bar declared it left J6 way 1 open): 0.77 A at 0.4 mm
                # (2026-10-04: it leaves J3's land 0.8 mm lower than it did, because the land
                # beside it is GND now and the old diagonal passed its corner at 0.06 mm)
                ("+24V_LED", "B.Cu", 0.4, [(16.10, 7.13), (16.10, 4.45), (19.44, 1.11), (20.25, 1.11),
@@ -542,7 +568,7 @@ BOARD_NOTES = {
     # bridge has to be a point that is in cluster A on one layer and MAIN on the other, and
     # (-16.62, -10.91) is exactly that -- F island 0, over the B main pour, 3.739 mm of
     # clearance headroom. One via, not a fifth guess.
-    "vias": [("GND", -21.50, -11.00), ("GND", -11.75, -7.00),
+    "vias": [("GND", 8.00, -13.50), ("GND", -21.50, -11.00), ("GND", -11.75, -7.00),
              ("GND", -20.00, -15.50), ("GND", 14.00, -15.50),
              ("GND", -16.62, -10.91),
              # ⚠ AND ONE ON THE EAST SIDE, FOR THE SAME REASON AS THE BRIDGE ABOVE (2026-09-30).
@@ -574,7 +600,7 @@ BOARD_NOTES = {
     # the Pi's header by. The passives can, and they are 0.5 mm tall against a 8.5 mm gap,
     # so they go where the connectors already are and the front face becomes bare laminate.
     "back_refs": ("J1", "J2", "J3", "J4", "J5", "J6",
-                  "C1", "C2", "C3", "C4", "R1", "R2", "R3", "R4", "F1", "C5", "C6"),
+                  "C1", "C2", "C3", "C4", "R1", "R2", "R3", "R4", "R5", "U1", "C5", "C6"),
     # ⚠ AND THIS FLAG IS DOCUMENTATION -- nothing reads it (checked across the tree), so it
     # never made the board one-sided and never will. It says what the layout is FOR; the
     # thing that decides the invoice is back_refs above.
@@ -587,13 +613,14 @@ BOARD_NOTES = {
         "power_paths": [
             # the Pi's whole supply: 3 A is motor_ctrl U5's rating and F2 is 4 A
             {"net": "+5V_PI", "from": "J2.2", "to": ["J1.2", "J1.4"], "amps": 3.0},
-            # lighting bus, every zone at full white (software-capped): 1.63 A in,
-            # 0.89 A on to the fret boards, 0.73 A to the foot strip (docs/lighting-bus.md)
-            {"net": "+24V_LED", "from": "J4.2", "to": ["J3.2"], "amps": 1.63},
-            {"net": "+24V_LED", "from": "J4.2", "to": ["J6.2"], "amps": 0.73},
-            # the display's logic supply, behind F1 (200 mA hold)
-            {"net": "+3V3_PI", "from": "J1.1", "to": ["F1.1"], "amps": 0.2},
-            {"net": "+3V3_UI", "from": "F1.2", "to": ["J5.10"], "amps": 0.2},
+            # lighting bus, every zone at full white (software-capped): 1.70 A in,
+            # 0.93 A on to the fret boards, 0.77 A to the foot strip (docs/lighting-bus.md)
+            {"net": "+24V_LED", "from": "J4.2", "to": ["J3.2"], "amps": 1.70},
+            {"net": "+24V_LED", "from": "J4.2", "to": ["J6.2"], "amps": 0.77},
+            # the display's supply, behind U1: 375 mA with every pixel lit (its sheet's
+            # maximum) plus the UI board's pull-ups
+            {"net": "+3V3_PI", "from": "J1.1", "to": ["U1.1"], "amps": 0.4},
+            {"net": "+3V3_UI", "from": "U1.6", "to": ["J5.10"], "amps": 0.4},
         ],
         # the power button's two throws: a few mA of pull-up current from the output
         # panel, switched to ground on the UI board. Signals, not supplies.
@@ -641,7 +668,9 @@ BOARD_NOTES = {
                            "end) and the way order is harness.UI_RIBBON, asserted above -- "
                            "the same list ui_board's J2 is built from. Which end of the "
                            "cable is way 1 is M1's question, not this one's",
-            "0805L020YR": "two-pad, unpolarised",
+            "TPS2553DBVR": "TI SLVS841 p.5, DBV package: 1 IN, 2 GND, 3 EN (active high "
+                           "on the 2553), 4 FAULT, 5 ILIM, 6 OUT. Board: 1 and 3 +3V3_PI, "
+                           "2 GND, 4 open, 5 UI_ILIM, 6 +3V3_UI. Read 2026-10-05",
         },
         "manual": {
             "M1": "done 2026-10-05, read off both ROUTED boards. UI ribbon: J5 here and J2 "
@@ -658,33 +687,62 @@ BOARD_NOTES = {
             "M3": "done: In1 is an unbroken GND plane under the whole board (plane_layers), "
                   "with GND pours on F.Cu and B.Cu stitched to it. Every supply path above "
                   "runs over it; no slot, and no return necks through a single via",
-            "M4": "no regulator on this board. C1 22 uF / 16 V + C3 100 nF on the Pi's 5 V at "
-                  "the socket (about 16 uF effective at 5 V bias on an 0805 X5R); C2 4.7 uF "
-                  "/ 50 V + C4 100 nF / 50 V on the 24 V lighting bus -- about half its "
-                  "value at 24 V, which is why it is local HF bulk only: each lit board "
-                  "carries its own buck and its own input capacitors",
-            "M5": "5 V rail: 16 V capacitor, XH 250 V. 24 V rail: 50 V capacitors, XH 250 V, "
-                  "PH 100 V. 3V3: F1 is a 9 V part. R1-R4 are 68 R in series with "
-                  "3.3 V logic. The two switch lines carry the output panel's pull-up, "
-                  "which that board holds at or under the switch's 12 V. Contact current "
-                  "is M33",
+            "M4": "no regulator on this board. U1 (TPS2553, a switch): C6 100 nF at IN, the 0.1 uF "
+                  "or more its sheet asks for, and C5 1 uF at OUT; the sheet requires no output "
+                  "capacitance. C1 22 uF / 16 V + C3 100 nF on the Pi's 5 V at the socket (about 16 "
+                  "uF effective at 5 V bias on an 0805 X5R); C2 4.7 uF / 50 V + C4 100 nF / 50 V on "
+                  "the 24 V lighting bus -- about half its value at 24 V, which is why it is local "
+                  "HF bulk only: each lit board carries its own buck and its own input capacitors",
+            "M5": "5 V rail: 16 V capacitor, XH 250 V. 24 V rail: 50 V capacitors, XH 250 V, PH 100 "
+                  "V. 3V3: U1 works from 2.5 to 6.5 V; C5 is a 16 V part. R1-R4 are 68 R in series "
+                  "with 3.3 V logic. The two switch lines carry the output panel's pull-up, which "
+                  "that board holds at or under the switch's 12 V. Contact current is M33",
+            "M6": "nothing here needs matching: the display's SPI and the two LED streams are clock "
+                  "and data from one master with no data returning, each through this board in a "
+                  "few centimetres over the unbroken In1 plane (M3)",
+            "M7": "U1, TI SLVS841 typical application: 0.1 uF at IN (C6), RILIM from ILIM to ground "
+                  "(R5, 49.9k 1 %, inside the 15k to 232k the sheet allows), EN driven high (tied "
+                  "to IN), FAULT an open-drain output with nothing on it, a capacitor at OUT (C5 1 "
+                  "uF). No other IC",
+            "M8": "U1 EN: tied to IN, on whenever the Pi's 3V3 is. ILIM: R5 to ground. No address, "
+                  "mode or boot pin on the board",
             "M9": "no MCU, nothing to program. Every net on the board is on a through-hole "
                   "pin of J1 or J5 or on a connector land, all reachable with a probe from "
                   "the bare front face; ground is on eight socket pins",
-            "M10": "decision: no clamp on this board. Every connector mates inside the "
-                   "instrument to its own harness. The 24 V it carries is clamped at "
-                   "motor_ctrl (D8, SMAJ30A) and fused there (F3); the Pi's 5 V has "
-                   "motor_ctrl's crowbar (D9 + F2). The one supply this board SOURCES to a "
-                   "cable, the ribbon's 3V3, is behind F1. Polarised housings on every "
-                   "JST; the ribbon header is not keyed -- see M1",
+            "M10": "decision: no clamp on this board. Every connector mates inside the instrument "
+                   "to its own harness. The 24 V it carries is clamped at motor_ctrl (D8, SMAJ30A) "
+                   "and fused there (F3); the Pi's 5 V has motor_ctrl's crowbar (D9 + F2). The one "
+                   "supply this board SOURCES to a cable, the ribbon's 3V3, is behind U1's current "
+                   "limit. Polarised housings on every JST; the ribbon header is not keyed -- see "
+                   "M1",
+            "M15": "no regulator. U1 is a switch: 3.3 V in against a 2.5 V minimum, 0.05 V across "
+                   "it at the worst, and no stability condition on its output capacitor",
             "M16": "decision: no added damping. Both inlets (J2, J4) are plugged at "
                    "assembly with the supply off -- they are inside the closed instrument "
                    "and nothing in service unplugs them. Were one plugged live: 5 V rings "
                    "toward 10 V on a 16 V capacitor, 24 V toward 48 V on 50 V parts",
+            "M18": "U1 is fed by the rail it switches, so it is never driven unpowered, and it "
+                   "blocks reverse current if its output is held above its input. The UI board has "
+                   "no supply of its own. The two switch lines carry the output panel's pull-up and "
+                   "touch no IC here",
+            "M20": "no pull-up and no termination on this board. The UI's pull-ups are on the UI "
+                   "board; the two LED streams are source-terminated here by R1-R4, 68 R at the "
+                   "Pi's pins",
+            "M21": "no converter on the board",
+            "M22": "no op-amp on the board",
+            "M25": "U1 has no thermal pad. 0.4 A through 135 mohm is 22 mW. Into a dead short it "
+                   "holds about 0.5 A at 3.3 V, 1.7 W, until its own thermal cut-out cycles it: the "
+                   "part's designed behaviour, and the fault is not a running condition",
+            "M26": "U1 IN is the Pi's side and OUT the ribbon's, by its pinout above. Every other "
+                   "net keeps one name from header pin to connector way",
+            "M27": "no strap, boot or debug pin is used: header pins 27 / 28 (the HAT ID bus) are "
+                   "not connected, and none of the pins taken (11 12 13 15 16 18 29 31 33 37 38 40, "
+                   "the SPI0 / SPI5 pairs) is read by the Pi at boot",
             "M28": "JST's own parts: S4B-XH-SM4-TB(LF)(SN) C161861, S6B-PH-SM4-TB(LF)(SN) C265405, "
-                   "S4B-XH-A(LF)(SN) C157925 -- the cited drawings are theirs. The "
-                   "2x20 socket and the 2x8 header are symmetric pin fields with no maker "
-                   "numbering. No transistor, regulator or IC on the board",
+                   "S4B-XH-A(LF)(SN) C157925 -- the cited drawings are theirs. The 2x20 socket and "
+                   "the 2x8 header are symmetric pin fields with no maker numbering. One IC: "
+                   "TPS2553DBVR C55266, the constant-current part (not the -1 latch-off one), "
+                   "SOT-23-6, pinout above",
             "M31": "name and revision on the front; J2 / J3 / J4 / J6 pin names beside each "
                    "connector; designators at 1.0 mm or larger (A12). The ribbon header's "
                    "pin-1 mark is the footprint's, outside the body",
@@ -695,26 +753,43 @@ BOARD_NOTES = {
                    "4, and J2's second power pair on 5 and 6. 24 V is on XH and 5 V on "
                    "PH. J6 is the through-hole side-entry XH (same housing; the SMT one "
                    "does not fit its band -- the note at FOOT_PINS)",
-            "M33": "5 V: 3 A through J2's two PH contacts (1.5 A each, 75 % of 2 A) and socket "
-                   "pins 2 + 4. 24 V: 1.63 A through J4's one contact (54 %), 0.89 A through "
-                   "J3's one XH contact (30 % of 3 A), 0.73 A through J6's one XH contact (24 %; both figures are a "
-                   "software cap with every zone at full white). 3V3: under 0.1 A of the "
-                   "Pi regulator's 0.5 A",
-            "M34": "no active part. SPI0 SCLK / MOSI and SPI5 SCLK / MOSI leave the Pi as "
-                   "outputs and reach inputs on the lit boards through 68 R; the UI nets "
-                   "keep one name from the header pin to the ribbon way. The two switch "
-                   "lines touch nothing here",
-            "M36": "3V3 to the ribbon: F1, 200 mA hold. 24 V to the lit boards: fused at "
-                   "its source, motor_ctrl F3 (3 A), which is every XH contact's own rating. 5 V does not "
-                   "leave this board except into the Pi",
+            "M33": "5 V: 3 A through J2's two PH contacts (1.5 A each, 75 % of 2 A) and socket pins "
+                   "2 + 4. 24 V: 1.70 A through J4's one contact (57 %), 0.93 A through J3's one XH "
+                   "contact (31 % of 3 A), 0.77 A through J6's one XH contact (26 %; both figures "
+                   "are a software cap with every zone at full white). 3V3: the display is 345 mA "
+                   "typical / 375 max with every pixel lit (Newhaven NHD-2.7-12864WDW3 sheet p.6, "
+                   "read 2026-10-05), under 0.1 A for a white-on-black page, plus a few mA of "
+                   "pull-ups: 0.4 A declared. That is 80 % of the 0.5 A commonly quoted for the "
+                   "header's 3V3 pins -- NOT a figure from a Pi 4 document, none was found -- so a "
+                   "full-white frame is the one case worth measuring on the first unit (the Pi's "
+                   "3V3 at the header). Volts: 0.30 V from 3.3 to the module's 3.0 V minimum; U1 "
+                   "0.03 to 0.05 V (85 to 135 mohm), ribbon about 0.13, UI board about 0.06: 0.24 V "
+                   "at the worst. Through header pin 1 alone, one socket contact (3 A class)",
+            "M34": "U1: IN from the Pi's 3V3 (header pin 1), OUT to the ribbon's way 10; nothing "
+                   "else on the board is active. SPI0 SCLK / MOSI and SPI5 SCLK / MOSI leave the Pi "
+                   "as outputs and reach inputs on the lit boards through 68 R; the UI nets keep "
+                   "one name from the header pin to the ribbon way. The two switch lines touch "
+                   "nothing here",
+            "M35": "TI publishes no errata document for the TPS2553; a web search (2026-10-05) "
+                   "found only forum threads on behaviour the sheet already describes -- FAULT is "
+                   "deglitched and can trail a marginal overload, and the part cycles thermally "
+                   "while limiting. Neither matters here: FAULT is not used",
+            "M36": "3V3 to the ribbon: U1, current-limited at 475 to 565 mA (RILIM 49.9k, the "
+                   "sheet's own row), constant-current with thermal cut-out, so a short on the "
+                   "ribbon costs the Pi at most 0.57 A. 24 V to the lit boards: fused at its "
+                   "source, motor_ctrl F3 (3 A), which is every XH contact's own rating. 5 V does "
+                   "not leave this board except into the Pi",
             "M38": "every part is on the back, under the board, inside the socket's 8.5 mm "
                    "standoff; the 0805s lie along X, parallel to the long edges, and the "
                    "nearest is over 4 mm from an edge. Routed outline, no V-score, no "
                    "mounting hole: the board hangs on the 40-pin socket. All five cables "
                    "leave sideways (side-entry parts) with open board edge in front",
-            "M40": "68 R, 22 uF, 4.7 uF and 100 nF are stock values. F1's description "
-                   "gives its hold and trip currents; nothing else is chosen for a "
-                   "critical parameter and nothing needs a heatsink",
+            "M39": "U1 FAULT is an open-drain output and is left open. Unused header pins are the "
+                   "Pi's own and have no pad on a net. J4 / J6 / J3 carry no unused way that is not "
+                   "named in harness.py",
+            "M40": "68 R, 22 uF, 4.7 uF and 100 nF are stock values. R5 is 49.9k 1 %, the tolerance "
+                   "the limit's table assumes, and says so; U1's description gives its limit. "
+                   "Nothing needs a heatsink",
         },
     },
 }
