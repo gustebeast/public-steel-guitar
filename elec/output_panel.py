@@ -2609,6 +2609,119 @@ BOARD_NOTES["quality"] = {
         "PWR_SW_UP": "a throw of the power button: 2.55 mA at most, through R33 + R34",
         "PWR_SW_DN": "the button's other throw, as PWR_SW_UP",
     },
+    # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
+    # repeated structure is on. The pass fails on any difference from the routed board.
+    "unconnected": {
+        "J[1-4].[AB]8": "USB-C sideband (SBU): USB 2.0 does not use it",
+        "J2.[AB]5": "J2 is not a port: the far end of the pass-through to the Pi, no CC resistor (note at J2)",
+        "J7.[34]": "the trunk head carries no data: ways 3 and 4 have no conductor",
+        "U1": {
+            "pins": "2 3 4 8 9 10 11 14 15 16 19 20 21 22 23 24 28 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 66",
+            "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
+        },
+        "U10.13": "MCP4261 SDO: the pot is written, never read back",
+        "U4": {
+            "pins": "2 5 6 7 8 13 16 17 18 21 22 23 24",
+            "why": "CH334F: downstream ports 3 and 4 (two of its four are used: the MCU and J4), and its LED / power-enable / mode pins, left at their defaults"
+        },
+        "U5.4": "LMR16006 SHDN: left open is enabled (internal pull-up)",
+        "U6.4": "the maker's NC pin"
+    },
+    "net_groups": [
+        {
+            "name": "hub: upstream and two downstream pairs, six pins on six nets",
+            "pins": [
+                "U4.9",
+                "U4.10",
+                "U4.11",
+                "U4.12",
+                "U4.14",
+                "U4.15"
+            ],
+            "nets": 6,
+            "each": 1
+        },
+        {
+            "name": "USB-C data: J1 and J2 are one pass-through pair, J3 and J4 a pair each",
+            "pins": [
+                "J[1-4].A[67]"
+            ],
+            "nets": 6
+        },
+        {
+            "name": "each receptacle's A and B data contacts are the same pair",
+            "pins": [
+                "J[1-4].[AB][67]"
+            ],
+            "nets": 6
+        },
+        {
+            "name": "digital pot: two channels, both ends and both wipers used; the two low ends share VMID",
+            "pins": [
+                "U10.[5-9]",
+                "U10.10"
+            ],
+            "nets": 5
+        },
+        {
+            "name": "relay: two poles, each with its own common and energised contact; both rest contacts are the direct path",
+            "pins": [
+                "K1.[2-7]"
+            ],
+            "nets": 5
+        },
+        {
+            "name": "I2S: five lines",
+            "nets_like": "I2S_(MCK|CK|WS|SDI|SDO)",
+            "count": 5
+        },
+        {
+            "name": "three op-amp buffers and the inverter: four outputs, four nets",
+            "pins": [
+                "U7.1",
+                "U8.1",
+                "U9.1",
+                "U11.1"
+            ],
+            "nets": 4,
+            "each": 1
+        },
+        {
+            "name": "power link: GND and 24 V twice, the button's two throws once",
+            "pins": [
+                "J10.[1-6]"
+            ],
+            "nets": 4
+        },
+        {
+            "name": "inlet: two contacts a rail",
+            "pins": [
+                "J6.[1-4]"
+            ],
+            "nets": 2,
+            "each": 2
+        },
+        {
+            "name": "the MCU's two I2S units share one clock pair on purpose: I2S2 drives WS and CK, I2S3 listens",
+            "pins": [
+                "U1.35",
+                "U1.53",
+                "U1.36",
+                "U1.58"
+            ],
+            "nets": 2,
+            "each": 2
+        },
+        {
+            "name": "the stereo ADC's two inputs take the one pickup signal",
+            "pins": [
+                "U2.13",
+                "U2.14"
+            ],
+            "nets": 1,
+            "each": 2
+        }
+    ],
     "pinouts": {
         "TYPE-C-31-M-12": "KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 names each land by "
                           "its USB Type-C contact (A1 ... B12), the names Korean Hroparts' "
