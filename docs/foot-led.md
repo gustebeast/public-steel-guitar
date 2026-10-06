@@ -164,8 +164,8 @@ So neither 2 nor 3 matches them, and 4 is not available here: four a zone at 24 
 by going back to 12 zones, which is what 24 zones replaced.
 
 **The commonality that matters is already complete.** The foot strip and the fret boards
-share the LED (C7371891), the driver (C116842), the buck (C2071783) and the inductor
-(C57269) -- every active part. The only thing that differs is R11's value, and that would
+share the LED (C7371891), the driver (C116842), the buck (LMR33630BRNXR, C2071384) and
+the inductor (SWPA5040S4R7MT, C48496) -- every active part. The only thing that differs is R11's value, and that would
 still differ at any string length that fits: a series string sets the rail, and a 572 mm
 floor wash and a 9.14 mm fret cell are not going to want the same one.
 
@@ -192,9 +192,10 @@ light window, and buys 3.40 mm.
 
 ⚠ **The 2.95 is off JST's own drawing** (SH catalogue, side-entry side view), not a
 catalogue attribute. That distinction is the whole lesson of the pogo retraction in
-`docs/fret-led.md` section 9.1, and it is the one new sourcing line on this board:
-**SM04B-SRSS-TB(LF)(SN), C160404**, 4-way, 1.0 A / 50 V against 0.24 A at 24 V, 3,495 in
-stock. Every other part is already bought for another board.
+`docs/fret-led.md` section 9.1. ⚠ **Superseded: the inlet is not a JST SH any more.** It
+is the 4-way XH the fret board uses, **S4B-XH-SM4-TB, C161861** (24 V goes on XH in this
+project, and its 3 A contact carries both foot boards at 26 %); the SH part is on no board
+and is not ordered.
 
 ## 6. ⚠ Four layers — and NOT for the pickup's sake
 
