@@ -281,13 +281,38 @@ WHAT THE PASS CHANGED (all in the generators, with the reason at each)
   gv.py, gv_drill.py); every orientation-critical footprint compared pad for pad with
   JLCPCB's library footprint (scratchpad rot.py).
 
+ORDER PAGE DRY RUN, 2026-10-06 (all five boards walked to "Quote & Order" on JLCPCB in the
+user's browser; NOTHING put in the cart). Each is saved in the account under
+Projects > Quotes. What it found, and what the order needs because of it:
+- ⚠ UPLOAD `<board>-bom-order.csv` AND `<board>-cpl-order.csv` (elec/order_files.py writes
+  them into elec/out/fab/<board>/), NOT the -bom.csv / -cpl.csv inside the zip. The zip's
+  BOM leaves passives uncoded and JLCPCB matched 0402 footprints to 01005 parts, unselected
+  (board built without them); the zip's CPL put the 1x20 header 24 mm off and the ribbon
+  header's pins into the board. The module's docstring has the three reasons.
+- ⚠ ui_board J2 needs 270, not the 90 this list said: pad numbers cannot orient a
+  symmetric header. The -cpl-order file carries it; the preview shows the body at the
+  board edge, pins off the board.
+- The seam pogo pins arrive UNSELECTED on every LED board (a "difficult" part, +0.08 USD
+  each). Tick the row (it can take two clicks); pressing Next without it raises
+  "Project has unselected parts". In the 2D preview all four rows point off their board end.
+- The 0.25 mm via option on the foot boards IS surcharged, whatever ORDER.txt says:
+  +17.1 via, +17.0 4-wire Kelvin test and +3.5 to 7.8 Tg155 material, both added by the
+  form itself. PCB 68 / 72 USD against 37 for a fret board at 0.30.
+- ⚠ THE FORM REMEMBERS THE LAST BOARD'S OPTIONS. After a foot board, a fret board opens
+  with 0.25 mm vias, Tg155 and the Kelvin test still on (Advanced Options): set
+  0.3mm/(0.4/0.45mm), FR4 TG135, Kelvin No. Build time can also jump to the paid
+  "2-3 days" (+66 USD): pick "3 days, PCBA Only".
+- Economic assembly was accepted for all five. Every BOM line matched and was in stock.
+- Quotes for 5 of each, before shipping (31 USD DHL): ui_board 53.31, foot_led_a 197.84,
+  foot_led_b 196.47, fret_led_key 160.78, fret_led_mid 158.43 -- 766.83 USD.
+
 NEEDS USER -- the one item left open on every board is M12, and only these parts of it:
 1. JLCPCB order page, per board: upload elec/out/fab/<board>.zip, then the BOM and CPL
    from inside it. In the parts-placement PREVIEW check each part against this table
    (KiCad angle in the CPL -> angle the fab's own footprint needs; worked out from
    JLCPCB's library footprints, so the previewer should show these parts turned by the
    difference until corrected -- fix it in the previewer, do not edit the file):
-     ui_board   J1 90 -> 0, J2 180 -> 90, SW1 0 -> 0, SW2 0 -> 0 (or 180: only the
+     ui_board   J1 90 -> 0, J2 180 -> 270, SW1 0 -> 0, SW2 0 -> 0 (or 180: only the
                 button's sense inverts, and JP1 on the output board picks the throw)
      foot_led   U1-U4 0 -> 270, U10 0 -> 270, J1 270 -> 270, every LED unchanged
      fret_led   U1-Un 0 -> 270, U10 (key) 270 -> 180, J1 270 -> 270,
