@@ -394,6 +394,41 @@ filled in to match.
 does not, and a board outside the table comes back as an engineering query or a scrap
 panel. If the order really is on a finer process, state that process's numbers in
 `quality.fab`; that is a declaration, not a waiver. **Soft:** silk height and stroke.
+
+### A15 — A signal's return does not have to go round a cut in the plane
+
+**Rule.** A signal track that runs over a ground pour on another layer does not straddle a
+cut in that pour longer than `return_slot` (default 5.0 mm). A cut is ground copper,
+then none, then ground copper again, measured along the track. A track that simply runs
+off the edge of the pour is not a cut and is not counted.
+
+**Why.** Return current does not take the shortest path; above a few tens of kHz it takes
+the path of least inductance, which is the copper directly under the signal. Every track
+routed on the plane layer cuts that copper for its whole length, so a plane layer that is
+also a routing layer is a plane with slots in it — and on a two-layer board it always is.
+Where a signal crosses a slot, its return has to travel to the end of the slot and back,
+and the loop that opens up is the area between the two paths. That loop radiates, and it
+receives; it is the usual reason a board passes on the bench and fails in a case next to
+a motor. None of it shows in DRC, in a netlist, or in a connectivity check: the copper is
+all where the schematic says it should be.
+
+The board this came from has one B.Cu ground pour and 455.89 mm of B.Cu signal copper cut
+through it. The plane under the power section turned out to be solid — which is the thing
+that mattered and had only ever been asserted — and the widest cut any signal straddles is
+3.03 mm, two tracks side by side. Both of those are now numbers instead of opinions.
+
+**How it is checked.** Every non-ground track longer than 1 mm is sampled every 0.25 mm
+and each sample tested against the filled ground polygons on every other copper layer.
+Only straddled gaps count. `quality.return_slot` sets the limit; `quality.return_slot_ok`
+lists nets exempted, and an entry is expected to say what carries that signal's return
+instead. A board with no ground pour gets a note saying so, and no claim.
+
+**How strict.** **Soft.** A long cut is usually a routing accident and reroutes cheaply,
+but there are honest reasons for one — a deliberately split plane between domains, a
+signal whose return is carried by its own pair rather than the plane. Those are written
+down, not waived silently. **A15 measures for every signal what M6 asks about by hand for
+fast buses**; M6 keeps the part A15 cannot measure, which is whether the edge rate makes
+the loop matter.
 *Break it when:* (a) the fab's own page for the service being ordered gives a smaller
 figure (put it in `quality.fab`); (b) the label has no site at the legible size anywhere
 in reach and the choice is a small label or none — `kicad_silk` then places it at 0.8 mm
@@ -402,7 +437,83 @@ assemble or wire the board correctly (a board name, a test-pad name). *Do not br
 for a polarity mark, a pin-1 mark, or the only statement of a connector's pin order: if
 that does not fit at the legible size, make room.
 
+
+### A14 — No via drinks a solder joint
+
+**Rule.** A via whose centre falls inside a pasted SMD land does not have a barrel that
+can hold half or more of the solder paste printed over that land. Measured as volume: the
+barrel is pi x (drill/2)^2 x `board_thickness`, the deposit is the land's area times
+`stencil_foil`.
+
+**Why.** An open plated barrel under a solder joint is a capillary, and reflow is exactly
+the condition it wants. The solder does not vanish -- it ends up on the far side of the
+board, which is no help to the joint it left. IPC-7093 says a via in a land is filled and
+capped, or is not there.
+
+Two things made this invisible until the exported files were read. First, the board model
+says the vias are **tented**: KiCad reports `IsOnLayer(F_Mask)` false for every via inside
+a pad, because it adds no mask opening of its *own*. The pad's aperture is already open
+over it. On the board this came from, F.Mask exported as 208 dark flashes -- one per pad
+on the layer -- and not one clear flash anywhere, so there is no mask island inside any
+aperture and every one of those barrels is open under the paste. Second, as an **area**
+ratio a 0.3 mm barrel in an 0603 land reads 8 % of the pad and looks like nothing. As a
+volume it is 0.113 mm3 against a 0.103 mm3 deposit: **110 %**. Four such vias survived a
+quality pass that was looking for them.
+
+**How it is checked.** Every via centre is tested against every SMD pad that opens the
+paste; a pad with no paste (a bare test pad) has no joint to starve and is skipped.
+`quality.stencil_foil` and `quality.board_thickness` set the two constants;
+`quality.via_in_land_ok` lists lands exempted, which is where an order placed with the
+vias filled and capped is declared. `cadkit/pcbflow/unwick.py` runs after routing and
+moves what it can -- it insists on a mask dam between via and land, and refuses a move
+longer than `via_land_move_max` (1.5 mm), because a ground return that walks 4 mm to
+avoid wicking is the worse board.
+
+**How strict.** **Hard** at half the deposit or more: that is a joint the assembler cannot
+make reliably, and no board has a good reason to keep one. Under half it is reported with
+its worst case and passes. The honest escape is not a waiver but a declaration -- order
+the vias filled and capped and say so in `via_in_land_ok`. **Tenting is not an escape**,
+for the reason above.
+
 ---
+
+### A13 — Every pin and every channel is accounted for
+
+**Rule.** The board declares which pins it leaves unconnected, and for each repeated
+structure how many distinct nets its pins are on. The pass fails on any difference, in
+either direction.
+
+**Why.** A netlist that is wrong but internally consistent passes everything else. Two
+channels wired to the same four driver outputs are simply fewer nets: it routes clean,
+DRC is clean, and every rule above is satisfied, because those all ask whether the board
+agrees with the netlist. Only a number the DESIGN means, written beside the board, can
+disagree with it. (A loop that read an index left over from the loop above did exactly
+this: 24 return nets where 32 were meant, eight driver outputs idle, nothing red.)
+
+**How it is checked.** On the routed board:
+
+* *Unconnected pins.* Every numbered pad of a part with three or more pins that has no
+  net (or is alone on its net) must be named in `quality.unconnected`, with a reason; and
+  every pin named there must really be unconnected. Keys are `"REF.PIN"` patterns
+  (`"J*.MP"`, `"U14.5"`) with the reason as the value, or a part pattern with a pin list:
+  `"U6": {"pins": "7 8 9 12", "why": "spare GPIO, left floating as inputs"}`.
+* *Groups.* `quality.net_groups` is a list of
+  `{"name": ..., "pins": ["PD*.2"], "nets": 20, "each": 1}`: the pins the patterns match
+  must sit on exactly `nets` distinct nets, with exactly `each` of them on every net (leave
+  `each` out when the nets are meant to differ), and `pins_count` pins must match when it
+  is given. A group can instead name its NETS:
+  `{"name": ..., "nets_like": "ULPI_D[0-7]", "count": 8, "pads": 2}` asks for exactly
+  `count` nets whose whole name matches, each with exactly `pads` pads on it (both ends
+  present, nothing extra). Declare one for every structure that is repeated: sensor channels, driver
+  outputs, LED zones, the ways of each connector, the lanes of a bus, chip selects.
+
+Write both from the DESIGN (the datasheet's channel count, the number of strings, frets,
+motors), not by copying what the board happens to have. A declaration read off the board
+proves nothing.
+
+**How strict.** **Hard**, all of it. There is no waiver: if the board is wrong the generator is
+fixed, and if the declaration is wrong it is corrected to what the design means. A board
+with nothing repeated says so with an empty `net_groups` list; leaving the key out fails.
 
 ## Manual checks
 
@@ -432,10 +543,23 @@ access the bring-up will need.
   connector's own mating face. Check the cable type (straight vs crossed, ribbon pin 1
   stripe), that an unshrouded or unkeyed connector cannot be plugged reversed or offset
   without marking, and that the pin order is held in ONE shared constant, not typed twice.
+  **Nets follow the footprint's own maker's drawing, and a mating part's numbering is
+  translated explicitly.** Where the other half is somebody else's product (a power
+  supply's plug, a module's header, a computer's port, a cable with its own contact
+  order), its pin numbers are NOT the numbers on our pads: two makers of the same
+  interface number the same contacts differently. Read both drawings, write the table
+  physical position -> our pad -> net at the connector, and say which document each
+  column came from. "Pin 1 +V" copied from the mating part's sheet onto our pad 1 is
+  the fault this line exists for.
 - **M2 — Polarised two-pad parts face the right way.** Diodes, LEDs, TVS, electrolytic and
   tantalum capacitors: the cathode/negative pin in the generator is the pad the footprint
   numbers as that pin (KiCad diodes: pad 1 = K), and the part's reel orientation is in the
   rotation check for the fab.
+  A placement frame fitted by pad NUMBER is not evidence of orientation: the fab's library
+  may number the same lands the other way (or split a terminal into two lands), and the
+  fit then turns the part to suit the numbers. For every polarised part record which
+  terminal the fab's footprint calls pin 1, from its library or from the mark its
+  previewer draws, against the terminal our pad 1 is.
 - **M3 — The return path matches the supply path.** For each `power_paths` entry, the
   ground return from the load back to the entry is a pour or copper at least as wide, and
   does not neck through a single via or a slot in the plane. High-current returns do not
@@ -452,8 +576,9 @@ access the bring-up will need.
 - **M6 — High-speed buses are matched and have an unbroken reference.** Clocked parallel
   buses and anything above ~50 MHz or with fast edges (ULPI, SDIO, RGMII, SPI at tens of
   MHz) are in `match` groups with a budget derived from the bit time. Each runs over a
-  continuous plane: no crossing a split, a slot, or a gap in the pour; a layer change has
-  a ground via beside it.
+  continuous plane: **A15** measures every signal's return for cuts in the pour, so what
+  is left here is the judgement it cannot make -- whether this bus's edge rate makes the
+  loop matter, and whether a layer change has a ground via beside it.
 - **M7 — Each IC's circuit matches its datasheet application.** Feedback dividers give the
   intended voltage, inductor and compensation values are in the recommended range, enable
   and mode pins are tied (not floating), crystals have the load capacitors their CL
@@ -685,8 +810,11 @@ Never renumber a rule: boards sign and waive by id.
 | 2026-10-04 | (third survey: a community review FAQ for schematics, read by the owner and summarised here in our own words) | USB device inrush capacitance, unused inputs and outputs, gate over-voltage and series resistance, live tabs and heatsinks, connectors without a ground, values that cannot be bought, undebounced contacts | A10, M39–M41; M19, M25, M32 extended |
 | 2026-10-04 | (same community FAQ: its layout and bill-of-materials pages, summarised in our own words) | crystal traces changing layer and load capacitors on the wrong side of the crystal, protection parts placed after the capacitor instead of at the connector, hardware keep-out differing per face, unlabelled controls and connector pins, one value typed two ways, parts that are obsolete or single-sourced at order time | A11, M42; A9, M10, M11, M23, M24, M31 extended |
 | 2026-10-04 | (design review, before first order) | four classes of fault named as the ones to stop before a board is ordered: supply choke points, missing surge capacitance, unmatched high-speed traces, mirrored pinouts | A1, A2, A3, A4, M3, M4, M6 |
+| 2026-10-04 | the same gerber read, carried on into the mask and paste layers | the board model called every via tented, and the exported F.Mask had 208 apertures and no islands at all, so ten barrels sat open under solder paste; measured as pad AREA the worst read 8 %, measured as paste VOLUME it read 110 % | **A14** (new, measured); `unwick.py` added to the post-route steps; M29 keeps the parts A14 does not measure |
+| 2026-10-04 | the exported gerbers of a two-layer board, rendered layer by layer by a reader that is not KiCad | the ground pour was the return for every signal on the board and was also a routing layer, carrying 455.89 mm of signal copper cut through it; nothing measured whether a return had to go round a cut, and M6 only asks it of fast buses | **A15** (new, measured); M6 narrowed to the edge-rate judgement A15 cannot make |
 | 2026-10-04 | the fab's own capability page, read against the rule files of seven routed boards | the rule file is typed by a person and DRC only proves the board against it; five of its values were looser than the fab's, and all silk was under the fab's legible height | **A12** (new, measured); M29 narrowed to what A12 cannot measure; `kicad_silk` and the layout's reference text raised to 1.0 mm |
 | 2026-10-06 | a control board, in a dry run of the fab's order page | generic passives were sent with no part number, "chosen at order time"; the fab's matcher read KiCad's `C_0402_1005Metric` as 01005 and picked parts its cheaper assembly service does not place, so they came up unselected at quantity 0 and the order would have built the board without them | M30 extended; `fab_package` refuses an uncoded row, keys passives on (value, footprint) and writes the plain package name |
 | 2026-10-06 | five boards walked through the fab's order page | the placement file carried our footprints' origins and angles and the fab places its own: a 1x20 header previewed 24 mm off its holes (our origin is pin 1, theirs the middle), and a right-angle two-row header previewed with its pins pointing into the board (the two libraries number its rows opposite ways, which no pad fit can see). The form also kept the previous board's paid options | M30 extended; `pcbflow/fab_frames.py` (new) writes the placement file in the fab's frames and the package lists what it could not measure |
 | 2026-10-06 | ten more boards walked through the fab's order page to the quote | (1) every part on an all-back-side board previewed a half turn out: the fab turns a back-side part over left to right, KiCad top to bottom. (2) two BOM rows naming one part number left one row at quantity 0. (3) a row whose designators mix prefixes arrives unticked. (4) the assembly TIER is decided by things that are not in the BOM: back-side assembly, a black solder mask and one "Standard only" part each force the dearer tier | `fab_frames.apply` turns back-side parts half round; the package writes one BOM row per part number and lists the rows that have to be ticked; M30 names the tier |
-
+| 2026-10-06 | a 24 V inlet and twenty photodiodes, both found in the fab's previewer | (1) the inlet's nets were assigned from the SUPPLY's pin table onto the JACK's pad numbers; the two makers number the four contacts differently and the board shorted the supply. (2) the photodiode's footprint numbered anode 1, the maker and the fab number the cathode lands 1 and 4, and the placement frame had been matched by number: all twenty a half turn out | M1 names the translation and asks for the position -> pad -> net table; M2 says a number fit is not orientation evidence |
+| 2026-10-06 | a fret-light board: two pairs of frets wired to the same four driver outputs | a loop in the generator read an index left over from the loop above. 24 nets where 32 were meant and eight outputs idle; routed, DRC-clean, quality-clean, because every check compared the board with its own netlist | A13: the board declares its unconnected pins and its nets per group, and the pass fails on any difference |

@@ -1462,7 +1462,10 @@ def output_panel():
             ("C28", "100nF", v3v3, gnd, "DAC DVDD", None),
             ("C29", "10uF", v3v3, gnd, "DAC DVDD bulk", C0805),
             ("C30", "100nF", ldoo, gnd, "DAC LDOO", None),
-            ("C31", "10uF", ldoo, gnd, "DAC LDOO bulk", C0805),
+            # C31 is the 0402 (6.3 V, on a 1.8 V pin): the 0805 stood in the mouth of the
+            # channel the inlet's full current leaves by, and no other site clears both the
+            # DAC's pins and the inlet's body
+            ("C31", "10uF", ldoo, gnd, "DAC LDOO bulk", None),
             ("C32", "2.2uF", capp, capm, "DAC charge-pump flying cap", C0805),
             ("C33", "2.2uF", vneg, gnd, "DAC VNEG", C0805),
             ("C34", "2.2nF C0G", dac_filt, agnd, "DAC output filter, with R13 "
@@ -2039,7 +2042,7 @@ BOARD_NOTES = {
         "C30": (21.00, -14.00, 0.0),      # LDOO 0.1
         "C27": (13.60, -21.40, 0.0),     # CPVDD 10u
         "C29": (17.20, -21.40, 0.0),     # DVDD 10u
-        "C31": (20.20, -21.70, 90.0),    # LDOO 10u, on end: 1.05 mm off the inlet's body
+        "C31": (20.25, -20.50, 180.0),   # LDOO 10u, an 0402 under the DAC's last pin
         "K1": (-13.00, 15.00, 0.0),
         "Q1": (-4.00, 15.00, 0.0),
         "R5": (-4.00, 12.00, 0.0),
@@ -2276,7 +2279,7 @@ BOARD_NOTES = {
         # the second bulk cap and THE BEAD sit at the island's +X end, which is where the
         # rail leaves for the rest of the board
         "C6": (13.00, -23.50, 0.0),
-        "FB1": (17.00, -23.50, 0.0),
+        "FB1": (16.60, -23.50, 0.0),
     },
     "refs_on_fab": True,
     "single_sided": True,
@@ -2436,12 +2439,11 @@ BOARD_NOTES["tracks"] += [
     (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
         # +24V_IN: pin 4 -> pin 2; pin 2 -> Q2 source
         ("+24V_IN", "F.Cu", 2.0, [_p4, _p2]),
-        # The one stretch that carries the whole 6.67 A, and it is 2.4 mm, not the 4.1 a
-        # 10 C rise asks of a long track: it leaves the channel between C31's pad and
-        # pin 1's land, 2.95 mm apart. It is 6 mm long with a through-hole land at one
-        # end and Q2's lead at the other; IPC-2221 puts a LONG 2.4 mm track at 24 C over
-        # ambient at 6.67 A.
-        ("+24V_IN", "F.Cu", 2.4, [_p2, (24.150, -22.200), (20.650, -25.400), _QS]),
+        # 4.2 mm: the one stretch that carries the whole 6.67 A (4.12 mm for a 10 C rise).
+        # It leaves the channel between the pin rows by its west mouth, between C31 and
+        # FB1 on one side and pin 1's land on the other, 0.33 mm clear of each.
+        ("+24V_IN", "F.Cu", 4.2, [_p2, (24.050, -22.200), (20.850, -23.500),
+                                  (20.150, -25.400), _QS]),
         # +24V on F.Cu: the tab -> the lane -> J7 pad 2
         ("+24V", "F.Cu", 2.0, [(11.5, _LANE_Y), (-1.250, _LANE_Y)]),
         ("+24V", "F.Cu", 1.4, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
@@ -2607,6 +2609,119 @@ BOARD_NOTES["quality"] = {
         "PWR_SW_UP": "a throw of the power button: 2.55 mA at most, through R33 + R34",
         "PWR_SW_DN": "the button's other throw, as PWR_SW_UP",
     },
+    # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
+    # repeated structure is on. The pass fails on any difference from the routed board.
+    "unconnected": {
+        "J[1-4].[AB]8": "USB-C sideband (SBU): USB 2.0 does not use it",
+        "J2.[AB]5": "J2 is not a port: the far end of the pass-through to the Pi, no CC resistor (note at J2)",
+        "J7.[34]": "the trunk head carries no data: ways 3 and 4 have no conductor",
+        "U1": {
+            "pins": "2 3 4 8 9 10 11 14 15 16 19 20 21 22 23 24 28 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 66",
+            "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
+        },
+        "U10.13": "MCP4261 SDO: the pot is written, never read back",
+        "U4": {
+            "pins": "2 5 6 7 8 13 16 17 18 21 22 23 24",
+            "why": "CH334F: downstream ports 3 and 4 (two of its four are used: the MCU and J4), and its LED / power-enable / mode pins, left at their defaults"
+        },
+        "U5.4": "LMR16006 SHDN: left open is enabled (internal pull-up)",
+        "U6.4": "the maker's NC pin"
+    },
+    "net_groups": [
+        {
+            "name": "hub: upstream and two downstream pairs, six pins on six nets",
+            "pins": [
+                "U4.9",
+                "U4.10",
+                "U4.11",
+                "U4.12",
+                "U4.14",
+                "U4.15"
+            ],
+            "nets": 6,
+            "each": 1
+        },
+        {
+            "name": "USB-C data: J1 and J2 are one pass-through pair, J3 and J4 a pair each",
+            "pins": [
+                "J[1-4].A[67]"
+            ],
+            "nets": 6
+        },
+        {
+            "name": "each receptacle's A and B data contacts are the same pair",
+            "pins": [
+                "J[1-4].[AB][67]"
+            ],
+            "nets": 6
+        },
+        {
+            "name": "digital pot: two channels, both ends and both wipers used; the two low ends share VMID",
+            "pins": [
+                "U10.[5-9]",
+                "U10.10"
+            ],
+            "nets": 5
+        },
+        {
+            "name": "relay: two poles, each with its own common and energised contact; both rest contacts are the direct path",
+            "pins": [
+                "K1.[2-7]"
+            ],
+            "nets": 5
+        },
+        {
+            "name": "I2S: five lines",
+            "nets_like": "I2S_(MCK|CK|WS|SDI|SDO)",
+            "count": 5
+        },
+        {
+            "name": "three op-amp buffers and the inverter: four outputs, four nets",
+            "pins": [
+                "U7.1",
+                "U8.1",
+                "U9.1",
+                "U11.1"
+            ],
+            "nets": 4,
+            "each": 1
+        },
+        {
+            "name": "power link: GND and 24 V twice, the button's two throws once",
+            "pins": [
+                "J10.[1-6]"
+            ],
+            "nets": 4
+        },
+        {
+            "name": "inlet: two contacts a rail",
+            "pins": [
+                "J6.[1-4]"
+            ],
+            "nets": 2,
+            "each": 2
+        },
+        {
+            "name": "the MCU's two I2S units share one clock pair on purpose: I2S2 drives WS and CK, I2S3 listens",
+            "pins": [
+                "U1.35",
+                "U1.53",
+                "U1.36",
+                "U1.58"
+            ],
+            "nets": 2,
+            "each": 2
+        },
+        {
+            "name": "the stereo ADC's two inputs take the one pickup signal",
+            "pins": [
+                "U2.13",
+                "U2.14"
+            ],
+            "nets": 1,
+            "each": 2
+        }
+    ],
     "pinouts": {
         "TYPE-C-31-M-12": "KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 names each land by "
                           "its USB Type-C contact (A1 ... B12), the names Korean Hroparts' "
@@ -2691,13 +2806,6 @@ BOARD_NOTES["quality"] = {
                               "against 2.0 mm for 3.8 A, and 4.12 mm if the whole supply "
                               "went this way; any four carry it",
         "A1:+24V Q2.2>J10.5": "as J10.2: the same eight vias",
-        "A1:+24V_IN J6.2>Q2.3":
-            "the track leaves the channel between the jack's pin rows through a "
-            "2.95 mm gap (C31's pad to pin 1's land), which no width passes at 4.12 "
-            "mm, and the jack's +V column is the one away from Q2. The neck is 6 mm "
-            "long: 1.2 mohm, 55 mW at the supply's full 6.67 A, between a "
-            "through-hole land and Q2's lead, which is itself narrower than the "
-            "track. A LONG 2.4 mm track would run 24 C over ambient",
         "A6:J2.A5": "J2 is not a port: it is the far end of a wire from J1 to the Pi's "
                     "gadget socket, with VBUS dead-ended on purpose (the note at J2). "
                     "Nothing behind it sources or sinks, so there is no VBUS for a CC "
@@ -2715,13 +2823,17 @@ BOARD_NOTES["quality"] = {
                "here too",
         "M3": "24 V: in on J6's two +V contacts and back on its two -V contacts, out and "
               "back on J7 / J10 / J9, each pair side by side; measured on the routed "
-              "board the return's narrowest copper is 1.2 mm to J7 and 1.0 mm to J10 "
-              "(15 and 7 mohm from the jack). 5 V: the buck's output returns through R60 "
+              "board 2026-10-06, after the inlet's nets were corrected (track copper "
+              "only, 1 oz): from J6's -V contacts the return is 12.5 mohm to J7, "
+              "narrowest copper 1.5 mm; 4.1 mohm to J10's way 1 (1.5 mm) and 7.9 to "
+              "its way 6 (1.0 mm, round the north of the row). The feed from the +V "
+              "contacts to Q2 is 1.0 mohm, narrowest 4.2 mm. 5 V: the buck's output returns through R60 "
               "(0 ohm, the one join of PWR_GND and GND, beside C5), 0.5 mm from the lane "
               "to its pad; every load is on the GND planes (In1 whole, B.Cu) under its "
               "supply track. Before R60 that current left the board by a USB ground. "
-              "C55, the inlet's 100 nF, returns by 8.7 mm of 0.2 mm track the closer "
-              "laid: a bypass ahead of the switch, carrying no load current",
+              "C55, the inlet's 100 nF, is on 0.5 mm track from pin 2 (8.9 mm) and returns "
+              "by 5.4 mm of 0.38 to 0.5 mm track to the jack's front north shell leg; a "
+              "bypass ahead of the switch, carrying no load current",
         "M21": "one ground plane under the converters, joined to the power return at ONE "
                "point (R60, at x -36.6, y -29, the board's -X / -Y corner). What crosses "
                "the plane besides the board's own return: the share of the motors' "

@@ -4301,6 +4301,142 @@ BOARD_NOTES["quality"] = {
                "249k",
         "M41": "no switch or button on the board",
     },
+    # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
+    # repeated structure is on. The pass fails on any difference from the routed board.
+    "unconnected": {
+        "J1.[AB]8": "USB-C sideband (SBU): USB 2.0 does not use it",
+        "J2.[34]": "the feed is two wires: ways 3 and 4 have no conductor",
+        "J2.MP": "JST reinforcement tab: soldered, on no net",
+        "U13.8": "LMR33630 PG: open drain, not read",
+        "U1[4-8].5": "TLV320ADC3140 MICBIAS: no microphone, the bias stays powered down",
+        "U1[4-8].20": "TLV320ADC3140 GPIO1: not used",
+        "U6": {
+            "pins": "1 7 8 9 10 11 12 18 19 20 21 24 25 26 27 28 33 34 35 41 42 43 44 46 50 52 53 54 55 58 59 60 63 64 65 66 67 68 69 70 73 74 75 76 77 78 83 84 85 86 87 88 89 94 95 96 97 98 99 100 101 104 105 106 107 108 109 110 111 112 115 116 117 118 119 120 121 122 123 128 129 130 131 132 133 134 138 139 140 141 142 144 145 146 147 150 151 152 153 154 155 156 157 160 162 164 165 167 168 169 170 173 174 176",
+            "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
+        },
+        "U7": {
+            "pins": "3 5 10 27",
+            "why": "USB3300 CPEN, ID and EXTVBUS (a device needs none: table 3-1) and XO (a clock is driven into XI)"
+        },
+        "U9.4": "the maker's NC pin"
+    },
+    "net_groups": [
+        {
+            "name": "twenty photodiodes: twenty cathodes, twenty summing nodes",
+            "pins": [
+                "PD*.2"
+            ],
+            "nets": 20,
+            "each": 1,
+            "pins_count": 20
+        },
+        {
+            "name": "every photodiode anode is on MID",
+            "pins": [
+                "PD*.1"
+            ],
+            "nets": 1,
+            "pins_count": 20
+        },
+        {
+            "name": "ten dual op-amps: twenty outputs, twenty nets",
+            "pins": [
+                "U2[1-9].[17]",
+                "U30.[17]"
+            ],
+            "nets": 20,
+            "each": 1,
+            "pins_count": 20
+        },
+        {
+            "name": "ten dual op-amps: twenty inverting inputs, twenty summing nodes",
+            "pins": [
+                "U2[1-9].[26]",
+                "U30.[26]"
+            ],
+            "nets": 20,
+            "each": 1,
+            "pins_count": 20
+        },
+        {
+            "name": "five 4-channel converters: twenty + inputs, twenty nets, none idle",
+            "pins": [
+                "U1[4-8].6",
+                "U1[4-8].8",
+                "U1[4-8].10",
+                "U1[4-8].12"
+            ],
+            "nets": 20,
+            "each": 1,
+            "pins_count": 20
+        },
+        {
+            "name": "five 4-channel converters: twenty - inputs, each with its own capacitor",
+            "pins": [
+                "U1[4-8].7",
+                "U1[4-8].9",
+                "U1[4-8].11",
+                "U1[4-8].13"
+            ],
+            "nets": 20,
+            "each": 1,
+            "pins_count": 20
+        },
+        {
+            "name": "each TIA output reaches one converter input through its coupling capacitor",
+            "nets_like": "TIA_OUT_\\d+[AB]",
+            "count": 20,
+            "pads": 4
+        },
+        {
+            "name": "five converters: a data line each",
+            "pins": [
+                "U1[4-8].21"
+            ],
+            "nets": 5,
+            "each": 1
+        },
+        {
+            "name": "five converters: a shutdown line each",
+            "pins": [
+                "U1[4-8].14"
+            ],
+            "nets": 5,
+            "each": 1
+        },
+        {
+            "name": "five converters: one bit clock and one frame clock",
+            "pins": [
+                "U1[4-8].22",
+                "U1[4-8].23"
+            ],
+            "nets": 2,
+            "each": 5
+        },
+        {
+            "name": "ten emitters: ten anodes, a ballast each",
+            "pins": [
+                "D*.2"
+            ],
+            "nets": 10,
+            "each": 1,
+            "pins_count": 10
+        },
+        {
+            "name": "ten emitters: one switched cathode row",
+            "pins": [
+                "D*.1"
+            ],
+            "nets": 1,
+            "pins_count": 10
+        },
+        {
+            "name": "ULPI: eight data lines, PHY to MCU",
+            "nets_like": "ULPI_D[0-7]",
+            "count": 8,
+            "pads": 2
+        }
+    ],
     "pinouts": {
         "TYPE-C-31-M-12": "KiCad's USB_C_Receptacle_HRO_TYPE-C-31-M-12 names each land by "
                           "its USB Type-C contact (A1 ... B12), the names Korean Hroparts' "
