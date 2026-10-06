@@ -1,6 +1,24 @@
 {
  "_source": "pad positions read from the JLCEDA/EasyEDA Official Library (https://lceda.cn/ , https://easyeda.com); this file keeps only the rotation and offset measured from them",
  "frames": {
+  "C107671|TSSOP-20_4.4x6.5mm_P0.65mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.01,
+   "fit": true,
+   "pads": 20,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C108383|QFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.04,
+   "fit": true,
+   "pads": 33,
+   "read": "2026-10-06",
+   "rot": 270
+  },
   "C116842|HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm": {
    "dx": 0.0,
    "dy": -0.0,
@@ -9,6 +27,128 @@
    "pads": 21,
    "read": "2026-10-06",
    "rot": 270
+  },
+  "C12084|SOIC-8_3.9x4.9mm_P1.27mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.13,
+   "fit": true,
+   "pads": 8,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C131334|JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical": {
+   "dx": 3.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C131342|JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical": {
+   "dx": 5.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 6,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C133337|Crystal_SMD_3225-4Pin_3.2x2.5mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C136343|Fuse_1206_3216Metric": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.05,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C136347|Fuse_1206_3216Metric": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.05,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C136349|Fuse_1206_3216Metric": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.05,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C144395|JST_XH_B4B-XH-A_1x04_P2.50mm_Vertical": {
+   "dx": 3.75,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C144397|JST_XH_B6B-XH-A_1x06_P2.50mm_Vertical": {
+   "dx": 6.249,
+   "dy": 0.001,
+   "err": 0.0,
+   "fit": true,
+   "pads": 6,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C148230|D_SMA": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.56,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C150716|SOT-223-3_TabPin2": {
+   "fit": false,
+   "read": "2026-10-06",
+   "why": "the fab's footprint numbers the tab 4; ours shares 2 between the tab and the middle lead"
+  },
+  "C157914|JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal": {
+   "dx": 8.75,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 8,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C157925|JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal": {
+   "dx": 3.75,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C158012|JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical": {
+   "dx": 1.25,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 180
   },
   "C160841|Alps_RKJXT1F42001": {
    "dx": 0.0,
@@ -19,6 +159,11 @@
    "read": "2026-10-06",
    "rot": 0
   },
+  "C161211|Everlight_PD15-22B": {
+   "fit": false,
+   "read": "2026-10-06",
+   "why": "the fab's footprint has four pads to our two; the numbers do not say which pair is which"
+  },
   "C161861|JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": {
    "dx": 0.0,
    "dy": -0.25,
@@ -28,6 +173,33 @@
    "read": "2026-10-06",
    "rot": 0
   },
+  "C165948|USB_C_Receptacle_HRO_TYPE-C-31-M-12": {
+   "dx": 0.0,
+   "dy": 1.571,
+   "err": 0.0,
+   "fit": true,
+   "pads": 8,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C1852021|Texas_RTW_WQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.06,
+   "fit": true,
+   "pads": 25,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C185580|TSSOP-14_4.4x5mm_P0.65mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.06,
+   "fit": true,
+   "pads": 14,
+   "read": "2026-10-06",
+   "rot": 270
+  },
   "C2071384|Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": {
    "dx": 0.0,
    "dy": -0.1281,
@@ -36,6 +208,15 @@
    "pads": 12,
    "read": "2026-10-06",
    "rot": 270
+  },
+  "C20917|SOT-23": {
+   "dx": 0.021,
+   "dy": 0.0,
+   "err": 0.08,
+   "fit": true,
+   "pads": 3,
+   "read": "2026-10-06",
+   "rot": 180
   },
   "C22438114|PinHeader_2x08_P1.27mm_Horizontal": {
    "by": "hand: the fab's footprint numbers its two rows the other way round, so a fit by pad number cannot work; its origin is the centre of the hole grid, its body is on its -y side where KiCad's is on +x (a quarter turn), and in the fab's previewer on ui_board J2 the body sat on our outline, pins off the board, at KiCad's angle plus 90 (KiCad 180, placed at 270). Plus 180, which this entry first carried, previewed with the pins over SW2",
@@ -57,6 +238,56 @@
    "read": "2026-10-06",
    "rot": 0
   },
+  "C248313|D_SOD-523": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C265121|JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": {
+   "dx": 0.0,
+   "dy": 0.025,
+   "err": 0.0,
+   "fit": true,
+   "pads": 8,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C265405|JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": {
+   "dx": -0.005,
+   "dy": -0.022,
+   "err": 0.0,
+   "fit": true,
+   "pads": 6,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C2683614|LED_0603_1608Metric": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.04,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C2862740|SOT-23-5": {
+   "dx": -0.007,
+   "dy": 0.0,
+   "err": 0.04,
+   "fit": true,
+   "pads": 5,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C2875467|Kycon_KPJX-4S-S": {
+   "fit": false,
+   "read": "2026-10-06",
+   "why": "the fab's footprint numbers its pads differently from ours (5.0 mm apart at the best rotation)"
+  },
   "C2905493|PinHeader_1x20_P2.54mm_Vertical": {
    "dx": 0.0,
    "dy": -24.13,
@@ -66,6 +297,156 @@
    "read": "2026-10-06",
    "rot": 270
   },
+  "C2913974|QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.06,
+   "fit": true,
+   "pads": 17,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C326376|Relay_DPDT_Omron_G6K-2F-Y": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.31,
+   "fit": true,
+   "pads": 8,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C3281500|TO-252-2": {
+   "dx": -1.799,
+   "dy": 0.0,
+   "err": 0.36,
+   "fit": true,
+   "pads": 3,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C3293141|Kangshen_DSHP01TSGER": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 90
+  },
+  "C368502|Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal": {
+   "fit": false,
+   "read": "2026-10-06",
+   "why": "the fab's footprint numbers its pads 1-6; ours are named T, R, S, TN, RN, SN"
+  },
+  "C398356|VSSOP-8_3x3mm_P0.65mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.09,
+   "fit": true,
+   "pads": 8,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C398358|SOT-23-5": {
+   "dx": 0.003,
+   "dy": 0.0,
+   "err": 0.02,
+   "fit": true,
+   "pads": 5,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C403946|Crystal_SMD_3225-4Pin_3.2x2.5mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C403948|Crystal_SMD_3225-4Pin_3.2x2.5mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.05,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C46388|SOT-363_SC-70-6": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.11,
+   "fit": true,
+   "pads": 6,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C485354|JST_ZH_S4B-ZR-SM4A-TF_TightCourtyard": {
+   "dx": 0.0,
+   "dy": -0.125,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C51118|SOT-23-5": {
+   "dx": 0.033,
+   "dy": 0.0,
+   "err": 0.2,
+   "fit": true,
+   "pads": 5,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C5124634|PinSocket_2x20_P2.54mm_Vertical": {
+   "by": "hand: the fab's footprint numbers its two rows the other way round; the pad grids coincide and a vertical socket is the same either way",
+   "dx": -1.27,
+   "dy": -24.13,
+   "err": 0.0,
+   "fit": true,
+   "pads": 40,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C5142280|QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.06,
+   "fit": true,
+   "pads": 29,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C5142795|QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.06,
+   "fit": true,
+   "pads": 69,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C5187527|HVQFN-24-1EP_4x4mm_P0.5mm_EP2.5x2.5mm": {
+   "dx": 0.0,
+   "dy": 0.001,
+   "err": 0.06,
+   "fit": true,
+   "pads": 25,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C5188434|TerminalBlock_MaiXu_MX126-5.0-02P_1x02_P5.00mm": {
+   "dx": 2.5,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
   "C5203987|Xinyangze_YZF0002-38080-02": {
    "by": "hand: one pad, so there is nothing to fit; in the fab's previewer on foot_led_a, foot_led_b, fret_led_key and fret_led_mid every pin sat on its land with the plunger off the board end, as KiCad wrote it",
    "dx": 0.0,
@@ -73,6 +454,56 @@
    "err": 0.0,
    "fit": true,
    "pads": 1,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C5274293|D_SOD-523": {
+   "fit": false,
+   "read": "2026-10-06",
+   "why": "the fab's library has no footprint for this part number"
+  },
+  "C54799748|Xinyangze_YZ165615055F-04025": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C54930022|Xinyangze_YZ185115035T-04025": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C55266|SOT-23-6": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.21,
+   "fit": true,
+   "pads": 6,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C55513|TSSOP-14_4.4x5mm_P0.65mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.06,
+   "fit": true,
+   "pads": 14,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C712738|Oscillator_SMD_Abracon_ASE-4Pin_3.2x2.5mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.07,
+   "fit": true,
+   "pads": 4,
    "read": "2026-10-06",
    "rot": 0
   },
