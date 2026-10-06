@@ -401,6 +401,29 @@ BOARD_NOTES = {
                    "middle terminal of each row is its common. Which end is closed with "
                    "the button out is read off the schematic, NOT metered",
         },
+        # WHAT THE DESIGN MEANS, for cadkit quality A13 to hold the routed board to
+        "unconnected": {
+            "J1.3": "Newhaven pin 3, NC (BC_VDD): no connect by default (p.4)",
+            "J1.9": "Newhaven pin 9, NC in the serial interface (p.4)",
+            "J1.15": "Newhaven pin 15, NC (VCC): no connect by default (p.4)",
+        },
+        "net_groups": [
+            {"name": "display: D/C, SCLK, SDIN, /RES, /CS, one net each",
+             "pins": ["J1.4", "J1.7", "J1.8", "J1.16", "J1.17"], "nets": 5, "each": 1},
+            {"name": "display supply: VDD and /SHDN on the one rail",
+             "pins": ["J1.2", "J1.18"], "nets": 1, "each": 2},
+            {"name": "display ground and straps: VSS x 8, BS1, BS0",
+             "pins": ["J1.1", "J1.5", "J1.6", "J1.1[0-4]", "J1.19", "J1.20"],
+             "nets": 1, "each": 10, "pins_count": 10},
+            {"name": "stick, push and encoder contacts: seven lines",
+             "pins": ["SW1.[ABCD]", "SW1.5", "SW1.7", "SW1.8"], "nets": 7, "each": 1},
+            {"name": "stick common, encoder common, frame lug",
+             "pins": ["SW1.6", "SW1.9", "SW1.10"], "nets": 1, "each": 3},
+            {"name": "power button: two poles in parallel, three nets",
+             "pins": ["SW2.[1-6]"], "nets": 3, "each": 2, "pins_count": 6},
+            {"name": "ribbon: sixteen ways, sixteen nets",
+             "pins": ["J2.[1-9]", "J2.1[0-6]"], "nets": 16, "each": 1, "pins_count": 16},
+        ],
         "waive": {"A2:J2": "J2 is where +3V3 arrives off the ribbon, not a load; the "
                            "bulk and the 100n are at the display header, which is"},
         # Signed 2026-10-05 against the routed board and the makers' sheets. M12 stays

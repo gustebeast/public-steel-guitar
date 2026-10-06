@@ -52,6 +52,8 @@ _HEIGHT: dict = {
     "QFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm": 0.9,
     # the optical board's 24 MHz oscillator, JSCJ CJO05: "1.2 max" (its outline drawing)
     "Oscillator_SMD_Abracon_ASE-4Pin_3.2x2.5mm": 1.2,
+    # the LED drivers, TLC5971RGER: "VQFN - 1 mm max height" (SBVS146D, RGE0024H outline)
+    "Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm": 1.0,
     # both LED supplies' inductor (elec/buck_cell.py): Sunlord's table, C = 4.0 max
     "L_Sunlord_SWPA5040S": 4.0,
     # the CAN tee's terminator switch, DSHP01TSGER: 2.30 +-0.20 off the board (its drawing)

@@ -11,7 +11,8 @@ in different clothes: **a number was trusted across two makers' numbering.**
   went on a half turn out.
 
 This page asks the same two questions of every other connector and polarised part on the
-boards in `elec/` (the lighting and UI boards' own records are quoted, not re-derived).
+boards in `elec/` (in sections 1 to 4 the lighting and UI boards' own records are quoted;
+section 5 re-derives them).
 The rule is now in `cadkit/PCB_QUALITY.md` (M1, M2).
 
 ## 1. Where a connector meets somebody else's numbering
@@ -83,3 +84,134 @@ No electrolytic or tantalum capacitor is on any of these boards.
 The lesson in the last column: a hand frame is safe where the part's shape allows one
 orientation, and is a guess where it does not. The photodiode was the only hand frame of
 the second kind.
+
+## 5. The lighting and UI boards, re-derived (2026-10-06)
+
+Sections 1 to 4 quote these five boards' own records. This section is the same question
+asked again from the makers' drawings and the routed boards: **physical position -> our pad
+-> net.** Positions are read off the routed `.kicad_pcb` (component side, board +Y up);
+the drawings are named with the view they are drawn in.
+
+### 5.1 `ui_board` J1 (1x20 header) <- Newhaven NHD-2.7-12864WDW3
+
+Newhaven's mechanical drawing (sheet dated 08/18/2023, third angle) numbers the row only
+in its REAR view: header row along the top edge, **"1" at the left end, "20" at the
+right**. Seen from the display face that is pin 1 at the RIGHT with the header edge up.
+The row is centred on the module (16.87 + 19 x 2.54 + 16.87 = 82.00), so nothing but that
+view says which end is which.
+
+The module stands over our board display face up, header edge toward -Y (the deck pocket
+and the two mounting holes allow no other way: turned end for end the module's body would
+lie over the knob). A half turn from the drawing's front view puts pin 1 at **-X**.
+Routed board: J1 pad 1 at local x -24.13, pad 20 at +24.13, row at y +14.02. **Module pin
+n lands on pad n.**
+
+| Module pin (Newhaven p.4, Serial Interface) | Our pad, local x | Net |
+|---|---|---|
+| 1 VSS | 1, -24.13 | GND |
+| 2 VDD | 2, -21.59 | +3V3 |
+| 3 NC (BC_VDD) | 3 | open |
+| 4 D/C | 4, -16.51 | DC |
+| 5-6 VSS | 5, 6 | GND |
+| 7 SCLK | 7, -8.89 | SCLK |
+| 8 SDIN | 8, -6.35 | SDIN |
+| 9 NC | 9 | open |
+| 10-14 VSS | 10-14 | GND |
+| 15 NC (VCC) | 15 | open |
+| 16 /RES | 16, +13.97 | RES_N |
+| 17 /CS | 17, +16.51 | CS_N |
+| 18 /SHDN | 18, +19.05 | +3V3 |
+| 19 BS1, 20 BS0 | 19, 20 (+24.13) | GND: 0 / 0 is 4-wire serial ("MPU Interface Pin Selections", the page after the pin tables) |
+
+State: **holds.** It depends on the socket being soldered to the module's BACK, which
+is INSTALL_NOTES' step 2 for this assembly.
+
+### 5.2 `ui_board` SW1 <- Alps RKJXT1F42001
+
+Alps name the terminals and draw the hole pattern "seen from the insertion side", which
+is our component side. Every hole was compared by position, from the pattern's centre
+(the 15.6 x 15.6 square's): x to the right, y up.
+
+| Alps terminal, position on their drawing | Our pad, at | Net |
+|---|---|---|
+| Encoder com: top pair, left (-1.5, +7.8) | 9 (-1.5, +7.8) | GND |
+| C: top pair, right (+1.5, +7.8) | C (+1.5, +7.8) | SW_C |
+| com: under the top pair (-1.0, +5.78) | 6 (-1.0, +5.78) | GND |
+| D: left pair, upper (-7.8, +1.5) | D (-7.8, +1.5) | SW_D |
+| Encoder A: left pair, lower (-7.8, -1.5) | 8 (-7.8, -1.5) | ENC_A |
+| locating hole (-3.8, -1.5) | unnumbered (-3.8, -1.5) | none |
+| Encoder B: right pair, upper (+7.8, +1.5) | 7 (+7.8, +1.5) | ENC_B |
+| B: right pair, lower (+7.8, -1.5) | B (+7.8, -1.5) | SW_B |
+| ground lug (+6.86, -3.75) | 10 (+6.86, -3.75) | GND |
+| A: bottom, left (-1.5, -7.8) | A (-1.5, -7.8) | SW_A |
+| Push: bottom, right (+1.0, -6.98) | 5 (+1.0, -6.98) | SW_PUSH |
+
+State: **holds**, and the part cannot be fitted another way (eleven holes with no
+symmetry). The letters are contacts, not directions: Alps' outline view has the lever
+moving toward "A" at the side AWAY from terminal A. Which way is "up" is the Pi's table.
+
+### 5.3 `ui_board` SW2 <- Legion PB-22E85
+
+Six holes, 2 x 3 at 2.50 x 5.40. Our pads 1-2-3 are one row and 4-5-6 the other, and the
+two poles carry the same three nets (1 and 4 PWR_SW_DN, 2 and 5 GND, 3 and 6
+PWR_SW_UP), so a maker who numbers the rows the other way round -- the fab's footprint
+does -- changes nothing. End for end swaps UP and DN: the button's sense, which the
+output board's JP1 picks either way. State: **holds by construction**; which throw is
+closed with the button out is still a meter reading on the first part.
+
+### 5.4 The seam pogo pins (C5203987) against the lands they meet
+
+One land each, so there is no number: POSITION decides. Both boards of a pair lie in the
+same plane the same way up, and the pins meet tip to tip across the seam.
+
+| Pair | Position across the board (local y) | Sending board | Receiving board |
+|---|---|---|---|
+| foot A +X end -> foot B -X end | +8.88 | J21 +24V | J11 +24V_IN |
+| | +5.08 | J22 GND | J12 GND |
+| | +1.28 | J23 SCK_OUT | J13 SCK_IN |
+| | -2.53 | J24 SDT_OUT | J14 SDT_IN |
+| fret key +X end -> fret mid -X end | -9.05 | J11 +14V5 | J11 +14V5 |
+| | -4.55 | J12 GND | J12 GND |
+| | +11.35 | J13 SCK_SEAM | J13 SCK_SEAM |
+| | +15.85 | J14 SDT_SEAM | J14 SDT_SEAM |
+
+State: **holds on the routed boards**, given what the CAD draws: each pair end to end,
+both faces the same way. A board of a pair turned over would cross every way.
+The pin itself has one pad but is NOT without orientation (section 4 says "nothing to
+orient"): the barrel must point off the board's end. Seen in the previewer on all four
+boards, 2026-10-06, every row pointing off its own end.
+
+### 5.5 The cable sockets and the ribbon
+
+* `foot_led_a` J1, `fret_led_key` J1 (S4B-XH-SM4-TB): our own lead, `harness.LED_DROP`
+  = GND, V24, SCK, SDT. Routed pads 1 to 4 carry GND, +24V_IN, SCK_CABLE, SDT_CABLE on
+  both. Covered by section 2's JST row.
+* `ui_board` J2 (2x8, 1.27): `harness.UI_RIBBON` way n on pad n, read back off the routed
+  board (1 SW_A ... 8 GND, 9 SCLK, 10 +3V3 ... 16 PWR_SW_DN). Pad 1 is the -Y end of the
+  inner row; the even pads are the row at the board's -X edge. The far end is `pi_cap`
+  J5, the same footprint.
+
+### 5.6 The RGBW LED (XL-5050RGBW C7371891): which mark was seen
+
+XINGLIGHT's outline drawing (p.9, top view): pins 1 to 4 down the left side (anodes R, G,
+B, W), 5 to 8 down the right (their cathodes), and **the "mark" is the cut corner beside
+pin 8**, diagonally opposite pin 1. Our footprint is drawn from that view: pad 1 top
+left, pad 8 bottom right.
+
+In the fab's previewer (2026-10-06, 2D view) every LED looked at carried the fab model's
+cut corner at **our pad 8's corner** and its "1" at our pad 1, beside the board's own
+pin-1 tick, for both placements (0 and 180): `foot_led_a` D1-D4 and D15-D18,
+`foot_led_b` D1-D5 and D17-D20, `fret_led_key` D11-D20, `fret_led_mid` about ten. The
+frame is a measured one, rotation 0.
+⚠ What that proves: the fab's model and ours agree on where the cut corner goes. That
+the PHYSICAL part's cut corner is at pin 8 is XINGLIGHT's drawing, not something seen;
+the fab's assembly review (Confirm Parts Placement) is the check that sees the part.
+
+### 5.7 The LED driver and the regulator
+
+* TLC5971RGER (C543004, VQFN-24): pin 1 by TI's Pin Functions table (SBVS146D). **The
+  fab's footprint for this code has not been compared and no frame is measured**: the
+  part is new on these boards. A square 24-pad QFN sits four ways and three are wrong.
+  OPEN until its pin-1 dot is seen on the board's pin-1 mark in the previewer.
+* LMR33630BRNXR (C2071384): pin 1 seen at the board's mark on `foot_led_a`,
+  `foot_led_b` and `fret_led_key` (2026-10-06).

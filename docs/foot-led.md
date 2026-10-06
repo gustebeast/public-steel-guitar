@@ -1,5 +1,11 @@
 # Foot lighting — the strip that fires down (brenner, 2026-09-30)
 
+> **2026-10-06: the driver is TLC5971RGER (C543004, VQFN-24) now, not the TLC59711 in HTSSOP-20.**
+> The same TI family: twelve channels, 16-bit enhanced-spectrum PWM, the same 224-bit
+> protocol, 17 V outputs; about 0.87 USD less each and a cooler package (38 C/W against
+> 68.6). What follows is the design record as written and still says TLC59711 and
+> HTSSOP-20 pin numbers; the pin table in force is in `elec/foot_led.py`.
+
 The second of the two lighting jobs. `docs/fret-led.md` is the first; between them they
 replace the single side-firing strip `elec/led_strip.py` was built for, which was trying
 to light the frets and the floor from one place and losing most of it bouncing around
@@ -164,7 +170,7 @@ So neither 2 nor 3 matches them, and 4 is not available here: four a zone at 24 
 by going back to 12 zones, which is what 24 zones replaced.
 
 **The commonality that matters is already complete.** The foot strip and the fret boards
-share the LED (C7371891), the driver (C116842), the buck (LMR33630BRNXR, C2071384) and
+share the LED (C7371891), the driver (C543004), the buck (LMR33630BRNXR, C2071384) and
 the inductor (SWPA5040S4R7MT, C48496) -- every active part. The only thing that differs is R11's value, and that would
 still differ at any string length that fits: a series string sets the rail, and a 572 mm
 floor wash and a 9.14 mm fret cell are not going to want the same one.
