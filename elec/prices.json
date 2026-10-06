@@ -72,7 +72,7 @@
       "sku": "688-ZZ",
       "url": "https://bearingsdirect.com/688-zz-mini-ball-bearing-8x16x5-shielded-mr688zz/",
       "date": "2026-10-06",
-      "what": "688ZZ O8xO16x5, AMPEC brand -- THE TEN SCREW THRUST BEARINGS ONLY (user, 2026-10-06: over $100 of bearings is too much). This is the one seat where the rating is the margin: 147 N axial against half the static rating, and the listing publishes 132 lbf = 587 N, so 2.0x. $4.38 each, 5% off at 10 ($4.16 for one instrument), 15% at 50 ($3.72, the ten-instrument price used here); 489 in stock, page read 2026-10-06. Cheaper alternate: VXB kit859, 10 for $29.99, house brand, lists 710 N."
+      "what": "688ZZ O8xO16x5, AMPEC brand -- THE TEN SCREW THRUST BEARINGS ONLY (user, 2026-10-06: over $100 of bearings is too much). This is the one seat where the rating is the margin: 147 N axial against half the static rating, and the listing publishes 132 lbf = 587 N, so 2.0x. $4.38 each, 5% off at 10 ($4.16 for one instrument), 15% at 50 ($3.72, the ten-instrument price used here); 489 in stock, page read 2026-10-06. CARTS READ 2026-10-06, shipping to Berkeley CA, nothing ordered: ten of these $41.60 + $8.55 USPS Ground Advantage = $50.15 before tax. The alternative that is cheaper per piece is not cheaper landed: EZO 688-ZZ at 123bearing, $3.22 each (EZO catalogue 590 N static, the same margin), ten for $32.20 but delivery from $27.90 = $60.10. ZEN 688-ZZ there is $1.97 at 100 with 592 N on the listing, worth a look for a ten-instrument buy. VXB kit859, 10 for $29.99, lists 710 N under a house brand."
     },
     "bearing_688zz": {
       "usd": 0.99,
@@ -82,7 +82,7 @@
       "sku": "TFE234",
       "url": "https://www.fasteddybearings.com/products/10-units-8x16x5-metal-shielded-bearing-688-zz",
       "date": "2026-10-06",
-      "what": "688ZZ O8xO16x5 chrome steel, metal shields -- 10 bridge axle + 2 per sensed control x 11 = 32 (the model draws 30 of them: it has ten controls). The cheapest stocked listing found outside Amazon and AliExpress (user, 2026-10-06): TFE234, 10 for $10.99; TFE480, 100 for $98.99 ($0.99, the ten-instrument price used here); TFE5, singles at $1.25. All three in stock, read off the shop's own product feed. NO LOAD RATING IS PUBLISHED, which is why the ten screw seats keep the rated part: here the bridge load is radial, 208 N against the lowest rating any maker publishes for a 688 (474 N, 2.3x), and the lever and pedal axles carry almost nothing. Also looked at: VXB $3.00 each in tens, Bearings Direct $4.38."
+      "what": "688ZZ O8xO16x5 chrome steel, metal shields -- 10 bridge axle + 2 per sensed control x 11 = 32 (the model draws 30 of them: it has ten controls). The cheapest stocked listing found outside Amazon and AliExpress (user, 2026-10-06): TFE234, 10 for $10.99; TFE480, 100 for $98.99 ($0.99, the ten-instrument price used here); TFE5, singles at $1.25. All three in stock, read off the shop's own product feed. NO LOAD RATING IS PUBLISHED, which is why the ten screw seats keep the rated part: here the bridge load is radial, 208 N against the lowest rating any maker publishes for a 688 (474 N, 2.3x), and the lever and pedal axles carry almost nothing. Cart read 2026-10-06: one pack $10.99 + $4.90 USPS first class to Berkeley = $15.89. Also looked at: VXB $3.00 each in tens, Bearings Direct $4.38."
     },
     "m4_button_8": {
       "usd": 0.5555,
