@@ -484,7 +484,7 @@ def _manual(board, n_drv):
                "separately and laid over the copper -- all %d plated holes have copper "
                "all round them on both outer layers. Paste only on soldered lands; "
                "stack-up and the via choice are in ORDER.txt"
-               % (FL.BOARD_NAME[board], 259 if a else 253),
+               % (FL.BOARD_NAME[board], 262 if a else 255),
         "M38": "the board bends along its length when it is handled, so every 1206 -- "
                "four capacitors and the fuse -- stands across it. Decision: the four "
                "4.7 uF 0805s lie along it, in the row over each driver that keeps the "
