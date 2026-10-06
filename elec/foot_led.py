@@ -430,8 +430,8 @@ def _manual(board, n_drv):
         "M28": "no transistor or small regulator. The three ICs' pin orders are read "
                "from their own sheets (pinouts, above), and each placed footprint was "
                "compared pad for pad with the fab's library footprint for that exact "
-               "LCSC code: TLC59711PWPR C116842, the RNX0012 land of LMR33630CRNXR "
-               "C2071783 (the B part is the same package), XL-5050RGBW "
+               "LCSC code: TLC59711PWPR C116842, LMR33630BRNXR C2071384 (and the "
+               "alternate C part's, C2071783: the same frame), XL-5050RGBW "
                "C7371891" + (", S4B-XH-SM4-TB C161861" if a else "") + " -- all match "
                "under a pure rotation",
         "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
