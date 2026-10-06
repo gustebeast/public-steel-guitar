@@ -931,11 +931,18 @@ def build(panel):
         # gap allows, in two rows clear of the driver's own courtyard.
         place["U%d" % (k + 1)] = (xd, DRV_Y, 0.0)
         fps["U%d" % (k + 1)] = DRV_FP
-        for ref, dx, dy, fp in (("R%d" % (k + 1), -1.40, -5.00, R_FP),
-                                ("C%d" % (k + 1), 1.40, -5.00, C_FP),
-                                ("C%d" % (10 + k + 1), -1.90, 5.20, C_FP),
-                                ("C%d" % (20 + k + 1), 1.40, 5.20, C08_FP)):
-            place[ref] = (xd + dx, DRV_Y + dy, 0.0)
+        # ⚠ THE THREE SMALL ONES STAND AT THE PIN-1 END, +Y, each over the pin it serves
+        # (manual quality pass, 2026-10-05): IREF is pin 1, the top of the -X column, and
+        # VREG and VCC are pins 20 and 19, the top of the +X one. The resistor and the
+        # VREG capacitor stood at the OTHER end, 7.4 mm of track from their pins, on a
+        # reference TI ask to have "close to the device" and a regulator output. They
+        # are 1.2 mm away now. The bulk capacitor, which serves the LED strings through
+        # the planes and not a pin, takes the far end alone.
+        for ref, dx, dy, rot, fp in (("R%d" % (k + 1), -2.30, 4.60, 0.0, R_FP),
+                                     ("C%d" % (10 + k + 1), 0.00, 4.60, 0.0, C_FP),
+                                     ("C%d" % (k + 1), 2.30, 4.60, 180.0, C_FP),
+                                     ("C%d" % (20 + k + 1), 0.00, -5.20, 0.0, C08_FP)):
+            place[ref] = (xd + dx, DRV_Y + dy, rot)
             fps[ref] = fp
         drivers.append((u, xd, trio))
 
