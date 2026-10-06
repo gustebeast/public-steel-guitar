@@ -1,0 +1,33 @@
+{
+ "_source": "pad positions read from the JLCEDA/EasyEDA Official Library (https://lceda.cn/ , https://easyeda.com); this file keeps only the rotation and offset measured from them",
+ "frames": {
+  "C161861|JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": {
+   "dx": 0.0,
+   "dy": -0.25,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C2071384|Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm": {
+   "dx": 0.0,
+   "dy": -0.1281,
+   "err": 0.104,
+   "fit": true,
+   "pads": 12,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C22438114|PinHeader_2x08_P1.27mm_Horizontal": {
+   "by": "hand: the fab's footprint numbers its two rows the other way round, so a fit by pad number cannot work; its origin is the centre of the hole grid and, in the fab's previewer on ui_board J2, the body sat on our outline at KiCad's angle plus a half turn (KiCad 90, placed at 270)",
+   "dx": 0.635,
+   "dy": -4.445,
+   "err": 0.0,
+   "fit": true,
+   "pads": 16,
+   "read": "2026-10-06",
+   "rot": 180
+  }
+ }
+}

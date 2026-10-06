@@ -41,6 +41,7 @@ BOARDS = ("can_tee", "lever_sensor", "motor_ctrl", "output_panel",
 # made. See the module docstring on why blank beats a guess.
 LCSC = {
     "S8B-XH-A": "C157914",          # 8-way side-entry XH, motor tee trunk
+    "CAS-120TA": "C2921534",        # Nidec 1-pole slide switch, the sensor board's terminator; 1,069 in stock
     "DSHP01TSGER": "C3293141",      # 1-position slide DIP switch, the tee's terminator; 21,200 stock
     "2.54-2*20P": "C5124634",       # 2x20 female header, the pi_cap's Pi socket
     "B6B-PH-K-S": "C131342",        # B6B-PH-K-S(LF)(SN) -- motor_ctrl J5, the Pi's 5 V out
@@ -292,7 +293,25 @@ ORDER_EVERY_BOARD = (
     ("placement", "Confirm Parts Placement: Yes. An engineer checks polarity and rotation "
                   "before the run; ROTATION-CHECK.txt is the list to compare against."),
     ("prod file", "Confirm Production File: Yes. The last look at the panel before it is cut."),
+    ("carry-over", "THE FORM REMEMBERS THE PREVIOUS BOARD'S OPTIONS. After a board ordered "
+                   "with 0.25 mm vias the next one opens with 0.25 mm vias, Tg155 and the "
+                   "4-wire Kelvin test still selected (Advanced Options), about 40 USD it "
+                   "does not need. Unless this file says otherwise above, set: via "
+                   "0.3 mm / (0.4/0.45 mm), FR4 TG135, Kelvin test No. Check the build time "
+                   "too: it can jump to the paid 2-3 day option."),
+    ("upload", "Upload THIS package's -bom.csv and -cpl.csv as they are: every row has "
+               "its part number, and each placement that could be measured is "
+               "already in the fab's footprint frame. ROTATION-CHECK.txt lists the ones "
+               "that were corrected and the ones still to check in the preview."),
 )
+
+# WHAT THE ORDER PAGE NEEDS DONE BY HAND FOR ONE PART (written into ORDER.txt of each
+# board that carries it).
+PART_NOTES = {
+    "C5203987": "the seam pogo pin arrives UNSELECTED (a 'difficult' part, about 0.08 USD "
+                "each extra). Tick its row -- it can take two clicks -- or Next stops "
+                "with 'Project has unselected parts'.",
+}
 
 
 def _check_bom_md(names):
@@ -354,9 +373,13 @@ def _check_bom_md(names):
 
 
 _fab.configure(HERE, BOARDS, {**LCSC, **PASSIVES}, OPEN_VALUES, ORDER_EVERY_BOARD,
-               after=_check_bom_md)
+               after=_check_bom_md, part_notes=PART_NOTES)
 fab = _fab.fab
 main = _fab.main
 
 if __name__ == "__main__":
-    main(sys.argv[1:] or list(BOARDS))
+    _args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--frames" in sys.argv:          # measure the fab's footprint frames (network)
+        _fab.frames(_args or list(BOARDS), refresh="--refresh" in sys.argv)
+    else:
+        main(_args or list(BOARDS))

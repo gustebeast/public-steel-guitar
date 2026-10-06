@@ -931,9 +931,9 @@ BOARD_NOTES = {
     #
     # elec/lever_sensor.py records the same lever with the measurement behind it, and
     # the cost: 0.50/0.25 is inside JLCPCB's standard capability ("Multilayer: 0.15 mm
-    # hole / 0.25 mm diameter") and is NOT surcharged -- the surcharge is for a 0.25 hole
-    # with a diameter UNDER 0.45. It is an order-form field, though, not just a gerber
-    # fact, which is why it is repeated in order_options below.
+    # hole / 0.25 mm diameter"). That file read the capability page as "not surcharged";
+    # the order page charged for it (2026-10-06, see order_options below). It is an
+    # order-form field, not just a gerber fact, which is why it is repeated there.
     "via_mm": (0.50, 0.25),
     # ⚠ 0.15 mm TRACK, for the same reason lever_sensor takes it: the tightest parts here
     # is a 0.65 mm pitch HTSSOP-20 with twelve outputs, and the
@@ -946,9 +946,11 @@ BOARD_NOTES = {
     "net_widths": {"+24V": 0.30, "+24V_IN": 0.30},   # the inlet stub was routed at 0.15
                                                       # for 0.77 A, which wants 0.20
     "order_options": {
-        "via size": "0.25 mm hole / 0.50 mm diameter -- SELECT THIS ON THE ORDER FORM. "
-                    "Inside standard capability and not surcharged. The driver fan does "
-                    "not route at the 0.60/0.30 default.",
+        "via size": "0.25 mm hole / 0.50 mm diameter -- SELECT THIS ON THE ORDER FORM. It is "
+                    "CHARGED FOR, whatever the capability page suggests (order page, "
+                    "2026-10-06): about +17 USD for the via size, and choosing it makes "
+                    "the form add a 4-wire Kelvin test (+17) and Tg155 material (+3.5 "
+                    "to 7.8) by itself. The driver fan does not route at the 0.60/0.30 default.",
     },
     "single_sided": True,        # every part on the face that fires at the floor
     "refs_on_fab": True,
