@@ -352,20 +352,23 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     v24_in += f1[1]
     v24 += f1[2]
 
-    # ⚠ THE 2.1 MHz VARIANT, AND IT IS THE POINT. LMR33630CRNXR is the optical board's
-    # buck (C2071783) and the "C" is 2.1 MHz: a 400 kHz part beside a magnetic pickup
-    # puts its fundamental four octaves nearer the audio band, and at light load every
-    # LMR33630 pulse-skips, which drops the switching energy to a load-dependent rate.
+    # ⚠ A MEGAHERTZ VARIANT, AND IT IS THE POINT. It was LMR33630CRNXR, the optical
+    # board's 2.1 MHz buck; it is the 1.4 MHz LMR33630BRNXR now, on the same land, because
+    # the C part lost 1.45 W here and sat at about 127 C (elec/buck_cell.py has the
+    # figures). What must NOT go here is the 400 kHz "A": beside a magnetic pickup it
+    # puts its fundamental two octaves nearer the audio band than this one, and it wants
+    # a 15 uH inductor that does not fit the bay. At light load every LMR33630 pulse-skips
+    # whatever its letter, which drops the switching energy to a load-dependent rate.
     # Measured against THIS board's floor: the eight drivers' own ICC is tens of mA
     # even with every LED dark, which puts the skip rate in the hundreds of kHz. It
     # only reaches the audio band at loads this board cannot present while powered.
     # Pinout, SNVSAN3F Table 6-1 (VQFN column): 1 PGND, 2 VIN, 3 NC, 4 BOOT, 5 VCC,
     # 6 AGND, 7 FB, 8 PG, 9 EN, 10 VIN, 11 PGND, 12 SW. TI: "connect the SW pin to NC
     # on the PCB". PG unused. EN to VIN, which the datasheet allows.
-    u = Part(name="LMR33630CRNX", ref_prefix="U", ref="U10", tag="U10", dest="NETLIST",
-             tool="skidl", value="LMR33630CRNXR",
-             description="24 V -> %.2f V synchronous buck, 2.1 MHz, 3 A "
-                         "(LCSC C2071783)" % V_RAIL,
+    u = Part(name="LMR33630", ref_prefix="U", ref="U10", tag="U10", dest="NETLIST",
+             tool="skidl", value=BC.U_VALUE,
+             description="24 V -> %.2f V synchronous buck, %.1f MHz, 3 A (LCSC %s)"
+                         % (V_RAIL, BC.U_FSW / 1e6, BC.U_LCSC),
              footprint=BUCK_FP, pins=[Pin(num=n, func=P) for n in range(1, 13)])
     sw, boot, vcc, fb = Net("SW"), Net("BOOT"), Net("BUCK_VCC"), Net("FB")
     gnd += u[1], u[11], u[6]
@@ -377,10 +380,10 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     Net("BUCK_PG_NC").connect(u[8])
 
     # ⚠ THE VALUE IS THE PART NUMBER, for the reason optical.py gives at its own L1:
-    # "3.3uH" does not specify an inductor, and saturation is what decides whether this
+    # "4.7uH" does not specify an inductor, and saturation is what decides whether this
     # supply survives a fault. buck_cell.L1_VALUE says which part and why. Ripple at
-    # 14.52 V out, 24 V in, 2.1 MHz: Vout(1-D)/(f L) = 0.83 A pk-pk, so the peak at BOTH
-    # boards' 1.38 A full-white load is 1.79 A against 3.95 A of guaranteed saturation.
+    # 14.52 V out, 24 V in, 1.4 MHz: Vout(1-D)/(f L) = 0.87 A pk-pk, so the peak at BOTH
+    # boards' 1.38 A full-white load is 1.82 A against 3.50 A of guaranteed saturation.
     assert IND_FP == BC.L1_FP
     l1 = Part(name="L", ref_prefix="L", ref="L1", tag="L1", dest="NETLIST", tool="skidl",
               value=BC.L1_VALUE, description=BC.L1_DESC,
@@ -719,21 +722,15 @@ def build(panel):
         ]
         pin = {"S4B-XH-SM4-TB": "JST XH S4B-XH-SM4-TB drawing for pin 1; the way order is "
                                 "J_PINS in _supply(), the Pi cap's end to match",
-            "LMR33630CRNXR": "TI LMR33630 datasheet SNVSAN3F, Table 6-1, VQFN (RNX) column",
+            BC.U_VALUE: "TI LMR33630 datasheet SNVSAN3F, Table 6-1, VQFN (RNX) column",
         }
-        # ⚠ A SECOND BARREL, IN THE INDUCTOR'S OWN LAND. All 1.38 A of the rail leaves L1.2,
-        # and the stitcher gives a pad one via because it does not know currents. The
-        # land is 1.4 x 4.2 (over the 4 mm2 at which a via in a soldered land is
-        # accepted), so one more goes straight down through it to the plane.
-        # ONE, NOT TWO: two open barrels hold 0.23 of the 0.49 mm3 of paste printed on
-        # the land, and a quarter is the limit (cadkit quality A12).
-        # (L1_LAND along the part to the land's centre, 1.2 along the land from there)
-        import math
-        lx, ly, lrot = place["L1"]
-        _kc, _ks = math.cos(math.radians(lrot)), math.sin(math.radians(lrot))
-        notes["vias"] = list(notes.get("vias", [])) + [
-            ("+14V5", round(lx + BC.L1_LAND * _kc - 1.2 * _ks, 3),
-             round(ly + BC.L1_LAND * _ks + 1.2 * _kc, 3))]
+        # ⚠ NO SECOND BARREL IN THE INDUCTOR'S LAND, which this board once declared. The
+        # 5 x 5 part's land is 1.4 x 4.2 and the stitcher puts its own via IN it; a second
+        # open barrel there holds 0.23 of the land's 0.71 mm3 of paste, over the quarter
+        # cadkit quality A12 allows. All 1.38 A still has more than one way down:
+        # buck_cell lays 1.0 mm of copper from this land to both output capacitors, each
+        # with its own via, and A1 measures the path.
+        notes["vias"] = list(notes.get("vias", []))
         # the switch node and the two input loops are laid, not routed (buck_cell.tracks)
         notes["tracks"] = list(notes.get("tracks", [])) + BC.copper(
             *cell_org, v_out="+14V5") + BC.heat_copper(*cell_org)

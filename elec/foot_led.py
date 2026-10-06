@@ -279,12 +279,12 @@ def _manual(board, n_drv):
               "1206 on 24 V; and, for the RNX package, a small capacitor at each of its "
               "two VIN/PGND pairs -- C32 and C35, 100 nF / 50 V, 0.60 mm from their pins. "
               "Bootstrap 100 nF (asked: 100 nF, 10 V or more; fitted 50 V). VCC 1 uF / "
-              "25 V (asked: 1 uF, 16 V). Output: TI's table for 12 V at 2.1 MHz is 3.3 uH "
+              "25 V (asked: 1 uF, 16 V). Output: TI's table for 12 V at 1.4 MHz is 4.7 uH "
               "and 4 x 10 uF; this rail has 2 x 10 uF / 50 V at the inductor plus "
               "%d x 4.7 uF / 25 V on the same plane, 38.8 uF by the "
               "markings. The 25 V parts sit at 46 %% of their rating and the 50 V ones "
               "at 23 %%. TI's equation 6 for the whole 0.72 A arriving as one step with "
-              "a 2 %% dip asks 3.5 uF. Each driver: 1 uF on VREG (its sheet requires "
+              "a 2 %% dip asks 5.1 uF. Each driver: 1 uF on VREG (its sheet requires "
               "it), 100 nF on VCC, and its own 4.7 uF for the 0.18 A its twelve "
               "channels switch together" % n_drv,
         "M5": "24 V bus: U10 is rated 36 V operating and 38 V absolute, every capacitor "
@@ -304,9 +304,9 @@ def _manual(board, n_drv):
               "pass the buck they run against the ground plane with both planes "
               "between them and the switch node",
         "M7": "divider: 100k over 10k || 200k = 9.524k on the 1.000 V reference is "
-              "11.50 V. Inductor 3.3 uH: TI's table value; their floor of 0.28 x Vout / "
-              "fsw is 1.53 uH against 2.31 at the part's -30 %; ripple 0.86 A, 29 % of "
-              "the 3 A they size it on. EN (pin 9) is tied to VIN on laid copper (TI: "
+              "11.50 V. Inductor 4.7 uH: TI's table value at 1.4 MHz; their floor of "
+              "0.28 x Vout / fsw is 2.3 uH against 3.76 at the part's -20 %; ripple "
+              "0.91 A, 30 % of the 3 A they size it on. EN (pin 9) is tied to VIN on laid copper (TI: "
               "may go straight to VIN, must not float). PG (pin 8) is an open drain "
               "that 'can be left open when not used', and is. The RNX has no exposed "
               "pad. TLC59711: IREF 3k3 gives 41 x 1.21 V / 3.3k = 15.0 mA; its "
@@ -357,15 +357,15 @@ def _manual(board, n_drv):
                "Bootstrap 1.07 mm from BOOT and 0.74 from SW. VCC's capacitor 0.42 mm "
                "from its pin on 1.1 mm of 0.25 track, its ground pad on the track from "
                "AGND",
-        "M14": "L1 SWPA5040S3R3NT, 3.3 uH +-30 %%. Ripple 11.5 x (1 - 11.5/24) / (3.3 uH "
-               "x 2.1 MHz) = 0.86 A, so the peak at this board's 0.72 A is 1.15 A. "
-               "Saturation (Sunlord: 30 %% inductance drop, 20 C) 3.95 A guaranteed, "
-               "4.60 typical; heating current 3.4 A. TI: saturation 'must not be less "
+        "M14": "L1 SWPA5040S4R7MT, 4.7 uH +-20 %%. Ripple 11.5 x (1 - 11.5/24) / (4.7 uH "
+               "x 1.4 MHz) = 0.91 A, so the peak at this board's 0.72 A is 1.18 A. "
+               "Saturation (Sunlord: 30 %% inductance drop, 20 C) 3.50 A guaranteed, "
+               "3.90 typical; heating current 3.0 A. TI: saturation 'must not be less "
                "than the device low-side current limit', 3.5 A typical (2.9 to 4.1) -- "
-               "met at the guarantee. The high-side limit is 4.5 A typical (3.85 to "
-               "5.05), inside the part's typical figure and above its guarantee: "
-               "accepted. A dead short on the rail pulls FB under 0.4 V and the part "
-               "hiccups at 94 ms. The 4 x 4 part this replaced saturated at 2.90 A",
+               "met at the guarantee, with nothing over. The high-side limit is 4.5 A "
+               "typical (3.85 to 5.05), above this part: accepted. A dead short on "
+               "the rail pulls FB under 0.4 V and the part hiccups at 94 ms. The 4 x 4 "
+               "part this replaced saturated at 2.90 A",
         "M15": "U10 is internally compensated for ceramic outputs and TI give no ESR "
                "window, only the table's inductance and capacitance (M4). Capacitance "
                "under bias is NOT read off a curve here: the 1206 and 0805 parts are "
@@ -408,12 +408,16 @@ def _manual(board, n_drv):
                "0.57 W typical and 0.75 W worst (12 x 15 mA across the rail less three "
                "LEDs, plus its own supply current); at TI's 68.6 C/W that is 39 to "
                "51 C over ambient, 96 C at 45 C against 150 C. U10 has no pad: its "
-               "heat leaves through the pins into the laid slabs and their vias. About "
-               "0.85 W at 0.72 A (TI figure 9-17's losses, which do not depend on the "
-               "output voltage) at an estimated 60 C/W -- TI's figure 9-4 gives 50 to "
-               "63 for this package on four layers with heavier copper -- is about "
-               "96 C at 45 C ambient, against 125 C operating and a 165 C shutdown. "
-               "No tab on the board",
+               "heat leaves through the pins into the laid slabs and their vias. "
+               "Loss, read off TI's 24 V curve for this package at 1.4 MHz (figure "
+               "9-15) at 0.7 A: 0.9 W, all of it charged to the IC. Thermal "
+               "resistance is an ESTIMATE, 60 C/W: TI's 23.5 junction to board, then "
+               "this board's copper; their figure 9-4 gives 50 to 63 for the package "
+               "on four layers of heavier copper. 45 C ambient (inside the chassis, "
+               "beside the motors) + 0.9 x 60 = 99 C against 125 C operating and a "
+               "165 C shutdown. The 2.1 MHz part these boards had loses 1.2 W at the "
+               "same load, 117 C: that is why it was changed (elec/buck_cell.py). No "
+               "tab on the board",
         "M26": "one link, a daisy chain. Read off TI's pin table: 9 SDTI, 10 SCKI, "
                "11 SCKO, 12 SDTO. " + ("SDT_IN and SCK_IN (from the cable through R22 "
                "/ R21) reach U1 pins 9 and 10" if a else "SDT_IN and SCK_IN (the seam) "
@@ -425,7 +429,8 @@ def _manual(board, n_drv):
         "M28": "no transistor or small regulator. The three ICs' pin orders are read "
                "from their own sheets (pinouts, above), and each placed footprint was "
                "compared pad for pad with the fab's library footprint for that exact "
-               "LCSC code: TLC59711PWPR C116842, LMR33630CRNXR C2071783, XL-5050RGBW "
+               "LCSC code: TLC59711PWPR C116842, the RNX0012 land of LMR33630CRNXR "
+               "C2071783 (the B part is the same package), XL-5050RGBW "
                "C7371891" + (", S4B-XH-SM4-TB C161861" if a else "") + " -- all match "
                "under a pure rotation",
         "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
@@ -498,14 +503,15 @@ def _manual(board, n_drv):
                "L1 (elec/buck_cell.py: saturation), F1 (a part number: speed and "
                "63 V), the 100 nF / 50 V at VIN, and the LED, whose 3.0 to 3.4 V sets "
                "the rail",
-        "M42": "JLCPCB stock on 2026-10-05: LED 40,185, driver 3,826, buck 3,453, "
-               "inductor C305173 2,389, fuse " + ("11 k" if a else "96 k") + ", spring "
+        "M42": "JLCPCB stock on 2026-10-05: LED 40,185, driver 3,826, buck "
+               "LMR33630BRNXR 260 (THIN: the alternate is the 2.1 MHz LMR33630CRNXR, "
+               "3,453, on the same land with no other change, and then full white is "
+               "capped in firmware -- elec/buck_cell.py), inductor C48496 8,632, fuse " + ("11 k" if a else "96 k") + ", spring "
                "pin 594" + (", socket 20,309" if a else "") + "; passives are basic "
                "parts. Both TI parts active. Single-maker parts: the spring pin "
                "(Xinyangze, no second source on this land: the thin one, eight a "
                "pair of boards) and the LED (other 5050 RGBW parts exist but their "
-               "pad order must be read first). The inductor has a second line, "
-               "SWPA5040S3R3MT C14656",
+               "pad order must be read first)",
     }
     return m
 
@@ -593,10 +599,10 @@ def build(board, passes=20):
     v24 += f1[2]
 
     # ── the buck: the fret boards', unchanged ────────────────────────────────────────
-    u10 = Part(name="LMR33630CRNX", ref_prefix="U", ref="U10", tag="U10", dest="NETLIST",
-               tool="skidl", value="LMR33630CRNXR",
-               description="24 V -> %.2f V synchronous buck, 2.1 MHz, 3 A "
-                           "(LCSC C2071783)" % V_RAIL,
+    u10 = Part(name="LMR33630", ref_prefix="U", ref="U10", tag="U10", dest="NETLIST",
+               tool="skidl", value=BC.U_VALUE,
+               description="24 V -> %.2f V synchronous buck, %.1f MHz, 3 A (LCSC %s)"
+                           % (V_RAIL, BC.U_FSW / 1e6, BC.U_LCSC),
                footprint=BUCK_FP, pins=[Pin(num=n, func=P) for n in range(1, 13)])
     sw, boot, vcc, fb = Net("SW"), Net("BOOT"), Net("BUCK_VCC"), Net("FB")
     gnd += u10[1], u10[11], u10[6]
@@ -648,7 +654,7 @@ def build(board, passes=20):
     #
     # ⚠ IT COSTS DISTANCE TO THE PICKUP AND THAT IS WORTH STATING. On the +X board
     # the buck moves from ~187 mm away to ~73, which is 16x the coupling by 1/r^3. It
-    # is still the quieter of the two things on this board: a tight 2.1 MHz hot loop
+    # is still the quieter of the two things on this board: a tight 1.4 MHz hot loop
     # of ~5 mm2 at 73 mm is 4x below the LED loop's 15 mm2 at 66 mm that shares the
     # board with it, and its spectrum is nowhere near the audio band.
     place["U10"] = (BUCK_X, LANE_Y, 0.0)
@@ -853,7 +859,7 @@ def build(board, passes=20):
                            "is drawn from it",
             "TLC59711PWPR": "TI TLC59711 datasheet, Terminal Functions table, PWP "
                             "(HTSSOP-20) column, top view",
-            "LMR33630CRNXR": "TI LMR33630 datasheet SNVSAN3F, Table 6-1, VQFN (RNX) column",
+            BC.U_VALUE: "TI LMR33630 datasheet SNVSAN3F, Table 6-1, VQFN (RNX) column",
         },
         "waive": waive,
         "manual": _manual(board, n_drv),
