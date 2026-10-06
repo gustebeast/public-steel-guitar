@@ -23,8 +23,8 @@ Official Library -- https://lceda.cn/ , https://easyeda.com -- read through the 
 | Parts with no fab model yet (+1 day, placeholder in preview) | optical R44 C5139521, pogo male C54799748 | ORDER.txt part note |
 | 6.35 mm jack previewed 16 mm off its holes | output_panel | hand-entered frame; re-previewed in its outline |
 | The form carried 19.87 of options into the next board | leg_pogo_male_bottom | already in ORDER.txt; seen live |
-| Kycon KPJX-4S-S: the fab numbers pins 3 and 4 the other way round from our footprint | output_panel | OPEN: check ours against the Kycon drawing before ordering |
-| The 20 photodiodes could not be resolved in the preview at screen size | optical | OPEN: look at them zoomed in (hand-entered frame, rot 90) |
+| Kycon KPJX-4S-S: the fab numbers pins 3 and 4 the other way round from our footprint | output_panel | closed 2026-10-06: our footprint is Kycon's land pattern pad for pad, and the fab's numbering is harmless (placed by position). The check found a real fault instead: the NETS followed Mean Well's pin numbers, which are not Kycon's, and shorted the supply. Netlist corrected, board re-routed |
+| The 20 photodiodes, looked at zoomed in: every one was a half turn out. The fab's part has Everlight's numbering (lands 1 and 4 cathode, striped side); our footprint calls the anode pair 1, and the hand frame had matched by number | optical | closed 2026-10-06: frame turned half round (rot 270); re-previewed with the stripe on the summing-node lands, toward the op-amp |
 
 ## Totals for five of each (as designed today)
 
