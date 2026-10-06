@@ -1313,6 +1313,63 @@ BOARD_NOTES["quality"] = {
         "USB_DP": "full speed, 12 Mbit/s: a bit is 83 ns and the pair is under 40 mm, so "
                   "its whole length is 0.25 ns and no skew it could have is 1 % of a bit",
     },
+    # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
+    # repeated structure is on. The pass fails on any difference from the routed board.
+    "unconnected": {
+        "J[26].MP": "JST reinforcement tab: soldered, on no net",
+        "J4.2": "USB VBUS way: the board is not bus powered, the way carries no conductor's net",
+        "J5.[34]": "the 6-way's two middle ways: no conductor (harness.PI_5V_LINK)",
+        "U1.4": "LMR16006 SHDN: left open is enabled (internal pull-up)",
+        "U[23].5": "SN65HVD230 Vref output: nothing here uses the reference",
+        "U4": {
+            "pins": "2 3 4 10 11 14 15 16 19 21 22 23 24 25 26 27 28 29 30 33 34 37 38 40 41 42 43 44 45 53 54 55 56 57 58 59 60 61 62 66",
+            "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
+        }
+    },
+    "net_groups": [
+        {
+            "name": "two CAN buses: four bus pins, four nets",
+            "pins": [
+                "U[23].[67]"
+            ],
+            "nets": 4,
+            "each": 1
+        },
+        {
+            "name": "two transceivers: TX and RX of each reach the MCU",
+            "nets_like": "CAN[12]_(TX|RX)",
+            "count": 4,
+            "pads": 2
+        },
+        {
+            "name": "bus B leaves by two connectors, way for way",
+            "pins": [
+                "J[26].[1-4]"
+            ],
+            "nets": 4,
+            "each": 2
+        },
+        {
+            "name": "power link: GND and 24 V twice, the button's two throws once",
+            "pins": [
+                "J3.[1-6]"
+            ],
+            "nets": 4
+        },
+        {
+            "name": "lights lead: four ways, four nets",
+            "pins": [
+                "J7.[1-4]"
+            ],
+            "nets": 4,
+            "each": 1
+        },
+        {
+            "name": "one USB pair",
+            "nets_like": "USB_D[PM]",
+            "count": 2
+        }
+    ],
     "pinouts": {
         "B4B-XH-A": "JST eXH.pdf p.5, Header / Top entry type: seen from the slotted wall "
                     "(the wall 2.35 mm from the posts), No. 1 circuit is the right-hand "

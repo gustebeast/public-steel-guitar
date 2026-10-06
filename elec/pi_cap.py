@@ -635,6 +635,52 @@ BOARD_NOTES = {
             "A1:+5V_PI J2.2>J1.4": "the same eight vias as J2.2>J1.2: 7.2 mm equivalent "
                                    "against 1.37 mm needed",
         },
+        # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
+        # repeated structure is on. The pass fails on any difference from the routed board.
+        "unconnected": {
+            "J1": {
+                "pins": "3 5 7 14 17 20 21 22 24 26 27 28 32 35 36",
+                "why": "Pi header pins this cap gives no function (the GPIO map is in pi_cap.py)"
+            },
+            "J2.[34]": "the 6-way's two middle ways: no conductor (harness.PI_5V_LINK)",
+            "J[234].MP": "JST reinforcement tab: soldered, on no net",
+            "U1.4": "TPS2553 FAULT: open drain, not read"
+        },
+        "net_groups": [
+            {
+                "name": "UI ribbon: sixteen ways, sixteen nets",
+                "pins": [
+                    "J5.*"
+                ],
+                "nets": 16,
+                "each": 1
+            },
+            {
+                "name": "two lighting drops: their clock and data are separate buses",
+                "pins": [
+                    "J3.[34]",
+                    "J6.[34]"
+                ],
+                "nets": 4,
+                "each": 1
+            },
+            {
+                "name": "the two drops share ground and the lights' 24 V",
+                "pins": [
+                    "J[36].[12]"
+                ],
+                "nets": 2,
+                "each": 2
+            },
+            {
+                "name": "lights lead: four ways, four nets",
+                "pins": [
+                    "J4.[1-4]"
+                ],
+                "nets": 4,
+                "each": 1
+            }
+        ],
         "pinouts": {
             "2.54-2*20P": "Raspberry Pi 4B mechanical drawing + src/electronics._cap_place, "
                           "worked through 2026-10-04: pad 1 sits at board (24.13, -3.23), "

@@ -234,6 +234,22 @@ def _quality(kind, parts):
         # 1 A is the spring header's rating (and the ZH contact's): the most this joint
         # may ever be asked to pass. Bus B's real load is a handful of sensor boards.
         "power_paths": [{"net": "+5V", "from": "J2.2", "to": "J1.%s" % j1_5v, "amps": 1.0}],
+        # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
+        # repeated structure is on. The pass fails on any difference from the routed board.
+        "unconnected": {
+            "J2.MP": "JST reinforcement tab: soldered, on no net"
+        },
+        "net_groups": [
+            {
+                "name": "four contacts and the four ways of the lead: one bus",
+                "pins": [
+                    "J1.*",
+                    "J2.[1-4]"
+                ],
+                "nets": 4,
+                "each": 2
+            }
+        ],
         "pinouts": {
             "S4B-PH-SM4-TB": "JST ePH.pdf p.4, Header (SMT type) / Side entry: looking INTO "
                              "the mouth with the board below, the No. 1 circuit mark is on "
