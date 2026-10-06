@@ -1697,15 +1697,6 @@ def ui_work_components():
     return out
 
 
-def _tensioner_coupon_components():
-    """The belt clamp shown ASSEMBLED, parked off the +X end for a clear look (the real
-    clamps ride each string's belt). Reuses the pre-built parts, so it cannot drift from the
-    real placements."""
-    o = cq.Vector(150.0, 90.0, 40.0)
-    return [(f"{nm}_coupon", cq.Workplane("XY").add(shp.val().translate((o.x, o.y, o.z))))
-            for nm, shp in BTn.clamp_components()]
-
-
 def collect_components():
     """EVERY placed thing in the instrument: [(name, cq.Workplane), ...].
 
@@ -1764,7 +1755,6 @@ def collect_components():
     # been reporting green on an instrument with no lever wiring in it.
     comps += _lever_bus_components() + _ctrl_bus_components()
     comps += _wrap_rod_component()
-    comps += _tensioner_coupon_components()
     for i in range(D.N_STRINGS):
         comps.extend(_string_components(i))
     return comps
@@ -1783,10 +1773,6 @@ _COLORS = {
     # …and the parked assembled coupon (green = clearly a reference, not a product part)
     # The coupon keeps its own COOL family so the parked copy never reads as a real
     # clamp; same one-hue-per-SKU rule within it.
-    "belt_tensioner_half_a_coupon": (0.20, 0.70, 0.45),
-    "belt_tensioner_half_b_coupon": (0.20, 0.70, 0.45),
-    "belt_tensioner_screw_coupon":  (0.55, 0.55, 0.58),
-    "belt_tensioner_insert_coupon": (0.72, 0.60, 0.30),
     "screw_pulley":    (0.00, 0.55, 0.55),
     "screw_top_bearing": (0.69, 0.77, 0.87),
     "motor_pulley":    (0.00, 0.55, 0.55),
