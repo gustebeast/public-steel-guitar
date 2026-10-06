@@ -1,6 +1,24 @@
 {
  "_source": "pad positions read from the JLCEDA/EasyEDA Official Library (https://lceda.cn/ , https://easyeda.com); this file keeps only the rotation and offset measured from them",
  "frames": {
+  "C116842|HTSSOP-20-1EP_4.4x6.5mm_P0.65mm_EP3.4x6.5mm_Mask2.75x3.43mm": {
+   "dx": 0.0,
+   "dy": -0.0,
+   "err": 0.008,
+   "fit": true,
+   "pads": 21,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C160841|Alps_RKJXT1F42001": {
+   "dx": 0.0,
+   "dy": -0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 10,
+   "read": "2026-10-06",
+   "rot": 0
+  },
   "C161861|JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": {
    "dx": 0.0,
    "dy": -0.25,
@@ -20,14 +38,52 @@
    "rot": 270
   },
   "C22438114|PinHeader_2x08_P1.27mm_Horizontal": {
-   "by": "hand: the fab's footprint numbers its two rows the other way round, so a fit by pad number cannot work; its origin is the centre of the hole grid and, in the fab's previewer on ui_board J2, the body sat on our outline at KiCad's angle plus a half turn (KiCad 90, placed at 270)",
+   "by": "hand: the fab's footprint numbers its two rows the other way round, so a fit by pad number cannot work; its origin is the centre of the hole grid, its body is on its -y side where KiCad's is on +x (a quarter turn), and in the fab's previewer on ui_board J2 the body sat on our outline, pins off the board, at KiCad's angle plus 90 (KiCad 180, placed at 270). Plus 180, which this entry first carried, previewed with the pins over SW2",
    "dx": 0.635,
    "dy": -4.445,
    "err": 0.0,
    "fit": true,
    "pads": 16,
    "read": "2026-10-06",
-   "rot": 180
+   "rot": 90
+  },
+  "C22462024|Legion_PB-22E85": {
+   "by": "hand: the fab's footprint numbers its two rows of three the other way round, so a fit by pad number cannot work; with numbers ignored its six holes lie on ours within 0.05 mm at KiCad's angle, both about the centre, and in the fab's previewer on ui_board SW2 the body sat in our outline as KiCad wrote it. The rows are the switch's two poles",
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.05,
+   "fit": true,
+   "pads": 6,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C2905493|PinHeader_1x20_P2.54mm_Vertical": {
+   "dx": 0.0,
+   "dy": -24.13,
+   "err": 0.0,
+   "fit": true,
+   "pads": 20,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C5203987|Xinyangze_YZF0002-38080-02": {
+   "by": "hand: one pad, so there is nothing to fit; in the fab's previewer on foot_led_a, foot_led_b, fret_led_key and fret_led_mid every pin sat on its land with the plunger off the board end, as KiCad wrote it",
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 1,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C7371891|XINGLIGHT_XL-5050RGBW": {
+   "dx": 0.0,
+   "dy": -0.0,
+   "err": 0.025,
+   "fit": true,
+   "pads": 8,
+   "read": "2026-10-06",
+   "rot": 0
   }
  }
 }
