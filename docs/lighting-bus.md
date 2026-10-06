@@ -170,17 +170,21 @@ it drops further the brighter the strip gets — the zones would dim as a group.
 
 | drop | 24 V draw | rail it makes |
 |---|--:|---|
-| fret_led_key, feeding mid over the seam | 0.894 A | 14.0 V, one buck for both |
-| foot (both boards, through one inlet) | **0.733 A** | 11.0 V |
-| **total, every zone full white** | **1.63 A** | 39 W |
+| fret_led_key, feeding mid over the seam | 0.928 A | 14.52 V, one buck for both |
+| foot (both boards, through one inlet) | **0.767 A** | 11.50 V, one buck a board |
+| **total, every zone full white** | **1.70 A** | 41 W |
+
+(Rails raised 2026-10-05: the LED's forward voltage tops out at 3.4 V, not 3.2. The
+firmware lights cap that keeps the motors their 4.6 A is unchanged at 1.07 A = 25.7 W,
+which is now 63 % of full white.)
 
 ⚠ **That total is the software-capped worst case**, not the operating point — it is every
 LED of all three boards at full white simultaneously. The effects daemon caps it the same
 way it caps the fret boards' 1.38 A on its own.
 
-⚠ **0.73 A of it goes through ONE SM04B-SRSS contact**, because the foot strip's −X inlet
-and its seam jumper carry both foot boards. 73% of the contact's rating, and the first
-thing to revisit if the foot strip ever grows again.
+**0.77 A of it goes through one contact**, because the foot strip's −X inlet and its seam
+carry both foot boards: 26 % of the XH contact's 3 A (it was 73 % of a JST SH's 1 A before
+the inlet became an XH, 2026-10-04).
 
 ## 4. What the Pi cap needs
 

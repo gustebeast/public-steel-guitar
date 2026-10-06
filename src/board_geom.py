@@ -48,6 +48,8 @@ _HEIGHT: dict = {
     "PinHeader_2x08_P1.27mm_Horizontal": 4.0,
     # the power button's CASE, off Legion's drawing; src/ui_panel.py draws the stem
     "Legion_PB-22E85": 8.5,
+    # both LED supplies' inductor (elec/buck_cell.py): Sunlord's table, C = 4.0 max
+    "L_Sunlord_SWPA5040S": 4.0,
 }
 _TAIL: dict = {
     # READ, not estimated (2026-10-04): HX's PZ1.27-2xNP WZ drawing gives the solder leg
@@ -60,6 +62,7 @@ _TAIL: dict = {
     # tail, so 1.4 shows through a 1.6 board; read the chosen part's drawing at order
     "PinSocket_2x20_P2.54mm_Vertical": 1.4,
     "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": 0.0,   # surface mount
+    "L_Sunlord_SWPA5040S": 0.0,
 }
 _THT_LEGS: dict = {}
 _PANEL: dict = {}

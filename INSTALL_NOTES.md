@@ -619,7 +619,7 @@ connector happens with the panel off or with the keyhead end open.
 ## Fret lighting boards (2026-09-30, seam joint built the same day)
 
 Two boards, one per deck panel, ONE cable: it lands on the keyhead board, and the mid board
-is fed across the panel seam by six tip-to-tip pogo pins (`docs/fret-led.md` §9.1f).
+is fed across the panel seam by four tip-to-tip pogo pins (`docs/fret-led.md` §9.1f).
 
 1. **Attach each LED board to its own panel, off the instrument** -- the retainer strips
    and the one M4, below. The board must not move in X once seated.
