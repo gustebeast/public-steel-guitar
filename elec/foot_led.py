@@ -541,7 +541,7 @@ def build(board, passes=20):
     # The pogo footprint fires -X as drawn, so A's set is turned half a turn.
     v24_in = Net("+24V_IN")
     sck, sdt = Net("SCK_IN"), Net("SDT_IN")
-    pogo_refs = {}
+    pogo_refs, nets_of_ref = {}, {}
     if board == "a":
         sck_out, sdt_out = Net("SCK_OUT"), Net("SDT_OUT")
         j1 = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J1", tag="J1",
@@ -577,6 +577,7 @@ def build(board, passes=20):
                  description="seam pogo, %s: %s (LCSC C5203987)" % (what, net),
                  footprint=POGO_FP, pins=[Pin(num=1, func=P)])
         nets_of[net] += j[1]
+        nets_of_ref[ref] = net
         place[ref] = (px, py, 0.0 if sgn < 0 else 180.0)
         fps[ref] = POGO_FP
         pogo_refs.setdefault(sgn, []).append(ref)
@@ -818,6 +819,16 @@ def build(board, passes=20):
         ("GND", round(place["U%d" % (k + 1)][0] + dx, 3),
          round(place["U%d" % (k + 1)][1] + dy, 3), v_drill, v_dia)
         for k in range(n_drv) for dx, dy in DRV_PAD_VIAS]
+    # the ground return crosses into its plane on more than one barrel (buck_cell, M3):
+    # at the seam land on both boards, and at the socket's ground way on board A
+    for refs in pogo_refs.values():
+        for ref in refs:
+            if nets_of_ref[ref] == "GND":
+                notes["vias"] += BC.land_vias("GND", *place[ref][:2])
+    if board == "a":
+        _trk, _via = BC.xh_ground_via(*place["J1"][:2])
+        notes["tracks"] = notes["tracks"] + [_trk]
+        notes["vias"] = notes["vias"] + [_via]
     # WHAT EACH SUPPLY NET CARRIES, all-white. A board's own rail is its channels and
     # its 24 V draw is that through the buck at 90 %. Board A's inlet and fuse carry
     # BOTH boards' and it hands B's share across the seam; B carries its own.

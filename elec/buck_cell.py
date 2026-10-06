@@ -211,3 +211,33 @@ def heat_copper(origin, turn):
 
 def heat_vias(origin, turn):
     return [("GND",) + at(origin, turn, x, HEAT_Y)[:2] for x in HEAT_VIAS_X]
+
+
+# ── A SUPPLY DOES NOT ENTER A PLANE THROUGH ONE VIA (manual quality pass M3) ────────────
+# Not part of the cell, but both LED boards need it and this is the file they share. The
+# stitcher gives a plane-net land one via. For a decoupling capacitor that is right; for
+# the land a whole board's supply or its return arrives on -- a seam spring pin, the
+# cable socket's ground way -- it is 0.9 A through a single plated barrel, which carries
+# it (about 1.5 A at a 10 C rise) and is still the one thing whose crack darkens the
+# board. So those lands get two more.
+POGO_VIA_DX = (-1.60, +1.60)         # along the 5.0 mm land, either side of the stitcher's
+
+
+def land_vias(net, x, y):
+    """Two more vias in a 5.0 x 3.5 spring-pin land centred (x, y)."""
+    return [(net, round(x + dx, 3), round(y, 3)) for dx in POGO_VIA_DX]
+
+
+# The XH socket's lands are 4.5 x 1.3, too small for a second open barrel (it would hold
+# a third of the land's paste), so its ground way gets a via just past the land's toe on
+# 0.4 mm of track. From the footprint's PAD CENTROID at rot 270, which is where elec/
+# places it: way 1 is 3.75 towards +y, the lands' centres 2.27 towards +x, their toes 4.52.
+XH_GND_WAY = (2.27, 3.75)
+XH_TOE_VIA = 5.30
+
+
+def xh_ground_via(jx, jy):
+    """(track, via) for an S4B-XH-SM4-TB placed at (jx, jy), rot 270."""
+    y = round(jy + XH_GND_WAY[1], 3)
+    return (("GND", "F.Cu", 0.40, [(round(jx + 3.50, 3), y), (round(jx + XH_TOE_VIA, 3), y)]),
+            ("GND", round(jx + XH_TOE_VIA, 3), y))
