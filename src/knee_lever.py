@@ -1364,7 +1364,7 @@ PCB_X1  =  4.025                                # +X edge: as close to the CHIP 
                                                 # no longer binds because the +X groove carrier
                                                 # is now confined BELOW the bore (see CR_X1_MAX
                                                 # and _cradle) instead of running full height.
-PCB_X0  = -28.0                                 # -X edge: the routed board's (chip 28.0 in). Was -25.
+PCB_X0  = -29.0                                 # -X edge: the routed board's (chip 29.0 in).
                                                 # History: was -14.0, CONNECTOR-limited. It is now
                                                 # CIRCUIT-limited, and the board had to grow.
                                                 #
@@ -1387,14 +1387,16 @@ PCB_X0  = -28.0                                 # -X edge: the routed board's (c
                                                 # 21.4 for a 19 board. -X is deep in all three
                                                 # housings.
                                                 #
-                                                # 28.0 is the MAXIMUM, and the FOOT PEDAL sets it:
-                                                # the pedal turns the board 90 deg to put its near
-                                                # edge toward the player, which swaps X and Z, and
-                                                # at 29 the turned board's +Z reach passes the
-                                                # pedal's ceiling and the pedal loses EVERY
-                                                # orientation. Checked against all 4 in-plane
-                                                # orientations of all 3 housings.
-PCB_WX  = PCB_X1 - PCB_X0                       # 28.0
+                                                # 29.0 is what the CIRCUIT needs, no more: the
+                                                # terminator switch (the motor tee's, 8.89 over
+                                                # its lands) lies between the transceiver and
+                                                # the +X groove band, and everything -X of it
+                                                # stands off by that much. The knee housings
+                                                # run to HOUS_X0, far past it; the pedal turns
+                                                # the board over into the bar, and its bay is
+                                                # measured from the posed board
+                                                # (foot_pedal.board_bay_cutter), so it follows.
+PCB_WX  = PCB_X1 - PCB_X0                       # 33.025
 CR_FLOOR_T = 4 * D.NOZZLE_D         # 3.2 (was 2.8 = 3.5 beads)                    # cradle floor under the board
 CONN_EDGE  = 1.0                    # connector body -> board's bottom edge (JLCPCB's
                                     # component-to-edge rule; the TOP end stays flush)

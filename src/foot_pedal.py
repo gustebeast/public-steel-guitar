@@ -417,7 +417,7 @@ assert KL.board_z(CRADLE_Z0, HOUS_Z1, BOARD_FLIP)[0] >= HOUS_Z0 - 1e-6, (
 # out that far instead of stopping at the bar top. On the knee lever the rule is
 # "nothing +X of the housing prism's face"; here +X is INTO the bar, and the bay
 # below is what makes that legal.
-CRADLE_X_MAX = -KL.PCB_X0                          # 25.0
+CRADLE_X_MAX = -KL.PCB_X0                          # 29.0
 # Everything that has to live inside the beam: the board's lower half, the mated
 # connector and the plug's reach past the mouth.
 BAY_CLR = 0.6                                      # printed clearance around the bay

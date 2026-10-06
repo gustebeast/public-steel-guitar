@@ -76,12 +76,11 @@ A part that is not in this file is not on a board, whatever another document say
 | `B6B-XH-A` | C144397 | 2 | motor_ctrl, output_panel |
 | `BLM18KG601SN1D` | C85833 | 2 | output_panel, optical |
 | `BZT52C10T-7` | C248313 | 1 | output_panel |
-| `CAS-120TA` | C2921534 | 11 | lever_sensor |
 | `CH32V203G6U6` | C5142280 | 11 | lever_sensor |
 | `CH32V307WCU6` | C5142795 | 2 | motor_ctrl, output_panel |
 | `CH334F` | C5187527 | 1 | output_panel |
 | `CJO05-240003320B30` | C712738 | 1 | optical |
-| `DSHP01TSGER` | C3293141 | 10 | can_tee |
+| `DSHP01TSGER` | C3293141 | 21 | can_tee, lever_sensor |
 | `ESD5B5.0ST1G` | C93623 | 28 | lever_sensor, motor_ctrl, output_panel |
 | `G6K-2F-Y-DC5` | C326376 | 1 | output_panel |
 | `JFC1206-1100FS` | C136343 | 3 | motor_ctrl, output_panel, foot_led_b |
@@ -169,7 +168,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 1 | R5 | `0R` | R_0402_1005Metric | C17168 |
 | 2 | R6, R7 | `4k7` | R_0402_1005Metric | C25900 |
 | 1 | R8 | `2R2` | R_0402_1005Metric | C327251 |
-| 1 | SW1 | `CAS-120TA` | Nidec_Copal_CAS-120A | C2921534 |
+| 1 | SW1 | `DSHP01TSGER` | Kangshen_DSHP01TSGER | C3293141 |
 | 1 | U1 | `AP2112K-3.3TRG1` | SOT-23-5 | C51118 |
 | 1 | U2 | `SN65HVD230DR` | SOIC-8_3.9x4.9mm_P1.27mm | C12084 |
 | 1 | U3 | `CH32V203G6U6` | QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm | C5142280 |
