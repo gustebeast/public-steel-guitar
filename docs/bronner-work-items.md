@@ -6,6 +6,28 @@ rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction 
 prompt. Where a prompt and this file disagree, this file is right — and where this file carries
 a stale marker, striking the marker is part of the work.
 
+**OPEN NOW (2026-10-06, evening) -- work down this list, strike each when it is on main.**
+
+1. `can_tee`: the ear's +X end comes in by the seat's fit so the pocket no longer cuts the
+   wall beside it (user). Measure the wall on the built chassis first; then `dimensions`,
+   `elec/can_tee.py`, re-route, package. The M4 hole stays where it is in the instrument.
+2. CAD gate (`scratch_view --start`, `--gate`) over three changes together: `pi_cap` drawn
+   parts-on-front and installed face down, the lever board's connector fused into the one
+   board part, and item 1. Then `agent_sync submit`.
+3. Lead's request (user: order 2 assembled, not 5): quote the five bench boards on the
+   fab's page at 5 bare / 2 assembled. Read so far: bare minimum is 5 (custom quantity
+   only in thousands); assembled is 5 or 2 on Economic, any of 2..5 on Standard.
+   `pi_cap` 48.44 (Economic now), `can_tee` 23.69. STILL TO READ: `motor_ctrl`,
+   `output_panel`, `optical`. Then `docs/jlcpcb-order-walk.md` (beside the 5 / 5 lines,
+   with the fees that do not shrink), `docs/bench-order.md` (the bench total), and whether
+   the unassembled spares come pasted or bare. Nothing in the cart.
+4. `pi_cap` records after the redraw: the order walk and `docs/pcb-quality-status.md` get a
+   dated note; `elec/prices.json` order_fees for `pi_cap` is read now (15.45), mark it 'v'.
+5. Reply to the lead: the quotes; A15 tests a track against the pour on the FAR face too
+   (declared on `pi_cap`); `cadkit/pcbflow/layout.py`'s back_refs note still names
+   `pi_cap`, which no longer uses it.
+6. Close the fab's browser tab when the quotes are read.
+
 **PCB QUALITY LOOP -- FINISHED 2026-10-05 as far as files can take it (DO NOT RE-ISSUE).**
 Every board of mine is `0 unconnected, 0 violations, 0 FAIL`: `can_tee` 7 OPEN, pogo x4 4,
 `pi_cap` 6, `lever_sensor` 7, `motor_ctrl` 10, `output_panel` 8, `optical` 7. What is OPEN
