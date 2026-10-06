@@ -1319,32 +1319,53 @@ PI_CAP_STANDOFF = BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"]   # 8.5, the sock
 def pi_cap() -> cq.Workplane:
     """The Pi's connector board, plugged onto its GPIO header.
 
-    The board is turned -90 so its socket (which runs along the board's X) lies along the
-    header's axis, and lifted by the socket's own body height so the socket fills the
-    standoff between the two boards -- which is why board_geom carries that 8.5 once and
-    both this and the flipped footprint read it from there.
+    The board goes on FACE DOWN: every part is on its front, and the front is the face
+    toward the Pi, so the socket's body fills the standoff between the two boards -- which
+    is why board_geom carries that 8.5 once and both this and the footprint read it from
+    there.
 
-    ⚠ ITS THROUGH-HOLE PINS ARE PART OF IT (2026-10-05). Every part on the cap is on the
-    face toward the Pi, so the three through-hole parts -- the 2x20 socket, the ribbon
-    header and J6, the foot drop's side-entry XH -- put their solder ends out of the
-    OTHER face, the one toward the deck. They were not drawn, so nothing could say what
-    they clear. One slab per part over its own pad row, as tall as board_geom's TAIL."""
-    s = _cap_place(BG.solid("pi_cap"))
-    top = s.val().BoundingBox().zmax              # the cap's far face: nothing stands on it
-    for ref, fab, tail in BG.tails("pi_cap"):
-        if tail <= 0.0:
-            continue
-        x0, x1, y0, y1 = BG.footprint("pi_cap", ref).get("tht") or fab
-        m = _cap_place(box_at(x1 - x0, abs(y1 - y0), 0.01, x=(x0 + x1) / 2.0,
-                              y=(y0 + y1) / 2.0, z=0.0)).val().BoundingBox()
-        s = s.union(box_at(m.xlen, m.ylen, tail, x=m.center.x, y=m.center.y,
-                           z=top + tail / 2.0))
-    return s
+    Its three through-hole parts -- the 2x20 socket, the ribbon header and J6, the foot
+    drop's side-entry XH -- put their solder ends out of the OTHER face, the bare one
+    toward the deck; board_geom draws them, so what stands over the cap has to clear
+    them."""
+    return _cap_place(BG.solid("pi_cap"))
 
 
 def pi_cap_silk():
-    """The cap's lettering, where the cap is -- its own part, so it can be white."""
-    return _cap_place(BG.silk("pi_cap"))
+    """The cap's lettering on its bare face, the one that shows with the cap on the Pi --
+    its own part, so it can be white.
+
+    That face is the board's BACK, and board_geom draws a board's front. A label on the
+    back is recorded where it sits seen through the board from the front, so here each
+    one is built reading the right way round, mirrored in x to where it is seen from
+    behind, and laid on the board's z 0 face; _cap_place then turns the board over with
+    everything else."""
+    g = BG.load("pi_cap")
+    solids = []
+    for lab in g.get("silk", []):
+        if lab["side"] != "B":
+            continue
+        lines = lab["text"].split("\n")
+        pitch = lab["size"] * 1.62                     # KiCad's line spacing
+        for k, line in enumerate(lines):
+            if not line.strip():
+                continue
+            w = (cq.Workplane("XY").text(line, lab["size"] / BG.SILK_CAP, BG.SILK_T,
+                                         halign="center", valign="center")
+                 .translate((0.0, ((len(lines) - 1) / 2.0 - k) * pitch, 0.0))
+                 .rotate((0, 0, 0), (0, 0, 1), -lab["angle"])
+                 # seen from behind: x runs the other way; then onto the back face,
+                 # the ink standing off it
+                 .translate((-lab["x"], lab["y"], 0.0))
+                 .rotate((0, 0, 0), (0, 1, 0), 180.0))
+            for s in w.vals():
+                solids += s.Solids()
+    if not solids:
+        return None
+    return _cap_place(cq.Workplane("XY").newObject([cq.Compound.makeCompound(solids)]))
+
+
+_CAP_T = BG.load("pi_cap")["thickness_mm"]
 
 
 def _cap_place(shape):
@@ -1364,14 +1385,16 @@ def _cap_place(shape):
     # rotation is not just unnecessary, it would put the cap across the header.
     # The j1_y offset moves to Y for the same reason: it positions the socket, and the socket
     # now varies in y rather than x.
-    # ⚠ 180 ABOUT Z, AND IT IS NOT COSMETIC: the cap is 34 mm across a 56 mm board and the
-    # header sits 4.77 in from the +Y edge, so the board it carries has to extend -Y OVER the
-    # Pi. Placed unrotated it reached y -57.27 -- 16.7 mm off the Pi's +Y edge, a HAT hanging
-    # in mid-air. The 180 turns its long axis around so it lies on the board it plugs into,
-    # and j1_y therefore ADDS rather than subtracts.
-    return (shape.rotate((0, 0, 0), (0, 0, 1), 180.0)
+    # ⚠ FACE DOWN, TURNED OVER ABOUT ITS OWN X: the parts are on the board's front and the
+    # front goes toward the Pi. That also turns the board's long axis around in y, which it
+    # needs: the cap is 34 mm across a 56 mm board and the header sits 4.77 in from the +Y
+    # edge, so the board it carries has to extend -Y OVER the Pi (the other way up in y it
+    # reached y -57.27 -- 16.7 mm off the Pi's +Y edge, a HAT hanging in mid-air), and
+    # j1_y therefore ADDS rather than subtracts. Turned over, the laminate lies below its
+    # own z 0, so it is lifted by its thickness to stand on the socket.
+    return (shape.rotate((0, 0, 0), (1, 0, 0), 180.0)
                  .translate((PI_HDR_X, PI_HDR_Y + j1_y,
-                             PI_Z + BD_T + PI_CAP_STANDOFF)))
+                             PI_Z + BD_T + PI_CAP_STANDOFF + _CAP_T)))
 
 
 def pi_cap_pin(ref, n):
@@ -1383,12 +1406,12 @@ def pi_cap_pin(ref, n):
     x0, x1, y0, y1 = f["fab"]
     pitch = 2.5 if "XH" in BG.fp_name(f["fpid"]) else 2.0
     cnt = {"J2": 6, "J4": 4, "J3": 4, "J6": 4}[ref]
-    # ⚠ THE WAYS COUNT ALONG THE PART'S OWN AXIS, WHICH TURNS WITH IT. These headers are
-    # all on the cap's back with way 1 at the low-x end unturned (J2, J3, J4) and at the
-    # HIGH-x end turned 180 (J6: ways at x 22.5 / 20.0 / 17.5 / 15.0 on the routed board).
-    # Counting +x regardless put J6's way 1 on way 4. The row is centred on the PADS, not
-    # on the fab box, which only happens to share that centre on these parts. Checked
-    # against the routed board's pads for all four, 2026-10-05.
+    # ⚠ THE WAYS COUNT ALONG THE PART'S OWN AXIS, WHICH TURNS WITH IT. Unturned, way 1 is
+    # at the low-x end (J6: ways at x -22.5 / -20.0 / -17.5 / -15.0 on the routed board);
+    # turned 180 it is at the HIGH-x end (J2, J3, J4). Counting +x regardless puts a turned
+    # part's way 1 on its last way. The row is centred on the PADS, not on the fab box,
+    # which only happens to share that centre on these parts. Checked against the routed
+    # board's pads for all four, 2026-10-06.
     rot = float(f.get("rot") or 0.0) % 360.0
     if abs(rot) < 1e-6:
         sgn = 1.0
@@ -1399,7 +1422,7 @@ def pi_cap_pin(ref, n):
                          % (ref, rot))
     px = f["pads_xy"][0] + sgn * (n - (cnt + 1) / 2.0) * pitch
     py = (y0 + y1) / 2.0
-    marker = box_at(0.01, 0.01, 0.01, x=px, y=py, z=0.0)
+    marker = box_at(0.01, 0.01, 0.01, x=px, y=py, z=_CAP_T)      # the face the parts are on
     bb = _cap_place(marker).val().BoundingBox()
     return ((bb.xmin + bb.xmax) / 2.0, (bb.ymin + bb.ymax) / 2.0, (bb.zmin + bb.zmax) / 2.0)
 _OP = BG.load("output_panel")
