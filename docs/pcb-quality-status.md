@@ -60,6 +60,17 @@ ROTATION-CHECK.txt lists what was corrected and what could not be measured.
   refused the script (HTTP 403) and its data carries a licence notice, so reading more of
   it waits for the owner's decision. Until then those parts are the list to check by eye
   in the preview, exactly as before.
+* **`pi_cap` is the first board that tests the back-side rule.** Every part on it is on
+  the back, where the builder subtracts the frame rotation instead of adding it (KiCad
+  flips a footprint top to bottom). That is exact if JLCPCB reads a back-side angle the
+  way KiCad writes one, and no board has shown it in the previewer yet: `ui_board`, where
+  the 2x8 header's frame (KiCad + 90) was seen, has it on the front. The package places
+  J5 at 180 (KiCad 270). In the preview look at J5, J3 / J4 and the SOT-23-6 (U1): if J5
+  sits a half turn out, the back-side sign is what is wrong, not the table.
+* The lever sensor board is ONE part in the CAD now (laminate plus every placed part,
+  fused), like the other boards; its mated connector stays separate because the plug
+  half belongs to the cable. `elec/cad_geom_check.py`, run over all fifteen boards
+  2026-10-06: every routed part is where the CAD draws it.
 * `ORDER.txt` no longer says the 0.25 mm via is free: it is about +17 USD and brings a
   Kelvin test and Tg155 with it; every package now warns that the form carries the
   previous board's options over, and the seam pogo pin's row has to be ticked by hand.
