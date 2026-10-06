@@ -58,7 +58,7 @@ board without them.
   `output_panel`, `optical`) rebuild with no blank row. On the order page each row should
   still be looked at once: a selected part on every line, none at quantity 0 (M30).
 
-## The paperwork against the boards, 2026-10-06
+### The paperwork against the boards, 2026-10-06
 
 An order-day stock list named a photodiode that is on no board: it had been replaced
 weeks earlier and BOM.md still named it where it was first chosen. The checks that existed
