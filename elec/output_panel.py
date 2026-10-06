@@ -381,17 +381,31 @@ def output_panel():
     # written down.
     # THE RESPIN ADDS ONE TAP TO THAT ISLAND -- U5's input -- and that tap is the
     # only thing on it besides the two connectors.
-    # ⚠ THE RAILS SIT ON THE DIAGONALS, and that is the supply's pinout, not a choice:
-    # Mean Well's R7B plug is 1 +V, 2 -V, 3 -V, 4 +V (GST160A-SPEC 2026-04-03, "KYCON
-    # KPPX-4P equivalent"). Mirror the footprint and both rails swap, so the handedness
-    # is written into the footprint's own description. METER THE PLUG BEFORE FIRST POWER
-    # (docs/board-bringup-diagnostics.md).
+    # ⚠ THE RAILS ARE A COLUMN EACH: +V ON PINS 2 AND 4, -V ON PINS 1 AND 3 (Kycon's
+    # numbers). Three drawings, read 2026-10-06, because the two makers number the same
+    # four contacts differently:
+    #   * Kycon KPJX-4S-S (the jack), looking INTO the mouth with the key up: 1 top left,
+    #     2 top right, 3 bottom left, 4 bottom right. Its land pattern has 3 and 4 in the
+    #     row 11.00 behind the nose, 1 and 2 in the row at 14.65, 1 behind 3 and 2 behind 4.
+    #     Our footprint is that pattern, pad for pad.
+    #   * Kycon KPPX-4P (the plug), looking at its pins with the key at nine o'clock:
+    #     1 top left, 3 top right, 2 bottom left, 4 bottom right -- the jack's face seen
+    #     from the other side, so plug pin n meets jack pin n.
+    #   * Mean Well GST160A-SPEC (2026-04-03), plug R7B, drawn the same way up: 2 top left,
+    #     3 top right, 1 bottom left, 4 bottom right, and its table reads 1 +Vo, 2 -Vo,
+    #     3 -Vo, 4 +Vo. MEAN WELL'S 1 AND 2 ARE KYCON'S 2 AND 1; 3 and 4 agree.
+    #   physical position (into the jack, key up) -> pad -> net:
+    #     top left     -> pad 1 -> PWR_GND          top right    -> pad 2 -> +24V_IN
+    #     bottom left  -> pad 3 -> PWR_GND          bottom right -> pad 4 -> +24V_IN
+    # The fab's library footprint numbers these pads another way again; it is placed by
+    # position, so its numbers do not matter. METER THE PLUG BEFORE FIRST POWER
+    # (docs/board-bringup-diagnostics.md): this is read off drawings, not off the part.
     # The shell goes to PWR_GND: the same spec ties -V to the AC inlet's earth pin, so the
     # shell is at that potential whatever this board does with it.
     j6 = Part(name="KPJX-4S-S", ref_prefix="J", ref="J6", tag="J6", dest="NETLIST", tool="skidl",
               value="KPJX-4S-S", description="24 V inlet, 4-pin snap-and-lock power jack",
               footprint=DC_FP,
-              pins=[Pin(num=1, name="V1", func=P), Pin(num=2, name="G2", func=P),
+              pins=[Pin(num=1, name="G1", func=P), Pin(num=2, name="V2", func=P),
                     Pin(num=3, name="G3", func=P), Pin(num=4, name="V4", func=P),
                     Pin(num="SH", name="SHELL", func=P)])
     # ⚠ THE INLET IS ITS OWN NET NOW: +24V_IN, AHEAD OF THE POWER SWITCH (2026-10-04). Nothing
@@ -399,8 +413,8 @@ def output_panel():
     # included, is on +24V behind Q2. See "THE POWER BUTTON" below J10.
     v24_in = Net("+24V_IN")
     v24_in.drive = Pin.drives.POWER
-    v24_in += j6[1], j6[4]
-    pgnd += j6[2], j6[3], j6["SH"]
+    v24_in += j6[2], j6[4]
+    pgnd += j6[1], j6[3], j6["SH"]
     # Trunk out on the instrument's standard 4-way: GND, 24 V, and NOTHING on ways 3 and 4.
     # ⚠ IT CARRIED BOTH RAILS TWICE (GND, 24, 24, GND) UNTIL 2026-10-04, and that put 24 V
     # and ground on the two ways where every other 4-way XH in the instrument has its
@@ -2384,9 +2398,8 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [tuple(_v) for _v in _frozen["
 # y -31 -- 1.0 below the pad row and 1.0 off the board edge -- and every pad is
 # through-hole, so each lane reaches its own pads with a plain stub and no via.
 #
-# J6 is the Kycon 4-pin jack: +24V on pins 1 and 4, PWR_GND on 2 and 3, on the DIAGONALS
-# (the supply's pinout). Pin 1 joins pin 4 on F.Cu through the 3.5 mm channel between the
-# two pin rows; pin 3 joins pin 2 the same way on B.Cu, under it.
+# J6 is the Kycon 4-pin jack: +24V_IN on pins 2 and 4, the column on the J10 side, and
+# PWR_GND on pins 1 and 3, the column on the lane's side (the pinout note is at j6).
 # ⚠ J10's +24V PADS ARE 2 AND 3, NOT PAD 1 -- pad 1 is PWR_GND.
 # Authored in the PRE-growth frame like the placements, shifted here like the repairs.
 _g = GROW_X / 2.0
@@ -2394,19 +2407,20 @@ _p1, _p2 = (24.250, J6_Y - 2.9), (24.250, J6_Y + 2.9)
 _p3, _p4 = (27.900, J6_Y - 2.5), (27.900, J6_Y + 2.5)
 _LANE_Y, _ROW_Y = -31.0, -28.0
 # ⚠ RE-LAID 2026-10-04 FOR THE POWER SWITCH. The inlet no longer feeds the lanes directly:
-#   +24V_IN  pins 1 and 4 joined through the channel (as before), then 4 mm of 3 mm
-#            copper from pin 1 into Q2's source lead.
+#   +24V_IN  pin 4 joined straight to pin 2, then from pin 2 down the channel between
+#            the pin rows and out of its west end into Q2's source lead.
 #   +24V     starts at Q2's TAB. West along the lane on F.Cu -- the tab is on F.Cu, so the
 #            trunk head (J7) gets there with no via -- and to J10 on B.Cu: four vias in the
 #            tab (0.8 mm3 of barrel in a land printed with 4.5), east under Q2's leads at
-#            y -27.4, north at x 19.9 beside the inlet's return, and along under J10's row.
+#            y -27.4, north at x 19.9, and along under J10's row.
 #   PWR_GND  therefore swaps layer east of J7: B.Cu along the lane from the inlet's pin 3,
 #            under Q2, to x 6.0 -- just east of J7's row. West of J7 it stays on F.Cu,
 #            where every ground pad of the buck's corner drops onto it. The two halves
 #            join through J7's through-hole pad 1: the B.Cu half turns north at x 6.0,
 #            passes over the top of the row at y -25.6 and comes down into pad 1.
 #            (Until 2026-10-04 it went through pad 4 as well; ways 3 and 4 are empty now.)
-# The +24V / PWR_GND pair to J10 is 4.4 mm apart for its whole run (x 19.9 against 24.25).
+#   J10's return (2026-10-06) leaves pin 3 on F.Cu, passes between the jack's two pegs,
+#            through the shield tab's land and north along x 33.75 into J10's way 1.
 _QS = (19.90, -26.22)          # Q2 source pad;  tab spans x 10.40..16.80, y -31.4..-25.6
 # ways 1..6 with the part turned 180: GND, 24 V, switch, switch, 24 V, GND
 _J10_PADS = (33.45, 30.95, 28.45, 25.95, 23.45, 20.95)
@@ -2420,10 +2434,14 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [
     for _x in (11.3, 12.6, 14.6, 15.9)]
 BOARD_NOTES["tracks"] += [
     (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
-        # +24V_IN: pin 1 <-> pin 4 through the channel; pin 1 -> Q2 source
-        ("+24V_IN", "F.Cu", 2.0, [_p1, (_p1[0], J6_Y), (_p4[0], J6_Y), _p4]),
-        # 4.2 mm: the one stretch that carries the whole 6.67 A (4.12 mm for a 10 C rise)
-        ("+24V_IN", "F.Cu", 4.2, [(_p1[0], -26.6), (_QS[0], -26.6)]),
+        # +24V_IN: pin 4 -> pin 2; pin 2 -> Q2 source
+        ("+24V_IN", "F.Cu", 2.0, [_p4, _p2]),
+        # The one stretch that carries the whole 6.67 A, and it is 2.4 mm, not the 4.1 a
+        # 10 C rise asks of a long track: it leaves the channel between C31's pad and
+        # pin 1's land, 2.95 mm apart. It is 6 mm long with a through-hole land at one
+        # end and Q2's lead at the other; IPC-2221 puts a LONG 2.4 mm track at 24 C over
+        # ambient at 6.67 A.
+        ("+24V_IN", "F.Cu", 2.4, [_p2, (24.150, -22.200), (20.650, -25.400), _QS]),
         # +24V on F.Cu: the tab -> the lane -> J7 pad 2
         ("+24V", "F.Cu", 2.0, [(11.5, _LANE_Y), (-1.250, _LANE_Y)]),
         ("+24V", "F.Cu", 1.4, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
@@ -2446,13 +2464,14 @@ BOARD_NOTES["tracks"] += [
         ("PWR_GND", "B.Cu", 1.5, [(6.000, _LANE_Y), (6.000, -25.6), (-3.750, -25.6),
                                   (-3.750, _ROW_Y)]),
         ("PWR_GND", "F.Cu", 1.2, [(-3.750, _ROW_Y), (-3.750, _LANE_Y)]),
-        # PWR_GND: pin 3 -> pin 2 on B.Cu in the channel; pin 2 north on F.Cu, through the
-        # +Y rear shell leg's land (same net), onto a bar under J10's row that ends in
-        # the row's two outside pads, ways 6 and 1
-        ("PWR_GND", "B.Cu", 1.5, [_p3, (_p3[0], J6_Y), (_p2[0], J6_Y), _p2]),
-        # (the bar is 1.5 mm at y -11.5: 0.6 mm under the lands of the four ways it passes)
-        ("PWR_GND", "F.Cu", 2.0, [_p2, (_p2[0], -11.500)]),
-        ("PWR_GND", "F.Cu", 1.5, [(_p2[0], -11.5), (_J10_PADS[0], -11.5),
+        # PWR_GND: pin 1 -> pin 3 on B.Cu
+        ("PWR_GND", "B.Cu", 2.0, [_p1, _p3]),
+        # J10's return on F.Cu: pin 3, between the pegs (3.3 mm of board between two
+        # 1.7 mm holes), through the shield tab's land, north past the front shell leg's
+        # land (same net) and into way 1
+        ("PWR_GND", "F.Cu", 2.0, [_p3, (30.400, -23.000), (33.750, -23.000),
+                                  (33.750, -11.000)]),
+        ("PWR_GND", "F.Cu", 1.5, [(33.750, -11.000), (_J10_PADS[0], -10.700),
                                   (_J10_PADS[0], _J10_Y)]),
         # ...and on from way 1 to way 6 round the NORTH of the row, 1.0 mm (half the
         # return, 1.9 A). Not along the south: C28's ground via has exactly one site, 1.3 mm
@@ -2554,7 +2573,7 @@ BOARD_NOTES["tracks"] += [
 BOARD_NOTES["quality"] = {
     "power_paths": [
         # the whole supply, ahead of the switch: two jack contacts in, one FET source
-        {"net": "+24V_IN", "from": "J6.1", "to": ["Q2.3"], "amps": 6.67},
+        {"net": "+24V_IN", "from": "J6.2", "to": ["Q2.3"], "amps": 6.67},
         {"net": "+24V_IN", "from": "J6.4", "to": ["Q2.3"], "amps": 3.34},   # one of two contacts
         # behind the switch. J7 heads the motor trunk (bus A's east feed, 2.9 A with ten
         # movers slewing); J10 is feed 2, two contacts at 2.7 A each -- motor_ctrl's own
@@ -2608,8 +2627,10 @@ BOARD_NOTES["quality"] = {
                     "to GND, normals grounded or open as the jack section says",
         "KPJX-4S-S": "Kycon KPJX-4S-S land pattern (footprint Steel:Kycon_KPJX-4S-S was "
                      "drawn from it); the rails are Mean Well's GST160A-SPEC (2026-04-03) "
-                     "for the R7B plug: 1 +V, 2 -V, 3 -V, 4 +V, shell to -V. Board: 1 and "
-                     "4 +24V_IN, 2 and 3 PWR_GND, SH PWR_GND. The plug is metered before "
+                     "for the R7B plug: 1 +V, 2 -V, 3 -V, 4 +V, shell to -V, in MEAN WELL'S "
+                     "numbering, whose 1 and 2 are Kycon's 2 and 1 (both plug-face "
+                     "drawings read 2026-10-06). Board, Kycon's numbers: 2 and 4 "
+                     "+24V_IN, 1 and 3 PWR_GND, SH PWR_GND. The plug is metered before "
                      "first power (docs/board-bringup-diagnostics.md)",
         "THROW": "KiCad SolderJumper-3 bridged 1-2: pad 2 is the common. Board: 1 "
                  "PWR_SW_UP, 2 SW_SENSE, 3 PWR_SW_DN",
@@ -2670,6 +2691,13 @@ BOARD_NOTES["quality"] = {
                               "against 2.0 mm for 3.8 A, and 4.12 mm if the whole supply "
                               "went this way; any four carry it",
         "A1:+24V Q2.2>J10.5": "as J10.2: the same eight vias",
+        "A1:+24V_IN J6.2>Q2.3":
+            "the track leaves the channel between the jack's pin rows through a "
+            "2.95 mm gap (C31's pad to pin 1's land), which no width passes at 4.12 "
+            "mm, and the jack's +V column is the one away from Q2. The neck is 6 mm "
+            "long: 1.2 mohm, 55 mW at the supply's full 6.67 A, between a "
+            "through-hole land and Q2's lead, which is itself narrower than the "
+            "track. A LONG 2.4 mm track would run 24 C over ambient",
         "A6:J2.A5": "J2 is not a port: it is the far end of a wire from J1 to the Pi's "
                     "gadget socket, with VBUS dead-ended on purpose (the note at J2). "
                     "Nothing behind it sources or sinks, so there is no VBUS for a CC "
@@ -2705,7 +2733,8 @@ BOARD_NOTES["quality"] = {
                "takes its reference from the plane under itself. The ADC's and DAC's "
                "analog supply pins are bypassed to that plane at the pins (A2). If motor "
                "noise is ever heard, R60 becomes a bead; that is why it is an 0603",
-        "M1": "J6: Mean Well's R7B plug, 1 +V, 2 -V, 3 -V, 4 +V (GST160A-SPEC), on a jack whose "
+        "M1": "J6: Mean Well's R7B plug, 1 +V, 2 -V, 3 -V, 4 +V (GST160A-SPEC) in its own "
+              "numbering = Kycon pins 2 and 4 +V, 1 and 3 -V, on a jack whose "
               "footprint was drawn from Kycon's land pattern; metered before first power (bring-up "
               "step 0). J10 <-> motor_ctrl J3: harness.PWR_LINK (GND, 24, SW_UP, SW_DN, 24, GND), a "
               "6-way straight lead, both ends built from that list. J7 -> the trunk's far end: GND, "

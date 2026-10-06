@@ -174,14 +174,14 @@
    "rot": 0
   },
   "C161211|Everlight_PD15-22B": {
-   "by": "hand: the fab's footprint splits each terminal into two lands (1 and 4, 2 and 3); its 1 and 2 laid on our 1 and 2",
+   "by": "hand: the fab's footprint follows Everlight (lands 1 and 4 cathode, the striped side; 2 and 3 anode). Ours calls the anode pair 1 and the cathode pair 2, so the fab's 1 and 4 are laid on our 2. Seen in the preview 2026-10-06",
    "dx": 0.0,
    "dy": 0.0,
    "err": 0.0,
    "fit": true,
    "pads": 0,
    "read": "2026-10-06",
-   "rot": 90
+   "rot": 270
   },
   "C161861|JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": {
    "dx": 0.0,
@@ -321,7 +321,7 @@
    "rot": 180
   },
   "C2875467|Kycon_KPJX-4S-S": {
-   "by": "hand: the fab's footprint numbers pins 3 and 4 the other way round; pins 1, 2 and both hole rows coincide",
+   "by": "hand: the fab's footprint numbers pins 3 and 4 the other way round (ours is Kycon's drawing, checked 2026-10-06); pins 1, 2 and both hole rows coincide",
    "dx": 0.0,
    "dy": 10.75,
    "err": 0.0,
