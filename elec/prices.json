@@ -64,19 +64,15 @@
       "sku": "GST160A24-R7B",
       "what": "Mean Well GST160A24-R7B sealed DESKTOP adapter, 24 V 6.67 A 160 W, IEC C14 in, 4-pin locking DIN out (mates the Kycon KPJX-4S-S on output_panel). USER'S CHOICE 2026-10-01, replacing the open-frame LRS-150-24 ($20.69 landed). $47.70 at 10, 891 in stock, page read by bronner. BEFORE shipping, tax and any tariff -- OnlineComponents' checkout has not been measured. The listing calls it 'no longer manufactured'; see BOM.md."
     },
-    "bearing_mr85zz": {
-      "usd": 0.49,
-      "qty": 20,
-      "verified": "v",
-      "per_instrument": 20,
-      "what": "MR85ZZ, the screws' bottom thrust pair"
-    },
     "bearing_688zz": {
-      "usd": 0.6,
-      "qty": 40,
+      "usd": 3.72,
       "verified": "v",
       "per_instrument": 42,
-      "what": "688ZZ O8xO16x5 -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls)"
+      "vendor": "Bearings Direct",
+      "sku": "688-ZZ",
+      "url": "https://bearingsdirect.com/688-zz-mini-ball-bearing-8x16x5-shielded-mr688zz/",
+      "date": "2026-10-06",
+      "what": "688ZZ O8xO16x5, AMPEC brand, chrome steel, metal shields -- 10 screw + 10 bridge axle + 2 per sensed control x 11 = 42 (the model draws 40: it has ten controls). THE recommended part: the listing publishes its own static rating, 132 lbf = 587 N (dynamic 282 lbf), so the worst string's 147 N is 2.0x inside the permissible axial load. $4.38 each, 5% off at 10, 10% at 25, 15% at 50 ($3.72, the ten-instrument price used here); 489 in stock, page read 2026-10-06. Was $0.60 from an unnamed listing with no rating. 100 or more in ONE order is quote-only there, so a ten-instrument buy goes in lots under 100. Cheaper alternate: VXB kit859, 10 for $29.99, house brand, lists 710 N. The MR85ZZ row that stood above this one was retired 2026-09-10 (the screw is O8) and is removed."
     },
     "m4_button_8": {
       "usd": 0.5555,
