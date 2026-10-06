@@ -251,15 +251,32 @@ against the finished board in two minutes rather than thirty.**
    converter fan.
 4. Item **6** as its own change, with its own route and its own before/after SI comparison.
 
+## First USB plug-in: read the negotiated speed (2026-10-05)
 
-## First USB plug-in: it must enumerate HIGH speed (2026-10-05)
+The PHY is a USB3300. It replaced a USB3343 before any board was ordered: Microchip's
+errata for that family (DS80000645A, module 2) has it failing the high-speed chirp behind
+the STM32's USB core, with a firmware workaround nobody had reported on an H743. The
+fault follows link power management, which the USB334x parts have and the USB3300 and
+USB332x do not: ST's own forum thread on it lists the USB3300 and USB3320 as working and
+the USB3330 / 3340 / 3343 as failing, and ST's STM32H743I-EVAL (schematic MB1246 E03)
+carries the USB3320C. So high-speed enumeration is the expected result.
 
-Microchip's errata for the USB334x (DS80000645A, module 2): as a high-speed device behind
-some USB cores the PHY fails the chirp and comes up at full speed only. The STM32's core
-is one of them. The fix is one bit in firmware: set `XCVRDLY` in `OTG_DCFG` before the
-port is enabled. That is proven on an STM32F446 with this same USB3343; nobody has been
-found reporting it on an H743.
+Its 24 MHz reference is an oscillator (Y2) driving XI, not a crystal: the USB3300 asks
+for a crystal rated for 0.5 mW of drive and the 3225 crystals in stock are rated 0.1 mW.
+Y2 should show a 24 MHz, 3.3 V square wave on its output land as soon as +3V3D is up.
 
-So the first thing to read after plugging in is the negotiated speed. Full speed with the
-bit set means the workaround does not carry to this MCU, and the fallback Microchip
-itself names is a USB332x PHY, which is a different footprint: a board change.
+Still the first thing to read after plugging in is the negotiated speed. Full speed here
+would point at the 24 MHz reference (Y2) or the ULPI wiring, not at the PHY's
+design: check CLKOUT is 60 MHz at the MCU's PA5 first.
+
+## First power-up: three temperatures and one current (2026-10-05)
+
+None of these can be read from the board itself; take them with a thermocouple or a
+thermal camera after ten minutes running, lid on.
+
+| What | Expect | Act if |
+|---|---|---|
+| U13 (5 V buck) case | about 45 C above ambient at the typical 0.46 A load | more than 60 C above ambient: its thermal resistance is worse than the 60 C/W estimated, add copper before a second order |
+| U8 (3.3 V digital regulator) tab | about 0.36 W, warm | too hot to hold a finger on: check which MCU peripherals are clocked |
+| U9 (3.3 V analog regulator) | cool | - |
+| `+3V3A` current | about 142 mA; the five converters are assumed at 26 mA each | over 166 mA: U9 is past its worst-case budget |

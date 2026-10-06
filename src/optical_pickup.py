@@ -237,9 +237,10 @@ PKG = {
     "SOT-23":   (2.90, 2.40, 1.30),
     "SOT-23-5": (2.90, 2.80, 1.45),
     "SOT-23-6": (2.90, 2.80, 1.45),   # same envelope as the -5; the buck (see U13)
-    "IND-4040": (4.10, 4.10, 3.10),   # 4x4 shielded power inductor, buck output (SWPA4030,
-                                      # 3.0 tall since the LMR33630 swap)
-    "RNX12":    (2.00, 3.00, 1.00),   # TI VQFN-HR RNX0012, the LMR33630CRNXR buck
+    "IND-4040": (4.10, 4.10, 3.10),   # 4x4 shielded power inductor, buck output. DRAWN AT
+                                      # THE LAND'S TALLEST PART, the 3.0 mm SWPA4030S; the
+                                      # WPN4020H fitted is 2.0, so this is 1 mm generous
+    "RNX12":    (2.00, 3.00, 1.00),   # TI VQFN-HR RNX0012, the LMR33630BRNXR buck
     "2512R":    (6.50, 3.35, 0.75),   # 6332 metric thick film, KOA RK73B W3A at its maxima
     "1206C":    (3.40, 1.85, 1.60),   # 50 V X7R -- the 24 V input bulk wants the voltage
                                       # rating AND the derating headroom; an 0805 50 V part
@@ -281,9 +282,11 @@ PKG = {
                                       # the leads against TSSOP's 6.40, and X is the
                                       # scarce direction in a 14 mm band.
     "QFN-24":   (4.00, 4.00, 0.90),
+    "QFN-32":   (5.00, 5.00, 0.90),   # Microchip USB3300-EZK, 5 x 5 x 0.9
     "LQFP144":  (22.00, 22.00, 1.60), # JEDEC MS-026: 20x20 body, 22x22 over leads
     "LQFP176":  (26.00, 26.00, 1.60), # JEDEC MS-026: 24x24 body, 26x26 over leads
     "3225":     (3.20, 2.50, 0.90),
+    "OSC3225":  (3.20, 2.50, 1.20),      # a 3225 clock oscillator: the same can, taller
     "USB-C":    (8.94, 7.35, 3.16),   # TYPE-C-31-M-12 (LCSC C165948)
     # J2 is a FOUR-way on the -Y EDGE, mouth facing -Y alongside the USB-C, so every cable
     # leaves the board at one end (user: a -X exit is unmanageable).
@@ -372,9 +375,11 @@ CRTYD = {
     "WQFN-16":  (3.60, 3.60),
     "SOIC-14":  (7.49, 9.25),
     "QFN-24":   (5.35, 5.35),
+    "QFN-32":   (6.26, 6.26),   # KiCad QFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm
     "LQFP144":  (23.39, 23.39),
     "LQFP176":  (27.36, 27.36),   # KiCad LQFP-176_24x24mm_P0.5mm F.CrtYd
     "3225":     (4.29, 3.59),
+    "OSC3225":  (4.29, 3.59),
     "IND-4040": (5.15, 4.59),
     "RNX12":    (2.90, 3.90),   # elec/footprints/Steel.pretty/Texas_RNX0012_...
     "USB-C":    (10.73, 9.51),
@@ -1796,7 +1801,7 @@ def _parts():
     # bit), while D+/D- is 480 Mbps and forgives nothing. Splitting the difference
     # served the tolerant link at the expense of the critical one.
     # The PHY now lives in the USB cluster at the -Y edge; see section 4b.
-    # ⚠ ONLY THE MCU'S CRYSTAL IS LEFT IN THIS ROW. Y2, its two load caps, the PHY's
+    # ⚠ ONLY THE MCU'S CRYSTAL IS LEFT IN THIS ROW. Y2, its bypass, the PHY's
     # three decoupling caps and R37 all belong to U7, and U7 is 19 to 45 mm away at the
     # -Y edge -- see the PHY SUPPORT CLUSTER in section 4b for why that is a defect and
     # not merely a long trace.
@@ -1851,7 +1856,7 @@ def _parts():
                       # when elec/optical.py turned this table into an actual netlist --
                       # which is the point of doing that, because a part that no net
                       # needs looks exactly like a part nobody noticed was absent.
-                      #   R37: the ULPI PHY's BIAS resistor. A USB3343 sets its
+                      #   R37: the ULPI PHY's BIAS resistor. The PHY sets its
                       #     transmitter drive current through it, so it is a 1% part and
                       #     without it the PHY does not meet the eye diagram at all.
                       #   R38: a pull-down on the LED row's gate. Without it the ten
@@ -2222,13 +2227,13 @@ def _parts():
     # impedance at high frequency and help transient response, and TI suggests one for
     # this part. It is a part added for a problem nobody has measured on this board yet;
     # the layer change costs nothing and should be tried first.
-    # LMR33630CRNXR since 2026-09-22 (see U13 in elec/optical.py): its two VIN/PGND pairs
+    # An LMR33630 in the RNX package since 2026-09-22 (see U13 in elec/optical.py): its two VIN/PGND pairs
     # sit on OPPOSITE sides, so each gets a 100 nF hard against it (C161 -X, C165 +X), and
     # VCC's 1 uF (C166) and a second output 22 uF (C167) join the row.
     # ⚠ A CELL ROUND THE PACKAGE, NOT A ROW PAST IT (2026-10-04, the regulator review). The
     # row above put every part in a line along X in the order the current flows, and the
     # routed board measured what a line costs a twelve-pin part with pins on all four
-    # sides: FB 21 mm from its divider (an 8 k node beside a 2.1 MHz switch node), VCC's
+    # sides: FB 21 mm from its divider (an 8 k node beside a megahertz switch node), VCC's
     # capacitor 6.4 mm from VCC, the bootstrap 4.5 mm from BOOT, the inductor 8.3 mm from
     # SW. The row is 4.59 tall (the inductor) and an 0402 on end is 1.95, so two stand in
     # it, one above the other, on each side of the package -- which is where the pins are:
@@ -2299,7 +2304,7 @@ def _parts():
     _uc_w, _uc_d = CRTYD["USB-C"]
     # TURNED 90 deg -- see the ESD array's placement -- so its envelope turns with it
     _esd_d, _esd_w = CRTYD["SOT-563"]
-    _phy_w, _phy_d = CRTYD["QFN-24"]
+    _phy_w, _phy_d = CRTYD["QFN-32"]
     # ⚠ THE CHAIN IS SPACED FOR ITS GROUND PAD, not for its courtyards. CRTYD_GAP is
     # 0.15 and legal, and at 0.15 the ESD array's centre pin -- its ground, where the
     # diodes dump what they clamp -- is boxed in: the pair's two rails leave either side
@@ -2308,15 +2313,15 @@ def _parts():
     # protection device whose ground is a pour connection the router may orphan is not
     # protecting anything. A millimetre of lane either side is what it costs.
     _chain_gap = 1.0
-    # ⚠ THE PHY END OF THE CHAIN HOLDS A ROW OF PARTS, AND THE PINS SAY WHICH. The
-    # USB3343's socket-facing side carries DP and DM (13, 14) and then VDD33, VBAT, VBUS
-    # and ID (15-18) -- per the datasheet, not the invented map this gap was first sized
-    # for. Those four each want a part within reach: VDD33's 1 uF regulator cap, the 3V3
-    # bypass, and VBUS's 20 k series resistor. They sit in ONE ROW here, outboard (+X) of
-    # the pair, behind the same 2 mm fan lane every face of this QFN gets.
-    #   2.0 fan lane + 1.03 row + ~0.6 to the ESD array  ->  3.6
-    _PHY_FAN = 2.0
-    _phy_gap = _PHY_FAN + CRTYD["0402"][1] + 0.57
+    # THE PHY'S SOCKET FACE HOLDS A ROW OF TWO PARTS, AND THE PINS SAY WHICH. That face
+    # of the USB3300 carries GND, GND, CPEN, VBUS, ID, VDD3.3, DP and DM (pins 1 to 8):
+    # VBUS wants its series resistor and VDD3.3 its bypass, and the pair leaves from the
+    # face's +X end. The two parts sit in one row -X of the pair, behind a lane.
+    #   1.09 lane + 1.03 row + ~0.6 to the ESD array
+    # The lane is 1.09 and not the 2 mm the other faces get: two supply stubs cross it and
+    # nothing fans, and it is what the board's -Y end has to give.
+    _SOCKET_LANE = 1.09
+    _phy_gap = _SOCKET_LANE + CRTYD["0402"][1] + 0.57
     _conn_depth = max(CRTYD["XH-SM-4Y"][1],
                       # socket, then the ESD array in line with its pad row, then the
                       # PHY behind that: the chain in signal order, in a straight line
@@ -2347,24 +2352,14 @@ def _parts():
         "2512R", _BUCK_X0 + CRTYD["2512R"][0] / 2 + 0.30,
         edge_y + CRTYD["XH-SM-4Y"][1] + 3.74 + 0.40 + CRTYD["2512R"][1] / 2,
         180.0)
-    # ⚠ THE CHAIN SITS INBOARD OF THE +X EDGE, AND THE PHY'S PINOUT IS WHY. With DP/DM
-    # facing the socket, the USB3343's cyclic pin order puts pins 19-24 -- RBIAS, the
-    # crystal's XO/XI, RESETB, VDD18 -- on the face toward +X. Hard against the edge that
-    # face had 1.8 mm of board, and a 26 MHz crystal, its two load caps, the bias
-    # resistor and the 1V8 regulator cap do not fit in 1.8 mm. There is no rotation that
-    # fixes it: a QFN cannot be mirrored, so pointing the pair at the socket FIXES which
-    # way pins 19-24 face. What moves is the chain. The pocket below is sized from its
-    # contents, and the -Y edge has 32 mm between J2 and J1 to give it from.
-    #   fan lane + R37/C122 column + crystal + load-cap column, less what the socket's
-    #   half-width already gives  ->  _CHAIN_DX
-    # PHY DM (-0.75 from its centre) straight over the ESD array's DM (+0.95 from ITS
-    # centre): 1.7. Only D+ then fans, and it fans -X -- away from pads 15-17, whose
-    # escapes the old 1.0 put D- straight across. VDD33, VBAT and VBUS all came back
-    # unconnected at 1.0.
-    _PAIR_DX = 1.7
-    _pocket = (_PHY_FAN + CRTYD["0402"][1] + CRTYD_GAP + CRTYD["3225"][1]
-               + CRTYD_GAP + CRTYD["0402"][1])
-    _CHAIN_DX = _pocket - (_uc_w / 2 - _PAIR_DX - _phy_w / 2) + 0.05
+    # THE PAIR RUNS STRAIGHT ON ITS D+ HALF. With the socket face toward -Y the PHY's DP
+    # (pin 7) is 1.25 mm +X of its centre and DM (pin 8) 1.75; the ESD array's DP pad is
+    # 0.95 -X of ITS centre. So the PHY stands 2.2 mm -X of the array: D+ drops straight
+    # and only D- fans, +X, off the end of the face where nothing else leaves.
+    _PAIR_DX = -(1.25 + 0.95)
+    # the socket's distance in from the +X keep-out; the USB lead's run to the conduit is
+    # drawn from where this puts it
+    _CHAIN_DX = 7.01
     _j1_x = TAIL_X1 - EDGE_KEEP - _uc_w / 2 - _CHAIN_DX
     add("J1", "USB-C receptacle -- 10ch audio + MIDI + DFU", "USB-C",
         _j1_x, edge_y + _uc_d / 2)
@@ -2435,15 +2430,13 @@ def _parts():
     # chassis rail's datum instead of the instrument's exterior, which made the budget look
     # 12.84 mm tighter than it is (see _WALL_Y). Against the real budget it is 2.92 of
     # 14.75 mm spare, and it buys a pair with no corner in it at all.
-    # TURNED so D+/D- face the ESD array. Unturned they face +X, which on a chain that
-    # runs in Y means the pair's first move is sideways out of the package and then back
-    # across it -- and the 12 ULPI signals, which leave the two faces at right angles to
-    # those, turn with it and still point at the MCU. The rotation costs nothing and is
-    # the difference between a straight pair and no pair.
-    # +_PAIR_DX: see its definition -- D- runs straight, only D+ fans.
-    add("U7", "USB 2.0 high-speed ULPI PHY", "QFN-24",
+    # TURNED 90 so the face with D+/D- (pins 1 to 8) looks at the ESD array. The rest
+    # follows from the package and cannot be chosen: the eight data pins face +Y, at the
+    # MCU; NXT, DIR, STP and CLKOUT face +X; the clock pins and the two 1.8 V rails face
+    # -X, into the open field between the socket and the buck.
+    add("U7", "USB 2.0 high-speed ULPI PHY", "QFN-32",
         _j1_x + _PAIR_DX, edge_y + _uc_d + _chain_gap + _esd_d + _phy_gap + _phy_d / 2,
-        rot=270.0)
+        rot=90.0)
     # ⚠ OFFSET BY HALF ITS OWN PAD SPAN, so the two faces land where the two hops need
     # them. A SOT-563's pads face +-X and this hop runs in Y, which reads like the wrong
     # package until you notice the part is a PASS-THROUGH: D+ appears on pins 1 and 6,
@@ -2452,96 +2445,86 @@ def _parts():
     # double back around the part it had just left. Shifted -X by half the pad span, the
     # +X face sits directly over the socket's pad row -- a 3 mm drop straight down it --
     # and the -X face looks back down the board at the PHY.
-    # ⚠ TURNED 180 FROM WHERE IT WAS, BECAUSE THE REAL PHY PUTS DP ON THE OTHER SIDE.
-    # With the datasheet pinout DP (13) is -X of DM (14). At 270 the array presented DP
-    # on its +X side, so the pair had to cross itself between two parts 3.6 mm apart;
-    # at 90 the array's PHY-facing pads are DP -X / DM +X, matching. It is a pass-through
-    # (DP on 1 and 6, DM on 3 and 4), so the socket-facing side keeps a valid pair too.
+    # Turned 90: its PHY-facing pads are then DP on -X and DM on +X, the order the PHY
+    # presents them in. It is a pass-through (DP on 1 and 6, DM on 3 and 4), so the
+    # socket-facing side is a valid pair too.
     add("U10", "USB data-line ESD array -- inboard of the socket's pad row", "SOT-563",
         _j1_x, edge_y + _uc_d + _chain_gap + _esd_d / 2, rot=90.0)
-    # ---- 4b-i. THE PHY'S SUPPORT PARTS, WHICH DID NOT FOLLOW IT DOWN HERE ----
-    # ⚠ THIS IS A STALE-PLACEMENT BUG, NOT A ROUTING ONE, and it is the same shape as the
-    # two this file already records: a derivation that stayed legal after the thing it
-    # derived from moved. When the PHY left the compute rows for the -Y edge (section 4b)
-    # it left behind everything that serves it -- its 24 MHz crystal, that crystal's two
-    # load caps, its three decoupling caps and its bias resistor. All seven stayed packed
-    # in rows 19 to 45 mm up the board, and every one of them was still "placed": legal
-    # courtyards, clean overlap gate, a render that looks right.
-    #
-    # WHAT THAT ACTUALLY MEANS, part by part:
-    #   * Y2 sat 43 mm from the XI/XO pins it drives. A crystal's load is the PCB as much
-    #     as the caps; 43 mm of track is an antenna on both a high-impedance oscillator
-    #     node and a 24 MHz reference the whole USB link is timed from.
-    #   * C120-C122 are DECOUPLING, and decoupling 19 mm from its die is decoration. The
-    #     loop inductance it exists to cancel is dominated by the trip out and back.
-    #   * R37 sets the PHY's transmitter drive CURRENT to 1%. It was 15.6 mm away, and it
-    #     was one of the four nets the router could not finish at all.
-    # Their proximity is the specification. Two columns immediately -X of U7, in the
-    # pocket between the buck and the socket, which was empty.
-    # ⚠ REBUILT FOR THE DATASHEET PINOUT. The cluster that stood here was fitted to an
-    # invented map (crystal on the -X face, RBIAS beside the pair). The real USB3343 puts:
-    #   socket face (-Y):  DP -1.25  DM -0.75  VDD33 -0.25  VBAT +0.25  VBUS +0.75  ID +1.25
-    #   +X face:           RBIAS -1.25  XO -0.75  XI -0.25  RESETB +0.25  VDD18 +0.75  STP +1.25
-    # (offsets along the face from the package centre, CAD frame). Everything below is
-    # placed off those numbers, and every face keeps the 2 mm fan lane.
-    # ⚠ ONE EXPRESSION, NOT TWO COPIES OF ONE: read U7 back, never re-derive it -- a copy
-    # that drifted by 1.2 mm once put R37's pad on U10's and shorted PHY_RBIAS to USB_DP.
+    # ---- 4b-i. THE PHY'S SUPPORT PARTS ----
+    # Their proximity is the specification: a bypass is the loop it closes, the bias
+    # resistor sets the transmitter's current to 1 %, and the clock is a 3.3 V edge that
+    # should not travel. Each is placed off the pin it serves. Offsets along a face
+    # from the package centre, CAD frame, with the part turned as above:
+    #   socket face (-Y):  VBUS -0.25   VDD3.3 +0.75   DP +1.25   DM +1.75
+    #   -X face:  VDD3.3 +1.75  VDD1.8 +1.25  XO +0.75  XI +0.25  VDDA1.8 -0.25
+    #             VDD3.3 -0.75  REG_EN -1.25  RBIAS -1.75
+    #   +X face:  NXT -0.75  DIR -0.25  STP +0.25  CLKOUT +0.75  VDD1.8 +1.25  VDD3.3 +1.75
+    # ONE EXPRESSION, NOT TWO COPIES OF ONE: read U7 back, never re-derive it.
     _ux, _phy_y = _part_x("U7"), _part_y("U7")
     _r_w, _r_h = CRTYD["0402"]              # an 0402 unrotated; rotated it is (_r_h, _r_w)
+    _half = _phy_w / 2
+    # An 0402's copper reaches 0.31 either side of its axis and a pin's track 0.10; 0.61
+    # between the two axes is 0.20 of clearance.
+    _PIN_OFF = 0.61
 
-    # SOCKET-FACE ROW, in the PHY-to-ESD gap, all +X of the pair (which leaves at -1.25 /
-    # -0.75 and needs its lane). Ordered by the pad each part serves.
-    _row_y = _phy_y - _phy_d / 2 - _PHY_FAN - _r_h / 2
-    _row_x0 = _ux + 0.30
-    for _k, (_ref, _desc) in enumerate((
-            ("C120", "PHY VDD33 regulator output cap, 1 uF -- pads 15 and 18"),
-            # C121 before R39 (2026-10-04): third in the row it was 6.2 mm from VBAT, the
-            # pin it bypasses; second it is 4.5. A 20 k series resistor does not care
-            # which end of the row it is at
-            ("C121", "PHY VBAT bypass -- pad 16"),
-            ("R39", "PHY VBUS series 20 k, device-only -- pad 17"))):
-        add(_ref, _desc, "0402", _row_x0 + _r_w / 2 + _k * (_r_w + CRTYD_GAP), _row_y)
-    # ⚠ C119: A SECOND BYPASS, AT PIN 9, BECAUSE ONE CAP CANNOT SERVE BOTH PINS IT NAMES.
-    # C121's description reads "pad 16 and 9" and the row above is ordered "by the pad each
-    # part serves" -- but VBAT (16) is on the SOCKET FACE and VDDIO (9) is on another, so a cap
-    # in this row is adjacent to 16 and 9.194 mm from 9. Measured, not assumed.
-    # That is wrong twice over, and the second reason is the one that matters more:
-    #   * ROUTING. VDDIO is the last unconnected net on this board. Its escape corridor runs
-    #     -X, away from every +3V3D pad -- the nearest is 2.756 mm and is another U7 pin -- so
-    #     the router has nothing to reach. A via cannot help: none fits at any size once the
-    #     neighbours route (O0.40 reaches +0.0697 mm against a 0.127 rule), and escape vias on
-    #     this edge made the board monotonically worse (2 -> 3 -> 5 unconnected).
-    #   * DECOUPLING. VDDIO sources the ULPI output drivers' switching current at 60 MHz. Its
-    #     bypass belongs AT the pin; 9.194 mm of loop is not a bypass, whatever the netlist says.
-    # So pin 16 keeps C121 and pin 9 gets its own, which is what one-bypass-per-supply-pin means.
-    # ⚠ PLACED RELATIVE TO U7, per this section's own rule ("read U7 back, never re-derive it").
-    # The offsets put it at file (113.000, 173.040): collinear with pin 9's land so the run is a
-    # straight -X hop, and its courtyard's +X edge lands 0.10 mm clear of U7's, which starts at
-    # 114.056 -- measured off the board, not guessed. Checked against every other courtyard on
-    # the board: nothing overlaps, and the 3 x 4 mm region outboard of the pin holds no pads.
-    # ⚠ rot 180 SO PAD 1 FACES THE PIN. _c() wires pad 1 to the rail and pad 2 to ground, and
-    # an 0402's pad 1 sits at -x unrotated, i.e. pointing AWAY. Unrotated this cap would offer
-    # the router its ground pad.
-    add("C119", "PHY VDDIO bypass -- AT pad 9, which C121 is 9.19 mm from", "0402",
-        _part_x("U7") - 4.731, _part_y("U7") + 0.250, 180.0)
-    # ⚠ -4.731, NOT -3.731: ONE MILLIMETRE FURTHER OUT, BECAUSE THE FIRST TRY TOOK D5'S LANE.
-    # At -3.731 (file x 113.000) VDDIO closed -- and ULPI_D5 came back with NO COPPER AT ALL,
-    # which audit_board reported and the DRC item count did not. The cause is the pitch: pins 8,
-    # 9 and 10 are 0.5 mm apart (y 172.54 / 173.04 / 173.54) and an 0402's courtyard is 1.010 mm
-    # tall, so a cap outboard of pin 9 SPANS ITS NEIGHBOURS' ESCAPE LANES no matter how it is
-    # rotated -- turning it 90 degrees makes it 1.910 mm tall, which is worse.
-    # That is the same mistake as the escape vias, wearing a capacitor: something placed in a
-    # crowded fan-out lane does not create room, it takes it from whoever was using it.
-    # A millimetre further out is past where the three escapes fan apart, and it costs almost
-    # nothing that matters: the run from pin 9 grows to about 1.7 mm, still a short bypass loop
-    # and still an order of magnitude better than C121's 9.194 mm.
-    # ⚠ C130 LEAVES THE POWER ROW, AND IT IS BOTH A ROUTING FIX AND A CORRECTION. It is
-    # the VBUS SENSE FILTER -- the C of an RC whose R is R39's 20 k -- and it was sitting
-    # 24 mm from R39, in the middle of the wall the ULPI nets have to cross. An RC filter
-    # whose two halves are at opposite ends of the board is not a filter anybody drew; it
-    # is where the packer happened to put a part called "bulk cap". Beside R39 it does its
-    # job, and the 2.8 mm it gives back is what lets the corridor below be 5.5 mm instead
-    # of the 2.7 the row could otherwise afford.
+    # SOCKET-FACE ROW, -X of the pair. Each part's inner pad looks at its pin.
+    _row_y = _phy_y - _half - _SOCKET_LANE - _r_h / 2
+    add("C121", "PHY VDD3.3 bypass -- pin 6", "0402", _ux - 0.45, _row_y, 180.0)
+    add("R39", "PHY VBUS series 10 k -- pin 4", "0402",
+        _ux - 0.45 - _r_w - CRTYD_GAP, _row_y, 0.0)
+
+    # -X FACE, FIRST COLUMN: five 0402s, rail pad inward, each beside its pin, standing
+    # _VIA_LANE off the package. They leave one gap, at XO / XI, for the clock's track.
+    # ⚠ THE LANE IS FOR VIAS, AND WITHOUT IT THE 3.3 V RAIL NEVER ARRIVED. Hard against
+    # the package there is 0.6 mm between a pin's end and its capacitor's pad: the rail
+    # comes up from an inner layer, a 0.6 mm via does not fit, and the two 3.3 V
+    # capacitors on this face and the one on +X came back as islands (2026-10-05). 1.05
+    # makes it 1.5 mm, a via with 0.45 either side.
+    _VIA_LANE = 1.05
+    _ca = _ux - _half - _VIA_LANE - _r_w / 2
+    # ⚠ THE GAP CARRIES THREE TRACKS, NOT ONE: the clock, and each 1.8 V rail on its way
+    # to its 4.7 uF in the second column. The column is a wall to anything on this layer,
+    # and with a gap sized for the clock alone the analog 1.8 V rail had no way to its
+    # regulator capacitor 2.6 mm away (2026-10-05). The lower three parts stand 0.15
+    # further down: 1.25 mm of gap, three 0.2 mm tracks at 0.15.
+    _low = 0.25 - _PIN_OFF - 0.15
+    for _ref, _desc, _dy in (
+            ("C119", "PHY VDD3.3 bypass -- pin 25", 0.75 + _PIN_OFF + _r_h + CRTYD_GAP),
+            ("C145", "PHY VDD1.8 bypass -- pin 26", 0.75 + _PIN_OFF),
+            ("C136", "PHY VDDA1.8 bypass -- pin 29", _low),
+            ("C139", "PHY VDD3.3 bypass -- pin 30", _low - (_r_h + CRTYD_GAP)),
+            ("R37", "PHY RBIAS 12k 1% -- pin 32", _low - 2 * (_r_h + CRTYD_GAP))):
+        add(_ref, _desc, "0402", _ca, _phy_y + _dy, 180.0)
+    # SECOND COLUMN: the two regulators' 4.7 uF output capacitors, end-on, either side of
+    # the same gap, rail pad toward it.
+    _cw, _ch = CRTYD["0805C"]
+    _cb = _ca - _r_w / 2 - CRTYD_GAP - _ch / 2
+    add("C122", "PHY VDD1.8 regulator output cap, 4.7 uF -- pin 26", "0805C",
+        _cb, _phy_y + 1.20 + _cw / 2, 90.0)
+    add("C120", "PHY VDDA1.8 regulator output cap, 4.7 uF -- pin 29", "0805C",
+        _cb, _phy_y - 0.20 - _cw / 2, 270.0)
+    # THIRD: the 24 MHz oscillator, centred on the gap, turned 270 so the column is its
+    # short side and its OUTPUT is the near, lower land, level with XI. Supply is the near
+    # upper land, enable the far upper one (tied to the supply), ground the far lower.
+    _yw, _yh = CRTYD["OSC3225"]
+    _cy2 = _cb - _ch / 2 - CRTYD_GAP - _yh / 2
+    _y2y = _phy_y + 0.50
+    add("Y2", "24 MHz oscillator -- PHY reference, output facing XI", "OSC3225",
+        _cy2, _y2y, rot=270.0)
+    # its bypass, beyond the supply land, rail pad over it
+    add("C125", "24 MHz oscillator supply bypass -- Y2 pin 4", "0402",
+        _cy2 + 0.35, _y2y + _yw / 2 + CRTYD_GAP + _r_h / 2, 180.0)
+
+    # +X FACE: the two bypasses of its supply corner, END-ON above CLKOUT, rail pad down
+    # at the pins and ground pad up. Lying along X beside the pins, the outer one's
+    # ground stub ran down across CLKOUT's only way out and the clock came back with no
+    # copper at all. C138 (pin 16, the upper pin) is the inner one, so pin 15's track
+    # passes under its pad to C137 rather than through it.
+    _cc = _ux + _half + _VIA_LANE + 0.10 + _r_h / 2
+    _cy = _phy_y + 0.75 + _PIN_OFF + _r_w / 2
+    add("C138", "PHY VDD3.3 bypass -- pin 16", "0402", _cc, _cy, 90.0)
+    add("C137", "PHY VDD1.8 bypass -- pin 15", "0402", _cc + _r_h + CRTYD_GAP, _cy, 90.0)
+
     # U11's own supply bypass (2026-10-04). It had none: the nearest capacitor on +3V3A
     # was 9 mm away, on the amplifier whose output is the reference all twenty channels
     # share. End-on above pin 5 (V+), in the gap between its row and the next one up --
@@ -2563,31 +2546,13 @@ def _parts():
     add("R42", "MID buffer isolation -- AT U11's output pin", "0402", _part_x("U11") - 1.14,
         _part_y("U11") + CRTYD["SOT-23-5"][1] / 2 + CRTYD_GAP + CRTYD["0402"][0] / 2, 90.0)
 
-    # ⚠ AND NOW IT IS AT U10's VBUS PIN (2026-10-04). Beside R39 it was 6.8 mm from the
-    # clamp array's rail pin, which needs it more: a rail-clamp dumps a strike into this
-    # capacitor, and the inductance between them is what the data lines see. It is still
-    # 5 mm from R39, and an RC with a 2 ms time constant is indifferent to that.
+    # C130 stands at U10's VBUS pin: a rail-clamp dumps a strike into this capacitor, and
+    # the inductance between them is what the data lines see. It is also the C of R39's
+    # RC, which is indifferent to the few millimetres between them.
     add("C130", "VBUS bypass at the clamp array's rail pin; also the C of R39's RC",
         "0805C", _part_x("U10") + CRTYD["SOT-563"][0] / 2 + CRTYD_GAP
         + CRTYD["0805C"][0] / 2 + 0.05, _part_y("U10") + 1.06)
 
-
-    # +X POCKET, three columns out from the +X face.
-    # col 1: R37 by RBIAS (socket end), C122 by VDD18 (MCU end). Turned 90 so the column
-    # is one 0402 wide, and spaced to leave the XI/XO pair a clear channel between them.
-    _c1 = _ux + _phy_w / 2 + _PHY_FAN + _r_h / 2
-    add("R37", "PHY RBIAS 8k06 1% -- by pad 19", "0402", _c1, _phy_y - 2.30, rot=90.0)
-    add("C122", "PHY VDD18 regulator output cap, 1 uF -- by pad 23", "0402",
-        _c1, _phy_y + 1.60, rot=90.0)
-    # col 2: the crystal, centred on XI/XO (-0.25 / -0.75), turned 90 so the column is
-    # the 3225's short side (its XI/XO pads are diagonal, so no turn "faces" them).
-    _c2 = _c1 + _r_h / 2 + CRTYD_GAP + CRTYD["3225"][1] / 2
-    add("Y2", "26 MHz crystal -- PHY reference, facing XI/XO", "3225",
-        _c2, _phy_y - 0.50, rot=90.0)
-    # col 3: its load caps, one beside each crystal pad.
-    _c3 = _c2 + CRTYD["3225"][1] / 2 + CRTYD_GAP + _r_h / 2
-    add("C125", "crystal load cap -- Y2 XI", "0402", _c3, _phy_y - 1.50, rot=90.0)
-    add("C126", "crystal load cap -- Y2 XO", "0402", _c3, _phy_y + 0.60, rot=90.0)
 
     for _ref, _desc, _pkg, _bx, _bdy, _brot in _buck:
         add(_ref, _desc, _pkg, _bx, _buck_y + _bdy, _brot)
@@ -2653,8 +2618,8 @@ _MPN_RULES = (
                                                     "2 MB). @10 price. 335 in stock 2026-09-21. "
                                                     "Its own ADCs are no longer used -- the "
                                                     "five TLV320ADC3140s convert")),
-    ("U7",   ("USB3343-CP",      "C633347",  2.6398, "ULPI HS PHY, QFN-24. @10 price. "
-                                                "*** OUT OF STOCK at LCSC 2026-08-04 ***")),
+    ("U7",   ("USB3300-EZK-TR",  "C108383",  1.455, "ULPI HS PHY, QFN-32 5x5. 17,431 in "
+                                                "stock 2026-10-05")),
     ("U10",  ("USBLC6-2SC6",     "C7519",    0.1829, "USB ESD array, @5+. NOTE SOT-23-6, not the "
                                                     "modelled SOT-563 -- envelope grows")),
     ("U11",  ("TLV9061IDBVR",    "C398358",  0.2505, "single of the same family as U1-U5, so the "
@@ -2676,16 +2641,13 @@ _MPN_RULES = (
     # summing-node argument at OP_PKG for why it is also the better circuit.
     ("U",    ("TLV9062IDGKR",    "C398356",  0.15,   "dual op-amp, VSSOP-8, 10 MHz GBW, @50+ "
                                                     "500 fA Ib -- the TIA part. 34k in stock")),
-    # ⚠ ONE "Y" RULE CANNOT COVER BOTH CRYSTALS, and the old one quietly did: it put
-    # a 25 MHz part on Y2, whose job is to clock the PHY at 26. The datasheet audit fixed
-    # the netlist and left this table saying "confirm vs USB3343". Per-ref now, and the
-    # frequency is the least of it -- CL and ESR are what decide whether an oscillator
-    # starts and runs on frequency, and the USB334x fixes both (CL 20 pF, ESR <= 30 ohm).
+    # ONE "Y" RULE CANNOT COVER BOTH: Y1 is the MCU's 25 MHz crystal and Y2 the PHY's
+    # 24 MHz oscillator, a powered part with a logic output.
     ("Y1",   ("TAXM25M4RDBCCT2T", "C403946", 0.0765, "25 MHz 3225, CL 10 pF, ESR <= 30 ohm "
                                                    "-- MCU HSE; see elec/optical.py for why "
                                                    "not the 20 pF part")),
-    ("Y2",   ("TAXM26M4RLBCDT2T", "C5143383", 0.0737, "26 MHz 3225, CL 20 pF, ESR <= 30 ohm "
-                                                    "-- the USB334x's own limits, T4.13")),
+    ("Y2",   ("CJO05-240003320B30", "C712738", 0.3723, "24 MHz 3.3 V CMOS oscillator, 3225, "
+                                                      "+-20 ppm, 1 ps rms -- PHY reference")),
     ("Q1",   ("AO3400A",         "C20917",   0.0849, "N-ch logic-level FET, SOT-23, LED row gate, @5+")),
     # Bare copper. It is a PLACED part as far as the CAD is concerned -- it occupies
     # board area and has to clear its neighbours -- and not a part at all as far as the
@@ -2694,15 +2656,17 @@ _MPN_RULES = (
                                                     "paste, excluded from the BOM and "
                                                     "the CPL by the footprint")),
     ("J1",   ("TYPE-C-31-M-12",  "C165948",  0.1709, "USB-C 16P, @5+; the modelled envelope IS this part")),
-    ("U13",  ("LMR33630CRNXR",   "C2071783", 1.82,  "24V->5V synchronous buck, VQFN-HR RNX 2x3, 3 A, "
-                                                    "2.1 MHz, 36 V abs max (user, 2026-09-22: the "
+    ("U13",  ("LMR33630BRNXR",   "C2071384", 2.5702, "24V->5V synchronous buck, VQFN-HR RNX 2x3, 3 A, "
+                                                    "1.4 MHz, 36 V abs max (user, 2026-09-22: the "
                                                     "TPS560430's 600 mA was 105 % used worst case "
-                                                    "with the five converters). No FPWM variant is "
-                                                    "stocked; at 2.1 MHz / 4.7 uH it stays in CCM "
-                                                    "(fixed frequency) above ~0.2 A. 793 in stock")),
-    ("L1",   ("SWPA4030S4R7MT",  "C57269",   0.12,  "buck output inductor, 4.7 uH shielded, 4.0 x 4.0 "
-                                                    "x 3.0, Isat 3.2 A, DCR 78 mohm. 0.40 A pk-pk "
-                                                    "ripple at 2.1 MHz. SHIELDED is not optional -- "
+                                                    "with the five converters). 1.4 MHz for heat: "
+                                                    "98 C worst where the 2.1 MHz part read 124. "
+                                                    "No FPWM variant is stocked; with 4.7 uH it "
+                                                    "holds its frequency above 0.30 A. 260 in "
+                                                    "stock 2026-10-05, shared with the LED supplies")),
+    ("L1",   ("WPN4020H4R7MT",   "C98363",   0.1013, "buck output inductor, 4.7 uH shielded, 4.0 x 4.0 "
+                                                    "x 2.0, Isat 4.0 A, DCR 108 mohm. 0.60 A pk-pk "
+                                                    "ripple at 1.4 MHz. SHIELDED is not optional -- "
                                                     "an unshielded inductor radiates into 20 TIAs. "
                                                     "42,221 in stock 2026-09-22")),
     # ⚠ "600" IN A FERRITE BEAD PART NUMBER USUALLY MEANS 60 OHM. Murata and Sunlord
@@ -2843,6 +2807,12 @@ _MPN_EXACT["C164"] = ("0805 X7R MLCC", "BASIC", 0.01,
 _MPN_EXACT.update({r: ("0402 thick-film R", "BASIC", 0.002, "output stage -- series / gain / filter")
                    for r in ("R45",)})
 _MPN_EXACT["C135"] = ("0402 X7R MLCC", "BASIC", 0.004, "NRST filter capacitor")
+_MPN_EXACT.update({r: ("0402 X7R MLCC", "BASIC", 0.004, "PHY supply bypass")
+                   for r in ("C136", "C137", "C138", "C139")})
+_MPN_EXACT.update({r: ("0805 X7R MLCC", "BASIC", 0.01,
+                       "PHY 1.8 V regulator output cap, 4.7 uF")
+                   for r in ("C120", "C122")})
+_MPN_EXACT["C125"] = ("0402 X7R MLCC", "BASIC", 0.004, "24 MHz oscillator supply bypass")
 _MPN_EXACT["R44"] = ("RK73B3ATTE2R0J", "C5139521", 0.6438,
                      "24 V input damping, 2 ohm 2512 -- KOA, for its single-pulse rating "
                      "(400 W under 10 us); not a generic 2512")
