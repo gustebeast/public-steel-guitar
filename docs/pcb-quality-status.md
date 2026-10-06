@@ -24,8 +24,8 @@ Scoreboard, 2026-10-05 (every board listed is `0 unconnected, 0 violation(s)`):
 | `leg_pogo_*` (four boards) | 0 | 4 | order-time M12 M30 M37 M42 |
 | `pi_cap` | 0 | 5 | M29, order-time four. M11 signed 2026-10-05 from the full build on main b0e7a911. M1 signed 2026-10-05 against the routed `ui_board`, `motor_ctrl`, fret and foot boards |
 | `lever_sensor` | 0 | 6 | M11, M29, order-time four |
-| `motor_ctrl` | 0 | 8 | M32 / M33 (user: motor current), M11, M29, order-time four. M23 and M35 signed 2026-10-05 from WCH's reference manual |
-| `output_panel` | 0 | 7 | M32 (user: motor current), M11, M29, order-time four |
+| `motor_ctrl` | 0 | 7 | M32 / M33 (user: motor current), M29, order-time four. M11 signed 2026-10-06 from the full build on main 45eeb5b8. M23 and M35 signed 2026-10-05 from WCH's reference manual |
+| `output_panel` | 0 | 6 | M32 (user: motor current), M29, order-time four. M11 signed 2026-10-06 from the full build on main 45eeb5b8 |
 | `optical` | 0 | 5 | M29, order-time four. M11 signed 2026-10-05 from the full build on main b0e7a911. Bring-up: U8's case temperature and the AVDD current (`docs/optical-bringup-diagnostics.md`) |
 | `ui_board`, `fret_led`, `foot_led` | - | - | brenner's boards, not touched by this loop |
 
