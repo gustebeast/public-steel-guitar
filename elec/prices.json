@@ -294,7 +294,7 @@
         "$16.60 -- JLCPCB prices a batch, not a board, and the minimum is per ORDER.",
         "The error was worst exactly where the instrument has most boards.",
         "",
-        "\u26a0 Re-measure before ordering. Quotes move, and these are one day's numbers."
+        "⚠ Re-measure before ordering. Quotes move, and these are one day's numbers."
       ],
       "measured": [
         {
@@ -453,7 +453,96 @@
       "down under stock. It is a stocked JST part, so this is a JLCPCB-library depth",
       "problem rather than a dead part -- but assembly is only turnkey while they hold it.",
       "ALSO THIN, 2026-10-01: MCP4261-103E/ST (C185580, output_panel U10) has 96 in stock against 10 an order; the leg pogo gold target C54930022 has 210 against 20."
-    ]
+    ],
+    "order_fees": {
+      "_note": [
+        "FEES PER ORDER, PER DESIGN that the rate model above cannot produce, read on the",
+        "live JLCPCB quotes of 2026-10-06 (docs/jlcpcb-order-walk.md). cost.py adds them",
+        "and divides by ten. They were read at 5 boards and are taken as flat at a",
+        "ten-instrument order; nobody has quoted them at that quantity.",
+        "Only the boards walked that day are here: the lighting and UI boards are not."
+      ],
+      "can_tee": [
+        {
+          "usd": 3.09,
+          "verified": "v",
+          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 1 type"
+        }
+      ],
+      "motor_ctrl": [
+        {
+          "usd": 55.62,
+          "verified": "v",
+          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 18 types"
+        }
+      ],
+      "lever_sensor": [
+        {
+          "usd": 24.72,
+          "verified": "v",
+          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 8 types"
+        },
+        {
+          "usd": 36.52,
+          "verified": "v",
+          "what": "0.25 mm via: 16.60, plus the 4-wire Kelvin test 16.59 and TG155 material 3.33 the form adds with it"
+        }
+      ],
+      "leg_pogo_male_bottom": [
+        {
+          "usd": 3.09,
+          "verified": "v",
+          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 1 type"
+        }
+      ],
+      "leg_pogo_male_top": [
+        {
+          "usd": 3.09,
+          "verified": "m",
+          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 1 type (the mirror of male_bottom; not taken to the quote)"
+        }
+      ],
+      "leg_pogo_female_bottom": [
+        {
+          "usd": 6.18,
+          "verified": "v",
+          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 2 types"
+        }
+      ],
+      "leg_pogo_female_top": [
+        {
+          "usd": 6.18,
+          "verified": "m",
+          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 2 types (the mirror of female_bottom; not taken to the quote)"
+        }
+      ],
+      "pi_cap": [
+        {
+          "usd": 38.18,
+          "verified": "m",
+          "what": "Standard PCBA instead of Economic: setup 25.75 + stencil 8.27 + 1.55 per SMT part type, less the 9.79 the model already charges. Worked from the fee rules the 2026-10-06 quotes follow, not read as a line. Forced by assembly on the bottom side; 9 types"
+        }
+      ],
+      "output_panel": [
+        {
+          "usd": 103.28,
+          "verified": "m",
+          "what": "Standard PCBA instead of Economic: setup 25.75 + stencil 8.27 + 1.55 per SMT part type, less the 9.79 the model already charges. Worked from the fee rules the 2026-10-06 quotes follow, not read as a line. Forced by the relay C326376 (Standard only); 51 types"
+        }
+      ],
+      "optical": [
+        {
+          "usd": 90.88,
+          "verified": "m",
+          "what": "Standard PCBA instead of Economic: setup 25.75 + stencil 8.27 + 1.55 per SMT part type, less the 9.79 the model already charges. Worked from the fee rules the 2026-10-06 quotes follow, not read as a line. Forced by the black solder mask; 43 types"
+        },
+        {
+          "usd": 8.0,
+          "verified": "v",
+          "what": "black solder mask, the colour charge"
+        }
+      ]
+    }
   },
   "parts_by_footprint": {
     "_note": "generic passives, priced by package class. LCSC Basic-library rates.",
@@ -5027,7 +5116,7 @@
       "$109 -> $146 on this one number. Walls dominate a part like the chassis, so it",
       "packs denser than sparse-infill intuition suggests.",
       "",
-      "\u26a0 ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
+      "⚠ ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
       "will run HIGHER than 0.60; a large hollow one lower. Slicing a second part -- a",
       "knee housing, say -- would show whether one factor is honest for the whole set."
     ]

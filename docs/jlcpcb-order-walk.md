@@ -26,6 +26,12 @@ Official Library -- https://lceda.cn/ , https://easyeda.com -- read through the 
 | Kycon KPJX-4S-S: the fab numbers pins 3 and 4 the other way round from our footprint | output_panel | closed 2026-10-06: our footprint is Kycon's land pattern pad for pad, and the fab's numbering is harmless (placed by position). The check found a real fault instead: the NETS followed Mean Well's pin numbers, which are not Kycon's, and shorted the supply. Netlist corrected, board re-routed |
 | The 20 photodiodes, looked at zoomed in: every one was a half turn out. The fab's part has Everlight's numbering (lands 1 and 4 cathode, striped side); our footprint calls the anode pair 1, and the hand frame had matched by number | optical | closed 2026-10-06: frame turned half round (rot 270); re-previewed with the stripe on the summing-node lands, toward the op-amp |
 
+Re-walked after the last copper change (C31 to an 0402, FB1 moved, inlet feed back to
+4.2 mm): `output_panel` uploaded again the same day, 95.5 x 66 detected, 58 of 58 parts
+confirmed, switched to Standard for the relay, preview looked at with the relay placed.
+Every part on its lands, J5 and J6 in their outlines, nothing over the wide feed. The
+quote was not read again. The form's "PCBA Qty" offers 5 or 2 for five boards.
+
 ## Totals for five of each (as designed today)
 
 | Board | Tier | PCB | Assembly | Total | of which fees not parts |
