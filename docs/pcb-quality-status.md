@@ -39,12 +39,14 @@ rather than ticking them.
 ### No soldering iron: both buses terminate with a switch, 2026-10-06
 
 * `can_tee`: the solder bridge is a 1-position slide switch, SW1 `DSHP01TSGER` (C3293141).
-* `lever_sensor`: the same job, a smaller part -- SW1 Nidec `CAS-120TA` (C2921534, 1,069
-  in stock, 11 an instrument). The tee's switch is 8.9 mm over its lands and the sensor
-  board has 8.87 mm between the transceiver and the +X groove band. The corner was
-  re-packed round it (R3, D2, D3 moved); 0 unconnected, 0 violations, 0 FAIL. It is 2.5
-  tall, so it sits outside the magnet cap's sweep and is set BEFORE the board goes into
-  its housing (INSTALL_NOTES PB-0).
+* `lever_sensor`: the SAME switch, so one part number ends both buses (21 an
+  instrument). It is 8.89 mm over its lands and the board had 8.87 mm between the
+  transceiver and the +X groove band, so the board is 1.0 longer toward -X (33.025 x
+  21.9) and the transceiver, MCU, crystal, regulator and J1 stand 1.0 further from the
+  sensor. All eleven housings take it: the knee levers have the depth, and the pedal's
+  bay in the bar is sized from the board. 0 unconnected, 0 violations, 0 FAIL. The
+  switch is 2.3 tall, so it sits outside the magnet cap's sweep and is set BEFORE the
+  board goes into its housing (INSTALL_NOTES PB-0).
 
 ### The placement file is in the fab's frames, 2026-10-06
 

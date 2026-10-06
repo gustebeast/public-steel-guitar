@@ -497,15 +497,15 @@ switch is ON.
 ### PB-0 — Set the terminator switch BEFORE the board goes into its housing
 
 Every lever and pedal sensor board carries a 120 ohm terminator behind a small slide
-switch marked TERM (SW1, in the corner below the sensor chip). It faces the magnet, so
-it cannot be reached once the board is in its housing. Bus B has two far ends: the last
-pedal (pedal 5) and the last knee lever on the lever chain. On those two boards slide the
-switch so the resistor is in circuit; on the other nine leave it out. No solder.
+switch marked TERM (SW1, in the corner below the sensor chip) -- the same switch as the
+motor tees'. It faces the magnet, so it cannot be reached once the board is in its
+housing. Bus B has two far ends: the last pedal (pedal 5) and the last knee lever on the
+lever chain. On those two boards slide the switch to ON (printed on its body); on the
+other nine leave it off. No solder.
 
-Which way is ON is settled with a meter, not by eye: with the board unplugged, measure
-between CAN_H and CAN_L on J1 (ways 3 and 4). 120 ohm is ON; open circuit is OFF. With
-the whole bus plugged up and the power off, any board reads 60 ohm when exactly two are
-ON.
+To check with a meter: with the board unplugged, measure between CAN_H and CAN_L on J1
+(ways 3 and 4). 120 ohm is ON; open circuit is OFF. With the whole bus plugged up and
+the power off, any board reads 60 ohm when exactly two are ON.
 
 ### PB-1 — Route each pedal segment through its spur
 

@@ -61,11 +61,10 @@ I, O, PWR, PIN = Pin.types.INPUT, Pin.types.OUTPUT, Pin.types.PWRIN, Pin.types.P
 # ── the board ────────────────────────────────────────────────────────────────
 # ⚠ THE OUTLINE IS branner's RE-SPIN SPEC, NOT AN OUTPUT OF THIS FILE (docs/lever-sensor-
 # respin.md, 2026-09-21). In the spec's frame -- origin on the MT6701, +X toward the lever,
-# +Z up -- the edges are +X 3.0, top 10.1, bottom -11.8, -X -28.0: 31.0 x 21.9. This file
+# +Z up -- the edges are +X 4.025, top 10.1, bottom -11.8, -X -29.0: 33.025 x 21.9. This file
 # works in board-local mm with the origin at the board CENTRE, so the chip sits at
-# (+12.5, +0.85): 3.0 from the +X edge and 10.1 below the top.
-# The -X edge is an upper bound the spec allows shrinking; it stays, because J1's plug run
-# and the tunnel in the -X web are sized to it.
+# (+12.49, +0.85): 4.025 from the +X edge and 10.1 below the top.
+# J1's plug run and the tunnel in the -X web follow the -X edge (knee_lever.PCB_X0).
 # ⚠ FOOTPRINTS: the MCU's QFN-28 pitch (0.4 vs 0.45) and both QFNs' exposed pads are still
 # the nearest stock KiCad lands, not read off the drawings -- resolve before ordering.
 MCU_FP = "Package_DFN_QFN:QFN-28-1EP_4x4mm_P0.4mm_EP2.4x2.4mm"
@@ -75,7 +74,10 @@ SENSOR_FP = "Package_DFN_QFN:QFN-16-1EP_3x3mm_P0.5mm_EP1.45x1.45mm"
 # not: BOARD_W and CHIP_XY were both typed, and both encode the edges, so the +X edge
 # moving on 2026-09-29 left this file describing a board that no longer existed while
 # every number in it stayed self-consistent (tools/check_board_match.py now says so).
-SPEC_X0, SPEC_X1 = -28.0, 4.025
+# -X: the terminator switch needs 8.89 mm over its lands between the transceiver and
+# the +X groove band, so the transceiver, MCU, crystal, regulator and J1 stand 1.0
+# further from the chip than they otherwise would.
+SPEC_X0, SPEC_X1 = -29.0, 4.025
 SPEC_Z0, SPEC_Z1 = -11.8, 10.1
 BOARD_W, BOARD_L = SPEC_X1 - SPEC_X0, SPEC_Z1 - SPEC_Z0
 # the axle axis in board-local mm -- half the board, less the chip's distance to the far
@@ -88,7 +90,7 @@ CHIP_XY = (BOARD_W / 2 - SPEC_X1, BOARD_L / 2 - SPEC_Z1)
 # inductor went with the buck; every passive here is under 1.5, the LDO is 1.45.
 CAP_SWEEP_R = 5.66
 TALL_PARTS = ("J1", "U2", "SW1")
-SW1_XY = (-3.7000, -7.9500)       # the terminator switch's centre, chip frame
+SW1_XY = (-2.5500, -7.3000)       # the terminator switch's centre, chip frame
 
 
 # ⚠ THE REF IS PINNED FROM THE TAG, AND IT HAS TO BE. Every call already passes a tag
@@ -209,16 +211,15 @@ def lever_sensor():
     # R4 is 0402: a single 120R across the pair sees ~17 mA, 0.034 W against 0.063 W.
     rt = _r("R", "R4", "120R", "CAN termination, in circuit only with SW1 ON",
             "Resistor_SMD:R_0402_1005Metric")
-    # Nidec CAS-120TA (LCSC C2921534): single pole, top slide, J-hook, 5.4 x 2.8 x 2.5.
-    # The motor tee's switch is 8.9 long over its lands and does not fit between the
-    # transceiver and the +X groove band (8.87 of bare board); this one is 4.5.
-    # SPDT used as on/off: common (2) to the resistor, throw 1 to CAN_L, throw 3 open.
-    sw1 = Part(name="SW_SPDT", ref_prefix="SW", ref="SW1", tag="SW1", dest="NETLIST",
-               tool="skidl", value="CAS-120TA",
-               description="bus B terminator: ON on the LAST board only (LCSC C2921534)",
-               footprint="Button_Switch_SMD:Nidec_Copal_CAS-120A",
-               pins=[Pin(num=1, name="A", func=P), Pin(num=2, name="C", func=P),
-                     Pin(num=3, name="B", func=Pin.types.NOCONNECT)])
+    # DSHP01TSGER (LCSC C3293141), THE MOTOR TEE'S SWITCH: one part number ends both
+    # buses. 1 position, SPST, recessed slide, gull wing, body 5.4 x 2.88 x 2.3, lands
+    # 0.76 x 1.27 on 7.62 centres -- 8.89 over the lands, which is what sets this board's
+    # -X edge (see SPEC_X0). ON is printed on the body.
+    sw1 = Part(name="SW_DIP_x01", ref_prefix="SW", ref="SW1", tag="SW1", dest="NETLIST",
+               tool="skidl", value="DSHP01TSGER",
+               description="bus B terminator: ON on the LAST board only (LCSC C3293141)",
+               footprint="Steel:Kangshen_DSHP01TSGER",
+               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     term = Net("TERM_MID")
     can_h += rt[1]; term += rt[2], sw1[2]; can_l += sw1[1]
 
@@ -500,26 +501,26 @@ _PLACE_CHIP = {
         "TP1": (-4.8000, 7.1000, 0.0),     # SWDIO
         "TP2": (-2.4000, 7.1000, 0.0),     # SWCLK
         "TP3": (0.0000, 7.1000, 0.0),      # GND
-        "TP4": (-14.1100, 8.0500, 0.0),    # NRST
-        # J1 on end, mouth -X at x -12.45 (3.05 in from the -X edge, the spec's figure).
+        "TP4": (-15.1100, 8.0500, 0.0),    # NRST
+        # J1 on end, mouth -X, 3.05 in from the -X edge (the spec's figure).
         # Placements anchor on the PAD CENTROID: the footprint's mouth is its local +y 4.4,
         # its pad centroid local y -1.70 (eight pins at -2.85, two tabs at +2.90), and rot
         # 270 turns +y to -X -- so the centroid sits 6.10 +X of the mouth. Read back off
         # the routed geom, not assumed: -8.05 put the mouth at -14.15.
-        "J1": (-18.8500, -0.8500, 270.0),
-        "U1": (-8.5000, 7.1500, 0.0),
+        "J1": (-19.8500, -0.8500, 270.0),
+        "U1": (-9.5000, 7.1500, 0.0),
         # 0.55 toward the regulator (courtyards 0.03 apart), which leaves 3.10 mm between
         # J1 and these two for the reset pad's name at 1.0 mm: RST is 3.07 wide and only
         # went down at 0.8. TP4 sits 0.04 off its old x so the placer's 0.25 grid lands in
         # the 0.03 mm of slack
-        "C1": (-11.3500, 7.7500, 0.0),
-        "C2": (-11.3500, 6.4500, 0.0),
+        "C1": (-12.3500, 7.7500, 0.0),
+        "C2": (-12.3500, 6.4500, 0.0),
         # the input damper, above C1 against the +Y edge: pad 2 (the regulator side) over
         # C1's input pad, pad 1 toward the regulator where the bus comes round to it
-        "R8": (-11.3500, 8.8500, 180.0),
+        "R8": (-12.3500, 8.8500, 180.0),
         # the bus bypass, behind the connector tails between the outgoing 5 V and GND ways
         # (6 and 5): pad 1 (+5V) toward way 6
-        "C3": (-14.8400, -3.0000, 90.0),
+        "C3": (-15.8400, -3.0000, 90.0),
         # SCL pull-up: 0.6 +X and 0.9 -Y of where it was, clear of the SWD row and the
         # name under it. (Tried beside the transceiver and between MCU and sensor: each
         # left a net open on some runs.)
@@ -527,7 +528,7 @@ _PLACE_CHIP = {
         # ⚠ U3 (the MCU) AT 0 ROTATION, AND IT IS A ROUTING DECISION -- measured across all
         # four rotations on the old board (see lever_sensor()). The CAN fan (pins 19-21,
         # 0.4 pitch) closes only with the 0.50/0.25 via; see via_mm.
-        "U3": (-10.0000, 2.1500, 0.0),
+        "U3": (-11.0000, 2.1500, 0.0),
         "C9": (-5.5000, 3.8000, 0.0),
         "C8": (-3.5000, 3.8000, 0.0),
         "R5": (0.0000, 3.2000, 0.0),
@@ -535,31 +536,30 @@ _PLACE_CHIP = {
         # pad 1 (+3V3) toward it and beside the MODE strap; it was 5 mm away, west of the chip
         "C11": (1.6000, 3.4000, 90.0),
         "C10": (-1.5000, -3.3000, 0.0),
-        "Y1": (-11.9000, -2.4000, 0.0),
+        "Y1": (-12.9000, -2.4000, 0.0),
         # C5/C6 stay east of the crystal: moving them west measured 1 -> 5 unconnected
-        "C5": (-7.4000, -1.9000, 0.0),
-        "C6": (-7.4000, -3.7000, 0.0),
+        "C5": (-8.4000, -1.9000, 0.0),
+        "C6": (-8.4000, -3.7000, 0.0),
         # C7 (NRST) steps 2.8 +Y off the MCU's west edge: J1's pads now stand 1.9 from
         # it rather than 3.6, and at its old site it sat squarely in OSC_OUT's escape
         # (pin 3, the pin below NRST) -- 1 unconnected with no legal repair path.
-        "C7": (-13.5500, 4.4500, 90.0),
+        "C7": (-14.5500, 4.4500, 90.0),
         "R6": (0.4000, -3.3200, 270.0),
-        "U2": (-10.5000, -7.0000, 0.0),
+        "U2": (-11.5000, -7.0000, 0.0),
         # the transceiver bypass is on the side VCC and GND are (pins 3 and 2, west), in
         # the 1.2 mm strip between U2 and the connector tails: pad 1 (+3V3) faces pin 3.
         # It was on the far side of the package, 7.7 mm from the pin
-        "C4": (-14.8400, -7.1000, 90.0),
-        # THE TERMINATOR CORNER, re-packed round the switch (2026-10-06). SW1 is 2.5 tall,
-        # so its body has to clear the magnet cap's sweep (CAP_SWEEP_R about the chip): it
-        # lies along X with its top edge 6.7 below the axle. R3 steps up beside R4, and the
-        # two bus clamps stack in the column between the switch and the +X groove.
+        "C4": (-15.8400, -7.1000, 90.0),
+        # THE TERMINATOR CORNER. SW1 lies along X between the transceiver and the +X
+        # groove band, its lands 8.89 apart; it is 2.3 tall, so its body keeps outside the
+        # magnet cap's sweep (CAP_SWEEP_R about the chip). R3 and R4 sit above it,
+        # and the two bus clamps lie in a row in the strip between the switch and the
+        # bottom edge.
         "R3": (-5.0200, -5.1700, 0.0),
         "R4": (-1.5000, -5.1500, 0.0),
-        # (placements anchor on the PAD CENTROID, and this part's is 0.383 off its centre:
-        # two lands on one side, one on the other)
-        "SW1": (SW1_XY[0], SW1_XY[1] - 0.3833, 90.0),
-        "D2": (0.7500, -6.4000, 0.0),
-        "D3": (0.7500, -9.1000, 0.0),
+        "SW1": SW1_XY + (0.0,),
+        "D2": (-1.6500, -9.5500, 180.0),
+        "D3": (0.9500, -9.5500, 180.0),
     }
 
 
@@ -597,7 +597,7 @@ BOARD_NOTES = {
     # pocket beside the pin, laid BEFORE routing so the crystal tracks go round it, and the
     # same netlist closes first pass. CHIP frame like the placements (it was board-local
     # (-0.90, 2.30) on the 31.0 board); 0.50/0.25 like the rest of the board.
-    "vias": [("NRST", -13.40 + CHIP_XY[0], 1.45 + CHIP_XY[1], 0.25, 0.50)],
+    "vias": [("NRST", -14.40 + CHIP_XY[0], 1.45 + CHIP_XY[1], 0.25, 0.50)],
     "placements": {_r: (_x + CHIP_XY[0], _y + CHIP_XY[1], _rot)
                     for _r, (_x, _y, _rot) in _PLACE_CHIP.items()},
     "cap_keepout": {"xy": list(CHIP_XY), "r": CAP_SWEEP_R, "tall": list(TALL_PARTS)},
@@ -748,13 +748,6 @@ BOARD_NOTES = {
              "amps": 0.08},
         ],
         "pinouts": {
-            "CAS-120TA": "Nidec CAS series sheet, Outline Dimensions, CAS-120A1 (the J-hook "
-                         "single pole; -TA is its washable, taped form): terminals 1 and 3 "
-                         "on one long side 3.5 apart, the common C (2) alone on the other; "
-                         "recommended pad outline, A type: 1.0 x 1.6 lands, rows 0.7 apart. "
-                         "KiCad Nidec_Copal_CAS-120A: pads 1 and 3 at x -1.15, y -/+1.75, "
-                         "pad 2 at x +1.15, 1.0 x 1.6 -- the same pattern. Wired C to R4, "
-                         "1 to CAN_L, 3 open. Read 2026-10-06",
             "S8B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
                              "the board below, No. 1 circuit is on the left. KiCad "
                              "JST_PH_S8B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
