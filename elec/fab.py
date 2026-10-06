@@ -302,11 +302,26 @@ ORDER_EVERY_BOARD = (
                "its part number, and each placement that could be measured is "
                "already in the fab's footprint frame. ROTATION-CHECK.txt lists the ones "
                "that were corrected and the ones still to check in the preview."),
+    ("tier", "PCBA Type should read Economic. Three boards are Standard and the page "
+             "says so itself: pi_cap (its parts are on the bottom side), optical (a "
+             "black solder mask) and output_panel (the relay is 'Standard only': the "
+             "page offers 'Switch to Standard PCBA', take it). Standard is a 25 USD "
+             "setup, a stencil charge and a loading fee per part type. On any other "
+             "board Standard is left over from the previous one: set it back."),
+    ("align", "Entering the placement preview the page may ask 'component may be offset "
+              "from the PCB, automatically align it?' -- Cancel. The placement file is "
+              "already in the fab's frames."),
 )
 
 # WHAT THE ORDER PAGE NEEDS DONE BY HAND FOR ONE PART (written into ORDER.txt of each
 # board that carries it).
 PART_NOTES = {
+    "C326376": "the relay is 'Standard only': under Economic it arrives unticked and Next "
+               "offers 'Switch to Standard PCBA' or 'Do not place this part'. Switch.",
+    "C5139521": "the fab has no footprint or model for it yet: the preview shows a "
+                "placeholder and the build takes one more day.",
+    "C54799748": "the fab has no footprint or model for it yet: the preview shows a "
+                 "placeholder and the build takes one more day.",
     "C5203987": "the seam pogo pin arrives UNSELECTED (a 'difficult' part, about 0.08 USD "
                 "each extra). Tick its row -- it can take two clicks -- or Next stops "
                 "with 'Project has unselected parts'.",

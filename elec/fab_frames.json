@@ -73,6 +73,15 @@
    "read": "2026-10-06",
    "rot": 0
   },
+  "C136345|Fuse_1206_3216Metric": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.05,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
   "C136347|Fuse_1206_3216Metric": {
    "dx": 0.0,
    "dy": 0.0,
@@ -119,9 +128,14 @@
    "rot": 0
   },
   "C150716|SOT-223-3_TabPin2": {
-   "fit": false,
+   "by": "hand: the fab's footprint calls the tab 4; the three leads laid on ours by number",
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 0,
    "read": "2026-10-06",
-   "why": "the fab's footprint numbers the tab 4; ours shares 2 between the tab and the middle lead"
+   "rot": 180
   },
   "C157914|JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal": {
    "dx": 8.75,
@@ -160,9 +174,14 @@
    "rot": 0
   },
   "C161211|Everlight_PD15-22B": {
-   "fit": false,
+   "by": "hand: the fab's footprint splits each terminal into two lands (1 and 4, 2 and 3); its 1 and 2 laid on our 1 and 2",
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 0,
    "read": "2026-10-06",
-   "why": "the fab's footprint has four pads to our two; the numbers do not say which pair is which"
+   "rot": 90
   },
   "C161861|JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": {
    "dx": 0.0,
@@ -247,6 +266,24 @@
    "read": "2026-10-06",
    "rot": 0
   },
+  "C265102|JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal": {
+   "dx": 0.0,
+   "dy": -0.137,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C265102|JST_PH_S4B-PH-SM4-TB_MouthOnEdge": {
+   "dx": 0.0,
+   "dy": -0.137,
+   "err": 0.0,
+   "fit": true,
+   "pads": 4,
+   "read": "2026-10-06",
+   "rot": 180
+  },
   "C265121|JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": {
    "dx": 0.0,
    "dy": 0.025,
@@ -284,9 +321,14 @@
    "rot": 180
   },
   "C2875467|Kycon_KPJX-4S-S": {
-   "fit": false,
+   "by": "hand: the fab's footprint numbers pins 3 and 4 the other way round; pins 1, 2 and both hole rows coincide",
+   "dx": 0.0,
+   "dy": 10.75,
+   "err": 0.0,
+   "fit": true,
+   "pads": 0,
    "read": "2026-10-06",
-   "why": "the fab's footprint numbers its pads differently from ours (5.0 mm apart at the best rotation)"
+   "rot": 0
   },
   "C2905493|PinHeader_1x20_P2.54mm_Vertical": {
    "dx": 0.0,
@@ -334,9 +376,14 @@
    "rot": 90
   },
   "C368502|Jack_6.35mm_Neutrik_NMJ6HCD2_Horizontal": {
-   "fit": false,
+   "by": "hand: the fab's footprint numbers its six pins 1-6 where ours are named T, R, S, TN, RN, SN; the two 3 x 2 hole grids laid centre on centre, nose direction checked in the fab's previewer",
+   "dx": 6.35,
+   "dy": -8.115,
+   "err": 0.0,
+   "fit": true,
+   "pads": 0,
    "read": "2026-10-06",
-   "why": "the fab's footprint numbers its pads 1-6; ours are named T, R, S, TN, RN, SN"
+   "rot": 0
   },
   "C398356|VSSOP-8_3x3mm_P0.65mm": {
    "dx": 0.0,
@@ -513,6 +560,87 @@
    "err": 0.025,
    "fit": true,
    "pads": 8,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C7519|SOT-23-6": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.01,
+   "fit": true,
+   "pads": 6,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C83333|D_SMB": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.21,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C841384|SOIC-8-1EP_3.9x4.9mm_P1.27mm_EP2.29x3mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.23,
+   "fit": true,
+   "pads": 9,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C8545|SOT-23": {
+   "dx": 0.021,
+   "dy": 0.0,
+   "err": 0.08,
+   "fit": true,
+   "pads": 3,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C8598|D_SOD-123": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.05,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C87080|SOT-23-6": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.21,
+   "fit": true,
+   "pads": 6,
+   "read": "2026-10-06",
+   "rot": 180
+  },
+  "C89597|LQFP-176_24x24mm_P0.5mm": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.13,
+   "fit": true,
+   "pads": 176,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C917006|D_SOD-523": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.05,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
+  "C93623|D_SOD-523": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.05,
+   "fit": true,
+   "pads": 2,
    "read": "2026-10-06",
    "rot": 0
   }
