@@ -82,9 +82,9 @@ DISP_FP = "Connector_PinHeader_2.54mm:PinHeader_1x20_P2.54mm_Vertical"
 # our custom PCB so we can pick whatever connector we want"). This was a 2.54 mm IDC box
 # header, which takes 1.27 ribbon; the cap's end is a 1.27 mm header, which takes 0.635.
 # No cable joins those. The cap cannot take 2.54 (it lives in an 8.5 mm gap), so this end
-# moves: HX PZ1.27-2x7P WZ, LCSC C22438113, right-angle, in stock. The cable is a stock
-# 14-way 1.27 mm IDC socket-to-socket lead. It is NOT shrouded -- nobody stocks a shrouded
-# 1.27 2x7 -- so pin 1 is marked in silk at both ends.
+# moves to the HX PZ1.27 right-angle family (a 2 x 7 at first). It is NOT shrouded --
+# nobody stocks a shrouded 1.27 header this size -- so pin 1 is marked in silk at both
+# ends.
 # ⚠ 2x8 SINCE THE POWER BUTTON (2026-10-04): the same family's next size, HX PZ1.27-2x8P WZ,
 # LCSC C22438114, and a stock 16-way lead. Ways 1-14 are where they were.
 RIBBON_FP = "Connector_PinHeader_1.27mm:PinHeader_2x08_P1.27mm_Horizontal"
