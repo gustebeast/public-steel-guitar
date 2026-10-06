@@ -15,7 +15,9 @@ that directory is untracked and keeps the files of boards that are no longer in 
 design, and a tool that globs it counts their parts (tools/lcsc_prices.py did).
 
 What is checked, and how hard:
-  HARD  a part on a board with a maker's part number and no LCSC code
+  HARD  a part on a board with no LCSC code: a maker's part missing from fab.LCSC, or a
+        passive whose (value, footprint) is missing from fab.PASSIVES. A blank row is
+        filled in by the fab's own matcher, which has picked the wrong package
   HARD  a part whose description cites one LCSC code while fab.LCSC orders another (the
         fab reads fab.LCSC; the description is what a person reads, and on 2026-10-06
         the output panel's digital pot cited the code of a 4.7 uF capacitor)
@@ -60,9 +62,13 @@ GENERIC = re.compile(
 NOT_A_PART = re.compile(r"^(TP|JP|H|FID|MH)\d")
 
 
+FOOTPRINT = {}                                      # (board, ref) -> footprint name
+COPPER = re.compile(r"^(TestPoint|NetTie|Fiducial|SolderJumper|MountingHole)")
+
+
 def truth():
     """({board: {ref: (value, code)}}, conflicts) for every board in the design."""
-    codes = L.lcsc_map()
+    codes, pairs = L.lcsc_map(), L.passive_map()
     out, conflicts = {}, []
     for path in L.design_netlists():
         b = os.path.basename(path)[:-4]
@@ -72,7 +78,8 @@ def truth():
             if inline and table and inline != table:
                 conflicts.append("%s %s '%s': its description cites %s, fab.LCSC orders %s"
                                  % (b, ref, val, inline, table))
-            out[b][ref] = (val, table or inline)
+            out[b][ref] = (val, pairs.get((val, _fp.split(":")[-1])) or table or inline)
+            FOOTPRINT[(b, ref)] = _fp.split(":")[-1]
     return out, conflicts
 
 
@@ -82,6 +89,7 @@ def main(argv):
     T, conflicts = truth()
     missing = []
     hard += conflicts
+    uncoded = {}
     on_board = {}                                   # value -> boards
     used_codes = {}
     for b, parts in T.items():
@@ -89,8 +97,13 @@ def main(argv):
             on_board.setdefault(val, set()).add(b)
             if code:
                 used_codes.setdefault(code, set()).add(b)
-            elif not GENERIC.match(val) and not NOT_A_PART.match(ref):
-                hard.append("%s %s: '%s' has no LCSC code in fab.LCSC" % (b, ref, val))
+            elif not NOT_A_PART.match(ref) and not COPPER.match(FOOTPRINT[(b, ref)]):
+                uncoded.setdefault((val, FOOTPRINT[(b, ref)]), []).append("%s %s" % (b, ref))
+    for (val, fp), where in sorted(uncoded.items()):
+        hard.append("no LCSC code for '%s' in %s (%d part(s): %s%s) -- add it to fab.%s"
+                    % (val, fp, len(where), ", ".join(where[:3]),
+                       " ..." if len(where) > 3 else "",
+                       "PASSIVES" if GENERIC.match(val) else "LCSC"))
     hard = sorted(set(hard))
 
     # fab.LCSC entries nothing uses
@@ -131,6 +144,10 @@ def main(argv):
 
     # the prose: any LCSC code or dead part number
     mating = set(L.HOUSING.values()) | set(L.CRIMP.values())
+    for (v, f), c in sorted(L.passive_map().items()):
+        if not any(val == v and FOOTPRINT[(b, ref)] == f
+                   for b, parts in T.items() for ref, (val, _c) in parts.items()):
+            soft.append("fab.PASSIVES: ('%s', '%s') (%s) is on no board" % (v, f, c))
     known = set(used_codes) | mating
     dead_names = set(dead)
     docs = [os.path.join(ROOT, "BOM.md"), os.path.join(ROOT, "INSTALL_NOTES.md")]
