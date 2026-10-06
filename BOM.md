@@ -7,6 +7,14 @@ preference. See `electromechanical-pedal-steel-spec.md` §12 for the fuller
 rationale. The **motors dominate cost** (10 × ~$35 ≈ ~$350); everything else
 is commodity.
 
+> **What is on the circuit boards is not read from this file.** It is
+> [`docs/order-parts.md`](docs/order-parts.md), generated from the boards' netlists by
+> `tools/order_list.py`: every part, its LCSC code and its count per board and per
+> instrument. The board sections below record what was chosen and why, in the order it
+> was decided, so a part that was later replaced is still named where it was chosen.
+> Sections headed **HISTORY** are kept for their reasoning only. `elec/bom_audit.py`
+> lists every place a part that is on no board is still named.
+
 ## Price verification — full sweep, 2026-08-01
 
 Every line item in this file was pushed at a live listing on **2026-08-01**.
@@ -1740,6 +1748,12 @@ motor end of each pigtail is four ferruled wires; the XH standard starts at the 
 
 ## Optical pickup PCB (per-string sensing + on-board audio→MIDI)
 
+> **The parts on this board: [`docs/order-parts.md`](docs/order-parts.md), section
+> `optical`.** Detector `PD15-22B/TR8`, emitter `LTE-C9901`, converters
+> `TLV320ADC3140`, TIA op-amps `TLV9062`, PHY `USB3300` with a 24 MHz oscillator, MCU
+> `STM32H743IIT6`, buck `LMR33630BRNXR`. Anything below that names a different part for
+> one of those jobs is the record of an earlier choice.
+
 > **⚠ 2026-09-21 — detector and converter changed; parts of this section predate it.**
 > * **Photodiode → Everlight `PD15-22B/TR8`** (C161211, $0.067, 11,271 in stock). The
 >   VEMD4110X01 had 95 in stock against 20 per board and no 0805 substitute; the full
@@ -2040,7 +2054,7 @@ measure the induced voltage with the motors slewing. That is a $2 board and an
 afternoon, and it converts the one soft number above into a measurement. Worth
 doing *before* any magnetic redesign, not after.
 
-### Orderability, 2026-08-01 — every part is now a real LCSC line
+### HISTORY — Orderability, 2026-08-01 — every part is now a real LCSC line
 
 Asked directly: is every part in LCSC's catalogue, in stock, in quantities that
 support a preassembled build? **Every part now has a real MPN; two lines are
@@ -2064,7 +2078,7 @@ at $2.07), QFN-24, matching the modelled envelope — the part the survey table
 assumed existed. (Since 2026-10-05 the PHY is `USB3300-EZK`, C108383, QFN-32:
 see the optical board's parts table.) And the **quad op-amp** is `TLV9064IDR`, below.
 
-### ⚠ Search snippets report the VOLUME-FLOOR price — every one of them was wrong
+### HISTORY — ⚠ Search snippets report the VOLUME-FLOOR price — every one of them was wrong
 
 Re-checked 2026-08-04 by fetching each LCSC product page directly, after another agent
 flagged that they could not read stock and would rather report unresolved than quote an
@@ -2106,7 +2120,7 @@ Board parts cost **$26.96 → $29.07**, per instrument **$42.58 → $44.69**.
   order JLC's own inventory governs, and that is on `jlcpcb.com/partdetail/…`, which *is*
   client-side. Treat these as a strong proxy and confirm at quote time.
 
-### Part selection — done 2026-08-01, and now enforced by the model
+### HISTORY — Part selection — done 2026-08-01, and now enforced by the model
 
 **Every one of the 141 placed parts now maps to an orderable line.** The mapping
 lives in `src/optical_pickup.py::_MPN_RULES`, and `_assert_every_part_orderable()`
@@ -2114,33 +2128,7 @@ runs at import: **add a part without a sourcing decision and the build fails.**
 The 141 parts collapse to **18 distinct order lines**, of which 5 are JLCPCB
 Basic classes (no feeder charge):
 
-| Line | MPN | LCSC | Qty | Ext. | Note |
-|---|---|---|--:|--:|---|
-| PD1A–PD10B | `PD15-22B/TR8` | C161211 | 20 | **$1.33** | filtered ✓ · 11,271 in stock 2026-09-21 · replaced the VEMD4110X01 ($11.60, 95 in stock) |
-| U14–U18 | `TLV320ADC3140IRTWT` | C1852021 | 5 | **$18.23** | 4-ch audio ADC ✓ · 306 in stock 2026-09-21 (the IRTWR reel C882863 is ~$1 less each but had 67) |
-| U6 | `STM32H743IIT6` | C89597 | 1 | $10.01 | 548 in stock (2026-09-17) |
-| U7 | `USB3300-EZK-TR` | C108383 | 1 | $1.455 | ULPI PHY, QFN-32 5×5, single 3.3 V supply; no link power management, so outside the USB334x chirp erratum ✓ |
-| U1–U5 | `TLV9064IDR` | C388176 | 5 | $1.08 | **the TIA part** — see below ✓ |
-| U9 | `TPS7A2033PDBVR` | C2862740 | 1 | $0.22 | 3V3 **analog**, 7 µVrms, ceramic-stable ✓ (was `SPX3819`, which needs an electrolytic or tantalum output capacitor) |
-| U8 | `AP2114H-3.3TRG1` | C150716 | 1 | $0.23 | 3V3 **digital**, SOT-223 tab — 0.51 W ✓. Replaces the AMS1117 (2026-10-04): that part needs a tantalum's ESR on its output and this board is all ceramic |
-| J2 | `S4B-XH-SM4-TB` | C161861 | 1 | $0.4379 | **4-way, not 6** — corrected 2026-09-19. The row still described the connector from before the optical feed became TWO WIRES: it listed 2×5V, 2×PWR_GND, AUDIO and AUDIO_GND, and the board now wires only PWR_GND and +24V, with ways 3–4 as declared no-connects. 20,952 in stock ✓ |
-| U11 | `TLV9061IDBVR` | C398358 | 1 | $0.0935 | **SOT-23-5, not the SC-70 IDCKR** — corrected 2026-09-19. The old row named `TLV9061IDCKR` against **C693480, which THIS FILE already records as a P6KE39CA TVS diode** (see the sourcing-trap note above): a known-bad code left sitting in the parts table. The board uses IDBVR, whose pinout fab.py checks pin-for-pin against the netlist. 297,517 in stock ✓ |
-| U12 | `PCM1808PWR` | C55513 | 1 | $0.34 | 24-bit audio ADC — magnetic pickup → I²S ✓ |
-| D1–D10 | `IR17-21C/TR8` | C131250 | 10 | $0.28 | 940 nm 0805 · ⚠ ~120°, confirm at layout |
-| J1 | `TYPE-C-31-M-12` | C165948 | 1 | $0.20 | the modelled envelope *is* this part ✓ |
-| U10 | `USBLC6-2SC6` | C7519 | 1 | $0.10 | ⚠ SOT-23-6, not the modelled SOT-563 |
-| Cf×20 | 0402 **C0G** MLCC | Basic | 20 | $0.08 | C0G not X7R — the anti-alias pole must not drift with bias |
-| C×7 | 0805 X7R MLCC | Basic | 7 | $0.07 | bulk + audio ADC bypass |
-| Y1, Y2 | `X322525MSB4SI` | C13740 | 2 | $0.07 | 25 MHz 3225, **Basic** ✓ |
-| C×34 | 0402 X7R MLCC | Basic | 34 | $0.07 | decoupling |
-| R×29 | 0402 thick-film | Basic | 29 | $0.06 | TIA feedback + pulls |
-| Q1 | `AO3400A` | C20917 | 1 | $0.05 | logic-level FET ✓ |
-| R1–R10 | 0603 thick-film | Basic | 10 | $0.03 | per-string LED ballast |
-| FB1 | `BLM18KG601SN1D` | C85833 | 1 | $0.0178 | 600 Ω @100 MHz, 0603, **1.3 A** (the 200 mA `GZ1608D601TF` carried 166 mA worst case) ✓ |
-| R44 | `RK73B3ATTE2R0J` | C5139521 | 1 | $0.57 | 2 Ω **2512** in series with the 24 V input: damps a live plug (48 V ring against the buck's 38 V). KOA, for its single-pulse rating — not a generic part ✓ |
-| Y1 | `TAXM25M4RDBCCT2T` | C403946 | 1 | $0.0765 | **MCU HSE 25 MHz**, 3225, CL 10 pF, ESR ≤ 30 Ω (the 20 pF part was outside the H7's start-up guarantee) ✓ |
-| Y2 | `CJO05-240003320B30` | C712738 | 1 | $0.3723 | **PHY reference 24 MHz**, a 3225 clock oscillator (3.3 V CMOS, ±20 ppm, 1 ps rms). An oscillator because the PHY asks for a crystal rated for 0.5 mW of drive and the stocked 3225 crystals are rated 0.1 mW ✓ |
-| | | | **148** | **$26.96** | **`open_lines()` is empty** |
+*(The table of order lines that stood here was kept by hand and had drifted: it listed the emitter, the TIA op-amp and both crystals of earlier revisions beside the current parts. The lines are generated now: [`docs/order-parts.md`](docs/order-parts.md), section `optical`; prices are `elec/prices.json`.)*
 
 **The op-amp is the happy surprise.** `TLV9064IDR` is a 4× CMOS RRIO part with
 **10 MHz GBW and 500 fA input bias current** — the bias figure is what a nanoamp
@@ -2157,7 +2145,7 @@ built from part *counts*: it was wrong by up to 56 % in both directions, and it
 only settled once every line had a real part number behind it. BOM.md can no
 longer drift from the model here.
 
-### The three blockers, resolved 2026-08-01 — `open_lines()` is now empty
+### HISTORY — The three blockers, resolved 2026-08-01 — `open_lines()` is now empty
 
 **1. Photodiode — the dilemma was a false alarm.** The choice looked like
 "break the no-consignment rule, or give up the daylight filter". Neither is
@@ -2215,7 +2203,7 @@ four ways suits a rail pulling >500 mA better than two would have (2× 5 V,
 **70.8 cm²**, about $0.18/board of fab. The model carries the real JST envelope
 (`XH-SM-4`, 6.10 × 15.00 × 7.00) and all clearance assertions pass.
 
-### The digital rail — resolved, and NOT with the buck I proposed
+### HISTORY — The digital rail — resolved, and NOT with the buck I proposed
 
 The MCU draws 200–300 mA, so 5 V → 3.3 V burns **0.51 W**. In a SOT-23-5 at
 ~250 °C/W that is a >100 °C rise — past the package, not marginally. So U8 could
@@ -2585,10 +2573,8 @@ their pads and route back south — normal practice, and viable *because* −X a
 room to receive them. If layout disagrees, the lever is moving the MCU −Y, paid for in board
 length, which is the opposite of what straightening the edge just bought.
 
-**J2 is now a 6-way `S6B-XH-SM4-TB`** (C191914, $0.4417): **2×5V, 2×PWR_GND, AUDIO,
-AUDIO_GND**. Going from 4-way to 6-way adds **no harness part** — `XHP-6` housings are
-already bought to mate the ten SERVO42D pigtails, and `SXH-001T-P0.6` contacts are common to
-every XH size. The only new line is the board-side part itself, one feeder.
+**J2 is a 4-way `S4B-XH-SM4-TB`** (C161861) carrying ground and 24 V on ways 1 and 2, with ways
+3 and 4 empty. (An earlier revision had a 6-way here with 5 V and audio on it.)
 
 ⚠ The 6-way's 20.0 mm width is **derived** from XH's 2.5 mm pitch (4-way B = 15.0, plus two
 ways). Confirm against JST's drawing before layout, exactly as the S4B figures were.
@@ -2763,7 +2749,7 @@ instead of ~1 µs. Per-string *current* is still set individually by R1–R10; w
 is common is only the on/off gate. The cost is optical crosstalk between
 neighbouring strings — one of the things the prototype needs to measure.
 
-### Two items that were closed, and are open again after the 2026-08-01 check
+### HISTORY — Two items that were closed, and are open again after the 2026-08-01 check
 
 **MCU — package still right; price and stock both wrong.** The LQFP100
 `STM32H743VIT6` brings out only **16** ADC channels; this board digitises **20**
@@ -2844,24 +2830,10 @@ earlier revision of this file anticipated. Worth measuring before buying: a
 gigging instrument mostly lives under stage and room lighting, which the table
 above says is already covered.
 
-**Still open** (project rule: NO consignment, all PCB parts LCSC-library):
-- ~~a **ULPI PHY** in JLC's library~~ — **CLOSED 2026-08-01.** Microchip
-  **`USB3343-CP`** is in LCSC stock at **$1.78** (C633347), QFN-24, exactly the
-  envelope modelled. The `-TR` reel variant is C112967 at $2.07. Since 2026-10-05
-  the PHY is `USB3300-EZK` (C108383, QFN-32, 17,000 in stock).
-- ~~the **IR emitter's beam angle**~~ — **CLOSED, unfavourably.** ±20–30° at
-  940 nm **is not made in 0805**. `IR17-21C/TR8` (C131250) is the chosen part at
-  ~120°. See "the three blockers" above for why the cover cannot make this up.
-- ~~**32 of the 35 part lines have no MPN**~~ — **CLOSED.** All 141 placed parts
-  map to an orderable line, enforced at import by
-  `optical_pickup._assert_every_part_orderable()`.
-- ~~**quad op-amp** with low enough input bias current for a nanoamp TIA~~ —
-  **CLOSED 2026-08-01. `TLV9064IDR`** (C388176), SOIC-14, 10 MHz GBW,
-  **500 fA** input bias, RRIO CMOS, 10k in stock, **$0.2161**. Four orders of
-  margin on bias against a tens-of-nA signal, in the package already modelled.
-- ~~**J2**~~ — **CLOSED.** `S4B-XH-SM4-TB` (C161861), 4-way, already a project
-  part. Board grew 5 mm; the model carries the real JST envelope.
-- ⚠ **NEW, and the last thing before a quote: U8 cannot be an LDO** — see above.
+**Nothing on this list is open any more** (project rule: NO consignment, all PCB parts
+LCSC-library). The PHY, the emitter, the op-amp, J2 and the 3.3 V regulator were each
+closed and several have since been replaced; the parts as built are in
+[`docs/order-parts.md`](docs/order-parts.md).
 
 **Prototype: the first measurement is now string 2, not `SENSE_D`.** Specifically
 a **.014 plain string at 22 mm at a realistic drive current** — and now
