@@ -3,9 +3,14 @@
 Three lit things, two boards that feed them. This is the interface, written from the LED
 side, so `elec/pi_cap.py` (bronner) and the motor board can be built against it.
 
-    fret_led_key   3 x TLC59711    J1 6-way PH   S6B-PH-SM4-TB   C265405
-      -> fret_led_mid  5 x TLC59711    fed over the seam: 6 x C5203987 tip to tip
-    foot_led  x2   8 x TLC59711    J1 4-way SH   SM04B-SRSS-TB   C160404
+    fret_led_key   3 x TLC59711    J1 4-way XH   S4B-XH-SM4-TB   C161861
+      -> fret_led_mid  5 x TLC59711    fed over the seam: 4 x C5203987 a side, tip to tip
+    foot_led_a     4 x TLC59711    J1 4-way XH   S4B-XH-SM4-TB   C161861
+      -> foot_led_b    4 x TLC59711    fed over the seam: 4 x C5203987 a side, tip to tip
+
+⚠ This table is the boards as ordered (2026-10-05). Sections below that speak of a 6-way
+PH or a 4-way JST SH inlet are the history of how it got here: both inlets carry 24 V, so
+both are XH (the project rule: PH is 5 V, XH is 24 V), and the SH part is on no board.
 
 ## 0. ⚠ UPDATE, 2026-09-30: TWO DROPS -- the seam joint is built
 
