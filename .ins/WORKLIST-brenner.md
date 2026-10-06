@@ -284,14 +284,15 @@ WHAT THE PASS CHANGED (all in the generators, with the reason at each)
 ORDER PAGE DRY RUN, 2026-10-06 (all five boards walked to "Quote & Order" on JLCPCB in the
 user's browser; NOTHING put in the cart). Each is saved in the account under
 Projects > Quotes. What it found, and what the order needs because of it:
-- ⚠ UPLOAD `<board>-bom-order.csv` AND `<board>-cpl-order.csv` (elec/order_files.py writes
-  them into elec/out/fab/<board>/), NOT the -bom.csv / -cpl.csv inside the zip. The zip's
-  BOM leaves passives uncoded and JLCPCB matched 0402 footprints to 01005 parts, unselected
-  (board built without them); the zip's CPL put the 1x20 header 24 mm off and the ribbon
-  header's pins into the board. The module's docstring has the three reasons.
+- The package's own `<board>-bom.csv` and `<board>-cpl.csv` are the upload again (since
+  2026-10-06, late): passives are coded by (value, footprint) in elec/fab.py, and the CPL is
+  written in the fab's footprint frames from elec/fab_frames.json. Rebuilt for all five and
+  compared row for row with the files used in the dry run: identical. What the dry run
+  first met: uncoded passives matched to 01005 parts and left unselected; the 1x20 header
+  24 mm off its holes; the ribbon header's pins into the board.
 - ⚠ ui_board J2 needs 270, not the 90 this list said: pad numbers cannot orient a
-  symmetric header. The -cpl-order file carries it; the preview shows the body at the
-  board edge, pins off the board.
+  symmetric header. fab_frames.json carries it by hand (KiCad + 90); the preview shows the
+  body at the board edge, pins off the board.
 - The seam pogo pins arrive UNSELECTED on every LED board (a "difficult" part, +0.08 USD
   each). Tick the row (it can take two clicks); pressing Next without it raises
   "Project has unselected parts". In the 2D preview all four rows point off their board end.
