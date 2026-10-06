@@ -75,10 +75,14 @@
       "what": "688ZZ O8xO16x5, AMPEC brand -- THE TEN SCREW THRUST BEARINGS ONLY (user, 2026-10-06: over $100 of bearings is too much). This is the one seat where the rating is the margin: 147 N axial against half the static rating, and the listing publishes 132 lbf = 587 N, so 2.0x. $4.38 each, 5% off at 10 ($4.16 for one instrument), 15% at 50 ($3.72, the ten-instrument price used here); 489 in stock, page read 2026-10-06. Cheaper alternate: VXB kit859, 10 for $29.99, house brand, lists 710 N."
     },
     "bearing_688zz": {
-      "usd": 0.6,
-      "verified": "m",
+      "usd": 0.99,
+      "verified": "v",
       "per_instrument": 32,
-      "what": "688ZZ O8xO16x5, any maker -- 10 bridge axle + 2 per sensed control x 11 = 32 (the model draws 30 of them: it has ten controls). Same size as the screw bearing, bought cheap: the bridge load is radial, 208 N against even the lowest published 688 rating of 474 N (2.3x), and the lever and pedal axles carry almost nothing. $0.60 is the unnamed-listing price this row always carried; NO VENDOR IS RECORDED, pick the lot at purchase."
+      "vendor": "Fast Eddy Bearings",
+      "sku": "TFE234",
+      "url": "https://www.fasteddybearings.com/products/10-units-8x16x5-metal-shielded-bearing-688-zz",
+      "date": "2026-10-06",
+      "what": "688ZZ O8xO16x5 chrome steel, metal shields -- 10 bridge axle + 2 per sensed control x 11 = 32 (the model draws 30 of them: it has ten controls). The cheapest stocked listing found outside Amazon and AliExpress (user, 2026-10-06): TFE234, 10 for $10.99; TFE480, 100 for $98.99 ($0.99, the ten-instrument price used here); TFE5, singles at $1.25. All three in stock, read off the shop's own product feed. NO LOAD RATING IS PUBLISHED, which is why the ten screw seats keep the rated part: here the bridge load is radial, 208 N against the lowest rating any maker publishes for a 688 (474 N, 2.3x), and the lever and pedal axles carry almost nothing. Also looked at: VXB $3.00 each in tens, Bearings Direct $4.38."
     },
     "m4_button_8": {
       "usd": 0.5555,
