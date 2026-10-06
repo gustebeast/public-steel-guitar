@@ -278,6 +278,20 @@ BOARD_NOTES = {
         "power_paths": [
             {"net": "+24V", "from": "J1.2", "to": ["J1.6", "J2.2"], "amps": 3.0},
         ],
+        # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
+        # repeated structure is on. The pass fails on any difference from the routed board.
+        "unconnected": {},
+        "net_groups": [
+            {
+                "name": "trunk in, trunk out and the motor drop are one bus, way for way",
+                "pins": [
+                    "J1.[1-8]",
+                    "J2.[1-4]"
+                ],
+                "nets": 4,
+                "each": 3
+            }
+        ],
         "pinouts": {
             "S8B-XH-A": "JST eXH.pdf p.5, Header / Side entry type, <3 circuits or more>: "
                         "seen from above with the mouth pointing away, No. 1 circuit is the "
