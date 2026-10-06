@@ -270,8 +270,9 @@ def _manual(board, n_drv):
               "broken only by via clearances; every ground pad has its own via beside "
               "it and the buck's ground slab has six. 24 V arrives on a 0.30 mm track "
               "(A1: 0.08 needed) and returns through that plane to "
-              + ("J1's ground land, which is 1.3 x 4.5 with a via in it" if a else
-                 "J12, a 5.0 x 3.5 land") +
+              + ("J1's ground land, which has a via in it and a second 0.8 mm past "
+                 "its toe; board B's return crosses on J22, three vias in the land"
+                 if a else "J12, a 5.0 x 3.5 land with three vias in it") +
               ". The feedback divider's ground (R11, R12) goes down its own vias 2 mm "
               "from the AGND pin, not along the power slab",
         "M4": "LMR33630 (SNVSAN3F 9.2.2.6 to 9.2.2.8). Input: TI ask 10 uF ceramic rated "
