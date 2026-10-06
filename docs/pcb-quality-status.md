@@ -26,7 +26,7 @@ Scoreboard, 2026-10-05 (every board listed is `0 unconnected, 0 violation(s)`):
 | `lever_sensor` | 0 | 6 | M11, M29, order-time four |
 | `motor_ctrl` | 0 | 8 | M32 / M33 (user: motor current), M11, M29, order-time four. M23 and M35 signed 2026-10-05 from WCH's reference manual |
 | `output_panel` | 0 | 7 | M32 (user: motor current), M11, M29, order-time four |
-| `optical` | 0 | 6 | M11, M29, order-time four. **Bring-up must see a HIGH-speed USB enumeration** (USB334x errata, firmware workaround unproven on the H743: `docs/optical-bringup-diagnostics.md`); also U8's case temperature and the AVDD current |
+| `optical` | 0 | 6 | M11, M29, order-time four. Bring-up: U8's case temperature and the AVDD current (`docs/optical-bringup-diagnostics.md`) |
 | `ui_board`, `fret_led`, `foot_led` | - | - | brenner's boards, not touched by this loop |
 
 "Order-time" items (M12 the order form, M30 the assembly order, M37 the files sent are the
@@ -40,8 +40,31 @@ rather than ticking them.
 
 ST ES0392 rev 15, Microchip DS80000645A (USB334x) and WCH's reference manual V2.2 were
 fetched and read; each board's M35 (and `motor_ctrl` M23) carries what was found. WCH
-publishes no errata sheets. The one finding with teeth is the USB334x high-speed chirp
-erratum on the optical board, above.
+publishes no errata sheets. The one finding with teeth was the USB334x high-speed chirp
+erratum: its workaround is firmware nobody has proven on the H743, so a board with that
+PHY could have needed a re-order to get high-speed USB at all.
+
+### Changed so a board does not have to be ordered twice, 2026-10-05
+
+* **`optical` U7 is a USB3300** (QFN-32, 17,000 in stock), the PHY ST's own H7 boards
+  use. It has no such erratum. Its supplies, RBIAS, VBUS divider and the four ULPI
+  control pins are laid by hand, not left to the router.
+* **`optical` Y2 is a 24 MHz oscillator into XI**, not a crystal. The USB3300 asks for a
+  crystal rated 0.5 mW drive or more; the stocked 3.2 x 2.5 crystals are rated 0.1 mW.
+  The PHY's sheet allows a 3.3 V clock on XI with XO left open (section 6.3).
+* **`optical` L1 is a WPN4020H4R7MT** (4.0 A saturation, was 2.9 A guaranteed): TI asks
+  for saturation at or above the converter's low-side limit, 3.5 A typical. Same land.
+* **`optical` U13 is the 1.4 MHz LMR33630B** (was the 2.1 MHz C part). Read off TI's
+  24 V loss curves with an estimated 60 C/W, the C part sat at about 124 C worst case
+  in a 45 C cavity against a 125 C limit; the B part is about 98 C. Same land. Only 260
+  in stock, shared with the three LED supplies (four an instrument). `motor_ctrl` U5
+  (400 kHz, padded package) reads 97 C at its full 3 A and is unchanged.
+* **`motor_ctrl` and `output_panel` L1 are 15 uH** (1.4 A guaranteed saturation, was 0.65
+  at 47 uH), against the LMR16006's 1.2 A typical limit. Same series, same land.
+* **`pi_cap` F1 (polyfuse) is now U1, a TPS2553 current-limited switch** at 475 to 565
+  mA. The polyfuse's resistance cost the display too much of the Pi's 3.3 V.
+* **Lighting is budgeted at 1.70 A full white** (0.93 fret, 0.77 foot); `motor_ctrl`'s
+  LED feed track is 0.65 mm for it.
 
 ### Decided by the user, 2026-10-04
 
@@ -115,7 +138,8 @@ has to get back there):
   also a 20 pF part, at or past the H7's start-up limit (gm_crit 1.37-1.85 mA/V against a
   guaranteed 1.5); now a 10 pF, 30 ohm part (0.50 mA/V worst case).
 * The PHY crystal's ESR was 30 ohm only in the distributor's listing; its maker's sheet
-  says 40, and the PHY's limit is 30. Replaced by a part whose own sheet says 30.
+  says 40, and the PHY's limit is 30. (The crystal has since gone: Y2 is an oscillator,
+  see "Changed so a board does not have to be ordered twice".)
 * U11 (the reference buffer all twenty channels share) had no supply bypass; one added.
   The VBUS clamp's capacitor moved to its rail pin; VCAP1's capacitor moved from 8 mm to
   2.6 mm from its pin.
