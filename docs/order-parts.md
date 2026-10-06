@@ -18,8 +18,8 @@ A part that is not in this file is not on a board, whatever another document say
 | `10k` | C25744 | 44 | lever_sensor, motor_ctrl, output_panel, optical, ui_board, foot_led_a, foot_led_b |
 | `10k 0.1%` | C190095 | 2 | output_panel |
 | `10nF C0G` | C22400107 | 40 | optical |
-| `10uF` | C15525 | 15 | optical |
-| `10uF` | C15850 | 21 | motor_ctrl, output_panel, optical, ui_board |
+| `10uF` | C15525 | 16 | output_panel, optical |
+| `10uF` | C15850 | 20 | motor_ctrl, output_panel, optical, ui_board |
 | `10uF/50V` | C13585 | 19 | motor_ctrl, output_panel, optical, fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
 | `120R` | C22787 | 11 | can_tee, motor_ctrl |
 | `120R` | C25079 | 11 | lever_sensor |
@@ -223,7 +223,7 @@ A part that is not in this file is not on a board, whatever another document say
 
 ## `output_panel`
 
-1 per instrument. 138 placed part(s) in 59 line(s); 6 pad(s) and jumper(s) that are copper, not parts.
+1 per instrument. 138 placed part(s) in 60 line(s); 6 pad(s) and jumper(s) that are copper, not parts.
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|
@@ -232,9 +232,10 @@ A part that is not in this file is not on a board, whatever another document say
 | 4 | C3, C55, C56, C61 | `100nF/50V` | C_0402_1005Metric | C307331 |
 | 24 | C4, C8, C10-C14, C19, C22, C26, C28, C30, C43, C44, C46, C47, C50-C54, C57, C59, C60 | `100nF` | C_0402_1005Metric | C307331 |
 | 2 | C5, C6 | `22uF/16V` | C_0805_2012Metric | C45783 |
-| 11 | C7, C9, C20, C21, C23, C25, C27, C29, C31, C36, C40 | `10uF` | C_0805_2012Metric | C15850 |
+| 10 | C7, C9, C20, C21, C23, C25, C27, C29, C36, C40 | `10uF` | C_0805_2012Metric | C15850 |
 | 4 | C15-C18 | `15pF` | C_0402_1005Metric | C1548 |
 | 4 | C24, C38, C39, C42 | `1uF` | C_0805_2012Metric | C28323 |
+| 1 | C31 | `10uF` | C_0402_1005Metric | C15525 |
 | 2 | C32, C33 | `2.2uF` | C_0805_2012Metric | C377773 |
 | 2 | C34, C45 | `2.2nF C0G` | C_0402_1005Metric | C2987940 |
 | 2 | C35, C58 | `1uF` | C_0402_1005Metric | C52923 |
