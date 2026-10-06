@@ -499,6 +499,12 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     return sck, sdt
 
 
+# the rail and its return cross the seam on one spring pin each, 0.90 A, and each enters
+# its plane on three barrels, not the stitcher's one (buck_cell.land_vias, M3)
+SEAM_SUPPLY = {"+14V5": "+14V5", "GND": "GND"}
+seam_vias = []
+
+
 def _seam(panel, place, fps, cx, nets):
     """The four seam pogos at this board's seam edge -- geometry from fret_light.
 
@@ -516,6 +522,8 @@ def _seam(panel, place, fps, cx, nets):
         nets[net] += j[1]
         place[ref] = (x - cx, y, rot)
         fps[ref] = POGO_FP
+        if net in SEAM_SUPPLY:
+            seam_vias.extend(BC.land_vias(SEAM_SUPPLY[net], x - cx, y))
 
 
 def _arrival(place, fps, gnd, vrail, bay_x0, cx):
@@ -563,6 +571,7 @@ def build(panel):
         # the chain comes in over the seam, from the harness board's last driver
         sck, sdt = seam["SCK_SEAM"], seam["SDT_SEAM"]
         _arrival(place, fps, gnd, vrail, x0, cx)
+    del seam_vias[:]
     _seam(panel, place, fps, cx, seam)
 
     drivers = []
@@ -698,7 +707,12 @@ def build(panel):
     # each driver's heat pad gets its six vias (DRV_PAD_VIAS)
     notes["vias"] = list(notes.get("vias", [])) + [
         ("GND", round(xd + dx, 3), round(DRV_Y + dy, 3))
-        for _u, xd, _trio in drivers for dx, dy in DRV_PAD_VIAS]
+        for _u, xd, _trio in drivers for dx, dy in DRV_PAD_VIAS] + list(seam_vias)
+    if panel == HARNESS:
+        # ...and the socket's ground way, which is the whole instrument's fret-light return
+        _trk, _via = BC.xh_ground_via(*place["J1"][:2])
+        notes["tracks"] = list(notes.get("tracks", [])) + [_trk]
+        notes["vias"] = notes["vias"] + [_via]
     # WHAT EACH SUPPLY NET CARRIES, all-white. The 14 V rail is made on the key board and
     # crosses the seam pogos to the mid board, so the key board's rail is held to BOTH
     # boards' channels and the mid board's to its own.
