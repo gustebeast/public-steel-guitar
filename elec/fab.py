@@ -64,7 +64,7 @@ LCSC = {
     # ── the optical board, every line checked against the manufacturer's datasheet on
     # 2026-09-17 (pinout verified pin by pin, not just the package) ──────────────────
     "STM32H743IIT6": "C89597",      # LQFP176; pins re-derived from ST's CubeMX symbol
-    "USB3343-CP": "C633347",        # ULPI PHY; pinout was INVENTED before this check
+    "USB3300-EZK-TR": "C108383",    # ULPI PHY, QFN-32 5x5; 17,431 in stock 2026-10-05
     "USBLC6-2SC6": "C7519",         # ESD array, SOT23-6L: 1 IO1 2 GND 3 IO2 4 IO2 5 VBUS 6 IO1
     "TLV9062IDGKR": "C398356",      # dual TIA, VSSOP-8 -- same die as the TLV9064 it
                                     # replaced (TI SBOS839); 34k stock vs the quad's 107
@@ -73,7 +73,6 @@ LCSC = {
                                     # 11,540 in stock 2026-10-04 (optical U8)
     "TPS7A2033PDBVR": "C2862740",   # 3V3 analog LDO, ceramic-stable: 1 IN 2 GND 3 EN 4 N/C 5 OUT;
                                     # 203,032 in stock 2026-10-04 (optical U9)
-    "LMR33630CRNXR": "C2071783",    # 24->5 V sync buck, 2.1 MHz, 3 A, VQFN-HR RNX (optical U13)
     "LTE-C9901": "C2683614",        # 940 nm emitter, 0603, Lite-On DS50-2017-0074:
                                     # 8 mW/sr typ @20 mA, 65 deg FULL, 0.98 tall, 60 mA DC
     "PD15-22B/TR8": "C161211",      # Everlight PIN photodiode, 940 nm peak, 11k stock (2026-09-21)
@@ -83,11 +82,11 @@ LCSC = {
     # Inductors are specified by PART too -- see the note beside L1. Isat 1.35 A
     # worst case against the TPS560430's 1.4 A maximum current limit, which is the
     # number TI tells you to size against.
-    "SWPA4030S4R7MT": "C57269",      # 4.7 uH, 4x4x3.0 shielded, Isat 3.2 A (optical L1)
+    "WPN4020H4R7MT": "C98363",       # 4.7 uH, 4x4x2.0 closed-circuit, Isat 4.0 A (optical L1)
     # ⚠ "600" IS 60 OHM in Murata/Sunlord bead numbering. 601 is the 600 ohm part.
     "GZ1608D601TF": "C1002",         # 0603 bead, 600R@100MHz, 200 mA, DCR 450 mohm
     # -- motor_ctrl's parts that were values and not parts until the 2026-10-04 review --
-    "PNR3015-470M": "C19634068",     # APV 47 uH 3015, Isat 0.88 A; 2,263 (3V3 buck L1).
+    "PNR3015-150M": "C19634062",     # APV 15 uH 3015, Isat 1.4 A guaranteed; 906 (LMR16006 L1).
                                      # Fits: ANR3015T470M C7427088 (0.43 A, 14.9k)
     "VLS6045EX-6R8M": "C415364",     # TDK 6.8 uH 6045, Isat 4.7 A, 36 mOhm; 4,123 (5 V buck
                                      # L2). Nearest: Sunlord SWPA6045S6R8MT C57254 (4.3 A)
@@ -108,8 +107,7 @@ LCSC = {
                                      # 75,154 in stock 2026-10-04 (motor_ctrl HSE)
     "TAXM25M4RDBCCT2T": "C403946",   # Yajingxin 25 MHz 3225, CL 10 pF, ESR 30 ohm max;
                                      # 7,232 in stock 2026-10-04 (optical MCU HSE)
-    "TAXM26M4RLBCDT2T": "C5143383",  # Yajingxin 26 MHz 3225, CL 20 pF, ESR 30 ohm max (the
-                                     # PHY's limits); 30,405 in stock 2026-10-04
+    "CJO05-240003320B30": "C712738",   # JSCJ 24 MHz 3.3 V CMOS oscillator, 3225; PHY reference
     # ── sourced 2026-09-17 from JLCPCB's own parts API, not from memory ──────────
     # Each line names the listing's exact model and the stock it showed, because a code
     # with no source is the thing this file exists to refuse. Picked by EXACT model and
@@ -139,6 +137,7 @@ LCSC = {
                                     # "B2B-XH-A" listing is C19272845 with ONE piece in
                                     # stock. Same shape as S4B-XH-SM4-TB and B4B-XH-A.
     "S4B-XH-A": "C157925",          # JST S4B-XH-A(LF)(SN), stock 88,547
+    "LMR33630BRNXR": "C2071384",     # the 1.4 MHz RNX part (optical U13, and the LED bucks)
     "LMR33630ADDAR": "C841384",     # TI, ESOP-8 (= HSOIC-8 PowerPAD), stock 6,730
     "KPJX-4S-S": "C2875467",        # Kycon KPJX-4S-S, 4-pin power jack; stock 44 on
                                     # 2026-10-01 -- THIN: check before a build of 10
@@ -151,8 +150,6 @@ LCSC = {
                                     # THT, 2902 in stock 2026-10-02 -- the pi_cap's UI ribbon.
                                     # (C22438122, named in pi_cap.py, is the VERTICAL one and
                                     # does not match the Horizontal footprint.)
-    "0805L020YR": "C126816",        # Littelfuse 0805 PTC, 200 mA hold / 500 mA trip, 9 V;
-                                    # 6,224 in stock 2026-10-04 -- pi_cap F1
     "SQD50P06-15L": "C3281500",     # Vishay SQD50P06-15L_GE3, P-ch 60 V 15.5 mOhm TO-252;
                                     # 6,668 in stock 2026-10-04 -- the output panel's power
                                     # switch. Same pinout: NCE60P50K (28 mOhm), AOD409 (40)
@@ -162,7 +159,7 @@ LCSC = {
                                     # MM5Z10VT1G
     "B6B-XH-A": "C144397",          # JST B6B-XH-A(LF)(SN), 38,933 in stock 2026-10-04 --
                                     # the motor board / output panel power + switch cable
-    "TPS2553DBVR": "C55266",        # TI current-limited switch, SOT-23-6; 58,077 in stock
+    "TPS2553DBVR": "C55266",        # TI current-limited switch, SOT-23-6 (motor_ctrl U6, pi_cap U1); 58,077 in stock
                                     # 2026-10-04 -- motor_ctrl U6, bus B's 5 V
     "PZ1.27-2x8P": "C22438114",     # the same family's 2x8, for the UI board's 16-way
                                     # ribbon; 2050 in stock 2026-10-04
