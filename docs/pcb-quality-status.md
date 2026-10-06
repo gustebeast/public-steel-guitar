@@ -36,6 +36,34 @@ needs the lead's build with the new board geometry.
 None of these can be closed from the files on hand, so the loop leaves them OPEN on purpose
 rather than ticking them.
 
+### No soldering iron: both buses terminate with a switch, 2026-10-06
+
+* `can_tee`: the solder bridge is a 1-position slide switch, SW1 `DSHP01TSGER` (C3293141).
+* `lever_sensor`: the same job, a smaller part -- SW1 Nidec `CAS-120TA` (C2921534, 1,069
+  in stock, 11 an instrument). The tee's switch is 8.9 mm over its lands and the sensor
+  board has 8.87 mm between the transceiver and the +X groove band. The corner was
+  re-packed round it (R3, D2, D3 moved); 0 unconnected, 0 violations, 0 FAIL. It is 2.5
+  tall, so it sits outside the magnet cap's sweep and is set BEFORE the board goes into
+  its housing (INSTALL_NOTES PB-0).
+
+### The placement file is in the fab's frames, 2026-10-06
+
+Brenner's order-page run found placements previewing off their pads: our footprints'
+origins and zero angles are not the fab's. `cadkit/pcbflow/fab_frames.py` measures each
+part's angle and origin by laying the fab's library pads over ours, the package builder
+applies the table (`elec/fab_frames.json`) to every placement file, and each package's
+ROTATION-CHECK.txt lists what was corrected and what could not be measured.
+
+* Measured so far: the three parts whose pads were already in the repository (the
+  SMD 4-way XH, the LED buck, and by hand the 2x8 ribbon header, which the two libraries
+  number opposite ways). **Every other part is still "not measured"**: the fab's library
+  refused the script (HTTP 403) and its data carries a licence notice, so reading more of
+  it waits for the owner's decision. Until then those parts are the list to check by eye
+  in the preview, exactly as before.
+* `ORDER.txt` no longer says the 0.25 mm via is free: it is about +17 USD and brings a
+  Kelvin test and Tg155 with it; every package now warns that the form carries the
+  previous board's options over, and the seam pogo pin's row has to be ticked by hand.
+
 ### Every BOM row names its part, 2026-10-06
 
 Found by brenner in a dry run of `ui_board` on JLCPCB's order page: passive rows went out

@@ -4740,6 +4740,11 @@
       "usd": 0.0014,
       "verified": "v",
       "what": "150k C25755 -- JLCPCB parts API at qty 10"
+    },
+    "lever_sensor:SW1": {
+      "usd": 0.5154,
+      "verified": "v",
+      "what": "CAS-120TA C2921534 -- JLCPCB parts API at qty 110"
     }
   },
   "modules": {
