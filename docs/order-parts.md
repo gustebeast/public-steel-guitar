@@ -120,7 +120,7 @@ A part that is not in this file is not on a board, whatever another document say
 
 ## `motor_ctrl`
 
-1 per instrument. 73 placed part(s) in 39 line(s); 6 pad(s) and jumper(s) that are copper, not parts.
+1 per instrument. 73 placed part(s) in 39 line(s); 5 pad(s) and jumper(s) that are copper, not parts.
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|

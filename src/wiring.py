@@ -6,7 +6,7 @@ TRUNK-AND-DROP over TEE PCBs (electronics.tee_pcb, flat on the floor):
 crimped XH jumper SEGMENTS run tee-to-tee (each drawn as its own component,
 suffix _N — a segment IS a separate physical cable), and each device hangs
 by ONE drop, so unplugging a device never breaks a bus. 120 Ω termination
-lives on the boards (motor_ctrl + each bus's LAST tee, jumper closed).
+lives on the boards (motor_ctrl's is permanent; each bus's LAST tee has its jumper closed).
 
   bus A (motors): motor_ctrl -> tee 9..0 (one per motor; LAST = tee 0,
         easternmost — its jumper is closed). Drop = the SERVO42D's own
