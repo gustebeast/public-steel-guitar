@@ -3,10 +3,10 @@
 Three lit things, two boards that feed them. This is the interface, written from the LED
 side, so `elec/pi_cap.py` (bronner) and the motor board can be built against it.
 
-    fret_led_key   3 x TLC59711    J1 4-way XH   S4B-XH-SM4-TB   C161861
-      -> fret_led_mid  5 x TLC59711    fed over the seam: 4 x C5203987 a side, tip to tip
-    foot_led_a     4 x TLC59711    J1 4-way XH   S4B-XH-SM4-TB   C161861
-      -> foot_led_b    4 x TLC59711    fed over the seam: 4 x C5203987 a side, tip to tip
+    fret_led_key   3 x TLC5971    J1 4-way XH   S4B-XH-SM4-TB   C161861
+      -> fret_led_mid  5 x TLC5971    fed over the seam: 4 x C5203987 a side, tip to tip
+    foot_led_a     4 x TLC5971    J1 4-way XH   S4B-XH-SM4-TB   C161861
+      -> foot_led_b    4 x TLC5971    fed over the seam: 4 x C5203987 a side, tip to tip
 
 ⚠ This table is the boards as ordered (2026-10-05). Sections below that speak of a 6-way
 PH or a 4-way JST SH inlet are the history of how it got here: both inlets carry 24 V, so
@@ -145,7 +145,7 @@ just routed 0/0, and the header count is bronner's constraint to weigh, not mine
 
 ## 2. ⚠ THE DRIVER HAS NO CHIP SELECT, WHICH DECIDES THE DATA TOPOLOGY
 
-A TLC59711 is write-only and unaddressed: it takes SCK and SDT, shifts 224 bits through
+A TLC5971 is write-only and unaddressed: it takes SCK and SDT, shifts 224 bits through
 itself, and passes the overflow out of SCKO/SDTO to the next one. There is no way to talk
 to one chain and not another on a shared pair — two chains on one data line show the
 **same picture**. So independent content leaves exactly two topologies:
@@ -206,7 +206,7 @@ the inlet became an XH, 2026-10-04).
    only be bit-banged, which breaks the stream-continuously rule of §2. Fret is SPI0 (SCLK
    pin 23, MOSI pin 19), foot is SPI5 (SCLK GPIO15 pin 10, MOSI GPIO14 pin 8), each clock
    through its own 68R into ONE cable -- which also closes §5 item 3. The two chains no
-   longer latch on one edge, and that does not matter: a TLC59711 latches itself when its
+   longer latch on one edge, and that does not matter: a TLC5971 latches itself when its
    own clock pauses, the fret and foot lights are separate fixtures, and the offset is
    well under a PWM period.
 4. **24 V in from the motor board**, 2 A of headroom, bussed to both headers. The fret
