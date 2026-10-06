@@ -147,6 +147,19 @@ def copper(origin, turn, v_in="+24V", v_out=None, v_cc="BUCK_VCC"):
         run(v_in, 0.40, (0.95, 0.60), (1.60, 0.60), (2.115, 0.35)),
         run(v_in, 0.70, (2.115, 0.35), (3.70, 0.35)),
         run(v_in, 0.25, (0.95, -0.016), (1.65, -0.016), (1.65, 0.35)),
+        # ⚠ THE BOOTSTRAP CAPACITOR'S TWO 1 mm LINKS ARE LAID TOO, and pin 3 to the switch
+        # pad. Pin 3 is the SW pin TI put beside BOOT for exactly this capacitor. Left to
+        # the router, the foot boards got these three short front-layer links and the
+        # keyhead fret board got C33's switch side taken through a via, 9 mm along the
+        # BACK under the feedback divider, and up through a second via into the
+        # inductor's land: a switch node on two layers. This is the foot boards' routed
+        # solution, copied: 0.13 where BOOT and SW pass each other, as it was.
+        run("SW", 0.15, (-2.115, -0.84), (-2.00, -0.84), (-1.34, -0.18)),
+        run("SW", 0.13, (-1.34, -0.18), (-1.06, -0.18), (-0.90, -0.01)),
+        run("SW", 0.15, (0.0, 0.81), (-0.83, -0.01), (-0.90, -0.01)),
+        run("BOOT", 0.15, (-2.115, -1.80), (-1.76, -1.80), (-1.59, -1.64)),
+        run("BOOT", 0.13, (-1.59, -1.64), (-1.59, -1.21), (-1.11, -0.73)),
+        run("BOOT", 0.15, (-1.11, -0.73), (-0.90, -0.51)),
         # VCC (pin 5) into its capacitor, and AGND (pin 6) round to the capacitor's
         # other pad: see CORE["CVCC"]
         run(v_cc, 0.25, (-0.50, -1.24), (-0.50, -2.00), (-0.75, -2.24)),

@@ -1044,14 +1044,21 @@ def build(panel):
         # the switch node and the two input loops are laid, not routed (buck_cell.tracks)
         notes["tracks"] = list(notes.get("tracks", [])) + BC.copper(
             *cell_org, v_out="+14V5") + BC.heat_copper(*cell_org)
+        # ⚠ THE 24 V FEED FROM THE FUSE IS LAID, 0.5 mm. F1 stands on the far side of J1
+        # from the cell, and the way between them is the 2.6 mm of board under the
+        # socket's body, between its four lands and its two mounting lands. The router
+        # left this net for last and its repair closed it with 24 mm of 0.20 track,
+        # which is 0.93 A on copper sized for 0.7. Along the cell's own input slab's
+        # line, so it arrives end-on.
+        _fx = CELL_Y - place["F1"][1]              # the fuse, in the cell's frame: -29.8
+        notes["tracks"] += [("+24V", "F.Cu", 0.50, [
+            BC.at(*cell_org, dx=_fx, dy=-1.40)[:2],
+            BC.at(*cell_org, dx=_fx + 1.30, dy=-1.40)[:2],
+            BC.at(*cell_org, dx=_fx + 2.85, dy=0.15)[:2],
+            BC.at(*cell_org, dx=BC.BULK["CIN_2"][0], dy=0.15)[:2]])]
         notes["vias"] = notes["vias"] + BC.vias(*cell_org) + BC.heat_vias(*cell_org)
         notes["stitch_exceptions"] = BC.STITCH_EXCEPTIONS
         waive = {
-            # IPC-2221, 1 oz outer: 0.250 mm carries 0.875 A at a 10 C rise, so 0.89 A is
-            # 10.4 C -- over 2 mm, between lands that are each a heat sink.
-            "A1:+24V F1.2>U10.2": "U10.2's land is 0.25 mm wide, so the 2 mm of track "
-                                  "into it cannot be wider; pins 9 and 10 take the same "
-                                  "rail at 0.30. 10.4 C rise, by IPC-2221",
             "A2:J1": "the harness plug, ahead of the fuse; the input capacitors C30-C32 "
                      "are on the fused side so a shorted one blows F1",
         }
