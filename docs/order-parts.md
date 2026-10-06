@@ -26,6 +26,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `CH32V307WCU6` | C5142795 | 2 | motor_ctrl, output_panel |
 | `CH334F` | C5187527 | 1 | output_panel |
 | `CJO05-240003320B30` | C712738 | 1 | optical |
+| `DSHP01TSGER` | C3293141 | 10 | can_tee |
 | `ESD5B5.0ST1G` | C93623 | 28 | lever_sensor, motor_ctrl, output_panel |
 | `G6K-2F-Y-DC5` | C326376 | 1 | output_panel |
 | `JFC1206-1100FS` | C136343 | 3 | motor_ctrl, output_panel, foot_led_b |
@@ -86,12 +87,13 @@ A part that is not in this file is not on a board, whatever another document say
 
 ## `can_tee`
 
-10 per instrument. 3 placed part(s) in 3 line(s); 1 pad(s) and jumper(s) that are copper, not parts.
+10 per instrument. 4 placed part(s) in 4 line(s).
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|
 | 1 | J1 | `S8B-XH-A` | JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal | C157914 |
 | 1 | J2 | `S4B-XH-A` | JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal | C157925 |
+| 1 | SW1 | `DSHP01TSGER` | Kangshen_DSHP01TSGER | C3293141 |
 | 1 | R1 | `120R` | R_0603_1608Metric | generic, by value |
 
 ## `lever_sensor`

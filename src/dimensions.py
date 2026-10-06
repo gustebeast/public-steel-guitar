@@ -657,6 +657,11 @@ TEE_TAIL_CY     = 2.0       # THT tail line, board-local +Y (6.0 in from the +Y 
 TEE_TAIL_DROP   = 1.8       # how far those tails hang below the board's underside
 TEE_FIT         = 0.3       # board fit in its seat
 TEE_WALL_OVER   = 1.2       # seat walls stand this far over the board's top face
+# The terminator behind the headers, layout-local (x, y, size along X, size along Y, height):
+# a 120 R 0603 and the slide switch that puts it across the pair (elec/can_tee.py asserts
+# its placements against these, so the CAD draws the parts where the fab places them).
+TEE_TERM_R      = (-10.5, 6.2, 1.6, 0.8, 0.55)
+TEE_TERM_SW     = (1.0, 6.3, 5.4, 2.88, 2.5)    # DSHP01TSGER: body 5.4 x 2.88, 2.30 +0.20 tall
 # ⚠⚠ DEFERRED -- THIS 70 IS NOT THE PART, AND A GREEN GATE DOES NOT MEAN THE MOTOR FITS OR
 # WIRES (2026-10-01; owner: LEAD; blocked on ONE MEASURED MOTOR). The SERVO42D MT we buy is
 # a 40 mm motor (makerbase3d listing) with a ~11 mm driver behind it: ~51, not 70. It also

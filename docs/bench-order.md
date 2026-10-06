@@ -74,19 +74,17 @@ A CAN bus wants 120 ohm at each end: 60 ohm between CAN_H and CAN_L with the pow
 | End | Terminator | How it is switched in |
 |---|---|---|
 | `motor_ctrl` | R5 | always in: wired straight across the pair |
-| the last tee | R1 | JP1, a solder bridge, made open |
+| the last tee | R1 | SW1, a slide switch marked TERM; it ships OFF |
 | the motor | its own 120 ohm | a push-on jumper beside the CAN terminals (manual section 1.1: "JUMPER ON = CAN 120") |
 
-`motor_ctrl` terminates its end with nothing to do. For the far end, with one motor, there
-are two ways and they are alternatives:
+`motor_ctrl` terminates its end with nothing to do. For the far end: slide SW1 to **ON**
+on the last tee of the trunk (on the bench, the only tee) with a toothpick or a small
+screwdriver, and leave it OFF on every other tee. The body prints ON at the end that
+closes it. Leave every motor's own jumper OFF.
 
-* **the motor's own jumper ON, the tee's JP1 left open** -- no solder. This is the bench
-  arrangement.
-* the tee's JP1 bridged with solder and the motor's jumper OFF -- what a full instrument
-  does on its last tee.
-
-Do not do both: three terminators load the pair to 40 ohm. Either way the meter reads
-60 ohm between CAN_H and CAN_L with the power off.
+Do not use both the tee's switch and a motor's jumper: three terminators load the pair
+to 40 ohm. The meter reads 60 ohm between CAN_H and CAN_L with the power off when it is
+right, 120 with the switch still OFF.
 
 ## Stock on the day (read 2026-10-06, JLCPCB parts API)
 
