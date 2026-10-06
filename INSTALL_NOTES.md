@@ -800,6 +800,20 @@ The rule (user, 2026-10-04; the tuples are in `elec/harness.py`):
 | bus B drops | PH 4 | motor board J2 / J6, leg boards | pedal and lever chains | `GND, 5V, CAN_H, CAN_L` |
 | lever / pedal trunk | PH 8 | sensor board J1 | next sensor board | the 4-way order twice |
 
+**The USB lead is the one lead whose far end has somebody else's numbering.** A USB-A plug's
+own contacts are 1 VBUS, 2 D-, 3 D+, 4 GND (USB 2.0, the order the plug's maker prints);
+the PH housing's ways are GND, VBUS, D-, D+. So it is NOT contact 1 to way 1:
+
+| USB-A contact | usual wire | PH way |
+|---|---|---|
+| 4 GND | black | 1 |
+| 1 VBUS | red | 2 (crimped or left out: the board does not connect it) |
+| 2 D- | white | 3 |
+| 3 D+ | green | 4 |
+
+Wire colours are a habit, not a standard: meter each wire to its plug contact before crimping.
+Crimped contact 1 to way 1, the Pi's 5 V lands on the motor board's ground.
+
 Not JST, and not confusable with any of the above: the UI ribbon (16-way IDC), the leg
 boards' ZH tail (5 V, inside the leg only), the inlet barrel jack.
 
