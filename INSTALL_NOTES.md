@@ -101,8 +101,22 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   hand as you can: every tenth of open tension taken up by hand is 0.4 mm of travel kept
   for raising pitch. A string wrapped slack and left to break in reaches about 3.4 semitones
   above open; re-wrapped after break-in it reaches 4 with room over.
-- **Which run:** odd strings (near row, the high belt plane) take the clamp on the **upper**
-  run of the belt; even strings (far row) on the **lower** run.
+- **Which run, and which end:** odd strings (near row, the high belt plane) take the clamp on
+  the **upper** run of the belt, 5 mm off the **screw** pulley; even strings (far row) on the
+  **lower** run, 5 mm off the **motor** pulley. That is the same rule as above, spelled out:
+  with the nut on the ceiling those are the pulleys each clamp has been travelling toward.
+  The assembly model is drawn in exactly this state. **Check it on the first string:** run
+  the nut down a little and the clamp must move AWAY from the pulley it was set beside. If
+  it moves toward it, stop: the clamp belongs at the other end of that run.
+- **This assumes a RIGHT-HAND leadscrew**, which is the stock part and what the BOM asks for.
+  A left-hand screw reverses every belt: odd strings would start at the motor end and even
+  strings at the screw end, and strings 2, 4, 6 and 8 would then sit inside the 16-20 mm
+  beside their screw pulleys where the clamp meets the next string's pulley. The model
+  follows `dimensions.SCREW_HAND`; if the hand ever changes, change it there, rebuild, and
+  re-run `tools/clamp_range.py` before trusting any of this.
+- **Why the run and the end matter:** neighbouring clamps pass close near the screws, and a
+  clamp on the wrong run, or started from the wrong end, can meet its neighbour or a
+  neighbour's pulley (`tools/clamp_range.py`, `docs/belt-clamp-travel.md`).
 - **Which way round:** the belt's teeth face the INSIDE of its loop and the clamp's ribs are
   on that side, so the key channel in half A ends up on the OUTSIDE of the loop. If the
   channel faces into the loop, the clamp is upside down.
