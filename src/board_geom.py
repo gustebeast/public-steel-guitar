@@ -56,8 +56,6 @@ _HEIGHT: dict = {
     "L_Sunlord_SWPA5040S": 4.0,
     # the CAN tee's terminator switch, DSHP01TSGER: 2.30 +-0.20 off the board (its drawing)
     "Kangshen_DSHP01TSGER": 2.5,
-    # the sensor board's terminator switch, Nidec CAS-120TA: "2.5 max" (its outline drawing)
-    "Nidec_Copal_CAS-120A": 2.5,
 }
 _TAIL: dict = {
     # READ, not estimated (2026-10-04): HX's PZ1.27-2xNP WZ drawing gives the solder leg
@@ -73,7 +71,6 @@ _TAIL: dict = {
     "SOT-23-6": 0.0,                             # surface mount (the Pi cap's U1)
     "L_Sunlord_SWPA5040S": 0.0,
     "Kangshen_DSHP01TSGER": 0.0,                 # gull wing
-    "Nidec_Copal_CAS-120A": 0.0,                 # J-hook
 }
 _THT_LEGS: dict = {}
 _PANEL: dict = {}

@@ -2302,9 +2302,9 @@
       "what": "JFC1206-1200FS C136345 -- JLCPCB parts API at qty 20"
     },
     "can_tee:SW1": {
-      "usd": 0.4682,
+      "usd": 0.4081,
       "verified": "v",
-      "what": "DSHP01TSGER C3293141 -- JLCPCB parts API at qty 100"
+      "what": "DSHP01TSGER C3293141 -- JLCPCB parts API at qty 210"
     },
     "motor_ctrl:C16": {
       "usd": 0.2028,
@@ -4742,9 +4742,9 @@
       "what": "150k C25755 -- JLCPCB parts API at qty 10"
     },
     "lever_sensor:SW1": {
-      "usd": 0.5154,
+      "usd": 0.4081,
       "verified": "v",
-      "what": "CAS-120TA C2921534 -- JLCPCB parts API at qty 110"
+      "what": "DSHP01TSGER C3293141 -- JLCPCB parts API at qty 210"
     }
   },
   "modules": {
