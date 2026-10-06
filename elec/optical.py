@@ -4088,6 +4088,15 @@ BOARD_NOTES["quality"] = {
               "converter can be taken off the bus alone by grounding its SHDNZ pull-up's "
               "pad. No pad on MID, on purpose. docs/optical-bringup-diagnostics.md has the "
               "order of work",
+        "M11": "finish.py's CAD check: 258 of 258 routed parts present in the CAD, "
+               "every one where the CAD draws it. The lead's full build on main "
+               "b0e7a911 (2026-10-05) with this board's geometry: 1010 components, 0 "
+               "unintended overlaps, the rotating-part sweep clean -- the board, its "
+               "parts at their drawn heights, its mated plugs and its cables against "
+               "the plastic and the fasteners round it. The two mounting holes are "
+               "cuts in the outline with their keep-outs in the board file, so DRC "
+               "holds copper off them, and the screw heads are solids in that build. "
+               "Parts the fab cannot place: none (M30 is the tier)",
         "M10": "USB: U10 (USBLC6-2SC6) is the first thing on the pair, 1.9 mm from the "
                "receptacle's pads, with VBUS on its rail pin; the PHY carries its own ESD "
                "cells behind it. This is an internal port (a 100 mm lead to the panel's hub, "
