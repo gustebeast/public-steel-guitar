@@ -411,6 +411,12 @@ with a volume-checked fuse per segment. Sound.
 
 **The largest undesigned behaviour, and a consequence of B1's table.**
 
+> **Corrected 2026-10-06 (user): both travel stops exist.** Since 2026-10-01 the top stop
+> is the changer room's ceiling (`D.CHANGER_CEIL_Z`) and the bottom stop is the thrust
+> bearing's inner ring, which the nut's boss lands on (`D.NUT_BOT_MIN`, `D.SUPPORT_BRG_Z`).
+> Read "no hard stop" below as history. What is still open is the firmware: soft limits,
+> and a homing move (a low-current stall against either stop gives a reference).
+
 There is **no homing reference, no limit switch, no index mark and no hard stop**
 anywhere in the string drivetrain. `src/bridge_endplate.py:666-670` says the
 guide rod's upper retention and **both** travel stops are deferred ("user: ignore
