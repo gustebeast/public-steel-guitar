@@ -1,5 +1,11 @@
 # Fret lighting — the separated strip (brenner, 2026-09-29)
 
+> **2026-10-06: the driver is TLC5971RGER (C543004, VQFN-24) now, not the TLC59711 in HTSSOP-20.**
+> The same TI family: twelve channels, 16-bit enhanced-spectrum PWM, the same 224-bit
+> protocol, 17 V outputs; about 0.87 USD less each and a cooler package (38 C/W against
+> 68.6). What follows is the design record as written and still says TLC59711 and
+> HTSSOP-20 pin numbers; the pin table in force is in `elec/fret_led.py`.
+
 The user split the one-source scheme in two: **this** board lights the FRETS from the
 underside of the top panels, and a second board (not this document) mounts inverted above
 the light window and fires down at the player's feet. The reason is loss — a single source

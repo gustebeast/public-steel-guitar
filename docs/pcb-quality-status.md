@@ -79,6 +79,14 @@ ROTATION-CHECK.txt lists what was corrected and what could not be measured.
 * The foot boards no longer need that option (2026-10-06): re-routed with a 0.55 mm pad on
   the standard 0.30 mm hole, 0 unconnected and 0 violations on both, which takes about
   38 USD off each order of five.
+* The four LED boards carry TLC5971RGER (C543004, VQFN-24) in place of TLC59711PWPR
+  (2026-10-06): the same family and protocol, about 0.87 USD less each, 38 C/W against
+  68.6. All four re-routed, 0 unconnected, 0 violations, 0 FAIL / 1 OPEN. The QFN's fab
+  frame is NOT measured: its pin-1 dot has to be seen on the board's mark in the previewer.
+* `fret_led_key` as packaged until today had frets 3 + 4 and 6 + 7 on the same four driver
+  outputs (a loop index read after its loop). Fixed in `elec/fret_led.py`, which now asserts
+  no two zones of a driver share an output; cadkit quality A13 holds every board to its
+  declared net counts.
 
 ### Every BOM row names its part, 2026-10-06
 
