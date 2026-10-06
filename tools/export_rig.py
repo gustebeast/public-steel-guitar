@@ -14,8 +14,11 @@ Kinematics: motor pulley (axis Y) -> twisted GT2 belt -> screw pulley (axis Z) -
 leadscrew -> carriage travels in Z. Pulleys are 14T:14T (1:1). The leadscrew and
 belt loop are perfectly cylindrical / a closed sweep, so a rigid transform can't
 make them look different — they are intentionally NOT animated (see NOTE below).
-The gains (mm per semitone, pulley turns per mm, belt-clamp travel) are VISUAL
-approximations: the real screw lead and string tension->pitch curve aren't modelled.
+Nothing here is a visual fudge any more. The nut's height for a pitch is the design's
+own stretch figure (open_down = DL_OPEN, times 2^(semitones/6)), and everything
+downstream of the nut is the mechanism's own ratio: one pulley turn per
+screw lead, BELT_PER_MM of belt per mm of nut, and each belt clamp slides along its run
+and turns with the belt exactly as src.build.clamp_location places it.
 """
 
 from __future__ import annotations
@@ -274,6 +277,45 @@ def _verify_levers(levers) -> None:
                 f"({r.xmin:.2f} -> {a.xmin:.2f})")
 
 
+_HAND = 1 if D.SCREW_HAND == "RH" else -1
+
+# WHAT COMES OFF WITH THE DECK (user, 2026-10-05): space hides the deck and everything
+# that leaves the instrument with it -- the UI station, the fret LED boards and their
+# hardware and leads, and the pickup on its height plate. Name PREFIXES of GLB nodes.
+DECK_PREFIXES = ["top_plate", "ui_", "wire_ui", "fret_", "wire_fret_led", "pickup",
+                 "wire_pickup"]
+
+
+def _clamp_motion(i):
+    """How string i's belt clamp moves, for the viewer: it SLIDES along its belt run and
+    TURNS with the belt as it goes. Read off src.build.clamp_location -- the placement the
+    build draws and the gates step -- at the ceiling and at the floor, so the viewer
+    re-derives nothing.
+
+      nodes       the clamp's four parts
+      origin      a point on the belt line (the clamp's own origin, nut on the ceiling)
+      dir         unit vector it travels as the nut goes DOWN
+      mm_per_mm   belt per mm of nut (dimensions.BELT_PER_MM)
+      rad_per_mm  its turn about `dir` per mm of BELT travelled"""
+    import math
+    from src import build as B, belt_tensioner as BTn
+    a = B.clamp_location(i, 0.0).toTuple()
+    b = B.clamp_location(i, D.CARRIAGE_TRAVEL).wrapped.Transformation()
+    a0 = B.clamp_location(i, 0.0).wrapped.Transformation()
+
+    def col(t, k):                                    # column k of the rotation (1-based)
+        return [t.Value(r, k) for r in (1, 2, 3)]
+    o0, o1 = list(a[0]), [b.Value(r, 4) for r in (1, 2, 3)]
+    belt = D.CARRIAGE_TRAVEL * D.BELT_PER_MM
+    d = [(q - p_) / belt for p_, q in zip(o0, o1)]
+    n0, n1 = col(a0, 3), col(b, 3)                    # the clamp's normal at each end
+    cr = [n0[1] * n1[2] - n0[2] * n1[1], n0[2] * n1[0] - n0[0] * n1[2],
+          n0[0] * n1[1] - n0[1] * n1[0]]
+    ang = math.atan2(sum(c * e for c, e in zip(cr, d)), sum(p_ * q for p_, q in zip(n0, n1)))
+    return {"nodes": [f"{n}_{i}" for n, _s in BTn.clamp_components()],
+            "origin": o0, "dir": d, "mm_per_mm": D.BELT_PER_MM, "rad_per_mm": ang / belt}
+
+
 def build_rig(build_n=None) -> pathlib.Path:
     if build_n is None:
         from tools.export_glb import _current_build_n
@@ -288,7 +330,7 @@ def build_rig(build_n=None) -> pathlib.Path:
         sy = D.string_y(i)
         scz = D.screw_pulley_z(i)
         mpos = D.motor_pos(i)                        # (mx, my, mz)
-        _, tan, _ = C.splice_frame(mpos, (D.screw_x(i), sy, scz))   # belt-clamp travel dir
+        clamp = _clamp_motion(i)
         strings.append({
             "i": i,
             "string": i + 1,                          # string number (1 = highest, far edge)
@@ -297,12 +339,16 @@ def build_rig(build_n=None) -> pathlib.Path:
             # the H-nut IS the carriage now: it, its ball end and nothing else
             "carriage_nodes": [f"nut_{i}", f"string_nut_{i}"],
             # pulleys: spin about their own axis, centre in CAD space
+            # `sign` is the turn per mm the NUT GOES DOWN, about `axis`: a right-hand screw
+            # lowers its nut turning counter-clockwise seen from above (+Z), and the belt
+            # then turns the motor pulley the other way about +Y. D.SCREW_HAND flips both.
             "screw_pulley": {"node": f"screw_pulley_{i}",
-                             "center": [D.screw_x(i), sy, scz], "axis": [0, 0, 1]},
+                             "center": [D.screw_x(i), sy, scz], "axis": [0, 0, 1],
+                             "sign": _HAND},
             "motor_pulley": {"node": f"motor_pulley_{i}",
-                             "center": list(mpos), "axis": [0, 1, 0]},
-            # belt clamp: rides the belt -> slides along the belt tangent
-            "belt_clamp": {"node": f"belt_clamp_{i}", "dir": list(tan)},
+                             "center": list(mpos), "axis": [0, 1, 0], "sign": -_HAND},
+            # belt clamp: rides the belt, turning with it
+            "belt_clamp": clamp,
         })
 
     # P1..P5 are the bar's stations left to right, and foot_pedal.PEDAL_X is in
@@ -335,11 +381,15 @@ def build_rig(build_n=None) -> pathlib.Path:
         "n_strings": D.N_STRINGS,
         "carriage_travel": D.CARRIAGE_TRAVEL,        # hard clamp on net displacement
         # VISUAL gains (not physical — see module docstring):
+        # The nut's height for a pitch is the design's own figure: a string is at open
+        # pitch DL_OPEN below the ceiling it was wrapped at, and n semitones from open is
+        # DL_OPEN * 2^(n/6) (dimensions.py, at DL_OPEN). The viewer applies that.
+        "open_down": D.DL_OPEN,
         "gains": {
-            "mm_per_semitone": 2.0,                  # carriage Z per semitone raised
-            "pulley_turns_per_mm": 0.12,             # screw/motor pulley spin per mm
-            "belt_mm_per_mm": 1.5,                    # belt-clamp slide per mm
+            # the mechanism's own ratio, so the pulleys and the clamp agree with the nut:
+            "pulley_turns_per_mm": 1.0 / D.SCREW_PITCH,   # one turn per lead; pulleys are 1:1
         },
+        "deck_prefixes": DECK_PREFIXES,
         "open_tuning": list(OPEN_TUNING),
         "strings": strings,
         "pedals": pedals,

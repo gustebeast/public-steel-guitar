@@ -164,3 +164,97 @@ screw-end half of each run. Strings 9 and 10 are about 2 short of 8.35.
 
 **The slim clip** (26 × 8.2 × 5.35) was clear end to end on the old runs; on the new ones
 string 10 has (194.0 − 26 − 11 − 10) / 14 = 10.5 of travel.
+
+## 2026-10-05: M3 socket head (2.5 key), beside the belt and in line with it
+
+Stand-ins, ±20° twist margin, step 4, each string on its right run, current main (the foot
+strip is in the chassis now).
+
+**Beside the belt** (`CLAMP_BOX=36,13.7,5.6,2.4,-2.75`; the other side is worse everywhere
+but string 1):
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 24.5 | **6.6** | 20.2 | 19.6 | 15.8 | 15.1 | 11.4 | 10.5 | **6.8** | **7.5** |
+
+Strings 9 and 10 stop on each other's belt once the clamp has turned past about 55°;
+string 2 is cut short by the foot strip's lips under it. Short of 8.35 on three strings.
+
+**In line with the belt** (`CLAMP_BOX=40,8.2,6.2,2.4`): the screw sits BETWEEN the two cut
+ends of the belt, on the belt's own line, so the section is the slim clip's plus 0.85 of
+thickness.
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 36.5 | 33.6 | 30.1 | 26.7 | 23.8 | 19.7 | 17.4 | 11.6 | 11.0 | 9.5 |
+
+Clear on all ten, limited only by the ends of each run. Every 14 of extra clamp length
+costs 1.0 of travel, so string 10 has room for a clamp about 56 long. Not designed, and
+clamp against clamp is not re-measured. Open: the head faces the belt, so the key has to
+come in at an angle (ball end) over a gap left behind the head, or the head needs another
+way to be turned.
+
+## 2026-10-05: the in-line M3 clamp, as modelled (`src/belt_tensioner.py`)
+
+Two halves, 8.2 across the belt, 6.4 through it, 49.2 long fully loose (45.2 closed). The
+screw's head faces the belt, so a channel in the back of half A takes the ball end of the
+2.5 mm key at 25°. The real solids, ±20° twist margin, step 4, each string on its right run:
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 35.9 | 33.0 | 29.5 | 26.6 | 23.1 | 17.4 | 16.7 | 11.0 | 10.3 | 8.8 |
+
+All ten carry the 8.35. String 10 is the tight one and is limited only by the ends of its
+run. Clamp against clamp is still not re-measured, and the build still draws every clamp
+at its reference spot on the lower run.
+
+## 2026-10-05, later: channel rails over the slot mouths (user)
+
+Each half carries a channel rail that slides over the other half's slot mouth: it closes
+the way the belt went in and hooks the slot's two lips so tension on the ribs cannot creep
+the slot open. A's rail runs inside the section; B's runs outside A (the head window
+needs both its side walls), so the clamp is 9.15 across, 6.4 through, 49.2 long. Real
+solids, ±20° twist margin, step 4:
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 33.0 | 33.0 | 26.9 | 26.6 | 23.1 | 17.6 | 16.7 | 11.3 | 10.3 | 8.8 |
+
+Still clear on all ten; the extra width only costs strings 1 and 3 some span near their
+motor pulleys.
+
+## 2026-10-05: clamp against clamp, own belt and pulleys, exhaustively (`tools/clamp_range.py`)
+
+Belts, pulleys and clamps only (user). Every clamp stepped end to end of its run (4 mm
+steps), at the nominal twist and a margin either side, against the other run of its own
+belt, every other belt and pulley, and every other clamp at every one of ITS steps and
+twists. Bounding boxes first; clamp against clamp settled on the real solids.
+
+**First result, the 9.15-wide clamp: NOT clear.** Clamps 2↔3, 4↔5, 6↔7 and 8↔9 (an even
+string's lower run against the next odd string's upper run) pass 8.8 apart near the
+screws, each presenting its +y side to the other. Clear at nominal twist by about 0.6,
+grazing at ±5°, 10 mm³ at ±10°, 39 mm³ at ±20°. No other run assignment is better: all
+upper, all lower and the swapped rule each collide on every neighbouring pair.
+
+**Fix:** the +y side went from 4.1 to 3.5 off the belt's centre (A's rail is the slot's
+side wall there), its two edges are chamfered 0.4, and the screw moved 0.3 toward −y so
+the head window keeps two equal 0.9 rails. 8.55 across.
+
+**Result now:** no clamp meets another clamp, or its own belt, at any pair of positions,
+at ±10° or at ±20°. At ±10° every string is clear at every step. At ±20° the only hits
+are a neighbour's pulley near one end of six runs (bounding box, so slightly pessimistic):
+strings 2, 4, 6 and 8 in the first 16-20 mm at the screw end, strings 1 and 3 over
+10-35 mm near the motor end. Each still has a clear stretch far longer than the 116.9 it
+needs (string 8, the shortest affected: about 198).
+
+**And the install rule keeps each clamp in it.** With a right-hand screw the nut rises as
+an upper-run clamp is carried toward the screw and a lower-run clamp toward the motor. So
+spliced with the nut on the ceiling, odd strings start at the screw end and even strings
+at the motor end, and both travel away from their blocked ends. ⚠ That direction is
+derived, not yet seen on a bench.
+
+`tools/clamp_study.py` (chassis and endplate included) on the same solids, ±20°:
+
+| string | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| clear travel (mm) | 33.0 | 33.0 | 26.9 | 26.6 | 23.1 | 20.5 | 16.7 | 14.1 | 10.3 | 8.8 |

@@ -216,3 +216,92 @@ OPEN; an item moves to DONE with the commit that closed it.
     -> up the endplate -> over motor 0 at x -595.5 -> down at y -50 -> Pi cap J6. Its cap
     end reads J6 off the routed pi_cap, so it follows bronner's re-route. LEAD_AXIS (the
     wire row's height in the XH housing) is an estimate. The FRET lead is still not drawn.
+
+30. 2026-10-05: both channel shoulders are two beads (were 1.20 / 1.50). The -Y one grew
+    toward +Y, so the seam pogo row moved 0.40 toward the LEDs; land 4 is 0.45 from the
+    LED body, 0.10 inside its courtyard (declared per board in elec/pcb_declared.py).
+    User asked to grow it -Y into the motor wall instead: NOT done, only WALL_T 1.60 is
+    left against the motor pocket there. Baffle wall at the window edge: not built, pogo
+    4 slides through that line (only 1.95 of height is free under the barrels).
+
+31. 2026-10-05: BOTH LIGHTING LEADS DRAWN AS FOUR CONDUCTORS (src/led_leads.py), colour per
+    way (black GND, red 24 V, white SCK, blue SDT), each on its own contact; contact
+    positions derived from the routed geometry and checked against the boards' pads.
+    Replaces the single wire_foot_led bundle. Scoped gate green.
+    - Wire-row height in the housings is still an estimate (half the socket's height).
+    - electronics.pi_cap_pin("J6", n) counts the wrong way (J6 is at 180: way 1 is at the
+      HIGH board x). Not used by led_leads; told the lead.
+    - STALE after the new belt clamp merges: foot_light.py's text about the placeholder
+      tensioners (~lines 20, 111) and docs/foot-led.md -- re-read the clamp's lowest
+      point from the merged model (lead's request).
+
+## MANUAL QUALITY PASS (started 2026-10-05; a 15-min loop keeps prompting it)
+
+Evidence sources cached in the session scratchpad `ds/` (TI TLC59711 SBVS181A, TI LMR33630
+SNVSAN3F, XINGLIGHT LED, JDT fuse, Xinyangze pogo, Sunlord SWPA (a scan: render the page),
+Newhaven display, Alps encoder, Legion switch). `scratchpad/jlc.py <keyword>` asks
+JLCPCB's parts API (code, model, basic/extended, stock).
+fab packages: `"C:/Program Files/KiCad/10.0/bin/python.exe" elec/fab.py <board>`.
+⚠ NEVER run two routes at once, never regenerate a board's netlist while its route is
+queued (the queued layout reads whichever board.json is on disk at that moment), and never
+stop java.exe by name: stop by PID, command line containing `public-steel-guitar-brenner`
+and the board name.
+⚠ A VIA ADDED TO A ROUTED BOARD LANDS ON BACK-LAYER TRACKS (tried: 4 to 11 DRC errors a
+board). Declare it in the generator and re-route.
+⚠ `finish.py --keep-route` keeps the board file's old part VALUES; the BOM is built from
+the .net so the package is right, but sync the board (scratch /tmp/setval.py) or re-lay.
+
+STATE (2026-10-05, late) -- DONE: every board 0 FAIL, 1 OPEN (M12, order day)
+- ui_board, foot_led_a, foot_led_b, fret_led_key, fret_led_mid: routed (0 unconnected,
+  0 DRC), signed, CAD fit check clean, packaged in elec/out/fab/<board>.zip, gerbers
+  rendered outside KiCad and the drill file laid over the copper (plated holes 72, 262,
+  255, 344, 625: all on copper on both outer layers).
+- The pre-split single `foot_led` package is in elec/out/fab/_stale/ (not orderable).
+- Re-routing any board means: re-measure, update the figures in its `_manual` /
+  `MEASURED`, finish --keep-route, fab.py, render again.
+
+WHAT THE PASS CHANGED (all in the generators, with the reason at each)
+- LED Vf is 3.0-3.4 V (XINGLIGHT p.4), not 3.2 max: foot rail 11.0 -> 11.50 V, fret rail
+  14.0 -> 14.52 V. Nets +11V5 / +14V5 (also src/fret_light.py POGO_LANES).
+- LMR33630: one shared cell, elec/buck_cell.py -- a capacitor at EACH VIN/PGND pair, the
+  divider at FB, VCC's capacitor at its pin, laid slabs and vias for heat.
+- The regulator is the 1.4 MHz LMR33630BRNXR (was the 2.1 MHz C part: 0.35 W hotter, about
+  127 C on the fret board at full white). JLCPCB stock 260 -- the C part is the named
+  alternate on the same land.
+- The inductor is SWPA5040S4R7MT, 5 x 5 x 4 (the 4 x 4 part saturated below the
+  regulator's current limit). src/board_geom.py has its height.
+- 1 k in series with SCK / SDT at the cable socket of foot_led_a and fret_led_key (a live
+  Pi into a dark driver). Nets at J1 are SCK_CABLE / SDT_CABLE.
+- TLC59711 heat pad: 1 via -> 7. Seam supply lands: 1 via -> 3. Socket ground way: +1.
+- fret_led_key: a second ground band and nine vias beside the buck.
+- Values carry their ratings; fuses are part numbers; 1206s across the foot strip; three
+  labelled test pads on each buck board.
+- ui_board: display current 345 / 375 mA, tracks 0.40, decoupling at VDD.
+- Independent checks: gerbers rendered with pygerber + own Excellon overlay (scratchpad
+  gv.py, gv_drill.py); every orientation-critical footprint compared pad for pad with
+  JLCPCB's library footprint (scratchpad rot.py).
+
+NEEDS USER -- the one item left open on every board is M12, and only these parts of it:
+1. JLCPCB order page, per board: upload elec/out/fab/<board>.zip, then the BOM and CPL
+   from inside it. In the parts-placement PREVIEW check each part against this table
+   (KiCad angle in the CPL -> angle the fab's own footprint needs; worked out from
+   JLCPCB's library footprints, so the previewer should show these parts turned by the
+   difference until corrected -- fix it in the previewer, do not edit the file):
+     ui_board   J1 90 -> 0, J2 180 -> 90, SW1 0 -> 0, SW2 0 -> 0 (or 180: only the
+                button's sense inverts, and JP1 on the output board picks the throw)
+     foot_led   U1-U4 0 -> 270, U10 0 -> 270, J1 270 -> 270, every LED unchanged
+     fret_led   U1-Un 0 -> 270, U10 (key) 270 -> 180, J1 270 -> 270,
+                every LED unchanged
+   ⚠ THE SEAM POGO PINS (J11-J14, J21-J24) CANNOT BE PRE-CHECKED: one pad, so only the
+   picture shows which way the barrel points. Each must point OFF its board's end.
+2. Stock on the day (all in stock 2026-10-05). The thin ones:
+     LMR33630BRNXR C2071384   260   -- if short, order LMR33630CRNXR C2071783 (3,453) in
+                                      its place: same land, nothing else changes, and
+                                      tell the firmware to cap the fret lights at 75 %
+     pogo C5203987            594   (16 an instrument)
+     display header C2905493  1,131;  ribbon header C22438114  2,050
+3. The quote page must accept ECONOMIC assembly for the foot boards (24 mm wide: under
+   Standard's 70 x 70 minimum) and for ui_board (72 x 34). The fret boards clear both
+   tiers. If it insists on Standard for a part, stop and say which.
+4. Tick: Confirm Production File, Confirm Parts Placement, Remove Mark; via 0.25 / 0.50
+   on the foot boards (ORDER.txt in each package).

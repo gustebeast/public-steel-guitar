@@ -1720,7 +1720,7 @@ Every part on both boards is already sourced in `elec/fab.py`:
 | LED | XL-5050RGBW | C7371891 | already selected; top-mount confirmed |
 | driver | TLC59711PWPR | C116842 | ES-PWM ~19.5 kHz, 16-bit GS, a white channel |
 | buck | LMR33630CRNXR | C2071783 | the **optical board's** buck, and the "C" is **2.1 MHz** |
-| inductor | SWPA4030S4R7MT | C57269 | the optical board's, 4.7 uH, Isat 3.2 A |
+| inductor | SWPA5040S4R7MT | C48496 | 4.7 uH, Isat 3.50 A min (was the optical board's SWPA4030S4R7MT until 2026-10-05) |
 | harness | S6B-PH-SM4-TB | C265405 | the LED strip's own connector, 4.80 deep |
 
 **Why the 2.1 MHz variant matters here.** A 400 kHz part beside a magnetic pickup puts its
@@ -1801,3 +1801,60 @@ clean-up to a board already on disk. Re-running a whole route to pick up an impr
 the clean-up throws away a good board and gambles on freerouting giving another one -- the
 non-determinism `elec/README.md` warns about. ⚠ It is not a repair tool and must not become
 one; anything needing judgement about where copper goes belongs in route.py's repair block.
+
+
+## The manual quality pass, 2026-10-05: what changed and why
+
+Read against the makers' sheets and the routed boards (cadkit/PCB_QUALITY.md, M1-M42).
+Everything above that says 14 V, 0.89 A or 396 mW is the history; these are the numbers
+now.
+
+1. **Rail 14.02 -> 14.52 V** (100k over 7k68 || 200k). XINGLIGHT give green, blue and
+   white 3.0 to 3.4 V at 20 mA, not 3.2: four in series is 13.6 V, and the old rail could
+   sit as low as 13.6 itself. 14.52 leaves 0.44 V at its own low limit. The net is
+   `+14V5`. 24 V draw, every fret full white: 0.93 A.
+2. **Driver heat, recomputed:** 0.68 W typical and 0.86 W worst per TLC59711 at full
+   white (it was written as 0.40 W on the old voltages, without the driver's own supply
+   current). Seven vias under each heat pad instead of one.
+3. **The buck's layout is TI's now** (`elec/buck_cell.py`): a 100 nF / 50 V at each
+   VIN/PGND pair and the feedback divider at the FB pin -- it stood 15 mm away, past the
+   inductor. Copper slabs under the input side carry the heat: about 1.25 W in a package
+   with no thermal pad.
+4. **Local bulk is 4.7 uF / 50 V** (was 25 V on a 14.5 V rail), every 100 nF is the 50 V
+   part, the fuse is JFC1206-1200FS (2 A, 63 V, fast).
+5. **Three labelled test pads** in the bay: +24V, +14V5, GND.
+6. **The regulator is the 1.4 MHz LMR33630BRNXR** (C2071384), not the 2.1 MHz
+   LMR33630CRNXR, on the same land. Read off TI's 24 V curves for this package the 2.1 MHz
+   part loses 1.2 W at 0.7 A and 1.45 W at 1.4 A, about 0.75 W of it at any load, and it
+   has no thermal pad. The 1.4 MHz part loses 0.9 W and 1.1 W. JLCPCB held only 260 of
+   it on 2026-10-05: the C part is the named alternate, same land, no other change, and
+   then full white has to be capped in firmware.
+7. **The inductor is SWPA5040S4R7MT** (C48496; 4.7 uH, 5 x 5 x 4 mm), not the 4 x 4
+   SWPA4030S4R7MT. The old part saturates at 2.90 A guaranteed (3.20 typical) and TI
+   require an inductor that does not saturate below the regulator's low-side limit,
+   3.5 A typical. The new one is 3.50 A guaranteed, 3.90 typical, at half the
+   resistance, and 4.7 uH is TI's table value for 12 V out at 1.4 MHz.
+8. **1 k in series with SCK and SDT at the cable socket** (R21, R22). A Pi that is up
+   while this board is dark -- a fuse open, the 24 V lead off, a Pi on USB power on the
+   bench -- would otherwise power the first driver's logic through its input protection
+   diodes. 1 k holds that to 2.7 mA.
+9. **The regulator's VCC capacitor stands at its pin**, with its ground pad on the track
+   from the pin beside it; it was reached through two vias.
+10. **No supply enters a plane through one via**: three in each seam land that carries
+   the rail or its return, and a second at the socket's ground way.
+
+**Junction temperatures at full white, 45 C under the deck** (estimates: the thermal
+resistance is TI's 23.5 C/W junction-to-board plus this board's copper, about 57 C/W in
+all with the second ground band and its nine vias beside the cell; TI's own figure for
+the package on four heavier layers is 50 to 63):
+
+| | loss | junction | limit |
+|---|--:|--:|--:|
+| LMR33630B, 1.38 A rail (both boards) | 1.1 W | 107 C | 125 C operating, 165 C shutdown |
+| the same at 63 % | 0.95 W | 99 C | |
+| TLC59711, twelve channels | 0.68 to 0.86 W | 92 to 104 C | 150 C |
+
+The firmware's lights cap (1.07 A at 24 V for frets and foot together) does NOT bound
+this board: the frets alone at full white draw 0.93 A. The 18 C of margin above is the
+hardware's. With the alternate 2.1 MHz part it is 127 C at full white and 110 C at
+75 %, so that part needs a fret cap of its own.
