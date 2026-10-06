@@ -709,6 +709,14 @@ BOARD_NOTES = {
             "M9": "no MCU, nothing to program. Every net on the board is on a through-hole "
                   "pin of J1 or J5 or on a connector land, all reachable with a probe from "
                   "the bare front face; ground is on eight socket pins",
+            "M11": "finish.py's CAD check: 18 of 18 routed parts present in the CAD, "
+                   "every one where the CAD draws it, all eighteen on the one face. The lead's full build on main b0e7a911 (2026-10-05) "
+                   "with this board's geometry: 1010 components, 0 unintended "
+                   "overlaps, the rotating-part sweep clean -- the board, its parts at "
+                   "their drawn heights, its mated plugs and its cables against the "
+                   "plastic and the fasteners round it. No mounting hole: the board "
+                   "hangs on the Pi's 40-pin header. Parts the fab cannot place: none "
+                   "(M30 is the tier)",
             "M10": "decision: no clamp on this board. Every connector mates inside the instrument "
                    "to its own harness. The 24 V it carries is clamped at motor_ctrl (D8, SMAJ30A) "
                    "and fused there (F3); the Pi's 5 V has motor_ctrl's crowbar (D9 + F2). The one "
