@@ -51,9 +51,6 @@ LCSC = {
                                     # split so each half unplugs from under the
                                     # instrument). Same family as the 8-way above.
                                     # Verified 2026-09-25: 28,934 in stock.
-    "B8B-PH-K-S": "C157974",        # B8B-PH-K-S(LF)(SN), stock 21,709 -- motor_ctrl J2,
-                                    # the same bus-B trunk on the vertical variant
-    "PJ-320D-4A": "C95562",         # TRRS 4-pole socket
     "SN65HVD230DR": "C12084",       # CAN transceiver, both boards
     "LMR16006XDDCR": "C87080",      # 60 V 0.6 A buck, lever + motor controller
     "TYPE-C-31-M-12": "C165948",    # USB-C receptacle, motor controller + panel
@@ -85,8 +82,6 @@ LCSC = {
     "WPN4020H4R7MT": "C98363",       # 4.7 uH, 4x4x2.0 closed-circuit, Isat 4.0 A (optical L1)
     "SWPA5040S4R7MT": "C48496",      # 4.7 uH, 5x5x4.0 shielded, Isat 3.50 A min (the LED bucks)
     "LMR33630BRNXR": "C2071384",     # the 1.4 MHz RNX part (the LED bucks, elec/buck_cell.py; optical U13)
-    # ⚠ "600" IS 60 OHM in Murata/Sunlord bead numbering. 601 is the 600 ohm part.
-    "GZ1608D601TF": "C1002",         # 0603 bead, 600R@100MHz, 200 mA, DCR 450 mohm
     # -- motor_ctrl's parts that were values and not parts until the 2026-10-04 review --
     "PNR3015-150M": "C19634062",     # APV 15 uH 3015, Isat 1.4 A guaranteed; 906 (LMR16006 L1).
                                      # Fits: ANR3015T470M C7427088 (0.43 A, 14.9k)
@@ -129,11 +124,6 @@ LCSC = {
     "YZ185115035T-04025-01": "C54930022",   # vertical 1x4 gold target, stock 210 -- THIN
     "S4B-ZR-SM4A-TF": "C485354",            # JST S4B-ZR-SM4A-TF(LF)(SN), stock 26,844
     "YZF0002-38080-02": "C5203987", # side-mount SMD pogo, 24 V / 12 A: the fret seam, x6 a side
-    # ⚠ THE FOOT STRIP'S, AND IT IS THERE FOR ITS HEIGHT. Everything on that board hangs
-    # into a 3.40 mm trough; the PH above is 5.50 tall and does not fit. JST's own
-    # drawing puts the side-entry SH at 2.95. 1.0 A / 50 V against 0.24 A at 24 V.
-    "SM04B-SRSS-TB": "C160404",     # JST SM04B-SRSS-TB(LF)(SN), 4-way side-entry SH,
-                                    # 3,495 in stock 2026-09-30
     "B2B-XH-A": "C158012",          # JST B2B-XH-A(LF)(SN), stock 381,008 -- sourced
                                     # 2026-09-19 by asking the catalogue, and it is the
                                     # (LF)(SN) trap again and not a preference: the BARE
@@ -148,10 +138,6 @@ LCSC = {
     # checked against it pin for pin rather than chosen by name:
     "NMJ6HCD2": "C368502",          # Neutrik 1/4 in TRS jack, THT. 1350 in stock 2026-10-02
                                     # (it was at ZERO on 2026-09-17 and sat in OPEN_VALUES)
-    "PZ1.27-2x7P": "C22438113",     # HX PZ1.27-2x7P WZ: 1.27 mm 2x7 RIGHT-ANGLE pin header,
-                                    # THT, 2902 in stock 2026-10-02 -- the pi_cap's UI ribbon.
-                                    # (C22438122, named in pi_cap.py, is the VERTICAL one and
-                                    # does not match the Horizontal footprint.)
     "SQD50P06-15L": "C3281500",     # Vishay SQD50P06-15L_GE3, P-ch 60 V 15.5 mOhm TO-252;
                                     # 6,668 in stock 2026-10-04 -- the output panel's power
                                     # switch. Same pinout: NCE60P50K (28 mOhm), AOD409 (40)
@@ -169,7 +155,6 @@ LCSC = {
                                     # 12 V 0.3 A; 2535 in stock 2026-10-04. The power button.
     "MCP4261-103E/ST": "C185580",   # dual 10k digital pot, TSSOP-14 -- ⚠ 96 in stock on
                                     # 2026-10-01; re-check before ordering
-    "SN74LVC1G3157DCKR": "C38663",  # SPDT analog switch, SC-70-6
     "TLV9061IDBVR": "C398358",      # TI, SOT-23-5: 1 OUT 2 V- 3 IN+ 4 IN- 5 V+ -- exact
                                     # match to U7/U8. Stock 301,906. Same family as the
                                     # optical board's TIAs. RRIO, 5.5 V max on a 5 V rail.
@@ -193,11 +178,6 @@ LCSC = {
                                     # 6.0 / tail 3.0, all three read from the listing
                                     # because src/ui_panel.py's Z stack is built on
                                     # them. 1,131 in stock.
-    # 154 IN STOCK, AND IT IS THE THINNEST LINE ON THIS BOARD. The right-angle 2x7 is
-    # the only shrouded IDC that fits under the deck (see ui_board.py); if it is gone,
-    # the fallback is the VERTICAL DC3-2.54-14PAS, which needs the board re-laid for a
-    # different exit -- not a like-for-like swap. Check it before ordering.
-    "DC3-2.54-14PAL": "C5156673",
 }
 # ⚠ EVERY VALUE STRING MUST BE ACCOUNTED FOR -- IN LCSC, GENERIC, OR HERE.
 # branner's catch, and it is the right shape for the bug that happened: usb_panel's
@@ -252,6 +232,14 @@ def _check_bom_md(names):
     """
     if set(names) != set(BOARDS):
         return
+    # The other direction (2026-10-06): does anything still name a part NO board carries?
+    # bom_audit.py, which also holds docs/order-parts.md against the netlists.
+    try:
+        import bom_audit
+        print()
+        bom_audit.main([])
+    except Exception as exc:
+        print("  !! bom_audit did not run: %r" % (exc,))
     try:
         import bom_check
         import part_totals

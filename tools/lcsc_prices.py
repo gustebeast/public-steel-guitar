@@ -126,10 +126,29 @@ HOUSING = {("XH", 2): "C144401", ("XH", 4): "C493083", ("XH", 8): "C144407",
 CRIMP = {"XH": "C140573", "PH": "C111515", "SH": "C263995", "VH": "C160350"}
 
 
+def design_netlists():
+    """The netlists of the boards in the design: fab.BOARDS, nothing else.
+
+    ⚠ NOT `elec/out/*.net` (2026-10-06). That directory is untracked and keeps the files
+    of every board that was ever tried -- four CAN tee variants, the first LED strip, an
+    alternative optical board -- and globbing it counted their parts into the order: 30
+    eight-way headers an instrument where the design has 21, and prices written into
+    prices.json for boards nobody will build. Which boards exist is fab.py's list."""
+    src = io.open(os.path.join(ROOT, "elec", "fab.py"), encoding="utf-8").read()
+    body = src[src.index("BOARDS = ("):src.index("# ── SOURCING")]
+    out = []
+    for name in re.findall(r'"([a-z0-9_]+)"', body):
+        path = os.path.join(ROOT, "elec", "out", name + ".net")
+        if not os.path.isfile(path):
+            raise SystemExit("no netlist for %s -- run its generator in elec/ first" % name)
+        out.append(path)
+    return out
+
+
 def mating_halves():
     """{LCSC code -> pieces in a ten-instrument order} for housings and crimps."""
     need = collections.Counter()
-    for path in sorted(glob.glob(os.path.join(ROOT, "elec", "out", "*.net"))):
+    for path in design_netlists():
         board = os.path.basename(path)[:-4]
         n = board_qty(board)
         if n is None:
@@ -153,7 +172,7 @@ def collect():
     demand = collections.Counter()
     used = collections.defaultdict(list)
     unpriceable = collections.Counter()
-    for path in sorted(glob.glob(os.path.join(ROOT, "elec", "out", "*.net"))):
+    for path in design_netlists():
         board = os.path.basename(path)[:-4]
         n = board_qty(board)
         if n is None:
@@ -247,6 +266,17 @@ def main(argv=None):
         "API at the quantity a ten-instrument order needs. Re-run it rather than",
         "editing by hand: the breaks move and so does stock.",
     ]
+    # A PRICE FOR A DESIGNATOR THAT IS GONE IS REMOVED, not left to read as current: the
+    # board was retired, or the part was. (86 such entries had collected by 2026-10-06.)
+    live = set()
+    for _net in design_netlists():
+        board = os.path.basename(_net)[:-4]
+        live.update("%s:%s" % (board, ref) for ref, _v, _f, _c in netlist_parts(_net))
+    gone = [k for k in by_ref if not k.startswith("_") and k not in live]
+    for k in gone:
+        del by_ref[k]
+    if gone:
+        print("\n  removed %d price(s) for designators no board has any more" % len(gone))
     for line, code, qty, usd, stock, model, where in rows:
         for board, ref, val in where:
             by_ref["%s:%s" % (board, ref)] = collections.OrderedDict([

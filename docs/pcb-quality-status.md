@@ -36,6 +36,31 @@ needs the lead's build with the new board geometry.
 None of these can be closed from the files on hand, so the loop leaves them OPEN on purpose
 rather than ticking them.
 
+### The paperwork against the boards, 2026-10-06
+
+An order-day stock list named a photodiode that is on no board: it had been replaced
+weeks earlier and BOM.md still named it where it was first chosen. The checks that existed
+all start from a board and ask whether the paperwork agrees; none started from the
+paperwork. What changed:
+
+* **`docs/order-parts.md` is the list of what is on the boards**, generated from the
+  netlists by `tools/order_list.py`. BOM.md points at it from its first paragraph and
+  from the optical section, and no longer keeps an order table by hand.
+* **`elec/bom_audit.py`** fails on: a part description citing a different LCSC code than
+  the one ordered, a price for a designator or a board that no longer exists, a stale
+  `order-parts.md`, a BOM.md row naming a different part than its board. It lists (without
+  failing) every line of prose that names a part on no board; sections headed HISTORY
+  are not searched. `elec/fab.py` runs it on a full build.
+* Found and fixed by its first run: `output_panel` U10's description cited **C132173,
+  which is a 4.7 uF capacitor** (the fab's own BOM had the right code, C185580);
+  71 prices in `elec/prices.json` for boards and designators that are gone;
+  `tools/lcsc_prices.py` counting four retired tee variants and two retired boards into
+  the order; seven sourcing entries and two geometry files for parts and boards no longer
+  in the design; BOM.md's optical order table naming the emitter, op-amp and crystals of
+  earlier revisions.
+* Run before an order: `py -3.12 elec/bom_audit.py`, then `py -3.12 elec/lcsc_check.py`
+  (every code against the catalogue, with stock per instrument).
+
 ### Errata and the motor board's USB, read 2026-10-05
 
 ST ES0392 rev 15, Microchip DS80000645A (USB334x) and WCH's reference manual V2.2 were
