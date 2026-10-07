@@ -96,20 +96,11 @@
     "m4_button_10": {
       "usd": 0.0958,
       "verified": "v",
-      "per_instrument": 69,
+      "per_instrument": 70,
       "vendor": "McMaster-Carr",
       "sku": "92095A190",
-      "order": "7 x $9.44 (pack of 100) = $66.08 for 690 needed",
-      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
-    },
-    "m4_button_12": {
-      "usd": 0.3692,
-      "verified": "v",
-      "per_instrument": 1,
-      "vendor": "McMaster-Carr",
-      "sku": "92095A192",
-      "order": "1 x $14.77 (pack of 100) = $14.77 for 10 needed",
-      "what": "M4x12 -- 1 UI clamp, and nothing else: the pickup retention screw is an M4x20 now. This row goes when the clamp moves to x10"
+      "order": "7 x $9.44 (pack of 100) = $66.08 for 700 needed",
+      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, 1 UI clamp (was M4x12), and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
     },
     "m4_button_20": {
       "usd": 0.1894,
