@@ -242,7 +242,7 @@ PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_bar_c",
 # magnet, sensor board, springs, set screws, housing and lever are ALL designed to
 # touch/run on each other. Whitelist any pair WITHIN the family (this never masks a
 # housing<->chassis / housing<->motor clash, since those involve a non-family part).
-_CORE = {"bearing", "magnet", "pcb", "chip", "can_header", "pcb_shim", "axle",
+_CORE = {"bearing", "magnet", "pcb", "chip", "pcb_shim", "axle",
          "magnet_cap", "axle_screw", "axle_washer"}
 # the two feel lanes, each with the same hardware
 _LANE = {f"{lane}_{part}"

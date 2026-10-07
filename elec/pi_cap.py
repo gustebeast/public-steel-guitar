@@ -154,8 +154,8 @@ SOCKET_FP = "Connector_PinSocket_2.54mm:PinSocket_2x20_P2.54mm_Vertical"
 PI_5V = (2, 4)
 # ⚠ PINS 14 AND 20 ARE DELIBERATELY NOT TAKEN, and this is the UI ribbon's doing.
 # The header has eight GND pins; this board uses six. Fanning J5's thirteen signals out of
-# the socket band put +3V3_PI across the whole band at y -7.23 -- on F.Cu west of x 7.95 and
-# on B.Cu east of it, so there is no layer on which anything can cross it -- and pins 14 and
+# the socket band put +3V3_PI across the whole band at y -7.23 -- on B.Cu east of x -7.95 and
+# on F.Cu west of it, so there is no layer on which anything can cross it -- and pins 14 and
 # 20 are north of that fence with the switch lines filling what is left. Measured, not
 # assumed: the pour around each is a closed island on BOTH layers (an exact
 # SHAPE_POLY_SET.Contains map, not a bounding box), no via site exists that lands in the
@@ -286,8 +286,8 @@ def pi_cap():
 
     # ⚠ THE UI BOARD'S RIBBON (brenner's station). 14 ways, 1.27 mm, 2x7, right-angle so
     # the cable leaves IN PLANE inside the socket's own 8.5 mm standoff rather than upward
-    # into the endplate -- the same argument that put every other connector on this board
-    # on its back face. See UI_WAYS above for the map and why SPI1 rather than SPI0.
+    # into the endplate -- the same argument that made every other connector on this board
+    # a side-entry part. See UI_WAYS above for the map and why SPI1 rather than SPI0.
     # ⚠ AND THIS IS THE FIRST TIME THIS BOARD TOUCHES +3V3. It carried +5V_PI, +5V_LED, GND
     # and the two SPI0 lines and nothing else, so way 7 is a new net off header pin 1 -- the
     # PI'S OWN 3V3 REGULATOR, good for about 500 mA across everything on it. Under 100 mA
@@ -427,33 +427,33 @@ BOARD_NOTES = {
         # socket or to anything else -- the board gained 8 mm on its -Y edge and the parts
         # kept their distances. electronics._cap_place's j1_y moved with them, because that
         # is the number the whole board is positioned by.
-        "J1": (0.00, -4.50, 90.0),   # 4.5 from the board edge = the Pi header's own margin
+        "J1": (0.00, -4.50, 90.0),    # 4.5 from the board edge = the Pi header's own margin
         # ⚠ RE-TILED FOR THE SIDE-ENTRY BODIES. Courtyards are 16.7 x 12.0 (4-way XH) and
         # 17.2 x 10.2 (6-way PH) against the 12.4 x 5.75 of the vertical parts they
-        # replace, so the three together take 50.6 of the board's 56: 0.9 mm at the west
-        # edge, 0.8 and 1.4 between them, 2.3 at the east edge. Their courtyards sit 6.05 ABOVE the placement point, which is why y is 5.4
+        # replace, so the three together take 50.6 of the board's 56: 0.9 mm at the east
+        # edge, 0.8 and 1.4 between them, 2.3 at the west edge. Their courtyards sit 6.05 ABOVE the placement point, which is why y is 5.4
         # and not 8 -- at 8 they overhung the +Y edge by 2 mm.
-        "J2": (-18.50, 9.40, 0.0),      # Pi 5 V in (6-way PH, courtyard 17.2 wide)
-        "J4": (-0.75, 9.40, 0.0),       # LED 24 V in
-        "J3": (17.35, 9.40, 0.0),       # out to the fret boards
-        # the foot drop goes in the ribbon's band, mouth -Y like the ribbon, at the +X end
+        "J2": (18.50, 9.40, 180.0),       # Pi 5 V in (6-way PH, courtyard 17.2 wide)
+        "J4": (0.75, 9.40, 180.0),        # LED 24 V in
+        "J3": (-17.35, 9.40, 180.0),      # out to the fret boards
+        # the foot drop goes in the ribbon's band, mouth -Y like the ribbon, at the -X end
         # (placed by its post row: posts at y -10.50, 2.9 below the socket's pads, ways at
-        # x 22.50 / 20.00 / 17.50 / 15.00; the body runs out to y -19.7, 2.7 past the edge)
+        # x -22.50 / -20.00 / -17.50 / -15.00; the body runs out to y -19.7, 2.7 past the edge)
         # (2026-10-05: 2 mm in from where it was. In the instrument the mated XHP-4 housing
         # stood in the slot the trunk's ground and feed-2 conductors drop through onto
         # motor_ctrl J3 -- 3.5 mm3 into each. The gate could not see it: a plug is not a
         # built solid.)
-        "J6": (18.75, -10.50, 180.0),
+        "J6": (-18.75, -10.50, 0.0),
         # (and its two series resistors 2 mm in with it, out of its courtyard)
-        "R3": (10.50, -9.00, 0.0),
-        "R4": (10.50, -11.00, 0.0),
+        "R3": (-10.50, -9.00, 180.0),
+        "R4": (-10.50, -11.00, 180.0),
         # the passives drop into the band between J1's socket and the connector row
-        "C1": (-20.00, 1.00, 0.0),
-        "C3": (-15.00, 1.00, 0.0),
-        "C2": (-6.00, 1.00, 0.0),
-        "C4": (-1.00, 1.00, 0.0),
-        "R1": (5.00, 1.00, 0.0),
-        "R2": (8.00, 1.00, 0.0),
+        "C1": (20.00, 1.00, 180.0),
+        "C3": (15.00, 1.00, 180.0),
+        "C2": (6.00, 1.00, 180.0),
+        "C4": (1.00, 1.00, 180.0),
+        "R1": (-5.00, 1.00, 180.0),
+        "R2": (-8.00, 1.00, 180.0),
         # ⚠ THE UI RIBBON SITS IN THE NEW BAND AND FACES AWAY FROM THE POWER CABLES. The
         # band is y -17..-7, clear of the socket's pad rows at -5.8..-3.2; the part is
         # ~7.6 x 1.3 of pads with its body 3.07 beyond them. ROT 270 turns the body -Y, so
@@ -466,22 +466,22 @@ BOARD_NOTES = {
         # into the board to seat. -17.00 (edge) + 2.135 (pad centroid -> plastic face).
         # ⚠ +0.635 WHEN IT BECAME A 2x8 (2026-10-04), SO WAYS 1-14 DID NOT MOVE. The part is
         # placed by its pad centroid, and one more pin pair moves the centroid half a pitch;
-        # left at -3.80 every one of the fourteen routed ways shifted 0.635 and the first
-        # route came back with UI_DC and UI_RES_N open. The new pair lands at x +1.28.
-        "J5": (-3.80 + 0.635, -BOARD_L / 2.0 + 2.135, 270.0),
-        # the ribbon's 3V3 switch, off the header's +X end, turned 180 so IN / EN (the
+        # left at 3.80 every one of the fourteen routed ways shifted 0.635 and the first
+        # route came back with UI_DC and UI_RES_N open. The new pair lands at x -1.28.
+        "J5": (3.80 - 0.635, -BOARD_L / 2.0 + 2.135, 270.0),
+        # the ribbon's 3V3 switch, off the header's -X end, unturned so IN / EN (the
         # Pi's side) face the socket's pin 1 and OUT / ILIM face the ribbon; its output
         # capacitor and limit resistor on the ribbon side, its input bypass on the other,
         # each with its live pad toward the pin it serves
-        "U1": (8.00, -13.50, 180.0),
-        "C5": (4.90, -14.30, 180.0),
-        "R5": (4.90, -12.60, 180.0),
-        "C6": (11.00, -14.30, 0.0),
+        "U1": (-8.00, -13.50, 0.0),
+        "C5": (-4.90, -14.30, 0.0),
+        "R5": (-4.90, -12.60, 0.0),
+        "C6": (-11.00, -14.30, 180.0),
     },
     # ⚠ THE SOCKET'S GROUND PADS TAKE NO STITCHING VIA, AND DO NOT NEED ONE. The check
     # exists because an SMD pad touching only a pour can be orphaned when routing carves
-    # the pour up. These are PLATED THROUGH-HOLE pads: the barrel already spans F.Cu and
-    # B.Cu, so each one IS its own via and reaches both pours by construction. There is no
+    # the pour up. These are PLATED THROUGH-HOLE pads: the barrel already spans B.Cu and
+    # F.Cu, so each one IS its own via and reaches both pours by construction. There is no
     # room beside them either -- 2.54 mm pitch leaves ~0.8 mm between pads, under a 0.6 mm
     # via plus clearance -- so the check can only ever fail here.
     # J5.8 (the ribbon's ground way) joined them 2026-10-04: its stitch via stood 0.30 mm,
@@ -490,9 +490,10 @@ BOARD_NOTES = {
                           + ("J5.8",)),
     # GND pour on both layers: this board carries up to 3 A to the Pi and 1.6 A to the
     # strip, and the return for both shares it.
-    "zones": [("GND", "F.Cu", 0.3), ("GND", "In1.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    "zones": [("GND", "F.Cu", 0.3), ("GND", "In2.Cu", 0.3), ("GND", "B.Cu", 0.3)],
     # a pour the router is not told about is copper it routes signals through (motor_ctrl)
-    "plane_layers": ("In1.Cu",),
+    # In2, the inner layer next to the bare face: the Pi's 5 V lane runs on B.Cu, right over it
+    "plane_layers": ("In2.Cu",),
     "stitch_nets": ("GND",),
     "edge_escape": ("J5",),       # the ribbon header's edge-side row: layout._edge_row_escape
     # ⚠ THE LIGHTING BUS IS NOT A SIGNAL. Every net here was the 0.25 mm default (0.88 A at a
@@ -512,43 +513,44 @@ BOARD_NOTES = {
     # land is GND now). The router keeps the rest
     # of the net -- the caps and the 0.77 A foot branch -- at 0.3 mm.
     # (2026-10-04: J4's 24 V is way 2 ALONE now -- ways 3 and 4 are the power button's --
-    # so the bar comes down at x -2.00 and the tie across to way 3 is gone.)
-    # (2026-10-04, later: J3 is an XH with 24 V on way 2, at x 16.10. The bar is 1.75 mm
+    # so the bar comes down at x 2.00 and the tie across to way 3 is gone.)
+    # (2026-10-04, later: J3 is an XH with 24 V on way 2, at x -16.10. The bar is 1.75 mm
     # longer and comes down there; the foot branch leaves from the same land.)
     # U1's ground pin stands between its IN and EN pins, both on the Pi's 3V3: the pour
     # cannot reach it and neither could the stitcher (2026-10-05, a 1.0 x 0.3 island and
     # the pin open). It goes inward, to a via under the middle of the package, 0.31 from
     # the ILIM pad opposite and 0.33 from the pads either side.
-    "tracks": [("GND", "B.Cu", 0.3, [(9.14, -13.50), (8.00, -13.50)]),
-               ("+24V_LED", "B.Cu", 1.0, [(-2.00, 7.13), (-2.00, _BAR_Y), (16.10, _BAR_Y)]),
-               ("+24V_LED", "B.Cu", 0.8, [(16.10, _BAR_Y), (16.10, 7.13)]),
+    "tracks": [("GND", "F.Cu", 0.3, [(-9.14, -13.50), (-8.00, -13.50)]),
+               ("+24V_LED", "F.Cu", 1.0, [(2.00, 7.13), (2.00, _BAR_Y), (-16.10, _BAR_Y)]),
+               ("+24V_LED", "F.Cu", 0.8, [(-16.10, _BAR_Y), (-16.10, 7.13)]),
                # the foot branch, on the path the router found when the net was all its own
                # (with the bar declared it left J6 way 1 open): 0.77 A at 0.4 mm
                # (2026-10-04: it leaves J3's land 0.8 mm lower than it did, because the land
                # beside it is GND now and the old diagonal passed its corner at 0.06 mm)
-               ("+24V_LED", "B.Cu", 0.4, [(16.10, 7.13), (16.10, 4.45), (19.44, 1.11), (20.25, 1.11),
-                                          # x 20.25 is the gap between two of the socket's
+               ("+24V_LED", "F.Cu", 0.4, [(-16.10, 7.13), (-16.10, 4.45), (-19.44, 1.11),
+                                          (-20.25, 1.11),
+                                          # x -20.25 is the gap between two of the socket's
                                           # pads, and the only one: the last step is to J6
-                                          (20.25, -9.90), (20.00, -10.15), (20.00, -10.50)])],
+                                          (-20.25, -9.90), (-20.00, -10.15), (-20.00, -10.50)])],
     # ⚠ TWO GND STITCHES IN THE RIBBON'S BAND. Growing the board and fanning 13 UI signals
     # across it cut the GND pour into the main body plus small fragments, and the fragments
     # are the band's own return path -- each one is what a switch line runs over. They are
-    # each anchored on a socket pad, but one pair came back as a ratline between the F.Cu and
-    # B.Cu pours, which is the pour's way of saying the anchoring is a hairline rather than a
+    # each anchored on a socket pad, but one pair came back as a ratline between the B.Cu and
+    # F.Cu pours, which is the pour's way of saying the anchoring is a hairline rather than a
     # connection. These two vias tie the band to both planes outright.
     # Sites searched against the routed board (clearance headroom 1.213 and 1.188 mm over the
     # rule), not chosen -- the same method the optical board's bring-up pads used.
     # ⚠ AND THE LAST TWO ARE THE ONES THAT MATTER, because the first two fixed the wrong
     # thing. Every GND pad on this board is either a socket pin -- all eight of them in the
-    # band, at y -4.5 -- or an SMD pad on J2/J3/J4, which touch B.Cu ONLY because every
-    # connector is on the back. So once the ribbon's fan cut the band into fragments, those
-    # eight pins anchored the FRAGMENTS and the F.Cu MAIN POUR was left with no anchor of its
-    # own: one ratline, F.Cu zone to B.Cu zone, and stitching the fragments did nothing for
+    # band, at y -4.5 -- or an SMD pad on J2/J3/J4, which touch F.Cu ONLY, being
+    # surface-mount parts. So once the ribbon's fan cut the band into fragments, those
+    # eight pins anchored the FRAGMENTS and the B.Cu MAIN POUR was left with no anchor of its
+    # own: one ratline, B.Cu zone to F.Cu zone, and stitching the fragments did nothing for
     # it. These two sit in the new band's bottom strip, below J5's body (which reaches
     # y -14.07), where both layers carry the main pour.
-    # ⚠ A FIFTH VIA WAS TRIED AT (1.30, -6.00) AND IT WAS BOTH WRONG AND DESTRUCTIVE.
-    # It was meant to anchor the 5.3 mm2 B.Cu sliver at x 0.64..1.95 -- which turned out to
-    # be anchored already, by J1.20 at (1.27, -5.77), a GND pad my own spot-search skipped
+    # ⚠ A FIFTH VIA WAS TRIED AT (-1.30, -6.00) AND IT WAS BOTH WRONG AND DESTRUCTIVE.
+    # It was meant to anchor the 5.3 mm2 F.Cu sliver at x -1.95..-0.64 -- which turned out to
+    # be anchored already, by J1.20 at (-1.27, -5.77), a GND pad my own spot-search skipped
     # because it filters SAME-NET pads and a via must not sit on one. So the via landed
     # 0.23 mm inside that pad, drop_redundant_pth_vias correctly removed it as redundant,
     # and that SECOND removal in one pass is what tipped pcbnew's SWIG container over:
@@ -562,49 +564,44 @@ BOARD_NOTES = {
     # islands, and every island in each cluster is anchored -- which is why four rounds of
     # "find the island with no anchor" all failed. Mapping each through-hole item to its
     # island index on BOTH layers settles it in one pass:
-    #     MAIN     F4,B3 + F3,F2   (J1.6, J1.9, J1.14, J1.25, J1.39 and most vias)
-    #     ISLAND A F1,F0 + B0,B1,B2 (J1.20, J1.30, J1.34, J5.1)
+    #     MAIN     B4,F3 + B3,B2   (J1.6, J1.9, J1.14, J1.25, J1.39 and most vias)
+    #     ISLAND A B1,B0 + F0,F1,F2 (J1.20, J1.30, J1.34, J5.1)
     # Nothing joined them: every through item lands inside ONE cluster on both layers. The
     # bridge has to be a point that is in cluster A on one layer and MAIN on the other, and
-    # (-16.62, -10.91) is exactly that -- F island 0, over the B main pour, 3.739 mm of
+    # (16.62, -10.91) is exactly that -- B island 0, over the F main pour, 3.739 mm of
     # clearance headroom. One via, not a fifth guess.
-    "vias": [("GND", 8.00, -13.50), ("GND", -21.50, -11.00), ("GND", -11.75, -7.00),
-             ("GND", -20.00, -15.50), ("GND", 14.00, -15.50),
-             ("GND", -16.62, -10.91),
-             # ⚠ AND ONE ON THE EAST SIDE, FOR THE SAME REASON AS THE BRIDGE ABOVE (2026-09-30).
-             # The foot drop's fan (R3/R4 -> J6) and its declared 24 V branch down x 20.25 cut
-             # a second cluster off east of the socket: B island x 6.5..19.6, y -5.1..3.0 and
-             # F island x 6.7..21.0, y -5.1..-1.2, anchored on each other and on nothing else.
+    "vias": [("GND", -8.00, -13.50), ("GND", 21.50, -11.00), ("GND", 11.75, -7.00),
+             ("GND", 20.00, -15.50), ("GND", -14.00, -15.50),
+             ("GND", 16.62, -10.91),
+             # ⚠ AND ONE ON THE WEST SIDE, FOR THE SAME REASON AS THE BRIDGE ABOVE (2026-09-30).
+             # The foot drop's fan (R3/R4 -> J6) and its declared 24 V branch down x -20.25 cut
+             # a second cluster off west of the socket: F island x -19.6..-6.5, y -5.1..3.0 and
+             # B island x -21.0..-6.7, y -5.1..-1.2, anchored on each other and on nothing else.
              # Five bar/branch variants all left it open, which is what a missing bridge looks
-             # like -- not router luck. This point is in the B cluster and the F main pour.
-             ("GND", 12.50, 1.20)],
+             # like -- not router luck. This point is in the F cluster and the B main pour.
+             ("GND", -12.50, 1.20)],
     "router_passes": 12,
-    # ⚠ THE SOCKET IS ON THE BACK, and that is the whole mechanical idea: its body is the
-    # standoff the cap hangs off the Pi's header by. Mounted on the front it would be a
-    # bump on top of the board with nothing holding the board on.
-    # ⚠ EVERY CONNECTOR IS ON THE BACK TOO, AND THAT IS A HEIGHT FIX, NOT A STYLE CHOICE
+    # ⚠ EVERY PART IS ON ONE FACE, THE ONE TOWARD THE PI, and the socket is why: its body
+    # is the standoff the cap hangs off the Pi's header by, so it has to be between the two
+    # boards. On the far face it would be a bump with nothing holding the board on.
+    # ⚠ THE CONNECTORS SHARE THAT FACE, AND THAT IS A HEIGHT FIX, NOT A STYLE CHOICE
     # (2026-09-22). dimensions.ELEC_STACK_D reserves 14.0 mm above the Pi's PCB and the
     # MOTOR BANK is packed against that number, so it cannot grow to suit this board. With
-    # vertical connectors the cap needed 8.5 (socket) + 1.6 (board) + 7.0 (XH) = 17.1 and
-    # drove 260 mm3 into the endplate -- measured by sweeping it, not by looking at it.
-    # Side entry on TOP still needs 15.85. Underneath, the cap's top face is bare PCB at
-    # 10.1 and the connectors live in the socket's own 8.5 mm gap (PH 5.5, XH 5.75), with
-    # their cables leaving sideways instead of upward into the endplate.
-    # ⚠ EVERY PART IS ON THE BACK NOW, AND THAT IS AN ASSEMBLY-COST FIX (user, 2026-09-28:
-    # "I hope you aren't making a two sided board, that increases the cost"). Two LAYERS of
-    # copper is standard and cheap; what costs is parts on BOTH FACES, because the fab runs
-    # a second placement setup. This board had six 0402s on the front and five connectors on
-    # the back -- the only board in the fleet populated on both sides, and it had been that
-    # way since the connectors moved to the back on 2026-09-22 for the height reason below.
-    # The connectors CANNOT move: the 2x20 socket's body is the standoff the cap hangs off
-    # the Pi's header by. The passives can, and they are 0.5 mm tall against a 8.5 mm gap,
-    # so they go where the connectors already are and the front face becomes bare laminate.
-    "back_refs": ("J1", "J2", "J3", "J4", "J5", "J6",
-                  "C1", "C2", "C3", "C4", "R1", "R2", "R3", "R4", "R5", "U1", "C5", "C6"),
-    # ⚠ AND THIS FLAG IS DOCUMENTATION -- nothing reads it (checked across the tree), so it
-    # never made the board one-sided and never will. It says what the layout is FOR; the
-    # thing that decides the invoice is back_refs above.
-    "single_sided": True,           # all eleven parts on one face, connectors and passives
+    # vertical connectors on the far face the cap needed 8.5 (socket) + 1.6 (board) +
+    # 7.0 (XH) = 17.1 and drove 260 mm3 into the endplate -- measured by sweeping it, not by
+    # looking at it. Side entry there still needs 15.85. Between the boards the connectors
+    # live in the socket's own 8.5 mm gap (PH 5.5, XH 5.75), the cap's far face is bare PCB
+    # at 10.1, and the cables leave sideways instead of upward into the endplate.
+    # ⚠ THE PASSIVES TOO, AND THAT IS AN ASSEMBLY-COST FIX (user, 2026-09-28: "I hope you
+    # aren't making a two sided board, that increases the cost"). Two LAYERS of copper is
+    # standard and cheap; what costs is parts on BOTH FACES, because the fab runs a second
+    # placement setup. They are 0.5 mm tall against a 8.5 mm gap, so they go where the
+    # connectors are and the far face is bare laminate.
+    # ⚠ AND THE POPULATED FACE IS THE DRAWING'S FRONT, because the fab's cheaper assembly
+    # tier places on the top side only (quoted 2026-10-06: a board populated on its bottom
+    # is Standard PCBA, 25.75 setup against 8.24). The board is installed FACE DOWN on the
+    # Pi -- see electronics._cap_place.
+    "single_sided": True,           # documentation: nothing reads it
     # short words for the pin legends: a legend is as wide as its longest net name
     "silk_labels": {"+24V_LED": "24V", "+5V_PI": "5V", "SCK_FOOT": "SCK", "SDT_FOOT": "SDT",
                     "PWR_SW_UP": "SW UP", "PWR_SW_DN": "SW DN"},
@@ -628,8 +625,8 @@ BOARD_NOTES = {
         "waive": {
             # A1 does not add parallel vias up (PCB_QUALITY.md A1, "How it is checked"), so
             # it reports one barrel. The arithmetic it asks for:
-            "A1:+5V_PI J2.2>J1.2": "eight 0.4 mm vias in parallel join the B.Cu lands to "
-                                   "the F.Cu lane, on a 2.2 mm patch each side: 8 x 0.90 mm "
+            "A1:+5V_PI J2.2>J1.2": "eight 0.4 mm vias in parallel join the F.Cu lands to "
+                                   "the B.Cu lane, on a 2.2 mm patch each side: 8 x 0.90 mm "
                                    "of equivalent barrel = 7.2 mm against the 1.37 mm that "
                                    "3 A needs; any two of them carry it",
             "A1:+5V_PI J2.2>J1.4": "the same eight vias as J2.2>J1.2: 7.2 mm equivalent "
@@ -681,16 +678,23 @@ BOARD_NOTES = {
                 "each": 1
             }
         ],
+        # A15 tests a track against the ground copper on EVERY other layer, one at a time.
+        # The gap it finds under the 5 V lane (5.03 mm, at x 3.8 y 2.5) is in the F.Cu
+        # pour, three layers away, where C2 and C4 and their tracks sit.
+        "return_slot_ok": {
+            "+5V_PI": "a DC supply lane on B.Cu. The layer next to it is In2, the ground "
+                      "plane, and that is whole under the lane's full length (sampled "
+                      "every 0.25 mm). The cut is in the far face's pour",
+        },
         "pinouts": {
             "2.54-2*20P": "Raspberry Pi 4B mechanical drawing + src/electronics._cap_place, "
-                          "worked through 2026-10-04: pad 1 sits at board (24.13, -3.23), "
-                          "pad 2 at (24.13, -5.77), numbers rising toward -X. The cap is "
-                          "placed turned 180 about Z over a Pi lying ports-to-+X with its "
+                          "worked through 2026-10-04: pad 1 sits at board (-24.13, -3.23), "
+                          "pad 2 at (-24.13, -5.77), numbers rising toward +X. The cap is "
+                          "placed face down (turned 180 about X) over a Pi lying ports-to-+X, its "
                           "header on the +Y long edge, which lands pad 1 at 3.5 mm from the "
                           "Pi's -X end on the INNER row and pad 2 on the edge row: the Pi's "
                           "pin 1 and pin 2 seen from its component side. Pad n is header "
-                          "pin n. The socket is on the back; the footprint is flipped with "
-                          "it, so the same holds from either face",
+                          "pin n",
             "S4B-XH-SM4-TB": "JST eXH.pdf p.6, Header / SMT type: seen from above with the "
                              "mouth pointing away and the tails toward the viewer, No. 1 "
                              "circuit is the right-hand post. KiCad JST_XH_S4B-XH-SM4-TB "
@@ -730,8 +734,8 @@ BOARD_NOTES = {
                   "1:1: J2 <-> motor_ctrl J5 (GND 5V - - 5V GND, PI_5V_LINK); J4 <-> "
                   "motor_ctrl J7 (GND 24 SW_UP SW_DN, LIGHTS_LINK); J3 <-> fret_led_key J1 "
                   "and J6 <-> foot_led_a J1 (GND 24 SCK SDT, LED_DROP)",
-            "M3": "done: In1 is an unbroken GND plane under the whole board (plane_layers), "
-                  "with GND pours on F.Cu and B.Cu stitched to it. Every supply path above "
+            "M3": "done: In2 is an unbroken GND plane under the whole board (plane_layers), "
+                  "with GND pours on B.Cu and F.Cu stitched to it. Every supply path above "
                   "runs over it; no slot, and no return necks through a single via",
             "M4": "no regulator on this board. U1 (TPS2553, a switch): C6 100 nF at IN, the 0.1 uF "
                   "or more its sheet asks for, and C5 1 uF at OUT; the sheet requires no output "
@@ -745,7 +749,7 @@ BOARD_NOTES = {
                   "that board holds at or under the switch's 12 V. Contact current is M33",
             "M6": "nothing here needs matching: the display's SPI and the two LED streams are clock "
                   "and data from one master with no data returning, each through this board in a "
-                  "few centimetres over the unbroken In1 plane (M3)",
+                  "few centimetres over the unbroken In2 plane (M3)",
             "M7": "U1, TI SLVS841 typical application: 0.1 uF at IN (C6), RILIM from ILIM to ground "
                   "(R5, 49.9k 1 %, inside the 15k to 232k the sheet allows), EN driven high (tied "
                   "to IN), FAULT an open-drain output with nothing on it, a capacitor at OUT (C5 1 "
@@ -754,7 +758,7 @@ BOARD_NOTES = {
                   "mode or boot pin on the board",
             "M9": "no MCU, nothing to program. Every net on the board is on a through-hole "
                   "pin of J1 or J5 or on a connector land, all reachable with a probe from "
-                  "the bare front face; ground is on eight socket pins",
+                  "the bare back face; ground is on eight socket pins",
             "M11": "finish.py's CAD check: 18 of 18 routed parts present in the CAD, "
                    "every one where the CAD draws it, all eighteen on the one face. The lead's full build on main b0e7a911 (2026-10-05) "
                    "with this board's geometry: 1010 components, 0 unintended "
@@ -797,8 +801,8 @@ BOARD_NOTES = {
                    "the 2x8 header are symmetric pin fields with no maker numbering. One IC: "
                    "TPS2553DBVR C55266, the constant-current part (not the -1 latch-off one), "
                    "SOT-23-6, pinout above",
-            "M31": "name and revision on the front; J2 / J3 / J4 / J6 pin names beside each "
-                   "connector; designators at 1.0 mm or larger (A12). The ribbon header's "
+            "M31": "name and revision on the front; J2 / J3 / J4 / J6 pin names on the back, "
+                   "over each connector, the face that shows with the cap on the Pi; designators at 1.0 mm or larger (A12). The ribbon header's "
                    "pin-1 mark is the footprint's, outside the body",
             "M32": "pitches read from the KiCad files: XH 2.50, PH 2.00, socket "
                    "2.54, ribbon header 1.27. XH 3 A per contact at AWG 22, PH 2 A "
@@ -833,7 +837,7 @@ BOARD_NOTES = {
                    "ribbon costs the Pi at most 0.57 A. 24 V to the lit boards: fused at its "
                    "source, motor_ctrl F3 (3 A), which is every XH contact's own rating. 5 V does "
                    "not leave this board except into the Pi",
-            "M38": "every part is on the back, under the board, inside the socket's 8.5 mm "
+            "M38": "every part is on the front, the face toward the Pi, inside the socket's 8.5 mm "
                    "standoff; the 0805s lie along X, parallel to the long edges, and the "
                    "nearest is over 4 mm from an edge. Routed outline, no V-score, no "
                    "mounting hole: the board hangs on the 40-pin socket. All five cables "
@@ -852,9 +856,9 @@ BOARD_NOTES = {
 # ── THE PI'S 5 V, DECLARED (2026-10-01) ──────────────────────────────────────────────────
 # J2 (from motor_ctrl's J5) -> J1 pins 2 and 4 is the Pi's ENTIRE supply, up to ~3 A, and
 # the router laid it as 67 mm of 0.25 mm (0.88 A at a 10 C rise) through ONE 0.3 mm via.
-# Same fault, same day, as motor_ctrl's side of this cable. It is now one F.Cu lane:
-# two 0.4 mm vias in each of J2's two 5 V lands (J2 is on the back), 2 mm (3.95 A) across
-# the board between the cap row's stitch vias and the header, round the east end of the
+# Same fault, same day, as motor_ctrl's side of this cable. It is now one B.Cu lane:
+# a field of 0.4 mm vias beside J2's two 5 V lands, 2 mm (3.95 A) across
+# the board between the cap row's stitch vias and the header, round the west end of the
 # header outside pin 1, and into pins 2 and 4. The return is the two GND pours.
 # The caps' stubs stay the router's.
 BOARD_NOTES["vias"] = list(BOARD_NOTES.get("vias", [])) + [
@@ -862,45 +866,45 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES.get("vias", [])) + [
     # a land, inside J2's two 5 V lands: 0.40 mm3 of open barrel in a land printed with
     # 0.70 mm3 of paste, on the joint that carries the Pi's whole supply. They are now a
     # field of eight in the strip between the lands and the capacitors, joined to the
-    # lands on B.Cu and to the lane on F.Cu.
-    ("+5V_PI", x, y, 0.4, 0.8) for x in (-20.4, -19.3, -18.2, -17.1) for y in (3.75, 2.65)]
+    # lands on F.Cu and to the lane on B.Cu.
+    ("+5V_PI", x, y, 0.4, 0.8) for x in (17.1, 18.2, 19.3, 20.4) for y in (3.75, 2.65)]
 BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
     # (2026-10-04: J2 is a 6-way PH. Its two 5 V lands are ways 2 and 5, 6 mm apart at
-    # x -21.5 and -15.5 with the two unused ways between them, so the patch is 6 mm long
+    # x 21.5 and 15.5 with the two unused ways between them, so the patch is 6 mm long
     # and each land drops onto one end of it; the via field has not moved.)
-    ("+5V_PI", "B.Cu", 1.0, [(-21.5, 6.5), (-21.5, 3.2)]),
-    ("+5V_PI", "B.Cu", 1.0, [(-15.5, 6.5), (-15.5, 3.2)]),
-    ("+5V_PI", "B.Cu", 2.2, [(-21.5, 3.2), (-15.5, 3.2)]),
-    ("+5V_PI", "F.Cu", 2.2, [(-20.4, 3.2), (-17.1, 3.2)]),
-    # the two capacitors, straight onto the B.Cu patch: left to the router they came back
+    ("+5V_PI", "F.Cu", 1.0, [(21.5, 6.5), (21.5, 3.2)]),
+    ("+5V_PI", "F.Cu", 1.0, [(15.5, 6.5), (15.5, 3.2)]),
+    ("+5V_PI", "F.Cu", 2.2, [(21.5, 3.2), (15.5, 3.2)]),
+    ("+5V_PI", "B.Cu", 2.2, [(20.4, 3.2), (17.1, 3.2)]),
+    # the two capacitors, straight onto the F.Cu patch: left to the router they came back
     # joined through a via in C3's land and 46 mm of 0.2 mm track to C1
-    ("+5V_PI", "B.Cu", 0.6, [(-20.95, 1.0), (-20.95, 2.6)]),
-    ("+5V_PI", "B.Cu", 0.4, [(-15.48, 1.0), (-15.48, 1.9), (-16.6, 3.0)]),
-    ("+5V_PI", "F.Cu", 2.0, [(-18.6, 3.2), (-18.6, 2.5), (1.5, 2.5), (4.4, -0.4),
-                             (25.3, -0.4)]),
-    ("+5V_PI", "F.Cu", 1.6, [(25.3, -0.4), (26.1, -1.2), (26.1, -5.77), (24.13, -5.77)]),
-    ("+5V_PI", "F.Cu", 1.2, [(24.13, -5.77), (21.59, -5.77)]),
+    ("+5V_PI", "F.Cu", 0.6, [(20.95, 1.0), (20.95, 2.6)]),
+    ("+5V_PI", "F.Cu", 0.4, [(15.48, 1.0), (15.48, 1.9), (16.6, 3.0)]),
+    ("+5V_PI", "B.Cu", 2.0, [(18.6, 3.2), (18.6, 2.5), (-1.5, 2.5), (-4.4, -0.4),
+                             (-25.3, -0.4)]),
+    ("+5V_PI", "B.Cu", 1.6, [(-25.3, -0.4), (-26.1, -1.2), (-26.1, -5.77), (-24.13, -5.77)]),
+    ("+5V_PI", "B.Cu", 1.2, [(-24.13, -5.77), (-21.59, -5.77)]),
 ]
 
-# ⚠ AND THE HEADER'S WEST HALF NEEDS ITS OWN GROUND BRIDGE. The F.Cu pour cannot pass
+# ⚠ AND THE HEADER'S EAST HALF NEEDS ITS OWN GROUND BRIDGE. The B.Cu pour cannot pass
 # between J1's pads (0.84 mm gaps, less two clearances), so the ground south of the header
-# reaches the rest only where the router happens to leave B.Cu open -- and with the lane in
-# it did not: UI_SW_PUSH ran a U round the whole west cluster (three B fragments, two F,
+# reaches the rest only where the router happens to leave F.Cu open -- and with the lane in
+# it did not: UI_SW_PUSH ran a U round the whole east cluster (three F fragments, two B,
 # J1.30 and J1.34 in them) and no via site joins it to the main pour on either face
 # (searched: 0 sites). So the link is DRAWN, before routing, where no route has used
-# F.Cu: from J1.30 up through the gap between pins 29 and 31 into the strip the lane leaves
+# B.Cu: from J1.30 up through the gap between pins 29 and 31 into the strip the lane leaves
 # north of the header. 0.25 mm in a 0.84 mm gap, 0.295 a side.
-BOARD_NOTES["tracks"] += [("GND", "F.Cu", 0.25, [(-11.43, -5.77), (-12.70, -4.50),
-                                                (-12.70, -1.20)])]
+BOARD_NOTES["tracks"] += [("GND", "B.Cu", 0.25, [(11.43, -5.77), (12.70, -4.50),
+                                                (12.70, -1.20)])]
 
 # THE POWER BUTTON TOOK THIS BOARD TO FOUR LAYERS (2026-10-04). Its two lines are the only
 # nets that cross the whole board -- ribbon header at -Y, J4 at +Y -- and they cross it
 # through the band the ribbon's own fan already filled. Measured, on two layers: routed
-# free, 2 then 3 nets open; drawn by hand down two socket gaps on B.Cu, 3 open and 3
-# violations, because two columns on B leave F.Cu as the only layer east-west traffic can
+# free, 2 then 3 nets open; drawn by hand down two socket gaps on F.Cu, 3 open and 3
+# violations, because two columns on F leave B.Cu as the only layer east-west traffic can
 # cross on. The band had been at its limit since the ribbon arrived -- the six hand-placed
-# GND bridge vias above are what that looked like. So In1 is a ground plane (which makes
-# those bridges redundant rather than load-bearing) and In2 is a second signal layer.
+# GND bridge vias above are what that looked like. So In2 is a ground plane (which makes
+# those bridges redundant rather than load-bearing) and In1 is a second signal layer.
 
 
 if __name__ == "__main__":

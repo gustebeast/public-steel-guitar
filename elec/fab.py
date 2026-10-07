@@ -302,8 +302,8 @@ ORDER_EVERY_BOARD = (
                "its part number, and each placement that could be measured is "
                "already in the fab's footprint frame. ROTATION-CHECK.txt lists the ones "
                "that were corrected and the ones still to check in the preview."),
-    ("tier", "PCBA Type should read Economic. Three boards are Standard and the page "
-             "says so itself: pi_cap (its parts are on the bottom side), optical (a "
+    ("tier", "PCBA Type should read Economic. Two boards are Standard and the page "
+             "says so itself: optical (a "
              "black solder mask) and output_panel (the relay is 'Standard only': the "
              "page offers 'Switch to Standard PCBA', take it). Standard is a 25 USD "
              "setup, a stencil charge and a loading fee per part type. On any other "

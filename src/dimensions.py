@@ -656,6 +656,11 @@ TEE_OUTLINE_X   = TEE_BOARD_X + TEE_EAR_X   # 49.5 fabbed outline = layout regio
 TEE_TAIL_CY     = 2.0       # THT tail line, board-local +Y (6.0 in from the +Y edge)
 TEE_TAIL_DROP   = 1.8       # how far those tails hang below the board's underside
 TEE_FIT         = 0.3       # board fit in its seat
+TEE_EDGE_BACK   = TEE_FIT   # the board's +X edge BELOW THE EAR stands this far inside the motor's
+                            # fit line, so the seat's fit ends ON the line. On the line itself,
+                            # the fit came out of the wall between two motors: 1.3 left of a
+                            # MIN_WALL_2P wall (user, 2026-10-06). The ear above it is over the
+                            # post, which has the room, and does not move.
 TEE_WALL_OVER   = 1.2       # seat walls stand this far over the board's top face
 # The terminator behind the headers, layout-local (x, y, size along X, size along Y, height):
 # a 120 R 0603 and the slide switch that puts it across the pair (elec/can_tee.py asserts
