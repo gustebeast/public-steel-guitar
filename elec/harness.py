@@ -13,29 +13,47 @@ and a board that gets it wrong does not fail on that board. It puts 24 V into CA
 whatever it is plugged into. No DRC, netlist check or router can see it: each board is
 internally consistent with its own copy, which is exactly why every copy has to go.
 
-The trunk order is GND, +24 V, CAN_H, CAN_L. An 8-way trunk connector is that order
-twice -- in on 1-4, out on 5-8 -- so a node sits INLINE on the bus and the chain
-daisy-chains through it, which is how both the tees and the sensor boards are wired.
+THE ORDER, FOR EVERY JST LEAD IN THE INSTRUMENT: POWER ON THE OUTSIDE, GROUND NEXT TO
+IT, DATA IN THE MIDDLE.
+
+    2-way   power, GND
+    4-way   power, GND, data, data
+    6-way   power, GND, data, data, GND, power
+    8-way   power, GND, data, data, data, data, GND, power
+
+A housing wider than four is the 4-way and its mirror, so it reads the same from either
+end. XH carries 24 V and PH carries 5 V, and the two families do not mate.
+
+⚠ TWO FAULTS DECIDE IT, AND AN ORDER THAT ANSWERS ONLY ONE IS WRONG.
+  1. A WHISKER BETWEEN TWO CRIMPS. Neighbouring ways short far more easily than distant
+     ones, so no data way sits beside a power way: its neighbours are ground or data.
+     Power's one neighbour is ground, and that short is the supply's own to clear. (A
+     strand from the 24 V way to a clock way beside it would be the rail on a Pi GPIO
+     through 68 ohm.)
+  2. A LEAD PUSHED INTO THE WRONG SOCKET OF ITS FAMILY. There are a dozen 4-way XH leads
+     in the instrument and they all seat in each other's sockets. Because EVERY lead has
+     the same order, a wrong one still puts power on power and ground on ground. This is
+     why the order may not be changed for one lead alone, however good the reason looks
+     on that lead: one connector with ground and power swapped turns "the lights lead in
+     a tee" from nothing into the trunk shorted through a board's ground.
+
+The trunk is +24 V, GND, CAN_H, CAN_L. An 8-way trunk connector carries the bus in on
+ways 1-4 and out on ways 5-8 MIRRORED (CAN_L, CAN_H, GND, +24 V), so a node sits INLINE
+on the bus and the chain daisy-chains through it -- how the tees and the sensor boards
+are wired -- and the two CAN_L ways meet in the middle, not CAN_L and the rail.
 """
 from __future__ import annotations
 
-XH_PINOUT = ("GND", "V24", "CAN_H", "CAN_L")
+XH_PINOUT = ("V24", "GND", "CAN_H", "CAN_L")
 # ⚠ BUS B IS THE SAME ORDER AT A DIFFERENT VOLTAGE, AND IT NEEDS ITS OWN NAME (2026-09-22).
 # The lever/pedal bus runs at 5 V on JST PH -- a different FAMILY from the 24 V XH motor
-# tees precisely so no harness can cross them -- but way 2 is +5 V, not +24 V. Calling it
+# tees precisely so no harness can cross them -- but way 1 is +5 V, not +24 V. Calling it
 # XH_PINOUT would have put the string "V24" on a 5 V contact in every board that bound to
 # it, which is the same class of silent disagreement this module exists to stop.
 # lever_sensor.py had already spelled this tuple inline rather than import a wrong name.
-PH_PINOUT = ("GND", "V5", "CAN_H", "CAN_L")
-
-# BUS B's own pinout, and it is a SEPARATE constant on purpose. Bus B runs at 5 V, not
-# 24, so pin 2 carries a different rail -- and the whole argument above is that a pin
-# order which is wrong is invisible until it puts a rail into a signal. Sharing XH's
-# tuple to save four words would mean bus B's pin 2 reading "V24" forever.
-#
-# The ORDER is deliberately the same shape (return, rail, H, L), so one crimp habit
-# still covers the instrument; it is only the rail's NAME that differs.
-PH_PINOUT = ("GND", "V5", "CAN_H", "CAN_L")
+# The ORDER is deliberately the same shape (rail, return, H, L), so one crimp habit
+# covers the instrument; it is only the rail's NAME that differs.
+PH_PINOUT = ("V5", "GND", "CAN_H", "CAN_L")
 
 
 # THE UI RIBBON, way by way -- ONE list for both ends (2026-10-02). The Pi cap's J5 and the
@@ -73,23 +91,34 @@ UI_RIBBON = ("SW_A", "SW_B", "SW_C", "SW_D", "SW_PUSH", "ENC_A", "ENC_B",
 #                the two throws in
 #   PI_5V_LINK   motor_ctrl J5 <-> pi_cap J2          6-way PH: the Pi's 5 V on two contacts
 #
-# ⚠ THE WIRE-TO-BOARD STANDARD (user, 2026-10-04). Every JST lead in the instrument has
-# its ways in ONE order and its family set by its voltage:
-#     way 1 GND   way 2 power   ways 3, 4 data (or nothing)   -- every 4-way
-#     way 5 power   way 6 GND                                  -- a 6-way adds these
-#     XH carries 24 V.  PH carries 5 V.
-# A 6-way is the 4-way with a second power pair on the far end, mirrored, so the lead reads
-# the same from either end and ground is the outside way on both sides. What it buys: a
-# lead that will physically seat in the wrong socket of its own family puts ground on
-# ground and power on power, and the two families cannot be crossed at all, so 24 V has no
-# way onto a 5 V contact.
+# Each is the standard at the top of this file: power, GND, data, data, and a 6-way adds
+# GND, power on the far end.
 # "NC" is a way with no conductor: the contact is in the header, nothing is crimped to it.
 NC = "NC"
-PWR_LINK = ("GND", "V24", "PWR_SW_UP", "PWR_SW_DN", "V24", "GND")
-LIGHTS_LINK = ("GND", "V24", "PWR_SW_UP", "PWR_SW_DN")
-PI_5V_LINK = ("GND", "V5", NC, NC, "V5", "GND")
+PWR_LINK = ("V24", "GND", "PWR_SW_UP", "PWR_SW_DN", "GND", "V24")
+LIGHTS_LINK = ("V24", "GND", "PWR_SW_UP", "PWR_SW_DN")
+PI_5V_LINK = ("V5", "GND", NC, NC, "GND", "V5")
 # the two lighting drops (pi_cap J3 -> the fret boards, pi_cap J6 -> the foot strip)
-LED_DROP = ("GND", "V24", "SCK", "SDT")
+LED_DROP = ("V24", "GND", "SCK", "SDT")
+# a two-way power lead (output_panel J9 -> the optical board's J2)
+POWER_PAIR = ("V24", "GND")
+
+
+def check_ways(ways, power, ground=("GND",), where=""):
+    """Raise unless `ways` (a connector's names, way 1 first) keeps the standard: every
+    way named in `power` at an END or beside a ground, and no other way beside power.
+    Generators call it on every JST they build, so an order typed by hand cannot ship."""
+    ways = tuple(ways)
+    for i, w in enumerate(ways):
+        if w not in power:
+            continue
+        for j in (i - 1, i + 1):
+            if 0 <= j < len(ways) and ways[j] not in ground and ways[j] not in power:
+                raise AssertionError(
+                    "%s: way %d (%s) carries a rail and way %d (%s) beside it is neither "
+                    "ground nor that rail -- elec/harness.py, the standard"
+                    % (where or "connector", i + 1, w, j + 1, ways[j]))
+    return ways
 
 
 def same_ways(ways, link, rails):
@@ -100,7 +129,7 @@ def same_ways(ways, link, rails):
 
 def ph_drop_pins():
     """Pin names for a 4-way bus-B drop: the leg blind-mate's PH and ZH housings, and
-    the lever/pedal sensor boards' PH. Pin 1 is GND at every one of them."""
+    the lever/pedal sensor boards' PH. Pin 1 is +5 V at every one of them."""
     return tuple(PH_PINOUT)
 
 
@@ -110,15 +139,15 @@ def xh_drop_pins():
 
 
 def xh_trunk_pins():
-    """Pin names for an 8-way trunk: bus in on 1-4, bus out on 5-8."""
+    """Pin names for an 8-way trunk: bus in on 1-4, bus out on 5-8 mirrored."""
     return (tuple(x + "_IN" for x in XH_PINOUT)
-            + tuple(x + "_OUT" for x in XH_PINOUT))
+            + tuple(x + "_OUT" for x in reversed(XH_PINOUT)))
 
 
 def ph_trunk_pins():
-    """Pin names for bus B's 8-way PH trunk: bus in on 1-4, bus out on 5-8."""
+    """Pin names for bus B's 8-way PH trunk: bus in on 1-4, bus out on 5-8 mirrored."""
     return (tuple(x + "_IN" for x in PH_PINOUT)
-            + tuple(x + "_OUT" for x in PH_PINOUT))
+            + tuple(x + "_OUT" for x in reversed(PH_PINOUT)))
 
 
 def xh_nets(pinout_nets):
