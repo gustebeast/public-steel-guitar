@@ -11,8 +11,15 @@ lives on the boards (motor_ctrl's is permanent; bus A's LAST tee has its switch 
   bus A (motors): motor_ctrl -> tee 9..0 (one per motor; LAST = tee 0,
         easternmost — its jumper is closed). Drop = the SERVO42D's own
         6-pin XH pigtail (motor_pigtail_N, grey). The 24 V pair rides the
-        same tees (2 contacts per rail on the 6-pos trunk headers): head
-        = DC inlet -> the AFE tee (10) -> tee 0; tail = tee 9 -> buck.
+        same tees and is fed from BOTH ends of the chain: the motor
+        controller's J1 at the west one (with CAN), the output board's J7
+        at the east one (24 V only).
+  EVERY LEAD'S CONDUCTORS COME FROM elec/harness.py (2026-10-06): CONN maps a
+  connector to its way tuple, conn_end() reads each way's position off the ROUTED
+  board, and check_cables() fails the build if a cable is drawn with a different
+  number of conductors than its tuple wires, or a conductor ends off its own way.
+  A way the tuple calls NC draws nothing.
+
   bus B (inputs): motor_ctrl -> the lever/pedal boards, WITH NO TEES AT ALL
         (user, 2026-09-14). Tees 11 and 12 are deleted: 11 existed to tap
         the trunk at the knee station, which the lever board's own 8-way
@@ -77,7 +84,7 @@ from . import board_geom as BG
 from . import ui_panel as UI
 from . import knee_lever as _KL   # the keeper barrel the lever slack winds on
 from .helpers import oct_cable
-from cadkit.cables import bundle_paths, flat_cable, flat_bends, path_length
+from cadkit.cables import bundle_paths, flat_cable, flat_bends
 
 # modeled cable OD per net (mm): jacketed bundles (shielded/USB) drawn as ONE
 # round conductor at the jacket OD; the 24 V pair AND the CAN pairs as discrete
@@ -117,17 +124,6 @@ WIRE_OD = {
 # (_KNEE_B is gone with the two-conductor bus-B head it served -- a landing 20 mm short
 #  of LKL's board, waiting on a chassis follow-up. That follow-up is the wiring port, and
 #  ctrl_bus_b now runs all four conductors onto the board's own ways. See bus B below.)
-# ⚠ THE INTER-BOARD GAP'S CENTRE, DERIVED. Both 24 V runs (the tail and feed 2) cross
-# between the Pi and the motor controller, and both had this frozen at y -46.0 with a
-# comment reading "the Pi ends at y -50, the motor starts at -42". The Pi's +Y edge moved
-# to -46.18 when the board went flush against the bay wall (user, 2026-09-29), which left
-# those cables 0.18 mm off the laminate -- and nothing would have said so, because a cable
-# that merely GRAZES a board still reaches it and check_cable_ends only asks whether an end
-# arrives. This is the fifth constant this pair of boards has falsified by moving; the
-# lesson each time was the same, so take it: ask the boards where the gap is.
-def _board_gap_y():
-    """Mid-gap between the Pi's +Y edge and the motor controller's -Y edge."""
-    return (EL.PI_FP[3] + EL.MCTRL_FP[2]) / 2.0
 CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
                       # scheme as PWR_OFF): the split pair stays inside the old
                       # single-jacket envelope (0.7 + 0.65 = 1.35 < the 2.4/2 it
@@ -416,13 +412,6 @@ def optical_feed():
 _NET_SHORT = {"GND": "gnd", "V24": "v24", "V5": "v5", "PWR_SW_UP": "up", "PWR_SW_DN": "dn"}
 
 
-def _floor_pts(x0, x1, z):
-    """The old floor-level corridor at RAIL_Y, which bus B still uses at the keyhead: it runs
-    motor controller -> lever boards low down, where the lever boards are, and has no reason
-    to climb over the motors and back."""
-    return [(x0, RAIL_Y, z), (x1, RAIL_Y, z)]
-
-
 # ── tee stations (all on the -Y rail corridor) ────────────────────────────
 def _motor_back(i):
     return MB.back_y(i)                      # -Y-most face of motor i (PCB back)
@@ -545,7 +534,6 @@ _EAR_XY       = (D.TEE_BOARD_X / 2,         # the accurate board's M4 THROUGH-ho
                  (D.TEE_BOARD_Y - D.TEE_EAR_Y) / 2)   # (centred in the bare ear off its +X end)
 from cadkit.fasteners import M4 as _M4
 from cadkit.pcb import PCB_T as _PCB_T
-from cadkit.pcb import PH_SIDE_H as _PH_SIDE_H, ph_side_length as _ph_len
 assert TEE_SCREW_L - _PCB_T <= _M4.anchor_min_wall + 1e-9, (
     f"tee hold-down M4x{TEE_SCREW_L:g} reaches {TEE_SCREW_L - _PCB_T:.2f} below the board's "
     f"underside, past the {_M4.anchor_min_wall} anchor the cradle bores -- it would bottom out")
@@ -613,9 +601,8 @@ def tee_components():
 # THE PORT ITSELF IS THE CHASSIS' (chassis.PORT_X / PORT_W / PORT_L / port_y): it is a
 # hole in the floor slab placed on the chassis' own mortise grid, so it is dimensioned
 # beside that grid. Read from there rather than copied.
-from .chassis import PORT_X, PORT_W, PORT_L, port_y
+from .chassis import PORT_W, port_y
 from .chassis import Z_BOT as _CH_Z_BOT
-from .motor_bank import FLOOR_TOP as _CH_FLOOR_TOP
 from . import leg_pogo as _PG
 from cadkit.pcb import PH_PITCH as _PH_PITCH
 
@@ -723,7 +710,7 @@ def _trrs_footing(bb):
     rather than an island. The footprint comes from the cradle's OWN bounding box:
     the M4's boss stands proud of the base plate on the -Y side, and sizing this by
     hand is how that boss ends up hanging."""
-    from .helpers import oct_cable, box_at
+    from .helpers import box_at
     return box_at(bb.xlen, bb.ylen, TRRS_FLOOR_TOP - TRRS_FLOOR_BOT,
                   x=bb.center.x, y=bb.center.y,
                   z=(TRRS_FLOOR_BOT + TRRS_FLOOR_TOP) / 2.0)
@@ -943,8 +930,7 @@ def build_wires():
     # ⚠ THREE BAY WIRES WERE ONE. The Pi link, bus B and the board-to-Pi USB all crossed
     # string 1's motor along this one column at BAYFLY -- 234, 69 and 15.5 mm3 of each
     # inside another, on the committed model, never reported (the gate allow-lists wire
-    # against wire). Bus B flies lower; the USB takes its own column (see _USB_COL).
-    BAYFLY_CANB = BAYFLY - 3.0            # -15.0 (the USB takes its own column instead)
+    # against wire). The USB takes its own column (see _USB_COL).
     SP = EL.stand_pt
     # (the AFE's long shielded runs and their _long() helper are gone with the
     #  board; the Teensy stack they climbed onto is gone with the motor controller)
@@ -1069,7 +1055,7 @@ def build_wires():
             _yc = back - stand
             if _yc - _od / 2.0 < CHAN_Y + 2.5:
                 # ...and it climbs RIGHT UNDER THE TROUGH'S LANES, which carry on over this
-                # motor at CHAN_Y where the trough is left out. Its tee's mouth is at feed 2's
+                # motor at CHAN_Y where the trough is left out. Its tee's mouth is at the 24 V link's
                 # height, so rising to it and turning east ran 21 mm along inside that cable.
                 # So it crosses onto the motor at the motor's own top, UNDER the lanes, and
                 # only rises to the mouth once it is +Y of them.
@@ -1125,9 +1111,9 @@ def build_wires():
     _j7e = conn_end("output_panel", "J7", ways=(1, 2))      # GND, 24 V; ways 3, 4 carry nothing
     _j10e = conn_end("output_panel", "J10")
     _REC_Y = -121.5                       # along the board's -Y edge, inside the recess
-    _REC_Z7, _REC_Z10 = -27.0, -31.0      # each pair's centre height crossing it
+    _REC_Z7 = -27.0                       # the J7 pair's centre height crossing it
     _BAY_X7, _BAY_X10 = -36.0, -31.0      # out of the endplate's -X face (-25.06); J7's
-                                          # pair turns 8 mm further out than feed 2's, past
+                                          # pair turns further out than the 24 V link, past
                                           # the optical 24 V lead's riser (OP.PWR_X_RISE)
     # THE LOOP: the J7 cable's 111 mm of balancing slack (see below) as ONE flat turn in the
     # bay above the output board. A full turn adds its whole circumference to the conductor
@@ -1138,9 +1124,6 @@ def build_wires():
     _LOOP_CX, _LOOP_CY = -52.5, CHAN_Y + _LOOP_R
     _LOOP_RISE = 4.0
     _RISE7 = _LOOP_CX - 4.5               # J7 climbs to its trough lane just past the loop
-    _RISE10 = CH_WT_X1 + 2.5              # feed 2 climbs short of the trough's end -- at
-                                          # +1.0 its hot conductor's offset put it in the
-                                          # trough's end face
     _EXIT7 = CH_WT_RUNS[-1][0] - 2.0      # J7 leaves the trough where it stops, before
                                           # string 10's motor, and goes to that motor's tee
 
@@ -1154,7 +1137,7 @@ def build_wires():
     # (same radius, 2 mm apart in height, all the way round -- side by side they would
     # cross twice), but it does nothing where the path is VERTICAL: both conductors left
     # the same header point and rose through each other, 67 mm3 on J7's pair and 154 on
-    # feed 2's -- invisible to the gate, which allow-lists wire against wire as insulated
+    # the link's -- invisible to the gate, which allow-lists wire against wire as insulated
     # crossings. X is the pin spacing on the connector; Z is the stack in the trough.
     def _pair(pts, dz):
         return [(x + dz, y, z) for x, y, z in pts]
@@ -1194,7 +1177,7 @@ def build_wires():
              WIRE_OD[_NAME[net]], "24 V head", k)
 
     # ⚠ AND THE LOOP ON _0 IS DELIBERATE RESISTANCE. The two feeds are wildly
-    # asymmetric -- J7 reaches the chain far sooner than feed 2 -- so uncorrected the
+    # asymmetric -- J7 reaches the chain far sooner than the motor board's J1 does -- so uncorrected the
     # east feed takes 5.6 of the 10 motors and the west 4.4. 111 mm of slack on the J7
     # cable brings it to 5.00/5.00, for 0.0059 ohm -- 0.07 % of 24 V at 3 A. Kept as a
     # PAIR through the turn: motor current is switched, and a pair that stays together
@@ -1924,77 +1907,14 @@ def lever_bus(nodes):
 # Everything on bus B lives BELOW the chassis floor and the controller lives above it.
 # The knee levers hang under the body (their J1 sits at z -95, the floor slab is
 # -81.5..-71.5) and the pedal bar's four conductors come up the -X/+Y leg and out of the
-# body adapter onto the underside. The controller stands in the tray at z -50. So bus B
-# crosses the floor EXACTLY ONCE, at chassis.PORT_X, and both cables make that crossing
-# -- which is why one port serves them and why it is sized to pass a connector head
-# rather than bare wire (user).
-#
-# WHICH HALF OF J2 EACH TAKES follows the mid-bus contract the rest of the bus already
-# uses: in on ways 1-4, out on 5-8 (elec/motor_ctrl). The pedals are the IN half and the
-# lever chain the OUT half, so the controller sits between them exactly as its netlist
-# says it does.
-CTRL_WAYS = len(EH.PH_PINOUT)               # 4: one half of the 8-way trunk
+# body adapter onto the underside. The controller hangs THROUGH the floor with bus B's
+# two 4-ways facing down under it -- J2 in, from the pedals, and J6 out, to the lever
+# chain: the mid-bus contract the rest of the bus uses (elec/motor_ctrl) -- so neither
+# cable crosses the floor at all. See ctrl_bus_b.
+# (Both used to come up through chassis.PORT_X to one 8-way inside the bay. Nothing here
+#  threads that port any more.)
+CTRL_WAYS = len(EH.PH_PINOUT)               # 4
 CTRL_PITCH = _PH_PITCH
-
-
-_PORT_HALF = 5 * D.BEAD             # 4.0
-
-
-def _port_lane(side):
-    """(below, above) on one cable's side of the port: `side` is -1 or +1.
-
-    THE TWO CABLES GET DIFFERENT HEIGHTS above the floor as well as different halves of
-    the port, because above it they share a corridor. Both run -Y along the port's own x
-    at a constant z (see _to_j2), so at one height the two were COLLINEAR -- the same
-    line, overlapping for the whole of their shared y (52-57 mm^3 a conductor, and the
-    pairs that matched were one cable's conductor against the other's). 5.0 apart in z
-    holds two 1.7 bundles clear with room to spare, and the cavity is open over far more
-    than that."""
-    y0, y1 = port_y()
-    yc = (y0 + y1) / 2.0 + side * _PORT_HALF
-    return ((PORT_X, yc, _CH_Z_BOT - 4.0),
-            (PORT_X, yc, _CH_FLOOR_TOP + 6.0 + side * 2.5))
-
-
-# ...AND THE CONDUCTORS ARE SPREAD IN THE BUNDLE'S OWN SECTION, not in world Y.
-# Spreading them by the connector's pitch along Y looked right and was wrong: the long
-# run from the port to the controller travels 91 mm in -Y, so a Y offset lies ALONG the
-# run, and the PERPENDICULAR separation of two conductors 2.0 apart collapsed to 0.42 --
-# they lay on top of each other for their whole length (85-99 mm^3 a pair, and the pair
-# that shared a direction was the worst). cadkit.cables.bundle_paths exists for exactly
-# this: the offsets are in the bundle's cross-section, so a conductor keeps its place
-# around every corner however the run turns. Its docstring says so in as many words,
-# which is the annoying part.
-# ...AND THE SPACING IS THE WIRE PLUS A HAIR, not the wire. Four centres on a square of
-# side 2*off are NEIGHBOURS at 2*off, and an octagonal cable is OD across its flats but
-# OD/cos(22.5) = 1.083*OD across its CORNERS -- so a square of side exactly OD has every
-# edge-neighbour overlapping by 8% of a diameter, for the whole length of the run. It is
-# the same 0.1 of air leg_pogo._WOFF leaves, and for the same reason.
-_CTRL_PLACE = ((-1, -1), (1, -1), (1, 1), (-1, 1))      # the two twisted pairs, adjacent
-
-
-def _ctrl_offsets(od):
-    o = (od + 0.1) / 2.0
-    return [(a * o, b * o) for a, b in _CTRL_PLACE]
-
-
-def _ribbon_offsets(n=4, pitch=None):
-    """A FLAT 1xN section, which is what a cable with a connector at BOTH ends needs.
-
-    The lever cable's two rows are at right angles -- LKL's J1 spreads along world Z and
-    the controller's J2 along world Y -- so its section has to turn through 90 degrees
-    somewhere. A 2x2 SQUARE cannot do that without its conductors trading places: rotate
-    a square by a right angle and every corner lands on the next one's, so all four have
-    to cross. That is what the join was costing, and no aim or way-order fixes it (103,
-    114 and 132 mm^3 over the three things tried).
-
-    A RIBBON turns freely. Each conductor keeps its own ordinal place and its own radius,
-    so the four sweep concentric arcs and never meet. It is also the section every other
-    bus-B segment already has -- lever to lever they run as four parallel wires on the
-    connector's own pitch -- so this is the bus's own idiom rather than the leg harness's
-    compact bundle, which the leg needs because it has a 2.4 channel to get through."""
-    p = CTRL_PITCH if pitch is None else pitch
-    return [(0.0, (j - (n - 1) / 2.0) * p) for j in range(n)]
 
 
 # A STRAIGHT RUN AT EACH CONNECTOR FOR THE FAN TO HAPPEN OVER. Four conductors on a
@@ -2003,18 +1923,12 @@ def _ribbon_offsets(n=4, pitch=None):
 # needs length. Given none, each conductor went from its place in the bundle straight to
 # its own way and they cut through each other on the way (15-76 mm^3 a pair).
 #
-# So each end of a cable carries TWO vertices: the connector's centre, which _fan below
+# So an end that fans carries TWO vertices: the connector's centre, which _fan below
 # replaces with that conductor's own lead and pin, and a FAN vertex one CTRL_FAN further
-# out along the connector's axis, which stays on the bundle. The spread then happens
+# back along the run, which stays on the bundle. The spread then happens
 # between those two, with every conductor running parallel to the connector's axis while
 # it does -- which is what leg_pogo's FAN_RUN buys the leg harness, for the same reason.
 CTRL_FAN = 16 * D.BEAD              # 12.8: ~2.2 of lateral move, a 10 deg fan
-
-
-def _ends(centre, d, lead=None):
-    """The two vertices one end of a cable needs: the fan vertex, then the connector."""
-    run = CTRL_FAN + (CANB_LEAD if lead is None else lead)
-    return [tuple(centre[m] + d[m] * run for m in range(3)), centre]
 
 
 def _fan(legs, at, pins, dirs, lead):
@@ -2038,37 +1952,6 @@ def _fan(legs, at, pins, dirs, lead):
             q[-1:] = [lead_pt, pin]
         out.append(q)
     return out
-
-
-def _to_j2(hi, j2c):
-    """The corridor from above the port to the controller: -Y first, then across.
-
-    NOT THE STRAIGHT LINE. A straight run from the port to J2 goes diagonally across the
-    cavity and clips a chassis rib on the way (8 mm^3 a conductor, at x -585). Probed on
-    the built chassis, two legs are completely clear: -Y at the PORT'S OWN X, the whole
-    way from the port to the connector's y, and then the climb across to the board. The
-    cavity is open along both."""
-    # ...AND IT RUNS INBOARD AS FAR AS THE CONNECTOR'S OWN FAN before it turns, so the
-    # cable arrives on the side the plug faces and goes straight in. Taken only as far as
-    # the port's x it had to doubleback: J2's wires leave along +X, so the run went +X out
-    # to the fan vertex and then -X again to the corridor -- a hairpin, and
-    # bundle_paths COLLAPSES ITS SECTION at a reversal like that. Every conductor came out
-    # at zero offset at two vertices (measured: neighbour gaps 0.00 where they should be
-    # the ribbon's pitch), which is every conductor on the same line, which is why all six
-    # pairs overlapped and why widening the ribbon made it worse rather than better.
-    #
-    # It also clears the KEYHEAD ENDPLATE, which comes inboard to -599 at this height and
-    # which the ribbon's outer conductor was clipping at the port's own x.
-    # THREE LEGS, and the order of them is the whole point. -Y first, OUTBOARD of the
-    # motor bank; then inboard once it is past the bank in Y; then up to the fan.
-    #
-    # Motor 0 fills x -583.6..-541.3 over y -41.2..28.8 at exactly this height, so going
-    # inboard first drove all eight conductors straight through it (85-93 mm^3 each). The
-    # connector's y is -80.5, well -Y of the bank, so by the time the run turns inboard
-    # there is nothing in the way.
-    cx = hi[0] + 6 * D.BEAD             # 4.8 off the port's x: clear of the keyhead
-    fx = j2c[0] + CTRL_FAN + CANB_LEAD  # endplate, which comes inboard to -599 here
-    return [hi, (cx, hi[1], hi[2]), (cx, j2c[1], hi[2]), (fx, j2c[1], hi[2])]
 
 
 def ctrl_bus_b(lkl):
