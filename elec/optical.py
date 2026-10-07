@@ -4166,8 +4166,9 @@ BOARD_NOTES["quality"] = {
                "150 mm harness more, so a live plug does not overshoot at all; without it the input "
                "rings toward 48 V on a part whose absolute maximum is 38. The resistor is a KOA "
                "2512 because the plug puts 288 W across it for microseconds and KOA's one-pulse "
-               "curve allows 400 W below 10 us in that case (40 W in a 1206). USB: VBUS is a sense "
-               "line into 100 nF and 10 k, nothing to ring",
+               "curve allows 400 W below 10 us in that case (40 W in a 1206). USB: VBUS lands "
+               "on 1 uF (C130) and a 10 k sense resistor: the capacitance the USB "
+               "specification expects a device to present, behind a host's own limit",
         "M17": "FB1 (BLM18KG601SN1D, 1.3 A) carries 166 mA at the worst case, 13 % of its "
                "rating. Its resonance with the 1.3 uF on +5V was near 115 kHz, beside the "
                "emitter carrier's third harmonic (144 kHz), and undamped; R43 + C134 (1 ohm "
@@ -4324,19 +4325,6 @@ BOARD_NOTES["quality"] = {
     },
     # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
     # repeated structure is on. The pass fails on any difference from the routed board.
-    # A15. MID runs the length of the board to twenty photodiode anodes and at one place
-    # lies over a 10.3 mm cut in the ground plane (the limit is 5). It is not a signal in
-    # the sense the rule means: it is U11's output, a 0.33 V reference held by C133's
-    # 10 uF, and what flows in it is the photodiodes' own current -- microamps, at the
-    # 48 kHz carrier. A loop 10 mm long and one dielectric thick, carrying microamps at
-    # tens of kilohertz, radiates nothing and is a far smaller pickup area than the
-    # photodiode pairs it feeds, whose fields the SUM / DIFF arithmetic exists to cancel.
-    "return_slot_ok": {
-        "MID": "a DC reference (U11's output, 0.33 V, 10 uF on it), carrying only the "
-               "photodiodes' microamps at 48 kHz; its return is U11's ground pin, and a "
-               "10 mm detour for that current is neither an emitter nor, beside the "
-               "photodiode pairs themselves, a pickup loop worth the reroute",
-    },
     "unconnected": {
         "J1.[AB]8": "USB-C sideband (SBU): USB 2.0 does not use it",
         "J2.[34]": "the feed is two wires: ways 3 and 4 have no conductor",

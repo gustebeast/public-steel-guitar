@@ -2119,6 +2119,15 @@
    "ohm": 120.0,
    "case": "0402",
    "src": "JLCPCB parts API attributes for C413065 (ERJ2RKF1200X, Panasonic: 100 mW, 1 %), fetched 2026-10-06; limiting element voltage 50 V from Panasonic's ERJ-2RK series table"
+  },
+  "C25336": {
+   "mpn": "1206W4F220LT5E",
+   "kind": "res",
+   "p": 0.25,
+   "v": 200.0,
+   "ohm": 0.22,
+   "case": "1206",
+   "src": "JLCPCB parts API attributes for C25336 (1206W4F220LT5E, UNI-ROYAL: 200 V, 250 mW, 1 %), fetched 2026-10-06"
   }
  }
 }

@@ -95,7 +95,6 @@ LCSC = {
     "JFC1206-1300FS": "C136347",     # JDT 1206 fuse 3 A 63 V; 37,944
     "JFC1206-1400FS": "C136349",     # JDT 1206 fuse 4 A 63 V; 45,541
     "B5819W": "C8598",               # CJ B5819W SL, SOD-123 1 A 40 V Schottky, JLC basic
-    "SMAJ30A": "C148230",            # Littelfuse, SMA, unidirectional; 27,577
     "SMAJ24A": "C148222",            # Littelfuse, SMA, unidirectional: 26.7-29.5 V, 38.9 V at 10.3 A; 19,311
     "SMBJ5.0A": "C83333",            # Littelfuse, SMB, unidirectional; 26,310
     "LESD5L5.0CT1G": "C5274293",     # LRC 0.5 pF bidirectional 5 V clamp, SOD-523; 12,023
@@ -215,7 +214,6 @@ PASSIVES = {
     ("2.2pF", "C_0402_1005Metric"):          "C325452",   # Yageo CC0402BRNPO9BN2R2, 50 V NP0 +-0.1 pF: the TIA's Cf, tighter than the +-10 % its stability sum assumes
     ("22nF/50V", "C_0402_1005Metric"):       "C1532",   # FH 0402B223K500NT, 50 V X7R 10 %; basic
     ("4.7uF", "C_0402_1005Metric"):          "C23733",   # Samsung CL05A475MP5NRNC, 10 V X5R 20 %; basic. On 3.3 V
-    ("100nF", "C_0805_2012Metric"):          "C49678",   # Yageo CC0805KRX7R9BB104, 50 V X7R 10 %; basic
     ("10uF", "C_0805_2012Metric"):           "C15850",   # Samsung CL21A106KAYNNNE, 25 V X5R 10 %; basic
     ("10uF/16V", "C_0805_2012Metric"):       "C15850",
     ("10uF/25V", "C_0805_2012Metric"):       "C15850",
@@ -238,11 +236,10 @@ PASSIVES = {
     ("10k", "R_0402_1005Metric"):            "C25744",   # UniOhm 0402WGF1002TCE, 1 %; basic
     ("10k 1%", "R_0402_1005Metric"):         "C25744",
     ("10k 0.1%", "R_0402_1005Metric"):       "C190095",   # Yageo RT0402BRD0710KL, thin film 0.1 % 25 ppm; 729,784 in stock
-    ("120R", "R_0402_1005Metric"):           "C25079",   # UniOhm 0402WGF1200TCE, 1 %; basic
     ("12k 1%", "R_0402_1005Metric"):         "C25752",   # UniOhm 0402WGF1202TCE, 1 %; basic
     ("137k 1%", "R_0402_1005Metric"):        "C138058",   # Yageo RC0402FR-07137KL, 1 %; 27,854 in stock
     ("150k", "R_0402_1005Metric"):           "C25755",   # UniOhm 0402WGF1503TCE, 1 %; preferred extended
-    ("180R", "R_0402_1005Metric"):           "C138045",   # Yageo RC0402FR-07180RL, 1 %; 264,305 in stock
+    ("0R22", "R_1206_3216Metric"):           "C25336",   # UniOhm 1206W4F220LT5E, 1 %, 250 mW, 200 V; 39,275 in stock (2026-10-06)
     ("120R 100mW", "R_0402_1005Metric"):     "C413065",   # Panasonic ERJ2RKF1200X, 1 %, 100 mW; 43,451 in stock (2026-10-06)
     ("180R 100mW", "R_0402_1005Metric"):     "C413069",   # Panasonic ERJ2RKF1800X, 1 %, 100 mW (the UniOhm / Yageo 0402 is 62.5); 29,615 in stock
     ("18k2 1%", "R_0402_1005Metric"):        "C2076827",   # Panasonic ERJ2RKF1822X, 1 %; 37,043 in stock

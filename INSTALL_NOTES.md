@@ -761,6 +761,11 @@ existing ones:
 
 * All three are straight leads: way 1 at one end is way 1 at the other.
 * The power link is the only 6-way XH in the instrument, so it cannot go in a wrong socket.
+* **Plug and unplug the power link with the supply's plug out of the panel.** The motor
+  board's 5 V converter has ceramic capacitors on its input, and a lead that is already
+  live rings them above the supply for a few microseconds as it makes contact. The board
+  is built to take it (a damping resistor, R23, and the rail clamp hold the worst case to
+  33 V at a part rated 38), but it is a stress with no purpose: power down first.
 * The 4-way XH plugs on the motor board (J1 bus A, J7 lights) and on the Pi cap (J4 lights,
   J3 / J6 light drops) fit each other's sockets. None of the swaps damages anything; what
   each one does is in the table in the next section. Each socket's way names are printed

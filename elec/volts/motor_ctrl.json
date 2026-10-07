@@ -10,6 +10,11 @@
    "v": 26.4,
    "why": "through F1"
   },
+  "+24V_F": {
+   "peak": 35.587,
+   "v": 26.4,
+   "why": "through R23"
+  },
   "+24V_LED": {
    "peak": 35.587,
    "v": 26.4,
@@ -588,6 +593,14 @@
   "R22.1": {
    "max": 50.0,
    "src": "element V -- 0402WGF4992TCE (C25897): JLCPCB parts API attributes for C25897 (0402WGF4992TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R23.1": {
+   "max": 200.0,
+   "src": "element V -- 1206W4F220LT5E (C25336): JLCPCB parts API attributes for C25336 (1206W4F220LT5E, UNI-ROYAL: 200 V, 250 mW, 1 %), fetched 2026-10-06"
+  },
+  "R23.2": {
+   "max": 200.0,
+   "src": "element V -- 1206W4F220LT5E (C25336): JLCPCB parts API attributes for C25336 (1206W4F220LT5E, UNI-ROYAL: 200 V, 250 mW, 1 %), fetched 2026-10-06"
   },
   "R3.1": {
    "max": 50.0,

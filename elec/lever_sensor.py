@@ -644,7 +644,14 @@ BOARD_NOTES = {
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
     "stitch_nets": ("GND",),
-    # (No stitch exceptions: J1 is SMT again, so its GND pads get vias like every other.)
+    # ⚠ ONE STITCH EXCEPTION: THE SENSOR'S BELLY PAD HAS NO VIA (quality A14, 2026-10-06).
+    # It is 1.45 mm square under four 0.58 mm paste windows, 0.161 mm3 of paste, and the
+    # stitcher's 0.3 mm via in its centre is a 0.113 mm3 barrel: 70 % of the joint, on the
+    # pad that also sets how flat the chip sits over the magnet. The pad carries no heat
+    # (35 mW) and no current of its own, so it is joined to pin 16, the part's ground
+    # pin 0.3 mm away, by copper on its own layer, and pin 16 keeps the via to the plane.
+    "stitch_exceptions": ("U4.17",),
+    "tracks": [("GND", "F.Cu", 0.2, [(11.80, 2.00), (11.80, 1.45)])],
     # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
     # short net here took it from 4 unconnected to 7. The generator is not better than
     # the router in general -- it wins on the optical board because twenty identical
@@ -742,6 +749,14 @@ BOARD_NOTES = {
     "conn_keepout": {"box": [-15.5, -9.95, -3.85, 9.95], "exempt": ["J1", "U4"]},
     # ── the quality pass (cadkit/PCB_QUALITY.md) ─────────────────────────────
     "quality": {
+        # A8 asks for a via in every exposed pad; the sensor's has none, deliberately (the
+        # note at stitch_exceptions). A8's own exception: a part that needs no heat path,
+        # with the pad still on its net by copper on its own layer.
+        "waive": {
+            "A8:U4": "MT6701, about 35 mW: its 1.45 mm exposed pad needs no heat path, and a "
+                     "via in it would take 70 % of its paste (A14). The pad is on GND through "
+                     "0.3 mm of F.Cu to pin 16, whose own via reaches the plane",
+        },
         "power_paths": [
             # the bus passes through: the first board of a chain carries the rest, up to
             # the 565 mA maximum of motor_ctrl's TPS2553 at 49.9 k
@@ -917,9 +932,11 @@ BOARD_NOTES = {
             "M24": "Y1 TAXM8M4RFDCET2T, CL 12 pF. C5 = C6 = 15 pF: 7.5 pF in series plus "
                    "about 4.5 pF of pin and track = 12 pF. The same crystal and capacitors "
                    "as motor_ctrl and output_panel",
-            "M25": "two exposed pads, both GND, both on vias to the plane (A8). The MCU "
-                   "dissipates about 35 mW and the sensor about 35 mW: neither needs the "
-                   "pad for heat",
+            "M25": "two exposed pads, both GND. The MCU's is on a via to the plane (A8) and "
+                   "dissipates about 35 mW. The sensor's (U4, about 35 mW) has NO via, on "
+                   "purpose: a 0.3 mm barrel would take 70 % of that 1.45 mm pad's paste "
+                   "(A14), so it is joined to pin 16 on its own layer and pin 16's via "
+                   "carries its ground. Neither needs the pad for heat",
             "M26": "CAN_TX: MCU pin 20 (PA12, CAN1_TX) to U2 pin 1, D, the driver input. "
                    "CAN_RX: U2 pin 4, R, the receiver output, to MCU pin 19 (PA11, "
                    "CAN1_RX). SDA to the sensor's pin 6 (A / SDA), SCL to pin 7 (B / SCL)",

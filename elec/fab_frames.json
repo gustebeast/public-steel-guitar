@@ -118,6 +118,24 @@
    "read": "2026-10-06",
    "rot": 0
   },
+  "C14486|SOT-23": {
+   "dx": 0.0208,
+   "dy": -0.0,
+   "err": 0.083,
+   "fit": true,
+   "pads": 3,
+   "read": "2026-10-06",
+   "rot": 270
+  },
+  "C148222|D_SMA": {
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.193,
+   "fit": true,
+   "pads": 2,
+   "read": "2026-10-06",
+   "rot": 0
+  },
   "C148230|D_SMA": {
    "dx": 0.0,
    "dy": 0.0,
@@ -236,6 +254,15 @@
    "pads": 3,
    "read": "2026-10-06",
    "rot": 180
+  },
+  "C22433320|SOIC-8_3.9x4.9mm_P1.27mm": {
+   "dx": 0.0001,
+   "dy": 0.0001,
+   "err": 0.207,
+   "fit": true,
+   "pads": 8,
+   "read": "2026-10-06",
+   "rot": 270
   },
   "C22438114|PinHeader_2x08_P1.27mm_Horizontal": {
    "by": "hand: the fab's footprint numbers its two rows the other way round, so a fit by pad number cannot work; its origin is the centre of the hole grid, its body is on its -y side where KiCad's is on +x (a quarter turn), and in the fab's previewer on ui_board J2 the body sat on our outline, pins off the board, at KiCad's angle plus 90 (KiCad 180, placed at 270). Plus 180, which this entry first carried, previewed with the pins over SW2",

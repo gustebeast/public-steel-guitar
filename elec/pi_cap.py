@@ -128,17 +128,19 @@ UI_FP = "Connector_PinHeader_1.27mm:PinHeader_2x08_P1.27mm_Horizontal"
 # ⚠ THE WAY ORDER IS harness.UI_RIBBON's (2026-10-02), which is the UI board's: that board
 # could not route this cap's original order. Each signal keeps its Pi header pin; only
 # the way it rides changes.
-# ⚠ UI_RES_N IS ON PIN 36 (GPIO16), NOT 33 (pre-order review, 2026-10-06). Pin 33 is
+# ⚠ UI_RES_N IS ON PIN 22 (GPIO25), NOT 33 (pre-order review, 2026-10-06). Pin 33 is
 # GPIO13, and the foot strip's bus on pins 8 / 10 is SPI5: the stock spi5-1cs overlay
 # "enables spi5 on GPIOs 13-15" and has no no_miso parameter, so loading it muxes GPIO13
 # to SPI5 MISO and the display's reset stops being a driven line. GPIO13 was picked as a
-# plain GPIO two days before SPI5 was. GPIO16 is claimed by no overlay this instrument
-# loads (SPI1's second and third chip selects are 17 and 16 only under spi1-2cs / -3cs;
-# this uses spi1-1cs). Pin 33 is left empty for the same reason as pin 35.
+# plain GPIO two days before SPI5 was. GPIO25 is an alternate function of no bus this
+# instrument uses (SPI0 is 7-11, SPI1 16-21, SPI5 12-15), and pin 22 stands directly
+# over the ribbon header. Pin 36 (GPIO16) was tried first and did not route: from x 19
+# it has to cross the whole east half of the header, and UI_DC and UI_RES_N both came
+# back open. Pin 33 is left empty for the same reason as pin 35.
 UI_WAYS = (("UI_SW_A", 11), ("UI_SW_B", 13), ("UI_SW_C", 15), ("UI_SW_D", 16),
            ("UI_SW_PUSH", 18), ("UI_ENC_A", 29), ("UI_ENC_B", 31), ("GND", 6),
            ("UI_SCLK", 40), ("+3V3_PI", 1), ("UI_SDIN", 38), ("UI_DC", 37),
-           ("UI_CS_N", 12), ("UI_RES_N", 36),
+           ("UI_CS_N", 12), ("UI_RES_N", 22),
            # ⚠ NOT THE PI'S. The power button's two throws pass straight through this board
            # to J4 and on to the output panel, which is where the supply comes in and the
            # only place it can be cut. No header pin: the Pi must not be able to hold its
@@ -655,7 +657,7 @@ BOARD_NOTES = {
         },
         "unconnected": {
             "J1": {
-                "pins": "3 5 7 14 17 20 21 22 24 26 27 28 32 33 35",
+                "pins": "3 5 7 14 17 20 21 24 26 27 28 32 33 35 36",
                 "why": "Pi header pins this cap gives no function (the GPIO map is in pi_cap.py)"
             },
             "J2.[34]": "the 6-way's two middle ways: no conductor (harness.PI_5V_LINK)",
@@ -813,7 +815,7 @@ BOARD_NOTES = {
             "M26": "U1 IN is the Pi's side and OUT the ribbon's, by its pinout above. Every other "
                    "net keeps one name from header pin to connector way",
             "M27": "no strap, boot or debug pin is used: header pins 27 / 28 (the HAT ID bus) are "
-                   "not connected, and none of the pins taken (11 12 13 15 16 18 29 31 36 37 38 40, "
+                   "not connected, and none of the pins taken (11 12 13 15 16 18 22 29 31 37 38 40, "
                    "the SPI0 / SPI5 pairs) is read by the Pi at boot",
             "M28": "JST's own parts: S4B-XH-SM4-TB(LF)(SN) C161861, S6B-PH-SM4-TB(LF)(SN) C265405, "
                    "S4B-XH-A(LF)(SN) C157925 -- the cited drawings are theirs. The 2x20 socket and "

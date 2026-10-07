@@ -619,7 +619,23 @@ def motor_ctrl():
               "not feed the fault back out into the trunk",
               footprint="Fuse:Fuse_1206_3216Metric",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
-    v24 += f1[1]
+    # ⚠ R23, 0.22 OHM AHEAD OF THE FUSE, IS THERE FOR ONE EVENT: J3 PLUGGED IN LIVE
+    # (pre-order review, 2026-10-06). U5's input bank is ceramic -- about 9 uF at 24 V of
+    # bias -- and a live lead is an inductor: the bank rings toward twice the supply
+    # through it, on a current set by the lead and the bank, not by the brick's limit, so
+    # the clamp's "the brick can only hand it 6.67 A" does not cover it. Worked as lead
+    # inductance into C1 (2.2 uF at bias, D8 across it) and through the fuse into the
+    # bank, over leads of 0.3 to 2 uH and 30 to 120 mohm: with the fuse's 0.1 ohm alone
+    # the worst corner puts 38.8 V on U5's VIN, over its 38 V absolute maximum, with
+    # 10.4 A in D8. With 0.22 ohm more in the branch it is 32.8 V at the pin and 34.6 V
+    # on the rail in every corner, under U5's 36 V operating limit. It costs 0.14 W and
+    # 0.18 V at the 0.8 A the buck draws flat out, in a 250 mW / 200 V 1206 (C25336).
+    # An electrolytic across the input damps the same ring; this needs no tall part.
+    v24_f = Net("+24V_F")
+    r23 = _r("R23", "0R22", "hot-plug damper for U5's ceramic input bank -- see note",
+             "Resistor_SMD:R_1206_3216Metric")
+    v24 += r23[2]
+    v24_f += r23[1], f1[1]
     v24_buck += f1[2]
     sw5, boot5, vcc5, fb5, en5 = (Net("SW5"), Net("BOOT5"), Net("VCC5"),
                                   Net("FB5"), Net("EN5"))
@@ -1146,6 +1162,7 @@ BOARD_NOTES = {
         "R12": (-5.90, -4.50, 90.0),
         "R13": (-5.90, -0.50, 90.0),
         "F1": (-9.90, -21.50, 90.0),
+        "R23": (-7.50, -18.00, 90.0),        # in the 24 V feed's own lane, above the fuse
         # ⚠ U5's INPUT CAPACITORS ARE AT ITS PINS NOW (pre-order review, 2026-10-06). VIN
         # and PGND are pins 2 and 1, side by side on the package's south row. C16 and C17
         # stood 6 and 12 mm east of the part and reached VIN through 16 and 22 mm of
@@ -1252,7 +1269,9 @@ BOARD_NOTES = {
         # into a land. So the CURRENT PATH is drawn here and the sense/boot branches stay
         # the router's. Lanes sit in the gaps between the part columns at x -15.4 / -9.9:
         #   24 V -> F1: 0.6 mm (1.6 A; the buck draws ~0.8 A at full load)
-        ("+24V", "F.Cu", 0.6, [(0.6, -14.75), (-7.9, -14.75), (-7.9, -22.9), (-9.9, -22.9)]),
+        #   (through R23, which stands in the lane: its upper land, then its lower one on)
+        ("+24V", "F.Cu", 0.6, [(0.6, -14.75), (-7.5, -14.75), (-7.5, -16.54)]),
+        ("+24V_F", "F.Cu", 0.6, [(-7.5, -19.46), (-7.5, -22.9), (-9.9, -22.9)]),
         #   F1 -> west along the board's south strip -> C17, C16 and C18 -> VIN. The lane
         #   stays 0.3 mm off the PG via and off C17's ground land; it ends IN C18's land.
         ("+24V_BUCK", "F.Cu", 0.8, [(-9.9, -20.1), (-11.5, -20.1), (-11.5, -23.55),
@@ -1391,7 +1410,8 @@ BOARD_NOTES["quality"] = {
         {"net": "+24V", "from": "J3.2", "to": ["J1.2"], "amps": 2.9},
         {"net": "+24V", "from": "J3.2", "to": ["J3.5"], "amps": 2.7},
         # the Pi's buck: 15 W out at ~88 % is 0.71 A at 24 V; F1 is 1 A
-        {"net": "+24V", "from": "J3.2", "to": ["F1.1"], "amps": 0.8},
+        {"net": "+24V", "from": "J3.2", "to": ["R23.2"], "amps": 0.8},
+        {"net": "+24V_F", "from": "R23.1", "to": ["F1.1"], "amps": 0.8},
         {"net": "+24V_BUCK", "from": "F1.2", "to": ["U5.2"], "amps": 0.8},
         # the lighting bus, every zone at full white (docs/lighting-bus.md); F3 is 3 A
         {"net": "+24V", "from": "J3.2", "to": ["F3.1"], "amps": 1.70},
@@ -1665,9 +1685,12 @@ BOARD_NOTES["quality"] = {
                "Headroom: 24 V in for 3.3 and 5 V out. No linear regulator",
         "M16": "J3 is plugged with the supply off, inside the instrument, and the supply "
                "now arrives through the output panel's switch, which ramps it at about "
-               "1.5 V/ms: no ring. Were it plugged live, the ring is clamped by D8 from "
-               "26.7-29.5 V, on 50 V capacitors and a 60 V buck; U5 (38 V) is behind F1 "
-               "and its own 20 uF",
+               "1.5 V/ms: no ring. Were it plugged live into a live panel, the ceramic "
+               "input bank rings through the lead: worked over leads of 0.3 to 2 uH and 30 to "
+               "120 mohm, U5's VIN reaches 32.8 V at most and the rail 34.6 V with 5.5 A in "
+               "D8, because R23 (0.22 ohm) and F1 stand in the bank's branch; without R23 "
+               "the worst corner was 38.8 V on a 38 V pin. U1 is a 65 V part and its diode "
+               "40 V. INSTALL_NOTES still says to plug J3 with the supply off",
         "M18": "one supply feeds everything: the Pi is powered FROM this board, so its "
                "USB cannot be up while this board is down; every CAN node is on the same "
                "24 V. The two switch lines touch no pin here. A debug probe on the SWD "
