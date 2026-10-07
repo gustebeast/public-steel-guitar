@@ -596,11 +596,11 @@
   },
   "R23.1": {
    "max": 200.0,
-   "src": "element V -- 1206W4F220LT5E (C25336): JLCPCB parts API attributes for C25336 (1206W4F220LT5E, UNI-ROYAL: 200 V, 250 mW, 1 %), fetched 2026-10-06"
+   "src": "element V -- 1206W4F0000T5E (C17888): JLCPCB parts API attributes for C17888 (1206W4F0000T5E, UNI-ROYAL: 0 ohm jumper, 250 mW, 200 V), fetched 2026-10-06; 20 mohm taken as the jumper's own resistance for the power sum"
   },
   "R23.2": {
    "max": 200.0,
-   "src": "element V -- 1206W4F220LT5E (C25336): JLCPCB parts API attributes for C25336 (1206W4F220LT5E, UNI-ROYAL: 200 V, 250 mW, 1 %), fetched 2026-10-06"
+   "src": "element V -- 1206W4F0000T5E (C17888): JLCPCB parts API attributes for C17888 (1206W4F0000T5E, UNI-ROYAL: 0 ohm jumper, 250 mW, 200 V), fetched 2026-10-06; 20 mohm taken as the jumper's own resistance for the power sum"
   },
   "R3.1": {
    "max": 50.0,

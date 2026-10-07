@@ -618,6 +618,12 @@ BOARD_NOTES = {
     # Pi -- see electronics._cap_place.
     "single_sided": True,           # documentation: nothing reads it
     # short words for the pin legends: a legend is as wide as its longest net name
+    # THE LETTERING READS AT 180 (tools/silk_read.py). The cap goes on the Pi FACE DOWN,
+    # so the face a person sees is its BACK, from the player's side. Back lettering is
+    # mirror writing that reads right once the board is turned over left-to-right; as
+    # the cap sits, that needs the half turn. (The front then reads the same way up when
+    # the cap is lifted off and rolled over toward you.)
+    "silk_read": 180,
     "silk_labels": {"+24V_LED": "24V", "+5V_PI": "5V", "SCK_FOOT": "SCK", "SDT_FOOT": "SDT",
                     "PWR_SW_UP": "SW UP", "PWR_SW_DN": "SW DN"},
     "qty_per_instrument": 1,
