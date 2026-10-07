@@ -23,7 +23,7 @@ a stale marker, striking the marker is part of the work.
    e41c8fe, `_body_bbox`). One was the CAD: `optical` U8 drawn a quarter turn out. One is
    honest and declared (`output_panel` J5, `ENDS_OK`). The probe also found the tee's ear
    drawn 0.3 detached after item 1; fixed. `strict_ends` is on for every board, 15 clean.
-   WAITS ON: the scratch gate over these, then submit.
+   Scratch gate 0 overlaps, sweep clean; submitted.
 
 **PCB QUALITY LOOP -- FINISHED 2026-10-05 as far as files can take it (DO NOT RE-ISSUE).**
 Every board of mine is `0 unconnected, 0 violations, 0 FAIL`: `can_tee` 7 OPEN, pogo x4 4,
