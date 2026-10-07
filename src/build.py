@@ -2028,6 +2028,10 @@ _COLORS = {
     "foot_pcb_a_silk": (0.95, 0.95, 0.93),
     "foot_pcb_b_silk": (0.95, 0.95, 0.93),
     "ui_pcb_silk":     (0.95, 0.95, 0.93),
+    "tee_silk":        (0.95, 0.95, 0.93),
+    "kl_pcb_silk":     (0.95, 0.95, 0.93),
+    "pogo_male_silk":  (0.95, 0.95, 0.93),
+    "pogo_female_silk": (0.95, 0.95, 0.93),
     "wire_ui":         (0.55, 0.56, 0.58),
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }

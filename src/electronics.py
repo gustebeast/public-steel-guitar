@@ -1332,37 +1332,11 @@ def pi_cap() -> cq.Workplane:
 
 
 def pi_cap_silk():
-    """The cap's lettering on its bare face, the one that shows with the cap on the Pi --
-    its own part, so it can be white.
-
-    That face is the board's BACK, and board_geom draws a board's front. A label on the
-    back is recorded where it sits seen through the board from the front, so here each
-    one is built reading the right way round, mirrored in x to where it is seen from
-    behind, and laid on the board's z 0 face; _cap_place then turns the board over with
-    everything else."""
-    g = BG.load("pi_cap")
-    solids = []
-    for lab in g.get("silk", []):
-        if lab["side"] != "B":
-            continue
-        lines = lab["text"].split("\n")
-        pitch = lab["size"] * 1.62                     # KiCad's line spacing
-        for k, line in enumerate(lines):
-            if not line.strip():
-                continue
-            w = (cq.Workplane("XY").text(line, lab["size"] / BG.SILK_CAP, BG.SILK_T,
-                                         halign="center", valign="center")
-                 .translate((0.0, ((len(lines) - 1) / 2.0 - k) * pitch, 0.0))
-                 .rotate((0, 0, 0), (0, 0, 1), -lab["angle"])
-                 # seen from behind: x runs the other way; then onto the back face,
-                 # the ink standing off it
-                 .translate((-lab["x"], lab["y"], 0.0))
-                 .rotate((0, 0, 0), (0, 1, 0), 180.0))
-            for s in w.vals():
-                solids += s.Solids()
-    if not solids:
-        return None
-    return _cap_place(cq.Workplane("XY").newObject([cq.Compound.makeCompound(solids)]))
+    """The cap's lettering, both faces -- its own part, so it can be white. The face
+    that shows with the cap on the Pi is the board's BACK; _cap_place turns the ink over
+    with the board."""
+    w = BG.ink("pi_cap")
+    return None if w is None else _cap_place(w)
 
 
 _CAP_T = BG.load("pi_cap")["thickness_mm"]
@@ -1534,8 +1508,9 @@ def output_panel() -> cq.Workplane:
 
 
 def output_panel_silk():
-    """The output board's lettering, where the board is -- its own part (white ink)."""
-    return BG.silk("output_panel").translate(op_origin())
+    """The output board's lettering, both faces, where the board is -- its own part
+    (white ink)."""
+    return BG.ink("output_panel").translate(op_origin())
 
 
 def op_top(ref: str):
@@ -1809,7 +1784,7 @@ def mctrl_floor_ports():
 def motor_ctrl_silk():
     """The motor controller's lettering, through the SAME pose as the board itself."""
     cx, cy = _ctr(MCTRL_FP)
-    return stand(BG.silk("motor_ctrl").translate((0.0, _MCTRL_DY, 0.0))
+    return stand(BG.ink("motor_ctrl").translate((0.0, _MCTRL_DY, 0.0))
                  .translate((cx, cy, MCTRL_BOARD_Z)))
 
 
@@ -1879,6 +1854,20 @@ def tee_conn_dx(which: str = "trunk") -> float:
     from the centre of the whole OUTLINE, ear included, hence the half ear."""
     f = BG.BOARDS.footprint("can_tee", "J1" if which == "trunk" else "J2")
     return f["pads_xy"][0] + D.TEE_EAR_X / 2
+
+
+_TEE_INK = []
+
+
+def tee_silk(x: float, y: float):
+    """A tee's lettering, both faces, for the tee tee_pcb(x, y) draws -- its own part
+    (white ink). The tee is modelled by hand, not from board_geom.solid, so its pose is
+    read off the drawn board (cadkit.board_check.place) rather than written a second
+    time; found once, at the origin, and moved with the board after that."""
+    if not _TEE_INK:
+        from cadkit.board_check import place
+        _TEE_INK.append(place(tee_pcb(0.0, 0.0), BG.load("can_tee"), BG.ink("can_tee")))
+    return _TEE_INK[0].translate((x, y, 0.0))
 
 
 def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Workplane:

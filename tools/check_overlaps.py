@@ -471,6 +471,14 @@ def intended(na, nb) -> bool:
     # removal above states the rule -- "MAIN'S REMOVAL WINS OVER MY KEEP ... re-adding it
     # would silently re-blind the gate to the exact overlap that decision was meant to
     # expose". The wire-key lookup above is an independent change and survives the merge.
+    # A BOARD'S LETTERING against whatever that face of the board is seated on. The ink is
+    # drawn 0.02 mm PROUD of the laminate so that it is a solid at all (board_geom.SILK_T),
+    # so a board that lies on a printed face -- a leg's female board on its host, a pedal's
+    # sensor board against the bar -- has its back lettering 0.02 into that face: 0.2 mm3
+    # per board, and nothing a print or a fab can act on. The BOARD itself is still gated
+    # against the same part, and that is the solid that says whether the thing fits.
+    if "_silk" in na or "_silk" in nb:
+        return True
     # bus tee PCBs mount flat on the chassis floor (christmas-tree boss TBD)
     if frozenset({base(na), base(nb)}) == frozenset({"tee_pcb", "chassis"}):
         return True

@@ -820,10 +820,27 @@ def sensor_pcba():
     return cq.Workplane(obj=solid)
 
 
+_SENSOR_INK = []
+
+
+def sensor_silk():
+    """The board's lettering, both faces, in sensor_pcba's frame -- its own part (white
+    ink). The board is drawn from this module's own datums, not from board_geom.solid,
+    so its pose is read off the drawn board (cadkit.board_check.place) rather than
+    written a second time. Found once."""
+    if not _SENSOR_INK:
+        from cadkit.board_check import place
+        _SENSOR_INK.append(place(sensor_pcba(), BG.load("lever_sensor"),
+                                 BG.ink("lever_sensor")))
+    return _SENSOR_INK[0]
+
+
 def sensor_parts(z_bot, z_top, prefix="kl", flip=None):
-    """The assembled board, posed for this housing. It comes from sensor_pcba unchanged
-    and is only ROTATED, so there is exactly one board design in the project."""
-    return [(f"{prefix}_pcb", _install(sensor_pcba(), z_bot, z_top, flip))]
+    """The assembled board and its lettering, posed for this housing. Both come from
+    sensor_pcba / sensor_silk unchanged and are only ROTATED, so there is exactly one
+    board design in the project."""
+    return [(f"{prefix}_pcb", _install(sensor_pcba(), z_bot, z_top, flip)),
+            (f"{prefix}_pcb_silk", _install(sensor_silk(), z_bot, z_top, flip))]
 
 
 def pcb_shim(z_bot, z_top, flip=None):
