@@ -141,6 +141,13 @@ DISP_PINS = {
 # nothing at the far end.
 import harness as _H  # noqa: E402
 RIBBON_PINS = {_i + 1: _n for _i, _n in enumerate(_H.UI_RIBBON)}
+# What J2's pinout block calls each way: at the nets' own names the block is 20 mm wide.
+# Two of the labeller's default short words would both have read "A".
+RIBBON_WORDS = {"SW_A": "SWA", "SW_B": "SWB", "SW_C": "SWC", "SW_D": "SWD",
+                "SW_PUSH": "PUSH", "ENC_A": "ENA", "ENC_B": "ENB", "SCLK": "SCK",
+                "SDIN": "SDI", "DC": "DC", "CS_N": "CS", "RES_N": "RES",
+                "PWR_SW_UP": "PUP", "PWR_SW_DN": "PDN", "+3V3": "3V3", "GND": "GND"}
+
 
 # -- SW1: the Alps part's own pin names, off its drawing and LCSC's symbol --
 ENC_PINS = {
@@ -591,21 +598,19 @@ BOARD_NOTES = {
     # would be perforated anyway, by twenty through-hole pins at 2.54 leaving 0.7 mm webs
     # straight across it. So GND is a routed net like every other one, which on a 72 mm
     # board with a metre of ribbon either side is what it was always going to be worth.
-    "silk_labels": {"SW2": "POWER", "SW1": "NAV"},
+    # a part's word, and (for J2's block) a net's: the block is as wide as its longest
+    # name, and at the nets' own names it only went down at 0.8 mm, under the legible size
+    "silk_labels": dict({"SW2": "POWER", "SW1": "NAV"}, **RIBBON_WORDS),
     # A designator beside every part that has a site: this is the board a hand probes
     # (two switches, a display header and a ribbon, all through-hole).
     "silk_refs": True,
     # THE TWO HEADERS ARE OVER THE LABELLER'S EIGHT-WAY LIMIT, so neither gets a word per
     # way: the ribbon's sixteen are at 1.27 and the display's twenty sit under the module.
-    # J2 gets its pinout as a block instead and J1 its first and last way numbered. The
-    # short words are the block's fallback where the nets' own names are too wide to go
-    # down at the legible size; two of the defaults would both have read "A".
+    # J2 gets its pinout as a block instead and J1 its first and last way numbered. Its
+    # words are RIBBON_WORDS.
     "silk_pinout": ["J2"],
     "silk_ends": ["J1"],
-    "silk_short": {"SW_A": "SWA", "SW_B": "SWB", "SW_C": "SWC", "SW_D": "SWD",
-                   "SW_PUSH": "PUSH", "ENC_A": "ENA", "ENC_B": "ENB", "SCLK": "SCK",
-                   "SDIN": "SDI", "DC": "DC", "CS_N": "CS", "RES_N": "RES",
-                   "PWR_SW_UP": "PUP", "PWR_SW_DN": "PDN", "+3V3": "3V3", "GND": "GND"},
+    "silk_short": RIBBON_WORDS,
     "mounting_hole_xy": UI.SCREW_XY,
     "single_sided": True,      # every part on the deck-facing face
     "qty_per_instrument": 1,
