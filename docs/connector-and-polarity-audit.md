@@ -60,7 +60,7 @@ answer is kept) and compared with the terminal our pad 1 is.
 | PD15-22B/TR8 C161211, x20 `optical` | pad 1 = anode pair, pad 2 = cathode pair (our own numbers) | Everlight's: 1 and 4 cathode (striped side), 2 and 3 anode | stripe on the MID lands before; after the fix, on the summing-node lands, toward the op-amp | **was wrong, fixed** (frame rot 270) |
 | LTE-C9901 C2683614, x10 `optical` | KiCad LED_0603: pad 1 = K (LED_ROW) | pin 1 "-", pin 2 "+" | "-" at the LED_ROW end, "+" at the ballast end | holds |
 | B5819W C8598, `motor_ctrl` D1, `output_panel` D1 | pad 1 = K (SW) | pin 1 "-", pin 2 "+" | (library only) | holds |
-| SMAJ30A C148230, `motor_ctrl` D8, `output_panel` D6 | pad 1 = K (+24V) | pins unnamed; the symbol's bar is at pin 1 | `motor_ctrl` D8: "-" at the pad-1 end, at screen resolution | holds |
+| SMAJ24A C148222, `motor_ctrl` D8, `output_panel` D6 (SMAJ30A until the pre-order review of 2026-10-06: same SMA land, same polarity) | pad 1 = K (+24V) | pins unnamed; the symbol's bar is at pin 1 | `motor_ctrl` D8: "-" at the pad-1 end, at screen resolution | holds for the footprint; the new code has not been seen in the previewer yet, so look at D8 / D6 there |
 | SMBJ5.0A C83333, `motor_ctrl` D9 | pad 1 = K (+5V) | pins unnamed; the symbol's bar is at pin 1 | D9: "-" at the pad-1 end, at screen resolution | holds |
 | 1N4148WT C917006, `output_panel` D4 | pad 1 = K (+5V, across the relay coil) | pin 1 "K", pin 2 "A" | (library only) | holds |
 | BZT52C10T C248313, `output_panel` D8 | pad 1 = K (SW_SENSE) | pin 1 "C", pin 2 "A" | (library only) | holds |

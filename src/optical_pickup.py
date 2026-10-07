@@ -3031,6 +3031,26 @@ _SECTIONS = ((HEAD_Y0, PCB_YP, PCB_X1S, TAIL_X1),      # +Y wrap, over the endpl
              (PCB_YM, WRAP_Y, COMPUTE_X0, TAIL_X1))    # compute, no -X overhang
 
 
+# ⚠ THE BOARD IS NOTCHED IN FRONT OF THE USB-C, BECAUSE ITS MOUTH STOOD INSIDE THE EDGE
+# (pre-order review, 2026-10-06). J1 is placed with its COURTYARD on the board's -Y face,
+# and the courtyard reaches 1.0 mm past the shell: the mouth ended up 0.5 mm inside the
+# edge where HRO's drawing has it 0.5 mm proud (board edge 3.19 in front of the part's
+# origin; here 4.19). A plug's overmould is wider and deeper than the shell and stands
+# about 0.45 mm off the mouth when it is home, so on this board it met the laminate first.
+# Moving the part would move the high-speed pair that was laid out behind it; taking
+# 1.0 mm of bare board away in front of it moves nothing. The courtyard stays where it
+# was: a keep-out, which is what it is.
+USB_NOTCH_D = 1.00            # back to HRO's edge
+USB_NOTCH_W = 14.00           # the overmould is 12.35 at most (USB Type-C 3.2.1), and the
+                              # mill leaves 0.5 mm radii in the corners
+
+
+def usb_notch():
+    """(x0, x1, y0, y1) of the notch in the board's -Y edge in front of J1, strip frame."""
+    x = part("J1")["x"]
+    return (x - USB_NOTCH_W / 2, x + USB_NOTCH_W / 2, PCB_YM, PCB_YM + USB_NOTCH_D)
+
+
 def mount_points():
     """The two M4 grips, one in each +X wrap -- same fastener as the pickup height jacks.
     Widely spaced on purpose: they are the board's Y datum, and the integrated lid's slots
@@ -3247,6 +3267,13 @@ def opt_pcb() -> cq.Workplane:
     for _mx, _my in mount_points():
         pcb = pcb.cut(cyl(M4.shaft_clr_d, PCB_T + 2.0, PCB_BOT - 1.0)
                       .translate((_mx, _my, 0.0)))
+    # the notch in front of the USB-C (usb_notch). On the BOARD only: _outline(grow) is
+    # also the shape pockets are cut from, and a pocket that followed the notch would put
+    # plastic exactly where the plug's overmould has to go.
+    _nx0, _nx1, _ny0, _ny1 = usb_notch()
+    pcb = pcb.cut(box_at(_nx1 - _nx0, (_ny1 - _ny0) + 1.0, PCB_T + 2.0,
+                         x=(_nx0 + _nx1) / 2, y=(_ny0 + _ny1) / 2 - 0.5,
+                         z=PCB_BOT + PCB_T / 2))
     # ⚠ NO JACK ACCESS HOLE, BECAUSE THE JACK IS NOT UNDER THE BOARD. This cut it, and
     # elec/optical.py emitted the matching circle on Edge.Cuts -- where it was a FAB
     # DEFECT, not a hole: the jack sits at x -33.93 and the board's -X edge is at -32.16,

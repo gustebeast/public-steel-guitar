@@ -1,17 +1,14 @@
 ** Drc report for pi_cap.kicad_pcb **
-** Created on 2026-10-06T16:29:27 **
+** Created on 2026-10-06T20:47:10 **
 ** Report includes: Errors, Warnings **
 
-** Found 27 DRC violations **
+** Found 26 DRC violations **
 [track_dangling]: Track has unconnected end
     Local override; warning
-    @(108.9350 mm, 116.2250 mm): Track [GND] on F.Cu, length 4.4950 mm
+    @(108.9350 mm, 116.2250 mm): Track [GND] on B.Cu, length 4.4950 mm
 [track_dangling]: Track has unconnected end
     Local override; warning
-    @(95.6100 mm, 112.6000 mm): Track [GND] on B.Cu, length 0.8200 mm
-[track_dangling]: Track has unconnected end
-    Local override; warning
-    @(97.9950 mm, 115.5000 mm): Track [PWR_SW_DN] on F.Cu, length 2.7700 mm
+    @(97.9950 mm, 115.5000 mm): Track [PWR_SW_DN] on B.Cu, length 2.7700 mm
 [silk_edge_clearance]: Silkscreen clipped by board edge
     Rule: board setup constraints silk; warning
     @(72.0000 mm, 117.0000 mm): Segment on Edge.Cuts
@@ -78,16 +75,20 @@
     @(108.3550 mm, 115.8179 mm): Segment of J5 on F.Silkscreen
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
-    @(89.6536 mm, 110.6200 mm): Segment of R4 on F.Silkscreen
-    @(89.5000 mm, 110.1700 mm): Reference field of R3
-[silk_overlap]: Silkscreen clearance
-    Rule: board setup constraints silk; warning
     @(81.2500 mm, 106.9900 mm): Reference field of J6
     @(74.5400 mm, 107.1000 mm): Segment of J1 on F.Silkscreen
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
+    @(89.6536 mm, 110.6200 mm): Segment of R4 on F.Silkscreen
+    @(89.5000 mm, 110.1700 mm): Reference field of R3
+[silk_overlap]: Silkscreen clearance
+    Rule: board setup constraints silk; warning
     @(95.1000 mm, 113.1400 mm): Reference field of C5
     @(94.9464 mm, 112.9800 mm): Segment of R5 on F.Silkscreen
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(81.2500 mm, 106.9900 mm): Reference field of J6
+    @(80.9500 mm, 105.7700 mm): PTH pad 6 [GND] of J1
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(89.5000 mm, 112.1700 mm): Reference field of R4
@@ -96,10 +97,6 @@
     Local override; warning
     @(89.5000 mm, 110.1700 mm): Reference field of R3
     @(90.0100 mm, 111.0000 mm): Pad 1 [SDT_FOOT_PI] of R4 on F.Cu
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(81.2500 mm, 106.9900 mm): Reference field of J6
-    @(80.9500 mm, 105.7700 mm): PTH pad 6 [GND] of J1
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(95.1000 mm, 113.1400 mm): Reference field of C5

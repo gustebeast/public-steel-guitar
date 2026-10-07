@@ -510,7 +510,8 @@ def output_panel():
     # -4.5 V, +-20 V gate, TO-252 with G left / D tab / S right seen from above, leads down
     # -- pad 1 G, 2 D, 3 S on KiCad's TO-252-2. The supply is 6.67 A: 0.9 W at 20 mOhm, on a
     # part good for 50 C/W on a square inch of copper; the realistic bus is under 5 A, 0.5 W.
-    # 60 V because D6 clamps the trunk at 48 V and a 40 V part would sit under that.
+    # 60 V because the trunk's clamp was a 48 V one when this was chosen and a 40 V part
+    # would have sat under it. D6 is an SMAJ24A now (38.9 V at its rated pulse); 60 V stays.
     #
     # THE GATE IS A SOFT START, AND IT HAS TO BE. Behind Q2 sit ten motor drivers' bulk
     # capacitors. Closed hard onto a supply that is already up, the only thing limiting
@@ -1253,7 +1254,10 @@ def output_panel():
               # load peaks at 0.45 A. LCSC C19634062, 3 x 3 x 1.5.
               value="PNR3015-150M", description="15 uH buck output inductor, Isat 1.4 A, SHIELDED "
               "-- it sits on the same board as a magnetic pickup's preamp",
-              footprint="Inductor_SMD:L_Taiyo-Yuden_NR-30xx",
+              # APV's own land (its sheet's a 1.0, b 1.1, c 2.7): pads 1.1 x 2.7 with 1.0
+              # between them. The Taiyo Yuden NR-30xx land this used is 0.8 x 2.7 with 1.4,
+              # which left the part's 0.9 mm terminals 0.25 mm short of pad on each inner side
+              footprint="Steel:L_APV_PNR3015",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]
     v5_pre += l1[2]
@@ -1311,7 +1315,17 @@ def output_panel():
             "pin 2, and C41 blocks the DC but passes the insertion edge")
     ring_blocked += d7[1]
     agnd += d7[2]
-    d6 = _d("D6", "SMAJ30A", "24 V rail clamp -- the trunk is shared with ten stepper "
+    # ⚠ SMAJ24A, NOT SMAJ30A (pre-order review, 2026-10-06). The 30 V part does nothing
+    # until 33.3 to 36.8 V and lets the rail reach 48.4 V at its rated pulse -- over the
+    # 40 V Schottkys on both bucks' switch nodes and over the optical board's 38 V
+    # LMR33630, which this diode is the only clamp for. The 24 V part breaks down at 26.7
+    # to 29.5 V (Littelfuse SMAJ table) and holds 38.9 V at 10.3 A; at the brick's whole
+    # 6.67 A a max-breakdown unit stands at 35.6 V. The brick is 24 V +-3 % (24.72 V), two
+    # volts under the lowest breakdown. If the brick ever sat at its over-voltage threshold
+    # (105 to 135 %: 25.2 to 32.4 V) instead of tripping, this part would conduct
+    # continuously and fail SHORT, which hiccups the supply: a brick fault ends as a dead
+    # rail, not as 32 V on everything. Same land, same polarity.
+    d6 = _d("D6", "SMAJ24A", "24 V rail clamp -- the trunk is shared with ten stepper "
             "drivers and their inductive kick arrives here", "Diode_SMD:D_SMA")
     v24 += d6[1]
     pgnd += d6[2]
@@ -1434,10 +1448,16 @@ def output_panel():
         c = _c(tag, val, desc, fp)
         net += c[1]
         ref += c[2]
-    # Y1 and Y2 are both CL 12 pF parts: 15 pF each side is 7.5 in series plus about
-    # 4.5 pF of pin and track. (The hub's pair was 12 pF "until its own part is chosen";
-    # it is chosen, and 12 pF left it 1.5 pF light.)
-    for tag, net in (("C15", osc_in), ("C16", osc_out), ("C17", hub_xi), ("C18", hub_xo)):
+    # Y1 is a CL 12 pF part: 15 pF each side is 7.5 in series plus about 4.5 pF of pin
+    # and track.
+    # ⚠ Y2, THE HUB'S CRYSTAL, HAS NO CAPACITORS, AND MUST NOT (pre-order review,
+    # 2026-10-06). The CH334 carries its own: WCH's CH334/CH335 datasheet V2.91, 6.1, the
+    # note under the application circuit -- XI and XO have about 16 pF built in and the
+    # crystal is to be fitted with no external capacitors; the reference circuits draw
+    # none. C17 / C18 stood here at 15 pF and made each pin 31 pF: 15.5 in series plus
+    # stray, 17 to 18 pF on a crystal cut for 12, pulling it low. 16 pF a side is 8 in
+    # series plus about 4 of pin and track: 12.
+    for tag, net in (("C15", osc_in), ("C16", osc_out)):
         c = _c(tag, "15pF", "crystal load")
         net += c[1]
         gnd += c[2]
@@ -1477,8 +1497,13 @@ def output_panel():
             ("C37", "100nF C0G", pk_hot, pk_in, "pickup input coupling -- 1.6 Hz into R8's "
              "1M. C0G: a coupling cap in the coil's own path must not have a voltage "
              "coefficient", "Capacitor_SMD:C_1206_3216Metric"),
-            ("C38", "1uF", pk_buf, direct, "direct-path coupling to the relay -- 16 Hz into "
-             "R15's 10k, two octaves under the lowest string (C2, 65 Hz)", C0805),
+            # 10 uF, not 1 (pre-order review, 2026-10-06): 1 uF into 10 k is 16 Hz, which
+            # is 0.26 dB down and 14 degrees of lead at the low C (65 Hz) on THIS throw only
+            # -- the relay's other throw is the DAC, flat to DC, so switching sources moved
+            # the bass. 1.6 Hz moves nothing audible, and a class-II part with almost no
+            # signal across it has no voltage coefficient to distort with.
+            ("C38", "10uF", pk_buf, direct, "direct-path coupling to the relay -- 1.6 Hz into "
+             "R15's 10k, flat through the lowest string (C2, 65 Hz)", C0805),
             ("C39", "1uF", sel, u7_in, "output buffer input coupling (1.6 Hz into R16)", C0805),
             ("C40", "10uF", vmid, agnd, "VMID reservoir", C0805),
             # ── the RING leg ─────────────────────────────────────────
@@ -2173,8 +2198,6 @@ BOARD_NOTES = {
         # The board directly below U4 was empty, so the crystal takes it: XI/XO are on
         # U4's west edge at its bottom corner, and the loop drops from 18 mm to ~4.
         "Y2": (-16.00, -13.00, 0.0),
-        "C17": (-17.50, -16.50, 0.0),
-        "C18": (-14.50, -16.50, 0.0),
         "U6": (6.00, -8.00, 0.0),
         "C58": (3.20, -7.50, 270.0),    # across IN and GND, where the SWD pads stood
         "C55": (27.90, -13.40, 90.0),   # between the inlet and J10, off the PWR_GND bar
@@ -2859,7 +2882,7 @@ BOARD_NOTES["quality"] = {
         "M2": "D1 (B5819W) pad 1 = K on SW, anode on PWR_GND. D4 (1N4148WT) pad 1 = K on "
               "+5V, anode on RELAY_COIL: it conducts the coil's turn-off current back to "
               "the rail (it was fitted the other way round until this review). D6 "
-              "(SMAJ30A) pad 1 = K on +24V. D8 (BZT52C10) pad 1 = K on SW_SENSE. D2 / D3 / "
+              "(SMAJ24A) pad 1 = K on +24V. D8 (BZT52C10) pad 1 = K on SW_SENSE. D2 / D3 / "
               "D5 / D7 are bidirectional. No electrolytic or tantalum part",
         "M4": "U5 (LMR16006, SNVSA24): CIN 10 uF / 50 V 1206 + 100 nF / 50 V at the pin "
               "(asks 1-10 uF); COUT 2 x 22 uF / 16 V 0805, about 2 x 9 uF at 5 V of "
@@ -2868,7 +2891,10 @@ BOARD_NOTES["quality"] = {
               "on a 24 V net is a 50 V part; C1 / C41 at the jack are 100 V against 48 V "
               "phantom power; C48 on Q2's gate is 25 V against 7.5 V",
         "M5": "+24V_IN and +24V: Q2 60 V, U5 60 V operating, capacitors 50 V, F1 63 V, "
-              "D6 stands off 30 V and breaks down at 33-37 V. Q2's gate sees 7.5 V of its "
+              "D6 (SMAJ24A) stands off 24 V, breaks down at 26.7-29.5 V and holds 38.9 V at its "
+              "rated 10.3 A, 35.6 V at the brick's whole 6.67 A: under D1's 40 V and, on the "
+              "optical board this rail feeds, under U13's 38 V. The brick's 24.72 V maximum "
+              "is 2 V under the lowest breakdown. Pin by pin: A16. Q2's gate sees 7.5 V of its "
               "20 V; Q3's sees 10 V (D8) of its 20 V. R33 / R34 dissipate 31 mW each "
               "with the switch held off, in 0402 parts rated 62 mW. 5 V rail: 16 V "
               "capacitors, op-amps and switch 5.5 V, the pot 5.5 V. 3V3: the DAC (3.9 V "
@@ -2978,8 +3004,10 @@ BOARD_NOTES["quality"] = {
                "is no external pull-up to fit. Port 1's pair has no via on one "
                "conductor and two on the other: recorded at the pair",
         "M24": "Y1 (8 MHz, CL 12 pF): 15 pF each side = 7.5 + about 4.5 pF of pin and "
-               "track. Y2 (12 MHz, CL 12 pF): the same 15 pF (it was 12 pF, 1.5 pF "
-               "light, from before the crystal was chosen)",
+               "track. Y2 (12 MHz, CL 12 pF) has NO external capacitors: the CH334 has "
+               "about 16 pF on each of XI and XO inside it and WCH says to fit none "
+               "(CH334/CH335 datasheet V2.91, 6.1) -- 8 in series + about 4 = 12. The "
+               "two 15 pF parts that stood there were removed 2026-10-06",
         "M25": "U1 and U4: exposed pads on GND with vias to the plane (A8). Q2: the tab "
                "is its drain, on eight vias to a 2.6 mm B.Cu bar and the F.Cu land: "
                "0.76 W at 6.67 A, about 0.2 W at the 3.5 A the instrument is budgeted "
@@ -3038,6 +3066,8 @@ if __name__ == "__main__":
     # R60 joins them (2026-10-04): one group, nothing to declare.
     netcheck.grounds_meet(os.path.join(OUT_DIR, "output_panel.net"))
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "output_panel.net"))
+    import volts_decl                   # A16: generated, see volts_decl.py
+    volts_decl.into(BOARD_NOTES, "output_panel")
     with open(os.path.join(OUT_DIR, "output_panel.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, x%d per instrument"
