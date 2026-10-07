@@ -1613,7 +1613,7 @@ def _ctrl_bus_components():
 
     Separate from _lever_bus_components because these are not lever-to-lever segments:
     they are the pedal bar's cable coming in off the instrument's underside and the head
-    of the lever chain, and both cross the chassis floor through the one wiring port."""
+    of the lever chain, both under the floor all the way to the motor board's J2 and J6."""
     from . import wiring as WR
     return WR.ctrl_bus_b(lever_bus_nodes()[0])
 

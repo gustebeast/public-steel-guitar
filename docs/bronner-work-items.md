@@ -55,6 +55,23 @@
      20 mm out with no plug body and ends in the Pi's USB-A block where the schematic sends
      it to the Pi's USB-C (pi4() does not model that); J4 is right. cadkit: side-entry XH
      drawn 6.1 deep, footprint body 11.6.
+   **DONE 2026-10-07 except the USB items.** `wiring.CONN` maps each connector to its
+   harness tuple, `conn_end()` reads every way off the routed board (`EL.way_pt`),
+   `check_cables()` fails the build on a wrong count, a conductor off its way's line, or
+   one that does not leave along the connector's exit; NC ways draw nothing. Redrawn: bus
+   A head (J1 all four ways), all ten tees (hops + pigtails on the routed ways), 24 V head
+   (J7 ways 1, 2), PWR_LINK (six), PI_5V_LINK (four, way n to way n), LIGHTS_LINK (new),
+   bus B onto J2 and J6 under the floor, optical feed (two conductors on ways 1, 2), the
+   UI ribbon onto pi_cap J5, colours for every net. The lead's audit re-run on this model
+   (scripts copied, conductor tables renamed, verdict computed from the measurement):
+   **37 of 51 connector instances right (26 CORRECT + 11 OK-as-one-jacket), 23 of 37
+   rows; before 5 of 51, 5 of 37.** The 14 left are branner's: five lever J1 (way order
+   mirrored, `knee_lever.plug_pin`), five pedal J1 (no cable), four leg J2.
+   **FOUND BY DRAWING IT:** motor_ctrl J7's ways 3 and 4 are below the floor's top with
+   the port cut 0.5 round the plug: their wires had no way out. `EL.mctrl_wire_relief` is
+   the trench (chassis_2 changes); INSTALL_NOTES has the step. Both bus-B cables stay
+   under the floor end to end; INSTALL_NOTES BB-2 / BB-3 rewritten for J2 + J6.
+   STILL OPEN: the three USB items below.
    - Not mine (branner): knee-lever J1 way order, leg joint J2 mirror, pogo_wire_*_3.
    ORDER: silk + orientation + fab packages FIRST (boards ordered tomorrow), then this.
 4. ~~DONE~~ (`tools/silk_read.py`; motor_ctrl 90, pi_cap 180, the two top leg boards 180, the rest 0) **One reading direction per board (lead, from the user).** kicad_silk: `silk_read` in the
