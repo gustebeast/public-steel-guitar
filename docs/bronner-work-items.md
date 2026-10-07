@@ -117,14 +117,21 @@
      declared. output_panel: J6's outline moved to .Fab BY HAND on the routed board.
      OPEN: (1) J6's footprint outline crosses its own land; a fresh layout brings A18
      back. Do NOT put J6 in strip_silk: the labeller clears 12 mm round a stripped part
-     and J6 + J10 lost designator and way-1 mark. (2) cadkit silkfit.fit_refs scores a
-     TRANSLATED copy of the text and then also sets angle 0 + KeepUpright, so a text that
-     was turned lands as a different polygon than the one scored (pi_cap R3 / R4 stayed
-     clipped 0.03-0.04 mm2 until a SECOND finish --keep-route). Not mine; owner unknown.
-     (3) lever_sensor, leg_pogo, ui_board NOT re-run under these rules (not ordered).
-     (4) Font swap to Rennie Mackintosh Light on the real silk: asked via branner, HELD
-     for the user (0.072 mm strokes at 1.0 mm cap, fab minimum 0.15; and it re-lays
-     every label on every carted board).
+     and J6 + J10 lost designator and way-1 mark. (2) lever_sensor, leg_pogo, ui_board
+     NOT re-run under these rules (not ordered). silkfit's two-run bug is FIXED (cadkit
+     c634d5e: candidates are scored upright, as the text is then set).
+   - **Silk face: Rennie Mackintosh PSG Bold, DONE 2026-10-07 on the five cart boards**
+     (user: before checkout). elec/silk.py SILK_FACE, size 1.5 (cap 1.40 mm, thinnest bar
+     0.153 mm; 1.4 is under the 0.15 minimum). PINOUT_REACH 40 (user: pinouts may sit
+     further off if they carry the connector number and stay in order). Each board one
+     finish --keep-route: 0 unconnected, 0 violations, 0 FAIL. Packages against the
+     pre-font ones: only F/B_Silkscreen and QUALITY.txt differ (optical: silk only);
+     every copper, mask, paste, drill, BOM and placement file identical. The font file
+     is NOT in the repo (elec/fonts/ ignored, no licence to redistribute): a machine
+     without it installed stops in _set_face rather than printing a substitute.
+     cadkit: a way-1 mark must be nearer its own connector than any other. propagate
+     reported 10/11 consumers in sync (one other project skipped). OPEN: lever_sensor,
+     leg_pogo, ui_board, LED boards still in the stroke font.
    - Lead's bench-cart corrections folded in 2026-10-07 (BOM, bench-order, prices.json):
      optical USB lead is 0.3 m and no stock lead with a published overmould <= 17.5 mm was
      found; bulkman screw link; PSU tariff line; M3x12 and Loctite 425 prices; LCSC lots.
