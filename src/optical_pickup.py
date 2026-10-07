@@ -4108,10 +4108,10 @@ def _silk_to_world():
 
 
 def opt_silk():
-    """The board's lettering as its OWN part (white ink; user, 2026-10-02), read from the
-    routed board. None if the board has not been lettered."""
+    """The board's lettering, both faces, as its OWN part (white ink; user, 2026-10-02),
+    read from the routed board. None if the board has not been lettered."""
     from . import board_geom as BG
-    w = BG.silk("optical")
+    w = BG.ink("optical")
     if w is None:
         return None
     dx, dy = _silk_to_world()

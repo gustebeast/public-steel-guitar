@@ -619,7 +619,7 @@ def ui_pcb():
 def ui_silk():
     """The UI board's lettering, where the board is -- its own part (white ink)."""
     cx, cy = board_centre()
-    w = _bg().silk("ui_board")
+    w = _bg().ink("ui_board")
     return None if w is None else w.translate((cx, cy, board_z0()))
 
 
