@@ -749,6 +749,11 @@ BOARD_NOTES = {
     "conn_keepout": {"box": [-15.5, -9.95, -3.85, 9.95], "exempt": ["J1", "U4"]},
     # ── the quality pass (cadkit/PCB_QUALITY.md) ─────────────────────────────
     "quality": {
+        # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
+        # and why. Way 1 is marked on the connector's own side in every case.
+        "connector_labels": {
+            "J1": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its nine-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
+        },
         # A8 asks for a via in every exposed pad; the sensor's has none, deliberately (the
         # note at stitch_exceptions). A8's own exception: a part that needs no heat path,
         # with the pad still on its net by copper on its own layer.
