@@ -289,7 +289,7 @@ def net_volts(rail, rail_max, rail_why):
     }
 
 
-def pin_volts(pogo_mpn, resistors):
+def pin_volts(pogo_mpn, resistors, pogo_accepted=None):
     """quality.pin_volts for the same boards. `resistors` are the 0402 values fitted."""
     r0402 = {"max": 50.0, "src": "UNI-ROYAL 0402WGF series (and Yageo RC0402): maximum "
                                  "working voltage 50 V"}
@@ -319,8 +319,13 @@ def pin_volts(pogo_mpn, resistors):
             }},
         "JFC1206-1200FS": fuse, "JFC1206-1100FS": fuse,
         "S4B-XH-SM4-TB": {"max": 250.0, "src": "JST XH series: rated 250 V"},
-        pogo_mpn: {"max": 24.0, "src": "Xinyangze YZF0002-38080-02 specification A.0: "
-                                       "voltage rating 24 V AC (rms) / DC"},
+        pogo_mpn: dict({"max": 24.0, "src": "Xinyangze YZF0002-38080-02 specification A.0: "
+                                            "voltage rating 24 V AC (rms) / DC"},
+                       **({"accepted": pogo_accepted, "peak": "none",
+                           "why": "the sheet gives one voltage and no transient rating, "
+                                  "and the input declares no transient above its steady "
+                                  "worst case: the leads are plugged with the "
+                                  "instrument off (M16)"} if pogo_accepted else {})),
         "XL-5050RGBW": {
             "max": "none", "src": "XINGLIGHT XL-5050RGBW sheet, absolute maximum ratings",
             "why": "a die in a series string has no rating to ground: its limits are "
@@ -333,3 +338,13 @@ def pin_volts(pogo_mpn, resistors):
     d.update({v: r0402 for v in resistors})
     return d
 
+
+
+# The pogo pin is rated a nominal 24 V and a board that passes the raw input through one
+# runs it at the supply's top tolerance, 3 % over. Accepted by the user, for that voltage
+# and no more: a board whose pin carries the input passes this to pin_volts().
+POGO_24V_ACCEPTED = {
+    "v": V24_MAX, "by": "user", "date": "2026-10-06",
+    "why": "\"If it's rated 24V it seems likely it could handle a 3% increase\": a nominal "
+           "24 V rating on a nominal 24 V supply at the top of its +-3 % (24.72 V), on "
+           "single pins standing on lands more than 2 mm apart"}
