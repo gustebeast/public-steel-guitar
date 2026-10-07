@@ -66,7 +66,7 @@ Way order is `elec/harness.py`; every JST lead is crimped 1:1, way n to way n. X
 | Motor board USB | `motor_ctrl` J4, PH 4 | a Pi USB-A host port | GND, VBUS (not connected at the board), D-, D+ |
 | Hub upstream | `output_panel` J3, USB-C | a Pi USB-A host port | stock A-to-C lead |
 | Pi gadget port | `output_panel` J2, USB-C | the Pi's USB-C | stock C-to-C lead, about 1 m on the bench. ⚠ In the instrument the Pi's USB-C faces the -Y rail about 4.5 mm away: no plug goes in there as the Pi is placed today (open design item) |
-| Optical USB | `output_panel` J4, USB-C | `optical` J1, USB-C | stock C-to-C lead, **0.3 m** (the modelled route is 204 mm boot to boot, about 242 mm mouth to mouth). ⚠ The optical end's conduit takes a plug overmould of 17.5 mm at most, and no stock 0.3 m lead with a published overmould that short has been found: measure one in hand before the board goes into the endplate |
+| Optical USB | `output_panel` J4, USB-C | `optical` J1, USB-C | stock C-to-C lead, **0.3 m, a down-angle (90°) plug at the optical end**: overmould 12 mm deep at most, 22 mm at most from the plug's axis to the cable. On the bench any C-to-C lead does; the angle is for the endplate |
 | Pickup | magnetic pickup | `output_panel` J8 | two screw terminals, hot and ground, marked on the silk |
 
 ### The motor drop
