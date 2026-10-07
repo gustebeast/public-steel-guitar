@@ -1108,6 +1108,12 @@ def _vkl_mount_y() -> float:
 # it is the LKL design reflected. Reflection keeps the tenons on ribs (their offsets
 # are rib multiples either way), but it does make a separate printed SKU — flagged,
 # not exported yet.
+# THE BOARD IS NOT REFLECTED. There is one sensor board, and a reflected one does not
+# exist; into a right-hand housing it goes TURNED OVER about the axle (a rotation), which
+# stands it 1.7 higher and counts its connector the other way up. The right-hand housing
+# is its own solid for that reason (knee_lever.knee_housing_r, cradle drawn for the
+# turned board), and the board, its lettering and its shim are posed at the station
+# without the mirror (_lever_stations_components, lever_bus_nodes).
 # ILKL still needs X clearance from LKL even though their PADDLES are in different
 # planes: the housings are deeper in Y than the paddles and their bands overlap. And
 # its -X limit is the left leg, whose block ends at -596.6 — the first station that
@@ -1287,6 +1293,14 @@ def _lever_stations_components():
 
     kl_parts, kv_parts = _knee_lever_components(), _knee_vert_components()
     assert_storage_angle()
+    # what a right-hand station does NOT take through the mirror: the housing (its own
+    # solid, already right-handed) and everything that is the board
+    _z = (KL.HOUS_Z0, KL.HOUS_Z1)
+    board_l = {n for n, _s in KL.sensor_parts(*_z)} | {"kl_pcb_shim"}
+    board_r = list(KL.sensor_parts(*_z, flip=True))
+    _shim = KL.pcb_shim(*_z, flip=True)
+    if _shim is not None:
+        board_r.append(("kl_pcb_shim", _shim))
     out = []
     for name, kind, sx, sy, mirrored in LEVER_STATIONS:
         if sy is None:
@@ -1294,11 +1308,16 @@ def _lever_stations_components():
         if kind == "kl":
             parts, mz = kl_parts, KL.MOUNT_Z
         else:                                   # KV carries its own -90° about Z
+            assert not mirrored, "there is no right-hand vertical lever"
             parts = [(n, s.rotate((0, 0, 0), (0, 0, 1), -90)) for n, s in kv_parts]
             mz = KV.MOUNT_Z
+        if mirrored:
+            parts = ([("knee_housing", KL.knee_housing_r)]
+                     # local +X -> -X: the opposite throw
+                     + [(n, s.mirror("YZ")) for n, s in parts
+                        if n != "knee_housing" and n not in board_l]
+                     + board_r)
         for n, s in parts:
-            if mirrored:
-                s = s.mirror("YZ")              # local +X -> -X: the opposite throw
             out.append((n if name == "lkl" else f"{name}_{n}",
                         s.translate((sx, sy, mz))))
     return out
@@ -1569,7 +1588,14 @@ def lever_bus_nodes():
     for name, kind, sx, sy, mirrored in sorted(LEVER_STATIONS, key=lambda st: st[2]):
         if sy is None:
             sy = _vkl_mount_y()
-        if kind == "kl":
+        # the right-hand lever's board is TURNED OVER, not reflected (see LEVER_STATIONS):
+        # its pins are the turned board's, already in the station's frame
+        turned = kind == "kl" and mirrored
+        if turned:
+            def pin(w, _K=KL):
+                return _K.plug_pin(w, _K.HOUS_Z0, _K.HOUS_Z1, True)
+            lace = KL.keeper_point()
+        elif kind == "kl":
             pin = KL.plug_pin
             lace = KL.keeper_point()
         else:
@@ -1581,13 +1607,16 @@ def lever_bus_nodes():
             lace = KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P, KV.HOUS_Z1)
         plug = pin((KL.CONN_N + 1) / 2.0)
         # the plug's wires leave along local -X (the mouth faces -X), posed the same way
-        p = _pose(kind, sx, sy, mirrored, plug)
+        p = _pose(kind, sx, sy, mirrored and not turned, plug)
         l = _pose(kind, sx, sy, mirrored, lace)
         d = _pose(kind, sx, sy, mirrored, (-1.0, 0.0, 0.0), vector=True)
         ka = _pose(kind, sx, sy, mirrored, KL.keeper_axis(), vector=True)
         pa = _pose(kind, sx, sy, mirrored, KL.pin_axis(), vector=True)
+        if turned:
+            pa = (pa[0], pa[1], -pa[2])
         ca = _pose(kind, sx, sy, mirrored, KL.cheek_axis(), vector=True)
-        pins = {w: _pose(kind, sx, sy, mirrored, pin(w)) for w in range(1, KL.CONN_N + 1)}
+        pins = {w: _pose(kind, sx, sy, mirrored and not turned, pin(w))
+                for w in range(1, KL.CONN_N + 1)}
         # WHERE THE ARRIVING CABLE TURNS, on the one lever whose plug the bus cannot
         # reach in a straight line: the vertical one, whose body lies along its plug's
         # axis, so the cable has to come round the +Y end before it can run back to the
