@@ -109,6 +109,22 @@
      0.0. NOT run through a gate (the Pi is outside my scratch scope): the lead's build
      is the first full check. Seen on the way and NOT mine, same on main: wire_fret_led_*
      <-> wire_link 6.6 / 1.7 / 0.9 mm3 near the deck (brenner's lead, my link).
+   - **Cart boards under the 2026-10-07 rules (A15 measured exemptions, A18 silk over mask).**
+     can_tee, motor_ctrl: 0 FAIL untouched, zips byte-identical. pi_cap, output_panel,
+     optical: 0 FAIL after silk-only fixes (--keep-route; every copper and drill file
+     identical apart from its date line; F_Silkscreen, QUALITY.txt and the job file
+     changed). optical: U14-U18 outlines to .Fab (strip_silk by full ref), +3V3D 5.30
+     declared. output_panel: J6's outline moved to .Fab BY HAND on the routed board.
+     OPEN: (1) J6's footprint outline crosses its own land; a fresh layout brings A18
+     back. Do NOT put J6 in strip_silk: the labeller clears 12 mm round a stripped part
+     and J6 + J10 lost designator and way-1 mark. (2) cadkit silkfit.fit_refs scores a
+     TRANSLATED copy of the text and then also sets angle 0 + KeepUpright, so a text that
+     was turned lands as a different polygon than the one scored (pi_cap R3 / R4 stayed
+     clipped 0.03-0.04 mm2 until a SECOND finish --keep-route). Not mine; owner unknown.
+     (3) lever_sensor, leg_pogo, ui_board NOT re-run under these rules (not ordered).
+     (4) Font swap to Rennie Mackintosh Light on the real silk: asked via branner, HELD
+     for the user (0.072 mm strokes at 1.0 mm cap, fab minimum 0.15; and it re-lays
+     every label on every carted board).
    - Lead's bench-cart corrections folded in 2026-10-07 (BOM, bench-order, prices.json):
      optical USB lead is 0.3 m and no stock lead with a published overmould <= 17.5 mm was
      found; bulkman screw link; PSU tariff line; M3x12 and Loctite 425 prices; LCSC lots.
