@@ -65,8 +65,10 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
 - **J1's dimensions** are from JST's ePH datasheet, **side-entry** sections: p.4 (19.9 long,
   5.5 tall, 6.0 deep + 2.6 tabs), p.2 (mated 9.6 × 5.5), p.3 (PHR-8: 6.85 × 4.5). Note that
   B4B-PH-SM4-TB (6.6 tall, 5.0 deep) is the *top-entry* part on the same page, not this one.
-- **Harness side:** PHR-8 housings, SPH-002T-P0.5S contacts and a PH crimp tool. Stock for
-  those hasn't been checked yet.
+- **Harness side:** PHR-8 housings, SPH-002T-P0.5S contacts and a PH crimp tool. Stock read
+  2026-10-06 (JLCPCB parts API): header C265121 19,232; PHR-8 C157950 99,670; contacts
+  C111515 1.3 million. Eleven headers and housings and 88 contacts an instrument, so none
+  of the three limits anything.
 
 ## The +X edge is a MECHANICAL keep-out, not a fabrication one (2026-09-29)
 
