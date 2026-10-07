@@ -406,3 +406,22 @@ NEEDS USER -- the one item left open on every board is M12, and only these parts
   +24V / +24V_IN is 24.72 V worst case (Mean Well GST160A24 24 V +-3 %). NOT waived; reported to the lead. Foot fab
   packages NOT rebuilt until this is decided.
 - NEXT: connector per-way labels once the kicad_silk change is on main (finish --keep-route on all five, rebuild fab).
+
+## JLCPCB RE-UPLOAD + RE-QUOTE, 2026-10-07 00:20-00:40 (user asked; NOTHING in the cart, cart read as empty afterwards)
+All five packages (zips of 2026-10-07 00:08-00:16: feed re-layout on the fret boards, per-way connector labels, ui_board
+J2 table) uploaded with their own -bom.csv / -cpl.csv and walked to "Quote & Order". Each is a NEW project under
+Projects > Quotes; older ones of the same name are stale. Options on every board: Economic, top side, qty 5, Remove
+Mark, Confirm Production File Yes, Confirm Parts Placement Yes, via 0.3, TG135, HASL; deburring No on the foot boards.
+Every BOM row matched and in stock; the pogo row ticked by hand (20 pcs, 11.35 USD) on the four LED boards.
+  Quotes for 5, before shipping:   was      now
+      foot_led_a                  143.06   143.06  (PCB 30.45, PCBA 112.61)
+      foot_led_b                  137.43   137.43  (PCB 30.35, PCBA 107.08)
+      fret_led_key                147.92   148.01  (PCB 37.05, PCBA 110.96; 0R C17168 x15 basic, 0.04)
+      fret_led_mid                136.98   137.12  (PCB 37.05, PCBA 100.07; 0R C17168 x25 basic, 0.06)
+      ui_board                     53.31    53.31  (PCB  5.05, PCBA  48.26)
+                                                    618.93
+NOT DONE: the parts-placement PREVIEW was seen for foot_led_a only (parts on their lands, new silk visible). The
+browser tab was in the background and screenshots of the 3D/2D viewer timed out on the other four. foot_led_b and
+ui_board carry the same CPL as the walk that was checked; fret_led_key / fret_led_mid have MOVED parts and the new
+R41.. links and their previews have NOT been looked at. Look on order day (Chrome in front), or rely on
+Confirm Parts Placement (ticked).
