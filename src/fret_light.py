@@ -718,6 +718,17 @@ def pcb(panel):
     return _placed(panel, BG.solid(BOARD_NAME[panel]))
 
 
+def silk(panel):
+    """The board's lettering, both faces, where the board is -- its own part (white
+    ink). The back's is mirror writing under the laminate, as the fab prints it."""
+    from . import board_geom as BG
+    sides = [w for w in (BG.silk(BOARD_NAME[panel], s) for s in ("F", "B")) if w is not None]
+    if not sides:
+        return None
+    solids = [x for w in sides for v in w.vals() for x in v.Solids()]
+    return _placed(panel, cq.Workplane("XY").newObject([cq.Compound.makeCompound(solids)]))
+
+
 def leds(panel):
     """The panel's LEDs alone, as their routed bodies -- for the probes that ask about
     the LEDs specifically. The build draws them as part of pcb()."""
