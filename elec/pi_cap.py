@@ -738,9 +738,22 @@ BOARD_NOTES = {
         # The gap it finds under the 5 V lane (5.03 mm, at x 3.8 y 2.5) is in the F.Cu
         # pour, three layers away, where C2 and C4 and their tracks sit.
         "return_slot_ok": {
-            "+5V_PI": "a DC supply lane on B.Cu. The layer next to it is In2, the ground "
-                      "plane, and that is whole under the lane's full length (sampled "
-                      "every 0.25 mm). The cut is in the far face's pour",
+            "+5V_PI": {"mm": 5.03,
+                       "why": "a DC supply lane on B.Cu. The layer next to it is In2, the "
+                              "ground plane, and that is whole under the lane's full "
+                              "length (sampled every 0.25 mm). The cut is in the far "
+                              "face's pour"},
+            # (2026-10-07, the rule now reads the whole run of a net, not one segment.)
+            # The cut is the socket's own row: its through-holes open the plane in a
+            # line, and every UI line has to pass between two of them to reach the ribbon.
+            "UI_RES_N": {"mm": 7.74,
+                         "why": "the display's reset: driven once at start-up and then "
+                                "held. It has no edge rate that needs a return path, and "
+                                "the cut it crosses is the 40-pin socket's own row of "
+                                "holes, which no line to the ribbon can avoid"},
+            "PWR_SW_UP": {"mm": 5.34,
+                          "why": "one leg of the power button: a contact that is open or "
+                                 "closed, read as a level. Same cut, the socket's row"},
         },
         "pinouts": {
             "2.54-2*20P": "Raspberry Pi 4B mechanical drawing + src/electronics._cap_place, "
@@ -816,11 +829,19 @@ BOARD_NOTES = {
                   "pin of J1 or J5 or on a connector land, all reachable with a probe from "
                   "the bare back face; ground is on eight socket pins",
             "M11": "finish.py's CAD check: 18 of 18 routed parts present in the CAD, "
-                   "every one where the CAD draws it, all eighteen on the one face. The lead's full build on main b0e7a911 (2026-10-05) "
-                   "with this board's geometry: 1010 components, 0 unintended "
+                   "every one where the CAD draws it, all eighteen on the one face. The lead's full build on main 5ef3691c (#840, 2026-10-07) "
+                   "with this board's geometry: 0 unintended "
                    "overlaps, the rotating-part sweep clean -- the board, its parts at "
                    "their drawn heights, its mated plugs and its cables against the "
-                   "plastic and the fasteners round it. No mounting hole: the board "
+                   "plastic and the fasteners round it. RE-SIGNED 2026-10-07: the build "
+                   "this cited before (b0e7a911) drew the cap 2.5 mm low on a Pi with no "
+                   "DISPLAY socket and so passed a board whose J3 stood 0.5 mm into that "
+                   "socket. Now: the cap at 11.0 over the Pi (8.5 socket on the header's "
+                   "2.5 base), the Pi 4B's DISPLAY and CAMERA sockets drawn at Z=5.5 "
+                   "from its mechanical drawing, J3 moved 2.5 mm clear. Tallest part "
+                   "under the cap is J6 at 6.1, over nothing (it hangs past the Pi's "
+                   "edge); J3 / J4 at 6.0 and J2 at 5.5 stand over parts no taller "
+                   "than the SoC's 2.4. No mounting hole: the board "
                    "hangs on the Pi's 40-pin header. Parts the fab cannot place: none "
                    "(M30 is the tier)",
             "M10": "decision: no clamp on this board. Every connector mates inside the instrument "
@@ -893,8 +914,8 @@ BOARD_NOTES = {
                    "ribbon costs the Pi at most 0.57 A. 24 V to the lit boards: fused at its "
                    "source, motor_ctrl F3 (3 A), which is every XH contact's own rating. 5 V does "
                    "not leave this board except into the Pi",
-            "M38": "every part is on the front, the face toward the Pi, inside the socket's 8.5 mm "
-                   "standoff; the 0805s lie along X, parallel to the long edges, and the "
+            "M38": "every part is on the front, the face toward the Pi, inside the 11.0 mm the "
+                   "socket and the Pi's header base hold the boards apart; the 0805s lie along X, parallel to the long edges, and the "
                    "nearest is over 4 mm from an edge. Routed outline, no V-score, no "
                    "mounting hole: the board hangs on the 40-pin socket. All five cables "
                    "leave sideways (side-entry parts) with open board edge in front",
