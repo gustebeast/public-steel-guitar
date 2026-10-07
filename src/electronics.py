@@ -1695,6 +1695,71 @@ def mctrl_pin(ref: str, n: int, count: int = 4, pitch=None):
     return (cx + lx, cy + ly + _MCTRL_DY, MCTRL_BOARD_Z + lz)
 
 
+# ── WHERE EACH WAY OF EACH CONNECTOR IS, IN THE WORLD ────────────────────────────────────
+# One answer for every board, read from two things that already exist: the routed board's
+# own pad table (board_geom.way, the geom file's `pads`) and the call that PLACES the board
+# in the assembly. mctrl_pin, pi_cap_pin and wiring's tee_pin / _j2_pin each rebuilt a way's
+# position from a pitch, a count and a rotation, and each was right until its board changed:
+# J2 was split into two 4-ways and the drawing kept an 8-way; a tee grew an ear and every
+# end moved half of it along the row; mctrl_pin returned the flat tray's coordinates under
+# a docstring that said world. A cable that lands on the wrong contact overlaps nothing, so
+# no gate saw any of them (the lead's audit, 2026-10-06: 4 of 51 connectors right).
+_WAY_FRAME = {}
+
+
+def _frame_of(put):
+    """(origin, (ex, ey, ez)): where `put` -- the very call that places a board -- carries
+    the board's frame. Found by pushing four markers through it, so there is no second
+    statement of the pose to keep in step with the first."""
+    def at(x, y, z):
+        m = cq.Workplane("XY").add(cq.Solid.makeBox(0.02, 0.02, 0.02,
+                                                    cq.Vector(x - 0.01, y - 0.01, z - 0.01)))
+        b = put(m).val().BoundingBox()
+        return ((b.xmin + b.xmax) / 2.0, (b.ymin + b.ymax) / 2.0, (b.zmin + b.zmax) / 2.0)
+    o = at(0.0, 0.0, 0.0)
+    axes = tuple(tuple(round(q - a, 6) for a, q in zip(o, at(*v)))
+                 for v in ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+    return o, axes
+
+
+def _mctrl_put(w):
+    cx, cy = _ctr(MCTRL_FP)
+    return stand(w.translate((0.0, _MCTRL_DY, 0.0)).translate((cx, cy, MCTRL_BOARD_Z)))
+
+
+def _tee_put(w):
+    from cadkit.board_check import place
+    return place(tee_pcb(0.0, 0.0), BG.load("can_tee"), w)
+
+
+def board_frame(board):
+    """(origin, axes) of a placed board's own frame in the world. `can_tee` is the tee
+    tee_pcb(0, 0) draws: a tee's ways are moved with its board (way_pt's `at`)."""
+    if board not in _WAY_FRAME:
+        put = {"motor_ctrl": _mctrl_put,
+               "output_panel": lambda w: w.translate(op_origin()),
+               "pi_cap": _cap_place,
+               "can_tee": _tee_put}[board]
+        _WAY_FRAME[board] = _frame_of(put)
+    return _WAY_FRAME[board]
+
+
+def way_pt(board, ref, n, at=(0.0, 0.0, 0.0)):
+    """World point where the conductor on WAY `n` of `ref` leaves its plug: on that way's
+    own contact line, at the mated plug's outer end."""
+    o, ax = board_frame(board)
+    p = BG.BOARDS.way(board, ref, n)
+    return tuple(o[k] + at[k] + sum(ax[m][k] * p[m] for m in range(3)) for k in range(3))
+
+
+def way_out(board, ref):
+    """World unit vector a wire travels LEAVING `ref`: the board's normal off a top-entry
+    header, out of the mouth off a side-entry one."""
+    _o, ax = board_frame(board)
+    d = BG.BOARDS.way_dir(board, ref)
+    return tuple(sum(ax[m][k] * d[m] for m in range(3)) for k in range(3))
+
+
 MCTRL_PORT_CLR = D.MCTRL_PORT_CLR    # around whatever of the board enters the floor
 
 
