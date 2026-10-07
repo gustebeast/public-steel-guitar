@@ -752,11 +752,11 @@ def _manual(panel, n_drv, n_zone, facts):
                "library footprint for the LCSC code: XL-5050RGBW C7371891" + (
                ", LMR33630BRNXR C2071384 (and the alternate C part's, C2071783: the "
                "same frame), S4B-XH-SM4-TB C161861" if key else "") + " -- matching under "
-               "a pure rotation. NOT compared: TLC5971RGER C543004, new on this board "
-               "2026-10-06. Its land is KiCad's Texas_RGE0024H, TI's own drawing for "
-               "the package; a square QFN can only be wrong by a quarter turn, and "
-               "that is M12's to see in the placement preview (pin-1 dot on the "
-               "board's pin-1 mark)",
+               "a pure rotation. TLC5971RGER C543004 (land: KiCad's Texas_RGE0024H, "
+               "TI's own drawing for the package) was not laid pad on pad; it was "
+               "SEEN in the fab's placement preview on this board, 2026-10-06: body "
+               "centred on its lands, the fab's pin-1 dot on the board's pin-1 mark, "
+               "at the angle KiCad wrote",
         "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
                "table, read 2026-10-04 (A12 measured against it). 211 x 70.4 mm plus "
                "the ear is inside the size limits. Every 0402's plane-side pad reaches "
@@ -775,6 +775,9 @@ def _manual(panel, n_drv, n_zone, facts):
                "The three test pads are named (+24V, +14V5, GND). J1's four ways are "
                "named on the back: 1 GND, 2 +24V_IN, 3 SCK_CABLE, 4 SDT_CABLE. "
                if key else "") + "Each seam land is named on the back with its net. "
+               "A designator stands beside every LED and driver" + (
+               ", the regulator, the inductor and the fuse" if key else "") +
+               " (silk_refs: every one found a site, 2026-10-06). "
                "All text 1.0 mm or more with a 0.15 stroke (A12). Pin-1 and LED "
                "polarity marks are the footprints', outside the bodies. The legend is "
                "cut back from every mask opening: the gerber carries the pads in "
@@ -1064,6 +1067,9 @@ def build(panel):
     notes["outline_poly"] = [[round(v, 4) for v in pt] for pt in (
         (-hl, -hw), (hl, -hw), (hl, ey), (ex0 - cx, ey), (ex0 - cx, hw), (-hl, hw))]
     notes["qty_per_instrument"] = 1
+    # Designators for what a hand reworks or probes -- the drivers, the regulator and
+    # its inductor, the fuse, and every LED (a dead one is reported by number).
+    notes["silk_refs"] = ["U", "D", "L", "F"]
     # each driver's heat pad gets its four more vias (DRV_PAD_VIAS)
     notes["vias"] = list(notes.get("vias", [])) + [
         ("GND", round(xd + dx, 3), round(DRV_Y + dy, 3))
