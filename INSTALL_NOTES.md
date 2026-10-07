@@ -630,10 +630,20 @@ existing ones:
 
 ## The optical board's USB plug goes in cable-DOWN
 
-The lead from the output panel's J4 has a right-angle USB-C at the optical board's end
-(J1). Plug it with the cable pointing **down**, into the conduit behind the board; the
-endplate is notched under the plug for it. USB-C goes in either way up, so if the cable
-points at the strings, turn the plug over. The other end, at the output panel, is straight.
+The lead from the output panel's J4 is a flat ribbon with the same right-angle USB-C at
+both ends. At the optical board (J1) plug it with the ribbon pointing **down**, into the
+conduit behind the board; the endplate is notched under the plug for it. USB-C goes in
+either way up, so if the ribbon points at the strings, turn the plug over.
+
+* Under J1, fold the ribbon once at 45 degrees so it runs toward the keyhead standing on
+  edge. On edge is the only way it leaves the endplate beside the rail.
+* The optical board's 24 V pair goes into the conduit FIRST: it crosses under the ribbon
+  in the trench in the conduit's floor.
+* At the output panel (J4) the plug goes in with the ribbon pointing **up**. Lay the ribbon
+  over away from the board on top of the plug's boot, so it rises OUTSIDE the loop of the
+  24 V pair, and fold it once toward the rail.
+* The lead is about 160 mm longer than the route. Run the spare along the rail past J4
+  and double it back.
 
 ## Every JST lead: one way order, and the family tells you the voltage
 
