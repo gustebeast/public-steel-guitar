@@ -65,8 +65,8 @@ Way order is `elec/harness.py`; every JST lead is crimped 1:1, way n to way n. X
 | Motor drop | `can_tee` J2, XH 4 | the motor's screw terminals | see below |
 | Motor board USB | `motor_ctrl` J4, PH 4 | a Pi USB-A host port | GND, VBUS (not connected at the board), D-, D+ |
 | Hub upstream | `output_panel` J3, USB-C | a Pi USB-A host port | stock A-to-C lead |
-| Pi gadget port | `output_panel` J2, USB-C | the Pi's USB-C | stock C-to-C lead |
-| Optical USB | `output_panel` J4, USB-C | `optical` J1, USB-C | stock C-to-C lead, about 100 mm |
+| Pi gadget port | `output_panel` J2, USB-C | the Pi's USB-C | stock C-to-C lead, about 1 m on the bench. ⚠ In the instrument the Pi's USB-C faces the -Y rail about 4.5 mm away: no plug goes in there as the Pi is placed today (open design item) |
+| Optical USB | `output_panel` J4, USB-C | `optical` J1, USB-C | stock C-to-C lead, **0.3 m** (the modelled route is 204 mm boot to boot, about 242 mm mouth to mouth). ⚠ The optical end's conduit takes a plug overmould of 17.5 mm at most, and no stock 0.3 m lead with a published overmould that short has been found: measure one in hand before the board goes into the endplate |
 | Pickup | magnetic pickup | `output_panel` J8 | two screw terminals, hot and ground, marked on the silk |
 
 ### The motor drop
@@ -138,6 +138,9 @@ The photodiode is the PD15-22B. The VEMD4110X01 it replaced (95 in stock) is on 
 Across the whole instrument, boards outside the bench included, the scarcest part is the
 fret boards' side-mount spring contact (YZF0002-38080-02, C5203987: 16 an instrument, 594
 in stock, 37 instruments). Nothing limits a ten-instrument order.
+
+LCSC sells the lead housings and contacts in minimum lots (read 2026-10-07): XHP-2 and
+PHR-4 in 50s, XHP-6, XHP-8 and PHR-6 in 20s, XHP-4-M in 10s, crimp contacts in 100s.
 
 JLCPCB does not hold stock for an order that has not been placed. The five parts under
 100 instruments are the ones to look at again on the day; `tools/lcsc_prices.py` re-reads
