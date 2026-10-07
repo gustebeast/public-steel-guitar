@@ -536,216 +536,32 @@ floor**. (There was a 7.2 × 21.6 port through the slab at x −597.3 for it; it
 ### BB-2 — The pedal cable
 
 One cable from the female pogo board's ZR, down the leg, out of the body adapter's
-channel, along the instrument's **underside**, and onto J2 ways 1–4 from below. 28 AWG the whole way — the leg's 2.4 channel is what sets the gauge, not the
-26 AWG the lever segments use between boards. **There is no connector at the adapter's
-face**, so the run is continuous; the only exposed length is the underside crossing.
+channel, along the instrument's **underside**, and up into **J2** (4-way PH, the one
+nearer the -Y rail) from below. 28 AWG the whole way — the leg's 2.4 channel is what sets
+the gauge, not the 26 AWG the lever segments use between boards. **There is no connector
+at the adapter's face**, so the run is continuous; the only exposed length is the
+underside crossing. It passes J6 on the endplate side of it (5 mm toward the keyhead), so
+the lever chain's plug can come out without moving it.
 
 ### BB-3 — The lever chain's head
 
-Four new conductors from J2 ways 5–8 to **LKL's J1 ways 1–4** — the end of the lever
-chain the controller feeds. Out of LKL along its plug's axis past the housing, along
-under the instrument beside the pedal cable to the controller's J2, from below.
+Four conductors from **J6** (4-way PH, 16 mm +Y of J2) to **LKL's J1 ways 1–4** — the end
+of the lever chain the controller feeds. A flat four-way: out of LKL along its plug's
+axis, level under the floor to below J6, and up into it. Way 1 at the lever is way 1 at
+the controller, like every other lead.
 
+J2 and J6 are two separate 4-way housings (they were one 8-way until 2026-10-03), so
+either cable unplugs on its own. Both take the same plug and nothing is damaged by
+swapping them — the board passes the bus straight through — but put them back as built.
 
-> ⚠ **The controller has ONE 8-way J2, not two jacks.** Both cables land on it — pedals
-> on ways 1–4, levers on 5–8 — which is the mid-bus pass-through its netlist describes,
-> but it is one PHR-8 housing, so the two cables have to share it: eight contacts, four
-> from each, crimped into one shell. Two separate 4-way jacks would make each cable its
-> own assembly and let either be unplugged alone. That is a motor-controller decision,
-> not a mechanical one.
+## The lights lead leaves the motor board through a slot in the floor
 
-## The deck's swappable bands — 2026-09-29
-
-**There are TWO filler bands and they are the same part.** Slide the pickup piece to the
-slot position you want and drop the two fillers into whichever slots it leaves; either
-band goes in either slot, and there is no set of spares to keep track of. That is what
-the fillers losing their fret lines bought — a marked band fits one slot only.
-
-The deck is therefore marked to **fret 24** (the octave quad, on the mid panel). Frets
-25–30 are unmarked, because they fall in the region that moves.
-
-## The UI station (deck mid panel) — 2026-09-28
-
-The display, the encoder and the board that carries them are ONE assembly, and the
-**clamp plate, two spigots and one M4×12** hold the whole of it to the deck panel. Plastic takes
-every other direction: the display's pocket walls and the window ledge, the board's
-cradle wall and its four bearings. **The station is built onto the panel with the panel
-off the instrument**, and the panel then goes on with all of it attached.
-
-**Building the station onto the panel** (panel off the instrument, face down)
-
-1. Heat-set an M4 insert into the boss on the panel's underside, from the boss's open
-   end. It is the only insert on the panel.
-2. Solder the 1×20 **female** socket (KH-2.54FH-1X20P-H8.5) to the BACK of the Newhaven
-   module, opening facing away from the glass. The module ships with plated holes and no
-   header — Newhaven's own drawing only recommends one — so this is the one hand-solder
-   step in the station, and it is on a PCB, which the project's no-solder rule allows.
-3. Drop the module face-first into the pocket. It seats against the 1.6 mm window ledge.
-4. Plug the UI board onto the module's socket and lower it onto the deck's four bearing
-   posts — two of which carry **spigots** that pass through the board's two Ø4.6 locating
-   holes. Those spigots are what hold the station in X, Y and rotation.
-   **Press the module up against the ledge as you do it.** The header stack is
-   deliberately long, so the socket has 0.6 mm still to go before it bottoms; the module
-   must end up flat on the ledge, not hanging on its pins.
-5. Plug the 14-way ribbon onto J2 at the board's −X edge. **Do this now** — it is much
-   harder once the clamp is on.
-
-   **The ribbon is creased twice, 45° each, and the creases are not optional.** The run
-   is flat all the way — width across the instrument, thickness vertical, because there
-   is only 10.70 mm of headroom under the deck and the ribbon is routed flat under it
-   (8.89 mm wide: 14 ways of 0.635 mm cable, since 2026-10-02) — so both of its 90° turns are in the cable's own plane, and flat cable turns in
-   plane by being folded. Fold them before the panel goes on, with the red stripe on the
-   outside of each turn, and the cable lies flat the whole way; fold them after and you
-   are creasing a cable that is already plugged in at both ends. 500 mm of cable against
-   a 449.6 mm run is what pays for getting a fold wrong once.
-6. Offer the clamp plate up under the board. The two spigots enter its sockets, its
-   reliefs go over the through-hole tails, and its arm runs +Y under the display so the
-   two posts on the crossbar land on the module's back at the far mounting-hole row —
-   that is what stops the screen drooping. Run the single **M4×12** button screw up
-   through the middle of it into the insert. The screw only holds Z; the plastic holds
-   everything else.
-7. Press the printed knob onto the switch's shaft through the hole in the deck. **The
-   shaft is a D** — Ø2.5 milled to 1.79 across — and so is the knob's bore. The cap is
-   unindexed, so any clocking is fine; it only has to go on square.
-7a. Press the printed power cap onto the power switch's square stem through its own hole
-   in the deck, socket down, until it bottoms. **Out (1.5 mm proud) is off; flush with
-   the deck is on.** To switch off, push it about a millimetre below the deck and let go.
-   ⚠ **Meter the first switch before trusting that sense** (`elec/ui_board.py`, SW2): which
-   throw closes with the button out is read off the maker's schematic, not measured.
-
-**Onto the instrument**
-
-8. Slide the mid panel on, station and all.
-9. Plug the ribbon's other end onto J5 of the Pi cap, at the cap's board edge. Both ends
-   are the SAME right-angle 1.27 mm 2×8 pin header (LCSC C22438114) with the same way
-   order (`elec/harness.UI_RIBBON`), so the cable is a plain straight-through 16-way
-   IDC lead. (Ways 15 and 16 are the power button's; until the Pi cap is re-made with the
-   2×8 its J5 is still the 2×7.) ⚠ **The header has no shroud, so nothing stops the socket going on
-   reversed**: the red stripe goes to pin 1, which the silkscreen marks on both boards.
-   Check both ends before the first power-up — way 10 is 3V3.
-10. Slide the keyhead panel on.
-11. Fit the keyhead endplate.
-
-Out is the reverse, and nothing has to be reached blind: every step that touches a
-connector happens with the panel off or with the keyhead end open.
-
-**Two things to confirm against the real parts before printing a panel:**
-
-* **The clamp's arm bears on the module's back** at the two far mounting-hole pads,
-  because that is the one region of a module's back guaranteed to be clear of
-  components. Newhaven's rear view shows parts and their drawing does not dimension
-  them — check it.
-* **The ribbon socket against the board edge.** The header's pins overhang the edge so
-  the IDC socket hangs off the board rather than sitting on it; the socket's ~5.5 mm
-  across the rows is a typical figure, not one read off a drawing. Check that the
-  socket seats fully with the board in its cradle.
-
-
-## Fret lighting boards (2026-09-30, seam joint built the same day)
-
-Two boards, one per deck panel, ONE cable: it lands on the keyhead board, and the mid board
-is fed across the panel seam by four tip-to-tip pogo pins (`docs/fret-led.md` §9.1f).
-
-1. **Attach each LED board to its own panel, off the instrument** -- the retainer strips
-   and the one M4, below. The board must not move in X once seated.
-2. **Slide the mid panel on** (it goes first and furthest, butting the bridge endplate).
-3. **Slide the keyhead panel on until the two panels BUTT.** The pogos meet in the last
-   ~3.4 mm before the panels touch: from first contact to flush they compress 1.70 each
-   and push back with about **1.2 kg** in all. Flush IS the preload -- if the panels meet,
-   the joint is made (§9.1e). A visible seam gap means it is not.
-4. **Plug the one cable into the keyhead board's J1** -- its plug faces -X at the keyhead
-   cluster, in the bay at the board's far end.
-5. **Fit the keyhead endplate**, which holds the panels butted against the pogos' push.
-
-⚠ **Never force the panels closer than flush.** The pogos bottom at 5.70 and are designed to
-sit at 6.30 when the panels touch, only 0.60 above that limit.
-
-⚠ **Every part on these boards stands inside a light cell except the bay's.** Do not add
-anything tall to the fret field without asking what it does to that cell's floor bounce.
-
-
-## Foot lighting strip (2026-09-30; two board designs 2026-10-04)
-
-Two boards end to end in a channel on the chassis bottom, firing down through the light
-window. **They go in before the −X endplate, and they are NOT interchangeable:** board B
-(`foot_led_b`, spring pins at one end only) goes in first and ends up at +X; board A
-(`foot_led_a`, spring pins at one end and a small cable socket at the other) goes in
-second. There is no cable between them: four spring pins under A's far end meet four
-under B's near end, tip to tip.
-
-1. **Assemble the chassis, leaving the −X endplate off.**
-2. **Slide board B in from −X**, LEDs down, pin end LAST, all the way to the stop block
-   at the channel's +X end.
-3. **Slide board A in behind it, pin end FIRST, and push it home.** The last 3.4 mm is
-   against the eight spring pins (about 0.8 kgf); the boards' ends touch when it is seated.
-4. **Plug the 4-way XH lead from the Pi cap's J6 into board A's socket.** The socket is
-   under the board's −X end, on the 7 mm of board that sticks out past the light window,
-   and its mouth faces the keyhead endplate. Dress the lead straight up the endplate,
-   across the TOP of string 1's motor, and down between that motor and the Pi.
-   ⚠ XH plugs are the 24 V family on this instrument and PH plugs the 5 V one; the two do
-   not fit each other's sockets.
-   **Making the lead (both lighting leads are the same):** four 24 AWG conductors, XHP-4
-   housing on each end, way 1 to way 1 -- **black GND, red 24 V, white SCK, blue SDT**.
-   The model draws each conductor in that colour on its own contact; use it as the
-   reference. The fret lead runs from the Pi cap's J3 out over the Pi, up, and along
-   under the deck to the socket on the keyhead fret board's -X end.
-5. ⚠ **OPEN: what holds board A pushed in.** The springs push it back out 3.4 mm. The
-   stop that takes that load (a printed block and one M4 behind the board, with a notch
-   for the lead) is not designed yet (.ins/WORKLIST-brenner.md).
-
-⚠ **Nothing on these boards may stand more than 5.75 mm off the PCB.** The board is
-installed face DOWN, 6.05 above an uncut floor; the tallest part is board A's cable
-socket at 5.75 (the spring pin's barrel is 3.80).
-
-⚠ **The channel's −Y wall is string 1's motor wall where the two meet.** The slot is cut
-into the foot of that motor's faceplate wall, leaving 1.6 mm against the motor, with a
-45° roof over the board.
-
-
-## Fret lighting boards (2026-09-30)
-
-Each fret board hooks under a fixed LIP along its -Y edge and is held by TWO M4s on its
-+Y side, one at each end (docs/fret-led.md 8.9 - 8.11). No loose retaining parts. Assemble the panel **face
-down on the bench**, before it goes on the instrument.
-
-0. **Melt an M4 heat-set insert into each of the panel's two bosses** -- the pocket opens
-   on the boss's end face, the one the board will sit on.
-1. **Lay the panel deck-face down.** The comb points up at you.
-2. **Tilt the board in.** Hold it about 15 degrees off flat with its -Y edge low, tuck that
-   edge under the lip, and swing the +Y edge down until the board lies on the cell walls,
-   LEDs in their cells. On the keyhead board the six seam plungers drop into their notches
-   in the end wall as it comes flat.
-3. **Push the board against the +Y wall.** That wall is the board's sideways datum -- on
-   both boards, which is what lines the seam pogos up.
-4. **Fit both M4 x 10s** through the board into the inserts: one in the bay at the board's
-   -X end, 3.7 mm in from the +Y edge, and one through the ear that stands off the +Y edge
-   at the +X end.
-5. Turn the panel over and install it.
-
-⚠ **THE BOARD MUST NOT BE SLID ALONG X ONCE IT IS SEATED.** An LED and a cell wall share
-the same Z band, so any X motion drives every LED into a wall -- fret 24's cell allows the
-LED 1.27 mm and that is the whole budget. The strips move; the board does not. This is why
-the earlier lift-and-shift tab scheme was retracted (docs/fret-led.md 8.6).
-
-## Set the pickup's retention screw on the bench, before the pickup piece goes in
-
-The pickup is locked to its height plate by ONE horizontal M4 x 12 button head at the plate's
--Y end (2.5 mm key). Its head faces -Y and is reached through the key slot in the pickup
-piece's -Y skirt, on the screw's axis. Once the piece is in the deck that slot faces the
-chassis, so: seat the pickup against the plate's +Y wall, run the screw in until its tip
-bears on the pickup, and only then slide the piece in. Height and tilt (the three jack
-screws, from above) stay adjustable afterwards; this one does not.
-
-## The optical board's hand guard goes on LAST, over both plugs
-
-* Plug the USB-C and the 24 V lead into the optical board first; the guard's -Y end is open
-  for them and J2 stands up through its notch.
-* Lower the guard straight down onto its posts; the two screws locate it (it has no
-  sides). Two **M4x20** button screws go through the guard AND the board into the
-  endplate's inserts (the board has no screws of its own any more), heads flush in the wells.
-* The guard covers the bring-up pads. Take it off to probe; the board stays located by the
-  plinth and the cables while it is off, but is not clamped.
-* Nothing covers the sensor row or the slots -- strings go on and off with the guard fitted.
+The motor board hangs through the chassis floor, and J7 (lights, 4-way XH) is low on it:
+its ways 3 and 4, the two button wires, are **below the floor's top**. A slot in the
+floor beside the plug lets those two wires out. Plug J7 with the four wires already
+dressed toward the Pi (+X), and press the two lower ones into the slot before the board
+is pushed home; a wire trapped between the plug's face and the floor keeps the board from
+seating.
 
 ## The power button's wiring rides on cables that already exist
 
