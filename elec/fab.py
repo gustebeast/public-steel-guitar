@@ -238,6 +238,7 @@ PASSIVES = {
     ("10k 0.1%", "R_0402_1005Metric"):       "C190095",   # Yageo RT0402BRD0710KL, thin film 0.1 % 25 ppm; 729,784 in stock
     ("12k 1%", "R_0402_1005Metric"):         "C25752",   # UniOhm 0402WGF1202TCE, 1 %; basic
     ("137k 1%", "R_0402_1005Metric"):        "C138058",   # Yageo RC0402FR-07137KL, 1 %; 27,854 in stock
+    ("0R", "R_0402_1005Metric"):             "C17168",   # UniOhm 0402WGF0000TCE, 0 ohm jumper; basic
     ("150k", "R_0402_1005Metric"):           "C25755",   # UniOhm 0402WGF1503TCE, 1 %; preferred extended
     ("0R22", "R_1206_3216Metric"):           "C25336",   # UniOhm 1206W4F220LT5E, 1 %, 250 mW, 200 V; 39,275 in stock (2026-10-06)
     ("120R 100mW", "R_0402_1005Metric"):     "C413065",   # Panasonic ERJ2RKF1200X, 1 %, 100 mW; 43,451 in stock (2026-10-06)
@@ -325,6 +326,9 @@ PART_NOTES = {
                 "placeholder and the build takes one more day.",
     "C54799748": "the fab has no footprint or model for it yet: the preview shows a "
                  "placeholder and the build takes one more day.",
+    "C7371891": "the RGBW LED's silk tick marks PIN 1 (the red anode); the package's cut "
+                "corner is at pin 8, the opposite corner. In the placement preview "
+                "the cut corner belongs AWAY from the tick, not on it.",
     "C2875467": "the 24 V inlet jack stands on flat tabs in plated SLOTS: six of 0.6 x 2.7 mm "
                 "and one of 2.2 x 1.0 mm in the drill file, the sizes on Kycon's drawing. If "
                 "the fab's engineer proposes round holes or a narrower slot, decline: the "
