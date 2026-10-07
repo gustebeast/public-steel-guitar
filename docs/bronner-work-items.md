@@ -84,8 +84,11 @@
    output_panel J6 J10, pi_cap J4 J6 (J1 standard, J5 ways waived), can_tee J1 J2,
    lever_sensor J1, leg male boards J1 (leg J2 ways and the female J1 ways waived).
    All 0 FAIL on A17 except **leg_pogo_female_bottom J2: hard, no way-1 mark fits** (left
-   at 1 FAIL on the lead's instruction; not on the bench order). OPEN: say what a mark
-   there would take; brenner's LED / UI boards need the same declarations.
+   at 1 FAIL on the lead's instruction; not on the bench order). What a mark takes (sent
+   to the lead 2026-10-07): J2's courtyard is 0.35 mm from the -Y edge with way 1 at that
+   end, J1's pad row abuts it on +X; the only clean fix is the board and its pocket 1.0 mm
+   longer at -Y (a 0.6 mm dot then fits). Waiting on the lead / user. brenner told that
+   the LED / UI boards need the same declarations.
 4. ~~DONE~~ (`tools/silk_read.py`; motor_ctrl 90, pi_cap 180, the two top leg boards 180, the rest 0) **One reading direction per board (lead, from the user).** kicad_silk: `silk_read` in the
    board's notes (default 0) = the way a person reads the board INSTALLED (pick from the CAD
    pose; say which way each bench board reads in the submit). Never 180 / 270 off it. The
