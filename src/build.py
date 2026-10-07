@@ -922,11 +922,11 @@ def _foot_pedal_components():
     from . import wiring as WR
     # bus B on from the leg joint's bar stub to the five boards. The stub is drawn in
     # world coordinates (the leg's), the pedals in the bar's frame, so the feed points
-    # come down by the lift and the whole harness goes back up with everything else.
+    # come down by the lift and the harness is drawn back up by it.
     WR.WIRE_OK.update(FP.BUS_WIRE_OK)
     feed = [(x, y, z - PEDAL_LIFT_DZ) for x, y, z in PG.bar_stub_ends()]
-    return [(n, wp.translate((0, 0, PEDAL_LIFT_DZ)))
-            for n, wp in FP.demo_parts() + FP.bus_harness(feed)]
+    return ([(n, wp.translate((0, 0, PEDAL_LIFT_DZ))) for n, wp in FP.demo_parts()]
+            + FP.bus_harness(feed, lift=PEDAL_LIFT_DZ))
 
 
 def _electronics_components():

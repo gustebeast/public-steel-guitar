@@ -733,12 +733,15 @@ BUS_WIRE_OK = {"pedal_wire_%s" % nt.lower(): {"pedal%d_pcb" % i for i in range(l
                for nt in BUS_NETS}
 
 
-def bus_harness(feed):
-    """[(name, solid)] in the bar's frame: bus B from the leg joint's bar stub to every
-    pedal board's J1. See bus_paths."""
+def bus_harness(feed, lift=0.0):
+    """[(name, solid)]: bus B from the leg joint's bar stub to every pedal board's J1.
+    See bus_paths. `lift` raises the paths out of the bar's frame BEFORE they are drawn,
+    so each solid is the cable its polyline describes and no pose stands between them
+    (the connector audit matches a cable to its drawn path by identity)."""
     from cadkit.cables import oct_cable
     from . import leg_pogo as PG
-    return [(nm, oct_cable(pts, PG.HARNESS_WIRE_OD)) for nm, pts in bus_paths(feed)]
+    return [(nm, oct_cable([(x, y, z + lift) for x, y, z in pts], PG.HARNESS_WIRE_OD))
+            for nm, pts in bus_paths(feed)]
 
 
 def demo_parts():
