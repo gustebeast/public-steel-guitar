@@ -105,20 +105,20 @@
     "m4_button_12": {
       "usd": 0.3692,
       "verified": "v",
-      "per_instrument": 2,
+      "per_instrument": 1,
       "vendor": "McMaster-Carr",
       "sku": "92095A192",
-      "order": "1 x $14.77 (pack of 100) = $14.77 for 20 needed",
-      "what": "M4x12 -- 1 UI clamp, 1 pickup retention"
+      "order": "1 x $14.77 (pack of 100) = $14.77 for 10 needed",
+      "what": "M4x12 -- 1 UI clamp, and nothing else: the pickup retention screw is an M4x20 now. This row goes when the clamp moves to x10"
     },
     "m4_button_20": {
       "usd": 0.1894,
       "verified": "v",
-      "per_instrument": 17,
+      "per_instrument": 18,
       "vendor": "McMaster-Carr",
       "sku": "92095A196",
-      "order": "4 x $9.47 (pack of 50) = $37.88 for 170 needed",
-      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards, 2 optical board through its hand guard"
+      "order": "4 x $9.47 (pack of 50) = $37.88 for 180 needed",
+      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 1 pickup -Y retention (was M4x12), 2 male pogo boards, 2 optical board through its hand guard"
     },
     "m3_shcs_12": {
       "usd": 0.0711,
