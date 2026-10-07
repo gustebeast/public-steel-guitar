@@ -138,12 +138,13 @@
       "what": "M3x12 socket head cap screw (ISO 4762, 2.5 mm key) -- the belt clamps' draw screws, one per string. Price and SKU carried at a guess; confirm at purchase."
     },
     "m3_insert": {
-      "usd": 0.15,
+      "usd": 0.2182,
       "verified": "m",
       "per_instrument": 10,
       "vendor": "McMaster-Carr",
-      "sku": "-",
-      "what": "M3 brass insert, about O4.6 x 4 -- dropped into each belt clamp's half B as a captive nut (not heat-set). NO SKU PICKED: belt_tensioner.INS_D / INS_L are a typical short insert; choose one, measure it, set those two numbers."
+      "sku": "94459A130",
+      "order": "1 x $10.91 (pack of 50) covers 5 instruments",
+      "what": "M3 brass heat-set insert, OD 4.7, installed length 4.3 (pilot end 3.9) -- dropped into each belt clamp's half B as a captive nut behind a shoulder (not heat-set). belt_tensioner.INS_D / INS_L are this part's DRAWING numbers: measure one on arrival, before a clamp is printed. Price and SKU as picked by the lead session 2026-10-07, not re-read off the page here."
     },
     "m4_button_40": {
       "usd": 0.5065,
