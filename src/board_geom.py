@@ -83,17 +83,15 @@ _TAIL: dict = {
 _THT_LEGS: dict = {}
 _PANEL: dict = {}
 
-# THE LETTERING'S FACE. A licensed font, so the file is NOT in the repository: it is looked
-# for in elec/fonts/ (ignored by git) and then where Windows installs fonts, and a checkout
-# without it draws the lettering in the kernel's default face and says so. SILK_FONT_CAP is this
-# font's capital height over its em (OS/2 sCapHeight 667 / 1000): a silk "size" is a
-# capital height, a font size is an em.
-SILK_FONT_FILE = "Rennie Mackintosh ITC Bold.otf"
+# THE LETTERING'S FACE: the one the boards' silkscreen is plotted in. It is a licensed font
+# with one glyph redrawn (tools/make_silk_font.py: the underscore, which is an ornament in
+# the original), so the file is NOT in the repository: it is looked for in elec/fonts/
+# (ignored by git) and then where Windows installs fonts, and a checkout without it draws
+# the lettering in the kernel's default face and says so. SILK_FONT_CAP is the font's
+# capital height over its em (OS/2 sCapHeight 667 / 1000): a silk "size" is a capital
+# height, a font size is an em.
+SILK_FONT_FILE = "RennieMackintoshPSG-Bold.otf"
 SILK_FONT_CAP = 0.667
-# THE FONT'S UNDERSCORE IS AN ORNAMENT (a small T over an O), and every net name here has
-# one. The file is not edited: an underscore is drawn as the font's own hyphen bar, moved
-# down from mid-height (it spans 345..418 of a 667 capital) to sit just under the baseline.
-SILK_SUBST = {"_": ("-", -0.66)}
 
 
 def _silk_font():
@@ -111,8 +109,7 @@ def _silk_font():
 
 _FONT = _silk_font()
 BOARDS = Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
-                **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP,
-                    "silk_subst": SILK_SUBST} if _FONT else {}))
+                **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {}))
 
 HEIGHT, TAIL, THT_LEGS, PANEL = BOARDS.HEIGHT, BOARDS.TAIL, BOARDS.THT_LEGS, BOARDS.PANEL
 
