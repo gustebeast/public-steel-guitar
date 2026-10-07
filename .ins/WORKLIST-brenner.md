@@ -379,3 +379,14 @@ NEEDS USER -- the one item left open on every board is M12, and only these parts
    tiers. If it insists on Standard for a part, stop and say which.
 4. Tick: Confirm Production File, Confirm Parts Placement, Remove Mark; via 0.25 / 0.50
    on the foot boards (ORDER.txt in each package).
+
+## FRET BOARDS: FEED RE-LAYOUT IN PROGRESS (2026-10-06, UNCOMMITTED, NOT ROUTED)
+- elec/fret_led.py + elec/fab.py edited: per-driver FEEDn net through a 0R link (R41..),
+  links / flank returns laid on F, feed laid on In1 under them, rail pour moved to B.Cu,
+  In1 a routing layer. Generator runs; netlists + board.json in elec/out are NEW.
+- elec/out/fret_led_{key,mid}.kicad_pcb are the OLD routes and no longer match the
+  netlist. Old set saved whole in elec/out/_planefeed/ (copy back + `git checkout
+  elec/fret_led.py elec/fab.py` + regenerate to abandon).
+- NEXT: layout + finish fret_led_key, read DRC / quality, then update scratchpad
+  moment.py to close the loop along the FEED copper and compare with 259 / 486 mm2;
+  then fret_led_mid, docs 6.3 / 9.3, sign-offs, prices.json, fab packages, CAD re-render.

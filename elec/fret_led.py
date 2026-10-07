@@ -210,6 +210,111 @@ ROT_TOWARD_DRIVER = {-1: 0.0, 0: 0.0, 1: 180.0}
 ZONE_OUTS = {-1: (21, 22, 23, 24), 0: (19, 20, 11, 12), 1: (7, 8, 9, 10)}
 COLOURS = ("R", "G", "B", "W")
 
+# ── EVERY STRING IS LAID, OVER A FEED THAT RETRACES IT (2026-10-06) ───────────────────
+# ⚠ A PLANE DOES NOT RETURN A 19.5 kHz CURRENT UNDER ITS TRACE. That is what this board
+# assumed -- "every zone's return is the plane directly beneath its own string" -- and it
+# is true above a few hundred kHz, where inductance steers the plane current. At the
+# carrier the plane is a resistor sheet: the current goes STRAIGHT from where it enters
+# to where it leaves. A flank zone's string entered the rail plane at y -30.4 in its own
+# column and left through a driver one fret over at y +20.4, so its loop was the
+# TRIANGLE between the routed copper and that straight line, flat in the board plane
+# and aimed at the pickup: 259 mm2 a string on the mid board, 486 on the keyhead one,
+# 1171 at worst (measured off the routed boards; docs/fret-led.md 9.3).
+#
+# So the rail no longer reaches a string through a plane at all. Each driver has ONE
+# feed net, FEEDn, tied to +14V5 through a 0 ohm link standing at the driver, and the
+# feed is a track on In1 -- 0.21 mm under F.Cu -- that runs back along each string to
+# its first LED. Out on F.Cu, back on In1, the same line: the loop stands on edge, 0.21
+# tall, wherever the frets are. In1 is a routing layer for that reason, and the rail's
+# plane is the back of the board (BOARD_NOTES).
+#
+# The geometry, per LED column, cathodes on side s (+1 = +X):
+#   * the four links leave a cathode column INWARD, under the LED's own body, run up
+#     the column's centre line and enter the next LED's anode column from inside. Lanes
+#     are 0.30 apart; the upper row takes the outer lane leaving and the lower row the
+#     outer lane arriving, which is the one assignment that never crosses;
+#   * a flank zone's returns leave the last LED OUTWARD, toward the driver, come down
+#     beside the column and turn into the driver's side pins, outer lane to upper pin;
+#   * the feed lies under all of it: from the link at the driver, under the returns, up
+#     and over the last LED, and down the centre line to a via inside the first LED.
+LED_PAD_DX = 2.14                    # the footprint's pad columns, and its four rows:
+LED_ROWS = (1.98, 0.66, -0.66, -1.98)        # pins 1..4 and 5..8, top to bottom at rot 0
+LANE, LANE_W = 0.30, 0.15            # the link lanes: 0.15 of copper, 0.15 of gap
+LANE_C = 0.65                        # a lane group's centre, off the column's centre line
+LANE_JOG = (2.90, 3.55)              # where a group shifts over, measured from an LED
+RET_W = 0.20
+RET_LANE0, RET_LANE = 3.05, 0.40     # the returns' lanes beside the column
+FEED_W = 0.25
+LINK_DY = -3.65                      # the 0 ohm link, under the driver's two NC pins
+LINK_VIA_DX = 1.35                   # its feed-side via
+LEG_DX = 2.90                        # where a flank's feed comes in under the side pins
+BULK_DY = -5.60
+
+
+def _offset(pts, d):
+    """The polyline `pts` moved `d` to the right of its direction of travel, mitred."""
+    import math
+    out = []
+    for i, (x, y) in enumerate(pts):
+        ns = []
+        for a, b in ((i - 1, i), (i, i + 1)):
+            if 0 <= a and b < len(pts):
+                dx, dy = pts[b][0] - pts[a][0], pts[b][1] - pts[a][1]
+                n = math.hypot(dx, dy)
+                ns.append((dy / n, -dx / n))
+        if len(ns) == 1:
+            nx, ny = ns[0]
+        else:
+            k = 1.0 + ns[0][0] * ns[1][0] + ns[0][1] * ns[1][1]
+            nx, ny = (ns[0][0] + ns[1][0]) / k, (ns[0][1] + ns[1][1]) / k
+        out.append((x + d * nx, y + d * ny))
+    return out
+
+
+def _r3(pts):
+    return [(round(x, 3), round(y, 3)) for x, y in pts]
+
+
+def _link_tracks(fret, xf, s, ya, yb, n):
+    """The four links from the LED at ya up to the one at yb, in their lanes."""
+    xo, xi = xf + s * LANE_C, xf - s * LANE_C
+    mid = [(xo, ya), (xo, ya + LANE_JOG[0]), (xf, ya + LANE_JOG[1]),
+           (xf, yb - LANE_JOG[1]), (xi, yb - LANE_JOG[0]), (xi, yb)]
+    out = []
+    for i, col in enumerate(COLOURS):
+        row = s * LED_ROWS[i]
+        pts = _offset(mid, LANE * (1.5 - i))
+        pts[0], pts[-1] = (pts[0][0], ya + row), (pts[-1][0], yb + row)
+        out.append(("Z%d_%s_%d" % (fret, col, n), "F.Cu", LANE_W, _r3(
+            [(xf + s * LED_PAD_DX, ya + row)] + pts + [(xf - s * LED_PAD_DX, yb + row)])))
+    return out
+
+
+def _drv_pin(xd, pin):
+    """Pad centre of a driver output on its -X (19..24) or +X (7..12) side, as placed."""
+    assert DRV_ROT == 90.0
+    if 19 <= pin <= 24:
+        return xd - 1.962, DRV_Y + 1.25 - 0.5 * (pin - 19)
+    assert 7 <= pin <= 12, pin
+    return xd + 1.962, DRV_Y - 1.25 + 0.5 * (pin - 7)
+
+
+def _ret_tracks(fret, xf, s, xd, outs):
+    """A flank zone's four returns: last LED, down beside the column, into the pins."""
+    yt = LED_ROW[-1]
+    rows = [s * r for r in LED_ROWS]
+    out = []
+    for i, col in enumerate(COLOURS):
+        lane = xf + s * (RET_LANE0 + RET_LANE * sorted(rows).index(rows[i]))
+        px, py = _drv_pin(xd, outs[i])
+        out.append(("Z%d_%s_RET" % (fret, col), "F.Cu", RET_W, _r3(
+            [(xf + s * LED_PAD_DX, yt + rows[i]), (lane, yt + rows[i]), (lane, py),
+             (px, py)])))
+    # outer lane to upper pin, or two of them cross at the corner
+    order = sorted(out, key=lambda t: s * t[3][1][0])
+    assert [t[3][2][1] for t in order] == sorted(t[3][2][1] for t in order), order
+    return out
+
 
 def _idle_outs(n_drv, n_zone):
     """Outputs of the LAST driver that no fret uses: a short trio sits at sides 0 and +1
@@ -975,6 +1080,14 @@ def build(panel):
                 C08_FP)
         vrail += cb[1]
         gnd += cb[2]
+        # the feed's one tie to the rail (see the note at _link_tracks). 0 ohm, at the
+        # driver, so the feed's current joins the rail where its return leaves for
+        # ground -- and a place to open one driver's strings on the bench.
+        feed = Net("FEED%d" % (k + 1))
+        rl = _r("R%d" % (40 + k + 1), "0R", "U%d feed link: its zones' anodes reach the "
+                "rail HERE and nowhere else" % (k + 1))
+        vrail += rl[1]
+        feed += rl[2]
         # ⚠ THE PASSIVES STACK IN Y, NOT IN X, and that is the fret pitch's doing. They
         # were in a row at xd -4.8 .. +5.0, which is fine at the nut end and 0.05 mm
         # INSIDE the comb's wall at the bridge end (see check_walls). Everything now
@@ -991,10 +1104,11 @@ def build(panel):
         for ref, dx, dy, rot, fp in (("R%d" % (k + 1), -2.30, 3.75, 180.0, R_FP),
                                      ("C%d" % (k + 1), 0.00, 3.75, 180.0, C_FP),
                                      ("C%d" % (10 + k + 1), 2.30, 3.75, 0.0, C_FP),
-                                     ("C%d" % (20 + k + 1), 0.00, -5.20, 0.0, C08_FP)):
+                                     ("C%d" % (20 + k + 1), 0.00, BULK_DY, 0.0, C08_FP),
+                                     ("R%d" % (40 + k + 1), 0.00, LINK_DY, 0.0, R_FP)):
             place[ref] = (xd + dx, DRV_Y + dy, rot)
             fps[ref] = fp
-        drivers.append((u, xd, trio, di))
+        drivers.append((u, xd, trio, di, feed))
 
     # ⚠ EACH DRIVER'S OWN di. This loop read the one left over from the loop above -- the
     # LAST driver's -- and on the keyhead board that driver has the short trio, so every
@@ -1002,7 +1116,13 @@ def build(panel):
     # four outputs idle. Frets 3 + 4 and 6 + 7 were one zone each, 24 return nets where
     # 32 were meant, on a board that routed clean and passed every check (found
     # 2026-10-06). `used` below is the check that would have caught it.
-    for k, (u, xd, trio, di) in enumerate(drivers):
+    laid, laid_vias = [], []
+    for k, (u, xd, trio, di, feed) in enumerate(drivers):
+        fn = "FEED%d" % (k + 1)
+        yj = DRV_Y + LINK_DY
+        root = (xd + LINK_VIA_DX, yj)
+        laid.append((fn, "F.Cu", FEED_W, _r3([(xd + 0.48, yj), root])))
+        laid_vias.append((fn, round(root[0], 3), round(root[1], 3)))
         used = [p for s in range(len(trio))
                 for p in ZONE_OUTS[max(-1, min(1, s - di))]]
         assert len(set(used)) == 4 * len(trio), (
@@ -1027,11 +1147,57 @@ def build(panel):
             # the series string, -Y to +Y: rail on the -Y outer LED's anodes, driver on
             # the +Y outer LED's cathodes, three links in between.
             for i, col in enumerate(COLOURS):
-                vrail += leds[0][i + 1]
+                feed += leds[0][i + 1]
                 for a, b in ((0, 1), (1, 2), (2, 3)):
                     Net("Z%d_%s_%d" % (fret, col, a)).connect(leds[a][i + 5],
                                                               leds[b][i + 1])
                 Net("Z%d_%s_RET" % (fret, col)).connect(leds[3][i + 5], u[outs[i]])
+            # ── this zone's copper ──
+            xz = xf - cx
+            sc = 1.0 if rot == 0.0 else -1.0          # the cathode column's side
+            ya = LED_ROW[0]
+            # the first LED's four anodes, and the via the feed comes up through
+            laid.append((fn, "F.Cu", FEED_W, _r3([(xz - sc * LED_PAD_DX, ya - LED_ROWS[0]),
+                                                  (xz - sc * LED_PAD_DX, ya + LED_ROWS[0])])))
+            laid.append((fn, "F.Cu", FEED_W, _r3([(xz - sc * LED_PAD_DX, ya),
+                                                  (xz - sc * LANE_C, ya)])))
+            laid_vias.append((fn, round(xz - sc * LANE_C, 3), round(ya, 3)))
+            up = [(xz - sc * LANE_C, ya), (xz, ya + LANE_C)]
+            # ⚠ ONE COLUMN STANDS ON THE SEAM'S LANDS: the keyhead board's last fret,
+            # whose centre line runs over all four pogo pads (5.0 wide, 0.9 from the
+            # board's end). Its links past the pads are the router's, and its feed
+            # goes between two of a supply land's three vias.
+            seam_x = [px - cx for px, _py, _n in FL.pogo_pads(panel)
+                      if abs(px - cx - xz) < 4.0]
+            n_laid = (0, 1, 2) if not seam_x else (0,)
+            if seam_x:
+                mx = seam_x[0] + (-0.80 if xz < seam_x[0] else 0.80)
+                up += [(xz, LED_ROW[1] + LANE_JOG[0]), (mx, LED_ROW[1] + LANE_JOG[1]),
+                       (mx, LED_ROW[2] - LANE_JOG[1]), (xz, LED_ROW[2] - LANE_JOG[0])]
+            if side == 0:
+                # ⚠ THE DRIVER STANDS IN ITS OWN ZONE'S COLUMN, between the third LED
+                # and the fourth, with a flank's returns either side of it. The top link
+                # and the returns are left to the router, which has In1 and the back to
+                # take them past; the feed goes as far as the laid links do.
+                assert not seam_x, fret
+                for n in (0, 1):
+                    laid += _link_tracks(fret, xz, sc, LED_ROW[n], LED_ROW[n + 1], n)
+                laid.append((fn, "In1.Cu", FEED_W, _r3(
+                    [root, (root[0], yj - 2.25), (xz, yj - 3.60)] + up[::-1])))
+            else:
+                assert sc == -side, (fret, side, rot)   # cathodes face the driver
+                for n in n_laid:
+                    laid += _link_tracks(fret, xz, sc, LED_ROW[n], LED_ROW[n + 1], n)
+                laid += _ret_tracks(fret, xz, sc, xd, outs)
+                lane = xz + sc * (RET_LANE0 + 1.5 * RET_LANE)
+                leg = (xd + side * LEG_DX, DRV_Y - 0.50)
+                # from the link: straight out on the +X side, round the link's own
+                # rail-side via on the -X side
+                start = ([root, (leg[0], yj)] if side > 0 else
+                         [root, (root[0], yj + 0.80), (leg[0], yj + 0.80)])
+                laid.append((fn, "In1.Cu", FEED_W, _r3(
+                    start + [leg, (lane, leg[1]), (lane, LED_ROW[-1]),
+                             (xz, LED_ROW[-1])] + up[::-1])))
 
     # ⚠ BEFORE THE NETLIST, NOT AFTER THE ROUTE. See check_placement.
     # the buck's cell is laid out to TI's figure, closer than the lane-keeping gap this
@@ -1073,7 +1239,8 @@ def build(panel):
     # each driver's heat pad gets its four more vias (DRV_PAD_VIAS)
     notes["vias"] = list(notes.get("vias", [])) + [
         ("GND", round(xd + dx, 3), round(DRV_Y + dy, 3))
-        for _u, xd, _trio, _di in drivers for dx, dy in DRV_PAD_VIAS] + list(seam_vias)
+        for _u, xd, _trio, _di, _f in drivers for dx, dy in DRV_PAD_VIAS] \
+        + list(seam_vias) + laid_vias
     # ⚠ IREF IS LAID, NOT ROUTED: 3 mm from pin 16 to its resistor. Left to the router it
     # was the one net unrouted at EVERY driver, because the stitcher runs first and stood
     # the VREG capacitor's ground via in the only gap the track had (2026-10-06).
@@ -1081,7 +1248,7 @@ def build(panel):
         ("IREF%d" % (k + 1), "F.Cu", 0.25,
          [(round(xd + dx, 3), round(DRV_Y + dy, 3))
           for dx, dy in ((-0.25, 1.96), (-0.25, 2.75), (-1.79, 2.75), (-1.79, 3.75))])
-        for k, (_u, xd, _trio, _di) in enumerate(drivers)]
+        for k, (_u, xd, _trio, _di, _f) in enumerate(drivers)] + laid
     if panel == HARNESS:
         # ...and the socket's ground way, which is the whole instrument's fret-light return
         _trk, _via = BC.xh_ground_via(*place["J1"][:2])
@@ -1194,30 +1361,25 @@ def build(panel):
 BOARD_NOTES = {
     "layers": 4,
     "thickness_mm": 1.6,
-    # ⚠ +14V5 ON In1, GND ON In2 -- AND THAT INVERTS docs/fret-led.md 6.3, ON PURPOSE.
-    # That section says "GND plane directly under the LED layer", having assumed the
-    # LED loop's return conductor is ground. It is not. A zone's switched current runs
-    # local bulk -> +14V5 -> four LEDs in series along 60 mm of fret -> the driver's
-    # output pin -> through the chip to its GND pad -> back to the cap, and the cap sits
-    # AT the driver. So the conductor that mirrors the long F.Cu run is the RAIL, and
-    # the loop is the area between the chain and the rail plane beneath it:
-    #     In1 = +14V5   0.21 mm under F.Cu    ~15 mm2      (this board)
-    #     In2 = +14V5   1.28 mm under F.Cu    ~90 mm2
-    # Six times smaller, for a swap that costs nothing. GND is still a solid plane one
-    # layer down, which is all the SPI chain (a few MHz) asks for, and the two planes
-    # face each other across 1.065 mm of core, which is free interplane decoupling.
-    "zones": [("+14V5", "In1.Cu", 0.3), ("GND", "In2.Cu", 0.3)],
-    # ⚠ BOTH INNERS ARE PLANES AND THE ROUTER HAS TO BE TOLD. A zone is just copper to
-    # freerouting: pour and say nothing and it routes signals straight through the
-    # reference, which splits the return path of every trace that crosses it -- here
-    # that would be the rail under the LED strings, i.e. the one thing this stackup
-    # exists for. (Found on the optical board; see the note in elec/lever_sensor.py.)
-    "plane_layers": ("In1.Cu", "In2.Cu"),
-    # ...which leaves F.Cu and B.Cu to route on, and B.Cu is empty of parts, so it is
-    # where anything that cannot make it across the LED rows on the top goes.
-    "local_inner": "B.Cu",
-    # A plane needs stitching to it, or nothing connects the pads. Every anode on the
-    # rail and every GND pad gets its own via down.
+    # ⚠ THE RAIL IS THE BACK OF THE BOARD, GND IS In2, AND In1 CARRIES THE FEEDS.
+    # The loop that matters is a string and its feed, and the feed is a TRACK (see the
+    # note at _link_tracks): it has to lie 0.21 mm under the string, which is In1, so In1
+    # cannot be a plane. The rail's plane moves to B.Cu, where it faces the ground plane
+    # across 0.21 mm of prepreg instead of 1.065 of core -- the supply and its return
+    # spread through two sheets of the same shape five times closer together.
+    # ⚠ AND NOT A RAIL POUR ON In1 ROUND THE FEEDS. A feed slits whatever it runs through
+    # from one long edge of the board nearly to the other, at every fret; the rail's
+    # current would then cross each slit round its ends while the ground's ran straight
+    # underneath, which is a flat loop carrying every downstream driver's current.
+    "zones": [("+14V5", "B.Cu", 0.3), ("GND", "In2.Cu", 0.3)],
+    # ⚠ ONLY THE GROUND IS DECLARED A PLANE TO THE ROUTER. The data chain has to cross
+    # each flank zone's column, where F.Cu carries the links and In1 the feed under
+    # them; the back is the only way over, and a hop there notches the rail's pour by
+    # the width of two tracks. The pour is filled round whatever the router leaves.
+    "plane_layers": ("In2.Cu",),
+    "local_inner": "In1.Cu",
+    # Every rail and GND pad gets its own via down. A string's anodes are on a feed
+    # net, not the rail, and get none.
     "stitch_nets": ("+14V5", "GND"),
     "single_sided": True,      # every part on the face that fires into the cells
     "refs_on_fab": True,       # 92 LEDs: silkscreen refs would be ink over copper

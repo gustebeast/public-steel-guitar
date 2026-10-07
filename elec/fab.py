@@ -237,6 +237,7 @@ PASSIVES = {
     ("120R", "R_0402_1005Metric"):           "C25079",   # UniOhm 0402WGF1200TCE, 1 %; basic
     ("12k 1%", "R_0402_1005Metric"):         "C25752",   # UniOhm 0402WGF1202TCE, 1 %; basic
     ("137k 1%", "R_0402_1005Metric"):        "C138058",   # Yageo RC0402FR-07137KL, 1 %; 27,854 in stock
+    ("0R", "R_0402_1005Metric"):             "C17168",   # UniOhm 0402WGF0000TCE, 0 ohm jumper; basic
     ("150k", "R_0402_1005Metric"):           "C25755",   # UniOhm 0402WGF1503TCE, 1 %; preferred extended
     ("180R", "R_0402_1005Metric"):           "C138045",   # Yageo RC0402FR-07180RL, 1 %; 264,305 in stock
     ("18k2 1%", "R_0402_1005Metric"):        "C2076827",   # Panasonic ERJ2RKF1822X, 1 %; 37,043 in stock
@@ -322,6 +323,9 @@ PART_NOTES = {
                 "placeholder and the build takes one more day.",
     "C54799748": "the fab has no footprint or model for it yet: the preview shows a "
                  "placeholder and the build takes one more day.",
+    "C7371891": "the RGBW LED's silk tick marks PIN 1 (the red anode); the package's cut "
+                "corner is at pin 8, the opposite corner. In the placement preview "
+                "the cut corner belongs AWAY from the tick, not on it.",
     "C5203987": "the seam pogo pin arrives UNSELECTED (a 'difficult' part, about 0.08 USD "
                 "each extra). Tick its row -- it can take two clicks -- or Next stops "
                 "with 'Project has unselected parts'.",
