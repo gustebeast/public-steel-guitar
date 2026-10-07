@@ -1,5 +1,5 @@
 ** Drc report for output_panel.kicad_pcb **
-** Created on 2026-10-06T22:23:39 **
+** Created on 2026-10-06T23:09:22 **
 ** Report includes: Errors, Warnings **
 
 ** Found 14 DRC violations **
@@ -46,11 +46,11 @@
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(76.1000 mm, 125.8000 mm): Reference field of L1
-    @(76.4800 mm, 125.7000 mm): Pad 2 [SW] of C4 on F.Cu
+    @(75.5200 mm, 125.7000 mm): Pad 1 [BOOT] of C4 on F.Cu
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(76.1000 mm, 125.8000 mm): Reference field of L1
-    @(75.5200 mm, 125.7000 mm): Pad 1 [BOOT] of C4 on F.Cu
+    @(76.4800 mm, 125.7000 mm): Pad 2 [SW] of C4 on F.Cu
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(127.4000 mm, 131.1000 mm): Segment of J6 on F.Silkscreen
