@@ -596,9 +596,14 @@ MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the
 # crosses the stem wall (half-width _JW/4). The whole lever drops by the difference.
 _SEAT_ROOF_Z = (BRG_SEAT_D / 2 + BRG_WALL) * math.sqrt(2.0) - _JW / 4
 HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z,
-                 CHIP_DROP + CEIL_CLR)      # ...and the sensor board, whose top edge stands
-                                            # CHIP_DROP over the axle and must stay CEIL_CLR
-                                            # under the chassis (10.5 -- not binding).
+                 max(CHIP_DROP, PCB_WZ - CHIP_DROP) + CEIL_CLR)
+                                            # ...and the sensor board, which must stay
+                                            # CEIL_CLR under the chassis EITHER WAY UP: as
+                                            # drawn its top edge is CHIP_DROP over the axle
+                                            # (10.5, not binding); turned over about the
+                                            # axle, which is how the one board design goes
+                                            # into a RIGHT-HAND housing, it is the long end
+                                            # that is up (11.8 + 0.4 = 12.2, binding by 0.2).
 # X is SNAPPED AGAIN once the tenons are known (see _TEN_PHASE, below the housing block): the
 # TENONS are what must land on the grid, not the housing's origin, and the tenon set carries a
 # phase now. This first value is the nominal; nothing between here and there reads it but
@@ -843,7 +848,7 @@ def sensor_parts(z_bot, z_top, prefix="kl", flip=None):
             (f"{prefix}_pcb_silk", _install(sensor_silk(), z_bot, z_top, flip))]
 
 
-def pcb_shim(z_bot, z_top, flip=None):
+def pcb_shim(z_bot, z_top, flip=None, right=False):
     """PRINTED SHIM (user): the board is one size and the housings are not, so the
     slack between the board's top edge and the instrument is taken up by a plastic
     block that slides down the SAME grooves on top of it. The chassis then presses
@@ -851,16 +856,16 @@ def pcb_shim(z_bot, z_top, flip=None):
     was — no fastener, no second board design. Returns None where the board already
     reaches the ceiling (the horizontal lever), so the part only exists where it is
     needed."""
-    gap = (z_top - CEIL_CLR) - board_z(z_bot, z_top, flip)[1]
+    gap = (z_top - CEIL_CLR) - board_z(z_bot, z_top, flip, right)[1]
     if gap <= CR_CLR:
         return None
-    bx0, bx1 = board_x(z_bot, z_top, flip)
+    bx0, bx1 = board_x(z_bot, z_top, flip, right)
     return box_at(bx1 - bx0, PCB_T, gap - CR_CLR, x=(bx0 + bx1) / 2,
                   y=PCB_Y + PCB_T / 2,
-                  z=board_z(z_bot, z_top, flip)[1] + CR_CLR + (gap - CR_CLR) / 2)
+                  z=board_z(z_bot, z_top, flip, right)[1] + CR_CLR + (gap - CR_CLR) / 2)
 
 
-def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
+def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False):
     """Add the MT6701 board cradle to the housing (user). Everything here grows UP
     off the same bed as the housing and has no ceiling anywhere, so it needs no
     supports; see the constant block for the retention scheme and the socket cone.
@@ -871,11 +876,11 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     groove's outer wall."""
     z_bot = HOUS_Z0 if z_bot is None else z_bot
     z_top = HOUS_Z1 if z_top is None else z_top
-    pcb_z0, pcb_z1 = board_z(z_bot, z_top, flip)
-    bx0, bx1 = board_x(z_bot, z_top, flip)   # installed edges — the flip swaps them
-    conn_zc = conn_z(z_bot, z_top, flip)
-    conn_mx = conn_mouth_x(z_bot, z_top, flip)
-    _sx = -1.0 if board_flip(z_bot, z_top, flip) else 1.0
+    pcb_z0, pcb_z1 = board_z(z_bot, z_top, flip, right)
+    bx0, bx1 = board_x(z_bot, z_top, flip, right)   # installed edges — the flip swaps them
+    conn_zc = conn_z(z_bot, z_top, flip, right)
+    conn_mx = conn_mouth_x(z_bot, z_top, flip, right)
+    _sx = -1.0 if _turned(z_bot, z_top, flip, right)[1] else 1.0
     x_max = CR_X1_MAX if x_max is None else x_max
     # The BOARD ITSELF must fit the housing's +X face, not just its groove web.
     # x_max below only caps the NEAR web, on the assumption the far side is never the
@@ -974,7 +979,7 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     # at the housing's +Y face: the magnet stand-off (AXLE_LAND_T) makes that gap
     # PH_SIDE_H + CONN_GAP, so the tunnel NEVER cuts the cheek -- the old relief took 0.85
     # of the 1.6 wall beside the half-stop pocket (user).
-    _cy0 = max(PCB_Y - PH_SIDE_H - CONN_POCKET, CR_Y0)
+    _cy0 = plug_tunnel_y()[0]
     _cz0 = conn_zc - CONN_L / 2 - CONN_POCKET
     _cx0 = conn_mx - _sx * CONN_UNPLUG                 # the plug's full unplug stroke
     _cx1 = conn_mx + _sx * (PH_SIDE_D + CONN_POCKET)
@@ -1004,6 +1009,13 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None):
     w = w.cut(printable_bore(SOCK_D, (CR_Y1 + 1.0) - _sock_y0, (0.0, _sock_y0, 0.0),
                              (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     return w
+
+
+def plug_tunnel_y():
+    """(y0, y1) of the plug's tunnel through the cradle: off the magnet face by the
+    connector's height and its pocket clearance, never into the housing's cheek. The
+    plug's wires have this width and no more until they are clear of the cradle."""
+    return max(PCB_Y - PH_SIDE_H - CONN_POCKET, CR_Y0), PCB_Y
 
 
 def _top_tenon(tx):
@@ -1552,23 +1564,38 @@ def board_flip(z_bot, z_top, prefer=None):
         "neither way up — move the housing's floor or its ceiling, not the board")
 
 
-def board_z(z_bot, z_top, flip=None):
+def _turned(z_bot, z_top, flip=None, right=False):
+    """(turned in Z, turned in X): how the board sits in a housing AS THAT HOUSING IS
+    DRAWN HERE.
+
+    A RIGHT-HAND housing (`right`) is built in this frame and then mirrored in X
+    (_housing), and the board that goes into it is the same board turned over about the
+    axle -- a rotation, so it is still the one design. Turning over reverses the board's
+    X and Z; the housing's mirror reverses X again. So in this frame, before the mirror,
+    the cradle a right-hand housing needs is the one for a board with ONLY ITS Z
+    reversed. Nothing is ever built that way round: the board itself is posed by
+    _install(flip=True) at the station, with no mirror."""
+    t = board_flip(z_bot, z_top, True if right else flip)
+    return t, (t and not right)
+
+
+def board_z(z_bot, z_top, flip=None, right=False):
     """(bottom, top) of the board as INSTALLED in this housing."""
-    return (-PCB_Z1, -PCB_Z0) if board_flip(z_bot, z_top, flip) else (PCB_Z0, PCB_Z1)
+    return (-PCB_Z1, -PCB_Z0) if _turned(z_bot, z_top, flip, right)[0] else (PCB_Z0, PCB_Z1)
 
 
-def board_x(z_bot, z_top, flip=None):
-    """(-X, +X) edges as INSTALLED — turning the board over swaps them too."""
-    return (-PCB_X1, -PCB_X0) if board_flip(z_bot, z_top, flip) else (PCB_X0, PCB_X1)
+def board_x(z_bot, z_top, flip=None, right=False):
+    """(-X, +X) edges as INSTALLED -- turning the board over swaps them too."""
+    return (-PCB_X1, -PCB_X0) if _turned(z_bot, z_top, flip, right)[1] else (PCB_X0, PCB_X1)
 
 
-def conn_z(z_bot, z_top, flip=None):
+def conn_z(z_bot, z_top, flip=None, right=False):
     """J1's centre height as installed (the flip turns it over)."""
-    return -CONN_ZC if board_flip(z_bot, z_top, flip) else CONN_ZC
+    return -CONN_ZC if _turned(z_bot, z_top, flip, right)[0] else CONN_ZC
 
 
-def conn_mouth_x(z_bot, z_top, flip=None):
-    return -CONN_MOUTH_X if board_flip(z_bot, z_top, flip) else CONN_MOUTH_X
+def conn_mouth_x(z_bot, z_top, flip=None, right=False):
+    return -CONN_MOUTH_X if _turned(z_bot, z_top, flip, right)[1] else CONN_MOUTH_X
 
 
 PCB_TOP = PCB_Z1
@@ -2184,16 +2211,19 @@ def plug_pin(way, z_bot=None, z_top=None, flip=None):
     cable lands on 1-4 and its DEPARTING cable leaves from 5-8, which is what makes the
     board pass the trunk through itself.
 
-    WAY 1 IS AT THE -Z END of the connector in this frame, and that is a CONVENTION THE
-    BOARD HAS TO MATCH -- nothing in the CAD can know which end the fab put pin 1 on.
-    docs/lever-sensor-respin.md carries it; if the routed board disagrees, this model is
-    wrong rather than the board.
+    WAY 1 IS AT THE +Z END of the connector on a board installed as drawn, and at the -Z
+    end on one turned over (the pedal's): that is where the ROUTED board has pad 1
+    (elec/geom/lever_sensor.geom.json: J1 at rot -90, pad 1 at geom +y, and geom +y is
+    this frame's +Z -- the frame SENSOR_BOM places every other part in). The turn-over
+    is a rotation about the axle, so it carries the row end for end with the board.
     """
-    zc = CONN_ZC if z_bot is None else conn_z(z_bot, z_top, flip)
-    mx = CONN_MOUTH_X if z_bot is None else conn_mouth_x(z_bot, z_top, flip)
+    turned = z_bot is not None and board_flip(z_bot, z_top, flip)
+    zc = -CONN_ZC if turned else CONN_ZC
+    mx = -CONN_MOUTH_X if turned else CONN_MOUTH_X
     sx = -1.0 if mx <= 0 else 1.0
+    up = -1.0 if turned else 1.0                       # way 1's end of the row
     return (mx + sx * CONN_PLUG_RUN, PCB_Y - PH_SIDE_H / 2.0,
-            zc + (way - 1 - (CONN_N - 1) / 2.0) * PH_PITCH)
+            zc + up * ((CONN_N - 1) / 2.0 - (way - 1)) * PH_PITCH)
 
 
 def plug_point(z_bot=None, z_top=None, flip=None):
@@ -2202,9 +2232,9 @@ def plug_point(z_bot=None, z_top=None, flip=None):
 
 
 def pin_axis():
-    """The direction the pin row runs, in the lever's LOCAL frame: J1 stands on end, so
-    its ways march along +Z."""
-    return (0.0, 0.0, 1.0)
+    """The direction the pin row runs, in the lever's LOCAL frame, on a board installed
+    as drawn: J1 stands on end and its ways count DOWN, way 1 at the top (plug_pin)."""
+    return (0.0, 0.0, -1.0)
 
 
 def cheek_axis():
@@ -2456,7 +2486,7 @@ KNEE_BRG_WALL = 6 * D.BEAD          # 4.8 of backing behind the race, vs 1.6 els
 KNEE_CHAM_C = (BRG_SEAT_D / 2.0 + KNEE_BRG_WALL) * math.sqrt(2.0)
 
 
-def board_guard(z_bot=None, z_top=None, flip=None):
+def board_guard(z_bot=None, z_top=None, flip=None, right=False):
     """The sensor board's envelope grown a 2-bead wall, AS INSTALLED in this housing.
 
     Shared by both levers' knee reliefs. As it happens the two come out IDENTICAL today --
@@ -2469,15 +2499,15 @@ def board_guard(z_bot=None, z_top=None, flip=None):
     """
     z_bot = HOUS_Z0 if z_bot is None else z_bot
     z_top = HOUS_Z1 if z_top is None else z_top
-    bx0, bx1 = board_x(z_bot, z_top, flip)
-    bz0, bz1 = board_z(z_bot, z_top, flip)
+    bx0, bx1 = board_x(z_bot, z_top, flip, right)
+    bz0, bz1 = board_z(z_bot, z_top, flip, right)
     b = sensor_board().val().BoundingBox()
     g = D.MIN_WALL_2P
     return box_at(abs(bx1 - bx0) + 2 * g, b.ylen + 2 * g, abs(bz1 - bz0) + 2 * g,
                   x=(bx0 + bx1) / 2.0, y=(b.ymin + b.ymax) / 2.0, z=(bz0 + bz1) / 2.0)
 
 
-def _knee_relief():
+def _knee_relief(right=False):
     """The 45 deg corner cut, across the housing's own width only.
 
     IT RUNS PAST THE CHEEKS AND OVER THE CRADLE (user, after seeing the -Y side: "ideally
@@ -2500,7 +2530,7 @@ def _knee_relief():
     f = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, y0, z) for x, z in pts] + [cq.Vector(pts[0][0], y0, pts[0][1])]))
     wedge = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, y1 - y0, 0)))
-    return wedge.cut(board_guard())
+    return wedge.cut(board_guard(right=right))
 
 
 def _stop_skirt(w):
@@ -2530,7 +2560,7 @@ def _stop_skirt(w):
     return out
 
 
-def _housing() -> cq.Workplane:
+def _housing(right=False) -> cq.Workplane:
     """ONE PARAMETRIC PRISM (user simplification round): the box spanned by
     HOUS_* (every face derived from the lever / cartridge / body extents),
     PLUS the mount tenons, minus exactly four families of cuts.
@@ -2571,7 +2601,13 @@ def _housing() -> cq.Workplane:
     the whole housing hangs 1.1 mm OUTBOARD of the rib comb. That pose is the
     fully-slid-OUT limit; engagement = slide - 1.1. See the note in the mount
     block — moving MOUNT_Y +Y is the fix, and it is the user's call.
-    Prints -Z→+Z (the tenons are the octagon family, self-supporting)."""
+    Prints -Z→+Z (the tenons are the octagon family, self-supporting).
+
+    `right` is the RIGHT-HAND housing (a lever struck by the knee moving +X): this
+    part's mirror image in X, except that the board it holds is NOT a mirror image --
+    there is one board design -- so its cradle and its knee relief are drawn for that
+    board turned over about the axle (see _turned). The board then sits 1.7 higher in
+    it, long end up, and needs no shim."""
     w = box_at(HOUS_X1 - HOUS_X0, 2 * HOUS_HW, HOUS_Z1 - HOUS_Z0,
                x=(HOUS_X0 + HOUS_X1) / 2, y=0.0, z=(HOUS_Z0 + HOUS_Z1) / 2)
     # MOUNT TENONS (user), unioned onto the raw prism BEFORE anything is cut — that
@@ -2592,11 +2628,11 @@ def _housing() -> cq.Workplane:
     # the -Z→+Z print — teardrop/roundness refinement rides the axle round.
     w = cut_axle_stack(w)          # bearing seats + contact rib + axle way
     w = cut_feel_pockets(w, feel_place)
-    w = _cradle(w)                                                  # the MT6701 board cradle (user)
+    w = _cradle(w, right=right)                                     # the MT6701 board cradle (user)
     w = w.union(cable_keeper())     # ...and the bus-B keeper on the cheek
     w = _stop_skirt(w)              # ...the bed dropped to make room for the travel stop
     w = w.cut(_room)            # ...and again, after the skirt re-added material
-    w = w.cut(_knee_relief())       # ...the bottom +X corner off at 45, for the knee
+    w = w.cut(_knee_relief(right))  # ...the bottom +X corner off at 45, for the knee
     w = w.cut(_stop_channel())      # ...and the stop's own way in, under the pockets
     # CLEARANCE AHEAD OF THE INSERT, not a self-tap (user: "the screw cut doesn't extend
     # far enough towards the lever, it leaves some material blocking the way"). cut_anchor
@@ -2608,7 +2644,8 @@ def _housing() -> cq.Workplane:
     w = cut_insert_bore(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0),
                         STOP_BORE_END - (STOP_ANCHOR_X + M4.insert_depth),
                         reason="knee lever travel stop", print_up=PRINT_UP)
-    return heal(roof_close(w, _room))
+    w = heal(roof_close(w, _room))
+    return w.mirror("YZ") if right else w
 
 
 def roof_close(w, *rooms, z_top=None, align=None, step=None):
@@ -2831,6 +2868,7 @@ def kl_magnet_cap() -> cq.Workplane:
 
 
 knee_housing = _housing()
+knee_housing_r = _housing(right=True)       # the right-hand lever's (LKR, RKR)
 knee_lever = _lever()
 kl_axle = kl_axle()                            # printed: full-length PCTG axle
 kl_magnet_cap = kl_magnet_cap()                # printed: screw-on magnet retainer
