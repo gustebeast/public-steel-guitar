@@ -1256,8 +1256,8 @@ BOARD_NOTES = {
         "R18": (19.00, -9.00, 90.0),
         "R19": (19.00, -6.50, 90.0),
         # the 24 V divider stands beside the 5 V one, tap toward the pin next to its own
-        "R20": (20.30, -9.00, 90.0),
-        "R21": (20.30, -6.50, 90.0),
+        "R20": (20.12, -9.00, 90.0),
+        "R21": (20.12, -6.50, 90.0),
     },
     "refs_on_fab": True,
     # THE GROUND PLANE is why this is four layers, same as the lever board: the
