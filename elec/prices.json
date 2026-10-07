@@ -201,13 +201,13 @@
       "what": "O3.5 M2 HSS drill blank, 73 mm long, Rockwell C60 -- CUT IN TWO for 2 x 35 mm rods, so 5 blanks an instrument. It is hardened: an abrasive wheel job, not a hacksaw. Was guessed at $0.50-1.20 a rod; it is $1.85."
     },
     "shaft_o8": {
-      "usd": 4.11,
+      "usd": 10.18,
       "verified": "v",
       "per_instrument": 2,
       "vendor": "McMaster-Carr",
-      "sku": "6112K44",
-      "order": "10 x $8.22 (each) = $82.20 for 20 needed",
-      "what": "O8 x 200 hardened steel linear shaft, CUT IN HALF for the bridge axle + nut wrap rod (both O8 x 100). Pre-cut 100 mm is 5033N131 at $14.38 EACH or 6459K118 (420 SS) at $10.18, i.e. 2.5-3.5x the price for saving one abrasive cut."
+      "sku": "6459K118",
+      "order": "20 x $10.18 (each) = $203.60 for 20 needed",
+      "what": "O8 x 100 linear motion shaft, 420 stainless, BOUGHT AT LENGTH -- one for the bridge axle, one for the nut wrap rod. No cutting anywhere in the build (user, 2026-10-07) and it must not rust, which rules out the 1055 carbon shaft 6112K44 ($8.22 for 200 mm, cut in half) this line used to be; that family has no 100 mm length. Read 2026-10-07. Its hardness and diameter tolerance were NOT read off the page: check the tolerance against the 688ZZ bore before a second order. Soft alternative: ServoCity 2100-0008-0100, $3.49, Rockwell B83."
     },
     "die_spring": {
       "usd": 1.1,
