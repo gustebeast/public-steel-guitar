@@ -403,6 +403,8 @@ def tee_components():
         z0 = tee_z(i)
         out.append((f"tee_pcb_{i}", EL.tee_pcb(cx, cy - EL.TEE_YSHIFT, d)
                     .translate((0, 0, z0 - EL.FLOOR_Z))))
+        out.append((f"tee_silk_{i}", EL.tee_silk(cx, cy - EL.TEE_YSHIFT)
+                    .translate((0, 0, z0 - EL.FLOOR_Z))))
         if hold_edge is None:
             continue
         hx, hy = _EAR_XY if hold_edge == "through" else pcb_hold_xy(
