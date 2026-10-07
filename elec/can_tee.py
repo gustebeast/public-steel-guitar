@@ -2,9 +2,13 @@
 
     py -3.12 elec/can_tee.py            # -> elec/out/can_tee.{net,board.json}
 
-WHY IT EXISTS: the MKS SERVO42D has a SINGLE 6-pin JST-XH carrying power and CAN
-together, so it cannot be daisy-chained without splicing -- and splicing is
-soldering, which this project forbids outside a factory-assembled PCB. The tee is
+WHY IT EXISTS: the MKS SERVO42D has ONE set of terminals for power and one for CAN (a
+6-way with V+ / GND and a 5-way with CAN L / CAN H, on opposite edges of its board --
+NOT a single 6-pin plug, which is what this line said until the pre-order review of
+2026-10-06 read Makerbase's schematic), so it cannot be daisy-chained without splicing
+-- and splicing is soldering, which this project forbids outside a factory-assembled
+PCB. The drop lead to it is split and crossed; its table is docs/bench-order.md,
+"The motor drop". The tee is
 what lets a motor be replaced with no solder and no splice. THAT is the purpose;
 everything else about it is a consequence. (An earlier revision of this file
 claimed the purpose was "unplugging a device never breaks the bus". That is a
@@ -456,6 +460,8 @@ if __name__ == "__main__":
     generate_netlist(file_=os.path.join(OUT_DIR, "can_tee.net"))
     netcheck.grounds_meet(os.path.join(OUT_DIR, "can_tee.net"))
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "can_tee.net"))
+    import volts_decl                   # A16: generated, see volts_decl.py
+    volts_decl.into(BOARD_NOTES, "can_tee")
     with open(os.path.join(OUT_DIR, "can_tee.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, tails %.1f mm from the +Y edge (limit 6.4)"

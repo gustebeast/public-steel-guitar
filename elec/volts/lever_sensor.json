@@ -1,0 +1,368 @@
+{
+ "net_volts": {
+  "+3V3": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "AP2112K-3.3: 3.3 V +1.5 %; +3 % transient"
+  },
+  "+5V": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "bus B's 5 V from motor_ctrl J2 / J6, behind its switch [motor_ctrl.+5V_BUSB: U6.6 (OUT) can reach its supply +5V]"
+  },
+  "+5V_LDO": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "through R8"
+  },
+  "CAN_H": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "CAN_L": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "CAN_RX": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U2.4 (R) can reach its supply +3V3; U3.19 (io) can reach its supply +3V3"
+  },
+  "CAN_TX": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.20 (io) can reach its supply +3V3"
+  },
+  "GND": 0,
+  "N$1": {
+   "v": 0.0,
+   "why": "pulled to ground"
+  },
+  "N$2": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U4.14 (io) can reach its supply +3V3; through R5"
+  },
+  "NRST": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.4 (io) can reach its supply +3V3"
+  },
+  "OSC_IN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.2 (io) can reach its supply +3V3"
+  },
+  "OSC_OUT": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.3 (io) can reach its supply +3V3"
+  },
+  "SCL": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.27 (io) can reach its supply +3V3; U4.7 (io) can reach its supply +3V3; through R7"
+  },
+  "SDA": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.28 (io) can reach its supply +3V3; U4.6 (io) can reach its supply +3V3; through R6"
+  },
+  "SENS_CSN": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.26 (io) can reach its supply +3V3; U4.8 (io) can reach its supply +3V3"
+  },
+  "SWCLK": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.22 (io) can reach its supply +3V3"
+  },
+  "SWDIO": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U3.21 (io) can reach its supply +3V3"
+  },
+  "TERM_MID": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "through R4; through SW1"
+  },
+  "U1_NC": {
+   "v": 0.0,
+   "why": "not connected"
+  }
+ },
+ "pin_volts": {
+  "C1.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C10.1": {
+   "max": 10.0,
+   "src": "rated V -- CL05A475MP5NRNC (C23733): JLCPCB parts API attributes for C23733 (CL05A475MP5NRNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C11.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C2.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C3.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C4.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C5.1": {
+   "max": 50.0,
+   "src": "rated V -- 0402CG150J500NT (C1548): JLCPCB parts API attributes for C1548 (0402CG150J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-10-06"
+  },
+  "C6.1": {
+   "max": 50.0,
+   "src": "rated V -- 0402CG150J500NT (C1548): JLCPCB parts API attributes for C1548 (0402CG150J500NT, FH (Guangdong Fenghua Advanced Tech)), fetched 2026-10-06"
+  },
+  "C7.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C8.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C9.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "D2.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on CAN_H: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
+  "D3.1": {
+   "max": 5.8,
+   "peak": "none",
+   "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
+   "why": "this part IS the clamp on CAN_L: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
+  },
+  "J1.2": {
+   "max": 100.0,
+   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J1.3": {
+   "max": 100.0,
+   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J1.4": {
+   "max": 100.0,
+   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J1.6": {
+   "max": 100.0,
+   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J1.7": {
+   "max": 100.0,
+   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J1.8": {
+   "max": 100.0,
+   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "R3.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1002TCE (C25744): JLCPCB parts API attributes for C25744 (0402WGF1002TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R4.1": {
+   "max": 50.0,
+   "src": "element V -- ERJ2RKF1200X (C413065): JLCPCB parts API attributes for C413065 (ERJ2RKF1200X, Panasonic: 100 mW, 1 %), fetched 2026-10-06; limiting element voltage 50 V from Panasonic's ERJ-2RK series table"
+  },
+  "R4.2": {
+   "max": 50.0,
+   "src": "element V -- ERJ2RKF1200X (C413065): JLCPCB parts API attributes for C413065 (ERJ2RKF1200X, Panasonic: 100 mW, 1 %), fetched 2026-10-06; limiting element voltage 50 V from Panasonic's ERJ-2RK series table"
+  },
+  "R5.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF0000TCE (C17168): JLCPCB parts API attributes for C17168 (0402WGF0000TCE: 50 V, 62.5 mW), fetched 2026-10-06"
+  },
+  "R5.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF0000TCE (C17168): JLCPCB parts API attributes for C17168 (0402WGF0000TCE: 50 V, 62.5 mW), fetched 2026-10-06"
+  },
+  "R6.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R6.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R7.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R7.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4701TCE (C25900): JLCPCB parts API attributes for C25900 (0402WGF4701TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R8.1": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-072R2L (C327251): JLCPCB parts API attributes for C327251 (RC0402FR-072R2L: 50 V, 62.5 mW), fetched 2026-10-06"
+  },
+  "R8.2": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-072R2L (C327251): JLCPCB parts API attributes for C327251 (RC0402FR-072R2L: 50 V, 62.5 mW), fetched 2026-10-06"
+  },
+  "SW1.1": {
+   "max": 24.0,
+   "peak": 50.0,
+   "src": "rated V -- DSHP01TSGER (C3293141): Kongshen DSHP01TSGER drawing DSHP-001-S-A rev A (2017-03-24), note 3 ELECTRICAL: non-switch rating 100 mA at 50 V DC; switching rating 25 mA at 24 V DC; dielectric strength 300 V AC for 60 s. Read off the drawing 2026-10-06 (it is an image; the catalogue attributes give only the switching figure)"
+  },
+  "SW1.2": {
+   "max": 24.0,
+   "peak": 50.0,
+   "src": "rated V -- DSHP01TSGER (C3293141): Kongshen DSHP01TSGER drawing DSHP-001-S-A rev A (2017-03-24), note 3 ELECTRICAL: non-switch rating 100 mA at 50 V DC; switching rating 25 mA at 24 V DC; dielectric strength 300 V AC for 60 s. Read off the drawing 2026-10-06 (it is an image; the catalogue attributes give only the switching figure)"
+  },
+  "TP1.1": {
+   "max": "none",
+   "src": "SWD (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "TP2.1": {
+   "max": "none",
+   "src": "SWD (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "TP4.1": {
+   "max": "none",
+   "src": "SWD (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "U1.1": {
+   "max": 6.5,
+   "src": "abs max -- AP2112K-3.3TRG1 (C51118): Diodes Inc AP2112 datasheet DS39724 Rev.2 p.3: VCC absolute max 6.5 V, recommended VIN 2.5-6.0 V; p.1 output accuracy +/-1.5 %"
+  },
+  "U1.3": {
+   "max": 6.5,
+   "src": "abs max -- AP2112K-3.3TRG1 (C51118): Diodes Inc AP2112 datasheet DS39724 Rev.2 p.3: VCC absolute max 6.5 V, recommended VIN 2.5-6.0 V; p.1 output accuracy +/-1.5 %"
+  },
+  "U1.4": {
+   "max": "none",
+   "src": "AP2112K-3.3TRG1 (C51118): Diodes Inc AP2112 datasheet DS39724 Rev.2 p.3: VCC absolute max 6.5 V, recommended VIN 2.5-6.0 V; p.1 output accuracy +/-1.5 %",
+   "why": "not connected"
+  },
+  "U1.5": {
+   "max": 6.5,
+   "src": "abs max -- AP2112K-3.3TRG1 (C51118): Diodes Inc AP2112 datasheet DS39724 Rev.2 p.3: VCC absolute max 6.5 V, recommended VIN 2.5-6.0 V; p.1 output accuracy +/-1.5 %"
+  },
+  "U2.1": {
+   "max": 3.95,
+   "src": "abs max -- SN65HVD230DR (C12084): TI SN65HVD230 datasheet SLOS346K p.6 absolute maximum ratings: VCC -0.3..6 V; CANH/CANL -4..16 V (transient -25..25 V through 100 ohm); D, R -0.5..VCC+0.5 V; dominant VOD max 3 V (electrical characteristics)"
+  },
+  "U2.3": {
+   "max": 6.0,
+   "src": "abs max -- SN65HVD230DR (C12084): TI SN65HVD230 datasheet SLOS346K p.6 absolute maximum ratings: VCC -0.3..6 V; CANH/CANL -4..16 V (transient -25..25 V through 100 ohm); D, R -0.5..VCC+0.5 V; dominant VOD max 3 V (electrical characteristics)"
+  },
+  "U2.4": {
+   "max": 3.95,
+   "src": "abs max -- SN65HVD230DR (C12084): TI SN65HVD230 datasheet SLOS346K p.6 absolute maximum ratings: VCC -0.3..6 V; CANH/CANL -4..16 V (transient -25..25 V through 100 ohm); D, R -0.5..VCC+0.5 V; dominant VOD max 3 V (electrical characteristics)"
+  },
+  "U2.6": {
+   "max": 16.0,
+   "src": "abs max -- SN65HVD230DR (C12084): TI SN65HVD230 datasheet SLOS346K p.6 absolute maximum ratings: VCC -0.3..6 V; CANH/CANL -4..16 V (transient -25..25 V through 100 ohm); D, R -0.5..VCC+0.5 V; dominant VOD max 3 V (electrical characteristics)"
+  },
+  "U2.7": {
+   "max": 16.0,
+   "src": "abs max -- SN65HVD230DR (C12084): TI SN65HVD230 datasheet SLOS346K p.6 absolute maximum ratings: VCC -0.3..6 V; CANH/CANL -4..16 V (transient -25..25 V through 100 ohm); D, R -0.5..VCC+0.5 V; dominant VOD max 3 V (electrical characteristics)"
+  },
+  "U2.8": {
+   "max": 3.95,
+   "src": "abs max -- SN65HVD230DR (C12084): TI SN65HVD230 datasheet SLOS346K p.6 absolute maximum ratings: VCC -0.3..6 V; CANH/CANL -4..16 V (transient -25..25 V through 100 ohm); D, R -0.5..VCC+0.5 V; dominant VOD max 3 V (electrical characteristics)"
+  },
+  "U3.17": {
+   "max": 4.0,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.19": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.2": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.20": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.21": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.22": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.26": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.27": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.28": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.3": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.4": {
+   "max": 3.75,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U3.5": {
+   "max": 4.0,
+   "src": "abs max -- CH32V203G6U6 (C5142280): WCH CH32V203 datasheet V2.8 s4.2 table 4-1: VDD-VSS -0.3..4.0 V; input on an FT pin VSS-0.3..5.5 V; on other pins VSS-0.3..VDD+0.3 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U4.13": {
+   "max": 7.0,
+   "src": "abs max -- MT6701QT-STD (C2913974): MagnTek MT6701 datasheet rev 1.9 (2024-05) p.6 absolute maximum ratings: VDD -0.5..7 V; operating 3.0..5.5 V. It gives no separate figure for the other pins, so each is rated VDD+0.3 V here, the usual input-clamp limit, which is the conservative reading"
+  },
+  "U4.14": {
+   "max": 3.75,
+   "src": "abs max -- MT6701QT-STD (C2913974): MagnTek MT6701 datasheet rev 1.9 (2024-05) p.6 absolute maximum ratings: VDD -0.5..7 V; operating 3.0..5.5 V. It gives no separate figure for the other pins, so each is rated VDD+0.3 V here, the usual input-clamp limit, which is the conservative reading"
+  },
+  "U4.6": {
+   "max": 3.75,
+   "src": "abs max -- MT6701QT-STD (C2913974): MagnTek MT6701 datasheet rev 1.9 (2024-05) p.6 absolute maximum ratings: VDD -0.5..7 V; operating 3.0..5.5 V. It gives no separate figure for the other pins, so each is rated VDD+0.3 V here, the usual input-clamp limit, which is the conservative reading"
+  },
+  "U4.7": {
+   "max": 3.75,
+   "src": "abs max -- MT6701QT-STD (C2913974): MagnTek MT6701 datasheet rev 1.9 (2024-05) p.6 absolute maximum ratings: VDD -0.5..7 V; operating 3.0..5.5 V. It gives no separate figure for the other pins, so each is rated VDD+0.3 V here, the usual input-clamp limit, which is the conservative reading"
+  },
+  "U4.8": {
+   "max": 3.75,
+   "src": "abs max -- MT6701QT-STD (C2913974): MagnTek MT6701 datasheet rev 1.9 (2024-05) p.6 absolute maximum ratings: VDD -0.5..7 V; operating 3.0..5.5 V. It gives no separate figure for the other pins, so each is rated VDD+0.3 V here, the usual input-clamp limit, which is the conservative reading"
+  },
+  "Y1.1": {
+   "max": "none",
+   "src": "TAXM8M4RFDCET2T (C403948): passive crystal: no voltage rating applies (drive level is a separate check, quality M24)",
+   "why": "no voltage rating applies"
+  },
+  "Y1.3": {
+   "max": "none",
+   "src": "TAXM8M4RFDCET2T (C403948): passive crystal: no voltage rating applies (drive level is a separate check, quality M24)",
+   "why": "no voltage rating applies"
+  }
+ }
+}
