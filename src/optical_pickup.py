@@ -3446,23 +3446,26 @@ _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overm
 # to account for the cable"). It was a STRAIGHT plug with its overmould capped at 17.5 mm,
 # and no stock 0.3 m lead with a published overmould that short was found (30.0 and 27.5
 # were). A down-angle plug turns the cable -Z at the socket, straight into the conduit
-# that is already under it, so the overmould's LENGTH stops mattering: what it needs is
-# depth behind the board and room below, and the conduit has both.
+# that is already under it, so the overmould's LENGTH stops mattering.
 #
 # (The straight plug had been chosen over a SIDE-angle one, when J1 sat -X of J2 and a
 #  sideways lead ran into J2's body. J1 is +X of J2 now, with the shaft between them, and
 #  a downward lead crosses nothing.)
 #
-# THE NUMBERS ARE A PURCHASING ENVELOPE, NOT A MEASUREMENT OF A PART: nothing is ordered,
-# and overmoulds are not standardised. A plug fits if, from the socket's mating face, its
-# overmould is no deeper than USBC_DOWN_DEPTH and, from the plug's axis, it ends no lower
-# than USBC_DOWN_DROP. The model draws that whole box as the plug, so the gate holds every
-# neighbour clear of the largest plug the BOM allows.
-USBC_DOWN_DEPTH = 12.0          # mating face -> back of the overmould (surveyed 8-12)
-USBC_DOWN_DROP = 22.0           # plug axis -> where the cable leaves the boot (15-22)
+# THE LEAD IS CHOSEN (user, 2026-10-07): Amazon B0FKYR7V34, 30 cm, USB 2.0, the same
+# up/down-angle plug at both ends on a flat ribbon. THESE ARE THE SELLER'S PHOTO'S
+# DIMENSIONS, NOT A MEASUREMENT: re-read them off the part when one is in hand.
+USBC_ANG_W = 12.2               # overmould, along the socket's long axis
+USBC_ANG_D = 5.2                # mating face -> back of the overmould
+USBC_ANG_BODY = 10.5            # the overmould along the cable. ASSUMED centred on the
+                                # plug's axis: the photo does not dimension where it sits
+USBC_ANG_BOOT = 8.5             # the ribbed relief past it
+USBC_BOOT_T = 3.5               # ...its thickness, ASSUMED (not dimensioned)
+RIBBON_W = 10.8                 # the flat cable, across
+RIBBON_T = 1.5                  # ...and through, ASSUMED (not dimensioned)
+USB_LEAD_L = 300.0              # overall, taken as overmould to overmould laid straight
 # ...AND THE CONDUIT STILL TAKES A STRAIGHT PLUG OF 17.5, which is what it was cut for and
-# costs nothing to keep: a straight lead measured in hand at 17.5 or under remains a fit.
-# J2's 14.0 is the XH housing and its wires' relief.
+# costs nothing to keep. J2's 14.0 is the XH housing and its wires' relief.
 PLUG_L = {"J1": 17.5, "J2": 14.0}
 # ⚠ THE -Y BUDGET IS A MEASUREMENT, NOT A DERIVATION (user, 2026-09-16). There are
 # 37.25 mm between this board's -Y edge and the instrument's -Y exterior in the model on
@@ -3602,31 +3605,25 @@ def opt_cables(which: str = "all") -> cq.Workplane:
 
     _WANT = {"usb": ("J1",), "pwr": ("J2",), "pwr_path": ("J2",), "all": ("J1", "J2")}[which]
     _yturn, _path, _od = {}, {}, {}
-    # ⚠ EACH LEAD TAKES THE CONDUIT SIDE NEAREST ITS OWN PLUG, and it used to take the far
-    # one. J1 sits at x +9.88 and dropped at -2.2; J2 sits at -29.29 and dropped at +2.2 --
-    # so each lead had to cross the OTHER's drop column to reach its own, and the two
-    # leads interpenetrated. Swapping the offsets removes both crossings at once: no lead
-    # passes over a column it does not own, and neither run reaches the other's x band.
-    # (Splitting opt_cables in two is what exposed this. As one unioned solid the clash
-    # was absorbed silently; tightening the crossing test alone made it WORSE -- 9.4 mm3
-    # to 40.2 -- because both leads then turned down at the same y. The offsets were the
-    # actual fault.)
-    for ref, w, h, od, xoff in (("J1", _USBC_W, _USBC_H, USB_OD, +2.2),
-                                ("J2", _XH4_W, _XH4_D, XH_OD, -2.2)):
+    # ⚠ THE 24 V PAIR TURNS DOWN RIGHT BEHIND ITS OWN PLUG (user, 2026-10-07). An XH plug
+    # is a crimped housing with loose wires, so the pair needs no run at plug height at
+    # all; it used to cross 20 mm sideways there to a column at the conduit's middle,
+    # from when the USB lead had a column beside it. The conduit is open behind J2.
+    # (PWR_COL_DX: it steps 3.75 mm +X as it turns. That is for the MODEL, not the
+    # wires -- cadkit's bundle carries the pair's flat round each corner without twisting
+    # it, and without one sideways leg it arrives at J9 a quarter turn out.)
+    for ref, w, h, od in (("J1", _USBC_W, _USBC_H, USB_OD),
+                          ("J2", _XH4_W, _XH4_D, XH_OD)):
         if ref not in _WANT:
             continue
         p, plen = part(ref), PLUG_L[ref]
         zc = PCB_TOP + PKG[p["pkg"]][2] / 2                   # cable/plug centre height
         if ref == "J1":
-            # the DOWN-ANGLE plug, as its whole purchasing envelope (see USBC_DOWN_DEPTH):
-            # the cable leaves the bottom of the boot on the conduit's own USB line
-            z1, z0 = zc + h / 2.0, zc - USBC_DOWN_DROP
-            add(box_at(w, USBC_DOWN_DEPTH, z1 - z0, x=p["x"],
-                       y=PCB_YM - USBC_DOWN_DEPTH / 2.0, z=(z0 + z1) / 2.0))
-            assert PCB_YM - USBC_DOWN_DEPTH < USB_Y < PCB_YM and USB_Z < z0, (
-                "the USB lead no longer leaves the bottom of J1's boot")
-            _path[ref] = [(p["x"], USB_Y, z0), (p["x"], USB_Y, USB_Z)]
-            _od[ref] = od
+            # the DOWN-ANGLE plug: overmould and boot here, its ribbon with J4's below
+            yd = PCB_YM - USBC_ANG_D / 2.0
+            add(box_at(USBC_ANG_W, USBC_ANG_D, USBC_ANG_BODY, x=p["x"], y=yd, z=zc))
+            add(box_at(RIBBON_W, USBC_BOOT_T, USBC_ANG_BOOT, x=p["x"], y=yd,
+                       z=zc - USBC_ANG_BODY / 2.0 - USBC_ANG_BOOT / 2.0))
             continue
         add(box_at(w, plen, h, x=p["x"], y=PCB_YM - plen / 2, z=zc))
         # TURN AT WHICHEVER BACK FACE IS FURTHER -Y -- its own, or that of any neighbour the
@@ -3640,8 +3637,9 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         # The run's SOLID is |dx| + od wide (see the box below), so it reaches od/2 past the
         # endpoints this test used -- J2's path stops at x 2.2 but its copper reaches 4.2,
         # and the USB-C plug's overmold starts at 3.88. Test the solid, not the path.
-        lo = min(p["x"], CONDUIT_XC + xoff) - od / 2.0
-        hi = max(p["x"], CONDUIT_XC + xoff) + od / 2.0
+        col = p["x"] + (PWR_COL_DX if ref == "J2" else 0.0)
+        lo = min(p["x"], col) - od / 2.0
+        hi = max(p["x"], col) + od / 2.0
         backs = [PCB_YM - plen]
         crosses = []
         for q in ("J1", "J2"):
@@ -3656,9 +3654,8 @@ def opt_cables(which: str = "all") -> cq.Workplane:
             f"{ref}: cable turns down at y {y_turn:.2f}, outside the conduit"
         # the lead as a PATH, built once at the end as one octagonal cable (helpers.oct_cable)
         # -- it used to be separate boxes and cylinders added piece by piece
-        z_end = USB_Z if ref == "J1" else PWR_Z_TURN
+        z_end = PWR_Z_TURN
         _yturn[ref] = y_turn
-        col = CONDUIT_XC + xoff
         _path[ref] = [(p["x"], PCB_YM - plen, zc), (p["x"], y_turn, zc), (col, y_turn, zc),
                       (col, y_turn, z_end)]
         _od[ref] = od
@@ -3675,7 +3672,7 @@ def opt_cables(which: str = "all") -> cq.Workplane:
     if "J2" in _WANT:
         # 24 V: across the conduit's floor to its +Y side, down the slot (opt_pwr_slot) into
         # the endplate's board recess, and onto J9 from above -- J9 is a top-entry XH.
-        xd = CONDUIT_XC - 2.2
+        xd = part("J2")["x"] + PWR_COL_DX
         j9 = op_top("J9")
         # J9 stands out in the bay since the power-button work (it was in the recess), inside
         # the plan of the J7 pair's balancing loop. So the lead leaves the recess under its
@@ -3688,42 +3685,89 @@ def opt_cables(which: str = "all") -> cq.Workplane:
             return _path["J2"]
     if "J1" not in _WANT:
         return out
-    # USB: out through the conduit's mouth into the bay -- the only part of that mouth the
-    # rail leaves open is y -128.75..-124.58 -- over the output board, down, and into the
-    # USB-C plug standing in J4's mouth on the board's -X edge (a USB-A until 2026-10-02).
-    # J4's own mouth. It used to be the tip of the mounting ear, 10.000 mm short -- see
-    # electronics.op_mouth, which exists because wiring.py's wire_usb made the same mistake.
+    # USB: A FLAT RIBBON, AND A RIBBON ONLY BENDS ONE WAY. It leaves J1's boot going down,
+    # flat against the board's -Y edge; one 45 degree FOLD turns it -X, standing on edge,
+    # which is the only way 10.8 mm of ribbon goes through the 4.2 mm of the conduit's
+    # mouth the -Y rail leaves open (y -128.75..-124.58). It runs out into the bay on edge,
+    # turns back toward the output board, and a second fold lays it flat against J4's
+    # plug, which points UP (pointing down it meets the endplate).
+    #
+    # THE SLACK IS DRAWN. The lead is 300 mm and the two sockets are about 140 mm of
+    # ribbon apart, so the run goes -X past J4 and doubles back: where it turns (xu) is
+    # solved from the lead's length, not chosen. Bends are drawn square.
+    w_, t_ = RIBBON_W, RIBBON_T
+    zr = RIBBON_Z
+    p1 = part("J1")
+    zb1 = (PCB_TOP + PKG[p1["pkg"]][2] / 2) - USBC_ANG_BODY / 2.0 - USBC_ANG_BOOT
+    yd = PCB_YM - USBC_ANG_D / 2.0                      # the drop's layer
+    yr = yd - t_                                        # the run's: the fold's other side
+    xa, xb = p1["x"] - w_ / 2.0, p1["x"] + w_ / 2.0
+    assert zb1 > zr + w_ / 2.0, "J1's boot ends below the ribbon's fold"
+    add(box_at(w_, t_, zb1 - (zr + w_ / 2.0), x=p1["x"], y=yd, z=(zb1 + zr + w_ / 2.0) / 2.0))
+    add(cq.Workplane("XZ", origin=(0, yd - t_ / 2.0, 0))
+        .polyline([(xa, zr - w_ / 2.0), (xa, zr + w_ / 2.0), (xb, zr + w_ / 2.0)]).close()
+        .extrude(t_, both=True))
+    # J4's own mouth (electronics.op_mouth; the ear's tip is 10 mm short of it)
     from .board_geom import HEIGHT as _H, footprint as _fp, fp_name as _fpn
     _BGH = _H[_fpn(_fp("output_panel", "J4")["fpid"])]
-    ua_mouth = op_mouth("J4")[0]
-    ua_end = ua_mouth - USBA_PLUG_L
-    zc4 = op_top("J4")[2] - _BGH / 2.0                  # the shell's axis, mid-height
+    x4 = op_mouth("J4")[0]
     y4 = op_top("J4")[1]
-    add(box_at(USBA_PLUG_L, USBA_PLUG_W, USBA_PLUG_H, x=(ua_mouth + ua_end) / 2, y=y4, z=zc4))
-    _path["J1"] += [(BAND_X0 - 1.0, USB_Y, USB_Z),
-                    (USB_DROP_X, USB_Y, USB_Z), (USB_DROP_X, y4, USB_Z),
-                    (USB_DROP_X, y4, zc4), (ua_end, y4, zc4)]
-    add(oct_cable(_path["J1"], _od["J1"]))
+    zc4 = op_top("J4")[2] - _BGH / 2.0                  # the shell's axis, mid-height
+    xd4 = x4 - USBC_ANG_D / 2.0                         # the rise's layer
+    xr4 = xd4 - t_                                      # the run's
+    zb4 = zc4 + USBC_ANG_BODY / 2.0 + USBC_ANG_BOOT
+    add(box_at(USBC_ANG_D, USBC_ANG_W, USBC_ANG_BODY, x=xd4, y=y4, z=zc4))
+    add(box_at(USBC_BOOT_T, w_, USBC_ANG_BOOT, x=xd4, y=y4, z=zb4 - USBC_ANG_BOOT / 2.0))
+    assert zb4 < zr - w_ / 2.0, "J4's boot ends above the ribbon's fold"
+    # ...and it cannot rise straight off the boot: the J7 pair's balancing loop crosses
+    # over J4 (its outside edge is at x -69.85 where the ribbon's -Y edge passes), so the
+    # ribbon lies over -X on top of the boot and rises outside the loop.
+    add(box_at(USB_J4_JOG + t_, w_, t_, x=xd4 - USB_J4_JOG / 2.0, y=y4, z=zb4 + t_ / 2.0))
+    xd4 -= USB_J4_JOG
+    xr4 = xd4 - t_
+    add(box_at(t_, w_, (zr - w_ / 2.0) - zb4, x=xd4, y=y4, z=(zb4 + zr - w_ / 2.0) / 2.0))
+    ya, yb4 = y4 - w_ / 2.0, y4 + w_ / 2.0
+    add(cq.Workplane("YZ", origin=(xd4 - t_ / 2.0, 0, 0))
+        .polyline([(ya, zr - w_ / 2.0), (yb4, zr - w_ / 2.0), (ya, zr + w_ / 2.0)]).close()
+        .extrude(t_, both=True))
+    # the run between the folds, in plan, on edge at zr
+    ybk = yr + USB_BACK_DY
+    free = USB_LEAD_L - 2 * (USBC_ANG_BODY + USBC_ANG_BOOT)
+    fixed = ((zb1 - zr) + w_ / 2.0 + xa + (ybk - yr) + xr4 + (ya - ybk) + w_ / 2.0
+             + (zr - zb4) + USB_J4_JOG)
+    xu = (fixed - free) / 2.0
+    assert xu < xr4 - 3 * t_, "the USB ribbon is too short for this route (xu %.1f)" % xu
+    plan = [(xa, yr), (xu, yr), (xu, ybk), (xr4, ybk), (xr4, ya)]
+    for (ax, ay), (bx, by) in zip(plan, plan[1:]):
+        add(box_at(abs(bx - ax) + t_, abs(by - ay) + t_, w_, x=(ax + bx) / 2.0,
+                   y=(ay + by) / 2.0, z=zr))
     return out
 
 
 # Where the two optical leads run below the conduit's plug level (see opt_cables).
-USB_Z = RUN_Z + 2.1                     # -7.5: the USB turns ABOVE the 24 V lead's column
-PWR_Z_TURN = RUN_Z - 2.4                # -12.0: the 24 V lead turns under the USB's run,
-                                        # 0.35 over the conduit floor at CONDUIT_Z0
-USB_Y = -126.6                          # both leads' y in the conduit's open mouth strip
-PWR_Y = -126.4                          # (y -128.75..-124.58, the rail on one side)
+PWR_Z_TURN = RUN_Z - 3.5                # -13.1: the 24 V pair crosses UNDER the USB
+                                        # ribbon, in a trench in the conduit's floor
+                                        # (opt_pwr_slot). The pair is stacked in Z there,
+                                        # 1.9 either side of this
+PWR_COL_DX = 3.75                       # the 24 V pair's drop, +X of J2's centre (see
+                                        # opt_cables). One and a half pitches: the -Y
+                                        # rail's end reaches x -19.93 inside the conduit,
+                                        # and at one pitch the pair came down through it
+PWR_Y = -126.4                          # the 24 V lead's y in the conduit's open mouth
+                                        # strip (y -128.75..-124.58, the rail on one side)
 PWR_Z_REC = -25.5                       # the 24 V lead crossing into the board recess,
                                         # 0.3 under its roof at FOOT_Z
 PWR_X_RISE = -27.5                      # the 24 V lead's riser: its skin 0.44 off the
                                         # endplate's -X face (-25.06)
 PWR_Z_BAY = -18.5                       # ...and its height over the bay: 1.0 over the J7
                                         # pair's loop where the two cross (loop top -21.5)
-USB_DROP_X = -84.0                      # the USB drops to J4's height out in the bay, -X of
-                                        # the 24 V loop and clear of the board-to-Pi lead
-# a USB-C male's overmould past the mouth (was a USB-A's 25 x 16 x 8 until J4 became a
-# USB-C, 2026-10-02). The name is kept: three call sites read it.
-USBA_PLUG_L, USBA_PLUG_W, USBA_PLUG_H = 20.0, 12.4, 6.5
+# The USB ribbon's run, on edge, between the 24 V pair where that crosses under it in the
+# conduit (the pair's top is PWR_Z_TURN + 1.9) and the deck's underside at z 0: 0.2 off
+# each, which is all 10.8 mm of ribbon leaves.
+RIBBON_Z = PWR_Z_TURN + 1.9 + 0.2 + RIBBON_W / 2.0        # -5.6
+USB_J4_JOG = 5.0                        # the ribbon's step -X over J4's boot, to rise
+                                        # outside the J7 pair's loop
+USB_BACK_DY = 6.0                       # the doubled-back slack's leg, +Y of the run
 XH_OD = 4.0                             # the 24 V lead (6x 26 AWG), as opt_cables draws it
 
 
@@ -3731,22 +3775,22 @@ USBC_NOTCH_CLR = 0.5
 
 
 def opt_usb_notch() -> cq.Workplane:
-    """The endplate cut J1's down-angle plug drops through: the 2 mm ledge between the
-    board's -Y edge and the conduit, taken away under the plug's envelope.
+    """The endplate cut J1's down-angle plug and its ribbon drop through: the 2 mm ledge
+    between the board's -Y edge and the conduit, taken away under the plug, down to the
+    foot of the ribbon's fold.
 
     The ledge is what was left between the board's pocket and the conduit; it carries
     nothing (the board ends at its +Y face). A down-angle overmould starts at the mating
-    face, so its leg comes down exactly where the ledge stands.
+    face, so it, its boot and the ribbon come down exactly where the ledge stands.
 
     Its -X end is a 45 degree ramp, not a wall: the endplate prints +X -> -X, and a square
     end would be a 2 mm shelf starting in mid-air."""
     p = part("J1")
-    zc = PCB_TOP + PKG[p["pkg"]][2] / 2
     c = USBC_NOTCH_CLR
-    x1 = p["x"] + _USBC_W / 2.0 + c
-    x0 = p["x"] - _USBC_W / 2.0 - c
+    x1 = p["x"] + USBC_ANG_W / 2.0 + c
+    x0 = p["x"] - USBC_ANG_W / 2.0 - c
     ya, yb = PCB_YM, CONDUIT_Y1 - 0.1               # into the conduit, so no skin is left
-    z0, z1 = zc - USBC_DOWN_DROP - c, PLINTH_TOP + 0.5
+    z0, z1 = RIBBON_Z - RIBBON_W / 2.0 - c, PLINTH_TOP + 0.5
     ramp = ya - yb
     return (cq.Workplane("XY").workplane(offset=z0)
             .polyline([(x1, yb), (x1, ya), (x0, ya), (x0 - ramp, yb)]).close()
@@ -3759,13 +3803,21 @@ def opt_pwr_slot() -> cq.Workplane:
     inside it: the part prints -X off its +X face, so a void that ended inside would leave a
     face of material printed over it -- a bridge. Open to the -X face, its only X-facing end
     is at +X, which the print meets as a floor."""
-    x0, x1 = BAND_X0 - 1.0, CONDUIT_XC + 5.0
+    x0, x1 = BAND_X0 - 1.0, part("J2")["x"] + PWR_COL_DX + 5.0    # the pair drops behind J2
     y0, y1 = PWR_Y - 2.2, -120.8        # into the recess, which starts at -122.8
     # up past the lead's own turn: it crosses the conduit's +Y wall at PWR_Z_TURN, above the
     # conduit's floor, so a slot that stopped at the floor left 2.8 mm3 of wall in the lead
     z0, z1 = PWR_Z_REC - 2.1, PWR_Z_TURN + XH_OD / 2 + 0.5
-    return box_at(x1 - x0, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2,
+    slot = box_at(x1 - x0, y1 - y0, z1 - z0, x=(x0 + x1) / 2, y=(y0 + y1) / 2,
                   z=(z0 + z1) / 2)
+    # ...and the TRENCH the pair crosses the conduit in, to reach the slot. The USB lead is
+    # a ribbon standing on edge between the deck and this pair (RIBBON_Z), and it needs
+    # 1.1 mm more than the conduit's floor left under it. Open to the -X face like the slot.
+    zt = PWR_Z_TURN - 1.9 - 0.5
+    assert zt < CONDUIT_Z0
+    return slot.union(box_at(x1 - x0, y0 - CONDUIT_Y0, CONDUIT_Z0 + 0.1 - zt,
+                             x=(x0 + x1) / 2, y=(y0 + CONDUIT_Y0) / 2,
+                             z=(zt + CONDUIT_Z0 + 0.1) / 2))
 
 
 def opt_carrier_pocket() -> cq.Workplane:

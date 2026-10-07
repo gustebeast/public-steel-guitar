@@ -90,9 +90,14 @@
      duplicated straight-plug comment blocks above PLUG_L are one current block. OPEN: a
      real lead to buy: DECIDED by the user, Amazon B0FKYR7V34 ($9.99, ribbon, same up/down angle
      at both ends, USB 2.0; in the BOM row and bench order. B0FKYQN31L was the first candidate; the user
-     accepted Amazon, not $16). When one is MEASURED: J4 end as an up-angle plug (19 mm end),
-     one 45-degree fold under J1, ribbon out of the conduit on edge with the 24 V pair
-     stacked beside it (BOM row has the numbers). `usb_run_length()` is dead code.
+     accepted Amazon, not $16). DRAWN to the listing's dimensions 2026-10-07 (user asked):
+     both plugs, the ribbon on edge with a fold at each end, a 5 mm jog over J4's boot to
+     clear the J7 loop, the slack doubled back along the rail (xu solved from 300 mm).
+     The 24 V pair's conduit crossing dropped 1.1 mm into a trench (PWR_Z_TURN -13.1).
+     ASSUMED: plug axis centred in the 10.5 body, boot 3.5 thick, ribbon 1.5 thick.
+     OPEN: nothing retains the slack; ribbon has 0.2 mm to the deck and to the pair.
+     The 24 V pair now turns down right behind J2 (user: a right-angle exit; an XH plug
+     is loose wires, so it is free). PWR_COL_DX 3.75 is a model step (and clears the rail end) for the bundle frame. `usb_run_length()` is dead code.
    - Lead's bench-cart corrections folded in 2026-10-07 (BOM, bench-order, prices.json):
      optical USB lead is 0.3 m and no stock lead with a published overmould <= 17.5 mm was
      found; bulkman screw link; PSU tariff line; M3x12 and Loctite 425 prices; LCSC lots.
