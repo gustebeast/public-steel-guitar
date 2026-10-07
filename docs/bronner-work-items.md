@@ -74,6 +74,18 @@
    the trench (chassis_2 changes); INSTALL_NOTES has the step. Both bus-B cables stay
    under the floor end to end; INSTALL_NOTES BB-2 / BB-3 rewritten for J2 + J6.
    STILL OPEN: the three USB items below.
+   - **THE Pi's USB-C TAKES NO PLUG WHERE THE Pi SITS (found 2026-10-07, OPEN, needs a
+     decision).** output_panel J2's lead goes to the Pi's USB-C gadget port, which is on
+     the Pi's -Y long edge 11.2 mm from its -X end (Pi 4B drawing). The Pi's -Y edge is at
+     y -127.0 and the -Y rail's inner face at about -131.5 there (slice of chassis_2 at
+     x -576.8): about 4.5 mm, against 17+ mm for a straight plug and 7-10 for an angled
+     one. `wiring.wire_usb` hides it by ending on the USB-A stack. Ways out: the Pi about
+     6-12 mm further +Y with an angled plug (its placement is the user's, and every lead
+     at the keyhead moves with it), or a pocket in the rail for the plug (structure). Not
+     drawn until one is chosen. The lead's lengths: 0.9-0.95 m with plugs.
+   - Lead's bench-cart corrections folded in 2026-10-07 (BOM, bench-order, prices.json):
+     optical USB lead is 0.3 m and no stock lead with a published overmould <= 17.5 mm was
+     found; bulkman screw link; PSU tariff line; M3x12 and Loctite 425 prices; LCSC lots.
    - Not mine (branner): knee-lever J1 way order, leg joint J2 mirror, pogo_wire_*_3.
    ORDER: silk + orientation + fab packages FIRST (boards ordered tomorrow), then this.
 3b. **Connector labels as a cadkit rule (lead, from the user) -- A17, cadkit 8683122 + e858ac7.**
