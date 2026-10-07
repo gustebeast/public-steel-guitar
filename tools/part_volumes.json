@@ -35,7 +35,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 375296.8
+   "volume_mm3": 376065.1
   },
   "cart_base": {
    "material": "pctg",
@@ -168,6 +168,10 @@
   "pickup_zplate": {
    "material": "petg-gf",
    "volume_mm3": 17270.7
+  },
+  "rod_plug": {
+   "material": "pctg",
+   "volume_mm3": 24.4
   },
   "screw_pulley_hi": {
    "material": "pctg",
