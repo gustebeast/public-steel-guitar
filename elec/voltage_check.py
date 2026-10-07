@@ -86,18 +86,22 @@ RAIL_TVS = PARTS[RAT["system"]["rail_tvs"]]
 # ── THE 24 V RAIL ─────────────────────────────────────────────────────────────────────────
 # steady: the brief's 24 V + 10 %. The brick itself is +/-3 % (24.72 V); the extra is room for
 #         stepper regeneration lifting the rail below anything that clamps it.
-# transient: the rail clamp's voltage AT THE MOST CURRENT THIS RAIL CAN BE HANDED, which is
-#         the brick's own rated output. The clamp's catalogue VC is at its rated pulse (10.3 A
-#         for the SMAJ24A) and nothing on this rail can supply that: the brick limits at its
-#         rating, and a stepper returns at most the current it was driven with, which came out
-#         of the same budget. Linear between maximum breakdown and VC, so a max-breakdown unit
-#         carrying 6.67 A stands at 35.6 V. `V24_VC` keeps the catalogue point, and
-#         `tvs_amps_at()` says how many amps of surge reach a given rating.
-#         (The clamp was an SMAJ30A until the review: 36.8 V before it did anything at all.)
+# transient: the rail clamp's voltage AT THE SURGE THIS RAIL IS TAKEN TO SEE
+#         (voltage_ratings.json, system.surge). The clamp's catalogue VC is at its rated
+#         pulse, 38.6 A for the SMCJ24A; linear between maximum breakdown and VC, so a
+#         max-breakdown unit carrying 20 A stands at 34.4 V. `V24_VC` keeps the catalogue
+#         point, and `tvs_amps_at()` says how many amps of surge reach a given rating.
+#         ⚠ THE SURGE FIGURE IS A BOUND AND NOT THE BRICK'S RATING. The brick's rated
+#         6.67 A is not what it can hand a clamp (it limits at about 150 %), and the
+#         drivers return winding current that did not come out of the brick's budget at
+#         that instant; and VC rises with temperature. So the clamp is the 1.5 kW part,
+#         sized so that the answer does not depend on the argument: it reaches the
+#         converters' 36 V operating limit at 26.7 A and their 38 V absolute at 34.9 A.
 V24_STEADY = BRICK["vnom"] * 1.10
 V24_SUSTAIN = RAIL_TVS["vbr_max"]
 V24_VC = RAIL_TVS["vc"]
-V24_CLAMP = V24_SUSTAIN + (V24_VC - V24_SUSTAIN) * min(1.0, BRICK["i"] / RAIL_TVS["ipp"])
+SURGE = RAT["system"]["surge"]
+V24_CLAMP = V24_SUSTAIN + (V24_VC - V24_SUSTAIN) * min(1.0, SURGE["i"] / RAIL_TVS["ipp"])
 V24_BRICK = BRICK["vnom"] * (1 + BRICK["tol"])
 V24_LIVE_PLUG = 2 * V24_BRICK                 # an undamped LC ring toward twice the source
 
@@ -113,9 +117,9 @@ CAN_TVS = PARTS["C14486"]                     # NUP2105L across bus A at motor_c
 
 RAIL24 = dict(v=V24_STEADY, vt=V24_CLAMP,
               why="24 V +10 %% steady (brick is +/-3 %%: %.2f V; OVP trips at up to %.1f V); "
-                  "transient = the %s clamp at the brick's %.2f A, the most this rail can be "
+                  "transient = the %s clamp at %.0f A of surge, a bound on what this rail is "
                   "handed: %.1f V (breakdown %.1f-%.1f V; its catalogue VC is %.1f V at %.1f A)"
-                  % (V24_BRICK, BRICK["vnom"] * BRICK["ovp_max_frac"], RAIL_TVS["mpn"], BRICK["i"],
+                  % (V24_BRICK, BRICK["vnom"] * BRICK["ovp_max_frac"], RAIL_TVS["mpn"], SURGE["i"],
                      V24_CLAMP, RAIL_TVS["vbr_min"], RAIL_TVS["vbr_max"], V24_VC, RAIL_TVS["ipp"]))
 CAN_A = dict(v=5.0, vt=CAN_TVS["vbr_max"], vf=V24_STEADY,
              why="bus A: dominant level of a 5 V transceiver in a SERVO42D (assumed, not known); "
@@ -137,8 +141,8 @@ SEEDS = {
         # ⚠ THE RAIL'S TRANSIENT COVERS WHAT THE BRICK AND THE MOTORS CAN DO. A LIVE PLUG IS
         # SEPARATE: its current is set by the lead and the capacitors. Worked in
         # motor_ctrl.py at F1 (lead 0.3-2 uH, 30-120 mohm, into C1 and through F1's
-        # 0.49 ohm into U5's 9 uF): 34.2 V on the rail and 31.0 V at U5's VIN in the worst corner,
-        # both under the 35.6 V declared here, so the rail's figure stands for it too.
+        # 0.24 ohm into U5's 9 uF): 34.1 V on the rail and 33.4 V at U5's VIN in the worst corner,
+        # both under the 34.4 V declared here, so the rail's figure stands for it too.
         "+24V": ("abs", RAIL24),
         "SW": ("like", "+24V", 0.0, "buck switch node: VIN while the high side is on"),
         "SW5": ("like", "+24V_BUCK", 0.0, "buck switch node: VIN while the high side is on"),
@@ -1162,8 +1166,8 @@ def run(elec, names, write):
     W("| steady worst case | %.1f | 24 V + 10 %% (the brief's figure): tolerance plus regeneration lifting the rail below any clamp |" % V24_STEADY)
     W("| brick OVP ceiling | %.1f | 135 %% of rated, hiccup |" % (BRICK["vnom"] * BRICK["ovp_max_frac"]))
     W("| clamp does nothing below | %.1f to %.1f | the rail clamp's breakdown at 1 mA (D8 on motor_ctrl, D6 on output_panel): regeneration can hold the rail anywhere under this |" % (RAIL_TVS["vbr_min"], RAIL_TVS["vbr_max"]))
-    W("| transient worst case | %.1f | %s at the brick's %.2f A, the most the rail can be handed. Its catalogue VC is %.1f V at %.1f A (10/1000 us); linear in between, about %.2f A of surge per volt above %.1f V |" % (
-        V24_CLAMP, RAIL_TVS["mpn"], BRICK["i"], V24_VC, RAIL_TVS["ipp"], RAIL_TVS["ipp"] / (V24_VC - V24_SUSTAIN), V24_SUSTAIN))
+    W("| transient worst case | %.1f | %s at %.0f A of surge (a bound: voltage_ratings.json, system.surge). Its catalogue VC is %.1f V at %.1f A (10/1000 us); linear in between, about %.2f A of surge per volt above %.1f V |" % (
+        V24_CLAMP, RAIL_TVS["mpn"], SURGE["i"], V24_VC, RAIL_TVS["ipp"], RAIL_TVS["ipp"] / (V24_VC - V24_SUSTAIN), V24_SUSTAIN))
     W("| live plug, undamped | %.1f | twice the brick: only where a connector feeds bare ceramic (output_panel +24V_IN) |" % V24_LIVE_PLUG)
     W("")
     W("## Summary")
