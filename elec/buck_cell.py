@@ -254,3 +254,82 @@ def xh_ground_via(jx, jy):
     y = round(jy + XH_GND_WAY[1], 3)
     return (("GND", "F.Cu", 0.40, [(round(jx + 3.50, 3), y), (round(jx + XH_TOE_VIA, 3), y)]),
             ("GND", round(jx + XH_TOE_VIA, 3), y))
+
+
+# ── WHAT EVERY NET REACHES, AND WHAT EVERY PIN ON IT IS RATED FOR (quality A16) ───────
+# One declaration for every board built on this cell -- the fret boards and the foot
+# strip carry the same regulator, the same drivers, the same LEDs and the same seam pin.
+# The WORST CASE, not the nominal, and each rating read from its maker's own table.
+# ⚠ 24.72 V, NOT 24: Mean Well's GST160A24 is 24 V +-3.0 % (specification table, "voltage
+# tolerance", which their note 4 says includes set-up, line and load). It matters in one
+# place: the seam pin is rated 24 V, so a seam that carries the 24 V bus is over it.
+V24_MAX = 24.72
+
+
+def net_volts(rail, rail_max, rail_why):
+    """quality.net_volts for a board whose LED rail is the net `rail`."""
+    return {
+        "GND": 0,
+        "*_NC": 0,                       # a no-connect pin or an output left open
+        "+24V*": {"v": V24_MAX, "why": "Mean Well GST160A24-R7B: 24 V +-3.0 %. The "
+                                       "leads are plugged with the instrument off "
+                                       "(M16), so there is no ring to add"},
+        "SW": {"v": V24_MAX, "why": "the switch node swings between ground and the input"},
+        "BOOT": {"v": V24_MAX + 5.25, "why": "the switch node plus the regulator's own VCC"},
+        "BUCK_VCC": {"v": 5.25, "why": "LMR33630's internal LDO, SNVSAN3F 7.5: 5 V nominal"},
+        "FB": {"v": 1.02, "why": "the 1.000 V reference, +1.5 %"},
+        rail: {"v": rail_max, "why": rail_why},
+        "Z*": {"v": rail_max, "why": "a node of an LED string: at the rail whenever its "
+                                     "sink is off, lower when it conducts"},
+        "VREG*": {"v": 3.5, "why": "TLC5971's internal regulator, SBVS146D 6.5: 3.5 V "
+                                   "maximum"},
+        "IREF*": {"v": 1.25, "why": "the 1.21 V reference across the IREF resistor"},
+        "SCK*": {"v": 3.5, "why": "the Pi's 3.3 V, or a driver's VREG-level output"},
+        "SDT*": {"v": 3.5, "why": "the Pi's 3.3 V, or a driver's VREG-level output"},
+    }
+
+
+def pin_volts(pogo_mpn, resistors):
+    """quality.pin_volts for the same boards. `resistors` are the 0402 values fitted."""
+    r0402 = {"max": 50.0, "src": "UNI-ROYAL 0402WGF series (and Yageo RC0402): maximum "
+                                 "working voltage 50 V"}
+    fuse = {"max": 63.0, "src": "JDT JFC1206 series sheet: voltage rating 63 V"}
+    d = {
+        "TLC5971RGER": {
+            "src": "TI TLC5971 datasheet SBVS146D, 6.1 absolute maximum ratings",
+            "max": 18.0,                 # VCC and the twelve outputs
+            "pins": {
+                "[12]": {"max": 3.7, "why": "SDTI / SCKI: VREG + 0.6 V, at this driver's "
+                                            "lowest VREG (3.1 V)"},
+                "[56]": {"max": "none", "why": "SCKO / SDTO are this pin's own VREG-level "
+                                               "outputs, rated VREG + 0.3 V"},
+                "15": {"max": 6.0},      # VREG
+                "16": {"max": 3.4, "why": "IREF: VREG + 0.3 V, at the lowest VREG"},
+            }},
+        U_VALUE: {
+            "src": "TI LMR33630 datasheet SNVSAN3F, 7.1 absolute maximum ratings",
+            "max": 38.0,                 # VIN; EN is tied to it and rated VIN + 0.3 V
+            "pins": {
+                "3": {"max": V24_MAX + 0.3, "why": "SW: VIN + 0.3 V"},
+                "12": {"max": V24_MAX + 0.3, "why": "SW: VIN + 0.3 V"},
+                "4": {"max": "none", "why": "BOOT is rated 5.5 V to SW, not to ground, "
+                                            "and it is the regulator's own VCC that "
+                                            "charges it"},
+                "5": {"max": 5.5}, "7": {"max": 5.5}, "8": {"max": 22.0},
+            }},
+        "JFC1206-1200FS": fuse, "JFC1206-1100FS": fuse,
+        "S4B-XH-SM4-TB": {"max": 250.0, "src": "JST XH series: rated 250 V"},
+        pogo_mpn: {"max": 24.0, "src": "Xinyangze YZF0002-38080-02 specification A.0: "
+                                       "voltage rating 24 V AC (rms) / DC"},
+        "XL-5050RGBW": {
+            "max": "none", "src": "XINGLIGHT XL-5050RGBW sheet, absolute maximum ratings",
+            "why": "a die in a series string has no rating to ground: its limits are "
+                   "forward current, which the sink sets, and 5 V reverse, which a "
+                   "string fed from one rail through one sink cannot apply"},
+        L1_VALUE: {"max": "none", "src": "-", "why": "an inductor: no voltage rating to "
+                                                     "ground, its limits are current (M14)"},
+        "TP": {"max": "none", "src": "-", "why": "a bare test pad, not a part"},
+    }
+    d.update({v: r0402 for v in resistors})
+    return d
+
