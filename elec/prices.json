@@ -4834,6 +4834,46 @@
       "usd": 0.4081,
       "verified": "v",
       "what": "DSHP01TSGER C3293141 -- JLCPCB parts API at qty 210"
+    },
+    "fret_led_mid:R41": {
+      "usd": 0.0025,
+      "verified": "v",
+      "what": "0R C17168 -- JLCPCB parts API at qty 1, read 2026-10-06"
+    },
+    "fret_led_mid:R42": {
+      "usd": 0.0025,
+      "verified": "v",
+      "what": "0R C17168 -- JLCPCB parts API at qty 1, read 2026-10-06"
+    },
+    "fret_led_mid:R43": {
+      "usd": 0.0025,
+      "verified": "v",
+      "what": "0R C17168 -- JLCPCB parts API at qty 1, read 2026-10-06"
+    },
+    "fret_led_mid:R44": {
+      "usd": 0.0025,
+      "verified": "v",
+      "what": "0R C17168 -- JLCPCB parts API at qty 1, read 2026-10-06"
+    },
+    "fret_led_mid:R45": {
+      "usd": 0.0025,
+      "verified": "v",
+      "what": "0R C17168 -- JLCPCB parts API at qty 1, read 2026-10-06"
+    },
+    "fret_led_key:R41": {
+      "usd": 0.0025,
+      "verified": "v",
+      "what": "0R C17168 -- JLCPCB parts API at qty 1, read 2026-10-06"
+    },
+    "fret_led_key:R42": {
+      "usd": 0.0025,
+      "verified": "v",
+      "what": "0R C17168 -- JLCPCB parts API at qty 1, read 2026-10-06"
+    },
+    "fret_led_key:R43": {
+      "usd": 0.0025,
+      "verified": "v",
+      "what": "0R C17168 -- JLCPCB parts API at qty 1, read 2026-10-06"
     }
   },
   "modules": {

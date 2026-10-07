@@ -380,13 +380,21 @@ NEEDS USER -- the one item left open on every board is M12, and only these parts
 4. Tick: Confirm Production File, Confirm Parts Placement, Remove Mark; via 0.25 / 0.50
    on the foot boards (ORDER.txt in each package).
 
-## FRET BOARDS: FEED RE-LAYOUT IN PROGRESS (2026-10-06, UNCOMMITTED, NOT ROUTED)
-- elec/fret_led.py + elec/fab.py edited: per-driver FEEDn net through a 0R link (R41..),
-  links / flank returns laid on F, feed laid on In1 under them, rail pour moved to B.Cu,
-  In1 a routing layer. Generator runs; netlists + board.json in elec/out are NEW.
-- elec/out/fret_led_{key,mid}.kicad_pcb are the OLD routes and no longer match the
-  netlist. Old set saved whole in elec/out/_planefeed/ (copy back + `git checkout
-  elec/fret_led.py elec/fab.py` + regenerate to abandon).
-- NEXT: layout + finish fret_led_key, read DRC / quality, then update scratchpad
-  moment.py to close the loop along the FEED copper and compare with 259 / 486 mm2;
-  then fret_led_mid, docs 6.3 / 9.3, sign-offs, prices.json, fab packages, CAD re-render.
+## FRET BOARDS: FEED RE-LAYOUT (2026-10-06, done, routed, packaged)
+- Why and the numbers: docs/fret-led.md 9.3. Per-driver FEEDn net through a 0R link
+  (R41..), every string laid on F over its feed on In1, rail pour on B.Cu, In1 a routing
+  layer. ZONE_OUTS[0] is now (11, 12, 20, 19).
+- Both boards 0 unconnected, 0 violations, quality 0 FAIL / 1 OPEN (M12). Flat loop per
+  string: mid 259 -> 12.9 mm2 mean (max 28), key 486 -> 22.5 (max 104, fret 9 at the seam).
+- Measure again with scratchpad moment2.py (`"$K" moment2.py fret_led_mid fret_led_key -v`).
+- The pre-change routes are in elec/out/_planefeed/ (untracked build output).
+- A16 (voltage ratings) is declared for the fret boards only: NET_VOLTS / PIN_VOLTS in
+  elec/fret_led.py. foot_led_a/b and ui_board will FAIL A16 at their next finish until
+  they get the same.
+- JLCPCB: the saved projects for all four LED boards are STALE (fret boards: new copper,
+  8 more parts; foot boards: older silkscreen). Re-upload, re-preview (0R links, U pin 1)
+  and re-quote before ordering. Nothing is in the cart.
+- NEXT: connector pin labels on the connector's own face (lead, from the user): bronner
+  is adding it to cadkit kicad_silk.py; when it is on main, sync, finish --keep-route all
+  five boards, fab.py, submit. The 2x7 1.27 ribbon header on ui_board cannot take a word
+  a way at 1.0 mm: say so in the submit.
