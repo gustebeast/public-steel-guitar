@@ -1,20 +1,20 @@
 ** Drc report for optical.kicad_pcb **
-** Created on 2026-09-28T22:14:15 **
+** Created on 2026-10-06T20:39:06 **
 ** Report includes: Errors, Warnings **
 
-** Found 35 DRC violations **
+** Found 36 DRC violations **
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
-    @(87.5013 mm, 130.5400 mm): Footprint TP8
-    @(86.0000 mm, 131.0050 mm): Footprint R30
-[courtyards_overlap]: Courtyards overlap
-    Rule: board setup constraints courtyard; error
-    @(75.1942 mm, 74.2167 mm): Footprint PD6A
     @(75.5500 mm, 76.3667 mm): Footprint D6
+    @(75.1942 mm, 74.2167 mm): Footprint PD6A
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
     @(75.5500 mm, 76.3667 mm): Footprint D6
     @(75.1942 mm, 78.5167 mm): Footprint PD6B
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(75.1942 mm, 83.5801 mm): Footprint PD7A
+    @(75.5500 mm, 85.7301 mm): Footprint D7
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
     @(75.5500 mm, 95.0935 mm): Footprint D8
@@ -25,6 +25,10 @@
     @(75.1942 mm, 92.9435 mm): Footprint PD8A
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
+    @(75.1942 mm, 46.1265 mm): Footprint PD3A
+    @(75.5500 mm, 48.2765 mm): Footprint D3
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
     @(75.5500 mm, 67.0033 mm): Footprint D5
     @(75.1942 mm, 64.8533 mm): Footprint PD5A
 [courtyards_overlap]: Courtyards overlap
@@ -33,12 +37,12 @@
     @(75.1942 mm, 69.1533 mm): Footprint PD5B
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
-    @(75.1942 mm, 27.3996 mm): Footprint PD1A
-    @(75.5500 mm, 29.5496 mm): Footprint D1
+    @(75.1942 mm, 115.9704 mm): Footprint PD10B
+    @(75.5500 mm, 113.8204 mm): Footprint D10
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
-    @(75.1942 mm, 50.4265 mm): Footprint PD3B
-    @(75.5500 mm, 48.2765 mm): Footprint D3
+    @(75.1942 mm, 106.6070 mm): Footprint PD9B
+    @(75.5500 mm, 104.4570 mm): Footprint D9
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
     @(75.1942 mm, 55.4899 mm): Footprint PD4A
@@ -49,64 +53,60 @@
     @(75.5500 mm, 57.6399 mm): Footprint D4
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
-    @(75.1942 mm, 106.6070 mm): Footprint PD9B
-    @(75.5500 mm, 104.4570 mm): Footprint D9
-[courtyards_overlap]: Courtyards overlap
-    Rule: board setup constraints courtyard; error
     @(75.1942 mm, 31.6996 mm): Footprint PD1B
     @(75.5500 mm, 29.5496 mm): Footprint D1
-[courtyards_overlap]: Courtyards overlap
-    Rule: board setup constraints courtyard; error
-    @(75.1942 mm, 102.3070 mm): Footprint PD9A
-    @(75.5500 mm, 104.4570 mm): Footprint D9
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
     @(75.1942 mm, 111.6704 mm): Footprint PD10A
     @(75.5500 mm, 113.8204 mm): Footprint D10
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
-    @(75.5500 mm, 48.2765 mm): Footprint D3
-    @(75.1942 mm, 46.1265 mm): Footprint PD3A
-[courtyards_overlap]: Courtyards overlap
-    Rule: board setup constraints courtyard; error
-    @(75.5500 mm, 113.8204 mm): Footprint D10
-    @(75.1942 mm, 115.9704 mm): Footprint PD10B
-[courtyards_overlap]: Courtyards overlap
-    Rule: board setup constraints courtyard; error
-    @(75.1942 mm, 41.0630 mm): Footprint PD2B
-    @(75.5500 mm, 38.9130 mm): Footprint D2
-[courtyards_overlap]: Courtyards overlap
-    Rule: board setup constraints courtyard; error
-    @(75.1942 mm, 83.5801 mm): Footprint PD7A
+    @(75.1942 mm, 87.8801 mm): Footprint PD7B
     @(75.5500 mm, 85.7301 mm): Footprint D7
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(75.5500 mm, 104.4570 mm): Footprint D9
+    @(75.1942 mm, 102.3070 mm): Footprint PD9A
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(75.5500 mm, 48.2765 mm): Footprint D3
+    @(75.1942 mm, 50.4265 mm): Footprint PD3B
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
     @(75.5500 mm, 38.9130 mm): Footprint D2
     @(75.1942 mm, 36.7630 mm): Footprint PD2A
 [courtyards_overlap]: Courtyards overlap
     Rule: board setup constraints courtyard; error
-    @(75.5500 mm, 85.7301 mm): Footprint D7
-    @(75.1942 mm, 87.8801 mm): Footprint PD7B
+    @(75.5500 mm, 38.9130 mm): Footprint D2
+    @(75.1942 mm, 41.0630 mm): Footprint PD2B
+[courtyards_overlap]: Courtyards overlap
+    Rule: board setup constraints courtyard; error
+    @(75.1942 mm, 27.3996 mm): Footprint PD1A
+    @(75.5500 mm, 29.5496 mm): Footprint D1
+[via_dangling]: Via is not connected or connected on only one layer
+    Local override; warning
+    @(94.7008 mm, 127.3150 mm): Via [SAI_FS] on F.Cu - B.Cu
+[track_dangling]: Track has unconnected end
+    Local override; warning
+    @(106.9900 mm, 39.5813 mm): Track [I2C2_SDA] on F.Cu, length 79.4187 mm
 [track_dangling]: Track has unconnected end
     Local override; warning
     @(107.9200 mm, 38.7313 mm): Track [I2C2_SCL] on B.Cu, length 80.2687 mm
 [track_dangling]: Track has unconnected end
     Local override; warning
-    @(116.3076 mm, 176.0566 mm): Track [PHY_VDD33] on F.Cu, length 0.0132 mm
-[track_dangling]: Track has unconnected end
-    Local override; warning
     @(120.1000 mm, 82.6350 mm): Track [SAI_SD3] on B.Cu, length 36.3650 mm
-[track_dangling]: Track has unconnected end
-    Local override; warning
-    @(93.4508 mm, 127.3150 mm): Track [SAI_FS] on F.Cu, length 1.2500 mm
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; warning
+    @(108.0308 mm, 193.2650 mm): Segment on Edge.Cuts
+    @(110.3308 mm, 192.0700 mm): Segment of J1 on F.Silkscreen
+[silk_edge_clearance]: Silkscreen clipped by board edge
+    Rule: board setup constraints silk; warning
+    @(108.0308 mm, 193.2650 mm): Segment on Edge.Cuts
+    @(119.7308 mm, 192.0700 mm): Segment of J1 on F.Silkscreen
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
-    @(114.8350 mm, 76.5272 mm): Segment of Cs33 on F.Silkscreen
-    @(114.5400 mm, 76.6850 mm): Polygon of U16 on F.Silkscreen
-[silk_overlap]: Silkscreen clearance
-    Rule: board setup constraints silk; warning
-    @(114.8350 mm, 95.2540 mm): Segment of Cs43 on F.Silkscreen
-    @(114.5400 mm, 95.4118 mm): Polygon of U17 on F.Silkscreen
+    @(114.8350 mm, 113.9809 mm): Segment of Cs53 on F.Silkscreen
+    @(114.5400 mm, 114.1387 mm): Polygon of U18 on F.Silkscreen
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
     @(114.8350 mm, 39.0735 mm): Segment of Cs13 on F.Silkscreen
@@ -117,16 +117,16 @@
     @(114.5400 mm, 57.9582 mm): Polygon of U15 on F.Silkscreen
 [silk_overlap]: Silkscreen clearance
     Rule: board setup constraints silk; warning
-    @(114.8350 mm, 113.9809 mm): Segment of Cs53 on F.Silkscreen
-    @(114.5400 mm, 114.1387 mm): Polygon of U18 on F.Silkscreen
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(114.5400 mm, 76.6850 mm): Polygon of U16 on F.Silkscreen
-    @(115.1950 mm, 77.1150 mm): Pad 2 [GND] of Cs33 on F.Cu
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
+    @(114.8350 mm, 95.2540 mm): Segment of Cs43 on F.Silkscreen
     @(114.5400 mm, 95.4118 mm): Polygon of U17 on F.Silkscreen
-    @(115.1950 mm, 95.8418 mm): Pad 2 [GND] of Cs43 on F.Cu
+[silk_overlap]: Silkscreen clearance
+    Rule: board setup constraints silk; warning
+    @(114.8350 mm, 76.5272 mm): Segment of Cs33 on F.Silkscreen
+    @(114.5400 mm, 76.6850 mm): Polygon of U16 on F.Silkscreen
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(114.5400 mm, 114.1387 mm): Polygon of U18 on F.Silkscreen
+    @(115.1950 mm, 114.5687 mm): Pad 2 [GND] of Cs53 on F.Cu
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(114.5400 mm, 39.2313 mm): Polygon of U14 on F.Silkscreen
@@ -137,8 +137,12 @@
     @(115.1950 mm, 58.3882 mm): Pad 2 [GND] of Cs23 on F.Cu
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
-    @(114.5400 mm, 114.1387 mm): Polygon of U18 on F.Silkscreen
-    @(115.1950 mm, 114.5687 mm): Pad 2 [GND] of Cs53 on F.Cu
+    @(114.5400 mm, 95.4118 mm): Polygon of U17 on F.Silkscreen
+    @(115.1950 mm, 95.8418 mm): Pad 2 [GND] of Cs43 on F.Cu
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(114.5400 mm, 76.6850 mm): Polygon of U16 on F.Silkscreen
+    @(115.1950 mm, 77.1150 mm): Pad 2 [GND] of Cs33 on F.Cu
 
 ** Found 0 unconnected pads **
 

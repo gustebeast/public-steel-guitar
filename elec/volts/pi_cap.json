@@ -1,0 +1,405 @@
+{
+ "net_volts": {
+  "+24V_LED": {
+   "peak": 35.587,
+   "v": 26.4,
+   "why": "lighting bus from motor_ctrl J7, after F3 [motor_ctrl.+24V_LED: through F3]"
+  },
+  "+3V3_PI": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi 3V3 rail, taken as 3.3 V +5 % (assumed; the Pi's PMIC tolerance was not looked up)"
+  },
+  "+3V3_UI": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "U1.6 (OUT) can reach its supply +3V3_PI"
+  },
+  "+5V_PI": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "the Pi's 5 V from motor_ctrl J5 [motor_ctrl.+5V: through F2]"
+  },
+  "GND": 0,
+  "PI_NC_14": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_17": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_20": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_21": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_24": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_26": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_27": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_28": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_3": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_32": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_33": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_35": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_36": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_37": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_5": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PWR_SW_DN": {
+   "peak": 10.8,
+   "v": 10.6,
+   "why": "the power button's throw, from output_panel [output_panel.SW_SENSE: clamped by D8 (BZT52C10T, VZ max 10.6 V) behind R33+R34 = 9.4 k; +0.2 V for its 20 ohm at the transient current]"
+  },
+  "PWR_SW_UP": {
+   "peak": 10.8,
+   "v": 10.6,
+   "why": "the power button's throw, from output_panel [output_panel.SW_SENSE: clamped by D8 (BZT52C10T, VZ max 10.6 V) behind R33+R34 = 9.4 k; +0.2 V for its 20 ohm at the transient current]"
+  },
+  "SCK": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "through R1"
+  },
+  "SCK_FOOT": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "through R3"
+  },
+  "SCK_FOOT_PI": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "SCK_PI": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "SDI_PI": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "SDT": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "through R2"
+  },
+  "SDT_FOOT": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "through R4"
+  },
+  "SDT_FOOT_PI": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "U1_NC_4": {
+   "v": 0.0,
+   "why": "not connected"
+  },
+  "UI_CS_N": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_DC": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_ENC_A": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_ENC_B": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_ILIM": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "U1.5 (ILIM) can reach its supply +3V3_PI"
+  },
+  "UI_RES_N": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_SCLK": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_SDIN": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_SW_A": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_SW_B": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_SW_C": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_SW_D": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "UI_SW_PUSH": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  }
+ },
+ "pin_volts": {
+  "C1.1": {
+   "max": 25.0,
+   "src": "rated V -- CL21A226MAQNNNE (C45783): JLCPCB parts API attributes for C45783 (CL21A226MAQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C2.1": {
+   "max": 50.0,
+   "src": "rated V -- CL21A475KBQNNNE (C98192): JLCPCB parts API attributes for C98192 (CL21A475KBQNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C3.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C4.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C5.1": {
+   "max": 25.0,
+   "src": "rated V -- CL05A105KA5NQNC (C52923): JLCPCB parts API attributes for C52923 (CL05A105KA5NQNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C6.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "J2.2": {
+   "max": 100.0,
+   "src": "rated V -- S6B-PH-SM4-TB(LF)(SN) (C265405): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J2.5": {
+   "max": 100.0,
+   "src": "rated V -- S6B-PH-SM4-TB(LF)(SN) (C265405): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J3.2": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-SM4-TB(LF)(SN) (C161861): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J3.3": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-SM4-TB(LF)(SN) (C161861): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J3.4": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-SM4-TB(LF)(SN) (C161861): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J4.2": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-SM4-TB(LF)(SN) (C161861): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J4.3": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-SM4-TB(LF)(SN) (C161861): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J4.4": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-SM4-TB(LF)(SN) (C161861): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J5.1": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.10": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.11": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.12": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.13": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.14": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.15": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.16": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.2": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.3": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.4": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.5": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.6": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.7": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J5.9": {
+   "max": 500.0,
+   "src": "rated V -- HX PZ1.27-2x8P WZ (C22438114): hanxia PZ1.27 datasheet p.4 / JLCPCB parts API attributes for C22438114 (500 V, 1 A)"
+  },
+  "J6.2": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-A(LF)(SN) (C157925): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J6.3": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-A(LF)(SN) (C157925): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J6.4": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-A(LF)(SN) (C157925): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "R1.1": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0768RL (C163455): JLCPCB parts API attributes for C163455 (RC0402FR-0768RL, YAGEO), fetched 2026-10-06"
+  },
+  "R1.2": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0768RL (C163455): JLCPCB parts API attributes for C163455 (RC0402FR-0768RL, YAGEO), fetched 2026-10-06"
+  },
+  "R2.1": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0768RL (C163455): JLCPCB parts API attributes for C163455 (RC0402FR-0768RL, YAGEO), fetched 2026-10-06"
+  },
+  "R2.2": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0768RL (C163455): JLCPCB parts API attributes for C163455 (RC0402FR-0768RL, YAGEO), fetched 2026-10-06"
+  },
+  "R3.1": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0768RL (C163455): JLCPCB parts API attributes for C163455 (RC0402FR-0768RL, YAGEO), fetched 2026-10-06"
+  },
+  "R3.2": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0768RL (C163455): JLCPCB parts API attributes for C163455 (RC0402FR-0768RL, YAGEO), fetched 2026-10-06"
+  },
+  "R4.1": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0768RL (C163455): JLCPCB parts API attributes for C163455 (RC0402FR-0768RL, YAGEO), fetched 2026-10-06"
+  },
+  "R4.2": {
+   "max": 50.0,
+   "src": "element V -- RC0402FR-0768RL (C163455): JLCPCB parts API attributes for C163455 (RC0402FR-0768RL, YAGEO), fetched 2026-10-06"
+  },
+  "R5.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF4992TCE (C25897): JLCPCB parts API attributes for C25897 (0402WGF4992TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "U1.1": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U1.3": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U1.4": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U1.5": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  },
+  "U1.6": {
+   "max": 7.0,
+   "src": "abs max -- TPS2553DBVR (C55266): TI TPS2552/3 datasheet p.3 absolute maximum ratings: IN, OUT, EN, ILIM, FAULT -0.3..7 V; p.4 recommended VIN 2.5-6.5 V"
+  }
+ }
+}

@@ -208,8 +208,14 @@ def lever_sensor():
     # BUS-B FAR-END TERMINATION, behind a slide switch placed by the fab: fitted on all
     # eleven, ON on the ONE board at each far end of the bus. A switch, not a solder
     # bridge, so that ending the bus needs no iron (user rule: no hand soldering).
-    # R4 is 0402: a single 120R across the pair sees ~17 mA, 0.034 W against 0.063 W.
-    rt = _r("R", "R4", "120R", "CAN termination, in circuit only with SW1 ON",
+    # R4 is 0402: a single 120R across the pair sees ~17 mA in normal traffic, 0.034 W.
+    # ⚠ A 100 mW 0402 (Panasonic ERJ2RKF1200X, C413065), NOT THE HOUSE 62.5 mW ONE
+    # (2026-10-06, found by elec/voltage_check.py when this board was added to it). The
+    # 34 mW is a typical drive at a typical duty. A transceiver's dominant output may be
+    # 3 V (SLOS346, VOD max), and the SN65HVD230 has no dominant time-out: firmware that
+    # parks TXD low holds 3 V across this part for as long as it stays there, 75 mW, 120 %
+    # of the house part. Same land, same value.
+    rt = _r("R", "R4", "120R 100mW", "CAN termination, in circuit only with SW1 ON",
             "Resistor_SMD:R_0402_1005Metric")
     # DSHP01TSGER (LCSC C3293141), THE MOTOR TEE'S SWITCH: one part number ends both
     # buses. 1 position, SPST, recessed slide, gull wing, body 5.4 x 2.88 x 2.3, lands
@@ -638,7 +644,14 @@ BOARD_NOTES = {
     # board -- the pour reaches them, but a pour is what routing can orphan, which is
     # the whole reason the plane is there. Every GND pad gets its own via down.
     "stitch_nets": ("GND",),
-    # (No stitch exceptions: J1 is SMT again, so its GND pads get vias like every other.)
+    # ⚠ ONE STITCH EXCEPTION: THE SENSOR'S BELLY PAD HAS NO VIA (quality A14, 2026-10-06).
+    # It is 1.45 mm square under four 0.58 mm paste windows, 0.161 mm3 of paste, and the
+    # stitcher's 0.3 mm via in its centre is a 0.113 mm3 barrel: 70 % of the joint, on the
+    # pad that also sets how flat the chip sits over the magnet. The pad carries no heat
+    # (35 mW) and no current of its own, so it is joined to pin 16, the part's ground
+    # pin 0.3 mm away, by copper on its own layer, and pin 16 keeps the via to the plane.
+    "stitch_exceptions": ("U4.17",),
+    "tracks": [("GND", "F.Cu", 0.2, [(11.80, 2.00), (11.80, 1.45)])],
     # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
     # short net here took it from 4 unconnected to 7. The generator is not better than
     # the router in general -- it wins on the optical board because twenty identical
@@ -736,6 +749,14 @@ BOARD_NOTES = {
     "conn_keepout": {"box": [-15.5, -9.95, -3.85, 9.95], "exempt": ["J1", "U4"]},
     # ── the quality pass (cadkit/PCB_QUALITY.md) ─────────────────────────────
     "quality": {
+        # A8 asks for a via in every exposed pad; the sensor's has none, deliberately (the
+        # note at stitch_exceptions). A8's own exception: a part that needs no heat path,
+        # with the pad still on its net by copper on its own layer.
+        "waive": {
+            "A8:U4": "MT6701, about 35 mW: its 1.45 mm exposed pad needs no heat path, and a "
+                     "via in it would take 70 % of its paste (A14). The pad is on GND through "
+                     "0.3 mm of F.Cu to pin 16, whose own via reaches the plane",
+        },
         "power_paths": [
             # the bus passes through: the first board of a chain carries the rest, up to
             # the 565 mA maximum of motor_ctrl's TPS2553 at 49.9 k
@@ -856,7 +877,8 @@ BOARD_NOTES = {
                   "maximum 6.5 V, behind R8 (M16). +3V3: MCU 3.6 V max operating, sensor "
                   "3.3-5 V, transceiver 3.6 V. CAN pins: the SN65HVD230 stands -4..16 V "
                   "and the bus supply is 5 V, so no fault on this bus exceeds it; D2 / D3 "
-                  "clamp ESD. R4 carries 17 mA: 34 mW in an 0402 rated 62 mW. R8 carries "
+                  "clamp ESD. R4 carries 17 mA: 34 mW, and 75 mW with the bus held dominant at 3 V, in an 0402 rated "
+                  "100 mW (ERJ2RKF1200X; the house 0402 is 62 mW and was not used). R8 carries "
                   "80 mA: 14 mW",
             "M6": "nothing fast: CAN at 1 Mbit/s with slope control, I2C at 400 kHz, an "
                   "8 MHz crystal 3.4 and 5.5 mm from its pins",
@@ -910,9 +932,11 @@ BOARD_NOTES = {
             "M24": "Y1 TAXM8M4RFDCET2T, CL 12 pF. C5 = C6 = 15 pF: 7.5 pF in series plus "
                    "about 4.5 pF of pin and track = 12 pF. The same crystal and capacitors "
                    "as motor_ctrl and output_panel",
-            "M25": "two exposed pads, both GND, both on vias to the plane (A8). The MCU "
-                   "dissipates about 35 mW and the sensor about 35 mW: neither needs the "
-                   "pad for heat",
+            "M25": "two exposed pads, both GND. The MCU's is on a via to the plane (A8) and "
+                   "dissipates about 35 mW. The sensor's (U4, about 35 mW) has NO via, on "
+                   "purpose: a 0.3 mm barrel would take 70 % of that 1.45 mm pad's paste "
+                   "(A14), so it is joined to pin 16 on its own layer and pin 16's via "
+                   "carries its ground. Neither needs the pad for heat",
             "M26": "CAN_TX: MCU pin 20 (PA12, CAN1_TX) to U2 pin 1, D, the driver input. "
                    "CAN_RX: U2 pin 4, R, the receiver output, to MCU pin 19 (PA11, "
                    "CAN1_RX). SDA to the sensor's pin 6 (A / SDA), SCL to pin 7 (B / SCL)",
@@ -984,6 +1008,8 @@ if __name__ == "__main__":
     assert not (_placed - _refs), (
         "placements name %s, which no part has -- a ref moved under it"
         % sorted(_placed - _refs))
+    import volts_decl                   # A16: generated, see volts_decl.py
+    volts_decl.into(BOARD_NOTES, "lever_sensor")
     with open(os.path.join(OUT_DIR, "lever_sensor.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, chip on the axle at (%.1f, %.1f)"

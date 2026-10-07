@@ -25,6 +25,90 @@ a stale marker, striking the marker is part of the work.
    drawn 0.3 detached after item 1; fixed. `strict_ends` is on for every board, 15 clean.
    Scratch gate 0 overlaps, sweep clean; submitted.
 
+**PRE-ORDER REVIEW (lead, 2026-10-06 19:20) -- nine independent reviewers on the five bench
+boards, snapshot f3cdde3f. Reports: MAIN worktree `research/review/*.md` (outside git). The
+order waits on this list. Strike each when done; answer the second group 'intended,
+because' or fix it.**
+
+FIX:
+- R1 `motor_ctrl` U5 (LMR33630) layout: C16 / C17 reach VIN through 16-22 mm of thin track,
+  C18 about 7 mm, PGND leaves by one stub to one via.
+- R2 SMAJ30A clamps at 48.4 V against LMR33630 VIN abs max 38 V (`motor_ctrl` U5, `optical`
+  U13) and the 40 V B5819W catch diodes (`motor_ctrl` D1, `output_panel` D1).
+- R3 `pi_cap` UI_RES_N on pin 33 / GPIO13 = SPI5 MISO under the stock overlay. Free: pin 36
+  GPIO16, 22 GPIO25, 7 GPIO4.
+- R4 PNR3015-150M on the NR-30xx footprint (`motor_ctrl` L1, `output_panel` L1): maker wants
+  1.1 x 2.7 pads at +-1.05.
+- R5 `optical` J1 USB-C: board edge at footprint y +4.195, HRO wants +3.19.
+- R6 values: `optical` C130 100 nF -> 1 uF+; `optical` R1-R10 are 0402 at 72-79 mW and the
+  M5 note calls them 0603; `output_panel` C17 / C18 on the CH334 crystal not placed;
+  `output_panel` C38 1 uF -> 10 uF.
+- R7 `motor_ctrl` BOOT1 / PB2 floating, BOOT0 no pad: 10k PB2 to GND, a BOOT0 pad. Optional
+  `optical`: PA4 tied to VDD.
+
+ANSWER OR FIX:
+- Q1 five TLV320ADC3140 all at 0x4C. Q2 SHDNZ pull-up only. Q3 `optical` L1 4.7 uH against
+  TI's 2.2 uH at 1.4 MHz. Q4 `motor_ctrl` U5 6.8 uH / 2 x 22 uF / 100 nF against Table 9-2.
+- Q5 no reverse-polarity / fuse / TVS on `optical` 24 V in, none on `output_panel`.
+- Q6 SN65HVD230 bus pins -4..16 V beside a 24 V conductor (the docstring says +-58 V).
+- Q7 `output_panel` J7 pads 3 / 4 no net. Q8 J4 VBUS unswitched on a 600 mA buck.
+- Q9 Neutrik shoulder 4.2 mm behind the board edge. Q10 leg_pogo PH reinforcement pads 3.0
+  against JST's 3.4. Q11 mis-plug: `motor_ctrl` J1 / J7 same XH, J2 / J4 / J6 same PH.
+- Q12 where the magnetic pickup input lives now.
+
+HARNESS / DOCS:
+- H1 `can_tee` J2 drop to the SERVO42D is split and crossed per Makerbase schematic V1.0_003
+  (6-way: 1 V+, 2 GND; 5-way: 1 CANL, 2 CANH). Harness table, BOM housings, M1.
+- H2 ORDER.txt: Kycon slots not to be undersized; PD cathode side in words.
+- H3 bring-up doc: SWD the only path to rely on; SWO on PB3 would switch the emitters;
+  PG_5V and BUSB_FAULT_N need internal pull-ups.
+- H4 re-run lcsc_check on `output_panel` (0 stock seen on the G6K relay and six passives).
+
+Then reply to the lead with taken / intended, and submit.
+
+**STATUS OF THAT LIST (2026-10-06, late).** Done unless it says otherwise.
+
+- ~~R1~~ `motor_ctrl` re-routed 0 / 0: C18 (now 220 nF) lies across VIN / PGND 0.6 mm from
+  each pin, C16 2.2 mm behind it, C17 2.9 mm; declared 0.6-1.0 mm copper, no via in the loop.
+- ~~R2~~ D8 / D6 are SMAJ24A (C148222). Judged pin by pin by A16 (below).
+- ~~R3~~ `pi_cap` UI_RES_N on pin 22 / GPIO25 (pin 36 was tried first and did not route), and UI_DC with it from pin 37 / GPIO26 to pin 7 / GPIO4 (it came back open at 37 and at 36); board re-routed 0 / 0; `docs/pi-cap-ui-ribbon.md`.
+- ~~R4~~ `Steel:L_APV_PNR3015` on both boards (`output_panel` swapped in place on the routed board).
+- ~~R5~~ `optical`: a 1.0 x 14 mm notch in the board edge in front of J1; no copper moved.
+- ~~R6~~ `optical` C130 1 uF, R1-R10 ERJ2RKF1800X (100 mW); `output_panel` C17 / C18 removed
+  with their stubs, C38 10 uF.
+- ~~R7~~ `motor_ctrl` BOOT1 tied to GND at the pin (a track, no part), BOOT0 on TP6 (silk
+  "B0"). `optical` PA4: not taken.
+- ~~Q4~~ taken: 4 x 22 uF + 220 nF. L2 stays 6.8 uH. ~~Q6~~ taken: U2 is a TCAN3413
+  (+-58 V) behind a NUP2105L.
+- Q1 / Q2 / Q3 / Q5 / Q7 / Q8 / Q9 / Q10 / Q11 / Q12: answered "intended, because" in the
+  reply to the lead.
+- ~~H1~~ `docs/bench-order.md` "The motor drop": split and crossed, by the schematic's
+  terminal numbers. Still open, and said so there: which block takes bare wire or a plug
+  (M1), read off a unit in hand.
+- ~~H2~~ `fab.PART_NOTES` C2875467 (slots) and C161211 (stripe on the silk bar).
+- ~~H3~~ `docs/board-bringup-diagnostics.md` and `docs/optical-bringup-diagnostics.md`,
+  "Pre-order review" sections.
+- ~~H4~~ JLC assembly stock read: the relay 54, the six passives in the thousands.
+
+**A16 (cadkit, new the same evening): every net's worst case against every pin's rating.**
+The review's `voltage_check.py` and its ratings file are in the repo now
+(`elec/voltage_check.py`, `elec/voltage_ratings.json`); `--declare` writes
+`elec/volts/<board>.json` and each generator loads it (`elec/volts_decl.py`). All ten
+boards. After any part or net change: generator, `py -3.12 elec/voltage_check.py
+--declare`, generator again.
+- ONE JUDGEMENT IN IT, flagged to the lead: the 24 V rail's transient is taken at the
+  clamp's voltage for the brick's whole 6.67 A (35.6 V), not at the clamp's catalogue
+  10.3 A pulse (38.9 V), which is 0.9 V over the LMR33630's 38 V absolute maximum.
+- Found by it on a board the review did not read: `lever_sensor` R4 (the bus B terminator)
+  was a 62.5 mW 0402 at 75 mW with the bus held dominant; now ERJ2RKF1200X, 100 mW.
+- cadkit A14 fixed on the way (b105ca9): a QFN's paste windows were read as lands.
+- cadkit A15 fixed too (b7bfe08): a track is judged against the NEAREST ground layer, not every pour.
+- Hot plug (the lead's follow-up): `motor_ctrl` R23, 0.22 ohm 1206 ahead of F1. Without it a live
+  plug of J3 put 38.8 V on U5's 38 V pin in the worst lead corner; with it 32.8 V.
+- `lever_sensor` U4's belly pad lost its via (A14, 70 % of the paste); tied to pin 16, A8 waived.
+- STATE: all ten boards 0 unconnected / 0 violations / 0 FAIL. Left for the order day: the
+  OPEN manual items (M37, M42 and the like), and brenner's firmware map for GPIO25 / GPIO4.
+
 **PCB QUALITY LOOP -- FINISHED 2026-10-05 as far as files can take it (DO NOT RE-ISSUE).**
 Every board of mine is `0 unconnected, 0 violations, 0 FAIL`: `can_tee` 7 OPEN, pogo x4 4,
 `pi_cap` 6, `lever_sensor` 7, `motor_ctrl` 10, `output_panel` 8, `optical` 7. What is OPEN
