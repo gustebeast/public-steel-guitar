@@ -3877,7 +3877,10 @@ BOARD_NOTES = {
     # The ten sensor triplets sit at a 1.6 pitch by optical design, so their silkscreen
     # outlines collide with each other and with their neighbours' pads -- 140 warnings
     # for ink the solder mask would clip anyway. See _place_ref's note in layout.py.
-    "strip_silk": ("D", "PD"),
+    # (2026-10-07, quality A18: the five converters' own outlines each put 0.003 mm2 of
+    # ink on a mask opening, so they are on .Fab too. Named whole, not by prefix: the
+    # labeller's keep-clear round the optics is by prefix and must not grow to these.)
+    "strip_silk": ("D", "PD", "U14", "U15", "U16", "U17", "U18"),
     "single_sided": True,      # every part on F.Cu: the optics FIRE UP through it
     "qty_per_instrument": 1,
     "placements": _placements(CX, CY),
@@ -3968,6 +3971,13 @@ for _net, (_nt, _nv) in STALE_REPAIRS.items():
 # ── the quality pass (cadkit/PCB_QUALITY.md) ──────────────────────────────────────────────
 # Currents are the budget at U8 / U9 above, at its worst-case column.
 BOARD_NOTES["quality"] = {
+    # A15 (2026-10-07, the rule now reads a net's whole run): measured, and a rail.
+    "return_slot_ok": {
+        "+3V3D": {"mm": 5.30,
+                  "why": "a supply rail, not a signal: it is bypassed to ground at every "
+                         "load it reaches, so no edge travels its length looking for a "
+                         "return, and the cut it crosses is 0.3 mm over the limit"},
+    },
     "power_paths": [
         # 24 V in: 1.07 A of 5 V at the board's worst case is 0.26 A here at 85 %
         {"net": "V24_IN", "from": "J2.2", "to": ["R44.1"], "amps": 0.26},
