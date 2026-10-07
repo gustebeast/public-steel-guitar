@@ -62,7 +62,7 @@
       "per_instrument": 1,
       "vendor": "OnlineComponents",
       "sku": "GST160A24-R7B",
-      "what": "Mean Well GST160A24-R7B sealed DESKTOP adapter, 24 V 6.67 A 160 W, IEC C14 in, 4-pin locking DIN out (mates the Kycon KPJX-4S-S on output_panel). USER'S CHOICE 2026-10-01, replacing the open-frame LRS-150-24 ($20.69 landed). $47.70 at 10, 891 in stock, page read by bronner. BEFORE shipping, tax and any tariff -- OnlineComponents' checkout has not been measured. The listing calls it 'no longer manufactured'; see BOM.md."
+      "what": "Mean Well GST160A24-R7B sealed DESKTOP adapter, 24 V 6.67 A 160 W, IEC C14 in, 4-pin locking DIN out (mates the Kycon KPJX-4S-S on output_panel). USER'S CHOICE 2026-10-01, replacing the open-frame LRS-150-24 ($20.69 landed). $47.70 at 10, 891 in stock, page read by bronner. BEFORE shipping and tax. OnlineComponents' cart adds a $16.72 tariff line at qty 1 ($52.40 + $16.72 = $69.12 landed before shipping, read 2026-10-07); the per-10 tariff has not been read. The listing calls it 'no longer manufactured'; see BOM.md."
     },
     "bearing_688zz_screw": {
       "usd": 3.72,
@@ -130,12 +130,12 @@
       "what": "M4x30 -- pedal-bar latch collar, one per bar-to-leg joint (model draws one leg)"
     },
     "m3_shcs_12": {
-      "usd": 0.08,
-      "verified": "m",
+      "usd": 0.0711,
+      "verified": "v",
       "per_instrument": 10,
       "vendor": "McMaster-Carr",
       "sku": "91292A114",
-      "what": "M3x12 socket head cap screw (ISO 4762, 2.5 mm key) -- the belt clamps' draw screws, one per string. Price and SKU carried at a guess; confirm at purchase."
+      "what": "M3x12 socket head cap screw (ISO 4762, 2.5 mm key) -- the belt clamps' draw screws, one per string. $7.11 per pack of 100, read off McMaster 2026-10-07."
     },
     "m3_insert": {
       "usd": 0.15,
