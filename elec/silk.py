@@ -26,6 +26,21 @@ from cadkit import kicad_silk  # noqa: E402
 
 REV = "r1"                 # bumped by hand when a board is RE-ORDERED with changed copper
 
+# ⚠ THE INSTRUMENT'S LETTERING (user, 2026-10-07): every board, labels and designators
+# alike, in "Rennie Mackintosh PSG" Bold -- ITC's Rennie Mackintosh Bold with its
+# ornamental underscore redrawn as a bar (tools/make_silk_font.py; the .otf is licensed,
+# lives in elec/fonts/, is NOT in the repository, and has to be INSTALLED for the user
+# before a board is finished: kicad_silk stops if KiCad cannot find it).
+# 1.5 IS MEASURED, NOT CHOSEN: at KiCad text size 1.5 the capitals plot 1.40 mm high and
+# the thinnest stroke in the face, the bar of '-' and '_', plots 0.153 mm against the
+# fab's 0.15 minimum (at 1.4: 0.143). There is no smaller size to fall back to.
+SILK_FACE = {"family": "Rennie Mackintosh PSG", "bold": True, "size": 1.5}
+# ...and a pinout block may lie this far from its connector (user, same day: "Pin labels
+# can also move further away so long as they have the connector number on them and still
+# appear in the right order"). The block is headed by the connector's designator and
+# lists the ways in order; the nearest free site on the connector's own side comes first.
+PINOUT_REACH = 40.0
+
 
 def silk(stem):
     try:
@@ -33,7 +48,9 @@ def silk(stem):
             notes = json.load(fh)
     except OSError:
         notes = {}
-    return kicad_silk.silk(stem, REV, tuple(notes.get("strip_silk", ())))
+    return kicad_silk.silk(stem, REV, tuple(notes.get("strip_silk", ())),
+                           face=notes.get("silk_font", SILK_FACE),
+                           reach=notes.get("silk_pinout_reach", PINOUT_REACH))
 
 
 if __name__ == "__main__":
