@@ -19,3 +19,4 @@ elec/out/
 skidl_REPL.*
 *.rpt
 .carriage-travel-cache.json
+elec/fonts/
