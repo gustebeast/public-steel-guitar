@@ -139,7 +139,7 @@
   },
   "pedal_bar_a": {
    "material": "petg-gf",
-   "volume_mm3": 399541.1
+   "volume_mm3": 399393.1
   },
   "pedal_bar_b": {
    "material": "petg-gf",
@@ -167,7 +167,7 @@
   },
   "pickup_zplate": {
    "material": "petg-gf",
-   "volume_mm3": 17270.7
+   "volume_mm3": 18168.3
   },
   "rod_plug": {
    "material": "pctg",
@@ -207,11 +207,11 @@
   },
   "top_plate_0": {
    "material": "pctg",
-   "volume_mm3": 71009.5
+   "volume_mm3": 70379.0
   },
   "top_plate_0_color": {
    "material": "pctg",
-   "volume_mm3": 20858.9
+   "volume_mm3": 20787.2
   },
   "top_plate_1": {
    "material": "pctg",
@@ -231,7 +231,7 @@
   },
   "top_plate_3": {
    "material": "pctg",
-   "volume_mm3": 200158.9
+   "volume_mm3": 200160.5
   },
   "top_plate_3_color": {
    "material": "pctg",

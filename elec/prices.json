@@ -96,38 +96,20 @@
     "m4_button_10": {
       "usd": 0.0958,
       "verified": "v",
-      "per_instrument": 69,
+      "per_instrument": 70,
       "vendor": "McMaster-Carr",
       "sku": "92095A190",
-      "order": "7 x $9.44 (pack of 100) = $66.08 for 690 needed",
-      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
-    },
-    "m4_button_12": {
-      "usd": 0.3692,
-      "verified": "v",
-      "per_instrument": 2,
-      "vendor": "McMaster-Carr",
-      "sku": "92095A192",
-      "order": "1 x $14.77 (pack of 100) = $14.77 for 20 needed",
-      "what": "M4x12 -- 1 UI clamp, 1 pickup retention"
+      "order": "7 x $9.44 (pack of 100) = $66.08 for 700 needed",
+      "what": "M4x10 -- 10 CAN tees, 2 bay boards, 2 fret boards, 1 UI clamp (was M4x12), and per sensed control x 11: 2 position + 2 spring-tension (the feel cartridges) + 1 in the axle's -Y end"
     },
     "m4_button_20": {
       "usd": 0.1894,
       "verified": "v",
-      "per_instrument": 17,
+      "per_instrument": 18,
       "vendor": "McMaster-Carr",
       "sku": "92095A196",
-      "order": "4 x $9.47 (pack of 50) = $37.88 for 170 needed",
-      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 2 male pogo boards, 2 optical board through its hand guard"
-    },
-    "m4_button_30": {
-      "usd": 0.732,
-      "verified": "v",
-      "per_instrument": 2,
-      "vendor": "McMaster-Carr",
-      "sku": "92095A198",
-      "order": "1 x $14.64 (pack of 50) = $14.64 for 20 needed",
-      "what": "M4x30 -- pedal-bar latch collar, one per bar-to-leg joint (model draws one leg)"
+      "order": "4 x $9.47 (pack of 50) = $37.88 for 180 needed",
+      "what": "M4x20 -- 10 keyhead nut-height screws (were M4x18, not a stocked length; nut_block.HS_SCREW_L is 20 since 2026-09-30), 3 pickup jacks, 1 pickup -Y retention (was M4x12), 2 male pogo boards, 2 optical board through its hand guard"
     },
     "m3_shcs_12": {
       "usd": 0.0711,
@@ -147,13 +129,13 @@
       "what": "M3 brass heat-set insert, OD 4.7, installed length 4.3 (pilot end 3.9) -- dropped into each belt clamp's half B as a captive nut behind a shoulder (not heat-set). belt_tensioner.INS_D / INS_L are this part's DRAWING numbers: measure one on arrival, before a clamp is printed. Price and SKU as picked by the lead session 2026-10-07, not re-read off the page here."
     },
     "m4_button_40": {
-      "usd": 0.5065,
+      "usd": 0.4052,
       "verified": "v",
-      "per_instrument": 4,
+      "per_instrument": 10,
       "vendor": "McMaster-Carr",
       "sku": "92095A200",
-      "order": "2 x $10.13 (pack of 25) = $20.26 for 40 needed",
-      "what": "M4x40 -- the four leg lock pins"
+      "order": "4 x $10.13 (pack of 25) = $40.52 for 100 needed",
+      "what": "M4x40 -- 4 leg lock pins, 2 pedal-bar latch collars (one per bar-to-leg joint; the model draws one leg), 4 knee-lever travel stops (one per lateral lever housing: LKL, LKR, RKL, RKR -- the vertical lever has none). The latch and the stops were M4x30; both seats take the x40, which retires that length"
     },
     "m4_insert": {
       "usd": 0.219,
