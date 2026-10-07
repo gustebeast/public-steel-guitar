@@ -38,8 +38,17 @@ REV = "r1"                 # bumped by hand when a board is RE-ORDERED with chan
 # 1.5 IS MEASURED, NOT CHOSEN: at KiCad text size 1.5 the capitals plot 1.40 mm high and
 # the thinnest stroke in the face, the bar of '-' and '_', plots 0.153 mm against the
 # fab's 0.15 minimum (at 1.4: 0.143). There is no smaller size to fall back to.
+# ⚠ WHAT IT MAY PRINT, AND WHICH FILE (quality A19). This is a display face: ITC drew "+"
+# as a TH ligature, "=" as TT, and ornaments on < > & ~ and most of the lower case. The
+# PSG file redraws "+" and "_" plain. `glyphs` is every character LOOKED AT, drawn from
+# the PSG file (2026-10-07: the capitals, the figures, r for the revision mark -- it
+# draws as a small capital -- and the punctuation below); a label needing any other
+# stops the labeller. `widths` proves the installed file is that one: its "+" is 0.97
+# of an H wide, and the ornament it replaces 1.42.
 SILK_FACE = {"family": "Rennie Mackintosh PSG", "bold": True, "size": 1.5,
-             "fallback": True}
+             "fallback": True,
+             "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789r+_-/.()#%:,",
+             "widths": {"+/H": 0.97}}
 # ...and a pinout block may lie this far from its connector (user, same day: "Pin labels
 # can also move further away so long as they have the connector number on them and still
 # appear in the right order"). The block is headed by the connector's designator and
