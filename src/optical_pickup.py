@@ -643,8 +643,13 @@ STRIP_GROW_MX = 0.0   # was 10.0 = 2.5 measured lane + 6.0 ADC column + 1.5 of C
 # two-bead wall further west and no sooner. Derived from the rod geometry so it cannot drift
 # if a rod moves: whichever of the deck band or the rod support binds first, wins.
 ROD_SUPPORT = D.MIN_WALL_2P                                   # 1.6, the ring's own wall
+# THE BOARD WAS ROUTED AGAINST A Ø3.5 ROD and its edge stays where that put it. The rod is
+# a Ø2.5 pin now, which leaves the ring 2.1 rather than 1.6; taking the 0.5 back for the
+# board is a re-layout, not a consequence to let through here.
+ROD_D_ROUTED = 3.5
+assert D.GUIDE_ROD_D <= ROD_D_ROUTED, "the guide rod outgrew the ring this board leaves it"
 _ROD_CAP = min(D.guide_rod_x(i) for i in range(D.N_STRINGS)
-               if D.guide_rod_x(i) < 0) - D.GUIDE_ROD_D / 2 - ROD_SUPPORT
+               if D.guide_rod_x(i) < 0) - ROD_D_ROUTED / 2 - ROD_SUPPORT
 PCB_X0  = min(BAND_X0 - BAND_CLR + STRIP_GROW_PX, _ROD_CAP)   # -23.35, strip +X edge
 # ⚠ MEASURED 2026-09-24: 1.20 mm IS FREE, AND THE BLOCKERS ARE NOT WHAT THIS NOTE SAYS.
 # Swept PCB_X1S in 0.2 mm steps rather than reasoning about it:

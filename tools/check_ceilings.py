@@ -153,6 +153,7 @@ DECLARED_UP = {
     "pedal_bar_c":       ("src.pedal_bar", "BAR_UP"),
     "knee_housing":      ("src.knee_lever", "PRINT_UP"),
     "knee_housing_r":    ("src.knee_lever", "PRINT_UP"),
+    "rod_plug":          ("src.bridge_endplate", "ROD_PLUG_UP"),
     "kv_housing":        ("src.knee_lever_vert", "PRINT_UP"),
     # ...the rest of the lever family, which does NOT share the housing's +Z: the arms
     # lie on a face and build along the axle, and each is its own module's declaration

@@ -252,7 +252,8 @@ NUT_FLANGE_T    = 4.0
 NUT_BOSS_D      = 10.2
 NUT_BOSS_L      = 11.0      # 15 overall - 4 flange
 NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 15.0
-NUT_HOLE_D      = 3.5       # the ears' through-holes
+NUT_HOLE_D      = 2.5       # the ears' through-holes, per the listing (user, 2026-10-07:
+                            # trust it and design to a stock dowel pin; unmeasured)
 NUT_HOLE_DX     = 8.0       # ± from the axis (16 mm hole pitch)
 # MOUNTING — FLANGE UP, BOSS DOWN, and nothing bolts to anything.
 # Flange up puts the EARS at the top of the nut, which is what keeps the string's
@@ -348,29 +349,25 @@ SCREW_TOP_Z     = CHANGER_CEIL_Z - SCREW_END_GAP        # -4.80
 # ─────────────────────────────────────────────────────────────────────────
 # Guide rod (anti-rotation) — axis Z, through the nut's -X EAR
 # ─────────────────────────────────────────────────────────────────────────
-# It hangs from the endplate's guide RIB above and cantilevers DOWN through the ear
-# (user). The other end has nowhere to go: the drive relief and nut sweep between
-# them removed every scrap of endplate below the room at this X line, so the top is
-# the only end left to anchor to — which is also the end that prints cleanly, since
-# a rib is a straight -X extension of solid cap and every layer of it is backed.
+# Pressed into the endplate slab's bore above the changer room and seated in a shallow
+# blind socket in the screw rail below it, so it is held at both ends and the ear rides
+# the span between (bridge_endplate.GUIDE_ROD_TOP has the stations).
 #
-# Ø3, NOT the Ø2.5 dowel, and the reason is slop rather than strength. The ear's hole
-# is the nut's own Ø3: a Ø2.5 rod leaves 0.5 mm of play, which lets the nut rotate
-# 38 mrad and walks the string 0.25 mm. A Ø3 g6 shaft leaves 0.01 and 0.8 mrad — 50×
-# better — and it is 2.1× stiffer into the bargain. It is also the SAME PART as the
-# bridge axle, so it costs no new BOM line, just ten more pieces.
-# Bending was never the problem and an earlier note here overstated it: the rod only
-# spans the ear's travel plus the ear, ~15 mm, not the room's height, and deflects
-# 0.016 mm under the 11 N anti-rotation load. What matters is the SOCKET — over the
-# rib's grip any clearance is amplified across that 15 mm, so it is a PRESS fit.
-# MATCHED TO THE NUT'S EAR HOLE (user, 2026-09-10). Ø3 was chosen to take the slop out of
-# the old nut's Ø3 ear; the Tr8x2 H-flange nut's ears are Ø3.5, so a Ø3 rod had put back
-# exactly the 0.5 mm of play the Ø2.5 dowel was rejected for (~38 mrad of nut rotation).
-# DERIVED from NUT_HOLE_D so the two cannot drift apart again. No longer the same stock
-# as the bridge axle (Ø5): buy it as a Ø3.5 DRILL BLANK, which is sold in 0.1 mm steps —
-# the seller's drawing is only +/-0.5-1, so MEASURE the real ear hole and pick the blank
-# to it; that is the whole point of choosing a stock sold that finely.
-GUIDE_ROD_D     = NUT_HOLE_D  # 3.5 — slide fit in the nut's ear, press in the endplate
+# THE DIAMETER IS THE NUT'S EAR HOLE, and it is derived from NUT_HOLE_D so the two cannot
+# drift apart. The reason is slop, not strength: any play between rod and ear is nut
+# rotation (0.5 mm of it is ~38 mrad, and walks the string 0.25 mm). Bending is nothing:
+# 0.004 mm under the 11 N anti-rotation load carried at both ends, 0.011 mm as a pure
+# cantilever from the slab. What matters is the bore -- any clearance there is amplified
+# over the rod's reach, so it is a PRESS fit.
+# A STOCK DOWEL PIN, USED AS BOUGHT (user, 2026-10-07). The listing gives the ear hole as
+# Ø2.5, and a hardened Ø2.5 dowel pin is an off-the-shelf part in the lengths this needs,
+# so nothing is cut.
+# FIRST CHECK WHEN A NUT ARRIVES: the ear hole is unmeasured, and an m6 pin is 2.502-2.508,
+# so it will not slide in a true 2.50 hole. Ream the ear to 2.6 or accept what the hole
+# really is.
+GUIDE_ROD_D     = NUT_HOLE_D  # 2.5 — slide fit in the nut's ear, press in the endplate
+GUIDE_ROD_L     = 30.0      # the STOCK length (McMaster 91595A370). The endplate takes
+                            # 25.2-35.4: see bridge_endplate.GUIDE_ROD_TOP
 GUIDE_ROD_FIT   = 0.05      # SNUG PRESS. Not zero: at zero the socket is drawn the
                             # rod's own Ø, which is not a hole you can install into,
                             # and coincident cylinders make the boolean unreliable
@@ -1153,7 +1150,7 @@ KEYHEAD_PX_BUF = 19 * BEAD / 4                      # 3.8 = KH_X - NUT_BLOCK_X, 
 # At the old 23.10 face the apex stood 0.36 PROUD of it, i.e. the seat broke out through
 # the -X face. Sized from whichever of the two reaches further, plus a 2-bead wall.
 _BRG_TEARDROP = (SUPPORT_BRG_OD + 0.2) / 2 * 1.4143            # 11.46, seat apex
-_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 2.51, rod-bore apex
+_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 1.80, rod-bore apex
 BRIDGE_BASE_HALF = (SCREW_ROW_DX
                     + max(_BRG_TEARDROP, NUT_HOLE_DX + _ROD_TEARDROP)
                     + MIN_WALL_2P)                             # 25.06
