@@ -2305,6 +2305,12 @@ BOARD_NOTES = {
         "FB1": (16.60, -23.50, 0.0),
     },
     "refs_on_fab": True,
+    # ⚠ quality A18 (2026-10-07): J6's drawn outline crosses one of its own lands (0.17 mm2
+    # of ink on a mask opening). On the ROUTED board that one shape was moved to .Fab BY
+    # HAND, copper frozen for the order. It is NOT in `strip_silk`: the labeller keeps all
+    # lettering 12 mm clear of a stripped part, and J6 and J10 lost their designators and
+    # way-1 marks when it was tried. A fresh layout brings the shape back, and A18 with it:
+    # the lasting fix is the footprint's own outline.
     "single_sided": True,
     "qty_per_instrument": 1,
     # ⚠ THIS BOARD NEEDS THE RETRY, AND IT IS THE FIRST ONE THAT HAS (2026-09-30). With
