@@ -12,22 +12,12 @@ a stale marker, striking the marker is part of the work.
    seat's fit no longer comes out of the wall between two motors (user).~~ Done in the
    files (`dimensions.TEE_EDGE_BACK`), re-routed 0 / 0, measured on the built chassis: the
    wall starts on the line at all ten motors. Waits on the gate in item 2.
-2. CAD gate (`scratch_view --start`, `--gate`) over three changes together: `pi_cap` drawn
-   parts-on-front and installed face down, the lever board's connector fused into the one
-   board part, and item 1. Then `agent_sync submit`.
-3. Lead's request (user: order 2 assembled, not 5): quote the five bench boards on the
-   fab's page at 5 bare / 2 assembled. Read so far: bare minimum is 5 (custom quantity
-   only in thousands); assembled is 5 or 2 on Economic, any of 2..5 on Standard.
-   `pi_cap` 48.44 (Economic now), `can_tee` 23.69. STILL TO READ: `motor_ctrl`,
-   `output_panel`, `optical`. Then `docs/jlcpcb-order-walk.md` (beside the 5 / 5 lines,
-   with the fees that do not shrink), `docs/bench-order.md` (the bench total), and whether
-   the unassembled spares come pasted or bare. Nothing in the cart.
-4. `pi_cap` records after the redraw: the order walk and `docs/pcb-quality-status.md` get a
-   dated note; `elec/prices.json` order_fees for `pi_cap` is read now (15.45), mark it 'v'.
-5. Reply to the lead: the quotes; A15 tests a track against the pour on the FAR face too
-   (declared on `pi_cap`); `cadkit/pcbflow/layout.py`'s back_refs note still names
-   `pi_cap`, which no longer uses it.
-6. Close the fab's browser tab when the quotes are read.
+2. ~~CAD gate over the three changes~~: 0 unintended overlaps, sweep clean; submitted.
+3. ~~Quote the five bench boards at 5 bare / 2 assembled~~: 630.25 for the five,
+   `docs/jlcpcb-order-walk.md` and `docs/bench-order.md`. Nothing in the cart.
+4. ~~`pi_cap` records and its fee marked read~~.
+5. ~~Reply to the lead~~.
+6. ~~Close the fab's browser tab~~.
 7. Lead, 2026-10-06: the stricter CAD-versus-board probe (cadkit board_check, ends of each
    body) flags 35 bodies on three boards. `optical` D1..D10 and all 20 PD15-22B at their
    -x end, U8 at both y ends; `output_panel` J5 at its +x end; `lever_sensor` D2, D3 at
