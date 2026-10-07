@@ -1,0 +1,61 @@
+{
+ "net_volts": {
+  "+5V": {
+   "peak": 5.432,
+   "v": 5.174,
+   "why": "bus B's 5 V from motor_ctrl J2 / J6, behind its switch [motor_ctrl.+5V_BUSB: U6.6 (OUT) can reach its supply +5V]"
+  },
+  "CAN_H": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "CAN_L": {
+   "peak": 7.8,
+   "v": 5.0,
+   "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
+  },
+  "GND": 0
+ },
+ "pin_volts": {
+  "J1.1": {
+   "max": 12.0,
+   "src": "rated V -- YZ165615055F-04025-02 (C54799748): Xinyangze's drawing for the 04025 spring-pin pair: rated 12 V DC, 1 A a pin (recorded in src/leg_pogo.py at RA_V when the part was chosen; the catalogue record gives no figures)"
+  },
+  "J1.2": {
+   "max": 12.0,
+   "src": "rated V -- YZ165615055F-04025-02 (C54799748): Xinyangze's drawing for the 04025 spring-pin pair: rated 12 V DC, 1 A a pin (recorded in src/leg_pogo.py at RA_V when the part was chosen; the catalogue record gives no figures)"
+  },
+  "J1.3": {
+   "max": 12.0,
+   "src": "rated V -- YZ165615055F-04025-02 (C54799748): Xinyangze's drawing for the 04025 spring-pin pair: rated 12 V DC, 1 A a pin (recorded in src/leg_pogo.py at RA_V when the part was chosen; the catalogue record gives no figures)"
+  },
+  "J2.2": {
+   "max": 100.0,
+   "src": "rated V -- S4B-PH-SM4-TB(LF)(SN) (C265102): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J2.3": {
+   "max": 100.0,
+   "src": "rated V -- S4B-PH-SM4-TB(LF)(SN) (C265102): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "J2.4": {
+   "max": 100.0,
+   "src": "rated V -- S4B-PH-SM4-TB(LF)(SN) (C265102): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+  },
+  "TP2.1": {
+   "max": "none",
+   "src": "V5 (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "TP3.1": {
+   "max": "none",
+   "src": "CAN_H (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "TP4.1": {
+   "max": "none",
+   "src": "CAN_L (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  }
+ }
+}

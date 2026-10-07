@@ -71,22 +71,30 @@ Way order is `elec/harness.py`; every JST lead is crimped 1:1, way n to way n. X
 
 ### The motor drop
 
-The SERVO42D has no single plug. Makerbase's CAN manual (V1.0.5, section 1.1) shows two
-screw-terminal blocks on opposite edges of the driver board: power on one (V+, GND, COM,
-EN, STP, DIR) and CAN on the other (EVCC, EGND, IN_1, then H and L). The drop is four
-wires from one XHP-4 housing, bare ends into those terminals:
+The SERVO42D has no single plug. Makerbase's schematic (*MKS SERVO42D_CAN V1.0_003
+Schematic.pdf*, in its GitHub repository under Hardware) and its CAN manual (V1.0.9,
+section 1.4) show two terminal blocks on opposite edges of the driver board: a 6-way with
+power on it and a 5-way, "COMM", with CAN on it. The drop is four wires from one XHP-4
+housing, and it is **split and crossed**: two wires go to one block and two to the other,
+and on both blocks the pair is in the opposite order to the tee's.
 
-| `can_tee` J2 way | Wire | Motor terminal, by its silk label |
-|---|---|---|
-| 1 GND | black | GND, on the V+ block |
-| 2 +24 V | red | V+ |
-| 3 CAN_H | yellow | CAN H |
-| 4 CAN_L | green | CAN L |
+| `can_tee` J2 way | Wire | Motor block | Its terminal, by the schematic | Silk label |
+|---|---|---|---|---|
+| 1 GND | black | 6-way | 2 | GND |
+| 2 +24 V | red | 6-way | 1 | V+ |
+| 3 CAN_H | yellow | 5-way COMM | 2 | CAN H |
+| 4 CAN_L | green | 5-way COMM | 1 | CAN L |
 
-Go by the labels printed on the motor's board, not by position: the terminal order has not
-been read off a unit in hand (`can_tee` item M1 is open for exactly this). The manual asks
-for the host's ground and the motor's ground to be common, which this lead does, and for
-the CAN pair to be twisted.
+Left empty on the motor: the 6-way's COM, EN, STP and DIR (3 to 6), and the 5-way's IN1,
+GND and 5V (3 to 5). **The 5-way's 5V is an output of the motor: nothing goes on it.**
+
+A straight four-wire lead into either block is wrong whichever block it is: into the
+6-way it puts ground on V+ and 24 V on GND. Go by the labels printed on the motor's board
+and check each wire against them before the first power-up; the terminal numbers above
+are the schematic's and have not been read off a unit in hand, and whether the blocks take
+bare wire or a plug has not either (`can_tee` item M1 is open for exactly this). The manual
+asks for the host's ground and the motor's ground to be common, which this lead does
+through the 6-way's GND, and for the CAN pair to be twisted.
 
 ### What closes bus A
 
@@ -141,6 +149,7 @@ all of them.
 |---|---|---|
 | WCH-LinkE | flashing and debugging `motor_ctrl` and `output_panel` (CH32V307) | the only probe that talks to CH32V parts. SWD pads TP1-TP5 on each board, labelled |
 | ST-Link (V2 or V3) | flashing and debugging `optical` (STM32H743) | SWD pads TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND, TP5 3V3. The board can also be loaded with no probe over I2C2 (TP6 / TP7) with TP8 held high |
+| Arm GNU Toolchain 14.2.rel1 (`arm-none-eabi-gcc`) | building the `optical` firmware (Cortex-M7) | Arm's own zip from developer.arm.com, checked against its published SHA-256; unpacked under `C:/Users/gus/tools`, not on PATH. The CH32V307 boards need WCH's RISC-V toolchain instead, not installed |
 | Spring-pin probe clip or hook leads | reaching the SWD pads | the pads are bare 1.5 mm lands, not a header |
 | USB-CAN adapter, `candump`-class | watching bus A from outside | H and L share the motor's CAN terminals, ground to the motor's GND |
 | Bench supply, 24 V, adjustable current limit | first power of each board at about 100 mA | `INSTALL_NOTES.md`, board bring-up step 1 |
