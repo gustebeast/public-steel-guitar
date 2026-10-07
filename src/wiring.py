@@ -2020,148 +2020,103 @@ def _to_j2(hi, j2c):
 
 
 def ctrl_bus_b(lkl):
-    """[(name, solid)]: the pedal cable and the lever chain's head, up through the port.
+    """[(name, solid)]: the pedal cable and the lever chain's head, under the floor.
 
     `lkl` is the first node of build.lever_bus_nodes() -- the -X-most lever, the end of
     the chain the controller feeds. Passed in for the same reason lever_bus takes its
     nodes: a station's POSE is src.build's, and wiring is imported BY build.
 
-    Both are drawn as BUNDLES with a fan onto the connector at each end, which is the
-    leg harness's idiom (leg_pogo.harness) rather than the lever chain's. The lever
-    segments can run each conductor pin to pin because both their connectors face the
-    same way, so four parallel wires never meet; these two cables turn through most of a
-    right angle on the way and need the section carried round with them.
+    ⚠ BOTH CABLES LIVE UNDER THE FLOOR, START TO FINISH. The motor board hangs through the
+    floor so that J2 (bus B in, from the pedals) and J6 (bus B out, to the levers) face
+    DOWN with their latches in reach from outside, and the levers and the leg's adapter
+    are under the instrument too. Neither cable has any reason to come up into the bay.
+
+    ⚠ REDRAWN 2026-10-06, WITH THE WAYS READ FROM THE ROUTED BOARD. Both were drawn onto
+    one 8-way (in on 1-4, out on 5-8) that the board stopped having when bus B's in and
+    out became two 4-ways 16 mm apart: the pedal cable sat two ways low on J2 and the
+    lever chain's head ended on and past J2, 12 mm from the J6 it belongs in. And both ran
+    -Y in one column under the board's edge, so each passed through the other's fan.
     """
     out = []
     n = CTRL_WAYS
-    # ── the PEDAL cable: the adapter's -Y face -> port -> J2 ways 1-4 ──────
+    _j2e, _j6e = conn_end("motor_ctrl", "J2"), conn_end("motor_ctrl", "J6")
+    _dn = _j2e[0][1]                                   # both mouths face the same way: down
+    j2 = [e[0] for e in _j2e]
+    j6 = [e[0] for e in _j6e]
+    j2c = (j2[0][0], sum(q[1] for q in j2) / n, j2[0][2])
+    j6c = (j6[0][0], sum(q[1] for q in j6) / n, j6[0][2])
+
+    # ── the PEDAL cable: the leg adapter's -Y face -> J2 ────────────────────
     # It starts where leg_pogo's drawing STOPS. The four stub ends are read from there,
     # not re-derived, so the two halves of one cable meet; the bundle frame takes over
     # from the face onward, which leaves a fraction of a millimetre of lateral step at
-    # the joint 32 mm from the next vertex -- nothing, and asserted below so it stays
-    # nothing.
+    # the joint -- nothing, and asserted below so it stays nothing.
     # ...AND IT IS THE SAME CABLE, so it is the same wire: leg_pogo's own gauge and its
     # own places in the bundle, read from HARNESS_WIRES. There is no connector at the
     # adapter's face -- the run goes from the female pogo board's ZR straight through to
     # the controller -- so 28 AWG all the way, which is what the leg's 2.4 channel is
-    # sized for, not the 26 AWG the lever segments use between boards. Naming follows the
-    # cable rather than the module that draws it.
+    # sized for, not the 26 AWG the lever segments use between boards.
+    # ITS OWN COLUMN, _PEDAL_DX off the connectors' line toward the endplate: J6 is
+    # between the adapter and J2 on that line, with the lever head's four conductors
+    # coming up into it. The cable passes J6 beside them and only swings onto J2's line
+    # over its own fan.
     ends = _PG.body_stub_ends()
     offs = [o for _, o in _PG.HARNESS_WIRES]
-    lo, hi = _port_lane(-1)
-    # ⚠ J2 AND J6, TWO 4-WAYS 16 mm APART, READ FROM THE ROUTED BOARD. This drew both
-    # cables onto one 8-way (in on 1-4, out on 5-8) that the board stopped having when
-    # bus B's in and out became two housings: the pedal cable sat two ways low on J2 and
-    # the lever chain's head ended on and past J2, 12 mm from the J6 it belongs in.
-    _j2e, _j6e = conn_end("motor_ctrl", "J2"), conn_end("motor_ctrl", "J6")
-    _out = _j2e[0][1]                                  # both mouths face the same way: down
-    j2 = [e[0] for e in _j2e]
-    j2c = (j2[0][0], sum(p[1] for p in j2) / n, j2[0][2])
-    # ⚠ THE PEDAL HALF STAYS UNDER THE FLOOR TOO (2026-09-30). It used to rise through the
-    # port on `hi`, run -Y in the cavity and come back down to a connector that is BELOW the
-    # floor -- the lever half's old topology, fixed there in c07cc16 and left here because the
-    # pedal cable was "not mine". It is the same cable family on the same connector, and it
-    # cost eight gate pairs: chassis_2 x 4 (6.5-7.8 mm3) and pi4 x 4 (2.6-6.2), all in one
-    # column at x -589.9..-579.3, y -82, z -81.9..-67.6 -- the rise, through the floor and
-    # into the Pi's underside. Same cure: out of the pin along -Z, a lane below the floor, +Y
-    # to the port's own xy, and up only as far as `lo`.
-    # ITS LANE IS 4.0 BELOW THE LEVER HALF'S. Ways 1-4 sit at lower y than ways 5-8 and both
-    # run +Y at the pins' x, so at one height the pedal bundle would pass through the lever
-    # half's fan. (Both lanes must be at or below pin_z - CANB_LEAD: a lane above the crimp
-    # lead's end makes the path reverse, and bundle_paths collapses its section there.)
-    _pedal_lane_z = j2c[2] - CANB_LEAD - 4.0
-    centre = [_PG.chan_ends()[1], lo, (lo[0], lo[1], _pedal_lane_z),
-              (j2c[0], j2c[1] + CTRL_FAN, _pedal_lane_z), j2c]
+    _PEDAL_DX = -6 * D.BEAD                            # -4.8
+    _pedal_z = j2c[2] - CANB_LEAD - 4.0                # under the crimps' own leads
+    _stub_c = _PG.chan_ends()[1]
+    _px = j2c[0] + _PEDAL_DX
+    _py = port_y()[0] + PORT_W / 2.0 + 3.2             # where it has always come down
+    centre = [_stub_c, (_px, _py, _CH_Z_BOT - 4.0), (_px, _py, _pedal_z),
+              (_px, j2c[1] + CTRL_FAN, _pedal_z), j2c]
     legs = bundle_paths(centre, offs, across=(0.0, 0.0, 1.0))
-    for j, q in enumerate(legs):
-        step = max(abs(q[0][m] - ends[j][m]) for m in range(3))
+    for k, q in enumerate(legs):
+        step = max(abs(q[0][m] - ends[k][m]) for m in range(3))
         assert step < 1.5, (
             "the pedal cable's conductor %d starts %.2f from where leg_pogo's stub ends "
-            "it: the bundle's section has turned over at the joint" % (j, step))
-        q[0] = ends[j]
-    # THE LEADS LEAVE J2 ALONG +X, away from the board. electronics.mctrl_pt is defined
-    # as "where a lead LEAVES the connector" and returns the mated plug's outer face, and
-    # the tray's stand() carries the board's +Z there onto world +X. Pointed -X the fan
-    # ran back into the board it had just left: 26-31 mm^3 a conductor, into motor_ctrl.
+            "it: the bundle's section has turned over at the joint" % (k, step))
+        q[0] = ends[k]
     # the far end is leg_pogo's (its stub's own end points, taken as they are)
-    _stub = [(ends[j], None, _j2e[j][2]) for j in range(n)]
     assert [nm.upper() for nm, _pl in _PG.HARNESS_WIRES] == [e[2] for e in _j2e], (
         "leg_pogo's harness order is not J2's way order")
-    _cable("bus B pedal cable", _stub, _j2e)
-    for j, (q, (nm, _pl)) in enumerate(zip(_fan(legs, -1, j2, _out, CANB_LEAD),
+    _cable("bus B pedal cable", [(ends[k], None, _j2e[k][2]) for k in range(n)], _j2e)
+    for k, (q, (nm, _pl)) in enumerate(zip(_fan(legs, -1, j2, _dn, CANB_LEAD),
                                            _PG.HARNESS_WIRES)):
-        _run(out, "pogo_wire_%s_5" % nm, q, _PG.HARNESS_WIRE_OD, "bus B pedal cable", j)
-    # ── the LEVER chain's head: J2 ways 5-8 -> port -> LKL's J1 ways 1-4 ──
-    # TWO BUNDLES, JOINED AT THE PORT, because this cable has a connector at BOTH ends
-    # and their rows are at right angles to each other: LKL's J1 spreads along world Z,
-    # the controller's J2 along world Y. A bundle's section can only be AIMED at one of
-    # them (bundle_paths' `across`), and at the other end it arrives turned -- so the
-    # four conductors cross each other reaching their own ways there. Aimed at LKL the
-    # cost was 103 mm^3 over six pairs, aimed at J2 it was 114: there is no seed that
-    # fixes it, because the aim is the wrong tool for a cable with two rows.
-    #
-    # So each half is walked FROM its own connector with its own aim, and they meet below
-    # the floor at the port -- which is where the slack would sit anyway. The join is a
-    # per-conductor snap: the J2 half's last point is moved onto the LKL half's, so one
-    # polyline comes out of the two. That leaves at most one bundle-width of lateral step
-    # spread over the 20 mm of the port's own rise, which is a few degrees of kink in open
-    # air under the instrument, and no crossing, because every conductor steps the same
-    # way at once.
+        _run(out, "pogo_wire_%s_5" % nm, q, _PG.HARNESS_WIRE_OD, "bus B pedal cable", k)
+
+    # ── the LEVER chain's head: LKL's J1 ways 1-4 -> J6 ─────────────────────
+    # A FLAT FOUR-WAY ON EDGE, the section every other bus-B segment has. LKL's row is
+    # stacked along world Z and J6's runs along world Y, and a ribbon on edge gets from
+    # one to the other with no twist at all: it runs level out of LKL, turns in plan as
+    # often as it likes (a bend across its thickness), and where it finally turns UP into
+    # J6 its width swings from Z onto Y -- the lowest conductor to the far end of the row.
+    # Which end that is depends on which way the lever's row counts, so the run comes
+    # under J6 from whichever side lands way 1 on way 1: asserted, not assumed.
+    # (It was two bundles joined at the old wiring port, 60 mm +Y of here, with a fan at
+    # the controller whose four lines crossed each other on the way to their pins.)
     _nm, _plug, _lace, d, _ka, _pa, pins, _so, _ca, _cb, _g = lkl   # _so: plug standoff
-    far = [pins[1 + j] for j in range(n)]
-    farc = (far[0][0], far[0][1], sum(p[2] for p in far) / n)
-    lo2, hi2 = _port_lane(1)
-    j2b = [e[0] for e in _j6e]
-    j2bc = (j2b[0][0], sum(p[1] for p in j2b) / n, j2b[0][2])
-    offs2 = _ribbon_offsets(n)
-    # ...out of LKL along its plug's axis far enough to clear the LEVER'S OWN BODY before
-    # turning, which is what plug_standoff is for and what every lever-to-lever segment
-    # already does. The fan run alone is 19.2 against a 42.4 standoff, so a turn at the
-    # fan vertex went back through the housing the cable had just left.
-    low = bundle_paths(list(reversed(_ends(farc, d, lead=max(CANB_LEAD, _so - CTRL_FAN))))
-                       + [lo2], offs2, across=(0.0, 0.0, 1.0))
-    low = _fan(low, 0, far, d, CANB_LEAD)
-    # ⚠ THE J2 END GOES DOWN, NOT ALONG. J2's plug face is at z -83.85, BELOW the floor
-    # slab's underside (_CH_Z_BOT -81.85) -- the connector is under the floor. The old path
-    # took the cable UP into the cavity on the lane's `hi` point (z -62.85), ran it -Y past
-    # the board and brought it back DOWN to a connector that was below the floor the whole
-    # time, and that up-and-back-down is what drove it THROUGH motor_ctrl: measured 10.25 /
-    # 10.25 / 4.57 mm^3 with 22-26 mm of y inside the board. It is why five polyline
-    # variants and three `across` seeds never touched this -- they were all re-aiming a run
-    # whose TOPOLOGY was wrong.
-    # ⚠ AND BOTH +-X FAN DIRECTIONS ARE WRONG, which is what the old note here got wrong.
-    # The pin sits at x -598.75, MID-THICKNESS of a board spanning -606.50..-591.70, so any
-    # approach from +-X at a z inside the board travels through it. "Pointed -X the fan ran
-    # back into the board" was true; "so use +X" did not follow. -Z is the one direction the
-    # connector actually faces, and it had never been tried.
-    # THE LANE IS AT pin_z - CANB_LEAD, NOT AT THE PORT'S `lo`. The crimp lead squares 6.4
-    # out of the pin, so it lands at -90.25; putting the run at lo's -85.85 instead would
-    # make the path dip below the lane and come back up, and bundle_paths COLLAPSES ITS
-    # SECTION at a reversal (the _to_j2 note above records that exact failure). Measured
-    # clear at every x from -600.00 to -592.50 at -85.85, -88.00, -90.25 and -92.00; only
-    # z -83.00 is blocked, by the board itself.
-    # ⚠ AND THE RIBBON SPREADS IN X, NOT Y. J2's four ways are strung out along y and the
-    # run to the port is ALSO +y, so a y-spread section would lay all four conductors on one
-    # line for the whole run -- the same fault this file records for the pedal cable, where
-    # 2.0 mm of y offset collapsed to 0.42 of real separation. The fan converts the pins'
-    # y spread into an x-spread ribbon over its own CTRL_FAN.
-    # ⚠ `across` MAKES NO MEASURABLE DIFFERENCE ON THIS PATH, and a note here previously
-    # claimed it did. Both seeds were measured: (1,0,0) -> 25.737 mm^3 of self-overlap,
-    # (0,0,1) -> 26.045, and the four conductors' zmin is -96.46/-98.46/-100.46/-102.46
-    # under BOTH. The earlier note derived "second axis = run x across" and read the 2.0 mm
-    # z stagger as proof the spread had landed on z; the next measurement refuted it, since
-    # swapping the seed moved nothing. THE STAGGER IS NOT THIS BUNDLE'S SECTION -- it is the
-    # LKL end's, and it is identical with this whole block reverted to HEAD. Do not re-tune
-    # this vector expecting the depth to move; it will not.
-    _lane_z = j2bc[2] - CANB_LEAD
-    high = bundle_paths([j2bc, (j2bc[0], j2bc[1] + CTRL_FAN, _lane_z),
-                         (lo2[0], lo2[1], _lane_z), lo2],
-                        offs2, across=(0.0, 0.0, 1.0))
-    high = _fan(high, 0, j2b, _out, CANB_LEAD)
-    _cable("bus B lever head", [(far[j], tuple(d), _j6e[j][2]) for j in range(n)], _j6e)
-    for j, (nm, _pl) in enumerate(CANB_NETS):
-        q = list(low[j]) + list(reversed(high[j]))[1:]
-        _run(out, "wire_canb_%s_lkl_0" % nm, q, CANB_WIRE_OD, "bus B lever head", j)
+    far = [pins[1 + k] for k in range(n)]
+    farc = tuple(sum(q[m] for q in far) / n for m in range(3))
+    assert abs(d[0] + 1.0) < 1e-6 and abs(far[0][0] - far[-1][0]) < 1e-6 and abs(
+        far[0][1] - far[-1][1]) < 1e-6, "LKL's plug no longer faces -X with its row along Z"
+    up = far[0][2] < far[-1][2]                        # way 1 at the row's low end
+    offs2 = [(0.0, (k - (n - 1) / 2.0) * CTRL_PITCH * (1.0 if up else -1.0)) for k in range(n)]
+    x6, zc = j6c[0], farc[2]
+    if up:          # way 1 lowest: arrive travelling -Y, the lowest lands furthest -Y
+        centre = [farc, (x6, farc[1], zc), (x6, j6c[1], zc), j6c]
+    else:           # way 1 highest: round the -Y end of J6 and arrive travelling +Y
+        _xa, _yb = x6 + 9 * D.BEAD, j6[0][1] - 6 * D.BEAD
+        centre = [farc, (_xa, farc[1], zc), (_xa, _yb, zc), (x6, _yb, zc), (x6, j6c[1], zc), j6c]
+    legs2 = bundle_paths(centre, offs2, across=(0.0, 0.0, 1.0))
+    for k, q in enumerate(legs2):
+        for end, pin in ((q[0], far[k]), (q[-1], j6[k])):
+            assert max(abs(end[m] - pin[m]) for m in range(3)) < 0.05, (
+                "the lever head's ribbon does not land way %d on its pin: %r against %r"
+                % (k + 1, end, pin))
+    legs2 = _fan(_fan(legs2, 0, far, d, max(CANB_LEAD, _so)), -1, j6, _dn, CANB_LEAD)
+    _cable("bus B lever head", [(far[k], tuple(d), _j6e[k][2]) for k in range(n)], _j6e)
+    for k, (nm, _pl) in enumerate(CANB_NETS):
+        _run(out, "wire_canb_%s_lkl_0" % nm, legs2[k], CANB_WIRE_OD, "bus B lever head", k)
     check_cables(["bus B pedal cable", "bus B lever head"])
     return out
 
