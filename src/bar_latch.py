@@ -51,7 +51,7 @@ ASSEMBLY (the latch then cannot come out):
   2. Slide the collar on from the tower's HOOK-side face until the rails hit the stop.
      The springs are 0.4 longer free than installed; a chamfer at the far end of
      each channel cams the coil end in as the ring settles.
-  3. One M4x30 button head down through the collar into its insert in the
+  3. One M4x40 button head down through the collar into its insert in the
      tower (cadkit.fasteners.ScrewJoint -- see `screw_joint`).
 
 THE PARTS
@@ -260,7 +260,8 @@ assert (_PEAK_K - _MORT_K) / _S2 >= D.MIN_WALL_2P, (
 # -- the screw (a corner) ----------------------------------------------------------
 SCREW = dataclasses.replace(M4, name="M4 button", head_recess_d=11 * B,
                             head_recess_h=3 * B)   # m4_button_screw: head 7.6 x 2.2
-SCREW_L = 30.0                     # M4x30: through the collar, then SCREW_BITE into the tower
+SCREW_L = 40.0                     # M4x40, the leg lock pins' SKU: through the collar, then
+                                   # SCREW_BITE into the tower (20 of it, in 26 of solid, measured)
 SCREW_BITE = SCREW_L - (COLLAR_H - SCREW.head_recess_h)
 SCREW_END = SCREW_BITE + COLLAR_H + 1.6   # where the hole stops, 1.6 past the tip
 # the head is the leg's head: ONE M4 button SKU on the instrument (user's fastener
