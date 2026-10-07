@@ -425,3 +425,10 @@ browser tab was in the background and screenshots of the 3D/2D viewer timed out 
 ui_board carry the same CPL as the walk that was checked; fret_led_key / fret_led_mid have MOVED parts and the new
 R41.. links and their previews have NOT been looked at. Look on order day (Chrome in front), or rely on
 Confirm Parts Placement (ticked).
+- PREVIEWS, second try 2026-10-07 01:15: reopened tonight's fret_led_mid from Projects (BOM kept: 9 rows, all selected) and
+  went to Component Placements. The viewer is a WebGL canvas that does not draw while Chrome's window is not in front
+  (document.visibilityState "hidden"): screenshots time out and the canvas reads back blank; other JLCPCB pages
+  screenshot fine. So fret_led_key, fret_led_mid and ui_board previews are STILL NOT LOOKED AT. Needs Chrome in front
+  (then: Projects > open the 2026-10-07 project > NEXT on the BOM page). What to look for: R41.. 0R links on their lands
+  beside each driver; U (TLC5971) pin-1 dot on the board's mark; pogo barrels pointing off the board end; ui_board J2
+  body at the board edge, pins off the board; J1 on its holes. Nothing in the cart.
