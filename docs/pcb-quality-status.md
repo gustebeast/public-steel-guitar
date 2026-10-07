@@ -67,6 +67,11 @@ ROTATION-CHECK.txt lists what was corrected and what could not be measured.
   turn, and the second preview had every connector on its pads with its mouth off the
   board. Seen for parts whose KiCad angle and frame rotation are 0 or 180 apart; none 90
   apart exists on a back side yet.
+* **2026-10-06, evening: `pi_cap` has no back-side parts any more.** It is redrawn with
+  every part on the front and goes on the Pi face down; the copper is the old board
+  mirrored, layer for layer. 0 unconnected, 0 violations, 0 FAIL. On the order page it
+  stays Economic and Top Side, and the quote was read (48.44 for 5 bare / 2 assembled).
+  No board has a back-side part now, so the rule above has nothing to act on.
 * All ten boards were walked to the quote: `docs/jlcpcb-order-walk.md` has what the
   page showed and every price line.
 * The lever sensor board is ONE part in the CAD now (laminate plus every placed part,
