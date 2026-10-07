@@ -2051,6 +2051,19 @@ _COLORS.update({
                         (0.95, 0.85, 0.10), (0.13, 0.72, 0.20)))})
 
 
+# The keyhead's three board-to-board leads, a conductor a part, in the harness's own
+# colours: black ground, red rail, and the power button's two throws orange (out) and
+# brown (latched in). And the lever chain's head, which is bus B like the rest of the
+# chain: its four had no entry of their own and came out the default grey, as did the
+# Pi's 5 V four (the lead's audit, 2026-10-06).
+_NET_RGB = {"gnd": (0.05, 0.05, 0.05), "v24": (0.85, 0.12, 0.10), "v5": (0.85, 0.12, 0.10),
+            "up": (0.95, 0.55, 0.10), "dn": (0.50, 0.32, 0.16)}
+_COLORS.update({"wire_%s_%s" % (_lead, _net): _rgb
+                for _lead in ("plink", "lights", "5v") for _net, _rgb in _NET_RGB.items()})
+_COLORS.update({"wire_canb_%s_lkl" % _n: _COLORS["wire_canb_%s" % _n]
+                for _n in ("gnd", "v5", "h", "l")})
+
+
 def _color_for(name):
     # STRIP EVERY TRAILING INDEX GROUP, not just the last one -- the same lesson
     # tools.check_overlaps.base() records, and this resolver had not learned it. A part

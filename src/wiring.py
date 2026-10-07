@@ -214,8 +214,12 @@ TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14m
 # side of that motor stand to -25.45: a lane on the floor (-26.4) clipped both. From there
 # up the stack is packed flat-to-flat (the octagons are rolled so their flats face up and
 # down), and still finishes under the lip's top at -13.6.
-LANE_PWR2  = CH_WT_ZF + 3.5      # -22.9: the 24 V bypass feed (J10 -> motor_ctrl),
-                                 #        hot -23.9 / gnd -21.9, 0.65 over those walls
+# THE 24 V LINK (output_panel J10 -> motor_ctrl J3) is the trough's lowest cable and its
+# biggest: six conductors, two across and three high (see build_wires), 0.15 off the floor.
+# It was a pair at -22.9 until all six ways were drawn (2026-10-06).
+PLINK_COL, PLINK_ROW = 1.0, 1.75        # half the pair's spacing; row to row
+PLINK_HALF = PLINK_ROW + 1.8 / 2        # 2.65 from its centre to its top or bottom
+LANE_PWR2  = CH_WT_ZF + 0.15 + PLINK_HALF       # -23.6: its centre
 LANE_USB   = CH_WT_ZF + 7.1      # -19.3: output board J2 -> the Pi (O2.6)
 LANE_PWR   = CH_WT_ZF + 10.8     # -15.6: the 24 V head (J7 -> the east tee), hot -16.6 /
                                  #        gnd -14.6 -- first trough piece only, it leaves
@@ -227,7 +231,9 @@ _TRUNK_OD = max(od for nm, od in WIRE_OD.items() if nm != 'motor_pigtail')
 # the trough's own guarantees, asserted where the lanes are chosen:
 _TOP_OF_MOTORS = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2          # -29.05
 assert CH_WT_ZF > _TOP_OF_MOTORS, "the trough's floor has come down to the motor tops"
-assert LANE_PWR2 - PWR_OFF - 1.8 / 2 > CH_WT_ZF, "feed 2 is in the trough's floor"
+assert LANE_PWR2 - PLINK_HALF > CH_WT_ZF, "the 24 V link is in the trough's floor"
+assert LANE_PWR2 + PLINK_HALF < LANE_USB - 2.6 / 2, (
+    "the 24 V link stands into the USB lead's lane in the trough")
 assert LANE_PWR + PWR_OFF + 1.8 / 2 < CH_WT_ZF + CH_WT_H, "the head stands over the lip"
 assert CH_WT_LANE_Y + _TRUNK_OD / 2 <= MB.HARNESS_Y1, (
     "the trough's lane reaches y %.2f, past motor_bank's HARNESS_Y1 %.2f"
@@ -977,6 +983,21 @@ def build_wires():
     # OWN tee. For the nine tees on motors that is a short climb up behind the motor and over
     # its top; string 10's tee is still on the rail, so that one keeps the old reach along the
     # corridor. The climb stands off the back bumper where there is one.
+    _under = []                 # x of each pigtail that climbs under the trough's line
+    _HUMP = 1.2                 # how far the lanes lift over one
+    _HUMP_R = WIRE_OD["motor_pigtail"] / 2.0 + 1.8      # half the lifted length, level
+    _HUMP_RAMP = 4.0                                    # ...and each ramp up to it
+
+    def _lane(x0, x1, z):
+        """The trough's line from x0 west to x1 at lane height z, lifted over every pigtail
+        that climbs under it."""
+        pts = [(x0, CHAN_Y, z)]
+        for hx in sorted(_under, reverse=True):
+            if x1 < hx - _HUMP_R - _HUMP_RAMP and hx + _HUMP_R + _HUMP_RAMP < x0:
+                pts += [(hx + _HUMP_R + _HUMP_RAMP, CHAN_Y, z), (hx + _HUMP_R, CHAN_Y, z + _HUMP),
+                        (hx - _HUMP_R, CHAN_Y, z + _HUMP), (hx - _HUMP_R - _HUMP_RAMP, CHAN_Y, z)]
+        return pts + [(x1, CHAN_Y, z)]
+
     for i in range(10):
         mx, sy, mz = D.motor_pos(i)
         back = _motor_back(i)
@@ -1001,13 +1022,21 @@ def build_wires():
                 # height, so rising to it and turning east ran 21 mm along inside that cable.
                 # So it crosses onto the motor at the motor's own top, UNDER the lanes, and
                 # only rises to the mouth once it is +Y of them.
-                _zc = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + _od / 2.0 + 0.35
-                assert _zc + _od / 2.0 < LANE_PWR2 - PWR_OFF - 0.9 - 0.3, (
+                # ⚠ AND THE LANES LIFT OVER IT (2026-10-06). The lowest cable there is the
+                # six-way 24 V link now, on the trough's floor line: 1.0 mm lower than the
+                # pair it replaced, and that put it in this jacket's top. The motor is
+                # under the jacket, so the cables above it give way: _lane humps the link
+                # and the USB lead over each climb recorded here.
+                _zc = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + _od / 2.0 + 0.15
+                _under.append(mx)
+                assert _zc + _od / 2.0 < LANE_PWR2 + _HUMP - PLINK_HALF - 0.2, (
                     "motor %d's pigtail cannot pass under the trough lanes" % i)
                 _yi = CHAN_Y + 2.5 + _od / 2.0 + 1.0
-                out.append((f"motor_pigtail_{i}", _wire([
+                # ...and it stays at the motor's top to its tee, like the other nine: the
+                # 24 V head comes in to the same tee at the mouth's height, across this run
+                _run(out, f"motor_pigtail_{i}", [
                     (mx, back, mz), (mx, _yc, mz), (mx, _yc, _zc), (mx, _yi, _zc),
-                    (mx, _yi, dz), (dx, _yi, dz), (dx, dy, dz)], _od)))
+                    (dx, _yi, _zc), (dx, dy - 8.0, _zc), (dx, dy - 4.0, dz), (dx, dy, dz)], _od)
                 continue
             # OVER THE MOTOR AT THE MOTOR'S OWN TOP, not at the mouth's height: the trunk's
             # lanes and bus A's head cross this run at the mouth's height, and a jacket
@@ -1103,7 +1132,10 @@ def build_wires():
     # ⚠ ON J7's WAYS 1 AND 2, AND INTO THE TEE ALONG ITS CONTACTS. The pair used to leave
     # the middle of the 4-way housing -- ground on way 3, which carries nothing -- and to
     # drop onto the tee's pins from above, through the top of a side-entry shell.
-    _HEAD_IN = 4.0                       # straight into the mouth: a crimp and its strain relief
+    # 11 straight into the mouth, not a crimp's length: the motor's own pigtail goes into the
+    # drop connector beside this one, rising to the mouth over its last 8 mm, and the pair
+    # has to cross it -Y of that rise, where the pigtail is still down on the motor.
+    _HEAD_IN = 11.0
     _HEAD_OUT = 6.0                      # +Y of the trough's line before coming down
     for k in _cable("24 V head", _j7e, _tout[_WEST0][:2]):
         net = _j7e[k][2]
@@ -1133,14 +1165,12 @@ def build_wires():
     # ONE BUNDLE, two across and three high, which is what fits a trough 4.8 wide beside
     # the other two cables in it: the 24 V pairs top and bottom, the two thin throws in
     # the middle row. cadkit.bundle_paths carries that section round every corner.
-    _PL_COL, _PL_ROW = 1.0, 1.75
+    _PL_COL, _PL_ROW, _PL_HALF = PLINK_COL, PLINK_ROW, PLINK_HALF
+    assert WIRE_OD["wire_plink"] == 1.8 and WIRE_OD["wire_usb"] == 2.6       # PLINK_HALF, LANE_PWR2
     _PL_OFFS = [(a * _PL_COL, b * _PL_ROW) for b in (-1, 0, 1) for a in (-1, 1)]
-    _PL_HALF = _PL_ROW + WIRE_OD["wire_plink"] / 2.0             # 2.65 centre to top or bottom
     _PL_ZREC = -35.3 + 0.2 + _PL_HALF          # the recess: 0.2 over J7's and J9's plug tops
-    _PL_ZTR = CH_WT_ZF + 0.15 + _PL_HALF       # the trough: on its floor, under the USB lead
+    _PL_ZTR = LANE_PWR2                        # the trough: on its floor, under the USB lead
     assert _PL_ZREC + _PL_HALF < _REC_Z7 - PWR_OFF - 0.9, "the link is into J7's pair in the recess"
-    assert _PL_ZTR + _PL_HALF < LANE_USB - WIRE_OD["wire_usb"] / 2.0, (
-        "the 24 V link stands into the USB lead's lane in the trough")
     # AT THE KEYHEAD it turns +Y out of the trough's end, comes down under the Pi's 5 V
     # leads (which cross it at J5's height) and under bus A's head, and runs +Y above the
     # cap, two abreast and three deep, to J3.
@@ -1172,8 +1202,8 @@ def build_wires():
     _pl_live = _cable("PWR_LINK", _j10e, _j3e)
     _pl_centre = [(_jc[0], _PL_Y0, _PL_ZREC), (_jc[0], _PL_REC_Y, _PL_ZREC),
                   (_BAY_X10, _PL_REC_Y, _PL_ZREC), (_BAY_X10, CHAN_Y, _PL_ZREC),
-                  (_PL_RISE, CHAN_Y, _PL_ZREC), (_PL_RISE, CHAN_Y, _PL_ZTR),
-                  (_PL_XT, CHAN_Y, _PL_ZTR), (_PL_XT, CHAN_Y + 3.0, _PL_ZTR),
+                  (_PL_RISE, CHAN_Y, _PL_ZREC)] + _lane(_PL_RISE, _PL_XT, _PL_ZTR) + [
+                  (_PL_XT, CHAN_Y + 3.0, _PL_ZTR),
                   (_PL_XT, CHAN_Y + 13.0, _PL_ZKEY), (_PL_XT, _PL_PY - 10.0, _PL_ZKEY)]
     _PL_SHORT = {"GND": "gnd", "V24": "v24", "PWR_SW_UP": "up", "PWR_SW_DN": "dn"}
     _legs = bundle_paths(_pl_centre, _PL_OFFS, across=(0.0, 0.0, 1.0))
@@ -1283,13 +1313,12 @@ def build_wires():
     _ua_x = _ua[0] - _UA_PLUG           # the plug's cable end. Was measured from the EAR TIP,
                                         # 10.000 mm short of the mouth -- see EL.op_mouth
     _USB_X = _LOOP_CX - _LOOP_R - 9.5     # -X of the loop, +X of the trough's end
-    out.append(("wire_usb", _wire(
-        [(_ua_x, _ua[1], _ua[2]), (_USB_X, _ua[1], _ua[2]), (_USB_X, _ua[1], LANE_USB),
-         (_USB_X, CHAN_Y, LANE_USB)]
-        + _rail_pts(_USB_X, _USB_COL, LANE_USB)
-        + [(_USB_COL, CHAN_Y, _USB_FLY), (_USB_COL, _usb[1], _USB_FLY),
-           (_PORT_APR_X, _usb[1], _USB_FLY), (_PORT_APR_X, _usb[1], _usb[2]), _usb],
-        WIRE_OD["wire_usb"])))                          # over motor 0, then down into the Pi
+    _run(out, "wire_usb",
+         [(_ua_x, _ua[1], _ua[2]), (_USB_X, _ua[1], _ua[2]), (_USB_X, _ua[1], LANE_USB)]
+         + _lane(_USB_X, _USB_COL, LANE_USB)
+         + [(_USB_COL, CHAN_Y, _USB_FLY), (_USB_COL, _usb[1], _USB_FLY),
+            (_PORT_APR_X, _usb[1], _USB_FLY), (_PORT_APR_X, _usb[1], _usb[2]), _usb],
+         WIRE_OD["wire_usb"])                           # over motor 0, then down into the Pi
 
     # -- 5 V to the Pi's GPIO header, from the merged board's J5. It was never
     #    modelled while the power board existed -- that board fed the Pi and nothing
