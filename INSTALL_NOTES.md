@@ -628,6 +628,13 @@ existing ones:
   bridged 1-2 (off with the button out), from the switch maker's drawing. If a real switch
   works the other way round, cut 1-2 and bridge 2-3.
 
+## The optical board's USB plug goes in cable-DOWN
+
+The lead from the output panel's J4 has a right-angle USB-C at the optical board's end
+(J1). Plug it with the cable pointing **down**, into the conduit behind the board; the
+endplate is notched under the plug for it. USB-C goes in either way up, so if the cable
+points at the strings, turn the plug over. The other end, at the output panel, is straight.
+
 ## Every JST lead: one way order, and the family tells you the voltage
 
 The rule (user, 2026-10-04; the tuples are in `elec/harness.py`):

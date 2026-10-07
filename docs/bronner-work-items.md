@@ -83,6 +83,15 @@
      6-12 mm further +Y with an angled plug (its placement is the user's, and every lead
      at the keyhead moves with it), or a pocket in the rail for the plug (structure). Not
      drawn until one is chosen. The lead's lengths: 0.9-0.95 m with plugs.
+   - **Optical J1's plug is a DOWN-ANGLE USB-C (user, 2026-10-07).** Envelope 12 deep x
+     22 down, drawn whole as the plug; the cable drops into the conduit on the old USB
+     line; `opt_usb_notch` takes the 2 mm ledge away under it (45 degree ramp at its -X
+     end for the print). The conduit still takes a 17.5 straight plug. The two stale,
+     duplicated straight-plug comment blocks above PLUG_L are one current block. OPEN: a
+     real lead to buy: candidate Amazon B0FKYQN31L ($9.99, ribbon, angled both ends; the user
+     accepted Amazon, not $16). When one is MEASURED: J4 end as an up-angle plug (19 mm end),
+     one 45-degree fold under J1, ribbon out of the conduit on edge with the 24 V pair
+     stacked beside it (BOM row has the numbers). `usb_run_length()` is dead code.
    - Lead's bench-cart corrections folded in 2026-10-07 (BOM, bench-order, prices.json):
      optical USB lead is 0.3 m and no stock lead with a published overmould <= 17.5 mm was
      found; bulkman screw link; PSU tariff line; M3x12 and Loctite 425 prices; LCSC lots.
