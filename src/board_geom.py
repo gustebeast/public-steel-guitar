@@ -90,6 +90,10 @@ _PANEL: dict = {}
 # capital height, a font size is an em.
 SILK_FONT_FILE = "Rennie Mackintosh ITC Light Regular.otf"
 SILK_FONT_CAP = 0.666
+# THE FONT'S UNDERSCORE IS AN ORNAMENT (a small T over an O), and every net name here has
+# one. The file is not edited: an underscore is drawn as the font's own hyphen bar, moved
+# down from mid-height (its foot is 359/666 of a capital up) to sit just under the baseline.
+SILK_SUBST = {"_": ("-", -0.6)}
 
 
 def _silk_font():
@@ -107,7 +111,8 @@ def _silk_font():
 
 _FONT = _silk_font()
 BOARDS = Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
-                **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {}))
+                **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP,
+                    "silk_subst": SILK_SUBST} if _FONT else {}))
 
 HEIGHT, TAIL, THT_LEGS, PANEL = BOARDS.HEIGHT, BOARDS.TAIL, BOARDS.THT_LEGS, BOARDS.PANEL
 
