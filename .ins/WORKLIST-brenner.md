@@ -325,8 +325,9 @@ Projects > Quotes. What it found, and what the order needs because of it:
   found a site), ui_board has 'NAV' at SW1 beside 'POWER' at SW2. All five boards' ink is
   now a part in the CAD: `foot_pcb_a_silk`, `foot_pcb_b_silk`, `fret_pcb_mid_silk`,
   `fret_pcb_key_silk`, `ui_pcb_silk` (src/foot_light.py, fret_light.py, ui_panel.py;
-  front side only -- Boards.silk() draws a back-side label on the top face, so the
-  pinouts on the backs are not drawn). Copper, drill, mask, paste, BOM and CPL are
+  both faces in the one part: the backs' pinouts hang under the laminate in mirror
+  writing, and the 90-degree ones on the fret boards were checked against the back
+  silkscreen gerber for which way they turn). Copper, drill, mask, paste, BOM and CPL are
   byte for byte what was uploaded; ONLY the two silkscreen gerbers changed, so THE
   PROJECTS SAVED ON JLCPCB TONIGHT CARRY THE OLDER INK: upload the zips again on order
   day (previews and quotes stand).
