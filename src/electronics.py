@@ -1902,8 +1902,9 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
     # (below the ear the board's +X edge stands D.TEE_EDGE_BACK inside the region's line)
     b = box_at(TEE_BOARD_X - D.TEE_EDGE_BACK, TEE_BOARD_Y, 1.6,
                x=xl - D.TEE_EDGE_BACK / 2, y=cy, z=FLOOR_Z + 0.8)
-    b = b.union(box_at(D.TEE_EAR_X, D.TEE_EAR_Y, 1.6,
-                       x=x + TEE_BOARD_X / 2, y=ey, z=FLOOR_Z + 0.8))
+    # ...so the ear reaches back that much further to meet it
+    b = b.union(box_at(D.TEE_EAR_X + D.TEE_EDGE_BACK, D.TEE_EAR_Y, 1.6,
+                       x=x + TEE_BOARD_X / 2 - D.TEE_EDGE_BACK / 2, y=ey, z=FLOOR_Z + 0.8))
     b = b.cut(cq.Workplane(obj=cq.Solid.makeCylinder(
         2.25, 3.6, cq.Vector(x + TEE_BOARD_X / 2, ey, FLOOR_Z - 1.0))))   # M4 clearance
     # ONE row along X: the 8-way trunk, then the 4-way drop beside it. Pin rows collinear, so
