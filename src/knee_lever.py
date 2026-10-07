@@ -2167,16 +2167,19 @@ def plug_pin(way, z_bot=None, z_top=None, flip=None):
     cable lands on 1-4 and its DEPARTING cable leaves from 5-8, which is what makes the
     board pass the trunk through itself.
 
-    WAY 1 IS AT THE -Z END of the connector in this frame, and that is a CONVENTION THE
-    BOARD HAS TO MATCH -- nothing in the CAD can know which end the fab put pin 1 on.
-    docs/lever-sensor-respin.md carries it; if the routed board disagrees, this model is
-    wrong rather than the board.
+    WAY 1 IS AT THE +Z END of the connector on a board installed as drawn, and at the -Z
+    end on one turned over (the pedal's): that is where the ROUTED board has pad 1
+    (elec/geom/lever_sensor.geom.json: J1 at rot -90, pad 1 at geom +y, and geom +y is
+    this frame's +Z -- the frame SENSOR_BOM places every other part in). The turn-over
+    is a rotation about the axle, so it carries the row end for end with the board.
     """
-    zc = CONN_ZC if z_bot is None else conn_z(z_bot, z_top, flip)
-    mx = CONN_MOUTH_X if z_bot is None else conn_mouth_x(z_bot, z_top, flip)
+    turned = z_bot is not None and board_flip(z_bot, z_top, flip)
+    zc = -CONN_ZC if turned else CONN_ZC
+    mx = -CONN_MOUTH_X if turned else CONN_MOUTH_X
     sx = -1.0 if mx <= 0 else 1.0
+    up = -1.0 if turned else 1.0                       # way 1's end of the row
     return (mx + sx * CONN_PLUG_RUN, PCB_Y - PH_SIDE_H / 2.0,
-            zc + (way - 1 - (CONN_N - 1) / 2.0) * PH_PITCH)
+            zc + up * ((CONN_N - 1) / 2.0 - (way - 1)) * PH_PITCH)
 
 
 def plug_point(z_bot=None, z_top=None, flip=None):
@@ -2185,9 +2188,9 @@ def plug_point(z_bot=None, z_top=None, flip=None):
 
 
 def pin_axis():
-    """The direction the pin row runs, in the lever's LOCAL frame: J1 stands on end, so
-    its ways march along +Z."""
-    return (0.0, 0.0, 1.0)
+    """The direction the pin row runs, in the lever's LOCAL frame, on a board installed
+    as drawn: J1 stands on end and its ways count DOWN, way 1 at the top (plug_pin)."""
+    return (0.0, 0.0, -1.0)
 
 
 def cheek_axis():
