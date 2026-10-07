@@ -50,8 +50,8 @@ side; likewise B's rail and A's lips.
 
 ⚠ NOT YET PROVEN, in the order a coupon should answer them: the side-entry grip under a
 twisting belt; the dropped-in insert staying still while the screw is turned; the ball
-end reaching the socket at KEY_DEG; the M3 insert's real size (INS_D / INS_L are a
-typical short insert, no SKU picked).
+end reaching the socket at KEY_DEG; the M3 insert's real size (INS_D / INS_L are
+McMaster 94459A130's DRAWING numbers -- measure one before printing).
 """
 
 from __future__ import annotations
@@ -76,8 +76,13 @@ BP  = D.BELT_PITCH        # 2.0  pitch
 HEAD_D   = 5.5
 HEAD_H   = 3.0
 SCREW_L  = 12.0
-INS_D    = 4.6            # ⚠ a typical short M3 insert; no SKU picked, MEASURE before printing
-INS_L    = 4.0
+INS_D    = 4.7            # McMaster 94459A130, brass heat-set M3: OD over the knurl 4.7,
+INS_L    = 4.3            # installed length 4.3 (pilot end 3.9). OFF THE DRAWING -- MEASURE
+                          # one before printing. It is not heat-set here: it drops into a
+                          # side pocket and the screw pulls it against a shoulder.
+INS_SLIP = 0.1            # the pocket over the insert's OD, so a printed slot takes a
+                          # knurled part by hand. It is all the section has to give: the
+                          # skin over and under the pocket is then one bead (asserted).
 M3 = FastenerSpec(
     name="M3", screw_d=3.0, pitch=0.5, selftap_d=3.2, shaft_clr_d=3.4,
     insert_pilot_d=INS_D, insert_depth=INS_L, insert_l=INS_L, insert_bore_d=3.4,
@@ -115,7 +120,7 @@ LEN_A    = SEAT_T + HEAD_ZONE + END_WALL + GRIP          # 22.0
 
 SHOULDER = 4 * B                             # 1.6 the wall the insert is pulled against
 INS_FIT  = 0.2                               # insert pocket over the insert, along the screw
-RUNOUT   = SCREW_L - SEAT_T - SHOULDER - INS_L - INS_FIT # 3.8 screw tip past the insert, halves closed
+RUNOUT   = SCREW_L - SEAT_T - SHOULDER - INS_L - INS_FIT # 3.5 screw tip past the insert, halves closed
 INNER_B  = SHOULDER + INS_L + INS_FIT + RUNOUT + B       # 10.0 inner face to the belt's end wall
 LEN_B    = INNER_B + END_WALL + GRIP                     # 23.2
 
@@ -132,6 +137,10 @@ RAIL_B_L = LEN_A                             # B's rail: likewise over A
 BODY_Y   = IN_HW + HW + RAIL_STEP            # 8.55 across the assembled clamp
 
 assert RUNOUT >= 0, "the screw is too long for half B at the closed position"
+INS_POCKET = INS_D + INS_SLIP                # 4.8 the pocket's bore and the side slot's height
+assert (BODY_T - INS_POCKET) / 2 >= B * 2 - 1e-9, (
+    "the insert's pocket leaves %.2f over and under it, under two beads of %.1f"
+    % ((BODY_T - INS_POCKET) / 2, B))
 # the key's channel must be clear of the belt's back where the grip begins
 _KEY_RUN = SEAT_T + HEAD_ZONE + END_WALL - (SEAT_T + SOCKET_IN)
 _KEY_Z   = (-_KEY_RUN * math.tan(math.radians(KEY_DEG))
@@ -226,8 +235,8 @@ def half_b() -> cq.Workplane:
     body = box_at(LEN_B, y1 - y0, BODY_T, x=LEN_B / 2, y=(y0 + y1) / 2)
     body = body.cut(cyl_x(SCR_CLR, INNER_B - B + 0.1, -0.1, y=SCREW_Y))       # clearance + runout
     ix0, il = SHOULDER, INS_L + INS_FIT                            # insert pocket, side entry
-    body = body.cut(cyl_x(INS_D, il, ix0, y=SCREW_Y))
-    body = body.cut(box_at(il, 6.0, INS_D, x=ix0 + il / 2, y=SCREW_Y + 3.0))
+    body = body.cut(cyl_x(INS_POCKET, il, ix0, y=SCREW_Y))
+    body = body.cut(box_at(il, 6.0, INS_POCKET, x=ix0 + il / 2, y=SCREW_Y + 3.0))
     gx0, gx1 = INNER_B + END_WALL, LEN_B
     cut, (ya, yb) = _belt_slot(gx0, gx1 + 1.0, +1)
     body = body.cut(cut).union(_ribs(gx0, ya, MOUTH_B))
