@@ -752,11 +752,11 @@ def _manual(panel, n_drv, n_zone, facts):
                "library footprint for the LCSC code: XL-5050RGBW C7371891" + (
                ", LMR33630BRNXR C2071384 (and the alternate C part's, C2071783: the "
                "same frame), S4B-XH-SM4-TB C161861" if key else "") + " -- matching under "
-               "a pure rotation. NOT compared: TLC5971RGER C543004, new on this board "
-               "2026-10-06. Its land is KiCad's Texas_RGE0024H, TI's own drawing for "
-               "the package; a square QFN can only be wrong by a quarter turn, and "
-               "that is M12's to see in the placement preview (pin-1 dot on the "
-               "board's pin-1 mark)",
+               "a pure rotation. TLC5971RGER C543004 (land: KiCad's Texas_RGE0024H, "
+               "TI's own drawing for the package) was not laid pad on pad; it was "
+               "SEEN in the fab's placement preview on this board, 2026-10-06: body "
+               "centred on its lands, the fab's pin-1 dot on the board's pin-1 mark, "
+               "at the angle KiCad wrote",
         "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
                "table, read 2026-10-04 (A12 measured against it). 211 x 70.4 mm plus "
                "the ear is inside the size limits. Every 0402's plane-side pad reaches "

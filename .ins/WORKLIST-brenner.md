@@ -305,6 +305,30 @@ Projects > Quotes. What it found, and what the order needs because of it:
   measured; CPL carries KiCad's 90), and the quotes (not re-read). The HTSSOP routes are
   kept in elec/out/_htssop/, the 0.25 mm via ones in elec/out/_via025/.
   Docs: section 5 of docs/connector-and-polarity-audit.md is the five boards re-derived.
+- RE-WALKED 2026-10-06, EVENING: the four re-routed LED packages uploaded again and taken
+  to "Quote & Order" (nothing in the cart; each is saved under Projects > Quotes as a new
+  project, the older ones of the same name are the stale ones). Every BOM row matched
+  and in stock; the pogo row ticked by hand as before. TLC5971RGER seen in the preview
+  on all four: body centred, pin-1 dot on the board's mark, at KiCad's angle -- frame
+  entered by hand in fab_frames.json (rot 0), ROTATION-CHECK now lists nothing unchecked,
+  and the rebuilt -bom.csv / -cpl.csv are byte for byte the ones uploaded.
+  Quotes for 5, before shipping:    was      now
+      foot_led_a                   197.84   143.06   (PCB 30.45, PCBA 112.61)
+      foot_led_b                   196.47   137.43   (PCB 30.35, PCBA 107.08)
+      fret_led_key                 160.78   147.92   (PCB 37.05, PCBA 110.87)
+      fret_led_mid                 158.43   136.98   (PCB 37.05, PCBA  99.93)
+                                   713.52   565.39
+  The form opened foot_led_b on the paid "2-3 days" build (+66.20): set "3 days, PCBA
+  Only". Deburring opened on Yes on foot_led_a: set No.
+- LOOP AREAS, old routes against new (scratchpad loop.py; every switched LED net, track
+  length x height over the rail plane, F.Cu 0.21 / B.Cu 1.275 mm): foot_led_a 808 -> 802
+  mm2 summed, foot_led_b 808 -> 806, fret_led_mid 5978 -> 5857, fret_led_key 3051 ->
+  3255 (eight more nets: the zone fix). Mean per net unchanged (5.4 foot, 24.5 fret).
+  The driver swap did not change them. ⚠ NOT NEW, BUT NOT WHAT THE NOTES SAY: on the fret
+  boards about 80 % of the switched copper is on B.Cu, whose neighbour is the GND plane,
+  not the rail; the "~15 mm2 a string" in elec/fret_led.py BOARD_NOTES assumes F.Cu over
+  the rail. At the PWM's audio-band harmonics the worst case is nearer 25 to 35 mm2 a net.
+  Not re-worked; raised with the user.
 - ⚠ SUPERSEDED 2026-10-06: the foot boards are re-routed at 0.55 / 0.30 (elec/foot_led.py
   via_mm), clean, repackaged; order them with the standard 0.3 mm via. The projects saved
   on JLCPCB still hold the OLD gerbers: upload the new zips. The 0.25 routes are kept in

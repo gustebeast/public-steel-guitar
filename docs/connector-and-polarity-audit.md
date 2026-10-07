@@ -209,9 +209,10 @@ the fab's assembly review (Confirm Parts Placement) is the check that sees the p
 
 ### 5.7 The LED driver and the regulator
 
-* TLC5971RGER (C543004, VQFN-24): pin 1 by TI's Pin Functions table (SBVS146D). **The
-  fab's footprint for this code has not been compared and no frame is measured**: the
-  part is new on these boards. A square 24-pad QFN sits four ways and three are wrong.
-  OPEN until its pin-1 dot is seen on the board's pin-1 mark in the previewer.
+* TLC5971RGER (C543004, VQFN-24): pin 1 by TI's Pin Functions table (SBVS146D). Seen in
+  the fab's placement preview on `foot_led_a`, `foot_led_b`, `fret_led_key` and
+  `fret_led_mid` (2026-10-06, the re-routed packages): body centred on its lands, the
+  fab's pin-1 dot on the board's pin-1 mark, at the angle KiCad wrote (90). Holds.
+  `fab_frames.json` carries it by hand (rotation 0, no offset).
 * LMR33630BRNXR (C2071384): pin 1 seen at the board's mark on `foot_led_a`,
   `foot_led_b` and `fret_led_key` (2026-10-06).
