@@ -140,7 +140,7 @@ guitar bridge plate — so restringing needs no tools at the moving end.
 (twisted 90°, 1:1) → screw pulley → Tr8×2 vertical leadscrew (37.7 mm) → its
 own H-nut → string`. **There is no printed carriage**: the nut's two mounting
 ears do both jobs one did — the +X ear anchors the string, the -X ear rides a
-**Ø3.5 hardened guide rod** for anti-rotation. An axial thrust path (support
+**Ø2.5 hardened dowel pin** for anti-rotation. An axial thrust path (support
 bearing + a second bearing up in the endplate slab) carries the string pull,
 which is off-axis by 8 mm and therefore a standing ~956 N·mm couple.
 

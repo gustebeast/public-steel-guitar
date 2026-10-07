@@ -96,6 +96,7 @@ PARTS = {
     "keyhead_endplate": (lambda: heal(__import__("src.keyhead_endplate", fromlist=["e"]).keyhead_endplate), "petg-gf/keyhead_endplate.step", "PETG-GF — merged keyhead (-X) endplate + nut block (25 mm, one piece): closes the box, caps the deck grooves, gauged break-edge + 2-row clamps; drops in last, held by 1 screw"),
     "knee_housing":    (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing, "petg-gf/knee_housing.step", "PETG-GF — knee-lever (LKL) housing: ONE parametric prism derived from the lever/cartridge/body extents, minus the house-pockets, backstop threads + lever room, plus FOUR fused octagon mount tenons on the top face (one per chassis rib crossing; the +X-most survives only as a stub over each cheek) and the MT6701 board CRADLE on the +Y face (grooves + plinth + floor; the board drops in from +Z with the lever OFF the instrument and the chassis underside becomes its lid — no retaining screw. Ø14 driver bore reserved for the magnet cap, plus a relief channel through the cheek and the -X web for the board's side-entry CAN connector and its plug). Retention is all on -X: the +X web stops at the plinth top so NOTHING stands +X of the prism face. Depth lock deferred"),
     "knee_housing_r":  (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_housing_r, "petg-gf/knee_housing_r.step", "PETG-GF — RIGHT-HAND knee-lever housing (LKR, RKR: struck by the knee moving +X): knee_housing's mirror image in X, except the board cradle, plug tunnel and knee relief, which are cut for the ONE sensor board turned over about the axle (connector toward +X, long end up, 1.7 higher, no shim). Print 2. The mirrored lever, cartridges and axle it carries are not exported yet"),
+    "rod_plug":        (lambda: __import__("src.bridge_endplate", fromlist=["e"]).rod_plug(), "pctg/rod_plug.step", "PCTG — guide-rod plug (x10): a Ø2.4 x 5.4 round spacer dropped down each guide-rod bore on top of the 30 mm pin, filling the bore to 0.15 under the optical board so the board holds the pin down. Print standing on end, ten at once"),
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness); the +Y axle journal + magnet stub print INTEGRAL (stand off the lying -Y bed face)"),
     "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø8 journals, D-FLAT key through the hub, flange land seating on the +Y inner race (= the air-gap datum), threaded magnet pocket, M4 thread-forming bore in the −Y tip for the retention screw + washer. Prints STANDING, POCKET-DOWN, with a brim"),
     "kl_magnet_cap": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_magnet_cap, "pctg/kl_magnet_cap.step", "PCTG — magnet CAP ×1: female-threaded HEX nut (9.35 across flats, for a 3/8-inch driver) screwing over the axle's pocket collar to clamp the Ø6 diametric disc; centre stays open so nothing intrudes on the air gap. Fit it BEFORE the sensor board. Prints APERTURE-DOWN"),
@@ -585,11 +586,14 @@ def _string_components(i):
         (D.string_anchor_x(i), sy, cz - D.NUT_FLANGE_T - D.STRING_NUT_D / 2))))
     # guide rod: dropped in from +Z through the slab, through the -X ear, into a blind
     # socket in the screw rail — SUPPORTED AT BOTH ENDS, so it is a beam and not a
-    # cantilever. Gravity seats it; the string overhead keeps it there.
-    rod_top = BE.GUIDE_ROD_TOP          # just under the optical board
+    # cantilever.
+    # A stock pin, seated on the socket floor, and the printed plug that fills the bore
+    # from its top to the optical board, which is the lid over both.
     rod_bot = BE.GUIDE_SOCKET_Z
-    out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
+    out.append((f"guide_rod_{i}", C.guide_rod(D.GUIDE_ROD_L).translate(
         (D.guide_rod_x(i), sy, rod_bot))))
+    out.append((f"rod_plug_{i}", BE.rod_plug().translate(
+        (D.guide_rod_x(i), sy, BE.GUIDE_ROD_TOP))))
     # screw drive pulley (odd ones raised one belt-plane), then the thrust stack:
     spz = D.screw_pulley_z(i)
     # TWO SKUs: the low-plane stations carry the column that lifts their boss to the
@@ -1326,7 +1330,7 @@ def _lever_stations_components():
     return out
 
 
-SCREW_ROW_PARTS = ("leadscrew", "nut_", "string_", "guide_rod",
+SCREW_ROW_PARTS = ("leadscrew", "nut_", "string_", "guide_rod", "rod_plug",
                    "screw_pulley", "screw_bearing")
 
 
@@ -1826,6 +1830,7 @@ _COLORS = {
     "nut":             (0.82, 0.60, 0.20),   # brass
     "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
     "guide_rod":       (0.35, 0.35, 0.38),
+    "rod_plug":        (0.85, 0.45, 0.15),
     "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
