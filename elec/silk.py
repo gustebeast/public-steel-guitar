@@ -30,11 +30,16 @@ REV = "r1"                 # bumped by hand when a board is RE-ORDERED with chan
 # alike, in "Rennie Mackintosh PSG" Bold -- ITC's Rennie Mackintosh Bold with its
 # ornamental underscore redrawn as a bar (tools/make_silk_font.py; the .otf is licensed,
 # lives in elec/fonts/, is NOT in the repository, and has to be INSTALLED for the user
-# before a board is finished: kicad_silk stops if KiCad cannot find it).
+# to get the boards as ordered).
+# WITHOUT IT ("fallback", user 2026-10-07: "something is better than nothing"): the boards
+# still finish, lettered in KiCad's stroke font at its own sizes, and the run says so.
+# That silk is legible and correct but is not the ordered one: labels land elsewhere, and
+# a `connector_labels` declaration worded for this face may then read as stale.
 # 1.5 IS MEASURED, NOT CHOSEN: at KiCad text size 1.5 the capitals plot 1.40 mm high and
 # the thinnest stroke in the face, the bar of '-' and '_', plots 0.153 mm against the
 # fab's 0.15 minimum (at 1.4: 0.143). There is no smaller size to fall back to.
-SILK_FACE = {"family": "Rennie Mackintosh PSG", "bold": True, "size": 1.5}
+SILK_FACE = {"family": "Rennie Mackintosh PSG", "bold": True, "size": 1.5,
+             "fallback": True}
 # ...and a pinout block may lie this far from its connector (user, same day: "Pin labels
 # can also move further away so long as they have the connector number on them and still
 # appear in the right order"). The block is headed by the connector's designator and

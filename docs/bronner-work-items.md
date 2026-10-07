@@ -128,7 +128,8 @@
      pre-font ones: only F/B_Silkscreen and QUALITY.txt differ (optical: silk only);
      every copper, mask, paste, drill, BOM and placement file identical. The font file
      is NOT in the repo (elec/fonts/ ignored, no licence to redistribute): a machine
-     without it installed stops in _set_face rather than printing a substitute.
+     without it installed letters the boards in the stroke font and says so (fallback,
+     cadkit; user 2026-10-07). NOT yet propagated: build lock was held; lead to propagate.
      cadkit: a way-1 mark must be nearer its own connector than any other. propagate
      reported 10/11 consumers in sync (one other project skipped). OPEN: lever_sensor,
      leg_pogo, ui_board, LED boards still in the stroke font.
