@@ -88,7 +88,8 @@
      line; `opt_usb_notch` takes the 2 mm ledge away under it (45 degree ramp at its -X
      end for the print). The conduit still takes a 17.5 straight plug. The two stale,
      duplicated straight-plug comment blocks above PLUG_L are one current block. OPEN: a
-     real lead to buy: candidate Amazon B0FKYQN31L ($9.99, ribbon, angled both ends; the user
+     real lead to buy: DECIDED by the user, Amazon B0FKYR7V34 ($9.99, ribbon, same up/down angle
+     at both ends, USB 2.0; in the BOM row and bench order. B0FKYQN31L was the first candidate; the user
      accepted Amazon, not $16). When one is MEASURED: J4 end as an up-angle plug (19 mm end),
      one 45-degree fold under J1, ribbon out of the conduit on edge with the 24 V pair
      stacked beside it (BOM row has the numbers). `usb_run_length()` is dead code.
