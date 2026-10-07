@@ -270,7 +270,9 @@ PKG = {
     # this board can shed. U13 makes 5 V and the two LDOs still make both 3V3 rails from
     # it, so the switching node is a single point at the board's extreme -Y tail rather
     # than a rail running the length of the sense array. See the U13 block.
-    "SOT-223":  (6.50, 3.50, 1.80),   # tab package, JEDEC TO-261AA
+    "SOT-223":  (7.00, 6.50, 1.80),   # tab package, JEDEC TO-261AA. KiCad-native: the
+                                      # three leads on -X and the tab on +X, 7.00 over
+                                      # them; the 6.50 body length runs along Y
     # TLV9062 dual, TI DGK. KiCad-native orientation: pin rows down the X sides, so the
     # 4.90 lead span is the X extent and the 3.00 body length is Y. IT IS PLACED ROTATED
     # (OP_ROT) so the rows face +-Y instead -- see COL_OPA.

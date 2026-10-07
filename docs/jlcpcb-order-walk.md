@@ -32,7 +32,45 @@ confirmed, switched to Standard for the relay, preview looked at with the relay 
 Every part on its lands, J5 and J6 in their outlines, nothing over the wide feed. The
 quote was not read again. The form's "PCBA Qty" offers 5 or 2 for five boards.
 
-## Totals for five of each (as designed today)
+## Five bare, two assembled: the bench boards re-quoted, 2026-10-06 (evening)
+
+The first order is for two assembled of each bench board, not five. What the form allows:
+
+* **Bare boards: 5 is the least.** The quantity list starts at 5; the custom field takes
+  multiples of 1,000 only.
+* **Assembled: 2 is the least.** Economic offers 5 or 2 for five boards. Standard has a
+  free field, "Qty from 2 to 5".
+* **The other three boards of each five.** The form does not say what state they come in;
+  it prices paste and placement for two and nothing for the rest. Taken as bare boards.
+  Not read on the page.
+
+| Board | Tier | PCB | Assembly | Total 5 / 2 | Total 5 / 5 | does not shrink with quantity |
+|---|---|--:|--:|--:|--:|---|
+| can_tee | Economic | 4.00 | 19.69 | 23.69 | 27.00 | 21.36: board 4.00, setup 8.24, stencil 1.55, extended 3.09, hand-solder 3.61, nitrogen 0.86 |
+| pi_cap | Economic (was Standard) | 8.00 | 40.44 | 48.44 | 79.73 | 37.71: board 8.00, setup 8.24, stencil 1.55, extended 15.45, hand-solder 3.61, nitrogen 0.86 |
+| motor_ctrl | Economic | 8.00 | 97.82 | 105.82 | 134.28 | 77.88: board 8.00, setup 8.24, stencil 1.55, extended 55.62, hand-solder 3.61, nitrogen 0.86 |
+| output_panel | Standard (relay) | 8.00 | 187.85 | 195.85 | 272.50 | 126.73: board 8.00, setup 25.75, stencil 8.27, loading 80.60, hand-solder 3.61, packaging 0.50 |
+| optical | Standard (black mask) | 41.30 | 215.15 | 256.45 | 397.12 | 142.47: engineering 25.00, colour 8.00, board 8.30, setup 25.75, stencil 8.27, loading 66.65, packaging 0.50 |
+| **all five** | | 69.30 | 560.95 | **630.25** | 910.63 | 406.15 |
+
+Shipping is not in these. Nothing was put in the cart; the page keeps a draft of each.
+
+The lines as read (5 bare / 2 assembled):
+
+* can_tee: PCB 4.00 | Economic PCBA 19.69 = setup 8.24, stencil 1.55, components(4) 1.87, extended 3.09, SMT 0.01, hand-solder 3.61, manual 0.46, nitrogen 0.86. Quoted on the outline before the +X edge moved in 0.3; the price does not depend on it. The rebuilt package has not been previewed.
+* pi_cap: PCB 8.00 | Economic PCBA 40.44 = setup 8.24, stencil 1.55, components(12) 8.35, extended 15.45 (5 types), SMT 0.33, hand-solder 3.61, manual 2.05, nitrogen 0.86. The board as redrawn that day, every part on the front: the form leaves it on Economic and Top Side.
+* motor_ctrl: PCB 8.00 | Economic PCBA 97.82 = setup 8.24, stencil 1.55, components(35) 25.74, extended 55.62 (18 types), SMT 1.28, hand-solder 3.61, manual 0.92, nitrogen 0.86.
+* output_panel: PCB 8.00 | Standard PCBA 187.85 = setup 25.75, stencil 8.27, components(58) 64.72, feeders loading 80.60, SMT 3.31, hand-solder 3.61, manual 1.09, packaging 0.50.
+* optical: PCB 41.30 = engineering 25.00, colour 8.00, board 8.30 | Standard PCBA 215.15 = setup 25.75, stencil 8.27, components(43) 109.31, feeders loading 66.65, SMT 4.67, packaging 0.50. The seven mixed-prefix rows ticked by hand, 50 of 50 confirmed.
+
+Two fifths of the boards is not two fifths of the parts bill: the fab buys each part in
+its own minimum quantity plus spares for the machine, so the component line falls by a
+half to two thirds rather than by three fifths.
+
+`can_tee` is the one board whose count differs: the bench needs 1, an instrument 10. Two
+assembled covers the bench. The instrument order is its own order of 10.
+
+## Totals for five of each (as walked first, 5 / 5)
 
 | Board | Tier | PCB | Assembly | Total | of which fees not parts |
 |---|---|---|---|---|---|
@@ -58,6 +96,7 @@ parts: J1 C157914 ext 0.8915 (5), J2 C157925 ext 0.6492 (6), R1 C22787 basic 0.0
 notes: form opened with Deburring=Yes (+0.10) carried over; surface finish default HASL (with lead)
 
 ## pi_cap  (qty 5 / 5; needs 1) -- ALL PARTS ON THE BACK
+SUPERSEDED 2026-10-06 (evening): the board is redrawn with every part on the front, so it is Economic and top-side now. The lines below are the board as it was; the table above has it as it is.
 detected 4 layer 34 x 56; Bottom-side assembly FORCES "Standard" PCBA (Economic is top-side only): setup 25.75 vs 8.24, stencil 8.27 vs 1.55, feeders loading fee 13.95, board padded to 70x70 with rails
 BOM first pass: 13 rows, C307331 on two rows ("100nF" and "100nF/50V") -> one row qty 0 + "Project has unselected parts". FIXED in the builder (one row per part number): 12/12 confirmed
 Preview first pass: every connector a half turn out (J3/J4 leads on the tab pads, J5 pins into the board). FIXED: back side = KiCad - frame + 180. Second pass: J1..J6, U1 all on their pads, mouths/pins off the board edge

@@ -29,6 +29,27 @@ table.
   error counter reading "no acknowledge" is correct.
 * No lighting. `pi_cap` J3 / J6 and `motor_ctrl` J7 -> `pi_cap` J4 can be left out.
 
+## What the boards cost (quoted 2026-10-06, nothing ordered)
+
+Two assembled of each, which is the least the fab assembles; five bare boards of each,
+which is the least it makes. The other three of each five are taken to come bare (the
+form prices paste and placement for two; it does not say).
+
+| Board | Tier | 5 bare / 2 assembled |
+|---|---|--:|
+| `can_tee` | Economic | 23.69 |
+| `pi_cap` | Economic | 48.44 |
+| `motor_ctrl` | Economic | 105.82 |
+| `output_panel` | Standard | 195.85 |
+| `optical` | Standard | 256.45 |
+| **boards, before shipping** | | **630.25** |
+
+At five assembled the same five were 910.63. Of the 630.25, 406.15 is charged per design
+whatever the quantity (setup, stencil, the per-part-type fees, the optical board's
+engineering and colour charges): one assembled of each, were it offered, would save little.
+`docs/jlcpcb-order-walk.md` has every line. The bench uses one `can_tee`; an instrument
+takes ten, which is a later order.
+
 ## Leads
 
 Way order is `elec/harness.py`; every JST lead is crimped 1:1, way n to way n. XH carries
