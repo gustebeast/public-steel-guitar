@@ -484,6 +484,20 @@ any knee depth over 197.5 mm in Y.
   them for the life of the instrument.
 - **Do this before** the lever goes up into the chassis — easier with it in your hand.
 
+### KL-3 — Right-hand levers (LKR, RKR): the board goes in turned over
+
+- **What:** the same sensor board as every other lever, lowered into the right-hand
+  housing's grooves **turned over about the axle**: connector toward +X, the board's
+  long end UP. There is no mirrored board. The right-hand housing (`knee_housing_r`) is
+  its own printed part and its grooves, floor and plug tunnel are cut for the board this
+  way round; it does not fit the other way.
+- **No shim** in a right-hand housing: turned over, the board's top edge already stands
+  0.4 mm under the chassis. Left-hand and vertical levers keep theirs.
+- **Way 1 changes ends with the board.** On LKL, VKL and RKL way 1 (GND in) is the TOP
+  contact of J1 and way 8 the bottom; on LKR and RKR way 1 is the BOTTOM contact. The
+  crimped harness is the same either way — a PH housing only plugs in one way round — so
+  this matters only when probing J1 with a meter.
+
 ---
 
 ## Pedal bar wiring (bus B)
@@ -522,6 +536,24 @@ the power off, any board reads 60 ohm when exactly two are ON.
 - **Order:** wire the trough **before** the lid slides in. The lid is a full-length sliding
   dovetail entering from the −X end; once it's on, nothing in the trough is reachable.
 - **Leave the last one out:** pedal 5 has no onward segment. Its J1 out-half is the bus end.
+
+### PB-2 — The trough is closed at every pedal except along its floor
+
+- **What:** each pedal's board shim stands from the board's edge to the lid, so with the
+  cradle under it it is a plate across the trough at every station. The only way past is
+  **under the shim, on the trough floor, against the lid side** — a gap 3 mm high and
+  5 mm wide. Lay the four conductors there two deep (the model draws them: GND and
+  CAN_H on the floor, +5 V and CAN_L on top of them).
+- **Order:** board in, plugs on, wires laid on the floor past the station, **then** the
+  shim down its grooves over them, then the lid. A shim that will not seat is sitting on
+  a wire.
+- **At the plug:** J1 points down into the bay and there is 2.5 mm under it. The wires
+  turn out of the plug along the floor inside the plug tunnel (6 mm wide) — arriving
+  four on the −X side of the pin row, departing four on the +X side.
+- **Way 1** (GND in) is the contact nearest the **player-side face** of the bar (−Y);
+  way 8 is nearest the lid.
+- **From the leg:** the four wires out of the bar's blind-mate board (ZH plug) come
+  along the chamber at mid-height and drop to the floor once they are over the trough.
 
 ---
 

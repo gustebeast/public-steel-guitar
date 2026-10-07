@@ -973,12 +973,18 @@ def port_xy(j):
     return x, y
 
 
-def pin_s(pitch, k, n=RA_N):
-    """Where way `k` (0-based) of an `n`-way connector sits along s, centred on the
-    housing. PIN 1 IS AT -s at every connector in this joint, which is the half of
-    the pin-order contract the CAD owns: elec.harness says WHICH circuit is pin 1,
-    this says WHERE pin 1 is. bronner needs both to route the boards."""
-    return (k - (n - 1) / 2.0) * pitch
+def pin_s(pitch, k, n=RA_N, j=None):
+    """Where way `k` (0-based) of an `n`-way connector sits along joint `j`'s s, centred
+    on the housing.
+
+    PIN 1 IS AT -s AT THE TOP JOINT AND AT +s AT THE BOTTOM ONE, on both boards of each.
+    The bottom boards are the top boards' mirror image (elec/leg_pogo.py: one generator,
+    x negated) and a mirrored board keeps its JST's footprint rotation, so the row
+    counts the other way along s. The spring contacts are netted BY POSITION and do not
+    turn round; the JSTs are netted by pad number and do. Without `j` this is the top
+    joint's, which is all a caller after a magnitude needs."""
+    end = -1.0 if j is None else j.dz
+    return end * ((n - 1) / 2.0 - k) * pitch
 
 
 def body_path():
@@ -1002,6 +1008,37 @@ def body_stub_ends():
     not re-derived here and cannot disagree."""
     legs = bundle_paths(body_path(), [o for _, o in HARNESS_WIRES],
                         across=(TOP.S[0], TOP.S[1], 0.0))
+    return [tuple(q[-1]) for q in legs]
+
+
+def bar_path():
+    """The bar stub's bundle centreline: off the bottom ZR's plug, clear of it, then
+    slanting onto the leg's axis line on the way down into the bar's wiring chamber, and
+    a first 10 along the chamber toward the trough.
+
+    ONE definition, like body_path: src.foot_pedal carries this cable on down the trough
+    to the pedal boards, from where this one ENDS (bar_stub_ends)."""
+    zd = F_TOP + ZR_H / 2.0                         # the plug's height off the host
+    # Out of the ZH, where FAN_RUN does not fit: the wire cavity stops at
+    # WIRE_T0 - CLR and the tenon's flat is only 1.6 beyond that, so the stub gets the
+    # lead-in plus whatever is left (STUB_FAN) rather than the full 2.4.
+    fr = ZR_MOUTH - ZR_PLUG - 0.1 - STUB_LEAD - STUB_FAN
+    g0 = BOTTOM.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)
+    g0b = BOTTOM.p(fr, 0.0, zd)                     # clear of the plug first...
+    # ...then SLANT onto the leg's axis line on the way down, rather than stepping
+    # across at the plug's own height and turning square into the drop. That corner
+    # was never forced: the move is 3.00 in s at a fixed t, the ZR's slot is +-4.80
+    # wide in s, so the whole diagonal lies inside the cavity that was already there.
+    # It read as a V hanging off the connector in the tab (user).
+    g2 = BOTTOM.p(fr, -S_C, -17.0)                  # ...and down into the chamber
+    return [g0, g0b, g2, (g2[0] + 10.0, g2[1], g2[2])]
+
+
+def bar_stub_ends():
+    """Where the bar stub's four conductors stop in the chamber, in HARNESS_WIRES
+    order -- by the same bundle_paths call harness() draws them with."""
+    legs = bundle_paths(bar_path(), [o for _, o in HARNESS_WIRES],
+                        across=(BOTTOM.S[0], BOTTOM.S[1], 0.0))
     return [tuple(q[-1]) for q in legs]
 
 
@@ -1058,25 +1095,11 @@ def harness():
     coils = [("pogo_wire_%s_4" % nm,
               helix_cable(ax, ay, z_b + pb, z_a + pb, CM.TURNS, r + pa, w))
              for nm, (pa, pb) in HARNESS_WIRES]
-    # ...and out of the ZH, where FAN_RUN does not fit: the wire cavity stops at
-    # WIRE_T0 - CLR and the tenon's flat is only 1.6 beyond that, so the stub gets the
-    # lead-in plus whatever is left (STUB_FAN) rather than the full 2.4.
-    fr = ZR_MOUTH - ZR_PLUG - 0.1 - STUB_LEAD - STUB_FAN
-    fc = fr                                          # ...and it drops there
-    zd = F_TOP + ZR_H / 2.0                         # the plug's height off the host
     # ONE straight run, down the channel's own diagonal and on out of the part -- and
-    # src.wiring picks the cable up from where this ends (body_path / body_stub_ends)
+    # src.wiring picks the cable up from where this ends (body_path / body_stub_ends);
+    # the bar's stub likewise (bar_path / bar_stub_ends, src.foot_pedal)
     _body = body_path()
-    g0 = BOTTOM.p(ZR_MOUTH - ZR_PLUG - 0.1, 0.0, zd)
-    g0b = BOTTOM.p(fr, 0.0, zd)                    # clear of the plug first...
-    # ...then SLANT onto the leg's axis line on the way down, rather than stepping
-    # across at the plug's own height and turning square into the drop. That corner
-    # was never forced: the move is 3.00 in s at a fixed t, the ZR's slot is +-4.80
-    # wide in s, so the whole diagonal lies inside the cavity that was already there.
-    # It read as a V hanging off the connector in the tab (user).
-    g2 = BOTTOM.p(fc, -S_C, -17.0)                 # ...and down into the chamber
-    bar_path = [g0, g0b, g2, (g2[0] + 10.0, g2[1], g2[2])]        # along the chamber,
-                                                                  # toward the trough
+    bar_path_ = bar_path()
     out = list(coils)
     # NUMBERED, not named, per run (0 leg above the coil, 1 leg below, 2 body stub,
     # 3 bar stub): check_overlaps strips a trailing index group, so all four runs of a
@@ -1093,7 +1116,7 @@ def harness():
             (0, ZR_PITCH, TOP, (-TOP.T[0], -TOP.T[1], 0.0), STUB_LEAD),
             (0, ZR_PITCH, BOTTOM, (-BOTTOM.T[0], -BOTTOM.T[1], 0.0), STUB_LEAD))
     for k, (path, (at, pitch, j, ed, lead_l)) in enumerate(zip((up_path, lo_path,
-                                                               _body, bar_path),
+                                                               _body, bar_path_),
                                                               ends)):
         # THE BUNDLE IS AIMED AT THE PIN ROW, and the frame is seeded at the path's
         # START, so a run that ENDS at its connector is walked backwards and flipped
@@ -1106,13 +1129,21 @@ def harness():
                             across=(j.S[0], j.S[1], 0.0))
         if rev:
             legs = [list(reversed(q)) for q in legs]
+        hub = path[at]                  # the housing's centre, on the BUNDLE'S AXIS
         for i, ((name, _), cpath) in enumerate(zip(HARNESS_WIRES, legs)):
             cpath = list(cpath)
-            p = cpath[at]
-            ds = pin_s(pitch, i)        # this way's place along the row
-            face = (p[0] + ds * j.S[0], p[1] + ds * j.S[1], p[2])
+            # this way's place along the row, off the AXIS: off the conductor's own
+            # place in the 2 x 2 bundle it landed half a wire from its contact, and
+            # half a wire off the contact line
+            ds = pin_s(pitch, i, j=j)
+            face = (hub[0] + ds * j.S[0], hub[1] + ds * j.S[1], hub[2])
             lead = tuple(face[m] + ed[m] * lead_l for m in range(3))
-            # square out of the pin FIRST, then fan back to the bundle
-            cpath[at:at + 1] = ([face, lead] if at == 0 else [lead, face])
+            # square out of the pin FIRST, then fan back to the bundle. The pin REPLACES
+            # the path's end point: a slice [-1:0] is empty and inserts before it, which
+            # sent each wire to its pin and back to the axis.
+            if at == 0:
+                cpath[:1] = [face, lead]
+            else:
+                cpath[-1:] = [lead, face]
             out.append(("pogo_wire_%s_%d" % (name, k), oct_cable(cpath, w)))
     return out

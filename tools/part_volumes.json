@@ -99,7 +99,7 @@
   },
   "knee_housing": {
    "material": "petg-gf",
-   "volume_mm3": 71758.6
+   "volume_mm3": 71885.5
   },
   "knee_lever": {
    "material": "pctg",
@@ -107,7 +107,7 @@
   },
   "kv_housing": {
    "material": "petg-gf",
-   "volume_mm3": 97774.3
+   "volume_mm3": 97774.8
   },
   "kv_lever": {
    "material": "pctg",
@@ -135,11 +135,11 @@
   },
   "pedal_bar_a": {
    "material": "petg-gf",
-   "volume_mm3": 400463.8
+   "volume_mm3": 399541.1
   },
   "pedal_bar_b": {
    "material": "petg-gf",
-   "volume_mm3": 431279.9
+   "volume_mm3": 429919.7
   },
   "pedal_bar_c": {
    "material": "petg-gf",
