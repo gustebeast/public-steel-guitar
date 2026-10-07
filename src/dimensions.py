@@ -349,35 +349,22 @@ SCREW_TOP_Z     = CHANGER_CEIL_Z - SCREW_END_GAP        # -4.80
 # ─────────────────────────────────────────────────────────────────────────
 # Guide rod (anti-rotation) — axis Z, through the nut's -X EAR
 # ─────────────────────────────────────────────────────────────────────────
-# It hangs from the endplate's guide RIB above and cantilevers DOWN through the ear
-# (user). The other end has nowhere to go: the drive relief and nut sweep between
-# them removed every scrap of endplate below the room at this X line, so the top is
-# the only end left to anchor to — which is also the end that prints cleanly, since
-# a rib is a straight -X extension of solid cap and every layer of it is backed.
+# Pressed into the endplate slab's bore above the changer room and seated in a shallow
+# blind socket in the screw rail below it, so it is held at both ends and the ear rides
+# the span between (bridge_endplate.GUIDE_ROD_TOP has the stations).
 #
-# Ø3, NOT the Ø2.5 dowel, and the reason is slop rather than strength. The ear's hole
-# is the nut's own Ø3: a Ø2.5 rod leaves 0.5 mm of play, which lets the nut rotate
-# 38 mrad and walks the string 0.25 mm. A Ø3 g6 shaft leaves 0.01 and 0.8 mrad — 50×
-# better — and it is 2.1× stiffer into the bargain. It is also the SAME PART as the
-# bridge axle, so it costs no new BOM line, just ten more pieces.
-# Bending was never the problem and an earlier note here overstated it: the rod only
-# spans the ear's travel plus the ear, ~15 mm, not the room's height, and deflects
-# 0.016 mm under the 11 N anti-rotation load. What matters is the SOCKET — over the
-# rib's grip any clearance is amplified across that 15 mm, so it is a PRESS fit.
-# MATCHED TO THE NUT'S EAR HOLE (user, 2026-09-10). Ø3 was chosen to take the slop out of
-# the old nut's Ø3 ear; the Tr8x2 H-flange nut's ears are Ø3.5, so a Ø3 rod had put back
-# exactly the 0.5 mm of play the Ø2.5 dowel was rejected for (~38 mrad of nut rotation).
-# DERIVED from NUT_HOLE_D so the two cannot drift apart again. No longer the same stock
-# as the bridge axle (Ø5): buy it as a Ø3.5 DRILL BLANK, which is sold in 0.1 mm steps —
-# the seller's drawing is only +/-0.5-1, so MEASURE the real ear hole and pick the blank
-# to it; that is the whole point of choosing a stock sold that finely.
-# A STOCK DOWEL PIN, NOT CUT STOCK (user, 2026-10-07). The listing gives the ear hole as
+# THE DIAMETER IS THE NUT'S EAR HOLE, and it is derived from NUT_HOLE_D so the two cannot
+# drift apart. The reason is slop, not strength: any play between rod and ear is nut
+# rotation (0.5 mm of it is ~38 mrad, and walks the string 0.25 mm). Bending is nothing:
+# 0.004 mm under the 11 N anti-rotation load carried at both ends, 0.011 mm as a pure
+# cantilever from the slab. What matters is the bore -- any clearance there is amplified
+# over the rod's reach, so it is a PRESS fit.
+# A STOCK DOWEL PIN, USED AS BOUGHT (user, 2026-10-07). The listing gives the ear hole as
 # Ø2.5, and a hardened Ø2.5 dowel pin is an off-the-shelf part in the lengths this needs,
-# so nothing is cut: the Ø3.5 drill blank had to be parted on an abrasive wheel. The rod is
-# 0.26× as stiff in bending and it does not matter: 0.004 mm under the 11 N anti-rotation
-# load carried at both ends, 0.011 mm as a pure cantilever from the slab.
-# FIRST CHECK WHEN A NUT ARRIVES: an m6 pin is 2.502-2.508, so it will not slide in a true
-# 2.50 hole. Ream the ear to 2.6 or accept what the hole really is.
+# so nothing is cut.
+# FIRST CHECK WHEN A NUT ARRIVES: the ear hole is unmeasured, and an m6 pin is 2.502-2.508,
+# so it will not slide in a true 2.50 hole. Ream the ear to 2.6 or accept what the hole
+# really is.
 GUIDE_ROD_D     = NUT_HOLE_D  # 2.5 — slide fit in the nut's ear, press in the endplate
 GUIDE_ROD_L     = 30.0      # the STOCK length (McMaster 91595A370). The endplate takes
                             # 25.2-35.4: see bridge_endplate.GUIDE_ROD_TOP
