@@ -1,5 +1,5 @@
 ** Drc report for output_panel.kicad_pcb **
-** Created on 2026-10-06T20:38:57 **
+** Created on 2026-10-06T22:23:39 **
 ** Report includes: Errors, Warnings **
 
 ** Found 14 DRC violations **
@@ -45,20 +45,20 @@
     @(105.2078 mm, 68.0100 mm): Segment of C19 on F.Silkscreen
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
-    @(127.4000 mm, 131.1000 mm): Segment of J6 on F.Silkscreen
-    @(128.9000 mm, 130.8000 mm): PTH pad SH [PWR_GND] of J6
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(127.4000 mm, 131.1000 mm): Segment of J6 on F.Silkscreen
-    @(128.9000 mm, 115.2000 mm): PTH pad SH [PWR_GND] of J6
+    @(76.1000 mm, 125.8000 mm): Reference field of L1
+    @(76.4800 mm, 125.7000 mm): Pad 2 [SW] of C4 on F.Cu
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
     @(76.1000 mm, 125.8000 mm): Reference field of L1
     @(75.5200 mm, 125.7000 mm): Pad 1 [BOOT] of C4 on F.Cu
 [silk_over_copper]: Silkscreen clipped by solder mask
     Local override; warning
-    @(76.1000 mm, 125.8000 mm): Reference field of L1
-    @(76.4800 mm, 125.7000 mm): Pad 2 [SW] of C4 on F.Cu
+    @(127.4000 mm, 131.1000 mm): Segment of J6 on F.Silkscreen
+    @(128.9000 mm, 130.8000 mm): PTH pad SH [PWR_GND] of J6
+[silk_over_copper]: Silkscreen clipped by solder mask
+    Local override; warning
+    @(127.4000 mm, 131.1000 mm): Segment of J6 on F.Silkscreen
+    @(128.9000 mm, 115.2000 mm): PTH pad SH [PWR_GND] of J6
 
 ** Found 0 unconnected pads **
 

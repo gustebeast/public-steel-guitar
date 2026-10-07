@@ -136,8 +136,8 @@ SEEDS = {
     "motor_ctrl": {
         # ⚠ THE RAIL'S TRANSIENT COVERS WHAT THE BRICK AND THE MOTORS CAN DO. A LIVE PLUG IS
         # SEPARATE: its current is set by the lead and the capacitors. Worked in
-        # motor_ctrl.py at R23 (lead 0.3-2 uH, 30-120 mohm, into C1 and through F1 + R23
-        # into U5's 9 uF): 34.6 V on the rail and 32.8 V at U5's VIN in the worst corner,
+        # motor_ctrl.py at F1 (lead 0.3-2 uH, 30-120 mohm, into C1 and through F1's
+        # 0.49 ohm into U5's 9 uF): 34.2 V on the rail and 31.0 V at U5's VIN in the worst corner,
         # both under the 35.6 V declared here, so the rail's figure stands for it too.
         "+24V": ("abs", RAIL24),
         "SW": ("like", "+24V", 0.0, "buck switch node: VIN while the high side is on"),

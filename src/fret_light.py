@@ -722,11 +722,8 @@ def silk(panel):
     """The board's lettering, both faces, where the board is -- its own part (white
     ink). The back's is mirror writing under the laminate, as the fab prints it."""
     from . import board_geom as BG
-    sides = [w for w in (BG.silk(BOARD_NAME[panel], s) for s in ("F", "B")) if w is not None]
-    if not sides:
-        return None
-    solids = [x for w in sides for v in w.vals() for x in v.Solids()]
-    return _placed(panel, cq.Workplane("XY").newObject([cq.Compound.makeCompound(solids)]))
+    w = BG.ink(BOARD_NAME[panel])
+    return None if w is None else _placed(panel, w)
 
 
 def leds(panel):
