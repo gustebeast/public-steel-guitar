@@ -493,6 +493,32 @@ def female(j):
             ("pogo_female_ph_%s" % j.name, zr)]
 
 
+_INK = {}
+
+
+def ink(j):
+    """Both boards' lettering at this joint, both faces -- parts of their own (white
+    ink). The boards are drawn from this module's dimension chain, so each one's pose
+    is read off the drawn board (cadkit.board_check.place). They stand on the tenon's
+    DIAGONAL and that reads axis-aligned plates, so the joint is turned square about
+    the leg's axis for it and the ink turned back."""
+    from cadkit.board_check import place
+    from . import board_geom as BG
+    out = []
+    for kind, parts in (("male", male(j)), ("female", female(j))):
+        key = (kind, j.name)
+        if key not in _INK:
+            board = "leg_pogo_%s_%s" % (kind, j.name)
+            s = parts[0][1]
+            for _n, part in parts[1:]:
+                s = s.union(part)
+            axis = ((j.x, j.y, 0.0), (j.x, j.y, 1.0))
+            w = place(s.rotate(axis[0], axis[1], -j.ang), BG.load(board), BG.ink(board))
+            _INK[key] = w.rotate(axis[0], axis[1], j.ang)
+        out.append(("pogo_%s_silk_%s" % (kind, j.name), _INK[key]))
+    return out
+
+
 def screws(j):
     """Both M4s and their inserts, drawn by cadkit from the same joints the parts cut."""
     return (female_screw(j).dummies("pogo_female_screw_%s" % j.name,
@@ -504,7 +530,7 @@ def screws(j):
 def dummies():
     out = []
     for j in (TOP, BOTTOM):
-        out += male(j) + female(j) + screws(j)
+        out += male(j) + female(j) + ink(j) + screws(j)
     return out + harness()
 
 
