@@ -132,6 +132,7 @@ J_PINS = tuple(_J1_NET[n] for n in LED_WAYS)          # this board's net on each
 J1_ORDER = ", ".join("%d %s" % (i + 1, {"V24": "24 V"}.get(n, n))
                      for i, n in enumerate(LED_WAYS))
 J1_NETS = ", ".join("%d %s" % (i + 1, n) for i, n in enumerate(J_PINS))
+_H.check_ways(LED_WAYS, ("V24",))        # no data way beside the supply
 assert LED_WAYS[:2] == tuple(_H.XH_PINOUT[:2]), (
     "the foot strip's socket is an XH and its supply ways are not the XH bus's own")
 from src import board_geom as _BG                     # noqa: E402
@@ -576,8 +577,8 @@ def build(board, passes=20):
         # anchors on the pad centroid, J_ANCHOR behind the mouth
         place["J1"] = (-(half - FL.J_INSET) + J_ANCHOR, J_Y, 270.0)
         fps["J1"] = J_FP
-        for (ref, name, dx), net in zip(J_SERIES, (sck, sdt)):
-            way = BC.xh_way(LED_WAYS, name)
+        for (ref, carries, dx), net in zip(J_SERIES, (sck, sdt)):
+            way = BC.xh_way(LED_WAYS, carries)
             dy = BC.xh_way_dy(way) + J_SERIES_DY
             cable = Net(J_PINS[way - 1])
             rs = _r(ref, R_SERIES, "%s in series at the cable: limits what a live Pi can "
@@ -865,7 +866,8 @@ def build(board, passes=20):
     if board == "a":
         i_24 = len(FL.HALVES) * i_own
         paths_24 = [
-            {"net": "+24V_IN", "from": "J1.2", "to": "F1.1", "amps": round(i_24, 3)},
+            {"net": "+24V_IN", "from": "J1.%d" % BC.xh_way(LED_WAYS, "V24"), "to": "F1.1",
+             "amps": round(i_24, 3)},
             {"net": "+24V", "from": "F1.2", "to": ["U10.2", "J21.1"],
              "amps": round(i_24, 3)},
         ]

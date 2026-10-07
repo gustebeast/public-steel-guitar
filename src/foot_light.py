@@ -623,7 +623,7 @@ def leds(half):
 
 
 # ── the lead: board A's socket to the Pi cap ────────────────────────────────────────────
-# One 4-way XH-to-XH lead (GND, 24 V, SCK, SDT). It is DRAWN in src/led_leads.py, as four
+# One 4-way XH-to-XH lead (harness.LED_DROP: 24 V, GND, SCK, SDT). It is DRAWN in src/led_leads.py, as four
 # conductors each on its own contact; what is here is where it may go.
 LEAD_STUB  = 4.0                    # straight out of the mouth before the first bend: the
                                     # XHP-4 housing stands about 4.3 past it
