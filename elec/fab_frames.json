@@ -509,6 +509,16 @@
    "read": "2026-10-06",
    "why": "the fab's library has no footprint for this part number"
   },
+  "C543004|Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm": {
+   "by": "hand: not laid pad on pad; in the fab's previewer on foot_led_a, foot_led_b, fret_led_key and fret_led_mid the body sat centred on its lands with the pin-1 dot on our pin-1 mark, as KiCad wrote it. Seen in the preview 2026-10-06",
+   "dx": 0.0,
+   "dy": 0.0,
+   "err": 0.0,
+   "fit": true,
+   "pads": 25,
+   "read": "2026-10-06",
+   "rot": 0
+  },
   "C54799748|Xinyangze_YZ165615055F-04025": {
    "dx": 0.0,
    "dy": 0.0,
