@@ -41,11 +41,6 @@
    "v": 3.465,
    "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
   },
-  "PI_NC_22": {
-   "peak": 3.564,
-   "v": 3.465,
-   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
-  },
   "PI_NC_24": {
    "peak": 3.564,
    "v": 3.465,
@@ -82,6 +77,11 @@
    "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
   },
   "PI_NC_35": {
+   "peak": 3.564,
+   "v": 3.465,
+   "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"
+  },
+  "PI_NC_36": {
    "peak": 3.564,
    "v": 3.465,
    "why": "Raspberry Pi GPIO: 3.3 V CMOS [= +3V3_PI+0]"

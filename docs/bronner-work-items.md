@@ -66,6 +66,43 @@ HARNESS / DOCS:
 
 Then reply to the lead with taken / intended, and submit.
 
+**STATUS OF THAT LIST (2026-10-06, late).** Done unless it says otherwise.
+
+- ~~R1~~ `motor_ctrl` re-routed 0 / 0: C18 (now 220 nF) lies across VIN / PGND 0.6 mm from
+  each pin, C16 2.2 mm behind it, C17 2.9 mm; declared 0.6-1.0 mm copper, no via in the loop.
+- ~~R2~~ D8 / D6 are SMAJ24A (C148222). Judged pin by pin by A16 (below).
+- ~~R3~~ `pi_cap` UI_RES_N on pin 22 / GPIO25 (pin 36 was tried first and did not route); board re-routed; `docs/pi-cap-ui-ribbon.md`.
+- ~~R4~~ `Steel:L_APV_PNR3015` on both boards (`output_panel` swapped in place on the routed board).
+- ~~R5~~ `optical`: a 1.0 x 14 mm notch in the board edge in front of J1; no copper moved.
+- ~~R6~~ `optical` C130 1 uF, R1-R10 ERJ2RKF1800X (100 mW); `output_panel` C17 / C18 removed
+  with their stubs, C38 10 uF.
+- ~~R7~~ `motor_ctrl` BOOT1 tied to GND at the pin (a track, no part), BOOT0 on TP6 (silk
+  "B0"). `optical` PA4: not taken.
+- ~~Q4~~ taken: 4 x 22 uF + 220 nF. L2 stays 6.8 uH. ~~Q6~~ taken: U2 is a TCAN3413
+  (+-58 V) behind a NUP2105L.
+- Q1 / Q2 / Q3 / Q5 / Q7 / Q8 / Q9 / Q10 / Q11 / Q12: answered "intended, because" in the
+  reply to the lead.
+- ~~H1~~ `docs/bench-order.md` "The motor drop": split and crossed, by the schematic's
+  terminal numbers. Still open, and said so there: which block takes bare wire or a plug
+  (M1), read off a unit in hand.
+- ~~H2~~ `fab.PART_NOTES` C2875467 (slots) and C161211 (stripe on the silk bar).
+- ~~H3~~ `docs/board-bringup-diagnostics.md` and `docs/optical-bringup-diagnostics.md`,
+  "Pre-order review" sections.
+- ~~H4~~ JLC assembly stock read: the relay 54, the six passives in the thousands.
+
+**A16 (cadkit, new the same evening): every net's worst case against every pin's rating.**
+The review's `voltage_check.py` and its ratings file are in the repo now
+(`elec/voltage_check.py`, `elec/voltage_ratings.json`); `--declare` writes
+`elec/volts/<board>.json` and each generator loads it (`elec/volts_decl.py`). All ten
+boards. After any part or net change: generator, `py -3.12 elec/voltage_check.py
+--declare`, generator again.
+- ONE JUDGEMENT IN IT, flagged to the lead: the 24 V rail's transient is taken at the
+  clamp's voltage for the brick's whole 6.67 A (35.6 V), not at the clamp's catalogue
+  10.3 A pulse (38.9 V), which is 0.9 V over the LMR33630's 38 V absolute maximum.
+- Found by it on a board the review did not read: `lever_sensor` R4 (the bus B terminator)
+  was a 62.5 mW 0402 at 75 mW with the bus held dominant; now ERJ2RKF1200X, 100 mW.
+- cadkit A14 fixed on the way (b105ca9): a QFN's paste windows were read as lands.
+
 **PCB QUALITY LOOP -- FINISHED 2026-10-05 as far as files can take it (DO NOT RE-ISSUE).**
 Every board of mine is `0 unconnected, 0 violations, 0 FAIL`: `can_tee` 7 OPEN, pogo x4 4,
 `pi_cap` 6, `lever_sensor` 7, `motor_ctrl` 10, `output_panel` 8, `optical` 7. What is OPEN

@@ -134,6 +134,11 @@ SEEDS = {
         "CAN_H": ("abs", CAN_A), "CAN_L": ("abs", CAN_A),
     },
     "motor_ctrl": {
+        # ⚠ THE RAIL'S TRANSIENT COVERS WHAT THE BRICK AND THE MOTORS CAN DO. A LIVE PLUG IS
+        # SEPARATE: its current is set by the lead and the capacitors. Worked in
+        # motor_ctrl.py at R23 (lead 0.3-2 uH, 30-120 mohm, into C1 and through F1 + R23
+        # into U5's 9 uF): 34.6 V on the rail and 32.8 V at U5's VIN in the worst corner,
+        # both under the 35.6 V declared here, so the rail's figure stands for it too.
         "+24V": ("abs", RAIL24),
         "SW": ("like", "+24V", 0.0, "buck switch node: VIN while the high side is on"),
         "SW5": ("like", "+24V_BUCK", 0.0, "buck switch node: VIN while the high side is on"),
@@ -218,7 +223,9 @@ SEEDS = {
         "VBUS_UP_NC": ("abs", dict(v=5.25, vt=5.5, why="host VBUS on the cable; pads only")),
     },
     "optical": {
-        "V24_IN": ("from", "output_panel", "+24V_OPT", "24 V from output_panel J9, after its F1"),
+        "V24_IN": ("from", "output_panel", "+24V_OPT",
+                   "24 V from output_panel J9, after its F1. A live plug does not ring here: U13's 5 uF "
+                   "sits behind R44's 2 ohm, four times the 0.45 ohm of a 1 uH lead into it"),
         "SW": ("like", "+24V", 0.0, "buck switch node: VIN while the high side is on"),
         "V5_PRE": ("buck", "U13", "R40", "R41", "LMR33630: VFB max x (1 + top/bot), 1 % resistors; +5 % overshoot"),
         "+3V3D": ("ldo", "U8", "AP2114H-3.3: 3.3 V +1.5 %; +3 % transient"),
@@ -272,7 +279,8 @@ def _vod(L, R):
 
 RES_MODEL = {
     "can_tee": {"R1": ("v", _vod, "CAN termination: SN65HVD230 dominant VOD max 3 V, 100 % dominant")},
-    "motor_ctrl": {"R5": ("v", lambda L, R: PARTS["C22433320"]["vod_max"],
+    "motor_ctrl": {"R23": ("i", 0.8, "U5's input at 15 W out, the figure F1 is sized on"),
+                   "R5": ("v", lambda L, R: PARTS["C22433320"]["vod_max"],
                           "CAN termination: TCAN3413 dominant VOD max 3 V, 100 % dominant")},
     "lever_sensor": {
         "R4": ("v", _vod, "CAN termination, switched in on the last board only: SN65HVD230 dominant VOD "

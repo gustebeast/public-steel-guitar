@@ -1430,7 +1430,7 @@
   "V24_IN": {
    "peak": 35.587,
    "v": 26.4,
-   "why": "24 V from output_panel J9, after its F1 [output_panel.+24V_OPT: through F1]"
+   "why": "24 V from output_panel J9, after its F1. A live plug does not ring here: U13's 5 uF sits behind R44's 2 ohm, four times the 0.45 ohm of a 1 uH lead into it [output_panel.+24V_OPT: through F1]"
   },
   "V5_DAMP": {
    "peak": 5.432,
