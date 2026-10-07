@@ -141,6 +141,7 @@ all of them.
 |---|---|---|
 | WCH-LinkE | flashing and debugging `motor_ctrl` and `output_panel` (CH32V307) | the only probe that talks to CH32V parts. SWD pads TP1-TP5 on each board, labelled |
 | ST-Link (V2 or V3) | flashing and debugging `optical` (STM32H743) | SWD pads TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND, TP5 3V3. The board can also be loaded with no probe over I2C2 (TP6 / TP7) with TP8 held high |
+| Arm GNU Toolchain 14.2.rel1 (`arm-none-eabi-gcc`) | building the `optical` firmware (Cortex-M7) | Arm's own zip from developer.arm.com, checked against its published SHA-256; unpacked under `C:/Users/gus/tools`, not on PATH. The CH32V307 boards need WCH's RISC-V toolchain instead, not installed |
 | Spring-pin probe clip or hook leads | reaching the SWD pads | the pads are bare 1.5 mm lands, not a header |
 | USB-CAN adapter, `candump`-class | watching bus A from outside | H and L share the motor's CAN terminals, ground to the motor's GND |
 | Bench supply, 24 V, adjustable current limit | first power of each board at about 100 mA | `INSTALL_NOTES.md`, board bring-up step 1 |
