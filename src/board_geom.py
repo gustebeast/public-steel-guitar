@@ -44,6 +44,9 @@ GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 
 # Laid OVER cadkit's tables (project wins).
 _HEIGHT: dict = {
+    # the 3.3 V buck inductors on motor_ctrl and output_panel, on APV's own land (the
+    # project footprint Steel:L_APV_PNR3015): 3.0 x 3.0 x 1.5 max, its sheet
+    "L_APV_PNR3015": 1.50,
     # the UI ribbon's 2x8, the 2x7's sibling (HX PZ1.27-2x8P WZ): the same LISTED 3.9
     "PinHeader_2x08_P1.27mm_Horizontal": 4.0,
     # the power button's CASE, off Legion's drawing; src/ui_panel.py draws the stem

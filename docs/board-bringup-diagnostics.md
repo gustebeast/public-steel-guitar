@@ -125,6 +125,8 @@ pins were unconnected (and until today mis-numbered).
 
 **2.4 (BOOT0 pad) — NOT DONE, on purpose.** Reading WCH's datasheet first, as this item demanded, is what stopped it. §2.5.2 says only that the ROM loader works "through the USART1 and USB interface" — it does not say WHICH USB, and this part has two (PA11/PA12, which J4 uses, and PB6/PB7, which nothing here reaches). And on the QFN68 package BOOT1 is a real pin (PB2, pin 28) that floats on this board, so "boot from system memory" (BOOT0 = 1, BOOT1 = 0) is not even well defined without a second part. A pad that might select a loader on a port that might be the right one is not a second way in. SWD on TP1–TP5 is the way in, and the WCH-LinkE is on the tools list. If a USB-only reflash path is ever wanted: pull PB2 down with 10k, then test the ROM loader on J4 on a first-article board BEFORE relying on it.
 
+**2.4, 2026-10-06 (pre-order review): the strap and the pad are on the board now, and SWD is still the only way in to rely on.** BOOT1 (PB2, pin 28) is tied to GND at the pin, a 0.9 mm track into the belly land with no part, so "boot from system memory" is defined; and BOOT0 has a 1.0 mm pad, TP6, labelled, beside the SWD pads. Bridging TP6 to TP5 (3V3) through a reset starts WCH's ROM loader. What is still not known is the thing this item stopped on: which USB port that loader enumerates on (PA11 / PA12, which J4 carries, or PB6 / PB7, which nothing here reaches). Try it on the first board; until it has been seen to work, the WCH-LinkE on TP1 to TP5 is the path the board depends on.
+
 **2.5 (CAN TX/RX pads) — CLOSED WITH NO HARDWARE.** Both transceivers are SOIC-8 at 1.27 mm pitch with gull-wing leads: pin 1 (D) and pin 4 (R) take a logic-analyser grabber directly. The pads would have duplicated probe points the package already provides.
 
 **Not recommended:** pads on the buses themselves — they are already on five connectors.
@@ -305,3 +307,33 @@ test pads, TP1-TP4 in that order, so nothing has to probe a spring pin or a gold
   full-duplex extension, so the DAC is I2S2 (master transmit) and the ADC's data is I2S3
   (PB5) as a slave receiver, with I2S3's clock pins (PA15 word clock, PB3 bit clock) tied
   on the board to I2S2's. Firmware has to enable both and start I2S3 before I2S2.
+
+## Pre-order review, 2026-10-06: what the bench and the firmware must know
+
+Nothing here changes copper. It is the part of the review that lands on whoever powers the
+first boards and writes their first firmware.
+
+* **SWD is the only programming path to rely on, on every MCU board.** `motor_ctrl` has a
+  second one that is untested (2.4 above), `output_panel` and `lever_sensor` have none, and
+  `optical` has one through its own I2C bus that has never been run
+  (`docs/optical-bringup-diagnostics.md`, item 3). Have the probe and the pads working
+  before anything else is tried.
+* **`motor_ctrl`: two inputs read "fault" until firmware turns their pull-ups on.**
+  `PG_5V` (PC1, from the 5 V buck) and `BUSB_FAULT_N` (PC6, from bus B's switch) are
+  open-drain outputs with no resistor on the board. Both pins must be inputs WITH the
+  internal pull-up; as plain inputs they float low and say the Pi's 5 V is bad and bus B
+  is shorted on a healthy board.
+* **Nothing fuses the 24 V trunk.** The brick's own limit (6.67 A, hiccup) is the
+  protection for the trunk and for the ten motors on it. What IS fused or limited is every
+  branch that leaves it: the optical board (F1 on `output_panel`, 1 A), the 5 V buck (F1 on
+  `motor_ctrl`), the lights (F3), the Pi's 5 V (F2, 4 A) and bus B (U6, 0.52 A). So first
+  power is from a current-limited bench supply, not the brick: a short on the trunk has
+  6.67 A behind it.
+* **The rail clamp is a 24 V part.** D8 on `motor_ctrl` and D6 on `output_panel` are
+  SMAJ24A: they start to conduct between 26.7 and 29.5 V. A bench supply set above 26 V
+  will warm them, and one left at 30 V will destroy them (they fail short, and the supply
+  current-limits into them). Set 24.0 V.
+* **Wrong socket.** Which plugs fit which sockets, and what each swap does, is tabled in
+  `INSTALL_NOTES.md` ("fit each other's sockets"). None of the swaps does damage. The motor
+  drop is the exception that can: it is split across two terminal blocks on the motor and
+  crossed on both (`docs/bench-order.md`, "The motor drop").

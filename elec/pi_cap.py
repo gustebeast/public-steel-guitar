@@ -128,10 +128,17 @@ UI_FP = "Connector_PinHeader_1.27mm:PinHeader_2x08_P1.27mm_Horizontal"
 # ⚠ THE WAY ORDER IS harness.UI_RIBBON's (2026-10-02), which is the UI board's: that board
 # could not route this cap's original order. Each signal keeps its Pi header pin; only
 # the way it rides changes.
+# ⚠ UI_RES_N IS ON PIN 36 (GPIO16), NOT 33 (pre-order review, 2026-10-06). Pin 33 is
+# GPIO13, and the foot strip's bus on pins 8 / 10 is SPI5: the stock spi5-1cs overlay
+# "enables spi5 on GPIOs 13-15" and has no no_miso parameter, so loading it muxes GPIO13
+# to SPI5 MISO and the display's reset stops being a driven line. GPIO13 was picked as a
+# plain GPIO two days before SPI5 was. GPIO16 is claimed by no overlay this instrument
+# loads (SPI1's second and third chip selects are 17 and 16 only under spi1-2cs / -3cs;
+# this uses spi1-1cs). Pin 33 is left empty for the same reason as pin 35.
 UI_WAYS = (("UI_SW_A", 11), ("UI_SW_B", 13), ("UI_SW_C", 15), ("UI_SW_D", 16),
            ("UI_SW_PUSH", 18), ("UI_ENC_A", 29), ("UI_ENC_B", 31), ("GND", 6),
            ("UI_SCLK", 40), ("+3V3_PI", 1), ("UI_SDIN", 38), ("UI_DC", 37),
-           ("UI_CS_N", 12), ("UI_RES_N", 33),
+           ("UI_CS_N", 12), ("UI_RES_N", 36),
            # ⚠ NOT THE PI'S. The power button's two throws pass straight through this board
            # to J4 and on to the output panel, which is where the supply comes in and the
            # only place it can be cut. No header pin: the Pi must not be able to hold its
@@ -634,9 +641,21 @@ BOARD_NOTES = {
         },
         # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
         # repeated structure is on. The pass fails on any difference from the routed board.
+        # A16: the one part voltage_check.py could not rate, stated here instead.
+        "pin_volts": {
+            "J1": {"max": "none",
+                   "src": "JLCPCB parts API attributes for C5124634 (2.54-2*20P socket): 2.5 A "
+                          "a contact and no voltage figure; its datasheet is an image of the "
+                          "drawing with no electrical table. Read 2026-10-06",
+                   "why": "a 2.54 mm pin socket: formed contacts in a moulded body, with no "
+                          "junction and no film dielectric to break down, on a header whose "
+                          "highest net is the Pi's own 5 V. Its maker publishes no working "
+                          "voltage to quote, and the parts of this pattern that do publish one "
+                          "give hundreds of volts"},
+        },
         "unconnected": {
             "J1": {
-                "pins": "3 5 7 14 17 20 21 22 24 26 27 28 32 35 36",
+                "pins": "3 5 7 14 17 20 21 22 24 26 27 28 32 33 35",
                 "why": "Pi header pins this cap gives no function (the GPIO map is in pi_cap.py)"
             },
             "J2.[34]": "the 6-way's two middle ways: no conductor (harness.PI_5V_LINK)",
@@ -794,7 +813,7 @@ BOARD_NOTES = {
             "M26": "U1 IN is the Pi's side and OUT the ribbon's, by its pinout above. Every other "
                    "net keeps one name from header pin to connector way",
             "M27": "no strap, boot or debug pin is used: header pins 27 / 28 (the HAT ID bus) are "
-                   "not connected, and none of the pins taken (11 12 13 15 16 18 29 31 33 37 38 40, "
+                   "not connected, and none of the pins taken (11 12 13 15 16 18 29 31 36 37 38 40, "
                    "the SPI0 / SPI5 pairs) is read by the Pi at boot",
             "M28": "JST's own parts: S4B-XH-SM4-TB(LF)(SN) C161861, S6B-PH-SM4-TB(LF)(SN) C265405, "
                    "S4B-XH-A(LF)(SN) C157925 -- the cited drawings are theirs. The 2x20 socket and "
@@ -912,6 +931,8 @@ if __name__ == "__main__":
     ERC()
     generate_netlist(file_=os.path.join(OUT_DIR, "pi_cap.net"))
     netcheck.grounds_meet(os.path.join(OUT_DIR, "pi_cap.net"))
+    import volts_decl                   # A16: generated, see volts_decl.py
+    volts_decl.into(BOARD_NOTES, "pi_cap")
     with open(os.path.join(OUT_DIR, "pi_cap.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     # ⚠ THE UI WAYS COUNT TOO. This line kept its own copy of the used-pin set and did not

@@ -1,0 +1,81 @@
+{
+ "net_volts": {
+  "+24V": {
+   "peak": 35.587,
+   "v": 26.4,
+   "why": "24 V +10 % steady (brick is +/-3 %: 24.72 V; OVP trips at up to 32.4 V); transient = the SMAJ24A clamp at the brick's 6.67 A, the most this rail can be handed: 35.6 V (breakdown 26.7-29.5 V; its catalogue VC is 38.9 V at 10.3 A)"
+  },
+  "CAN_H": {
+   "peak": 32.0,
+   "v": 5.0,
+   "why": "bus A: dominant level of a 5 V transceiver in a SERVO42D (assumed, not known); transient = the NUP2105L's maximum breakdown either way (24 V stand-off, so the +24 V conductor beside it in the same 4-wire trunk is a level it stands, not one it clamps); FAULT = that conductor shorted on"
+  },
+  "CAN_L": {
+   "peak": 32.0,
+   "v": 5.0,
+   "why": "bus A: dominant level of a 5 V transceiver in a SERVO42D (assumed, not known); transient = the NUP2105L's maximum breakdown either way (24 V stand-off, so the +24 V conductor beside it in the same 4-wire trunk is a level it stands, not one it clamps); FAULT = that conductor shorted on"
+  },
+  "GND": 0,
+  "TERM_MID": {
+   "peak": 32.0,
+   "v": 5.0,
+   "why": "through R1; through SW1"
+  }
+ },
+ "pin_volts": {
+  "J1.2": {
+   "max": 250.0,
+   "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J1.3": {
+   "max": 250.0,
+   "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J1.4": {
+   "max": 250.0,
+   "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J1.6": {
+   "max": 250.0,
+   "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J1.7": {
+   "max": 250.0,
+   "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J1.8": {
+   "max": 250.0,
+   "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J2.2": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-A(LF)(SN) (C157925): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J2.3": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-A(LF)(SN) (C157925): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "J2.4": {
+   "max": 250.0,
+   "src": "rated V -- S4B-XH-A(LF)(SN) (C157925): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
+  },
+  "R1.1": {
+   "max": 75.0,
+   "src": "element V -- 0603WAF1200T5E (C22787): JLCPCB parts API attributes for C22787 (0603WAF1200T5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R1.2": {
+   "max": 75.0,
+   "src": "element V -- 0603WAF1200T5E (C22787): JLCPCB parts API attributes for C22787 (0603WAF1200T5E, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "SW1.1": {
+   "max": 24.0,
+   "peak": 50.0,
+   "src": "rated V -- DSHP01TSGER (C3293141): Kongshen DSHP01TSGER drawing DSHP-001-S-A rev A (2017-03-24), note 3 ELECTRICAL: non-switch rating 100 mA at 50 V DC; switching rating 25 mA at 24 V DC; dielectric strength 300 V AC for 60 s. Read off the drawing 2026-10-06 (it is an image; the catalogue attributes give only the switching figure)"
+  },
+  "SW1.2": {
+   "max": 24.0,
+   "peak": 50.0,
+   "src": "rated V -- DSHP01TSGER (C3293141): Kongshen DSHP01TSGER drawing DSHP-001-S-A rev A (2017-03-24), note 3 ELECTRICAL: non-switch rating 100 mA at 50 V DC; switching rating 25 mA at 24 V DC; dielectric strength 300 V AC for 60 s. Read off the drawing 2026-10-06 (it is an image; the catalogue attributes give only the switching figure)"
+  }
+ }
+}

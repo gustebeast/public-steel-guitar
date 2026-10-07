@@ -208,8 +208,14 @@ def lever_sensor():
     # BUS-B FAR-END TERMINATION, behind a slide switch placed by the fab: fitted on all
     # eleven, ON on the ONE board at each far end of the bus. A switch, not a solder
     # bridge, so that ending the bus needs no iron (user rule: no hand soldering).
-    # R4 is 0402: a single 120R across the pair sees ~17 mA, 0.034 W against 0.063 W.
-    rt = _r("R", "R4", "120R", "CAN termination, in circuit only with SW1 ON",
+    # R4 is 0402: a single 120R across the pair sees ~17 mA in normal traffic, 0.034 W.
+    # ⚠ A 100 mW 0402 (Panasonic ERJ2RKF1200X, C413065), NOT THE HOUSE 62.5 mW ONE
+    # (2026-10-06, found by elec/voltage_check.py when this board was added to it). The
+    # 34 mW is a typical drive at a typical duty. A transceiver's dominant output may be
+    # 3 V (SLOS346, VOD max), and the SN65HVD230 has no dominant time-out: firmware that
+    # parks TXD low holds 3 V across this part for as long as it stays there, 75 mW, 120 %
+    # of the house part. Same land, same value.
+    rt = _r("R", "R4", "120R 100mW", "CAN termination, in circuit only with SW1 ON",
             "Resistor_SMD:R_0402_1005Metric")
     # DSHP01TSGER (LCSC C3293141), THE MOTOR TEE'S SWITCH: one part number ends both
     # buses. 1 position, SPST, recessed slide, gull wing, body 5.4 x 2.88 x 2.3, lands
@@ -856,7 +862,8 @@ BOARD_NOTES = {
                   "maximum 6.5 V, behind R8 (M16). +3V3: MCU 3.6 V max operating, sensor "
                   "3.3-5 V, transceiver 3.6 V. CAN pins: the SN65HVD230 stands -4..16 V "
                   "and the bus supply is 5 V, so no fault on this bus exceeds it; D2 / D3 "
-                  "clamp ESD. R4 carries 17 mA: 34 mW in an 0402 rated 62 mW. R8 carries "
+                  "clamp ESD. R4 carries 17 mA: 34 mW, and 75 mW with the bus held dominant at 3 V, in an 0402 rated "
+                  "100 mW (ERJ2RKF1200X; the house 0402 is 62 mW and was not used). R8 carries "
                   "80 mA: 14 mW",
             "M6": "nothing fast: CAN at 1 Mbit/s with slope control, I2C at 400 kHz, an "
                   "8 MHz crystal 3.4 and 5.5 mm from its pins",
@@ -984,6 +991,8 @@ if __name__ == "__main__":
     assert not (_placed - _refs), (
         "placements name %s, which no part has -- a ref moved under it"
         % sorted(_placed - _refs))
+    import volts_decl                   # A16: generated, see volts_decl.py
+    volts_decl.into(BOARD_NOTES, "lever_sensor")
     with open(os.path.join(OUT_DIR, "lever_sensor.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements, chip on the axle at (%.1f, %.1f)"

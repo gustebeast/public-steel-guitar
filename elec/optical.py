@@ -444,7 +444,13 @@ def optical():
         # And the lever is smaller than it looks: 20 -> 60 mA is 3x optical = +2.4 dB of
         # shot-limited SNR, against the +10.9 dB the emitter swap just banked. Spend it
         # only if bring-up says the thin string needs it.
-        r = _r("R%d" % i, "180R", "LED ballast, string %d -- 21 mA, tune per string" % i)
+        # A 100 mW 0402 (Panasonic ERJ2RKF1800X, C413069), NOT THE HOUSE 62.5 mW ONE
+        # (pre-order review, 2026-10-06). At 50 % duty it carries 36 to 40 mW, but nothing
+        # in hardware limits the on-time: LED_GATE is one MCU pin, and a test mode or a
+        # halted debugger that parks it high puts 72 to 80 mW in each ballast for as long
+        # as it stays there -- 115 to 128 % of the part that was ordered, while the note
+        # that signed this off called it an 0603 rated 100 mW. Same land, same value.
+        r = _r("R%d" % i, "180R 100mW", "LED ballast, string %d -- 20 mA, tune per string" % i)
         d = Part(name="LED_IR", ref_prefix="D", ref="D%d" % i, dest="NETLIST",
                  tool="skidl", value="LTE-C9901",
                  description="IR emitter 940 nm, string %d (LCSC C2683614)" % i,
@@ -1712,20 +1718,20 @@ def optical():
         net += c[1]
         gnd += c[2]
     # C130-C133: the bulk caps and the reference bypass.
-    # ⚠ C130 IS 100 nF, NOT 10 uF, BECAUSE VBUS IS A SENSE LINE HERE AND NOT A SUPPLY.
-    # This board is self-powered from the 24 V trunk; the only thing downstream of VBUS
-    # is the PHY's comparator, reached through R39's 10 k. Ten microfarads against 10 k
-    # is a 0.1 SECOND time constant on the signal that tells the device whether a host
-    # is present -- and 10 uF of bulk on a self-powered device is also inrush the host
-    # pays for at plug-in, for a rail this board never draws from. 100 nF filters the
-    # comparator input (1 ms) without either.
-    for tag, net, desc in (("C130", vbus, "VBUS sense filter -- see note"),
+    # ⚠ C130 IS 1 uF: THE PHY'S OWN MINIMUM FOR A DEVICE (USB3300 DS00001783C table 7-2,
+    # "Capacitance values at VBUS of USB connector": device 1 uF min, 10 uF max, drawn on
+    # the connector side of RVBUS in its figure 7-1). It was 100 nF, on the argument that
+    # VBUS is only sensed here and that bulk against R39's 10 k would slow the sense. That
+    # argument put the capacitor on the wrong side of the resistor: C130 is on VBUS itself,
+    # which the host drives directly, so R39 is not in its charging path. 1 uF, the bottom
+    # of the range, because the board draws nothing from VBUS and the host pays the inrush.
+    for tag, net, desc in (("C130", vbus, "VBUS capacitor, the PHY's 1 uF minimum -- see note"),
                            ("C131", v3d, "3V3 digital bulk"),
                            ("C132", v3a, "3V3 analog bulk"),
                            ("C133", mid, "MID reference bypass -- the twenty summing "
                             "nodes share this, so it is what keeps them from talking "
                             "to each other through their own reference")):
-        c = _c(tag, "100nF" if tag == "C130" else "10uF", desc,
+        c = _c(tag, "1uF" if tag == "C130" else "10uF", desc,
                "Capacitor_SMD:C_0805_2012Metric")
         net += c[1]
         gnd += c[2]
@@ -2853,6 +2859,19 @@ def _outline_poly(cx, cy):
                 out.pop(i)
                 changed = True
                 break
+    # the notch in front of the USB-C (OP.usb_notch): four more corners in the -Y edge
+    nx0, nx1, ny0, ny1 = OP.usb_notch()
+    for i in range(len(out)):
+        a, b = out[i], out[(i + 1) % len(out)]
+        if (abs(a[1] - ny0) < 1e-9 and abs(b[1] - ny0) < 1e-9
+                and min(a[0], b[0]) < nx0 and max(a[0], b[0]) > nx1):
+            ins = [(nx0, ny0), (nx0, ny1), (nx1, ny1), (nx1, ny0)]
+            if a[0] > b[0]:
+                ins.reverse()
+            out[i + 1:i + 1] = ins
+            break
+    else:
+        raise RuntimeError("the USB notch found no -Y edge to stand in")
     return [(x - cx, y - cy) for x, y in out]
 
 
@@ -4046,15 +4065,17 @@ BOARD_NOTES["quality"] = {
               "TI's figure 165 less its four paralleled 100 nF (the note at the Cs parts). Every "
               "capacitor on a 24 V net is a 50 V part and says so in its value",
         "M5": "24 V nets: capacitors 50 V, R44 200 V, U13 36 V operating / 38 V absolute. The rail "
-              "is clamped at the panel (D6 there, SMAJ30A: stands off 30 V, breaks down at 33 to 37 "
-              "V) and at the motor board, and reaches U13 through the panel's 1 A fuse and R44's 2 "
-              "ohm with 5 uF behind it, so a fast spike has to charge that first; the same exposure "
-              "as the motor board's buck of this family. 5 V nets: 16 V bulk, U8 6 V maximum input, "
+              "is clamped at the panel (D6 there, SMAJ24A: breaks down at 26.7 to 29.5 V, 38.9 V at "
+              "its rated 10.3 A) and at the motor board by the same part, and reaches U13 through "
+              "the panel's 1 A fuse and R44's 2 ohm with 5 uF behind it: U13's 38 V needs about 9 A "
+              "of surge at the clamp, and its 36 V operating limit is above the clamp's breakdown. "
+              "This board has no clamp of its own and is only ever fed from the panel's J9. 5 V nets: 16 V bulk, U8 6 V maximum input, "
               "U9 6.0 V (6.5 absolute), fed 5.02 V. 3V3: converters 3.0 to 3.6 V, op-amps 5.5 V, "
               "MCU 3.6 V, PHY 3.0 to 3.6, Y2 2.97 to 3.63. The TIAs run on +3V3A so a saturated "
               "channel cannot exceed the converter's AVDD + 0.3 V. Emitters: 20 mA of 60 "
-              "continuous, 28 mW of 100. Q1: 30 V, 5.7 A against 5 V and 0.21 A. Ballasts 72 mW "
-              "peak, 36 mW average, in 0603 parts rated 100 mW",
+              "continuous, 28 mW of 100. Q1: 30 V, 5.7 A against 5 V and 0.21 A. Ballasts 72 to 80 "
+              "mW whenever the row is held on, 36 to 40 at the 50 % the carrier runs at, in 0402 "
+              "parts rated 100 mW (ERJ2RKF1800X; the house 0402 is 62.5 mW and was not used)",
         "M6": "ULPI, 60 MHz, clocked by the PHY: twelve nets, 22.1 to 57.5 mm, a spread of 35.4 mm "
               "(about 0.23 ns) against the 80 mm the board file budgets from the PHY's setup time "
               "(its table 6-2); the pass checks it on every route. All of it runs over the In1 "
@@ -4196,8 +4217,8 @@ BOARD_NOTES["quality"] = {
                "harmless at 480 Mbit/s. No series resistors and no external pull-up: the USB3300 "
                "has both internally (its 6.2.2). Clock: Y2 is an oscillator, +-20 ppm all-in "
                "against the +-500 ppm the PHY's note 5-1 allows, 1 ps rms of phase jitter, 7.6 mm "
-               "from XI on F.Cu with no via. VBUS is sensed, never sourced. C130 on VBUS is 0.1 uF "
-               "on purpose (a sense line; the note at C130)",
+               "from XI on F.Cu with no via. VBUS is sensed, never sourced. C130 on VBUS is 1 uF, "
+               "the PHY's minimum for a device (its table 7-2)",
         "M24": "Y1 (TAXM25M4RDBCCT2T): CL 10 pF, ESR 30 ohm max, C0 3 pF max. C123 = C124 = 12 pF "
                "C0G; (12 + about 7 per leg) / 2 = 9.5 pF. gm_crit = 4 x 30 x (2 pi 25 MHz)^2 x (13 "
                "pF)^2 = 0.50 mA/V against the 1.5 the H7 guarantees to start: 3 times. Y2 is not a "
@@ -4303,6 +4324,19 @@ BOARD_NOTES["quality"] = {
     },
     # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
     # repeated structure is on. The pass fails on any difference from the routed board.
+    # A15. MID runs the length of the board to twenty photodiode anodes and at one place
+    # lies over a 10.3 mm cut in the ground plane (the limit is 5). It is not a signal in
+    # the sense the rule means: it is U11's output, a 0.33 V reference held by C133's
+    # 10 uF, and what flows in it is the photodiodes' own current -- microamps, at the
+    # 48 kHz carrier. A loop 10 mm long and one dielectric thick, carrying microamps at
+    # tens of kilohertz, radiates nothing and is a far smaller pickup area than the
+    # photodiode pairs it feeds, whose fields the SUM / DIFF arithmetic exists to cancel.
+    "return_slot_ok": {
+        "MID": "a DC reference (U11's output, 0.33 V, 10 uF on it), carrying only the "
+               "photodiodes' microamps at 48 kHz; its return is U11's ground pin, and a "
+               "10 mm detour for that current is neither an emitter nor, beside the "
+               "photodiode pairs themselves, a pickup loop worth the reroute",
+    },
     "unconnected": {
         "J1.[AB]8": "USB-C sideband (SBU): USB 2.0 does not use it",
         "J2.[34]": "the feed is two wires: ways 3 and 4 have no conductor",
@@ -4565,6 +4599,8 @@ if __name__ == "__main__":
     import mpn_check
     if mpn_check.main():
         raise SystemExit("the CAD sourcing table and the netlist disagree -- see above")
+    import volts_decl                   # A16: generated, see volts_decl.py
+    volts_decl.into(BOARD_NOTES, "optical")
     with open(os.path.join(OUT_DIR, "optical.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.2f x %.2f mm, %d placements, x%d per instrument"
