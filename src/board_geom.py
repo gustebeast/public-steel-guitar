@@ -83,7 +83,31 @@ _TAIL: dict = {
 _THT_LEGS: dict = {}
 _PANEL: dict = {}
 
-BOARDS = Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL)
+# THE LETTERING'S FACE. A licensed font, so the file is NOT in the repository: it is looked
+# for in elec/fonts/ (ignored by git) and then where Windows installs fonts, and a checkout
+# without it draws the lettering in the kernel's default face and says so. SILK_FONT_CAP is this
+# font's capital height over its em (OS/2 sCapHeight 666 / 1000): a silk "size" is a
+# capital height, a font size is an em.
+SILK_FONT_FILE = "Rennie Mackintosh ITC Light Regular.otf"
+SILK_FONT_CAP = 0.666
+
+
+def _silk_font():
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    for d in (os.path.join(here, "elec", "fonts"),
+              os.path.join(os.environ.get("LOCALAPPDATA", ""), "Microsoft", "Windows", "Fonts"),
+              os.path.join(os.environ.get("WINDIR", ""), "Fonts")):
+        f = os.path.join(d, SILK_FONT_FILE)
+        if os.path.isfile(f):
+            return f
+    print("board_geom: %s not found (elec/fonts/ or installed) -- board lettering is drawn "
+          "in the default face" % SILK_FONT_FILE)
+    return None
+
+
+_FONT = _silk_font()
+BOARDS = Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
+                **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {}))
 
 HEIGHT, TAIL, THT_LEGS, PANEL = BOARDS.HEIGHT, BOARDS.TAIL, BOARDS.THT_LEGS, BOARDS.PANEL
 
