@@ -128,8 +128,20 @@ def _ui_rule_check():
     return 0
 
 
+# Bodies drawn to their real shape that do not reach the board face at one end of their
+# fab rectangle. Everything else must: the end probes COUNT on every board (strict_ends),
+# so a part drawn turned, short or shifted fails here rather than being remarked on.
+ENDS_OK = {
+    "output_panel": {
+        "J5": "the 6.35 mm jack's nose is its round bushing, on the jack's axis and clear "
+              "of the board face; the fab rectangle is the plan view of it",
+    },
+}
+
+
 def check(board, verbose=True):
-    return _CHK.check(board, _cad(board), BG.load(board), verbose=verbose)
+    return _CHK.check(board, _cad(board), BG.load(board), verbose=verbose,
+                      strict_ends=True, ends_ok=ENDS_OK.get(board))
 
 
 def main(argv):
