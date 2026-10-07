@@ -98,6 +98,15 @@
      OPEN: nothing retains the slack; ribbon has 0.2 mm to the deck and to the pair.
      The 24 V pair now turns down right behind J2 (user: a right-angle exit; an XH plug
      is loose wires, so it is free). PWR_COL_DX 3.75 is a model step (and clears the rail end) for the bundle frame. `usb_run_length()` is dead code.
+   - **pi_cap stack height (user asked 2026-10-07, OPEN, model not changed).** (1) The cap is
+     drawn 8.5 above the Pi's PCB (PI_CAP_STANDOFF = the socket body); a real 8.5 socket
+     seats on the Pi header's 2.54 plastic base, so the gap is 11.0. Raised 2.54 the cap
+     hits no plastic (tested against the cached build; wires not re-run). (2) pi4() has
+     no DISPLAY (DSI) or CAMERA connector. From memory of the Pi 4B drawing, NOT read:
+     DSI at x about 2.5-5.5 from the pin-1 end, y 17-39, about 5.5 tall. J3's body is
+     at x 3.5-17, y 31-38, 5.75 tall: at an 11.0 gap its underside is 5.25 over the Pi,
+     i.e. touching or 0.25 into the DSI connector over a 2 mm strip. Measure on a real
+     Pi before pi_cap is ordered; J3/J4/J2 have about 2.2 mm of courtyard slack in x.
    - Lead's bench-cart corrections folded in 2026-10-07 (BOM, bench-order, prices.json):
      optical USB lead is 0.3 m and no stock lead with a published overmould <= 17.5 mm was
      found; bulkman screw link; PSU tariff line; M3x12 and Loctite 425 prices; LCSC lots.
