@@ -98,6 +98,17 @@
      OPEN: nothing retains the slack; ribbon has 0.2 mm to the deck and to the pair.
      The 24 V pair now turns down right behind J2 (user: a right-angle exit; an XH plug
      is loose wires, so it is free). PWR_COL_DX 3.75 is a model step (and clears the rail end) for the bundle frame. `usb_run_length()` is dead code.
+   - ~~DONE~~ **pi_cap J3 stood 0.5 mm into the Pi's DISPLAY socket (user asked 2026-10-07).**
+     Read, not remembered: Pi 4B mechanical drawing (DISPLAY Z=5.5, centre 4.0 from the
+     pin-1 end, CAMERA at 46.5 / 11.5); JST eXH p.6 (S4B-XH-SM4-TB stands 6.0, not 5.75:
+     cadkit acf5870, pushed, NOT propagated). The 11.0 gap (8.5 socket on the header's
+     2.5 base) is standard practice, not read off a document. J3 / J4 / J2 moved east
+     2.5 / 1.4 / 0.8 with their declared copper; routed 0 / 0, quality 0 FAIL, 5 OPEN
+     (M12 M29 M30 M37 M42, the order-day items); fab zip rebuilt. CAD: PI_CAP_STANDOFF
+     11.0, pi4() has the two ribbon sockets and the header base. Own test: cap <-> pi4
+     0.0. NOT run through a gate (the Pi is outside my scratch scope): the lead's build
+     is the first full check. Seen on the way and NOT mine, same on main: wire_fret_led_*
+     <-> wire_link 6.6 / 1.7 / 0.9 mm3 near the deck (brenner's lead, my link).
    - Lead's bench-cart corrections folded in 2026-10-07 (BOM, bench-order, prices.json):
      optical USB lead is 0.3 m and no stock lead with a published overmould <= 17.5 mm was
      found; bulkman screw link; PSU tariff line; M3x12 and Loctite 425 prices; LCSC lots.
