@@ -1911,7 +1911,6 @@ _COLORS = {
     "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ
     "kl_magnet":       (0.80, 0.20, 0.20),   # diametric magnet
     "kl_pcb":          (0.05, 0.35, 0.15),   # MT6701 board (green)
-    "kl_can_header":   (0.95, 0.95, 0.90),   # JST S4B-XH-SM4-TB + mated XHP-4 (natural white)
     "kv_housing":      (0.30, 0.36, 0.42),   # LKV housing (PETG-GF, as LKL)
     # ...THE SAME BLUE AS LKL'S ARM, not a colour of its own (user, 2026-09-25: "the
     # levers are blue for LKL but yellow for LKV, we should color them consistently").
@@ -1920,7 +1919,6 @@ _COLORS = {
     "kv_lever":        (0.27, 0.51, 0.71),   # LKV arm (PCTG, as LKL -- the same blue)
     "kv_pcb":          (0.05, 0.35, 0.15),   # LKV MT6701 board (green, as LKL)
     "kv_chip":         (0.12, 0.12, 0.14),   # LKV MT6701 package (black)
-    "kv_can_header":   (0.95, 0.95, 0.90),   # LKV S4B-XH-SM4-TB + mated XHP-4
     "kv_pcb_shim":     (0.75, 0.75, 0.78),   # LKV board shim (printed, takes up the slack)
     # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
     "main_spring":                        (0.55, 0.20, 0.75),
