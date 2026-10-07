@@ -105,6 +105,8 @@ WIRE_OD = {
     "wire_plink": 1.8, "wire_plink_sw": 1.3,
     # the lights' feed and the same two throws going on to the cap: under an amp of LEDs
     "wire_lights": 1.3,
+    # the optical board's 24 V feed: 26 AWG, a couple of hundred milliamps over 150 mm
+    "wire_opt": 1.3,
     "wire_link": 1.4,
     # THE UI'S RIBBON IS NOT A DIAMETER AT ALL, and this entry only exists because
     # the gate's colour and allow-list tables are keyed off the same names. It is drawn
@@ -287,6 +289,7 @@ CONN = {
     ("pi_cap", "J2"): EH.PI_5V_LINK,
     ("pi_cap", "J4"): EH.LIGHTS_LINK,
     ("output_panel", "J7"): ("GND", "V24", EH.NC, EH.NC),
+    ("output_panel", "J9"): ("GND", "V24"),
     ("output_panel", "J10"): EH.PWR_LINK,
     ("can_tee", "J1"): tuple(n.rsplit("_", 1)[0] for n in EH.xh_trunk_pins()),
     ("can_tee", "J2"): EH.XH_PINOUT,
@@ -363,6 +366,54 @@ def check_cables(keys=None):
                     bad.append("%s %s (%s): does not leave along the connector's exit"
                                % (key, name, net))
     assert not bad, "cables that disagree with elec/harness.py:\n  " + "\n  ".join(bad)
+
+
+def optical_feed():
+    """[(name, solid)]: the optical board's 24 V feed, output_panel J9 -> optical J2.
+
+    TWO CONDUCTORS, ON WAYS 1 AND 2. The link went two-wire by population (J9 is a 2-way;
+    the optical board's J2 is a 4-way with ways 3 and 4 not connected) and was still drawn
+    as the one O4.0 solid of the six-way it had been, centred on the 4-way: 2.5 mm to one
+    side of the two ways that carry anything, and in one colour for a ground and a supply.
+
+    A FLAT PAIR AT THE CONNECTORS' OWN PITCH, end to end. Both ends are XH, 2.5 mm, so the
+    two conductors leave one housing 2.5 apart and arrive at the other 2.5 apart with no
+    fan at either; and 2.5 + a conductor is 3.8 across, inside the O4.0 the route was
+    planned in (optical_pickup.opt_cables owns that route -- the conduit, the slot in the
+    endplate, the rise over J7's pair -- and this follows it, only moved onto the ways).
+    """
+    from . import optical_pickup as OP
+    old = OP.opt_cables("pwr_path")
+    dx, dy = OP._silk_to_world()
+    dz = OP.PCB_TOP - BG.BOARDS.load("optical")["thickness_mm"]
+    names = CONN[("output_panel", "J9")]
+    out_a = tuple(float(v) for v in BG.BOARDS.way_dir("optical", "J2"))
+    ways = [BG.BOARDS.way("optical", "J2", n) for n in (1, 2)]
+    # each conductor starts on its own way's line, at the BACK of the plug as it is drawn
+    a = [((w[0] + dx, old[0][1], w[2] + dz), out_a, names[k]) for k, w in enumerate(ways)]
+    b = conn_end("output_panel", "J9")
+    ac = tuple((a[0][0][m] + a[1][0][m]) / 2.0 for m in range(3))
+    bc = tuple((b[0][0][m] + b[1][0][m]) / 2.0 for m in range(3))
+    # the old centre line with its two ends moved onto the ways: the plug end sideways and
+    # down to the contacts' level, the J9 end onto the row
+    mid = [(q[0], q[1], q[2]) for q in old[2:-3]]
+    centre = ([ac, (ac[0], old[1][1], ac[2]), (mid[0][0], old[1][1], ac[2])] + mid[1:]
+              + [(bc[0], old[-3][1], old[-3][2]), (bc[0], bc[1], old[-3][2]), bc])
+    half = (a[1][0][0] - a[0][0][0]) / 2.0
+    legs = bundle_paths(centre, [(0.0, -half), (0.0, half)], across=(1.0, 0.0, 0.0))
+    out = []
+    for k in _cable("optical feed", a, b):
+        for end, pin in ((legs[k][0], a[k][0]), (legs[k][-1], b[k][0])):
+            assert max(abs(end[m] - pin[m]) for m in range(3)) < 0.05, (
+                "the optical feed's pair has turned over on the way: %r against way %d at %r"
+                % (end, k + 1, pin))
+        _run(out, "wire_opt_%s_%d" % (_NET_SHORT[names[k]], k + 1), legs[k],
+             WIRE_OD["wire_opt"], "optical feed", k)
+    check_cables(["optical feed"])
+    return out
+
+
+_NET_SHORT = {"GND": "gnd", "V24": "v24", "V5": "v5", "PWR_SW_UP": "up", "PWR_SW_DN": "dn"}
 
 
 def _floor_pts(x0, x1, z):
@@ -1621,6 +1672,7 @@ WIRE_OK = {
     "wire_5v":        {"motor_ctrl", "pi_cap"},
     "wire_plink":     {"output_panel", "motor_ctrl"},
     "wire_lights":    {"motor_ctrl", "pi_cap"},
+    "wire_opt":       {"optical_plug_pwr", "output_panel"},
     "wire_usb":       {"output_panel", "pi4"},
     "wire_link":      {"motor_ctrl", "pi4"},
     "wire_ui":        {"ui_pcb", "pi4"},
