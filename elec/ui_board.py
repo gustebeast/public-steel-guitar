@@ -454,7 +454,25 @@ BOARD_NOTES = {
             {"name": "ribbon: sixteen ways, sixteen nets",
              "pins": ["J2.[1-9]", "J2.1[0-6]"], "nets": 16, "each": 1, "pins_count": 16},
         ],
-        "waive": {"A2:J2": "J2 is where +3V3 arrives off the ribbon, not a load; the "
+        # A17. Every part is on the face that lies against the deck, so the BACK is the
+        # face a hand sees with the board installed and the ribbon being plugged.
+        "connector_labels": {
+            "J2": {"back_only": "16 ways at 1.27 mm: no word fits a way. The block is on "
+                                "the back, which is the face left in view once the board "
+                                "is screwed to the deck (single_sided: every part faces "
+                                "the deck); on the front SW2 and its POWER label take the "
+                                "14 mm round the header. Way 1 is marked on the front"},
+        },
+        "waive": {"A17:J1 ways": "20 ways in one row: a block is 21 lines, 34 mm at the "
+                                 "legible 1.0 mm, the whole height of this 72 x 34 board, "
+                                 "and the row itself lies under the display module. "
+                                 "Nothing is crimped to it: the mate is the Newhaven "
+                                 "module's own socket strip, which goes on one way only "
+                                 "(turned round, the module lies off the board). Ways 1 "
+                                 "and 20 are numbered; the order is Newhaven's table, "
+                                 "datasheet p.4, kept in DISP_PINS above and in "
+                                 "quality.pinouts",
+                  "A2:J2": "J2 is where +3V3 arrives off the ribbon, not a load; the "
                            "bulk and the 100n are at the display header, which is"},
         # Signed 2026-10-05 against the routed board and the makers' sheets. M12 stays
         # open on purpose: what is left of it can only be done on the day of the order.
