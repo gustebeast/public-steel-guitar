@@ -918,7 +918,15 @@ def _foot_pedal_components():
     """Foot pedals, drawn in the pedal bar's frame (z0 = plate bottom) and lifted
     the same way it is. Three stations, all at REST."""
     from . import foot_pedal as FP
-    return [(n, wp.translate((0, 0, PEDAL_LIFT_DZ))) for n, wp in FP.demo_parts()]
+    from . import leg_pogo as PG
+    from . import wiring as WR
+    # bus B on from the leg joint's bar stub to the five boards. The stub is drawn in
+    # world coordinates (the leg's), the pedals in the bar's frame, so the feed points
+    # come down by the lift and the whole harness goes back up with everything else.
+    WR.WIRE_OK.update(FP.BUS_WIRE_OK)
+    feed = [(x, y, z - PEDAL_LIFT_DZ) for x, y, z in PG.bar_stub_ends()]
+    return [(n, wp.translate((0, 0, PEDAL_LIFT_DZ)))
+            for n, wp in FP.demo_parts() + FP.bus_harness(feed)]
 
 
 def _electronics_components():
@@ -2042,7 +2050,7 @@ from . import led_leads as _LL                                   # noqa: E402
 _COLORS.update({"wire_%s_led_%s" % (_lead, _w.lower()): _LL.COLORS[_w]
                 for _lead in ("foot", "fret") for _w in _LL.WAYS})
 _COLORS.update({
-    "pogo_wire_%s" % n.lower(): c for n, c in zip(
+    "%s_wire_%s" % (run, n.lower()): c for run in ("pogo", "pedal") for n, c in zip(
         _EH.PH_PINOUT, ((0.05, 0.05, 0.05), (0.85, 0.12, 0.10),
                         (0.95, 0.85, 0.10), (0.13, 0.72, 0.20)))})
 

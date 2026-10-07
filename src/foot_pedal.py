@@ -122,6 +122,7 @@ import cadquery as cq
 from . import dimensions as D
 from . import knee_lever as KL
 from . import pedal_bar as PB
+from elec import harness as EH             # the PCB's pin order, single-sourced
 from .helpers import box_at, cyl_y, heal, pose_dir
 
 
@@ -458,8 +459,13 @@ def board_bay_cutter():
     z0, z1 = z0 - KL.CR_WEB_T - BAY_CLR, z1 + KL.CR_WEB_T + BAY_CLR
     # +X (into the bar) is the deepest posed hardware, measured -- it used to be a typed
     # connector reach, which went stale when J1 moved to the board's back (2026-09-21)
-    x0, x1 = HOUS_X1 - 20.0, max(max(p.val().BoundingBox().xmax for p in parts),
-                                 CRADLE_X_MAX) + BAY_CLR      # -20: run out through the top
+    # ...AND THEN DOWN TO THE TROUGH'S OWN FLOOR. J1 points down, so its wires leave the
+    # plug toward the bay floor, and BAY_CLR under the plug is 0.6: less than one
+    # conductor. Nothing said so until the cable was drawn (bus_harness). The trough
+    # already leaves this much floor under itself the whole length of the bar.
+    x0, x1 = HOUS_X1 - 20.0, max(max(p.val().BoundingBox().xmax for p in parts) + BAY_CLR,
+                                 CRADLE_X_MAX + BAY_CLR,
+                                 BAR_TOP_Z - PB.TROUGH_Z0)    # -20: run out through the top
     return box_at(x1 - x0, y1 - y0, z1 - z0,
                   x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
 
@@ -566,6 +572,147 @@ def cut_wire_ways(piece, x0: float, x1: float):
         if x0 <= x < x1:
             piece = piece.cut(_trough_spur(x))
     return piece
+
+
+# -- BUS B ALONG THE BAR, DRAWN ----------------------------------------------
+# The leg joint's bar stub (src.leg_pogo.bar_path) used to stop 10 mm into the wiring
+# chamber and nothing ran on to any pedal board. This is the rest of that cable and the
+# four hops between the boards: 28 AWG, the leg harness's own wire, a conductor a part.
+#
+# WHICH WIRE GOES IN WHICH WAY IS elec.harness's, read here and not retyped:
+# ph_trunk_pins() is the bus IN on four ways and OUT on the next four, each in PH_PINOUT
+# order, so a board's arriving cable lands on the _IN ways and the cable to the next
+# board leaves from the _OUT ways. The last board has no departing cable (it closes its
+# own terminator, elec/lever_sensor.py).
+#
+# THE ROUTE. Along the trough the four conductors lie FLAT, one track each in Y at one
+# height, and a circuit keeps its track the whole length of the bar. At a station a
+# wire turns down its own LANE (an X) to the trough floor, runs -Y along the floor
+# through the spur into the bay, steps across to the pin row and rises into the plug.
+# Lanes nearer the row belong to ways further +Y, so no wire steps across another's
+# lane, and each track is at its own Y, so no riser stands in another track.
+BUS_WAYS = EH.ph_trunk_pins()
+BUS_NETS = tuple(EH.ph_drop_pins())
+assert len(BUS_WAYS) == KL.CONN_N, (
+    "elec.harness's trunk is %d ways and the sensor board's J1 is %d"
+    % (len(BUS_WAYS), KL.CONN_N))
+BUS_AIR = 0.2                               # between a conductor and anything beside it
+BUS_TRACK = 1.5                             # track pitch along the trough, and
+BUS_FAN = 12.0                              # the run the stub's 2 x 2 bundle takes to
+                                            # open onto the tracks: closer or shorter and
+                                            # two conductors pass inside one another on
+                                            # the way (0.78 at lane pitch over 4.4; 0.95
+                                            # here, asserted in bus_paths)
+BUS_KEEP = 1.1                              # a lane's centre off the pin row: one wire
+                                            # plus BUS_AIR, so a floor run clears the
+                                            # other ways' drops
+
+
+def bus_way(net, side):
+    """The 1-based way of J1 that `net` uses on the bus's "IN" or "OUT" side."""
+    return BUS_WAYS.index("%s_%s" % (net, side)) + 1
+
+
+def bus_pin(i, way):
+    """Bar-frame point where the conductor in `way` leaves pedal i's plug."""
+    lx, ly, lz = KL.plug_pin(way, CRADLE_Z0, HOUS_Z1, BOARD_FLIP)
+    # _to_guitar, for a point: local +Y -> -X, +Z -> +Y, +X -> -Z
+    return (PEDAL_X[i] - ly, lz + MOUNT_DY, BAR_TOP_Z - lx)
+
+
+def _seg_gap(p0, p1, q0, q1):
+    """Shortest distance between two segments."""
+    import numpy as np
+    p0, p1, q0, q1 = (np.array(v, float) for v in (p0, p1, q0, q1))
+    u, v, w = p1 - p0, q1 - q0, p0 - q0
+    a, b, c, d, e = u @ u, u @ v, v @ v, u @ w, v @ w
+    den = a * c - b * b
+    s = min(max((b * e - c * d) / den, 0.0), 1.0) if den > 1e-12 else 0.0
+    t = (b * s + e) / c if c > 1e-12 else 0.0
+    if t < 0.0 or t > 1.0:
+        t = min(max(t, 0.0), 1.0)
+        s = min(max((b * t - d) / a, 0.0), 1.0) if a > 1e-12 else 0.0
+    return float(np.linalg.norm(w + s * u - t * v))
+
+
+def bus_paths(feed):
+    """[(name, polyline)] in the BAR's frame. `feed` is the four points where the leg
+    joint's bar stub ends, in BUS_NETS order (src.leg_pogo.bar_stub_ends, bar frame)."""
+    from . import leg_pogo as PG
+    w = PG.HARNESS_WIRE_OD
+    n = len(BUS_NETS)
+    names = [nm for nm, _ in PG.HARNESS_WIRES]
+    assert tuple(x.upper() for x in names) == BUS_NETS
+    bay = board_bay_cutter().val().BoundingBox()
+    floor = BAR_TOP_Z - bay.xmax                            # the bay's floor = the trough's
+    zf = floor + w / 2.0 + BUS_AIR / 2.0                     # a floor run's centre line
+    pitch = w + BUS_AIR
+    # TRACKS: flat against the trough's -Y wall, at the feed's own height
+    y_wall = PB.LID_Y0 - PB.TROUGH_D
+    zt = sum(p[2] for p in feed) / n
+    # a circuit's track follows where its conductor already IS in the stub's section,
+    # so the fan from the 2 x 2 bundle to the flat does not cross itself
+    rank = sorted(range(n), key=lambda c: (feed[c][1], feed[c][2]))
+    track = {c: y_wall + BUS_AIR + w / 2.0 + rank.index(c) * BUS_TRACK for c in range(n)}
+    paths = []
+    tail = {c: [tuple(feed[c]), (feed[c][0] + BUS_FAN, track[c], zt)] for c in range(n)}
+
+    def room(span):                                         # lanes that fit on one side
+        return int((span - BUS_KEEP - w / 2.0 - BUS_AIR) // pitch) + 1
+
+    for i, px in enumerate(PEDAL_X):
+        last = i == len(PEDAL_X) - 1
+        ways = [(bus_way(nt, "IN"), c, True) for c, nt in enumerate(BUS_NETS)]
+        if not last:
+            ways += [(bus_way(nt, "OUT"), c, False) for c, nt in enumerate(BUS_NETS)]
+        pins = {wy: bus_pin(i, wy) for wy, _c, _a in ways}
+        row_x = pins[ways[0][0]][0]
+        by_y = sorted(pins, key=lambda wy: pins[wy][1])     # -Y .. +Y along the row
+        # The -X side takes as many ways as it has room for, counted from the row's -Y
+        # end, and the rest go +X. On each side the lane NEAREST the row goes to the way
+        # furthest +Y, which is what keeps a wire's step to the row off every other lane.
+        x_lo, x_hi = px - bay.ymax, px - bay.ymin            # the bay's walls (local Y -> -X)
+        n_lo = min(len(by_y), room(row_x - x_lo))
+        lo, hi = by_y[:n_lo], by_y[n_lo:]
+        assert len(hi) <= room(x_hi - row_x), (
+            "pedal %d's bay is %.2f wide and cannot lane %d conductors at %.2f pitch"
+            % (i, x_hi - x_lo, len(by_y), pitch))
+        lane = {}
+        for k, wy in enumerate(reversed(lo)):
+            lane[wy] = row_x - BUS_KEEP - k * pitch
+        for k, wy in enumerate(reversed(hi)):
+            lane[wy] = row_x + BUS_KEEP + k * pitch
+        for wy, c, arriving in ways:
+            pin = pins[wy]
+            drop = [(lane[wy], track[c], zt), (lane[wy], track[c], zf),
+                    (lane[wy], pin[1], zf), (pin[0], pin[1], zf), pin]
+            if arriving:
+                paths.append(("pedal_wire_%s_%d" % (names[c], i), tail[c] + drop))
+            else:
+                tail[c] = list(reversed(drop))
+    # no conductor inside another anywhere
+    for a in range(len(paths)):
+        for b in range(a + 1, len(paths)):
+            pa, pb = paths[a][1], paths[b][1]
+            g = min(_seg_gap(p0, p1, q0, q1) for p0, p1 in zip(pa, pa[1:])
+                    for q0, q1 in zip(pb, pb[1:]))
+            assert g >= w - 1e-6, ("%s and %s come within %.2f of each other, under one "
+                                   "wire" % (paths[a][0], paths[b][0], g))
+    return paths
+
+
+# what a pedal_wire_* may touch (the overlap gate's wire doctrine, src.wiring.WIRE_OK):
+# the boards whose plugs it ends in, and nothing else -- not the bar
+BUS_WIRE_OK = {"pedal_wire_%s" % nt.lower(): {"pedal%d_pcb" % i for i in range(len(PEDAL_X))}
+               for nt in BUS_NETS}
+
+
+def bus_harness(feed):
+    """[(name, solid)] in the bar's frame: bus B from the leg joint's bar stub to every
+    pedal board's J1. See bus_paths."""
+    from cadkit.cables import oct_cable
+    from . import leg_pogo as PG
+    return [(nm, oct_cable(pts, PG.HARNESS_WIRE_OD)) for nm, pts in bus_paths(feed)]
 
 
 def demo_parts():
