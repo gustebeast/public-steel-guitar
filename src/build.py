@@ -586,9 +586,9 @@ def _string_components(i):
     # guide rod: dropped in from +Z through the slab, through the -X ear, into a blind
     # socket in the screw rail — SUPPORTED AT BOTH ENDS, so it is a beam and not a
     # cantilever. Gravity seats it; the string overhead keeps it there.
-    rod_top = BE.GUIDE_ROD_TOP          # just under the optical board
+    # A stock pin, seated on the socket floor; the optical board is its lid.
     rod_bot = BE.GUIDE_SOCKET_Z
-    out.append((f"guide_rod_{i}", C.guide_rod(rod_top - rod_bot).translate(
+    out.append((f"guide_rod_{i}", C.guide_rod(D.GUIDE_ROD_L).translate(
         (D.guide_rod_x(i), sy, rod_bot))))
     # screw drive pulley (odd ones raised one belt-plane), then the thrust stack:
     spz = D.screw_pulley_z(i)
