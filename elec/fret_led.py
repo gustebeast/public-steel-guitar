@@ -775,6 +775,9 @@ def _manual(panel, n_drv, n_zone, facts):
                "The three test pads are named (+24V, +14V5, GND). J1's four ways are "
                "named on the back: 1 GND, 2 +24V_IN, 3 SCK_CABLE, 4 SDT_CABLE. "
                if key else "") + "Each seam land is named on the back with its net. "
+               "A designator stands beside every LED and driver" + (
+               ", the regulator, the inductor and the fuse" if key else "") +
+               " (silk_refs: every one found a site, 2026-10-06). "
                "All text 1.0 mm or more with a 0.15 stroke (A12). Pin-1 and LED "
                "polarity marks are the footprints', outside the bodies. The legend is "
                "cut back from every mask opening: the gerber carries the pads in "
@@ -1064,6 +1067,9 @@ def build(panel):
     notes["outline_poly"] = [[round(v, 4) for v in pt] for pt in (
         (-hl, -hw), (hl, -hw), (hl, ey), (ex0 - cx, ey), (ex0 - cx, hw), (-hl, hw))]
     notes["qty_per_instrument"] = 1
+    # Designators for what a hand reworks or probes -- the drivers, the regulator and
+    # its inductor, the fuse, and every LED (a dead one is reported by number).
+    notes["silk_refs"] = ["U", "D", "L", "F"]
     # each driver's heat pad gets its four more vias (DRV_PAD_VIAS)
     notes["vias"] = list(notes.get("vias", [])) + [
         ("GND", round(xd + dx, 3), round(DRV_Y + dy, 3))

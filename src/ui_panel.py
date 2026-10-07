@@ -616,6 +616,13 @@ def ui_pcb():
     return _bg().solid("ui_board").translate((cx, cy, board_z0()))
 
 
+def ui_silk():
+    """The UI board's lettering, where the board is -- its own part (white ink)."""
+    cx, cy = board_centre()
+    w = _bg().silk("ui_board")
+    return None if w is None else w.translate((cx, cy, board_z0()))
+
+
 def display_module():
     """The Newhaven module, hung off the routed J1.
 
@@ -1017,7 +1024,9 @@ def hardware():
 
 def parts():
     """[(name, solid)] everything the assembly shows for the UI station."""
-    return [("ui_pcb", ui_pcb()), ("ui_display", display_module()),
-            ("ui_screen", screen()), ("ui_clamp", clamp()),
-            ("ui_shaft", encoder_shaft()), ("ui_knob", knob()),
-            ("ui_pwr_stem", power_stem()), ("ui_pwr_cap", power_cap())] + hardware()
+    return ([("ui_pcb", ui_pcb()), ("ui_display", display_module()),
+             ("ui_screen", screen()), ("ui_clamp", clamp()),
+             ("ui_shaft", encoder_shaft()), ("ui_knob", knob()),
+             ("ui_pwr_stem", power_stem()), ("ui_pwr_cap", power_cap())]
+            + [(n, w) for n, w in (("ui_pcb_silk", ui_silk()),) if w is not None]
+            + hardware())

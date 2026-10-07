@@ -495,7 +495,8 @@ BOARD_NOTES = {
                    "rails. Seven BOM lines: three basic passives and four extended "
                    "parts. 'Confirm Production File' and 'Confirm Parts Placement' are "
                    "in the package's ORDER.txt",
-            "M31": "'UI BOARD r1' and 'POWER' on the front, every designator at 1.0 mm. "
+            "M31": "'UI BOARD r1', 'POWER' at SW2 and 'NAV' at SW1 on the front, every "
+                   "designator at 1.0 mm. "
                    "J1's and J2's pin-1 marks are the footprints', outside the bodies. "
                    "Decision: no pin names at J2 or J1 -- sixteen ways at 1.27 mm and "
                    "twenty at 2.54 leave no room at a legible size, neither is wired by "
@@ -567,7 +568,10 @@ BOARD_NOTES = {
     # would be perforated anyway, by twenty through-hole pins at 2.54 leaving 0.7 mm webs
     # straight across it. So GND is a routed net like every other one, which on a 72 mm
     # board with a metre of ribbon either side is what it was always going to be worth.
-    "silk_labels": {"SW2": "POWER"},
+    "silk_labels": {"SW2": "POWER", "SW1": "NAV"},
+    # A designator beside every part that has a site: this is the board a hand probes
+    # (two switches, a display header and a ribbon, all through-hole).
+    "silk_refs": True,
     "mounting_hole_xy": UI.SCREW_XY,
     "single_sided": True,      # every part on the deck-facing face
     "qty_per_instrument": 1,

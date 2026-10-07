@@ -320,6 +320,16 @@ Projects > Quotes. What it found, and what the order needs because of it:
                                    713.52   565.39
   The form opened foot_led_b on the paid "2-3 days" build (+66.20): set "3 days, PCBA
   Only". Deburring opened on Yes on foot_led_a: set No.
+- SILKSCREEN PASS 2026-10-06, NIGHT (user asked; cadkit's `silk_refs` is new): the four
+  LED boards print a designator beside every U, D, L and F (43 / 43 / 38 / 65, every one
+  found a site), ui_board has 'NAV' at SW1 beside 'POWER' at SW2. All five boards' ink is
+  now a part in the CAD: `foot_pcb_a_silk`, `foot_pcb_b_silk`, `fret_pcb_mid_silk`,
+  `fret_pcb_key_silk`, `ui_pcb_silk` (src/foot_light.py, fret_light.py, ui_panel.py;
+  front side only -- Boards.silk() draws a back-side label on the top face, so the
+  pinouts on the backs are not drawn). Copper, drill, mask, paste, BOM and CPL are
+  byte for byte what was uploaded; ONLY the two silkscreen gerbers changed, so THE
+  PROJECTS SAVED ON JLCPCB TONIGHT CARRY THE OLDER INK: upload the zips again on order
+  day (previews and quotes stand).
 - LOOP AREAS, old routes against new (scratchpad loop.py; every switched LED net, track
   length x height over the rail plane, F.Cu 0.21 / B.Cu 1.275 mm): foot_led_a 808 -> 802
   mm2 summed, foot_led_b 808 -> 806, fret_led_mid 5978 -> 5857, fret_led_key 3051 ->

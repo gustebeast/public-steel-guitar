@@ -461,7 +461,9 @@ def _manual(board, n_drv):
                "+11V5, GND). " % board.upper() + ("J1's four ways are named on the "
                "BACK, which is the face that looks up at whoever plugs it: 1 GND, "
                "2 +24V_IN, 3 SCK_CABLE, 4 SDT_CABLE. " if a else "") + "Each seam land "
-               "is named on the back with its net. All text 1.0 mm or more with a "
+               "is named on the back with its net. A designator stands beside every "
+               "LED, driver, the regulator, the inductor and the fuse (silk_refs: 43 "
+               "of 43 found a site, 2026-10-06). All text 1.0 mm or more with a "
                "0.15 stroke (A12). Pin-1 and LED polarity marks are the footprints', "
                "outside the bodies. The legend is cut back from every mask opening: "
                "the gerber carries the pads in clear polarity",
@@ -996,6 +998,9 @@ BOARD_NOTES = {
     # argument elec/lever_sensor.py records for its grooves.
     "no_mounting_holes": True,
     "qty_per_instrument": 1,
+    # Designators for what a hand reworks or probes -- the drivers, the regulator and
+    # its inductor, the fuse, and every LED (a dead one is reported by number).
+    "silk_refs": ["U", "D", "L", "F"],
 }
 
 

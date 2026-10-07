@@ -718,6 +718,13 @@ def pcb(panel):
     return _placed(panel, BG.solid(BOARD_NAME[panel]))
 
 
+def silk(panel):
+    """The board's lettering, where the board is -- its own part (white ink)."""
+    from . import board_geom as BG
+    w = BG.silk(BOARD_NAME[panel])
+    return None if w is None else _placed(panel, w)
+
+
 def leds(panel):
     """The panel's LEDs alone, as their routed bodies -- for the probes that ask about
     the LEDs specifically. The build draws them as part of pcb()."""
