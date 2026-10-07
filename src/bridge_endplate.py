@@ -1172,6 +1172,7 @@ def _build() -> cq.Workplane:
     # buys whole-lip retention at the cost of a doubled-back cable and a longer run.
     body = body.cut(OP.opt_conduit())
     body = body.cut(OP.opt_pwr_slot())            # the optical 24 V lead's way down to J9
+    body = body.cut(OP.opt_usb_notch())           # J1's down-angle plug: its leg's way down
     body = body.cut(box_at(LIP_DX + 2.0, OP.CONDUIT_D, LIP_DZ + 2.0,
                            x=XLO - (LIP_DX + 2.0) / 2 + 1.0,
                            y=(OP.CONDUIT_Y0 + OP.CONDUIT_Y1) / 2,
