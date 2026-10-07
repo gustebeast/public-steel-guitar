@@ -277,7 +277,23 @@ def _quality(kind, parts):
         },
         # A12 "Break it when" (b): no site at the legible size, and the text is not
         # needed to assemble or wire the board.
-        "waive": {"A12:silk text height":
+        # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
+        # and why. Way 1 is marked on the connector's own side in every case.
+        "connector_labels": ({"J1": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"}}
+                             if male else {}),
+        # A17 "Break the ways when" (c): a board 10-13 mm wide, no site for a word at the
+        # legible size on either face beyond what is printed. The way order is the
+        # harness's one order (GND, 5V, CAN_H, CAN_L) and is in INSTALL_NOTES.md.
+        "waive": {"A17:J2 ways":
+                  "a 10-13 mm board: J2's four ways have no site for a word or a block at "
+                  "1.0 mm on either face. The lead is the leg harness's own 4-way, crimped "
+                  "1:1 in the one order every lead uses (INSTALL_NOTES.md, 'Every JST "
+                  "lead')",
+                  **({} if male else {
+                      "A17:J1 ways": "the pad row for the spring pins: nothing plugs into "
+                                     "it by hand, it meets the male board when the leg is "
+                                     "seated. No site for four words at 1.0 mm"}),
+                  "A12:silk text height":
                   "the front face is all courtyard and the back is 10-13 mm wide with vias "
                   "across it: the ground test pad's letter (and a pin legend, on the one "
                   "board where one fits at all) has no site at 1.0 mm and is printed at "

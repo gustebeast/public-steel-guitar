@@ -76,6 +76,16 @@
    STILL OPEN: the three USB items below.
    - Not mine (branner): knee-lever J1 way order, leg joint J2 mirror, pogo_wire_*_3.
    ORDER: silk + orientation + fab packages FIRST (boards ordered tomorrow), then this.
+3b. **Connector labels as a cadkit rule (lead, from the user) -- A17, cadkit 8683122 + e858ac7.**
+   Designator, a name for every way, a way-1 mark, all on the connector's own side;
+   `quality.connector_labels` declares `back_only` / `standard`; harness
+   `pcbflow/test_quality_a17.py`. Also 1e98ef6: a pinout block tries the short words at
+   1.0 mm before 0.8. Declared (board.json only, no ink, no fab package touched):
+   output_panel J6 J10, pi_cap J4 J6 (J1 standard, J5 ways waived), can_tee J1 J2,
+   lever_sensor J1, leg male boards J1 (leg J2 ways and the female J1 ways waived).
+   All 0 FAIL on A17 except **leg_pogo_female_bottom J2: hard, no way-1 mark fits** (left
+   at 1 FAIL on the lead's instruction; not on the bench order). OPEN: say what a mark
+   there would take; brenner's LED / UI boards need the same declarations.
 4. ~~DONE~~ (`tools/silk_read.py`; motor_ctrl 90, pi_cap 180, the two top leg boards 180, the rest 0) **One reading direction per board (lead, from the user).** kicad_silk: `silk_read` in the
    board's notes (default 0) = the way a person reads the board INSTALLED (pick from the CAD
    pose; say which way each bench board reads in the submit). Never 180 / 270 off it. The
