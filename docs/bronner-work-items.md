@@ -18,6 +18,14 @@
    J7-J10, pi_cap J2-J6, optical J2, can_tee J1/J2), then lever_sensor and the leg boards
    (J2 has no pinout at all). Silk only: `finish.py --keep-route`, rebuild fab packages,
    say so in the submit. Tell brenner the same holds for the LED and UI boards.
+2b. ~~DONE~~ **Way-1 marks (lead).** Where a connector has no word per way on its own side it
+   gets a bare "1" nearest way 1's pad, else a 0.6 mm dot: motor_ctrl J2 J3 J4, output_panel
+   J6-J10, pi_cap J1 J4 J5 J6, optical J2, can_tee J1 J2 (a "1"); lever_sensor J1 and the
+   leg boards' J1 (a dot); leg_pogo_male_bottom / female_top J2 a dot, male_top /
+   female_bottom J2 nothing fits (not on the bench order; lead accepted). All ten re-run
+   `finish.py --keep-route`: 0 unconnected, 0 violations, 0 FAIL; fab packages rebuilt after
+   the last board write (pi_cap twice). cadkit 1468651 + 4127408 (`silk_pinout`,
+   `silk_ends`, the mark on connectors over 8 ways: for brenner's ui_board).
 3. **Drawn wiring from the harness tables (lead, from the user).** One pass over every lead
    in `src/wiring.py`: conductor count, way assignment and colour from the `elec/harness.py`
    tuple for that link, and an assert that fails the build when a drawn cable's count
