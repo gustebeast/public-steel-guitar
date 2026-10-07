@@ -1,5 +1,64 @@
 # bronner — open work items (2026-09-30)
 
+## OPEN, 2026-10-06 night (after the pre-order batch merged)
+
+0. ~~DONE~~ **Re-review S1 / S2 (lead).** S1: every fab package re-exported after the last board
+   write and checked newer than its board. S2: F1 is 0.49 ohm cold (JDT's table), not 0.1; with
+   that a live plug of J3 peaks at 31.0 V on U5, so R23 is a 0 ohm link (C17888) on the same land,
+   not an unrated 0.22 ohm thick film. optical C130 2.2 uF. Pi config: no `w1-gpio` on GPIO4.
+
+1. **Lettering always reaches the CAD (user).** cadkit `board_check.check(ink=)`: every label
+   the routed board prints must have ink in the CAD, on its face; `Boards.ink` = both faces;
+   `board_check.place` for hand-modelled boards. New ink parts: tee, lever sensor, four leg
+   boards; back faces on motor_ctrl / output_panel / pi_cap / optical. ~~DONE~~ (15 of 15 pass).
+2. ~~DONE~~ **Per-way connector labels on the CONNECTOR's side (lead, from the user).** Every pinout
+   is on the back. kicad_silk: a short net word in line with each way on the part's own
+   side + a pin-1 mark; keep the back block; never under the legible size -- report the
+   connectors that cannot take it. Bench boards first (motor_ctrl J1-J7, output_panel
+   J7-J10, pi_cap J2-J6, optical J2, can_tee J1/J2), then lever_sensor and the leg boards
+   (J2 has no pinout at all). Silk only: `finish.py --keep-route`, rebuild fab packages,
+   say so in the submit. Tell brenner the same holds for the LED and UI boards.
+3. **Drawn wiring from the harness tables (lead, from the user).** One pass over every lead
+   in `src/wiring.py`: conductor count, way assignment and colour from the `elec/harness.py`
+   tuple for that link, and an assert that fails the build when a drawn cable's count
+   differs. Known wrong: PWR_LINK (6 ways, drawn as a pair; no power-button conductor
+   anywhere), LIGHTS_LINK (not drawn; find the owner), output_panel J9 -> optical J2 (one
+   fat wire), the stale "2 x 22 AWG per rail" comment at J7. NC ways draw nothing. Gate
+   green. Leads that are brenner's: message brenner.
+   **THE AUDIT FOR IT (lead, same night):** main worktree `research/review/jst_audit.md`,
+   `jst_audit_detail.txt`, scripts `jst_*.py` (re-runnable: the acceptance test; before = 4
+   of 51 JST instances right; say before / after in the submit). Mine (`src/wiring.py`,
+   `src/electronics.py`):
+   - WRONG: (1) motor_ctrl J6 gets nothing, the lever-chain head ends 12 mm away
+     (`wiring._j2_pin` still treats J2 as one 8-way); (2) J2 pedal cable two ways low, same
+     cause; (3) J5: four 5 V conductors float 25.6 mm off (`EL.mctrl_pin` is flat-tray, never
+     stood up at wiring.py:1206); (4) no cable: motor_ctrl J7 <-> pi_cap J4 (LIGHTS_LINK),
+     the five pedal boards' J1 (settle with branner whose); (5) counts: PWR_LINK 2 of 6 and
+     5.5 mm beside the row; motor_ctrl J1 2 of 4 with GND / 24 V drawn into J3; output_panel
+     J9 <-> optical J2 one 4 mm solid for a two-wire lead.
+   - INACCURATE: (6) all ten tees J1 / J2 every end +4.75 mm along the row
+     (`wiring.tee_point` vs the half-ear offset in `EL.tee_pcb` / the lead's `tee_conn_dx`
+     change: fix by measurement), entry angles off; (7) pi_cap J2 entered through the body
+     of a side-entry part; (8) output_panel J7 pair centred on the housing (GND on NC way 3);
+     (9) no colour for `wire_5v_*` x4 and `wire_canb_*_lkl_0` x4; (10) `wire_ui` Pi end 65.8 mm
+     from pi_cap J5, hard-coded; (11) eight conductors overrun their pin 2-3 mm
+     (`q[-1:0]` slice in `wiring._fan`).
+   - USB: output_panel J3 (hub upstream) has no lead; J2's lead is a bare wire starting
+     20 mm out with no plug body and ends in the Pi's USB-A block where the schematic sends
+     it to the Pi's USB-C (pi4() does not model that); J4 is right. cadkit: side-entry XH
+     drawn 6.1 deep, footprint body 11.6.
+   - Not mine (branner): knee-lever J1 way order, leg joint J2 mirror, pogo_wire_*_3.
+   ORDER: silk + orientation + fab packages FIRST (boards ordered tomorrow), then this.
+4. ~~DONE~~ (`tools/silk_read.py`; motor_ctrl 90, pi_cap 180, the two top leg boards 180, the rest 0) **One reading direction per board (lead, from the user).** kicad_silk: `silk_read` in the
+   board's notes (default 0) = the way a person reads the board INSTALLED (pick from the CAD
+   pose; say which way each bench board reads in the submit). Never 180 / 270 off it. The
+   quarter turn is the LAST resort and only for association (a word against its own pin or
+   pad): first a wider reach, more sites, a shorter word, one line vs stacked. Log each
+   turned label with its reason; report the 90-degree count per board before / after
+   (before: optical 8 of 14 front, motor_ctrl 5 of 14, output_panel 4 of 16, foot_led_a 17
+   of 52). Designators: KiCad's keep-upright already prints them at 0 / 90; kicad_geom
+   exported the raw footprint angle (180 / 270) -- export the DRAWN angle. Pass to brenner.
+
 **⚠ READ THIS FIRST, PROMPT-WRITERS AND AGENTS ALIKE.** Two items that tick prompts keep
 re-issuing are FINISHED: the `WIRE_OK` bus-B entry (`9303bd5`) and the chassis_2 mounting
 rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction pasted into a

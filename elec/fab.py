@@ -239,7 +239,7 @@ PASSIVES = {
     ("12k 1%", "R_0402_1005Metric"):         "C25752",   # UniOhm 0402WGF1202TCE, 1 %; basic
     ("137k 1%", "R_0402_1005Metric"):        "C138058",   # Yageo RC0402FR-07137KL, 1 %; 27,854 in stock
     ("150k", "R_0402_1005Metric"):           "C25755",   # UniOhm 0402WGF1503TCE, 1 %; preferred extended
-    ("0R22", "R_1206_3216Metric"):           "C25336",   # UniOhm 1206W4F220LT5E, 1 %, 250 mW, 200 V; 39,275 in stock (2026-10-06)
+    ("0R", "R_1206_3216Metric"):             "C17888",   # UniOhm 1206W4F0000T5E; basic, 2.6 M in stock (2026-10-06)
     ("120R 100mW", "R_0402_1005Metric"):     "C413065",   # Panasonic ERJ2RKF1200X, 1 %, 100 mW; 43,451 in stock (2026-10-06)
     ("180R 100mW", "R_0402_1005Metric"):     "C413069",   # Panasonic ERJ2RKF1800X, 1 %, 100 mW (the UniOhm / Yageo 0402 is 62.5); 29,615 in stock
     ("18k2 1%", "R_0402_1005Metric"):        "C2076827",   # Panasonic ERJ2RKF1822X, 1 %; 37,043 in stock

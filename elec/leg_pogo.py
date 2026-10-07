@@ -216,6 +216,11 @@ def design(kind, joint):
     # board 10 mm wide, and "CAN_H" at the legible 1.0 mm is 4.4 mm long. G, 5V, H, L in
     # the harness order; kicad_silk places each beside its pad or reports that it could not.
     notes["silk_labels"] = {"TP1": "G", "TP2": "5V", "TP3": "H", "TP4": "L"}
+    # The two TOP-joint boards sit the other way up from the bottom pair (the joint is
+    # the same joint, turned over), so their lettering reads at 180 to face the same way
+    # as the bottom pair once installed (tools/silk_read.py).
+    if joint == "top":
+        notes["silk_read"] = 180
     # The stem is 22 characters and the back is 10-13 mm wide with vias across it.
     notes["silk_name"] = "POGO %s %s" % ("MALE" if kind == "male" else "FEM",
                                          "BOT" if joint == "bottom" else "TOP")

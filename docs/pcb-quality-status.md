@@ -433,3 +433,24 @@ One judgement is in the A16 declarations and is written where it is made
 brick's whole 6.67 A, 35.6 V, not its catalogue 38.9 V at a 10.3 A pulse the brick cannot
 supply. Two rule faults were found and fixed in cadkit on the way (A14 read a QFN's paste
 windows as lands; A15 judged a track against every ground pour instead of the nearest).
+
+## Lettering pass and re-review, 2026-10-06 (late)
+
+Silk only, no copper moved: every board was re-run with `finish.py --keep-route`.
+
+- **The CAD is held to the ink.** `cadkit.board_check.check(ink=)` fails a board whose
+  routed lettering is not drawn in the CAD, label by label and face by face. Six boards
+  had never drawn theirs (can tee, lever sensor, four leg boards) and four drew the front
+  only; all fifteen pass now.
+- **One reading direction per board** (`silk_read`, from `tools/silk_read.py`): motor_ctrl
+  90, pi_cap 180 (its visible face is the back), the two top leg boards 180, the rest 0.
+  Text a quarter turn off it, before to after: optical 8 to 0, motor_ctrl 5 to 3 (all
+  three are per-way words on connector rows), output_panel 4 to 0, pi_cap 4.
+- **A word per way on the connector's own side**: motor_ctrl J1 J5 J6 J7, pi_cap J2 J3.
+  The front pinout block instead: motor_ctrl J2 J3 J4, output_panel J7 J8 J9, optical J2.
+  NO ROOM on the front for either, back block only: output_panel J10 and J6, pi_cap J4
+  and J6, can_tee J1 J2, lever_sensor J1, and every connector on the four leg boards.
+- **Re-review**: `motor_ctrl` R23 is a 0 ohm link (the fuse is 0.49 ohm cold and damps a
+  live plug by itself: 31.0 V on a 38 V pin); `optical` C130 is 2.2 uF.
+- Fab packages for all ten boards were exported after the last board write and each is
+  newer than its board.

@@ -1718,20 +1718,22 @@ def optical():
         net += c[1]
         gnd += c[2]
     # C130-C133: the bulk caps and the reference bypass.
-    # ⚠ C130 IS 1 uF: THE PHY'S OWN MINIMUM FOR A DEVICE (USB3300 DS00001783C table 7-2,
+    # ⚠ C130 IS 2.2 uF, INSIDE THE PHY'S RANGE FOR A DEVICE (USB3300 DS00001783C table 7-2,
     # "Capacitance values at VBUS of USB connector": device 1 uF min, 10 uF max, drawn on
     # the connector side of RVBUS in its figure 7-1). It was 100 nF, on the argument that
     # VBUS is only sensed here and that bulk against R39's 10 k would slow the sense. That
     # argument put the capacitor on the wrong side of the resistor: C130 is on VBUS itself,
-    # which the host drives directly, so R39 is not in its charging path. 1 uF, the bottom
-    # of the range, because the board draws nothing from VBUS and the host pays the inrush.
-    for tag, net, desc in (("C130", vbus, "VBUS capacitor, the PHY's 1 uF minimum -- see note"),
+    # which the host drives directly, so R39 is not in its charging path. It was 1 uF, the
+    # bottom of the range exactly, for a day: a 10 % X5R at 5 V of bias is under 1 uF. 2.2 uF
+    # on the same 0805 land keeps it over the minimum across tolerance and bias and is still
+    # a quarter of the maximum; the board draws nothing from VBUS and the host pays the inrush.
+    for tag, net, desc in (("C130", vbus, "VBUS capacitor, 2.2 uF in the PHY's 1 to 10 uF -- see note"),
                            ("C131", v3d, "3V3 digital bulk"),
                            ("C132", v3a, "3V3 analog bulk"),
                            ("C133", mid, "MID reference bypass -- the twenty summing "
                             "nodes share this, so it is what keeps them from talking "
                             "to each other through their own reference")):
-        c = _c(tag, "1uF" if tag == "C130" else "10uF", desc,
+        c = _c(tag, "2.2uF" if tag == "C130" else "10uF", desc,
                "Capacitor_SMD:C_0805_2012Metric")
         net += c[1]
         gnd += c[2]
@@ -4167,7 +4169,7 @@ BOARD_NOTES["quality"] = {
                "rings toward 48 V on a part whose absolute maximum is 38. The resistor is a KOA "
                "2512 because the plug puts 288 W across it for microseconds and KOA's one-pulse "
                "curve allows 400 W below 10 us in that case (40 W in a 1206). USB: VBUS lands "
-               "on 1 uF (C130) and a 10 k sense resistor: the capacitance the USB "
+               "on 2.2 uF (C130) and a 10 k sense resistor: the capacitance the USB "
                "specification expects a device to present, behind a host's own limit",
         "M17": "FB1 (BLM18KG601SN1D, 1.3 A) carries 166 mA at the worst case, 13 % of its "
                "rating. Its resonance with the 1.3 uF on +5V was near 115 kHz, beside the "
@@ -4218,7 +4220,7 @@ BOARD_NOTES["quality"] = {
                "harmless at 480 Mbit/s. No series resistors and no external pull-up: the USB3300 "
                "has both internally (its 6.2.2). Clock: Y2 is an oscillator, +-20 ppm all-in "
                "against the +-500 ppm the PHY's note 5-1 allows, 1 ps rms of phase jitter, 7.6 mm "
-               "from XI on F.Cu with no via. VBUS is sensed, never sourced. C130 on VBUS is 1 uF, "
+               "from XI on F.Cu with no via. VBUS is sensed, never sourced. C130 on VBUS is 2.2 uF, "
                "the PHY's minimum for a device (its table 7-2)",
         "M24": "Y1 (TAXM25M4RDBCCT2T): CL 10 pF, ESR 30 ohm max, C0 3 pF max. C123 = C124 = 12 pF "
                "C0G; (12 + about 7 per leg) / 2 = 9.5 pF. gm_crit = 4 x 30 x (2 pi 25 MHz)^2 x (13 "

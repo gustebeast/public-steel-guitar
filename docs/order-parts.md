@@ -9,8 +9,8 @@ A part that is not in this file is not on a board, whatever another document say
 | Part | LCSC | Per instrument | Boards |
 |---|---|--:|---|
 | `0R` | C17168 | 11 | lever_sensor |
+| `0R` | C17888 | 1 | motor_ctrl |
 | `0R` | C21189 | 1 | output_panel |
-| `0R22` | C25336 | 1 | motor_ctrl |
 | `100k` | C25741 | 17 | motor_ctrl, output_panel, optical, fret_led_key, foot_led_a, foot_led_b |
 | `100nF` | C307331 | 186 | lever_sensor, motor_ctrl, output_panel, pi_cap, optical, ui_board, fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
 | `100nF C0G` | C170182 | 1 | output_panel |
@@ -34,11 +34,11 @@ A part that is not in this file is not on a board, whatever another document say
 | `1M` | C26083 | 1 | output_panel |
 | `1N4148WT` | C917006 | 1 | output_panel |
 | `1R` | C25086 | 1 | optical |
-| `1uF` | C28323 | 4 | output_panel, optical |
+| `1uF` | C28323 | 3 | output_panel |
 | `1uF` | C52923 | 61 | lever_sensor, motor_ctrl, output_panel, pi_cap, optical, fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
 | `2.2nF C0G` | C2987940 | 2 | output_panel |
 | `2.2pF` | C325452 | 20 | optical |
-| `2.2uF` | C377773 | 4 | output_panel, optical |
+| `2.2uF` | C377773 | 5 | output_panel, optical |
 | `2.2uF/100V` | C92775 | 2 | output_panel |
 | `2.54-2*20P` | C5124634 | 1 | pi_cap |
 | `200k 1%` | C25764 | 3 | fret_led_key, foot_led_a, foot_led_b |
@@ -219,7 +219,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 1 | R12 | `137k 1%` | R_0402_1005Metric | C138058 |
 | 1 | R13 | `10k 1%` | R_0402_1005Metric | C25744 |
 | 1 | R22 | `49k9 1%` | R_0402_1005Metric | C25897 |
-| 1 | R23 | `0R22` | R_1206_3216Metric | C25336 |
+| 1 | R23 | `0R` | R_1206_3216Metric | C17888 |
 | 1 | U1 | `LMR16006XDDCR` | SOT-23-6 | C87080 |
 | 1 | U2 | `TCAN3413DR` | SOIC-8_3.9x4.9mm_P1.27mm | C22433320 |
 | 1 | U3 | `SN65HVD230DR` | SOIC-8_3.9x4.9mm_P1.27mm | C12084 |
@@ -317,16 +317,15 @@ A part that is not in this file is not on a board, whatever another document say
 
 ## `optical`
 
-1 per instrument. 258 placed part(s) in 46 line(s); 11 pad(s) and jumper(s) that are copper, not parts.
+1 per instrument. 258 placed part(s) in 45 line(s); 11 pad(s) and jumper(s) that are copper, not parts.
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|
 | 41 | C100-C110, C115-C119, C121, C125, C128, C129, C135-C139, C141-C145, C163, Cd1-Cd10 | `100nF` | C_0402_1005Metric | C307331 |
 | 14 | C111, C114, C140, C166, Cs11, Cs15, Cs21, Cs25, Cs31, Cs35, Cs41, Cs45, Cs51, Cs55 | `1uF` | C_0402_1005Metric | C52923 |
-| 2 | C112, C113 | `2.2uF` | C_0805_2012Metric | C377773 |
+| 3 | C112, C113, C130 | `2.2uF` | C_0805_2012Metric | C377773 |
 | 2 | C120, C122 | `4.7uF` | C_0805_2012Metric | C1779 |
 | 2 | C123, C124 | `12pF` | C_0402_1005Metric | C1547 |
-| 1 | C130 | `1uF` | C_0805_2012Metric | C28323 |
 | 4 | C131-C134 | `10uF` | C_0805_2012Metric | C15850 |
 | 1 | C160 | `10uF/50V` | C_1206_3216Metric | C13585 |
 | 2 | C161, C165 | `100nF/50V` | C_0402_1005Metric | C307331 |

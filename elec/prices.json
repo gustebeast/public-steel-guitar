@@ -3843,22 +3843,22 @@
     "output_panel:C32": {
       "usd": 0.053,
       "verified": "v",
-      "what": "2.2uF C377773 -- JLCPCB parts API at qty 40"
+      "what": "2.2uF C377773 -- JLCPCB parts API at qty 50"
     },
     "output_panel:C33": {
       "usd": 0.053,
       "verified": "v",
-      "what": "2.2uF C377773 -- JLCPCB parts API at qty 40"
+      "what": "2.2uF C377773 -- JLCPCB parts API at qty 50"
     },
     "optical:C112": {
       "usd": 0.053,
       "verified": "v",
-      "what": "2.2uF C377773 -- JLCPCB parts API at qty 40"
+      "what": "2.2uF C377773 -- JLCPCB parts API at qty 50"
     },
     "optical:C113": {
       "usd": 0.053,
       "verified": "v",
-      "what": "2.2uF C377773 -- JLCPCB parts API at qty 40"
+      "what": "2.2uF C377773 -- JLCPCB parts API at qty 50"
     },
     "lever_sensor:C10": {
       "usd": 0.0166,
@@ -3878,7 +3878,7 @@
     "output_panel:C24": {
       "usd": 0.0399,
       "verified": "v",
-      "what": "1uF C28323 -- JLCPCB parts API at qty 40"
+      "what": "1uF C28323 -- JLCPCB parts API at qty 30"
     },
     "output_panel:C38": {
       "usd": 0.0472,
@@ -3888,12 +3888,12 @@
     "output_panel:C39": {
       "usd": 0.0399,
       "verified": "v",
-      "what": "1uF C28323 -- JLCPCB parts API at qty 40"
+      "what": "1uF C28323 -- JLCPCB parts API at qty 30"
     },
     "output_panel:C42": {
       "usd": 0.0399,
       "verified": "v",
-      "what": "1uF C28323 -- JLCPCB parts API at qty 40"
+      "what": "1uF C28323 -- JLCPCB parts API at qty 30"
     },
     "lever_sensor:R3": {
       "usd": 0.0034,
@@ -4586,9 +4586,9 @@
       "what": "180R 100mW C413069 -- JLCPCB parts API at qty 100"
     },
     "optical:C130": {
-      "usd": 0.0399,
+      "usd": 0.053,
       "verified": "v",
-      "what": "1uF C28323 -- JLCPCB parts API at qty 40"
+      "what": "2.2uF C377773 -- JLCPCB parts API at qty 50"
     },
     "output_panel:R1": {
       "usd": 0.0024,
@@ -4836,9 +4836,9 @@
       "what": "22uF/25V C12891 -- JLCPCB parts API at qty 40"
     },
     "motor_ctrl:R23": {
-      "usd": 0.0084,
+      "usd": 0.0085,
       "verified": "v",
-      "what": "0R22 C25336 -- JLCPCB parts API at qty 10"
+      "what": "0R C17888 -- JLCPCB parts API at qty 10"
     }
   },
   "modules": {
