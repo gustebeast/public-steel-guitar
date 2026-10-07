@@ -556,6 +556,7 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # Neither reverses a supply. Nothing below names a way by its NUMBER: every contact
     # is found by what it carries, so the order is harness.py's to change.
     J_PINS = LED_WAYS                    # the Pi cap's J3, way for way
+    _H.check_ways(LED_WAYS, ("V24",))        # no data way beside the supply
     assert J_PINS[:2] == tuple(_H.XH_PINOUT[:2]), (
         "the fret harness plug is an XH and its supply ways are not the XH bus's own")
     j = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
@@ -1390,7 +1391,8 @@ def build(panel):
     if panel == "key":
         i_24 = i_all * V_RAIL / 24.0 / 0.90
         paths = [
-            {"net": "+24V_IN", "from": "J1.2", "to": "F1.1", "amps": round(i_24, 3)},
+            {"net": "+24V_IN", "from": "J1.%d" % BC.xh_way(LED_WAYS, "V24"), "to": "F1.1",
+             "amps": round(i_24, 3)},
             {"net": "+24V", "from": "F1.2", "to": "U10.2", "amps": round(i_24, 3)},
             # the rail: out of the inductor, onto the plane, across the seam pogos. Held
             # to the WHOLE rail rather than the mid board's share, because the stretch

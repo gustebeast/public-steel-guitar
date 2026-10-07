@@ -184,7 +184,7 @@ boards, 2026-10-06, every row pointing off its own end.
 ### 5.5 The cable sockets and the ribbon
 
 * `foot_led_a` J1, `fret_led_key` J1 (S4B-XH-SM4-TB): our own lead, `harness.LED_DROP`
-  = GND, V24, SCK, SDT. Routed pads 1 to 4 carry GND, +24V_IN, SCK_CABLE, SDT_CABLE on
+  = V24, GND, SCK, SDT (2026-10-07: power, ground, data, data on every JST lead). Routed pads 1 to 4 carry +24V_IN, GND, SCK_CABLE, SDT_CABLE on
   both. Covered by section 2's JST row.
 * `ui_board` J2 (2x8, 1.27): `harness.UI_RIBBON` way n on pad n, read back off the routed
   board (1 SW_A ... 8 GND, 9 SCLK, 10 +3V3 ... 16 PWR_SW_DN). Pad 1 is the -Y end of the
