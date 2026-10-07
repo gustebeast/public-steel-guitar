@@ -137,9 +137,15 @@ UI_FP = "Connector_PinHeader_1.27mm:PinHeader_2x08_P1.27mm_Horizontal"
 # over the ribbon header. Pin 36 (GPIO16) was tried first and did not route: from x 19
 # it has to cross the whole east half of the header, and UI_DC and UI_RES_N both came
 # back open. Pin 33 is left empty for the same reason as pin 35.
+# UI_DC MOVED WITH IT, from pin 37 (GPIO26) to pin 7 (GPIO4), the same day. Its way on
+# the ribbon header is in the edge-side row's WEST half, so its drawn escape comes out
+# round the header's west end; with the reset line now coming down beside it there was
+# no way back east to pin 37 (or to pin 36, tried next), and it came back open both
+# times. Pin 7 is on the side the escape already faces. GPIO4 is a plain GPIO unless
+# the 1-wire overlay is loaded, which this instrument does not use.
 UI_WAYS = (("UI_SW_A", 11), ("UI_SW_B", 13), ("UI_SW_C", 15), ("UI_SW_D", 16),
            ("UI_SW_PUSH", 18), ("UI_ENC_A", 29), ("UI_ENC_B", 31), ("GND", 6),
-           ("UI_SCLK", 40), ("+3V3_PI", 1), ("UI_SDIN", 38), ("UI_DC", 37),
+           ("UI_SCLK", 40), ("+3V3_PI", 1), ("UI_SDIN", 38), ("UI_DC", 7),
            ("UI_CS_N", 12), ("UI_RES_N", 22),
            # ⚠ NOT THE PI'S. The power button's two throws pass straight through this board
            # to J4 and on to the output panel, which is where the supply comes in and the
@@ -657,7 +663,7 @@ BOARD_NOTES = {
         },
         "unconnected": {
             "J1": {
-                "pins": "3 5 7 14 17 20 21 24 26 27 28 32 33 35 36",
+                "pins": "3 5 14 17 20 21 24 26 27 28 32 33 35 36 37",
                 "why": "Pi header pins this cap gives no function (the GPIO map is in pi_cap.py)"
             },
             "J2.[34]": "the 6-way's two middle ways: no conductor (harness.PI_5V_LINK)",
@@ -815,7 +821,7 @@ BOARD_NOTES = {
             "M26": "U1 IN is the Pi's side and OUT the ribbon's, by its pinout above. Every other "
                    "net keeps one name from header pin to connector way",
             "M27": "no strap, boot or debug pin is used: header pins 27 / 28 (the HAT ID bus) are "
-                   "not connected, and none of the pins taken (11 12 13 15 16 18 22 29 31 37 38 40, "
+                   "not connected, and none of the pins taken (7 11 12 13 15 16 18 22 29 31 38 40, "
                    "the SPI0 / SPI5 pairs) is read by the Pi at boot",
             "M28": "JST's own parts: S4B-XH-SM4-TB(LF)(SN) C161861, S6B-PH-SM4-TB(LF)(SN) C265405, "
                    "S4B-XH-A(LF)(SN) C157925 -- the cited drawings are theirs. The 2x20 socket and "
