@@ -123,8 +123,12 @@ def tee_pocket(i):
     from the fused result, exactly as it does every motor's lift path."""
     sx0, sx1, sy0, sy1, sz = tee_board_box(i)
     _h = (SEAT_TOP - sz) + 2.0
-    pocket = box_at(D.TEE_BOARD_X + 2 * D.TEE_FIT, D.TEE_BOARD_Y + 2 * D.TEE_FIT, _h,
-                    x=(sx0 + sx1) / 2 - D.TEE_EAR_X / 2, y=(sy0 + sy1) / 2, z=sz + _h / 2)
+    # (its +X face is the motor's fit line: the board's edge stands D.TEE_EDGE_BACK inside it,
+    # so the fit takes nothing from the wall between this motor and the next)
+    pocket = box_at(D.TEE_BOARD_X - D.TEE_EDGE_BACK + 2 * D.TEE_FIT,
+                    D.TEE_BOARD_Y + 2 * D.TEE_FIT, _h,
+                    x=(sx0 + sx1) / 2 - D.TEE_EAR_X / 2 - D.TEE_EDGE_BACK / 2,
+                    y=(sy0 + sy1) / 2, z=sz + _h / 2)
     # ...plus the ear's tab (an L, not a box). The CUT runs deeper than the tab: down to where
     # the -X neighbour's own board sits, one STAGGER away. The ear laps that neighbour's bay, so
     # two independent pockets bite the same post from opposite sides, and stopping each at its own
