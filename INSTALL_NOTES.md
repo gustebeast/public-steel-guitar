@@ -150,9 +150,11 @@ turns on the 2.5 mm hex key. See `BOM.md` and
 - **Why:** the board is an O rather than a C -- its sensing strip runs +X across the
   endplate block to give the digital nets a path that does not cross the analog strip --
   and that band passes straight over the near-row bores. The rods are 30 mm stock pins
-  and stand 5.5 mm short of the board when seated (z 6.65 against 12.20), so the board
-  no longer rests on them -- but it is still their lid, and once it is on there is no
-  way to reach a rod. Press every rod down until it stops on its socket floor first.
+  and stand 5.5 mm short of the board when seated (z 6.65 against 12.20). Press every
+  rod down until it stops on its socket floor, then drop one printed ROD PLUG (Ø2.4 x
+  5.4) down each bore on top of it -- all ten bores, both rows. The plug fills the bore
+  to 0.15 under the board, so the board is what holds the rod down. A plug that stands
+  proud of the endplate means its rod is not home: the board will not seat on it.
 - **Check the fit before pressing any:** try one pin through a nut's ear. It must slide
   freely. The pin is 2.502-2.508 and the ear hole is unmeasured; if it binds, ream the
   ears to 2.6 before assembly.
