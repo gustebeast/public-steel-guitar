@@ -492,7 +492,7 @@ four legs. Cost is per instrument on a **ten-instrument order with whole packs b
 | `leadscrew_nut_h` | 10 | AliExpress | 3256804704147842 | $9.20 | [m] | Tr8x2 single-start H-flange brass nut, ~$11 per 3 x 4-pack per BOM.md. Not re-read today; was folded into the screw line before. |
 | `belt_gt2` | 8 | — | — | $6.40 | [v] | GT2 open belt, USD per metre; ~7.74 m per instrument |
 | `strings` | 1 | — | — | $25.00 | [m] | one 10-string pedal steel set |
-| **Total** | | | | **$617.95** | | |
+| **Total** | | | | **$617.68** | | |
 
 **Open, and they are design questions rather than prices:**
 
