@@ -385,6 +385,29 @@ BOARD_NOTES = {
     "via_keepouts": [[round(_PWR_X - 4.0, 3), round(_PWR_Y - 4.2, 3),
                       round(_PWR_X + 4.0, 3), round(_PWR_Y + 4.2, 3)]],
     "quality": {
+        # A16: everything on this board is the Pi's 3.3 V rail or a line pulled up to it.
+        "net_volts": {
+            "GND": 0,
+            "+3V3": {"v": 3.40, "why": "the Pi's 3.3 V rail; no tolerance is published "
+                                       "for it, so +3 % is allowed for"},
+            "*": {"v": 3.40, "why": "a logic line driven from, or pulled up to, +3V3"},
+        },
+        "pin_volts": {
+            "KH-2.54PH180-1X20P-L11.5": {
+                "max": 3.5, "src": "Newhaven NHD-2.7-12864WDW3 specification, electrical "
+                                   "characteristics: VDD 3.0 to 3.5 V",
+                "why": "the header is brass in a housing; what limits these pins is "
+                       "the display module that plugs onto them"},
+            "PZ1.27-2x8P": {"max": 500.0, "src": "hanxia HX PZ1.27-2x8P WZ, JLCPCB "
+                                                 "listing C22438114: 500 V"},
+            "RKJXT1F42001": {"max": 5.0, "src": "Alps RKJXT1F series sheet: maximum "
+                                                "rating 10 mA 5 V DC, resistive load"},
+            "PB-22E85-S-5.7C-C-W": {"max": 12.0, "src": "Legion PB-22E85, JLCPCB listing "
+                                                        "C22462024: 12 V 300 mA"},
+            "10k": {"max": 50.0, "src": "UNI-ROYAL 0402WGF series: maximum working "
+                                        "voltage 50 V"},
+            "100nF": {"max": 50.0, "src": "Samsung CL05B104KB54PNC (elec/fab.py): 50 V X7R"},
+        },
         # the display module's logic and its own boost converter, every pixel lit:
         # Newhaven's maximum (the note at C1). Pin 18 is /SHDN, a logic input.
         "power_paths": [{"net": "+3V3", "from": "J2.10", "to": ["J1.2"], "amps": 0.375}],
