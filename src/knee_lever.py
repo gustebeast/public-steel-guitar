@@ -2335,12 +2335,14 @@ def keeper_axis():
 # expression as the room it sits in. Back the screw all the way out and it lands ON the
 # room's own wall, which is why it can never permit more travel than the part does.
 STOP_MIN_DEG = 5.0                  # the shallowest travel the stop can be set to
-STOP_SCREW_L = 30.0                 # M4 x 30 BUTTON, an existing BOM SKU, 2.5 mm hex --
+STOP_SCREW_L = 40.0                 # M4 x 40 BUTTON, the leg lock pins' SKU, 2.5 mm hex --
                                     #   the instrument's one key (fastener_single_tool).
                                     #   x20 was enough for the TRAVEL, but not to park the
                                     #   head behind a cadkit ANCHOR: the pocket and its
                                     #   bite need 12 of solid ahead of where the head sits
-                                    #   at the shallow stop, and x20 left 8.05
+                                    #   at the shallow stop, and x20 left 8.05. x40 parks
+                                    #   it 16.2 back, and backed right out the head is
+                                    #   still inside the housing's open channel
 STOP_CH_W = M4_BUTTON_HEAD_D + 2 * HS_CLR       # 8.4: the head drops in through this
 STOP_CH_SHOULDER = D.MIN_WALL_2P    # ...straight sides this far above the axis before
                                     #   the 45 deg gable starts, so the ROUND head still
