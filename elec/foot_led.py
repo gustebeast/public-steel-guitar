@@ -874,6 +874,12 @@ def build(board, passes=20):
                       "are on the fused side so a shorted one blows F1",
         }
     notes["quality"] = {
+        # A16, declared with the fret boards' in elec/buck_cell.py. This board's rail is
+        # 11.50 V, 11.88 at the top of the reference's and the divider's tolerance (M5).
+        "net_volts": BC.net_volts("+11V5", 11.88, "11.50 V at the top of the reference's "
+                                  "1.5 % and the divider's 1 %"),
+        "pin_volts": BC.pin_volts("YZF0002-38080-02", ("3k3", "1k 1%", "10k 1%", "100k 1%",
+                                                "200k 1%")),
         "power_paths": paths_24 + [
             # ⚠ HELD TO THE WHOLE RAIL, though a driver's VCC is only its logic supply:
             # the stretch that matters is L1's own exit onto the plane, all of the rail
