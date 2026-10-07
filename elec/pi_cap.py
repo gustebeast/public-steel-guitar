@@ -658,8 +658,7 @@ BOARD_NOTES = {
         "connector_labels": {
             "J1": {"standard": "the Raspberry Pi 40-pin header: its mate is the Pi itself, "
                                "which this board sits on"},
-            "J4": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
-            "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
+            "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
         },
         "waive": {
             # A17 "Break the ways when" (b): more ways than a block carries, and the mate
