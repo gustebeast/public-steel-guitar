@@ -1,8 +1,8 @@
 ** Drc report for output_panel.kicad_pcb **
-** Created on 2026-10-06T23:09:22 **
+** Created on 2026-10-07T13:26:36 **
 ** Report includes: Errors, Warnings **
 
-** Found 14 DRC violations **
+** Found 10 DRC violations **
 [silk_edge_clearance]: Silkscreen clipped by board edge
     Rule: board setup constraints silk; warning
     @(143.0000 mm, 133.0000 mm): Segment on Edge.Cuts
@@ -43,22 +43,6 @@
     Rule: board setup constraints silk; warning
     @(105.5500 mm, 68.5900 mm): Polygon of U2 on F.Silkscreen
     @(105.2078 mm, 68.0100 mm): Segment of C19 on F.Silkscreen
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(76.1000 mm, 125.8000 mm): Reference field of L1
-    @(75.5200 mm, 125.7000 mm): Pad 1 [BOOT] of C4 on F.Cu
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(76.1000 mm, 125.8000 mm): Reference field of L1
-    @(76.4800 mm, 125.7000 mm): Pad 2 [SW] of C4 on F.Cu
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(127.4000 mm, 131.1000 mm): Segment of J6 on F.Silkscreen
-    @(128.9000 mm, 130.8000 mm): PTH pad SH [PWR_GND] of J6
-[silk_over_copper]: Silkscreen clipped by solder mask
-    Local override; warning
-    @(127.4000 mm, 131.1000 mm): Segment of J6 on F.Silkscreen
-    @(128.9000 mm, 115.2000 mm): PTH pad SH [PWR_GND] of J6
 
 ** Found 0 unconnected pads **
 
