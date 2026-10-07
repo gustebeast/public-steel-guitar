@@ -283,8 +283,8 @@ BOARD_NOTES = {
         # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
         # and why. Way 1 is marked on the connector's own side in every case.
         "connector_labels": {
-            "J1": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its nine-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
-            "J2": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
+            "J1": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its nine-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
+            "J2": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
         },
         # 3 A is the XH contact's rating and therefore the most the trunk may ever be
         # asked to pass; the budget case is 2.7 A (BOM.md, dual feed 54 / 46 at < 5 A).
