@@ -252,7 +252,8 @@ NUT_FLANGE_T    = 4.0
 NUT_BOSS_D      = 10.2
 NUT_BOSS_L      = 11.0      # 15 overall - 4 flange
 NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 15.0
-NUT_HOLE_D      = 3.5       # the ears' through-holes
+NUT_HOLE_D      = 2.5       # the ears' through-holes, per the listing (user, 2026-10-07:
+                            # trust it and design to a stock dowel pin; unmeasured)
 NUT_HOLE_DX     = 8.0       # ± from the axis (16 mm hole pitch)
 # MOUNTING — FLANGE UP, BOSS DOWN, and nothing bolts to anything.
 # Flange up puts the EARS at the top of the nut, which is what keeps the string's
@@ -370,7 +371,16 @@ SCREW_TOP_Z     = CHANGER_CEIL_Z - SCREW_END_GAP        # -4.80
 # as the bridge axle (Ø5): buy it as a Ø3.5 DRILL BLANK, which is sold in 0.1 mm steps —
 # the seller's drawing is only +/-0.5-1, so MEASURE the real ear hole and pick the blank
 # to it; that is the whole point of choosing a stock sold that finely.
-GUIDE_ROD_D     = NUT_HOLE_D  # 3.5 — slide fit in the nut's ear, press in the endplate
+# A STOCK DOWEL PIN, NOT CUT STOCK (user, 2026-10-07). The listing gives the ear hole as
+# Ø2.5, and a hardened Ø2.5 dowel pin is an off-the-shelf part in the lengths this needs,
+# so nothing is cut: the Ø3.5 drill blank had to be parted on an abrasive wheel. The rod is
+# 0.26× as stiff in bending and it does not matter: 0.004 mm under the 11 N anti-rotation
+# load carried at both ends, 0.011 mm as a pure cantilever from the slab.
+# FIRST CHECK WHEN A NUT ARRIVES: an m6 pin is 2.502-2.508, so it will not slide in a true
+# 2.50 hole. Ream the ear to 2.6 or accept what the hole really is.
+GUIDE_ROD_D     = NUT_HOLE_D  # 2.5 — slide fit in the nut's ear, press in the endplate
+GUIDE_ROD_L     = 30.0      # the STOCK length (McMaster 91595A370). The endplate takes
+                            # 25.2-35.4: see bridge_endplate.GUIDE_ROD_TOP
 GUIDE_ROD_FIT   = 0.05      # SNUG PRESS. Not zero: at zero the socket is drawn the
                             # rod's own Ø, which is not a hole you can install into,
                             # and coincident cylinders make the boolean unreliable
@@ -1153,7 +1163,7 @@ KEYHEAD_PX_BUF = 19 * BEAD / 4                      # 3.8 = KH_X - NUT_BLOCK_X, 
 # At the old 23.10 face the apex stood 0.36 PROUD of it, i.e. the seat broke out through
 # the -X face. Sized from whichever of the two reaches further, plus a 2-bead wall.
 _BRG_TEARDROP = (SUPPORT_BRG_OD + 0.2) / 2 * 1.4143            # 11.46, seat apex
-_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 2.51, rod-bore apex
+_ROD_TEARDROP = (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2 * 1.4143     # 1.80, rod-bore apex
 BRIDGE_BASE_HALF = (SCREW_ROW_DX
                     + max(_BRG_TEARDROP, NUT_HOLE_DX + _ROD_TEARDROP)
                     + MIN_WALL_2P)                             # 25.06
