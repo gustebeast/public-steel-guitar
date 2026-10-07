@@ -244,14 +244,27 @@ def land_vias(net, x, y):
 # The XH socket's lands are 4.5 x 1.3, too small for a second open barrel (it would hold
 # a third of the land's paste), so its ground way gets a via just past the land's toe on
 # 0.4 mm of track. From the footprint's PAD CENTROID at rot 270, which is where elec/
-# places it: way 1 is 3.75 towards +y, the lands' centres 2.27 towards +x, their toes 4.52.
-XH_GND_WAY = (2.27, 3.75)
+# places it: way 1 is 3.75 towards +y and each way after it 2.50 further towards -y, the
+# lands' centres 2.27 towards +x, their toes 4.52.
+XH_WAY1_DY = 3.75
+XH_PITCH = 2.50
 XH_TOE_VIA = 5.30
 
 
-def xh_ground_via(jx, jy):
-    """(track, via) for an S4B-XH-SM4-TB placed at (jx, jy), rot 270."""
-    y = round(jy + XH_GND_WAY[1], 3)
+def xh_way_dy(way):
+    """Board y of way `way` (1-based) from the pad centroid of an XH at rot 270."""
+    return XH_WAY1_DY - XH_PITCH * (way - 1)
+
+
+def xh_way(ways, name):
+    """The 1-based way that carries `name` in a lead's order (harness.LED_DROP)."""
+    return tuple(ways).index(name) + 1
+
+
+def xh_ground_via(jx, jy, way):
+    """(track, via) for an S4B-XH-SM4-TB placed at (jx, jy), rot 270, whose ground is
+    way `way` -- whichever one the lead's order puts it on."""
+    y = round(jy + xh_way_dy(way), 3)
     return (("GND", "F.Cu", 0.40, [(round(jx + 3.50, 3), y), (round(jx + XH_TOE_VIA, 3), y)]),
             ("GND", round(jx + XH_TOE_VIA, 3), y))
 
