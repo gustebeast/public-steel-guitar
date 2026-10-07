@@ -519,8 +519,8 @@
       "pi_cap": [
         {
           "usd": 15.45,
-          "verified": "m",
-          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 5 types. Counted from the BOM, not yet read on a quote"
+          "verified": "v",
+          "what": "extended-part fee, 3.09 per extended SMT part type (preferred and through-hole are exempt): 5 types. Read on the quote of 2026-10-06"
         }
       ],
       "output_panel": [
