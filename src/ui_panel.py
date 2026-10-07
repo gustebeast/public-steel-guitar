@@ -275,13 +275,15 @@ RIBBON_PITCH = 0.635               # was 1.27: the header is a 1.27 mm 2x7 now, 
 RIBBON_T = 0.65                    # 0.635 flat cable, and each conductor's pitch circle:
                                    # neighbouring ways touch, which is what makes it a
                                    # ribbon rather than sixteen wires
-# ...AND IT TURNS TWO CORNERS BY BEING FOLDED. The run is flat under the deck -- width
+# ...AND IT TURNS ONE CORNER BY BEING FOLDED. The run is flat under the deck -- width
 # in Y, thickness in Z, because there is only 10.70 of headroom and 17.78 of it on edge
-# does not fit -- so both of its 90 degree turns are IN THE RIBBON'S OWN PLANE, and flat
-# cable can only do that creased over at 45 degrees. Ordinary, and free, but it is an
-# assembly step somebody has to get the right way round, so the count is declared here
-# and cadkit.cables.flat_bends holds the modelled path to it.
-RIBBON_FOLDS = 2
+# does not fit -- so its 90 degree turn onto the Pi cap's header's line is IN THE RIBBON'S
+# OWN PLANE, and flat cable can only do that creased over at 45 degrees. Ordinary, and
+# free, but it is an assembly step somebody has to get the right way round, so the count
+# is declared here and cadkit.cables.flat_bends holds the modelled path to it. (Two until
+# 2026-10-06, when the path ended at a typed point instead of on the header; the second
+# turn, down onto the socket, is across the ribbon's width and is a plain bend.)
+RIBBON_FOLDS = 1
 RIBBON_W = RIBBON_N * RIBBON_PITCH  # 10.16, the cable's own width. Every way's insulation
                                     # touches its neighbour's, so the ribbon is exactly as
                                     # wide as the ways it has -- which is also the width

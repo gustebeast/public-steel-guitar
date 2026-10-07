@@ -1845,11 +1845,12 @@ def mctrl_floor_ports():
 # come to z -72.4 and -74.9, under a floor whose top is -71.5. The port is cut 0.5 round the
 # mated plug, so the wires leaving those two ways along the board's normal met solid floor
 # at the plug's own face. Nothing reported it because the link was never drawn. This is the
-# trench they leave through: from the plug's face, as long as the four conductors need to
-# come up one behind the next (wiring.py draws them there), open at the top, and through
-# the floor's skin into the hollow under it.
-MCTRL_J7_LEAD = 1.5             # the plug's face to the first conductor's riser
+# trench they leave through: from the plug's face, wide enough for the two to step sideways
+# and come up one behind the other to the heights ways 1 and 2 leave at (wiring.py draws
+# them there), open at the top, and through the floor's skin into the hollow under it.
+MCTRL_J7_LEAD = 1.5             # the plug's face to the first of the two risers
 MCTRL_J7_PITCH = 1.6            # riser to riser: an O1.3 conductor and 0.3 of air
+MCTRL_J7_SIDE = -1.7            # the side-step, in world Y: beside ways 1 and 2's own line
 MCTRL_J7_WIRE = 1.3
 
 
@@ -1858,11 +1859,14 @@ def mctrl_wire_relief():
     from . import motor_bank as MB
     ways = [way_pt("motor_ctrl", "J7", n) for n in (1, 2, 3, 4)]
     x0 = ways[0][0] - MCTRL_PORT_CLR
-    x1 = ways[0][0] + MCTRL_J7_LEAD + 3 * MCTRL_J7_PITCH + MCTRL_J7_WIRE / 2.0 + D.MIN_WALL / 2.0
+    x1 = ways[0][0] + MCTRL_J7_LEAD + MCTRL_J7_PITCH + MCTRL_J7_WIRE / 2.0 + D.MIN_WALL / 2.0
     half = MCTRL_J7_WIRE / 2.0 + 0.55
+    ya, yb = sorted((ways[0][1] - half, ways[0][1] + half,
+                     ways[0][1] + MCTRL_J7_SIDE - half, ways[0][1] + MCTRL_J7_SIDE + half))[::3]
     z0 = min(w[2] for w in ways) - half
     z1 = MB.FLOOR_TOP + 1.0
-    return box_at(x1 - x0, 2 * half, z1 - z0, x=(x0 + x1) / 2.0, y=ways[0][1], z=(z0 + z1) / 2.0)
+    return box_at(x1 - x0, yb - ya, z1 - z0, x=(x0 + x1) / 2.0, y=(ya + yb) / 2.0,
+                  z=(z0 + z1) / 2.0)
 
 
 # pi_cap_relief() lived here and is DELETED (user, 2026-09-29). It cut a 5.8 mm pocket in
