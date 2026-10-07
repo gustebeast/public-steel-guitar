@@ -2822,6 +2822,12 @@ BOARD_NOTES["quality"] = {
                             "3 HUB_XO, 2 / 4 GND",
         "PNR3015-150M": "two-pad, unpolarised",
     },
+    # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
+    # and why. Way 1 is marked on the connector's own side in every case.
+    "connector_labels": {
+        "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
+        "J10": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its seven-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
+    },
     "waive": {
         # A1 reports one barrel and does not add parallel vias up. The tab has eight.
         "A1:+24V Q2.2>J10.2": "eight 0.3 mm vias join the tab to the B.Cu bar, two in each "
