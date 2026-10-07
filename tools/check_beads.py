@@ -485,6 +485,9 @@ _ex("clearance",
     belt_tensioner__SOCKET_IN="ball centre below the head top (purchased screw)",
     belt_tensioner__INS_FIT="insert pocket slack along the screw (a gap)",
     belt_tensioner__RAIL_CLR="rail to its flat (a gap)",
+    foot_pedal__BUS_AIR="air between a drawn conductor and a wall or the layer under it (a gap)",
+    foot_pedal__BUS_KEEP="air between two drawn conductors in one layer (a gap)",
+    foot_pedal__BUS_RIBBON="pitch of the harness's flat ribbon (wire spacing, not plastic)",
     GROOVE_FLOOR="string channel depth; per-string floor = gauge + break-angle physics",
     )
 
