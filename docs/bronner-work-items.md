@@ -64,9 +64,11 @@
    bus B onto J2 and J6 under the floor, optical feed (two conductors on ways 1, 2), the
    UI ribbon onto pi_cap J5, colours for every net. The lead's audit re-run on this model
    (scripts copied, conductor tables renamed, verdict computed from the measurement):
-   **37 of 51 connector instances right (26 CORRECT + 11 OK-as-one-jacket), 23 of 37
-   rows; before 5 of 51, 5 of 37.** The 14 left are branner's: five lever J1 (way order
-   mirrored, `knee_lever.plug_pin`), five pedal J1 (no cable), four leg J2.
+   **50 of 51 connector instances right (39 CORRECT + 11 OK-as-one-jacket), 36 of 37
+   rows; before 5 of 51, 5 of 37** -- on the tree with branner's lever / leg / pedal
+   fixes merged (133baf33), run with branner's copy of the scripts. The one left is
+   pedal4 J1, "4 of 8": the pedal chain's far end, where nothing leaves (the script's
+   EXPECT table has that entry for the lever chain's end and not for the pedals').
    **FOUND BY DRAWING IT:** motor_ctrl J7's ways 3 and 4 are below the floor's top with
    the port cut 0.5 round the plug: their wires had no way out. `EL.mctrl_wire_relief` is
    the trench (chassis_2 changes); INSTALL_NOTES has the step. Both bus-B cables stay
