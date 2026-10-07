@@ -1196,6 +1196,13 @@ PI_PORT_BODY = {"usb2": (13.1, 17.1, 16.0, 2.5), "usb3": (13.1, 17.1, 16.0, 2.5)
                 "eth": (15.5, 21.4, 13.5, 3.0)}
 
 
+# DISPLAY and CAMERA: the two 15-way ribbon sockets, Z=5.5 on the same drawing, centred
+# (4.0, 28.0) and (46.5, 11.5) from the pin-1 end and the edge AWAY from the header. The
+# body is scaled off the drawing, not dimensioned on it: about 3.5 x 22.6.
+PI_FFC = ((4.0, 28.0), (46.5, 11.5))
+PI_FFC_BODY = (3.5, 22.6, 5.5)
+
+
 def pi_port_pt(which: str):
     """WORLD (x, y, z) of a port mouth on the Pi's +X end. Do NOT feed it through stand_pt.
 
@@ -1228,6 +1235,13 @@ def pi4() -> cq.Workplane:
         b = b.union(box_at(d, w, h, x=PI_FP[1] + proud - d / 2.0,
                            y=PI_FP[2] + PI_PORTS[which], z=top + h / 2.0))
     b = b.union(box_at(15.0, 15.0, 2.5, x=cx, y=cy, z=PI_Z + BD_T + 1.25))
+    # the two ribbon sockets, the only things under the cap tall enough to meet it, and
+    # the header's base the cap's socket seats on
+    for px, py in PI_FFC:
+        b = b.union(box_at(PI_FFC_BODY[0], PI_FFC_BODY[1], PI_FFC_BODY[2], x=PI_FP[0] + px,
+                           y=PI_FP[2] + py, z=top + PI_FFC_BODY[2] / 2.0))
+    b = b.union(box_at(20 * 2.54, 2 * 2.54, PI_HDR_BASE, x=PI_HDR_X, y=PI_HDR_Y,
+                       z=top + PI_HDR_BASE / 2.0))
     return b
 
 
@@ -1303,7 +1317,11 @@ from . import board_geom as BG
 # LED strip) both go +Y, so the header faces the things it feeds.
 PI_HDR_X = PI_FP[0] + 3.5 + (20 - 1) * 2.54 / 2.0   # the pad centroid along the row
 PI_HDR_Y = PI_FP[3] - 3.5 - 1.27                    # between the two pin rows
-PI_CAP_STANDOFF = BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"]   # 8.5, the socket's body
+# ⚠ 11.0, NOT 8.5 (2026-10-07). The socket's body is 8.5, and it does not reach the Pi's
+# board: it seats on the 2.5 mm plastic base of the Pi's own header. The cap was drawn
+# 2.5 mm low, which hid that its J3 stood into the Pi's display connector (pi4 below).
+PI_HDR_BASE = 2.5                                                # the Pi header's plastic
+PI_CAP_STANDOFF = BG.HEIGHT["PinSocket_2x20_P2.54mm_Vertical"] + PI_HDR_BASE
 
 
 # ⚠ NO INSTALL RELIEF IS NEEDED IN THE ENDPLATE, and the near-miss is worth recording.

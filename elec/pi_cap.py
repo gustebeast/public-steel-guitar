@@ -448,9 +448,16 @@ BOARD_NOTES = {
         # replace, so the three together take 50.6 of the board's 56: 0.9 mm at the east
         # edge, 0.8 and 1.4 between them, 2.3 at the west edge. Their courtyards sit 6.05 ABOVE the placement point, which is why y is 5.4
         # and not 8 -- at 8 they overhung the +Y edge by 2 mm.
-        "J2": (18.50, 9.40, 180.0),       # Pi 5 V in (6-way PH, courtyard 17.2 wide)
-        "J4": (0.75, 9.40, 180.0),        # LED 24 V in
-        "J3": (-17.35, 9.40, 180.0),      # out to the fret boards
+        # ⚠ ALL THREE MOVED EAST, 2026-10-07, TO GET J3 OFF THE Pi'S DISPLAY CONNECTOR. The
+        # cap sits 11.0 over the Pi's board (the 8.5 socket on the header's 2.5 base) and
+        # this XH is 6.0 tall (JST eXH p.6), so its underside is 5.0 up. The Pi 4B's DISPLAY
+        # socket is Z=5.5, centred 4.0 from the pin-1 end (the official mechanical drawing),
+        # reaching about 5.75: J3's housing started at 4.1 and stood 0.5 mm INTO it over a
+        # 1.7 mm strip. It starts at 6.6 now. The row had 2.2 mm of slack between courtyards
+        # and that is spent: 0.1 at the east edge, 0.2 and 0.3 between them, 4.8 at the west.
+        "J2": (19.30, 9.40, 180.0),       # Pi 5 V in (6-way PH, courtyard 17.2 wide)
+        "J4": (2.15, 9.40, 180.0),        # LED 24 V in
+        "J3": (-14.85, 9.40, 180.0),      # out to the fret boards
         # the foot drop goes in the ribbon's band, mouth -Y like the ribbon, at the -X end
         # (placed by its post row: posts at y -10.50, 2.9 below the socket's pads, ways at
         # x -22.50 / -20.00 / -17.50 / -15.00; the body runs out to y -19.7, 2.7 past the edge)
@@ -535,14 +542,17 @@ BOARD_NOTES = {
     # cannot reach it and neither could the stitcher (2026-10-05, a 1.0 x 0.3 island and
     # the pin open). It goes inward, to a via under the middle of the package, 0.31 from
     # the ILIM pad opposite and 0.33 from the pads either side.
+    # (2026-10-07: J3 / J4 / J2 moved east 2.5 / 1.4 / 0.8 off the Pi's display connector, and
+    # every declared x on their lands moved with them: the bar, the foot branch's start,
+    # the 5 V patch and its via field.)
     "tracks": [("GND", "F.Cu", 0.3, [(-9.14, -13.50), (-8.00, -13.50)]),
-               ("+24V_LED", "F.Cu", 1.0, [(2.00, 7.13), (2.00, _BAR_Y), (-16.10, _BAR_Y)]),
-               ("+24V_LED", "F.Cu", 0.8, [(-16.10, _BAR_Y), (-16.10, 7.13)]),
+               ("+24V_LED", "F.Cu", 1.0, [(3.40, 7.13), (3.40, _BAR_Y), (-13.60, _BAR_Y)]),
+               ("+24V_LED", "F.Cu", 0.8, [(-13.60, _BAR_Y), (-13.60, 7.13)]),
                # the foot branch, on the path the router found when the net was all its own
                # (with the bar declared it left J6 way 1 open): 0.77 A at 0.4 mm
                # (2026-10-04: it leaves J3's land 0.8 mm lower than it did, because the land
                # beside it is GND now and the old diagonal passed its corner at 0.06 mm)
-               ("+24V_LED", "F.Cu", 0.4, [(-16.10, 7.13), (-16.10, 4.45), (-19.44, 1.11),
+               ("+24V_LED", "F.Cu", 0.4, [(-13.60, 7.13), (-13.60, 4.45), (-16.94, 1.11),
                                           (-20.25, 1.11),
                                           # x -20.25 is the gap between two of the socket's
                                           # pads, and the only one: the last step is to J6
@@ -913,20 +923,20 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES.get("vias", [])) + [
     # 0.70 mm3 of paste, on the joint that carries the Pi's whole supply. They are now a
     # field of eight in the strip between the lands and the capacitors, joined to the
     # lands on F.Cu and to the lane on B.Cu.
-    ("+5V_PI", x, y, 0.4, 0.8) for x in (17.1, 18.2, 19.3, 20.4) for y in (3.75, 2.65)]
+    ("+5V_PI", x, y, 0.4, 0.8) for x in (17.9, 19.0, 20.1, 21.2) for y in (3.75, 2.65)]
 BOARD_NOTES["tracks"] = list(BOARD_NOTES.get("tracks", [])) + [
     # (2026-10-04: J2 is a 6-way PH. Its two 5 V lands are ways 2 and 5, 6 mm apart at
     # x 21.5 and 15.5 with the two unused ways between them, so the patch is 6 mm long
     # and each land drops onto one end of it; the via field has not moved.)
-    ("+5V_PI", "F.Cu", 1.0, [(21.5, 6.5), (21.5, 3.2)]),
-    ("+5V_PI", "F.Cu", 1.0, [(15.5, 6.5), (15.5, 3.2)]),
-    ("+5V_PI", "F.Cu", 2.2, [(21.5, 3.2), (15.5, 3.2)]),
-    ("+5V_PI", "B.Cu", 2.2, [(20.4, 3.2), (17.1, 3.2)]),
+    ("+5V_PI", "F.Cu", 1.0, [(22.3, 6.5), (22.3, 3.2)]),
+    ("+5V_PI", "F.Cu", 1.0, [(16.3, 6.5), (16.3, 3.2)]),
+    ("+5V_PI", "F.Cu", 2.2, [(22.3, 3.2), (16.3, 3.2)]),
+    ("+5V_PI", "B.Cu", 2.2, [(21.2, 3.2), (17.9, 3.2)]),
     # the two capacitors, straight onto the F.Cu patch: left to the router they came back
     # joined through a via in C3's land and 46 mm of 0.2 mm track to C1
     ("+5V_PI", "F.Cu", 0.6, [(20.95, 1.0), (20.95, 2.6)]),
     ("+5V_PI", "F.Cu", 0.4, [(15.48, 1.0), (15.48, 1.9), (16.6, 3.0)]),
-    ("+5V_PI", "B.Cu", 2.0, [(18.6, 3.2), (18.6, 2.5), (-1.5, 2.5), (-4.4, -0.4),
+    ("+5V_PI", "B.Cu", 2.0, [(19.4, 3.2), (19.4, 2.5), (-1.5, 2.5), (-4.4, -0.4),
                              (-25.3, -0.4)]),
     ("+5V_PI", "B.Cu", 1.6, [(-25.3, -0.4), (-26.1, -1.2), (-26.1, -5.77), (-24.13, -5.77)]),
     ("+5V_PI", "B.Cu", 1.2, [(-24.13, -5.77), (-21.59, -5.77)]),
