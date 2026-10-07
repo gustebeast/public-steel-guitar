@@ -398,3 +398,11 @@ NEEDS USER -- the one item left open on every board is M12, and only these parts
   is adding it to cadkit kicad_silk.py; when it is on main, sync, finish --keep-route all
   five boards, fab.py, submit. The 2x7 1.27 ribbon header on ui_board cannot take a word
   a way at 1.0 mm: say so in the submit.
+
+## A16 VOLTAGE RATINGS DECLARED (2026-10-06)
+- Declarations live in elec/buck_cell.py (V24_MAX 24.72, net_volts(), pin_volts()); fret, foot and ui boards use them.
+- fret_led_key / fret_led_mid / ui_board: A16 ok, 0 FAIL / 1 OPEN (M12). Fab packages rebuilt.
+- foot_led_a (J21.1) and foot_led_b (J11.1): A16 hard FAIL. The pogo pin YZF0002-38080-02 is rated 24 V DC and
+  +24V / +24V_IN is 24.72 V worst case (Mean Well GST160A24 24 V +-3 %). NOT waived; reported to the lead. Foot fab
+  packages NOT rebuilt until this is decided.
+- NEXT: connector per-way labels once the kicad_silk change is on main (finish --keep-route on all five, rebuild fab).

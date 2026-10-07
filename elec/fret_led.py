@@ -401,69 +401,15 @@ def _ret_tracks(fret, xf, s, xd, outs):
 
 
 # ── WHAT EVERY NET REACHES, AND WHAT EVERY PIN ON IT IS RATED FOR (quality A16) ───────
-# The worst case, not the nominal: the brick's +5 %, the rail at the top of its divider's
-# tolerance (M5), VREG at TI's maximum. Ratings are absolute maxima read from each maker's
-# own table; a capacitor's is in its value.
-V24_MAX = 25.2
+# Declared once, in elec/buck_cell.py, for every board that carries the LED cell: the
+# same regulator, drivers, LEDs and seam pins, so the same readings. This board's own
+# numbers are the rail at the top of its divider's tolerance (M5) and its feed nets.
 V_RAIL_MAX = 15.0
-NET_VOLTS = {
-    "GND": 0,
-    "*_NC": 0,                           # a no-connect pin or an output left open
-    "+24V*": {"v": V24_MAX, "why": "the 24 V brick at +5 %; this lead is plugged with "
-                                   "the instrument off (M16), so there is no ring"},
-    "SW": {"v": V24_MAX, "why": "the switch node swings between ground and the input"},
-    "BOOT": {"v": V24_MAX + 5.25, "why": "the switch node plus the regulator's own VCC"},
-    "BUCK_VCC": {"v": 5.25, "why": "LMR33630's internal LDO, SNVSAN3F 7.5: 5 V nominal"},
-    "FB": {"v": 1.02, "why": "the 1.000 V reference, +1.5 %"},
-    "+14V5": {"v": V_RAIL_MAX, "why": "14.52 V at the top of the reference's 1.5 % and "
-                                      "the divider's 1 %"},
-    "FEED*": {"v": V_RAIL_MAX, "why": "the rail, through a 0 ohm link"},
-    "Z*": {"v": V_RAIL_MAX, "why": "a node of an LED string: at the rail whenever its "
-                                   "sink is off, lower when it conducts"},
-    "VREG*": {"v": 3.5, "why": "TLC5971's internal regulator, SBVS146D 6.5: 3.5 V maximum"},
-    "IREF*": {"v": 1.25, "why": "the 1.21 V reference across the IREF resistor"},
-    "SCK*": {"v": 3.5, "why": "the Pi's 3.3 V, or a driver's VREG-level output"},
-    "SDT*": {"v": 3.5, "why": "the Pi's 3.3 V, or a driver's VREG-level output"},
-}
-_TLC = "TI TLC5971 datasheet SBVS146D, 6.1 absolute maximum ratings"
-_LMR = "TI LMR33630 datasheet SNVSAN3F, 7.1 absolute maximum ratings"
-_R0402 = {"max": 50.0, "src": "UNI-ROYAL 0402WGF series (and Yageo RC0402): maximum "
-                              "working voltage 50 V"}
-PIN_VOLTS = {
-    "TLC5971RGER": {
-        "src": _TLC, "max": 18.0,        # VCC and the twelve outputs
-        "pins": {
-            "[12]": {"max": 3.7, "why": "SDTI / SCKI: VREG + 0.6 V, at this driver's "
-                                        "lowest VREG (3.1 V)"},
-            "[56]": {"max": "none", "why": "SCKO / SDTO are this pin's own VREG-level "
-                                           "outputs, rated VREG + 0.3 V"},
-            "15": {"max": 6.0},          # VREG
-            "16": {"max": 3.4, "why": "IREF: VREG + 0.3 V, at the lowest VREG"},
-        }},
-    BC.U_VALUE: {
-        "src": _LMR, "max": 38.0,        # VIN; EN is tied to it and rated VIN + 0.3 V
-        "pins": {
-            "3": {"max": V24_MAX + 0.3, "why": "SW: VIN + 0.3 V"},
-            "12": {"max": V24_MAX + 0.3, "why": "SW: VIN + 0.3 V"},
-            "4": {"max": "none", "why": "BOOT is rated 5.5 V to SW, not to ground, and "
-                                        "it is the regulator's own VCC that charges it"},
-            "5": {"max": 5.5}, "7": {"max": 5.5}, "8": {"max": 22.0},
-        }},
-    "JFC1206-1200FS": {"max": 63.0, "src": "JDT JFC1206 series sheet: voltage rating 63 V"},
-    "S4B-XH-SM4-TB": {"max": 250.0, "src": "JST XH series: rated 250 V"},
-    FL.POGO_MPN: {"max": 24.0, "src": "Xinyangze YZF0002-38080-02 specification A.0: "
-                                      "voltage rating 24 V AC (rms) / DC"},
-    "XL-5050RGBW": {"max": "none", "src": "XINGLIGHT XL-5050RGBW sheet, absolute maximum "
-                                          "ratings",
-                    "why": "a die in a series string has no rating to ground: its limits "
-                           "are forward current, which the sink sets, and 5 V reverse, "
-                           "which a string fed from one rail through one sink cannot apply"},
-    BC.L1_VALUE: {"max": "none", "src": "-", "why": "an inductor: no voltage rating to "
-                                                    "ground, its limits are current (M14)"},
-    "TP": {"max": "none", "src": "-", "why": "a bare test pad, not a part"},
-    "0R": _R0402, "3k3": _R0402, "1k 1%": _R0402, "100k 1%": _R0402,
-    "200k 1%": _R0402, "7k68 1%": _R0402,
-}
+NET_VOLTS = BC.net_volts("+14V5", V_RAIL_MAX, "14.52 V at the top of the reference's "
+                         "1.5 % and the divider's 1 %")
+NET_VOLTS["FEED*"] = {"v": V_RAIL_MAX, "why": "the rail, through a 0 ohm link"}
+PIN_VOLTS = BC.pin_volts(FL.POGO_MPN, ("0R", "3k3", "1k 1%", "100k 1%", "200k 1%",
+                                       "7k68 1%"))
 
 
 def _idle_outs(n_drv, n_zone):
