@@ -44,6 +44,9 @@ GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 
 # Laid OVER cadkit's tables (project wins).
 _HEIGHT: dict = {
+    # the tee's 8-way trunk: the same shell as cadkit's S4B-XH-A, eight ways long. The tee
+    # is drawn by hand (electronics.tee_pcb), so this is read only for where a wire leaves it
+    "JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal": 6.1,
     # the 3.3 V buck inductors on motor_ctrl and output_panel, on APV's own land (the
     # project footprint Steel:L_APV_PNR3015): 3.0 x 3.0 x 1.5 max, its sheet
     "L_APV_PNR3015": 1.50,

@@ -1836,7 +1836,33 @@ def mctrl_floor_ports():
     c = MCTRL_PORT_CLR
     return [box_at(k[1] - k[0] + 2 * c, yb - ya + 2 * c, h,
                    x=(k[0] + k[1]) / 2, y=(ya + yb) / 2, z=z0 + h / 2)
-            for k, ya, yb in runs]
+            for k, ya, yb in runs] + [mctrl_wire_relief()]
+
+
+# ⚠ J7's LOWER WAYS ARE BELOW THE FLOOR'S TOP, AND THEIR WIRES HAD NO WAY OUT (2026-10-06).
+# The board hangs through the floor (see mctrl_floor_ports) and J7 -- the lights link, a
+# top-entry 4-way with its row along the board's long axis -- stands low on it: ways 3 and 4
+# come to z -72.4 and -74.9, under a floor whose top is -71.5. The port is cut 0.5 round the
+# mated plug, so the wires leaving those two ways along the board's normal met solid floor
+# at the plug's own face. Nothing reported it because the link was never drawn. This is the
+# trench they leave through: from the plug's face, as long as the four conductors need to
+# come up one behind the next (wiring.py draws them there), open at the top, and through
+# the floor's skin into the hollow under it.
+MCTRL_J7_LEAD = 1.5             # the plug's face to the first conductor's riser
+MCTRL_J7_PITCH = 1.6            # riser to riser: an O1.3 conductor and 0.3 of air
+MCTRL_J7_WIRE = 1.3
+
+
+def mctrl_wire_relief():
+    """The trench in the floor that J7's conductors rise out of, as a cutter."""
+    from . import motor_bank as MB
+    ways = [way_pt("motor_ctrl", "J7", n) for n in (1, 2, 3, 4)]
+    x0 = ways[0][0] - MCTRL_PORT_CLR
+    x1 = ways[0][0] + MCTRL_J7_LEAD + 3 * MCTRL_J7_PITCH + MCTRL_J7_WIRE / 2.0 + D.MIN_WALL / 2.0
+    half = MCTRL_J7_WIRE / 2.0 + 0.55
+    z0 = min(w[2] for w in ways) - half
+    z1 = MB.FLOOR_TOP + 1.0
+    return box_at(x1 - x0, 2 * half, z1 - z0, x=(x0 + x1) / 2.0, y=ways[0][1], z=(z0 + z1) / 2.0)
 
 
 # pi_cap_relief() lived here and is DELETED (user, 2026-09-29). It cut a 5.8 mm pocket in
