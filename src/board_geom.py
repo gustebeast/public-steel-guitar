@@ -86,14 +86,14 @@ _PANEL: dict = {}
 # THE LETTERING'S FACE. A licensed font, so the file is NOT in the repository: it is looked
 # for in elec/fonts/ (ignored by git) and then where Windows installs fonts, and a checkout
 # without it draws the lettering in the kernel's default face and says so. SILK_FONT_CAP is this
-# font's capital height over its em (OS/2 sCapHeight 666 / 1000): a silk "size" is a
+# font's capital height over its em (OS/2 sCapHeight 667 / 1000): a silk "size" is a
 # capital height, a font size is an em.
-SILK_FONT_FILE = "Rennie Mackintosh ITC Light Regular.otf"
-SILK_FONT_CAP = 0.666
+SILK_FONT_FILE = "Rennie Mackintosh ITC Bold.otf"
+SILK_FONT_CAP = 0.667
 # THE FONT'S UNDERSCORE IS AN ORNAMENT (a small T over an O), and every net name here has
 # one. The file is not edited: an underscore is drawn as the font's own hyphen bar, moved
-# down from mid-height (its foot is 359/666 of a capital up) to sit just under the baseline.
-SILK_SUBST = {"_": ("-", -0.6)}
+# down from mid-height (it spans 345..418 of a 667 capital) to sit just under the baseline.
+SILK_SUBST = {"_": ("-", -0.66)}
 
 
 def _silk_font():
