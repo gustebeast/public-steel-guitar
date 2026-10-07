@@ -73,6 +73,7 @@ import cadquery as cq
 from . import dimensions as D
 from elec import harness as EH            # the PCB's pin order, single-sourced
 from . import electronics as EL
+from . import board_geom as BG
 from . import ui_panel as UI
 from . import knee_lever as _KL   # the keeper barrel the lever slack winds on
 from .helpers import oct_cable
@@ -340,6 +341,10 @@ def check_cables(keys=None):
             pts = PATHS[name][0]
             for end, p, q in ((c["a"][k], pts[0], pts[1]), (c["b"][k], pts[-1], pts[-2])):
                 w, d, net = end
+                if d is None:           # an end another module owns and hands over as a point
+                    d = [q[m] - p[m] for m in range(3)]
+                    n_ = math.sqrt(sum(x * x for x in d)) or 1.0
+                    d = [x / n_ for x in d]
                 # distance of the conductor's end from the way's LINE (through w along d)
                 v = [p[m] - w[m] for m in range(3)]
                 al = sum(v[m] * d[m] for m in range(3))
@@ -923,13 +928,18 @@ def build_wires():
     # over string 1's motor, and only there steps -X onto its pin and in through the mouth.
     # The four keep their order the whole way (way 1 is the -Y-most at J1, takes the -X-most
     # riser, turns first, and lands on the -X-most pin), so none crosses another.
-    _HEAD_RISE = 1.8                  # J1's plug top to the first riser: a wire's own width
+    # ⚠ THE FOOT STRIP'S LEAD COMES DOWN THIS BOARD'S FACE TOO (led_leads.foot_paths: four
+    # columns at x -595.5 to -590.7, in the corridor's y). The first riser stands 0.2 clear
+    # of the nearest of them, and the four lanes are packed to their own diameters rather
+    # than at the connector's pitch, which keeps the last one clear of the 24 V link.
+    _HEAD_RISE = 2.8                  # J1's plug top to the first riser
+    _HEAD_LANES = (0.0, 2.0, 3.8, 5.4)       # GND, 24 V (O1.8), CAN_H, CAN_L (O1.3)
     _HEAD_TURN_Y = MB.body_box(0)[2] + 5.0      # the first -X step, 5 in over string 1's motor
     _SEG = {"GND": 11, "V24": 11, "CAN_H": 0, "CAN_L": 0}       # the names these have always had
     _ja = conn_end("motor_ctrl", "J1")
     for k in _cable("bus A head", _ja, _tin[west[0]]):
         (pa, _d, net), (pb, _bd, _bn) = _ja[k], _tin[west[0]][k]
-        xr = pa[0] + _HEAD_RISE + k * _XH_PITCH
+        xr = pa[0] + _HEAD_RISE + _HEAD_LANES[k]
         yj = _HEAD_TURN_Y + k * _XH_PITCH
         assert pb[0] < xr, "bus A's head: way %d's riser is not +X of its tee pin" % (k + 1)
         _run(out, "%s_%d" % (_NAME[net], _SEG[net]),
@@ -1131,23 +1141,30 @@ def build_wires():
     assert _PL_ZREC + _PL_HALF < _REC_Z7 - PWR_OFF - 0.9, "the link is into J7's pair in the recess"
     assert _PL_ZTR + _PL_HALF < LANE_USB - WIRE_OD["wire_usb"] / 2.0, (
         "the 24 V link stands into the USB lead's lane in the trough")
-    # AT THE KEYHEAD it leaves the trough's end, drops under the Pi's 5 V leads (which
-    # cross it at J5's height) and runs +Y above the cap to the open corridor between the
-    # cap and string 1's motor, then -X to the motor board and DOWN beside J3.
+    # AT THE KEYHEAD it turns +Y out of the trough's end, comes down under the Pi's 5 V
+    # leads (which cross it at J5's height) and under bus A's head, and runs +Y above the
+    # cap, two abreast and three deep, to J3.
     _PL_XT = CH_WT_RUNS[0][0] - 3.0                              # clear of the trough's end face
     _j5z = EL.way_pt("motor_ctrl", "J5", 1)[2]
-    _PL_ZKEY = _j5z - WIRE_OD["wire_5v"] / 2.0 - 0.25 - _PL_COL - WIRE_OD["wire_plink"] / 2.0
-    # J3 is SIX WAYS STACKED IN Z at one x and y, 3.3 mm off the cap's edge: no bundle can
-    # arrive along its axis. So the bundle comes down beside it and each conductor PEELS
-    # OFF at its own way's height: across to the mid-line of that 3.3 mm, along it to the
-    # way, and in. The slot nearest J3 goes to the TOP way (it peels first), so a lower
-    # conductor's peel only ever passes where a higher one has already left.
-    _capbb = EL.pi_cap().val().BoundingBox()
+    _PL_ZKEY = _j5z - WIRE_OD["wire_5v"] / 2.0 - 0.25 - _PL_HALF
+    # ⚠ J3 IS SIX WAYS STACKED IN Z at one x and y, on the standing board, and the corridor
+    # in front of it is the foot strip's lead's as well (its four conductors come down the
+    # board's face and cross to the cap's J6 at z -61.9, +Y and +X of here). No bundle can
+    # arrive along J3's axis, and there is no room beside it for one to come down whole.
+    # So the six come down as a 3 x 2 block of COLUMNS standing on J3's own line and the
+    # one -Y of it, the nearest column over the mid-point of the plug's lead, and each
+    # conductor leaves its column at its own way's height: the top way's column is the
+    # nearest and ends first, so every lower conductor's last run passes where the ones
+    # above it have already gone in. Each of the three levels of the run carries the pair
+    # for one column pair -- top level to the top two ways -- and within a level the -X
+    # lane turns in first, onto the line it reaches first, and the +X lane onto J3's own.
+    # (The other side of J3 is the foot lead's; and with the lanes the other way round a
+    # row's two conductors cross each other leaving J10.)
     _j3e = conn_end("motor_ctrl", "J3")
-    _PL_PX = (_j3e[0][0][0] + _capbb.xmin) / 2.0                 # the mid-line: -590.05
-    _PL_PY = _j3e[0][0][1]
-    _PL_XD = _PL_PX + _PL_COL
-    _PL_YC = _capbb.ymax + WIRE_OD["wire_plink"] / 2.0 + 0.55 + _PL_ROW      # all of it +Y of the cap
+    _PL_LEAD = 1.25                    # straight out of the plug before anything turns: the
+                                       # far column is then 0.4 off the cap's J6
+    _PL_STEP = WIRE_OD["wire_plink"] + 0.1       # column to column
+    _PL_PX, _PL_PY = _j3e[0][0][0] + _PL_LEAD, _j3e[0][0][1]
     _jc = [sum(e[0][m] for e in _j10e) / len(_j10e) for m in range(3)]
     _PL_Y0 = _jc[1] - 10.0             # the merge: at 4.0 a row's two conductors closed to 1.5
     _PL_REC_Y = _REC_Y + _PL_COL       # its -Y column on the line J7's pair takes, not past it
@@ -1156,36 +1173,40 @@ def build_wires():
     _pl_centre = [(_jc[0], _PL_Y0, _PL_ZREC), (_jc[0], _PL_REC_Y, _PL_ZREC),
                   (_BAY_X10, _PL_REC_Y, _PL_ZREC), (_BAY_X10, CHAN_Y, _PL_ZREC),
                   (_PL_RISE, CHAN_Y, _PL_ZREC), (_PL_RISE, CHAN_Y, _PL_ZTR),
-                  (_PL_XT, CHAN_Y, _PL_ZTR), (_PL_XT, CHAN_Y, _PL_ZKEY),
-                  (_PL_XT, _PL_YC, _PL_ZKEY), (_PL_XD, _PL_YC, _PL_ZKEY),
-                  (_PL_XD, _PL_YC, _PL_ZKEY - 10.0)]
+                  (_PL_XT, CHAN_Y, _PL_ZTR), (_PL_XT, CHAN_Y + 3.0, _PL_ZTR),
+                  (_PL_XT, CHAN_Y + 13.0, _PL_ZKEY), (_PL_XT, _PL_PY - 10.0, _PL_ZKEY)]
     _PL_SHORT = {"GND": "gnd", "V24": "v24", "PWR_SW_UP": "up", "PWR_SW_DN": "dn"}
-    for _mirror in (1.0, -1.0):
-        _legs = bundle_paths(_pl_centre, [(a * _mirror, b) for a, b in _PL_OFFS],
-                             across=(0.0, 0.0, 1.0))
-        # nearest J3 -> the top way (way 6), and so on down
-        _order = sorted(range(6), key=lambda s: -math.hypot(_legs[s][-1][0] - _PL_PX,
-                                                            _legs[s][-1][1] - _PL_PY))
-        _slot = {k: _order[k] for k in range(6)}         # way k+1 -> its slot
-        # ...and at J10 the two conductors of a row must leave it in their pins' own order,
-        # or they cross on the way into the bundle. One of the two mirror images does.
-        if all((_j10e[k][0][0] - _j10e[m][0][0]) * (_legs[_slot[k]][0][0] - _legs[_slot[m]][0][0]) > 0
+    _legs = bundle_paths(_pl_centre, _PL_OFFS, across=(0.0, 0.0, 1.0))
+    # which slot is which, read off the run at the keyhead: level (z) picks the pair of
+    # ways, lane (x) picks which of the two
+    _by_z = sorted(range(6), key=lambda s: (round(_legs[s][-1][2], 2), _legs[s][-1][0]))
+    _slot = {}
+    for _lvl in range(3):
+        _inner, _outer = _by_z[2 * _lvl], _by_z[2 * _lvl + 1]       # -X lane, +X lane
+        _slot[2 * _lvl + 1] = _outer           # the even way (2, 4, 6): J3's own line
+        _slot[2 * _lvl] = _inner               # the odd way (1, 3, 5): the line -Y of it
+    # ...and at J10 the two conductors of a row have to leave it in their pins' own order,
+    # or they cross on the way into the bundle
+    assert all((_j10e[k][0][0] - _j10e[m][0][0])
+               * (_legs[_slot[k]][0][0] - _legs[_slot[m]][0][0]) > 0
                for k in range(6) for m in range(k)
-               if abs(_legs[_slot[k]][0][2] - _legs[_slot[m]][0][2]) < 0.01):
-            break
-    else:
-        raise AssertionError("the 24 V link: no bundle section meets both connectors in order")
-    assert sorted(abs(_legs[_slot[k]][0][2] - _PL_ZREC) < 0.01 for k in (2, 3)) == [True, True], (
+               if abs(_legs[_slot[k]][0][2] - _legs[_slot[m]][0][2]) < 0.01), (
+        "the 24 V link: the bundle's section meets J10 with a row's two conductors crossed")
+    assert all(abs(_legs[_slot[k]][0][2] - _PL_ZREC) < 0.01 for k in (2, 3)), (
         "the 24 V link: the two thin throws are not the bundle's middle row")
     for k in _pl_live:
         (pa, _d, net), (pb, _bd, _bn) = _j10e[k], _j3e[k]
         leg = _legs[_slot[k]]
-        sx, sy = leg[-1][0], leg[-1][1]
-        pts = [pa, (pa[0], pa[1], leg[0][2])] + list(leg[:-1]) + [(sx, sy, pb[2])]
-        if abs(sx - _PL_PX) > 0.01:
-            pts.append((_PL_PX, sy, pb[2]))
-        pts += [(_PL_PX, _PL_PY, pb[2]), pb]
-        _run(out, "wire_plink_%s_%d" % (_PL_SHORT[net], k + 1), pts,
+        lx, lz = leg[-1][0], leg[-1][2]
+        sx = _PL_PX + (2 - k // 2) * _PL_STEP          # ways 5, 6 nearest the plug
+        sy = _PL_PY - (0.0 if k % 2 else _PL_STEP)
+        pts = [pa, (pa[0], pa[1], leg[0][2])] + list(leg[:-1]) + [
+            (lx, sy, lz), (sx, sy, lz), (sx, sy, pb[2])]
+        if sy != _PL_PY:
+            pts.append((sx, _PL_PY, pb[2]))
+        if sx != _PL_PX:
+            pts.append((_PL_PX, _PL_PY, pb[2]))
+        _run(out, "wire_plink_%s_%d" % (_PL_SHORT[net], k + 1), pts + [pb],
              WIRE_OD["wire_plink_sw" if net.startswith("PWR_SW") else "wire_plink"],
              "PWR_LINK", k)
 
@@ -1297,11 +1318,12 @@ def build_wires():
     # turn -Y, last (furthest -Y) to turn +X.
     _v5a, _v5b = conn_end("motor_ctrl", "J5"), conn_end("pi_cap", "J2")
     _lta, _ltb = conn_end("motor_ctrl", "J7"), conn_end("pi_cap", "J4")
-    _LT_IN = 4.0                                    # straight into J4's mouth
-    _LT_YL = _ltb[0][0][1] - _LT_IN                 # where the lights' conductors come down
+    _LT_IN = 2.0                                    # the least run straight into J4's mouth
+    _LT_PITCH = EL.MCTRL_J7_PITCH
+    _LT_YL = _ltb[0][0][1] - _LT_IN                 # the lights' +X lanes start here, going -Y
     _V5_PITCH = 2.0                                 # O1.8 conductors side by side
-    _V5_X0 = _PL_XT + _PL_ROW + 0.9 + 0.9 + 1.95    # the first column: +X of the 24 V link's run
-    _V5_Y0 = _LT_YL - 2.5                           # the last +X run: -Y of the lights' drops
+    _V5_X0 = _PL_XT + _PL_COL + 0.9 + 3.6           # the first column: +X of the 24 V link's run
+    _V5_Y0 = _LT_YL - 3 * _LT_PITCH - 2.2           # the last +X run: -Y of the lights' lanes
     _v5_live = _cable("PI_5V_LINK", _v5a, _v5b)
     for n, k in enumerate(_v5_live):
         (pa, _d, net), (pb, _bd, _bn) = _v5a[k], _v5b[k]
@@ -1315,28 +1337,39 @@ def build_wires():
     # Fused 24 V and ground for every LED in the instrument, and the power button's two
     # throws on their way from the UI ribbon to the output board. NOT DRAWN AT ALL until
     # 2026-10-06: two connectors with nothing in them, and the lights' only feed.
-    # J7's four ways are stacked in Z low on the standing board, in the open corridor
-    # between the cap and string 1's motor; J4 faces -Y off the far side of the cap. So
-    # each conductor leaves along the board's normal, climbs in the corridor to its own
-    # level above the cap, crosses +X to its own way's x, runs -Y over the cap, and comes
-    # down past its edge into the mouth. Way 1 is the top one at J7 and the +X-most at J4:
-    # it climbs first and highest, so it passes over the other three's risers.
-    # ⚠ WAYS 3 AND 4 START BELOW THE FLOOR'S TOP: the board hangs through the floor and
-    # J7 is low on it. They rise out of the trench electronics.mctrl_wire_relief cuts for
-    # them, which is as long as these four risers stand one behind the next.
+    # J7's four ways are stacked in Z low on the standing board, facing the corridor
+    # between the cap and string 1's motor; J4 faces -Y off the far side of the cap.
+    # ⚠ UNDER THE FOOT STRIP'S LEAD, WHICH CROSSES THIS CORRIDOR RIGHT IN FRONT OF J7
+    # (z -61.9, at J7's own y among others). So the four run +X along the floor as a
+    # 2 x 2, below it, until they are past it; each then climbs in its own column to just
+    # over the cap, runs -Y across the cap, comes down past its edge to J4's height, and
+    # runs +X to its own way and in through the mouth.
+    # ⚠ WAYS 3 AND 4 START BELOW THE FLOOR'S TOP: the board hangs through the floor and J7
+    # is low on it. They side-step and rise to ways 1 and 2's heights inside the trench
+    # electronics.mctrl_wire_relief cuts for them, and run beside those two.
+    # ⚠ ACROSS THE CAP BETWEEN J3 AND J4, NOT AT J4's OWN x: J5 -- the UI ribbon's header --
+    # faces the corridor from the cap's +Y edge at the very x J4 has on the -Y edge, and
+    # the ribbon comes straight down in front of it.
     assert WIRE_OD["wire_lights"] == EL.MCTRL_J7_WIRE
-    _LT_PITCH = EL.MCTRL_J7_PITCH
-    _LT_FLY = _capbb.zmax + WIRE_OD["wire_lights"] / 2.0 + 2.85 + 3 * _LT_PITCH
-    # the run across the corridor, a little -Y of J7's own line: on that line it grazes
-    # string 2's motor, whose -Y face is 0.4 from it
-    _LT_YRUN = _lta[0][0][1] - 1.3
-    for n, k in enumerate(_cable("LIGHTS_LINK", _lta, _ltb)):
+    _capbb = EL.pi_cap().val().BoundingBox()
+    _LT_FLY = _capbb.zmax + WIRE_OD["wire_lights"] / 2.0 + 2.85
+    _LT_XC = min(e[0][0] for e in _ltb) - 2.0       # the last column: 2.0 -X of J4's last way
+    _lt_live = _cable("LIGHTS_LINK", _lta, _ltb)
+    for n, k in enumerate(_lt_live):
         (pa, _d, net), (pb, _bd, _bn) = _lta[k], _ltb[k]
-        xa = pa[0] + EL.MCTRL_J7_LEAD + n * _LT_PITCH
-        zf = _LT_FLY - n * _LT_PITCH
-        _run(out, "wire_lights_%s_%d" % (_PL_SHORT[net], k + 1),
-             [pa, (xa, pa[1], pa[2]), (xa, pa[1], zf), (xa, _LT_YRUN, zf),
-              (pb[0], _LT_YRUN, zf), (pb[0], _LT_YL, zf), (pb[0], _LT_YL, pb[2]), pb],
+        # ways 1, 2 on J7's own line at their own heights; 3, 4 beside them at the same two
+        row, lvl = n // 2, n % 2
+        y, z = pa[1] + row * EL.MCTRL_J7_SIDE, _lta[_lt_live[lvl]][0][2]
+        # on each line the upper conductor climbs first, so the lower passes under its column
+        xc = _LT_XC - (3 - (2 * row + lvl)) * _LT_PITCH
+        yl = _LT_YL - (3 - n) * _LT_PITCH
+        pts = [pa]
+        if row:
+            xs = pa[0] + EL.MCTRL_J7_LEAD + lvl * _LT_PITCH
+            pts += [(xs, pa[1], pa[2]), (xs, y, pa[2]), (xs, y, z)]
+        pts += [(xc, y, z), (xc, y, _LT_FLY), (xc, yl, _LT_FLY), (xc, yl, pb[2]),
+                (pb[0], yl, pb[2]), pb]
+        _run(out, "wire_lights_%s_%d" % (_PL_SHORT[net], k + 1), pts,
              WIRE_OD["wire_lights"], "LIGHTS_LINK", k)
 
     # ── THE LED HARNESS IS NOT DRAWN HERE ANY MORE, AND THAT IS BRENNER'S CALL ────
@@ -1401,9 +1434,31 @@ def build_wires():
     #    width is perpendicular to both sweeps that corner as fourteen concentric arcs,
     #    every conductor keeping its own place. Turned the other way it would have to
     #    fold, and a fold is a crease in a part that gets pulled every service.
-    centre = [(ex, uy, umz), (ex - 12.0, uy, umz), (BAY_X, uy, umz),
-              (BAY_X, -40.0, SP(-600.0, -40.0, -57.0)[2]),
-              SP(-600.0, -40.0, -57.0)]
+    #    ⚠ ONTO THE CAP'S J5, WHICH IS WHERE IT PLUGS IN (2026-10-06). It ended at a typed
+    #    point, SP(-600, -40, -57): 65.8 mm from the header, on the far side of the
+    #    standing motor board. J5 is a right-angle 2x8 on the cap's +Y edge, mouth to the
+    #    corridor between the cap and string 2's motor, and an IDC socket's ribbon leaves
+    #    its BACK, square to the mating axis. So the ribbon runs -X under the deck as it
+    #    always did, folds once to run +Y at the header's own x, and comes straight down
+    #    in front of the header onto the socket, its width along the pin row.
+    _j5f = BG.footprint("pi_cap", "J5")
+    _j5pads = _j5f["pads"].values()
+    _o5, _a5 = EL.board_frame("pi_cap")
+
+    def _cap_pt(bx, by, bz):
+        return tuple(_o5[m] + _a5[0][m] * bx + _a5[1][m] * by + _a5[2][m] * bz for m in range(3))
+
+    _j5h = BG.HEIGHT[BG.fp_name(_j5f["fpid"])]
+    _pad_y = sum(q[1] for q in _j5pads) / len(_j5pads)
+    _mouth_y = max(_j5f["fab"][2:], key=lambda v: abs(v - _pad_y))         # the end away from the pads
+    _j5c = _cap_pt((min(q[0] for q in _j5pads) + max(q[0] for q in _j5pads)) / 2.0, _mouth_y,
+                   EL._CAP_T + _j5h / 2.0)
+    assert abs(_a5[1][1]) > 0.99 and abs(_j5f["fab"][3] - _j5f["fab"][2]) < abs(
+        _j5f["fab"][1] - _j5f["fab"][0]), "pi_cap J5's row no longer runs along world X"
+    _J5_SOCKET = 3.0                # the IDC socket's ribbon slot, out from the header's mouth
+    _ry = _j5c[1] + _J5_SOCKET * (1.0 if _a5[1][1] * (_mouth_y - _pad_y) > 0 else -1.0)
+    centre = [(ex, uy, umz), (ex - 12.0, uy, umz), (_j5c[0], uy, umz),
+              (_j5c[0], _ry, umz), (_j5c[0], _ry, _j5c[2])]
     #    ...AND IT IS ONE PRISM, NOT FOURTEEN SWEEPS (user, 2026-09-28). It was drawn
     #    as fourteen conductors from bundle_paths, one octagonal solid each, which is the
     #    truth about a ribbon and the wrong model of it: nothing inside a ribbon can move
@@ -1417,6 +1472,7 @@ def build_wires():
     #    to admit to it here rather than appear in the assembly as a surprise.
     _bends = flat_bends(centre, across=(0.0, 1.0, 0.0))
     _folds = [v for v, k, _d in _bends if k == "fold"]
+    PATHS["wire_ui"] = (centre, UI.RIBBON_W)
     assert len(_folds) == UI.RIBBON_FOLDS, (
         "the UI ribbon's path folds %d times, not the %d declared: %r"
         % (len(_folds), UI.RIBBON_FOLDS, _bends))
@@ -1800,26 +1856,6 @@ CTRL_WAYS = len(EH.PH_PINOUT)               # 4: one half of the 8-way trunk
 CTRL_PITCH = _PH_PITCH
 
 
-def _j2_pin(way, ways=2 * 4):
-    """World point of one way of the controller's J2, at the mated plug's outer face.
-
-    THE ROW RUNS ALONG WORLD Y, measured rather than assumed: the footprint's own fab
-    outline is 5.01 across by 18.41 along in the board's frame (electronics._mctrl_fab),
-    so its long axis is board +Y; the board is unrotated and the tray's stand() carries
-    board +Y straight through to world +Y.
-
-    WAY 1 IS AT -Y. The routed geometry carries no pad positions, only the fab body, so
-    this is a CHOICE and not a reading -- it decides which conductor sits on which way in
-    the drawing and nothing else. It is stated here so it is one statement rather than a
-    pattern spread through two cables."""
-    x, y, z = EL.mctrl_pt("J2")
-    p = EL.stand(cq.Workplane().add(cq.Vertex.makeVertex(x, y, z))).val().toTuple()
-    return (p[0], p[1] + (way - (ways + 1) / 2.0) * CTRL_PITCH, p[2])
-
-
-# HOW FAR OFF THE PORT'S CENTRE EACH CABLE RUNS. The port carries the whole of bus B --
-# both cables -- so they get half of it each: 3.2 of bundle inside a 21.6 slot leaves
-# 4.8 between them at +-4.0, and the head of a connector still has the room to pass.
 _PORT_HALF = 5 * D.BEAD             # 4.0
 
 
@@ -1912,7 +1948,13 @@ def _fan(legs, at, pins, dirs, lead):
         q = list(path)
         pin = pins[j]
         lead_pt = tuple(pin[m] + dirs[m] * lead for m in range(3))
-        q[at:at + 1] = [pin, lead_pt] if at == 0 else [lead_pt, pin]
+        # (q[at:at + 1] with at = -1 is q[-1:0], an EMPTY slice: it inserted the pin BEFORE
+        # the bundle's last point instead of replacing it, and eight conductors ran on 2 to
+        # 3 mm past their pins.)
+        if at == 0:
+            q[:1] = [pin, lead_pt]
+        else:
+            q[-1:] = [lead_pt, pin]
         out.append(q)
     return out
 
@@ -1978,7 +2020,13 @@ def ctrl_bus_b(lkl):
     ends = _PG.body_stub_ends()
     offs = [o for _, o in _PG.HARNESS_WIRES]
     lo, hi = _port_lane(-1)
-    j2 = [_j2_pin(1 + j) for j in range(n)]
+    # ⚠ J2 AND J6, TWO 4-WAYS 16 mm APART, READ FROM THE ROUTED BOARD. This drew both
+    # cables onto one 8-way (in on 1-4, out on 5-8) that the board stopped having when
+    # bus B's in and out became two housings: the pedal cable sat two ways low on J2 and
+    # the lever chain's head ended on and past J2, 12 mm from the J6 it belongs in.
+    _j2e, _j6e = conn_end("motor_ctrl", "J2"), conn_end("motor_ctrl", "J6")
+    _out = _j2e[0][1]                                  # both mouths face the same way: down
+    j2 = [e[0] for e in _j2e]
     j2c = (j2[0][0], sum(p[1] for p in j2) / n, j2[0][2])
     # ⚠ THE PEDAL HALF STAYS UNDER THE FLOOR TOO (2026-09-30). It used to rise through the
     # port on `hi`, run -Y in the cavity and come back down to a connector that is BELOW the
@@ -2006,9 +2054,14 @@ def ctrl_bus_b(lkl):
     # as "where a lead LEAVES the connector" and returns the mated plug's outer face, and
     # the tray's stand() carries the board's +Z there onto world +X. Pointed -X the fan
     # ran back into the board it had just left: 26-31 mm^3 a conductor, into motor_ctrl.
-    for q, (nm, _pl) in zip(_fan(legs, -1, j2, (0.0, 0.0, -1.0), CANB_LEAD),
-                            _PG.HARNESS_WIRES):
-        out.append(("pogo_wire_%s_5" % nm, _wire(q, _PG.HARNESS_WIRE_OD)))
+    # the far end is leg_pogo's (its stub's own end points, taken as they are)
+    _stub = [(ends[j], None, _j2e[j][2]) for j in range(n)]
+    assert [nm.upper() for nm, _pl in _PG.HARNESS_WIRES] == [e[2] for e in _j2e], (
+        "leg_pogo's harness order is not J2's way order")
+    _cable("bus B pedal cable", _stub, _j2e)
+    for j, (q, (nm, _pl)) in enumerate(zip(_fan(legs, -1, j2, _out, CANB_LEAD),
+                                           _PG.HARNESS_WIRES)):
+        _run(out, "pogo_wire_%s_5" % nm, q, _PG.HARNESS_WIRE_OD, "bus B pedal cable", j)
     # ── the LEVER chain's head: J2 ways 5-8 -> port -> LKL's J1 ways 1-4 ──
     # TWO BUNDLES, JOINED AT THE PORT, because this cable has a connector at BOTH ends
     # and their rows are at right angles to each other: LKL's J1 spreads along world Z,
@@ -2029,7 +2082,7 @@ def ctrl_bus_b(lkl):
     far = [pins[1 + j] for j in range(n)]
     farc = (far[0][0], far[0][1], sum(p[2] for p in far) / n)
     lo2, hi2 = _port_lane(1)
-    j2b = [_j2_pin(n + 1 + j) for j in range(n)]
+    j2b = [e[0] for e in _j6e]
     j2bc = (j2b[0][0], sum(p[1] for p in j2b) / n, j2b[0][2])
     offs2 = _ribbon_offsets(n)
     # ...out of LKL along its plug's axis far enough to clear the LEVER'S OWN BODY before
@@ -2075,10 +2128,12 @@ def ctrl_bus_b(lkl):
     high = bundle_paths([j2bc, (j2bc[0], j2bc[1] + CTRL_FAN, _lane_z),
                          (lo2[0], lo2[1], _lane_z), lo2],
                         offs2, across=(0.0, 0.0, 1.0))
-    high = _fan(high, 0, j2b, (0.0, 0.0, -1.0), CANB_LEAD)
+    high = _fan(high, 0, j2b, _out, CANB_LEAD)
+    _cable("bus B lever head", [(far[j], tuple(d), _j6e[j][2]) for j in range(n)], _j6e)
     for j, (nm, _pl) in enumerate(CANB_NETS):
         q = list(low[j]) + list(reversed(high[j]))[1:]
-        out.append(("wire_canb_%s_lkl_0" % nm, _wire(q, CANB_WIRE_OD)))
+        _run(out, "wire_canb_%s_lkl_0" % nm, q, CANB_WIRE_OD, "bus B lever head", j)
+    check_cables(["bus B pedal cable", "bus B lever head"])
     return out
 
 
