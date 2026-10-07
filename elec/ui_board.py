@@ -595,6 +595,17 @@ BOARD_NOTES = {
     # A designator beside every part that has a site: this is the board a hand probes
     # (two switches, a display header and a ribbon, all through-hole).
     "silk_refs": True,
+    # THE TWO HEADERS ARE OVER THE LABELLER'S EIGHT-WAY LIMIT, so neither gets a word per
+    # way: the ribbon's sixteen are at 1.27 and the display's twenty sit under the module.
+    # J2 gets its pinout as a block instead and J1 its first and last way numbered. The
+    # short words are the block's fallback where the nets' own names are too wide to go
+    # down at the legible size; two of the defaults would both have read "A".
+    "silk_pinout": ["J2"],
+    "silk_ends": ["J1"],
+    "silk_short": {"SW_A": "SWA", "SW_B": "SWB", "SW_C": "SWC", "SW_D": "SWD",
+                   "SW_PUSH": "PUSH", "ENC_A": "ENA", "ENC_B": "ENB", "SCLK": "SCK",
+                   "SDIN": "SDI", "DC": "DC", "CS_N": "CS", "RES_N": "RES",
+                   "PWR_SW_UP": "PUP", "PWR_SW_DN": "PDN", "+3V3": "3V3", "GND": "GND"},
     "mounting_hole_xy": UI.SCREW_XY,
     "single_sided": True,      # every part on the deck-facing face
     "qty_per_instrument": 1,
