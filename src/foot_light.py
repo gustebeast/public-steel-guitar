@@ -607,6 +607,13 @@ def pcb(half):
     return _placed(half, BG.solid(BOARD_NAME[half]))
 
 
+def silk(half):
+    """The board's lettering, where the board is -- its own part (white ink)."""
+    from . import board_geom as BG
+    w = BG.silk(BOARD_NAME[half])
+    return None if w is None else _placed(half, w)
+
+
 def leds(half):
     """The strip's LEDs alone, as their routed bodies -- for probes; the build draws
     them as part of pcb()."""
@@ -660,4 +667,6 @@ def parts():
         print("  (no %s.geom.json yet -- the foot strip is left out of this build; "
               "route and export it, see elec/foot_led.py)" % "/".join(BOARD_NAME.values()))
         return []
-    return [("foot_pcb_%s" % h, pcb(h)) for h in HALVES] + pogo_pins()
+    inks = [("foot_pcb_%s_silk" % h, silk(h)) for h in HALVES]
+    return ([("foot_pcb_%s" % h, pcb(h)) for h in HALVES]
+            + [(n, w) for n, w in inks if w is not None] + pogo_pins())

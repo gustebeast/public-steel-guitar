@@ -954,6 +954,9 @@ def _electronics_components():
     from . import fret_light as FL
     for panel in ("mid", "key"):
         out.append(("fret_pcb_%s" % panel, FL.pcb(panel)))
+        _ink = FL.silk(panel)
+        if _ink is not None:
+            out.append(("fret_pcb_%s_silk" % panel, _ink))
     # the FOOT strip: one board placed twice, firing down through the chassis window.
     # The channel it slides into is chassis geometry (src/foot_light.py).
     from . import foot_light as FOOT
@@ -2022,6 +2025,11 @@ _COLORS = {
     "fret_pcb_key":    (0.05, 0.35, 0.15),
     "foot_pcb_a":      (0.05, 0.35, 0.15),
     "foot_pcb_b":      (0.05, 0.35, 0.15),
+    "fret_pcb_mid_silk": (0.95, 0.95, 0.93),   # silkscreen ink, its own part on each board
+    "fret_pcb_key_silk": (0.95, 0.95, 0.93),
+    "foot_pcb_a_silk": (0.95, 0.95, 0.93),
+    "foot_pcb_b_silk": (0.95, 0.95, 0.93),
+    "ui_pcb_silk":     (0.95, 0.95, 0.93),
     "wire_ui":         (0.55, 0.56, 0.58),
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
 }
