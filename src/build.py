@@ -829,7 +829,9 @@ def _pickup_mount_components():
     # what it is, and coloured off the loose-wire scheme already in this table: violet for
     # USB, red for 24 V.
     out.append(("optical_cable_usb", OP.opt_cables("usb")))
-    out.append(("optical_cable_pwr", OP.opt_cables("pwr")))
+    out.append(("optical_plug_pwr", OP.opt_cables("pwr")))
+    from . import wiring as _WRo
+    out += _WRo.optical_feed()          # its two conductors, J9 -> J2 ways 1 and 2
     # The two M4 grips that locate the board: heat-set insert seated in the endplate's
     # wrap plinth, button screw down through the board's clearance hole into it. Same
     # fastener family as the pickup height jacks, so no new BOM line.
@@ -1413,7 +1415,8 @@ def optical_work_components():
     # the change, so it has to be visible in the view that reviews it.
     out = [("optical_pcb", OP.opt_pcb()),
            ("optical_cable_usb", OP.opt_cables("usb")),
-           ("optical_cable_pwr", OP.opt_cables("pwr")),
+           ("optical_plug_pwr", OP.opt_cables("pwr")),
+           *__import__("src.wiring", fromlist=["w"]).optical_feed(),
            ("bridge_endplate", PARTS["bridge_endplate"][0]()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("motor_ctrl_silk", EL.motor_ctrl_silk()),
@@ -1961,7 +1964,7 @@ _COLORS = {
     # run whether it is drawn as a wire or as a modelled cable, and the old single entry
     # was (0.15,0.15,0.17) -- near-black, which this project reserves for TPU.
     "optical_cable_usb": (0.55, 0.25, 0.75),  # violet, as wire_usb - USB-C plug + lead to the Pi
-    "optical_cable_pwr": (0.85, 0.12, 0.10),  # red, as wire_pwr_hot - 24 V in at J2
+    "optical_plug_pwr": (0.92, 0.92, 0.88),   # the XH housing on J2; its pair is wire_opt_*
     "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
     "optical_screw":   (0.72, 0.74, 0.78),   # M4x20 button, through the guard and the board
     "optical_silk":    (0.95, 0.95, 0.93),   # silkscreen ink, its own part on each board
@@ -2059,7 +2062,8 @@ _COLORS.update({
 _NET_RGB = {"gnd": (0.05, 0.05, 0.05), "v24": (0.85, 0.12, 0.10), "v5": (0.85, 0.12, 0.10),
             "up": (0.95, 0.55, 0.10), "dn": (0.50, 0.32, 0.16)}
 _COLORS.update({"wire_%s_%s" % (_lead, _net): _rgb
-                for _lead in ("plink", "lights", "5v") for _net, _rgb in _NET_RGB.items()})
+                for _lead in ("plink", "lights", "5v", "opt")
+                for _net, _rgb in _NET_RGB.items()})
 _COLORS.update({"wire_canb_%s_lkl" % _n: _COLORS["wire_canb_%s" % _n]
                 for _n in ("gnd", "v5", "h", "l")})
 
