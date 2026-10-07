@@ -25,6 +25,47 @@ a stale marker, striking the marker is part of the work.
    drawn 0.3 detached after item 1; fixed. `strict_ends` is on for every board, 15 clean.
    Scratch gate 0 overlaps, sweep clean; submitted.
 
+**PRE-ORDER REVIEW (lead, 2026-10-06 19:20) -- nine independent reviewers on the five bench
+boards, snapshot f3cdde3f. Reports: MAIN worktree `research/review/*.md` (outside git). The
+order waits on this list. Strike each when done; answer the second group 'intended,
+because' or fix it.**
+
+FIX:
+- R1 `motor_ctrl` U5 (LMR33630) layout: C16 / C17 reach VIN through 16-22 mm of thin track,
+  C18 about 7 mm, PGND leaves by one stub to one via.
+- R2 SMAJ30A clamps at 48.4 V against LMR33630 VIN abs max 38 V (`motor_ctrl` U5, `optical`
+  U13) and the 40 V B5819W catch diodes (`motor_ctrl` D1, `output_panel` D1).
+- R3 `pi_cap` UI_RES_N on pin 33 / GPIO13 = SPI5 MISO under the stock overlay. Free: pin 36
+  GPIO16, 22 GPIO25, 7 GPIO4.
+- R4 PNR3015-150M on the NR-30xx footprint (`motor_ctrl` L1, `output_panel` L1): maker wants
+  1.1 x 2.7 pads at +-1.05.
+- R5 `optical` J1 USB-C: board edge at footprint y +4.195, HRO wants +3.19.
+- R6 values: `optical` C130 100 nF -> 1 uF+; `optical` R1-R10 are 0402 at 72-79 mW and the
+  M5 note calls them 0603; `output_panel` C17 / C18 on the CH334 crystal not placed;
+  `output_panel` C38 1 uF -> 10 uF.
+- R7 `motor_ctrl` BOOT1 / PB2 floating, BOOT0 no pad: 10k PB2 to GND, a BOOT0 pad. Optional
+  `optical`: PA4 tied to VDD.
+
+ANSWER OR FIX:
+- Q1 five TLV320ADC3140 all at 0x4C. Q2 SHDNZ pull-up only. Q3 `optical` L1 4.7 uH against
+  TI's 2.2 uH at 1.4 MHz. Q4 `motor_ctrl` U5 6.8 uH / 2 x 22 uF / 100 nF against Table 9-2.
+- Q5 no reverse-polarity / fuse / TVS on `optical` 24 V in, none on `output_panel`.
+- Q6 SN65HVD230 bus pins -4..16 V beside a 24 V conductor (the docstring says +-58 V).
+- Q7 `output_panel` J7 pads 3 / 4 no net. Q8 J4 VBUS unswitched on a 600 mA buck.
+- Q9 Neutrik shoulder 4.2 mm behind the board edge. Q10 leg_pogo PH reinforcement pads 3.0
+  against JST's 3.4. Q11 mis-plug: `motor_ctrl` J1 / J7 same XH, J2 / J4 / J6 same PH.
+- Q12 where the magnetic pickup input lives now.
+
+HARNESS / DOCS:
+- H1 `can_tee` J2 drop to the SERVO42D is split and crossed per Makerbase schematic V1.0_003
+  (6-way: 1 V+, 2 GND; 5-way: 1 CANL, 2 CANH). Harness table, BOM housings, M1.
+- H2 ORDER.txt: Kycon slots not to be undersized; PD cathode side in words.
+- H3 bring-up doc: SWD the only path to rely on; SWO on PB3 would switch the emitters;
+  PG_5V and BUSB_FAULT_N need internal pull-ups.
+- H4 re-run lcsc_check on `output_panel` (0 stock seen on the G6K relay and six passives).
+
+Then reply to the lead with taken / intended, and submit.
+
 **PCB QUALITY LOOP -- FINISHED 2026-10-05 as far as files can take it (DO NOT RE-ISSUE).**
 Every board of mine is `0 unconnected, 0 violations, 0 FAIL`: `can_tee` 7 OPEN, pogo x4 4,
 `pi_cap` 6, `lever_sensor` 7, `motor_ctrl` 10, `output_panel` 8, `optical` 7. What is OPEN
