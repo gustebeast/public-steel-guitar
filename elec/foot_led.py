@@ -100,12 +100,14 @@ POGO_FP = "Steel:Xinyangze_YZF0002-38080-02"
 # cap's own XH part.
 # ⚠ XH BECAUSE IT IS 24 V. The instrument's rule (user, 2026-10-04): PH carries 5 V and XH
 # carries 24 V, so no lead can put the higher rail on the lower one's socket.
-# ⚠ AND THE ORDER IS harness.XH_PINOUT's -- GND, V24, then the two signals -- so the one
-# mistake still possible is harmless both ways round: a motor-bus lead on this socket
-# powers the board correctly and lays CAN on the two SPI inputs, and this lead on a
-# motor-bus socket lays 3.3 V logic on CAN. Neither reverses a supply.
+# ⚠ AND THE ORDER IS THE INSTRUMENT'S ONE JST ORDER, harness.LED_DROP, whose supply ways
+# are the XH bus's own -- so the one mistake still possible is harmless both ways round:
+# a motor-bus lead on this socket powers the board correctly and lays CAN on the two SPI
+# inputs, and this lead on a motor-bus socket lays 3.3 V logic on CAN. Neither reverses a
+# supply. Nothing below names a way by its NUMBER: every contact is found by what it
+# carries, so the order is harness.py's to change. (J_PINS is built under the import.)
 J_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
-J_PINS = ("GND", "+24V_IN", "SCK_CABLE", "SDT_CABLE")
+_J1_NET = {"GND": "GND", "V24": "+24V_IN", "SCK": "SCK_CABLE", "SDT": "SDT_CABLE"}
 # ── 1 k IN SERIES WITH EACH SIGNAL AT THE CABLE (manual quality pass M18, 2026-10-05) ────
 # The Pi drives SCK and SDT at 3.3 V through 68 ohm (pi_cap R1..R4), and this board can be
 # dark while the Pi is up: its fuse open, the lights' fuse on the motor board open, the
@@ -115,15 +117,22 @@ J_PINS = ("GND", "+24V_IN", "SCK_CABLE", "SDT_CABLE")
 # 1 k limits that to 2.7 mA. Against the pin's few pF it is a 10 ns corner, on a clock
 # TI allow to 10 MHz and edges the source resistor has already slowed.
 R_SERIES = "1k 1%"
-# They stand just past the socket's courtyard, each on its own land's line. Measured on the
-# routed board from J1's pad centroid: the lands' centres are 3.25 towards +X, the
-# courtyard ends at 6.05, and ways 3 and 4 are 1.24 and 3.74 towards the LED row.
-J_SERIES = (("R21", 7.30, -1.24), ("R22", 7.30, -3.74))
+# They stand just past the socket's courtyard, each on the line of the way it is in series
+# with. Measured on the routed board from J1's pad centroid: the lands' centres are 3.25
+# towards +X, the courtyard ends at 6.05, and the ways are buck_cell.xh_way_dy apart
+# (0.01 nearer the LED row here: the row's own Y is rounded).
+J_SERIES = (("R21", "SCK", 7.30), ("R22", "SDT", 7.30))
+J_SERIES_DY = 0.01
 J_ANCHOR = 5.30 + 0.9833             # mouth (local +Y 5.30) to the PAD CENTROID (the mean
                                      # of its six pads), both read out of the .kicad_mod
 J_Y = FL.to_board_y(FL.J_Y)
 import harness as _H                                  # noqa: E402
-assert tuple(n.replace("+24V_IN", "V24") for n in J_PINS[:2]) == tuple(_H.XH_PINOUT[:2]), (
+LED_WAYS = tuple(_H.LED_DROP)
+J_PINS = tuple(_J1_NET[n] for n in LED_WAYS)          # this board's net on each way
+J1_ORDER = ", ".join("%d %s" % (i + 1, {"V24": "24 V"}.get(n, n))
+                     for i, n in enumerate(LED_WAYS))
+J1_NETS = ", ".join("%d %s" % (i + 1, n) for i, n in enumerate(J_PINS))
+assert LED_WAYS[:2] == tuple(_H.XH_PINOUT[:2]), (
     "the foot strip's socket is an XH and its supply ways are not the XH bus's own")
 from src import board_geom as _BG                     # noqa: E402
 assert abs(_BG.HEIGHT[_BG.fp_name(J_FP)] - FL.XH_H) < 1e-9, (
@@ -248,9 +257,9 @@ def _manual(board, n_drv):
     seam = ("J21..J24" if a else "J11..J14")
     m = {
         "M1": ("two joints. J1 to the Pi cap's J6: a 4-way JST XH lead, straight through, "
-               "way n to way n -- 1 GND, 2 24 V, 3 SCK, 4 SDT at both ends "
+               "way n to way n -- " + J1_ORDER + " at both ends "
                "(harness.LED_DROP; pi_cap.py wires J6 pins 1 to 4 in that order, and this "
-               "board's lands read GND, +24V_IN, SCK_CABLE, SDT_CABLE on the routed "
+               "board's lands read " + J1_NETS + " on the routed "
                "board). XH is shrouded and keyed: it goes on one way and cannot sit one "
                "pin along. The seam, J21..J24 to board B's J11..J14: spring pins tip to "
                "tip, both boards face down in one channel, so equal Y is the same pin -- "
@@ -459,8 +468,8 @@ def _manual(board, n_drv):
                "fuse, the spring pin" + (" and the socket" if a else ""),
         "M31": "'FOOT LED %s r1' on the front. The three test pads are named (+24V, "
                "+11V5, GND). " % board.upper() + ("J1's four ways are named on the "
-               "BACK, which is the face that looks up at whoever plugs it: 1 GND, "
-               "2 +24V_IN, 3 SCK_CABLE, 4 SDT_CABLE. " if a else "") + "Each seam land "
+               "BACK, which is the face that looks up at whoever plugs it: "
+               + J1_NETS + ". " if a else "") + "Each seam land "
                "is named on the back with its net. A designator stands beside every "
                "LED, driver, the regulator, the inductor and the fuse (silk_refs: 43 "
                "of 43 found a site, 2026-10-06). All text 1.0 mm or more with a "
@@ -557,17 +566,19 @@ def build(board, passes=20):
         sck_out, sdt_out = Net("SCK_OUT"), Net("SDT_OUT")
         j1 = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J1", tag="J1",
                   dest="NETLIST", tool="skidl", value="S4B-XH-SM4-TB",
-                  description="in, from the Pi cap's J6 -- GND, +24V, SCK, SDT "
-                              "(LCSC C161861)",
+                  description="in, from the Pi cap's J6 -- %s (LCSC C161861)"
+                              % ", ".join(LED_WAYS),
                   footprint=J_FP,
                   pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(J_PINS)])
-        gnd += j1[1]
-        v24_in += j1[2]
+        gnd += j1[BC.xh_way(LED_WAYS, "GND")]
+        v24_in += j1[BC.xh_way(LED_WAYS, "V24")]
         # mouth faces -X (rot 270), J_INSET in from the board's end; the placement
         # anchors on the pad centroid, J_ANCHOR behind the mouth
         place["J1"] = (-(half - FL.J_INSET) + J_ANCHOR, J_Y, 270.0)
         fps["J1"] = J_FP
-        for (ref, dx, dy), way, net in zip(J_SERIES, (3, 4), (sck, sdt)):
+        for (ref, name, dx), net in zip(J_SERIES, (sck, sdt)):
+            way = BC.xh_way(LED_WAYS, name)
+            dy = BC.xh_way_dy(way) + J_SERIES_DY
             cable = Net(J_PINS[way - 1])
             rs = _r(ref, R_SERIES, "%s in series at the cable: limits what a live Pi can "
                                    "push into a dark driver's input" % J_PINS[way - 1][:3])
@@ -843,7 +854,7 @@ def build(board, passes=20):
             if nets_of_ref[ref] == "GND":
                 notes["vias"] += BC.land_vias("GND", *place[ref][:2])
     if board == "a":
-        _trk, _via = BC.xh_ground_via(*place["J1"][:2])
+        _trk, _via = BC.xh_ground_via(*place["J1"][:2], BC.xh_way(LED_WAYS, "GND"))
         notes["tracks"] = notes["tracks"] + [_trk]
         notes["vias"] = notes["vias"] + [_via]
     # WHAT EACH SUPPLY NET CARRIES, all-white. A board's own rail is its channels and

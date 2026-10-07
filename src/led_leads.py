@@ -4,12 +4,13 @@ Each is a 4-way JST XH to XH lead, and it is drawn AS FOUR CONDUCTORS, each in i
 colour and each landing on its own contact at both ends (user, 2026-10-05: "we model them
 as separate wires with accurate color and placement into the JST port so we can use it as
 a reference"). The way order is harness.LED_DROP at every one of the four sockets, so the
-lead is straight-through: way n to way n.
+lead is straight-through: way n to way n, and WHICH way each conductor is on is read
+from there and written nowhere here. A conductor is known by what it carries:
 
-    way 1  GND   black
-    way 2  V24   red
-    way 3  SCK   white
-    way 4  SDT   blue
+    GND   black
+    V24   red
+    SCK   white
+    SDT   blue
 
 White and blue rather than the CAN pair's yellow and green, so a lighting lead cannot be
 read as a bus lead in the model or on the bench.
@@ -39,7 +40,7 @@ from .helpers import box_at, oct_cable
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "elec"))
 import harness as _H                                   # noqa: E402
 
-WAYS = tuple(_H.LED_DROP)                              # GND, V24, SCK, SDT
+WAYS = tuple(_H.LED_DROP)                              # the lead's own order
 WIRE_OD = 1.4                    # 24 AWG over its insulation; XH crimps take 22-28 AWG
 WIRE_LANE = 1.6                  # lane to lane where the four share a direction
 XH_PITCH = 2.5
