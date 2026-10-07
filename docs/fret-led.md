@@ -416,6 +416,11 @@ distance:
 | **4-layer** | plane 0.2 mm below | **15.9 mm²** | **44x smaller** |
 | 2-layer | trace 2 mm away | 159.2 mm² | 4x smaller |
 
+> ⚠ **The 15.9 mm² row assumed the plane's current follows the trace above it. At the
+> 19.5 kHz carrier it does not**, and the boards built on that assumption measured
+> 259 to 486 mm² a string. Section 9.3 has the measurement and what replaced the plane:
+> a feed TRACK 0.21 mm under each string. The arithmetic in this row is right for that.
+
 Cost: 4-layer at 200x60 and 224x60 quotes **$32.40 + $33.30 per five**, about **$13.14 an
 instrument** against ~$4.12 for 2-layer — **+$9**, against a $19.28 driver stack. Buy it.
 
@@ -423,8 +428,9 @@ instrument** against ~$4.12 for 2-layer — **+$9**, against a $19.28 driver sta
 axis is vertical, so it answers to Bz. A current loop lying flat in the board plane makes
 exactly that; a trace over its own return plane stands the loop up and points its field
 sideways. Free once you are on 4 layers **but only if the return is actually underneath** —
-hence the layout rule: *every zone's return is the plane directly beneath its own string,
-and no zone's current may take a path that encloses board area.*
+hence the layout rule: *every zone's return is ~~the plane~~ a conductor directly beneath
+its own string (9.3: a track, because a plane does not do this at the carrier), and no
+zone's current may take a path that encloses board area.*
 
 **3. Buck at the KEYHEAD end.** It is the highest di/dt thing on the board. On the mid
 board that puts it ~200 mm from the pickup and leaves only smoothed 12 V at the +X end.
@@ -1463,8 +1469,8 @@ there fixes it, and three things fall out that are better than what 9.1b planned
    chain runs +X to the seam, crosses, and mid's runs +X to the bridge -- ascending X
    throughout, which is the order `zones_for` already used. A per-board 24 V seam would
    have needed key's 24 V carried 211 mm from the seam to its bay.
-2. **The rail crosses as 14 V, straight off the In1 plane.** No trace at all on either side:
-   a via under each pad. (C5203987 is still the only candidate -- 14 > 12, and every other
+2. **The rail crosses as 14 V, straight off its plane** (the back of the board since 9.3).
+   No trace at all on either side: three vias in each land. (C5203987 is still the only candidate -- 14 > 12, and every other
    side-mount pogo is 12 V.)
 3. **One SDT for both boards.** The chain continues through the seam, so the Pi cap needs
    one fret header, not two. See docs/lighting-bus.md.
@@ -1598,8 +1604,9 @@ chain links parallel. (Alternating the feed direction per COLOUR, which was the 
 attempt at balancing the two sides, crosses them: four crossings per fret gap, 180 vias on
 the mid board, bought nothing.)
 
-**The rail is a plane, so the anode end of every string is a via, not a trace.** 123 pads on
-the mid board stitch straight down to a plane.
+~~**The rail is a plane, so the anode end of every string is a via, not a trace.** 123 pads
+on the mid board stitch straight down to a plane.~~ Superseded 2026-10-06: the anode end
+of a string is its driver's feed track (9.3).
 
 ## 9.2a What the routing actually did, and the two checkers it bought
 
@@ -1687,22 +1694,82 @@ room for a stitching via beside U3.19"*. The driver takes `trio[0]` instead, a w
 pitch further in. ⚠ Not the midpoint of the two, which is the obvious alternative and is
 exactly where a comb wall stands.
 
-## 9.3 ⚠ +14V on In1 and GND on In2 -- which inverts 6.3, on purpose
+## 9.3 ⚠ Every string is laid over a feed track that retraces it (2026-10-06)
 
-Section 6.3 says "GND plane directly under the LED layer", having assumed the LED loop's
-return conductor is ground. **It is not.** A zone's switched current runs: local bulk ->
-+14V -> four LEDs in series along 60 mm of fret -> the driver's output pin -> through the
-chip to its GND pad -> back to the cap, and **the cap sits at the driver**. The conductor
-that mirrors the long F.Cu run is therefore the RAIL:
+**What 6.3 assumed, and what this section first did about it.** 6.3 wants "the return
+directly beneath the string". The first boards put the +14V5 rail on In1 as a plane,
+0.21 mm under the LED layer, on the argument that the rail (not ground) is the conductor
+that mirrors a string: local bulk -> rail -> four LEDs -> the driver's output -> through
+the chip to ground. That argument stands. What does not is the step after it: *a plane
+under a trace carries that trace's return under it*.
 
-    In1 = +14V    0.21 mm under F.Cu     ~15 mm2 of loop
-    In2 = +14V    1.28 mm under F.Cu     ~90 mm2
+**A plane is a resistor sheet at 19.5 kHz.** Return current hugs its trace when the loop's
+inductance dominates the plane's resistance, which for 0.5 oz copper is above a few
+hundred kHz. The grayscale carrier is far below that, so the rail's current goes
+STRAIGHT across the plane from where it enters (at the driver, where the ground current
+leaves) to where it is taken (the first LED's anodes). A driver serves three frets: its
+own column and the one either side. For the two flank columns the string runs down a
+column one fret over, 51 mm, and comes back along the driver's row, while the plane
+current cuts the corner. The loop is the TRIANGLE between them, lying flat in the board
+plane with its axis vertical, which is the one orientation 6.3 item 2 exists to avoid.
 
-Six times smaller, for a swap that costs nothing. GND is still a solid plane one layer
-down, which is all a few-MHz SPI chain asks of a reference, and the two planes face each
-other across 1.065 mm of core, which is free interplane decoupling. Everything else in 6.3
-stands: the loop is vertical rather than flat (item 2), the buck is at the keyhead end
-(item 3), and every driver has local bulk (item 4).
+Measured off the routed boards (vector area of each string's loop, closed along the
+straight line through the plane; flat = the component a pickup's vertical axis sees):
+
+| | flat loop, mean | flat, worst | on-edge loop, mean |
+|---|--:|--:|--:|
+| mid board, rail plane on In1 | 259 mm² | 688 | 68 mm² |
+| key board, rail plane on In1 | 486 mm² | 1171 | 68 mm² |
+| of which the driver's own column | 67 to 72 | 257 | 70 |
+| of which the flank columns | 355 to 738 | 1171 | 67 |
+
+The 15.9 mm² of 6.3 was never there. Moving the returns from the back layer to the front,
+which was the first idea, changes only the on-edge 68.
+
+**What is built instead.** The rail no longer reaches a string through a plane.
+
+* Each driver has ONE feed net, `FEEDn`, tied to +14V5 through a 0 ohm 0402 at the driver
+  (R41 up), so the feed's current joins the rail where its return leaves for ground.
+* The feed is a TRACK on In1, 0.21 mm under F.Cu, laid back along every string it lights
+  to a via inside the string's first LED. Out on the front, back on In1, on the same line.
+* The strings themselves are laid, not routed: the four links between two LEDs leave a
+  cathode column inward, under the LED body, run up the column's centre line on 0.30 mm
+  lanes and enter the next anode column from inside. A flank's returns come down beside
+  its column and turn into the driver's side pins. The driver's own column passes UNDER
+  the driver on In1, two colours a side, with each pair's returns directly above it.
+* In1 is therefore a routing layer. The rail's plane is a pour on **B.Cu**, 0.21 mm from
+  the ground plane on In2 instead of 1.065, so the supply and its return spread through
+  two sheets of the same shape five times closer together. Each flank feed reaches its
+  via along 6 mm of the back, lying the way the rail's current runs.
+* ⚠ **Not a rail pour on In1 round the feeds**, which is the obvious way to keep the old
+  stackup: a feed slits whatever it runs through nearly edge to edge at every fret, the
+  rail's current would cross each slit round its ends while the ground's ran straight
+  underneath, and that flat loop carries every downstream driver's current, not one
+  string's 15 mA. For the same reason there is no rail TRUNK track: a track holds its
+  current on one line while the ground plane's spreads across 70 mm.
+
+Measured the same way on the boards as routed now:
+
+| | flat loop, mean | flat, worst | on-edge loop, mean |
+|---|--:|--:|--:|
+| mid board (the pickup's end) | **12.9 mm²** | 28 | 14 mm² |
+| key board | **22.5 mm²** | 104 | 14 mm² |
+| the driver's own column | 23 | 28 | 12 |
+| the flank columns | 8 (mid), 22 (key) | 17 (mid) | 16 |
+
+Twenty times down on the mid board and five times on the on-edge loop. What is left in
+a driver's own column is the 8 mm where its link passes the driver 2 mm off the centre
+line; red-green and blue-white go opposite sides, so the pair's sum is near zero. The key
+board's worst (104) is fret 9, whose column stands on the seam's pogo lands and has two
+links left to the router, 200 mm from the pickup.
+
+**What it cost.** Eight 0 ohm links (a basic part). In1 nearly empty while In2 and the
+back are full sheets, so the copper is no longer balanced about the mid-plane: a 211 mm
+board may bow as it comes, and is held flat by the deck. The output mapping changed for
+the driver's own zone only (`ZONE_OUTS[0]`: red 11, green 12, blue 20, white 19).
+
+Everything else in 6.3 stands: the buck is at the keyhead end (item 3) and every driver
+has local bulk (item 4).
 
 ## 9.4 Two things the catalogue settled that this document had wrong
 
