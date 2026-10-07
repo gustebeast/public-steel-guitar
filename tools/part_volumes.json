@@ -101,6 +101,10 @@
    "material": "petg-gf",
    "volume_mm3": 71885.5
   },
+  "knee_housing_r": {
+   "material": "petg-gf",
+   "volume_mm3": 72314.5
+  },
   "knee_lever": {
    "material": "pctg",
    "volume_mm3": 34478.0
