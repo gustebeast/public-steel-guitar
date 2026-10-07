@@ -201,13 +201,15 @@ ROT_TOWARD_DRIVER = {-1: 0.0, 0: 0.0, 1: 180.0}
 # The three zones a driver serves are spread in X, one either side and one directly
 # above, so:
 #   zone -X   pins 21, 22, 23, 24    the -X side's lower four
-#   zone mid  pins 19, 20, 11, 12    the TOP of both sides, straight down from y 30.4
+#   zone mid  pins 11, 12, 20, 19    the TOP of both sides, straight down from y 30.4:
+#                                    red and green on +X, blue and white on -X, in the
+#                                    order their returns arrive (_own_tracks)
 #   zone +X   pins 7, 8, 9, 10       the +X side's lower four
 # FIRMWARE MUST USE THIS TABLE. Global brightness correction (BC) is per colour GROUP
 # and this mapping puts one zone's four dice in different groups, so all three BC
 # fields are set equal and every per-fret adjustment happens in GS -- which is also
 # what keeps the 16-bit depth useful at the dim end (docs/fret-led.md 6.5, 6.6).
-ZONE_OUTS = {-1: (21, 22, 23, 24), 0: (19, 20, 11, 12), 1: (7, 8, 9, 10)}
+ZONE_OUTS = {-1: (21, 22, 23, 24), 0: (11, 12, 20, 19), 1: (7, 8, 9, 10)}
 COLOURS = ("R", "G", "B", "W")
 
 # ── EVERY STRING IS LAID, OVER A FEED THAT RETRACES IT (2026-10-06) ───────────────────
@@ -246,9 +248,18 @@ RET_W = 0.20
 RET_LANE0, RET_LANE = 3.05, 0.40     # the returns' lanes beside the column
 FEED_W = 0.25
 LINK_DY = -3.65                      # the 0 ohm link, under the driver's two NC pins
-LINK_VIA_DX = 1.35                   # its feed-side via
-LEG_DX = 2.90                        # where a flank's feed comes in under the side pins
-BULK_DY = -5.60
+ROOT_DY = -2.85                      # its feed-side via, between the link and those pins
+LEG_DX, LEG_DY = 2.90, -1.90         # a flank's own feed via, beside the driver
+BULK_DY = -5.40
+# the driver's own column (see _own_tracks), x from the driver's centre:
+OWN_IN = (1.75, 2.20)                # two link lanes a side on In1, between the heat
+                                     # pad's vias and the flank feed's via
+OWN_OUT = (3.45, 3.85)               # ...and under the returns once past the driver
+OWN_JOG_Y = 0.90                     # where they move over, from the driver's centre
+OWN_VIA_IN = 0.95                    # a link's via inside an LED, beside its pad column
+OWN_VIA_OUT = 3.25                   # ...or outside it
+OWN_TURN = (-2.85, -3.25)            # the west pair's returns under the last LED
+OWN_HOP = ((-1.75, -7.20), (-2.50, -6.55))   # the west pair's vias, over the third LED
 
 
 def _offset(pts, d):
@@ -299,6 +310,79 @@ def _drv_pin(xd, pin):
     return xd + 1.962, DRV_Y - 1.25 + 0.5 * (pin - 7)
 
 
+def _own_tracks(fret, fn, xd, outs):
+    """The driver's OWN column, from its third LED up: ([tracks], [vias]).
+
+    ⚠ THE DRIVER STANDS BETWEEN THE THIRD LED AND THE FOURTH, and everything else that
+    crosses its row is already there: a flank's returns on F.Cu either side of it and
+    their feeds on In1 beneath. So this zone's last link goes UNDER the driver on In1,
+    two colours a side between the heat pad's vias and the flank feed's, and comes up
+    at the last LED; its returns come back down F.Cu to the top two pins of each side
+    directly over the link they belong to. Out and back on the same line, 0.21 apart,
+    which is why this stretch needs no feed of its own.
+
+    The east pair is red and green, the top two rows: they leave the last LED outward
+    and nothing of theirs passes the lower rows. The west pair is blue and white: their
+    returns leave INWARD, under the LED's body, turn west below it and come down the
+    far side. ZONE_OUTS[0] is written to match (outer lane to upper pin, both sides).
+    The flank feeds reach their own vias along the back, under the link: one 6 mm
+    track lying the way the rail's current runs."""
+    y3, y4 = LED_ROW[2], LED_ROW[3]
+    yj = DRV_Y + OWN_JOG_Y
+    trk, via = [], []
+
+    def add(net, layer, w, pts):
+        pts = _r3([(xd + x, y) for x, y in pts])
+        trk.append((net, layer, w, [q for n, q in enumerate(pts) if not n or q != pts[n - 1]]))
+
+    for i, col in enumerate(COLOURS):
+        row = LED_ROWS[i]
+        link, ret = "Z%d_%s_2" % (fret, col), "Z%d_%s_RET" % (fret, col)
+        px, py = _drv_pin(xd, outs[i])
+        if i < 2:                                   # east: red outer, green inner
+            lane_in, lane_out = OWN_IN[1 - i], OWN_OUT[1 - i]
+            y0 = yj - 0.20 * (1 - i)
+            add(link, "F.Cu", RET_W, [(LED_PAD_DX, y3 + row), (OWN_VIA_OUT, y3 + row)])
+            via.append((link, round(xd + OWN_VIA_OUT, 3), round(y3 + row, 3)))
+            add(link, "In1.Cu", LANE_W,
+                [(OWN_VIA_OUT, y3 + row), (lane_in, y3 + row), (lane_in, y0),
+                 (lane_out, y0 + lane_out - lane_in), (lane_out, y4 + row),
+                 (-OWN_VIA_IN, y4 + row)])
+            via.append((link, round(xd - OWN_VIA_IN, 3), round(y4 + row, 3)))
+            add(link, "F.Cu", RET_W, [(-OWN_VIA_IN, y4 + row), (-LED_PAD_DX, y4 + row)])
+            assert px > xd, (col, outs)
+            add(ret, "F.Cu", RET_W, [(LED_PAD_DX, y4 + row), (lane_out, y4 + row),
+                                      (lane_out, py), (px - xd, py)])
+        else:                                       # west: white inner, blue outer
+            j = i - 2                               # 0 blue, 1 white
+            lane_in, lane_out = -OWN_IN[1 - j], -OWN_OUT[1 - j]
+            y0 = yj - 0.20 * (1 - j)
+            lane_led = 1.10 - LANE * j              # under the third LED, leaving it
+            hx, hy = OWN_HOP[1 - j]
+            add(link, "F.Cu", LANE_W, [(LED_PAD_DX, y3 + row), (lane_led, y3 + row),
+                                       (lane_led, DRV_Y + hy), (hx, DRV_Y + hy)])
+            via.append((link, round(xd + hx, 3), round(DRV_Y + hy, 3)))
+            add(link, "In1.Cu", LANE_W,
+                [(hx, DRV_Y + hy), (lane_in, DRV_Y + hy + abs(hx - lane_in)),
+                 (lane_in, y0), (lane_out, y0 + lane_in - lane_out),
+                 (lane_out, y4 + row), (-OWN_VIA_OUT - 0.05, y4 + row)])
+            via.append((link, round(xd - OWN_VIA_OUT - 0.05, 3), round(y4 + row, 3)))
+            add(link, "F.Cu", RET_W, [(-OWN_VIA_OUT - 0.05, y4 + row),
+                                      (-LED_PAD_DX, y4 + row)])
+            assert px < xd, (col, outs)
+            lane_ret = 0.75 + 0.35 * j              # under the last LED, leaving it
+            add(ret, "F.Cu", RET_W, [(LED_PAD_DX, y4 + row), (lane_ret, y4 + row),
+                                      (lane_ret, y4 + OWN_TURN[j]),
+                                      (lane_out, y4 + OWN_TURN[j]),
+                                      (lane_out, py), (px - xd, py)])
+    # outer lane to upper pin on both sides, or a pair crosses at its corner
+    for side in (1, -1):
+        rs = sorted((t for t in trk if t[0].endswith("_RET")
+                     and side * (t[3][-1][0] - xd) > 0), key=lambda t: abs(t[3][-2][0] - xd))
+        assert len(rs) == 2 and rs[0][3][-1][1] > rs[1][3][-1][1], rs
+    return trk, via
+
+
 def _ret_tracks(fret, xf, s, xd, outs):
     """A flank zone's four returns: last LED, down beside the column, into the pins."""
     yt = LED_ROW[-1]
@@ -314,6 +398,72 @@ def _ret_tracks(fret, xf, s, xd, outs):
     order = sorted(out, key=lambda t: s * t[3][1][0])
     assert [t[3][2][1] for t in order] == sorted(t[3][2][1] for t in order), order
     return out
+
+
+# ── WHAT EVERY NET REACHES, AND WHAT EVERY PIN ON IT IS RATED FOR (quality A16) ───────
+# The worst case, not the nominal: the brick's +5 %, the rail at the top of its divider's
+# tolerance (M5), VREG at TI's maximum. Ratings are absolute maxima read from each maker's
+# own table; a capacitor's is in its value.
+V24_MAX = 25.2
+V_RAIL_MAX = 15.0
+NET_VOLTS = {
+    "GND": 0,
+    "*_NC": 0,                           # a no-connect pin or an output left open
+    "+24V*": {"v": V24_MAX, "why": "the 24 V brick at +5 %; this lead is plugged with "
+                                   "the instrument off (M16), so there is no ring"},
+    "SW": {"v": V24_MAX, "why": "the switch node swings between ground and the input"},
+    "BOOT": {"v": V24_MAX + 5.25, "why": "the switch node plus the regulator's own VCC"},
+    "BUCK_VCC": {"v": 5.25, "why": "LMR33630's internal LDO, SNVSAN3F 7.5: 5 V nominal"},
+    "FB": {"v": 1.02, "why": "the 1.000 V reference, +1.5 %"},
+    "+14V5": {"v": V_RAIL_MAX, "why": "14.52 V at the top of the reference's 1.5 % and "
+                                      "the divider's 1 %"},
+    "FEED*": {"v": V_RAIL_MAX, "why": "the rail, through a 0 ohm link"},
+    "Z*": {"v": V_RAIL_MAX, "why": "a node of an LED string: at the rail whenever its "
+                                   "sink is off, lower when it conducts"},
+    "VREG*": {"v": 3.5, "why": "TLC5971's internal regulator, SBVS146D 6.5: 3.5 V maximum"},
+    "IREF*": {"v": 1.25, "why": "the 1.21 V reference across the IREF resistor"},
+    "SCK*": {"v": 3.5, "why": "the Pi's 3.3 V, or a driver's VREG-level output"},
+    "SDT*": {"v": 3.5, "why": "the Pi's 3.3 V, or a driver's VREG-level output"},
+}
+_TLC = "TI TLC5971 datasheet SBVS146D, 6.1 absolute maximum ratings"
+_LMR = "TI LMR33630 datasheet SNVSAN3F, 7.1 absolute maximum ratings"
+_R0402 = {"max": 50.0, "src": "UNI-ROYAL 0402WGF series (and Yageo RC0402): maximum "
+                              "working voltage 50 V"}
+PIN_VOLTS = {
+    "TLC5971RGER": {
+        "src": _TLC, "max": 18.0,        # VCC and the twelve outputs
+        "pins": {
+            "[12]": {"max": 3.7, "why": "SDTI / SCKI: VREG + 0.6 V, at this driver's "
+                                        "lowest VREG (3.1 V)"},
+            "[56]": {"max": "none", "why": "SCKO / SDTO are this pin's own VREG-level "
+                                           "outputs, rated VREG + 0.3 V"},
+            "15": {"max": 6.0},          # VREG
+            "16": {"max": 3.4, "why": "IREF: VREG + 0.3 V, at the lowest VREG"},
+        }},
+    BC.U_VALUE: {
+        "src": _LMR, "max": 38.0,        # VIN; EN is tied to it and rated VIN + 0.3 V
+        "pins": {
+            "3": {"max": V24_MAX + 0.3, "why": "SW: VIN + 0.3 V"},
+            "12": {"max": V24_MAX + 0.3, "why": "SW: VIN + 0.3 V"},
+            "4": {"max": "none", "why": "BOOT is rated 5.5 V to SW, not to ground, and "
+                                        "it is the regulator's own VCC that charges it"},
+            "5": {"max": 5.5}, "7": {"max": 5.5}, "8": {"max": 22.0},
+        }},
+    "JFC1206-1200FS": {"max": 63.0, "src": "JDT JFC1206 series sheet: voltage rating 63 V"},
+    "S4B-XH-SM4-TB": {"max": 250.0, "src": "JST XH series: rated 250 V"},
+    FL.POGO_MPN: {"max": 24.0, "src": "Xinyangze YZF0002-38080-02 specification A.0: "
+                                      "voltage rating 24 V AC (rms) / DC"},
+    "XL-5050RGBW": {"max": "none", "src": "XINGLIGHT XL-5050RGBW sheet, absolute maximum "
+                                          "ratings",
+                    "why": "a die in a series string has no rating to ground: its limits "
+                           "are forward current, which the sink sets, and 5 V reverse, "
+                           "which a string fed from one rail through one sink cannot apply"},
+    BC.L1_VALUE: {"max": "none", "src": "-", "why": "an inductor: no voltage rating to "
+                                                    "ground, its limits are current (M14)"},
+    "TP": {"max": "none", "src": "-", "why": "a bare test pad, not a part"},
+    "0R": _R0402, "3k3": _R0402, "1k 1%": _R0402, "100k 1%": _R0402,
+    "200k 1%": _R0402, "7k68 1%": _R0402,
+}
 
 
 def _idle_outs(n_drv, n_zone):
@@ -704,13 +854,17 @@ def _manual(panel, n_drv, n_zone, facts):
                "the deck's rails, which is what holds the pins in line; nothing else "
                "plugs into this board" % seam_y),
         "M2": "the only polarised parts are the LEDs. XINGLIGHT's drawing: pads 1 to 4 "
-              "are the four anodes, 5 to 8 their cathodes; the netlist takes the rail to "
-              "an anode and the cathode on to the next LED or the driver's sinking "
+              "are the four anodes, 5 to 8 their cathodes; the netlist takes the rail, "
+              "through its driver's feed link, to an anode and the cathode on to the "
+              "next LED or the driver's sinking "
               "output. The fab's own library footprint for C7371891 was compared with "
               "ours pad for pad: identical at 0 degrees, so the reel's orientation is "
               "the CPL's angle unchanged. No diode, electrolytic or tantalum",
-        "M3": "ground is a whole inner layer (In2) and the rail another (In1), each "
-              "broken only by via clearances and the two M4 keep-outs. "
+        "M3": "ground is a whole inner layer (In2), broken only by via clearances, and "
+              "the rail is poured over the whole back, 0.21 mm from it, round the two "
+              "M4 keep-outs, one 6 mm feed track at each driver and the data chain's "
+              "hops. Every LED string returns on its own feed track on In1, directly "
+              "under it (the note at _link_tracks). "
               + ("24 V arrives on a 0.30 mm track and returns through the ground plane "
                  "to J1's ground land, which has a via in it and a second 0.8 mm past "
                  "its toe. The rail leaves L1 on 1.0 mm of laid copper to both output "
@@ -745,8 +899,8 @@ def _manual(panel, n_drv, n_zone, facts):
         "M6": "no parallel bus and nothing matched. SCK and SDT are a 10 MHz-capable "
               "pair that the Pi clocks far slower; each driver re-drives both (10 ns "
               "edges) to the next, %s mm at the longest, which is %s ns of flight. They "
-              "run over the unbroken rail plane or, on the back, against the ground "
-              "plane" % (facts["hop_mm"], facts["hop_ns"]),
+              "run on the front or In1 over the ground plane, or on the back against "
+              "it" % (facts["hop_mm"], facts["hop_ns"]),
         "M7": ("divider: 100k over 7k68 || 200k = 7.396k on the 1.000 V reference is "
                "14.52 V. Inductor 4.7 uH: TI's table value at 1.4 MHz; their floor of "
                "0.28 x Vout / fsw is 2.9 uH against 3.76 at the part's -20 %; ripple "
@@ -866,7 +1020,8 @@ def _manual(panel, n_drv, n_zone, facts):
                "table, read 2026-10-04 (A12 measured against it). 211 x 70.4 mm plus "
                "the ear is inside the size limits. Every 0402's plane-side pad reaches "
                "its plane through a via beside the pad on a short track, as the other "
-               "pad has: no pad sits in a pour",
+               "pad has: no pad sits in a pour. The rail's pour is on the back, where "
+               "nothing is soldered",
         "M30": "JLCPCB's assembly page, read 2026-10-05: Economic PCBA takes "
                "single-sided assembly on 2, 4 or 6 layers at 1.6 mm, a single board "
                "from 10 x 10 to 470 x 500 mm, parts from 0402 and IC pitch from 0.4 mm; "
@@ -930,7 +1085,7 @@ def _manual(panel, n_drv, n_zone, facts):
                "need no load. U10's PG is an open drain left open, as its sheet "
                "allows" if key else "All 60 outputs are used. U5's SCKO and SDTO are "
                "the end of the chain: push-pull outputs, left open"),
-        "M40": "3k3" + (", 7k68 (an E96 value), 100k, 200k, 1k" if key else "") +
+        "M40": "0R (the feed links: any 0402 jumper), 3k3" + (", 7k68 (an E96 value), 100k, 200k, 1k" if key else "") +
                ", 100 nF, 1 uF, 4.7 uF and 10 uF are stock values, and every "
                "capacitor's voltage is in its value. Do-not-substitute parts say so "
                "where they are defined: " + ("L1 and U10 (elec/buck_cell.py: "
@@ -977,20 +1132,20 @@ def _manual(panel, n_drv, n_zone, facts):
 # What was measured on the routed boards after the last route (scratch scripts in the
 # session; the figures are re-read whenever a board is re-routed).
 MEASURED = {
-    "key": {"hop_mm": "82", "hop_ns": "0.5", "cin": "0.60", "sw": "4.4",
+    "key": {"hop_mm": "84", "hop_ns": "0.5", "cin": "0.60", "sw": "4.4",
             "r11": "1.17", "r10": "2.35", "boot": "1.07", "vcc": "0.42",
             "m37": (
                 "elec/fab.py fret_led_key, 2026-10-06, run after finish.py's refill and DRC; "
                 "gerbers and drill written together. Opened outside KiCad: every layer "
                 "rendered with pygerber 2.4.3 and looked at, the Excellon file parsed "
-                "separately and laid over the copper -- all 366 plated holes have copper all "
+                "separately and laid over the copper -- all 165 plated holes have copper all "
                 "round them on both outer layers. Paste only on soldered lands; stack-up and "
                 "the via choice are in ORDER.txt")},
-    "mid": {"hop_mm": "51", "hop_ns": "0.3", "m37": (
+    "mid": {"hop_mm": "54", "hop_ns": "0.3", "m37": (
                 "elec/fab.py fret_led_mid, 2026-10-06, run after finish.py's refill and DRC; "
                 "gerbers and drill written together. Opened outside KiCad: every layer "
                 "rendered with pygerber 2.4.3 and looked at, the Excellon file parsed "
-                "separately and laid over the copper -- all 601 plated holes have copper all "
+                "separately and laid over the copper -- all 175 plated holes have copper all "
                 "round them on both outer layers. Paste only on soldered lands; stack-up and "
                 "the via choice are in ORDER.txt")},
 }
@@ -1119,10 +1274,16 @@ def build(panel):
     laid, laid_vias = [], []
     for k, (u, xd, trio, di, feed) in enumerate(drivers):
         fn = "FEED%d" % (k + 1)
-        yj = DRV_Y + LINK_DY
-        root = (xd + LINK_VIA_DX, yj)
-        laid.append((fn, "F.Cu", FEED_W, _r3([(xd + 0.48, yj), root])))
+        # the link's feed-side via stands on the column's centre line; a flank's feed
+        # has a via of its own beside the driver, reached along the back
+        root = (xd, DRV_Y + ROOT_DY)
+        laid.append((fn, "F.Cu", FEED_W, _r3([(xd + 0.48, DRV_Y + LINK_DY), root])))
         laid_vias.append((fn, round(root[0], 3), round(root[1], 3)))
+        flanks = sorted({max(-1, min(1, q - di)) for q in range(len(trio))} - {0})
+        for q in flanks:
+            leg = (xd + q * LEG_DX, DRV_Y + LEG_DY)
+            laid.append((fn, "B.Cu", FEED_W, _r3([root, (leg[0], root[1]), leg])))
+            laid_vias.append((fn, round(leg[0], 3), round(leg[1], 3)))
         used = [p for s in range(len(trio))
                 for p in ZONE_OUTS[max(-1, min(1, s - di))]]
         assert len(set(used)) == 4 * len(trio), (
@@ -1174,30 +1335,38 @@ def build(panel):
                 mx = seam_x[0] + (-0.80 if xz < seam_x[0] else 0.80)
                 up += [(xz, LED_ROW[1] + LANE_JOG[0]), (mx, LED_ROW[1] + LANE_JOG[1]),
                        (mx, LED_ROW[2] - LANE_JOG[1]), (xz, LED_ROW[2] - LANE_JOG[0])]
+                # ⚠ AND A SEAM LAND ABOVE THE DRIVER'S ROW IS WALLED IN: this zone's
+                # returns come down F.Cu between it and the driver, their feed is on In1
+                # under them, and the land is 0.9 mm from the board's end. The data line
+                # that ends there gets a via in the land (5.0 x 3.5: A14 allows it) and
+                # 6 mm of the back, under the wall, to a via the router can reach. Left
+                # to the router it was the one net open on the board (2026-10-06).
+                for px, py, pnet in FL.pogo_pads(panel):
+                    if pnet in ("+14V5", "GND") or py < DRV_Y - 1.35:
+                        continue
+                    hop = [(px - cx - sc * BC.POGO_VIA_DX[1], py),
+                           (xz + sc * (RET_LANE0 + 3 * RET_LANE + 1.15), py)]
+                    laid.append((pnet, "B.Cu", 0.25, _r3(hop)))
+                    laid_vias += [(pnet, round(x, 3), round(y, 3)) for x, y in hop]
             if side == 0:
-                # ⚠ THE DRIVER STANDS IN ITS OWN ZONE'S COLUMN, between the third LED
-                # and the fourth, with a flank's returns either side of it. The top link
-                # and the returns are left to the router, which has In1 and the back to
-                # take them past; the feed goes as far as the laid links do.
-                assert not seam_x, fret
+                assert not seam_x and sc == 1.0, fret
                 for n in (0, 1):
                     laid += _link_tracks(fret, xz, sc, LED_ROW[n], LED_ROW[n + 1], n)
-                laid.append((fn, "In1.Cu", FEED_W, _r3(
-                    [root, (root[0], yj - 2.25), (xz, yj - 3.60)] + up[::-1])))
+                _t, _v = _own_tracks(fret, fn, xd, outs)
+                laid += _t
+                laid_vias += _v
+                laid.append((fn, "In1.Cu", FEED_W, _r3([root] + up[::-1])))
             else:
                 assert sc == -side, (fret, side, rot)   # cathodes face the driver
                 for n in n_laid:
                     laid += _link_tracks(fret, xz, sc, LED_ROW[n], LED_ROW[n + 1], n)
                 laid += _ret_tracks(fret, xz, sc, xd, outs)
                 lane = xz + sc * (RET_LANE0 + 1.5 * RET_LANE)
-                leg = (xd + side * LEG_DX, DRV_Y - 0.50)
-                # from the link: straight out on the +X side, round the link's own
-                # rail-side via on the -X side
-                start = ([root, (leg[0], yj)] if side > 0 else
-                         [root, (root[0], yj + 0.80), (leg[0], yj + 0.80)])
+                leg = (xd + side * LEG_DX, DRV_Y + LEG_DY)
+                yl = DRV_Y - 0.50                       # under the four returns
                 laid.append((fn, "In1.Cu", FEED_W, _r3(
-                    start + [leg, (lane, leg[1]), (lane, LED_ROW[-1]),
-                             (xz, LED_ROW[-1])] + up[::-1])))
+                    [leg, (leg[0], yl), (lane, yl), (lane, LED_ROW[-1]),
+                     (xz, LED_ROW[-1])] + up[::-1])))
 
     # ⚠ BEFORE THE NETLIST, NOT AFTER THE ROUTE. See check_placement.
     # the buck's cell is laid out to TI's figure, closer than the lane-keeping gap this
@@ -1316,8 +1485,18 @@ def build(panel):
         paths = [{"net": "+14V5", "from": rail_j[0] + ".1",
                   "to": ["U%d.13" % (k + 1) for k in range(n_drv)], "amps": I_VCC}]
         pin, waive = {}, {}
+    # each driver's feed, from its 0 ohm link to each zone's first LED: one zone's four
+    # strings, 60 mA, down a branch of its own. (Declared at the driver's whole 180 mA
+    # the check read 0.4 ohm of In1 as a 75 mV drop on a branch that carries a third of
+    # that; the stretch all three share is the link's 0.9 mm stub and its via.)
+    paths += [{"net": "FEED%d" % (k + 1), "from": "R%d.2" % (40 + k + 1),
+               "to": ["D%d.1" % (4 * (3 * k + q) + 1) for q in range(len(trio))],
+               "amps": round(4 * I_CHAN, 3)}
+              for k, (_u, _xd, trio, _di, _f) in enumerate(drivers)]
     notes["quality"] = {
         "power_paths": paths,
+        "net_volts": NET_VOLTS,
+        "pin_volts": PIN_VOLTS,
         "pinouts": dict({
             "XL-5050RGBW": "XINGLIGHT XL-5050RGBW datasheet, package drawing: pads 1-4 the "
                            "four anodes, 5-8 their cathodes; Steel:XINGLIGHT_XL-5050RGBW "
