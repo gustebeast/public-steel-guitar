@@ -19,7 +19,11 @@
    "i": 6.67,
    "src": "Mean Well GST160A-SPEC: 24 V model voltage tolerance +/-3.0 %, rated 6.67 A, over-voltage protection 105-135 % of rated output (hiccup)"
   },
-  "rail_tvs": "C148222"
+  "rail_tvs": "C310039",
+  "surge": {
+   "i": 20.0,
+   "src": "a BOUND, not a measurement: the brick's over-current limit (about 10 A, 150 % of 6.67 A) plus as much again returned by ten drivers stopping together. A scope trace of the rail during the fastest all-motor stop replaces it (bench item)"
+  }
  },
  "parts": {
   "C22787": {
@@ -2128,6 +2132,39 @@
    "ohm": 0.02,
    "case": "1206",
    "src": "JLCPCB parts API attributes for C17888 (1206W4F0000T5E, UNI-ROYAL: 0 ohm jumper, 250 mW, 200 V), fetched 2026-10-06; 20 mohm taken as the jumper's own resistance for the power sum"
+  },
+  "C310039": {
+   "kind": "tvs",
+   "vrwm": 24.0,
+   "vbr_min": 26.7,
+   "vbr_max": 29.5,
+   "vc": 38.9,
+   "ipp": 38.6,
+   "bidir": false,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "mpn": "SMCJ24A",
+   "src": "Brightking SMCJ series datasheet (LCSC C310039), electrical table row SMCJ24A: VRWM 24 V, VBR 26.7-29.5 V @1 mA, VC 38.9 V @ IPP 38.6 A (10/1000 us), 1500 W"
+  },
+  "C7467023": {
+   "kind": "diode",
+   "vr": 60.0,
+   "if": 1.0,
+   "pins": {
+    "1": "K",
+    "2": "A"
+   },
+   "src": "FUXINSEMI DSS12 thru DSS120 Ver2.1 p.1, column DSS16: VRRM 60 V, VDC 60 V, I(AV) 1.0 A, IFSM 30 A, VF 0.70 V at 1 A; SOD-123, band = cathode",
+   "mpn": "DSS16"
+  },
+  "C136344": {
+   "kind": "fuse",
+   "v": 63.0,
+   "i": 1.5,
+   "src": "Shenzhen JDT JFC1206FS fast-acting fuse datasheet p.2 table (rev 05/07/20): JFC1206-1150FS 1.5 A, in the 72/63/32/24 VDC group, 240 mohm cold, pre-arc I2t 0.15 A2s",
+   "mpn": "JFC1206-1150FS"
   }
  }
 }
