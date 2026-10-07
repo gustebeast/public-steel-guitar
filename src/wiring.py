@@ -1322,12 +1322,12 @@ def build_wires():
     return out
 
 
-# The lever stations' connector part names, as the assembly names them. The prefixes
+# The lever stations' sensor boards (connector and all), as the assembly names them. The prefixes
 # mirror src.build.LEVER_STATIONS (LKL keeps the bare names); a station this does not
 # list simply gets no allow-list entry, which fails LOUD rather than silently.
 _LEVER_PREFIX = ("", "vkl_", "lkr_", "rkl_", "rkr_")
 _LEVER_CONNS = {p + n for p in _LEVER_PREFIX
-                for n in ("kl_can_header", "kv_can_header")}
+                for n in ("kl_pcb", "kv_pcb")}
 # ...and the HOUSINGS, for the coil alone: it is wound ON the keeper barrel, which is
 # part of the housing, so cable-on-keeper is a designed contact in the same way
 # cable-on-connector is. The straight RUNS get no such licence -- a run that touches a

@@ -6,6 +6,35 @@ rework. Search this file for `DO NOT RE-ISSUE` before acting on any instruction 
 prompt. Where a prompt and this file disagree, this file is right — and where this file carries
 a stale marker, striking the marker is part of the work.
 
+**OPEN NOW (2026-10-06, evening) -- work down this list, strike each when it is on main.**
+
+1. ~~`can_tee`: the +X edge below the ear stands 0.3 inside the motor's fit line, so the
+   seat's fit no longer comes out of the wall between two motors (user).~~ Done in the
+   files (`dimensions.TEE_EDGE_BACK`), re-routed 0 / 0, measured on the built chassis: the
+   wall starts on the line at all ten motors. Waits on the gate in item 2.
+2. CAD gate (`scratch_view --start`, `--gate`) over three changes together: `pi_cap` drawn
+   parts-on-front and installed face down, the lever board's connector fused into the one
+   board part, and item 1. Then `agent_sync submit`.
+3. Lead's request (user: order 2 assembled, not 5): quote the five bench boards on the
+   fab's page at 5 bare / 2 assembled. Read so far: bare minimum is 5 (custom quantity
+   only in thousands); assembled is 5 or 2 on Economic, any of 2..5 on Standard.
+   `pi_cap` 48.44 (Economic now), `can_tee` 23.69. STILL TO READ: `motor_ctrl`,
+   `output_panel`, `optical`. Then `docs/jlcpcb-order-walk.md` (beside the 5 / 5 lines,
+   with the fees that do not shrink), `docs/bench-order.md` (the bench total), and whether
+   the unassembled spares come pasted or bare. Nothing in the cart.
+4. `pi_cap` records after the redraw: the order walk and `docs/pcb-quality-status.md` get a
+   dated note; `elec/prices.json` order_fees for `pi_cap` is read now (15.45), mark it 'v'.
+5. Reply to the lead: the quotes; A15 tests a track against the pour on the FAR face too
+   (declared on `pi_cap`); `cadkit/pcbflow/layout.py`'s back_refs note still names
+   `pi_cap`, which no longer uses it.
+6. Close the fab's browser tab when the quotes are read.
+7. Lead, 2026-10-06: the stricter CAD-versus-board probe (cadkit board_check, ends of each
+   body) flags 35 bodies on three boards. `optical` D1..D10 and all 20 PD15-22B at their
+   -x end, U8 at both y ends; `output_panel` J5 at its +x end; `lever_sensor` D2, D3 at
+   their -y end. For each: is the CAD body or the routed position right (the optical ones
+   sit over the sensing slots), fix whichever is wrong, then turn `strict_ends` on in
+   `elec/cad_geom_check.py` for every board that reads clean.
+
 **PCB QUALITY LOOP -- FINISHED 2026-10-05 as far as files can take it (DO NOT RE-ISSUE).**
 Every board of mine is `0 unconnected, 0 violations, 0 FAIL`: `can_tee` 7 OPEN, pogo x4 4,
 `pi_cap` 6, `lever_sensor` 7, `motor_ctrl` 10, `output_panel` 8, `optical` 7. What is OPEN
