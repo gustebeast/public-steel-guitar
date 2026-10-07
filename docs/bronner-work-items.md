@@ -71,7 +71,7 @@ Then reply to the lead with taken / intended, and submit.
 - ~~R1~~ `motor_ctrl` re-routed 0 / 0: C18 (now 220 nF) lies across VIN / PGND 0.6 mm from
   each pin, C16 2.2 mm behind it, C17 2.9 mm; declared 0.6-1.0 mm copper, no via in the loop.
 - ~~R2~~ D8 / D6 are SMAJ24A (C148222). Judged pin by pin by A16 (below).
-- ~~R3~~ `pi_cap` UI_RES_N on pin 22 / GPIO25 (pin 36 was tried first and did not route); board re-routed; `docs/pi-cap-ui-ribbon.md`.
+- ~~R3~~ `pi_cap` UI_RES_N on pin 22 / GPIO25 (pin 36 was tried first and did not route), and UI_DC with it from pin 37 / GPIO26 to pin 7 / GPIO4 (it came back open at 37 and at 36); board re-routed 0 / 0; `docs/pi-cap-ui-ribbon.md`.
 - ~~R4~~ `Steel:L_APV_PNR3015` on both boards (`output_panel` swapped in place on the routed board).
 - ~~R5~~ `optical`: a 1.0 x 14 mm notch in the board edge in front of J1; no copper moved.
 - ~~R6~~ `optical` C130 1 uF, R1-R10 ERJ2RKF1800X (100 mW); `output_panel` C17 / C18 removed
@@ -102,6 +102,12 @@ boards. After any part or net change: generator, `py -3.12 elec/voltage_check.py
 - Found by it on a board the review did not read: `lever_sensor` R4 (the bus B terminator)
   was a 62.5 mW 0402 at 75 mW with the bus held dominant; now ERJ2RKF1200X, 100 mW.
 - cadkit A14 fixed on the way (b105ca9): a QFN's paste windows were read as lands.
+- cadkit A15 fixed too (b7bfe08): a track is judged against the NEAREST ground layer, not every pour.
+- Hot plug (the lead's follow-up): `motor_ctrl` R23, 0.22 ohm 1206 ahead of F1. Without it a live
+  plug of J3 put 38.8 V on U5's 38 V pin in the worst lead corner; with it 32.8 V.
+- `lever_sensor` U4's belly pad lost its via (A14, 70 % of the paste); tied to pin 16, A8 waived.
+- STATE: all ten boards 0 unconnected / 0 violations / 0 FAIL. Left for the order day: the
+  OPEN manual items (M37, M42 and the like), and brenner's firmware map for GPIO25 / GPIO4.
 
 **PCB QUALITY LOOP -- FINISHED 2026-10-05 as far as files can take it (DO NOT RE-ISSUE).**
 Every board of mine is `0 unconnected, 0 violations, 0 FAIL`: `can_tee` 7 OPEN, pogo x4 4,

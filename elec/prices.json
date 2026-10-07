@@ -4834,6 +4834,11 @@
       "usd": 0.1733,
       "verified": "v",
       "what": "22uF/25V C12891 -- JLCPCB parts API at qty 40"
+    },
+    "motor_ctrl:R23": {
+      "usd": 0.0084,
+      "verified": "v",
+      "what": "0R22 C25336 -- JLCPCB parts API at qty 10"
     }
   },
   "modules": {

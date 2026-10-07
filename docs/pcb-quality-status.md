@@ -412,3 +412,24 @@ The rules were checked against how these boards are actually made, and four were
 4. Work the manual list M1–M42 and sign each with what was checked against.
 
 The optical board goes first: it is the next order.
+
+## Pre-order review, 2026-10-06
+
+The lead's review list (R1-R7, Q1-Q12, H1-H4; `docs/bronner-work-items.md`) and the new
+rule A16 (every net's worst voltage against every pin's rating) were worked on all ten
+boards. Every board ends 0 unconnected, 0 violations, 0 FAIL.
+
+| board | what changed |
+|---|---|
+| `motor_ctrl` | re-routed. Buck input loop closed up (C18 220 nF at the pins); SMAJ24A clamp; TCAN3413 behind a NUP2105L; BOOT1 to GND, BOOT0 on a pad; R23 0.22 ohm ahead of the fuse for a live plug of J3 (38.8 V on a 38 V pin without it, 32.8 V with) |
+| `output_panel` | edited in place on the routed board: SMAJ24A, two capacitors out, one up to 10 uF, the inductor's real footprint |
+| `optical` | USB notch in the edge; 100 mW LED resistors; C130 1 uF. Not re-routed |
+| `lever_sensor` | R4 is a 100 mW part (75 mW with the bus held dominant, found by A16); the sensor's belly pad has no via (A14: the barrel was 70 % of its paste) and is tied to pin 16, A8 waived with that reason |
+| `pi_cap` | re-routed. UI_RES_N pin 33 to pin 22 (GPIO13 is SPI5 MISO under the stock overlay), UI_DC pin 37 to pin 7 (would not route otherwise) |
+| `can_tee`, four leg boards | declarations only |
+
+One judgement is in the A16 declarations and is written where it is made
+(`elec/voltage_check.py`): the 24 V rail's transient is the clamp's voltage at the
+brick's whole 6.67 A, 35.6 V, not its catalogue 38.9 V at a 10.3 A pulse the brick cannot
+supply. Two rule faults were found and fixed in cadkit on the way (A14 read a QFN's paste
+windows as lands; A15 judged a track against every ground pour instead of the nearest).

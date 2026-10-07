@@ -10,6 +10,7 @@ A part that is not in this file is not on a board, whatever another document say
 |---|---|--:|---|
 | `0R` | C17168 | 11 | lever_sensor |
 | `0R` | C21189 | 1 | output_panel |
+| `0R22` | C25336 | 1 | motor_ctrl |
 | `100k` | C25741 | 17 | motor_ctrl, output_panel, optical, fret_led_key, foot_led_a, foot_led_b |
 | `100nF` | C307331 | 186 | lever_sensor, motor_ctrl, output_panel, pi_cap, optical, ui_board, fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
 | `100nF C0G` | C170182 | 1 | output_panel |
@@ -179,7 +180,7 @@ A part that is not in this file is not on a board, whatever another document say
 
 ## `motor_ctrl`
 
-1 per instrument. 75 placed part(s) in 42 line(s); 6 pad(s) and jumper(s) that are copper, not parts.
+1 per instrument. 76 placed part(s) in 43 line(s); 6 pad(s) and jumper(s) that are copper, not parts.
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|
@@ -218,6 +219,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 1 | R12 | `137k 1%` | R_0402_1005Metric | C138058 |
 | 1 | R13 | `10k 1%` | R_0402_1005Metric | C25744 |
 | 1 | R22 | `49k9 1%` | R_0402_1005Metric | C25897 |
+| 1 | R23 | `0R22` | R_1206_3216Metric | C25336 |
 | 1 | U1 | `LMR16006XDDCR` | SOT-23-6 | C87080 |
 | 1 | U2 | `TCAN3413DR` | SOIC-8_3.9x4.9mm_P1.27mm | C22433320 |
 | 1 | U3 | `SN65HVD230DR` | SOIC-8_3.9x4.9mm_P1.27mm | C12084 |

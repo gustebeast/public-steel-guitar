@@ -46,7 +46,7 @@ switch lines — which are static on a human timescale and make quiet neighbours
 | 2 | SCLK | 40 | GPIO21 | **SPI1 SCLK** |
 | 3 | SDIN | 38 | GPIO20 | **SPI1 MOSI** |
 | 4 | CS_N | 12 | GPIO18 | **SPI1 CE0** |
-| 5 | DC | 37 | GPIO26 | plain GPIO |
+| 5 | DC | 7 | GPIO4 | plain GPIO (1-wire only if that overlay is loaded; it is not). **Moved from pin 37 / GPIO26 on 2026-10-06** with RES_N: its way leaves the ribbon header round the west end and could no longer get back east |
 | 6 | RES_N | 22 | GPIO25 | plain GPIO. **Moved from pin 33 / GPIO13 on 2026-10-06**: the stock `spi5-1cs` overlay (the foot strip's bus on pins 8 / 10) muxes GPIO13 to SPI5 MISO, so the reset line stopped being driven as soon as it loaded |
 | 7 | +3V3 | 1 | — | see the caveat below |
 | 8 | ENC_A | 29 | GPIO5 | |
