@@ -8,9 +8,10 @@ a stale marker, striking the marker is part of the work.
 
 **OPEN NOW (2026-10-06, evening) -- work down this list, strike each when it is on main.**
 
-1. `can_tee`: the ear's +X end comes in by the seat's fit so the pocket no longer cuts the
-   wall beside it (user). Measure the wall on the built chassis first; then `dimensions`,
-   `elec/can_tee.py`, re-route, package. The M4 hole stays where it is in the instrument.
+1. ~~`can_tee`: the +X edge below the ear stands 0.3 inside the motor's fit line, so the
+   seat's fit no longer comes out of the wall between two motors (user).~~ Done in the
+   files (`dimensions.TEE_EDGE_BACK`), re-routed 0 / 0, measured on the built chassis: the
+   wall starts on the line at all ten motors. Waits on the gate in item 2.
 2. CAD gate (`scratch_view --start`, `--gate`) over three changes together: `pi_cap` drawn
    parts-on-front and installed face down, the lever board's connector fused into the one
    board part, and item 1. Then `agent_sync submit`.
@@ -27,6 +28,12 @@ a stale marker, striking the marker is part of the work.
    (declared on `pi_cap`); `cadkit/pcbflow/layout.py`'s back_refs note still names
    `pi_cap`, which no longer uses it.
 6. Close the fab's browser tab when the quotes are read.
+7. Lead, 2026-10-06: the stricter CAD-versus-board probe (cadkit board_check, ends of each
+   body) flags 35 bodies on three boards. `optical` D1..D10 and all 20 PD15-22B at their
+   -x end, U8 at both y ends; `output_panel` J5 at its +x end; `lever_sensor` D2, D3 at
+   their -y end. For each: is the CAD body or the routed position right (the optical ones
+   sit over the sensing slots), fix whichever is wrong, then turn `strict_ends` on in
+   `elec/cad_geom_check.py` for every board that reads clean.
 
 **PCB QUALITY LOOP -- FINISHED 2026-10-05 as far as files can take it (DO NOT RE-ISSUE).**
 Every board of mine is `0 unconnected, 0 violations, 0 FAIL`: `can_tee` 7 OPEN, pogo x4 4,

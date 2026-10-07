@@ -184,6 +184,11 @@ _TEE_QTY = _tee_qty()
 _HW, _HL = BOARD_W / 2.0, BOARD_L / 2.0
 _EAR_X1 = _HW + EAR_W                    # +29.5
 _EAR_Y0 = _HL - EAR_H                    # -0.7
+# Below the ear the +X edge stands 0.3 inside the layout region's line. In the instrument
+# that line is the face of the wall between two motors, and the seat's fit round the board
+# has to end on it rather than in it (dimensions.TEE_EDGE_BACK).
+EDGE_BACK = 0.3
+_BODY_X1 = _HW - EDGE_BACK               # +19.7
 
 BAR_Y, BAR_W, STUB_W = -1.5, 2.0, 1.5
 # pad x of each rail's three lands, off the footprints: J1 at -7.0 spans 8 ways about its
@@ -205,7 +210,7 @@ BOARD_NOTES = {
     # THE LAYOUT REGION, not the outline: every part lives in the original 40 x 16
     # and place_check measures against this. The board EDGE is outline_poly below.
     "outline_mm": (BOARD_W, BOARD_L),
-    "outline_poly": [(-_HW, -_HL), (_HW, -_HL), (_HW, _EAR_Y0), (_EAR_X1, _EAR_Y0),
+    "outline_poly": [(-_HW, -_HL), (_BODY_X1, -_HL), (_BODY_X1, _EAR_Y0), (_EAR_X1, _EAR_Y0),
                      (_EAR_X1, _HL), (-_HW, _HL)],
     # Centred in the ear: 4.75 from the +X edge, 4.35 from the +Y edge.
     "cutouts": [{"xy": (_EAR_X1 - EAR_W / 2.0, _HL - EAR_H / 2.0), "d": HOLE_D}],
@@ -428,6 +433,7 @@ def _check_against_cad():
             ("board Y", BOARD_L, D.TEE_BOARD_Y),
             ("ear X", EAR_W, D.TEE_EAR_X),
             ("ear Y", EAR_H, D.TEE_EAR_Y),
+            ("+X edge set-back", EDGE_BACK, D.TEE_EDGE_BACK),
             ("fabbed outline X", BOARD_OUTLINE_W, D.TEE_OUTLINE_X),
             ("tail row Y", ROW_Y, D.TEE_TAIL_CY),
             ("terminator R1 X", R1_X, D.TEE_TERM_R[0]),
