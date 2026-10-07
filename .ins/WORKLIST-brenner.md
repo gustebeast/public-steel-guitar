@@ -379,3 +379,30 @@ NEEDS USER -- the one item left open on every board is M12, and only these parts
    tiers. If it insists on Standard for a part, stop and say which.
 4. Tick: Confirm Production File, Confirm Parts Placement, Remove Mark; via 0.25 / 0.50
    on the foot boards (ORDER.txt in each package).
+
+## FRET BOARDS: FEED RE-LAYOUT (2026-10-06, done, routed, packaged)
+- Why and the numbers: docs/fret-led.md 9.3. Per-driver FEEDn net through a 0R link
+  (R41..), every string laid on F over its feed on In1, rail pour on B.Cu, In1 a routing
+  layer. ZONE_OUTS[0] is now (11, 12, 20, 19).
+- Both boards 0 unconnected, 0 violations, quality 0 FAIL / 1 OPEN (M12). Flat loop per
+  string: mid 259 -> 12.9 mm2 mean (max 28), key 486 -> 22.5 (max 104, fret 9 at the seam).
+- Measure again with scratchpad moment2.py (`"$K" moment2.py fret_led_mid fret_led_key -v`).
+- The pre-change routes are in elec/out/_planefeed/ (untracked build output).
+- A16 (voltage ratings) is declared for the fret boards only: NET_VOLTS / PIN_VOLTS in
+  elec/fret_led.py. foot_led_a/b and ui_board will FAIL A16 at their next finish until
+  they get the same.
+- JLCPCB: the saved projects for all four LED boards are STALE (fret boards: new copper,
+  8 more parts; foot boards: older silkscreen). Re-upload, re-preview (0R links, U pin 1)
+  and re-quote before ordering. Nothing is in the cart.
+- NEXT: connector pin labels on the connector's own face (lead, from the user): bronner
+  is adding it to cadkit kicad_silk.py; when it is on main, sync, finish --keep-route all
+  five boards, fab.py, submit. The 2x7 1.27 ribbon header on ui_board cannot take a word
+  a way at 1.0 mm: say so in the submit.
+
+## A16 VOLTAGE RATINGS DECLARED (2026-10-06)
+- Declarations live in elec/buck_cell.py (V24_MAX 24.72, net_volts(), pin_volts()); fret, foot and ui boards use them.
+- fret_led_key / fret_led_mid / ui_board: A16 ok, 0 FAIL / 1 OPEN (M12). Fab packages rebuilt.
+- foot_led_a (J21.1) and foot_led_b (J11.1): A16 hard FAIL. The pogo pin YZF0002-38080-02 is rated 24 V DC and
+  +24V / +24V_IN is 24.72 V worst case (Mean Well GST160A24 24 V +-3 %). NOT waived; reported to the lead. Foot fab
+  packages NOT rebuilt until this is decided.
+- NEXT: connector per-way labels once the kicad_silk change is on main (finish --keep-route on all five, rebuild fab).
