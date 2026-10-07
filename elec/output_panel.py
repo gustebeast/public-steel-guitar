@@ -2831,8 +2831,8 @@ BOARD_NOTES["quality"] = {
     # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
     # and why. Way 1 is marked on the connector's own side in every case.
     "connector_labels": {
-        "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
-        "J10": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its seven-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
+        "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
+        "J10": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its seven-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
     },
     "waive": {
         # A1 reports one barrel and does not add parallel vias up. The tab has eight.

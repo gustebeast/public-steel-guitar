@@ -347,12 +347,18 @@ CLAMP_ARM_Z = -8.0                 # the arm's TOP, once it has stepped up past 
                                    # 3.2 clear of the highest thing under the display
                                    # (wire_canl at -17.24); at the plate's own level it
                                    # would have been 1.8 INSIDE it
-# A stock length, and the SHORTER of the two that fit. 3.2 of clamp + 1.6 of board
-# leaves 7.2 in a boss that is 11.1 deep -- full engagement in the 5.0 insert and 2.2 to
-# spare. M4x16 also satisfies the bite, and its tip then stood 0.10 past the boss's top
-# into the deck panel's own body, which the overlap gate reported at 1.26 mm3. A screw
-# that ends inside the part it threads into is the better answer than a longer bore.
-CLAMP_SCREW_L = 12.0
+# M4 x 10, the length the rest of the instrument already buys (2026-10-07: one screw
+# length fewer on the BOM; this was the x12). The head bears on the clamp's underside,
+# the shank climbs 3.2 of clamp and 1.6 of board, and 5.2 is left for the boss: the whole
+# 5.0 of the insert, whose mouth is the boss's end face on the board, and 0.2 beyond it.
+# Measured on the solids, not only here -- tip at -5.90 against the insert's far end at
+# -6.10, and the clamp is its full 3.2 round the screw hole (no recess, and the arm's
+# step is elsewhere). CLAMP_RELIEF is sideways, round the footprints, and is not in this
+# stack. A screw at the short end of its tolerance (ISO 7380: -0.29) still has 4.9 of
+# the 5.0 in thread, more than a diameter. If this stack ever grows, take it out from
+# under the head (a recess in the clamp), not with a longer screw: an M4 x 16 once stood
+# 0.10 past the boss's top into the deck panel's own body.
+CLAMP_SCREW_L = 10.0
 assert CLAMP_SCREW_L - CLAMP_T - BOARD_T >= M4.insert_depth, (
     "an M4 x %.1f leaves %.1f in the insert, which is %.1f deep"
     % (CLAMP_SCREW_L, CLAMP_SCREW_L - CLAMP_T - BOARD_T, M4.insert_depth))
