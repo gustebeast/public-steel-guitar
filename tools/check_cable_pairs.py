@@ -27,7 +27,7 @@ RUN_MM, MIN_VOL = 4.0, 0.5
 def main():
     ws = {n: w.val() for n, w in W.build_wires()}
     ws["optical_cable_usb"] = O.opt_cables("usb").val()
-    ws["optical_cable_pwr"] = O.opt_cables("pwr").val()
+    ws.update({n: w.val() for n, w in W.optical_feed()})
     t = time.time()
     runs, touches = [], 0
     for a, b in itertools.combinations(list(ws), 2):

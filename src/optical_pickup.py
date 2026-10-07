@@ -3658,8 +3658,9 @@ def opt_cables(which: str = "all") -> cq.Workplane:
     """The MALE connectors and their cable, at true diameter -- an assembly aid, not a part.
 
     ⚠ SPLIT BY WHAT THE CABLE IS, because one grey solid could not say. `which` is
-    "usb" (J1's plug, its lead, and the long haul to the Pi), "pwr" (J2's plug and its
-    24 V lead), or "all". The build registers the two separately so each carries its own
+    "usb" (J1's plug, its lead, and the long haul to the Pi), "pwr" (J2's plug -- its
+    two conductors are wiring.optical_feed's, drawn along "pwr_path", the lead's centre
+    line as a list of points), or "all". The build registers the two separately so each carries its own
     name and its own colour in the viewer -- violet for USB and red for 24 V, the same
     scheme the loose wires already use -- and so either can be hidden on its own while
     tracing a route. As one part they were a single near-black mass, which also broke the
@@ -3669,14 +3670,18 @@ def opt_cables(which: str = "all") -> cq.Workplane:
     along -Y, runs to the conduit's mouth and turns down it. The USB-C socket sits -X of the
     endplate, so its lead also has to travel +X to reach the shaft -- which is the one thing
     about this route that is not obvious from a side view."""
-    USB_OD, XH_OD = 2.6, 4.0          # slim shielded USB-2 (BOM wire table); 6x 26 AWG bundle
+    # slim shielded USB-2 (BOM wire table); and the ENVELOPE the 24 V lead is planned in.
+    # That lead is two conductors side by side at the connector's own pitch, 3.8 across
+    # (wiring.optical_feed); it was drawn as one O4.0 solid, "6x 26 AWG", from when the
+    # link had six ways, and every clearance on its route was set against that.
+    USB_OD, XH_OD = 2.6, 4.0
     out = None
 
     def add(s):
         nonlocal out
         out = s if out is None else out.union(s)
 
-    _WANT = {"usb": ("J1",), "pwr": ("J2",), "all": ("J1", "J2")}[which]
+    _WANT = {"usb": ("J1",), "pwr": ("J2",), "pwr_path": ("J2",), "all": ("J1", "J2")}[which]
     _yturn, _path, _od = {}, {}, {}
     # ⚠ EACH LEAD TAKES THE CONDUIT SIDE NEAREST ITS OWN PLUG, and it used to take the far
     # one. J1 sits at x +9.88 and dropped at -2.2; J2 sits at -29.29 and dropped at +2.2 --
@@ -3749,7 +3754,8 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         _path["J2"] += [(xd, PWR_Y, PWR_Z_TURN), (xd, PWR_Y, PWR_Z_REC),
                         (PWR_X_RISE, PWR_Y, PWR_Z_REC), (PWR_X_RISE, PWR_Y, PWR_Z_BAY),
                         (j9[0], PWR_Y, PWR_Z_BAY), (j9[0], j9[1], PWR_Z_BAY), j9]
-        add(oct_cable(_path["J2"], _od["J2"]))
+        if which == "pwr_path":
+            return _path["J2"]
     if "J1" not in _WANT:
         return out
     # USB: out through the conduit's mouth into the bay -- the only part of that mouth the
