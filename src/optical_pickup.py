@@ -3441,110 +3441,29 @@ CONDUIT_CLR = 1.5
 # is what the endplate wall is asserted against.
 _XH4_W, _XH4_D = 12.4, 5.75                                   # S4B-XH housing, 4 way
 _USBC_W, _USBC_H = 12.35, 6.50                                # USB-IF MAX overmold
-# Plug body length along the mating axis. ASSUMPTIONS, and the ones to check against real
-# cable before cutting metal -- overmolds are not standardised.
-# J1 IS A STRAIGHT PLUG, and the right-angle idea it replaces was wrong -- J2 is what kills
-# it. J1 sits -X of J2, so its lead must cross J2's footprint to reach the shaft. A
-# right-angle leaves +X *at the plug*, which is exactly where J2's body is: the cable turned
-# +X at y -112.85, dead inside J2's -120.85..-106.85 span, and clipped straight through it
-# (user-caught from a render).
+# ⚠ J1's PLUG IS A DOWN-ANGLE USB-C, AND THE PLASTIC FOLLOWS THE CABLE (user, 2026-10-07:
+# "Can we not just use a downward right angled usb C?" ... "we can always redesign plastic
+# to account for the cable"). It was a STRAIGHT plug with its overmould capped at 17.5 mm,
+# and no stock 0.3 m lead with a published overmould that short was found (30.0 and 27.5
+# were). A down-angle plug turns the cable -Z at the socket, straight into the conduit
+# that is already under it, so the overmould's LENGTH stops mattering: what it needs is
+# depth behind the board and room below, and the conduit has both.
 #
-# The escape is not a detour but a LONGER plug. A straight USB-C's own back face lands at
-# -126.85, already 6.00 mm clear of J2's -120.85, so the lead turns +X in free space with a
-# single bend and no doubling back. A right-angle would have needed exit +X, turn -Y, turn
-# +X again -- three bends to solve a problem the straight plug does not have.
+# (The straight plug had been chosen over a SIDE-angle one, when J1 sat -X of J2 and a
+#  sideways lead ran into J2's body. J1 is +X of J2 now, with the shaft between them, and
+#  a downward lead crosses nothing.)
 #
-# So the earlier claim that the angled plug saved a bend was true only in isolation; once
-# the neighbouring connector is in the picture it costs two. J2 stays straight for its own
-# reason: it sits nearly over the shaft already.
-#
-# PLUG_L IS A PURCHASING SPEC, NOT A MEASUREMENT. Nothing is ordered yet, and overmold
-# LENGTH is not standardised -- USB-IF fixes the cross-section (12.35 x 6.50) but not this,
-# and surveyed parts run ~10-25 mm. So rather than guess a number and hope, the geometry is
-# made insensitive to it in the direction that matters and the number becomes a rule for
-# what to BUY, which is checkable at order time:
-#
-#   SHORT plug -- the dangerous case, because it was what put J1's lead into J2. Removed as
-#     a risk entirely: a lead that crosses a neighbour now turns at whichever back face is
-#     further -Y, ITS OWN OR THE NEIGHBOUR'S. A short plug just runs a little further in
-#     free air before turning. No length can make it clip.
-#   LONG plug -- only eats conduit depth, and there is a hard limit past which the -Y
-#     exterior wall drops under MIN_WALL_2P. So the BOM specifies a maximum overmold and
-#     the assertion below holds the model to it. See _WALL_Y for where that limit is and
-#     why it is a surveyed number rather than a derived one.
-#
-# ⚠ THAT MAXIMUM TIGHTENED FROM 20 TO 17.5 (2026-09-15), and this is the constant that
-# absorbed it -- which is what it was built for. Spacing the layout by COURTYARD rather
-# than by BODY moved the board's -Y face 2.58 mm further out (the XH's land reaches back
-# further than the USB-C's, and the deeper of the two now sets the edge), and that came
-# straight off the conduit's depth budget. Nothing about the instrument changed; the
-# rule for what to buy did. Surveyed USB-C overmolds run ~10-25 mm, so <= 17.5 narrows
-# the choice without leaving it -- it rules out the long boots, not the market.
-PLUG_L = {"J1": 17.5, "J2": 14.0}    # USB-C boot (SHORT -- see below); XHP-6 + relief
-# ⚠ J1 IS BACK AT 17.5 -- A STOCK USB-C BOOT -- AND THE EXPERIMENT THAT MOVED IT IS WORTH
-# KEEPING. Through _COND_SPAN -> CONDUIT_D -> CONDUIT_Y0, this one number caps the board's
-# LENGTH: at 17.5 neither the ULPI corridor past 7 mm nor ANY east-edge routing lane fits,
-# not 3 mm and not 1. Shortening it to 14.0 (a real short-overmold cable) bought 2.2 mm of
-# board and let both in.
-# It bought no CONNECTED NETS. Measured both ways with the same escapes: 9 mm corridor +
-# 3 mm east lane on the longer board gives 5 unconnected / 0 unexpected, and 7 mm + no lane
-# on the stock-cable board gives 5 unconnected / 0 unexpected. Identical. So the shorter
-# board wins on everything else -- no constraint on which USB-C cable the owner may use,
-# and no cable-vs-endplate clash (the conduit mouth tracks PCB_YM, so growing the board
-# walked it south and left endplate material for the lead to cross, 94.2 mm3).
-# Leave 17.5. If a future change makes board length worth buying again, 14.0 is the lever
-# and 12.4 is its floor -- below that _COND_PASS, getting a plug THROUGH the shaft, binds
-# instead and nothing further is won.
-# J1 IS A STRAIGHT PLUG, and the right-angle idea it replaces was wrong -- J2 is what kills
-# it. J1 sits -X of J2, so its lead must cross J2's footprint to reach the shaft. A
-# right-angle leaves +X *at the plug*, which is exactly where J2's body is: the cable turned
-# +X at y -112.85, dead inside J2's -120.85..-106.85 span, and clipped straight through it
-# (user-caught from a render).
-#
-# The escape is not a detour but a LONGER plug. A straight USB-C's own back face lands at
-# -126.85, already 6.00 mm clear of J2's -120.85, so the lead turns +X in free space with a
-# single bend and no doubling back. A right-angle would have needed exit +X, turn -Y, turn
-# +X again -- three bends to solve a problem the straight plug does not have.
-#
-# So the earlier claim that the angled plug saved a bend was true only in isolation; once
-# the neighbouring connector is in the picture it costs two. J2 stays straight for its own
-# reason: it sits nearly over the shaft already.
-#
-# PLUG_L IS A PURCHASING SPEC, NOT A MEASUREMENT. Nothing is ordered yet, and overmold
-# LENGTH is not standardised -- USB-IF fixes the cross-section (12.35 x 6.50) but not this,
-# and surveyed parts run ~10-25 mm. So rather than guess a number and hope, the geometry is
-# made insensitive to it in the direction that matters and the number becomes a rule for
-# what to BUY, which is checkable at order time:
-#
-#   SHORT plug -- the dangerous case, because it was what put J1's lead into J2. Removed as
-#     a risk entirely: a lead that crosses a neighbour now turns at whichever back face is
-#     further -Y, ITS OWN OR THE NEIGHBOUR'S. A short plug just runs a little further in
-#     free air before turning. No length can make it clip.
-#   LONG plug -- only eats conduit depth, and there is a hard limit past which the -Y
-#     exterior wall drops under MIN_WALL_2P. So the BOM specifies a maximum overmold and
-#     the assertion below holds the model to it. See _WALL_Y for where that limit is and
-#     why it is a surveyed number rather than a derived one.
-#
-# ⚠ THAT MAXIMUM TIGHTENED FROM 20 TO 17.5 (2026-09-15), and this is the constant that
-# absorbed it -- which is what it was built for. Spacing the layout by COURTYARD rather
-# than by BODY moved the board's -Y face 2.58 mm further out (the XH's land reaches back
-# further than the USB-C's, and the deeper of the two now sets the edge), and that came
-# straight off the conduit's depth budget. Nothing about the instrument changed; the
-# rule for what to buy did. Surveyed USB-C overmolds run ~10-25 mm, so <= 17.5 narrows
-# the choice without leaving it -- it rules out the long boots, not the market.
-PLUG_L = {"J1": 17.5, "J2": 14.0}    # USB-C boot (SHORT -- see below); XHP-6 + relief
-# ⚠ J1's 14.0 IS A REQUIREMENT ON THE CABLE, NOT A MEASUREMENT OF AN ARBITRARY ONE. It was
-# 17.5, and that number -- through _COND_SPAN -> CONDUIT_D -> CONDUIT_Y0 -- was the single
-# thing capping this board's LENGTH, and through length its ROUTABILITY. At 17.5 neither
-# the ULPI corridor past 7 mm nor any east-edge routing lane fits at all; not 3 mm, not 1.
-# At 14.0 both fit (board 188.53 -> 190.73), and the 9 mm corridor is the one measured
-# configuration in which every ULPI net routes.
-# So the build needs a SHORT-OVERMOLD USB-C cable: 14.0 mm or less from the connector face
-# to the back of the boot. That is a common stock item, but it is a real constraint and
-# belongs in the BOM rather than in someone's head -- a standard 17.5 mm boot will not fit
-# the endplate, and the assertion at the bottom of this file is what will say so.
-# The floor is 12.4: below that _COND_PASS (getting a plug THROUGH the shaft) binds instead
-# and nothing further is won, so there is no reason to specify tighter than 14.
+# THE NUMBERS ARE A PURCHASING ENVELOPE, NOT A MEASUREMENT OF A PART: nothing is ordered,
+# and overmoulds are not standardised. A plug fits if, from the socket's mating face, its
+# overmould is no deeper than USBC_DOWN_DEPTH and, from the plug's axis, it ends no lower
+# than USBC_DOWN_DROP. The model draws that whole box as the plug, so the gate holds every
+# neighbour clear of the largest plug the BOM allows.
+USBC_DOWN_DEPTH = 12.0          # mating face -> back of the overmould (surveyed 8-12)
+USBC_DOWN_DROP = 22.0           # plug axis -> where the cable leaves the boot (15-22)
+# ...AND THE CONDUIT STILL TAKES A STRAIGHT PLUG OF 17.5, which is what it was cut for and
+# costs nothing to keep: a straight lead measured in hand at 17.5 or under remains a fit.
+# J2's 14.0 is the XH housing and its wires' relief.
+PLUG_L = {"J1": 17.5, "J2": 14.0}
 # ⚠ THE -Y BUDGET IS A MEASUREMENT, NOT A DERIVATION (user, 2026-09-16). There are
 # 37.25 mm between this board's -Y edge and the instrument's -Y exterior in the model on
 # main, and that whole span is available -- to the board, the conduit, the mated plug and
@@ -3698,6 +3617,17 @@ def opt_cables(which: str = "all") -> cq.Workplane:
             continue
         p, plen = part(ref), PLUG_L[ref]
         zc = PCB_TOP + PKG[p["pkg"]][2] / 2                   # cable/plug centre height
+        if ref == "J1":
+            # the DOWN-ANGLE plug, as its whole purchasing envelope (see USBC_DOWN_DEPTH):
+            # the cable leaves the bottom of the boot on the conduit's own USB line
+            z1, z0 = zc + h / 2.0, zc - USBC_DOWN_DROP
+            add(box_at(w, USBC_DOWN_DEPTH, z1 - z0, x=p["x"],
+                       y=PCB_YM - USBC_DOWN_DEPTH / 2.0, z=(z0 + z1) / 2.0))
+            assert PCB_YM - USBC_DOWN_DEPTH < USB_Y < PCB_YM and USB_Z < z0, (
+                "the USB lead no longer leaves the bottom of J1's boot")
+            _path[ref] = [(p["x"], USB_Y, z0), (p["x"], USB_Y, USB_Z)]
+            _od[ref] = od
+            continue
         add(box_at(w, plen, h, x=p["x"], y=PCB_YM - plen / 2, z=zc))
         # TURN AT WHICHEVER BACK FACE IS FURTHER -Y -- its own, or that of any neighbour the
         # lead has to cross in X. Deriving it from the plug's own length alone is what let
@@ -3761,7 +3691,6 @@ def opt_cables(which: str = "all") -> cq.Workplane:
     # USB: out through the conduit's mouth into the bay -- the only part of that mouth the
     # rail leaves open is y -128.75..-124.58 -- over the output board, down, and into the
     # USB-C plug standing in J4's mouth on the board's -X edge (a USB-A until 2026-10-02).
-    xu = CONDUIT_XC + 2.2
     # J4's own mouth. It used to be the tip of the mounting ear, 10.000 mm short -- see
     # electronics.op_mouth, which exists because wiring.py's wire_usb made the same mistake.
     from .board_geom import HEIGHT as _H, footprint as _fp, fp_name as _fpn
@@ -3771,7 +3700,7 @@ def opt_cables(which: str = "all") -> cq.Workplane:
     zc4 = op_top("J4")[2] - _BGH / 2.0                  # the shell's axis, mid-height
     y4 = op_top("J4")[1]
     add(box_at(USBA_PLUG_L, USBA_PLUG_W, USBA_PLUG_H, x=(ua_mouth + ua_end) / 2, y=y4, z=zc4))
-    _path["J1"] += [(xu, USB_Y, USB_Z), (BAND_X0 - 1.0, USB_Y, USB_Z),
+    _path["J1"] += [(BAND_X0 - 1.0, USB_Y, USB_Z),
                     (USB_DROP_X, USB_Y, USB_Z), (USB_DROP_X, y4, USB_Z),
                     (USB_DROP_X, y4, zc4), (ua_end, y4, zc4)]
     add(oct_cable(_path["J1"], _od["J1"]))
@@ -3796,6 +3725,32 @@ USB_DROP_X = -84.0                      # the USB drops to J4's height out in th
 # USB-C, 2026-10-02). The name is kept: three call sites read it.
 USBA_PLUG_L, USBA_PLUG_W, USBA_PLUG_H = 20.0, 12.4, 6.5
 XH_OD = 4.0                             # the 24 V lead (6x 26 AWG), as opt_cables draws it
+
+
+USBC_NOTCH_CLR = 0.5
+
+
+def opt_usb_notch() -> cq.Workplane:
+    """The endplate cut J1's down-angle plug drops through: the 2 mm ledge between the
+    board's -Y edge and the conduit, taken away under the plug's envelope.
+
+    The ledge is what was left between the board's pocket and the conduit; it carries
+    nothing (the board ends at its +Y face). A down-angle overmould starts at the mating
+    face, so its leg comes down exactly where the ledge stands.
+
+    Its -X end is a 45 degree ramp, not a wall: the endplate prints +X -> -X, and a square
+    end would be a 2 mm shelf starting in mid-air."""
+    p = part("J1")
+    zc = PCB_TOP + PKG[p["pkg"]][2] / 2
+    c = USBC_NOTCH_CLR
+    x1 = p["x"] + _USBC_W / 2.0 + c
+    x0 = p["x"] - _USBC_W / 2.0 - c
+    ya, yb = PCB_YM, CONDUIT_Y1 - 0.1               # into the conduit, so no skin is left
+    z0, z1 = zc - USBC_DOWN_DROP - c, PLINTH_TOP + 0.5
+    ramp = ya - yb
+    return (cq.Workplane("XY").workplane(offset=z0)
+            .polyline([(x1, yb), (x1, ya), (x0, ya), (x0 - ramp, yb)]).close()
+            .extrude(z1 - z0))
 
 
 def opt_pwr_slot() -> cq.Workplane:
