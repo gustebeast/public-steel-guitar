@@ -2991,7 +2991,7 @@ pros/cons when weighing approaches** (project policy).
 
 | Tool | For | ~Price | Notes |
 |------|-----|--------|-------|
-| **JST crimp tool** | XH harness (contacts SXH-001T-P0.6) | $25–45 | IWISS SN-01BM or Engineer PA-09 (mfr/eBay — not DigiKey); covers XH/PH/most small JST; budget a dozen practice crimps |
+| **JST crimp tool** | XH + PH harness (contacts SXH-001T-P0.6, SPH-002T-P0.5S), all leads hand-crimped to length | ~$20 | **IWISS IWS-2820M** (28–20 AWG; listed for both XH and PH). Not the Engineer PA-09 (contacts stick, loose on small contacts, pierces XH insulation) and not the SN-01BM (insulation crimp reported too fat for a PH housing). JST's own WC-110 (XH) / WC-240 (PH) are the step up at several hundred dollars each. Budget a dozen practice crimps per contact and pull-test |
 | **Soldering iron** | bench-once pigtails (SP-3541, XT30), PCB touch-up | — | presumed owned |
 | **Heat-set insert tips** | M4 (94459A150); M2 only for the last two — the bus-B placeholder tees, pending their fold into the lever PCBs | ~$15 | fits the soldering iron |
 | **2.5 mm hex key** | ball-end L-key (or a 2.5 mm bit in a driver) | commodity | THE ONE DRIVER the instrument is converging on: every M4 button head and the M3 motor socket caps take it. Not yet sufficient on its own — the two bus-B tees' M2s are the last to migrate; ball end for the angled reach to the pickup's -Y retention screw |
