@@ -280,3 +280,16 @@ thermal camera after ten minutes running, lid on.
 | U8 (3.3 V digital regulator) tab | about 0.36 W, warm | too hot to hold a finger on: check which MCU peripherals are clocked |
 | U9 (3.3 V analog regulator) | cool | - |
 | `+3V3A` current | about 142 mA; the five converters are assumed at 26 mA each | over 166 mA: U9 is past its worst-case budget |
+
+## Pre-order review, 2026-10-06: two things about the debug port
+
+* **SWD is the only way in to rely on.** The ROM loader's I2C2 on TP6 / TP7 with BOOT0 on
+  TP8 (item 3) is on the board and has never been run. Bring the board up over SWD.
+* **Do not turn SWO on.** PB3 is the emitter gate (`LED_GATE`, TIM2_CH2), and PB3 is also
+  the debug port's trace output (JTDO / TRACESWO). A probe configured for "SWD + SWO", or
+  an IDE whose trace view is enabled, takes the pin away from the timer and drives the ten
+  emitters with trace data: the carrier stops, the lock-in reads nothing, and the ballasts
+  sit at whatever duty the trace happens to have. Leave the probe on plain two-wire SWD
+  and print over USB or RTT. (The ballasts are 100 mW parts since this review, so a gate
+  held high is 72 to 80 mW in each and inside their rating; it is the measurement that is
+  lost, not a part.)

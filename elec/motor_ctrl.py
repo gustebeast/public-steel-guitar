@@ -11,8 +11,8 @@ IT REPLACES THREE THINGS: the Teensy 4.1 ($31.50), its SGTL5000 audio shield
 ($9.80) and the teensy_ifc carrier. The Teensy's value was the Audio Library, USB
 high-speed and the codec -- all irrelevant once no audio touches this board. What
 could NOT be deleted is the pair of CAN TRANSCEIVERS: no general-purpose MCU
-integrates one, because a transceiver has to survive +-58 V bus faults and cannot
-share a die with 3.3 V logic. So the board was always going to exist; the only
+integrates one, because a transceiver has to survive bus faults and cannot share a die
+with 3.3 V logic (bus A's is the +-58 V part; bus B's 5 V bus has nothing above 5 V on it). So the board was always going to exist; the only
 question was whether an MCU sat on it too.
 
 CAPACITY, checked rather than assumed. On a pedal steel one pedal changes several
@@ -154,6 +154,27 @@ def _xcvr(tag, desc):
                 pins=[Pin(num=1, name="D", func=I), Pin(num=2, name="GND", func=PWR),
                       Pin(num=3, name="VCC", func=PWR), Pin(num=4, name="R", func=O),
                       Pin(num=5, name="Vref", func=O), Pin(num=6, name="CANL", func=P),
+                      Pin(num=7, name="CANH", func=P), Pin(num=8, name="Rs", func=I)])
+
+
+def _xcvr_fp(tag, desc):
+    """TCAN3413DR, SOIC-8: 1 TXD, 2 GND, 3 VCC, 4 RXD, 5 VIO, 6 CANL, 7 CANH, 8 STB.
+
+    TI SLLSFP9 "Pin Configuration and Functions" (D package), read 2026-10-06. The
+    SN65HVD230's footprint and its eight pins' places, with two differences: pin 5 is the
+    logic supply VIO (the 230 has a reference OUTPUT there) and pin 8 is STB, low = normal,
+    with a pull-up inside (the 230 has its slope resistor there).
+
+    BUS A ONLY, AND THE BUS FAULT IS WHY: -58..58 V on CANH / CANL against the 230's
+    -4..16 V. Bus A's lead carries 24 V on the way next to CAN_H (J1 ways 2 and 3) all the
+    way round ten motors; a whisker of a crimp or a pinched lead puts the trunk on a bus
+    pin. The 230 survived that only for as long as a 200 mW clamp took to fail."""
+    return Part(name="TCAN3413DR", ref_prefix="U", tag=tag, dest="NETLIST", tool="skidl",
+                value="TCAN3413DR", description=desc,
+                footprint="Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
+                pins=[Pin(num=1, name="D", func=I), Pin(num=2, name="GND", func=PWR),
+                      Pin(num=3, name="VCC", func=PWR), Pin(num=4, name="R", func=O),
+                      Pin(num=5, name="VIO", func=PWR), Pin(num=6, name="CANL", func=P),
                       Pin(num=7, name="CANH", func=P), Pin(num=8, name="Rs", func=I)])
 
 
@@ -305,11 +326,14 @@ def motor_ctrl():
               # limit, and its typical clears the maximum. Same series, same land.
               # Ripple 3.3 x (1 - 3.3 / 24) / (15 uH x 700 kHz) = 0.27 A, so the 0.25 A load
               # peaks at 0.39 A. LCSC C19634062, 3 x 3 x 1.5.
+              # ITS OWN LAND (2026-10-06): APV's sheet asks 1.1 x 2.7 pads with a 1.0 gap;
+              # the Taiyo Yuden NR-30xx land this used is 0.8 x 2.7 with 1.4, which left the
+              # 0.9 mm terminals no toe.
               value="PNR3015-150M", description="15 uH buck inductor, Isat 1.4 A",
-              footprint="Inductor_SMD:L_Taiyo-Yuden_NR-30xx",
+              footprint="Steel:L_APV_PNR3015",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     sw += l1[1]; v33 += l1[2]
-    d1 = Part(name="B5819W", ref_prefix="D", tag="D1", dest="NETLIST", tool="skidl",
+    d1 = Part(name="B5819W", ref_prefix="D", tag="D1", ref="D1", dest="NETLIST", tool="skidl",
               value="B5819W", description="buck catch diode (Schottky, 40 V)",
               footprint="Diode_SMD:D_SOD-123",
               pins=[Pin(num=1, name="K", func=P), Pin(num=2, name="A", func=P)])
@@ -336,18 +360,24 @@ def motor_ctrl():
     # ── the two transceivers ─────────────────────────────────────────────────
     a_tx, a_rx = Net("CAN1_TX"), Net("CAN1_RX")
     b_tx, b_rx = Net("CAN2_TX"), Net("CAN2_RX")
-    u2 = _xcvr("U2", "bus A -- the motors")
+    u2 = _xcvr_fp("U2", "bus A -- the motors; +-58 V bus fault")
     u3 = _xcvr("U3", "bus B -- the levers and pedals")
-    for u, (tx, rx, ch, cl), rtag in ((u2, (a_tx, a_rx, a_h, a_l), "R3"),
-                                      (u3, (b_tx, b_rx, b_h, b_l), "R4")):
+    for u, (tx, rx, ch, cl), rtag, what in (
+            # U2's pin 8 is STB: low is normal mode, and its pull-up sources 20 uA at
+            # most (SLLSFS8A 5.8, IIL), so 10 k holds it at 0.2 V against a 0.99 V threshold
+            (u2, (a_tx, a_rx, a_h, a_l), "R3", "bus A transceiver STB, held low = normal"),
+            # U3's is Rs: a resistor to GND sets slope control. 10 k slews the edges, which
+            # is right on a metre of cable in a box full of motors
+            (u3, (b_tx, b_rx, b_h, b_l), "R4", "transceiver slope control")):
         tx += u["D"]; rx += u["R"]
         gnd += u["GND"]; v33 += u["VCC"]
         ch += u["CANH"]; cl += u["CANL"]
-        # Rs to GND through a resistor sets slope control. 10 k slews the edges,
-        # which is right on a metre of cable in a box full of motors; neither bus
-        # is anywhere near the part's 1 Mbps limit.
-        rs = _r(rtag, "10k", "transceiver slope control")
+        rs = _r(rtag, "10k", what)
         u["Rs"] += rs[1]; gnd += rs[2]
+    v33 += u2["VIO"]                       # the logic side is the MCU's 3.3 V
+    # VIO is a supply pin of its own and wants its own capacitor (SLLSFS8A 8.4: 100 nF at
+    # VCC and at VIO). The SN65HVD230 this replaced had Vref on pin 5, which wants nothing.
+    c33 = _c("C33", "100nF", "U2 VIO bypass"); v33 += c33[1]; gnd += c33[2]
 
     # TERMINATION -- BUS A ONLY (user, 2026-09-22). A 120 ohm terminator is an END-OF-BUS
     # part, and since the controller moved to the MIDDLE of bus B it is no longer an end of
@@ -363,21 +393,29 @@ def motor_ctrl():
     a_h += rt[1]
     a_l += rt[2]
 
-    # BUS-PIN CLAMPS, two per pair. Separate BIDIRECTIONAL parts rather than a
-    # 3-pin CAN array: a 2-pin bidirectional device is symmetric, so there is no
-    # pinout to get wrong. The threat is the leg's TRRS -- a plug drags its bands
-    # across every socket contact on insertion, and 24 V reaching a bus pin is
-    # past this transceiver's -4..+16 V absolute maximum.
-    for tag, net in (("D2", a_h), ("D3", a_l), ("D4", b_h), ("D5", b_l)):
-        d = Part(name="TVS", ref_prefix="D", tag=tag, dest="NETLIST", tool="skidl",
-                 # ⚠ THIS SAID "SMF24CA" UNTIL 2026-10-04, AND THAT PART DOES NOT EXIST IN
-                 # THIS PACKAGE: SMF24CA is SOD-123FL, the land here is SOD-523. It was
-                 # also the wrong clamp. A 24 V stand-off part clamps near 39 V and this
-                 # transceiver's bus pins stop at 16 V, so it protected nothing; and no
-                 # clamp turns a DC 24 V fault into a safe one. What a clamp can do here
-                 # is ESD, and for that the house part fits: 5 V stand-off (the bus sits
-                 # at 2.3 V, +-1 V of drive), ~10 V clamp, the same reel as the output
-                 # panel's.
+    # BUS-PIN CLAMPS.
+    # BUS A: ONE 24 V CAN CLAMP, BECAUSE ITS TRANSCEIVER NOW SURVIVES WHAT THE CLAMP LETS
+    # THROUGH (pre-order review, 2026-10-06). The pair of 5 V parts that stood here could
+    # do ESD and nothing else: a 24 V conductor shares bus A's lead, and a sustained
+    # contact drove a 200 mW clamp into breakdown across an unfused 6.67 A supply. It
+    # failed, the bus went down, and until it failed the transceiver sat past its 16 V.
+    # NUP2105L is the part made for this: two lines to a common pin, 24 V stand-off (so
+    # the trunk held on a bus pin draws nanoamps), 26.2-32 V breakdown, 44 V at 8 A --
+    # every figure inside the TCAN3413's +-58 V. onsemi NUP2105L/D p.1: pins 1 and 2 are
+    # the lines, pin 3 the common.
+    d2 = Part(name="NUP2105L", ref_prefix="D", tag="D2", ref="D2", dest="NETLIST",
+              tool="skidl", value="NUP2105LT1G",
+              description="bus A clamp: CAN_H and CAN_L to GND, 24 V stand-off",
+              footprint="Package_TO_SOT_SMD:SOT-23",
+              pins=[Pin(num=1, func=P), Pin(num=2, func=P), Pin(num=3, func=P)])
+    a_h += d2[1]; a_l += d2[2]; gnd += d2[3]
+    # BUS B: separate bidirectional 5 V parts. Its supply is 5 V, so nothing on its lead
+    # can hold a pin above what the SN65HVD230 stands (-4..16 V); what reaches it is the
+    # leg's spring pins being touched, and for that the house ESD part fits: 5 V stand-off
+    # (the bus sits at 2.3 V, +-1 V of drive), about 10 V clamp. A 2-pin bidirectional
+    # device is symmetric, so there is no pinout to get wrong. (D3 is not used.)
+    for tag, net in (("D4", b_h), ("D5", b_l)):
+        d = Part(name="TVS", ref_prefix="D", tag=tag, ref=tag, dest="NETLIST", tool="skidl",
                  value="ESD5B5.0ST1G", description="bidirectional ESD clamp, bus pin to GND",
                  footprint="Diode_SMD:D_SOD-523",
                  pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
@@ -430,7 +468,10 @@ def motor_ctrl():
             # bring-up sense pins (docs/board-bringup-diagnostics.md 2.2, 2.3). Numbers off
             # the same QFN68 column (.ins/ch32v307_qfn68.json): 8 PC0, 9 PC1, 20 PA4, 39 PC6.
             (8, "PC0", I), (9, "PC1", I), (20, "PA4", I),
-            (39, "PC6", I)]
+            (39, "PC6", I),
+            # BOOT1. With BOOT0 high the part boots its ROM loader only if this reads low;
+            # floating, it could as well boot from RAM. Tied to the belly land beside it.
+            (28, "PB2", I)]
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6", description="RISC-V MCU, 2x hardware CAN",
               footprint=MCU_FP,
@@ -439,6 +480,7 @@ def motor_ctrl():
     v33 += (u1["VDD_1"], u1["VDD_2"], u1["VDD_3"], u1["VDDA"],
             u1["VIO_1"], u1["VIO_2"], u1["VIO_3"], u1["VIO_4"], u1["VBAT"])
     nrst += u1["NRST"]; boot0 += u1["BOOT0"]
+    gnd += u1["PB2"]
     osc1 += u1["OSC_IN"]; osc2 += u1["OSC_OUT"]
     a_rx += u1["PB8"]; a_tx += u1["PB9"]         # CAN1 REMAPPED -- see the header
     b_rx += u1["PB12"]; b_tx += u1["PB13"]
@@ -480,6 +522,16 @@ def motor_ctrl():
         _net += _tp[1]
 
     r_b = _r("R7", "10k", "BOOT0 pull-down"); boot0 += r_b[1]; gnd += r_b[2]
+    # ...and a pad on it. BOOT0 went only to R7 and the pin, so reaching WCH's ROM loader
+    # meant tacking a wire onto an 0402. Held to TP5 (3V3) through reset, with BOOT1 low
+    # above, the part starts its loader. SWD stays the path the first board depends on.
+    _tp6 = Part(name="TestPoint", ref_prefix="TP", ref="TP6", tag="TP6", dest="NETLIST",
+                tool="skidl",
+                value="BOOT0", description="BOOT0 pad -- to 3V3 through reset for the ROM "
+                "loader; bare copper, no component",
+                footprint="TestPoint:TestPoint_Pad_D1.0mm",
+                pins=[Pin(num=1, func=P)])
+    boot0 += _tp6[1]
     # Eight supply pins want their own decoupling; one bulk holds the rail up.
     for tag in ("C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14"):
         c = _c(tag, "100nF", "MCU supply decoupling"); v33 += c[1]; gnd += c[2]
@@ -610,17 +662,22 @@ def motor_ctrl():
     for tag, val in (("C16", "10uF/50V"), ("C17", "10uF/50V")):
         c = _c(tag, val, "5 V buck input bulk", "Capacitor_SMD:C_1206_3216Metric")
         v24_buck += c[1]; gnd += c[2]
-    c18 = _c("C18", "100nF/50V", "5 V buck input HF bypass -- nearest VIN/GND")
+    # 220 nF in an 0603, which is what TI asks by name: "a small case size, 220-nF ceramic
+    # capacitor must be used at the input, as close a possible to the regulator"
+    # (SNVSAN3F 9.2.2.6). It was 100 nF.
+    c18 = _c("C18", "220nF/50V", "5 V buck input HF bypass -- across VIN / PGND at the pins",
+             "Capacitor_SMD:C_0603_1608Metric")
     v24_buck += c18[1]; gnd += c18[2]
     c19 = _c("C19", "1uF", "5 V buck VCC bypass")
     vcc5 += c19[1]; gnd += c19[2]
     c20 = _c("C20", "100nF", "5 V buck bootstrap -- BOOT to SW")
     boot5 += c20[1]; sw5 += c20[2]
-    for tag in ("C21", "C22"):
-        # 1206 / 25 V, for what is LEFT at 5 V of bias: about 15 uF each, where the 0805 /
-        # 16 V parts these replaced keep about 11. With C27 behind the fuse that is ~37 uF
-        # on the board; TI's equation 6 asks 37.5 uF for a 1.5 A step inside 250 mV, and
-        # its 400 kHz / 5 V table row fits 4 x 22 uF. The Pi's own bulk is the rest.
+    for tag in ("C21", "C22", "C31", "C32"):
+        # FOUR, which is the table's row (SNVSAN3F table 9-2, 400 kHz / 5 V: 4 x 22 uF). There
+        # were two, and the converter is compensated inside for the table's bank.
+        # 1206 / 25 V, for what is LEFT at 5 V of bias: about 15 uF each, so about 60 uF
+        # on the node before the fuse, against the 72 uF the worked example arrives at and
+        # equation 6's 37.5 uF for a 1.5 A step inside 250 mV.
         c = _c(tag, "22uF/25V", "5 V output bulk", "Capacitor_SMD:C_1206_3216Metric")
         v5_raw += c[1]; gnd += c[2]
     # Feedback from the RAW node, BEFORE the fuse: regulating after F2 would put
@@ -715,7 +772,7 @@ def motor_ctrl():
     v5_b += c30[1]; gnd += c30[2]
 
     for tag, net in (("D6", dp), ("D7", dm)):
-        d = Part(name="TVS", ref_prefix="D", tag=tag, dest="NETLIST", tool="skidl",
+        d = Part(name="TVS", ref_prefix="D", tag=tag, ref=tag, dest="NETLIST", tool="skidl",
                  # 0.5 pF, 5 V stand-off, bidirectional (LRC, LCSC C5274293)
                  value="LESD5L5.0CT1G", description="USB data-line ESD clamp",
                  footprint="Diode_SMD:D_SOD-523",
@@ -727,13 +784,25 @@ def motor_ctrl():
     # they belong logically -- handed them D6/D7 and pushed the USB clamps to D8/D9.
     # The placement dict and the CAD table both key on the ref, so the names have to
     # follow the parts, not the narrative.
-    d8 = Part(name="D_TVS", ref_prefix="D", tag="D8", dest="NETLIST", tool="skidl",
-              value="SMAJ30A", description="24 V rail clamp -- the trunk is shared "
+    # ⚠ SMAJ24A, NOT 30A (pre-order review, 2026-10-06). The 30 V part breaks down at
+    # 33.3-36.8 V and clamps at 48.4 V at its rated 8.3 A, and U5 behind it is a 38 V part
+    # (36 V recommended): the clamp could not hold the rail inside the converter's
+    # OPERATING range at all, and passed its absolute one at about 1 A of surge. The
+    # 24 V part: breakdown 26.7-29.5 V, 38.9 V at 10.3 A (Littelfuse SMAJ, 10/1000 us) --
+    # U5's 38 V is reached at about 9 A of surge, and the 40 V catch diode D1 never is.
+    # WHAT IT COSTS: it stands off 24 V, and the supply is 24 V +-3 % (24.72 V). Under
+    # breakdown it leaks microamps. If motor regeneration or a failing supply holds the
+    # rail above 26.7 V it CONDUCTS, and a 400 W-pulse part cannot do that for long: it
+    # fails short and the supply hiccups. That is the right way round -- the alternative
+    # was the converter failing instead -- and the brick's own over-voltage trip (105 to
+    # 135 %, 25.2 to 32.4 V) is a fault this instrument does not run through anyway.
+    d8 = Part(name="D_TVS", ref_prefix="D", tag="D8", ref="D8", dest="NETLIST", tool="skidl",
+              value="SMAJ24A", description="24 V rail clamp -- the trunk is shared "
               "with ten stepper drivers", footprint="Diode_SMD:D_SMA",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v24 += d8[1]; gnd += d8[2]
 
-    d9 = Part(name="D_TVS", ref_prefix="D", tag="D9", dest="NETLIST", tool="skidl",
+    d9 = Part(name="D_TVS", ref_prefix="D", tag="D9", ref="D9", dest="NETLIST", tool="skidl",
               value="SMBJ5.0A", description="THE CROWBAR: clamps the 5 V rail and "
               "draws enough through F2 to open it", footprint="Diode_SMD:D_SMB",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
@@ -887,6 +956,8 @@ BOARD_W, BOARD_L = 61.8, 55.0
 #     that replaced it.
 # The board is a plain rectangle now and the M4 lives beside its edge, same as the Pi's.
 
+TP6_X, TP6_Y = 4.10, -5.50     # elec/sitesearch.py: the nearest legal site to R7, 5.6 mm
+
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
     # (no outline_poly and no cutouts: with the ear gone the board is exactly outline_mm, and
@@ -1024,12 +1095,14 @@ BOARD_NOTES = {
         "R2": (5.20, -16.40, 90.0),
         "C6": (6.80, -14.05, 90.0),
         "R7": (5.60, -14.05, 90.0),
+        "TP6": (TP6_X, TP6_Y, 0.0),
         "C7": (15.70, -14.05, 90.0),
         "C8": (18.00, -3.95, 90.0),
         "C9": (6.10, -12.10, 90.0),
         "C10": (6.10, -10.10, 90.0),
         "C11": (6.10, -8.10, 90.0),
         "C12": (15.30, -1.90, 0.0),
+        "C33": (10.00, 7.35, 0.0),          # 1.1 mm past the end of U2's pin 5 land
         "C13": (6.10, -4.10, 90.0),
         "C14": (6.10, -2.10, 90.0),
         # ⚠ ABOVE U4, BECAUSE THE CORRIDOR BESIDE IT IS 3.46 mm AND THE CRYSTAL IS 3.58.
@@ -1052,8 +1125,9 @@ BOARD_NOTES = {
         "R3": (8.10, 7.70, 90.0),
         "R4": (14.60, 7.70, 90.0),
         "R5": (-3.60, 13.00, 90.0),      # R5 / D2 / D3 moved -3.20 to make room for J3's 6-way
-        "D2": (-3.60, -12.60, 90.0),
-        "D3": (-3.60, -9.40, 90.0),
+        # one SOT-23 where the two SOD-523 stood: its two line pins face J1's CAN ways
+        # (CAN_H at y -12.25, CAN_L at -9.75), its common pin away from them
+        "D2": (-4.40, -11.00, 180.0),
         "D4": (19.60, 6.50, 90.0),
         "D5": (19.60, 9.50, 90.0),
         # ⚠ BESIDE J4, THE USB CONNECTOR THEY CLAMP. They sat at x 27.60, which is
@@ -1072,14 +1146,21 @@ BOARD_NOTES = {
         "R12": (-5.90, -4.50, 90.0),
         "R13": (-5.90, -0.50, 90.0),
         "F1": (-9.90, -21.50, 90.0),
-        "C16": (-9.90, -15.50, 90.0),
-        "C17": (-9.90, -9.50, 90.0),
-        # ⚠ C18 WAS 18.08 mm FROM THE PIN IT EXISTS TO BYPASS -- the FARTHEST of the
-        # three caps on +24V_BUCK, behind the 10 uF bulk at 8.93 and C17 at 13.26. Its
-        # own description says "nearest VIN/GND". Nothing checks that a placement honours
-        # what a part is FOR, so it drifted and read as decoupling that was present.
-        # Now north of U5's VIN pad (-18.475, 20.405), clear of the courtyard's y 21.25.
-        "C18": (-18.80, -21.98, 90.0),
+        # ⚠ U5's INPUT CAPACITORS ARE AT ITS PINS NOW (pre-order review, 2026-10-06). VIN
+        # and PGND are pins 2 and 1, side by side on the package's south row. C16 and C17
+        # stood 6 and 12 mm east of the part and reached VIN through 16 and 22 mm of
+        # 0.5-0.6 mm track; PGND left through one 0.25 mm stub to one via. TI's first
+        # layout rule is these capacitors against these two pins (SNVSAN3F 10.1).
+        # In the 4 mm strip south of the package: C18 straddles the two pins 0.6 mm below
+        # them, C16 lies under C18 with the same hand, C17 beside C16. The copper is drawn
+        # (see "tracks"): VIN is one short run through C18's and C16's own lands.
+        "C16": (-16.67, -26.05, 180.0),
+        "C17": (-11.80, -26.05, 0.0),
+        # the two output capacitors that make the bank four: beside L2's output on the
+        # sites the input pair left, their +5V_RAW lands facing each other
+        "C31": (-9.90, -9.40, 270.0),
+        "C32": (-9.90, -4.60, 90.0),
+        "C18": (-16.67, -24.05, 180.0),
         "D8": (-9.90, 1.50, 90.0),
         "F2": (-9.90, 9.50, 90.0),
         "U5": (-15.40, -19.50, 90.0),
@@ -1172,13 +1253,25 @@ BOARD_NOTES = {
         # the router's. Lanes sit in the gaps between the part columns at x -15.4 / -9.9:
         #   24 V -> F1: 0.6 mm (1.6 A; the buck draws ~0.8 A at full load)
         ("+24V", "F.Cu", 0.6, [(0.6, -14.75), (-7.9, -14.75), (-7.9, -22.9), (-9.9, -22.9)]),
-        #   F1 -> C16 -> C17, and round U5's south end to VIN and its 100 nF
-        ("+24V_BUCK", "F.Cu", 1.0, [(-9.9, -20.1), (-9.9, -16.97)]),
-        ("+24V_BUCK", "F.Cu", 0.6, [(-9.9, -20.1), (-11.6, -20.1)]),
-        ("+24V_BUCK", "F.Cu", 0.6, [(-9.9, -16.97), (-11.6, -16.97)]),
-        ("+24V_BUCK", "F.Cu", 0.6, [(-11.6, -24.4), (-11.6, -10.97), (-9.9, -10.97)]),
-        ("+24V_BUCK", "F.Cu", 0.5, [(-11.6, -24.4), (-18.8, -24.4), (-18.8, -22.46)]),
-        ("+24V_BUCK", "F.Cu", 0.5, [(-16.03, -24.4), (-16.03, -21.97)]),
+        #   F1 -> west along the board's south strip -> C17, C16 and C18 -> VIN. The lane
+        #   stays 0.3 mm off the PG via and off C17's ground land; it ends IN C18's land.
+        ("+24V_BUCK", "F.Cu", 0.8, [(-9.9, -20.1), (-11.5, -20.1), (-11.5, -23.55),
+                                    (-12.3, -24.35), (-15.6, -24.35)]),
+        ("+24V_BUCK", "F.Cu", 1.0, [(-13.275, -24.35), (-13.275, -26.05)]),      # C17
+        ("+24V_BUCK", "F.Cu", 1.0, [(-15.195, -24.35), (-15.195, -26.05)]),      # C16
+        #   C18's land -> pin 2, the pin's own width
+        ("+24V_BUCK", "F.Cu", 0.6, [(-15.895, -24.05), (-16.03, -22.9), (-16.03, -21.97)]),
+        #   PGND: pin 1 -> C18's land -> C16's land, on the part's own layer, and three
+        #   vias to the plane beside them (not inside a land: A12 counts the barrel)
+        ("GND", "F.Cu", 0.6, [(-17.31, -21.97), (-17.31, -22.9), (-17.445, -24.05)]),
+        ("GND", "F.Cu", 0.8, [(-17.445, -24.05), (-18.145, -24.95), (-18.145, -26.05)]),
+        ("GND", "F.Cu", 0.8, [(-17.445, -24.05), (-18.6, -24.05)]),
+        ("GND", "F.Cu", 0.6, [(-18.6, -24.05), (-18.6, -22.9)]),
+        ("GND", "F.Cu", 0.8, [(-18.145, -26.05), (-19.4, -26.05)]),
+        #   ...and pin 1 to the belly land's own copper, so PGND and the pad meet on F.Cu
+        ("GND", "F.Cu", 0.5, [(-17.31, -21.97), (-17.31, -20.5), (-17.6, -20.1)]),
+        #   the two added output capacitors, off the 2 mm bar
+        ("+5V_RAW", "F.Cu", 1.4, [(-12.525, -7.0), (-9.9, -7.0)]),
         #   the switch node: short and straight into the inductor's land
         ("SW5", "F.Cu", 0.6, [(-17.31, -17.03), (-17.31, -11.6), (-15.4, -11.6)]),
         #   inductor -> output caps -> F2: 2 mm (3.95 A)
@@ -1241,6 +1334,14 @@ BOARD_NOTES["tracks"] += [
 # find twice running, so the pin drops straight to an inner layer in the 1.3 mm between
 # itself and the input bar.
 BOARD_NOTES["vias"] += [("PG_5V", -12.52, -21.98)]
+# ...and EN beside it, for the same reason and more: the input lane now passes 1 mm south
+# of the pin row. The via stands just below the pin, 0.3 mm off the lane.
+BOARD_NOTES["vias"] += [("EN5", -14.77, -23.40)]
+BOARD_NOTES["tracks"] += [("EN5", "F.Cu", 0.25, [(-14.77, -21.97), (-14.77, -23.40)])]
+# (no vias declared for those three GND ends: stitch_nets drops one at each GND pad by
+# itself, and three declared beside them stood 0.05 mm hole to hole from its own)
+# BOOT1 (pin 28) straight into the belly land, 0.93 mm away: no part, no via
+BOARD_NOTES["tracks"] += [("GND", "F.Cu", 0.2, [(16.54, -6.70), (15.0, -6.70)])]
 
 # U5'S HEAT GOES DOWN THROUGH FIVE VIAS, FOUR OF THEM BESIDE THE PAD. The stitcher gives the
 # thermal pad one via; a second inside it would swallow the paste (quality A12 counts the
@@ -1280,7 +1381,7 @@ BOARD_NOTES["tracks"] += [
 ]
 
 # short words for the pin legends: a legend is as wide as its longest net name
-BOARD_NOTES["silk_labels"] = {"PWR_SW_UP": "SW UP", "PWR_SW_DN": "SW DN", "+24V_LED": "24V",
+BOARD_NOTES["silk_labels"] = {"TP6": "B0", "PWR_SW_UP": "SW UP", "PWR_SW_DN": "SW DN", "+24V_LED": "24V",
                               "+5V_BUSB": "5V", "+24V": "24V", "+5V": "5V"}
 
 BOARD_NOTES["quality"] = {
@@ -1320,9 +1421,9 @@ BOARD_NOTES["quality"] = {
         "J4.2": "USB VBUS way: the board is not bus powered, the way carries no conductor's net",
         "J5.[34]": "the 6-way's two middle ways: no conductor (harness.PI_5V_LINK)",
         "U1.4": "LMR16006 SHDN: left open is enabled (internal pull-up)",
-        "U[23].5": "SN65HVD230 Vref output: nothing here uses the reference",
+        "U3.5": "SN65HVD230 Vref output: nothing here uses the reference",
         "U4": {
-            "pins": "2 3 4 10 11 14 15 16 19 21 22 23 24 25 26 27 28 29 30 33 34 37 38 40 41 42 43 44 45 53 54 55 56 57 58 59 60 61 62 66",
+            "pins": "2 3 4 10 11 14 15 16 19 21 22 23 24 25 26 27 29 30 33 34 37 38 40 41 42 43 44 45 53 54 55 56 57 58 59 60 61 62 66",
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         }
     },
@@ -1396,6 +1497,17 @@ BOARD_NOTES["quality"] = {
         "LMR16006XDDCR": "TI SNVSA24 section 6, Pin Functions (SOT-23-6): 1 CB, 2 GND, 3 FB, "
                          "4 SHDN, 5 VIN, 6 SW. Board: 1 CB, 2 GND, 3 FB, 4 open (float = "
                          "enabled, same table), 5 +24V, 6 SW. Re-read 2026-10-04",
+        "TCAN3413DR": "TI SLLSFS8A p.3, Pin Configuration and Functions, D (SOIC-8) top "
+                      "view: 1 TXD, 2 GND, 3 VCC, 4 RXD, 5 VIO, 6 CANL, 7 CANH, 8 STB. Board "
+                      "(U2): 1 CAN1_TX, 2 GND, 3 +3V3, 4 CAN1_RX, 5 +3V3, 6 CANA_L, 7 CANA_H, "
+                      "8 R3 to GND (STB low = normal mode). KiCad SOIC-8_3.9x4.9mm_P1.27mm "
+                      "numbers counter-clockwise from the dot, as the drawing does. Read "
+                      "2026-10-06",
+        "NUP2105LT1G": "onsemi NUP2105L/D rev 5 p.1, SOT-23 pin drawing: 1 and 2 are the "
+                       "two lines (CAN_H, CAN_L -- the two halves are identical, so which is "
+                       "which is free), 3 is the common. Board (D2): 1 CANA_H, 2 CANA_L, "
+                       "3 GND. KiCad SOT-23: 1 and 2 on the two-pin side, 3 alone, the "
+                       "JEDEC TO-236 numbering the drawing uses. Read 2026-10-06",
         "SN65HVD230DR": "TI SLOS346 Pin Functions (SOIC-8): 1 D, 2 GND, 3 VCC, 4 R, 5 Vref, "
                         "6 CANL, 7 CANH, 8 RS. Board: 1 CANn_TX, 2 GND, 3 +3V3, 4 CANn_RX, "
                         "5 open, 6 L, 7 H, 8 slope resistor. Re-read 2026-10-04",
@@ -1447,8 +1559,8 @@ BOARD_NOTES["quality"] = {
               "ground and power way for way; what a swap does to ways 3 and 4 is "
               "tabled in INSTALL_NOTES",
         "M2": "D1 (B5819W): pad 1 is K in KiCad's D_SOD-123 and is on SW, anode on GND. "
-              "D8 (SMAJ30A) pad 1 = K on +24V; D9 (SMBJ5.0A) pad 1 = K on +5V; both "
-              "unidirectional, anode to GND. D2-D7 are bidirectional. No electrolytic or "
+              "D8 (SMAJ24A) pad 1 = K on +24V; D9 (SMBJ5.0A) pad 1 = K on +5V; both "
+              "unidirectional, anode to GND. D2 and D4-D7 are bidirectional (there is no D3). No electrolytic or "
               "tantalum part. Reel rotation is ROTATION-CHECK.txt's job at order (M12)",
         "M3": "In1 is an unbroken GND plane (plane_layers) under every supply path above, "
               "with a GND pour on B.Cu; every ground pad has its own via to the plane. "
@@ -1458,19 +1570,27 @@ BOARD_NOTES["quality"] = {
               "(asks 1-10 uF); COUT 10 uF / 16 V at 3.3 V plus the MCU's 10 uF and nine "
               "100 nF on the same rail (asks 4.7-100 uF, ESR under 0.7 ohm). U5 "
               "(LMR33630, SNVSAN3F table 9-2, 400 kHz / 5 V row): CIN 2 x 10 uF / 50 V "
-              "1206 + 100 nF (asks 10 uF + 220 nF; about 9 uF left at 24 V of bias); "
-              "COUT 2 x 22 uF / 25 V 1206 + 10 uF behind F2, about 37 uF at 5 V of bias "
-              "against equation 6's 37.5 uF for a 1.5 A step inside 250 mV -- the Pi's "
-              "own bulk and pi_cap's 22 uF are the margin. U6: 100 nF in, 1 uF at OUT, "
+              "1206 + 220 nF / 50 V 0603 at the pins (asks 10 uF + 220 nF; about 9 uF left "
+              "at 24 V of bias); COUT 4 x 22 uF / 25 V 1206, which is the row itself (it "
+              "was two until the pre-order review), + 10 uF behind F2: about 60 uF at 5 V "
+              "of bias before the fuse, against equation 6's 37.5 uF for a 1.5 A step inside 250 mV. U6: 100 nF in, 1 uF at OUT, "
               "10 uF at the connectors. Every capacitor on a 24 V net is a 50 V part",
-        "M5": "24 V nets: capacitors 50 V, fuses 63 V, U1 60 V, U5 36 V operating / 38 V "
-              "absolute, R12 and R20 0402 (50 V) at 4 and 5 mW. D8 stands off 30 V so "
-              "motor regeneration does not hold it in conduction, breaks down at 33.3-"
-              "36.8 V and reaches U5's 38 V at about 1 A of surge; U5 sits behind F1 with "
-              "20 uF at its pin, which a fast spike has to charge first (a 1 uH, 5 A "
-              "kick is 12 uJ: 30 mV). 5 V nets: 16 and 25 V capacitors, D9 clamps at "
-              "9.2 V and opens F2. MCU pins: SENSE_24V is 2.18 V at 24 V and 3.3 V only "
-              "at 36 V; SENSE_5V 2.5 V. CAN pins: -4..16 V, clamped by D2-D5 near 10 V",
+        "M5": "pin by pin this is A16 now (elec/voltage_check.py: every net's worst case "
+              "against every pin's rating, 201 pins). What is left to judge is whether the "
+              "declared worst cases are the worst. 24 V: 26.4 V steady is 24 V + 10 %, "
+              "where the brick is +-3 % (24.72 V). D8 (SMAJ24A) breaks down at 26.7-29.5 V "
+              "and holds 38.9 V at its rated 10.3 A; the transient is taken at the brick's "
+              "whole 6.67 A, 35.6 V, because nothing on this rail can hand it more -- "
+              "under U5's 36 V operating limit and D1's 40 V. U5's 38 V absolute needs "
+              "about 9.3 A of surge. If the brick sat at its over-voltage threshold (105 to "
+              "135 %, up to 32.4 V) without tripping, D8 would conduct continuously, fail "
+              "short and hiccup the supply: a dead rail, not an over-volted one. 5 V nets: "
+              "D9 clamps at 9.2 V and opens F2 (a FAULT level: over U6's 7 V while F2 "
+              "clears). MCU pins: SENSE_24V is 2.18 V at 24 V and 3.3 V only at 36 V; "
+              "SENSE_5V 2.5 V. Bus A pins: U2 stands +-58 V, so the 24 V conductor beside "
+              "them in the trunk is inside its rating, and D2 (24 V stand-off, breakdown "
+              "26.2-32 V) does not conduct on it. Bus B: -4..16 V at U3, clamped by D4 / D5 "
+              "near 7 V, in a cable that carries nothing above 5 V",
         "M6": "nothing here is fast: CAN at 1 Mbit/s and full-speed USB (A3 has the "
               "arithmetic). No clocked parallel bus",
         "M7": "U1: 0.765 V x (1 + 100k / 30.1k) = 3.31 V; 15 uH gives 0.27 A of ripple, 45 % of the "
@@ -1479,13 +1599,19 @@ BOARD_NOTES["quality"] = {
               "VIN and the load current). U5: 1.0 V x (1 + 100k / 24.9k) = 5.02 V, TI's own 5 V "
               "divider; 6.8 uH against the table's 8; BOOT 100 nF, VCC 1 uF; EN from a 137k / 10k "
               "divider (on at 18.1 V); pad on GND. U6: RILIM 49.9k is inside 15k-232k; EN tied to "
-              "IN. U2 / U3: RS through 10k to GND = slope control; Vref open",
+              "IN. U3: RS through 10k to GND = slope control; Vref open. U2 (TCAN3413): VCC and "
+              "VIO both on 3V3, each with 100 nF (C33 at VIO, 0.8 mm from the pin); STB through "
+              "10k to GND = normal mode. U5's output is the table's 4 x 22 uF",
         "M8": "BOOT0: R7, 10k to GND. NRST: the MCU's own 40k pull-up + C6 100 nF. "
-              "BOOT1 (PB2) is read only when BOOT0 is high. U5 EN: divider. U6 EN: tied "
-              "to IN; ILIM: R22. U2 / U3 RS: 10k to GND. FAULT and PG are open-drain "
+              "BOOT1 (PB2) is tied to GND at the pin: with BOOT0 high it chooses between "
+              "the ROM loader (0) and RAM (1), and open it chose by leakage. U5 EN: divider. "
+              "U6 EN: tied to IN; ILIM: R22. U3 RS: 10k to GND. U2 STB: 10k to GND against a "
+              "20 uA pull-up, 0.2 V of a 0.99 V threshold. FAULT and PG are open-drain "
               "into MCU pins that firmware sets input-with-pull-up (noted at both nets)",
         "M9": "SWD on bare 1.5 mm pads TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND, TP5 3V3, "
-              "all labelled, on the front. 24 V and 5 V are probed on the through-hole "
+              "all labelled, on the front, and TP6 BOOT0 (1.0 mm, marked B0): bridged to TP5 through "
+              "reset it starts WCH's ROM loader, a second way in. SWD is the one the first "
+              "board depends on. 24 V and 5 V are probed on the through-hole "
               "pins of J3 and J5, and the board reports both itself (SENSE_24V, SENSE_5V, "
               "PG_5V, BUSB_FAULT_N) over USB",
         "M11": "finish.py's CAD check: 73 of 73 routed parts present in the CAD, every one where "
@@ -1496,8 +1622,10 @@ BOARD_NOTES["quality"] = {
                "jumper was removed (2026-10-06): copper only, no part of the CAD model moved, and "
                "the scoped overlap gate was re-run clean. No hole in this board: the M4 that holds "
                "it sits beside its edge. Parts the fab cannot place: none (M30 is the tier)",
-        "M10": "bus A and bus B pins: D2-D5, bidirectional 5 V clamps 4 mm from J1 and "
-               "1.3 mm from J6 (J2 shares J6's node, 15 mm of track away). USB: D6 / D7, "
+        "M10": "bus A: D2, a NUP2105L across both lines 2.7 mm from J1's pins, ahead of "
+               "the terminator and the transceiver, which itself stands +-58 V. Bus B: D4 / "
+               "D5, bidirectional 5 V clamps 1.3 mm from J6 (J2 shares J6's node, 15 mm of "
+               "track away). USB: D6 / D7, "
                "0.5 pF, on the pair 5 mm from J4. 24 V in: D8; this board does not fuse "
                "the trunk because it is in the middle of a ring fed from both ends -- the "
                "supply's own limit is the protection, and the three branches that end "
@@ -1508,8 +1636,12 @@ BOARD_NOTES["quality"] = {
                "on the part's own layer, its ground pad on its own via to the plane 3 mm "
                "from the GND pin; D1 cathode 1.1 mm from SW, its anode on its own via; L1 "
                "2.5 mm from SW; C3 between CB and SW, 1.0 mm from each; R1 / R2 0.5 mm "
-               "from FB with only their FB pads at the pin. U5: C18 0.9 mm from PGND and "
-               "2.2 from VIN, same layer, no via in the loop; SW to L2 on declared 0.6 mm "
+               "from FB with only their FB pads at the pin. U5: C18 (220 nF) lies across the VIN and PGND pins, 0.6 mm "
+               "from each, with C16 (10 uF) 2.2 mm from both behind it and C17 2.9 mm from "
+               "VIN -- all on the part's own layer, on declared 0.6 to 1.0 mm copper, no via "
+               "in the loop (it was 100 nF 0.9 mm from PGND and 2.2 from VIN until the "
+               "pre-order review); the output's four 22 uF: C31 / C32 2.0 mm from L2's "
+               "pad, C21 / C22 10 mm further along the rail; SW to L2 on declared 0.6 mm "
                "track, 7.3 mm for a 3.5 mm gap (it leaves the pin away from the feedback "
                "side); C20 1.0 mm from BOOT with its other pad on that track; C19 0.6 mm "
                "from VCC; R10 / R11 0.6 and 0.7 mm from FB. Neither feedback node runs "
@@ -1528,13 +1660,14 @@ BOARD_NOTES["quality"] = {
                "30 % drop) and 3.6 A rms; the high-side limit is 4.5 A typical, 5.05 maximum",
         "M15": "both converters are internally compensated for ceramic outputs. U1: "
                "about 17 uF effective on 3V3 against the 4.7-100 uF the datasheet gives. "
-               "U5: about 37 uF effective against a table row of 4 x 22 uF nominal "
-               "(roughly 44 uF at bias), plus the Pi's bulk across 150 mm of cable. "
+               "U5: the table row's own 4 x 22 uF, about 60 uF at bias, plus 10 uF behind "
+               "F2 and the Pi's bulk across 150 mm of cable. "
                "Headroom: 24 V in for 3.3 and 5 V out. No linear regulator",
         "M16": "J3 is plugged with the supply off, inside the instrument, and the supply "
                "now arrives through the output panel's switch, which ramps it at about "
-               "1.5 V/ms: no ring. Were it plugged live, 48 V lands on 50 V capacitors, "
-               "a 60 V buck and D8; U5 (38 V) is behind F1 and its own 20 uF",
+               "1.5 V/ms: no ring. Were it plugged live, the ring is clamped by D8 from "
+               "26.7-29.5 V, on 50 V capacitors and a 60 V buck; U5 (38 V) is behind F1 "
+               "and its own 20 uF",
         "M18": "one supply feeds everything: the Pi is powered FROM this board, so its "
                "USB cannot be up while this board is down; every CAN node is on the same "
                "24 V. The two switch lines touch no pin here. A debug probe on the SWD "
@@ -1570,24 +1703,29 @@ BOARD_NOTES["quality"] = {
                "vias INSIDE the pad would take the paste (A12): the four are beside it for that "
                "reason. The MCU's pad is its ground, about 0.1 W; nothing else on the board has one",
         "M26": "bus A: PB9 = CAN1_TX (remap) -> U2 pin 1 D, the driver INPUT; U2 pin 4 R, "
-               "the receiver OUTPUT -> PB8 = CAN1_RX. Bus B: PB13 = CAN2_TX -> U3 D; U3 R "
-               "-> PB12 = CAN2_RX. MCU functions from WCH's table 3-1, transceiver pins "
-               "from SLOS346. No UART or SPI leaves the board",
-        "M27": "BOOT0: R7 and the MCU pin, nothing else. NRST: C6, TP3. SWDIO / SWCLK: "
-               "their pads only. PB2 / BOOT1: unconnected",
+               "the receiver OUTPUT -> PB8 = CAN1_RX. (TXD and RXD in the TCAN3413's own sheet, SLLSFS8A p.3). Bus B: PB13 = "
+               "CAN2_TX -> U3 D; U3 R -> PB12 = CAN2_RX. MCU functions from WCH's table "
+               "3-1, U3's pins from SLOS346. No UART or SPI leaves the board",
+        "M27": "BOOT0: R7, the pad TP6 and the MCU pin, nothing else. NRST: C6, TP3. "
+               "SWDIO / SWCLK: their pads only. PB2 / BOOT1: tied to GND at the pin and used "
+               "for nothing else",
         "M28": "TI: LMR16006XDDCR C87080, LMR33630ADDAR C841384 (the DDA / HSOIC column, "
                "not the VQFN one), TPS2553DBVR C55266 (the constant-current part, not "
-               "the -1 latch-off), SN65HVD230DR C12084. WCH CH32V307WCU6 C5142795. "
+               "the -1 latch-off), SN65HVD230DR C12084 (U3), TCAN3413DR C22433320 (U2: the "
+               "3413, with VIO on pin 5, not the 3414 with SHDN there). onsemi NUP2105LT1G "
+               "C14486. SMAJ24A C148222 (unidirectional, not the CA). "
+               "WCH CH32V307WCU6 C5142795. "
                "Yajingxin TAXM8M4RFDCET2T C403948. JST B4B / B6B-XH-A, B4B / B6B-PH-K-S, S4B-PH-SM4-TB. "
                "Each pinout above is from that maker's sheet for that ordering code",
         "M31": "name and revision on the front; every connector's way names on the back beside its "
-               "tails; the five SWD pads labelled on the front. Pin-1 marks are the footprints', "
+               "tails; the five SWD pads labelled on the front, and BOOT0's marked B0 (the word does not fit beside it). Pin-1 marks are the footprints', "
                "outside the bodies",
         "M34": "U5 EN is active high (on above 1.23 V); U6 EN active high, tied to IN; "
                "U1 SHDN is active low and floats high. FAULT and PG are open-drain, "
                "active low, into 3.3 V pins with internal pull-ups, never above 3.3 V. "
                "CAN: U2 pin 7 CANH -> J1 way 3 CAN_H, pin 6 CANL -> way 4; U3 the same to "
-               "J2 / J6. Transceiver logic and the MCU are both 3.3 V. USB D+ on PA12, "
+               "J2 / J6. U2's STB is active high (high = standby) and is held low. "
+               "Transceiver logic (U2's VIO, U3's VCC) and the MCU are both 3.3 V. USB D+ on PA12, "
                "D- on PA11",
         "M36": "bus B's 5 V: U6, 0.52 A, constant current. 24 V to the lights: F3, 3 A. "
                "5 V to the Pi: F2, 4 A, with D9. 24 V to bus A on J1 is the trunk itself "
@@ -1597,7 +1735,8 @@ BOARD_NOTES["quality"] = {
                "screw through the board (the M4 sits beside its edge). J2 / J6 mate "
                "downward through the chassis access hole, the five XH upward into the "
                "bay; the SWD pads are on the same open face",
-        "M39": "U2 / U3 pin 5 (Vref) is an output and is left open, as SLOS346 allows. "
+        "M39": "U3 pin 5 (Vref) is an output and is left open, as SLOS346 allows; U2 has "
+               "no spare pin. "
                "U1 pin 4 (SHDN) floats = enabled, per its pin table. J4 way 1 (VBUS) is "
                "open on purpose. The MCU's 40 unused pins have no pads: firmware sets "
                "them input-with-pull-down at start-up. No spare was brought out -- the "
@@ -1616,6 +1755,8 @@ if __name__ == "__main__":
     generate_netlist(file_=os.path.join(OUT_DIR, "motor_ctrl.net"))
     netcheck.grounds_meet(os.path.join(OUT_DIR, "motor_ctrl.net"))
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "motor_ctrl.net"))
+    import volts_decl                   # A16: generated, see volts_decl.py
+    volts_decl.into(BOARD_NOTES, "motor_ctrl")
     with open(os.path.join(OUT_DIR, "motor_ctrl.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     print("board %.1f x %.1f mm, %d placements"

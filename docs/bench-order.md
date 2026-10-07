@@ -71,22 +71,30 @@ Way order is `elec/harness.py`; every JST lead is crimped 1:1, way n to way n. X
 
 ### The motor drop
 
-The SERVO42D has no single plug. Makerbase's CAN manual (V1.0.5, section 1.1) shows two
-screw-terminal blocks on opposite edges of the driver board: power on one (V+, GND, COM,
-EN, STP, DIR) and CAN on the other (EVCC, EGND, IN_1, then H and L). The drop is four
-wires from one XHP-4 housing, bare ends into those terminals:
+The SERVO42D has no single plug. Makerbase's schematic (*MKS SERVO42D_CAN V1.0_003
+Schematic.pdf*, in its GitHub repository under Hardware) and its CAN manual (V1.0.9,
+section 1.4) show two terminal blocks on opposite edges of the driver board: a 6-way with
+power on it and a 5-way, "COMM", with CAN on it. The drop is four wires from one XHP-4
+housing, and it is **split and crossed**: two wires go to one block and two to the other,
+and on both blocks the pair is in the opposite order to the tee's.
 
-| `can_tee` J2 way | Wire | Motor terminal, by its silk label |
-|---|---|---|
-| 1 GND | black | GND, on the V+ block |
-| 2 +24 V | red | V+ |
-| 3 CAN_H | yellow | CAN H |
-| 4 CAN_L | green | CAN L |
+| `can_tee` J2 way | Wire | Motor block | Its terminal, by the schematic | Silk label |
+|---|---|---|---|---|
+| 1 GND | black | 6-way | 2 | GND |
+| 2 +24 V | red | 6-way | 1 | V+ |
+| 3 CAN_H | yellow | 5-way COMM | 2 | CAN H |
+| 4 CAN_L | green | 5-way COMM | 1 | CAN L |
 
-Go by the labels printed on the motor's board, not by position: the terminal order has not
-been read off a unit in hand (`can_tee` item M1 is open for exactly this). The manual asks
-for the host's ground and the motor's ground to be common, which this lead does, and for
-the CAN pair to be twisted.
+Left empty on the motor: the 6-way's COM, EN, STP and DIR (3 to 6), and the 5-way's IN1,
+GND and 5V (3 to 5). **The 5-way's 5V is an output of the motor: nothing goes on it.**
+
+A straight four-wire lead into either block is wrong whichever block it is: into the
+6-way it puts ground on V+ and 24 V on GND. Go by the labels printed on the motor's board
+and check each wire against them before the first power-up; the terminal numbers above
+are the schematic's and have not been read off a unit in hand, and whether the blocks take
+bare wire or a plug has not either (`can_tee` item M1 is open for exactly this). The manual
+asks for the host's ground and the motor's ground to be common, which this lead does
+through the 6-way's GND, and for the CAN pair to be twisted.
 
 ### What closes bus A
 

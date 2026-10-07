@@ -47,7 +47,7 @@ switch lines — which are static on a human timescale and make quiet neighbours
 | 3 | SDIN | 38 | GPIO20 | **SPI1 MOSI** |
 | 4 | CS_N | 12 | GPIO18 | **SPI1 CE0** |
 | 5 | DC | 37 | GPIO26 | plain GPIO |
-| 6 | RES_N | 33 | GPIO13 | plain GPIO |
+| 6 | RES_N | 36 | GPIO16 | plain GPIO. **Moved from pin 33 / GPIO13 on 2026-10-06**: the stock `spi5-1cs` overlay (the foot strip's bus on pins 8 / 10) muxes GPIO13 to SPI5 MISO, so the reset line stopped being driven as soon as it loaded |
 | 7 | +3V3 | 1 | — | see the caveat below |
 | 8 | ENC_A | 29 | GPIO5 | |
 | 9 | ENC_B | 31 | GPIO6 | |
