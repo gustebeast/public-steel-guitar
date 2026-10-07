@@ -35,40 +35,40 @@ from src import board_geom as BG                      # noqa: E402
 
 
 def _cad(board):
-    """The board's CAD solid, whole: plate plus every part, in whatever frame it is built."""
+    """(solid, ink): the board's CAD solid, whole -- plate plus every part -- and the
+    LETTERING the assembly places for it, both in the same frame. The ink comes from the
+    function the build itself calls, so a board whose lettering never reaches the
+    assembly has nothing to hand over here and fails."""
     if board == "output_panel":
         from src import electronics as EL
-        return EL.output_panel_pcb()
+        return EL.output_panel(), EL.output_panel_silk()
     if board == "motor_ctrl":
         from src import electronics as EL
-        return EL.motor_ctrl_pcb()
+        return EL.motor_ctrl(), EL.motor_ctrl_silk()
     if board == "ui_board":
         from src import ui_panel as UIP
-        return UIP.ui_pcb()
+        return UIP.ui_pcb(), UIP.ui_silk()
     if board == "can_tee":
         from src import electronics as EL
-        return EL.tee_pcb(0.0, 0.0)
+        return EL.tee_pcb(0.0, 0.0), EL.tee_silk(0.0, 0.0)
     if board in ("foot_led_a", "foot_led_b"):
         from src import foot_light as FOOT
-        return FOOT.pcb(board[-1])
+        return FOOT.pcb(board[-1]), FOOT.silk(board[-1])
     if board == "pi_cap":
         from src import electronics as EL
-        return EL.pi_cap()
+        return EL.pi_cap(), EL.pi_cap_silk()
     if board == "optical":
         from src import optical_pickup as OP
-        return OP.opt_pcb()
+        return OP.opt_pcb(), OP.opt_silk()
     if board == "lever_sensor":
         from src import knee_lever as KL
-        s = KL.sensor_board()
-        for _n, part in KL.sensor_hardware():
-            s = s.union(part)
-        return s.union(KL.sensor_connector())
+        return KL.sensor_pcba(), KL.sensor_silk()
     if board in ("fret_led_mid", "fret_led_key"):
         # the two fret boards: the laminate with every routed body, and the LEDs, which
         # src/fret_light.py draws as their own part so they read as lit
         from src import fret_light as FL
         panel = board.rsplit("_", 1)[1]
-        return FL.pcb(panel)
+        return FL.pcb(panel), FL.silk(panel)
     if board.startswith("leg_pogo_"):
         # the leg's blind-mate boards: src/leg_pogo.py draws each as board + contacts +
         # connector at its joint. They stand on the tenon's DIAGONAL, and this check looks
@@ -81,7 +81,9 @@ def _cad(board):
         s = parts[0][1]
         for _n, part in parts[1:]:
             s = s.union(part)
-        return s.rotate((j.x, j.y, 0.0), (j.x, j.y, 1.0), -j.ang)
+        ink = dict(P.ink(j))["pogo_%s_silk_%s" % (kind, j.name)]
+        turn = lambda w: w.rotate((j.x, j.y, 0.0), (j.x, j.y, 1.0), -j.ang)
+        return turn(s), turn(ink)
     raise KeyError(board)
 
 
@@ -140,8 +142,9 @@ ENDS_OK = {
 
 
 def check(board, verbose=True):
-    return _CHK.check(board, _cad(board), BG.load(board), verbose=verbose,
-                      strict_ends=True, ends_ok=ENDS_OK.get(board))
+    solid, ink = _cad(board)
+    return _CHK.check(board, solid, BG.load(board), verbose=verbose,
+                      strict_ends=True, ends_ok=ENDS_OK.get(board), ink=ink)
 
 
 def main(argv):

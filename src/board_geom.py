@@ -92,5 +92,6 @@ mouth = BOARDS.mouth
 lead_exit = BOARDS.lead_exit
 bodies = BOARDS.bodies
 silk = BOARDS.silk
+ink = BOARDS.ink
 silk_boxes = BOARDS.silk_boxes
 solid = BOARDS.solid
