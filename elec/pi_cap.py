@@ -643,7 +643,20 @@ BOARD_NOTES = {
         # the power button's two throws: a few mA of pull-up current from the output
         # panel, switched to ground on the UI board. Signals, not supplies.
         "not_power": ("PWR_SW_UP", "PWR_SW_DN"),
+        # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
+        # and why. Way 1 is marked on the connector's own side in every case.
+        "connector_labels": {
+            "J1": {"standard": "the Raspberry Pi 40-pin header: its mate is the Pi itself, "
+                               "which this board sits on"},
+            "J4": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
+            "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
+        },
         "waive": {
+            # A17 "Break the ways when" (b): more ways than a block carries, and the mate
+            # is our own board, which prints the pinout.
+            "A17:J5 ways": "16-way 1.27 mm ribbon header to ui_board J2, which prints the "
+                           "pinout block beside its own end; keyed IDC both ends, and way 1 "
+                           "is marked here",
             # A1 does not add parallel vias up (PCB_QUALITY.md A1, "How it is checked"), so
             # it reports one barrel. The arithmetic it asks for:
             "A1:+5V_PI J2.2>J1.2": "eight 0.4 mm vias in parallel join the F.Cu lands to "
