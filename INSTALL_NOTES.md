@@ -726,3 +726,23 @@ else.
 
 The one row worth a label is the second: a motor drop or the bus-A head plugged into a light
 drop on the Pi cap. Mark the two light-drop leads at the Pi cap end.
+
+## Pickup piece: set the retention screw on the bench, and clear the leads before it slides
+
+- **The retention screw is an M4 x 20 button head driven from -Y, through a slot in the
+  piece's -Y skirt.** With a short pickup (96.5 mm) it is screwed right in and its head sits
+  inside the skirt; with the longest (102 mm) it is backed out 5.5 mm and the head stands
+  3 mm OUTSIDE the skirt. Either is right. Set it with the piece on the bench, before the
+  piece goes into the body: once the piece is in, the head is under the deck.
+- **The piece slides the whole length of the body, in and out the keyhead end**
+  (`py -3.12 -m tools.check_deck_slide`). Nothing fixed stands in its way, but two leads
+  do unless you move them: the UI ribbon and the fret-light lead stay in the body when the
+  mid and keyhead panels come off, and both lie at the height of the pickup's plate
+  (6-16 mm under the deck). Push them down against the chassis floor, or lift them out
+  over the rail, before the pickup piece moves.
+- **Order out:** strings, nut block and keyhead endplate, keyhead panel (unplug the fret
+  lead), mid panel with the UI station on it (unplug the ribbon), then the bands and the
+  pickup piece (unplug the pickup lead). In is the reverse.
+- **Tight spots on the way** (as drawn, plate at the bottom of its travel): the jack
+  screws' tips pass 0.3-0.4 mm over the foot-light lead, and the deck's -Y edge passes
+  0.3 mm from the optical board's USB cable. Dress both flat.
