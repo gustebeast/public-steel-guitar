@@ -801,17 +801,17 @@ def _install(s, z_bot, z_top, flip=None):
 
 
 def sensor_pcba():
-    """The ASSEMBLED board as ONE part (user): the laminate and every part the fab places
-    on it, fused. It arrives from the fab as one thing and is handled as one thing, so the
-    model has one part for it -- not a board and twenty-five loose boxes. The connector is
-    not in it: sensor_connector() is drawn MATED, header and harness plug together, and
-    the plug belongs to the cable.
+    """The ASSEMBLED board as ONE part (user): the laminate, every part the fab places on
+    it and its connector, fused. It arrives from the fab as one thing and is handled as
+    one thing, so the model has one part for it -- not a board and twenty-five loose
+    boxes. The connector is drawn MATED (sensor_connector), so the part also reserves the
+    run the harness plug needs.
 
     Fused in ONE multi-fuse and checked by volume (a fuse can hand back a valid solid with
     material missing). The parts stand ON the board face and beside each other, so the
     whole is exactly the sum of its pieces."""
     board = sensor_board()
-    parts = [s for _n, s in sensor_hardware()]
+    parts = [s for _n, s in sensor_hardware()] + [sensor_connector()]
     solid = board.val().fuse(*[s.val() for s in parts], glue=True).clean()
     want = board.val().Volume() + sum(s.val().Volume() for s in parts)
     assert abs(solid.Volume() - want) < 1e-3 * want, (
@@ -821,12 +821,9 @@ def sensor_pcba():
 
 
 def sensor_parts(z_bot, z_top, prefix="kl", flip=None):
-    """The assembled board and its mated connector, posed for this housing. Both come
-    from sensor_pcba/sensor_connector unchanged and are only ROTATED, so there is exactly
-    one board design in the project."""
-    return [(f"{prefix}_pcb", _install(sensor_pcba(), z_bot, z_top, flip)),
-            (f"{prefix}_can_header",
-             _install(sensor_connector(), z_bot, z_top, flip))]
+    """The assembled board, posed for this housing. It comes from sensor_pcba unchanged
+    and is only ROTATED, so there is exactly one board design in the project."""
+    return [(f"{prefix}_pcb", _install(sensor_pcba(), z_bot, z_top, flip))]
 
 
 def pcb_shim(z_bot, z_top, flip=None):

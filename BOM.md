@@ -638,10 +638,10 @@ pins" problem: through the cap, our ways reach any GPIO on the header, contiguou
 
 Mechanically it does not fit, and the numbers are not close:
 
-* **No face has the height for a 2.54 mm IDC.** Every connector on the cap is on the BACK,
+* **No face has the height for a 2.54 mm IDC.** Every connector on the cap is on the face toward the Pi,
   inside the socket's own **8.5 mm** standoff (the JSTs are 5.5 and 5.75). A 2.54 male
   header is **8.54** on its own before its socket goes over it, and a shrouded right-angle
-  is ~10. The front face has **2.5 mm** before `chassis_2` — measured by stepping slabs
+  is ~10. The bare face has **2.5 mm** before `chassis_2` — measured by stepping slabs
   outward, clear at 2.5 and hit at 3.0. And the height budget it is packed against
   (`ELEC_STACK_D`, 14.0 above the Pi's PCB) is the one thing bronner's docstring says
   cannot grow.
