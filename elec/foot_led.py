@@ -437,11 +437,11 @@ def _manual(board, n_drv):
                "fab's library footprint for the exact LCSC code: LMR33630BRNXR "
                "C2071384 (and the alternate C part's, C2071783: the same frame), "
                "XL-5050RGBW C7371891" + (", S4B-XH-SM4-TB C161861" if a else "") +
-               " -- all match under a pure rotation. NOT compared: TLC5971RGER "
-               "C543004, new on this board 2026-10-06. Its land is KiCad's "
-               "Texas_RGE0024H, TI's own drawing for the package; a square QFN can "
-               "only be wrong by a quarter turn, and that is M12's to see in the "
-               "placement preview (pin-1 dot on the board's pin-1 mark)",
+               " -- all match under a pure rotation. TLC5971RGER C543004 (land: "
+               "KiCad's Texas_RGE0024H, TI's own drawing for the package) was not "
+               "laid pad on pad; it was SEEN in the fab's placement preview on this "
+               "board, 2026-10-06: body centred on its lands, the fab's pin-1 dot on "
+               "the board's pin-1 mark, at the angle KiCad wrote",
         "M29": "four layers, 1.6 mm, 1 oz outside and 0.5 oz inside: JLCPCB's standard "
                "table, read 2026-10-04 (A12 measured against it). The 0.30 / 0.55 via "
                "is the fab's standard, uncharged hole. %s x 24.15 mm is inside "
@@ -461,7 +461,9 @@ def _manual(board, n_drv):
                "+11V5, GND). " % board.upper() + ("J1's four ways are named on the "
                "BACK, which is the face that looks up at whoever plugs it: 1 GND, "
                "2 +24V_IN, 3 SCK_CABLE, 4 SDT_CABLE. " if a else "") + "Each seam land "
-               "is named on the back with its net. All text 1.0 mm or more with a "
+               "is named on the back with its net. A designator stands beside every "
+               "LED, driver, the regulator, the inductor and the fuse (silk_refs: 43 "
+               "of 43 found a site, 2026-10-06). All text 1.0 mm or more with a "
                "0.15 stroke (A12). Pin-1 and LED polarity marks are the footprints', "
                "outside the bodies. The legend is cut back from every mask opening: "
                "the gerber carries the pads in clear polarity",
@@ -996,6 +998,9 @@ BOARD_NOTES = {
     # argument elec/lever_sensor.py records for its grooves.
     "no_mounting_holes": True,
     "qty_per_instrument": 1,
+    # Designators for what a hand reworks or probes -- the drivers, the regulator and
+    # its inductor, the fuse, and every LED (a dead one is reported by number).
+    "silk_refs": ["U", "D", "L", "F"],
 }
 
 
