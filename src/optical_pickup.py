@@ -3605,17 +3605,15 @@ def opt_cables(which: str = "all") -> cq.Workplane:
 
     _WANT = {"usb": ("J1",), "pwr": ("J2",), "pwr_path": ("J2",), "all": ("J1", "J2")}[which]
     _yturn, _path, _od = {}, {}, {}
-    # ⚠ EACH LEAD TAKES THE CONDUIT SIDE NEAREST ITS OWN PLUG, and it used to take the far
-    # one. J1 sits at x +9.88 and dropped at -2.2; J2 sits at -29.29 and dropped at +2.2 --
-    # so each lead had to cross the OTHER's drop column to reach its own, and the two
-    # leads interpenetrated. Swapping the offsets removes both crossings at once: no lead
-    # passes over a column it does not own, and neither run reaches the other's x band.
-    # (Splitting opt_cables in two is what exposed this. As one unioned solid the clash
-    # was absorbed silently; tightening the crossing test alone made it WORSE -- 9.4 mm3
-    # to 40.2 -- because both leads then turned down at the same y. The offsets were the
-    # actual fault.)
-    for ref, w, h, od, xoff in (("J1", _USBC_W, _USBC_H, USB_OD, +2.2),
-                                ("J2", _XH4_W, _XH4_D, XH_OD, -2.2)):
+    # ⚠ THE 24 V PAIR TURNS DOWN RIGHT BEHIND ITS OWN PLUG (user, 2026-10-07). An XH plug
+    # is a crimped housing with loose wires, so the pair needs no run at plug height at
+    # all; it used to cross 20 mm sideways there to a column at the conduit's middle,
+    # from when the USB lead had a column beside it. The conduit is open behind J2.
+    # (PWR_COL_DX: it steps 3.75 mm +X as it turns. That is for the MODEL, not the
+    # wires -- cadkit's bundle carries the pair's flat round each corner without twisting
+    # it, and without one sideways leg it arrives at J9 a quarter turn out.)
+    for ref, w, h, od in (("J1", _USBC_W, _USBC_H, USB_OD),
+                          ("J2", _XH4_W, _XH4_D, XH_OD)):
         if ref not in _WANT:
             continue
         p, plen = part(ref), PLUG_L[ref]
@@ -3639,8 +3637,9 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         # The run's SOLID is |dx| + od wide (see the box below), so it reaches od/2 past the
         # endpoints this test used -- J2's path stops at x 2.2 but its copper reaches 4.2,
         # and the USB-C plug's overmold starts at 3.88. Test the solid, not the path.
-        lo = min(p["x"], CONDUIT_XC + xoff) - od / 2.0
-        hi = max(p["x"], CONDUIT_XC + xoff) + od / 2.0
+        col = p["x"] + (PWR_COL_DX if ref == "J2" else 0.0)
+        lo = min(p["x"], col) - od / 2.0
+        hi = max(p["x"], col) + od / 2.0
         backs = [PCB_YM - plen]
         crosses = []
         for q in ("J1", "J2"):
@@ -3657,7 +3656,6 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         # -- it used to be separate boxes and cylinders added piece by piece
         z_end = PWR_Z_TURN
         _yturn[ref] = y_turn
-        col = CONDUIT_XC + xoff
         _path[ref] = [(p["x"], PCB_YM - plen, zc), (p["x"], y_turn, zc), (col, y_turn, zc),
                       (col, y_turn, z_end)]
         _od[ref] = od
@@ -3674,7 +3672,7 @@ def opt_cables(which: str = "all") -> cq.Workplane:
     if "J2" in _WANT:
         # 24 V: across the conduit's floor to its +Y side, down the slot (opt_pwr_slot) into
         # the endplate's board recess, and onto J9 from above -- J9 is a top-entry XH.
-        xd = CONDUIT_XC - 2.2
+        xd = part("J2")["x"] + PWR_COL_DX
         j9 = op_top("J9")
         # J9 stands out in the bay since the power-button work (it was in the recess), inside
         # the plan of the J7 pair's balancing loop. So the lead leaves the recess under its
@@ -3751,6 +3749,10 @@ PWR_Z_TURN = RUN_Z - 3.5                # -13.1: the 24 V pair crosses UNDER the
                                         # ribbon, in a trench in the conduit's floor
                                         # (opt_pwr_slot). The pair is stacked in Z there,
                                         # 1.9 either side of this
+PWR_COL_DX = 3.75                       # the 24 V pair's drop, +X of J2's centre (see
+                                        # opt_cables). One and a half pitches: the -Y
+                                        # rail's end reaches x -19.93 inside the conduit,
+                                        # and at one pitch the pair came down through it
 PWR_Y = -126.4                          # the 24 V lead's y in the conduit's open mouth
                                         # strip (y -128.75..-124.58, the rail on one side)
 PWR_Z_REC = -25.5                       # the 24 V lead crossing into the board recess,
@@ -3801,7 +3803,7 @@ def opt_pwr_slot() -> cq.Workplane:
     inside it: the part prints -X off its +X face, so a void that ended inside would leave a
     face of material printed over it -- a bridge. Open to the -X face, its only X-facing end
     is at +X, which the print meets as a floor."""
-    x0, x1 = BAND_X0 - 1.0, CONDUIT_XC + 5.0
+    x0, x1 = BAND_X0 - 1.0, part("J2")["x"] + PWR_COL_DX + 5.0    # the pair drops behind J2
     y0, y1 = PWR_Y - 2.2, -120.8        # into the recess, which starts at -122.8
     # up past the lead's own turn: it crosses the conduit's +Y wall at PWR_Z_TURN, above the
     # conduit's floor, so a slot that stopped at the floor left 2.8 mm3 of wall in the lead

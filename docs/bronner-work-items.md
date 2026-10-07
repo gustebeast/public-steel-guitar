@@ -95,7 +95,9 @@
      clear the J7 loop, the slack doubled back along the rail (xu solved from 300 mm).
      The 24 V pair's conduit crossing dropped 1.1 mm into a trench (PWR_Z_TURN -13.1).
      ASSUMED: plug axis centred in the 10.5 body, boot 3.5 thick, ribbon 1.5 thick.
-     OPEN: nothing retains the slack; ribbon has 0.2 mm to the deck and to the pair. `usb_run_length()` is dead code.
+     OPEN: nothing retains the slack; ribbon has 0.2 mm to the deck and to the pair.
+     The 24 V pair now turns down right behind J2 (user: a right-angle exit; an XH plug
+     is loose wires, so it is free). PWR_COL_DX 3.75 is a model step (and clears the rail end) for the bundle frame. `usb_run_length()` is dead code.
    - Lead's bench-cart corrections folded in 2026-10-07 (BOM, bench-order, prices.json):
      optical USB lead is 0.3 m and no stock lead with a published overmould <= 17.5 mm was
      found; bulkman screw link; PSU tariff line; M3x12 and Loctite 425 prices; LCSC lots.
