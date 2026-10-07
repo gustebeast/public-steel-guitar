@@ -585,27 +585,33 @@ def cut_wire_ways(piece, x0: float, x1: float):
 # board leaves from the _OUT ways. The last board has no departing cable (it closes its
 # own terminator, elec/lever_sensor.py).
 #
-# THE ROUTE. Along the trough the four conductors lie FLAT, one track each in Y at one
-# height, and a circuit keeps its track the whole length of the bar. At a station a
-# wire turns down its own LANE (an X) to the trough floor, runs -Y along the floor
-# through the spur into the bay, steps across to the pin row and rises into the plug.
-# Lanes nearer the row belong to ways further +Y, so no wire steps across another's
-# lane, and each track is at its own Y, so no riser stands in another track.
+# THE ROUTE IS ON THE TROUGH FLOOR, AND THE SHIM IS WHY. Each station's board shim
+# stands from the board's edge to the lid (SHIM_TOP: the lid is what presses it), so it
+# and the cradle under it are a PLATE ACROSS THE TROUGH at every pedal, floor to lid,
+# open only below the shim: 3.05 of height (the trough floor to the shim's edge), and
+# under that only where the cradle's own tie is not -- the 5 mm against the lid. Drawn
+# at mid-height, the first version of this harness went through all five shims. So:
+#   * two LAYERS on the floor, one wire deep each, both under the shim and under the
+#     plug (2.5 below it since board_bay_cutter took the bay down to this floor);
+#   * four TRACKS along the bar, against the lid, one per circuit, each in one layer
+#     for the whole length -- so a conductor never changes height;
+#   * at a station the cradle leaves the plug's wires only the tunnel's width
+#     (knee_lever.plug_tunnel_y), 6.1: two LANES each side of the pin row, the
+#     arriving ways on -X where their cable comes from, the departing ways on +X.
+# No two conductors in one layer ever cross: on each side the lane nearer the row
+# carries the ways further +Y, whose tracks are further +Y too (asserted in bus_paths
+# on the finished paths, not on this argument).
 BUS_WAYS = EH.ph_trunk_pins()
 BUS_NETS = tuple(EH.ph_drop_pins())
 assert len(BUS_WAYS) == KL.CONN_N, (
     "elec.harness's trunk is %d ways and the sensor board's J1 is %d"
     % (len(BUS_WAYS), KL.CONN_N))
-BUS_AIR = 0.2                               # between a conductor and anything beside it
-BUS_TRACK = 1.5                             # track pitch along the trough, and
-BUS_FAN = 12.0                              # the run the stub's 2 x 2 bundle takes to
-                                            # open onto the tracks: closer or shorter and
-                                            # two conductors pass inside one another on
-                                            # the way (0.78 at lane pitch over 4.4; 0.95
-                                            # here, asserted in bus_paths)
-BUS_KEEP = 1.1                              # a lane's centre off the pin row: one wire
-                                            # plus BUS_AIR, so a floor run clears the
-                                            # other ways' drops
+BUS_AIR = 0.2                               # a conductor off a wall, a layer off a layer
+BUS_KEEP = 0.1                              # ...and off another conductor in its own layer
+BUS_FAN = 12.0                              # the run the stub's 2 x 2 bundle takes to open
+BUS_RIBBON = 1.5                            # ...into a flat ribbon at this pitch: closer or
+                                            # shorter and two conductors pass inside one
+                                            # another on the way (0.78 at 1.1 over 4.4)
 
 
 def bus_way(net, side):
@@ -644,52 +650,72 @@ def bus_paths(feed):
     names = [nm for nm, _ in PG.HARNESS_WIRES]
     assert tuple(x.upper() for x in names) == BUS_NETS
     bay = board_bay_cutter().val().BoundingBox()
-    floor = BAR_TOP_Z - bay.xmax                            # the bay's floor = the trough's
-    zf = floor + w / 2.0 + BUS_AIR / 2.0                     # a floor run's centre line
+    floor = BAR_TOP_Z - bay.xmax
+    assert abs(floor - PB.TROUGH_Z0) < 1e-6, "the bay's floor is not the trough's"
+    layer = [floor + BUS_AIR / 2.0 + w / 2.0]                # A, on the floor
+    layer.append(layer[0] + w + BUS_AIR)                     # B, on A
     pitch = w + BUS_AIR
-    # TRACKS: flat against the trough's -Y wall, at the feed's own height
-    y_wall = PB.LID_Y0 - PB.TROUGH_D
-    zt = sum(p[2] for p in feed) / n
-    # a circuit's track follows where its conductor already IS in the stub's section,
-    # so the fan from the 2 x 2 bundle to the flat does not cross itself
+    track_y = [PB.LID_Y0 - 4 * BUS_AIR - w / 2.0 - (n - 1 - j) * pitch for j in range(n)]
+    ty0, ty1 = KL.plug_tunnel_y()                            # local Y -> guitar -X
+    # a circuit's slot, from where its IN way sits along the pin row (-Y .. +Y):
+    # 0 far lane / layer A, 1 far / B, 2 near / A, 3 near / B, and its track likewise
+    row = sorted(range(n), key=lambda c: bus_pin(0, bus_way(BUS_NETS[c], "IN"))[1])
+    slot = {c: row.index(c) for c in range(n)}
+    z_of = {c: layer[slot[c] % 2] for c in range(n)}
+    # ...but its TRACK follows where its conductor already is in the stub's section, so
+    # the bundle opens into a ribbon without crossing itself
     rank = sorted(range(n), key=lambda c: (feed[c][1], feed[c][2]))
-    track = {c: y_wall + BUS_AIR + w / 2.0 + rank.index(c) * BUS_TRACK for c in range(n)}
+    rk = {c: rank.index(c) for c in range(n)}
+    y_of = {c: track_y[rk[c]] for c in range(n)}
+    for a in range(n):
+        for b in range(n):
+            if z_of[a] == z_of[b] and slot[a] < slot[b]:
+                assert y_of[a] < y_of[b], (
+                    "%s and %s share a layer and their tracks are the wrong way round "
+                    "for their lanes: they would cross" % (BUS_NETS[a], BUS_NETS[b]))
+
+    def lane(px, row_x, c, arriving):
+        near = slot[c] >= 2
+        if arriving:                                         # -X of the row
+            wall = px - ty1
+            return row_x - w - BUS_KEEP if near else wall + BUS_AIR + w / 2.0
+        wall = px - ty0
+        return row_x + w + BUS_KEEP if near else wall - BUS_AIR - w / 2.0
+
     paths = []
-    tail = {c: [tuple(feed[c]), (feed[c][0] + BUS_FAN, track[c], zt)] for c in range(n)}
-
-    def room(span):                                         # lanes that fit on one side
-        return int((span - BUS_KEEP - w / 2.0 - BUS_AIR) // pitch) + 1
-
+    # THE STUB OPENS INTO A FLAT RIBBON, AND THE RIBBON TURNS TWICE. All of it at the
+    # stub's own height, because the chamber's floor is higher than the trough's; each
+    # conductor comes down to its layer once it is over the trough. A ribbon corner is
+    # nested -- the inside conductor turns first -- so nothing crosses in either turn.
+    zc = sum(p[2] for p in feed) / n
+    y_rib = PB.LID_Y0 - PB.TROUGH_D + BUS_AIR + w / 2.0     # against the trough's -Y wall
+    x_fan = max(p[0] for p in feed) + BUS_FAN
+    x_dn = max(x_fan + n * BUS_RIBBON, PB.TROUGH_X0 + w) + pitch
+    tail = {}
+    for c in range(n):
+        yr = y_rib + rk[c] * BUS_RIBBON
+        xt = x_fan + (n - rk[c]) * BUS_RIBBON               # +X -> +Y: highest Y first
+        xd = x_dn + (n - 1 - rk[c]) * pitch
+        tail[c] = [tuple(feed[c]), (x_fan, yr, zc), (xt, yr, zc), (xt, y_of[c], zc),
+                   (xd, y_of[c], zc), (xd, y_of[c], z_of[c])]
     for i, px in enumerate(PEDAL_X):
         last = i == len(PEDAL_X) - 1
-        ways = [(bus_way(nt, "IN"), c, True) for c, nt in enumerate(BUS_NETS)]
-        if not last:
-            ways += [(bus_way(nt, "OUT"), c, False) for c, nt in enumerate(BUS_NETS)]
-        pins = {wy: bus_pin(i, wy) for wy, _c, _a in ways}
-        row_x = pins[ways[0][0]][0]
-        by_y = sorted(pins, key=lambda wy: pins[wy][1])     # -Y .. +Y along the row
-        # The -X side takes as many ways as it has room for, counted from the row's -Y
-        # end, and the rest go +X. On each side the lane NEAREST the row goes to the way
-        # furthest +Y, which is what keeps a wire's step to the row off every other lane.
-        x_lo, x_hi = px - bay.ymax, px - bay.ymin            # the bay's walls (local Y -> -X)
-        n_lo = min(len(by_y), room(row_x - x_lo))
-        lo, hi = by_y[:n_lo], by_y[n_lo:]
-        assert len(hi) <= room(x_hi - row_x), (
-            "pedal %d's bay is %.2f wide and cannot lane %d conductors at %.2f pitch"
-            % (i, x_hi - x_lo, len(by_y), pitch))
-        lane = {}
-        for k, wy in enumerate(reversed(lo)):
-            lane[wy] = row_x - BUS_KEEP - k * pitch
-        for k, wy in enumerate(reversed(hi)):
-            lane[wy] = row_x + BUS_KEEP + k * pitch
-        for wy, c, arriving in ways:
-            pin = pins[wy]
-            drop = [(lane[wy], track[c], zt), (lane[wy], track[c], zf),
-                    (lane[wy], pin[1], zf), (pin[0], pin[1], zf), pin]
-            if arriving:
-                paths.append(("pedal_wire_%s_%d" % (names[c], i), tail[c] + drop))
-            else:
-                tail[c] = list(reversed(drop))
+        for arriving in (True, False):
+            if last and not arriving:
+                continue                                     # the chain ends here
+            for c, nt in enumerate(BUS_NETS):
+                pin = bus_pin(i, bus_way(nt, "IN" if arriving else "OUT"))
+                assert bus_pin(i, bus_way(nt, "OUT"))[1] > bus_pin(i, bus_way(nt, "IN"))[1]
+                xl = lane(px, pin[0], c, arriving)
+                assert abs(xl - pin[0]) >= w + BUS_KEEP - 1e-6 and \
+                    px - ty1 + w / 2.0 <= xl <= px - ty0 - w / 2.0, (
+                        "pedal %d: no lane for %s in the plug tunnel" % (i, nt))
+                drop = [(xl, y_of[c], z_of[c]), (xl, pin[1], z_of[c]),
+                        (pin[0], pin[1], z_of[c]), pin]
+                if arriving:
+                    paths.append(("pedal_wire_%s_%d" % (names[c], i), tail[c] + drop))
+                else:
+                    tail[c] = list(reversed(drop))
     # no conductor inside another anywhere
     for a in range(len(paths)):
         for b in range(a + 1, len(paths)):
