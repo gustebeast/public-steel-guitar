@@ -1867,14 +1867,29 @@ def tee_board_cy(y: float) -> float:
     return y + TEE_YSHIFT
 
 
+def tee_conn_dx(which: str = "trunk") -> float:
+    """X of a tee connector's centre, from the centre of the board's 40 mm LAYOUT region:
+    the 8-way trunk (J1) or the 4-way drop (J2).
+
+    READ OFF THE ROUTED BOARD (elec/geom/can_tee.geom.json), not worked out here. The two
+    headers used to be drawn butted end to end and centred on the region, which is not
+    where the board has them: there is 1.2 mm of laminate between the two housings, and
+    the pair sits 0.65 toward -X. Drawn butted they read as one 12-way block (user,
+    2026-10-06) and each stood 0.5 to 0.8 mm off its own pads. The geom file measures
+    from the centre of the whole OUTLINE, ear included, hence the half ear."""
+    f = BG.BOARDS.footprint("can_tee", "J1" if which == "trunk" else "J2")
+    return f["pads_xy"][0] + D.TEE_EAR_X / 2
+
+
 def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Workplane:
-    """CAN bus TEE PCB dummy, flat on the chassis floor. THREE 4-pin TOP-ENTRY XH
-    (B4B-XH-A; cadkit jst_xh_header, drawn MATED) -- trunk-in / drop / trunk-out,
-    L-to-R, cables up -- plus the 120 Ω terminator behind its slide switch (ON only on
-    each bus's LAST tee). Serves the 10 bus-A motor tees on the open -Y rail. `drop`
-    = ±1 marks the device side (cables are top-entry, so it doesn't change the board
-    geometry). Mount: ONE M4 THROUGH the bare ear off its +X end (wiring.tee_hold). `accurate=False` -> the compact bus-B
-    placeholder (see _tee_pcb_placeholder)."""
+    """CAN bus TEE PCB dummy. ONE ROW of side-entry XH, drawn MATED (cadkit
+    jst_xh_side_header): the 8-way trunk J1 (in on ways 1-4, out on 5-8) and beside it
+    the 4-way drop J2 to the motor, each where the routed board has it (tee_conn_dx) --
+    plus the 120 ohm terminator and its slide switch (ON only on each bus's LAST tee).
+    Serves the 10 bus-A motor tees. `drop` = +-1 marks the device side (it does not
+    change the board). Mount: ONE M4 THROUGH the bare ear off its +X end
+    (wiring.tee_hold). `accurate=False` -> the compact bus-B placeholder (see
+    _tee_pcb_placeholder)."""
     if not accurate:
         return _tee_pcb_placeholder(x, y, drop)
     top = FLOOR_Z + 1.6                              # board top face; connectors rise +Z from here
@@ -1891,9 +1906,7 @@ def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Work
         2.25, 3.6, cq.Vector(x + TEE_BOARD_X / 2, ey, FLOOR_Z - 1.0))))   # M4 clearance
     # ONE row along X: the 8-way trunk, then the 4-way drop beside it. Pin rows collinear, so
     # the tail band is ~1.5 deep instead of 7.5 and clears the faceplate wall's strip.
-    l8, l4 = xh_side_length(TEE_TRUNK_N, smt=False), xh_side_length(TEE_CONN_N, smt=False)
-    run = l8 + l4
-    for n, dx in ((TEE_TRUNK_N, -run / 2 + l8 / 2), (TEE_CONN_N, run / 2 - l4 / 2)):
+    for n, dx in ((TEE_TRUNK_N, tee_conn_dx("trunk")), (TEE_CONN_N, tee_conn_dx("drop"))):
         b = b.union(jst_xh_side_header(n, smt=False, mated=True)
                     .translate((xl + dx, cy + TEE_CONN_CY - TEE_MOUTH_DY, top)))
     for px, py, sx, sy, h in (D.TEE_TERM_R, D.TEE_TERM_SW):       # 120 R and its switch

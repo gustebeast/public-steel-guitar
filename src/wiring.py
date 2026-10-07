@@ -332,14 +332,10 @@ def tee_pin(i, x, y, cond, out):
 
 def tee_point(i, x, y, which="trunk"):
     """The 3D point a wire lands on: tee i's trunk (8-way) or drop (4-way) connector."""
-    from cadkit.pcb import xh_side_length
     cx, cy = tee_center(i, x, y)
     if not on_motor(i):
         return cx, cy + EL.TEE_CONN_CY, tee_hdr_z(i)
-    l8 = xh_side_length(EL.TEE_TRUNK_N, smt=False)
-    l4 = xh_side_length(EL.TEE_CONN_N, smt=False)
-    run = l8 + l4
-    dx = (-run / 2 + l8 / 2) if which == "trunk" else (run / 2 - l4 / 2)
+    dx = EL.tee_conn_dx(which)             # where the routed board has that connector
     # the cable arrives at the MOUTH, which faces -Y: it runs out over the motor, not upward
     return cx + dx, cy + EL.TEE_CONN_CY - EL.TEE_MOUTH_DY - 2.0, tee_hdr_z(i)
 
