@@ -19,7 +19,7 @@ Official Library -- https://lceda.cn/ , https://easyeda.com -- read through the 
 | Rows whose designators mix prefixes arrive unticked ("multiple types of parts") | optical (7 rows) | ORDER.txt lists the rows to tick; renaming does not clear it |
 | Bottom-side assembly is Standard tier only | pi_cap | ORDER.txt says so; a cost item, see below |
 | Black solder mask forces Standard tier (+8.00 colour) | optical | ORDER.txt says so; a cost item |
-| Relay is "Standard only" (seen on C326376; the board now orders the reel listing C47190, not re-read) | output_panel | ORDER.txt says so; a cost item |
+| ~~Relay is "Standard only"~~ | output_panel | closed 2026-10-08: that was the tube listing C326376. Ordered as the reel listing C47190 (the same Omron G6K-2F-Y, 5 V) the board goes through as ECONOMIC, 58 of 58 rows matched, no prompt: 247.69 in the cart against 274.44 as Standard. Every Standard figure for output_panel below is from before that |
 | Parts with no fab model yet (+1 day, placeholder in preview) | optical R44 C5139521, pogo male C54799748 | ORDER.txt part note |
 | 6.35 mm jack previewed 16 mm off its holes | output_panel | hand-entered frame; re-previewed in its outline |
 | The form carried 19.87 of options into the next board | leg_pogo_male_bottom | already in ORDER.txt; seen live |
