@@ -1745,7 +1745,9 @@ def _parts():
         add(_ref, _desc, "TP", _lx - 3.55, _ly - 28.315)
     for _ref, _desc, _lx, _ly in (
             ("TP6", "bring-up pad -- I2C2 SDA (ROM bootloader bus)", 6.394, 54.265),
-            ("TP7", "bring-up pad -- I2C2 SCL (ROM bootloader bus)", 7.394, 61.765)):
+            ("TP7", "bring-up pad -- I2C2 SCL (ROM bootloader bus)", 7.394, 61.765),
+            # the debug serial output (PA2, USART2_TX), 3 mm west of U6 pin 42 on its own stub
+            ("TP12", "bring-up pad -- debug serial out (PA2 USART2_TX)", -9.549, -46.815)):
         add(_ref, _desc, "TP_SMALL", _lx - 3.55, _ly - 28.315)
 
     # ⚠ THE PER-CELL SHDNZ PULL-UPS AND THEIR PADS -- item 6, converter isolation. One

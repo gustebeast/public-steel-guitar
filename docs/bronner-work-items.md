@@ -5633,3 +5633,44 @@ arrives when the child exits.
 
 What is left is the router: single-threaded on purpose (`-mt 1`; freerouting's
 multi-threaded optimiser is documented as making clearance violations).
+
+## BRING-UP ROUND 1: FOUR SMALL BOARD CHANGES, NONE THROUGH THE ROUTER (2026-10-07)
+
+The night before the order four reviewers read the boards for "what goes wrong on the
+first evening". Four changes reached copper or silk; the rest is text
+(`docs/board-bringup-diagnostics.md`, `docs/optical-bringup-diagnostics.md`,
+`docs/bench-order.md`, `INSTALL_NOTES.md`).
+
+| board | change | how it was laid |
+|---|---|---|
+| `output_panel` | PB2 (BOOT1, U1.28) joined to JACK_MODE: R37 holds it low at reset | one 1.0 mm F.Cu track added to the KEPT board by script, then `finish --keep-route`; declared in `repair_tracks` so the next route carries it |
+| `output_panel` | "J2 PI USB-C", "J3 HUB UP", "J4 OPTICAL 5V" on the front silk | `silk_words` (new, cadkit `4357145`) |
+| `pi_cap` | "PI 5V IN - NO USB-C SUPPLY" on the back (the seen face) | `silk_words`, `--keep-route` |
+| `optical` | TP12, 1.0 mm, on PA2 (USART2_TX): the one pin that talks | `post_route_refs` + `post_route_nets` + a declared 3 mm stub, `ROUTE_REUSE_SES=1` |
+
+**Why the output panel was edited on the board and not re-imported.** It has
+`finish_rounds: 2`, and the `.ses` on disk is the DISCARDED second pass: re-importing it
+would not give back the board that was reviewed. So the pad's net and the one track were
+set on the kept board with a ten-line pcbnew script, and the generator declares the same
+thing. The track is pinned to this routing, like every post-route repair.
+
+**`silk_words`** (cadkit `kicad_silk.py`): `[(text, x, y, "front" | "back")]` in the board
+file's millimetres. Laid LAST, so adding a word moves no other label: both re-lettered
+boards differ from their last run by the new words alone.
+
+**A post-route pad whose only copper is its own declared stub** was walked off the stub:
+`route.py` re-sites bring-up pads against the copper on the board, and the repair tracks
+are laid just after. Declared F.Cu repair tracks now count in that check (cadkit
+`4958913`). The six older pads stayed where they were.
+
+**A stale table found on the way, and it was the dangerous kind.** `docs/bench-order.md`,
+"The motor drop", still had the tee's way 1 as ground. Since the pin-order change way 1
+is 24 V, so the power pair is no longer crossed at the motor (the CAN pair still is). A
+lead made to the old table reversed 24 V into a motor. Corrected, with the warning.
+
+**"Target sense"** was the generators' word for TP5 on the two CH32V307 boards. It is an
+ST-Link's word for an input; the WCH-LinkE's 3V3 pin is an output. Reworded (netlist
+description only: no copper, no silk).
+
+Firmware notes that came with the copper: PB2 on `output_panel` stays an input for ever;
+PA2 on `optical` is USART2_TX at AF7.

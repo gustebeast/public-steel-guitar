@@ -722,7 +722,8 @@ def output_panel():
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
-                 21, 20, 26, 27)]   # PA5, PA4, PB0 pot SPI; PB1 the jack mode
+                 21, 20, 26, 27,    # PA5, PA4, PB0 pot SPI; PB1 the jack mode
+                 28)]               # PB2 = BOOT1, held low on the jack-mode net
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -769,6 +770,15 @@ def output_panel():
     # rather than reading one; the note above is explicit that nothing downstream can
     # catch a wrong pin number, so it was read.
     jack_mode += u1[27]
+    # ⚠ PB2 IS BOOT1, AND IT WAS FLOATING (bring-up review, 2026-10-07). The part samples
+    # BOOT0 and BOOT1 together at reset: BOOT0 high with BOOT1 high is "run from SRAM",
+    # not the ROM loader, so the one recovery path this board has (BOOT0 by tweezers,
+    # then USB through the hub) depended on an open pin reading low. Pin 28 is the next
+    # pad along from PB1, whose net already has R37's 100k to ground: PB2 joins it with
+    # 1 mm of surface copper (repair_tracks) and no part.
+    # FIRMWARE: PB2 STAYS AN INPUT FOR EVER. Driven as an output it fights PB1 and moves
+    # the jack mode; pulled up it lifts JACK_MODE against R37.
+    jack_mode += u1[28]
     mclk = Net("I2S_MCK")
     mclk += u1[39]
     v3v3 += u1[1]             # VBAT: no backup battery, so it is the main supply
@@ -788,7 +798,12 @@ def output_panel():
     # for the life of the board. Five pads cost nothing and remove both problems.
     for _ref, _net, _what in (("TP1", swdio, "SWDIO"), ("TP2", swclk, "SWCLK"),
                               ("TP3", nrst, "NRST"), ("TP4", gnd, "GND"),
-                              ("TP5", v3v3, "target sense")):
+                              # ⚠ TP5 IS FOR THE METER, NOT FOR THE PROBE. It was called
+                              # "target sense", which is what an ST-Link's pin 1 is; the
+                              # WCH-LinkE's 3V3 and 5V pins are power OUTPUTS, side by
+                              # side. No probe wire lands here while 24 V is on, and
+                              # never the 5V pin (bring-up review, 2026-10-07).
+                              ("TP5", v3v3, "+3V3, a meter point: no probe wire")):
         _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
                    tool="skidl", value="SWD",
                    description="SWD pad -- %s; bare copper, no component" % _what,
@@ -1941,12 +1956,26 @@ BOARD_NOTES = {
     #  router closes it itself -- 0.18 mm from where the repair via stood, so the two holes
     #  overlapped. Gone; the list is kept because the re-centring pass reads it.)
     "repair_vias": [],
+    # WHAT EACH OF THE THREE IDENTICAL USB-C SOCKETS IS (bring-up review, 2026-10-07):
+    # they stand 16 mm apart in one column and nothing told them apart but J2 / J3 / J4.
+    # Only the optical board may go on J4 -- it is a 5 V feed, not a port. Sites are the
+    # free strip just south of each socket, in the board file's mm (kicad_silk silk_words).
+    "silk_words": [("J2 PI USB-C", 71.5, 81.9, "front"),
+                   ("J3 HUB UP", 71.5, 97.9, "front"),
+                   ("J4 OPTICAL 5V", 72.5, 102.9, "front")],
     "repair_tracks": [
         # (the PWR_GND hop that stood first here is gone: since the mounting ear the router
         #  closes PWR_GND on its own, and the pinned copy crossed its V5_PRE, 2026-09-21)
         # (THE 24 V BUS IS NOT HERE ANY MORE. The J7 -> J9 hop and the inlet's own runs were
         #  0.5 mm post-route repairs; the whole power path is DECLARED copper now, sized for
         #  the supply -- see the bottom of this file.)
+        # PB2 (BOOT1, pin 28) onto JACK_MODE, whose track passes 1 mm east of the pad on
+        # its way out of pin 27: from the pad's centre straight east into that track.
+        # 0.20 mm from pin 29's pad and 0.31 from POT_SDI, measured on the routed board.
+        # ⚠ LAID ON THE KEPT BOARD BY HAND-RUN SCRIPT, 2026-10-07, AND DECLARED HERE SO
+        # THE NEXT ROUTE CARRIES IT. It is pinned to this routing: if JACK_MODE leaves
+        # pin 27 another way after a re-route, the east end hangs and DRC says so.
+        ("JACK_MODE", "F.Cu", 0.2, [(-1.06, -7.20), (-0.05, -7.20)]),
     ],
     "stitch_nets": ("GND",),
     # ⚠ THE USB SHIELD TABS REACH THE PLANE THROUGH THEIR OWN BARRELS. J2.SH and J4.SH
@@ -2674,7 +2703,7 @@ BOARD_NOTES["quality"] = {
         "J2.[AB]5": "J2 is not a port: the far end of the pass-through to the Pi, no CC resistor (note at J2)",
         "J7.[34]": "the trunk head carries no data: ways 3 and 4 have no conductor",
         "U1": {
-            "pins": "2 3 4 8 9 10 11 14 15 16 19 22 23 24 28 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66",
+            "pins": "2 3 4 8 9 10 11 14 15 16 19 22 23 24 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66",
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U10.13": "MCP4261 SDO: the pot is written, never read back",

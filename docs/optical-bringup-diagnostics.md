@@ -334,3 +334,74 @@ TP6 and TP7 stand 7.5 mm apart beside the first converter; SDA is the one nearer
   there is no per-converter read-back, so a wrong one released reads as the right one.
 * The feed is a different housing at each end: a 2-way XH at the output panel (J9), a
   4-way XH here (J2, ways 3 and 4 empty).
+
+## Bring-up review, 2026-10-07: the first evening
+
+One copper change: **TP12, a 1.0 mm pad on PA2 (U6 pin 42), 3 mm west of the pin.** PA2 is
+USART2_TX (AF7) and TIM2_CH3: a serial console out, or a scope trigger. 3.3 V, transmit
+only. It is the only thing on this board a terminal can read; without it the views in are
+RTT through the debugger and PB3 (the emitter gate) blinked and watched through a phone
+camera, which sees the infrared.
+
+**Look for R44 first when the board arrives.** It is the 2512 in series with J2; the fab
+had no model for it. Unplaced, no rail comes up and the buck gets the blame.
+
+### First power at 6 V, not 24 V
+
+U13's feedback divider is R40 over R41. If R40 is open (a tombstoned 0402) or U13's FB
+pad is dry, the buck goes to full duty and its output follows its input: at 24 V that is
+24 V on a rail whose regulators stop at 6.5 V, and the MCU, PHY and converters behind
+them. Nothing on the board can be opened to prevent it. The buck runs from 3.8 V, so:
+
+1. Pigtail plugged (way 1 = 24 V; this board has no reverse protection), output OFF. Set
+   **6.0 V, limit 0.3 A.** Output on.
+2. TP9 reads 6.0 V. **TP10 must read 5.0 V.** If it reads about 6 V the buck is not
+   regulating: stop. Nothing has been hurt.
+3. TP5 3.3 V, TP11 3.3 V; about 1.2 V on C112 pad 1 and C113 pad 1 (the MCU's core); 1.8 V
+   on C122 pad 1 and C120 pad 1 (the PHY).
+4. Only then 24.0 V, and read TP10 again.
+
+The board can be flashed and debugged at the 6 V setting.
+
+**Never feed the board through TP10 or TP5.** J2 is the only supply input.
+
+**One current-limit figure: 100 mA at 24 V with the MCU erased, 250 mA once it is
+flashed.** At 100 mA the supply folds back when firmware lights the emitters and the PHY,
+and the board resets in a loop that looks like a crash. (The documents used to give
+100 mA, 0.6 A and 79 mA typical in three places.)
+
+### Getting back from a bad flash
+
+| what the firmware did | way back |
+|---|---|
+| reconfigured PA13 / PA14, or sleeps in the idle loop | connect under reset, through TP3 |
+| wrong clocks, PLL never locks, fault at start | plain attach |
+| wrote PWR_CR3 for bypass (the core supply turns off; this board has no external one) | power off, hold BOOT0 high (TP8), power on, connect, erase |
+| RDP level 1 | regression to level 0 (mass erase) |
+| **RDP level 2** | **none. Permanent.** |
+
+* **BOOT0 is TP8, and the nearest +3V3D is C106 pad 1, 2.6 mm east of it**: a 3 mm wire or
+  a solder blob. (`INSTALL_NOTES.md` said TP5 was "right there". It is 31 mm away.
+  Corrected.)
+* **Never in firmware:** RDP level 2; the HSLV option bit or `SYSCFG_CCCSR.HSLV` (for
+  supplies under 2.7 V; at 3.3 V it can damage the pads); the PWR_CR3 bypass.
+
+### The first firmware
+
+A debugger reset resets the MCU only. The PHY and the five converters stay exactly as the
+last program left them, hundreds of times an evening.
+
+* **Before I2C2 is enabled: clock nine pulses on PF1 as an open-drain GPIO until PF0 reads
+  high, make a STOP, then enable the peripheral; then software-reset the converters and
+  wait 2 ms.** A reset that lands mid-read leaves a converter holding SDA low, the
+  peripheral reports BUSY for ever, and the program that worked a minute ago configures
+  nothing.
+* **A time-out on the USB core reset, reported on TP12.** With the PHY, its crystal or one
+  ULPI line dead, the core reset never completes, and a program that waits for it looks
+  dead.
+* **Never set the PHY's InterfaceProtectDisable bit.** It is what lets a suspended PHY
+  restart its clock after an MCU reset; with it set the two deadlock until a power cycle.
+* **Leave PA13 / PA14 out of any "unused pins to analog" loop.**
+* A 2 s delay at the top of `main()` before any sleep, as on the other boards.
+* No pull-ups were added on PA4 / PA7: the ROM's I2C loader stays the unproven third way
+  in, and SWD does not depend on it.

@@ -908,11 +908,22 @@ def optical():
     vcap1, vcap2 = Net("VCAP1"), Net("VCAP2")
     vcap1 += u6[PIN["VCAP1"]]
     vcap2 += u6[PIN["VCAP2"]]
+    # ⚠ ONE PIN THAT TALKS (bring-up review, 2026-10-07). The board had SWD and nothing a
+    # terminal can read: no UART came out anywhere, and the only signs of life short of a
+    # debugger were RTT and the emitter gate seen through a phone camera. PA2 is
+    # USART2_TX (AF7) and TIM2_CH3; it was a no-connect with both neighbours (PA1, PH2)
+    # no-connects too, on the west row where 3 mm of surface copper reaches clear board.
+    # TP12 is that pad: bare 1.0 mm, post-route like the other bring-up pads, on a net
+    # that does not exist before routing so the router's input is unchanged.
+    # TX ONLY, 3.3 V, idle high. FIRMWARE: USART2_TX on PA2 at AF7; nothing drives the
+    # pad from outside, so it may equally be a scope trigger (TIM2_CH3) or a GPIO.
+    dbg_tx = Net("DBG_TX")
+    dbg_tx += u6[PIN["PA2"]]
     # Every remaining pin is unconnected ON PURPOSE. The LQFP176 brings out far more
     # IO than this board uses; naming each one keeps ERC honest instead of silent.
     used = set(MCU_VDD) | set(MCU_VSS) | {
         PIN[k] for k in ("VSSA", "VDDA", "VREF+", "VBAT", "VDD33_USB", "PDR_ON",
-                         "PH0", "PH1", "NRST", "BOOT0", "PA13", "PA14", "PB3",
+                         "PH0", "PH1", "NRST", "BOOT0", "PA13", "PA14", "PB3", "PA2",
                          "VCAP1", "VCAP2") + tuple(SAI_CLK.values()) + SAI_SD
         + tuple(p for bus in I2C_BUS for p in bus)}
     used |= {PIN[p] for p in ULPI.values()}
@@ -1372,11 +1383,12 @@ def optical():
                              ("TP8", boot0, "BOOT0 -- hold HIGH at reset for the bootloader"),
                              ("TP9", v24_in, "24 V as it arrives at J2, ahead of R44"),
                              ("TP10", v5, "+5V rail -- the buck's output"),
-                             ("TP11", v3a, "+3V3A rail -- the quiet LDO")):
+                             ("TP11", v3a, "+3V3A rail -- the quiet LDO"),
+                             ("TP12", dbg_tx, "PA2 = USART2_TX, the debug serial out")):
         _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
                    tool="skidl", value="BRINGUP",
                    description="bring-up pad -- %s; bare copper, no component" % _why,
-                   footprint=FP["TP_SMALL" if _ref in ("TP6", "TP7") else "TP"],
+                   footprint=FP["TP_SMALL" if _ref in ("TP6", "TP7", "TP12") else "TP"],
                    pins=[Pin(num=1, func=P)])
         _net += _tp[1]
 
@@ -3337,6 +3349,10 @@ BOARD_NOTES = {
     # fitted on a bring-up pad, so that courtyard reserves room for a body that does not
     # exist); its COPPER clears by 0.492 mm.
     "post_route_refs": ("TP6", "TP7", "TP8", "TP9", "TP10", "TP11",
+                        # the debug serial pad: unlike the six above it stands on NO
+                        # routed copper -- its 3 mm stub is declared in repair_tracks,
+                        # which route.py counts as the pad's own when it checks the site
+                        "TP12",
                         # item 6: the five SHDNZ pull-ups. A RESISTOR being here is the
                         # same argument one step further -- a part the router never sees
                         # cannot cost it a net, and an 0402 in a site verified clear on the
@@ -3350,7 +3366,7 @@ BOARD_NOTES = {
     # no-connect it used to be, the DSN gains nothing, and route.py builds the net over every
     # node after the import. The mechanism also covers the general case of a pad whose net is
     # new; the BUCK_PG attempt is what it was written for.
-    "post_route_nets": ("SHDNZ1", "SHDNZ2", "SHDNZ3", "SHDNZ4", "SHDNZ5"),
+    "post_route_nets": ("SHDNZ1", "SHDNZ2", "SHDNZ3", "SHDNZ4", "SHDNZ5", "DBG_TX"),
     # ⚠ SAI_FS IS CLOSED HERE, AFTER ROUTING, AND THAT TIMING IS THE ENTIRE ANSWER.
     # This net was the board's last unconnected item for a dozen routes. Everything tried
     # BEFORE routing made it worse, every time, and the count is worth keeping because the
@@ -3543,6 +3559,11 @@ BOARD_NOTES = {
                                 (-20.2, -34.0), (-20.8, -33.4), (-20.8, -24.6),
                                 (-20.08, -23.33)]),
         ("+3V3A", "F.Cu", 0.5, [(-20.08, -23.33), (-20.08, -21.08)]),
+        # TP12, the debug serial pad: from U6 pin 42 (PA2) straight west to the pad, 3 mm.
+        # Measured on the routed board of 2026-10-07: 0.94 mm from the nearest foreign
+        # F.Cu and 0.745 from the nearest courtyard. A 1.5 mm pad here would touch the
+        # board's name on the silk, which is why it is the 1.0.
+        ("DBG_TX", "F.Cu", 0.2, [(-6.549, -46.815), (-9.549, -46.815)]),
     ] + _shdnz_stubs(),
     "repair_vias": [("+3V3A", -5.48, -60.73), ("+3V3A", -20.08, -23.33),
                     ("SAI_FS", -4.5992, -27.1387),
@@ -4142,7 +4163,8 @@ BOARD_NOTES["quality"] = {
               "A second way in that needs no probe: the ROM bootloader's I2C2 is this "
               "board's own control bus, on TP6 / TP7, selected by holding TP8 (BOOT0) high. "
               "Rails: TP9 the 24 V as it arrives (ahead of R44, so the drop across R44 "
-              "reads the input current), TP10 +5V, TP11 +3V3A, TP5 the digital 3V3. Each "
+              "reads the input current), TP10 +5V, TP11 +3V3A, TP5 the digital 3V3. TP12 is "
+              "PA2, USART2_TX: a debug serial output, 3.3 V, 1.0 mm pad west of U6. Each "
               "converter can be taken off the bus alone by grounding its SHDNZ pull-up's "
               "pad. No pad on MID, on purpose. docs/optical-bringup-diagnostics.md has the "
               "order of work",
@@ -4300,7 +4322,7 @@ BOARD_NOTES["quality"] = {
                "USBLC6-2SC6 C7519, TAXM25M4RDBCCT2T C403946, CJO05-240003320B30 C712738, "
                "S4B-XH-SM4-TB, TYPE-C-31-M-12",
         "M31": "printed by kicad_silk on every route: the board's name and r1 on the front, "
-               "every test pad's net beside it (TP1-TP11, TP9 reads V24_IN), J2's way names "
+               "every test pad's net beside it (TP1-TP12, TP9 reads V24_IN), J2's way names "
                "on the back under its tails. Pin-1 and polarity marks are the footprints' "
                "own, outside the bodies; the emitters' cathode marks included. DRC's silk "
                "warnings (five overlaps, five over copper) are reference designators in the "
@@ -4361,7 +4383,7 @@ BOARD_NOTES["quality"] = {
         "U1[4-8].5": "TLV320ADC3140 MICBIAS: no microphone, the bias stays powered down",
         "U1[4-8].20": "TLV320ADC3140 GPIO1: not used",
         "U6": {
-            "pins": "1 7 8 9 10 11 12 18 19 20 21 24 25 26 27 28 33 34 35 41 42 43 44 46 50 52 53 54 55 58 59 60 63 64 65 66 67 68 69 70 73 74 75 76 77 78 83 84 85 86 87 88 89 94 95 96 97 98 99 100 101 104 105 106 107 108 109 110 111 112 115 116 117 118 119 120 121 122 123 128 129 130 131 132 133 134 138 139 140 141 142 144 145 146 147 150 151 152 153 154 155 156 157 160 162 164 165 167 168 169 170 173 174 176",
+            "pins": "1 7 8 9 10 11 12 18 19 20 21 24 25 26 27 28 33 34 35 41 43 44 46 50 52 53 54 55 58 59 60 63 64 65 66 67 68 69 70 73 74 75 76 77 78 83 84 85 86 87 88 89 94 95 96 97 98 99 100 101 104 105 106 107 108 109 110 111 112 115 116 117 118 119 120 121 122 123 128 129 130 131 132 133 134 138 139 140 141 142 144 145 146 147 150 151 152 153 154 155 156 157 160 162 164 165 167 168 169 170 173 174 176",
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U7": {
