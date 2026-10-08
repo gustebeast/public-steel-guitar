@@ -18,7 +18,7 @@
   "GND": 0
  },
  "pin_volts": {
-  "J1.2": {
+  "J1.1": {
    "max": 12.0,
    "src": "rated V -- YZ185115035T-04025-01 (C54930022): Xinyangze's drawing for the 04025 spring-pin pair: rated 12 V DC, 1 A a pin (recorded in src/leg_pogo.py at RA_V when the part was chosen; the catalogue record gives no figures)"
   },
@@ -30,7 +30,7 @@
    "max": 12.0,
    "src": "rated V -- YZ185115035T-04025-01 (C54930022): Xinyangze's drawing for the 04025 spring-pin pair: rated 12 V DC, 1 A a pin (recorded in src/leg_pogo.py at RA_V when the part was chosen; the catalogue record gives no figures)"
   },
-  "J2.2": {
+  "J2.1": {
    "max": 50.0,
    "src": "rated V -- S4B-ZR-SM4A-TF(LF)(SN) (C485354): JST ZH series datasheet p.1: 'Current rating: 1 A AC, DC (AWG #26); Voltage rating: 50 V'; the same two figures in the JLCPCB parts API attributes for C485354, fetched 2026-10-06"
   },

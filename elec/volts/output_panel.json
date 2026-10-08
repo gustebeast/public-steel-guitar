@@ -1,9 +1,9 @@
 {
  "net_volts": {
   "+24V": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
-   "why": "24 V +10 % steady (brick is +/-3 %: 24.72 V; OVP trips at up to 32.4 V); transient = the SMAJ24A clamp at the brick's 6.67 A, the most this rail can be handed: 35.6 V (breakdown 26.7-29.5 V; its catalogue VC is 38.9 V at 10.3 A)"
+   "why": "24 V +10 % steady (brick is +/-3 %: 24.72 V; OVP trips at up to 32.4 V); transient = the SMCJ24A clamp at 20 A of surge, a bound on what this rail is handed: 34.4 V (breakdown 26.7-29.5 V; its catalogue VC is 38.9 V at 38.6 A)"
   },
   "+24V_IN": {
    "peak": 49.44,
@@ -11,7 +11,7 @@
    "why": "inlet, ahead of the switch: steady as the rail; transient = a live plug ringing toward 2 x 24.72 V into C55's 100 nF with Q2 off (D6 is on the far side of Q2)"
   },
   "+24V_OPT": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "through F1"
   },
@@ -44,7 +44,7 @@
    "why": "relay common: either source, 0 V referenced"
   },
   "BOOT": {
-   "peak": 42.587,
+   "peak": 41.37,
    "v": 33.4,
    "why": "bootstrap: SW + 7 V, held by U5"
   },
@@ -273,12 +273,12 @@
   "POT_CS": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U1.64 (io) can reach its supply +3V3"
+   "why": "U1.21 (io) can reach its supply +3V3"
   },
   "POT_SCK": {
    "peak": 3.45,
    "v": 3.349,
-   "why": "U1.65 (io) can reach its supply +3V3"
+   "why": "U1.20 (io) can reach its supply +3V3"
   },
   "POT_SDI": {
    "peak": 3.45,
@@ -358,7 +358,7 @@
    "why": "not connected"
   },
   "SW": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "buck switch node: VIN while the high side is on [= +24V+0]"
   },
@@ -775,8 +775,8 @@
    "src": "rated V -- CL21A106KAYNNNE (C15850): JLCPCB parts API attributes for C15850 (CL21A106KAYNNNE, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "D1.1": {
-   "max": 40.0,
-   "src": "VRRM -- B5819W SL (C8598): CJ B5817W-B5819W datasheet p.1 max ratings: B5819W VRRM/VRWM/VR 40 V, non-repetitive VRM 40 V, IO 1 A, V(BR) min 40 V @1 mA"
+   "max": 60.0,
+   "src": "VRRM -- DSS16 (C7467023): FUXINSEMI DSS12 thru DSS120 Ver2.1 p.1, column DSS16: VRRM 60 V, VDC 60 V, I(AV) 1.0 A, IFSM 30 A, VF 0.70 V at 1 A; SOD-123, band = cathode"
   },
   "D2.1": {
    "max": 5.4,
@@ -807,7 +807,7 @@
   "D6.1": {
    "max": 26.7,
    "peak": "none",
-   "src": "SMAJ24A (C148222): Littelfuse SMAJ series datasheet p.2 electrical table, row SMAJ24A (VR 24.0, VBR 26.70-29.50 @1 mA, VC 38.9 @ IPP 10.3 A 10/1000 us)",
+   "src": "SMCJ24A (C310039): Brightking SMCJ series datasheet (LCSC C310039), electrical table row SMCJ24A: VRWM 24 V, VBR 26.7-29.5 V @1 mA, VC 38.9 V @ IPP 38.6 A (10/1000 us), 1500 W",
    "why": "this part IS the clamp on +24V: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
   },
   "D7.1": {
@@ -879,7 +879,7 @@
    "max": 20.0,
    "src": "rated V -- TYPE-C-31-M-12 (C165948): JLCPCB parts API attributes for C165948 (20 V, 5 A; datasheet PDF is a drawing)"
   },
-  "J10.2": {
+  "J10.1": {
    "max": 250.0,
    "src": "rated V -- B6B-XH-A(LF)(SN) (C144397): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
@@ -891,7 +891,7 @@
    "max": 250.0,
    "src": "rated V -- B6B-XH-A(LF)(SN) (C144397): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
-  "J10.5": {
+  "J10.6": {
    "max": 250.0,
    "src": "rated V -- B6B-XH-A(LF)(SN) (C144397): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
@@ -1027,7 +1027,7 @@
    "peak": 500.0,
    "src": "rated V -- KPJX-4S-S (C2875467): Kycon KPJX-4S-S drawing, Electrical Characteristics: contact rating 7.5 A max at 48 V DC per pin; dielectric withstanding voltage 500 V AC RMS for 1 min; insulation resistance 50 Mohm min at 250 V DC"
   },
-  "J7.2": {
+  "J7.1": {
    "max": 250.0,
    "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
@@ -1035,7 +1035,7 @@
    "max": 300.0,
    "src": "rated V -- MX126-5.0-02P-GN01-Cu-S-A (C5188434): JLCPCB parts API attributes for C5188434 (300 V, 10 A; datasheet PDF is an image)"
   },
-  "J9.2": {
+  "J9.1": {
    "max": 250.0,
    "src": "rated V -- B2B-XH-A(LF)(SN) (C158012): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
@@ -1398,6 +1398,14 @@
    "max": 4.0,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
+  "U1.20": {
+   "max": 3.75,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U1.21": {
+   "max": 3.75,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
   "U1.25": {
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
@@ -1479,14 +1487,6 @@
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
   "U1.63": {
-   "max": 3.75,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
-  "U1.64": {
-   "max": 3.75,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
-  "U1.65": {
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },

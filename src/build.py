@@ -2092,9 +2092,10 @@ from . import led_leads as _LL                                   # noqa: E402
 _COLORS.update({"wire_%s_led_%s" % (_lead, _w.lower()): _LL.COLORS[_w]
                 for _lead in ("foot", "fret") for _w in _LL.WAYS})
 _COLORS.update({
-    "%s_wire_%s" % (run, n.lower()): c for run in ("pogo", "pedal") for n, c in zip(
-        _EH.PH_PINOUT, ((0.05, 0.05, 0.05), (0.85, 0.12, 0.10),
-                        (0.95, 0.85, 0.10), (0.13, 0.72, 0.20)))})
+    "%s_wire_%s" % (run, n.lower()): {"GND": (0.05, 0.05, 0.05), "V5": (0.85, 0.12, 0.10),
+                                      "CAN_H": (0.95, 0.85, 0.10),
+                                      "CAN_L": (0.13, 0.72, 0.20)}[n]
+    for run in ("pogo", "pedal") for n in _EH.PH_PINOUT})
 
 
 # The keyhead's three board-to-board leads, a conductor a part, in the harness's own

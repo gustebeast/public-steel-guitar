@@ -2207,7 +2207,7 @@ def plug_pin(way, z_bot=None, z_top=None, flip=None):
     enter the JST in accurate placement so we can use it as a reference when deciding
     which slot to put each wire into?"). So the way numbers here are the harness's, not
     a drawing convenience: harness.ph_trunk_pins() is the bus IN on ways 1-4 and OUT on
-    5-8, each group in PH_PINOUT order (GND, +5 V, CAN_H, CAN_L). A lever's ARRIVING
+    5-8: 1-4 in PH_PINOUT order (+5 V, GND, CAN_H, CAN_L), 5-8 its mirror. A lever's ARRIVING
     cable lands on 1-4 and its DEPARTING cable leaves from 5-8, which is what makes the
     board pass the trunk through itself.
 

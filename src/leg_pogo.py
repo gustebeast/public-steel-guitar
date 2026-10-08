@@ -191,7 +191,7 @@ assert HARNESS_D >= HARNESS_WIRE_OD * (1 + math.sqrt(2)), "the bundle is under-s
 # FOUR CONDUCTORS, DRAWN AS FOUR (user), the way src.wiring already draws every CAN run
 # rather than as one jacket -- there is no jacket here to draw. They sit in the
 # connector's own PIN ORDER around the bundle's axis, so no conductor has to cross a
-# neighbour to reach its crimp: GND, 5V, CAN_H, CAN_L on 1-4 at both ends.
+# neighbour to reach its crimp: 5V, GND, CAN_H, CAN_L on 1-4 at both ends.
 #
 # The pair that matters is CAN_H/CAN_L, and they are placed DIAGONALLY OPPOSITE across
 # the bundle rather than side by side. Twisted, that is the pair; untwisted -- which is
@@ -205,7 +205,7 @@ _WOFF = (HARNESS_WIRE_OD + 0.1) / 2.0                   # 0.5: touching plus 0.1
 # because this constant was written out three times with nothing comparing the copies,
 # and a wrong pin order is invisible until it puts a rail into a signal -- so the CAD
 # reads it rather than keeping a fourth copy. Change PH_PINOUT and the wires move.
-_PINOUT = tuple(n.lower() for n in EH.ph_drop_pins())   # ('gnd', 'v5', 'can_h', 'can_l')
+_PINOUT = tuple(n.lower() for n in EH.ph_drop_pins())   # ('v5', 'gnd', 'can_h', 'can_l')
 _PLACE = ((-_WOFF, -_WOFF), (_WOFF, -_WOFF), (_WOFF, _WOFF), (-_WOFF, _WOFF))
 HARNESS_WIRES = tuple(zip(_PINOUT, _PLACE))
 # ...and THE TWO PAIRS MUST STAY PAIRS. This is two twisted pairs, not a four-core:
@@ -217,7 +217,7 @@ def _adjacent(a, b):
     return sum(1 for u, v in zip(_PLACE[a], _PLACE[b]) if u != v) == 1
 
 
-for _p, _q in (("can_h", "can_l"), ("gnd", _PINOUT[1])):
+for _p, _q in (("can_h", "can_l"), ("gnd", "v5")):
     assert _adjacent(_PINOUT.index(_p), _PINOUT.index(_q)), (
         "%s and %s are a TWISTED PAIR and no longer sit side by side in the bundle -- "
         "elec.harness.PH_PINOUT moved a pin and _PLACE has not followed" % (_p, _q))

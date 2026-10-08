@@ -58,12 +58,12 @@ Way order is `elec/harness.py`; every JST lead is crimped 1:1, way n to way n. X
 | Lead | From | To | Ways |
 |---|---|---|---|
 | Supply | Mean Well GST160A24-R7B | `output_panel` J6 | the supply's own plug. Meter J6 before first power |
-| Power link | `output_panel` J10, XH 6 | `motor_ctrl` J3, XH 6 | GND, 24 V, SW_UP, SW_DN, 24 V, GND |
-| Optical power | `output_panel` J9, XH 2 | `optical` J2, XH 4 housing | GND, 24 V on ways 1 and 2; ways 3 and 4 of the 4-way housing empty |
-| Pi 5 V | `motor_ctrl` J5, PH 6 | `pi_cap` J2, PH 6 | GND, 5 V, -, -, 5 V, GND |
-| Bus A trunk | `motor_ctrl` J1, XH 4 | `can_tee` J1, XH 8, ways 1-4 | GND, 24 V, CAN_H, CAN_L. Ways 5-8 of the 8-way housing empty |
+| Power link | `output_panel` J10, XH 6 | `motor_ctrl` J3, XH 6 | 24 V, GND, SW_UP, SW_DN, GND, 24 V |
+| Optical power | `output_panel` J9, XH 2 | `optical` J2, XH 4 housing | 24 V, GND on ways 1 and 2; ways 3 and 4 of the 4-way housing empty |
+| Pi 5 V | `motor_ctrl` J5, PH 6 | `pi_cap` J2, PH 6 | 5 V, GND, -, -, GND, 5 V |
+| Bus A trunk | `motor_ctrl` J1, XH 4 | `can_tee` J1, XH 8, ways 1-4 | 24 V, GND, CAN_H, CAN_L. Ways 5-8 of the 8-way housing empty |
 | Motor drop | `can_tee` J2, XH 4 | the motor's screw terminals | see below |
-| Motor board USB | `motor_ctrl` J4, PH 4 | a Pi USB-A host port | GND, VBUS (not connected at the board), D-, D+ |
+| Motor board USB | `motor_ctrl` J4, PH 4 | a Pi USB-A host port | VBUS (not connected at the board), GND, D-, D+ |
 | Hub upstream | `output_panel` J3, USB-C | a Pi USB-A host port | stock A-to-C lead |
 | Pi gadget port | `output_panel` J2, USB-C | the Pi's USB-C | stock C-to-C lead, about 1 m on the bench. ⚠ In the instrument the Pi's USB-C faces the -Y rail about 4.5 mm away: no plug goes in there as the Pi is placed today (open design item) |
 | Optical USB | `output_panel` J4, USB-C | `optical` J1, USB-C | [Amazon B0FKYR7V34](https://www.amazon.com/dp/B0FKYR7V34), $9.99: **0.3 m, USB 2.0, the same up/down-angle plug at both ends** (user, 2026-10-07). The optical end's limits are overmould 12 mm deep at most, 22 mm at most from the plug's axis to the cable; this one is 5.2 and about 14 (seller's photo). On the bench any C-to-C lead does; the angle is for the endplate |

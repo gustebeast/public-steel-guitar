@@ -7,7 +7,7 @@ the mating plane) and says of itself "this is CAD for bronner to route from, not
 board". This is the routed board. Every dimension below is READ from that module; nothing
 is retyped, and _check_against_cad() fails the generator if the two drift.
 
-WHAT EACH BOARD IS. Four conductors of bus B (GND, +5V, CAN_H, CAN_L -- harness.PH_PINOUT)
+WHAT EACH BOARD IS. Four conductors of bus B (+5V, GND, CAN_H, CAN_L -- harness.PH_PINOUT)
 straight through, and nothing else:
   * MALE, on the leg, standing on edge in the tenon's end: a right-angle 1 x 4 spring-pin
     header on the lower edge (LCSC C54799748) and a side-entry JST PH on the upper edge
@@ -35,7 +35,7 @@ computing where each pad ends up -- and check_pogo_nets() re-reads the ROUTED bo
 proves it, because a hand-derived frame mapping returns believable wrong numbers and this
 one would put 5 V on CAN_L.
 
-DEBUG. Each board carries four bare test pads, one per conductor, in the harness order
+DEBUG. Each board carries four bare test pads, one per conductor, ground first
 (TP1-TP4 = GND, +5V, CAN_H, CAN_L); only the ground pad's letter fits on the silk. With
 the leg off, the pins are spring-loaded gold you do not want to slip a probe on, and the
 target's faces are 0.44 mm apart; the pads are where a meter, a scope ground or a CAN
@@ -58,7 +58,10 @@ import math  # noqa: E402
 
 import harness  # noqa: E402
 
-PINOUT = harness.PH_PINOUT                      # GND, V5, CAN_H, CAN_L
+PINOUT = harness.PH_PINOUT                      # V5, GND, CAN_H, CAN_L
+# the test pads' own order: ground first, because its letter is the one that finds a
+# silk site on every board and the other three are read by counting from it
+TP_ORDER = ("GND", "V5", "CAN_H", "CAN_L")
 NET_NAME = {"GND": "GND", "V5": "+5V", "CAN_H": "CAN_H", "CAN_L": "CAN_L"}
 
 HDR_FP = "Steel:Xinyangze_YZ165615055F-04025"
@@ -176,7 +179,7 @@ def design(kind, joint):
         place = {"J1": tgt_at + (90.0,), "J2": zr_at + (zr_rot,)}
         s_axis = "y"
 
-    for i, n in enumerate(PINOUT):
+    for i, n in enumerate(TP_ORDER):
         ref = "TP%d" % (i + 1)
         parts.append((ref, n, TP_FP, "probe pad -- %s; bare copper, no component"
                       % NET_NAME[n], {"1": NET_NAME[n]}))
@@ -238,7 +241,8 @@ def _quality(kind, parts):
     return {
         # 1 A is the spring header's rating (and the ZH contact's): the most this joint
         # may ever be asked to pass. Bus B's real load is a handful of sensor boards.
-        "power_paths": [{"net": "+5V", "from": "J2.2", "to": "J1.%s" % j1_5v, "amps": 1.0}],
+        "power_paths": [{"net": "+5V", "from": "J2.%d" % (PINOUT.index("V5") + 1),
+                         "to": "J1.%s" % j1_5v, "amps": 1.0}],
         # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
         # repeated structure is on. The pass fails on any difference from the routed board.
         "unconnected": {
@@ -270,7 +274,7 @@ def _quality(kind, parts):
                                      "wrong, only POSITION. The k-th contact along the row "
                                      "carries harness.PH_PINOUT[k]; `leg_pogo.py --check` "
                                      "re-reads the ROUTED board and proves it (run "
-                                     "2026-10-04: GND, +5V, CAN_H, CAN_L on all four)",
+                                     "2026-10-07: +5V, GND, CAN_H, CAN_L on all four)",
             "YZ185115035T-04025-01": "a symmetric 1 x 4 row of lands: position, not pad "
                                      "number, decides the net. `leg_pogo.py --check` proves "
                                      "the routed order on all four boards (run 2026-10-04)",
@@ -302,7 +306,7 @@ def _quality(kind, parts):
                   "board's name, which is, is at 1.0 mm or larger on all four"},
         "manual": {
             "M1": "across the joint: `leg_pogo.py --check` reads the four ROUTED boards and "
-                  "finds GND, +5V, CAN_H, CAN_L along the row on every one, so male and "
+                  "finds +5V, GND, CAN_H, CAN_L along the row on every one, so male and "
                   "female agree contact for contact at both joints. Harness side: J2's ways "
                   "1-4 are harness.PH_PINOUT, the one constant every bus-B connector binds "
                   "to; the leads are crimped 1:1. PH and ZH are both polarised housings, "
@@ -316,8 +320,8 @@ def _quality(kind, parts):
             "M5": "bus B is 5 V. Spring header 12 V DC / 1 A (maker's drawing, as recorded "
                   "in src/leg_pogo.py RA_V); JST PH 100 V / 2 A (ePH.pdf p.1); JST ZH "
                   "50 V / 1 A (eZH.pdf p.1). Current is M33",
-            "M9": "four bare 1.0 mm test pads, one per conductor, in a 2 x 2 block in the "
-                  "harness order TP1-TP4 = GND, +5V, CAN_H, CAN_L. Only TP1's letter (G) "
+            "M9": "four bare 1.0 mm test pads, one per conductor, in a 2 x 2 block, ground "
+                  "first: TP1-TP4 = GND, +5V, CAN_H, CAN_L. Only TP1's letter (G) "
                   "finds a silk site on every board, so the ORDER is the label: G marks "
                   "the first pad. No MCU on the board",
             "M31": "decision: the board carries a short name and revision (back, e.g. "
@@ -326,8 +330,8 @@ def _quality(kind, parts):
                    "more: kicad_silk reports no room for the other three pad letters or "
                    "either connector's pin legend on a board 10-13 mm wide whose front is "
                    "all courtyard. Relied on instead: both connectors are polarised and "
-                   "carry the one bus-B order (GND, +5V, CAN_H, CAN_L from pin 1), the "
-                   "test pads repeat it from the lettered pad, and it is written in "
+                   "carry the one bus-B order (+5V, GND, CAN_H, CAN_L from pin 1), the "
+                   "test pads count GND, +5V, CAN_H, CAN_L from the lettered pad, and both are written in "
                    "elec/harness.py and the bring-up notes. JST's own pin-1 marks are "
                    "moulded on the housings",
             "M11": ("finish.py's CAD check: both routed parts present where the CAD draws "

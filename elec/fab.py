@@ -94,8 +94,9 @@ LCSC = {
     "JFC1206-1200FS": "C136345",     # JDT 1206 fuse 2 A 63 V; 11,363 on 2026-10-05 (foot_led_a F1)
     "JFC1206-1300FS": "C136347",     # JDT 1206 fuse 3 A 63 V; 37,944
     "JFC1206-1400FS": "C136349",     # JDT 1206 fuse 4 A 63 V; 45,541
-    "B5819W": "C8598",               # CJ B5819W SL, SOD-123 1 A 40 V Schottky, JLC basic
-    "SMAJ24A": "C148222",            # Littelfuse, SMA, unidirectional: 26.7-29.5 V, 38.9 V at 10.3 A; 19,311
+    "JFC1206-1150FS": "C136344",     # JDT 1206 fuse 1.5 A 63 V, 240 mohm cold; 5,908 on 2026-10-07 (motor_ctrl F1)
+    "DSS16": "C7467023",             # FUXINSEMI, SOD-123 1 A 60 V Schottky; 8,105 on 2026-10-07 (the buck catch diodes)
+    "SMCJ24A": "C310039",            # Brightking, SMC, unidirectional 1.5 kW: 26.7-29.5 V, 38.9 V at 38.6 A; 12,745 on 2026-10-07
     "SMBJ5.0A": "C83333",            # Littelfuse, SMB, unidirectional; 26,310
     "LESD5L5.0CT1G": "C5274293",     # LRC 0.5 pF bidirectional 5 V clamp, SOD-523; 12,023
     "TAXM12M4RFBCCT2T": "C133337",   # Yajingxin 12 MHz 3225, CL 12 pF, ESR 80 ohm max

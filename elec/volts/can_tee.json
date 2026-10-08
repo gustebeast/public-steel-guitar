@@ -1,9 +1,9 @@
 {
  "net_volts": {
   "+24V": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
-   "why": "24 V +10 % steady (brick is +/-3 %: 24.72 V; OVP trips at up to 32.4 V); transient = the SMAJ24A clamp at the brick's 6.67 A, the most this rail can be handed: 35.6 V (breakdown 26.7-29.5 V; its catalogue VC is 38.9 V at 10.3 A)"
+   "why": "24 V +10 % steady (brick is +/-3 %: 24.72 V; OVP trips at up to 32.4 V); transient = the SMCJ24A clamp at 20 A of surge, a bound on what this rail is handed: 34.4 V (breakdown 26.7-29.5 V; its catalogue VC is 38.9 V at 38.6 A)"
   },
   "CAN_H": {
    "peak": 32.0,
@@ -23,7 +23,7 @@
   }
  },
  "pin_volts": {
-  "J1.2": {
+  "J1.1": {
    "max": 250.0,
    "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
@@ -35,11 +35,11 @@
    "max": 250.0,
    "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
-  "J1.6": {
+  "J1.5": {
    "max": 250.0,
    "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
-  "J1.7": {
+  "J1.6": {
    "max": 250.0,
    "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
@@ -47,7 +47,7 @@
    "max": 250.0,
    "src": "rated V -- S8B-XH-A(LF)(SN) (C157914): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
-  "J2.2": {
+  "J2.1": {
    "max": 250.0,
    "src": "rated V -- S4B-XH-A(LF)(SN) (C157925): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
