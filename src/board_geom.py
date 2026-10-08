@@ -44,6 +44,8 @@ GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 
 # Laid OVER cadkit's tables (project wins).
 _HEIGHT: dict = {
+    # output_panel U10, the AD8402 gain pot: 14-lead narrow SOIC, 1.75 max (JEDEC MS-012-AB)
+    "SOIC-14_3.9x8.7mm_P1.27mm": 1.75,
     # the tee's 8-way trunk: the same shell as cadkit's S4B-XH-A, eight ways long. The tee
     # is drawn by hand (electronics.tee_pcb), so this is read only for where a wire leaves it
     "JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal": 6.1,

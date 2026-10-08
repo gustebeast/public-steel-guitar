@@ -59,7 +59,7 @@ So the first diagnostic tool is the datasheet. The audit, finished 2026-09-30:
 | PCM1808, PCM5102A | output_panel U2, U3 | ✅ read, SLES177B §5 and SLAS859C §7, all 14 + 20 pins: match |
 | TLV9061 (SOT-23) | output_panel U7/U8/U9/U11 | ✅ read, SBOS839N Table 5-1: matches (the SC70 column differs — same part number, different pins) |
 | AP2112K (SOT25) | lever_sensor U1, output_panel U6 | ✅ read, Diodes DS39724: matches |
-| MCP4261 | output_panel U10 | ✅ already cited (DS22059 Table 3-1) and cross-checked against KiCad's symbol |
+| AD8402ARZ10 (the MCP4261 until 2026-10-08) | output_panel U10 | ✅ Analog Devices Rev. C, pin configuration drawing and pin function table, which agree: 1 AGND, 2 B2, 3 A2, 4 W2, 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, 11 VDD, 12 W1, 13 A1, 14 B1 |
 | G6K-2F-Y, AO3400A | output_panel K1, Q1 | ✅ read off the rendered drawings (Omron p. B-83, AOS rev 3 p.1): match, including coil polarity and which contact is NC |
 | CH334F | output_panel U4 | ✅ read, WCH V2.91 Table 1-3: every pin the board uses matches. One label differs from the V2.5 the file cites — **pin 18 is PSELF, not NC**. Harmless as built (own pull-up, open = self-powered) but it must never be grounded as a spare |
 | **MT6701QT** | lever_sensor U4 | ❌ **pins right, STRAP WRONG — fixed.** All eight pin numbers match rev 1.9 §1.2. But `MODE` was strapped to **GND**, and the reference circuits (fig. 18 vs fig. 7) show GND = **ABZ**, VDD = I2C: all eleven sensors would have been silent on I2C. The file said "confirm polarity on the first board"; the pin *table* does not say, the *figures* do. R5 now goes to +3V3 |
@@ -142,7 +142,7 @@ pins were unconnected (and until today mis-numbered).
 two ends of the whole audio chain.
 
 **What is missing:** `+5V` is reachable only on J4's VBUS pin; `V5_PRE`, `ADC_VREF`, `DAC_LDOO`,
-`DAC_VNEG` have no access; the pot is write-only (`POT_SDO_NC`); neither converter has a control
+`DAC_VNEG` have no access; the pot is write-only (the 14-lead AD8402 has no data output); neither converter has a control
 port, so a silent DAC and a silent pot look identical.
 
 | # | item | area | signal risk |
@@ -151,7 +151,7 @@ port, so a silent DAC and a silent pot look identical.
 | 3.2 | **Analog loopback with a cable, not a circuit.** A TS lead from the output jack back into the pickup terminal (J8): play a tone from the DAC, record it on the ADC. One measurement exercises DAC → filter → pot → buffer → relay → jack → input buffer → ADC → I2S, and repeating it across the relay states, both jack modes and a pot sweep tests every switched path and reads the gain. It replaces most of the pads this board would otherwise want — and adds nothing to a board that cannot spare the area | 0 (one cable) | 0 — it is not connected in use |
 | 3.3 | **Rail pads, post-route: `+5V`, `DAC_VNEG`, `ADC_VREF`.** `DAC_VNEG` is the PCM5102's charge-pump output: if it is missing the DAC is silent with every digital signal correct, which is otherwise a long hunt. All three are low-impedance DC nodes | 3 pads | none on `+5V`; `DAC_VNEG`/`ADC_VREF` are decoupled DC nodes — site the pad AT the cap, no stub |
 | 3.4 | **`BOOT0` to a bare pad** — same argument and same ⚠ as 2.4; this MCU sits behind the hub, so the ROM loader would enumerate through it | 1 pad | 0 |
-| 3.5 | **Pot readback: wire `POT_SDO` to a MISO pin.** Proves the SPI link and the pot's registers. ⚠ Needs a net out of U1's 0.4 mm QFN, which a post-route repair cannot do (recorded limit) — so it is a placement-time change on a board that currently loses its route to any change. **Rank below 3.2, which answers the same question from outside** | 0 parts, 1 net | 0 (SPI idles between volume changes) |
+| 3.5 | ~~Pot readback~~ **not available since 2026-10-08:** the 14-lead AD8402 has no data output, so there is nothing to read back; 3.2 is the test of the pot. As written for the earlier part: wire `POT_SDO` to a MISO pin. Proves the SPI link and the pot's registers. ⚠ Needs a net out of U1's 0.4 mm QFN, which a post-route repair cannot do (recorded limit) — so it is a placement-time change on a board that currently loses its route to any change. **Rank below 3.2, which answers the same question from outside** | 0 parts, 1 net | 0 (SPI idles between volume changes) |
 
 **Status 2026-09-30 — this board takes NO hardware changes, and that is the finding.** Six
 placement changes were routed on it (a diode move, five USB overhang values); every one split
@@ -369,7 +369,7 @@ unkeyed: way 1 is marked on the silk.
 SMCJ24A's stand-off and the LMR33630's 38 V under an all-motor stop (scope trace on the
 24 V rail).
 
-**Stock seen thin on 2026-10-07:** KPJX-4S-S 19, G6K relay 48, MCP4261 96,
+**Stock seen thin on 2026-10-07** (the relay and the pot have since been changed for well-stocked parts: C47190 and the AD8402)**:** KPJX-4S-S 19, G6K relay 48, MCP4261 96,
 LMR33630BRNXR about 260.
 
 ## Bring-up review, 2026-10-07: the first evening on `motor_ctrl` and `output_panel`
@@ -454,6 +454,13 @@ CH32V307 (`motor_ctrl`, `output_panel`):
   and nothing times it out**: the SN65HVD230 has no dominant time-out.
 * **`motor_ctrl`: PB8 and PB12 (the two CAN RX lines) stay inputs.** Each is driven by
   its transceiver.
+* **`output_panel`: the gain pot (U10, AD8402) has no memory.** It wakes with both
+  wipers at mid-scale. Firmware keeps the gain in the MCU's flash, writes BOTH channels
+  at boot, and saves a moment after the last change, not on every step. The word is 10
+  bits, MSB first: two address bits (00 = the tip channel, 01 = the ring channel) then
+  eight data bits, clocked on the rising edge and latched when CS rises. CS idles high
+  on the board's own divider (3.0 V) while the MCU is in reset; drive it push-pull.
+  Nothing on the MCU reaches the pot's RS or SHDN pins.
 * **`output_panel`: PA15 and PB3 stay inputs.** They are tied on the board to PB12 / PB13
   (I2S2 WS / CK). An "unused pins to outputs" loop shorts them.
 
@@ -492,7 +499,7 @@ its polarity first. Plug it with the supply's output OFF.
    250 mA before calling it a short.** The buck stalls in a 100 mA limit once the hub and
    the MCU are running.
 3. **Before any firmware:** the hub enumerates on a PC through J3, and the direct path
-   J8 to the jack plays (relay released, pot at its factory mid-scale). Neither needs the
+   J8 to the jack plays (relay released, both wipers at mid-scale, about -6 dB: the pot's own reset network puts them there 10 ms after the rail stands). Neither needs the
    MCU, and with both proven a later fault is the firmware's.
 4. **No K1, no sound, in any mode.** If the relay was not placed (stock was thin), bridge
    its pads 2-3 and 6-7 to go on.

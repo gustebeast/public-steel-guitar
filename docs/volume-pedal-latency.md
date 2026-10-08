@@ -17,7 +17,7 @@ it is Linux userspace scheduling on the Pi.**
 | 4 | motor board MCU → Pi | **≈ 1 ms** | USB interrupt endpoint at a 1 ms interval |
 | 5 | **Pi userspace turnaround** | **1–10 ms typical, tens of ms under load** | ⚠ the only soft number in the table |
 | 6 | Pi → output board MCU | **≈ 1 ms** | same, through the panel's hub |
-| 7 | MCU → the gain pot | **0.16 ms** | 16 bits of bit-banged SPI at 100 kHz into the MCP4261 |
+| 7 | MCU → the gain pot | **0.2 ms** | two 10-bit words, one per channel, of bit-banged SPI at 100 kHz into the AD8402 (it was one 16-bit word per channel into the MCP4261, 0.16 ms each) |
 | 8 | pot wiper → audible | **0** | it is an **analog** attenuator. There is no sample, so there is no sample delay |
 
 **Hardware total, excluding the Pi: ≈ 4.3 ms.** The remaining ~45 ms is all available to
