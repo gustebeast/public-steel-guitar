@@ -42,26 +42,25 @@ switch lines — which are static on a human timescale and make quiet neighbours
 
 | way | signal | header pin | BCM | note |
 |---|---|---|---|---|
-| 1 | GND | 6 | — | the clock's return, adjacent to it |
-| 2 | SCLK | 40 | GPIO21 | **SPI1 SCLK** |
-| 3 | SDIN | 38 | GPIO20 | **SPI1 MOSI** |
-| 4 | CS_N | 12 | GPIO18 | **SPI1 CE0** |
-| 5 | DC | 7 | GPIO4 | plain GPIO. **GPIO4 is the default 1-Wire pin: do not enable `w1-gpio` on its default pin** (no `dtoverlay=w1-gpio` in the Pi's config, or give it another `gpiopin`). **Moved from pin 37 / GPIO26 on 2026-10-06** with RES_N: its way leaves the ribbon header round the west end and could no longer get back east |
-| 6 | RES_N | 22 | GPIO25 | plain GPIO. **Moved from pin 33 / GPIO13 on 2026-10-06**: the stock `spi5-1cs` overlay (the foot strip's bus on pins 8 / 10) muxes GPIO13 to SPI5 MISO, so the reset line stopped being driven as soon as it loaded |
-| 7 | +3V3 | 1 | — | see the caveat below |
-| 8 | ENC_A | 29 | GPIO5 | |
-| 9 | ENC_B | 31 | GPIO6 | |
-| 10 | SW_PUSH | 18 | GPIO24 | |
-| 11 | SW_A | 11 | GPIO17 | |
-| 12 | SW_B | 13 | GPIO27 | |
-| 13 | SW_C | 15 | GPIO22 | |
-| 14 | SW_D | 16 | GPIO23 | |
+| 1 | SW_A | 11 | GPIO17 |  |
+| 2 | SW_B | 13 | GPIO27 |  |
+| 3 | SW_C | 15 | GPIO22 |  |
+| 4 | SW_D | 16 | GPIO23 |  |
+| 5 | SW_PUSH | 18 | GPIO24 |  |
+| 6 | ENC_A | 29 | GPIO5 |  |
+| 7 | ENC_B | 31 | GPIO6 |  |
+| 8 | GND | 6 | — | the clock's return, adjacent to it |
+| 9 | SCLK | 40 | GPIO21 | **SPI1 SCLK** |
+| 10 | +3V3 | 1 | — | see the caveat below |
+| 11 | SDIN | 38 | GPIO20 | **SPI1 MOSI** |
+| 12 | DC | 7 | GPIO4 | plain GPIO. **GPIO4 is the default 1-Wire pin: do not enable `w1-gpio` on its default pin** |
+| 13 | CS_N | 12 | GPIO18 | **SPI1 CE0** |
+| 14 | RES_N | 22 | GPIO25 | plain GPIO. Moved from pin 33 / GPIO13 on 2026-10-06: the `spi5-1cs` overlay muxes GPIO13 to SPI5 MISO |
+| 15 | PWR_SW_UP | — | — | the power button's throw: passes through the cap to J4, NOT on a Pi pin |
+| 16 | PWR_SW_DN | — | — | the other throw, likewise |
 
-### ⚠ Do not use GPIO19 (pin 35) for anything
-
-The `spi1-1cs` overlay claims **GPIO18, 19, 20, 21**. GPIO19 is SPI1 MISO and your display is
-write-only, so it is unused — but it is **claimed**, and putting a switch on it would work
-until the overlay loads. It stays empty on purpose.
+This is `harness.UI_RIBBON`, the order both boards are built from (`elec/pi_cap.py` asserts it). It replaced the
+first order on 2026-10-02, when the UI board could not route that one; each signal kept its Pi pin.
 
 ### Pins I deliberately avoided
 
@@ -70,11 +69,12 @@ until the overlay loads. It stays empty on purpose.
 * **GPIO0, 1** (pins 27, 28) — ID_SD/ID_SC, probed at boot for HAT EEPROM.
 * **GPIO2, 3** (pins 3, 5) — I2C1, left free deliberately; this instrument has a CAN bus and
   may yet want I2C.
-* **GPIO14, 15** (pins 8, 10) — UART console. Worth keeping on a machine that boots headless.
+* **GPIO14, 15** (pins 8, 10) — **SPI5, the foot strip's bus** (`spi5-1cs`), so there is NO UART
+  console on this instrument's header: a headless Pi is reached over the network or USB.
 
 After this the cap still has 8 free GPIO, so the station can grow.
 
-## Caveat on +3V3 (way 7)
+## Caveat on +3V3 (way 10)
 
 **The cap does not currently connect header pin 1 or 17 at all** — it carries +5V_PI, +5V_LED,
 GND, and the two SPI lines. Adding this means the display's supply comes off the **Pi's own

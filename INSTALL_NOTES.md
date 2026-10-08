@@ -686,6 +686,18 @@ The rule (user, 2026-10-07; the tuples are in `elec/harness.py`):
 | bus B drops | PH 4 | motor board J2 / J6, leg boards | pedal and lever chains | `5V, GND, CAN_H, CAN_L` |
 | lever / pedal trunk | PH 8 | sensor board J1 | next sensor board | `5V, GND, CAN_H, CAN_L` in on 1-4, its mirror out on 5-8 |
 
+**The optical feed has a different housing at each end**: a 2-way XH at the output panel
+(J9), a 4-way XH at the optical board (J2) with ways 3 and 4 left empty. Way 1 is 24 V at
+both. The optical board has no reverse protection: meter the lead before it is first
+plugged in.
+
+**Only the optical board plugs into the output panel's USB-C (J4).** Its VBUS has no
+current limit of its own, on a 0.6 A rail.
+
+**Two pairs of sockets on the motor board take each other's plug**: J1 and J7 (both
+4-way XH), and J4 (the USB lead) against the bus-B leads on J2 / J6 (all 4-way PH). The
+table further down says what each wrong pairing does; the silk names every socket.
+
 **At a motor the drop ends on screw terminals, not a housing**: 24 V to V+, ground to GND,
 and the pair to CANH / CANL by the names printed on the driver. The lead's colours (red,
 black, yellow, green) are the check; there is no way number at that end.
