@@ -84,13 +84,13 @@ def run_len():
 # underside, and the board stands just high enough for the TALLEST of them to clear the
 # floor -- so the floor is not cut at all (user, 2026-10-02: "raise so we don't have to
 # cut into the chassis floor"). The tallest is board A's cable socket, a side-entry JST XH
-# at 5.75 (user, 2026-10-04: XH is the instrument's 24 V connector, "move the board
+# at 6.00 (JST eXH p.6; 5.75 was the top-entry part's depth) (user, 2026-10-04: "move the board
 # further +z until the XH connector fits"); the seam pogo's barrel is 3.80, the buck's
 # inductor 3.00 and the LED 1.60.
 #
-# ⚠ THE LED IS 4.45 OFF THE WINDOW NOW, and that is the price, paid twice over. It was
+# ⚠ THE LED IS 4.70 OFF THE WINDOW NOW, and that is the price, paid twice over. It was
 # 0.30 when the LED set the trough, 2.50 when the pogo did. The window is 8 mm wide, so a
-# Lambertian row 4.45 above it puts about two thirds of its light straight into the
+# Lambertian row 4.70 above it puts about two thirds of its light straight into the
 # opening where at 2.50 it was about 85 % -- the rest lands on the trough floor either
 # side first. ESTIMATED from the geometry, not measured. Along the run it is BETTER: the
 # depth the pitch is judged against grows with it.
@@ -99,10 +99,10 @@ AIR_GAP    = 0.30                   # the tallest hanging part to the floor: a p
 LED_H      = 1.60                   # XL-5050RGBW body (LCSC C7371891, and see fret_light)
 LED_BODY   = 5.00                   # ...and its plan size, square (the footprint's F.Fab)
 BOARD_T    = 1.60
-XH_H       = 5.75                   # JST S4B-XH-SM4-TB above its board (board_geom's
+XH_H       = 6.00                   # JST S4B-XH-SM4-TB above its board (board_geom's
                                     # figure; elec/foot_led.py asserts the two agree)
 HANG_MAX   = max(PG.POGO_BODY_H, XH_H)
-TROUGH     = HANG_MAX + AIR_GAP     # 6.05: floor to the board's underside
+TROUGH     = HANG_MAX + AIR_GAP     # 6.30: floor to the board's underside
 SLOT_PLAY  = 0.30                   # board edge to the wall -- AND, via the 45° ramp,
                                     # the clearance over the board's top face
 LIP_OVER   = 0.80                   # how far each lip reaches OVER the board: 1 bead
@@ -623,7 +623,7 @@ def leds(half):
 
 
 # ── the lead: board A's socket to the Pi cap ────────────────────────────────────────────
-# One 4-way XH-to-XH lead (GND, 24 V, SCK, SDT). It is DRAWN in src/led_leads.py, as four
+# One 4-way XH-to-XH lead (harness.LED_DROP: 24 V, GND, SCK, SDT). It is DRAWN in src/led_leads.py, as four
 # conductors each on its own contact; what is here is where it may go.
 LEAD_STUB  = 4.0                    # straight out of the mouth before the first bend: the
                                     # XHP-4 housing stands about 4.3 past it
