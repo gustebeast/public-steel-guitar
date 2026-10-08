@@ -374,6 +374,7 @@ enumerate, SWD is the only way to inspect it, and the only way to reflash.
 with SSH or a screen: with the cap on there is no serial console):
 
 ```
+[all]
 dtparam=spi=on                      # SPI0, fret lights: GPIO10, GPIO11
 dtoverlay=spi1-1cs                  # SPI1, display: GPIO20, GPIO21, CS on GPIO18
 dtoverlay=spi5-1cs                  # SPI5, foot lights: GPIO14, GPIO15
@@ -385,9 +386,14 @@ dtoverlay=dwc2,dr_mode=peripheral   # the USB-C port is the gadget port
 `-3cs` (a second chip select lands on a UI switch), `dtoverlay=w1-gpio` (GPIO4 is the
 display's DC line). Take `console=serial0,115200` out of `cmdline.txt`.
 
-**Then remove the Pi's own USB-C supply for good and tape that port.** With the 5 V lead
-from the motor board plugged into the cap, a supply on the Pi feeds the whole 24 V trunk
-backwards at about 4.3 V. The cap says so on the face you can see.
+**If a console is ever needed with the cap on:** GPIO14 (TXD) is J6 way 4 and GPIO15
+(RXD) is J6 way 3, each through 68 ohm, ground on way 2. **Never way 1: that is 24 V.**
+
+**Then remove the Pi's own USB-C supply for good.** With the 5 V lead from the motor board
+plugged into the cap, a supply (or a PC) on the Pi's USB-C feeds the whole 24 V trunk
+backwards at about 4.3 V. The one lead that belongs in that port is the C-to-C from the
+output panel's J2, whose VBUS goes nowhere. Tag the port; do not tape it. The cap says so
+on the face you can see.
 
 **Seating check, before 5 V.** The 40-way socket is not keyed. One row off puts 5 V on
 the Pi's 3V3 rail. Look for a bare header pin at either end and along either side: there
@@ -778,7 +784,7 @@ else.
 | ways 3 / 4 of the lead | meet | result |
 |---|---|---|
 | CAN_H, CAN_L | button lines (lights sockets) | The button lines idle at 10 V behind 9.4 k (2.6 mA at most), which the bus's 60 ohm swallows. The panel reads the line as held low: **the instrument turns off or will not turn on**, and bus A does not talk. No damage. |
-| CAN_H, CAN_L | SCK, SDT at the Pi cap's J3 / J6 | The Pi's two SPI pins, each behind 68 ohm, meet the CAN pair. A 5 V CAN transceiver (the motor drivers', if they are 5 V parts -- not checked) drives CAN_H to 3.5 V typical, 4.5 V worst case, against a 3.3 V pin: up to about 9 mA into the pin's clamp, and the pin itself drives about 25 mA into the bus against its 16 mA. **A stress for as long as it is left plugged, not an over-voltage**; lights and bus A both misbehave at once. |
+| CAN_H, CAN_L | SCK, SDT at the Pi cap's J3 / J6 | The Pi's two SPI pins, each behind 68 ohm, meet the CAN pair. A 5 V CAN transceiver (the motor drivers' is one: TJA1051T/3 on a 5 V supply, U9 on the maker's schematic) drives CAN_H to 3.5 V typical, 4.5 V worst case, against a 3.3 V pin: up to about 9 mA into the pin's clamp, and the pin itself drives about 25 mA into the bus against its 16 mA. **A stress for as long as it is left plugged, not an over-voltage**; lights and bus A both misbehave at once. |
 | CAN_H, CAN_L | SCK, SDT inputs of a fret / foot board | The LED driver's inputs see the bus's 1.5 to 3.5 V. No damage; the lights show noise. |
 | button, button | SCK, SDT at the Pi cap's J3 / J6 (the plug next to its own socket) | 10 V behind 9.4 k through 68 ohm into a Pi pin: 0.7 mA into its clamp. When the Pi drives the pin low the panel reads "off": **the instrument turns itself off.** No damage. |
 | button, button | SCK, SDT inputs of a fret / foot board | The same 0.7 mA at most into the LED driver's input clamps. No damage. |
