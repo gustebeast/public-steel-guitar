@@ -798,7 +798,12 @@ def output_panel():
     # for the life of the board. Five pads cost nothing and remove both problems.
     for _ref, _net, _what in (("TP1", swdio, "SWDIO"), ("TP2", swclk, "SWCLK"),
                               ("TP3", nrst, "NRST"), ("TP4", gnd, "GND"),
-                              ("TP5", v3v3, "target sense")):
+                              # ⚠ TP5 IS FOR THE METER, NOT FOR THE PROBE. It was called
+                              # "target sense", which is what an ST-Link's pin 1 is; the
+                              # WCH-LinkE's 3V3 and 5V pins are power OUTPUTS, side by
+                              # side. No probe wire lands here while 24 V is on, and
+                              # never the 5V pin (bring-up review, 2026-10-07).
+                              ("TP5", v3v3, "+3V3, a meter point: no probe wire")):
         _tp = Part(name="TestPoint", ref_prefix="TP", ref=_ref, dest="NETLIST",
                    tool="skidl", value="SWD",
                    description="SWD pad -- %s; bare copper, no component" % _what,
