@@ -650,8 +650,14 @@ BOARD_NOTES = {
     # pad that also sets how flat the chip sits over the magnet. The pad carries no heat
     # (35 mW) and no current of its own, so it is joined to pin 16, the part's ground
     # pin 0.3 mm away, by copper on its own layer, and pin 16 keeps the via to the plane.
-    "stitch_exceptions": ("U4.17",),
-    "tracks": [("GND", "F.Cu", 0.2, [(11.80, 2.00), (11.80, 1.45)])],
+    "stitch_exceptions": ("U4.17", "U3.1"),    # U3.1: see the pin-1 link at "tracks"
+    # ⚠ AND THE MCU'S PIN 1 (VSS, the corner pin) GOES STRAIGHT INTO ITS OWN BELLY LAND.
+    # Left to the router it ran north along the package's west edge to a via, and with
+    # SCL leaving pin 27 north-eastward that shut SDA -- pin 28, the corner pin between
+    # them -- in a 1 mm pocket with no exit: 1 unconnected on every run since J1's
+    # ways were re-ordered (2026-10-07). 0.7 mm of copper to the land frees the corner.
+    "tracks": [("GND", "F.Cu", 0.2, [(11.80, 2.00), (11.80, 1.45)]),
+               ("GND", "F.Cu", 0.15, [(-0.45, 4.20), (0.10, 4.20), (0.50, 3.80)])],
     # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
     # short net here took it from 4 unconnected to 7. The generator is not better than
     # the router in general -- it wins on the optical board because twenty identical
