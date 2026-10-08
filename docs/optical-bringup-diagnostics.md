@@ -347,7 +347,10 @@ camera, which sees the infrared.
   firmware has set the pin up", not "dead".
 * **No console traffic on TP12 while capturing audio.** SWCLK (on In2) and NRST and
   +3V3A (on B.Cu) run under the stub, behind the ground plane; an idle-high line is
-  quiet, a chattering one is an edge source 3 mm from the MCU's analog supply.
+  quiet, a chattering one is an edge source beside the MCU's analog supply (C110 pad 1,
+  +3V3A, is 0.94 mm north of the pad).
+* **A soldered tail on TP12, and the serial adapter's ground on TP4.** A probe held on
+  the pad can slip onto C110.
 
 **Look for R44 first when the board arrives.** It is the 2512 in series with J2; the fab
 had no model for it. Unplaced, no rail comes up and the buck gets the blame.
@@ -385,7 +388,7 @@ and the board resets in a loop that looks like a crash. (The documents used to g
 |---|---|
 | reconfigured PA13 / PA14, or sleeps in the idle loop | connect under reset, through TP3 |
 | wrong clocks, PLL never locks, fault at start | plain attach |
-| wrote PWR_CR3 for bypass (the core supply turns off; this board has no external one) | power off, hold BOOT0 high (TP8), power on, connect, erase |
+| wrote PWR_CR3 for bypass (the core supply turns off; this board has no external one) | power off, hold BOOT0 high (TP8), power on, connect, erase. PWR_CR3's low byte is written once per power-up: **after any visit to the ROM loader, power-cycle before judging a program that writes it** |
 | RDP level 1 | regression to level 0 (mass erase) |
 | **RDP level 2** | **none. Permanent.** |
 

@@ -97,8 +97,10 @@ Tools section; they are not weighed against anything.
 | **Multimeter** | rails, continuity, and **60 Ω across CAN_H/CAN_L with power off** | that one reading proves both terminators are present and the bus is unbroken, on either bus, from any connector |
 | **Oscilloscope** | buck ripple, CAN wave shape, I2S clock quality | only needed when the cheaper tools say "present but wrong" |
 
-Plus three cables to make once: an **XH and a PH Y-cable** (the bus tap for the CAN adapter),
-and a **¼″ TS → bare-wire loopback lead** (section 3).
+Plus cables to make once: for bus A, **three tails for the CAN adapter crimped into ways
+5 to 7 of the bench trunk's XHP-8** (`docs/bench-order.md`, Tools; this replaces the XH
+Y-cable first written here); for bus B, a **PH Y-cable**; and a **¼″ TS → bare-wire
+loopback lead** (section 3).
 
 ---
 
@@ -383,8 +385,9 @@ not to do. The optical board's own list is in `docs/optical-bringup-diagnostics.
   target-voltage sense pin (UNVERIFIED for clones, which may source 3.3 V there: leave a
   clone's pin off). Flashing works without the reset wire; getting back from a bad flash does not.
   Fit it on day one, not when it is first needed.
-* **Soldered tails, not a clip.** The pads are bare lands, 18 to 27 mm apart on the two
-  CH32V307 boards and 8.9 mm on `optical`. Tails under 30 cm, left on the board. A wire
+* **Soldered tails, not a clip.** The pads are bare lands. On the two CH32V307 boards the
+  four wired pads are two pairs 3 mm apart, the pairs 18 to 29 mm from each other; on
+  `optical` the pads are 8.9 mm apart. Tails under 30 cm, left on the board. A wire
   loop soldered to TP4 is the ground a scope clip can hold.
 * **WCH-LinkE in RISC-V mode** for the two CH32V307 boards.
 * **The LinkE's 3V3 and 5V pins are power OUTPUTS, side by side on its header.** Never a
@@ -429,6 +432,9 @@ CH32V307 (`motor_ctrl`, `output_panel`):
 * **`motor_ctrl`: PA6 is also UART7_TX (remap 1) and USART1_TX (remap 3).** PA6 is PG_5V,
   and its only other node is U5 pin 4, an SOIC lead a grabber holds. Open-drain only: U5
   pulls the same line low when the 5 V rail is bad.
+* **`motor_ctrl`, scope points firmware can wiggle:** PA5 on the pad R18 and R19 share
+  and PA4 on the pad R20 and R21 share (the two rail-sense dividers, 5k and 9k1 of source
+  impedance behind them), besides PA6 at U5 pin 4.
 * **`output_panel`: toggle PC5.** The relay clicks.
 * **`motor_ctrl`, with no firmware at all:** a 10k from TP5 to PA6 (at U5 pin 4) or to PC6
   (at U6 pin 4) is the pull-up the firmware would have supplied, and a meter then reads
@@ -459,7 +465,8 @@ its polarity first. Plug it with the supply's output OFF.
 
 `motor_ctrl`:
 
-0. **Power off, meter:** 120 ohm across J1 ways 3 / 4 (R5), open across J2 ways 3 / 4,
+0. **Power off, meter:** 120 ohm across J1 ways 3 / 4 (R5), no terminator across J2 ways 3 / 4
+   (tens of kilohms or more: the SN65HVD230's own input),
    and +3V3 to GND not a short.
 1. **8 to 12 V, limit 50 mA.** Only the 3V3 converter runs (U5 holds off until 18.1 V).
    TP5 reads 3.31 V at 10 to 25 mA. Attach the probe and flash here: a wrong 5 V rail
