@@ -133,7 +133,7 @@ CAN_OFF = 0.7         # CAN-H / CAN-L conductor separation (both x and y, same
 # diagonal, so CAN-H ran through 24 V hot and CAN-L through ground on every hop -- 18 pairs,
 # ~80 mm3 each over 45.8 mm, never reported (the gate allow-lists wire against wire). Spread
 # as a flat set at 1.8, which clears the fattest neighbours (O1.8 beside O1.3 needs 1.55):
-# ...IN THE CONNECTOR'S OWN PIN ORDER (GND, 24 V, CAN-H, CAN-L on 1-4 / 5-8 -- can_tee J1),
+# ...IN THE CONNECTOR'S OWN PIN ORDER (24 V, GND, CAN-H, CAN-L on 1-4, mirrored on 5-8 -- can_tee J1),
 # so each conductor runs from its own pin to its own lane without crossing a neighbour.
 # (2026-10-01: all four runs share one height now -- see TRUNK_Z_RUN -- so the two O1.8
 #  power conductors need 2.0 between them, not 1.8, which had them tangent. Same 5.4 span.)
@@ -148,6 +148,10 @@ TRUNK_OFF = {"gnd": -2.8, "hot": -0.8, "canh": 1.0, "canl": 2.6}
 # was a FOURTH copy -- the CAD's -- and the one place the EDA side could not see.
 _CAD_NAME = {"GND": "gnd", "V24": "hot", "CAN_H": "canh", "CAN_L": "canl"}
 TRUNK_PIN = {_CAD_NAME[n]: i + 1 for i, n in enumerate(EH.XH_PINOUT)}
+# the 8-way trunk's way for each conductor, IN half and OUT half: the out half is the in
+# half MIRRORED (harness.xh_trunk_pins), so it is looked up by name and never as "+ 4"
+TRUNK_WAY = {(_CAD_NAME[n.rsplit("_", 1)[0]], n.endswith("_OUT")): i + 1
+             for i, n in enumerate(EH.xh_trunk_pins())}
 assert set(TRUNK_PIN) == set(TRUNK_OFF), (
     "elec.harness.XH_PINOUT names a circuit this trunk has no lane for: %s"
     % (set(TRUNK_PIN) ^ set(TRUNK_OFF)))
@@ -284,8 +288,8 @@ CONN = {
     ("motor_ctrl", "J7"): EH.LIGHTS_LINK,
     ("pi_cap", "J2"): EH.PI_5V_LINK,
     ("pi_cap", "J4"): EH.LIGHTS_LINK,
-    ("output_panel", "J7"): ("GND", "V24", EH.NC, EH.NC),
-    ("output_panel", "J9"): ("GND", "V24"),
+    ("output_panel", "J7"): ("V24", "GND", EH.NC, EH.NC),
+    ("output_panel", "J9"): EH.POWER_PAIR,
     ("output_panel", "J10"): EH.PWR_LINK,
     ("can_tee", "J1"): tuple(n.rsplit("_", 1)[0] for n in EH.xh_trunk_pins()),
     ("can_tee", "J2"): EH.XH_PINOUT,
@@ -502,7 +506,7 @@ def tee_pin(i, x, y, cond, out):
     outline, ear included. Every end of every trunk cable sat 4.75 mm (1.9 ways) along the
     row from its contact, on all ten tees."""
     assert on_motor(i), "tee %d is not on a motor: there are no rail tees left" % i
-    return EL.way_pt("can_tee", "J1", TRUNK_PIN[cond] + (4 if out else 0), _tee_at(i, x, y))
+    return EL.way_pt("can_tee", "J1", TRUNK_WAY[cond, bool(out)], _tee_at(i, x, y))
 
 
 def tee_point(i, x, y, which="trunk"):
@@ -1859,15 +1863,17 @@ def lever_bus(nodes):
             c1 = lp.endPoint().toTuple()
         # EACH CONDUCTOR ON ITS OWN WAY, so the model reads as a wiring reference (user).
         # The trunk passes THROUGH a board: this cable leaves the upstream lever on its
-        # OUT half (ways 5-8) and lands on the downstream lever's IN half (1-4), each in
-        # harness.PH_PINOUT order. That is the whole point of the 8-way part.
+        # OUT half (ways 5-8) and lands on the downstream lever's IN half (1-4): the in
+        # half in harness.PH_PINOUT order, the out half its mirror (way 8 to way 1).
         n = len(CANB_NETS)
         seg = 0.0
         # the lateral offsets CANB_NETS carried are gone: a conductor now starts and
         # ends on its OWN contact, so the bundle's spread is the connector's pitch
         for j_net, (net, _off) in enumerate(CANB_NETS):
-            out_pin = pins0[n + 1 + j_net]          # ways 5..8 on the upstream lever
-            in_pin = pins1[1 + j_net]               # ways 1..4 on the downstream one
+            _hn = {"gnd": "GND", "v5": "V5", "h": "CAN_H", "l": "CAN_L"}[net]
+            _tw = EH.ph_trunk_pins()
+            out_pin = pins0[_tw.index(_hn + "_OUT") + 1]    # ways 5..8, mirrored, upstream
+            in_pin = pins1[_tw.index(_hn + "_IN") + 1]      # ways 1..4 on the downstream one
             # SQUARE OUT OF THE PIN for the crimp's length, then along the plug's own
             # axis until the cradle and the board are behind it, and only then turn.
             # Turned at the lead alone, the run reached the next lever straight through
@@ -2050,7 +2056,8 @@ def ctrl_bus_b(lkl):
                 % (k + 1, end, pin))
     legs2 = _fan(_fan(legs2, 0, far, d, max(CANB_LEAD, _so)), -1, j6, _dn, CANB_LEAD)
     _cable("bus B lever head", [(far[k], tuple(d), _j6e[k][2]) for k in range(n)], _j6e)
-    for k, (nm, _pl) in enumerate(CANB_NETS):
+    for k, _hn in enumerate(EH.PH_PINOUT):          # conductor k lands on way k + 1
+        nm = {"GND": "gnd", "V5": "v5", "CAN_H": "h", "CAN_L": "l"}[_hn]
         _run(out, "wire_canb_%s_lkl_0" % nm, legs2[k], CANB_WIRE_OD, "bus B lever head", k)
     check_cables(["bus B pedal cable", "bus B lever head"])
     return out

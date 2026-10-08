@@ -121,25 +121,25 @@ def lever_sensor():
         n.drive = Pin.drives.POWER
 
     # ── the trunk, in and out of one connector ───────────────────────────────
-    # Pins 1-4 are the incoming cable and 5-8 the outgoing one, each in the SAME
-    # order the motor tee uses (GND / +V / CAN_H / CAN_L) so one crimp order
-    # serves every connector in the instrument. The two halves are the same four
-    # nets -- a pass-through, not a switch.
-    # PH, SMT side entry (user, 2026-09-21). Pin order is the XH trunk's (harness.XH_PINOUT)
-    # so one crimp order serves every connector -- but the +V way is the 5 V LEVER bus, which
-    # is why the family differs from the 24 V tees: a lever harness physically cannot mate
+    # Ways 1-4 are the incoming cable in the instrument's one order (harness.PH_PINOUT:
+    # 5 V, GND, CAN_H, CAN_L) and ways 5-8 the outgoing one in its MIRROR (CAN_L, CAN_H,
+    # GND, 5 V), which is how the motor tees' 8-way trunk reads too: the two 5 V ways are
+    # the outside ones, each with ground next to it, and the housing reads the same from
+    # either end. The two halves are the same four nets -- a pass-through, not a switch.
+    # PH, SMT side entry (user, 2026-09-21): the power way is the 5 V LEVER bus, which is
+    # why the family differs from the 24 V tees -- a lever harness physically cannot mate
     # a motor tee. The footprint's two MP tabs are mechanical and carry no net.
     j1 = Part(name="S8B-PH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
               tool="skidl", value="S8B-PH-SM4-TB",
               description="lever bus in (1-4) and out (5-8), 5 V, LCSC C265121",
               footprint="Connector_JST:JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal",
-              pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(
-                  tuple(x + "_IN" for x in ("GND", "V5", "CAN_H", "CAN_L"))
-                  + tuple(x + "_OUT" for x in ("GND", "V5", "CAN_H", "CAN_L")))])
-    gnd += j1[1], j1[5]
-    v5 += j1[2], j1[6]
-    can_h += j1[3], j1[7]
-    can_l += j1[4], j1[8]
+              pins=[Pin(num=i + 1, name=n, func=P)
+                    for i, n in enumerate(harness.ph_trunk_pins())])
+    _trunk = tuple(n.rsplit("_", 1)[0] for n in harness.ph_trunk_pins())
+    harness.check_ways(_trunk, ("V5",), where="J1")
+    _rail = {"GND": gnd, "V5": v5, "CAN_H": can_h, "CAN_L": can_l}
+    for i, n in enumerate(_trunk):
+        _rail[n] += j1[i + 1]
 
     # ── 5 V -> 3V3, AP2112K-3.3TRG1 (LCSC C51118) ─────────────────────────────
     # Replaces the 24 V buck. SOT-23-5 (Diodes Inc DS33549): 1 IN, 2 GND, 3 EN, 4 NC,
@@ -765,10 +765,10 @@ BOARD_NOTES = {
         "power_paths": [
             # the bus passes through: the first board of a chain carries the rest, up to
             # the 565 mA maximum of motor_ctrl's TPS2553 at 49.9 k
-            {"net": "+5V", "from": "J1.2", "to": ["J1.6"], "amps": 0.57},
+            {"net": "+5V", "from": "J1.1", "to": ["J1.8"], "amps": 0.57},
             # this board: MCU ~10 mA at 48 MHz, sensor 10 mA, transceiver 17 mA dominant
             # plus ~35 mA into the bus while it drives -- 80 mA with margin
-            {"net": "+5V", "from": "J1.2", "to": ["R8.1"], "amps": 0.08},
+            {"net": "+5V", "from": "J1.1", "to": ["R8.1"], "amps": 0.08},
             {"net": "+5V_LDO", "from": "R8.2", "to": ["U1.1"], "amps": 0.08},
             {"net": "+3V3", "from": "U1.5", "to": ["U3.17", "U3.5", "U2.3", "U4.13"],
              "amps": 0.08},
@@ -824,8 +824,8 @@ BOARD_NOTES = {
             "S8B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
                              "the board below, No. 1 circuit is on the left. KiCad "
                              "JST_PH_S8B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
-                             "Ways 1-4 and 5-8 are each harness.PH_PINOUT (GND, 5 V, CAN_H, "
-                             "CAN_L); the two MP tabs carry no net. Read 2026-10-04",
+                             "Ways 1-4 are harness.PH_PINOUT (5 V, GND, CAN_H, CAN_L) and "
+                             "5-8 its mirror; the two MP tabs carry no net. Read 2026-10-04",
             "AP2112K-3.3TRG1": "Diodes DS39724 p.1-2, Pin Descriptions, SOT25 column: 1 VIN, "
                                "2 GND, 3 EN (high = on), 4 NC, 5 VOUT. Board: 1 +5V_LDO, 2 GND, "
                                "3 +5V_LDO, 4 open, 5 +3V3. Read 2026-10-04",
@@ -859,8 +859,8 @@ BOARD_NOTES = {
             "M35": "read 2026-10-05. " + 'WCH publishes no errata sheet: its product page lists the datasheet and the reference manual (CH32FV2x_V3xRM) and nothing else, read 2026-10-05. ' + "(CH32V203: same "
                    "manual.) The other parts were not searched for errata sheets",
             "M1": "one PHR-8 housing carries both cables (INSTALL_NOTES, 'one PHR-8 "
-                  "housing'): ways 1-4 are the bus in and 5-8 the bus out, each in "
-                  "harness.PH_PINOUT order (GND, 5 V, CAN_H, CAN_L), the list motor_ctrl "
+                  "housing'): ways 1-4 are the bus in, in harness.PH_PINOUT order (5 V, "
+                  "GND, CAN_H, CAN_L), and 5-8 the bus out in its mirror -- the list motor_ctrl "
                   "J2 / J6 and the leg boards are built from. Both halves are the same "
                   "four nets on this board, so in and out may be swapped without effect. "
                   "The housing is polarised and a PH cannot enter an XH, so a lever lead "
@@ -868,8 +868,8 @@ BOARD_NOTES = {
             "M2": "no polarised two-pad part: D2 / D3 are bidirectional, every capacitor "
                   "is ceramic",
             "M3": "In1 is an unbroken GND plane under the whole board and B.Cu carries a "
-                  "second GND pour. The pass-through's return (up to 0.57 A) goes J1.5 -> "
-                  "plane -> J1.1, 8 mm, directly under its own +5V track. No slot, no "
+                  "second GND pour. The pass-through's return (up to 0.57 A) goes J1.7 -> "
+                  "plane -> J1.2, 10 mm, directly under its own +5V track. No slot, no "
                   "split; the regulator and every IC ground drop into the plane on their "
                   "own vias",
             "M4": "U1 (AP2112K, DS39724): asks 1 uF ceramic at IN and at OUT. C1 1 uF at "
