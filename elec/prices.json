@@ -508,9 +508,9 @@
       ],
       "output_panel": [
         {
-          "usd": 103.28,
+          "usd": 76.53,
           "verified": "m",
-          "what": "Standard PCBA instead of Economic: setup 25.75 + stencil 8.27 + 1.55 per SMT part type, less the 9.79 the model already charges. Worked from the fee rules the 2026-10-06 quotes follow, not read as a line. Forced by the relay C326376 (Standard only); 51 types"
+          "what": "Economic since 2026-10-08, when the relay moved to the reel listing C47190 (the tube listing C326376 was Standard only). This is the earlier Standard adder (103.28, worked from the fee rules of the 2026-10-06 quotes) less the 26.75 the cart fell by (274.44 to 247.69). What remains is the extended-part fees and the model's own shortfall; it was not read as a line"
         }
       ],
       "optical": [
