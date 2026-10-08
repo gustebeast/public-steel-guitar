@@ -131,6 +131,15 @@ def _c(tag, value, desc, fp="Capacitor_SMD:C_0402_1005Metric"):
 # keyed by ref -- then put each part at the other one's coordinates. DRC found it as a
 # solder-mask bridge between parts that should not have been near each other.
 # Caught in one route. It would have been much harder to see in a year.
+def _bind(part, ways, nets):
+    """Join each of `part`'s ways to the net its harness NAME maps to, and hold the order
+    to the standard (harness.py). By name, never by way number."""
+    harness.check_ways(ways, ("V24", "V5"), ("GND", harness.NC), where=part.ref)
+    for i, n in enumerate(ways):
+        if n in nets:
+            nets[n] += part[i + 1]
+
+
 def _d(tag, value, desc, fp="Diode_SMD:D_SOD-523"):
     return Part(name="D", ref_prefix="D", ref=tag, tag=tag, dest="NETLIST", tool="skidl",
                 value=value, description=desc, footprint=fp,
@@ -415,25 +424,18 @@ def output_panel():
     v24_in.drive = Pin.drives.POWER
     v24_in += j6[2], j6[4]
     pgnd += j6[1], j6[3], j6["SH"]
-    # Trunk out on the instrument's standard 4-way: GND, 24 V, and NOTHING on ways 3 and 4.
-    # ⚠ IT CARRIED BOTH RAILS TWICE (GND, 24, 24, GND) UNTIL 2026-10-04, and that put 24 V
-    # and ground on the two ways where every other 4-way XH in the instrument has its
-    # data. Any 4-way XH lead seats here: a motor drop would have had 24 V on CAN_H (a
-    # transceiver rated -4 to +16 V) and the lights lead 24 V on a switch line whose
-    # switch is a 12 V part. The user's rule (harness.py) is GND, power, data, data --
-    # so on a lead with no data, ways 3 and 4 are empty and a wrong plug finds nothing
-    # on them.
-    # What the doubling was for, and why it was not buying it: this lead's far end is the
-    # east tee's trunk header, which takes the rail on ONE contact (ways 1-4 of the 8 are
-    # GND, 24, CAN_H, CAN_L). The pair was always limited by that contact; this end now
-    # matches it. 2.9 A with ten motors moving, on a 3 A contact at each end.
+    # Trunk out on the instrument's standard 4-way (harness.py: power, GND, data, data):
+    # 24 V, GND, and NOTHING on ways 3 and 4. Any 4-way XH lead seats here, so a lead with
+    # no data leaves the data ways empty and a wrong plug finds nothing on them.
+    # One contact per rail: this lead's far end is the east tee's trunk header, which
+    # takes the rail on one contact, so the lead was always limited there. 2.9 A with ten
+    # motors moving, on a 3 A contact at each end.
     j7 = Part(name="B4B-XH-A", ref_prefix="J", ref="J7", tag="J7", dest="NETLIST", tool="skidl",
-              value="B4B-XH-A", description="24 V trunk out: GND, 24 V, two empty ways",
+              value="B4B-XH-A", description="24 V trunk out: 24 V, GND, two empty ways",
               footprint=XH_FP,
               pins=[Pin(num=i + 1, name=n, func=P)
-                    for i, n in enumerate(("PWR_GND", "+24V", "NC3", "NC4"))])
-    pgnd += j7[1]
-    v24 += j7[2]
+                    for i, n in enumerate(("+24V", "PWR_GND", "NC3", "NC4"))])
+    _bind(j7, harness.XH_PINOUT, {"V24": v24, "GND": pgnd})
 
     # ⚠ J10 -- THE SECOND 24 V TRUNK OUTLET, WHICH FEEDS THE CHAIN'S FAR END (user,
     # 2026-09-18, "option A"). J7 feeds the tee chain at the EAST end; this one runs the
@@ -442,27 +444,19 @@ def output_panel():
     # middle, so the worst-loaded segment carries roughly half the fleet instead of all
     # of it -- the single +24V contact between tees is the 3 A ceiling this relieves.
     #
-    # FOUR WAYS, DOUBLED, AND THAT IS DECIDED BY THE LEDS. This feed carries motor_ctrl
+    # TWO CONTACTS PER RAIL, AND THAT IS DECIDED BY THE LEDS. This feed carries motor_ctrl
     # plus the Pi (0.70 A) plus the LED strip (1.05 A at full white) before a motor
     # moves, because the strip is driven from the Pi and so lives at that end. A single
     # conductor pair sits at 89 % of one contact with five motors moving and goes over
     # with ten; doubled it is 2.98 A and 5.24 A against 6 A. See BOM.md's power budget.
     #
-    # ⚠ AND IT IS THE FOURTH 4-WAY XH THAT IS PIN-INCOMPATIBLE WITH A CAN DROP. Ways 3
-    # and 4 are +24V and PWR_GND here; on a CAN drop they are CAN_H and CAN_L, and ways
-    # 1-2 agree in both, so a mis-mated node powers up normally and fails on the signal
-    # pins -- with 24 V on a transceiver rated -4 to +16. The user's decision is to mark
-    # this family rather than key it: DYE THE HOUSINGS, board and cable, at both ends.
-    # That makes a wrong plug visible instead of impossible, which is a weaker guarantee
-    # than a 5-way shell and costs nothing; the trade is recorded in BOM.md.
-    # ⚠ SIX WAYS SINCE 2026-10-04, AND THE SIXTH FINDING ABOVE IS GONE WITH IT. Ways 5 and 6
-    # are the power button's two throws (user: "let's avoid a new cable between the output
-    # and motor and just put the power switch signal on the same cable carrying power from
-    # the output board to the motor board"). A 6-way plug cannot enter a 4-way header, so
-    # this link no longer needs a dyed housing to tell it from a CAN drop.
-    # The ways are the instrument's one order (harness.py): GND, 24 V, the two switch
-    # lines where a 4-way has its data, then 24 V and GND again on ways 5 and 6 -- so the
-    # row reads the same from either end and each rail still has two contacts.
+    # SIX WAYS, IN THE INSTRUMENT'S ONE ORDER (harness.PWR_LINK): 24 V, GND, the power
+    # button's two throws where a 4-way has its data, then GND and 24 V again -- the
+    # 4-way's order and its mirror, so each rail has two contacts, ground stands between
+    # 24 V and a switch line on both sides, and a 6-way plug cannot enter a 4-way header.
+    # (user: "let's avoid a new cable between the output and motor and just put the power
+    # switch signal on the same cable carrying power from the output board to the motor
+    # board")
     j10 = Part(name="B6B-XH-A", ref_prefix="J", ref="J10", dest="NETLIST", tool="skidl",
                value="B6B-XH-A",
                description="24 V trunk out #2 + the power button's throws in -- to "
@@ -472,8 +466,7 @@ def output_panel():
                    # harness.PWR_LINK: the same list motor_ctrl J3 is built from
                    tuple({"GND": "PWR_GND", "V24": "+24V"}.get(w, w)
                          for w in harness.PWR_LINK))])
-    pgnd += j10[1], j10[6]
-    v24 += j10[2], j10[5]
+    _bind(j10, harness.PWR_LINK, {"V24": v24, "GND": pgnd})
 
     # ── THE POWER BUTTON (user, 2026-10-04) ──────────────────────────────────────────────
     # The button is SW2 on the UI board: a latching 2P2T rated 12 V / 0.3 A, so it cannot
@@ -511,7 +504,7 @@ def output_panel():
     # -- pad 1 G, 2 D, 3 S on KiCad's TO-252-2. The supply is 6.67 A: 0.9 W at 20 mOhm, on a
     # part good for 50 C/W on a square inch of copper; the realistic bus is under 5 A, 0.5 W.
     # 60 V because the trunk's clamp was a 48 V one when this was chosen and a 40 V part
-    # would have sat under it. D6 is an SMAJ24A now (38.9 V at its rated pulse); 60 V stays.
+    # would have sat under it. D6 is an SMCJ24A now (38.9 V at its rated pulse); 60 V stays.
     #
     # THE GATE IS A SOFT START, AND IT HAS TO BE. Behind Q2 sit ten motor drivers' bulk
     # capacitors. Closed hard onto a supply that is already up, the only thing limiting
@@ -546,8 +539,7 @@ def output_panel():
     pwr_pull, sw_sense, sw_gate = Net("PWR_PULL"), Net("SW_SENSE"), Net("SW_GATE")
     sw_mid = Net("SW_PU_MID")
     sw_up, sw_dn = Net("PWR_SW_UP"), Net("PWR_SW_DN")
-    sw_up += j10[3]
-    sw_dn += j10[4]
+    _bind(j10, harness.PWR_LINK, {"PWR_SW_UP": sw_up, "PWR_SW_DN": sw_dn})
     pgnd += q3["S"]
     pwr_pull += q3["D"]
     sw_gate += q3["G"]
@@ -677,8 +669,7 @@ def output_panel():
               value="B2B-XH-A", description="24 V out to the optical pickup board",
               footprint="Connector_JST:JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical",
               pins=[Pin(num=i + 1, name=n, func=P)
-                    for i, n in enumerate(("PWR_GND", "+24V"))])
-    pgnd += j9[1]
+                    for i, n in enumerate(("+24V", "PWR_GND"))])
     # ⚠ FUSED (2026-10-04). This outlet is ONE XH contact and a thin lead to a board that
     # has no fuse of its own, fed from a supply that will hold 6.67 A into a fault there:
     # 160 W into whatever failed. 1 A against a 0.12 A load -- the SKU motor_ctrl's F1 is.
@@ -689,7 +680,8 @@ def output_panel():
               footprint="Fuse:Fuse_1206_3216Metric",
               pins=[Pin(num=1, func=P), Pin(num=2, func=P)])
     v24 += f1[1]
-    v24_opt += f1[2], j9[2]
+    v24_opt += f1[2]
+    _bind(j9, harness.POWER_PAIR, {"V24": v24_opt, "GND": pgnd})
 
     # ── U1: the MCU. USB HS to the hub, two I2S units on one clock pair, one GPIO for the relay ──
     # Pin numbers off WCH's QFN-68 column (CH32V303/305/307/317 V3.9, table 3-1):
@@ -730,7 +722,7 @@ def output_panel():
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
-                 64, 65, 26, 27)]   # PB8, PB9, PB0 pot SPI; PB1 the jack mode
+                 21, 20, 26, 27)]   # PA5, PA4, PB0 pot SPI; PB1 the jack mode
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -751,17 +743,26 @@ def output_panel():
     i2s_sdo += u1[38]
     relay += u1[25]
     # ⚠ BIT-BANGED, AND DELIBERATELY. SPI1 (PA5/6/7) and SPI2 (PB13/14/15) are both
-    # spoken for -- SPI2 IS the I2S2 that carries the audio -- and PB8/PB9/PB0 were the
-    # three pins cross-checked as genuinely free against WCH's QFN-68 column. A digital
+    # spoken for -- SPI2 IS the I2S2 that carries the audio -- and PA5/PA4/PB0 are
+    # three pins cross-checked as genuinely free against WCH's QFN-68 column (SPI1 is
+    # not used on THIS board, so its pins are plain port pins here).
+    # ⚠ ALL THREE ON THE EAST ROW, IN THE POT'S OWN ORDER (2026-10-07). CS and SCK were
+    # on PB8 / PB9, pins 64 / 65 of the WEST row, with the pot 20 mm east of the chip:
+    # two lines that had to leave on the side the hub pair, the I2S inputs and BOOT0
+    # leave on and then cross the whole package. Once the slug band was fenced against
+    # vias (`slug_max`) there was no way round and POT_CS stayed open. They are on
+    # pins 21 / 20, in the six-pin run of the east row that nothing else uses. (Pins
+    # 30 / 29 were tried first: 30 stands between SCK's lane and the +3V3 pair's
+    # capacitor, and stayed open the same way.) FIRMWARE: POT_CS is PA5, POT_SCK is PA4. A digital
     # pot is written when the VOLUME CHANGES, not per sample: 16 bits at even 100 kHz is
     # 160 us, four hundred times inside the 50 ms budget below. Spending a hardware SPI
     # peripheral on it would buy nothing and cost a pin map that is already full.
     pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
     jack_mode = Net("JACK_MODE")   # 0 = balanced (inverted tip), 1 = stereo
-    pot_cs += u1[64]
-    pot_sck += u1[65]
+    pot_cs += u1[21]
+    pot_sck += u1[20]
     pot_sdi += u1[26]
-    # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 26 PB0, 27 PB1, 64 PB8, 65 PB9,
+    # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 20 PA4, 21 PA5, 26 PB0, 27 PB1,
     # checked against .ins/ch32v307_qfn68.json -- the same QFN-68 column the other
     # twenty-four pins on this part were taken from. 27 was briefly written down as an
     # inference from "26 is PB0 and they are adjacent", which is reasoning about a table
@@ -1277,8 +1278,10 @@ def output_panel():
     v5 += fb1[2]
 
     # ── diodes ───────────────────────────────────────────────────────────────
-    d1 = _d("D1", "B5819W", "buck catch diode -- the LMR16006 is ASYNCHRONOUS, so this "
-            "is required, not optional", "Diode_SMD:D_SOD-123")
+    # 60 V, not 40: its cathode is the switch node, which stands at VIN, and the rail
+    # clamp's catalogue point is 38.9 V -- 1.1 V under a 40 V part before any ring.
+    d1 = _d("D1", "DSS16", "buck catch diode, 60 V 1 A -- the LMR16006 is ASYNCHRONOUS, so "
+            "this is required, not optional", "Diode_SMD:D_SOD-123")
     sw += d1[1]
     pgnd += d1[2]
     for tag, net in (("D2", thru_dp), ("D3", thru_dm)):
@@ -1315,18 +1318,19 @@ def output_panel():
             "pin 2, and C41 blocks the DC but passes the insertion edge")
     ring_blocked += d7[1]
     agnd += d7[2]
-    # ⚠ SMAJ24A, NOT SMAJ30A (pre-order review, 2026-10-06). The 30 V part does nothing
-    # until 33.3 to 36.8 V and lets the rail reach 48.4 V at its rated pulse -- over the
-    # 40 V Schottkys on both bucks' switch nodes and over the optical board's 38 V
-    # LMR33630, which this diode is the only clamp for. The 24 V part breaks down at 26.7
-    # to 29.5 V (Littelfuse SMAJ table) and holds 38.9 V at 10.3 A; at the brick's whole
-    # 6.67 A a max-breakdown unit stands at 35.6 V. The brick is 24 V +-3 % (24.72 V), two
-    # volts under the lowest breakdown. If the brick ever sat at its over-voltage threshold
+    # ⚠ A 24 V CLAMP, AND THE 1.5 kW ONE (motor_ctrl.py's D8 has the table). It breaks
+    # down at 26.7 to 29.5 V and its voltage then rises with the current it is handed, to
+    # 38.9 V at its rated pulse -- and that pulse is 10.3 A for an SMAJ, 38.6 A for this
+    # SMCJ. Behind it are the optical board's LMR33630 (36 V operating, 38 V absolute),
+    # which has no clamp of its own, and both bucks' switch nodes; the SMCJ reaches 36 V at
+    # 26.7 A of surge and 38 V at 34.9 A, where the SMAJ did at 7.1 and 9.3 A -- under what
+    # a brick limiting at 150 % can hand it. The brick is 24 V +-3 % (24.72 V), two volts
+    # under the lowest breakdown. If the brick ever sat at its over-voltage threshold
     # (105 to 135 %: 25.2 to 32.4 V) instead of tripping, this part would conduct
     # continuously and fail SHORT, which hiccups the supply: a brick fault ends as a dead
-    # rail, not as 32 V on everything. Same land, same polarity.
-    d6 = _d("D6", "SMAJ24A", "24 V rail clamp -- the trunk is shared with ten stepper "
-            "drivers and their inductive kick arrives here", "Diode_SMD:D_SMA")
+    # rail, not as 32 V on everything.
+    d6 = _d("D6", "SMCJ24A", "24 V rail clamp, 1.5 kW -- the trunk is shared with ten "
+            "stepper drivers and their inductive kick arrives here", "Diode_SMD:D_SMC")
     v24 += d6[1]
     pgnd += d6[2]
 
@@ -2058,7 +2062,7 @@ BOARD_NOTES = {
         "C33": (8.60, -16.40, 0.0),       # VNEG 2.2u
         "C25": (7.40, -18.60, 0.0),      # AVDD 10u
         "C14": (10.60, -18.20, 180.0),    # AVDD 0.1 -- its 3V3 pad TOWARD pin 8 (turned away, it was walled in and left open)
-        "R13": (10.60, -19.40, 0.0),      # output filter 470R
+        "R13": (10.60, -19.40, 180.0),    # output filter 470R, its DAC_FILT land over C34's
         "C34": (10.60, -20.60, 0.0),      # output filter 2.2nF
         "R14": (8.60, -20.60, 0.0),      # -6 dB
         # (C28, C30 and C31 moved 2026-10-01: the Kycon inlet's body is 16 wide where the
@@ -2165,9 +2169,11 @@ BOARD_NOTES = {
         # pins (35-39) face north toward the ADC, and each supply group has its capacitor
         # within 3 mm. Offsets from U1 are the ones motor_ctrl routes clean with.
         "U1": (-5.00, -8.00, 90.0),
-        "Y1": (-6.40, -14.55, 0.0),
-        "C15": (-9.30, -14.55, 90.0),
-        "C16": (-3.50, -14.55, 90.0),
+        # 0.45 mm further off U1 than it could be: the 1.2 mm between the pin row and the
+        # crystal's lands is the lane NRST leaves by (see slug_max)
+        "Y1": (-6.40, -15.00, 0.0),
+        "C15": (-9.30, -15.00, 90.0),
+        "C16": (-3.50, -15.00, 90.0),
         "C54": (-10.80, -14.55, 90.0),   # NRST
         "C51": (-11.50, -10.60, 90.0),   # pins 67 + 68
         "C52": (-11.50, -4.60, 90.0),    # pins 50 + 51
@@ -2207,7 +2213,7 @@ BOARD_NOTES = {
         "C9": (11.00, -8.00, 0.0),
         "C10": (-1.90, -14.55, 90.0),    # pins 13 + 17
         "C11": (-11.50, -12.60, 90.0),   # pin 1
-        "R6": (-9.00, -17.00, 0.0),
+        "R6": (-9.60, -17.00, 0.0),
         "R7": (-12.00, -14.55, 90.0),
         # -Y CORNER: THE 24 V ISLAND AND ITS SWITCHER, on their own copper
         # ⚠ SWAPPING J7 AND J9 DOES NOT FIX THE SEVERED BUS -- measured, still 2
@@ -2229,7 +2235,7 @@ BOARD_NOTES = {
         # SWD pads -- the tightest free cluster next to U1; see the note in output_panel()
         "TP1": (-7.00, -0.60, 0.0),      # SWDIO, pin 48, is on U1's north side now
         "TP2": (-10.00, -0.60, 0.0),     # SWCLK, pin 52, at its north-west corner
-        "TP3": (-4.00, -17.80, 0.0),     # NRST, pin 7, south: below the crystal row
+        "TP3": (-4.00, -18.40, 0.0),     # NRST, pin 7, south: below the crystal row, 0.6 mm lower, clear of its courtyard
         "TP4": (-1.00, -17.80, 0.0),
         "TP5": (-13.00, 1.20, 0.0),
         # ⚠ 16.00, NOT 14.00, AND THE TWO MILLIMETRES ARE THE 24 V BUS. At 14.00 this
@@ -2273,7 +2279,9 @@ BOARD_NOTES = {
         "Q3": (-24.00, -13.20, 0.0),
         "D8": (-24.00, -15.60, 0.0),
         "JP1": (-20.25, -13.20, 90.0),
-        "D6": (-12.00, -28.00, 0.0),
+        # SMC: 9.8 x 6.7 of courtyard. Cathode toward J7, 2.45 mm of 1.4 mm copper from
+        # its 24 V post; the anode's land is where J7's ground meets the lane
+        "D6": (-11.70, -28.00, 180.0),
         # THE BUCK AS ONE CELL (2026-10-04). Its nine parts stood in a row on a 5 mm grid:
         # the bootstrap capacitor 11 mm from CB, the feedback divider 15 mm from FB, the
         # catch diode 3.4 mm from SW and the first output capacitor 36 mm from the
@@ -2305,12 +2313,6 @@ BOARD_NOTES = {
         "FB1": (16.60, -23.50, 0.0),
     },
     "refs_on_fab": True,
-    # ⚠ quality A18 (2026-10-07): J6's drawn outline crosses one of its own lands (0.17 mm2
-    # of ink on a mask opening). On the ROUTED board that one shape was moved to .Fab BY
-    # HAND, copper frozen for the order. It is NOT in `strip_silk`: the labeller keeps all
-    # lettering 12 mm clear of a stripped part, and J6 and J10 lost their designators and
-    # way-1 marks when it was tried. A fresh layout brings the shape back, and A18 with it:
-    # the lasting fix is the footprint's own outline.
     "single_sided": True,
     "qty_per_instrument": 1,
     # ⚠ THIS BOARD NEEDS THE RETRY, AND IT IS THE FIRST ONE THAT HAS (2026-09-30). With
@@ -2425,14 +2427,14 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [tuple(_v) for _v in _frozen["
 # leg that carries a trunk.
 #
 # THE RAILS TAKE A LAYER EACH UNDER THE CONNECTOR ROW, which is the way out of the trap the
-# net_widths note describes: J7 and J10 are wired PWR_GND, +24V, +24V, PWR_GND, so two lanes
-# on ONE layer cannot both tap down. +24V runs on B.Cu, PWR_GND on F.Cu, both along
+# net_widths note describes: two lanes on ONE layer cannot both tap down into an
+# interleaved row. +24V runs on B.Cu, PWR_GND on F.Cu, both along
 # y -31 -- 1.0 below the pad row and 1.0 off the board edge -- and every pad is
 # through-hole, so each lane reaches its own pads with a plain stub and no via.
 #
 # J6 is the Kycon 4-pin jack: +24V_IN on pins 2 and 4, the column on the J10 side, and
 # PWR_GND on pins 1 and 3, the column on the lane's side (the pinout note is at j6).
-# ⚠ J10's +24V PADS ARE 2 AND 3, NOT PAD 1 -- pad 1 is PWR_GND.
+# J10's +24V pads are its outside ones, ways 1 and 6; J7's is way 1, its west end.
 # Authored in the PRE-growth frame like the placements, shifted here like the repairs.
 _g = GROW_X / 2.0
 _p1, _p2 = (24.250, J6_Y - 2.9), (24.250, J6_Y + 2.9)
@@ -2442,20 +2444,29 @@ _LANE_Y, _ROW_Y = -31.0, -28.0
 #   +24V_IN  pin 4 joined straight to pin 2, then from pin 2 down the channel between
 #            the pin rows and out of its west end into Q2's source lead.
 #   +24V     starts at Q2's TAB. West along the lane on F.Cu -- the tab is on F.Cu, so the
-#            trunk head (J7) gets there with no via -- and to J10 on B.Cu: four vias in the
-#            tab (0.8 mm3 of barrel in a land printed with 4.5), east under Q2's leads at
-#            y -27.4, north at x 19.9, and along under J10's row.
+#            trunk head (J7 way 1, the row's west end) gets there with no via -- and to
+#            J10 on B.Cu: vias in the tab, east under Q2's leads at y -27.4, north at
+#            x 19.9, and along under J10's row to its two outside ways.
 #   PWR_GND  therefore swaps layer east of J7: B.Cu along the lane from the inlet's pin 3,
-#            under Q2, to x 6.0 -- just east of J7's row. West of J7 it stays on F.Cu,
-#            where every ground pad of the buck's corner drops onto it. The two halves
-#            join through J7's through-hole pad 1: the B.Cu half turns north at x 6.0,
-#            passes over the top of the row at y -25.6 and comes down into pad 1.
-#            (Until 2026-10-04 it went through pad 4 as well; ways 3 and 4 are empty now.)
-#   J10's return (2026-10-06) leaves pin 3 on F.Cu, passes between the jack's two pegs,
-#            through the shield tab's land and north along x 33.75 into J10's way 1.
+#            under Q2, to x 6.0 -- just east of J7's row -- north past the row, west
+#            over the top of it at y -25.6 and down into way 2. From that post it carries
+#            on WEST on F.Cu, over the top of way 1 and of the clamp's cathode land, into
+#            the clamp's anode land, and from there down onto the lane the buck's corner
+#            hangs from: the clamp is across J7's two posts by 2.5 mm of 1.4 mm copper
+#            one way and 15 mm of 1.0 mm the other, with no via in either.
+#   J10's return leaves pin 3 on F.Cu, passes between the jack's two pegs, through the
+#            shield tab's land and north along x 33.75 into the FRONT SHELL LEG's land
+#            (the same net), and from that land 3.6 mm straight north into way 2.
 _QS = (19.90, -26.22)          # Q2 source pad;  tab spans x 10.40..16.80, y -31.4..-25.6
-# ways 1..6 with the part turned 180: GND, 24 V, switch, switch, 24 V, GND
+# ways 1..6 with the part turned 180: 24 V, GND, switch, switch, GND, 24 V
 _J10_PADS = (33.45, 30.95, 28.45, 25.95, 23.45, 20.95)
+_J10_V = tuple(_J10_PADS[i] for i, w in enumerate(harness.PWR_LINK) if w == "V24")
+_J10_G = tuple(_J10_PADS[i] for i, w in enumerate(harness.PWR_LINK) if w == "GND")
+# J7 (rot 0, centred on x 0): way n at x -3.75 + 2.5 (n - 1)
+_J7_V = -3.75 + 2.5 * harness.XH_PINOUT.index("V24")
+_J7_G = -3.75 + 2.5 * harness.XH_PINOUT.index("GND")
+# D6's lands (SMC, K toward J7): cathode, anode
+_D6_K, _D6_A = -11.70 + 3.40, -11.70 - 3.40
 # EIGHT 0.3 mm VIAS, TWO IN EACH OF THE TAB'S FOUR PASTE WINDOWS (2026-10-04). They were
 # four 0.4 mm ones in the two northern windows: 0.40 mm3 of barrel under 1.01 mm3 of paste,
 # enough to starve the joint that carries the whole supply (quality A12). Two 0.3 mm
@@ -2473,65 +2484,69 @@ BOARD_NOTES["tracks"] += [
         # FB1 on one side and pin 1's land on the other, 0.33 mm clear of each.
         ("+24V_IN", "F.Cu", 4.2, [_p2, (24.050, -22.200), (20.850, -23.500),
                                   (20.150, -25.400), _QS]),
-        # +24V on F.Cu: the tab -> the lane -> J7 pad 2
-        ("+24V", "F.Cu", 2.0, [(11.5, _LANE_Y), (-1.250, _LANE_Y)]),
-        ("+24V", "F.Cu", 1.4, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
-        # (the buck's feed leaves J7 pad 2 on B.Cu, in the buck's-corner block below)
-        ("+24V", "B.Cu", 1.4, [(-1.250, _ROW_Y), (-1.250, _LANE_Y)]),
-        # +24V on B.Cu: the tab's vias -> east -> north -> under J10 -> pads 2 and 3
+        # +24V on F.Cu: the tab -> the lane -> J7 way 1
+        ("+24V", "F.Cu", 2.0, [(11.5, _LANE_Y), (_J7_V, _LANE_Y)]),
+        ("+24V", "F.Cu", 1.4, [(_J7_V, _ROW_Y), (_J7_V, _LANE_Y)]),
+        # (the buck's feed leaves J7 way 1 on B.Cu, in the buck's-corner block below)
+        ("+24V", "B.Cu", 1.4, [(_J7_V, _ROW_Y), (_J7_V, _LANE_Y)]),
+        # +24V on B.Cu: the tab's vias -> east -> north -> under J10 -> ways 6 and 1
         # ⚠ x 19.9, NOT 21.2: the inlet's rear shell legs are through-hole lands on PWR_GND
         # at x 21.30..24.50 (y -15.2 and -30.8), and a through-hole land is on EVERY layer.
         # At 21.2 this bar ran straight through the north one.
         # (2.6 mm under the tab, to take both rows of vias; 0.35 mm above the PWR_GND lane)
         ("+24V", "B.Cu", 2.6, [(11.3, -28.35), (19.9, -28.35)]),
         ("+24V", "B.Cu", 2.0, [(19.9, -28.35), (19.9, -12.9), (20.9, -11.9),
-                               (_J10_PADS[1], -11.9)]),
-        ("+24V", "B.Cu", 1.2, [(_J10_PADS[1], -11.9), (_J10_PADS[1], _J10_Y)]),
-        ("+24V", "B.Cu", 1.2, [(_J10_PADS[4], -11.9), (_J10_PADS[4], _J10_Y)]),
+                               (_J10_V[0], -11.9)]),
+        ("+24V", "B.Cu", 1.2, [(_J10_V[0], -11.9), (_J10_V[0], _J10_Y)]),
+        ("+24V", "B.Cu", 1.2, [(_J10_V[1], -11.9), (_J10_V[1], _J10_Y)]),
         # PWR_GND on B.Cu: the inlet's pin 3 -> the lane -> x 6.0, 0.65 mm east of J7's
         # empty way 4 ...
         ("PWR_GND", "B.Cu", 2.0, [(6.000, _LANE_Y), (_p3[0], _LANE_Y), _p3]),
-        # ...north past the row, west over the top of it, and down into pad 1
-        ("PWR_GND", "B.Cu", 1.5, [(6.000, _LANE_Y), (6.000, -25.6), (-3.750, -25.6),
-                                  (-3.750, _ROW_Y)]),
-        ("PWR_GND", "F.Cu", 1.2, [(-3.750, _ROW_Y), (-3.750, _LANE_Y)]),
+        # ...north past the row, west over the top of it, and down into way 2
+        ("PWR_GND", "B.Cu", 1.5, [(6.000, _LANE_Y), (6.000, -25.6), (_J7_G, -25.6),
+                                  (_J7_G, _ROW_Y)]),
         # PWR_GND: pin 1 -> pin 3 on B.Cu
         ("PWR_GND", "B.Cu", 2.0, [_p1, _p3]),
         # J10's return on F.Cu: pin 3, between the pegs (3.3 mm of board between two
-        # 1.7 mm holes), through the shield tab's land, north past the front shell leg's
-        # land (same net) and into way 1
+        # 1.7 mm holes), through the shield tab's land, north into the front shell leg's
+        # land (same net), and out of that land's north side into way 2
         ("PWR_GND", "F.Cu", 2.0, [_p3, (30.400, -23.000), (33.750, -23.000),
-                                  (33.750, -11.000)]),
-        ("PWR_GND", "F.Cu", 1.5, [(33.750, -11.000), (_J10_PADS[0], -10.700),
-                                  (_J10_PADS[0], _J10_Y)]),
-        # ...and on from way 1 to way 6 round the NORTH of the row, 1.0 mm (half the
-        # return, 1.9 A). Not along the south: C28's ground via has exactly one site, 1.3 mm
-        # west of way 6 and below it, and a leg coming in under the row closes it.
-        ("PWR_GND", "F.Cu", 1.0, [(_J10_PADS[0], _J10_Y), (_J10_PADS[0], -6.9),
-                                  (_J10_PADS[5], -6.9), (_J10_PADS[5], _J10_Y)]),
+                                  (33.750, -15.200), (31.400, -15.200)]),
+        ("PWR_GND", "F.Cu", 1.5, [(31.400, -15.200), (_J10_G[0], -14.000),
+                                  (_J10_G[0], _J10_Y)]),
+        # ...and on from way 2 to way 5 round the NORTH of the two switch ways, 1.0 mm
+        # (half the return, 1.9 A). Not along the south: the 24 V bar is under there on
+        # B.Cu and C28's ground via has its one site beside way 6.
+        ("PWR_GND", "F.Cu", 1.0, [(_J10_G[0], _J10_Y), (_J10_G[0], -6.9),
+                                  (_J10_G[1], -6.9), (_J10_G[1], _J10_Y)]),
     ]]
 
 # ── THE BUCK'S CORNER, DECLARED TOO (2026-10-01) ─────────────────────────────────────────
 # Three things were wrong west of J7, all found by tracing the 0.2 mm tracks the retry laid:
 #   * D6, THE SURGE DIODE, hung off 14 mm of 0.2 mm track. A clamp is only as good as the
-#     copper to it: it is on 1.0 mm now, straight off J7's +24V pins and the PWR_GND lane.
+#     copper to it: its cathode is 2.5 mm of 1.4 mm copper from J7's 24 V post, and its
+#     anode land is the junction of J7's ground and the PWR_GND lane.
 #   * THE BUCK'S HOT LOOP (C2 -> U5 -> SW -> D1 -> C2) returned from D1 through ten vias,
 #     hopping F.Cu / In2 at 0.2 mm -- the "worst switcher loop in the fleet" the J6/J7 note
 #     records. D1's anode now goes to C2's ground pad on 0.8 mm of F.Cu, 6 mm, no via.
 #   * THE FEED AND RETURN were 0.2 mm where the board asks for 0.5 (`net_widths`).
-# How it fits: the PWR_GND lane carries on west along the row on F.Cu, so every ground
-# pad drops straight onto it; the +24V feed comes along UNDER it on B.Cu and rises through
+# How it fits: the PWR_GND lane runs west from the clamp's anode along the row on F.Cu, so
+# every ground pad drops straight onto it; the +24V feed comes along UNDER it on B.Cu and rises through
 # one via beside C2, which keeps F.Cu between D1 and C2 clear for the loop's return.
 BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("+24V", -25.925 + _g, -26.600)]
 BOARD_NOTES["tracks"] += [
     (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
-        # D6: +24V over the top of J7's pad 1, PWR_GND straight down to the lane
-        ("+24V", "F.Cu", 1.0, [(-1.250, _ROW_Y), (-1.250, -26.200), (-14.000, -26.200),
-                               (-14.000, _ROW_Y)]),
-        ("PWR_GND", "F.Cu", 1.2, [(-10.000, _ROW_Y), (-10.000, _LANE_Y)]),
-        # the lane, west of J7: 1.2 mm, on under the buck cell to C5's ground pad. Pin 2
-        # reaches it under the package; C2's ground pad shares D1's drop to it
-        ("PWR_GND", "F.Cu", 1.2, [(-3.750, _LANE_Y), (-34.950, _LANE_Y)]),
+        # D6: its cathode straight off J7's 24 V post ...
+        ("+24V", "F.Cu", 1.4, [(_J7_V, _ROW_Y), (_D6_K, _ROW_Y)]),
+        # ... and J7's ground post to its anode: north out of the post, west over the top
+        # of the 24 V post and of the cathode land (0.45 mm above it), down into the
+        # anode land, and on down to the lane
+        ("PWR_GND", "F.Cu", 1.0, [(_J7_G, _ROW_Y), (_J7_G, -25.400), (_D6_A, -25.400),
+                                  (_D6_A, _ROW_Y)]),
+        ("PWR_GND", "F.Cu", 1.2, [(_D6_A, _ROW_Y), (_D6_A, _LANE_Y)]),
+        # the lane, west of the clamp: 1.2 mm, on under the buck cell to C5's ground pad.
+        # Pin 2 reaches it under the package; C2's ground pad shares D1's drop to it
+        ("PWR_GND", "F.Cu", 1.2, [(_D6_A, _LANE_Y), (-34.950, _LANE_Y)]),
         ("PWR_GND", "F.Cu", 0.4, [(-30.000, _LANE_Y), (-30.000, _ROW_Y), (-31.140, _ROW_Y)]),
         ("PWR_GND", "F.Cu", 0.4, [(-27.300, -28.960), (-27.300, _LANE_Y)]),         # C3
         ("PWR_GND", "F.Cu", 0.4, [(-33.610, -28.950), (-33.610, _LANE_Y)]),         # R12
@@ -2539,7 +2554,7 @@ BOARD_NOTES["tracks"] += [
         ("PWR_GND", "F.Cu", 0.5, [(-34.950, _LANE_Y), (-35.800, _LANE_Y),
                                   (-35.800, -29.000)]),                             # R60
         # the buck's feed: B.Cu under the lane -> a via under D1 -> C2 -> C3 -> U5 pin 5
-        ("+24V", "B.Cu", 0.8, [(-1.250, _LANE_Y), (-25.925, _LANE_Y), (-25.925, -26.600)]),
+        ("+24V", "B.Cu", 0.8, [(_J7_V, _LANE_Y), (-25.925, _LANE_Y), (-25.925, -26.600)]),
         ("+24V", "F.Cu", 0.6, [(-25.925, -26.600), (-25.925, _ROW_Y)]),
         ("+24V", "F.Cu", 0.5, [(-25.925, _ROW_Y), (-28.860, _ROW_Y)]),
         # the hot loop's return: D1 anode straight down to the lane, through C2's
@@ -2566,40 +2581,54 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [("PWR_GND", 6.000 + _g, -25.6
 
 
 
-# ── HUB_DN1, DRAWN (2026-10-04) ──────────────────────────────────────────────────────────
+# ── HUB_DN1, DRAWN ───────────────────────────────────────────────────────────────────────
 # U4.11/12 face east at U1.61/62 across 3.8 mm, and the two ends disagree about which
 # conductor is north: DM is the southern pin at the hub and the northern one at the MCU.
 # No rotation of either part changes that (turning a pair never swaps it), so ONE crossover
 # is intrinsic. DP takes it: down to B.Cu, under DM, and up again beside its pin. DM stays
-# on F.Cu the whole way. Both leave the hub north-east, over the DN2 pair's two vias
-# (0.57 and 0.75 mm from their centres), and run east below C52's pad.
-# The snapshot this replaces put two vias in EACH conductor and 8 mm on two layers.
+# on F.Cu the whole way. Both leave the hub north-east, over the DN2 pair's two vias, and
+# DM comes south 1.6 mm off U1's pad ends -- not hard against them: that strip is the
+# only via site pins 58 and 60 have (below).
 BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [
-    ("HUB_DN1_DP", -10.55 + _g, -5.80), ("HUB_DN1_DP", -10.75 + _g, -8.60)]
+    ("HUB_DN1_DP", -10.55 + _g, -5.80), ("HUB_DN1_DP", -11.15 + _g, -8.75)]
 BOARD_NOTES["tracks"] += [
     (_n, _l, _w, [(_x + _g, _y) for _x, _y in _pts]) for _n, _l, _w, _pts in [
         ("HUB_DN1_DM", "F.Cu", 0.2, [(-13.562, -7.25), (-13.00, -7.25), (-12.05, -6.30),
-                                     (-11.00, -6.30), (-10.20, -7.10), (-10.20, -8.00),
-                                     (-9.80, -8.40), (-8.938, -8.40)]),
+                                     (-11.35, -6.30), (-10.95, -6.70), (-10.95, -8.05),
+                                     (-10.60, -8.40), (-8.938, -8.40)]),
         ("HUB_DN1_DP", "F.Cu", 0.2, [(-13.562, -6.75), (-13.00, -6.75), (-12.05, -5.80),
                                      (-10.55, -5.80)]),
-        ("HUB_DN1_DP", "B.Cu", 0.2, [(-10.55, -5.80), (-10.55, -8.40), (-10.75, -8.60)]),
-        ("HUB_DN1_DP", "F.Cu", 0.2, [(-10.75, -8.60), (-10.55, -8.80), (-8.938, -8.80)]),
+        ("HUB_DN1_DP", "B.Cu", 0.2, [(-10.55, -5.80), (-10.55, -8.15), (-11.15, -8.75)]),
+        ("HUB_DN1_DP", "F.Cu", 0.2, [(-11.15, -8.75), (-11.10, -8.80), (-8.938, -8.80)]),
     ]]
 
 
 # ── THE QUALITY RECORD (cadkit/PCB_QUALITY.md) ───────────────────────────────────────────
-# -- I2S3'S CK AND SD LEAVE U1 INWARD (2026-10-04) --
+# ⚠ NOTHING LEAVES U1 INWARD (pre-order review, 2026-10-07; motor_ctrl.py has the
+# argument). The belly land is 5.2 mm and the slug may be 6.5: six signal vias stood in
+# that band with solder mask alone between them and a slug at ground. `slug_max` fences
+# it for the router and for quality A21.
+# -- I2S3'S CK AND SD LEAVE U1 OUTWARD, INTO THE STRIP THE HUB PAIR LEFT --
 # Pins 58 and 60 face west, 0.4 mm apart either side of an unused pin and directly above
-# the hub pair's two (61, 62). The pair's hand-drawn DM runs north past them 0.75 mm off
-# the pad ends, so there is no room for a via on that side and no way round on F.Cu.
-# Each gets a via between the pad row and the exposed pad, the exit the old pin-37 escape
-# used on the north row: 0.88 mm in from the pad centre, 0.16 off the pad's copper.
+# the hub pair's two (61, 62). Each gets a via 0.55 mm beyond the pad ends: 0.25 mm off
+# the ends of the unused pins beside it, 0.25 off the hub pair's DP on the back, and
+# 0.25 above DM where it turns in to pin 61.
+BOARD_NOTES["slug_max"] = {"U1": (6.5, "WCH QFN68 outline: exposed pad 6.2 +0.3 / -1.2")}
 BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [
-    ("I2S_CK", -8.058 + _g, -7.20), ("I2S_SDI", -8.058 + _g, -8.00)]
+    ("I2S_CK", -9.90 + _g, -6.85), ("I2S_SDI", -9.90 + _g, -7.75)]
+# -- NRST (pin 7, south row) faces the crystal, with OSC_IN and OSC_OUT leaving beside it:
+# its own via, midway between the pin row and Y1's lands.
+BOARD_NOTES["vias"] += [("NRST", -5.05 + _g, -12.95)]
 BOARD_NOTES["tracks"] += [
-    ("I2S_CK", "F.Cu", 0.15, [(-8.938 + _g, -7.20), (-8.058 + _g, -7.20)]),
-    ("I2S_SDI", "F.Cu", 0.15, [(-8.938 + _g, -8.00), (-8.058 + _g, -8.00)])]
+    ("NRST", "F.Cu", 0.15, [(-5.80 + _g, -11.94), (-5.80 + _g, -12.45), (-5.30 + _g, -12.95),
+                            (-5.05 + _g, -12.95)]),
+    # the DAC's output filter: R13's land stands over C34's, 1.2 mm apart
+    ("DAC_FILT", "F.Cu", 0.25, [(10.12 + _g, -20.60), (10.12 + _g, -19.40)]),
+]
+BOARD_NOTES["tracks"] += [
+    ("I2S_CK", "F.Cu", 0.15, [(-8.938 + _g, -7.20), (-9.55 + _g, -7.20), (-9.90 + _g, -6.85)]),
+    ("I2S_SDI", "F.Cu", 0.15, [(-8.938 + _g, -8.00), (-9.55 + _g, -8.00), (-9.80 + _g, -7.75),
+                               (-9.90 + _g, -7.75)])]
 
 BOARD_NOTES["quality"] = {
     "power_paths": [
@@ -2609,13 +2638,13 @@ BOARD_NOTES["quality"] = {
         # behind the switch. J7 heads the motor trunk (bus A's east feed, 2.9 A with ten
         # movers slewing); J10 is feed 2, two contacts at 2.7 A each -- motor_ctrl's own
         # record splits that into bus A's west feed, the Pi's buck and the lights
-        {"net": "+24V", "from": "Q2.2", "to": ["J7.2"], "amps": 2.9},
+        {"net": "+24V", "from": "Q2.2", "to": ["J7.1"], "amps": 2.9},
         # ⚠ 3.8 A, NOT THE 5.4 THAT motor_ctrl's FOUR LOADS ADD UP TO: the supply is 6.67 A
         # and bus A is fed from both ends, so with J7 carrying its 2.9 A share there is
         # 3.77 A left for this connector whatever is switched on behind it.
-        {"net": "+24V", "from": "Q2.2", "to": ["J10.2", "J10.5"], "amps": 3.8},
+        {"net": "+24V", "from": "Q2.2", "to": ["J10.1", "J10.6"], "amps": 3.8},
         {"net": "+24V", "from": "Q2.2", "to": ["F1.1"], "amps": 0.12},
-        {"net": "+24V_OPT", "from": "F1.2", "to": ["J9.2"], "amps": 0.12},
+        {"net": "+24V_OPT", "from": "F1.2", "to": ["J9.1"], "amps": 0.12},
         {"net": "+24V", "from": "Q2.2", "to": ["U5.5"], "amps": 0.1},
         # the board's own 5 V: 257 mA worst case (the budget at U5), through the bead
         {"net": "V5_PRE", "from": "L1.2", "to": ["FB1.1"], "amps": 0.3},
@@ -2645,7 +2674,7 @@ BOARD_NOTES["quality"] = {
         "J2.[AB]5": "J2 is not a port: the far end of the pass-through to the Pi, no CC resistor (note at J2)",
         "J7.[34]": "the trunk head carries no data: ways 3 and 4 have no conductor",
         "U1": {
-            "pins": "2 3 4 8 9 10 11 14 15 16 19 20 21 22 23 24 28 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 66",
+            "pins": "2 3 4 8 9 10 11 14 15 16 19 22 23 24 28 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66",
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U10.13": "MCP4261 SDO: the pot is written, never read back",
@@ -2762,7 +2791,7 @@ BOARD_NOTES["quality"] = {
                     "at -Y and pad 1 at -X. Way names are harness.PWR_LINK, the list "
                     "motor_ctrl J3 is built from. Read 2026-10-04",
         "B4B-XH-A": "the same JST drawing and KiCad family as the 6-way (eXH.pdf p.5). "
-                    "J7: 1 PWR_GND, 2 +24V, 3 and 4 empty -- the instrument's order "
+                    "J7: 1 +24V, 2 PWR_GND, 3 and 4 empty -- the instrument's order "
                     "(harness.py) with no data ways used",
         "NMJ6HCD2": "Neutrik NMJ6HCD2 drawing: T / R / S contacts and their normalling "
                     "contacts TN / RN / SN. KiCad's Jack_6.35mm_Neutrik_NMJ6HCD2 names the "
@@ -2793,7 +2822,7 @@ BOARD_NOTES["quality"] = {
                         "5 OSC_IN, 6 OSC_OUT, 7 NRST, 12 VSSA, 13 VDDA, 17/31/51/67 VIO, "
                         "18/49 VSS, 32/50/68 VDD, 25 PC5, 26 PB0, 27 PB1, 35 PB12, 36 PB13, "
                         "38 PB15, 39 PC6, 48 PA13/SWDIO, 52 PA14/SWCLK, 53 PA15, 58 PB3, 60 PB5, 61 PB6 = "
-                        "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, 64 PB8, 65 PB9, pad VSS",
+                        "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, pad VSS; 20 PA4, 21 PA5 off the drawing 2026-10-07",
         "MCP4261-103E/ST": "Microchip DS22059 Table 3-1, 14-lead column: 1 CS, 2 SCK, "
                            "3 SDI, 4 VSS, 5 P1B, 6 P1W, 7 P1A, 8 P0A, 9 P0W, 10 P0B, 11 WP, "
                            "12 SHDN, 13 SDO, 14 VDD. Read 2026-09-30 and confirmed from a "
@@ -2836,11 +2865,11 @@ BOARD_NOTES["quality"] = {
     },
     "waive": {
         # A1 reports one barrel and does not add parallel vias up. The tab has eight.
-        "A1:+24V Q2.2>J10.2": "eight 0.3 mm vias join the tab to the B.Cu bar, two in each "
+        "A1:+24V Q2.2>J10.1": "eight 0.3 mm vias join the tab to the B.Cu bar, two in each "
                               "paste window: 8 x 0.67 mm of equivalent barrel = 5.4 mm "
                               "against 2.0 mm for 3.8 A, and 4.12 mm if the whole supply "
                               "went this way; any four carry it",
-        "A1:+24V Q2.2>J10.5": "as J10.2: the same eight vias",
+        "A1:+24V Q2.2>J10.6": "as J10.1: the same eight vias",
         "A6:J2.A5": "J2 is not a port: it is the far end of a wire from J1 to the Pi's "
                     "gadget socket, with VBUS dead-ended on purpose (the note at J2). "
                     "Nothing behind it sources or sinks, so there is no VBUS for a CC "
@@ -2883,18 +2912,18 @@ BOARD_NOTES["quality"] = {
         "M1": "J6: Mean Well's R7B plug, 1 +V, 2 -V, 3 -V, 4 +V (GST160A-SPEC) in its own "
               "numbering = Kycon pins 2 and 4 +V, 1 and 3 -V, on a jack whose "
               "footprint was drawn from Kycon's land pattern; metered before first power (bring-up "
-              "step 0). J10 <-> motor_ctrl J3: harness.PWR_LINK (GND, 24, SW_UP, SW_DN, 24, GND), a "
-              "6-way straight lead, both ends built from that list. J7 -> the trunk's far end: GND, "
-              "24, and two empty ways. J9 -> the optical board: 2-way here, 1 GND, 2 +24V_OPT; the "
+              "step 0). J10 <-> motor_ctrl J3: harness.PWR_LINK (24, GND, SW_UP, SW_DN, GND, 24), a "
+              "6-way straight lead, both ends built from that list. J7 -> the trunk's far end: 24, "
+              "GND, and two empty ways. J9 -> the optical board: 2-way here, 1 +24V_OPT, 2 GND; the "
               "optical board's J2 is a 4-way housing with ways 1 and 2 crimped in the same order "
               "(JST makes no 2-way SMT side-entry XH; the note at that J2). J1 / J2 / J3 / J4 are "
               "USB-C receptacles on stock C-to-C leads with D+ / D- tied across both rows. J8: two "
               "screw terminals, hot and ground, marked on the silk. J5: tip / ring / sleeve. The "
               "6-way cannot enter a 4-way or a 2-way",
-        "M2": "D1 (B5819W) pad 1 = K on SW, anode on PWR_GND. D4 (1N4148WT) pad 1 = K on "
+        "M2": "D1 (DSS16) pad 1 = K on SW, anode on PWR_GND. D4 (1N4148WT) pad 1 = K on "
               "+5V, anode on RELAY_COIL: it conducts the coil's turn-off current back to "
               "the rail (it was fitted the other way round until this review). D6 "
-              "(SMAJ24A) pad 1 = K on +24V. D8 (BZT52C10) pad 1 = K on SW_SENSE. D2 / D3 / "
+              "(SMCJ24A) pad 1 = K on +24V. D8 (BZT52C10) pad 1 = K on SW_SENSE. D2 / D3 / "
               "D5 / D7 are bidirectional. No electrolytic or tantalum part",
         "M4": "U5 (LMR16006, SNVSA24): CIN 10 uF / 50 V 1206 + 100 nF / 50 V at the pin "
               "(asks 1-10 uF); COUT 2 x 22 uF / 16 V 0805, about 2 x 9 uF at 5 V of "
@@ -2903,9 +2932,10 @@ BOARD_NOTES["quality"] = {
               "on a 24 V net is a 50 V part; C1 / C41 at the jack are 100 V against 48 V "
               "phantom power; C48 on Q2's gate is 25 V against 7.5 V",
         "M5": "+24V_IN and +24V: Q2 60 V, U5 60 V operating, capacitors 50 V, F1 63 V, "
-              "D6 (SMAJ24A) stands off 24 V, breaks down at 26.7-29.5 V and holds 38.9 V at its "
-              "rated 10.3 A, 35.6 V at the brick's whole 6.67 A: under D1's 40 V and, on the "
-              "optical board this rail feeds, under U13's 38 V. The brick's 24.72 V maximum "
+              "D6 (SMCJ24A, 1.5 kW) stands off 24 V, breaks down at 26.7-29.5 V and holds 38.9 V at "
+              "its rated 38.6 A, 34.4 V at 20 A of surge (voltage_check.py says where that "
+              "bound is from): under D1's 60 V and, on the optical board this rail feeds, under "
+              "U13's 36 V operating limit, which is reached at 26.7 A. The brick's 24.72 V maximum "
               "is 2 V under the lowest breakdown. Pin by pin: A16. Q2's gate sees 7.5 V of its "
               "20 V; Q3's sees 10 V (D8) of its 20 V. R33 / R34 dissipate 31 mW each "
               "with the switch held off, in 0402 parts rated 62 mW. 5 V rail: 16 V "
@@ -2919,7 +2949,7 @@ BOARD_NOTES["quality"] = {
         "M7": "U5: 0.765 V x (1 + 100k / 18.2k) = 4.97 V; 15 uH at 700 kHz gives 0.38 A of ripple, "
               "63 % of the IC's 0.6 A against the 30 to 40 % the sheet suggests (the smaller value "
               "is for saturation, M14); bootstrap 100 nF (the sheet's value; it was 10 nF); SHDN "
-              "open = enabled; catch diode 40 V / 1 A. U6: EN tied to IN. U2 (PCM1808): MD0 = MD1 = "
+              "open = enabled; catch diode 60 V / 1 A. U6: EN tied to IN. U2 (PCM1808): MD0 = MD1 = "
               "0, slave; FMT = 0, I2S; SCKI from the MCU's MCK at 256 fS. U3 (PCM5102A): FMT = 0 "
               "I2S, DEMP = 0, FLT = 0, XSMT high, charge-pump and LDO capacitors at the sheet's "
               "values. U4 (CH334F): V5 tied to VDD33 for 3.3 V supply, as WCH allows; 12 MHz "

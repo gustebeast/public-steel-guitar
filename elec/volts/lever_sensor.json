@@ -152,7 +152,7 @@
    "src": "ESD5B5.0ST1G (C93623): onsemi ESD5B5.0S datasheet p.2 electrical table (VRWM 5.0, VBR 5.8-7.8 @1 mA), p.1 max ratings (50 W 8x20 us, 10 W 10x1000 us, 200 mW)",
    "why": "this part IS the clamp on CAN_L: it stands 5 V (where its leakage is specified) and starts to conduct at 5.8 V, the figure a steady level must stay under"
   },
-  "J1.2": {
+  "J1.1": {
    "max": 100.0,
    "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
@@ -164,11 +164,11 @@
    "max": 100.0,
    "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
-  "J1.6": {
+  "J1.5": {
    "max": 100.0,
    "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
-  "J1.7": {
+  "J1.6": {
    "max": 100.0,
    "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },

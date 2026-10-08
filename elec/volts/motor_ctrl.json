@@ -1,22 +1,22 @@
 {
  "net_volts": {
   "+24V": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
-   "why": "24 V +10 % steady (brick is +/-3 %: 24.72 V; OVP trips at up to 32.4 V); transient = the SMAJ24A clamp at the brick's 6.67 A, the most this rail can be handed: 35.6 V (breakdown 26.7-29.5 V; its catalogue VC is 38.9 V at 10.3 A)"
+   "why": "24 V +10 % steady (brick is +/-3 %: 24.72 V; OVP trips at up to 32.4 V); transient = the SMCJ24A clamp at 20 A of surge, a bound on what this rail is handed: 34.4 V (breakdown 26.7-29.5 V; its catalogue VC is 38.9 V at 38.6 A)"
   },
   "+24V_BUCK": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "through F1"
   },
   "+24V_F": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "through R23"
   },
   "+24V_LED": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "through F3"
   },
@@ -46,7 +46,7 @@
    "why": "U4.63 (io) can reach its supply +3V3"
   },
   "BOOT5": {
-   "peak": 41.087,
+   "peak": 39.87,
    "v": 31.9,
    "why": "bootstrap: SW5 + 5.5 V, held by U5"
   },
@@ -101,12 +101,12 @@
    "why": "bus B: 5 V nodes; nothing above 5 V in its cable; transient = the ESD5B5.0 clamps' maximum breakdown (motor_ctrl D4 / D5, and each lever board's own)"
   },
   "CB": {
-   "peak": 42.587,
+   "peak": 41.37,
    "v": 33.4,
    "why": "bootstrap: SW + 7 V, held by U1"
   },
   "EN5": {
-   "peak": 2.421,
+   "peak": 2.338,
    "v": 1.796,
    "why": "divider off +24V: x 0.0680"
   },
@@ -147,7 +147,7 @@
   "PG_5V": {
    "peak": 3.604,
    "v": 3.432,
-   "why": "U4.9 (io) can reach its supply +3V3"
+   "why": "U4.22 (io) can reach its supply +3V3"
   },
   "PWR_SW_DN": {
    "peak": 10.8,
@@ -160,7 +160,7 @@
    "why": "the power button's throw, from output_panel [output_panel.SW_SENSE: clamped by D8 (BZT52C10T, VZ max 10.6 V) behind R33+R34 = 9.4 k; +0.2 V for its 20 ohm at the transient current]"
   },
   "SENSE_24V": {
-   "peak": 3.235,
+   "peak": 3.125,
    "v": 2.4,
    "why": "divider off +24V: x 0.0909"
   },
@@ -170,12 +170,12 @@
    "why": "divider off +5V: x 0.5000"
   },
   "SW": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "buck switch node: VIN while the high side is on [= +24V+0]"
   },
   "SW5": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "buck switch node: VIN while the high side is on [= +24V_BUCK+0]"
   },
@@ -351,8 +351,8 @@
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "D1.1": {
-   "max": 40.0,
-   "src": "VRRM -- B5819W SL (C8598): CJ B5817W-B5819W datasheet p.1 max ratings: B5819W VRRM/VRWM/VR 40 V, non-repetitive VRM 40 V, IO 1 A, V(BR) min 40 V @1 mA"
+   "max": 60.0,
+   "src": "VRRM -- DSS16 (C7467023): FUXINSEMI DSS12 thru DSS120 Ver2.1 p.1, column DSS16: VRRM 60 V, VDC 60 V, I(AV) 1.0 A, IFSM 30 A, VF 0.70 V at 1 A; SOD-123, band = cathode"
   },
   "D2.1": {
    "max": 26.2,
@@ -393,7 +393,7 @@
   "D8.1": {
    "max": 26.7,
    "peak": "none",
-   "src": "SMAJ24A (C148222): Littelfuse SMAJ series datasheet p.2 electrical table, row SMAJ24A (VR 24.0, VBR 26.70-29.50 @1 mA, VC 38.9 @ IPP 10.3 A 10/1000 us)",
+   "src": "SMCJ24A (C310039): Brightking SMCJ series datasheet (LCSC C310039), electrical table row SMCJ24A: VRWM 24 V, VBR 26.7-29.5 V @1 mA, VC 38.9 V @ IPP 38.6 A (10/1000 us), 1500 W",
    "why": "this part IS the clamp on +24V: it stands 24 V (where its leakage is specified) and starts to conduct at 26.7 V, the figure a steady level must stay under"
   },
   "D9.1": {
@@ -404,11 +404,11 @@
   },
   "F1.1": {
    "max": 63.0,
-   "src": "rated V -- JFC1206-1100FS (C136343): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 1 A"
+   "src": "rated V -- JFC1206-1150FS (C136344): Shenzhen JDT JFC1206FS fast-acting fuse datasheet p.2 table (rev 05/07/20): JFC1206-1150FS 1.5 A, in the 72/63/32/24 VDC group, 240 mohm cold, pre-arc I2t 0.15 A2s"
   },
   "F1.2": {
    "max": 63.0,
-   "src": "rated V -- JFC1206-1100FS (C136343): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 1 A"
+   "src": "rated V -- JFC1206-1150FS (C136344): Shenzhen JDT JFC1206FS fast-acting fuse datasheet p.2 table (rev 05/07/20): JFC1206-1150FS 1.5 A, in the 72/63/32/24 VDC group, 240 mohm cold, pre-arc I2t 0.15 A2s"
   },
   "F2.1": {
    "max": 63.0,
@@ -426,7 +426,7 @@
    "max": 63.0,
    "src": "rated V -- JFC1206-1300FS (C136347): Shenzhen JDT JFC1206 fast-acting fuse datasheet p.3 table: rated voltage 63 VDC, rated current 3 A"
   },
-  "J1.2": {
+  "J1.1": {
    "max": 250.0,
    "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
@@ -438,7 +438,7 @@
    "max": 250.0,
    "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
-  "J2.2": {
+  "J2.1": {
    "max": 100.0,
    "src": "rated V -- S4B-PH-SM4-TB(LF)(SN) (C265102): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
@@ -450,7 +450,7 @@
    "max": 100.0,
    "src": "rated V -- S4B-PH-SM4-TB(LF)(SN) (C265102): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
-  "J3.2": {
+  "J3.1": {
    "max": 250.0,
    "src": "rated V -- B6B-XH-A(LF)(SN) (C144397): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
@@ -462,11 +462,11 @@
    "max": 250.0,
    "src": "rated V -- B6B-XH-A(LF)(SN) (C144397): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
-  "J3.5": {
+  "J3.6": {
    "max": 250.0,
    "src": "rated V -- B6B-XH-A(LF)(SN) (C144397): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
-  "J4.2": {
+  "J4.1": {
    "max": 100.0,
    "src": "rated V -- B4B-PH-K-S(LF)(SN) (C131334): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
@@ -478,15 +478,15 @@
    "max": 100.0,
    "src": "rated V -- B4B-PH-K-S(LF)(SN) (C131334): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
-  "J5.2": {
+  "J5.1": {
    "max": 100.0,
    "src": "rated V -- B6B-PH-K-S(LF)(SN) (C131342): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
-  "J5.5": {
+  "J5.6": {
    "max": 100.0,
    "src": "rated V -- B6B-PH-K-S(LF)(SN) (C131342): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
-  "J6.2": {
+  "J6.1": {
    "max": 100.0,
    "src": "rated V -- S4B-PH-SM4-TB(LF)(SN) (C265102): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
@@ -498,7 +498,7 @@
    "max": 100.0,
    "src": "rated V -- S4B-PH-SM4-TB(LF)(SN) (C265102): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
-  "J7.2": {
+  "J7.1": {
    "max": 250.0,
    "src": "rated V -- B4B-XH-A(LF)(SN) (C144395): JST XH series datasheet p.1: 'Current rating: 3 A AC, DC (AWG #22); Voltage rating: 250 V'"
   },
@@ -732,6 +732,14 @@
    "max": 3.904,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
+  "U4.21": {
+   "max": 3.904,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
+  "U4.22": {
+   "max": 3.904,
+   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
+  },
   "U4.31": {
    "max": 4.0,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
@@ -808,20 +816,12 @@
    "max": 3.904,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
-  "U4.8": {
-   "max": 3.904,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
-  "U4.9": {
-   "max": 3.904,
-   "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
-  },
   "U5.2": {
    "max": 38.0,
    "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
   },
   "U5.3": {
-   "max": 35.887,
+   "max": 34.67,
    "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
   },
   "U5.4": {
@@ -842,7 +842,7 @@
    "why": "bootstrap node, rated SW+5.5 and set by the IC itself"
   },
   "U5.8": {
-   "max": 35.887,
+   "max": 34.67,
    "src": "abs max -- LMR33630ADDAR (C841384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; HSOIC (DDA) pinout p.3"
   },
   "U6.1": {

@@ -23,7 +23,7 @@ is never disturbed. Three separate 4-ways came to 40.47 mm of courtyard in a row
 full 1.0 mm component-to-edge margin AND locating walls on both X edges.
 
 SAME DAISY-CHAIN PATTERN AS THE LEVER BOARD (user): an 8-way carrying trunk in on
-1-4 and out on 5-8, identical pin order, so one crimp order and one wiring habit
+1-4 and out on 5-8, the out half the mirror of the in half, so one wiring habit
 covers both buses -- the motors simply add a 4-pin step the levers do not need.
 The HOUSING differs by bus and cannot be helped: the lever board needs side-entry
 SMT (a top-entry plug would insert from inside its housing, and THT posts would
@@ -75,12 +75,16 @@ import harness                                      # noqa: E402
 import netcheck                                     # noqa: E402
 
 # ── the harness contract ─────────────────────────────────────────────────────
-# Four conductors, colours the user's: black GND / red 24V / yellow CAN_H /
+# Four conductors, colours the user's: red 24V / black GND / yellow CAN_H /
 # green CAN_L. The pin ORDER is the board's half of that contract and is the SAME
 # on every connector in the instrument, so one crimp order serves all of them.
 # The pin order lives in harness.py -- see the note there for why it is not
 # allowed to have a second copy.
 XH_PINOUT = harness.XH_PINOUT
+# the 8-way's eight ways by conductor: V24 GND CAN_H CAN_L CAN_L CAN_H GND V24
+_TRUNK = tuple(n.rsplit("_", 1)[0] for n in harness.xh_trunk_pins())
+harness.check_ways(_TRUNK, ("V24",), where="can_tee J1")
+harness.check_ways(XH_PINOUT, ("V24",), where="can_tee J2")
 
 # 120 R, 1%. ISO 11898 wants 120 ohm at each END of the trunk and nowhere else,
 # so every board carries the resistor behind a switch that ships OFF; the one that
@@ -105,7 +109,7 @@ def can_tee():
         n.drive = Pin.drives.POWER
 
     j1 = Part(name="B8B-XH-A", ref_prefix="J", tag="J1", dest="NETLIST", tool="skidl",
-              value="S8B-XH-A", description="CAN trunk: in 1-4, out 5-8 (LCSC C157914)",
+              value="S8B-XH-A", description="CAN trunk: in 1-4, out 5-8 mirrored (LCSC C157914)",
               footprint="Connector_JST:JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=Pin.types.PASSIVE) for i, n in enumerate(
                   harness.xh_trunk_pins())])
@@ -114,10 +118,13 @@ def can_tee():
               footprint="Connector_JST:JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=Pin.types.PASSIVE)
                     for i, n in enumerate(XH_PINOUT)])
-    gnd += j1[1], j1[5], j2[1]
-    v24 += j1[2], j1[6], j2[2]
-    can_h += j1[3], j1[7], j2[3]
-    can_l += j1[4], j1[8], j2[4]
+    # bound by NAME off the harness's lists, never by way number: the trunk's out half is
+    # the mirror of its in half (harness.py), so "way n and way n + 4" is not a rule here
+    rail = {"V24": v24, "GND": gnd, "CAN_H": can_h, "CAN_L": can_l}
+    for i, n in enumerate(_TRUNK):
+        rail[n] += j1[i + 1]
+    for i, n in enumerate(XH_PINOUT):
+        rail[n] += j2[i + 1]
 
     r1 = Part(name="R", ref_prefix="R", tag="R1", dest="NETLIST", tool="skidl",
               value=TERM_OHMS, description="CAN termination, 1%",
@@ -202,8 +209,9 @@ _J1_X0, _J2_X0, _PITCH = -7.0 - 3.5 * 2.5, 11.7 - 1.5 * 2.5, 2.5
 
 def _power_copper():
     out = []
-    for net, layer, way in (("GND", "B.Cu", 0), ("+24V", "F.Cu", 1)):
-        xs = [_J1_X0 + way * _PITCH, _J1_X0 + (way + 4) * _PITCH, _J2_X0 + way * _PITCH]
+    for net, layer, name in (("GND", "B.Cu", "GND"), ("+24V", "F.Cu", "V24")):
+        xs = sorted([_J1_X0 + i * _PITCH for i, n in enumerate(_TRUNK) if n == name]
+                    + [_J2_X0 + XH_PINOUT.index(name) * _PITCH])
         out.append((net, layer, BAR_W, [(xs[0], BAR_Y), (xs[-1], BAR_Y)]))
         for x in xs:
             out.append((net, layer, STUB_W, [(x, BAR_Y), (x, ROW_Y)]))
@@ -291,14 +299,14 @@ BOARD_NOTES = {
         # The drop is one motor, 1-1.5 A input; declared at the same 3 A so the stub is
         # sized for the contact, not the load.
         "power_paths": [
-            {"net": "+24V", "from": "J1.2", "to": ["J1.6", "J2.2"], "amps": 3.0},
+            {"net": "+24V", "from": "J1.1", "to": ["J1.8", "J2.1"], "amps": 3.0},
         ],
         # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
         # repeated structure is on. The pass fails on any difference from the routed board.
         "unconnected": {},
         "net_groups": [
             {
-                "name": "trunk in, trunk out and the motor drop are one bus, way for way",
+                "name": "trunk in, trunk out and the motor drop are one bus, conductor for conductor",
                 "pins": [
                     "J1.[1-8]",
                     "J2.[1-4]"
@@ -375,10 +383,12 @@ BOARD_NOTES = {
             "M32": "footprint pitch read from the KiCad file: 2.50 (pads at 0 / 2.5 / 5.0 / "
                    "7.5), XH's pitch, and the 8-way spans 17.5 = JST's dimension A for 8 "
                    "circuits. Contact 3 A at AWG 22 (eXH.pdf p.1). Pad 1 against the JST "
-                   "drawing: see pinouts. Every connector carries GND on way 1 (and 5)",
-            "M34": "no active part. CAN_H lands on way 3 and CAN_L on way 4 of every "
-                   "housing from one constant (harness.XH_PINOUT), so H meets H and L "
-                   "meets L by construction; R1 + SW1 bridge H to L and nothing else",
+                   "drawing: see pinouts. Every connector carries +24 V on its outside way (1, and 8 "
+                   "on the trunk) with GND beside it (harness.py)",
+            "M34": "no active part. CAN_H is way 3 and CAN_L way 4 of every 4-way, and the "
+                   "trunk's out half is their mirror (CAN_L 5, CAN_H 6), all bound by name "
+                   "from one constant (harness.XH_PINOUT), so H meets H and L meets L by "
+                   "construction; R1 + SW1 bridge H to L and nothing else",
             "M38": "no ceramic capacitor on the board. R1 (0603) lies along X, parallel to "
                    "the +Y edge 1.8 mm away, 35 mm from the screw. SW1 is a moulded "
                    "switch on two gull-wing leads, not a ceramic. No V-score: routed "

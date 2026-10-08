@@ -641,6 +641,37 @@ def _seg_gap(p0, p1, q0, q1):
     return float(np.linalg.norm(w + s * u - t * v))
 
 
+def _turn_over(start, goal, n):
+    """The shortest list of moves (circuit, cell, cell) that takes `n` conductors from
+    `start` to `goal`, a cell being (track, layer) on n tracks x 2 layers. A move is one
+    conductor going along its own layer across free cells, or straight to the other
+    layer where the cell there is free -- so no move passes through another conductor."""
+    start, goal = tuple(start), tuple(goal)
+    seen, queue = {start: None}, [start]
+    while queue:
+        st = queue.pop(0)
+        if st == goal:
+            moves = []
+            while seen[st]:
+                st, mv = seen[st]
+                moves.append(mv)
+            return moves[::-1]
+        used = set(st)
+        for c, (y, l) in enumerate(st):
+            to = [(y, 1 - l)] if (y, 1 - l) not in used else []
+            for d in (-1, 1):
+                q = y + d
+                while 0 <= q < n and (q, l) not in used:
+                    to.append((q, l))
+                    q += d
+            for cell in to:
+                nx = st[:c] + (cell,) + st[c + 1:]
+                if nx not in seen:
+                    seen[nx] = (st, (c, (y, l), cell))
+                    queue.append(nx)
+    raise AssertionError("no way to turn the bus over between two pedals")
+
+
 def bus_paths(feed):
     """[(name, polyline)] in the BAR's frame. `feed` is the four points where the leg
     joint's bar stub ends, in BUS_NETS order (src.leg_pogo.bar_stub_ends, bar frame)."""
@@ -674,8 +705,24 @@ def bus_paths(feed):
                     "%s and %s share a layer and their tracks are the wrong way round "
                     "for their lanes: they would cross" % (BUS_NETS[a], BUS_NETS[b]))
 
+    # THE OUT HALF OF THE HOUSING IS THE IN HALF MIRRORED (harness.ph_trunk_pins): a hop
+    # runs way 8 to way 1, 7 to 2, 6 to 3, 5 to 4, so the four conductors of a hop turn
+    # over once between two boards, as a flat lead between two such housings does.
+    # ⚠ AND THEY CANNOT DO IT IN THE PLUG TUNNEL. Two conductors on one layer need the
+    # one with the lower pin in the far lane AND on the lower track, on both sides of
+    # the row; mirrored, the lower IN pin is the higher OUT pin, so no pair can share a
+    # layer through a whole hop. So a hop LEAVES in the arriving pattern mirrored (slot,
+    # layer and track all read off the OUT ways) and turns over in the open trough
+    # beyond the tunnel, one conductor at a time: `_turn_over` finds the moves.
+    row_out = sorted(range(n), key=lambda c: bus_pin(0, bus_way(BUS_NETS[c], "OUT"))[1])
+    slot_out = {c: row_out.index(c) for c in range(n)}
+    zo_of = {c: layer[slot_out[c] % 2] for c in range(n)}
+    yo_of = {c: track_y[slot_out[c]] for c in range(n)}
+    turn = _turn_over([(slot_out[c], slot_out[c] % 2) for c in range(n)],
+                      [(rk[c], slot[c] % 2) for c in range(n)], n)
+
     def lane(px, row_x, c, arriving):
-        near = slot[c] >= 2
+        near = (slot if arriving else slot_out)[c] >= 2
         if arriving:                                         # -X of the row
             wall = px - ty1
             return row_x - w - BUS_KEEP if near else wall + BUS_AIR + w / 2.0
@@ -710,12 +757,19 @@ def bus_paths(feed):
                 assert abs(xl - pin[0]) >= w + BUS_KEEP - 1e-6 and \
                     px - ty1 + w / 2.0 <= xl <= px - ty0 - w / 2.0, (
                         "pedal %d: no lane for %s in the plug tunnel" % (i, nt))
-                drop = [(xl, y_of[c], z_of[c]), (xl, pin[1], z_of[c]),
-                        (pin[0], pin[1], z_of[c]), pin]
+                yt, zt = (y_of[c], z_of[c]) if arriving else (yo_of[c], zo_of[c])
+                drop = [(xl, yt, zt), (xl, pin[1], zt), (pin[0], pin[1], zt), pin]
                 if arriving:
                     paths.append(("pedal_wire_%s_%d" % (names[c], i), tail[c] + drop))
                 else:
                     tail[c] = list(reversed(drop))
+            if not arriving:
+                # the turn-over: one move a station, stations two pitches apart, the
+                # first two pitches clear of the tunnel's end
+                x0 = px - ty0 + 2 * pitch
+                for k, (c, (ya, la), (yb, lb)) in enumerate(turn):
+                    xs = x0 + 2 * pitch * k
+                    tail[c] += [(xs, track_y[ya], layer[la]), (xs, track_y[yb], layer[lb])]
     # no conductor inside another anywhere
     for a in range(len(paths)):
         for b in range(a + 1, len(paths)):

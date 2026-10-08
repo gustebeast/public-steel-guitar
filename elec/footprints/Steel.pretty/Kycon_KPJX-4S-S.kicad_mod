@@ -15,7 +15,7 @@
 	(fp_line (start 8.250 -17.650) (end 8.250 0.250) (stroke (width 0.05) (type solid)) (layer "F.CrtYd"))
 	(fp_line (start 8.250 0.250) (end -8.250 0.250) (stroke (width 0.05) (type solid)) (layer "F.CrtYd"))
 	(fp_line (start -8.250 0.250) (end -8.250 -17.650) (stroke (width 0.05) (type solid)) (layer "F.CrtYd"))
-	(fp_line (start -8.100 -17.500) (end 8.100 -17.500) (stroke (width 0.12) (type solid)) (layer "F.SilkS"))
+	(fp_line (start -6.700 -17.500) (end 6.700 -17.500) (stroke (width 0.12) (type solid)) (layer "F.SilkS"))
 	(pad "1" thru_hole oval (at -2.900 -14.650) (size 1.5 3.2) (drill oval 0.6 2.7) (layers "*.Cu" "*.Mask"))
 	(pad "2" thru_hole oval (at 2.900 -14.650) (size 1.5 3.2) (drill oval 0.6 2.7) (layers "*.Cu" "*.Mask"))
 	(pad "3" thru_hole oval (at -2.500 -11.000) (size 1.5 3.2) (drill oval 0.6 2.7) (layers "*.Cu" "*.Mask"))
