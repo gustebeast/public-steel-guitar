@@ -101,6 +101,7 @@ import json  # noqa: E402
 
 from skidl import ERC, Net, Part, Pin, generate_netlist, subcircuit  # noqa: E402
 
+import harness                                      # noqa: E402
 import netcheck                                     # noqa: E402
 
 P = Pin.types.PASSIVE
@@ -682,6 +683,20 @@ def optical():
                 "I2C bus" % (14 + k,))
         shdnz += rs[1]
         v3d += rs[2]
+        # ⚠ AND A CAPACITOR HOLDS IT LOW WHILE THE SUPPLIES COME UP (pre-order review,
+        # 2026-10-07). SBAS993B section 10 (Figure 169): keep SHDNZ low until IOVDD and
+        # AVDD are stable, then at least 100 us more. A bare pull-up to IOVDD releases the
+        # part WITH the rail. 1 uF against the 10k is 10 ms: SHDNZ crosses its 0.65 x IOVDD
+        # threshold about 10.5 ms after IOVDD stands, and AVDD -- U9, enabled by this same
+        # rail -- is up inside the first two. Grounding the resistor's land still drops the
+        # converter off the bus, and the software reset is still issued: this makes the
+        # power-up sequence the datasheet's, it does not replace the reset.
+        # It is placed after routing, like the resistor, in the strip of ground pour north
+        # of it (the same cell-frame site in all five cells).
+        cz = _c("Cs%d9" % tag, "1uF", "U%d SHDNZ release delay: 10 ms with its 10k "
+                "pull-up (SBAS993B Fig 169)" % (14 + k,))
+        shdnz += cz[1]
+        gnd += cz[2]
         # ⚠ NO SEPARATE PAD: THE PULL-UP'S OWN SHDNZ LAND IS THE ACCESS POINT, and that
         # is a deliberate trade rather than a saving. A 1.0 mm pad does fit in these cells
         # -- searched, (-3.810, +6.950) in cell frame, 0.348 mm of headroom -- but it lands
@@ -1007,7 +1022,15 @@ def optical():
               footprint="Package_TO_SOT_SMD:SOT-23-5",
               pins=[Pin(num=n, func=P) for n in range(1, 6)])
     # TPS7A20 DBV: 1 IN, 2 GND, 3 EN, 4 N/C, 5 OUT
-    v5 += u9[1], u9[3]
+    # ⚠ EN IS ON +3V3D, NOT ON ITS OWN INPUT (pre-order review, 2026-10-07). This rail is
+    # the MCU's VDDA and VREF+, and ST (DS12110 3.5.1, Figure 3) wants VDDA below
+    # VDD + 0.3 V while VDD is under 1 V. Tied to IN, U9 started as soon as the 5 V rail
+    # passed its 1.35 V UVLO, 0.75 ms later -- while U8, which makes VDD, is specified only
+    # from 2.5 V in and carries the whole digital load: nothing on paper said which rail
+    # was first. Enabled from +3V3D (EN high above 0.9 V, SBVS338 5.5), the analog rail
+    # cannot start until the digital one is most of a volt up, and falls with it.
+    v5 += u9[1]
+    v3d += u9[3]
     gnd += u9[2]
     # Pin 4 has no internal connection on this part. (On the SPX3819 it was the noise
     # bypass, with C127 on it; C127 went with that part.)
@@ -1478,12 +1501,14 @@ def optical():
     # which is free when the harness is crimped to length anyway.
     j2 = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J2", dest="NETLIST",
               tool="skidl", value="S4B-XH-SM4-TB",
-              description="24 V in -- 1=PWR_GND 2=+24V, ways 3/4 unpopulated",
+              description="24 V in -- 1=+24V 2=PWR_GND, ways 3/4 unpopulated",
               footprint="Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal",
               pins=[Pin(num=i + 1, name=n, func=P)
-                    for i, n in enumerate(("PWR_GND", "+24V", "NC3", "NC4"))])
-    pgnd += j2[1]
-    v24_in += j2[2]
+                    for i, n in enumerate(("+24V", "PWR_GND", "NC3", "NC4"))])
+    # the first two ways of the instrument's one order (harness.py: power, GND, ...)
+    harness.check_ways(harness.POWER_PAIR, ("V24",), where="J2")
+    for _i, _n in enumerate(harness.POWER_PAIR):
+        {"V24": v24_in, "GND": pgnd}[_n].__iadd__(j2[_i + 1])
     # ⚠ R44: THE INPUT IS DAMPED, BECAUSE A LIVE PLUG WOULD OTHERWISE KILL THE BUCK
     # (2026-10-05, quality M16). J2 fed 10 uF of ceramic and U13 directly. A live 24 V
     # lead plugged into ceramics rings toward twice the supply: 48 V, against U13's 36 V
@@ -2747,50 +2772,38 @@ def _shdn_tracks():
 #   SHDNZ<k>  converter pin 14 -> the pull-up's pad 1
 #   +3V3D     the pull-up's pad 2 -> the via at the head of the existing IOVDD channel,
 #             which is why that via stops dangling and the rail closes again
-# ⚠ MAZED AGAINST THE FINISHED BOARD AT 0.05 mm AND VERIFIED CONTINUOUSLY AT 0.02 mm.
-# SHDNZ leaves pin 14 westward, under the part's own IN4M pad at 0.360 mm -- a DC-static
-# line beside an AC-grounded analog input, which is why 0.36 is comfortable rather than
-# marginal -- and climbs to the resistor's south pad. +3V3D leaves the north pad, goes
-# AROUND the west side and back down to the head of the existing IOVDD channel at
-# (_V3_CH_DX, +0.75), which is also what stops that via dangling now that pin 14 no longer
-# feeds it. Worst gap on either path 0.360 mm against the 0.127 rule.
-# ⚠ THE SECOND PATH HAD TO BE SEARCHED AGAINST THE FIRST. Mazed independently they cross:
-# the router cannot see copper that has not been laid yet, so SHDNZ went down with lay.py
-# and +3V3D was searched against a board carrying it. Its first path ran at x 9.1 and its
-# second goes round at x 7.7.
-_SHDNZ_STUB = [(-1.962, 0.750), (-2.510, 0.751), (-3.460, 1.701), (-3.462, 2.240)]
-# ⚠ AND +3V3D TAKES ONE VIA AND THE BACK SIDE, because there is no surface path at all.
-# Asked with a 500 mm penalty per layer change, the maze still needs a hop: the corridor
-# south from the pull-up to the rail is the converter's own west pad row. B.Cu and NOT In2
-# -- the note on the channel this replaces says why, and it is the same reason now: on In2
-# a run down the cell fences the one free signal layer off between every pair of cells,
-# while on B.Cu it costs a GND pour a slot.
-# ⚠ ONE VIA, NOT TWO: the maze's second via landed 0.52 mm from the foot via and the
-# laminate between them came out at -0.080 mm. A through via IS a B.Cu landing, so the run
-# ends ON the foot via instead -- which is also what reconnects this cell to _v3_trunk.
-# ⚠ AND +3V3D TAKES ONE VIA AND THE BACK SIDE, because there is no surface path at all:
-# asked with a 500 mm penalty per layer change the maze still needs a hop, since the
-# corridor south from the pull-up is the converter's own west pad row. B.Cu and NOT In2 --
-# the same reason the channel this replaces gave: on In2 a run down the cell fences the one
-# free signal layer off, while on B.Cu it costs a GND pour a slot.
-# ⚠ ONE VIA, NOT TWO: the maze's second via sat 0.52 mm from the foot via, -0.080 mm of
-# laminate between the drills. A through via IS a B.Cu landing, so the run ends ON the foot
-# via -- which is also what reconnects this cell to _v3_trunk.
-# ⚠⚠ AND IT WAS SEARCHED IN CELL 1, NOT CELL 0, WHICH IS THE WHOLE LESSON OF THE SECOND
-# ATTEMPT. The first path ran its B.Cu leg at cell x -3.960, which is 0.02 mm from the
-# I2C2_SCL spine -- and in cell 0 that is FINE, because the spine starts at y 61.269, below
-# it. In the other four cells it is a short, and DRC said so three times. Verifying one cell
-# and copying five is not verifying five: this path is checked in all five (0.227 mm
-# required, ALL CLEAR) and its B.Cu leg sits 0.77 mm off the spine.
-# ⚠ AND THE VIA MOVED 0.10 mm OUT, WHICH IS ABOUT In1 RATHER THAN CLEARANCE. At
-# (-3.210, -0.022) it sat 1.06 mm from the I2C2_SCL spine via in every cell, and the two
-# antipads left a 0.160 mm web in the analog reference plane where the board had documented
-# 0.266 -- legal, check_north_si still passed, and still a measurable halving of a property
-# this design states as measured. 0.10 mm further out along its own diagonal puts the web at
-# 0.301 mm, better than it was before this change. Measured with check_north_si on the board
-# before and after, not argued.
-_V3_STUB = [("F.Cu", [(-3.462, 3.260), (-3.910, 2.828), (-3.960, 2.828), (-4.160, 2.628),
-                      (-4.160, 1.828), (-3.960, 1.628), (-3.960, 0.828), (-3.110, 0.078)]),
+# ⚠ THE RESISTOR'S SHDNZ LAND IS ITS NORTH ONE, because the release-delay capacitor
+# stands north of it in the only free strip the cell has (ground pour, x -3.9 .. -3.0,
+# y 3.9 .. 6.2 in cell frame, in all five cells) and shares that land's net.
+#   SHDNZ  leaves pin 14 westward, under the part's own IN4M pad at 0.360 mm -- a
+#          DC-static line beside an AC-grounded analog input -- turns north up the 0.77 mm
+#          corridor between the resistor's lands and the IN4M track (0.28 mm either
+#          side), comes round into the north land, and carries on north into the
+#          capacitor.
+#   +3V3D  drops from the resistor's south land straight to the foot via of the IOVDD
+#          channel, which is what stops that via dangling now that pin 14 no longer
+#          feeds it.
+#   GND    the capacitor's north land stands in the front pour; a declared 0.2 mm link
+#          joins it to Cm<k>4's ground land 1.3 mm away as well, so its connection does
+#          not depend on how the pour happens to fill.
+_SHDNZ_STUB = [(-1.962, 0.750), (-2.510, 0.751), (-2.762, 1.003), (-2.762, 3.010),
+               (-3.012, 3.260), (-3.462, 3.260), (-3.462, 4.170)]
+_SHDNZ_GND_STUB = [(-3.462, 5.130), (-3.462, 5.850), (-2.982, 6.330), (-2.302, 6.330)]
+# ⚠ +3V3D TAKES ONE VIA AND THE BACK SIDE below the foot, because there is no surface
+# path south of it: the corridor is the converter's own west pad row. B.Cu and NOT In2 --
+# on In2 a run down the cell fences the one free signal layer off between every pair of
+# cells, while on B.Cu it costs a GND pour a slot.
+# ⚠ ONE VIA, NOT TWO: a second via sat 0.52 mm from the foot via, -0.080 mm of laminate
+# between the drills. A through via IS a B.Cu landing, so the run ends ON the foot via --
+# which is also what reconnects this cell to _v3_trunk.
+# ⚠ EVERY CELL IS CHECKED, NOT ONE COPIED FIVE TIMES. A path at cell x -3.960 on B.Cu is
+# 0.02 mm from the I2C2_SCL spine in four cells and clear in the fifth, where the spine
+# starts lower down; DRC said so three times. audit_board re-walks all five.
+# ⚠ AND THE VIA'S PLACE IS ABOUT In1 RATHER THAN CLEARANCE. At (-3.210, -0.022) it sat
+# 1.06 mm from the I2C2_SCL spine via in every cell, and the two antipads left a 0.160 mm
+# web in the analog reference plane where the board had documented 0.266. Where it is
+# now the web is 0.301 mm (check_north_si, on the board).
+_V3_STUB = [("F.Cu", [(-3.462, 2.240), (-3.462, 0.430), (-3.110, 0.078)]),
             ("B.Cu", [(-3.110, 0.078), (_V3_CH_DX, -3.270)])]
 _V3_VIA = (-3.110, 0.078)
 _STUB_W = 0.20
@@ -2814,6 +2827,7 @@ def _shdnz_stubs():
     for k in range(5):
         P = lambda dx, dy, k=k: _cell_pt(k, dx, dy)
         out.append(("SHDNZ%d" % (k + 1), "F.Cu", _STUB_W, [P(*q) for q in _SHDNZ_STUB]))
+        out.append(("GND", "F.Cu", _STUB_W, [P(*q) for q in _SHDNZ_GND_STUB]))
         for _lay, _pts in _V3_STUB:
             out.append(("+3V3D", _lay, _STUB_W, [_v3_pt(k, q) for q in _pts]))
     return out
@@ -3331,7 +3345,9 @@ BOARD_NOTES = {
                         # cannot cost it a net, and an 0402 in a site verified clear on the
                         # finished board is as safe there as a bare pad. It is still
                         # assembled: the fab builds from the board, not from the DSN.
-                        "Rs11", "Rs21", "Rs31", "Rs41", "Rs51"),
+                        "Rs11", "Rs21", "Rs31", "Rs41", "Rs51",
+                        # ...and the five release-delay capacitors that stand on them
+                        "Cs19", "Cs29", "Cs39", "Cs49", "Cs59"),
     # ⚠ THE FIVE SHDNZ NETS DO NOT EXIST BEFORE ROUTING. Each is a converter pin and a
     # pull-up, and BOTH are post-route -- so layout leaves pin 14 bare, exactly as the
     # no-connect it used to be, the DSN gains nothing, and route.py builds the net over every
@@ -3980,7 +3996,7 @@ BOARD_NOTES["quality"] = {
     },
     "power_paths": [
         # 24 V in: 1.07 A of 5 V at the board's worst case is 0.26 A here at 85 %
-        {"net": "V24_IN", "from": "J2.2", "to": ["R44.1"], "amps": 0.26},
+        {"net": "V24_IN", "from": "J2.1", "to": ["R44.1"], "amps": 0.26},
         {"net": "+24V", "from": "R44.2", "to": ["U13.2", "U13.10"], "amps": 0.26},
         # the buck's output: U8 (digital 3V3, 452 mA at 85 C), the bead to U9, and the
         # ten emitter ballasts at 21 mA each while the row is on
@@ -4025,6 +4041,9 @@ BOARD_NOTES["quality"] = {
     "decoupling": {"exempt": {
         "U7.31": "REG_EN, a logic input tied to +3V3D to run the PHY's own 1.8 V "
                  "regulators (DS00001783C table 3-1, pin 31); it draws no supply current",
+        "U9.3": "EN, a logic input on +3V3D so that the analog rail follows the digital "
+                "one up (SBVS338 5.5: 0.9 V threshold, under 1 uA); it draws no supply "
+                "current",
     }},
     "manual": {
         "M35": "read 2026-10-05. ST ES0392 rev 15 (STM32H742/743/750/753), every entry, against "
@@ -4043,12 +4062,12 @@ BOARD_NOTES["quality"] = {
                "still reads the negotiated speed (docs/optical-bringup-diagnostics.md). JSCJ "
                "publishes none for the oscillator. TI publishes no errata sheet for the "
                "TLV320ADC3140 (searched, none found)",
-        "M1": "two cables. J2 <- output_panel J9: two wires. That end is a 2-way XH (1 GND, "
-              "2 +24 V), this a 4-way housing with the same two ways crimped and ways 3 / 4 "
+        "M1": "two cables. J2 <- output_panel J9: two wires. That end is a 2-way XH (1 +24 V, "
+              "2 GND), this a 4-way housing with the same two ways crimped and ways 3 / 4 "
               "empty (JST makes no 2-way SMT side-entry XH; the note at J2). It is the "
-              "first two ways of the instrument's one order (harness.py: GND, power, ...) "
+              "first two ways of the instrument's one order (harness.py: power, GND, ...) "
               "and the XH family says 24 V. Polarised; a CAN drop plugged here lands its "
-              "ground and 24 V on the same two ways and its data on empty cavities. J1 <- "
+              "24 V and ground on the same two ways and its data on empty cavities. J1 <- "
               "the output panel's hub: a stock USB-C lead; D+ on A6 and B6, D- on A7 and "
               "B7, CC1 and CC2 each on its own 5k1, so either way up is the same circuit",
         "M2": "D1-D10 (LTE-C9901): pin 1 K on LED_ROW, the switched low side; pin 2 A on "
@@ -4077,10 +4096,10 @@ BOARD_NOTES["quality"] = {
               "TI's figure 165 less its four paralleled 100 nF (the note at the Cs parts). Every "
               "capacitor on a 24 V net is a 50 V part and says so in its value",
         "M5": "24 V nets: capacitors 50 V, R44 200 V, U13 36 V operating / 38 V absolute. The rail "
-              "is clamped at the panel (D6 there, SMAJ24A: breaks down at 26.7 to 29.5 V, 38.9 V at "
-              "its rated 10.3 A) and at the motor board by the same part, and reaches U13 through "
-              "the panel's 1 A fuse and R44's 2 ohm with 5 uF behind it: U13's 38 V needs about 9 A "
-              "of surge at the clamp, and its 36 V operating limit is above the clamp's breakdown. "
+              "is clamped at the panel (D6 there, SMCJ24A: breaks down at 26.7 to 29.5 V, 38.9 V at "
+              "its rated 38.6 A) and at the motor board by the same part, and reaches U13 through "
+              "the panel's 1 A fuse and R44's 2 ohm with 5 uF behind it: U13's 38 V needs about 35 A "
+              "of surge at the clamp and its 36 V operating limit about 27 A. "
               "This board has no clamp of its own and is only ever fed from the panel's J9. 5 V nets: 16 V bulk, U8 6 V maximum input, "
               "U9 6.0 V (6.5 absolute), fed 5.02 V. 3V3: converters 3.0 to 3.6 V, op-amps 5.5 V, "
               "MCU 3.6 V, PHY 3.0 to 3.6, Y2 2.97 to 3.63. The TIAs run on +3V3A so a saturated "
@@ -4121,7 +4140,7 @@ BOARD_NOTES["quality"] = {
               "firmware MUST issue the software reset before configuring. U7 RESET (active high): "
               "to ground, so the PHY starts from its own power-on reset; REG_EN: to +3V3D; ID: open "
               "on its internal pull-up (a B-device). Y2 enable: to +3V3D. U13 EN: to VIN. U9 EN: to "
-              "IN. Q1 gate: 100k to ground, so the emitters are off in reset",
+              "+3V3D, so VDDA cannot lead VDD. Q1 gate: 100k to ground, so the emitters are off in reset",
         "M9": "SWD on bare 1.5 mm pads: TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND, TP5 +3V3D. "
               "A second way in that needs no probe: the ROM bootloader's I2C2 is this "
               "board's own control bus, on TP6 / TP7, selected by holding TP8 (BOOT0) high. "
@@ -4303,8 +4322,8 @@ BOARD_NOTES["quality"] = {
                "amps declared in power_paths",
         "M34": "one logic level throughout, 3.3 V: MCU, PHY, oscillator, converter IOVDD. SHDNZ is "
                "active low and pulled high (run); the PHY's RESET active high, tied low, and its "
-               "REG_EN active high, tied high; Y2's enable active high, tied high; U13 EN and U9 EN "
-               "active high, tied to their inputs; Q1 is on with LED_GATE high and held low by R38. "
+               "REG_EN active high, tied high; Y2's enable active high, tied high; U13 EN active high, tied to its "
+               "input, and U9 EN active high, on +3V3D; Q1 is on with LED_GATE high and held low by R38. "
                "Converter interrupt pins are not used. USB D+ to DP (pin 7), D- to DM (8) through "
                "the clamp array, same polarity at the receptacle. Each TIA's feedback returns to "
                "its inverting input (pins 2 and 6 of the dual); the follower's to pin 4. I2C is "
@@ -4481,7 +4500,7 @@ BOARD_NOTES["quality"] = {
                          "mouth pointing away and the tails toward the viewer, No. 1 "
                          "circuit is the right-hand post. KiCad JST_XH_S4B-XH-SM4-TB has "
                          "its tails at -Y, mouth +Y and pad 1 at -X: the same end. Board: "
-                         "1 GND, 2 +24V, 3 and 4 not crimped. Read 2026-10-04",
+                         "1 +24V, 2 GND, 3 and 4 not crimped. Read 2026-10-04",
         "AO3400A": "AOS AO3400A datasheet rev 3 p.1, package drawing: 1 G, 2 S, 3 D. Read "
                    "2026-09-30",
         "USBLC6-2SC6": "ST USBLC6-2 datasheet, SOT23-6L pin configuration: 1 I/O1, 2 GND, "
@@ -4525,8 +4544,8 @@ BOARD_NOTES["quality"] = {
                            "not this part). Read 2026-10-04",
         "TPS7A2033PDBVR": "TI TPS7A20 datasheet (SBVS338 / ZHCSKY8G) fig. 5-4, DBV 5-pin "
                           "SOT-23 top view, and its pin table: 1 IN, 2 GND, 3 EN, 4 N/C (no "
-                          "internal connection), 5 OUT. Board: 1 and 3 on +5V (EN tied to "
-                          "IN), 2 GND, 4 open, 5 +3V3A. Read 2026-10-04",
+                          "internal connection), 5 OUT. Board: 1 on +5V, 3 (EN) on +3V3D, "
+                          "2 GND, 4 open, 5 +3V3A. Read 2026-10-04",
         "TAXM25M4RDBCCT2T": "Yajingxin TAXM25M4RDBCCT2T sheet (LCSC C403946) p.7, outline: "
                             "lands 1 and 3 are the crystal, 2 and 4 the can. Board: "
                             "1 OSC_IN, 3 OSC_OUT, 2 / 4 GND. Read 2026-10-04",
