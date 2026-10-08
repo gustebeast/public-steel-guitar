@@ -119,9 +119,9 @@ pins were unconnected (and until today mis-numbered).
 | 2.4 | **`BOOT0` to a bare pad.** With USB already on J4 that is a second way in (WCH's ROM ISP) that needs no probe on a board mounted in the keyhead. ⚠ **Verify against WCH's reference manual which USB port and which UART the ROM loader uses BEFORE routing to it** — optical lost four routing runs to exactly this assumption | 1 pad | 0 |
 | 2.5 | **Four pads on `CAN1_TX/RX`, `CAN2_TX/RX`**, post-route, on existing copper. The logic-analyser hook that separates MCU from transceiver | 4 pads | 0 |
 
-**Status 2026-09-30:** 2.2 and 2.3 are ON THE BOARD and routed 0 / 0 — PG → PC1 (Pi 5 V) and PC6 (LED 5 V) on the MCU's internal pull-ups (no parts), +24 V → PC0 through 100k/10k, +5 V → PA4 through 10k/10k (R18–R21, in two strips that were already free; the board did not grow). The ADC channels are confirmed off the datasheet's pin drawing (PC0 = ADC10, PA4 = ADC4).
+**Status 2026-09-30:** 2.2 and 2.3 are ON THE BOARD and routed 0 / 0 — PG → PA6 (Pi 5 V; it was PC1 until 2026-10-07) and PC6 (LED 5 V) on the MCU's internal pull-ups (no parts), +24 V → PA4 through 100k/10k (PC0 until 2026-10-07), +5 V → PA5 through 10k/10k (PA4 until 2026-10-07) (R18–R21, in two strips that were already free; the board did not grow). The ADC channels are confirmed off the datasheet's pin drawing (PC0 = ADC10, PA4 = ADC4).
 
-**And later the same day U6 left the board** (docs/lighting-bus.md: every lit board makes its own rail, so the motor board owes the lights 24 V and nothing else). PG_LED and PC6 went with it; PG_5V → PC1 and both rail-sense dividers stay. The lighting bus is F3 (3 A) → J7, and its health is read at the LED boards, not here.
+**And later the same day U6 left the board** (docs/lighting-bus.md: every lit board makes its own rail, so the motor board owes the lights 24 V and nothing else). PG_LED and PC6 went with it; PG_5V → PC1 (PA6 since 2026-10-07) and both rail-sense dividers stay. The lighting bus is F3 (3 A) → J7, and its health is read at the LED boards, not here.
 
 **2.4 (BOOT0 pad) — NOT DONE, on purpose.** Reading WCH's datasheet first, as this item demanded, is what stopped it. §2.5.2 says only that the ROM loader works "through the USART1 and USB interface" — it does not say WHICH USB, and this part has two (PA11/PA12, which J4 uses, and PB6/PB7, which nothing here reaches). And on the QFN68 package BOOT1 is a real pin (PB2, pin 28) that floats on this board, so "boot from system memory" (BOOT0 = 1, BOOT1 = 0) is not even well defined without a second part. A pad that might select a loader on a port that might be the right one is not a second way in. SWD on TP1–TP5 is the way in, and the WCH-LinkE is on the tools list. If a USB-only reflash path is ever wanted: pull PB2 down with 10k, then test the ROM loader on J4 on a first-article board BEFORE relying on it.
 
@@ -319,7 +319,7 @@ first boards and writes their first firmware.
   (`docs/optical-bringup-diagnostics.md`, item 3). Have the probe and the pads working
   before anything else is tried.
 * **`motor_ctrl`: two inputs read "fault" until firmware turns their pull-ups on.**
-  `PG_5V` (PC1, from the 5 V buck) and `BUSB_FAULT_N` (PC6, from bus B's switch) are
+  `PG_5V` (PA6, from the 5 V buck) and `BUSB_FAULT_N` (PC6, from bus B's switch) are
   open-drain outputs with no resistor on the board. Both pins must be inputs WITH the
   internal pull-up; as plain inputs they float low and say the Pi's 5 V is bad and bus B
   is shorted on a healthy board.
@@ -337,3 +337,34 @@ first boards and writes their first firmware.
   `INSTALL_NOTES.md` ("fit each other's sockets"). None of the swaps does damage. The motor
   drop is the exception that can: it is split across two terminal blocks on the motor and
   crossed on both (`docs/bench-order.md`, "The motor drop").
+
+## Review run 3, 2026-10-07: firmware and first-power notes (no board change)
+
+**motor_ctrl**
+* `PG_5V` (PA6) and `BUSB_FAULT_N` (PC6) are both on EXTI line 6: one of them can have
+  the edge interrupt, the other is polled. Both need the internal pull-up.
+* PB2 (BOOT1) is tied hard to ground. Never drive it as an output.
+* CAN2 only works with CAN1's clock on (CAN1 owns the shared filters), even where CAN1
+  itself is idle.
+* Same-shell pairs that will accept each other's plug: J1 and J7 (both 4-way XH), and
+  J4 (the USB lead, 4-way PH) against the bus-B leads on J2 / J6. The silk names them;
+  read it.
+
+**motor_ctrl and output_panel, before first power:** ohm +3V3 to GND. A mask-covered
++3V3 track still runs 3.06 to 3.20 mm from the CH32V307's centre, inside the reach of
+the largest slug the package drawing allows (3.25 mm). No signal via stands in that
+band any more; the track is under mask, so this is a check, not an expected fault.
+
+**output_panel:** J4's VBUS has no current limit of its own and the rail behind it is
+0.6 A. Only the optical board plugs in there.
+
+**pi_cap:** measure the Pi's 3V3 pin current with the UI ribbon attached (the estimate is
+345 to 375 mA and the Pi publishes no rating for that pin). The ribbon header J5 is
+unkeyed: way 1 is marked on the silk.
+
+**Hardware-only, still to measure:** the trunk contact at 97 % of its 3 A rating; the
+SMCJ24A's stand-off and the LMR33630's 38 V under an all-motor stop (scope trace on the
+24 V rail).
+
+**Stock seen thin on 2026-10-07:** KPJX-4S-S 19, G6K relay 48, MCP4261 96,
+LMR33630BRNXR about 260.

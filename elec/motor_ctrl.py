@@ -1782,7 +1782,7 @@ BOARD_NOTES["quality"] = {
                "sit at the far ends. Stubs to U2 / U3 are under 25 mm",
         "M21": "the only converter is the MCU's ADC reading two dividers. VSSA and VSS "
                "join at the part on the In1 plane; VDDA has its own 100 nF. SENSE_24V "
-               "leaves pin 21 on the open east row to a divider 3.8 mm away, beside the "
+               "leaves pin 20 (PA4) on the open east row to a divider 3.8 mm away, beside the "
                "5 V one and across the MCU from both inductors. Source impedance is 9.1k and 5k: firmware uses the "
                "longest sample time",
         "M22": "no op-amp on the board",

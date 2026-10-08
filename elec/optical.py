@@ -209,14 +209,11 @@ PIN = {  # port name -> LQFP176 pin
 # done here: the swap to LQFP176 was for stock, and changing two ULPI pins in the same
 # step would mix a stock fix with a design change. Worth doing deliberately.
 #
-# ⚠ PC2_C AND PC3_C NOW CARRY TWO OF THE TWENTY ANALOG CHANNELS, AND THE FIRMWARE RULE
-# HAS REVERSED. This block used to say ULPI lands here and the SYSCFG analog switch must
-# be LEFT CLOSED; that has been wrong since ULPI moved to PI11/PH4, and the instruction
-# is now the opposite. PC2SO/PC3SO in SYSCFG_PMCR must be SET, opening the switch, so
-# that ADC3 reaches the _C pads by the direct low-impedance path these pins exist for.
-# Left at their reset value the conversion still works, through the switch and whatever
-# series resistance it has -- which is exactly the kind of fault that measures as a
-# slightly slow settling channel and is never traced back to a register.
+# ⚠ PC2_C AND PC3_C CARRY NOTHING ON THIS BOARD (2026-10-07; they carried two analog
+# channels while the MCU's own ADCs did the converting, and ULPI before that). The
+# twenty channels go through the five TLV320ADC3140s now, so both pads are unconnected
+# and PC2SO / PC3SO in SYSCFG_PMCR can stay at their reset value. The history below is
+# kept because it says why ULPI_DIR / ULPI_NXT are on PI11 / PH4.
 #
 # ⚠ THE TRAP THAT USED TO BE HERE IS GONE, NOT MOVED. It was that an ADC-heavy design
 # would open these switches for analog performance and silently kill USB. With ULPI

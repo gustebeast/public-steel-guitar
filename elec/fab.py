@@ -336,7 +336,7 @@ PART_NOTES = {
                 "tabs do not enter anything smaller.",
     "C161211": "polarity, to look at in the placement preview and again on the finished "
                "board: each photodiode's STRIPED end (its cathode; Everlight's lands 1 and 4) "
-               "lies on the silk bar, which is the end toward its op-amp. Twenty of them, "
+               "is the end toward its op-amp. Nothing is printed there. Twenty of them, "
                "every one the same way round relative to its own op-amp.",
     "C5203987": "the seam pogo pin arrives UNSELECTED (a 'difficult' part, about 0.08 USD "
                 "each extra). Tick its row -- it can take two clicks -- or Next stops "
