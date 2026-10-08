@@ -130,7 +130,7 @@ a few boards of each design, far inside every row.
 | G6K-2F-Y-DC5, signal relay, the tape-and-reel listing (the tube listing C326376 fell to 44) | C47190 | `output_panel` | 1 | 64,883 (2026-10-08) | - |
 | TLV320ADC3140, audio converter | C1852021 | `optical` | 5 | 304 | 60 |
 | LMR33630BRNXR, 1.4 MHz buck | C2071384 | `optical` 1, LED supplies 3 | 4 | 260 | 65 |
-| MCP4261-103E/ST, digital pot | C185580 | `output_panel` | 1 | 96 | 96 |
+| AD8402ARZ10, digital pot (replaced the MCP4261-103E/ST, which stood at 96 with no thicker listing) | C578716 | `output_panel` | 1 | 2,460 (2026-10-08) | - |
 | LTE-C9901, IR emitter | C2683614 | `optical` | 10 | 1,717 | 171 |
 | CH32V307WCU6, MCU | C5142795 | `motor_ctrl`, `output_panel` | 2 | 413 | 206 |
 | PD15-22B, photodiode | C161211 | `optical` | 20 | 6,818 | 340 |
