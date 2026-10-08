@@ -274,7 +274,8 @@ def _wire(pts, d=WIRE_D):
 # so no gate had an opinion. So the drawing now declares each CABLE -- which connector at
 # each end, which ways -- and check_cables() fails the build unless, for every one:
 #   * a conductor is drawn for every way the harness tuple wires, and none for an NC way;
-#   * each conductor joins the SAME net at both ends (way n to way n: every lead is straight);
+#   * each conductor joins the SAME net at both ends (way n to way n on a lead; on a
+#     trunk hop, the out half counted from way 8 to the in half counted from way 1);
 #   * each end sits on its own way's contact line, where the routed board has that pad;
 #   * and leaves along the connector's own exit direction, not through its body.
 # The way's place and direction come from electronics.way_pt / way_out (the routed pads
@@ -489,10 +490,14 @@ def _tee_at(i, x, y):
 
 def tee_end(i, x, y, half):
     """One end of a trunk cable at tee i: its IN half (ways 1-4, from the west) or its
-    OUT half (5-8, to the east), or the 4-way motor drop."""
+    OUT half (to the east), or the 4-way motor drop.
+
+    The OUT half is the IN half mirrored (harness.xh_trunk_pins), so it is listed from
+    way 8 DOWN: conductor k of a hop is then the same net at both ends -- way 8 to way 1,
+    7 to 2, 6 to 3, 5 to 4 -- and the first two of either list are 24 V and ground."""
     if half == "drop":
         return conn_end("can_tee", "J2", at=_tee_at(i, x, y))
-    return conn_end("can_tee", "J1", ways=range(5, 9) if half == "out" else range(1, 5),
+    return conn_end("can_tee", "J1", ways=(8, 7, 6, 5) if half == "out" else range(1, 5),
                     at=_tee_at(i, x, y))
 
 
