@@ -293,3 +293,18 @@ thermal camera after ten minutes running, lid on.
   and print over USB or RTT. (The ballasts are 100 mW parts since this review, so a gate
   held high is 72 to 80 mW in each and inside their rating; it is the measurement that is
   lost, not a part.)
+
+## Power-up sequencing, 2026-10-07: two changes to expect on the bench
+
+* **The analog rail follows the digital one.** U9's enable is on `+3V3D`, not on its own
+  input, so `+3V3A` (the MCU's VDDA / VREF+ and the converters' AVDD) cannot come up
+  before `+3V3D` is past about 0.9 V, and falls with it. On a scope: `+3V3D` first,
+  `+3V3A` within a millisecond or so after. If `+3V3A` is missing, look at `+3V3D` (TP5)
+  before suspecting U9.
+* **Each converter is released about 10 ms after its supply.** `Cs19`..`Cs59`, 1 uF from
+  `SHDNZ` to ground beside each `Rs<k>1`, with the 10k pull-up: `SHDNZ` crosses its
+  threshold roughly 10 ms after `+3V3D` stands (TI SBAS993B section 10, Figure 169, wants
+  the supplies stable first). **Firmware: do not talk to a converter in the first 20 ms
+  after power-up, and still issue the software reset.** Grounding the `SHDNZ` land still
+  takes one converter off the bus; releasing it now takes 10 ms to act. The SHDNZ land
+  of `Rs<k>1` is its NORTH pad now (it was the south one).
