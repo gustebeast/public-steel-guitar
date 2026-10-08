@@ -2248,7 +2248,7 @@
      "min": 0.0
     }
    },
-   "src": "Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V",
+   "src": "Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA PULSED, continuous +/-5 mA at the wiper and +/-2.1 mA A to B for the 10k part (Rev. E, order review 2026-10-08; the board runs 0.31 mA). Operating supply 2.7..5.5 V. The check's 0.258 V on U10.12 is the rail's own 5 % allowance (the pot nets are declared at +5V against VDD + 0), not a pin margin",
    "mpn": "AD8402ARZ10"
   }
  }
