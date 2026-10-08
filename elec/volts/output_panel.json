@@ -1056,35 +1056,35 @@
   },
   "K1.1": {
    "max": 7.5,
-   "src": "coil max -- G6K-2F-Y-DC5 (C326376): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+   "src": "coil max -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
   },
   "K1.2": {
    "max": 60.0,
-   "src": "switching V -- G6K-2F-Y-DC5 (C326376): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
   },
   "K1.3": {
    "max": 60.0,
-   "src": "switching V -- G6K-2F-Y-DC5 (C326376): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
   },
   "K1.4": {
    "max": 60.0,
-   "src": "switching V -- G6K-2F-Y-DC5 (C326376): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
   },
   "K1.5": {
    "max": 60.0,
-   "src": "switching V -- G6K-2F-Y-DC5 (C326376): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
   },
   "K1.6": {
    "max": 60.0,
-   "src": "switching V -- G6K-2F-Y-DC5 (C326376): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
   },
   "K1.7": {
    "max": 60.0,
-   "src": "switching V -- G6K-2F-Y-DC5 (C326376): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+   "src": "switching V -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
   },
   "K1.8": {
    "max": 7.5,
-   "src": "coil max -- G6K-2F-Y-DC5 (C326376): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
+   "src": "coil max -- G6K-2F-Y-DC5 (C47190): Omron G6K datasheet p.3 coil ratings (5 VDC: 21.1 mA, max voltage 150 % of rated) and contact ratings (max switching 125 VAC / 60 VDC, 1 A)"
   },
   "L1.1": {
    "max": "none",

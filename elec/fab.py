@@ -171,7 +171,7 @@ LCSC = {
     "PCM1808PWR": "C55513",         # TI ADC, TSSOP-14 (SLES177B Pin Functions)
     "PCM5102APWR": "C107671",       # TI DAC, TSSOP-20 (SLAS859C Pin Functions, Figure 33)
     "CH334F": "C5187527",           # WCH HS hub, QFN-24 4x4 (DS V2.5 Table 1-3, "4F")
-    "G6K-2F-Y-DC5": "C326376",      # Omron DPDT, 5 V coil (terminal arrangement p.6), ~2.5k
+    "G6K-2F-Y-DC5": "C47190",       # Omron DPDT, 5 V coil (terminal arrangement p.6): the TAPE-AND-REEL listing (G6K-2F-Y-TR DC5), 64,883 on 2026-10-08; the tube listing C326376 was down to 44
     "ESD5B5.0ST1G": "C93623",       # onsemi bidirectional 5 V TVS, SOD-523, ~166k
     # -- the UI board, 2026-09-25, every line read off the LCSC listing itself ------
     "RKJXT1F42001": "C160841",      # Alps 4-way stick + encoder + push, 7,354 in stock.
@@ -321,7 +321,7 @@ ORDER_EVERY_BOARD = (
 # WHAT THE ORDER PAGE NEEDS DONE BY HAND FOR ONE PART (written into ORDER.txt of each
 # board that carries it).
 PART_NOTES = {
-    "C326376": "the relay is 'Standard only': under Economic it arrives unticked and Next "
+    "C47190": "the relay was 'Standard only' under its old listing (C326376); not re-read for this one. If it arrives unticked under Economic, Next "
                "offers 'Switch to Standard PCBA' or 'Do not place this part'. Switch.",
     "C5139521": "the fab has no footprint or model for it yet: the preview shows a "
                 "placeholder and the build takes one more day.",
