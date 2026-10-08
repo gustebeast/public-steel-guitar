@@ -74,6 +74,14 @@ from skidl import ERC, Net, Part, Pin, generate_netlist  # noqa: E402
 
 import netcheck  # noqa: E402
 import harness as _H  # noqa: E402
+
+# The inlet's ways, in the lead's own order and by what each carries: the netlist, the
+# placement and every sentence that names a way read these, never a number.
+LED_WAYS = tuple(_H.LED_DROP)
+_J1_NET = {"GND": "GND", "V24": "+24V_IN", "SCK": "SCK_CABLE", "SDT": "SDT_CABLE"}
+J1_ORDER = ", ".join("%d %s" % (i + 1, {"V24": "24 V"}.get(n, n))
+                     for i, n in enumerate(LED_WAYS))
+J1_NETS = ", ".join("%d %s" % (i + 1, _J1_NET[n]) for i, n in enumerate(LED_WAYS))
 import placecheck  # noqa: E402
 import buck_cell as BC  # noqa: E402
 from placecheck import check_placement, fp_box  # noqa: E402
@@ -541,30 +549,34 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     # at 24 V.
     # ⚠ XH BECAUSE IT IS 24 V. The instrument's rule (user, 2026-10-04): PH carries 5 V
     # and XH carries 24 V, so no lead can put the higher rail on the lower one's socket.
-    # ⚠ AND THE ORDER IS harness.XH_PINOUT's -- GND, V24, then the two signals -- so the one
-    # mistake still possible is harmless both ways round: a motor-bus lead on this socket
-    # powers the board correctly and lays CAN on the two SPI inputs, and this lead on a
-    # motor-bus socket lays 3.3 V logic on CAN. Neither reverses a supply.
-    J_PINS = tuple(_H.LED_DROP)          # GND, V24, SCK, SDT: the Pi cap's J3, way for way
+    # ⚠ AND THE ORDER IS THE INSTRUMENT'S ONE JST ORDER, harness.LED_DROP, whose supply
+    # ways are the XH bus's own -- so the one mistake still possible is harmless both ways
+    # round: a motor-bus lead on this socket powers the board correctly and lays CAN on
+    # the two SPI inputs, and this lead on a motor-bus socket lays 3.3 V logic on CAN.
+    # Neither reverses a supply. Nothing below names a way by its NUMBER: every contact
+    # is found by what it carries, so the order is harness.py's to change.
+    J_PINS = LED_WAYS                    # the Pi cap's J3, way for way
+    _H.check_ways(LED_WAYS, ("V24",))        # no data way beside the supply
     assert J_PINS[:2] == tuple(_H.XH_PINOUT[:2]), (
         "the fret harness plug is an XH and its supply ways are not the XH bus's own")
     j = Part(name="S4B-XH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
              tool="skidl", value="S4B-XH-SM4-TB",
-             description="harness in from the Pi daughter board: GND, 24 V, SCK, SDT",
+             description="harness in from the Pi daughter board: %s" % ", ".join(J_PINS),
              footprint=J_FP,
              pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(J_PINS)])
     v24_in = Net("+24V_IN")
-    gnd += j[1]
-    v24_in += j[2]
+    gnd += j[BC.xh_way(J_PINS, "GND")]
+    v24_in += j[BC.xh_way(J_PINS, "V24")]
     sck, sdt = Net("SCK_IN"), Net("SDT_IN")
     series = []
-    for ref, way, net in (("R21", 3, sck), ("R22", 4, sdt)):
+    for ref, name, net in (("R21", "SCK", sck), ("R22", "SDT", sdt)):
+        way = BC.xh_way(J_PINS, name)
         cable = Net("%s_CABLE" % J_PINS[way - 1])
         rs = _r(ref, R_SERIES, "%s in series at the cable: limits what a live Pi can push "
                                "into a dark driver's input" % J_PINS[way - 1])
         cable += j[way], rs[1]
         net += rs[2]
-        series.append(ref)
+        series.append((ref, way))
 
     # The fuse protects the TRUNK, not the board: a shorted buck must not pull the
     # instrument's 24 V down. Same argument, same part class as motor_ctrl's F1.
@@ -712,9 +724,9 @@ def _supply(place, fps, gnd, v24, vrail, bay_x0, bay_x1, cx):
     place["F1"] = (col, 12.00, 180.0)
     # the two series resistors, just past J1's courtyard on their own lands' lines (the
     # lands' centres are 3.25 +X of the pad centroid, the courtyard ends at 6.05, and
-    # ways 3 and 4 are 1.25 and 3.75 towards -Y)
-    for ref, dy in zip(series, (-1.25, -3.75)):
-        place[ref] = (mouth + J_ANCHOR + 7.30, dy, 0.0)
+    # each stands on the line of the way it is in series with)
+    for ref, way in series:
+        place[ref] = (mouth + J_ANCHOR + 7.30, BC.xh_way_dy(way), 0.0)
         fps[ref] = R_FP
     fps.update(dict(
         [("J1", J_FP), ("U10", BUCK_FP), ("L1", IND_FP),
@@ -785,9 +797,9 @@ def _manual(panel, n_drv, n_zone, facts):
     seam_y = "+14V5 at -9.05, GND -4.55, SCK 11.35, SDT 15.85"
     m = {
         "M1": ("two joints. J1 to the Pi cap's J3: a 4-way JST XH lead, straight through, "
-               "way n to way n -- 1 GND, 2 24 V, 3 SCK, 4 SDT at both ends "
-               "(harness.LED_DROP, asserted here and in pi_cap.py; this board's lands "
-               "read GND, +24V_IN, SCK_CABLE, SDT_CABLE on the routed board). XH is "
+               "way n to way n -- " + J1_ORDER + " at both ends "
+               "(harness.LED_DROP, read here and in pi_cap.py; this board's lands "
+               "read " + J1_NETS + " on the routed board). XH is "
                "shrouded and keyed. The seam, J11..J14 to the mid board's J11..J14: "
                "spring pins tip to tip, both boards face up under one deck, so equal Y "
                "is the same pin -- %s on BOTH routed boards. SCK_SEAM here is U3's SCKO "
@@ -979,7 +991,7 @@ def _manual(panel, n_drv, n_zone, facts):
                else ""),
         "M31": "'FRET LED %s r1' on the front. " % panel.upper() + (
                "The three test pads are named (+24V, +14V5, GND). J1's four ways are "
-               "named on the back: 1 GND, 2 +24V_IN, 3 SCK_CABLE, 4 SDT_CABLE. "
+               "named on the back: " + J1_NETS + ". "
                if key else "") + "Each seam land is named on the back with its net. "
                "A designator stands beside every LED and driver" + (
                ", the regulator, the inductor and the fuse" if key else "") +
@@ -1366,7 +1378,7 @@ def build(panel):
         for k, (_u, xd, _trio, _di, _f) in enumerate(drivers)] + laid
     if panel == HARNESS:
         # ...and the socket's ground way, which is the whole instrument's fret-light return
-        _trk, _via = BC.xh_ground_via(*place["J1"][:2])
+        _trk, _via = BC.xh_ground_via(*place["J1"][:2], BC.xh_way(LED_WAYS, "GND"))
         notes["tracks"] = list(notes.get("tracks", [])) + [_trk]
         notes["vias"] = notes["vias"] + [_via]
     # WHAT EACH SUPPLY NET CARRIES, all-white. The 14 V rail is made on the key board and
@@ -1379,7 +1391,8 @@ def build(panel):
     if panel == "key":
         i_24 = i_all * V_RAIL / 24.0 / 0.90
         paths = [
-            {"net": "+24V_IN", "from": "J1.2", "to": "F1.1", "amps": round(i_24, 3)},
+            {"net": "+24V_IN", "from": "J1.%d" % BC.xh_way(LED_WAYS, "V24"), "to": "F1.1",
+             "amps": round(i_24, 3)},
             {"net": "+24V", "from": "F1.2", "to": "U10.2", "amps": round(i_24, 3)},
             # the rail: out of the inductor, onto the plane, across the seam pogos. Held
             # to the WHOLE rail rather than the mid board's share, because the stretch
