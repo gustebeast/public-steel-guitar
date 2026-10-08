@@ -47,7 +47,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 628793.0
+   "volume_mm3": 629024.4
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -55,7 +55,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 692251.3
+   "volume_mm3": 692513.4
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -63,7 +63,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 634829.6
+   "volume_mm3": 634960.2
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -135,7 +135,7 @@
   },
   "optical_guard": {
    "material": "petg-gf",
-   "volume_mm3": 12612.8
+   "volume_mm3": 12638.0
   },
   "pedal_bar_a": {
    "material": "petg-gf",
