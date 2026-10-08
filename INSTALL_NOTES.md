@@ -183,16 +183,30 @@ Companion: `docs/board-bringup-diagnostics.md` (what each step can and cannot te
 the tools — all listed in `BOM.md` Tools). **No LEDs are used for diagnosis on any board.**
 Like the optical board, the chain is serial: work in order, one new thing per step.
 
-1. **Bare board on the bench supply, 24 V with the current limit at ~100 mA.** Read the
-   current at rest, then each rail with a meter. A supply that hits its limit is a short —
-   stop there. Do this for every first-article board, before it ever meets the instrument.
+0. **Probe wiring, once per board.** WCH-LinkE in RISC-V mode. Four SOLDERED tails:
+   SWDIO to TP1, SWCLK to TP2, GND to TP4, **reset to TP3, always**. Nothing on the
+   LinkE's 5V pin, ever; nothing from its 3V3 pin to TP5 while 24 V is on (TP5 is for the
+   meter). Ohm +3V3 to GND on both assembled `motor_ctrl` boards first.
+1. **Bare board on the bench supply, through the one bench pigtail** (XHP-4: way 1 24 V,
+   way 2 GND, ways 3 and 4 empty; polarity metered): `motor_ctrl` J1, `output_panel` J7.
+   **`motor_ctrl` starts at 8 to 12 V, limit 50 mA** (only 3V3 exists; flash here), then
+   24.0 V, then 5.02 V checked on a 10 ohm load on J5 with the limit raised to 0.3 A,
+   **before the Pi is plugged in.** `output_panel` at 24.0 V, limit 100 mA; if the rail
+   sits at 5 to 8 V in current limit, raise it to 250 mA before calling it a short. The
+   steps and the readings are in `docs/board-bringup-diagnostics.md`, "First power,
+   staged". Do this for every first-article board, before it ever meets the instrument.
 2. **`motor_ctrl` alone.** WCH-LinkE attaches → flash → the board enumerates on the Pi's USB.
+   (The console on day one is SDI printf over the two debug wires. The first firmware
+   waits 2 s at the top of `main()` and never drives PB2.)
    Its CAN error counters should read "no acknowledge" on both buses. That is CORRECT: nothing
    else is on a bus yet.
 3. **Add one CAN node at a time.** The counters go clean when the first node acknowledges.
    After each addition, power off and measure **60 Ω between CAN_H and CAN_L** on that bus —
    120 Ω means one terminator is missing or the bus is open, 40 Ω means a third is fitted.
-4. **`output_panel`.** First the USB tree as the Pi sees it (hub, then MCU, then the optical
+4. **`output_panel`.** Before any firmware: its hub enumerates on a PC through J3, and the
+   direct path J8 to the jack plays. (No relay K1 on the board means no sound in any
+   mode: bridge K1 pads 2-3 and 6-7 to go on.) Plug J4 with the power off; only the
+   optical board goes there. Then the USB tree as the Pi sees it (hub, then MCU, then the optical
    board behind it). Then the audio loopback: the TS lead from the output jack back into the
    pickup terminal tests ADC, Pi, DAC, relay and buffer in one measurement.
    If the loopback is silent, meter the output panel's rails at the parts that already sit on
@@ -219,16 +233,18 @@ board can and cannot observe, and the pads that would widen it.
 | `TP6` `TP7` | I2C2 SDA, I2C2 SCL | **the ROM bootloader, when SWD will not attach** |
 | `TP8` | BOOT0 | selects that bootloader; hold it at +3V3D through reset |
 | `TP9` `TP10` `TP11` | +24V, +5V, +3V3A | a meter on each rail, without probing a 0402 |
+| `TP12` | PA2, USART2_TX | the debug serial output (3.3 V, transmit only), 3 mm west of the MCU |
 
-All eleven are bare copper: no paste, no component, and not in the BOM or the
-pick-and-place. `TP6`/`TP7` are 1.0 mm, the rest 1.5 mm.
+All twelve are bare copper: no paste, no component, and not in the BOM or the
+pick-and-place. `TP6`/`TP7`/`TP12` are 1.0 mm, the rest 1.5 mm.
 
 **There is a second way in, and it was on the board before the pads were.** There is no
 DFU -- the ROM bootloader's USB is on OTG_FS and this board uses OTG_HS through the PHY --
 but AN2606 Rev 61 Table 113 puts the H74x bootloader's **I2C2 interface on PF1 (SCL) and
 PF0 (SDA)**, which is exactly the bus this board already runs to all five converters.
 
-- Pull **`TP8` (BOOT0) to +3V3D** (`TP5` is right there) and reset. The ROM bootloader
+- Pull **`TP8` (BOOT0) to +3V3D** (the nearest is **C106 pad 1, 2.6 mm east of TP8**: a
+  3 mm wire or a solder blob. TP5 is 31 mm away) and reset. The ROM bootloader
   then listens on every interface it has, I2C2 among them.
 - Talk to it at **slave address `0b1001110` (0x4E)**, 7-bit, up to 400 kHz. **The
   converters are at `0b1001100` (0x4C)**, so they cannot answer for the bootloader and it
@@ -249,8 +265,12 @@ first article while SWD still works -- not on the board whose SWD has failed.
 - **Measure each rail to GND with a meter, board unpowered:** `+24V`, `+5V`, `+3V3D`,
   `+3V3A`. A near-zero reading is an assembly short; find it now rather than with 24 V
   behind it.
-- **Current-limit the bench supply.** The board's normal draw is ~0.3 A and up, so a
-  ~0.6 A limit still lets it run while stopping a short from cooking anything.
+- **Look for R44** (the 2512 beside J2). Unplaced, nothing comes up.
+- **First power is 6.0 V at a 0.3 A limit, not 24 V**: TP10 must read 5.0 V before the
+  supply goes any higher (a dry joint in the buck's feedback would otherwise put 24 V on
+  the 5 V rail). Then 24.0 V: **limit 100 mA with the MCU erased, 250 mA once it is
+  flashed.** Never feed the board through TP10 or TP5. The four steps are in
+  `docs/optical-bringup-diagnostics.md`, "First power at 6 V, not 24 V".
 
 ### 1. Power tree
 
@@ -347,6 +367,32 @@ harder -- so treat it as a quick hint, never as evidence they are off.
 Enumerate over `J1`. The path is 20 channels -> 5 converters -> SAI TDM -> H743 -> ULPI PHY
 -> USB-C, carrying the audio plus MIDI from on-chip pitch detection. If it does not
 enumerate, SWD is the only way to inspect it, and the only way to reflash.
+
+## The Pi: what it must be told, and two checks before 5 V (2026-10-07)
+
+`/boot/firmware/config.txt`, before the cap goes on (set the Pi up on its own supply,
+with SSH or a screen: with the cap on there is no serial console):
+
+```
+dtparam=spi=on                      # SPI0, fret lights: GPIO10, GPIO11
+dtoverlay=spi1-1cs                  # SPI1, display: GPIO20, GPIO21, CS on GPIO18
+dtoverlay=spi5-1cs                  # SPI5, foot lights: GPIO14, GPIO15
+dtoverlay=dwc2,dr_mode=peripheral   # the USB-C port is the gadget port
+```
+
+**Must NOT appear:** `enable_uart=1`, `dtoverlay=disable-bt`, `dtoverlay=miniuart-bt`
+(all three put a UART on GPIO14 / 15, the foot lights' pins), `dtoverlay=spi1-2cs` or
+`-3cs` (a second chip select lands on a UI switch), `dtoverlay=w1-gpio` (GPIO4 is the
+display's DC line). Take `console=serial0,115200` out of `cmdline.txt`.
+
+**Then remove the Pi's own USB-C supply for good and tape that port.** With the 5 V lead
+from the motor board plugged into the cap, a supply on the Pi feeds the whole 24 V trunk
+backwards at about 4.3 V. The cap says so on the face you can see.
+
+**Seating check, before 5 V.** The 40-way socket is not keyed. One row off puts 5 V on
+the Pi's 3V3 rail. Look for a bare header pin at either end and along either side: there
+must be none. Then meter: cap tail 6 to the Pi's USB shell reads 0 ohm; cap tail 1 to
+tail 2 does not.
 
 ## The flat Pi: seat it, then clamp it with the spacer (2026-09-29)
 

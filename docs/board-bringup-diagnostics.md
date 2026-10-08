@@ -91,7 +91,7 @@ Tools section; they are not weighed against anything.
 | tool | what it answers | why it is not optional |
 |---|---|---|
 | **Current-limited bench supply** (24 V, set to ~100 mA for first power) | is anything shorted, before it burns | the LMR33630 fault above becomes a number on a display instead of a blown fuse. First power on every first article goes through this, not the instrument's own supply |
-| **WCH-LinkE** | everything downstream of a live MCU | CH32V parts use WCH's two-wire debug; an ST-Link or J-Link will not talk to them. It also carries a USB-serial port |
+| **WCH-LinkE** | everything downstream of a live MCU | CH32V parts use WCH's two-wire debug; an ST-Link or J-Link will not talk to them. It also carries a USB-serial port. RISC-V mode, four soldered tails (the reset wire always), its 3V3 and 5V pins unused: the probe rule at the end of this document |
 | **USB-CAN adapter** (CANable-class, `candump`) | what is actually on the bus, from outside it | `motor_ctrl` is the head of BOTH buses and the Pi is not on either — so if `motor_ctrl` is the thing that is broken, nothing in the instrument can see the bus at all |
 | **8-channel logic analyser** | CAN TX/RX at the MCU side, SPI to the pot, I2S framing | splits "the MCU is not transmitting" from "the transceiver or the wire is dead" |
 | **Multimeter** | rails, continuity, and **60 Ω across CAN_H/CAN_L with power off** | that one reading proves both terminators are present and the bus is unbroken, on either bus, from any connector |
@@ -336,7 +336,7 @@ first boards and writes their first firmware.
 * **Wrong socket.** Which plugs fit which sockets, and what each swap does, is tabled in
   `INSTALL_NOTES.md` ("fit each other's sockets"). None of the swaps does damage. The motor
   drop is the exception that can: it is split across two terminal blocks on the motor and
-  crossed on both (`docs/bench-order.md`, "The motor drop").
+  crossed on the CAN pair (`docs/bench-order.md`, "The motor drop").
 
 ## Review run 3, 2026-10-07: firmware and first-power notes (no board change)
 
@@ -368,3 +368,128 @@ SMCJ24A's stand-off and the LMR33630's 38 V under an all-motor stop (scope trace
 
 **Stock seen thin on 2026-10-07:** KPJX-4S-S 19, G6K relay 48, MCP4261 96,
 LMR33630BRNXR about 260.
+
+## Bring-up review, 2026-10-07: the first evening on `motor_ctrl` and `output_panel`
+
+One copper change came out of this review: on `output_panel`, PB2 (BOOT1, U1 pin 28) is
+joined to JACK_MODE, so R37 holds it low at reset. Everything else is what to do and what
+not to do. The optical board's own list is in `docs/optical-bringup-diagnostics.md`.
+
+### The probe rule (all three MCU boards)
+
+* **Four wires, soldered: SWDIO (TP1), SWCLK (TP2), GND (TP4) and ALWAYS the reset wire
+  (TP3).** Flashing works without the reset wire; getting back from a bad flash does not.
+  Fit it on day one, not when it is first needed.
+* **Soldered tails, not a clip.** The pads are bare lands 18 to 27 mm apart. Tails under
+  30 cm, left on the board.
+* **WCH-LinkE in RISC-V mode** for the two CH32V307 boards.
+* **The LinkE's 3V3 and 5V pins are power OUTPUTS, side by side on its header.** Never a
+  wire on the 5V pin. No wire from the 3V3 pin to TP5 while 24 V is on. On `motor_ctrl`,
+  5 V on TP5 is 5 V on a rail whose parts stop at 4.0 V: the MCU and both CAN
+  transceivers, one of two assembled boards. TP5 is where the METER goes. (The generators
+  called it "target sense", which is an ST-Link's word for an input. Corrected.)
+* **Never press "Disable 2-wire SDI" in WCH-LinkUtility.**
+
+### Getting back from a bad flash
+
+CH32V307 (`motor_ctrl`, `output_panel`):
+
+| what the firmware did | symptom | way back | needs |
+|---|---|---|---|
+| wrong clock tree, dead PLL, fault at start | runs wrong or not at all | attach and reflash | the three wires |
+| remapped PA13 / PA14, or entered sleep / stop / standby at start | "cannot connect" | WCH-LinkUtility, **"Clear All Code Flash - By Pin NRST"** (WCH-Link manual V2.7, 5.2.4) | the reset wire on TP3 |
+| the same, and the reset erase does not take | "cannot connect" | **"Clear All Code Flash - By Power Off"** (same section): the Link powers the chip | LinkE 3V3 on TP5 with the board's own power OFF and, on `motor_ctrl`, J1 / J3 / J5 / J7 unplugged (see back-feed below) |
+| the same, no reset wire | "cannot connect" | BOOT0 high through a reset, then the Link as usual | `motor_ctrl`: a soldered wire from TP6 (BOOT0) to the TP5 tail. `output_panel`: tweezers from R7 pad 1 to R6 pad 2 |
+| debug closed for good | the Link is dead | the ROM loader with WCHISPTool over USB | BOOT0 high as above, and a USB lead |
+
+* **The ROM loader's USB is on PA11 / PA12 or PB6 / PB7** (WCH's CH32V307 evaluation-board
+  reference V1.6; its serial side is PA9 / PA10, brought out on neither board). That
+  closes open question 2.4: `motor_ctrl`'s J4 is on PA11 / PA12, and `output_panel`'s MCU
+  is reached through its hub on J3.
+* **`output_panel` has no BOOT0 pad.** R7 pad 1 is BOOT0 and R6 pad 2 is +3V3, 3.5 mm
+  apart beside the crystal: bridge them with tweezers through a reset. BOOT1 is PB2,
+  which the board now holds low (before this change it floated, and BOOT0 high with BOOT1
+  high starts from SRAM, not the loader). On `motor_ctrl` BOOT1 is tied to ground.
+* **Prove the ROM loader on the first evening**, while the debug wires still work. It is
+  the one recovery nobody has run, and on `motor_ctrl` it also tests the hand-made USB
+  lead.
+
+### Seeing the firmware run, with no LED and no UART pad
+
+* **printf over the two debug wires.** The WCH-LinkE's "SDI virtual serial port" (manual
+  5.2.11; CH32V30x is listed; WCH's `SDI_Printf` example). No pin, and it does not depend
+  on the clock tree being right. This is the console on both CH32V307 boards.
+* **`motor_ctrl`: PA6 is also UART7_TX (remap 1) and USART1_TX (remap 3).** PA6 is PG_5V,
+  and its only other node is U5 pin 4, an SOIC lead a grabber holds. Open-drain only: U5
+  pulls the same line low when the 5 V rail is bad.
+* **`output_panel`: toggle PC5.** The relay clicks.
+
+### The first firmware: rules that protect the board and the way back in
+
+* **A 2 s delay at the top of `main()`, before any sleep, standby or debug-pin remap.**
+  It is the window the probe always has.
+* **Never drive PB2**, on either board. On `output_panel` it is tied to PB1 (JACK_MODE):
+  an output there fights PB1 and moves the jack mode. It stays an input for ever, with
+  no pull-up.
+* **`motor_ctrl`: PA6 and PC6 are never push-pull** (U5's PG and U6's FAULT are open-drain
+  outputs on those lines; inputs with the internal pull-up). **PB13 held low stops bus B
+  and nothing times it out**: the SN65HVD230 has no dominant time-out.
+* **`output_panel`: PA15 and PB3 stay inputs.** They are tied on the board to PB12 / PB13
+  (I2S2 WS / CK). An "unused pins to outputs" loop shorts them.
+
+### First power, staged
+
+**One bench pigtail serves all three 24 V boards**: an XHP-4 with way 1 = 24 V, way 2 =
+GND, ways 3 and 4 empty, into `motor_ctrl` J1, `output_panel` J7 or `optical` J2. Meter
+its polarity first. Plug it with the supply's output OFF.
+
+`motor_ctrl`:
+
+1. **8 to 12 V, limit 50 mA.** Only the 3V3 converter runs (U5 holds off until 18.1 V).
+   TP5 reads 3.31 V at 10 to 25 mA. Attach the probe and flash here: a wrong 5 V rail
+   cannot exist yet.
+2. **24.0 V, limit 150 mA.** 5.02 V on J5's outer posts.
+3. **Raise the limit to 0.3 A, then load the 5 V rail**: 10 ohm 5 W on J5 (0.5 A), still
+   5.0 V. Below 0.3 A the supply folds back as U5 starts, the trunk falls under U5's
+   turn-off, and the rail motorboats: it looks like a broken converter and is the bench
+   supply.
+4. **Only then the Pi.** Its header has no protection.
+
+(Readings are datasheet estimates, not measurements: replace them with the first board's.)
+
+`output_panel`:
+
+1. **The pigtail into J7, 24.0 V, limit 100 mA.** Not J6: the inlet takes only the brick's
+   plug and the brick has 6.67 A behind it. J7 is behind the power switch (Q2), so this
+   bypasses it; the jack's pins go live through Q2's body diode, which is harmless. The
+   switch is tested later, on the brick, after J6's polarity has been metered.
+2. **If the supply sits in current limit with 5 to 8 V on the rail, raise the limit to
+   250 mA before calling it a short.** The buck stalls in a 100 mA limit once the hub and
+   the MCU are running.
+3. **Before any firmware:** the hub enumerates on a PC through J3, and the direct path
+   J8 to the jack plays (relay released, pot at its factory mid-scale). Neither needs the
+   MCU, and with both proven a later fault is the firmware's.
+4. **No K1, no sound, in any mode.** If the relay was not placed (stock was thin), bridge
+   its pads 2-3 and 6-7 to go on.
+5. **Plug J4 with the power off, and only the optical board goes there.** A hot plug dips
+   +5V far enough to brown the MCU out mid-flash.
+
+### Back-feed
+
+* **No USB-C supply on the Pi once the J5 to J2 lead is in.** It reaches the 24 V trunk at
+  about 4.3 V through U5 and F1. Tape the port.
+* **3.3 V on `motor_ctrl`'s TP5 reaches the 24 V net through U1.** For a power-off erase,
+  unplug J1, J3, J5 and J7 first, or the probe is charging the motor trunk and the erase
+  "does not work".
+
+### The ohm check, corrected
+
+On `motor_ctrl` a mask-covered +3V3 segment at (13.11 .. 13.84, -10.56) lies 0.16 mm
+INSIDE the nominal exposed slug of the CH32V307, not only inside the largest the drawing
+allows. It is under solder mask; a pinhole there is a +3V3 to ground short under the
+part. **Meter +3V3 to GND on both assembled boards before either meets 24 V.**
+
+### pi_cap
+
+In the fab's placement preview, J5's pins must point off the board edge: its placement
+frame was entered by hand.
