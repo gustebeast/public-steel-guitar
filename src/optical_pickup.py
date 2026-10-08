@@ -1753,10 +1753,10 @@ def _parts():
     # 1.74 mm circle (an 0402's circumscribed courtyard) sits 2 mm from pin 14 at the SAME
     # cell-frame offset (-3.46, +2.00) in all five cells, because the cells are one pattern
     # repeated. All five converters are rot 180 at x 11.9, y spaced 18.727.
-    # ⚠ THE RESISTOR IS VERTICAL (rot 90) SO ITS SOUTH PAD FACES +3V3D. The channel via
-    # this pull-up feeds from sits at (8.85, y+0.75), south-east of the site; a horizontal
-    # part would put the +3V3D pad on the far side and make that stub cross back under the
-    # body. SHDNZ takes the longer stub instead, which is free -- it is a DC-static line.
+    # ⚠ THE RESISTOR IS VERTICAL WITH ITS +3V3D LAND SOUTH. The channel via this pull-up
+    # feeds from sits at (8.85, y+0.75), south-east of the site, and the release-delay
+    # capacitor shares the SHDNZ land from the north, where the cell's one free strip is.
+    # SHDNZ takes the longer stub, which is free -- it is a DC-static line.
     # ⚠ AND BOTH ARE PLACED AFTER ROUTING (post_route_refs), so these coordinates are
     # measured against the FINISHED board rather than negotiated with the router.
     # ⚠ THE OFFSETS ARE SEARCHED AGAINST THE ROUTE, AND THE FIRST GUESS WAS WRONG TWICE.
@@ -1770,7 +1770,10 @@ def _parts():
     # (-3.810, +6.950), 3.45 mm clear of it.
     for _k, _cy in enumerate((62.0187, 43.2918, 24.565, 5.8382, -12.8887)):
         add("Rs%d1" % (_k + 1), "U%d SHDNZ pull-up (10k to IOVDD)" % (14 + _k), "0402",
-            11.9 - 3.462 - 3.55, _cy - 0.75 + 3.500 - 28.315, rot=90.0)
+            11.9 - 3.462 - 3.55, _cy - 0.75 + 3.500 - 28.315, rot=270.0)
+        # ...and the release-delay capacitor on its SHDNZ land, 1.9 mm further north
+        add("Cs%d9" % (_k + 1), "U%d SHDNZ release delay (1 uF to ground)" % (14 + _k),
+            "0402", 11.9 - 3.462 - 3.55, _cy - 0.75 + 3.500 + 1.900 - 28.315, rot=90.0)
         # ⚠ NO PAD OF ITS OWN -- the resistor's SHDNZ land is the access point. A 1.0 mm
         # pad fits (searched: cell offset (-3.810, +6.950), 0.348 mm headroom) but sits
         # 3.45 mm from the resistor and would need its own stub, which is ~4 mm more copper
