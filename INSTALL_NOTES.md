@@ -386,8 +386,10 @@ dtoverlay=dwc2,dr_mode=peripheral   # the USB-C port is the gadget port
 `-3cs` (a second chip select lands on a UI switch), `dtoverlay=w1-gpio` (GPIO4 is the
 display's DC line). Take `console=serial0,115200` out of `cmdline.txt`.
 
-**If a console is ever needed with the cap on:** GPIO14 (TXD) is J6 way 4 and GPIO15
-(RXD) is J6 way 3, each through 68 ohm, ground on way 2. **Never way 1: that is 24 V.**
+**If a console is ever needed with the cap on**, it borrows the foot lights' pins, so
+for as long as it is wanted: the foot-light lead off J6, `dtoverlay=spi5-1cs` out,
+`enable_uart=1` in. GPIO14 (TXD) is J6 way 4 and GPIO15 (RXD) is J6 way 3, each through
+68 ohm, ground on way 2. **Never way 1: that is 24 V.** Afterwards put all three back.
 
 **Then remove the Pi's own USB-C supply for good.** With the 5 V lead from the motor board
 plugged into the cap, a supply (or a PC) on the Pi's USB-C feeds the whole 24 V trunk

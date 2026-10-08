@@ -157,7 +157,7 @@ all of them.
 | WCH-LinkE | flashing and debugging `motor_ctrl` and `output_panel` (CH32V307) | the only probe that talks to CH32V parts, **in its RISC-V mode**. Four wires: SWDIO TP1, SWCLK TP2, GND TP4 and **reset TP3, always**. Its 3V3 and 5V pins are power OUTPUTS and go nowhere (TP5 is for the meter). It is also the day-one console: SDI printf over the same two debug wires |
 | ST-Link (V2 or V3) | flashing and debugging `optical` (STM32H743) | SWD pads TP1 SWDIO, TP2 SWCLK, TP3 NRST (always wired: connect-under-reset is the way back), TP4 GND, TP5 3V3 (a genuine ST-Link senses there; a clone may source 3.3 V, so leave a clone's pin off). Before the first flash, watch TP3 go low on a tool-commanded reset: a clone whose reset pin does nothing cannot recover a bad flash. The board can also be loaded with no probe over I2C2 (TP6 / TP7) with TP8 held high |
 | Arm GNU Toolchain 14.2.rel1 (`arm-none-eabi-gcc`) | building the `optical` firmware (Cortex-M7) | Arm's own zip from developer.arm.com, checked against its published SHA-256; unpacked under `C:/Users/gus/tools`, not on PATH. The CH32V307 boards need WCH's RISC-V toolchain instead, not installed |
-| Four soldered wire tails per MCU board, under 30 cm | reaching the SWD pads | the pads are bare 1.5 mm lands, not a header: 18 to 27 mm apart on the two CH32V307 boards and 8.9 mm on `optical`, and no clip holds on any of them. Solder the tails once and leave them on |
+| Four soldered wire tails per MCU board, under 30 cm | reaching the SWD pads | the pads are bare 1.5 mm lands, not a header: on the two CH32V307 boards the four wired pads are two pairs 3 mm apart, the pairs 18 to 29 mm from each other; on `optical` the pads are 8.9 mm apart. No clip holds on any of them. Solder the tails once and leave them on |
 | Bench pigtail: XHP-4, way 1 red (24 V), way 2 black (GND), ways 3 and 4 EMPTY | powering each 24 V board alone | one lead, three boards: `motor_ctrl` J1, `output_panel` J7, `optical` J2. Meter its polarity before it meets a board: none of the three has reverse protection. A crimp in way 3 or 4 would put 24 V on a CAN pin |
 | 10 ohm 5 W resistor on a PHR-6 (ways 1 and 2) | loading the Pi's 5 V before the Pi sees it | `motor_ctrl` J5, 0.5 A |
 | USB-CAN adapter, `candump`-class | watching bus A from outside | **three tails crimped into ways 5 (CAN_L), 6 (CAN_H) and 7 (GND) of the bench trunk's XHP-8, way 8 EMPTY** (way 8 is 24 V). Not clipped to a motor's screw terminals: a slip there lands on V+. The adapter's own 120 ohm is ON only when the adapter is the far end of the bus (no tee switched in) |
@@ -167,7 +167,9 @@ all of them.
 
 Order of work is in `INSTALL_NOTES.md` (board bring-up) and
 `docs/optical-bringup-diagnostics.md`: one board at a time on the current-limited supply,
-then `motor_ctrl` alone, then the motor, then the output panel, then the optical board.
+then `motor_ctrl` alone, then the output panel alone, then the two joined by the power
+link with the tee and one motor (below: once J1 holds the trunk, 24 V reaches `motor_ctrl`
+through the panel), then the optical board.
 
 ## Before the first power-up (bring-up review, 2026-10-07)
 
@@ -181,7 +183,8 @@ nothing). The rule is no SUPPLY and no PC in the Pi's USB-C once the 5 V lead is
 the J2 lead. Tag the port; do not tape it. The cap's seen face says so.
 
 **Every SERVO42D leaves its box as CAN ID 01, 500K, in the pulse-input mode** (maker's CAN
-manual V1.0.9, sections 3.2, 3.11, 3.12). Before a motor meets the trunk: set its ID from
+manual V1.0.9, sections 3.2, 3.11, 3.12). On the bench the tee's drop IS the motor's
+supply, so each motor is set up **as the only motor on the tee**: set its ID from
 its own screen and buttons, one motor at a time; set the bus-control mode (SR_vFOC);
 calibrate it with nothing on the shaft, before the belt goes on. Never plug or unplug a
 motor's power or CAN with the trunk live (manual 14.1): the tee is there to swap motors,
@@ -195,6 +198,20 @@ off, and the board's first frame is acknowledged by the adapter, so "no ACK" can
 mistaken for wrong bit timing. Then one motor on J2, the adapter's terminator OFF and
 SW1 ON: 60 ohm again. Read SW1 before trusting it: "ships OFF" is what the reel is
 expected to do, not something measured.
+
+**Where 24 V goes in once J1 holds the trunk.** The bench pigtail and the bus A trunk
+want the same socket on `motor_ctrl`. From this stage on the pigtail goes into
+`output_panel` **J7**, and the power link (J10 to `motor_ctrl` J3) carries 24 V across:
+J7 and J10 are one net on the panel, J3 and J1 one net on the motor board. So the panel
+has had its own first power (`docs/board-bringup-diagnostics.md`) before the first motor
+turns. **Limit for this stage: 2 A with one motor.** At the 0.3 A of the earlier stages a
+motor calibrating folds the supply back and the fold-back looks like a fault. (2 A is an
+estimate from the driver's default phase current, not a measurement: read the supply's
+display on the first calibration and set the limit a little above it.)
+
+**The Pi's gadget port has never been run with VBUS absent.** The panel's J2 leaves VBUS
+open on purpose. If the Pi does not appear as a gadget through that lead, the first
+question is `dr_mode` and VBUS sensing on the Pi, not a dead panel.
 
 **Meter only, before either meets power.** The tee: J1 way 1 = way 8 = J2 way 1; 2 = 7 =
 J2 way 2; 3 = 6 = J2 way 3; 4 = 5 = J2 way 4; 24 V to GND open; CAN_H to CAN_L open with
