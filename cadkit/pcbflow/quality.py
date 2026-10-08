@@ -2157,14 +2157,26 @@ def silk_prints_as_drawn(ctx):
             sys.path.insert(0, _here)
         import silkfit
     except Exception as e:                                  # noqa: BLE001
-        return [("silk clipped", None,
-                 "silkfit is not importable (%s), so NO claim is made about whether "
-                 "this board's silk prints as drawn" % type(e).__name__)]
+        # ⚠ FAIL, NOT None, AND THE CAREFUL HANDLER WAS WEAKER THAN NO HANDLER.
+        # ok=None renders as a "note": counted in neither fails nor opens, printed
+        # with "ok" in the margin. So the ONE rule here with no declaration
+        # mechanism -- because ink over a mask opening is not printed, and signing
+        # for it would be signing that the plot may lie -- had an accidental waiver
+        # that no other rule has: break silkfit and every board ships green at
+        # "0 FAIL, 0 OPEN". Letting the exception ESCAPE was already correct, since
+        # run()'s own handler turns a broken check into a FAIL. A check that could
+        # not run has not passed.
+        return [("silk clipped", False,
+                 "silkfit is not importable (%s), so this board's silk CANNOT be "
+                 "graded -- and ungraded silk is silk nobody has checked for "
+                 "clipping" % type(e).__name__)]
     try:
         bad = silkfit.clipped(ctx.board, pcbnew=pcbnew)
     except Exception as e:                                  # noqa: BLE001
-        return [("silk clipped", None,
-                 "the check itself failed: %s: %s" % (type(e).__name__, e))]
+        # FAIL for the reason given on the import handler above.
+        return [("silk clipped", False,
+                 "the check itself failed, so NOTHING on this board is graded: "
+                 "%s: %s" % (type(e).__name__, e))]
     n_silk = 0
     for fp in ctx.fps.values():
         for f in fp.GetFields():
@@ -2179,7 +2191,8 @@ def silk_prints_as_drawn(ctx):
                  "none overlaps a solder-mask opening" % n_silk)]
     worst = bad[0]
     return [("silk clipped", False,
-             "%d of %d silk object(s) will be clipped by the solder mask and so are "
+             "%d of %d silk object(s) will be clipped by the solder mask or the board "
+            "outline and so are "
              "drawn but not printed; the worst is %s, losing %.4f mm2 at (%.2f, %.2f)"
              % (len(bad), n_silk, worst[0], worst[1], worst[2][0], worst[2][1]))]
 
@@ -2400,15 +2413,24 @@ def connector_labels(ctx):
 
     # a test pad's label is the test pad's: ink whose nearest pad on the whole board is a
     # TP's names that pad, however close a connector's contact on the same net is
-    probes = [_xy(q) for r, f in ctx.fps.items() if _prefix(r) == "TP" for q in f.Pads()]
+    # ...measured to each pad's COPPER, not its centre: a side-entry header's land is
+    # 3.5 mm long, and a "1" 1 mm off its end is 2.8 mm from its centre -- further than a
+    # test pad standing 2.3 mm away diagonally, which then took the mark for its own.
+    def _land(q):
+        bb = q.GetBoundingBox()
+        return (MM(bb.GetLeft()), MM(bb.GetTop()), MM(bb.GetRight()), MM(bb.GetBottom()))
+
+    probes = [_land(q) for r, f in ctx.fps.items() if _prefix(r) == "TP" for q in f.Pads()]
 
     def probe_label(centre):
         if not probes or not allpads:
             return False
-        d = min(math.dist(centre, q) for q in probes)
-        return d <= min(math.dist(centre, q) for q in allpads)
+        at = (centre[0], centre[1], centre[0], centre[1])
+        d = min(_box_gap(at, q) for q in probes)
+        return d <= min(_box_gap(at, q) for q in allpads)
 
-    allpads = [xy for _r, (_f, ws, _b) in conns.items() for xy in ws.values()]
+    allpads = [_land(q) for _r, (f, ws, _b) in conns.items() for q in f.Pads()
+               if q.GetNumber().isdigit() and int(q.GetNumber()) in ws]
     tally = collections.Counter()
     for ref in sorted(conns, key=_nat):
         fp, ways, _body = conns[ref]
