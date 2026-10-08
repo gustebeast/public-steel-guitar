@@ -432,3 +432,17 @@ Confirm Parts Placement (ticked).
   (then: Projects > open the 2026-10-07 project > NEXT on the BOM page). What to look for: R41.. 0R links on their lands
   beside each driver; U (TLC5971) pin-1 dot on the board's mark; pogo barrels pointing off the board end; ui_board J2
   body at the board edge, pins off the board; J1 on its holes. Nothing in the cart.
+
+## JST ORDER: power, GND, data, data -- 2026-10-07 (user rule for every JST lead; pogo lands are free)
+- foot_led_a and fret_led_key inlet J1 re-routed on harness.LED_DROP (V24, GND, SCK, SDT): 0 unconnected, 0 violations,
+  0 FAIL / 1 OPEN (M12), A22 ok. Generators read the ways BY NAME from harness.py (taken unchanged from agent/bronner
+  52cdfaf5, as was elec/silk.py with the verified glyph list -- without it the labeller does not run and A19 fails).
+- foot_led_b, fret_led_mid, ui_board: no JST inlet, copper unchanged; re-lettered only. Seam pogo lands unchanged.
+- Dropped with the reorder: the FET isolator idea for the inlet, and the 1 MHz clock ceiling note. R21/R22 stay 1k.
+- src/foot_light.XH_H 6.00 (the side-entry part; board_geom's figure), trough 6.30, LED 4.70 off the window.
+- All five fab packages rebuilt 2026-10-07. The JLCPCB uploads of 00:20 are STALE for all five (new silk face on every
+  board, new inlet copper on two). Re-upload + re-quote on order day; nothing is in the cart.
+- CAD: src/ on this branch does NOT import until bronner's 8a8c55f1 (leg_pogo / wiring follow harness.PH_PINOUT) is on
+  main. Gate + scratch render after that sync.
+- NOTE for the work items: JLC stocks no side-entry SMT 5-way XH; the only stocked 5-way is THT S5B-XH-A (C263757).
+- Seen in a scoped gate before the sync, not mine: bar_latch_screw <-> pedal_bar_a, 105.6 mm3.
