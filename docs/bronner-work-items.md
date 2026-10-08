@@ -5703,3 +5703,16 @@ order-time ones, open before as well. PB2 on JACK_MODE is routed by the router n
 (the pinned track is gone). `src/board_geom.py` carries the SOIC-14's height.
 `docs/board-bringup-diagnostics.md` item 3.5 (pot readback) is closed: the part has no
 data output.
+
+
+**Order review, run 4 (lead, 2026-10-08): ORDER AS IS**, five reviewers, no blocker; they
+read the current Rev. E (pinout and logic levels as Rev. C). What they added is text, and
+it is in the generator beside U10 and in the bring-up notes: the reset network fires once
+per clean power-up (a stalled bench start can leave the tip channel silent: start at
+250 mA, and after any stall switch off 2 s); firmware sets PA5 high before making it an
+output, never pulses CS without a word, drives the clock and data low early, writes both
+channels 30 ms after +5V, and mutes around a relay release; the terminals leave 0..VDD by
+a junction drop for milliseconds at switch-on, switch-off and clipping (6 mA peaks against
+20 mA pulsed), accepted, as it stood with the earlier pot. The voltage check's "0.258 V on
+U10.12" is the rail's own tolerance, not a pin margin. The package the lead uploaded is
+the one built before these text edits: its QUALITY.txt still says "SDO is unused".

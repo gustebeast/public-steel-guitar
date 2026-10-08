@@ -191,8 +191,10 @@ Like the optical board, the chain is serial: work in order, one new thing per st
    way 2 GND, ways 3 and 4 empty; polarity metered): `motor_ctrl` J1, `output_panel` J7.
    **`motor_ctrl` starts at 8 to 12 V, limit 50 mA** (only 3V3 exists; flash here), then
    24.0 V, then 5.02 V checked on a 10 ohm load on J5 with the limit raised to 0.3 A,
-   **before the Pi is plugged in.** `output_panel` at 24.0 V, limit 100 mA; if the rail
-   sits at 5 to 8 V in current limit, raise it to 250 mA before calling it a short. The
+   **before the Pi is plugged in.** `output_panel` at 24.0 V, limit 250 mA. If its
+   start stalled or sagged, or it was switched off and straight on again, switch off for
+   2 s and start again before judging the sound: the gain pot takes its mid-scale setting
+   only from a clean power-up, and can otherwise sit silent. The
    steps and the readings are in `docs/board-bringup-diagnostics.md`, "First power,
    staged". Do this for every first-article board, before it ever meets the instrument.
 2. **`motor_ctrl` alone.** WCH-LinkE attaches → flash → the board enumerates on the Pi's USB.

@@ -329,7 +329,9 @@ PART_NOTES = {
                "on the order page. The board went through as Economic before it; if this "
                "row arrives unticked with 'Switch to Standard PCBA', switch (a cost "
                "item, not a fault). In the preview its pin-1 dot is at the south-west "
-               "corner of the package, toward the board centre.",
+               "corner of the package, toward the board centre. NEVER accept 'do not place' "
+               "on this row: without U10 there is no sound in any mode (the rescue is "
+               "a bridge across its pads 12-13 and another across 3-4).",
     "C5139521": "the fab has no footprint or model for it yet: the preview shows a "
                 "placeholder and the build takes one more day.",
     "C54799748": "the fab has no footprint or model for it yet: the preview shows a "
