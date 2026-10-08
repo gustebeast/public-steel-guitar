@@ -1124,23 +1124,11 @@ def output_panel():
     # 0..5 V, so a switch that only passed a logic-level window would clip the loud half.
 
     # ── U10: THE GAIN, AND IT IS AN ATTENUATOR IN FRONT OF THE BUFFERS ─────────
-    # MCP4261-103E/ST: dual 10k digital pot, SPI, TSSOP-14. Pinout off Microchip's
-    # DS22059 Table 3-1 (14-lead), read 2026-09-30:
-    #   1 CS   2 SCK  3 SDI  4 VSS  5 P1B  6 P1W  7 P1A
-    #   8 P0A  9 P0W 10 P0B 11 WP  12 SHDN 13 SDO 14 VDD
-    # ✅ CONFIRMED, AND FROM A SECOND SOURCE RATHER THAN A SECOND LOOK. It was briefly
-    # marked unconfirmed here, and rightly: U12's pinout was also "read from the datasheet"
-    # and all three of its signal pins were wrong, so one reading is not evidence on this
-    # board. DS22059B could not settle it -- its pin table renders as an image and the
-    # package drawing's text extracts with the column order scrambled, so it cannot even
-    # say whether pin 2 is SCK or SDI, which was the only part in doubt.
-    # What settled it was KiCad's OWN symbol for the same 14-lead MCP42X1 dual pot,
-    # Potentiometer_Digital:MCP4251-xxxx-ST, which reads pin for pin:
-    #   1 CS  2 SCK  3 SDI  4 VSS  5 P1B  6 P1W  7 P1A
-    #   8 P0A 9 P0W 10 P0B 11 WP  12 SHDN 13 SDO 14 VDD
-    # -- identical, including 2 and 3, and including WP/SHDN on 11/12, which is what makes
-    # it the same MCP42X1 outline and not a neighbouring part's. An independent
-    # transcription agreeing is worth more than reading the same page twice.
+    # AD8402ARZ10: dual 10k digital pot, SPI, 256 steps, SOIC-14, 2.7 to 5.5 V. Pinout off
+    # Analog Devices AD8400/AD8402/AD8403 Rev. C, the pin configuration drawing and the pin
+    # function table, which agree (read 2026-10-08):
+    #   1 AGND  2 B2  3 A2  4 W2  5 DGND  6 SHDN  7 CS
+    #   8 SDI   9 CLK 10 RS 11 VDD 12 W1  13 A1  14 B1
     # ⚠ WHY A POT AND NOT A GAIN THE Pi APPLIES IN SOFTWARE: BECAUSE OF MODE 1.
     # The user asked for gain control in the DIRECT mode -- the one whose whole point is
     # that the pickup reaches the jack without the Pi in the path. A software gain is by
@@ -1154,34 +1142,69 @@ def output_panel():
     # because VMID IS the AC ground here (C40 is 10 uF across it) -- and because both
     # ends of the track then sit at the same DC as the wiper, so moving the wiper moves
     # no charge and the volume change does not click.
-    # ⚠ 3.3 V LOGIC INTO A 5 V PART, CHECKED RATHER THAN ASSUMED: VIH is 0.45*VDD =
-    # 2.25 V at VDD = 5 V, and the MCU drives 3.3 V. It runs off V5 and not V3V3 because
+    # ⚠ 3.3 V LOGIC INTO A 5 V PART, CHECKED RATHER THAN ASSUMED: input-high is 2.4 V at
+    # VDD = 5 V, and the MCU drives 3.3 V. It runs off V5 and not V3V3 because
     # the AUDIO has to fit between its rails -- the signal is VMID-centred and swings the
     # full 0..5 V, which a 3.3 V-powered pot would clip against its own substrate diodes.
-    u10 = Part(name="MCP4261-103E_ST", ref_prefix="U", ref="U10", tag="U10",
-               dest="NETLIST", tool="skidl", value="MCP4261-103E/ST",
+    # ⚠⚠ WHY THIS PART, AND WHAT IT ASKS OF THE BOARD (user, 2026-10-08). It was chosen on
+    # stock: 2,460 at the fab (C578716) where the EEPROM pots of the MCP42x1 family stood
+    # under 100. Three things about it are on this board:
+    #   1. NO MEMORY. Its latches are
+    #      volatile. FIRMWARE: keep the gain in the MCU's flash and write BOTH channels at
+    #      boot (and save a moment after the last change, not on every step).
+    #   2. NO POWER-ON PRESET OF ITS OWN. The sheet promises midscale only through RS
+    #      ("resets to midscale by asserting the RS pin, simplifying initial conditions at
+    #      power up") and says nothing about what the latches hold otherwise. So RS has a
+    #      power-on network, R38 100k to +5V and C62 100 nF to ground (10 ms; tRS is
+    #      50 ns): with no firmware at all both wipers stand at midscale, 80H, about
+    #      -6 dB -- which is what the direct mode plays at until the MCU writes.
+    #   3. NO PULL-UPS ON ITS INPUTS. With the MCU erased or in
+    #      reset CS would float, and a floating CS with a floating clock loads noise
+    #      into the latches. R39 / R40 hold it high: 100k to +5V over 150k to ground is
+    #      3.0 V (2.85 to 3.15 over the rail's 5 %), above the part's 2.4 V input-high
+    #      and inside the MCU pin's 3.6 V -- PA5 is not a 5 V-tolerant pin, which is why
+    #      it is a divider and not a plain pull-up to the pot's own rail. CLK and SDI are
+    #      left to float in reset: with CS high the part ignores them.
+    # THE WORD, on three MCU pins (it is 10 bits, two address then
+    # eight data, MSB first, clocked on the rising edge and latched when CS rises: a
+    # bit-banged write either way), 3.3 V logic into a 5 V part (VIH 2.4 V at 5 V), the
+    # terminals' range (0 to VDD) and the sense of the wiper (FFH is the A end, full
+    # level). THD 0.003 % at 1 V rms, 1 kHz.
+    u10 = Part(name="AD8402ARZ10", ref_prefix="U", ref="U10", tag="U10",
+               dest="NETLIST", tool="skidl", value="AD8402ARZ10",
                description="dual 10k SPI digital pot -- the OUTPUT GAIN, analog so it "
-               "works in the direct mode too (LCSC C185580)",
-               footprint="Package_SO:TSSOP-14_4.4x5mm_P0.65mm",
+               "works in the direct mode too (LCSC C578716)",
+               footprint="Package_SO:SOIC-14_3.9x8.7mm_P1.27mm",
                pins=[Pin(num=n, func=P) for n in range(1, 15)])
-    pot_cs += u10[1]
-    pot_sck += u10[2]
-    pot_sdi += u10[3]
-    agnd += u10[4]
-    v5 += u10[14]
-    # WP and SHDN are tied INACTIVE rather than left to float: SHDN floating would let
-    # noise mute the instrument, which is the one failure nobody would debug quickly.
-    v5 += u10[11], u10[12]
-    Net("POT_SDO_NC").connect(u10[13])   # daisy-chain out, nothing downstream
-    # P0 = the TIP path, which is BOTH modes' hot leg and therefore the direct path too
-    u7_in += u10[8]           # P0A: the relay common, AC-coupled and VMID-biased
-    tip_gain += u10[9]        # P0W -> U7
-    vmid += u10[10]           # P0B: AC ground
-    # P1 = the RING path. Same 10k, same code written to both, so the two legs track
-    # and a balanced pair stays balanced at every volume setting.
-    ring_in += u10[7]         # P1A: pole B, attenuated, AC-coupled, VMID-biased
-    ring_gain += u10[6]       # P1W -> U9
-    vmid += u10[5]            # P1B
+    agnd += u10[1], u10[5]    # AGND and DGND: one ground on this board
+    v5 += u10[11]
+    # SHDN is tied INACTIVE rather than left to float: SHDN low opens the A terminal and
+    # puts the wiper on B, which mutes the instrument -- the one failure nobody would
+    # debug quickly.
+    v5 += u10[6]
+    pot_cs += u10[7]
+    pot_sdi += u10[8]
+    pot_sck += u10[9]
+    pot_rs = Net("POT_RS")
+    pot_rs += u10[10]
+    r38 = _r("R38", "100k", "U10 RS power-on reset to midscale, with C62 (10 ms)")
+    v5 += r38[1]
+    pot_rs += r38[2]
+    r39 = _r("R39", "100k", "POT_CS held high in reset: top of the 3.0 V divider")
+    pot_cs += r39[1]
+    v5 += r39[2]
+    r40 = _r("R40", "150k", "POT_CS held high in reset: bottom of the 3.0 V divider")
+    pot_cs += r40[1]
+    agnd += r40[2]
+    # RDAC 1 = the TIP path, which is BOTH modes' hot leg and therefore the direct path too
+    u7_in += u10[13]          # A1: the relay common, AC-coupled and VMID-biased
+    tip_gain += u10[12]       # W1 -> U7
+    vmid += u10[14]           # B1: AC ground
+    # RDAC 2 = the RING path. Same 10k, same code written to both, so the two legs track
+    # and a balanced pair stays balanced at every volume setting (channel match 1 %).
+    ring_in += u10[3]         # A2: pole B, attenuated, AC-coupled, VMID-biased
+    ring_gain += u10[4]       # W2 -> U9
+    vmid += u10[2]            # B2
 
     # ── K1/Q1: direct vs processed. DE-ENERGISED IS DIRECT. ──────────────────
     # With no power, no Pi and no firmware the magnetic pickup reaches the jack
@@ -1535,6 +1558,8 @@ def output_panel():
             ("C43", "100nF", v5, agnd, "U9 bypass", None),
             ("C44", "100nF", v5, agnd, "U10 bypass -- the pot's supply is also the reference "
              "its wiper divides, so it gets its own", None),
+            ("C62", "100nF", pot_rs, agnd, "U10 RS power-on reset, with R38: holds RS low "
+             "for about 10 ms after the rail stands, so both wipers start at midscale", None),
             ("C45", "2.2nF C0G", dac_r_filt, agnd, "DAC right output filter, with R23 -- "
              "C34's mirror", None),
             ("C46", "100nF", v5, agnd, "U11 bypass", None),
@@ -1975,7 +2000,9 @@ BOARD_NOTES = {
         # ⚠ LAID ON THE KEPT BOARD BY HAND-RUN SCRIPT, 2026-10-07, AND DECLARED HERE SO
         # THE NEXT ROUTE CARRIES IT. It is pinned to this routing: if JACK_MODE leaves
         # pin 27 another way after a re-route, the east end hangs and DRC says so.
-        ("JACK_MODE", "F.Cu", 0.2, [(-1.06, -7.20), (-0.05, -7.20)]),
+        # (2026-10-08: GONE. The board was re-routed for the AD8402 and pin 28 is an
+        #  ordinary node of JACK_MODE, so the router joins it; the pinned track would
+        #  have been pinned to a routing that no longer exists.)
     ],
     "stitch_nets": ("GND",),
     # ⚠ THE USB SHIELD TABS REACH THE PLANE THROUGH THEIR OWN BARRELS. J2.SH and J4.SH
@@ -2112,8 +2139,11 @@ BOARD_NOTES = {
         # everything above y 11.34 out to the +X edge
         "U7": (4.00, 8.00, 0.0),
         "R9": (8.00, 8.00, 0.0),
-        "C1": (13.00, 8.00, 0.0),
-        "D5": (17.50, 8.00, 0.0),
+        # C1 and D5 stand 1.1 and 1.95 mm nearer the jack than they did: the SOIC pot
+        # (2026-10-08) is 3.7 mm longer than the TSSOP it replaces, and its bypass and its
+        # reset network took the strip these two used to border.
+        "C1": (13.00, 9.10, 0.0),
+        "D5": (17.50, 9.95, 0.0),
         "R10": (21.00, 8.00, 0.0),
         # the output buffer's AC coupling and the VMID it biases to
         "C39": (-0.20, 9.80, 0.0),
@@ -2143,11 +2173,27 @@ BOARD_NOTES = {
         # 5.7 mm still resonates well above the audio band -- but if this board is ever
         # respun, the +X edge cannot move (it is the panel) so the growth is -X, and it
         # wants the USB block at that end spread out to free the middle for the audio.
-        "U10": (14.00, 2.00, 0.0),      # MCP4261, between the two legs it drives
-        "C44": (13.60, 5.60, 180.0),    # pot bypass, 3.2 mm from VDD (it stood 8.4 mm away); nearer is the THRU pair's via
+        # AD8402, SOIC-14, A QUARTER TURN (2026-10-08). Its courtyard is 7.49 x 9.25, and
+        # upright it needs 10.45 mm between U12 and C1 where there are 8.9. Lying down it
+        # fits between U9 and C41 with 0.43 mm at each END -- which is plastic, not pads:
+        # the lands are on the north and south rows, 0.6 mm clear of U12 and of C44.
+        # Turned this way round RDAC 1 (tip) faces north-west toward U7, RDAC 2 (ring)
+        # faces south over U12 and U9, and CS / SHDN / DGND come out at the south-east
+        # beside the pocket R39 / R40 stand in.
+        # ⚠ THE PASS-THROUGH PAIR SETS WHERE THIS STANDS. THRU_DP is pinned copper (see the
+        # frozen snapshot at the bottom of this file): a via at layout (22.04, 5.50) and a
+        # diagonal down to (25.14, 2.94) on F.Cu. At (14.135, 1.92) pads 8 to 10 sat on it
+        # (one short, POT_SDI open), and 1.2 mm south its corner still did. Here pad 8 is
+        # 0.31 mm of copper clear of the diagonal, measured on the laid board.
+        "U10": (13.835, 0.07, 90.0),
+        "C44": (14.00, 4.71, 180.0),    # pot bypass, 2.2 mm north of VDD (pin 11)
+        "R38": (16.50, 7.25, 90.0),     # RS pull-up, north-east of RS (pin 10)
+        "C62": (18.10, 7.25, 90.0),     # RS reset capacitor, beside it
+        "R39": (20.45, -0.30, 0.0),     # CS divider, top: east of CS (pin 7)
+        "R40": (20.45, -1.95, 0.0),     # CS divider, bottom
         "C60": (5.40, 10.40, 180.0),    # U7's own, above its V+ pin
         "U9": (6.76, 0.43, 0.0),        # ring buffer, matched to U7
-        "C43": (11.49, -2.53, 0.0),     # U9 bypass -- 5.7 mm, the worst of the op-amp three
+        "C43": (7.60, 2.84, 0.0),       # U9 bypass, in the gap between C8 and U9
         # ⚠ THESE SIX WERE RE-SWEPT AGAINST THEIR **REAL** COURTYARDS, AND THE FIRST
         # SET WAS GUESSED. The other fifteen were measured off a placed board; these did
         # not exist yet, so their sizes were typed from memory -- and they were wrong by
@@ -2159,16 +2205,16 @@ BOARD_NOTES = {
         # guessed placement wearing a measurement's clothes.
         "U11": (1.93, -0.45, 0.0),      # the inverter: the balanced cold leg
         "C46": (4.53, -3.98, 0.0),      # U11 bypass, 4.9 mm -- see the note above
-        "U12": (14.50, -3.66, 0.0),     # SPDT: inverted tip, or the right-hand channel
-        "C47": (7.75, -3.10, 0.0),      # U12 bypass. The switch draws no output current,
+        "U12": (14.50, -5.06, 0.0),     # SPDT: inverted tip, or the right-hand channel
+        "C47": (14.50, -6.90, 180.0),    # U12 bypass, under its +5V pin. The switch draws no output current,
                                         # so its supply is the least demanding of the four
         "R26": (-3.25, 2.00, 0.0),      # the 0.1% pair that sets the balanced CMRR --
         "R27": (-3.32, 4.35, 0.0),      # same reel, and they stay near each other
         "C41": (21.54, 5.06, 0.0),      # ring DC block, 1210 (C1's mirror)
-        "D7": (18.29, -3.91, 0.0),      # ring phantom clamp (D5's mirror) -- see above
+        "D7": (20.29, -3.91, 0.0),      # ring phantom clamp (D5's mirror) -- see above
         "R21": (21.19, 1.51, 0.0),      # ring bleed (R10's mirror)
         "R20": (7.76, 5.75, 0.0),       # ring series 220R (R9's mirror)
-        "C42": (10.78, -5.29, 0.0),     # ring path coupling, off K1 pole B
+        "C42": (10.78, -5.49, 0.0),     # ring path coupling, off K1 pole B
         "R22": (16.95, -6.60, 90.0),     # ring bias to VMID (R16's mirror)
         "R28": (-7.25, 11.00, 0.0),     # pole B common to 0 V, beside K1
         # the DAC's right channel, beside the left channel's own filter and divider
@@ -2660,6 +2706,9 @@ BOARD_NOTES["tracks"] += [
                                (-9.90 + _g, -7.75)])]
 
 BOARD_NOTES["quality"] = {
+    "decoupling": {"exempt": {
+        "U10.6": "SHDN, a logic input strapped to +5V: it carries leakage only (1 uA, "
+                 "AD8402 Rev. C, digital inputs). The supply pin is U10.11, with C44 beside it"}},
     "power_paths": [
         # the whole supply, ahead of the switch: two jack contacts in, one FET source
         {"net": "+24V_IN", "from": "J6.2", "to": ["Q2.3"], "amps": 6.67},
@@ -2681,7 +2730,7 @@ BOARD_NOTES["quality"] = {
         {"net": "+5V", "from": "FB1.2", "to": ["K1.1"], "amps": 0.04},
         {"net": "+5V", "from": "FB1.2", "to": ["J4.A4", "J4.B4"], "amps": 0.1},
         {"net": "+5V", "from": "FB1.2", "to": ["U2.3", "U7.5", "U8.5", "U9.5", "U11.5",
-                                               "U10.14", "U12.5"], "amps": 0.02},
+                                               "U10.11", "U12.5"], "amps": 0.02},
         # 3V3: the hub is the big one (100 mA), then the MCU with its PHY running
         {"net": "+3V3", "from": "U6.5", "to": ["U4.19", "U4.20"], "amps": 0.1},
         {"net": "+3V3", "from": "U6.5", "to": ["U1.1", "U1.13", "U1.17", "U1.31", "U1.32",
@@ -2706,7 +2755,6 @@ BOARD_NOTES["quality"] = {
             "pins": "2 3 4 8 9 10 11 14 15 16 19 22 23 24 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66",
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
-        "U10.13": "MCP4261 SDO: the pot is written, never read back",
         "U4": {
             "pins": "2 5 6 7 8 13 16 17 18 21 22 23 24",
             "why": "CH334F: downstream ports 3 and 4 (two of its four are used: the MCU and J4), and its LED / power-enable / mode pins, left at their defaults"
@@ -2745,8 +2793,8 @@ BOARD_NOTES["quality"] = {
         {
             "name": "digital pot: two channels, both ends and both wipers used; the two low ends share VMID",
             "pins": [
-                "U10.[5-9]",
-                "U10.10"
+                "U10.[2-4]",
+                "U10.1[2-4]"
             ],
             "nets": 5
         },
@@ -2852,10 +2900,13 @@ BOARD_NOTES["quality"] = {
                         "18/49 VSS, 32/50/68 VDD, 25 PC5, 26 PB0, 27 PB1, 35 PB12, 36 PB13, "
                         "38 PB15, 39 PC6, 48 PA13/SWDIO, 52 PA14/SWCLK, 53 PA15, 58 PB3, 60 PB5, 61 PB6 = "
                         "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, pad VSS; 20 PA4, 21 PA5 off the drawing 2026-10-07",
-        "MCP4261-103E/ST": "Microchip DS22059 Table 3-1, 14-lead column: 1 CS, 2 SCK, "
-                           "3 SDI, 4 VSS, 5 P1B, 6 P1W, 7 P1A, 8 P0A, 9 P0W, 10 P0B, 11 WP, "
-                           "12 SHDN, 13 SDO, 14 VDD. Read 2026-09-30 and confirmed from a "
-                           "second source (note at U10)",
+        "AD8402ARZ10": "Analog Devices AD8400/AD8402/AD8403 Rev. C, AD8402 pin "
+                       "configuration (SOIC-14 drawing) and pin function table: 1 AGND, "
+                       "2 B2, 3 A2, 4 W2, 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, "
+                       "11 VDD, 12 W1, 13 A1, 14 B1. Read 2026-10-08; the drawing and the "
+                       "table agree. Board: 1 and 5 GND, 2 and 14 VMID, 3 RING_BUF_IN, "
+                       "4 RING_GAIN, 6 and 11 +5V, 7 POT_CS, 8 POT_SDI, 9 POT_SCK, "
+                       "10 POT_RS, 12 TIP_GAIN, 13 OUT_BUF_IN",
         "TLV9061IDBVR": "TI SBOS839N Table 5-1, SOT-23 (DBV) column: 1 OUT, 2 V-, 3 IN+, "
                         "4 IN-, 5 V+. Read 2026-09-30",
         "TS5A3159DCKR": "TI SCDS174 p.3 Pin Functions (DBV and DCK): 1 NO, 2 GND, 3 NC, "
@@ -2982,7 +3033,8 @@ BOARD_NOTES["quality"] = {
               "0, slave; FMT = 0, I2S; SCKI from the MCU's MCK at 256 fS. U3 (PCM5102A): FMT = 0 "
               "I2S, DEMP = 0, FLT = 0, XSMT high, charge-pump and LDO capacitors at the sheet's "
               "values. U4 (CH334F): V5 tied to VDD33 for 3.3 V supply, as WCH allows; 12 MHz "
-              "crystal; unused ports open. U10 (MCP4261): WP and SHDN high. U12 (TS5A3159): IN from "
+              "crystal; unused ports open. U10 (AD8402): SHDN high; RS on R38 / C62, released 10 ms after "
+              "the rail, so both wipers start at midscale. U12 (TS5A3159): IN from "
               "the MCU, COM to the ring buffer",
         "M8": "BOOT0: R7, 10 k to GND. NRST: R6 10 k to 3V3 and C54. Relay gate: R36, "
               "100 k to GND, so the relay is released (the direct, unprocessed path) "
@@ -3102,8 +3154,9 @@ BOARD_NOTES["quality"] = {
                "pulls 5: about 0.18 A through a 600 mA regulator. 24 V: this board's "
                "own draw is under 0.1 A; the rest passes through to J7 / J10 / J9 on "
                "copper checked for it (A1)",
-        "M34": "MCU (3.3 V) to the 5 V pot: the MCP4261's input-high is 0.45 x VDD = "
-               "2.25 V. MCU to the analog switch: the TS5A3159 needs 2.4 V at 5 V (the "
+        "M34": "MCU (3.3 V) to the 5 V pot: the AD8402's input-high is 2.4 V at "
+               "VDD = 5 V (Rev. C, digital inputs). Its CS rests at 3.0 V on R39 / R40, inside "
+               "the MCU pin's 3.6 V. MCU to the analog switch: the TS5A3159 needs 2.4 V at 5 V (the "
                "SN74LVC1G3157 it replaces needed 3.5 V and would not have switched). "
                "MCU to both converters: all 3.3 V. The DAC's XSMT, the ADC's mode "
                "pins: tied",
@@ -3116,7 +3169,7 @@ BOARD_NOTES["quality"] = {
                "connectors are on the panel edge or reachable from above",
         "M39": "MCU: unused GPIO open, set by firmware; PB14 (the old ADC data pin) is "
                "one of them now. Hub: ports 3 / 4 and the LED / strap pins open, as "
-               "WCH's sheet allows. Pot: SDO open. U5 SHDN open (= on). J1 / J2 / J3 "
+               "WCH's sheet allows. Pot: no unused pin (SHDN strapped high, RS on its own reset network). U5 SHDN open (= on). J1 / J2 / J3 "
                "VBUS pins dead-ended on purpose",
         "M40": "the generator carries it beside each value: the feedback divider, the "
                "bead, the soft-start parts, the relay's default state, the CC "

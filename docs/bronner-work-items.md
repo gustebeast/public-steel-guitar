@@ -5674,3 +5674,32 @@ description only: no copper, no silk).
 
 Firmware notes that came with the copper: PB2 on `output_panel` stays an input for ever;
 PA2 on `optical` is USART2_TX at AF7.
+
+## GAIN POT: AD8402ARZ10 IN PLACE OF THE MCP4261 (user, 2026-10-08)
+
+`output_panel` U10. The reason is stock: the MCP4261-103E/ST stood at 96 at the fab with
+no thicker pin-compatible listing; the AD8402ARZ10 (C578716, extended) stood at 2,460.
+It is not a drop-in. Read from Analog Devices AD8400/AD8402/AD8403 **Rev. C** (a
+distributor's copy; the maker's site would not serve the current revision here).
+
+| What | On the board |
+|---|---|
+| SOIC-14, its own pinout | new footprint, re-routed. 1 AGND, 2 B2, 3 A2, 4 W2, 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, 11 VDD, 12 W1, 13 A1, 14 B1. Tip is channel 1, ring channel 2 |
+| No memory | firmware keeps the gain in the MCU's flash and writes both channels at boot |
+| Midscale only through RS | R38 100k + C62 100 nF on RS: both wipers at midscale (about -6 dB) 10 ms after the rail, with no firmware at all |
+| No pull-ups on its inputs | R39 100k / R40 150k hold CS at 3.0 V with the MCU erased (PA5 is not 5 V-tolerant, hence a divider) |
+| SHDN | strapped to +5V |
+| The word | 10 bits, two address then eight data, on the same three MCU pins |
+
+**Four routes, and the first two were lost to one fact:** THRU_DP is pinned copper
+(`output_panel.frozen.json`), and its F.Cu diagonal passes the pot's north-east corner.
+The wider package sat on it twice. The pot now stands 1.85 mm south and 0.3 mm west of
+where the first attempt put it; C43, C47, U12, D7, C42 and C44 moved to make the room.
+Before routing a part beside a frozen pair, measure its pads against that copper
+(`padchk.py` in the session's scratch did it in seconds; the route takes eleven minutes).
+
+Result: 0 unconnected, 0 violations, quality 0 FAIL; the six OPEN items are the
+order-time ones, open before as well. PB2 on JACK_MODE is routed by the router now
+(the pinned track is gone). `src/board_geom.py` carries the SOIC-14's height.
+`docs/board-bringup-diagnostics.md` item 3.5 (pot readback) is closed: the part has no
+data output.

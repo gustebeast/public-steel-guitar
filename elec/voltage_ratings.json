@@ -2165,6 +2165,91 @@
    "i": 1.5,
    "src": "Shenzhen JDT JFC1206FS fast-acting fuse datasheet p.2 table (rev 05/07/20): JFC1206-1150FS 1.5 A, in the 72/63/32/24 VDC group, 240 mohm cold, pre-arc I2t 0.15 A2s",
    "mpn": "JFC1206-1150FS"
+  },
+  "C578716": {
+   "kind": "ic",
+   "supply": {
+    "VDD": "11"
+   },
+   "pass": [
+    [
+     "2",
+     "3",
+     "4"
+    ],
+    [
+     "12",
+     "13",
+     "14"
+    ]
+   ],
+   "pins": {
+    "1": {
+     "n": "AGND",
+     "gnd": true
+    },
+    "2": {
+     "n": "B2",
+     "max": "VDD+0.0",
+     "min": 0.0
+    },
+    "3": {
+     "n": "A2",
+     "max": "VDD+0.0",
+     "min": 0.0
+    },
+    "4": {
+     "n": "W2",
+     "max": "VDD+0.0",
+     "min": 0.0
+    },
+    "5": {
+     "n": "DGND",
+     "gnd": true
+    },
+    "6": {
+     "n": "SHDN",
+     "max": 7.0
+    },
+    "7": {
+     "n": "CS",
+     "max": 7.0
+    },
+    "8": {
+     "n": "SDI",
+     "max": 7.0
+    },
+    "9": {
+     "n": "CLK",
+     "max": 7.0
+    },
+    "10": {
+     "n": "RS",
+     "max": 7.0
+    },
+    "11": {
+     "n": "VDD",
+     "max": 8.0,
+     "rec": 5.5
+    },
+    "12": {
+     "n": "W1",
+     "max": "VDD+0.0",
+     "min": 0.0
+    },
+    "13": {
+     "n": "A1",
+     "max": "VDD+0.0",
+     "min": 0.0
+    },
+    "14": {
+     "n": "B1",
+     "max": "VDD+0.0",
+     "min": 0.0
+    }
+   },
+   "src": "Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V",
+   "mpn": "AD8402ARZ10"
   }
  }
 }

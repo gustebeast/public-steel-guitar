@@ -157,8 +157,11 @@ LCSC = {
                                     # ribbon; 2050 in stock 2026-10-04
     "PB-22E85-S-5.7C-C-W": "C22462024",   # Legion self-locking push switch, 2P2T, THT,
                                     # 12 V 0.3 A; 2535 in stock 2026-10-04. The power button.
-    "MCP4261-103E/ST": "C185580",   # dual 10k digital pot, TSSOP-14 -- ⚠ 96 in stock on
-                                    # 2026-10-01; re-check before ordering
+    "MCP4261-103E/ST": "C185580",   # dual 10k digital pot, TSSOP-14 -- 96 in stock on
+                                    # 2026-10-08 and no thicker MCP42x1 listing: REPLACED
+                                    # on output_panel by the part below; kept for the record
+    "AD8402ARZ10": "C578716",       # Analog Devices dual 10k SPI pot, SOIC-14 (AD8402ARZ10-REEL);
+                                    # 2,460 in stock 2026-10-08
     "TLV9061IDBVR": "C398358",      # TI, SOT-23-5: 1 OUT 2 V- 3 IN+ 4 IN- 5 V+ -- exact
                                     # match to U7/U8. Stock 301,906. Same family as the
                                     # optical board's TIAs. RRIO, 5.5 V max on a 5 V rail.
@@ -322,6 +325,11 @@ ORDER_EVERY_BOARD = (
 # WHAT THE ORDER PAGE NEEDS DONE BY HAND FOR ONE PART (written into ORDER.txt of each
 # board that carries it).
 PART_NOTES = {
+    "C578716": "the gain pot, an extended part first ordered 2026-10-08 and not yet seen "
+               "on the order page. The board went through as Economic before it; if this "
+               "row arrives unticked with 'Switch to Standard PCBA', switch (a cost "
+               "item, not a fault). In the preview its pin-1 dot is at the south-west "
+               "corner of the package, toward the board centre.",
     "C5139521": "the fab has no footprint or model for it yet: the preview shows a "
                 "placeholder and the build takes one more day.",
     "C54799748": "the fab has no footprint or model for it yet: the preview shows a "
