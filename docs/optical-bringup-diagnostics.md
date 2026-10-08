@@ -308,3 +308,29 @@ thermal camera after ten minutes running, lid on.
   after power-up, and still issue the software reset.** Grounding the `SHDNZ` land still
   takes one converter off the bus; releasing it now takes 10 ms to act. The SHDNZ land
   of `Rs<k>1` is its NORTH pad now (it was the south one).
+
+## Review run 3, 2026-10-07: where the unlabelled pads are, and five things to know
+
+**Three bring-up pads carry no silk** (no site at a legible size beside them). Front
+face, seen with the USB-C socket (J1) at the bottom; "up" is distance from J1's centre
+toward the far end of the strip, "side" is distance from the board's long centreline,
+on J1's side of it:
+
+| pad | net | size | up from J1 | side of centreline |
+|---|---|---|---|---|
+| TP11 | +3V3A | 1.5 mm | 73.8 mm | 17.9 mm |
+| TP6 | I2C2 SDA | 1.0 mm | 144.3 mm | 6.4 mm |
+| TP7 | I2C2 SCL | 1.0 mm | 151.8 mm | 7.4 mm |
+
+TP6 and TP7 stand 7.5 mm apart beside the first converter; SDA is the one nearer J1.
+
+* **J2 has no reverse protection.** A lead crimped to the OLD order (ground on way 1)
+  puts 24 V backwards into U13. Meter the lead before the first plug-in: way 1 is 24 V.
+* **The ROM's I2C loader may not answer.** PA4 and PA7 float and PA5 carries 60 MHz, and
+  the ROM polls its other interfaces first: test it with and without USB attached, and
+  rely on SWD.
+* **U8 runs hot by design**, 65 to 90 C over ambient at full load. Touch-test it last.
+* **All five converters answer at 0x4C** and are told apart by which SHDNZ is released:
+  there is no per-converter read-back, so a wrong one released reads as the right one.
+* The feed is a different housing at each end: a 2-way XH at the output panel (J9), a
+  4-way XH here (J2, ways 3 and 4 empty).
