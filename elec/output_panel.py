@@ -722,7 +722,7 @@ def output_panel():
                  5, 6, 7,                               # OSC_IN, OSC_OUT, NRST
                  61, 62, 35, 36, 38, 25, 48, 52, 63, 39, 1,
                  53, 58, 60,                            # I2S3: WS, CK, SD
-                 64, 65, 26, 27)]   # PB8, PB9, PB0 pot SPI; PB1 the jack mode
+                 21, 20, 26, 27)]   # PA5, PA4, PB0 pot SPI; PB1 the jack mode
     u1 = Part(name="CH32V307WCU6", ref_prefix="U", ref="U1", tag="U1", dest="NETLIST", tool="skidl",
               value="CH32V307WCU6",
               description="RISC-V MCU, USB2.0 HS with INTERNAL PHY (LCSC C5142795)",
@@ -743,17 +743,26 @@ def output_panel():
     i2s_sdo += u1[38]
     relay += u1[25]
     # ⚠ BIT-BANGED, AND DELIBERATELY. SPI1 (PA5/6/7) and SPI2 (PB13/14/15) are both
-    # spoken for -- SPI2 IS the I2S2 that carries the audio -- and PB8/PB9/PB0 were the
-    # three pins cross-checked as genuinely free against WCH's QFN-68 column. A digital
+    # spoken for -- SPI2 IS the I2S2 that carries the audio -- and PA5/PA4/PB0 are
+    # three pins cross-checked as genuinely free against WCH's QFN-68 column (SPI1 is
+    # not used on THIS board, so its pins are plain port pins here).
+    # ⚠ ALL THREE ON THE EAST ROW, IN THE POT'S OWN ORDER (2026-10-07). CS and SCK were
+    # on PB8 / PB9, pins 64 / 65 of the WEST row, with the pot 20 mm east of the chip:
+    # two lines that had to leave on the side the hub pair, the I2S inputs and BOOT0
+    # leave on and then cross the whole package. Once the slug band was fenced against
+    # vias (`slug_max`) there was no way round and POT_CS stayed open. They are on
+    # pins 21 / 20, in the six-pin run of the east row that nothing else uses. (Pins
+    # 30 / 29 were tried first: 30 stands between SCK's lane and the +3V3 pair's
+    # capacitor, and stayed open the same way.) FIRMWARE: POT_CS is PA5, POT_SCK is PA4. A digital
     # pot is written when the VOLUME CHANGES, not per sample: 16 bits at even 100 kHz is
     # 160 us, four hundred times inside the 50 ms budget below. Spending a hardware SPI
     # peripheral on it would buy nothing and cost a pin map that is already full.
     pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
     jack_mode = Net("JACK_MODE")   # 0 = balanced (inverted tip), 1 = stereo
-    pot_cs += u1[64]
-    pot_sck += u1[65]
+    pot_cs += u1[21]
+    pot_sck += u1[20]
     pot_sdi += u1[26]
-    # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 26 PB0, 27 PB1, 64 PB8, 65 PB9,
+    # ✅ ALL FOUR READ OFF THE TABLE, NOT INFERRED: 20 PA4, 21 PA5, 26 PB0, 27 PB1,
     # checked against .ins/ch32v307_qfn68.json -- the same QFN-68 column the other
     # twenty-four pins on this part were taken from. 27 was briefly written down as an
     # inference from "26 is PB0 and they are adjacent", which is reasoning about a table
@@ -2053,7 +2062,7 @@ BOARD_NOTES = {
         "C33": (8.60, -16.40, 0.0),       # VNEG 2.2u
         "C25": (7.40, -18.60, 0.0),      # AVDD 10u
         "C14": (10.60, -18.20, 180.0),    # AVDD 0.1 -- its 3V3 pad TOWARD pin 8 (turned away, it was walled in and left open)
-        "R13": (10.60, -19.40, 0.0),      # output filter 470R
+        "R13": (10.60, -19.40, 180.0),    # output filter 470R, its DAC_FILT land over C34's
         "C34": (10.60, -20.60, 0.0),      # output filter 2.2nF
         "R14": (8.60, -20.60, 0.0),      # -6 dB
         # (C28, C30 and C31 moved 2026-10-01: the Kycon inlet's body is 16 wide where the
@@ -2160,9 +2169,11 @@ BOARD_NOTES = {
         # pins (35-39) face north toward the ADC, and each supply group has its capacitor
         # within 3 mm. Offsets from U1 are the ones motor_ctrl routes clean with.
         "U1": (-5.00, -8.00, 90.0),
-        "Y1": (-6.40, -14.55, 0.0),
-        "C15": (-9.30, -14.55, 90.0),
-        "C16": (-3.50, -14.55, 90.0),
+        # 0.45 mm further off U1 than it could be: the 1.2 mm between the pin row and the
+        # crystal's lands is the lane NRST leaves by (see slug_max)
+        "Y1": (-6.40, -15.00, 0.0),
+        "C15": (-9.30, -15.00, 90.0),
+        "C16": (-3.50, -15.00, 90.0),
         "C54": (-10.80, -14.55, 90.0),   # NRST
         "C51": (-11.50, -10.60, 90.0),   # pins 67 + 68
         "C52": (-11.50, -4.60, 90.0),    # pins 50 + 51
@@ -2202,7 +2213,7 @@ BOARD_NOTES = {
         "C9": (11.00, -8.00, 0.0),
         "C10": (-1.90, -14.55, 90.0),    # pins 13 + 17
         "C11": (-11.50, -12.60, 90.0),   # pin 1
-        "R6": (-9.00, -17.00, 0.0),
+        "R6": (-9.60, -17.00, 0.0),
         "R7": (-12.00, -14.55, 90.0),
         # -Y CORNER: THE 24 V ISLAND AND ITS SWITCHER, on their own copper
         # ⚠ SWAPPING J7 AND J9 DOES NOT FIX THE SEVERED BUS -- measured, still 2
@@ -2224,7 +2235,7 @@ BOARD_NOTES = {
         # SWD pads -- the tightest free cluster next to U1; see the note in output_panel()
         "TP1": (-7.00, -0.60, 0.0),      # SWDIO, pin 48, is on U1's north side now
         "TP2": (-10.00, -0.60, 0.0),     # SWCLK, pin 52, at its north-west corner
-        "TP3": (-4.00, -17.80, 0.0),     # NRST, pin 7, south: below the crystal row
+        "TP3": (-4.00, -18.40, 0.0),     # NRST, pin 7, south: below the crystal row, 0.6 mm lower, clear of its courtyard
         "TP4": (-1.00, -17.80, 0.0),
         "TP5": (-13.00, 1.20, 0.0),
         # ⚠ 16.00, NOT 14.00, AND THE TWO MILLIMETRES ARE THE 24 V BUS. At 14.00 this
@@ -2302,12 +2313,6 @@ BOARD_NOTES = {
         "FB1": (16.60, -23.50, 0.0),
     },
     "refs_on_fab": True,
-    # ⚠ quality A18 (2026-10-07): J6's drawn outline crosses one of its own lands (0.17 mm2
-    # of ink on a mask opening). On the ROUTED board that one shape was moved to .Fab BY
-    # HAND, copper frozen for the order. It is NOT in `strip_silk`: the labeller keeps all
-    # lettering 12 mm clear of a stripped part, and J6 and J10 lost their designators and
-    # way-1 marks when it was tried. A fresh layout brings the shape back, and A18 with it:
-    # the lasting fix is the footprint's own outline.
     "single_sided": True,
     "qty_per_instrument": 1,
     # ⚠ THIS BOARD NEEDS THE RETRY, AND IT IS THE FIRST ONE THAT HAS (2026-09-30). With
@@ -2611,6 +2616,15 @@ BOARD_NOTES["tracks"] += [
 BOARD_NOTES["slug_max"] = {"U1": (6.5, "WCH QFN68 outline: exposed pad 6.2 +0.3 / -1.2")}
 BOARD_NOTES["vias"] = list(BOARD_NOTES["vias"]) + [
     ("I2S_CK", -9.90 + _g, -6.85), ("I2S_SDI", -9.90 + _g, -7.75)]
+# -- NRST (pin 7, south row) faces the crystal, with OSC_IN and OSC_OUT leaving beside it:
+# its own via, midway between the pin row and Y1's lands.
+BOARD_NOTES["vias"] += [("NRST", -5.05 + _g, -12.95)]
+BOARD_NOTES["tracks"] += [
+    ("NRST", "F.Cu", 0.15, [(-5.80 + _g, -11.94), (-5.80 + _g, -12.45), (-5.30 + _g, -12.95),
+                            (-5.05 + _g, -12.95)]),
+    # the DAC's output filter: R13's land stands over C34's, 1.2 mm apart
+    ("DAC_FILT", "F.Cu", 0.25, [(10.12 + _g, -20.60), (10.12 + _g, -19.40)]),
+]
 BOARD_NOTES["tracks"] += [
     ("I2S_CK", "F.Cu", 0.15, [(-8.938 + _g, -7.20), (-9.55 + _g, -7.20), (-9.90 + _g, -6.85)]),
     ("I2S_SDI", "F.Cu", 0.15, [(-8.938 + _g, -8.00), (-9.55 + _g, -8.00), (-9.80 + _g, -7.75),
@@ -2660,7 +2674,7 @@ BOARD_NOTES["quality"] = {
         "J2.[AB]5": "J2 is not a port: the far end of the pass-through to the Pi, no CC resistor (note at J2)",
         "J7.[34]": "the trunk head carries no data: ways 3 and 4 have no conductor",
         "U1": {
-            "pins": "2 3 4 8 9 10 11 14 15 16 19 20 21 22 23 24 28 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 66",
+            "pins": "2 3 4 8 9 10 11 14 15 16 19 22 23 24 28 29 30 33 34 37 40 41 42 43 44 45 46 47 54 55 56 57 59 64 65 66",
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         },
         "U10.13": "MCP4261 SDO: the pot is written, never read back",
@@ -2808,7 +2822,7 @@ BOARD_NOTES["quality"] = {
                         "5 OSC_IN, 6 OSC_OUT, 7 NRST, 12 VSSA, 13 VDDA, 17/31/51/67 VIO, "
                         "18/49 VSS, 32/50/68 VDD, 25 PC5, 26 PB0, 27 PB1, 35 PB12, 36 PB13, "
                         "38 PB15, 39 PC6, 48 PA13/SWDIO, 52 PA14/SWCLK, 53 PA15, 58 PB3, 60 PB5, 61 PB6 = "
-                        "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, 64 PB8, 65 PB9, pad VSS",
+                        "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, pad VSS; 20 PA4, 21 PA5 off the drawing 2026-10-07",
         "MCP4261-103E/ST": "Microchip DS22059 Table 3-1, 14-lead column: 1 CS, 2 SCK, "
                            "3 SDI, 4 VSS, 5 P1B, 6 P1W, 7 P1A, 8 P0A, 9 P0W, 10 P0B, 11 WP, "
                            "12 SHDN, 13 SDO, 14 VDD. Read 2026-09-30 and confirmed from a "
@@ -2851,11 +2865,11 @@ BOARD_NOTES["quality"] = {
     },
     "waive": {
         # A1 reports one barrel and does not add parallel vias up. The tab has eight.
-        "A1:+24V Q2.2>J10.2": "eight 0.3 mm vias join the tab to the B.Cu bar, two in each "
+        "A1:+24V Q2.2>J10.1": "eight 0.3 mm vias join the tab to the B.Cu bar, two in each "
                               "paste window: 8 x 0.67 mm of equivalent barrel = 5.4 mm "
                               "against 2.0 mm for 3.8 A, and 4.12 mm if the whole supply "
                               "went this way; any four carry it",
-        "A1:+24V Q2.2>J10.5": "as J10.2: the same eight vias",
+        "A1:+24V Q2.2>J10.6": "as J10.1: the same eight vias",
         "A6:J2.A5": "J2 is not a port: it is the far end of a wire from J1 to the Pi's "
                     "gadget socket, with VBUS dead-ended on purpose (the note at J2). "
                     "Nothing behind it sources or sinks, so there is no VBUS for a CC "
