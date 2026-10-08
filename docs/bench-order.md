@@ -40,7 +40,7 @@ form prices paste and placement for two; it does not say).
 | `can_tee` | Economic | 23.69 |
 | `pi_cap` | Economic | 48.44 |
 | `motor_ctrl` | Economic | 105.82 |
-| `output_panel` | Standard | 195.85 |
+| `output_panel` | Standard when quoted; **Economic since 2026-10-08** (relay ordered as C47190: 26.75 less in the cart) | 195.85 |
 | `optical` | Standard | 256.45 |
 | **boards, before shipping** | | **630.25** |
 
