@@ -126,8 +126,8 @@ a few boards of each design, far inside every row.
 
 | Part | LCSC | Board | Per instrument | In stock | Instruments |
 |---|---|---|--:|--:|--:|
-| KPJX-4S-S, 24 V inlet jack | C2875467 | `output_panel` | 1 | 39 | 39 |
-| G6K-2F-Y-DC5, signal relay | C326376 | `output_panel` | 1 | 54 | 54 |
+| KPJX-4S-S, 24 V inlet jack (no other listing or maker in the catalogue: it mates the supply's own plug) | C2875467 | `output_panel` | 1 | 19 (2026-10-08) | 19 |
+| G6K-2F-Y-DC5, signal relay, the tape-and-reel listing (the tube listing C326376 fell to 44) | C47190 | `output_panel` | 1 | 64,883 (2026-10-08) | - |
 | TLV320ADC3140, audio converter | C1852021 | `optical` | 5 | 304 | 60 |
 | LMR33630BRNXR, 1.4 MHz buck | C2071384 | `optical` 1, LED supplies 3 | 4 | 260 | 65 |
 | MCP4261-103E/ST, digital pot | C185580 | `output_panel` | 1 | 96 | 96 |
