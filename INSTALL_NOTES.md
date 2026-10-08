@@ -498,7 +498,7 @@ any knee depth over 197.5 mm in Y.
   way round; it does not fit the other way.
 - **No shim** in a right-hand housing: turned over, the board's top edge already stands
   0.4 mm under the chassis. Left-hand and vertical levers keep theirs.
-- **Way 1 changes ends with the board.** On LKL, VKL and RKL way 1 (GND in) is the TOP
+- **Way 1 changes ends with the board.** On LKL, VKL and RKL way 1 (5 V in) is the TOP
   contact of J1 and way 8 the bottom; on LKR and RKR way 1 is the BOTTOM contact. The
   crimped harness is the same either way — a PH housing only plugs in one way round — so
   this matters only when probing J1 with a meter.
@@ -609,8 +609,8 @@ existing ones:
 | cable | from | to | ways |
 |---|---|---|---|
 | UI ribbon, 16-way IDC | UI board J2 | Pi cap J5 | ways 15 / 16 are the button |
-| lights lead, 4-way XH | Pi cap J4 | motor board J7 | `GND, 24V, button, button` |
-| power link, **6-way** XH | motor board J3 | output panel J10 | `GND, 24V, button, button, 24V, GND` |
+| lights lead, 4-way XH | Pi cap J4 | motor board J7 | `24V, GND, button, button` |
+| power link, **6-way** XH | motor board J3 | output panel J10 | `24V, GND, button, button, GND, 24V` |
 
 * All three are straight leads: way 1 at one end is way 1 at the other.
 * The power link is the only 6-way XH in the instrument, so it cannot go in a wrong socket.
@@ -618,7 +618,7 @@ existing ones:
   board's 5 V converter has ceramic capacitors on its input, and a lead that is already
   live rings them above the supply for a few microseconds as it makes contact. The board
   is built to take it (the converter's own fuse and the rail clamp hold the worst case to
-  31 V at a part rated 38), but it is a stress with no purpose: power down first.
+  33.4 V at a part that works to 36 and survives 38), but it is a stress with no purpose: power down first.
 * The 4-way XH plugs on the motor board (J1 bus A, J7 lights) and on the Pi cap (J4 lights,
   J3 / J6 light drops) fit each other's sockets. None of the swaps damages anything; what
   each one does is in the table in the next section. Each socket's way names are printed
@@ -652,42 +652,58 @@ either way up, so if the ribbon points at the strings, turn the plug over.
 
 ## Every JST lead: one way order, and the family tells you the voltage
 
-The rule (user, 2026-10-04; the tuples are in `elec/harness.py`):
+The rule (user, 2026-10-07; the tuples are in `elec/harness.py`):
 
 * **XH (2.5 mm, white, the bigger one) carries 24 V. PH (2.0 mm) carries 5 V.** An XH plug
   does not enter a PH socket or the other way round, so 24 V cannot reach a 5 V contact.
-* **Ways are always `GND, power, data, data`.** A 6-way adds `power, GND` on ways 5 and 6,
-  so it reads the same from either end. A lead with no data leaves ways 3 and 4 empty.
-* Every lead is straight: way 1 at one end is way 1 at the other.
+* **Ways are always `power, GND, data, data`.** A lead with no data leaves ways 3 and 4
+  empty.
+* **A wider housing adds the same four mirrored.** A 6-way is `power, GND, data, data, GND,
+  power`; an 8-way trunk is `power, GND, H, L, L, H, GND, power`. Either reads the same
+  from both ends, and its power ways are the two outside ones.
+* **Why ground is second.** In every housing the way next to a power way is ground or
+  empty, never a data way. The two faults that put neighbours together -- a strand of wire
+  between two crimps, a contact pushed into the next cavity -- then blow a fuse instead of
+  putting 24 V on a 3.3 V pin.
+* A 4-way or 6-way lead is straight: way 1 at one end is way 1 at the other.
+* **A trunk hop is not.** It leaves one board on ways 5 to 8 (the out half) and arrives at
+  the next on ways 1 to 4 (the in half): **way 8 to way 1, 7 to 2, 6 to 3, 5 to 4.** In a
+  housing wider than four, count each half from its own end of the housing and the two
+  halves read the same: power outermost, then ground, then CAN_H, then CAN_L.
 
 | lead | family, ways | from | to | ways |
 |---|---|---|---|---|
-| motor trunk head | XH 4 | output panel J7 | east tee trunk | `GND, 24V, -, -` |
-| power link | XH 6 | output panel J10 | motor board J3 | `GND, 24V, button, button, 24V, GND` |
-| optical feed | XH 2 / XH 4 | output panel J9 | optical board J2 | `GND, 24V` (`-, -`) |
-| bus A head and every motor drop | XH 4 | motor board J1, tee J2 | tees, motors | `GND, 24V, CAN_H, CAN_L` |
-| tee trunk | XH 8 | tee J1 | next tee | the 4-way order twice, in then out |
-| lights lead | XH 4 | motor board J7 | Pi cap J4 | `GND, 24V, button, button` |
-| fret light drop | XH 4 | Pi cap J3 | fret board J1 | `GND, 24V, SCK, SDT` |
-| foot light drop | XH 4 | Pi cap J6 | foot board J1 | `GND, 24V, SCK, SDT` |
-| Pi 5 V | PH 6 | motor board J5 | Pi cap J2 | `GND, 5V, -, -, 5V, GND` |
-| USB to the Pi | PH 4 | motor board J4 | Pi USB-A | `GND, VBUS (unused), D-, D+` |
-| bus B drops | PH 4 | motor board J2 / J6, leg boards | pedal and lever chains | `GND, 5V, CAN_H, CAN_L` |
-| lever / pedal trunk | PH 8 | sensor board J1 | next sensor board | the 4-way order twice |
+| motor trunk head | XH 4 | output panel J7 | east tee trunk | `24V, GND, -, -` |
+| power link | XH 6 | output panel J10 | motor board J3 | `24V, GND, button, button, GND, 24V` |
+| optical feed | XH 2 / XH 4 | output panel J9 | optical board J2 | `24V, GND` (`-, -`) |
+| bus A head and every motor drop | XH 4 | motor board J1, tee J2 | tees, motors | `24V, GND, CAN_H, CAN_L` |
+| tee trunk | XH 8 | tee J1 | next tee | `24V, GND, CAN_H, CAN_L` in on 1-4, its mirror out on 5-8 |
+| lights lead | XH 4 | motor board J7 | Pi cap J4 | `24V, GND, button, button` |
+| fret light drop | XH 4 | Pi cap J3 | fret board J1 | `24V, GND, SCK, SDT` |
+| foot light drop | XH 4 | Pi cap J6 | foot board J1 | `24V, GND, SCK, SDT` |
+| Pi 5 V | PH 6 | motor board J5 | Pi cap J2 | `5V, GND, -, -, GND, 5V` |
+| USB to the Pi | PH 4 | motor board J4 | Pi USB-A | `VBUS (unused), GND, D-, D+` |
+| bus B drops | PH 4 | motor board J2 / J6, leg boards | pedal and lever chains | `5V, GND, CAN_H, CAN_L` |
+| lever / pedal trunk | PH 8 | sensor board J1 | next sensor board | `5V, GND, CAN_H, CAN_L` in on 1-4, its mirror out on 5-8 |
+
+**At a motor the drop ends on screw terminals, not a housing**: 24 V to V+, ground to GND,
+and the pair to CANH / CANL by the names printed on the driver. The lead's colours (red,
+black, yellow, green) are the check; there is no way number at that end.
 
 **The USB lead is the one lead whose far end has somebody else's numbering.** A USB-A plug's
 own contacts are 1 VBUS, 2 D-, 3 D+, 4 GND (USB 2.0, the order the plug's maker prints);
-the PH housing's ways are GND, VBUS, D-, D+. So it is NOT contact 1 to way 1:
+the PH housing's ways are VBUS, GND, D-, D+. So it is NOT contact n to way n:
 
 | USB-A contact | usual wire | PH way |
 |---|---|---|
-| 4 GND | black | 1 |
-| 1 VBUS | red | 2 (crimped or left out: the board does not connect it) |
+| 1 VBUS | red | 1 (crimped or left out: the board does not connect it) |
+| 4 GND | black | 2 |
 | 2 D- | white | 3 |
 | 3 D+ | green | 4 |
 
 Wire colours are a habit, not a standard: meter each wire to its plug contact before crimping.
-Crimped contact 1 to way 1, the Pi's 5 V lands on the motor board's ground.
+Crimped contact n to way n, the Pi's D- lands on the motor board's ground and the lead's
+ground on D+: the link is dead and nothing is damaged.
 
 Not JST, and not confusable with any of the above: the UI ribbon (16-way IDC), the leg
 boards' ZH tail (5 V, inside the leg only), the inlet barrel jack.
@@ -720,7 +736,7 @@ else.
 | lead | in | result |
 |---|---|---|
 | USB lead | a bus-B drop | The Pi's USB 5 V meets the bus's 5 V (the bus side is behind a 0.5 A limited switch); CAN_H / CAN_L, 0 to 3.3 V, meet the Pi's D- / D+. No damage; neither link works. |
-| bus-B drop | motor board J4 (USB) | Way 2 is not connected on the board; the CAN pair meets the MCU's USB pins at 0 to 3.3 V. No damage. |
+| bus-B drop | motor board J4 (USB) | Way 1, the bus's 5 V, is not connected on the board; the CAN pair meets the MCU's USB pins at 0 to 3.3 V. No damage. |
 
 **6-way PH**: only the Pi's 5 V lead. **8-way** XH and PH: only the two trunks.
 

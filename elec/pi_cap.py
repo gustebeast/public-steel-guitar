@@ -672,6 +672,7 @@ BOARD_NOTES = {
         "connector_labels": {
             "J1": {"standard": "the Raspberry Pi 40-pin header: its mate is the Pi itself, "
                                "which this board sits on"},
+            "J4": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned, that is not along another connector's pins (run 2026-10-07, after the lead order change); the block is on the back, behind it"},
             "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
         },
         "waive": {
@@ -764,6 +765,9 @@ BOARD_NOTES = {
                                 "held. It has no edge rate that needs a return path, and "
                                 "the cut it crosses is the 40-pin socket's own row of "
                                 "holes, which no line to the ribbon can avoid"},
+            "UI_SW_A": {"mm": 6.10,
+                        "why": "one contact of the UI's rotary switch: open or closed, "
+                               "read as a level at human speed. Same cut, the socket's row"},
             "PWR_SW_UP": {"mm": 5.34,
                           "why": "one leg of the power button: a contact that is open or "
                                  "closed, read as a level. Same cut, the socket's row"},
@@ -785,7 +789,7 @@ BOARD_NOTES = {
             "S6B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
                              "the board below, No. 1 circuit is on the left. KiCad "
                              "JST_PH_S6B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
-                             "Ways are harness.PI_5V_LINK (GND 5V nc nc 5V GND), which "
+                             "Ways are harness.PI_5V_LINK (5V GND nc nc GND 5V), which "
                              "reads the same from either end. Read 2026-10-04",
             "S4B-XH-A": "JST eXH.pdf p.5, Header / Side entry type, 3 circuits or more: "
                         "seen from above with the mouth pointing away and the posts toward "
@@ -813,9 +817,9 @@ BOARD_NOTES = {
                   "them pin for pin. The header has no shroud: a reversed socket is an "
                   "assembly error the stripe-to-pin-1 step in INSTALL_NOTES guards, not a "
                   "wiring one. The four JST leads, pad nets read at both ends, all crimped "
-                  "1:1: J2 <-> motor_ctrl J5 (GND 5V - - 5V GND, PI_5V_LINK); J4 <-> "
-                  "motor_ctrl J7 (GND 24 SW_UP SW_DN, LIGHTS_LINK); J3 <-> fret_led_key J1 "
-                  "and J6 <-> foot_led_a J1 (GND 24 SCK SDT, LED_DROP)",
+                  "1:1: J2 <-> motor_ctrl J5 (5V GND - - GND 5V, PI_5V_LINK); J4 <-> "
+                  "motor_ctrl J7 (24 GND SW_UP SW_DN, LIGHTS_LINK); J3 <-> fret_led_key J1 "
+                  "and J6 <-> foot_led_a J1 (24 GND SCK SDT, LED_DROP)",
             "M3": "done: In2 is an unbroken GND plane under the whole board (plane_layers), "
                   "with GND pours on B.Cu and F.Cu stitched to it. Every supply path above "
                   "runs over it; no slot, and no return necks through a single via",

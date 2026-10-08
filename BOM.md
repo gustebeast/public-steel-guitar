@@ -1374,7 +1374,7 @@ twisting + the bridge-side AFE buffer, not conductor size):
 >
 > **The bottleneck moves rather than disappears.** The motor controller's bus
 > outputs J1/J2 carry 24 V on a *single* conductor, because bus A/B is the
-> four-wire CAN-plus-power scheme (GND, +24 V, H, L). Bus A feeds ten SERVO42D
+> four-wire CAN-plus-power scheme (+24 V, GND, H, L). Bus A feeds ten SERVO42D
 > drivers, so nearly the whole <5 A passes through one 3 A contact. Doubling J3
 > was free (its ways were idle); doing it at J1/J2 is not, because those ways
 > carry CAN. **Open:** a wider shell, a separate power bus, or a measured slew
@@ -1467,7 +1467,7 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > be answered by the same decision about how bus A carries its current.
 | CAN | 26 AWG twisted pair, 120 Ω terminated — ⚠ **this is the H/L pair only; the same cable's 24 V and GND conductors have no gauge** | ~2.2 |
 | 24 V → optical board | **4 × 26 AWG**, ~150 mm, XH crimps both ends — panel **J9** to optical **J2**, both `1=GND 2=+24V 3=+24V 4=GND`. ⚠ **Was missing entirely:** the connector exists at both ends and this row did not, found 2026-09-18. 26 AWG is ample here — the board draws **79 mA at 24 V** typical (324 mA on its 5 V rail through an 85 % buck), ~122 mA at the worst case in `elec/optical.py`'s budget, against XH's applicable #30–#22. It runs beside the ~150 mm USB cable between the same two boards | ~2.2 |
-| **bus B, pedal segments** | **4 × 26 AWG** twisted (GND / +5 V / CAN_H / CAN_L), **~100 mm each, ×5**, PHR-8 both ends, ways 5–8 of one board to ways 1–4 of the next. Cut to fit: a pedal's station is printed into the bar, so these lengths are fixed. Each runs from its board's bay up through the **spur** into the trough (INSTALL_NOTES PB-1). The **levers** are the adjustable ones and they get the slack scheme instead — see `knee_lever.lace_loop` | ~2.5 bundled |
+| **bus B, pedal segments** | **4 × 26 AWG** twisted (+5 V / GND / CAN_H / CAN_L), **~100 mm each, ×5**, PHR-8 both ends, ways 5–8 of one board to ways 1–4 of the next (way 8 to way 1, 7 to 2, 6 to 3, 5 to 4: the out half mirrors the in half). Cut to fit: a pedal's station is printed into the bar, so these lengths are fixed. Each runs from its board's bay up through the **spur** into the trough (INSTALL_NOTES PB-1). The **levers** are the adjustable ones and they get the slack scheme instead — see `knee_lever.lace_loop` | ~2.5 bundled |
 | pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
 | USB panel → Pi | slim shielded USB-2 | ~2.6 |
 | logic (relay, link, TDM, OLED, joystick) | 28 AWG | ~1.4 |
@@ -2569,7 +2569,7 @@ their pads and route back south — normal practice, and viable *because* −X a
 room to receive them. If layout disagrees, the lever is moving the MCU −Y, paid for in board
 length, which is the opposite of what straightening the edge just bought.
 
-**J2 is a 4-way `S4B-XH-SM4-TB`** (C161861) carrying ground and 24 V on ways 1 and 2, with ways
+**J2 is a 4-way `S4B-XH-SM4-TB`** (C161861) carrying 24 V and ground on ways 1 and 2, with ways
 3 and 4 empty. (An earlier revision had a 6-way here with 5 V and audio on it.)
 
 ⚠ The 6-way's 20.0 mm width is **derived** from XH's 2.5 mm pitch (4-way B = 15.0, plus two

@@ -1,7 +1,7 @@
 {
  "net_volts": {
   "+24V": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "through R44"
   },
@@ -321,7 +321,7 @@
    "why": "generated inside U18 (VREF)"
   },
   "BOOT": {
-   "peak": 41.087,
+   "peak": 39.87,
    "v": 31.9,
    "why": "bootstrap: SW + 5.5 V, held by U13"
   },
@@ -539,7 +539,7 @@
    "why": "through Rs51"
   },
   "SW": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "buck switch node: VIN while the high side is on [= +24V+0]"
   },
@@ -1428,7 +1428,7 @@
    "why": "U7.7 (DP) can reach its supply +3V3D"
   },
   "V24_IN": {
-   "peak": 35.587,
+   "peak": 34.37,
    "v": 26.4,
    "why": "24 V from output_panel J9, after its F1. A live plug does not ring here: U13's 5 uF sits behind R44's 2 ohm, four times the 0.45 ohm of a 1 uH lead into it [output_panel.+24V_OPT: through F1]"
   },
@@ -3028,7 +3028,7 @@
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U13.12": {
-   "max": 35.887,
+   "max": 34.67,
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U13.2": {
@@ -3036,7 +3036,7 @@
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U13.3": {
-   "max": 35.887,
+   "max": 34.67,
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U13.4": {
@@ -3057,7 +3057,7 @@
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U13.9": {
-   "max": 35.887,
+   "max": 34.67,
    "src": "abs max -- LMR33630BRNXR (C2071384): TI LMR33630 datasheet SNVSAN3F p.5 s7.1: VIN 38 V; EN VIN+0.3; FB 5.5; PG 22; SW VIN+0.3 (38 V <100 ns); BOOT-SW 5.5; VCC 5.5; s7.3 VIN 3.8-36 V; p.6 VFB 0.985/1/1.015 V; VQFN (RNX) pinout p.2-3 table 6-1"
   },
   "U14.1": {
