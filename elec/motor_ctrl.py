@@ -915,7 +915,9 @@ def motor_ctrl():
     # ⚠ FIRMWARE: PA6 must be an input WITH PULL-UP, or it reads low for ever.
     pg5 = Net("PG_5V")
     pg5 += u5["PG"], u1["PA6"]
-    # Rail sense into two ADC pins, side by side. PA4 = ADC4 (5 V), PA5 = ADC5 (24 V) --
+    # Rail sense into two ADC pins, side by side. PA4 = ADC4 (24 V), PA5 = ADC5 (5 V) --
+    # in the order their dividers stand east of the row: the 24 V one is the further and
+    # its lane goes round the south of the 5 V one, so it takes the southern pin --
     # read off the CH32V307WCU6 pin drawing in WCH's datasheet V3.4 ("20 PA4/ADC4/DAC0",
     # "21 PA5/ADC5/DAC1", "22 PA6/ADC6"), 2026-10-07.
     #   +24V: 100k / 10k -> 2.18 V at 24 V, 2.73 V at a 30 V overshoot: inside 3.3 V always.
@@ -924,10 +926,10 @@ def motor_ctrl():
     sense24, sense5 = Net("SENSE_24V"), Net("SENSE_5V")
     r20 = _r("R20", "100k", "+24V sense divider, top")
     r21 = _r("R21", "10k", "+24V sense divider, bottom")
-    v24 += r20[1]; sense24 += r20[2], r21[1], u1["PA5"]; gnd += r21[2]
+    v24 += r20[1]; sense24 += r20[2], r21[1], u1["PA4"]; gnd += r21[2]
     r18 = _r("R18", "10k", "+5V sense divider, top")
     r19 = _r("R19", "10k", "+5V sense divider, bottom")
-    v5 += r18[1]; sense5 += r18[2], r19[1], u1["PA4"]; gnd += r19[2]
+    v5 += r18[1]; sense5 += r18[2], r19[1], u1["PA5"]; gnd += r19[2]
 
 
 # ── the board ────────────────────────────────────────────────────────────────
@@ -1382,15 +1384,37 @@ BOARD_NOTES["vias"] = list(BOARD_NOTES.get("vias", [])) + [("+24V", -2.0, 1.0),
 # mask alone between their annuli and the slug. `slug_max` fences the band (layout.py
 # makes it a via keepout the router is handed; quality A21 measures the result).
 #   So the three pins that faced the crystal with no outward lane were taken apart:
-#   SENSE_24V and PG_5V moved to pins 21 / 22 on the open east row, and Y1 stands 1 mm
+#   the two rail senses and PG_5V stand on pins 20 / 21 / 22 of the open east row, and Y1 stands 1 mm
 #   further out, which leaves NRST a lane of its own -- declared, so that it is the same
 #   lane every run: out of pin 7 and down to a via midway between the pin row and Y1's
 #   lands (0.6 mm off the pins, 0.55 off the land).
 BOARD_NOTES["slug_max"] = {"U4": (6.5, "WCH QFN68 outline: exposed pad 6.2 +0.3 / -1.2")}
 BOARD_NOTES["vias"] += [("NRST", 12.55, -12.75)]
+# ...and the three signals side by side on the north row -- SWDIO, D+, D- on pins 48 / 47 /
+# 46 -- are declared for the same reason: with nowhere to drop inward, the router gave the
+# strip beyond the pads to two of the three, a different two each run. Three vias in a
+# row 2.3 mm north of the pins, 0.75 and 0.85 mm apart, in the gap between the two
+# transceivers' lands. Pin 49's ground, which stood where the first of them goes, joins the
+# belly land directly instead of taking a via of its own.
+BOARD_NOTES["vias"] += [("SWDIO", 10.25, -2.30), ("USB_DP", 11.00, -2.30),
+                        ("USB_DM", 11.85, -2.30),
+                         ("PG_5V", 17.60, -8.30)]
 BOARD_NOTES["tracks"] += [
-    ("NRST", "F.Cu", 0.15, [(11.80, -11.44), (11.80, -12.00), (12.55, -12.75)]),
+    ("SWDIO", "F.Cu", 0.2, [(10.60, -3.56), (10.60, -2.90), (10.25, -2.55), (10.25, -2.30)]),
+    ("USB_DP", "F.Cu", 0.2, [(11.00, -3.56), (11.00, -2.30)]),
+    ("USB_DM", "F.Cu", 0.2, [(11.40, -3.56), (11.40, -2.95), (11.85, -2.50), (11.85, -2.30)]),
+    # the three east-row pins, fanned so that none shuts another in (left to the router,
+    # the 5 V sense dropped a via beside pin 22 and PG_5V had no way out): 24 V sense
+    # south round R18, 5 V sense straight across to it, PG_5V north-east to a via
+    ("SENSE_24V", "F.Cu", 0.2, [(16.54, -9.90), (17.20, -9.90), (18.10, -10.80),
+                                (20.05, -10.80), (20.77, -10.08), (20.77, -9.14),
+                                (20.12, -8.49)]),
+    ("SENSE_5V", "F.Cu", 0.2, [(16.54, -9.50), (17.40, -9.50), (18.41, -8.49),
+                               (19.00, -8.49)]),
+    ("PG_5V", "F.Cu", 0.2, [(16.54, -9.10), (17.30, -9.10), (17.60, -8.80), (17.60, -8.30)]),
+    ("GND", "F.Cu", 0.2, [(10.20, -3.56), (10.20, -5.00)]),
 ]
+BOARD_NOTES["stitch_exceptions"] = list(BOARD_NOTES.get("stitch_exceptions", ())) + ["U4.49"]
 
 # U5's PG pin is walled in on its own layer: the thermal pad north, EN west, and the
 # declared input copper south and east. The router has no way out of that pocket it will
@@ -1484,6 +1508,12 @@ BOARD_NOTES["quality"] = {
     },
     # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
     # repeated structure is on. The pass fails on any difference from the routed board.
+    "return_slot_ok": {
+        "SENSE_24V": {"mm": 6.5,
+                      "why": "the tap of a 100k / 10k divider, read by the ADC at its longest "
+                             "sample time: a DC level with no edge to return. The cut it "
+                             "crosses is the row of vias beside the MCU's east pins"},
+    },
     "unconnected": {
         "J[26].MP": "JST reinforcement tab: soldered, on no net",
         "J4.1": "USB VBUS way: the board is not bus powered, the way carries no conductor's net",
@@ -1491,7 +1521,7 @@ BOARD_NOTES["quality"] = {
         "U1.4": "LMR16006 SHDN: left open is enabled (internal pull-up)",
         "U3.5": "SN65HVD230 Vref output: nothing here uses the reference",
         "U4": {
-            "pins": "2 3 4 10 11 14 15 16 19 21 22 23 24 25 26 27 29 30 33 34 37 38 40 41 42 43 44 45 53 54 55 56 57 58 59 60 61 62 66",
+            "pins": "2 3 4 8 9 10 11 14 15 16 19 23 24 25 26 27 29 30 33 34 37 38 40 41 42 43 44 45 53 54 55 56 57 58 59 60 61 62 66",
             "why": "GPIO this board gives no function: left open, firmware leaves it an input with pull-down"
         }
     },
