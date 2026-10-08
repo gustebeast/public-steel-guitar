@@ -75,13 +75,14 @@ The SERVO42D has no single plug. Makerbase's schematic (*MKS SERVO42D_CAN V1.0_0
 Schematic.pdf*, in its GitHub repository under Hardware) and its CAN manual (V1.0.9,
 section 1.4) show two terminal blocks on opposite edges of the driver board: a 6-way with
 power on it and a 5-way, "COMM", with CAN on it. The drop is four wires from one XHP-4
-housing, and it is **split and crossed**: two wires go to one block and two to the other,
-and on both blocks the pair is in the opposite order to the tee's.
+housing, and it is **split, and half of it is crossed**: two wires go to one block and two
+to the other. The power pair lands in the tee's order (way 1 to terminal 1); the CAN pair
+lands in the opposite order.
 
 | `can_tee` J2 way | Wire | Motor block | Its terminal, by the schematic | Silk label |
 |---|---|---|---|---|
-| 1 GND | black | 6-way | 2 | GND |
-| 2 +24 V | red | 6-way | 1 | V+ |
+| 1 +24 V | red | 6-way | 1 | V+ |
+| 2 GND | black | 6-way | 2 | GND |
 | 3 CAN_H | yellow | 5-way COMM | 2 | CAN H |
 | 4 CAN_L | green | 5-way COMM | 1 | CAN L |
 
@@ -89,7 +90,10 @@ Left empty on the motor: the 6-way's COM, EN, STP and DIR (3 to 6), and the 5-wa
 GND and 5V (3 to 5). **The 5-way's 5V is an output of the motor: nothing goes on it.**
 
 A straight four-wire lead into either block is wrong whichever block it is: into the
-6-way it puts ground on V+ and 24 V on GND. Go by the labels printed on the motor's board
+6-way it puts the CAN pair on COM and EN, and into the 5-way it puts 24 V on CAN L. (Until
+2026-10-07 the tee's way 1 was ground and this table had the power pair crossed. A lead
+made to the old table puts 24 V backwards into the motor: meter the four ferrules against
+the XHP-4 before first power.) Go by the labels printed on the motor's board
 and check each wire against them before the first power-up; the terminal numbers above
 are the schematic's and have not been read off a unit in hand, and whether the blocks take
 bare wire or a plug has not either (`can_tee` item M1 is open for exactly this). The manual
@@ -150,15 +154,39 @@ all of them.
 
 | Tool | For | Notes |
 |---|---|---|
-| WCH-LinkE | flashing and debugging `motor_ctrl` and `output_panel` (CH32V307) | the only probe that talks to CH32V parts. SWD pads TP1-TP5 on each board, labelled |
-| ST-Link (V2 or V3) | flashing and debugging `optical` (STM32H743) | SWD pads TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND, TP5 3V3. The board can also be loaded with no probe over I2C2 (TP6 / TP7) with TP8 held high |
+| WCH-LinkE | flashing and debugging `motor_ctrl` and `output_panel` (CH32V307) | the only probe that talks to CH32V parts, **in its RISC-V mode**. Four wires: SWDIO TP1, SWCLK TP2, GND TP4 and **reset TP3, always**. Its 3V3 and 5V pins are power OUTPUTS and go nowhere (TP5 is for the meter). It is also the day-one console: SDI printf over the same two debug wires |
+| ST-Link (V2 or V3) | flashing and debugging `optical` (STM32H743) | SWD pads TP1 SWDIO, TP2 SWCLK, TP3 NRST (always wired: connect-under-reset is the way back), TP4 GND, TP5 3V3 (a genuine ST-Link senses there; a clone may source 3.3 V, so leave a clone's pin off). Before the first flash, watch TP3 go low on a tool-commanded reset: a clone whose reset pin does nothing cannot recover a bad flash. The board can also be loaded with no probe over I2C2 (TP6 / TP7) with TP8 held high |
 | Arm GNU Toolchain 14.2.rel1 (`arm-none-eabi-gcc`) | building the `optical` firmware (Cortex-M7) | Arm's own zip from developer.arm.com, checked against its published SHA-256; unpacked under `C:/Users/gus/tools`, not on PATH. The CH32V307 boards need WCH's RISC-V toolchain instead, not installed |
-| Spring-pin probe clip or hook leads | reaching the SWD pads | the pads are bare 1.5 mm lands, not a header |
-| USB-CAN adapter, `candump`-class | watching bus A from outside | H and L share the motor's CAN terminals, ground to the motor's GND |
-| Bench supply, 24 V, adjustable current limit | first power of each board at about 100 mA | `INSTALL_NOTES.md`, board bring-up step 1 |
+| Four soldered wire tails per MCU board, under 30 cm | reaching the SWD pads | the pads are bare 1.5 mm lands 18 to 27 mm apart, not a header: no clip spans them. Solder the tails once and leave them on |
+| Bench pigtail: XHP-4, way 1 red (24 V), way 2 black (GND), ways 3 and 4 EMPTY | powering each 24 V board alone | one lead, three boards: `motor_ctrl` J1, `output_panel` J7, `optical` J2. Meter its polarity before it meets a board: none of the three has reverse protection. A crimp in way 3 or 4 would put 24 V on a CAN pin |
+| 10 ohm 5 W resistor on a PHR-6 (ways 1 and 2) | loading the Pi's 5 V before the Pi sees it | `motor_ctrl` J5, 0.5 A |
+| USB-CAN adapter, `candump`-class | watching bus A from outside | **three tails crimped into ways 5 (CAN_L), 6 (CAN_H) and 7 (GND) of the bench trunk's XHP-8, way 8 EMPTY** (way 8 is 24 V). Not clipped to a motor's screw terminals: a slip there lands on V+. The adapter's own 120 ohm is ON only when the adapter is the far end of the bus (no tee switched in) |
+| Bench supply, 0 to 24 V, adjustable current limit | first power of each board, staged | one limit per board and per stage: `docs/board-bringup-diagnostics.md`, "First power, staged", and the optical board's 6 V start in `docs/optical-bringup-diagnostics.md` |
 | Multimeter | rails, the 60 ohm bus check, J6's polarity before first power | |
 | Thermocouple or thermal camera | `optical` U13, U8; `motor_ctrl` U5 | `docs/optical-bringup-diagnostics.md`, first power-up table |
 
 Order of work is in `INSTALL_NOTES.md` (board bring-up) and
 `docs/optical-bringup-diagnostics.md`: one board at a time on the current-limited supply,
 then `motor_ctrl` alone, then the motor, then the output panel, then the optical board.
+
+## Before the first power-up (bring-up review, 2026-10-07)
+
+**No USB-C supply on the Pi once the Pi 5 V lead (J5 to the cap's J2) is in.** The Pi's own
+supply would feed backwards through that lead into `motor_ctrl`'s 5 V rail, through U5 and
+its fuse onto the 24 V trunk at about 4.3 V: ten motor drivers and the output panel half
+alive on a phone charger. Set the Pi up on its own supply with no cap, then take that
+supply away for good and tape the Pi's USB-C power port. The cap's seen face says so.
+
+**Every SERVO42D leaves its box as CAN ID 01, 500K, in the pulse-input mode** (maker's CAN
+manual V1.0.9, sections 3.2, 3.11, 3.12). Before a motor meets the trunk: set its ID from
+its own screen and buttons, one motor at a time; set the bus-control mode (SR_vFOC);
+calibrate it with nothing on the shaft, before the belt goes on. Never plug or unplug a
+motor's power or CAN with the trunk live (manual 14.1): the tee is there to swap motors,
+with the power off.
+
+**Bus A with no motor first.** `motor_ctrl`, the bench trunk and the adapter on its three
+tails with the adapter's terminator ON: 60 ohm H to L with the power off, and the board's
+first frame is acknowledged by the adapter, so "no ACK" cannot be mistaken for wrong bit
+timing. Then the tee and one motor, the adapter's terminator OFF and the tee's SW1 ON,
+60 ohm again. Read SW1 before trusting it: "ships OFF" is what the reel is expected to
+do, not something measured.

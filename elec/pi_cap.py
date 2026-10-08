@@ -648,6 +648,10 @@ BOARD_NOTES = {
     # the cap sits, that needs the half turn. (The front then reads the same way up when
     # the cap is lifted off and rolled over toward you.)
     "silk_read": 180,
+    # The Pi takes its 5 V through this cap's J2. A USB-C supply plugged into the Pi as
+    # well back-feeds the 24 V trunk through the motor board's converter (bring-up review,
+    # 2026-10-07): said on the face a person sees with the cap seated.
+    "silk_words": [("PI 5V IN - NO USB-C SUPPLY", 103.5, 97.5, "back")],
     "silk_labels": {"+24V_LED": "24V", "+5V_PI": "5V", "SCK_FOOT": "SCK", "SDT_FOOT": "SDT",
                     "PWR_SW_UP": "SW UP", "PWR_SW_DN": "SW DN"},
     "qty_per_instrument": 1,
