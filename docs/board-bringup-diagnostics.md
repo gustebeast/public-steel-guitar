@@ -59,7 +59,7 @@ So the first diagnostic tool is the datasheet. The audit, finished 2026-09-30:
 | PCM1808, PCM5102A | output_panel U2, U3 | ✅ read, SLES177B §5 and SLAS859C §7, all 14 + 20 pins: match |
 | TLV9061 (SOT-23) | output_panel U7/U8/U9/U11 | ✅ read, SBOS839N Table 5-1: matches (the SC70 column differs — same part number, different pins) |
 | AP2112K (SOT25) | lever_sensor U1, output_panel U6 | ✅ read, Diodes DS39724: matches |
-| AD8402ARZ10 (the MCP4261 until 2026-10-08) | output_panel U10 | ✅ Analog Devices Rev. C, pin configuration drawing and pin function table, which agree: 1 AGND, 2 B2, 3 A2, 4 W2, 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, 11 VDD, 12 W1, 13 A1, 14 B1 |
+| AD8402ARZ10 (the MCP4261 until 2026-10-08) | output_panel U10 | ✅ Analog Devices Rev. C, and the current Rev. E by the order review (same pinout), pin configuration drawing and pin function table, which agree: 1 AGND, 2 B2, 3 A2, 4 W2, 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, 11 VDD, 12 W1, 13 A1, 14 B1 |
 | G6K-2F-Y, AO3400A | output_panel K1, Q1 | ✅ read off the rendered drawings (Omron p. B-83, AOS rev 3 p.1): match, including coil polarity and which contact is NC |
 | CH334F | output_panel U4 | ✅ read, WCH V2.91 Table 1-3: every pin the board uses matches. One label differs from the V2.5 the file cites — **pin 18 is PSELF, not NC**. Harmless as built (own pull-up, open = self-powered) but it must never be grounded as a spare |
 | **MT6701QT** | lever_sensor U4 | ❌ **pins right, STRAP WRONG — fixed.** All eight pin numbers match rev 1.9 §1.2. But `MODE` was strapped to **GND**, and the reference circuits (fig. 18 vs fig. 7) show GND = **ABZ**, VDD = I2C: all eleven sensors would have been silent on I2C. The file said "confirm polarity on the first board"; the pin *table* does not say, the *figures* do. R5 now goes to +3V3 |
@@ -460,7 +460,16 @@ CH32V307 (`motor_ctrl`, `output_panel`):
   bits, MSB first: two address bits (00 = the tip channel, 01 = the ring channel) then
   eight data bits, clocked on the rising edge and latched when CS rises. CS idles high
   on the board's own divider (3.0 V) while the MCU is in reset; drive it push-pull.
-  Nothing on the MCU reaches the pot's RS or SHDN pins.
+  Nothing on the MCU reaches the pot's RS or SHDN pins. And, from the order review:
+  * **Set PA5 HIGH in the output register before making it an output.** A bare rise of
+    CS latches zeros into the tip channel. Never pulse CS without a full word.
+  * **A debugger or NRST reset does not return the pot to mid-scale.** Only a power
+    cycle does.
+  * **Drive POT_SCK and POT_SDI low early.** Floating at mid-rail the pot draws up to
+    about 5 mA, so an erased board's supply current is not a fixed number.
+  * **Write both channels 30 ms or more after +5V stands.**
+  * **Mute around a relay release:** write 00H, release, wait 100 ms, restore. The direct
+    path's coupling node floats while the relay is energised and steps by up to 2.4 V.
 * **`output_panel`: PA15 and PB3 stay inputs.** They are tied on the board to PB12 / PB13
   (I2S2 WS / CK). An "unused pins to outputs" loop shorts them.
 
@@ -495,11 +504,14 @@ its polarity first. Plug it with the supply's output OFF.
    plug and the brick has 6.67 A behind it. J7 is behind the power switch (Q2), so this
    bypasses it; the jack's pins go live through Q2's body diode, which is harmless. The
    switch is tested later, on the brick, after J6's polarity has been metered.
-2. **If the supply sits in current limit with 5 to 8 V on the rail, raise the limit to
-   250 mA before calling it a short.** The buck stalls in a 100 mA limit once the hub and
-   the MCU are running.
+2. **Start this board at a 250 mA limit, not 100.** The buck stalls in a 100 mA limit
+   once the hub and the MCU are running, and a stalled start is a trap of its own: +5V
+   can park near 3 V, the pot's reset releases there, and the tip channel can load zero
+   (silent). Raising the limit afterwards does not fire the reset again. **After any
+   stalled or sagging start, or a fast off and on, switch off for 2 s and start again
+   before judging the direct path.**
 3. **Before any firmware:** the hub enumerates on a PC through J3, and the direct path
-   J8 to the jack plays (relay released, both wipers at mid-scale, about -6 dB: the pot's own reset network puts them there 10 ms after the rail stands). Neither needs the
+   J8 to the jack plays (relay released, both wipers at mid-scale, about -6 dB: the pot's own reset network puts them there about 5 ms after the rail stands). Neither needs the
    MCU, and with both proven a later fault is the firmware's.
 4. **No K1, no sound, in any mode.** If the relay was not placed (stock was thin), bridge
    its pads 2-3 and 6-7 to go on.
