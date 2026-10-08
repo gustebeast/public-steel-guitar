@@ -313,7 +313,7 @@ ORDER_EVERY_BOARD = (
     ("tier", "PCBA Type should read Economic. One board is Standard and the page "
              "says so itself: optical (a black solder mask). output_panel is Economic "
              "since its relay is ordered as the reel listing C47190 (2026-10-08: 58 of "
-             "58 rows matched, no prompt); under the tube listing C326376 it was "
+             "58 rows matched, no prompt, and again the same day with the AD8402 pot); under the tube listing C326376 it was "
              "'Standard only'. Standard is a 25 USD "
              "setup, a stencil charge and a loading fee per part type. On any other "
              "board Standard is left over from the previous one: set it back."),
@@ -325,10 +325,9 @@ ORDER_EVERY_BOARD = (
 # WHAT THE ORDER PAGE NEEDS DONE BY HAND FOR ONE PART (written into ORDER.txt of each
 # board that carries it).
 PART_NOTES = {
-    "C578716": "the gain pot, an extended part first ordered 2026-10-08 and not yet seen "
-               "on the order page. The board went through as Economic before it; if this "
-               "row arrives unticked with 'Switch to Standard PCBA', switch (a cost "
-               "item, not a fault). In the preview its pin-1 dot is at the south-west "
+    "C578716": "the gain pot, an Extended part. Seen on the order page 2026-10-08: "
+               "matched and ticked under Economic, no prompt for Standard. In the preview "
+               "it sits on its pads with the pin-1 dot at the south-west "
                "corner of the package, toward the board centre. NEVER accept 'do not place' "
                "on this row: without U10 there is no sound in any mode (the rescue is "
                "a bridge across its pads 12-13 and another across 3-4).",
