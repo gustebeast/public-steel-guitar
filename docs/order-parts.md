@@ -11,8 +11,8 @@ A part that is not in this file is not on a board, whatever another document say
 | `0R` | C17168 | 19 | lever_sensor, fret_led_mid, fret_led_key |
 | `0R` | C17888 | 1 | motor_ctrl |
 | `0R` | C21189 | 1 | output_panel |
-| `100k` | C25741 | 17 | motor_ctrl, output_panel, optical, fret_led_key, foot_led_a, foot_led_b |
-| `100nF` | C307331 | 186 | lever_sensor, motor_ctrl, output_panel, pi_cap, optical, ui_board, fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
+| `100k` | C25741 | 19 | motor_ctrl, output_panel, optical, fret_led_key, foot_led_a, foot_led_b |
+| `100nF` | C307331 | 187 | lever_sensor, motor_ctrl, output_panel, pi_cap, optical, ui_board, fret_led_mid, fret_led_key, foot_led_a, foot_led_b |
 | `100nF C0G` | C170182 | 1 | output_panel |
 | `100R` | C25076 | 3 | output_panel, optical |
 | `10k` | C25744 | 44 | lever_sensor, motor_ctrl, output_panel, optical, ui_board, foot_led_a, foot_led_b |
@@ -26,7 +26,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `12k 1%` | C25752 | 1 | optical |
 | `12pF` | C1547 | 2 | optical |
 | `137k 1%` | C138058 | 1 | motor_ctrl |
-| `150k` | C25755 | 1 | output_panel |
+| `150k` | C25755 | 2 | output_panel |
 | `15pF` | C1548 | 26 | lever_sensor, motor_ctrl, output_panel |
 | `180R 100mW` | C413069 | 10 | optical |
 | `18k2 1%` | C2076827 | 1 | output_panel |
@@ -66,6 +66,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `68R` | C163455 | 4 | pi_cap |
 | `7k68 1%` | C25919 | 1 | fret_led_key |
 | `9k09 1%` | C274897 | 1 | optical |
+| `AD8402ARZ10` | C578716 | 1 | output_panel |
 | `AO3400A` | C20917 | 2 | output_panel, optical |
 | `AP2112K-3.3TRG1` | C51118 | 12 | lever_sensor, output_panel |
 | `AP2114H-3.3TRG1` | C150716 | 1 | optical |
@@ -96,7 +97,6 @@ A part that is not in this file is not on a board, whatever another document say
 | `LMR33630ADDAR` | C841384 | 1 | motor_ctrl |
 | `LMR33630BRNXR` | C2071384 | 4 | optical, fret_led_key, foot_led_a, foot_led_b |
 | `LTE-C9901` | C2683614 | 10 | optical |
-| `MCP4261-103E/ST` | C185580 | 1 | output_panel |
 | `MT6701QT-STD` | C2913974 | 11 | lever_sensor |
 | `MX126-5.0-02P` | C5188434 | 1 | output_panel |
 | `NMJ6HCD2` | C368502 | 1 | output_panel |
@@ -231,14 +231,14 @@ A part that is not in this file is not on a board, whatever another document say
 
 ## `output_panel`
 
-1 per instrument. 136 placed part(s) in 60 line(s); 6 pad(s) and jumper(s) that are copper, not parts.
+1 per instrument. 140 placed part(s) in 60 line(s); 6 pad(s) and jumper(s) that are copper, not parts.
 
 | Qty | Designators | Part or value | Package | LCSC |
 |--:|---|---|---|---|
 | 2 | C1, C41 | `2.2uF/100V` | C_1210_3225Metric | C92775 |
 | 1 | C2 | `10uF/50V` | C_1206_3216Metric | C13585 |
 | 4 | C3, C55, C56, C61 | `100nF/50V` | C_0402_1005Metric | C307331 |
-| 24 | C4, C8, C10-C14, C19, C22, C26, C28, C30, C43, C44, C46, C47, C50-C54, C57, C59, C60 | `100nF` | C_0402_1005Metric | C307331 |
+| 25 | C4, C8, C10-C14, C19, C22, C26, C28, C30, C43, C44, C46, C47, C50-C54, C57, C59, C60, C62 | `100nF` | C_0402_1005Metric | C307331 |
 | 2 | C5, C6 | `22uF/16V` | C_0805_2012Metric | C45783 |
 | 11 | C7, C9, C20, C21, C23, C25, C27, C29, C36, C38, C40 | `10uF` | C_0805_2012Metric | C15850 |
 | 2 | C15, C16 | `15pF` | C_0402_1005Metric | C1548 |
@@ -275,13 +275,13 @@ A part that is not in this file is not on a board, whatever another document say
 | 9 | R6, R7, R14, R15, R19, R24, R25, R28, R35 | `10k` | R_0402_1005Metric | C25744 |
 | 1 | R8 | `1M` | R_0402_1005Metric | C26083 |
 | 2 | R9, R20 | `220R` | R_0402_1005Metric | C25091 |
-| 9 | R10, R11, R16-R18, R21, R22, R36, R37 | `100k` | R_0402_1005Metric | C25741 |
+| 11 | R10, R11, R16-R18, R21, R22, R36-R39 | `100k` | R_0402_1005Metric | C25741 |
 | 1 | R12 | `18k2 1%` | R_0402_1005Metric | C2076827 |
 | 2 | R13, R23 | `470R` | R_0402_1005Metric | C25117 |
 | 2 | R26, R27 | `10k 0.1%` | R_0402_1005Metric | C190095 |
 | 2 | R29, R30 | `56k` | R_0402_1005Metric | C25796 |
 | 1 | R31 | `330k` | R_0402_1005Metric | C25778 |
-| 1 | R32 | `150k` | R_0402_1005Metric | C25755 |
+| 2 | R32, R40 | `150k` | R_0402_1005Metric | C25755 |
 | 2 | R33, R34 | `4k7` | R_0402_1005Metric | C25900 |
 | 1 | R60 | `0R` | R_0603_1608Metric | C21189 |
 | 1 | U1 | `CH32V307WCU6` | QFN-68-1EP_8x8mm_P0.4mm_EP5.2x5.2mm | C5142795 |
@@ -291,7 +291,7 @@ A part that is not in this file is not on a board, whatever another document say
 | 1 | U5 | `LMR16006XDDCR` | SOT-23-6 | C87080 |
 | 1 | U6 | `AP2112K-3.3TRG1` | SOT-23-5 | C51118 |
 | 4 | U7-U9, U11 | `TLV9061IDBVR` | SOT-23-5 | C398358 |
-| 1 | U10 | `MCP4261-103E/ST` | TSSOP-14_4.4x5mm_P0.65mm | C185580 |
+| 1 | U10 | `AD8402ARZ10` | SOIC-14_3.9x8.7mm_P1.27mm | C578716 |
 | 1 | U12 | `TS5A3159DCKR` | SOT-363_SC-70-6 | C46388 |
 | 1 | Y1 | `TAXM8M4RFDCET2T` | Crystal_SMD_3225-4Pin_3.2x2.5mm | C403948 |
 | 1 | Y2 | `TAXM12M4RFBCCT2T` | Crystal_SMD_3225-4Pin_3.2x2.5mm | C133337 |

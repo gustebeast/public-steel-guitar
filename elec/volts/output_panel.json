@@ -271,9 +271,14 @@
    "why": "AC-coupled onto VMID; a magnetic pickup is volts at most [= +5V+0]"
   },
   "POT_CS": {
-   "peak": 3.45,
-   "v": 3.349,
-   "why": "U1.21 (io) can reach its supply +3V3"
+   "peak": 3.254,
+   "v": 3.099,
+   "why": "divider off +5V: x 0.6000"
+  },
+  "POT_RS": {
+   "peak": 5.424,
+   "v": 5.166,
+   "why": "through R38"
   },
   "POT_SCK": {
    "peak": 3.45,
@@ -284,10 +289,6 @@
    "peak": 3.45,
    "v": 3.349,
    "why": "U1.26 (io) can reach its supply +3V3"
-  },
-  "POT_SDO_NC": {
-   "v": 0.0,
-   "why": "not connected"
   },
   "PWR_GATE": {
    "peak": 49.44,
@@ -759,6 +760,10 @@
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
   "C61.1": {
+   "max": 50.0,
+   "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
+  },
+  "C62.1": {
    "max": 50.0,
    "src": "rated V -- CL05B104KB54PNC (C307331): JLCPCB parts API attributes for C307331 (CL05B104KB54PNC, Samsung Electro-Mechanics), fetched 2026-10-06"
   },
@@ -1326,9 +1331,29 @@
    "max": 50.0,
    "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
+  "R38.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R38.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R39.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R39.2": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1003TCE (C25741): JLCPCB parts API attributes for C25741 (0402WGF1003TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
   "R4.1": {
    "max": 50.0,
    "src": "element V -- 0402WGF5101TCE (C25905): JLCPCB parts API attributes for C25905 (0402WGF5101TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
+  },
+  "R40.1": {
+   "max": 50.0,
+   "src": "element V -- 0402WGF1503TCE (C25755): JLCPCB parts API attributes for C25755 (0402WGF1503TCE, UNI-ROYAL(Uniroyal Elec)), fetched 2026-10-06"
   },
   "R5.1": {
    "max": 50.0,
@@ -1506,57 +1531,53 @@
    "max": 3.75,
    "src": "abs max -- CH32V307WCU6 (C5142795): WCH CH32V303/305/307 datasheet p.53 table 4-1: VDD/VIO -0.3..4.0 V; non-FT pins VSS-0.3..VIO+0.3 V; FT pins 5.5 V (FT is NOT credited: every I/O is rated as non-FT)"
   },
-  "U10.1": {
-   "max": 12.5,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
-  },
   "U10.10": {
-   "max": 5.724,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.11": {
-   "max": 12.5,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 8.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.12": {
-   "max": 12.5,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 5.424,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.13": {
-   "max": 5.724,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 5.424,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.14": {
-   "max": 7.0,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 5.424,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.2": {
-   "max": 12.5,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 5.424,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.3": {
-   "max": 12.5,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 5.424,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
-  "U10.5": {
-   "max": 5.724,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+  "U10.4": {
+   "max": 5.424,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.6": {
-   "max": 5.724,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.7": {
-   "max": 5.724,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.8": {
-   "max": 5.724,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U10.9": {
-   "max": 5.724,
-   "src": "abs max -- MCP4261-103E/ST (C185580): Microchip MCP414X/416X/424X/426X datasheet DS22059B p.3: VDD -0.6..7.0 V; CS/SCK/SDI/WP/SHDN -0.6..12.5 V; PxA/PxW/PxB/SDO -0.3..VDD+0.3 V; terminal current +/-2.5 mA"
+   "max": 7.0,
+   "src": "abs max -- AD8402ARZ10 (C578716): Analog Devices AD8400/AD8402/AD8403 Rev. C, absolute maximum ratings: VDD -0.3..+8 V; VA, VB, VW 0 V..VDD; digital inputs 0..7 V; terminal current +/-20 mA. Operating supply 2.7..5.5 V"
   },
   "U11.1": {
    "max": 5.924,
