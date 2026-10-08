@@ -104,11 +104,12 @@ and a **¼″ TS → bare-wire loopback lead** (section 3).
 
 ## 2. `motor_ctrl` — head of both CAN buses, three regulators, the Pi's 5 V
 
-**What exists:** TP1–TP5 (SWDIO, SWCLK, NRST, GND, +3V3). `+24V`, `+5V`, `+5V_LED` and both
-buses are on connector pins. USB to the Pi on J4.
+**What exists:** TP1–TP5 (SWDIO, SWCLK, NRST, GND, +3V3). `+24V`, `+5V` and both
+buses are on connector pins. (This section was written when the board also made the
+lights' 5 V: `+5V_LED`, `+5V_LED_RAW` and a second buck's PG are no longer on it.) USB to the Pi on J4.
 
 **What is missing:** no access to `CAN1/2_TX/RX` (the MCU ↔ transceiver side), none to the
-pre-filter `+5V_RAW` / `+5V_LED_RAW`, `BOOT0` goes only to its pull-down, and the bucks' PG
+pre-filter `+5V_RAW`, `BOOT0` goes only to its pull-down, and the bucks' PG
 pins were unconnected (and until today mis-numbered).
 
 | # | item | area | signal risk |
@@ -330,7 +331,7 @@ first boards and writes their first firmware.
   power is from a current-limited bench supply, not the brick: a short on the trunk has
   6.67 A behind it.
 * **The rail clamp is a 24 V part.** D8 on `motor_ctrl` and D6 on `output_panel` are
-  SMAJ24A: they start to conduct between 26.7 and 29.5 V. A bench supply set above 26 V
+  SMCJ24A: they start to conduct between 26.7 and 29.5 V. A bench supply set above 26 V
   will warm them, and one left at 30 V will destroy them (they fail short, and the supply
   current-limits into them). Set 24.0 V.
 * **Wrong socket.** Which plugs fit which sockets, and what each swap does, is tabled in
@@ -378,17 +379,21 @@ not to do. The optical board's own list is in `docs/optical-bringup-diagnostics.
 ### The probe rule (all three MCU boards)
 
 * **Four wires, soldered: SWDIO (TP1), SWCLK (TP2), GND (TP4) and ALWAYS the reset wire
-  (TP3).** Flashing works without the reset wire; getting back from a bad flash does not.
+  (TP3).** `optical` with a genuine ST-Link wants a fifth, TP5 to the probe's
+  target-voltage sense pin (UNVERIFIED for clones, which may source 3.3 V there: leave a
+  clone's pin off). Flashing works without the reset wire; getting back from a bad flash does not.
   Fit it on day one, not when it is first needed.
-* **Soldered tails, not a clip.** The pads are bare lands 18 to 27 mm apart. Tails under
-  30 cm, left on the board.
+* **Soldered tails, not a clip.** The pads are bare lands, 18 to 27 mm apart on the two
+  CH32V307 boards and 8.9 mm on `optical`. Tails under 30 cm, left on the board. A wire
+  loop soldered to TP4 is the ground a scope clip can hold.
 * **WCH-LinkE in RISC-V mode** for the two CH32V307 boards.
 * **The LinkE's 3V3 and 5V pins are power OUTPUTS, side by side on its header.** Never a
   wire on the 5V pin. No wire from the 3V3 pin to TP5 while 24 V is on. On `motor_ctrl`,
-  5 V on TP5 is 5 V on a rail whose parts stop at 4.0 V: the MCU and both CAN
-  transceivers, one of two assembled boards. TP5 is where the METER goes. (The generators
+  5 V on TP5 is 5 V on the MCU, which stops at 4.0 V (the two CAN transceivers, TCAN3413
+  and SN65HVD230, stand 6 V): one of two assembled boards. TP5 is where the METER goes. (The generators
   called it "target sense", which is an ST-Link's word for an input. Corrected.)
-* **Never press "Disable 2-wire SDI" in WCH-LinkUtility.**
+* **Never press "Disable Two-Line Interface" in WCH-LinkUtility** (manual 5.2.8), which
+  MounRiver calls "Disable 2-wire SDI" (4.3.3). The same button under two names.
 
 ### Getting back from a bad flash
 
@@ -397,9 +402,9 @@ CH32V307 (`motor_ctrl`, `output_panel`):
 | what the firmware did | symptom | way back | needs |
 |---|---|---|---|
 | wrong clock tree, dead PLL, fault at start | runs wrong or not at all | attach and reflash | the three wires |
-| remapped PA13 / PA14, or entered sleep / stop / standby at start | "cannot connect" | WCH-LinkUtility, **"Clear All Code Flash - By Pin NRST"** (WCH-Link manual V2.7, 5.2.4) | the reset wire on TP3 |
-| the same, and the reset erase does not take | "cannot connect" | **"Clear All Code Flash - By Power Off"** (same section): the Link powers the chip | LinkE 3V3 on TP5 with the board's own power OFF and, on `motor_ctrl`, J1 / J3 / J5 / J7 unplugged (see back-feed below) |
-| the same, no reset wire | "cannot connect" | BOOT0 high through a reset, then the Link as usual | `motor_ctrl`: a soldered wire from TP6 (BOOT0) to the TP5 tail. `output_panel`: tweezers from R7 pad 1 to R6 pad 2 |
+| remapped PA13 / PA14, or entered sleep / stop / standby at start | "cannot connect" | WCH-LinkUtility, **"Clear All Code Flash", the by-reset-pin form** (WCH-Link manual V2.7, 5.2.4; the menu's exact wording, "By Pin NRST", is read off a screenshot there) | the reset wire on TP3 |
+| the same, and the reset erase does not take | "cannot connect" | **"Clear All Code Flash - By Power Off"** (same section): the Link powers the chip | a fifth tail soldered to TP5 for this and taken off afterwards, LinkE 3V3 on it with the board's own power OFF. `motor_ctrl`: J1 / J3 / J5 / J7 unplugged (see back-feed below). `output_panel`: J3, J4, J7, J9 and J10 unplugged, and prefer the BOOT0 row there |
+| the same, no reset wire | "cannot connect" | BOOT0 high through a reset, then the Link as usual | `motor_ctrl`: a soldered wire from TP6 (BOOT0) to TP5 (solder a fifth tail to TP5 for this; take both off afterwards). `output_panel`: tweezers from R7 pad 1 to R6 pad 2 |
 | debug closed for good | the Link is dead | the ROM loader with WCHISPTool over USB | BOOT0 high as above, and a USB lead |
 
 * **The ROM loader's USB is on PA11 / PA12 or PB6 / PB7** (WCH's CH32V307 evaluation-board
@@ -407,9 +412,11 @@ CH32V307 (`motor_ctrl`, `output_panel`):
   closes open question 2.4: `motor_ctrl`'s J4 is on PA11 / PA12, and `output_panel`'s MCU
   is reached through its hub on J3.
 * **`output_panel` has no BOOT0 pad.** R7 pad 1 is BOOT0 and R6 pad 2 is +3V3, 3.5 mm
-  apart beside the crystal: bridge them with tweezers through a reset. BOOT1 is PB2,
-  which the board now holds low (before this change it floated, and BOOT0 high with BOOT1
-  high starts from SRAM, not the loader). On `motor_ctrl` BOOT1 is tied to ground.
+  apart beside the crystal: bridge them with tweezers through a reset. **The reset is an
+  NRST reset or a power cycle, not a software reset.** BOOT1 is PB2, which the board now
+  holds low, so this recovery is deterministic (before this change PB2 floated, and BOOT0
+  high with BOOT1 high starts from SRAM, not the loader). On `motor_ctrl` BOOT1 is tied
+  to ground.
 * **Prove the ROM loader on the first evening**, while the debug wires still work. It is
   the one recovery nobody has run, and on `motor_ctrl` it also tests the hand-made USB
   lead.
@@ -423,6 +430,11 @@ CH32V307 (`motor_ctrl`, `output_panel`):
   and its only other node is U5 pin 4, an SOIC lead a grabber holds. Open-drain only: U5
   pulls the same line low when the 5 V rail is bad.
 * **`output_panel`: toggle PC5.** The relay clicks.
+* **`motor_ctrl`, with no firmware at all:** a 10k from TP5 to PA6 (at U5 pin 4) or to PC6
+  (at U6 pin 4) is the pull-up the firmware would have supplied, and a meter then reads
+  PG and FAULT directly.
+* **`output_panel`: PB2 reads back what PB1 drives.** The two pins are one net now, so the
+  JACK_MODE output has a free self-test.
 
 ### The first firmware: rules that protect the board and the way back in
 
@@ -434,6 +446,8 @@ CH32V307 (`motor_ctrl`, `output_panel`):
 * **`motor_ctrl`: PA6 and PC6 are never push-pull** (U5's PG and U6's FAULT are open-drain
   outputs on those lines; inputs with the internal pull-up). **PB13 held low stops bus B
   and nothing times it out**: the SN65HVD230 has no dominant time-out.
+* **`motor_ctrl`: PB8 and PB12 (the two CAN RX lines) stay inputs.** Each is driven by
+  its transceiver.
 * **`output_panel`: PA15 and PB3 stay inputs.** They are tied on the board to PB12 / PB13
   (I2S2 WS / CK). An "unused pins to outputs" loop shorts them.
 
@@ -445,15 +459,19 @@ its polarity first. Plug it with the supply's output OFF.
 
 `motor_ctrl`:
 
+0. **Power off, meter:** 120 ohm across J1 ways 3 / 4 (R5), open across J2 ways 3 / 4,
+   and +3V3 to GND not a short.
 1. **8 to 12 V, limit 50 mA.** Only the 3V3 converter runs (U5 holds off until 18.1 V).
    TP5 reads 3.31 V at 10 to 25 mA. Attach the probe and flash here: a wrong 5 V rail
    cannot exist yet.
-2. **24.0 V, limit 150 mA.** 5.02 V on J5's outer posts.
+2. **24.0 V, limit 150 mA.** 5.02 V on J5's outer posts, 5 to 15 mA from the supply
+   with the MCU erased and nothing plugged in.
 3. **Raise the limit to 0.3 A, then load the 5 V rail**: 10 ohm 5 W on J5 (0.5 A), still
    5.0 V. Below 0.3 A the supply folds back as U5 starts, the trunk falls under U5's
    turn-off, and the rail motorboats: it looks like a broken converter and is the bench
    supply.
-4. **Only then the Pi.** Its header has no protection.
+4. **Only then the Pi**, at a 1.5 A limit; `vcgencmd get_throttled` must read `0x0`. Its
+   header has no protection.
 
 (Readings are datasheet estimates, not measurements: replace them with the first board's.)
 
@@ -477,14 +495,17 @@ its polarity first. Plug it with the supply's output OFF.
 ### Back-feed
 
 * **No USB-C supply on the Pi once the J5 to J2 lead is in.** It reaches the 24 V trunk at
-  about 4.3 V through U5 and F1. Tape the port.
+  about 4.3 V through U5 and F1. No supply and no PC in the Pi's USB-C; the one lead
+  that belongs there is the C-to-C from `output_panel` J2, whose VBUS is dead-ended. Tag
+  the port; do not tape it.
 * **3.3 V on `motor_ctrl`'s TP5 reaches the 24 V net through U1.** For a power-off erase,
   unplug J1, J3, J5 and J7 first, or the probe is charging the motor trunk and the erase
   "does not work".
 
 ### The ohm check, corrected
 
-On `motor_ctrl` a mask-covered +3V3 segment at (13.11 .. 13.84, -10.56) lies 0.16 mm
+On `motor_ctrl` a mask-covered +3V3 segment at (113.11 .. 113.84, 110.56) in the board
+file's millimetres, with U4's centre at (112.60, 107.50), lies 0.16 mm
 INSIDE the nominal exposed slug of the CH32V307, not only inside the largest the drawing
 allows. It is under solder mask; a pinhole there is a +3V3 to ground short under the
 part. **Meter +3V3 to GND on both assembled boards before either meets 24 V.**

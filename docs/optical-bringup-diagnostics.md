@@ -343,6 +343,12 @@ only. It is the only thing on this board a terminal can read; without it the vie
 RTT through the debugger and PB3 (the emitter gate) blinked and watched through a phone
 camera, which sees the infrared.
 
+* **TP12 is silent on an erased board**: PA2 resets to analog. Silence there means "no
+  firmware has set the pin up", not "dead".
+* **No console traffic on TP12 while capturing audio.** SWCLK (on In2) and NRST and
+  +3V3A (on B.Cu) run under the stub, behind the ground plane; an idle-high line is
+  quiet, a chattering one is an edge source 3 mm from the MCU's analog supply.
+
 **Look for R44 first when the board arrives.** It is the 2512 in series with J2; the fab
 had no model for it. Unplaced, no rail comes up and the buck gets the blame.
 
@@ -355,13 +361,16 @@ them. Nothing on the board can be opened to prevent it. The buck runs from 3.8 V
 
 1. Pigtail plugged (way 1 = 24 V; this board has no reverse protection), output OFF. Set
    **6.0 V, limit 0.3 A.** Output on.
-2. TP9 reads 6.0 V. **TP10 must read 5.0 V.** If it reads about 6 V the buck is not
-   regulating: stop. Nothing has been hurt.
-3. TP5 3.3 V, TP11 3.3 V; about 1.2 V on C112 pad 1 and C113 pad 1 (the MCU's core); 1.8 V
+2. TP9 reads 6.0 V. **TP10 must read 4.9 to 5.1 V.** Above 5.3 V the buck is not
+   regulating (it follows its input): stop. Nothing has been hurt.
+3. TP5 3.3 V, TP11 3.3 V; about 1.0 V on C112 pad 1 and C113 pad 1 (the MCU's core: an
+   erased or just-reset H743 is in VOS3, RM0433 6.4.1); 1.8 V
    on C122 pad 1 and C120 pad 1 (the PHY).
 4. Only then 24.0 V, and read TP10 again.
 
-The board can be flashed and debugged at the 6 V setting.
+The board can be FLASHED at the 6 V setting, with the emitters off. Running it there
+needs about 0.55 A and trips the 0.3 A limit: go to 24 V with the limit at 250 mA before
+firmware turns on the emitters or USB.
 
 **Never feed the board through TP10 or TP5.** J2 is the only supply input.
 
