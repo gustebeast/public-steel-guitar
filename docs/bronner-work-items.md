@@ -5568,3 +5568,68 @@ Where our boards stand, and the real findings of the first run (supply pins far 
 capacitor on optical U6, output_panel U1, motor_ctrl +5V): `docs/pcb-quality-status.md`.
 NEXT: declare the `quality` record for `optical` and work it to `0 FAIL, 0 OPEN` before
 the order.
+
+## PIN ORDER + COPPER BATCH, AND WHY A ROUTE TOOK 84 MINUTES (2026-10-07)
+
+**One way order on every JST lead** (user, 2026-10-07; `elec/harness.py`): way 1 power,
+way 2 ground, ways 3-4 data; a 6-way adds ground then power; an 8-way trunk is the 4-way
+and its mirror. XH carries 24 V, PH 5 V. Every board, the CAD wire tables and the docs
+(`INSTALL_NOTES.md` "Every JST lead", `docs/bench-order.md`, `BOM.md`,
+`docs/connector-and-polarity-audit.md`) follow it.
+
+What changed in copper, per board (all routed `0 unconnected, 0 violations, 0 FAIL`):
+
+| board | changes |
+|---|---|
+| can_tee | J1 trunk mirrored (ways 5-8 = L, H, GND, 24 V), J2 drop 24 V first |
+| pi_cap | J2 / J3 / J4 / J6 on the new order |
+| motor_ctrl | every JST re-ordered; F1 1.5 A (JFC1206-1150FS); D1 DSS16 (60 V); D8 SMCJ24A; slug band under U4 fenced (`slug_max`), crystal 1 mm out; declared escapes for NRST, SWDIO, USB pair and the three east-row pins |
+| output_panel | J7 / J9 / J10 re-ordered; D1 DSS16; D6 SMCJ24A; slug band under U1 fenced; pot CS / SCK moved to the east row |
+| optical | J2 24 V on way 1; U9 EN from +3V3D; 1 uF on each converter's SHDNZ (Cs19..Cs59, placed after routing) |
+| lever_sensor | J1 trunk mirrored; MCU pin 1 tied straight to its belly land |
+| leg_pogo x4 | contact order +5V, GND, CAN_H, CAN_L (`leg_pogo.py --check` passes) |
+
+**⚠ FIRMWARE, three boards.**
+* motor_ctrl: `SENSE_24V` is PA4 (ADC4), `SENSE_5V` is PA5 (ADC5), `PG_5V` is PA6 (input
+  WITH pull-up).
+* output_panel: `POT_CS` is PA5, `POT_SCK` is PA4 (bit-banged, as before; `POT_SDI`
+  stays PB0).
+* optical: SHDNZ now rises about 10 ms after +3V3D (1 uF x 10k). Wait for it before the
+  first I2C write to a converter, and still issue the software reset.
+
+**CAD.** A trunk hop runs way 8 to way 1, 7 to 2, 6 to 3, 5 to 4, so four conductors
+turn over once per hop. `src/foot_pedal.bus_paths` models that between pedals
+(`_turn_over`), `src/wiring.tee_end` lists a tee's OUT half from way 8. Scratch gate
+clean.
+
+**Open, not on an order board.**
+* leg_pogo x4: A17 way-1 marks (no site on a 10-13 mm board), and on male_bottom a
+  0.20 mm +5V segment where A1 wants 0.30.
+* ui_board: fab package stale (14-way footprint against a 16-pin part). Do not order.
+* motor_ctrl / output_panel: LESD5L5.0CT1G has no footprint in the fab's library, so
+  its rotation is the one to look at in the placement preview.
+
+### The 84 minutes
+
+Measured on optical (finish, 18:28 to 19:52): layout 3 min, freerouting 33.5, the
+post-route import in `route.py` 25, `close_last` 20, the rest 3.
+
+Two thirds of that was our own Python asking one question badly, twice:
+
+| step | was | is | how it was checked |
+|---|---|---|---|
+| `layout.link_close_gaps` | 25 min | ~2 min | board identical, 2056 of 2056 tracks and vias |
+| `repair_search.via_ok` (close_last) | 20 min | ~2 min | same six closures, same lengths |
+
+Each tested a candidate point against EVERY pad and track on the board. Each now files
+its obstacles in a grid and asks the cell the point is in (cadkit `d5cd587`, `9df4051`).
+
+**How to find the next one:** `ROUTE_REUSE_SES=1` re-runs `route.py`'s import on an
+existing session file without routing, so any post-route step can be put under
+`cProfile` on a COPY of `elec/out/<board>.*` in a temp folder (route.py ends in
+`os._exit`, which skips a profile written in `finally`: time it by the wall clock, or
+profile the function). The finish log cannot be used as a clock: each child's output
+arrives when the child exits.
+
+What is left is the router: single-threaded on purpose (`-mt 1`; freerouting's
+multi-threaded optimiser is documented as making clearance violations).
