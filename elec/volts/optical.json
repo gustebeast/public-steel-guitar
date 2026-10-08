@@ -337,6 +337,11 @@
    "v": 5.0,
    "why": "generated inside U13 (VCC)"
   },
+  "DBG_TX": {
+   "peak": 3.45,
+   "v": 3.349,
+   "why": "U6.42 (io) can reach its supply +3V3D"
+  },
   "FB": {
    "peak": 1.083,
    "v": 1.031,
@@ -1112,11 +1117,6 @@
    "peak": 3.45,
    "v": 3.349,
    "why": "U6.41 (io) can reach its supply +3V3D"
-  },
-  "U6_NC_42": {
-   "peak": 3.45,
-   "v": 3.349,
-   "why": "U6.42 (io) can reach its supply +3V3D"
   },
   "U6_NC_43": {
    "peak": 3.45,
@@ -2968,6 +2968,11 @@
    "why": "bare copper"
   },
   "TP11.1": {
+   "max": "none",
+   "src": "BRINGUP (no LCSC code): no LCSC code / no rating applies",
+   "why": "bare copper"
+  },
+  "TP12.1": {
    "max": "none",
    "src": "BRINGUP (no LCSC code): no LCSC code / no rating applies",
    "why": "bare copper"
