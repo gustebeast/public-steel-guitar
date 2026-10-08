@@ -755,8 +755,8 @@ def output_panel():
     # pins 21 / 20, in the six-pin run of the east row that nothing else uses. (Pins
     # 30 / 29 were tried first: 30 stands between SCK's lane and the +3V3 pair's
     # capacitor, and stayed open the same way.) FIRMWARE: POT_CS is PA5, POT_SCK is PA4. A digital
-    # pot is written when the VOLUME CHANGES, not per sample: 16 bits at even 100 kHz is
-    # 160 us, four hundred times inside the 50 ms budget below. Spending a hardware SPI
+    # pot is written when the VOLUME CHANGES, not per sample: two 10-bit words at even 100 kHz are
+    # 200 us, two hundred and fifty times inside the 50 ms budget below. Spending a hardware SPI
     # peripheral on it would buy nothing and cost a pin map that is already full.
     pot_cs, pot_sck, pot_sdi = Net("POT_CS"), Net("POT_SCK"), Net("POT_SDI")
     jack_mode = Net("JACK_MODE")   # 0 = balanced (inverted tip), 1 = stereo
@@ -1006,7 +1006,7 @@ def output_panel():
     buf += u7[1], u7[4]       # unity-gain follower
     agnd += u7[2]
     tip_gain = Net("TIP_GAIN")
-    tip_gain += u7[3]         # the pot's P0 wiper -- see U10
+    tip_gain += u7[3]         # the pot's W1 wiper -- see U10
     v5 += u7[5]
     # ⚠ U8 IS NEW WITH THE PICKUP, AND IT IS WHAT MAKES ONE COIL FEED TWO THINGS.
     # The ADC and the relay's direct contact both want the pickup, and a magnetic
@@ -1125,7 +1125,8 @@ def output_panel():
 
     # ── U10: THE GAIN, AND IT IS AN ATTENUATOR IN FRONT OF THE BUFFERS ─────────
     # AD8402ARZ10: dual 10k digital pot, SPI, 256 steps, SOIC-14, 2.7 to 5.5 V. Pinout off
-    # Analog Devices AD8400/AD8402/AD8403 Rev. C, the pin configuration drawing and the pin
+    # Analog Devices AD8400/AD8402/AD8403 Rev. C (the order review read the current Rev. E
+    # and found the pinout and logic levels the same), the pin configuration drawing and the pin
     # function table, which agree (read 2026-10-08):
     #   1 AGND  2 B2  3 A2  4 W2  5 DGND  6 SHDN  7 CS
     #   8 SDI   9 CLK 10 RS 11 VDD 12 W1  13 A1  14 B1
@@ -1154,10 +1155,28 @@ def output_panel():
     #      boot (and save a moment after the last change, not on every step).
     #   2. NO POWER-ON PRESET OF ITS OWN. The sheet promises midscale only through RS
     #      ("resets to midscale by asserting the RS pin, simplifying initial conditions at
-    #      power up") and says nothing about what the latches hold otherwise. So RS has a
-    #      power-on network, R38 100k to +5V and C62 100 nF to ground (10 ms; tRS is
-    #      50 ns): with no firmware at all both wipers stand at midscale, 80H, about
-    #      -6 dB -- which is what the direct mode plays at until the MCU writes.
+    #      power up"), and Rev. E says outright that without it the wiper "can be at any
+    #      random position at power-up" (p. 20, as the order review read it). So RS has a
+    #      power-on network, R38 100k to +5V and C62 100 nF to ground: a 10 ms time
+    #      constant, RS crossing 0.8 V at 1.7 ms and 2.4 V at 6.5 ms, released at about
+    #      5 ms (tRS is 50 ns). With no firmware at all both wipers stand at midscale,
+    #      80H, about -6 dB -- which is what the direct mode plays at until the MCU writes.
+    #      ⚠ THE NETWORK FIRES ONCE PER CLEAN POWER-UP. A rail that stalls near 3 V (a
+    #      bench supply in current limit) lets RS release while CS, at 0.6 x VDD, sits on
+    #      its threshold: a stray CS edge then latches zeros into the tip channel, and
+    #      raising the limit afterwards does not reset it. A debugger or NRST reset does
+    #      not return the pot to midscale either. Only a power cycle does (off 2 s).
+    #      FIRMWARE: PA5 high in the output register BEFORE it is made an output; never
+    #      a CS pulse without a full word; POT_SCK / POT_SDI driven low early (floating
+    #      mid-rail the part draws up to about 5 mA); both channels written 30 ms or more
+    #      after +5V; and 00H around a relay release, 100 ms, then the level back
+    #      (DIRECT_AC floats while the relay is energised: up to 2.4 V of step).
+    #   ⚠ THE TERMINALS LEAVE 0..VDD BY A JUNCTION DROP, BRIEFLY, AND THAT IS ACCEPTED
+    #      (order review, 2026-10-08): for milliseconds at switch-on with strings ringing,
+    #      at every switch-off (C40 holds VMID while +5V collapses, 1 to 3 mA) and on
+    #      clipping. Peaks 6 mA or less against 20 mA pulsed; continuous ratings are 5 mA
+    #      at the wiper and 2.1 mA A to B for the 10k part, the board runs 0.31 mA. The
+    #      same topology stood with the earlier pot.
     #   3. NO PULL-UPS ON ITS INPUTS. With the MCU erased or in
     #      reset CS would float, and a floating CS with a floating clock loads noise
     #      into the latches. R39 / R40 hold it high: 100k to +5V over 150k to ground is
@@ -1559,7 +1578,7 @@ def output_panel():
             ("C44", "100nF", v5, agnd, "U10 bypass -- the pot's supply is also the reference "
              "its wiper divides, so it gets its own", None),
             ("C62", "100nF", pot_rs, agnd, "U10 RS power-on reset, with R38: holds RS low "
-             "for about 10 ms after the rail stands, so both wipers start at midscale", None),
+             "for about 5 ms after the rail stands (10 ms time constant), so both wipers start at midscale", None),
             ("C45", "2.2nF C0G", dac_r_filt, agnd, "DAC right output filter, with R23 -- "
              "C34's mirror", None),
             ("C46", "100nF", v5, agnd, "U11 bypass", None),
@@ -2708,7 +2727,7 @@ BOARD_NOTES["tracks"] += [
 BOARD_NOTES["quality"] = {
     "decoupling": {"exempt": {
         "U10.6": "SHDN, a logic input strapped to +5V: it carries leakage only (1 uA, "
-                 "AD8402 Rev. C, digital inputs). The supply pin is U10.11, with C44 beside it"}},
+                 "AD8402 Rev. C and E, digital inputs). The supply pin is U10.11, with C44 beside it"}},
     "power_paths": [
         # the whole supply, ahead of the switch: two jack contacts in, one FET source
         {"net": "+24V_IN", "from": "J6.2", "to": ["Q2.3"], "amps": 6.67},
@@ -2900,7 +2919,7 @@ BOARD_NOTES["quality"] = {
                         "18/49 VSS, 32/50/68 VDD, 25 PC5, 26 PB0, 27 PB1, 35 PB12, 36 PB13, "
                         "38 PB15, 39 PC6, 48 PA13/SWDIO, 52 PA14/SWCLK, 53 PA15, 58 PB3, 60 PB5, 61 PB6 = "
                         "USBHS_DM, 62 PB7 = USBHS_DP, 63 BOOT0, pad VSS; 20 PA4, 21 PA5 off the drawing 2026-10-07",
-        "AD8402ARZ10": "Analog Devices AD8400/AD8402/AD8403 Rev. C, AD8402 pin "
+        "AD8402ARZ10": "Analog Devices AD8400/AD8402/AD8403 Rev. C, and Rev. E by the order review, AD8402 pin "
                        "configuration (SOIC-14 drawing) and pin function table: 1 AGND, "
                        "2 B2, 3 A2, 4 W2, 5 DGND, 6 SHDN, 7 CS, 8 SDI, 9 CLK, 10 RS, "
                        "11 VDD, 12 W1, 13 A1, 14 B1. Read 2026-10-08; the drawing and the "
@@ -3033,7 +3052,7 @@ BOARD_NOTES["quality"] = {
               "0, slave; FMT = 0, I2S; SCKI from the MCU's MCK at 256 fS. U3 (PCM5102A): FMT = 0 "
               "I2S, DEMP = 0, FLT = 0, XSMT high, charge-pump and LDO capacitors at the sheet's "
               "values. U4 (CH334F): V5 tied to VDD33 for 3.3 V supply, as WCH allows; 12 MHz "
-              "crystal; unused ports open. U10 (AD8402): SHDN high; RS on R38 / C62, released 10 ms after "
+              "crystal; unused ports open. U10 (AD8402): SHDN high; RS on R38 / C62, released about 5 ms after "
               "the rail, so both wipers start at midscale. U12 (TS5A3159): IN from "
               "the MCU, COM to the ring buffer",
         "M8": "BOOT0: R7, 10 k to GND. NRST: R6 10 k to 3V3 and C54. Relay gate: R36, "
@@ -3138,7 +3157,7 @@ BOARD_NOTES["quality"] = {
         "M26": "I2S_SDO: MCU pin 38 (PB15, I2S2_SD, transmit) to the DAC's DIN. I2S_SDI: "
                "the ADC's DOUT to MCU pin 60 (PB5, I2S3_SD, receive). It used to land "
                "on PB14, which is not an I2S pin on this part. POT_SDI: MCU out to the "
-               "pot's SDI; the pot's SDO is unused",
+               "pot's SDI; the 14-lead pot has no data output",
         "M27": "BOOT0: R7 only. SWDIO / SWCLK: a test pad each. NRST: R6, C54, a test "
                "pad. PA15, PB3 (I2S3) are plain GPIO at reset on this RISC-V part: SWD "
                "is two-wire, so they are not debug pins. The hub's strap pins are open",
@@ -3155,7 +3174,7 @@ BOARD_NOTES["quality"] = {
                "own draw is under 0.1 A; the rest passes through to J7 / J10 / J9 on "
                "copper checked for it (A1)",
         "M34": "MCU (3.3 V) to the 5 V pot: the AD8402's input-high is 2.4 V at "
-               "VDD = 5 V (Rev. C, digital inputs). Its CS rests at 3.0 V on R39 / R40, inside "
+               "VDD = 5 V (Rev. C and E, digital inputs). Its CS rests at 3.0 V on R39 / R40, inside "
                "the MCU pin's 3.6 V. MCU to the analog switch: the TS5A3159 needs 2.4 V at 5 V (the "
                "SN74LVC1G3157 it replaces needed 3.5 V and would not have switched). "
                "MCU to both converters: all 3.3 V. The DAC's XSMT, the ADC's mode "
