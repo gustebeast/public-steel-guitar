@@ -2298,16 +2298,14 @@ _COLORS = {
     "ui_pcb":          _BG.mask("ui_board"),   # the UI board, as fabbed
     "ui_display":      (0.16, 0.16, 0.18),   # the module's metal bezel -- the part the
                                              # deck's ledge bears on and covers
-    "ui_screen":       (0.64, 0.66, 0.68),   # the 128 x 64 of LIT AREA. Light enough to
-                                             # read against the bezel, so the render
-                                             # answers "how much of the screen does the
-                                             # deck cover" by looking -- but GREY, not
-                                             # white: at 0.92 it glared next to the
-                                             # near-black module around it
+    "ui_screen":       (0.004, 0.004, 0.005),   # an OLED is black where it is not lit
+    "ui_screen_lit":   (0.93, 0.96, 1.0),    # ...and this module (WDW) lights white
     "ui_clamp":        (0.36, 0.30, 0.42),   # the printed clamp plate under the board
     "ui_insert":       (0.72, 0.60, 0.38),   # brass heat-set
     "ui_screw":        (0.62, 0.64, 0.67),
     "ui_knob":         (0.15, 0.15, 0.17),   # the printed cap on the encoder
+    "ui_pwr_cap":      (0.15, 0.15, 0.17),   # ...and the one on the power switch
+    "ui_pwr_stem":     (0.94, 0.94, 0.92),   # the switch's own plunger, moulded white
     "dc_jack":         (0.62, 0.64, 0.67),
     "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
