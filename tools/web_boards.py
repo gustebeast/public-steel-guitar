@@ -280,7 +280,7 @@ def _reference_inks():
     return out
 
 
-def _own_part(f, h, t, pose, panel):
+def _own_part(f, h, t, pose, panel, edge=None):
     """A part drawn by tools/web_parts.py, meshed where it stands: a mesh_shape() result
     with per-vertex colour, or None when there is no generator for it (or it fails: a
     box is a complete model, so this never costs the export)."""
@@ -292,7 +292,7 @@ def _own_part(f, h, t, pose, panel):
     from OCP.TopExp import TopExp_Explorer
     from OCP.TopAbs import TopAbs_FACE
     try:
-        parts = WP.build(f, h, t, panel)
+        parts = WP.build(f, h, t, panel, edge)
         if not parts:
             return None
         R, tr = pose[:3, :3], pose[:3, 3]
@@ -373,6 +373,8 @@ def detail(meshed, shape_of, log=print):
                                          (g["outline_mm"][0] / 2, g["outline_mm"][1] / 2),
                                          (-g["outline_mm"][0] / 2, g["outline_mm"][1] / 2)]
         corners = _apply(pose, np.array([(x, y, z) for x, y in poly for z in (0.0, t)]))
+        edge = (min(p[0] for p in poly), max(p[0] for p in poly),
+                min(p[1] for p in poly), max(p[1] for p in poly))
         centre = _apply(pose, np.array([[0.0, 0.0, t / 2.0]]))[0]
         solid_name, best = None, 0.0
         for name, m in meshed.items():
@@ -431,7 +433,7 @@ def detail(meshed, shape_of, log=print):
                     path = resolve_model("${KICAD10_3DMODEL_DIR}/" + same)
             if path is None:
                 # no file anywhere: the part drawn here (tools/web_parts.py)
-                own = _own_part(f, h, t, pose, panel)
+                own = _own_part(f, h, t, pose, panel, edge)
                 if own is None:
                     keep("no model in KiCad's library here, none drawn in web_parts")
                     continue
