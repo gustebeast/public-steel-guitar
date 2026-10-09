@@ -661,10 +661,43 @@ def screen():
     -- which is the BEZEL doing its job -- and the picture said the panel was covering
     the screen. It never was. This is the rectangle that matters, in its own colour, so
     the question can be answered by looking."""
+    return _screen_box().cut(screen_lit())
+
+
+SCREEN_T = 0.2
+# WHAT THE SCREEN SHOWS: the instrument's name, in the face the boards are lettered in.
+# In that face a lower-case l is the capital L with two dots over its foot. A checkout
+# without the font (it is licensed, and not in the repository) shows plain capitals.
+SCREEN_WORD, SCREEN_WORD_PLAIN = "PUBlIC", "PUBLIC"
+SCREEN_FILL = 0.75                 # of the lit area's width, and no more of its height
+
+
+def _screen_box():
     hx, hy = routed("J1")
     my = hy + (MOD_L / 2.0 - HDR_EDGE_DY)
     face = z_stack()[2]
-    return box_at(ACT_W, ACT_L, 0.2, x=hx, y=my + VIEW_OFF_Y, z=face - 0.1)
+    return box_at(ACT_W, ACT_L, SCREEN_T, x=hx, y=my + VIEW_OFF_Y, z=face - SCREEN_T / 2.0)
+
+
+@lru_cache(maxsize=1)
+def screen_lit():
+    """The dots that are ON: the name, centred, upright to the player (who sits at -Y).
+
+    An OLED is black wherever it is not lit, so the lit dots are their own part, let
+    into the screen's face, and the screen is what is left of the rectangle."""
+    font = _bg()._FONT
+    word, face = (SCREEN_WORD, {"fontPath": font}) if font else (SCREEN_WORD_PLAIN, {})
+
+    def drawn(size):
+        w = cq.Workplane("XY").text(word, size, SCREEN_T, **face)
+        return w, w.val().BoundingBox()
+
+    _w, b = drawn(10.0)
+    size = 10.0 * min(SCREEN_FILL * ACT_W / b.xlen, SCREEN_FILL * ACT_L / b.ylen)
+    w, b = drawn(size)
+    c = _screen_box().val().BoundingBox()
+    return w.translate(((c.xmin + c.xmax - b.xmin - b.xmax) / 2.0,
+                        (c.ymin + c.ymax - b.ymin - b.ymax) / 2.0, c.zmin - b.zmin))
 
 
 def knob_geometry():
@@ -1033,7 +1066,7 @@ def hardware():
 def parts():
     """[(name, solid)] everything the assembly shows for the UI station."""
     return ([("ui_pcb", ui_pcb()), ("ui_display", display_module()),
-             ("ui_screen", screen()), ("ui_clamp", clamp()),
+             ("ui_screen", screen()), ("ui_screen_lit", screen_lit()), ("ui_clamp", clamp()),
              ("ui_shaft", encoder_shaft()), ("ui_knob", knob()),
              ("ui_pwr_stem", power_stem()), ("ui_pwr_cap", power_cap())]
             + [(n, w) for n, w in (("ui_pcb_silk", ui_silk()),) if w is not None]
