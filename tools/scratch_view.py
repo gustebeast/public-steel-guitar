@@ -103,6 +103,11 @@ def _live_one(entry):
         raise SystemExit(
             f"scratch_view: your scope names {entry!r}, which does not exist.\n"
             "Re-point it with:  agent_sync.py scope --set src.<your_module>")
+    # YOUR MODULE'S CHECKS ALL RUN. Some modules build their parts on first use
+    # (cadkit.lazy), so that others can read their dimensions without waiting; the
+    # asserts inside those builders must still fire for whoever is working on the module.
+    from cadkit.lazy import build_all
+    build_all(mod)
     # --attr belongs to a scope of ONE module; with several, each uses its tail name
     attr = (SCOPE.get("attr") if len(LIVE) == 1 else None) or entry.rpartition(".")[2]
     obj = getattr(mod, attr, None)
