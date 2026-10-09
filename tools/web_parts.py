@@ -261,6 +261,15 @@ def _mouth(f, name, panel, outline=None):
     return (1 if dx > 0 else -1, 0) if abs(dx) > abs(dy) else (0, 1 if dy > 0 else -1)
 
 
+def side_entry(name):
+    """True for a side-entry header: the one kind of part a board may draw MATED."""
+    return bool(re.search(_RULES[0][0], name) or re.search(r"^JST_.*Horizontal", name))
+
+
+def mouth(f, panel=None, outline=None):
+    return _mouth(f, f["fpid"].split(":")[-1], panel or {}, outline)
+
+
 def knows(name):
     return any(re.search(p, name) for p, _ in _RULES)
 
