@@ -5830,3 +5830,19 @@ time only changes stage. It cannot be swapped for `2 * HOUS_HW`: the solid is 58
 Y against 36.4 for the prism (tenons). Any scope that imports `src.build` pays it too.
 The earlier 84 -> 63 s figure for `import src.build` does not reproduce (77.6 s now); the
 scope figures (bridge_endplate 79 -> 35 s) do not import `src.build` and stand.
+
+**Viewer: ray tracing moved to the graphics card (cadkit 149b190, 57e7733, 65219e7; awaiting propagate).**
+The in-browser tracer is gone (user: too clunky). The local server keeps a background
+Blender (Cycles on OptiX, denoised there) with the model loaded: `cadkit/web/trace.py`,
+`trace_blender.py`, `POST /trace`. The page sends camera, hidden parts, rig pose; gets a
+24-sample picture then a 128-sample one. Measured (RTX 5090, 1.2M triangles, 1920x1200):
+first picture ~0.3-0.5 s after the view stops, full ~1.2 s; model load 0.9 s, Blender
+start ~5 s (once, warmed when the level is chosen). The picture is asked for where the
+orbit glide WILL end, while it still glides. Blender 5.2.2 portable is in
+`%LOCALAPPDATA%/Programs/Blender` (user asked for the install); without Blender, or on
+the published page, the level is not offered. Not done: section cuts are not traced.
+
+**Boards drawn in their solder mask's colour (user, 2026-10-09).** `cadkit.board_geom.mask_rgb`
+(canonical 266553c), `src/board_geom.py` `MASK` + `mask()`, `src/build.py` colour table.
+optical is black (its order option), every other board of ours the default green;
+motor_ctrl and output_panel lose their made-up red and purple. Needs 266553c propagated.
