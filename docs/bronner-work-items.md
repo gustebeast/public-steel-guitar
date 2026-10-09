@@ -5846,3 +5846,13 @@ the published page, the level is not offered. Not done: section cuts are not tra
 (canonical 266553c), `src/board_geom.py` `MASK` + `mask()`, `src/build.py` colour table.
 optical is black (its order option), every other board of ours the default green;
 motor_ctrl and output_panel lose their made-up red and purple. Needs 266553c propagated.
+
+**Bought parts and board components look like what they are (user, 2026-10-09).** cadkit
+`web/finishes.py` (canonical, pushed): a finish table (metalness, roughness) that travels
+in the model file; the page and the Blender tracer both apply it, the part keeps its
+colour. `tools/web_materials.py` `finish_of()` names each non-printed part's finish from
+its name (screws/washers/springs/rods steel, bearings/magnets/strings polished, inserts
+brass, pogo contacts gold, belts rubber, wires pvc, boards a gloss lacquer...). Component
+models: faces in the libraries' fixed metal colours are flagged metal in the vertex
+colour's alpha. Left plain (no rule): nut, string_nut, ui_pwr_*, and the kv_* printed
+parts the filament lookup has never matched.

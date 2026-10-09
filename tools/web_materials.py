@@ -1,8 +1,9 @@
-"""Which filament each part of the assembly is printed in, for the viewer.
+"""What each part of the assembly is made of, for the viewer.
 
-    material_of("lkr_main_cart_base_0")  ->  "pctg"
+    material_of("lkr_main_cart_base_0")  ->  "pctg"       the filament it is printed in
     material_of("chassis_2")             ->  "petg-gf"
-    material_of("kl_bearing")            ->  None        (bought, not printed)
+    material_of("kl_bearing")            ->  "polished"   bought: its finish
+    material_of("tee_insert_3")          ->  "brass"
 
 The build's PARTS table (src/build.py) is the one place a printed part's material is
 written: the folder of its STEP file, "petg-gf/chassis_2.step". This reads that table AS
@@ -13,6 +14,11 @@ way the build's own colour lookup reduces it.
 
 The viewer uses this for its "as printed" view: every part of one filament in that
 filament's colour and finish, to judge the instrument as it will come off the printer.
+
+A part that is NOT printed gets a FINISH instead (cadkit/web/finishes.py: steel, brass,
+rubber...), by what its name says it is, so a bearing does not look moulded. It keeps
+its colour from the build; only the surface changes. A new bought part whose name fits
+no rule below simply stays plain, and is listed by `py -3.12 -m tools.web_materials -v`.
 """
 
 from __future__ import annotations
@@ -50,10 +56,44 @@ def _table():
     return exact, pats
 
 
+# WHAT A BOUGHT PART IS, FROM ITS NAME. First match wins; searched in the name with its
+# index groups off (lkr_main_spring_tension_screw, wire_canb_gnd_lkl, kl_bearing).
+_FINISH = [(re.compile(rx), finish) for rx, finish in (
+    (r"_shim$", None),                   # printed, though named after the board it packs
+    (r"(^|_)wire_|_pigtail$|_cable_", "pvc"),
+    (r"_silk(_|$)", "ink"),
+    (r"insert", "brass"),
+    (r"pogo_.*(pins|pads)|_pogo_pins$", "gold"),
+    (r"bearing|magnet$|^string$", "polished"),
+    (r"screw$|screw_(top|bottom)$|washer$|spring$|_dowel$|_rod$|^leadscrew$|_m4_(key|mid)$"
+     r"|^ui_shaft$|^ui_display$", "steel"),
+    (r"^belt$", "rubber"),
+    (r"^pickup$", "aluminium"),
+    (r"^motor$", "painted"),
+    (r"_ph_(top|bottom)$|_plug_", "nylon"),
+    (r"^ui_screen$", "glass"),
+    (r"(^|_)pcb(_[a-z]+)?$|_board_(top|bottom)$|^(motor_ctrl|output_panel|pi_cap|pi4)$", "board"),
+)]
+
+
+def finish_of(base: str):
+    """The finish of a part that is not printed, from its name; None if no rule fits."""
+    bare = _STATION.sub("", base)
+    for rx, finish in _FINISH:
+        if rx.search(bare):
+            return finish
+    return None
+
+
 def material_of(name: str):
-    """"petg-gf" | "pctg" | "pctg-alt" | "tpu" for a printed part's instance name, else None."""
-    exact, pats = _table()
+    """What `name` (an instance in the assembly) is made of: "petg-gf" | "pctg" |
+    "pctg-alt" | "tpu" for a printed part, a finish for a bought one, else None."""
     name = name.split("__")[0]
+    return _filament_of(name) or finish_of(re.sub(r"(_\d+)+$", "", name))
+
+
+def _filament_of(name: str):
+    exact, pats = _table()
     base = re.sub(r"(_\d+)+$", "", name)
     # THE DECK IS ONE PRINT IN TWO COLOURS OF PCTG. Its `top_plate_color_N` bodies are
     # the skin you see (the whole top face); `top_plate_N` is the body under it, which
@@ -97,4 +137,7 @@ if __name__ == "__main__":
     if "-v" in sys.argv:
         for mat in MATERIALS:
             print(mat, sorted({re.sub(r"(_\d+)+$", "", n) for n in names if material_of(n) == mat}))
+        from cadkit.web.finishes import FINISHES
+        for fin in FINISHES:
+            print(fin, sorted({re.sub(r"(_\d+)+$", "", n) for n in names if material_of(n) == fin}))
         print("none:", sorted({re.sub(r"(_\d+)+$", "", n) for n in names if material_of(n) is None}))
