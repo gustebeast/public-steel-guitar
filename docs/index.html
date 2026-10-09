@@ -1274,7 +1274,7 @@
     $('build').textContent = stamp ? 'local · ' + new Date(stamp.t * 1000).toLocaleTimeString()
                                    : rig ? 'build #' + rig.build : '';
     $('status').textContent = stamp
-      ? `local view · ${stamp.live.length ? stamp.live.length + ' part(s) fresh' : 'nothing fresh'} · surroundings ${Math.round(stamp.cache_age_min)} min old`
+      ? `local view · ${stamp.live.length ? stamp.live.length + ' part(s) fresh' : stamp.kept ? stamp.kept + ' part(s) as last built' : 'nothing fresh'} · surroundings ${Math.round(stamp.cache_age_min)} min old`
       : '';
     const hiddenNames = new Set(hiddenParts().map(p => p.name));
     const wasMode = mode;
