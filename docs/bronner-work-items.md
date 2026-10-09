@@ -5866,3 +5866,24 @@ tracer; it casts no shadow in the drawn picture). Project: `tools/web_materials.
 `top_plate`/`chassis_light` = "pctg-clear" (was the placeholder "pctg-alt");
 `tools/export_glb.py` and `tools/scratch_view.py` pass `units=`. NEEDS the cadkit commit
 vendored first: `export()` has no `units` keyword before it.
+
+## 2026-10-09 viewer: filament colours by default, the screen, the power switch
+
+- The "as printed" switch is gone (user): a part that names its filament is always shown
+  in that filament's colour and surface. The filament table moved into
+  `cadkit/web/finishes.py` (FILAMENTS) and the export writes the colour into the model
+  file, so the page and the ray tracer carry no table and no flag.
+- `nut` and `string_nut` are brass (user: the leadscrew nuts did not look like brass).
+- The OLED is black with the name lit on it (`ui_screen_lit`, a part let into
+  `ui_screen`; 75 % of the lit width, centred, upright to the player at -Y). The face is
+  the board-lettering font; a checkout without it shows plain capitals. The screen's
+  finish is "screen": it reflects none of the room, or black glass reads grey at a
+  shallow angle.
+- The stick's cap and the power cap are black PCTG ("pctg-black").
+- The UI board showed boxes because its geom names no part models: a board made from
+  footprints without model fields was skipped whole. `cadkit.web.boards` now finds
+  KiCad's model by the footprint's name for such a footprint, so the UI board and the
+  four LED boards carry real parts; the latching power switch is drawn by
+  `cadkit.web.parts.push_latch`.
+- OPEN: `ui_pwr_cap` is a printed part with NO entry in PARTS (no STEP is exported for
+  it, no print orientation declared). Not added here.
