@@ -10,6 +10,7 @@ __pycache__/
 *.stl
 *.png
 docs/assembly.glb
+docs/index.html
 docs/assembly.geo.json
 docs/rig.json
 fast_build_map.json
