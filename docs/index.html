@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <title>Public Steel Guitar — assembly</title>
+  <title>Assembly</title>
   <style>
     :root { color-scheme: dark; }
     html, body { margin: 0; height: 100%; overflow: hidden; background: #16181c;
@@ -94,8 +94,8 @@
 </head>
 <body>
   <div id="view"></div>
-  <div class="label"><b>Public Steel Guitar</b>
-    <div class="sub">full assembly · C6 copedent · <span id="keys"></span><b>space</b> = <span id="deckstate">hide deck</span> (and what comes off with it)</div>
+  <div class="label"><b id="title">Assembly</b>
+    <div class="sub"><span id="subtitle"></span><span id="keys"></span><span id="deckhint"><b>space</b> = <span id="deckstate">hide deck</span> (and what comes off with it)</span></div>
   </div>
   <div id="build">build #—</div>
   <div id="fps"></div>
@@ -371,6 +371,7 @@
       wrap.appendChild(row);
     }
     // the deck toggle as a BUTTON: space does not exist on a phone
+    if (!(rig && rig.deck_prefixes)) return;
     const d = document.createElement('div');
     d.className = 'pedal'; d.id = 'deckbtn';
     d.innerHTML = '<span class="k">space</span><b>hide deck</b>';
@@ -385,7 +386,7 @@
   const keyToPedal = {};   // '1' -> 'A'
   let deckVisible = true;
   function deckParts() {
-    const pre = (rig && rig.deck_prefixes) || ['top_plate'];
+    const pre = (rig && rig.deck_prefixes) || [];
     return M.list.filter(p => pre.some(x => p.name.startsWith(x)));
   }
   function toggleDeck() {
@@ -1287,10 +1288,10 @@
   }
 
   // ── load rig + model ──────────────────────────────────────────────────────
-  // The same page serves two models. On GitHub Pages it is the build the lead pushed.
-  // Run locally (py -3.12 -m tools.web_view) it is one agent's part fresh in its cached
-  // surroundings, and stamp.json says when that was re-exported: the page reloads the
-  // model then, keeping the camera and whatever was hidden.
+  // The same page serves two models. Published (a folder written by export(page=True))
+  // it is the build that was pushed. Served locally (cadkit.web.view) it is whatever was
+  // last shown, and stamp.json says when: the page reloads the model then, keeping the
+  // camera and whatever was hidden.
   let stamp = null;
   async function fetchJSON(url) {
     try { const r = await fetch(url, { cache: 'no-store' }); return r.ok ? await r.json() : null; }
@@ -1303,14 +1304,28 @@
     for (const k of Object.keys(keyToPedal)) delete keyToPedal[k];
     if (rig) for (const p of rig.copedent) keyToPedal[p.key] = p.name;
     M.key = stamp ? String(stamp.t) : rig ? String(rig.build) : String(Date.now());
-    $('build').textContent = stamp ? 'local · ' + new Date(stamp.t * 1000).toLocaleTimeString()
-                                   : rig ? 'build #' + rig.build : '';
-    $('status').textContent = stamp
-      ? `local view · ${stamp.live.length ? stamp.live.length + ' part(s) fresh' : stamp.kept ? stamp.kept + ' part(s) as last built' : 'nothing fresh'} · surroundings ${Math.round(stamp.cache_age_min)} min old`
+    $('status').textContent = stamp && stamp.scratch
+      ? ['scratch view',
+         stamp.live.length ? stamp.live.length + ' part(s) fresh' : 'nothing rebuilt',
+         stamp.own ? stamp.own + ' kept as built here' : '',
+         stamp.cache_age_min != null
+           ? `the rest from build${stamp.build != null ? ' #' + stamp.build : ''}, ${Math.round(stamp.cache_age_min)} min old` : '',
+         stamp.drift ? 'NOT THE SAME TREE: ' + stamp.drift : '']
+        .filter(Boolean).join(' · ')
       : '';
     const hiddenNames = new Set(hiddenParts().map(p => p.name));
     const wasMode = mode;
     const gltf = await new GLTFLoader().loadAsync('assembly.glb?v=' + M.key);
+    // what the export says the model IS: its name, a line about it, its build number
+    const about = (gltf.asset && gltf.asset.extras) || {};
+    document.title = $('title').textContent = about.title || 'Assembly';
+    $('subtitle').textContent = about.subtitle ? about.subtitle + ' · ' : '';
+    $('deckhint').style.display = rig && rig.deck_prefixes ? '' : 'none';
+    // a scratch view is not a build: its number would be the surroundings', not its own
+    const buildN = stamp && stamp.scratch ? null : about.build != null ? about.build : rig && rig.build;
+    $('build').textContent = [buildN != null ? 'build #' + buildN : '',
+                              stamp ? 'local · ' + new Date(stamp.t * 1000).toLocaleTimeString() : '']
+                             .filter(Boolean).join(' · ');
     disposeModel();
     curCarr = null; curPress = null;
     buildModel(gltf);

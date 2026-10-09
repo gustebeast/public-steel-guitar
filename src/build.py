@@ -1,6 +1,6 @@
 """Electro-mechanical pedal steel guitar — main build script (vertical layout).
 
-  py -3.12 -m src.build              # build all printed parts + assembly.step
+  py -3.12 -m src.build              # build all printed parts + the viewer's model
   py -3.12 -m src.build --part NAME  # build one printed part (fast iteration)
   py -3.12 -m src.build --list       # list part names
   py -3.12 -m src.build --geom       # print the belt geometry report & exit
@@ -26,9 +26,7 @@ _T_IMPORT = time.perf_counter()         # the modules below BUILD GEOMETRY as th
 
 import cadquery as cq
 
-# Shared CAD utilities, vendored at <project>/cadkit (git subtree). show() makes the
-# build's output viewable — opens/refreshes its tab in the FreeCAD hub. Never raises.
-from cadkit.freecad import show
+# Shared CAD utilities, vendored at <project>/cadkit (git subtree).
 from cadkit.step_export import export_step, export_print
 from cadkit.orientation import (PrintOrientation as PO,
                                 require_declared, unconfirmed)
@@ -60,8 +58,8 @@ from . import legs as LG
 # ── PRINTED parts → each is exported as its own STEP. ────────────────────
 # This is the ONLY set that gets STEP files. DEMONSTRATION parts (purchased /
 # swaged dummies — leadscrew, brass nuts, bearings, motor, belt, string,
-# string-end nut, dowels …) live in components.py and appear ONLY in
-# assembly.step; they are never added here, so they are never exported.
+# string-end nut, dowels …) live in components.py and appear ONLY in the
+# assembly; they are never added here, so they are never exported.
 # Values are (builder, path, note): the builder runs heal() LAZILY at export
 # time, so importing this module (the overlap gate, assembly-only builds)
 # doesn't pay for healing parts it never exports.
@@ -1702,7 +1700,7 @@ def optical_work_components():
 
     This is the actual unit of the work: the board, the endplate whose block it cuts into,
     and the chassis it sits above. Scope it with
-        scope --set src.build --attr optical_work_components --crop bridge               --replaced optical_,bridge_endplate,chassis_
+        scope --set src.build --attr optical_work_components --replaced optical_,bridge_endplate,chassis_
     so the cache leaves those to the live build instead of duplicating them.
 
     ⚠ BOTH ENDPLATE BOARDS, NOT JUST THE OPTICAL ONE (user, 2026-09-25). The instrument
@@ -2072,8 +2070,8 @@ def collect_components():
     comps += _lever_stations_components()      # all five, LKL/VKL included
     # ...AND THE HARNESS THAT RUNS BETWEEN THEM. Left out when the bus-B harness landed
     # (2026-09-23), so all 36 conductors were built by lever_harness_components() for the
-    # agent's own scratch view and by NOTHING ELSE: absent from assembly.step, from the web
-    # preview, and -- the part that matters -- from the overlap gate, which takes its model
+    # agent's own scratch view and by NOTHING ELSE: absent from the web preview and --
+    # the part that matters -- from the overlap gate, which takes its model
     # from this function. The user spotted it as missing geometry in the viewer; the gate had
     # been reporting green on an instrument with no lever wiring in it.
     comps += _lever_bus_components() + _ctrl_bus_components()
@@ -2083,8 +2081,8 @@ def collect_components():
     return comps
 
 
-# Per-part colours, baked into the assembly STEP (single source of truth — they
-# show in the shared FreeCAD live viewer and any STEP viewer). RGB floats 0..1.
+# Per-part colours (single source of truth — the viewer and the scratch view both
+# resolve through _color_for). RGB floats 0..1.
 _COLORS = {
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
@@ -2444,27 +2442,19 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
     build_n = _bump_build_counter()
     with _stage("assembly: collect_components"):
         comps = collect_components()
-    with _stage("assembly.step: assemble + save"):
-        asm = cq.Assembly(name="public_steel_guitar")
-        for name, wp in comps:
-            asm.add(wp, name=name, color=_color_for(name))
-        counter = _build_counter_model(build_n)
-        if counter is not None:
-            asm.add(counter, name="build_counter", color=_color_for("build_counter"))
-        # ATOMIC write: the 30+ MB STEP takes seconds to save, and the viewer's
-        # file-watcher must never see (and import) a half-written file — save to a
-        # temp name, then rename into place (one mtime event, complete file).
-        asm.save(str(OUT / "assembly.step.tmp"), exportType="STEP")
-        os.replace(OUT / "assembly.step.tmp", OUT / "assembly.step")
-    print(f"Wrote assembly.step  [build #{build_n}]", flush=True)
+    print(f"Assembled {len(comps)} components  [build #{build_n}]", flush=True)
     with _stage("geometry report"):
         print(geometry_report())
-    with _stage("viewer: show()"):
-        show(str(OUT / "assembly.step"))   # open/refresh it in the shared FreeCAD hub
-    if publish:
-        _publish_web_preview(comps, build_n)
-    # LAST: the gate spawns a worker pool, so run it once the STEP is safely on
-    # disk and the viewer is refreshed — a gate hiccup can never cost the build.
+    # THE ASSEMBLY IS THIS LIST, NOT A FILE. Nothing read the one-file STEP of it but a
+    # viewer, and the viewer is given the list. The printed parts' own STEPs are above.
+    # Each component is left behind on its own instead, where every worktree's scratch
+    # view takes its surroundings from (cadkit.scratch): only the lead's build writes it.
+    with _stage("shared cache for the scratch views"):
+        from cadkit.scratch import publish_cache
+        publish_cache(comps, OUT, build=build_n)
+    _web_view(comps, build_n, publish)
+    # LAST: the gate spawns a worker pool, so run it once the viewer is refreshed — a
+    # gate hiccup can never cost the build.
     rc = 0
     if gate:
         # every gate always runs, so one RED doesn't hide another's result
@@ -2583,24 +2573,29 @@ def _report_dead() -> int:
     return 0
 
 
-def _publish_web_preview(comps, build_n):
-    """Refresh the web-preview GLB from the just-built components (reused — no
-    second geometry pass) and force-push it to the gh-pages branch. STRICTLY
-    NON-FATAL: a publish failure (offline, not on main, auth) must never fail an
-    otherwise-good geometry build. The push itself is a no-op off the main branch
-    (so agent worktrees don't publish) — see tools/publish_preview.py."""
+def _web_view(comps, build_n, publish=True):
+    """The viewer's model, from the just-built components (reused — no second geometry
+    pass, and every mesh is of a COPY): written to docs/, shown in the local page, and
+    force-pushed to the gh-pages branch. STRICTLY NON-FATAL: viewer or publish trouble
+    (offline, not on main, auth) must never fail an otherwise-good geometry build. The
+    push itself is a no-op off the main branch (so agent worktrees don't publish) — see
+    tools/publish_preview.py."""
     try:
+        from cadkit.web import show_exported
         from tools.export_glb import build_glb
         from tools.export_rig import build_rig
         from tools.publish_preview import push_gh_pages
-        with _stage("web preview: mesh + write"):
-            build_glb(comps, build_n=build_n)   # full instrument + the #build label
-        with _stage("web preview: rig"):
+        with _stage("viewer: rig"):
             build_rig(build_n)                  # animation manifest (pivots + copedent)
-        with _stage("web preview: publish"):
-            push_gh_pages(build_n)
-    except Exception as e:               # noqa: BLE001 — never let publishing break a build
-        print(f"web preview: publish skipped ({type(e).__name__}: {e})", flush=True)
+        with _stage("viewer: mesh + write"):
+            glb = build_glb(comps, build_n=build_n)   # full instrument + the #build label
+        with _stage("viewer: local page"):
+            show_exported(glb.parent, root=OUT)
+        if publish:
+            with _stage("viewer: publish"):
+                push_gh_pages(build_n)
+    except Exception as e:               # noqa: BLE001 — never let the viewer break a build
+        print(f"web view: skipped ({type(e).__name__}: {e})", flush=True)
 
 
 _T_MAIN = time.perf_counter()           # everything above has been imported and built

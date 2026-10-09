@@ -1,33 +1,33 @@
-"""Scratch view for THIS project -- renders YOUR portion into YOUR OWN FreeCAD tab.
+"""Scratch view for THIS project -- YOUR portion, fresh, in the web viewer.
 
     py -3.12 cadkit/tools/agent_sync.py view            # the normal way to run this
-    py -3.12 -m tools.scratch_view --start              # BEGIN a flow: re-cache, render
-    py -3.12 -m tools.scratch_view                      # iterate: your part fresh
-    py -3.12 -m tools.scratch_view --gate               # fast gate on the cache
-    py -3.12 -m tools.scratch_view --merge              # END a flow: DELETE the cache
+    py -3.12 -m tools.scratch_view                      # your part fresh, the rest as built
+    py -3.12 -m tools.scratch_view --cache-only         # the page alone, in seconds
+    py -3.12 -m tools.scratch_view --gate               # fast gate on the same model
+    py -3.12 -m tools.scratch_view --own                # build EVERYTHING here (minutes)
+    py -3.12 -m tools.scratch_view --lead               # forget what you built: back to the lead's
 
 WHY: a full `src.build` is minutes, and nearly all of it is geometry you are not
-touching. This caches the surroundings and rebuilds only the part under work --
-measured here at ~14 s per iteration against a ~4 min build.
+touching. The lead's build leaves every component in a cache all worktrees share, so
+this rebuilds only the part under work and takes the rest from there. A part you built
+earlier in the sitting stays as YOU built it. READ cadkit/scratch.py for what each of
+those is trusted for: the caches are for the VIEW and the scoped gate only --
+`src.build` and its gates never read them.
 
 WHICH PART IS YOURS COMES FROM THE SCOPE REGISTRY, NOT FROM THIS FILE. Claim it once:
 
     py -3.12 cadkit/tools/agent_sync.py scope --set src.<your_module> [--attr assembly]
+    py -3.12 cadkit/tools/agent_sync.py scope --set part:bridge_endplate,src.nut_block
 
-That deliberately does NOT live here. This file is TRACKED, so a per-agent config
-block would put every agent's "which part am I on" edit on the same three lines --
-a guaranteed conflict on every merge request, between two agents who are both
-right. The registry is per-worktree state under .git instead (cadkit/agents.py).
+(several, comma-separated, are all rebuilt every run). That deliberately does NOT live
+here. This file is TRACKED, so a per-agent config block would put every agent's "which
+part am I on" edit on the same three lines -- a guaranteed conflict on every merge
+request, between two agents who are both right. The registry is per-worktree state
+under .git instead (cadkit/agents.py).
 
-The only thing you may need to add here is a POSE or CROP helper, and only if your
-part is not authored in global coordinates -- see POSES / CROPS below. Those are
-additive, so two agents adding one do not collide.
-
-READ cadkit/scratch.py before trusting the cache. Short version: the LIFECYCLE is
-the invalidation strategy (re-cache on --start, delete on --merge, so a cache never
-outlives one sitting), and the cache is for the VIEW ONLY -- `src.build` and
-tools.check_overlaps never read it, so a drift costs a surprise at merge rather
-than a wrong part. Do not "improve" it into something the gate reads.
+The only thing you may need to add here is a POSE helper, and only if your part is not
+authored in global coordinates -- see POSES below. Those are additive, so two agents
+adding one do not collide.
 """
 
 from __future__ import annotations
@@ -47,81 +47,21 @@ if SCOPE is None:
         "  py -3.12 cadkit/tools/agent_sync.py scope --set src.<your_module>\n"
         "Then see who owns what with:  agent_sync.py scope")
 
-LIVE_MODULE = SCOPE["module"]
-# Default to the module's OWN TAIL NAME, which is how nearly every part module in
-# this project is written: src/bridge_endplate.py ends in `bridge_endplate = _build()`.
-# Defaulting to "assembly" named a callable that exists nowhere here, so a bare
-# `scope --set src.<module>` could never work and every agent had to guess an --attr.
-LIVE_ATTR = SCOPE.get("attr") or LIVE_MODULE.rpartition(".")[2]
+# What is rebuilt every run: one entry, or several separated by commas.
+LIVE = [m.strip() for m in SCOPE["module"].split(",") if m.strip()]
 REPLACED = tuple(SCOPE.get("replaced", ()))
-
-# A scope may name a BUILD PART instead of a module attribute:
-#     scope --set part:bridge_endplate
-# Some parts are only ever assembled in src/build.py, so "point it at the right
-# module attribute" has no correct answer for them (brenner, 2026-09-07).
-# PARTS[name][0] is a zero-arg builder returning one Workplane -- exactly a live set
-# of one.
-PART_KEY = LIVE_MODULE[len("part:"):] if LIVE_MODULE.startswith("part:") else None
 
 
 # ── optional per-part helpers ────────────────────────────────────────────────
-# Only needed when a part is NOT authored in global coordinates, or when you want
-# the context cropped to a region. Add yours; a scope opts in with
-#   scope --set ... --pose <key> --crop <key>
-# and anything unregistered simply gets no pose and the whole instrument.
-def _leg_station():
-    """The -X/+Y (TRRS) leg station."""
-    from src import chassis as CH
-    return CH.LEG_STATIONS_X[1], CH.LEG_Y[0], CH.Z_BOT
-
-
+# Only needed when a part is NOT authored in global coordinates. Add yours; a scope
+# opts in with
+#   scope --set ... --pose <key>
+# and anything unregistered simply gets no pose.
 def _tensioner_string():
     """The string the belt-tensioner work sits on: the LAST one -- the short belt run,
-    where clamp-vs-pulley clearance is decided. Shared by the pose and the crop so the
-    two cannot drift onto different strings."""
+    where clamp-vs-pulley clearance is decided."""
     from src import dimensions as D
     return D.N_STRINGS - 1
-
-
-def _belt_run_box(pad=12.0, back_pad=8.0, top_pad=2.0):
-    """Crop for the belt tensioner: ONLY what bears on the clamp -- this string's motor,
-    the belt it drives, the leadscrew and pulley at the far end, and whatever chassis runs
-    between them. The crop CLIPS rather than filters, so chassis_0 comes back as the local
-    slab instead of the whole instrument, and the +Y pad catches the neighbouring string's
-    belt, which is the thing the clamp can actually foul.
-
-    Derived from the real parts, not hardcoded, so it follows the layout if that moves."""
-    from src import components as C, dimensions as D
-    i = _tensioner_string()
-    sy, spz = D.string_y(i), D.screw_pulley_z(i)
-    m = D.motor_pos(i)
-    # Sized from the BELT PLANE only -- motor, belt, screw pulley. The leadscrew is
-    # deliberately NOT in this list even though it is wanted in view: it stands 53mm
-    # up to the carriage, and sizing to its top raised the ceiling through the deck,
-    # dragging in top_plate, pickup, optical and bridge_endplate -- none of which the
-    # clamp can reach. It still renders, clipped to its drive end, which is the part
-    # the belt wraps and the only part the clamp comes near.
-    bbs = [C.belt(m, (D.screw_x(i), sy, spz)).val().BoundingBox(),
-           C.motor().translate(m).val().BoundingBox(),
-           C.screw_pulley(high=spz > D.SCREW_PULLEY_Z)
-            .translate((D.screw_x(i), sy, spz)).val().BoundingBox()]
-    lo = [min(b.xmin for b in bbs) - pad, min(b.ymin for b in bbs) - pad,
-          min(b.zmin for b in bbs) - pad]
-    hi = [max(b.xmax for b in bbs) + pad, max(b.ymax for b in bbs) + pad,
-          max(b.zmax for b in bbs) + pad]
-    # -Y is cut just behind the motor PULLEY rather than behind the motor. The motor
-    # body + driver stack runs 88mm toward the player, and everything living in that
-    # band -- the CAN wiring, tee PCBs, knee lever, panel jacks, analog front end --
-    # came into the view while being unable to touch the clamp. The drive end is the
-    # only part of the motor the belt (and so the clamp) actually relates to.
-    lo[1] = C.motor_pulley().translate(m).val().BoundingBox().ymin - back_pad
-    # +Z stops at the top of the drive itself. A full pad above it reached into the
-    # deck and brought back 0.4-3mm SLIVERS of top_plate, pickup and pickup_zplate --
-    # shavings clipped exactly at the ceiling, which read as debris in the view and
-    # are the one thing that cannot reach a clamp sitting in the chassis cavity.
-    hi[2] = max(b.zmax for b in bbs) + top_pad
-    return (hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2],
-            (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2)
 
 
 def _pose_belt_tensioner(name, wp):
@@ -142,141 +82,55 @@ def _pose_belt_tensioner(name, wp):
 POSES = {"belt_tensioner": _pose_belt_tensioner}
 
 
-def _crop_leg_station():
-    """400 sq x 900 box round the leg station. Spelled out rather than built by
-    tuple concatenation -- the one-liner read `(w,d,h) + station[:2] + (z-300.0)`,
-    and that last term is a FLOAT, not a 1-tuple, so it raised the moment anyone
-    actually used a crop. Nobody had until now."""
-    lx, ly, zt = _leg_station()
-    return (400.0, 400.0, 900.0, lx, ly, zt - 300.0)
-
-
-def _crop_keyhead():
-    """The whole keyhead endplate and what it mates with, at the -X end.
-
-    Z IS SPANNED FROM THE BED TO OVER THE NUT BLOCK, not centred on the string plane.
-    Centring on STRING_Z with 90 of height put the floor at -29 and spent 45 on empty air
-    above the instrument -- which clipped chassis_2 to a 29 mm band that the deck panel
-    then sat on top of, so the chassis read as MISSING from the render. Everything this
-    part actually mates with is BELOW that line: the rail-end dovetail sockets at -23.15,
-    the leg shell, the fill band down to the bed."""
-    from src import dimensions as D, chassis as CH
-    z0, z1 = CH.Z_BOT - 5.0, D.STRING_Z + 10.0
-    return (120.0, 140.0, z1 - z0, D.NUT_BLOCK_X, 0.0, (z0 + z1) / 2)
-
-
-def _crop_bridge():
-    """The bridge endplate's UPPER BLOCK and what it mates with, at the +X end.
-
-    NARROWER IN Y THAN THE KEYHEAD'S. The part itself runs -139..+66 because the screw
-    rail and the foot reach right down the instrument, but the work here is the bearing
-    arms and the axle between them -- +-51 -- and the optical board that stops the shaft.
-    Cropping to that keeps the strings, the carriages and the arms in frame and leaves the
-    drivetrain out of it.
-
-    Z SPANS THE DECK TO OVER THE STRINGS, not the whole part: the arms stand above the
-    deck and everything they mate with is up there. The foot and the rail below are
-    context this view does not need, and they are most of the solids."""
-    from src import dimensions as D, chassis as CH
-    z0, z1 = CH.Z_TOP - 10.0, D.STRING_Z + 12.0
-    return (90.0, 130.0, z1 - z0, D.BRIDGE_AXLE_X, 0.0, (z0 + z1) / 2)
-
-
-def _crop_screw_rows():
-    """The +X end INCLUDING the drivetrain -- the two Tr8 screw rows and the endplate
-    that hosts them.
-
-    Distinct from _crop_bridge, which deliberately stops at the deck to frame the bearing
-    arms and leaves the drivetrain out. The work here is the opposite: the rows, their
-    nuts, bearings and guide rods, and how the endplate closes around them. So Z runs
-    from under the drive pulleys to over the strings."""
-    from src import dimensions as D
-    x0, x1 = D.BRIDGE_BASE_X0 - 25.0, D.BRIDGE_BASE_X1 + 25.0
-    # floor from the PULLEY bottoms, not the screw: the endcap screw now stops well above them
-    z0, z1 = D.SCREW_PULLEY_Z - D.PULLEY_BOT - 8.0, D.STRING_Z + 10.0
-    return (x1 - x0, D.STRING_FIELD_W + 40.0, z1 - z0,
-            (x0 + x1) / 2, 0.0, (z0 + z1) / 2)
-
-
-def _crop_body():
-    """The whole BODY, keyhead to bridge, from a little under the legs' body stubs up to the
-    UNDERSIDE of the deck panels (user) -- the panels are cut away, so the view looks straight
-    down into the chassis.
-
-    For work that spans the instrument's length -- the motor bank packed against the standing
-    electronics at the keyhead, the screw rows and string access channels at the bridge -- and
-    how the legs meet the chassis at both ends (the service slide). The leg columns below the
-    stubs, the pedal bar and the feet stay out: they are most of the solids and none of this."""
-    from src import dimensions as D, chassis as CH, legs as LG, top_plate as TP
-    x0, x1 = D.NUT_BLOCK_X - 30.0, D.BRIDGE_BASE_X1 + 25.0
-    y0, y1 = CH.Y_LO - 20.0, CH.Y_HI + 20.0
-    z0, z1 = CH.Z_BOT - LG.STUB_H - 20.0, TP.BZ
-    return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
-
-
-def _crop_lkl_vkl():
-    """The focused lever(s) whole and the chassis bottom over them -- shared with the live set in
-    src.build.lkl_vkl_box so the clipped chassis and the cropped context cannot disagree."""
-    return importlib.import_module("src.build").lkl_vkl_box()
-
-
-def _crop_pedal_bar():
-    """The pedal bar end to end with its pedals -- shared with the live set in
-    src.build.pedal_bar_box so the crop and the live set cannot disagree."""
-    return importlib.import_module("src.build").pedal_bar_box()
-
-
-def _crop_lever_harness():
-    """The knee levers and their harness -- shared with src.build.lever_harness_box so
-    the crop and the live set cannot disagree."""
-    return importlib.import_module("src.build").lever_harness_box()
-
-
-CROPS = {"leg_station": _crop_leg_station, "belt_run": _belt_run_box,
-         "lever_harness": _crop_lever_harness,
-         "lkl_vkl": _crop_lkl_vkl, "pedal_bar": _crop_pedal_bar,
-         "keyhead": _crop_keyhead, "bridge": _crop_bridge,
-         "screw_rows": _crop_screw_rows, "body": _crop_body}
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def _live():
-    if PART_KEY is not None:
+def _live_one(entry):
+    """The parts one scope entry names. An entry is a module (its attribute given by
+    the scope's --attr, else the module's OWN TAIL NAME, which is how nearly every part
+    module here is written: src/bridge_endplate.py ends in `bridge_endplate =
+    _build()`), or a BUILD PART, `part:bridge_endplate`: some parts are only ever
+    assembled in src/build.py, so "point it at the right module attribute" has no
+    correct answer for them (brenner, 2026-09-07). PARTS[name][0] is a zero-arg builder
+    returning one Workplane -- exactly a live set of one."""
+    if entry.startswith("part:"):
+        key = entry[len("part:"):]
         parts = importlib.import_module("src.build").PARTS
-        if PART_KEY not in parts:
-            raise SystemExit(f"scratch_view: no build part {PART_KEY!r}. "
+        if key not in parts:
+            raise SystemExit(f"scratch_view: no build part {key!r}. "
                              "List them with:  py -3.12 -m src.build --list")
-        return [(PART_KEY, parts[PART_KEY][0]())]
+        return [(key, parts[key][0]())]
     try:
-        mod = importlib.import_module(LIVE_MODULE)
+        mod = importlib.import_module(entry)
     except ModuleNotFoundError:
         raise SystemExit(
-            f"scratch_view: your scope names {LIVE_MODULE!r}, which does not exist.\n"
+            f"scratch_view: your scope names {entry!r}, which does not exist.\n"
             "Re-point it with:  agent_sync.py scope --set src.<your_module>")
-    obj = getattr(mod, LIVE_ATTR, None)
+    # --attr belongs to a scope of ONE module; with several, each uses its tail name
+    attr = (SCOPE.get("attr") if len(LIVE) == 1 else None) or entry.rpartition(".")[2]
+    obj = getattr(mod, attr, None)
     if obj is None:
         cands = [n for n in vars(mod)
                  if not n.startswith("_") and hasattr(getattr(mod, n), "val")]
         raise SystemExit(
-            f"scratch_view: {LIVE_MODULE} has no {LIVE_ATTR!r}.\n"
+            f"scratch_view: {entry} has no {attr!r}.\n"
             + (f"  solids it exports: {', '.join(cands)}\n" if cands else "")
-            + "  agent_sync.py scope --set " + LIVE_MODULE + " --attr <name>")
+            + "  agent_sync.py scope --set " + entry + " --attr <name>")
     # THREE SHAPES, because the part modules here follow no single convention:
     #   a bare solid         bridge_endplate = _build()        <- the common case
     #   a callable -> solid  belt_tensioner.tensioner_coupon()
     #   a callable -> list   build.py's _*_components()
-    # Accepting only the third is what made BOTH seeded scopes wrong on their first
-    # run, and it would have kept being wrong for every module shaped like the others.
     if callable(obj):
         obj = obj()
-    parts = [(LIVE_ATTR, obj)] if hasattr(obj, "val") else list(obj)
+    parts = [(attr, obj)] if hasattr(obj, "val") else list(obj)
     return [(n, w) for n, w in parts if not n.endswith("_CONTEXT")]
 
 
+def _live():
+    return [p for entry in LIVE for p in _live_one(entry)]
+
+
 def _lookup(table, key, what):
-    """Resolve a POSES/CROPS key, LOUDLY. `dict.get` returned None for an unknown key,
-    so a typo rendered the part unposed (or uncropped) with no warning at all -- the
-    silent-wrong-answer failure this project keeps paying for."""
+    """Resolve a POSES key, LOUDLY. `dict.get` returned None for an unknown key, so a
+    typo rendered the part unposed with no warning at all -- the silent-wrong-answer
+    failure this project keeps paying for."""
     if not key:
         return None
     if key not in table:
@@ -291,16 +145,21 @@ VIEW = ScratchView(
     context=lambda: importlib.import_module("src.build").collect_components(),
     live=_live,
     replaced=REPLACED,
-    crop=(lambda f: f() if f else None)(_lookup(CROPS, SCOPE.get("crop"), "crop")),
     pose=_lookup(POSES, SCOPE.get("pose"), "pose"),
-    # The LIVE set wears the same colours the full build gives it, so the part under
-    # work reads as the material it is instead of one flat highlight. Resolved through
+    # Every part wears the colour the full build gives it, resolved through
     # src.build._color_for -- the very function the real build uses -- so this view
-    # cannot drift from the finished assembly. Cached context stays grey on purpose:
-    # that contrast is what tells you which parts are live and which may be stale.
+    # cannot drift from the finished assembly.
     colors=lambda n: importlib.import_module("src.build")._color_for(n),
+    # What the page shows beyond the parts: the mechanism's rig, real part models on the
+    # boards, the filament each part is printed in, and what the model is called.
+    web=dict(
+        rig=lambda path: importlib.import_module("tools.export_rig").build_rig(out=path),
+        boards=lambda: importlib.import_module("src.board_geom").BOARDS,
+        materials=lambda n: importlib.import_module("tools.web_materials").material_of(n),
+        extras={"title": "Public Steel Guitar", "subtitle": "full assembly · C6 copedent"},
+    ),
     # INNER-LOOP gates (`--gate`): the project's real gate functions, handed the
-    # cached context instead of a fresh 5.5-min rebuild. Scoping a gate by NAME
+    # scratch model instead of a fresh 5.5-min rebuild. Scoping a gate by NAME
     # never helped -- the build is ~95% of its cost, not the checking -- so this
     # scopes what gets BUILT, exactly as the view does. This is the contributor's gate;
     # the FULL gate runs in the lead's build on merge, and `--gate` says so every run.

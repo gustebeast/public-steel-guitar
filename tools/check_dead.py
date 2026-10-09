@@ -19,6 +19,7 @@ only when the count GROWS. Deliberate exceptions (re-export facades, entry point
 tool calls by path) belong in KNOWN with the reason written down.
 """
 import ast
+import collections
 import os
 import re
 import sys
@@ -76,12 +77,14 @@ def scan():
         for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 defs.append((p, node.lineno, node.name))
-    dead = []
-    for p, lineno, name in defs:
-        pat = re.compile(r"\b%s\b" % re.escape(name))
-        if sum(len(pat.findall(s)) for s in text.values()) <= 1:
-            dead.append((p, lineno, name))
-    return sorted(dead)
+    # ONE pass over the text, counting every word: a name is a whole word, so its count
+    # here is exactly what a \bname\b search of every file would find. Searching per
+    # definition instead read the whole repo once for each of ~2000 names, and was the
+    # slowest single stage of a full build (188 s of 643).
+    seen = collections.Counter()
+    for s in text.values():
+        seen.update(re.findall(r"\w+", s))
+    return sorted(d for d in defs if seen[d[2]] <= 1)
 
 
 def main():

@@ -5722,12 +5722,11 @@ the one built before these text edits: its QUALITY.txt still says "SDO is unused
 Aim: the web page replaces FreeCAD as the way the instrument is looked at, locally and
 on GitHub Pages. FreeCAD had become slow, the lettering being part of it.
 
-**Run it locally:** `py -3.12 -m tools.web_view` (needs a scratch cache, i.e. a
-`tools.scratch_view --start` at some point). It builds the part under work fresh, takes
-the surroundings from the cache, serves the page on `http://127.0.0.1:8137/` and the
-open page reloads itself on every re-export, keeping the camera and what is hidden.
-`--cache-only` skips the fresh part (seconds); the first run pays about a minute for
-part colours, once.
+**Run it:** `py -3.12 cadkit/tools/agent_sync.py view` (an agent's part fresh in the
+lead's last build; the run prints the page's URL, one port per worktree from 8137). The
+open page reloads itself, keeping the camera and what is hidden. `view --cache-only`
+builds nothing (seconds). The lead's `src.build` shows the whole instrument on its own
+page and publishes the same model to GitHub Pages. The viewer lives in `cadkit.web`.
 
 | Piece | Where | State |
 |---|---|---|
@@ -5748,7 +5747,10 @@ part colours, once.
 | As printed | `tools/web_materials.py`, `docs/index.html` | ✅ local only. Key k: every printed part in its FILAMENT's colour and finish (user: PETG-GF black, PCTG forest green, and do materials affect the lighting). PETG-GF matte black (roughness 0.92), PCTG glossy forest green (0.22, full environment reflection), TPU dull black; bought parts keep their colours. The material is read from the build's PARTS table as text (the STEP folder), the instance name reduced as the build's colour lookup reduces it, and written on the GLB node. The deck is one print in two PCTG colours: its skin (`top_plate_color_N`) takes the green, the body under it that shows as fret lines is `pctg-alt`, a pale stand-in until that colour is chosen. Not modelled: PCTG's translucency. Unmapped, so still in build colours: anything PARTS does not name with a filament folder (the belt tensioner halves, the string nut, shims) |
 | Headers on hand-drawn boards | `tools/web_boards.py` | ✅ local only. User: all the JSTs are uncoloured blocks. The lever boards and the tee draw their side-entry header MATED (plug reach included) and where their own table says, so no corner sat on the F.Fab box; the leg joint boards draw it as a part of its own. Three more steps in the search: a box centred on the footprint of another size, a mated header reaching past the mouth, a separate part standing on the footprint. 798 models now; left as drawn: the four spring-pin blocks (their pins are modelled by hand already) and two optical regulators |
 | Axis views | `docs/index.html` | ✅ buttons +X −X +Y −Y +Z −Z (named by the CAD side looked from) and iso. The camera is PERSPECTIVE and only that (user, 2026-10-09: pick one and lock it in, whichever looks like the real thing) |
-| `agent_sync view` and the build opening the page, `assembly.step` dropped | not started | the lead's `src/build.py` and cadkit; printed parts keep their own STEP files |
+| Promoted to cadkit; FreeCAD and `assembly.step` out of the build | `cadkit/web/`, `cadkit/scratch.py` (canonical b45ee05); `src/build.py`, `tools/export_glb.py`, `tools/scratch_view.py` | ✅ user: commit to the new viewer, remove the FreeCAD remnants, and cut build time for geometry work. `tools/web_*.py` moved to `cadkit.web` (only `tools/web_materials.py`, this project's filament table, stays). The build no longer writes `assembly.step` or calls FreeCAD; it serves the page it publishes. `cadkit/freecad` itself is deleted from canonical once the other ten projects import `cadkit.web` |
+| Build time, measured by stage | `src/build.py` `_stage`, printed at the end of every build | ✅ 643 s -> 381 s in this worktree (overlap pair cache cold in both). Dead-code report 188 s -> 0.5 s (it searched the whole repo once per definition; now one word count, output identical). `assembly.step` 20 s -> gone, replaced by a 3 s shared cache. What is left is geometry: import 83 s + collect_components 120 s, then the sweep gate 56 s and overlaps |
+| Scratch loop redone: the lead's cache, no crops | `cadkit/scratch.py`, `tools/scratch_view.py` | ✅ user: everyone uses the lead's cache unless they change a part; a part an agent built stays as they built it; crops are not needed. The lead's build leaves all 827 components as BREP under `.git/agent-sync/cache/` (64 MB, 3 s, unchanged parts not rewritten). `view` = scope rebuilt + own kept parts + the lead's build. From nothing to the whole model on the page: 32 s (was a full build per agent). `--start` / `--merge` / `--crop` are gone; `--own` builds everything here, `--lead` forgets the worktree's own parts; `scope --set a,b` takes several. Round trip checked on all 827: boxes agree to 5e-13 mm, volumes equal, a file read twice fingerprints the same (so the scoped gate's pair cache stays warm: 4437 of 4437 on the second run). 37 of 827 parts build to different BYTES in a new process, same geometry: those are rewritten every build, a build-determinism matter that predates this |
+| Open: a `part:` scope still pays `import src.build` | `src/build.py` | 84 of the 99 s of a `view` on a `part:` scope is importing `src.build`, which builds geometry at module level. A module scope (`src.<module>`) does not pay it. Making `src.build` cheap to import is the next build-time lever and is the lead's file |
 
 How the page stays fast with every part still addressable: parts that never move are
 merged into one mesh per material, and each keeps its run of the merged index. A pick is

@@ -18,11 +18,10 @@ Split into focused modules:
                     each cut belt into a loop and sets its tension
   tension_fork    — graded belt-tension lock plugs for the motor slots
   build           — composes everything into a colour-coded assembly, writes
-                    per-part STEPs + assembly.step (the refresh signal for the
-                    shared FreeCAD live viewer).
+                    per-part STEPs and the web viewer's model, runs the gates.
 
 Run from the repo root:
-  py -3.12 -m src.build              # build all parts + assembly.step
+  py -3.12 -m src.build              # build all parts + the viewer's model
   py -3.12 -m src.build --part NAME  # build one part (fast iteration)
   py -3.12 -m src.build --list       # list part names
 """
