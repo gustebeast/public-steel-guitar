@@ -1185,8 +1185,32 @@
     else { setHidden(M.list.filter(p => hiddenNames.has(p.name)), true); syncDeckUI(); }
     if (wasMode === 'measure') setMode('measure');
   }
+  // The local server also says when this page's own file was last edited; the page then
+  // reloads itself and comes back as it was (camera, hidden parts, section, mode).
+  let pageStamp = null;
+  const KEEP = 'viewer-state';
+  function keepState() {
+    try { sessionStorage.setItem(KEEP, JSON.stringify({
+      cam: camera.position.toArray(), tgt: controls.target.toArray(),
+      hidden: hiddenParts().map(p => p.name), deck: deckVisible, mode,
+      sec: { on: sec.on, axis: sec.axis, v: sec.v, flip: sec.flip } })); } catch {}
+  }
+  function restoreState() {
+    let s = null;
+    try { s = JSON.parse(sessionStorage.getItem(KEEP)); sessionStorage.removeItem(KEEP); } catch {}
+    if (!s) return;
+    camera.position.fromArray(s.cam); controls.target.fromArray(s.tgt); controls.update();
+    restoreVis({ names: s.hidden, deck: s.deck });
+    if (s.sec.on) setSection(true, s.sec.axis, s.sec.v, s.sec.flip);
+    if (s.mode === 'measure') setMode('measure');
+  }
   async function watch() {
     if (!stamp) return;
+    const pg = await fetchJSON('page.json?t=' + Date.now());
+    if (pg) {
+      if (pageStamp === null) pageStamp = pg.t;
+      else if (pg.t !== pageStamp) { keepState(); location.reload(); return; }
+    }
     const s = await fetchJSON('stamp.json?t=' + Date.now());
     if (s && s.t !== stamp.t) { $('status').textContent = 'reloading…'; try { await load(false); } catch (e) { console.error(e); } }
     setTimeout(watch, 1500);
@@ -1195,6 +1219,7 @@
     setHint();
     try {
       await load(true);
+      restoreState();
       $('loading').style.opacity = '0';
       setTimeout(() => $('loading').remove(), 400);
       watch();
