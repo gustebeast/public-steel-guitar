@@ -13,6 +13,7 @@ length in a staircase, twisted belts connecting them.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import math
 import os
 import pathlib
@@ -20,6 +21,8 @@ import re
 import sys
 import time
 from functools import partial
+
+_T_IMPORT = time.perf_counter()         # the modules below BUILD GEOMETRY as they import
 
 import cadquery as cq
 
@@ -675,6 +678,38 @@ def _material_of(path):
     return head if head in MATERIALS else None
 
 
+# ── WHERE A BUILD'S TIME GOES ────────────────────────────────────────────────────────
+# One line per stage at the end of every build (lead, 2026-10-09: the log timed two
+# gates and nothing else, so nobody could say what a ten-minute build spent its ten
+# minutes on). Cut where this says the time is, not where it is assumed to be.
+_STAGES: list = []
+
+
+@contextlib.contextmanager
+def _stage(label):
+    t = time.perf_counter()
+    try:
+        yield
+    finally:
+        _STAGES.append((label, time.perf_counter() - t))
+
+
+def _stage_add(label, seconds):
+    for i, (k, s) in enumerate(_STAGES):
+        if k == label:
+            _STAGES[i] = (k, s + seconds)
+            return
+    _STAGES.append((label, seconds))
+
+
+def _report_stages():
+    total = sum(s for _, s in _STAGES)
+    print("BUILD TIME by stage (%.0f s):" % total)
+    for label, s in _STAGES:
+        print("  %7.1f s  %4.1f %%  %s" % (s, 100.0 * s / total if total else 0.0, label))
+    sys.stdout.flush()
+
+
 def _export(name):
     builder, path, note = PARTS[name]
     dest = OUT / path
@@ -685,6 +720,8 @@ def _export(name):
     export_s = time.perf_counter() - t
     record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp,
                 material=_material_of(path))          # ~free profiling + volume hook
+    _stage_add("printed parts: build", build_s)
+    _stage_add("printed parts: STEP export", export_s)
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
 
 
@@ -2405,30 +2442,41 @@ def _color_for(name):
 
 def _export_assembly(publish=True, gate=True, gate_full=True):
     build_n = _bump_build_counter()
-    comps = collect_components()
-    asm = cq.Assembly(name="public_steel_guitar")
-    for name, wp in comps:
-        asm.add(wp, name=name, color=_color_for(name))
-    counter = _build_counter_model(build_n)
-    if counter is not None:
-        asm.add(counter, name="build_counter", color=_color_for("build_counter"))
-    # ATOMIC write: the 30+ MB STEP takes seconds to save, and the viewer's
-    # file-watcher must never see (and import) a half-written file — save to a
-    # temp name, then rename into place (one mtime event, complete file).
-    asm.save(str(OUT / "assembly.step.tmp"), exportType="STEP")
-    os.replace(OUT / "assembly.step.tmp", OUT / "assembly.step")
+    with _stage("assembly: collect_components"):
+        comps = collect_components()
+    with _stage("assembly.step: assemble + save"):
+        asm = cq.Assembly(name="public_steel_guitar")
+        for name, wp in comps:
+            asm.add(wp, name=name, color=_color_for(name))
+        counter = _build_counter_model(build_n)
+        if counter is not None:
+            asm.add(counter, name="build_counter", color=_color_for("build_counter"))
+        # ATOMIC write: the 30+ MB STEP takes seconds to save, and the viewer's
+        # file-watcher must never see (and import) a half-written file — save to a
+        # temp name, then rename into place (one mtime event, complete file).
+        asm.save(str(OUT / "assembly.step.tmp"), exportType="STEP")
+        os.replace(OUT / "assembly.step.tmp", OUT / "assembly.step")
     print(f"Wrote assembly.step  [build #{build_n}]", flush=True)
-    print(geometry_report())
-    show(str(OUT / "assembly.step"))   # open/refresh it in the shared FreeCAD hub
+    with _stage("geometry report"):
+        print(geometry_report())
+    with _stage("viewer: show()"):
+        show(str(OUT / "assembly.step"))   # open/refresh it in the shared FreeCAD hub
     if publish:
         _publish_web_preview(comps, build_n)
     # LAST: the gate spawns a worker pool, so run it once the STEP is safely on
     # disk and the viewer is refreshed — a gate hiccup can never cost the build.
-    if not gate:
-        return 0
-    # both gates always run, so one RED doesn't hide the other's result
-    return (_report_overlaps(comps, full=gate_full) | _report_sweep(comps)
-            | _report_travel(comps) | _report_carriage_travel(comps) | _report_dead())
+    rc = 0
+    if gate:
+        # every gate always runs, so one RED doesn't hide another's result
+        for label, fn in (("gate: overlaps", lambda: _report_overlaps(comps, full=gate_full)),
+                          ("gate: sweep", lambda: _report_sweep(comps)),
+                          ("gate: travel", lambda: _report_travel(comps)),
+                          ("gate: carriage travel", lambda: _report_carriage_travel(comps)),
+                          ("gate: dead code", _report_dead)):
+            with _stage(label):
+                rc |= fn()
+    _report_stages()
+    return rc
 
 
 # The overlap gate's ACCEPTED baseline: the count of REAL defects tracked
@@ -2545,11 +2593,17 @@ def _publish_web_preview(comps, build_n):
         from tools.export_glb import build_glb
         from tools.export_rig import build_rig
         from tools.publish_preview import push_gh_pages
-        build_glb(comps, build_n=build_n)   # full instrument + the #build label
-        build_rig(build_n)                  # animation manifest (pivots + copedent)
-        push_gh_pages(build_n)
+        with _stage("web preview: mesh + write"):
+            build_glb(comps, build_n=build_n)   # full instrument + the #build label
+        with _stage("web preview: rig"):
+            build_rig(build_n)                  # animation manifest (pivots + copedent)
+        with _stage("web preview: publish"):
+            push_gh_pages(build_n)
     except Exception as e:               # noqa: BLE001 — never let publishing break a build
         print(f"web preview: publish skipped ({type(e).__name__}: {e})", flush=True)
+
+
+_T_MAIN = time.perf_counter()           # everything above has been imported and built
 
 
 def main() -> None:
@@ -2592,6 +2646,7 @@ def main() -> None:
     p.add_argument("--gate-full", action="store_true",
                    help="(default now; accepted for compatibility)")
     args = p.parse_args()
+    _STAGES.insert(0, ("import (module-level geometry)", _T_MAIN - _T_IMPORT))
 
     if args.geom:
         print(geometry_report())
