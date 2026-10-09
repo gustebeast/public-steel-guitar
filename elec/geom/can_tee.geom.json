@@ -62,7 +62,27 @@
      -3.0,
      2.0
     ]
-   }
+   },
+   "models": [
+    {
+     "file": "${KICAD10_3DMODEL_DIR}/Connector_JST.3dshapes/JST_XH_S8B-XH-A_1x08_P2.50mm_Horizontal.step",
+     "offset": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "rot": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   ]
   },
   {
    "ref": "J2",
@@ -105,7 +125,27 @@
      10.7,
      2.0
     ]
-   }
+   },
+   "models": [
+    {
+     "file": "${KICAD10_3DMODEL_DIR}/Connector_JST.3dshapes/JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal.step",
+     "offset": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "rot": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   ]
   },
   {
    "ref": "R1",
@@ -125,7 +165,27 @@
     6.662
    ],
    "crtyd": null,
-   "tht": null
+   "tht": null,
+   "models": [
+    {
+     "file": "${KICAD10_3DMODEL_DIR}/Resistor_SMD.3dshapes/R_0603_1608Metric.step",
+     "offset": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "rot": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   ]
   },
   {
    "ref": "SW1",
