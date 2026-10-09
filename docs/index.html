@@ -106,6 +106,7 @@
       <div class="btn" id="bMeasure">measure<span class="k">m</span></div>
       <div class="btn" id="bParts">parts<span class="k">p</span></div>
       <div class="btn" id="bSection">section<span class="k">c</span></div>
+      <div class="btn" id="bLight">light<span class="k">l</span></div>
       <div class="btn" id="bShowAll" style="display:none">show all<span class="k">u</span></div>
     </div>
     <div class="bar" id="views">
@@ -143,6 +144,10 @@
   import { Line2 } from 'three/addons/lines/Line2.js';
   import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
   import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+  import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
   import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 
   THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -157,8 +162,9 @@
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.85;
+  // no tone curve: the part colours are display colours already, and a filmic curve
+  // over mostly pale plastic washed the whole model out (user, 2026-10-09)
+  renderer.toneMapping = THREE.NoToneMapping;
   view.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -171,24 +177,36 @@
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
 
-  // Even lighting: image-based ambient from the room environment (set above) plus
-  // a hemisphere, a flat ambient fill, and directional fills from several angles
-  // so nothing occluded from one light falls to black.
-  scene.add(new THREE.HemisphereLight(0xdfe6f0, 0x2a2e36, 0.85));
-  scene.add(new THREE.AmbientLight(0xffffff, 0.2));
-  for (const [x, y, z, intensity] of [
-      [ 3,  4,  2, 0.85], [-3,  2, -2, 0.5], [ 2, 1, -3, 0.4],
-      [-2,  3,  3, 0.4 ], [ 0, -3,  0, 0.3]]) {   // last = up-fill from below
+  // Lighting: ONE key light does most of the work and casts the shadows. The ambient
+  // part (room environment at ENV, a hemisphere) is kept LOW: when it led, every face
+  // was lit alike and the model read flat and pale. Weak fills keep the side away from
+  // the key from falling to black (the last is an up-fill from below).
+  const ENV = 0.3;                         // envMapIntensity of every part material
+  scene.add(new THREE.HemisphereLight(0xdfe6f0, 0x2a2e36, 0.3));
+  const KEY_DIR = new THREE.Vector3(3, 4, 2).normalize();
+  const SHADOW_PX = matchMedia('(pointer: coarse)').matches ? 2048 : 4096;
+  const key = new THREE.DirectionalLight(0xffffff, 2.4);
+  key.castShadow = true;
+  key.shadow.mapSize.set(SHADOW_PX, SHADOW_PX);
+  key.shadow.bias = -0.0003;
+  scene.add(key, key.target);
+  for (const [x, y, z, intensity] of [[-3, 2, -2, 0.18], [2, 1, -3, 0.18], [-2, 3, 3, 0.18], [0, -3, 0, 0.18]]) {
     const L = new THREE.DirectionalLight(0xffffff, intensity);
     L.position.set(x, y, z);
     scene.add(L);
   }
+  // the shadow map is drawn again only when something that casts one has changed
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  renderer.info.autoReset = false;                    // counted per frame, over every pass
 
   const lineMats = [];
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
+    if (composer) composer.setSize(innerWidth, innerHeight);
     for (const m of lineMats) m.resolution.set(innerWidth, innerHeight);
   });
 
@@ -406,23 +424,27 @@
     const key = c.getHexString() + ':' + a.toFixed(3);
     if (!matCache.has(key))
       matCache.set(key, new THREE.MeshStandardMaterial({
-        color: c.clone(), metalness: 0, roughness: 0.65, side: THREE.DoubleSide,
+        color: c.clone(), metalness: 0, roughness: 0.65, side: THREE.DoubleSide, clipShadows: true,
+        envMapIntensity: ENV,
         transparent: a < 0.999, opacity: a }));
     return matCache.get(key);
   }
-  // a board's real components are parts of their own, named <board part>__<ref>: in the
-  // list they are one row per board, not one per resistor
-  const family = n => n.includes('__') ? n.split('__')[0] + ' · components' : n.replace(/(_\d+)+$/, '');
+  // a board's real components are meshes of their own, named <board part>__<ref>, but a
+  // board and everything on it is ONE thing to select, hide and list (its `unit`); only
+  // the measure tool looks at a single component
+  const unitOf = n => n.split('__')[0];
+  const family = n => unitOf(n).replace(/(_\d+)+$/, '');
   // a part of many colours (a component model) carries them per vertex, under one white material
   const vcMat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, metalness: 0.1,
-                                                 roughness: 0.6, side: THREE.DoubleSide });
+                                                 roughness: 0.6, side: THREE.DoubleSide, clipShadows: true,
+                                                 envMapIntensity: ENV });
 
   function buildModel(gltf) {
     const root = gltf.scene;
     let parts = root;
     while (parts.children.length === 1 && !parts.children[0].isMesh) parts = parts.children[0];
     M.root = root; M.parts = parts;
-    M.list = []; M.byName = new Map(); M.batches = []; M.pickables = [];
+    M.list = []; M.byName = new Map(); M.units = new Map(); M.batches = []; M.pickables = [];
     nodes = {};
     const moving = movingNames();
     const groups = new Map();
@@ -430,15 +452,19 @@
       if (!mesh.isMesh) continue;
       const g = mesh.geometry, col = g.attributes.color ? g.attributes.color.array : null;
       const mat = col ? vcMat : partMaterial(mesh.material);
-      const p = { name: mesh.name, family: family(mesh.name), mat, hidden: false, col,
+      const unit = mesh.userData.unit || unitOf(mesh.name);      // a board's lettering names its board
+      const p = { name: mesh.name, unit, family: family(unit), mat, hidden: false, col,
                   pos: g.attributes.position.array, idx: g.index.array,
                   dynamic: moving.has(mesh.name), mesh: null, batch: null,
                   vStart: 0, iStart: 0, iCount: g.index.count };
       M.list.push(p); M.byName.set(p.name, p);
+      if (!M.units.has(p.unit)) M.units.set(p.unit, []);
+      M.units.get(p.unit).push(p);
       if (p.dynamic) {
         g.computeVertexNormals();
         g.computeBoundsTree({ indirect: true });
         mesh.material = mat; mesh.userData.part = p;
+        mesh.castShadow = mesh.receiveShadow = true;
         p.mesh = mesh; nodes[p.name] = mesh;
         M.pickables.push(mesh);
       } else {
@@ -471,6 +497,7 @@
       drawGeo.setIndex(new THREE.BufferAttribute(full.slice(), 1));
       drawGeo.boundingSphere = null; drawGeo.computeBoundingSphere();
       const draw = new THREE.Mesh(drawGeo, mat);
+      draw.castShadow = draw.receiveShadow = true;
       const pick = new THREE.Mesh(pickGeo, mat);
       pick.visible = false;                     // raycast only: the ray does not test visibility
       const b = { mat, parts: ps, full, draw, pick, drawGeo, pickGeo,
@@ -513,6 +540,7 @@
       if (p.mesh) p.mesh.visible = !hidden; else dirty.add(p.batch);
     }
     for (const b of dirty) redrawBatch(b);
+    lightDirty = true;
     if (hidden) { const s = new Set(ps); selection = selection.filter(p => !s.has(p)); drawSelection(); }
     syncPartsUI();
   }
@@ -605,9 +633,10 @@
     if (!selection.length) { el.style.display = 'none'; return; }
     el.style.display = 'block';
     const fams = [...new Set(selection.map(p => p.family))];
-    const head = selection.length === 1
-      ? `<div class="name">${selection[0].name}</div>`
-      : `<div class="name">${selection.length} parts</div><div class="dim">${fams.slice(0, 6).join(', ')}${fams.length > 6 ? ', …' : ''}</div>`;
+    const units = [...new Set(selection.map(p => p.unit))];
+    const head = units.length === 1
+      ? `<div class="name">${units[0]}</div>` + (selection.length > 1 ? `<div class="dim">board, lettering and components: ${selection.length} pieces</div>` : '')
+      : `<div class="name">${units.length} parts</div><div class="dim">${fams.slice(0, 6).join(', ')}${fams.length > 6 ? ', …' : ''}</div>`;
     const sib = M.list.filter(p => fams.includes(p.family)).length;
     el.innerHTML = `<h4>selected</h4>${head}<div class="bar" style="margin-top:6px">
       <div class="btn" data-a="hide">hide<span class="k">x</span></div>
@@ -1023,7 +1052,7 @@
   function setHint() {
     $('hint').textContent = mode === 'measure'
       ? 'measure: click a corner, edge or face, then another · esc clears · m leaves · drag still orbits'
-      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · ctrl+z / ctrl+y undo, redo · p parts list · m measure · c section';
+      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · ctrl+z / ctrl+y undo, redo · p parts list · m measure · c section · l lighting';
   }
 
   // ── pointer and keys ─────────────────────────────────────────────────────────────
@@ -1037,9 +1066,10 @@
     if (mode === 'measure') { measureClick(snapAt(e.clientX, e.clientY)); return; }
     const hit = pickAt(e.clientX, e.clientY);
     if (!hit) { if (!e.shiftKey) clearSelection(); return; }
-    if (e.shiftKey || e.ctrlKey) {
-      selection = selection.includes(hit.part) ? selection.filter(p => p !== hit.part) : [...selection, hit.part];
-    } else selection = selection.length === 1 && selection[0] === hit.part ? [] : [hit.part];
+    const unit = M.units.get(hit.part.unit).filter(p => !p.hidden);
+    const had = selection.includes(hit.part), others = selection.filter(p => p.unit !== hit.part.unit);
+    if (e.shiftKey || e.ctrlKey) selection = had ? others : [...others, ...unit];
+    else selection = had && !others.length ? [] : unit;
     drawSelection();
   });
   addEventListener('keydown', e => {
@@ -1059,6 +1089,7 @@
       case 'z': selAction('zoom'); return;
       case 'u': showAll(); return;
       case 'c': $('bSection').onclick(); return;
+      case 'l': setQuality(quality - 1, true); return;
     }
     const p = keyToPedal[e.key]; if (!p || e.repeat) return;
     held.add(p); syncUI();
@@ -1088,6 +1119,7 @@
       sec.plane.set(n, sec.flip ? -sec.v : sec.v).applyMatrix4(M.parts.matrixWorld);
     }
     renderer.clippingPlanes = on ? [sec.plane] : [];
+    lightDirty = true;
     $('bSection').classList.toggle('on', sec.on);
     $('secPanel').style.display = sec.on ? 'block' : 'none';
     if (!on) return;
@@ -1123,6 +1155,78 @@
   $('secSlide').oninput = e => setSection(true, undefined, +e.target.value);
   $('secSlide').onchange = e => e.target.blur();       // hand the keys back to the page
   $('secVal').onchange = e => { if (isFinite(+e.target.value)) setSection(true, undefined, +e.target.value); };
+
+  // ── lighting that follows what is shown ──────────────────────────────────────────
+  // Three levels. Shadows come from one map fitted round whatever is VISIBLE, so hiding
+  // the deck lets light into the mechanism and an isolated part gets the whole map to
+  // itself. Occlusion is screen-space, so it follows by nature. Both cost frame time,
+  // and the page gives them up, one level at a time, if it cannot hold 60 fps.
+  const LIGHT = ['plain', 'shadows', 'shadows + occlusion'];
+  let quality = 2, autoQuality = true, composer = null, gtao = null;
+  let lightDirty = true, lastSig = 0, slowFor = 0, settledAt = Infinity;
+  function setQuality(q, manual = false) {
+    quality = (q + LIGHT.length) % LIGHT.length;
+    if (manual) autoQuality = false;
+    const sh = quality >= 1;
+    if (renderer.shadowMap.enabled !== sh) {
+      renderer.shadowMap.enabled = sh; key.castShadow = sh;
+      for (const m of [...matCache.values(), vcMat]) m.needsUpdate = true;
+    }
+    if (quality >= 2 && !composer) {
+      const pr = renderer.getPixelRatio();
+      composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(
+        innerWidth * pr, innerHeight * pr, { samples: 4, type: THREE.HalfFloatType }));
+      composer.addPass(new RenderPass(scene, camera));
+      gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+      gtao.updateGtaoMaterial({ radius: 14, distanceExponent: 1.5, thickness: 2, scale: 1.1, samples: 12 });
+      // the occlusion is worked out from the PARTS alone: the selection tint and the
+      // measure marks are drawn over them and would read as solid black otherwise
+      const hideRest = gtao.overrideVisibility.bind(gtao);
+      gtao.overrideVisibility = () => {
+        hideRest();
+        scene.traverse(o => { if (o.isMesh && !(o.material && o.material.isMeshStandardMaterial)) o.visible = false; });
+      };
+      composer.addPass(gtao);
+      composer.addPass(new OutputPass());
+    }
+    lightDirty = true; slowFor = 0;
+    $('bLight').title = 'lighting: ' + LIGHT[quality] + (autoQuality ? ' (drops by itself under 60 fps)' : '');
+  }
+  function fitShadow() {
+    const box = new THREE.Box3();
+    for (const p of M.list) if (!p.hidden) box.union(p.box || (p.box = partBox(p, new THREE.Box3())));
+    if (box.isEmpty()) return;
+    const s = box.applyMatrix4(M.parts.matrixWorld).getBoundingSphere(new THREE.Sphere());
+    const R = Math.max(s.radius, 1), c = key.shadow.camera;
+    key.target.position.copy(s.center);
+    key.position.copy(s.center).addScaledVector(KEY_DIR, 2 * R);
+    key.target.updateMatrixWorld();
+    c.left = c.bottom = -R; c.right = c.top = R; c.near = 0.01 * R; c.far = 4 * R;
+    c.updateProjectionMatrix();
+    key.shadow.normalBias = 3 * R / SHADOW_PX;          // a texel and a half
+  }
+  // anything the rig has moved since the last frame? (a sum that any motion changes)
+  function rigSignature() {
+    let s = 0;
+    for (const n in nodes) { const e = nodes[n].matrix.elements; s += e[0] + 1.7 * e[5] + e[12] + 1.3 * e[13] + 1.9 * e[14]; }
+    return s;
+  }
+  function drawFrame() {
+    if (quality >= 1 && M.parts) {
+      const sig = rigSignature();
+      if (lightDirty) fitShadow();
+      if (lightDirty || sig !== lastSig) renderer.shadowMap.needsUpdate = true;
+      lastSig = sig; lightDirty = false;
+    }
+    if (quality >= 2) composer.render(); else renderer.render(scene, camera);
+  }
+  // called once a second with the measured rate
+  function govern(fps, now) {
+    if (!autoQuality || quality === 0 || document.hidden || now < settledAt) { slowFor = 0; return; }
+    if (fps >= 57) { slowFor = 0; return; }
+    if (++slowFor >= 2) setQuality(quality - 1);
+  }
+  $('bLight').onclick = () => setQuality(quality - 1, true);
 
   // ── the axis views ───────────────────────────────────────────────────────────────
   // look along a CAD direction, from that side: "+Z" is the view from above
@@ -1181,6 +1285,7 @@
     buildPedalUI(); syncUI();
     buildPartsUI();
     M.box = null; applySection();
+    lightDirty = true; settledAt = performance.now() + 6000;
     if (first) frameBox(new THREE.Box3().setFromObject(M.root));
     else { setHidden(M.list.filter(p => hiddenNames.has(p.name)), true); syncDeckUI(); }
     if (wasMode === 'measure') setMode('measure');
@@ -1229,14 +1334,16 @@
     }
   }
 
-  let last = performance.now(), fpsT = last, fpsN = 0;
+  let last = performance.now(), fpsT = last, fpsN = 0, stalled = false;
   const fpsEl = $('fps');
   function tick(now) {
+    if (now - last > 250) stalled = true;               // a hidden tab, a load: not a slow device
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
     if (++fpsN && now - fpsT >= 1000) {
-      fpsEl.textContent = Math.round(fpsN * 1000 / (now - fpsT)) + ' fps · ' +
-                          renderer.info.render.calls + ' draws · ' +
-                          Math.round(renderer.info.render.triangles / 1000) + 'k tris';
+      const fps = fpsN * 1000 / (now - fpsT);
+      fpsEl.textContent = Math.round(fps) + ' fps · ' + renderer.info.render.calls + ' draws · ' +
+                          Math.round(renderer.info.render.triangles / 1000) + 'k tris · ' + LIGHT[quality];
+      if (stalled) stalled = false; else govern(fps, now);
       fpsT = now; fpsN = 0;
     }
     applyRig(dt);
@@ -1247,14 +1354,17 @@
       const [x, y, z] = toPx(meas.mid), el = $('dimlabel');
       el.style.display = z < 1 ? 'block' : 'none'; el.style.left = x + 'px'; el.style.top = y + 'px';
     }
-    renderer.render(scene, camera);
+    renderer.info.reset();
+    drawFrame();
     requestAnimationFrame(tick);
   }
   // for poking at it from the console (and for the checks that drive the page)
-  window.viewer = { renderer, scene, camera, controls, sec, setSection, undo, viewFrom, M, meas, pickAt, snapAt, setHidden, setMode,
+  window.viewer = { renderer, scene, camera, controls, sec, setSection, undo, viewFrom, setQuality, get quality() { return quality; }, key, THREE,
+                    frame() { controls.update(); lightDirty = true; renderer.info.reset(); drawFrame(); }, M, meas, pickAt, snapAt, setHidden, setMode,
                     measureClick, between, showAll, get selection() { return selection; },
-                    select(names) { selection = names.map(n => M.byName.get(n)).filter(Boolean); drawSelection(); },
+                    select(names) { selection = names.flatMap(n => M.byName.has(n) ? M.units.get(M.byName.get(n).unit) : []); drawSelection(); },
                     selAction, loadGeo, toPx };
+  setQuality(quality);
   init();
   requestAnimationFrame(tick);
   </script>
