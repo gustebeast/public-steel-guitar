@@ -5736,7 +5736,7 @@ part colours, once.
 | Local view | `tools/web_view.py`, `.webview/` (ignored) | ✅ |
 | Select, hide, isolate, zoom, parts list | `docs/index.html` | ✅ keys x / i / z / u / p; shift-click adds |
 | Measure: corner, edge, face; distance, angle, radius | `docs/index.html` + `assembly.geo.json` | ✅ exact, read from the kernel's numbers: two leadscrew axes read 25.812 = sqrt(24² + 9.5²) |
-| Detailed boards (KiCad's component models) | not started | KiCad's own GLB of output_panel is 2.5 MB in 2 s without copper, 18 MB with: copper stays out |
+| Detailed boards: KiCad's own coloured part models in place of the footprint boxes | `tools/web_boards.py`; `models` in each `elec/geom/*.geom.json` (cadkit `kicad_geom`, 97b8ea0) | ✅ in the web export only; the CAD and its gates still see boxes. From the cache: output_panel 131 parts, pi_cap 15, each lever sensor 23. A board is found by fitting its lettering's corners to the reference (order-free, exact to a micron); a footprint keeps its box when its model is not in KiCad's library here (USB-C, the TRS jack, the inlet), when the instance does not draw it, or when the model would not land on its F.Fab box. brenner's boards (LED, UI) get models when their geom files are next written by the new exporter |
 | Section cut, orthographic and standard views | not started | |
 | `agent_sync view` and the build opening the page, `assembly.step` dropped | not started | the lead's `src/build.py` and cadkit; printed parts keep their own STEP files |
 

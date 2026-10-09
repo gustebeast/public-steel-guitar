@@ -47,7 +47,7 @@ TOLERANCE = 0.1
 ANGULAR = 0.3
 # sampled edges (ellipses, splines): chord error of the polyline the viewer snaps to
 EDGE_DEFLECTION = 0.02
-FORMAT = 1
+FORMAT = 2
 
 
 def _r(v, n=4):
@@ -137,8 +137,27 @@ def _edge_record(edge):
     return ["o", flat]
 
 
-def mesh_shape(shape, tolerance=TOLERANCE, angular=ANGULAR):
-    """One TopoDS_Shape -> {"pos": float32 (n,3), "tri": uint32 (m,3), "geo": {...}}.
+def shape_vertices(shape):
+    """The B-rep's own corners, float32 (k,3), in the kernel's order."""
+    from OCP.BRep import BRep_Tool
+    from OCP.TopAbs import TopAbs_VERTEX
+    from OCP.TopExp import TopExp
+    from OCP.TopoDS import TopoDS
+    from OCP.TopTools import TopTools_IndexedMapOfShape
+    vm = TopTools_IndexedMapOfShape()
+    TopExp.MapShapes_s(shape, TopAbs_VERTEX, vm)
+    out = np.empty((vm.Extent(), 3), dtype=np.float32)
+    for i in range(1, vm.Extent() + 1):
+        p = BRep_Tool.Pnt_s(TopoDS.Vertex_s(vm.FindKey(i)))
+        out[i - 1] = (p.X(), p.Y(), p.Z())
+    return out
+
+
+def mesh_shape(shape, tolerance=TOLERANCE, angular=ANGULAR, face_colors=None):
+    """One TopoDS_Shape -> {"pos": float32 (n,3), "tri": uint32 (m,3), "geo": {...},
+    "verts": float32 (k,3) the B-rep's corners}, plus "col": uint8 (n,4) when
+    `face_colors` = [(TopoDS_Face, (r, g, b) or None)] is given (a part of many colours:
+    a component model).
 
     geo = {"f": [face records], "r": [tri offsets, len(f)+1], "e": [edge records],
            "fe": [[edge ids] per face]}.  Triangles are sorted by face; r[i]..r[i+1] is
@@ -216,8 +235,20 @@ def mesh_shape(shape, tolerance=TOLERANCE, angular=ANGULAR):
                 fe.append(k)
             ex.Next()
         face_edges.append(fe)
-    return {"pos": pos, "tri": tri,
-            "geo": {"f": faces, "r": runs, "e": edges, "fe": face_edges}}
+    out = {"pos": pos, "tri": tri, "verts": shape_vertices(shape),
+           "geo": {"f": faces, "r": runs, "e": edges, "fe": face_edges}}
+    if face_colors is not None:
+        fc = np.full((nf, 4), 255, dtype=np.uint8)
+        fc[:, :3] = 150
+        for face, c in face_colors:
+            k = fmap.FindIndex(face)
+            if k >= 1 and c is not None:
+                fc[k - 1, :3] = np.clip(np.round(np.array(c) * 255.0), 0, 255)
+        col = np.zeros((len(pos), 4), dtype=np.uint8)
+        for k in range(3):
+            col[tri[:, k]] = fc[tri_face]
+        out["col"] = col
+    return out
 
 
 # ── the GLB ───────────────────────────────────────────────────────────────────────
@@ -226,7 +257,9 @@ def _pad4(b: bytes, fill: bytes = b"\x00") -> bytes:
 
 
 def write_glb(parts, out: pathlib.Path, extras=None) -> None:
-    """parts = [(name, pos float32 (n,3), tri uint32 (m,3), (r, g, b, a))]."""
+    """parts = [(name, pos float32 (n,3), tri uint32 (m,3), (r, g, b, a), col)]: `col`
+    is None, or uint8 (n,4) per-vertex colour (linear, as glTF's COLOR_0), and then the
+    part's material is plain white under it."""
     buf = bytearray()
     views, accessors, meshes, nodes, materials, mat_ix = [], [], [], [], [], {}
 
@@ -238,8 +271,8 @@ def write_glb(parts, out: pathlib.Path, extras=None) -> None:
         buf.extend(data)
         return len(views) - 1
 
-    for name, pos, tri, rgba in parts:
-        key = tuple(round(float(c), 4) for c in rgba)
+    for name, pos, tri, rgba, col in parts:
+        key = (1.0, 1.0, 1.0, 1.0) if col is not None else tuple(round(float(c), 4) for c in rgba)
         if key not in mat_ix:
             mat_ix[key] = len(materials)
             m = {"pbrMetallicRoughness": {"baseColorFactor": list(key),
@@ -257,8 +290,14 @@ def write_glb(parts, out: pathlib.Path, extras=None) -> None:
                           "max": pos.max(axis=0).tolist()})
         accessors.append({"bufferView": vi, "componentType": 5123 if small else 5125,
                           "count": int(idx.size), "type": "SCALAR"})
-        meshes.append({"primitives": [{"attributes": {"POSITION": len(accessors) - 2},
-                                       "indices": len(accessors) - 1,
+        attrs = {"POSITION": len(accessors) - 2}
+        ia = len(accessors) - 1
+        if col is not None:
+            vc = view(np.ascontiguousarray(col, dtype=np.uint8).tobytes(), 34962)
+            accessors.append({"bufferView": vc, "componentType": 5121, "normalized": True,
+                              "count": int(len(col)), "type": "VEC4"})
+            attrs["COLOR_0"] = len(accessors) - 1
+        meshes.append({"primitives": [{"attributes": attrs, "indices": ia,
                                        "material": mat_ix[key]}]})
         nodes.append({"name": name, "mesh": len(meshes) - 1})
     # CAD Z-up -> glTF Y-up at the one root, as cadquery's exporter did
@@ -304,36 +343,55 @@ def _topods(obj):
     return getattr(obj, "wrapped", obj)
 
 
-def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=False):
+def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=False,
+           boards=True):
     """Write <stem>.glb and <stem>.geo.json into out_dir.
 
-    parts  = [(name, solid, colour)]; solid is a cq.Workplane / cq.Shape / TopoDS_Shape,
-             colour a cq.Color or an (r, g, b[, a]) tuple.
+    boards = True swaps each circuit board's footprint boxes for KiCad's own part models
+    where it can (tools/web_boards.py says how, and what it leaves alone).
+
+    parts  = [(name, solid, colour)]; solid is a cq.Workplane / cq.Shape / TopoDS_Shape
+             (or, with `meshed`, a function returning one: it is called only if the part
+             has to be re-cut), colour a cq.Color or an (r, g, b[, a]) tuple.
     meshed = optional {name: mesh_shape() result} to reuse (the local view's cache).
     Returns (glb path, sidecar path, {name: mesh})."""
     out_dir = pathlib.Path(out_dir)
-    done, glb_parts, geo = {}, [], {}
-    seen = set()
+    done, colors, solids = {}, {}, {}
     for name, solid, color in parts:
-        if name in seen:
+        if name in done or name in solids:
             raise ValueError("two parts are both named %r: the viewer addresses parts by name" % name)
-        seen.add(name)
+        solids[name] = solid
         m = (meshed or {}).get(name)
         if m is None:
             m = mesh_shape(_topods(solid))
         if m is None:
             continue
         done[name] = m
-        glb_parts.append((name, m["pos"], m["tri"], _rgba(color)))
-        geo[name] = m["geo"]
+        colors[name] = _rgba(color)
+    models = {}
+    if boards:
+        try:
+            from tools.web_boards import detail, SEP
+            models = detail(done, lambda n: solids[n]() if callable(solids[n]) else solids[n])
+            for n in done:
+                if n not in colors:
+                    colors[n] = colors.get(n.split(SEP)[0], (0.8, 0.8, 0.8, 1.0))
+        except Exception as exc:          # the boxes are a complete model: never fail the export
+            print("web boards: skipped (%s: %s) -- boards keep their boxes"
+                  % (type(exc).__name__, exc))
+            done = {n: m for n, m in done.items() if n in colors}
+    glb_parts, geo = [], {}
+    for name, m in done.items():
+        glb_parts.append((name, m["pos"], m["tri"], colors[name], m.get("col")))
+        geo[name] = m["inst"] if "inst" in m else m["geo"]
     glb = out_dir / (stem + ".glb")
     side = out_dir / (stem + ".geo.json")
     write_glb(glb_parts, glb, extras=extras)
-    side.write_text(json.dumps({"format": FORMAT, "units": "mm", "parts": geo},
+    side.write_text(json.dumps({"format": FORMAT, "units": "mm", "parts": geo, "models": models},
                                separators=(",", ":")))
     if not quiet:
         ntri = sum(len(p[2]) for p in glb_parts)
-        nfc = sum(len(g["f"]) for g in geo.values())
+        nfc = sum(len(g["f"]) for g in geo.values() if "f" in g)
         print("wrote %s (%d parts, %d triangles, %.1f MB) and %s (%d faces, %.1f MB)"
               % (glb.name, len(glb_parts), ntri, glb.stat().st_size / 1e6,
                  side.name, nfc, side.stat().st_size / 1e6))

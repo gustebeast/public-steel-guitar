@@ -391,7 +391,12 @@
         transparent: a < 0.999, opacity: a }));
     return matCache.get(key);
   }
-  const family = n => n.replace(/(_\d+)+$/, '');
+  // a board's real components are parts of their own, named <board part>__<ref>: in the
+  // list they are one row per board, not one per resistor
+  const family = n => n.includes('__') ? n.split('__')[0] + ' · components' : n.replace(/(_\d+)+$/, '');
+  // a part of many colours (a component model) carries them per vertex, under one white material
+  const vcMat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, metalness: 0.1,
+                                                 roughness: 0.6, side: THREE.DoubleSide });
 
   function buildModel(gltf) {
     const root = gltf.scene;
@@ -404,8 +409,9 @@
     const groups = new Map();
     for (const mesh of [...parts.children]) {
       if (!mesh.isMesh) continue;
-      const g = mesh.geometry, mat = partMaterial(mesh.material);
-      const p = { name: mesh.name, family: family(mesh.name), mat, hidden: false,
+      const g = mesh.geometry, col = g.attributes.color ? g.attributes.color.array : null;
+      const mat = col ? vcMat : partMaterial(mesh.material);
+      const p = { name: mesh.name, family: family(mesh.name), mat, hidden: false, col,
                   pos: g.attributes.position.array, idx: g.index.array,
                   dynamic: moving.has(mesh.name), mesh: null, batch: null,
                   vStart: 0, iStart: 0, iCount: g.index.count };
@@ -426,8 +432,10 @@
       let nv = 0, ni = 0;
       for (const p of ps) { p.vStart = nv; p.iStart = ni; nv += p.pos.length / 3; ni += p.iCount; }
       const pos = new Float32Array(nv * 3), full = new Uint32Array(ni);
+      const cols = mat === vcMat ? new Uint8Array(nv * 4).fill(255) : null;
       for (const p of ps) {
         pos.set(p.pos, p.vStart * 3);
+        if (cols && p.col) cols.set(p.col, p.vStart * 4);
         const o = p.vStart, src = p.idx;
         for (let i = 0; i < src.length; i++) full[p.iStart + i] = src[i] + o;
         p.pos = pos.subarray(p.vStart * 3, p.vStart * 3 + p.pos.length);
@@ -440,6 +448,7 @@
       const drawGeo = new THREE.BufferGeometry();
       drawGeo.setAttribute('position', pickGeo.attributes.position);
       drawGeo.setAttribute('normal', pickGeo.attributes.normal);
+      if (cols) drawGeo.setAttribute('color', new THREE.BufferAttribute(cols, 4, true));
       drawGeo.setIndex(new THREE.BufferAttribute(full.slice(), 1));
       drawGeo.boundingSphere = null; drawGeo.computeBoundingSphere();
       const draw = new THREE.Mesh(drawGeo, mat);
@@ -595,7 +604,7 @@
     for (const [f, ps] of [...fams].sort((a, b) => a[0].localeCompare(b[0]))) {
       const el = document.createElement('div');
       el.className = 'fam'; el.dataset.f = f;
-      el.innerHTML = `<span class="eye">●</span><span class="sw" style="background:#${ps[0].mat.color.getHexString()}"></span>` +
+      el.innerHTML = `<span class="eye">●</span><span class="sw" style="background:#${ps[0].col ? '8a8f98' : ps[0].mat.color.getHexString()}"></span>` +
                      `<span>${f}</span><span class="n">${ps.length > 1 ? '×' + ps.length : ''}</span>`;
       el.querySelector('.eye').onclick = ev => { ev.stopPropagation(); setHidden(ps, !ps.every(p => p.hidden)); };
       el.onclick = () => { selection = ps.filter(p => !p.hidden); drawSelection(); };
@@ -641,7 +650,7 @@
       M.geoPromise = fetch('assembly.geo.json?v=' + M.key).then(r => {
         if (!r.ok) throw new Error('no geometry record for this model');
         return r.json();
-      }).then(j => (M.geo = j.parts));
+      }).then(j => { M.models = j.models || {}; return (M.geo = j.parts); });
     return M.geoPromise;
   }
   function faceOfTri(G, tri) {
@@ -667,11 +676,19 @@
   }
   const polyLen = pts => { let s = 0; for (let i = 1; i < pts.length; i++) s += pts[i].distanceTo(pts[i - 1]); return s; };
   // an entity in the CAD frame as the part stands NOW (a part the rig has moved carries its matrix)
-  function xf(part) { return part.mesh ? part.mesh.matrix : null; }
+  // (and a component is ONE shared record placed by a matrix: `i` names it, `m` places it)
+  const GEO = part => { const g = M.geo[part.name]; return g && g.i !== undefined ? M.models[g.i] : g; };
+  function xf(part) {
+    const g = M.geo[part.name];
+    if (!g || g.i === undefined) return part.mesh ? part.mesh.matrix : null;
+    const a = g.m, inst = new THREE.Matrix4().set(a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7],
+                                                  a[8], a[9], a[10], a[11], 0, 0, 0, 1);
+    return part.mesh ? part.mesh.matrix.clone().multiply(inst) : inst;
+  }
   const P = (v, m) => m ? v.clone().applyMatrix4(m) : v;
   const D = (v, m) => m ? v.clone().transformDirection(m) : v;
   function edgeEntity(part, ei) {
-    const e = M.geo[part.name].e[ei], m = xf(part);
+    const e = GEO(part).e[ei], m = xf(part);
     const pts = edgePolyline(e).map(p => P(p, m));
     const base = { part, edge: ei, pts };
     if (e[0] === 'l') return { ...base, kind: 'line', a: pts[0], b: pts[1] };
@@ -679,7 +696,7 @@
     return { ...base, kind: 'curve' };
   }
   function faceEntity(part, fi) {
-    const G = M.geo[part.name], f = G.f[fi], m = xf(part), base = { part, face: fi };
+    const G = GEO(part), f = G.f[fi], m = xf(part), base = { part, face: fi };
     switch (f[0]) {
       case 'p': return { ...base, kind: 'plane', p: P(V(f, 1), m), n: D(V(f, 4), m) };
       case 'c': return { ...base, kind: 'cyl', p: P(V(f, 1), m), d: D(V(f, 4), m), r: f[7], len: Math.abs(f[9] - f[8]) };
@@ -690,7 +707,7 @@
     return { ...base, kind: 'surface' };
   }
   function faceArea(part, fi) {
-    const G = M.geo[part.name], t0 = G.r[fi], t1 = G.r[fi + 1];
+    const G = GEO(part), t0 = G.r[fi], t1 = G.r[fi + 1];
     const idx = part.mesh ? part.mesh.geometry.index.array : part.batch.full;
     const pos = part.mesh ? part.mesh.geometry.attributes.position.array : part.batch.pickGeo.attributes.position.array;
     const o = part.mesh ? 0 : part.iStart;
@@ -716,7 +733,7 @@
   function snapAt(cx, cy) {
     const hit = pickAt(cx, cy);
     if (!hit || !M.geo) return null;
-    const G = M.geo[hit.part.name];
+    const G = GEO(hit.part);
     if (!G) return { kind: 'point', p: hit.cad, part: hit.part, pick: hit.cad, loose: true };
     const fi = faceOfTri(G, hit.tri);
     let bestV = null, bestE = null;
@@ -879,7 +896,7 @@
       g.add(fatLine(e.pts, mm.line));
       if (e.kind === 'circle') { const o = new THREE.Points(new THREE.BufferGeometry().setFromPoints([e.c]), mm.pt); o.renderOrder = 21; g.add(o); }
     } else {
-      const G = M.geo[e.part.name], t0 = G.r[e.face], t1 = G.r[e.face + 1];
+      const G = GEO(e.part), t0 = G.r[e.face], t1 = G.r[e.face + 1];
       const bg = new THREE.BufferGeometry();
       if (e.part.mesh) {
         bg.setAttribute('position', e.part.mesh.geometry.attributes.position);

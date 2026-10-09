@@ -79,7 +79,27 @@
      -0.65,
      5.425
     ]
-   }
+   },
+   "models": [
+    {
+     "file": "${KICAD10_3DMODEL_DIR}/Connector_JST.3dshapes/JST_ZH_S4B-ZR-SM4A-TF_1x04-1MP_P1.50mm_Horizontal.step",
+     "offset": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "rot": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   ]
   },
   {
    "ref": "TP1",
