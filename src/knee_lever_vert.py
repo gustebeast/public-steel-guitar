@@ -64,6 +64,7 @@ from .motor_bank import BED_Z as _BED_Z     # the chassis print-bed datum (= cha
                                             # imported from motor_bank to stay out of the
                                             # chassis import cycle)
 from .helpers import box_at, cyl_y, heal, pose_dir
+from cadkit.lazy import lazy
 
 
 # ── throw + the lobe that keeps the feel identical ───────────────────────────
@@ -489,8 +490,8 @@ def swing(s, throw=0.0):
 
 THROW_MAX = _throw_max()
 
-kv_lever = _lever()
-kv_housing = _housing()
+kv_lever = lazy(_lever)                 # built when first used: see knee_lever
+kv_housing = lazy(_housing)
 
 
 def demo_parts():
