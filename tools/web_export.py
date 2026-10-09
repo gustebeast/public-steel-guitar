@@ -299,7 +299,7 @@ def silk_units(done):
     return out
 
 
-def write_glb(parts, out: pathlib.Path, extras=None, units=None) -> None:
+def write_glb(parts, out: pathlib.Path, extras=None, units=None, mats=None) -> None:
     """parts = [(name, pos float32 (n,3), tri uint32 (m,3), (r, g, b, a), col)]: `col`
     is None, or uint8 (n,4) per-vertex colour (linear, as glTF's COLOR_0), and then the
     part's material is plain white under it."""
@@ -343,8 +343,13 @@ def write_glb(parts, out: pathlib.Path, extras=None, units=None) -> None:
         meshes.append({"primitives": [{"attributes": attrs, "indices": ia,
                                        "material": mat_ix[key]}]})
         nodes.append({"name": name, "mesh": len(meshes) - 1})
+        ex = {}
         if units and name in units:                # what it is selected and hidden with
-            nodes[-1]["extras"] = {"unit": units[name]}
+            ex["unit"] = units[name]
+        if mats and mats.get(name):                # the filament it is printed in
+            ex["mat"] = mats[name]
+        if ex:
+            nodes[-1]["extras"] = ex
     # CAD Z-up -> glTF Y-up at the one root, as cadquery's exporter did
     s = 0.7071067811865476
     root = {"name": "assembly", "rotation": [-s, 0.0, 0.0, s],
@@ -486,7 +491,13 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
         geo[name] = m["inst"] if "inst" in m else m["geo"]
     glb = out_dir / (stem + ".glb")
     side = out_dir / (stem + ".geo.json")
-    write_glb(glb_parts, glb, extras=extras, units=silk_units(done))
+    try:
+        from tools.web_materials import material_of
+        mats = {n: material_of(n) for n in done if "__" not in n}
+    except Exception as exc:                 # the as-printed view is an extra
+        print("web export: no print materials (%s)" % exc)
+        mats = None
+    write_glb(glb_parts, glb, extras=extras, units=silk_units(done), mats=mats)
     side.write_text(json.dumps({"format": FORMAT, "units": "mm", "parts": geo, "models": models},
                                separators=(",", ":")))
     if not quiet:
