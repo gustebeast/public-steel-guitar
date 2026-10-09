@@ -109,7 +109,6 @@
       <div class="btn" id="bShowAll" style="display:none">show all<span class="k">u</span></div>
     </div>
     <div class="bar" id="views">
-      <div class="btn" id="bOrtho">parallel<span class="k">o</span></div>
       <div class="btn vw" data-d="1,0,0">+X</div><div class="btn vw" data-d="-1,0,0">−X</div>
       <div class="btn vw" data-d="0,1,0">+Y</div><div class="btn vw" data-d="0,-1,0">−Y</div>
       <div class="btn vw" data-d="0,0,1">+Z</div><div class="btn vw" data-d="0,0,-1">−Z</div>
@@ -167,11 +166,7 @@
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  // two cameras, one in use: the perspective one, and a parallel one for looking square
-  // at a face (o, or any of the axis views)
-  const persp = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 20000);
-  const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
-  let camera = persp;
+  const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 20000);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
@@ -191,10 +186,8 @@
 
   const lineMats = [];
   addEventListener('resize', () => {
-    persp.aspect = innerWidth / innerHeight;
-    persp.updateProjectionMatrix();
-    ortho.left = -ortho.top * persp.aspect; ortho.right = ortho.top * persp.aspect;
-    ortho.updateProjectionMatrix();
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
     for (const m of lineMats) m.resolution.set(innerWidth, innerHeight);
   });
@@ -1030,7 +1023,7 @@
   function setHint() {
     $('hint').textContent = mode === 'measure'
       ? 'measure: click a corner, edge or face, then another · esc clears · m leaves · drag still orbits'
-      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · ctrl+z / ctrl+y undo, redo · p parts list · m measure · c section · o parallel';
+      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · ctrl+z / ctrl+y undo, redo · p parts list · m measure · c section';
   }
 
   // ── pointer and keys ─────────────────────────────────────────────────────────────
@@ -1066,7 +1059,6 @@
       case 'z': selAction('zoom'); return;
       case 'u': showAll(); return;
       case 'c': $('bSection').onclick(); return;
-      case 'o': setOrtho(!camera.isOrthographicCamera); return;
     }
     const p = keyToPedal[e.key]; if (!p || e.repeat) return;
     held.add(p); syncUI();
@@ -1132,59 +1124,29 @@
   $('secSlide').onchange = e => e.target.blur();       // hand the keys back to the page
   $('secVal').onchange = e => { if (isFinite(+e.target.value)) setSection(true, undefined, +e.target.value); };
 
-  // ── parallel projection and the axis views ───────────────────────────────────────
-  const tanHalf = () => Math.tan(persp.fov * Math.PI / 360);
-  function orthoFrustum(halfH, dist) {
-    ortho.top = halfH; ortho.bottom = -halfH;
-    ortho.left = -halfH * persp.aspect; ortho.right = halfH * persp.aspect;
-    ortho.zoom = 1; ortho.near = -dist * 20; ortho.far = dist * 100;
-  }
-  function setOrtho(on) {
-    if (on !== !!camera.isOrthographicCamera) {
-      const dir = camera.position.clone().sub(controls.target);
-      const dist = dir.length(); dir.normalize();
-      if (on) {
-        orthoFrustum(dist * tanHalf(), dist);
-        ortho.position.copy(persp.position); ortho.quaternion.copy(persp.quaternion);
-        camera = ortho;
-      } else {
-        const d = ortho.top / ortho.zoom / tanHalf();
-        persp.position.copy(controls.target).addScaledVector(dir, d);
-        persp.quaternion.copy(ortho.quaternion);
-        persp.near = d / 100; persp.far = d * 100;
-        camera = persp;
-      }
-      camera.updateProjectionMatrix();
-      controls.object = camera; controls.update();
-    }
-    $('bOrtho').classList.toggle('on', !!camera.isOrthographicCamera);
-  }
+  // ── the axis views ───────────────────────────────────────────────────────────────
   // look along a CAD direction, from that side: "+Z" is the view from above
-  function viewFrom(d, parallel = true) {
+  function viewFrom(d) {
     if (!M.parts) return;
     const dir = new THREE.Vector3(d[0], d[1], d[2]).transformDirection(M.parts.matrixWorld);
     if (Math.abs(dir.y) > 0.9999) dir.z += 1e-4;        // straight down: CAD +Y up the screen
     const dist = camera.position.distanceTo(controls.target);
     camera.position.copy(controls.target).addScaledVector(dir.normalize(), dist);
     controls.update();
-    setOrtho(parallel);
   }
-  $('bOrtho').onclick = () => setOrtho(!camera.isOrthographicCamera);
   for (const e of document.querySelectorAll('#views .vw'))
-    e.onclick = () => viewFrom(e.dataset.d.split(',').map(Number),
-                               e.textContent !== 'iso' || !!camera.isOrthographicCamera);
+    e.onclick = () => viewFrom(e.dataset.d.split(',').map(Number));
 
   // ── frame camera to the model ─────────────────────────────────────────────
   function frameBox(box, reset = true) {
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const radius = 0.5 * Math.max(size.x, size.y, size.z, 1);
-    const dist = radius / Math.sin((persp.fov * Math.PI / 180) / 2) * 1.15;
+    const dist = radius / Math.sin((camera.fov * Math.PI / 180) / 2) * 1.15;
     const dir = reset ? new THREE.Vector3(0.55, 0.5, 1).normalize()
                       : camera.position.clone().sub(controls.target).normalize();
     camera.position.copy(center).add(dir.multiplyScalar(dist));
-    if (camera.isOrthographicCamera) { orthoFrustum(radius * 1.15, dist); camera.updateProjectionMatrix(); }
-    else if (reset) { camera.near = dist / 100; camera.far = dist * 100; camera.updateProjectionMatrix(); }
+    if (reset) { camera.near = dist / 100; camera.far = dist * 100; camera.updateProjectionMatrix(); }
     controls.target.copy(center); controls.update();
   }
 
@@ -1264,7 +1226,7 @@
     requestAnimationFrame(tick);
   }
   // for poking at it from the console (and for the checks that drive the page)
-  window.viewer = { renderer, scene, get camera() { return camera; }, controls, sec, setSection, undo, setOrtho, viewFrom, M, meas, pickAt, snapAt, setHidden, setMode,
+  window.viewer = { renderer, scene, camera, controls, sec, setSection, undo, viewFrom, M, meas, pickAt, snapAt, setHidden, setMode,
                     measureClick, between, showAll, get selection() { return selection; },
                     select(names) { selection = names.map(n => M.byName.get(n)).filter(Boolean); drawSelection(); },
                     selAction, loadGeo, toPx };
