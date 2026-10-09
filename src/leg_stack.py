@@ -615,10 +615,11 @@ assert ADJ_N * ADJ_PITCH <= ADJ_TRAVEL + 1e-9, (
 
 
 # ── PRINT ORIENTATION (user) -- the record, declared once per part ─────────
-# PRINT_UP is each part's build direction; the hole cutters read it, so a hole is
-# shaped for the way its part actually prints. PRINT_ROT is the same fact as
-# cadkit.step_export.print_pose wants it, for the per-part STEPs. The assert below
-# makes the two unable to disagree.
+# PRINT_UP is each part's build direction, and it is the ONE declaration: the
+# hole cutters read it, so a hole is shaped for the way its part actually
+# prints, and src/build.py turns it into the part's PrintOrientation (via
+# cadkit.orientation.from_build_dir) so the exported STEP is posed from the
+# same fact. There is no second table to keep in step with this one.
 _S2 = 1.0 / math.sqrt(2.0)
 SLEEVE_UP = (0.0, -1.0, 0.0)       # both sleeves: the bed is the +Y face (at Y 65.95
                                    # on this station) and the part builds toward -Y,
@@ -678,29 +679,20 @@ PRINT_UP = {"adjust_sleeve": SLEEVE_UP, "fixed_sleeve": SLEEVE_UP,
             "adjust_tenon": TENON_UP, "fixed_tenon": TENON_UP,
             "latch_slider": SLIDER_UP, "bar_latch_frame": BAR_FRAME_UP,
             "bar_latch_collar": BAR_COLLAR_UP}
-PRINT_ROT = {"adjust_sleeve": ((1, 0, 0), -90), "fixed_sleeve": ((1, 0, 0), -90),
-             "body_adapter": ((1, 0, 0), -90),
-             "adjust_tenon": ((-1, 1, 0), 90), "fixed_tenon": ((-1, 1, 0), 90),
-             "latch_slider": ((0, 1, 0), -90), "bar_latch_frame": ((1, 0, 0), 0),
-             "bar_latch_collar": ((1, 0, 0), 90)}
-
-
-def _rotated(v, axis, deg):
-    """v rotated about `axis` by `deg` (Rodrigues) -- to check PRINT_ROT."""
-    k = [c / math.sqrt(sum(q * q for q in axis)) for c in axis]
-    th = math.radians(deg)
-    kv = sum(k[i] * v[i] for i in range(3))
-    kx = (k[1] * v[2] - k[2] * v[1], k[2] * v[0] - k[0] * v[2],
-          k[0] * v[1] - k[1] * v[0])
-    return tuple(v[i] * math.cos(th) + kx[i] * math.sin(th)
-                 + k[i] * kv * (1 - math.cos(th)) for i in range(3))
-
-
-for _n, _up in PRINT_UP.items():
-    _z = _rotated(_up, *PRINT_ROT[_n])
-    assert abs(_z[2] - 1.0) < 1e-9, (
-        "%s: PRINT_ROT does not stand the part on the bed PRINT_UP says it "
-        "prints from (build axis lands on %s, not +Z)" % (_n, _z))
+# PRINT_ROT IS GONE, and so is the local Rodrigues that checked it. It held
+# the same fact as PRINT_UP in print_pose's vocabulary, with an assert to stop
+# the two drifting -- the right instinct and the wrong fix, since it kept the
+# duplicate and watched it. cadkit.orientation derives the rotation from the
+# direction instead, so there is nothing left to watch:
+#
+#     PrintOrientation.from_build_dir(PRINT_UP[name], why)
+#
+# and src/build.py builds the project's PRINT_ORIENTATION table from PRINT_UP
+# that way. It reproduces all eight of the rotations this table used to carry
+# exactly (checked before deleting them), and the per-part STEPs are now posed
+# with them -- which they never were: export wrote every part AS MODELLED, so
+# the three that build -Y and the two that build diagonally had to be
+# re-oriented by hand in the slicer every time.
 
 
 def latch_slider():
