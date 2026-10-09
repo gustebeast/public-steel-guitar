@@ -5791,6 +5791,11 @@ consecutive builds.
 **Board lettering is not byte-stable between builds (found chasing the lead's overlap
 cache question).** Two full builds in separate processes: 805 of 827 parts give the same
 gate key, 22 never do: the 21 `*_silk` lettering parts and `vkl_kv_housing`. Every pair
-touching one is recomputed on every build. TODO (mine, `src/board_geom.py` ink): make it
-stable, most likely by keeping the ink solid on disk keyed on the geom file, which also
-saves its build time. `vkl_kv_housing` is somebody else's part; the lead knows.
+touching one is recomputed on every build. DONE another way (cadkit 8ceb5a1, pushed;
+the lead propagates): the lettering is bare faces with no volume, so the overlap gate no
+longer scans any pair that has a faces-only part. Nothing keys on the glyph bytes now, so
+they were left as they are. `vkl_kv_housing` is somebody else's part; the lead knows.
+
+**Viewer MRs are batched (lead, 2026-10-09; the user's standing rule):** after f80babb2,
+viewer changes stay local until a round worth a ten-minute build, or the user asks to see
+it published. Gate, board and fab work is still submitted when ready.
