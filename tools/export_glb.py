@@ -1,7 +1,7 @@
 """Export a colored GLB of the FULL instrument for web sharing.
 
-Writes docs/assembly.glb (served by GitHub Pages via docs/index.html, Google's
-<model-viewer>). The full assembly.step is ~145 MB — far too big for in-browser
+Writes docs/assembly.glb and docs/assembly.geo.json (served by GitHub Pages via
+docs/index.html, a three.js page). The full assembly.step is ~145 MB — far too big for in-browser
 viewers — and a GLB is web-native, keeps the per-part colors, and is far smaller.
 
 The GLB carries the ENTIRE assembly (every part collect_components() builds —
@@ -33,51 +33,47 @@ def _current_build_n():
 
 
 # MESH SETTINGS FOR THE WEB PREVIEW ONLY -- the STEP files and the CAD are untouched.
-# cadquery meshes the whole GLB at ONE tolerance, and its defaults (0.1 mm, 0.1 rad) are
-# what pushed build #620's preview to 101.4 MiB: past GitHub's 100 MiB per-file limit, so
-# the viewer silently stopped publishing. Almost all of it was the strings' wound capstan
-# coils -- a thin tube swept along a multi-turn helix, where the ANGULAR tolerance sets
-# the triangle count (string_1 alone meshed to 482,525 triangles). Measured on the whole
-# assembly, clearing cached meshes between runs:
+# The defaults cadquery meshes at (0.1 mm, 0.1 rad) are what pushed build #620's preview
+# to 101.4 MiB: past GitHub's 100 MiB per-file limit, so the viewer silently stopped
+# publishing. Almost all of it was the strings' wound capstan coils -- a thin tube swept
+# along a multi-turn helix, where the ANGULAR tolerance sets the triangle count (string_1
+# alone meshed to 482,525 triangles). Measured on the whole assembly through cadquery's
+# exporter:
 #     tolerance / angular     GLB
 #       0.1 / 0.1           101.2 MiB   (the old default)
 #       0.1 / 0.3            25.5 MiB   <- this
 #       0.2 / 0.5            16.8 MiB
 #       0.5 / 1.0            12.1 MiB
 # 0.3 rad leaves linear deviation at the old 0.1 mm, so round parts are as accurate as
-# before and only the angle loosens; the coarser rows save ~9 MiB more at a visible
-# faceting cost. Export time fell 62 s -> 8 s as a side effect.
-GLB_TOLERANCE = 0.1
-GLB_ANGULAR_TOLERANCE = 0.3
+# before and only the angle loosens. The numbers live in tools/web_export.py now, which
+# meshes the parts itself (one mesh per part, no normals: about half the bytes again) and
+# writes the geometry record the viewer measures against beside the GLB.
+from tools.web_export import TOLERANCE as GLB_TOLERANCE, ANGULAR as GLB_ANGULAR_TOLERANCE
+
 
 def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib.Path:
-    """Write `out` (a web GLB) from `components` — the (name, workplane) list from
-    collect_components(). Pass the list the caller already built to avoid rebuilding
-    all the geometry a second time; omit it to collect fresh. `build_n` stamps the
-    floating build-number label into the scene (same as assembly.step); omit it to
-    read the current counter without bumping. Returns the path.
+    """Write `out` (the web GLB) and, beside it, <stem>.geo.json (what every triangle
+    was: the faces and edges as the CAD kernel describes them, for the viewer's measure
+    tool) from `components` -- the (name, workplane) list from collect_components().
+    Pass the list the caller already built to avoid rebuilding all the geometry a second
+    time; omit it to collect fresh. `build_n` stamps the floating build-number label into
+    the scene (same as assembly.step); omit it to read the current counter without
+    bumping. Returns the GLB's path.
 
-    cadquery's GLTF exporter already converts CAD Z-up to glTF Y-up at the scene
-    root, so we add NO rotation here (an explicit one double-rotates -> upside down)."""
+    The GLB's root node turns CAD Z-up to glTF Y-up; the part nodes under it are in CAD
+    coordinates, which is the frame the rig's pivots are given in."""
+    from tools.web_export import export
     if components is None:
         components = collect_components()
     if build_n is None:
         build_n = _current_build_n()
-    asm = cq.Assembly(name="public_steel_guitar")
-    n = 0
-    for name, wp in components:
-        asm.add(wp, name=name, color=_color_for(name))
-        n += 1
+    parts = [(name, wp, _color_for(name)) for name, wp in components]
     if build_n is not None:
         counter = _build_counter_model(build_n)
         if counter is not None:
-            asm.add(counter, name="build_counter", color=_color_for("build_counter"))
-            n += 1
-    out.parent.mkdir(parents=True, exist_ok=True)
-    asm.save(str(out), exportType="GLTF", tolerance=GLB_TOLERANCE,
-             angularTolerance=GLB_ANGULAR_TOLERANCE)
-    mb = out.stat().st_size / 1e6
-    print(f"wrote {out.relative_to(REPO).as_posix()}  ({n} parts, {mb:.1f} MB, build #{build_n})")
+            parts.append(("build_counter", counter, _color_for("build_counter")))
+    export(parts, out.parent, stem=out.stem, extras={"build": build_n})
+    print(f"  ({out.relative_to(REPO).as_posix()}, build #{build_n})")
     return out
 
 
