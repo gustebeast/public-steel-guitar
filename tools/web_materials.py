@@ -85,9 +85,23 @@ def finish_of(base: str):
     return None
 
 
+# PRINTS IN TWO FILAMENTS: two parts in the build, ONE object on the printer and in the
+# hand, so the viewer hides, selects and lists them as one (cadkit.web.export units=).
+_ONE_PRINT = ((re.compile(r"^top_plate_color_(\d+)$"), r"top_plate_\1"),
+              (re.compile(r"^chassis_light_(\d+)$"), r"chassis_\1"))
+
+
+def unit_of(name: str):
+    """The part `name` is printed as one object with, or None."""
+    for rx, to in _ONE_PRINT:
+        if rx.match(name):
+            return rx.sub(to, name)
+    return None
+
+
 def material_of(name: str):
     """What `name` (an instance in the assembly) is made of: "petg-gf" | "pctg" |
-    "pctg-alt" | "tpu" for a printed part, a finish for a bought one, else None."""
+    "pctg-clear" | "tpu" for a printed part, a finish for a bought one, else None."""
     name = name.split("__")[0]
     return _filament_of(name) or finish_of(re.sub(r"(_\d+)+$", "", name))
 
@@ -95,15 +109,15 @@ def material_of(name: str):
 def _filament_of(name: str):
     exact, pats = _table()
     base = re.sub(r"(_\d+)+$", "", name)
-    # THE DECK IS ONE PRINT IN TWO COLOURS OF PCTG. Its `top_plate_color_N` bodies are
-    # the skin you see (the whole top face); `top_plate_N` is the body under it, which
-    # shows through as the fret lines and markers. The skin takes the PCTG colour and
-    # the body under it reads as "pctg-alt", a second colour, or the markers would
-    # vanish into the deck.
+    # THE DECK IS ONE PRINT IN TWO PCTGs. Its `top_plate_color_N` bodies are the skin
+    # you see (the whole top face); `top_plate_N` is the body under it, CLEAR, which
+    # shows through as the fret lines and markers and lets the fret lights up through
+    # them. The chassis's light window is the same clear PCTG. "pctg-clear" is drawn
+    # see-through (cadkit's viewer: any filament named ...-clear).
     if base == "top_plate_color":
         return "pctg"
-    if base == "top_plate":
-        return "pctg-alt"
+    if base in ("top_plate", "chassis_light"):
+        return "pctg-clear"
     # chassis_2 -- and chassis_1_0: a part drawn as several solids is exported one
     # solid at a time (cadkit.web.pieces), each with one more index on its name
     tail = name
