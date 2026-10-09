@@ -159,18 +159,20 @@ def export_local(live=True, rig=False):
     mine = {n for n, _ in live_parts}
     breps = [f for f in sorted(CACHE.glob("*.brep"))
              if f.stem not in mine and not (replaced and f.stem.startswith(replaced))]
-    meshed = {}
+    meshed, solids = {}, {}
     for f in breps:
         m = _cached_mesh(f)
         if m is not None:
             meshed[f.stem] = m
+            solids[f.stem] = (lambda p=f: __import__("cadquery").Shape.importBrep(str(p)))
     for n, w in live_parts:
         m = mesh_shape(_topods(w))
         if m is not None:
             meshed[n] = m
+            solids[n] = w
     cols = _colors(list(meshed))
     age = (time.time() - float((CACHE / "STAMP").read_text())) / 60.0
-    export([(n, None, cols[n]) for n in meshed], OUT, meshed=meshed)
+    export([(n, solids[n], cols[n]) for n in meshed], OUT, meshed=meshed)
     if rig or not (OUT / "rig.json").exists():
         try:
             import tools.export_rig as ER
