@@ -26,7 +26,9 @@ import cadquery as cq
 # Shared CAD utilities, vendored at <project>/cadkit (git subtree). show() makes the
 # build's output viewable — opens/refreshes its tab in the FreeCAD hub. Never raises.
 from cadkit.freecad import show
-from cadkit.step_export import export_step
+from cadkit.step_export import export_step, export_print
+from cadkit.orientation import (PrintOrientation as PO,
+                                require_declared, unconfirmed)
 try:                                    # optional on-every-build face-count regression gate
     from tools.build_profile import (record_part, report_build_regressions,
                                      write_part_volumes)
@@ -136,12 +138,12 @@ PARTS = {
     # body latch and the pedal bar's latch. The other three corners carry only a body
     # adapter. (The old square-leg family is retired from the assembly and from here;
     # its generators remain in legs.py, which still owns the body joinery.)
-    "body_adapter":    (lambda: heal(LS.body_adapter()), "petg-gf/body_adapter.step", "PETG-GF — body adapter, -X/+Y corner (the leg): slides into the body's mortises along Y (two octagon ridges + the end-wall tongue in its rebate), one M4 shear pin down the rail + the endplate's lock pin; blind mortise below for the fixed tenon, with the body latch's pocket. Prints -Y -> +Y"),
+    "body_adapter":    (lambda: heal(LS.body_adapter()), "petg-gf/body_adapter.step", "PETG-GF — body adapter, -X/+Y corner (the leg): slides into the body's mortises along Y (two octagon ridges + the end-wall tongue in its rebate), one M4 shear pin down the rail + the endplate's lock pin; blind mortise below for the fixed tenon, with the body latch's pocket. Prints +Y -> -Y"),
     "body_adapter_px_py": (lambda: heal(LS.body_adapter(CH.LEG_STATIONS_X[0], CH.LEG_Y[0])), "petg-gf/body_adapter_px_py.step", "PETG-GF — body adapter, +X/+Y corner: the same adapter with its body joinery built for that corner (tongue toward +X)"),
     "body_adapter_px_my": (lambda: heal(LS.body_adapter(CH.LEG_STATIONS_X[0], CH.LEG_Y[1])), "petg-gf/body_adapter_px_my.step", "PETG-GF — body adapter, +X/-Y corner (tongue toward +X, screw down the -Y rail)"),
     "body_adapter_mx_my": (lambda: heal(LS.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1])), "petg-gf/body_adapter_mx_my.step", "PETG-GF — body adapter, -X/-Y corner (tongue toward -X, screw down the -Y rail)"),
-    "fixed_sleeve":    (lambda: heal(LS.fixed_sleeve()), "petg-gf/fixed_sleeve.step", "PETG-GF — fixed sleeve: butts the adapter, pinned to the fixed tenon by one +X screw; the body latch's pad sits flush in its -Y face. Prints -Y -> +Y"),
-    "adjust_sleeve":   (lambda: heal(LS.adjust_sleeve()), "petg-gf/adjust_sleeve.step", "PETG-GF — adjust sleeve: butts the fixed sleeve; one +X screw pins the fixed tenon, one sets the height through the adjust tenon's ladder. Prints -Y -> +Y"),
+    "fixed_sleeve":    (lambda: heal(LS.fixed_sleeve()), "petg-gf/fixed_sleeve.step", "PETG-GF — fixed sleeve: butts the adapter, pinned to the fixed tenon by one +X screw; the body latch's pad sits flush in its -Y face. Prints +Y -> -Y"),
+    "adjust_sleeve":   (lambda: heal(LS.adjust_sleeve()), "petg-gf/adjust_sleeve.step", "PETG-GF — adjust sleeve: butts the fixed sleeve; one +X screw pins the fixed tenon, one sets the height through the adjust tenon's ladder. Prints +Y -> -Y"),
     "fixed_tenon":     (lambda: heal(LS.fixed_tenon()), "petg-gf/fixed_tenon.step", "PETG-GF — fixed floating tenon: adapter <-> fixed sleeve <-> adjust sleeve, houses the body latch slider and spring. Prints diagonally (+X+Y -> -X-Y)"),
     "adjust_tenon":    (lambda: heal(LS.adjust_tenon()), "petg-gf/adjust_tenon.step", "PETG-GF — adjust floating tenon: the height ladder (blind +X holes) and, at its bar end, the pedal bar latch's pocket and lead-in. Prints diagonally (+X+Y -> -X-Y)"),
     "leg_latch_slider": (lambda: heal(__import__("src.leg_latch", fromlist=["e"]).slider()), "pctg/leg_latch_slider.step", "PCTG — body latch slider: push-to-connect hook into the adapter, flush 20x20 pad on the fixed sleeve, one steel coil. Prints -X -> +X"),
@@ -420,6 +422,91 @@ PARTS["test_belt_tensioner"] = (
 OUT = pathlib.Path(__file__).resolve().parents[1]
 
 
+# ── PRINT ORIENTATION — one declaration per printed part ─────────────────────
+# cadkit requires it and export_print refuses a part without it, because a
+# MISSING bed face used to be indistinguishable from a deliberate "models as
+# printed" (both arrived as None) and a TPU pin on another project shipped
+# standing on its end as a 5.9:1 tower.
+#
+# This instrument was ALREADY ahead of that: it declares each part's build
+# DIRECTION as a module-level PRINT_UP, and the hole cutters and overhang
+# relief read it, so a hole is shaped for the way its part actually prints.
+# What it did NOT do was pose the STEPs — export_step wrote every part as
+# modelled, so a part whose PRINT_UP is not +Z had to be re-oriented by hand
+# in the slicer. PrintOrientation.from_build_dir takes the direction the
+# project already declares and derives the rotation, so the file now matches
+# the documented print and there is no second copy of the fact to drift.
+#
+# Everything NOT declared by a module keeps exporting as modelled — exactly
+# what it has always done, so no print changes — and is marked
+# confirmed=False. The build says those out loud on every run.
+def _declared():
+    from . import leg_stack as _LS
+    from . import bridge_endplate as _BE
+    from . import keyhead_endplate as _KE
+    from . import chassis as _CH
+    from . import knee_lever as _KL
+    from . import knee_lever_vert as _KV
+    from . import tension_fork as _TF
+    from . import joint_coupon as _JC
+
+    out = {}
+    # the leg stack names its eight parts individually, each with its reasons
+    # in leg_stack's own comments (the ridges, the latch pocket's bridge, the
+    # layer-support test on the slider) — those stay there; this carries the
+    # direction and a pointer.
+    for _n, _up in _LS.PRINT_UP.items():
+        out[_n] = PO.from_build_dir(
+            _up, "leg_stack.PRINT_UP %r — see leg_stack for why (the ridges, "
+                 "the latch pocket, the slider's layer-support test)" % (_up,))
+    out["leg_latch_slider"] = out.pop("latch_slider")   # the PARTS name
+    for _n, _mod, _why in (
+            ("bridge_endplate", _BE, "bridge_endplate.PRINT_UP — builds -X, "
+                                     "so the +X face is the bed; the screw "
+                                     "and string-access cutters are shaped "
+                                     "from it"),
+            ("keyhead_endplate", _KE, "keyhead_endplate.PRINT_UP — builds "
+                                      "+X, the -X face is the bed"),
+            ("knee_housing", _KL, "knee_lever.PRINT_UP — builds +Z, as "
+                                  "modelled"),
+            ("knee_housing_r", _KL, "knee_lever.PRINT_UP — builds +Z, as "
+                                    "modelled (the X-mirror of knee_housing)"),
+            ("kv_housing", _KV, "knee_lever_vert.PRINT_UP — builds +Z; the "
+                                "pocket gable is kept UP for exactly this"),
+            ("tension_fork", _TF, "tension_fork.PRINT_UP — builds +Z, as "
+                                  "modelled"),
+            ("test_section_tenon", _JC, "joint_coupon.PRINT_UP — builds +Z; "
+                                        "the coupon prints the way the "
+                                        "section it stands in for does"),
+            ("test_section_mortise", _JC, "joint_coupon.PRINT_UP — builds "
+                                          "+Z, same as its tenon"),
+    ):
+        out[_n] = PO.from_build_dir(_mod.PRINT_UP, _why)
+    for _n in [n for n in PARTS if n.startswith("chassis_")]:
+        out[_n] = PO.from_build_dir(
+            _CH.PRINT_UP, "chassis.PRINT_UP — builds +Z, as modelled "
+                          "(deck panels print flat)")
+    return {k: v for k, v in out.items() if k in PARTS}
+
+
+PRINT_ORIENTATION = _declared()
+for _n, (_b, _path, _note) in PARTS.items():
+    if _n in PRINT_ORIENTATION:
+        continue
+    # 🚩 NOT a decision — a RECORD of what this part's STEP has always
+    # exported as. The part's own note usually says how it prints; that prose
+    # is carried here so whoever confirms it has it in front of them, but
+    # prose is not a declaration and nothing has checked it against the
+    # geometry.
+    PRINT_ORIENTATION[_n] = PO(
+        None,
+        "as modelled — what this part's STEP has always exported as, kept so "
+        "this migration changes no print. UNSTUDIED. The part note says: "
+        + " ".join((_note or "(nothing about printing)").split())[:300],
+        confirmed=False)
+require_declared(set(PARTS), PRINT_ORIENTATION)
+
+
 # The instrument's materials, and there are THREE (user, 2026-09-30): PETG-GF for the
 # body, PCTG for the deck and fine-feature parts, TPU for the feet. Plain PETG was here
 # for exactly three parts -- the chassis light windows -- and buying a fourth spool for
@@ -444,7 +531,9 @@ def _export(name):
     dest = OUT / path
     dest.parent.mkdir(parents=True, exist_ok=True)   # material folder (petg-gf/pctg/tpu)
     t = time.perf_counter(); wp = builder(); build_s = time.perf_counter() - t
-    t = time.perf_counter(); export_step(wp, str(dest)); export_s = time.perf_counter() - t
+    t = time.perf_counter()
+    export_print(wp, PRINT_ORIENTATION[name], str(dest))
+    export_s = time.perf_counter() - t
     record_part(name, build_s, export_s, wp.val() if hasattr(wp, "val") else wp,
                 material=_material_of(path))          # ~free profiling + volume hook
     print(f"Wrote {path}" + (f"  ({note})" if note else ""))
@@ -2323,6 +2412,20 @@ def main() -> None:
             _stream.reconfigure(encoding="utf-8", errors="replace")
         except (AttributeError, ValueError):
             pass
+
+    # 🚩 an UNCONFIRMED bed face is a RECORD of how a part has been exported,
+    # not a decision anyone checked. The bed face decides which faces are
+    # overhangs, which slots bridge and which way every joint on the part
+    # prints, so settle it with the user before working on one of these
+    # (cadkit AGENTS.md). 41 of 63 parts here are in that state: the
+    # instrument declares PRINT_UP per module, and these are the parts no
+    # module covers.
+    flagged = unconfirmed(PRINT_ORIENTATION)
+    if flagged:
+        print("UNCONFIRMED print orientation (%d of %d parts) — confirm with "
+              "the user BEFORE working on one of these:\n  %s"
+              % (len(flagged), len(PRINT_ORIENTATION), ", ".join(flagged)),
+              flush=True)
 
     p = argparse.ArgumentParser(prog="src.build")
     p.add_argument("--part", help="Build only this printed part (skips assembly).")
