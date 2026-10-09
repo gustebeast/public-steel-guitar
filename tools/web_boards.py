@@ -49,6 +49,9 @@ from tools import web_parts as WP
 
 SEP = "__"                    # <board part>__<ref> names a component's own part
 LOOSE = 0.25                  # how far outside its F.Fab box a hand-drawn body may stand
+ENVELOPE = 1.2                # ...and a package envelope drawn with its leads
+PLUG = 9.0                    # a mated side-entry header: its plug's reach past the mouth
+BACK = 0.8                    # ...and how far its back may stand off the F.Fab box
 
 
 # ── where KiCad keeps its models ──────────────────────────────────────────────────
@@ -410,13 +413,66 @@ def detail(meshed, shape_of, log=print):
                     if len(col):
                         h = max(h or 0.0, float(np.abs(col - (0.0 if back else t)).max()))
             if h is None:
-                # a board that draws its parts from its own package table (optical) has
-                # no corner on the F.Fab box: take whatever stands on this footprint
-                on = local[(local[:, 0] > x0 - LOOSE) & (local[:, 0] < x1 + LOOSE)
-                           & (local[:, 1] > y0 - LOOSE) & (local[:, 1] < y1 + LOOSE)
-                           & ((local[:, 2] < -0.01) if back else (local[:, 2] > t + 0.01))]
-                if len(on) < 4:
+                # NOT A BOX ON THE F.FAB OUTLINE. Boards drawn by hand stand a part where
+                # and how big their own tables say: a package envelope that takes in the
+                # leads (optical), or a side-entry header drawn MATED, its plug's reach
+                # past the mouth included (the lever boards, the tee). Look for what
+                # stands on this footprint, in widening steps.
+                name = f["fpid"].split(":")[-1]
+                above = local[(local[:, 2] < -0.01) if back else (local[:, 2] > t + 0.01)]
+
+                def within(gx0, gx1, gy0, gy1):
+                    return above[(above[:, 0] > gx0) & (above[:, 0] < gx1)
+                                 & (above[:, 1] > gy0) & (above[:, 1] < gy1)]
+
+                on = within(x0 - LOOSE, x1 + LOOSE, y0 - LOOSE, y1 + LOOSE)
+                if len(on) < 4 and WP.side_entry(name):
+                    mx, my = WP.mouth(f, panel, edge)
+                    on = within(x0 - (PLUG if mx < 0 else BACK), x1 + (PLUG if mx > 0 else BACK),
+                                y0 - (PLUG if my < 0 else BACK), y1 + (PLUG if my > 0 else BACK))
+                    on = on if len(on) >= 2 else on[:0]
+                elif len(on) < 4:
+                    # one box, centred on the footprint, of another size
+                    wide = within(x0 - ENVELOPE, x1 + ENVELOPE, y0 - ENVELOPE, y1 + ENVELOPE)
+                    if len(wide):
+                        top = wide[np.abs(np.abs(wide[:, 2]) - np.abs(wide[:, 2]).max()) < 0.01]
+                        cx, cy = (top[:, 0].min() + top[:, 0].max()) / 2, (top[:, 1].min() + top[:, 1].max()) / 2
+                        if (len(top) >= 4 and abs(cx - (x0 + x1) / 2) < max(0.35, 0.12 * (x1 - x0))
+                                and abs(cy - (y0 + y1) / 2) < max(0.35, 0.12 * (y1 - y0))):
+                            on = top
+                if len(on) < 2 and WP.side_entry(name) and WP.knows(name):
+                    # drawn as a PART OF ITS OWN beside the board (the leg joint boards):
+                    # that part becomes the model, under its own name
+                    mx, my = WP.mouth(f, panel, edge)
+                    gx0, gx1 = x0 - (PLUG if mx < 0 else BACK), x1 + (PLUG if mx > 0 else BACK)
+                    gy0, gy1 = y0 - (PLUG if my < 0 else BACK), y1 + (PLUG if my > 0 else BACK)
+                    inv = np.linalg.inv(pose)
+                    best = None
+                    for cand, cm in meshed.items():
+                        if cand in used or SEP in cand or "silk" in cand or "inst" in cm:
+                            continue
+                        lo, hi = cm["pos"].min(0), cm["pos"].max(0)
+                        if np.linalg.norm((lo + hi) / 2 - centre) > 60.0:
+                            continue
+                        q = _apply(inv, cm["pos"].astype(float))
+                        lo, hi = q.min(0), q.max(0)
+                        foot = (hi[2] if back else lo[2]) - (0.0 if back else t)
+                        if (lo[0] > gx0 and hi[0] < gx1 and lo[1] > gy0 and hi[1] < gy1
+                                and abs(foot) < 0.3):
+                            size = float(np.prod(hi - lo))
+                            if best is None or size > best[0]:
+                                best = (size, cand, float(-lo[2] if back else hi[2] - t))
+                    own = _own_part(f, best[2], t, pose, panel, edge) if best else None
+                    if own is not None:
+                        meshed[best[1]] = own[0]
+                        used.add(best[1])
+                        stats["models"] += 1
+                        stats["drawn"] = stats.get("drawn", 0) + 1
+                        continue
+                if len(on) < 2:
                     keep("not drawn on this instance")
+                    if os.environ.get("WEB_BOARDS_WHY"):
+                        log("  not drawn: %s %s %s" % (solid_name, f["ref"], name))
                     continue
                 h = float(np.abs(on[:, 2] - (0.0 if back else t)).max())
                 x0, x1 = min(x0, float(on[:, 0].min())), max(x1, float(on[:, 0].max()))
