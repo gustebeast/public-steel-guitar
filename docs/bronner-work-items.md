@@ -5716,3 +5716,35 @@ a junction drop for milliseconds at switch-on, switch-off and clipping (6 mA pea
 20 mA pulsed), accepted, as it stood with the earlier pot. The voltage check's "0.258 V on
 U10.12" is the rail's own tolerance, not a pin margin. The package the lead uploaded is
 the one built before these text edits: its QUALITY.txt still says "SDO is unused".
+
+## THE WEB VIEWER IS BRONNER'S (user, 2026-10-09)
+
+Aim: the web page replaces FreeCAD as the way the instrument is looked at, locally and
+on GitHub Pages. FreeCAD had become slow, the lettering being part of it.
+
+**Run it locally:** `py -3.12 -m tools.web_view` (needs a scratch cache, i.e. a
+`tools.scratch_view --start` at some point). It builds the part under work fresh, takes
+the surroundings from the cache, serves the page on `http://127.0.0.1:8137/` and the
+open page reloads itself on every re-export, keeping the camera and what is hidden.
+`--cache-only` skips the fresh part (seconds); the first run pays about a minute for
+part colours, once.
+
+| Piece | Where | State |
+|---|---|---|
+| Mesher: one mesh per part, triangles sorted by CAD face, and a record of what each face and edge IS | `tools/web_export.py` | ✅ whole cache in 19 s; GLB 12 MB (was 30) |
+| The build's preview export uses it | `tools/export_glb.py` (same `build_glb` signature) | ✅ sample-tested; the lead's next full build is the real test |
+| Local view | `tools/web_view.py`, `.webview/` (ignored) | ✅ |
+| Select, hide, isolate, zoom, parts list | `docs/index.html` | ✅ keys x / i / z / u / p; shift-click adds |
+| Measure: corner, edge, face; distance, angle, radius | `docs/index.html` + `assembly.geo.json` | ✅ exact, read from the kernel's numbers: two leadscrew axes read 25.812 = sqrt(24² + 9.5²) |
+| Detailed boards (KiCad's component models) | not started | KiCad's own GLB of output_panel is 2.5 MB in 2 s without copper, 18 MB with: copper stays out |
+| Section cut, orthographic and standard views | not started | |
+| `agent_sync view` and the build opening the page, `assembly.step` dropped | not started | the lead's `src/build.py` and cadkit; printed parts keep their own STEP files |
+
+How the page stays fast with every part still addressable: parts that never move are
+merged into one mesh per material, and each keeps its run of the merged index. A pick is
+"which run is this triangle in", hiding rewrites the drawn index without the run, and
+the highlight draws the run again. Measured locally: 827 parts, 757k triangles, about
+160 draw calls.
+
+The silkscreen is NOT a cost on the web: all the lettering together is about 7 % of the
+triangles. It was only ever a FreeCAD cost, so "silk as a texture" is dropped.

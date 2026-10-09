@@ -10,6 +10,7 @@ __pycache__/
 *.stl
 *.png
 docs/assembly.glb
+docs/assembly.geo.json
 docs/rig.json
 fast_build_map.json
 .scratch_cache/
@@ -20,3 +21,4 @@ skidl_REPL.*
 *.rpt
 .carriage-travel-cache.json
 elec/fonts/
+.webview/
