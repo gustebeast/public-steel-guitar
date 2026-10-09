@@ -423,7 +423,10 @@ def detail(meshed, shape_of, log=print):
                            R[2, 0], R[2, 1], R[2, 2], tr[2])
             from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
             placed = cq.Shape.cast(BRepBuilderAPI_Transform(tool.wrapped, trsf, True).Shape())
-            solid = cq.Shape.cast(_topods(shape_of(solid_name)))
+            # a COPY is cut: OCCT writes to a boolean's operands, and the gates key their
+            # pair caches on the caller's shape byte for byte
+            from OCP.BRepBuilderAPI import BRepBuilderAPI_Copy
+            solid = cq.Shape.cast(BRepBuilderAPI_Copy(_topods(shape_of(solid_name)), True, False).Shape())
             trimmed = solid.cut(placed)
             new = mesh_shape(trimmed.wrapped)
             if new is not None:
