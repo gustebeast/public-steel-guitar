@@ -55,6 +55,7 @@ from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
                         PH_SIDE_H, PH_SIDE_D, PH_TAB_D, PH_PLUG_RUN, PH_PITCH)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore
+from cadkit.lazy import lazy
 # the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
 _insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
 _insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
@@ -2869,18 +2870,22 @@ def kl_magnet_cap() -> cq.Workplane:
     return b.rotate((0, 0, 0), (1, 0, 0), -90)          # +Z -> +Y
 
 
-knee_housing = _housing()
-knee_housing_r = _housing(right=True)       # the right-hand lever's (LKR, RKR)
-knee_lever = _lever()
-kl_axle = kl_axle()                            # printed: full-length PCTG axle
-kl_magnet_cap = kl_magnet_cap()                # printed: screw-on magnet retainer
+# THE PARTS ARE BUILT WHEN FIRST USED (cadkit.lazy), not when this module is imported:
+# the chassis reads this module for its mounting stations and its rib mortise, and so
+# does every scratch view of anything that touches the chassis. None of them should
+# wait for a housing they never look at.
+knee_housing = lazy(_housing)
+knee_housing_r = lazy(_housing, right=True)    # the right-hand lever's (LKR, RKR)
+knee_lever = lazy(_lever)
+kl_axle = lazy(kl_axle)                        # printed: full-length PCTG axle
+kl_magnet_cap = lazy(kl_magnet_cap)            # printed: screw-on magnet retainer
 # ONE shared cartridge (printed twice: MAIN + HALF-STOP). Built canonically (MAIN placement: follower
 # at the lobe rest extremum); the assembly slides a HALF-STOP copy +X by HS_SETBACK and a MAIN copy to
 # MAIN_YC. Placement helper for build.py / tools:
 CART_MAIN_OFFSET = (0.0, MAIN_YC - HS_YC, 0.0)        # main copy: shift to -Y
 CART_HALFSTOP_OFFSET = (HS_SETBACK, 0.0, 0.0)         # half-stop copy: slide +X (engagement setback)
-cart_base = _half_stop_cart_base()             # printed: cartridge (inverted-U, open -Z; no separate roof)
-cart_piston = _half_stop_piston()              # printed: piston (Ø10 head + follower tongue + spring pilot)
+cart_base = lazy(_half_stop_cart_base)         # printed: cartridge (inverted-U, open -Z; no separate roof)
+cart_piston = lazy(_half_stop_piston)          # printed: piston (Ø10 head + follower tongue + spring pilot)
 
 # (the FLOATING TENON is retired -- the octagon tenons are now FUSED onto the housing yoke, so
 # the lever mounts as a single part; the rib carries the matching octagon mortise. See _mount.)
