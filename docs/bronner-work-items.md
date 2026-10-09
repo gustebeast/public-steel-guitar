@@ -5740,6 +5740,10 @@ part colours, once.
 | Section cut | `docs/index.html` | ✅ key c: one plane square to a CAD axis at a CAD coordinate (X / Y / Z, flip, slider, typed value). It starts through the middle of the selection, else of the model, and takes away the side nearer the eye. What is cut away cannot be picked, so the exposed parts can be selected and measured. The cut faces are OPEN (no caps): a solid shows its inside walls |
 | Undo / redo of what is shown | `docs/index.html` | ✅ ctrl+z, ctrl+y (ctrl+shift+z): each hide, isolate, show all, eye click and deck toggle is one step; a step is the set of hidden NAMES, so it survives a reload |
 | A part drawn as several solids is one part per solid | `tools/web_export.py` `pieces()` | ✅ user: "bridge_bearings appears as one part, I'd expect each bearing and rod to be separate". `<name>_0 .. _N` in the web export only (the build's names are untouched); the parts list still shows one row. Stays whole if the rig names it, if a piece name is taken, or if it has faces outside a solid. Today: bridge_bearings 11, the pogo pin sets 4 each, ui_shaft 2, the deck's colour bodies |
+| Lighting that follows what is shown | `docs/index.html` | ✅ key l cycles three levels: plain / shadows / shadows + occlusion. ONE shadow map, fitted round whatever is VISIBLE and redrawn only when something is hidden, shown, cut or moved by the rig; screen-space occlusion (three's GTAO pass) on top. The page measures its frame rate each second and gives up a level after two seconds under 57 fps (not while hidden, not in the 6 s after a load); choosing a level by hand turns that off. NOT measured on a phone yet |
+| Lighting balance | `docs/index.html` | ✅ user: "very washed out / unpleasant". Cause: ambient (environment + hemisphere + fills) led the key light, under a filmic tone curve that desaturates pale colours. Now: no tone curve, environment at 0.3, hemisphere 0.3, key 2.4, fills 0.18. The user's eye is the judge of this, not a screenshot read |
+| A board is one thing | `docs/index.html` | ✅ user: for show/hide a PCB is one part, not one per component. A click on a board or anything on it selects the board and all its components (`unit`); the parts list has one row; the measure tool still snaps to a single component. The board's LETTERING goes with it too (user: "the silkscreen isn't hiding/showing with the board"): the export finds each `*silk*` part's board by matching boxes (`web_export.silk_units`, names follow no rule) and writes it on the node; all 31 link correctly. Selected parts read BLACK under the occlusion pass until the selection tint and measure marks were kept out of it |
+| The local page reloads itself | `tools/web_view.py` `/page.json`, `docs/index.html` | ✅ on an edit to the page file as well as on a re-export, keeping camera, hidden parts, section and mode |
 | Axis views | `docs/index.html` | ✅ buttons +X −X +Y −Y +Z −Z (named by the CAD side looked from) and iso. The camera is PERSPECTIVE and only that (user, 2026-10-09: pick one and lock it in, whichever looks like the real thing) |
 | `agent_sync view` and the build opening the page, `assembly.step` dropped | not started | the lead's `src/build.py` and cadkit; printed parts keep their own STEP files |
 
@@ -5782,3 +5786,11 @@ can_tee: 0 -> 1 each.
 pairs on a build where only tools/web_boards.py changed; about 184 was normal before the
 viewer work. To chase: which pairs, and whether their keys differ between two
 consecutive builds.
+
+
+**Board lettering is not byte-stable between builds (found chasing the lead's overlap
+cache question).** Two full builds in separate processes: 805 of 827 parts give the same
+gate key, 22 never do: the 21 `*_silk` lettering parts and `vkl_kv_housing`. Every pair
+touching one is recomputed on every build. TODO (mine, `src/board_geom.py` ink): make it
+stable, most likely by keeping the ink solid on disk keyed on the geom file, which also
+saves its build time. `vkl_kv_housing` is somebody else's part; the lead knows.
