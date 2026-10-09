@@ -138,7 +138,7 @@ def model_mesh(path):
         from tools.web_export import mesh_shape, ANGULAR
         try:
             comp, cols = load_model(path)
-            _MODELS[path] = mesh_shape(comp, MODEL_TOLERANCE, ANGULAR, face_colors=cols)
+            _MODELS[path] = mesh_shape(comp, MODEL_TOLERANCE, ANGULAR, face_colors=cols, copy=False)
         except Exception as exc:
             print("web boards: %s will not load (%s)" % (os.path.basename(path), exc))
             _MODELS[path] = None
