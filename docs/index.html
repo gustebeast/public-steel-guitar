@@ -56,7 +56,11 @@
                 text-transform: uppercase; letter-spacing: .06em; }
     .panel .name { color: #e6eaf0; font-weight: 600; word-break: break-all; }
     .panel .dim { opacity: .55; }
-    #sel, #readout, #partsPanel { display: none; }
+    #sel, #readout, #partsPanel, #secPanel { display: none; }
+    #views .btn { padding: 3px 7px; font-size: 11px; }
+    #secVal { width: 74px; background: #121418; border: 1px solid #333842; border-radius: 6px;
+              color: #e6eaf0; font: inherit; padding: 2px 5px; }
+    #secSlide { width: 100%; margin: 8px 0 0; }
     #readout .v { color: #e6eaf0; font-variant-numeric: tabular-nums; }
     #readout .big { font-size: 17px; color: #ffe08a; font-variant-numeric: tabular-nums; }
     #readout .a { color: #6fd3ff; } #readout .b { color: #ff8fd0; }
@@ -101,7 +105,24 @@
       <div class="btn on" id="bSelect">select</div>
       <div class="btn" id="bMeasure">measure<span class="k">m</span></div>
       <div class="btn" id="bParts">parts<span class="k">p</span></div>
+      <div class="btn" id="bSection">section<span class="k">c</span></div>
       <div class="btn" id="bShowAll" style="display:none">show all<span class="k">u</span></div>
+    </div>
+    <div class="bar" id="views">
+      <div class="btn" id="bOrtho">parallel<span class="k">o</span></div>
+      <div class="btn vw" data-d="1,0,0">+X</div><div class="btn vw" data-d="-1,0,0">−X</div>
+      <div class="btn vw" data-d="0,1,0">+Y</div><div class="btn vw" data-d="0,-1,0">−Y</div>
+      <div class="btn vw" data-d="0,0,1">+Z</div><div class="btn vw" data-d="0,0,-1">−Z</div>
+      <div class="btn vw" data-d="0.55,-1,0.5">iso</div>
+    </div>
+    <div class="panel" id="secPanel">
+      <h4>section cut</h4>
+      <div class="bar">
+        <div class="btn ax" data-a="0">X</div><div class="btn ax" data-a="1">Y</div>
+        <div class="btn ax" data-a="2">Z</div><div class="btn" id="bFlip">flip</div>
+        <input id="secVal" type="number" step="0.1">
+      </div>
+      <input id="secSlide" type="range" step="0.1">
     </div>
     <div class="panel" id="sel"></div>
     <div class="panel" id="readout"></div>
@@ -146,7 +167,11 @@
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
-  const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 20000);
+  // two cameras, one in use: the perspective one, and a parallel one for looking square
+  // at a face (o, or any of the axis views)
+  const persp = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 20000);
+  const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 20000);
+  let camera = persp;
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
@@ -166,8 +191,10 @@
 
   const lineMats = [];
   addEventListener('resize', () => {
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
+    persp.aspect = innerWidth / innerHeight;
+    persp.updateProjectionMatrix();
+    ortho.left = -ortho.top * persp.aspect; ortho.right = ortho.top * persp.aspect;
+    ortho.updateProjectionMatrix();
     renderer.setSize(innerWidth, innerHeight);
     for (const m of lineMats) m.resolution.set(innerWidth, innerHeight);
   });
@@ -350,8 +377,7 @@
     return M.list.filter(p => pre.some(x => p.name.startsWith(x)));
   }
   function toggleDeck() {
-    deckVisible = !deckVisible;
-    setHidden(deckParts(), !deckVisible);
+    act(() => { deckVisible = !deckVisible; setHidden(deckParts(), !deckVisible); });
     $('deckstate').textContent = deckVisible ? 'hide deck' : 'show deck';
     const b = $('deckbtn');
     if (b) { b.classList.toggle('on', !deckVisible);
@@ -498,7 +524,33 @@
     syncPartsUI();
   }
   const hiddenParts = () => M.list.filter(p => p.hidden);
-  function showAll() { setHidden(hiddenParts(), false); deckVisible = true; syncDeckUI(); }
+  function showAll() { act(() => { setHidden(hiddenParts(), false); deckVisible = true; syncDeckUI(); }); }
+
+  // ── undo / redo of what is shown (ctrl+z, ctrl+y) ────────────────────────────────
+  // A step is the whole set of hidden part NAMES, so it survives a model reload.
+  const undoStack = [], redoStack = [];
+  const visState = () => ({ names: hiddenParts().map(p => p.name), deck: deckVisible });
+  const sameVis = (a, b) => a.deck === b.deck && a.names.length === b.names.length
+                            && a.names.every((n, i) => n === b.names[i]);
+  function act(fn) {                       // run a change to what is shown, as one step
+    const before = visState();
+    fn();
+    if (sameVis(before, visState())) return;
+    undoStack.push(before); redoStack.length = 0;
+    if (undoStack.length > 200) undoStack.shift();
+  }
+  function restoreVis(s) {
+    const want = new Set(s.names);
+    setHidden(M.list.filter(p => p.hidden && !want.has(p.name)), false);
+    setHidden(M.list.filter(p => !p.hidden && want.has(p.name)), true);
+    deckVisible = s.deck; syncDeckUI();
+  }
+  function undo(redo = false) {
+    const from = redo ? redoStack : undoStack, to = redo ? undoStack : redoStack;
+    if (!from.length) return false;
+    to.push(visState()); restoreVis(from.pop());
+    return true;
+  }
   function syncDeckUI() {
     $('deckstate').textContent = deckVisible ? 'hide deck' : 'show deck';
     const b = $('deckbtn');
@@ -524,6 +576,7 @@
         p = b.parts[lo]; tri = h.faceIndex - b.starts[lo];
       } else { p = h.object.userData.part; tri = h.faceIndex; }
       if (!p || p.hidden) continue;
+      if (sec.on && sec.plane.distanceToPoint(h.point) < 0) continue;   // cut away
       return { part: p, tri, world: h.point.clone(), cad: M.parts.worldToLocal(h.point.clone()) };
     }
     return null;
@@ -573,8 +626,8 @@
   function clearSelection() { selection = []; drawSelection(); }
   function selAction(a) {
     if (!selection.length) return;
-    if (a === 'hide') setHidden([...selection], true);
-    if (a === 'isolate') { const keep = new Set(selection); setHidden(M.list.filter(p => !keep.has(p)), true); }
+    if (a === 'hide') act(() => setHidden([...selection], true));
+    if (a === 'isolate') { const keep = new Set(selection); act(() => setHidden(M.list.filter(p => !keep.has(p)), true)); }
     if (a === 'zoom') frameParts(selection);
     if (a === 'fam') { const f = new Set(selection.map(p => p.family));
                        selection = M.list.filter(p => f.has(p.family) && !p.hidden); drawSelection(); }
@@ -606,7 +659,7 @@
       el.className = 'fam'; el.dataset.f = f;
       el.innerHTML = `<span class="eye">●</span><span class="sw" style="background:#${ps[0].col ? '8a8f98' : ps[0].mat.color.getHexString()}"></span>` +
                      `<span>${f}</span><span class="n">${ps.length > 1 ? '×' + ps.length : ''}</span>`;
-      el.querySelector('.eye').onclick = ev => { ev.stopPropagation(); setHidden(ps, !ps.every(p => p.hidden)); };
+      el.querySelector('.eye').onclick = ev => { ev.stopPropagation(); act(() => setHidden(ps, !ps.every(p => p.hidden))); };
       el.onclick = () => { selection = ps.filter(p => !p.hidden); drawSelection(); };
       el.ondblclick = () => frameParts(ps);
       el._parts = ps;
@@ -977,7 +1030,7 @@
   function setHint() {
     $('hint').textContent = mode === 'measure'
       ? 'measure: click a corner, edge or face, then another · esc clears · m leaves · drag still orbits'
-      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · p parts list · m measure';
+      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · ctrl+z / ctrl+y undo, redo · p parts list · m measure · c section · o parallel';
   }
 
   // ── pointer and keys ─────────────────────────────────────────────────────────────
@@ -999,6 +1052,11 @@
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); return; }
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) toggleDeck(); return; }
+    if (e.ctrlKey || e.metaKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'z' || k === 'y') { e.preventDefault(); undo(k === 'y' || e.shiftKey); }
+      return;
+    }
     if (e.key === 'Escape') { mode === 'measure' ? clearMeasure() : clearSelection(); return; }
     if (!e.repeat && !e.ctrlKey && !e.metaKey) switch (e.key) {
       case 'm': setMode(mode === 'measure' ? 'select' : 'measure'); return;
@@ -1007,6 +1065,8 @@
       case 'i': selAction('isolate'); return;
       case 'z': selAction('zoom'); return;
       case 'u': showAll(); return;
+      case 'c': $('bSection').onclick(); return;
+      case 'o': setOrtho(!camera.isOrthographicCamera); return;
     }
     const p = keyToPedal[e.key]; if (!p || e.repeat) return;
     held.add(p); syncUI();
@@ -1020,16 +1080,111 @@
   $('bParts').onclick = toggleParts;
   $('bShowAll').onclick = showAll;
 
+  // ── section cut ──────────────────────────────────────────────────────────────────
+  // One plane square to a CAD axis, at a CAD coordinate. Everything on the far side is
+  // not drawn and cannot be picked, so what the cut exposes can be selected and measured.
+  const sec = { on: false, axis: 0, v: NaN, flip: false, plane: new THREE.Plane() };
+  function cadBox() {
+    if (!M.box) M.box = new THREE.Box3().setFromObject(M.root)
+                                        .applyMatrix4(M.parts.matrixWorld.clone().invert());
+    return M.box;
+  }
+  function applySection() {
+    const on = sec.on && !!M.parts;
+    if (on) {
+      const n = new THREE.Vector3().setComponent(sec.axis, sec.flip ? 1 : -1);
+      sec.plane.set(n, sec.flip ? -sec.v : sec.v).applyMatrix4(M.parts.matrixWorld);
+    }
+    renderer.clippingPlanes = on ? [sec.plane] : [];
+    $('bSection').classList.toggle('on', sec.on);
+    $('secPanel').style.display = sec.on ? 'block' : 'none';
+    if (!on) return;
+    const b = cadBox(), s = $('secSlide');
+    s.min = Math.floor(b.min.getComponent(sec.axis)); s.max = Math.ceil(b.max.getComponent(sec.axis));
+    s.value = sec.v; $('secVal').value = sec.v.toFixed(1);
+    for (const e of document.querySelectorAll('#secPanel .ax')) e.classList.toggle('on', +e.dataset.a === sec.axis);
+    $('bFlip').classList.toggle('on', sec.flip);
+  }
+  // where a cut starts: through the middle of what is selected, else of the model
+  function secHome() {
+    const b = new THREE.Box3();
+    for (const p of selection) partBox(p, b);
+    return (b.isEmpty() ? cadBox() : b).getCenter(new THREE.Vector3()).getComponent(sec.axis);
+  }
+  function setSection(on, axis, v, flip) {
+    if (!M.parts) return;
+    const moved = axis !== undefined && axis !== sec.axis, fresh = on && !sec.on;
+    sec.on = on;
+    if (axis !== undefined) sec.axis = axis;
+    if (flip !== undefined) sec.flip = flip;
+    else if (moved || fresh) {                           // take away the side nearer the eye
+      const eye = M.parts.worldToLocal(camera.position.clone()).sub(M.parts.worldToLocal(controls.target.clone()));
+      sec.flip = eye.getComponent(sec.axis) < 0;
+    }
+    if (v !== undefined) sec.v = v;
+    else if (moved || !isFinite(sec.v)) sec.v = secHome();
+    applySection();
+  }
+  $('bSection').onclick = () => { if (!sec.on) sec.v = NaN; setSection(!sec.on); };
+  $('bFlip').onclick = () => setSection(true, undefined, undefined, !sec.flip);
+  for (const e of document.querySelectorAll('#secPanel .ax')) e.onclick = () => setSection(true, +e.dataset.a);
+  $('secSlide').oninput = e => setSection(true, undefined, +e.target.value);
+  $('secSlide').onchange = e => e.target.blur();       // hand the keys back to the page
+  $('secVal').onchange = e => { if (isFinite(+e.target.value)) setSection(true, undefined, +e.target.value); };
+
+  // ── parallel projection and the axis views ───────────────────────────────────────
+  const tanHalf = () => Math.tan(persp.fov * Math.PI / 360);
+  function orthoFrustum(halfH, dist) {
+    ortho.top = halfH; ortho.bottom = -halfH;
+    ortho.left = -halfH * persp.aspect; ortho.right = halfH * persp.aspect;
+    ortho.zoom = 1; ortho.near = -dist * 20; ortho.far = dist * 100;
+  }
+  function setOrtho(on) {
+    if (on !== !!camera.isOrthographicCamera) {
+      const dir = camera.position.clone().sub(controls.target);
+      const dist = dir.length(); dir.normalize();
+      if (on) {
+        orthoFrustum(dist * tanHalf(), dist);
+        ortho.position.copy(persp.position); ortho.quaternion.copy(persp.quaternion);
+        camera = ortho;
+      } else {
+        const d = ortho.top / ortho.zoom / tanHalf();
+        persp.position.copy(controls.target).addScaledVector(dir, d);
+        persp.quaternion.copy(ortho.quaternion);
+        persp.near = d / 100; persp.far = d * 100;
+        camera = persp;
+      }
+      camera.updateProjectionMatrix();
+      controls.object = camera; controls.update();
+    }
+    $('bOrtho').classList.toggle('on', !!camera.isOrthographicCamera);
+  }
+  // look along a CAD direction, from that side: "+Z" is the view from above
+  function viewFrom(d, parallel = true) {
+    if (!M.parts) return;
+    const dir = new THREE.Vector3(d[0], d[1], d[2]).transformDirection(M.parts.matrixWorld);
+    if (Math.abs(dir.y) > 0.9999) dir.z += 1e-4;        // straight down: CAD +Y up the screen
+    const dist = camera.position.distanceTo(controls.target);
+    camera.position.copy(controls.target).addScaledVector(dir.normalize(), dist);
+    controls.update();
+    setOrtho(parallel);
+  }
+  $('bOrtho').onclick = () => setOrtho(!camera.isOrthographicCamera);
+  for (const e of document.querySelectorAll('#views .vw'))
+    e.onclick = () => viewFrom(e.dataset.d.split(',').map(Number),
+                               e.textContent !== 'iso' || !!camera.isOrthographicCamera);
+
   // ── frame camera to the model ─────────────────────────────────────────────
   function frameBox(box, reset = true) {
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     const radius = 0.5 * Math.max(size.x, size.y, size.z, 1);
-    const dist = radius / Math.sin((camera.fov * Math.PI / 180) / 2) * 1.15;
+    const dist = radius / Math.sin((persp.fov * Math.PI / 180) / 2) * 1.15;
     const dir = reset ? new THREE.Vector3(0.55, 0.5, 1).normalize()
                       : camera.position.clone().sub(controls.target).normalize();
     camera.position.copy(center).add(dir.multiplyScalar(dist));
-    if (reset) { camera.near = dist / 100; camera.far = dist * 100; camera.updateProjectionMatrix(); }
+    if (camera.isOrthographicCamera) { orthoFrustum(radius * 1.15, dist); camera.updateProjectionMatrix(); }
+    else if (reset) { camera.near = dist / 100; camera.far = dist * 100; camera.updateProjectionMatrix(); }
     controls.target.copy(center); controls.update();
   }
 
@@ -1063,6 +1218,7 @@
     buildModel(gltf);
     buildPedalUI(); syncUI();
     buildPartsUI();
+    M.box = null; applySection();
     if (first) frameBox(new THREE.Box3().setFromObject(M.root));
     else { setHidden(M.list.filter(p => hiddenNames.has(p.name)), true); syncDeckUI(); }
     if (wasMode === 'measure') setMode('measure');
@@ -1108,7 +1264,7 @@
     requestAnimationFrame(tick);
   }
   // for poking at it from the console (and for the checks that drive the page)
-  window.viewer = { renderer, scene, camera, controls, M, meas, pickAt, snapAt, setHidden, setMode,
+  window.viewer = { renderer, scene, get camera() { return camera; }, controls, sec, setSection, undo, setOrtho, viewFrom, M, meas, pickAt, snapAt, setHidden, setMode,
                     measureClick, between, showAll, get selection() { return selection; },
                     select(names) { selection = names.map(n => M.byName.get(n)).filter(Boolean); drawSelection(); },
                     selAction, loadGeo, toPx };

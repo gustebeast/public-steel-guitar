@@ -5737,7 +5737,10 @@ part colours, once.
 | Select, hide, isolate, zoom, parts list | `docs/index.html` | ✅ keys x / i / z / u / p; shift-click adds |
 | Measure: corner, edge, face; distance, angle, radius | `docs/index.html` + `assembly.geo.json` | ✅ exact, read from the kernel's numbers: two leadscrew axes read 25.812 = sqrt(24² + 9.5²) |
 | Detailed boards: KiCad's own coloured part models in place of the footprint boxes | `tools/web_boards.py`; `models` in each `elec/geom/*.geom.json` (cadkit `kicad_geom`, 97b8ea0) | ✅ in the web export only; the CAD and its gates still see boxes. From the cache: output_panel 131 parts, pi_cap 15, each lever sensor 23. A board is found by fitting its lettering's corners to the reference (order-free, exact to a micron); a footprint keeps its box when its model is not in KiCad's library here (USB-C, the TRS jack, the inlet), when the instance does not draw it, or when the model would not land on its F.Fab box. brenner's boards (LED, UI) get models when their geom files are next written by the new exporter |
-| Section cut, orthographic and standard views | not started | |
+| Section cut | `docs/index.html` | ✅ key c: one plane square to a CAD axis at a CAD coordinate (X / Y / Z, flip, slider, typed value). It starts through the middle of the selection, else of the model, and takes away the side nearer the eye. What is cut away cannot be picked, so the exposed parts can be selected and measured. The cut faces are OPEN (no caps): a solid shows its inside walls |
+| Undo / redo of what is shown | `docs/index.html` | ✅ ctrl+z, ctrl+y (ctrl+shift+z): each hide, isolate, show all, eye click and deck toggle is one step; a step is the set of hidden NAMES, so it survives a reload |
+| A part drawn as several solids is one part per solid | `tools/web_export.py` `pieces()` | ✅ user: "bridge_bearings appears as one part, I'd expect each bearing and rod to be separate". `<name>_0 .. _N` in the web export only (the build's names are untouched); the parts list still shows one row. Stays whole if the rig names it, if a piece name is taken, or if it has faces outside a solid. Today: bridge_bearings 11, the pogo pin sets 4 each, ui_shaft 2, the deck's colour bodies |
+| Parallel projection and axis views | `docs/index.html` | ✅ key o; buttons +X −X +Y −Y +Z −Z (named by the CAD side looked from, parallel) and iso |
 | `agent_sync view` and the build opening the page, `assembly.step` dropped | not started | the lead's `src/build.py` and cadkit; printed parts keep their own STEP files |
 
 How the page stays fast with every part still addressable: parts that never move are
@@ -5757,3 +5760,25 @@ by 0.5 mm^3 without having moved. `mesh_shape` now meshes a COPY. Proved on a fu
 of 827 parts: no shape carries a triangulation afterwards, no bounding box changed, and
 the sweep and overlap gates read 0 / 0 both before and after the export on the same
 parts. The rule: test an export's side effects on what it is handed, not only its output.
+
+
+**Why build #864 recomputed every carriage-travel pair (lead's question).** One time
+only. The gates key their pair caches on the bytes of each shape, triangulation included.
+Every build before #864 handed the gate shapes the old preview export had meshed in
+place, so the stored keys were of meshed shapes; from #864 the shapes arrive clean, so
+no key matched (and the pair count went 953 -> 935 because bounding boxes are exact
+again). Checked: a shape's key is the same before and after this export, and changes
+after an in-place mesh. The board-detail step now cuts a COPY of the board solid as well,
+since a boolean writes to its operands.
+
+**Boards that draw their own parts (optical, the tee).** They model each part from their
+own package table, so no corner sits on the F.Fab box and the "is it drawn here" test
+passed only one part of the optical board. The test now also accepts whatever stands on
+the footprint within 0.25 mm of its box, and cuts that away. optical: 1 -> 223 models;
+can_tee: 0 -> 1 each.
+
+
+**Open, from the lead (not urgent, not red):** the overlap gate recomputed 411 of 4853
+pairs on a build where only tools/web_boards.py changed; about 184 was normal before the
+viewer work. To chase: which pairs, and whether their keys differ between two
+consecutive builds.
