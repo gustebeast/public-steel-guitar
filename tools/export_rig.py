@@ -316,7 +316,7 @@ def _clamp_motion(i):
             "origin": o0, "dir": d, "mm_per_mm": D.BELT_PER_MM, "rad_per_mm": ang / belt}
 
 
-def build_rig(build_n=None) -> pathlib.Path:
+def build_rig(build_n=None, out=RIG) -> pathlib.Path:
     if build_n is None:
         from tools.export_glb import _current_build_n
         build_n = _current_build_n()
@@ -395,15 +395,16 @@ def build_rig(build_n=None) -> pathlib.Path:
         "pedals": pedals,
         "copedent": copedent,
     }
-    RIG.parent.mkdir(parents=True, exist_ok=True)
-    RIG.write_text(json.dumps(rig, indent=1))
-    print(f"wrote {RIG.relative_to(REPO).as_posix()}  "
+    out = pathlib.Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(rig, indent=1))
+    print(f"wrote {out.name}  "
           f"({len(strings)} strings, {len(pedals)} posed pedals, "
           f"{len(copedent)} controls "
           f"({sum(1 for k in _COPEDENT if k.startswith('P'))} pedals + "
           f"{sum(1 for k in _COPEDENT if not k.startswith('P'))} levers), "
           f"build #{build_n})")
-    return RIG
+    return out
 
 
 def main() -> None:

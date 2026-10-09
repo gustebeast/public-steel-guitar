@@ -148,8 +148,8 @@ already threw away one full run’s answer):
 
 ## When it closes
 
-`opt_audit` → SI groups → `cad_geom_check optical` → `scratch_view --gate` → render and copy
-`scratch.step` over `assembly.step` (the user reads the FreeCAD tab, not the commit) → commit →
+`opt_audit` → SI groups → `cad_geom_check optical` → `scratch_view --gate` → `agent_sync view`
+(the user reads the viewer page, not the commit) → commit →
 `agent_sync submit`.
 
 ## Then, and only then
