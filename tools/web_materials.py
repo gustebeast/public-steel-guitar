@@ -12,8 +12,8 @@ must not. An assembly instance is named after its part with a station prefix and
 groups round it (pedal3_axle, rkl_knee_housing, top_plate_1), so the name is reduced the
 way the build's own colour lookup reduces it.
 
-The viewer uses this for its "as printed" view: every part of one filament in that
-filament's colour and finish, to judge the instrument as it will come off the printer.
+The viewer shows every part of one filament in that filament's colour and finish, the
+instrument as it will come off the printer.
 
 A part that is NOT printed gets a FINISH instead (cadkit/web/finishes.py: steel, brass,
 rubber...), by what its name says it is, so a bearing does not look moulded. It keeps
@@ -62,7 +62,7 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in (
     (r"_shim$", None),                   # printed, though named after the board it packs
     (r"(^|_)wire_|_pigtail$|_cable_", "pvc"),
     (r"_silk(_|$)", "ink"),
-    (r"insert", "brass"),
+    (r"insert|^nut$|^string_nut$", "brass"),      # the leadscrew nuts, the string ends
     (r"pogo_.*(pins|pads)|_pogo_pins$", "gold"),
     (r"bearing|magnet$|^string$", "polished"),
     (r"screw$|screw_(top|bottom)$|washer$|spring$|_dowel$|_rod$|^leadscrew$|_m4_(key|mid)$"
@@ -70,8 +70,9 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in (
     (r"^belt$", "rubber"),
     (r"^pickup$", "aluminium"),
     (r"^motor$", "painted"),
-    (r"_ph_(top|bottom)$|_plug_", "nylon"),
-    (r"^ui_screen$", "glass"),
+    (r"_ph_(top|bottom)$|_plug_|^ui_pwr_stem$", "nylon"),
+    (r"^ui_screen$", "screen"),
+    (r"^ui_screen_lit$", "ink"),                  # light, not a surface: flat and bright
     (r"(^|_)pcb(_[a-z]+)?$|_board_(top|bottom)$|^(motor_ctrl|output_panel|pi_cap|pi4)$", "board"),
 )]
 
@@ -85,14 +86,16 @@ def finish_of(base: str):
     return None
 
 
-# PRINTS IN TWO FILAMENTS: two parts in the build, ONE object on the printer and in the
-# hand, so the viewer hides, selects and lists them as one (cadkit.web.export units=).
+# TWO PARTS IN THE BUILD, ONE OBJECT in the hand (a print in two filaments, a screen
+# and what it shows), so the viewer hides, selects and lists them as one
+# (cadkit.web.export units=).
 _ONE_PRINT = ((re.compile(r"^top_plate_color_(\d+)$"), r"top_plate_\1"),
-              (re.compile(r"^chassis_light_(\d+)$"), r"chassis_\1"))
+              (re.compile(r"^chassis_light_(\d+)$"), r"chassis_\1"),
+              (re.compile(r"^ui_screen_lit$"), "ui_screen"))     # what the screen shows
 
 
 def unit_of(name: str):
-    """The part `name` is printed as one object with, or None."""
+    """The part `name` is one object with, or None."""
     for rx, to in _ONE_PRINT:
         if rx.match(name):
             return rx.sub(to, name)
@@ -101,7 +104,7 @@ def unit_of(name: str):
 
 def material_of(name: str):
     """What `name` (an instance in the assembly) is made of: "petg-gf" | "pctg" |
-    "pctg-clear" | "tpu" for a printed part, a finish for a bought one, else None."""
+    "pctg-clear" | "pctg-black" | "tpu" for a printed part, a finish for a bought one, else None."""
     name = name.split("__")[0]
     return _filament_of(name) or finish_of(re.sub(r"(_\d+)+$", "", name))
 
@@ -118,6 +121,10 @@ def _filament_of(name: str):
         return "pctg"
     if base in ("top_plate", "chassis_light"):
         return "pctg-clear"
+    # THE TWO CAPS THE HAND FINDS on the deck, the stick's and the power button's, are
+    # BLACK PCTG (user, 2026-10-09), not the deck's colour
+    if base in ("ui_knob", "ui_pwr_cap"):
+        return "pctg-black"
     # chassis_2 -- and chassis_1_0: a part drawn as several solids is exported one
     # solid at a time (cadkit.web.pieces), each with one more index on its name
     tail = name
