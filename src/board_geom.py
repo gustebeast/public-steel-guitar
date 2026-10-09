@@ -37,10 +37,24 @@ from __future__ import annotations
 
 import os
 
-from cadkit.board_geom import Boards, SILK_CAP, SILK_T, fp_name  # noqa: F401  (re-exported)
+from cadkit.board_geom import Boards, SILK_CAP, SILK_T, fp_name, mask_rgb  # noqa: F401  (re-exported)
 
 GEOM_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                         "elec", "geom")          # tracked: elec/out is git-ignored
+
+# THE SOLDER MASK EACH BOARD IS ORDERED IN, where it is not the fab's default green. A
+# board is drawn in it (src/build.py's colours), so the model shows the board that will
+# be in the hand. The order itself is each board's "order_options" in elec/<board>.py:
+# keep the two in step.
+MASK: dict = {
+    "optical": "black",      # functional, not taste: the sensor cavity is a light trap
+}
+
+
+def mask(board: str):
+    """(r, g, b) of `board` as made: its solder mask's colour."""
+    return mask_rgb(MASK.get(board, "green"))
+
 
 # Laid OVER cadkit's tables (project wins).
 _HEIGHT: dict = {

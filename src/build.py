@@ -2083,6 +2083,9 @@ def collect_components():
 
 # Per-part colours (single source of truth — the viewer and the scratch view both
 # resolve through _color_for). RGB floats 0..1.
+# OUR CIRCUIT BOARDS ARE DRAWN IN THEIR SOLDER MASK'S COLOUR (user, 2026-10-09: true
+# to life), read from the one table of what each is ordered in: _BG.mask(<board>).
+from . import board_geom as _BG  # noqa: E402
 _COLORS = {
     "bridge_endplate": (0.39, 0.58, 0.93),   # PETG-GF — load-critical
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
@@ -2137,8 +2140,8 @@ _COLORS = {
     "lock_pin_insert": (0.80, 0.60, 0.35),   # brass heat-set insert
     # the leg's blind-mates: pogo boards (src.leg_pogo). PCB green, gold pads/pins,
     # the JST PH mated envelope in harness white, screws steel
-    "pogo_male_board":   (0.10, 0.35, 0.18),
-    "pogo_female_board": (0.10, 0.35, 0.18),
+    "pogo_male_board":   _BG.mask("leg_pogo_male_top"),
+    "pogo_female_board": _BG.mask("leg_pogo_female_top"),
     "pogo_male_pins":    (0.83, 0.69, 0.22),
     "pogo_female_pads":  (0.83, 0.69, 0.22),
     "pogo_male_ph":      (0.90, 0.90, 0.86),
@@ -2229,14 +2232,14 @@ _COLORS = {
     "kl_crystal":      (0.72, 0.74, 0.78),   # 3225 crystal can (bright metal)
     "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ
     "kl_magnet":       (0.80, 0.20, 0.20),   # diametric magnet
-    "kl_pcb":          (0.05, 0.35, 0.15),   # MT6701 board (green)
+    "kl_pcb":          _BG.mask("lever_sensor"),   # MT6701 board (green)
     "kv_housing":      (0.30, 0.36, 0.42),   # LKV housing (PETG-GF, as LKL)
     # ...THE SAME BLUE AS LKL'S ARM, not a colour of its own (user, 2026-09-25: "the
     # levers are blue for LKL but yellow for LKV, we should color them consistently").
     # The comment beside it already said "as LKL" while the number said otherwise, which
     # is how it survived: same part, same job, same material, two colours.
     "kv_lever":        (0.27, 0.51, 0.71),   # LKV arm (PCTG, as LKL -- the same blue)
-    "kv_pcb":          (0.05, 0.35, 0.15),   # LKV MT6701 board (green, as LKL)
+    "kv_pcb":          _BG.mask("lever_sensor"),   # LKV MT6701 board (green, as LKL)
     "kv_chip":         (0.12, 0.12, 0.14),   # LKV MT6701 package (black)
     "kv_pcb_shim":     (0.75, 0.75, 0.78),   # LKV board shim (printed, takes up the slack)
     # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
@@ -2258,15 +2261,15 @@ _COLORS = {
     # electronics bay (dummies) + panel jacks
 
     "pi4":             (0.05, 0.35, 0.15),   # PCB green
-    "pi_cap":          (0.05, 0.35, 0.15),   # PCB green
+    "pi_cap":          _BG.mask("pi_cap"),   # PCB green
     "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
-    "output_panel":    (0.45, 0.30, 0.45),   # output + panel board (VBUS broken,
+    "output_panel":    _BG.mask("output_panel"),   # output + panel board (VBUS broken,
                                              # DAC + true-bypass relay + the TS jack)
-    "motor_ctrl":      (0.55, 0.25, 0.25),   # motor controller PCB (CH32V307 +
+    "motor_ctrl":      _BG.mask("motor_ctrl"),   # motor controller PCB (CH32V307 +
                                              # 2x CAN transceiver + XH headers)
-    "tee_pcb":         (0.10, 0.42, 0.18),   # trunk-and-drop bus tee PCBs
+    "tee_pcb":         _BG.mask("can_tee"),   # trunk-and-drop bus tee PCBs
     "tee_cradle":      (0.32, 0.55, 0.42),   # PCTG drop-in PCB cradle (pcb_cradle, side hold-down)
-    "trrs_adapter_pcb":    (0.18, 0.42, 0.24),   # the leg's TRRS<->XH adapter (bronner's board)
+    "trrs_adapter_pcb":    _BG.mask("trrs_adapter"),   # the leg's TRRS<->XH adapter (bronner's board)
     "trrs_adapter_plug":   (0.15, 0.15, 0.17),   # the lead from the leg, plugged in
     "trrs_adapter_screw":  (0.55, 0.55, 0.58),   # M4 button, 2.5 hex -- the one lock
     "trrs_adapter_insert": (0.80, 0.60, 0.35),   # its brass heat-set insert
@@ -2274,8 +2277,7 @@ _COLORS = {
     "tee_insert":      (0.72, 0.60, 0.30),
     "board_screw":     (0.72, 0.74, 0.78),   # M4x10 button THROUGH our boards' mounting ears
     "board_insert":    (0.72, 0.60, 0.30),   # its heat-set brass, in the cradle boss   # M4 heat-set brass, in the cradle boss
-    "optical_pcb":     (0.12, 0.30, 0.55),   # per-string optical strip (blue solder mask,
-                                             # so it reads apart from the green audio PCBs)
+    "optical_pcb":     _BG.mask("optical"),   # per-string optical strip: BLACK mask, as ordered
     # ⚠ MATCHED TO THE LOOSE-WIRE COLOURS BELOW, not picked fresh: a USB run is a USB
     # run whether it is drawn as a wire or as a modelled cable, and the old single entry
     # was (0.15,0.15,0.17) -- near-black, which this project reserves for TPU.
@@ -2293,7 +2295,7 @@ _COLORS = {
     "top_plate":       (0.88, 0.91, 0.94),   # transparent-PCTG deck base + fret lines
     "top_plate_color": (0.30, 0.33, 0.38),   # colour-PCTG deck layer (skin contact)
     "chassis_light":   (0.88, 0.91, 0.94),   # light window -- the deck panels' white
-    "ui_pcb":          (0.05, 0.35, 0.18),   # the UI board, as fabbed
+    "ui_pcb":          _BG.mask("ui_board"),   # the UI board, as fabbed
     "ui_display":      (0.16, 0.16, 0.18),   # the module's metal bezel -- the part the
                                              # deck's ledge bears on and covers
     "ui_screen":       (0.64, 0.66, 0.68),   # the 128 x 64 of LIT AREA. Light enough to
@@ -2338,10 +2340,10 @@ _COLORS = {
     # thing that tells you which way round the plug goes.
     # named per PANEL, not per index (_color_for strips digits, not words), because
     # "mid" and "key" are what every other file calls these two boards
-    "fret_pcb_mid":    (0.05, 0.35, 0.15),   # PCB green
-    "fret_pcb_key":    (0.05, 0.35, 0.15),
-    "foot_pcb_a":      (0.05, 0.35, 0.15),
-    "foot_pcb_b":      (0.05, 0.35, 0.15),
+    "fret_pcb_mid":    _BG.mask("fret_led_mid"),   # PCB green
+    "fret_pcb_key":    _BG.mask("fret_led_key"),
+    "foot_pcb_a":      _BG.mask("foot_led_a"),
+    "foot_pcb_b":      _BG.mask("foot_led_b"),
     "fret_pcb_mid_silk": (0.95, 0.95, 0.93),   # silkscreen ink, its own part on each board
     "fret_pcb_key_silk": (0.95, 0.95, 0.93),
     "foot_pcb_a_silk": (0.95, 0.95, 0.93),
