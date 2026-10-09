@@ -5856,3 +5856,13 @@ brass, pogo contacts gold, belts rubber, wires pvc, boards a gloss lacquer...). 
 models: faces in the libraries' fixed metal colours are flagged metal in the vertex
 colour's alpha. Left plain (no rule): nut, string_nut, ui_pwr_*, and the kv_* printed
 parts the filament lookup has never matched.
+
+**Two-filament prints are one thing in the viewer; clear PCTG is see-through (user, 2026-10-09).**
+cadkit (canonical, pushed): `export(units=, parents=)` -- the solids of one part are one
+unit by themselves, and the project's `unit_of` joins a colour half to its base;
+any filament named `...-clear` is drawn at 38% (page, as-printed, and the Blender
+tracer; it casts no shadow in the drawn picture). Project: `tools/web_materials.py`
+`unit_of` (top_plate_color_N -> top_plate_N, chassis_light_N -> chassis_N) and
+`top_plate`/`chassis_light` = "pctg-clear" (was the placeholder "pctg-alt");
+`tools/export_glb.py` and `tools/scratch_view.py` pass `units=`. NEEDS the cadkit commit
+vendored first: `export()` has no `units` keyword before it.
