@@ -5804,3 +5804,45 @@ they were left as they are. `vkl_kv_housing` is somebody else's part; the lead k
 **Viewer MRs are batched (lead, 2026-10-09; the user's standing rule):** after f80babb2,
 viewer changes stay local until a round worth a ten-minute build, or the user asks to see
 it published. Gate, board and fab work is still submitted when ready.
+
+**The other projects use the web viewer; the FreeCAD hub is deleted (2026-10-09).** Seven
+consumers switched and committed locally, one commit each (`from cadkit.web import show`,
+`View Assembly.cmd` runs `py -3.12 -m cadkit.web.view`, wording): cat-nip-ball 72f6a227,
+drill-bit-holder 6b42bd97, haptic-plank-logo 161768b, retractable-cable-spool 9bfdb8d,
+superglue-cap 07094812, toothpaste-dispenser cf165f9e, watering-backpack 182ea11. Not
+touched: single-ball-adapter (dirty tree, no `cadkit/web`, still imports the hub: it must
+be switched together with its next cadkit propagate) and plant-pot (the lead's uncommitted
+switch; README still describes FreeCAD). Canonical cadkit d08b68f deletes `cadkit/freecad`
+and `ScratchView`'s unused `crop=`; 0f121e6 makes `show(step)` serve from the STEP's folder.
+
+**Viewer: a ray traced lighting level (cadkit 10db352, 648bea4; awaiting propagate).** Fourth
+step of the light button. The drawn picture stays live; once the view is still a path
+tracer (three-gpu-pathtracer 0.0.23) works out of sight and its picture is swapped in only
+at 64 samples, sharpening to 256; any movement puts the drawn picture back on the next
+frame. Tree built once per model in a worker (3.6 s, 1.22M triangles); hide/show is a
+refit (~0.3 s). Measured on an RTX 5090 only, 7-9 ms a sample at 1280x800. Not traced:
+section cuts. Not judged: the light balance against the drawn picture, weaker cards.
+
+**Why the full build's import stage did not shrink with the lazy solids (lead, #871: 78.6 s).**
+`src/build.py:1310` (`_lever_plane_y`) takes the bounding box of `knee_housing` at module
+level, which builds it (18.9 s) during import; the build needs that solid anyway, so the
+time only changes stage. It cannot be swapped for `2 * HOUS_HW`: the solid is 58.4 deep in
+Y against 36.4 for the prism (tenons). Any scope that imports `src.build` pays it too.
+The earlier 84 -> 63 s figure for `import src.build` does not reproduce (77.6 s now); the
+scope figures (bridge_endplate 79 -> 35 s) do not import `src.build` and stand.
+
+**Viewer: ray tracing moved to the graphics card (cadkit 149b190, 57e7733, 65219e7; awaiting propagate).**
+The in-browser tracer is gone (user: too clunky). The local server keeps a background
+Blender (Cycles on OptiX, denoised there) with the model loaded: `cadkit/web/trace.py`,
+`trace_blender.py`, `POST /trace`. The page sends camera, hidden parts, rig pose; gets a
+24-sample picture then a 128-sample one. Measured (RTX 5090, 1.2M triangles, 1920x1200):
+first picture ~0.3-0.5 s after the view stops, full ~1.2 s; model load 0.9 s, Blender
+start ~5 s (once, warmed when the level is chosen). The picture is asked for where the
+orbit glide WILL end, while it still glides. Blender 5.2.2 portable is in
+`%LOCALAPPDATA%/Programs/Blender` (user asked for the install); without Blender, or on
+the published page, the level is not offered. Not done: section cuts are not traced.
+
+**Boards drawn in their solder mask's colour (user, 2026-10-09).** `cadkit.board_geom.mask_rgb`
+(canonical 266553c), `src/board_geom.py` `MASK` + `mask()`, `src/build.py` colour table.
+optical is black (its order option), every other board of ours the default green;
+motor_ctrl and output_panel lose their made-up red and purple. Needs 266553c propagated.
