@@ -452,7 +452,8 @@
       if (!mesh.isMesh) continue;
       const g = mesh.geometry, col = g.attributes.color ? g.attributes.color.array : null;
       const mat = col ? vcMat : partMaterial(mesh.material);
-      const p = { name: mesh.name, unit: unitOf(mesh.name), family: family(mesh.name), mat, hidden: false, col,
+      const unit = mesh.userData.unit || unitOf(mesh.name);      // a board's lettering names its board
+      const p = { name: mesh.name, unit, family: family(unit), mat, hidden: false, col,
                   pos: g.attributes.position.array, idx: g.index.array,
                   dynamic: moving.has(mesh.name), mesh: null, batch: null,
                   vStart: 0, iStart: 0, iCount: g.index.count };
@@ -634,7 +635,7 @@
     const fams = [...new Set(selection.map(p => p.family))];
     const units = [...new Set(selection.map(p => p.unit))];
     const head = units.length === 1
-      ? `<div class="name">${units[0]}</div>` + (selection.length > 1 ? `<div class="dim">board and ${selection.length - 1} components</div>` : '')
+      ? `<div class="name">${units[0]}</div>` + (selection.length > 1 ? `<div class="dim">board, lettering and components: ${selection.length} pieces</div>` : '')
       : `<div class="name">${units.length} parts</div><div class="dim">${fams.slice(0, 6).join(', ')}${fams.length > 6 ? ', …' : ''}</div>`;
     const sib = M.list.filter(p => fams.includes(p.family)).length;
     el.innerHTML = `<h4>selected</h4>${head}<div class="bar" style="margin-top:6px">
@@ -1178,6 +1179,13 @@
       composer.addPass(new RenderPass(scene, camera));
       gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
       gtao.updateGtaoMaterial({ radius: 14, distanceExponent: 1.5, thickness: 2, scale: 1.1, samples: 12 });
+      // the occlusion is worked out from the PARTS alone: the selection tint and the
+      // measure marks are drawn over them and would read as solid black otherwise
+      const hideRest = gtao.overrideVisibility.bind(gtao);
+      gtao.overrideVisibility = () => {
+        hideRest();
+        scene.traverse(o => { if (o.isMesh && !(o.material && o.material.isMeshStandardMaterial)) o.visible = false; });
+      };
       composer.addPass(gtao);
       composer.addPass(new OutputPass());
     }
@@ -1354,7 +1362,7 @@
   window.viewer = { renderer, scene, camera, controls, sec, setSection, undo, viewFrom, setQuality, get quality() { return quality; }, key, THREE,
                     frame() { controls.update(); lightDirty = true; renderer.info.reset(); drawFrame(); }, M, meas, pickAt, snapAt, setHidden, setMode,
                     measureClick, between, showAll, get selection() { return selection; },
-                    select(names) { selection = names.flatMap(n => M.units.get(unitOf(n)) || []); drawSelection(); },
+                    select(names) { selection = names.flatMap(n => M.byName.has(n) ? M.units.get(M.byName.get(n).unit) : []); drawSelection(); },
                     selAction, loadGeo, toPx };
   setQuality(quality);
   init();
