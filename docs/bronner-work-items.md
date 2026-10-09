@@ -5740,7 +5740,7 @@ part colours, once.
 | Section cut | `docs/index.html` | ✅ key c: one plane square to a CAD axis at a CAD coordinate (X / Y / Z, flip, slider, typed value). It starts through the middle of the selection, else of the model, and takes away the side nearer the eye. What is cut away cannot be picked, so the exposed parts can be selected and measured. The cut faces are OPEN (no caps): a solid shows its inside walls |
 | Undo / redo of what is shown | `docs/index.html` | ✅ ctrl+z, ctrl+y (ctrl+shift+z): each hide, isolate, show all, eye click and deck toggle is one step; a step is the set of hidden NAMES, so it survives a reload |
 | A part drawn as several solids is one part per solid | `tools/web_export.py` `pieces()` | ✅ user: "bridge_bearings appears as one part, I'd expect each bearing and rod to be separate". `<name>_0 .. _N` in the web export only (the build's names are untouched); the parts list still shows one row. Stays whole if the rig names it, if a piece name is taken, or if it has faces outside a solid. Today: bridge_bearings 11, the pogo pin sets 4 each, ui_shaft 2, the deck's colour bodies |
-| Parallel projection and axis views | `docs/index.html` | ✅ key o; buttons +X −X +Y −Y +Z −Z (named by the CAD side looked from, parallel) and iso |
+| Axis views | `docs/index.html` | ✅ buttons +X −X +Y −Y +Z −Z (named by the CAD side looked from) and iso. The camera is PERSPECTIVE and only that (user, 2026-10-09: pick one and lock it in, whichever looks like the real thing) |
 | `agent_sync view` and the build opening the page, `assembly.step` dropped | not started | the lead's `src/build.py` and cadkit; printed parts keep their own STEP files |
 
 How the page stays fast with every part still addressable: parts that never move are
