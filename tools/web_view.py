@@ -8,7 +8,8 @@
 It is the same page GitHub Pages serves (docs/index.html), reading a model written to
 .webview/ instead of docs/. The page watches .webview/stamp.json and reloads the model
 when it changes, keeping the camera and whatever is hidden, so the loop is: edit, run
-this, look.
+this, look. An edit to the page itself (docs/index.html) reloads the open page the same
+way: nobody presses reload.
 
 WHAT IT READS. The surroundings are the scratch cache (.scratch_cache/*.brep, written
 by `tools.scratch_view --start`); the part under work is built fresh from your scope,
@@ -54,6 +55,18 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         if name in MODEL_FILES and (OUT / name).exists():
             return str(OUT / name)
         return super().translate_path(path)
+
+    def do_GET(self):
+        # when the PAGE itself was last edited: the open page reloads itself on a change
+        if self.path.split("?", 1)[0] == "/page.json":
+            body = json.dumps({"t": (DOCS / "index.html").stat().st_mtime_ns}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        super().do_GET()
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")
