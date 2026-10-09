@@ -46,6 +46,7 @@ GEOM_DIR = ROOT / "elec" / "geom"
 CACHE = ROOT / ".webview" / "boards"
 MODEL_TOLERANCE = 0.03        # chord error for a component model: parts are small
 SEP = "__"                    # <board part>__<ref> names a component's own part
+LOOSE = 0.25                  # how far outside its F.Fab box a hand-drawn body may stand
 
 
 # ── where KiCad keeps its models ──────────────────────────────────────────────────
@@ -362,8 +363,17 @@ def detail(meshed, shape_of, log=print):
                     if len(col):
                         h = max(h or 0.0, float(np.abs(col - (0.0 if back else t)).max()))
             if h is None:
-                keep("not drawn on this instance")
-                continue
+                # a board that draws its parts from its own package table (optical) has
+                # no corner on the F.Fab box: take whatever stands on this footprint
+                on = local[(local[:, 0] > x0 - LOOSE) & (local[:, 0] < x1 + LOOSE)
+                           & (local[:, 1] > y0 - LOOSE) & (local[:, 1] < y1 + LOOSE)
+                           & ((local[:, 2] < -0.01) if back else (local[:, 2] > t + 0.01))]
+                if len(on) < 4:
+                    keep("not drawn on this instance")
+                    continue
+                h = float(np.abs(on[:, 2] - (0.0 if back else t)).max())
+                x0, x1 = min(x0, float(on[:, 0].min())), max(x1, float(on[:, 0].max()))
+                y0, y1 = min(y0, float(on[:, 1].min())), max(y1, float(on[:, 1].max()))
             model = ms[0]
             if any(abs(s - 1.0) > 1e-6 for s in model["scale"]):
                 keep("scaled model")
@@ -380,7 +390,7 @@ def detail(meshed, shape_of, log=print):
             p = _apply(fm, mm["pos"].astype(float))
             lo, hi = p.min(0), p.max(0)
             cx, cy = (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2
-            fx, fy = (x0 + x1) / 2, (y0 + y1) / 2
+            fx, fy = (f["fab"][0] + f["fab"][1]) / 2, (f["fab"][2] + f["fab"][3]) / 2
             slack_x = max(1.0, 0.5 * (x1 - x0))
             slack_y = max(1.0, 0.5 * (y1 - y0))
             if abs(cx - fx) > slack_x or abs(cy - fy) > slack_y:
@@ -427,7 +437,18 @@ def detail(meshed, shape_of, log=print):
             # pair caches on the caller's shape byte for byte
             from OCP.BRepBuilderAPI import BRepBuilderAPI_Copy
             solid = cq.Shape.cast(BRepBuilderAPI_Copy(_topods(shape_of(solid_name)), True, False).Shape())
+            v0 = solid.Volume()
             trimmed = solid.cut(placed)
+            if not trimmed.isValid() or trimmed.Volume() > v0 - 1e-3:
+                # OCCT returns the operand untouched when the cutters overlap one
+                # another (they do where hand-drawn bodies stand close): one at a time
+                trimmed = solid
+                for b in placed.Solids():
+                    nxt = trimmed.cut(b)
+                    if nxt.isValid() and nxt.Volume() <= trimmed.Volume() + 1e-6:
+                        trimmed = nxt
+                if trimmed.Volume() > v0 - 1e-3:
+                    log("web boards: %s -- nothing came away under its models" % solid_name)
             new = mesh_shape(trimmed.wrapped)
             if new is not None:
                 meshed[solid_name] = new

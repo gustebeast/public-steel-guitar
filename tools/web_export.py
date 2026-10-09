@@ -357,8 +357,53 @@ def _topods(obj):
     return getattr(obj, "wrapped", obj)
 
 
+def pieces(name, shape, taken=(), whole=()):
+    """[(piece name, shape)]: a part drawn as several separate solids (a row of
+    bearings and their rod) becomes one part per solid, <name>_0 .. <name>_N, so each can
+    be picked, hidden and measured by itself. It stays whole when it is one solid, when
+    it has faces outside any solid, when it is named in `whole` (the rig moves parts by
+    name) or when a piece's name is already somebody's (`taken`)."""
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.TopAbs import TopAbs_SOLID, TopAbs_FACE
+    from OCP.TopoDS import TopoDS
+    one = [(name, shape)]
+    if name in whole:
+        return one
+    out, ex = [], TopExp_Explorer(shape, TopAbs_SOLID)
+    while ex.More():
+        out.append(TopoDS.Solid_s(ex.Current()))
+        ex.Next()
+    if len(out) < 2 or TopExp_Explorer(shape, TopAbs_FACE, TopAbs_SOLID).More():
+        return one
+    names = ["%s_%d" % (name, i) for i in range(len(out))]
+    if any(n in taken for n in names):
+        return one
+    return list(zip(names, out))
+
+
+def rig_names(path):
+    """Every string in a rig file: the part names the animation moves (and more, which
+    costs nothing). Empty when there is no rig yet."""
+    out = set()
+
+    def walk(v):
+        if isinstance(v, str):
+            out.add(v)
+        elif isinstance(v, dict):
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x)
+    try:
+        walk(json.loads(pathlib.Path(path).read_text(encoding="utf-8")))
+    except Exception:
+        pass
+    return out
+
+
 def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=False,
-           boards=True):
+           boards=True, whole=None):
     """Write <stem>.glb and <stem>.geo.json into out_dir.
 
     boards = True swaps each circuit board's footprint boxes for KiCad's own part models
@@ -368,20 +413,30 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
              (or, with `meshed`, a function returning one: it is called only if the part
              has to be re-cut), colour a cq.Color or an (r, g, b[, a]) tuple.
     meshed = optional {name: mesh_shape() result} to reuse (the local view's cache).
+    whole  = names that must stay one part though drawn as several solids (see pieces());
+             by default the names in the rig file beside the output.
     Returns (glb path, sidecar path, {name: mesh})."""
     out_dir = pathlib.Path(out_dir)
+    if whole is None:
+        whole = rig_names(out_dir / "rig.json")
     done, colors, solids = {}, {}, {}
-    for name, solid, color in parts:
-        if name in done or name in solids:
-            raise ValueError("two parts are both named %r: the viewer addresses parts by name" % name)
-        solids[name] = solid
-        m = (meshed or {}).get(name)
-        if m is None:
-            m = mesh_shape(_topods(solid))
-        if m is None:
-            continue
-        done[name] = m
-        colors[name] = _rgba(color)
+    taken = {p[0] for p in parts}
+    for part_name, solid, color in parts:
+        if part_name in done or part_name in solids:
+            raise ValueError("two parts are both named %r: the viewer addresses parts by name" % part_name)
+        if (meshed or {}).get(part_name) is not None:
+            split = [(part_name, solid)]
+        else:
+            split = pieces(part_name, _topods(solid), taken, whole)
+        for name, piece in split:
+            solids[name] = piece
+            m = (meshed or {}).get(name)
+            if m is None:
+                m = mesh_shape(_topods(piece))
+            if m is None:
+                continue
+            done[name] = m
+            colors[name] = _rgba(color)
     models = {}
     if boards:
         try:

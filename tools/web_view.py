@@ -118,12 +118,13 @@ def _colors(names):
     return {n: tuple(known[n]) for n in names}
 
 
-def _cached_mesh(brep):
-    """mesh_shape() of a cached solid, itself cached on the file's size and time."""
+def _cached_mesh(brep, taken, whole):
+    """[(piece name, mesh)] of a cached part (web_export.pieces says when a part is
+    several), itself cached on the file's size and time."""
     import cadquery as cq
-    from tools.web_export import mesh_shape, TOLERANCE, ANGULAR, FORMAT
+    from tools.web_export import mesh_shape, pieces, TOLERANCE, ANGULAR, FORMAT
     st = brep.stat()
-    key = (st.st_size, st.st_mtime_ns, TOLERANCE, ANGULAR, FORMAT)
+    key = (st.st_size, st.st_mtime_ns, TOLERANCE, ANGULAR, FORMAT, "pieces", brep.stem in whole)
     f = OUT / "mesh" / (brep.stem + ".pkl")
     if f.exists():
         try:
@@ -132,14 +133,22 @@ def _cached_mesh(brep):
                 return m
         except Exception:
             pass
-    m = mesh_shape(cq.Shape.importBrep(str(brep)).wrapped)
+    m = [(n, mesh_shape(s)) for n, s in
+         pieces(brep.stem, cq.Shape.importBrep(str(brep)).wrapped, taken, whole)]
+    m = [(n, x) for n, x in m if x is not None]
     f.parent.mkdir(parents=True, exist_ok=True)
     f.write_bytes(pickle.dumps((key, m), protocol=pickle.HIGHEST_PROTOCOL))
     return m
 
 
+def _piece(brep, name):
+    import cadquery as cq
+    from tools.web_export import pieces
+    return dict(pieces(brep.stem, cq.Shape.importBrep(str(brep)).wrapped))[name]
+
+
 def export_local(live=True, rig=False):
-    from tools.web_export import export, mesh_shape, _topods
+    from tools.web_export import export, mesh_shape, pieces, rig_names, _topods
     if not (CACHE / "STAMP").exists():
         raise SystemExit("web view: no scratch cache. Begin a flow first:\n"
                          "  py -3.12 -m tools.scratch_view --start")
@@ -159,20 +168,21 @@ def export_local(live=True, rig=False):
     mine = {n for n, _ in live_parts}
     breps = [f for f in sorted(CACHE.glob("*.brep"))
              if f.stem not in mine and not (replaced and f.stem.startswith(replaced))]
-    meshed, solids = {}, {}
+    meshed, solids, base = {}, {}, {}             # base: a piece's part, for its colour
+    taken = {f.stem for f in breps} | mine
+    whole = rig_names(OUT / "rig.json") | rig_names(DOCS / "rig.json")
     for f in breps:
-        m = _cached_mesh(f)
-        if m is not None:
-            meshed[f.stem] = m
-            solids[f.stem] = (lambda p=f: __import__("cadquery").Shape.importBrep(str(p)))
-    for n, w in live_parts:
-        m = mesh_shape(_topods(w))
-        if m is not None:
-            meshed[n] = m
-            solids[n] = w
-    cols = _colors(list(meshed))
+        for n, m in _cached_mesh(f, taken, whole):
+            meshed[n], base[n] = m, f.stem
+            solids[n] = (lambda p=f, k=n: _piece(p, k))
+    for part, w in live_parts:
+        for n, s in pieces(part, _topods(w), taken, whole):
+            m = mesh_shape(s)
+            if m is not None:
+                meshed[n], base[n], solids[n] = m, part, s
+    cols = _colors(sorted(set(base.values())))
     age = (time.time() - float((CACHE / "STAMP").read_text())) / 60.0
-    export([(n, solids[n], cols[n]) for n in meshed], OUT, meshed=meshed)
+    export([(n, solids[n], cols[base[n]]) for n in meshed], OUT, meshed=meshed)
     if rig or not (OUT / "rig.json").exists():
         try:
             import tools.export_rig as ER
