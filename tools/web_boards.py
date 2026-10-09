@@ -45,6 +45,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 GEOM_DIR = ROOT / "elec" / "geom"
 CACHE = ROOT / ".webview" / "boards"
 MODEL_TOLERANCE = 0.03        # chord error for a component model: parts are small
+from tools import web_parts as WP
+
 SEP = "__"                    # <board part>__<ref> names a component's own part
 LOOSE = 0.25                  # how far outside its F.Fab box a hand-drawn body may stand
 
@@ -278,6 +280,44 @@ def _reference_inks():
     return out
 
 
+def _own_part(f, h, t, pose, panel):
+    """A part drawn by tools/web_parts.py, meshed where it stands: a mesh_shape() result
+    with per-vertex colour, or None when there is no generator for it (or it fails: a
+    box is a complete model, so this never costs the export)."""
+    from tools.web_export import mesh_shape, ANGULAR
+    from OCP.gp import gp_Trsf
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
+    from OCP.TopoDS import TopoDS_Compound
+    from OCP.BRep import BRep_Builder
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.TopAbs import TopAbs_FACE
+    try:
+        parts = WP.build(f, h, t, panel)
+        if not parts:
+            return None
+        R, tr = pose[:3, :3], pose[:3, 3]
+        trsf = gp_Trsf()
+        trsf.SetValues(R[0, 0], R[0, 1], R[0, 2], tr[0], R[1, 0], R[1, 1], R[1, 2], tr[1],
+                       R[2, 0], R[2, 1], R[2, 2], tr[2])
+        comp, bb, cols = TopoDS_Compound(), BRep_Builder(), []
+        bb.MakeCompound(comp)
+        boxes = [s.BoundingBox() for s, _ in parts]                 # in the board's frame
+        lo = (min(b.xmin for b in boxes), min(b.ymin for b in boxes), min(b.zmin for b in boxes))
+        hi = (max(b.xmax for b in boxes), max(b.ymax for b in boxes), max(b.zmax for b in boxes))
+        for s, rgb in parts:
+            placed = BRepBuilderAPI_Transform(s.wrapped, trsf, True).Shape()
+            bb.Add(comp, placed)
+            lin = tuple(c ** 2.2 for c in rgb)          # glTF vertex colour is linear
+            ex = TopExp_Explorer(placed, TopAbs_FACE)
+            while ex.More():
+                cols.append((ex.Current(), lin))
+                ex.Next()
+        return mesh_shape(comp, MODEL_TOLERANCE, ANGULAR, face_colors=cols, copy=False), (lo, hi)
+    except Exception as exc:
+        print("web boards: %s (%s) could not be drawn: %s" % (f["ref"], f["fpid"], exc))
+        return None
+
+
 def _has(points, p, tol=0.01):
     return bool((np.abs(points - p).max(axis=1) < tol).any()) if len(points) else False
 
@@ -300,6 +340,11 @@ def detail(meshed, shape_of, log=print):
     inks = _reference_inks()
     if not inks:
         return models_geo
+    try:
+        from src import board_geom as BG
+        panel = BG.PANEL
+    except Exception:
+        panel = {}
     by_count = {}
     for key, v in inks.items():
         by_count.setdefault(len(v), []).append(key)
@@ -347,10 +392,10 @@ def detail(meshed, shape_of, log=print):
         used.add(solid_name)
         sv = meshed[solid_name]["verts"]
         local = _apply(np.linalg.inv(pose), sv.astype(float))    # the solid's corners, board frame
-        cut, added = [], 0
+        cut, added, drawn = [], 0, 0
         for f in g["footprints"]:
             ms = f.get("models") or []
-            if not ms or not f.get("fab"):
+            if not f.get("fab") or not (ms or WP.knows(f["fpid"].split(":")[-1])):
                 continue
             x0, x1, y0, y1 = f["fab"]
             back = f["side"] == "B"
@@ -374,13 +419,32 @@ def detail(meshed, shape_of, log=print):
                 h = float(np.abs(on[:, 2] - (0.0 if back else t)).max())
                 x0, x1 = min(x0, float(on[:, 0].min())), max(x1, float(on[:, 0].max()))
                 y0, y1 = min(y0, float(on[:, 1].min())), max(y1, float(on[:, 1].max()))
-            model = ms[0]
-            if any(abs(s - 1.0) > 1e-6 for s in model["scale"]):
-                keep("scaled model")
-                continue
-            path = resolve_model(model["file"])
+            model = ms[0] if ms else None
+            path = None
+            if model:
+                if any(abs(s - 1.0) > 1e-6 for s in model["scale"]):
+                    keep("scaled model")
+                    continue
+                path = resolve_model(model["file"])
+                same = WP.SAME_BODY.get(os.path.basename(model["file"]))
+                if path is None and same:               # the same body under another name
+                    path = resolve_model("${KICAD10_3DMODEL_DIR}/" + same)
             if path is None:
-                keep("model file not in KiCad's library here")
+                # no file anywhere: the part drawn here (tools/web_parts.py)
+                own = _own_part(f, h, t, pose, panel)
+                if own is None:
+                    keep("no model in KiCad's library here, none drawn in web_parts")
+                    continue
+                own, (lo, hi) = own
+                meshed[solid_name + SEP + f["ref"]] = own
+                added += 1
+                drawn += 1
+                # what comes away is everything the drawn part covers: a panel
+                # connector's nose and nut stand outside its F.Fab box
+                z0, z1 = ((min(lo[2], -h) - 0.05, -0.005) if back
+                          else (t + 0.005, max(hi[2], t + h) + 0.05))
+                cut.append((min(x0, lo[0]) - 0.02, max(x1, hi[0]) + 0.02,
+                            min(y0, lo[1]) - 0.02, max(y1, hi[1]) + 0.02, z0, z1))
                 continue
             mm = model_mesh(path)
             if mm is None:
@@ -456,8 +520,9 @@ def detail(meshed, shape_of, log=print):
             log("web boards: %s kept its boxes under the models (%s)" % (solid_name, exc))
         stats["boards"] += 1
         stats["models"] += added
+        stats["drawn"] = stats.get("drawn", 0) + drawn
     kept = "; ".join("%d %s" % (n, w) for w, n in sorted(stats["kept"].items())) or "none"
-    log("web boards: %d board(s) carry %d real part model(s) [%s]; boxes kept: %s"
-        % (stats["boards"], stats["models"],
+    log("web boards: %d board(s) carry %d part model(s), %d of them drawn here [%s]; boxes kept: %s"
+        % (stats["boards"], stats["models"], stats.get("drawn", 0),
            ", ".join("%s x%d: %d" % (b, n, k) for b, (n, k) in sorted(counts.items())), kept))
     return models_geo
