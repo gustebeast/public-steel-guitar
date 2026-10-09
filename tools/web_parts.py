@@ -239,9 +239,11 @@ def _facts(gen, m):
     return {}
 
 
-def _mouth(f, name, panel):
+def _mouth(f, name, panel, outline=None):
     """The mouth's direction in the board frame: the panel table's where it has the
-    part; else away from the pads (a side-entry header's lands are at its back)."""
+    part; else away from the pads (a side-entry header's lands are at its back); else,
+    for a part whose pads are under its middle (a screw terminal), toward the NEAREST
+    BOARD EDGE -- wires come in from outside the board."""
     from cadkit.board_geom import _rot
     spec = panel.get(name)
     if spec:
@@ -251,7 +253,11 @@ def _mouth(f, name, panel):
     px, py = f.get("pads_xy") or ((x0 + x1) / 2, (y0 + y1) / 2)
     dx, dy = ((x0 + x1) / 2 - px) / (x1 - x0), ((y0 + y1) / 2 - py) / (y1 - y0)
     if max(abs(dx), abs(dy)) < 0.08:
-        return (0, -1)
+        if not outline:
+            return (0, -1)
+        bx0, bx1, by0, by1 = outline
+        return min(((x0 - bx0, (-1, 0)), (bx1 - x1, (1, 0)), (y0 - by0, (0, -1)),
+                    (by1 - y1, (0, 1))), key=lambda e: e[0])[1]
     return (1 if dx > 0 else -1, 0) if abs(dx) > abs(dy) else (0, 1 if dy > 0 else -1)
 
 
@@ -259,9 +265,10 @@ def knows(name):
     return any(re.search(p, name) for p, _ in _RULES)
 
 
-def build(f, h, thickness, panel=None):
+def build(f, h, thickness, panel=None, outline=None):
     """[(cq solid, (r, g, b))] for footprint record `f` (a geom file's), standing h tall,
-    in the board's frame; None for a part there is no generator for."""
+    in the board's frame; None for a part there is no generator for. `outline` is the
+    board's own (x0, x1, y0, y1)."""
     name = f["fpid"].split(":")[-1]
     for pat, gen in _RULES:
         m = re.search(pat, name)
@@ -270,7 +277,7 @@ def build(f, h, thickness, panel=None):
     else:
         return None
     x0, x1, y0, y1 = f["fab"]
-    mx, my = _mouth(f, name, panel or {})
+    mx, my = _mouth(f, name, panel or {}, outline)
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     if mx:
         W, D = y1 - y0, x1 - x0
