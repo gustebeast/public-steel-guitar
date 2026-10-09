@@ -31,6 +31,7 @@ import types
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BUILD_PY = ROOT / "src" / "build.py"
 MAP_FILE = pathlib.Path(__file__).with_name("fast_build_map.json")
+_MISSING = object()        # tells a STALE map from a legitimate rot of None
 
 
 def _reconstruct(builder, buildmod):
@@ -72,6 +73,18 @@ def _build_map():
         rec = _reconstruct(builder, B)
         if rec:
             rec["path"] = path
+            # THE PART'S BED FACE TRAVELS WITH IT. This writes to the REAL
+            # part STEP, so a fast rebuild that exported un-posed would
+            # quietly replace a posed file with an un-posed one -- two export
+            # paths disagreeing about the one fact cadkit.orientation exists
+            # to keep single. The rotation is carried in the map (which is
+            # invalidated by build.py's hash, so it cannot go stale) rather
+            # than re-derived here, because src.build is the only place that
+            # knows which module declares which part.
+            _o = B.PRINT_ORIENTATION[name]
+            rec["print_rot"] = _o.rot
+            rec["print_why"] = _o.why
+            rec["print_confirmed"] = _o.confirmed
             entries[name] = rec
     payload = {"build_hash": hashlib.sha256(BUILD_PY.read_bytes()).hexdigest(),
                "total_parts": len(B.PARTS), "entries": entries}
@@ -97,7 +110,8 @@ def fast_build(name, entries):
     if rec is None:
         return None
     from importlib import import_module
-    from cadkit.step_export import export_step
+    from cadkit.step_export import export_print
+    from cadkit.orientation import PrintOrientation as PO
     t = time.perf_counter()
     mod = import_module(rec["module"])
     obj = getattr(mod, rec["attr"])
@@ -108,7 +122,16 @@ def fast_build(name, entries):
         obj = heal(obj)
     dest = ROOT / rec["path"]
     dest.parent.mkdir(parents=True, exist_ok=True)
-    export_step(obj, str(dest))
+    rot = rec.get("print_rot", _MISSING)
+    if rot is _MISSING:                  # a map written before bed faces were
+        return None                      # recorded -- refresh it, do not guess
+    if not rec.get("print_confirmed", True):
+        print("  🚩 %s's print orientation is UNCONFIRMED: %s"
+              % (name, rec.get("print_why", "")), flush=True)
+    export_print(obj, PO(tuple(rot) if isinstance(rot, list) else rot,
+                         rec.get("print_why") or "from the fast-build map",
+                         rec.get("print_confirmed", True)),
+                 str(dest))
     return time.perf_counter() - t
 
 
