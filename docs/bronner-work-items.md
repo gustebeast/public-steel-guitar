@@ -5748,3 +5748,12 @@ the highlight draws the run again. Measured locally: 827 parts, 757k triangles, 
 
 The silkscreen is NOT a cost on the web: all the lettering together is about 7 % of the
 triangles. It was only ever a FreeCAD cost, so "silk as a texture" is dropped.
+
+**The first viewer MR turned the sweep gate red, and it was the export's fault (build
+#862, backed out by the lead).** The mesher triangulated the build's own shapes in place.
+OCCT's bounding box reads the triangulation when a shape has one, and the sweep gate,
+which runs after the preview, measures by bounding box: ten pulleys grazed their bearings
+by 0.5 mm^3 without having moved. `mesh_shape` now meshes a COPY. Proved on a full build
+of 827 parts: no shape carries a triangulation afterwards, no bounding box changed, and
+the sweep and overlap gates read 0 / 0 both before and after the export on the same
+parts. The rule: test an export's side effects on what it is handed, not only its output.

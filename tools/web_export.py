@@ -153,11 +153,20 @@ def shape_vertices(shape):
     return out
 
 
-def mesh_shape(shape, tolerance=TOLERANCE, angular=ANGULAR, face_colors=None):
+def mesh_shape(shape, tolerance=TOLERANCE, angular=ANGULAR, face_colors=None, copy=True):
     """One TopoDS_Shape -> {"pos": float32 (n,3), "tri": uint32 (m,3), "geo": {...},
     "verts": float32 (k,3) the B-rep's corners}, plus "col": uint8 (n,4) when
     `face_colors` = [(TopoDS_Face, (r, g, b) or None)] is given (a part of many colours:
     a component model).
+
+    ⚠ THE CALLER'S SHAPE IS NOT TOUCHED: a COPY is meshed (copy=True). Meshing stores a
+    triangulation ON the shape, and OCCT's bounding box then reads the triangles instead
+    of the surfaces. The first version of this meshed the build's own shapes in place,
+    and the sweep gate, which runs after the preview and measures by bounding box,
+    turned red on ten pulleys that had not moved (build #862, 0.5 mm^3 each): chords
+    where it expected circles. A viewer export must leave no trace on what it was shown.
+    copy=False is for a shape nobody else holds (a model file just read), and is what
+    `face_colors` needs, since it names faces of the shape as given.
 
     geo = {"f": [face records], "r": [tri offsets, len(f)+1], "e": [edge records],
            "fe": [[edge ids] per face]}.  Triangles are sorted by face; r[i]..r[i+1] is
@@ -171,6 +180,11 @@ def mesh_shape(shape, tolerance=TOLERANCE, angular=ANGULAR, face_colors=None):
     from OCP.TopTools import TopTools_IndexedMapOfShape
     from vtkmodules.util.numpy_support import vtk_to_numpy
 
+    if copy:
+        if face_colors is not None:
+            raise ValueError("face_colors names faces of the shape as given: pass copy=False")
+        from OCP.BRepBuilderAPI import BRepBuilderAPI_Copy
+        shape = BRepBuilderAPI_Copy(shape, True, False).Shape()     # geometry yes, mesh no
     BRepMesh_IncrementalMesh(shape, tolerance, False, angular, True)
     vs, sd = IVtkOCC_Shape(shape), IVtkVTK_ShapeData()
     IVtkOCC_ShapeMesher().Build(vs, sd)
