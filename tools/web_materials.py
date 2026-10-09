@@ -64,9 +64,17 @@ def material_of(name: str):
         return "pctg"
     if base == "top_plate":
         return "pctg-alt"
-    for rx, mat in pats:                                   # chassis_2
-        if rx.match(name):
-            return mat
+    # chassis_2 -- and chassis_1_0: a part drawn as several solids is exported one
+    # solid at a time (web_export.pieces), each with one more index on its name
+    tail = name
+    while True:
+        for rx, mat in pats:
+            if rx.match(tail):
+                return mat
+        cut = re.sub(r"_\d+$", "", tail)
+        if cut == tail:
+            break
+        tail = cut
     tries = [base]
     bare = _STATION.sub("", base)
     tries += [bare, "kl_" + bare, _LANE.sub("", bare)]
