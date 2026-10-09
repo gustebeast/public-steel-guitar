@@ -486,6 +486,155 @@ def _declared():
         out[_n] = PO.from_build_dir(
             _CH.PRINT_UP, "chassis.PRINT_UP — builds +Z, as modelled "
                           "(deck panels print flat)")
+
+    # ── the rest of the instrument. It turns out EVERY printed part already
+    # had its build direction declared — not in one table, but per part in its
+    # own module, under about twenty different names (ROD_PLUG_UP, CART_UP,
+    # AXLE_UP, PIECE_UP, LID_UP, BAR_UP, COVER_UP ...). Each carries its
+    # reasoning in the comment beside it, and tools.check_ceilings already
+    # reads some of them by name. Nothing ever COLLECTED them, so nothing
+    # posed anything: a complete orientation record the exporter never saw.
+    # Collecting them is the whole of it.
+    from . import components as _C
+    from . import knee_lever as _KLX
+    from . import knee_lever_vert as _KVX
+    from . import foot_pedal as _FP
+    from . import top_plate as _TP
+    from . import ui_panel as _UI
+    from . import pedal_bar as _PB
+    from . import legs as _LG
+    from . import lever_jig as _LJ
+    from . import belt_tensioner as _BT
+    from . import coil_mandrel as _CM
+
+    _plate = [n for n in PARTS if n.startswith("top_plate_")]
+    for _names, _up, _why in (
+        (["screw_pulley_hi", "screw_pulley_lo"], _C.SCREW_PULLEY_UP,
+         "components.SCREW_PULLEY_UP — FLANGE DOWN: the full O11 -Z disc is "
+         "the bed face and everything above it steps inward, which is also "
+         "why _tooth_cutter caps the groove ends at 45 (a flat cap would be "
+         "unsupported in a flange-down print)"),
+        (["motor_pulley"], _C.MOTOR_PULLEY_UP,
+         "components.MOTOR_PULLEY_UP — FLANGE DOWN too, but its flange is "
+         "the -Y face: the +Y flange is the chamfered, printable cone, so it "
+         "builds +Y"),
+        (["knee_lever"], _KLX.LEVER_UP,
+         "knee_lever.LEVER_UP — the arm lies on its -Y face and builds +Y. "
+         "Already machine-readable: cut_axle_bore hands this to cadkit as "
+         "print_up, which is why the axle bore comes back a plain cylinder "
+         "and not a teardrop (the bore runs ALONG the build)"),
+        (["cart_base"], _KLX.CART_UP,
+         "knee_lever.CART_UP — builds +Z with the housing it sits in, which "
+         "is what its peaked roof is drawn for: the housing pocket cut from "
+         "it is then self-supporting in a -Z->+Z print"),
+        (["kl_axle"], _KLX.AXLE_UP,
+         "knee_lever.AXLE_UP — STANDING, POCKET-DOWN: drawn along +Z then "
+         "rotated +Z->+Y, so the collar end faces +Y and the build runs away "
+         "from it. That bed face is only 14.8 mm2, which is exactly why the "
+         "part note calls for a brim"),
+        (["kl_magnet_cap"], _KLX.MAGNET_CAP_UP,
+         "knee_lever.MAGNET_CAP_UP — APERTURE-DOWN, same construction as "
+         "the axle: the flange face is the bed (its +Y end, 55.2 mm2)"),
+        (["cart_piston"], _KLX.PISTON_UP,
+         "knee_lever.PISTON_UP — stands on its +X SPRING-SEAT face, the one "
+         "flat 10x10 end, so body, follower tongue and nose all grow ALONG "
+         "the build. Printed +Z with the cartridge it would lay its tongue "
+         "out sideways as a flat cantilever over air"),
+        (["kv_lever"], _KVX.LEVER_UP,
+         "knee_lever_vert.LEVER_UP — the same one fact as the LKL arm, read "
+         "through this lever own pose (pose_dir(POSE_ROT, KL.LEVER_UP))"),
+        (["pedal_lever"], _FP.LEVER_UP,
+         "foot_pedal.LEVER_UP — the LKL arm direction again, through the "
+         "foot pedal pose"),
+        (_plate, _TP.PIECE_UP,
+         "top_plate.PIECE_UP — the deck pieces print DECK-DOWN: the top "
+         "face is on the bed and the part builds -Z, which is what lets each "
+         "leadscrew head be captured in solid deck with no boss and no web. "
+         "A base and its _color half print AS ONE OBJECT, so they share it"),
+        (["pickup_zplate"], _TP.ZPL_UP,
+         "top_plate.ZPL_UP — the height plate goes the other way up: flat "
+         "bottom on the bed, every boss standing up"),
+        (["ui_knob"], _UI.KNOB_UP,
+         "ui_panel.KNOB_UP — DISC-DOWN, on the flat top face it presents to "
+         "the player. Every other way up puts the shaft bore blind end over "
+         "air"),
+        (["ui_clamp"], _UI.CLAMP_UP,
+         "ui_panel.CLAMP_UP — flat underside on the bed, every pad, rib and "
+         "post growing straight up off it"),
+        (["pedal_bar_a", "pedal_bar_b", "pedal_bar_c"], _PB.BAR_UP,
+         "pedal_bar.BAR_UP — the bar prints lying on its -Y face, building "
+         "+Y (bar_trrs says the same of pedal_bar_a in so many words)"),
+        (["pedal_lid_a", "pedal_lid_b"], _PB.LID_UP,
+         "pedal_bar.LID_UP — the OPPOSITE of BAR_UP, and it has to be: the "
+         "lid profile runs out to the bar +Y face, so it builds -Y, and the "
+         "45 dovetail flanks its docstring cites are only overhangs this way "
+         "up"),
+        (["rod_plug"], _BE.ROD_PLUG_UP,
+         "bridge_endplate.ROD_PLUG_UP — the plug stands on end, ten at "
+         "once"),
+        (["leg_foot"], _LG.FOOT_UP,
+         "legs.FOOT_UP — the 44-sq pad is the bed, tenon up"),
+        (["lever_prog_jig"], _LJ.JIG_UP,
+         "lever_jig.JIG_UP — prints as drawn: flat on the bench face, posts "
+         "growing up"),
+        (["test_belt_tensioner"], _BT.COUPON_UP,
+         "belt_tensioner.COUPON_UP — each half already lies on its closed "
+         "side face in the model"),
+        (["test_cover_seat", "test_cover_plate"], _JC.COVER_UP,
+         "joint_coupon.COVER_UP — the cover coupons print LYING, like the "
+         "real sleeve they stand in for: bed on the +Y face so the rail "
+         "slots open at the bed and their 0.8 roofs bridge. That is "
+         "SLEEVE_UP, which is what a print-fit coupon is required to match"),
+        (["coil_mandrel"], _CM.MANDREL_UP,
+         "coil_mandrel.MANDREL_UP — flange-down on its O27.8 base, as "
+         "drawn"),
+        (["coil_mandrel_sleeve"], _CM.SLEEVE_UP,
+         "coil_mandrel.SLEEVE_UP — as drawn (a plain tube: both ends "
+         "measure identically, so there is nothing to choose)"),
+    ):
+        for _n in _names:
+            out[_n] = PO.from_build_dir(_up, _why)
+
+    # THE BODY-ADAPTER CORNERS. leg_stack ADAPTER_UP covers the -X/+Y one and
+    # states the rule: "THE RIDGES DECIDE THIS. The body tenons on the top
+    # face run along Y and END at the +Y face, so that face is the bed" —
+    # built the other way each ridge starts in mid-air, and the 45 ramp that
+    # fixes it spends 481 mm3 of tenon engagement. The three corner variants
+    # are that part with its joinery rebuilt, so the rule follows the
+    # CORNER Y SIGN, and the geometry says so: the bed is the Y end the
+    # tenons leave UNBROKEN (2472.14 mm2 of full face), and it flips with the
+    # corner —
+    #     body_adapter       (-X/+Y)   -Y 2394.54   +Y 2472.14  -> bed +Y
+    #     body_adapter_px_py (+X/+Y)   -Y 2401.01   +Y 2472.14  -> bed +Y
+    #     body_adapter_mx_my (-X/-Y)   -Y 2472.14   +Y 2364.66  -> bed -Y
+    # px_my (+X/-Y) measures 2472.14 at BOTH ends — its features happen to
+    # break neither — so it follows its corner-mate mx_my: the same -Y
+    # corner, the same rule.
+    _ADAPTER_WHY = ("the body tenons run along Y and END at this corner Y "
+                    "face, so that face is the bed (leg_stack.ADAPTER_UP "
+                    "rule, mirrored with the corner): built the other way "
+                    "each ridge starts in mid-air and the 45 ramp that fixes "
+                    "it costs 481 mm3 of tenon engagement")
+    for _n, _up in (("body_adapter_px_py", (0.0, -1.0, 0.0)),
+                    ("body_adapter_px_my", (0.0, 1.0, 0.0)),
+                    ("body_adapter_mx_my", (0.0, 1.0, 0.0))):
+        out[_n] = PO.from_build_dir(_up, _ADAPTER_WHY)
+
+    # No module declares these last two.
+    out["optical_guard"] = PO(
+        "flip",
+        "ROOF-DOWN, the palm face on the bed (the part note). Measured, that "
+        "face is 6690 mm2 on the plate at an 0.09 aspect — the part is "
+        "essentially a shell lying on its roof")
+    out["pedal_detent_nub"] = PO(
+        ((1, 0, 0), -90),
+        "NOTHING IN THE PROJECT DECLARES THIS ONE and no note describes its "
+        "print. Measured: a O4x4 TPU cylinder whose axis lies along Y, so "
+        "standing it up is the only way it has a footprint at all (12.6 mm2; "
+        "every other candidate touches the plate on a line) and it is "
+        "overhang-free that way. It is rotationally symmetric, so +90 and "
+        "-90 are the same print. Low stakes, but unchecked",
+        confirmed=False)
     return {k: v for k, v in out.items() if k in PARTS}
 
 
