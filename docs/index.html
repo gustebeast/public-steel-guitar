@@ -56,7 +56,11 @@
                 text-transform: uppercase; letter-spacing: .06em; }
     .panel .name { color: #e6eaf0; font-weight: 600; word-break: break-all; }
     .panel .dim { opacity: .55; }
-    #sel, #readout, #partsPanel { display: none; }
+    #sel, #readout, #partsPanel, #secPanel { display: none; }
+    #views .btn { padding: 3px 7px; font-size: 11px; }
+    #secVal { width: 74px; background: #121418; border: 1px solid #333842; border-radius: 6px;
+              color: #e6eaf0; font: inherit; padding: 2px 5px; }
+    #secSlide { width: 100%; margin: 8px 0 0; }
     #readout .v { color: #e6eaf0; font-variant-numeric: tabular-nums; }
     #readout .big { font-size: 17px; color: #ffe08a; font-variant-numeric: tabular-nums; }
     #readout .a { color: #6fd3ff; } #readout .b { color: #ff8fd0; }
@@ -101,7 +105,23 @@
       <div class="btn on" id="bSelect">select</div>
       <div class="btn" id="bMeasure">measure<span class="k">m</span></div>
       <div class="btn" id="bParts">parts<span class="k">p</span></div>
+      <div class="btn" id="bSection">section<span class="k">c</span></div>
       <div class="btn" id="bShowAll" style="display:none">show all<span class="k">u</span></div>
+    </div>
+    <div class="bar" id="views">
+      <div class="btn vw" data-d="1,0,0">+X</div><div class="btn vw" data-d="-1,0,0">−X</div>
+      <div class="btn vw" data-d="0,1,0">+Y</div><div class="btn vw" data-d="0,-1,0">−Y</div>
+      <div class="btn vw" data-d="0,0,1">+Z</div><div class="btn vw" data-d="0,0,-1">−Z</div>
+      <div class="btn vw" data-d="0.55,-1,0.5">iso</div>
+    </div>
+    <div class="panel" id="secPanel">
+      <h4>section cut</h4>
+      <div class="bar">
+        <div class="btn ax" data-a="0">X</div><div class="btn ax" data-a="1">Y</div>
+        <div class="btn ax" data-a="2">Z</div><div class="btn" id="bFlip">flip</div>
+        <input id="secVal" type="number" step="0.1">
+      </div>
+      <input id="secSlide" type="range" step="0.1">
     </div>
     <div class="panel" id="sel"></div>
     <div class="panel" id="readout"></div>
@@ -350,8 +370,7 @@
     return M.list.filter(p => pre.some(x => p.name.startsWith(x)));
   }
   function toggleDeck() {
-    deckVisible = !deckVisible;
-    setHidden(deckParts(), !deckVisible);
+    act(() => { deckVisible = !deckVisible; setHidden(deckParts(), !deckVisible); });
     $('deckstate').textContent = deckVisible ? 'hide deck' : 'show deck';
     const b = $('deckbtn');
     if (b) { b.classList.toggle('on', !deckVisible);
@@ -498,7 +517,33 @@
     syncPartsUI();
   }
   const hiddenParts = () => M.list.filter(p => p.hidden);
-  function showAll() { setHidden(hiddenParts(), false); deckVisible = true; syncDeckUI(); }
+  function showAll() { act(() => { setHidden(hiddenParts(), false); deckVisible = true; syncDeckUI(); }); }
+
+  // ── undo / redo of what is shown (ctrl+z, ctrl+y) ────────────────────────────────
+  // A step is the whole set of hidden part NAMES, so it survives a model reload.
+  const undoStack = [], redoStack = [];
+  const visState = () => ({ names: hiddenParts().map(p => p.name), deck: deckVisible });
+  const sameVis = (a, b) => a.deck === b.deck && a.names.length === b.names.length
+                            && a.names.every((n, i) => n === b.names[i]);
+  function act(fn) {                       // run a change to what is shown, as one step
+    const before = visState();
+    fn();
+    if (sameVis(before, visState())) return;
+    undoStack.push(before); redoStack.length = 0;
+    if (undoStack.length > 200) undoStack.shift();
+  }
+  function restoreVis(s) {
+    const want = new Set(s.names);
+    setHidden(M.list.filter(p => p.hidden && !want.has(p.name)), false);
+    setHidden(M.list.filter(p => !p.hidden && want.has(p.name)), true);
+    deckVisible = s.deck; syncDeckUI();
+  }
+  function undo(redo = false) {
+    const from = redo ? redoStack : undoStack, to = redo ? undoStack : redoStack;
+    if (!from.length) return false;
+    to.push(visState()); restoreVis(from.pop());
+    return true;
+  }
   function syncDeckUI() {
     $('deckstate').textContent = deckVisible ? 'hide deck' : 'show deck';
     const b = $('deckbtn');
@@ -524,6 +569,7 @@
         p = b.parts[lo]; tri = h.faceIndex - b.starts[lo];
       } else { p = h.object.userData.part; tri = h.faceIndex; }
       if (!p || p.hidden) continue;
+      if (sec.on && sec.plane.distanceToPoint(h.point) < 0) continue;   // cut away
       return { part: p, tri, world: h.point.clone(), cad: M.parts.worldToLocal(h.point.clone()) };
     }
     return null;
@@ -573,8 +619,8 @@
   function clearSelection() { selection = []; drawSelection(); }
   function selAction(a) {
     if (!selection.length) return;
-    if (a === 'hide') setHidden([...selection], true);
-    if (a === 'isolate') { const keep = new Set(selection); setHidden(M.list.filter(p => !keep.has(p)), true); }
+    if (a === 'hide') act(() => setHidden([...selection], true));
+    if (a === 'isolate') { const keep = new Set(selection); act(() => setHidden(M.list.filter(p => !keep.has(p)), true)); }
     if (a === 'zoom') frameParts(selection);
     if (a === 'fam') { const f = new Set(selection.map(p => p.family));
                        selection = M.list.filter(p => f.has(p.family) && !p.hidden); drawSelection(); }
@@ -606,7 +652,7 @@
       el.className = 'fam'; el.dataset.f = f;
       el.innerHTML = `<span class="eye">●</span><span class="sw" style="background:#${ps[0].col ? '8a8f98' : ps[0].mat.color.getHexString()}"></span>` +
                      `<span>${f}</span><span class="n">${ps.length > 1 ? '×' + ps.length : ''}</span>`;
-      el.querySelector('.eye').onclick = ev => { ev.stopPropagation(); setHidden(ps, !ps.every(p => p.hidden)); };
+      el.querySelector('.eye').onclick = ev => { ev.stopPropagation(); act(() => setHidden(ps, !ps.every(p => p.hidden))); };
       el.onclick = () => { selection = ps.filter(p => !p.hidden); drawSelection(); };
       el.ondblclick = () => frameParts(ps);
       el._parts = ps;
@@ -977,7 +1023,7 @@
   function setHint() {
     $('hint').textContent = mode === 'measure'
       ? 'measure: click a corner, edge or face, then another · esc clears · m leaves · drag still orbits'
-      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · p parts list · m measure';
+      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · ctrl+z / ctrl+y undo, redo · p parts list · m measure · c section';
   }
 
   // ── pointer and keys ─────────────────────────────────────────────────────────────
@@ -999,6 +1045,11 @@
   addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); return; }
     if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) toggleDeck(); return; }
+    if (e.ctrlKey || e.metaKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'z' || k === 'y') { e.preventDefault(); undo(k === 'y' || e.shiftKey); }
+      return;
+    }
     if (e.key === 'Escape') { mode === 'measure' ? clearMeasure() : clearSelection(); return; }
     if (!e.repeat && !e.ctrlKey && !e.metaKey) switch (e.key) {
       case 'm': setMode(mode === 'measure' ? 'select' : 'measure'); return;
@@ -1007,6 +1058,7 @@
       case 'i': selAction('isolate'); return;
       case 'z': selAction('zoom'); return;
       case 'u': showAll(); return;
+      case 'c': $('bSection').onclick(); return;
     }
     const p = keyToPedal[e.key]; if (!p || e.repeat) return;
     held.add(p); syncUI();
@@ -1019,6 +1071,71 @@
   $('bMeasure').onclick = () => setMode(mode === 'measure' ? 'select' : 'measure');
   $('bParts').onclick = toggleParts;
   $('bShowAll').onclick = showAll;
+
+  // ── section cut ──────────────────────────────────────────────────────────────────
+  // One plane square to a CAD axis, at a CAD coordinate. Everything on the far side is
+  // not drawn and cannot be picked, so what the cut exposes can be selected and measured.
+  const sec = { on: false, axis: 0, v: NaN, flip: false, plane: new THREE.Plane() };
+  function cadBox() {
+    if (!M.box) M.box = new THREE.Box3().setFromObject(M.root)
+                                        .applyMatrix4(M.parts.matrixWorld.clone().invert());
+    return M.box;
+  }
+  function applySection() {
+    const on = sec.on && !!M.parts;
+    if (on) {
+      const n = new THREE.Vector3().setComponent(sec.axis, sec.flip ? 1 : -1);
+      sec.plane.set(n, sec.flip ? -sec.v : sec.v).applyMatrix4(M.parts.matrixWorld);
+    }
+    renderer.clippingPlanes = on ? [sec.plane] : [];
+    $('bSection').classList.toggle('on', sec.on);
+    $('secPanel').style.display = sec.on ? 'block' : 'none';
+    if (!on) return;
+    const b = cadBox(), s = $('secSlide');
+    s.min = Math.floor(b.min.getComponent(sec.axis)); s.max = Math.ceil(b.max.getComponent(sec.axis));
+    s.value = sec.v; $('secVal').value = sec.v.toFixed(1);
+    for (const e of document.querySelectorAll('#secPanel .ax')) e.classList.toggle('on', +e.dataset.a === sec.axis);
+    $('bFlip').classList.toggle('on', sec.flip);
+  }
+  // where a cut starts: through the middle of what is selected, else of the model
+  function secHome() {
+    const b = new THREE.Box3();
+    for (const p of selection) partBox(p, b);
+    return (b.isEmpty() ? cadBox() : b).getCenter(new THREE.Vector3()).getComponent(sec.axis);
+  }
+  function setSection(on, axis, v, flip) {
+    if (!M.parts) return;
+    const moved = axis !== undefined && axis !== sec.axis, fresh = on && !sec.on;
+    sec.on = on;
+    if (axis !== undefined) sec.axis = axis;
+    if (flip !== undefined) sec.flip = flip;
+    else if (moved || fresh) {                           // take away the side nearer the eye
+      const eye = M.parts.worldToLocal(camera.position.clone()).sub(M.parts.worldToLocal(controls.target.clone()));
+      sec.flip = eye.getComponent(sec.axis) < 0;
+    }
+    if (v !== undefined) sec.v = v;
+    else if (moved || !isFinite(sec.v)) sec.v = secHome();
+    applySection();
+  }
+  $('bSection').onclick = () => { if (!sec.on) sec.v = NaN; setSection(!sec.on); };
+  $('bFlip').onclick = () => setSection(true, undefined, undefined, !sec.flip);
+  for (const e of document.querySelectorAll('#secPanel .ax')) e.onclick = () => setSection(true, +e.dataset.a);
+  $('secSlide').oninput = e => setSection(true, undefined, +e.target.value);
+  $('secSlide').onchange = e => e.target.blur();       // hand the keys back to the page
+  $('secVal').onchange = e => { if (isFinite(+e.target.value)) setSection(true, undefined, +e.target.value); };
+
+  // ── the axis views ───────────────────────────────────────────────────────────────
+  // look along a CAD direction, from that side: "+Z" is the view from above
+  function viewFrom(d) {
+    if (!M.parts) return;
+    const dir = new THREE.Vector3(d[0], d[1], d[2]).transformDirection(M.parts.matrixWorld);
+    if (Math.abs(dir.y) > 0.9999) dir.z += 1e-4;        // straight down: CAD +Y up the screen
+    const dist = camera.position.distanceTo(controls.target);
+    camera.position.copy(controls.target).addScaledVector(dir.normalize(), dist);
+    controls.update();
+  }
+  for (const e of document.querySelectorAll('#views .vw'))
+    e.onclick = () => viewFrom(e.dataset.d.split(',').map(Number));
 
   // ── frame camera to the model ─────────────────────────────────────────────
   function frameBox(box, reset = true) {
@@ -1063,12 +1180,37 @@
     buildModel(gltf);
     buildPedalUI(); syncUI();
     buildPartsUI();
+    M.box = null; applySection();
     if (first) frameBox(new THREE.Box3().setFromObject(M.root));
     else { setHidden(M.list.filter(p => hiddenNames.has(p.name)), true); syncDeckUI(); }
     if (wasMode === 'measure') setMode('measure');
   }
+  // The local server also says when this page's own file was last edited; the page then
+  // reloads itself and comes back as it was (camera, hidden parts, section, mode).
+  let pageStamp = null;
+  const KEEP = 'viewer-state';
+  function keepState() {
+    try { sessionStorage.setItem(KEEP, JSON.stringify({
+      cam: camera.position.toArray(), tgt: controls.target.toArray(),
+      hidden: hiddenParts().map(p => p.name), deck: deckVisible, mode,
+      sec: { on: sec.on, axis: sec.axis, v: sec.v, flip: sec.flip } })); } catch {}
+  }
+  function restoreState() {
+    let s = null;
+    try { s = JSON.parse(sessionStorage.getItem(KEEP)); sessionStorage.removeItem(KEEP); } catch {}
+    if (!s) return;
+    camera.position.fromArray(s.cam); controls.target.fromArray(s.tgt); controls.update();
+    restoreVis({ names: s.hidden, deck: s.deck });
+    if (s.sec.on) setSection(true, s.sec.axis, s.sec.v, s.sec.flip);
+    if (s.mode === 'measure') setMode('measure');
+  }
   async function watch() {
     if (!stamp) return;
+    const pg = await fetchJSON('page.json?t=' + Date.now());
+    if (pg) {
+      if (pageStamp === null) pageStamp = pg.t;
+      else if (pg.t !== pageStamp) { keepState(); location.reload(); return; }
+    }
     const s = await fetchJSON('stamp.json?t=' + Date.now());
     if (s && s.t !== stamp.t) { $('status').textContent = 'reloading…'; try { await load(false); } catch (e) { console.error(e); } }
     setTimeout(watch, 1500);
@@ -1077,6 +1219,7 @@
     setHint();
     try {
       await load(true);
+      restoreState();
       $('loading').style.opacity = '0';
       setTimeout(() => $('loading').remove(), 400);
       watch();
@@ -1108,7 +1251,7 @@
     requestAnimationFrame(tick);
   }
   // for poking at it from the console (and for the checks that drive the page)
-  window.viewer = { renderer, scene, camera, controls, M, meas, pickAt, snapAt, setHidden, setMode,
+  window.viewer = { renderer, scene, camera, controls, sec, setSection, undo, viewFrom, M, meas, pickAt, snapAt, setHidden, setMode,
                     measureClick, between, showAll, get selection() { return selection; },
                     select(names) { selection = names.map(n => M.byName.get(n)).filter(Boolean); drawSelection(); },
                     selAction, loadGeo, toPx };
