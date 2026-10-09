@@ -6,11 +6,11 @@ the geometry is exactly as it was found.
 ## Resume in one command
 
 ```bash
-py -3.12 -m cadkit.tools.agent_sync scope --set src.build --attr pedal_bar_work_components --crop pedal_bar
+py -3.12 -m cadkit.tools.agent_sync scope --set src.build --attr pedal_bar_work_components
 ```
 
-Then `py -3.12 -m tools.scratch_view --start` (≈2.5 min; caches 19 context solids,
-skips 263 live ones by name). A warm `--gate` cycle is 76 s, ~44 s of which is
+Then `py -3.12 -m tools.scratch_view` (the 263 live parts rebuilt, the rest from the
+lead's last build). A warm `--gate` cycle is 76 s, ~44 s of which is
 `import src.build`.
 
 ## What the user asked for

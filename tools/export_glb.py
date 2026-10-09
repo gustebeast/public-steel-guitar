@@ -1,8 +1,7 @@
 """Export a colored GLB of the FULL instrument for web sharing.
 
-Writes docs/assembly.glb and docs/assembly.geo.json (served by GitHub Pages via
-docs/index.html, a three.js page). The full assembly.step is ~145 MB — far too big for in-browser
-viewers — and a GLB is web-native, keeps the per-part colors, and is far smaller.
+Writes docs/assembly.glb and docs/assembly.geo.json, and docs/index.html: the viewer
+page (cadkit.web), which GitHub Pages serves with them.
 
 The GLB carries the ENTIRE assembly (every part collect_components() builds —
 body, legs, deck, electronics, wiring, pickup, the lot) so the web preview
@@ -45,10 +44,12 @@ def _current_build_n():
 #       0.2 / 0.5            16.8 MiB
 #       0.5 / 1.0            12.1 MiB
 # 0.3 rad leaves linear deviation at the old 0.1 mm, so round parts are as accurate as
-# before and only the angle loosens. The numbers live in tools/web_export.py now, which
-# meshes the parts itself (one mesh per part, no normals: about half the bytes again) and
-# writes the geometry record the viewer measures against beside the GLB.
-from tools.web_export import TOLERANCE as GLB_TOLERANCE, ANGULAR as GLB_ANGULAR_TOLERANCE
+# before and only the angle loosens. The numbers live in cadkit.web now (TOLERANCE,
+# ANGULAR), which meshes the parts itself (one mesh per part, no normals: about half the
+# bytes again) and writes the geometry record the viewer measures against beside the GLB.
+
+# what the page calls the model (tools/scratch_view.py says the same)
+ABOUT = {"title": "Public Steel Guitar", "subtitle": "full assembly · C6 copedent"}
 
 
 def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib.Path:
@@ -57,12 +58,14 @@ def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib
     tool) from `components` -- the (name, workplane) list from collect_components().
     Pass the list the caller already built to avoid rebuilding all the geometry a second
     time; omit it to collect fresh. `build_n` stamps the floating build-number label into
-    the scene (same as assembly.step); omit it to read the current counter without
+    the scene; omit it to read the current counter without
     bumping. Returns the GLB's path.
 
     The GLB's root node turns CAD Z-up to glTF Y-up; the part nodes under it are in CAD
     coordinates, which is the frame the rig's pivots are given in."""
-    from tools.web_export import export
+    from cadkit.web import export
+    from src.board_geom import BOARDS
+    from tools.web_materials import material_of
     if components is None:
         components = collect_components()
     if build_n is None:
@@ -72,7 +75,8 @@ def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib
         counter = _build_counter_model(build_n)
         if counter is not None:
             parts.append(("build_counter", counter, _color_for("build_counter")))
-    export(parts, out.parent, stem=out.stem, extras={"build": build_n})
+    export(parts, out.parent, stem=out.stem, extras=dict(ABOUT, build=build_n), page=True,
+           boards=BOARDS, cache_dir=REPO / ".webview" / "boards", materials=material_of)
     print(f"  ({out.relative_to(REPO).as_posix()}, build #{build_n})")
     return out
 
