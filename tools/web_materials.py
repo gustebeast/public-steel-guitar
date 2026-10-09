@@ -65,7 +65,7 @@ def material_of(name: str):
     if base == "top_plate":
         return "pctg-alt"
     # chassis_2 -- and chassis_1_0: a part drawn as several solids is exported one
-    # solid at a time (web_export.pieces), each with one more index on its name
+    # solid at a time (cadkit.web.pieces), each with one more index on its name
     tail = name
     while True:
         for rx, mat in pats:

@@ -240,13 +240,13 @@ machines anywhere.
 
 ## Building the CAD
 
-CadQuery on Python 3.12 generates a STEP file per printed part plus a colored
-`assembly.step`. The assembly places ~960 components: the printed parts, every
+CadQuery on Python 3.12 generates a STEP file per printed part, and the whole
+assembly as the model the web viewer shows. The assembly places ~960 components: the printed parts, every
 purchased-part dummy, the ten PCBs read back from their own routed geometry, and
 the wiring harness drawn as real cable — every conductor, with its connectors.
 
 ```bash
-py -3.12 -m src.build              # all parts + assembly.step (the guaranteed full build)
+py -3.12 -m src.build              # all parts + the viewer's model (the guaranteed full build)
 py -3.12 -m src.build --part NAME  # one part, but still pays the ~26s module-level import
 py -3.12 -m src.build --list       # list part names
 py -3.12 -m src.build --geom       # belt-geometry report
@@ -270,7 +270,7 @@ py -3.12 -m tools.check_cable_pairs # two cables sharing one lane -- the overlap
 py -3.12 -m tools.check_part_specs # the CAD's board dimensions against the ROUTED boards
 py -3.12 -m tools.check_dead       # source drift: definitions nothing names any more
 py -3.12 -m tools.build_profile    # per-part/module build-cost + face-count regression gate
-py -3.12 -m tools.export_glb       # simplified colored GLB for the web viewer (docs/)
+py -3.12 -m tools.export_glb       # the web viewer's model and page alone (docs/)
 ```
 
 - `src/dimensions.py` — the coordinate frame (+X along the strings toward the

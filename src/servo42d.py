@@ -175,16 +175,12 @@ def report() -> str:
 
 if __name__ == "__main__":
     import pathlib
-    from cadkit.step_export import export_step
-    from cadkit.freecad import show
-    # its own folder: the viewer hub names a tab after the STEP's parent folder
-    out = pathlib.Path(__file__).resolve().parent.parent / "servo42d" / "servo42d.step"
-    out.parent.mkdir(exist_ok=True)
-    assy = cq.Assembly(name="servo42d")
-    for (name, wp), rgb in zip(parts().items(), ((0.25, 0.25, 0.27), (0.05, 0.35, 0.15),
-                                                 (0.8, 0.2, 0.2), (0.08, 0.08, 0.08))):
-        assy.add(wp, name=name, color=cq.Color(*rgb))
-    assy.save(str(out))
+    from cadkit.web import show
+    # its own folder, so it gets a viewer page of its own beside the instrument's
+    out = pathlib.Path(__file__).resolve().parent.parent / "servo42d"
+    out.mkdir(exist_ok=True)
     print(report())
-    print("wrote", out)
-    show(str(out))
+    show([(name, wp, rgb) for (name, wp), rgb in
+          zip(parts().items(), ((0.25, 0.25, 0.27), (0.05, 0.35, 0.15),
+                                (0.8, 0.2, 0.2), (0.08, 0.08, 0.08)))],
+         root=out, title="SERVO42D")
