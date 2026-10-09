@@ -107,6 +107,7 @@
       <div class="btn" id="bParts">parts<span class="k">p</span></div>
       <div class="btn" id="bSection">section<span class="k">c</span></div>
       <div class="btn" id="bLight">light<span class="k">l</span></div>
+      <div class="btn" id="bPrinted">as printed<span class="k">k</span></div>
       <div class="btn" id="bShowAll" style="display:none">show all<span class="k">u</span></div>
     </div>
     <div class="bar" id="views">
@@ -439,6 +440,26 @@
                                                  roughness: 0.6, side: THREE.DoubleSide, clipShadows: true,
                                                  envMapIntensity: ENV });
 
+  // ── as printed ───────────────────────────────────────────────────────────────────
+  // The build colours every part differently so they can be told apart. This view
+  // shows the instrument as it comes off the printer instead: every part of one
+  // filament in that filament's colour AND finish. Glass-filled PETG is matte (the
+  // fibre breaks up the surface, so it barely reflects); PCTG is a glossy plastic and
+  // picks up the room; TPU is dull rubber. Bought parts keep their colours.
+  const PRINT = {
+    'petg-gf': new THREE.MeshStandardMaterial({ color: 0x17181a, metalness: 0, roughness: 0.92,
+      side: THREE.DoubleSide, clipShadows: true, envMapIntensity: 0.25 }),
+    'pctg': new THREE.MeshStandardMaterial({ color: 0x14401f, metalness: 0, roughness: 0.22,
+      side: THREE.DoubleSide, clipShadows: true, envMapIntensity: 1.0 }),
+    // the deck's second colour (its fret lines and markers): not chosen yet, so a pale one
+    'pctg-alt': new THREE.MeshStandardMaterial({ color: 0xd9d6c8, metalness: 0, roughness: 0.22,
+      side: THREE.DoubleSide, clipShadows: true, envMapIntensity: 1.0 }),
+    'tpu': new THREE.MeshStandardMaterial({ color: 0x101011, metalness: 0, roughness: 1.0,
+      side: THREE.DoubleSide, clipShadows: true, envMapIntensity: 0.15 }),
+  };
+  let asPrinted = false;
+  try { asPrinted = sessionStorage.getItem('as-printed') === '1'; } catch {}
+
   function buildModel(gltf) {
     const root = gltf.scene;
     let parts = root;
@@ -451,7 +472,8 @@
     for (const mesh of [...parts.children]) {
       if (!mesh.isMesh) continue;
       const g = mesh.geometry, col = g.attributes.color ? g.attributes.color.array : null;
-      const mat = col ? vcMat : partMaterial(mesh.material);
+      const printed = asPrinted && !col && PRINT[mesh.userData.mat];
+      const mat = col ? vcMat : printed || partMaterial(mesh.material);
       const unit = mesh.userData.unit || unitOf(mesh.name);      // a board's lettering names its board
       const p = { name: mesh.name, unit, family: family(unit), mat, hidden: false, col,
                   pos: g.attributes.position.array, idx: g.index.array,
@@ -1052,7 +1074,7 @@
   function setHint() {
     $('hint').textContent = mode === 'measure'
       ? 'measure: click a corner, edge or face, then another · esc clears · m leaves · drag still orbits'
-      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · ctrl+z / ctrl+y undo, redo · p parts list · m measure · c section · l lighting';
+      : 'drag orbit · scroll zoom · right-drag pan · click a part to select it (shift adds) · x hide · i isolate · z zoom · u show all · ctrl+z / ctrl+y undo, redo · p parts list · m measure · c section · l lighting · k as printed';
   }
 
   // ── pointer and keys ─────────────────────────────────────────────────────────────
@@ -1090,6 +1112,7 @@
       case 'u': showAll(); return;
       case 'c': $('bSection').onclick(); return;
       case 'l': setQuality(quality - 1, true); return;
+      case 'k': setPrinted(!asPrinted); return;
     }
     const p = keyToPedal[e.key]; if (!p || e.repeat) return;
     held.add(p); syncUI();
@@ -1170,7 +1193,7 @@
     const sh = quality >= 1;
     if (renderer.shadowMap.enabled !== sh) {
       renderer.shadowMap.enabled = sh; key.castShadow = sh;
-      for (const m of [...matCache.values(), vcMat]) m.needsUpdate = true;
+      for (const m of [...matCache.values(), vcMat, ...Object.values(PRINT)]) m.needsUpdate = true;
     }
     if (quality >= 2 && !composer) {
       const pr = renderer.getPixelRatio();
@@ -1227,6 +1250,15 @@
     if (++slowFor >= 2) setQuality(quality - 1);
   }
   $('bLight').onclick = () => setQuality(quality - 1, true);
+  // the model is built again from the file: parts are grouped by material when it loads
+  function setPrinted(on) {
+    asPrinted = on;
+    try { sessionStorage.setItem('as-printed', on ? '1' : '0'); } catch {}
+    $('bPrinted').classList.toggle('on', on);
+    load(false).catch(e => console.error(e));
+  }
+  $('bPrinted').onclick = () => setPrinted(!asPrinted);
+  $('bPrinted').classList.toggle('on', asPrinted);
 
   // ── the axis views ───────────────────────────────────────────────────────────────
   // look along a CAD direction, from that side: "+Z" is the view from above
@@ -1359,7 +1391,7 @@
     requestAnimationFrame(tick);
   }
   // for poking at it from the console (and for the checks that drive the page)
-  window.viewer = { renderer, scene, camera, controls, sec, setSection, undo, viewFrom, setQuality, get quality() { return quality; }, key, THREE,
+  window.viewer = { renderer, scene, camera, controls, sec, setSection, undo, viewFrom, setPrinted, setQuality, get quality() { return quality; }, key, THREE,
                     frame() { controls.update(); lightDirty = true; renderer.info.reset(); drawFrame(); }, M, meas, pickAt, snapAt, setHidden, setMode,
                     measureClick, between, showAll, get selection() { return selection; },
                     select(names) { selection = names.flatMap(n => M.byName.has(n) ? M.units.get(M.byName.get(n).unit) : []); drawSelection(); },
