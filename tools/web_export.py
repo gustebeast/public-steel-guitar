@@ -270,7 +270,36 @@ def _pad4(b: bytes, fill: bytes = b"\x00") -> bytes:
     return b + fill * (-len(b) % 4)
 
 
-def write_glb(parts, out: pathlib.Path, extras=None) -> None:
+def silk_units(done):
+    """{lettering part: its board}. A board's lettering is a part of its own in the
+    build (white ink), under names that follow no one rule (tee_silk_3 on tee_pcb_3,
+    pogo_male_silk_top on pogo_male_board_top), so the board is found by where the
+    lettering IS: the other part whose box best matches the lettering's own (overlap
+    over union, both grown 1 mm so a one-face print still has a thickness). The viewer
+    then selects, hides and lists the two as one."""
+    boxes = {n: (m["pos"].min(0), m["pos"].max(0)) for n, m in done.items() if "__" not in n}
+    out = {}
+    for n, (lo, hi) in boxes.items():
+        if "silk" not in n:
+            continue
+        best = (0.05, None)
+        lo, hi = lo - 1.0, hi + 1.0
+        for k, (a, b) in boxes.items():
+            if "silk" in k:
+                continue
+            a, b = a - 1.0, b + 1.0
+            inter = float(np.prod(np.clip(np.minimum(hi, b) - np.maximum(lo, a), 0.0, None)))
+            if inter <= 0.0:
+                continue
+            iou = inter / (float(np.prod(hi - lo)) + float(np.prod(b - a)) - inter)
+            if iou > best[0]:
+                best = (iou, k)
+        if best[1]:
+            out[n] = best[1]
+    return out
+
+
+def write_glb(parts, out: pathlib.Path, extras=None, units=None) -> None:
     """parts = [(name, pos float32 (n,3), tri uint32 (m,3), (r, g, b, a), col)]: `col`
     is None, or uint8 (n,4) per-vertex colour (linear, as glTF's COLOR_0), and then the
     part's material is plain white under it."""
@@ -314,6 +343,8 @@ def write_glb(parts, out: pathlib.Path, extras=None) -> None:
         meshes.append({"primitives": [{"attributes": attrs, "indices": ia,
                                        "material": mat_ix[key]}]})
         nodes.append({"name": name, "mesh": len(meshes) - 1})
+        if units and name in units:                # what it is selected and hidden with
+            nodes[-1]["extras"] = {"unit": units[name]}
     # CAD Z-up -> glTF Y-up at the one root, as cadquery's exporter did
     s = 0.7071067811865476
     root = {"name": "assembly", "rotation": [-s, 0.0, 0.0, s],
@@ -455,7 +486,7 @@ def export(parts, out_dir, stem="assembly", extras=None, meshed=None, quiet=Fals
         geo[name] = m["inst"] if "inst" in m else m["geo"]
     glb = out_dir / (stem + ".glb")
     side = out_dir / (stem + ".geo.json")
-    write_glb(glb_parts, glb, extras=extras)
+    write_glb(glb_parts, glb, extras=extras, units=silk_units(done))
     side.write_text(json.dumps({"format": FORMAT, "units": "mm", "parts": geo, "models": models},
                                separators=(",", ":")))
     if not quiet:
