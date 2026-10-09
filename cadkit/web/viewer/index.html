@@ -149,6 +149,7 @@
   import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
   import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
   import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+  import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
   import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 
   THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -537,7 +538,7 @@
   }
   function disposeModel() {
     if (!M.root) return;
-    clearSelection(); clearMeasure();
+    clearSelection(); clearMeasure(); rtDrop();
     scene.remove(M.root);
     for (const b of M.batches) { b.pickGeo.disposeBoundsTree(); b.pickGeo.dispose(); b.drawGeo.dispose(); }
     for (const p of M.list) if (p.mesh) { p.mesh.geometry.disposeBoundsTree(); p.mesh.geometry.dispose(); }
@@ -1112,7 +1113,7 @@
       case 'z': selAction('zoom'); return;
       case 'u': showAll(); return;
       case 'c': $('bSection').onclick(); return;
-      case 'l': setQuality(quality - 1, true); return;
+      case 'l': setQuality(quality + 1, true); return;
       case 'k': setPrinted(!asPrinted); return;
     }
     const p = keyToPedal[e.key]; if (!p || e.repeat) return;
@@ -1185,11 +1186,12 @@
   // the deck lets light into the mechanism and an isolated part gets the whole map to
   // itself. Occlusion is screen-space, so it follows by nature. Both cost frame time,
   // and the page gives them up, one level at a time, if it cannot hold 60 fps.
-  const LIGHT = ['plain', 'shadows', 'shadows + occlusion'];
+  const LIGHT = ['plain', 'shadows', 'shadows + occlusion', 'ray traced'];
   let quality = 2, autoQuality = true, composer = null, gtao = null;
-  let lightDirty = true, lastSig = 0, slowFor = 0, settledAt = Infinity;
+  let lightDirty = true, lastSig = 0, slowFor = 0, settledAt = Infinity, traced = false;
   function setQuality(q, manual = false) {
     quality = (q + LIGHT.length) % LIGHT.length;
+    if (quality === 3 && !rt.ok) quality = manual ? 0 : 2;       // no tracer behind this page
     if (manual) autoQuality = false;
     const sh = quality >= 1;
     if (renderer.shadowMap.enabled !== sh) {
@@ -1214,7 +1216,143 @@
       composer.addPass(new OutputPass());
     }
     lightDirty = true; slowFor = 0;
+    if (quality === 3) fetchJSON('trace.json?warm=1');           // have it ready
     $('bLight').title = 'lighting: ' + LIGHT[quality] + (autoQuality ? ' (drops by itself under 60 fps)' : '');
+  }
+
+  // ── ray tracing ──────────────────────────────────────────────────────────────────
+  // The top level, and never chosen for you. THE DRAWN PICTURE STAYS ON SCREEN, quick
+  // and live, exactly as 'shadows + occlusion' draws it (user, 2026-10-09). When the
+  // view has come to rest, ONE ray traced picture of exactly what is shown is swapped
+  // in: light that bounces between parts, soft shadows, reflections of the model in its
+  // own glossy parts. Any movement puts the drawn picture straight back.
+  //
+  // THE PAGE DOES NOT TRACE IT. A browser cannot reach a card's ray-tracing hardware,
+  // and a tracer written in a shader took seconds a picture. The server this page
+  // comes from keeps a renderer that can (cadkit/web/trace.py) with the model loaded;
+  // the page sends what it shows, camera, hidden parts, the rig's pose, and gets a
+  // picture back in a fraction of a second. So the level exists only on a page served
+  // from the machine that built the model, and only if that machine has the renderer:
+  // a published page does not offer it. It traces what is SHOWN, not a section cut:
+  // with a cut on, the page stays with the drawn picture.
+  // TWO PICTURES A VIEW: a quick one of few samples, denoised, which is nearly the
+  // finished thing and is there in a third of a second, then the full one over it.
+  const RT_FIRST = 24, RT_SAMPLES = 128;
+  const rt = { ok: null, cam: new THREE.Matrix4(), size: '', want: 0, shown: false,
+               asking: 0, ms: 0, n: 0, quad: null, error: '', prev: new THREE.Matrix4(), goal: null, asked: -1, far: 1 };
+  async function rtLoad() {                        // is there a tracer behind this page?
+    if (rt.ok !== null) return;
+    const r = await fetchJSON('trace.json?t=' + Date.now());
+    rt.ok = !!(r && r.available);
+  }
+  function rtDrop() { rt.want++; rt.shown = false; rt.goal = null; }
+  async function rtAsk(samples = RT_FIRST) {
+    const want = rt.want, pr = renderer.getPixelRatio(), poses = {};
+    for (const n in nodes) poses[n] = nodes[n].matrixWorld.toArray();
+    const view = { w: Math.round(innerWidth * pr), h: Math.round(innerHeight * pr), samples,
+                   cam: rt.cam.toArray(), fov: camera.fov, near: camera.near, far: camera.far,
+                   hidden: M.list.filter(p => p.hidden).map(p => p.name), poses, printed: asPrinted,
+                   sun: KEY_DIR.toArray(), sun_strength: key.intensity,
+                   bg: scene.background.clone().convertLinearToSRGB().toArray() };
+    const t0 = performance.now();
+    rt.asking++; fpsLine();
+    try {
+      const r = await fetch('trace', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                       body: JSON.stringify(view) });
+      if (r.status === 200) {
+        const bmp = await createImageBitmap(await r.blob(), { imageOrientation: 'flipY' });
+        if (want !== rt.want) bmp.close();           // the view moved on meanwhile
+        else {
+          if (!rt.quad) rt.quad = new FullScreenQuad(new THREE.MeshBasicMaterial(
+            { toneMapped: false, depthTest: false, depthWrite: false }));
+          const m = rt.quad.material;
+          if (m.map) { m.map.image.close(); m.map.dispose(); }
+          m.map = new THREE.Texture(bmp);
+          m.map.colorSpace = THREE.SRGBColorSpace; m.map.generateMipmaps = false;
+          m.map.minFilter = m.map.magFilter = THREE.LinearFilter;
+          m.map.needsUpdate = true; m.needsUpdate = true;
+          rt.shown = true; rt.ms = performance.now() - t0; rt.n = samples; rt.error = '';
+          if (samples < RT_SAMPLES) rtAsk(RT_SAMPLES);
+        }
+      } else if (r.status !== 204) { rt.error = r.statusText || 'failed'; console.warn('ray tracing:', rt.error); }
+    } catch (e) { rt.error = 'failed'; console.warn(e); }
+    rt.asking--; fpsLine();
+  }
+  // THE VIEW GLIDES TO A STOP after a drag, ever more slowly, and takes a second or two
+  // to stand exactly still, long after the eye has it as stopped. Waiting for that is
+  // waiting for nothing (user, 2026-10-09: err on the side of speed; a picture the view
+  // has left is simply dropped). So as soon as the glide is slow, WHERE IT WILL END is
+  // worked out, the picture is asked for THERE at once, and the glide is finished by
+  // this code, quickly, while the picture is on its way.
+  const RT_SLOW = 1e-2;                            // a frame's movement, as a share of the view
+  function rtSame(a, b, tol = 1e-6) {
+    const x = a.elements, y = b.elements;
+    for (let i = 0; i < 15; i++) if (Math.abs(x[i] - y[i]) > (i < 12 ? tol : tol * rt.far)) return false;
+    return true;
+  }
+  // the pose a picture should be of, or null while the view is really moving
+  function rtPose() {
+    const g = rt.goal;
+    rt.far = camera.position.distanceTo(controls.target) || 1;
+    if (g) {
+      if (down || camera.position.distanceTo(g.at) > 1e-6 * rt.far) rt.goal = null;   // taken back in hand
+      else {
+        camera.position.lerp(g.pos, 0.35); controls.target.lerp(g.tgt, 0.35);
+        if (camera.position.distanceTo(g.pos) < 1e-4 * rt.far) {
+          camera.position.copy(g.pos); controls.target.copy(g.tgt); rt.goal = null;
+          controls.update(); camera.updateMatrixWorld();
+          rt.prev.copy(camera.matrixWorld);
+          return camera.matrixWorld;                                   // arrived: g.mat, to rounding
+        }
+        camera.lookAt(controls.target); camera.updateMatrixWorld();
+        g.at.copy(camera.position); rt.prev.copy(camera.matrixWorld);
+        return g.mat;
+      }
+    }
+    const a = camera.matrixWorld.elements, p = rt.prev.elements;
+    let m = 0;
+    for (let i = 0; i < 15; i++) m = Math.max(m, Math.abs(a[i] - p[i]) / (i < 12 ? 1 : rt.far));
+    rt.prev.copy(camera.matrixWorld);
+    if (m < 1e-7) return camera.matrixWorld;                 // still, to rounding
+    if (down || m >= RT_SLOW) return null;
+    // the end of the glide: what the controls would do with the rest of it in one step
+    const at = camera.position.clone(), tgt = controls.target.clone();
+    controls.enableDamping = false; controls.update(); controls.enableDamping = true;
+    camera.updateMatrixWorld();
+    rt.goal = { pos: camera.position.clone(), tgt: controls.target.clone(), mat: camera.matrixWorld.clone(), at };
+    camera.position.copy(at); controls.target.copy(tgt);
+    camera.lookAt(tgt); camera.updateMatrixWorld();
+    rt.prev.copy(camera.matrixWorld);
+    return rt.goal.mat;
+  }
+  // true when this frame shows the traced picture (so the drawn one must NOT be drawn over it)
+  function rtFrame(changed) {
+    if (quality !== 3 || !rt.ok || sec.on || !M.parts) return false;
+    const pose = rtPose(), size = innerWidth + 'x' + innerHeight;
+    if (changed || !pose || size !== rt.size || !rtSame(pose, rt.cam)) {
+      const was = rt.shown;
+      rt.shown = false; rt.want++; rt.size = size;
+      if (pose) rt.cam.copy(pose); else rt.cam.identity();
+      if (was) fpsLine();
+    }
+    // asked for as soon as there is a pose and nothing else is changing (the rig eases)
+    if (pose && !changed && rt.asked !== rt.want) { rt.asked = rt.want; rtAsk(); }
+    if (!rt.shown || rt.goal || !rtSame(camera.matrixWorld, rt.cam)) return false;
+    rt.quad.render(renderer);
+    rtOverlays();
+    return true;
+  }
+  // the selection tint and the measure marks, over the traced picture
+  function rtOverlays() {
+    const off = [];
+    for (const b of M.batches) if (b.draw.visible) { b.draw.visible = false; off.push(b.draw); }
+    for (const p of M.list) if (p.mesh && p.mesh.visible) { p.mesh.visible = false; off.push(p.mesh); }
+    const bg = scene.background, ac = renderer.autoClear;
+    scene.background = null; renderer.autoClear = false;
+    renderer.clearDepth();
+    renderer.render(scene, camera);
+    scene.background = bg; renderer.autoClear = ac;
+    for (const o of off) o.visible = true;
   }
   function fitShadow() {
     const box = new THREE.Box3();
@@ -1233,24 +1371,30 @@
   function rigSignature() {
     let s = 0;
     for (const n in nodes) { const e = nodes[n].matrix.elements; s += e[0] + 1.7 * e[5] + e[12] + 1.3 * e[13] + 1.9 * e[14]; }
-    return s;
+    // to a tenth of a micron: the rig EASES to rest, and its last digits go on settling
+    // for seconds after anything that could be seen has stopped
+    return Math.round(s * 1e4);
   }
   function drawFrame() {
+    let changed = false;
     if (quality >= 1 && M.parts) {
       const sig = rigSignature();
+      changed = lightDirty || sig !== lastSig;
       if (lightDirty) fitShadow();
-      if (lightDirty || sig !== lastSig) renderer.shadowMap.needsUpdate = true;
+      if (changed) renderer.shadowMap.needsUpdate = true;
       lastSig = sig; lightDirty = false;
     }
+    traced = rtFrame(changed);
+    if (traced) return;
     if (quality >= 2) composer.render(); else renderer.render(scene, camera);
   }
   // called once a second with the measured rate
   function govern(fps, now) {
     if (!autoQuality || quality === 0 || document.hidden || now < settledAt) { slowFor = 0; return; }
     if (fps >= 57) { slowFor = 0; return; }
-    if (++slowFor >= 2) setQuality(quality - 1);
+    if (++slowFor >= 2) setQuality(Math.min(quality, 3) - 1);
   }
-  $('bLight').onclick = () => setQuality(quality - 1, true);
+  $('bLight').onclick = () => setQuality(quality + 1, true);
   // the model is built again from the file: parts are grouped by material when it loads
   function setPrinted(on) {
     asPrinted = on;
@@ -1371,6 +1515,7 @@
     setHint();
     try {
       await load(true);
+      await rtLoad();
       restoreState();
       $('loading').style.opacity = '0';
       setTimeout(() => $('loading').remove(), 400);
@@ -1383,14 +1528,23 @@
 
   let last = performance.now(), fpsT = last, fpsN = 0, stalled = false;
   const fpsEl = $('fps');
+  let fpsNow = 0;
+  function fpsLine() {                                  // also said at once when tracing starts or ends
+    fpsEl.textContent = traced || rt.shown
+        ? 'ray traced · ' + rt.n + ' samples in ' + (rt.ms / 1000).toFixed(2) + ' s'
+        : Math.round(fpsNow) + ' fps · ' + renderer.info.render.calls + ' draws · ' +
+          Math.round(renderer.info.render.triangles / 1000) + 'k tris · ' + LIGHT[quality] +
+          (quality !== 3 ? '' : sec.on ? ' (not with a section cut)' : rt.asking ? ' (tracing…)'
+           : rt.error ? ' (' + rt.error + ')' : ' (when still)');
+  }
   function tick(now) {
     if (now - last > 250) stalled = true;               // a hidden tab, a load: not a slow device
     const dt = Math.min((now - last) / 1000, 0.05); last = now;
     if (++fpsN && now - fpsT >= 1000) {
-      const fps = fpsN * 1000 / (now - fpsT);
-      fpsEl.textContent = Math.round(fps) + ' fps · ' + renderer.info.render.calls + ' draws · ' +
-                          Math.round(renderer.info.render.triangles / 1000) + 'k tris · ' + LIGHT[quality];
-      if (stalled) stalled = false; else govern(fps, now);
+      const fps = fpsNow = fpsN * 1000 / (now - fpsT);
+      fpsLine();
+      // a second spent tracing says nothing about how fast this device DRAWS
+      if (stalled || traced) stalled = false; else govern(fps, now);
       fpsT = now; fpsN = 0;
     }
     applyRig(dt);
@@ -1406,8 +1560,9 @@
     requestAnimationFrame(tick);
   }
   // for poking at it from the console (and for the checks that drive the page)
-  window.viewer = { renderer, scene, camera, controls, sec, setSection, undo, viewFrom, setPrinted, setQuality, get quality() { return quality; }, key, THREE,
-                    frame() { controls.update(); lightDirty = true; renderer.info.reset(); drawFrame(); }, M, meas, pickAt, snapAt, setHidden, setMode,
+  window.viewer = { rt, renderer, scene, camera, controls, sec, setSection, undo, viewFrom, setPrinted, setQuality, get quality() { return quality; }, key, THREE,
+                    frame() { controls.update(); lightDirty = true; renderer.info.reset(); drawFrame(); },
+                    draw() { renderer.info.reset(); drawFrame(); return traced; }, M, meas, pickAt, snapAt, setHidden, setMode,
                     measureClick, between, showAll, get selection() { return selection; },
                     select(names) { selection = names.flatMap(n => M.byName.has(n) ? M.units.get(M.byName.get(n).unit) : []); drawSelection(); },
                     selAction, loadGeo, toPx };
