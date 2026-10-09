@@ -13,7 +13,8 @@ way: nobody presses reload.
 
 WHAT IT READS. The surroundings are the scratch cache (.scratch_cache/*.brep, written
 by `tools.scratch_view --start`); the part under work is built fresh from your scope,
-exactly as the scratch view does it. Each cached solid's MESH is kept in
+exactly as the scratch view does it, and kept in .webview/live/ so that a --cache-only
+run still shows it, as last built. Each cached solid's MESH is kept in
 .webview/mesh/, keyed on the solid file's size and time, so a second run meshes only
 what changed. Like the scratch cache this is for LOOKING: no gate reads it.
 
@@ -161,7 +162,7 @@ def _piece(brep, name):
 
 
 def export_local(live=True, rig=False):
-    from tools.web_export import export, mesh_shape, pieces, rig_names, _topods
+    from tools.web_export import export, rig_names, _topods
     if not (CACHE / "STAMP").exists():
         raise SystemExit("web view: no scratch cache. Begin a flow first:\n"
                          "  py -3.12 -m tools.scratch_view --start")
@@ -179,20 +180,33 @@ def export_local(live=True, rig=False):
             if VIEW.pose:
                 live_parts = [(n, VIEW.pose(n, w)) for n, w in live_parts]
     mine = {n for n, _ in live_parts}
+    # THE PART UNDER WORK IS KEPT, as last built, in .webview/live/: the scratch cache
+    # leaves it out on purpose (it is rebuilt every run), so without this a --cache-only
+    # run showed the instrument with a hole where the claimed scope is. (User, 2026-10-09:
+    # "why is the chassis missing?" -- it was in the scope.)
+    kept = OUT / "live"
+    if live_parts:
+        import cadquery as cq
+        kept.mkdir(exist_ok=True)
+        for f in kept.glob("*.brep"):
+            f.unlink()
+        for part, w in live_parts:
+            cq.Shape(_topods(w)).exportBrep(str(kept / (part + ".brep")))
+    stale = sorted(kept.glob("*.brep")) if kept.exists() else []
+    held = {f.stem for f in stale}
     breps = [f for f in sorted(CACHE.glob("*.brep"))
-             if f.stem not in mine and not (replaced and f.stem.startswith(replaced))]
+             if f.stem not in held and not (replaced and f.stem.startswith(replaced))] + stale
+    if stale and not live_parts:
+        print("web view: %d part(s) under work shown AS LAST BUILT (%s); run without "
+              "--cache-only to rebuild them" % (len(stale), time.strftime(
+                  "%H:%M", time.localtime(max(f.stat().st_mtime for f in stale)))))
     meshed, solids, base = {}, {}, {}             # base: a piece's part, for its colour
-    taken = {f.stem for f in breps} | mine
+    taken = {f.stem for f in breps}
     whole = rig_names(OUT / "rig.json") | rig_names(DOCS / "rig.json")
     for f in breps:
         for n, m in _cached_mesh(f, taken, whole):
             meshed[n], base[n] = m, f.stem
             solids[n] = (lambda p=f, k=n: _piece(p, k))
-    for part, w in live_parts:
-        for n, s in pieces(part, _topods(w), taken, whole):
-            m = mesh_shape(s)
-            if m is not None:
-                meshed[n], base[n], solids[n] = m, part, s
     cols = _colors(sorted(set(base.values())))
     age = (time.time() - float((CACHE / "STAMP").read_text())) / 60.0
     export([(n, solids[n], cols[base[n]]) for n in meshed], OUT, meshed=meshed)
@@ -203,7 +217,8 @@ def export_local(live=True, rig=False):
             ER.build_rig()
         except Exception as exc:
             print("web view: no animation rig (%s) -- the page shows the model still" % exc)
-    stamp = {"t": time.time(), "live": sorted(mine), "cache_age_min": round(age, 1),
+    stamp = {"t": time.time(), "live": sorted(mine), "kept": len(held) - len(mine),
+             "cache_age_min": round(age, 1),
              "parts": len(meshed)}
     (OUT / "stamp.json").write_text(json.dumps(stamp))
     print("web view: %d parts (%d fresh, surroundings %.0f min old) in %.1f s"
