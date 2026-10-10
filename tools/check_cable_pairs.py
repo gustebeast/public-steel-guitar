@@ -10,7 +10,9 @@ column (234 / 69 / 15.5 mm3). None of it was ever reported.
 
 A contact confined to one small region (under 4 mm across) is a touch -- cables converging
 on one connector, or a crossing -- and is only counted. A contact that runs is listed: that
-is two cables occupying the same length of space. Exit code = the number that run.
+is two cables occupying the same length of space. Two cables may touch in several places
+(they cross square wherever their lanes meet, and nothing lifts over anything); each place
+is measured for itself. Exit code = the number that run.
 """
 import itertools
 import sys
@@ -40,8 +42,12 @@ def main():
         v = it.Volume()
         if v <= MIN_VOL:
             continue
-        ib = it.BoundingBox()
-        span = max(ib.xlen, ib.ylen, ib.zlen)
+        # the longest ONE contact: two conductors that cross square at both ends of a hop
+        # meet twice, 30 mm apart, and neither meeting is a run
+        span = 0.0
+        for piece in it.Solids():
+            ib = piece.BoundingBox()
+            span = max(span, ib.xlen, ib.ylen, ib.zlen)
         if span < RUN_MM:
             touches += 1
         else:

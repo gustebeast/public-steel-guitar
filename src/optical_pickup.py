@@ -132,7 +132,7 @@ from . import chassis as CH
 from . import top_plate as TP
 from .helpers import box_at, cyl, cyl_y, oct_cable
 from cadkit.fasteners import M4
-from cadkit.pcb import PCB_T as _PCB_T, jst_plug as _jst_plug
+from cadkit.pcb import PCB_T as _PCB_T
 
 # ── where it sits ────────────────────────────────────────────────────────────
 # The speaking length ends at the BEARING TANGENT (directly over the axle), NOT at
@@ -3587,17 +3587,14 @@ def usb_run_length():
     return segs, sum(v for _, v in segs)
 
 
-def opt_cables(which: str = "all") -> cq.Workplane:
-    """The MALE connectors and their cable, at true diameter -- an assembly aid, not a part.
+def opt_cables(which: str = "usb") -> cq.Workplane:
+    """The USB lead with its plugs, at true size -- an assembly aid, not a part -- or the
+    line the 24 V pair is planned along.
 
-    ⚠ SPLIT BY WHAT THE CABLE IS, because one grey solid could not say. `which` is
-    "usb" (J1's plug, its lead, and the long haul to the Pi), "pwr" (J2's plug -- its
-    two conductors are wiring.optical_feed's, drawn along "pwr_path", the lead's centre
-    line as a list of points), or "all". The build registers the two separately so each carries its own
-    name and its own colour in the viewer -- violet for USB and red for 24 V, the same
-    scheme the loose wires already use -- and so either can be hidden on its own while
-    tracing a route. As one part they were a single near-black mass, which also broke the
-    project's rule that black is reserved for TPU.
+    `which` is "usb" (J1's down-angle plug, its ribbon, and J4's plug at the output board:
+    one bought lead, drawn black as it is) or "pwr_path" (the centre line of J2's pair as
+    a list of points; its two conductors are wiring.optical_feed's, and its crimp housing
+    is the one the board's export seats in the header).
 
     Modelled so the route can be planned rather than assumed: each plug leaves its socket
     along -Y, runs to the conduit's mouth and turns down it. The USB-C socket sits -X of the
@@ -3614,7 +3611,7 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         nonlocal out
         out = s if out is None else out.union(s)
 
-    _WANT = {"usb": ("J1",), "pwr": ("J2",), "pwr_path": ("J2",), "all": ("J1", "J2")}[which]
+    _WANT = {"usb": ("J1",), "pwr_path": ("J2",)}[which]
     _yturn, _path, _od = {}, {}, {}
     # ⚠ THE 24 V PAIR TURNS DOWN RIGHT BEHIND ITS OWN PLUG (user, 2026-10-07). An XH plug
     # is a crimped housing with loose wires, so the pair needs no run at plug height at
@@ -3647,8 +3644,8 @@ def opt_cables(which: str = "all") -> cq.Workplane:
                                            z=zb - (k + 0.8) * step))
             add(boot)
             continue
-        # the crimp housing, drawn as one (cadkit.pcb.jst_plug): inside the same box
-        add(_jst_plug(4, w, h, plen).translate((p["x"], PCB_YM, zc)))
+        # (J2's crimp housing is not drawn here: the board's own export seats one in every
+        #  JST header, from the routed footprint. PLUG_L is the room planned behind it.)
         # TURN AT WHICHEVER BACK FACE IS FURTHER -Y -- its own, or that of any neighbour the
         # lead has to cross in X. Deriving it from the plug's own length alone is what let
         # the right-angle J1 drive through J2; deriving it from the neighbour alone would
