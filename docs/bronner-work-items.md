@@ -5908,3 +5908,23 @@ there self-contained, no PATH change): `rt/` the renderer, `app/` the desktop sh
   and has ray queries if the Windows SDK's dxcompiler.dll is supplied.
 - NEXT (not started): the real viewer page hosted this way with its canvas left
   transparent; NRD as the denoiser for the moving picture.
+
+## RENDERER LOOP (user, 2026-10-09) -- state, read at the start of every tick
+
+DONE WHEN: (1) one viewer page shared by web and desktop, only the renderer differs;
+(2) every control of the web version works in the desktop app; (3) the still picture is
+close to Blender's (side-by-side, views A and B); (4) it starts with one command and is
+documented in cadkit. Then stop the loop.
+
+DECISIONS: the page stays the UI and keeps picking / measuring on its own geometry; in
+the shell its canvas is transparent and draws overlays only; the page sends camera,
+hidden, poses, selection, section, sun, backdrop to native. Native = Rust, wgpu Vulkan
+ray queries. Work happens in `%LOCALAPPDATA%/cadkit-rt/desk` until it works; the source
+then moves into canonical cadkit (`desktop/`, build output kept outside Sync). Denoiser:
+try NRD if the moving picture needs it; DLSS only after asking the user (SDK download).
+
+MILESTONES
+- [ ] M1 real page hosted, all controls, overlay alignment measured  (agent running, started 2026-10-09)
+- [ ] M2 quality parity with Blender on views A and B (materials, sky, sun, clear parts)
+- [ ] M3 moving-picture quality (denoiser), real-mouse check by the user
+- [ ] M4 source into cadkit, `py -3.12 -m cadkit.web.desktop` launcher, docs, lead propagates
