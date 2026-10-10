@@ -2272,7 +2272,7 @@ _COLORS = {
     # ⚠ MATCHED TO THE LOOSE-WIRE COLOURS BELOW, not picked fresh: a USB run is a USB
     # run whether it is drawn as a wire or as a modelled cable, and the old single entry
     # was (0.15,0.15,0.17) -- near-black, which this project reserves for TPU.
-    "optical_cable_usb": (0.55, 0.25, 0.75),  # violet, as wire_usb - the optical board USB ribbon lead and its two plugs
+    "optical_cable_usb": (0.03, 0.03, 0.035),  # black, as the bought lead is: the optical board USB ribbon and its two plugs
     "optical_plug_pwr": (0.92, 0.92, 0.88),   # the XH housing on J2; its pair is wire_opt_*
     "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
     "optical_screw":   (0.72, 0.74, 0.78),   # M4x20 button, through the guard and the board

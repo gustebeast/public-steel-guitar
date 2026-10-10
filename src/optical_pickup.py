@@ -132,7 +132,7 @@ from . import chassis as CH
 from . import top_plate as TP
 from .helpers import box_at, cyl, cyl_y, oct_cable
 from cadkit.fasteners import M4
-from cadkit.pcb import PCB_T as _PCB_T
+from cadkit.pcb import PCB_T as _PCB_T, jst_plug as _jst_plug
 
 # ── where it sits ────────────────────────────────────────────────────────────
 # The speaking length ends at the BEARING TANGENT (directly over the axle), NOT at
@@ -3471,6 +3471,7 @@ USBC_ANG_BODY = 10.5            # the overmould along the cable. ASSUMED centred
                                 # plug's axis: the photo does not dimension where it sits
 USBC_ANG_BOOT = 8.5             # the ribbed relief past it
 USBC_BOOT_T = 3.5               # ...its thickness, ASSUMED (not dimensioned)
+USBC_RIBS = 5                   # ...and its ribs, counted off the photo
 RIBBON_W = 10.8                 # the flat cable, across
 RIBBON_T = 1.5                  # ...and through, ASSUMED (not dimensioned)
 USB_LEAD_L = 300.0              # overall, taken as overmould to overmould laid straight
@@ -3631,11 +3632,23 @@ def opt_cables(which: str = "all") -> cq.Workplane:
         if ref == "J1":
             # the DOWN-ANGLE plug: overmould and boot here, its ribbon with J4's below
             yd = PCB_YM - USBC_ANG_D / 2.0
-            add(box_at(USBC_ANG_W, USBC_ANG_D, USBC_ANG_BODY, x=p["x"], y=yd, z=zc))
-            add(box_at(RIBBON_W, USBC_BOOT_T, USBC_ANG_BOOT, x=p["x"], y=yd,
-                       z=zc - USBC_ANG_BODY / 2.0 - USBC_ANG_BOOT / 2.0))
+            # as the part looks (the seller's photo): a moulded block with its edges eased,
+            # and a relief of USBC_RIBS ribs -- both inside the boxes they were drawn as
+            add(box_at(USBC_ANG_W, USBC_ANG_D, USBC_ANG_BODY, x=p["x"], y=yd, z=zc)
+                .edges().chamfer(0.6))
+            zb = zc - USBC_ANG_BODY / 2.0
+            boot = box_at(RIBBON_W, USBC_BOOT_T, USBC_ANG_BOOT, x=p["x"], y=yd,
+                          z=zb - USBC_ANG_BOOT / 2.0)
+            step = USBC_ANG_BOOT / USBC_RIBS
+            for k in range(USBC_RIBS):                    # the gap under each rib, both faces
+                for s in (-1.0, 1.0):
+                    boot = boot.cut(box_at(RIBBON_W + 1.0, 0.6, 0.4 * step, x=p["x"],
+                                           y=yd + s * (USBC_BOOT_T / 2.0 - 0.3 + 0.01),
+                                           z=zb - (k + 0.8) * step))
+            add(boot)
             continue
-        add(box_at(w, plen, h, x=p["x"], y=PCB_YM - plen / 2, z=zc))
+        # the crimp housing, drawn as one (cadkit.pcb.jst_plug): inside the same box
+        add(_jst_plug(4, w, h, plen).translate((p["x"], PCB_YM, zc)))
         # TURN AT WHICHEVER BACK FACE IS FURTHER -Y -- its own, or that of any neighbour the
         # lead has to cross in X. Deriving it from the plug's own length alone is what let
         # the right-angle J1 drive through J2; deriving it from the neighbour alone would
