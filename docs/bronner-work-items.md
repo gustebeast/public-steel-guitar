@@ -5952,3 +5952,11 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
   (that last part not seen working by eye).
 - OPEN: user's verdict on feel; edges rougher while moving in crowded close-ups (NRD /
   DLSS not tried); other cards, SDR and 60-120 Hz displays untested; Windows only.
+- 2026-10-10 "pedals still lag, cannot orbit and press a pedal together": reproduced only
+  with input through the real queue (selftest part `hand`: SendInput pointer drag + keys);
+  posted messages and synthetic events never showed it. Cause: winit registers raw
+  input, each real key leaves a WM_INPUT on the shell's thread, and the shell drew one
+  blocking frame per page message so it never got back to read it; the page's key then
+  arrived ~550 ms late and its key-up / pointer-up not at all. Fixed in cadkit 9ae9d31
+  (raw input off; frames drawn on redraw request, newest view only). Hand test 20 of 20
+  at 2560x1369 and 1280x800, key down in 5-14 ms. Not yet tried by the user's own hands.
