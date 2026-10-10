@@ -5979,3 +5979,14 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
 - Untested: Ctrl+W and the tab ×, Blender `/trace` through the new server, `show()`/`scratch_show()`
   with real parts, the real gh-pages publish without tabs. Web tab switch is a page navigation.
 - Not shared: the web strip (page code) and the app strip (`desktop/src/tabs.html`) are two copies.
+
+## Plugs as they look (2026-10-10, cadkit ba0cc02, needs propagate before submit)
+
+- `optical_plug_pwr`: `cadkit.pcb.jst_plug` (wire cavities, lance windows, rails) inside the old
+  12.4 x 5.75 x 14 box. `optical_cable_usb`: black, overmould chamfered, boot with `USBC_RIBS`.
+- STILL PLAIN BLOCKS (same treatment owed): `pogo_*_ph_*` (leg joint boards, 0 models carried),
+  the tee boards' mated J1 envelope (green block over the 8-way), lever boards' mated PH.
+- cadkit a7342f1: tabs drag to reorder (app + web). ba0cc02: a build never opens a browser tab
+  (`CADKIT_VIEWER=browser` to ask for one).
+- Scratch view colours are remembered in `.webview/colors.json`; a changed `_COLORS` entry does
+  not show in the scratch view until that file's entry is changed too.
