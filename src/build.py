@@ -798,14 +798,6 @@ def _bump_build_counter() -> int:
     return n
 
 
-def _build_counter_model(n: int):
-    try:
-        return (cq.Workplane("XZ").text(str(n), 28, 6)
-                .translate((-150, 0, D.STRING_Z + 40)))
-    except Exception:
-        return None
-
-
 # THE ASSEMBLY IS DRAWN AS IT IS ASSEMBLED (user, 2026-10-05): every nut on the ceiling,
 # the top of its travel, which is where a string is wrapped and where each belt's clamp is
 # spliced -- because the build is what someone holds the real thing up against to check
@@ -2212,7 +2204,6 @@ _COLORS = {
     "shaft_trrs_jack": (0.62, 0.64, 0.67),       # bar-joint jack (10-03404)
     "shaft_trrs_cable": (0.45, 0.45, 0.48),
     "jack_seat_ring":  (0.42, 0.48, 0.52),
-    "build_counter":   (0.86, 0.08, 0.24),
     # knee lever (LKL) — input-side control
     "knee_housing":    (0.30, 0.36, 0.42),   # PCTG housing
     "knee_lever":      (0.27, 0.51, 0.71),   # PCTG lever/paddle
@@ -2588,7 +2579,7 @@ def _web_view(comps, build_n, publish=True):
         with _stage("viewer: rig"):
             build_rig(build_n)                  # animation manifest (pivots + copedent)
         with _stage("viewer: mesh + write"):
-            glb = build_glb(comps, build_n=build_n)   # full instrument + the #build label
+            glb = build_glb(comps, build_n=build_n)   # full instrument, numbered
         with _stage("viewer: local page"):
             show_exported(glb.parent, root=OUT)
         if publish:

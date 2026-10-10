@@ -13,10 +13,8 @@ from __future__ import annotations
 
 import pathlib
 
-import cadquery as cq
 
-from src.build import (collect_components, _color_for, _build_counter_model,
-                       _BUILD_COUNTER_FILE)
+from src.build import collect_components, _color_for, _BUILD_COUNTER_FILE
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 GLB = REPO / "docs" / "assembly.glb"
@@ -57,9 +55,9 @@ def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib
     was: the faces and edges as the CAD kernel describes them, for the viewer's measure
     tool) from `components` -- the (name, workplane) list from collect_components().
     Pass the list the caller already built to avoid rebuilding all the geometry a second
-    time; omit it to collect fresh. `build_n` stamps the floating build-number label into
-    the scene; omit it to read the current counter without
-    bumping. Returns the GLB's path.
+    time; omit it to collect fresh. `build_n` is the build's number, which the page shows
+    as text beside the time; omit it to read the current counter without bumping. Returns
+    the GLB's path.
 
     The GLB's root node turns CAD Z-up to glTF Y-up; the part nodes under it are in CAD
     coordinates, which is the frame the rig's pivots are given in."""
@@ -71,10 +69,6 @@ def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib
     if build_n is None:
         build_n = _current_build_n()
     parts = [(name, wp, _color_for(name)) for name, wp in components]
-    if build_n is not None:
-        counter = _build_counter_model(build_n)
-        if counter is not None:
-            parts.append(("build_counter", counter, _color_for("build_counter")))
     export(parts, out.parent, stem=out.stem, extras=dict(ABOUT, build=build_n), page=True,
            boards=BOARDS, cache_dir=REPO / ".webview" / "boards", materials=material_of,
            units=unit_of)
