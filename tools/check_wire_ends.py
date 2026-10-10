@@ -18,6 +18,17 @@ the pose off the solid), and then:
 
 Two wires in one way, and a loose end, are failures. A way nothing takes is only listed:
 not every way of every connector carries a conductor.
+
+AND EVERY WIRE IS ACCOUNTED FOR BY NAME. A conductor that floats -- ends near nothing --
+takes no way and misses none, so the way-by-way test passes it. ENDS says how many of
+each wire's ends are JST ways (first match wins; two unless it says otherwise), and a
+wire with fewer or more than that is a failure too.
+
+WHAT THIS DOES NOT PROVE: that a way holds the RIGHT net (src.wiring.check_cables holds
+each drawn cable to elec/harness.py, way by way, for the cables declared there); that an
+end which is not a JST -- a screw terminal, a USB plug, the ribbon's IDC header, a pogo
+board's pad, the motor's own terminals -- is anywhere in particular; or that the plug's
+own dimensions are the part's (cadkit.pcb.JST_SERIES says which are estimates).
 """
 
 from __future__ import annotations
@@ -44,6 +55,24 @@ BOARD_OF = (
     (r"^pogo_(male|female)_board_(top|bottom)$", r"leg_pogo_\1_\2"),
 )
 WIRE = re.compile(r"^wire_|pigtail|_cable_")
+
+# how many of a wire's ends are JST ways, and why not two
+ENDS = (
+    (r"^motor_pigtail_\d+$", 0),            # the jacket: motor terminals to where it splits
+    (r"^motor_pigtail_\d+_\d+$", 1),        # ...and each conductor from there into the tee's drop
+    (r"^wire_link$", 0),                    # the jacket: the Pi's USB-A to where it splits
+    (r"^wire_link_\d+$", 1),
+    (r"^wire_canb_coil_", 0),               # the coiled middle of a lever-to-lever lead
+    (r"^wire_canb_\w+_\d+_[01]$", 1),       # ...and its two halves, a plug on one end each
+    (r"^wire_(usb|ui|pickup)$|^optical_cable_usb$", 0),   # USB, the IDC ribbon, screw terminals
+)
+
+
+def ends_of(name):
+    for rx, n in ENDS:
+        if re.match(rx, name):
+            return n
+    return 2
 
 
 def _board(name):
@@ -149,6 +178,11 @@ def audit(parts, boards, show_all=False):
     if show_all:
         print("  one end in a way: " + ", ".join(one))
         print("  no end in a way:  " + ", ".join(none))
+    for wn, _ in wires:
+        got, want = ends.get(wn, 0), ends_of(wn)
+        if got != want:
+            bad += 1
+            print("  FLOATS      %s has %d end(s) in a way, and should have %d" % (wn, got, want))
     return bad
 
 
