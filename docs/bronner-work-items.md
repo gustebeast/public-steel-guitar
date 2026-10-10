@@ -5887,3 +5887,68 @@ vendored first: `export()` has no `units` keyword before it.
   `cadkit.web.parts.push_latch`.
 - OPEN: `ui_pwr_cap` is a printed part with NO entry in PARTS (no STEP is exported for
   it, no print orientation declared). Not added here.
+
+## 2026-10-09 custom path tracer: two proofs of concept (nothing in the repo yet)
+
+Both live OUTSIDE the repository, under `%LOCALAPPDATA%/cadkit-rt/` (Rust 1.99 installed
+there self-contained, no PATH change): `rt/` the renderer, `app/` the desktop shell.
+
+- `rt`: wgpu 30 on Vulkan ray queries, per-part BLAS + one TLAS, compute path tracer,
+  a-trous + reprojection denoise, accumulates to 256 samples then stops GPU work.
+  RTX 5090, 1.22 M triangles, 1920x1200: 0.8-1.9 ms GPU per moving frame (display-capped
+  at 240 Hz), 256 samples 75-200 ms after stopping; load + acceleration build < 0.1 s.
+  No NVIDIA software in it (no OptiX / NRD / DLSS). Moving picture judged from stills only.
+- `app`: a transparent WebView2 (wry) over the native picture in one winit window, page
+  drives the camera over IPC. Works ONLY with the window created without
+  WS_CLIPCHILDREN (winit sets it by default; with it the picture is white). 239 fps while
+  dragging, pointer event to present about 9 ms. A transparent WebGL canvas composites too.
+  Not tested: a real mouse, keyboard focus, interactive resize, SDR display, other cards,
+  the real viewer page. On the HDR desktop the Vulkan picture is shown darker than
+  rendered and translucent HTML blends heavier than in a browser; DX12 shows exact colour
+  and has ray queries if the Windows SDK's dxcompiler.dll is supplied.
+- NEXT (not started): the real viewer page hosted this way with its canvas left
+  transparent; NRD as the denoiser for the moving picture.
+
+## RENDERER LOOP (user, 2026-10-09) -- state, read at the start of every tick
+
+DONE WHEN: (1) one viewer page shared by web and desktop, only the renderer differs;
+(2) every control of the web version works in the desktop app; (3) the still picture is
+close to Blender's (side-by-side, views A and B); (4) it starts with one command and is
+documented in cadkit. Then stop the loop.
+
+DECISIONS: the page stays the UI and keeps picking / measuring on its own geometry; in
+the shell its canvas is transparent and draws overlays only; the page sends camera,
+hidden, poses, selection, section, sun, backdrop to native. Native = Rust, wgpu Vulkan
+ray queries. Work happens in `%LOCALAPPDATA%/cadkit-rt/desk` until it works; the source
+then moves into canonical cadkit (`desktop/`, build output kept outside Sync). Denoiser:
+try NRD if the moving picture needs it; DLSS only after asking the user (SDK download).
+
+MILESTONES
+- [x] M1 real page hosted (`desk.exe <url>`): orbit, select, hide, isolate, undo, rig, deck, section,
+  measure, axis views, parts list, resize pass scripted; overlay within 1 px; 219 fps moving,
+  256 samples 80-90 ms after stopping. Left: real keyboard / mouse by the user, a few untested
+  rows, exit code 122, hint text. Vulkan shows dark on the HDR desktop, DX12 exact -> DX12 the
+  default where the SDK's compiler DLL is found. Blender's room is bright BELOW (kept: it is
+  the look the user approved; trace_blender.py now says so); native is to match it.
+- [x] M2 still picture vs Blender at 1920x1200: mean difference 0.49/255 (A), 1.27/255 (B), luminance
+  within 1 %; reached in 0.18 s / 0.55 s (1024 samples + a light denoise). Principled-BSDF surface model.
+- [x] M3 moving picture within ~3/255 of the resting one on the model (variance-guided denoise, per-part
+  reprojection, samples per frame adapt to GPU time); 0 GPU work at rest (measured). NOT done: NRD /
+  DLSS (not needed so far), the 60-120 Hz budget branch, any other card. Real mouse: asked the user.
+- [x] M4 cadkit 2123dac: `desktop/` (Rust source), `web/desktop.py` launcher (builds into
+  %LOCALAPPDATA%/cadkit-desktop, uses only a server of its own cadkit copy: an older page has no
+  native mode and silently draws WebGL -- that is what "no RTX" was), AGENTS.md, README. Lead told.
+LOOP STOPPED 2026-10-09: all four conditions met by scripted checks; the user's own hands-on is open.
+
+After the loop (2026-10-09, evening), from the user's first hands-on:
+- "No RTX": the launcher had attached to a server of an older cadkit copy whose page has
+  no native mode. It now takes only a server of its own copy (`where.json` gives the page).
+- Pedals / levers laggy and the fans up: at 2560x1369 one pedal press kept the card at
+  ~99 % / 520 W for 7.3 s. Causes: the rig eases invisibly for seconds and every pose
+  restarted the picture; the resting picture was gathered in 240 Hz frames. Now 1.9 s
+  (cadkit 88b2e08); a moving frame takes ~36 % of the card. Not yet confirmed by the user.
+- Updated in place (cadkit 7a5c994): one window a model, brought forward on a second run;
+  restarted on a newer program at the same place; view kept in the page's localStorage
+  (that last part not seen working by eye).
+- OPEN: user's verdict on feel; edges rougher while moving in crowded close-ups (NRD /
+  DLSS not tried); other cards, SDR and 60-120 Hz displays untested; Windows only.
