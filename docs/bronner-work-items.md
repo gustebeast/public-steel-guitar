@@ -5965,3 +5965,28 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
   right; a scratch view now says "build #883 + bronner 14" there (the lead's build it
   stands on, whose view, and that worktree's own running count, kept in
   .webview/scratch_n.txt). Needs cadkit's view.py + page change (not yet propagated).
+
+## Desktop viewer: one app, tabs, one server (2026-10-10, cadkit 40a34f5)
+
+- App is `%LOCALAPPDATA%/cadkit-desktop/app/CadkitViewer.exe` (icon, app ID `cadkit.viewer`), single
+  instance, a tab per project, session restored on start with no Python. Control door 127.0.0.1:8136
+  (`/ping`, `/open?dir=&focus=`, `/quit`). Install/update: `py -3.12 -m cadkit.web.desktop`.
+- `web/view.py`: ONE server on 8137, projects at `/p/<folder>/`, `ensure_server` joins it; `--dev`
+  serves the canonical page on the same port. Builds call `desktop.notify`.
+- Web page has the same tab strip on that server; none on static hosting, with `?tabs=0`, or
+  `export(extras={"tabs": False})` (last one untested).
+- A worktree's tab is titled "<title> · <folder suffix>" (tabs.rs `title`, view.py `_whose`).
+- Untested: Ctrl+W and the tab ×, Blender `/trace` through the new server, `show()`/`scratch_show()`
+  with real parts, the real gh-pages publish without tabs. Web tab switch is a page navigation.
+- Not shared: the web strip (page code) and the app strip (`desktop/src/tabs.html`) are two copies.
+
+## Plugs as they look (2026-10-10, cadkit ba0cc02, needs propagate before submit)
+
+- `optical_plug_pwr`: `cadkit.pcb.jst_plug` (wire cavities, lance windows, rails) inside the old
+  12.4 x 5.75 x 14 box. `optical_cable_usb`: black, overmould chamfered, boot with `USBC_RIBS`.
+- STILL PLAIN BLOCKS (same treatment owed): `pogo_*_ph_*` (leg joint boards, 0 models carried),
+  the tee boards' mated J1 envelope (green block over the 8-way), lever boards' mated PH.
+- cadkit a7342f1: tabs drag to reorder (app + web). ba0cc02: a build never opens a browser tab
+  (`CADKIT_VIEWER=browser` to ask for one).
+- Scratch view colours are remembered in `.webview/colors.json`; a changed `_COLORS` entry does
+  not show in the scratch view until that file's entry is changed too.
