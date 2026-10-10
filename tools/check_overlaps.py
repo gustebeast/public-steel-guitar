@@ -410,8 +410,6 @@ def _deferred_rule(na, nb):
 
 
 def intended(na, nb) -> bool:
-    if "build_counter" in (na, nb):
-        return True
     _pair = frozenset({base(na), base(nb)})
     if _pair in DEFERRED:
         if _pair not in _DEFERRED_SEEN:                 # announce once, never silently
