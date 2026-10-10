@@ -1099,7 +1099,6 @@ def _pickup_mount_components():
     # what it is, and coloured off the loose-wire scheme already in this table: violet for
     # USB, red for 24 V.
     out.append(("optical_cable_usb", OP.opt_cables("usb")))
-    out.append(("optical_plug_pwr", OP.opt_cables("pwr")))
     from . import wiring as _WRo
     out += _WRo.optical_feed()          # its two conductors, J9 -> J2 ways 1 and 2
     # The two M4 grips that locate the board: heat-set insert seated in the endplate's
@@ -1712,7 +1711,6 @@ def optical_work_components():
     # the change, so it has to be visible in the view that reviews it.
     out = [("optical_pcb", OP.opt_pcb()),
            ("optical_cable_usb", OP.opt_cables("usb")),
-           ("optical_plug_pwr", OP.opt_cables("pwr")),
            *__import__("src.wiring", fromlist=["w"]).optical_feed(),
            ("bridge_endplate", PARTS["bridge_endplate"][0]()),
            ("motor_ctrl", EL.motor_ctrl()),
@@ -1989,6 +1987,20 @@ def ctrl_bus_work_components():
     have = {n for n, _ in out}
     for n, w in lever_components() + _lever_bus_components() + _ctrl_bus_components():
         if n not in have:
+            out.append((n, w))
+    return out
+
+
+def wiring_work_components():
+    """EVERY WIRE AND EVERY BOARD A WIRE ENDS ON, as one live set: for the pass that puts
+    each conductor on its own way of its own plug. The electronics (boards, tees, bus A,
+    the LED leads), the levers with bus B, and the optical board's two leads."""
+    out = _electronics_components()
+    have = {n for n, _ in out}
+    for n, w in (lever_components() + _lever_bus_components() + _ctrl_bus_components()
+                 + optical_work_components()):
+        if n not in have:
+            have.add(n)
             out.append((n, w))
     return out
 
@@ -2273,7 +2285,6 @@ _COLORS = {
     # run whether it is drawn as a wire or as a modelled cable, and the old single entry
     # was (0.15,0.15,0.17) -- near-black, which this project reserves for TPU.
     "optical_cable_usb": (0.03, 0.03, 0.035),  # black, as the bought lead is: the optical board USB ribbon and its two plugs
-    "optical_plug_pwr": (0.92, 0.92, 0.88),   # the XH housing on J2; its pair is wire_opt_*
     "optical_insert":  (0.72, 0.60, 0.30),   # M4 heat-set brass, board grips
     "optical_screw":   (0.72, 0.74, 0.78),   # M4x20 button, through the guard and the board
     "optical_silk":    (0.95, 0.95, 0.93),   # silkscreen ink, its own part on each board
