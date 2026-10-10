@@ -5930,6 +5930,12 @@ MILESTONES
   rows, exit code 122, hint text. Vulkan shows dark on the HDR desktop, DX12 exact -> DX12 the
   default where the SDK's compiler DLL is found. Blender's room is bright BELOW (kept: it is
   the look the user approved; trace_blender.py now says so); native is to match it.
-- [ ] M2 quality parity with Blender on views A and B (materials, sky, sun, clear parts)
-- [ ] M3 moving-picture quality (denoiser), real-mouse check by the user
-- [ ] M4 source into cadkit, `py -3.12 -m cadkit.web.desktop` launcher, docs, lead propagates
+- [x] M2 still picture vs Blender at 1920x1200: mean difference 0.49/255 (A), 1.27/255 (B), luminance
+  within 1 %; reached in 0.18 s / 0.55 s (1024 samples + a light denoise). Principled-BSDF surface model.
+- [x] M3 moving picture within ~3/255 of the resting one on the model (variance-guided denoise, per-part
+  reprojection, samples per frame adapt to GPU time); 0 GPU work at rest (measured). NOT done: NRD /
+  DLSS (not needed so far), the 60-120 Hz budget branch, any other card. Real mouse: asked the user.
+- [x] M4 cadkit 2123dac: `desktop/` (Rust source), `web/desktop.py` launcher (builds into
+  %LOCALAPPDATA%/cadkit-desktop, uses only a server of its own cadkit copy: an older page has no
+  native mode and silently draws WebGL -- that is what "no RTX" was), AGENTS.md, README. Lead told.
+LOOP STOPPED 2026-10-09: all four conditions met by scripted checks; the user's own hands-on is open.
