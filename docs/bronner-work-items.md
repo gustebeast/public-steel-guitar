@@ -5887,3 +5887,24 @@ vendored first: `export()` has no `units` keyword before it.
   `cadkit.web.parts.push_latch`.
 - OPEN: `ui_pwr_cap` is a printed part with NO entry in PARTS (no STEP is exported for
   it, no print orientation declared). Not added here.
+
+## 2026-10-09 custom path tracer: two proofs of concept (nothing in the repo yet)
+
+Both live OUTSIDE the repository, under `%LOCALAPPDATA%/cadkit-rt/` (Rust 1.99 installed
+there self-contained, no PATH change): `rt/` the renderer, `app/` the desktop shell.
+
+- `rt`: wgpu 30 on Vulkan ray queries, per-part BLAS + one TLAS, compute path tracer,
+  a-trous + reprojection denoise, accumulates to 256 samples then stops GPU work.
+  RTX 5090, 1.22 M triangles, 1920x1200: 0.8-1.9 ms GPU per moving frame (display-capped
+  at 240 Hz), 256 samples 75-200 ms after stopping; load + acceleration build < 0.1 s.
+  No NVIDIA software in it (no OptiX / NRD / DLSS). Moving picture judged from stills only.
+- `app`: a transparent WebView2 (wry) over the native picture in one winit window, page
+  drives the camera over IPC. Works ONLY with the window created without
+  WS_CLIPCHILDREN (winit sets it by default; with it the picture is white). 239 fps while
+  dragging, pointer event to present about 9 ms. A transparent WebGL canvas composites too.
+  Not tested: a real mouse, keyboard focus, interactive resize, SDR display, other cards,
+  the real viewer page. On the HDR desktop the Vulkan picture is shown darker than
+  rendered and translucent HTML blends heavier than in a browser; DX12 shows exact colour
+  and has ray queries if the Windows SDK's dxcompiler.dll is supplied.
+- NEXT (not started): the real viewer page hosted this way with its canvas left
+  transparent; NRD as the denoiser for the moving picture.
