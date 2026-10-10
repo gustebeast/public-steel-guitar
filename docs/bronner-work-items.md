@@ -5939,3 +5939,16 @@ MILESTONES
   %LOCALAPPDATA%/cadkit-desktop, uses only a server of its own cadkit copy: an older page has no
   native mode and silently draws WebGL -- that is what "no RTX" was), AGENTS.md, README. Lead told.
 LOOP STOPPED 2026-10-09: all four conditions met by scripted checks; the user's own hands-on is open.
+
+After the loop (2026-10-09, evening), from the user's first hands-on:
+- "No RTX": the launcher had attached to a server of an older cadkit copy whose page has
+  no native mode. It now takes only a server of its own copy (`where.json` gives the page).
+- Pedals / levers laggy and the fans up: at 2560x1369 one pedal press kept the card at
+  ~99 % / 520 W for 7.3 s. Causes: the rig eases invisibly for seconds and every pose
+  restarted the picture; the resting picture was gathered in 240 Hz frames. Now 1.9 s
+  (cadkit 88b2e08); a moving frame takes ~36 % of the card. Not yet confirmed by the user.
+- Updated in place (cadkit 7a5c994): one window a model, brought forward on a second run;
+  restarted on a newer program at the same place; view kept in the page's localStorage
+  (that last part not seen working by eye).
+- OPEN: user's verdict on feel; edges rougher while moving in crowded close-ups (NRD /
+  DLSS not tried); other cards, SDR and 60-120 Hz displays untested; Windows only.
