@@ -5960,3 +5960,8 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
   arrived ~550 ms late and its key-up / pointer-up not at all. Fixed in cadkit 9ae9d31
   (raw input off; frames drawn on redraw request, newest view only). Hand test 20 of 20
   at 2560x1369 and 1280x800, key down in 5-14 ms. Not yet tried by the user's own hands.
+- 2026-10-10 the physical build number is gone (user): the red 3D numeral over the
+  model was a part in the published GLB only. The page already said "build #N" top
+  right; a scratch view now says "build #883 + bronner 14" there (the lead's build it
+  stands on, whose view, and that worktree's own running count, kept in
+  .webview/scratch_n.txt). Needs cadkit's view.py + page change (not yet propagated).
