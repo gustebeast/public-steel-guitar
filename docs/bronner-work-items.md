@@ -5924,7 +5924,12 @@ then moves into canonical cadkit (`desktop/`, build output kept outside Sync). D
 try NRD if the moving picture needs it; DLSS only after asking the user (SDK download).
 
 MILESTONES
-- [ ] M1 real page hosted, all controls, overlay alignment measured  (agent running, started 2026-10-09)
+- [x] M1 real page hosted (`desk.exe <url>`): orbit, select, hide, isolate, undo, rig, deck, section,
+  measure, axis views, parts list, resize pass scripted; overlay within 1 px; 219 fps moving,
+  256 samples 80-90 ms after stopping. Left: real keyboard / mouse by the user, a few untested
+  rows, exit code 122, hint text. Vulkan shows dark on the HDR desktop, DX12 exact -> DX12 the
+  default where the SDK's compiler DLL is found. Blender's room is bright BELOW (kept: it is
+  the look the user approved; trace_blender.py now says so); native is to match it.
 - [ ] M2 quality parity with Blender on views A and B (materials, sky, sun, clear parts)
 - [ ] M3 moving-picture quality (denoiser), real-mouse check by the user
 - [ ] M4 source into cadkit, `py -3.12 -m cadkit.web.desktop` launcher, docs, lead propagates
