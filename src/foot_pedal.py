@@ -770,14 +770,24 @@ def bus_paths(feed):
                 for k, (c, (ya, la), (yb, lb)) in enumerate(turn):
                     xs = x0 + 2 * pitch * k
                     tail[c] += [(xs, track_y[ya], layer[la]), (xs, track_y[yb], layer[lb])]
-    # no conductor inside another anywhere
+    # NO CONDUCTOR RUNS ALONG INSIDE ANOTHER. Two that meet SQUARE may pass through each
+    # other (user, 2026-10-10: "a 90 degree crossing is totally fine"; what must not
+    # happen is two overlapped over a length, where they cannot be told apart), so only
+    # stretches that are not square to each other are held a wire apart.
+    def _along(p0, p1, q0, q1):
+        u = [p1[m] - p0[m] for m in range(3)]
+        v = [q1[m] - q0[m] for m in range(3)]
+        nu, nv = (math.sqrt(sum(x * x for x in t)) for t in (u, v))
+        return nu > 1e-9 and nv > 1e-9 and abs(sum(a * b for a, b in zip(u, v))) / (nu * nv) > 0.1
+
     for a in range(len(paths)):
         for b in range(a + 1, len(paths)):
             pa, pb = paths[a][1], paths[b][1]
-            g = min(_seg_gap(p0, p1, q0, q1) for p0, p1 in zip(pa, pa[1:])
-                    for q0, q1 in zip(pb, pb[1:]))
-            assert g >= w - 1e-6, ("%s and %s come within %.2f of each other, under one "
-                                   "wire" % (paths[a][0], paths[b][0], g))
+            g, at = min([(_seg_gap(p0, p1, q0, q1), (p0, p1, q0, q1))
+                         for p0, p1 in zip(pa, pa[1:]) for q0, q1 in zip(pb, pb[1:])
+                         if _along(p0, p1, q0, q1)] or [(w, None)], key=lambda e: e[0])
+            assert g >= w - 1e-6, ("%s and %s run within %.2f of each other, under one "
+                                   "wire: %s" % (paths[a][0], paths[b][0], g, at))
     return paths
 
 

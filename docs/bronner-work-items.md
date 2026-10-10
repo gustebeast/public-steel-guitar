@@ -5990,3 +5990,26 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
   (`CADKIT_VIEWER=browser` to ask for one).
 - Scratch view colours are remembered in `.webview/colors.json`; a changed `_COLORS` entry does
   not show in the scratch view until that file's entry is changed too.
+
+## Wiring pass: every conductor in its own way (2026-10-10, needs cadkit 3c0670c)
+
+- `tools/check_wire_ends.py` (new): every way of every JST on every placed board, against every
+  wire solid. 274 ways on 47 connectors; clean = no LOOSE end, no two in one way. ~6 min (builds
+  `build.wiring_work_components`, the live set this pass used: scope `src.build --attr
+  wiring_work_components`).
+- cadkit `way()` = the plug's back face (was the envelope face, 4.7 short on XH side entry).
+- Bus A hops: ONE level, square crossings (`TRUNK_Z_OVER`, `_seg`, `_rail_pts`, the lane humps
+  are gone). User rule 2026-10-10: crossings are fine, runs alongside are not.
+- `tools/check_cable_pairs.py` measures each contact for itself (two square crossings 30 mm
+  apart were read as one 29 mm run). 0 runs, 57 touches.
+- Jacketed leads split at the plug (`wiring._split_jacket`): `motor_pigtail_<m>_<way>` x40,
+  `wire_link_<way>` x4. +44 components.
+- `optical_plug_pwr` removed: the board export seats the plug; `wire_opt_*` start on its ways.
+- `foot_pedal.bus_paths`: only stretches not square to each other are held a wire apart.
+- ⚠ OPEN: S*B-PH-SM4-TB contact axis height. `cadkit.pcb.JST_SERIES` has PH_SIDE_H/2 (2.75),
+  UNREAD from ePH p.4. If it is ~3.75 (as KiCad's THT part suggests) the pedal plug tunnel has
+  room for one lane on its narrow side, not two: `foot_pedal.bus_paths` fails its own check.
+- ⚠ OPEN: the motor end of each pigtail is a point on the box motor's back; the real SERVO42D
+  has two screw-terminal blocks (5-way CAN, 6-way power) on opposite edges (src/servo42d.py).
+- ⚠ OPEN: `tee_pcb` draws the S8B/S4B-XH-A header 6.1 deep; the routed footprint has the mouth
+  9.25 in front of the pads. The real plug stands ~1.3 past the envelope the tee reserves.

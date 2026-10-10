@@ -2217,13 +2217,18 @@ def plug_pin(way, z_bot=None, z_top=None, flip=None):
     (elec/geom/lever_sensor.geom.json: J1 at rot -90, pad 1 at geom +y, and geom +y is
     this frame's +Z -- the frame SENSOR_BOM places every other part in). The turn-over
     is a rotation about the axle, so it carries the row end for end with the board.
+
+    HOW FAR OFF THE BOARD THE CONTACTS ARE is the plug's own figure (cadkit's record of
+    the seated PHR housing, the one the viewer draws the plug from), not half the
+    header's height: that put every conductor a millimetre under its cavity.
     """
+    axis = BG.BOARDS.plug("lever_sensor", "J1")["o"][2] - _PCB_T
     turned = z_bot is not None and board_flip(z_bot, z_top, flip)
     zc = -CONN_ZC if turned else CONN_ZC
     mx = -CONN_MOUTH_X if turned else CONN_MOUTH_X
     sx = -1.0 if mx <= 0 else 1.0
     up = -1.0 if turned else 1.0                       # way 1's end of the row
-    return (mx + sx * CONN_PLUG_RUN, PCB_Y - PH_SIDE_H / 2.0,
+    return (mx + sx * CONN_PLUG_RUN, PCB_Y - axis,
             zc + up * ((CONN_N - 1) / 2.0 - (way - 1)) * PH_PITCH)
 
 
