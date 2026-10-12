@@ -41,7 +41,7 @@ from . import dimensions as D
 from . import components as C
 from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
                                         # (chassis imports knee_lever, so not chassis)
-from .helpers import box_at, corbel_close, cyl, cyl_y, heal
+from .helpers import ball_bearing_y, box_at, corbel_close, cyl, cyl_y, heal
 from . import board_geom as BG
 
 from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
@@ -350,14 +350,18 @@ SWING_X = LOBE_RC * math.sin(_THR) + CAM_TX  # cam +X reach at full throw (sizes
 # uxcell B0B772B9V2, JIS light-load (blue), Ø10 hole / Ø5 rod x 30 free (+-2), 142.2 N at its
 # 40% max (12 mm) -> ~11.9 N/mm. It replaces the custom Ø6 x 1.4 music-wire coil, which had no
 # stock source (spring index 3.3) and topped out ~1 kg at the knee. Chosen range 0.5..1 kg at the
-# knee, set by the M4 tension screw (a button head, like every screw here). Rectangular wire, ground ends -> modelled as a TUBE, the
-# convention for every spring here. LENGTH is the costly dimension (it is X, and X decides where a
+# knee, set by the M4 tension screw (a button head, like every screw here). Rectangular wire, ground
+# ends: DRAWN AS THE COIL (die_spring below), inside the Ø10 / Ø5 tube it used to be. LENGTH is the costly dimension (it is X, and X decides where a
 # lever can mount); a die spring's length is fixed by the adjustable RANGE, its Ø by the top force.
 HS_SPR_OD   = 10.0                  # die-spring HOLE Ø (the spring's working OD)
 HS_SPR_ID   = 5.0                   # die-spring ROD Ø (its ID)
 HS_SPR_FREE = 30.0                  # free length (uxcell +-2 -- measure on arrival)
 HS_SPR_RATE = 142.2 / (0.40 * HS_SPR_FREE)     # ~11.85 N/mm: published max load / max deflection
 HS_SPR_MAXDEFL = 0.40 * HS_SPR_FREE            # 12.0: JIS blue max compression -- never exceed
+# ⚠ ESTIMATES, for the look only (nothing is sized from them): the wire's axial thickness and
+# the pitch are read off the seller's photo, not a drawing. Measure on arrival.
+HS_SPR_WIRE_X = 1.7                 # the rectangular wire, along the spring
+HS_SPR_PITCH  = 3.3                 # ~9 coils in the 30
 HS_SPR_INST = HS_SPR_FREE           # the BAY: piston seat -> spring-seat washer with the tension
                                     #   screw backed out = a nominal spring at ZERO preload
 HS_PILOT_D  = HS_SPR_ID - 0.4       # 4.6: piston pilot nosing into the spring's Ø5 bore
@@ -641,10 +645,21 @@ MORT_Y1   = MORT_Y_END - MOUNT_Y    # ...in the local frame
 
 
 def _bearing():
-    """MR85ZZ dummy (axis Y), -Y face at y=0."""
-    o = cyl_y(BRG_OD, BRG_W, y0=0.0)
-    b = cyl_y(BRG_ID, BRG_W + 0.2, y0=-0.1)
-    return o.cut(b)
+    """688ZZ dummy (axis Y), -Y face at y=0."""
+    return ball_bearing_y(BRG_OD, BRG_ID, BRG_W, 0.0)
+
+
+def _die_spring():
+    """The feel spring as it looks, along +Z from 0: a rectangular wire coiled inside the
+    Ø10 / Ø5 tube, both ends cut flat (ground). At its free length, like the bay."""
+    rm, pitch = (HS_SPR_OD + HS_SPR_ID) / 4.0, HS_SPR_PITCH
+    helix = cq.Wire.makeHelix(pitch=pitch, height=HS_SPR_INST + 2 * pitch, radius=rm)
+    coil = (cq.Workplane("XZ").center(rm, 0.0).rect((HS_SPR_OD - HS_SPR_ID) / 2.0, HS_SPR_WIRE_X)
+            .sweep(cq.Workplane("XY").add(helix), isFrenet=True).translate((0.0, 0.0, -pitch)))
+    return coil.intersect(cyl(2 * HS_SPR_OD, HS_SPR_INST, z=0.0))
+
+
+die_spring = lazy(_die_spring)
 
 
 def feel_dummies(place, prefix="", hs_setback=None):
@@ -683,9 +698,7 @@ def feel_dummies(place, prefix="", hs_setback=None):
         # every dummy is BUILT in the +Z/+X frame then placed to its installed spot (below the axle,
         # spring -X) -- same map as the cartridge, so they track AXLE_Z too. Drawn with the tension
         # screw BACKED OUT: the spring at its free length, the washer on the back wall.
-        out.append((f"{p}{nm}_spring", place(x_axis(
-            cyl(HS_SPR_OD, HS_SPR_INST, z=0.0).cut(cyl(HS_SPR_ID, HS_SPR_INST + 2, z=-1.0)),
-            HS_BODY_BX + dx, yc, HS_Z))))
+        out.append((f"{p}{nm}_spring", place(x_axis(die_spring, HS_BODY_BX + dx, yc, HS_Z))))
         out.append((f"{p}{nm}_spring_seat_washer", place(x_axis(washer, HS_SPR_TIPX + dx, yc, HS_Z))))
         # TENSION: end on the washer (nested in its Ø3.2 hole), head out the cartridge back.
         out.append((f"{p}{nm}_spring_tension_screw",

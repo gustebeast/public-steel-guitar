@@ -29,3 +29,16 @@ POGO_FREE, POGO_LIMIT = 8.00, 5.70
 # cannot be recovered: a pogo at its 5.70 limit is a brass strut holding the panels
 # apart, and no endplate clamping closes that seam. Losing a little force is not.
 POGO_WORK = 6.30
+# The same drawing gives what the pin is made of: plunger and barrel brass C3604, gold
+# over 50-80 u-in nickel (plunger 3 u-in, barrel 1 u-in), spring SUS304 -- so the whole
+# pin is gold to look at. Read 2026-10-12.
+POGO_RGB = (0.83, 0.68, 0.25)       # cadkit.web.parts.GOLD: the barrel is drawn there
+
+
+def plunger(x_root, x_tip, y, z):
+    """One plunger along X, from the barrel's front face at x_root to its tip at x_tip:
+    cadkit's spring pin (cadkit.pcb.spring_plunger), flat ended as the drawing has it."""
+    from cadkit.pcb import spring_plunger
+    return (spring_plunger(POGO_PLUNGER_D, abs(x_tip - x_root), "flat")
+            .rotate((0, 0, 0), (0, 1, 0), 90.0 if x_tip > x_root else -90.0)
+            .translate((x_root, y, z)))

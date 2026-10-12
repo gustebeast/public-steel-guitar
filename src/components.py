@@ -10,9 +10,10 @@ from __future__ import annotations
 import math
 
 import cadquery as cq
+from OCP.ShapeUpgrade import ShapeUpgrade_UnifySameDomain  # type: ignore[import]
 
 from . import dimensions as D
-from .helpers import cyl, cyl_y, box_at
+from .helpers import ball_bearing, ball_bearing_y, box_at, cyl, cyl_y
 
 from cadkit.threads import threaded_rod
 from cadkit.fasteners import set_screw, m4_insert                # the ONE dummies now live in cadkit/fasteners.py;
@@ -28,9 +29,66 @@ MOTOR_PULLEY_STANDOFF = 14.0   # pulley sits this far +Y of the motor faceplate
 
 
 # ── Vertical leadscrew (axis Z) ──────────────────────────────────────────
+# Tr8x2 to ISO 2904 / DIN 103 (the basic profile, no tolerance position): 30 deg
+# included flanks, thread thickness = groove width = P/2 on the pitch diameter
+# d2 = d - P/2, root d3 = d - 2*(P/2 + ac) with the standard's crest clearance ac = 0.25
+# for P 2..5 -- which is the Ø5.5 root dimensions.FORM_MINOR is already sized against.
+_TR_AC      = 0.25
+_TR_PITCH_D = D.SCREW_OD - D.SCREW_PITCH / 2                    # 7.0
+_TR_ROOT_D  = D.SCREW_OD - 2 * (D.SCREW_PITCH / 2 + _TR_AC)     # 5.5
+_TR_FLANK   = math.tan(math.radians(15.0))
+_TR_CHAMFER = (D.SCREW_OD - _TR_ROOT_D) / 2    # 1.25 x 45 deg, crest to root, both ends.
+                                               # ⚠ GUESSED: the rod is sawn from stock and
+                                               # nothing in the repo says how its ends are
+                                               # dressed; this is the usual deburr.
+_SCREWS = {}                                   # length -> the solid, built once
+
+
+def _tr_groove_w(r: float) -> float:
+    """Axial width of the thread GROOVE at radius r."""
+    return D.SCREW_PITCH / 2 + 2 * (r - _TR_PITCH_D / 2) * _TR_FLANK
+
+
 def screw(length: float = D.SCREW_LEN) -> cq.Workplane:
-    """Leadscrew, axis +Z, base face at z=0. (Threads not modelled.)"""
-    return cyl(D.SCREW_OD, length, z=0.0)
+    """Leadscrew, axis +Z, base face at z=0: a cut length of Tr8x2 rod, threaded end to
+    end (it is sawn from threaded stock, so there are no journals -- the bearing, the nut
+    and the pulley's socket all ride the crests), single start, D.SCREW_HAND.
+
+    ONE TRUE HELIX, cut the way cadkit.threads cuts: the groove's section swept along a
+    helix and subtracted from a chamfered Ø8 blank, so the crests ARE the old plain
+    cylinder's surface and nothing stands outside it. (Not cadkit.threads itself: that
+    is the printable 45 deg form, and this is the bought rod's 30 deg one.) The sweep
+    runs whole turns and overshoots both ends; the section rides the helix's own frame,
+    which leans it by the lead angle (6.6 deg at the root, 0.7% on the groove's width).
+
+    Built ONCE per length and handed out as the same solid: place it with .moved(), which
+    shares the geometry, not .translate(), which copies it."""
+    if length not in _SCREWS:
+        p, rc, rr, ch = D.SCREW_PITCH, D.SCREW_OD / 2, _TR_ROOT_D / 2, _TR_CHAMFER
+        blank = (cq.Workplane("XZ")
+                 .polyline([(0, 0), (rc - ch, 0), (rc, ch), (rc, length - ch),
+                            (rc - ch, length), (0, length)]).close()
+                 .revolve(360, (0, 0, 0), (0, 1, 0)))
+        turns = math.ceil(length / p) + 2
+        ro = rc + 0.3                                               # cutter past the crest
+        groove = (cq.Workplane("XZ")
+                  .polyline([(rr, -_tr_groove_w(rr) / 2), (ro, -_tr_groove_w(ro) / 2),
+                             (ro, _tr_groove_w(ro) / 2), (rr, _tr_groove_w(rr) / 2)]).close()
+                  .sweep(cq.Workplane("XY").add(cq.Wire.makeHelix(
+                      pitch=p, height=turns * p, radius=rr,
+                      lefthand=D.SCREW_HAND == "LH")), isFrenet=True)
+                  .translate((0, 0, -(turns * p - length) / 2)))
+        out = blank.cut(groove, clean=False)
+        # OCCT can hand back a smooth rod, or half of one, without a word
+        # (cadkit/THREADS_README.md): hold the result to the thread's own arithmetic.
+        _fill = 1 - ((rc ** 2 - rr ** 2) * (_tr_groove_w(rr) + _tr_groove_w(rc)) / 2 / p
+                     - (rc - rr) ** 2 * (_tr_groove_w(rc) - _tr_groove_w(rr)) / (3 * p)) / rc ** 2
+        _vol = out.val().Volume() / (math.pi * rc ** 2 * length)
+        assert out.val().isValid() and len(out.val().Solids()) == 1             and abs(_vol - _fill) < 0.03, (
+                f"the leadscrew's thread did not cut: {_vol:.3f} of its cylinder, "
+                f"want {_fill:.3f}")
+        _SCREWS[length] = out
+    return _SCREWS[length]
 
 
 # ── Leadscrew nut (H-type brass flange nut, axis Z) ──────────────────────
@@ -205,8 +263,7 @@ def support_bearing() -> cq.Workplane:
     on each screw in TANDEM — build.py stacks them; see dimensions.SUPPORT_BRG_N
     for why two and why not preloaded. (The purchased LOCKNUT that used to sit
     under them is gone: the printed screw_collar retains the screw now.)"""
-    o = cyl(D.BRG688_OD, D.BRG688_W, z=-D.BRG688_W / 2)
-    return o.cut(cyl(D.BRG688_ID, D.BRG688_W + 2, z=-D.BRG688_W / 2 - 1))
+    return ball_bearing(D.BRG688_OD, D.BRG688_ID, D.BRG688_W).translate((0, 0, -D.BRG688_W / 2))
 
 
 # ── Motor: MKS SERVO42D, lies flat, shaft +Y ─────────────────────────────
@@ -245,56 +302,24 @@ def bridge_bearings() -> cq.Workplane:
                 y0=D.BRIDGE_AXLE_Y0, x=x, z=z)
     for i in range(D.N_STRINGS):
         y0 = D.string_y(i) - D.BRIDGE_BEARING_W / 2
-        brg = cyl_y(D.BRIDGE_BEARING_OD, D.BRIDGE_BEARING_W, y0=y0, x=x, z=z)
-        brg = brg.cut(cyl_y(D.BRIDGE_AXLE_D + 0.3, D.BRIDGE_BEARING_W + 2,
-                            y0=y0 - 1, x=x, z=z))
-        out = out.union(brg)
+        out = out.union(ball_bearing_y(D.BRIDGE_BEARING_OD, D.BRIDGE_AXLE_D + 0.3,
+                                       D.BRIDGE_BEARING_W, y0, x=x, z=z))
     return out
 
 
-_FLAT_LEN = 42.0            # flat (untwisting) belt zone near the motor end of run B
+# ── GT2 open belt: where it runs ─────────────────────────────────────────
+# The belt is SEATED IN THE PULLEYS' TEETH: its land (the flat between two teeth) lies on
+# the pulley's Ø8.4 tooth crests and its teeth hang into the grooves, so its pitch line is
+# on the 14-tooth pitch circle (0.256 outside the crests; GT2's own figure is 0.254).
+# Everything that rides the belt reads the SAME radius -- the clamp frames below as well --
+# because a straight run is the tangent to it.
+# ⚠ MOVED 2026-10-12: this was PULLEY_OD/2 + BELT_T/2 (4.9), which stood the whole belt on
+# top of the crests, D.BELT_TOOTH_H too far out. Each run, and the clamp on it, is that
+# much nearer the inside of its loop now.
+BELT_BACK_T  = D.BELT_T - D.BELT_TOOTH_H                    # 0.65 the land, under the teeth
+BELT_PITCH_R = D.PULLEY_TEETH * D.BELT_PITCH / (2 * math.pi)        # 4.456
+BELT_R       = D.PULLEY_OD / 2 + BELT_BACK_T - D.BELT_T / 2  # 4.15 mid-thickness, on a pulley
 _CLAMP_DIST = 24.0         # clamp centre distance from the motor (clears the pulley)
-_AUX_OFF = 3.0             # auxiliary-spine offset that drives the sweep twist
-_SAMPLE_DIV = 12.0         # run sample spacing (smaller = denser)
-
-
-def _belt_samples(motor_xyz, screw_xyz):
-    """Loop centreline as a list of (point, inward-normal n). n tracks the toothed
-    face and returns to itself (orientable). Run B carries a FLAT zone near the
-    motor (n held = +Z) so the splice clamp grips a non-twisting section."""
-    V = cq.Vector
-    M, S = V(*motor_xyz), V(*screw_xyz)
-    r = D.PULLEY_OD / 2 + D.BELT_T / 2
-    m_top, m_bot = V(M.x, M.y, M.z + r), V(M.x, M.y, M.z - r)
-    s_py, s_my = V(S.x, S.y + r, S.z), V(S.x, S.y - r, S.z)
-
-    def lerp(a, b, t):
-        return a.add(b.sub(a).multiply(t))
-
-    samples, NW = [], 12
-    NA = max(8, int(s_py.sub(m_top).Length / _SAMPLE_DIV))
-    for k in range(NA):                               # run A: n −Z → −Y
-        a = (k / NA) * math.pi / 2
-        samples.append((lerp(m_top, s_py, k / NA), V(0, -math.sin(a), -math.cos(a))))
-    for k in range(NW):                               # screw wrap (+X side)
-        phi = math.radians(90 - 180 * k / NW)
-        samples.append((V(S.x + r * math.cos(phi), S.y + r * math.sin(phi), S.z),
-                        V(-math.cos(phi), -math.sin(phi), 0)))
-    L_B = m_bot.sub(s_my).Length                      # run B: +Y → +Z, flat near motor
-    flat = min(0.45, _FLAT_LEN / L_B)
-    NB = max(8, int(L_B / _SAMPLE_DIV))
-    for k in range(NB):
-        t = k / NB
-        if t < 1 - flat:
-            a = (t / (1 - flat)) * math.pi / 2
-            samples.append((lerp(s_my, m_bot, t), V(0, math.cos(a), math.sin(a))))
-        else:
-            samples.append((lerp(s_my, m_bot, t), V(0, 0, 1)))   # flat splice zone
-    for k in range(NW):                               # motor wrap (−X side)
-        th = math.radians(270 - 180 * k / NW)
-        samples.append((V(M.x + r * math.cos(th), M.y, M.z + r * math.sin(th)),
-                        V(-math.cos(th), 0, -math.sin(th))))
-    return samples
 
 
 def splice_frame(motor_xyz, screw_xyz, from_screw=None):
@@ -306,7 +331,7 @@ def splice_frame(motor_xyz, screw_xyz, from_screw=None):
     it. Left out, it sits _CLAMP_DIST from the motor (the coupon's reference)."""
     V = cq.Vector
     M, S = V(*motor_xyz), V(*screw_xyz)
-    r = D.PULLEY_OD / 2 + D.BELT_T / 2
+    r = BELT_R
     m_bot, s_my = V(M.x, M.y, M.z - r), V(S.x, S.y - r, S.z)
     L_B = m_bot.sub(s_my).Length
     t = (1 - _CLAMP_DIST / L_B) if from_screw is None else from_screw / L_B
@@ -322,7 +347,7 @@ def _clamp_run(motor_xyz, screw_xyz, upper):
     belt run a clamp rides: the upper one leaves the motor pulley's top."""
     V = cq.Vector
     M, S = V(*motor_xyz), V(*screw_xyz)
-    r = D.PULLEY_OD / 2 + D.BELT_T / 2
+    r = BELT_R
     sgn = 1.0 if upper else -1.0
     m_t, s_t = V(M.x, M.y, M.z + sgn * r), V(S.x, S.y + sgn * r, S.z)
     return s_t, m_t.sub(s_t).normalized(), m_t.sub(s_t).Length, sgn
@@ -372,68 +397,178 @@ def clamp_frame(motor_xyz, screw_xyz, upper, p, x0, x1, da=0.0):
     return (o.x, o.y, o.z), (tan.x, tan.y, tan.z), (n.x, n.y, n.z)
 
 
-def _belt_smooth(samples):
-    """Single smooth sweep of the strip profile along the loop centreline, the
-    twist driven by an auxiliary spine (offset along the inward normal). One solid,
-    no seams. (FreeCAD/OCC reads these fine; tight short loops can trip stricter
-    STEP importers, so the single-sweep approach avoids them.)"""
-    pts = [(p.x, p.y, p.z) for p, _ in samples]
-    aux = [(p.x + n.x * _AUX_OFF, p.y + n.y * _AUX_OFF, p.z + n.z * _AUX_OFF)
-           for p, n in samples]
-    path = cq.Workplane("XY").spline(pts, periodic=True).wire()
-    auxw = cq.Workplane("XY").spline(aux, periodic=True).wire()
-    p0, n0 = samples[0]
-    tan = samples[1][0].sub(p0).normalized()
-    wd = n0.cross(tan).normalized()
-    prof = cq.Workplane(cq.Plane(origin=(p0.x, p0.y, p0.z), xDir=(wd.x, wd.y, wd.z),
-                                 normal=(tan.x, tan.y, tan.z))).rect(D.BELT_W, D.BELT_T)
-    return prof.sweep(path, auxSpine=auxw, isFrenet=False).val()
+# ── GT2 open belt: the solid ─────────────────────────────────────────────
+# A tooth, as (distance from its centre along the pitch line, height above the land):
+# a polygon INSCRIBED in the pulley's own groove (a circle of _GROOVE_R, its floor
+# BELT_TOOTH_H under the crests), so a tooth drawn in a groove is inside it. That is the
+# existing pulley model's groove rather than Gates' three-radius GT2 form; the two agree to
+# a few hundredths at this size. The flat tip is the inscribing: 0.72 against 0.75.
+_TOOTH_DEG = (18.0, 55.0)        # the polygon's corners round the groove circle, off its
+                                 # bottom: more of them = a rounder tooth and more faces
 
 
-def _belt_teeth_ridges(samples):
-    """Rounded GT2 teeth: half-round ridges (cylinders along the width) every
-    BELT_PITCH of arc on the inner face (+n)."""
-    def lerp(a, b, t):
-        return a.add(b.sub(a).multiply(t))
-    ridges, n_pts, acc = [], len(samples), 0.0
-    for k in range(n_pts):
-        q0, m0 = samples[k]
-        q1, m1 = samples[(k + 1) % n_pts]
-        seg = q1.sub(q0)
-        L = seg.Length
-        if L < 1e-6:
+def _tooth_profile():
+    c = D.BELT_TOOTH_H - _GROOVE_R                                # groove centre over the land
+    pts = [(_GROOVE_R * math.sin(math.radians(a)), c + _GROOVE_R * math.cos(math.radians(a)))
+           for a in _TOOTH_DEG]
+    return pts + [(math.sqrt(_GROOVE_R ** 2 - c ** 2), 0.0)]      # where it meets the land
+
+
+_TOOTH = _tooth_profile()
+
+
+def _tooth_h(du: float) -> float:
+    """Tooth height over the land, du along the pitch line from the nearest tooth centre."""
+    du = abs(du)
+    x0, h0 = 0.0, _TOOTH[0][1]
+    for x1, h1 in _TOOTH:
+        if du <= x1:
+            return h0 + (h1 - h0) * (du - x0) / (x1 - x0) if x1 > x0 else h1
+        x0, h0 = x1, h1
+    return 0.0
+
+
+def _clamp_twist(d, L, p, x0, x1):
+    """The belt's turn (rad, 0 at the screw pulley, pi/2 at the motor's) at d along a run
+    of length L from its screw end. With a clamp on the run (p not None) the stretch
+    under it, p + x0 .. p + x1, is rigid and the turn is shared between the free belt
+    either side in proportion to length: clamp_frame's rule, so the two agree."""
+    if p is None:
+        return (math.pi / 2) * d / L
+    a, b = p + x0, p + x1
+    free = d if d <= a else a if d <= b else d - (b - a)
+    return (math.pi / 2) * free / (L - (b - a))
+
+
+def _belt_path(motor_xyz, screw_xyz, upper, p, x0, x1, end_a, end_b):
+    """The open belt as a path: (frame, length, wraps). frame(u) -> (centre, inward
+    normal, direction of travel) at u along the pitch line from the cut end in the clamp's
+    half A (end_a, in the clamp's frame; A is the half toward the screw), round the screw
+    pulley, back along the other run, round the motor pulley and into half B (end_b).
+    wraps = ((u at the start of the screw pulley's half turn, its end), (the motor's))."""
+    V = cq.Vector
+    M, S = V(*motor_xyz), V(*screw_xyz)
+    s_c, tan_c, L_c, sgn = _clamp_run(motor_xyz, screw_xyz, upper)
+    s_o, tan_o, L_o, _ = _clamp_run(motor_xyz, screw_xyz, not upper)
+    d_a, d_b = p + end_a, p + end_b
+    half = math.pi * BELT_PITCH_R                       # half a turn of either pulley: 7 teeth
+    u1 = d_a
+    u2 = u1 + half
+    u3 = u2 + L_o
+    u4 = u3 + half
+    total = u4 + L_c - d_b
+
+    def run(o, tan, d, a, side, travel):
+        n = V(0.0, math.cos(a), math.sin(a)).multiply(side)
+        n = n.sub(tan.multiply(n.dot(tan))).normalized()
+        return o.add(tan.multiply(d)), n, tan.multiply(travel)
+
+    def frame(u):
+        if u <= u1 or u >= u4:                          # the clamp's own run
+            d = d_a - u if u <= u1 else L_c - (u - u4)
+            return run(s_c, tan_c, d, _clamp_twist(d, L_c, p, x0, x1), -sgn, -1.0)
+        if u < u2:                                      # screw pulley, its far side (+X)
+            f = sgn * (math.pi / 2 - (u - u1) / BELT_PITCH_R)
+            rad = V(math.cos(f), math.sin(f), 0.0)
+            return (S.add(rad.multiply(BELT_R)), rad.multiply(-1.0),
+                    V(math.sin(f), -math.cos(f), 0.0).multiply(sgn))
+        if u <= u3:                                     # the other run, toward the motor
+            d = u - u2
+            return run(s_o, tan_o, d, _clamp_twist(d, L_o, None, 0.0, 0.0), sgn, 1.0)
+        t = -sgn * (math.pi / 2 + (u - u3) / BELT_PITCH_R)      # motor pulley, far side (-X)
+        rad = V(math.cos(t), 0.0, math.sin(t))
+        return (M.add(rad.multiply(BELT_R)), rad.multiply(-1.0),
+                V(math.sin(t), 0.0, -math.cos(t)).multiply(sgn))
+
+    return frame, total, ((u1, u2), (u3, u4))
+
+
+def belt_loop(motor_xyz, screw_xyz) -> float:
+    """Pitch-line length of the belt's path as a CLOSED loop: both runs and half a turn
+    of each pulley. The belt is this, less what its clamp spans between its cut ends."""
+    return (_clamp_run(motor_xyz, screw_xyz, True)[2] + _clamp_run(motor_xyz, screw_xyz, False)[2]
+            + 2 * math.pi * BELT_PITCH_R)
+
+
+def belt_mesh(motor_xyz, screw_xyz, upper, p, x0, x1, end_a, end_b, tooth):
+    """(motor pulley turn about +Y, screw pulley turn about +Z), in degrees, that put each
+    pulley's grooves under this belt's teeth. The pulleys are modelled with a groove on
+    +X; the belt's teeth are where its clamp holds them, so the pulleys turn to suit."""
+    _f, _total, ((u1, _u2), (u3, _u4)) = _belt_path(motor_xyz, screw_xyz, upper, p, x0, x1,
+                                                    end_a, end_b)
+    sgn = 1.0 if upper else -1.0
+
+    def first(u):                                       # first tooth centre at or after u
+        return tooth + math.ceil((u - tooth) / D.BELT_PITCH - 1e-9) * D.BELT_PITCH
+    f = sgn * (math.pi / 2 - (first(u1) - u1) / BELT_PITCH_R)
+    t = -sgn * (math.pi / 2 + (first(u3) - u3) / BELT_PITCH_R)
+    step = 360.0 / D.PULLEY_TEETH
+    # about +Y a turn carries +X toward -Z, so the motor pulley's is the angle negated
+    return (-math.degrees(t)) % step, math.degrees(f) % step
+
+
+_TWIST_STEP = 2.0                # deg: the most a belt turns between one rigid block of
+                                 # teeth and the next (0.09 at the belt's edge)
+
+
+def belt(motor_xyz, screw_xyz, upper, p, x0, x1, end_a, end_b, tooth) -> cq.Workplane:
+    """One OPEN GT2 belt, teeth inside the loop, from its cut end in the clamp's half A
+    round both pulleys to its cut end in half B -- nothing passes through the clamp.
+
+    upper, p, x0, x1 are clamp_frame's (which run the clamp is on, where, and its extent),
+    so the belt lies in the clamp's slots wherever the clamp is put; end_a, end_b are the
+    two cut ends in the clamp's frame and `tooth` the distance from a cut end to the first
+    tooth centre (belt_tensioner.belt_ends, BELT_TOOTH_IN: where its ribs hold the teeth).
+    The teeth run on at D.BELT_PITCH from end A, so end B only lands on half B's ribs if
+    the clamp's gap is belt_tensioner.belt_fit's.
+
+    ONE ruled loft through the belt's own cross-sections -- a rectangle D.BELT_W wide, the
+    land plus whatever tooth stands on it there -- taken at every corner of every tooth.
+    The cut ends are simply the first and last section, and no boolean is involved: one
+    solid, by construction.
+
+    THE TEETH ARE RIGID AND THE LANDS BETWEEN THEM DO THE TURNING. Round a pulley every
+    tooth is a straight block, tangent at its own centre, and the land to the next is the
+    chord. Along a run the 90 deg twist is taken the same way, but in blocks of several
+    teeth -- as many as turn _TWIST_STEP between them -- because a block's sides and back
+    are then single flat faces, and that is the difference between ~5 faces a tooth and
+    24. (A section loft has no other way to be cheap: one face a side that followed the
+    twist smoothly would be a C0 surface, and OCCT's booleans, volumes and mesher all get
+    those wrong -- tried, 2026-10-12.)"""
+    frame, total, ((u1, u2), (u3, u4)) = _belt_path(motor_xyz, screw_xyz, upper, p, x0, x1,
+                                                    end_a, end_b)
+    P, r = D.BELT_PITCH, _TOOTH[-1][0]
+
+    def per_block(L):                                   # teeth in a block, on a run L long
+        return max(1, int(math.radians(_TWIST_STEP) / ((math.pi / 2) / L * P)))
+    L_c = _clamp_run(motor_xyz, screw_xyz, upper)[2] - (x1 - x0)
+    runs = ((0.0, u1, per_block(L_c)), (u2, u3, per_block(u3 - u2)), (u4, total, per_block(L_c)))
+    blocks, on = [], None                               # each: its teeth's centres
+    for k in range(-1, int(total / P) + 2):
+        uc = tooth + k * P
+        if uc + r <= 0.0 or uc - r >= total:
             continue
-        t_dir = seg.multiply(1.0 / L)
-        d = 0.0
-        while acc <= L - d + 1e-9:
-            d += acc
-            t = min(d / L, 1.0)
-            pt = lerp(q0, q1, t)
-            nn = lerp(m0, m1, t)
-            nn = nn.sub(t_dir.multiply(nn.dot(t_dir)))
-            acc = D.BELT_PITCH
-            if nn.Length < 1e-6:
-                continue
-            nn = nn.normalized()
-            ww = nn.cross(t_dir).normalized()
-            base = pt.add(nn.multiply(D.BELT_T / 2 - 0.25))   # deep overlap → robust fuse
-            c = base.sub(ww.multiply(D.BELT_W / 2))
-            ridges.append(cq.Solid.makeCylinder(
-                D.BELT_TOOTH_H, D.BELT_W, cq.Vector(c.x, c.y, c.z),
-                cq.Vector(ww.x, ww.y, ww.z)))
-        acc -= (L - d)
-    return ridges
-
-
-# ── GT2 belt — smooth twisted loop (both runs + 90° twist + pulley wraps) ─────
-def belt(motor_xyz, screw_xyz, teeth: bool = False) -> cq.Workplane:
-    """The belt loop wraps the motor pulley (axis Y) and screw pulley (axis Z), so
-    its flat face twists 90° per run. A single smooth sweep (no seams), one solid.
-    `teeth=True` fuses rounded GT2 teeth onto the inner face."""
-    samples = _belt_samples(motor_xyz, screw_xyz)
-    body = _belt_smooth(samples)
-    if teeth:
-        body = body.fuse(*_belt_teeth_ridges(samples))
-    body = body.clean()
-    solids = body.Solids()
-    return cq.Workplane("XY").add(solids[0] if len(solids) == 1 else body)
+        run = next((j for j, (a, b, _n) in enumerate(runs)
+                    if (uc - r >= a or j == 0) and (uc + r <= b or j == 2)), None)
+        if run is None or run != on or len(blocks[-1]) >= runs[run][2]:
+            blocks.append([])
+        blocks[-1].append(uc)
+        on = run
+    back, hw = -D.BELT_T / 2, D.BELT_W / 2
+    wires = []
+    for teeth in blocks:
+        mid = (teeth[0] + teeth[-1]) / 2
+        c, n, t = frame(mid)
+        w = n.cross(t).normalized().multiply(hw)
+        us = sorted({min(max(uc + sx * x, 0.0), total)
+                     for uc in teeth for x, _h in _TOOTH for sx in (-1.0, 1.0)})
+        for u in us:
+            o = c.add(t.multiply(u - mid))
+            top = back + BELT_BACK_T + _tooth_h((u - tooth + P / 2) % P - P / 2)
+            lo, hi = o.add(n.multiply(back)), o.add(n.multiply(top))
+            wires.append(cq.Wire.makePolygon([lo.sub(w), lo.add(w), hi.add(w), hi.sub(w)],
+                                             close=True))
+    out = cq.Solid.makeLoft(wires, ruled=True)
+    uni = ShapeUpgrade_UnifySameDomain(out.wrapped, True, True, False)   # flat faces, whole
+    uni.Build()
+    return cq.Workplane("XY").add(cq.Shape.cast(uni.Shape()))
