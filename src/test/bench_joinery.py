@@ -139,19 +139,22 @@ GRID_0, GRID_P, GRID_WEB = -618.103, 10.4, 3.6 + 3.2
 LEVER_K = (5, 12)
 
 DECK_UNDER = -10.4          # the rail strip: the groove (5.46 deep) on 4.9 of solid rail
-TIE_Z = (DECK_UNDER, DECK_UNDER + 3.2)
+TIE_Z = (DECK_UNDER, DECK_UNDER + 3.2)      # top 1.7 under the grooves' floor
 TIE_W = 8.0
 
 
 def _fix_rail_ties(comps):
-    """Three bars across the bed that hold the two rail strips at the rails' real spacing
-    -- the job the chassis floor does, 70 mm further down. Under the grooves' floor, so
-    nothing of the joint touches them. STIFFER than the real rails, which can lean apart
-    at the top: a panel that slides here has not been helped by the plastic giving."""
+    """THE DUMMY CHASSIS the two rail strips stand in (user): two grooves only test a
+    panel if they are held at the rails' real spacing, square, the whole length -- the
+    job the floor does 70 mm further down. Three cross-members on the bed, one at each
+    end and one in the middle. Under the
+    grooves' floor, so nothing of the joint touches them. STIFFER than the real rails,
+    which can lean apart at the top: a panel that slides here has not been helped by
+    the plastic giving."""
     bb = comps["chassis_1"].BoundingBox()
-    xs = (bb.xmin + 20.0, (bb.xmin + bb.xmax) / 2.0, bb.xmax - 20.0)
-    bars = [_box((x - TIE_W / 2, x + TIE_W / 2, RAIL_MY - 1.0, RAIL_PY + 1.0) + TIE_Z)
-            for x in xs]
+    x0, x1 = bb.xmin + 4.0, bb.xmax - 8.0 - TIE_W      # inside the section's two ends
+    xs = (x0, (x0 + x1) / 2.0, x1)
+    bars = [_box((x, x + TIE_W, RAIL_MY - 1.0, RAIL_PY + 1.0) + TIE_Z) for x in xs]
     return bars[0].fuse(*bars[1:])
 
 
@@ -247,8 +250,10 @@ COUPONS = [
 def report(comps, where, export=False):
     from cadkit.orientation import PrintOrientation as PO
     from cadkit.step_export import export_print, print_pose
+    from tools.web_materials import material_of
     print("coupons cut from %s" % where)
-    print("%-28s %7s  %-22s %5s  %s" % ("coupon", "cm3", "on the bed, tall", "h/waist", "notes"))
+    print("%-28s %-8s %6s  %-22s %7s  %s" % ("coupon", "filament", "cm3", "on the bed, tall",
+                                             "h/waist", "notes"))
     total = 0.0
     for c in COUPONS:
         wp, n, crumbs, fixture = c.build(comps)
@@ -274,11 +279,22 @@ def report(comps, where, export=False):
             notes.append("fixture %.1f cm3" % (fixture / 1000.0))
         if ratio > SLENDER:
             notes.append("SLENDER")
-        print("%-28s %7.1f  %5.1f x %5.1f, %5.1f  %5.2f  %s" % (
-            c.name, vol, bb.xlen, bb.ylen, bb.zlen, ratio, "; ".join(notes)))
+        print("%-28s %-8s %6.1f  %5.1f x %5.1f, %5.1f  %7.2f  %s" % (
+            c.name, material_of("test_" + c.name), vol, bb.xlen, bb.ylen, bb.zlen, ratio,
+            "; ".join(notes)))
         if export:
             export_print(wp, po, str(HERE / ("test_%s.step" % c.name)))
-    print("%-28s %7.1f" % ("TOTAL", total))
+    print("%-28s %-8s %6.1f" % ("TOTAL", "", total))
+
+
+def source_of(name):
+    """The instrument part a coupon (`test_<name>`) is printed as, or None: what it is
+    made of and so what colour it is drawn (tools.web_materials). A deck coupon is one
+    filament where the panel is two, and takes the SKIN's -- the last source listed."""
+    for c in COUPONS:
+        if name == "test_" + c.name:
+            return c.sources[-1]
+    return None
 
 
 VIEW_LIFT = 160.0          # the scratch view: coupons float this far over their parts
