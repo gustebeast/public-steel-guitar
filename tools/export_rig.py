@@ -73,16 +73,14 @@ _COPEDENT = {
     "P3": {"key": "3", "moves": {2: -1, 6: -1}},           # chart 6: E->D# E->D#
     "P4": {"key": "4", "moves": {3: +2, 4: +2}},           # chart 7: C->D* A->B*  (both split)
     "P5": {"key": "5", "moves": {7: +1, 9: -1, 10: -3}},   # chart 8: C->C# F->E  C->A
-    # KNEE LEVERS — keyed q..t (the QWERTY home row above the pedals' number
-    # row, so the two UI rows sit the same way round as the keyboard) strictly LEFT TO RIGHT from the player's seat
-    # (user's rule), which is ascending X, the same direction the pedals run.
-    # ILKL (the inner lever, string 1 D->E) was removed 2026-09-11 (user), so LKL
-    # is now the leftmost lever and takes q; the rest follow strictly left to right.
-    "LKL": {"key": "q", "moves": {4: +1}},             # A->A#
-    "VKL": {"key": "w", "moves": {1: +1}},             # D->D#
-    "LKR": {"key": "e", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
-    "RKL": {"key": "r", "moves": {3: -1}},             # C->B
-    "RKR": {"key": "t", "moves": {3: +1, 7: +1}},      # C->C#  C->C#
+    # KNEE LEVERS — keyed 6..0, the number row carrying on from the pedals' 1..5 (the
+    # letters under it are the viewer's own tools), strictly LEFT TO RIGHT from the
+    # player's seat (user's rule), which is ascending X, the same direction the pedals run.
+    "LKL": {"key": "6", "moves": {4: +1}},             # A->A#
+    "VKL": {"key": "7", "moves": {1: +1}},             # D->D#
+    "LKR": {"key": "8", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
+    "RKL": {"key": "9", "moves": {3: -1}},             # C->B
+    "RKR": {"key": "0", "moves": {3: +1, 7: +1}},      # C->C#  C->C#
 }
 OPEN_TUNING = ("D4", "E4", "C4", "A3", "G3", "E3", "C3", "A2", "F2", "C2")
 

@@ -299,8 +299,7 @@ _ex("hardware",
     nut_block__SPAN_MPA="bending STRESS in the wrap rod, MPa — the '3' is the string count, not a length",
     nut_block___SPAN_MPA="bending STRESS in the wrap rod, MPa — the '3' is the string count, not a length",
     _GROOVE_R="GT2 groove profile radius (belt tooth form)",
-    _FLAT_LEN="belt dummy: flat splice-zone length of the purchased belt's centreline model",
-    _AUX_OFF="belt dummy: sweep-spine offset (centreline model, nothing printed)",
+    _TR_AC="PURCHASED Tr8x2 rod: ISO 2904 crest clearance for pitch 2..5 (leadscrew dummy)",
     # latch return spring -- a purchased coil (BOM SKU); OD/wire/free length and
     # rate are the spring's, and the bore/ID/post derive from them
     SPR_OD="latch spring Ø5.0 OD (BOM SKU)",
@@ -360,7 +359,6 @@ _ex("hardware",
     belt_tensioner__INS_L="McMaster 94459A130 M3 insert, installed length",
     CVR_RAIL_W="octagon rail at cadkit's family floor (h_min 4.95 at 0.8) + margin; "
                "4.8 is below the floor",
-    SPLICE_LAP="open-belt lap allowance in the splice clamp (cut-length spec, soft)",
     ANCHOR_POST_H="tower top = bearing underside - 1.0 asserted (_BRG_GAP); pinned by "
                   "the CARRIAGE_NOM_Z travel chain against the 695ZZ OD",
     UNDER_Z="comb-finger underside plane (must stay flush with _fpro's 6.5 flat); "

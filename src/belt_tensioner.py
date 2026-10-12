@@ -149,6 +149,12 @@ assert _KEY_Z <= -SLOT_H / 2 + 1e-6, (
     "the key channel reaches z %.2f at the grip, into the belt's slot (%.2f): lengthen "
     "HEAD_ZONE or steepen KEY_DEG" % (_KEY_Z, -SLOT_H / 2))
 
+# ── where the belt's two cut ends are ─────────────────────────────────────────────────────
+BELT_END_A = LEN_A - GRIP                    # 9.6 half A's inner face to its end wall
+BELT_END_B = INNER_B + END_WALL              # 10.8 half B's, likewise
+BELT_TOOTH_IN = B / 2                        # 0.2 an end wall to the nearest tooth's centre:
+                                             # _ribs stands its first rib BP/2 past that
+
 
 def _ribs(x0: float, y0: float, y1: float) -> cq.Workplane:
     """N_TEETH ribs hanging from the slot's +z face into the belt's valleys, the first
@@ -279,3 +285,25 @@ def clamp_components(gap: float = GAP):
     P = "belt_tensioner_"
     return [(P + "half_a", at(_HALF_A, -gap / 2)), (P + "half_b", at(_HALF_B, gap / 2)),
             (P + "screw", at(_SCREW, -gap / 2)), (P + "insert", nut)]
+
+
+def belt_ends(gap: float = GAP) -> tuple:
+    """(x of the cut end in half A, x of the one in half B) in the BELT-LOCAL frame: each
+    end lies against its slot's end wall."""
+    return -gap / 2 - BELT_END_A, gap / 2 + BELT_END_B
+
+
+def belt_fit(loop: float) -> tuple:
+    """(teeth, gap) for a belt whose path, as a closed loop, is `loop` long on its pitch
+    line. The belt is CUT TO A TOOTH COUNT, and both grips hold it by its teeth, so the
+    gap between the halves is not free: it is whatever the loop leaves once `teeth`
+    pitches are in it. The cut is `teeth` * BP + 2 * BELT_TOOTH_IN long -- each end wall
+    is BELT_TOOTH_IN past the last tooth's centre, so the cut goes through a tooth there.
+
+    Of the two counts whose gap is inside the screw's travel, this is the LONGER belt,
+    gap in [GAP - BP, GAP): tensioned, the screw still has that much left to close, which
+    is what takes up a belt that has stretched. ⚠ MY READING of the clamp, not a stated
+    rule (2026-10-12): the shorter count would leave under one tooth of take-up."""
+    room = loop - BELT_END_A - BELT_END_B - 2 * BELT_TOOTH_IN
+    teeth = math.floor((room - GAP) / BP) + 1
+    return teeth, room - teeth * BP

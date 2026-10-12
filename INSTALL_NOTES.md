@@ -130,6 +130,14 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   laid down the channel in the back of half A at about 25° to the belt. The halves start
   4 mm apart and each turn closes them 0.5 mm. If they meet before the belt is tight,
   move one end of the belt one tooth (2 mm) further into its slot and start again.
+- **Cut length:** each belt is cut to a TOOTH COUNT, and the build prints the ten counts
+  (`src.build.geometry_report`, from `belt_tensioner.belt_fit`): 574, 554, 485, 464, 396,
+  375, 306, 286, 217, 196 teeth for strings 1 to 10. Both ends are cut 0.2 mm past a
+  tooth's centre, so the cut is that many pitches plus 0.4 mm, and each end goes through a
+  tooth. At that count the halves stand 2 to 4 mm apart with the belt tight, which leaves
+  the screw at least 2 mm more to close. ⚠ The counts are the model's: neither the pitch
+  line under tension nor the choice of the longer of the two counts that fit has been
+  tried on a bench.
 
 ## Leadscrew nuts: LOOK at the top edge of each string ear hole
 

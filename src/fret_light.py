@@ -751,6 +751,7 @@ def parts(panel):
 from .pogo_part import (POGO_MPN, POGO_PAD_L, POGO_PAD_W, POGO_BODY_L, POGO_BODY_W,   # noqa: E402,F401
                         POGO_BODY_H, POGO_AXIS_H, POGO_PLUNGER_D, POGO_FAB_STROKE,
                         POGO_FREE, POGO_LIMIT, POGO_WORK)
+from .pogo_part import plunger as _pogo_plunger                                       # noqa: E402
 POGO_STACK = 0.80          # +- the deck stack at the seam, both panels' ribs and the gap
 # key's barrels to key's end wall: elec/fret_led.py's WALL_CLR (0.30), plus 0.05 so its
 # strict float test is not decided by rounding when the two are equal
@@ -843,8 +844,7 @@ def pogo_pins(only=None):
         f = pogo_fire(panel)
         for x, y, _net in pogo_pads(panel):
             x0 = x + f * (POGO_BODY_L + POGO_FAB_STROKE) / 2.0
-            c = (cq.Workplane("YZ").circle(POGO_PLUNGER_D / 2.0).extrude(abs(xc - x0))
-                 .translate((min(x0, xc), y, z)))
+            c = _pogo_plunger(x0, xc, y, z)
             out = c if out is None else out.union(c)
     return [("fret_pogo_pins", out)]
 

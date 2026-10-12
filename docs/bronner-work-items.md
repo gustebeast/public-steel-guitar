@@ -6013,3 +6013,15 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
   has two screw-terminal blocks (5-way CAN, 6-way power) on opposite edges (src/servo42d.py).
 - ⚠ OPEN: `tee_pcb` draws the S8B/S4B-XH-A header 6.1 deep; the routed footprint has the mouth
   9.25 in front of the pads. The real plug stands ~1.3 past the envelope the tee reserves.
+
+## Viewer accuracy pass (2026-10-12, user's list of ten)
+
+- ⚠ REV 2 NOTE, motor_ctrl: J7 (lights, B4B-XH-A) is too low; header + plug cut into the
+  chassis under the board. Rev 1 stays as routed. A second revision moves J7 up (board -X).
+  (Not written into `elec/motor_ctrl.py`: touching it makes the routed outputs read as stale.)
+- Lever feel springs are drawn as the coil (`knee_lever.die_spring`), painted blue (JIS light
+  load). Wire thickness and pitch are read off a photo, not a drawing.
+- PCTG green: `tools/web_materials._PRINTED` names printed parts no PARTS row covers
+  (nut slide inserts, belt clamp halves; shims and pi_spacer by assumption). The vertical
+  lever's doubly prefixed parts (vkl_kv_*) now resolve too.
+- `chassis_light_{i}` is in the full assembly (it was only in body_work_components).

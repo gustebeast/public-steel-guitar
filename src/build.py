@@ -752,27 +752,26 @@ def _tangent_angle(cx, cz, px, pz, R, side):
 # ─────────────────────────────────────────────────────────────────────────
 # Belt geometry report
 # ─────────────────────────────────────────────────────────────────────────
-SPLICE_LAP = 25.0   # extra open-belt length to lap inside the splice clamp
-
-
 def geometry_report() -> str:
     lines = ["", "=== Belt geometry (under-string vertical layout) ===",
              f"  strings={D.N_STRINGS}  string pitch={D.STRING_PITCH} mm  "
              f"screw len={D.SCREW_LEN:.0f} mm (vertical, no whip)",
              f"  toothed GT2 ({D.BELT_W:.0f} mm); twisted 90° (motor pulley axis Y -> "
              "screw pulley axis Z), run along X.",
-             "  cut = open-belt length to cut per string (loop + splice lap), mm:",
-             f"    {'str':>4} {'run':>7} {'twist':>9} {'cut len':>9}"]
+             "  cut = open-belt length to cut per string: a whole number of teeth, each end",
+             f"  cut {BTn.BELT_TOOTH_IN} past a tooth's centre; gap = the clamp's, at that length:",
+             f"    {'str':>4} {'run':>7} {'twist':>9} {'teeth':>6} {'cut len':>9} {'gap':>6}"]
     total = 0.0
     for i in range(D.N_STRINGS):
         mx, my, mz = D.motor_pos(i)
         run = abs(mx - D.screw_x(i))
         rise = D.screw_pulley_z(i) - mz          # odd pulleys sit one belt-plane up
         span = math.hypot(run, rise)
-        loop = 2 * span + math.pi * D.PULLEY_OD
-        cut = loop + SPLICE_LAP
+        teeth, gap = belt_cut(i)
+        cut = teeth * D.BELT_PITCH + 2 * BTn.BELT_TOOTH_IN
         total += cut
-        lines.append(f"    {i:>4} {span:>6.0f} {90.0 / span:>6.2f}°/mm {cut:>8.0f}")
+        lines.append(f"    {i:>4} {span:>6.0f} {90.0 / span:>6.2f}°/mm {teeth:>6} {cut:>8.1f} "
+                     f"{gap:>6.2f}")
     lines.append(f"  total open GT2 to buy: ~{total/1000:.2f} m "
                  f"(+ {D.N_STRINGS} printed half A + {D.N_STRINGS} half B, "
                  f"{D.N_STRINGS}× M3×12 socket head + M3 insert)")
@@ -824,15 +823,36 @@ def clamp_upper(i):
     return not D.screw_far(i)
 
 
+def _belt_ends(i):
+    """(motor pulley centre, screw pulley centre) of string i's belt."""
+    return D.motor_pos(i), (D.screw_x(i), D.string_y(i), D.screw_pulley_z(i))
+
+
 def clamp_location(i, down=0.0, da=0.0, p=None):
     """cq.Location of string i's belt clamp with the nut `down` mm below the ceiling (or
     at an explicit p along its run), plus `da` degrees of twist error."""
-    m, s = D.motor_pos(i), (D.screw_x(i), D.string_y(i), D.screw_pulley_z(i))
+    m, s = _belt_ends(i)
     x0, x1 = min(_CLAMP_XS), max(_CLAMP_XS)
     if p is None:
         p = C.clamp_p(m, s, clamp_upper(i), x0, x1, down)
     o, xd, n = C.clamp_frame(m, s, clamp_upper(i), p, x0, x1, da)
     return cq.Location(cq.Plane(origin=o, xDir=xd, normal=n))
+
+
+def belt_cut(i):
+    """(teeth, gap): the tooth count string i's belt is cut to, and the gap its clamp
+    stands at with that belt in it (belt_tensioner.belt_fit)."""
+    return BTn.belt_fit(C.belt_loop(*_belt_ends(i)))
+
+
+def _belt_args(i, down=0.0):
+    """components.belt's arguments for string i with the nut `down` below the ceiling:
+    the run its clamp is on, where the clamp is, and where the clamp holds its two ends."""
+    m, s = _belt_ends(i)
+    x0, x1 = min(_CLAMP_XS), max(_CLAMP_XS)
+    p = C.clamp_p(m, s, clamp_upper(i), x0, x1, down)
+    return (m, s, clamp_upper(i), p, x0, x1, *BTn.belt_ends(belt_cut(i)[1]),
+            BTn.BELT_TOOTH_IN)
 
 
 def _string_components(i):
@@ -841,7 +861,8 @@ def _string_components(i):
     cz = D.NUT_TOP_Z + DEMO_POSE_DZ.get(i, 0.0)      # the NUT's flange top
     out = []
     # vertical leadscrew
-    out.append((f"leadscrew_{i}", C.screw().translate((D.screw_x(i), sy, D.SCREW_BOT_Z))))
+    out.append((f"leadscrew_{i}", cq.Workplane("XY").add(C.screw().val().moved(   # ONE solid, ×10
+        cq.Location(cq.Vector(D.screw_x(i), sy, D.SCREW_BOT_Z))))))
     # THE NUT IS THE CARRIAGE. Nothing else moves: its +X ear anchors the string and
     # its -X ear rides the guide rod. Origin = the flange's top face.
     out.append((f"nut_{i}", C.nut().translate((D.screw_x(i), sy, cz))))
@@ -861,10 +882,16 @@ def _string_components(i):
         (D.guide_rod_x(i), sy, BE.GUIDE_ROD_TOP))))
     # screw drive pulley (odd ones raised one belt-plane), then the thrust stack:
     spz = D.screw_pulley_z(i)
+    # Both pulleys are drawn TURNED to where this belt's teeth are (the clamp sets that:
+    # components.belt_mesh), so the belt is in their grooves and not across their teeth.
+    down = -DEMO_POSE_DZ.get(i, 0.0)
+    belt_args = _belt_args(i, down)
+    mp_deg, sp_deg = C.belt_mesh(*belt_args)
     # TWO SKUs: the low-plane stations carry the column that lifts their boss to the
     # same thrust plane the high-plane ones already reach.
     out.append((f"screw_pulley_{i}",
-                C.screw_pulley(high=spz > D.SCREW_PULLEY_Z).translate((D.screw_x(i), sy, spz))))
+                C.screw_pulley(high=spz > D.SCREW_PULLEY_Z).rotate((0, 0, 0), (0, 0, 1), sp_deg)
+                .translate((D.screw_x(i), sy, spz))))
     # THRUST STACK, seated straight on the pulley's pilot boss. The string's pull jams
     # the pulley up into it, and that one jam does BOTH jobs: it retains the screw and
     # it holds the pulley on the rod. No collar, no set screw.
@@ -883,7 +910,8 @@ def _string_components(i):
     # overlap gate caught it. Deleting the bearing is what resolves that, not a fit.
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
     out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
-    out.append((f"motor_pulley_{i}", C.motor_pulley().translate((mx, my, mz))))
+    out.append((f"motor_pulley_{i}", C.motor_pulley().rotate((0, 0, 0), (0, 1, 0), mp_deg)
+                .translate((mx, my, mz))))
     # The body length the pockets are built from is checked here, where the motor is built
     # anyway. (No retaining screw: each motor is held by its own CAN tee -- wiring.on_motor.)
     if i == 0:
@@ -891,14 +919,18 @@ def _string_components(i):
         assert abs(-_mb.ymin - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_L) < 1e-6, (
             f"the motor body is {-_mb.ymin - MOTOR_PULLEY_STANDOFF:.2f} deep, not "
             f"dimensions.MOTOR_BODY_L {D.MOTOR_BODY_L} -- the pockets are built from that")
-    out.append((f"belt_{i}", C.belt((mx, my, mz), (D.screw_x(i), sy, spz))))   # all belts modelled smooth
+    # The belt is OPEN and TOOTHED: cut to a whole number of teeth, its two ends against the
+    # end walls of its clamp's two slots, its teeth between the clamp's ribs.
+    out.append((f"belt_{i}", C.belt(*belt_args)))
     # belt-tension clamp (half A + half B + M3 screw + insert), in line with the belt, on the
     # run it is installed on (odd strings, the near row, on the upper run; even strings on
     # the lower) and WHERE IT IS SPLICED: nut on the ceiling, clamp CLAMP_END_CLR off the
     # pulley it has been travelling toward. The nut's travel carries it away from there;
     # that whole travel is checked by tools/clamp_range.py and tools/clamp_study.py.
-    cloc = clamp_location(i, -DEMO_POSE_DZ.get(i, 0.0))
-    for _nm, _shp in BTn.clamp_components():
+    # Its GAP is this belt's (belt_cut): the halves stand wherever a whole-tooth belt
+    # leaves them. Those tools, and _CLAMP_XS, keep the fully loose clamp, which is longer.
+    cloc = clamp_location(i, down)
+    for _nm, _shp in BTn.clamp_components(belt_cut(i)[1]):
         out.append((f"{_nm}_{i}", cq.Workplane("XY").add(_shp.val().moved(cloc))))
     # string: rises from the anchor tangent to the bearing's +X extent, wraps 90°
     # over the top, then runs the speaking length to the nut block.
@@ -2066,6 +2098,9 @@ def collect_components():
         ("keyhead_endplate", _KE.keyhead_endplate),
     ]
     comps += [(f"chassis_{i}", seg) for i, seg in enumerate(chassis_segments)]
+    # ...and each section's light window, the clear half of the same print (the viewer
+    # shows the two as one object: tools.web_materials.unit_of)
+    comps += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     comps += _pickup_mount_components()
     comps += _leg_components()
     comps += _pedal_bar_components()
@@ -2148,6 +2183,10 @@ _COLORS = {
     "pogo_female_board": _BG.mask("leg_pogo_female_top"),
     "pogo_male_pins":    (0.83, 0.69, 0.22),
     "pogo_female_pads":  (0.83, 0.69, 0.22),
+    # the lighting seams' plungers (src.pogo_part): gold plated, the colour their barrels
+    # are drawn in. They had no entry and came out the default white
+    "fret_pogo_pins":    (0.83, 0.68, 0.25),
+    "foot_pogo_pins":    (0.83, 0.68, 0.25),
     "pogo_male_ph":      (0.90, 0.90, 0.86),
     "pogo_female_ph":    (0.90, 0.90, 0.86),
     "pogo_male_screw":   (0.62, 0.64, 0.67),
@@ -2246,8 +2285,8 @@ _COLORS = {
     "kv_chip":         (0.12, 0.12, 0.14),   # LKV MT6701 package (black)
     "kv_pcb_shim":     (0.75, 0.75, 0.78),   # LKV board shim (printed, takes up the slack)
     # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
-    "main_spring":                        (0.55, 0.20, 0.75),
-    "half_stop_spring":                   (0.75, 0.45, 0.88),
+    "main_spring":                        (0.04, 0.16, 0.55),   # JIS light-load die spring: painted blue
+    "half_stop_spring":                   (0.04, 0.16, 0.55),
     "main_spring_tension_screw":          (0.55, 0.55, 0.58),
     "half_stop_spring_tension_screw":     (0.62, 0.62, 0.66),
     "main_cart_base":                     (0.85, 0.65, 0.13),   # printed cartridge (shared part)

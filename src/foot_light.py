@@ -576,8 +576,7 @@ def pogo_pins():
         pad = edge - sgn * POGO_SETBACK
         front = pad + sgn * (PG.POGO_BODY_L + PG.POGO_FAB_STROKE) / 2.0
         for y in pogo_ys():
-            c = (cq.Workplane("YZ").circle(PG.POGO_PLUNGER_D / 2.0)
-                 .extrude(abs(edge - front)).translate((min(front, edge), y, z)))
+            c = PG.plunger(front, edge, y, z)
             out = c if out is None else out.union(c)
     return [("foot_pogo_pins", out)]
 
