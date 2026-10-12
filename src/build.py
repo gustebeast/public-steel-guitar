@@ -845,6 +845,18 @@ def belt_cut(i):
     return BTn.belt_fit(C.belt_loop(*_belt_ends(i)))
 
 
+def belts_as_played():
+    """{name: belt} with every nut at OPEN PITCH, for the viewer. The assembly draws each
+    nut on its ceiling, where the belt is cut and clamped, and that is the pose the gates
+    check; the page then lowers every nut to its open pitch (the rig's open_down) and
+    slides each clamp along its belt to suit -- 14 mm of belt per mm of nut, so 56 mm.
+    The clamp IS the joint between the belt's two ends, so the ends go with it: the
+    viewer is given the belt as it lies then, or its cut is 56 mm from its clamp.
+    (A pedal or lever still moves the clamp off this belt: the belt itself does not
+    travel in the viewer yet.)"""
+    return {f"belt_{i}": C.belt(*_belt_args(i, D.DL_OPEN)) for i in range(D.N_STRINGS)}
+
+
 def _belt_args(i, down=0.0):
     """components.belt's arguments for string i with the nut `down` below the ceiling:
     the run its clamp is on, where the clamp is, and where the clamp holds its two ends."""
