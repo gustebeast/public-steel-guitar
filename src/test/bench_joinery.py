@@ -299,6 +299,9 @@ def source_of(name):
     for c in COUPONS:
         if name == "test_" + c.name:
             return c.sources[-1]
+    if name.startswith("test_fit_"):
+        from . import fit_finder
+        return fit_finder.source_of(name)
     return None
 
 
@@ -310,8 +313,9 @@ def assembly(live=False):
     from, mated to its partner, VIEW_LIFT above the instrument so it is not buried in
     the part it is a piece of."""
     comps, _where = components(live)
-    return [("test_" + c.name, c.build(comps)[0].translate((0, 0, VIEW_LIFT)))
-            for c in COUPONS]
+    from . import fit_finder                      # the thumbnails, in a row in front
+    return ([("test_" + c.name, c.build(comps)[0].translate((0, 0, VIEW_LIFT)))
+             for c in COUPONS] + fit_finder.assembly())
 
 
 def main(argv=None):
