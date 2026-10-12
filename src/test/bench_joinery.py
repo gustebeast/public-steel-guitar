@@ -236,13 +236,18 @@ COUPONS = [
            [(_, _, _, -49.7, -86.4, _)],
            UP_Z, "the housing's eight tenons on its own top deck"),
 
-    # F. nut slide inserts <-> keyhead: one insert of each SKU (A string 7, B string 8,
-    #    C string 10) and the slots of strings 7-10 they slide in.
+    # F. nut slide inserts <-> keyhead: the slots of strings 7-10 and the four inserts
+    #    that fill them -- every SKU (A string 7, B strings 8 and 9, C string 10), and
+    #    BOTH B's (user): 8, 9 and 10 have no printed wall between them, each insert
+    #    slides against its neighbour, so the three only prove they fit when all three
+    #    are in.
     Coupon("insert_slots", ["keyhead_endplate"],
            [(_, _, -46.0, -3.0, -63.0, _)],
            UP_X, "the insert slots of strings 7-10"),
     Coupon("insert_a", ["nut_slide_insert_6"], [(_,) * 6], DOWN_X, "slide insert, SKU A"),
     Coupon("insert_b", ["nut_slide_insert_7"], [(_,) * 6], DOWN_X, "slide insert, SKU B"),
+    Coupon("insert_b2", ["nut_slide_insert_8"], [(_,) * 6], DOWN_X,
+           "slide insert, SKU B again: string 9, between a B and the C"),
     Coupon("insert_c", ["nut_slide_insert_9"], [(_,) * 6], DOWN_X, "slide insert, SKU C"),
 ]
 
