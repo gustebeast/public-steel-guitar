@@ -11,9 +11,9 @@ signed semitones) and the visual gains. Regenerated with the GLB on every publis
   py -3.12 -m tools.export_rig
 
 Kinematics: motor pulley (axis Y) -> twisted GT2 belt -> screw pulley (axis Z) ->
-leadscrew -> carriage travels in Z. Pulleys are 14T:14T (1:1). The leadscrew and
-belt loop are perfectly cylindrical / a closed sweep, so a rigid transform can't
-make them look different — they are intentionally NOT animated (see NOTE below).
+leadscrew -> carriage travels in Z. Pulleys are 14T:14T (1:1). The leadscrew turns
+with its pulley (its thread is drawn, so the turn shows). The belt is NOT animated:
+its teeth each go their own way round the loop, which no rigid transform is.
 Nothing here is a visual fudge any more. The nut's height for a pitch is the design's
 own stretch figure (open_down = DL_OPEN, times 2^(semitones/6)), and everything
 downstream of the nut is the mechanism's own ratio: one pulley turn per
@@ -108,7 +108,7 @@ def _pedals() -> list[dict]:
 
     The pistons retract along guitar +Z (the cartridge bases sit above them). The
     springs are NOT animated — a compressing helix isn't a rigid transform, same
-    reason the belt loop and leadscrew aren't (see the module docstring).
+    reason the belt isn't (see the module docstring).
     """
     from src import foot_pedal as FP
     from src.build import PEDAL_LIFT_DZ
@@ -340,7 +340,7 @@ def build_rig(build_n=None, out=RIG) -> pathlib.Path:
             # `sign` is the turn per mm the NUT GOES DOWN, about `axis`: a right-hand screw
             # lowers its nut turning counter-clockwise seen from above (+Z), and the belt
             # then turns the motor pulley the other way about +Y. D.SCREW_HAND flips both.
-            "screw_pulley": {"node": f"screw_pulley_{i}",
+            "screw_pulley": {"node": f"screw_pulley_{i}", "with": [f"leadscrew_{i}"],
                              "center": [D.screw_x(i), sy, scz], "axis": [0, 0, 1],
                              "sign": _HAND},
             "motor_pulley": {"node": f"motor_pulley_{i}",
