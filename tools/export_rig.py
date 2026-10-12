@@ -11,9 +11,9 @@ signed semitones) and the visual gains. Regenerated with the GLB on every publis
   py -3.12 -m tools.export_rig
 
 Kinematics: motor pulley (axis Y) -> twisted GT2 belt -> screw pulley (axis Z) ->
-leadscrew -> carriage travels in Z. Pulleys are 14T:14T (1:1). The leadscrew and
-belt loop are perfectly cylindrical / a closed sweep, so a rigid transform can't
-make them look different — they are intentionally NOT animated (see NOTE below).
+leadscrew -> carriage travels in Z. Pulleys are 14T:14T (1:1). The leadscrew turns
+with its pulley (its thread is drawn, so the turn shows). The belt is NOT animated:
+its teeth each go their own way round the loop, which no rigid transform is.
 Nothing here is a visual fudge any more. The nut's height for a pitch is the design's
 own stretch figure (open_down = DL_OPEN, times 2^(semitones/6)), and everything
 downstream of the nut is the mechanism's own ratio: one pulley turn per
@@ -73,16 +73,14 @@ _COPEDENT = {
     "P3": {"key": "3", "moves": {2: -1, 6: -1}},           # chart 6: E->D# E->D#
     "P4": {"key": "4", "moves": {3: +2, 4: +2}},           # chart 7: C->D* A->B*  (both split)
     "P5": {"key": "5", "moves": {7: +1, 9: -1, 10: -3}},   # chart 8: C->C# F->E  C->A
-    # KNEE LEVERS — keyed q..t (the QWERTY home row above the pedals' number
-    # row, so the two UI rows sit the same way round as the keyboard) strictly LEFT TO RIGHT from the player's seat
-    # (user's rule), which is ascending X, the same direction the pedals run.
-    # ILKL (the inner lever, string 1 D->E) was removed 2026-09-11 (user), so LKL
-    # is now the leftmost lever and takes q; the rest follow strictly left to right.
-    "LKL": {"key": "q", "moves": {4: +1}},             # A->A#
-    "VKL": {"key": "w", "moves": {1: +1}},             # D->D#
-    "LKR": {"key": "e", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
-    "RKL": {"key": "r", "moves": {3: -1}},             # C->B
-    "RKR": {"key": "t", "moves": {3: +1, 7: +1}},      # C->C#  C->C#
+    # KNEE LEVERS — keyed 6..0, the number row carrying on from the pedals' 1..5 (the
+    # letters under it are the viewer's own tools), strictly LEFT TO RIGHT from the
+    # player's seat (user's rule), which is ascending X, the same direction the pedals run.
+    "LKL": {"key": "6", "moves": {4: +1}},             # A->A#
+    "VKL": {"key": "7", "moves": {1: +1}},             # D->D#
+    "LKR": {"key": "8", "moves": {4: -1, 8: -1}},      # A->G#  A->G#
+    "RKL": {"key": "9", "moves": {3: -1}},             # C->B
+    "RKR": {"key": "0", "moves": {3: +1, 7: +1}},      # C->C#  C->C#
 }
 OPEN_TUNING = ("D4", "E4", "C4", "A3", "G3", "E3", "C3", "A2", "F2", "C2")
 
@@ -110,7 +108,7 @@ def _pedals() -> list[dict]:
 
     The pistons retract along guitar +Z (the cartridge bases sit above them). The
     springs are NOT animated — a compressing helix isn't a rigid transform, same
-    reason the belt loop and leadscrew aren't (see the module docstring).
+    reason the belt isn't (see the module docstring).
     """
     from src import foot_pedal as FP
     from src.build import PEDAL_LIFT_DZ
@@ -342,7 +340,7 @@ def build_rig(build_n=None, out=RIG) -> pathlib.Path:
             # `sign` is the turn per mm the NUT GOES DOWN, about `axis`: a right-hand screw
             # lowers its nut turning counter-clockwise seen from above (+Z), and the belt
             # then turns the motor pulley the other way about +Y. D.SCREW_HAND flips both.
-            "screw_pulley": {"node": f"screw_pulley_{i}",
+            "screw_pulley": {"node": f"screw_pulley_{i}", "with": [f"leadscrew_{i}"],
                              "center": [D.screw_x(i), sy, scz], "axis": [0, 0, 1],
                              "sign": _HAND},
             "motor_pulley": {"node": f"motor_pulley_{i}",

@@ -38,7 +38,7 @@ from src import build as B, components as C, dimensions as D, belt_tensioner as 
 V = cq.Vector
 KIN = C                 # main() has a local C (the posed boxes)
 N = D.N_STRINGS
-R = D.PULLEY_OD / 2 + D.BELT_T / 2
+R = C.BELT_R
 REACH_MARGIN = D.CLAMP_END_CLR   # mm of belt past the far end of the travel: a clamp spliced
                                  # off its mark by as much as its whole end clearance
 STEP = float(sys.argv[1]) if len(sys.argv) > 1 else 4.0

@@ -29,6 +29,8 @@ import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 MATERIALS = ("petg-gf", "pctg", "tpu")
+_PRINTED = ("nut_slide_insert", "belt_tensioner_half_a", "belt_tensioner_half_b",
+            "pcb_shim", "pi_spacer")
 _STATION = re.compile(r"^(?:lkl|lkr|rkl|rkr|vkl|pedal\d+)_")
 _LANE = re.compile(r"^(?:main|half_stop)_")
 
@@ -65,6 +67,7 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in (
     (r"insert|^nut$|^string_nut$", "brass"),      # the leadscrew nuts, the string ends
     (r"pogo_.*(pins|pads)|_pogo_pins$", "gold"),
     (r"bearing|magnet$|^string$", "polished"),
+    (r"(main|half_stop)_spring$", "painted"),     # the levers' die springs are painted blue
     (r"screw$|screw_(top|bottom)$|washer$|spring$|_dowel$|_rod$|^leadscrew$|_m4_(key|mid)$"
      r"|^ui_shaft$|^ui_display$", "steel"),
     (r"^belt$", "rubber"),
@@ -125,6 +128,13 @@ def _filament_of(name: str):
     # BLACK PCTG (user, 2026-10-09), not the deck's colour
     if base in ("ui_knob", "ui_pwr_cap"):
         return "pctg-black"
+    # PRINTED, AND IN NO PARTS ROW (they are exported inside a coupon, or not yet at all):
+    # the build table cannot say what these are made of, so this does. PCTG, like every
+    # other small fine-feature part (user, 2026-10-12: the nut's sliding inserts and the
+    # belt clamps are PCTG and so the same green; the shims and the Pi's spacer are an
+    # assumption on the same rule).
+    if re.sub(r"^.*_(?=pcb_shim$)", "", base) in _PRINTED:
+        return "pctg"
     # chassis_2 -- and chassis_1_0: a part drawn as several solids is exported one
     # solid at a time (cadkit.web.pieces), each with one more index on its name
     tail = name
@@ -139,6 +149,10 @@ def _filament_of(name: str):
     tries = [base]
     bare = _STATION.sub("", base)
     tries += [bare, "kl_" + bare, _LANE.sub("", bare)]
+    # the vertical lever's parts carry the design's prefix inside the station's
+    # (vkl_kv_main_cart_base): the same cartridge, axle and cap as every other lever's
+    inner = re.sub(r"^kv_", "", bare)
+    tries += [inner, "kl_" + inner, _LANE.sub("", inner)]
     for t in tries:
         if t in exact:
             return exact[t]

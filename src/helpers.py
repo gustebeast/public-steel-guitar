@@ -16,6 +16,28 @@ def cyl(d: float, h: float, z: float = 0.0) -> cq.Workplane:
     return cq.Workplane("XY").workplane(offset=z).circle(d / 2).extrude(h)
 
 
+def ball_bearing(od: float, bore: float, w: float) -> cq.Workplane:
+    """A shielded (ZZ) deep-groove ball bearing as it looks, axis +Z from z = 0: two
+    rings with broken corners and a pressed shield set back between them on each face.
+    It is the od x bore x w tube with material taken OFF, so whatever cleared the tube
+    clears this. ⚠ The ring thicknesses, the shield's setback and the corner break are
+    proportions read off a 688ZZ, not a drawing: for the look only."""
+    rb, R = bore / 2.0, od / 2.0
+    t = R - rb
+    ri, ro = rb + 0.26 * t, R - 0.24 * t          # the shield spans ri..ro
+    c, s = min(0.3, 0.08 * t), 0.08 * w           # corner break; shield setback
+    pts = [(rb + c, 0.0), (ri, 0.0), (ri, s), (ro, s), (ro, 0.0), (R - c, 0.0), (R, c),
+           (R, w - c), (R - c, w), (ro, w), (ro, w - s), (ri, w - s), (ri, w),
+           (rb + c, w), (rb, w - c), (rb, c)]
+    return cq.Workplane("XZ").polyline(pts).close().revolve(360.0, (0, 0, 0), (0, 1, 0))
+
+
+def ball_bearing_y(od: float, bore: float, w: float, y0: float, *, x: float = 0.0,
+                   z: float = 0.0) -> cq.Workplane:
+    """ball_bearing with its axis along +Y, its -Y face at y0, centred on (x, z)."""
+    return ball_bearing(od, bore, w).rotate((0, 0, 0), (1, 0, 0), -90).translate((x, y0, z))
+
+
 def cyl_y(d: float, length: float, y0: float, *, x: float = 0.0,
           z: float = 0.0) -> cq.Workplane:
     """Solid cylinder with axis along +Y (the motor shaft axis), base face at y0,
