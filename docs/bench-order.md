@@ -154,11 +154,10 @@ all of them.
 
 | Tool | For | Notes |
 |---|---|---|
-| WCH-LinkE (MuseLab, Tindie: kit 2, the probe + four 20 cm leads + a USB-C cable; $5.00, 950 in stock 2026-10-12) | flashing and debugging `motor_ctrl`, `output_panel` (CH32V307) and the eleven `lever_sensor` boards (CH32V203, through the jig) | the only probe that talks to CH32V parts, **in its RISC-V mode**. Four wires, always including reset. **Its header is a 2x5 with no pin numbers.** As the listing's picture names it, one end to the other: front row `U_RX, U_TX, GND, 3V3, RST`; back row `SWCLK, GND, SWDIO, 3V3, 5V`. WCH's own manual shows the layout only as a figure: **read the silkscreen of the probe that arrives before the first wire.** Its 3V3 and 5V pins are power OUTPUTS and take no lead. WCH's manual: lines to the target at most 30 cm. It is also the day-one console: SDI printf over the same two debug wires |
+| WCH-LinkE (MuseLab, Tindie: kit 2, the probe + four 20 cm leads + a USB-C cable; $5.00, 950 in stock 2026-10-12) | flashing and debugging `motor_ctrl` and `output_panel` (CH32V307); later, the eleven `lever_sensor` boards (CH32V203, through their jig) | the only probe that talks to CH32V parts, **in its RISC-V mode**. Four wires, always including reset. **Its header is a 2x5 with no pin numbers.** As the listing's picture names it, one end to the other: front row `U_RX, U_TX, GND, 3V3, RST`; back row `SWCLK, GND, SWDIO, 3V3, 5V`. WCH's own manual shows the layout only as a figure: **read the silkscreen of the probe that arrives before the first wire.** Its 3V3 and 5V pins are power OUTPUTS and take no lead. WCH's manual: lines to the target at most 30 cm. It is also the day-one console: SDI printf over the same two debug wires |
 | ST-LINK/V2 (genuine, DigiKey), 20-pin 2.54 mm header | flashing and debugging `optical` (STM32H743) | Five leads, by ST's own table (UM1075 rev 8, table 4): **pin 1 VAPP** to TP5 (3V3; a sense INPUT, it powers nothing), **pin 7 SWDIO** to TP1, **pin 9 SWCLK** to TP2, **pin 15 NRST** to TP3 (always wired: connect-under-reset is the way back), **pin 8 GND** to TP4 (any of 4, 6, 8, 10, 12, 14, 16, 18, 20 is ground; 8 sits between the two signals). Before the first flash, watch TP3 go low on a tool-commanded reset. The board can also be loaded with no probe over I2C2 (TP6 / TP7) with TP8 held high |
-| 17 jumper leads, 2.54 mm female, one end cut off and soldered to a pad: one 20-pack of 150 mm female/female, cut to suit (Adafruit 1950, $1.95, in stock; or DigiKey 1568-12796-ND, SparkFun PRT-12796, 28 AWG, $3.17, 1,290 in stock; both read 2026-10-12) | every lead between a board and a probe | **The count:** 4 on `motor_ctrl` (TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND), 4 on `output_panel` (the same four), 5 on `optical` (TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND, TP5 3V3), 4 from the jig's pins. The LinkE kit's own four leads are female/female and go spare. Each tail's female end goes straight onto its probe pin, so there is no adapter and no second joint. Solder the tails once and leave them on; keep every one under 30 cm. The pads are bare 1.5 mm lands (1.0 on the lever board, which is why it has the jig): no clip holds on any of them |
-| Lever jig: two prints, four pogo pins (Adafruit 2430, pack of 10, $4.95), one M4 x 10 button screw and one M4 brass insert from the instrument's own stock | flashing the eleven `lever_sensor` boards | `tools/lever_prog_jig.step` + `tools/lever_prog_jig_base.step` (`src/lever_jig.py`). **No glue:** each pin stands on the base plate and is held by its own soldered lead, nipped under the ear by the screw. The pin's figures are Adafruit's published ones (body 1 mm, head 0.7 mm, 16 mm long, 13 mm compressed); **measure the pins and one jumper lead's insulation on arrival, before printing** (`POGO_L`, `LEAD_OD`) |
-| The bus B drop from `motor_ctrl` J6 (the instrument's own lead, PHR-4 to PHR-8 ways 1 to 4) | powering a `lever_sensor` board in the jig | 5 V from `motor_ctrl`'s bus B switch, limited to 0.52 A. Not a bench lead: "Power without a bench supply", below |
+| 13 jumper leads, 2.54 mm female, one end cut off and soldered to a pad: one 20-pack of 150 mm female/female, cut to suit (Adafruit 1950, $1.95, in stock; or DigiKey 1568-12796-ND, SparkFun PRT-12796, 28 AWG, $3.17, 1,290 in stock; both read 2026-10-12) | every lead between a board and a probe | **The count:** 4 on `motor_ctrl` (TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND), 4 on `output_panel` (the same four), 5 on `optical` (TP1 SWDIO, TP2 SWCLK, TP3 NRST, TP4 GND, TP5 3V3). The 20-pack leaves seven, four of which are for the lever jig later. The LinkE kit's own four leads are female/female and go spare. Each tail's female end goes straight onto its probe pin, so there is no adapter and no second joint. Solder the tails once and leave them on; keep every one under 30 cm. The pads are bare 1.5 mm lands: no clip holds on any of them, and a wire only stays on one soldered |
+| USB leads to the Pi: USB-A to USB-C (in the LinkE kit), USB-A to mini-B (for the ST-LINK/V2; whether one is in its box is not confirmed), and the instrument's own three (USB-A to PHR-4 for `motor_ctrl` J4, USB-A to USB-C for `output_panel` J3, USB-C to USB-C for `optical` J1 to the panel's J4) | the probes into the Pi, and each board's own USB once it has firmware | "The Pi as the flashing host", below |
 | WCH-LinkUtility 3.1 (WCH, Windows) or `wlink` (open source, native Windows driver) | flashing the CH32V boards through the LinkE | WCH lists CH32V20x and CH32V30x for the utility; `wlink` names the LinkE as its recommended probe and lists CH32V203 and CH32V307 as tested. Neither is installed yet |
 | STM32CubeProgrammer (ST; Windows, Linux, macOS) | flashing `optical` through the ST-LINK/V2 | not installed yet |
 | Arm GNU Toolchain 14.2.rel1 (`arm-none-eabi-gcc`) | building the `optical` firmware (Cortex-M7) | Arm's own zip from developer.arm.com, checked against its published SHA-256; unpacked under `C:/Users/gus/tools`, not on PATH. **The CH32V boards (307 and 203) need WCH's RISC-V toolchain instead, and it is still NOT installed**: nothing can be built for them until it is |
@@ -176,6 +175,37 @@ Order of work is below ("Power without a bench supply"); what each reading means
 `INSTALL_NOTES.md` (board bring-up), `docs/board-bringup-diagnostics.md` and
 `docs/optical-bringup-diagnostics.md`.
 
+## The Pi as the flashing host (user, 2026-10-13)
+
+**The instrument's own Raspberry Pi 4 does the flashing**, bare on the bench: no cap on its
+header, no 5 V lead from `motor_ctrl`, **powered by its own USB-C supply** (the rule above
+about no USB-C supply applies once the 5 V lead is in; here it is not). Both probes plug
+into its USB-A ports. `py -3.12 -m tools.flash_bench_view` draws every lead.
+
+| Board | First flash, from the Pi | Its own USB path to the Pi | Can a BLANK chip be reached over that USB? |
+|---|---|---|---|
+| `motor_ctrl` (CH32V307) | **WCH-LinkE**; four soldered tails (TP1 to TP4) | **J4** (PHR-4) to a Pi USB-A port: the instrument's own lead | **not the plan, and UNCONFIRMED.** It would need BOOT0 (pad TP6) held at 3V3 through a reset, and WCH's loader to answer on this port. WCH's datasheet says "USART1 and USB" without naming the port; `wchisp` lists the chip as tested without naming the transport |
+| `output_panel` (CH32V307) | **WCH-LinkE**; four soldered tails | **J3** (USB-C) to a Pi USB-A port: the hub's upstream, the MCU behind the hub | **no.** BOOT0 has only R7 to ground and no pad: the loader cannot be entered without lifting a part |
+| `optical` (STM32H743) | **ST-LINK/V2** in a Pi USB-A port; five soldered tails (TP1 to TP5) | **J1** (USB-C) to the panel's **J4**, through the hub and J3 | **no.** ST's ROM loader speaks USB only on the full-speed port (PA11/PA12), which this board does not wire; its high-speed port has no loader |
+
+So for a blank board the probes are the only way in, on every board. The USB leads are in
+the picture because they are how each board TALKS to the Pi once it has firmware (the
+day-one check that a flash worked), and how it would take an update if its first
+firmware carries a loader of its own. Nothing here changes a revision 1 board.
+
+**Software on the Pi.** `openocd` (Raspberry Pi OS package) drives the ST-LINK/V2 and
+knows the STM32H743: ordinary, though not yet run here. `wlink` drives the WCH-LinkE and
+lists CH32V203 and CH32V307 as tested; its page gives Linux build steps (libudev,
+libusb) but **does not say it has been run on a Pi (64-bit ARM): UNCONFIRMED**. If it
+will not build there, the CH32V boards are flashed from a Windows PC with the same probe
+and leads (WCH-LinkUtility), and only the optical board from the Pi.
+
+**Not drawn, because not tried: no probe at all for the optical board.** `openocd` can
+bit-bang SWD from a Pi 4's own header pins, and that is a real, documented way to flash an
+STM32. It would replace the ST-LINK/V2 with three more jumper leads from the Pi's header
+to TP1, TP2 and TP4. The ST-LINK is already on the order and is the path in the picture.
+There is no such tool for the CH32V parts' two-wire debug, so the WCH-LinkE stays.
+
 ## Power without a bench supply (user, 2026-10-13)
 
 **The plan now: the instrument's own brick powers the output panel, and every other board
@@ -187,12 +217,9 @@ bench supply, no pigtail, no 5 V source. `py -3.12 -m tools.flash_bench_view` dr
 | the brick's own plug | Mean Well GST160A24-R7B | `output_panel` **J6** | fixed |
 | optical feed | `output_panel` **J9** (XHP-2) | `optical` **J2** (XHP-4) | 1 = 24 V, 2 = GND; ways 3 and 4 of the XHP-4 EMPTY |
 | power link | `output_panel` **J10** (XHP-6) | `motor_ctrl` **J3** (XHP-6) | 24 V, GND, button, button, GND, 24 V |
-| one bus B drop | `motor_ctrl` **J6** (PHR-4) | `lever_sensor` **J1** ways 1 to 4 (PHR-8) | 5 V, GND, CAN_H, CAN_L |
 
-All four are the instrument's leads (`INSTALL_NOTES.md`, the cable table), made to their
-real lengths, so nothing here is bought or made for the bench alone. The bus B drop is the
-J6 lead to the first lever (LKL); it reaches the jig through the end window the bench lead
-used, because it is the same PHR-8.
+All three are the instrument's leads (`INSTALL_NOTES.md`, the cable table), made to their
+real lengths, so nothing here is bought or made for the bench alone.
 
 **What is being accepted.** A bench supply turns a fault into a reading: at a 100 mA limit
 a solder bridge or a reversed part is a number on a display and nothing gets hot. The brick
@@ -204,7 +231,6 @@ between a fault and that current:
 | `output_panel` | **nothing.** Its 24 V rail is the brick's, through Q2 |
 | `motor_ctrl` | F1 (1.5 A) ahead of the 5 V converter only. The 24 V trunk on it, and whatever else hangs off that, has nothing |
 | `optical` | the panel's F1, 1 A: a chip fuse, soldered. It blows; it does not reset. **And it does not help the one fault that matters here** (below): 24 V on the 5 V rail draws well under 1 A while it destroys the board |
-| `lever_sensor` | `motor_ctrl`'s bus B switch (TPS2553, 0.52 A constant current, 5 V). This one IS a current limit, and a good one |
 
 So the two boards that meet the brick first have no protection. **That is accepted (user,
 2026-10-13): there are five of each board, and a board lost on first power is a spare
@@ -219,7 +245,7 @@ board:**
 2. **Check every crimped lead, end to end, against `elec/harness.py` before it carries
    power**: way n at one end is way n at the other, way 1 is the rail, and no way is
    shorted to its neighbour. One lead feeds every board of its kind, so a lead with 24 V
-   and ground crossed takes all five. The four leads are in the table above.
+   and ground crossed takes all five. The three leads are in the table above.
 
 **Everything else below is OPTIONAL**: the power-off "not a short" readings, the in-circuit
 resistor checks, and both battery steps. Each saves a board from one fault on that board;
@@ -299,14 +325,7 @@ power link from J10 to J3, brick in: TP5 3.31 V, **5.02 V on J5's outer posts be
 anything is plugged into J5, J2 or J6.** The 10 ohm load on J5 as before. Its four tails,
 flash.
 
-**4. The eleven `lever_sensor` boards**, from `motor_ctrl` J6 through the bus B drop, in
-the jig. This is the well-protected step: 5 V, 0.52 A at most. The drop may be plugged
-into a lever board with the power on (the switch limits the inrush and a short alike);
-seat the board in the jig first, then plug J1. The lead also carries CAN_H and CAN_L to
-the board: that is harmless before either end has firmware, and once both have it the
-lever board is simply on the bus it belongs to.
-
-**5. Then the rest as before:** bus A with the tee and no motor, one motor, the Pi.
+**4. Then the rest as before:** bus A with the tee and no motor, one motor, the Pi.
 
 ### The two low-voltage steps, on batteries (OPTIONAL)
 
@@ -331,6 +350,39 @@ below 17.6 V; a 9 V battery cannot deliver more than an amp or two into a short.
 buys is small: with nothing plugged into J5, J2 or J6, a wrong 5 V rail can only hurt the
 board's own bus B switch (U6) and the 5 V converter. Do it if a battery snap is to hand;
 the 5 V reading in step 3, before anything is plugged in, does the same job at 24 V.
+
+## Later: the lever sensor boards (user, 2026-10-13)
+
+**Not part of the first flash and not on its shopping list.** The `lever_sensor` board has
+not been ordered; it is worked on once the first prototype is validated. Nothing below is
+bought, printed or made until then. It is kept here so it is not lost.
+
+| Tool | For | Notes |
+|---|---|---|
+| Lever jig: two prints, four pogo pins (Adafruit 2430, pack of 10, $4.95), one M4 x 10 button screw and one M4 brass insert from the instrument's own stock | flashing the eleven `lever_sensor` boards | `tools/lever_prog_jig.step` + `tools/lever_prog_jig_base.step` (`src/lever_jig.py`). **No glue:** each pin stands on the base plate and is held by its own soldered lead, nipped under the ear by the screw. The pin's figures are Adafruit's published ones (body 1 mm, head 0.7 mm, 16 mm long, 13 mm compressed); **measure the pins and one jumper lead's insulation on arrival, before printing** (`POGO_L`, `LEAD_OD`) |
+| The bus B drop from `motor_ctrl` J6 (the instrument's own lead, PHR-4 to PHR-8 ways 1 to 4) | powering a `lever_sensor` board in the jig | 5 V from `motor_ctrl`'s bus B switch, limited to 0.52 A. Not a bench lead: "Power without a bench supply", below |
+| 4 jumper leads, 2.54 mm female, one end cut off | the jig's four pins to the WCH-LinkE | from the same 20-pack as the first flash's thirteen; each is soldered to a pin's foot, once |
+
+| Lead | From | To | Ways |
+|---|---|---|---|
+| one bus B drop | `motor_ctrl` **J6** (PHR-4) | `lever_sensor` **J1** ways 1 to 4 (PHR-8) | 5 V, GND, CAN_H, CAN_L |
+
+The bus B drop is the J6 lead to the first lever (LKL), the instrument's own; it reaches
+the jig through its end window.
+
+**Flashing them:** the WCH-LinkE in a Pi USB-A port, four leads soldered to the feet of
+the jig's pogo pins. The board has no USB of its own, so the probe is the only way in.
+
+**Power, and why this is the well-protected step:** from `motor_ctrl` J6 through the bus B
+drop, with `motor_ctrl` already flashed and powered down the chain: 5 V through its bus B
+switch (TPS2553), a 0.52 A constant-current limit. The drop may be plugged into a lever
+board with the power on (the switch limits the inrush and a short alike); seat the board in
+the jig first, then plug J1. The lead also carries CAN_H and CAN_L to the board: that is
+harmless before either end has firmware, and once both have it the lever board is simply
+on the bus it belongs to.
+
+**Before it is ordered:** it is the natural first board to make operational over USB alone
+(`docs/lever-sensor-respin.md`), which would retire the jig, the pins and the probe for it.
 
 ## Before the first power-up (bring-up review, 2026-10-07)
 

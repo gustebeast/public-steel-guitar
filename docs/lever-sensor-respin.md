@@ -122,3 +122,13 @@ R2 are in the BOM with no placement; and C7, R6, C2, U1 and C1 sit between 1.55 
 mm from where elec puts them. The housing's plinth relief is cut against that BOM, so it
 is currently clearing parts that are not there and not clearing parts that are.
 Regenerating it needs the elec pipeline.
+
+## Not ordered yet: the first board to make USB-only (user, 2026-10-13)
+
+The lever board is not in the first prototype's order and is worked on after that
+prototype is validated. Every future board is to be operational with only a host computer
+and a USB cable, first flash included (`cadkit/PCB_QUALITY.md`, M43), and this is the one
+board that can meet that before it is ever ordered: it has no USB today and is flashed
+through a pogo jig and a WCH-LinkE (`docs/bench-order.md`, "Later: the lever sensor
+boards"). A note only: no design work has been done, and how a board on a 5 V CAN drop
+gets a USB path is open.

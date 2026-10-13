@@ -1378,7 +1378,12 @@ def build_wires():
     assert WIRE_OD["wire_lights"] == EL.MCTRL_J7_WIRE
     _capbb = EL.pi_cap().val().BoundingBox()
     _LT_FLY = _capbb.zmax + WIRE_OD["wire_lights"] / 2.0 + 2.85
-    _LT_XC = min(e[0][0] for e in _ltb) - 2.0       # the last column: 2.0 -X of J4's last way
+    # ⚠ THE COLUMNS CLIMB IN THE CORRIDOR, AND ITS +X SIDE IS A CHASSIS WALL: chassis_2
+    # stands from x -562.70 on at J7's y, up to z -58.5 (measured off the solid). So the
+    # last column is the nearer of 2.0 -X of J4's last way and a wire off that wall.
+    _LT_WALL_X = -562.70
+    _LT_XC = min(min(e[0][0] for e in _ltb) - 2.0,
+                 _LT_WALL_X - WIRE_OD["wire_lights"])
     _lt_live = _cable("LIGHTS_LINK", _lta, _ltb)
     for n, k in enumerate(_lt_live):
         (pa, _d, net), (pb, _bd, _bn) = _lta[k], _ltb[k]
