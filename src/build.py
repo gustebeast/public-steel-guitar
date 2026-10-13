@@ -110,6 +110,14 @@ PARTS = {
     "kl_pcb_shim":     (lambda: (lambda KL: KL.pcb_shim(KL.HOUS_Z0, KL.HOUS_Z1))(__import__("src.knee_lever", fromlist=["e"])), "pctg/kl_pcb_shim.step", "PCTG — sensor-board shim, LEFT-HAND knee levers (x2: LKL, RKL): a 33.0 x 1.55 strip one board thick that drops down the cradle grooves on top of the board, so the chassis underside presses the board through it. The right-hand housings need none. Prints FLAT, on a big face"),
     "kv_pcb_shim":     (lambda: (lambda KL, KV: KL.pcb_shim(KV.HOUS_Z0, KV.HOUS_Z1))(__import__("src.knee_lever", fromlist=["e"]), __import__("src.knee_lever_vert", fromlist=["e"])), "pctg/kv_pcb_shim.step", "PCTG — sensor-board shim, VERTICAL knee lever (x1): the same plate 20.95 tall, filling the taller housing's cradle above the one board. Prints FLAT, on a big face"),
     "pedal_pcb_shim":  (lambda: (lambda KL, FP: KL.pcb_shim(FP.CRADLE_Z0, FP.SHIM_TOP, FP.BOARD_FLIP))(__import__("src.knee_lever", fromlist=["e"]), __import__("src.foot_pedal", fromlist=["e"])), "pctg/pedal_pcb_shim.step", "PCTG — sensor-board shim, FOOT PEDALS (x5): the same plate 24.70 tall, standing from the board's edge to the bar's lid groove; the LID presses it. Prints FLAT, on a big face"),
+    # THE NUT'S SLIDING INSERTS: ten in the instrument, THREE parts (nut_block.sku_gauge_max:
+    # every insert of a SKU is one part). Each row builds its SKU's first string.
+    "nut_slide_insert_a": (lambda: (lambda NB: NB.slide_insert(0))(__import__("src.nut_block", fromlist=["e"])), "pctg/nut_slide_insert_a.step", "PCTG — nut slide insert, SKU A (x7: strings 1-7): the string's clamp flat and dowel cradle on a tall foot that the height screw pushes up its slot in the keyhead. Prints LYING ON ITS FLAT +X FACE, growing -X"),
+    "nut_slide_insert_b": (lambda: (lambda NB: NB.slide_insert(NB.N_FINGERED))(__import__("src.nut_block", fromlist=["e"])), "pctg/nut_slide_insert_b.step", "PCTG — nut slide insert, SKU B (x2: strings 8-9): the wider insert of the bass stack, abutting its neighbours. Prints LYING ON ITS FLAT +X FACE, growing -X"),
+    "nut_slide_insert_c": (lambda: (lambda NB: NB.slide_insert(NB.SKU_C))(__import__("src.nut_block", fromlist=["e"])), "pctg/nut_slide_insert_c.step", "PCTG — nut slide insert, SKU C (x1: string 10): the widest, its clamp lobe run out to cover the heaviest coil. Prints LYING ON ITS FLAT +X FACE, growing -X"),
+    # THE BELT CLAMP'S TWO HALVES, ten of each. (test_belt_tensioner is the same pair on one plate.)
+    "belt_tensioner_half_a": (lambda: __import__("src.belt_tensioner", fromlist=["e"]).half_a(), "pctg/belt_tensioner_half_a.step", "PCTG at a 0.4 NOZZLE (the ribs) — belt-tension clamp, HEAD half (x10): belt slot, M3 head window and the key channel. Prints LYING ON ITS CLOSED +Y SIDE FACE, the slot opening upward"),
+    "belt_tensioner_half_b": (lambda: __import__("src.belt_tensioner", fromlist=["e"]).half_b(), "pctg/belt_tensioner_half_b.step", "PCTG at a 0.4 NOZZLE (the ribs) — belt-tension clamp, INSERT half (x10): belt slot and the side-entry M3 insert pocket. Prints LYING ON ITS CLOSED -Y SIDE FACE, slot and pocket opening upward"),
     "kv_housing":      (lambda: __import__("src.knee_lever_vert", fromlist=["e"]).kv_housing, "petg-gf/kv_housing.step", "PETG-GF — VERTICAL knee-lever (LKV) housing: same prism derivation as LKL but with the feel block TRANSLATED above the axle (not mirrored — the pocket gable stays up for printability), so the axle sits 19.2 lower and the arm has room to swing UP. Y is asymmetric (-16.10..+13.90): the -Y wall is 2.2 wider to fit TWO octagon tenons at the 23mm rib pitch, while the +Y sensor face is untouched. Tenons slide along local X (= the guitar's Y once posed). Carries the SAME sensor cradle as LKL (knee_lever._cradle, parameterised by the housing Z extents) - the board is just taller here, 31.2 vs 19. Rest stop deferred"),
     "kv_lever":        (lambda: __import__("src.knee_lever_vert", fromlist=["e"]).kv_lever, "pctg/kv_lever.step", "PCTG — VERTICAL knee-lever (LKV) arm: an L. Hub on the axle, a LEG rising +Z carrying the return lobe at 13.2 (sized so the 20° throw gives the SAME 4.51 spring stroke as LKL's 30°), and a 50mm ARM running +X that the knee lifts — 17.1 of paddle rise"),
     "cart_base": (lambda: __import__("src.knee_lever", fromlist=["e"]).cart_base, "pctg/cart_base.step", "PCTG — spring-cartridge (inverted-U, open -Z; shared: print 2, for main + half-stop)"),
@@ -566,6 +574,16 @@ def _declared():
         (["kl_pcb_shim", "kv_pcb_shim", "pedal_pcb_shim"], _KLX.SHIM_UP,
          "knee_lever.SHIM_UP — flat on a big face, building through its "
          "own 1.6 thickness: a plain plate, nothing overhangs"),
+        (["nut_slide_insert_a", "nut_slide_insert_b", "nut_slide_insert_c"],
+         __import__("src.nut_block", fromlist=["e"]).INSERT_UP,
+         "nut_block.INSERT_UP — lying on the flat +X face and growing -X "
+         "(user): the reliable way to make a 67 mm part, not a tower"),
+        (["belt_tensioner_half_a"], _BT.HALF_A_UP,
+         "belt_tensioner.HALF_A_UP — on its closed +y side face, every slot "
+         "a through-profile opening upward"),
+        (["belt_tensioner_half_b"], _BT.HALF_B_UP,
+         "belt_tensioner.HALF_B_UP — on its closed -y side face, slot and "
+         "insert pocket opening upward"),
         (["pedal_lever"], _FP.LEVER_UP,
          "foot_pedal.LEVER_UP — the LKL arm direction again, through the "
          "foot pedal pose"),
