@@ -23,7 +23,11 @@ the 128 small parts in SMALL. Its `Z=` callouts are heights over the board's top
     16-contact receptacle (the one on our boards), the two micro-HDMI sockets are KiCad's
     library model of Molex's 46765, and Ethernet, the USB-A stacks and the audio jack are
     drawn here, with the standard openings for their plugs;
-  * NOTHING UNDER THE BOARD is drawn: the microSD socket is not on the drawing.
+  * UNDER THE BOARD only the microSD socket and its card are drawn. Their outlines are
+    off the same drawing's DXF (RP-008342-DS-1, layer PARTS_BOTTOM): the socket, and the
+    card standing 2.265 past the board's short edge. The DXF is flat, so the socket's
+    height and where the card lies in it are estimates; the card's 15 x 11 x 1.0 is the
+    microSD standard's.
 """
 from __future__ import annotations
 
@@ -100,13 +104,21 @@ SMALL = (
     (69.09, 5.70, 0.62, 0.41), (69.09, 6.65, 0.62, 0.41), (69.59, 8.50, 0.50, 1.01), (69.59, 10.50, 0.50, 1.01),
 )
 
+# under the board (the DXF's PARTS_BOTTOM): ((x0, x1), (y0, y1))
+SD_SOCKET = ((1.685, 13.135), (22.11, 34.10))
+SD_CARD = ((-2.265, 12.735), (22.51, 33.51))     # 15.0 x 11.0: the card, pushed home
+SD_SOCKET_H = 1.5                # ESTIMATE: a push-push microSD socket's height
+SD_CARD_T = 1.0                  # the microSD standard's
+SD_CARD_GAP = 0.3                # ESTIMATE: the card's top face under the board
+
 RGB = {"board": (0.05, 0.38, 0.20), "shell": (0.78, 0.79, 0.81), "lid": (0.74, 0.75, 0.77),
        "black": (0.07, 0.07, 0.08), "pin": (0.83, 0.68, 0.25), "cream": (0.90, 0.87, 0.78),
        "blue": (0.10, 0.30, 0.75), "passive": (0.36, 0.25, 0.14)}
 # the parts, by what each is made of: name suffix -> (colour, finish)
 GROUPS = {"": ("board", "board"), "_shells": ("shell", "steel"), "_lids": ("lid", "steel"),
           "_black": ("black", "nylon"), "_pins": ("pin", "gold"), "_ffc": ("cream", "nylon"),
-          "_usb3": ("blue", "nylon"), "_passives": ("passive", "painted")}
+          "_usb3": ("blue", "nylon"), "_passives": ("passive", "painted"),
+          "_sd": ("shell", "steel"), "_card": ("black", "nylon")}
 
 
 def _box(x0, x1, y0, y1, z0, z1):
@@ -269,7 +281,13 @@ def parts() -> dict:
     small = passives[0]
     for s in passives[1:]:
         small = small.union(s)
-    return {"": board, "_shells": _all(shells), "_lids": _all(lids), "_black": black,
+    (sx, sy), (cx, cy) = SD_SOCKET, SD_CARD
+    card = _box(cx[0], cx[1], cy[0], cy[1], -SD_CARD_GAP - SD_CARD_T, -SD_CARD_GAP)
+    socket = _box(sx[0], sx[1], sy[0], sy[1], -SD_SOCKET_H, 0.0).cut(
+        _box(sx[0], cx[1] + 0.1, cy[0] - 0.1, cy[1] + 0.1, -SD_CARD_GAP - SD_CARD_T - 0.1,
+             -SD_CARD_GAP + 0.1))
+    return {"": board, "_sd": socket, "_card": card,
+            "_shells": _all(shells), "_lids": _all(lids), "_black": black,
             "_pins": _all(pins), "_ffc": _all(ffc), "_usb3": _all(blue),
             "_passives": small.cut(black)}
 

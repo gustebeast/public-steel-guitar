@@ -6166,3 +6166,20 @@ geometry and texture/color/material. Then use the same model for the first flash
   USB-C = cadkit's own receptacle (as on our boards), micro-HDMI = KiCad's Molex 46765
   model, Ethernet / USB-A / jack drawn here with standard openings. KiCad's RJ45 models
   were tried and do not fit the Pi's 15.5 x 21.36 x 13.5 jack (16.0 deep or 25.4 deep).
+- User 2026-10-13: "the insert that holds the pi in place clips into the mortise which the
+  levers need ... move the insert further +z". Measured off chassis_2: mortise void to
+  z -72.95 beside the bore and 0.10 under its floor. `pi_boss_top()` = FLOOR_TOP + one
+  anchor (8.5): insert and screw wholly above the floor. `pi_spacer` is now a bridge (lap
+  on the board, key against its edge through the wall's notch, bar on the boss); prints
+  top face down, 0 ceilings.
+- User: "model the SD card slot ... and the card itself". Outlines off Raspberry Pi's DXF
+  (RP-008342-DS-1, PARTS_BOTTOM): `pi4_sd`, `pi4_card` (card 2.265 past the -X edge).
+  Socket height 1.5 and the card's 0.3 under the board are ESTIMATES. The cradle's -X wall
+  is open for the card (it was 17.6 mm3 inside it). `pi4_card` is its own gate name.
+- FOUND: the real USB-C, HDMI x2 and jack stand 1.24 to 2.50 past the Pi's -Y edge and
+  were 10.1 mm3 inside the top 0.80 of the cradle's -Y wall (hidden: chassis<->pi4 is an
+  allowed pair). The -Y wall now stops at the laminate's top face.
+- OPEN, NEXT: the USB leads. wire_usb (panel J2 -> the Pi's USB-C) has no plugs and ends
+  on the USB-A stack: the USB-C mouth is 3.26 mm from the -Y rail. Panel J3 -> a Pi USB-A
+  port is not drawn and has NO BOM ROW (bench-order.md lists it). Plan told to the user:
+  move the Pi about 2.4 mm +Y for an angled plug, not a pocket in the rail.
