@@ -859,8 +859,10 @@ def _build() -> cq.Workplane:
         # the bore follows the SCREW: x20 through the hand guard reaches 5.04 further down
         # than the x12 that sat on the board did (was a typed 11.0)
         _tip = OP.GUARD_SEAT_Z - OP.GUARD_SCREW_L
+        # print_up: the bore runs along Z in a part that builds -X, so it is a SIDEWAYS
+        # hole and takes the teardrop (it was cut round: a 4.3 mm flat roof on the pocket)
         body = cut_anchor(M4, body, (_mx, _my, PCB_PAD_TOP), (0, 0, -1),
-                          depth=PCB_PAD_TOP - _tip + D.BEAD)
+                          depth=PCB_PAD_TOP - _tip + D.BEAD, print_up=PRINT_UP)
     # FUSE IN the screw-support rail and bridge it to the cap at the bottom + tie it
     # up to the bearing arms at the edges — the whole bridge end becomes one solid
     # piece (screw support + bearing support + box closure) with continuous material.
@@ -1282,7 +1284,20 @@ def op_cradle():
     _base_t = max(1.6, _M4.anchor_min_wall - standoff)
     cr = cr.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         _M4.boss_od / 2.0, _base_t + standoff, cq.Vector(hx, hy, -_base_t))))
-    cr = _cut_anchor(_M4, cr, (hx, hy, standoff), (0, 0, -1), _M4.anchor_min_wall)
+    # THE BOSS IS A HORIZONTAL BARREL IN THIS PRINT (the part builds -X; the boss's axis is
+    # Z), and above the floor its +X side looked straight down at the bed: a 6.5 x 4.5
+    # round roof with nothing under it (check_ceilings' curved pass, 2026-10-12). Same
+    # answer as the pads' gussets below: the bed side is squared off and carried down to
+    # the floor on a 45 deg ramp, under the board's corner where nothing is mounted.
+    _br = _M4.boss_od / 2.0
+    cr = cr.union(box_at(_br, 2 * _br, standoff, x=hx + _br / 2.0, y=hy, z=standoff / 2.0))
+    cr = cr.union(cq.Workplane("XZ").polyline([(hx + _br, 0.0), (hx + _br + standoff, 0.0),
+                                               (hx + _br, standoff)]).close()
+                  .extrude(_br, both=True).translate((0.0, hy, 0.0)))
+    # (the cradle is only ever translated into place, so the endplate's PRINT_UP is its
+    #  own: this bore lies sideways in the print too, and takes the teardrop)
+    cr = _cut_anchor(_M4, cr, (hx, hy, standoff), (0, 0, -1), _M4.anchor_min_wall,
+                     print_up=PRINT_UP)
     # pcb_cradle's own frame: the MOUNTING SURFACE is local z 0 and the board's underside
     # is local z `standoff` (the base plate hangs below 0).
     _base_top = 0.0

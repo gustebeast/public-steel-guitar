@@ -1,7 +1,7 @@
 """Flat-ceiling (unsupported-bridge) checker for a part in ITS print orientation.
 
   py -3.12 -m tools.check_ceilings                 # every registered part
-  py -3.12 -m tools.check_ceilings --only leg_head
+  py -3.12 -m tools.check_ceilings --only bridge_endplate
   py -3.12 -m tools.check_ceilings --min 50        # only ceilings over 50 mm^2
 
 WHY THIS EXISTS: the overlap gate reports interpenetration and nothing else. It
@@ -86,17 +86,45 @@ import math
 
 import cadquery as cq
 
-from src import legs as LG
 from src.dimensions import NOZZLE_D as D_NOZZLE
 
 # name -> (builder, build axis 'x'|'y'|'z', bed plane coordinate on that axis,
 #          which side the bed is on: +1 if the part's bed face is at MAX coord)
-PARTS = {
-    # The leg head lies on its +Y face: authored +Y is world -Y once every leg
-    # is placed rot 180, so that face is both the bed and the button side.
-    "leg_head": (lambda: LG.leg_head(latch=True), (0.0, -1.0, 0.0), None),
-    "leg_body_stub_trrs": (LG.leg_body_stub_trrs, (0.0, -1.0, 0.0), None),
-}
+# (leg_head and leg_body_stub_trrs were registered here by hand. They are the OLD leg
+#  family, retired when the square leg stack replaced it -- src.build prints neither --
+#  and for months their TRRS ways were the two worst rows in every report: 265 and
+#  82 mm2 of roof on parts nobody will print. Everything checked now is something the
+#  build exports.)
+PARTS = {}
+
+# CURVED ROWS, JUDGED (2026-10-12, after the curved pass was turned the right way round).
+# A row that is still in the report is here with why it stays; the rest were changed.
+#   CHANGED  bridge_endplate   the optical board's two M4 anchors and the output panel's
+#                              one were cut round in a part that builds -X: teardrops now
+#                              (print_up). The output panel's boss stood 4.5 over the
+#                              cradle floor as a bare barrel: squared and ramped at 45.
+#   ROUND ON PURPOSE
+#     kv_lever / pedal_lever   the O8.2 axle bore (162 mm2, roof chord 5.7). A shaft fit:
+#                              a teardrop's apex is a void beside the axle. Stays round;
+#                              ream or drill to size if the roof sags.
+#   ACCEPTED AS SHORT BRIDGES
+#     pickup_zplate            the retention screw's O6.0 insert pocket and O4.4 bore,
+#                              chords 4.3 and 3.15. A teardrop's apex comes within 0.34
+#                              of the boss top, and the boss cannot grow: it is 1.6 under
+#                              the deck at the bottom of the plate's travel. The insert
+#                              is melted in, which forgives the roof.
+#     kv_lever                 two O3.2 cross holes, chord 2.2.
+#     test_belt_tensioner      the clamp's M3 bores, chords 1.6-2.4, in a coupon.
+#     knee_housing(_r)         three slivers at 53.6 deg, under one bead of span.
+#     kl_magnet_cap            a 0.23-tall lead-in cone at 58.6 deg, 6.3 mm2.
+#     top_plate_0              two jack-head seat cones whose worst facet reads 48-50 deg:
+#                              under 1 mm2 of each is past the slack, so they no longer
+#                              make a row.
+#   OPEN
+#     kv_lever                 its O13.6 HUB lies on the bed as a bare barrel (137 mm2,
+#                              0.7 off the plate). A flat costs 2.0 of a 2.7 wall; a 45
+#                              deg foot adds 0.56 to the hub's swept radius, which has to
+#                              be cleared in the housing first (tools/check_sweep).
 
 
 def _chassis_seg(i):
@@ -177,6 +205,7 @@ DECLARED_UP = {
     "lever_prog_jig_base": ("src.lever_jig", "BASE_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
+    "ui_pwr_cap":        ("src.ui_panel", "PWR_CAP_UP"),
     "ui_clamp":          ("src.ui_panel", "CLAMP_UP"),
     # the print-fit coupons, which declare an orientation for the same reason the parts
     # they stand in for do -- a coupon printed the other way up is not the same test
@@ -399,6 +428,9 @@ def ceilings(part, up, bed: float, max_tilt: float = 44.0, tol: float = 1e-6):
 AX = {"x": 0, "y": 1, "z": 2}      # lost in the bc58ba6 merge; curved_overhangs needs it
 
 
+FACET_SLACK = 1.0      # degrees a FACET of a 45 deg cone may read past 45 (see below)
+
+
 def curved_overhangs(part, axis: str, bed: float, side: int, thresh_deg: float = 45.0,
                      tol: float = 1e-6, tess: float = 0.1):
     """Non-planar faces whose UNDERSIDE overhangs more than `thresh_deg`.
@@ -424,16 +456,31 @@ def curved_overhangs(part, axis: str, bed: float, side: int, thresh_deg: float =
     face area of 578.1, worst overhang 88.6°, and 146.8 mm² beyond 45° -- located at the
     bottom of the barrel, which is where it is.
 
+    A 45 DEG CONE IS NOT AN OVERHANG, AND ITS FACETS SAID IT WAS. A flat triangle laid
+    across two rulings of a cone is steeper than the cone: by 1/cos(half the facet's angle
+    round the axis) in the tangent, which at this tessellation is 45.3-45.5 deg on every
+    teardrop apex cone and insert-pocket step in the model -- a dozen rows of nothing in
+    every report (the lead, 2026-10-12). So a facet has to be FACET_SLACK past the
+    threshold before it counts. That costs nothing real: the faces worth a row are tens
+    of degrees past it, and the closest true one on record is 48.3.
+
     Returns [(worst_deg, area_beyond, span, depth, centre)], worst first. `span` and `depth`
     mean what they do for flat ceilings, measured over the offending triangles only.
     """
     import math
 
     i = AX[axis]
-    # the unit vector pointing TOWARD the bed: the flat check calls a face bed-facing when
-    # comp[i] * side > 0, so that direction is side along the build axis.
+    # the unit vector pointing TOWARD the bed. `side` is the sign of the BUILD direction
+    # along the axis (main() passes +1 for a part that builds +Z), so the bed is the other
+    # way: -side.
+    # ⚠ THIS WAS +side, AND THE WHOLE PASS WAS INSIDE OUT. It measured the faces that look
+    # UP at the nozzle and called them overhangs, then threw most of them away on a depth
+    # that came out negative -- so a +Z part's real undersides were never reported at all
+    # (a horizontal O9.2 barrel on the bed: nothing), and a -Z part's upward faces were
+    # (ui_knob's cone, 182 mm2 "at 76 deg", which faces the nozzle). The barrel is the test:
+    # 142 mm2 past 45 deg along its lowest line, in either build direction.
     bed_dir = [0.0, 0.0, 0.0]
-    bed_dir[i] = float(side)
+    bed_dir[i] = -float(side)
     out = []
     for f in part.faces().vals():
         if f.geomType() == "PLANE":
@@ -459,7 +506,7 @@ def curved_overhangs(part, axis: str, bed: float, side: int, thresh_deg: float =
             # + = facing the bed squarely (90° is a flat roof), - = facing away
             dot = sum(n[k] * bed_dir[k] for k in range(3)) / L
             deg = math.degrees(math.asin(max(-1.0, min(1.0, dot))))
-            if deg <= thresh_deg:
+            if deg <= thresh_deg + FACET_SLACK:
                 continue
             a = L / 2.0
             worst = max(worst, deg)
@@ -472,7 +519,9 @@ def curved_overhangs(part, axis: str, bed: float, side: int, thresh_deg: float =
         if area_over <= tol:
             continue
         ctr = tuple(acc[k] / (area_over * 3.0) for k in range(3))
-        depth = (bed - ctr[i]) * side
+        # `bed` is bed_plane()'s figure: the part's lowest material MEASURED ALONG THE BUILD
+        # DIRECTION, so the centre has to be measured the same way before the two are compared
+        depth = ctr[i] * side - bed
         if depth <= tol:
             continue                       # at the bed plane: printed on the plate, not over air
         ext = [hi[k] - lo[k] for k in range(3)]

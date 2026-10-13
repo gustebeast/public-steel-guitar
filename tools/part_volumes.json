@@ -35,7 +35,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 376065.1
+   "volume_mm3": 376113.5
   },
   "cart_base": {
    "material": "pctg",
@@ -256,6 +256,10 @@
   "ui_knob": {
    "material": "pctg",
    "volume_mm3": 1171.4
+  },
+  "ui_pwr_cap": {
+   "material": "pctg",
+   "volume_mm3": 1292.2
   }
  }
 }
