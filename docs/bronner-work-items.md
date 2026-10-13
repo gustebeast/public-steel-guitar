@@ -6042,14 +6042,18 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
 
 ## Open from 2026-10-12 (the 15-minute loop works this list; delete a line when it is done)
 
-- (c) next MR: open-pitch belts, BoardsSkipped, mesh cache -- committed, submit after (d).
-- (d) cold / warm whole-instrument export proof (C:/Users/gus/AppData/Local/Temp/qbak/w/prof/coldwarm.py),
-  then the per-stage build profile (prof.py beside it). Tell the lead before either.
-- (e) solid cache for the non-printed families (belts first): keyed on parameters + the
-  drawing module's source, outside git, never stale.
-- (f) belts travel with their clamps in the page (and the desktop app).
+- MR @ 83b7e83b filed (open-pitch belts, BoardsSkipped = red, mesh cache, sweep envelope
+  once per part). Proof: none 104.1 / cold 90.9 / warm 54.1 s, identical bytes, busy machine.
+  Take the clean warm export time and the sweep time from the lead's next two builds.
+- Sweep gate was 122 s of envelopes (threaded leadscrew 97 s, x10 copies), 1.4 s of
+  intersections. Not the belts.
+- (e) `cadkit.kept` (117164e) needs the lead's propagate; then wrap the two belt calls in
+  src/build.py (`_string_components`, `belts_as_played`): `kept(C.belt, *args)`. Only belts
+  are worth it (3.0 s drawn, 0.19 s read); every other bought part draws in under 1 s.
+- (f) belts travel with their clamps in the page (and the desktop app). Asked only as
+  "is it feasible"; last on the list.
 - (g) close the app, build, open the app: it shows the new build number.
-- (h) plant-pot, watering-backpack: `show(assembly, boards=...)` once their trees are clean.
-- (i) rebuild the desktop app after any page change.
+- (i) rebuild the desktop app after any page change (none since a0c6e74).
 - Model size: 35 MB published. The user has not chosen between compression, coarser belt
   teeth and a lighter Pages model.
+- plant-pot 7040be8e (no modelled build number) is committed, unpushed.
