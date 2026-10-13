@@ -17,6 +17,14 @@
    "material": "pctg",
    "volume_mm3": 5267.5
   },
+  "belt_tensioner_half_a": {
+   "material": "pctg",
+   "volume_mm3": 779.2
+  },
+  "belt_tensioner_half_b": {
+   "material": "pctg",
+   "volume_mm3": 997.9
+  },
   "body_adapter": {
    "material": "petg-gf",
    "volume_mm3": 84084.5
@@ -63,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 634960.2
+   "volume_mm3": 635132.9
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -145,6 +153,18 @@
    "material": "pctg",
    "volume_mm3": 286.5
   },
+  "nut_slide_insert_a": {
+   "material": "pctg",
+   "volume_mm3": 4337.7
+  },
+  "nut_slide_insert_b": {
+   "material": "pctg",
+   "volume_mm3": 7312.6
+  },
+  "nut_slide_insert_c": {
+   "material": "pctg",
+   "volume_mm3": 9536.3
+  },
   "optical_guard": {
    "material": "petg-gf",
    "volume_mm3": 12638.0
@@ -183,7 +203,7 @@
   },
   "pi_spacer": {
    "material": "petg-gf",
-   "volume_mm3": 1009.2
+   "volume_mm3": 991.1
   },
   "pickup_zplate": {
    "material": "petg-gf",
