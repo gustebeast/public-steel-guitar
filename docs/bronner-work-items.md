@@ -6198,3 +6198,11 @@ geometry and texture/color/material. Then use the same model for the first flash
   - wire_usb and wire_link both end between the two mouths of a USB-A stack
     (PI_PORT_Z = top + 7.0), 1 mm inside, with no plug body.
   - BOM row added for panel J3 -> Pi USB-A (was missing).
+- THE BENCH Pi IS UP (user, 2026-10-13: "write to it such that ... you'll be able to access
+  the pi"). Card written with Raspberry Pi OS Lite 64-bit 2026-10-06 (image, scripts and
+  the original boot files in C:/Users/gus/tools/pi-image, outside Sync); cloud-init
+  user-data: host psg-pi, user gus, key-only SSH with the user's own public key; the user
+  typed the Wi-Fi themselves. Reach: `ssh gus@psg-pi.local`. Installed by apt: openocd,
+  stlink-tools, dfu-util, can-utils, git. It reports 2 GB of memory (the BOM row says the
+  1 GB board). A bootloader EEPROM update is offered and NOT applied. wlink: no aarch64
+  release; not built.
