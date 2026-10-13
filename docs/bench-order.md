@@ -254,10 +254,37 @@ TP12 (115200 baud). **It compiles and links (31 kB); it has not run on a board.*
 converter registers were read off TI's datasheet; the frame format between the converters
 and the MCU is the likeliest thing to need its `F` command on the bench.
 
-**Not written yet:** the test scenarios themselves, and which converter input is which
-string (the board's wiring table, not yet carried into `optical.py`). Until the optical
-board streams, `pitch.py` takes any recording, so a first motor can be tested with a pickup
-into a sound card.
+**The tests** are `bench/psgbench/scenarios.py`, run one at a time:
+
+    python3 -m psgbench.bench <scenario> --motor 1 --string 3 --counts 400 --limit 2000         --link motor:/dev/ttyACM0 --optical /dev/ttyACM1,/dev/ttyACM2 --out runs/
+
+| scenario | what it does | what it answers |
+|---|---|---|
+| `hold` | nothing, for 10 s | how steady the pitch reading is by itself |
+| `step` | one step up, one back | delay, settling time, overshoot, does it come back |
+| `sizes` | steps of 1/4 to 4 times the base, each up and back | cents per count; are small moves as true as large |
+| `speeds` | the same step at 300 to 3000 rpm | what speed buys |
+| `accels` | the same step at five acceleration settings | what the motor's 0..255 means |
+| `approach` | one place from below and from above, five times | lost motion |
+| `repeat` | fifty steps up and back | drift, and faults that happen only sometimes |
+| `rapid` | up-and-back pairs 300 ms down to 10 ms apart | how closely moves can follow each other |
+| `retarget` | a new place commanded 5, 15, 40 ms into a move | the lever that changes its mind |
+
+Each prints one row per move (how late the command left, the motor's own travel time, encoder
+error, and from the string: cents moved, delay, settling time, overshoot) and totals: cents
+per 1000 counts, how far the rest pitch wandered, lost motion, worst encoder error. Listening
+to a string other than the moved motor's (`--motor 2 --string 1`) is the cross-talk test.
+`--sim` runs any of them on the pretend motor and string. `--out` keeps the raw recording so
+a run can be measured again without being run again.
+
+**`--limit` is required on hardware**: the furthest, in encoder counts, the run may send the
+motor from where it stands. A run that would pass it is refused before anything moves. The
+base step (`--counts`) is a guess until `sizes` has said what a count is worth on that
+string: start small. After every run the motor's encoder is compared with where it began,
+and it is sent back if it is off (`rapid` and `retarget` can leave it so).
+
+Nothing judges pass or fail yet: the first real runs have to say what good looks like.
+Until the optical board streams, `--wav` takes a recording made some other way.
 
 ## Power without a bench supply (user, 2026-10-13)
 
