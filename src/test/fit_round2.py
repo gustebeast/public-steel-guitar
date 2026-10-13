@@ -1,7 +1,7 @@
 """FIT FINDERS, ROUND 2: one PETG-GF plate, laid out so a token sits beside its own cell.
 
     py -3.12 -m src.test.fit_round2            # the table: what each number is
-    py -3.12 -m src.test.fit_round2 --export   # ...and write src/test/test_fit2_plate.step
+    py -3.12 -m src.test.fit_round2 --export   # ...and write src/test/test_fit2_plate_*.step
 
 ROUND 1 (src/test/fit_finder.py, printed 2026-10-13, all in PETG-GF) said, by feel:
 
@@ -28,9 +28,20 @@ as different numbers"). A step here is (side, depth, corner radius) named outrig
   OCTAGON   1-5  0.10 .. 0.40 at the drawn depth. Both its halves print standing, like the
                  endplate's socket, so the drawn 0.30 is expected to be loose.
 
-THE PLATE IS ONE FILE. Every piece is already turned onto its bed face and set down where
-it prints: each strip with its tokens in a column beside it, token N level with cell N,
-both numbered. Import the one STEP and do not let the slicer re-arrange it.
+  DECK      1-3  the side opened (0.20 / 0.25 / 0.30) with the depth held at 0.20
+            4-6  corners drawn at 0.4, at 0.15 / 0.20 / 0.25
+  INSERT A  1-5  the slot at 0.20 .. 0.40 all round; one insert tries all five
+  STACK     1-5  0.15 .. 0.35 between two bass inserts, in the keyhead's slot as it is
+                 now cut: open between two lips, no bridge
+
+TWO PLATES, ONE FILE EACH (user, 2026-10-13: print the PETG-GF first, learn from the
+PETG-GF to PETG-GF joints, and only then decide whether the PCTG is worth printing or
+the sockets want another round). test_fit2_plate_petg_gf.step has everything that is
+PETG-GF: the three all-GF joints whole, and the SOCKET strips of the deck, insert A and
+the stack. test_fit2_plate_pctg.step has those three joints' tenons. Every piece is
+already turned onto its bed face and set down where it prints -- each strip with its
+tokens in a column beside it, token N level with cell N, both numbered. Import the one
+STEP and do not let the slicer re-arrange it.
 """
 from __future__ import annotations
 
@@ -54,7 +65,14 @@ STEPS = {
                  (0.15, 0.30, 0.0), (0.20, 0.30, 0.0)],
     "octagon": [(0.10, 0.60, 0.0), (0.15, 0.60, 0.0), (0.20, 0.60, 0.0),
                 (0.30, 0.60, 0.0), (0.40, 0.60, 0.0)],
+    "deck": [(0.20, 0.20, 0.0), (0.25, 0.20, 0.0), (0.30, 0.20, 0.0),
+             (0.15, 0.20, R), (0.20, 0.20, R), (0.25, 0.20, R)],
 }
+# THE TWO-FILAMENT JOINTS. Their sockets are PETG-GF and go on that plate; their tenons
+# are PCTG and go on the other, so each of these is split across the two files.
+SPLIT = ("deck",)
+INSERT_A = (0.0, 0.05, 0.10, 0.15, 0.20)       # added to the slot's own 0.20: 0.20 .. 0.40
+STACK = (0.15, 0.20, 0.25, 0.30, 0.35)         # the gap between two bass inserts
 
 
 def finders():
@@ -80,17 +98,21 @@ def _rot(w, up):
     return w.rotate((0.0, 0.0, 0.0), tuple(axis), deg)
 
 
-def _group(f):
+def _group(f, which="both"):
     """One joint as it prints: [(name, solid)] with the strip standing at x >= 0 and each
-    token beside it, level with its own cell; and the group's width in X."""
+    token beside it, level with its own cell; and the group's width in X. `which` keeps
+    only the "strip" or only the "tokens" (which then start at x = 0), for a joint whose
+    halves are different filaments and print on different plates."""
     from src.version_mark import cut_mark
     pairs = [f.make(k, d) for k, d in enumerate(f.deltas)]
     _tokens, strip = f.build()
     strip = _rot(strip, f.cell_up)
     sb = strip.val().BoundingBox()
     strip = strip.translate((-sb.xmin, 0.0, -sb.zmin))
-    out = [("fit2_%s_strip" % f.name, strip.val())]
-    x_tok = sb.xlen + BESIDE
+    out = [("fit2_%s_strip" % f.name, strip.val())] if which != "tokens" else []
+    if which == "strip":
+        return out, sb.xlen
+    x_tok = sb.xlen + BESIDE if which == "both" else 0.0
     width = 0.0
     for k, (tok, _cell) in enumerate(pairs):
         if f.token_mark:
@@ -107,53 +129,100 @@ def _group(f):
     return out, width
 
 
-def plate():
-    """[(name, solid)] for the whole plate, bed at z = 0: the three joints side by side,
-    then the bass stack's slot as the keyhead now cuts it (open, for round 1's tokens)."""
+def _set_down(wp, up, x):
+    """A finished piece (a strip, or a row of tokens) turned onto its bed face and set
+    down with its corner at (x, 0); and its width in X."""
+    w = _rot(wp, up)
+    b = w.val().BoundingBox()
+    return w.val().moved(cq.Location(cq.Vector(x - b.xmin, -b.ymin, -b.zmin))), b.xlen
+
+
+def _inserts():
+    """The two insert finders, re-stepped: (insert A, the bass stack)."""
+    fs = {f.name: f for f in F.finders()}
+    fs["insert_a"].deltas = INSERT_A
+    return fs["insert_a"], fs["insert_stack"]
+
+
+def plate(filament="petg-gf"):
+    """[(name, solid)] for one plate, bed at z = 0.
+
+    "petg-gf": the three joints that are PETG-GF on both sides, each strip with its
+    tokens beside it; then the SOCKET strips of the two-filament joints -- the deck's
+    rail, insert A's slots, the bass stack's slot as the keyhead now cuts it.
+    "pctg": those joints' other halves -- the deck's tongues, the one insert A, and the
+    five sets of three bass inserts."""
     out, x = [], 0.0
-    for f in finders():
-        grp, w = _group(f)
-        y0 = min(s.BoundingBox().ymin for _n, s in grp)
-        out += [(n, s.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, s in grp]
-        x += w + BETWEEN
-    stack = [f for f in F.finders() if f.name == "insert_stack"][0]
-    _tokens, strip = stack.build()
-    strip = _rot(strip, stack.cell_up)
-    b = strip.val().BoundingBox()
-    out.append(("fit2_stack_strip", strip.val().moved(cq.Location(cq.Vector(x - b.xmin, -b.ymin, -b.zmin)))))
+    ins_a, stack = _inserts()
+    steps, F.STACK_STEPS = F.STACK_STEPS, STACK       # the stack finder reads its steps here
+    try:
+        for f in finders():
+            split = f.name in SPLIT
+            if split != (filament == "pctg") and not (split and filament == "petg-gf"):
+                continue
+            which = "both" if not split else ("tokens" if filament == "pctg" else "strip")
+            grp, w = _group(f, which)
+            y0 = min(sh.BoundingBox().ymin for _n, sh in grp)
+            out += [(n, sh.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, sh in grp]
+            x += w + BETWEEN
+        for f in (ins_a, stack):
+            tokens, strip = f.build()
+            if filament == "petg-gf":
+                sh, w = _set_down(strip, f.cell_up, x)
+                out.append(("fit2_%s_strip" % f.name, sh))
+            else:
+                row, w = _set_down(tokens, f.token_up, x)
+                out += [("fit2_%s_token_%d" % (f.name, k + 1), t)
+                        for k, t in enumerate(row.Solids())]
+            x += w + BETWEEN
+    finally:
+        F.STACK_STEPS = steps
     # a solid that is valid as drawn can fail the checker once it is turned (a
     # tolerance, not a shape: the volume does not move); ShapeFix settles it
     return [(n, sh if sh.isValid() else sh.fix()) for n, sh in out]
 
 
 def assembly(origin=(-560.0, 330.0, 160.0)):
-    """[(name, Workplane)] for the scratch view: the plate as it prints, beside round 1."""
-    return [("test_" + n, cq.Workplane("XY").newObject([s]).translate(origin)) for n, s in plate()]
+    """[(name, Workplane)] for the scratch view: both plates as they print, beside round 1."""
+    out = []
+    for j, fil in enumerate(("petg-gf", "pctg")):
+        o = (origin[0], origin[1] + j * 110.0, origin[2])
+        out += [("test_" + n.replace("fit2_", "fit2_%s_" % fil.replace("-", "")),
+                 cq.Workplane("XY").newObject([s]).translate(o)) for n, s in plate(fil)]
+    return out
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("--export", action="store_true", help="write src/test/test_fit2_plate.step")
+    ap.add_argument("--export", action="store_true", help="write src/test/test_fit2_*.step")
     a = ap.parse_args(argv)
     print("number  side / depth clearance, corners")
     for name, steps in STEPS.items():
         print(name)
         for k, (c, bc, r) in enumerate(steps):
             print("   %d    %.2f / %.2f  %s" % (k + 1, c, bc, "corners r %.1f" % r if r else "sharp"))
-    pl = plate()
-    lo = [min(s.BoundingBox().__getattribute__(a_) for _n, s in pl) for a_ in ("xmin", "ymin", "zmin")]
-    hi = [max(s.BoundingBox().__getattribute__(a_) for _n, s in pl) for a_ in ("xmax", "ymax", "zmax")]
-    print("\n%d pieces, %.1f cm3, plate %.1f x %.1f, %.1f tall, bed at z %.2f" % (
-        len(pl), sum(s.Volume() for _n, s in pl) / 1000.0,
-        hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], lo[2]))
-    bad = [n for n, s in pl if not s.isValid() or len(s.Solids()) != 1]
-    print("every piece one valid solid" if not bad else "NOT ONE VALID SOLID: %s" % ", ".join(bad))
-    if a.export:
-        from cadkit.step_export import export_step
-        path = HERE / "test_fit2_plate.step"
-        export_step(cq.Workplane("XY").newObject([cq.Compound.makeCompound([s for _n, s in pl])]),
-                    str(path))
-        print("wrote", path)
+    from src import nut_block as NB
+    print("insert_a  (one insert, five slots)")
+    for k, d in enumerate(INSERT_A):
+        print("   %d    %.2f all round" % (k + 1, NB._clr(6) + d))
+    print("insert_stack  (one slot, five sets of three)")
+    for k, st in enumerate(STACK):
+        print("   %d    %.2f between two inserts" % (k + 1, st))
+    for fil in ("petg-gf", "pctg"):
+        pl = plate(fil)
+        lo = [min(getattr(s.BoundingBox(), a_) for _n, s in pl) for a_ in ("xmin", "ymin", "zmin")]
+        hi = [max(getattr(s.BoundingBox(), a_) for _n, s in pl) for a_ in ("xmax", "ymax", "zmax")]
+        print("\n%s plate: %d pieces, %.1f cm3, %.1f x %.1f, %.1f tall, bed at z %.2f" % (
+            fil, len(pl), sum(s.Volume() for _n, s in pl) / 1000.0,
+            hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], lo[2]))
+        bad = [n for n, s in pl if not s.isValid() or len(s.Solids()) != 1]
+        print("every piece one valid solid" if not bad else "NOT ONE VALID SOLID: %s" % ", ".join(bad))
+        if a.export:
+            from cadkit.step_export import export_step
+            path = HERE / ("test_fit2_plate_%s.step" % fil.replace("-", "_"))
+            export_step(cq.Workplane("XY").newObject(
+                [cq.Compound.makeCompound([s for _n, s in pl])]), str(path))
+            print("wrote", path)
     return 0
 
 
