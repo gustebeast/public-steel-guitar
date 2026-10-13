@@ -282,8 +282,8 @@ Not mine to change; offered because the same lens applies.
 
 ## Leg blind-mate boards (elec/leg_pogo.py)
 
-Four passive boards, four conductors each (GND, +5V, CAN_H, CAN_L). Each carries four bare
-test pads, TP1-TP4 in that order, so nothing has to probe a spring pin or a gold face.
+Four passive boards, four conductors each (on the connector: +5V, GND, CAN_H, CAN_L, `elec/harness.py` PH_PINOUT). Each carries four bare
+test pads, TP1-TP4 = GND, +5V, CAN_H, CAN_L (the PADS' order, not the connector's), so nothing has to probe a spring pin or a gold face.
 
 1. **Before fitting: each board alone.** Meter TP1-TP4 to the connector's ways 1-4. Any
    other pairing is a wrong board, not a bad one.

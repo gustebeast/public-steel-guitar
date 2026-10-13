@@ -49,7 +49,7 @@ contact per rail per direction, and three 4-way XH in a row is 40.47 mm on a 40 
     power trunk   ONE continuous pair, panel J7 -> tee 9 .. tee 0, a tap crimped at each tee
     tee           J3  2-way JST VH, side entry   power tap (this motor's current only)
                   J1  4-way JST XH, side entry   CAN in (H, L) + CAN out (H, L)
-                  J2  4-way JST XH, side entry   drop to the motor (GND, 24V, H, L) -- unchanged
+                  J2  4-way JST XH, side entry   drop to the motor (24V, GND, H, L) -- unchanged
     motor board   fed by panel J10 -> J3 as now; J1 carries CAN only (its 24 V way unused)
 
 Trunk current never crosses a contact or a board. Each tap carries one motor. The motor

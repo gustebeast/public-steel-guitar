@@ -1369,8 +1369,8 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > two contacts on each rail. Audited 2026-09-17: the motor controller's inlet J3
 > was taking all of it through **one** contact — a doubled source into a
 > single-contact sink is not doubled — and that is now fixed, along with the
-> optical board's J2, so every 24 V connector in the instrument is
-> `1=GND 2=+24V 3=+24V 4=GND`.
+> optical board's J2. (The way order of that day, `1=GND 2=+24V 3=+24V 4=GND`, is
+> SUPERSEDED: since 2026-10-07 way 1 is the rail on every lead, `elec/harness.py`.)
 >
 > **The bottleneck moves rather than disappears.** The motor controller's bus
 > outputs J1/J2 carry 24 V on a *single* conductor, because bus A/B is the
@@ -1466,7 +1466,7 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > above, seen from the cable end rather than the connector end — and both have to
 > be answered by the same decision about how bus A carries its current.
 | CAN | 26 AWG twisted pair, 120 Ω terminated — ⚠ **this is the H/L pair only; the same cable's 24 V and GND conductors have no gauge** | ~2.2 |
-| 24 V → optical board | **4 × 26 AWG**, ~150 mm, XH crimps both ends — panel **J9** to optical **J2**, both `1=GND 2=+24V 3=+24V 4=GND`. ⚠ **Was missing entirely:** the connector exists at both ends and this row did not, found 2026-09-18. 26 AWG is ample here — the board draws **79 mA at 24 V** typical (324 mA on its 5 V rail through an 85 % buck), ~122 mA at the worst case in `elec/optical.py`'s budget, against XH's applicable #30–#22. It runs beside the ~150 mm USB cable between the same two boards | ~2.2 |
+| 24 V → optical board | **2 × 26 AWG**, ~150 mm — panel **J9** (XHP-2) to optical **J2** (XHP-4, ways 3 and 4 EMPTY): **way 1 = +24 V, way 2 = GND** at both ends (`elec/harness.py` POWER_PAIR; this row said `1=GND 2=+24V 3=+24V 4=GND` on four wires until 2026-10-13, the order before 2026-10-07). ⚠ **Was missing entirely:** the connector exists at both ends and this row did not, found 2026-09-18. 26 AWG is ample here — the board draws **79 mA at 24 V** typical (324 mA on its 5 V rail through an 85 % buck), ~122 mA at the worst case in `elec/optical.py`'s budget, against XH's applicable #30–#22. It runs beside the ~150 mm USB cable between the same two boards | ~2.2 |
 | **bus B, pedal segments** | **4 × 26 AWG** twisted (+5 V / GND / CAN_H / CAN_L), **~100 mm each, ×5**, PHR-8 both ends, ways 5–8 of one board to ways 1–4 of the next (way 8 to way 1, 7 to 2, 6 to 3, 5 to 4: the out half mirrors the in half). Cut to fit: a pedal's station is printed into the bar, so these lengths are fixed. Each runs from its board's bay up through the **spur** into the trough (INSTALL_NOTES PB-1). The **levers** are the adjustable ones and they get the slack scheme instead — see `knee_lever.lace_loop` | ~2.5 bundled |
 | pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
 | USB panel → Pi | slim shielded USB-2 | ~2.6 |
@@ -1623,8 +1623,8 @@ and the tail band already sits 6.0 mm from the +Y edge against a 6.4 mm wall).
 
 | leg | cable | note |
 |---|---|---|
-| panel **J7** → east end of the chain | 4-way XH, 2× +24V + 2× GND | **+ 111 mm of coiled slack** |
-| panel **J10** → `motor_ctrl` **J3** | 4-way XH, 2× +24V + 2× GND, ~582 mm | new connector, new cable |
+| panel **J7** → east end of the chain | 4-way XH: way 1 +24 V, way 2 GND, ways 3 and 4 empty | **+ 111 mm of coiled slack** |
+| panel **J10** → `motor_ctrl` **J3** | **6-way** XH: `24V, GND, button, button, GND, 24V` (`elec/harness.py` PWR_LINK), ~582 mm | new connector, new cable |
 | `motor_ctrl` **J1** → west end of the chain | existing bus-A cable | board copper J3→J1 must widen |
 
 **⚠ THE COIL IS 111 mm, ON THE J7 (EAST) CABLE, AND IT IS DELIBERATE RESISTANCE.** The two
@@ -2713,7 +2713,7 @@ hand, set `PLUG_L["J1"]` to the measured value; nothing else has to move.
 
 **Power (J2): 24 V from the instrument trunk, not USB VBUS.** (This said *5 V* until
 2026-09-18; the rail moved to 24 V with a local buck on 2026-09-14 and this line did
-not follow. `elec/optical.py` wires J2's four ways as `1=GND 2=+24V 3=+24V 4=GND`.)
+not follow. `elec/optical.py` wires J2 as way 1 = +24 V, way 2 = GND, ways 3 and 4 unconnected.)
 ⚠ **And the current argument that used to sit here was wrong in both directions.** It
 read *MCU ~200–300 mA, PHY ~50, 21 op-amp channels ~40 — already past a USB port's
 500 mA before a single emitter is lit.* The itemised budget in `elec/optical.py` was
