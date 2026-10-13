@@ -215,6 +215,36 @@ STM32. It would replace the ST-LINK/V2 with three more jumper leads from the Pi'
 to TP1, TP2 and TP4. The ST-LINK is already on the order and is the path in the picture.
 There is no such tool for the CH32V parts' two-wire debug, so the WCH-LinkE stays.
 
+## The bench test's software (user, 2026-10-13)
+
+What the bench is for: does the motor, belt, pulley and leadscrew change a string's tension
+quickly, accurately and reliably. The software to find out is in two places.
+
+**`firmware/motor_ctrl`** is the motor controller's bench firmware: a USB serial port that
+sends CAN frames at a time on the board's own microsecond clock and reports every received
+frame with its time. It knows nothing about the motors (its line protocol is at the top of
+`main.c`). Built on the Pi with Debian's RISC-V GCC against WCH's library, which is not in
+this repository: `make` in that folder, with `~/src/ch32v307` a checkout of
+`github.com/openwch/ch32v307`; `make flash` writes it through the WCH-LinkE. **It compiles
+and links (11 kB); it has not run on a board.**
+
+**`bench/psgbench`** is the test side, in Python, run on the Pi (`cd bench; python3 -m
+pytest`):
+- `link.py`: the CAN bus through the motor controller's USB, or through a USB-CAN adapter.
+  Either way a test gets frames and send times on one clock.
+- `servo.py`: the SERVO42D's commands. ⚠ Written from the Makerbase manual from memory;
+  to be re-read against the manual and a real motor before any number is believed.
+- `run.py`: a test is a list of timed moves ("at 0.3 s, motor 1, +4096 counts at 600 rpm");
+  it runs them, polls every motor's encoder throughout, and returns it all.
+- `pitch.py`: pitch against time from a recording of one string, and for one tension change
+  the delay, the settling time, the overshoot and the size of the change in cents.
+- `sim.py`: a pretend motor and string. The four tests in `tests/` pass against them. That
+  proves the plumbing and nothing about the mechanism.
+
+**Not written yet:** the optical board's firmware (its samples to the Pi, with times on the
+same clock), and the tests themselves. Until the optical board streams, `pitch.py` takes any
+recording, so a first motor can be tested with a pickup into a sound card.
+
 ## Power without a bench supply (user, 2026-10-13)
 
 **The plan now: the instrument's own brick powers the output panel, and every other board
