@@ -210,7 +210,7 @@ and `output_panel`'s are scattered differently again.
   10.2 mm of pads, and this board's own source records it as full (six free 2.0 mm sites, four
   already spent on TP1–TP4; a single extra 0402 failed to place three times). The pads stay
   where they are. Two things replace the recommendation:
-  * **A printed programming jig** — a nest the 31.0 × 21.9 board drops into, with four pogo
+  * **A printed programming jig** — a nest the 33.0 × 21.9 board drops into, with four pogo
     pins at TP1–TP4's positions (read from `elec/geom/lever_sensor.geom.json`, so it follows a
     re-route) wired to the WCH-LinkE. Scattered pads stop mattering once nothing is
     hand-probed; eleven boards become eleven drops. **Designed: `src/lever_jig.py`**, listed in
