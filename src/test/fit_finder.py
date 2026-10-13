@@ -337,7 +337,17 @@ class StackFinder(Finder):
         x0, x1 = sb.xmin - cx - wx, NB.INS_X1 + c + NB.HS_ROOF_T + wx - cx
         cell = (_box(x0, x1, sb.ymin - cy - 2 * wy, sb.ymax - cy + wy, 0, L)
                 .cut(slot.translate((-cx, -cy, 0))))
-        strip = _strip([cell], (sb.ymax - sb.ymin) + 2 * wy + GAP, self.cell_up)
+        # A BUTTRESS OUTSIDE EACH WALL (user, 2026-10-13: "an angled support beam that
+        # holds the wall in place"). With the roof open the two walls are free-standing
+        # off the bed and nothing ties one to the other, so a set that is too tight
+        # would bow them apart and still go in; the keyhead's own walls are backed by
+        # the rest of the part. A wedge from the bed to the wall's top, the slot's
+        # whole length: it only narrows as it rises, so it prints without a ceiling
+        ya, yb, foot = sb.ymin - cy - 2 * wy, sb.ymax - cy + wy, 8 * D.BEAD
+        for yw, sgn in ((ya, -1.0), (yb, 1.0)):
+            cell = cell.union(cq.Workplane("XY").polyline(
+                [(x0, yw), (x0, yw + sgn * foot), (x1, yw)]).close().extrude(L))
+        strip = _strip([cell], (sb.ymax - sb.ymin) + 3 * wy + 2 * foot + GAP, self.cell_up)
         strip = cut_mark(strip, "01234", (x0, 0.0, L / 2.0), (-1, 0, 0), (0, -1, 0),
                          font=True, height=7.3)
         spread = 3.0                            # air between a set's three, on the bed
