@@ -2505,10 +2505,9 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
     with _stage("shared cache for the scratch views"):
         from cadkit.scratch import publish_cache
         publish_cache(comps, OUT, build=build_n)
-    _web_view(comps, build_n, publish)
+    rc = _web_view(comps, build_n, publish)
     # LAST: the gate spawns a worker pool, so run it once the viewer is refreshed — a
     # gate hiccup can never cost the build.
-    rc = 0
     if gate:
         # every gate always runs, so one RED doesn't hide another's result
         for label, fn in (("gate: overlaps", lambda: _report_overlaps(comps, full=gate_full)),
@@ -2629,10 +2628,14 @@ def _report_dead() -> int:
 def _web_view(comps, build_n, publish=True):
     """The viewer's model, from the just-built components (reused — no second geometry
     pass, and every mesh is of a COPY): written to docs/, shown in the local page, and
-    force-pushed to the gh-pages branch. STRICTLY NON-FATAL: viewer or publish trouble
-    (offline, not on main, auth) must never fail an otherwise-good geometry build. The
-    push itself is a no-op off the main branch (so agent worktrees don't publish) — see
-    tools/publish_preview.py."""
+    force-pushed to the gh-pages branch. Viewer or publish trouble (offline, not on main,
+    auth) never fails an otherwise-good geometry build, WITH ONE EXCEPTION: boards whose
+    components could not be drawn. That model is written with every board as its boxes,
+    and it is neither shown nor published: the build is RED (returns 1), because a page
+    of green boxes looks like a finished build to everyone but the person who knows the
+    boards. The push itself is a no-op off the main branch (so agent worktrees don't
+    publish) — see tools/publish_preview.py. Returns the build's exit code."""
+    from cadkit.web import BoardsSkipped
     try:
         from cadkit.web import show_exported
         from tools.export_glb import build_glb
@@ -2647,8 +2650,12 @@ def _web_view(comps, build_n, publish=True):
         if publish:
             with _stage("viewer: publish"):
                 push_gh_pages(build_n)
+    except BoardsSkipped as e:
+        print(f"🔴 web view: BOARDS NOT DRAWN — not shown, not published. {e}", flush=True)
+        return 1
     except Exception as e:               # noqa: BLE001 — never let the viewer break a build
         print(f"web view: skipped ({type(e).__name__}: {e})", flush=True)
+    return 0
 
 
 _T_MAIN = time.perf_counter()           # everything above has been imported and built

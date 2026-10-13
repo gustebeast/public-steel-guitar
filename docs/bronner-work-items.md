@@ -6025,3 +6025,31 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
   (nut slide inserts, belt clamp halves; shims and pi_spacer by assumption). The vertical
   lever's doubly prefixed parts (vkl_kv_*) now resolve too.
 - `chassis_light_{i}` is in the full assembly (it was only in body_work_components).
+- Bought parts as they look: toothed open GT2 belts cut at their clamps, Tr8x2 thread,
+  shielded ball bearings (`helpers.ball_bearing`), gold pogo plungers, the HRO USB-C shell.
+- Materials are said where a part is made (cadkit `finishes.made_of`; fasteners tag
+  themselves steel / brass). The export lists every part with no material.
+- The viewer is given each belt as it lies at OPEN PITCH (`build.belts_as_played`, +18 s a
+  build): the page lowers every nut 4 mm, which slides each clamp 56 mm along its belt.
+  A pressed pedal still slides the clamp off the cut -- the belt does not travel yet.
+- Boards asked for and not drawn = a RED build (`_web_view` returns 1 on
+  `cadkit.web.BoardsSkipped`; the boxed model is neither shown nor published).
+- Viewer export keeps every part's mesh in `.webview/mesh` (keyed on the solid's bytes and
+  the mesher's source).
+- ⚠ LESSON: a scratch tab's `rig.json` was written once and never again, so a tab could
+  animate on keys and parts three days old (levers on q-t, still leadscrews). cadkit
+  8061071: a view that builds parts rewrites the rig.
+
+## Open from 2026-10-12 (the 15-minute loop works this list; delete a line when it is done)
+
+- (c) next MR: open-pitch belts, BoardsSkipped, mesh cache -- committed, submit after (d).
+- (d) cold / warm whole-instrument export proof (C:/Users/gus/AppData/Local/Temp/qbak/w/prof/coldwarm.py),
+  then the per-stage build profile (prof.py beside it). Tell the lead before either.
+- (e) solid cache for the non-printed families (belts first): keyed on parameters + the
+  drawing module's source, outside git, never stale.
+- (f) belts travel with their clamps in the page (and the desktop app).
+- (g) close the app, build, open the app: it shows the new build number.
+- (h) plant-pot, watering-backpack: `show(assembly, boards=...)` once their trees are clean.
+- (i) rebuild the desktop app after any page change.
+- Model size: 35 MB published. The user has not chosen between compression, coarser belt
+  teeth and a lighter Pages model.
