@@ -91,9 +91,15 @@ def _grooves(body, k, face_x, y0, z0, z1):
     return body
 
 
-def _strip(cells, pitch, up):
+def _strip(cells, pitch, up, skin_top=False):
     """Cells (each centred on y=0) set out along Y, tightest first, joined by a skin on
-    the bed with a tab past the tight end."""
+    the bed with a tab past the tight end.
+
+    `skin_top` puts the skin on the LAST layer instead, for a socket whose mouth is on
+    the bed (the floor mortises: the chassis stands on the face they open in). A bed
+    skin there closes every mouth and nothing can enter (user caught it on the first
+    print). On top it bridges the 2.4 between cells, and the tab hangs off it on a 45
+    degree wedge."""
     placed = [c.translate((0, i * pitch, 0)) for i, c in enumerate(cells)]
     body = placed[0]
     for c in placed[1:]:
@@ -101,7 +107,15 @@ def _strip(cells, pitch, up):
     bb = body.val().BoundingBox()
     hw = (pitch - GAP) / 2.0
     y0, y1 = -hw - 4.0, (len(cells) - 1) * pitch + hw          # the tab is the -4
-    if up[2] > 0:
+    if skin_top:
+        assert up[2] > 0, "a top skin is only drawn for a +Z print"
+        run = 4.0                                        # the tab's reach
+        skin = _box(bb.xmin, bb.xmax, y0 + run, y1, bb.zmax - SKIN, bb.zmax).union(
+            cq.Workplane("YZ").polyline([(y0 + run, bb.zmax), (y0, bb.zmax),
+                                         (y0, bb.zmax - SKIN),
+                                         (y0 + run, bb.zmax - SKIN - run)]).close()
+            .extrude(bb.xmax - bb.xmin).translate((bb.xmin, 0, 0)))
+    elif up[2] > 0:
         skin = _box(bb.xmin, bb.xmax, y0, y1, bb.zmin, bb.zmin + SKIN)
     elif up[2] < 0:
         skin = _box(bb.xmin, bb.xmax, y0, y1, bb.zmax - SKIN, bb.zmax)
@@ -122,7 +136,9 @@ class Finder(object):
     local frame; `pitch` between them; which way each prints; what it stands for."""
 
     def __init__(self, name, what, make, clr, pitch, token_up, cell_up, token_as, cell_as,
-                 deltas=DELTAS, one_token=False, cell_mark=None, token_mark=None):
+                 deltas=DELTAS, one_token=False, cell_mark=None, token_mark=None,
+                 skin_top=False):
+        self.skin_top = skin_top
         self.name, self.what, self.make, self.clr = name, what, make, clr
         self.deltas, self.one_token = deltas, one_token
         # (at, outward normal, reading direction) of a face to number, in the piece's
@@ -142,7 +158,7 @@ class Finder(object):
         if self.token_mark:
             at, n, xd = self.token_mark
             tokens = [cut_mark(t, k + 1, at, n, xd) for k, t in enumerate(tokens)]
-        strip = _strip([p[1] for p in pairs], self.pitch, self.cell_up)
+        strip = _strip([p[1] for p in pairs], self.pitch, self.cell_up, self.skin_top)
         for m in self.cell_mark:
             at, n, xd = m[:3]
             kw = dict(m[3]) if len(m) > 3 else {}
@@ -361,7 +377,7 @@ def finders():
                host_w=D.LEVER_MORT_W + 2 * web, ten_t=6 * D.BEAD,
                mort_t=CH.MB.FLOOR_TOP - CH.Z_BOT, root=1.0, drop=1.0),
         (j.clearance, j.back_clearance), D.LEVER_MORT_W + 2 * web + GAP,
-        UP_Z, UP_Z, "knee_housing", "chassis_0"))
+        UP_Z, UP_Z, "knee_housing", "chassis_0", skin_top=True))
 
     # the nut's slide inserts: SKU A between printed fingers, SKU C at the stack fit
     make, pitch, c0, fc = _insert(6)
