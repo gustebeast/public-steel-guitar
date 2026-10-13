@@ -162,7 +162,7 @@ all of them.
 | WCH-LinkUtility 3.1 (WCH, Windows) or `wlink` (open source, native Windows driver) | flashing the CH32V boards through the LinkE | WCH lists CH32V20x and CH32V30x for the utility; `wlink` names the LinkE as its recommended probe and lists CH32V203 and CH32V307 as tested. Neither is installed yet |
 | STM32CubeProgrammer (ST; Windows, Linux, macOS) | flashing `optical` through the ST-LINK/V2 | not installed yet |
 | Arm GNU Toolchain 14.2.rel1 (`arm-none-eabi-gcc`) | building the `optical` firmware (Cortex-M7) | Arm's own zip from developer.arm.com, checked against its published SHA-256; unpacked under `C:/Users/gus/tools`, not on PATH. **The CH32V boards (307 and 203) need WCH's RISC-V toolchain instead, and it is still NOT installed**: nothing can be built for them until it is |
-| Four AA alkaline cells in a holder, leads into an XHP-4 (way 1 +, way 2 -) | the optical board's 6 V start | the one bench-only lead. Alkaline only. "Power without a bench supply", below |
+| OPTIONAL: four AA alkaline cells in a holder, leads into an XHP-4 (way 1 +, way 2 -) | the optical board's 6 V start | the one bench-only lead. Alkaline only. "Power without a bench supply", below |
 | OPTIONAL: bench pigtail, XHP-4, way 1 red (24 V), way 2 black (GND), ways 3 and 4 EMPTY | powering each 24 V board alone from a bench supply | only with the optional bench supply: `motor_ctrl` J1, `output_panel` J7, `optical` J2. Meter its polarity before it meets a board. A crimp in way 3 or 4 would put 24 V on a CAN pin |
 | 10 ohm 5 W resistor on a PHR-6 (ways 1 and 2) | loading the Pi's 5 V before the Pi sees it | `motor_ctrl` J5, 0.5 A |
 | USB-CAN adapter, `candump`-class | watching bus A from outside | **three tails crimped into ways 5 (CAN_L), 6 (CAN_H) and 7 (GND) of the bench trunk's XHP-8, way 8 EMPTY** (way 8 is 24 V). Not clipped to a motor's screw terminals: a slip there lands on V+. The adapter's own 120 ohm is ON only when the adapter is the far end of the bus (no tee switched in) |
@@ -206,9 +206,25 @@ between a fault and that current:
 | `optical` | the panel's F1, 1 A: a chip fuse, soldered. It blows; it does not reset. **And it does not help the one fault that matters here** (below): 24 V on the 5 V rail draws well under 1 A while it destroys the board |
 | `lever_sensor` | `motor_ctrl`'s bus B switch (TPS2553, 0.52 A constant current, 5 V). This one IS a current limit, and a good one |
 
-So the two boards that meet the brick first have no protection, and the checks below, made
-with the power OFF, are all there is. They find a short. They do not find a part that fails
-when it is powered. **A bench supply stays the safer way and is still listed, as optional.**
+So the two boards that meet the brick first have no protection. **That is accepted (user,
+2026-10-13): there are five of each board, and a board lost on first power is a spare
+used.** A bench supply stays the safer way and is still listed, as optional.
+
+**TWO CHECKS ARE REQUIRED, because five spares do not cover a mistake that repeats on every
+board:**
+
+1. **Meter the brick's plug before it ever goes into J6** (step 0 below). The pin positions
+   were read off drawings, never off the part, and no board has reverse protection: a plug
+   that is the other way round kills the panel, and then the next panel, and the next.
+2. **Check every crimped lead, end to end, against `elec/harness.py` before it carries
+   power**: way n at one end is way n at the other, way 1 is the rail, and no way is
+   shorted to its neighbour. One lead feeds every board of its kind, so a lead with 24 V
+   and ground crossed takes all five. The four leads are in the table above.
+
+**Everything else below is OPTIONAL**: the power-off "not a short" readings, the in-circuit
+resistor checks, and both battery steps. Each saves a board from one fault on that board;
+skip them and the cost of that fault is one spare. Adding one board at a time is still
+the recommended order, because it says which board a fault is on.
 
 **There is no power switch on the bench.** The button is on the UI board, and with nothing
 on J10's ways 3 and 4 the panel's switch (Q2) reads "not off" and turns ON, soft-started,
@@ -216,9 +232,9 @@ whenever the brick is in. Off means the brick's mains plug out. Every lead is pl
 unplugged with it out, and after pulling it meter J7 way 1 to see the 24 V gone
 before touching a lead (there is no bleeder on that rail; the converters drain it).
 
-### The order, one board added at a time
+### The order, one board added at a time (recommended)
 
-**What "not a short" reads.** Ohms range, either polarity, read once the number has
+**What "not a short" reads (OPTIONAL).** Ohms range, either polarity, read once the number has
 stopped moving (every capacitor on these rails is ceramic, tens of microfarads at most: a
 second, not a minute). **CALCULATED from the resistors on each rail, not measured:** the
 "at most" column is the resistor paths alone, and the chips on the rail can only pull the
@@ -241,12 +257,12 @@ A reading far ABOVE the "at most" figure is a fault too: the resistor path it wa
 calculated from is open (on `motor_ctrl`'s 24 V that is the 5 V converter's enable divider
 or the sense divider).
 
-Each step: power off, the meter checks, then power, then the readings, then flash, then
-power off again before the next lead goes in. Rail readings are the ones in
+Each step: power off, the meter checks (optional, but for step 0), then power, then the
+readings, then flash, then power off again before the next lead goes in. Rail readings are the ones in
 `docs/board-bringup-diagnostics.md` ("First power, staged") and
 `docs/optical-bringup-diagnostics.md`; they are not repeated here.
 
-**0. The brick, alone.** Plug it into the wall with nothing on its lead and meter the plug:
+**0. The brick, alone. REQUIRED.** Plug it into the wall with nothing on its lead and meter the plug:
 looking into the plug's pins with the flat/key as the panel's jack takes it, 24 V must
 appear between the pair that lands on J6's +24V_IN lands and the pair that lands on
 PWR_GND, **the right way round**, and the shell must be 0 V. The panel has no reverse
@@ -272,7 +288,7 @@ brick out.** After a fast off-and-on, wait 2 s (the gain pot's reset).
   stands on one end. **This checks the resistors, not U13's own FB joint, which sits under
   the part.** A dry FB pad passes this check and still follows its input.
 - J2 way 1 to way 2, +5 V (TP10) to GND, +3V3 (TP5, TP11) to GND: not a short.
-- **The 6 V start, on four AA cells** (the one low-voltage step worth keeping; next section).
+- The 6 V start, on four AA cells (optional; next section).
 Then the optical feed from J9 to J2, brick in. TP9 24 V, **TP10 at once: 4.9 to 5.1 V, or
 brick out.** Then the rest of its table, its five tails, flash.
 
@@ -292,10 +308,10 @@ lever board is simply on the bus it belongs to.
 
 **5. Then the rest as before:** bus A with the tee and no motor, one motor, the Pi.
 
-### The two low-voltage steps, on batteries
+### The two low-voltage steps, on batteries (OPTIONAL)
 
 **`optical`: four ALKALINE AA cells in a holder, into J2 (way 1 +, way 2 -).** This is the
-one check with no fuse behind it, so it is kept. It holds:
+one fault with no fuse behind it; skipping the step risks one optical board. It holds:
 - U13 (LMR33630) runs from 3.8 V. Four fresh alkaline cells are 6.4 V open and about 5.8 V
   at the 0.15 to 0.3 A an erased board takes; R44 drops another 0.3 to 0.6 V.
 - If U13 is NOT regulating, the 5 V rail gets at most the cells' voltage: 6.4 V. The parts
