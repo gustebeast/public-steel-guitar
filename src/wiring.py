@@ -48,7 +48,7 @@ HUE = gauge bucket, SHADE = the specific wire within the bucket:
   BLUE = power pair       (superseded for the CAN power rails above)
   AMBER = 28 AWG logic    (light -> dark) wire_link (motor controller <-> Pi),
                           wire_ui (the UI board's 14-way ribbon, ONE flat prism)
-  VIOLET = shielded USB-2 wire_usb: USB-C panel -> Pi 4
+  VIOLET = shielded USB-2 wire_usb: output panel J2 -> the Pi's USB-C (wire_hub, indigo: J3 -> a Pi USB-A)
   GREY = factory jackets  motor_pigtail_N
 
 Analog architecture: NONE OF IT IS HERE. The AFE board is deleted and no audio
@@ -92,6 +92,7 @@ from cadkit.cables import bundle_paths, flat_cable, flat_bends
 # wires -- black gnd, red 24 V, yellow CAN-H, green CAN-L). Nothing exceeds 2.6.
 WIRE_OD = {
     "wire_usb": 2.6,
+    "wire_hub": 2.6,
     # single-core SHIELDED instrument cable, jacket OD: centre conductor = PICKUP_HOT,
     # braid = the return, which is why it is one cable at bundle OD and not two wires.
     # Both ends are BARE TINNED LEADS -- the panel end lands in J8's screw terminals and
@@ -195,6 +196,7 @@ CAP_LEAD_IN = 4.0
 from .chassis import Y_LO as _Y_LO, T as _RAIL_T
 from .chassis import WT_LANE_Y as CH_WT_LANE_Y, WT_ZF as CH_WT_ZF, WT_H as CH_WT_H
 from .chassis import WT_X1 as CH_WT_X1, WT_RUNS as CH_WT_RUNS
+from .chassis import WT_D as CH_WT_D, WT_T as CH_WT_T
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
 RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -131.55: -Y rail inner face
@@ -219,7 +221,13 @@ TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14m
 PLINK_COL, PLINK_ROW = 1.0, 1.75        # half the pair's spacing; row to row
 PLINK_HALF = PLINK_ROW + 1.8 / 2        # 2.65 from its centre to its top or bottom
 LANE_PWR2  = CH_WT_ZF + 0.15 + PLINK_HALF       # -23.6: its centre
-LANE_USB   = CH_WT_ZF + 7.1      # -19.3: output board J2 -> the Pi (O2.6)
+# THE TWO USB LEADS TO THE Pi (O2.6 each) lie on the 24 V link, and 4.8 mm of trough does not
+# take them side by side: they are STAGGERED, wire_usb against the rail and low, wire_hub
+# against the lip and USB_LANE_DZ higher -- the least that keeps two octagons 2 * USB_LANE_DY
+# apart from meeting on their slanted flats ((2 dy + dz) / sqrt 2 > 2.6).
+USB_LANE_DY, USB_LANE_DZ = 0.9, 2.1
+LANE_USB   = LANE_PWR2 + PLINK_HALF + 2.6 / 2 + 0.05     # -19.6: output board J2 -> the Pi
+LANE_HUB   = LANE_USB + USB_LANE_DZ      # -17.5: output board J3 (the hub) -> the Pi
 LANE_PWR   = CH_WT_ZF + 10.8     # -15.6: the 24 V head (J7 -> the east tee), hot -16.6 /
                                  #        gnd -14.6 -- first trough piece only, it leaves
                                  #        at string 10's motor for that motor's tee
@@ -233,6 +241,8 @@ assert CH_WT_ZF > _TOP_OF_MOTORS, "the trough's floor has come down to the motor
 assert LANE_PWR2 - PLINK_HALF > CH_WT_ZF, "the 24 V link is in the trough's floor"
 assert LANE_PWR2 + PLINK_HALF < LANE_USB - 2.6 / 2, (
     "the 24 V link stands into the USB lead's lane in the trough")
+assert (2 * USB_LANE_DY + USB_LANE_DZ) / math.sqrt(2.0) > 2.6, "the two USB leads meet in the trough"
+assert USB_LANE_DY + 2.6 / 2 < (CH_WT_D - CH_WT_T) / 2, "a USB lead is in the trough's wall"
 assert LANE_PWR + PWR_OFF + 1.8 / 2 < CH_WT_ZF + CH_WT_H, "the head stands over the lip"
 assert CH_WT_LANE_Y + _TRUNK_OD / 2 <= MB.HARNESS_Y1, (
     "the trough's lane reaches y %.2f, past motor_bank's HARNESS_Y1 %.2f"
@@ -305,6 +315,26 @@ def _cable(key, a, b):
                                 "every lead straight" % (key, k, ea[2], eb[2]))
     _CABLES[key] = {"a": a, "b": b, "drawn": {}}
     return [k for k, e in enumerate(a) if e[2] != EH.NC]
+
+
+# THE USB PLUGS, as bodies (overmould across, through, along) and what goes into the socket.
+# The leads are commodity ones, so the overmoulds are the LARGEST the USB-IF allows in
+# section -- any lead passes -- and a typical length, which the standard does not fix.
+USBC_PLUG, USBC_TONGUE = (12.35, 6.5, 20.0), (8.25, 2.4, 6.65)
+USBA_PLUG, USBA_TONGUE = (16.0, 8.0, 22.0), (12.0, 4.5, 11.75)
+USBA_GAP = 0.25                 # a USB-A's shell stands this far out of a seated socket
+
+
+def _usb_plug(mouth, sx, body, tongue, gap=0.0):
+    """A straight USB plug seated in a socket whose `mouth` faces sx along X (+1 or -1) with
+    its long side along Y: (solid, the point its cable leaves from)."""
+    (bw, bt, bl), (tw, tt, tl) = body, tongue
+    mx, my, mz = mouth
+    s = (cq.Workplane("XY").box(bl, bw, bt).edges("|X").chamfer(1.0)
+         .translate((mx + sx * (gap + bl / 2.0), my, mz)))
+    s = s.union(cq.Workplane("XY").box(tl + gap, tw, tt)
+                .translate((mx + sx * (gap - tl) / 2.0, my, mz)))
+    return s, (mx + sx * (gap + bl), my, mz)
 
 
 def _run(out, name, pts, d, cable=None, k=None):
@@ -1252,69 +1282,50 @@ def build_wires():
     # The two it drew are gone rather than kept alongside: they overlapped the real
     # cable (5.2 mm^3), which is what a duplicate of a run looks like to the gate.
 
-    # -- USB (blue): USB-C panel -> -Y rail corridor -> ride to the bay -> right-angle to Pi
-    # It leaves the OUTPUT PANEL BOARD's own USB-A now, not a panel coupler: the
-    # panel USB-C is a part ON that board and its VBUS stops there, so what crosses
-    # the instrument is the board-to-Pi lead. Starting it at the old panel-jack
-    # position ran it straight through the relocated DC inlet.
-    # The lane drops -X of the OUTPUT PANEL BOARD's own -X edge rather than at x -12,
-    # which is where it used to go. -12 sat inside the relocated DC inlet (x -13.3..4.7)
-    # AND inside the board's footprint; clearing the board is what also clears the jack.
-    # It leaves J2 out of the board's -X edge through a USB-A plug standing _UA_PLUG past
-    # the mouth, climbs to the trough's USB lane out in the bay -X of the J7 loop, and rides
-    # the trough to the keyhead bay. (It used to run a floor corridor inside the pocket cut
-    # into the rail; the trough replaced both.)
-    # ⚠ THE SAME FROZEN y 20 AS wire_link, and check_cable_ends found it (2026-09-29): this
-    # read SP(-575.0, 20.0, -44.0), which was on the Pi when it spanned y -50..35 and is 8.10 mm
-    # off it now that the swap put the Pi at -135..-50. TWO leads to the Pi were stranded at its
-    # old position; only wire_link happened to clip a wall and raise a gate pair. Derived from
-    # the USB/ethernet block pi4() builds at PI_FP[3] - 9.0, like wire_link's.
-    # ⚠ DERIVED FROM THE PORT NOW, not typed (user: "the USB for example enters the pi from
-    # +x which doesn't seem like how the USB would be oriented"). The old point was tray
-    # (-575, PI_FP[3]-9, -44) = world (-587.8, -55.18, -34.0), 1.8 mm inside the USB block's
-    # outer face, and the lead ran IN ALONG WORLD X at z -15 through the block's interior to
-    # stop in the middle of it -- approaching the component face from +X exactly as described.
-    # It now lands in the upper USB stack on the +Y END and is approached from +Y, which is
-    # the only direction a USB-A plug can enter. See EL.pi_port_pt.
-    # NOT through SP(): pi_port_pt returns WORLD coords now -- the Pi lies flat and no
-    # longer stands, and standing these again is what put this lead inside motor_ctrl.
-    _usb = EL.pi_port_pt("usb3")
-    # ⚠ THE GAP IS 4.68 mm AND NO USB PLUG FITS IN IT -- see the block above _MCTRL_CY.
-    # The approach runs inside that real gap rather than pretending to a wider one: the lead
-    # reaches the right port from the only direction a plug could enter, and the fact that
-    # the plug itself has nowhere to go is a placement problem recorded where placement is.
-    # THE GAP IS 11.68 mm NOW and a right-angle USB-A plug fits (2026-09-29):
-    # motor_ctrl's BOARD_L went 62.0 -> 55.0 off its bare Pi-facing edge and _MCTRL_CY
-    # -10.5 -> -7.0 held the +Y edge, so the boards leave y -46.18..-34.50. The approach
-    # sits MID-GAP, where the plug body actually lives, instead of hugging the port face
-    # because there was nowhere else to be.
-    # ⚠ THE APPROACH IS IN +X NOW, NOT +Y, AND THAT IS THE HALF THAT WAS MISSING LAST TIME.
-    # Moving the ports to the +X end without moving this drove BOTH cables through the board
-    # to reach them: wire_usb 0.000 -> 134.864 mm^3 and wire_link 0.000 -> 71.444, and the
-    # GATE REPORTED AN IMPROVEMENT (17 -> 16) because pi4 is in both wires' allow-list. The
-    # ports and their approach are one change; they cannot land separately.
-    # ⚠ AND THE PORTS FACE +X BECAUSE NOTHING ELSE FITS -- measured, not chosen: motor_ctrl's
-    # +X face is 3.70 mm off the Pi's -X edge, and no USB-A plug fits in 3.70 (a right-angle
-    # one is ~10). The +X end is open. So the Pi does NOT rotate; the pose was right and only
-    # the port frame was wrong.
-    _PORT_APR_X = EL.PI_FP[1] + 20.0               # -483.0: clear of the +X face + a plug
-    _ua = EL.op_mouth("J2")          # was op_pt: J2's +Y FACE, 7.300 mm off its axis
-    _UA_PLUG = 20.0                  # a USB-C plug's overmould (J2 was a USB-A, 25, until
-                                     # 2026-10-02)
-    # ITS OWN COLUMN at the keyhead, 6 mm +X of the one the bay wires share: at a different
-    # fly height in the shared column it met the OLED lead's drop instead (24.9 mm3). Here it
-    # flies over string 1's motor, well above its top.
-    _USB_COL = BAY_X + 6.0
-    _USB_FLY = BAYFLY - 3.0               # under the Pi link's fly, which it crossed at the Pi
-    _ua_x = _ua[0] - _UA_PLUG           # the plug's cable end. Was measured from the EAR TIP,
-                                        # 10.000 mm short of the mouth -- see EL.op_mouth
-    _USB_X = _LOOP_CX - _LOOP_R - 9.5     # -X of the loop, +X of the trough's end
+    # -- THE THREE USB LEADS TO THE Pi, each with the plugs it is bought with ------------------
+    # wire_usb   output panel J2 (the panel USB-C's pass-through) -> the Pi's USB-C: C to C
+    # wire_hub   output panel J3 (the hub's upstream)             -> a Pi USB-A:    C to A
+    # wire_link  motor controller J4 (drawn further down)         -> a Pi USB-A:    PH to A
+    # The two from the panel leave its -X edge through straight USB-C plugs, climb in the bay
+    # and ride the trough to the keyhead, staggered (see LANE_USB).
+    #
+    # ⚠ wire_usb HAS NO PLUG AT THE Pi, AND THAT IS THE DRAWING BEING HONEST (user,
+    # 2026-10-13). The Pi's USB-C faces the -Y rail 3.7 mm away and no plug fits: the room
+    # depends on how far the Pi can move +Y, which waits on a motor's measured length. Until
+    # then the lead is drawn to the socket's mouth -- down the gap from the trough's end and
+    # in -- so the route and its length are right and the missing plug is plain to see.
+    #
+    # The USB-A plugs enter the Pi's +X end, the one side of it that is open.
+    _pc_usb, _c_usb = _usb_plug(EL.op_mouth("J2"), -1.0, USBC_PLUG, USBC_TONGUE)
+    _pc_hub, _c_hub = _usb_plug(EL.op_mouth("J3"), -1.0, USBC_PLUG, USBC_TONGUE)
+    _m_hub = EL.pi_usb_a_mouth("usb3")
+    _pa_hub, _a_hub = _usb_plug(_m_hub, 1.0, USBA_PLUG, USBA_TONGUE, USBA_GAP)
+    out += [("wire_usb_plug", _pc_usb), ("wire_hub_plug_0", _pc_hub), ("wire_hub_plug_1", _pa_hub)]
+    _PORT_APR_X = _a_hub[0] + 8.0         # where a lead turns down to its USB-A plug's back
+    _USB_COL = BAY_X + 6.0                # the keyhead column the hub's lead leaves the trough by
+    _USB_FLY = BAYFLY - 3.0               # ...and its height over the Pi, under the Pi link's
+    _USB_X = _c_usb[0] - 3.0              # wire_usb's riser, just behind its plug
+    _ym, _yh = CHAN_Y - USB_LANE_DY, CHAN_Y + USB_LANE_DY
+    _mc = EL.pi_usb_c_mouth()
+    # ...and it comes down the gap -X of where the 24 V link turns out of the trough's end
+    # for the motor board: that link's two columns fill the gap right over the socket.
+    _USBC_DROP = _mc[0] - 4.6
     _run(out, "wire_usb",
-         [(_ua_x, _ua[1], _ua[2]), (_USB_X, _ua[1], _ua[2]), (_USB_X, _ua[1], LANE_USB)]
-         + _lane(_USB_X, _USB_COL, LANE_USB)
-         + [(_USB_COL, CHAN_Y, _USB_FLY), (_USB_COL, _usb[1], _USB_FLY),
-            (_PORT_APR_X, _usb[1], _USB_FLY), (_PORT_APR_X, _usb[1], _usb[2]), _usb],
-         WIRE_OD["wire_usb"])                           # over motor 0, then down into the Pi
+         [_c_usb, (_USB_X, _c_usb[1], _c_usb[2]), (_USB_X, _c_usb[1], LANE_USB),
+          (_USB_X, _ym, LANE_USB), (_USBC_DROP, _ym, LANE_USB), (_USBC_DROP, _ym, _mc[2]),
+          (_mc[0], _ym, _mc[2]), (_mc[0], _mc[1] + 1.0, _mc[2])],
+         WIRE_OD["wire_usb"])
+    # THE HUB'S LEAD STAYS OUT OF THE TROUGH'S FIRST PIECE: the 24 V head has the lanes over
+    # wire_usb there. It crosses the bay at its own lane's height instead, at J3's y, and
+    # comes to the wall where the head has left (_EXIT7) and before the UI board begins.
+    _HUB_X = _c_hub[0] - 6.0              # its riser, clear of wire_usb's run to the wall
+    _HUB_IN = _EXIT7 - 6.0                # where it turns for the wall
+    _run(out, "wire_hub",
+         [_c_hub, (_HUB_X, _c_hub[1], _c_hub[2]), (_HUB_X, _c_hub[1], LANE_HUB),
+          (_HUB_IN, _c_hub[1], LANE_HUB), (_HUB_IN, _yh, LANE_HUB), (_USB_COL, _yh, LANE_HUB),
+          (_USB_COL, _yh, _USB_FLY), (_USB_COL, _m_hub[1], _USB_FLY),
+          (_PORT_APR_X, _m_hub[1], _USB_FLY), (_PORT_APR_X, _m_hub[1], _m_hub[2]), _a_hub],
+         WIRE_OD["wire_hub"])
 
     # -- 5 V to the Pi's GPIO header, from the merged board's J5. It was never
     #    modelled while the power board existed -- that board fed the Pi and nothing
@@ -1413,21 +1424,15 @@ def build_wires():
     # joystick became one ribbon. Keeping them would have been a KeyError at import.
 
     # -- motor controller <-> Pi (purple): the USB lead the Pi writes travel offsets over --
-    #    a stock USB-A -> XH lead now, off J4's top like every other lead on the board
+    #    a stock USB-A -> PH lead, off J4's top like every other lead on the board
     #    (the USB-C it replaced faced the -Y rail 5.5 mm away and could not be plugged in).
-    # ⚠ THE PI END WAS A HARDCODED y 20 AND THE PI IS NOT THERE ANY MORE (2026-09-29). It read
-    # SP(-585.0, 20.0, -58.0); pre-swap the Pi spanned y -50..35 so 20 was on the board, and
-    # after the swap it spans -135..-50 -- so this lead ended in OPEN AIR where the Pi used to
-    # be, and grazed the chassis on the way (chassis_2 <-> wire_link). A cable that does not
-    # reach its connector is worse than an overlap: the gate can see the overlap.
-    # Derived now, from the Pi's USB/ethernet block, which pi4() puts at PI_FP[3] - 9.0 -- so
-    # it follows the board instead of being falsified by it. That is the FIFTH constant this
-    # swap invalidated (root_d's 13 beads, MCTRL_HOLE, the 5 V leg, _FEED2_X, and this).
+    # Its USB-A plug is in the Pi's other stack, beside the hub lead's.
     # (its four conductors fan in to J4's own ways from the jacket's first bend: _split_jacket)
     _l4 = [(EL.way_pt("motor_ctrl", "J4", n), EL.way_out("motor_ctrl", "J4"), None)
            for n in range(1, 5)]
     _lt = tuple(sum(e[0][m] for e in _l4) / 4.0 for m in range(3))
-    _lp = EL.pi_port_pt("usb2")        # the other USB stack; WORLD, not through SP()
+    _pa_link, _lp = _usb_plug(EL.pi_usb_a_mouth("usb2"), 1.0, USBA_PLUG, USBA_TONGUE, USBA_GAP)
+    out.append(("wire_link_plug", _pa_link))
     # ITS OWN COLUMN, 3 mm short of the bay column: J4 is on the board's -Y edge, at the very
     # y where bus B drops down the bay column to the floor corridor.
     # It crosses motor 0's Y band, so it takes the BAYFLY lane over the motor top
@@ -1628,6 +1633,7 @@ WIRE_OK = {
     "wire_lights":    {"motor_ctrl", "pi_cap"},
     "wire_opt":       {"optical_pcb", "output_panel"},
     "wire_usb":       {"output_panel", "pi4"},
+    "wire_hub":       {"output_panel", "pi4"},
     "wire_link":      {"motor_ctrl", "pi4"},
     "wire_ui":        {"ui_pcb", "pi4"},
 }

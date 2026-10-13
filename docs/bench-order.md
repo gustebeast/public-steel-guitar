@@ -193,12 +193,21 @@ the picture because they are how each board TALKS to the Pi once it has firmware
 day-one check that a flash worked), and how it would take an update if its first
 firmware carries a loader of its own. Nothing here changes a revision 1 board.
 
-**Software on the Pi.** `openocd` (Raspberry Pi OS package) drives the ST-LINK/V2 and
-knows the STM32H743: ordinary, though not yet run here. `wlink` drives the WCH-LinkE and
-lists CH32V203 and CH32V307 as tested; its page gives Linux build steps (libudev,
-libusb) but **does not say it has been run on a Pi (64-bit ARM): UNCONFIRMED**. If it
-will not build there, the CH32V boards are flashed from a Windows PC with the same probe
-and leads (WCH-LinkUtility), and only the optical board from the Pi.
+**Software on the Pi (set up 2026-10-13).** The bench Pi is `psg-pi` (Raspberry Pi OS
+Lite 64-bit, Debian 13, image of 2026-10-06; a Pi 4 Model B Rev 1.5 that reports 2 GB),
+on Wi-Fi, reached by `ssh gus@psg-pi.local` with a key: no password login. Installed from
+the distribution's own packages: `openocd` 0.12 (it has `stm32h7x.cfg`, `stlink.cfg` and
+the Pi's own `raspberrypi-swd.cfg`), `stlink-tools`, `dfu-util`, `can-utils`, `git`.
+None of it has been run against a board yet.
+Kept current (user, 2026-10-13): every package is at the distribution's latest (kernel
+6.18.50), and Rust is the current stable from `rustup` (1.99.0), not Debian's 1.85.
+**`wlink` 0.1.2, its newest release, is on it, built there from source** (`~/src/wlink`
+at tag v0.1.2, installed as `/usr/local/bin/wlink`): its releases carry no Linux build
+for 64-bit ARM. Its README lists the CH32V203 and CH32V307 with the WCH-LinkE. A udev
+rule lets the `gus` user reach the probe without sudo. **It starts and lists its commands; it has NOT talked to a probe or a chip
+yet**: that is the first thing to check when the LinkE arrives (`wlink list`, then
+`wlink status` on a board). If it fails there, the CH32V boards are flashed from a
+Windows PC with the same probe and leads (`wlink` for Windows, or WCH-LinkUtility).
 
 **Not drawn, because not tried: no probe at all for the optical board.** `openocd` can
 bit-bang SWD from a Pi 4's own header pins, and that is a real, documented way to flash an
