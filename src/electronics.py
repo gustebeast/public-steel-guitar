@@ -1178,36 +1178,10 @@ def _ctr(fp):
     return (fp[0] + fp[1]) / 2, (fp[2] + fp[3]) / 2
 
 
-# ── THE PI'S PORTS, so a cable can be drawn to one instead of to an invented point ──
-# ⚠ EVERY CABLE TO THE PI USED TO END AT A HAND-TYPED POINT, and the user saw it: "the USB
-# for example enters the pi from +x which doesn't seem like how the USB would be oriented".
-# wire_usb ended at stand_pt(-575.0, PI_FP[3] - 9.0, -44.0) = WORLD (-587.8, -55.18, -34.0),
-# which is 1.8 mm inside the USB/ethernet block's outer face -- the cable ran in along world
-# x at z -15 straight through the block's interior and stopped in the middle of it. It
-# approached the COMPONENT face from +X, exactly as described.
-# ⚠⚠ AND THE WORK-ITEMS NOTE THAT DIAGNOSED IT READ THE FRAME WRONG. It said the lead
-# "lands at x -575.0, which is outboard of the whole Pi (xmax -586)". -575.0 is the TRAY x
-# that stand_pt turns into world z -34.0; the world x is -587.8, which is INSIDE the block.
-# The user's observation was right and the explanation under it was not. stand_pt's three
-# arguments are tray (x, y, z) -> world (z-543.8, y, -609-x); never read one as a world x.
-# The ports are on the +Y END, which is where a Pi 5's are (⚠ see pi4: NOT re-checked
-# against a Pi 4B, which is the board the BOM now specifies), and pi4() already builds that
-# block. These are its three connector groups along the 50 mm the block spans in tray x,
-# taken mid-height so the plug shell sits inside the block's 14 mm rather than proud of it.
-# ⚠ THESE ARE WORLD COORDS NOW, AND THEY USED TO BE TRAY COORDS THAT NOBODY MOVED.
-# pi_port_pt returned tray (x, y, z) for stand_pt, from when the Pi STOOD in the electronics
-# tray. pi4() stopped standing -- it lies flat on the chassis floor and is authored where it
-# sits -- and the ports were left behind. Measured before the fix: all three resolved to
-# world (-593.0, -72.0, z) with z -15 / -33 / -49, i.e. the port stack of a standing board,
-# while the Pi solid is flat at x -588..-503, y -127..-71, z -68.95..-53.35. The points sat
-# 5 mm off its -X edge and up to 38 mm ABOVE it, and (-593, -72, -33) is inside motor_ctrl --
-# which is exactly why wire_usb (33.31 mm3) and wire_link (9.66 mm3) terminated in that
-# board. They were landing where the ports used to be.
-# ⚠ TWO DATUMS WERE WRONG, NOT ONE. The z used BOARD_Z (-57.80, the TRAY board) where pi4()
-# builds from PI_Z (-68.95); mid-block is PI_Z + BD_T + 7.0, the same expression pi4() uses
-# to place the block, so the two cannot drift again.
-PI_PORT_Z  = PI_Z + BD_T + 7.0         # mid-block, by pi4()'s own expression
-PI_PORT_IN = 1.0                       # end the lead 1 mm inside the face so it CONTACTS
+# ── THE PI'S PORTS, so a cable is drawn to a socket's mouth and not to a typed point ──
+# The sockets themselves are src/pi4b.py's, off Raspberry Pi's drawing; pi_usb_a_mouth and
+# pi_usb_c_mouth below hand a cable the mouth it plugs into, in WORLD coords (the Pi lies
+# flat and is authored where it sits). What follows is the ROOM pi4() gives the port block.
 # OFFSETS ALONG THE 56 mm END, read off the official Pi 4B mechanical drawing
 # (datasheets.raspberrypi.com/rpi4/raspberry-pi-4-mechanical-drawing.pdf): the connector
 # centres are 9 / 27 / 45.75 from one 85 mm edge, with the two USB stacks at Z=16.0 and the
@@ -1231,13 +1205,19 @@ PI_FFC = ((4.0, 28.0), (46.5, 11.5))
 PI_FFC_BODY = (3.5, 22.6, 5.5)
 
 
-def pi_port_pt(which: str):
-    """WORLD (x, y, z) of a port mouth on the Pi's +X end. Do NOT feed it through stand_pt.
+def pi_usb_a_mouth(which: str, upper: bool = True):
+    """WORLD (x, y, z) of the middle of a USB-A mouth on the Pi's +X end: `which` is the
+    stack ("usb2", the pair nearer the USB-C edge, or "usb3"), `upper` the socket in it.
+    A plug enters along -X."""
+    x, y, z = _P4.usb_mouth({"usb2": _P4.USB2, "usb3": _P4.USB3}[which], upper)
+    return (PI_FP[0] + x, PI_FP[2] + y, PI_Z + z)
 
-    The Pi lies flat, so its ports are on the +X 56 mm end and spread along Y. pi4() puts
-    the I/O block at x = PI_FP[1] - 9.0, 18 deep, so PI_FP[1] is its outer face and the
-    mouth sits PI_PORT_IN inside that."""
-    return (PI_FP[1] - PI_PORT_IN, PI_FP[2] + PI_PORTS[which], PI_PORT_Z)
+
+def pi_usb_c_mouth():
+    """WORLD (x, y, z) of the middle of the Pi's USB-C mouth, on its -Y edge. A plug enters
+    along +Y."""
+    x, y, z = _P4.usb_c_mouth()
+    return (PI_FP[0] + x, PI_FP[2] + y, PI_Z + z)
 
 
 def pi4_parts():

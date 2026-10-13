@@ -74,6 +74,15 @@
    the trench (chassis_2 changes); INSTALL_NOTES has the step. Both bus-B cables stay
    under the floor end to end; INSTALL_NOTES BB-2 / BB-3 rewritten for J2 + J6.
    STILL OPEN: the three USB items below.
+   - **USB LEADS TO THE Pi DRAWN AS BOUGHT (user, 2026-10-13).** `wire_usb` (panel J2 ->
+     the Pi's USB-C, 0.67 m with plugs) now ends in the USB-C's mouth, coming down the
+     3.7 mm gap beside the rail, WITH NO PLUG THERE by the user's instruction: the plug
+     waits on a measured motor (a shorter motor may let the Pi move +Y). `wire_hub` (panel
+     J3 -> a Pi USB-A, 0.8 m) is new. Straight USB-C plugs on J2 and J3, USB-A plugs on
+     `wire_hub` and `wire_link` at the Pi, at the USB-IF's largest overmould section. The
+     two long leads are staggered in the trough (4.8 mm does not take two side by side);
+     `wire_hub` crosses the bay to join it past the 24 V head's exit. Its top is 0.1 mm
+     under the UI board's lowest point (was `wire_usb`, 1.9 under): brenner's station.
    - **THE Pi's USB-C TAKES NO PLUG WHERE THE Pi SITS (found 2026-10-07, OPEN, needs a
      decision).** output_panel J2's lead goes to the Pi's USB-C gadget port, which is on
      the Pi's -Y long edge 11.2 mm from its -X end (Pi 4B drawing). The Pi's -Y edge is at

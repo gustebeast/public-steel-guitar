@@ -199,12 +199,12 @@ on Wi-Fi, reached by `ssh gus@psg-pi.local` with a key: no password login. Insta
 the distribution's own packages: `openocd` 0.12 (it has `stm32h7x.cfg`, `stlink.cfg` and
 the Pi's own `raspberrypi-swd.cfg`), `stlink-tools`, `dfu-util`, `can-utils`, `git`.
 None of it has been run against a board yet.
-**`wlink` 0.1.1 is on it, built there from source** (`~/src/wlink` at tag v0.1.1,
-installed as `/usr/local/bin/wlink`): its releases carry no Linux build for 64-bit ARM.
-The newest tag, v0.1.2, does not build with Debian 13's Rust 1.85.1 (two of its
-dependencies need 1.87 or later); v0.1.1 builds as published and its README lists the
-CH32V203 and CH32V307 with the WCH-LinkE. A udev rule lets the `gus` user reach the probe
-without sudo. **It starts and lists its commands; it has NOT talked to a probe or a chip
+Kept current (user, 2026-10-13): every package is at the distribution's latest (kernel
+6.18.50), and Rust is the current stable from `rustup` (1.99.0), not Debian's 1.85.
+**`wlink` 0.1.2, its newest release, is on it, built there from source** (`~/src/wlink`
+at tag v0.1.2, installed as `/usr/local/bin/wlink`): its releases carry no Linux build
+for 64-bit ARM. Its README lists the CH32V203 and CH32V307 with the WCH-LinkE. A udev
+rule lets the `gus` user reach the probe without sudo. **It starts and lists its commands; it has NOT talked to a probe or a chip
 yet**: that is the first thing to check when the LinkE arrives (`wlink list`, then
 `wlink status` on a board). If it fails there, the CH32V boards are flashed from a
 Windows PC with the same probe and leads (`wlink` for Windows, or WCH-LinkUtility).

@@ -2441,7 +2441,7 @@ _COLORS = {
     "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
                                              #   shielded lead, coil underside -> the
                                              #   output panel's J8 screw terminals
-    "wire_link":       (0.95, 0.72, 0.22),   # light amber - Teensy <-> Pi
+    "wire_link":       (0.95, 0.72, 0.22),   # light amber - motor controller <-> Pi, USB
     "wire_tdm":        (0.80, 0.46, 0.10),   # deep amber  - CS stack -> Pi
     # THE UI RIBBON, fourteen conductors. Grey is what 1.27 flat cable is; conductor 1
     # is its red stripe, which is the only marking an IDC cable carries and the only
@@ -2462,7 +2462,11 @@ _COLORS = {
     "pogo_male_silk":  (0.95, 0.95, 0.93),
     "pogo_female_silk": (0.95, 0.95, 0.93),
     "wire_ui":         (0.55, 0.56, 0.58),
-    "wire_usb":        (0.55, 0.25, 0.75),   # violet      - shielded USB-2 -> Pi
+    "wire_usb":        (0.55, 0.25, 0.75),   # violet      - output panel J2 -> the Pi's USB-C
+    "wire_hub":        (0.38, 0.32, 0.85),   # indigo      - output panel J3 (the hub) -> a Pi USB-A
+    "wire_usb_plug":   (0.03, 0.03, 0.035),  # the leads' moulded plugs, black as bought
+    "wire_hub_plug":   (0.03, 0.03, 0.035),
+    "wire_link_plug":  (0.03, 0.03, 0.035),
 }
 _DEFAULT_COLOR = (0.80, 0.80, 0.80)
 _TPU_BLACK = (0.03, 0.03, 0.03)                  # ALL TPU parts render black (user rule)
