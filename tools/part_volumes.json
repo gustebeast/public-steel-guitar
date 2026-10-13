@@ -256,6 +256,10 @@
   "ui_knob": {
    "material": "pctg",
    "volume_mm3": 1171.4
+  },
+  "ui_pwr_cap": {
+   "material": "pctg",
+   "volume_mm3": 1292.2
   }
  }
 }
