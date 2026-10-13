@@ -30,6 +30,11 @@ READING THEM: a token carries one groove per step, counted from the TIGHTEST (on
 = the first clearance in the table). A strip's cells run in the same order, and the
 tight end is the one with the tab. The insert finders have ONE token: an insert does
 not change with its fit, only its slot does.
+
+THEY ALSO CARRY THE VERSION MARK ON TRIAL (src/version_mark.py; user, 2026-10-13): the
+step number, 1 to 5, cut as a V-grooved seven-segment figure -- on the BED face of each
+deck cell, on a SIDE WALL of each seam cell, and on the TOP of each seam token. Three
+faces, the same cutter, and between them the five figures use all seven segments.
 """
 from __future__ import annotations
 
@@ -107,9 +112,12 @@ class Finder(object):
     local frame; `pitch` between them; which way each prints; what it stands for."""
 
     def __init__(self, name, what, make, clr, pitch, token_up, cell_up, token_as, cell_as,
-                 deltas=DELTAS, one_token=False):
+                 deltas=DELTAS, one_token=False, cell_mark=None, token_mark=None):
         self.name, self.what, self.make, self.clr = name, what, make, clr
         self.deltas, self.one_token = deltas, one_token
+        # (at, outward normal, reading direction) of a face to number, in the piece's
+        # own frame -- see version_mark.cut_mark
+        self.cell_mark, self.token_mark = cell_mark, token_mark
         self.pitch, self.token_up, self.cell_up = pitch, token_up, cell_up
         self.token_as, self.cell_as = token_as, cell_as      # the real part each is printed as
 
@@ -117,8 +125,17 @@ class Finder(object):
         pairs = [self.make(k, d) for k, d in enumerate(self.deltas)]
         # an insert is the same insert at every step -- only its slot is cut differently
         # -- so one token tries all five cells and carries no grooves
-        return (_row([p[0] for p in pairs][:1 if self.one_token else None], self.pitch),
-                _strip([p[1] for p in pairs], self.pitch, self.cell_up))
+        from src.version_mark import cut_mark
+        tokens = [p[0] for p in pairs][:1 if self.one_token else None]
+        if self.token_mark:
+            at, n, xd = self.token_mark
+            tokens = [cut_mark(t, k + 1, at, n, xd) for k, t in enumerate(tokens)]
+        strip = _strip([p[1] for p in pairs], self.pitch, self.cell_up)
+        if self.cell_mark:
+            at, n, xd = self.cell_mark
+            for k in range(len(pairs)):
+                strip = cut_mark(strip, k + 1, (at[0], at[1] + k * self.pitch, at[2]), n, xd)
+        return _row(tokens, self.pitch), strip
 
 
 def _check_nominal(real, mine):
@@ -202,7 +219,9 @@ def finders():
                        install="+x"),
                host_w=T, ten_t=8 * D.BEAD, mort_t=T, root=1.0, drop=1.0),
         (j.clearance, j.back_clearance), T + GAP,
-        _facing_up("up"), _facing_up("down"), "top_plate_color_0", "chassis_0"))
+        _facing_up("up"), _facing_up("down"), "top_plate_color_0", "chassis_0",
+        # the cell's BED face: the rail's underside, 4.9 of solid under the groove
+        cell_mark=((L / 2.0, 0.0, T), (0, 0, 1), (0, 1, 0))))
 
     # the section seam: the tee a section drops onto
     j = CH._SEG_J
@@ -211,7 +230,10 @@ def finders():
         _drop(j, dict(width=CH._SEG_JW, depth=CH._SEG_JD, tenon=CH._UP, mortise=CH._UP,
                       install="-z"),
               host_w=T, host_d=CH._SEG_JD + 3 * D.BEAD, root=CH._SEG_ROOT),
-        (j.clearance, j.back_clearance), T + GAP, UP_Z, UP_Z, "chassis_0", "chassis_0"))
+        (j.clearance, j.back_clearance), T + GAP, UP_Z, UP_Z, "chassis_0", "chassis_0",
+        # the cell's back face, a SIDE WALL (figure upright); the token's TOP
+        cell_mark=((CH._SEG_JD + 3 * D.BEAD, 0.0, L / 2.0), (1, 0, 0), (0, 1, 0)),
+        token_mark=((-(CH._SEG_JD + 3 * D.BEAD) / 2.0, 0.0, L), (0, 0, 1), (0, 1, 0))))
 
     # the endplate: the mushroom on a rail end / shell end, the endplate's socket over it
     j = CH._EP_J
