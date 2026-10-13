@@ -195,8 +195,13 @@ Like the optical board, the chain is serial: work in order, one new thing per st
    SWDIO to TP1, SWCLK to TP2, GND to TP4, **reset to TP3, always**. Nothing on the
    LinkE's 5V pin, ever; nothing from its 3V3 pin to TP5 while 24 V is on (TP5 is for the
    meter). Ohm +3V3 to GND on both assembled `motor_ctrl` boards first.
-1. **Bare board on the bench supply, through the one bench pigtail** (XHP-4: way 1 24 V,
-   way 2 GND, ways 3 and 4 empty; polarity metered): `motor_ctrl` J1, `output_panel` J7.
+1. **First power, one board at a time, down the instrument's own chain** (user,
+   2026-10-13: no bench supply): the brick into `output_panel` J6, then `optical` from
+   the panel's J9, `motor_ctrl` from its J10, the lever boards from `motor_ctrl` J6.
+   Order, power-off meter checks and what is risked: `docs/bench-order.md`, "Power
+   without a bench supply". The rest of this step is the bench-supply way, which is
+   optional and safer (one XHP-4 pigtail: way 1 24 V, way 2 GND, ways 3 and 4 empty,
+   polarity metered, into `motor_ctrl` J1 or `output_panel` J7).
    **`motor_ctrl` starts at 8 to 12 V, limit 50 mA** (only 3V3 exists; flash here), then
    24.0 V, then 5.02 V checked on a 10 ohm load on J5 with the limit raised to 0.3 A,
    **before the Pi is plugged in.** `output_panel` at 24.0 V, limit 250 mA. If its

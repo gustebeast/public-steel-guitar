@@ -357,6 +357,10 @@ had no model for it. Unplaced, no rail comes up and the buck gets the blame.
 
 ### First power at 6 V, not 24 V
 
+**Without a bench supply this is done on four alkaline AA cells**, and read as a
+difference between the buck's input and TP10 rather than as 6.0 and 5.0:
+`docs/bench-order.md`, "The two low-voltage steps, on batteries".
+
 U13's feedback divider is R40 over R41. If R40 is open (a tombstoned 0402) or U13's FB
 pad is dry, the buck goes to full duty and its output follows its input: at 24 V that is
 24 V on a rail whose regulators stop at 6.5 V, and the MCU, PHY and converters behind

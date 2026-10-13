@@ -13,8 +13,14 @@ FOUR STATIONS, one board each, set up one at a time:
     optical   optical                                                         ST-LINK/V2
 
 A TOOL THERE IS ONE OF is drawn at every station it serves and is ONE unit in the parts
-list (`units` below): the WCH-LinkE, the bench supply, the 24 V pigtail. What is drawn
-once per station, because one is made per board, is that board's own tails.
+list (`units` below): the WCH-LinkE. What is drawn once per station, because one is made
+per board, is that board's own tails.
+
+POWER COMES DOWN THE INSTRUMENT'S OWN CHAIN (user, 2026-10-13: no bench supply). The
+brick's plug goes into output_panel J6 and every other board is fed from the board before
+it by the harness lead the instrument uses there (CHAIN below): no pigtail, no bench
+lead, no second source. The price is in docs/bench-order.md, "Power without a bench
+supply": nothing limits the current on first power but F1 and the bus B switch.
 
 WHERE EVERY FIGURE COMES FROM
   * pads and headers: the routed boards (elec/geom), through src/board_geom.
@@ -58,26 +64,40 @@ TAILS = {
 }
 BOARD = {"lever": "lever_sensor", "motor": "motor_ctrl", "panel": "output_panel",
          "optical": "optical"}
-# the header each board is powered through on the bench, and what feeds it
-POWER = {"lever": ("J1", 5.0), "motor": ("J1", 24.0), "panel": ("J7", 24.0),
-         "optical": ("J2", 24.0)}
+# THE POWER CHAIN: (lead, from station, header, to station, header, ((net, way out,
+# way in), ...)). Each is the instrument's own lead, way for way (elec/harness.py):
+# POWER_PAIR, PWR_LINK, and a bus B drop (PH_PINOUT into the first four ways of J1).
+CHAIN = (
+    ("optical_power", "panel", "J9", "optical", "J2",
+     (("V24", 1, 1), ("GND", 2, 2))),
+    ("power_link", "panel", "J10", "motor", "J3",
+     (("V24", 1, 1), ("GND", 2, 2), ("PWR_SW_UP", 3, 3), ("PWR_SW_DN", 4, 4),
+      ("GND", 5, 5), ("V24", 6, 6))),
+    ("bus_b_drop", "motor", "J6", "lever", "J1",
+     (("V5", 1, 1), ("GND", 2, 2), ("CAN_H", 3, 3), ("CAN_L", 4, 4))),
+)
+INLET = ("panel", "J6")      # where the brick's own plug goes
+_MATED = {(BOARD[s], r) for _n, s0, r0, s1, r1, _w in CHAIN for s, r in ((s0, r0), (s1, r1))}
 # every OTHER header is empty on the bench
 UNMATED = tuple((BOARD[s], f["ref"]) for s in BOARD for f in BG.load(BOARD[s])["footprints"]
-                if "JST" in f["fpid"] and f["ref"] != POWER[s][0])
+                if "JST" in f["fpid"] and (BOARD[s], f["ref"]) not in _MATED)
 BOARDS = BG.on_the_bench(UNMATED)
 
 RGB = {"SWDIO": (0.10, 0.35, 0.85), "SWCLK": (0.95, 0.80, 0.10), "NRST": (0.92, 0.92, 0.92),
        "GND": (0.05, 0.05, 0.05), "VAPP": (0.95, 0.45, 0.10),
-       "hot": (0.85, 0.12, 0.10), "probe": (0.10, 0.25, 0.60), "stlink": (0.90, 0.90, 0.92),
-       "supply": (0.25, 0.27, 0.30), "pin": (0.83, 0.66, 0.22), "socket": (0.06, 0.06, 0.06),
+       "V24": (0.85, 0.12, 0.10), "V5": (0.85, 0.12, 0.10),
+       "CAN_H": (0.95, 0.80, 0.10), "CAN_L": (0.10, 0.60, 0.20),
+       "PWR_SW_UP": (0.55, 0.55, 0.58), "PWR_SW_DN": (0.55, 0.55, 0.58),
+       "probe": (0.10, 0.25, 0.60), "stlink": (0.90, 0.90, 0.92),
+       "brick": (0.10, 0.10, 0.11), "pin": (0.83, 0.66, 0.22), "socket": (0.06, 0.06, 0.06),
        "jig": (0.90, 0.45, 0.10), "bench": (0.55, 0.42, 0.28)}
 
 # ── where the stations stand on the bench (z 0 is the bench top) ─────────────────────
 AT = {"lever": (-150.0, 0.0), "motor": (-40.0, 0.0), "panel": (95.0, 0.0),
       "optical": (290.0, 0.0)}
 PROBE_DY = 75.2              # a probe's header, +Y of its station
-SUPPLY_DY = -95.2            # the supply's posts, -Y of it
 RISE = 12.0                  # how high a lead arcs over the bench
+LINK_RISE = 26.0             # a harness lead's, over the tails
 
 
 def _box(x0, x1, y0, y1, z0, z1):
@@ -125,13 +145,12 @@ def stlink(x, y):
     return _mv(body, x, y), _mv(pins, x, y), {s: tip[n] for s, n in STLINK.items()}
 
 
-def supply(x, y):
-    """The bench supply's two OUTPUT POSTS on a stub of its case (the supply itself is
-    not drawn at size: it would hide the bench): (body, {"hot": post top, "gnd": ...})."""
-    body = _box(-22.0, 22.0, -30.0, 0.0, 0.0, 14.0)
-    posts = _box(-12.0, -6.0, 0.0, 8.0, 4.0, 10.0).union(_box(6.0, 12.0, 0.0, 8.0, 4.0, 10.0))
-    return (_mv(body.union(posts), x, y),
-            {"hot": (x - 9.0, y + 4.0, 10.0), "gnd": (x + 9.0, y + 4.0, 10.0)})
+def brick_plug(p):
+    """The brick's own plug standing in the inlet at `p`, and a stub of its lead (the
+    brick itself is off the bench): a block the right kind of size, not the Kycon part."""
+    return (cq.Workplane("XY").circle(5.5).extrude(26.0)
+            .union(cq.Workplane("XY").workplane(offset=26.0).circle(3.0).extrude(40.0))
+            .translate(p))
 
 
 def _board_solid(board):
@@ -174,7 +193,7 @@ def components():
         out.append((name, w, rgb))
 
     xs = [AT[s][0] for s in AT]
-    add("bench", _box(min(xs) - 90, max(xs) + 90, -230.0, 190.0, -6.0, 0.0), RGB["bench"])
+    add("bench", _box(min(xs) - 90, max(xs) + 90, -110.0, 190.0, -6.0, 0.0), RGB["bench"])
     for st in ("lever", "motor", "panel", "optical"):
         b = BOARD[st]
         x0, y0 = AT[st]
@@ -213,23 +232,28 @@ def components():
             name = "%s_tail_%s" % (st, sig.lower())
             add(name, wire, RGB[sig])
             add(name + "__socket", _socket(b_), RGB["socket"])
-        # power: the supply's two posts to ways 1 and 2 of the board's header
-        ref, volts = POWER[st]
-        plug = BOARDS.plug(b, ref)
-        body, post = supply(x0, y0 + SUPPLY_DY - (60.0 if st == "optical" else 0.0))
-        kind = "5v" if volts < 10 else "24v"
-        add("bench_supply_%s__%s" % (kind, st), body, RGB["supply"])
-        for way, net in ((1, "hot"), (2, "gnd")):
-            w = pt(plug["ways"][way])
-            o = plug["out"]
-            if st == "lever":
-                o = (-o[0], o[1], -o[2])
-            clear = (w[0] + 8.0 * o[0], w[1] + 8.0 * o[1], w[2] + 8.0 * o[2])
-            p = post[net]
-            top = max(clear[2], p[2]) + RISE
-            add("bench_lead_%s_%s__%s" % (kind, net, st),
-                oct_cable([w, clear, (clear[0], clear[1], top), (p[0], p[1], top), p], LEAD_OD),
-                RGB["hot" if net == "hot" else "GND"])
+    # power: the brick's plug in the inlet, then each harness lead of the chain
+
+    def way_out(st, ref, way):
+        """(a way's contact, a point 8 mm out of its housing) on the bench."""
+        _place, pt = _board_at(st)
+        plug = BOARDS.plug(BOARD[st], ref)
+        w, o = pt(plug["ways"][way]), plug["out"]
+        if st == "lever":
+            o = (-o[0], o[1], -o[2])
+        return w, (w[0] + 8.0 * o[0], w[1] + 8.0 * o[1], w[2] + 8.0 * o[2])
+    _place, pt = _board_at(INLET[0])
+    f = BOARDS.footprint(BOARD[INLET[0]], INLET[1])
+    add("brick_plug", brick_plug(pt((f["x"], f["y"], BG.load(BOARD[INLET[0]])["thickness_mm"]))),
+        RGB["brick"])
+    for k, (lead, s0, r0, s1, r1, ways) in enumerate(CHAIN):
+        for j, (net, w0, w1) in enumerate(ways):
+            a, a1 = way_out(s0, r0, w0)
+            b_, b1 = way_out(s1, r1, w1)
+            top = max(a1[2], b1[2]) + LINK_RISE + 4.0 * k + LEAD_OD * j
+            add("%s_%d_%s" % (lead, w0, net.lower()),
+                oct_cable([a, a1, (a1[0], a1[1], top), (b1[0], b1[1], top), b1, b_], LEAD_OD),
+                RGB[net])
     # the jig itself, and what is bought for it
     x0, y0 = AT["lever"]
     dz = -LJ.Z_BASE
@@ -255,11 +279,12 @@ def conductors():
                   else "WCH-LinkE %s" % wch[sig].replace("_B", " (back row)"))
             rows.append(("%s_tail_%s" % (st, sig.lower()),
                          "%s %s%s" % (BOARD[st], tp, " (jig pin)" if st == "lever" else ""), to))
-        ref, volts = POWER[st]
-        kind = "5v" if volts < 10 else "24v"
-        for way, net in ((1, "hot"), (2, "gnd")):
-            rows.append(("bench_lead_%s_%s" % (kind, net), "%s %s way %d" % (BOARD[st], ref, way),
-                         "bench supply %s" % ("+%g V" % volts if net == "hot" else "GND")))
+    rows.append(("brick_plug", "the brick's own plug", "%s %s" % (BOARD[INLET[0]], INLET[1])))
+    for lead, s0, r0, s1, r1, ways in CHAIN:
+        for net, w0, w1 in ways:
+            rows.append(("%s_%d_%s" % (lead, w0, net.lower()),
+                         "%s %s way %d" % (BOARD[s0], r0, w0),
+                         "%s %s way %d (%s)" % (BOARD[s1], r1, w1, net)))
     return rows
 
 

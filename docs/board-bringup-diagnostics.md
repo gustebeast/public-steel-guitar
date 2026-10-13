@@ -475,6 +475,11 @@ CH32V307 (`motor_ctrl`, `output_panel`):
 
 ### First power, staged
 
+**This is the bench-supply way, which is now OPTIONAL (user, 2026-10-13).** Without
+one, the boards are powered down the instrument's own chain from the brick:
+`docs/bench-order.md`, "Power without a bench supply". The readings below hold either
+way; the current limits exist only with a supply.
+
 **One bench pigtail serves all three 24 V boards**: an XHP-4 with way 1 = 24 V, way 2 =
 GND, ways 3 and 4 empty, into `motor_ctrl` J1, `output_panel` J7 or `optical` J2. Meter
 its polarity first. Plug it with the supply's output OFF.

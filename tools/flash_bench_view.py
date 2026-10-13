@@ -33,7 +33,7 @@ def material_of(name: str):
         return "steel"
     if base in _METAL or base.startswith("jig_pin"):
         return "gold"
-    if "_tail_" in base or base.startswith("bench_lead"):
+    if "_tail_" in base or base.startswith(("optical_power_", "power_link_", "bus_b_drop_")):
         return "nylon" if name.endswith("__socket") else "pvc"
     return "painted"
 

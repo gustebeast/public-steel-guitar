@@ -6087,3 +6087,20 @@ draw (the toothed one was 3 s). Kept from the toothed work: the belt is OPEN, cu
 whole number of teeth with its ends in its clamp, and seated on the pulleys' pitch circle.
 The band is the envelope of land and teeth, so it stands BELT_TOOTH_H into the pulleys'
 crests and the clamp's ribs (both pairs were already allowed to touch in check_overlaps).
+
+## First flash with no bench supply (user via lead, 2026-10-13)
+
+User: "I don't have a bench supply and it feels like I shouldn't need one." Done: the brick
+into output_panel J6, optical from J9, motor_ctrl from J10 (power link), lever boards from
+motor_ctrl J6 (bus B drop, TPS2553-limited). `src/flash_bench.py` draws that chain (CHAIN);
+the bench supply, pigtail and PHR-8 bench lead are gone from the tab and OPTIONAL in
+bench-order.md / BOM Tools. `docs/bench-order.md`, "Power without a bench supply": the four
+leads to make first, what limits a fault on each board (panel: nothing; motor_ctrl: F1 on
+the 5 V buck only; optical: the panel's F1, which does not help R40-open; levers: a real
+limit), the power-off meter checks, and the two battery steps (4 alkaline AA into optical
+J2, read as a difference; 9 V into motor_ctrl, optional).
+- NOT MEASURED: every "not a short" has no expected ohms; record the first board's.
+- The scratch tab's belts: tools/scratch_view.py passes shown=belts_as_played (cadkit
+  7c9c94d). UNCOMMITTED here until the vendored cadkit has it.
+- Seen, not fixed: BOM.md rows for J9->J2 ("4 x 26 AWG ... 1=GND 2=+24V") and J10->J3
+  ("4-way XH") disagree with elec/harness.py and INSTALL_NOTES' cable table.
