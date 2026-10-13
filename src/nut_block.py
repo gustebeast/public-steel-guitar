@@ -1427,6 +1427,7 @@ assert HS_HEAD_LOW >= _MB.BED_Z - D.STRING_Z - 1e-9, (
 # locating contact each) and whose flat top stands HS_ROOF_T clear of the insert's face. That top is
 # a BRIDGE in the keyhead's -X -> +X print; the gap is there so it may sag.
 HS_ROOF_T = 2 * D.BEAD
+INSERT_UP = (-1.0, 0.0, 0.0)                    # the insert's own build axis: its +X face is the bed
 HS_POCKET_X1 = INS_X1 + HS_ROOF_T + max(_clr(i) for i in range(D.N_STRINGS))   # the roofs' +X reach
 
 

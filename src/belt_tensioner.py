@@ -260,6 +260,8 @@ def screw_dummy() -> cq.Workplane:
 
 # ── coupon: the two halves in their print poses ───────────────────────────────────────────
 COUPON_UP = (0.0, 0.0, 1.0)     # the plate's direction; each half is turned onto its bed face
+HALF_A_UP = (0.0, -1.0, 0.0)    # each half on its own: A lies on its closed +y face,
+HALF_B_UP = (0.0, 1.0, 0.0)     # B on its closed -y face, both slots opening upward
 
 
 def tensioner_coupon() -> cq.Workplane:
