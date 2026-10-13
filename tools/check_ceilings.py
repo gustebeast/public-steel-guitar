@@ -431,10 +431,17 @@ def curved_overhangs(part, axis: str, bed: float, side: int, thresh_deg: float =
     import math
 
     i = AX[axis]
-    # the unit vector pointing TOWARD the bed: the flat check calls a face bed-facing when
-    # comp[i] * side > 0, so that direction is side along the build axis.
+    # the unit vector pointing TOWARD the bed. `side` is the sign of the BUILD direction
+    # along the axis (main() passes +1 for a part that builds +Z), so the bed is the other
+    # way: -side.
+    # ⚠ THIS WAS +side, AND THE WHOLE PASS WAS INSIDE OUT. It measured the faces that look
+    # UP at the nozzle and called them overhangs, then threw most of them away on a depth
+    # that came out negative -- so a +Z part's real undersides were never reported at all
+    # (a horizontal O9.2 barrel on the bed: nothing), and a -Z part's upward faces were
+    # (ui_knob's cone, 182 mm2 "at 76 deg", which faces the nozzle). The barrel is the test:
+    # 142 mm2 past 45 deg along its lowest line, in either build direction.
     bed_dir = [0.0, 0.0, 0.0]
-    bed_dir[i] = float(side)
+    bed_dir[i] = -float(side)
     out = []
     for f in part.faces().vals():
         if f.geomType() == "PLANE":
@@ -473,7 +480,9 @@ def curved_overhangs(part, axis: str, bed: float, side: int, thresh_deg: float =
         if area_over <= tol:
             continue
         ctr = tuple(acc[k] / (area_over * 3.0) for k in range(3))
-        depth = (bed - ctr[i]) * side
+        # `bed` is bed_plane()'s figure: the part's lowest material MEASURED ALONG THE BUILD
+        # DIRECTION, so the centre has to be measured the same way before the two are compared
+        depth = ctr[i] * side - bed
         if depth <= tol:
             continue                       # at the bed plane: printed on the plate, not over air
         ext = [hi[k] - lo[k] for k in range(3)]
