@@ -1,9 +1,19 @@
 """The MKS SERVO42D's CAN commands, as far as the bench needs them.
 
-⚠ WRITTEN FROM THE MAKERBASE MANUAL AS REMEMBERED, NOT CHECKED AGAINST A MOTOR OR RE-READ
-(2026-10-13). Every code and field below is to be confirmed against "MKS SERVO42D/57D_CAN
-User Manual" and then against a real motor's replies before any result is believed. The
-simulator (sim.py) is built from this same file, so it cannot catch a mistake in it.
+Checked 2026-10-13 against Makerbase's "MKS SERVO42D/57D_CAN User Manual" V1.0.5: the
+checksum, every code and field below, 0x4000 counts per turn, and the move replies. The
+manual's own example frames are in tests/test_sim.py. Its defaults: CAN id 1, 500 kbit/s,
+replies on. NOT yet checked against a motor, and the motors' firmware version is unknown
+(the manual's history says F4 and F5 were reworked in later releases).
+
+Two things the manual says that a test must respect:
+  * commands over the bus work in the SR_ work modes; SR_vFOC (mode 5) is the closed-loop
+    one that reaches 3000 rpm. set_mode() sets it; it is kept by the motor.
+  * F5 (absolute) takes a new target while the last move is still running; F4 (relative)
+    is not said to.
+`acc` 0 means no ramp at all. What 1..255 mean in rpm per second is not in this manual's
+text (remembered from another edition as one rpm every (256 - acc) x 50 microseconds):
+measure it.
 
 A frame is: CAN id = the motor's address (1..), data = code, parameters, checksum, where
 checksum = (id + every data byte before it) & 0xFF. Multi-byte fields are big-endian.
@@ -19,10 +29,13 @@ READ_ENCODER = 0x31         # reply: int48 accumulated counts
 READ_SPEED = 0x32           # reply: int16 rpm
 READ_ERROR = 0x39           # reply: int32 angle error, 51200 per turn
 ENABLE = 0xF3               # 1 byte: 1 on, 0 off
+SET_MODE = 0x82             # 1 byte: 0..2 pulse-input modes, 3 SR_OPEN, 4 SR_CLOSE, 5 SR_vFOC
+SR_VFOC = 5
 MOVE_REL = 0xF4             # speed u16, acc u8, int24 counts, relative
 MOVE_ABS = 0xF5             # speed u16, acc u8, int24 counts, absolute
-# a move is answered twice: status 1 when it starts, 2 when it has arrived (0 = refused)
-STARTED, ARRIVED = 1, 2
+# a move is answered twice: status 1 when it starts, 2 when it has arrived
+# (0 = refused, 3 = stopped by an end limit)
+STARTED, ARRIVED, LIMIT = 1, 2, 3
 
 
 def pack(can_id: int, body: bytes) -> bytes:
@@ -69,6 +82,9 @@ class Servo:
 
     def enable(self, on=True, at=None):
         return self._send(bytes([ENABLE, 1 if on else 0]), at)
+
+    def set_mode(self, mode: int = SR_VFOC, at=None):
+        return self._send(bytes([SET_MODE, mode]), at)
 
     def move_rel(self, counts: int, rpm: int, acc: int, at=None) -> int:
         """Turn by `counts` (16384 per turn) from where it is. Returns the frame's sequence
