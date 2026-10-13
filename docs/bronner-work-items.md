@@ -6048,8 +6048,11 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
 - DONE, closed app -> build -> open app: a probe copy of the app (own port 8139, own data
   folder; C:/Users/gus/AppData/Local/Temp/qbak/w/g/closed.py) showed build #32, was quit,
   the model folder was rewritten, and on opening showed build #37.
-- NOT STARTED, user's word needed: belts travelling with their clamps in the page and the
-  app (asked only as "is it feasible": yes, several hours).
+- DROPPED (user: "drop it if it degrades the code"): belts travelling with their clamps.
+  Everything the viewer animates is a rigid part with one matrix (page, tracer, native app,
+  picking). A travelling belt is one rigid part PER TOOTH (3,850 more animated parts against
+  141; measured in the page: 20 -> 3,870 draw calls, 0.5 -> 5.8 ms a frame on the desktop)
+  or a mesh bent every frame in three renderers. Neither.
 - NOT STARTED, user's choice needed: the 35 MB published model (compression, coarser belt
   teeth, or a lighter Pages model).
 - Offered, not asked: footprints that keep a box drawn in a warning colour, so a real green
