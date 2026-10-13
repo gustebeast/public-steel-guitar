@@ -299,6 +299,8 @@ def source_of(name):
     for c in COUPONS:
         if name == "test_" + c.name:
             return c.sources[-1]
+    if name.startswith("test_fit2_"):       # round 2: one plate, all PETG-GF
+        return "chassis_0"
     if name.startswith("test_fit_"):
         from . import fit_finder
         return fit_finder.source_of(name)
@@ -314,8 +316,15 @@ def assembly(live=False):
     the part it is a piece of."""
     comps, _where = components(live)
     from . import fit_finder                      # the thumbnails, in a row in front
+    from . import fit_round2                      # ...and round 2's plate, as it prints
+    # ON TRIAL IN THIS TAB (user, 2026-10-13): the keyhead as this branch draws it -- the
+    # bass stack's roof left open, its outer wall doubled -- under its own name, so it
+    # stands in the instrument in place of the lead's and the two tabs can be compared
+    from src import keyhead_endplate as KE
+    from src.helpers import heal
     return ([("test_" + c.name, c.build(comps)[0].translate((0, 0, VIEW_LIFT)))
-             for c in COUPONS] + fit_finder.assembly())
+             for c in COUPONS] + fit_finder.assembly() + fit_round2.assembly()
+            + [("keyhead_endplate", heal(KE.keyhead_endplate))])
 
 
 def main(argv=None):

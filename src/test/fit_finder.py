@@ -40,7 +40,7 @@ seam tokens, the octagon cells). The same cutter throughout, 8 tall, or 6 where 
 face is thin (SMALL).
 THE INSTRUMENT'S FONT is tried beside it, on the insert strips, where the faces are
 bigger: figures 9 mm tall on the TOP of each insert_a cell and on that strip's end
-(a SIDE WALL), and 7.3 tall on the stack slot -- "01234" on its BED face, "56789" on top.
+(a SIDE WALL), and 7.3 tall on the stack slot's BED face, "01234".
 """
 from __future__ import annotations
 
@@ -72,6 +72,54 @@ def _box(x0, x1, y0, y1, z0, z1):
 
 def _clrs(c0, bc0, d):
     return max(C_MIN, round(c0 + d, 3)), max(C_MIN, round(bc0 + d, 3))
+
+
+def _variant(real, d):
+    """(side clearance, depth clearance, corner radius) of one step. A NUMBER is a delta
+    on both of the joint's own clearances (round 1); a TUPLE names the three outright
+    (round 2: side and depth varied apart, and the profile's corners rounded or not)."""
+    if isinstance(d, tuple):
+        return d
+    return _clrs(real.clearance, real.back_clearance, d) + (0.0,)
+
+
+def _round(body, axis, r):
+    """`body` with every profile corner rounded to `r`: the edges that run along `axis`
+    (the joint's extrusion), bar the block's own two bed corners. A nozzle cannot turn
+    a sharper corner than about half its bead anyway, so a drawn radius of that much
+    prints as drawn, where a drawn sharp corner prints as whatever blob it leaves
+    (the round 1 seam bound at exactly those corners). One edge at a time: a fillet that
+    will not build on some sliver of an edge is skipped, and the count is returned."""
+    bb = body.val().BoundingBox()
+    lo = {"x": (bb.ymin, bb.zmin), "z": (bb.xmin, bb.ymin)}[axis]
+    hi = {"x": (bb.ymax, bb.zmax), "z": (bb.xmax, bb.ymax)}[axis]
+    done = skipped = 0
+    spots = []
+    for e in body.edges("|%s" % axis.upper()).vals():
+        c = e.Center()
+        uv = (c.y, c.z) if axis == "x" else (c.x, c.y)
+        ext = [abs(uv[i] - lo[i]) < 1e-6 or abs(uv[i] - hi[i]) < 1e-6 for i in (0, 1)]
+        if not all(ext):
+            spots.append(uv)
+    for uv in spots:
+        sel = [e for e in body.edges("|%s" % axis.upper()).vals()
+               if abs(((e.Center().y, e.Center().z) if axis == "x"
+                       else (e.Center().x, e.Center().y))[0] - uv[0]) < 1e-6
+               and abs(((e.Center().y, e.Center().z) if axis == "x"
+                        else (e.Center().x, e.Center().y))[1] - uv[1]) < 1e-6]
+        if not sel:
+            skipped += 1
+            continue
+        try:
+            new = body.newObject(sel).fillet(r)
+            if new.val().isValid() and len(new.val().Solids()) == 1:
+                body = new
+                done += 1
+            else:
+                skipped += 1
+        except Exception:
+            skipped += 1
+    return body, done, skipped
 
 
 def _facing_up(facing, axial=UP_X):
@@ -171,7 +219,7 @@ def _slide(real, site, host_w, ten_t, mort_t, root, drop):
     """An X-SLIDE joint's pair maker. Local frame (cadkit's): X the slide, Y the width,
     Z the depth -- the tenon's host under z=0, the socket's host over it."""
     def make(k, d):
-        c, bc = _clrs(real.clearance, real.back_clearance, d)
+        c, bc, r = _variant(real, d)
         J = joint(length=L, clearance=c, back_clearance=bc, **site)
         if d == 0.0:
             _check_nominal(real, J)
@@ -180,6 +228,8 @@ def _slide(real, site, host_w, ten_t, mort_t, root, drop):
         so = getattr(J, "standoff", 0.0)
         cell = (_box(0, L, -hw, hw, so, mort_t)
                 .cut(J.mortise(drop=drop, length=L + 2.0).translate((-1.0, 0, 0))))
+        if r:
+            token, cell = _round(token, "x", r)[0], _round(cell, "x", r)[0]
         return token, cell
     return make
 
@@ -188,7 +238,7 @@ def _drop(real, site, host_w, host_d, root):
     """A DROP-IN (z-install) joint's pair maker. The profile lies in plan: X the depth
     past the seam, Y the width, Z the drop; both halves print +Z."""
     def make(k, d):
-        c, bc = _clrs(real.clearance, real.back_clearance, d)
+        c, bc, r = _variant(real, d)
         J = joint(length=L, clearance=c, back_clearance=bc, **site)
         if d == 0.0:
             _check_nominal(real, J)
@@ -196,6 +246,8 @@ def _drop(real, site, host_w, host_d, root):
         token = _box(-host_d, 0, -hw, hw, 0, L).union(J.tenon(root=root, length=L))
         cell = (_box(0, host_d, -hw, hw, 0, L)
                 .cut(J.mortise(drop=root + 1.0, length=L + 2.0).translate((0, 0, -1.0))))
+        if r:
+            token, cell = _round(token, "z", r)[0], _round(cell, "z", r)[0]
         return token, cell
     return make
 
@@ -274,17 +326,19 @@ class StackFinder(Finder):
         sb = slot.val().BoundingBox()
         cx, cy = (sb.xmin + sb.xmax) / 2.0, (sb.ymin + sb.ymax) / 2.0
         wy, wx = D.MIN_WALL_2P, 3 * D.BEAD
-        # ...under the ONE roof the keyhead gives the three of them (nut_block._roof_groups)
+        # ...closed at +X the way the keyhead closes the three of them (nut_block's
+        # _roof_groups / _roof_cutter): NOT AT ALL, since 2026-10-13 -- the one roof over
+        # the stack was an 18.3 bridge that would not print, so the slot runs open through
+        # the +X wall and the stack's outer (-Y) wall is four beads instead of two
+        # (keyhead_endplate.HS_Y0)
         y9 = NB.insert_lobes(STACK[1])[0][0]
         (lo, hi, c), = [g for g in NB._roof_groups() if g[0] <= y9 <= g[1]]
         slot = slot.union(_house(NB, lo, hi, c))
         x0, x1 = sb.xmin - cx - wx, NB.INS_X1 + c + NB.HS_ROOF_T + wx - cx
-        cell = (_box(x0, x1, sb.ymin - cy - wy, sb.ymax - cy + wy, 0, L)
+        cell = (_box(x0, x1, sb.ymin - cy - 2 * wy, sb.ymax - cy + wy, 0, L)
                 .cut(slot.translate((-cx, -cy, 0))))
         strip = _strip([cell], (sb.ymax - sb.ymin) + 2 * wy + GAP, self.cell_up)
         strip = cut_mark(strip, "01234", (x0, 0.0, L / 2.0), (-1, 0, 0), (0, -1, 0),
-                         font=True, height=7.3)
-        strip = cut_mark(strip, "56789", (x1, 0.0, L / 2.0), (1, 0, 0), (0, 1, 0),
                          font=True, height=7.3)
         spread = 3.0                            # air between a set's three, on the bed
         set_pitch = (sb.ymax - sb.ymin) + len(STACK) * spread + 4.0
