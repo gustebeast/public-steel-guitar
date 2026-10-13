@@ -198,28 +198,44 @@ def _drop(real, site, host_w, host_d, root):
     return make
 
 
+def _house(NB, lo, hi, c):
+    """THE SLOT'S ROOF, the real one (nut_block._roof_cutter), over z -1 .. L+1: past the
+    pocket's +X face the keyhead closes over an insert as a HOUSE -- 45 degrees in from
+    each side, then a flat two beads clear of the insert -- because the part builds
+    -X -> +X and a slot's far end is a ceiling. A cell without it bridges the slot's
+    whole width flat on the insert's face, which the real part never does (user,
+    2026-10-13: "that kind of print overhang doesn't appear in the actual model")."""
+    return (NB._roof_cutter(lo, hi, c, NB.HS_FLOOR + L + 2.0)
+            .translate((0, 0, -NB.HS_FLOOR - 1.0)))
+
+
 def _insert(i):
     """A nut slide insert's pair maker: the insert's own plan as a short prism, and that
-    plan grown by the clearance as a slot -- which is how nut_block cuts the real one."""
+    plan grown by the clearance as a slot under its house roof -- which is how nut_block
+    cuts the real one."""
     from src import nut_block as NB
     from src import dimensions as D
     wire = NB._plan_wire(i)
     pb = wire.extrude(1.0).val().BoundingBox()
     cx, cy = (pb.xmin + pb.xmax) / 2.0, (pb.ymin + pb.ymax) / 2.0
     wy, wx = D.MIN_WALL_2P, 3 * D.BEAD            # a printed finger each side; the end walls
+    (dy, dw), _clamp = NB.insert_lobes(i)
+    # the strip's top: over the loosest cell's roof, so all five cells share one face
+    x_top = NB.INS_X1 + NB._clr(i) + max(DELTAS) + NB.HS_ROOF_T + wx
 
     def make(k, d):
         c = max(C_MIN, round(NB._clr(i) + d, 3))
         token = NB._plan_wire(i).extrude(L + 4.0).translate((-cx, -cy, 0))
-        cell = (_box(pb.xmin - cx - wx, pb.xmax - cx + wx,
+        slot = (NB._plan_wire(i).offset2D(c, kind="arc").extrude(L + 2.0).translate((0, 0, -1.0))
+                .union(_house(NB, dy - dw / 2.0 - c, dy + dw / 2.0 + c, c)))
+        cell = (_box(pb.xmin - cx - wx, x_top - cx,
                      pb.ymin - cy - c - wy, pb.ymax - cy + c + wy, 0, L)
-                .cut(NB._plan_wire(i).offset2D(c, kind="arc").extrude(L + 2.0)
-                     .translate((-cx, -cy, -1.0))))
+                .cut(slot.translate((-cx, -cy, 0))))
         return token, cell
     pitch = (pb.ymax - pb.ymin) + 2 * (NB._clr(i) + max(DELTAS) + wy) + GAP
     # the strip's faces, for the version marks: its bed and top (x), the last cell's
     # outer wall (y)
-    faces = dict(x0=pb.xmin - cx - wx, x1=pb.xmax - cx + wx,
+    faces = dict(x0=pb.xmin - cx - wx, x1=x_top - cx,
                  y_end=(len(DELTAS) - 1) * pitch + (pb.ymax - pb.ymin) / 2.0
                  + NB._clr(i) + DELTAS[-1] + wy)
     return make, pitch, NB._clr(i), faces
@@ -250,14 +266,19 @@ class StackFinder(Finder):
         assert all(abs(NB._clr(i) - NB.BASS_CLR) < 1e-9 for i in STACK), "not one stack any more"
         slot = None
         for i in STACK:
-            g = NB._plan_wire(i).offset2D(NB.BASS_CLR, kind="arc").extrude(L + 2.0)
+            g = (NB._plan_wire(i).offset2D(NB.BASS_CLR, kind="arc").extrude(L + 2.0)
+                 .translate((0, 0, -1.0)))
             slot = g if slot is None else slot.union(g)
         sb = slot.val().BoundingBox()
         cx, cy = (sb.xmin + sb.xmax) / 2.0, (sb.ymin + sb.ymax) / 2.0
         wy, wx = D.MIN_WALL_2P, 3 * D.BEAD
-        x0, x1 = sb.xmin - cx - wx, sb.xmax - cx + wx
+        # ...under the ONE roof the keyhead gives the three of them (nut_block._roof_groups)
+        y9 = NB.insert_lobes(STACK[1])[0][0]
+        (lo, hi, c), = [g for g in NB._roof_groups() if g[0] <= y9 <= g[1]]
+        slot = slot.union(_house(NB, lo, hi, c))
+        x0, x1 = sb.xmin - cx - wx, NB.INS_X1 + c + NB.HS_ROOF_T + wx - cx
         cell = (_box(x0, x1, sb.ymin - cy - wy, sb.ymax - cy + wy, 0, L)
-                .cut(slot.translate((-cx, -cy, -1.0))))
+                .cut(slot.translate((-cx, -cy, 0))))
         strip = _strip([cell], (sb.ymax - sb.ymin) + 2 * wy + GAP, self.cell_up)
         strip = cut_mark(strip, "01234", (x0, 0.0, L / 2.0), (-1, 0, 0), (0, -1, 0),
                          font=True, height=7.3)
