@@ -120,6 +120,12 @@ def _filament_of(name: str):
     # shows through as the fret lines and markers and lets the fret lights up through
     # them. The chassis's light window is the same clear PCTG. "pctg-clear" is drawn
     # see-through (cadkit's viewer: any filament named ...-clear).
+    # A BENCH COUPON (src/test/bench_joinery.py) is a piece of a real part, printed in
+    # that part's filament and drawn in its colour
+    if base.startswith("test_"):
+        from src.test.bench_joinery import source_of
+        src = source_of(base)
+        return _filament_of(src) if src else None
     if base == "top_plate_color":
         return "pctg"
     if base in ("top_plate", "chassis_light"):
