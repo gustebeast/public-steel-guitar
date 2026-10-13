@@ -164,18 +164,21 @@ def gate(comps) -> int:
     print(f"check_sweep: {len(spun)} rotating parts, "
           f"{len(comps)} components to clear them against")
 
+    # each part's box ONCE: a box is not free (a toothed belt's is 2 ms), and there
+    # are (rotating parts x components) pairs to turn away by it
+    boxes = [shape.BoundingBox() for _other, shape in comps]
+    ok = {tuple(sorted(p)) for p in SWEPT_OK}
     hits = []
     for name, base, env, r in spun:
         ebb = env.BoundingBox()
-        for other, shape in comps:
+        for (other, shape), obb in zip(comps, boxes):
             if other == name:
                 continue
             obase = _base(other)
-            if tuple(sorted((base, obase))) in {tuple(sorted(p)) for p in SWEPT_OK}:
+            if tuple(sorted((base, obase))) in ok:
                 continue
             # same rotating family on the SAME screw is concentric — skip; a
             # DIFFERENT screw is exactly what we are here to catch.
-            obb = shape.BoundingBox()
             if (obb.xmin > ebb.xmax or obb.xmax < ebb.xmin
                     or obb.ymin > ebb.ymax or obb.ymax < ebb.ymin
                     or obb.zmin > ebb.zmax or obb.zmax < ebb.zmin):
