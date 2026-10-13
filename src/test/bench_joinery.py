@@ -310,11 +310,15 @@ def source_of(name):
 VIEW_LIFT = 160.0          # the scratch view: coupons float this far over their parts
 
 
+# the tab shows the round on the bench; True adds the bench coupons and round 1 back
+ALL_ROUNDS = False
+
+
 def assembly(live=False):
     """[(name, Workplane)] for the scratch view: every coupon over the place it was cut
     from, mated to its partner, VIEW_LIFT above the instrument so it is not buried in
     the part it is a piece of."""
-    comps, _where = components(live)
+    comps = components(live)[0] if ALL_ROUNDS else None
     from . import fit_finder                      # the thumbnails, in a row in front
     from . import fit_round2                      # ...and round 2's plate, as it prints
     # ON TRIAL IN THIS TAB (user, 2026-10-13): the keyhead as this branch draws it -- the
@@ -322,9 +326,11 @@ def assembly(live=False):
     # stands in the instrument in place of the lead's and the two tabs can be compared
     from src import keyhead_endplate as KE
     from src.helpers import heal
-    return ([("test_" + c.name, c.build(comps)[0].translate((0, 0, VIEW_LIFT)))
-             for c in COUPONS] + fit_finder.assembly() + fit_round2.assembly()
-            + [("keyhead_endplate", heal(KE.keyhead_endplate))])
+    shown = fit_round2.assembly() + [("keyhead_endplate", heal(KE.keyhead_endplate))]
+    if ALL_ROUNDS:
+        shown += [("test_" + c.name, c.build(comps)[0].translate((0, 0, VIEW_LIFT)))
+                  for c in COUPONS] + fit_finder.assembly()
+    return shown
 
 
 def main(argv=None):
