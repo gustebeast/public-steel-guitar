@@ -6062,3 +6062,19 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
   optical SWD / I2C2 ROM loader pads, no ROM USB path. WCH datasheet 2.5.2 says "USART1 and
   USB" and does not name the port: bench-check 4348:55e0 on the first motor_ctrl and
   output_panel.
+
+## ⚠ REV 2 RULE (user, 2026-10-12): a host computer and a USB cable are all a board needs
+
+Every board either needs no firmware, or takes its FIRST firmware and every update over
+USB. No probe, no soldered tails, no jig, no bridged pad. Revision 1 broke this on all four
+MCU boards (the first-flash bench, `src/flash_bench.py`, is what it cost). It is cadkit
+`PCB_QUALITY.md` M43; revision 1 is in production and is not changed for it. What a
+revision 2 owes, board by board:
+- `lever_sensor` (x11, CH32V203, no USB): the worst case. Either a USB path to each board,
+  or the board that hosts their bus loads them (a bridge), with the loader in ROM reach.
+- `motor_ctrl` (CH32V307, USBFS on J4): BOOT0 entered without a pad -- a button, or a strap
+  the cable sets.
+- `output_panel` (CH32V307, USBHS behind the hub): the same, and confirm WCH's ROM loader
+  answers on PB6/PB7 (not confirmed by a WCH sentence).
+- `optical` (STM32H743, ULPI only): ST's ROM DFU is on OTG_FS PA11/PA12, unwired. Wire it,
+  or add a bridge.
