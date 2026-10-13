@@ -15,11 +15,15 @@ one shape prints on every face without a thought for which way up the part is:
   * on the BED a square-cut stroke is a ceiling one stroke wide bridged on the first
     layers, a V closes over itself a bead at a time.
 
-Seven segments rather than a font because the chamfer is the point and a font fights it:
-a glyph's strokes vary in width, so a 45 degree cut either runs out of stroke (and the
-taper self-intersects) or leaves a floor in the wide parts. Segments are one width
-everywhere by construction. (The font asked for, Berkeley Mono, is also not on this
-machine; nothing here stops a font being tried beside it later.)
+TWO FACES OF TYPE ARE ON TRIAL, and the print decides between them:
+
+  * SEVEN SEGMENTS (`mark`): one stroke width everywhere by construction, so the V is
+    exact and the stroke can be set in beads -- two of them in a figure 8 mm tall.
+  * THE INSTRUMENT'S OWN FONT (`font_mark`): Rennie Mackintosh PSG, the face on the
+    boards and the display. Its strokes are 0.11 of its figure height -- 0.75 mm in a
+    7 mm figure, ONE bead at 7.3 and two only at 14.5 -- so on a small part it is a
+    hairline where the segments are a groove. It is cut the same way, each glyph tapered
+    at 45 degrees as deep as its stroke allows (FONT_DEPTH; a V that deep nearly closes).
 
 SIZES ARE IN BEADS. A stroke narrower than two beads is a slit the slicer may close;
 `STROKE` is two, and the figure is five strokes tall, three wide.
@@ -93,10 +97,58 @@ def size(text, height=HEIGHT):
     return n * WIDTH * k + (n - 1) * GAP * k, height
 
 
-def cut_mark(body, text, at, normal, x_dir, height=HEIGHT, stroke=STROKE):
+FONT_STROKE = 0.11           # the font's stroke over its figure height (measured: 2A/P)
+FONT_FIGURE = 0.68           # ...and its figure height over the font size
+FONT_DEPTH = 0.45            # of the stroke: a 45 deg V closes at 0.5
+
+
+def _font():
+    from . import board_geom as BG
+    return BG._FONT
+
+
+def font_mark(text, height=HEIGHT):
+    """The cutter for `text` in the instrument's font, figures `height` tall, centred on
+    the origin in XY and cutting into -Z; None if the font is not on this machine."""
+    path = _font()
+    if not path:
+        return None
+    depth = FONT_DEPTH * FONT_STROKE * height
+    flat = cq.Workplane("XY").text(str(text), height / FONT_FIGURE, 1.0, fontPath=path,
+                                   halign="center", valign="center")
+    out = None
+    for f in flat.faces("<Z").vals():
+        prism = f.Area() * depth
+        vee = None
+        # the taper's sense follows the wire's winding, which a font does not promise:
+        # take whichever way NARROWS with depth
+        for taper in (45.0, -45.0):
+            try:
+                cand = cq.Solid.extrudeLinear(f.outerWire(), f.innerWires(),
+                                              cq.Vector(0, 0, depth), taper=taper)
+            except Exception:
+                continue
+            if cand.isValid() and 0.0 < cand.Volume() < prism:
+                vee = cand
+                break
+        if vee is None:                    # no clean taper: a square cut that shallow
+            vee = cq.Solid.extrudeLinear(f.outerWire(), f.innerWires(), cq.Vector(0, 0, depth))
+        piece = (cq.Workplane("XY").newObject([vee]).mirror("XY")
+                 .union(cq.Workplane("XY").newObject(
+                     [cq.Solid.extrudeLinear(f.outerWire(), f.innerWires(),
+                                             cq.Vector(0, 0, PROUD))])))
+        out = piece if out is None else out.union(piece)
+    return out
+
+
+def cut_mark(body, text, at, normal, x_dir, height=HEIGHT, stroke=STROKE, font=False):
     """`body` with `text` cut into the face through `at` whose OUTWARD normal is `normal`;
     `x_dir` is the reading direction along the face. Read from outside, it reads true --
-    so a mark on a bed face is mirrored in the plan view, as it should be."""
+    so a mark on a bed face is mirrored in the plan view, as it should be. `font=True`
+    cuts it in the instrument's font instead of segments (and cuts nothing, returning
+    the body as it came, on a machine without the font)."""
     plane = cq.Plane(origin=cq.Vector(*at), xDir=cq.Vector(*x_dir), normal=cq.Vector(*normal))
-    cutter = mark(text, height, stroke).val().moved(plane.location)
-    return body.cut(cq.Workplane("XY").newObject([cutter]))
+    cutter = font_mark(text, height) if font else mark(text, height, stroke)
+    if cutter is None:
+        return body
+    return body.cut(cq.Workplane("XY").newObject([cutter.val().moved(plane.location)]))

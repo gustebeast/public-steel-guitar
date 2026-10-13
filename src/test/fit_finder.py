@@ -35,6 +35,9 @@ THEY ALSO CARRY THE VERSION MARK ON TRIAL (src/version_mark.py; user, 2026-10-13
 step number, 1 to 5, cut as a V-grooved seven-segment figure -- on the BED face of each
 deck cell, on a SIDE WALL of each seam cell, and on the TOP of each seam token. Three
 faces, the same cutter, and between them the five figures use all seven segments.
+THE INSTRUMENT'S FONT is tried beside it, on the insert strips, where the faces are
+bigger: figures 9 mm tall on the TOP of each insert_a cell and on that strip's end
+(a SIDE WALL), and all ten figures in pairs, 7.3 tall, on the BED face of insert_c.
 """
 from __future__ import annotations
 
@@ -116,8 +119,10 @@ class Finder(object):
         self.name, self.what, self.make, self.clr = name, what, make, clr
         self.deltas, self.one_token = deltas, one_token
         # (at, outward normal, reading direction) of a face to number, in the piece's
-        # own frame -- see version_mark.cut_mark
-        self.cell_mark, self.token_mark = cell_mark, token_mark
+        # own frame -- see version_mark.cut_mark. A fourth entry is cut_mark's keywords
+        # plus `text` (a function of the step) and `once` (mark the strip, not each cell).
+        self.cell_mark = cell_mark if isinstance(cell_mark, list) else [cell_mark] if cell_mark else []
+        self.token_mark = token_mark
         self.pitch, self.token_up, self.cell_up = pitch, token_up, cell_up
         self.token_as, self.cell_as = token_as, cell_as      # the real part each is printed as
 
@@ -131,10 +136,13 @@ class Finder(object):
             at, n, xd = self.token_mark
             tokens = [cut_mark(t, k + 1, at, n, xd) for k, t in enumerate(tokens)]
         strip = _strip([p[1] for p in pairs], self.pitch, self.cell_up)
-        if self.cell_mark:
-            at, n, xd = self.cell_mark
-            for k in range(len(pairs)):
-                strip = cut_mark(strip, k + 1, (at[0], at[1] + k * self.pitch, at[2]), n, xd)
+        for m in self.cell_mark:
+            at, n, xd = m[:3]
+            kw = dict(m[3]) if len(m) > 3 else {}
+            text, once = kw.pop("text", lambda k: k + 1), kw.pop("once", False)
+            for k in range(1 if once else len(pairs)):
+                strip = cut_mark(strip, text(k), (at[0], at[1] + k * self.pitch, at[2]),
+                                 n, xd, **kw)
         return _row(tokens, self.pitch), strip
 
 
@@ -201,7 +209,13 @@ def _insert(i):
                 .cut(NB._plan_wire(i).offset2D(c, kind="arc").extrude(L + 2.0)
                      .translate((-cx, -cy, -1.0))))
         return token, cell
-    return make, (pb.ymax - pb.ymin) + 2 * (NB._clr(i) + max(DELTAS) + wy) + GAP, NB._clr(i)
+    pitch = (pb.ymax - pb.ymin) + 2 * (NB._clr(i) + max(DELTAS) + wy) + GAP
+    # the strip's faces, for the version marks: its bed and top (x), the last cell's
+    # outer wall (y)
+    faces = dict(x0=pb.xmin - cx - wx, x1=pb.xmax - cx + wx,
+                 y_end=(len(DELTAS) - 1) * pitch + (pb.ymax - pb.ymin) / 2.0
+                 + NB._clr(i) + DELTAS[-1] + wy)
+    return make, pitch, NB._clr(i), faces
 
 
 def finders():
@@ -267,9 +281,17 @@ def finders():
             ("insert_a", 6, "nut slide insert SKU A <-> its slot", DELTAS),
             ("insert_c", 9, "nut slide insert SKU C <-> its slot (stack fit)",
              (-0.04, 0.0, 0.05, 0.10, 0.15))):
-        make, pitch, c0 = _insert(i)
+        make, pitch, c0, fc = _insert(i)
+        if name == "insert_a":      # the font, 9 tall: on TOP of each cell, and on the end
+            marks = [((fc["x1"], 0.0, L / 2.0), (1, 0, 0), (0, 1, 0), dict(font=True, height=9.0)),
+                     (((fc["x0"] + fc["x1"]) / 2.0, fc["y_end"], L / 2.0), (0, 1, 0), (0, 0, 1),
+                      dict(font=True, height=9.0, once=True, text=lambda k: "12"))]
+        else:                       # the font, 7.3 tall (a one-bead stroke): the BED face
+            marks = [((fc["x0"], 0.0, L / 2.0), (-1, 0, 0), (0, -1, 0),
+                      dict(font=True, height=7.3, text=lambda k: "%d%d" % (2 * k, 2 * k + 1)))]
         out.append(Finder(name, what, make, (c0, c0), pitch, DOWN_X, UP_X,
-                          "nut_slide_insert_0", "keyhead_endplate", deltas=ds, one_token=True))
+                          "nut_slide_insert_0", "keyhead_endplate", deltas=ds, one_token=True,
+                          cell_mark=marks))
     return out
 
 
