@@ -58,9 +58,9 @@ AGAINST the board with reliefs for the tails instead of hanging below them, and 
 arm steps up to -8.0 before running +Y under the display.
 
 ...AND THE PANEL SLIDES ON WITH ALL OF IT ATTACHED, which is a 361 mm stroke past the
-whole bay. Stepping the real solids along it (2026-10-13, every 3 mm), what the station
-meets is the Pi's two USB-A leads where they stand up out of the bay to cross to the
-Pi's ports, and nothing else:
+whole bay. Stepping the station along it against the Pi's three USB leads (2026-10-13,
+every 3 mm; the rest of the bay was not re-stepped this time), what it meets is the two
+USB-A leads where they stand up out of the bay to cross to the Pi's ports:
 
     wire_link (motor board -> Pi)    panel 276 to 318 mm out, at x -470, z -12.7
     wire_hub  (output panel -> Pi)   panel 354 to 357 mm out, at x -575, z -14.5
