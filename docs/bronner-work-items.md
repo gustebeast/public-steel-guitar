@@ -6040,18 +6040,22 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
   animate on keys and parts three days old (levers on q-t, still leadscrews). cadkit
   8061071: a view that builds parts rewrites the rig.
 
-## Open from 2026-10-12 (the 15-minute loop works this list; delete a line when it is done)
+## Open from 2026-10-12 -- the loop is finished; what is left waits on the user
 
-- MR @ 27437324 filed, waiting on the lead's build: belts through `cadkit.kept`, sweep gate
-  boxes each part once (whole gate 14.8 s; it was 178 s, then 52 s). From that build and the
-  next read: sweep ~15 s, viewer mesh warm, "~365 kept, 0 made" board meshes (the board
-  cache is salted with web/boards.py, parts.py, pcb.py, board_geom.py: an edit to any of
-  them is a cold build BY DESIGN), collect_components ~20 s lower.
-- (g) after that build: close the app, build, open the app: it shows the new build number.
-- (f) belts travel with their clamps in the page (and the desktop app). Asked only as
-  "is it feasible"; not started, waits for the user's word.
-- (i) rebuild the desktop app after any page change (none since a0c6e74).
-- Model size: 35 MB published. The user has not chosen between compression, coarser belt
-  teeth and a lighter Pages model.
+- Build #897 (belts through `cadkit.kept`, sweep gate boxing once): sweep 15.3 s (was 178.6),
+  "852 meshes kept, 59 made", "365 board meshes kept, 0 made". The belt saving
+  (~20 s of collect_components) shows from #898 on.
+- DONE, closed app -> build -> open app: a probe copy of the app (own port 8139, own data
+  folder; C:/Users/gus/AppData/Local/Temp/qbak/w/g/closed.py) showed build #32, was quit,
+  the model folder was rewritten, and on opening showed build #37.
+- NOT STARTED, user's word needed: belts travelling with their clamps in the page and the
+  app (asked only as "is it feasible": yes, several hours).
+- NOT STARTED, user's choice needed: the 35 MB published model (compression, coarser belt
+  teeth, or a lighter Pages model).
 - Offered, not asked: footprints that keep a box drawn in a warning colour, so a real green
   part (Phoenix MKDS on the backpack) is never mistaken for an undrawn one.
+- USB flashing, as built (2026-10-12): lever_sensor SWD pads only; motor_ctrl USBFS on J4 to
+  the Pi + BOOT0 pad TP6; output_panel USBHS behind the hub, BOOT0 by tweezers on R7;
+  optical SWD / I2C2 ROM loader pads, no ROM USB path. WCH datasheet 2.5.2 says "USART1 and
+  USB" and does not name the port: bench-check 4348:55e0 on the first motor_ctrl and
+  output_panel.
