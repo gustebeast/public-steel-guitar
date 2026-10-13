@@ -6104,3 +6104,18 @@ J2, read as a difference; 9 V into motor_ctrl, optional).
   7c9c94d). UNCOMMITTED here until the vendored cadkit has it.
 - Seen, not fixed: BOM.md rows for J9->J2 ("4 x 26 AWG ... 1=GND 2=+24V") and J10->J3
   ("4-way XH") disagree with elec/harness.py and INSTALL_NOTES' cable table.
+
+## Boards show their pads (user, 2026-10-13)
+
+User, with JLCPCB's render beside ours: "update the PCBs to render the pads ... add this to
+cadkit so future PCB design ... will render the pads as well." cadkit: `kicad_geom` writes
+`lands` per footprint (every pad the mask is open over, outline + drilled hole),
+`Boards.lands()` draws them as faces, and `cadkit.web.boards.detail` adds
+`<board part>__pads` to every board it finds, tin by default (`Boards(finish="enig")` for
+gold). Nothing per project: a board whose geom file has `lands` shows them.
+- Re-exported here from elec/out (every other field identical to the tracked file):
+  can_tee, the four leg_pogo boards, lever_sensor, motor_ctrl, optical, output_panel, pi_cap.
+- NOT DONE: ui_board (elec/out differs from its tracked geom, so not overwritten) and
+  foot_led_a/b, fret_led_key/mid (no board file under those names in elec/out here).
+  They keep no pads until their owner re-exports with the new cadkit.
+- Vias, tracks and pours are not drawn; only lands. geo.json grows (first-flash 3.3 -> 5.5 MB).
