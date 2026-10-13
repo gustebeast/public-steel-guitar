@@ -28,6 +28,7 @@ import cadquery as cq
 
 # Shared CAD utilities, vendored at <project>/cadkit (git subtree).
 from cadkit.step_export import export_step, export_print
+from cadkit.kept import kept
 from cadkit.orientation import (PrintOrientation as PO,
                                 require_declared, unconfirmed)
 try:                                    # optional on-every-build face-count regression gate
@@ -854,7 +855,7 @@ def belts_as_played():
     viewer is given the belt as it lies then, or its cut is 56 mm from its clamp.
     (A pedal or lever still moves the clamp off this belt: the belt itself does not
     travel in the viewer yet.)"""
-    return {f"belt_{i}": C.belt(*_belt_args(i, D.DL_OPEN)) for i in range(D.N_STRINGS)}
+    return {f"belt_{i}": kept(C.belt, *_belt_args(i, D.DL_OPEN)) for i in range(D.N_STRINGS)}
 
 
 def _belt_args(i, down=0.0):
@@ -933,7 +934,7 @@ def _string_components(i):
             f"dimensions.MOTOR_BODY_L {D.MOTOR_BODY_L} -- the pockets are built from that")
     # The belt is OPEN and TOOTHED: cut to a whole number of teeth, its two ends against the
     # end walls of its clamp's two slots, its teeth between the clamp's ribs.
-    out.append((f"belt_{i}", C.belt(*belt_args)))
+    out.append((f"belt_{i}", kept(C.belt, *belt_args)))     # 3 s to draw, 0.2 s to read
     # belt-tension clamp (half A + half B + M3 screw + insert), in line with the belt, on the
     # run it is installed on (odd strings, the near row, on the upper run; even strings on
     # the lower) and WHERE IT IS SPLICED: nut on the ceiling, clamp CLAMP_END_CLR off the
