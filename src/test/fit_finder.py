@@ -57,7 +57,7 @@ C_MIN = 0.02                # a clearance never goes below this (it is not zero:
                             # halves must still be two solids)
 GAP = 2.4                   # air between a strip's cells -- the walls flex into it
 SKIN = 0.8                  # the bed skin that joins a strip
-GROOVE_W, GROOVE_D, GROOVE_P = 0.9, 0.6, 1.8
+GROOVE_W, GROOVE_P = 1.2, 1.8    # a tally groove: a V 1.2 across (so 0.6 deep), 1.8 apart
 
 UP_Z, DOWN_Z, UP_X, DOWN_X = (0, 0, 1.0), (0, 0, -1.0), (1.0, 0, 0), (-1.0, 0, 0)
 
@@ -76,11 +76,18 @@ def _facing_up(facing, axial=UP_X):
 
 
 def _grooves(body, k, face_x, y0, z0, z1):
-    """k+1 vertical grooves on the face x=face_x, starting GROOVE_P in from y0."""
+    """k+1 tally grooves on the face x=face_x (which looks -X), starting GROOVE_P in from
+    y0 and running z0..z1.
+
+    V-CUT, WITH POINTED ENDS (user, 2026-10-13: the square ones had print overhangs --
+    a flat roof wherever a groove lay across the layers or stopped short of an edge).
+    The same stroke as a version mark's, for the same reason: 45 degrees on every wall,
+    whichever way up the piece prints."""
+    from src.version_mark import cut_groove
     for j in range(k + 1):
         y = y0 + GROOVE_P * (j + 0.8)
-        body = body.cut(_box(face_x - GROOVE_D, face_x + GROOVE_D,
-                             y - GROOVE_W / 2, y + GROOVE_W / 2, z0, z1))
+        body = cut_groove(body, (face_x, y, (z0 + z1) / 2.0), (-1, 0, 0), (0, 0, 1),
+                          (z1 - z0) - 0.6, stroke=GROOVE_W)
     return body
 
 
@@ -166,7 +173,7 @@ def _slide(real, site, host_w, ten_t, mort_t, root, drop):
             _check_nominal(real, J)
         hw = host_w / 2.0
         token = _box(0, L, -hw, hw, -ten_t, 0).union(J.tenon(root=root, length=L))
-        token = _grooves(token, k, 0.0, -hw, -ten_t, -0.1)
+        token = _grooves(token, k, 0.0, -hw, -ten_t, 0.0)
         so = getattr(J, "standoff", 0.0)
         cell = (_box(0, L, -hw, hw, so, mort_t)
                 .cut(J.mortise(drop=drop, length=L + 2.0).translate((-1.0, 0, 0))))
@@ -239,7 +246,7 @@ class StackFinder(Finder):
     def build(self):
         from src import nut_block as NB
         from src import dimensions as D
-        from src.version_mark import cut_mark
+        from src.version_mark import cut_groove, cut_mark
         assert all(abs(NB._clr(i) - NB.BASS_CLR) < 1e-9 for i in STACK), "not one stack any more"
         slot = None
         for i in STACK:
@@ -267,11 +274,14 @@ class StackFinder(Finder):
                     wire = wire.offset2D(-e, kind="arc")
                 tok = wire.extrude(L + 2.0)             # 2 proud of the slot, to pull it by
                 tb = tok.val().BoundingBox()
-                for n in range(k + 1):          # grooves across its -Y face, at the top
+                for n in range(k + 1):          # tally grooves on its -Y face, at the top
                     x = tb.xmin + GROOVE_P * (n + 1.5)
-                    tok = tok.cut(_box(x - GROOVE_W / 2, x + GROOVE_W / 2,
-                                       tb.ymin - GROOVE_D, tb.ymin + GROOVE_D, L - 2.0, L + 3.0))
-                solids.append(tok.translate((-cx, -cy + j * spread + k * set_pitch, 0)).val())
+                    tok = cut_groove(tok, (x, tb.ymin, L - 0.5), (0, -1, 0), (0, 0, 1), 4.0,
+                                     stroke=GROOVE_W)
+                # every token's +X face on ONE plane: that face is the bed, and a set
+                # shrunk all round would otherwise hang its shrink above the plate
+                solids.append(tok.translate((sb.xmax - tb.xmax - cx,
+                                             -cy + j * spread + k * set_pitch, 0)).val())
         tokens = cq.Workplane("XY").newObject([cq.Compound.makeCompound(solids)])
         return tokens, strip
 

@@ -66,6 +66,16 @@ def _segment(p0, p1, stroke):
     return vee.union(cq.Workplane("XY").polyline(pts).close().extrude(PROUD))
 
 
+def cut_groove(body, at, normal, along, length, stroke=STROKE):
+    """`body` with ONE V stroke cut into the face through `at` (outward `normal`),
+    `length` long tip to tip and running `along` the face: a tally mark, or a segment of
+    anything else, that prints on any face for the same reason a figure does."""
+    half = max(0.0, length / 2.0 - stroke / 2.0)
+    plane = cq.Plane(origin=cq.Vector(*at), xDir=cq.Vector(*along), normal=cq.Vector(*normal))
+    cutter = _segment((-half, 0.0), (half, 0.0), stroke).val().moved(plane.location)
+    return body.cut(cq.Workplane("XY").newObject([cutter]))
+
+
 def figure(ch, height=HEIGHT, width=WIDTH, stroke=STROKE):
     """The cutter for one figure, centred on the origin, cutting into -Z."""
     hx, hy = (width - stroke) / 2.0, (height - stroke) / 2.0
