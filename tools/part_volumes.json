@@ -127,7 +127,11 @@
   },
   "lever_prog_jig": {
    "material": null,
-   "volume_mm3": 10581.5
+   "volume_mm3": 14330.1
+  },
+  "lever_prog_jig_base": {
+   "material": null,
+   "volume_mm3": 5121.7
   },
   "motor_pulley": {
    "material": "pctg",
