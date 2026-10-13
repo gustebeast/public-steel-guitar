@@ -715,8 +715,15 @@ def pi_spacer() -> cq.Workplane:
     z_top = PI_Z + BD_T + PI_SPACER_T
     # box_at is CENTRED on all three axes, so these are midpoints, not faces. Written with
     # faces first, which straddled the laminate's top plane by half the thickness.
-    lap = box_at(PI_SPACER_W, PI_SPACER_LAP, PI_SPACER_T,
-                 PI_SPACER_CX, y_edge - PI_SPACER_LAP / 2.0, PI_Z + BD_T + PI_SPACER_T / 2.0)
+    # ⚠ THE LAP STARTS PAST THE END OF THE Pi's 40-PIN HEADER, which stands on this same
+    # edge of the laminate (its plastic ends at x -530.10, 1.00 in from the edge): the bar
+    # itself runs on -X of that, outboard of the board, where nothing is in its way.
+    x_hdr = PI_HDR_X + 20 * _P4.PITCH / 2.0 + CRADLE_CLR
+    x_end = PI_SPACER_CX + PI_SPACER_W / 2.0
+    x_lap = max(PI_SPACER_CX - PI_SPACER_W / 2.0, x_hdr)
+    lap = box_at(x_end - x_lap, PI_SPACER_LAP, PI_SPACER_T,
+                 (x_lap + x_end) / 2.0, y_edge - PI_SPACER_LAP / 2.0,
+                 PI_Z + BD_T + PI_SPACER_T / 2.0)
     y_out = hy + PI_SPACER_TAIL
     shank = box_at(PI_SPACER_W, y_out - y_edge, z_top - PI_Z,
                    PI_SPACER_CX, (y_edge + y_out) / 2.0, (PI_Z + z_top) / 2.0)
@@ -1212,6 +1219,20 @@ def pi_port_pt(which: str):
     return (PI_FP[1] - PI_PORT_IN, PI_FP[2] + PI_PORTS[which], PI_PORT_Z)
 
 
+def pi4_parts():
+    """[(name, solid)]: the Raspberry Pi 4B AS IT IS DRAWN, where it lies -- src/pi4b.py's
+    parts (laminate, shells, pins, chips, small parts), one per colour. The drawing's
+    frame is ours turned no way at all: x along the 85 mm side toward the USB end (+X),
+    y from the USB-C edge to the header's (+Y), so each part is only moved.
+
+    pi4() below is the ROOM the Pi is given (what the cradle is cut by and what the bay's
+    datums are read off); this is the part itself, and the overlap gate sees this."""
+    from cadkit.kept import kept
+    from . import pi4b as P4
+    return [("pi4" + k, kept(P4.part, k).translate((PI_FP[0], PI_FP[2], PI_Z)))
+            for k in P4.GROUPS]
+
+
 def pi4() -> cq.Workplane:
     """Raspberry Pi 4B dummy: board + its three +X-end ports + SoC. WORLD frame, lying FLAT.
 
@@ -1310,13 +1331,15 @@ from . import board_geom as BG
 # Pi's outline apart from 0.37 mm at the -Y end -- real HATs sit flush, and 0.37 is the
 # difference between the cap's half-length and the header's margin, not a placement error.
 
-# ⚠ THE 40-PIN HEADER RUNS ALONG X NOW, off the +Y long edge. Flat, the 2x20 runs down the
-# board's 85 mm side; 3.5 mm in from the corner is the Pi's own pin-1 inset, and 1.27 is half
-# the 2.54 row spacing so the datum sits BETWEEN the two rows, exactly as before.
+# ⚠ THE 40-PIN HEADER RUNS ALONG X, off the +Y long edge, and its place is READ OFF THE
+# Pi's OWN DRAWING (src/pi4b.py HDR): its centre is midway between the two mounting holes
+# on that edge, 32.5 along the board and 3.5 in from the edge, which is the line BETWEEN
+# the two pin rows. Pin 1 is therefore 8.37 from the short edge.
 # +Y edge chosen deliberately: the cap's two cable runs (the UI ribbon to the deck, and the
 # LED strip) both go +Y, so the header faces the things it feeds.
-PI_HDR_X = PI_FP[0] + 3.5 + (20 - 1) * 2.54 / 2.0   # the pad centroid along the row
-PI_HDR_Y = PI_FP[3] - 3.5 - 1.27                    # between the two pin rows
+from . import pi4b as _P4                                        # noqa: E402
+PI_HDR_X = PI_FP[0] + _P4.HDR[0]                    # the pad centroid along the row
+PI_HDR_Y = PI_FP[2] + _P4.HDR[1]                    # between the two pin rows
 # ⚠ 11.0, NOT 8.5 (2026-10-07). The socket's body is 8.5, and it does not reach the Pi's
 # board: it seats on the 2.5 mm plastic base of the Pi's own header. The cap was drawn
 # 2.5 mm low, which hid that its J3 stood into the Pi's display connector (pi4 below).

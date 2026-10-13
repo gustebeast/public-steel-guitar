@@ -24,6 +24,7 @@ from __future__ import annotations
 import os
 import pathlib
 import subprocess
+import time
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 DOCS = REPO / "docs"
@@ -38,6 +39,9 @@ def _git(*args: str, env=None, check=True) -> str:
 
 
 GITHUB_FILE_LIMIT = 100 * 2**20          # GitHub's hard per-file limit is 100 MiB
+POST_BUFFER = 150 * 2**20                # git's http.postBuffer for the push: the whole pack
+PUSH_TRIES = 3
+PUSH_WAIT = 5.0                          # seconds between tries
 
 
 def _oversize(files):
@@ -78,20 +82,21 @@ def _heaviest_families(glb, top=6):
 def push_gh_pages(build_n: int | None = None, remote: str = "origin",
                   branch: str = "gh-pages") -> bool:
     """Force-push the current docs/ contents to `remote`/`branch` as one orphan
-    commit. Returns True if pushed, False if skipped (opted out / not on main).
+    commit. Returns True if pushed, None if skipped on purpose (opted out / not on
+    main / nothing to send), False if it SHOULD have gone out and did not.
     Never touches the working tree, index, or HEAD (uses a throwaway index)."""
     if os.environ.get("PSG_NO_PUBLISH"):
         print("web preview: PSG_NO_PUBLISH set -> skip publish")
-        return False
+        return None
     cur = _git("rev-parse", "--abbrev-ref", "HEAD")
     if cur != "main":
         print(f"web preview: on '{cur}', not main -> skip publish")
-        return False
+        return None
 
     files = sorted(p for p in DOCS.iterdir() if p.is_file())
     if not files:
         print("web preview: docs/ is empty -> nothing to publish")
-        return False
+        return None
 
     # GitHub refuses any file over 100 MiB outright. Check BEFORE pushing: a doomed
     # push used to fail deep inside `git push`, and the caller's non-fatal wrapper
@@ -124,7 +129,31 @@ def push_gh_pages(build_n: int | None = None, remote: str = "origin",
         tree = _git("write-tree", env=env)
         msg = f"web preview{f' (build #{build_n})' if build_n else ''}"
         commit = _git("commit-tree", tree, "-m", msg, env=env)   # no -p => orphan
-        _git("push", "--force", remote, f"{commit}:refs/heads/{branch}")
+        # THE PUSH IS RETRIED, WITH A BIG POST BUFFER. Five builds in one day (2026-10-13)
+        # were published by hand: the push was reset mid-upload ("curl 55") every time
+        # without http.postBuffer and went through with it, and once it failed to connect
+        # at all and the next try worked. So both, and a failure that says so.
+        err = ""
+        for attempt in range(PUSH_TRIES):
+            r = subprocess.run(["git", "-c", f"http.postBuffer={POST_BUFFER}", "push", "--force",
+                                remote, f"{commit}:refs/heads/{branch}"],
+                               cwd=str(REPO), capture_output=True, text=True)
+            if r.returncode == 0:
+                break
+            err = r.stderr.strip()
+            print(f"web preview: push {attempt + 1} of {PUSH_TRIES} failed "
+                  f"({err.splitlines()[-1] if err else 'no message'})", flush=True)
+            time.sleep(PUSH_WAIT)
+        else:
+            bar = "!" * 72
+            print(bar)
+            print(f"web preview: NOT PUBLISHED -- the push to {remote}/{branch} failed "
+                  f"{PUSH_TRIES} times:")
+            print("    " + err.replace("\n", "\n    "))
+            print("The gh-pages viewer is still showing the LAST published build. Publish by "
+                  "hand:  py -3.12 -m tools.publish_preview")
+            print(bar, flush=True)
+            return False
     finally:
         idx.unlink(missing_ok=True)
     print(f"web preview: force-pushed docs/ -> {remote}/{branch}"

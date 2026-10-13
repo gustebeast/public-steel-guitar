@@ -6119,3 +6119,39 @@ gold). Nothing per project: a board whose geom file has `lands` shows them.
   foot_led_a/b, fret_led_key/mid (no board file under those names in elec/out here).
   They keep no pads until their owner re-exports with the new cadkit.
 - Vias, tracks and pours are not drawn; only lands. geo.json grows (first-flash 3.3 -> 5.5 MB).
+
+## The Pi drawn from its own drawing; the Pi as flashing host (user, 2026-10-13)
+
+User: "the pi is very poorly rendered ... make the board accurately rendered both in
+geometry and texture/color/material. Then use the same model for the first flash tab."
+- `src/pi4b.py`: the Pi 4B off Raspberry Pi's mechanical drawing (RP-008343-DS-1): outline,
+  holes, every connector and chip outline with its Z, 128 small parts. One part per
+  material (`pi4`, `pi4_shells`, `pi4_lids`, `pi4_black`, `pi4_pins`, `pi4_ffc`, `pi4_usb3`,
+  `pi4_passives`). The instrument (`electronics.pi4_parts`) and the first-flash tab use it.
+- NOT ON THE DRAWING, so not drawn: the microSD socket, anything under the board. Board
+  thickness is ours (1.6).
+- FOUND: the 40-pin header was placed 4.87 short in x and 1.27 short in y. PI_HDR_X/Y now
+  come from the drawing, so `pi_cap` moved with them. Two things followed and are fixed:
+  `pi_spacer`'s lap starts past the header's end; the lights link's columns stay -X of the
+  chassis wall at x -562.70.
+- `electronics.pi4()` is still the ROOM envelope (cradle cut, optical datums). Its USB
+  bodies are narrower and less proud than the drawing's (13.1 / 2.5 against 14.5 / 3.0).
+  Not changed here.
+- First-flash tab: the Pi on its own USB-C supply, both probes and each board's own USB
+  into it; soldered tails carry a solder joint. The lever station is OUT (user: the lever
+  board is not ordered; later). docs/bench-order.md has "The Pi as the flashing host" and
+  "Later: the lever sensor boards".
+- UNCONFIRMED and said so in the doc: `wlink` on a Pi (64-bit ARM); a USB-A to mini-B lead
+  in the ST-LINK's box; any USB path into a BLANK chip.
+- Dropped at the user's word: the solderless jig (Harwin S25-212 sleeve + P25-0123 probe,
+  both in stock at DigiKey 2026-10-13). The jig stays as built.
+- `tools/publish_preview.py`: three tries, http.postBuffer, a loud NOT PUBLISHED banner;
+  None for a deliberate skip, False for a failed one (build.py repeats it last).
+- STILL OPEN (lead): how much of collect_components + import time is bought parts.
+- Connectors (user: "did you grab the geometry ... or a bounding box"; "can you find exact
+  part numbers?"): NO part numbers are published. Raspberry Pi's reduced schematic
+  (RP-008345-DS-1) names no connector part, and its Pi 4 page lists no STEP (only the
+  drawing as PDF and DXF). So each is a part of its kind at the drawing's place and size:
+  USB-C = cadkit's own receptacle (as on our boards), micro-HDMI = KiCad's Molex 46765
+  model, Ethernet / USB-A / jack drawn here with standard openings. KiCad's RJ45 models
+  were tried and do not fit the Pi's 15.5 x 21.36 x 13.5 jack (16.0 deep or 25.4 deep).

@@ -1281,7 +1281,7 @@ def _electronics_components():
     # pi_spacer is the flat Pi's RETENTION -- a printed piece, not a dummy. It replaces the
     # button head that used to clamp the laminate directly: no position beside the board had
     # room for that screw's anchor below the floor (electronics.PI_SPACER_XY).
-    out = [("pi4", EL.pi4()), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
+    out = [*EL.pi4_parts(), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
            # each board's LETTERING is its own part: white ink the viewer can hide
@@ -1777,7 +1777,7 @@ def optical_work_components():
            ("bridge_endplate", PARTS["bridge_endplate"][0]()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("motor_ctrl_silk", EL.motor_ctrl_silk()),
-           ("pi4", EL.pi4()), ("pi_spacer", EL.pi_spacer()),
+           *EL.pi4_parts(), ("pi_spacer", EL.pi_spacer()),
            ("keyhead_endplate", _KE.keyhead_endplate)]
     # ⚠ AND THE FASTENERS, BECAUSE THEY MOVE WITH THE RETENTION AND THE CACHE DOES NOT KNOW.
     # Left to the cache, board_screw_2/board_insert_2 stay at the hold position they had when
@@ -2332,7 +2332,9 @@ _COLORS = {
     "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
 
-    "pi4":             (0.05, 0.35, 0.15),   # PCB green
+    # the Pi's parts, each its own colour (src/pi4b.py: "pi4" is the laminate)
+    **{"pi4" + _k: __import__("src.pi4b", fromlist=["RGB"]).RGB[_c]
+       for _k, (_c, _f) in __import__("src.pi4b", fromlist=["GROUPS"]).GROUPS.items()},
     "pi_cap":          _BG.mask("pi_cap"),   # PCB green
     "pi_spacer":       (0.85, 0.55, 0.20),   # PRINTED: the Pi's retention, not a board
     "output_panel":    _BG.mask("output_panel"),   # output + panel board (VBUS broken,
@@ -2667,7 +2669,10 @@ def _web_view(comps, build_n, publish=True):
             show_exported(glb.parent, root=OUT)
         if publish:
             with _stage("viewer: publish"):
-                push_gh_pages(build_n)
+                published = push_gh_pages(build_n)
+            if published is False:               # it has said why; say it LAST as well
+                print(f"⚠ web view: build #{build_n} is NOT on the public preview "
+                      "(tools.publish_preview said why, above)", flush=True)
     except BoardsSkipped as e:
         print(f"🔴 web view: BOARDS NOT DRAWN — not shown, not published. {e}", flush=True)
         return 1

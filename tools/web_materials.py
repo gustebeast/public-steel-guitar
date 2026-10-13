@@ -76,6 +76,10 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in (
     (r"_ph_(top|bottom)$|_plug_|^ui_pwr_stem$", "nylon"),
     (r"^ui_screen$", "screen"),
     (r"^ui_screen_lit$", "ink"),                  # light, not a surface: flat and bright
+    (r"^pi4_(shells|lids)$", "steel"),            # the Pi's parts (src/pi4b.py GROUPS)
+    (r"^pi4_pins$", "gold"),
+    (r"^pi4_(black|ffc|usb3)$", "nylon"),
+    (r"^pi4_passives$", "painted"),
     (r"(^|_)pcb(_[a-z]+)?$|_board_(top|bottom)$|^(motor_ctrl|output_panel|pi_cap|pi4)$", "board"),
 )]
 
@@ -93,6 +97,7 @@ def finish_of(base: str):
 # and what it shows), so the viewer hides, selects and lists them as one
 # (cadkit.web.export units=).
 _ONE_PRINT = ((re.compile(r"^top_plate_color_(\d+)$"), r"top_plate_\1"),
+              (re.compile(r"^pi4_[a-z0-9]+$"), "pi4"),            # one bought board
               (re.compile(r"^chassis_light_(\d+)$"), r"chassis_\1"),
               (re.compile(r"^ui_screen_lit$"), "ui_screen"))     # what the screen shows
 

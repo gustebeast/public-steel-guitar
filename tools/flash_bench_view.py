@@ -15,25 +15,24 @@ import cadquery as cq
 REPO = pathlib.Path(__file__).resolve().parents[1]
 ROOT = REPO / "views" / "first-flash"
 
-_METAL = {"jig_pin", "jig_insert", "jig_screw", "wch_linke_pins", "stlink_v2_pins"}
-_PRINTED = {"lever_prog_jig", "lever_prog_jig_base"}
+_METAL = {"wch_linke_pins", "stlink_v2_pins"}
 
 
 def material_of(name: str):
     base = name.split("__")[0]
+    if base.startswith("pi4"):
+        from src.pi4b import GROUPS
+        # a part of several solids arrives one solid at a time: pi4_shells_3
+        return next(f for k, (_c, f) in sorted(GROUPS.items(), reverse=True)
+                    if base[3:].startswith(k))
     if base.endswith("_board"):
         return "board"
     if base.endswith("_silk"):
         return "ink"
-    if base in _PRINTED:
-        return "pctg"
-    if base in ("jig_insert",):
-        return "brass"
-    if base == "jig_screw":
-        return "steel"
-    if base in _METAL or base.startswith("jig_pin"):
+    if base in _METAL:
         return "gold"
-    if "_tail_" in base or base.startswith(("optical_power_", "power_link_", "bus_b_drop_")):
+    if "_tail_" in base or base.endswith(("_usb", "_supply")) or base.startswith(
+            ("optical_power_", "power_link_")):
         return "nylon" if name.endswith("__socket") else "pvc"
     return "painted"
 

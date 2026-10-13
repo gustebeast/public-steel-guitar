@@ -45,7 +45,14 @@ def base(name: str) -> str:
     # single-group strip left base = "screw_bearing_4", which matches nothing in
     # the allow list — so the designed bearing-in-rail contact quietly stopped
     # being allow-listed, and only stayed silent because it sits under VOL_EPS.
-    return re.sub(r"(_\d+)+$", "", name)
+    name = re.sub(r"(_\d+)+$", "", name)
+    # THE Pi IS ONE BOUGHT BOARD DRAWN AS SEVERAL PARTS, one per colour (pi4_shells,
+    # pi4_black ...; src/pi4b.py). Whatever may touch the Pi may touch any of them --
+    # but its header PINS stay themselves: they stand inside the cap's socket, and that
+    # one designed fit must not make the rest of the Pi invisible to the cap.
+    if name.startswith("pi4_") and name != "pi4_pins":
+        return "pi4"
+    return name
 
 
 def idx(name: str):
@@ -143,6 +150,7 @@ GLOBAL_OK = {
     # the day something moves -- which is the argument the tee_pcb note below makes for
     # exactly this situation, one paragraph down.
     frozenset({"chassis", "pi4"}),
+    frozenset({"pi4_pins", "pi_cap"}),      # the Pi's 40 pins, in the cap's socket
     frozenset({"chassis", "motor_ctrl"}),   # teensy_ifc is deleted; the
                                             # merged controller took its place
     # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown
