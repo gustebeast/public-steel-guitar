@@ -71,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 634960.2
+   "volume_mm3": 635132.9
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -203,7 +203,7 @@
   },
   "pi_spacer": {
    "material": "petg-gf",
-   "volume_mm3": 1009.2
+   "volume_mm3": 991.1
   },
   "pickup_zplate": {
    "material": "petg-gf",
