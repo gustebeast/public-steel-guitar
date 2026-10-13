@@ -565,9 +565,6 @@ def _declared():
          "ui_panel.KNOB_UP — DISC-DOWN, on the flat top face it presents to "
          "the player. Every other way up puts the shaft bore blind end over "
          "air"),
-        (["ui_pwr_cap"], _UI.PWR_CAP_UP,
-         "ui_panel.PWR_CAP_UP — top face on the bed, the stem's socket "
-         "opening upward"),
         (["ui_clamp"], _UI.CLAMP_UP,
          "ui_panel.CLAMP_UP — flat underside on the bed, every pad, rib and "
          "post growing straight up off it"),
@@ -639,6 +636,16 @@ def _declared():
         "ROOF-DOWN, the palm face on the bed (the part note). Measured, that "
         "face is 6690 mm2 on the plate at an 0.09 aspect — the part is "
         "essentially a shell lying on its roof")
+    # Declared by its module, but NOT YET CONFIRMED by the user (2026-10-12): the
+    # direction was chosen when the part was first registered for printing.
+    out["ui_pwr_cap"] = PO.from_build_dir(
+        _UI.PWR_CAP_UP,
+        "ui_panel.PWR_CAP_UP — top face on the bed, the stem's socket "
+        "opening upward. Measured that way up: no ceiling and no curved "
+        "overhang (tools/check_ceilings). The other way up the socket's "
+        "3.6 mm roof is a bridge and the face the thumb meets is the last "
+        "layer, not the bed's. Chosen, not yet confirmed",
+        confirmed=False)
     out["pedal_detent_nub"] = PO(
         ((1, 0, 0), -90),
         "NOTHING IN THE PROJECT DECLARES THIS ONE and no note describes its "
