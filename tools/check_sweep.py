@@ -123,6 +123,17 @@ def envelope(shape, ax, ay, eps=1e-3):
     return env, rmax
 
 
+def _same_part(shape, ax, ay):
+    """What makes two rotating parts ONE part on two axes: the same solid, sitting the
+    same way on its own axis. Its envelope about that axis is then the same envelope,
+    moved -- and turning the part about the axis (each pulley is turned to meet its
+    belt's teeth) changes nothing, which is why this reads the centre of mass and not
+    the bounding box."""
+    bb, c = shape.BoundingBox(), shape.Center()
+    return (len(shape.Faces()), round(shape.Volume(), 3), round(bb.zlen, 4),
+            round(math.hypot(c.x - ax, c.y - ay), 4), round(c.z - bb.zmin, 4))
+
+
 def gate(comps) -> int:
     """Sweep-check ALREADY-BUILT components; return the collision count.
 
@@ -131,12 +142,20 @@ def gate(comps) -> int:
     checking it, so the BUILD calls this with what it already has and the check
     is effectively free. ``comps`` is ``[(name, cq.Shape)]``.
     """
-    spun = []
+    # ONE envelope per part, not per copy: ten leadscrews are one threaded solid, and its
+    # envelope is ~10 s of slicing (a thread has a vertex height every half pitch).
+    spun, made = [], {}
     for name, shape in comps:
         base, i = _base(name), _index(name)
         if base in ROTATING and i is not None:
             ax, ay = ROTATING[base](i)
-            env, r = envelope(shape, ax, ay)
+            zmin = shape.BoundingBox().zmin
+            key = (base,) + _same_part(shape, ax, ay)
+            if key not in made:
+                made[key] = envelope(shape, ax, ay) + (ax, ay, zmin)
+            env, r, ax0, ay0, z0 = made[key]
+            if env is not None and (ax, ay, zmin) != (ax0, ay0, z0):
+                env = env.moved(cq.Location(cq.Vector(ax - ax0, ay - ay0, zmin - z0)))
             spun.append((name, base, env, r))
 
     if not spun:

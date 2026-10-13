@@ -68,10 +68,14 @@ def build_glb(components=None, out: pathlib.Path = GLB, build_n=None) -> pathlib
         components = collect_components()
     if build_n is None:
         build_n = _current_build_n()
+    # the belts as they lie at open pitch, which is how the page poses everything else
+    from src.build import belts_as_played
+    played = belts_as_played()
+    components = [(name, played.get(name, wp)) for name, wp in components]
     parts = [(name, wp, _color_for(name)) for name, wp in components]
     export(parts, out.parent, stem=out.stem, extras=dict(ABOUT, build=build_n), page=True,
            boards=BOARDS, cache_dir=REPO / ".webview" / "boards", materials=material_of,
-           units=unit_of)
+           units=unit_of, mesh_cache=REPO / ".webview" / "mesh")
     print(f"  ({out.relative_to(REPO).as_posix()}, build #{build_n})")
     return out
 
