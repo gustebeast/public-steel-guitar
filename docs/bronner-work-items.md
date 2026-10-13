@@ -6078,3 +6078,12 @@ revision 2 owes, board by board:
   answers on PB6/PB7 (not confirmed by a WCH sentence).
 - `optical` (STM32H743, ULPI only): ST's ROM DFU is on OTG_FS PA11/PA12, unwired. Wire it,
   or add a bridge.
+
+## Belts drawn smooth again (user, 2026-10-13)
+
+"Revert the belts and have them appear smooth again." `components.belt` is a plain band,
+BELT_W x BELT_T, with no tooth cut into it: one ruled loft, ~520 faces a belt and 0.15 s to
+draw (the toothed one was 3 s). Kept from the toothed work: the belt is OPEN, cut to a
+whole number of teeth with its ends in its clamp, and seated on the pulleys' pitch circle.
+The band is the envelope of land and teeth, so it stands BELT_TOOTH_H into the pulleys'
+crests and the clamp's ribs (both pairs were already allowed to touch in check_overlaps).
