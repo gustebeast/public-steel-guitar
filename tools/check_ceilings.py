@@ -177,6 +177,7 @@ DECLARED_UP = {
     "lever_prog_jig_base": ("src.lever_jig", "BASE_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
+    "ui_pwr_cap":        ("src.ui_panel", "PWR_CAP_UP"),
     "ui_clamp":          ("src.ui_panel", "CLAMP_UP"),
     # the print-fit coupons, which declare an orientation for the same reason the parts
     # they stand in for do -- a coupon printed the other way up is not the same test

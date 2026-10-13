@@ -193,6 +193,9 @@ KNOB_BORE_CLR = 0.15               # per face, round AND flat: a press fit on a 
 # way up puts the shaft bore's blind end over air. Its own +Z is the world's, so the
 # declaration is the world axis turned over.
 KNOB_UP = (0.0, 0.0, -1.0)
+# The power button's cap prints the same way up, for the same reason: its top face on
+# the bed and the stem's square socket opening upward.
+PWR_CAP_UP = (0.0, 0.0, -1.0)
 # The clamp goes the other way: its flat underside is the bed and every pad, rib and
 # post grows straight up off it.
 CLAMP_UP = (0.0, 0.0, 1.0)
