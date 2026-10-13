@@ -169,6 +169,10 @@
    "material": "petg-gf",
    "volume_mm3": 28367.3
   },
+  "pi_spacer": {
+   "material": "petg-gf",
+   "volume_mm3": 1009.2
+  },
   "pickup_zplate": {
    "material": "petg-gf",
    "volume_mm3": 18168.3
