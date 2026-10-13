@@ -81,8 +81,12 @@
      J3 -> a Pi USB-A, 0.8 m) is new. Straight USB-C plugs on J2 and J3, USB-A plugs on
      `wire_hub` and `wire_link` at the Pi, at the USB-IF's largest overmould section. The
      two long leads are staggered in the trough (4.8 mm does not take two side by side);
-     `wire_hub` crosses the bay to join it past the 24 V head's exit. Its top is 0.1 mm
-     under the UI board's lowest point (was `wire_usb`, 1.9 under): brenner's station.
+     `wire_hub` crosses the bay to join it past the 24 V head's exit. Under the UI board
+     it is clear (brenner measured 1.72 mm, the trough's wall between). At the Pi the two
+     USB-A leads' fly lanes stand in the UI station's slide path, as `wire_link`'s always
+     did: the Pi's USB-A plugs go in after the mid deck panel is on (brenner's
+     INSTALL_NOTES entry). To revisit with the other keyhead leads if the Pi moves: hold
+     them under z -18.4 for y -116.6..-108.4 and -16.4 for y -125..-95.
    - **THE Pi's USB-C TAKES NO PLUG WHERE THE Pi SITS (found 2026-10-07, OPEN, needs a
      decision).** output_panel J2's lead goes to the Pi's USB-C gadget port, which is on
      the Pi's -Y long edge 11.2 mm from its -X end (Pi 4B drawing). The Pi's -Y edge is at
