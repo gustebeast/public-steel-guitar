@@ -6183,3 +6183,18 @@ geometry and texture/color/material. Then use the same model for the first flash
   on the USB-A stack: the USB-C mouth is 3.26 mm from the -Y rail. Panel J3 -> a Pi USB-A
   port is not drawn and has NO BOM ROW (bench-order.md lists it). Plan told to the user:
   move the Pi about 2.4 mm +Y for an angled plug, not a pocket in the rail.
+- USB leads, MEASURED 2026-10-13 (nothing drawn yet):
+  - At the Pi's USB-C (x -576.8) the -Y rail is y -142..-132, full height; mouth to rail
+    3.7 mm; the slot is free upward for 30+ mm. A Pi moved +2.4 in Y gives 6.1 and breaks
+    nothing I could test (cap, clamp, screw, every wire, check_cables; cap to the bay wall
+    1.6). +3.2 leaves the cap 0.8 off that wall.
+  - The bought ribbon family (Amazon B0FKYR7V34's listing): the UP/DOWN plug (5.2 deep,
+    ribbon leaves upward on edge) is sold to 0.5 m only (B0FKYLRRXV, one end); the 1 m
+    lead (B0FKYMRXF3) has SIDEWAYS plugs at both ends, whose ribbon lies flat and needs
+    its own 10.8 width in front of the port: it does not fit 6.1. Pimoroni's flat 1 m
+    leads: no plug dimensions published, stock shown as pre-order.
+  - So the Pi end of panel J2 -> Pi USB-C is NOT SOLVED by moving the Pi alone: it needs
+    a lead that exists. Asked the user.
+  - wire_usb and wire_link both end between the two mouths of a USB-A stack
+    (PI_PORT_Z = top + 7.0), 1 mm inside, with no plug body.
+  - BOM row added for panel J3 -> Pi USB-A (was missing).
