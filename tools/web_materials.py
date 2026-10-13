@@ -76,9 +76,9 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in (
     (r"_ph_(top|bottom)$|_plug_|^ui_pwr_stem$", "nylon"),
     (r"^ui_screen$", "screen"),
     (r"^ui_screen_lit$", "ink"),                  # light, not a surface: flat and bright
-    (r"^pi4_(shells|lids)$", "steel"),            # the Pi's parts (src/pi4b.py GROUPS)
+    (r"^pi4_(shells|lids|sd)$", "steel"),            # the Pi's parts (src/pi4b.py GROUPS)
     (r"^pi4_pins$", "gold"),
-    (r"^pi4_(black|ffc|usb3)$", "nylon"),
+    (r"^pi4_(black|ffc|usb3|card)$", "nylon"),
     (r"^pi4_passives$", "painted"),
     (r"(^|_)pcb(_[a-z]+)?$|_board_(top|bottom)$|^(motor_ctrl|output_panel|pi_cap|pi4)$", "board"),
 )]
