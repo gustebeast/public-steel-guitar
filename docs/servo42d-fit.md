@@ -69,7 +69,7 @@ the depth back), a window per bay on -X, a floor relief per bay. All of it is in
 
 The motor never had a pigtail, so the harness makes one: **four wires, ferruled into the
 two screw-terminal blocks (V+, GND; CANH, CANL), gathered into one XHP-4** in the order the
-tee's drop already has (GND, 24 V, CAN-H, CAN-L). That is the cable `wiring.py` draws as
+tee's drop already has (24 V, GND, CAN-H, CAN-L: `elec/harness.py` XH_PINOUT). That is the cable `wiring.py` draws as
 `motor_pigtail_*` today, and it plugs into the merged tee unchanged. The trunk, the tee
 board, its pinout and brenner's fret boards over it are all untouched.
 

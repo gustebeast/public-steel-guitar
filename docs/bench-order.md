@@ -213,10 +213,33 @@ when it is powered. **A bench supply stays the safer way and is still listed, as
 **There is no power switch on the bench.** The button is on the UI board, and with nothing
 on J10's ways 3 and 4 the panel's switch (Q2) reads "not off" and turns ON, soft-started,
 whenever the brick is in. Off means the brick's mains plug out. Every lead is plugged and
-unplugged with it out, and after pulling it wait until the 24 V on J7 way 1 has fallen away (the
-panel's bulk capacitors hold it for some seconds).
+unplugged with it out, and after pulling it meter J7 way 1 to see the 24 V gone
+before touching a lead (there is no bleeder on that rail; the converters drain it).
 
 ### The order, one board added at a time
+
+**What "not a short" reads.** Ohms range, either polarity, read once the number has
+stopped moving (every capacitor on these rails is ceramic, tens of microfarads at most: a
+second, not a minute). **CALCULATED from the resistors on each rail, not measured:** the
+"at most" column is the resistor paths alone, and the chips on the rail can only pull the
+reading lower. Write the first board's readings beside these.
+
+| Board | Between | At most (resistors alone) | Stop if steady under |
+|---|---|---|---|
+| `output_panel` | J6 24 V lands to ground lands (ahead of the switch) | megohms: R33 + R34 end in a 10 V zener the meter cannot turn on | 1 k |
+| `output_panel` | J7 way 1 to way 2 (24 V behind the switch) | megohms: only converter inputs and the TVS | 1 k |
+| `output_panel` | +5 V to GND | 60 k (R11 + R12 118 k, R17 + R18 200 k, R39 + R40 250 k) | 50 ohm |
+| `output_panel` | +3V3 (TP5) to GND | not calculable: the MCU, hub and codecs | 50 ohm |
+| `optical` | J2 way 1 to way 2 | megohms, through R44's 2 ohm | 1 k |
+| `optical` | +5 V (TP10) to GND | 125 k (R40 + R41) | 50 ohm |
+| `optical` | +3V3 (TP5, TP11) to GND | not calculable: the MCU, PHY and converters | 50 ohm |
+| `motor_ctrl` | J3 way 1 to way 2 (24 V) | 63 k (R12 + R13 147 k, R20 + R21 110 k) | 1 k |
+| `motor_ctrl` | J5 outer posts (5 V) to GND | 17 k (R18 + R19 20 k, R10 + R11 125 k) | 50 ohm |
+| `motor_ctrl` | +3V3 (TP5) to GND | 130 k (R1 + R2), less with the MCU | 50 ohm |
+
+A reading far ABOVE the "at most" figure is a fault too: the resistor path it was
+calculated from is open (on `motor_ctrl`'s 24 V that is the 5 V converter's enable divider
+or the sense divider).
 
 Each step: power off, the meter checks, then power, then the readings, then flash, then
 power off again before the next lead goes in. Rail readings are the ones in
@@ -231,9 +254,7 @@ protection. (`elec/output_panel.py` at J6 gives the pin positions; they were rea
 drawings, never off the part.)
 
 **1. `output_panel`, nothing plugged into it.** Power off, meter:
-- J7 way 1 to way 2 (the 24 V rail behind the switch): not a short. It reads low and then
-  climbs as the bulk capacitors charge from the meter; a steady reading under about
-  100 ohm is a stop.
+- J7 way 1 to way 2 (the 24 V rail behind the switch): not a short (table above).
 - J6's two 24 V lands to its two ground lands: the same.
 - +5 V to GND and +3V3 to GND (TP5): not a short.
 - Diode range, red on GND, black on the 24 V rail: one diode drop or more (the TVS and the
