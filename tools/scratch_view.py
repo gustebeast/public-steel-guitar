@@ -151,6 +151,9 @@ VIEW = ScratchView(
     live=_live,
     replaced=REPLACED,
     pose=_lookup(POSES, SCOPE.get("pose"), "pose"),
+    # the belts as they lie at open pitch, which is where the page's rig poses their
+    # clamps (tools/export_glb.py does the same for the published model)
+    shown=lambda: importlib.import_module("src.build").belts_as_played(),
     # Every part wears the colour the full build gives it, resolved through
     # src.build._color_for -- the very function the real build uses -- so this view
     # cannot drift from the finished assembly.
