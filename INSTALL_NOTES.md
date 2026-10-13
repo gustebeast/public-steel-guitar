@@ -843,3 +843,17 @@ drop on the Pi cap. Mark the two light-drop leads at the Pi cap end.
 - **Tight spots on the way** (as drawn, plate at the bottom of its travel): the jack
   screws' tips pass 0.3-0.4 mm over the foot-light lead, and the deck's -Y edge passes
   0.3 mm from the optical board's USB cable. Dress both flat.
+
+## The Pi's USB-A plugs go in after the mid deck panel is on
+
+The UI station rides the mid deck panel, and that panel slides on from the keyhead end
+past the Pi. The two leads that plug into the Pi's USB-A ports (from the motor board and
+from the output panel's hub) stand up out of the bay to reach those ports, into the path
+the station's underside sweeps.
+
+* Before sliding the mid panel on: leave both USB-A plugs unplugged and lay the leads down
+  in the bay. Nothing should stand higher than the cable trough's lip.
+* After the panel is home: plug the UI ribbon into the Pi cap, then the two USB-A plugs.
+  The keyhead panel is still off, so the Pi is open from above.
+* Coming apart is the reverse: both USB-A plugs and the ribbon out, leads laid down, then
+  slide the panel off.

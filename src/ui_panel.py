@@ -58,9 +58,21 @@ AGAINST the board with reliefs for the tails instead of hanging below them, and 
 arm steps up to -8.0 before running +Y under the display.
 
 ...AND THE PANEL SLIDES ON WITH ALL OF IT ATTACHED, which is a 361 mm stroke past the
-whole bay. Stepping the real solids along it, the only thing the station meets is
-wire_usb, and only in the last 30 mm at the keyhead -- where that cable climbs to the
-Pi, on a keyhead endplate that is not fitted until after the panels.
+whole bay. Stepping the real solids along it (2026-10-13, every 3 mm), what the station
+meets is the Pi's two USB-A leads where they stand up out of the bay to cross to the
+Pi's ports, and nothing else:
+
+    wire_link (motor board -> Pi)    panel 276 to 318 mm out, at x -470, z -12.7
+    wire_hub  (output panel -> Pi)   panel 354 to 357 mm out, at x -575, z -14.5
+
+Both are loose ends until they are plugged, so THE Pi's USB-A PLUGS GO IN AFTER THIS
+PANEL IS ON, in the same step as the ribbon, and come out before it slides off. Until
+then each lead lies down in the bay, under the trough lip. (INSTALL_NOTES.md says so.)
+
+In the trough itself nothing is near: at rest wire_hub's top is at -16.20 and the
+board's lowest tail at -16.10, but the lead is 1.05 further -Y, inside the trough and
+2.6 under its lip, with the trough's wall between the two. The nearest approach is
+1.72 mm, and it is the same at every point of the slide. wire_usb, lower, is 4.42 off.
 
 -- DOES THE SCREEN SIT LEVEL? (user, 2026-09-28) ------------------------------
 Its face lies on the window ledge, which is a flat, so level means only: can the face
