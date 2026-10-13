@@ -384,7 +384,11 @@ PARTS["coil_mandrel_sleeve"] = (
 PARTS["lever_prog_jig"] = (
     lambda: heal(__import__("src.lever_jig", fromlist=["e"]).jig()),
     "tools/lever_prog_jig.step",
-    "TOOL — pogo nest for flashing the 11 lever/pedal sensor boards. The board drops in COMPONENT FACE DOWN onto four P75 pins standing at TP1–TP4 (positions read from the routed board), J1 is powered through the end window, and the pins seat themselves at height against the bench. PETG, printed as drawn")
+    "TOOL — pogo nest for flashing the 11 lever/pedal sensor boards. The board drops in COMPONENT FACE DOWN onto four pogo pins (Adafruit 2430) standing at TP1–TP4 (positions read from the routed board), and J1 is powered through the end window. NO GLUE: each pin stands on the base plate and is held up by its own lead, which is nipped under the ear by the one M4 screw. One brass M4 insert in the ear's underside. PETG, printed as drawn")
+PARTS["lever_prog_jig_base"] = (
+    lambda: heal(__import__("src.lever_jig", fromlist=["e"]).base()),
+    "tools/lever_prog_jig_base.step",
+    "TOOL — the jig's base plate: the flat the four pins stand on, screwed to the nest's ear with one M4 x 10 button screw whose head is sunk in the underside. PETG, printed UPSIDE DOWN (the counterbore opens upward)")
 
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
@@ -577,8 +581,11 @@ def _declared():
         (["leg_foot"], _LG.FOOT_UP,
          "legs.FOOT_UP — the 44-sq pad is the bed, tenon up"),
         (["lever_prog_jig"], _LJ.JIG_UP,
-         "lever_jig.JIG_UP — prints as drawn: flat on the bench face, posts "
+         "lever_jig.JIG_UP — prints as drawn: flat on the base face, posts "
          "growing up"),
+        (["lever_prog_jig_base"], _LJ.BASE_UP,
+         "lever_jig.BASE_UP — upside down: the screw head's counterbore "
+         "opens upward"),
         (["test_belt_tensioner"], _BT.COUPON_UP,
          "belt_tensioner.COUPON_UP — each half already lies on its closed "
          "side face in the model"),

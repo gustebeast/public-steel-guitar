@@ -133,6 +133,16 @@ BOARDS = Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=
 
 HEIGHT, TAIL, THT_LEGS, PANEL = BOARDS.HEIGHT, BOARDS.TAIL, BOARDS.THT_LEGS, BOARDS.PANEL
 
+
+def on_the_bench(unmated) -> Boards:
+    """The same boards with the same part facts, as they lie on a BENCH: `unmated` names
+    the (board, ref) headers nothing is plugged into there (in the instrument every
+    header has its plug)."""
+    return Boards(GEOM_DIR, height=_HEIGHT, tail=_TAIL, tht_legs=_THT_LEGS, panel=_PANEL,
+                  unmated=unmated,
+                  **({"silk_font": _FONT, "silk_cap": SILK_FONT_CAP} if _FONT else {}))
+
+
 load = BOARDS.load
 footprint = BOARDS.footprint
 tails = BOARDS.tails

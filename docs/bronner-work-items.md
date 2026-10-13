@@ -6040,20 +6040,25 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
   animate on keys and parts three days old (levers on q-t, still leadscrews). cadkit
   8061071: a view that builds parts rewrites the rig.
 
-## Open from 2026-10-12 (the 15-minute loop works this list; delete a line when it is done)
+## Open from 2026-10-12 -- the loop is finished; what is left waits on the user
 
-- MR @ 83b7e83b filed (open-pitch belts, BoardsSkipped = red, mesh cache, sweep envelope
-  once per part). Proof: none 104.1 / cold 90.9 / warm 54.1 s, identical bytes, busy machine.
-  Take the clean warm export time and the sweep time from the lead's next two builds.
-- Sweep gate was 122 s of envelopes (threaded leadscrew 97 s, x10 copies), 1.4 s of
-  intersections. Not the belts.
-- (e) `cadkit.kept` (117164e) needs the lead's propagate; then wrap the two belt calls in
-  src/build.py (`_string_components`, `belts_as_played`): `kept(C.belt, *args)`. Only belts
-  are worth it (3.0 s drawn, 0.19 s read); every other bought part draws in under 1 s.
-- (f) belts travel with their clamps in the page (and the desktop app). Asked only as
-  "is it feasible"; last on the list.
-- (g) close the app, build, open the app: it shows the new build number.
-- (i) rebuild the desktop app after any page change (none since a0c6e74).
-- Model size: 35 MB published. The user has not chosen between compression, coarser belt
-  teeth and a lighter Pages model.
-- plant-pot 7040be8e (no modelled build number) is committed, unpushed.
+- Build #897 (belts through `cadkit.kept`, sweep gate boxing once): sweep 15.3 s (was 178.6),
+  "852 meshes kept, 59 made", "365 board meshes kept, 0 made". The belt saving
+  (~20 s of collect_components) shows from #898 on.
+- DONE, closed app -> build -> open app: a probe copy of the app (own port 8139, own data
+  folder; C:/Users/gus/AppData/Local/Temp/qbak/w/g/closed.py) showed build #32, was quit,
+  the model folder was rewritten, and on opening showed build #37.
+- DROPPED (user: "drop it if it degrades the code"): belts travelling with their clamps.
+  Everything the viewer animates is a rigid part with one matrix (page, tracer, native app,
+  picking). A travelling belt is one rigid part PER TOOTH (3,850 more animated parts against
+  141; measured in the page: 20 -> 3,870 draw calls, 0.5 -> 5.8 ms a frame on the desktop)
+  or a mesh bent every frame in three renderers. Neither.
+- NOT STARTED, user's choice needed: the 35 MB published model (compression, coarser belt
+  teeth, or a lighter Pages model).
+- Offered, not asked: footprints that keep a box drawn in a warning colour, so a real green
+  part (Phoenix MKDS on the backpack) is never mistaken for an undrawn one.
+- USB flashing, as built (2026-10-12): lever_sensor SWD pads only; motor_ctrl USBFS on J4 to
+  the Pi + BOOT0 pad TP6; output_panel USBHS behind the hub, BOOT0 by tweezers on R7;
+  optical SWD / I2C2 ROM loader pads, no ROM USB path. WCH datasheet 2.5.2 says "USART1 and
+  USB" and does not name the port: bench-check 4348:55e0 on the first motor_ctrl and
+  output_panel.
