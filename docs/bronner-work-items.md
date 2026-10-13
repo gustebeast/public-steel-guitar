@@ -6147,7 +6147,18 @@ geometry and texture/color/material. Then use the same model for the first flash
   both in stock at DigiKey 2026-10-13). The jig stays as built.
 - `tools/publish_preview.py`: three tries, http.postBuffer, a loud NOT PUBLISHED banner;
   None for a deliberate skip, False for a failed one (build.py repeats it last).
-- STILL OPEN (lead): how much of collect_components + import time is bought parts.
+- `pi_spacer` was in the assembly but never in PARTS (no STEP, no volume, no ceiling
+  check). Registered as PETG-GF; prints TOP FACE DOWN (the other way the lap overhangs
+  2.5 mm: `check_ceilings --only pi_spacer`).
+- MEASURED for the lead (2026-10-13, this machine, one run each, nothing proposed):
+  import src.build 74 s = printed geometry almost entirely (build.py's own top level 35.8,
+  chassis 22.3, bridge_endplate 9.5, top_plate 4.6, keyhead_endplate 4.0, knee_lever_vert
+  3.0); boards, wires and bought parts cost ~0 at import. collect_components 143 s, by
+  stack sampling: boards + silk ~47 s (optical 17, output_panel + motor_ctrl + their silk
+  + pi_cap silk 19, fret boards + silk 10), wires ~12 s, bought hardware (components.py)
+  ~6 s: about 65 s, 46 percent, is not printed. Another ~10 s is mixed (foot_light.parts,
+  ui_panel.parts). The printed side: foot_pedal ~20 s, knee_lever_vert.place 12 s, lazily
+  built parts 15 s, legs 6 s. Scripts: qbak/w/vw/q73.py (sampler), -X importtime.
 - Connectors (user: "did you grab the geometry ... or a bounding box"; "can you find exact
   part numbers?"): NO part numbers are published. Raspberry Pi's reduced schematic
   (RP-008345-DS-1) names no connector part, and its Pi 4 page lists no STEP (only the
