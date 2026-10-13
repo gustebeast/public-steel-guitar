@@ -1143,6 +1143,10 @@ MAGNET_CAP_UP = (0.0, -1.0, 0.0)
 # came off: with a Ø4.6 boss on the bed face there was no good answer, which is the
 # tell that the boss was the problem (user).
 PISTON_UP = (-1.0, 0.0, 0.0)
+# THE BOARD SHIM lies on one of its two big faces and builds through its own thickness:
+# it is a plain plate one board thick, so flat is the only way it is not a 1.6 mm wall
+# standing on edge. Declared in the lever's own frame, which is the frame pcb_shim draws in.
+SHIM_UP = (0.0, 1.0, 0.0)
 #
 # NOT DECLARED: the half-stop PISTON. Nothing in the module says which way it prints, it
 # takes no print_up, and its follower nose is a half-cylinder in X-Z that would be a

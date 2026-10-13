@@ -97,6 +97,10 @@
    "material": "pctg",
    "volume_mm3": 103.0
   },
+  "kl_pcb_shim": {
+   "material": "pctg",
+   "volume_mm3": 81.9
+  },
   "knee_housing": {
    "material": "petg-gf",
    "volume_mm3": 71885.5
@@ -116,6 +120,10 @@
   "kv_lever": {
    "material": "pctg",
    "volume_mm3": 20841.3
+  },
+  "kv_pcb_shim": {
+   "material": "pctg",
+   "volume_mm3": 1107.0
   },
   "leg_foot": {
    "material": "tpu",
@@ -168,6 +176,14 @@
   "pedal_lid_b": {
    "material": "petg-gf",
    "volume_mm3": 28367.3
+  },
+  "pedal_pcb_shim": {
+   "material": "pctg",
+   "volume_mm3": 1305.1
+  },
+  "pi_spacer": {
+   "material": "petg-gf",
+   "volume_mm3": 1009.2
   },
   "pickup_zplate": {
    "material": "petg-gf",

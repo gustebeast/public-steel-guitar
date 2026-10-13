@@ -144,6 +144,8 @@ def _filament_of(name: str):
     # other small fine-feature part (user, 2026-10-12: the nut's sliding inserts and the
     # belt clamps are PCTG and so the same green; the shims and the Pi's spacer are an
     # assumption on the same rule).
+    # The shims HAVE rows now (kl_/kv_/pedal_pcb_shim) but under their part names, not
+    # the station names the assembly draws them by, so they are still answered here.
     if re.sub(r"^.*_(?=pcb_shim$)", "", base) in _PRINTED:
         return "pctg"
     # chassis_2 -- and chassis_1_0: a part drawn as several solids is exported one
