@@ -25,8 +25,19 @@ as different numbers"). A step here is (side, depth, corner radius) named outrig
   ENDPLATE  1-3  tighter than round 1 reached (0.10 / 0.15 / 0.20), depth as round 1's best
             4-5  0.15 and 0.20 again with the DEPTH brought down to 0.30: is the wobble
                  the side gap or the depth gap?
+            6-8  1-3 again with every corner drawn at 0.4 (user, 2026-10-13: "have our
+                 design match what is printed ... any joints that rely on the printer to
+                 make a sharp turn"). The tenon prints with its profile flat on the bed,
+                 so the nozzle turns its corners; the socket is drawn to the same radius
+                 so the pair still mates.
   OCTAGON   1-5  0.10 .. 0.40 at the drawn depth. Both its halves print standing, like the
                  endplate's socket, so the drawn 0.30 is expected to be loose.
+
+WHICH PROFILES THE NOZZLE TURNS. Only a profile lying flat on the bed has its corners
+made by the nozzle changing direction: both halves of the SEAM, and the ENDPLATE's
+tenon. The deck, the octagon and the inserts all print with the profile standing, their
+corners made by one layer ending short of the next, and get no radius for that reason
+(the deck's 4-6 carry one anyway, as a second theory for its tight first step).
 
   DECK      1-3  the side opened (0.20 / 0.25 / 0.30) with the depth held at 0.20
             4-6  corners drawn at 0.4, at 0.15 / 0.20 / 0.25
@@ -62,7 +73,8 @@ STEPS = {
     "seam": [(0.25, 0.30, 0.0), (0.35, 0.30, 0.0), (0.45, 0.30, 0.0),
              (0.15, 0.30, R), (0.25, 0.30, R), (0.35, 0.30, R)],
     "endplate": [(0.10, 0.50, 0.0), (0.15, 0.50, 0.0), (0.20, 0.50, 0.0),
-                 (0.15, 0.30, 0.0), (0.20, 0.30, 0.0)],
+                 (0.15, 0.30, 0.0), (0.20, 0.30, 0.0),
+                 (0.10, 0.50, R), (0.15, 0.50, R), (0.20, 0.50, R)],
     "octagon": [(0.10, 0.60, 0.0), (0.15, 0.60, 0.0), (0.20, 0.60, 0.0),
                 (0.30, 0.60, 0.0), (0.40, 0.60, 0.0)],
     "deck": [(0.20, 0.20, 0.0), (0.25, 0.20, 0.0), (0.30, 0.20, 0.0),
