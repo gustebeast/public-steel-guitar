@@ -23,6 +23,18 @@ def rig():
     sim.stop()
 
 
+def test_frames_match_the_manuals_examples():
+    """MKS SERVO42D/57D_CAN User Manual V1.0.5, sections 5.1, 6.7 and 6.8."""
+    h = bytes.fromhex
+    assert servo.pack(1, h("30")) == h("3031")
+    assert servo.pack(1, servo.move(servo.MOVE_REL, 0x4000, 600, 2)) == h("F40258020040 0091".replace(" ", ""))
+    # (the manual prints the -0x4000 F4 example with checksum 09; by its own rule, and by the
+    #  matching F5 example two lines down, it is 10)
+    assert servo.pack(1, servo.move(servo.MOVE_REL, -0x4000, 600, 2)) == h("F4025802FFC00010")
+    assert servo.pack(1, servo.move(servo.MOVE_ABS, 0x4000, 600, 2)) == h("F502580200400092")
+    assert servo.pack(1, servo.move(servo.MOVE_ABS, -0x4000, 600, 2)) == h("F5025802FFC00011")
+
+
 def test_frame_checksum():
     assert servo.pack(1, bytes([0x31])) == bytes([0x31, 0x32])
     assert servo.check(1, servo.pack(1, servo.move(servo.MOVE_REL, -5, 600, 2)))

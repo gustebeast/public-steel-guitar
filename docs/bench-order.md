@@ -232,18 +232,32 @@ and links (11 kB); it has not run on a board.**
 pytest`):
 - `link.py`: the CAN bus through the motor controller's USB, or through a USB-CAN adapter.
   Either way a test gets frames and send times on one clock.
-- `servo.py`: the SERVO42D's commands. ⚠ Written from the Makerbase manual from memory;
-  to be re-read against the manual and a real motor before any number is believed.
+- `servo.py`: the SERVO42D's commands, checked against Makerbase's CAN manual V1.0.5 (its
+  example frames are tests). Not yet against a motor; the motors' firmware version is
+  unknown. Commands over the bus need the motor in an SR_ work mode (`set_mode`).
+- `optical.py`: the optical board's sample stream, and the lock-in that turns each
+  photodiode's 48 kHz carrier into its signal at 48 kHz, on the same clock as the motors.
 - `run.py`: a test is a list of timed moves ("at 0.3 s, motor 1, +4096 counts at 600 rpm");
   it runs them, polls every motor's encoder throughout, and returns it all.
 - `pitch.py`: pitch against time from a recording of one string, and for one tension change
   the delay, the settling time, the overshoot and the size of the change in cents.
-- `sim.py`: a pretend motor and string. The four tests in `tests/` pass against them. That
-  proves the plumbing and nothing about the mechanism.
+- `sim.py`: a pretend motor and string. The seven tests in `tests/` pass against them and
+  against made-up converter samples. That proves the plumbing and nothing about the mechanism.
 
-**Not written yet:** the optical board's firmware (its samples to the Pi, with times on the
-same clock), and the tests themselves. Until the optical board streams, `pitch.py` takes any
-recording, so a first motor can be tested with a pickup into a sound card.
+**`firmware/optical`** is the optical board's bench firmware: two USB serial ports, one for
+commands and one carrying the converters' samples untouched (192 kHz, whichever of the five
+converters are asked for), each block stamped with its sample count. No demodulation and no
+pitch detection on the board: that is all done afterwards on the Pi. Built on the Pi with
+Debian's ARM GCC against TinyUSB and ST's HAL (`~/src/tinyusb`, not in this repository);
+`make flash` writes it with `openocd` through the ST-LINK. Start-up reports each step on
+TP12 (115200 baud). **It compiles and links (31 kB); it has not run on a board.** The
+converter registers were read off TI's datasheet; the frame format between the converters
+and the MCU is the likeliest thing to need its `F` command on the bench.
+
+**Not written yet:** the test scenarios themselves, and which converter input is which
+string (the board's wiring table, not yet carried into `optical.py`). Until the optical
+board streams, `pitch.py` takes any recording, so a first motor can be tested with a pickup
+into a sound card.
 
 ## Power without a bench supply (user, 2026-10-13)
 
