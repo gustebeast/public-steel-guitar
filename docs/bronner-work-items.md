@@ -6042,18 +6042,16 @@ After the loop (2026-10-09, evening), from the user's first hands-on:
 
 ## Open from 2026-10-12 (the 15-minute loop works this list; delete a line when it is done)
 
-- MR @ 83b7e83b filed (open-pitch belts, BoardsSkipped = red, mesh cache, sweep envelope
-  once per part). Proof: none 104.1 / cold 90.9 / warm 54.1 s, identical bytes, busy machine.
-  Take the clean warm export time and the sweep time from the lead's next two builds.
-- Sweep gate was 122 s of envelopes (threaded leadscrew 97 s, x10 copies), 1.4 s of
-  intersections. Not the belts.
-- (e) `cadkit.kept` (117164e) needs the lead's propagate; then wrap the two belt calls in
-  src/build.py (`_string_components`, `belts_as_played`): `kept(C.belt, *args)`. Only belts
-  are worth it (3.0 s drawn, 0.19 s read); every other bought part draws in under 1 s.
+- MR @ 27437324 filed, waiting on the lead's build: belts through `cadkit.kept`, sweep gate
+  boxes each part once (whole gate 14.8 s; it was 178 s, then 52 s). From that build and the
+  next read: sweep ~15 s, viewer mesh warm, "~365 kept, 0 made" board meshes (the board
+  cache is salted with web/boards.py, parts.py, pcb.py, board_geom.py: an edit to any of
+  them is a cold build BY DESIGN), collect_components ~20 s lower.
+- (g) after that build: close the app, build, open the app: it shows the new build number.
 - (f) belts travel with their clamps in the page (and the desktop app). Asked only as
-  "is it feasible"; last on the list.
-- (g) close the app, build, open the app: it shows the new build number.
+  "is it feasible"; not started, waits for the user's word.
 - (i) rebuild the desktop app after any page change (none since a0c6e74).
 - Model size: 35 MB published. The user has not chosen between compression, coarser belt
   teeth and a lighter Pages model.
-- plant-pot 7040be8e (no modelled build number) is committed, unpushed.
+- Offered, not asked: footprints that keep a box drawn in a warning colour, so a real green
+  part (Phoenix MKDS on the backpack) is never mistaken for an undrawn one.
