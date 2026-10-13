@@ -49,7 +49,7 @@ def test_position_round_trip(rig):
 def test_one_step_is_timed_and_heard(rig):
     link, sim, s = rig
     quarter = servo.COUNTS_PER_TURN // 4
-    rec = run(link, [Move(0.3, 1, quarter, rpm=600)], poll_hz=500, tail=0.6)
+    rec = run(link, [Move(0.3, 1, quarter, rpm=600)], quarter, poll_hz=500, tail=0.6)
     # the command left when it was asked to, to within the computer's scheduling
     assert abs(rec.sent[0] - (rec.t_start + 0.3)) < 0.005
     # the motor got there and said so
@@ -72,8 +72,28 @@ def test_one_step_is_timed_and_heard(rig):
 
 def test_two_moves_in_order(rig):
     link, sim, s = rig
-    rec = run(link, [Move(0.1, 1, 2000), Move(0.4, 1, -2000)], tail=0.4)
+    rec = run(link, [Move(0.1, 1, 2000), Move(0.4, 1, -2000)], 2000, tail=0.4)
     assert rec.sent[0] < rec.sent[1]
     assert len(rec.arrived[1]) == 2
     pos = np.array([p for _, p in rec.positions[1]])
     assert pos.max() == 2000 and pos[-1] == 0
+
+
+def test_a_plan_past_the_limit_is_refused_before_anything_moves(rig):
+    link, sim, s = rig
+    from psgbench.run import TravelError
+    with pytest.raises(TravelError):
+        run(link, [Move(0.1, 1, 2000), Move(0.4, 1, 2000), Move(0.7, 1, -4000)], 3000)
+    assert s.position() == 0
+
+
+def test_every_scenario_ends_where_it_began():
+    from psgbench import scenarios
+    for name in scenarios.SCENARIOS:
+        moves, reach = scenarios.plan(name, 1, 400)
+        assert reach <= 4 * 400, name
+
+
+def test_string_lookup():
+    from psgbench import optical
+    assert [optical.string_inputs(n) for n in (1, 2, 3, 10)] == [(0, 3, 2), (0, 1, 0), (1, 3, 2), (4, 1, 0)]

@@ -11,9 +11,7 @@ TIMES. Samples are counted from when the board started its converters, and the b
 way MotorCtrlLink does with the motor controller's, so `time_of(sample)` is on the same clock
 as the motor commands.
 
-WHICH INPUT IS WHICH STRING is the board's wiring (elec/optical.py, converter k = U14 + k, and
-its SEC table for the four inputs); it is not decoded here. A test names the converter and the
-two slots of the string it is looking at.
+WHICH INPUT IS WHICH STRING is the board's wiring, and string_inputs() is it: see there.
 """
 from __future__ import annotations
 
@@ -64,6 +62,29 @@ def join(blocks, converter: int):
             raise ValueError("samples %d..%d are missing" % (at, b[0]))
         at += len(b[2][converter])
     return first, np.concatenate([b[2][converter] for b in blocks])
+
+
+def string_inputs(string: int):
+    """(converter, slot of photodiode A, slot of photodiode B) for the board's string 1..10.
+
+    From elec/optical.py's netlist: the twenty amplifier outputs are numbered 1A, 1B, 2A ...
+    10B (0..19); output ch goes to converter ch // 4 (U14 + that), input IN(4 - ch % 4), and
+    the firmware puts input INn in slot n - 1. So each converter has two strings, the odd
+    one in slots 3 (A) and 2 (B), the even one in slots 1 (A) and 0 (B)."""
+    if not 1 <= string <= 10:
+        raise ValueError("strings are 1..10")
+    a, b = 2 * (string - 1), 2 * (string - 1) + 1
+    return a // 4, 3 - a % 4, 3 - b % 4
+
+
+def string_signal(blocks, string: int):
+    """(first sample, SUM, DIFF) of one string at 48 kHz from received blocks: its two
+    photodiodes through the lock-in, added (the string's motion toward and away from the
+    board: the audio) and subtracted (its motion across)."""
+    conv, sa, sb = string_inputs(string)
+    first, x = join(blocks, conv)
+    a, b = demod(x[:, sa]), demod(x[:, sb])
+    return first, a + b, a - b
 
 
 def demod(x: np.ndarray):

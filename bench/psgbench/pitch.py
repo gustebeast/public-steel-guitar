@@ -16,6 +16,21 @@ import numpy as np
 from scipy.signal import butter, hilbert, sosfiltfilt
 
 
+def guess(audio: np.ndarray, sr: float, lo: float = 50.0, hi: float = 1200.0) -> float:
+    """Roughly what note this is, for track(): the lowest strong peak of the spectrum
+    between lo and hi (lowest, because a string's harmonics can be louder than its
+    fundamental)."""
+    w = np.abs(np.fft.rfft(audio * np.hanning(len(audio))))
+    hz = np.fft.rfftfreq(len(audio), 1.0 / sr)
+    band = (hz >= lo) & (hz <= hi)
+    w, hz = w[band], hz[band]
+    strong = np.nonzero(w > 0.25 * w.max())[0]
+    k = strong[0]
+    while k + 1 < len(w) and w[k + 1] > w[k]:
+        k += 1
+    return float(hz[k])
+
+
 def cents(f, ref):
     return 1200.0 * np.log2(np.asarray(f, dtype=float) / ref)
 
@@ -52,14 +67,17 @@ class Step:
 
 
 def step(f: np.ndarray, sr: float, t0: float, t_cmd: float, tol_cents: float = 3.0,
-         rest_s: float = 0.1, edge_s: float = 0.03) -> Step:
+         rest_s: float = 0.1, edge_s: float = 0.03, t_end: float | None = None) -> Step:
     """Measure one pitch change. `f` is track()'s output, its first sample at time t0;
-    `t_cmd` is when the command left. The last and first rest_s of the stretch looked at
-    are taken as "settled" and "before". edge_s at each end of the recording is not looked
-    at: the filter and the phase have nothing to stand on there."""
+    `t_cmd` is when the command left, and `t_end` where to stop looking (the next command;
+    the end of the recording if not given). The last and first rest_s of the stretch looked
+    at are taken as "settled" and "before". edge_s at each end of the recording is not
+    looked at: the filter and the phase have nothing to stand on there."""
     k = int(edge_s * sr)
     f, t0 = np.maximum(f[k:len(f) - k], 1e-6), t0 + k / sr
     t = t0 + np.arange(len(f)) / sr
+    if t_end is not None:
+        f, t = f[t < t_end], t[t < t_end]
     pre = f[(t > t_cmd - rest_s) & (t < t_cmd)]
     post = f[t > t[-1] - rest_s]
     before, after = float(np.median(pre)), float(np.median(post))
