@@ -381,6 +381,12 @@ PARTS["coil_mandrel_sleeve"] = (
     lambda: heal(__import__("src.coil_mandrel", fromlist=["e"]).sleeve()),
     "tools/coil_mandrel_sleeve.step",
     "TOOL — the mandrel's outer sleeve, bore Ø23.0. It caps the coil's diameter so the mean lands on arithmetic rather than on spring-back, and holds both axial tails against the barrel while they set. PA6-GF, printed SOLID")
+# THE Pi's CLAMP: a printed part of the instrument (in the assembly since it was drawn),
+# registered here so it is exported, weighed and checked like every other print.
+PARTS["pi_spacer"] = (
+    lambda: heal(__import__("src.electronics", fromlist=["e"]).pi_spacer()),
+    "petg-gf/pi_spacer.step",
+    "PETG-GF — the Raspberry Pi's clamp: a stepped bar that laps 2.5 mm over the board's +Y edge beside the 40-pin header and is held by one M4 x 10 button screw into the chassis boss beside the board. Prints TOP FACE DOWN: the top is one flat face, so nothing overhangs")
 # LEVER PROGRAMMING JIG -- a SHOP TOOL like the mandrel: exported, never in the assembly.
 PARTS["lever_prog_jig"] = (
     lambda: heal(__import__("src.lever_jig", fromlist=["e"]).jig()),
@@ -513,6 +519,7 @@ def _declared():
     from . import lever_jig as _LJ
     from . import belt_tensioner as _BT
     from . import coil_mandrel as _CM
+    from . import electronics as _ELX
 
     _plate = [n for n in PARTS if n.startswith("top_plate_")]
     for _names, _up, _why in (
@@ -595,6 +602,9 @@ def _declared():
          "real sleeve they stand in for: bed on the +Y face so the rail "
          "slots open at the bed and their 0.8 roofs bridge. That is "
          "SLEEVE_UP, which is what a print-fit coupon is required to match"),
+        (["pi_spacer"], _ELX.PI_SPACER_UP,
+         "electronics.PI_SPACER_UP — top face down: one flat face on the "
+         "bed, nothing overhangs"),
         (["coil_mandrel"], _CM.MANDREL_UP,
          "coil_mandrel.MANDREL_UP — flange-down on its O27.8 base, as "
          "drawn"),

@@ -652,6 +652,9 @@ PI_SPACER_LAP  = 2.5               # how far it reaches IN over the laminate
 PI_SPACER_TAIL = 4.0               # how far it runs on past the screw
 
 
+PI_SPACER_UP = (0.0, 0.0, -1.0)    # prints TOP FACE DOWN (see pi_spacer)
+
+
 def pi_spacer_boss() -> cq.Workplane:
     """The chassis boss under the spacer's screw: floor top up to the board's UNDERSIDE.
 
@@ -702,12 +705,11 @@ def pi_spacer() -> cq.Workplane:
       * its thickness is chosen for strength (3 beads), not inherited from a fastener.
       * the clamp load spreads along the edge instead of concentrating where the arc touches.
 
-    ⚠ PRINTS SHANK-FACE DOWN, AND THE STEP IS WHY IT CAN. Lying on the outboard underside the
-    lap section is a 1.60 mm TERRACE -- a step UP, supported all the way -- so there is no
-    overhang anywhere in the part. Printed the other way up that same step is a 16 mm bridge.
-    This matters today: the motor board's boss was just deleted for being a horizontal
-    cylinder on a Z-up part, and `check_ceilings` is blind to a curved downward face, so print
-    direction on a new part is checked by hand or not at all.
+    ⚠ PRINTS TOP FACE DOWN (PI_SPACER_UP), AND THE STEP IS WHY. The top is one flat face
+    across the lap, the shank and the head's pad, so on the bed everything grows straight
+    up from it and nothing overhangs: `check_ceilings --only pi_spacer` reads 0 ceilings.
+    The other way up, on the outboard underside, the lap hangs 2.50 mm out over nothing
+    1.60 off the bed (29 mm2, the same tool) -- the face that bears on the Pi.
     """
     from cadkit.fasteners import M4 as _M4
     hx, hy = PI_SPACER_XY

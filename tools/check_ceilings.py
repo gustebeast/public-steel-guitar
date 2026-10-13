@@ -201,6 +201,7 @@ DECLARED_UP = {
     "tension_fork":      ("src.tension_fork", "PRINT_UP"),
     "coil_mandrel":      ("src.coil_mandrel", "MANDREL_UP"),
     "coil_mandrel_sleeve": ("src.coil_mandrel", "SLEEVE_UP"),
+    "pi_spacer":         ("src.electronics", "PI_SPACER_UP"),
     "lever_prog_jig":    ("src.lever_jig", "JIG_UP"),
     "lever_prog_jig_base": ("src.lever_jig", "BASE_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
