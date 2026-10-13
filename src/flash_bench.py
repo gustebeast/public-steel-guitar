@@ -97,7 +97,7 @@ AT = {"lever": (-150.0, 0.0), "motor": (-40.0, 0.0), "panel": (95.0, 0.0),
       "optical": (290.0, 0.0)}
 PROBE_DY = 75.2              # a probe's header, +Y of its station
 RISE = 12.0                  # how high a lead arcs over the bench
-LINK_RISE = 26.0             # a harness lead's, over the tails
+LINK_RISE = 28.0             # a harness lead's, over the tails
 
 
 def _box(x0, x1, y0, y1, z0, z1):
