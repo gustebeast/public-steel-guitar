@@ -6206,3 +6206,8 @@ geometry and texture/color/material. Then use the same model for the first flash
   stlink-tools, dfu-util, can-utils, git. It reports 2 GB of memory (the BOM row says the
   1 GB board). A bootloader EEPROM update is offered and NOT applied. wlink: no aarch64
   release; not built.
+- wlink ON THE Pi (user: "Build wlink on the Pi"): v0.1.2 will not build on Debian's rustc
+  1.85.1 (libloading 0.9 needs 1.88, nu-pretty-hex 0.109 uses an API from 1.87); v0.1.1
+  builds with --locked in 2 m 40 s and is in /usr/local/bin. udev rule
+  /etc/udev/rules.d/99-wch-link.rules (1a86:8010, :8012 -> plugdev). NOT run against a
+  probe. Rust came from apt (cargo, rustc), not rustup.
