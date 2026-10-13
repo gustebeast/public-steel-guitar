@@ -37,7 +37,7 @@ deck cell, on a SIDE WALL of each seam cell, and on the TOP of each seam token. 
 faces, the same cutter, and between them the five figures use all seven segments.
 THE INSTRUMENT'S FONT is tried beside it, on the insert strips, where the faces are
 bigger: figures 9 mm tall on the TOP of each insert_a cell and on that strip's end
-(a SIDE WALL), and all ten figures in pairs, 7.3 tall, on the BED face of insert_c.
+(a SIDE WALL), and 7.3 tall on the stack slot -- "01234" on its BED face, "56789" on top.
 """
 from __future__ import annotations
 
@@ -218,6 +218,64 @@ def _insert(i):
     return make, pitch, NB._clr(i), faces
 
 
+STACK = (7, 8, 9)            # strings 8, 9, 10: the inserts that share one slot
+STACK_STEPS = (0.02, 0.10, 0.20, 0.30, 0.40)       # nut_block.STACK_CLR, tried
+
+
+class StackFinder(Finder):
+    """THE BASS INSERTS, TOGETHER (user, 2026-10-13). Strings 8, 9 and 10 have no wall
+    between them: the three inserts stand in ONE slot and each slides against the next,
+    so the fit is the stack's, and a single insert in a walled slot of its own does not
+    have it.
+
+    ONE NUMBER SETS THAT FIT, nut_block.STACK_CLR: an insert is the string pitch less
+    it, so it is the air between two neighbours, and half of it (+0.01) is the air to
+    the slot's walls all round. The slot is therefore the SAME at every step -- the
+    pitch plus 0.02 -- and what changes is the inserts. So this finder is the other way
+    round from the rest: ONE cell, the real slot, and FIVE SETS of three tokens, each
+    set the three real plans shrunk all round by half the step. Grooves on a token
+    count its step, as everywhere else."""
+
+    def build(self):
+        from src import nut_block as NB
+        from src import dimensions as D
+        from src.version_mark import cut_mark
+        assert all(abs(NB._clr(i) - NB.BASS_CLR) < 1e-9 for i in STACK), "not one stack any more"
+        slot = None
+        for i in STACK:
+            g = NB._plan_wire(i).offset2D(NB.BASS_CLR, kind="arc").extrude(L + 2.0)
+            slot = g if slot is None else slot.union(g)
+        sb = slot.val().BoundingBox()
+        cx, cy = (sb.xmin + sb.xmax) / 2.0, (sb.ymin + sb.ymax) / 2.0
+        wy, wx = D.MIN_WALL_2P, 3 * D.BEAD
+        x0, x1 = sb.xmin - cx - wx, sb.xmax - cx + wx
+        cell = (_box(x0, x1, sb.ymin - cy - wy, sb.ymax - cy + wy, 0, L)
+                .cut(slot.translate((-cx, -cy, -1.0))))
+        strip = _strip([cell], (sb.ymax - sb.ymin) + 2 * wy + GAP, self.cell_up)
+        strip = cut_mark(strip, "01234", (x0, 0.0, L / 2.0), (-1, 0, 0), (0, -1, 0),
+                         font=True, height=7.3)
+        strip = cut_mark(strip, "56789", (x1, 0.0, L / 2.0), (1, 0, 0), (0, 1, 0),
+                         font=True, height=7.3)
+        spread = 3.0                            # air between a set's three, on the bed
+        set_pitch = (sb.ymax - sb.ymin) + len(STACK) * spread + 4.0
+        solids = []
+        for k, step in enumerate(STACK_STEPS):
+            e = (step - NB.STACK_CLR) / 2.0     # off every face of the insert
+            for j, i in enumerate(sorted(STACK, reverse=True)):       # -Y first
+                wire = NB._plan_wire(i)
+                if abs(e) > 1e-9:
+                    wire = wire.offset2D(-e, kind="arc")
+                tok = wire.extrude(L + 2.0)             # 2 proud of the slot, to pull it by
+                tb = tok.val().BoundingBox()
+                for n in range(k + 1):          # grooves across its -Y face, at the top
+                    x = tb.xmin + GROOVE_P * (n + 1.5)
+                    tok = tok.cut(_box(x - GROOVE_W / 2, x + GROOVE_W / 2,
+                                       tb.ymin - GROOVE_D, tb.ymin + GROOVE_D, L - 2.0, L + 3.0))
+                solids.append(tok.translate((-cx, -cy + j * spread + k * set_pitch, 0)).val())
+        tokens = cq.Workplane("XY").newObject([cq.Compound.makeCompound(solids)])
+        return tokens, strip
+
+
 def finders():
     from src import chassis as CH
     from src import knee_lever as KL
@@ -275,23 +333,21 @@ def finders():
         UP_Z, UP_Z, "knee_housing", "chassis_0"))
 
     # the nut's slide inserts: SKU A between printed fingers, SKU C at the stack fit
-    # (the stack fit is 0.06 a side: there is nothing to try below it but line-to-line,
-    #  so its steps run upward)
-    for name, i, what, ds in (
-            ("insert_a", 6, "nut slide insert SKU A <-> its slot", DELTAS),
-            ("insert_c", 9, "nut slide insert SKU C <-> its slot (stack fit)",
-             (-0.04, 0.0, 0.05, 0.10, 0.15))):
-        make, pitch, c0, fc = _insert(i)
-        if name == "insert_a":      # the font, 9 tall: on TOP of each cell, and on the end
-            marks = [((fc["x1"], 0.0, L / 2.0), (1, 0, 0), (0, 1, 0), dict(font=True, height=9.0)),
-                     (((fc["x0"] + fc["x1"]) / 2.0, fc["y_end"], L / 2.0), (0, 1, 0), (0, 0, 1),
-                      dict(font=True, height=9.0, once=True, text=lambda k: "12"))]
-        else:                       # the font, 7.3 tall (a one-bead stroke): the BED face
-            marks = [((fc["x0"], 0.0, L / 2.0), (-1, 0, 0), (0, -1, 0),
-                      dict(font=True, height=7.3, text=lambda k: "%d%d" % (2 * k, 2 * k + 1)))]
-        out.append(Finder(name, what, make, (c0, c0), pitch, DOWN_X, UP_X,
-                          "nut_slide_insert_0", "keyhead_endplate", deltas=ds, one_token=True,
-                          cell_mark=marks))
+    make, pitch, c0, fc = _insert(6)
+    # the font, 9 tall: on TOP of each cell, and on the strip's end wall
+    marks = [((fc["x1"], 0.0, L / 2.0), (1, 0, 0), (0, 1, 0), dict(font=True, height=9.0)),
+             (((fc["x0"] + fc["x1"]) / 2.0, fc["y_end"], L / 2.0), (0, 1, 0), (0, 0, 1),
+              dict(font=True, height=9.0, once=True, text=lambda k: "12"))]
+    out.append(Finder("insert_a", "nut slide insert SKU A <-> its slot", make, (c0, c0), pitch,
+                      DOWN_X, UP_X, "nut_slide_insert_0", "keyhead_endplate", one_token=True,
+                      cell_mark=marks))
+    # strings 8-10 as the stack they are (see StackFinder). Its steps are STACK_CLR
+    # itself, so the table's two columns are the wall gap and that
+    from src import nut_block as NB
+    out.append(StackFinder(
+        "insert_stack", "nut slide inserts, strings 8-10, in their shared slot", None,
+        (NB.BASS_CLR, NB.STACK_CLR), 0.0, DOWN_X, UP_X, "nut_slide_insert_0",
+        "keyhead_endplate", deltas=tuple(st - NB.STACK_CLR for st in STACK_STEPS)))
     return out
 
 
@@ -339,10 +395,14 @@ def main(argv=None):
           "the same way from its tab")
     print("%-10s %-52s %s" % ("finder", "joint", "clearance (lateral / depth face) per step"))
     for f in fs:
-        steps = ["%.2f/%.2f%s" % (_clrs(f.clr[0], f.clr[1], d) + ("*" if d == 0 else "",))
-                 for d in f.deltas]
+        if isinstance(f, StackFinder):      # wall gap is half the stack clearance, +0.01
+            steps = ["%.2f/%.2f%s" % (f.clr[0] + d / 2.0, f.clr[1] + d, "*" if abs(d) < 1e-9 else "")
+                     for d in f.deltas]
+        else:
+            steps = ["%.2f/%.2f%s" % (_clrs(f.clr[0], f.clr[1], d) + ("*" if d == 0 else "",))
+                     for d in f.deltas]
         print("%-10s %-52s %s" % (f.name, f.what, "  ".join(steps)))
-    print("(* = what the instrument is drawn at today)\n")
+    print("(* = what the instrument is drawn at today; insert_stack reads wall gap / gap between two inserts)\n")
     print("%-24s %-8s %6s  %s" % ("piece", "filament", "cm3", "on the bed, tall"))
     from tools.web_materials import material_of
     total = 0.0
