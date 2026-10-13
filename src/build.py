@@ -882,8 +882,7 @@ def _belt_args(i, down=0.0):
     m, s = _belt_ends(i)
     x0, x1 = min(_CLAMP_XS), max(_CLAMP_XS)
     p = C.clamp_p(m, s, clamp_upper(i), x0, x1, down)
-    return (m, s, clamp_upper(i), p, x0, x1, *BTn.belt_ends(belt_cut(i)[1]),
-            BTn.BELT_TOOTH_IN)
+    return (m, s, clamp_upper(i), p, x0, x1, *BTn.belt_ends(belt_cut(i)[1]))
 
 
 def _string_components(i):
@@ -917,7 +916,7 @@ def _string_components(i):
     # components.belt_mesh), so the belt is in their grooves and not across their teeth.
     down = -DEMO_POSE_DZ.get(i, 0.0)
     belt_args = _belt_args(i, down)
-    mp_deg, sp_deg = C.belt_mesh(*belt_args)
+    mp_deg, sp_deg = C.belt_mesh(*belt_args, BTn.BELT_TOOTH_IN)
     # TWO SKUs: the low-plane stations carry the column that lifts their boss to the
     # same thrust plane the high-plane ones already reach.
     out.append((f"screw_pulley_{i}",
@@ -950,9 +949,9 @@ def _string_components(i):
         assert abs(-_mb.ymin - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_L) < 1e-6, (
             f"the motor body is {-_mb.ymin - MOTOR_PULLEY_STANDOFF:.2f} deep, not "
             f"dimensions.MOTOR_BODY_L {D.MOTOR_BODY_L} -- the pockets are built from that")
-    # The belt is OPEN and TOOTHED: cut to a whole number of teeth, its two ends against the
-    # end walls of its clamp's two slots, its teeth between the clamp's ribs.
-    out.append((f"belt_{i}", kept(C.belt, *belt_args)))     # 3 s to draw, 0.2 s to read
+    # The belt is OPEN: cut to a whole number of teeth, its two ends against the end walls
+    # of its clamp's two slots. It is drawn as a plain band (components.belt).
+    out.append((f"belt_{i}", kept(C.belt, *belt_args)))
     # belt-tension clamp (half A + half B + M3 screw + insert), in line with the belt, on the
     # run it is installed on (odd strings, the near row, on the upper run; even strings on
     # the lower) and WHERE IT IS SPLICED: nut on the ceiling, clamp CLAMP_END_CLR off the

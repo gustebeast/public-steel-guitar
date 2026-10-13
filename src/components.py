@@ -10,7 +10,6 @@ from __future__ import annotations
 import math
 
 import cadquery as cq
-from OCP.ShapeUpgrade import ShapeUpgrade_UnifySameDomain  # type: ignore[import]
 
 from . import dimensions as D
 from .helpers import ball_bearing, ball_bearing_y, box_at, cyl, cyl_y
@@ -398,36 +397,6 @@ def clamp_frame(motor_xyz, screw_xyz, upper, p, x0, x1, da=0.0):
 
 
 # ── GT2 open belt: the solid ─────────────────────────────────────────────
-# A tooth, as (distance from its centre along the pitch line, height above the land):
-# a polygon INSCRIBED in the pulley's own groove (a circle of _GROOVE_R, its floor
-# BELT_TOOTH_H under the crests), so a tooth drawn in a groove is inside it. That is the
-# existing pulley model's groove rather than Gates' three-radius GT2 form; the two agree to
-# a few hundredths at this size. The flat tip is the inscribing: 0.72 against 0.75.
-_TOOTH_DEG = (18.0, 55.0)        # the polygon's corners round the groove circle, off its
-                                 # bottom: more of them = a rounder tooth and more faces
-
-
-def _tooth_profile():
-    c = D.BELT_TOOTH_H - _GROOVE_R                                # groove centre over the land
-    pts = [(_GROOVE_R * math.sin(math.radians(a)), c + _GROOVE_R * math.cos(math.radians(a)))
-           for a in _TOOTH_DEG]
-    return pts + [(math.sqrt(_GROOVE_R ** 2 - c ** 2), 0.0)]      # where it meets the land
-
-
-_TOOTH = _tooth_profile()
-
-
-def _tooth_h(du: float) -> float:
-    """Tooth height over the land, du along the pitch line from the nearest tooth centre."""
-    du = abs(du)
-    x0, h0 = 0.0, _TOOTH[0][1]
-    for x1, h1 in _TOOTH:
-        if du <= x1:
-            return h0 + (h1 - h0) * (du - x0) / (x1 - x0) if x1 > x0 else h1
-        x0, h0 = x1, h1
-    return 0.0
-
-
 def _clamp_twist(d, L, p, x0, x1):
     """The belt's turn (rad, 0 at the screw pulley, pi/2 at the motor's) at d along a run
     of length L from its screw end. With a clamp on the run (p not None) the stretch
@@ -507,68 +476,43 @@ def belt_mesh(motor_xyz, screw_xyz, upper, p, x0, x1, end_a, end_b, tooth):
     return (-math.degrees(t)) % step, math.degrees(f) % step
 
 
-_TWIST_STEP = 2.0                # deg: the most a belt turns between one rigid block of
-                                 # teeth and the next (0.09 at the belt's edge)
+_TWIST_STEP = 2.0                # deg: the most a run's belt turns between two sections
+_WRAP_STEP = 10.0                # deg: likewise round a pulley
 
 
-def belt(motor_xyz, screw_xyz, upper, p, x0, x1, end_a, end_b, tooth) -> cq.Workplane:
-    """One OPEN GT2 belt, teeth inside the loop, from its cut end in the clamp's half A
-    round both pulleys to its cut end in half B -- nothing passes through the clamp.
+def belt(motor_xyz, screw_xyz, upper, p, x0, x1, end_a, end_b) -> cq.Workplane:
+    """One OPEN GT2 belt from its cut end in the clamp's half A round both pulleys to its
+    cut end in half B -- nothing passes through the clamp.
 
     upper, p, x0, x1 are clamp_frame's (which run the clamp is on, where, and its extent),
     so the belt lies in the clamp's slots wherever the clamp is put; end_a, end_b are the
-    two cut ends in the clamp's frame and `tooth` the distance from a cut end to the first
-    tooth centre (belt_tensioner.belt_ends, BELT_TOOTH_IN: where its ribs hold the teeth).
-    The teeth run on at D.BELT_PITCH from end A, so end B only lands on half B's ribs if
-    the clamp's gap is belt_tensioner.belt_fit's.
+    two cut ends in the clamp's frame (belt_tensioner.belt_ends).
 
-    ONE ruled loft through the belt's own cross-sections -- a rectangle D.BELT_W wide, the
-    land plus whatever tooth stands on it there -- taken at every corner of every tooth.
-    The cut ends are simply the first and last section, and no boolean is involved: one
-    solid, by construction.
+    DRAWN AS A PLAIN BAND, D.BELT_W by D.BELT_T: the envelope of the land and its teeth,
+    with no tooth cut into it. So it stands D.BELT_TOOTH_H into each pulley's crests and
+    the clamp's ribs, which is where the teeth are.
 
-    THE TEETH ARE RIGID AND THE LANDS BETWEEN THEM DO THE TURNING. Round a pulley every
-    tooth is a straight block, tangent at its own centre, and the land to the next is the
-    chord. Along a run the 90 deg twist is taken the same way, but in blocks of several
-    teeth -- as many as turn _TWIST_STEP between them -- because a block's sides and back
-    are then single flat faces, and that is the difference between ~5 faces a tooth and
-    24. (A section loft has no other way to be cheap: one face a side that followed the
-    twist smoothly would be a C0 surface, and OCCT's booleans, volumes and mesher all get
-    those wrong -- tried, 2026-10-12.)"""
+    ONE ruled loft through the band's own cross-sections, every _TWIST_STEP of a run's
+    90 deg turn and every _WRAP_STEP round a pulley. The cut ends are simply the first and
+    last section, and no boolean is involved: one solid, by construction."""
     frame, total, ((u1, u2), (u3, u4)) = _belt_path(motor_xyz, screw_xyz, upper, p, x0, x1,
                                                     end_a, end_b)
-    P, r = D.BELT_PITCH, _TOOTH[-1][0]
-
-    def per_block(L):                                   # teeth in a block, on a run L long
-        return max(1, int(math.radians(_TWIST_STEP) / ((math.pi / 2) / L * P)))
     L_c = _clamp_run(motor_xyz, screw_xyz, upper)[2] - (x1 - x0)
-    runs = ((0.0, u1, per_block(L_c)), (u2, u3, per_block(u3 - u2)), (u4, total, per_block(L_c)))
-    blocks, on = [], None                               # each: its teeth's centres
-    for k in range(-1, int(total / P) + 2):
-        uc = tooth + k * P
-        if uc + r <= 0.0 or uc - r >= total:
-            continue
-        run = next((j for j, (a, b, _n) in enumerate(runs)
-                    if (uc - r >= a or j == 0) and (uc + r <= b or j == 2)), None)
-        if run is None or run != on or len(blocks[-1]) >= runs[run][2]:
-            blocks.append([])
-        blocks[-1].append(uc)
-        on = run
-    back, hw = -D.BELT_T / 2, D.BELT_W / 2
+    us = []
+    for a, b, deg, step in ((0.0, u1, 90.0 * u1 / L_c, _TWIST_STEP),
+                            (u1, u2, 180.0, _WRAP_STEP),
+                            (u2, u3, 90.0, _TWIST_STEP),
+                            (u3, u4, 180.0, _WRAP_STEP),
+                            (u4, total, 90.0 * (total - u4) / L_c, _TWIST_STEP)):
+        n = max(1, math.ceil(deg / step))
+        us += [a + (b - a) * k / n for k in range(n)]
+    us.append(total)
+    ht, hw = D.BELT_T / 2, D.BELT_W / 2
     wires = []
-    for teeth in blocks:
-        mid = (teeth[0] + teeth[-1]) / 2
-        c, n, t = frame(mid)
+    for u in us:
+        o, n, t = frame(u)
         w = n.cross(t).normalized().multiply(hw)
-        us = sorted({min(max(uc + sx * x, 0.0), total)
-                     for uc in teeth for x, _h in _TOOTH for sx in (-1.0, 1.0)})
-        for u in us:
-            o = c.add(t.multiply(u - mid))
-            top = back + BELT_BACK_T + _tooth_h((u - tooth + P / 2) % P - P / 2)
-            lo, hi = o.add(n.multiply(back)), o.add(n.multiply(top))
-            wires.append(cq.Wire.makePolygon([lo.sub(w), lo.add(w), hi.add(w), hi.sub(w)],
-                                             close=True))
-    out = cq.Solid.makeLoft(wires, ruled=True)
-    uni = ShapeUpgrade_UnifySameDomain(out.wrapped, True, True, False)   # flat faces, whole
-    uni.Build()
-    return cq.Workplane("XY").add(cq.Shape.cast(uni.Shape()))
+        lo, hi = o.sub(n.multiply(ht)), o.add(n.multiply(ht))
+        wires.append(cq.Wire.makePolygon([lo.sub(w), lo.add(w), hi.add(w), hi.sub(w)],
+                                         close=True))
+    return cq.Workplane("XY").add(cq.Solid.makeLoft(wires, ruled=True))
