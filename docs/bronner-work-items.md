@@ -6148,3 +6148,10 @@ geometry and texture/color/material. Then use the same model for the first flash
 - `tools/publish_preview.py`: three tries, http.postBuffer, a loud NOT PUBLISHED banner;
   None for a deliberate skip, False for a failed one (build.py repeats it last).
 - STILL OPEN (lead): how much of collect_components + import time is bought parts.
+- Connectors (user: "did you grab the geometry ... or a bounding box"; "can you find exact
+  part numbers?"): NO part numbers are published. Raspberry Pi's reduced schematic
+  (RP-008345-DS-1) names no connector part, and its Pi 4 page lists no STEP (only the
+  drawing as PDF and DXF). So each is a part of its kind at the drawing's place and size:
+  USB-C = cadkit's own receptacle (as on our boards), micro-HDMI = KiCad's Molex 46765
+  model, Ethernet / USB-A / jack drawn here with standard openings. KiCad's RJ45 models
+  were tried and do not fit the Pi's 15.5 x 21.36 x 13.5 jack (16.0 deep or 25.4 deep).

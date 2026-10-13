@@ -17,6 +17,12 @@ the 128 small parts in SMALL. Its `Z=` callouts are heights over the board's top
   * the laminate's thickness (T, the project's own board thickness);
   * any height with no `Z=`: the memory, the radio's can, the other chips, the small parts;
   * the inside of every port (openings, tongues): the usual sizes for that connector;
+  * WHICH PARTS THE CONNECTORS ARE. Raspberry Pi publishes no part numbers for them (its
+    reduced schematic names none, and it publishes no 3D model of this board), so each is
+    a part OF ITS KIND at the drawing's place and size: the USB-C socket is cadkit's own
+    16-contact receptacle (the one on our boards), the two micro-HDMI sockets are KiCad's
+    library model of Molex's 46765, and Ethernet, the USB-A stacks and the audio jack are
+    drawn here, with the standard openings for their plugs;
   * NOTHING UNDER THE BOARD is drawn: the microSD socket is not on the drawing.
 """
 from __future__ import annotations
@@ -141,6 +147,25 @@ def _edge_port(port, ow, oh, recess=4.0):
     return shell, tongue
 
 
+MICRO_HDMI = "HDMI_Micro-D_Molex_46765-1xxx"     # KiCad's library model; mouth at its -Y
+MICRO_HDMI_MOUTH = -2.40                         # ...which is here in the model's own frame
+RJ45_OPEN = (11.7, 6.6)          # an 8P8C plug's opening...
+RJ45_LATCH = ((6.2, 1.5), (3.3, 1.2))            # ...and the two steps of its latch's keyway
+
+
+def _micro_hdmi():
+    """KiCad's micro-HDMI socket, mouth at y = 0, seated on z = 0; None on a machine
+    without KiCad's models (the port is then a shell with an opening)."""
+    try:
+        from cadkit.web.boards import library_models
+        m = library_models(MICRO_HDMI)
+        if not m:
+            return None
+        return cq.importers.importStep(m[0]["file"]).translate((0, -MICRO_HDMI_MOUTH, 0))
+    except Exception:
+        return None
+
+
 USB_A_OPEN = (12.5, 5.1)         # a USB-A mouth
 USB_A_Z = (4.4, 12.0)            # the two mouths of a stack, over the board's top face
 
@@ -152,20 +177,50 @@ def parts() -> dict:
     for x, y in HOLES:
         board = board.cut(cq.Workplane("XY").circle(HOLE_D / 2).extrude(T).translate((x, y, 0)))
 
-    shells, black, blue = [], [], []
-    shells.append(_end_port(ETH, [(6.6, 11.7, 8.2)], recess=11.0))
+    shells, black, blue, gold = [], [], [], []
+    # Ethernet: the 8P8C opening with its latch keyway toward the board, the eight
+    # contacts under its roof, and the moulding that closes its back
+    yc, (_w, _d, eh), x1 = ETH
+    zc = eh / 2 + 0.6
+    keys, z = [], zc - RJ45_OPEN[1] / 2
+    for kw, kh in RJ45_LATCH:
+        keys.append((z - kh / 2, kw, kh))
+        z -= kh
+    shells.append(_end_port(ETH, [(zc,) + RJ45_OPEN] + keys, recess=11.0))
+    black.append(_box(x1 - 11.0, x1 - 10.0, yc - RJ45_OPEN[0] / 2, yc + RJ45_OPEN[0] / 2,
+                      T + zc - RJ45_OPEN[1] / 2, T + zc + RJ45_OPEN[1] / 2))
+    for k in range(8):
+        y = yc + (k - 3.5) * 1.02
+        gold.append(_box(x1 - 10.0, x1 - 2.5, y - 0.2, y + 0.2,
+                         T + zc + RJ45_OPEN[1] / 2 - 0.5, T + zc + RJ45_OPEN[1] / 2))
     for port, tongues in ((USB2, black), (USB3, blue)):
         shells.append(_end_port(port, [(z,) + USB_A_OPEN for z in USB_A_Z]))
         yc, x1 = port[0], port[2]
         for z in USB_A_Z:                        # the tongue in each mouth
             tongues.append(_box(x1 - 6.0, x1 - 1.0, yc - 5.6, yc + 5.6, T + z + 0.3, T + z + 2.2))
-    usbc, tongue = _edge_port(USB_C, 8.0, 2.4)
-    shells.append(usbc)
-    black.append(tongue)
+    # USB-C: the receptacle our own boards carry (cadkit.web.parts.usb_c), at the
+    # drawing's size and place; its shell's legs go through the laminate
+    from cadkit.web import parts as WP
+    xc, (w, d, h), y0 = USB_C
+    for piece, colour in WP.usb_c(w, d, h):
+        piece = piece.translate((xc, y0, T))
+        if colour == WP.GOLD:
+            gold.append(piece)
+        elif colour == WP.BLACK:
+            black.append(piece)
+        else:
+            shells.append(piece)
+            board = board.cut(piece)
+    hdmi = _micro_hdmi()
     for port in HDMI:
-        shell, tongue = _edge_port(port, 5.9, 2.2)
-        shells.append(shell)
-        black.append(tongue)
+        if hdmi is None:
+            shell, tongue = _edge_port(port, 5.9, 2.2)
+            shells.append(shell)
+            black.append(tongue)
+        else:
+            piece = hdmi.translate((port[0], port[2], T))
+            shells.append(piece)
+            board = board.cut(piece)
 
     # the audio jack: a moulded body, its barrel past the edge, the socket's bore
     xc, (w, d, h), y0 = JACK
@@ -191,7 +246,7 @@ def parts() -> dict:
     base, pins = header(HDR, 20, 2)
     base2, pins2 = header(POE, 2, 2)
     black += [base, base2]
-    pins = pins + pins2
+    pins = pins + pins2 + gold
 
     ffc = []
     for c, latch in zip(FFC, FFC_LATCH):
