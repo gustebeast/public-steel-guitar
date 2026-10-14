@@ -12,13 +12,18 @@ standing across the layers -- is assumed to print as drawn. Today's joints have 
 for that: the seam's head is 2.66 deep and the endplate tenon's 1.6, where two 2 mm
 corners need 4, so their printed heads are beads, not the T's on the drawing.
 
-THE RULE every coupon here is drawn to, on each NOZZLE-MADE half: convex corners at
-CONVEX_R (2.0, prints ~2.4), concave at CONCAVE_R (0.5, prints ~1.1), and room for them
-(a face carrying two convex corners is 2 * CONVEX_R long plus a bead of flat -- with no
-flat at all the two arcs meet tangent and the second will not build). A LAYER-MADE half is
-drawn to MATCH its mate (it prints as drawn): concave corners at the mate's convex
-radius plus the clearance, convex at its concave radius -- so the model shows the gap
-that prints, not a sharp pocket round a round head. The user (2026-10-14): test the smallest such joint for each
+THE END STATE every pair here is drawn to (the user, 2026-10-14): BOTH halves print as
+modelled, AND the two are the same shape a clearance apart -- even clearance all round.
+  printable  a NOZZLE-MADE half's convex corners at least CONVEX_R (2.0), its concave at
+             least CONCAVE_R (0.5); a LAYER-MADE half prints as drawn, so anything goes.
+  matched    a tenon corner of radius r faces a socket corner of r + c (tenon convex,
+             socket concave) or r - c (tenon concave, socket convex): the offset curve.
+Both hold when each tenon radius is the LARGER of its own minimum and what its mate's
+minimum asks of it -- matched() -- and one pass settles it, since a rounder corner never
+prints worse. What it can cost is ROOM (a face carrying two convex corners is their two
+radii plus a bead of flat -- with no flat the arcs meet tangent and the second will not
+build), so the shapes below are sized from matched() at the loosest step. _gaps() then
+MEASURES the result on the solids: no interference, and no air past the clearance. The user (2026-10-14): test the smallest such joint for each
 orientation pair the instrument uses, all in PETG-GF, before any joint in it changes.
 
   NOZZLE / NOZZLE  (drop-in tee: chassis seam, pedal-bar splice, bar-latch rail)
@@ -52,13 +57,31 @@ from . import fit_round2 as R2
 HERE = pathlib.Path(__file__).resolve().parent
 CONVEX_R = 2.0               # a nozzle-made convex corner: prints ~2.4
 CONCAVE_R = 0.5              # a nozzle-made concave corner: prints ~1.1
-NOZZLE_HALF = (CONVEX_R, CONCAVE_R)
+NOZZLE_MIN = (CONVEX_R, CONCAVE_R)   # (convex, concave) a nozzle-made half can print
+LAYER_MIN = (0.0, 0.0)               # a layer-made half prints what is drawn
 WALL = 2 * D.BEAD            # 1.6, every socket wall
 BACK = 4 * D.BEAD            # 3.2 behind a drop-in socket's head: its number is cut there,
                              # 1.6 deep, and leaves a full wall
 
+
+
+def matched(c, tenon_min, socket_min):
+    """((convex, concave) of the tenon, (convex, concave) of the socket) at clearance `c`:
+    each tenon radius the larger of its own printable minimum and what the mating socket
+    corner's minimum needs (its convex r - c, its concave r + c), the socket the tenon's
+    offset curve."""
+    tc = max(tenon_min[0], socket_min[1] - c)
+    tv = max(tenon_min[1], socket_min[0] + c)
+    return (tc, tv), (max(tv - c, 0.0), tc + c)
+
+
+TEE = [(0.20, 0.30), (0.25, 0.30), (0.30, 0.30), (0.35, 0.30), (0.40, 0.30)]
+ROUND = [0.20, 0.25, 0.30, 0.35, 0.40]
+ROOT_R = matched(max(c for c, _b in TEE), NOZZLE_MIN, NOZZLE_MIN)[0][1]   # 2.4: the tee
+                                                    # tenon's root, matched to the lip's 2.0
+
 NECK_W = 2 * D.BEAD                                 # 1.6, the quality tier
-HEAD_W = NECK_W + 2 * (CONCAVE_R + CONVEX_R + D.BEAD / 2)   # 7.4: each overhang a root, a
+HEAD_W = NECK_W + 2 * (ROOT_R + CONVEX_R + D.BEAD / 2)   # 11.2: each overhang a root, a
                                                     # corner and a half bead of flat between
 HEAD_D = 2 * CONVEX_R + D.BEAD                      # 4.8: two convex corners and a bead of flat
 LIP_T = 2 * CONVEX_R + D.BEAD                       # 4.8: the socket lip's two, likewise
@@ -67,8 +90,6 @@ WAIST = 4 * D.BEAD                                  # 3.2: the mushroom waist (c
 MUSH_CELL_T = 14 * D.BEAD                           # 11.2: the grown cavity plus three beads
                                                     # behind it, where its (deepened) number is cut
 
-TEE = [(0.20, 0.30), (0.25, 0.30), (0.30, 0.30), (0.35, 0.30), (0.40, 0.30)]
-ROUND = [0.20, 0.25, 0.30, 0.35, 0.40]
 MUSHROOM = [(0.15, 0.50), (0.20, 0.50), (0.25, 0.50), (0.30, 0.50), (0.20, 0.70)]
 OCTAGON = [(0.15, 0.60, 0.0), (0.20, 0.60, 0.0), (0.25, 0.60, 0.0), (0.30, 0.60, 0.0)]
 TAG = "fit3"
@@ -84,25 +105,50 @@ def _round_u0(c):
 # plane for the whole strip, so that face must not move with the step
 D_TEE = LIP_T + max(c for c, _b in TEE) + HEAD_D + max(b for _c, b in TEE) + BACK
 D_ROUND = max(_round_u0(c) + BULB_R + c for c in ROUND) + BACK
-LOG = {}                     # finder name -> [each step's corner log], for the table
+LOG = {}                     # finder name -> [(corner log, radii asked, gaps)], per step
 
 
 def _poly(pts, z0, z1):
     return cq.Workplane("XY").polyline(pts).close().extrude(z1 - z0).translate((0, 0, z0))
 
 
-def _drop_pair(tenon_pts, cavity, host_w, host_d, name):
+def _gaps(token, cell, axis, beyond):
+    """The clearance as built: points round the tenon's profile (a section at mid-length),
+    each one's distance to the socket. Only points past the token's own face count
+    (`beyond(u, v)`): the host faces are coupon, not joint. Returns the sorted gaps."""
+    import OCP.BRepBuilderAPI as BB
+    import OCP.gp as gp
+    pln = (gp.gp_Pln(gp.gp_Pnt(0, 0, F.L / 2.0), gp.gp_Dir(0, 0, 1)) if axis == "z" else
+           gp.gp_Pln(gp.gp_Pnt(F.L / 2.0, 0, 0), gp.gp_Dir(1, 0, 0)))
+    plane = cq.Face(BB.BRepBuilderAPI_MakeFace(pln, -200, 200, -200, 200).Face())
+    sec = token.val().intersect(plane)
+    cs = cell.val()
+    out = []
+    for e in sec.Edges():
+        for k in range(41):
+            q = e.positionAt(k / 40.0)
+            u, v = (q.x, q.y) if axis == "z" else (q.y, q.z)
+            if beyond(u, v):
+                out.append(cs.distance(cq.Vertex.makeVertex(q.x, q.y, q.z)))
+    return sorted(out)
+
+
+def _record(name, token, cell, axis, beyond, radii):
+    F.ROUND_LOG.clear()
+    token, cell = F._round_pair(token, cell, axis, dict(radii, hosts=False))
+    LOG.setdefault(name, []).append((F.ROUND_LOG[0], radii, _gaps(token, cell, axis, beyond)))
+    return token, cell
+
+
+def _drop_pair(tenon_pts, cavity, host_w, host_d, name, c):
     """A drop-in pair in fit_finder's _drop frame (X depth past the seam, Y width, Z the
-    drop; both halves print +Z): `tenon_pts` the tenon's plan (from x = -1, inside its
-    host), `cavity` the socket cutter; both halves rounded to the rule."""
+    drop; both halves print +Z, both nozzle-made): `tenon_pts` the tenon's plan (from
+    x = -1, inside its host), `cavity` the socket cutter; rounded to matched()."""
     hw = host_w / 2.0
     token = F._box(-host_d, 0, -hw, hw, 0, F.L).union(_poly(tenon_pts, 0, F.L))
     cell = F._box(0, host_d, -hw, hw, 0, F.L).cut(cavity)
-    F.ROUND_LOG.clear()
-    token, cell = F._round_pair(token, cell, "z", {"tenon": NOZZLE_HALF, "socket": NOZZLE_HALF,
-                                                    "hosts": False})
-    LOG.setdefault(name, []).append(F.ROUND_LOG[0])
-    return token, cell
+    rt, rs = matched(c, NOZZLE_MIN, NOZZLE_MIN)
+    return _record(name, token, cell, "z", lambda u, v: u > 1e-3, {"tenon": rt, "socket": rs})
 
 
 def tee(c, bc):
@@ -116,7 +162,7 @@ def tee(c, bc):
            .union(_poly([(lip - c, -h2 - c), (lip + HEAD_D + bc, -h2 - c),
                          (lip + HEAD_D + bc, h2 + c), (lip - c, h2 + c)], -1.0, F.L + 1.0)))
     host_w = HEAD_W + 2 * c + 2 * WALL
-    return _drop_pair(pts, cav, host_w, D_TEE, "tee")
+    return _drop_pair(pts, cav, host_w, D_TEE, "tee", c)
 
 
 def round_head(c):
@@ -133,11 +179,8 @@ def round_head(c):
     host_d = D_ROUND
     token = F._box(-host_d, 0, -hw, hw, 0, F.L).union(neck).union(bulb)
     cell = F._box(0, host_d, -hw, hw, 0, F.L).cut(hole)
-    F.ROUND_LOG.clear()
-    token, cell = F._round_pair(token, cell, "z", {"tenon": NOZZLE_HALF, "socket": NOZZLE_HALF,
-                                                    "hosts": False})
-    LOG.setdefault("round", []).append(F.ROUND_LOG[0])
-    return token, cell
+    rt, rs = matched(c, NOZZLE_MIN, NOZZLE_MIN)
+    return _record("round", token, cell, "z", lambda u, v: u > 1e-3, {"tenon": rt, "socket": rs})
 
 
 def _drop_finder(name, what, make, steps, host_w, host_d):
@@ -173,10 +216,31 @@ def finders():
     return out + [ep, octa]
 
 
+def _offset_cavity(token, c, bc):
+    """The socket cutter for an x-running tenon standing on z = 0: the tenon's profile
+    (with a neck-wide stub run down through the mouth) offset by `c`, swept up a further
+    `bc - c` so the top alone gets `bc`, run the length of the cell and a mm past each end."""
+    body = token.val()
+    sec = body.intersect(cq.Face.makePlane(400, 400, cq.Vector(F.L / 2.0, 0, 0), cq.Vector(1, 0, 0)))
+    n = min(abs(e.startPoint().y) for e in sec.Edges()
+            if e.geomType() == "LINE" and min(e.startPoint().z, e.endPoint().z) > 1e-6
+            and abs(e.startPoint().y - e.endPoint().y) < 1e-6)
+    part = (cq.Workplane("XY").add(body).intersect(F._box(-1, F.L + 1, -50, 50, 0, 50))
+            .union(F._box(0, F.L, -n, n, -1 - c, 0.1)))
+    end = part.faces("<X").val()
+    prof = cq.Face.makeFromWires(end.outerWire().offset2D(c, "arc")[0])
+    cut = cq.Workplane("XY").add(cq.Solid.extrudeLinear(prof, cq.Vector(F.L + 2.0, 0, 0))
+                                 .translate(cq.Vector(-1.0, 0, 0)))
+    return cut.union(cut.translate((0, 0, bc - c))) if bc > c else cut
+
+
 def _mushroom_make(base_make):
-    """The endplate finder's maker with the waist grown to WAIST, the TENON (the
-    nozzle-made half) rounded to the rule and the layer-made socket rounded to match it
-    (layer-made corners print as drawn, so the socket is drawn as the tenon prints)."""
+    """The endplate finder's maker with the waist grown to WAIST and both halves to
+    matched(): the tenon (nozzle-made) rounded, the socket (layer-made) cut as the
+    rounded tenon's TRUE OFFSET -- c on every side and on the 45 degree faces under the
+    head, `bc` only on top. cadkit's own mortise offsets the profile c sideways and `bc`
+    upward, which leaves the faces under the head (the pull-out bearing faces) at
+    (c + bc) / sqrt(2) and their arcs off-centre: matched in angle, not in clearance."""
     from src import chassis as CH
     from cadkit.joinery import joint
 
@@ -192,16 +256,13 @@ def _mushroom_make(base_make):
         token = F._box(0, F.L, -hw, hw, -10 * D.BEAD, 0).union(J.tenon(root=root, length=F.L))
         so = getattr(J, "standoff", 0.0)
         assert J.height + bc + 3 * D.BEAD <= MUSH_CELL_T + 1e-9, "no room behind the cavity for its number"
-        cell = (F._box(0, F.L, -hw, hw, so, MUSH_CELL_T)
-                .cut(J.mortise(drop=root + 1.0, length=F.L + 2.0).translate((-1.0, 0, 0))))
-        F.ROUND_LOG.clear()
-        # the socket drawn to MATCH the tenon: each concave corner the tenon's printed
-        # convex one grown by the clearance (parallel faces, not a sharp pocket round a
-        # round head), each convex one the tenon's concave radius
-        token, cell = F._round_pair(token, cell, "x", {"tenon": NOZZLE_HALF,
-                                                        "socket": (CONCAVE_R, CONVEX_R + c),
-                                                        "hosts": False})
-        LOG.setdefault("mushroom", []).append(F.ROUND_LOG[0])
+        rt, rs = matched(c, NOZZLE_MIN, LAYER_MIN)
+        token, lt = F._round(token, "x", rt, False)
+        cell = F._box(0, F.L, -hw, hw, so, MUSH_CELL_T).cut(_offset_cavity(token, c, bc))
+        cell, ls = F._round(cell, "x", rs, False)
+        beyond = lambda u, v: v > so + 1e-3              # noqa: E731
+        LOG.setdefault("mushroom", []).append(({"tenon": lt, "socket": ls}, {"tenon": rt, "socket": rs},
+                                               _gaps(token, cell, "x", beyond)))
         return token, cell
     return make
 
@@ -235,11 +296,21 @@ def main(argv=None):
         for k, d in enumerate(steps):
             dd = d if isinstance(d, tuple) else (d,)
             print("   %d    %s" % (k + 1, " / ".join("%.2f" % v for v in dd[:2])))
+    steps = {"tee": TEE, "round": ROUND, "mushroom": MUSHROOM}
     for name, logs in LOG.items():
-        short = [(half, kind, used, want) for half in ("tenon", "socket") for u, v, kind, used in logs[0][half]
-                 for want in [NOZZLE_HALF[0] if kind == "convex" else NOZZLE_HALF[1]]
-                 if used is None or (name != "mushroom" or half == "tenon") and used < want - 1e-9]
-        print("%s corners not at the rule (step 1): %s" % (name, short if short else "none"))
+        print("%s   (radii tenon convex/concave | socket convex/concave, then the gap as built)" % name)
+        for k, (log, radii, gaps) in enumerate(logs[:len(steps[name])]):
+            d = steps[name][k]
+            c, bc = (d, d) if not isinstance(d, tuple) else d
+            off = [(half, kind, used) for half in ("tenon", "socket") for u, v, kind, used in log[half]
+                   for want in [radii[half][0 if kind == "convex" else 1]]
+                   if kind and want > 1e-9 and (used is None or abs(used - want) > 1e-6)]
+            at_c = sum(abs(g - c) < 0.01 for g in gaps) / float(len(gaps))
+            print("   %d  c %.2f  %.2f/%.2f | %.2f/%.2f   gap %.3f..%.3f (%.0f%% at c)%s%s" % (
+                k + 1, c, radii["tenon"][0], radii["tenon"][1], radii["socket"][0], radii["socket"][1],
+                gaps[0], gaps[-1], 100 * at_c,
+                "" if gaps[-1] <= max(c, bc) + 0.01 else "   AIR PAST THE CLEARANCE",
+                "" if not off else "   CORNERS OFF: %s" % off))
     lo = [min(getattr(s.BoundingBox(), a_) for _n, s in pl) for a_ in ("xmin", "ymin", "zmin")]
     hi = [max(getattr(s.BoundingBox(), a_) for _n, s in pl) for a_ in ("xmax", "ymax", "zmax")]
     print("plate: %d pieces, %.1f cm3, %.1f x %.1f, %.1f tall" % (

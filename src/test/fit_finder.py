@@ -95,7 +95,8 @@ def _round(body, axis, r, hosts=True):
     corner comes out about 2 mm round whatever is drawn under that, a concave one about
     1 mm -- so each kind is drawn at what it will print). A corner is convex where the
     solid fills ONE quadrant round it, concave where it fills three. One edge at a time,
-    and a radius the edge has no room for is tried smaller (to 0.4) before it is
+    and a radius the edge has no room for is tried smaller (to 0.4, or to a smaller
+    asked radius) before it is
     skipped. hosts=False leaves the host block's own side edges (its +/-Y faces) sharp:
     they are coupon, not joint. Returns (body, [(u, v, kind, radius used or None)])."""
     cx, cv = (r, r) if not isinstance(r, tuple) else r
@@ -132,7 +133,7 @@ def _round(body, axis, r, hosts=True):
         want = cx if kind == "convex" else cv if kind == "concave" else 0.0
         used = None
         rr = want
-        while sel and rr >= 0.4 - 1e-9:
+        while sel and rr > 1e-9 and rr >= min(0.4, want) - 1e-9:
             try:
                 new = body.newObject(sel).fillet(rr)
                 if new.val().isValid() and len(new.val().Solids()) == 1:
