@@ -16,7 +16,8 @@ deep -- from the motor bay's floor at z -71.35 out to the bed face at -81.85. Th
 sits ON TOP of that band and shines into it; the 10.50 of PCTG is the diffuser.
 
 ⚠ EVERYTHING ABOVE IT IS EMPTY, AND THAT IS WHY THIS IS EASY. A box swept the whole run
-at 15 mm wide and 5.85 tall (tools/_probe_mouth.py): **clear end to end**, with the
+at 15 mm wide and 5.85 tall (a one-off probe, since retired; the board has since grown
+-Y to y 31.05): **clear end to end**, with the
 belt tensioners' lowest feature at z -65.22 and the +Y rail's inner face at y 55.55 the
 only two things anywhere near. Both mouths are open too -- 34.4 mm of clear approach at
 the bridge end and 44.8 at the keyhead end, bounded only by the endplates, which are not
@@ -541,7 +542,7 @@ def slot_cut():
     # ⚠ THE CORRIDOR STARTS BEFORE THE WINDOW DOES. String 1's faceplate wall runs 13.7 mm
     # past the window's -X end, and the slot cut used to stop AT that end -- so the wall
     # stood whole across the mouth and no board could have been slid in past it. Found as
-    # 5.3 mm3 of one free plunger inside chassis_2 (tools/_probe_foot_cut.py).
+    # 5.3 mm3 of one free plunger inside chassis_2 (the overlap gate now covers it).
     x0, x1 = window()[0] - MOUTH_CUT, window()[1]
     floor = window()[4]
     top = clear_top()

@@ -24,7 +24,7 @@ strip lies on top of it and shines in; that 10.50 of PCTG is the diffuser, and t
 player's feet are what comes out the other side.
 
 **The whole lane above it is empty, which is why this was easy.** A 15 x 5.85 box swept
-the full run (`tools/_probe_mouth.py`): clear end to end. The only two things anywhere
+the full run (a one-off probe, since retired; the board has since grown -Y to y 31.05): clear end to end. The only two things anywhere
 near are the belt tensioners, whose lowest feature is z **-65.22** across y 38.15..47.08,
 and the +Y rail's inner face at y **55.55**. Both mouths are open too — 44.8 mm of clear
 approach at the keyhead end, 34.4 at the bridge — bounded only by the endplates.
