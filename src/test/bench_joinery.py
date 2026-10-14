@@ -299,7 +299,7 @@ def source_of(name):
     for c in COUPONS:
         if name == "test_" + c.name:
             return c.sources[-1]
-    if name.startswith("test_fit2_"):       # round 2: one plate, all PETG-GF
+    if name.startswith(("test_fit2_", "test_fit3_")):     # rounds 2 and 3: PETG-GF plates
         return "chassis_0"
     if name.startswith("test_fit_"):
         from . import fit_finder
@@ -310,7 +310,7 @@ def source_of(name):
 VIEW_LIFT = 160.0          # the scratch view: coupons float this far over their parts
 
 
-# the tab shows the round on the bench; True adds the bench coupons and round 1 back
+# the tab shows the round on the bench; True adds the bench coupons and rounds 1-2 back
 ALL_ROUNDS = False
 
 
@@ -320,16 +320,17 @@ def assembly(live=False):
     the part it is a piece of."""
     comps = components(live)[0] if ALL_ROUNDS else None
     from . import fit_finder                      # the thumbnails, in a row in front
-    from . import fit_round2                      # ...and round 2's plate, as it prints
+    from . import fit_round2                      # ...round 2's plates, as they print
+    from . import fit_round3                      # ...and round 3's, the one on the bench
     # ON TRIAL IN THIS TAB (user, 2026-10-13): the keyhead as this branch draws it -- the
     # bass stack's roof left open, its outer wall doubled -- under its own name, so it
     # stands in the instrument in place of the lead's and the two tabs can be compared
     from src import keyhead_endplate as KE
     from src.helpers import heal
-    shown = fit_round2.assembly() + [("keyhead_endplate", heal(KE.keyhead_endplate))]
+    shown = fit_round3.assembly() + [("keyhead_endplate", heal(KE.keyhead_endplate))]
     if ALL_ROUNDS:
         shown += [("test_" + c.name, c.build(comps)[0].translate((0, 0, VIEW_LIFT)))
-                  for c in COUPONS] + fit_finder.assembly()
+                  for c in COUPONS] + fit_finder.assembly() + fit_round2.assembly()
     return shown
 
 

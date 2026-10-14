@@ -87,12 +87,14 @@ INSERT_A = (0.0, 0.05, 0.10, 0.15, 0.20)       # added to the slot's own 0.20: 0
 STACK = (0.15, 0.20, 0.25, 0.30, 0.35)         # the gap between two bass inserts
 
 
-def finders():
-    """Round 1's seam, endplate and octagon finders, re-stepped."""
+def finders(steps=None):
+    """Round 1's finders, re-stepped from `steps` (this round's STEPS by default); only
+    the joints it names."""
+    steps = STEPS if steps is None else steps
     out = []
     for f in F.finders():
-        if f.name in STEPS:
-            f.deltas = tuple(STEPS[f.name])
+        if f.name in steps:
+            f.deltas = tuple(steps[f.name])
             out.append(f)
     return out
 
@@ -110,7 +112,7 @@ def _rot(w, up):
     return w.rotate((0.0, 0.0, 0.0), tuple(axis), deg)
 
 
-def _group(f, which="both"):
+def _group(f, which="both", tag="fit2"):
     """One joint as it prints: [(name, solid)] with the strip standing at x >= 0 and each
     token beside it, level with its own cell; and the group's width in X. `which` keeps
     only the "strip" or only the "tokens" (which then start at x = 0), for a joint whose
@@ -121,7 +123,7 @@ def _group(f, which="both"):
     strip = _rot(strip, f.cell_up)
     sb = strip.val().BoundingBox()
     strip = strip.translate((-sb.xmin, 0.0, -sb.zmin))
-    out = [("fit2_%s_strip" % f.name, strip.val())] if which != "tokens" else []
+    out = [("%s_%s_strip" % (tag, f.name), strip.val())] if which != "tokens" else []
     if which == "strip":
         return out, sb.xlen
     x_tok = sb.xlen + BESIDE if which == "both" else 0.0
@@ -137,7 +139,7 @@ def _group(f, which="both"):
         tb = t.val().BoundingBox()
         t = t.translate((x_tok - tb.xmin, cy - (tb.ymin + tb.ymax) / 2.0, -tb.zmin))
         width = max(width, x_tok + tb.xlen)
-        out.append(("fit2_%s_token_%d" % (f.name, k + 1), t.val()))
+        out.append(("%s_%s_token_%d" % (tag, f.name, k + 1), t.val()))
     return out, width
 
 
@@ -156,7 +158,7 @@ def _inserts():
     return fs["insert_a"], fs["insert_stack"]
 
 
-def plate(filament="petg-gf"):
+def plate(filament="petg-gf", steps=None, tag="fit2", inserts=True):
     """[(name, solid)] for one plate, bed at z = 0.
 
     "petg-gf": the three joints that are PETG-GF on both sides, each strip with its
@@ -166,29 +168,29 @@ def plate(filament="petg-gf"):
     five sets of three bass inserts."""
     out, x = [], 0.0
     ins_a, stack = _inserts()
-    steps, F.STACK_STEPS = F.STACK_STEPS, STACK       # the stack finder reads its steps here
+    saved, F.STACK_STEPS = F.STACK_STEPS, STACK       # the stack finder reads its steps here
     try:
-        for f in finders():
+        for f in finders(steps):
             split = f.name in SPLIT
             if split != (filament == "pctg") and not (split and filament == "petg-gf"):
                 continue
             which = "both" if not split else ("tokens" if filament == "pctg" else "strip")
-            grp, w = _group(f, which)
+            grp, w = _group(f, which, tag)
             y0 = min(sh.BoundingBox().ymin for _n, sh in grp)
             out += [(n, sh.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, sh in grp]
             x += w + BETWEEN
-        for f in (ins_a, stack):
+        for f in (ins_a, stack) if inserts else ():
             tokens, strip = f.build()
             if filament == "petg-gf":
                 sh, w = _set_down(strip, f.cell_up, x)
-                out.append(("fit2_%s_strip" % f.name, sh))
+                out.append(("%s_%s_strip" % (tag, f.name), sh))
             else:
                 row, w = _set_down(tokens, f.token_up, x)
-                out += [("fit2_%s_token_%d" % (f.name, k + 1), t)
+                out += [("%s_%s_token_%d" % (tag, f.name, k + 1), t)
                         for k, t in enumerate(row.Solids())]
             x += w + BETWEEN
     finally:
-        F.STACK_STEPS = steps
+        F.STACK_STEPS = saved
     # a solid that is valid as drawn can fail the checker once it is turned (a
     # tolerance, not a shape: the volume does not move); ShapeFix settles it
     return [(n, sh if sh.isValid() else sh.fix()) for n, sh in out]
