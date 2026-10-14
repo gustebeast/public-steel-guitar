@@ -78,6 +78,46 @@ def pieces(radii=RADII, first=1):
     return out
 
 
+# SET 3, STANDING (user, 2026-10-14): the same ring stood up as a DIAMOND, its profile
+# across the layers, so its corners are made by LAYER STACKING -- the joints' layer-made
+# halves are drawn on the assumption that such a corner prints as drawn, and this
+# measures it. All four sides are 45 degree faces (self-supporting); the bottom vertex is
+# cut off where the diamond is FOOT_W wide and stood on a foot plate. Measure as before,
+# but the DIAGONALS ACROSS (left vertex to right vertex, outside and hole): those two
+# corners are the layer-made ones; the flats are across the 45 degree faces.
+RADII_3 = (0.0, 0.4, 0.8, 1.2, 2.0)
+FOOT_W = 4 * D.BEAD          # 3.2 where the diamond stands
+FOOT_T = 2 * D.BEAD          # 1.6 foot plate
+FOOT_L = 10 * D.BEAD         # 8.0 foot plate along the ring's thickness
+STAND_T = 10 * D.BEAD        # 8.0 thick, so it stands
+
+
+def standing(r: float) -> cq.Workplane:
+    """One standing ring, profile in XZ, foot plate on the bed at z = 0, centred on x = 0."""
+    def square(s, h):
+        w = cq.Workplane("XY")
+        if r <= 0:
+            return w.rect(s, s).extrude(h)
+        return w.sketch().rect(s, s).vertices().fillet(r).finalize().extrude(h)
+    body = square(OUT_S, STAND_T).cut(square(IN_S, STAND_T + 2.0).translate((0, 0, -1.0)))
+    body = body.rotate((0, 0, 0), (0, 0, 1), 45).rotate((0, 0, 0), (1, 0, 0), 90)
+    lo = -OUT_S / math.sqrt(2.0) + FOOT_W / 2.0          # where the drawn diamond is FOOT_W wide
+    body = body.cut(cq.Workplane("XY").box(100, 100, 100).translate((0, 0, lo - 50.0)))
+    body = body.translate((0, 0, FOOT_T - lo))
+    foot = cq.Workplane("XY").box(OUT_S, FOOT_L, FOOT_T, centered=(True, True, False))
+    return body.union(foot.translate((0, -STAND_T / 2.0, 0)))
+
+
+def standing_pieces(first=len(RADII) + len(RADII_2) + 1):
+    """[(name, solid)]: set 3, numbered on the foot plate's +X end, in a row along X."""
+    out = []
+    for k, r in enumerate(RADII_3):
+        p = cut_mark(standing(r), k + first, (OUT_S / 4.0 + 1.6, -STAND_T / 2.0, FOOT_T), (0, 0, 1),
+                     (0, 1, 0), height=2.4, stroke=0.8)
+        out.append(("corner_r_%d" % (k + first), p.translate((k * (OUT_S + GAP), 0.0, 0.0)).val()))
+    return out
+
+
 def assembly(origin=(-560.0, 450.0, 160.0)):
     """[(name, Workplane)] for the scratch view: the plate as it prints."""
     return [("test_" + n, cq.Workplane("XY").newObject([s]).translate(origin)) for n, s in pieces()]

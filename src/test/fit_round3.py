@@ -23,19 +23,22 @@ minimum asks of it -- matched() -- and one pass settles it, since a rounder corn
 prints worse. What it can cost is ROOM (a face carrying two convex corners is their two
 radii plus a bead of flat -- with no flat the arcs meet tangent and the second will not
 build), so the shapes below are sized from matched() at the loosest step. _gaps() then
-MEASURES the result on the solids: no interference, and no air past the clearance. The user (2026-10-14): test the smallest such joint for each
-orientation pair the instrument uses, all in PETG-GF, before any joint in it changes.
+MEASURES the result on the solids: no interference, and no air past the clearance.
+And no wall under TWO BEADS. This is PLATE 1 of a cadkit joinery system (the user,
+2026-10-14): the smallest such joint for every print-orientation pair, PETG-GF to PETG-GF;
+plate 2 carries the pairs not here, drawn from what this one measures.
 
-  NOZZLE / NOZZLE  (drop-in tee: chassis seam, pedal-bar splice, bar-latch rail)
-    TEE    neck NECK_W, head HEAD_W x HEAD_D, socket lip LIP_T: the smallest T whose every
-           corner fits the rule (head overhang = CONCAVE_R + CONVEX_R a side, plus a half bead of flat).
-    ROUND  the same neck into a ROUND head, radius BULB_R -- a circle has no corner to
-           lose, so it may print truer in less room. Same lip.
-  NOZZLE / LAYER   (chassis -> endplate mushroom): cadkit's own mushroom, its waist grown
-           (joint depth) until the tenon's flat top and the corners either side of the
-           waist fit the rule; the socket, layer-made, keeps its 45 degree roof, rounded to match.
-  LAYER / LAYER    (octagon: knee lever, leg section, cover rail): unchanged in shape;
-           its clearances again round round 2's good 0.20 (two of those cells were lost).
+  NOZZLE / NOZZLE  (drop-in: chassis seam, pedal-bar splice, bar-latch rail)
+    TEE    neck NECK_W, head HEAD_W x HEAD_D, socket lip LIP_T: each a face's two end
+           arcs (r * tan(turn / 2) apiece) plus flat, up to the next whole bead.
+    ROUND  the same neck into a circle of BULB_R = CONVEX_R, its lip ROUND_LIP (shorter:
+           the slot meets the circle at ~67 degrees, not 90).
+  NOZZLE / LAYER   (chassis -> endplate mushroom): cadkit's mushroom, its waist grown only
+           until the head's corners hold 2.0; the socket cut as the tenon's TRUE OFFSET.
+  LAYER / LAYER    (octagon: knee lever, leg section, cover rail): OCT_W wide (a two-bead
+           stem), two-bead walls, socket likewise a true offset.
+  + the STANDING corner rings (corner_radius set 3): does a layer-made corner print as
+           drawn, as every layer-made half here assumes?
 
 Clearance steps start from round 2's sharp results, the nearest thing to these shapes
 (a sharp nozzle corner already printed ~2 mm round): seam 0.25 tight / 0.35 loose,
@@ -84,7 +87,7 @@ NECK_W = 2 * D.BEAD                                 # 1.6, the quality tier
 HEAD_W = NECK_W + 2 * (ROOT_R + CONVEX_R + D.BEAD / 2)   # 11.2: each overhang a root, a
                                                     # corner and a half bead of flat between
 HEAD_D = 2 * CONVEX_R + D.BEAD                      # 4.8: two convex corners and a bead of flat
-BULB_R = 3 * D.BEAD                                 # 2.4: the round head (4.8 across)
+BULB_R = 5 * D.BEAD / 2.0                           # 2.0: the round head, CONVEX_R (5 beads across)
 
 
 def _lip(*turns):
@@ -105,13 +108,17 @@ def _junction_turn(c):
 LIP_T = _lip(90.0, 90.0)                            # 4.8: the tee's lip, square at both ends
 ROUND_LIP = _lip(90.0, max(_junction_turn(c) for c in ROUND))   # 4.0: the round head's,
                                                     # whose inner end turns only ~67 degrees
-WAIST = 4 * D.BEAD                                  # 3.2: the mushroom waist (cadkit's is 1.6)
-MUSH_CELL_T = 14 * D.BEAD                           # 11.2: the grown cavity plus three beads
-                                                    # behind it, where its (deepened) number is cut
+WAIST = 3 * D.BEAD                                  # 2.4: the mushroom waist, the least that
+                                                    # leaves its head's corners 2.0 (1.6 holds 1.8;
+                                                    # its socket lip is 1.97 either way)
+MUSH_CELL_T = 14 * D.BEAD                           # 11.2: the grown cavity plus four beads
+                                                    # behind it: its number (1.4 deep) and two beads
 
 MUSHROOM = [(0.15, 0.50), (0.20, 0.50), (0.25, 0.50), (0.30, 0.50), (0.20, 0.70)]
 OCTAGON = [(0.15, 0.60, 0.0), (0.20, 0.60, 0.0), (0.25, 0.60, 0.0), (0.30, 0.60, 0.0)]
 TAG = "fit3"
+OCT_W = 2 * WALL             # 3.2: the octagon's width, its stem (width / 2) two beads; cadkit
+                             # would go to 2.26 on its own, with a 1.13 stem
 
 
 def _round_u0(c):
@@ -228,11 +235,37 @@ def finders():
     at, n, xd, kw = ep.cell_mark[0]
     ep.cell_mark = [((at[0], at[1], MUSH_CELL_T), n, xd, kw)]      # its bed face moved out
     octa.deltas = tuple(OCTAGON)
-    # the octagon cell's number sits on its 1.6 roof, which has no bead to spare: it keeps
-    # the plain V (0.6 deep) and leaves a bead over the mortise
+    octa.make, top, host_w = _octagon_make()
+    octa.pitch = host_w + F.GAP
     at, n, xd, kw = octa.cell_mark[0]
-    octa.cell_mark = [(at, n, xd, dict(kw, shaft=0.0))]
+    octa.cell_mark = [((at[0], at[1], top), n, xd, kw)]
     return out + [ep, octa]
+
+
+def _octagon_make():
+    """(maker, cell top, host width) for the octagon at its smallest: OCT_W wide, both
+    halves layer-made (sharp, printed as drawn), every wall two beads -- the socket's
+    sides, and its roof under the number (cut 1.4 deep into a 3.2 roof)."""
+    from src import knee_lever as KL
+    from cadkit.joinery import joint
+    cmax = max(c for c, _b, _r in OCTAGON)
+    host_w = OCT_W + 2 * cmax + 2 * WALL
+    top = max(joint(OCT_W, F.L, tenon=KL._JUP, mortise=KL._JUP, clearance=c,
+                    back_clearance=bc).height + bc for c, bc, _r in OCTAGON) + 2 * WALL
+
+    def make(k, d):
+        c, bc, _r = d
+        J = joint(OCT_W, F.L, tenon=KL._JUP, mortise=KL._JUP, clearance=c, back_clearance=bc)
+        hw = host_w / 2.0
+        token = F._box(0, F.L, -hw, hw, -6 * D.BEAD, 0).union(J.tenon(root=1.0, length=F.L))
+        # cut as the tenon's true offset, not cadkit's mortise (whose depth relief leaks
+        # into the 45 degree faces, as the mushroom's does)
+        cell = F._box(0, F.L, -hw, hw, 0, top).cut(_offset_cavity(token, c, bc))
+        LOG.setdefault("octagon", []).append(({"tenon": [], "socket": []},
+                                              {"tenon": LAYER_MIN, "socket": LAYER_MIN},
+                                              _gaps(token, cell, "x", lambda u, v: v > 1e-3)))
+        return token, cell
+    return make, top, host_w
 
 
 def _offset_cavity(token, c, bc):
@@ -242,7 +275,8 @@ def _offset_cavity(token, c, bc):
     body = token.val()
     sec = body.intersect(cq.Face.makePlane(400, 400, cq.Vector(F.L / 2.0, 0, 0), cq.Vector(1, 0, 0)))
     n = min(abs(e.startPoint().y) for e in sec.Edges()
-            if e.geomType() == "LINE" and min(e.startPoint().z, e.endPoint().z) > 1e-6
+            if e.geomType() == "LINE" and max(e.startPoint().z, e.endPoint().z) > 1e-6
+            and min(e.startPoint().z, e.endPoint().z) > -1e-6
             and abs(e.startPoint().y - e.endPoint().y) < 1e-6)
     part = (cq.Workplane("XY").add(body).intersect(F._box(-1, F.L + 1, -50, 50, 0, 50))
             .union(F._box(0, F.L, -n, n, -1 - c, 0.1)))
@@ -274,7 +308,7 @@ def _mushroom_make(base_make):
         root = CH.EP_J_ROOT
         token = F._box(0, F.L, -hw, hw, -10 * D.BEAD, 0).union(J.tenon(root=root, length=F.L))
         so = getattr(J, "standoff", 0.0)
-        assert J.height + bc + 3 * D.BEAD <= MUSH_CELL_T + 1e-9, "no room behind the cavity for its number"
+        assert J.height + bc + 4 * D.BEAD <= MUSH_CELL_T + 1e-9, "no room behind the cavity for its number"
         rt, rs = matched(c, NOZZLE_MIN, LAYER_MIN)
         token, lt = F._round(token, "x", rt, False)
         cell = F._box(0, F.L, -hw, hw, so, MUSH_CELL_T).cut(_offset_cavity(token, c, bc))
@@ -287,13 +321,20 @@ def _mushroom_make(base_make):
 
 
 def plate():
-    """[(name, solid)], bed at z = 0: every finder's strip with its tokens beside it."""
+    """[(name, solid)], bed at z = 0: every finder's strip with its tokens beside it, and
+    in a row in front the standing corner rings (corner_radius set 3), which measure the
+    layer-made corners every layer-made half here is drawn on."""
+    from . import corner_radius as CR
     out, x = [], 0.0
     for f in finders():
         grp, w = R2._group(f, "both", TAG)
         y0 = min(sh.BoundingBox().ymin for _n, sh in grp)
         out += [(n, sh.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, sh in grp]
         x += w + R2.BETWEEN
+    for n, sh in CR.standing_pieces():
+        bb = sh.BoundingBox()
+        out.append((n, sh.moved(cq.Location(cq.Vector(CR.OUT_S / 2.0 + 2.0, -bb.ymax - R2.BETWEEN,
+                                                         0.0)))))
     return [(n, sh if sh.isValid() else sh.fix()) for n, sh in out]
 
 
@@ -315,12 +356,12 @@ def main(argv=None):
         for k, d in enumerate(steps):
             dd = d if isinstance(d, tuple) else (d,)
             print("   %d    %s" % (k + 1, " / ".join("%.2f" % v for v in dd[:2])))
-    steps = {"tee": TEE, "round": ROUND, "mushroom": MUSHROOM}
+    steps = {"tee": TEE, "round": ROUND, "mushroom": MUSHROOM, "octagon": OCTAGON}
     for name, logs in LOG.items():
         print("%s   (radii tenon convex/concave | socket convex/concave, then the gap as built)" % name)
         for k, (log, radii, gaps) in enumerate(logs[:len(steps[name])]):
             d = steps[name][k]
-            c, bc = (d, d) if not isinstance(d, tuple) else d
+            c, bc = (d, d) if not isinstance(d, tuple) else d[:2]
             off = [(half, kind, used) for half in ("tenon", "socket") for u, v, kind, used in log[half]
                    for want in [radii[half][0 if kind == "convex" else 1]]
                    if kind and want > 1e-9 and (used is None or abs(used - want) > 1e-6)]
