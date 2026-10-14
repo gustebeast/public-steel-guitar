@@ -27,7 +27,6 @@ import json
 import pathlib
 
 from src import dimensions as D
-from src import components as C
 
 REPO = pathlib.Path(__file__).resolve().parents[1]
 RIG = REPO / "docs" / "rig.json"
@@ -220,7 +219,6 @@ def _verify_levers(levers) -> None:
         is one the knee pushes left; "…R" is the reflection)
       * a vertical lever's arm RISES
     """
-    import cadquery as cq
     from src import build as B
     from src import knee_lever as KL
     from src import knee_lever_vert as KV

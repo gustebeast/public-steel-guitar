@@ -203,7 +203,6 @@ def _board_solid(board):
 def _board_at(station):
     """(place, pad): the board's own frame onto the bench at its station, face up."""
     x0, y0 = AT[station]
-    t = BG.load(BOARD[station])["thickness_mm"]
 
     def place(w):
         return w.translate((x0, y0, 0.0))

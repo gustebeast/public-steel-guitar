@@ -2,7 +2,7 @@
 # elec/output_panel.frozen.json (placement frame). Run with KiCad's python from the repo
 # root, ONLY on a board whose finish.py summary carries no verify FAIL. See the note at
 # the bottom of output_panel.py.
-import pcbnew, json, sys
+import pcbnew, json
 b=pcbnew.LoadBoard("elec/out/output_panel.kicad_pcb"); mm=pcbnew.ToMM
 NETS=("THRU_DP","THRU_DM","HUB_DN1_DP","HUB_DN1_DM","HUB_DN2_DP","HUB_DN2_DM","HUB_UP_DP","HUB_UP_DM")
 out={"nets":list(NETS),"tracks":[],"vias":[]}

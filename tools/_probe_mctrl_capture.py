@@ -17,7 +17,6 @@ What this measures, because the idea lives or dies on them:
 import cadquery as cq
 
 from src.build import collect_components
-from src import electronics as EL
 from src import motor_bank as MB
 
 

@@ -41,6 +41,7 @@ KNOWN = {
     "lkl_vkl_components": "src/build.py -- scope entry point, branner's levers round",
     "body_work_components": "src/build.py -- scope entry point, bronner",
     "pedal_bar_work_components": "src/build.py -- scope entry point, branner",
+    "ui_work_components": "src/build.py -- scope entry point, brenner (the UI station)",
 }
 
 

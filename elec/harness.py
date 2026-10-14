@@ -121,21 +121,10 @@ def check_ways(ways, power, ground=("GND",), where=""):
     return ways
 
 
-def same_ways(ways, link, rails):
-    """True if a connector's pin names are `link`, once `rails` ({"+24V": "V24", ...})
-    has mapped the board's own net names onto the link's."""
-    return tuple(rails.get(w, w) for w in ways) == tuple(link)
-
-
 def ph_drop_pins():
     """Pin names for a 4-way bus-B drop: the leg blind-mate's PH and ZH housings, and
     the lever/pedal sensor boards' PH. Pin 1 is +5 V at every one of them."""
     return tuple(PH_PINOUT)
-
-
-def xh_drop_pins():
-    """Pin names for a 4-way drop: one node hanging off the bus."""
-    return tuple(XH_PINOUT)
 
 
 def xh_trunk_pins():
@@ -149,15 +138,3 @@ def ph_trunk_pins():
     return (tuple(x + "_IN" for x in PH_PINOUT)
             + tuple(x + "_OUT" for x in reversed(PH_PINOUT)))
 
-
-def xh_nets(pinout_nets):
-    """Map {name: Net} onto trunk pin NUMBERS, so a board binds by order, not by hand.
-
-    Returns [(pin_number, net)] for all eight ways of a trunk connector. The point is
-    that a board never writes `j1[3]` beside a net name again: the pairing comes from
-    XH_PINOUT, so it cannot drift from it.
-    """
-    out = []
-    for i, name in enumerate(xh_trunk_pins()):
-        out.append((i + 1, pinout_nets[name.rsplit("_", 1)[0]]))
-    return out
