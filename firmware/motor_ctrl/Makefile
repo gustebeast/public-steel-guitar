@@ -4,6 +4,7 @@
 #
 #   make            build/motor_ctrl.bin
 #   make flash      write it with wlink through the WCH-LinkE
+#   make isp        write it with wchisp through WCH's ROM loader on J4 (BOOT0 high at power-up)
 WCH   ?= $(HOME)/src/ch32v307
 EXAM  := $(WCH)/EVT/EXAM
 CDC   := $(EXAM)/USB/USBFS/DEVICE/SimulateCDC/User
@@ -59,8 +60,12 @@ $(B)/v:
 flash: $(B)/motor_ctrl.bin
 	wlink flash --address 0x08000000 $<
 
+# the .bin, never the .elf: wchisp sizes its erase from the file
+isp: $(B)/motor_ctrl.bin
+	wchisp flash $<
+
 clean:
 	rm -rf $(B)
 
-.PHONY: all flash clean
+.PHONY: all flash isp clean
 .SECONDARY:
