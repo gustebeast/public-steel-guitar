@@ -232,13 +232,13 @@ def _print_report(lib_s, src, rows, base, top):
     print(f"  module-level geometry (at import):   {module_geom:6.2f}s  {module_geom/real_total*100:4.1f}%")
     print(f"  lazy build + export (per-part loop): {lazy:6.2f}s  {lazy/real_total*100:4.1f}%")
 
-    print(f"\n  module-level geometry, heaviest src modules  (self-import = its top-level build)")
+    print("\n  module-level geometry, heaviest src modules  (self-import = its top-level build)")
     for m, s in sorted(src.items(), key=lambda kv: kv[1], reverse=True)[:top or None]:
         if s < 0.05:
             break
         print(f"    {s:6.2f}s {s/real_total*100:5.1f}%  {m}{_mark(m)}")
 
-    print(f"\n  lazy parts (builder() + export), heaviest")
+    print("\n  lazy parts (builder() + export), heaviest")
     print(f"    {'build':>7} {'export':>7} {'total':>7} {'share':>6} {'faces':>6}  part")
     for r in ok[:top or None]:
         print(f"    {r['build_s']:7.2f} {r['export_s']:7.2f} {r['total_s']:7.2f} "

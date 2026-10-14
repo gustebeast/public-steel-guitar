@@ -4,10 +4,10 @@ Not a standalone print: bridge_endplate unions this rail in and bridges it to
 the cap, so the whole bridge end is one solid. The 10 vertical screws' bottom
 supports live in ONE rail spanning the field across BOTH screw rows (+/-SCREW_ROW_DX).
 Each station seats ONE 688ZZ bearing (Ø16 OD, 5.0 wide) with a
-top ledge that backs their OUTER RINGS against the screw's UPWARD pull (the string
-pulls each carriage toward its bridge bearing, +Z). The inner rings are driven up
-from below by the printed screw_collar, so the load crosses the balls in parallel
-through both bearings. A single rail avoids the overlapping per-screw cradles that
+top ledge that backs its OUTER RING against the screw's UPWARD pull (the string
+pulls each carriage toward its bridge bearing, +Z). The inner ring is held by the
+drive pulley, which sits under it and is the retaining collar (see below), so the
+load crosses the balls. A single rail avoids the overlapping per-screw cradles that
 10 separate holders would create at 9.5 mm pitch. Built in global position.
 """
 
@@ -27,8 +27,7 @@ PRINT_UP = (-1.0, 0.0, 0.0)
 
 ACROSS  = 2 * D.BRIDGE_AXLE_Y + D.BRIDGE_ARM_W   # reach the endplate edge-ribs' outer Y
 # X span: the -X face reaches the endplate's own -X edge (BRIDGE_BASE_X0) so the
-# drivetrain-mount base is the full 25 mm wide (matching the endplate); the +X face stops
-# at SCREW_X+7, where the bridge's bottom-bridge takes over up to the +X tip.
+# drivetrain-mount base is the full 25 mm wide (matching the endplate).
 # The rail now spans the WHOLE bridge base. It used to stop at SCREW_X+7 and hand over
 # to the bridge's bottom-bridge, which worked when every seat sat on one X line; with
 # TWO ROWS the seats are at -/+SCREW_ROW_DX and the rail has to reach both.
@@ -48,22 +47,18 @@ SEAT_CLR = 0.3                              # slop under the stack (it seats UP 
 # below -- and a Ø16 bearing does not pass through Ø11.8. This is half of what replaced the drive
 # relief, which bought the same access by rebating 3.24 off the WHOLE inner face of the end wall.
 BRG_DROP = D.BRG688_W                       # 5.0
-BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -31.47, rail underside = seat mouth
-TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -22.17
+BOT      = D.SUPPORT_BRG_BOT - SEAT_CLR     # -31.85, rail underside = seat mouth
+TOP      = D.SUPPORT_BRG_Z + D.BRG_LEDGE_T  # -22.55
 HEIGHT   = TOP - BOT                        # 9.3
 # (No plane-vs-plane nut check here. The nut's lowest part is its Ø10.2 boss, which passes
 # DOWN THROUGH the ledge bore and stops on the BEARING at the bottom of it -- that is the
 # nut's floor, dimensions.SUPPORT_BRG_Z. The check that matters is the bore's radial
 # clearance, below.)
 
-# TOP-LEDGE BORE. It has to be a window that lands on the OUTER rings and NOTHING
-# else: the ledge is part of the endplate and never turns, while the inner rings turn
-# with the screw. At the old 5.5 it reached inward over the inner ring's face (that
-# ring's OD is ~5.8-6.0), so the stationary ledge would have rubbed a rotating race
-# under the full string load, every move, forever. 6.4 sits in the gap — clear of the
-# inner ring by ~0.4, still covering the outer ring (bore ~7.0-7.2) by ~0.8.
-# It is the mirror of the constraint on screw_collar's Ø5.6 pilot boss, which lands on
-# the inner rings only for the same reason from the other side.
+# TOP-LEDGE BORE. It has to be a window that lands on the OUTER ring and NOTHING
+# else: the ledge is part of the endplate and never turns, while the inner ring turns
+# with the screw, so a ledge reaching in over the inner ring's face would rub a rotating
+# race under the full string load, every move, forever.
 SEAT_LEDGE_D = 18 * D.BEAD                 # 14.4 — lands on 688ZZ's OUTER ring
 PULLEY_CH_D  = D.PULLEY_FLANGE_OD + 2 * 0.4   # 11.8 — the pulley's SWEPT circle + clearance
 assert PULLEY_CH_D < D.SUPPORT_BRG_OD + 0.2, (
@@ -81,7 +76,7 @@ assert SEAT_LEDGE_D <= 15.4, "the ledge no longer backs the 688's outer ring"
 # all the way to the bearing's inner ring, which is its stop — and that puts back the plate
 # material a full-height Ø14.4 would take out from under the guide-rod sockets.
 LEDGE_LIP_T  = 2 * D.BEAD                  # 1.6 of Ø14.4 lip on the outer ring
-LEDGE_TOP    = D.SUPPORT_BRG_Z + LEDGE_LIP_T   # -24.57, where the bore steps in
+LEDGE_TOP    = D.SUPPORT_BRG_Z + LEDGE_LIP_T   # -24.95, where the bore steps in
 NUT_BOSS_CLR = 0.5                         # radial air round the Ø10.2 boss: ~0.2 print
                                            # tolerance + runout.
                                            # ⚠ the boss is off the seller's ±0.5-1 drawing, so
@@ -99,8 +94,8 @@ assert NUT_PASS_D < SEAT_LEDGE_D, "the boss passage is wider than the lip it ste
 # Gravity is the other direction and is not close to a competing case: the screw is
 # 8.6 g, about 0.08 N, some 1700x smaller than the load it is fighting. And with the
 # strings off, when gravity IS the only force, the stack can drop exactly
-# RAIL_PULLEY_CLR (0.4 mm) before the drive pulley's bottom flange lands on this
-# rail's top face and stops it.
+# the running gap between them before the drive pulley's bottom flange lands on
+# this rail's top face and stops it.
 
 
 def _bore(d, length, at):
@@ -121,7 +116,7 @@ def seat_cutter() -> cq.Workplane:
 
     Exported because the rail is FUSED into bridge_endplate and the endplate's own
     foot block reaches -X to about x −4.2 — far enough +X to refill the +X sliver of
-    every Ø8.2 seat after the union. So the endplate re-applies this AFTER all its
+    every bearing seat after the union. So the endplate re-applies this AFTER all its
     unions; cutting only inside this module was quietly leaving 0.2 mm of material
     in the bearings' way (the overlap gate found it)."""
     tool = None

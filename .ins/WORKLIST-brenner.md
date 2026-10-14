@@ -69,7 +69,7 @@ OPEN; an item moves to DONE with the commit that closed it.
    2026-10-01). Make it a cadkit ScrewJoint with its insert when next in that file.
 
 10. **Foot strip seam by POGO (user, 2026-10-02) -- supersedes the cable plan in item 2.**
-    Measured (tools/_probe_foot_y.py): FOUR circuits are needed (24V, GND, SCK, SDT) and
+    Measured (a one-off probe, since retired): FOUR circuits are needed (24V, GND, SCK, SDT) and
     only THREE C5203987 fit under the board. Lands are 3.50 wide; the lane is the board's
     -Y edge (35.15, the motor retention -- user) to the end LED's courtyard at 47.30 =
     12.15, and four lands need 14.0 before any gap. The end LED sits at exactly the X a

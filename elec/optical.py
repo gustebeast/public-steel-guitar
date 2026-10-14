@@ -2205,33 +2205,6 @@ def _bus_spines(w=0.2, spine_w=0.25):
     return out
 
 
-def _pin_escapes():
-    """Escape vias for the pins the router leaves stranded -- see _PIN_ESCAPES.
-
-    The first was SAI_FS at the MCU, the only one of its three
-    neighbours that never got one (user spotted it in the routed board, 2026-09-25:
-    "this disconnected net SAI_FS doesn't have a via but seems like it needs one").
-
-    U6 pads 2/3/4 are SAI_SD2 / SAI_FS / SAI_SCK on a 0.5 mm pitch. The router escaped
-    SD2 at (-5.35, -26.81) and SD1 at (-5.36, -28.02) -- 1.21 mm apart, and two 0.6 vias
-    need 0.8 mm from each other, so there is no room for a THIRD between them. SAI_FS was
-    left on F.Cu and had to cross a pin field that is full on both sides (east is those
-    two vias, west is +3V3D's and SAI_SCK's surface runs), so it failed in every routing
-    this board has had -- five layouts, every corridor width, 10 passes and 50.
-
-    ⚠ MEASURED INTO A VERIFIED-EMPTY SITE, as every declared via on this board must be:
-    (-5.73, -27.09) is 0.85 mm from the pad and the nearest clear position to it, scanned
-    against the UNROUTED board (pads and declared copper) at 0.05 mm steps. It is inside
-    where SD2's escape landed, which is the point -- claiming the lane for the net that
-    cannot route pushes the two that can onto their own, and they have the whole belly.
-
-    The stub is laid WITH the via, not left for the router: an orphan via never gets
-    adopted on this board, so the pad reaches the via on F.Cu here and the router only
-    has to leave from the via on an inner layer. Same shape as _stitch_plane_pads.
-    """
-    return _escapes(_PIN_ESCAPES)
-
-
 # ⚠ THE NETS THAT FAIL ARE THE NETS WITH NO ESCAPE VIA. The user read three routings and
 # found the same thing each time (2026-09-25): "this disconnected net SAI_FS doesn't have
 # a via but seems like it needs one", then "5 ULPI_D1 is also disconnected and has no via",

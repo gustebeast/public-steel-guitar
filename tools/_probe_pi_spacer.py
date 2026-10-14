@@ -67,11 +67,6 @@ def main():
     print("within %.1f mm of the bore: %.1f mm3 of chassis to anchor into" % (MIN_WALL, host))
     if foreign:
         for v, n in sorted(foreign, reverse=True):
-            b = None
-            try:
-                b = s and None
-            except Exception:
-                pass
             print("  ⚠ FOREIGN %-20s %8.1f mm3 -- the 1.6 mm shell is not ours" % (n, v))
     else:
         print("  nothing foreign in the shell ✓")

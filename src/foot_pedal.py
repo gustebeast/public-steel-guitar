@@ -132,7 +132,6 @@ ENGAGE_P   = THROW_P / 2.0          # the half stop engages at half throw (10°)
 LOBE_RC_P  = 13.2                   # so LOBE_RC_P·sin(THROW_P) == the horizontal
                                     # lever's 4.50 stroke -> the whole feel system
                                     # transfers untouched (same trick as LKV)
-_STROKE    = LOBE_RC_P * math.sin(math.radians(THROW_P))
 _FEEL_DZ_P = LOBE_RC_P + KL.LOBE_RC          # +22.2: how far the feel block rises
 
 ARM_LEN_P  = 112 * KL.D.BEAD        # 89.6 axle -> pedal-board centre
@@ -146,7 +145,7 @@ LEVER_HW   = KL.LEVER_HW            # ±12.8 in Y (LKL's) — unchanged, so the 
 # a side and read as a stray ledge. The arm's own 25.6 face is the pad now, and the arm runs
 # ARM_TIP further so the foot surface still ends where the board's did.
 PAD_WY     = 2 * LEVER_HW           # 25.6 the working face's width (local Y = guitar X)
-ARM_TIP    = 4.0                    # the arm's reach past ARM_LEN_P (the old board's overhang)
+ARM_TIP    = 5 * D.BEAD             # 4.0 the arm's reach past ARM_LEN_P (the old board's overhang)
 # Past REST the other way (+theta) nothing but gravity acts, and gravity pulls INTO the spring,
 # so the pedal barely goes there -- the recess still covers a small margin of it.
 REST_OVER_P = 5.0
@@ -168,9 +167,8 @@ N_PEDALS = PB.N_PEDALS
 assert PAD_WY <= PB.PEDAL_W, (
     f"the pad (the arm, {PAD_WY}) is wider than the {PB.PEDAL_W} the bar lays each station "
     f"out on")
-# ⚠ PB.PEDAL_W (28) is also described as "the pedal's X footprint, marginally wider than its
-# 27.4 housing" -- stale: the housing is 2*HOUS_HW = 36.4 now. It still works (the splices clear
-# every housing by >= 13, measured 2026-09-21), but it is the bar's number to update.
+# ⚠ PB.PEDAL_W (28) is narrower than the housing (2*HOUS_HW = 36.4). It still works (the
+# splices clear every housing by >= 13, measured 2026-09-21), but it is the bar's number to update.
 
 
 def swing(s, deg):

@@ -15,7 +15,7 @@ class Stub:
 t=time.time(); _o=W._wire
 W._wire=lambda pts,d=W.WIRE_D: Stub(pts,d)
 try: out=dict((n,o) for n,o in W.build_wires() if isinstance(o,Stub))
-except Exception as e:
+except Exception:
     import traceback; traceback.print_exc(); sys.exit(1)
 print("stub build %.1fs, %d polylines"%(time.time()-t,len(out)))
 def segd(p1,q1,p2,q2):

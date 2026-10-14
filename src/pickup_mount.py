@@ -1,28 +1,8 @@
-"""Pickup carrier hardware — the DEMO pickup body + its mount screws.
+"""Pickup hardware: the DEMO pickup body (Lace Alumitone 4.0 bar) and its dimensions.
 
-The pickup is carried by the swappable PICKUP PIECE in the deck (top_plate.py):
-a pocket that rides the SAME rail grooves as the other deck cover pieces. The
-pickup rests on a full-width Z-PLATE that three M4 SET-SCREW JACKS lift/tilt
-(3-point -> height + across-string tilt); it slides on the plate in X for tone
-and is locked by two M4 TOE-CLAMP screws. EVERY screw is turned from +Z with the
-instrument assembled:
-  * the two +Y jacks are reached THROUGH the pickup's own +Y mounting-ear holes
-    (tip string 1 aside); the -Y jack sits outboard at centre X, in the open bay;
-  * the two toe-clamp screws thread ledges on the -Y skirt and press the pickup's
-    -Y mounting frame down -> lock the pickup onto the plate AND the plate onto the
-    jack pads (the ledge also caps up-travel, so you can't jack into the strings).
-
-Service flow (all from +Z, NO plate removal):
-  X (tone, bridge<->neck): loosen the toe-clamps -> pickup slides on the plate
-    (+/-~17 continuous, bridges the 20 mm slot step) + which slots the piece sits
-    in (coarse); retighten.
-  Z (gap) / tilt: loosen the toe-clamps -> turn the three jacks (equalise the two
-    +Y = X level; the -Y jack = across-string tilt); retighten.
-  Y: centred on the field for magnetic coverage; the -Y guide flange + end walls
-    set it; the +Y body edge floats in the open bay by the chassis rail.
-
-All screws are stocked M4 set screws (zero new BOM lines). Frames: pickup centred
-X/Y, top at z=0 (build.py lifts it to PK_TOP); jack/clamp screws vertical.
+The mount itself -- the Z-plate the pickup rests on, the three M4 leadscrew jacks at the
+plate corners, and the pickup's retention -- is built in top_plate.py, which reads the
+PK_* dimensions here. Frame: pickup centred X/Y, top at z=0 (build.py lifts it to PK_TOP).
 """
 
 from __future__ import annotations
@@ -30,7 +10,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import box_at, cyl, cyl_y
+from .helpers import box_at, cyl
 
 # ── the pickup itself (Lace Alumitone 4.0 bar, per the datasheet) ─────────────
 # The RECOMMENDED pickup (user). A current-driven BLADE humbucker (no per-string
@@ -55,17 +35,14 @@ GAP     = 3.0                                   # pickup top -> heaviest string 
 PK_TOP  = D.STRING_Z - D.STRING_GAUGE_MAX - GAP   # clear the heaviest string that fits, not the demo set's
 PK_BOT  = PK_TOP - PK_H
 
-# mounting-ear holes (the pickup's own 4 corner holes; the tripod jacks reach the
-# two +Y ones from +Z THROUGH these holes -- see top_plate). Ø sized for M4 clear /
-# hex-driver access. Positions are relative to the pickup centre (X/Y).
-EAR_HOLE_D = D.NUT_SCREW_D                       # M4 clearance / driver access (cadkit's M4)
+# mounting-ear holes: the pickup's own 4 corner holes, modelled on the demo body only (the
+# mount does not use them -- the jacks are on the plate corners). Positions are relative to
+# the pickup centre (X/Y).
+EAR_HOLE_D = D.NUT_SCREW_D                       # M4 clearance (cadkit's M4)
 EAR_HOLE_X = 30.6 / 2                            # +/-15.3 (the 30.6 pattern, along neck)
 EAR_HOLE_Y = 84.0 / 2                            # +/-42.0 (the 84 pattern, across strings)
 EAR_HOLES  = [(sx * EAR_HOLE_X, sy * EAR_HOLE_Y)
               for sy in (1, -1) for sx in (1, -1)]
-
-# ── mount screws (all stocked M4) ────────────────────────────────────────────
-HSCREW_D = 4.0                                  # M4 height set-screw
 
 
 def pickup_demo() -> cq.Workplane:
@@ -77,13 +54,7 @@ def pickup_demo() -> cq.Workplane:
               .edges("|Z").fillet(6.0))                          # rounded corner ears
     body = coil.union(flange)
     for hx, hy in EAR_HOLES:                                     # the pickup's own 4 mounting holes
-        body = body.cut(cyl(EAR_HOLE_D, PK_H + 2, z=-PK_H - 1)   # (the mount doesn't use these --
-                        .translate((hx, hy, 0)))                 # jacks are on the plate corners)
+        body = body.cut(cyl(EAR_HOLE_D, PK_H + 2, z=-PK_H - 1)
+                        .translate((hx, hy, 0)))
     return body
-
-
-def height_screw() -> cq.Workplane:
-    """DEMO M4 height set-screw, axis +Z, top at z=0 (the pickup rests here);
-    short enough that its base stays above the chassis ribs at z -14."""
-    return cyl(HSCREW_D, 4.0, z=-4.0)
 
