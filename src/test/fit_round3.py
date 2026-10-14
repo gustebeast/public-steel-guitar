@@ -16,8 +16,9 @@ THE RULE every coupon here is drawn to, on each NOZZLE-MADE half: convex corners
 CONVEX_R (2.0, prints ~2.4), concave at CONCAVE_R (0.5, prints ~1.1), and room for them
 (a face carrying two convex corners is 2 * CONVEX_R long plus a bead of flat -- with no
 flat at all the two arcs meet tangent and the second will not build). A LAYER-MADE half is
-left sharp: it prints as drawn, and a sharp socket corner only ever leaves air round the
-tenon's rounder printed one. The user (2026-10-14): test the smallest such joint for each
+drawn to MATCH its mate (it prints as drawn): concave corners at the mate's convex
+radius plus the clearance, convex at its concave radius -- so the model shows the gap
+that prints, not a sharp pocket round a round head. The user (2026-10-14): test the smallest such joint for each
 orientation pair the instrument uses, all in PETG-GF, before any joint in it changes.
 
   NOZZLE / NOZZLE  (drop-in tee: chassis seam, pedal-bar splice, bar-latch rail)
@@ -27,7 +28,7 @@ orientation pair the instrument uses, all in PETG-GF, before any joint in it cha
            lose, so it may print truer in less room. Same lip.
   NOZZLE / LAYER   (chassis -> endplate mushroom): cadkit's own mushroom, its waist grown
            (joint depth) until the tenon's flat top and the corners either side of the
-           waist fit the rule; the socket, layer-made, keeps its 45 degree roof as is.
+           waist fit the rule; the socket, layer-made, keeps its 45 degree roof, rounded to match.
   LAYER / LAYER    (octagon: knee lever, leg section, cover rail): unchanged in shape;
            its clearances again round round 2's good 0.20 (two of those cells were lost).
 
@@ -53,6 +54,8 @@ CONVEX_R = 2.0               # a nozzle-made convex corner: prints ~2.4
 CONCAVE_R = 0.5              # a nozzle-made concave corner: prints ~1.1
 NOZZLE_HALF = (CONVEX_R, CONCAVE_R)
 WALL = 2 * D.BEAD            # 1.6, every socket wall
+BACK = 4 * D.BEAD            # 3.2 behind a drop-in socket's head: its number is cut there,
+                             # 1.6 deep, and leaves a full wall
 
 NECK_W = 2 * D.BEAD                                 # 1.6, the quality tier
 HEAD_W = NECK_W + 2 * (CONCAVE_R + CONVEX_R + D.BEAD / 2)   # 7.4: each overhang a root, a
@@ -61,13 +64,26 @@ HEAD_D = 2 * CONVEX_R + D.BEAD                      # 4.8: two convex corners an
 LIP_T = 2 * CONVEX_R + D.BEAD                       # 4.8: the socket lip's two, likewise
 BULB_R = 3 * D.BEAD                                 # 2.4: the round head (4.8 across)
 WAIST = 4 * D.BEAD                                  # 3.2: the mushroom waist (cadkit's is 1.6)
-MUSH_CELL_T = 12 * D.BEAD                           # 9.6: the mushroom cell, round 1's 8.0 + the waist
+MUSH_CELL_T = 14 * D.BEAD                           # 11.2: the grown cavity plus three beads
+                                                    # behind it, where its (deepened) number is cut
 
 TEE = [(0.20, 0.30), (0.25, 0.30), (0.30, 0.30), (0.35, 0.30), (0.40, 0.30)]
 ROUND = [0.20, 0.25, 0.30, 0.35, 0.40]
 MUSHROOM = [(0.15, 0.50), (0.20, 0.50), (0.25, 0.50), (0.30, 0.50), (0.20, 0.70)]
 OCTAGON = [(0.15, 0.60, 0.0), (0.20, 0.60, 0.0), (0.25, 0.60, 0.0), (0.30, 0.60, 0.0)]
 TAG = "fit3"
+
+
+def _round_u0(c):
+    """Where the round head's centre stands: its socket lip, mouth to where the slot
+    meets the circle, is LIP_T long."""
+    return LIP_T + math.sqrt((BULB_R + c) ** 2 - (NECK_W / 2.0 + c) ** 2)
+
+
+# EVERY CELL OF A STRIP IS AS DEEP AS ITS LOOSEST: the number is cut in the back face, one
+# plane for the whole strip, so that face must not move with the step
+D_TEE = LIP_T + max(c for c, _b in TEE) + HEAD_D + max(b for _c, b in TEE) + BACK
+D_ROUND = max(_round_u0(c) + BULB_R + c for c in ROUND) + BACK
 LOG = {}                     # finder name -> [each step's corner log], for the table
 
 
@@ -100,22 +116,21 @@ def tee(c, bc):
            .union(_poly([(lip - c, -h2 - c), (lip + HEAD_D + bc, -h2 - c),
                          (lip + HEAD_D + bc, h2 + c), (lip - c, h2 + c)], -1.0, F.L + 1.0)))
     host_w = HEAD_W + 2 * c + 2 * WALL
-    return _drop_pair(pts, cav, host_w, lip + HEAD_D + bc + WALL, "tee")
+    return _drop_pair(pts, cav, host_w, D_TEE, "tee")
 
 
 def round_head(c):
     """The same neck into a circle of BULB_R, whose centre stands far enough out that
     the socket's lip (mouth to where the slot meets the circle) is LIP_T long."""
     n2 = NECK_W / 2.0
-    meet = math.sqrt((BULB_R + c) ** 2 - (n2 + c) ** 2)     # slot edge to circle, from centre
-    u0 = LIP_T + meet
+    u0 = _round_u0(c)
     neck = _poly([(-1.0, -n2), (u0, -n2), (u0, n2), (-1.0, n2)], 0, F.L)
     bulb = cq.Workplane("XY").circle(BULB_R).extrude(F.L).translate((u0, 0, 0))
     hole = (_poly([(-1.0, -n2 - c), (u0, -n2 - c), (u0, n2 + c), (-1.0, n2 + c)], -1.0, F.L + 1.0)
             .union(cq.Workplane("XY").circle(BULB_R + c).extrude(F.L + 2.0)
                    .translate((u0, 0, -1.0))))
     hw = BULB_R + c + WALL
-    host_d = u0 + BULB_R + c + WALL
+    host_d = D_ROUND
     token = F._box(-host_d, 0, -hw, hw, 0, F.L).union(neck).union(bulb)
     cell = F._box(0, host_d, -hw, hw, 0, F.L).cut(hole)
     F.ROUND_LOG.clear()
@@ -138,12 +153,11 @@ def finders():
     """The four round-3 finders, each re-stepped."""
     out = []
     w_tee = HEAD_W + 2 * max(c for c, _b in TEE) + 2 * WALL
-    d_tee = LIP_T + max(c for c, _b in TEE) + HEAD_D + max(b for _c, b in TEE) + WALL
     out.append(_drop_finder("tee", "nozzle/nozzle drop-in T, corners to the rule",
-                            lambda k, d: tee(*d), TEE, w_tee, d_tee))
+                            lambda k, d: tee(*d), TEE, w_tee, D_TEE))
     w_rd = 2 * (BULB_R + max(ROUND) + WALL)
     out.append(_drop_finder("round", "nozzle/nozzle drop-in round head",
-                            lambda k, d: round_head(d), ROUND, w_rd, d_tee))
+                            lambda k, d: round_head(d), ROUND, w_rd, D_ROUND))
     base = {f.name: f for f in F.finders()}
     ep, octa = base["endplate"], base["octagon"]
     ep.deltas = tuple(MUSHROOM)
@@ -152,12 +166,17 @@ def finders():
     at, n, xd, kw = ep.cell_mark[0]
     ep.cell_mark = [((at[0], at[1], MUSH_CELL_T), n, xd, kw)]      # its bed face moved out
     octa.deltas = tuple(OCTAGON)
+    # the octagon cell's number sits on its 1.6 roof, which has no bead to spare: it keeps
+    # the plain V (0.6 deep) and leaves a bead over the mortise
+    at, n, xd, kw = octa.cell_mark[0]
+    octa.cell_mark = [(at, n, xd, dict(kw, shaft=0.0))]
     return out + [ep, octa]
 
 
 def _mushroom_make(base_make):
-    """The endplate finder's maker with the waist grown to WAIST and the TENON (the
-    nozzle-made half) rounded to the rule; the layer-made socket left as cadkit cuts it."""
+    """The endplate finder's maker with the waist grown to WAIST, the TENON (the
+    nozzle-made half) rounded to the rule and the layer-made socket rounded to match it
+    (layer-made corners print as drawn, so the socket is drawn as the tenon prints)."""
     from src import chassis as CH
     from cadkit.joinery import joint
 
@@ -172,11 +191,15 @@ def _mushroom_make(base_make):
         root = CH.EP_J_ROOT
         token = F._box(0, F.L, -hw, hw, -10 * D.BEAD, 0).union(J.tenon(root=root, length=F.L))
         so = getattr(J, "standoff", 0.0)
-        assert J.height + bc + D.BEAD <= MUSH_CELL_T, "the grown cavity breaks the cell's bed face"
+        assert J.height + bc + 3 * D.BEAD <= MUSH_CELL_T + 1e-9, "no room behind the cavity for its number"
         cell = (F._box(0, F.L, -hw, hw, so, MUSH_CELL_T)
                 .cut(J.mortise(drop=root + 1.0, length=F.L + 2.0).translate((-1.0, 0, 0))))
         F.ROUND_LOG.clear()
-        token, cell = F._round_pair(token, cell, "x", {"tenon": NOZZLE_HALF, "socket": None,
+        # the socket drawn to MATCH the tenon: each concave corner the tenon's printed
+        # convex one grown by the clearance (parallel faces, not a sharp pocket round a
+        # round head), each convex one the tenon's concave radius
+        token, cell = F._round_pair(token, cell, "x", {"tenon": NOZZLE_HALF,
+                                                        "socket": (CONCAVE_R, CONVEX_R + c),
                                                         "hosts": False})
         LOG.setdefault("mushroom", []).append(F.ROUND_LOG[0])
         return token, cell
@@ -214,7 +237,8 @@ def main(argv=None):
             print("   %d    %s" % (k + 1, " / ".join("%.2f" % v for v in dd[:2])))
     for name, logs in LOG.items():
         short = [(half, kind, used, want) for half in ("tenon", "socket") for u, v, kind, used in logs[0][half]
-                 for want in [NOZZLE_HALF[0] if kind == "convex" else NOZZLE_HALF[1]] if used is None or used < want - 1e-9]
+                 for want in [NOZZLE_HALF[0] if kind == "convex" else NOZZLE_HALF[1]]
+                 if used is None or (name != "mushroom" or half == "tenon") and used < want - 1e-9]
         print("%s corners not at the rule (step 1): %s" % (name, short if short else "none"))
     lo = [min(getattr(s.BoundingBox(), a_) for _n, s in pl) for a_ in ("xmin", "ymin", "zmin")]
     hi = [max(getattr(s.BoundingBox(), a_) for _n, s in pl) for a_ in ("xmax", "ymax", "zmax")]
