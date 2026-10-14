@@ -105,14 +105,16 @@ def standing(r: float) -> cq.Workplane:
     body = body.cut(cq.Workplane("XY").box(100, 100, 100).translate((0, 0, lo - 50.0)))
     body = body.translate((0, 0, FOOT_T - lo))
     foot = cq.Workplane("XY").box(OUT_S, FOOT_L, FOOT_T, centered=(True, True, False))
-    return body.union(foot.translate((0, -STAND_T / 2.0, 0)))
+    return body.union(foot.translate((0, -FOOT_L / 2.0, 0)))
 
 
 def standing_pieces(first=len(RADII) + len(RADII_2) + 1):
-    """[(name, solid)]: set 3, numbered on the foot plate's +X end, in a row along X."""
+    """[(name, solid)]: set 3, in a row along X, each numbered on its UNDERSIDE (the bed
+    face), right under where the diamond stands: the foot plate plus the ring above it,
+    so the cut leaves well over two beads. Read along the ring's thickness."""
     out = []
     for k, r in enumerate(RADII_3):
-        p = cut_mark(standing(r), k + first, (OUT_S / 4.0 + 1.6, -STAND_T / 2.0, FOOT_T), (0, 0, 1),
+        p = cut_mark(standing(r), k + first, (0.0, -STAND_T / 2.0, 0.0), (0, 0, -1),
                      (0, 1, 0), height=2.4, stroke=0.8)
         # pitched on the DIAMOND's width (OUT_S * sqrt 2), not the flat ring's: apart, so each
         # diagonal can be measured
