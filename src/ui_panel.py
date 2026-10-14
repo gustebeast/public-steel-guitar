@@ -47,13 +47,15 @@ positive retention. Undo two screws and the station comes away as one piece.
 WHAT IS ACTUALLY UNDER IT, measured rather than assumed. An earlier probe of mine
 reported 57.5 mm of clear air under the whole station and was WRONG -- it filtered out
 almost every part in the instrument and found two. Intersecting a prism over the
-station's plan with everything gives:
+station's plan with everything gives (re-measured 2026-10-14):
 
-    under the BOARD     wire_usb at -18.00, then the motor pigtails at -21.45
-    under the DISPLAY   wire_canl at -17.24, the tee boards at -19.65
+    under the BOARD     wire_usb at -18.31, then the 24 V link at -20.95 (wire_hub's
+                        top is at -16.20, but in the cable trough beside the tails, not
+                        under them -- see the slide note below)
+    under the DISPLAY   the tee boards at -19.65, then wire_pwr_hot at -20.00
 
-The board's own through-hole tails already reach -16.50, so the clearance under this
-station is a millimetre and a half, not five centimetres. That is why the clamp lies
+The board's own through-hole tails already reach -16.10, so the clearance under this
+station is about two millimetres, not five centimetres. That is why the clamp lies
 AGAINST the board with reliefs for the tails instead of hanging below them, and why its
 arm steps up to -8.0 before running +Y under the display.
 
@@ -129,7 +131,6 @@ HDR_EDGE_DY  = 2.50                # header row below the header edge; the two m
                                    # holes on that side share the row
 HDR_N        = 20
 HDR_PITCH    = 2.54                # 19 x 2.54 = 48.26, centred in X
-MOD_HOLE_D   = 2.50
 MOD_HOLE_DX  = 36.70               # +-, from the module centre
 MOD_HOLE_DY  = 43.00               # between the two hole rows
 BEZEL_W, BEZEL_L = 74.20, 42.50    # the metal bezel
@@ -168,8 +169,6 @@ ENC_SQ        = 17.0               # body, W x D
 ENC_BODY_H    = 8.30               # the 17 x 17 body above the PCB
 ENC_COLLAR_D  = 7.10               # first collar step, to ENC_COLLAR_Z
 ENC_COLLAR_Z  = 10.20              # collar top (the catalogue's "10.5")
-ENC_TAIL      = 3.5                # terminals below the PCB (the drawing says 3.2;
-                                   # the model draws 3.5, so the model's is carried)
 ENC_SHAFT_Z0  = 11.10              # shaft root above the PCB
 ENC_SHAFT_TIP = 17.10              # shaft tip above the PCB
 ENC_FLAT_Z0   = 12.10              # ...and where its flat starts: only THIS much of
@@ -338,30 +337,27 @@ POST_SQ    = 4.0                   # the deck's bearing posts. 4.0, not 5.0: the
 # 3.2, AND IT IS A CEILING, NOT A CHOICE. The bay under this station is not the clear
 # air an earlier probe of mine reported -- that probe filtered out almost every part in
 # the instrument and found two. Measured properly, by intersecting a prism over the
-# board's plan with everything:
-#     under the BOARD    the highest thing is wire_usb at -18.00
-#     under the DISPLAY  wire_canl at -17.24, then the tee boards at -19.65
-# The board's own through-hole tails already reach -16.50. So the whole budget between
-# the tails and the harness is 1.50 mm, and a plate slung under the tails -- which is
+# board's plan with everything (the numbers are in the module docstring): the tails
+# reach -16.10 and the harness under them starts at -18.31, so the whole budget between
+# the two is about 2 mm, and a plate slung under the tails -- which is
 # what this was -- lands in the middle of the motor bank's wiring.
 #
 # The plate therefore sits AT the board's underside and takes a relief under every
 # footprint for the tails to hang into. Its top face IS the bearing surface, which is
 # simpler than pads and grips the whole board rather than four spots.
 CLAMP_T    = 4 * D.BEAD
-CLAMP_TAIL_CLR = 0.5               # air under the longest through-hole tail
 # 0.4, grown round each through-hole footprint. It is a CEILING, not a fit: the fab box
 # already bounds the tails, so the relief only has to exist -- and J1's and J2's boxes
 # pass within 2.43 of each other, so anything over 0.415 leaves a web under the two-bead
 # floor between them. check_thin is what found that, at 1.43.
 CLAMP_RELIEF = 0.4
 CLAMP_RIB_W = 6.0                  # the arm that reaches under the display
-CLAMP_RIB_H = 6.0
 CLAMP_ARM_Z = -8.0                 # the arm's TOP, once it has stepped up past the
-                                   # board. Its UNDERSIDE then sits at -14.0, which is
-                                   # 3.2 clear of the highest thing under the display
-                                   # (wire_canl at -17.24); at the plate's own level it
-                                   # would have been 1.8 INSIDE it
+                                   # board. Its UNDERSIDE then sits at -14.0, 5.65 clear
+                                   # of the highest thing under the display (the tee
+                                   # boards at -19.65). It was set when a CAN lead ran
+                                   # at -17.24 there, and at the plate's own level the
+                                   # arm would have stood 1.8 inside it
 # M4 x 10, the length the rest of the instrument already buys (2026-10-07: one screw
 # length fewer on the BOM; this was the x12). The head bears on the clamp's underside,
 # the shank climbs 3.2 of clamp and 1.6 of board, and 5.2 is left for the boss: the whole
@@ -386,7 +382,6 @@ ENC_FOOTPRINT = "Alps_RKJXT1F42001"
 # A round cap that sits at one of two heights: proud is off, flush with the deck is on. Under it is
 # a self-locking push switch on the board, Legion PB-22E85-S-5.7C-C-W (LCSC C22462024),
 # and everything below except the cap is off its drawing:
-PWR_FOOTPRINT = "Legion_PB-22E85"
 PWR_BODY_H = 8.5                   # the case, which board_geom draws
 PWR_STEM_SQ = 3.3                  # the stem the cap presses onto
 PWR_STEM_H = 5.7                   # its top over the case, button OUT
@@ -750,6 +745,7 @@ def knob():
 
     The cap is UNINDEXED -- a plain disc with no marking -- so which way round it goes
     on the D is free at assembly. Nothing downstream reads its clocking."""
+    collar_clears_deck()
     kx, ky = knob_centre()
     flat, tip, cap_z0, _hole = knob_geometry()
     rim_z0 = cap_z0 + (KNOB_D - KNOB_SHANK_D) / 2.0 * math.tan(math.radians(KNOB_CONE))
@@ -1010,7 +1006,7 @@ A RELIEF UNDER THE THROUGH-HOLE FOOTPRINTS ONLY, from board_geom.TAIL. Relieving
     shows parts, and their drawing does not dimension them."""
     cx, cy = board_centre()
     top, bot = clamp_z()
-    hw, hl = BOARD_W / 2.0, BOARD_L / 2.0
+    hl = BOARD_L / 2.0
     _tz, _bz, _face, mod_back, _board_top, _board_bot = z_stack()
     from . import chassis as CH
     # ...AND ITS -Y EDGE STOPS CLEAR OF THE CABLE TROUGH, for the same reason the deck's

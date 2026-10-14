@@ -62,7 +62,7 @@ LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
 DRV_FP = "Package_DFN_QFN:Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm"
 DRV_ROT = 90.0
 DRV_OUT_PINS = tuple(range(7, 13)) + tuple(range(19, 25))    # SBVS146D: OUTR2..B3, R0..B1
-BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
+BUCK_FP = BC.U_FP
 IND_FP = BC.L1_FP                    # with its reason, in buck_cell
 R_FP = "Resistor_SMD:R_0402_1005Metric"
 C_FP = "Capacitor_SMD:C_0402_1005Metric"
@@ -123,8 +123,7 @@ R_SERIES = "1k 1%"
 # (0.01 nearer the LED row here: the row's own Y is rounded).
 J_SERIES = (("R21", "SCK", 7.30), ("R22", "SDT", 7.30))
 J_SERIES_DY = 0.01
-J_ANCHOR = 5.30 + 0.9833             # mouth (local +Y 5.30) to the PAD CENTROID (the mean
-                                     # of its six pads), both read out of the .kicad_mod
+J_ANCHOR = BC.XH_ANCHOR             # mouth to the pad centroid (buck_cell)
 J_Y = FL.to_board_y(FL.J_Y)
 import harness as _H                                  # noqa: E402
 LED_WAYS = tuple(_H.LED_DROP)
@@ -255,7 +254,6 @@ def _manual(board, n_drv):
     routed boards and the makers' sheets. M12 is left open on purpose: what remains of
     it can only be done on the day of the order (.ins/WORKLIST-brenner.md, NEEDS USER)."""
     a = board == "a"
-    seam = ("J21..J24" if a else "J11..J14")
     m = {
         "M1": ("two joints. J1 to the Pi cap's J6: a 4-way JST XH lead, straight through, "
                "way n to way n -- " + J1_ORDER + " at both ends "
