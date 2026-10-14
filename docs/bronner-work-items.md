@@ -6224,3 +6224,8 @@ geometry and texture/color/material. Then use the same model for the first flash
   builds with --locked in 2 m 40 s and is in /usr/local/bin. udev rule
   /etc/udev/rules.d/99-wch-link.rules (1a86:8010, :8012 -> plugdev). NOT run against a
   probe. Rust came from apt (cargo, rustc), not rustup.
+
+## 2026-10-13: flashing the CH32V307 boards without the LinkE (lead)
+
+- WCH evaluation-board reference V1.9 p13 confirms the ROM loader on PA11/PA12 or PB6/PB7 (USB) and PA9/PA10 (serial). `wchisp` 0.3.0 built and installed on psg-pi with a udev rule; `make isp` in firmware/motor_ctrl. Written up in docs/bench-order.md. Nothing tried on a chip.
+- `swindle` (RP2040) is real and maintained but has no released firmware: second choice, not built.

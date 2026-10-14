@@ -184,11 +184,12 @@ into its USB-A ports. `py -3.12 -m tools.flash_bench_view` draws every lead.
 
 | Board | First flash, from the Pi | Its own USB path to the Pi | Can a BLANK chip be reached over that USB? |
 |---|---|---|---|
-| `motor_ctrl` (CH32V307) | **WCH-LinkE**; four soldered tails (TP1 to TP4) | **J4** (PHR-4) to a Pi USB-A port: the instrument's own lead | **not the plan, and UNCONFIRMED.** It would need BOOT0 (pad TP6) held at 3V3 through a reset, and WCH's loader to answer on this port. WCH's datasheet says "USART1 and USB" without naming the port; `wchisp` lists the chip as tested without naming the transport |
-| `output_panel` (CH32V307) | **WCH-LinkE**; four soldered tails | **J3** (USB-C) to a Pi USB-A port: the hub's upstream, the MCU behind the hub | **no.** BOOT0 has only R7 to ground and no pad: the loader cannot be entered without lifting a part |
+| `motor_ctrl` (CH32V307) | **WCH-LinkE**; four soldered tails (TP1 to TP4) | **J4** (PHR-4) to a Pi USB-A port: the instrument's own lead | **yes by WCH's manual, not yet tried.** BOOT0 (pad TP6) at 3V3 through a power-up, then `wchisp`: "Flashing the CH32V307 boards without the LinkE", below |
+| `output_panel` (CH32V307) | **WCH-LinkE**; four soldered tails | **J3** (USB-C) to a Pi USB-A port: the hub's upstream, the MCU behind the hub | **probably, not yet tried.** BOOT0 has no pad: tweezers from R7 pad 1 to R6 pad 2 through a power-up, and the loader has to come up through the hub (same section) |
 | `optical` (STM32H743) | **ST-LINK/V2** in a Pi USB-A port; five soldered tails (TP1 to TP5) | **J1** (USB-C) to the panel's **J4**, through the hub and J3 | **no.** ST's ROM loader speaks USB only on the full-speed port (PA11/PA12), which this board does not wire; its high-speed port has no loader |
 
-So for a blank board the probes are the only way in, on every board. The USB leads are in
+So for a blank `optical` board the probe is the only way in; the two CH32V307 boards have
+WCH's ROM loader as a second way, written up below. The USB leads are in
 the picture because they are how each board TALKS to the Pi once it has firmware (the
 day-one check that a flash worked), and how it would take an update if its first
 firmware carries a loader of its own. Nothing here changes a revision 1 board.
@@ -213,7 +214,82 @@ Windows PC with the same probe and leads (`wlink` for Windows, or WCH-LinkUtilit
 bit-bang SWD from a Pi 4's own header pins, and that is a real, documented way to flash an
 STM32. It would replace the ST-LINK/V2 with three more jumper leads from the Pi's header
 to TP1, TP2 and TP4. The ST-LINK is already on the order and is the path in the picture.
-There is no such tool for the CH32V parts' two-wire debug, so the WCH-LinkE stays.
+For the CH32V parts' two-wire debug the nearest thing is `swindle` on an RP2040 (next
+section); the WCH-LinkE stays.
+
+## Flashing the CH32V307 boards without the LinkE (2026-10-13)
+
+Every WCH-LinkE source is one to four weeks out. The LinkE **stays on the order**: it is
+the debugger, the day-one console and the fallback. This is how to get firmware onto the
+two boards before it arrives. No board changes.
+
+**Confirmed, from primary sources**
+- **WCH's ROM loader answers on USB at PA11 / PA12 or PB6 / PB7, and on serial at PA9 /
+  PA10.** WCH's "CH32V3xx Evaluation Board Reference" V1.9, page 13, under "WCHISPTool
+  Download" (the copy in `~/src/ch32v307/EVT/PUB` on the Pi). Its steps: BOOT0 to VCC and
+  BOOT1 to ground, connect, download, BOOT0 back to ground.
+  `motor_ctrl`'s J4 is PA11 / PA12; `output_panel`'s MCU is PB6 / PB7 behind the hub.
+  BOOT1 is held low on both boards.
+- **`wchisp` 0.3.0 is on the Pi**, built there from source (`~/src/wchisp`, installed as
+  `/usr/local/bin/wchisp`), with a udev rule so `gus` needs no sudo. Its README lists
+  CH32V307 VCT6 and RCT6 as tested. It looks for a USB device `4348:55e0` or `1a86:55e0`.
+  It has not talked to a chip yet.
+
+**Only claimed, to be found out on the bench**
+- That the WCU6 (QFN-68) package behaves as the VCT6 that `wchisp` and WCH's board use.
+  Same family and the same manual; nobody's list names the WCU6.
+- That the loader keeps running once BOOT0 is let go (boot pins are normally read
+  only at a reset; WCH's sentence for it was not found), so the reset `wchisp` issues after writing starts
+  the new firmware. If it does not, leave the link on to write, then take it off and
+  power-cycle.
+- That the loader's USB on PB6 / PB7 comes up **through the CH334F hub**. A USB 2.0 hub
+  passes a full-speed or a high-speed device alike, and the hub is how this board's own
+  firmware reaches the Pi, so there is no reason it should not; no source says anyone
+  has done it. WCH's board has an 8 MHz crystal, as both of ours do.
+- That a second `wchisp` command works without a power-cycle. `wchisp` issue 22 (open)
+  reports time-outs on repeat runs under Linux on this chip: the first command after the
+  loader starts is the reliable one. So go straight to `flash`.
+- **Write the `.bin`, never the `.elf`.** `wchisp` issue 28: an ELF with a segment in RAM
+  made an older `wchisp` erase past the end of flash and take the ROM loader with it (on
+  a CH32V203; put back only with a WCH-Link). `make isp` writes the `.bin`.
+
+**The route to try first: `motor_ctrl` from the Pi over J4.** Nothing to buy.
+1. Solder one jumper tail to **TP6** (BOOT0, marked B0) and one to **TP5** (3V3), 25 mm
+   apart. Join their female ends with a header pin or a cut resistor leg. (Two of the
+   seven spare leads. TP5's "no probe wire" rule is about a probe's 3V3 output; this is
+   not one.)
+2. J4 to a Pi USB-A port with the instrument's own USB-A to PHR-4 lead. J4 carries no
+   power: the board needs its 24 V on J1, down the same chain as any other first power
+   ("Power without a bench supply"), with its staged checks done first.
+3. Power the board with the link joined. On the Pi, `lsusb` shows `4348:55e0` (or
+   `1a86:55e0`). If it does not, the lead or the loader is at fault and nothing has been
+   written: stop there.
+4. **Pull the link apart** (both tails stay on the board), then
+   `cd ~/psg/firmware/motor_ctrl && make isp`. It erases, writes, verifies and resets.
+5. `lsusb` now shows the firmware's own serial port, and `/dev/ttyACM0` answers `?`.
+6. To flash again: join the link, power-cycle, pull it apart, `make isp`.
+
+**`output_panel`, the same way, no soldering.** BOOT0 has no pad: R7 pad 1 is BOOT0 and R6
+pad 2 is 3V3, 3.5 mm apart beside the crystal, both 0402 lands (about 0.5 x 0.6 mm).
+Hold tweezers across the two **while the board's 24 V is switched on**, then let go.
+J3 to a Pi USB-A port; `lsusb` shows the hub and, behind it, `4348:55e0`. A soldered link
+instead would be 4 mm of 30 AWG wire across those two lands, on for the power-up and
+then cut: finer work than the tweezers and no better. There is no bench firmware for
+this board yet, so for now this only proves the loader answers through the hub
+(`wchisp info`).
+
+**A different probe: `swindle` on an RP2040.** Real and maintained
+(`github.com/mean00/swindle`, a Black Magic Probe derivative, GPL-3.0, commits dated
+2026-10-13). Its README names WCH's two-wire debug on CH32V3xx, has a `ch32v307` preset,
+and its author's demonstration is an RP2040-Zero debugging a CH32V307 board. A Raspberry
+Pi Pico is stocked everywhere in the US. Wiring per its wiki: SWDIO GPIO13, SWCLK GPIO12,
+reset GPIO10; it is driven from `gdb` (`mon rvswdp_scan`, `attach 1`, `load`), at no more
+than 1000 kHz for these chips. **Against it:** its releases page is empty, so the
+firmware has to be built from source (CMake, ARM GCC, Rust), which has not been tried;
+its author says the two-wire protocol is not fully reverse-engineered and calls his
+version good enough; it would be one more unproven thing between us and the chip. It is
+the second choice, worth the evening only if the ROM loader fails on `motor_ctrl`.
+`minichlink` / `ch32fun` need a WCH-Link for this chip.
 
 ## The bench test's software (user, 2026-10-13)
 
