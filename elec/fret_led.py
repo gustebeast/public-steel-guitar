@@ -56,7 +56,6 @@ plug J1 on key, fit the endplate.
 """
 from __future__ import annotations
 
-import io
 import json
 import os
 import sys
@@ -84,7 +83,7 @@ J1_ORDER = ", ".join("%d %s" % (i + 1, {"V24": "24 V"}.get(n, n))
 J1_NETS = ", ".join("%d %s" % (i + 1, _J1_NET[n]) for i, n in enumerate(LED_WAYS))
 import placecheck  # noqa: E402
 import buck_cell as BC  # noqa: E402
-from placecheck import check_placement, fp_box  # noqa: E402
+from placecheck import check_placement  # noqa: E402
 
 P = Pin.types.PASSIVE
 
@@ -185,8 +184,6 @@ LED_YS = FL.LED_YS                               # -30.40 -10.40 +10.40 +30.40
 #     edge, so a left-to-right chain is a straight line;
 #   * the -Y band stays empty, and IS the bay's overflow on both boards.
 DRV_Y = 20.40
-PASSIVE_Y = 15.60                                # under the driver, out of the returns
-SPI_Y = 13.95                                    # the band's lower edge
 LED_ROW = tuple(LED_YS)
 
 # ⚠ WHICH WAY A ZONE'S LEDs FACE IS A ROUTING DECISION. The footprint's anodes (1-4)
@@ -1383,8 +1380,9 @@ def build(panel):
         notes["vias"] = notes["vias"] + [_via]
     # WHAT EACH SUPPLY NET CARRIES, all-white. The 14 V rail is made on the key board and
     # crosses the seam pogos to the mid board, so the key board's rail is held to BOTH
-    # boards' channels and the mid board's to its own.
-    i_own = 4 * len(zs) * I_CHAN
+    # boards' channels. On either board a string's current reaches its LEDs through its
+    # driver's FEED path (below), so the mid board's rail itself carries only the
+    # drivers' logic supply.
     rail_j = ["J%d" % (11 + i) for i, (_x, _y, _net) in enumerate(FL.pogo_pads(panel))
               if _net == "+14V5"]            # the seam pogo(s) the rail crosses on
     i_all = 4 * I_CHAN * sum(len(zones_for(*FL.panel_range(q))) for q in ("mid", "key"))

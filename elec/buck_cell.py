@@ -58,7 +58,7 @@ CORE = {
 # 2026-10-05 against 3,453 of the C -- and then full white must be capped in firmware.
 U_VALUE = "LMR33630BRNXR"
 U_LCSC = "C2071384"
-U_ALT = "LMR33630CRNXR (C2071783): same land, 2.1 MHz, about 0.35 W hotter"
+# the alternate: LMR33630CRNXR (C2071783), same land, 2.1 MHz, about 0.35 W hotter
 U_FSW = 1.4e6
 # ⚠ THE INDUCTOR IS SUNLORD SWPA5040S4R7MT, 5 x 5 x 4, and both its numbers were chosen.
 # 4.7 uH is the value TI's table gives for 12 V out at 1.4 MHz; their floor, 0.28 x
@@ -73,7 +73,7 @@ L1_VALUE = "SWPA5040S4R7MT"
 L1_LCSC = "C48496"
 L1_FP = "Inductor_SMD:L_Sunlord_SWPA5040S"
 L1_DESC = ("buck output inductor, 4.7 uH +-20 % shielded, Isat 3.50 A min / 3.90 typ, "
-           "DCR 39 mohm max, 5.0 x 5.0 x 4.0 (LCSC C48496)")
+           "DCR 39 mohm max, 5.0 x 5.0 x 4.0 (LCSC %s)" % L1_LCSC)
 L1_UH, L1_ISAT = 4.7, 3.50
 L1_DX = 7.035                # the inductor's centre, a 5 x 5 mm part with lands at +-1.85
 L1_LAND = 1.85

@@ -255,7 +255,6 @@ def _manual(board, n_drv):
     routed boards and the makers' sheets. M12 is left open on purpose: what remains of
     it can only be done on the day of the order (.ins/WORKLIST-brenner.md, NEEDS USER)."""
     a = board == "a"
-    seam = ("J21..J24" if a else "J11..J14")
     m = {
         "M1": ("two joints. J1 to the Pi cap's J6: a 4-way JST XH lead, straight through, "
                "way n to way n -- " + J1_ORDER + " at both ends "
