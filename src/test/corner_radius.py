@@ -39,6 +39,10 @@ from src.version_mark import cut_mark
 
 HERE = pathlib.Path(__file__).resolve().parent
 RADII = (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2)
+# SET 2 (user's calipers, 2026-10-14): rings 1 and 10 BOTH printed an outside corner of
+# about 2.1 (drawn 0 and 1.2), so the outer knee lies past this set; the hole went 1.0 ->
+# 1.8 and does follow the drawing. Set 2 carries the series on, numbered on from 11.
+RADII_2 = (1.6, 2.0, 2.4, 2.8, 3.2)
 OUT_S = 20 * D.BEAD          # 16.0 across the outer flats
 IN_S = 10 * D.BEAD           # 8.0 across the hole's flats (inside jaws reach its corners)
 T = 5 * D.BEAD               # 4.0 tall: ten 0.4 layers
@@ -61,15 +65,16 @@ def diagonal(s: float, r: float) -> float:
     return s * math.sqrt(2.0) - 2.0 * r * (math.sqrt(2.0) - 1.0)
 
 
-def pieces():
-    """[(name, solid)]: every step's ring, numbered on its -Y wall's top, laid out on the bed."""
+def pieces(radii=RADII, first=1):
+    """[(name, solid)]: every step's ring, numbered (from `first`) on its -Y wall's top,
+    laid out on the bed."""
     out = []
     wall_mid = (OUT_S + IN_S) / 4.0                     # the middle of a wall, off the centre
-    for k, r in enumerate(RADII):
-        p = cut_mark(ring(r), k + 1, (0.0, -wall_mid, T), (0, 0, 1), (1, 0, 0), **MARK)
+    for k, r in enumerate(radii):
+        p = cut_mark(ring(r), k + first, (0.0, -wall_mid, T), (0, 0, 1), (1, 0, 0), **MARK)
         col, row = k % PER_ROW, k // PER_ROW
         p = p.translate((col * (OUT_S + GAP), -row * (OUT_S + GAP), 0.0))
-        out.append(("corner_r_%d" % (k + 1), p.val()))
+        out.append(("corner_r_%d" % (k + first), p.val()))
     return out
 
 
@@ -90,12 +95,17 @@ def main(argv=None):
     bad = [n for n, s in pl if not s.isValid() or len(s.Solids()) != 1]
     print("%d pieces, %.1f cm3; %s" % (len(pl), sum(s.Volume() for _n, s in pl) / 1000.0,
                                        "every piece one valid solid" if not bad else "BAD: " + ", ".join(bad)))
+    for k, r in enumerate(RADII_2):
+        print("   %2d    %.1f       %.2f / %.3f            %.2f / %.3f   (set 2)" % (
+            k + len(RADII) + 1, r, OUT_S, diagonal(OUT_S, r), IN_S, diagonal(IN_S, r)))
+    pl2 = pieces(RADII_2, len(RADII) + 1)
     if a.export:
         from cadkit.step_export import export_step
-        path = HERE / "test_corner_radius_plate.step"
-        export_step(cq.Workplane("XY").newObject(
-            [cq.Compound.makeCompound([s for _n, s in pl])]), str(path))
-        print("wrote", path)
+        for name, part in (("test_corner_radius_plate.step", pl), ("test_corner_radius_plate_2.step", pl2)):
+            path = HERE / name
+            export_step(cq.Workplane("XY").newObject(
+                [cq.Compound.makeCompound([s for _n, s in part])]), str(path))
+            print("wrote", path)
     return 0
 
 
