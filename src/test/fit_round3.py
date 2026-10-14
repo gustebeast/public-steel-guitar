@@ -1,57 +1,197 @@
-"""FIT FINDERS, ROUND 3: the PETG-GF to PETG-GF joints again, every corner rounded.
+"""FIT FINDERS, ROUND 3: the smallest joint that prints AS DRAWN, per print-orientation pair.
 
-    py -3.12 -m src.test.fit_round3            # the table: what each number is
+    py -3.12 -m src.test.fit_round3            # the table, and every corner's radius
     py -3.12 -m src.test.fit_round3 --export   # ...and write src/test/test_fit3_plate_petg_gf.step
 
-ROUND 2 (src/test/fit_round2.py, printed 2026-10-13 in PETG-GF) said, by feel:
+WHY (src/test/corner_radius.py, the user's calipers, 2026-10-14, PETG-GF at a 0.8 nozzle).
+A corner the NOZZLE makes -- the profile lying in the layer plane -- does not print as
+drawn: a CONVEX one comes out about 1.9-2.0 round whatever is drawn under that, and
+from 2.0 drawn it tracks the drawing about 0.4 rounder; a CONCAVE one comes out about
+1.05 until 0.5 is drawn, then follows it. A corner made by LAYER STACKING -- the profile
+standing across the layers -- is assumed to print as drawn. Today's joints have no room
+for that: the seam's head is 2.66 deep and the endplate tenon's 1.6, where two 2 mm
+corners need 4, so their printed heads are beads, not the T's on the drawing.
 
-  * SEAM      sharp 0.25 tight, 0.35 and 0.45 loose; ROUNDED 0.15 and 0.25 would not go
-              in, 0.35 tight. Rounded wants more side clearance than sharp did.
-  * ENDPLATE  sharp 0.10 and 0.15 (depth 0.50) a bit tight, 0.20 slides easily with no
-              wobble; at depth 0.30 both a bit tight; ROUNDED 0.10-0.20 all a bit tight.
-  * OCTAGON   0.10 too tight, 0.20 nice and low-friction with a tiny wobble, 0.40 too
-              loose; 0.15 and 0.30 came off the bed (plate not clean), so untested.
+THE RULE every coupon here is drawn to, on each NOZZLE-MADE half: convex corners at
+CONVEX_R (2.0, prints ~2.4), concave at CONCAVE_R (0.5, prints ~1.1), and room for them
+(a face carrying two convex corners is 2 * CONVEX_R long plus a bead of flat -- with no
+flat at all the two arcs meet tangent and the second will not build). A LAYER-MADE half is
+left sharp: it prints as drawn, and a sharp socket corner only ever leaves air round the
+tenon's rounder printed one. The user (2026-10-14): test the smallest such joint for each
+orientation pair the instrument uses, all in PETG-GF, before any joint in it changes.
 
-The user, on reading them: the corners stay rounded -- "I want our models to more
-accurately match the prints" -- and a rounded joint is tight because the shape now
-meets over its whole face, so the next round steps rounded joints LOOSER until the
-balance is found. Every step here is rounded (r = half a bead, fit_round2.R).
+  NOZZLE / NOZZLE  (drop-in tee: chassis seam, pedal-bar splice, bar-latch rail)
+    TEE    neck NECK_W, head HEAD_W x HEAD_D, socket lip LIP_T: the smallest T whose every
+           corner fits the rule (head overhang = CONCAVE_R + CONVEX_R a side, plus a half bead of flat).
+    ROUND  the same neck into a ROUND head, radius BULB_R -- a circle has no corner to
+           lose, so it may print truer in less room. Same lip.
+  NOZZLE / LAYER   (chassis -> endplate mushroom): cadkit's own mushroom, its waist grown
+           (joint depth) until the tenon's flat top and the corners either side of the
+           waist fit the rule; the socket, layer-made, keeps its 45 degree roof as is.
+  LAYER / LAYER    (octagon: knee lever, leg section, cover rail): unchanged in shape;
+           its clearances again round round 2's good 0.20 (two of those cells were lost).
 
-  SEAM      0.40 .. 0.60 side, depth held at 0.30 (its flat has always had room)
-  ENDPLATE  1-4  0.25 .. 0.40 side at depth 0.50 (round 2: 0.30 depth was tight)
-            5-6  0.30 / 0.35 side at depth 0.70: does more room under the head help?
-  OCTAGON   0.15 .. 0.30 around round 2's good 0.20, at the drawn 0.60 depth. Its profile
-            prints standing, so its corners are layer steps, not nozzle turns; rounded
-            here so the whole family is drawn one way, and for the two lost cells.
-
-The two-filament joints (deck, the inserts) wait for a PCTG print; round 2's PCTG plate
-still stands for them. Same layout as round 2: token N beside cell N, both numbered.
+Clearance steps start from round 2's sharp results, the nearest thing to these shapes
+(a sharp nozzle corner already printed ~2 mm round): seam 0.25 tight / 0.35 loose,
+endplate 0.20 at 0.50 depth good. Same layout as before: token N beside cell N.
 """
 from __future__ import annotations
 
 import argparse
+import math
 import pathlib
 import sys
 
 import cadquery as cq
 
+from src import dimensions as D
+from . import fit_finder as F
 from . import fit_round2 as R2
 
 HERE = pathlib.Path(__file__).resolve().parent
-R = R2.R
-STEPS = {
-    "seam": [(0.40, 0.30, R), (0.45, 0.30, R), (0.50, 0.30, R), (0.55, 0.30, R), (0.60, 0.30, R)],
-    "endplate": [(0.25, 0.50, R), (0.30, 0.50, R), (0.35, 0.50, R), (0.40, 0.50, R),
-                 (0.30, 0.70, R), (0.35, 0.70, R)],
-    "octagon": [(0.15, 0.60, R), (0.20, 0.60, R), (0.25, 0.60, R), (0.30, 0.60, R)],
-}
+CONVEX_R = 2.0               # a nozzle-made convex corner: prints ~2.4
+CONCAVE_R = 0.5              # a nozzle-made concave corner: prints ~1.1
+NOZZLE_HALF = (CONVEX_R, CONCAVE_R)
+WALL = 2 * D.BEAD            # 1.6, every socket wall
+
+NECK_W = 2 * D.BEAD                                 # 1.6, the quality tier
+HEAD_W = NECK_W + 2 * (CONCAVE_R + CONVEX_R + D.BEAD / 2)   # 7.4: each overhang a root, a
+                                                    # corner and a half bead of flat between
+HEAD_D = 2 * CONVEX_R + D.BEAD                      # 4.8: two convex corners and a bead of flat
+LIP_T = 2 * CONVEX_R + D.BEAD                       # 4.8: the socket lip's two, likewise
+BULB_R = 3 * D.BEAD                                 # 2.4: the round head (4.8 across)
+WAIST = 4 * D.BEAD                                  # 3.2: the mushroom waist (cadkit's is 1.6)
+MUSH_CELL_T = 12 * D.BEAD                           # 9.6: the mushroom cell, round 1's 8.0 + the waist
+
+TEE = [(0.20, 0.30), (0.25, 0.30), (0.30, 0.30), (0.35, 0.30), (0.40, 0.30)]
+ROUND = [0.20, 0.25, 0.30, 0.35, 0.40]
+MUSHROOM = [(0.15, 0.50), (0.20, 0.50), (0.25, 0.50), (0.30, 0.50), (0.20, 0.70)]
+OCTAGON = [(0.15, 0.60, 0.0), (0.20, 0.60, 0.0), (0.25, 0.60, 0.0), (0.30, 0.60, 0.0)]
 TAG = "fit3"
+LOG = {}                     # finder name -> [each step's corner log], for the table
+
+
+def _poly(pts, z0, z1):
+    return cq.Workplane("XY").polyline(pts).close().extrude(z1 - z0).translate((0, 0, z0))
+
+
+def _drop_pair(tenon_pts, cavity, host_w, host_d, name):
+    """A drop-in pair in fit_finder's _drop frame (X depth past the seam, Y width, Z the
+    drop; both halves print +Z): `tenon_pts` the tenon's plan (from x = -1, inside its
+    host), `cavity` the socket cutter; both halves rounded to the rule."""
+    hw = host_w / 2.0
+    token = F._box(-host_d, 0, -hw, hw, 0, F.L).union(_poly(tenon_pts, 0, F.L))
+    cell = F._box(0, host_d, -hw, hw, 0, F.L).cut(cavity)
+    F.ROUND_LOG.clear()
+    token, cell = F._round_pair(token, cell, "z", {"tenon": NOZZLE_HALF, "socket": NOZZLE_HALF,
+                                                    "hosts": False})
+    LOG.setdefault(name, []).append(F.ROUND_LOG[0])
+    return token, cell
+
+
+def tee(c, bc):
+    """The smallest rule-fitting T: neck NECK_W through a LIP_T lip into a HEAD_W x HEAD_D
+    head. `c` round the sides and under the head, `bc` past its tip."""
+    n2, h2, lip = NECK_W / 2.0, HEAD_W / 2.0, LIP_T + c
+    pts = [(-1.0, -n2), (lip, -n2), (lip, -h2), (lip + HEAD_D, -h2),
+           (lip + HEAD_D, h2), (lip, h2), (lip, n2), (-1.0, n2)]
+    cav = (_poly([(-1.0, -n2 - c), (lip - c + 0.01, -n2 - c), (lip - c + 0.01, n2 + c),
+                  (-1.0, n2 + c)], -1.0, F.L + 1.0)
+           .union(_poly([(lip - c, -h2 - c), (lip + HEAD_D + bc, -h2 - c),
+                         (lip + HEAD_D + bc, h2 + c), (lip - c, h2 + c)], -1.0, F.L + 1.0)))
+    host_w = HEAD_W + 2 * c + 2 * WALL
+    return _drop_pair(pts, cav, host_w, lip + HEAD_D + bc + WALL, "tee")
+
+
+def round_head(c):
+    """The same neck into a circle of BULB_R, whose centre stands far enough out that
+    the socket's lip (mouth to where the slot meets the circle) is LIP_T long."""
+    n2 = NECK_W / 2.0
+    meet = math.sqrt((BULB_R + c) ** 2 - (n2 + c) ** 2)     # slot edge to circle, from centre
+    u0 = LIP_T + meet
+    neck = _poly([(-1.0, -n2), (u0, -n2), (u0, n2), (-1.0, n2)], 0, F.L)
+    bulb = cq.Workplane("XY").circle(BULB_R).extrude(F.L).translate((u0, 0, 0))
+    hole = (_poly([(-1.0, -n2 - c), (u0, -n2 - c), (u0, n2 + c), (-1.0, n2 + c)], -1.0, F.L + 1.0)
+            .union(cq.Workplane("XY").circle(BULB_R + c).extrude(F.L + 2.0)
+                   .translate((u0, 0, -1.0))))
+    hw = BULB_R + c + WALL
+    host_d = u0 + BULB_R + c + WALL
+    token = F._box(-host_d, 0, -hw, hw, 0, F.L).union(neck).union(bulb)
+    cell = F._box(0, host_d, -hw, hw, 0, F.L).cut(hole)
+    F.ROUND_LOG.clear()
+    token, cell = F._round_pair(token, cell, "z", {"tenon": NOZZLE_HALF, "socket": NOZZLE_HALF,
+                                                    "hosts": False})
+    LOG.setdefault("round", []).append(F.ROUND_LOG[0])
+    return token, cell
+
+
+def _drop_finder(name, what, make, steps, host_w, host_d):
+    f = F.Finder(name, what, make, (steps[0], steps[0]), host_w + F.GAP, F.UP_Z, F.UP_Z,
+                 "chassis_0", "chassis_0",
+                 cell_mark=((host_d, 0.0, F.L / 2.0), (1, 0, 0), (0, 1, 0)),
+                 token_mark=((-host_d / 2.0, 0.0, F.L), (0, 0, 1), (0, 1, 0)))
+    f.deltas = tuple(steps)
+    return f
+
+
+def finders():
+    """The four round-3 finders, each re-stepped."""
+    out = []
+    w_tee = HEAD_W + 2 * max(c for c, _b in TEE) + 2 * WALL
+    d_tee = LIP_T + max(c for c, _b in TEE) + HEAD_D + max(b for _c, b in TEE) + WALL
+    out.append(_drop_finder("tee", "nozzle/nozzle drop-in T, corners to the rule",
+                            lambda k, d: tee(*d), TEE, w_tee, d_tee))
+    w_rd = 2 * (BULB_R + max(ROUND) + WALL)
+    out.append(_drop_finder("round", "nozzle/nozzle drop-in round head",
+                            lambda k, d: round_head(d), ROUND, w_rd, d_tee))
+    base = {f.name: f for f in F.finders()}
+    ep, octa = base["endplate"], base["octagon"]
+    ep.deltas = tuple(MUSHROOM)
+    ep.name = "mushroom"
+    ep.make = _mushroom_make(ep.make)
+    at, n, xd, kw = ep.cell_mark[0]
+    ep.cell_mark = [((at[0], at[1], MUSH_CELL_T), n, xd, kw)]      # its bed face moved out
+    octa.deltas = tuple(OCTAGON)
+    return out + [ep, octa]
+
+
+def _mushroom_make(base_make):
+    """The endplate finder's maker with the waist grown to WAIST and the TENON (the
+    nozzle-made half) rounded to the rule; the layer-made socket left as cadkit cuts it."""
+    from src import chassis as CH
+    from cadkit.joinery import joint
+
+    def make(k, d):
+        c, bc = d
+        site = dict(width=CH.EP_J_W, tenon=CH._EP_AX, mortise=CH._EP_DN, install="+x",
+                    standoff=CH.EP_TOP_CLR)
+        h0 = joint(length=F.L, clearance=c, back_clearance=bc, **site).height
+        J = joint(length=F.L, clearance=c, back_clearance=bc,
+                  depth=h0 - 2 * D.BEAD + WAIST, **site)
+        hw = CH.T / 2.0
+        root = CH.EP_J_ROOT
+        token = F._box(0, F.L, -hw, hw, -10 * D.BEAD, 0).union(J.tenon(root=root, length=F.L))
+        so = getattr(J, "standoff", 0.0)
+        assert J.height + bc + D.BEAD <= MUSH_CELL_T, "the grown cavity breaks the cell's bed face"
+        cell = (F._box(0, F.L, -hw, hw, so, MUSH_CELL_T)
+                .cut(J.mortise(drop=root + 1.0, length=F.L + 2.0).translate((-1.0, 0, 0))))
+        F.ROUND_LOG.clear()
+        token, cell = F._round_pair(token, cell, "x", {"tenon": NOZZLE_HALF, "socket": None,
+                                                        "hosts": False})
+        LOG.setdefault("mushroom", []).append(F.ROUND_LOG[0])
+        return token, cell
+    return make
 
 
 def plate():
-    """[(name, solid)], bed at z = 0: the three all-PETG-GF joints, each strip with its
-    tokens beside it."""
-    return R2.plate("petg-gf", steps=STEPS, tag=TAG, inserts=False)
+    """[(name, solid)], bed at z = 0: every finder's strip with its tokens beside it."""
+    out, x = [], 0.0
+    for f in finders():
+        grp, w = R2._group(f, "both", TAG)
+        y0 = min(sh.BoundingBox().ymin for _n, sh in grp)
+        out += [(n, sh.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, sh in grp]
+        x += w + R2.BETWEEN
+    return [(n, sh if sh.isValid() else sh.fix()) for n, sh in out]
 
 
 def assembly(origin=(-560.0, 330.0, 160.0)):
@@ -63,17 +203,23 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--export", action="store_true", help="write src/test/test_fit3_plate_petg_gf.step")
     a = ap.parse_args(argv)
-    print("number  side / depth clearance, corners r %.1f" % R)
-    for name, steps in STEPS.items():
-        print(name)
-        for k, (c, bc, _r) in enumerate(steps):
-            print("   %d    %.2f / %.2f" % (k + 1, c, bc))
+    LOG.clear()
     pl = plate()
+    print("TEE neck %.1f, head %.1f x %.1f, lip %.1f | ROUND head r %.1f | MUSHROOM waist %.1f"
+          % (NECK_W, HEAD_W, HEAD_D, LIP_T, BULB_R, WAIST))
+    for name, steps in (("tee", TEE), ("round", ROUND), ("mushroom", MUSHROOM), ("octagon", OCTAGON)):
+        print(name)
+        for k, d in enumerate(steps):
+            dd = d if isinstance(d, tuple) else (d,)
+            print("   %d    %s" % (k + 1, " / ".join("%.2f" % v for v in dd[:2])))
+    for name, logs in LOG.items():
+        short = [(half, kind, used, want) for half in ("tenon", "socket") for u, v, kind, used in logs[0][half]
+                 for want in [NOZZLE_HALF[0] if kind == "convex" else NOZZLE_HALF[1]] if used is None or used < want - 1e-9]
+        print("%s corners not at the rule (step 1): %s" % (name, short if short else "none"))
     lo = [min(getattr(s.BoundingBox(), a_) for _n, s in pl) for a_ in ("xmin", "ymin", "zmin")]
     hi = [max(getattr(s.BoundingBox(), a_) for _n, s in pl) for a_ in ("xmax", "ymax", "zmax")]
-    print("plate: %d pieces, %.1f cm3, %.1f x %.1f, %.1f tall, bed at z %.2f" % (
-        len(pl), sum(s.Volume() for _n, s in pl) / 1000.0,
-        hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], lo[2]))
+    print("plate: %d pieces, %.1f cm3, %.1f x %.1f, %.1f tall" % (
+        len(pl), sum(s.Volume() for _n, s in pl) / 1000.0, hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]))
     bad = [n for n, s in pl if not s.isValid() or len(s.Solids()) != 1]
     print("every piece one valid solid" if not bad else "NOT ONE VALID SOLID: %s" % ", ".join(bad))
     if a.export:

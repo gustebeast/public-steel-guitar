@@ -44,6 +44,7 @@ bigger: figures 9 mm tall on the TOP of each insert_a cell and on that strip's e
 """
 from __future__ import annotations
 
+import math
 import argparse
 import pathlib
 import sys
@@ -75,51 +76,86 @@ def _clrs(c0, bc0, d):
 
 
 def _variant(real, d):
-    """(side clearance, depth clearance, corner radius) of one step. A NUMBER is a delta
-    on both of the joint's own clearances (round 1); a TUPLE names the three outright
-    (round 2: side and depth varied apart, and the profile's corners rounded or not)."""
+    """(side clearance, depth clearance, corners) of one step. A NUMBER is a delta on both
+    of the joint's own clearances (round 1); a TUPLE names the three outright (round 2:
+    side and depth varied apart, and the profile's corners rounded or not). The corners
+    are a radius for every corner of both halves, or (round 3) a dict naming each half's
+    (convex, concave) pair: {"tenon": (cx, cv), "socket": (cx, cv)}."""
     if isinstance(d, tuple):
         return d
     return _clrs(real.clearance, real.back_clearance, d) + (0.0,)
 
 
-def _round(body, axis, r):
-    """`body` with every profile corner rounded to `r`: the edges that run along `axis`
-    (the joint's extrusion), bar the block's own two bed corners. A nozzle cannot turn
-    a sharper corner than about half its bead anyway, so a drawn radius of that much
-    prints as drawn, where a drawn sharp corner prints as whatever blob it leaves
-    (the round 1 seam bound at exactly those corners). One edge at a time: a fillet that
-    will not build on some sliver of an edge is skipped, and the count is returned."""
+def _round(body, axis, r, hosts=True):
+    """`body` with its profile corners rounded: the edges that run along `axis` (the
+    joint's extrusion), bar the block's own two bed corners.
+
+    `r` is one radius for every corner (round 2), or a (CONVEX, CONCAVE) pair (round 3:
+    the corner-radius rings showed the two print differently -- a nozzle-made convex
+    corner comes out about 2 mm round whatever is drawn under that, a concave one about
+    1 mm -- so each kind is drawn at what it will print). A corner is convex where the
+    solid fills ONE quadrant round it, concave where it fills three. One edge at a time,
+    and a radius the edge has no room for is tried smaller (to 0.4) before it is
+    skipped. hosts=False leaves the host block's own side edges (its +/-Y faces) sharp:
+    they are coupon, not joint. Returns (body, [(u, v, kind, radius used or None)])."""
+    cx, cv = (r, r) if not isinstance(r, tuple) else r
     bb = body.val().BoundingBox()
     lo = {"x": (bb.ymin, bb.zmin), "z": (bb.xmin, bb.ymin)}[axis]
     hi = {"x": (bb.ymax, bb.zmax), "z": (bb.xmax, bb.ymax)}[axis]
-    done = skipped = 0
+    mid = {"x": (bb.xmin + bb.xmax) / 2.0, "z": (bb.zmin + bb.zmax) / 2.0}[axis]
+
+    def uv_of(e):
+        c = e.Center()
+        return (c.y, c.z) if axis == "x" else (c.x, c.y)
+
+    def pt(u, v):
+        return cq.Vector(mid, u, v) if axis == "x" else cq.Vector(u, v, mid)
+
     spots = []
     for e in body.edges("|%s" % axis.upper()).vals():
-        c = e.Center()
-        uv = (c.y, c.z) if axis == "x" else (c.x, c.y)
-        ext = [abs(uv[i] - lo[i]) < 1e-6 or abs(uv[i] - hi[i]) < 1e-6 for i in (0, 1)]
-        if not all(ext):
+        uv = uv_of(e)
+        if not all(abs(uv[i] - lo[i]) < 1e-6 or abs(uv[i] - hi[i]) < 1e-6 for i in (0, 1)):
+            if not hosts and (abs(e.Center().y - bb.ymin) < 1e-6 or abs(e.Center().y - bb.ymax) < 1e-6):
+                continue
             spots.append(uv)
-    for uv in spots:
+    log = []
+    for u, v in spots:
         sel = [e for e in body.edges("|%s" % axis.upper()).vals()
-               if abs(((e.Center().y, e.Center().z) if axis == "x"
-                       else (e.Center().x, e.Center().y))[0] - uv[0]) < 1e-6
-               and abs(((e.Center().y, e.Center().z) if axis == "x"
-                        else (e.Center().x, e.Center().y))[1] - uv[1]) < 1e-6]
-        if not sel:
-            skipped += 1
-            continue
-        try:
-            new = body.newObject(sel).fillet(r)
-            if new.val().isValid() and len(new.val().Solids()) == 1:
-                body = new
-                done += 1
-            else:
-                skipped += 1
-        except Exception:
-            skipped += 1
-    return body, done, skipped
+               if abs(uv_of(e)[0] - u) < 1e-6 and abs(uv_of(e)[1] - v) < 1e-6]
+        solid = body.val()
+        # the share of a small circle round the corner that is solid: a convex corner
+        # (90 or 135 degrees inside) holds under half of it, a concave one over half
+        ring = [pt(u + 0.05 * math.cos(math.radians(a)), v + 0.05 * math.sin(math.radians(a)))
+                for a in range(0, 360, 15)]
+        share = sum(solid.isInside(q, 1e-6) for q in ring) / float(len(ring))
+        kind = "convex" if share < 0.45 else "concave" if share > 0.55 else None
+        want = cx if kind == "convex" else cv if kind == "concave" else 0.0
+        used = None
+        rr = want
+        while sel and rr >= 0.4 - 1e-9:
+            try:
+                new = body.newObject(sel).fillet(rr)
+                if new.val().isValid() and len(new.val().Solids()) == 1:
+                    body, used = new, rr
+                    break
+            except Exception:
+                pass
+            rr = round(rr - 0.2, 3)
+        log.append((u, v, kind, used))
+    return body, log
+
+
+ROUND_LOG = []       # each rounded pair's corner log, in build order, for the round's report
+
+
+def _round_pair(token, cell, axis, r):
+    """Both halves rounded: `r` for both, or each half's own (convex, concave) pair."""
+    rt, rs = (r["tenon"], r["socket"]) if isinstance(r, dict) else (r, r)
+    hosts = r.get("hosts", True) if isinstance(r, dict) else True
+    token, lt = _round(token, axis, rt, hosts) if rt else (token, [])
+    cell, ls = _round(cell, axis, rs, hosts) if rs else (cell, [])
+    ROUND_LOG.append({"tenon": lt, "socket": ls})
+    return token, cell
 
 
 def _facing_up(facing, axial=UP_X):
@@ -229,7 +265,7 @@ def _slide(real, site, host_w, ten_t, mort_t, root, drop):
         cell = (_box(0, L, -hw, hw, so, mort_t)
                 .cut(J.mortise(drop=drop, length=L + 2.0).translate((-1.0, 0, 0))))
         if r:
-            token, cell = _round(token, "x", r)[0], _round(cell, "x", r)[0]
+            token, cell = _round_pair(token, cell, "x", r)
         return token, cell
     return make
 
@@ -247,7 +283,7 @@ def _drop(real, site, host_w, host_d, root):
         cell = (_box(0, host_d, -hw, hw, 0, L)
                 .cut(J.mortise(drop=root + 1.0, length=L + 2.0).translate((0, 0, -1.0))))
         if r:
-            token, cell = _round(token, "z", r)[0], _round(cell, "z", r)[0]
+            token, cell = _round_pair(token, cell, "z", r)
         return token, cell
     return make
 
