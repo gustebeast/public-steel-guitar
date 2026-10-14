@@ -1,56 +1,13 @@
 # -*- coding: utf-8 -*-
-"""THE LEG'S BLIND-MATE, ON THE JOINT'S OWN AXIS: a spring-floated jack inside the
-fixed TENON, meeting a plug fixed in the body adapter's roof, right down the middle
-of the octagon joint the leg already hangs on.
+"""The TRRS blind-mate's shared numbers and helpers.
 
-WHY THE MIDDLE (user). The first pass put this in the -X/+Y corner, because the
-connector stack was sized against the ADAPTER's depth and only a corner has 52.8 of
-it -- on the axis the adapter has 12.8, the mortise being 40 of the 52.8. That was
-the wrong part to measure. Put the bulk in the TENON, which is 252 long and solid,
-and the axis is not merely possible but better:
-
-  * the octagon joint's OWN 0.3 fit centres the pair. In the corner, two bores 20 off
-    the axis had to agree across two parts and two print directions.
-  * nothing stands proud. The plug's barrel protrudes, but into the MORTISE, which is
-    a pocket 40 deep -- there is no exposed pin to knock.
-  * the lead then runs the leg's CORE, which is the path the ADJUST tenon needs
-    anyway (user): its ladder holes run along X at y 0, so a few mm of Y clears every
-    one of them -- measured O9.2 clear the full 252.
-
-WHERE, EXACTLY. Not the geometric axis: the latch's pocket owns the tenon's middle
-(it takes everything y < -3 across x +-6), so the spine steps +Y off it. At
-(-1.6, +4.8) the fixed tenon takes O14.8 for its top 46 and O12.8 for its whole
-length, with the latch's pocket clear -- measured on the built solid, not derived.
-
-WHAT IT COSTS, and the user chose it: the plug's way IN is a O6.6 hole in the
-adapter's top face at that spine, and the MIDDLE RIDGE's root is there. Boring
-through a ridge would leave 1.6 slivers, so the ridge is CUT BACK instead -- it
-already gives up its inboard end to the service slide, and it now starts at
-legs.SIGNAL_RIDGE_IN rather than at the slide. A shortening, not a hole.
-
-HOW IT GOES TOGETHER. The plug drops in from the adapter's top face and PRESSES into
-8.0 of O6.0 bore, its back at the channel's floor so the lead folds straight into the
-channel and runs out the -Y face, inboard, under the instrument. The jack is dropped
-down the tenon's bore onto its coil and is stopped by the THROAT at the tenon's tip --
-a O6.6 lip the plug's overmould passes and the jack's O9.7 barrel cannot. At rest the
-jack's mouth stands THROAT_L below the tip; the plug's shoulder bottoms it FLOAT
-lower, and that FLOAT is how much the latch is allowed to be short.
-
-THE COIL IS NOT THE LATCHES' COIL, and that is the user's call after this joint
-turned out to be unbuildable with it. The coil has to end up ON THE LEAD, between the
-jack's back and its seat -- and a lead has two ends, the moulded jack (O9.7) and the
-moulded far plug (O6.1). A 3.8 ID coil passes neither, so NO assembly order puts it
-there; widening every bore to PASS_D was necessary and nowhere near sufficient. (The
-install sweep missed it because a swept envelope treats each piece as a free rigid
-body and has no notion of one part being THREADED ONTO another.) So this joint gets
-its own coil, whose only new requirement is an ID that clears the far plug -- it is
-slid onto the lead over that plug before anything goes in the tenon. Everything else
-about it is the latch coil's numbers, deliberately: same free length, same rate, so
-the force at rest and at seat are unchanged.
-
-It pays for itself twice over: at O8.0 the coil seats DIRECTLY on the tenon's own
-O9.9 -> PASS_D step, because a step that stops a O8.0 coil still passes the O6.1 head.
-The printed seat washer the O5.0 coil needed is gone.
+The leg<->body joint's TRRS pair is retired (src.leg_pogo carries that signal now), and
+its builders went with it. What stays is what src.bar_trrs -- the bar joint's
+blind-mate -- builds from: the bought jack/plug/lead dimensions, the floating coil, the
+bayonet sleeve and keeper numbers, and the bore / bayonet / lug / cable-run helpers
+(_bore, _td_sector, _entry_sweep, _bayonet_slots, _lugs, _run, spring_coil). The spine
+axis offset (AX_X, AX_Y) and the plug's mouth (_MOUTH_PEAK) are still checked against
+legs.SIGNAL_RIDGE_IN below.
 """
 
 from __future__ import annotations
@@ -326,10 +283,6 @@ KEEP_CLR = 0.2                          # ...and the keeper TURNS in it with thi
                                         # begin with -- with the leg ON, the mortise roof
                                         # lies flat on the keeper's top face, so the
                                         # axial half of the release cannot happen at all
-KEEP_DRIVE_W = 2 * B                    # two radial notches across the keeper's mouth,
-KEEP_DRIVE_DP = 2 * B                   # deep enough to take a flat blade. That is the
-                                        # whole tool: the bore is O6.6 and open to the
-                                        # tip, so an ordinary screwdriver spans it
 LEAD_BORE_D = 6 * B             # 4.8 -- the SLEEVE'S flange bore, and the plug does
                                 # not come down through it.
                                 # THE LEAD IS A PIGTAIL NOW (user): the far end is bare
@@ -357,8 +310,7 @@ THROAT_LEAD_D = 9.0             # the keeper's MOUTH, opened 45 from its O6.6 bo
                                 # cock: 0.15 of slop is 3.6 degrees is 1.60 at the
                                 # barrel's tip. That JAMS THE LEG (user). Opened to 9.0
                                 # the capture is 2.75, which swallows it.
-CHAN_W = CABLE_D + 1.0          # 4.8 wide and deep: the groove in the adapter's top
-CHAN_D = CABLE_D + 1.0          # face the lead is folded into
+CHAN_D = CABLE_D + 1.0          # 4.8: the depth of the groove in the adapter's top face the lead is folded into
 
 # ── the z chain, all of it hung off the tenon's tip ───────────────────────────
 TIP = LS.Z_MORTISE_ROOF         # -94.55: the tenon's tip, and the mortise's roof
@@ -396,8 +348,6 @@ SLV_BOT = TIP                                   # the cup's mouth, flush with th
                                                 # THROAT_D, which leaves 0.25 of wall.
                                                 # There is no sleeve down there
 SLV_TOP = (LS.Z_TOP - CHAN_D) - CB_ROOF         # ...and its flange's top face
-SLV_H = SLV_TOP - SLV_BOT                       # 6.4: PLUG_GRIP of cup plus CB_ROOF of
-                                                # flange
 LUG_BOT = SLV_BOT + LUG_LEDGE                   # where the lugs sit once turned home
 assert SLV_TOP > PLUG_TOP, (
     "the sleeve's flange has nowhere to be: the plug's top is %.2f and the counterbore's"
@@ -439,29 +389,8 @@ assert LG.SIGNAL_RIDGE_IN >= _MOUTH_PEAK + D.MIN_WALL_2P, (
     % (LG.SIGNAL_RIDGE_IN, _MOUTH_PEAK))
 
 
-def _ax(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
-    return sx + AX_X, ly + AX_Y
-
-
 def _bore(d, z0, z1, x, y, up):
     return teardrop_hole(d, z1 - z0, (x, y, z0), (0, 0, 1), up)
-
-
-def chan_pts(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
-    """The channel's centreline on the adapter's top face: straight out of the plug's
-    mouth and down the part to the -Y face. It needs no dog-leg any more -- on the
-    axis there is no tongue in the way."""
-    x, y = _ax(sx, ly)
-    return [(x, y), (x, ly - LS.LEG_W / 2.0 - 1.0)]
-
-
-def channel(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
-    """That path as a groove in the top face. It runs ALONG this part's build
-    direction, so both its walls are vertical and it has no ceiling at all."""
-    a, b = chan_pts(sx, ly)
-    return (cq.Workplane("XY")
-            .box(CHAN_W, a[1] - b[1], CHAN_D + 1.0, centered=(True, False, False))
-            .translate((a[0], b[1], LS.Z_TOP - CHAN_D)))
 
 
 def _sector(r_in, r_out, z0, z1, a0, sweep, x, y):
@@ -605,117 +534,6 @@ def _lugs(r_in, r_out, z_lo, z_hi, x, y, angles, bear_up, chamfer=None):
     return out.cut(chamfer)
 
 
-def sleeve(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
-    """THE MALE PLUG'S RETAINER: a TPU cup that grips the overmould and locks into the
-    adapter on a bayonet (user's design).
-
-    Two things it fixes at once. RETENTION is no longer a rigid press whose interference
-    disappears if the bought plug measures at the low end of its drawing -- an elastomer
-    at SLV_SQUEEZE does not care, and the bayonet means the last word is a mechanical
-    ledge rather than friction at all. And the plug can no longer COCK: the press had
-    0.15 of slop in it, which is 1.79 degrees at the barrel's tip, and a preloaded
-    elastomer has none.
-
-    It only wraps PLUG_GRIP of the plug, not all 14 -- below the mortise roof the
-    overmould has to pass the keeper's THROAT_D, which leaves 0.25 of wall.
-
-    You turn it by turning the PLUG: the cup grips the overmould far harder than the
-    lugs need, so there is no driver feature and nothing to reach into the mortise with.
-    What stops it turning back is the lead itself -- folded into CHAN_W of rectangular
-    channel that the chassis closes over, it cannot rotate, and the only free length is
-    the few mm of round bore above the flange."""
-    x, y = _ax(sx, ly)
-    body = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        SLV_OD / 2.0, SLV_H, cq.Vector(x, y, SLV_BOT), cq.Vector(0, 0, 1)))
-    body = body.union(_lugs(SLV_OD / 2.0 - 0.01, LUG_D / 2.0 - SLV_CLR / 2.0,
-                            LUG_BOT - (LUG_H - LUG_SLOT_H) / 2.0,
-                            LUG_BOT + LUG_SLOT_H + (LUG_H - LUG_SLOT_H) / 2.0,
-                            x, y, SLV_A, False))
-    # the grip bore, then the flange the plug's top bottoms on
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        SLV_ID / 2.0, PLUG_GRIP + 1.0, cq.Vector(x, y, SLV_BOT - 1.0),
-        cq.Vector(0, 0, 1))))
-    body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        LEAD_BORE_D / 2.0, SLV_H + 2.0, cq.Vector(x, y, SLV_BOT - 1.0),
-        cq.Vector(0, 0, 1))))
-    assert len(body.val().Solids()) == 1, (
-        "the sleeve came out as %d solids -- see throat()" % len(body.val().Solids()))
-    return body
-
-
-def tenon_negatives(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, up=None,
-                    bot: float = None):
-    """Cut in the FIXED TENON: one straight O9.9 bore from the tip down past the jack
-    and the coil to the ledge their SEAT rests on, then a pass-through the rest of the
-    way that is wide enough for the lead's far plug. Nothing narrows on the way in --
-    everything that has to get past goes in from the tip, in order."""
-    x, y = _ax(sx, ly)
-    up = up or LS.PRINT_UP["fixed_tenon"]
-    bot = LS.Z_FIX_TEN_BOT - 1.0 if bot is None else bot
-    out = _bore(JACK_BORE_D, SPR_SEAT, TIP + 1.0, x, y, up)     # ONE bore, tip to step
-    out = out.union(_bore(THROAT_BORE_D, JACK_REST, TIP + 1.0, x, y, up))  # the keeper's
-    out = out.union(_bayonet_slots(THROAT_BORE_D / 2.0 - 0.01, LUG_D / 2.0,
-                                   KEEP_SLOT_LO, KEEP_SLOT_HI, False, x, y, KEEP_A, up))
-    return out.union(_bore(PASS_D, bot, SPR_SEAT + 0.01, x, y, up))
-
-
-def throat(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
-    """THE JACK'S UP-STOP at the tenon's tip: a TPU ring on a bayonet (user).
-
-    It cannot be a step in the bore. The jack is O9.7 and can only go in from the tip,
-    so anything narrower than 9.7 above it is a lid fitted before the box is filled --
-    which is exactly what the first pass drew, a O9.8 cavity with O6.6 at both ends and
-    no way to put a jack in it (user). So the lip arrives after the jack, as its own
-    part, bored THROAT_D so the plug's overmould still passes.
-
-    WHY IT TURNS IN rather than presses. It was a PCTG ring on a press, locked by a O2
-    TPU pin through the tenon's flank -- and the pin had no way out. A TPU pin usually
-    stands proud so there is something to pull on; this one could not, because the flank
-    it sits in is the one that enters the mortise with 0.15 of clearance (user). A
-    bayonet carries its own extraction: put a blade in the drive notches, turn an eighth,
-    lift. Nothing is proud of anything.
-
-    Nor can it turn itself loose. A bayonet releases by turning AND THEN lifting, and
-    with the leg on, the adapter's mortise roof lies flat on this face -- the lift is
-    blocked before the turn matters. With the leg off there is nothing pulling on it:
-    the coil's 5 N is the whole load, and the lugs carry that against LUG_LEDGE of
-    octagon.
-
-    It is TPU for the same reason the sleeve is: an elastomer lug LUG_H tall in a
-    LUG_SLOT_H slot is its own spring, so the joint is preloaded and cannot rattle,
-    where a rigid bayonet this size would need a wave washer behind it."""
-    x, y = _ax(sx, ly)
-    r = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        (THROAT_BORE_D - KEEP_CLR) / 2.0, THROAT_L,
-        cq.Vector(x, y, JACK_REST), cq.Vector(0, 0, 1)))
-    r = r.union(_lugs((THROAT_BORE_D - KEEP_CLR) / 2.0 - 0.01,
-                      LUG_D / 2.0 - KEEP_CLR / 2.0,
-                      KEEP_SLOT_LO - (LUG_H - LUG_SLOT_H) / 2.0,
-                      KEEP_SLOT_HI + (LUG_H - LUG_SLOT_H) / 2.0, x, y, KEEP_A,
-                      True))
-    r = r.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        THROAT_D / 2.0, THROAT_L + 2.0,
-        cq.Vector(x, y, JACK_REST - 1.0), cq.Vector(0, 0, 1))))
-    # the LEAD-IN: a 45 funnel at the top, catching a barrel that arrives off axis
-    r = r.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-        THROAT_D / 2.0, THROAT_LEAD_D / 2.0, (THROAT_LEAD_D - THROAT_D) / 2.0,
-        cq.Vector(x, y, TIP - (THROAT_LEAD_D - THROAT_D) / 2.0), cq.Vector(0, 0, 1))))
-    # ...and the DRIVE: two notches across the mouth, square to the lugs so the blade
-    # is turning on the thickest part of the ring
-    for a in (KEEP_A[0] + LUG_TURN + LUG_DEG / 2.0 + 90.0,):
-        cut = (cq.Workplane("XY")
-               .box(THROAT_BORE_D + 2.0, KEEP_DRIVE_W, KEEP_DRIVE_DP, centered=True)
-               .translate((0, 0, TIP - KEEP_DRIVE_DP / 2.0))
-               .rotate((0, 0, 0), (0, 0, 1), a).translate((x, y, 0)))
-        r = r.cut(cut)
-    assert len(r.val().Solids()) == 1, (
-        "the keeper came out as %d solids -- its lugs are drawn off a radius the ring "
-        "does not reach, so they float. KEEP_CLR shrinks the ring away from the bore "
-        "the lugs are sized against, and the lugs have to start from the RING"
-        % len(r.val().Solids()))
-    return r
-
-
 def _run(pts, d=CABLE_D):
     """A cable through `pts`: cylinders with balls at the corners."""
     out = None
@@ -726,34 +544,6 @@ def _run(pts, d=CABLE_D):
     for q in pts[1:-1]:
         out = out.fuse(cq.Solid.makeSphere(d / 2.0, cq.Vector(*q)))
     return cq.Workplane("XY").add(out)
-
-
-def cables(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0):
-    """THE RUN, drawn -- a hole in a face with nothing coming out of it reads as a
-    mystery (user saw exactly that on the first pass).
-
-    The patch lead leaves the plug's back AT the channel's floor, runs straight down
-    the adapter's top face and out the -Y one -- inboard, under the instrument, where
-    nothing shows from the front -- then along the underside to the jack in the
-    chassis floor. Below the joint, the leg's own lead drops from the floating jack's
-    back down the middle of the tenon, which is where the adjust tenon will want it."""
-    x, y = _ax(sx, ly)
-    _, b = chan_pts(sx, ly)
-    fold = LS.Z_TOP - CHAN_D / 2.0
-    patch = _run([(x, y, PLUG_TOP),                             # the plug's back
-                  (x, y, fold),                                 # folded into the channel
-                  (b[0], b[1] + 1.0, fold),                     # out the -Y face
-                  (b[0], b[1] - 12.0, fold),                    # ...and it STOPS there.
-                  (b[0], b[1] - 18.0, fold - 6.0)])             # THE CHASSIS END IS
-                                    # PARKED (user 2026-09-16): the adapter board that
-                                    # used to be under the instrument is dropped, and
-                                    # this lead hangs in free air until the user's
-                                    # wiring plan lands. Drawn as a short stub rather
-                                    # than run to a station that is no longer there --
-                                    # a cable drawn into empty space would read as a
-                                    # routing decision, and this is the absence of one
-    leg = _run([(x, y, JACK_BACK), (x, y, JACK_BACK - 40.0)])
-    return [("leg_trrs_patch_%d" % k, patch), ("leg_trrs_leg_lead_%d" % k, leg)]
 
 
 def spring_coil(x, y, mated: bool = True, length: float | None = None):
@@ -785,23 +575,3 @@ def spring_coil(x, y, mated: bool = True, length: float | None = None):
     return coil.translate((x, y, SPR_SEAT + SPR_WIRE / 2.0))
 
 
-def dummies(sx: float = LS.LEG_X, ly: float = LS.LEG_Y, k: int = 0, mated: bool = True):
-    """The bought parts where they sit. `mated` is the latched state: the jack pushed
-    back FLOAT off its throat, its coil that much shorter."""
-    x, y = _ax(sx, ly)
-    back = 0.0 if mated else FLOAT
-    plug = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        PLUG_D / 2.0, PLUG_L, cq.Vector(x, y, PLUG_SHOULDER), cq.Vector(0, 0, 1)))
-    plug = plug.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        BARREL_D / 2.0, BARREL_L, cq.Vector(x, y, PLUG_SHOULDER - BARREL_L),
-        cq.Vector(0, 0, 1))))
-    mouth = PLUG_SHOULDER + back                 # the jack's mouth: it is what moves
-    jack = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        JACK_D / 2.0, JACK_L, cq.Vector(x, y, mouth - JACK_L), cq.Vector(0, 0, 1)))
-    coil = spring_coil(x, y, mated)
-    return ([("leg_trrs_plug_%d" % k, plug), ("leg_trrs_jack_%d" % k, jack),
-            ("leg_trrs_spring_%d" % k, coil),
-            ("leg_trrs_throat_%d" % k, throat(sx, ly)),
-            ("leg_trrs_sleeve_%d" % k, sleeve(sx, ly)),
-            ]
-            + cables(sx, ly, k))
