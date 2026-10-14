@@ -86,7 +86,8 @@ def pieces(radii=RADII, first=1):
 # but the DIAGONALS ACROSS (left vertex to right vertex, outside and hole): those two
 # corners are the layer-made ones; the flats are across the 45 degree faces.
 RADII_3 = (0.0, 0.4, 0.8, 1.2, 2.0)
-FOOT_W = 4 * D.BEAD          # 3.2 where the diamond stands
+FOOT_W = 8 * D.BEAD          # 6.4 where the diamond stands: wide enough to carry its number
+                             # ("20" is 5.6 wide) with the foot AND the ring over it
 FOOT_T = 2 * D.BEAD          # 1.6 foot plate
 FOOT_L = 10 * D.BEAD         # 8.0 foot plate along the ring's thickness
 STAND_T = 10 * D.BEAD        # 8.0 thick, so it stands
@@ -111,11 +112,16 @@ def standing(r: float) -> cq.Workplane:
 def standing_pieces(first=len(RADII) + len(RADII_2) + 1):
     """[(name, solid)]: set 3, in a row along X, each numbered on its UNDERSIDE (the bed
     face), right under where the diamond stands: the foot plate plus the ring above it,
-    so the cut leaves well over two beads. Read along the ring's thickness."""
+    so the cut leaves well over two beads. Reading across the ring, 4.0 tall (at 2.4 the
+    segments closed up and every figure read as an 8)."""
     out = []
     for k, r in enumerate(RADII_3):
-        p = cut_mark(standing(r), k + first, (0.0, -STAND_T / 2.0, 0.0), (0, 0, -1),
-                     (0, 1, 0), height=2.4, stroke=0.8)
+        body, mark = standing(r), dict(height=4.0, stroke=0.8)
+
+        def cut(x0):
+            return cut_mark(body, k + first, (x0, -STAND_T / 2.0, 0.0), (0, 0, -1), (1, 0, 0), **mark)
+        gb = body.val().cut(cut(0.0).val()).BoundingBox()      # the figure, to centre it
+        p = cut(-(gb.xmin + gb.xmax) / 2.0)
         # pitched on the DIAMOND's width (OUT_S * sqrt 2), not the flat ring's: apart, so each
         # diagonal can be measured
         out.append(("corner_r_%d" % (k + first),
