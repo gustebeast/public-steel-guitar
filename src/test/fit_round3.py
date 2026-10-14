@@ -29,10 +29,10 @@ And no wall under TWO BEADS. This is PLATE 1 of a cadkit joinery system (the use
 plate 2 carries the pairs not here, drawn from what this one measures.
 
   NOZZLE / NOZZLE  (drop-in: chassis seam, pedal-bar splice, bar-latch rail)
-    TEE    neck NECK_W, head HEAD_W x HEAD_D, socket lip LIP_T: each a face's two end
-           arcs (r * tan(turn / 2) apiece) plus flat, up to the next whole bead.
-    ROUND  the same neck into a circle of BULB_R = CONVEX_R, its lip ROUND_LIP (shorter:
-           the slot meets the circle at ~67 degrees, not 90).
+    ROUND  neck NECK_W into a circle of BULB_R = CONVEX_R, its socket lip ROUND_LIP:
+           the lip's two end arcs (r * tan(turn / 2) apiece) plus flat, up to the next
+           whole bead. (tee() draws the smallest T by the same rules -- 11.2 wide, so it
+           is off the plate: the round head is this pair's smallest joint.)
   NOZZLE / LAYER   (chassis -> endplate mushroom): cadkit's mushroom, its waist grown only
            until the head's corners hold 2.0; the socket cut as the tenon's TRUE OFFSET.
   LAYER / LAYER    (octagon: knee lever, leg section, cover rail): OCT_W wide (a two-bead
@@ -219,11 +219,10 @@ def _drop_finder(name, what, make, steps, host_w, host_d):
 
 
 def finders():
-    """The four round-3 finders, each re-stepped."""
+    """The plate's finders, each re-stepped: ONE joint per orientation pair, its smallest.
+    The tee (tee()) is not among them: it is the smallest T, but the round head does the
+    same nozzle/nozzle pair in a 4.0 head against its 11.2 (user, 2026-10-14)."""
     out = []
-    w_tee = HEAD_W + 2 * max(c for c, _b in TEE) + 2 * WALL
-    out.append(_drop_finder("tee", "nozzle/nozzle drop-in T, corners to the rule",
-                            lambda k, d: tee(*d), TEE, w_tee, D_TEE))
     w_rd = 2 * (BULB_R + max(ROUND) + WALL)
     out.append(_drop_finder("round", "nozzle/nozzle drop-in round head",
                             lambda k, d: round_head(d), ROUND, w_rd, D_ROUND))
