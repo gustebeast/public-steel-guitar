@@ -35,6 +35,7 @@ import os as _os
 import sys as _sys
 
 from cadkit.cables import oct_cable
+from cadkit.pcb import XH_PITCH
 
 from . import dimensions as D
 from .helpers import box_at
@@ -45,7 +46,6 @@ import harness as _H                                   # noqa: E402
 WAYS = tuple(_H.LED_DROP)                              # the lead's own order
 WIRE_OD = 1.4                    # 24 AWG over its insulation; XH crimps take 22-28 AWG
 WIRE_LANE = 1.6                  # lane to lane where the four share a direction
-XH_PITCH = 2.5
 PLUG_L = 5.0                     # straight out of a mouth before any bend: the XHP-4
                                  # housing stands about 4.3 past it
 COLORS = {"GND": (0.05, 0.05, 0.05), "V24": (0.85, 0.12, 0.10),

@@ -74,7 +74,7 @@ L1_VALUE = "SWPA5040S4R7MT"
 L1_LCSC = "C48496"
 L1_FP = "Inductor_SMD:L_Sunlord_SWPA5040S"
 L1_DESC = ("buck output inductor, 4.7 uH +-20 % shielded, Isat 3.50 A min / 3.90 typ, "
-           "DCR 39 mohm max, 5.0 x 5.0 x 4.0 (LCSC %s)" % L1_LCSC)
+           "DCR 39 mohm max, 5.0 x 5.0 x 4.0 (LCSC " + L1_LCSC + ")")
 L1_UH, L1_ISAT = 4.7, 3.50
 L1_DX = 7.035                # the inductor's centre, a 5 x 5 mm part with lands at +-1.85
 L1_LAND = 1.85
