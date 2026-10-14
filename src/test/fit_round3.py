@@ -84,8 +84,27 @@ NECK_W = 2 * D.BEAD                                 # 1.6, the quality tier
 HEAD_W = NECK_W + 2 * (ROOT_R + CONVEX_R + D.BEAD / 2)   # 11.2: each overhang a root, a
                                                     # corner and a half bead of flat between
 HEAD_D = 2 * CONVEX_R + D.BEAD                      # 4.8: two convex corners and a bead of flat
-LIP_T = 2 * CONVEX_R + D.BEAD                       # 4.8: the socket lip's two, likewise
 BULB_R = 3 * D.BEAD                                 # 2.4: the round head (4.8 across)
+
+
+def _lip(*turns):
+    """THE LIP -- the socket wall beside the neck, mouth to head -- as short as its two
+    ends allow: each end is a nozzle-made convex corner, so it prints CONVEX_R round
+    whatever is drawn, and an arc of radius r turning through `t` degrees takes
+    r * tan(t / 2) of the lip. Their sum, then up to the next whole bead (some flat
+    between, or the second arc will not build)."""
+    need = sum(CONVEX_R * math.tan(math.radians(t) / 2.0) for t in turns)
+    return (math.floor(need / D.BEAD + 1e-9) + 1) * D.BEAD
+
+
+def _junction_turn(c):
+    """The turn, degrees, where the round head's slot meets its circle."""
+    return math.degrees(math.acos((NECK_W / 2.0 + c) / (BULB_R + c)))
+
+
+LIP_T = _lip(90.0, 90.0)                            # 4.8: the tee's lip, square at both ends
+ROUND_LIP = _lip(90.0, max(_junction_turn(c) for c in ROUND))   # 4.0: the round head's,
+                                                    # whose inner end turns only ~67 degrees
 WAIST = 4 * D.BEAD                                  # 3.2: the mushroom waist (cadkit's is 1.6)
 MUSH_CELL_T = 14 * D.BEAD                           # 11.2: the grown cavity plus three beads
                                                     # behind it, where its (deepened) number is cut
@@ -97,8 +116,8 @@ TAG = "fit3"
 
 def _round_u0(c):
     """Where the round head's centre stands: its socket lip, mouth to where the slot
-    meets the circle, is LIP_T long."""
-    return LIP_T + math.sqrt((BULB_R + c) ** 2 - (NECK_W / 2.0 + c) ** 2)
+    meets the circle, is ROUND_LIP long."""
+    return ROUND_LIP + math.sqrt((BULB_R + c) ** 2 - (NECK_W / 2.0 + c) ** 2)
 
 
 # EVERY CELL OF A STRIP IS AS DEEP AS ITS LOOSEST: the number is cut in the back face, one
@@ -167,7 +186,7 @@ def tee(c, bc):
 
 def round_head(c):
     """The same neck into a circle of BULB_R, whose centre stands far enough out that
-    the socket's lip (mouth to where the slot meets the circle) is LIP_T long."""
+    the socket's lip (mouth to where the slot meets the circle) is ROUND_LIP long."""
     n2 = NECK_W / 2.0
     u0 = _round_u0(c)
     neck = _poly([(-1.0, -n2), (u0, -n2), (u0, n2), (-1.0, n2)], 0, F.L)
@@ -289,8 +308,8 @@ def main(argv=None):
     a = ap.parse_args(argv)
     LOG.clear()
     pl = plate()
-    print("TEE neck %.1f, head %.1f x %.1f, lip %.1f | ROUND head r %.1f | MUSHROOM waist %.1f"
-          % (NECK_W, HEAD_W, HEAD_D, LIP_T, BULB_R, WAIST))
+    print("TEE neck %.1f, head %.1f x %.1f, lip %.1f | ROUND head r %.1f, lip %.1f | MUSHROOM waist %.1f"
+          % (NECK_W, HEAD_W, HEAD_D, LIP_T, BULB_R, ROUND_LIP, WAIST))
     for name, steps in (("tee", TEE), ("round", ROUND), ("mushroom", MUSHROOM), ("octagon", OCTAGON)):
         print(name)
         for k, d in enumerate(steps):
