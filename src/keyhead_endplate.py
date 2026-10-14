@@ -1,18 +1,17 @@
-"""Keyhead (-X) endplate + NUT BLOCK — PETG-GF, ONE merged 25 mm piece (x -636..-611).
+"""Keyhead (-X) endplate + NUT BLOCK — PETG-GF, ONE merged piece, CH.KH_EP_THK thick in X.
 
-The nut block (string termination) is fused into a simple FULL-WIDTH solid prism
-(rail outer to rail outer) that TAKES OVER the rail -X ends, so its edge shows from
+The nut block (string termination, nut_block.py) is fused into a simple FULL-WIDTH solid
+prism (rail outer to rail outer) that TAKES OVER the rail -X ends, so its edge shows from
 the front like the bridge endplate. It INSTALLS LAST, dropping straight down (+Z→-Z)
 with the deck panels already in place. It:
   - closes the -X end of the box (its solid +X face stops the deck panels sliding -X);
-  - terminates the strings (gauged break edge + 2-row clamps), bearing on solid
-    PETG-GF — no separate nut block, no 4 corner bolts;
+  - terminates the strings: break dowels on sliding inserts that clamp each string
+    against the wrap rod, each insert pushed up by its own M4 height screw;
   - sockets a dovetail tongue on each rail end (mirrors the bridge joint) -> X+Y lock
-    + grip against the +X string tension; locked in +Z by ONE M4×18 button-head screw
-    up from the chassis floor bottom, forming its own thread in the solid body
-    (2.5 mm key -- the same one every other screw on the instrument takes).
+    + grip against the +X string tension; held down by the legs' lock screws
+    (legs.lock_pin_joint), which pass through its end face.
 
-Service: send motors slack, remove the +Z screw,
+Service: send motors slack, remove the leg lock screws,
 lift this piece out, slide the deck panels off -X.
 """
 
@@ -25,15 +24,13 @@ from .endplate_base import endplate_base
 from .helpers import box_at, heal
 
 
-# ONE part (x −636 .. −611, PETG-GF), FULL-WIDTH (rail outer to rail outer) so it TAKES
-# OVER the whole −X end and its edge shows from the front, mirroring the bridge endplate.
-# Per the endplate methodology it's AS SOLID AS POSSIBLE: a solid block from the deck
-# level (z6) down to the bed -- so the block itself is the −X cross-tie (no separate
-# crossbar) -- with the nut block the only thing reaching above the deck and foot
-# clearance hollowed only over the −X legs (XBAR above the tenon). Installs LAST,
-# dropping straight DOWN (+Z→−Z): it sockets a dovetail tongue on each rail end (X+Y
-# lock + grip vs the +X string tension) and is held by those alone (no screw). Nut
-# block fused in (~15 % infill).
+# ONE part (PETG-GF), FULL-WIDTH (rail outer to rail outer) so it TAKES OVER the whole −X
+# end and its edge shows from the front, mirroring the bridge endplate. Per the endplate
+# methodology it's AS SOLID AS POSSIBLE: a solid block from the deck level (z6) down to the
+# bed -- so the block itself is the −X cross-tie (no separate crossbar) -- with the nut
+# block the only thing reaching above the deck and foot clearance hollowed only over the
+# −X legs (XBAR above the tenon). Installs LAST, dropping straight DOWN (+Z→−Z): it
+# sockets a dovetail tongue on each rail end (X+Y lock + grip vs the +X string tension).
 # Build direction (user): the keyhead prints on its -X (outer) face, building -X -> +X.
 # Hole cutters that take it (cadkit.fasteners) shape any sideways hole by themselves.
 PRINT_UP = (1.0, 0.0, 0.0)
@@ -44,13 +41,11 @@ XHI  = CH.KH_X                             # +X (inboard) face (-611); the rail 
 XLO  = XHI - T_EP                          # -X outer (bed) face
 KX   = (XLO + XHI) / 2
 YFL  = CH.Y_LO - CH.T / 2                   # full width: -Y rail outer face
-YFH  = CH.Y_HI + CH.T / 2                   # +Y rail outer face
 # The wrap rod slides in from -Y along the whole of NB.rod_bore, so that run has to come out
 # through this part's -Y face -- anything short of it is material the rod cannot be pushed past.
 assert NB.ROD_Y0 - NB.ROD_L < YFL, (
     f"the rod's insertion run ends at y {NB.ROD_Y0 - NB.ROD_L:.2f}, inside the keyhead's -Y face "
     f"({YFL:.2f}) -- the {NB.ROD_L:g} mm rod could not be slid into position")
-Z6    = CH.TP_GZ1                          # deck/top-plate level = general plate top
 FOOT_Z = CH.KH_DT_Z0                       # foot line (-23.15): fill band bottom / wall-box top
 # FOOT POCKET: the chassis now KEEPS a ~10 mm rail shell hugging each -X leg socket
 # (CH._leg_shell over CH.LEG_SHELL_NX), capped at the foot line (z -23.15); the keyhead
@@ -58,7 +53,7 @@ FOOT_Z = CH.KH_DT_Z0                       # foot line (-23.15): fill band botto
 # z = Z_BOT .. FOOT_Z (over the shell), NOT full-Z -- so the solid fill band (z -23.15..6)
 # stays intact over the legs. leg -> 10 mm rail wall -> keyhead, touching.
 LEG_CLR = CH.EP_LEG_CLR                    # assembly clearance around the kept chassis shell (shared)
-LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_NX     # -625.6 .. -610.6 (rail-takeover region)
+LEG_SHELL_X0 = CH.LEG_SHELL_NX[0]                # -X end of the kept leg shell (rail-takeover region)
 
 
 
@@ -97,14 +92,6 @@ def _height_negatives():
     return out.translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z))
 
 
-# ⚠ _slot_shadow() IS GONE WITH THE CRADLES, and it was 20 lines of real machinery: the
-# insert slots plus each slot's opening in the HS_X1 face swept +X past the board, so the
-# Pi's columns could stand on a fin between slots without filling one or roofing over one.
-# It existed only because those columns landed on the height-adjust prism. Rooted in the
-# chassis floor the Pi's frame stops 0.6 mm short of that prism's face, so there is nothing
-# left to carve around. If the cradles ever come back onto this part, this is what they
-# needed -- see git history rather than re-deriving it.
-
 
 def _build():
     # THE SHARED TWO-PRISM BASE (endplate_base — same code as the bridge):
@@ -114,8 +101,7 @@ def _build():
     # the rail-end shells + tongues come from the chassis side).
     w = endplate_base(XLO, XHI, "lo")
     # nut block (the only thing reaching above the deck): ONE solid prism from the deck
-    # plane (Z6) up to the boss top, fused on -- it bridges down to the fill zone itself,
-    # so no separate riser
+    # plane up to its lid over the wrap rod, fused on
     w = w.union(NB.nut_block.translate((D.NUT_BLOCK_X, 0, D.STRING_Z)))
     # THE INSERT SLOTS RUN PAST THE NUT BLOCK'S BASE, so they have to be cut HERE too --
     # nut_block can only cut its own prism, and an insert at its lowest travel hangs well
@@ -161,20 +147,10 @@ def _build():
             w = w.cut(_n)
         for _n in _esn(CH.LEG_STATIONS_X[1], _ly, -1.0, CH.Z_BOT, PRINT_UP, _s):
             w = w.cut(_n)
-    # STRING-END STOWAGE (one per string): a vertical bore set INBOARD of the -X face
-    # (the stow bores, 1.6 of wall -X of them) running from near the body top straight DOWN
-    # and out through the bed -- the cut string end tucks into it, so almost nothing
-    # protrudes -X and what does is a smooth loop, not a sharp tail. The string can't drop
-    # in from straight above (the nut-block riser caps that), so the bore curves smoothly
-    # out to the -X face top corner (XLO, Z6): the WHOLE thing -- vertical bore, 45-deg
-    # arc, and 45-deg face lead-in -- is one swept solid, so there's no seam where the
-    # curve meets the bore (one continuous wall to push the string against). Restringing:
-    # pull the end back out with pliers for a hand-hold while setting the new string hand-tight.
-    # ON THE WRAP'S FAR END, NOT ON THE STRING'S OWN LANE (user caught this). Since the
-    # capstan the tail does not leave at nut_y any more: it leaves where its coil ends,
-    # nut_y - adv, which is 0.9 to 4.7 further -Y depending on gauge. The bores had stayed
-    # on the old line, so every tail was aimed a little wide of its own hole and the fattest
-    # was aimed at its neighbour's. Reading nut_block.wrap_y ties them to the wrap for good.
+    # STRING-END STOWAGE (one per string): a straight teardrop bore per string, set inboard of
+    # the -X face and leaning -Y as it descends (nut_block.STOW_TILT), from the nut block's top
+    # face down and out through the bed. The cut tail is fed in by hand. Its Y comes from the
+    # insert (nut_block.stow_y), so the hole does not move when the strings change.
     w = w.cut(NB.all_stow_channels(CH.Z_BOT - 1.0 - D.STRING_Z)
               .translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
     # RE-BORE THE WRAP ROD, after every union. The Ø8 rod dips below the deck plane, where the
@@ -182,29 +158,12 @@ def _build():
     # the bore back in (the gate: 905 mm3 of rod inside the endplate). Same cutter as the
     # nut block's own, from the module that owns the rod.
     w = w.cut(NB.rod_bore().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))
-    # ⚠ THE BOARD CRADLES USED TO BE FUSED HERE AND ARE THE CHASSIS'S NOW (user, 2026-09-28:
-    # "we need to be able to remove the endplate while leaving the pi and motor board in
-    # place"). They are unioned into the chassis segment in build.py, beside the floor ports
-    # and for the same circular-import reason.
-    # WHAT THAT ALSO FIXED: fused here, the motor frame's side walls ran down INSIDE the
-    # chassis floor -- 2717 mm3 of two printed parts in the same space, invisible because
-    # {keyhead_endplate, chassis} is allow-listed for this part's seating and hold-down
-    # screw. On the chassis those walls are a root.
-    # AND _slot_shadow() WENT WITH IT. It existed to carve the Pi frame's columns around the
-    # height-adjust insert slots they used to land on; a frame rooted in the floor stops
-    # 0.6 mm short of that block's face and never reaches them.
-    # ONE SOLID, CHECKED. The cradles are fused to a ledge 22 mm inboard of this plate's
-    # face, and the first version of them reached nowhere near it: the motor controller's
-    # came out as a free-floating 18,121 mm3 lump and the part was quietly TWO pieces. The
-    # overlap gate cannot see that -- it reports interpenetration, and two solids that never
-    # touch do not interpenetrate -- and every feature-by-feature check of the cradle passed,
-    # because each of its walls, pads and screw bosses was exactly right. Only whether it was
-    # ATTACHED was never asked. Ask it here, where a change to either part fails loudly.
+    # ONE SOLID, CHECKED. The overlap gate reports interpenetration, not disconnection: a
+    # fused feature that never touches the plate would leave the part quietly in TWO pieces.
     _n = len(w.val().Solids())
     assert _n == 1, (
-        "keyhead_endplate came out as %d disconnected solids -- a cradle (or another fused "
-        "feature) is not touching the plate. Check electronics.RIB_LZ (where the columns start) "
-        "against where this plate's wall actually is." % _n)
+        "keyhead_endplate came out as %d disconnected solids -- a fused feature is not "
+        "touching the plate." % _n)
     return heal(w)
 
 
@@ -225,7 +184,7 @@ def assembly():
     machinery keyed off the scope registry; per-part knowledge belongs with the part.
     src.build is imported INSIDE the call to dodge the import cycle (build imports this
     module), which is safe because build is always imported by then."""
-    from . import dimensions as D, nut_block as NB, components as C
+    from . import components as C
     from . import build as B
     out = [("keyhead_endplate", keyhead_endplate),
            ("nut_wrap_rod", NB.rod().translate((D.NUT_BLOCK_X, 0.0, D.STRING_Z)))]
