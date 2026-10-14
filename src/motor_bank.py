@@ -3,9 +3,9 @@
 The 10 motors lie flat under the speaking length, shaft +Y (bodies extend −Y
 toward the player). They step along −X by MOTOR_X_STEP so they don't overlap,
 each on its string's Y line. Each mounts to a faceplate wall (an X–Z plane at
-its faceplate Y) carrying a NEMA17 pattern; motors and walls rest on the
-chassis's per-motor cross-ribs (no floor plate — the walls are fused into the
-chassis). Built in global position.
+its faceplate Y) (its pilot boss drops into a slot in it); motors and walls rest on the
+chassis's solid bottom prism (the walls are fused into the chassis). Built in
+global position.
 
 DROP-IN POCKETS (user, 2026-09-11). The motors do not bolt to anything any more:
 each drops STRAIGHT DOWN into a pocket that stops it in every other direction,
@@ -15,7 +15,7 @@ what holds the motor in (user, 2026-09-14). Install: slip the belt over the
 pulley, lower the motor in, drop the tee on and drive its one screw. Remove:
 back that screw out, lift the board off, lift the motor out.
 
-What makes a pocket possible at a 1.6 mm motor gap is the STAGGER. Neighbours sit
+What makes a pocket possible between motors only D.MOTOR_GAP apart is the STAGGER. Neighbours sit
 one string pitch (9.5) apart in Y, so the −X neighbour ENDS 9.5 short of this
 motor's back face and the +X neighbour STARTS 9.5 behind its front face. In those
 two bands the side post stands alone and can be as thick as it likes, so the bank
@@ -28,23 +28,16 @@ import cadquery as cq
 
 
 from . import dimensions as D
-from .helpers import box_at
+from .helpers import box_at, cyl_y
 from .components import MOTOR_PULLEY_STANDOFF
 
-PLATE_T      = 8 * D.NOZZLE_D    # 6.4 (was 6.0 = 7.5 beads)
-_BOLT_EDGE   = 7 * D.BEAD                   # 5.6 material around the NEMA17 bolt square
-                                            # (was 6.0 = 7.5 beads; snapped DOWN — the
-                                            # gaps to the chassis split planes and the
-                                            # neighbouring motor GROW)
-
-WALL_W = D.NEMA17_BOLT_SQ + 2 * _BOLT_EDGE  # 42.2: 0.9 to the chassis split planes,
-                                            # 1.75 to the neighbouring motor body
+PLATE_T      = 8 * D.BEAD        # 6.4 faceplate wall
 
 BOARD_AIR  = D.MIN_WALL          # 0.8: the tee board's underside over the motor's top face --
                                  # the lap that retains it, and the motor's lift before it bites
 SEAT_HALF_W = 21.9               # the faceplate wall's -X reach: the tee's -X locating wall needs
                                  # board/2 + wall + fit outside the board, and the neighbour's body
-                                 # is at 22.75 (wiring asserts the board still fits this)
+                                 # is at MOTOR_SQ/2 + MOTOR_GAP (wiring asserts the board still fits)
 MOTOR_CLR  = D.MOTOR_CLR         # slip fit round a PURCHASED body (the gap is sized from it)
 BOSS_CLR   = 0.4                 # round the O22 pilot boss in its drop-in slot
 POST_T     = 12 * D.BEAD         # 9.6 side post (X). Capped by the NEIGHBOUR's boss slot,
@@ -52,11 +45,10 @@ POST_T     = 12 * D.BEAD         # 9.6 side post (X). Capped by the NEIGHBOUR's 
 NEIGH_CLR  = D.MIN_WALL          # 0.8 air to the diagonal neighbour's body, at the band end
 WIRE_LANE_W = 6.0                # a back stop leaves this much clear on the motor's centreline
                                  # for its CAN pigtail to climb
-FIN_H      = 16 * D.BEAD         # 12.8: the -X fin's height (short, and wall-braced)
 BACK_T     = 4 * D.BEAD          # 3.2 back wall: nothing pushes the motor -Y, so it is a stop,
 BUMP_H     = 16 * D.BEAD         # 12.8 tall -- above it the DRIVE's connector and cable want the
                                  # bay open, and the motor goes in with them attached
-STAGGER    = abs(D.string_y(0) - D.string_y(1))    # 9.5, one string pitch: the band's depth
+STAGGER    = D.STRING_PITCH      # 9.5, one string pitch: the band's depth
 # THE POCKET'S -Y LIMIT. The bank is staggered, so the -Y-most motors' backs run right down to
 # the -Y rail -- and that strip is the HARNESS CORRIDOR: the tee boards on their cradles and the
 # six stacked trunk lanes. Nothing of a pocket may enter it (the first cut of this design put
@@ -80,9 +72,8 @@ def _face_y(i):
 
 _zc = D.MOTOR_BELT_Z
 FLOOR_TOP = _zc - D.MOTOR_SQ / 2            # motors rest here (= wall bottom / chassis rib top)
-BED_Z = FLOOR_TOP - D.BOTTOM_T                  # print bed = chassis rib/rail bottom; the
-                                            # FLOOR_TOP->bed gap = rib height = XBAR, so the
-                                            # cross-ribs are a square XBAR x XBAR section
+BED_Z = FLOOR_TOP - D.BOTTOM_T                  # print bed = the chassis bottom prism's
+                                                # underside; FLOOR_TOP is that prism's top
 Z_HI = _zc + D.MOTOR_SQ / 2 + BOARD_AIR            # the TEE SEAT PLANE: the board rests here and
                                                    # laps the motor by BOARD_AIR of air
 SEAT_TOP = Z_HI + D.TEE_BOARD_T + D.TEE_WALL_OVER  # ...and the bay runs this far over it, so the
@@ -219,13 +210,14 @@ def pocket(i) -> cq.Workplane:
     accreted version left a sliver wherever a cut met a small prism edge-on; here every face is
     either the motor's surface plus its fit, or a cut with a reason.
 
-    THE PRISM  the bay this motor owns: half the gap to each neighbour (the halves meet and
-               fuse, so ONE 1.6 wall separates two motors), rib tops up to the tee seat plane.
+    THE PRISM  the bay this motor owns: the whole gap to each neighbour less its fit
+               (side_room), so ONE 1.6 wall separates two motors, from the bottom prism's top
+               up past the tee seat plane.
     THE CUTS   the motor + MOTOR_CLR swept +Z, which is both the pocket and the way IN; the
                DRIVE's room at the back (its connector and cable leave that face and the motor
                goes in with them attached, so the back wall stops at BUMP_H and keeps a lane on
-               the centreline); the -Y rail's harness corridor; and the boss's drop-in slot,
-               which _wall cuts.
+               the centreline); the tee board's seat; and the boss's drop-in slot. (The -Y
+               rail's harness corridor is cut by chassis.py.)
 
     Exposed PER MOTOR so the chassis can fuse each housing WHOLE into the print segment that
     owns its motor -- a housing straddling a segment boundary is never sliced; it just overhangs
@@ -282,36 +274,17 @@ def pocket(i) -> cq.Workplane:
     # before the prism unions into those bands and the prism simply fills them back in.
     _slot_w = D.NEMA17_PILOT_D + 2 * BOSS_CLR
     _fy = _face_y(i)
-    body = body.cut(box_at(_slot_w, PLATE_T + 2.0, Z_HI - bz1 + (bz1 - (mz := D.motor_pos(i)[2])) + 1.0,
+    body = body.cut(box_at(_slot_w, PLATE_T + 2.0, Z_HI - (mz := D.motor_pos(i)[2]) + 1.0,
                            x=(bx0 + bx1) / 2, y=_fy, z=(mz + Z_HI + 1.0) / 2))
-    body = body.cut(cq.Workplane(obj=cq.Solid.makeCylinder(
-        _slot_w / 2, PLATE_T + 2.0, cq.Vector((bx0 + bx1) / 2, _fy - PLATE_T / 2 - 1.0, mz),
-        cq.Vector(0, 1, 0))))
-    body = body.cut(lift_prism(i))
-    # The corridor cut can strand a scrap of side wall above it on the -Y-most bays (their backs
-    # reach the rail, so there is nothing left to join it to). Keep the housing proper: the
-    # chassis would drop the scraps anyway, and a part that IS its own answer is easier to read.
-    _solids = body.val().Solids()
-    if len(_solids) > 1:
-        body = cq.Workplane(obj=max(_solids, key=lambda s: s.Volume()))
-    return body
+    body = body.cut(cyl_y(_slot_w, PLATE_T + 2.0, _fy - PLATE_T / 2 - 1.0,
+                          x=(bx0 + bx1) / 2, z=mz))
+    return body.cut(lift_prism(i))
 
 
 plates = [pocket(i) for i in range(D.N_STRINGS)]
 
-# the post stops short of the NEIGHBOUR's boss slot (both sides are the same by symmetry).
-# The SCREWED motor's fatter post is exempt: it is the last in the bank, with no neighbour.
+# the post stops short of the NEIGHBOUR's boss slot (both sides are the same by symmetry)
 _slot_edge = D.MOTOR_X_STEP - (D.NEMA17_PILOT_D + 2 * BOSS_CLR) / 2
 assert (D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T) <= _slot_edge - D.MIN_WALL + 1e-9, (
     "the side post reaches within %.2f of the neighbour's boss slot"
     % (_slot_edge - (D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T)))
-
-
-def _build() -> cq.Workplane:
-    body = plates[0]
-    for w in plates[1:]:
-        body = body.union(w)
-    return body
-
-
-motor_bank = _build()
