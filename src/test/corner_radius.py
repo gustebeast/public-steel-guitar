@@ -114,7 +114,10 @@ def standing_pieces(first=len(RADII) + len(RADII_2) + 1):
     for k, r in enumerate(RADII_3):
         p = cut_mark(standing(r), k + first, (OUT_S / 4.0 + 1.6, -STAND_T / 2.0, FOOT_T), (0, 0, 1),
                      (0, 1, 0), height=2.4, stroke=0.8)
-        out.append(("corner_r_%d" % (k + first), p.translate((k * (OUT_S + GAP), 0.0, 0.0)).val()))
+        # pitched on the DIAMOND's width (OUT_S * sqrt 2), not the flat ring's: apart, so each
+        # diagonal can be measured
+        out.append(("corner_r_%d" % (k + first),
+                    p.translate((k * (OUT_S * math.sqrt(2.0) + GAP), 0.0, 0.0)).val()))
     return out
 
 
