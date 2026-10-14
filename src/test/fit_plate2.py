@@ -1,0 +1,359 @@
+"""JOINERY PLATE 2: the smallest joint per print-orientation pair, both halves drawn to
+what they print, checked on BOTH solids.
+
+    py -3.12 -m src.test.fit_plate2            # every pair's dims, corners, overhangs, walls, gap
+    py -3.12 -m src.test.fit_plate2 --export   # ...and write src/test/test_plate2_petg_gf.step
+
+WHAT PLATE 1 TAUGHT (fit_round3, the user's calipers and fingers, 2026-10-14, PETG-GF 0.8):
+  corners   a corner prints within ~0.3 of the drawing only from: NOZZLE-made 2.0 convex
+            AND 2.0 concave (a concave drawn 0.5 printed ~1.3 -- the knee is not the
+            accurate point); LAYER-made 0.8 both (the standing rings).
+  fit       round head (nozzle/nozzle) 0.40 for a long joint; octagon (layer/layer) 0.30;
+            the mushroom bound at the neck, where its corners were drawn sharper than
+            they print.
+  even      the user: even clearance all round -- no separate depth relief on top.
+
+THE RULES, per half, from how it prints (the joint frame: X the slide, Y across, Z from
+the mating plane toward the tenon's head):
+  NOZZLE  (profile in the layers)   corners >= NOZZLE_MIN; no overhang limit.
+  LAYER   (profile across them)     corners >= LAYER_MIN; every face hanging over air must
+                                    be 45 degrees or steeper: printed head-up ("up") that is
+                                    the tenon's head underside / the socket's roof; printed
+                                    mouth-up ("down") the socket's lip underside.
+  BOTH    walls two beads; one SHARED profile drawn against both halves' rules (matched()
+          radii; each face as long as its two end arcs need, up to the next whole bead);
+          the tenon IS it, the socket its offset by c; then every check runs on both solids.
+"""
+from __future__ import annotations
+
+import argparse
+import math
+import pathlib
+import sys
+
+import cadquery as cq
+import numpy as np
+
+from src import dimensions as D
+from . import fit_finder as F
+from . import fit_round2 as R2
+
+HERE = pathlib.Path(__file__).resolve().parent
+BEAD = D.BEAD
+WALL = 2 * BEAD
+MIN = {"N": (2.0, 2.0), "L": (0.8, 0.8)}      # (convex, concave) that prints as drawn
+ROOF_FLAT_MAX = 5 * BEAD                       # 4.0: a socket roof may bridge this much (round 1's
+                                               # 18.3 failed; a few mm is routine in PETG)
+TAG = "p2"
+
+# (name, tenon prints, socket prints, clearances). "N" nozzle-made (the profile lies in the
+# layers: the tenon stands on its end); "up" layer-made, head toward the nozzle; "down"
+# layer-made, socket mouth toward the nozzle.
+PAIRS = [
+    ("nl_mouth_up", "N", "down", (0.25, 0.30, 0.35)),
+    ("nl_mouth_down", "N", "up", (0.25, 0.30, 0.35)),
+    ("ll_standing", "up", "up", (0.25, 0.30, 0.35)),
+    ("ll_mouth_up", "up", "down", (0.25, 0.30, 0.35)),
+]
+
+
+def _kind(p):
+    return "N" if p == "N" else "L"
+
+
+def matched(c, tmin, smin):
+    """(tenon (convex, concave), socket (convex, concave)) at clearance c."""
+    tc = max(tmin[0], smin[1] - c)
+    tv = max(tmin[1], smin[0] + c)
+    return (tc, tv), (tv - c, tc + c)
+
+
+def _beads_over(need):
+    """The next whole bead ABOVE `need`: some flat is left between two end arcs."""
+    return (math.floor(need / BEAD + 1e-9) + 1) * BEAD
+
+
+def _arc(r, turn):
+    """How much of a face an arc of radius r turning `turn` degrees takes."""
+    return r * math.tan(math.radians(turn) / 2.0)
+
+
+def shape(tenon, socket, cmax):
+    """The shared profile's dimensions for one pair, sized at its loosest clearance."""
+    (tc, tv), (sc, sv) = matched(cmax, MIN[_kind(tenon)], MIN[_kind(socket)])
+    flare = 45.0 if (tenon == "up" or socket == "down") else 90.0   # the head's underside
+    chamfer = socket == "up"                                         # the socket's roof
+    n = BEAD                                                         # neck: two beads wide
+    # neck side: root corner (90) to the flare corner; and the socket's lip over it two beads
+    z1 = _beads_over(_arc(tv, 90.0) + _arc(tv, flare))
+    lip = (lambda z: z + cmax - cmax * math.sqrt(2.0)) if flare == 45.0 else (lambda z: z - cmax)
+    while lip(z1) < WALL:
+        z1 += BEAD
+    # the underside: its flare corner to the head-side corner
+    need = _arc(tv, flare) + _arc(tc, flare)
+    k = 1
+    while (k * BEAD * (math.sqrt(2.0) if flare == 45.0 else 1.0)) <= need + 1e-6:
+        k += 1
+    h = n + k * BEAD
+    # the top: two 90 degree corners on a flat, or 45 degree chamfers to a short flat
+    if chamfer:
+        # a POINTED roof: the two chamfers meet at a rounded peak, no flat -- the bridge
+        # is only the flatter middle of that peak's arc
+        t = 0.0
+        while h * math.sqrt(2.0) <= _arc(tc, 45.0) + _arc(tc, 90.0) + 1e-6:
+            h += BEAD / 2.0
+        top_turn = 45.0
+    else:
+        t = None
+        while 2 * h <= 2 * _arc(tc, 90.0) + 1e-6:
+            h += BEAD / 2.0
+        top_turn = 90.0
+    s = _beads_over(_arc(tc, flare) + _arc(tc, top_turn))
+    # a socket printed mouth-down has its mouth ON THE BED, where its rounded corner would
+    # start flat over air: it is a 45 degree CHAMFER instead, sharp on the bed, landing
+    # just past where the tenon's root fillet runs out (tv from the neck), so the gap runs
+    # 0 at the seam to c with no overlap
+    mouth = (n + tv) if socket == "up" else None
+    return dict(n=n, z1=z1, h=h, s=s, t=t, mouth=mouth, flare=flare, chamfer=chamfer)
+
+
+def _meet(l1, l2):
+    """Intersection of two lines, each (point, direction), in (y, z)."""
+    (p, d), (q, e) = l1, l2
+    den = d[0] * e[1] - d[1] * e[0]
+    u = ((q[0] - p[0]) * e[1] - (q[1] - p[1]) * e[0]) / den
+    return (p[0] + u * d[0], p[1] + u * d[1])
+
+
+def profile(S, o=0.0, zb=-0.5):
+    """The closed (y, z) profile, every face moved out by `o` but the mating plane."""
+    n, z1, h, s, t = S["n"], S["z1"], S["h"], S["s"], S["t"]
+    r2 = math.sqrt(0.5)
+    if S["flare"] == 45.0:
+        z2 = z1 + (h - n)
+        under = ((n + o * r2, z1 - o * r2), (r2, r2))
+    else:
+        z2 = z1
+        under = ((n, z1 - o), (1.0, 0.0))
+    z3 = z2 + s
+    neck = ((n + o, 0.0), (0.0, 1.0))
+    side = ((h + o, 0.0), (0.0, 1.0))
+    pts = [(n + o, zb), _meet(neck, under), _meet(under, side)]
+    apex = None
+    if S["chamfer"]:
+        ch = ((h + o * r2, z3 + o * r2), (-r2, r2))
+        pts += [_meet(side, ch)]
+        if t:
+            pts += [_meet(ch, ((0.0, z3 + (h - t) + o), (1.0, 0.0)))]
+        else:
+            apex = _meet(ch, ((0.0, 0.0), (0.0, 1.0)))   # the peak, on the centre line
+    else:
+        pts += [_meet(side, ((0.0, z3 + o), (1.0, 0.0)))]
+    left = [(-y, z) for y, z in reversed(pts)]
+    return pts + ([apex] if apex else []) + left
+
+
+def _prism(pts, x0, x1):
+    return (cq.Workplane("YZ").polyline(pts).close().extrude(x1 - x0)
+            .translate((x0, 0, 0)))
+
+
+# THE CHECKS RUN ON THE 2D SECTION: the joint is a straight extrusion of its profile, so
+# a section at mid-length says everything, and its outline -- outer ring wound one way,
+# holes the other -- gives each face's outward normal without probing the solid.
+STEP = 0.05                                    # mm between the outline's samples
+
+
+def rings(body):
+    """The section's outlines at mid-length, (y, z) arrays, each wound so that its
+    material lies to the LEFT (outer rings counter-clockwise, holes clockwise)."""
+    sec = body.val().intersect(cq.Face.makePlane(400, 400, cq.Vector(F.L / 2.0, 0, 0),
+                                                 cq.Vector(1, 0, 0)))
+    out = []
+    for face in sec.Faces():
+        for k, w in enumerate([face.outerWire()] + face.innerWires()):
+            n = max(8, int(w.Length() / STEP))
+            pts = np.array([(q.y, q.z) for q in w.positions(np.linspace(0.0, 1.0, n, endpoint=False))])
+            area = 0.5 * np.sum(pts[:, 0] * np.roll(pts[:, 1], -1) - np.roll(pts[:, 0], -1) * pts[:, 1])
+            if (area < 0) == (k == 0):         # outer wants +area, holes -area
+                pts = pts[::-1]
+            out.append(pts)
+    return out
+
+
+def _segments(rs):
+    a = np.vstack([r for r in rs])
+    b = np.vstack([np.roll(r, -1, axis=0) for r in rs])
+    return a, b
+
+
+def _inside(pts, rs):
+    """Even-odd point-in-section for many points."""
+    a, b = _segments(rs)
+    y, z = pts[:, 0:1], pts[:, 1:2]
+    cross = ((a[:, 1] > z) != (b[:, 1] > z))
+    t = (z - a[:, 1]) / np.where(b[:, 1] == a[:, 1], 1e-12, b[:, 1] - a[:, 1])
+    yi = a[:, 0] + t * (b[:, 0] - a[:, 0])
+    return (np.sum(cross & (y < yi), axis=1) % 2) == 1
+
+
+def gaps(token, cell, above=1e-3):
+    """The clearance as built, round the tenon's profile above z = `above`: each
+    point's distance to the socket (negative where the two overlap). Sorted."""
+    tr, cr = rings(token), rings(cell)
+    pts = np.vstack(tr)
+    pts = pts[pts[:, 1] > above]
+    a, b = _segments(cr)
+    d = b - a
+    L2 = np.maximum(np.sum(d * d, axis=1), 1e-12)
+    t = np.clip(((pts[:, None, :] - a[None]) * d[None]).sum(axis=2) / L2, 0.0, 1.0)
+    near = a[None] + t[..., None] * d[None]
+    dist = np.sqrt(((pts[:, None, :] - near) ** 2).sum(axis=2)).min(axis=1)
+    dist[_inside(pts, cr)] *= -1.0
+    return np.sort(dist)
+
+
+def overhang(body, down):
+    """(steepest overhang, bridge) of the joint's faces printed with `down` (y, z) the
+    print's down. Anything flatter than 45 degrees is a BRIDGE -- the roof's flat AND the
+    flatter parts of the arcs running into it -- measured by its width across (it must be
+    under ROOF_FLAT_MAX); the overhang is the steepest face outside it (45 is the limit).
+    The section's own outer box (bed, top, sides) is not joint and is left out."""
+    rs = rings(body)
+    a, b = _segments(rs)
+    allp = np.vstack(rs)
+    lo, hi = allp.min(axis=0), allp.max(axis=0)
+    m = (a + b) / 2.0
+    keep = np.all((np.abs(m - lo) > 1e-3) & (np.abs(m - hi) > 1e-3), axis=1)
+    d = (b - a)[keep]
+    n = np.stack([d[:, 1], -d[:, 0]], axis=1)          # material on the left: air to the right
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-12)
+    dot = n @ np.array(down)
+    flat = dot > math.sqrt(0.5) + 0.005
+    steep = (dot > 0) & ~flat
+    worst = math.degrees(math.asin(min(1.0, dot[steep].max()))) if steep.any() else 0.0
+    # each RUN of flat faces, unbroken round the outline, is one bridge: its width across
+    full = np.zeros(len(m), bool)
+    full[np.flatnonzero(keep)[flat]] = True
+    widest, run = 0.0, []
+    for i in range(len(full) + 1):
+        if i < len(full) and full[i]:
+            run.append(m[i, 0])
+        elif run:
+            widest, run = max(widest, max(run) - min(run)), []
+    return worst, float(widest)
+
+
+DOWN = {"up": (0.0, -1.0), "down": (0.0, 1.0)}   # the print's down in the joint's (y, z)
+
+
+def make_pair(name, tenon, socket, c, S, host_w, top):
+    """(token, cell, report) at clearance c."""
+    rt, rs = matched(c, MIN[_kind(tenon)], MIN[_kind(socket)])
+    hw = host_w / 2.0
+    token = F._box(0, F.L, -hw, hw, -2 * WALL, 0).union(_prism(profile(S), 0.0, F.L))
+    cell = F._box(0, F.L, -hw, hw, 0, top).cut(_prism(profile(S, c, -1.0), -1.0, F.L + 1.0))
+    if S["mouth"]:
+        m = S["mouth"]
+        cell = cell.cut(_prism([(m + 1.0, -1.0), (0.0, m), (-m - 1.0, -1.0)], -1.0, F.L + 1.0))
+    token, lt = F._round(token, "x", rt, False)
+    cell, ls = F._round(cell, "x", rs, False,
+                        skip=(lambda u, v: abs(v) < 1e-6) if S["mouth"] else None)
+    gp = gaps(token, cell)
+    # a mouth-down socket's chamfered mouth leaves more air by the seam, by design: the
+    # joint's own clearance is measured above it, the mouth's reported apart
+    gj = gaps(token, cell, S["mouth"]) if S["mouth"] else gp
+    off = [(half, kind, used) for half, log, want in (("tenon", lt, rt), ("socket", ls, rs))
+           for _u, _v, kind, used in log
+           if kind and (used is None or abs(used - want[0 if kind == "convex" else 1]) > 1e-6)]
+    rep = dict(c=c, tenon_r=rt, socket_r=rs, gap=(gp[0], gj[-1]), mouth_air=gp[-1], corners_off=off,
+               tenon_overhang=(None, 0.0) if tenon == "N" else overhang(token, DOWN[tenon]),
+               socket_overhang=overhang(cell, DOWN[socket]))
+    return token, cell, rep
+
+
+REPORT = {}
+
+
+def finders():
+    out = []
+    for name, tenon, socket, steps in PAIRS:
+        S = shape(tenon, socket, max(steps))
+        prof = profile(S)
+        tip = max(z for _y, z in prof)
+        host_w = 2 * (S["h"] + max(steps) + WALL)
+        top = tip + max(steps) + 2 * WALL                   # roof two beads + the number's depth
+        S.update(host_w=host_w, top=top, tip=tip,
+                 lip=min((S["z1"] + c - c * math.sqrt(2.0)) if S["flare"] == 45.0 else S["z1"] - c
+                         for c in steps),
+                 side_wall=host_w / 2.0 - (S["h"] + max(steps)), roof=top - (tip + max(steps)))
+        REPORT[name] = dict(shape=S, steps=[])
+
+        def make(k, d, name=name, tenon=tenon, socket=socket, S=S, host_w=host_w, top=top):
+            token, cell, rep = make_pair(name, tenon, socket, d, S, host_w, top)
+            REPORT[name]["steps"].append(rep)
+            return token, cell
+        t_up = F.UP_X if tenon == "N" else F.UP_Z
+        c_up = F.DOWN_Z if socket == "down" else F.UP_Z
+        f = F.Finder(name, "%s tenon / %s socket" % (tenon, socket), make, (steps[0], steps[0]),
+                     host_w + F.GAP, t_up, c_up, "chassis_0", "chassis_0", deltas=tuple(steps),
+                     skin_top=socket == "up",                        # mouths on the bed
+                     cell_mark=((F.L / 2.0, 0.0, top), (0, 0, 1), (0, 1, 0), dict(height=3.2, stroke=0.8)),
+                     token_mark=((F.L / 2.0, 0.0, -2 * WALL), (0, 0, -1), (0, 1, 0),
+                                 dict(height=3.2, stroke=0.8)))
+        out.append(f)
+    return out
+
+
+def plate():
+    out, x = [], 0.0
+    for f in finders():
+        grp, w = R2._group(f, "both", TAG)
+        y0 = min(sh.BoundingBox().ymin for _n, sh in grp)
+        out += [(n, sh.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, sh in grp]
+        x += w + R2.BETWEEN
+    return [(n, sh if sh.isValid() else sh.fix()) for n, sh in out]
+
+
+def assembly(origin=(-560.0, 210.0, 160.0)):
+    return [("test_" + n, cq.Workplane("XY").newObject([s]).translate(origin)) for n, s in plate()]
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--export", action="store_true")
+    a = ap.parse_args(argv)
+    REPORT.clear()
+    pl = plate()
+    for name, r in REPORT.items():
+        S = r["shape"]
+        print("%s: neck %.1f, head %.1f wide x %.2f tall, underside %d deg, top %s | lip %.2f, side wall %.2f, roof %.2f"
+              % (name, 2 * S["n"], 2 * S["h"], S["tip"], S["flare"],
+                 "chamfered to %.2f" % (2 * S["t"]) if S["chamfer"] else "flat",
+                 S["lip"], S["side_wall"], S["roof"]))
+        for rep in r["steps"][:3]:
+            (to, tb), (so, sb) = rep["tenon_overhang"], rep["socket_overhang"]
+            bad = ((to or 0) > 45.5 or so > 45.5 or max(tb, sb) > ROOF_FLAT_MAX + 1e-6
+                   or rep["gap"][1] > rep["c"] + 0.01 or rep["corners_off"])
+            print("   c %.2f  tenon %.2f/%.2f socket %.2f/%.2f  gap %.3f..%.3f (mouth %.2f)  overhang tenon %s"
+                  " socket %.0f  bridge %.2f%s"
+                  % (rep["c"], rep["tenon_r"][0], rep["tenon_r"][1], rep["socket_r"][0], rep["socket_r"][1],
+                     rep["gap"][0], rep["gap"][1], rep["mouth_air"], "-" if to is None else "%.0f" % to, so,
+                     max(tb, sb),
+                     "   FAILS A CHECK %s" % (rep["corners_off"] or "") if bad else ""))
+    lo = [min(getattr(s.BoundingBox(), k) for _n, s in pl) for k in ("xmin", "ymin")]
+    hi = [max(getattr(s.BoundingBox(), k) for _n, s in pl) for k in ("xmax", "ymax", "zmax")]
+    print("plate: %d pieces, %.1f cm3, %.1f x %.1f, %.1f tall" % (
+        len(pl), sum(s.Volume() for _n, s in pl) / 1000.0, hi[0] - lo[0], hi[1] - lo[1], hi[2]))
+    bad = [n for n, s in pl if not s.isValid() or len(s.Solids()) != 1]
+    print("every piece one valid solid" if not bad else "NOT ONE VALID SOLID: %s" % ", ".join(bad))
+    if a.export:
+        from cadkit.step_export import export_step
+        path = HERE / "test_plate2_petg_gf.step"
+        export_step(cq.Workplane("XY").newObject([cq.Compound.makeCompound([s for _n, s in pl])]), str(path))
+        print("wrote", path)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

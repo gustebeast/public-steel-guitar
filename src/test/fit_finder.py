@@ -86,7 +86,7 @@ def _variant(real, d):
     return _clrs(real.clearance, real.back_clearance, d) + (0.0,)
 
 
-def _round(body, axis, r, hosts=True):
+def _round(body, axis, r, hosts=True, skip=None):
     """`body` with its profile corners rounded: the edges that run along `axis` (the
     joint's extrusion), bar the block's own two bed corners.
 
@@ -98,7 +98,9 @@ def _round(body, axis, r, hosts=True):
     and a radius the edge has no room for is tried smaller (to 0.4, or to a smaller
     asked radius) before it is
     skipped. hosts=False leaves the host block's own side edges (its +/-Y faces) sharp:
-    they are coupon, not joint. Returns (body, [(u, v, kind, radius used or None)])."""
+    they are coupon, not joint. `skip(u, v)` leaves those corners as drawn (a socket
+    mouth on the print bed: any fillet there starts flat over air). Returns
+    (body, [(u, v, kind, radius used or None)])."""
     cx, cv = (r, r) if not isinstance(r, tuple) else r
     bb = body.val().BoundingBox()
     lo = {"x": (bb.ymin, bb.zmin), "z": (bb.xmin, bb.ymin)}[axis]
@@ -117,6 +119,8 @@ def _round(body, axis, r, hosts=True):
         uv = uv_of(e)
         if not all(abs(uv[i] - lo[i]) < 1e-6 or abs(uv[i] - hi[i]) < 1e-6 for i in (0, 1)):
             if not hosts and (abs(e.Center().y - bb.ymin) < 1e-6 or abs(e.Center().y - bb.ymax) < 1e-6):
+                continue
+            if skip and skip(*uv):
                 continue
             spots.append(uv)
     log = []
