@@ -82,7 +82,6 @@ PER_STRING_OK = {
     # the height screw threads its heat-set and its tip bears on its own insert's foot
     frozenset({"nut_height_screw", "nut_height_insert"}),
     frozenset({"nut_height_screw", "nut_slide_insert"}),
-    frozenset({"set_screw", "nut_insert"}),
     frozenset({"nut", "screw_pulley"}), frozenset({"screw_bearing", "screw_pulley"}),
     # the collar's bore is 4.6 and the rod is Ø5: the interference IS the design —
     # the steel FORMS its mating thread in the plastic on the way in (screw_collar.py)
@@ -169,7 +168,6 @@ GLOBAL_OK = {
     frozenset({"jack_seat_ring", "leg_body_stub"}),
     frozenset({"leg_column_plug", "leg_body_stub"}),
     frozenset({"leg_sleeve", "leg_shaft"}), frozenset({"leg_shaft", "leg_foot"}),
-    frozenset({"leg_washer", "leg_sleeve"}),
     frozenset({"leg_seg_body", "leg_seg_body"}),
     frozenset({"leg_seg_body", "leg_head"}),
     frozenset({"leg_seg_body", "leg_sleeve"}),
@@ -180,12 +178,8 @@ GLOBAL_OK = {
     # shoulder plane) and the plate rests on the foot caps
     frozenset({"pedal_bar_a", "leg_shaft"}),
     frozenset({"pedal_bar_c", "leg_shaft"}),
-    frozenset({"pedal_bolt", "leg_shaft"}), frozenset({"pedal_bolt_trrs", "leg_shaft"}),
     # TRRS: the female jack embeds in the -X/+Y shaft (leg_shaft_2 is the
     # leg_shaft_trrs variant); the slider-carried plug reaches into it
-    frozenset({"pedal_trrs_jack", "leg_shaft"}),
-    frozenset({"pedal_trrs_plug", "leg_shaft"}),
-    frozenset({"pedal_leg_carrier", "leg_shaft"}),
     # the leg-column TRRS cable up the shaft's Ø6 hollow centre
     frozenset({"pedal_trrs_cable_leg", "leg_shaft"}),
     # leg↔body TRRS blind-mate: jack in the stub chimney (ring pressed
@@ -212,30 +206,23 @@ GLOBAL_OK = {
     # ── THE REDESIGNED LEG's blind-mate (src/leg_trrs.py), all four DESIGNED fits ──
     # the male barrel inside the female jack IS the mate: two bought parts modelled
     # as separate solids, engaged over BARREL_L when the leg is latched
-    frozenset({"leg_trrs_plug", "leg_trrs_jack"}),
     # the keeper is PRESSED into the tenon's tip (THROAT_PRESS 0.1 on Ø10.5)...
-    frozenset({"fixed_tenon", "leg_trrs_throat"}),
     # ...both of which are TPU on a bayonet, and a bayonet in an elastomer is
     # PRELOADED on purpose: the lug is LUG_H tall in a LUG_SLOT_H slot, so ~1 mm3 of it
     # is squashed at rest and the joint cannot rattle. See leg_trrs.LUG_H
-    frozenset({"body_adapter", "leg_trrs_sleeve"}),
     # and the sleeve GRIPS the male overmould at SLV_SQUEEZE -- that interference is
     # the entire retention scheme, not a clash
-    frozenset({"leg_trrs_sleeve", "leg_trrs_plug"}),
     # and the BOTTOM joint's collar grips the same bought overmould the same way, with
     # the same SLV_SQUEEZE -- see src.bar_trrs
     frozenset({"bar_trrs_sleeve", "bar_trrs_plug"}),
     # ── AND THE BAR HALF OF THAT SAME JOINT (src/bar_trrs.py, the bar-frame end) ──
     # the same mate as the top joint's, the other way up: this time the BOUGHT female
     # is the one fixed in the structure and the male is the half that floats
-    frozenset({"bar_trrs_plug", "bar_trrs_jack"}),
     # the throat GRIPS the bought jack at SLV_SQUEEZE on its O7.8 body. The jack is a
     # flangeless moulding, so this 30.6 mm3 of interference IS the up-stop -- there is
     # no shoulder on the part to catch instead
-    frozenset({"bar_trrs_throat", "bar_trrs_jack"}),
     # ...and the throat's own lugs are preloaded in the bar's bayonet, LUG_H tall in a
     # TH_RUN_H slot, exactly as the two sleeves are in theirs
-    frozenset({"bar_trrs_throat", "pedal_bar_a"}),
 }
 
 # The pedal bar is a self-contained subassembly (bar pieces + the sliding

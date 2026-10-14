@@ -2175,29 +2175,16 @@ _COLORS = {
     # ...keyed BY PIN NUMBER off elec.harness, in wiring's colour order (return black,
     # rail red, CAN-H yellow, CAN-L green), so the colours follow the pinout instead of
     # being a fifth place the circuit names are written out
-    "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
-    "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
-    "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
-    "leg_trrs_throat": (0.34, 0.56, 0.44),   # ...and the ring that keeps the jack in
     "bar_trrs_sleeve": (0.03, 0.03, 0.03),   # the bottom joint's TPU carrier (black)
-    "bar_trrs_throat": (0.05, 0.05, 0.06),   # ...and the TPU keeper for its jack
-    "bar_trrs_jack":   (0.12, 0.12, 0.14),   # ...the bought jack it holds
-    "bar_trrs_lead":   (0.45, 0.45, 0.48),   # ...and the lead out of its back, as far as the bar's wiring channel
     "bar_trrs_plug":   (0.15, 0.15, 0.17),   # ...the male plug it floats
     "bar_trrs_spring": (0.62, 0.64, 0.67),   # ...and the coil above it
-    "leg_trrs_sleeve": (0.03, 0.03, 0.03),   # ...and the TPU cup that holds the plug (black)
-    "leg_trrs_patch":  (0.12, 0.12, 0.14),   # ...the lead up to the chassis socket
-    "leg_trrs_leg_lead": (0.12, 0.12, 0.14), # ...and the column's own, down the leg
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
     "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
     "bar_latch_spring": (0.62, 0.64, 0.67),
     "bar_latch_screw": (0.55, 0.55, 0.58),   # M4 button -- same SKU, same colour
     "bar_latch_insert": (0.80, 0.60, 0.35),  # as the leg's screw and insert
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
-    "leg_coupler_m":   (0.36, 0.42, 0.46),
-    "leg_coupler_f":   (0.36, 0.42, 0.46),
     "leg_head":        (0.36, 0.42, 0.46),
-    "leg_pinch_gib":   (0.85, 0.35, 0.20),   # clamp accent (matches bolts)
     "leg_plug_retainer": (0.42, 0.48, 0.52),
     "chassis_trrs_jack": (0.62, 0.64, 0.67),
     "leg_column_plug":  (0.32, 0.36, 0.58),  # slate, matches the bar plug
@@ -2206,7 +2193,6 @@ _COLORS = {
     "leg_cable_coil":  (0.45, 0.45, 0.48),   # heat-set coil section (slack
                                              # take-up in the segment core)
     "leg_sleeve":      (0.36, 0.42, 0.46),
-    "leg_sleeve_cover": (0.30, 0.36, 0.40),
     "leg_shaft":       (0.55, 0.58, 0.62),
     "leg_foot":        (0.12, 0.12, 0.13),   # TPU
     # pedal bar (2 spliced pieces + 2 dovetail-lid pieces) + latches
@@ -2215,17 +2201,7 @@ _COLORS = {
     "pedal_bar_c":      (0.31, 0.46, 0.36),  # PETG-GF bar, +X piece
     "pedal_lid_a":      (0.50, 0.58, 0.52),  # dovetail lid, -X piece
     "pedal_lid_b":      (0.54, 0.62, 0.56),  # dovetail lid, +X piece
-    "pedal_bolt":       (0.85, 0.35, 0.20),  # snap latch slider, +X foot
-    "pedal_bolt_trrs":  (0.85, 0.35, 0.20),  # TRRS latch slider, -X foot
-    "pedal_latch_finger": (0.12, 0.12, 0.13),  # TPU return finger (the only spring)
     "pedal_detent_nub": (0.12, 0.12, 0.13),  # TPU hold-closed detent nub
-    "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # leg-side female TRRS (DEMO)
-    "pedal_trrs_plug":  (0.32, 0.36, 0.58),  # bar-side male plug (DEMO; slate
-                                             # — black is reserved for TPU)
-    # pedal TRRS link: Tensility CA-354S factory cables (Ø3.7 shielded 4C
-    # jackets). Grey — NOT black (TPU-reserved); the per-wire gauge/shade
-    # colours reappear at the crimped XH pigtails, not inside a jacket.
-    "pedal_trrs_cable_bar": (0.45, 0.45, 0.48),  # trough → stub plug seat
 
     "shaft_trrs_jack": (0.62, 0.64, 0.67),       # bar-joint jack (10-03404)
     "shaft_trrs_cable": (0.45, 0.45, 0.48),
@@ -2239,14 +2215,8 @@ _COLORS = {
     "kv_axle_screw":   (0.55, 0.55, 0.58),
     "kv_axle_washer":  (0.72, 0.72, 0.75),
     "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer
-    "kl_chip":         (0.12, 0.12, 0.14),   # MT6701 package (black)
     # the rest of the sensor board's real population (knee_lever.SENSOR_BOM). The
     # kv_/pedal{i}_ instances inherit these by the prefix rules in _color_for.
-    "kl_mcu":          (0.16, 0.16, 0.19),   # CH32V203G6U6 QFN-28 (black, slightly lifted)
-    "kl_transceiver":  (0.20, 0.20, 0.23),   # SN65HVD230DR SOIC-8 (black)
-    "kl_buck":         (0.24, 0.24, 0.27),   # LMR16006XDDCR SOT-23-6 (black)
-    "kl_inductor":     (0.35, 0.30, 0.28),   # shielded inductor (dark ferrite)
-    "kl_crystal":      (0.72, 0.74, 0.78),   # 3225 crystal can (bright metal)
     "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ
     "kl_magnet":       (0.80, 0.20, 0.20),   # diametric magnet
     "kl_pcb":          _BG.mask("lever_sensor"),   # MT6701 board (green)
@@ -2257,7 +2227,6 @@ _COLORS = {
     # is how it survived: same part, same job, same material, two colours.
     "kv_lever":        (0.27, 0.51, 0.71),   # LKV arm (PCTG, as LKL -- the same blue)
     "kv_pcb":          _BG.mask("lever_sensor"),   # LKV MT6701 board (green, as LKL)
-    "kv_chip":         (0.12, 0.12, 0.14),   # LKV MT6701 package (black)
     "kv_pcb_shim":     (0.75, 0.75, 0.78),   # LKV board shim (printed, takes up the slack)
     # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
     "main_spring":                        (0.04, 0.16, 0.55),   # JIS light-load die spring: painted blue
@@ -2274,7 +2243,6 @@ _COLORS = {
     "half_stop_position_washer":          (0.72, 0.72, 0.75),
     "main_position_screw":                (0.55, 0.55, 0.58),
     "half_stop_position_screw":           (0.62, 0.62, 0.66),
-    "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
 
     # the Pi's parts, each its own colour (src/pi4b.py: "pi4" is the laminate)
@@ -2325,7 +2293,6 @@ _COLORS = {
     "ui_pwr_cap":      (0.15, 0.15, 0.17),   # ...and the one on the power switch
     "ui_pwr_stem":     (0.94, 0.94, 0.92),   # the switch's own plunger, moulded white
     "dc_jack":         (0.62, 0.64, 0.67),
-    "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
     #   green = 28 AWG shielded audio | amber = 28 AWG logic | violet = USB-2
     # CAN + power trunk = its 4 colour-coded conductors (user override):
@@ -2341,11 +2308,8 @@ _COLORS = {
     "wire_canb_coil":  (0.45, 0.45, 0.48),   # grey        - the slack, drawn as a bundle
     "wire_canbh":      (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H
     "wire_canbl":      (0.13, 0.72, 0.20),   # green       - bus B CAN-L
-    "wire_canjmph":    (0.95, 0.85, 0.10),   # yellow      - jumper CAN-H
-    "wire_canjmpl":    (0.13, 0.72, 0.20),   # green       - jumper CAN-L
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
-    "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
     "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
                                              #   shielded lead, coil underside -> the
                                              #   output panel's J8 screw terminals
