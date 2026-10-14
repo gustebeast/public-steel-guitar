@@ -74,6 +74,19 @@
    the trench (chassis_2 changes); INSTALL_NOTES has the step. Both bus-B cables stay
    under the floor end to end; INSTALL_NOTES BB-2 / BB-3 rewritten for J2 + J6.
    STILL OPEN: the three USB items below.
+   - **USB LEADS TO THE Pi DRAWN AS BOUGHT (user, 2026-10-13).** `wire_usb` (panel J2 ->
+     the Pi's USB-C, 0.67 m with plugs) now ends in the USB-C's mouth, coming down the
+     3.7 mm gap beside the rail, WITH NO PLUG THERE by the user's instruction: the plug
+     waits on a measured motor (a shorter motor may let the Pi move +Y). `wire_hub` (panel
+     J3 -> a Pi USB-A, 0.8 m) is new. Straight USB-C plugs on J2 and J3, USB-A plugs on
+     `wire_hub` and `wire_link` at the Pi, at the USB-IF's largest overmould section. The
+     two long leads are staggered in the trough (4.8 mm does not take two side by side);
+     `wire_hub` crosses the bay to join it past the 24 V head's exit. Under the UI board
+     it is clear (brenner measured 1.72 mm, the trough's wall between). At the Pi the two
+     USB-A leads' fly lanes stand in the UI station's slide path, as `wire_link`'s always
+     did: the Pi's USB-A plugs go in after the mid deck panel is on (brenner's
+     INSTALL_NOTES entry). To revisit with the other keyhead leads if the Pi moves: hold
+     them under z -18.4 for y -116.6..-108.4 and -16.4 for y -125..-95.
    - **THE Pi's USB-C TAKES NO PLUG WHERE THE Pi SITS (found 2026-10-07, OPEN, needs a
      decision).** output_panel J2's lead goes to the Pi's USB-C gadget port, which is on
      the Pi's -Y long edge 11.2 mm from its -X end (Pi 4B drawing). The Pi's -Y edge is at
@@ -6166,3 +6179,53 @@ geometry and texture/color/material. Then use the same model for the first flash
   USB-C = cadkit's own receptacle (as on our boards), micro-HDMI = KiCad's Molex 46765
   model, Ethernet / USB-A / jack drawn here with standard openings. KiCad's RJ45 models
   were tried and do not fit the Pi's 15.5 x 21.36 x 13.5 jack (16.0 deep or 25.4 deep).
+- User 2026-10-13: "the insert that holds the pi in place clips into the mortise which the
+  levers need ... move the insert further +z". Measured off chassis_2: mortise void to
+  z -72.95 beside the bore and 0.10 under its floor. `pi_boss_top()` = FLOOR_TOP + one
+  anchor (8.5): insert and screw wholly above the floor. `pi_spacer` is now a bridge (lap
+  on the board, key against its edge through the wall's notch, bar on the boss); prints
+  top face down, 0 ceilings.
+- User: "model the SD card slot ... and the card itself". Outlines off Raspberry Pi's DXF
+  (RP-008342-DS-1, PARTS_BOTTOM): `pi4_sd`, `pi4_card` (card 2.265 past the -X edge).
+  Socket height 1.5 and the card's 0.3 under the board are ESTIMATES. The cradle's -X wall
+  is open for the card (it was 17.6 mm3 inside it). `pi4_card` is its own gate name.
+- FOUND: the real USB-C, HDMI x2 and jack stand 1.24 to 2.50 past the Pi's -Y edge and
+  were 10.1 mm3 inside the top 0.80 of the cradle's -Y wall (hidden: chassis<->pi4 is an
+  allowed pair). The -Y wall now stops at the laminate's top face.
+- OPEN, NEXT: the USB leads. wire_usb (panel J2 -> the Pi's USB-C) has no plugs and ends
+  on the USB-A stack: the USB-C mouth is 3.26 mm from the -Y rail. Panel J3 -> a Pi USB-A
+  port is not drawn and has NO BOM ROW (bench-order.md lists it). Plan told to the user:
+  move the Pi about 2.4 mm +Y for an angled plug, not a pocket in the rail.
+- USB leads, MEASURED 2026-10-13 (nothing drawn yet):
+  - At the Pi's USB-C (x -576.8) the -Y rail is y -142..-132, full height; mouth to rail
+    3.7 mm; the slot is free upward for 30+ mm. A Pi moved +2.4 in Y gives 6.1 and breaks
+    nothing I could test (cap, clamp, screw, every wire, check_cables; cap to the bay wall
+    1.6). +3.2 leaves the cap 0.8 off that wall.
+  - The bought ribbon family (Amazon B0FKYR7V34's listing): the UP/DOWN plug (5.2 deep,
+    ribbon leaves upward on edge) is sold to 0.5 m only (B0FKYLRRXV, one end); the 1 m
+    lead (B0FKYMRXF3) has SIDEWAYS plugs at both ends, whose ribbon lies flat and needs
+    its own 10.8 width in front of the port: it does not fit 6.1. Pimoroni's flat 1 m
+    leads: no plug dimensions published, stock shown as pre-order.
+  - So the Pi end of panel J2 -> Pi USB-C is NOT SOLVED by moving the Pi alone: it needs
+    a lead that exists. Asked the user.
+  - wire_usb and wire_link both end between the two mouths of a USB-A stack
+    (PI_PORT_Z = top + 7.0), 1 mm inside, with no plug body.
+  - BOM row added for panel J3 -> Pi USB-A (was missing).
+- THE BENCH Pi IS UP (user, 2026-10-13: "write to it such that ... you'll be able to access
+  the pi"). Card written with Raspberry Pi OS Lite 64-bit 2026-10-06 (image, scripts and
+  the original boot files in C:/Users/gus/tools/pi-image, outside Sync); cloud-init
+  user-data: host psg-pi, user gus, key-only SSH with the user's own public key; the user
+  typed the Wi-Fi themselves. Reach: `ssh gus@psg-pi.local`. Installed by apt: openocd,
+  stlink-tools, dfu-util, can-utils, git. It reports 2 GB of memory (the BOM row says the
+  1 GB board). A bootloader EEPROM update is offered and NOT applied. wlink: no aarch64
+  release; not built.
+- wlink ON THE Pi (user: "Build wlink on the Pi"): v0.1.2 will not build on Debian's rustc
+  1.85.1 (libloading 0.9 needs 1.88, nu-pretty-hex 0.109 uses an API from 1.87); v0.1.1
+  builds with --locked in 2 m 40 s and is in /usr/local/bin. udev rule
+  /etc/udev/rules.d/99-wch-link.rules (1a86:8010, :8012 -> plugdev). NOT run against a
+  probe. Rust came from apt (cargo, rustc), not rustup.
+
+## 2026-10-13: flashing the CH32V307 boards without the LinkE (lead)
+
+- WCH evaluation-board reference V1.9 p13 confirms the ROM loader on PA11/PA12 or PB6/PB7 (USB) and PA9/PA10 (serial). `wchisp` 0.3.0 built and installed on psg-pi with a udev rule; `make isp` in firmware/motor_ctrl. Written up in docs/bench-order.md. Nothing tried on a chip.
+- `swindle` (RP2040) is real and maintained but has no released firmware: second choice, not built.

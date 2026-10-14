@@ -513,7 +513,7 @@ def pi_hold_bore():
     same ordering reason."""
     from cadkit.fasteners import M4 as _M4, anchor_cutter
     hx, hy = pi_hold_pt()
-    return anchor_cutter(_M4, (hx, hy, PI_Z), (0, 0, -1), _M4.anchor_min_wall)
+    return anchor_cutter(_M4, (hx, hy, pi_boss_top()), (0, 0, -1), _M4.anchor_min_wall)
 
 
 def pi_cradle() -> cq.Workplane:
@@ -578,8 +578,21 @@ def pi_cradle() -> cq.Workplane:
     # 20.0 long: the notch spanned x -520.3..-499.7 and the bar -524.0..-504.0, so its outboard
     # 3.7 mm still crossed an un-notched wall -- 14.2 mm3, which the gate reported the moment
     # the scope stopped drowning it in phantom self-overlaps.
-    cr = cr.cut(box_at(PI_SPACER_W + 2 * CRADLE_CLR, 4.0, 8.0,
+    cr = cr.cut(box_at(PI_SPACER_W + 2 * CRADLE_CLR, PI_SPACER_NOTCH, 8.0,
                        PI_SPACER_CX, PI_FP[3] + 1.0, PI_Z + 4.0))
+    # ...and the -X wall is open where the microSD card stands 2.27 past the board's edge
+    # (src/pi4b.py SD_CARD), a fit each side and for the wall's whole height: the Pi drops
+    # in with its card fitted, and the card can be drawn out with the Pi in place.
+    # ...and the -Y wall stops at the laminate's top face. The USB-C socket, both HDMI
+    # sockets and the audio jack stand on that face and 1.24 to 2.50 PAST the edge
+    # (src/pi4b.py), which is where the wall's 0.80 above the board would be: 10.1 mm3 of
+    # them inside it. The wall still locates the board by its edge, full thickness.
+    _wy = PI_FP[2] - CRADLE_CLR - 0.8
+    cr = cr.cut(box_at(PI_FP[1] - PI_FP[0] + 8.0, 2.0, 6.0, (PI_FP[0] + PI_FP[1]) / 2.0, _wy,
+                       PI_Z + BD_T + 3.0))
+    (_cx0, _cx1), (_cy0, _cy1) = _P4.SD_CARD
+    cr = cr.cut(box_at(8.0, _cy1 - _cy0 + 2 * PI_SD_FIT, 20.0, PI_FP[0],
+                       PI_FP[2] + (_cy0 + _cy1) / 2.0, _MB_FLOOR.FLOOR_TOP + 10.0))
     return cr.union(pi_spacer_boss())
 
 
@@ -650,37 +663,48 @@ PI_SPACER_LAP  = 2.5               # how far it reaches IN over the laminate
 # clears it by 0.55 and still stands 0.20 proud of the head's edge (-54.70), so the head bears
 # on plastic all the way round rather than half over air.
 PI_SPACER_TAIL = 4.0               # how far it runs on past the screw
+PI_SPACER_NOTCH = 4.0              # the notch in the cradle's +Y wall, along Y, centred 1.0
+                                   # outboard of the board's edge
+PI_SPACER_KEY = 1.0 + PI_SPACER_NOTCH / 2.0 - CRADLE_CLR   # the key's run out from the edge
 
 
+PI_SD_FIT = 2 * D.BEAD             # each side of the card, in the cradle wall's opening
 PI_SPACER_UP = (0.0, 0.0, -1.0)    # prints TOP FACE DOWN (see pi_spacer)
 
 
+def pi_boss_top() -> float:
+    """World z of the top of the boss the Pi's clamp screws into.
+
+    ⚠ THE WHOLE ANCHOR STANDS ABOVE THE FLOOR, NONE OF IT IN IT (user, 2026-10-13: "the
+    insert clips into the mortise which the levers need. We need to find a way to move the
+    insert further +z"). The floor slab under this site is the levers' mortise: measured
+    off chassis_2, its void comes up to z -72.95 beside the bore and to within 0.10 of the
+    floor of a bore sunk from the board's underside. FLOOR_TOP is -71.35, so an anchor that
+    ends AT the floor's top keeps the 1.60 over the mortise that the slab itself has, and
+    takes nothing from it. The boss is therefore exactly one anchor tall."""
+    from cadkit.fasteners import M4 as _M4
+    return _MB_FLOOR.FLOOR_TOP + _M4.anchor_min_wall
+
+
 def pi_spacer_boss() -> cq.Workplane:
-    """The chassis boss under the spacer's screw: floor top up to the board's UNDERSIDE.
+    """The chassis boss under the clamp's screw: a column from the floor up to
+    pi_boss_top(), holding the whole anchor above the floor (see pi_boss_top).
 
-    Only 2.40 mm of column, because that is all the height there is between FLOOR_TOP and
-    PI_Z -- the anchor itself lives in the floor slab below, and build.py takes it out with
-    pi_hold_bore() AFTER the fuse (see that docstring: cut-before-union is silently refilled,
-    and a fastener is the one place it is invisible, because the plastic looks right and only
-    the screw solid shows the interference).
-
-    ⚠ THE BOSS TOPS OUT LEVEL WITH THE BOARD'S UNDERSIDE, NOT ITS TOP FACE, and that is what
-    makes the spacer a STEPPED part rather than a flat one. Sitting it level with the top face
-    would raise the bore 1.60 mm -- and the knee housing's band is BELOW, so raising the bore
-    pushes its far end further into that band for no gain. Keeping the boss at the underside
-    also keeps the anchor at exactly the depth the sweep cleared."""
+    build.py takes the anchor out with pi_hold_bore() AFTER the fuse: cut-before-union is
+    silently refilled, and a fastener is the one place that is invisible, because the
+    plastic looks right and only the screw solid shows the interference."""
     from cadkit.fasteners import M4 as _M4
     hx, hy = PI_SPACER_XY
     # ⚠ A BEAD INTO THE SLAB AND A RIB BACK TO THE CRADLE, BECAUSE A COLUMN STANDING ON A
     # COINCIDENT PLANE IS NOT ATTACHED. Built flush at FLOOR_TOP and free of the cradle, this
     # came out as a SECOND SOLID -- pi_cradle() returned 2 -- which is exactly the failure
-    # build.py's one-solid assert exists for: "a cradle that touches nothing survives here as a
-    # second solid and prints as a loose part", and the overlap gate cannot see it either,
+    # build.py's one-solid assert exists for, and the overlap gate cannot see it either,
     # because two solids that never touch do not interpenetrate.
     # The rib also gives the boss its lateral strength: 12.50 mm out from the cradle, a bare
     # O9.2 column carrying the board's whole lift restraint is a cantilever on the floor.
+    # It stops at the board's underside: the clamp's key comes down onto it there.
     z0 = _MB_FLOOR.FLOOR_TOP - D.BEAD
-    boss = cyl(_M4.boss_od, PI_Z - z0, z0).translate((hx, hy, 0.0))
+    boss = cyl(_M4.boss_od, pi_boss_top() - z0, z0).translate((hx, hy, 0.0))
     y_web = PI_FP[3] + CRADLE_CLR + 1.6 - D.BEAD     # a bead INTO the cradle's +Y wall foot
     rib = box_at(_M4.boss_od, hy - y_web, PI_Z - z0,
                  hx, (y_web + hy) / 2.0, (z0 + PI_Z) / 2.0)
@@ -690,55 +714,51 @@ def pi_spacer_boss() -> cq.Workplane:
 def pi_spacer() -> cq.Workplane:
     """The printed piece that clamps the flat Pi down -- the user's spacer.
 
-    A STEPPED bar. Over the board it rests on the laminate's top face; outboard of the edge it
-    drops by exactly one board thickness to sit on `pi_spacer_boss`, which stands level with
-    the laminate's underside. The step is the whole design: it lets ONE part bear on the
-    board's top and on a boss level with its bottom, and its vertical face REGISTERS ON THE
-    BOARD'S EDGE, so the part's position is set by the board and not by a tolerance.
+    A BRIDGE WITH TWO FEET. Its top is one flat bar from over the board's edge out to the
+    screw. At the board it comes down in a LAP that rests on the laminate's top face, and
+    just outboard of the edge in a KEY that drops through the cradle wall's notch to the
+    laminate's underside: the key's face REGISTERS ON THE BOARD'S EDGE, so the bar cannot
+    turn about its one screw. At the screw it sits on `pi_spacer_boss`, which stands a
+    whole anchor above the floor (pi_boss_top) so the insert stays out of the levers'
+    mortise.
 
     Why this beats the button head it replaces -- the user's "better retention than the screw
     head anyway", in numbers:
       * a O7.6 head laps the laminate by pcb_hold_overlap() = 1.30 mm on ONE SMALL ARC. This
-        laps PI_SPACER_LAP = 2.50 mm over a PI_SPACER_W = 16.00 mm run of edge -- 40.0 mm2 of
-        laminate held down, against a head's arc, and the lap is capped by the Pi's own I/O
-        block rather than by anything this design chose.
+        laps PI_SPACER_LAP = 2.50 mm over the run of edge beside the header, and the lap is
+        capped by the Pi's own I/O block rather than by anything this design chose.
       * its thickness is chosen for strength (3 beads), not inherited from a fastener.
       * the clamp load spreads along the edge instead of concentrating where the arc touches.
 
-    ⚠ PRINTS TOP FACE DOWN (PI_SPACER_UP), AND THE STEP IS WHY. The top is one flat face
-    across the lap, the shank and the head's pad, so on the bed everything grows straight
-    up from it and nothing overhangs: `check_ceilings --only pi_spacer` reads 0 ceilings.
-    The other way up, on the outboard underside, the lap hangs 2.50 mm out over nothing
-    1.60 off the bed (29 mm2, the same tool) -- the face that bears on the Pi.
+    ⚠ PRINTS TOP FACE DOWN (PI_SPACER_UP). The top is one flat face, and the lap, the key
+    and the bar all grow straight up from it, so nothing overhangs:
+    `check_ceilings --only pi_spacer` reads 0 ceilings.
     """
     from cadkit.fasteners import M4 as _M4
     hx, hy = PI_SPACER_XY
     y_edge = PI_FP[3]                              # the board's +Y edge
-    z_top = PI_Z + BD_T + PI_SPACER_T
-    # box_at is CENTRED on all three axes, so these are midpoints, not faces. Written with
-    # faces first, which straddled the laminate's top plane by half the thickness.
+    z_boss = pi_boss_top()
+    z_top = z_boss + PI_SPACER_T
+    z_face = PI_Z + BD_T                           # the laminate's top face
+    x0, x_end = PI_SPACER_CX - PI_SPACER_W / 2.0, PI_SPACER_CX + PI_SPACER_W / 2.0
+
+    def block(xa, xb, ya, yb, za, zb):             # box_at is CENTRED on all three axes
+        return box_at(xb - xa, yb - ya, zb - za, (xa + xb) / 2.0, (ya + yb) / 2.0, (za + zb) / 2.0)
     # ⚠ THE LAP STARTS PAST THE END OF THE Pi's 40-PIN HEADER, which stands on this same
     # edge of the laminate (its plastic ends at x -530.10, 1.00 in from the edge): the bar
     # itself runs on -X of that, outboard of the board, where nothing is in its way.
-    x_hdr = PI_HDR_X + 20 * _P4.PITCH / 2.0 + CRADLE_CLR
-    x_end = PI_SPACER_CX + PI_SPACER_W / 2.0
-    x_lap = max(PI_SPACER_CX - PI_SPACER_W / 2.0, x_hdr)
-    lap = box_at(x_end - x_lap, PI_SPACER_LAP, PI_SPACER_T,
-                 (x_lap + x_end) / 2.0, y_edge - PI_SPACER_LAP / 2.0,
-                 PI_Z + BD_T + PI_SPACER_T / 2.0)
+    x_lap = max(x0, PI_HDR_X + 20 * _P4.PITCH / 2.0 + CRADLE_CLR)
+    lap = block(x_lap, x_end, y_edge - PI_SPACER_LAP, y_edge, z_face, z_top)
+    # the key: down through the notch pi_cradle cuts in the +Y wall, a fit short of its far side
+    key = block(x0, x_end, y_edge, y_edge + PI_SPACER_KEY, PI_Z, z_top)
     y_out = hy + PI_SPACER_TAIL
-    shank = box_at(PI_SPACER_W, y_out - y_edge, z_top - PI_Z,
-                   PI_SPACER_CX, (y_edge + y_out) / 2.0, (PI_Z + z_top) / 2.0)
-    # THE HEAD'S PAD. The bar stops at the Pi cap's +X end, and the screw is 1.2 inside that
-    # end -- so half the head would bear on air. Outboard of the cap's +Y edge (y -63.08)
-    # nothing is in the way, so the bar widens there to carry the head all the way round.
+    bar = block(x0, x_end, y_edge, y_out, z_boss, z_top)
+    # THE HEAD'S PAD. The bar's -X end is 1.2 past the screw, so half the head would bear
+    # on air: the bar widens round the screw to carry the head all the way round.
     from cadkit.fasteners import M4_BUTTON_HEAD_D as _HD
-    _px0, _py0 = hx - _HD / 2.0 - 0.2, hy - _HD / 2.0 - 0.2
-    pad = box_at((PI_SPACER_CX - PI_SPACER_W / 2.0) - _px0 + 0.01, y_out - _py0, z_top - PI_Z,
-                 (_px0 + PI_SPACER_CX - PI_SPACER_W / 2.0 + 0.01) / 2.0, (_py0 + y_out) / 2.0,
-                 (PI_Z + z_top) / 2.0)
-    return lap.union(shank).union(pad).cut(
-        cyl(_M4.shaft_clr_d, (z_top - PI_Z) + 2.0, PI_Z - 1.0).translate((hx, hy, 0.0)))
+    pad = block(hx - _HD / 2.0 - 0.2, x0 + 0.01, hy - _HD / 2.0 - 0.2, y_out, z_boss, z_top)
+    return lap.union(key).union(bar).union(pad).cut(
+        cyl(_M4.shaft_clr_d, PI_SPACER_T + 2.0, z_boss - 1.0).translate((hx, hy, 0.0)))
 
 
 def keyhead_cradles(standing: bool = True) -> cq.Workplane:
@@ -1139,13 +1159,12 @@ def board_screws():
     # PI_SPACER_XY the cradle's boss and build.py's anchor bore read, so the three cannot
     # drift apart.
     _px, _py = pi_hold_pt()
-    out.append(("board_insert_2", seated_insert(_M4, (_px, _py, PI_Z), (0, 0, -1))))
-    # ⚠ THE HEAD SEATS ON THE SPACER, PI_SPACER_T ABOVE THE LAMINATE -- it does not touch
-    # the board at all any more. Engagement is still over one diameter: an M4x10 from
-    # z -64.95 reaches -74.95 into an insert that starts at PI_Z, so 6.00 mm = 1.5 x D.
+    out.append(("board_insert_2", seated_insert(_M4, (_px, _py, pi_boss_top()), (0, 0, -1))))
+    # ⚠ THE HEAD SEATS ON THE SPACER, PI_SPACER_T ABOVE THE BOSS -- it does not touch the
+    # board at all. An M4x10 through the 2.40 bar reaches 7.60 into an anchor 8.50 deep.
     assert L - PI_SPACER_T <= _M4.anchor_min_wall + 1e-9
     out.append(("board_screw_2", m4_button_screw(L).translate(
-        (_px, _py, PI_Z + BD_T + PI_SPACER_T + M4_BUTTON_HEAD_H))))
+        (_px, _py, pi_boss_top() + PI_SPACER_T + M4_BUTTON_HEAD_H))))
     return out
 
 
@@ -1159,36 +1178,10 @@ def _ctr(fp):
     return (fp[0] + fp[1]) / 2, (fp[2] + fp[3]) / 2
 
 
-# ── THE PI'S PORTS, so a cable can be drawn to one instead of to an invented point ──
-# ⚠ EVERY CABLE TO THE PI USED TO END AT A HAND-TYPED POINT, and the user saw it: "the USB
-# for example enters the pi from +x which doesn't seem like how the USB would be oriented".
-# wire_usb ended at stand_pt(-575.0, PI_FP[3] - 9.0, -44.0) = WORLD (-587.8, -55.18, -34.0),
-# which is 1.8 mm inside the USB/ethernet block's outer face -- the cable ran in along world
-# x at z -15 straight through the block's interior and stopped in the middle of it. It
-# approached the COMPONENT face from +X, exactly as described.
-# ⚠⚠ AND THE WORK-ITEMS NOTE THAT DIAGNOSED IT READ THE FRAME WRONG. It said the lead
-# "lands at x -575.0, which is outboard of the whole Pi (xmax -586)". -575.0 is the TRAY x
-# that stand_pt turns into world z -34.0; the world x is -587.8, which is INSIDE the block.
-# The user's observation was right and the explanation under it was not. stand_pt's three
-# arguments are tray (x, y, z) -> world (z-543.8, y, -609-x); never read one as a world x.
-# The ports are on the +Y END, which is where a Pi 5's are (⚠ see pi4: NOT re-checked
-# against a Pi 4B, which is the board the BOM now specifies), and pi4() already builds that
-# block. These are its three connector groups along the 50 mm the block spans in tray x,
-# taken mid-height so the plug shell sits inside the block's 14 mm rather than proud of it.
-# ⚠ THESE ARE WORLD COORDS NOW, AND THEY USED TO BE TRAY COORDS THAT NOBODY MOVED.
-# pi_port_pt returned tray (x, y, z) for stand_pt, from when the Pi STOOD in the electronics
-# tray. pi4() stopped standing -- it lies flat on the chassis floor and is authored where it
-# sits -- and the ports were left behind. Measured before the fix: all three resolved to
-# world (-593.0, -72.0, z) with z -15 / -33 / -49, i.e. the port stack of a standing board,
-# while the Pi solid is flat at x -588..-503, y -127..-71, z -68.95..-53.35. The points sat
-# 5 mm off its -X edge and up to 38 mm ABOVE it, and (-593, -72, -33) is inside motor_ctrl --
-# which is exactly why wire_usb (33.31 mm3) and wire_link (9.66 mm3) terminated in that
-# board. They were landing where the ports used to be.
-# ⚠ TWO DATUMS WERE WRONG, NOT ONE. The z used BOARD_Z (-57.80, the TRAY board) where pi4()
-# builds from PI_Z (-68.95); mid-block is PI_Z + BD_T + 7.0, the same expression pi4() uses
-# to place the block, so the two cannot drift again.
-PI_PORT_Z  = PI_Z + BD_T + 7.0         # mid-block, by pi4()'s own expression
-PI_PORT_IN = 1.0                       # end the lead 1 mm inside the face so it CONTACTS
+# ── THE PI'S PORTS, so a cable is drawn to a socket's mouth and not to a typed point ──
+# The sockets themselves are src/pi4b.py's, off Raspberry Pi's drawing; pi_usb_a_mouth and
+# pi_usb_c_mouth below hand a cable the mouth it plugs into, in WORLD coords (the Pi lies
+# flat and is authored where it sits). What follows is the ROOM pi4() gives the port block.
 # OFFSETS ALONG THE 56 mm END, read off the official Pi 4B mechanical drawing
 # (datasheets.raspberrypi.com/rpi4/raspberry-pi-4-mechanical-drawing.pdf): the connector
 # centres are 9 / 27 / 45.75 from one 85 mm edge, with the two USB stacks at Z=16.0 and the
@@ -1212,13 +1205,19 @@ PI_FFC = ((4.0, 28.0), (46.5, 11.5))
 PI_FFC_BODY = (3.5, 22.6, 5.5)
 
 
-def pi_port_pt(which: str):
-    """WORLD (x, y, z) of a port mouth on the Pi's +X end. Do NOT feed it through stand_pt.
+def pi_usb_a_mouth(which: str, upper: bool = True):
+    """WORLD (x, y, z) of the middle of a USB-A mouth on the Pi's +X end: `which` is the
+    stack ("usb2", the pair nearer the USB-C edge, or "usb3"), `upper` the socket in it.
+    A plug enters along -X."""
+    x, y, z = _P4.usb_mouth({"usb2": _P4.USB2, "usb3": _P4.USB3}[which], upper)
+    return (PI_FP[0] + x, PI_FP[2] + y, PI_Z + z)
 
-    The Pi lies flat, so its ports are on the +X 56 mm end and spread along Y. pi4() puts
-    the I/O block at x = PI_FP[1] - 9.0, 18 deep, so PI_FP[1] is its outer face and the
-    mouth sits PI_PORT_IN inside that."""
-    return (PI_FP[1] - PI_PORT_IN, PI_FP[2] + PI_PORTS[which], PI_PORT_Z)
+
+def pi_usb_c_mouth():
+    """WORLD (x, y, z) of the middle of the Pi's USB-C mouth, on its -Y edge. A plug enters
+    along +Y."""
+    x, y, z = _P4.usb_c_mouth()
+    return (PI_FP[0] + x, PI_FP[2] + y, PI_Z + z)
 
 
 def pi4_parts():

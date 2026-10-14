@@ -64,7 +64,8 @@ ENDS = (
     (r"^wire_link_\d+$", 1),
     (r"^wire_canb_coil_", 0),               # the coiled middle of a lever-to-lever lead
     (r"^wire_canb_\w+_\d+_[01]$", 1),       # ...and its two halves, a plug on one end each
-    (r"^wire_(usb|ui|pickup)$|^optical_cable_usb$", 0),   # USB, the IDC ribbon, screw terminals
+    (r"^wire_(usb|hub|ui|pickup)$|^optical_cable_usb$", 0),   # USB, the IDC ribbon, screw terminals
+    (r"^wire_(usb|hub|link)_plug", 0),      # a moulded USB plug: a body, not a conductor
 )
 
 

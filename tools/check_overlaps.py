@@ -49,8 +49,9 @@ def base(name: str) -> str:
     # THE Pi IS ONE BOUGHT BOARD DRAWN AS SEVERAL PARTS, one per colour (pi4_shells,
     # pi4_black ...; src/pi4b.py). Whatever may touch the Pi may touch any of them --
     # but its header PINS stay themselves: they stand inside the cap's socket, and that
-    # one designed fit must not make the rest of the Pi invisible to the cap.
-    if name.startswith("pi4_") and name != "pi4_pins":
+    # one designed fit must not make the rest of the Pi invisible to the cap. So does its
+    # microSD CARD, which stands past the board's edge where the cradle's wall is.
+    if name.startswith("pi4_") and name not in ("pi4_pins", "pi4_card"):
         return "pi4"
     return name
 
