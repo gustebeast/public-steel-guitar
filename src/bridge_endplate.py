@@ -960,7 +960,6 @@ def _build() -> cq.Workplane:
     # bearings are flanked on both sides instead of the outer two leaning on the arm 4.5
     # away. 11 fingers, one half-pitch outboard of strings 1 and 10 -- close enough to the
     # arms that they merge into them, which is exactly the tie the end bearings wanted.
-    _pitch = abs(D.string_y(1) - D.string_y(0))
     # ⚠ NINE FINGERS, ONE PER GAP -- THE TWO END ONES ARE GONE (user, 2026-09-23:
     # "we can also remove the extra material on either side of strings 1 and 10").
     # They used to sit half a pitch OUTBOARD of strings 1 and 10 so that all ten bearings
@@ -1127,7 +1126,7 @@ def _build() -> cq.Workplane:
     # the +Y. That only surfaced once JACK_TIP was fixed and the board arrived at the
     # panel at all; before that it was 20 mm inboard and never reached the wall to clash
     # with it. Read the board's own span and add a clearance each side.
-    from .electronics import (TS_Y, JACK_Z, JACK_WALL_X, JACK_TIP, OP_BOARD_Y,
+    from .electronics import (JACK_Z, JACK_WALL_X, JACK_TIP, OP_BOARD_Y,
                               OP_PANEL_CLR, op_origin, op_panel_openings, op_rear_mounts)
     _rc_y = op_origin()[1]                           # the board's Y centre
     _rc_w = OP_BOARD_Y + 2 * OP_PANEL_CLR            # its span plus a fit clearance
@@ -1249,8 +1248,7 @@ def op_cradle():
     """
     from cadkit.pcb import pcb_cradle
     from cadkit.fasteners import M4 as _M4
-    from .electronics import (op_origin, OP_BOARD_X, OP_BOARD_Y, OP_PANEL_CLR,
-                              JACK_Z, _PCB_T)
+    from .electronics import op_origin, OP_BOARD_Y, OP_PANEL_CLR, JACK_Z
     cx, cy, cz = op_origin()
     standoff = cz - (JACK_Z - 14.0)              # board underside above the recess floor
     # ⚠ THE M4 GOES THROUGH THE BOARD NOW, not beside it (user, 2026-09-21: "the screw
@@ -1300,7 +1298,6 @@ def op_cradle():
                      print_up=PRINT_UP)
     # pcb_cradle's own frame: the MOUNTING SURFACE is local z 0 and the board's underside
     # is local z `standoff` (the base plate hangs below 0).
-    _base_top = 0.0
     # +X WALL: the panel is the stop, and a wall there would sit IN the panel, standing
     # above the board's edge exactly where the three connectors overhang it.
     cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,

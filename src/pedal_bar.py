@@ -80,10 +80,9 @@ import math
 
 import cadquery as cq
 
-from cadkit.holes import teardrop_hole
 from cadkit.joinery import PrintSpec, joint
 from . import dimensions as D
-from .helpers import box_at, cyl, cyl_y
+from .helpers import box_at, cyl_y
 from .chassis import LEG_STATIONS_X, LEG_Y
 # The redesigned leg owns the SECTION -- profile, fit and engagement all come from
 # there, so the mortise in this bar cannot drift from the tenon that enters it.
@@ -96,7 +95,6 @@ from . import bar_latch as BL
 from . import legs as LG
 from . import latch as LT
 from . import bar_trrs as BT
-from .legs import _house
 
 YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
                                        # legs' centreline, 17 inboard of the

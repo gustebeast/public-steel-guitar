@@ -38,7 +38,6 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
-from . import components as C
 from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
                                         # (chassis imports knee_lever, so not chassis)
 from .helpers import ball_bearing_y, box_at, corbel_close, cyl, cyl_y, heal

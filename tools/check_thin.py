@@ -161,7 +161,6 @@ def thin_spots(shape, limit, grid=16, top=10):
 def main(argv):
     limit, grid, top = D.MIN_WALL_2P, 16, 10
     names = []
-    it = iter(range(len(argv)))
     i = 0
     while i < len(argv):
         a = argv[i]

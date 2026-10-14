@@ -30,7 +30,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
-from .helpers import box_at, cyl, cyl_y
+from .helpers import box_at, cyl
 
 # ── the pickup itself (Lace Alumitone 4.0 bar, per the datasheet) ─────────────
 # The RECOMMENDED pickup (user). A current-driven BLADE humbucker (no per-string

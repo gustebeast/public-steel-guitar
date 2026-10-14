@@ -10,7 +10,7 @@ is the nut travel that belt can carry. The even spread is an ASSUMPTION (a real 
 twists where it is slackest and the clamp's own weight hangs it off-angle), so twist_err
 also tests the clamp that many degrees either side and a position is clear only if all
 three are. First run 2026-10-01: see docs/belt-clamp-travel.md."""
-import math, sys, json, time, re
+import math, sys, json, time
 import cadquery as cq
 from src import build as B, dimensions as D, belt_tensioner as BTn
 V = cq.Vector

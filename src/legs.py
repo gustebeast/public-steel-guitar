@@ -1052,8 +1052,6 @@ def corner_groove_negatives(station: float, ly: float, syg: float,
     # (THE END-WALL REBATE IS GONE with the straight tongue it hosted -- user, 2026-09-17: the
     #  endplate gets that material back and holds the lock pin's INSERT in it instead. Its 45 deg
     #  overhang relief went with it: there is no rebate roof left to relieve.)
-    r_in = STUB_WALL_IN - STUB_TNG_REBATE_IN
-    r_out = STUB_WALL_IN + STUB_TNG_W + STUB_TNG_FIT
     # crossing grooves (thirds of the side-panel overlap): 0.5 inboard
     # overshoot, 1 outboard
     Lc = SQ_W + 1.5

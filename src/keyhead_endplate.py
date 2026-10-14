@@ -18,10 +18,6 @@ lift this piece out, slide the deck panels off -X.
 
 from __future__ import annotations
 
-import math
-
-import cadquery as cq
-
 from . import dimensions as D
 from . import chassis as CH
 from . import nut_block as NB
