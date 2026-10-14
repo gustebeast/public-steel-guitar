@@ -130,7 +130,7 @@ from cadquery.selectors import NearestToPointSelector
 from . import dimensions as D
 from . import chassis as CH
 from . import top_plate as TP
-from .helpers import box_at, cyl, cyl_y, oct_cable
+from .helpers import box_at, cyl
 from cadkit.fasteners import M4
 from cadkit.pcb import PCB_T as _PCB_T
 
@@ -1573,8 +1573,6 @@ def _parts():
     # C112/C113 -- those two own the inner lane of that strip and are there because their
     # own VCAP pins are. 4.3 mm off the package for those four, 0.7 for the other eight.
     _dec_off = CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0402"][1] / 2
-    _dec_off_e = (CRTYD[_MCU_PKG][0] / 2 + CRTYD_GAP + CRTYD["0805C"][0]
-                  + CRTYD_GAP + CRTYD["0402"][1] / 2)
     # ⚠ THE RING IS BACK TO EIGHT WEST AND FOUR EAST, AND THE REASON IS THAT THE TAIL MOUNT
     # LEFT THE +X STRIP (2026-09-29, user). It was briefly rebalanced nine/three because the
     # M4's button head landed on C111 -- 0.25 mm centre to centre -- and a step-away would not
@@ -1827,7 +1825,6 @@ def _parts():
     # the +X end of the row because the MCU they clock is anchored +X.
     _y1_h = CRTYD["3225"][1]
     _y1_y = y - _y1_h / 2
-    _y1_x = x1 - CRTYD["3225"][0] / 2
     # ⚠ AND NOW THE ROW IS EMPTY: Y1, C123 and C124 are at the MCU's pins 29 / 30 (see the
     # decoupling ring). The row KEEPS ITS HEIGHT, because every row below is placed from
     # this y and the board is routed against where they are.
@@ -3363,7 +3360,6 @@ APER_X1 = BAND_X0 - D.MIN_WALL_2P                # -26.66: leaves a FULL two-bea
 
 def _aperture_cutter(sy: float) -> cq.Workplane:
     """One string's aperture: a constant-width notch, open at the roof's -X edge."""
-    hy = SLOT_DY / 2
     return box_at(APER_X1 - (COVER_X0 - 1.0), SLOT_DY, COVER_T + 2,
                   x=(APER_X1 + COVER_X0 - 1.0) / 2, y=sy,
                   z=(COVER_Z0 + COVER_Z1) / 2)
@@ -3672,7 +3668,7 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
         y_turn = min(backs) - CONDUIT_CLR
         assert CONDUIT_Y0 < y_turn < CONDUIT_Y1, \
             f"{ref}: cable turns down at y {y_turn:.2f}, outside the conduit"
-        # the lead as a PATH, built once at the end as one octagonal cable (helpers.oct_cable)
+        # the lead as a PATH, built once at the end as one octagonal cable (cadkit.cables.oct_cable)
         # -- it used to be separate boxes and cylinders added piece by piece
         z_end = PWR_Z_TURN
         _yturn[ref] = y_turn
@@ -3838,26 +3834,6 @@ def opt_pwr_slot() -> cq.Workplane:
     return slot.union(box_at(x1 - x0, y0 - CONDUIT_Y0, CONDUIT_Z0 + 0.1 - zt,
                              x=(x0 + x1) / 2, y=(y0 + CONDUIT_Y0) / 2,
                              z=(zt + CONDUIT_Z0 + 0.1) / 2))
-
-
-def opt_carrier_pocket() -> cq.Workplane:
-    """Cutter the endplate's carrier uses: the board envelope plus its slip fit, opening
-    UPWARD. Cut from the board's own numbers so the pocket is always the board."""
-    # opens from PLINTH_TOP, not PCB_BOT: the pocket has to admit the thickest board the
-    # fab may ship, not the nominal one the model draws.
-    return _outline(grow=0.3, t=(COVER_Z1 + 0.3) - PLINTH_TOP,
-                    zc=(PLINTH_TOP + COVER_Z1 + 0.3) / 2)
-
-
-def bom_rows():
-    """The strip's BOM, grouped -- (qty, description, package, refs). Same PARTS table the
-    3D model is built from, so BOM.md and the assembly cannot disagree."""
-    groups = {}
-    for p in PARTS:
-        groups.setdefault((p["desc"], p["pkg"]), []).append(p["ref"])
-    rows = [(len(r), desc, pkg, r) for (desc, pkg), r in groups.items()]
-    rows.sort(key=lambda r: (-PKG[r[2]][0] * PKG[r[2]][1], r[1]))
-    return rows
 
 
 def _assert_field_clear():
@@ -4028,7 +4004,6 @@ def _assert_field_clear():
             f"aperture -- under the {D.MIN_WALL_2P} two-bead floor")
     # 7. every sensor must actually see through an aperture
     for i in range(D.N_STRINGS):
-        sy = string_y_at(i, SENSE_X)
         for s in (0, PD_DY, -PD_DY):
             if abs(s) + PD_PKG[1] / 2 > SLOT_DY / 2 + 1e-9:
                 raise AssertionError(

@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import collections
-import glob
 import importlib.util
 import io
 import json

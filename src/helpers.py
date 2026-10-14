@@ -7,8 +7,6 @@ import math
 import cadquery as cq
 from OCP.ShapeUpgrade import ShapeUpgrade_UnifySameDomain  # type: ignore[import]
 
-from .dimensions import NEMA17_BOLT_SQ, NEMA17_PILOT_D, M3_CLR_D, BOOL_OVERSHOOT
-
 
 def cyl(d: float, h: float, z: float = 0.0) -> cq.Workplane:
     """Solid cylinder, diameter d, height h, base at z (axis = +Z). The vertical
@@ -389,11 +387,3 @@ def heal(wp: cq.Workplane) -> cq.Workplane:
     else:
         wrapped = cq.Solid(unified)
     return cq.Workplane("XY").add(wrapped)
-
-
-# ── CABLES: octagonal prisms, not cylinders (user, 2026-09-21) ────────────────────
-# MOVED TO cadkit.cables (2026-09-22): nothing in it was project-specific, and the lesson it
-# encodes -- that a sphere elbow meeting two cylinders is the tangent case OCCT silently
-# drops material on -- is one every model here pays for once. Re-exported so the callers in
-# this package (wiring, optical_pickup) keep importing it from helpers.
-from cadkit.cables import oct_cable, oct_prism as _oct_prism, oct_area  # noqa: F401,E402

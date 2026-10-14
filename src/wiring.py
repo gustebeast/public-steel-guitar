@@ -83,8 +83,7 @@ from . import electronics as EL
 from . import board_geom as BG
 from . import ui_panel as UI
 from . import knee_lever as _KL   # the keeper barrel the lever slack winds on
-from .helpers import oct_cable
-from cadkit.cables import bundle_paths, flat_cable, flat_bends
+from cadkit.cables import bundle_paths, flat_cable, flat_bends, oct_cable
 
 # modeled cable OD per net (mm): jacketed bundles (shielded/USB) drawn as ONE
 # round conductor at the jacket OD; the 24 V pair AND the CAN pairs as discrete
@@ -253,7 +252,7 @@ CHAN_Y = CH_WT_LANE_Y                    # inside the trough
 
 
 def _wire(pts, d=WIRE_D):
-    """Polyline cable, OCTAGONAL section, across-flats d -- see helpers.oct_cable.
+    """Polyline cable, OCTAGONAL section, across-flats d -- see cadkit.cables.oct_cable.
 
     It was cylinders with sphere elbows, fused first as a chain of pairwise unions (which
     silently dropped cable: 1100 mm3 of one feed gone, no exception), then as one
@@ -931,7 +930,6 @@ def build_wires():
     # string 1's motor along this one column at BAYFLY -- 234, 69 and 15.5 mm3 of each
     # inside another, on the committed model, never reported (the gate allow-lists wire
     # against wire). The USB takes its own column (see _USB_COL).
-    SP = EL.stand_pt
     # (the AFE's long shielded runs and their _long() helper are gone with the
     #  board; the Teensy stack they climbed onto is gone with the motor controller)
 
@@ -981,7 +979,7 @@ def build_wires():
     _SEG = {"GND": 11, "V24": 11, "CAN_H": 0, "CAN_L": 0}       # the names these have always had
     _ja = conn_end("motor_ctrl", "J1")
     for k in _cable("bus A head", _ja, _tin[west[0]]):
-        (pa, _d, net), (pb, _bd, _bn) = _ja[k], _tin[west[0]][k]
+        (pa, _, net), (pb, _, _) = _ja[k], _tin[west[0]][k]
         xr = pa[0] + _HEAD_RISE + _HEAD_LANES[k]
         yj = _HEAD_TURN_Y + k * _XH_PITCH
         assert pb[0] < xr, "bus A's head: way %d's riser is not +X of its tee pin" % (k + 1)
@@ -1251,7 +1249,7 @@ def build_wires():
     assert all(abs(_legs[_slot[k]][0][2] - _PL_ZREC) < 0.01 for k in (2, 3)), (
         "the 24 V link: the two thin throws are not the bundle's middle row")
     for k in _pl_live:
-        (pa, _d, net), (pb, _bd, _bn) = _j10e[k], _j3e[k]
+        (pa, _, net), (pb, _, _) = _j10e[k], _j3e[k]
         leg = _legs[_slot[k]]
         lx, lz = leg[-1][0], leg[-1][2]
         sx = _PL_PX + (2 - k // 2) * _PL_STEP          # ways 5, 6 nearest the plug
@@ -1362,7 +1360,7 @@ def build_wires():
     _V5_Y0 = _LT_YL - 3 * _LT_PITCH - 2.2           # the last +X run: -Y of the lights' lanes
     _v5_live = _cable("PI_5V_LINK", _v5a, _v5b)
     for n, k in enumerate(_v5_live):
-        (pa, _d, net), (pb, _bd, _bn) = _v5a[k], _v5b[k]
+        (pa, _, net), (pb, _, _) = _v5a[k], _v5b[k]
         xt = _V5_X0 + n * _V5_PITCH
         yl = _V5_Y0 - (len(_v5_live) - 1 - n) * _V5_PITCH
         _run(out, "wire_5v_%s_%d" % (net.lower(), k + 1),
@@ -1397,7 +1395,7 @@ def build_wires():
                  _LT_WALL_X - WIRE_OD["wire_lights"])
     _lt_live = _cable("LIGHTS_LINK", _lta, _ltb)
     for n, k in enumerate(_lt_live):
-        (pa, _d, net), (pb, _bd, _bn) = _lta[k], _ltb[k]
+        (pa, _, net), (pb, _, _) = _lta[k], _ltb[k]
         # ways 1, 2 on J7's own line at their own heights; 3, 4 beside them at the same two
         row, lvl = n // 2, n % 2
         y, z = pa[1] + row * EL.MCTRL_J7_SIDE, _lta[_lt_live[lvl]][0][2]
@@ -1838,7 +1836,6 @@ def lever_bus(nodes):
         # The trunk passes THROUGH a board: this cable leaves the upstream lever on its
         # OUT half (ways 5-8) and lands on the downstream lever's IN half (1-4): the in
         # half in harness.PH_PINOUT order, the out half its mirror (way 8 to way 1).
-        n = len(CANB_NETS)
         seg = 0.0
         # the lateral offsets CANB_NETS carried are gone: a conductor now starts and
         # ends on its OWN contact, so the bundle's spread is the connector's pitch

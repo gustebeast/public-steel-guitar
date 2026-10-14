@@ -120,7 +120,7 @@ def check(stem):
         segs = RS._segments(pcb)
         found = 0
         for rt in want:
-            nname, layer, _w, pts = rt[0], rt[1], rt[2], rt[3]
+            nname, layer, pts = rt[0], rt[1], rt[3]
             a, b = tuple(pts[0]), tuple(pts[1])
             for s in segs:
                 if s["net"] != nname or s["layer"] != layer:

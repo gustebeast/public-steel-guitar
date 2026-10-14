@@ -34,8 +34,10 @@ import math
 import os as _os
 import sys as _sys
 
+from cadkit.cables import oct_cable
+
 from . import dimensions as D
-from .helpers import box_at, oct_cable
+from .helpers import box_at
 
 _sys.path.insert(0, _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "elec"))
 import harness as _H                                   # noqa: E402

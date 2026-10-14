@@ -84,8 +84,6 @@ import argparse
 import importlib
 import math
 
-import cadquery as cq
-
 from src.dimensions import NOZZLE_D as D_NOZZLE
 
 # name -> (builder, build axis 'x'|'y'|'z', bed plane coordinate on that axis,

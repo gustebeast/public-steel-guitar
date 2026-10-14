@@ -25,7 +25,6 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import json  # noqa: E402
 
 import pcbnew  # noqa: E402
 import wx  # noqa: E402
@@ -37,7 +36,6 @@ import layout  # noqa: E402
 
 def tidy(stem):
     board = pcbnew.LoadBoard(stem + ".kicad_pcb")
-    notes = json.load(open(stem + ".board.json", encoding="utf-8"))
     # ⚠ EVERY READ AND EVERY POUR HAPPENS BEFORE THE FIRST DELETE, AND THE SAVE IS THE
     # NEXT STATEMENT AFTER IT. board.Remove() leaves the track container in a state
     # where touching it again is undefined -- route.py records this as a SWIG ownership
