@@ -98,8 +98,10 @@ def _round(body, axis, r, hosts=True, skip=None):
     and a radius the edge has no room for is tried smaller (to 0.4, or to a smaller
     asked radius) before it is
     skipped. hosts=False leaves the host block's own side edges (its +/-Y faces) sharp:
-    they are coupon, not joint. `skip(u, v)` leaves those corners as drawn (a socket
-    mouth on the print bed: any fillet there starts flat over air). Returns
+    they are coupon, not joint. `skip(u, v)` True leaves that corner as drawn (a socket
+    mouth on the print bed: any fillet there starts flat over air); a number rounds it
+    to that radius instead (a corner no mate faces only needs its own printable one).
+    Returns
     (body, [(u, v, kind, radius used or None)])."""
     cx, cv = (r, r) if not isinstance(r, tuple) else r
     bb = body.val().BoundingBox()
@@ -114,14 +116,17 @@ def _round(body, axis, r, hosts=True, skip=None):
     def pt(u, v):
         return cq.Vector(mid, u, v) if axis == "x" else cq.Vector(u, v, mid)
 
-    spots = []
+    spots, own = [], {}
     for e in body.edges("|%s" % axis.upper()).vals():
         uv = uv_of(e)
         if not all(abs(uv[i] - lo[i]) < 1e-6 or abs(uv[i] - hi[i]) < 1e-6 for i in (0, 1)):
             if not hosts and (abs(e.Center().y - bb.ymin) < 1e-6 or abs(e.Center().y - bb.ymax) < 1e-6):
                 continue
-            if skip and skip(*uv):
+            got = skip(*uv) if skip else False
+            if got is True:
                 continue
+            if got is not False and got is not None:
+                own[uv] = got
             spots.append(uv)
     log = []
     for u, v in spots:
@@ -134,7 +139,7 @@ def _round(body, axis, r, hosts=True, skip=None):
                 for a in range(0, 360, 15)]
         share = sum(solid.isInside(q, 1e-6) for q in ring) / float(len(ring))
         kind = "convex" if share < 0.45 else "concave" if share > 0.55 else None
-        want = cx if kind == "convex" else cv if kind == "concave" else 0.0
+        want = own.get((u, v), cx if kind == "convex" else cv if kind == "concave" else 0.0)
         used = None
         rr = want
         while sel and rr > 1e-9 and rr >= min(0.4, want) - 1e-9:

@@ -81,12 +81,16 @@ def _arc(r, turn):
 def shape(tenon, socket, cmax):
     """The shared profile's dimensions for one pair, sized at its loosest clearance."""
     (tc, tv), (sc, sv) = matched(cmax, MIN[_kind(tenon)], MIN[_kind(socket)])
-    flare = 45.0 if (tenon == "up" or socket == "down") else 90.0   # the head's underside
+    # the head's underside at 45 degrees ALWAYS: a layer-made half may need it, and where
+    # none does a flat one is only allowed, not smaller -- its two corners would each take
+    # their whole radius of the face (a 90 degree underside made pair B 11.2 wide, not 4.8)
+    flare = 45.0
     chamfer = socket == "up"                                         # the socket's roof
     n = BEAD                                                         # neck: two beads wide
     # neck side: root corner (90) to the flare corner; and the socket's lip over it two beads
     z1 = _beads_over(_arc(tv, 90.0) + _arc(tv, flare))
-    lip = (lambda z: z + cmax - cmax * math.sqrt(2.0)) if flare == 45.0 else (lambda z: z - cmax)
+    # the socket's seat stands c off the host too (below), so its lip loses that c as well
+    lip = (lambda z: z - cmax * math.sqrt(2.0)) if flare == 45.0 else (lambda z: z - 2 * cmax)
     while lip(z1) < WALL:
         z1 += BEAD
     # the underside: its flare corner to the head-side corner
@@ -111,8 +115,9 @@ def shape(tenon, socket, cmax):
     s = _beads_over(_arc(tc, flare) + _arc(tc, top_turn))
     # a socket printed mouth-down has its mouth ON THE BED, where its rounded corner would
     # start flat over air: it is a 45 degree CHAMFER instead, sharp on the bed, landing
-    # just past where the tenon's root fillet runs out (tv from the neck), so the gap runs
-    # 0 at the seam to c with no overlap
+    # just past where the tenon's root fillet runs out (tv from the neck) -- any nearer
+    # and its bed end comes inside c of that fillet (the 45 tangent to the matched
+    # corner came to 0.107 at c 0.25). The air it leaves is the mouth's, reported apart
     mouth = (n + tv) if socket == "up" else None
     return dict(n=n, z1=z1, h=h, s=s, t=t, mouth=mouth, flare=flare, chamfer=chamfer)
 
@@ -247,25 +252,44 @@ def overhang(body, down):
 DOWN = {"up": (0.0, -1.0), "down": (0.0, 1.0)}   # the print's down in the joint's (y, z)
 
 
+def _mouth_corners(S, c, socket):
+    """The skip rule for a mouth-down socket's corners: those on the bed stay sharp, and
+    the chamfer's corner onto the neck wall faces only the mouth's air, so it takes the
+    socket's own printable minimum and leaves that wall to the corner that mates."""
+    if not S["mouth"]:
+        return None
+    knee = S["mouth"] - (S["n"] + c)                     # the chamfer onto the wall, z
+    return lambda u, v: True if abs(v) < 1e-6 else (
+        MIN[_kind(socket)][0] if abs(v - knee) < 1e-6 else None)
+
+
 def make_pair(name, tenon, socket, c, S, host_w, top):
     """(token, cell, report) at clearance c."""
     rt, rs = matched(c, MIN[_kind(tenon)], MIN[_kind(socket)])
     hw = host_w / 2.0
     token = F._box(0, F.L, -hw, hw, -2 * WALL, 0).union(_prism(profile(S), 0.0, F.L))
-    cell = F._box(0, F.L, -hw, hw, 0, top).cut(_prism(profile(S, c, -1.0), -1.0, F.L + 1.0))
+    # the SEAT is a face of the joint like any other: the socket stands c off the host, so
+    # its mouth corner is the tenon root fillet's true offset (seated flush, that corner
+    # rounded against the seat and pinched the gap to 0 for 1.7 up the neck). The cavity is
+    # cut c low in the socket's own frame; `seated` puts the socket where it rides
+    cell = (F._box(0, F.L, -hw, hw, 0, top)
+            .cut(_prism(profile(S, c, -1.0), -1.0, F.L + 1.0).translate((0, 0, -c))))
     if S["mouth"]:
         m = S["mouth"]
         cell = cell.cut(_prism([(m + 1.0, -1.0), (0.0, m), (-m - 1.0, -1.0)], -1.0, F.L + 1.0))
     token, lt = F._round(token, "x", rt, False)
-    cell, ls = F._round(cell, "x", rs, False,
-                        skip=(lambda u, v: abs(v) < 1e-6) if S["mouth"] else None)
-    gp = gaps(token, cell)
-    # a mouth-down socket's chamfered mouth leaves more air by the seam, by design: the
-    # joint's own clearance is measured above it, the mouth's reported apart
-    gj = gaps(token, cell, S["mouth"]) if S["mouth"] else gp
-    off = [(half, kind, used) for half, log, want in (("tenon", lt, rt), ("socket", ls, rs))
+    cell, ls = F._round(cell, "x", rs, False, skip=_mouth_corners(S, c, socket))
+    seated = cell.translate((0, 0, c))
+    gp = gaps(token, seated)
+    # the joint's own clearance is measured above the mouth, the mouth's air reported apart
+    gj = gaps(token, seated, S["mouth"] + c) if S["mouth"] else gp
+    # a corner FAILS only below what its half can print: one drawn short of its matched
+    # radius (no room) still prints as drawn, and the measured gap says whether the pair
+    # still meets evenly
+    off = [(half, kind, used) for half, log, mn in (("tenon", lt, MIN[_kind(tenon)]),
+                                                     ("socket", ls, MIN[_kind(socket)]))
            for _u, _v, kind, used in log
-           if kind and (used is None or abs(used - want[0 if kind == "convex" else 1]) > 1e-6)]
+           if kind and (used is None or used < mn[0 if kind == "convex" else 1] - 1e-6)]
     rep = dict(c=c, tenon_r=rt, socket_r=rs, gap=(gp[0], gj[-1]), mouth_air=gp[-1], corners_off=off,
                tenon_overhang=(None, 0.0) if tenon == "N" else overhang(token, DOWN[tenon]),
                socket_overhang=overhang(cell, DOWN[socket]))
@@ -273,6 +297,29 @@ def make_pair(name, tenon, socket, c, S, host_w, top):
 
 
 REPORT = {}
+
+
+def mark_size(face_w, widest):
+    """The biggest number that fits a host's face (host_w across, the joint's length L
+    along), WALL clear all round: each step's figure as cut_mark draws it, tried from
+    the biggest down in half beads (its stroke and depth stay -- the material under it
+    is two beads either way)."""
+    from src.version_mark import cut_mark
+    face = F._box(0, F.L, -face_w / 2.0, face_w / 2.0, -2 * WALL, 0)
+    h = F.L - 2 * WALL
+    while h > 2 * BEAD:
+        mk = dict(height=h, stroke=0.8)
+        ok = True
+        for k in range(1, widest + 1):
+            gb = face.val().cut(cut_mark(face, k, (F.L / 2.0, 0.0, 0.0), (0, 0, 1), (0, 1, 0), **mk).val())
+            gb = gb.BoundingBox()
+            if gb.xmin < WALL - 1e-6 or gb.xmax > F.L - WALL + 1e-6 or                     gb.ymin < -face_w / 2.0 + WALL - 1e-6 or gb.ymax > face_w / 2.0 - WALL + 1e-6:
+                ok = False
+                break
+        if ok:
+            return mk
+        h -= BEAD / 2.0
+    return dict(height=2 * BEAD, stroke=0.8)
 
 
 def finders():
@@ -284,7 +331,7 @@ def finders():
         host_w = 2 * (S["h"] + max(steps) + WALL)
         top = tip + max(steps) + 2 * WALL                   # roof two beads + the number's depth
         S.update(host_w=host_w, top=top, tip=tip,
-                 lip=min((S["z1"] + c - c * math.sqrt(2.0)) if S["flare"] == 45.0 else S["z1"] - c
+                 lip=min((S["z1"] - c * math.sqrt(2.0)) if S["flare"] == 45.0 else S["z1"] - 2 * c
                          for c in steps),
                  side_wall=host_w / 2.0 - (S["h"] + max(steps)), roof=top - (tip + max(steps)))
         REPORT[name] = dict(shape=S, steps=[])
@@ -293,14 +340,15 @@ def finders():
             token, cell, rep = make_pair(name, tenon, socket, d, S, host_w, top)
             REPORT[name]["steps"].append(rep)
             return token, cell
+        mark = mark_size(host_w, len(steps))
+        S["mark"] = mark["height"]
         t_up = F.UP_X if tenon == "N" else F.UP_Z
         c_up = F.DOWN_Z if socket == "down" else F.UP_Z
         f = F.Finder(name, "%s tenon / %s socket" % (tenon, socket), make, (steps[0], steps[0]),
                      host_w + F.GAP, t_up, c_up, "chassis_0", "chassis_0", deltas=tuple(steps),
                      skin_top=socket == "up",                        # mouths on the bed
-                     cell_mark=((F.L / 2.0, 0.0, top), (0, 0, 1), (0, 1, 0), dict(height=3.2, stroke=0.8)),
-                     token_mark=((F.L / 2.0, 0.0, -2 * WALL), (0, 0, -1), (0, 1, 0),
-                                 dict(height=3.2, stroke=0.8)))
+                     cell_mark=((F.L / 2.0, 0.0, top), (0, 0, 1), (0, 1, 0), mark),
+                     token_mark=((F.L / 2.0, 0.0, -2 * WALL), (0, 0, -1), (0, 1, 0), mark))
         out.append(f)
     return out
 
@@ -327,10 +375,10 @@ def main(argv=None):
     pl = plate()
     for name, r in REPORT.items():
         S = r["shape"]
-        print("%s: neck %.1f, head %.1f wide x %.2f tall, underside %d deg, top %s | lip %.2f, side wall %.2f, roof %.2f"
+        print("%s: neck %.1f, head %.1f wide x %.2f tall, underside %d deg, top %s | lip %.2f, side wall %.2f,"
+              " roof %.2f | numbers %.1f tall"
               % (name, 2 * S["n"], 2 * S["h"], S["tip"], S["flare"],
-                 "chamfered to %.2f" % (2 * S["t"]) if S["chamfer"] else "flat",
-                 S["lip"], S["side_wall"], S["roof"]))
+                 "pointed" if S["chamfer"] else "flat", S["lip"], S["side_wall"], S["roof"], S["mark"]))
         for rep in r["steps"][:3]:
             (to, tb), (so, sb) = rep["tenon_overhang"], rep["socket_overhang"]
             bad = ((to or 0) > 45.5 or so > 45.5 or max(tb, sb) > ROOF_FLAT_MAX + 1e-6
