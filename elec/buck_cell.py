@@ -58,6 +58,7 @@ CORE = {
 # 2026-10-05 against 3,453 of the C -- and then full white must be capped in firmware.
 U_VALUE = "LMR33630BRNXR"
 U_LCSC = "C2071384"
+U_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
 # the alternate: LMR33630CRNXR (C2071783), same land, 2.1 MHz, about 0.35 W hotter
 U_FSW = 1.4e6
 # ⚠ THE INDUCTOR IS SUNLORD SWPA5040S4R7MT, 5 x 5 x 4, and both its numbers were chosen.
@@ -249,6 +250,9 @@ def land_vias(net, x, y):
 XH_WAY1_DY = 3.75
 XH_PITCH = 2.50
 XH_TOE_VIA = 5.30
+# the socket's mouth (local +Y 5.30) to its PAD CENTROID (the mean of its six pads), both
+# read out of the .kicad_mod: where a board places J1 from the mouth it wants
+XH_ANCHOR = 5.30 + 0.9833
 
 
 def xh_way_dy(way):

@@ -92,12 +92,12 @@ LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
 DRV_FP = "Package_DFN_QFN:Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm"
 DRV_ROT = 90.0
 DRV_OUT_PINS = tuple(range(7, 13)) + tuple(range(19, 25))    # SBVS146D: OUTR2..B3, R0..B1
-BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
+BUCK_FP = BC.U_FP
 IND_FP = "Inductor_SMD:L_Sunlord_SWPA5040S"   # = buck_cell.L1_FP, asserted in _supply
 J_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
 # mouth (the footprint's local +Y 5.30) to the PAD CENTROID layout anchors on (the mean of
 # its six pads, -0.9833), both read out of the .kicad_mod
-J_ANCHOR = 5.30 + 0.9833
+J_ANCHOR = BC.XH_ANCHOR
 R_FP = "Resistor_SMD:R_0402_1005Metric"
 C_FP = "Capacitor_SMD:C_0402_1005Metric"
 C08_FP = "Capacitor_SMD:C_0805_2012Metric"

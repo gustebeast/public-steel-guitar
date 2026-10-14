@@ -18,9 +18,12 @@ sits ON TOP of that band and shines into it; the 10.50 of PCTG is the diffuser.
 ⚠ EVERYTHING ABOVE IT IS EMPTY, AND THAT IS WHY THIS IS EASY. A box swept the whole run
 at 15 mm wide and 5.85 tall (tools/_probe_mouth.py): **clear end to end**, with the
 belt tensioners' lowest feature at z -65.22 and the +Y rail's inner face at y 55.55 the
-only two things anywhere near. Both mouths are open too -- 34.4 mm of clear approach at
-the bridge end and 44.8 at the keyhead end, bounded only by the endplates, which are not
-on yet when this slides in.
+only two things anywhere near. That was measured before the strip and its slot were
+built; re-run 2026-10-14, the same probe finds only the strip itself and the slot's own
+chassis in the lane. The keyhead mouth, which is the one it goes in by (see the slot,
+below), holds the keyhead endplate -- not on yet when this slides in -- and the strip's
+own lead. The bridge mouth is no longer open: chassis_0 stands 3.2 into it (x -19.74 to
+-16.54, y 47.60 to 55.00).
 
 ⚠ TWO BOARDS, AND IT IS THE ASSEMBLER'S LIMIT, NOT A CHOICE. JLCPCB's published assembly
 capability, read 2026-09-30: **Economic PCBA takes a single PCB from 10x10 to 470x500 mm;
@@ -105,8 +108,8 @@ HANG_MAX   = max(PG.POGO_BODY_H, XH_H)
 TROUGH     = HANG_MAX + AIR_GAP     # 6.30: floor to the board's underside
 SLOT_PLAY  = 0.30                   # board edge to the wall -- AND, via the 45° ramp,
                                     # the clearance over the board's top face
-LIP_OVER   = 0.80                   # how far each lip reaches OVER the board: 1 bead
-LIP_CAP    = 0.80                   # the flat cap above the ramp: 1 bead
+LIP_OVER   = 1 * D.BEAD             # how far each lip reaches OVER the board: 1 bead
+LIP_CAP    = D.MIN_WALL             # the flat cap above the ramp: 1 bead
 # ⚠ WHAT THIS ASKS OF THE BELT CLAMPS, WHICH ARE BEING REDESIGNED (user, 2026-10-02, and
 # 2026-10-04: "we can ignore collision with the belt clamp"). The lips top out at floor +
 # 9.55 = -61.80 and the board's top is at -63.70. Today's placeholder tensioners come down
