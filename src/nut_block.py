@@ -1429,15 +1429,6 @@ assert HS_HEAD_LOW >= _MB.BED_Z - D.STRING_Z - 1e-9, (
 HS_ROOF_T = 2 * D.BEAD
 INSERT_UP = (-1.0, 0.0, 0.0)                    # the insert's own build axis: its +X face is the bed
 HS_POCKET_X1 = INS_X1 + HS_ROOF_T + max(_clr(i) for i in range(D.N_STRINGS))   # the roofs' +X reach
-# A ROOF'S FLAT IS A BRIDGE, AND ONLY A SHORT ONE PRINTS. Over one pocket it is 1.5 across.
-# Over the bass stack (strings 8-10, one roof) it was 18.3, standing on the tips of two
-# 45 degree ramps, and on the bench it came out as spaghetti (user, 2026-10-13). A group
-# whose flat would be wider than this gets NO FLAT: its two ramps stay, and the gap between
-# them runs open through the wall. Nothing held an insert there anyway -- the roof stood two beads clear, the
-# shoulder in each insert's plan is what stops it walking +X, and the deck panel butting
-# the block keeps its top. What the roof did do was tie the stack's outer wall to the
-# rest of the comb; keyhead_endplate thickens that wall instead (HS_Y0).
-HS_BRIDGE_MAX = 8 * D.BEAD
 
 
 def insert_foot_z(i: int) -> float:
@@ -1507,11 +1498,6 @@ def _roof_groups():
     return out
 
 
-def roof_open(lo: float, hi: float) -> bool:
-    """Whether the roof over lo..hi would bridge further than HS_BRIDGE_MAX, and so is left out."""
-    return (hi - lo) - 2 * HS_ROOF_T > HS_BRIDGE_MAX + 1e-9
-
-
 def _roof_cutter(lo: float, hi: float, c: float, z_top: float) -> cq.Workplane:
     """One group's roof, floor to the prism's top: full width until the pockets' own +X face (INS_X1 + the
     fit), then a TRUE 45 deg ramp -- rise HS_ROOF_T over the same run -- to a flat HS_ROOF_T past that
@@ -1523,20 +1509,6 @@ def _roof_cutter(lo: float, hi: float, c: float, z_top: float) -> cq.Workplane:
     t = HS_ROOF_T
     assert hi - lo > 2 * t, f"a {hi - lo:.2f} roof span has no room for its flat top"
     x0 = INS_X1 + c                                # the pockets' +X face: where the ramp starts
-    if roof_open(lo, hi):
-        # TOO WIDE TO BRIDGE: open through the wall, but KEEP THE TWO RAMPS (user,
-        # 2026-10-13: "we might as well add the 45 section in the space we have"). They
-        # close over the outer corner of each end pocket, so the two side inserts are
-        # still held in +X; the middle one is not, and does not need to be. Each ramp
-        # STOPS TWO BEADS SHORT of the wall's +X face and runs out straight, so the lip
-        # ends in a square two-bead edge and not a knife (user).
-        d = (HS_POCKET_X1 + D.MIN_WALL_2P) - x0    # the wall's whole depth past the pockets
-        r = d - D.MIN_WALL_2P                      # the ramp's run, and its rise
-        assert r > 0 and hi - lo > 2 * r + HS_BRIDGE_MAX, "no opening left between the ramps"
-        pts = [(x0 - 0.5, lo), (x0, lo), (x0 + r, lo + r), (x0 + d + 1.0, lo + r),
-               (x0 + d + 1.0, hi - r), (x0 + r, hi - r), (x0, hi), (x0 - 0.5, hi)]
-        return (cq.Workplane("XY").polyline(pts).close()
-                .extrude(z_top - HS_FLOOR).translate((0, 0, HS_FLOOR)))
     pts = [(x0 - 0.5, lo), (x0, lo), (x0 + t, lo + t),
            (x0 + t, hi - t), (x0, hi), (x0 - 0.5, hi)]
     return (cq.Workplane("XY").polyline(pts).close()

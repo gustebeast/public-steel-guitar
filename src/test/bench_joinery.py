@@ -325,9 +325,9 @@ def assembly(live=False):
     # ON TRIAL IN THIS TAB (user, 2026-10-13): the keyhead as this branch draws it -- the
     # bass stack's roof left open, its outer wall doubled -- under its own name, so it
     # stands in the instrument in place of the lead's and the two tabs can be compared
-    from src import keyhead_endplate as KE
+    from .keyhead_roof_trial import keyhead
     from src.helpers import heal
-    shown = fit_round3.assembly() + [("keyhead_endplate", heal(KE.keyhead_endplate))]
+    shown = fit_round3.assembly() + [("keyhead_endplate", heal(keyhead()))]
     if ALL_ROUNDS:
         shown += [("test_" + c.name, c.build(comps)[0].translate((0, 0, VIEW_LIFT)))
                   for c in COUPONS] + fit_finder.assembly() + fit_round2.assembly()

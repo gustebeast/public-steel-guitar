@@ -73,10 +73,7 @@ LEG_SHELL_X0, LEG_SHELL_X1 = CH.LEG_SHELL_NX     # -625.6 .. -610.6 (rail-takeov
 # thickness trim. Z: 0.4 over the chassis's wide corner rib (nut_block.HS_PRISM_BOT) up to 0.8 under the top
 # plate.
 HS_X1 = D.NUT_BLOCK_X + NB.HS_POCKET_X1 + D.MIN_WALL_2P
-# THE -Y WALL IS FOUR BEADS, not two: it is the bass stack's outer wall, and with that
-# stack's roof left open (nut_block.HS_BRIDGE_MAX) its +X edge is free below the fill slab.
-# Doubling it is eight times the stiffness, which is more than the roof's tie was worth.
-HS_Y0, HS_Y1 = NB._INS_LO - 2 * D.MIN_WALL_2P, NB._INS_HI + D.MIN_WALL_2P
+HS_Y0, HS_Y1 = NB._INS_LO - D.MIN_WALL_2P, NB._INS_HI + D.MIN_WALL_2P
 HS_Z0 = D.STRING_Z + NB.HS_PRISM_BOT
 HS_Z1 = CH.TP_GZ0 - D.MIN_WALL
 # THE +Y LEG SLIDES CLEAR OF THE HEIGHT SCREWS' KEY PATHS (legs.SERVICE_SLIDE, sized from them). It

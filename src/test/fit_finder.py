@@ -253,13 +253,15 @@ def _drop(real, site, host_w, host_d, root):
 
 
 def _house(NB, lo, hi, c):
-    """THE SLOT'S ROOF, the real one (nut_block._roof_cutter), over z -1 .. L+1: past the
+    """THE SLOT'S ROOF, as the keyhead cuts it (nut_block._roof_cutter, with the bass stack's
+    roof left open as keyhead_roof_trial draws it), over z -1 .. L+1: past the
     pocket's +X face the keyhead closes over an insert as a HOUSE -- 45 degrees in from
     each side, then a flat two beads clear of the insert -- because the part builds
     -X -> +X and a slot's far end is a ceiling. A cell without it bridges the slot's
     whole width flat on the insert's face, which the real part never does (user,
     2026-10-13: "that kind of print overhang doesn't appear in the actual model")."""
-    return (NB._roof_cutter(lo, hi, c, NB.HS_FLOOR + L + 2.0)
+    from .keyhead_roof_trial import roof_cutter
+    return (roof_cutter(lo, hi, c, NB.HS_FLOOR + L + 2.0)
             .translate((0, 0, -NB.HS_FLOOR - 1.0)))
 
 
@@ -330,7 +332,7 @@ class StackFinder(Finder):
         # _roof_groups / _roof_cutter): NOT AT ALL, since 2026-10-13 -- the one roof over
         # the stack was an 18.3 bridge that would not print, so the slot runs open through
         # the +X wall and the stack's outer (-Y) wall is four beads instead of two
-        # (keyhead_endplate.HS_Y0)
+        # (keyhead_endplate.HS_Y0, doubled on trial: keyhead_roof_trial)
         y9 = NB.insert_lobes(STACK[1])[0][0]
         (lo, hi, c), = [g for g in NB._roof_groups() if g[0] <= y9 <= g[1]]
         slot = slot.union(_house(NB, lo, hi, c))
