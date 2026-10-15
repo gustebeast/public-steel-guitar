@@ -81,8 +81,8 @@ def _arc(r, turn):
 def shape(tenon, socket, cmax, size=None):
     """The shared profile's dimensions for one pair, sized at its loosest clearance.
     `size` raises the floors: {"neck": full width, "head": full width, "side": the head's
-    straight side} (plate 4: a layer/layer head that locates on 45 degree stairs is not
-    repeatable, so it gets straight sides to locate on)."""
+    straight side, "root": True, "trunc": mm} (plate 4: a layer/layer head that locates on
+    45 degree stairs is not repeatable, so it gets straight sides to locate on)."""
     size = size or {}
     (tc, tv), (sc, sv) = matched(cmax, MIN[_kind(tenon)], MIN[_kind(socket)])
     # the head's underside at 45 degrees ALWAYS: a layer-made half may need it, and where
@@ -91,8 +91,15 @@ def shape(tenon, socket, cmax, size=None):
     flare = 45.0
     chamfer = socket == "up"                                         # the socket's roof
     n = size.get("neck", 2 * BEAD) / 2.0                             # neck: two beads wide
-    # neck side: root corner (90) to the flare corner; and the socket's lip over it two beads
-    z1 = _beads_over(_arc(tv, 90.0) + _arc(tv, flare))
+    # a mouth-down socket's mouth is a 45 degree chamfer (sharp on the bed); with "root" the
+    # TENON grows the same chamfer at its root (one shared profile; plate 5: the chamfer's
+    # air let a layer-made tenon's base rock), `root` up the neck -- long enough for the
+    # tenon's two concave arcs onto it. Worth it only where the root corner is small
+    # (layer-made: ~1.0); a nozzle-made one (2.0) keeps most of the air (plate 2)
+    root = (math.ceil(2 * _arc(tv, 45.0) / math.sqrt(2.0) / (BEAD / 2.0) - 1e-9) * BEAD / 2.0
+            if size.get("root") and socket == "up" else 0.0)
+    # neck side: root corner to the flare corner; and the socket's lip over it two beads
+    z1 = _beads_over(root + _arc(tv, 45.0 if root else 90.0) + _arc(tv, flare))
     # the socket's seat stands c off the host too (below), so its lip loses that c as well
     lip = (lambda z: z - cmax * math.sqrt(2.0)) if flare == 45.0 else (lambda z: z - 2 * cmax)
     while lip(z1) < WALL:
@@ -122,8 +129,9 @@ def shape(tenon, socket, cmax, size=None):
     # just past where the tenon's root fillet runs out (tv from the neck) -- any nearer
     # and its bed end comes inside c of that fillet (the 45 tangent to the matched
     # corner came to 0.107 at c 0.25). The air it leaves is the mouth's, reported apart
-    mouth = (n + tv) if socket == "up" else None
-    return dict(n=n, z1=z1, h=h, s=s, t=t, mouth=mouth, flare=flare, chamfer=chamfer)
+    mouth = (n + tv) if socket == "up" and not root else None
+    return dict(n=n, z1=z1, h=h, s=s, t=t, mouth=mouth, flare=flare, chamfer=chamfer, root=root,
+                trunc=size.get("trunc", 0.0))
 
 
 def _meet(l1, l2):
@@ -134,8 +142,9 @@ def _meet(l1, l2):
     return (p[0] + u * d[0], p[1] + u * d[1])
 
 
-def profile(S, o=0.0, zb=-0.5):
-    """The closed (y, z) profile, every face moved out by `o` but the mating plane."""
+def profile(S, o=0.0, zb=-0.5, o_root=None):
+    """The closed (y, z) profile, every face moved out by `o` but the mating plane (the
+    root chamfer, if any, by `o_root`, default `o`)."""
     n, z1, h, s, t = S["n"], S["z1"], S["h"], S["s"], S["t"]
     r2 = math.sqrt(0.5)
     if S["flare"] == 45.0:
@@ -147,7 +156,13 @@ def profile(S, o=0.0, zb=-0.5):
     z3 = z2 + s
     neck = ((n + o, 0.0), (0.0, 1.0))
     side = ((h + o, 0.0), (0.0, 1.0))
-    pts = [(n + o, zb), _meet(neck, under), _meet(under, side)]
+    if S.get("root"):
+        orr = o if o_root is None else o_root
+        rc = ((n + S["root"] + orr * r2, orr * r2), (-r2, r2))
+        pts = [_meet(rc, ((0.0, zb), (1.0, 0.0))), _meet(rc, neck)]
+    else:
+        pts = [(n + o, zb)]
+    pts += [_meet(neck, under), _meet(under, side)]
     apex = None
     if S["chamfer"]:
         ch = ((h + o * r2, z3 + o * r2), (-r2, r2))
@@ -206,12 +221,12 @@ def _inside(pts, rs):
     return (np.sum(cross & (y < yi), axis=1) % 2) == 1
 
 
-def gaps(token, cell, above=1e-3):
+def gaps(token, cell, above=1e-3, below=1e9):
     """The clearance as built, round the tenon's profile above z = `above`: each
     point's distance to the socket (negative where the two overlap). Sorted."""
     tr, cr = rings(token), rings(cell)
     pts = np.vstack(tr)
-    pts = pts[pts[:, 1] > above]
+    pts = pts[(pts[:, 1] > above) & (pts[:, 1] < below)]
     a, b = _segments(cr)
     d = b - a
     L2 = np.maximum(np.sum(d * d, axis=1), 1e-12)
@@ -260,6 +275,8 @@ def _mouth_corners(S, c, socket):
     """The skip rule for a mouth-down socket's corners: those on the bed stay sharp, and
     the chamfer's corner onto the neck wall faces only the mouth's air, so it takes the
     socket's own printable minimum and leaves that wall to the corner that mates."""
+    if S.get("root"):                    # the shared chamfer: only its bed edges stay sharp
+        return lambda u, v: True if abs(v) < 1e-6 else None
     if not S["mouth"]:
         return None
     knee = S["mouth"] - (S["n"] + c)                     # the chamfer onto the wall, z
@@ -322,43 +339,55 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
     `relief` says which layer-made halves take S["lead"]: both / tenon / socket / none."""
     g = c if g is None else g
     rt, rs = matched(c, MIN[_kind(tenon)], MIN[_kind(socket)])
-    hw = host_w / 2.0
-    token = F._box(0, F.L, -hw, hw, -2 * WALL, 0).union(_prism(profile(S), 0.0, F.L))
-    # the SEAT is a face of the joint like any other: the socket stands c off the host, so
-    # its mouth corner is the tenon root fillet's true offset (seated flush, that corner
-    # rounded against the seat and pinched the gap to 0 for 1.7 up the neck). The cavity is
-    # cut c low in the socket's own frame; `seated` puts the socket where it rides
-    cell = (F._box(0, F.L, -hw, hw, 0, top)
-            .cut(_prism(profile(S, c, -1.0), -1.0, F.L + 1.0).translate((0, 0, -g))))
-    # a seat closer than c (the user: the seam shows on the instrument's front face) keeps
-    # c only over the tenon's root fillet -- a pocket c - g deep, as wide as that fillet
-    # runs -- so the mouth corner is still the fillet's true offset, and the rest of the
-    # face comes down to g
-    n_root = None
-    if g < c - 1e-9:
-        n_root = S["n"] + rt[1] + 0.05          # a hair past the fillet: room for the full arc
-        cell = cell.cut(F._box(-1.0, F.L + 1.0, -n_root, n_root, -1.0, c - g))
-    if S["mouth"]:
-        m = S["mouth"]
-        cell = cell.cut(_prism([(m + 1.0, -1.0), (0.0, m), (-m - 1.0, -1.0)], -1.0, F.L + 1.0))
-    token, lt = F._round(token, "x", rt, False)
-    skip = _mouth_corners(S, c, socket)
-    if n_root:                       # the pocket's own edge corners face only air: as drawn
-        skip0 = skip
-        skip = lambda u, v: True if abs(abs(u) - n_root) < 1e-6 else (skip0(u, v) if skip0 else None)
-    cell, ls = F._round(cell, "x", rs, False, skip=skip)
-    if S.get("lead"):
-        if tenon != "N" and relief in ("both", "tenon"):
-            token = _lead(token, hw, 0.0, S["tip"] + 1.0, (0.0, 1e3), S["lead"])
-        if socket != "N" and relief in ("both", "socket"):
-            # a seat OFF the bed takes the lead-in too (the band under it keeps the offset
-            # outline's edges one-for-one); one ON the bed must not be undercut
-            cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3), S["lead"],
-                         None if socket == "up" else (S["n"] + c + rs[0] + 0.05, 0.3))
-    seated = cell.translate((0, 0, g))
-    gp = gaps(token, seated)
+    # with a ROOT chamfer the socket's sharp bed edge faces the tenon's ROUND root corner;
+    # that one chamfer steps out (quarter-tenths) until it clears by c
+    d = 0.0
+    while True:
+        hw = host_w / 2.0
+        token = F._box(0, F.L, -hw, hw, -2 * WALL, 0).union(_prism(profile(S), 0.0, F.L))
+        if S.get("trunc"):               # the tip cut flat clear of a bridged socket roof (user)
+            token = token.cut(F._box(-1.0, F.L + 1.0, -hw, hw, S["tip"] - S["trunc"], S["tip"] + 1.0))
+        # the SEAT is a face of the joint like any other: the socket stands c off the host, so
+        # its mouth corner is the tenon root fillet's true offset (seated flush, that corner
+        # rounded against the seat and pinched the gap to 0 for 1.7 up the neck). The cavity is
+        # cut c low in the socket's own frame; `seated` puts the socket where it rides
+        cell = (F._box(0, F.L, -hw, hw, 0, top)
+                .cut(_prism(profile(S, c, -1.0, c + d), -1.0, F.L + 1.0).translate((0, 0, -g))))
+        # a seat closer than c (the user: the seam shows on the instrument's front face) keeps
+        # c only over the tenon's root fillet -- a pocket c - g deep, as wide as that fillet
+        # runs -- so the mouth corner is still the fillet's true offset, and the rest of the
+        # face comes down to g
+        n_root = None
+        if g < c - 1e-9:
+            n_root = S["n"] + rt[1] + 0.05          # a hair past the fillet: room for the full arc
+            cell = cell.cut(F._box(-1.0, F.L + 1.0, -n_root, n_root, -1.0, c - g))
+        if S["mouth"]:
+            m = S["mouth"]
+            cell = cell.cut(_prism([(m + 1.0, -1.0), (0.0, m), (-m - 1.0, -1.0)], -1.0, F.L + 1.0))
+        token, lt = F._round(token, "x", rt, False)
+        skip = _mouth_corners(S, c, socket)
+        if n_root:                       # the pocket's own edge corners face only air: as drawn
+            skip0 = skip
+            skip = lambda u, v: True if abs(abs(u) - n_root) < 1e-6 else (skip0(u, v) if skip0 else None)
+        cell, ls = F._round(cell, "x", rs, False, skip=skip)
+        if S.get("lead"):
+            if tenon != "N" and relief in ("both", "tenon"):
+                token = _lead(token, hw, 0.0, S["tip"] + 1.0, (0.0, 1e3), S["lead"])
+            if socket != "N" and relief in ("both", "socket"):
+                # a seat OFF the bed takes the lead-in too (the band under it keeps the offset
+                # outline's edges one-for-one); one ON the bed must not be undercut
+                cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3), S["lead"],
+                             None if socket == "up" else (S["n"] + c + rs[0] + 0.05, 0.3))
+        seated = cell.translate((0, 0, g))
+        gp = gaps(token, seated)
+        if not S.get("root") or gp[0] >= min(c, g) - 0.005 or d > 1.0:
+            break
+        d = round(d + 0.025, 3)
     # the joint's own clearance is measured above the mouth, the mouth's air reported apart
-    gj = gaps(token, seated, S["mouth"] + c) if S["mouth"] else gp
+    # and below a cut-flat tip, whose extra air is by design (reported in mouth_air's max)
+    below = S["tip"] - S["trunc"] - 0.5 if S.get("trunc") else 1e9
+    above = (S["mouth"] + c) if S["mouth"] else (S["root"] + 1.0) if S.get("root") else 1e-3
+    gj = gaps(token, seated, above, below)
     # a corner FAILS only below what its half can print: one drawn short of its matched
     # radius (no room) still prints as drawn, and the measured gap says whether the pair
     # still meets evenly
@@ -367,6 +396,7 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
            for _u, _v, kind, used in log
            if kind and (used is None or used < mn[0 if kind == "convex" else 1] - 1e-6)]
     rep = dict(c=c, tenon_r=rt, socket_r=rs, gap=(gp[0], gj[-1]), mouth_air=gp[-1], corners_off=off,
+               root_step=d,
                tenon_overhang=(None, 0.0) if tenon == "N" else overhang(token, DOWN[tenon]),
                socket_overhang=(None, 0.0) if socket == "N" else overhang(cell, DOWN[socket]))
     return token, cell, rep
