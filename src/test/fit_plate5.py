@@ -22,6 +22,10 @@ Only the tenon's root fillet needs c at the seat: the socket keeps it there as a
 (c - g deep, as wide as the fillet runs) and the rest of its face comes down to g. On a
 NOZZLE-made socket that prints as drawn at any depth; a layer-made one rounds to 0.4 layers.
 nn at its long-joint c (0.35), seat 0.35 (as before) / 0.15 / 0.05.
+
+AND WHICH HALF NEEDS THE END RELIEF (the user: only the tenon was ever measured): C and D at
+this size, each relief option (neither / tenon only / socket only / both) its own 0.15 /
+0.20 / 0.25 sweep -- one option may move where the fit lands.
 """
 from __future__ import annotations
 
@@ -32,10 +36,25 @@ from . import fit_plate2 as P2
 TAG = "p5"
 OPT = {"lead": P2.LEAD, "size": {"neck": 3 * P2.BEAD, "head": 6 * P2.BEAD, "side": 3 * P2.BEAD}}
 
+STEPS = (0.15, 0.20, 0.25)
+
+
+def _ll(row, relief):
+    return dict(OPT, relief=relief, row=row)
+
+
+# row 0 (back): C -- relief on neither / tenon / socket / both; row 1 (front): D the same,
+# then the nn seat test
 PAIRS = [
-    ("ll_standing", "up", "up", (0.15, 0.20, 0.25), OPT),
-    ("ll_mouth_up", "up", "down", (0.15, 0.20, 0.25), OPT),
-    ("nn_seat", "N", "N", (0.35, 0.35, 0.35), {"seat": (0.35, 0.15, 0.05)}),
+    ("C_none", "up", "up", STEPS, _ll(0, "none")),
+    ("C_tenon", "up", "up", STEPS, _ll(0, "tenon")),
+    ("C_socket", "up", "up", STEPS, _ll(0, "socket")),
+    ("C_both", "up", "up", STEPS, _ll(0, "both")),
+    ("D_none", "up", "down", STEPS, _ll(1, "none")),
+    ("D_tenon", "up", "down", STEPS, _ll(1, "tenon")),
+    ("D_socket", "up", "down", STEPS, _ll(1, "socket")),
+    ("D_both", "up", "down", STEPS, _ll(1, "both")),
+    ("nn_seat", "N", "N", (0.35, 0.35, 0.35), {"seat": (0.35, 0.15, 0.05), "row": 1}),
 ]
 
 

@@ -310,8 +310,9 @@ def _lead(body, hw, z0, z1, zlim, stations=LEAD):
     return cq.Workplane("XY").newObject([out])
 
 
-def make_pair(name, tenon, socket, c, S, host_w, top, g=None):
-    """(token, cell, report) at clearance c, the socket's seat `g` off the host (default c)."""
+def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
+    """(token, cell, report) at clearance c, the socket's seat `g` off the host (default c);
+    `relief` says which layer-made halves take S["lead"]: both / tenon / socket / none."""
     g = c if g is None else g
     rt, rs = matched(c, MIN[_kind(tenon)], MIN[_kind(socket)])
     hw = host_w / 2.0
@@ -340,9 +341,9 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None):
         skip = lambda u, v: True if abs(abs(u) - n_root) < 1e-6 else (skip0(u, v) if skip0 else None)
     cell, ls = F._round(cell, "x", rs, False, skip=skip)
     if S.get("lead"):
-        if tenon != "N":
+        if tenon != "N" and relief in ("both", "tenon"):
             token = _lead(token, hw, 0.0, S["tip"] + 1.0, (0.0, 1e3), S["lead"])
-        if socket != "N":
+        if socket != "N" and relief in ("both", "socket"):
             # a seat OFF the bed takes the lead-in too (the band under it keeps the offset
             # outline's edges one-for-one); one ON the bed must not be undercut
             cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3), S["lead"])
@@ -395,6 +396,7 @@ def finders(pairs=None):
         S = shape(tenon, socket, max(steps), opt[0].get("size") if opt else None)
         S["lead"] = opt[0].get("lead") if opt else None          # END RELIEF stations
         S["seat"] = opt[0].get("seat") if opt else None          # per-step seat gaps
+        S["relief"] = opt[0].get("relief") if opt else None      # relief halves (or per step)
         prof = profile(S)
         tip = max(z for _y, z in prof)
         host_w = 2 * (S["h"] + max(steps) + WALL)
@@ -407,7 +409,10 @@ def finders(pairs=None):
 
         def make(k, d, name=name, tenon=tenon, socket=socket, S=S, host_w=host_w, top=top):
             g = S["seat"][k] if S.get("seat") else None
-            token, cell, rep = make_pair(name, tenon, socket, d, S, host_w, top, g)
+            rl = S.get("relief") or "both"
+            rl = rl if isinstance(rl, str) else rl[k]
+            token, cell, rep = make_pair(name, tenon, socket, d, S, host_w, top, g, rl)
+            rep["relief"] = rl
             rep["seat"] = d if g is None else g
             REPORT[name]["steps"].append(rep)
             return token, cell
@@ -469,13 +474,23 @@ def _footed(grp, standing):
 
 
 def plate(pairs=None, tag=TAG):
-    out, x = [], 0.0
-    for f in finders(pairs):
+    """Every family as it prints, left to right; a family whose options carry "row": k goes
+    in row k, row 0 at the top of the plate (+Y) and the rest below it."""
+    pairs = pairs or PAIRS
+    rows = {}
+    for f, pr in zip(finders(pairs), pairs):
+        k = pr[4].get("row", 0) if len(pr) > 4 else 0
         grp = _footed(_top_down(R2._group(f, "both", tag)[0]), f.token_up == F.UP_X)
-        w = max(sh.BoundingBox().xmax for _n, sh in grp) - min(sh.BoundingBox().xmin for _n, sh in grp)
+        x0 = min(sh.BoundingBox().xmin for _n, sh in grp)
         y0 = min(sh.BoundingBox().ymin for _n, sh in grp)
-        out += [(n, sh.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, sh in grp]
-        x += w + R2.BETWEEN
+        x = rows.setdefault(k, [0.0, []])[0]
+        rows[k][1] += [(n, sh.moved(cq.Location(cq.Vector(x - x0, -y0, 0.0)))) for n, sh in grp]
+        rows[k][0] = x + max(sh.BoundingBox().xmax for _n, sh in grp) - x0 + R2.BETWEEN
+    out, y = [], 0.0
+    for k in sorted(rows, reverse=True):                   # the last row at the front
+        grp = rows[k][1]
+        out += [(n, sh.moved(cq.Location(cq.Vector(0.0, y, 0.0)))) for n, sh in grp]
+        y += max(sh.BoundingBox().ymax for _n, sh in grp) + R2.BETWEEN
     return [(n, sh if sh.isValid() else sh.fix()) for n, sh in out]
 
 
@@ -495,13 +510,13 @@ def main(argv=None, pairs=None, tag=TAG, out="test_plate2_petg_gf.step"):
               " roof %.2f | numbers %.1f tall"
               % (name, 2 * S["n"], 2 * S["h"], S["tip"], S["flare"],
                  "pointed" if S["chamfer"] else "flat", S["lip"], S["side_wall"], S["roof"], S["mark"]))
-        for rep in r["steps"][:3]:
+        for rep in r["steps"][:len(r["steps"]) // 2 or None]:
             (to, tb), (so, sb) = rep["tenon_overhang"], rep["socket_overhang"]
             bad = ((to or 0) > 45.5 or (so or 0) > 45.5 or max(tb, sb) > ROOF_FLAT_MAX + 1e-6
                    or rep["gap"][1] > rep["c"] + 0.01 or rep["corners_off"])
-            print("   c %.2f seat %.2f  tenon %.2f/%.2f socket %.2f/%.2f  gap %.3f..%.3f (mouth %.2f)  overhang tenon %s"
+            print("   c %.2f seat %.2f %-6s tenon %.2f/%.2f socket %.2f/%.2f  gap %.3f..%.3f (mouth %.2f)  overhang tenon %s"
                   " socket %s  bridge %.2f%s"
-                  % (rep["c"], rep.get("seat", rep["c"]), rep["tenon_r"][0], rep["tenon_r"][1], rep["socket_r"][0], rep["socket_r"][1],
+                  % (rep["c"], rep.get("seat", rep["c"]), rep.get("relief", ""), rep["tenon_r"][0], rep["tenon_r"][1], rep["socket_r"][0], rep["socket_r"][1],
                      rep["gap"][0], rep["gap"][1], rep["mouth_air"], "-" if to is None else "%.0f" % to, "-" if so is None else "%.0f" % so,
                      max(tb, sb),
                      "   FAILS A CHECK %s" % (rep["corners_off"] or "") if bad else ""))
