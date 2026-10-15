@@ -376,8 +376,12 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
             if socket != "N" and relief in ("both", "socket"):
                 # a seat OFF the bed takes the lead-in too (the band under it keeps the offset
                 # outline's edges one-for-one); one ON the bed must not be undercut
-                cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3), S["lead"],
-                             None if socket == "up" else (S["n"] + c + rs[0] + 0.05, 0.3))
+                # a mouth-up socket's flat cavity end prints as a LAYER face: relieved too, it
+                # stepped a layer deeper at the joint's ends (plate 6 B, seen in the slicer by
+                # the user) -- the relief stops at it, as at the seat
+                cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top,
+                             (-1.0, top - 1e-3) if socket == "up" else (-1.0, S["tip"] + c - g - 1e-3),
+                             S["lead"], None if socket == "up" else (S["n"] + c + rs[0] + 0.05, 0.3))
         seated = cell.translate((0, 0, g))
         gp = gaps(token, seated)
         if not S.get("root") or gp[0] >= min(c, g) - 0.005 or d > 1.0:
