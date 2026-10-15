@@ -357,7 +357,7 @@ def _top_down(grp):
     """The group with step 1 at the TOP of the plate (+Y), 2 and 3 below it, every family
     alike (user: the finder's order varied with each strip's print flip). A family that
     runs the other way has its strip turned 180 degrees about Z round its cells' middle,
-    and its tokens' slots swapped end for end (each token turned in place too)."""
+    and its tokens' slots swapped end for end."""
     def cy(sh):
         bb = sh.BoundingBox()
         return (bb.ymin + bb.ymax) / 2.0
@@ -369,17 +369,38 @@ def _top_down(grp):
     swap = {n: slots[len(slots) - 1 - i] for i, (n, _sh) in enumerate(toks)}
 
     def turn(sh, to=None):
+        if to is not None:                      # a token only MOVES (it is symmetric across
+            return sh.translate(cq.Vector(0, to - cy(sh), 0))   # the joint): base stays +X
         bb = sh.BoundingBox()
-        c = cq.Vector((bb.xmin + bb.xmax) / 2.0, mid if to is None else cy(sh), 0.0)
-        sh = sh.rotate(c, c + cq.Vector(0, 0, 1), 180.0)
-        return sh if to is None else sh.translate(cq.Vector(0, to - c.y, 0))
+        c = cq.Vector((bb.xmin + bb.xmax) / 2.0, mid, 0.0)
+        return sh.rotate(c, c + cq.Vector(0, 0, 1), 180.0)
     return [(n, turn(sh, swap.get(n))) for n, sh in grp]
+
+
+FOOT_L = 5 * BEAD                 # how far a standing token's foot reaches past its base
+FOOT_T = 2 * 0.4                  # two 0.4 layers
+
+
+def _footed(grp):
+    """A nozzle-made token stands 12 tall on its ~3 deep base, and A3 broke free of the bed
+    (user): each gets a thin FOOT off the back of its base, full base width -- behind the
+    base, where no socket ever goes, so the fit never sees it."""
+    out = []
+    for n, sh in grp:
+        bb = sh.BoundingBox()
+        if "_token_" in n and bb.zlen > bb.xlen:
+            back = cq.Solid.makeBox(0.5, bb.ylen, 0.4, cq.Vector(bb.xmax - 0.5, bb.ymin, 0.0))
+            assert sh.intersect(back).Volume() > 0.95 * back.Volume(), "%s: base not at +X" % n
+            sh = sh.fuse(cq.Solid.makeBox(FOOT_L, bb.ylen, FOOT_T,
+                                          cq.Vector(bb.xmax - 0.01, bb.ymin, 0.0))).clean()
+        out.append((n, sh))
+    return out
 
 
 def plate():
     out, x = [], 0.0
     for f in finders():
-        grp = _top_down(R2._group(f, "both", TAG)[0])
+        grp = _footed(_top_down(R2._group(f, "both", TAG)[0]))
         w = max(sh.BoundingBox().xmax for _n, sh in grp) - min(sh.BoundingBox().xmin for _n, sh in grp)
         y0 = min(sh.BoundingBox().ymin for _n, sh in grp)
         out += [(n, sh.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, sh in grp]
