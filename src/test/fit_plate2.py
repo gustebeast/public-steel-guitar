@@ -78,15 +78,19 @@ def _arc(r, turn):
     return r * math.tan(math.radians(turn) / 2.0)
 
 
-def shape(tenon, socket, cmax):
-    """The shared profile's dimensions for one pair, sized at its loosest clearance."""
+def shape(tenon, socket, cmax, size=None):
+    """The shared profile's dimensions for one pair, sized at its loosest clearance.
+    `size` raises the floors: {"neck": full width, "head": full width, "side": the head's
+    straight side} (plate 4: a layer/layer head that locates on 45 degree stairs is not
+    repeatable, so it gets straight sides to locate on)."""
+    size = size or {}
     (tc, tv), (sc, sv) = matched(cmax, MIN[_kind(tenon)], MIN[_kind(socket)])
     # the head's underside at 45 degrees ALWAYS: a layer-made half may need it, and where
     # none does a flat one is only allowed, not smaller -- its two corners would each take
     # their whole radius of the face (a 90 degree underside made pair B 11.2 wide, not 4.8)
     flare = 45.0
     chamfer = socket == "up"                                         # the socket's roof
-    n = BEAD                                                         # neck: two beads wide
+    n = size.get("neck", 2 * BEAD) / 2.0                             # neck: two beads wide
     # neck side: root corner (90) to the flare corner; and the socket's lip over it two beads
     z1 = _beads_over(_arc(tv, 90.0) + _arc(tv, flare))
     # the socket's seat stands c off the host too (below), so its lip loses that c as well
@@ -98,7 +102,7 @@ def shape(tenon, socket, cmax):
     k = 1
     while (k * BEAD * (math.sqrt(2.0) if flare == 45.0 else 1.0)) <= need + 1e-6:
         k += 1
-    h = n + k * BEAD
+    h = max(n + k * BEAD, size.get("head", 0.0) / 2.0)
     # the top: two 90 degree corners on a flat, or 45 degree chamfers to a short flat
     if chamfer:
         # a POINTED roof: the two chamfers meet at a rounded peak, no flat -- the bridge
@@ -112,7 +116,7 @@ def shape(tenon, socket, cmax):
         while 2 * h <= 2 * _arc(tc, 90.0) + 1e-6:
             h += BEAD / 2.0
         top_turn = 90.0
-    s = _beads_over(_arc(tc, flare) + _arc(tc, top_turn))
+    s = max(_beads_over(_arc(tc, flare) + _arc(tc, top_turn)), size.get("side", 0.0))
     # a socket printed mouth-down has its mouth ON THE BED, where its rounded corner would
     # start flat over air: it is a 45 degree CHAMFER instead, sharp on the bed, landing
     # just past where the tenon's root fillet runs out (tv from the neck) -- any nearer
@@ -375,7 +379,7 @@ def mark_size(face_w, widest):
 def finders(pairs=None):
     out = []
     for name, tenon, socket, steps, *opt in (pairs or PAIRS):
-        S = shape(tenon, socket, max(steps))
+        S = shape(tenon, socket, max(steps), opt[0].get("size") if opt else None)
         S["lead"] = opt[0].get("lead") if opt else None          # END RELIEF stations
         prof = profile(S)
         tip = max(z for _y, z in prof)
