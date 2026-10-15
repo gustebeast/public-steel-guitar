@@ -6112,11 +6112,32 @@ boards already flashed run good firmware). Proposed per board, NOT decided:
   the Pi). SWDIO/SWCLK on the USB-C's SBU1/SBU2 (a full-featured C-C cable, ours to
   specify), NRST on the 24 V XH's empty way 3 or 4 behind a series R and clamp at both
   ends (24 V is two ways away), or a 4-way PH if the endplate conduit takes a third plug.
-- `lever_sensor` x11: unsolved. CAN only, and the CH32V203's ROM loader is USART/USB.
-  Idea: an MCU whose ROM loader speaks CAN and enters it by itself on blank flash (check
-  STM32G0B1 / G4 against ST AN2606), plus a load switch on each board passing bus power
-  downstream only once that board is flashed, so blank boards come up ONE AT A TIME (the
-  same step can hand out node IDs).
+- `lever_sensor` x11 (pedals and levers, two buses): PLAN AGREED (user, 2026-10-15),
+  hardware and firmware not built:
+  * CHIP: one whose ROM loader speaks CAN and starts by itself on a blank chip (STM32G0B1
+    class; CONFIRM FDCAN in AN2606's table for the part, and the loader's fixed CAN IDs
+    and bit rate). Its BOOT0 pin disabled in option bytes.
+  * POWER GATING: each board passes bus power downstream through a load switch that is
+    OFF until its updater turns it on. motor_ctrl gets one switched 5 V output PER BUS
+    (rev 1's U6 EN is tied on), pedals brought up first, then levers: at most one blank
+    chip is ever powered on a bus.
+  * IDS: by position, handed out at every power-up by motor_ctrl as each board appears
+    (no stored ID; a replacement takes its spot's number). Which number is which control:
+    the OLED's "move each control" pass, the same pass that records travel for the
+    offsets; saved on the Pi and motor_ctrl by position.
+  * UPDATER: a small resident CAN updater at the start of flash, write-protected. Runs
+    first at every power-up, listens ~100 ms, numbers itself, enables downstream, checks
+    the main firmware's CRC and starts it. motor_ctrl power-cycling a bus catches every
+    board in its updater: bad main firmware is fixed for one board or all.
+  * FIRST PAGE LAST: every write (first flash, updater) puts the first page last, so an
+    interrupted write leaves the first word blank and the ROM loader takes the board back.
+  * UPDATER REFLASH ALLOWED, WITH GUARD RAILS (user, 2026-10-15): a deliberate command
+    in the main firmware unlocks, writes, relocks. Rare and behind an OLED confirm; one
+    board first, restarted and proved (comes back, takes a main-firmware update) before
+    any other; then one at a time, stopping at the first that does not come back.
+  * THE ONE CASE LEFT: a completely written but broken updater (or dead hardware). A
+    probe on the debug pads; lay them out for a plug-on spring-pin clip (Tag-Connect
+    class) so it is unplug-and-clip, no soldering.
 - The SD card: one image or a script run after Raspberry Pi Imager that installs the
   flash tools, the firmware files and the OLED menu entry; the flash order is fixed by
   the bridges (motor_ctrl and panel, then optical, then the levers in chain order).
