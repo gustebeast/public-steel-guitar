@@ -6097,7 +6097,25 @@ plug in every board in its final form with no USB connections beyond the instrum
 own, then tell the Pi to flash everything from the OLED and joystick. So "a host and a
 cable" means THE INSTRUMENT'S PI over the instrument's own leads, hands-free: no button,
 no BOOT0 by hand. A flashed board may be the bridge to the next one (user: assume the
-boards already flashed run good firmware). Proposed per board, NOT decided:
+boards already flashed run good firmware).
+
+**THE THREE CASES, EVERY BOARD (user, 2026-10-15).** The Pi, from the OLED, over the
+instrument's own leads, with no hands on a board, must be able to do all three for every
+board that has firmware, one board or all of them:
+1. FIRST FLASH of a blank chip;
+2. ROUTINE UPDATES;
+3. RECOVERY from bad firmware (it crashes, ignores its link, or an update was cut off).
+How each board meets them (the bullets below have the detail):
+
+| board | first flash | routine update | recovery from bad firmware |
+|---|---|---|---|
+| `motor_ctrl` | serial chip behind its USB socket drives BOOT0/NRST; WCH serial loader | same | same: the serial chip needs no firmware |
+| `output_panel` | serial chip on the hub's spare port, same way | same | same |
+| `optical` | the panel is its SWD probe (`openocd` on the Pi) | same | same: SWD with connect-under-reset |
+| lever / pedal x11 | ROM CAN loader on a blank chip, one board powered at a time | resident updater over CAN | bus power-cycle catches the updater; a cut-off write falls back to the ROM loader |
+
+The only cases left for hands and a probe: a completely written but broken lever/pedal
+updater, and dead hardware. Proposed per board, NOT all decided:
 - `motor_ctrl`: DECIDED (user, 2026-10-15): **a real USB socket replaces J4's PH-4** -- no
   more hand-crimped USB-A to PHR-4 lead; an ordinary cable to the Pi (USB-C on the board
   is the obvious choice, to confirm against the board edge and the CAD's `wire_link`).
@@ -6113,7 +6131,8 @@ boards already flashed run good firmware). Proposed per board, NOT decided:
   specify), NRST on the 24 V XH's empty way 3 or 4 behind a series R and clamp at both
   ends (24 V is two ways away), or a 4-way PH if the endplate conduit takes a third plug.
 - `lever_sensor` x11 (pedals and levers, two buses): PLAN AGREED (user, 2026-10-15),
-  hardware and firmware not built:
+  hardware and firmware not built. **THE PROJECT'S ONE EXCEPTION to cadkit M43's "over its
+  own USB" (user, 2026-10-15): tight on space, so the same three cases are met over CAN.**
   * CHIP: one whose ROM loader speaks CAN and starts by itself on a blank chip (STM32G0B1
     class; CONFIRM FDCAN in AN2606's table for the part, and the loader's fixed CAN IDs
     and bit rate). Its BOOT0 pin disabled in option bytes.
