@@ -263,6 +263,42 @@ def _mouth_corners(S, c, socket):
         MIN[_kind(socket)][0] if abs(v - knee) < 1e-6 else None)
 
 
+LEAD = (0.2, 2 * BEAD)            # a layer-made half's end lead-in: (inset at the end, length)
+
+
+def _lead(body, hw, z0, z1, zlim):
+    """`body` with a LEAD-IN at both joint ends: the air beside its profile grown by LEAD[0]
+    at the end face, lofted back to nothing LEAD[1] in. A layer-made half bulges where each
+    layer's outline turns at the joint's ends (plate 2 C and D: tight only where the two
+    halves' ends meet, loose between); the taper keeps those ends out of the fit, and the
+    loft from the ROUNDED section keeps every corner as drawn. Only z in `zlim` is cut."""
+    e, lr = LEAD
+    L, x = F.L, F.L / 2.0
+    sec = body.val().intersect(cq.Face.makePlane(400, 400, cq.Vector(x, 0, 0), cq.Vector(1, 0, 0)))
+    rect = cq.Face.makeFromWires(cq.Wire.makePolygon(
+        [cq.Vector(x, -hw, z0), cq.Vector(x, hw, z0), cq.Vector(x, hw, z1), cq.Vector(x, -hw, z1)],
+        close=True))
+    tools = []
+    for f in rect.cut(sec).Faces():
+        w = f.outerWire()
+        g = w.offset2D(e, "intersection")[0]
+        assert len(g.Edges()) == len(w.Edges()), "lead-in outline changed shape: the loft would twist"
+        for xe, xi in ((0.0, lr), (L, L - lr)):
+            tools.append(cq.Solid.makeLoft([g.moved(cq.Location(cq.Vector(xe - x, 0, 0))),
+                                            w.moved(cq.Location(cq.Vector(xi - x, 0, 0)))], True))
+    cut = tools[0]
+    for t in tools[1:]:
+        cut = cut.fuse(t)
+    cut = cut.intersect(
+        cq.Solid.makeBox(L + 2.0, 4 * hw + 2.0, zlim[1] - zlim[0], cq.Vector(-1.0, -2 * hw - 1.0, zlim[0])))
+    out = body.val().cut(cut)
+    if not (out.isValid() and len(out.Solids()) == 1):
+        out = body.val().cut(cut, tol=1e-5)
+    assert out.isValid() and len(out.Solids()) == 1, "lead-in broke the solid (%d solids, valid %s)" % (
+        len(out.Solids()), out.isValid())
+    return cq.Workplane("XY").newObject([out])
+
+
 def make_pair(name, tenon, socket, c, S, host_w, top):
     """(token, cell, report) at clearance c."""
     rt, rs = matched(c, MIN[_kind(tenon)], MIN[_kind(socket)])
@@ -279,6 +315,13 @@ def make_pair(name, tenon, socket, c, S, host_w, top):
         cell = cell.cut(_prism([(m + 1.0, -1.0), (0.0, m), (-m - 1.0, -1.0)], -1.0, F.L + 1.0))
     token, lt = F._round(token, "x", rt, False)
     cell, ls = F._round(cell, "x", rs, False, skip=_mouth_corners(S, c, socket))
+    if S.get("lead"):
+        if tenon != "N":
+            token = _lead(token, hw, 0.0, S["tip"] + 1.0, (0.0, 1e3))
+        if socket != "N":
+            # a seat OFF the bed takes the lead-in too (the band under it keeps the offset
+            # outline's edges one-for-one); one ON the bed must not be undercut
+            cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3))
     seated = cell.translate((0, 0, c))
     gp = gaps(token, seated)
     # the joint's own clearance is measured above the mouth, the mouth's air reported apart
@@ -292,7 +335,7 @@ def make_pair(name, tenon, socket, c, S, host_w, top):
            if kind and (used is None or used < mn[0 if kind == "convex" else 1] - 1e-6)]
     rep = dict(c=c, tenon_r=rt, socket_r=rs, gap=(gp[0], gj[-1]), mouth_air=gp[-1], corners_off=off,
                tenon_overhang=(None, 0.0) if tenon == "N" else overhang(token, DOWN[tenon]),
-               socket_overhang=overhang(cell, DOWN[socket]))
+               socket_overhang=(None, 0.0) if socket == "N" else overhang(cell, DOWN[socket]))
     return token, cell, rep
 
 
@@ -322,10 +365,11 @@ def mark_size(face_w, widest):
     return dict(height=2 * BEAD, stroke=0.8)
 
 
-def finders():
+def finders(pairs=None):
     out = []
-    for name, tenon, socket, steps in PAIRS:
+    for name, tenon, socket, steps, *opt in (pairs or PAIRS):
         S = shape(tenon, socket, max(steps))
+        S["lead"] = bool(opt and opt[0].get("lead"))
         prof = profile(S)
         tip = max(z for _y, z in prof)
         host_w = 2 * (S["h"] + max(steps) + WALL)
@@ -343,7 +387,7 @@ def finders():
         mark = mark_size(host_w, len(steps))
         S["mark"] = mark["height"]
         t_up = F.UP_X if tenon == "N" else F.UP_Z
-        c_up = F.DOWN_Z if socket == "down" else F.UP_Z
+        c_up = {"down": F.DOWN_Z, "up": F.UP_Z, "N": F.UP_X}[socket]
         f = F.Finder(name, "%s tenon / %s socket" % (tenon, socket), make, (steps[0], steps[0]),
                      host_w + F.GAP, t_up, c_up, "chassis_0", "chassis_0", deltas=tuple(steps),
                      skin_top=socket == "up",                        # mouths on the bed
@@ -381,14 +425,14 @@ FOOT_L = 5 * BEAD                 # how far a standing token's foot reaches past
 FOOT_T = 2 * 0.4                  # two 0.4 layers
 
 
-def _footed(grp):
+def _footed(grp, standing):
     """A nozzle-made token stands 12 tall on its ~3 deep base, and A3 broke free of the bed
     (user): each gets a thin FOOT off the back of its base, full base width -- behind the
     base, where no socket ever goes, so the fit never sees it."""
     out = []
     for n, sh in grp:
         bb = sh.BoundingBox()
-        if "_token_" in n and bb.zlen > bb.xlen:
+        if standing and "_token_" in n:
             back = cq.Solid.makeBox(0.5, bb.ylen, 0.4, cq.Vector(bb.xmax - 0.5, bb.ymin, 0.0))
             assert sh.intersect(back).Volume() > 0.95 * back.Volume(), "%s: base not at +X" % n
             sh = sh.fuse(cq.Solid.makeBox(FOOT_L, bb.ylen, FOOT_T,
@@ -397,10 +441,10 @@ def _footed(grp):
     return out
 
 
-def plate():
+def plate(pairs=None, tag=TAG):
     out, x = [], 0.0
-    for f in finders():
-        grp = _footed(_top_down(R2._group(f, "both", TAG)[0]))
+    for f in finders(pairs):
+        grp = _footed(_top_down(R2._group(f, "both", tag)[0]), f.token_up == F.UP_X)
         w = max(sh.BoundingBox().xmax for _n, sh in grp) - min(sh.BoundingBox().xmin for _n, sh in grp)
         y0 = min(sh.BoundingBox().ymin for _n, sh in grp)
         out += [(n, sh.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, sh in grp]
@@ -412,12 +456,12 @@ def assembly(origin=(-560.0, 210.0, 160.0)):
     return [("test_" + n, cq.Workplane("XY").newObject([s]).translate(origin)) for n, s in plate()]
 
 
-def main(argv=None):
+def main(argv=None, pairs=None, tag=TAG, out="test_plate2_petg_gf.step"):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--export", action="store_true")
     a = ap.parse_args(argv)
     REPORT.clear()
-    pl = plate()
+    pl = plate(pairs, tag)
     for name, r in REPORT.items():
         S = r["shape"]
         print("%s: neck %.1f, head %.1f wide x %.2f tall, underside %d deg, top %s | lip %.2f, side wall %.2f,"
@@ -426,12 +470,12 @@ def main(argv=None):
                  "pointed" if S["chamfer"] else "flat", S["lip"], S["side_wall"], S["roof"], S["mark"]))
         for rep in r["steps"][:3]:
             (to, tb), (so, sb) = rep["tenon_overhang"], rep["socket_overhang"]
-            bad = ((to or 0) > 45.5 or so > 45.5 or max(tb, sb) > ROOF_FLAT_MAX + 1e-6
+            bad = ((to or 0) > 45.5 or (so or 0) > 45.5 or max(tb, sb) > ROOF_FLAT_MAX + 1e-6
                    or rep["gap"][1] > rep["c"] + 0.01 or rep["corners_off"])
             print("   c %.2f  tenon %.2f/%.2f socket %.2f/%.2f  gap %.3f..%.3f (mouth %.2f)  overhang tenon %s"
-                  " socket %.0f  bridge %.2f%s"
+                  " socket %s  bridge %.2f%s"
                   % (rep["c"], rep["tenon_r"][0], rep["tenon_r"][1], rep["socket_r"][0], rep["socket_r"][1],
-                     rep["gap"][0], rep["gap"][1], rep["mouth_air"], "-" if to is None else "%.0f" % to, so,
+                     rep["gap"][0], rep["gap"][1], rep["mouth_air"], "-" if to is None else "%.0f" % to, "-" if so is None else "%.0f" % so,
                      max(tb, sb),
                      "   FAILS A CHECK %s" % (rep["corners_off"] or "") if bad else ""))
     lo = [min(getattr(s.BoundingBox(), k) for _n, s in pl) for k in ("xmin", "ymin")]
@@ -442,7 +486,7 @@ def main(argv=None):
     print("every piece one valid solid" if not bad else "NOT ONE VALID SOLID: %s" % ", ".join(bad))
     if a.export:
         from cadkit.step_export import export_step
-        path = HERE / "test_plate2_petg_gf.step"
+        path = HERE / out
         export_step(cq.Workplane("XY").newObject([cq.Compound.makeCompound([s for _n, s in pl])]), str(path))
         print("wrote", path)
     return 0
