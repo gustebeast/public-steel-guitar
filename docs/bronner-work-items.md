@@ -6098,8 +6098,13 @@ own, then tell the Pi to flash everything from the OLED and joystick. So "a host
 cable" means THE INSTRUMENT'S PI over the instrument's own leads, hands-free: no button,
 no BOOT0 by hand. A flashed board may be the bridge to the next one (user: assume the
 boards already flashed run good firmware). Proposed per board, NOT decided:
-- `motor_ctrl`: two Pi GPIOs drive BOOT0 and NRST (open-drain) through J5's ways 3 and 4,
-  which carry nothing today (pi_cap J2 end too); `wchisp` over J4. Flashed first.
+- `motor_ctrl`: DECIDED (user, 2026-10-15): **a real USB socket replaces J4's PH-4** -- no
+  more hand-crimped USB-A to PHR-4 lead; an ordinary cable to the Pi (USB-C on the board
+  is the obvious choice, to confirm against the board edge and the CAD's `wire_link`).
+  PROPOSED behind it: a USB-serial chip (CH340/CH343-class) as the board's only USB
+  device, carrying the link to the MCU's USART and driving BOOT0/NRST from DTR/RTS (WCH's
+  serial loader is on PA9/PA10, unused on rev 1). Hands-free first flash and recovery,
+  any host, no Pi GPIO wires. Flashed first.
 - `output_panel`: a USB-serial chip (CH340-class) on one of the CH334F's two spare ports,
   DTR/RTS to BOOT0/NRST through the two-transistor auto-reset; the loader over that UART
   (WCH: USART1 PA9/PA10) or USB on PB6/PB7. Needs nothing from any other board.
