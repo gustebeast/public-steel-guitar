@@ -6092,6 +6092,30 @@ revision 2 owes, board by board:
 - `optical` (STM32H743, ULPI only): ST's ROM DFU is on OTG_FS PA11/PA12, unwired. Wire it,
   or add a bridge.
 
+**THE GOAL, sharpened (user, 2026-10-15):** prepare the Pi's SD card on a PC, install and
+plug in every board in its final form with no USB connections beyond the instrument's
+own, then tell the Pi to flash everything from the OLED and joystick. So "a host and a
+cable" means THE INSTRUMENT'S PI over the instrument's own leads, hands-free: no button,
+no BOOT0 by hand. A flashed board may be the bridge to the next one (user: assume the
+boards already flashed run good firmware). Proposed per board, NOT decided:
+- `motor_ctrl`: two Pi GPIOs drive BOOT0 and NRST (open-drain) through J5's ways 3 and 4,
+  which carry nothing today (pi_cap J2 end too); `wchisp` over J4. Flashed first.
+- `output_panel`: a USB-serial chip (CH340-class) on one of the CH334F's two spare ports,
+  DTR/RTS to BOOT0/NRST through the two-transistor auto-reset; the loader over that UART
+  (WCH: USART1 PA9/PA10) or USB on PB6/PB7. Needs nothing from any other board.
+- `optical`: the panel is its SWD probe (CMSIS-DAP in the panel's firmware, `openocd` on
+  the Pi). SWDIO/SWCLK on the USB-C's SBU1/SBU2 (a full-featured C-C cable, ours to
+  specify), NRST on the 24 V XH's empty way 3 or 4 behind a series R and clamp at both
+  ends (24 V is two ways away), or a 4-way PH if the endplate conduit takes a third plug.
+- `lever_sensor` x11: unsolved. CAN only, and the CH32V203's ROM loader is USART/USB.
+  Idea: an MCU whose ROM loader speaks CAN and enters it by itself on blank flash (check
+  STM32G0B1 / G4 against ST AN2606), plus a load switch on each board passing bus power
+  downstream only once that board is flashed, so blank boards come up ONE AT A TIME (the
+  same step can hand out node IDs).
+- The SD card: one image or a script run after Raspberry Pi Imager that installs the
+  flash tools, the firmware files and the OLED menu entry; the flash order is fixed by
+  the bridges (motor_ctrl and panel, then optical, then the levers in chain order).
+
 ## Belts drawn smooth again (user, 2026-10-13)
 
 "Revert the belts and have them appear smooth again." `components.belt` is a plain band,
