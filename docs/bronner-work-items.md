@@ -6131,7 +6131,8 @@ updater, and dead hardware. Proposed per board, NOT all decided:
   specify), NRST on the 24 V XH's empty way 3 or 4 behind a series R and clamp at both
   ends (24 V is two ways away), or a 4-way PH if the endplate conduit takes a third plug.
 - `lever_sensor` x11 (pedals and levers, two buses): PLAN AGREED (user, 2026-10-15),
-  hardware and firmware not built:
+  hardware and firmware not built. **THE PROJECT'S ONE EXCEPTION to cadkit M43's "over its
+  own USB" (user, 2026-10-15): tight on space, so the same three cases are met over CAN.**
   * CHIP: one whose ROM loader speaks CAN and starts by itself on a blank chip (STM32G0B1
     class; CONFIRM FDCAN in AN2606's table for the part, and the loader's fixed CAN IDs
     and bit rate). Its BOOT0 pin disabled in option bytes.
