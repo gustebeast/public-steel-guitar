@@ -353,10 +353,34 @@ def finders():
     return out
 
 
+def _top_down(grp):
+    """The group with step 1 at the TOP of the plate (+Y), 2 and 3 below it, every family
+    alike (user: the finder's order varied with each strip's print flip). A family that
+    runs the other way has its strip turned 180 degrees about Z round its cells' middle,
+    and its tokens' slots swapped end for end (each token turned in place too)."""
+    def cy(sh):
+        bb = sh.BoundingBox()
+        return (bb.ymin + bb.ymax) / 2.0
+    toks = sorted([(n, sh) for n, sh in grp if "_token_" in n], key=lambda t: t[0])
+    if cy(toks[0][1]) >= cy(toks[-1][1]):
+        return grp
+    slots = [cy(sh) for _n, sh in toks]
+    mid = (slots[0] + slots[-1]) / 2.0          # the cells' middle (the strip's tab is off it)
+    swap = {n: slots[len(slots) - 1 - i] for i, (n, _sh) in enumerate(toks)}
+
+    def turn(sh, to=None):
+        bb = sh.BoundingBox()
+        c = cq.Vector((bb.xmin + bb.xmax) / 2.0, mid if to is None else cy(sh), 0.0)
+        sh = sh.rotate(c, c + cq.Vector(0, 0, 1), 180.0)
+        return sh if to is None else sh.translate(cq.Vector(0, to - c.y, 0))
+    return [(n, turn(sh, swap.get(n))) for n, sh in grp]
+
+
 def plate():
     out, x = [], 0.0
     for f in finders():
-        grp, w = R2._group(f, "both", TAG)
+        grp = _top_down(R2._group(f, "both", TAG)[0])
+        w = max(sh.BoundingBox().xmax for _n, sh in grp) - min(sh.BoundingBox().xmin for _n, sh in grp)
         y0 = min(sh.BoundingBox().ymin for _n, sh in grp)
         out += [(n, sh.moved(cq.Location(cq.Vector(x, -y0, 0.0)))) for n, sh in grp]
         x += w + R2.BETWEEN
