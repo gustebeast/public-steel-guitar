@@ -277,10 +277,12 @@ LEAD_P3 = ((0.0, 0.2), (2 * BEAD, 0.0))
 LEAD = ((0.0, 0.12), (3.0, 0.12), (4.5, 0.0))
 
 
-def _lead(body, hw, z0, z1, zlim, stations=LEAD):
+def _lead(body, hw, z0, z1, zlim, stations=LEAD, keep=None):
     """`body` with the END RELIEF `stations` at both joint ends: the air beside its profile
     grown by each station's amount at its distance in, lofted between (the loft from the
-    ROUNDED section keeps every corner as drawn). Only z in `zlim` is cut."""
+    ROUNDED section keeps every corner as drawn). Only z in `zlim` is cut, and with
+    `keep` = (y, z) nothing beyond |y| below z -- the SEAT face outside the mouth (plate 5:
+    a seat cut 0.12 at the ends left the last layer an island over the middle)."""
     L, x = F.L, F.L / 2.0
     sec = body.val().intersect(cq.Face.makePlane(400, 400, cq.Vector(x, 0, 0), cq.Vector(1, 0, 0)))
     rect = cq.Face.makeFromWires(cq.Wire.makePolygon(
@@ -302,6 +304,11 @@ def _lead(body, hw, z0, z1, zlim, stations=LEAD):
         cut = cut.fuse(t)
     cut = cut.intersect(
         cq.Solid.makeBox(L + 2.0, 4 * hw + 2.0, zlim[1] - zlim[0], cq.Vector(-1.0, -2 * hw - 1.0, zlim[0])))
+    if keep:
+        ky, kz = keep
+        for y0 in (ky, -2 * hw - 1.0):
+            cut = cut.cut(cq.Solid.makeBox(L + 2.0, 2 * hw + 1.0 - ky, kz - zlim[0],
+                                           cq.Vector(-1.0, y0, zlim[0])))
     out = body.val().cut(cut)
     if not (out.isValid() and len(out.Solids()) == 1):
         out = body.val().cut(cut, tol=1e-5)
@@ -346,7 +353,8 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
         if socket != "N" and relief in ("both", "socket"):
             # a seat OFF the bed takes the lead-in too (the band under it keeps the offset
             # outline's edges one-for-one); one ON the bed must not be undercut
-            cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3), S["lead"])
+            cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3), S["lead"],
+                         None if socket == "up" else (S["n"] + c + rs[0] + 0.05, 0.3))
     seated = cell.translate((0, 0, g))
     gp = gaps(token, seated)
     # the joint's own clearance is measured above the mouth, the mouth's air reported apart
