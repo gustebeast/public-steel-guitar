@@ -39,6 +39,10 @@ from src.version_mark import cut_mark
 
 HERE = pathlib.Path(__file__).resolve().parent
 RADII = (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2)
+# SET 2 (user's calipers, 2026-10-14): rings 1 and 10 BOTH printed an outside corner of
+# about 2.1 (drawn 0 and 1.2), so the outer knee lies past this set; the hole went 1.0 ->
+# 1.8 and does follow the drawing. Set 2 carries the series on, numbered on from 11.
+RADII_2 = (1.6, 2.0, 2.4, 2.8, 3.2)
 OUT_S = 20 * D.BEAD          # 16.0 across the outer flats
 IN_S = 10 * D.BEAD           # 8.0 across the hole's flats (inside jaws reach its corners)
 T = 5 * D.BEAD               # 4.0 tall: ten 0.4 layers
@@ -61,15 +65,67 @@ def diagonal(s: float, r: float) -> float:
     return s * math.sqrt(2.0) - 2.0 * r * (math.sqrt(2.0) - 1.0)
 
 
-def pieces():
-    """[(name, solid)]: every step's ring, numbered on its -Y wall's top, laid out on the bed."""
+def pieces(radii=RADII, first=1):
+    """[(name, solid)]: every step's ring, numbered (from `first`) on its -Y wall's top,
+    laid out on the bed."""
     out = []
     wall_mid = (OUT_S + IN_S) / 4.0                     # the middle of a wall, off the centre
-    for k, r in enumerate(RADII):
-        p = cut_mark(ring(r), k + 1, (0.0, -wall_mid, T), (0, 0, 1), (1, 0, 0), **MARK)
+    for k, r in enumerate(radii):
+        p = cut_mark(ring(r), k + first, (0.0, -wall_mid, T), (0, 0, 1), (1, 0, 0), **MARK)
         col, row = k % PER_ROW, k // PER_ROW
         p = p.translate((col * (OUT_S + GAP), -row * (OUT_S + GAP), 0.0))
-        out.append(("corner_r_%d" % (k + 1), p.val()))
+        out.append(("corner_r_%d" % (k + first), p.val()))
+    return out
+
+
+# SET 3, STANDING (user, 2026-10-14): the same ring stood up as a DIAMOND, its profile
+# across the layers, so its corners are made by LAYER STACKING -- the joints' layer-made
+# halves are drawn on the assumption that such a corner prints as drawn, and this
+# measures it. All four sides are 45 degree faces (self-supporting); the bottom vertex is
+# cut off where the diamond is FOOT_W wide and stood on a foot plate. Measure as before,
+# but the DIAGONALS ACROSS (left vertex to right vertex, outside and hole): those two
+# corners are the layer-made ones; the flats are across the 45 degree faces.
+RADII_3 = (0.0, 0.4, 0.8, 1.2, 2.0)
+FOOT_W = 8 * D.BEAD          # 6.4 where the diamond stands: wide enough to carry its number
+                             # ("20" is 5.6 wide) with the foot AND the ring over it
+FOOT_T = 2 * D.BEAD          # 1.6 foot plate
+FOOT_L = 10 * D.BEAD         # 8.0 foot plate along the ring's thickness
+STAND_T = 10 * D.BEAD        # 8.0 thick, so it stands
+
+
+def standing(r: float) -> cq.Workplane:
+    """One standing ring, profile in XZ, foot plate on the bed at z = 0, centred on x = 0."""
+    def square(s, h):
+        w = cq.Workplane("XY")
+        if r <= 0:
+            return w.rect(s, s).extrude(h)
+        return w.sketch().rect(s, s).vertices().fillet(r).finalize().extrude(h)
+    body = square(OUT_S, STAND_T).cut(square(IN_S, STAND_T + 2.0).translate((0, 0, -1.0)))
+    body = body.rotate((0, 0, 0), (0, 0, 1), 45).rotate((0, 0, 0), (1, 0, 0), 90)
+    lo = -OUT_S / math.sqrt(2.0) + FOOT_W / 2.0          # where the drawn diamond is FOOT_W wide
+    body = body.cut(cq.Workplane("XY").box(100, 100, 100).translate((0, 0, lo - 50.0)))
+    body = body.translate((0, 0, FOOT_T - lo))
+    foot = cq.Workplane("XY").box(OUT_S, FOOT_L, FOOT_T, centered=(True, True, False))
+    return body.union(foot.translate((0, -FOOT_L / 2.0, 0)))
+
+
+def standing_pieces(first=len(RADII) + len(RADII_2) + 1):
+    """[(name, solid)]: set 3, in a row along X, each numbered on its UNDERSIDE (the bed
+    face), right under where the diamond stands: the foot plate plus the ring above it,
+    so the cut leaves well over two beads. Reading across the ring, 4.0 tall (at 2.4 the
+    segments closed up and every figure read as an 8)."""
+    out = []
+    for k, r in enumerate(RADII_3):
+        body, mark = standing(r), dict(height=4.0, stroke=0.8)
+
+        def cut(x0):
+            return cut_mark(body, k + first, (x0, -STAND_T / 2.0, 0.0), (0, 0, -1), (1, 0, 0), **mark)
+        gb = body.val().cut(cut(0.0).val()).BoundingBox()      # the figure, to centre it
+        p = cut(-(gb.xmin + gb.xmax) / 2.0)
+        # pitched on the DIAMOND's width (OUT_S * sqrt 2), not the flat ring's: apart, so each
+        # diagonal can be measured
+        out.append(("corner_r_%d" % (k + first),
+                    p.translate((k * (OUT_S * math.sqrt(2.0) + GAP), 0.0, 0.0)).val()))
     return out
 
 
@@ -90,12 +146,17 @@ def main(argv=None):
     bad = [n for n, s in pl if not s.isValid() or len(s.Solids()) != 1]
     print("%d pieces, %.1f cm3; %s" % (len(pl), sum(s.Volume() for _n, s in pl) / 1000.0,
                                        "every piece one valid solid" if not bad else "BAD: " + ", ".join(bad)))
+    for k, r in enumerate(RADII_2):
+        print("   %2d    %.1f       %.2f / %.3f            %.2f / %.3f   (set 2)" % (
+            k + len(RADII) + 1, r, OUT_S, diagonal(OUT_S, r), IN_S, diagonal(IN_S, r)))
+    pl2 = pieces(RADII_2, len(RADII) + 1)
     if a.export:
         from cadkit.step_export import export_step
-        path = HERE / "test_corner_radius_plate.step"
-        export_step(cq.Workplane("XY").newObject(
-            [cq.Compound.makeCompound([s for _n, s in pl])]), str(path))
-        print("wrote", path)
+        for name, part in (("test_corner_radius_plate.step", pl), ("test_corner_radius_plate_2.step", pl2)):
+            path = HERE / name
+            export_step(cq.Workplane("XY").newObject(
+                [cq.Compound.makeCompound([s for _n, s in part])]), str(path))
+            print("wrote", path)
     return 0
 
 

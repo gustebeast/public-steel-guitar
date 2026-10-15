@@ -40,6 +40,10 @@ WIDTH = 3 * STROKE           # 4.8
 GAP = STROKE                 # between figures
 RIDGE = 0.04                 # the V stops this short of a knife edge (a taper to zero
                              # width is a degenerate solid)
+# A BEAD OF STRAIGHT WALL UNDER THE V (user, 2026-10-14: the round 2 numbers were hard to
+# read at 0.8 deep). The groove drops this far square, then closes in its 45 degree V, so
+# it is a bead deeper and still has no floor and no flat roof wider than its own mouth.
+SHAFT = D.BEAD
 PROUD = 0.2                  # the cutter stands this far out of the face, so the cut
                              # never shares a face with the part
 
@@ -52,9 +56,10 @@ SEGMENTS = {"0": "abcdef", "1": "bc", "2": "abged", "3": "abgcd", "4": "fgbc",
             "5": "afgcd", "6": "afgecd", "7": "abc", "8": "abcdefg", "9": "abcdfg"}
 
 
-def _segment(p0, p1, stroke):
+def _segment(p0, p1, stroke, shaft=SHAFT):
     """One stroke from p0 to p1 (centreline ends, in the face's plane): a bar with
-    pointed ends reaching half a stroke past each, cut as a V below z=0."""
+    pointed ends reaching half a stroke past each, cut `shaft` straight down from z=0 and
+    then as a V below that."""
     (x0, y0), (x1, y1) = p0, p1
     h = stroke / 2.0
     if abs(y1 - y0) < 1e-9:                                   # along x
@@ -62,8 +67,9 @@ def _segment(p0, p1, stroke):
     else:                                                     # along y
         pts = [(x0, y0 - h), (x0 + h, y0), (x0 + h, y1), (x0, y1 + h), (x0 - h, y1), (x0 - h, y0)]
     wire = cq.Workplane("XY").polyline(pts).close()
-    vee = wire.extrude(h - RIDGE / 2.0, taper=45.0).mirror("XY")      # mouth at z=0, down
-    return vee.union(cq.Workplane("XY").polyline(pts).close().extrude(PROUD))
+    vee = wire.extrude(h - RIDGE / 2.0, taper=45.0).mirror("XY").translate((0, 0, -shaft))
+    bar = cq.Workplane("XY").polyline(pts).close().extrude(PROUD + shaft).translate((0, 0, -shaft))
+    return vee.union(bar)
 
 
 def cut_groove(body, at, normal, along, length, stroke=STROKE):
@@ -76,7 +82,7 @@ def cut_groove(body, at, normal, along, length, stroke=STROKE):
     return body.cut(cq.Workplane("XY").newObject([cutter]))
 
 
-def figure(ch, height=HEIGHT, width=WIDTH, stroke=STROKE):
+def figure(ch, height=HEIGHT, width=WIDTH, stroke=STROKE, shaft=SHAFT):
     """The cutter for one figure, centred on the origin, cutting into -Z."""
     hx, hy = (width - stroke) / 2.0, (height - stroke) / 2.0
     ends = {"a": ((-hx, hy), (hx, hy)), "g": ((-hx, 0.0), (hx, 0.0)), "d": ((-hx, -hy), (hx, -hy)),
@@ -84,18 +90,18 @@ def figure(ch, height=HEIGHT, width=WIDTH, stroke=STROKE):
             "e": ((-hx, -hy), (-hx, 0.0)), "c": ((hx, -hy), (hx, 0.0))}
     out = None
     for s in SEGMENTS[ch]:
-        seg = _segment(*ends[s], stroke=stroke)
+        seg = _segment(*ends[s], stroke=stroke, shaft=shaft)
         out = seg if out is None else out.union(seg)
     return out
 
 
-def mark(text, height=HEIGHT, stroke=STROKE):
+def mark(text, height=HEIGHT, stroke=STROKE, shaft=SHAFT):
     """The cutter for a number, centred on the origin in XY, cutting into -Z."""
     width = WIDTH * height / HEIGHT
     pitch = width + GAP * height / HEIGHT
     out = None
     for i, ch in enumerate(str(text)):
-        fig = figure(ch, height, width, stroke).translate(((i - (len(str(text)) - 1) / 2.0) * pitch, 0, 0))
+        fig = figure(ch, height, width, stroke, shaft).translate(((i - (len(str(text)) - 1) / 2.0) * pitch, 0, 0))
         out = fig if out is None else out.union(fig)
     return out
 
@@ -151,14 +157,14 @@ def font_mark(text, height=HEIGHT):
     return out
 
 
-def cut_mark(body, text, at, normal, x_dir, height=HEIGHT, stroke=STROKE, font=False):
+def cut_mark(body, text, at, normal, x_dir, height=HEIGHT, stroke=STROKE, font=False, shaft=SHAFT):
     """`body` with `text` cut into the face through `at` whose OUTWARD normal is `normal`;
     `x_dir` is the reading direction along the face. Read from outside, it reads true --
     so a mark on a bed face is mirrored in the plan view, as it should be. `font=True`
     cuts it in the instrument's font instead of segments (and cuts nothing, returning
     the body as it came, on a machine without the font)."""
     plane = cq.Plane(origin=cq.Vector(*at), xDir=cq.Vector(*x_dir), normal=cq.Vector(*normal))
-    cutter = font_mark(text, height) if font else mark(text, height, stroke)
+    cutter = font_mark(text, height) if font else mark(text, height, stroke, shaft)
     if cutter is None:
         return body
     return body.cut(cq.Workplane("XY").newObject([cutter.val().moved(plane.location)]))
