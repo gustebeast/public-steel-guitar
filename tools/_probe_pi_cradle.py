@@ -159,7 +159,6 @@ def sweep():
     comps = [(n, wp.val()) for n, wp in collect_components()]
     cap = [(n, s) for n, s in comps if n.startswith("pi_cap")]
     board_top = FLOOR + EL.PI_STANDOFF + EL.BD_T
-    off = CLR + M4.shaft_clr_d / 2.0
     print("\n=== SWEEP: edge x hold, boss AND head, against chassis walls + pi_cap ===")
     print("    board top %.2f ; head O%.1f x %.1f above it ; boss O%.1f below it"
           % (board_top, M4_BUTTON_HEAD_D, M4_BUTTON_HEAD_H, M4.boss_od))

@@ -1,5 +1,12 @@
 """Belt-tension lock forks — a graded set of tiny printed plugs (§ motors).
 
+⚠ NOTHING TAKES THEM ANY MORE. Everything below describes the slotted, bolted motor
+mounts this set was made for; since 2026-09-11 the motors drop into pockets with no
+bolts or slots (motor_bank's docstring), and belt tension lives in the in-line clamp
+(belt_tensioner). The set is still built and exported until it is retired as a part;
+the text is kept as the record of what it was for. (It is also out of date in its own
+terms: SIZES now runs 16 sizes, HEAD_T is 1.6, and D.MOTOR_GAP is 2.4.)
+
 The motor mounts are friction clamps in slotted holes; the slots point at the
 screw pulley, so long-term clamp creep could let a motor walk +X and slacken
 its belt. A direct tensioner (set screw / U-channel) doesn't fit: the staircase

@@ -148,7 +148,6 @@ def analyze(name: str, rec: Recording, motor: int, t0: float, sr: float, audio: 
     quiet = audio[: max(int((quiet_end - t0) * sr), int(0.2 * sr))]
     hz = hz or pitch.guess(quiet, sr)
     f, _ = pitch.track(audio, sr, hz)
-    t = t0 + np.arange(len(f)) / sr
     edge = int(0.03 * sr)
     q = f[edge:max(edge + 1, len(quiet) - edge)]
     rest_hz = float(np.median(q))

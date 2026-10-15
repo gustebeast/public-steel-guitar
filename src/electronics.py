@@ -27,7 +27,6 @@ BRIDGE end, cut flush through the +X endplate face.
 from __future__ import annotations
 
 import math
-import re
 
 import cadquery as cq
 
@@ -57,8 +56,7 @@ TRAY_Z0, TRAY_Z1 = -64.0, -61.0        # plate band (3 thick) - 1.15 ABOVE the
 from . import board_geom as BG      # the ROUTED boards -- see MCTRL_BOARD_X/Y below
 from . import chassis as CH          # only early constants (X_*, Z_*) used here
 from .helpers import box_at, cyl
-from cadkit.pcb import (PCB_T as _PCB_T, jst_xh_header, jst_xh_side_header,
-                        xh_length, xh_side_length)
+from cadkit.pcb import PCB_T as _PCB_T, jst_xh_side_header
 
 # ---- board footprints (x0, x1, y0, y1); board bottom z = TRAY_Z1 + post ----
 POST_H = 4 * D.BEAD                    # 3.2 printed standoff posts under each board
@@ -791,7 +789,7 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     column here starts inside the endplate wall (RIB_LZ), and keyhead_endplate asserts the
     finished part is ONE solid.
     """
-    from cadkit.fasteners import M4 as _M4, M4_BUTTON_HEAD_D, cut_anchor as _cut_anchor
+    from cadkit.fasteners import M4 as _M4
     from cadkit.pcb import pcb_hold_xy
     from .helpers import box_at
     zb = RIB_LZ - TRAY_Z1          # cradle frame: the endplate's wall, -26.5 below the mount face
@@ -804,7 +802,6 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # nozzle ever changes.
     CLR, WALL, LIP = CRADLE_CLR, D.MIN_WALL_2P, 3 * D.BEAD
     RETAIN = 3 * D.BEAD   # how far the 45 deg lean reaches over the board (= its rise)
-    HARNESS_W = 24.0      # the -Y notch the cable leaves through
 
     def _cyl_col(x, y, d, z0, z1):
         return cq.Workplane("XY").add(cq.Solid.makeCylinder(d / 2.0, z1 - z0, cq.Vector(x, y, z0)))
@@ -1122,7 +1119,6 @@ def board_screws():
     # from the board rather than left as a fastening point that cannot be fastened.
     _mhx, _mhy = _hold_xy(_mx1 - _mx0, _my1 - _my0, MCTRL_HOLD[0],
                           hold_at=MCTRL_HOLD[1], clr=CRADLE_CLR, spec=_M4)
-    tx, ty = cx + _mhx, cy + _mhy
     # ⚠⚠ THE MOTOR BOARD'S M4 IS GONE -- THE TOP PANEL RETAINS IT NOW (user, 2026-09-29).
     # keyhead_cradles no longer builds a boss for it, so drawing the screw would put a
     # fastener in the render with nothing to thread into: this project's own named fault,
@@ -1149,7 +1145,6 @@ def board_screws():
     # hold-downs: the head lands on the board's top face and laps its edge, clamping it to
     # the cradle boss. The seat plane is therefore the board top, exactly as it is for the
     # two boards above, and the assert at the top of this function covers it unchanged.
-    from cadkit.pcb import pcb_hold_xy
     # ⚠ THE PI'S M4 IS BACK, BECAUSE THERE IS NOW A BOSS BEHIND IT (2026-09-29). It was
     # removed when the Pi went flat: its boss lived on the tray frame, and drawing a fastener
     # with nothing to thread into is this project's own named fault -- "a hole designed for an
@@ -1319,8 +1314,8 @@ def pi4() -> cq.Workplane:
 # file's placements, i.e. against the numbers layout was GIVEN. It agreed with itself while
 # the panel connectors' bodies sat 0.54 short of the board edge, the barrel inlet faced the
 # chassis rail, and the USB-C hole was cut 7.85 mm above the receptacle. src/board_geom.py
-# builds it from elec/geom/output_panel.geom.json instead: the finished board, read back.
-from . import board_geom as BG
+# builds it from elec/geom/output_panel.geom.json instead: the finished board, read back
+# (board_geom, imported as BG at the top of this file).
 
 
 # ── THE Pi CAP (elec/pi_cap.py) ──────────────────────────────────────────────
@@ -2007,17 +2002,14 @@ def tee_silk(x: float, y: float):
     return _TEE_INK[0].translate((x, y, 0.0))
 
 
-def tee_pcb(x: float, y: float, drop: int = 1, accurate: bool = True) -> cq.Workplane:
+def tee_pcb(x: float, y: float, drop: int = 1) -> cq.Workplane:
     """CAN bus TEE PCB dummy. ONE ROW of side-entry XH, drawn MATED (cadkit
     jst_xh_side_header): the 8-way trunk J1 (in on ways 1-4, out on 5-8) and beside it
     the 4-way drop J2 to the motor, each where the routed board has it (tee_conn_dx) --
     plus the 120 ohm terminator and its slide switch (ON only on each bus's LAST tee).
     Serves the 10 bus-A motor tees. `drop` = +-1 marks the device side (it does not
     change the board). Mount: ONE M4 THROUGH the bare ear off its +X end
-    (wiring.tee_hold). `accurate=False` -> the compact bus-B placeholder (see
-    _tee_pcb_placeholder)."""
-    if not accurate:
-        return _tee_pcb_placeholder(x, y, drop)
+    (wiring.tee_hold)."""
     top = FLOOR_Z + 1.6                              # board top face; connectors rise +Z from here
     cy = tee_board_cy(y)
     # `x` is the OUTLINE centre. Bronner's 40 mm layout region is the -X part of it; off its

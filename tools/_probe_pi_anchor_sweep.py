@@ -14,14 +14,11 @@ BOARD. So sweep a wide region and score each candidate by:
 
     py -3.12 -m tools._probe_pi_anchor_sweep
 """
-import math
-
 import cadquery as cq
 
 from src.build import collect_components
 from src import electronics as EL
 from src import motor_bank as MB
-from src import top_plate as TP
 from cadkit.fasteners import M4
 
 MIN_WALL = 1.6

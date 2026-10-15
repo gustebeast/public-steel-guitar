@@ -56,7 +56,6 @@ plug J1 on key, fit the endplate.
 """
 from __future__ import annotations
 
-import io
 import json
 import os
 import sys
@@ -84,7 +83,7 @@ J1_ORDER = ", ".join("%d %s" % (i + 1, {"V24": "24 V"}.get(n, n))
 J1_NETS = ", ".join("%d %s" % (i + 1, _J1_NET[n]) for i, n in enumerate(LED_WAYS))
 import placecheck  # noqa: E402
 import buck_cell as BC  # noqa: E402
-from placecheck import check_placement, fp_box  # noqa: E402
+from placecheck import check_placement  # noqa: E402
 
 P = Pin.types.PASSIVE
 
@@ -93,12 +92,12 @@ LED_FP = "Steel:XINGLIGHT_XL-5050RGBW"
 DRV_FP = "Package_DFN_QFN:Texas_RGE0024H_VQFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm"
 DRV_ROT = 90.0
 DRV_OUT_PINS = tuple(range(7, 13)) + tuple(range(19, 25))    # SBVS146D: OUTR2..B3, R0..B1
-BUCK_FP = "Steel:Texas_RNX0012_VQFN-HR-12_2x3mm_P0.5mm"
+BUCK_FP = BC.U_FP
 IND_FP = "Inductor_SMD:L_Sunlord_SWPA5040S"   # = buck_cell.L1_FP, asserted in _supply
 J_FP = "Connector_JST:JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal"
 # mouth (the footprint's local +Y 5.30) to the PAD CENTROID layout anchors on (the mean of
 # its six pads, -0.9833), both read out of the .kicad_mod
-J_ANCHOR = 5.30 + 0.9833
+J_ANCHOR = BC.XH_ANCHOR
 R_FP = "Resistor_SMD:R_0402_1005Metric"
 C_FP = "Capacitor_SMD:C_0402_1005Metric"
 C08_FP = "Capacitor_SMD:C_0805_2012Metric"
@@ -185,8 +184,6 @@ LED_YS = FL.LED_YS                               # -30.40 -10.40 +10.40 +30.40
 #     edge, so a left-to-right chain is a straight line;
 #   * the -Y band stays empty, and IS the bay's overflow on both boards.
 DRV_Y = 20.40
-PASSIVE_Y = 15.60                                # under the driver, out of the returns
-SPI_Y = 13.95                                    # the band's lower edge
 LED_ROW = tuple(LED_YS)
 
 # ⚠ WHICH WAY A ZONE'S LEDs FACE IS A ROUTING DECISION. The footprint's anodes (1-4)
@@ -1383,8 +1380,9 @@ def build(panel):
         notes["vias"] = notes["vias"] + [_via]
     # WHAT EACH SUPPLY NET CARRIES, all-white. The 14 V rail is made on the key board and
     # crosses the seam pogos to the mid board, so the key board's rail is held to BOTH
-    # boards' channels and the mid board's to its own.
-    i_own = 4 * len(zs) * I_CHAN
+    # boards' channels. On either board a string's current reaches its LEDs through its
+    # driver's FEED path (below), so the mid board's rail itself carries only the
+    # drivers' logic supply.
     rail_j = ["J%d" % (11 + i) for i, (_x, _y, _net) in enumerate(FL.pogo_pads(panel))
               if _net == "+14V5"]            # the seam pogo(s) the rail crosses on
     i_all = 4 * I_CHAN * sum(len(zones_for(*FL.panel_range(q))) for q in ("mid", "key"))

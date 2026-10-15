@@ -38,7 +38,6 @@ import math
 import cadquery as cq
 
 from . import dimensions as D
-from . import components as C
 from . import motor_bank as MB          # for BED_Z, the chassis print-bed datum
                                         # (chassis imports knee_lever, so not chassis)
 from .helpers import ball_bearing_y, box_at, corbel_close, cyl, cyl_y, heal
@@ -49,16 +48,14 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
                               M4_BUTTON_HEAD_H,
                               m4_button_screw,
                        M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
-                       cut_selftap,
-                       cut_m4_pocket, seated_m4_insert, cut_m4_boss, m4_boss_insert)
+                       cut_selftap, seated_m4_insert)
 from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
                         PH_SIDE_H, PH_SIDE_D, PH_TAB_D, PH_PLUG_RUN, PH_PITCH)
 from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
 from cadkit.supports import printable_bore
 from cadkit.lazy import lazy
-# the M4 insert pocket/boss helpers now live in cadkit/fasteners.py (shared); keep the old local names:
-_insert_pocket, _seated_insert = cut_m4_pocket, seated_m4_insert
-_insert_boss_cut, _insert_dummy = cut_m4_boss, m4_boss_insert
+# the M4 insert helper lives in cadkit/fasteners.py (shared); keep the old local name:
+_seated_insert = seated_m4_insert
 
 # ── bought parts (assembly dummies). REUSE existing line items where possible so they buy in
 # bulk: the 688ZZ bearings + the M4×10 button heads + M4 heat-set inserts are ALL already in
@@ -84,7 +81,7 @@ BRG_OD, BRG_ID, BRG_W = D.BRG688_OD, D.BRG688_ID, D.BRG688_W   # 688ZZ (Ø8×16�
                                     # it adds no inertia — the bearing lives in the
                                     # HOUSING, not on the swinging lever. The cost is
                                     # bulk: the housing grows to clear the race.
-BRG_WALL = 1.6                      # 2-bead seat wall around the outer race
+BRG_WALL = 2 * D.BEAD                # 1.6 2-bead seat wall around the outer race
 BRG_SEAT_D = BRG_OD + 0.1           # the seat bore (race + press clearance) — walls measure from THIS
 BRG_WALL_X = 4 * D.BEAD             # 3.2 +X of the seat (user): with the lever room open through the
                                     # +X face the cheek holds that side of the race from below only
@@ -185,8 +182,8 @@ PCB_T = _PCB_T                      # taller than anything on it: the board ran 
                                     # chip's CHIP_DROP fixes that edge relative to the axle).
                                     # In X the outline is already tight: the chip's keepout sets
                                     # +X and the connector's groove band sets -X.
-CHIP_W, CHIP_H = 3.0, 0.80          # MT6701QT-STD, QFN-16. DATASHEET §9.2 (verified):
-                                    # D = E = 2.900..3.100 (3.0 nominal) and A, the TOTAL
+CHIP_H = 0.80                       # MT6701QT-STD, QFN-16 (3.0 x 3.0). DATASHEET §9.2 (verified):
+                                    # A, the TOTAL
                                     # package height, = 0.700..0.800. CHIP_H takes the MAX,
                                     # not the typical: A is what stands between the board
                                     # face and the air gap's datum, so the tallest package is
@@ -214,29 +211,17 @@ CHIP_DISP_MAX = 0.3                 # datasheet DISP: max misalignment between t
 INSERT_D, INSERT_L = M4_INSERT_D, M4_INSERT_L   # M4 heat-set insert Ø6 × 5
 SCREW_CLR = M4_SHAFT_CLR_D          # M4 shaft clearance (Ø4.4)
 
-# ── housing envelope ─────────────────────────────────────────────────────────
-WALL    = 4.0                       # bearing-wall thickness (Y)
-HALF_X  = 14 * D.BEAD               # 11.2 housing half-width in X (the bearing block; sits
-                                    #   in the bay). Snapped UP: wider extents can only KEEP
-                                    #   or ADD tenon stations, never drop one
-WALL_Z0, WALL_Z1 = -9.0, 5.5        # bearing walls (axle plates) span this in Z (bearing centred z=0);
-                                    #   top just clears the Ø10 hub (z 5) -- the mount is now to the -X SIDE
-                                    #   (rails), NOT a yoke above the lever, so the plates stop at the lever top
-
 # ── layout along the axle (Y): -Y outboard (player) .. +Y inboard (under body) ──
 # The hub/cam is THICK (24 mm) so the main coil (-Y), the half-stop cartridge (+Y) and the centred
-# stop screw all get their own Y lane without touching. The bearing walls flank it; magnet + sensor
-# sit past the +Y wall.
+# stop screw all get their own Y lane without touching. Magnet + sensor sit past the +Y face.
 HUB_Y0, HUB_Y1 = -12.0, 12.0        # hub / cam / feel cavity -- 24 mm thick
-WN_Y0, WN_Y1   = HUB_Y0 - 4.0, HUB_Y0   # -Y bearing wall (-14 .. -10)
-WP_Y0, WP_Y1   = HUB_Y1, HUB_Y1 + 4.0   # +Y bearing wall (10 .. 14)
 # (MAG_Y0 / PCB_Y / AXLE_Y0 / AXLE_Y1 moved DOWN to the prism block: they
 #  anchor to the housing face + bearing home, which are defined there. They
-#  used to hang off WP_Y1 — the +Y bearing WALL, deleted in the prism round —
-#  which left the magnet floating 2.6 outboard of the real face.)
+#  used to hang off the +Y bearing WALL, deleted in the prism round, which
+#  left the magnet floating 2.6 outboard of the real face.)
 # (the cone/pilot glue tenon and its protruding KEY tongue are retired with the
 #  insert — the axle is one through-part now and the key is a D-FLAT, sized in
-#  the prism block: a protruding tongue cannot pass the Ø5 bearing bore.)
+#  the prism block: a protruding tongue cannot pass the Ø8 bearing bore.)
 HUB_YC  = (HUB_Y0 + HUB_Y1) / 2     # hub / cam / feel centre Y (0)
 
 # ── lever ────────────────────────────────────────────────────────────────────
@@ -256,9 +241,8 @@ ARM_WY  = 32 * D.BEAD               # 25.6 arm width in Y -- the face the player
                                     #   edge (HS_YC), so widening the lever IS what spreads the cartridges
                                     #   apart -- Y is the cheap axis here (user); X is not.
 LEVER_HW = ARM_WY / 2               # UNIFORM lever half-width: hub, lobe and arm are all ±LEVER_HW (one
-                                    #   clean section). It no longer reaches the ±12 walls, so...
-PIVOT_BOSS_D = 8.0                  # ...the housing carries a small Ø8 thrust boss at each hub end for
-PIVOT_CLR = 0.2                     #   low-friction Y location (a ring, not the whole hub face)
+                                    #   clean section).
+PIVOT_CLR = 0.2                     # hub-face to thrust-boss running clearance
 THROW   = 30.0                      # neutral -> full throw (deg, +theta about +Y). 30° is the useful max
 # ...and the OTHER way, for STORAGE (user, 2026-09-28: "for the LKL we want a storage
 # sweep angle as well. It should be able to sweep until it touches the LKV"). The lever
@@ -317,14 +301,10 @@ LOBE_WY = 4.5                                # each lobe's / follower-tongue Y w
                                              #   and the piston HEAD widened to (LOBE_WY+2) so the 0.8mm front
                                              #   lip survives -- so the tongue can be this wide within the 20mm
                                              #   arm (0.8mm arm-outboard wall) without a bigger coil.
-CAM_TX  = 4 * D.NOZZLE_D                     # 3.2 cam-plate thickness in X (was 3.0 = 3.75 beads)
-CAM_Y0, CAM_Y1 = HUB_Y0 + 1.0, HUB_Y1 - 1.0  # cam-plate Y span (wide enough to span both followers,
-                                             #   which sit flush against the bearing walls)
 # lobe +X extremum (what a follower touches) and its Z, at rest and at full throw:
 LOBE_X0 = LOBE_R                              # follower contact X at rest (a=0)
 LOBE_X1 = LOBE_RC * math.sin(_THR) + LOBE_R  # follower contact X at full throw
 FOLL_TRAVEL = LOBE_X1 - LOBE_X0              # follower / piston travel over the throw (BOUNDED)
-SWING_X = LOBE_RC * math.sin(_THR) + CAM_TX  # cam +X reach at full throw (sizes the housing swing slot)
 # (No travel-stop boss: the old central stop screw was designed for the +Z cam PLATE and, in the -Z
 #  arm-as-cam layout, its boss landed a block right in the arm's swing path. Throw is bounded by the
 #  sweep clearance / the sensor; add a proper -Z-geometry stop later if a hard limit is wanted.)
@@ -365,7 +345,6 @@ HS_SPR_PITCH  = 3.3                 # ~9 coils in the 30
 HS_SPR_INST = HS_SPR_FREE           # the BAY: piston seat -> spring-seat washer with the tension
                                     #   screw backed out = a nominal spring at ZERO preload
 HS_PILOT_D  = HS_SPR_ID - 0.4       # 4.6: piston pilot nosing into the spring's Ø5 bore
-HS_PILOT_LX = 6 * D.BEAD            # 4.8 pilot length
 # SPRING SEAT = a steel WASHER, not a printed guide post (user: the printed post spent 3.2 of X).
 # McMaster 91100A120, DIN 9021 M3: Ø9, Ø3.2 hole, 0.7..0.9 thick (modelled at the 0.9 max, so the
 # housing recess always swallows it). The M4 screw's Ø4 thread cannot pass the Ø3.2 hole, so its
@@ -416,7 +395,6 @@ HS_BODY_LX = 4 * D.BEAD             # 3.2 piston body length in X (was 5 -- the 
                                     #   spent on thread engagement without moving the leg-facing extent). The
                                     #   pilot + tongue add effective bearing length so 3mm won't cock.
 HS_CLR    = 0.4                     # piston/coil <-> channel slide clearance (per side)
-HS_WALL   = D.MIN_WALL_2P           # cartridge STRUCTURAL wall (floor / front); sides are HS_CART_WALL
 HS_HOUS_WALL = D.MIN_WALL_2P        # housing shell wall around the pocket -- CONSTANT thickness, the
                                     #   outer /\ bottom parallels the pocket /\ (no thick flat bottom)
 HS_LIP    = 4 * D.BEAD              # 3.2 front wall (the lips that catch the piston head). Was 1.6: this
@@ -434,7 +412,7 @@ HS_ENGAGE_DEG = 15.0                          # half-stop engagement angle (thro
 # setback is tuned by a solid-contact solve to first-contact at HS_ENGAGE_DEG (clamp-adjustable in use).
 HS_SETBACK = 1.863                            # = engages at 15.0 deg (sin(15) would give 16.5 deg)
 # X layout (canonical build = MAIN placement: follower face rests at the lobe's rest extremum LOBE_X0):
-# nose rests on the cam plate's +X face (= lobe rest extremum, LOBE_X0 = CAM_TX/2) at neutral, so
+# nose rests on the cam plate's +X face (= lobe rest extremum, LOBE_X0 = LOBE_R) at neutral, so
 # the MAIN follower is loaded at rest (90 / no movement); the lobe takes over as theta grows
 HS_NOSE_TIPX = LOBE_X0              # follower face at rest -- bears on plate face / lobe extremum
 HS_FRONT    = HS_NOSE_TIPX + HS_NOSE_PROTRUDE   # cartridge front face (clears LOBE_X1 at full throw)
@@ -529,7 +507,6 @@ HS_CART_Z1  = HS_ROOF_SPLIT + HS_ROOF_TZ     # cartridge +Z CAP top (the outer g
 # walls, open on -Z where the arm's arc is WIDEST. The HOUSING floor is the -Z retaining wall (relieved to
 # open air at the front, where the arm sweeps). The whole box is pushed clear of the arm's arc by
 # CART_RECEDE. Plain rectangular prisms throughout (printability deferred).
-HS_POCKET_X0 = SWING_X              # housing pocket front (cartridge front cantilevers -X into the slot)
 # ── HOUSING REAR (behind the pockets). Both pockets end at ONE back face, HS_POS_NOM behind the
 # HALF-STOP cartridge's nominal back (the MAIN parks HS_SETBACK further forward on its own position
 # screw -- either cartridge still fits either slot). Behind that face: the position head's recess,
@@ -576,8 +553,6 @@ _JUP      = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
 def _lever_joint(length):
     """The mount joint at a given SLIDE length (Y). MORT_CLR shrinks the tenon for fit."""
     return joint(_JW, length, tenon=_JUP, mortise=_JUP, clearance=MORT_CLR)
-TEN_H     = _lever_joint(8.0).height    # how far a tenon rises above its mating face (5.82;
-                                        # the length arg is a probe — height ignores it)
 MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the -Y rail for slide-in)
 # global mount: MOUNT_X = -501 is itself a rib X in the half-pitch comb, which is what lets
 # the tenon stations be generated on a plain 23 mm walk from the axle. build.py poses the
@@ -1080,14 +1055,6 @@ def feel_place(s):
     return s.mirror("YZ").translate((_FEEL_DX, 0, _FEEL_DZ))
 
 
-def feel_place_pt(p):                               # same map for a bare point (e.g. the clamp axis origin)
-    return (-p[0] + _FEEL_DX, p[1], p[2] + _FEEL_DZ)
-
-
-def feel_unplace(s):                                # inverse of feel_place: placed-frame solid -> build frame
-    return s.translate((-_FEEL_DX, 0, -_FEEL_DZ)).mirror("YZ")
-
-
 # ── HOUSING = ONE PARAMETRIC PRISM (user round: draw the lever, then the
 # cartridges incl. their back-stops, then DERIVE the housing box from their
 # extents — each face computed from the previous stage, no hand numbers):
@@ -1241,7 +1208,7 @@ AXLE_LAND_D = 12 * D.BEAD           # 9.6 inner-race land
 # one-bead land. So the LAND grows until that stack clears J1 by CONN_GAP: the magnet, and
 # with it the board, stands 0.9 further out instead of J1 cutting the housing wall (user:
 # the old relief took 0.85 out of the 1.6 beside the half-stop pocket).
-MAG_FLANGE_T    = 0.8                           # pocket floor under the magnet
+MAG_FLANGE_T    = 1 * D.BEAD                    # 0.8 pocket floor under the magnet
 CONN_GAP = 0.3                      # J1 body -> housing face
 AXLE_LAND_T = max(D.MIN_WALL,
                   PH_SIDE_H + CONN_GAP - (MAG_FLANGE_T + MAG_T + AIR_GAP + CHIP_H))   # 0.8: the PH
@@ -1272,7 +1239,7 @@ MAG_TH_MAJOR  = 8.0                 # SIZED BY THE DRIVER rather than by strengt
                                     # the reason this Ø split off from the flange's.)
 MAG_TH_MINOR  = MAG_TH_MAJOR - 2 * MAG_TH_DEPTH
 MAG_TH_CLR    = 0.4                 # male shrunk (same rule as the backstop)
-CAP_T  = 0.8                                    # cap's clamping flange
+CAP_T  = 1 * D.BEAD                             # 0.8 cap's clamping flange
 CAP_HEX_AF = 9.2                    # across flats, for a 3/8" (9.525) female hex driver.
                                     # 0.325 total clearance, deliberately generous: printed
                                     # external features come out slightly OVER size, and the
@@ -1337,7 +1304,7 @@ assert AXLE_FLAT_R - M4.selftap_d / 2 >= D.MIN_WALL - 1e-9, (
     f"the axle's wall between the end screw's bore and the D-flat is "
     f"{AXLE_FLAT_R - M4.selftap_d / 2:.2f}, under one bead")
 PCB_Y   = MAG_Y1 + AIR_GAP + CHIP_H             # board face = magnet + gap + PACKAGE
-AXLE_Y0, AXLE_Y1 = -HOUS_HW - AXLE_END_PROUD, MAG_Y1   # axle: the -Y journal runs the full
+AXLE_Y0 = -HOUS_HW - AXLE_END_PROUD                   # axle: the -Y journal runs the full
                                                 # bearing width (user, 2026-09-21) and its tip
                                                 # stands AXLE_END_PROUD past the race for the
                                                 # end screw to seat on .. the magnet face at
@@ -1378,7 +1345,7 @@ CR_CLR   = 0.15                     # board slip fit, per face. The board's -Y f
                                     # the screw up pulls the board onto the seat faces at
                                     # PCB_Y and the 0.3 of slot slop all lands behind.
 CR_ENG   = 1.85                     # how deep each board edge sits in its groove
-CR_WEB_T = 4.0                      # web thickness in X, outboard of the groove
+CR_WEB_T = 5 * D.BEAD                # 4.0 web thickness in X, outboard of the groove
 CR_BACK  = D.MIN_WALL_2P   # 1.6 (was 1.5)                      # web material BEHIND the groove (the +Y flank)
 # The board is DELIBERATELY ASYMMETRIC about the chip. Both edges are pushed out by
 # the socket cone (a groove wall may not come inside SOCK_R, so an edge may not come
@@ -1539,8 +1506,6 @@ def sensor_hardware():
     return out
 
 
-
-
 def board_flip(z_bot, z_top, prefer=None):
     """Which way up the board goes in a housing spanning z_bot..z_top.
 
@@ -1633,11 +1598,6 @@ CR_X1_MAX = HOUS_X1                 # NOTHING in the cradle may stand +X of the 
                                     # +X extent was 13.15. The retention lost there is bought
                                     # back on -X, where the web runs full height and the board
                                     # is 14 deep — see _cradle.
-CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housing top, i.e.
-                                                # with the chassis underside: the grooves have
-                                                # to guide the board as high as it goes, and
-                                                # flush is exactly what already slides under
-                                                # the ribs everywhere else on this part
 # ── CAN DROP CONNECTOR: JST B4B-XH-A (the project standard — see BOM Connectors;
 # the SERVO42D's own I/O is XH2.54 native, so the whole harness is one system).
 # FOUR circuits because that is what CAN costs us: black GND / red 24 V / yellow H
@@ -1652,7 +1612,6 @@ CR_Z1    = HOUS_Z1                              # web tops FLUSH with the housin
 # the -X web. That gap is PH_SIDE_H + CONN_GAP (AXLE_LAND_T buys it), so the tunnel never
 # reaches the housing's cheek. SMT: no post tails at all.
 CONN_N       = 8
-CONN_PART    = "S8B-PH-SM4-TB"                        # LCSC C265121
 CONN_L       = ph_side_length(CONN_N)                 # 19.9, vertical (JST B)
 CONN_MOUTH_X = PCB_X0 + 3.05                          # the PH-era layout's mouth: its courtyard
                                                       #   (10.29 deep) sits clear of the groove band
@@ -1715,8 +1674,6 @@ for _n, _lcsc, _lx, _wz, _hy, _cx, _cz in SENSOR_BOM:
         _kx0, _kx1, _kz0, _kz1 = _conn_keepout()
         if _x0 < _kx1 and _x1 > _kx0 and _z0 < _kz1 and _z1 > _kz0:
             CONN_PAD_CONFLICTS.append(_n)
-
-
 
 
 def recess_swept(yc, lobe_rc, throw, zc, sense=1, rest_span=45.0, step=3.0):
@@ -1879,22 +1836,8 @@ def _hs_pocket(yc, x0, x1):
     return box.union(_roof_gable(yc, hs_pocket_hw(), z1, x0, x1))     # peaked ceiling
 
 
-# (the M4 insert pocket/boss geometry -- _insert_pocket/_seated_insert/_insert_boss_cut/_insert_dummy --
-#  now lives in freecad/fasteners.py and is aliased in at the top of this file.)
-
-
-def _hs_block(yc, x0, x1):
-    r"""The housing SHELL around one cartridge pocket: a rectangular block, HS_HOUS_WALL thick on ALL SIX
-    faces of the pocket (floor, ceiling, sides). Cut _hs_pocket() from this to leave the shell -- a flat
-    floor shelf under the cartridge (the -Z retaining wall for the open-bottomed cartridge; relieved to
-    open air at the front where the arm sweeps) + side walls + ceiling. Floor == ceiling thickness (both
-    HS_HOUS_WALL) -- symmetric, so the -Z floor is a clean 0.8-multiple like every other housing wall."""
-    hw = hs_pocket_hw()
-    t = HS_HOUS_WALL
-    # z_top clears the pocket GABLE apex (peak = ceiling + hw) plus one wall, so the shell fully caps the
-    # peaked ceiling; the flat top merges into the solid rail<->cartridge block above.
-    z_bot, z_top = (HS_FLOOR_Z - HS_CLR) - t, (HS_CART_Z1 + HS_CLR) + hw + t
-    return box_at(x1 - x0, 2 * (hw + t), z_top - z_bot, x=(x0 + x1) / 2, y=yc, z=(z_bot + z_top) / 2)
+# (the M4 insert geometry -- _seated_insert -- lives in cadkit/fasteners.py and is
+#  aliased in at the top of this file.)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -1997,7 +1940,6 @@ def cut_feel_rear(w, place, reach=0.0):
         w = w.cut(place(cq.Workplane("XY").add(printable_bore(
             HS_KEY_D, run, (HS_POCKET_BX, yc, zp), (1.0, 0.0, 0.0), up))))
     return w
-
 
 
 # -- THE CABLE KEEPER: where a lever's bus-B slack is stowed ----------------
@@ -2135,7 +2077,6 @@ KEEP_DROP = HOUS_Z1 - KEEP_WIND_Z0
 # depth of the lever and put its coil 18 below everyone else's. Hung at KEEP_DROP with a
 # 45 deg buttress down to the cheek, it matches. The buttress drops the post's whole
 # offset before it lands, which is the budget the assert in cable_keeper checks.
-_KEEP_DY = KEEP_CLR_Y + KEEP_COIL_R + CANB_BUNDLE_OD / 2.0
 
 
 def _yz(pts, xc, t):
@@ -2198,7 +2139,7 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
     def top(y):                                                 # the band's upper plane
         return wz0 - (px - y)
     # THE DEPTH IS THE WHOLE BUDGET, and the vertical lever spends nearly all of it: 45
-    # deg buys one mm of drop per mm of offset, the post stands _KEEP_DY + a radius out,
+    # deg buys one mm of drop per mm of offset, the post stands KEEP_CLR_Y + KEEP_COIL_R + half the bundle + a radius out,
     # and that is most of the 22.9 between this winding base and this floor. Hence no
     # bare shaft below the winding (there were 4.0) -- there is no room for any.
     a = y0 - ov
@@ -2282,47 +2223,6 @@ def plug_standoff(x_back=None):
     """
     x0 = HOUS_X0 if x_back is None else x_back
     return abs(plug_point()[0] - x0) + 4 * D.BEAD
-
-
-def cable_guide(x_face, y_face, z_bed, z_top, sx=1.0, sy=1.0):
-    """A TURN POST at a housing's front corner, on the connector side.
-
-    Only one lever needs it, and it is the vertical one. LKV is the horizontal lever
-    rotated 90 deg, so its body lies ALONG its plug's axis and its connector points down
-    that axis, away from the neighbour the bus arrives from: every straight line to the
-    plug crosses the housing, the axle or the arm. This is the alternative to bending
-    the cable round nothing -- a post the cable genuinely wraps, so the turn has
-    something making it, which is the rule the rest of this harness is drawn to.
-
-    Same shape as the keeper: a pillar along the build direction with a 45 deg head, on
-    a base in the corner it stands in. The base ties it to BOTH faces it sits against.
-    `sx`/`sy` pick WHICH corner: the post projects that way off the faces given.
-
-    IT GOES ON THE BACK CORNER, AWAY FROM THE ARM (user, 2026-09-23: "the cable
-    shouldn't go around the front next to the lever arm, it should go around the back",
-    and "the +y side"). Right: LKV's arm hangs to -Y and sweeps there, so a turn post at
-    the front corner puts the cable through the one part of this lever that MOVES. The
-    back corner -- past the +Y end, on the far cheek -- is still air at every throw.
-    """
-    r = KEEP_POST_D / 2.0
-    xc = x_face + sx * (r + D.MIN_WALL_2P)
-    yc = y_face + sy * (KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y)
-    z1 = z_top - KEEP_HEAD - D.MIN_WALL_2P
-    post = cyl(KEEP_POST_D, z1 - z_bed, z=z_bed).translate((xc, yc, 0.0))
-    head = cq.Workplane("XY").add(cq.Solid.makeCone(
-        r, r + KEEP_HEAD, KEEP_HEAD, cq.Vector(xc, yc, z1), cq.Vector(0, 0, 1)))
-    xe = xc + sx * r
-    base = box_at(abs(xe - x_face), abs(yc - y_face), KEEP_WEB_H,
-                  x=(x_face + xe) / 2.0, y=(y_face + yc) / 2.0,
-                  z=z_bed + KEEP_WEB_H / 2.0)
-    return post.union(head).union(base)
-
-
-def guide_point(x_face, y_face, z_bed, sx=1.0, sy=1.0):
-    """Where a cable wraps the turn post: its axis, above the base."""
-    return (x_face + sx * (KEEP_POST_D / 2.0 + D.MIN_WALL_2P),
-            y_face + sy * (KEEP_COIL_R + CANB_BUNDLE_OD / 2.0 + KEEP_CLR_Y),
-            z_bed + KEEP_WEB_H)
 
 
 def keeper_point(z_bed=None, x_back=None, y_face=None, z_top=None):
@@ -2456,13 +2356,6 @@ _STOP_WALL = ((STOP_POCKET_Z0 - (STOP_Z + STOP_CH_RISE - STOP_CH_FLAT / 2.0))
 assert _STOP_WALL >= D.MIN_WALL_2P - 1e-9, (
     "the travel stop's channel leaves only %.2f between its gable and the cartridge "
     "pocket's inner corner" % _STOP_WALL)
-
-
-
-def stop_screw_x(deg):
-    """Where the stop screw's TIP sits to allow `deg` of travel -- and so where its head
-    is, STOP_SCREW_L behind. Used by the dummy, so the assembly shows a real setting."""
-    return arm_face_x(deg, STOP_Z)
 
 
 def _stop_channel():

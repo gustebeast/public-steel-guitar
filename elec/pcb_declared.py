@@ -4,7 +4,6 @@
 `declared(board, vtype, refs)` about every violation; anything it does not accept stays a
 violation. A count is not a check -- see cadkit.pcbflow.netcheck.classify_violations.
 """
-import re
 
 
 def optical_declared(vtype, refs):

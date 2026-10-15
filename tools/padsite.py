@@ -238,9 +238,6 @@ def main():
                 y += 0.5
             x += 0.5
         best.sort(reverse=True)
-        cur = None
-        for p in O.BOARD_NOTES["placements"]:
-            pass
         if not best:
             print("%-5s %-10s  NO SITE   [of %d grid points: %d not on its own copper, "
                   "%d too close to foreign copper, %d under a part]"

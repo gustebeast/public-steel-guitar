@@ -752,6 +752,9 @@ from .pogo_part import (POGO_MPN, POGO_PAD_L, POGO_PAD_W, POGO_BODY_L, POGO_BODY
                         POGO_BODY_H, POGO_AXIS_H, POGO_PLUNGER_D, POGO_FAB_STROKE,
                         POGO_FREE, POGO_LIMIT, POGO_WORK)
 from .pogo_part import plunger as _pogo_plunger                                       # noqa: E402
+# not used here, but read through this module: POGO_MPN by elec/fret_led.py, the body's
+# width and height by tools/check_part_specs.py
+_RE_EXPORTED = (POGO_MPN, POGO_BODY_W, POGO_BODY_H)
 POGO_STACK = 0.80          # +- the deck stack at the seam, both panels' ribs and the gap
 # key's barrels to key's end wall: elec/fret_led.py's WALL_CLR (0.30), plus 0.05 so its
 # strict float test is not decided by rounding when the two are equal

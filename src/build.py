@@ -27,7 +27,7 @@ _T_IMPORT = time.perf_counter()         # the modules below BUILD GEOMETRY as th
 import cadquery as cq
 
 # Shared CAD utilities, vendored at <project>/cadkit (git subtree).
-from cadkit.step_export import export_step, export_print
+from cadkit.step_export import export_print
 from cadkit.kept import kept
 from cadkit.orientation import (PrintOrientation as PO,
                                 require_declared, unconfirmed)
@@ -1006,7 +1006,6 @@ def _string_components(i):
     # at the far end of the coil, not on the string's own lane (see nut_block.wrap_y)
     g = D.STRING_GAUGE[i]
     ny, wy = NB.wrap_y(i)
-    tail_z = D.STRING_Z + NB.ROD_Z                                     # the tail runs at rod height
     out.append((f"break_dowel_{i}", C.dowel().translate(               # gauged: pin top at Z-g, so
         (D.NUT_BLOCK_X + NB.DOWEL_X, ny,                               # every string top lands on
          D.STRING_Z - g - D.NUT_PIN_D / 2))))                          # one plane. DOWEL_X, not 0:
@@ -1110,7 +1109,6 @@ def _string_path(i, sy, rise_only=False):
     # way in. The touch point sits BREAK_ANGLE round from the bottom, +X side.
     phi = NB.touch_angle(i)          # nut_block owns this -- see its docstring on why
     tang = cq.Vector(rx + hr * math.cos(phi), ny, rz + hr * math.sin(phi))
-    tail_z = rz + hr                                       # the TOP: where it leaves
     # RUN THE STRAIGHT RUNS PAST THE TANGENT POINT, or they do not touch the coil.
     # A tangent meets its circle at ONE POINT: the lead rod ends exactly where the helix
     # begins, so the union of the two has literally nothing to fuse and OCC hands back a
@@ -1177,7 +1175,7 @@ def _wrap_coil(i, rad, hr):
 
 def _pickup_mount_components():
     from . import top_plate as TP
-    from cadkit.fasteners import (M2, M4, screw as f_screw, insert as f_insert,
+    from cadkit.fasteners import (M4, insert as f_insert,
                                   headed_screw, seated_insert)
     PICKUP_X = TP.PICKUP_X_NOM     # pickup centre in the shown pose (pocket centre)
     # pickup rests on the Z-plate, centred on the field (Y = PK_CTR_Y) for magnetic cover
@@ -1221,7 +1219,7 @@ def _pickup_mount_components():
     # +Y wall, locking it to the PLATE only. Threading it in/out meets any pickup in the ~5.5 mm
     # length window; shown here at the DEMO Alumitone (longest, so nearly backed out): tip at PK_YM.
     _ret_face_y = TP.PK_MAX_YM - TP.RET_BOSS_L                        # boss/insert mouth (-Y, at the room edge)
-    from cadkit.fasteners import m4_button_screw, M4_BUTTON_HEAD_H
+    from cadkit.fasteners import m4_button_screw
     _ret_grub = m4_button_screw(TP.RET_SCREW_L).rotate((0, 0, 0), (1, 0, 0), 90)   # head -Y, tip +Y
     _ret_bb = _ret_grub.val().BoundingBox()
     out.append(("pickup_retention_screw",
@@ -1266,7 +1264,6 @@ def _pedal_bar_components():
     """Pedal bar + latch, modelled in absolute X/Y with z0 = plate bottom =
     the shaft waist's lower shoulder (foot top): lift by ground + FOOT_H."""
     from . import pedal_bar as PB
-    from . import foot_pedal as FP
     dz = PEDAL_LIFT_DZ
     # The pedal HOUSINGS are fused into the bar pieces (foot_pedal.fuse_into_bar),
     # and that fusion has to happen HERE as well as in the export registry
@@ -1590,7 +1587,6 @@ def _knee_lever_components():
     thr, eng = math.radians(throw), math.radians(KL.HS_ENGAGE_DEG)
     s_main = KL.LOBE_RC * math.sin(thr) if throw else 0.0            # MAIN follower engaged from rest
     s_hs = (KL.LOBE_RC * (math.sin(thr) - math.sin(eng)) + 1.0) if throw > KL.HS_ENGAGE_DEG else 0.0  # engages @15°
-    pose = KL.MOUNT_POSE
     out = [("knee_housing", KL.knee_housing), ("knee_lever", swing(KL.knee_lever)),
            ("kl_axle", swing(KL.kl_axle)),                  # keyed on its D-flat -> turns with the lever
            ("kl_magnet_cap", swing(KL.kl_magnet_cap))]      # screwed to the axle
@@ -1723,29 +1719,6 @@ def _optical_fasteners():
         out.append((f"optical_screw_{_i}",
                     _oscr.translate((_mx, _my, OP.GUARD_SEAT_Z + _ohh))))
     return out
-
-
-def travel_work_components():
-    """EVERYTHING THE NUT'S TRAVEL MOVES OR MEETS, as one live set: all ten strings' whole
-    drivetrains (screw, nut, guide rod, string, belt, clamp, motor) and the bridge endplate
-    whose ceiling and rail are the two stops. The screw rows alone leave the belts and their
-    clamps in grey cache, and the clamps reaching the pulleys is what the travel is about."""
-    out = [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)]
-    out.append(("bridge_endplate", PARTS["bridge_endplate"][0]()))
-    out.append(("bridge_bearings", C.bridge_bearings()))
-    return out
-
-
-def drivetrain_components():
-    """THE DRIVETRAIN ALONE, as one live set: every string's motor, pulleys, belt, clamp,
-    leadscrew, nut, bearing and guide rod -- and nothing that covers them. For the scratch
-    view with the top of the instrument taken off (scope --replaced drops the deck, the
-    boards on it and the bridge endplate from the context), so the belts can be followed
-    from motor to screw."""
-    keep = ("motor", "belt", "screw_pulley", "leadscrew", "nut_", "screw_bearing", "guide_rod",
-            "string_nut")
-    return [(n, w) for i in range(D.N_STRINGS) for n, w in _string_components(i)
-            if n.startswith(keep) and not n.startswith(("nut_slide", "nut_height"))]
 
 
 def screw_rows_components():
@@ -1895,24 +1868,6 @@ def lkl_vkl_components():
 LEG_CONTEXT_Z = 250.0    # how far UP the legs the pedal-bar crop reaches
 
 
-def pedal_bar_box():
-    """(w, d, h, x, y, z) round the PEDAL BAR: the bar end to end, its towers, the
-    pedals standing on it, the feet under it -- and LEG_CONTEXT_Z of the leg columns
-    above it.
-
-    The legs are the reason for that last term. A box drawn to the bar's own bounds
-    is only ~175 tall, and everything the bar hangs off is outside it, so the view
-    came out as a bar floating in space with no instrument attached to it (user). The
-    box stops well short of the body all the same: the legs are ~700 long and all of
-    that is somebody else's work."""
-    bbs = [w.val().BoundingBox() for _, w in _pedal_bar_components() + _foot_pedal_components()]
-    x0, x1 = min(b.xmin for b in bbs) - 20.0, max(b.xmax for b in bbs) + 20.0
-    y0, y1 = min(b.ymin for b in bbs) - 30.0, max(b.ymax for b in bbs) + 30.0
-    z0 = min(b.zmin for b in bbs) - 30.0
-    z1 = max(b.zmax for b in bbs) + LEG_CONTEXT_Z
-    return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
-
-
 def pedal_bar_work_components():
     """The bar, its lid and latch, and the five pedals on it, as ONE live set -- for
     work on the bar itself (the wiring trough, the splices, the fused housings). Like
@@ -2035,59 +1990,12 @@ def cable_cut_list():
     return WR.lever_bus_cut_list(lever_bus_nodes())
 
 
-def lever_harness_box():
-    """(w, d, h, x, y, z) round the KNEE LEVERS and their harness -- the unit of work,
-    and nothing else. The pedal bar is 600 mm away down the legs and shares only the
-    board design, so carrying it live cost minutes a gate for geometry the levers
-    cannot reach (user)."""
-    from . import top_plate as TP
-    bbs = [w.val().BoundingBox()
-           for _, w in (_lever_stations_components() + _lever_bus_components()
-                       + _ctrl_bus_components())]
-    x0, x1 = min(b.xmin for b in bbs) - 25.0, max(b.xmax for b in bbs) + 25.0
-    y0, y1 = min(b.ymin for b in bbs) - 25.0, max(b.ymax for b in bbs) + 25.0
-    z0, z1 = min(b.zmin for b in bbs) - 15.0, TP.BZ
-    return (x1 - x0, y1 - y0, z1 - z0, (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
-
-
 def lever_harness_components():
     """The knee levers and the bus-B harness between them, as ONE live set. The pedals
     and the bar are OUT: they are a separate subassembly that this work does not move,
     and leaving them in made every gate rebuild 500 solids to check 200."""
     return (_lever_stations_components() + _lever_bus_components()
             + _ctrl_bus_components())
-
-
-def bus_b_components():
-    """EVERYTHING ON BUS B as ONE live set: the five modelled knee-lever stations, the
-    five foot pedals, and the pedal bar they are fused into.
-
-    The bus is the unit of work for the harness -- a lever chains to the next lever and
-    the chain carries on down the leg to the bar -- and it is the one view that shows
-    both ends of it. Like lever_components, the build does not need this; it exists for
-    the scratch view. No crop goes with it: the chain spans the whole instrument, and
-    cropping to the levers is what left the pedal bar looking like a bar in empty
-    space."""
-    return (lever_components() + _pedal_bar_components()
-            + _lever_bus_components() + _ctrl_bus_components())
-
-
-def ctrl_bus_work_components():
-    """BUS B'S CROSSING OF THE CHASSIS FLOOR as one live set: the two cables that arrive
-    at the motor controller, and everything they have to get past to do it.
-
-    It is body_work plus the bus, and it needs to be both. The pedal cable starts inside
-    the -X/+Y LEG, comes out of the body adapter onto the instrument's UNDERSIDE, crosses
-    it, passes through a port in the CHASSIS floor slab, and lands on a connector on the
-    standing ELECTRONICS tray; the lever half comes up from the knee-lever bay below. A
-    live set holding only the harness would gate a cable against nothing it can hit, and
-    one holding only the body would not gate the cable at all."""
-    out = body_work_components()
-    have = {n for n, _ in out}
-    for n, w in lever_components() + _lever_bus_components() + _ctrl_bus_components():
-        if n not in have:
-            out.append((n, w))
-    return out
 
 
 def wiring_work_components():
@@ -2267,29 +2175,16 @@ _COLORS = {
     # ...keyed BY PIN NUMBER off elec.harness, in wiring's colour order (return black,
     # rail red, CAN-H yellow, CAN-L green), so the colours follow the pinout instead of
     # being a fifth place the circuit names are written out
-    "leg_trrs_plug":   (0.15, 0.15, 0.17),   # the blind-mate: the FIXED plug, in the
-    "leg_trrs_jack":   (0.20, 0.20, 0.22),   # adapter's roof...and the FLOATING jack
-    "leg_trrs_spring": (0.62, 0.64, 0.67),   # ...the coil that holds them together
-    "leg_trrs_throat": (0.34, 0.56, 0.44),   # ...and the ring that keeps the jack in
     "bar_trrs_sleeve": (0.03, 0.03, 0.03),   # the bottom joint's TPU carrier (black)
-    "bar_trrs_throat": (0.05, 0.05, 0.06),   # ...and the TPU keeper for its jack
-    "bar_trrs_jack":   (0.12, 0.12, 0.14),   # ...the bought jack it holds
-    "bar_trrs_lead":   (0.45, 0.45, 0.48),   # ...and the lead out of its back, as far as the bar's wiring channel
     "bar_trrs_plug":   (0.15, 0.15, 0.17),   # ...the male plug it floats
     "bar_trrs_spring": (0.62, 0.64, 0.67),   # ...and the coil above it
-    "leg_trrs_sleeve": (0.03, 0.03, 0.03),   # ...and the TPU cup that holds the plug (black)
-    "leg_trrs_patch":  (0.12, 0.12, 0.14),   # ...the lead up to the chassis socket
-    "leg_trrs_leg_lead": (0.12, 0.12, 0.14), # ...and the column's own, down the leg
     "bar_latch_frame": (0.85, 0.35, 0.20),   # pedal bar latch accent
     "bar_latch_collar": (0.36, 0.42, 0.46),  # PETG-GF, the bar tower's family
     "bar_latch_spring": (0.62, 0.64, 0.67),
     "bar_latch_screw": (0.55, 0.55, 0.58),   # M4 button -- same SKU, same colour
     "bar_latch_insert": (0.80, 0.60, 0.35),  # as the leg's screw and insert
     "leg_seg_body":    (0.42, 0.48, 0.52),   # square GF bodies
-    "leg_coupler_m":   (0.36, 0.42, 0.46),
-    "leg_coupler_f":   (0.36, 0.42, 0.46),
     "leg_head":        (0.36, 0.42, 0.46),
-    "leg_pinch_gib":   (0.85, 0.35, 0.20),   # clamp accent (matches bolts)
     "leg_plug_retainer": (0.42, 0.48, 0.52),
     "chassis_trrs_jack": (0.62, 0.64, 0.67),
     "leg_column_plug":  (0.32, 0.36, 0.58),  # slate, matches the bar plug
@@ -2298,7 +2193,6 @@ _COLORS = {
     "leg_cable_coil":  (0.45, 0.45, 0.48),   # heat-set coil section (slack
                                              # take-up in the segment core)
     "leg_sleeve":      (0.36, 0.42, 0.46),
-    "leg_sleeve_cover": (0.30, 0.36, 0.40),
     "leg_shaft":       (0.55, 0.58, 0.62),
     "leg_foot":        (0.12, 0.12, 0.13),   # TPU
     # pedal bar (2 spliced pieces + 2 dovetail-lid pieces) + latches
@@ -2307,17 +2201,7 @@ _COLORS = {
     "pedal_bar_c":      (0.31, 0.46, 0.36),  # PETG-GF bar, +X piece
     "pedal_lid_a":      (0.50, 0.58, 0.52),  # dovetail lid, -X piece
     "pedal_lid_b":      (0.54, 0.62, 0.56),  # dovetail lid, +X piece
-    "pedal_bolt":       (0.85, 0.35, 0.20),  # snap latch slider, +X foot
-    "pedal_bolt_trrs":  (0.85, 0.35, 0.20),  # TRRS latch slider, -X foot
-    "pedal_latch_finger": (0.12, 0.12, 0.13),  # TPU return finger (the only spring)
     "pedal_detent_nub": (0.12, 0.12, 0.13),  # TPU hold-closed detent nub
-    "pedal_trrs_jack":  (0.62, 0.64, 0.67),  # leg-side female TRRS (DEMO)
-    "pedal_trrs_plug":  (0.32, 0.36, 0.58),  # bar-side male plug (DEMO; slate
-                                             # — black is reserved for TPU)
-    # pedal TRRS link: Tensility CA-354S factory cables (Ø3.7 shielded 4C
-    # jackets). Grey — NOT black (TPU-reserved); the per-wire gauge/shade
-    # colours reappear at the crimped XH pigtails, not inside a jacket.
-    "pedal_trrs_cable_bar": (0.45, 0.45, 0.48),  # trough → stub plug seat
 
     "shaft_trrs_jack": (0.62, 0.64, 0.67),       # bar-joint jack (10-03404)
     "shaft_trrs_cable": (0.45, 0.45, 0.48),
@@ -2331,14 +2215,8 @@ _COLORS = {
     "kv_axle_screw":   (0.55, 0.55, 0.58),
     "kv_axle_washer":  (0.72, 0.72, 0.75),
     "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer
-    "kl_chip":         (0.12, 0.12, 0.14),   # MT6701 package (black)
     # the rest of the sensor board's real population (knee_lever.SENSOR_BOM). The
     # kv_/pedal{i}_ instances inherit these by the prefix rules in _color_for.
-    "kl_mcu":          (0.16, 0.16, 0.19),   # CH32V203G6U6 QFN-28 (black, slightly lifted)
-    "kl_transceiver":  (0.20, 0.20, 0.23),   # SN65HVD230DR SOIC-8 (black)
-    "kl_buck":         (0.24, 0.24, 0.27),   # LMR16006XDDCR SOT-23-6 (black)
-    "kl_inductor":     (0.35, 0.30, 0.28),   # shielded inductor (dark ferrite)
-    "kl_crystal":      (0.72, 0.74, 0.78),   # 3225 crystal can (bright metal)
     "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ
     "kl_magnet":       (0.80, 0.20, 0.20),   # diametric magnet
     "kl_pcb":          _BG.mask("lever_sensor"),   # MT6701 board (green)
@@ -2349,7 +2227,6 @@ _COLORS = {
     # is how it survived: same part, same job, same material, two colours.
     "kv_lever":        (0.27, 0.51, 0.71),   # LKV arm (PCTG, as LKL -- the same blue)
     "kv_pcb":          _BG.mask("lever_sensor"),   # LKV MT6701 board (green, as LKL)
-    "kv_chip":         (0.12, 0.12, 0.14),   # LKV MT6701 package (black)
     "kv_pcb_shim":     (0.75, 0.75, 0.78),   # LKV board shim (printed, takes up the slack)
     # feel parts (unified: two identical spring cartridges, main -Y + half-stop +Y)
     "main_spring":                        (0.04, 0.16, 0.55),   # JIS light-load die spring: painted blue
@@ -2366,7 +2243,6 @@ _COLORS = {
     "half_stop_position_washer":          (0.72, 0.72, 0.75),
     "main_position_screw":                (0.55, 0.55, 0.58),
     "half_stop_position_screw":           (0.62, 0.62, 0.66),
-    "retention_setscrew":                 (0.40, 0.40, 0.43),   # -Y lock screw
     # electronics bay (dummies) + panel jacks
 
     # the Pi's parts, each its own colour (src/pi4b.py: "pi4" is the laminate)
@@ -2417,7 +2293,6 @@ _COLORS = {
     "ui_pwr_cap":      (0.15, 0.15, 0.17),   # ...and the one on the power switch
     "ui_pwr_stem":     (0.94, 0.94, 0.92),   # the switch's own plunger, moulded white
     "dc_jack":         (0.62, 0.64, 0.67),
-    "usbc_jack":       (0.62, 0.64, 0.67),
     # wire harness: HUE = gauge bucket, SHADE = the specific wire in the bucket
     #   green = 28 AWG shielded audio | amber = 28 AWG logic | violet = USB-2
     # CAN + power trunk = its 4 colour-coded conductors (user override):
@@ -2433,11 +2308,8 @@ _COLORS = {
     "wire_canb_coil":  (0.45, 0.45, 0.48),   # grey        - the slack, drawn as a bundle
     "wire_canbh":      (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H
     "wire_canbl":      (0.13, 0.72, 0.20),   # green       - bus B CAN-L
-    "wire_canjmph":    (0.95, 0.85, 0.10),   # yellow      - jumper CAN-H
-    "wire_canjmpl":    (0.13, 0.72, 0.20),   # green       - jumper CAN-L
     "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
                                              #   XH pigtail (factory jacket)
-    "wire_knee_drop":  (0.45, 0.45, 0.48),   # grey        - LKL drop stub
     "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
                                              #   shielded lead, coil underside -> the
                                              #   output panel's J8 screw terminals

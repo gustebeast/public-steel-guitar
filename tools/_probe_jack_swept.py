@@ -14,7 +14,6 @@ by how much for the sizes above it. That converts "is it blocked" into "trim X f
 import cadquery as cq
 
 from src.build import collect_components
-from src import top_plate as TP
 
 DIAS = [2.887, 3.5, 4.0, 5.0, 6.0, 7.0, 8.0]
 COL_H = 25.0

@@ -479,48 +479,6 @@ def _th_run(floor_z):
     return lo, lo + TH_RUN_H
 
 
-def bar_negatives(floor_z, chamber_top_z, x=None, y=None, up=BAR_UP):
-    """Cut in the BAR's mortise tower, in the BAR's frame.
-
-    `floor_z` is the mortise floor -- the plane the leg's tenon lands on, and the plane
-    the jack's nose stands up off. `chamber_top_z` is the wiring chamber's ceiling: the
-    cable way stops there rather than this module guessing where the bar's trough is.
-
-    Nothing here narrows on the way DOWN except at the very bottom, where it is meant
-    to: jack and throat both go in from the mortise, which is open until the leg does."""
-    if x is None:
-        x, y = _ax()
-    lo, hi = _th_run(floor_z)
-    out = LT._bore(JB_D, floor_z - JB_DEEP, floor_z + 0.01, x, y, up)
-    out = out.union(LT._bore(TH_POCK_D, floor_z - TH_DEEP, floor_z + 0.01, x, y, up))
-    out = out.union(LT._bayonet_slots(TH_POCK_D / 2.0 - 0.01, TH_LUG_D / 2.0,
-                                      lo, hi, False, x, y, TH_A, up))
-    # AND THE ENTRY SLOTS REACH THE MORTISE FLOOR. leg_trrs._bayonet_slots opens its
-    # entry one LUG_LEDGE past the run, which is exactly right where the run sits that
-    # far from the part's open end. It does not here: the run is at the BOTTOM of a
-    # TH_DEEP pocket, so the stock entry stopped 1.4 short of the floor and the lugs
-    # could not get in. The leg half needed the same line for the same reason -- see
-    # tenon_negatives, where the shortfall was 11.8 rather than 1.4.
-    for a0 in TH_A:
-        out = out.union(LT._td_sector(
-            TH_POCK_D / 2.0 - 0.01, TH_LUG_D / 2.0, lo, floor_z + 0.01,
-            a0 - LT.LUG_CLR_DEG,
-            LT._entry_sweep(up, a0, TH_LUG_D / 2.0), x, y, up))
-    # the detent, subtracted BACK OUT of the run: a pin standing TH_DETENT proud of the
-    # slot's outer wall, TH_DETENT_DEG before the stop, that the lug squashes past
-    r_pin = _PIN_R
-    for a0 in TH_A:
-        a = math.radians(a0 + LT.LUG_TURN - TH_DETENT_DEG)
-        out = out.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
-            TH_DETENT_R, hi - lo + 1.0,
-            cq.Vector(x + r_pin * math.cos(a), y + r_pin * math.sin(a), lo - 0.5),
-            cq.Vector(0, 0, 1))))
-    # ...and the lead's way out of the jack's back, down into the wiring chamber
-    out = out.union(LT._bore(CABLE_WAY_D, chamber_top_z - 0.01,
-                             floor_z - JB_DEEP + 0.01, x, y, up))
-    return out
-
-
 def throat(floor_z=TIP, x=None, y=None):
     """THE JACK'S KEEPER: TPU, gripping the jack's body, turned into the tower's bayonet.
 
@@ -548,52 +506,3 @@ def throat(floor_z=TIP, x=None, y=None):
         "the throat came out as %d solids" % len(body.val().Solids()))
     return body
 
-
-def bar_cable(floor_z, x=None, y=None, k: int = 0):
-    """THE START OF THE LEAD'S JOURNEY: out of the jack's back and into the trough.
-
-    Only the start. Where it goes once it is IN the channel is the bar's wiring problem
-    and not this joint's, so the run stops a little past the trough's mouth rather than
-    pretending to know the rest -- exactly as leg_trrs.cables stops short of the chassis
-    end that is still parked.
-
-    What it is here to show is the TURN, which is the one thing about this route that
-    was a decision: the lead leaves the jack travelling -Z, and the trough is 20.4 +X
-    and 3.2 +Y of the spine. It could not turn that corner inside a tunnel of any
-    sensible diameter, so it turns in the open chamber instead -- CHAM_Z1 - CHAM_Z0 of
-    room, 3.3x the cable's own O3.8, plus the whole depth of the chamber in Y to bow
-    into. Drawn as cylinders with balls at the corners (leg_trrs._run), so the corners
-    are SHARPER than the real cable's: read the chamber for the radius, not the
-    polyline.
-
-    `floor_z` is the mortise floor in whatever frame the caller is drawing, which is
-    the same contract the rest of the bar half keeps. Everything else is read off
-    pedal_bar and shifted by the difference, so the two cannot drift apart."""
-    from . import pedal_bar as PB                    # late: PB imports this module
-    if x is None:
-        x, y = _ax()
-    dz = floor_z - (PB.TOWER_TOP - LS.ENGAGE)        # bar frame -> the caller's
-    z_cham = PB.CHAM_Z1 + dz
-    z_run = (PB.CHAM_Z0 + PB.CHAM_Z1) / 2.0 - 1.2 + dz       # the lead lies low in it
-    y_mid = (PB.LID_Y0 - PB.TROUGH_D + PB.LID_Y0) / 2.0      # the trough's own centre
-    lead = LT._run([
-        (x, y, floor_z - JB_DEEP),                   # the jack's back
-        (x, y, z_cham - 1.5),                        # straight down the cable way...
-        (x, y + 3.6, z_cham - 6.0),                  # ...and into the chamber, turning
-        (x + 7.0, y_mid - 1.8, z_run),               # the corner, mid-chamber
-        (x + 17.0, y_mid, z_run),                    # settled on the trough's centre
-        (PB.TROUGH_X0 + 16.0, y_mid, z_run),         # ...and away down the channel
-    ])
-    return [("bar_trrs_lead_%d" % k, lead)]
-
-
-def bar_dummies(floor_z, x=None, y=None, k: int = 0):
-    """The bought jack where it sits in the bar, and the throat holding it."""
-    if x is None:
-        x, y = _ax()
-    jack = cq.Workplane("XY").add(cq.Solid.makeCylinder(
-        LT.JACK_D / 2.0, LT.JACK_L, cq.Vector(x, y, floor_z - JB_DEEP),
-        cq.Vector(0, 0, 1)))
-    return ([("bar_trrs_jack_%d" % k, jack),
-             ("bar_trrs_throat_%d" % k, throat(floor_z, x, y))]
-            + bar_cable(floor_z, x, y, k))

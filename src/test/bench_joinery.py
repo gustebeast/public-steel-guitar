@@ -299,6 +299,8 @@ def source_of(name):
     for c in COUPONS:
         if name == "test_" + c.name:
             return c.sources[-1]
+    if name.startswith(("test_fit2_", "test_fit3_", "test_corner_r_")):   # PETG-GF plates
+        return "chassis_0"
     if name.startswith("test_fit_"):
         from . import fit_finder
         return fit_finder.source_of(name)
@@ -308,14 +310,30 @@ def source_of(name):
 VIEW_LIFT = 160.0          # the scratch view: coupons float this far over their parts
 
 
+# the tab shows the round on the bench; True adds the bench coupons and rounds 1-2 back
+ALL_ROUNDS = False
+
+
 def assembly(live=False):
     """[(name, Workplane)] for the scratch view: every coupon over the place it was cut
     from, mated to its partner, VIEW_LIFT above the instrument so it is not buried in
     the part it is a piece of."""
-    comps, _where = components(live)
+    comps = components(live)[0] if ALL_ROUNDS else None
     from . import fit_finder                      # the thumbnails, in a row in front
-    return ([("test_" + c.name, c.build(comps)[0].translate((0, 0, VIEW_LIFT)))
-             for c in COUPONS] + fit_finder.assembly())
+    from . import fit_round2                      # ...round 2's plates, as they print
+    from . import fit_round3                      # ...and round 3's, the one on the bench
+    from . import corner_radius                   # ...with the corner-radius rings beside it
+    # ON TRIAL IN THIS TAB (user, 2026-10-13): the keyhead as this branch draws it -- the
+    # bass stack's roof left open, its outer wall doubled -- under its own name, so it
+    # stands in the instrument in place of the lead's and the two tabs can be compared
+    from .keyhead_roof_trial import keyhead
+    from src.helpers import heal
+    shown = (fit_round3.assembly() + corner_radius.assembly()
+             + [("keyhead_endplate", heal(keyhead()))])
+    if ALL_ROUNDS:
+        shown += [("test_" + c.name, c.build(comps)[0].translate((0, 0, VIEW_LIFT)))
+                  for c in COUPONS] + fit_finder.assembly() + fit_round2.assembly()
+    return shown
 
 
 def main(argv=None):

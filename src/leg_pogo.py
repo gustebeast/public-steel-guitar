@@ -886,7 +886,6 @@ def adapter_features(sx: float = LS.LEG_X, ly: float = LS.LEG_Y):
     runs out whichever Y face the port points at: -Y, inboard, under the instrument."""
     j = TOP
     neg = host_negatives(j)
-    fc = j.p((WIRE_T0 + ZR_MOUTH - ZR_PLUG) / 2.0, 0.0, 0.0)
     # OUT THE -Y FACE (user): inboard, under the instrument. The +Y face is the rail
     # side, and it is also the one the latch now opens onto.
     #
@@ -967,12 +966,6 @@ COIL_LEAD = 4.0                 # the vertical run-in
 COIL_GAP = 2 * B                # 1.6 -- > (HARNESS_D / 2) cos(lead), measured 1.118
 
 
-def port_xy(j):
-    """World (x, y) of the PH port's axis: the line the harness leaves the plug on."""
-    x, y, _ = j.p(TF + SE_H / 2.0, 0.0, 0.0)
-    return x, y
-
-
 def pin_s(pitch, k, n=RA_N, j=None):
     """Where way `k` (0-based) of an `n`-way connector sits along joint `j`'s s, centred
     on the housing.
@@ -1049,12 +1042,10 @@ def harness():
     the jog, and over to the bottom board -- plus the two female stubs."""
     from . import bar_trrs as BT
     from . import coil_mandrel as CM
-    d = HARNESS_D
     dm = PLUG_TOP + PIN_LEAD + FAN_RUN      # lead-in, THEN room for the fan
     pt = TF + SE_H / 2.0
     xs, ys = drop_xy()
     xb, yb = BT._ax()
-    xc, yc = LS.LEG_X + BT.CH_X, LS.LEG_Y + BT.CH_Y
     z_a, z_b = LS.Z_FIX_TEN_BOT - 8.0, LS.Z_ADJ_TEN_TOP + 8.0
     pitch = (z_a - z_b) / CM.TURNS
     r = math.sqrt(max((CM.COIL_LEN / CM.TURNS) ** 2 - pitch ** 2, 0.0)) / math.pi / 2.0

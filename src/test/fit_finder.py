@@ -26,18 +26,21 @@ WHAT IS KEPT TRUE besides the profile:
   * NOT the length. These answer "does it go together, and how freely"; whether a
     218 mm tongue still slides is what the full-length coupons are for.
 
-READING THEM: a token carries one groove per step, counted from the TIGHTEST (one groove
-= the first clearance in the table). A strip's cells run in the same order, and the
-tight end is the one with the tab. The insert finders have ONE token: an insert does
+READING THEM: every token and every cell carries its step's NUMBER, 1 the tightest (the
+first clearance in the table), and number goes with number (user, 2026-10-13: numbers
+everywhere, in place of the tally grooves). A strip's tight end is also the one
+with the tab. The insert finders have ONE token: an insert does
 not change with its fit, only its slot does.
 
 THEY ALSO CARRY THE VERSION MARK ON TRIAL (src/version_mark.py; user, 2026-10-13): the
-step number, 1 to 5, cut as a V-grooved seven-segment figure -- on the BED face of each
-deck cell, on a SIDE WALL of each seam cell, and on the TOP of each seam token. Three
-faces, the same cutter, and between them the five figures use all seven segments.
+step number, 1 to 5, cut as a V-grooved seven-segment figure on every kind of face a
+part has: a BED face (the deck cells and tokens, the endplate cells, the octagon
+tokens), a SIDE WALL (the seam cells, the endplate and stack tokens) and a TOP (the
+seam tokens, the octagon cells). The same cutter throughout, 8 tall, or 6 where the
+face is thin (SMALL).
 THE INSTRUMENT'S FONT is tried beside it, on the insert strips, where the faces are
 bigger: figures 9 mm tall on the TOP of each insert_a cell and on that strip's end
-(a SIDE WALL), and 7.3 tall on the stack slot -- "01234" on its BED face, "56789" on top.
+(a SIDE WALL), and 7.3 tall on the stack slot's BED face, "01234".
 """
 from __future__ import annotations
 
@@ -57,7 +60,7 @@ C_MIN = 0.02                # a clearance never goes below this (it is not zero:
                             # halves must still be two solids)
 GAP = 2.4                   # air between a strip's cells -- the walls flex into it
 SKIN = 0.8                  # the bed skin that joins a strip
-GROOVE_W, GROOVE_P = 1.2, 1.8    # a tally groove: a V 1.2 across (so 0.6 deep), 1.8 apart
+SMALL = dict(height=6.0, stroke=1.2)   # a figure for a thin face: 0.6 deep, not 0.8
 
 UP_Z, DOWN_Z, UP_X, DOWN_X = (0, 0, 1.0), (0, 0, -1.0), (1.0, 0, 0), (-1.0, 0, 0)
 
@@ -71,29 +74,67 @@ def _clrs(c0, bc0, d):
     return max(C_MIN, round(c0 + d, 3)), max(C_MIN, round(bc0 + d, 3))
 
 
+def _variant(real, d):
+    """(side clearance, depth clearance, corner radius) of one step. A NUMBER is a delta
+    on both of the joint's own clearances (round 1); a TUPLE names the three outright
+    (round 2: side and depth varied apart, and the profile's corners rounded or not)."""
+    if isinstance(d, tuple):
+        return d
+    return _clrs(real.clearance, real.back_clearance, d) + (0.0,)
+
+
+def _round(body, axis, r):
+    """`body` with every profile corner rounded to `r`: the edges that run along `axis`
+    (the joint's extrusion), bar the block's own two bed corners. A nozzle cannot turn
+    a sharper corner than about half its bead anyway, so a drawn radius of that much
+    prints as drawn, where a drawn sharp corner prints as whatever blob it leaves
+    (the round 1 seam bound at exactly those corners). One edge at a time: a fillet that
+    will not build on some sliver of an edge is skipped, and the count is returned."""
+    bb = body.val().BoundingBox()
+    lo = {"x": (bb.ymin, bb.zmin), "z": (bb.xmin, bb.ymin)}[axis]
+    hi = {"x": (bb.ymax, bb.zmax), "z": (bb.xmax, bb.ymax)}[axis]
+    done = skipped = 0
+    spots = []
+    for e in body.edges("|%s" % axis.upper()).vals():
+        c = e.Center()
+        uv = (c.y, c.z) if axis == "x" else (c.x, c.y)
+        ext = [abs(uv[i] - lo[i]) < 1e-6 or abs(uv[i] - hi[i]) < 1e-6 for i in (0, 1)]
+        if not all(ext):
+            spots.append(uv)
+    for uv in spots:
+        sel = [e for e in body.edges("|%s" % axis.upper()).vals()
+               if abs(((e.Center().y, e.Center().z) if axis == "x"
+                       else (e.Center().x, e.Center().y))[0] - uv[0]) < 1e-6
+               and abs(((e.Center().y, e.Center().z) if axis == "x"
+                        else (e.Center().x, e.Center().y))[1] - uv[1]) < 1e-6]
+        if not sel:
+            skipped += 1
+            continue
+        try:
+            new = body.newObject(sel).fillet(r)
+            if new.val().isValid() and len(new.val().Solids()) == 1:
+                body = new
+                done += 1
+            else:
+                skipped += 1
+        except Exception:
+            skipped += 1
+    return body, done, skipped
+
+
 def _facing_up(facing, axial=UP_X):
     return {"up": UP_Z, "down": DOWN_Z, "axial": axial}[facing]
 
 
-def _grooves(body, k, face_x, y0, z0, z1):
-    """k+1 tally grooves on the face x=face_x (which looks -X), starting GROOVE_P in from
-    y0 and running z0..z1.
-
-    V-CUT, WITH POINTED ENDS (user, 2026-10-13: the square ones had print overhangs --
-    a flat roof wherever a groove lay across the layers or stopped short of an edge).
-    The same stroke as a version mark's, for the same reason: 45 degrees on every wall,
-    whichever way up the piece prints."""
-    from src.version_mark import cut_groove
-    for j in range(k + 1):
-        y = y0 + GROOVE_P * (j + 0.8)
-        body = cut_groove(body, (face_x, y, (z0 + z1) / 2.0), (-1, 0, 0), (0, 0, 1),
-                          (z1 - z0) - 0.6, stroke=GROOVE_W)
-    return body
-
-
-def _strip(cells, pitch, up):
+def _strip(cells, pitch, up, skin_top=False):
     """Cells (each centred on y=0) set out along Y, tightest first, joined by a skin on
-    the bed with a tab past the tight end."""
+    the bed with a tab past the tight end.
+
+    `skin_top` puts the skin on the LAST layer instead, for a socket whose mouth is on
+    the bed (the floor mortises: the chassis stands on the face they open in). A bed
+    skin there closes every mouth and nothing can enter (user caught it on the first
+    print). On top it bridges the 2.4 between cells, and the tab hangs off it on a 45
+    degree wedge."""
     placed = [c.translate((0, i * pitch, 0)) for i, c in enumerate(cells)]
     body = placed[0]
     for c in placed[1:]:
@@ -101,7 +142,15 @@ def _strip(cells, pitch, up):
     bb = body.val().BoundingBox()
     hw = (pitch - GAP) / 2.0
     y0, y1 = -hw - 4.0, (len(cells) - 1) * pitch + hw          # the tab is the -4
-    if up[2] > 0:
+    if skin_top:
+        assert up[2] > 0, "a top skin is only drawn for a +Z print"
+        run = 4.0                                        # the tab's reach
+        skin = _box(bb.xmin, bb.xmax, y0 + run, y1, bb.zmax - SKIN, bb.zmax).union(
+            cq.Workplane("YZ").polyline([(y0 + run, bb.zmax), (y0, bb.zmax),
+                                         (y0, bb.zmax - SKIN),
+                                         (y0 + run, bb.zmax - SKIN - run)]).close()
+            .extrude(bb.xmax - bb.xmin).translate((bb.xmin, 0, 0)))
+    elif up[2] > 0:
         skin = _box(bb.xmin, bb.xmax, y0, y1, bb.zmin, bb.zmin + SKIN)
     elif up[2] < 0:
         skin = _box(bb.xmin, bb.xmax, y0, y1, bb.zmax - SKIN, bb.zmax)
@@ -122,7 +171,9 @@ class Finder(object):
     local frame; `pitch` between them; which way each prints; what it stands for."""
 
     def __init__(self, name, what, make, clr, pitch, token_up, cell_up, token_as, cell_as,
-                 deltas=DELTAS, one_token=False, cell_mark=None, token_mark=None):
+                 deltas=DELTAS, one_token=False, cell_mark=None, token_mark=None,
+                 skin_top=False):
+        self.skin_top = skin_top
         self.name, self.what, self.make, self.clr = name, what, make, clr
         self.deltas, self.one_token = deltas, one_token
         # (at, outward normal, reading direction) of a face to number, in the piece's
@@ -136,13 +187,14 @@ class Finder(object):
     def build(self):
         pairs = [self.make(k, d) for k, d in enumerate(self.deltas)]
         # an insert is the same insert at every step -- only its slot is cut differently
-        # -- so one token tries all five cells and carries no grooves
+        # -- so one token tries all five cells and carries no number
         from src.version_mark import cut_mark
         tokens = [p[0] for p in pairs][:1 if self.one_token else None]
         if self.token_mark:
-            at, n, xd = self.token_mark
-            tokens = [cut_mark(t, k + 1, at, n, xd) for k, t in enumerate(tokens)]
-        strip = _strip([p[1] for p in pairs], self.pitch, self.cell_up)
+            at, n, xd = self.token_mark[:3]
+            kw = self.token_mark[3] if len(self.token_mark) > 3 else {}
+            tokens = [cut_mark(t, k + 1, at, n, xd, **kw) for k, t in enumerate(tokens)]
+        strip = _strip([p[1] for p in pairs], self.pitch, self.cell_up, self.skin_top)
         for m in self.cell_mark:
             at, n, xd = m[:3]
             kw = dict(m[3]) if len(m) > 3 else {}
@@ -167,16 +219,17 @@ def _slide(real, site, host_w, ten_t, mort_t, root, drop):
     """An X-SLIDE joint's pair maker. Local frame (cadkit's): X the slide, Y the width,
     Z the depth -- the tenon's host under z=0, the socket's host over it."""
     def make(k, d):
-        c, bc = _clrs(real.clearance, real.back_clearance, d)
+        c, bc, r = _variant(real, d)
         J = joint(length=L, clearance=c, back_clearance=bc, **site)
         if d == 0.0:
             _check_nominal(real, J)
         hw = host_w / 2.0
         token = _box(0, L, -hw, hw, -ten_t, 0).union(J.tenon(root=root, length=L))
-        token = _grooves(token, k, 0.0, -hw, -ten_t, 0.0)
         so = getattr(J, "standoff", 0.0)
         cell = (_box(0, L, -hw, hw, so, mort_t)
                 .cut(J.mortise(drop=drop, length=L + 2.0).translate((-1.0, 0, 0))))
+        if r:
+            token, cell = _round(token, "x", r)[0], _round(cell, "x", r)[0]
         return token, cell
     return make
 
@@ -185,27 +238,30 @@ def _drop(real, site, host_w, host_d, root):
     """A DROP-IN (z-install) joint's pair maker. The profile lies in plan: X the depth
     past the seam, Y the width, Z the drop; both halves print +Z."""
     def make(k, d):
-        c, bc = _clrs(real.clearance, real.back_clearance, d)
+        c, bc, r = _variant(real, d)
         J = joint(length=L, clearance=c, back_clearance=bc, **site)
         if d == 0.0:
             _check_nominal(real, J)
         hw = host_w / 2.0
         token = _box(-host_d, 0, -hw, hw, 0, L).union(J.tenon(root=root, length=L))
-        token = _grooves(token, k, -host_d, -hw, 0.0, L)
         cell = (_box(0, host_d, -hw, hw, 0, L)
                 .cut(J.mortise(drop=root + 1.0, length=L + 2.0).translate((0, 0, -1.0))))
+        if r:
+            token, cell = _round(token, "z", r)[0], _round(cell, "z", r)[0]
         return token, cell
     return make
 
 
 def _house(NB, lo, hi, c):
-    """THE SLOT'S ROOF, the real one (nut_block._roof_cutter), over z -1 .. L+1: past the
+    """THE SLOT'S ROOF, as the keyhead cuts it (nut_block._roof_cutter, with the bass stack's
+    roof left open as keyhead_roof_trial draws it), over z -1 .. L+1: past the
     pocket's +X face the keyhead closes over an insert as a HOUSE -- 45 degrees in from
     each side, then a flat two beads clear of the insert -- because the part builds
     -X -> +X and a slot's far end is a ceiling. A cell without it bridges the slot's
     whole width flat on the insert's face, which the real part never does (user,
     2026-10-13: "that kind of print overhang doesn't appear in the actual model")."""
-    return (NB._roof_cutter(lo, hi, c, NB.HS_FLOOR + L + 2.0)
+    from .keyhead_roof_trial import roof_cutter
+    return (roof_cutter(lo, hi, c, NB.HS_FLOOR + L + 2.0)
             .translate((0, 0, -NB.HS_FLOOR - 1.0)))
 
 
@@ -256,13 +312,13 @@ class StackFinder(Finder):
     the slot's walls all round. The slot is therefore the SAME at every step -- the
     pitch plus 0.02 -- and what changes is the inserts. So this finder is the other way
     round from the rest: ONE cell, the real slot, and FIVE SETS of three tokens, each
-    set the three real plans shrunk all round by half the step. Grooves on a token
-    count its step, as everywhere else."""
+    set the three real plans shrunk all round by half the step. The number on a token
+    is its step, as everywhere else."""
 
     def build(self):
         from src import nut_block as NB
         from src import dimensions as D
-        from src.version_mark import cut_groove, cut_mark
+        from src.version_mark import cut_mark
         assert all(abs(NB._clr(i) - NB.BASS_CLR) < 1e-9 for i in STACK), "not one stack any more"
         slot = None
         for i in STACK:
@@ -272,17 +328,29 @@ class StackFinder(Finder):
         sb = slot.val().BoundingBox()
         cx, cy = (sb.xmin + sb.xmax) / 2.0, (sb.ymin + sb.ymax) / 2.0
         wy, wx = D.MIN_WALL_2P, 3 * D.BEAD
-        # ...under the ONE roof the keyhead gives the three of them (nut_block._roof_groups)
+        # ...closed at +X the way the keyhead closes the three of them (nut_block's
+        # _roof_groups / _roof_cutter): NOT AT ALL, since 2026-10-13 -- the one roof over
+        # the stack was an 18.3 bridge that would not print, so the slot runs open through
+        # the +X wall and the stack's outer (-Y) wall is four beads instead of two
+        # (keyhead_endplate.HS_Y0, doubled on trial: keyhead_roof_trial)
         y9 = NB.insert_lobes(STACK[1])[0][0]
         (lo, hi, c), = [g for g in NB._roof_groups() if g[0] <= y9 <= g[1]]
         slot = slot.union(_house(NB, lo, hi, c))
         x0, x1 = sb.xmin - cx - wx, NB.INS_X1 + c + NB.HS_ROOF_T + wx - cx
-        cell = (_box(x0, x1, sb.ymin - cy - wy, sb.ymax - cy + wy, 0, L)
+        cell = (_box(x0, x1, sb.ymin - cy - 2 * wy, sb.ymax - cy + wy, 0, L)
                 .cut(slot.translate((-cx, -cy, 0))))
-        strip = _strip([cell], (sb.ymax - sb.ymin) + 2 * wy + GAP, self.cell_up)
+        # A BUTTRESS OUTSIDE EACH WALL (user, 2026-10-13: "an angled support beam that
+        # holds the wall in place"). With the roof open the two walls are free-standing
+        # off the bed and nothing ties one to the other, so a set that is too tight
+        # would bow them apart and still go in; the keyhead's own walls are backed by
+        # the rest of the part. A wedge from the bed to the wall's top, the slot's
+        # whole length: it only narrows as it rises, so it prints without a ceiling
+        ya, yb, foot = sb.ymin - cy - 2 * wy, sb.ymax - cy + wy, 8 * D.BEAD
+        for yw, sgn in ((ya, -1.0), (yb, 1.0)):
+            cell = cell.union(cq.Workplane("XY").polyline(
+                [(x0, yw), (x0, yw + sgn * foot), (x1, yw)]).close().extrude(L))
+        strip = _strip([cell], (sb.ymax - sb.ymin) + 3 * wy + 2 * foot + GAP, self.cell_up)
         strip = cut_mark(strip, "01234", (x0, 0.0, L / 2.0), (-1, 0, 0), (0, -1, 0),
-                         font=True, height=7.3)
-        strip = cut_mark(strip, "56789", (x1, 0.0, L / 2.0), (1, 0, 0), (0, 1, 0),
                          font=True, height=7.3)
         spread = 3.0                            # air between a set's three, on the bed
         set_pitch = (sb.ymax - sb.ymin) + len(STACK) * spread + 4.0
@@ -295,10 +363,9 @@ class StackFinder(Finder):
                     wire = wire.offset2D(-e, kind="arc")
                 tok = wire.extrude(L + 2.0)             # 2 proud of the slot, to pull it by
                 tb = tok.val().BoundingBox()
-                for n in range(k + 1):          # tally grooves on its -Y face, at the top
-                    x = tb.xmin + GROOVE_P * (n + 1.5)
-                    tok = cut_groove(tok, (x, tb.ymin, L - 0.5), (0, -1, 0), (0, 0, 1), 4.0,
-                                     stroke=GROOVE_W)
+                # its set's number on the -Y face, a side wall, figure upright
+                tok = cut_mark(tok, k + 1, (tb.xmin + 5.2, tb.ymin, (L + 2.0) / 2.0),
+                               (0, -1, 0), (1, 0, 0), **SMALL)
                 # every token's +X face on ONE plane: that face is the bed, and a set
                 # shrunk all round would otherwise hang its shrink above the plate
                 solids.append(tok.translate((sb.xmax - tb.xmax - cx,
@@ -324,7 +391,9 @@ def finders():
         (j.clearance, j.back_clearance), T + GAP,
         _facing_up("up"), _facing_up("down"), "top_plate_color_0", "chassis_0",
         # the cell's BED face: the rail's underside, 4.9 of solid under the groove
-        cell_mark=((L / 2.0, 0.0, T), (0, 0, 1), (0, 1, 0))))
+        cell_mark=((L / 2.0, 0.0, T), (0, 0, 1), (0, 1, 0)),
+        # the token's BED face too: the panel's top, under 6.4 of host
+        token_mark=((L / 2.0, 0.0, -8 * D.BEAD), (0, 0, -1), (0, 1, 0))))
 
     # the section seam: the tee a section drops onto
     j = CH._SEG_J
@@ -349,7 +418,11 @@ def finders():
                host_w=T, ten_t=10 * D.BEAD, mort_t=10 * D.BEAD, root=CH.EP_J_ROOT,
                drop=CH.EP_J_ROOT + 1.0),
         (j.clearance, j.back_clearance), T + GAP,
-        _facing_up("axial"), _facing_up("down"), "chassis_0", "bridge_endplate"))
+        _facing_up("axial"), _facing_up("down"), "chassis_0", "bridge_endplate",
+        # the cell's BED face, 2.1 behind the socket (so the small figure); the token's
+        # back, a SIDE WALL in its axial print
+        cell_mark=((L / 2.0, 0.0, 10 * D.BEAD), (0, 0, 1), (0, 1, 0), SMALL),
+        token_mark=((L / 2.0, 0.0, -10 * D.BEAD), (0, 0, -1), (0, 1, 0))))
 
     # the lever grid: a housing's (or a body adapter's) octagon in a floor mortise, with
     # a whole 3.2 web each side of it
@@ -361,7 +434,11 @@ def finders():
                host_w=D.LEVER_MORT_W + 2 * web, ten_t=6 * D.BEAD,
                mort_t=CH.MB.FLOOR_TOP - CH.Z_BOT, root=1.0, drop=1.0),
         (j.clearance, j.back_clearance), D.LEVER_MORT_W + 2 * web + GAP,
-        UP_Z, UP_Z, "knee_housing", "chassis_0"))
+        UP_Z, UP_Z, "knee_housing", "chassis_0", skin_top=True,
+        # the cell's TOP, the 1.6 roof over the mortise (the small figure); the
+        # token's BED face
+        cell_mark=((L / 2.0, 0.0, CH.MB.FLOOR_TOP - CH.Z_BOT), (0, 0, 1), (0, 1, 0), SMALL),
+        token_mark=((L / 2.0, 0.0, -6 * D.BEAD), (0, 0, -1), (0, 1, 0))))
 
     # the nut's slide inserts: SKU A between printed fingers, SKU C at the stack fit
     make, pitch, c0, fc = _insert(6)
@@ -422,8 +499,8 @@ def main(argv=None):
     ap.add_argument("--export", action="store_true", help="write src/test/test_fit_*.step")
     a = ap.parse_args(argv)
     fs = finders()
-    print("grooves on a token = its place in this table, counted from 1; a strip's cells run "
-          "the same way from its tab")
+    print("the number on a token or a cell = its place in this table, counted from 1; "
+          "a strip's tab is at 1")
     print("%-10s %-52s %s" % ("finder", "joint", "clearance (lateral / depth face) per step"))
     for f in fs:
         if isinstance(f, StackFinder):      # wall gap is half the stack clearance, +0.01

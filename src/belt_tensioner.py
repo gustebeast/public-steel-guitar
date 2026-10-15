@@ -84,7 +84,7 @@ INS_SLIP = 0.1            # the pocket over the insert's OD, so a printed slot t
                           # knurled part by hand. It is all the section has to give: the
                           # skin over and under the pocket is then one bead (asserted).
 M3 = FastenerSpec(
-    name="M3", screw_d=3.0, pitch=0.5, selftap_d=3.2, shaft_clr_d=3.4,
+    name="M3", screw_d=3.0, pitch=0.5, selftap_d=3.2, shaft_clr_d=D.M3_CLR_D,
     insert_pilot_d=INS_D, insert_depth=INS_L, insert_l=INS_L, insert_bore_d=3.4,
     boss_prot=5.0)
 SCR_CLR  = M3.shaft_clr_d                    # 3.4
@@ -103,13 +103,12 @@ HW, HT   = BODY_W / 2, BODY_T / 2
 N_TEETH  = 6                                 # ribs per grip (~the belt's full rating)
 GRIP     = N_TEETH * BP + B                  # 12.4 slot length
 END_WALL = 2 * B                             # 0.8 the wall the belt's cut end stops on
-GAP      = 4.0                               # between the halves, fully loose = tension travel (2 teeth)
+GAP      = 2 * BP                            # 4.0 between the halves, fully loose = tension travel (2 teeth)
 SEAT_T   = 6 * B                             # 2.4 the wall the head bears on
 HEAD_CLR = 0.15                              # head to the window's side rails
 IN_HW    = BW / 2 + EDGE_CLR + 2 * B         # 3.5 belt centre to the +y face, the side that
                                              # meets the neighbouring clamp: A's rail web alone
 SCREW_Y  = (IN_HW - HW) / 2                  # -0.3 the screw, midway across half A
-HEAD_RAIL = (IN_HW + HW - HEAD_D) / 2 - HEAD_CLR   # 0.9 each side rail of the head window
 EDGE_CH  = B                                 # 0.4 chamfer on A's two +y edges
 KEY_DEG  = 25.0                              # ball-end key off the screw's axis
 KEY_W    = 8 * B                             # 3.2 channel for the 2.5 key (2.9 over its corners)
@@ -134,7 +133,6 @@ RAIL_STEP = RAIL_T + RAIL_CLR                # 0.95 B's rail stood off A's −y 
 MOUTH_B  = IN_HW - RAIL_STEP                 # 2.55 B's slot mouth, under A's rail
 RAIL_A_L = LEN_B                             # A's rail: flush with B's outer end, halves closed
 RAIL_B_L = LEN_A                             # B's rail: likewise over A
-BODY_Y   = IN_HW + HW + RAIL_STEP            # 8.55 across the assembled clamp
 
 assert RUNOUT >= 0, "the screw is too long for half B at the closed position"
 INS_POCKET = INS_D + INS_SLIP                # 4.8 the pocket's bore and the side slot's height
@@ -172,7 +170,7 @@ def _ribs(x0: float, y0: float, y1: float) -> cq.Workplane:
 
 
 def _belt_slot(x0: float, x1: float, open_y: int) -> tuple:
-    """(cutter, ribs) for a belt slot over [x0, x1], open on the open_y (±1) side face and
+    """(cutter, (ya, yb)) for a belt slot over [x0, x1], open on the open_y (±1) side face and
     run past whichever X end is asked for by the caller's own overshoot."""
     yc = -open_y * (BW / 2 + EDGE_CLR)               # the closed end
     ya, yb = sorted((yc, open_y * (HW + 1.0)))
