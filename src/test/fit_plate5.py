@@ -14,6 +14,14 @@ WHAT PLATE 4 TAUGHT (the user, 2026-10-15, PETG-GF):
 
 SO THIS PLATE: C and D again, head 4.8 wide with straight sides >= 2.4 (stair-free on a
 layer-made half) to locate on, neck 2.4, the same end relief, 0.15 / 0.20 / 0.25.
+
+AND THE SEAM: the user saw a fairly noticeable seam on nn where the halves meet -- on the
+instrument, the FRONT face. The even-clearance rule stood the socket's seat c off the host,
+so the seam is a c-wide line (plus each half's nozzle-made outer edge printing ~2.0 round).
+Only the tenon's root fillet needs c at the seat: the socket keeps it there as a pocket
+(c - g deep, as wide as the fillet runs) and the rest of its face comes down to g. On a
+NOZZLE-made socket that prints as drawn at any depth; a layer-made one rounds to 0.4 layers.
+nn at its long-joint c (0.35), seat 0.35 (as before) / 0.15 / 0.05.
 """
 from __future__ import annotations
 
@@ -27,6 +35,7 @@ OPT = {"lead": P2.LEAD, "size": {"neck": 3 * P2.BEAD, "head": 6 * P2.BEAD, "side
 PAIRS = [
     ("ll_standing", "up", "up", (0.15, 0.20, 0.25), OPT),
     ("ll_mouth_up", "up", "down", (0.15, 0.20, 0.25), OPT),
+    ("nn_seat", "N", "N", (0.35, 0.35, 0.35), {"seat": (0.35, 0.15, 0.05)}),
 ]
 
 
