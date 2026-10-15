@@ -310,8 +310,9 @@ def _lead(body, hw, z0, z1, zlim, stations=LEAD):
     return cq.Workplane("XY").newObject([out])
 
 
-def make_pair(name, tenon, socket, c, S, host_w, top):
-    """(token, cell, report) at clearance c."""
+def make_pair(name, tenon, socket, c, S, host_w, top, g=None):
+    """(token, cell, report) at clearance c, the socket's seat `g` off the host (default c)."""
+    g = c if g is None else g
     rt, rs = matched(c, MIN[_kind(tenon)], MIN[_kind(socket)])
     hw = host_w / 2.0
     token = F._box(0, F.L, -hw, hw, -2 * WALL, 0).union(_prism(profile(S), 0.0, F.L))
@@ -320,12 +321,24 @@ def make_pair(name, tenon, socket, c, S, host_w, top):
     # rounded against the seat and pinched the gap to 0 for 1.7 up the neck). The cavity is
     # cut c low in the socket's own frame; `seated` puts the socket where it rides
     cell = (F._box(0, F.L, -hw, hw, 0, top)
-            .cut(_prism(profile(S, c, -1.0), -1.0, F.L + 1.0).translate((0, 0, -c))))
+            .cut(_prism(profile(S, c, -1.0), -1.0, F.L + 1.0).translate((0, 0, -g))))
+    # a seat closer than c (the user: the seam shows on the instrument's front face) keeps
+    # c only over the tenon's root fillet -- a pocket c - g deep, as wide as that fillet
+    # runs -- so the mouth corner is still the fillet's true offset, and the rest of the
+    # face comes down to g
+    n_root = None
+    if g < c - 1e-9:
+        n_root = S["n"] + rt[1] + 0.05          # a hair past the fillet: room for the full arc
+        cell = cell.cut(F._box(-1.0, F.L + 1.0, -n_root, n_root, -1.0, c - g))
     if S["mouth"]:
         m = S["mouth"]
         cell = cell.cut(_prism([(m + 1.0, -1.0), (0.0, m), (-m - 1.0, -1.0)], -1.0, F.L + 1.0))
     token, lt = F._round(token, "x", rt, False)
-    cell, ls = F._round(cell, "x", rs, False, skip=_mouth_corners(S, c, socket))
+    skip = _mouth_corners(S, c, socket)
+    if n_root:                       # the pocket's own edge corners face only air: as drawn
+        skip0 = skip
+        skip = lambda u, v: True if abs(abs(u) - n_root) < 1e-6 else (skip0(u, v) if skip0 else None)
+    cell, ls = F._round(cell, "x", rs, False, skip=skip)
     if S.get("lead"):
         if tenon != "N":
             token = _lead(token, hw, 0.0, S["tip"] + 1.0, (0.0, 1e3), S["lead"])
@@ -333,7 +346,7 @@ def make_pair(name, tenon, socket, c, S, host_w, top):
             # a seat OFF the bed takes the lead-in too (the band under it keeps the offset
             # outline's edges one-for-one); one ON the bed must not be undercut
             cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3), S["lead"])
-    seated = cell.translate((0, 0, c))
+    seated = cell.translate((0, 0, g))
     gp = gaps(token, seated)
     # the joint's own clearance is measured above the mouth, the mouth's air reported apart
     gj = gaps(token, seated, S["mouth"] + c) if S["mouth"] else gp
@@ -381,6 +394,7 @@ def finders(pairs=None):
     for name, tenon, socket, steps, *opt in (pairs or PAIRS):
         S = shape(tenon, socket, max(steps), opt[0].get("size") if opt else None)
         S["lead"] = opt[0].get("lead") if opt else None          # END RELIEF stations
+        S["seat"] = opt[0].get("seat") if opt else None          # per-step seat gaps
         prof = profile(S)
         tip = max(z for _y, z in prof)
         host_w = 2 * (S["h"] + max(steps) + WALL)
@@ -392,7 +406,9 @@ def finders(pairs=None):
         REPORT[name] = dict(shape=S, steps=[])
 
         def make(k, d, name=name, tenon=tenon, socket=socket, S=S, host_w=host_w, top=top):
-            token, cell, rep = make_pair(name, tenon, socket, d, S, host_w, top)
+            g = S["seat"][k] if S.get("seat") else None
+            token, cell, rep = make_pair(name, tenon, socket, d, S, host_w, top, g)
+            rep["seat"] = d if g is None else g
             REPORT[name]["steps"].append(rep)
             return token, cell
         mark = mark_size(host_w, len(steps))
@@ -483,9 +499,9 @@ def main(argv=None, pairs=None, tag=TAG, out="test_plate2_petg_gf.step"):
             (to, tb), (so, sb) = rep["tenon_overhang"], rep["socket_overhang"]
             bad = ((to or 0) > 45.5 or (so or 0) > 45.5 or max(tb, sb) > ROOF_FLAT_MAX + 1e-6
                    or rep["gap"][1] > rep["c"] + 0.01 or rep["corners_off"])
-            print("   c %.2f  tenon %.2f/%.2f socket %.2f/%.2f  gap %.3f..%.3f (mouth %.2f)  overhang tenon %s"
+            print("   c %.2f seat %.2f  tenon %.2f/%.2f socket %.2f/%.2f  gap %.3f..%.3f (mouth %.2f)  overhang tenon %s"
                   " socket %s  bridge %.2f%s"
-                  % (rep["c"], rep["tenon_r"][0], rep["tenon_r"][1], rep["socket_r"][0], rep["socket_r"][1],
+                  % (rep["c"], rep.get("seat", rep["c"]), rep["tenon_r"][0], rep["tenon_r"][1], rep["socket_r"][0], rep["socket_r"][1],
                      rep["gap"][0], rep["gap"][1], rep["mouth_air"], "-" if to is None else "%.0f" % to, "-" if so is None else "%.0f" % so,
                      max(tb, sb),
                      "   FAILS A CHECK %s" % (rep["corners_off"] or "") if bad else ""))
