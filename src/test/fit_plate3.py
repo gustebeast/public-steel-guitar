@@ -28,7 +28,7 @@ import sys
 from . import fit_plate2 as P2
 
 TAG = "p3"
-LEAD = {"lead": True}
+LEAD = {"lead": P2.LEAD_P3}       # what plate 3 printed (0.2 at the tip, gone by 1.6)
 
 # (name, tenon prints, socket prints, clearances[, options]) as fit_plate2.PAIRS; "N" a
 # socket standing on its end too (its profile in the layers)

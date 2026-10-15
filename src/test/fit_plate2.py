@@ -263,16 +263,20 @@ def _mouth_corners(S, c, socket):
         MIN[_kind(socket)][0] if abs(v - knee) < 1e-6 else None)
 
 
-LEAD = (0.2, 2 * BEAD)            # a layer-made half's end lead-in: (inset at the end, length)
+# a layer-made half's END RELIEF: (distance in from the end, how far the air beside the
+# profile grows there), joined straight. Plate 3's (0.2 at the tip, nothing by 1.6) missed:
+# the user's calipers on a D2 head (drawn 3.20) read 2.6 at the tip, 3.33 about 3 mm in,
+# 3.1 in the middle -- the nozzle slows into each end's turn and over-extrudes just before
+# it, so the bulge peaks ~3 mm in whatever is drawn there. LEAD takes 0.12 a side off from
+# the tip to 3 mm (3.33 -> ~3.1, the middle's), back to nothing by 4.5
+LEAD_P3 = ((0.0, 0.2), (2 * BEAD, 0.0))
+LEAD = ((0.0, 0.12), (3.0, 0.12), (4.5, 0.0))
 
 
-def _lead(body, hw, z0, z1, zlim):
-    """`body` with a LEAD-IN at both joint ends: the air beside its profile grown by LEAD[0]
-    at the end face, lofted back to nothing LEAD[1] in. A layer-made half bulges where each
-    layer's outline turns at the joint's ends (plate 2 C and D: tight only where the two
-    halves' ends meet, loose between); the taper keeps those ends out of the fit, and the
-    loft from the ROUNDED section keeps every corner as drawn. Only z in `zlim` is cut."""
-    e, lr = LEAD
+def _lead(body, hw, z0, z1, zlim, stations=LEAD):
+    """`body` with the END RELIEF `stations` at both joint ends: the air beside its profile
+    grown by each station's amount at its distance in, lofted between (the loft from the
+    ROUNDED section keeps every corner as drawn). Only z in `zlim` is cut."""
     L, x = F.L, F.L / 2.0
     sec = body.val().intersect(cq.Face.makePlane(400, 400, cq.Vector(x, 0, 0), cq.Vector(1, 0, 0)))
     rect = cq.Face.makeFromWires(cq.Wire.makePolygon(
@@ -281,11 +285,14 @@ def _lead(body, hw, z0, z1, zlim):
     tools = []
     for f in rect.cut(sec).Faces():
         w = f.outerWire()
-        g = w.offset2D(e, "intersection")[0]
-        assert len(g.Edges()) == len(w.Edges()), "lead-in outline changed shape: the loft would twist"
-        for xe, xi in ((0.0, lr), (L, L - lr)):
-            tools.append(cq.Solid.makeLoft([g.moved(cq.Location(cq.Vector(xe - x, 0, 0))),
-                                            w.moved(cq.Location(cq.Vector(xi - x, 0, 0)))], True))
+        rings = []
+        for _d, e in stations:
+            g = w.offset2D(e, "intersection")[0] if e > 0 else w
+            assert len(g.Edges()) == len(w.Edges()), "lead-in outline changed shape: the loft would twist"
+            rings.append(g)
+        for sgn, x0 in ((1.0, 0.0), (-1.0, L)):
+            tools.append(cq.Solid.makeLoft([g.moved(cq.Location(cq.Vector(x0 + sgn * d - x, 0, 0)))
+                                            for (d, _e), g in zip(stations, rings)], True))
     cut = tools[0]
     for t in tools[1:]:
         cut = cut.fuse(t)
@@ -317,11 +324,11 @@ def make_pair(name, tenon, socket, c, S, host_w, top):
     cell, ls = F._round(cell, "x", rs, False, skip=_mouth_corners(S, c, socket))
     if S.get("lead"):
         if tenon != "N":
-            token = _lead(token, hw, 0.0, S["tip"] + 1.0, (0.0, 1e3))
+            token = _lead(token, hw, 0.0, S["tip"] + 1.0, (0.0, 1e3), S["lead"])
         if socket != "N":
             # a seat OFF the bed takes the lead-in too (the band under it keeps the offset
             # outline's edges one-for-one); one ON the bed must not be undercut
-            cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3))
+            cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top, (-1.0, top - 1e-3), S["lead"])
     seated = cell.translate((0, 0, c))
     gp = gaps(token, seated)
     # the joint's own clearance is measured above the mouth, the mouth's air reported apart
@@ -369,7 +376,7 @@ def finders(pairs=None):
     out = []
     for name, tenon, socket, steps, *opt in (pairs or PAIRS):
         S = shape(tenon, socket, max(steps))
-        S["lead"] = bool(opt and opt[0].get("lead"))
+        S["lead"] = opt[0].get("lead") if opt else None          # END RELIEF stations
         prof = profile(S)
         tip = max(z for _y, z in prof)
         host_w = 2 * (S["h"] + max(steps) + WALL)
