@@ -171,8 +171,11 @@ def _filament_of(name: str):
             return exact[t]
     # a part made in variants under one instance name (screw_pulley -> _hi / _lo)
     # (two or more of them: one key that merely starts the same is another part --
-    # `pickup` is not pickup_zplate, `motor` is not motor_pulley)
-    kin = [m for k, m in exact.items() if k.startswith(bare + "_")]
+    # `pickup` is not pickup_zplate, `motor` is not motor_pulley). A VARIANT IS ONE WORD
+    # after the name: the brass leadscrew `nut` is not the printed nut_slide_insert_a/b/c,
+    # and counting those as its variants drew the nut in PCTG (user, 2026-10-16).
+    kin = [m for k, m in exact.items()
+           if k.startswith(bare + "_") and "_" not in k[len(bare) + 1:]]
     return kin[0] if len(kin) >= 2 and len(set(kin)) == 1 else None
 
 
