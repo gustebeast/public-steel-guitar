@@ -164,11 +164,28 @@ def corbel_close(w, crop, z0, z1, step, align=None, keep_frac=0.5, debug=False):
         for f in fs:
             g = f.translate((0, 0, z - f.Center().z))
             try:
-                out.append(cq.Solid.extrudeLinear(g.outerWire(), list(g.innerWires()),
-                                                  cq.Vector(0, 0, t), taper=-45))
+                d = cq.Solid.extrudeLinear(g.outerWire(), list(g.innerWires()),
+                                           cq.Vector(0, 0, t), taper=-45)
             except Exception:
                 return None
-        return None if not out else (out[0] if len(out) == 1 else out[0].fuse(*out[1:]))
+            # AN INVALID DRAFT POISONS THE FUSE (user, 2026-10-16: "a mysterious shelf cut
+            # out"). On LKL one of six support faces drafted invalid at z 9.8, and the
+            # multi-fuse then silently dropped the 603 mm3 piece next to it: the course's
+            # support came back 295 mm3, and the cut took a whole bead-tall slice under the
+            # deck -- a 580 mm2 shelf over solid material. That face stands up straight
+            # instead (its stepped reach, which is what `grown` uses anyway)...
+            out.append(d if d.isValid() else cq.Solid.extrudeLinear(g, cq.Vector(0, 0, t)))
+        if not out:
+            return None
+        if len(out) == 1:
+            return out[0]
+        fused = out[0].fuse(*out[1:])
+        # ...and the fuse is checked by VOLUME, as every multi-fuse here has to be: a union
+        # is never smaller than its biggest piece. If it is, the caller falls back to the
+        # stepped support for this course.
+        if not fused.isValid() or fused.Volume() < max(s.Volume() for s in out) - 1e-6:
+            return None
+        return fused
 
     def prism(fs, z, t):
         """The faces stood up as one solid `t` tall at `z` -- in ONE multi-fuse.
