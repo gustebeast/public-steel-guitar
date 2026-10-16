@@ -14,6 +14,49 @@ const STILL_MS: f64 = 12.0;     // the card's time in one frame of a picture at 
 pub const ATROUS_PASSES: usize = 5;
 pub const IDENT: [f32; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
+/// DLSS ENLARGING THE PICTURE WHILE IT MOVES (the settings window): the picture is traced smaller, by
+/// DLSS's own ratio for the mode, and DLSS makes it the window's size. At rest it is traced at its own size
+/// as ever, so the picture it settles to is the same. Off: DLSS cleans the picture at its own size (DLAA).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum Upscale {
+    #[default]
+    Off,
+    Quality,
+    Balanced,
+    Performance,
+    Ultra,
+}
+
+impl Upscale {
+    pub const ALL: [Upscale; 5] = [Upscale::Off, Upscale::Quality, Upscale::Balanced, Upscale::Performance, Upscale::Ultra];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Upscale::Off => "off",
+            Upscale::Quality => "quality",
+            Upscale::Balanced => "balanced",
+            Upscale::Performance => "performance",
+            Upscale::Ultra => "ultra",
+        }
+    }
+
+    pub fn parse(s: &str) -> Option<Upscale> {
+        Upscale::ALL.into_iter().find(|u| u.name() == s)
+    }
+
+    #[cfg(feature = "dlss")]
+    fn mode(self) -> Option<dlss_wgpu::DlssPerfQualityMode> {
+        use dlss_wgpu::DlssPerfQualityMode as M;
+        match self {
+            Upscale::Off => None,
+            Upscale::Quality => Some(M::Quality),
+            Upscale::Balanced => Some(M::Balanced),
+            Upscale::Performance => Some(M::Performance),
+            Upscale::Ultra => Some(M::UltraPerformance),
+        }
+    }
+}
+
 /// A camera in the CAD frame (Z up): where it is, its right / up / forward, the vertical field of view.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Camera {
@@ -73,7 +116,7 @@ struct Globals {
     white: f32,
     pad: u32,
     jit: [f32; 2],
-    pad2: [u32; 2],
+    out: [u32; 2],
 }
 
 #[repr(C)]
@@ -167,7 +210,12 @@ struct Dlss {
 /// ... what of it is made for one size of picture
 #[cfg(feature = "dlss")]
 struct DlssPer {
+    /// at the picture's own size (DLAA): at rest, and while moving with `Upscale::Off`
     ctx: dlss_wgpu::ray_reconstruction::DlssRayReconstruction,
+    /// enlarging a smaller picture to it: while moving, with an `Upscale` mode
+    up: Option<dlss_wgpu::ray_reconstruction::DlssRayReconstruction>,
+    /// the last frame was the enlarging one's (the other has no history of it: it starts afresh)
+    was_up: bool,
     /// colour, diffuse, specular, normal + roughness, depth, motion, DLSS's picture
     views: [wgpu::TextureView; 7],
     bg_in: [wgpu::BindGroup; 2],
@@ -235,6 +283,11 @@ pub struct Renderer {
     /// DLSS is wanted (made unless DESK_DLSS=0, on a card that has it: see `enable_dlss`)
     #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
     pub dlss_on: bool,
+    /// DLSS enlarges the picture while it moves (see `Upscale`; `set_upscale`)
+    #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
+    upscale: Upscale,
+    /// the last frame was traced smaller than the picture: it cannot be added to
+    small: bool,
 }
 
 fn shader(device: &wgpu::Device, name: &str, src: &str) -> wgpu::ShaderModule {
@@ -374,6 +427,8 @@ impl Renderer {
             #[cfg(feature = "dlss")]
             dlss: None,
             dlss_on: true,
+            upscale: Upscale::Off,
+            small: false,
         }
     }
 
@@ -560,7 +615,50 @@ impl Renderer {
         self.size = (0, 0);
         self.resize(size.0, size.1);
         let made = self.dlss.as_ref().is_some_and(|d| d.per.is_some());
-        format!("DLSS: Ray Reconstruction {}", if made { "is on while the picture moves" } else { "is there, not yet made for this size" })
+        format!("DLSS: Ray Reconstruction {}", if made { "made for this picture" } else { "there (made for each model's picture)" })
+    }
+
+    /// DLSS is there on this card (made for each picture's size at its resize; it may still be off: `dlss_on`)
+    pub fn dlss_ready(&self) -> bool {
+        #[cfg(feature = "dlss")]
+        return self.dlss.is_some();
+        #[cfg(not(feature = "dlss"))]
+        false
+    }
+
+    /// The size a moving picture is traced at, if DLSS enlarges it (None: at its own size).
+    pub fn moving_size(&self) -> Option<(u32, u32)> {
+        #[cfg(feature = "dlss")]
+        if let Some(up) = self.dlss.as_ref().and_then(|d| d.per.as_ref()).and_then(|p| p.up.as_ref()) {
+            let r = up.render_resolution();
+            return Some((r[0], r[1]));
+        }
+        None
+    }
+
+    pub fn upscale(&self) -> Upscale {
+        self.upscale
+    }
+
+    /// DLSS's enlarging, made again for the picture's size; the picture starts again.
+    pub fn set_upscale(&mut self, u: Upscale) {
+        if self.upscale != u {
+            self.upscale = u;
+            #[cfg(feature = "dlss")]
+            if self.dlss.is_some() {
+                let size = self.size;
+                self.size = (0, 0);
+                self.resize(size.0, size.1);
+            }
+            self.invalidate();
+        }
+    }
+
+    pub fn set_dlss_on(&mut self, on: bool) {
+        if self.dlss_on != on {
+            self.dlss_on = on;
+            self.invalidate();
+        }
     }
 
     /// Encode for a screen that decodes a plain 2.4 power (see `power_out`); the picture is resolved again.
@@ -630,8 +728,11 @@ impl Renderer {
             dl.per = None;
             dl.run = 0;
             let flags = dlss_wgpu::DlssFeatureFlags::HighDynamicRange | dlss_wgpu::DlssFeatureFlags::LowResolutionMotionVectors;
-            // (DLAA: the picture is traced at the size it is shown; DLSS cleans it, it does not enlarge it)
-            match DlssRayReconstruction::new([w, h], dlss_wgpu::DlssPerfQualityMode::Dlaa, flags, DlssRayReconstructionRoughnessMode::Packed, DlssRayReconstructionDepthMode::Linear, dl.sdk.clone(), d, &self.queue) {
+            // (the textures are the picture's size; a smaller picture uses their top left: partial_texture_size)
+            let make = |m| DlssRayReconstruction::new([w, h], m, flags, DlssRayReconstructionRoughnessMode::Packed, DlssRayReconstructionDepthMode::Linear, dl.sdk.clone(), d, &self.queue);
+            // (and the one that enlarges a smaller picture to this size, while it moves: `Upscale`)
+            let up = self.upscale.mode().and_then(|m| make(m).map_err(|e| eprintln!("DLSS: no {} enlarging at {w}x{h}: {e}", self.upscale.name())).ok());
+            match make(dlss_wgpu::DlssPerfQualityMode::Dlaa) {
                 Ok(ctx) => {
                     let tex = |label: &str, format: wgpu::TextureFormat| {
                         d.create_texture(&wgpu::TextureDescriptor {
@@ -655,7 +756,7 @@ impl Renderer {
                     };
                     let bg_in = [mk_in(0), mk_in(1)];
                     let bg_out = bind(d, &dl.l_out, &[g.clone(), wgpu::BindingResource::TextureView(&views[6]), out_px.as_entire_binding(), shown_px.as_entire_binding()]);
-                    dl.per = Some(DlssPer { ctx, views, bg_in, bg_out });
+                    dl.per = Some(DlssPer { ctx, up, was_up: false, views, bg_in, bg_out });
                 }
                 Err(e) => eprintln!("DLSS: not used at {w}x{h}: {e}"),
             }
@@ -683,7 +784,14 @@ impl Renderer {
     /// Returns None (and submits nothing) when there is no model or the image is already converged.
     pub fn render(&mut self, cam: &Camera, changed: bool, keep: bool, surface: Option<(&wgpu::TextureView, u32, u32)>) -> Option<wgpu::SubmissionIndex> {
         self.scene.as_ref()?;
-        let reset = changed || self.n == 0;
+        // TRACED SMALLER WHILE IT MOVES, DLSS making it the window's size (`Upscale`). At rest it is traced at
+        // its own size; samples of a smaller picture cannot be added to, so rest starts again from nothing.
+        #[cfg(feature = "dlss")]
+        let small = changed && self.dlss_on && self.dlss.as_ref().and_then(|d| d.per.as_ref()).is_some_and(|p| p.up.is_some());
+        #[cfg(not(feature = "dlss"))]
+        let small = false;
+        let reset = changed || self.n == 0 || self.small;
+        self.small = small;
         if !reset && self.n >= MAX_SPP {
             return None;
         }
@@ -701,12 +809,20 @@ impl Renderer {
         let use_dlss = self.dlss_on && self.n <= DLSS_UNTIL && self.dlss.as_ref().is_some_and(|d| d.per.is_some());
         #[cfg(not(feature = "dlss"))]
         let use_dlss = false;
+        // the size traced: the picture's own, or DLSS's smaller one for it
+        #[allow(unused_mut)]
+        let mut rs = (t.w, t.h);
         #[allow(unused_mut)]
         let mut jitter = [0.0f32; 2];
         #[cfg(feature = "dlss")]
-        if use_dlss && reset {
-            if let Some(per) = self.dlss.as_ref().and_then(|d| d.per.as_ref()) {
-                jitter = per.ctx.suggested_jitter(self.frame, [t.w, t.h]);
+        if let Some(per) = self.dlss.as_ref().and_then(|d| d.per.as_ref()) {
+            let ctx = if small { per.up.as_ref().unwrap() } else { &per.ctx };
+            if small {
+                let r = ctx.render_resolution();
+                rs = (r[0].clamp(1, t.w), r[1].clamp(1, t.h));
+            }
+            if use_dlss && reset {
+                jitter = ctx.suggested_jitter(self.frame, [rs.0, rs.1]);
             }
         }
         let mut mode = 0;
@@ -739,7 +855,7 @@ impl Renderer {
             prev_r: pr,
             prev_u: pu,
             prev_f: pf,
-            size: [t.w, t.h],
+            size: [rs.0, rs.1],
             frame: self.frame,
             n: self.n,
             reset: reset as u32,
@@ -751,7 +867,8 @@ impl Renderer {
             max_hist: s.max_hist,
             near: cam.near,
             surf: [sw, sh.saturating_sub(self.top).max(1)],
-            vsize: [vsize.0, vsize.1],
+            // (the same view over fewer pixels)
+            vsize: [vsize.0 * rs.0 as f32 / t.w as f32, vsize.1 * rs.1 as f32 / t.h as f32],
             sun: [l.sun.x, l.sun.y, l.sun.z, l.sun_strength],
             bg: [l.bg[0], l.bg[1], l.bg[2], 1.0],
             clip: l.clip.unwrap_or([0.0; 4]),
@@ -759,7 +876,7 @@ impl Renderer {
             white: self.white,
             pad: 0,
             jit: jitter,
-            pad2: [0; 2],
+            out: [t.w, t.h],
         };
         self.last_globals = g;
         self.queue.write_buffer(&self.globals, 0, bytemuck::bytes_of(&g));
@@ -769,7 +886,7 @@ impl Renderer {
             }
         }
         let p = self.parity;
-        let (gx, gy) = (t.w.div_ceil(8), t.h.div_ceil(8));
+        let (gx, gy) = (rs.0.div_ceil(8), rs.1.div_ceil(8));
         let mut enc = self.device.create_command_encoder(&Default::default());
         // parts shown, hidden or moved since the last frame: the TLAS is built again (the BLASes never are)
         let sc = self.scene.as_mut().unwrap();
@@ -840,9 +957,12 @@ impl Renderer {
             let fresh = self.prev_cam.is_none();
             let dl = self.dlss.as_mut().unwrap();
             let adapter = dl.adapter.clone();
-            let first = dl.run == 0 || fresh;
+            let mut first = dl.run == 0 || fresh;
             dl.run += 1;
             let per = dl.per.as_mut().unwrap();
+            // (the other one has seen none of the frames before this: it starts afresh)
+            first |= per.was_up != small;
+            per.was_up = small;
             let v = &per.views;
             let params = DlssRayReconstructionRenderParameters {
                 diffuse_albedo: &v[1],
@@ -865,10 +985,11 @@ impl Renderer {
                 reset: first,
                 // (the rays left each pixel at its centre + jitter: the picture is shifted the other way)
                 jitter_offset: [-jitter[0], -jitter[1]],
-                partial_texture_size: None,
+                partial_texture_size: small.then_some([rs.0, rs.1]),
                 motion_vector_scale: None,
             };
-            match per.ctx.render(params, &mut enc, &adapter) {
+            let ctx = if small { per.up.as_mut().unwrap() } else { &mut per.ctx };
+            match ctx.render(params, &mut enc, &adapter) {
                 Ok(cmd) => {
                     let dl = self.dlss.as_ref().unwrap();
                     let mut after = self.device.create_command_encoder(&Default::default());
@@ -876,7 +997,7 @@ impl Renderer {
                         let mut cp = after.begin_compute_pass(&Default::default());
                         cp.set_pipeline(&dl.p_out);
                         cp.set_bind_group(0, &dl.per.as_ref().unwrap().bg_out, &[]);
-                        cp.dispatch_workgroups(gx, gy, 1);
+                        cp.dispatch_workgroups(t.w.div_ceil(8), t.h.div_ceil(8), 1);
                     }
                     self.n_dispatches += 2;
                     if let Some((view, _, _)) = surface {
@@ -953,6 +1074,9 @@ impl Renderer {
     /// the last restart of the picture.
     pub fn read_guide(&mut self) -> Vec<(f32, u32)> {
         let Some(t) = self.targets.as_ref() else { return vec![] };
+        if self.small {
+            return vec![]; // (traced smaller: not a pixel each)
+        }
         let raw = self.read(&t.guide[self.parity], &t.guide_staging);
         raw.chunks_exact(16).map(|c| (f32::from_le_bytes([c[4], c[5], c[6], c[7]]), u32::from_le_bytes([c[12], c[13], c[14], c[15]]))).collect()
     }

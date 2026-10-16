@@ -274,9 +274,15 @@
     r = await shot('16_parts_list');
     await tap('t'); await tap('e');
 
-    // ── the lighting level: none in the shell (the key does nothing, the button is gone)
-    const q0 = v.quality; await tap('l');
-    log(`lighting (l): level ${q0} -> ${v.quality}; button display "${$('bLight').style.display}"`);
+    // ── the graphics settings (g): what the shell says it has, each row, and why one is greyed
+    await tap('g');
+    for (let i = 0; i < 50 && !v.gfx.info; i++) await sleep(100);
+    const gi = v.gfx.info || {};
+    const grows = [...document.querySelectorAll('#gfxPanel .gr')].map(e => { const sl = e.querySelector('select'), off = [...sl.options].filter(o => o.disabled);
+      return `${e.firstChild.textContent} = "${sl.selectedOptions[0].text}"${sl.disabled ? ' (WHOLE SELECTOR DISABLED)' : ''}` + (off.length ? ` [greyed: ${off.map(o => `${o.text} ("${o.title}")`).join(', ')}]` : ''); });
+    log(`graphics (g): panel display "${$('gfxPanel').style.display}"; the shell: ${J({ backend: gi.backend, surface: gi.surface, adapter: gi.adapter, dlss: gi.dlss, size: gi.size, prefs: gi.prefs })}; ` +
+        `rows: ${grows.join('; ')}`);
+    await tap('g');
 
     // ── overlay against picture
     const part = M.list.find(p => { if (p.mesh || p.col || p.mat.transparent || p.iCount < 3000) return false;
@@ -342,8 +348,8 @@
     log(`      "e" twice -> [${seen()}]; parts panel "${p1}" then "${$('partsPanel').style.display}"`);
     await realKey(0, 'w'); await sleep(150); const m1 = $('bMeasure').classList.contains('on'); await realKey(0, 'w'); await sleep(150);
     log(`      "w" twice -> [${seen()}]; measure ${m1} then ${$('bMeasure').classList.contains('on')}`);
-    await realKey(0, 'l'); await sleep(150);
-    log(`      "l" -> [${seen()}]; lighting level ${v.quality} (stays 0 in the shell)`);
+    await realKey(0, 'g'); await sleep(150); const g1 = $('gfxPanel').style.display; await realKey(0, 'g'); await sleep(150);
+    log(`      "g" twice -> [${seen()}]; graphics panel "${g1}" then "${$('gfxPanel').style.display}"`);
     v.select([part]); await sleep(50); await realKey(0, 's'); await sleep(200); const i1 = hiddenN();
     await realKey(0, 'esc'); await sleep(100);
     log(`      "s" then esc -> [${seen()}]; ${i1} hidden, selection ${v.selection.length}`);
@@ -531,6 +537,14 @@
     v.showAll(); v.camera.position.multiplyScalar(1.25); v.controls.update();
   }
 
+  // a graphics setting changed as the settings window changes it; the shell answers with all of them
+  async function setGfx(o) {
+    v.gfx.info = null;
+    window.ipc.postMessage(JSON.stringify({ t: 'gfx', set: o }));
+    for (let i = 0; i < 50 && !v.gfx.info; i++) await sleep(100);
+    return v.gfx.info || {};
+  }
+
   // ── MOVING against AT REST: a frame from the middle of a movement, and the same view traced to rest
   async function motion() {
     const snap = async (name, after, go, what) => {
@@ -549,6 +563,17 @@
     const iso = () => { $('views').querySelector('.vw[data-d="0.55,-1,0.5"]').click(); };
     iso(); await sleep(300);
     await snap('orbit_whole', 90, () => drag(cx, cy + 40, cx - 240, cy - 30, 150), 'orbit, the whole instrument');
+    // the same with DLSS enlarging the moving picture (the settings window's upscaling), mode by mode
+    if ((await setGfx({})).dlss === 'ok') {
+      for (const mode of ['quality', 'performance', 'ultra']) {
+        const gi = await setGfx({ upscale: mode });
+        iso(); await sleep(300);
+        await snap('orbit_whole_' + mode, 90, () => drag(cx, cy + 40, cx - 240, cy - 30, 150),
+                   `orbit, the whole instrument, DLSS enlarging (${mode}: traced at ${gi.moving ? gi.moving.join('x') : '?'} while moving)`);
+      }
+      await setGfx({ upscale: 'off' });
+      iso(); await sleep(300);
+    }
     // close in, the deck off: boards, wires, contact shadows (the quality view B)
     v.setHidden(M.list.filter(p => ['top_plate', 'fret_', 'pickup', 'ui_', 'wire_fret_led', 'wire_pickup', 'wire_ui'].some(x => p.name.startsWith(x))), true);
     v.camera.position.set(-260.1, 208.55, 240); v.controls.target.set(-387, -67, 28); v.controls.update();
@@ -715,7 +740,7 @@
     while (!(window.viewer && viewer.M.parts && viewer.M.list.length && !$('loading'))) await sleep(100);
     v = window.viewer; M = v.M; THREE = v.THREE;
     log(`page loaded: ${location.href}  NATIVE=${v.NATIVE}  ${innerWidth}x${innerHeight} css px @ dpr ${dpr()}  ${M.list.length} parts (${M.list.filter(p => p.mesh).length} the rig moves)`);
-    log(`light button display "${$('bLight').style.display}", lighting level ${v.quality}; canvas alpha ${v.renderer.getContextAttributes().alpha}; html background "${getComputedStyle(document.documentElement).backgroundColor}"`);
+    log(`lighting level ${v.quality}; canvas alpha ${v.renderer.getContextAttributes().alpha}; html background "${getComputedStyle(document.documentElement).backgroundColor}"`);
     rig = await (await fetch('rig.json')).json();
     await sleep(2500);                                            // the pick trees, and the rig tuning up to open
     // the capture's white level, on an opaque green square (HDR desktop)
