@@ -167,10 +167,10 @@ SEAM_FIN_MAX = SEAM_Y1 - (-131.55) - 1.0       # the fin stops a millimetre shor
 
 # THE MINI (user, 2026-10-16: test chassis-to-chassis-to-lever small first -- the seam is
 # likely to open a little, and a housing spanning it tolerates only its tenons' 2 x 0.20).
-# Two stations a side; the rail cut ten beads above the seam relief's 45 (its bottom 8.8
+# Two stations a side; the rail cut fifteen beads (user: +4) above the seam relief's 45 (its bottom 8.8
 # of tenon is wedge, not head); floor and housing tenons MINI_L long.
 MINI_K, MINI_L = 2, 15 * 0.8
-MINI_TOP = FLOOR + 8.8 + 10 * 0.8
+MINI_TOP = FLOOR + 8.8 + 15 * 0.8
 MINI_X0 = SEAM_X - (GRID_P / 2.0 + (MINI_K - 1) * GRID_P) - GRID_WEB
 MINI_X1 = SEAM_X + (GRID_P / 2.0 + (MINI_K - 1) * GRID_P) + GRID_WEB
 MINI_Y1 = -141.95 + MINI_L + 2 * 0.8

@@ -225,12 +225,14 @@ TEN_Y = (-TEN_PITCH / 2.0, 0.0, TEN_PITCH / 2.0)
 def _top_tenon(ty):
     """One fused mount tenon at local y=ty. The joint already slides along +X with
     its head +Z, which is exactly what this lever wants — no rotation, unlike LKL's.
-    Its root slab is clipped to the housing's Y, so an outer station stays inside."""
+    Its root slab and root chamfer are clipped to the housing's Y, so an outer station's
+    stays inside; the stem and flare above are left whole (KL.clip_tenon_root)."""
     t = (KL._lever_joint(TEN_X1 - TEN_X0).tenon(root=KL.TEN_ROOT)
          .translate((TEN_X0, ty, HOUS_Z1)))
-    return t.intersect(box_at(4 * (HOUS_X1 - HOUS_X0), HOUS_HW_N + HOUS_HW_P, 40.0,
-                              x=(HOUS_X0 + HOUS_X1) / 2, y=(HOUS_HW_P - HOUS_HW_N) / 2,
-                              z=HOUS_Z1))
+    return KL.clip_tenon_root(t, TEN_X1 - TEN_X0, HOUS_Z1,
+                              ((HOUS_X0 + HOUS_X1) / 2 - 2 * (HOUS_X1 - HOUS_X0),
+                               (HOUS_X0 + HOUS_X1) / 2 + 2 * (HOUS_X1 - HOUS_X0),
+                               -HOUS_HW_N, HOUS_HW_P))
 
 
 def _lever_envelope() -> cq.Workplane:

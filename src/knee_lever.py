@@ -573,7 +573,7 @@ def _lever_halves(length, drop=0.0):
                               drop=drop)
     _wall = D.XBAR / 2.0 - cav.val().BoundingBox().ymax
     assert _wall >= D.MIN_WALL_2P - 1e-9, "the mount mortise leaves the rib %.2f, under the tier" % _wall
-    return ten, cav
+    return ten, cav, _S
 
 
 def _lever_joint(length):
@@ -1039,12 +1039,27 @@ def _top_tenon(tx):
     """ONE fused mount tenon at station tx: the joint (slides +X, head +Z) rotated 90° about Z
     so it slides +Y, mating plane at the housing TOP face (which is the chassis underside),
     head rising +Z into the rib above and its root slab reaching down into the prism for a
-    volumetric fuse -- clipped to the housing's X, so the edge station's slab stays inside."""
+    volumetric fuse. Only the slab and the ROOT CHAMFER are clipped to the housing's X (an
+    edge station's would hang off the edge as a downward ledge); the stem stands flush on the
+    edge and the 45 deg flare overhangs it, whole, as the -X station was designed (2026-09-18).
+    Clipping the whole tenon cut 1.2 off that station's head (user caught it on a coupon)."""
     t = (_lever_joint(TEN_Y1 - TEN_Y0).tenon(root=TEN_ROOT)
          .rotate((0, 0, 0), (0, 0, 1), 90)                    # slide axis X -> Y (head stays +Z)
          .translate((tx, TEN_Y0, HOUS_Z1)))                   # station X, -Y start, mate at the top face
-    return t.intersect(box_at(HOUS_X1 - HOUS_X0, 4 * HOUS_HW, 40.0,
-                              x=(HOUS_X0 + HOUS_X1) / 2, y=0.0, z=HOUS_Z1))
+    return clip_tenon_root(t, TEN_Y1 - TEN_Y0, HOUS_Z1,
+                           (HOUS_X0, HOUS_X1, -2 * HOUS_HW, 2 * HOUS_HW))
+
+
+def clip_tenon_root(t, length, z_mate, xy):
+    """A housing's mount tenon `t` (mating at z_mate) with its root slab and root chamfer
+    kept inside the housing's plan rectangle `xy` = (x0, x1, y0, y1); above the chamfer
+    the tenon is left whole, so an edge station's stem stands flush and its flare overhangs."""
+    x0, x1, y0, y1 = xy
+    z_cut = z_mate + _lever_halves(length)[2]["root"]
+    base = t.intersect(box_at(x1 - x0, y1 - y0, z_cut - (z_mate - 20.0),
+                              x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z_cut + z_mate - 20.0) / 2))
+    top = t.intersect(box_at(2000.0, 2000.0, 40.0, x=0.0, y=0.0, z=z_cut + 20.0))
+    return base.union(top)
 
 
 def rib_mortise(rib_x, y0=None, y1=None):
