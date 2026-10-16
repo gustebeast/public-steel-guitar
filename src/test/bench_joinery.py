@@ -129,6 +129,8 @@ UP_Z, DOWN_Z = (0.0, 0.0, 1.0), (0.0, 0.0, -1.0)
 UP_X, DOWN_X = (1.0, 0.0, 0.0), (-1.0, 0.0, 0.0)
 DOWN_Y = (0.0, -1.0, 0.0)
 
+EP_TOP = -5.5               # an endplate coupon's top: the upper socket's far end (-7.1) and a
+                            # two-bead wall past it -- the endplate above that is not joint (user)
 FLOOR = -71.3               # just under the floor's top face: "the floor and nothing above"
 RAIL_PY, RAIL_MY = 55.0, -131.0     # inboard of each rail's inner face (55.55 / -131.55)
 
@@ -196,7 +198,7 @@ COUPONS = [
            UP_Z, "endplate tenons (upper + lower), adapter mortises, leg screw",
            fix=_fix_fin(-38.0, 55.55, -1)),
     Coupon("corner_bridge_endplate", ["bridge_endplate"],
-           [(_, _, 45.0, _, _, 6.4)],
+           [(_, _, 45.0, _, _, EP_TOP)],
            DOWN_X, "endplate sockets for both tenons, leg-screw recess + insert pocket"),
     Coupon("corner_adapter", ["body_adapter_1"],
            [(_, _, _, _, -94.0, _)],
@@ -208,7 +210,7 @@ COUPONS = [
            [(_, -588.0, _, RAIL_MY, _, _), (_, -591.0, _, -112.0, _, FLOOR)],
            UP_Z, "endplate tenons (upper + lower)", fix=_fix_fin(-588.0 - FIN_T, -131.55, +1)),
     Coupon("corner_keyhead_endplate", ["keyhead_endplate"],
-           [(_, _, _, -120.0, _, 6.4)],
+           [(_, _, _, -120.0, _, EP_TOP)],
            UP_X, "endplate sockets for both tenons"),
 
     # D. deck panel <-> rail tops: BOTH grooves of the longest section at its whole
@@ -336,12 +338,66 @@ def assembly(live=False):
     return shown
 
 
+# ── a PLATE: several coupons laid out on one bed, as their own exports print ───────────
+PLATE_GAP = 5.0                    # between pieces
+BED = 250.0                        # usable of the 256 bed
+
+# step 3 (user's joinery sequence): the PETG-GF joints at full length, rows by depth
+PLATES = {
+    "full_length_1": [
+        ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_keyhead_chassis",
+         "corner_adapter"],
+        ["lever_floor", ("lever_housing", "corner_bridge_endplate", "corner_keyhead_endplate")],
+    ],
+}
+
+
+def plate(name):
+    """One STEP of the plate's coupons, read from their exports (already in print pose) and
+    laid out in rows: each row's entries left to right; a tuple is a COLUMN of pieces stacked
+    in Y. Every piece keeps its own pose, so its layers lie as the real part's do."""
+    def load(n):
+        s = cq.importers.importStep(str(HERE / ("test_%s.step" % n))).val()
+        bb = s.BoundingBox()
+        return s.translate(cq.Vector(-bb.xmin, -bb.ymin, -bb.zmin))
+    out, y = [], 0.0
+    for row in PLATES[name]:
+        x, depth = 0.0, 0.0
+        for entry in row:
+            col = entry if isinstance(entry, tuple) else (entry,)
+            cy, width = y, 0.0
+            for n in col:
+                s = load(n)
+                bb = s.BoundingBox()
+                out.append((n, s.translate(cq.Vector(x, cy, 0.0))))
+                cy += bb.ylen + PLATE_GAP
+                width = max(width, bb.xlen)
+            depth = max(depth, cy - PLATE_GAP - y)
+            x += width + PLATE_GAP
+        assert x - PLATE_GAP <= BED, "%s: a row runs %.1f, past the bed" % (name, x - PLATE_GAP)
+        y += depth + PLATE_GAP
+    assert y - PLATE_GAP <= BED, "%s: the rows run %.1f, past the bed" % (name, y - PLATE_GAP)
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--export", action="store_true", help="write src/test/test_*.step")
+    ap.add_argument("--plate", choices=sorted(PLATES),
+                    help="write one plate of already-exported coupons, laid out, as one STEP")
     ap.add_argument("--live", action="store_true",
                     help="build the instrument here instead of reading the lead's build")
     a = ap.parse_args(argv)
+    if a.plate:
+        from cadkit.step_export import export_step
+        pcs = plate(a.plate)
+        for n, s in pcs:
+            bb = s.BoundingBox()
+            print("%-26s x %6.1f..%6.1f  y %6.1f..%6.1f  %.1f tall" % (n, bb.xmin, bb.xmax, bb.ymin, bb.ymax, bb.zlen))
+        path = HERE / ("test_%s_plate.step" % a.plate)
+        export_step(cq.Workplane("XY").newObject([cq.Compound.makeCompound([s for _n, s in pcs])]), str(path))
+        print("wrote", path)
+        return 0
     comps, where = components(a.live)
     report(comps, where, a.export)
     return 0
