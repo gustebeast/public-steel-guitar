@@ -266,7 +266,10 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
   if (G.reset != 0u) {
     // the guide: what stands at the pixel's centre, seen through whatever is clear. A ray of its own, so
     // that it is the same from frame to frame and no sample of the picture is spent on it.
-    let d = ray_dir(vec2f(gid.xy) + 0.5, G.vsize, G.cam_r, G.cam_u, G.cam_f, G.cam_pos.w);
+    // (for DLSS - flag 32 - it is shifted in the pixel as the frame's samples are: see below)
+    var gj = vec2f(0.0);
+    if ((G.flags & 32u) != 0u) { gj = G.jit; }
+    let d = ray_dir(vec2f(gid.xy) + 0.5 + gj, G.vsize, G.cam_r, G.cam_u, G.cam_f, G.cam_pos.w);
     see_through = true;
     veiled = false;
     let h = trace(G.cam_pos.xyz, d, G.near / max(dot(d, G.cam_f.xyz), 1e-3), 200000.0);
@@ -296,7 +299,9 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
     // of them already give the share of the pixel an edge covers far better than as many thrown at random,
     // and while the picture moves each pixel uses the same few, so an edge does not shimmer
     let u0 = fract(px_shift + f32(G.n - G.spf + si + 1u) * vec2f(0.7548776662, 0.5698402910));
-    let jit = vec2f(0.5) + clamp(FILTER_SD * sqrt(-2.0 * log(max(u0.x, 1e-7))) * vec2f(cos(2.0 * PI * u0.y), sin(2.0 * PI * u0.y)), vec2f(-1.5), vec2f(1.5));
+    var jit = vec2f(0.5) + clamp(FILTER_SD * sqrt(-2.0 * log(max(u0.x, 1e-7))) * vec2f(cos(2.0 * PI * u0.y), sin(2.0 * PI * u0.y)), vec2f(-1.5), vec2f(1.5));
+    // DLSS while the picture moves: every ray of the frame from the one place in the pixel it is told of
+    if ((G.flags & 32u) != 0u && G.reset != 0u) { jit = vec2f(0.5) + G.jit; }
     var o = G.cam_pos.xyz;
     var d = ray_dir(vec2f(gid.xy) + jit, G.vsize, G.cam_r, G.cam_u, G.cam_f, G.cam_pos.w);
     var thr = vec3f(1.0);

@@ -26,6 +26,9 @@
 //! (default: desk-window.json beside the exe).
 //! DESK_TRACE=1 in the environment: every message, frame and key the shell sees, with its time, written to
 //! trace.txt in the --out folder at the end.
+//! DLSS (on unless DESK_DLSS=0): NVIDIA's Ray Reconstruction cleans the picture while it moves, on Vulkan with an RTX card,
+//! if this was built with it (cargo feature `dlss`: cadkit/web/desktop.py turns it on when NVIDIA's SDK is on
+//! the machine). It costs ~3.5 ms a frame (RTX 5090, 1280x800, 2026-10-16: 218 -> 147 fps at rest).
 //!
 //! What the page sends (window.ipc.postMessage, JSON, at most one a frame, only what changed):
 //!   {t:"view", cam:[16], fov, near, far, w, h,      the page camera's matrixWorld; the size it projects onto
@@ -463,6 +466,57 @@ fn data_root(args: &Args) -> PathBuf {
     exe.parent().and_then(|p| p.parent()).unwrap_or(Path::new(".")).join("data")
 }
 
+/// what NVIDIA's DLSS knows this program by
+#[cfg(feature = "dlss")]
+const DLSS_PROJECT: uuid::Uuid = uuid::uuid!("5f9b8e8f-918f-4f44-8d80-c8b582cd0550");
+
+/// A Vulkan instance that DLSS can be used on, if this program is built with it and the card has it.
+/// (the dlss feature: cadkit/web/desktop.py builds it in when NVIDIA's SDK is on the machine)
+#[cfg(feature = "dlss")]
+fn dlss_instance(idesc: &wgpu::InstanceDescriptor, said: &mut String) -> Option<wgpu::Instance> {
+    // (on by default; ~3.5 ms a frame, measured 2026-10-16 on an RTX 5090 at 1280x800)
+    if std::env::var("DESK_DLSS").is_ok_and(|v| v == "0") {
+        return None;
+    }
+    let mut has = dlss_wgpu::FeatureSupport::default();
+    match dlss_wgpu::create_instance(DLSS_PROJECT, idesc, &mut has) {
+        Ok(i) if has.ray_reconstruction_supported => Some(i),
+        Ok(_) => {
+            *said += "; DLSS: not used: the driver does not offer Ray Reconstruction";
+            None
+        }
+        Err(e) => {
+            *said += &format!("; DLSS: not used: {e}");
+            None
+        }
+    }
+}
+#[cfg(not(feature = "dlss"))]
+fn dlss_instance(_: &wgpu::InstanceDescriptor, _: &mut String) -> Option<wgpu::Instance> {
+    None
+}
+
+/// ... and the device on it.
+#[cfg(feature = "dlss")]
+fn dlss_device(adapter: &wgpu::Adapter, ddesc: &wgpu::DeviceDescriptor, said: &mut String) -> Option<(wgpu::Device, wgpu::Queue)> {
+    let mut has = dlss_wgpu::FeatureSupport::default();
+    match dlss_wgpu::request_device(DLSS_PROJECT, adapter, ddesc, &mut has, None) {
+        Ok(d) if has.ray_reconstruction_supported => Some(d),
+        Ok(_) => {
+            *said += "; DLSS: not used: the card does not offer Ray Reconstruction";
+            None
+        }
+        Err(e) => {
+            *said += &format!("; DLSS: not used: {e}");
+            None
+        }
+    }
+}
+#[cfg(not(feature = "dlss"))]
+fn dlss_device(_: &wgpu::Adapter, _: &wgpu::DeviceDescriptor, _: &mut String) -> Option<(wgpu::Device, wgpu::Queue)> {
+    None
+}
+
 /// One way of getting pictures out of the card. Err: why not.
 fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSize<u32>) -> Result<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration, Renderer, String), String> {
     let mut idesc = wgpu::InstanceDescriptor::new_without_display_handle();
@@ -478,22 +532,30 @@ fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSiz
     } else {
         idesc.backends = wgpu::Backends::VULKAN;
     }
-    let instance = wgpu::Instance::new(idesc);
+    // (DLSS is had through Vulkan alone)
+    let made = if which == "vulkan" { dlss_instance(&idesc, &mut note) } else { None };
+    let mut dlss = made.is_some();
+    let instance = made.unwrap_or_else(|| wgpu::Instance::new(idesc));
     let surface = instance.create_surface(window.clone()).map_err(|e| e.to_string())?;
     let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions { power_preference: wgpu::PowerPreference::HighPerformance, compatible_surface: Some(&surface), ..Default::default() })).map_err(|e| format!("no adapter: {e}"))?;
     let info = adapter.get_info();
     if !adapter.features().contains(wgpu::Features::EXPERIMENTAL_RAY_QUERY) {
         return Err(format!("{} does not offer ray queries there", info.name));
     }
-    let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
+    let ddesc = wgpu::DeviceDescriptor {
         label: None,
         required_features: wgpu::Features::EXPERIMENTAL_RAY_QUERY,
         required_limits: adapter.limits(),
         experimental_features: unsafe { wgpu::ExperimentalFeatures::enabled() },
         memory_hints: wgpu::MemoryHints::Performance,
         trace: wgpu::Trace::Off,
-    }))
-    .map_err(|e| e.to_string())?;
+    };
+    let for_dlss = if dlss { dlss_device(&adapter, &ddesc, &mut note) } else { None };
+    dlss = for_dlss.is_some();
+    let (device, queue) = match for_dlss {
+        Some(d) => d,
+        None => pollster::block_on(adapter.request_device(&ddesc)).map_err(|e| e.to_string())?,
+    };
     let caps = surface.get_capabilities(&adapter);
     let mut config = surface.get_default_config(&adapter, size.width.max(1), size.height.max(1)).ok_or("no surface configuration")?;
     // values go to the surface already sRGB-encoded, so: a format that does not encode them again. Except
@@ -521,6 +583,11 @@ fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSiz
     }
     r.settings.temporal = true;
     r.resize(config.width, config.height);
+    #[cfg(feature = "dlss")]
+    if dlss {
+        note += &format!("; {}", r.enable_dlss(&adapter, DLSS_PROJECT));
+    }
+    let _ = dlss;
     let line = format!("{:?} / {} / driver {}{note}; surface {:?} {:?} (offered: {:?})", info.backend, info.name, info.driver_info, config.format, config.present_mode, caps.formats);
     Ok((surface, config, r, line))
 }

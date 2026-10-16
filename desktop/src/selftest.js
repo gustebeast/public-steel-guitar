@@ -19,6 +19,8 @@
   }
 
   const $ = id => document.getElementById(id);
+  // an element's text, or that the page no longer has it (a renamed element must not end the whole selftest)
+  const txt = (id, sel) => { const e = $(id), t = e && (sel ? e.querySelector(sel) : e); return t ? t.textContent : `(no #${id}${sel ? ' ' + sel : ''})`; };
   const J = o => JSON.stringify(o, (k, x) => typeof x === 'number' ? Math.round(x * 100) / 100 : x);
   const key = (k, type = 'keydown', o = {}) => dispatchEvent(new KeyboardEvent(type,
     { key: k, code: k === ' ' ? 'Space' : 'Key' + k.toUpperCase(), bubbles: true, cancelable: true, ...o }));
@@ -143,7 +145,7 @@
   // ── the parts of the selftest (desk.exe --selftest=keys,rows runs those alone) ───────────────────────────
   const only = (window.__tOnly || '').split(',').filter(Boolean);
   const want = name => !only.length || only.includes(name);
-  const VK = { x: 0x58, u: 0x55, i: 0x49, z: 0x5A, y: 0x59, c: 0x43, m: 0x4D, p: 0x50, l: 0x4C, 1: 0x31, space: 0x20, esc: 0x1B, ctrl: 0x11, shift: 0x10,
+  const VK = { x: 0x58, u: 0x55, i: 0x49, z: 0x5A, y: 0x59, c: 0x43, m: 0x4D, p: 0x50, a: 0x41, s: 0x53, t: 0x54, r: 0x52, w: 0x57, e: 0x45, l: 0x4C, 1: 0x31, space: 0x20, esc: 0x1B, ctrl: 0x11, shift: 0x10,
                left: 0x25, up: 0x26, right: 0x27, down: 0x28 };
   // a real key, down and up: where 0 = to the window that has the keyboard in the webview, 1 = to the shell's
   // own window, 2 = typed through the desktop's input queue
@@ -183,8 +185,8 @@
     const firstUnit = h.unit;
 
     // ── hide it: the page's own key
-    await tap('x');
-    log(`hide (x): ${hiddenN()} hidden on the page; "${$('bShowAll').textContent}"`);
+    await tap('a');
+    log(`hide (a): ${hiddenN()} hidden on the page; "${$('bShowAll').textContent}"`);
     r = await shot('04_hide', { sample: [[h.x, h.y]], diff: '02_orbit' });
     log(`    the clicked pixel is now native ${J(r.sample[0].native)}`);
 
@@ -192,8 +194,8 @@
     h = hitNear(0.5, 0.5, [firstUnit]);
     await click(h.x, h.y); await sleep(200);
     const picked = selUnits();
-    await tap('i');
-    log(`isolate (i): clicked ${h.name}, selection ${J(picked)}; ${hiddenN()} of ${M.list.length} hidden`);
+    await tap('s');
+    log(`isolate (s): clicked ${h.name}, selection ${J(picked)}; ${hiddenN()} of ${M.list.length} hidden`);
     r = await shot('05_isolate');
 
     // ── undo / redo
@@ -204,8 +206,8 @@
     r = await shot('06_undo', { diff: '04_hide' });
 
     // ── show all
-    key('Escape'); await tap('u');
-    log(`show all (u), selection cleared (esc): ${hiddenN()} hidden`);
+    key('Escape'); await tap('t');
+    log(`show all (t), selection cleared (esc): ${hiddenN()} hidden`);
     r = await shot('07_showall', { diff: '02_orbit' });
 
     // ── the rig: a pedal held by its key, a knee lever latched by its button
@@ -224,23 +226,23 @@
 
     // ── space: the deck off
     await tap(' ');
-    log(`deck (space): ${hiddenN()} hidden; "${$('deckstate').textContent}"`);
+    log(`deck (space): ${hiddenN()} hidden; deck button "${txt('deckbtn', 'b')}"`);
     r = await shot('10_deck');
     await tap(' ');
 
     // ── section cut
-    await tap('c');
-    log(`section (c): ${J({ on: v.sec.on, axis: v.sec.axis, v: v.sec.v, flip: v.sec.flip })}`);
+    await tap('r');
+    log(`section (r): ${J({ on: v.sec.on, axis: v.sec.axis, v: v.sec.v, flip: v.sec.flip })}`);
     r = await shot('11_section');
     document.querySelector('#secPanel .ax[data-a="1"]').click();
     $('bFlip').click();
     const sl = $('secSlide'); sl.value = String(v.sec.v + 30); sl.dispatchEvent(new Event('input'));
     log(`section: Y, flipped, slider moved: ${J({ on: v.sec.on, axis: v.sec.axis, v: v.sec.v, flip: v.sec.flip })}`);
     r = await shot('12_section_y');
-    await tap('c');
+    await tap('r');
 
     // ── measure: two real clicks
-    await tap('m');
+    await tap('w');
     for (let i = 0; i < 100 && !M.geo; i++) await sleep(100);
     const a = hitNear(0.35, 0.5), bb = hitNear(0.65, 0.55);
     await click(a.x, a.y); await sleep(250);
@@ -256,7 +258,7 @@
       log(`    do the picked points lie on the native picture's surface? eye to A ${eye.distanceTo(world(mA.pick)).toFixed(2)} mm, native first hit there within ${near(r.depth[0], eye.distanceTo(world(mA.pick))).toFixed(3)} mm; ` +
           `B ${eye.distanceTo(world(mB.pick)).toFixed(2)} mm, within ${near(r.depth[1], eye.distanceTo(world(mB.pick))).toFixed(3)} mm`);
     } else log(`measure: FAILED, the clicks picked A=${mA && mA.kind} B=${mB && mB.kind}`);
-    await tap('m');
+    await tap('w');
 
     // ── axis views
     document.querySelector('#views .vw[data-d="0,0,1"]').click(); await sleep(100);
@@ -265,16 +267,16 @@
     r = await shot('15_view_iso');
 
     // ── the parts list: its eye hides a family
-    await tap('p');
+    await tap('e');
     const fam = [...$('plist').children].find(e => e._parts.length > 3 && e._parts.length < 40);
     fam.querySelector('.eye').click();
-    log(`parts list (p): ${$('plist').children.length} families listed; the eye of "${fam.dataset.f}" clicked: ${hiddenN()} hidden`);
+    log(`parts list (e): ${$('plist').children.length} families listed; the eye of "${fam.dataset.f}" clicked: ${hiddenN()} hidden`);
     r = await shot('16_parts_list');
-    await tap('u'); await tap('p');
+    await tap('t'); await tap('e');
 
-    // ── the lighting level: none in the shell (the key does nothing, the button is gone, the hint does not offer it)
+    // ── the lighting level: none in the shell (the key does nothing, the button is gone)
     const q0 = v.quality; await tap('l');
-    log(`lighting (l): level ${q0} -> ${v.quality}; button display "${$('bLight').style.display}"; hint: "${$('hint').textContent.slice(-60)}"`);
+    log(`lighting (l): level ${q0} -> ${v.quality}; button display "${$('bLight').style.display}"`);
 
     // ── overlay against picture
     const part = M.list.find(p => { if (p.mesh || p.col || p.mat.transparent || p.iCount < 3000) return false;
@@ -323,10 +325,10 @@
     w = await win();
     const part = M.list.find(p => !p.mesh && !p.col && p.iCount > 3000).name;
     v.select([part]); await sleep(100);
-    let r = await realKey(0, 'x'); await sleep(200);
-    log(`  (a) the page has the keyboard ("${w.focus_class}"): WM_KEYDOWN/UP "x" posted to "${r.to}" -> page saw [${seen()}]; ${hiddenN()} hidden (a part was selected: want >= 1)`);
-    r = await realKey(0, 'u'); await sleep(200);
-    log(`      "u" -> [${seen()}]; ${hiddenN()} hidden (want 0)`);
+    let r = await realKey(0, 'a'); await sleep(200);
+    log(`  (a) the page has the keyboard ("${w.focus_class}"): WM_KEYDOWN/UP "a" posted to "${r.to}" -> page saw [${seen()}]; ${hiddenN()} hidden (a part was selected: want >= 1)`);
+    r = await realKey(0, 't'); await sleep(200);
+    log(`      "t" -> [${seen()}]; ${hiddenN()} hidden (want 0)`);
     await call('Tkey', { ops: [[0, VK[1], 1, 400]] });
     const lit = [...document.querySelectorAll('.pedal.on')].map(e => e.dataset.name);
     await call('Tkey', { ops: [[0, VK[1], 0, 300]] });
@@ -334,17 +336,17 @@
     await realKey(0, 'space'); await sleep(200); const h1 = hiddenN();
     await realKey(0, 'space'); await sleep(200);
     log(`      space twice -> [${seen()}]; hidden ${h1} then ${hiddenN()} (deck off, on)`);
-    await realKey(0, 'c'); await sleep(150); const s1 = v.sec.on; await realKey(0, 'c'); await sleep(150);
-    log(`      "c" twice -> [${seen()}]; section ${s1} then ${v.sec.on}`);
-    await realKey(0, 'p'); await sleep(150); const p1 = $('partsPanel').style.display; await realKey(0, 'p'); await sleep(150);
-    log(`      "p" twice -> [${seen()}]; parts panel "${p1}" then "${$('partsPanel').style.display}"`);
-    await realKey(0, 'm'); await sleep(150); const m1 = $('bMeasure').classList.contains('on'); await realKey(0, 'm'); await sleep(150);
-    log(`      "m" twice -> [${seen()}]; measure ${m1} then ${$('bMeasure').classList.contains('on')}`);
+    await realKey(0, 'r'); await sleep(150); const s1 = v.sec.on; await realKey(0, 'r'); await sleep(150);
+    log(`      "r" twice -> [${seen()}]; section ${s1} then ${v.sec.on}`);
+    await realKey(0, 'e'); await sleep(150); const p1 = $('partsPanel').style.display; await realKey(0, 'e'); await sleep(150);
+    log(`      "e" twice -> [${seen()}]; parts panel "${p1}" then "${$('partsPanel').style.display}"`);
+    await realKey(0, 'w'); await sleep(150); const m1 = $('bMeasure').classList.contains('on'); await realKey(0, 'w'); await sleep(150);
+    log(`      "w" twice -> [${seen()}]; measure ${m1} then ${$('bMeasure').classList.contains('on')}`);
     await realKey(0, 'l'); await sleep(150);
     log(`      "l" -> [${seen()}]; lighting level ${v.quality} (stays 0 in the shell)`);
-    v.select([part]); await sleep(50); await realKey(0, 'i'); await sleep(200); const i1 = hiddenN();
+    v.select([part]); await sleep(50); await realKey(0, 's'); await sleep(200); const i1 = hiddenN();
     await realKey(0, 'esc'); await sleep(100);
-    log(`      "i" then esc -> [${seen()}]; ${i1} hidden, selection ${v.selection.length}`);
+    log(`      "s" then esc -> [${seen()}]; ${i1} hidden, selection ${v.selection.length}`);
     // ctrl+z needs the desktop's own idea of which keys are down: typed (SendInput), and only if this window is in front
     r = await call('Tkey', { ops: [[2, VK.ctrl, 1, 40], [2, VK.z, 1, 60], [2, VK.z, 0, 40], [2, VK.ctrl, 0, 120]] });
     await sleep(200);
@@ -355,18 +357,18 @@
     v.select([part]); await sleep(100);
     await call('Tfocus', { who: 'shell' }); await sleep(250);
     w = await win();
-    r = await realKey(1, 'x'); await sleep(250);
+    r = await realKey(1, 'a'); await sleep(250);
     const w2 = await win();
     log(`  (b) the keyboard given to the shell's own window: 0.25 s later it is with "${w.focus_class}" (the shell: ${w.focus_is_shell}; it hands the keyboard to the page whenever it gets it). ` +
-        `A key that does reach the shell's window ("x" posted to "${r.to}") is passed on -> page saw [${seen()}]; ${hiddenN()} hidden (want >= 1); the keyboard is then with "${w2.focus_class}" (the shell: ${w2.focus_is_shell})`);
-    r = await realKey(0, 'u'); await sleep(200);
-    log(`      next key "u", to where the keyboard now is ("${r.to}") -> [${seen()}]; ${hiddenN()} hidden (want 0)`);
+        `A key that does reach the shell's window ("a" posted to "${r.to}") is passed on -> page saw [${seen()}]; ${hiddenN()} hidden (want >= 1); the keyboard is then with "${w2.focus_class}" (the shell: ${w2.focus_is_shell})`);
+    r = await realKey(0, 't'); await sleep(200);
+    log(`      next key "t", to where the keyboard now is ("${r.to}") -> [${seen()}]; ${hiddenN()} hidden (want 0)`);
     // an input box takes its own keys
-    await realKey(0, 'p'); await sleep(150); $('pfilter').focus(); await sleep(100);
-    await realKey(0, 'x'); await sleep(150);
-    log(`      with the parts filter box focused, "x" -> [${seen()}]; box holds "${$('pfilter').value}", ${hiddenN()} hidden (want "x", 0)`);
+    await realKey(0, 'e'); await sleep(150); $('pfilter').focus(); await sleep(100);
+    await realKey(0, 'a'); await sleep(150);
+    log(`      with the parts filter box focused, "a" -> [${seen()}]; box holds "${$('pfilter').value}", ${hiddenN()} hidden (want "a", 0)`);
     $('pfilter').value = ''; $('pfilter').dispatchEvent(new Event('input')); $('pfilter').blur();
-    await realKey(0, 'p'); await sleep(150);
+    await realKey(0, 'e'); await sleep(150);
     removeEventListener('keydown', note, true); removeEventListener('keyup', note, true);
     v.showAll(); v.select([]);
   }
@@ -375,12 +377,12 @@
   async function rows() {
     let r;
     // section: Z axis, and the number box
-    await tap('c');
+    await tap('r');
     document.querySelector('#secPanel .ax[data-a="2"]').click(); await sleep(100);
     const box = $('secVal'); box.value = '-40.5'; box.dispatchEvent(new Event('change')); await sleep(100);
     r = await shot('21_section_z');
     log(`section: Z, number box set to -40.5: page ${J({ axis: v.sec.axis, v: v.sec.v, flip: v.sec.flip })}, slider at ${$('secSlide').value}; native clip ${J(r.counts.clip)} (want [0,0,-1,-40.5])`);
-    await tap('c');
+    await tap('r');
 
     // shift-click adds to the selection (real clicks; shift held through the desktop's input queue, as a hand holds it)
     const a = hitNear(0.42, 0.45), b = hitNear(0.6, 0.5, [a.unit]);
@@ -412,7 +414,7 @@
     key('Escape');
 
     // parts list: the filter box, and a double-click on a row
-    await tap('p');
+    await tap('e');
     const pf = $('pfilter'); pf.value = 'belt'; pf.dispatchEvent(new Event('input')); await sleep(100);
     const shown = [...$('plist').children].filter(e => e.style.display !== 'none');
     const c0 = v.camera.position.clone();
@@ -432,14 +434,21 @@
     r = await shot('24_parts_filter');
     log(`parts list: filter "belt": ${shown.length} of ${$('plist').children.length} rows shown (${shown.slice(0, 4).map(e => e.dataset.f)}); real double-click on "${row.dataset.f}"${dbl ? '' : ' NOT MADE (window not in front)'} (the page saw ${evs.join(', ') || 'NOTHING'}): ` +
         `selection ${v.selection.length} parts (the row's ${row._parts.length}), the eye moved ${c0.distanceTo(v.camera.position).toFixed(1)} mm to frame them (the row's element ${stale ? 'was replaced by the first click' : 'is still the one clicked'}); native ${r.counts.sel} selected`);
-    pf.value = ''; pf.dispatchEvent(new Event('input')); key('Escape'); await tap('p');
+    pf.value = ''; pf.dispatchEvent(new Event('input')); key('Escape'); await tap('e');
     $('views').querySelector('.vw[data-d="0.55,-1,0.5"]').click(); await sleep(300);
 
     // measure: the highlight under the pointer (a real mouse move, no click)
-    await tap('m');
+    await tap('w');
     for (let i = 0; i < 100 && !M.geo; i++) await sleep(100);
     const h = hitNear(0.5, 0.45);
     const b0 = await shot('25_hover_before');
+    // A posted mouse move is followed at once by a pointerleave when the real cursor is elsewhere (it is: the
+    // test does not take the user's mouse), and the page drops its hover on a leave before its next frame
+    // can draw it. Those leaves are held back here, and counted.
+    let moves = 0, leaves = 0;
+    const onMove = () => moves++, onLeave = e => { leaves++; e.stopImmediatePropagation(); };
+    v.renderer.domElement.addEventListener('pointermove', onMove);
+    v.renderer.domElement.addEventListener('pointerleave', onLeave, true);
     await call('Tmouse', { ops: [[WM.move, 0, h.x - 3, h.y, 60], [WM.move, 0, h.x, h.y, 300]] });
     await sleep(300);
     const hov = v.meas.hover;
@@ -450,9 +459,12 @@
       changed = q.found[0] ? q.found[0][2] : 0;
     }
     log(`measure hover: pointer moved to ${J([h.x, h.y])} on ${h.name}: the page highlights ${hov ? hov.kind + ' on ' + hov.part.name : 'NOTHING'}; hover mark object ${v.meas.objs.hover ? 'present' : 'absent'}; ` +
+        `the canvas saw ${moves} pointer move(s), ${leaves} leave(s) held back; ` +
         `pixels of the hover colour (#ffe08a) within 60 px of the pointer in the window: ${changed} (want > 0)`);
+    v.renderer.domElement.removeEventListener('pointermove', onMove);
+    v.renderer.domElement.removeEventListener('pointerleave', onLeave, true);
     await call('Tmouse', { ops: [[WM.move, 0, 5, Math.round(H / 2), 200]] });
-    await tap('m');
+    await tap('w');
   }
 
   // ── the window: sized by the desktop's own sizing loop, minimised and brought back, its title

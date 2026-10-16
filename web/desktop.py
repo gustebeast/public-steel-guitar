@@ -37,6 +37,12 @@ names one that is not on the PATH), OUTSIDE the project and any synced folder, i
 It is built again when its source (or the page) is newer, and installed over the old
 one: a running app is asked to quit, replaced, and started again with its tabs.
 Windows only so far: the window layering is Windows'.
+
+NVIDIA's DLSS Ray Reconstruction is built in when NVIDIA's DLSS SDK is on this machine
+(`dlss_sdk()`: `CADKIT_DLSS_SDK`, else `sdk/` beside the build, else the new_codes
+tracer's), and its two DLLs are put beside the program. It is used unless
+DESK_DLSS=0, on an RTX card. NVIDIA's SDK licence applies to those DLLs: they are
+never put in a repository.
 """
 
 from __future__ import annotations
@@ -175,6 +181,38 @@ def find_cargo():
     return None, {}
 
 
+# the DLLs DLSS Ray Reconstruction needs beside the program (both: without the second NGX says "not supported")
+DLSS_DLLS = ("nvngx_dlssd.dll", "nvngx_dlss.dll")
+
+
+def dlss_sdk():
+    """(the DLSS DLLs' folder, extra environment for cargo) when NVIDIA's DLSS SDK is on this
+    machine, else None. A folder holding DLSS/ (NVIDIA's SDK), Vulkan-Headers/ (Khronos', named
+    as VULKAN_SDK) and clang/ (any folder below it with libclang.dll, e.g. the PyPI wheel's)."""
+    if os.name != "nt":
+        return None
+    roots = [os.environ.get("CADKIT_DLSS_SDK"), str(home() / "sdk")]
+    if os.environ.get("LOCALAPPDATA"):
+        roots.append(str(pathlib.Path(os.environ["LOCALAPPDATA"]) / "new_codes-tracer" / "sdk"))
+    for root in filter(None, roots):
+        root = pathlib.Path(root)
+        dlls = root / "DLSS" / "lib" / "Windows_x86_64" / "rel"
+        if not all((dlls / d).is_file() for d in DLSS_DLLS) or not (root / "Vulkan-Headers" / "include").is_dir():
+            continue
+        clang = next((f.parent for f in (root / "clang").rglob("libclang.dll")), None) if (root / "clang").is_dir() else None
+        if clang is None:
+            continue
+        return dlls, {"DLSS_SDK": str(root / "DLSS"), "VULKAN_SDK": str(root / "Vulkan-Headers"), "LIBCLANG_PATH": str(clang)}
+    return None
+
+
+def _put_dlls(src_dir, dst_dir):
+    for d in DLSS_DLLS:
+        a, b = src_dir / d, dst_dir / d
+        if a.is_file() and not (b.is_file() and b.stat().st_size == a.stat().st_size):
+            shutil.copy2(a, b)
+
+
 def build():
     cargo, extra = find_cargo()
     if cargo is None:
@@ -183,10 +221,16 @@ def build():
     home().mkdir(parents=True, exist_ok=True)
     print("cadkit desktop: building (the first build takes a few minutes)")
     sys.stdout.flush()
+    dlss = dlss_sdk()
+    if dlss:
+        print("cadkit desktop: with DLSS Ray Reconstruction (NVIDIA's SDK found; DESK_DLSS=0 turns it off)")
     r = subprocess.run([cargo, "build", "--release", "--manifest-path", str(SRC / "Cargo.toml"),
-                        "--target-dir", str(home() / "target")], env={**os.environ, **extra})
+                        "--target-dir", str(home() / "target")] + (["--features", "dlss"] if dlss else []),
+                       env={**os.environ, **extra, **(dlss[1] if dlss else {})})
     if r.returncode != 0:
         raise SystemExit("cadkit desktop: the build failed")
+    if dlss:
+        _put_dlls(dlss[0], built().parent)
 
 
 def quit_app(wait=10.0):
@@ -207,6 +251,8 @@ def install():
     there is not it. A running app is in the way of that (a running file cannot be
     replaced): it is asked to quit first. Returns (installed anew, an app was quit)."""
     src, dst = built(), program()
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    _put_dlls(src.parent, dst.parent)
     if dst.exists() and (dst.stat().st_size, int(dst.stat().st_mtime)) == (src.stat().st_size, int(src.stat().st_mtime)):
         return False, False
     was = ping() is not None

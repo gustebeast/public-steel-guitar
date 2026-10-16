@@ -72,6 +72,8 @@ struct Globals {
     off: [u32; 2],
     white: f32,
     pad: u32,
+    jit: [f32; 2],
+    pad2: [u32; 2],
 }
 
 #[repr(C)]
@@ -144,6 +146,34 @@ impl Parked {
     }
 }
 
+/// DLSS RAY RECONSTRUCTION (NVIDIA's, through dlss_wgpu; Vulkan only): in place of the tracer's own denoiser
+/// while the picture moves, and for the first samples of a picture at rest. It is given the picture as traced
+/// and what stands at each pixel (dlss_in.wgsl), and gives back a clean picture (finished by dlss_out.wgsl);
+/// it keeps the frames before itself, so each frame's rays leave their pixels at a place it is told (G.jit,
+/// flag 32). Ported from the new_codes tracer, where it was first made to work.
+#[cfg(feature = "dlss")]
+struct Dlss {
+    sdk: std::sync::Arc<std::sync::Mutex<dlss_wgpu::DlssSdk>>,
+    adapter: wgpu::Adapter,
+    l_in: wgpu::BindGroupLayout,
+    l_out: wgpu::BindGroupLayout,
+    p_in: wgpu::ComputePipeline,
+    p_out: wgpu::ComputePipeline,
+    per: Option<DlssPer>,
+    /// frames it has been given in a row
+    run: u32,
+}
+
+/// ... what of it is made for one size of picture
+#[cfg(feature = "dlss")]
+struct DlssPer {
+    ctx: dlss_wgpu::ray_reconstruction::DlssRayReconstruction,
+    /// colour, diffuse, specular, normal + roughness, depth, motion, DLSS's picture
+    views: [wgpu::TextureView; 7],
+    bg_in: [wgpu::BindGroup; 2],
+    bg_out: wgpu::BindGroup,
+}
+
 /// The model on the card.
 struct SceneGpu {
     parts_buf: wgpu::Buffer,
@@ -200,6 +230,11 @@ pub struct Renderer {
     parity: usize,
     prev_cam: Option<Camera>,
     last_globals: Globals,
+    #[cfg(feature = "dlss")]
+    dlss: Option<Dlss>,
+    /// DLSS is wanted (made unless DESK_DLSS=0, on a card that has it: see `enable_dlss`)
+    #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
+    pub dlss_on: bool,
 }
 
 fn shader(device: &wgpu::Device, name: &str, src: &str) -> wgpu::ShaderModule {
@@ -210,6 +245,10 @@ fn shader(device: &wgpu::Device, name: &str, src: &str) -> wgpu::ShaderModule {
 fn e_buf(binding: u32, ty: wgpu::BufferBindingType, vis: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry { binding, visibility: vis, ty: wgpu::BindingType::Buffer { ty, has_dynamic_offset: false, min_binding_size: None }, count: None }
 }
+/// with DLSS on, a picture at rest is DLSS's until it has this many samples a pixel; then it is the tracer's own
+#[cfg(feature = "dlss")]
+const DLSS_UNTIL: u32 = 256;
+
 const UNI: wgpu::BufferBindingType = wgpu::BufferBindingType::Uniform;
 const RO: wgpu::BufferBindingType = wgpu::BufferBindingType::Storage { read_only: true };
 const RW: wgpu::BufferBindingType = wgpu::BufferBindingType::Storage { read_only: false };
@@ -332,6 +371,9 @@ impl Renderer {
             parity: 0,
             prev_cam: None,
             last_globals: Globals::default(),
+            #[cfg(feature = "dlss")]
+            dlss: None,
+            dlss_on: true,
         }
     }
 
@@ -486,6 +528,41 @@ impl Renderer {
     }
 
     /// Forget accumulation and temporal history.
+    /// DLSS Ray Reconstruction on this card, if it will. The device must have been made for it
+    /// (dlss_wgpu::request_device). -> what to say of it
+    #[cfg(feature = "dlss")]
+    pub fn enable_dlss(&mut self, adapter: &wgpu::Adapter, project: uuid::Uuid) -> String {
+        let sdk = match dlss_wgpu::DlssSdk::new(project, self.device.clone()) {
+            Ok(s) => s,
+            Err(e) => return format!("DLSS: not used: {e}"),
+        };
+        let c = wgpu::ShaderStages::COMPUTE;
+        let sto = |binding: u32, format: wgpu::TextureFormat| wgpu::BindGroupLayoutEntry {
+            binding,
+            visibility: c,
+            ty: wgpu::BindingType::StorageTexture { access: wgpu::StorageTextureAccess::WriteOnly, format, view_dimension: wgpu::TextureViewDimension::D2 },
+            count: None,
+        };
+        let tex = wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            visibility: c,
+            ty: wgpu::BindingType::Texture { sample_type: wgpu::TextureSampleType::Float { filterable: false }, view_dimension: wgpu::TextureViewDimension::D2, multisampled: false },
+            count: None,
+        };
+        let f16 = wgpu::TextureFormat::Rgba16Float;
+        let l_in = layout(&self.device, "dlss_in", &[e_buf(0, UNI, c), e_buf(1, RO, c), e_buf(2, RO, c), e_buf(3, RO, c), e_buf(4, RO, c), e_buf(5, RO, c), sto(6, f16), sto(7, f16), sto(8, f16), sto(9, f16), sto(10, wgpu::TextureFormat::R32Float), sto(11, f16)]);
+        let l_out = layout(&self.device, "dlss_out", &[e_buf(0, UNI, c), tex, e_buf(2, RW, c), e_buf(3, RW, c)]);
+        let p_in = compute_pipeline(&self.device, "dlss_in", &l_in, &shader(&self.device, "dlss_in", include_str!("dlss_in.wgsl")));
+        let p_out = compute_pipeline(&self.device, "dlss_out", &l_out, &shader(&self.device, "dlss_out", include_str!("dlss_out.wgsl")));
+        self.dlss = Some(Dlss { sdk, adapter: adapter.clone(), l_in, l_out, p_in, p_out, per: None, run: 0 });
+        // (made for the picture's size at the next resize)
+        let size = self.size;
+        self.size = (0, 0);
+        self.resize(size.0, size.1);
+        let made = self.dlss.as_ref().is_some_and(|d| d.per.is_some());
+        format!("DLSS: Ray Reconstruction {}", if made { "is on while the picture moves" } else { "is there, not yet made for this size" })
+    }
+
     /// Encode for a screen that decodes a plain 2.4 power (see `power_out`); the picture is resolved again.
     pub fn set_power_out(&mut self, on: bool) {
         if self.power_out != on {
@@ -547,6 +624,42 @@ impl Renderer {
         };
         // odd pass count: the final result lands in fb
         let mk_resolve = |p: usize| bind(d, &self.l_resolve, &[g.clone(), guide[p].as_entire_binding(), acc_a.as_entire_binding(), fb.as_entire_binding(), out_px.as_entire_binding(), acc_b.as_entire_binding(), acc_c.as_entire_binding(), other.as_entire_binding(), shown_px.as_entire_binding()]);
+        #[cfg(feature = "dlss")]
+        if let Some(dl) = self.dlss.as_mut() {
+            use dlss_wgpu::ray_reconstruction::{DlssRayReconstruction, DlssRayReconstructionDepthMode, DlssRayReconstructionRoughnessMode};
+            dl.per = None;
+            dl.run = 0;
+            let flags = dlss_wgpu::DlssFeatureFlags::HighDynamicRange | dlss_wgpu::DlssFeatureFlags::LowResolutionMotionVectors;
+            // (DLAA: the picture is traced at the size it is shown; DLSS cleans it, it does not enlarge it)
+            match DlssRayReconstruction::new([w, h], dlss_wgpu::DlssPerfQualityMode::Dlaa, flags, DlssRayReconstructionRoughnessMode::Packed, DlssRayReconstructionDepthMode::Linear, dl.sdk.clone(), d, &self.queue) {
+                Ok(ctx) => {
+                    let tex = |label: &str, format: wgpu::TextureFormat| {
+                        d.create_texture(&wgpu::TextureDescriptor {
+                            label: Some(label),
+                            size: wgpu::Extent3d { width: w, height: h, depth_or_array_layers: 1 },
+                            mip_level_count: 1,
+                            sample_count: 1,
+                            dimension: wgpu::TextureDimension::D2,
+                            format,
+                            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::STORAGE_BINDING,
+                            view_formats: &[],
+                        })
+                        .create_view(&Default::default())
+                    };
+                    let f16 = wgpu::TextureFormat::Rgba16Float;
+                    let views = [tex("dlss colour", f16), tex("dlss diffuse", f16), tex("dlss specular", f16), tex("dlss normal", f16), tex("dlss depth", wgpu::TextureFormat::R32Float), tex("dlss motion", f16), tex("dlss out", f16)];
+                    let mk_in = |p: usize| {
+                        let mut res = vec![g.clone(), acc_a.as_entire_binding(), acc_c.as_entire_binding(), guide[p].as_entire_binding(), sc.parts_buf.as_entire_binding(), sc.motion_buf.as_entire_binding()];
+                        res.extend(views[..6].iter().map(wgpu::BindingResource::TextureView));
+                        bind(d, &dl.l_in, &res)
+                    };
+                    let bg_in = [mk_in(0), mk_in(1)];
+                    let bg_out = bind(d, &dl.l_out, &[g.clone(), wgpu::BindingResource::TextureView(&views[6]), out_px.as_entire_binding(), shown_px.as_entire_binding()]);
+                    dl.per = Some(DlssPer { ctx, views, bg_in, bg_out });
+                }
+                Err(e) => eprintln!("DLSS: not used at {w}x{h}: {e}"),
+            }
+        }
         let t = Targets {
             w,
             h,
@@ -583,6 +696,19 @@ impl Renderer {
         self.n = if reset { spf } else { self.n + spf };
         self.frame = self.frame.wrapping_add(1);
         let temporal = s.temporal && s.denoise;
+        // DLSS, if it is there and wanted: while the picture moves, and for a picture's first samples at rest
+        #[cfg(feature = "dlss")]
+        let use_dlss = self.dlss_on && self.n <= DLSS_UNTIL && self.dlss.as_ref().is_some_and(|d| d.per.is_some());
+        #[cfg(not(feature = "dlss"))]
+        let use_dlss = false;
+        #[allow(unused_mut)]
+        let mut jitter = [0.0f32; 2];
+        #[cfg(feature = "dlss")]
+        if use_dlss && reset {
+            if let Some(per) = self.dlss.as_ref().and_then(|d| d.per.as_ref()) {
+                jitter = per.ctx.suggested_jitter(self.frame, [t.w, t.h]);
+            }
+        }
         let mut mode = 0;
         let mut hist_w = 0.0;
         if temporal {
@@ -619,7 +745,7 @@ impl Renderer {
             reset: reset as u32,
             mode,
             spf,
-            flags: if l.clip.is_some() { 2 } else { 0 } | if s.denoise { 0 } else { 1 } | if self.linear_out { 8 } else { 0 } | if self.power_out { 16 } else { 0 },
+            flags: if l.clip.is_some() { 2 } else { 0 } | if s.denoise { 0 } else { 1 } | if self.linear_out { 8 } else { 0 } | if self.power_out { 16 } else { 0 } | if use_dlss { 32 } else { 0 },
             denoise: if s.denoise { 1.0 } else { 0.0 },
             hist_w,
             max_hist: s.max_hist,
@@ -632,6 +758,8 @@ impl Renderer {
             off: [0, self.top.min(sh.saturating_sub(1))],
             white: self.white,
             pad: 0,
+            jit: jitter,
+            pad2: [0; 2],
         };
         self.last_globals = g;
         self.queue.write_buffer(&self.globals, 0, bytemuck::bytes_of(&g));
@@ -679,7 +807,16 @@ impl Renderer {
             cp.set_bind_group(0, &t.bg_trace[p], &[]);
             cp.dispatch_workgroups(gx, gy, 1);
             self.n_dispatches += 2;
-            if s.denoise {
+            #[cfg(feature = "dlss")]
+            if use_dlss {
+                let dl = self.dlss.as_ref().unwrap();
+                cp.set_pipeline(&dl.p_in);
+                cp.set_bind_group(0, &dl.per.as_ref().unwrap().bg_in[p], &[]);
+                cp.dispatch_workgroups(gx, gy, 1);
+            }
+            if use_dlss {
+                // (its own denoise and its own finishing are DLSS's this frame)
+            } else if s.denoise {
                 cp.set_pipeline(&self.p_pre);
                 cp.set_bind_group(0, &t.bg_pre[p], &[]);
                 cp.dispatch_workgroups(gx, gy, 1);
@@ -690,11 +827,77 @@ impl Renderer {
                 }
                 self.n_dispatches += 1 + ATROUS_PASSES as u64;
             }
-            cp.set_pipeline(&self.p_resolve);
-            cp.set_bind_group(0, &t.bg_resolve[p], &[]);
-            cp.dispatch_workgroups(gx, gy, 1);
+            if !use_dlss {
+                cp.set_pipeline(&self.p_resolve);
+                cp.set_bind_group(0, &t.bg_resolve[p], &[]);
+                cp.dispatch_workgroups(gx, gy, 1);
+            }
         }
         self.n_renders += 1;
+        #[cfg(feature = "dlss")]
+        if use_dlss {
+            use dlss_wgpu::ray_reconstruction::{DlssRayReconstructionRenderParameters, DlssRayReconstructionSpecularGuide};
+            let fresh = self.prev_cam.is_none();
+            let dl = self.dlss.as_mut().unwrap();
+            let adapter = dl.adapter.clone();
+            let first = dl.run == 0 || fresh;
+            dl.run += 1;
+            let per = dl.per.as_mut().unwrap();
+            let v = &per.views;
+            let params = DlssRayReconstructionRenderParameters {
+                diffuse_albedo: &v[1],
+                specular_albedo: &v[2],
+                normals: &v[3],
+                roughness: None,
+                color: &v[0],
+                depth: &v[4],
+                motion_vectors: &v[5],
+                // (what a glossy surface mirrors is taken to move as the surface does)
+                specular_guide: DlssRayReconstructionSpecularGuide::SpecularMotionVectors(&v[5]),
+                transparency_overlay: None,
+                color_before_transparency: None,
+                screen_space_subsurface_scattering_guide: None,
+                depth_of_field_guide: None,
+                responsivity_mask: None,
+                alpha: None,
+                dlss_output_alpha: None,
+                dlss_output: &v[6],
+                reset: first,
+                // (the rays left each pixel at its centre + jitter: the picture is shifted the other way)
+                jitter_offset: [-jitter[0], -jitter[1]],
+                partial_texture_size: None,
+                motion_vector_scale: None,
+            };
+            match per.ctx.render(params, &mut enc, &adapter) {
+                Ok(cmd) => {
+                    let dl = self.dlss.as_ref().unwrap();
+                    let mut after = self.device.create_command_encoder(&Default::default());
+                    {
+                        let mut cp = after.begin_compute_pass(&Default::default());
+                        cp.set_pipeline(&dl.p_out);
+                        cp.set_bind_group(0, &dl.per.as_ref().unwrap().bg_out, &[]);
+                        cp.dispatch_workgroups(gx, gy, 1);
+                    }
+                    self.n_dispatches += 2;
+                    if let Some((view, _, _)) = surface {
+                        self.blit(&mut after, view, true);
+                    }
+                    self.prev_cam = Some(*cam);
+                    return Some(self.queue.submit([enc.finish(), cmd, after.finish()]));
+                }
+                Err(e) => {
+                    // (it has failed: this frame goes without a picture of its own, the next is the tracer's)
+                    eprintln!("DLSS: turned off: {e}");
+                    self.dlss_on = false;
+                }
+            }
+        }
+        #[cfg(feature = "dlss")]
+        if !use_dlss {
+            if let Some(dl) = self.dlss.as_mut() {
+                dl.run = 0;
+            }
+        }
         if let Some((view, _, _)) = surface {
             self.blit(&mut enc, view, true);
         }
