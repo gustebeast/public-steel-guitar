@@ -37,7 +37,6 @@ from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at
 from .test import fit_plate2 as FIT
-from cadkit.joinery import PrintSpec, joint
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
 X_BRIDGE = D.BRIDGE_BASE_X1 - 3 * D.BEAD   # 6.1: +X (bridge) end — the rails end here; the
@@ -86,38 +85,36 @@ TP_GZ0, TP_GZ1 = 0.0, D.DECK_TOP_Z     # deck plate z-plane: bottom rests on the
 # it also ties the rails in Y. The tongue runs along X -> plates still slide out -X.
 # top_plate.py builds the matching tongue; the rail top is lowered to z0 in the deck
 # X-span so the plate sits flush on top.
-TP_TG_DEPTH    = 8 * D.BEAD             # 6.4: the reserved groove ZONE below the deck. The
-                                        # joint itself uses less (see TP_JOINT.height);
-                                        # other geometry keys off this envelope, so it
-                                        # stays the published number.
+TP_TG_DEPTH    = 9 * D.BEAD             # 7.2: the reserved groove ZONE below the deck: the
+                                        # fit-tested tongue stands 6.4 and its groove ends
+                                        # c past it (asserted under _deck_halves); the seam
+                                        # and the upper endplate tenons stop at its floor.
 TP_TG_YC       = {1: Y_HI, -1: Y_LO}   # groove centre = each rail centre-line
-# ── the joint itself is cadkit's, and the PRINT DIRECTION is what picks it ──────
-# Now that a PrintSpec carries an axis AND a direction, this site describes itself. The
-# deck panels print TOP-FACE-DOWN (their leadscrew head pockets open at the bed — see
-# top_plate.HEAD_POCKET_D), so a panel builds world −Z while the chassis builds world +Z.
-# In the joint's own frame — local +Z is the direction the tenon GROWS, i.e. downward off
-# the panel's underside — that reads as tenon facing 'up', mortise facing 'down', and
-# cadkit answers with the flat-top MUSHROOM. That is the right answer for a reason the
-# hand-rolled dovetail got wrong: the rail builds TOWARD the groove's opening, so the
-# cavity's WIDE end is reached first and prints as a supported floor. The dovetail's wide
-# foot was a bridge instead, and its acute plan corners are the same 0.8-nozzle rounding
-# problem that retired the dovetail everywhere else.
-_DECK_UP   = PrintSpec(nozzle=0.8, material="PCTG", facing="up")      # builds world −Z
-_RAIL_DOWN = PrintSpec(nozzle=0.8, material="PETG-GF", facing="down")  # builds world +Z
-TP_TG_W    = 6.4                       # across Y: leaves (T − W)/2 − clearance = 1.65 mm
-                                       # (2 beads) of rail wall per side. Wider than the
-                                       # old 4.6 foot, so the groove's inboard wall — what
-                                       # the rails bear on if they try to spread — gains.
-TP_JOINT   = joint(width=TP_TG_W, length=1.0, tenon=_DECK_UP, mortise=_RAIL_DOWN,
-                   install="+x")       # SIGNED: panels slide in travelling +X and butt the
-                                       # bridge endplate, which IS the stop; they come back
-                                       # out −X once the keyhead endplate is off.
-assert TP_JOINT.height <= TP_TG_DEPTH, (
-    f"deck joint swallows {TP_JOINT.height:.3f} but the reserved groove zone "
-    f"TP_TG_DEPTH is {TP_TG_DEPTH} — deepen the zone or narrow TP_TG_W")
-assert (T - TP_TG_W) / 2 - TP_JOINT.clearance >= D.MIN_WALL_2P, (
-    f"deck groove leaves {(T - TP_TG_W) / 2 - TP_JOINT.clearance:.2f} of rail wall per "
-    f"side, under the {D.MIN_WALL_2P} two-bead tier — narrow TP_TG_W")
+# ── THE DECK JOINT IS THE FIT-TESTED MOUTH-UP PAIR (user, 2026-10-16) ──────────────────
+# The deck panels print TOP-FACE-DOWN (their leadscrew head pockets open at the bed), so the
+# tongue grows toward the nozzle off the panel's underside, and the rail builds +Z toward the
+# groove's opening: joinery step 1's LAYER/LAYER MOUTH-UP pair, sized up to this site (plate 8
+# B: neck 3.2, head 6.4, straight sides 2.4, a flat groove floor, end relief in the groove
+# only). Plate 8 B1, 0.25: "ideal, low friction and wobble". The panel's underside rests on
+# the rail top, so the seat is 0. Built by src/test/fit_plate2.halves until step 4.
+TP_TG_W    = 8 * D.BEAD                # 6.4 across the head
+TP_TG_CLR  = 0.25                      # plate 8 B1
+DECK_FIT   = {"neck": 4 * D.BEAD, "head": TP_TG_W, "side": 3 * D.BEAD}
+_DECK_HOST_W = 10 * D.BEAD             # 8.0 the tongue's root slab, inside the rail's 10.4
+
+
+@functools.lru_cache(maxsize=None)
+def _deck_halves(length, drop=0.0):
+    """(tongue, groove) of the deck joint, `length` along X, in the joint frame (X the slide,
+    Y across, Z down from the panel's underside once _deck_tg turns it over)."""
+    ten, cav, _S = FIT.halves("up", "down", TP_TG_CLR, length, 0.0, _DECK_HOST_W, size=DECK_FIT,
+                              drop=drop)
+    bb = cav.val().BoundingBox()
+    assert bb.zmax <= TP_TG_DEPTH + 1e-6, (
+        "the deck groove reaches %.2f, past the reserved zone TP_TG_DEPTH %.2f" % (bb.zmax, TP_TG_DEPTH))
+    assert (T - 2 * bb.ymax) / 2 >= D.MIN_WALL_2P - 1e-6, (
+        "deck groove leaves %.2f of rail wall per side, under the tier" % ((T - 2 * bb.ymax) / 2))
+    return ten, cav
 
 
 def _deck_tg(yc, x0, x1, mortise):
@@ -125,8 +122,7 @@ def _deck_tg(yc, x0, x1, mortise):
     (the panel's tongue; top_plate calls it). Rotated 180° about X so the joint's local
     +Z points DOWN: the tenon grows off the panel's underside into the rail."""
     L = (x1 - x0) + (2.0 if mortise else 0.0)
-    s = (TP_JOINT.mortise(drop=1.0, length=L) if mortise
-         else TP_JOINT.tenon(root=1.0, length=L))
+    s = _deck_halves(L, 1.0)[1] if mortise else _deck_halves(L)[0]
     return (s.rotate((0, 0, 0), (1, 0, 0), 180)
             .translate((x0 - (1.0 if mortise else 0.0), yc, TP_GZ0)))
 # TOP L-joint X-clearance (housing<->endplate): the chassis rail end stops EP_TOP_CLR

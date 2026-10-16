@@ -362,7 +362,8 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both", L=N
         # face comes down to g
         n_root = None
         if g < c - 1e-9:
-            n_root = S["n"] + rt[1] + 0.05          # a hair past the fillet: room for the full arc
+            n_root = S["n"] + S["root"] + rt[1] + 0.05   # a hair past the fillet (and any root
+                                                         # chamfer it runs off): room for the full arc
             cell = cell.cut(F._box(-1.0, L + 1.0, -n_root, n_root, -1.0, c - g))
         if S["mouth"]:
             m = S["mouth"]
@@ -411,13 +412,15 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both", L=N
     return token, cell, rep
 
 
-def halves(tenon, socket, c, L, g, host_w, size=None, relief="socket"):
+def halves(tenon, socket, c, L, g, host_w, size=None, relief="socket", drop=0.0):
     """The fit-tested joint for an INSTRUMENT site (step 2 of the user's sequence, until it
     moves into cadkit): (tenon, cavity, S), both in the joint frame -- X the slide (0..L),
     Y across, Z the depth from the mating plane (the tenon host's face). The tenon carries
     its host slab 2 * WALL back behind that plane (fused into the real host; host_w must fit
     inside it) with the root fillets in it; the cavity is what the socket host loses, from
-    `g` (where its material starts: its seat, or an assembly standoff) to the cavity's end."""
+    `g` (where its material starts: its seat, or an assembly standoff) to the cavity's end --
+    and `drop` further back across the mating plane, where a socket host that ends exactly
+    there would otherwise be cut coplanar (only where nothing of the tenon's host is behind)."""
     S = dict(shape(tenon, socket, c, size), lead=LEAD)
     S["tip"] = max(z for _y, z in profile(S))
     top = S["tip"] + c + 2 * WALL
@@ -425,6 +428,10 @@ def halves(tenon, socket, c, L, g, host_w, size=None, relief="socket"):
     assert rep["gap"][0] >= min(c, g) - 0.005, "the joint pinches to %.3f" % rep["gap"][0]
     hw = host_w / 2.0
     cavity = F._box(0, L, -hw, hw, 0, top).cut(cell).translate((0, 0, g))
+    if drop:
+        mouth = cavity.val().intersect(F._box(-1.0, L + 1.0, -hw, hw, g, g + 0.01).val())
+        cavity = cavity.union(cq.Workplane("XY").newObject([mouth]).faces("<Z").wires().toPending()
+                              .extrude(-(drop + 0.01)))
     return token, cavity, S
 
 

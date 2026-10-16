@@ -223,11 +223,14 @@ TEN_Y = (-TEN_PITCH / 2.0, 0.0, TEN_PITCH / 2.0)
 
 
 def _top_tenon(ty):
-    """One fused octagon tenon at local y=ty. cadkit's octagon already slides
-    along +X with its roof +Z, which is exactly what this lever wants — no
-    rotation, unlike LKL's."""
-    return (KL._lever_joint(TEN_X1 - TEN_X0).tenon(root=KL.TEN_ROOT)
-            .translate((TEN_X0, ty, HOUS_Z1)))
+    """One fused mount tenon at local y=ty. The joint already slides along +X with
+    its head +Z, which is exactly what this lever wants — no rotation, unlike LKL's.
+    Its root slab is clipped to the housing's Y, so an outer station stays inside."""
+    t = (KL._lever_joint(TEN_X1 - TEN_X0).tenon(root=KL.TEN_ROOT)
+         .translate((TEN_X0, ty, HOUS_Z1)))
+    return t.intersect(box_at(4 * (HOUS_X1 - HOUS_X0), HOUS_HW_N + HOUS_HW_P, 40.0,
+                              x=(HOUS_X0 + HOUS_X1) / 2, y=(HOUS_HW_P - HOUS_HW_N) / 2,
+                              z=HOUS_Z1))
 
 
 def _lever_envelope() -> cq.Workplane:
@@ -304,7 +307,7 @@ def _housing() -> cq.Workplane:
     # steeply once it is past ~44 deg: 17.95 at 44, 26.03 at 56, 33.73 at 63. So the room is
     # swept as far as the roots allow and no further -- measured at 56 deg, against the
     # chassis's 62.6. The last 6.6 deg would cost a tenon root, and the lever is DRIVEN 20.
-    _stem = min(abs(ty) - KL._JW / 4 for ty in TEN_Y if abs(ty) > 1e-9)
+    _stem = min(abs(ty) - KL._J_STEM / 2 for ty in TEN_Y if abs(ty) > 1e-9)
     _x0 = -(KL.ARM_TX / 2 + KL.HS_CLR)
     _x1 = HOUS_X1 + 1.0
     _span = box_at(_x1 - _x0, 2 * _hw + 2.0, 400.0, x=(_x0 + _x1) / 2, y=0.0, z=0.0)

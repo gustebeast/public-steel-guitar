@@ -245,8 +245,8 @@ def _octagon_make():
     """(maker, cell top, host width) for the octagon at its smallest: OCT_W wide, both
     halves layer-made (sharp, printed as drawn), every wall two beads -- the socket's
     sides, and its roof under the number (cut 1.4 deep into a 3.2 roof)."""
-    from src import knee_lever as KL
     from cadkit.joinery import joint
+    KL = F._round1_sites()
     cmax = max(c for c, _b, _r in OCTAGON)
     host_w = OCT_W + 2 * cmax + 2 * WALL
     top = max(joint(OCT_W, F.L, tenon=KL._JUP, mortise=KL._JUP, clearance=c,

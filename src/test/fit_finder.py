@@ -64,8 +64,13 @@ def _round1_sites():
     up = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
     ax = PrintSpec(nozzle=0.8, material="PETG-GF", facing="axial")
     dn = PrintSpec(nozzle=0.8, material="PETG-GF", facing="down")
+    deck = PrintSpec(nozzle=0.8, material="PCTG", facing="up")
+    rail = PrintSpec(nozzle=0.8, material="PETG-GF", facing="down")
     return SimpleNamespace(
-        _UP=up, _SEG_JW=6.4, _SEG_JD=8.0, _SEG_ROOT=3 * D.BEAD,
+        _DECK_UP=deck, _RAIL_DOWN=rail, TP_TG_W=6.4,
+        TP_JOINT=joint(width=6.4, length=1.0, tenon=deck, mortise=rail, install="+x"),
+        _UP=up, _JUP=up, KL_JW=6.6,
+        LEVER_J=lambda L: joint(6.6, L, tenon=up, mortise=up, clearance=0.3), _SEG_JW=6.4, _SEG_JD=8.0, _SEG_ROOT=3 * D.BEAD,
         _SEG_J=joint(width=6.4, length=1.0, depth=8.0, tenon=up, mortise=up, install="-z"),
         _EP_AX=ax, _EP_DN=dn, EP_J_W=6 * D.BEAD, EP_J_ROOT=3 * D.BEAD, EP_TOP_CLR=CH.EP_TOP_CLR,
         _EP_J=joint(width=6 * D.BEAD, length=10.0, tenon=ax, mortise=dn, install="+x",
@@ -447,10 +452,11 @@ def finders():
     out = []
 
     # the deck: a panel's tongue (PCTG, printed deck-down) in a rail-top groove
-    j = CH.TP_JOINT
+    R1 = _round1_sites()
+    j = R1.TP_JOINT
     out.append(Finder(
         "deck", "deck panel tongue <-> rail-top groove",
-        _slide(j, dict(width=CH.TP_TG_W, tenon=CH._DECK_UP, mortise=CH._RAIL_DOWN,
+        _slide(j, dict(width=R1.TP_TG_W, tenon=R1._DECK_UP, mortise=R1._RAIL_DOWN,
                        install="+x"),
                host_w=T, ten_t=8 * D.BEAD, mort_t=T, root=1.0, drop=1.0),
         (j.clearance, j.back_clearance), T + GAP,
@@ -492,11 +498,12 @@ def finders():
 
     # the lever grid: a housing's (or a body adapter's) octagon in a floor mortise, with
     # a whole 3.2 web each side of it
-    j = KL._lever_joint(L)
+    R1 = _round1_sites()
+    j = R1.LEVER_J(L)
     web = D.XBAR - D.LEVER_MORT_W
     out.append(Finder(
         "octagon", "lever housing / body adapter <-> floor mortise (octagon)",
-        _slide(j, dict(width=KL._JW, tenon=KL._JUP, mortise=KL._JUP),
+        _slide(j, dict(width=R1.KL_JW, tenon=R1._JUP, mortise=R1._JUP),
                host_w=D.LEVER_MORT_W + 2 * web, ten_t=6 * D.BEAD,
                mort_t=CH.MB.FLOOR_TOP - CH.Z_BOT, root=1.0, drop=1.0),
         (j.clearance, j.back_clearance), D.LEVER_MORT_W + 2 * web + GAP,
