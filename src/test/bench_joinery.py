@@ -97,8 +97,9 @@ class Coupon(object):
 
 
 # ── the placed instrument the coupons are cut from ──────────────────────────────────
-def components(live=False):
-    """{name: shape} and a line saying where it came from."""
+def components(live=False, own=False):
+    """{name: shape} and a line saying where it came from: the lead's build, this worktree's
+    last `scratch_view --own` build (`own`), or a build run here now (`live`)."""
     if live:
         from src import build as B
         return ({n: (w.val() if hasattr(w, "val") else w) for n, w in
@@ -106,6 +107,14 @@ def components(live=False):
     import json
     from cadkit.scratch import shared_cache, read_brep, MANIFEST
 
+    if own:
+        cache = ROOT / ".scratch_cache"
+
+        class _Own(dict):
+            def __missing__(self, k):
+                self[k] = read_brep(cache / (k + ".brep"))
+                return self[k]
+        return _Own(), "this worktree's own build (.scratch_cache)"
     cache = shared_cache(ROOT)
     man = json.loads((cache / MANIFEST).read_text(encoding="utf-8"))
 
@@ -140,6 +149,14 @@ RAIL_PY, RAIL_MY = 55.0, -131.0     # inboard of each rail's inner face (55.55 /
 GRID_0, GRID_P, GRID_WEB = -618.103, 10.4, 3.6 + 3.2
 LEVER_K = (5, 12)
 
+# the seam at -207.3 sits on a grid wall: stations -212.5 / -202.1 flank it. SEAM_K a side
+# (a housing's eight, four on each section), cut on the far side of the web beyond the last
+SEAM_X, SEAM_K = -207.30345584989846, 4
+SEAM_X0 = SEAM_X - (GRID_P / 2.0 + (SEAM_K - 1) * GRID_P) - GRID_WEB
+SEAM_X1 = SEAM_X + (GRID_P / 2.0 + (SEAM_K - 1) * GRID_P) + GRID_WEB
+SEAM_Y1 = -24.0             # the floor to the housing's station (its tenons end at -27.7)
+MIN_WALL = 0.8
+
 DECK_UNDER = -10.4          # the rail strip: the groove (5.46 deep) on 4.9 of solid rail
 TIE_Z = (DECK_UNDER, DECK_UNDER + 3.2)      # top 1.7 under the grooves' floor
 TIE_W = 8.0
@@ -163,51 +180,61 @@ def _fix_rail_ties(comps):
 Z_BOT, FIN_TOP, FIN_RUN, FIN_T = -81.85, -8.0, 40.0, 4.8
 
 
-def _fix_fin(x0, y_face, inboard):
+def _fix_fin(x0, y_face, inboard, z0=Z_BOT):
     """A buttress for a cut length of RAIL: 82 mm tall and 10.4 thick, it is a wall in
-    the chassis and a reed in a coupon. A triangular fin FIN_T thick, from the bed up the
-    rail's inner face (`y_face`, running `inboard` = +1/-1 in Y), at the end of the piece
-    FURTHEST from its joint, so the walls round the joint flex exactly as the real ones."""
+    the chassis and a reed in a coupon. A triangular fin FIN_T thick, from the bed (or the
+    floor's top, `z0`, where the floor under it is mortised) up the rail's inner face
+    (`y_face`, running `inboard` = +1/-1 in Y), at the end of the piece FURTHEST from its
+    joint, so the walls round the joint flex exactly as the real ones."""
     def fin(_comps):
         y0 = y_face - inboard * 1.0                       # a millimetre into the rail
-        pts = [(y0, Z_BOT), (y_face + inboard * FIN_RUN, Z_BOT), (y0, FIN_TOP)]
+        pts = [(y0, z0), (y_face + inboard * FIN_RUN, z0), (y0, FIN_TOP)]
         return (cq.Workplane("YZ").polyline(pts).close().extrude(FIN_T)
                 .translate((x0, 0, 0)).val())
     return fin
 
 
 COUPONS = [
-    # A. chassis section <-> chassis section: the tee tenon on a section's +X end drops
-    #    (-Z) into the next section's rail. One rail of the two: both are the same joint,
-    #    and their spacing is the same printer error on both parts. Full tenon length
-    #    (64.95), on a foot of real floor so the 82 mm column does not stand alone -- the
-    #    -Y rail, because the floor meets that one directly (a trough runs beside the +Y).
+    # A. chassis section <-> chassis section AND the lever grid across it (user, 2026-10-16:
+    #    "use two pieces both to test the chassis to chassis joint and the knee to chassis"
+    #    -- so the seam is also shown to keep the grid's pitch for a housing that spans it).
+    #    The tee tenon on a section's +X end drops (-Z) into the next section's -Y rail (the
+    #    floor meets that rail directly; a trough runs beside the +Y), at its full length;
+    #    the floor under it is the lever grid, SEAM_K stations a side, from the rail to the
+    #    housing's station. A knee housing slides in along Y across the seam, and a body
+    #    adapter's three ridges in any three of the same mortises. The floor is the foot;
+    #    the rail's fin stands on the floor's top, clear of the mortises under it.
     Coupon("seam_tenon", ["chassis_1"],
-           [(-233.0, _, _, RAIL_MY, _, _), (-233.0, _, _, -106.0, _, FLOOR)],
-           UP_Z, "section seam (tee tenon, drop-in)", fix=_fix_fin(-233.0, -131.55, +1)),
+           [(SEAM_X0, _, _, RAIL_MY, _, _), (SEAM_X0, _, _, SEAM_Y1, _, FLOOR)],
+           UP_Z, "section seam (tee tenon, drop-in) + SEAM_K lever mortises",
+           fix=_fix_fin(SEAM_X0, -131.55, +1, FLOOR)),
     Coupon("seam_mortise", ["chassis_0"],
-           [(_, -175.0, _, RAIL_MY, _, _), (_, -175.0, _, -106.0, _, FLOOR)],
-           UP_Z, "section seam (tee mortise) + the deck groove across the seam",
-           fix=_fix_fin(-175.0 - FIN_T, -131.55, +1)),
+           [(_, SEAM_X1, _, RAIL_MY, _, _), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
+           UP_Z, "section seam (tee mortise), the deck groove across it, SEAM_K lever mortises",
+           fix=_fix_fin(SEAM_X1 - FIN_T, -131.55, +1, FLOOR)),
 
     # B. chassis <-> bridge endplate, +Y corner: the two stacked mushroom tenons the
-    #    endplate drops over, the leg screw through the end wall, and under the floor the
-    #    three mortises a body adapter slides into along Y (their whole 44.8 run).
+    #    endplate drops over and the leg screw through the end wall. (The three floor
+    #    mortises the body adapter takes here are the lever grid's own: A carries them.)
     Coupon("corner_bridge_chassis", ["chassis_0"],
-           [(-38.0, _, RAIL_PY, _, _, _), (-21.5, _, 20.5, _, _, FLOOR)],
-           UP_Z, "endplate tenons (upper + lower), adapter mortises, leg screw",
+           [(-38.0, _, RAIL_PY, _, _, _)],
+           UP_Z, "endplate tenons (upper + lower), leg screw",
            fix=_fix_fin(-38.0, 55.55, -1)),
     Coupon("corner_bridge_endplate", ["bridge_endplate"],
            [(_, _, 45.0, _, _, EP_TOP)],
            DOWN_X, "endplate sockets for both tenons, leg-screw recess + insert pocket"),
+    # the adapter's three ridges (x -17.7..8.7, z -82..-75) on a two-bead slab of its plate:
+    # the rest of the plate (12 thick, and 16 past the last ridge) is the leg's half.
+    # PRINTED RIDGES UP, as the housing's tenons are: the ridge takes the lever's standing
+    # layer/layer profile, which the real adapter's DOWN_Y would make nozzle-wise (open)
     Coupon("corner_adapter", ["body_adapter_1"],
-           [(_, _, _, _, -94.0, _)],
-           DOWN_Y, "adapter ridges (octagon, slide in along Y) + the screw's hole"),
+           [(-17.7 - 2 * MIN_WALL, 8.7 + 2 * MIN_WALL, _, _, -82.0 - 2 * MIN_WALL, _)],
+           UP_Z, "adapter ridges (octagon, slide in along Y): into A's floor mortises"),
 
     # C. chassis <-> keyhead endplate, -Y corner: the same joint printed the other way
     #    up (+X) on the other rail, in the thinner endplate.
     Coupon("corner_keyhead_chassis", ["chassis_2"],
-           [(_, -588.0, _, RAIL_MY, _, _), (_, -591.0, _, -112.0, _, FLOOR)],
+           [(_, -588.0, _, RAIL_MY, _, _)],
            UP_Z, "endplate tenons (upper + lower)", fix=_fix_fin(-588.0 - FIN_T, -131.55, +1)),
     Coupon("corner_keyhead_endplate", ["keyhead_endplate"],
            [(_, _, _, -120.0, _, EP_TOP)],
@@ -345,9 +372,9 @@ BED = 250.0                        # usable of the 256 bed
 # step 3 (user's joinery sequence): the PETG-GF joints at full length, rows by depth
 PLATES = {
     "full_length_1": [
-        ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_keyhead_chassis",
+        ["seam_tenon", "seam_mortise", ("corner_bridge_chassis", "corner_keyhead_chassis"),
          "corner_adapter"],
-        ["lever_floor", ("lever_housing", "corner_bridge_endplate", "corner_keyhead_endplate")],
+        ["lever_housing", ("corner_bridge_endplate", "corner_keyhead_endplate")],
     ],
 }
 
@@ -387,6 +414,8 @@ def main(argv=None):
                     help="write one plate of already-exported coupons, laid out, as one STEP")
     ap.add_argument("--live", action="store_true",
                     help="build the instrument here instead of reading the lead's build")
+    ap.add_argument("--own", action="store_true",
+                    help="read this worktree's last `scratch_view --own` build")
     a = ap.parse_args(argv)
     if a.plate:
         from cadkit.step_export import export_step
@@ -398,7 +427,7 @@ def main(argv=None):
         export_step(cq.Workplane("XY").newObject([cq.Compound.makeCompound([s for _n, s in pcs])]), str(path))
         print("wrote", path)
         return 0
-    comps, where = components(a.live)
+    comps, where = components(a.live, a.own)
     report(comps, where, a.export)
     return 0
 
