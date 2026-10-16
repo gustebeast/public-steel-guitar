@@ -213,9 +213,9 @@ def _cross_x(eps: float, station: float | None = None) -> tuple:
         taken.add(round(g, 6))
         out.append(g)
     return tuple(out)
-STUB_TEN_W = D.LEVER_MORT_W - 0.6   # 6.6 flat-to-flat: THE SAME JOINT the levers use, because
-                               # these ridges ride the same mortises (user). It was 8.0, sized on
-                               # its own; a 7.2 grid mortise cannot take that.
+STUB_TEN_W = 9 * D.BEAD        # 7.2: the ridge's widest (its root slab) -- THE SAME JOINT the
+                               # levers use, because these ridges ride the same mortises (user):
+                               # knee_lever._lever_joint, the fit-tested standing pair
 # The END-WALL TONGUE and its rebate are gone (user, 2026-09-17: see
 # corner_groove_negatives); these numbers survive only as the end-wall check below,
 # which keeps a floor under the LOCK PIN's M4 insert pocket behind where the rebate was.
@@ -236,23 +236,20 @@ TRRS_DX = 5.0                  # the old TRRS axis offset in local x (paired wit
 
 
 def _stub_ridge(length: float = SQ_W) -> cq.Workplane:
-    """One octagon RIDGE as a Y-RUNNING prism (slide axis +y), roof UP,
-    width along x, base (stem plane) at z 0, extruded +y from y 0.
-    cadkit.joinery builds the profile in Y-Z extruded along X; rotate
-    Z(+90) maps the extrusion to +y and the width onto x."""
-    return (_joint(STUB_TEN_W, length, tenon=_UP, mortise=_UP, clearance=0.1)
-            .tenon()
-            .rotate((0, 0, 0), (0, 0, 1), 90))
+    """One RIDGE as a Y-RUNNING prism (slide axis +y), head UP, width along x, mating
+    plane at z 0, extruded +y from y 0: the knee lever's mount tenon, because it rides the
+    same mortises. The joint is built along X; rotate Z(+90) maps it to +y."""
+    from . import knee_lever as _KL
+    assert abs(STUB_TEN_W - _KL._J_HOST_W) < 1e-9, "STUB_TEN_W is not the lever joint's width"
+    return _KL._lever_joint(length).tenon().rotate((0, 0, 0), (0, 0, 1), 90)
 
 
 def _groove(length: float) -> cq.Workplane:
-    """The matching cavity (ridge dilated 0.1/side, the coupon fit),
-    Y-running, roof up, opening DOWNWARD at its base plane (the mortise's
-    stem slit extends 2.1 below it — over the sliding plane that is air).
-    Callers translate it to (ridge x, y0, Z_BOT)."""
-    return (_joint(STUB_TEN_W, length, tenon=_UP, mortise=_UP, clearance=0.1)
-            .mortise()
-            .rotate((0, 0, 0), (0, 0, 1), 90))
+    """The matching cavity (the lever mount's mortise), Y-running, head up, opening
+    DOWNWARD at its base plane (its mouth carried 2.1 below it -- over the sliding plane
+    that is air). Callers translate it to (ridge x, y0, Z_BOT)."""
+    from . import knee_lever as _KL
+    return _KL._lever_joint(length).mortise(drop=2.1).rotate((0, 0, 0), (0, 0, 1), 90)
 
 
 # SERVICE POSITION (user, restored 2026-09-17 on the decoupled foot). To reach what sits over a

@@ -245,8 +245,8 @@ def _octagon_make():
     """(maker, cell top, host width) for the octagon at its smallest: OCT_W wide, both
     halves layer-made (sharp, printed as drawn), every wall two beads -- the socket's
     sides, and its roof under the number (cut 1.4 deep into a 3.2 roof)."""
-    from src import knee_lever as KL
     from cadkit.joinery import joint
+    KL = F._round1_sites()
     cmax = max(c for c, _b, _r in OCTAGON)
     host_w = OCT_W + 2 * cmax + 2 * WALL
     top = max(joint(OCT_W, F.L, tenon=KL._JUP, mortise=KL._JUP, clearance=c,
@@ -298,13 +298,14 @@ def _mushroom_make(base_make):
 
     def make(k, d):
         c, bc = d
-        site = dict(width=CH.EP_J_W, tenon=CH._EP_AX, mortise=CH._EP_DN, install="+x",
-                    standoff=CH.EP_TOP_CLR)
+        R1 = F._round1_sites()
+        site = dict(width=R1.EP_J_W, tenon=R1._EP_AX, mortise=R1._EP_DN, install="+x",
+                    standoff=R1.EP_TOP_CLR)
         h0 = joint(length=F.L, clearance=c, back_clearance=bc, **site).height
         J = joint(length=F.L, clearance=c, back_clearance=bc,
                   depth=h0 - 2 * D.BEAD + WAIST, **site)
         hw = CH.T / 2.0
-        root = CH.EP_J_ROOT
+        root = R1.EP_J_ROOT
         token = F._box(0, F.L, -hw, hw, -10 * D.BEAD, 0).union(J.tenon(root=root, length=F.L))
         so = getattr(J, "standoff", 0.0)
         assert J.height + bc + 4 * D.BEAD <= MUSH_CELL_T + 1e-9, "no room behind the cavity for its number"

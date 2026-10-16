@@ -33,6 +33,7 @@ Both ride adjustment screws so tension is tunable.
 
 from __future__ import annotations
 
+import functools
 import math
 
 import cadquery as cq
@@ -51,7 +52,7 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
                        cut_selftap, seated_m4_insert)
 from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
                         PH_SIDE_H, PH_SIDE_D, PH_TAB_D, PH_PLUG_RUN, PH_PITCH)
-from cadkit.joinery import PrintSpec, joint   # cadkit's one joinery entrypoint
+
 from cadkit.supports import printable_bore
 from cadkit.lazy import lazy
 # the M4 insert helper lives in cadkit/fasteners.py (shared); keep the old local name:
@@ -531,28 +532,60 @@ RIB_PITCH = D.MOTOR_X_STEP          # THE motor pitch. The bottom is a SLAB now,
 BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.2) + a 2.4mm AIR
                                     #   gap (no material between the lever and the body). Raising the axle
                                     #   is equivalent to lowering BODY_Z here; MOUNT_Z tracks it (= -82.55)
-# ── OCTAGON slide-joint (cadkit): cadkit's octagon slides along its extrude axis, so we
-# rotate it 90° about Z — the slide becomes +Y (the knee-DEPTH adjustment) and the roof
-# stays +Z. Both halves print -Z->+Z (facing 'up') -> the octagon family -> self-supporting
-# on BOTH sides. One joint SIZE, two LENGTHS: short TENONS on the housing (its own Y span)
-# and a long RIB MORTISE (the whole knee-depth range).
-MORT_CLR  = 0.3                     # mortise clearance (slide fit)
-# THE JOINT'S BOUNDING BOX IS THE RIB (user, 2026-09-10): the rib (D.XBAR wide) keeps a
-# two-bead wall either side of the MORTISE, and the mortise is the tenon + MORT_CLR, so the
-# tenon's flat-to-flat is what is left. It used to be a flat 8 beads (6.4), which put the
-# 1.6 on the octagon's own shoulder and left the rib 1.7 beside the mortise.
-_JW       = D.XBAR - 2 * D.MIN_WALL_2P - 2 * MORT_CLR   # 6.6 octagon flat-to-flat width.
-#                                    Sized on the MECHANICS (knee-strike
-#                                    pull-out): ~3x the shear area and 2x the retention shoulder of the
-#                                    old 3mm, while the rib keeps ~77% of its section as a sound arch
-#                                    (2mm side columns + 4.2mm top beam). The mortise roof now rises
-#                                    into the harness lanes -- the rib raceways are removed and the
-#                                    cables left colliding for now (a cable-routing pass comes next).
-_JHW      = _JW / 2.0               # octagon half-width in X (after the Z-rotation)
-_JUP      = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
+# ── THE MOUNT JOINT: the fit-tested standing pair (user, 2026-10-16) ──────────────────────
+# Both halves print -Z->+Z with the slide (+Y, the knee-DEPTH adjustment) across the layers:
+# joinery step 1's LAYER/LAYER STANDING pair, sized up to this site (plate 8 A: neck 3.2, head
+# 5.6, straight sides 1.6, the tip cut flat 1.2 under the peak, a root chamfer, end relief in
+# the socket only). Plate 8 A1, 0.20: no wobble, slight friction -- picked because a set of
+# them that still slides at full length is the strongest mount; A2 (0.25) is the fallback the
+# full-length coupon decides on. One joint SIZE, two LENGTHS: short TENONS on the housing (its
+# own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
+# ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
+# until step 4 moves it into cadkit.
+MORT_CLR  = 0.25                    # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
+                                    # already too tight on the mini seam plate, user 2026-10-16)
+LEVER_FIT = {"neck": 4 * D.BEAD, "head": 7 * D.BEAD, "side": 2 * D.BEAD, "root": True,
+             "trunc": 1.2}
+_JW       = LEVER_FIT["head"]       # 5.6 across the head (the joint's widest)
+_JHW      = _JW / 2.0
+_J_STEM   = LEVER_FIT["neck"]       # 3.2 the neck
+_J_HOST_W = 9 * D.BEAD              # 7.2 the tenon's root slab: the neck, its root chamfer and
+                                    # their fillets; clipped to its host where it overhangs
+
+
+class _FitJoint(object):
+    """The mount joint at one slide length, in the joint frame (X the slide, Y across, Z up
+    from the mating plane), with the two calls the callers use."""
+
+    def __init__(self, length):
+        self.length = length
+
+    def tenon(self, root=None):
+        return _lever_halves(self.length)[0]
+
+    def mortise(self, drop=0.0):
+        return _lever_halves(self.length, drop)[1]
+
+
+@functools.lru_cache(maxsize=None)
+def _lever_halves(length, drop=0.0):
+    from .test import fit_plate2 as FIT
+    ten, cav, _S = FIT.halves("up", "up", MORT_CLR, length, 0.0, _J_HOST_W, size=LEVER_FIT,
+                              drop=drop)
+    # the WEB between two mortises is one printed wall, both halves of it: XBAR - the cavity's
+    # width (3.16 at c 0.25). Only at a chassis seam is it split, into two 1.58 halves that the
+    # seam compensation takes further under 1.6 (user, 2026-10-16: "going slightly under our
+    # 1.6mm wall") -- the halves are not walls anywhere else.
+    _web = D.XBAR - 2.0 * cav.val().BoundingBox().ymax
+    assert _web >= D.MIN_WALL_2P - 1e-9, "the mount mortises leave a %.2f web, under the tier" % _web
+    return ten, cav, _S
+
+
 def _lever_joint(length):
-    """The mount joint at a given SLIDE length (Y). MORT_CLR shrinks the tenon for fit."""
-    return joint(_JW, length, tenon=_JUP, mortise=_JUP, clearance=MORT_CLR)
+    """The mount joint at a given SLIDE length (X, before the callers' rotation)."""
+    return _FitJoint(length)
+
+
 MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the -Y rail for slide-in)
 # global mount: MOUNT_X = -501 is itself a rib X in the half-pitch comb, which is what lets
 # the tenon stations be generated on a plain 23 mm walk from the axle. build.py poses the
@@ -573,8 +606,8 @@ MORT_Y0   = -3 * D.BEAD           # -2.4 mortise -Y mouth (opens outboard of the
 # seat's 45° print peak, and where that band's outer edge meets the top face it has to land
 # INSIDE the mount tenon's stem (beside the stem is the rib's lip, not free space). The
 # band's outer edge is the line x + z = (seat radius + wall)·√2, so the top sits where it
-# crosses the stem wall (half-width _JW/4). The whole lever drops by the difference.
-_SEAT_ROOF_Z = (BRG_SEAT_D / 2 + BRG_WALL) * math.sqrt(2.0) - _JW / 4
+# crosses the stem wall (half-width _J_STEM/2). The whole lever drops by the difference.
+_SEAT_ROOF_Z = (BRG_SEAT_D / 2 + BRG_WALL) * math.sqrt(2.0) - _J_STEM / 2
 HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z,
                  max(CHIP_DROP, PCB_WZ - CHIP_DROP) + CEIL_CLR)
                                             # ...and the sensor board, which must stay
@@ -1008,18 +1041,34 @@ def plug_tunnel_y():
 
 
 def _top_tenon(tx):
-    """ONE fused octagon tenon at station tx: cadkit's octagon (slides +X, roof +Z) rotated
-    90° about Z so it slides +Y, mating plane at the housing TOP face (which is the chassis
-    underside), roof rising +Z into the rib above and the root reaching TEN_ROOT down into
-    the prism for a volumetric fuse."""
-    return (_lever_joint(TEN_Y1 - TEN_Y0).tenon(root=TEN_ROOT)
-            .rotate((0, 0, 0), (0, 0, 1), 90)                 # slide axis X -> Y (roof stays +Z)
-            .translate((tx, TEN_Y0, HOUS_Z1)))                # station X, -Y start, mate at the top face
+    """ONE fused mount tenon at station tx: the joint (slides +X, head +Z) rotated 90° about Z
+    so it slides +Y, mating plane at the housing TOP face (which is the chassis underside),
+    head rising +Z into the rib above and its root slab reaching down into the prism for a
+    volumetric fuse. Only the slab and the ROOT CHAMFER are clipped to the housing's X (an
+    edge station's would hang off the edge as a downward ledge); the stem stands flush on the
+    edge and the 45 deg flare overhangs it, whole, as the -X station was designed (2026-09-18).
+    Clipping the whole tenon cut 1.2 off that station's head (user caught it on a coupon)."""
+    t = (_lever_joint(TEN_Y1 - TEN_Y0).tenon(root=TEN_ROOT)
+         .rotate((0, 0, 0), (0, 0, 1), 90)                    # slide axis X -> Y (head stays +Z)
+         .translate((tx, TEN_Y0, HOUS_Z1)))                   # station X, -Y start, mate at the top face
+    return clip_tenon_root(t, TEN_Y1 - TEN_Y0, HOUS_Z1,
+                           (HOUS_X0, HOUS_X1, -2 * HOUS_HW, 2 * HOUS_HW))
+
+
+def clip_tenon_root(t, length, z_mate, xy):
+    """A housing's mount tenon `t` (mating at z_mate) with its root slab and root chamfer
+    kept inside the housing's plan rectangle `xy` = (x0, x1, y0, y1); above the chamfer
+    the tenon is left whole, so an edge station's stem stands flush and its flare overhangs."""
+    x0, x1, y0, y1 = xy
+    z_cut = z_mate + _lever_halves(length)[2]["root"]
+    base = t.intersect(box_at(x1 - x0, y1 - y0, z_cut - (z_mate - 20.0),
+                              x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z_cut + z_mate - 20.0) / 2))
+    top = t.intersect(box_at(2000.0, 2000.0, 40.0, x=0.0, y=0.0, z=z_cut + 20.0))
+    return base.union(top)
 
 
 def rib_mortise(rib_x, y0=None, y1=None):
-    """ONE octagon MORTISE (GLOBAL) for the rib at rib_x: the same cadkit octagon as the tenon
-    but LONG in Y (MORT_Y0..MORT_Y1 = the knee-depth slide range), rotated to slide +Y. Opens at
+    """ONE mount MORTISE (GLOBAL) for the rib at rib_x: the same joint as the tenon but LONG in Y (MORT_Y0..MORT_Y1 = the knee-depth slide range), rotated to slide +Y. Opens at
     the rib bottom (-Z, the mating plane = Z_BOT) and its roof bridges inside the rib. chassis.py
     cuts this into every rib so a lever can mount in ANY bay."""
     # WORLD y range: the caller's, or this station's own by the grid's rule. chassis.py is the
@@ -1157,7 +1206,6 @@ _SEAT_OPEN_HW = max(0.0, _SEAT_RS * math.sqrt(2.0) - HOUS_Z1)   # peak's width a
 # prints self-supporting off the stem, and it lives up inside the chassis mortise anyway.
 # The stations stay a plain walk on the grid PITCH from there, so they still land in mortises;
 # what moved is the phase, and MOUNT_X takes it back out so the render still sits on stations.
-_J_STEM   = _JW / 2.0               # cadkit's octagon parity (stem = width/2 -- _octagon_profile)
 TEN_X_END = HOUS_X0 + _J_STEM / 2.0     # the -X-most station: stem face ON the housing edge
 TEN_X = tuple(TEN_X_END + k * _TEN_PITCH for k in range(40)
               if TEN_X_END + k * _TEN_PITCH <= HOUS_X1 - _JHW
