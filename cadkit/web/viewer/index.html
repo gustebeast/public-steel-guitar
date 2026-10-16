@@ -1564,7 +1564,7 @@
                 marks: '', blank: false, line: '', short: '', depth: null, tmp: new THREE.Matrix4(),
                 stats(s) { nat.short = s.spp + ' samples';
                            nat.line = 'path traced · ' + s.state + ' · ' + nat.short +
-                                      (s.gpu_ms ? ' · ' + s.gpu_ms.toFixed(1) + ' ms a frame' : ''); fpsLine(); } };
+                                      (s.fps ? ' · ' + Math.round(s.fps) + ' fps' : ''); fpsLine(); } };
   // The shell's status line stands where the frame rate does and is longer. In a window
   // too narrow for it beside the title's lines it is said shorter, and not at all rather
   // than over them.
