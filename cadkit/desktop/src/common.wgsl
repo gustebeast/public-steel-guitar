@@ -27,7 +27,7 @@ struct Globals {
   white: f32,       // a float surface: its 1.0 is 80 nits (scRGB), so linear values x the screen's SDR white
   pad: u32,
   jit: vec2f,       // DLSS (flags bit 5) while the picture moves: where in the pixel this frame's rays leave
-  pad2: vec2u,
+  out: vec2u,       // the picture's own size: `size` is what is traced, smaller while DLSS enlarges it (gpu.rs `Upscale`)
 }
 
 struct Guide {

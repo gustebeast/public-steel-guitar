@@ -11,8 +11,8 @@ fn vs(@builtin(vertex_index) i: u32) -> @builtin(position) vec4f {
 @fragment
 fn fs(@builtin(position) pos: vec4f) -> @location(0) vec4f {
   let uv = (pos.xy - vec2f(G.off)) / vec2f(G.surf);
-  let q = min(vec2u(uv * vec2f(G.size)), G.size - 1u);
-  let c = unpack4x8unorm(outp[q.y * G.size.x + q.x]).rgb;
+  let q = min(vec2u(uv * vec2f(G.out)), G.out - 1u);
+  let c = unpack4x8unorm(outp[q.y * G.out.x + q.x]).rgb;
   // (flags bit 3: the surface encodes sRGB itself, so it is handed the linear value)
   if ((G.flags & 8u) != 0u) { return vec4f(select(pow((c + 0.055) / 1.055, vec3f(2.4)), c / 12.92, c <= vec3f(0.04045)) * G.white, 1.0); }
   // (flags bit 4, a screen that decodes a plain 2.4 power: resolve.wgsl has already encoded for it)

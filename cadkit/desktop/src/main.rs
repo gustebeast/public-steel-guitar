@@ -47,6 +47,7 @@ mod door;
 mod gpu;
 mod hdr;
 mod http;
+mod prefs;
 mod scene;
 mod tabs;
 mod wgc;
@@ -54,6 +55,7 @@ mod wgc;
 use app::APP_TITLE;
 use glam::Vec3;
 use gpu::{Camera, Renderer};
+use prefs::Prefs;
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -115,6 +117,12 @@ struct Gfx {
     hold: Duration,
     /// the screen the window was last seen on (see `screen_curve`)
     monitor: Option<String>,
+    info: wgpu::AdapterInfo,
+    /// DLSS here: "ok", or why not -- "build" (built without it), "backend" (not Vulkan), "env" (DESK_DLSS=0),
+    /// "vendor" (not an NVIDIA card), "driver" (the driver or the card does not offer Ray Reconstruction)
+    dlss_why: &'static str,
+    /// a moving frame's time on the card, ms, when the settings leave it to the display's refresh
+    budget_auto: f32,
 }
 
 /// Vulkan on an HDR Windows screen: the picture is decoded with a plain 2.4 power there, so the renderer
@@ -441,6 +449,10 @@ struct App {
     shift: bool,
     /// the window's last un-maximised, un-minimised place: [x, y, w, h]
     place: [i32; 4],
+    /// the graphics settings (prefs.rs)
+    prefs: Prefs,
+    /// the page draws the picture itself (one of the browser's light levels): nothing is traced
+    raster: bool,
 }
 
 fn state_file(args: &Args) -> Option<PathBuf> {
@@ -464,6 +476,17 @@ fn data_root(args: &Args) -> PathBuf {
     }
     let exe = std::env::current_exe().unwrap_or_default();
     exe.parent().and_then(|p| p.parent()).unwrap_or(Path::new(".")).join("data")
+}
+
+/// Where the graphics settings are kept (prefs.rs). The selftest keeps none: it runs on the defaults.
+fn prefs_file(args: &Args) -> Option<PathBuf> {
+    if args.selftest {
+        return None;
+    }
+    if args.url.is_none() {
+        return Some(data_root(args).join("graphics.json"));
+    }
+    Some(std::env::current_exe().ok()?.parent()?.join("desk-graphics.json"))
 }
 
 /// what NVIDIA's DLSS knows this program by
@@ -518,7 +541,10 @@ fn dlss_device(_: &wgpu::Adapter, _: &wgpu::DeviceDescriptor, _: &mut String) ->
 }
 
 /// One way of getting pictures out of the card. Err: why not.
-fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSize<u32>) -> Result<(wgpu::Surface<'static>, wgpu::SurfaceConfiguration, Renderer, String), String> {
+type Made = (wgpu::Surface<'static>, wgpu::SurfaceConfiguration, Renderer, String, wgpu::AdapterInfo, &'static str);
+
+/// `surface`: "auto", "float" or "8bit" (prefs.rs), or DESK_SURFACE's "srgb".
+fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSize<u32>, surface_want: &str) -> Result<Made, String> {
     let mut idesc = wgpu::InstanceDescriptor::new_without_display_handle();
     let mut note = String::new();
     if which == "dx12" {
@@ -562,8 +588,8 @@ fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSiz
     // Vulkan, which gets a FLOAT surface (linear, scaled by the screen's SDR white: screen_curve): Windows shows
     // an 8-bit Vulkan picture on an HDR desktop with a ~2.2 curve at ~0.63 of its white (measured 2026-10-16),
     // which no 8-bit encoding can undo. (DESK_SURFACE=srgb|float|8bit picks one, for finding out.)
-    let want = std::env::var("DESK_SURFACE").unwrap_or_else(|_| if which == "vulkan" { "float".into() } else { String::new() });
-    config.format = match want.as_str() {
+    let want = if surface_want == "auto" { if which == "vulkan" { "float" } else { "" } } else { surface_want };
+    config.format = match want {
         "srgb" => caps.formats.iter().copied().find(|f| f.is_srgb()),
         "float" => caps.formats.iter().copied().find(|f| *f == wgpu::TextureFormat::Rgba16Float),
         _ => None,
@@ -588,12 +614,25 @@ fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSiz
         note += &format!("; {}", r.enable_dlss(&adapter, DLSS_PROJECT));
     }
     let _ = dlss;
+    let why = if r.dlss_ready() {
+        "ok"
+    } else if !cfg!(feature = "dlss") {
+        "build"
+    } else if which != "vulkan" {
+        "backend"
+    } else if std::env::var("DESK_DLSS").is_ok_and(|v| v == "0") {
+        "env"
+    } else if info.vendor != 0x10de {
+        "vendor"
+    } else {
+        "driver"
+    };
     let line = format!("{:?} / {} / driver {}{note}; surface {:?} {:?} (offered: {:?})", info.backend, info.name, info.driver_info, config.format, config.present_mode, caps.formats);
-    Ok((surface, config, r, line))
+    Ok((surface, config, r, line, info, why))
 }
 
 
-fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>) -> (Gfx, String) {
+fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, prefs: &Prefs, proxy: EventLoopProxy<Ev>) -> (Gfx, String) {
     // with_clip_children(false) is REQUIRED: with WS_CLIPCHILDREN the picture under the webview is white
     let app = args.url.is_none();
     let mut attrs = Window::default_attributes().with_title(if app { APP_TITLE } else { "cadkit desk" }).with_inner_size(PhysicalSize::new(1280u32, 800u32)).with_clip_children(false);
@@ -602,7 +641,8 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>
     if let Ok(icon) = winit::window::Icon::from_resource(1, None) {
         attrs = attrs.with_window_icon(Some(icon.clone())).with_taskbar_icon(Some(icon));
     }
-    if args.probe {
+    // (on top only for desktop duplication: the window capture sees the window wherever it stands)
+    if args.probe && !wgc::wanted() {
         attrs = attrs.with_window_level(WindowLevel::AlwaysOnTop);
     }
     let mut said = String::new();
@@ -632,14 +672,17 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>
     let size = window.inner_size();
     // Vulkan first (user, 2026-10-16): the one backend on every platform, and NVIDIA's DLSS through it. On an
     // HDR Windows desktop its picture is encoded to suit (screen_curve); DX12 is the fallback.
-    let order: Vec<&str> = match args.backend.as_deref() {
+    // (--backend, else the settings window's choice, else Vulkan then DX12)
+    let pick = args.backend.clone().or_else(|| (prefs.backend != "auto").then(|| prefs.backend.clone()));
+    let surface_want = std::env::var("DESK_SURFACE").unwrap_or_else(|_| prefs.surface.clone());
+    let order: Vec<&str> = match pick.as_deref() {
         Some("dx12") => vec!["dx12"],
         Some(_) => vec!["vulkan"],
         None => vec!["vulkan", "dx12"],
     };
     let mut got = None;
     for (i, which) in order.iter().enumerate() {
-        match try_backend(&window, which, args, size) {
+        match try_backend(&window, which, args, size, &surface_want) {
             Ok(x) => {
                 got = Some((x, which.to_string()));
                 break;
@@ -648,13 +691,14 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>
             Err(e) => panic!("{which} cannot be used: {e}"),
         }
     }
-    let ((surface, config, mut r, line), backend) = got.unwrap();
+    let ((surface, config, mut r, line, info, dlss_why), backend) = got.unwrap();
     said += &format!("adapter: {line}\n");
     // A MOVING FRAME GETS A THIRD OF THE CARD, not all of it: its samples are fitted to about 36% of the time
     // the display shows a frame for (1.5 ms at 240 Hz, 3 ms at 120, 6 ms at 60). Filling the whole frame bought
     // a little less grain while moving for a card at full power, fans and all, whenever anything moved.
     let hz = window.current_monitor().and_then(|m| m.refresh_rate_millihertz()).unwrap_or(60000) as f32 / 1000.0;
-    r.settings.budget_ms = std::env::var("DESK_BUDGET_MS").ok().and_then(|v| v.parse().ok()).unwrap_or((360.0 / hz.max(1.0)).clamp(1.2, 6.0));
+    let budget_auto = std::env::var("DESK_BUDGET_MS").ok().and_then(|v| v.parse().ok()).unwrap_or((360.0 / hz.max(1.0)).clamp(1.2, 6.0));
+    r.settings.budget_ms = budget_auto;
     said += &format!("display {hz:.0} Hz: a moving frame gets as many samples as the card does in {:.1} ms", r.settings.budget_ms);
 
     // the UI: the page itself in a WebView2 child window over the whole client area, transparent. It is told
@@ -684,7 +728,7 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>
         }
         let _ = strip.focus();
         let hold = Duration::from_secs_f32(2.5 / hz.max(1.0));
-        return with_curve(Gfx { webview: None, strip: Some(strip), ctx, surface, config, r, window, hwnd, backend, hold, monitor: None }, said);
+        return with_curve(Gfx { webview: None, strip: Some(strip), ctx, surface, config, r, window, hwnd, backend, hold, monitor: None, info, dlss_why, budget_auto }, said);
     }
     let mut init = String::from("window.cadkitNative = true;\n");
     if args.selftest {
@@ -717,7 +761,7 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>
     // the keys are the page's: it has the keyboard from the start
     let _ = webview.focus();
     let hold = Duration::from_secs_f32(2.5 / hz.max(1.0));
-    with_curve(Gfx { webview: Some(webview), strip: None, ctx, surface, config, r, window, hwnd, backend, hold, monitor: None }, said)
+    with_curve(Gfx { webview: Some(webview), strip: None, ctx, surface, config, r, window, hwnd, backend, hold, monitor: None, info, dlss_why, budget_auto }, said)
 }
 
 /// A message's kind, for the trace.
@@ -885,6 +929,15 @@ impl App {
         if let Some(u) = v["glb"].as_str() {
             self.fetch_model(u.to_string());
         }
+        if let Some(b) = v["raster"].as_bool() {
+            if self.raster != b {
+                self.raster = b;
+                if let Some(g) = self.gfx.as_mut() {
+                    g.r.invalidate();
+                }
+                self.say(format!("the page {} the picture", if b { "draws" } else { "no longer draws" }));
+            }
+        }
         let Some(g) = self.gfx.as_mut() else { return };
         let mut rigid = true;
         if let Some(m) = nums::<16>(&v["cam"]) {
@@ -953,6 +1006,10 @@ impl App {
         }
         if self.shell.as_ref().is_some_and(|s| s.list) {
             return; // the projects list covers the picture: drawn when the list is put away
+        }
+        if self.raster {
+            self.dirty = false;
+            return; // the page draws the picture (a light level of its own): the card is left alone
         }
         let changed = self.dirty;
         let Some(cam) = self.view.cam.filter(|_| g.r.has_scene()) else {
@@ -1083,6 +1140,39 @@ impl App {
     }
 
     /// The page's status line: said only when it changes, so a picture at rest costs nothing here either.
+    /// What the settings say that can change while running, put into the renderer.
+    fn apply_prefs(&mut self) {
+        let Some(g) = self.gfx.as_mut() else { return };
+        let p = &self.prefs;
+        g.r.set_dlss_on(p.dlss);
+        g.r.set_upscale(p.upscale);
+        if g.r.settings.denoise != p.denoise {
+            g.r.settings.denoise = p.denoise;
+            g.r.invalidate();
+        }
+        g.r.settings.budget_ms = p.budget_ms.unwrap_or(g.budget_auto);
+        g.window.request_redraw();
+        self.touch(false);
+    }
+
+    /// The settings window is told what this program and this card can do, what is set, and what is in use.
+    fn push_gfx(&mut self) {
+        let Some(g) = self.gfx.as_ref() else { return };
+        let s = json!({
+            "prefs": self.prefs.to_json(),
+            "backend": g.backend,
+            "surface": if g.config.format == wgpu::TextureFormat::Rgba16Float { "float" } else { "8bit" },
+            "adapter": g.info.name,
+            "vendor": g.info.vendor,
+            "dlss": g.dlss_why,
+            "size": [g.r.size().0, g.r.size().1],
+            "moving": g.r.moving_size().map(|(w, h)| [w, h]),
+            "budget_auto": g.budget_auto,
+            "budgets": prefs::BUDGETS,
+        });
+        self.eval(&format!("window.viewer&&viewer.native&&viewer.native.gfx&&viewer.native.gfx({s})"));
+    }
+
     fn push_stats(&mut self) {
         let el = self.stat_t.elapsed().as_secs_f64();
         if el < 0.25 {
@@ -1116,6 +1206,18 @@ impl App {
         let t = v["t"].as_str().unwrap_or("");
         if t == "view" {
             return self.on_view(&v);
+        }
+        // the settings window: {t: 'gfx'} asks what there is, {t: 'gfx', set: {...}} changes some of it
+        if t == "gfx" {
+            if v["set"].is_object() {
+                let p = self.prefs.merged(&v["set"]);
+                if p != self.prefs {
+                    self.prefs = p;
+                    self.prefs.save(&prefs_file(&self.args));
+                    self.apply_prefs();
+                }
+            }
+            return self.push_gfx();
         }
         if !self.args.selftest {
             return;
@@ -1515,7 +1617,7 @@ impl App {
             "minimized": g.window.is_minimized(), "maximized": g.window.is_maximized(),
             "renders": g.r.n_renders, "dispatches": g.r.n_dispatches, "presents": self.presents, "status_lines": self.stat_sent, "resizes": self.resizes,
             "foreground": cap::foreground() == g.hwnd, "focus_class": cap::class_name(focus), "focus_is_shell": focus == g.hwnd,
-            "backend": g.backend, "spf_moving": g.r.settings.spf_moving, "spf_still": g.r.settings.spf_still, "budget_ms": g.r.settings.budget_ms,
+            "backend": g.backend, "spf_moving": g.r.settings.spf_moving, "spf_still": g.r.settings.spf_still, "budget_ms": g.r.settings.budget_ms, "upscale": g.r.upscale().name(), "moving_size": g.r.moving_size().map(|(w, h)| [w, h]),
             "spp": g.r.n, "cap": gpu::MAX_SPP,
         })
     }
@@ -1636,13 +1738,14 @@ impl ApplicationHandler<Ev> for App {
         if self.gfx.is_some() {
             return;
         }
-        let (g, said) = init_gfx(event_loop, &self.args, self.proxy.clone());
+        let (g, said) = init_gfx(event_loop, &self.args, &self.prefs, self.proxy.clone());
         g.window.request_redraw();
         if let (Ok(p), s) = (g.window.outer_position(), g.window.inner_size()) {
             self.place = [p.x, p.y, s.width as i32, s.height as i32];
         }
         self.gfx = Some(g);
         self.say(said);
+        self.apply_prefs();
         self.start = Instant::now();
         self.app_start();
     }
@@ -1923,6 +2026,7 @@ fn main() {
         }
         Shell { data, tabs: vec![], active: None, list: true, projects: vec![], titles: HashMap::new(), next_id: 0, top: 0, poll_t: now, switch: None, last_switch: Value::Null, ready: false, pushed: String::new(), note, pshot: None }
     });
+    let prefs = Prefs::load(&prefs_file(&args));
     let mut app = App {
         args,
         proxy: event_loop.create_proxy(),
@@ -1955,6 +2059,8 @@ fn main() {
         ctrl: false,
         shift: false,
         place: [0; 4],
+        prefs,
+        raster: false,
     };
     event_loop.run_app(&mut app).unwrap();
     app.save_session();

@@ -63,7 +63,11 @@
                 text-transform: uppercase; letter-spacing: .06em; }
     .panel .name { color: #e6eaf0; font-weight: 600; word-break: break-all; }
     .panel .dim { opacity: .55; }
-    #sel, #readout, #partsPanel, #secPanel { display: none; }
+    #sel, #readout, #partsPanel, #secPanel, #gfxPanel { display: none; }
+    .gr { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 5px 0 0; }
+    .gr select { background: #121418; border: 1px solid #333842; border-radius: 6px; color: #e6eaf0;
+                 font: inherit; padding: 1px 3px; max-width: 170px; }
+    .gnote { opacity: .55; font-size: 11px; margin: 1px 0 0; }
     #views .btn { padding: 3px 7px; font-size: 11px; }
     #secVal { width: 74px; background: #121418; border: 1px solid #333842; border-radius: 6px;
               color: #e6eaf0; font: inherit; padding: 2px 5px; }
@@ -169,7 +173,7 @@
       <div class="btn" id="bMeasure">measure<span class="k">w</span></div>
       <div class="btn" id="bParts">parts<span class="k">e</span></div>
       <div class="btn" id="bSection">section<span class="k">r</span></div>
-      <div class="btn" id="bLight">light<span class="k">l</span></div>
+      <div class="btn" id="bGfx">graphics<span class="k">g</span></div>
       <div class="btn" id="bUndo">undo<span class="k">z</span></div>
       <div class="btn" id="bRedo">redo<span class="k">x</span></div>
       <div class="btn" id="bShowAll" style="display:none">show all<span class="k">t</span></div>
@@ -185,6 +189,7 @@
     </div>
     <div class="panel" id="sel"></div>
     <div class="panel" id="readout"></div>
+    <div class="panel" id="gfxPanel"></div>
     <div class="panel" id="partsPanel">
       <input id="pfilter" placeholder="filter parts…" spellcheck="false">
       <div id="plist"></div>
@@ -222,8 +227,11 @@
   // own, and sets window.cadkitNative before any of this runs. The page is then still
   // the whole of the UI: it loads the model, picks and measures on it as ever, and says
   // what the picture is of (nativeState). But it DRAWS NO MODEL: its canvas is clear but
-  // for its own marks, the selection tint and the measure marks. In a browser NATIVE is
-  // false and nothing here is any different.
+  // for its own marks, the selection tint and the measure marks -- unless one of the
+  // browser's own light levels is chosen in the graphics settings (`quality` < 3): then it
+  // draws the model as a browser does, over an opaque backdrop, and the shell traces
+  // nothing (`raster` in nativeState). In a browser NATIVE is false and nothing here is
+  // any different.
   const NATIVE = !!(window.cadkitNative && window.ipc);
   // The page of ONE PROJECT AMONG SEVERAL on cadkit's local server (see TABS, below) is at
   // <server>/p/<key>/. Anywhere else (a published folder, the desktop app) TABKEY is null.
@@ -1267,7 +1275,7 @@
       case 'z': undo(); return;
       case 'x': undo(true); return;
       case 't': showAll(); return;
-      case 'l': setQuality(quality + 1, true); return;
+      case 'g': gfxToggle(); return;
     }
     const p = keyToPedal[e.key]; if (!p || e.repeat) return;
     held.add(p); syncUI();
@@ -1346,9 +1354,15 @@
   let quality = 2, autoQuality = true, composer = null, gtao = null;
   let lightDirty = true, lastSig = 0, slowFor = 0, settledAt = Infinity, traced = false;
   function setQuality(q, manual = false) {
-    if (NATIVE) q = 0;                                           // the shell's picture is the one level there
     quality = (q + LIGHT.length) % LIGHT.length;
-    if (quality === 3 && !rt.ok) quality = manual ? 0 : 2;       // no tracer behind this page
+    // (in the desktop app the top level is the shell's own path tracer)
+    if (quality === 3 && !NATIVE && !rt.ok) quality = manual ? 0 : 2;   // no tracer behind this page
+    if (NATIVE) {                                                // the page draws the picture itself, or the shell does
+      const own = quality < 3;
+      scene.background = own ? BACKDROP : null;
+      renderer.setClearColor(0x000000, own ? 1 : 0);
+      if (own) renderer.setClearColor(BACKDROP, 1);
+    }
     if (manual) autoQuality = false;
     const sh = quality >= 1;
     if (renderer.shadowMap.enabled !== sh) {
@@ -1376,7 +1390,75 @@
     if (quality === 3) fetchJSON('trace.json?warm=1');           // have it ready
     else { rtDrop(); traced = false; }                           // a traced picture belongs to its level
     fpsLine();                                                   // said now, not at the next second
-    $('bLight').title = 'lighting: ' + LIGHT[quality] + (autoQuality ? ' (drops by itself under 60 fps)' : '');
+    if (gfx.open) gfxDraw();
+  }
+
+  // ── the graphics settings ──────────────────────────────────────────────────────────
+  // One window for every way the picture is made. The browser has its own light levels;
+  // the desktop app's tracer has the rest -- DLSS, its enlarging, its own denoiser, a
+  // moving frame's time on the card, the graphics API, the surface -- asked for and set
+  // through the shell (viewer.native.gfx; desktop/src/prefs.rs keeps them between runs).
+  // What this client cannot do is greyed, and says why when pointed at.
+  const gfx = { open: false, info: null };
+  const UPSCALE = [['off', 'off (full size)'], ['quality', 'quality (1.5x)'], ['balanced', 'balanced (1.7x)'],
+                   ['performance', 'performance (2x)'], ['ultra', 'ultra performance (3x)']];
+  const escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  function dlssWhy(i) {
+    if (!NATIVE) return 'only in the desktop app';
+    if (!i) return 'asking the desktop app…';
+    switch (i.dlss) {
+      case 'ok': return '';
+      case 'build': return "this desktop app was built without DLSS (NVIDIA's DLSS SDK was not on the machine that built it)";
+      case 'backend': return 'DLSS runs on Vulkan: set the graphics API to Vulkan or auto, and start the app again';
+      case 'env': return 'turned off for this run (DESK_DLSS=0)';
+      case 'vendor': return 'DLSS needs an NVIDIA RTX card; this one is ' + i.adapter;
+      default: return 'the driver for ' + i.adapter + ' does not offer DLSS Ray Reconstruction';
+    }
+  }
+  // EVERY SETTING IS A SELECTOR THAT CAN ALWAYS BE OPENED (user, 2026-10-16): what is set
+  // is shown, and each alternative this client cannot have is greyed in the list, saying
+  // why when pointed at -- a selector is never greyed as a whole.
+  function gfxDraw() {
+    const i = gfx.info, p = i && i.prefs, out = ['<h4>graphics</h4>'];
+    const deskWhy = NATIVE ? (i ? '' : 'asking the desktop app…') : 'only in the desktop app';
+    const row = (label, k, opts, val, note) => out.push(
+      `<div class="gr"><span>${label}</span><select data-k="${k}">` +
+      opts.map(([v, t, why]) => `<option value="${v}"${String(v) === String(val) ? ' selected' : ''}` +
+                                (why ? ` disabled title="${escH(why)}"` : '') + `>${t}</option>`).join('') +
+      '</select></div>' + (note ? `<div class="gnote">${note}</div>` : ''));
+    // lighting: the browser's own levels anywhere; the top one is a tracer, the shell's or the server's
+    const traceWhy = NATIVE || rt.ok ? '' : 'no tracer behind this page';
+    row('lighting', 'light', [...LIGHT.slice(0, 3).map((t, k) => [k, t, '']), [3, NATIVE ? 'path traced' : LIGHT[3], traceWhy]], quality,
+        NATIVE && quality < 3 ? 'drawn by the page, as in a browser: the path tracer rests' : '');
+    // the denoiser of the traced picture: DLSS while it moves (where the card has it), or the tracer's own, or none
+    const dw = dlssWhy(i), den = !NATIVE ? 'own' : !p ? 'own' : p.dlss && !dw ? 'dlss' : p.denoise ? 'own' : 'none';
+    row('denoising', 'denoiser', [['dlss', 'DLSS ray reconstruction', dw], ['own', 'edge-aware filter (built in)', ''], ['none', 'none', deskWhy]], den,
+        NATIVE && dw && i ? 'DLSS: ' + escH(dw) : '');
+    // DLSS's enlarging while the picture moves
+    const uw = dw || (den !== 'dlss' ? 'upscaling is done by DLSS: choose DLSS ray reconstruction for denoising' : '');
+    row('upscaling', 'upscale', UPSCALE.map(([v, t]) => [v, t, v === 'off' ? '' : uw]), p && !uw ? p.upscale : 'off',
+        !uw && i.moving && p.upscale !== 'off' ? `traced at ${i.moving[0]}×${i.moving[1]} while moving, ${i.size[0]}×${i.size[1]} at rest` : '');
+    const bud = [['auto', i ? `auto (${i.budget_auto.toFixed(1)} ms)` : 'auto', ''], ...(i ? i.budgets : [1.5, 3, 6, 12]).map(m => [m, m + ' ms', deskWhy])];
+    row('card time a moving frame', 'budget_ms', bud, p ? p.budget_ms : 'auto');
+    // the two that take effect when the app is next started
+    const next = (want, now) => want !== now ? ' · changes when the app is next started' : '';
+    const api = p && (p.backend === 'auto' ? 'vulkan' : p.backend), names = { vulkan: 'Vulkan', dx12: 'DX12' };
+    const apis = [['auto', 'auto (Vulkan, else DX12)', deskWhy], ['vulkan', 'Vulkan', deskWhy], ['dx12', 'DX12', deskWhy]];
+    if (!NATIVE) apis.unshift(['webgl', 'WebGL (this browser)', '']);
+    row('graphics API', 'backend', apis, NATIVE ? (p ? p.backend : 'auto') : 'webgl',
+        i ? `in use: ${names[i.backend] || i.backend} on ${escH(i.adapter)}` + next(api, i.backend) : '');
+    const srf = p && (p.surface === 'auto' ? (api === 'vulkan' ? 'float' : '8bit') : p.surface);
+    const outs = [['auto', 'auto', deskWhy], ['float', 'float (exact on HDR)', deskWhy], ['8bit', '8-bit', deskWhy]];
+    if (!NATIVE) outs.unshift(['browser', 'the browser\'s', '']);
+    row('output', 'surface', outs, NATIVE ? (p ? p.surface : 'auto') : 'browser',
+        i ? `in use: ${i.surface === 'float' ? 'float' : '8-bit'}` + next(srf, i.surface) : '');
+    $('gfxPanel').innerHTML = out.join('');
+  }
+  function gfxToggle(open = !gfx.open) {
+    gfx.open = open;
+    $('gfxPanel').style.display = open ? 'block' : 'none';
+    $('bGfx').classList.toggle('on', open);
+    if (open) { gfxDraw(); if (NATIVE) window.ipc.postMessage(JSON.stringify({ t: 'gfx' })); }
   }
 
   // ── ray tracing ──────────────────────────────────────────────────────────────────
@@ -1562,6 +1644,9 @@
   // time one has been loaded (the shell fetches the same file).
   const nat = { all: true, glb: '', cam: [], hidden: '', sel: null, clip: '', pose: {}, quiet: 0, env: null,
                 marks: '', blank: false, line: '', short: '', depth: null, tmp: new THREE.Matrix4(),
+                // (the light level kept by the shell is taken once, when it first answers)
+                gfx(i) { gfx.info = i; if (!gfx.took) { gfx.took = true; if (i.prefs.light !== quality) setQuality(i.prefs.light, true); }
+                         if (gfx.open) gfxDraw(); },
                 stats(s) { nat.short = s.spp + ' samples';
                            nat.line = 'path traced · ' + s.state + ' · ' + nat.short +
                                       (s.fps ? ' · ' + Math.round(s.fps) + ' fps' : ''); fpsLine(); } };
@@ -1601,6 +1686,7 @@
     // and every pose sent starts the picture again. So a part is sent while it moves by
     // something a pixel could show (a hundredth of a millimetre at arm's length, scaled
     // with the view), and once more, exactly, when the rig has gone quiet.
+    if (all || nat.raster !== (quality < 3)) { nat.raster = quality < 3; m.raster = nat.raster; }   // the page draws it
     if (all) nat.pose = {};
     const tol = Math.max(0.01, 2e-5 * far), exact = nat.quiet === 3;
     let moved = false, owed = false;
@@ -1661,7 +1747,8 @@
     for (const o of model) o.visible = true;
   }
   function drawFrame() {
-    if (NATIVE) return nativeFrame();
+    if (NATIVE && quality === 3) return nativeFrame();
+    if (NATIVE && M.parts) nativeState();                // (the shell is told it rests, and keeps up with the view)
     let changed = false;
     if (quality >= 1 && M.parts) {
       const sig = rigSignature();
@@ -1677,11 +1764,25 @@
   }
   // called once a second with the measured rate
   function govern(fps, now) {
-    if (!autoQuality || quality === 0 || document.hidden || now < settledAt) { slowFor = 0; return; }
+    if (!autoQuality || NATIVE || quality === 0 || document.hidden || now < settledAt) { slowFor = 0; return; }
     if (fps >= 57) { slowFor = 0; return; }
     if (++slowFor >= 2) setQuality(Math.min(quality, 3) - 1);
   }
-  $('bLight').onclick = () => setQuality(quality + 1, true);
+  $('bGfx').onclick = () => gfxToggle();
+  $('gfxPanel').addEventListener('change', e => {
+    const k = e.target.dataset.k, el = e.target;
+    if (!k) return;
+    if (k === 'light') {
+      setQuality(+el.value, true);
+      if (NATIVE) window.ipc.postMessage(JSON.stringify({ t: 'gfx', set: { light: quality } }));   // kept by the shell
+      return;
+    }
+    if (!NATIVE) return;                                 // (in a browser the rest has the one choice it can have)
+    const v = k === 'budget_ms' && el.value !== 'auto' ? +el.value : el.value;
+    // (the denoiser is two of the shell's settings: DLSS while moving, the tracer's own at rest)
+    const set = k === 'denoiser' ? { dlss: v === 'dlss', denoise: v !== 'none' } : { [k]: v };
+    window.ipc.postMessage(JSON.stringify({ t: 'gfx', set }));   // the shell answers with all of it
+  });
 
   // ── the axis views ───────────────────────────────────────────────────────────────
   // look along a CAD direction, from that side: "+Z" is the view from above
@@ -1981,7 +2082,7 @@
   const fpsEl = $('fps');
   let fpsNow = 0;
   function fpsLine() {                                  // also said at once when tracing starts or ends
-    if (NATIVE) { nativeLine(); return; }
+    if (NATIVE && quality === 3) { nativeLine(); return; }
     fpsEl.textContent = quality === 3 && (traced || rt.shown)
         ? 'ray traced · ' + rt.n + ' samples in ' + (rt.ms / 1000).toFixed(2) + ' s'
         : Math.round(fpsNow) + ' fps · ' + renderer.info.render.calls + ' draws · ' +
@@ -2040,9 +2141,10 @@
                     draw() { renderer.info.reset(); drawFrame(); return traced; }, M, meas, pickAt, snapAt, setHidden, setMode,
                     measureClick, between, showAll, get selection() { return selection; },
                     select(names) { selection = names.flatMap(n => M.byName.has(n) ? M.units.get(M.byName.get(n).unit) : []); drawSelection(); },
-                    selAction, loadGeo, toPx, NATIVE, native: nat };
-  if (NATIVE) { $('bLight').style.display = 'none'; addEventListener('resize', fpsLine); }
-  setQuality(quality);
+                    selAction, loadGeo, toPx, NATIVE, native: nat, gfx };
+  if (NATIVE) addEventListener('resize', fpsLine);
+  setQuality(NATIVE ? 3 : quality);
+  if (NATIVE) window.ipc.postMessage(JSON.stringify({ t: 'gfx' }));   // the kept light level (nat.gfx)
   init();
   requestAnimationFrame(tick);
   </script>
