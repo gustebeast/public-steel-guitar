@@ -46,9 +46,9 @@ def _from(pick):
 PAIRS = [
     ("lever", "up", "up", _from(0.20), {"lead": P2.LEAD, "relief": "socket", "size": LEVER}),
     ("deck", "up", "down", _from(0.25), {"lead": P2.LEAD, "relief": "socket", "size": DECK}),
-    ("rail_end", "N", "down", _from(CH.KH_DT_CLR),
+    ("rail_end", "N", "down", _from(0.30),
      {"lead": P2.LEAD, "relief": "socket", "seat": (CH.EP_TOP_CLR,) * 3, "row": 1}),
-    ("seam", "N", "N", _from(CH._SEG_CLR), {"seat": (0.0,) * 3, "row": 1}),
+    ("seam", "N", "N", _from(0.35), {"seat": (0.0,) * 3, "row": 1}),
 ]
 
 
