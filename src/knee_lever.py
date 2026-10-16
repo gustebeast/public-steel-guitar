@@ -2571,8 +2571,22 @@ def _housing(right=False) -> cq.Workplane:
     # ordering is what makes the +X-most station come out "minimal" on its own: the
     # lever-room sweep below runs the full tenon height now, so it takes that tenon's
     # middle with it and leaves only the two cheek-wall stubs.
+    # ...and a tenon the roof closure would undercut gives up that whole stretch of itself
+    # (user, 2026-10-16: "we need to cut out the tenon"): the 45 deg cut meeting the
+    # tenon's own flares leaves a downward V, an island that starts in mid air -- 11.9 mm
+    # of it along the +X station. Taken square across the tenon over every Y the cut
+    # reaches it, so what stays is the cheek stubs, standing on solid prism.
+    _roof = roof_cut().val()
+    _over = _roof.intersect(box_at(800.0, 800.0, 100.0, z=HOUS_Z1 + 50.0).val())   # above the
+    # mating plane only: the root slab below it is buried in the prism and cut like it
     for _tx in TEN_X:
-        w = w.union(_top_tenon(_tx))
+        _t = _top_tenon(_tx)
+        _hit = _t.val().intersect(_over)
+        if _hit.Volume() > 1e-6:
+            _hb, _tb = _hit.BoundingBox(), _t.val().BoundingBox()
+            _t = _t.cut(box_at(_tb.xlen + 2.0, _hb.ylen, _tb.zlen + 2.0,
+                               x=_tb.center.x, y=_hb.center.y, z=_tb.center.z))
+        w = w.union(_t)
     _room = lever_room()        # built once: 31 unions is not free
     w = w.cut(_room)            # the lever's own sweep, and nothing else
     # BEARING SEATS (user): Ø8.1 pockets for the MR85ZZ pair, opening
@@ -2601,7 +2615,7 @@ def _housing(right=False) -> cq.Workplane:
     w = cut_insert_bore(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0),
                         STOP_BORE_END - (STOP_ANCHOR_X + M4.insert_depth),
                         reason="knee lever travel stop", print_up=PRINT_UP)
-    w = heal(w.cut(roof_cut()))
+    w = heal(w.cut(_roof))
     return w.mirror("YZ") if right else w
 
 
@@ -2621,6 +2635,10 @@ def roof_cut() -> cq.Workplane:
         outer gable meets it (z_ch), but it can only reach in OVER the room, so its base is the
         higher of that and the room's crown: the hub band's arc, and past the fold's tangent
         point the straight face the arm's +X side sweeps at STORAGE. Carried in along (0, -+1, 1).
+        BUT THE BEARING SEAT RUNS OUT THROUGH THE CHEEK as a teardrop (cut_axle_stack), so
+        over the hub the cheek is not solid from the crown: it is solid from the teardrop's
+        roof. The base is the higher of the two there, or the crown's middle is founded on a
+        hole (the layer check found it: 0.37 mm2 starting in air at the crown's top).
       * the -X END: the crown's own 45 deg point (the crown is self-supporting below it), raised
         to the pocket gables where they stand higher. Carried +X along (1, 0, 1).
       * the +X end gives nothing: it is the open knee face.
@@ -2647,12 +2665,22 @@ def roof_cut() -> cq.Workplane:
     g = (cq.Workplane("XZ").moveTo(xt, lo).lineTo(xt, -xt)
          .threePointArc((0.0, r), (xf, zf)).lineTo(x_ch, z_ch).lineTo(xe, z_ch)
          .lineTo(xe, lo).close())
-    gf = cq.Face.makeFromWires(g.wire().val())
+    # the seat teardrop through the cheek, down to lo (printable_bore: 45 flanks off the
+    # circle, the tip dulled to a nozzle-wide flat)
+    rb, nz = BRG_SEAT_D / 2.0, 0.8
+    ztd, xtd = rb * s2 - nz / 2.0, rb / s2
+    td = (cq.Workplane("XZ").moveTo(-rb, lo).lineTo(-rb, 0.0)
+          .threePointArc((-rb * math.cos(math.pi / 8), rb * math.sin(math.pi / 8)), (-xtd, xtd))
+          .lineTo(-nz / 2.0, ztd).lineTo(nz / 2.0, ztd).lineTo(xtd, xtd)
+          .threePointArc((rb * math.cos(math.pi / 8), rb * math.sin(math.pi / 8)), (rb, 0.0))
+          .lineTo(rb, lo).close())
+    gf = cq.Face.makeFromWires(g.wire().val()).fuse(cq.Face.makeFromWires(td.wire().val())).clean()
     reach = 2 * rhw + 4.0
     cut = cq.Solid.makeBox(xe - xt, 2 * rhw, 2 * -lo, cq.Vector(xt, -rhw, lo))
     for side in (1.0, -1.0):
-        cut = cut.intersect(cq.Solid.extrudeLinear(gf.translate((0, side * rhw, 0)),
-                                                   cq.Vector(0, -side * reach, reach)))
+        _e = [cq.Solid.extrudeLinear(f, cq.Vector(0, -side * reach, reach))
+              for f in gf.translate((0, side * rhw, 0)).Faces()]
+        cut = cut.intersect(_e[0].fuse(*_e[1:]) if len(_e) > 1 else _e[0])
     # the -X end: base F(y) in YZ -- the crown's 45 point, up over the pocket gables
     zt = -xt
     half = [(yi + (zt - zp), zt), (HS_YC - ROOF_FLAT / 2.0, pk), (HS_YC + ROOF_FLAT / 2.0, pk),
