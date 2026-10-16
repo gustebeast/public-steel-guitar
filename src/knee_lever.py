@@ -2601,8 +2601,69 @@ def _housing(right=False) -> cq.Workplane:
     w = cut_insert_bore(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0),
                         STOP_BORE_END - (STOP_ANCHOR_X + M4.insert_depth),
                         reason="knee lever travel stop", print_up=PRINT_UP)
-    w = heal(roof_close(w, _room))
+    w = heal(w.cut(roof_cut()))
     return w.mirror("YZ") if right else w
+
+
+def roof_cut() -> cq.Workplane:
+    """THE CLOSURE OVER THE LEVER ROOM AS A HANDFUL OF CLEAN CUTS (user, 2026-10-16: the layer
+    sweep "should be a tool we use when making significant design changes ... not what we use
+    for every build"; clean geometry over the last bit of material; nothing over 0.8 bridged).
+    roof_close is that tool -- it found the target, this reproduces it.
+
+    A POINT OVER THE ROOM STAYS IF ANY WALL CAN REACH IT AT 45, so the cut is the room's
+    footprint under ALL the walls' 45 deg surfaces at once -- one surface per wall, each the
+    wall's own BASE (where it is solid) carried into the room at 45. A single slanted plane
+    would take what a differently-facing wall could have held (user); intersecting them keeps
+    each wall's share:
+
+      * the two CHEEKS (the room's +-Y faces). Each is solid from where the cartridge pocket's
+        outer gable meets it (z_ch), but it can only reach in OVER the room, so its base is the
+        higher of that and the room's crown: the hub band's arc, and past the fold's tangent
+        point the straight face the arm's +X side sweeps at STORAGE. Carried in along (0, -+1, 1).
+      * the -X END: the crown's own 45 deg point (the crown is self-supporting below it), raised
+        to the pocket gables where they stand higher. Carried +X along (1, 0, 1).
+      * the +X end gives nothing: it is the open knee face.
+
+    No floor: inside the footprint, below these surfaces, is the room or material hanging into
+    it (the web between the pockets past the fold face), which has to go anyway. Against the
+    sweep (LKL): one solid, 23 faces, 0.1 s against minutes, 1582 mm3 off where the sweep took
+    1352 -- 0.3% of the housing for no staircase -- and no flat ceiling wider than one bead."""
+    s2 = math.sqrt(2.0)
+    r = HUB_D / 2 + HS_CLR                          # the room's crown: the hub band
+    rhw = LEVER_HW + HS_CLR                         # the room's half-width: the cheeks' faces
+    xt = -r / s2                                    # the crown's 45 deg point, -X side
+    a = math.radians(STORAGE)                       # the fold carries the arm's +X face to here:
+    xf, zf = r * math.cos(a), r * math.sin(a)       #   its tangent point on the crown...
+    run = math.tan(a)                               #   ...and its run per unit fall beyond it
+    zp = HS_CART_Z1 + HS_CLR + _FEEL_DZ             # the cartridge pockets' box top
+    yo, yi = HS_YC + hs_pocket_hw(), HS_YC - hs_pocket_hw()     # their outer / inner walls
+    pk = zp + hs_pocket_hw() - ROOF_FLAT / 2.0      # their gable's flat
+    z_ch = zp + (yo - rhw)                          # a cheek is solid from here at its face
+    x_ch = xf + (zf - z_ch) * run                   # where the fold face comes down to it
+    xe, lo = HOUS_X1 + 1.0, -40.0
+    assert xt < 0.0 < xf < x_ch < HOUS_X1, "the crown / fold / cheek bases are out of order"
+    # the cheeks: base G(x) in XZ, carried in at 45 from each face
+    g = (cq.Workplane("XZ").moveTo(xt, lo).lineTo(xt, -xt)
+         .threePointArc((0.0, r), (xf, zf)).lineTo(x_ch, z_ch).lineTo(xe, z_ch)
+         .lineTo(xe, lo).close())
+    gf = cq.Face.makeFromWires(g.wire().val())
+    reach = 2 * rhw + 4.0
+    cut = cq.Solid.makeBox(xe - xt, 2 * rhw, 2 * -lo, cq.Vector(xt, -rhw, lo))
+    for side in (1.0, -1.0):
+        cut = cut.intersect(cq.Solid.extrudeLinear(gf.translate((0, side * rhw, 0)),
+                                                   cq.Vector(0, -side * reach, reach)))
+    # the -X end: base F(y) in YZ -- the crown's 45 point, up over the pocket gables
+    zt = -xt
+    half = [(yi + (zt - zp), zt), (HS_YC - ROOF_FLAT / 2.0, pk), (HS_YC + ROOF_FLAT / 2.0, pk),
+            (yo - (zt - zp), zt), (rhw + 1.0, zt)]
+    assert 0.0 < half[0][0] and half[3][0] < rhw, "the pocket gables no longer rise inside the room"
+    prof = [(-y, z) for y, z in reversed(half)] + [(0.0, zt)] + half
+    f = cq.Workplane("YZ").polyline([(-(rhw + 1.0), lo)] + prof + [(rhw + 1.0, lo)]).close()
+    ff = cq.Face.makeFromWires(f.wire().val()).translate((xt, 0, 0))
+    run_x = xe - xt + 2.0
+    cut = cut.intersect(cq.Solid.extrudeLinear(ff, cq.Vector(run_x, 0, run_x)))
+    return cq.Workplane("XY").add(cut)
 
 
 def roof_close(w, *rooms, z_top=None, align=None, step=None):
