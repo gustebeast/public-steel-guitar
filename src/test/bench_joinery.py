@@ -215,7 +215,14 @@ def compensate(shape, side, e=SEAM_COMP):
 HOUS_Z1_W, TEN_ROOT_CH = -81.85, 0.8         # the mating plane: the chassis underside
 _MINI_S3 = HOUS_S0 + 3 * GRID_P
 _R3_S7 = HOUS_S0 + 7 * GRID_P
-R3_HOUS = [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, _, HOUS_TEN_Y0 + 36.4 + 0.05, -86.4, _),
+# ROUND 3 IS TWO BEADS EACH SIDE OF THE JOINT (user, 2026-10-16: "only 1.6mm of material on
+# top of the mortises and below the tenons"): the floor stops MIN_WALL_2P over the lever
+# mortises' roof (-73.906, measured on chassis_0), the housing's deck MIN_WALL_2P under the
+# mating plane. The instrument's own floor cap goes to 1.6 with BOTTOM_T (lead, same day).
+R3_MORT_TOP = -73.906
+R3_FLOOR = R3_MORT_TOP + 2 * 0.8
+R3_HOUS = [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, _, HOUS_TEN_Y0 + 36.4 + 0.05,
+            HOUS_Z1_W - 2 * 0.8, _),
            (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, _, HOUS_TEN_Y0 + 36.4 + 0.05,
             HOUS_Z1_W + TEN_ROOT_CH, _)]
 MINI_HOUS = [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, HOUS_TEN_Y0 + MINI_L, -86.4, _),
@@ -321,10 +328,10 @@ COUPONS = [
     # ROUND 3 (user, 2026-10-16): "test the full 8 mortise/tenons and the full 36.4mm length" --
     # SEAM_K stations a side on a floor one tenon length long, the rail still the mini's stub
     Coupon("r3_seam_tenon", ["chassis_1"],
-           [(STUB_TEN_X0, _, _, RAIL_MY, _, MINI_TOP), (SEAM_X0, _, _, SEAM_Y1, _, FLOOR)],
+           [(STUB_TEN_X0, _, _, RAIL_MY, _, MINI_TOP), (SEAM_X0, _, _, SEAM_Y1, _, R3_FLOOR)],
            UP_Z, "seam tenon, short, + 4 lever mortises, full tenon length"),
     Coupon("r3_seam_mortise", ["chassis_0"],
-           [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
+           [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, _, R3_FLOOR)],
            UP_Z, "seam mortise, short, + 4 lever mortises, full tenon length"),
     Coupon("r3_lever", ["knee_housing"], R3_HOUS,
            UP_Z, "all 8 housing tenons, full 36.4"),
