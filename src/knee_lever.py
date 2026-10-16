@@ -542,8 +542,9 @@ BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.
 # own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
 # ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
 # until step 4 moves it into cadkit.
-MORT_CLR  = 0.25                    # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
-                                    # already too tight on the mini seam plate, user 2026-10-16)
+MORT_CLR  = 0.275                   # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
+                                    # already too tight on the mini seam plate, user 2026-10-16);
+                                    # MINI ROUND 2: 0.25 "still a touch tight" -> half a step
 LEVER_FIT = {"neck": 4 * D.BEAD, "head": 7 * D.BEAD, "side": 2 * D.BEAD, "root": True,
              "trunc": 1.2}
 _JW       = LEVER_FIT["head"]       # 5.6 across the head (the joint's widest)

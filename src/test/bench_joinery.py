@@ -186,8 +186,10 @@ HOUS_TEN_Y0, HOUS_S0 = -86.15, -566.1
 # MINI PLATE 1 (user, 2026-10-16), the UNcompensated set at c 0.45: the web across the seam read
 # 7.0 against 6.7 between any other two mortises -- 0.3 open, the centre of 0..0.637, so the
 # prediction held. The seam is now c 0.40 (it wobbled): it opens 0..0.566, centred by 0.14 a face.
-SEAM_OPEN = round(0.40 * 2 ** 0.5, 3)       # 0.566: c x sqrt 2 (the catch is a 45 deg flank)
-SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.14 a face
+# Round 2 (seam 0.40, lever 0.25): "the lever joints are still a touch tight and the chassis
+# joints a touch loose" -> half a step each: seam 0.375 (opens 0..0.530), lever 0.275.
+SEAM_OPEN = round(0.375 * 2 ** 0.5, 3)      # 0.530: c x sqrt 2 (the catch is a 45 deg flank)
+SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.13 a face
 COMP_SPLIT_Z = -72.5    # under the seam cavity (0.4 under the floor top), over the lever mortises (-73.86)
 
 
@@ -212,6 +214,10 @@ def compensate(shape, side, e=SEAM_COMP):
 # the tenon carries on whole to its head's edge
 HOUS_Z1_W, TEN_ROOT_CH = -81.85, 0.8         # the mating plane: the chassis underside
 _MINI_S3 = HOUS_S0 + 3 * GRID_P
+_R3_S7 = HOUS_S0 + 7 * GRID_P
+R3_HOUS = [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, _, HOUS_TEN_Y0 + 36.4 + 0.05, -86.4, _),
+           (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, _, HOUS_TEN_Y0 + 36.4 + 0.05,
+            HOUS_Z1_W + TEN_ROOT_CH, _)]
 MINI_HOUS = [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, HOUS_TEN_Y0 + MINI_L, -86.4, _),
              (HOUS_S0 - GRID_WEB, _MINI_S3 + 5.6 / 2.0 + 0.5, _, HOUS_TEN_Y0 + MINI_L,
               HOUS_Z1_W + TEN_ROOT_CH, _)]
@@ -312,6 +318,16 @@ COUPONS = [
     Coupon("mini_seam_mortise", ["chassis_0"],
            [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, MINI_X1, _, MINI_Y1, _, FLOOR)],
            UP_Z, "seam mortise, short, + 2 lever mortises"),
+    # ROUND 3 (user, 2026-10-16): "test the full 8 mortise/tenons and the full 36.4mm length" --
+    # SEAM_K stations a side on a floor one tenon length long, the rail still the mini's stub
+    Coupon("r3_seam_tenon", ["chassis_1"],
+           [(STUB_TEN_X0, _, _, RAIL_MY, _, MINI_TOP), (SEAM_X0, _, _, SEAM_Y1, _, FLOOR)],
+           UP_Z, "seam tenon, short, + 4 lever mortises, full tenon length"),
+    Coupon("r3_seam_mortise", ["chassis_0"],
+           [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
+           UP_Z, "seam mortise, short, + 4 lever mortises, full tenon length"),
+    Coupon("r3_lever", ["knee_housing"], R3_HOUS,
+           UP_Z, "all 8 housing tenons, full 36.4"),
     Coupon("mini_lever", ["knee_housing"], MINI_HOUS,
            UP_Z, "4 housing tenons (2 each side of the seam), MINI_L long"),
 
@@ -479,6 +495,8 @@ PLATES = {
     # round 2: seam c 0.40, lever c 0.25 -- the compensated pair only (round 1 measured the
     # uncompensated one) and its lever
     "seam_lever_mini_2": [["mini_seam_tenon_comp", "mini_seam_mortise_comp", "mini_lever"]],
+    # round 3: seam 0.375, lever 0.275
+    "seam_lever_mini_3": [["r3_seam_tenon_comp", "r3_seam_mortise_comp", "r3_lever"]],
     "full_length_1": [
         ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_adapter"],
         ["corner_keyhead_chassis", ("corner_bridge_endplate", "corner_keyhead_endplate")],
