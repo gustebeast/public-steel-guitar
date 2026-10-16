@@ -177,8 +177,41 @@ MINI_Y1 = -141.95 + MINI_L + 2 * 0.8
 # the knee housing's tenons sit on stations -566.1 .. -493.3; the mini keeps the first four
 # (2 + 2 across the seam) and MINI_L of their length from the deck's -Y edge
 HOUS_TEN_Y0, HOUS_S0 = -86.15, -566.1
-MINI_HOUS = (HOUS_S0 - GRID_WEB, HOUS_S0 + 3 * GRID_P + GRID_WEB,
-             _, HOUS_TEN_Y0 + MINI_L, -86.4, _)
+# SEAM COMPENSATION (user, 2026-10-16: "predict the amount of extra space the joint might add
+# and compensate ... slightly under our 1.6 wall"). Measured on fit_plate2's seam halves (N/N,
+# c 0.45, seat 0): the tenon pulls back 0.637 (c x sqrt 2 -- its catch is a 45 deg flank)
+# before it catches, so the pitch across a seam runs 10.4 (faces pressed) .. 11.04 (pulled).
+# Centre that on 10.4: each section's seam face comes in SEAM_COMP and carries its half of
+# the joint with it, the walls either side 1.6 -> 1.44; the pitch then runs 10.08 .. 10.72.
+SEAM_OPEN = 0.637
+SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.16 a face
+COMP_SPLIT_Z = -72.5    # under the seam cavity (0.4 under the floor top), over the lever mortises (-73.86)
+
+
+def compensate(shape, side, e=SEAM_COMP):
+    """A seam coupon (world frame) with its seam face moved in by e, its half of the joint
+    with it. side -1: the -X section (the tenon stands past the face at SEAM_X; it moves -e).
+    side +1: the +X section (the rail above COMP_SPLIT_Z carries the cavity; it moves +e).
+    The floor and its lever mortises stay put -- that is the point."""
+    s = SEAM_X
+    if side < 0:
+        keep = shape.intersect(_box((_, s - e, _, _, _, _)))
+        move = shape.intersect(_box((s, _, _, _, _, _))).translate(cq.Vector(-e, 0, 0))
+    else:
+        rail = (_, _, _, -131.55, COMP_SPLIT_Z, _)
+        keep = shape.intersect(_box((s + e, _, _, _, _, _))).cut(_box(rail))
+        move = shape.intersect(_box(rail)).translate(cq.Vector(e, 0, 0))
+    return keep.fuse(move).clean()
+
+
+# +X end cut as the housing's real -X edge is (user: no deck past the joint): the deck stops
+# at the fourth tenon's STEM face; above its root chamfer (0.8, knee_lever.clip_tenon_root)
+# the tenon carries on whole to its head's edge
+HOUS_Z1_W, TEN_ROOT_CH = -81.85, 0.8         # the mating plane: the chassis underside
+_MINI_S3 = HOUS_S0 + 3 * GRID_P
+MINI_HOUS = [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, HOUS_TEN_Y0 + MINI_L, -86.4, _),
+             (HOUS_S0 - GRID_WEB, _MINI_S3 + 5.6 / 2.0 + 0.5, _, HOUS_TEN_Y0 + MINI_L,
+              HOUS_Z1_W + TEN_ROOT_CH, _)]
 MIN_WALL = 0.8
 
 DECK_UNDER = -10.4          # the rail strip: the groove (5.46 deep) on 4.9 of solid rail
@@ -276,7 +309,7 @@ COUPONS = [
     Coupon("mini_seam_mortise", ["chassis_0"],
            [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, MINI_X1, _, MINI_Y1, _, FLOOR)],
            UP_Z, "seam mortise, short, + 2 lever mortises"),
-    Coupon("mini_lever", ["knee_housing"], [MINI_HOUS],
+    Coupon("mini_lever", ["knee_housing"], MINI_HOUS,
            UP_Z, "4 housing tenons (2 each side of the seam), MINI_L long"),
 
     # B. chassis <-> bridge endplate, +Y corner: the two stacked mushroom tenons the
@@ -437,7 +470,9 @@ BED = 250.0                        # usable of the 256 bed
 
 # step 3 (user's joinery sequence): the PETG-GF joints at full length, rows by depth
 PLATES = {
-    "seam_lever_mini": [["mini_seam_tenon", "mini_seam_mortise", "mini_lever"]],
+    # as drawn, then with SEAM_COMP (user: "print one as is, then one with the compensation")
+    "seam_lever_mini": [["mini_seam_tenon", "mini_seam_mortise", "mini_lever"],
+                        ["mini_seam_tenon_comp", "mini_seam_mortise_comp", "mini_lever"]],
     "full_length_1": [
         ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_adapter"],
         ["corner_keyhead_chassis", ("corner_bridge_endplate", "corner_keyhead_endplate")],
