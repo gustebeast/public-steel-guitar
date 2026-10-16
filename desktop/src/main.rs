@@ -21,8 +21,8 @@
 //! A tab that is left keeps its model ON THE CARD (the last few: KEEP_SCENES), so coming back to it is a
 //! picture at once; its page is then asked to say its whole state again.
 //!
-//! Options: --out <dir>; --backend dx12|vulkan (default: dx12 if it can trace, which needs the dxcompiler.dll
-//! of an installed Windows SDK, or --dxc <path>; else vulkan); --state <file> where the window's place is kept
+//! Options: --out <dir>; --backend vulkan|dx12 (default: vulkan, else dx12 if it can trace, which needs the
+//! dxcompiler.dll of an installed Windows SDK, or --dxc <path>); --state <file> where the window's place is kept
 //! (default: desk-window.json beside the exe).
 //! DESK_TRACE=1 in the environment: every message, frame and key the shell sees, with its time, written to
 //! trace.txt in the --out folder at the end.
@@ -42,9 +42,11 @@ mod cap;
 mod dda;
 mod door;
 mod gpu;
+mod hdr;
 mod http;
 mod scene;
 mod tabs;
+mod wgc;
 
 use app::APP_TITLE;
 use glam::Vec3;
@@ -108,6 +110,43 @@ struct Gfx {
     backend: String,
     /// how long the view must have stood still before the picture is refined: see redraw
     hold: Duration,
+    /// the screen the window was last seen on (see `screen_curve`)
+    monitor: Option<String>,
+}
+
+/// Vulkan on an HDR Windows screen: the picture is decoded with a plain 2.4 power there, so the renderer
+/// encodes for it (hdr.rs). Looked at when the window reaches another screen. DESK_POWER_OUT=1|0 forces it.
+fn with_curve(mut g: Gfx, mut said: String) -> (Gfx, String) {
+    screen_curve(&mut g);
+    if g.r.power_out {
+        said += "
+screen: HDR, so the picture is encoded for a plain 2.4 power (Vulkan)";
+    }
+    if g.config.format == wgpu::TextureFormat::Rgba16Float {
+        said += &format!("
+float surface: linear x {:.3} (the screen's SDR white, 1.0 = 80 nits)", g.r.white);
+    }
+    (g, said)
+}
+
+fn screen_curve(g: &mut Gfx) -> bool {
+    let m = g.window.current_monitor().and_then(|m| m.name());
+    if g.monitor.is_some() && g.monitor == m {
+        return false;
+    }
+    g.monitor = m;
+    let was = (g.r.power_out, g.r.white);
+    if g.config.format == wgpu::TextureFormat::Rgba16Float {
+        g.r.set_white(hdr::sdr_white(g.hwnd).unwrap_or(1.0));
+    } else {
+        let on = match std::env::var("DESK_POWER_OUT").as_deref() {
+            Ok("1") => true,
+            Ok("0") => false,
+            _ => g.backend == "vulkan" && !g.r.linear_out && hdr::on_hdr(g.hwnd),
+        };
+        g.r.set_power_out(on);
+    }
+    was != (g.r.power_out, g.r.white)
 }
 
 /// The webview covers the whole client area (DESK_WV_FRAC=0.8 leaves the right fifth bare: a control for captures).
@@ -457,9 +496,11 @@ fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSiz
     .map_err(|e| e.to_string())?;
     let caps = surface.get_capabilities(&adapter);
     let mut config = surface.get_default_config(&adapter, size.width.max(1), size.height.max(1)).ok_or("no surface configuration")?;
-    // values go to the surface already sRGB-encoded, so: a format that does not encode them again.
-    // (DESK_SURFACE=srgb|float picks another, for finding out what a desktop does with each)
-    let want = std::env::var("DESK_SURFACE").unwrap_or_default();
+    // values go to the surface already sRGB-encoded, so: a format that does not encode them again. Except
+    // Vulkan, which gets a FLOAT surface (linear, scaled by the screen's SDR white: screen_curve): Windows shows
+    // an 8-bit Vulkan picture on an HDR desktop with a ~2.2 curve at ~0.63 of its white (measured 2026-10-16),
+    // which no 8-bit encoding can undo. (DESK_SURFACE=srgb|float|8bit picks one, for finding out.)
+    let want = std::env::var("DESK_SURFACE").unwrap_or_else(|_| if which == "vulkan" { "float".into() } else { String::new() });
     config.format = match want.as_str() {
         "srgb" => caps.formats.iter().copied().find(|f| f.is_srgb()),
         "float" => caps.formats.iter().copied().find(|f| *f == wgpu::TextureFormat::Rgba16Float),
@@ -478,7 +519,6 @@ fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSiz
     if config.format == wgpu::TextureFormat::Rgba16Float {
         r.linear_out = true;
     }
-    r.power_out = std::env::var("DESK_POWER_OUT").is_ok_and(|v| v == "1");
     r.settings.temporal = true;
     r.resize(config.width, config.height);
     let line = format!("{:?} / {} / driver {}{note}; surface {:?} {:?} (offered: {:?})", info.backend, info.name, info.driver_info, config.format, config.present_mode, caps.formats);
@@ -499,8 +539,10 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>
         attrs = attrs.with_window_level(WindowLevel::AlwaysOnTop);
     }
     let mut said = String::new();
+    // (on top only for desktop duplication: the window capture sees the window wherever it stands)
+    let top = if wgc::wanted() { WindowLevel::Normal } else { WindowLevel::AlwaysOnTop };
     if args.selftest && args.state.is_none() {
-        attrs = attrs.with_position(PhysicalPosition::new(60, 60)).with_window_level(WindowLevel::AlwaysOnTop);
+        attrs = attrs.with_position(PhysicalPosition::new(60, 60)).with_window_level(top);
     } else if let Some(v) = state_file(args).and_then(|f| std::fs::read_to_string(f).ok()).and_then(|t| serde_json::from_str::<Value>(&t).ok()) {
         // where it was last time, if that is still on a screen
         let n = |k: &str| v[k].as_i64().unwrap_or(0) as i32;
@@ -515,17 +557,18 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>
         }
         said = format!("window: as it was left: {w}x{h} at {x},{y}{}{}\n", if v["max"].as_bool().unwrap_or(false) { ", maximised" } else { "" }, if on_screen { "" } else { " (that place is on no screen now: placed by the desktop)" });
         if args.selftest {
-            attrs = attrs.with_window_level(WindowLevel::AlwaysOnTop);
+            attrs = attrs.with_window_level(top);
         }
     }
     let window = Arc::new(event_loop.create_window(attrs).unwrap());
     let hwnd = hwnd_of(&window);
     let size = window.inner_size();
-    // DX12 first: on an HDR desktop its picture is shown exactly, Vulkan's too dark
+    // Vulkan first (user, 2026-10-16): the one backend on every platform, and NVIDIA's DLSS through it. On an
+    // HDR Windows desktop its picture is encoded to suit (screen_curve); DX12 is the fallback.
     let order: Vec<&str> = match args.backend.as_deref() {
-        Some("vulkan") => vec!["vulkan"],
-        Some(_) => vec!["dx12"],
-        None => vec!["dx12", "vulkan"],
+        Some("dx12") => vec!["dx12"],
+        Some(_) => vec!["vulkan"],
+        None => vec!["vulkan", "dx12"],
     };
     let mut got = None;
     for (i, which) in order.iter().enumerate() {
@@ -574,7 +617,7 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>
         }
         let _ = strip.focus();
         let hold = Duration::from_secs_f32(2.5 / hz.max(1.0));
-        return (Gfx { webview: None, strip: Some(strip), ctx, surface, config, r, window, hwnd, backend, hold }, said);
+        return with_curve(Gfx { webview: None, strip: Some(strip), ctx, surface, config, r, window, hwnd, backend, hold, monitor: None }, said);
     }
     let mut init = String::from("window.cadkitNative = true;\n");
     if args.selftest {
@@ -607,7 +650,7 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, proxy: EventLoopProxy<Ev>
     // the keys are the page's: it has the keyboard from the start
     let _ = webview.focus();
     let hold = Duration::from_secs_f32(2.5 / hz.max(1.0));
-    (Gfx { webview: Some(webview), strip: None, ctx, surface, config, r, window, hwnd, backend, hold }, said)
+    with_curve(Gfx { webview: Some(webview), strip: None, ctx, surface, config, r, window, hwnd, backend, hold, monitor: None }, said)
 }
 
 /// A message's kind, for the trace.
@@ -1631,7 +1674,13 @@ impl ApplicationHandler<Ev> for App {
                     self.redraw();
                 }
             }
-            WindowEvent::Moved(_) => self.note_place(),
+            WindowEvent::Moved(_) => {
+                if screen_curve(g) {
+                    self.touch(false);
+                    self.redraw();
+                }
+                self.note_place()
+            }
             // another screen's scale: the strip is as many of ITS pixels high (the resize that follows
             // lays everything out again)
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {

@@ -13,7 +13,7 @@ struct Globals {
   reset: u32,
   mode: u32,        // pre pass: 0 plain, 1 temporal reprojection, 2 still with history prior
   spf: u32,
-  flags: u32,       // bit0: resolve raw (no denoise), bit1: section cut on, bit3: the surface wants linear values
+  flags: u32,       // bit0: resolve raw (no denoise), bit1: section cut on, bit3: the surface wants linear values, bit4: the screen decodes a plain 2.4 power
   denoise: f32,     // 1 = fully denoised, 0 = raw accumulation
   hist_w: f32,
   max_hist: f32,
@@ -24,7 +24,8 @@ struct Globals {
   bg: vec4f,        // backdrop, linear
   clip: vec4f,      // section plane: kept where dot(xyz, p) + w >= 0
   off: vec2u,       // where on the surface the picture's first pixel is (the tabbed app: below its tab strip)
-  pad: vec2u,
+  white: f32,       // a float surface: its 1.0 is 80 nits (scRGB), so linear values x the screen's SDR white
+  pad: u32,
 }
 
 struct Guide {
