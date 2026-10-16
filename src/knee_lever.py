@@ -2681,6 +2681,25 @@ def roof_cut() -> cq.Workplane:
         _e = [cq.Solid.extrudeLinear(f, cq.Vector(0, -side * reach, reach))
               for f in gf.translate((0, side * rhw, 0)).Faces()]
         cut = cut.intersect(_e[0].fuse(*_e[1:]) if len(_e) > 1 else _e[0])
+    # THE GABLE'S FOOT BESIDE THE SEAT (user, 2026-10-16: "small overhang here"). Below the
+    # crown's 45 point the room carries itself, but the cartridge pocket's outer gable comes
+    # down to the cheek face at z_ch, and from where the seat circle crosses z_ch up to the
+    # crown's 45 point the cheek beyond that face is the SEAT: the gable's first course is
+    # a 0.88 edge on air. Its foot is raised onto the seat's teardrop there (steeper than 45
+    # along X, so it carries itself) and the gable carried in from it at 45, over the
+    # gable's own outer slope only.
+    x0, x1 = -math.sqrt(rb * rb - z_ch * z_ch), xt
+    assert x0 < -math.sqrt(r * r - z_ch * z_ch) < xt, "the seat / room no longer cross the gable's foot"
+    ftf = cq.Face.makeFromWires(td.wire().val()).intersect(
+        cq.Face.makeFromWires(cq.Workplane("XZ").rect(x1 - x0, -2.0 * lo, centered=False)
+                              .wire().val().translate((x0, 0, lo)))).Faces()[0]
+    yg = HS_YC + ROOF_FLAT / 2.0                    # the gable flat's outer edge
+    feet = []                                       # (fused after the -X end's clip: they
+    for side in (1.0, -1.0):                        #  lie -X of it)
+        band = cq.Solid.makeBox(x1 - x0, rhw - yg, 2 * -lo,
+                                cq.Vector(x0, rhw - (rhw - yg) if side > 0 else -rhw, lo))
+        feet.append(band.intersect(cq.Solid.extrudeLinear(
+            ftf.translate((0, side * rhw, 0)), cq.Vector(0, -side * reach, reach))))
     # the -X end: base F(y) in YZ -- the crown's 45 point, up over the pocket gables
     zt = -xt
     half = [(yi + (zt - zp), zt), (HS_YC - ROOF_FLAT / 2.0, pk), (HS_YC + ROOF_FLAT / 2.0, pk),
@@ -2690,7 +2709,18 @@ def roof_cut() -> cq.Workplane:
     f = cq.Workplane("YZ").polyline([(-(rhw + 1.0), lo)] + prof + [(rhw + 1.0, lo)]).close()
     ff = cq.Face.makeFromWires(f.wire().val()).translate((xt, 0, 0))
     run_x = xe - xt + 2.0
+    cheeks = cut
     cut = cut.intersect(cq.Solid.extrudeLinear(ff, cq.Vector(run_x, 0, run_x)))
+    # ...and the -X end rises off the raised foot, not off zt, over the same band -- or the
+    # end's material just +X of xt overhangs the foot by a course. Still under the cheeks.
+    tdt = rb * s2 - abs(xt)                         # the teardrop's flank at xt
+    for side in (1.0, -1.0):
+        band = [(yg, lo), (rhw, lo), (rhw, tdt), (yg, tdt + rhw - yg)]
+        fe = cq.Workplane("YZ").polyline([(side * y, z) for y, z in band]).close()
+        feet.append(cheeks.intersect(cq.Solid.extrudeLinear(
+            cq.Face.makeFromWires(fe.wire().val()).translate((xt, 0, 0)),
+            cq.Vector(run_x, 0, run_x))))
+    cut = cut.fuse(*feet)
     return cq.Workplane("XY").add(cut)
 
 
