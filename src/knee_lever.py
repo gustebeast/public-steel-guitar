@@ -542,7 +542,8 @@ BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.
 # own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
 # ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
 # until step 4 moves it into cadkit.
-MORT_CLR  = 0.20                    # plate 8 A1
+MORT_CLR  = 0.25                    # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
+                                    # already too tight on the mini seam plate, user 2026-10-16)
 LEVER_FIT = {"neck": 4 * D.BEAD, "head": 7 * D.BEAD, "side": 2 * D.BEAD, "root": True,
              "trunc": 1.2}
 _JW       = LEVER_FIT["head"]       # 5.6 across the head (the joint's widest)
@@ -571,8 +572,12 @@ def _lever_halves(length, drop=0.0):
     from .test import fit_plate2 as FIT
     ten, cav, _S = FIT.halves("up", "up", MORT_CLR, length, 0.0, _J_HOST_W, size=LEVER_FIT,
                               drop=drop)
-    _wall = D.XBAR / 2.0 - cav.val().BoundingBox().ymax
-    assert _wall >= D.MIN_WALL_2P - 1e-9, "the mount mortise leaves the rib %.2f, under the tier" % _wall
+    # the WEB between two mortises is one printed wall, both halves of it: XBAR - the cavity's
+    # width (3.16 at c 0.25). Only at a chassis seam is it split, into two 1.58 halves that the
+    # seam compensation takes further under 1.6 (user, 2026-10-16: "going slightly under our
+    # 1.6mm wall") -- the halves are not walls anywhere else.
+    _web = D.XBAR - 2.0 * cav.val().BoundingBox().ymax
+    assert _web >= D.MIN_WALL_2P - 1e-9, "the mount mortises leave a %.2f web, under the tier" % _web
     return ten, cav, _S
 
 

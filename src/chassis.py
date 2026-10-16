@@ -249,9 +249,11 @@ for _s in SPLIT_X:
 # the hand-rolled sliding dovetail, which cadkit retired: at a 0.8 nozzle the
 # dovetail's acute plan corners round DOWN on the tenon and UP in the mortise, so
 # the halves collide at the corners before the faces seat.
-_SEG_CLR  = 0.45                       # plate 8 D3 (user, 2026-10-16): 0.35 and 0.40 fit but the
+_SEG_CLR  = 0.40                       # plate 8 D3 (user, 2026-10-16): 0.35 and 0.40 fit but the
                                        # layer lines across the slide made them drag; 0.45 the first
                                        # to slide easily (some wobble -- the full-length test decides)
+                                       # MINI SEAM PLATE (user, 2026-10-16): 0.45 "slides easily but it
+                                       # still wobbles" and length will not cure it -- down a notch
 _SEG_HOST_W = 10 * D.BEAD              # 8.0: the tenon's host slab across Y, inside the rail
 _SEG_JD   = 13 * D.BEAD                # 10.4 room into the +X segment for the fit-tested
                                        # nozzle/nozzle joint (4.8 head, 2.0 corners): it

@@ -183,8 +183,11 @@ HOUS_TEN_Y0, HOUS_S0 = -86.15, -566.1
 # before it catches, so the pitch across a seam runs 10.4 (faces pressed) .. 11.04 (pulled).
 # Centre that on 10.4: each section's seam face comes in SEAM_COMP and carries its half of
 # the joint with it, the walls either side 1.6 -> 1.44; the pitch then runs 10.08 .. 10.72.
-SEAM_OPEN = 0.637
-SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.16 a face
+# MINI PLATE 1 (user, 2026-10-16), the UNcompensated set at c 0.45: the web across the seam read
+# 7.0 against 6.7 between any other two mortises -- 0.3 open, the centre of 0..0.637, so the
+# prediction held. The seam is now c 0.40 (it wobbled): it opens 0..0.566, centred by 0.14 a face.
+SEAM_OPEN = round(0.40 * 2 ** 0.5, 3)       # 0.566: c x sqrt 2 (the catch is a 45 deg flank)
+SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.14 a face
 COMP_SPLIT_Z = -72.5    # under the seam cavity (0.4 under the floor top), over the lever mortises (-73.86)
 
 
@@ -473,6 +476,9 @@ PLATES = {
     # as drawn, then with SEAM_COMP (user: "print one as is, then one with the compensation")
     "seam_lever_mini": [["mini_seam_tenon", "mini_seam_mortise", "mini_lever"],
                         ["mini_seam_tenon_comp", "mini_seam_mortise_comp"]],   # one lever tests both
+    # round 2: seam c 0.40, lever c 0.25 -- the compensated pair only (round 1 measured the
+    # uncompensated one) and its lever
+    "seam_lever_mini_2": [["mini_seam_tenon_comp", "mini_seam_mortise_comp", "mini_lever"]],
     "full_length_1": [
         ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_adapter"],
         ["corner_keyhead_chassis", ("corner_bridge_endplate", "corner_keyhead_endplate")],
