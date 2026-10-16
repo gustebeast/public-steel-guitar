@@ -154,7 +154,12 @@ LEVER_K = (5, 12)
 SEAM_X, SEAM_K = -207.30345584989846, 4
 SEAM_X0 = SEAM_X - (GRID_P / 2.0 + (SEAM_K - 1) * GRID_P) - GRID_WEB
 SEAM_X1 = SEAM_X + (GRID_P / 2.0 + (SEAM_K - 1) * GRID_P) + GRID_WEB
-SEAM_Y1 = -24.0             # the floor to the housing's station (its tenons end at -27.7)
+# the floor only as long as a housing's tenons (36.4, user: "only long enough to fit a
+# lever") from the rail's outer face (-141.95) -- the mortises run on under the rail -- and
+# two beads. The housing slides in from the cut end.
+SEAM_TEN_L = 36.4
+SEAM_Y1 = -141.95 + SEAM_TEN_L + 2 * 0.8
+SEAM_FIN_RUN = SEAM_Y1 - (-131.55) - 1.0       # the fin stops a millimetre short of the cut
 MIN_WALL = 0.8
 
 DECK_UNDER = -10.4          # the rail strip: the groove (5.46 deep) on 4.9 of solid rail
@@ -180,7 +185,7 @@ def _fix_rail_ties(comps):
 Z_BOT, FIN_TOP, FIN_RUN, FIN_T = -81.85, -8.0, 40.0, 4.8
 
 
-def _fix_fin(x0, y_face, inboard, z0=Z_BOT):
+def _fix_fin(x0, y_face, inboard, z0=Z_BOT, run=FIN_RUN):
     """A buttress for a cut length of RAIL: 82 mm tall and 10.4 thick, it is a wall in
     the chassis and a reed in a coupon. A triangular fin FIN_T thick, from the bed (or the
     floor's top, `z0`, where the floor under it is mortised) up the rail's inner face
@@ -188,7 +193,7 @@ def _fix_fin(x0, y_face, inboard, z0=Z_BOT):
     joint, so the walls round the joint flex exactly as the real ones."""
     def fin(_comps):
         y0 = y_face - inboard * 1.0                       # a millimetre into the rail
-        pts = [(y0, z0), (y_face + inboard * FIN_RUN, z0), (y0, FIN_TOP)]
+        pts = [(y0, z0), (y_face + inboard * run, z0), (y0, FIN_TOP)]
         return (cq.Workplane("YZ").polyline(pts).close().extrude(FIN_T)
                 .translate((x0, 0, 0)).val())
     return fin
@@ -200,18 +205,18 @@ COUPONS = [
     #    -- so the seam is also shown to keep the grid's pitch for a housing that spans it).
     #    The tee tenon on a section's +X end drops (-Z) into the next section's -Y rail (the
     #    floor meets that rail directly; a trough runs beside the +Y), at its full length;
-    #    the floor under it is the lever grid, SEAM_K stations a side, from the rail to the
-    #    housing's station. A knee housing slides in along Y across the seam, and a body
+    #    the floor under it is the lever grid, SEAM_K stations a side, one tenon length
+    #    (SEAM_Y1) long. A knee housing slides in along Y across the seam, and a body
     #    adapter's three ridges in any three of the same mortises. The floor is the foot;
     #    the rail's fin stands on the floor's top, clear of the mortises under it.
     Coupon("seam_tenon", ["chassis_1"],
            [(SEAM_X0, _, _, RAIL_MY, _, _), (SEAM_X0, _, _, SEAM_Y1, _, FLOOR)],
            UP_Z, "section seam (tee tenon, drop-in) + SEAM_K lever mortises",
-           fix=_fix_fin(SEAM_X0, -131.55, +1, FLOOR)),
+           fix=_fix_fin(SEAM_X0, -131.55, +1, FLOOR, SEAM_FIN_RUN)),
     Coupon("seam_mortise", ["chassis_0"],
            [(_, SEAM_X1, _, RAIL_MY, _, _), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
            UP_Z, "section seam (tee mortise), the deck groove across it, SEAM_K lever mortises",
-           fix=_fix_fin(SEAM_X1 - FIN_T, -131.55, +1, FLOOR)),
+           fix=_fix_fin(SEAM_X1 - FIN_T, -131.55, +1, FLOOR, SEAM_FIN_RUN)),
 
     # B. chassis <-> bridge endplate, +Y corner: the two stacked mushroom tenons the
     #    endplate drops over and the leg screw through the end wall. (The three floor
@@ -372,9 +377,9 @@ BED = 250.0                        # usable of the 256 bed
 # step 3 (user's joinery sequence): the PETG-GF joints at full length, rows by depth
 PLATES = {
     "full_length_1": [
-        ["seam_tenon", "seam_mortise", ("corner_bridge_chassis", "corner_keyhead_chassis"),
-         "corner_adapter"],
-        ["lever_housing", ("corner_bridge_endplate", "corner_keyhead_endplate")],
+        ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_adapter"],
+        ["corner_keyhead_chassis", ("corner_bridge_endplate", "corner_keyhead_endplate")],
+        ["lever_housing"],
     ],
 }
 
