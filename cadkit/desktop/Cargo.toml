@@ -11,9 +11,17 @@ serde_json = "1.0.151"
 wgpu = "30.0.1"
 winit = "0.30.13"
 png = "0.17"
+# DLSS Ray Reconstruction (Vulkan). Needs NVIDIA's DLSS SDK, the Vulkan headers and libclang to build:
+# cadkit/web/desktop.py turns the feature on when it finds them (see there); without them the viewer is
+# built as before, and runs as before on any card.
+dlss_wgpu = { version = "6.0.0", optional = true }
+uuid = { version = "1", optional = true }
 wry = "0.57.0"
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging", "Win32_Storage_Xps", "Win32_System_Power", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Threading", "Win32_UI_Shell", "Win32_System_Console"] }
 windows = { version = "0.62", features = ["Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Direct3D11", "Win32_Graphics_Direct3D", "Win32_Foundation", "Win32_Graphics_Dwm", "Win32_Devices_Display", "Win32_Graphics_Gdi", "Win32_System_Performance", "Win32_System_WinRT", "Win32_System_WinRT_Direct3D11", "Win32_System_WinRT_Graphics_Capture", "Graphics", "Graphics_Capture", "Graphics_DirectX", "Graphics_DirectX_Direct3D11", "Foundation"] }
+
+[features]
+dlss = ["dep:dlss_wgpu", "dep:uuid"]
 
 [build-dependencies]
 winresource = "0.1"
