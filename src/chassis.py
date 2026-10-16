@@ -290,7 +290,9 @@ for _s in SPLIT_X:
 _UP       = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
 _SEG_JW   = 6.4                        # width across Y — leaves (T − JW)/2 − clearance
                                        # = 1.65 mm of rail wall per side (2 beads)
-_SEG_JD   = 8.0                        # room into the +X segment (the T uses 5.63 of it)
+_SEG_JD   = 13 * D.BEAD                # 10.4 room into the +X segment: the fit-tested
+                                       # nozzle/nozzle joint (src/test/fit_plate2, 4.8 head,
+                                       # 2.0 corners) stands 8.8 + c 0.45 there; the T uses 5.63
 _SEG_JZ1  = TP_GZ0 - TP_TG_DEPTH       # tenon top = the deck-groove FLOOR (−6), so the
                                        # seam joint never reaches into the deck groove
 _SEG_ROOT = 3 * D.BEAD                 # 2.4 volumetric fusion depth back into the −X segment
