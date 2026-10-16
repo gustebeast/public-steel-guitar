@@ -23,7 +23,7 @@ struct Dda {
 
 thread_local! { static DDA: RefCell<Option<Dda>> = const { RefCell::new(None) }; }
 
-fn half(h: u16) -> f32 {
+pub(crate) fn half(h: u16) -> f32 {
     let (s, e, m) = ((h >> 15) & 1, ((h >> 10) & 0x1f) as i32, (h & 0x3ff) as f32);
     let v = if e == 0 {
         m / 1024.0 * 2f32.powi(-14)
@@ -35,12 +35,15 @@ fn half(h: u16) -> f32 {
     if s == 1 { -v } else { v }
 }
 
-fn srgb(v: f32) -> u8 {
+pub(crate) fn srgb(v: f32) -> u8 {
     let v = v.clamp(0.0, 1.0);
     ((if v <= 0.0031308 { v * 12.92 } else { 1.055 * v.powf(1.0 / 2.4) - 0.055 }) * 255.0).round() as u8
 }
 
 pub fn init(h: isize) -> Result<String, String> {
+    if crate::wgc::wanted() {
+        return crate::wgc::init(h);
+    }
     let (w, hh) = client_size(h);
     let (sx, sy) = client_to_screen(h, 0, 0);
     let e = |s: &str, e: windows::core::Error| format!("desktop duplication unavailable: {s}: {e}");
@@ -73,6 +76,9 @@ pub fn init(h: isize) -> Result<String, String> {
 
 /// `green`: client rect of an opaque rgb(0,255,0) element, used to calibrate the SDR white level on HDR desktops.
 pub fn capture(h: isize, green: Option<[f64; 4]>) -> Result<(u32, u32, Vec<u8>), String> {
+    if crate::wgc::wanted() {
+        return crate::wgc::capture(h, green);
+    }
     let (w, hh) = client_size(h);
     let (sx, sy) = client_to_screen(h, 0, 0);
     DDA.with(|c| unsafe {
@@ -154,5 +160,8 @@ pub fn capture(h: isize, green: Option<[f64; 4]>) -> Result<(u32, u32, Vec<u8>),
 
 /// (SDR white level in scRGB units, desktop is HDR)
 pub fn scale() -> (f32, bool) {
+    if crate::wgc::wanted() {
+        return crate::wgc::scale();
+    }
     DDA.with(|c| c.borrow().as_ref().map(|d| (d.scale, d.float)).unwrap_or((1.0, false)))
 }

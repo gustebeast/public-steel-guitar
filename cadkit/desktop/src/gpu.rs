@@ -70,7 +70,8 @@ struct Globals {
     bg: [f32; 4],
     clip: [f32; 4],
     off: [u32; 2],
-    pad: [u32; 2],
+    white: f32,
+    pad: u32,
 }
 
 #[repr(C)]
@@ -190,6 +191,8 @@ pub struct Renderer {
     pub linear_out: bool,
     /// what shows the surface decodes it with a plain 2.4 power (Vulkan on an HDR desktop): encode to suit
     pub power_out: bool,
+    /// linear_out to a FLOAT surface (scRGB, 1.0 = 80 nits): the screen's SDR white in those units (hdr.rs)
+    pub white: f32,
     /// rows of the surface ABOVE the picture (the tabbed app's tab strip): the picture is shown below them
     pub top: u32,
     pub n: u32,
@@ -266,7 +269,7 @@ impl Renderer {
         );
         let l_pre = layout(&device, "pre", &[e_buf(0, UNI, c), e_buf(1, RO, c), e_buf(2, RO, c), e_buf(3, RO, c), e_buf(4, RO, c), e_buf(5, RW, c), e_buf(6, RW, c), e_buf(7, RO, c), e_buf(8, RO, c), e_buf(9, RO, c)]);
         let l_atrous = layout(&device, "atrous", &[e_buf(0, UNI, c), e_buf(1, UNI, c), e_buf(2, RO, c), e_buf(3, RO, c), e_buf(4, RW, c)]);
-        let l_resolve = layout(&device, "resolve", &[e_buf(0, UNI, c), e_buf(1, RO, c), e_buf(2, RO, c), e_buf(3, RO, c), e_buf(4, RW, c), e_buf(5, RO, c), e_buf(6, RO, c), e_buf(7, RO, c)]);
+        let l_resolve = layout(&device, "resolve", &[e_buf(0, UNI, c), e_buf(1, RO, c), e_buf(2, RO, c), e_buf(3, RO, c), e_buf(4, RW, c), e_buf(5, RO, c), e_buf(6, RO, c), e_buf(7, RO, c), e_buf(8, RW, c)]);
         let f = wgpu::ShaderStages::FRAGMENT;
         let l_blit = layout(&device, "blit", &[e_buf(0, UNI, f), e_buf(1, RO, f)]);
 
@@ -322,6 +325,7 @@ impl Renderer {
             n_dispatches: 0,
             linear_out: surface_format.is_srgb(),
             power_out: false,
+            white: 1.0,
             top: 0,
             n: 0,
             frame: 0,
@@ -482,6 +486,21 @@ impl Renderer {
     }
 
     /// Forget accumulation and temporal history.
+    /// Encode for a screen that decodes a plain 2.4 power (see `power_out`); the picture is resolved again.
+    pub fn set_power_out(&mut self, on: bool) {
+        if self.power_out != on {
+            self.power_out = on;
+            self.invalidate();
+        }
+    }
+
+    pub fn set_white(&mut self, w: f32) {
+        if self.white != w {
+            self.white = w;
+            self.invalidate();
+        }
+    }
+
     pub fn invalidate(&mut self) {
         self.n = 0;
         self.prev_cam = None;
@@ -513,6 +532,8 @@ impl Renderer {
         let fa = sto("fa", 16, none);
         let fb = sto("fb", 16, none);
         let out_px = sto("out", 4, wgpu::BufferUsages::COPY_SRC);
+        // what the window is handed (resolve.wgsl): out_px, or out_px encoded for a plain-2.4 screen
+        let shown_px = sto("shown", 4, none);
         let stg = |size: u64| d.create_buffer(&wgpu::BufferDescriptor { label: Some("staging"), size, usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let (staging, guide_staging) = (stg(px * 4), stg(px * 16));
         let g = self.globals.as_entire_binding();
@@ -525,7 +546,7 @@ impl Renderer {
             })
         };
         // odd pass count: the final result lands in fb
-        let mk_resolve = |p: usize| bind(d, &self.l_resolve, &[g.clone(), guide[p].as_entire_binding(), acc_a.as_entire_binding(), fb.as_entire_binding(), out_px.as_entire_binding(), acc_b.as_entire_binding(), acc_c.as_entire_binding(), other.as_entire_binding()]);
+        let mk_resolve = |p: usize| bind(d, &self.l_resolve, &[g.clone(), guide[p].as_entire_binding(), acc_a.as_entire_binding(), fb.as_entire_binding(), out_px.as_entire_binding(), acc_b.as_entire_binding(), acc_c.as_entire_binding(), other.as_entire_binding(), shown_px.as_entire_binding()]);
         let t = Targets {
             w,
             h,
@@ -533,7 +554,7 @@ impl Renderer {
             bg_pre: [mk_pre(0), mk_pre(1)],
             bg_atrous: [mk_atrous(0), mk_atrous(1)],
             bg_resolve: [mk_resolve(0), mk_resolve(1)],
-            bg_blit: bind(d, &self.l_blit, &[g.clone(), out_px.as_entire_binding()]),
+            bg_blit: bind(d, &self.l_blit, &[g.clone(), shown_px.as_entire_binding()]),
             out_px,
             staging,
             guide,
@@ -609,7 +630,8 @@ impl Renderer {
             bg: [l.bg[0], l.bg[1], l.bg[2], 1.0],
             clip: l.clip.unwrap_or([0.0; 4]),
             off: [0, self.top.min(sh.saturating_sub(1))],
-            pad: [0; 2],
+            white: self.white,
+            pad: 0,
         };
         self.last_globals = g;
         self.queue.write_buffer(&self.globals, 0, bytemuck::bytes_of(&g));
@@ -681,7 +703,7 @@ impl Renderer {
     }
 
     fn blit(&self, enc: &mut wgpu::CommandEncoder, view: &wgpu::TextureView, draw: bool) {
-        let bg = self.look.bg.map(|v| if self.linear_out { v as f64 } else if self.power_out { v.powf(1.0 / 2.4) as f64 } else { linear_to_srgb(v) as f64 });
+        let bg = self.look.bg.map(|v| if self.linear_out { (v * self.white) as f64 } else if self.power_out { v.powf(1.0 / 2.4) as f64 } else { linear_to_srgb(v) as f64 });
         let mut rp = enc.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[Some(wgpu::RenderPassColorAttachment { view, depth_slice: None, resolve_target: None, ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: bg[0], g: bg[1], b: bg[2], a: 1.0 }), store: wgpu::StoreOp::Store } })],
