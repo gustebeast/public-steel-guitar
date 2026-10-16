@@ -188,10 +188,11 @@ def _prism(pts, x0, x1):
 STEP = 0.05                                    # mm between the outline's samples
 
 
-def rings(body):
+def rings(body, x=None):
     """The section's outlines at mid-length, (y, z) arrays, each wound so that its
     material lies to the LEFT (outer rings counter-clockwise, holes clockwise)."""
-    sec = body.val().intersect(cq.Face.makePlane(400, 400, cq.Vector(F.L / 2.0, 0, 0),
+    x = F.L / 2.0 if x is None else x
+    sec = body.val().intersect(cq.Face.makePlane(400, 400, cq.Vector(x, 0, 0),
                                                  cq.Vector(1, 0, 0)))
     out = []
     for face in sec.Faces():
@@ -221,10 +222,10 @@ def _inside(pts, rs):
     return (np.sum(cross & (y < yi), axis=1) % 2) == 1
 
 
-def gaps(token, cell, above=1e-3, below=1e9):
+def gaps(token, cell, above=1e-3, below=1e9, x=None):
     """The clearance as built, round the tenon's profile above z = `above`: each
     point's distance to the socket (negative where the two overlap). Sorted."""
-    tr, cr = rings(token), rings(cell)
+    tr, cr = rings(token, x), rings(cell, x)
     pts = np.vstack(tr)
     pts = pts[(pts[:, 1] > above) & (pts[:, 1] < below)]
     a, b = _segments(cr)
@@ -237,13 +238,13 @@ def gaps(token, cell, above=1e-3, below=1e9):
     return np.sort(dist)
 
 
-def overhang(body, down):
+def overhang(body, down, L=None):
     """(steepest overhang, bridge) of the joint's faces printed with `down` (y, z) the
     print's down. Anything flatter than 45 degrees is a BRIDGE -- the roof's flat AND the
     flatter parts of the arcs running into it -- measured by its width across (it must be
     under ROOF_FLAT_MAX); the overhang is the steepest face outside it (45 is the limit).
     The section's own outer box (bed, top, sides) is not joint and is left out."""
-    rs = rings(body)
+    rs = rings(body, None if L is None else L / 2.0)
     a, b = _segments(rs)
     allp = np.vstack(rs)
     lo, hi = allp.min(axis=0), allp.max(axis=0)
@@ -294,13 +295,14 @@ LEAD_P3 = ((0.0, 0.2), (2 * BEAD, 0.0))
 LEAD = ((0.0, 0.12), (3.0, 0.12), (4.5, 0.0))
 
 
-def _lead(body, hw, z0, z1, zlim, stations=LEAD, keep=None):
+def _lead(body, hw, z0, z1, zlim, stations=LEAD, keep=None, L=None):
     """`body` with the END RELIEF `stations` at both joint ends: the air beside its profile
     grown by each station's amount at its distance in, lofted between (the loft from the
     ROUNDED section keeps every corner as drawn). Only z in `zlim` is cut, and with
     `keep` = (y, z) nothing beyond |y| below z -- the SEAT face outside the mouth (plate 5:
     a seat cut 0.12 at the ends left the last layer an island over the middle)."""
-    L, x = F.L, F.L / 2.0
+    L = F.L if L is None else L
+    x = L / 2.0
     sec = body.val().intersect(cq.Face.makePlane(400, 400, cq.Vector(x, 0, 0), cq.Vector(1, 0, 0)))
     rect = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, -hw, z0), cq.Vector(x, hw, z0), cq.Vector(x, hw, z1), cq.Vector(x, -hw, z1)],
@@ -334,25 +336,26 @@ def _lead(body, hw, z0, z1, zlim, stations=LEAD, keep=None):
     return cq.Workplane("XY").newObject([out])
 
 
-def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
+def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both", L=None):
     """(token, cell, report) at clearance c, the socket's seat `g` off the host (default c);
     `relief` says which layer-made halves take S["lead"]: both / tenon / socket / none."""
     g = c if g is None else g
+    L = F.L if L is None else L
     rt, rs = matched(c, MIN[_kind(tenon)], MIN[_kind(socket)])
     # with a ROOT chamfer the socket's sharp bed edge faces the tenon's ROUND root corner;
     # that one chamfer steps out (quarter-tenths) until it clears by c
     d = 0.0
     while True:
         hw = host_w / 2.0
-        token = F._box(0, F.L, -hw, hw, -2 * WALL, 0).union(_prism(profile(S), 0.0, F.L))
+        token = F._box(0, L, -hw, hw, -2 * WALL, 0).union(_prism(profile(S), 0.0, L))
         if S.get("trunc"):               # the tip cut flat clear of a bridged socket roof (user)
-            token = token.cut(F._box(-1.0, F.L + 1.0, -hw, hw, S["tip"] - S["trunc"], S["tip"] + 1.0))
+            token = token.cut(F._box(-1.0, L + 1.0, -hw, hw, S["tip"] - S["trunc"], S["tip"] + 1.0))
         # the SEAT is a face of the joint like any other: the socket stands c off the host, so
         # its mouth corner is the tenon root fillet's true offset (seated flush, that corner
         # rounded against the seat and pinched the gap to 0 for 1.7 up the neck). The cavity is
         # cut c low in the socket's own frame; `seated` puts the socket where it rides
-        cell = (F._box(0, F.L, -hw, hw, 0, top)
-                .cut(_prism(profile(S, c, -1.0, c + d), -1.0, F.L + 1.0).translate((0, 0, -g))))
+        cell = (F._box(0, L, -hw, hw, 0, top)
+                .cut(_prism(profile(S, c, -1.0, c + d), -1.0, L + 1.0).translate((0, 0, -g))))
         # a seat closer than c (the user: the seam shows on the instrument's front face) keeps
         # c only over the tenon's root fillet -- a pocket c - g deep, as wide as that fillet
         # runs -- so the mouth corner is still the fillet's true offset, and the rest of the
@@ -360,10 +363,10 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
         n_root = None
         if g < c - 1e-9:
             n_root = S["n"] + rt[1] + 0.05          # a hair past the fillet: room for the full arc
-            cell = cell.cut(F._box(-1.0, F.L + 1.0, -n_root, n_root, -1.0, c - g))
+            cell = cell.cut(F._box(-1.0, L + 1.0, -n_root, n_root, -1.0, c - g))
         if S["mouth"]:
             m = S["mouth"]
-            cell = cell.cut(_prism([(m + 1.0, -1.0), (0.0, m), (-m - 1.0, -1.0)], -1.0, F.L + 1.0))
+            cell = cell.cut(_prism([(m + 1.0, -1.0), (0.0, m), (-m - 1.0, -1.0)], -1.0, L + 1.0))
         token, lt = F._round(token, "x", rt, False)
         skip = _mouth_corners(S, c, socket)
         if n_root:                       # the pocket's own edge corners face only air: as drawn
@@ -372,7 +375,7 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
         cell, ls = F._round(cell, "x", rs, False, skip=skip)
         if S.get("lead"):
             if tenon != "N" and relief in ("both", "tenon"):
-                token = _lead(token, hw, 0.0, S["tip"] + 1.0, (0.0, 1e3), S["lead"])
+                token = _lead(token, hw, 0.0, S["tip"] + 1.0, (0.0, 1e3), S["lead"], L=L)
             if socket != "N" and relief in ("both", "socket"):
                 # a seat OFF the bed takes the lead-in too (the band under it keeps the offset
                 # outline's edges one-for-one); one ON the bed must not be undercut
@@ -381,9 +384,9 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
                 # the user) -- the relief stops at it, as at the seat
                 cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top,
                              (-1.0, top - 1e-3) if socket == "up" else (-1.0, S["tip"] + c - g - 1e-3),
-                             S["lead"], None if socket == "up" else (S["n"] + c + rs[0] + 0.05, 0.3))
+                             S["lead"], None if socket == "up" else (S["n"] + c + rs[0] + 0.05, 0.3), L=L)
         seated = cell.translate((0, 0, g))
-        gp = gaps(token, seated)
+        gp = gaps(token, seated, x=L / 2.0)
         if not S.get("root") or gp[0] >= min(c, g) - 0.005 or d > 1.0:
             break
         d = round(d + 0.025, 3)
@@ -391,7 +394,9 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
     # and below a cut-flat tip, whose extra air is by design (reported in mouth_air's max)
     below = S["tip"] - S["trunc"] - 0.5 if S.get("trunc") else 1e9
     above = (S["mouth"] + c) if S["mouth"] else (S["root"] + 1.0) if S.get("root") else 1e-3
-    gj = gaps(token, seated, above, below)
+    if g < c - 1e-9:                     # faces that MEET: the root fillet's tail sits in the
+        above = max(above, c - g)        # pocket, beside faces touching by design
+    gj = gaps(token, seated, above, below, x=L / 2.0)
     # a corner FAILS only below what its half can print: one drawn short of its matched
     # radius (no room) still prints as drawn, and the measured gap says whether the pair
     # still meets evenly
@@ -399,11 +404,28 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both"):
                                                      ("socket", ls, MIN[_kind(socket)]))
            for _u, _v, kind, used in log
            if kind and (used is None or used < mn[0 if kind == "convex" else 1] - 1e-6)]
-    rep = dict(c=c, tenon_r=rt, socket_r=rs, gap=(gp[0], gj[-1]), mouth_air=gp[-1], corners_off=off,
+    rep = dict(c=c, tenon_r=rt, socket_r=rs, gap=(gj[0] if g < c - 1e-9 else gp[0], gj[-1]), mouth_air=gp[-1], corners_off=off,
                root_step=d,
-               tenon_overhang=(None, 0.0) if tenon == "N" else overhang(token, DOWN[tenon]),
-               socket_overhang=(None, 0.0) if socket == "N" else overhang(cell, DOWN[socket]))
+               tenon_overhang=(None, 0.0) if tenon == "N" else overhang(token, DOWN[tenon], L),
+               socket_overhang=(None, 0.0) if socket == "N" else overhang(cell, DOWN[socket], L))
     return token, cell, rep
+
+
+def halves(tenon, socket, c, L, g, host_w, size=None, relief="socket"):
+    """The fit-tested joint for an INSTRUMENT site (step 2 of the user's sequence, until it
+    moves into cadkit): (tenon, cavity, S), both in the joint frame -- X the slide (0..L),
+    Y across, Z the depth from the mating plane (the tenon host's face). The tenon carries
+    its host slab 2 * WALL back behind that plane (fused into the real host; host_w must fit
+    inside it) with the root fillets in it; the cavity is what the socket host loses, from
+    `g` (where its material starts: its seat, or an assembly standoff) to the cavity's end."""
+    S = dict(shape(tenon, socket, c, size), lead=LEAD)
+    S["tip"] = max(z for _y, z in profile(S))
+    top = S["tip"] + c + 2 * WALL
+    token, cell, rep = make_pair("site", tenon, socket, c, S, host_w, top, g=g, relief=relief, L=L)
+    assert rep["gap"][0] >= min(c, g) - 0.005, "the joint pinches to %.3f" % rep["gap"][0]
+    hw = host_w / 2.0
+    cavity = F._box(0, L, -hw, hw, 0, top).cut(cell).translate((0, 0, g))
+    return token, cavity, S
 
 
 REPORT = {}
@@ -555,7 +577,7 @@ def main(argv=None, pairs=None, tag=TAG, out="test_plate2_petg_gf.step"):
         for rep in r["steps"][:len(r["steps"]) // 2 or None]:
             (to, tb), (so, sb) = rep["tenon_overhang"], rep["socket_overhang"]
             bad = ((to or 0) > 45.5 or (so or 0) > 45.5 or max(tb, sb) > ROOF_FLAT_MAX + 1e-6
-                   or rep["gap"][1] > rep["c"] + 0.01 or rep["corners_off"])
+                   or rep["gap"][1] > max(rep["c"], rep.get("seat", rep["c"])) + 0.01 or rep["corners_off"])
             print("   c %.2f seat %.2f %-6s tenon %.2f/%.2f socket %.2f/%.2f  gap %.3f..%.3f (mouth %.2f)  overhang tenon %s"
                   " socket %s  bridge %.2f%s"
                   % (rep["c"], rep.get("seat", rep["c"]), rep.get("relief", ""), rep["tenon_r"][0], rep["tenon_r"][1], rep["socket_r"][0], rep["socket_r"][1],

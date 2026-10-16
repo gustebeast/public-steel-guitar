@@ -11,7 +11,7 @@ webs carry self-supporting diamond lightening; everything else is modelled
 SOLID — the slicer's walls + infill set the strength-to-weight.
 
 Too long for one print (~645 mm > 255 mm bed), so it's cut into 3 segments joined
-by a cadkit install-z JOINT on each side rail: the profile lies in the plan plane,
+by a fit-tested install-z JOINT on each side rail: the profile lies in the plan plane,
 so every working face is a printed VERTICAL wall, and you drop the next segment
 straight DOWN onto it. The joint locks ±X (so string pull can never draw the seam
 open) and ±Y by shape; Z — the install axis — needs no seam hardware at all, because
@@ -25,6 +25,7 @@ the segments assemble into the whole.
 
 from __future__ import annotations
 
+import functools
 import math
 
 import cadquery as cq
@@ -35,6 +36,7 @@ from elec.harness import ph_trunk_pins as _ph_trunk_pins
 from . import motor_bank as MB
 from .components import MOTOR_PULLEY_STANDOFF
 from .helpers import box_at
+from .test import fit_plate2 as FIT
 from cadkit.joinery import PrintSpec, joint
 
 T        = D.WALL_THICKNESS            # rail thickness (solid; slicer infills)
@@ -153,10 +155,9 @@ KH_RAIL_X      = KH_X + EP_TOP_CLR               # rail -X end / keyhead dovetai
 # so string tension can't draw the wide foot back out. The body carries the tenons; the
 # endplate sockets them (X+Y lock, still lifts +Z). The endplate's L-foot resting on the
 # leg-shell top is the drop-depth stop, so the dovetails need no shoulder of their own.
-# (KH_DT_WR / KH_DT_WT are gone with the hand-rolled trapezoid they described: the flank
-#  widths are cadkit's business now, computed from EP_J_W by the same max-min rule every
-#  other joint in the body is sized by.)
-KH_DT_DEPTH    = 8.0                    # dovetail reach into the endplate (X)
+KH_DT_DEPTH    = 11 * D.BEAD            # 8.8 reach into the endplate (X): the fit-tested
+                                       # joint below stands 8.0 and its cavity ends c past
+                                       # that (asserted in _ep_halves)
 KH_DT_Z0       = -29 * D.BEAD           # -23.2 foot line; also the LOWER/UPPER dovetail
                                        # split (the L-corner / drop stop). Every mate
                                        # (keyhead FOOT_Z, leg shells, both dovetails)
@@ -164,70 +165,35 @@ KH_DT_Z0       = -29 * D.BEAD           # -23.2 foot line; also the LOWER/UPPER 
                                        # top -33.15 + XBAR" -- arithmetic that had ALREADY
                                        # gone stale when the bed and XBAR moved onto the
                                        # grid, so the snap replaces a dead formula.)
-KH_DT_CLR      = 0.3                    # socket clearance (Y fit) -- now what cadkit's own
-                                       # policy returns for this site (PETG-GF 0.15, fit="loose"
-                                       # x2 for a BLIND drop-on), so the hand-picked number and
-                                       # the library's agree; asserted under _EP_J
-# ── THE ENDPLATE JOINT IS A CADKIT JOINT NOW (user, 2026-09-18) ──────────────────────────
-# It was the last hand-rolled joinery in the body: a Y-flaring trapezoid, i.e. exactly the
-# angled dovetail cadkit RETIRED, because at a 0.8 nozzle the tenon's acute plan corners round
-# DOWN while the mortise's inner corners round UP and the corners collide before the faces seat.
-# The site is: the chassis (printing Z-up, ALONG the install axis -> facing 'axial') carries a
-# tenon that the endplate (printing along the joint's DEPTH, from its deep end toward the mating
-# face -> facing 'down') drops onto. That is cadkit's MUSHROOM site, and the shape it picks is
-# the one the user drew: stem, two 45 deg flares, a two-bead waist vertical, one FLAT top -- the
-# flat end is legal precisely because the mortise host prints it FIRST, on solid material.
-# WIDTH is what the rail allows: the joint centres 5.0 from the instrument's outer face, and the
-# cavity (width/2 + clearance) has to leave the two-bead wall there.
-# WIDTH is bounded by the OUTER WALL MEASURED ACROSS THE DIAGONAL, not in a layer (user caught
-# it at 1.32 on the render, 2026-09-18). The cavity's widest corner and the instrument's outer
-# face make a WEDGE: in any one printed layer that wall is 5.0 - (W/2 + clearance), but the wedge
-# itself narrows by 1/sqrt(2) across the 45 deg flank, and that throat is the section the wall
-# actually fails at. At W 5.6 it was 1.90 in a layer and 1.34 across -- under the tier. 4.8 puts
-# the throat at 1.63. The flare (the retention) goes 1.40 -> 1.20 per side, still over the 1.00
-# of undercut the hand-rolled dovetail had.
-EP_J_ROOT = 3 * D.BEAD                  # 2.4 of volumetric fusion back into the chassis
-_EP_AX    = PrintSpec(nozzle=0.8, material="PETG-GF", facing="axial")   # chassis: builds +Z,
-                                                                       # along the install axis
-_EP_DN    = PrintSpec(nozzle=0.8, material="PETG-GF", facing="down")    # endplates: deep end
-                                                                       # first, mouth last
-EP_J_W    = 6 * D.BEAD                  # 4.8
-# NO `depth`: TAKE ONLY WHAT THE JOINT NEEDS (user, 2026-09-18). Handing it the 8.0 the endplate
-# has spent all of it -- the mushroom rides surplus depth on its WAIST VERTICALS, so the waist
-# came out 4.88 instead of the 1.60 tier. That buys NOTHING in pull-out: this joint is pulled
-# along its depth axis (the string tension), and that load is carried by the neck's tension and
-# the flare/lip shear, both of which are per unit of ENGAGEMENT LENGTH (the Z run), not of waist
-# height. A taller waist only adds side-bearing across the width and a deeper socket to cut. So
-# the profile takes its width-driven minimum (4.72 deep) and the endplate keeps the other 3.3.
-_EP_J     = joint(width=EP_J_W, length=10.0, tenon=_EP_AX, mortise=_EP_DN,
-                  install="+x", fit="loose",   # +x: the tenon travels +install to seat, and the
-                                               # endplate comes DOWN onto it
-                  standoff=EP_TOP_CLR)         # ...and the endplate's material does not start at
-                                               # the mating plane: it nests over the kept shell
-                                               # with this much assembly air. Declared, so the
-                                               # library can carry it -- both necks grow by it,
-                                               # the tenon's root grows to reach back across it,
-                                               # and the mortise host still prints its tier.
-                                               # (EP_TOP_CLR is the same 0.4 EP_LEG_CLR spells
-                                               #  further down -- that one is defined after this.)
-assert abs(_EP_J.clearance - KH_DT_CLR) < 1e-9, (
-    "cadkit's clearance for this site is %.2f but KH_DT_CLR says %.2f -- one of them is stale"
-    % (_EP_J.clearance, KH_DT_CLR))
-# ...and the endplate's printed NECK. cadkit grows the tenon's stem standoff by
-# clearance*(sqrt2-1) for one reason: so the DILATED cavity's neck wall lands on the two-bead
-# tier instead of being shortened by the mitre at the reflex stem->flare corner. The endplate
-# receives the whole of that only because _end_dt puts the mating plane on the ENDPLATE's own
-# face; measured on the built part along the user's own line it reads 1.73. Anything that eats
-# into it -- a bigger assembly gap, a placement back on the nominal face -- takes it straight
-# off the tier, which is what a measured 1.32 was.
-_EP_NECK = D.MIN_WALL_2P + _EP_J.clearance * (math.sqrt(2.0) - 1.0)
-assert _EP_NECK >= D.MIN_WALL_2P - 1e-9, (
-    "the cavity neck is %.2f, under the two-bead tier" % _EP_NECK)
-_EP_THROAT = (5.0 - (EP_J_W / 2.0 + _EP_J.clearance)) / math.sqrt(2.0)
-assert _EP_THROAT >= D.MIN_WALL_2P - 1e-9, (
-    "the socket's outer wall necks to %.2f across the flank's diagonal (%.2f in a layer), under "
-    "the two-bead tier -- narrow EP_J_W"
-    % (_EP_THROAT, 5.0 - (EP_J_W / 2.0 + _EP_J.clearance)))
+KH_DT_CLR      = 0.30                   # socket clearance: the step-1 LONG-joint pick for a
+                                       # nozzle tenon in a layer socket (fit plates 2-7)
+# ── THE ENDPLATE JOINT IS THE FIT-TESTED PROFILE (user, 2026-10-16) ───────────────────────
+# Joinery step 1 (src/test/fit_plate2..7, printed and fitted by the user) settled one profile
+# per print-orientation pair. This site is a NOZZLE tenon (the chassis builds +Z, along the
+# install axis) in a LAYER socket whose mouth faces UP in its print (both endplates build from
+# their outer face, so the face the rail drops into is the print's top). Smallest such joint:
+# neck 1.6, head 4.8, 2.0 corners, a flat cavity end, 8.0 deep -- which is why KH_DT_DEPTH
+# grew from 8.0. The endplate's 0.4 of assembly air (EP_TOP_CLR) is the socket's seat.
+# Until the profile moves into cadkit (step 4) it is built by src/test/fit_plate2.halves.
+EP_J_HOST_W = 10 * D.BEAD               # 8.0: the tenon's host slab across Y, inside the rail
+
+
+@functools.lru_cache(maxsize=None)
+def _ep_halves(length):
+    """(tenon, cavity) of the endplate joint, `length` along the install axis, in the joint
+    frame (X install, Y across, Z depth from the nominal face) -- see fit_plate2.halves."""
+    ten, cav, S = FIT.halves("N", "down", KH_DT_CLR, length, EP_TOP_CLR, EP_J_HOST_W)
+    reach = cav.val().BoundingBox().zmax
+    assert reach <= KH_DT_DEPTH + 1e-6, (
+        "the endplate socket reaches %.2f past the face, over KH_DT_DEPTH %.2f" % (reach, KH_DT_DEPTH))
+    # the endplate's OUTER wall: the joint centres 5.0 in from the instrument's outer face, and
+    # that wall is measured ACROSS THE DIAGONAL, not in a layer (user, 2026-09-18: 1.32 caught on
+    # the render) -- the cavity's widest corner and the outer face make a 45 degree wedge
+    throat = (5.0 - (S["h"] + KH_DT_CLR)) / math.sqrt(2.0)
+    assert throat >= D.MIN_WALL_2P - 1e-9, "endplate outer wall necks to %.2f, under the tier" % throat
+    return ten, cav
+
+
 KH_DT_SEAT     = 0.1                    # lower-dovetail seating clearance: the mortise face stays
                                        # ON the foot line (KH_DT_Z0 = -23.15) and the TENON is
                                        # shortened by this (top -23.25) so the tenon seats on the
@@ -287,15 +253,13 @@ for _s in SPLIT_X:
 # the hand-rolled sliding dovetail, which cadkit retired: at a 0.8 nozzle the
 # dovetail's acute plan corners round DOWN on the tenon and UP in the mortise, so
 # the halves collide at the corners before the faces seat.
-_UP       = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
-_SEG_JW   = 6.4                        # width across Y — leaves (T − JW)/2 − clearance
-                                       # = 1.65 mm of rail wall per side (2 beads)
-_SEG_JD   = 13 * D.BEAD                # 10.4 room into the +X segment: the fit-tested
-                                       # nozzle/nozzle joint (src/test/fit_plate2, 4.8 head,
-                                       # 2.0 corners) stands 8.8 + c 0.45 there; the T uses 5.63
+_SEG_CLR  = 0.35                       # the step-1 LONG-joint pick for nozzle / nozzle
+_SEG_HOST_W = 10 * D.BEAD              # 8.0: the tenon's host slab across Y, inside the rail
+_SEG_JD   = 13 * D.BEAD                # 10.4 room into the +X segment for the fit-tested
+                                       # nozzle/nozzle joint (4.8 head, 2.0 corners): it
+                                       # stands 8.8 and its cavity ends c past that
 _SEG_JZ1  = TP_GZ0 - TP_TG_DEPTH       # tenon top = the deck-groove FLOOR (−6), so the
                                        # seam joint never reaches into the deck groove
-_SEG_ROOT = 3 * D.BEAD                 # 2.4 volumetric fusion depth back into the −X segment
 # IT STARTS AT THE BOTTOM'S TOP FACE, NOT AT THE BED (user, 2026-09-15). The tenon is the only
 # MATERIAL half of this joint, and run from Z_BOT it stood in the same 10.4 band as the lever
 # mortises -- so the two stations flanking every seam had to be dropped and mortises went
@@ -314,9 +278,33 @@ _SEG_JZ0  = MB.FLOOR_TOP               # tenon base = the bottom prism's top fac
 # comes down on it working -X (every segment carries its tenon at its +X end and its mortise at
 # its -X end, so the chain is consistent). The endplates socket the rail ends and the deck rides
 # both crowns, both of which come after, so nothing else cared which way this went.
-_SEG_J    = joint(width=_SEG_JW, length=_SEG_JZ1 - _SEG_JZ0, depth=_SEG_JD,
-                  tenon=_UP, mortise=_UP, install="-z")   # signed: the TENON's segment is
-                  # lowered on, so RELATIVE to the mortise's host the tenon travels -Z to seat
+# THE PROFILE IS THE FIT-TESTED ONE (user, 2026-10-16): both segments build +Z, along the
+# install axis, so it is joinery step 1's nozzle/nozzle pair -- until step 4 moves it into
+# cadkit, built by src/test/fit_plate2.halves. The two segments' faces MEET at the seam (the
+# rail is one face, no reveal), so the socket's seat is 0: the plate-5 pocket keeps c over the
+# tenon's root fillet only.
+@functools.lru_cache(maxsize=None)
+def _seg_halves(length):
+    """(tenon, cavity) of the seam joint, `length` along Z, in the joint frame (X install,
+    Y across, Z depth past the seam plane) -- see fit_plate2.halves."""
+    ten, cav, _S = FIT.halves("N", "N", _SEG_CLR, length, 0.0, _SEG_HOST_W)
+    bb = cav.val().BoundingBox()
+    assert bb.zmax <= _SEG_JD + 1e-6, "seam cavity reaches %.2f, over _SEG_JD" % bb.zmax
+    # the rail wall left beside the cavity is a printed wall like any other
+    assert (T - 2 * bb.ymax) / 2 >= D.MIN_WALL_2P - 1e-9, (
+        "seam joint leaves %.2f of rail wall per side, under the tier" % ((T - 2 * bb.ymax) / 2))
+    return ten, cav
+
+
+def _to_world(half, into):
+    """A joint-frame half (X install, Z depth) placed install-up: X -> world +Z, depth -> world
+    `into` * X; Y stays Y (the profile is symmetric, so one rotation serves both signs)."""
+    half = half.rotate((0, 0, 0), (0, 1, 0), -90.0)      # +x -> +z, +z -> -x
+    if into > 0:
+        half = half.rotate((0, 0, 0), (0, 0, 1), 180.0)  # ...and -x -> +x
+    return half
+
+
 # ...and the cavity's own floor: 0.4 below the bottom prism's top face, which is a SKIM off that
 # face rather than a channel through it. The 0.4 is clearance, not a seat -- the segments' Z is
 # set by the rail crowns and the endplates, and the tenon must not bottom out before the rail
@@ -326,13 +314,7 @@ _SEG_RELIEF_CLR = 0.4                   # the gap under the tenon: the cavity's 
                                         # ramp this far below the tenon's, so the tenon lands on
                                         # neither -- one number, both faces
 _SEG_MZ0  = MB.FLOOR_TOP - _SEG_RELIEF_CLR
-_SEG_JX1  = _SEG_J.dims["depth_used"]  # the tenon's +X reach past the seam plane
-# the rail wall left beside the cavity is a printed wall like any other, and the only
-# thing keeping it at tier is the hand-picked width above. Say so, so a later change to
-# either the width or the rail thickness fails here rather than quietly slicing it.
-assert (T - _SEG_JW) / 2 - _SEG_J.clearance >= D.MIN_WALL_2P, (
-    f"seam joint leaves {(T - _SEG_JW) / 2 - _SEG_J.clearance:.2f} of rail wall per "
-    f"side, under the {D.MIN_WALL_2P} two-bead tier — narrow _SEG_JW or thicken the rail")
+_SEG_JX1  = _seg_halves(1.0)[0].val().BoundingBox().zmax   # the tenon's +X reach past the seam
 # guard: the seam JOINT (X-footprint s−ROOT .. s+reach, at the RAILS) must not overlap
 # a rib -- the rib runs to the rails there, so an overlap would slice it.
 # The seam and the grid no longer argue in X: the split PLANE runs down the middle of a 3.2
@@ -852,7 +834,7 @@ def _seg_relief(s, yr, dz=0.0):
     mortise did not).
 
     The TENON needs it: it stands on the bottom prism's top face, so everything it projects past
-    the seam plane hangs over the NEIGHBOUR's floor, and flat that underside was a 5.63-deep
+    the seam plane hangs over the NEIGHBOUR's floor, and flat that underside was an 8.8-deep
     bridge over air. The MORTISE takes the same wedge lowered by _SEG_RELIEF_CLR -- which gives
     the cavity's ramp a clearance gap under the tenon's instead of a coincident face to bottom
     out on, and hands the +X segment back the material its cavity was taking below a tenon that
@@ -877,13 +859,13 @@ def _relieved(solid, s, yr, dz, what):
 
 def _seg_tenon(s, yr):
     """The −X segment's half of the seam joint at split X=s, rail Y=yr: a plan-plane
-    T prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
+    profile prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
     _SEG_JZ0 -- below that is the lever-mortise grid, and this may not stand in it). (The bridge/keyhead END
     joints are a different site — they use the low _br_tongue/_kh_tongue dovetails.)"""
     # the 45 deg underside is _seg_relief -- self-supporting back to this segment's own floor,
-    # at a cost to the head of its bottom 5.63 of engagement out of 65.35
-    return _relieved(_SEG_J.tenon(root=_SEG_ROOT).translate((s, yr, _SEG_JZ0)),
-                     s, yr, 0.0, "tenon")
+    # at a cost to the head of its bottom _SEG_JX1 (8.8) of engagement
+    ten = _to_world(_seg_halves(_SEG_JZ1 - _SEG_JZ0)[0], +1)
+    return _relieved(ten.translate((s, yr, _SEG_JZ0)), s, yr, 0.0, "tenon")
 
 
 def _seg_mortise(s, yr):
@@ -897,8 +879,7 @@ def _seg_mortise(s, yr):
     out of a 3.2 wall between two slots, and the user caught it collided with them. Reversing
     which segment goes down last deleted the need for it outright (see the SEGMENT JOINT block):
     nothing sweeps the floor any more, so the cavity stops at the floor."""
-    cav = _SEG_J.mortise(drop=_SEG_ROOT + 1.0,
-                         length=(TP_GZ0 + 2.0) - _SEG_MZ0).translate((s, yr, _SEG_MZ0))
+    cav = _to_world(_seg_halves((TP_GZ0 + 2.0) - _SEG_MZ0)[1], +1).translate((s, yr, _SEG_MZ0))
     return _relieved(cav, s, yr, -_SEG_RELIEF_CLR, "cavity")
 
 
@@ -908,15 +889,8 @@ def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=KH_DT_SEAT):
     endplate's interior -- the direction the joint's DEPTH runs. The body carries the tenon;
     the endplate cuts the socket (socket=True).
 
-    THE SHAPE IS CADKIT'S, not ours (see the _EP_J block): a mushroom, because the endplate
-    prints from its deep end toward this face. All this function does is place it -- the
-    library authors the profile in its own frame (width across local Y, depth along local Z,
-    extruded along local X = the install axis), so the placement is a rotation:
-
-        local +X (install)  ->  world +Z     the endplate drops on
-        local +Z (depth)    ->  world `into` * X
-        local  Y (width)    ->  world Y      (the profile is symmetric, so its sign is free --
-                                              which is what lets one rotation serve both ends)
+    THE SHAPE IS THE FIT-TESTED ONE (see _ep_halves). All this function does is place it
+    (_to_world): install -> world +Z, the endplate dropping on; depth -> world `into` * X.
 
     `top_clr` raises the SOCKET's far end past the tenon's so the tenon seats on its real stop
     -- A SEATING CLEARANCE, NOT A RUN-OUT (user, 2026-09-18). The upper joint used to take
@@ -927,17 +901,10 @@ def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=KH_DT_SEAT):
     what the lower joint always used
     (the L-foot on the shell) and not on the cavity's end -- unchanged in meaning, and still the
     only asymmetry between the two halves."""
-    # The mating plane is the NOMINAL face, and the endplate's 0.4 of assembly air is the
-    # joint's `standoff` (see _EP_J) -- the library grows both necks by it and lengthens the
-    # tenon's root to reach back across it. It was hand-corrected here for one commit, which
-    # worked and taught nothing: a second site with a gap would have made the same 1.32.
+    # The mating plane is the NOMINAL face; the endplate's 0.4 of assembly air is the socket's
+    # seat (_ep_halves), so its material starts there and the cavity with it.
     L = (z1 - z0) + (top_clr if socket else 0.0)
-    half = (_EP_J.mortise(drop=EP_J_ROOT + 1.0, length=L) if socket
-            else _EP_J.tenon(root=EP_J_ROOT, length=L))
-    half = half.rotate((0, 0, 0), (0, 1, 0), -90.0)      # +x -> +z, +z -> -x
-    if into > 0:
-        half = half.rotate((0, 0, 0), (0, 0, 1), 180.0)  # ...and -x -> +x at the bridge end
-    return half.translate((x_face, yc, z0))
+    return _to_world(_ep_halves(L)[1 if socket else 0], into).translate((x_face, yc, z0))
 
 
 def _kh_tongue(yc, socket=False):

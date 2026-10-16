@@ -298,13 +298,14 @@ def _mushroom_make(base_make):
 
     def make(k, d):
         c, bc = d
-        site = dict(width=CH.EP_J_W, tenon=CH._EP_AX, mortise=CH._EP_DN, install="+x",
-                    standoff=CH.EP_TOP_CLR)
+        R1 = F._round1_sites()
+        site = dict(width=R1.EP_J_W, tenon=R1._EP_AX, mortise=R1._EP_DN, install="+x",
+                    standoff=R1.EP_TOP_CLR)
         h0 = joint(length=F.L, clearance=c, back_clearance=bc, **site).height
         J = joint(length=F.L, clearance=c, back_clearance=bc,
                   depth=h0 - 2 * D.BEAD + WAIST, **site)
         hw = CH.T / 2.0
-        root = CH.EP_J_ROOT
+        root = R1.EP_J_ROOT
         token = F._box(0, F.L, -hw, hw, -10 * D.BEAD, 0).union(J.tenon(root=root, length=F.L))
         so = getattr(J, "standoff", 0.0)
         assert J.height + bc + 4 * D.BEAD <= MUSH_CELL_T + 1e-9, "no room behind the cavity for its number"

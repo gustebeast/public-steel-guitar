@@ -53,6 +53,25 @@ import cadquery as cq
 
 from cadkit.joinery import joint
 
+
+def _round1_sites():
+    """The seam and endplate SITES as round 1 printed them (cadkit's tee and mushroom). The
+    chassis has since moved both onto the fit-tested profile (2026-10-16); these keep the
+    round-1 coupons rebuilding exactly as they were printed."""
+    from types import SimpleNamespace
+    from cadkit.joinery import PrintSpec
+    from src import chassis as CH, dimensions as D
+    up = PrintSpec(nozzle=0.8, material="PETG-GF", facing="up")
+    ax = PrintSpec(nozzle=0.8, material="PETG-GF", facing="axial")
+    dn = PrintSpec(nozzle=0.8, material="PETG-GF", facing="down")
+    return SimpleNamespace(
+        _UP=up, _SEG_JW=6.4, _SEG_JD=8.0, _SEG_ROOT=3 * D.BEAD,
+        _SEG_J=joint(width=6.4, length=1.0, depth=8.0, tenon=up, mortise=up, install="-z"),
+        _EP_AX=ax, _EP_DN=dn, EP_J_W=6 * D.BEAD, EP_J_ROOT=3 * D.BEAD, EP_TOP_CLR=CH.EP_TOP_CLR,
+        _EP_J=joint(width=6 * D.BEAD, length=10.0, tenon=ax, mortise=dn, install="+x",
+                    fit="loose", standoff=CH.EP_TOP_CLR),
+        T=CH.T)
+
 HERE = pathlib.Path(__file__).resolve().parent
 
 L = 12.0                    # engagement: enough to feel a slide, short enough to print five
@@ -442,27 +461,28 @@ def finders():
         token_mark=((L / 2.0, 0.0, -8 * D.BEAD), (0, 0, -1), (0, 1, 0))))
 
     # the section seam: the tee a section drops onto
-    j = CH._SEG_J
+    R1 = _round1_sites()
+    j = R1._SEG_J
     out.append(Finder(
         "seam", "chassis section seam (tee, drop-in)",
-        _drop(j, dict(width=CH._SEG_JW, depth=CH._SEG_JD, tenon=CH._UP, mortise=CH._UP,
+        _drop(j, dict(width=R1._SEG_JW, depth=R1._SEG_JD, tenon=R1._UP, mortise=R1._UP,
                       install="-z"),
-              host_w=T, host_d=CH._SEG_JD + 3 * D.BEAD, root=CH._SEG_ROOT),
+              host_w=T, host_d=R1._SEG_JD + 3 * D.BEAD, root=R1._SEG_ROOT),
         (j.clearance, j.back_clearance), T + GAP, UP_Z, UP_Z, "chassis_0", "chassis_0",
         # the cell's back face, a SIDE WALL (figure upright); the token's TOP
-        cell_mark=((CH._SEG_JD + 3 * D.BEAD, 0.0, L / 2.0), (1, 0, 0), (0, 1, 0)),
-        token_mark=((-(CH._SEG_JD + 3 * D.BEAD) / 2.0, 0.0, L), (0, 0, 1), (0, 1, 0))))
+        cell_mark=((R1._SEG_JD + 3 * D.BEAD, 0.0, L / 2.0), (1, 0, 0), (0, 1, 0)),
+        token_mark=((-(R1._SEG_JD + 3 * D.BEAD) / 2.0, 0.0, L), (0, 0, 1), (0, 1, 0))))
 
     # the endplate: the mushroom on a rail end / shell end, the endplate's socket over it
-    j = CH._EP_J
+    j = R1._EP_J
     out.append(Finder(
         "endplate", "chassis <-> endplate (mushroom, the loose tier)",
         # (no fit="loose" here: that tier is how the part ARRIVES at 0.30/0.60, and the
         #  clearances are given outright below -- passing both would double them again)
-        _slide(j, dict(width=CH.EP_J_W, tenon=CH._EP_AX, mortise=CH._EP_DN, install="+x",
-                       standoff=CH.EP_TOP_CLR),
-               host_w=T, ten_t=10 * D.BEAD, mort_t=10 * D.BEAD, root=CH.EP_J_ROOT,
-               drop=CH.EP_J_ROOT + 1.0),
+        _slide(j, dict(width=R1.EP_J_W, tenon=R1._EP_AX, mortise=R1._EP_DN, install="+x",
+                       standoff=R1.EP_TOP_CLR),
+               host_w=T, ten_t=10 * D.BEAD, mort_t=10 * D.BEAD, root=R1.EP_J_ROOT,
+               drop=R1.EP_J_ROOT + 1.0),
         (j.clearance, j.back_clearance), T + GAP,
         _facing_up("axial"), _facing_up("down"), "chassis_0", "bridge_endplate",
         # the cell's BED face, 2.1 behind the socket (so the small figure); the token's

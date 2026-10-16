@@ -3613,7 +3613,7 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
     # is a crimped housing with loose wires, so the pair needs no run at plug height at
     # all; it used to cross 20 mm sideways there to a column at the conduit's middle,
     # from when the USB lead had a column beside it. The conduit is open behind J2.
-    # (PWR_COL_DX: it steps 3.75 mm +X as it turns. That is for the MODEL, not the
+    # (PWR_COL_DX: it steps 7.5 mm +X as it turns. That is for the MODEL, not the
     # wires -- cadkit's bundle carries the pair's flat round each corner without twisting
     # it, and without one sideways leg it arrives at J9 a quarter turn out.)
     for ref, w, h, od in (("J1", _USBC_W, _USBC_H, USB_OD),
@@ -3765,10 +3765,12 @@ PWR_Z_TURN = RUN_Z - 3.5                # -13.1: the 24 V pair crosses UNDER the
                                         # ribbon, in a trench in the conduit's floor
                                         # (opt_pwr_slot). The pair is stacked in Z there,
                                         # 1.9 either side of this
-PWR_COL_DX = 3.75                       # the 24 V pair's drop, +X of J2's centre (see
-                                        # opt_cables). One and a half pitches: the -Y
-                                        # rail's end reaches x -19.93 inside the conduit,
-                                        # and at one pitch the pair came down through it
+PWR_COL_DX = 7.5                        # the 24 V pair's drop, +X of J2's centre (see
+                                        # opt_cables). Three pitches: the -Y rail's end
+                                        # tenon reaches x -17.46 inside the conduit since
+                                        # it became the fit-tested 8.0-deep joint (it was
+                                        # -19.93 at 3.75), and the pair hangs 1.9 either
+                                        # side of this line -- 0.5 clear of the tip
 PWR_Y = -126.4                          # the 24 V lead's y in the conduit's open mouth
                                         # strip (y -128.75..-124.58, the rail on one side)
 PWR_Z_REC = -25.5                       # the 24 V lead crossing into the board recess,
