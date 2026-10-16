@@ -532,21 +532,11 @@ RIB_PITCH = D.MOTOR_X_STEP          # THE motor pitch. The bottom is a SLAB now,
 BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.2) + a 2.4mm AIR
                                     #   gap (no material between the lever and the body). Raising the axle
                                     #   is equivalent to lowering BODY_Z here; MOUNT_Z tracks it (= -82.55)
-# ── THE MOUNT JOINT: the fit-tested standing pair (user, 2026-10-16) ──────────────────────
-# Both halves print -Z->+Z with the slide (+Y, the knee-DEPTH adjustment) across the layers:
-# joinery step 1's LAYER/LAYER STANDING pair, sized up to this site (plate 8 A: neck 3.2, head
-# 5.6, straight sides 1.6, the tip cut flat 1.2 under the peak, a root chamfer, end relief in
-# the socket only). Plate 8 A1, 0.20: no wobble, slight friction -- picked because a set of
-# them that still slides at full length is the strongest mount; A2 (0.25) is the fallback the
-# full-length coupon decides on. One joint SIZE, two LENGTHS: short TENONS on the housing (its
-# own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
-# ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
-# until step 4 moves it into cadkit.
-MORT_CLR  = 0.275                   # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
-                                    # already too tight on the mini seam plate, user 2026-10-16);
-                                    # MINI ROUND 2: 0.25 "still a touch tight" -> half a step
-LEVER_FIT = {"neck": 4 * D.BEAD, "head": 7 * D.BEAD, "side": 2 * D.BEAD, "root": True,
-             "trunc": 1.2}
+# ── THE MOUNT JOINT: the fit-tested standing pair -- DEFINED in dimensions (LEVER_FIT,
+# LEVER_MORT_CLR), because the chassis floor's thickness is read off it (D.BOTTOM_T) and the
+# floor sets the bed this module poses the lever from. Built by src/test/fit_plate2.halves.
+MORT_CLR  = D.LEVER_MORT_CLR
+LEVER_FIT = D.LEVER_FIT
 _JW       = LEVER_FIT["head"]       # 5.6 across the head (the joint's widest)
 _JHW      = _JW / 2.0
 _J_STEM   = LEVER_FIT["neck"]       # 3.2 the neck

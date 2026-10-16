@@ -47,6 +47,8 @@ import sys
 
 import cadquery as cq
 
+from src import motor_bank as _MB    # the bed: every coupon z under the floor top hangs off it
+
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 
@@ -212,20 +214,17 @@ def compensate(shape, side, e=SEAM_COMP):
 # +X end cut as the housing's real -X edge is (user: no deck past the joint): the deck stops
 # at the fourth tenon's STEM face; above its root chamfer (0.8, knee_lever.clip_tenon_root)
 # the tenon carries on whole to its head's edge
-HOUS_Z1_W, TEN_ROOT_CH = -81.85, 0.8         # the mating plane: the chassis underside
+HOUS_Z1_W, TEN_ROOT_CH = _MB.BED_Z, 0.8      # the mating plane: the chassis underside
 _MINI_S3 = HOUS_S0 + 3 * GRID_P
 _R3_S7 = HOUS_S0 + 7 * GRID_P
 # ROUND 3 IS TWO BEADS EACH SIDE OF THE JOINT (user, 2026-10-16: "only 1.6mm of material on
-# top of the mortises and below the tenons"): the floor stops MIN_WALL_2P over the lever
-# mortises' roof (-73.906, measured on chassis_0), the housing's deck MIN_WALL_2P under the
-# mating plane. The instrument's own floor cap goes to 1.6 with BOTTOM_T (lead, same day).
-R3_MORT_TOP = -73.906
-R3_FLOOR = R3_MORT_TOP + 2 * 0.8
+# top of the mortises and below the tenons"): the housing's deck MIN_WALL_2P under the mating
+# plane; the floor needs no cut of its own -- D.BOTTOM_T now IS the mortise roof plus 1.6.
 R3_HOUS = [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, _, HOUS_TEN_Y0 + 36.4 + 0.05,
             HOUS_Z1_W - 2 * 0.8, _),
            (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, _, HOUS_TEN_Y0 + 36.4 + 0.05,
             HOUS_Z1_W + TEN_ROOT_CH, _)]
-MINI_HOUS = [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, HOUS_TEN_Y0 + MINI_L, -86.4, _),
+MINI_HOUS = [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, HOUS_TEN_Y0 + MINI_L, HOUS_Z1_W - 4.55, _),
              (HOUS_S0 - GRID_WEB, _MINI_S3 + 5.6 / 2.0 + 0.5, _, HOUS_TEN_Y0 + MINI_L,
               HOUS_Z1_W + TEN_ROOT_CH, _)]
 MIN_WALL = 0.8
@@ -253,7 +252,7 @@ def _fix_rail_ties(comps):
 # the fin only has to stop a rail swaying under the nozzle (user: "we wouldn't need much
 # material to keep the object upright"): a two-bead web, braced along its whole edge by the
 # rail, to two thirds of the height
-Z_BOT = -81.85
+Z_BOT = _MB.BED_Z
 FIN_TOP, FIN_RUN, FIN_T = Z_BOT + 2.0 / 3.0 * 81.85, 25.0, 2 * 0.8
 
 
@@ -328,10 +327,10 @@ COUPONS = [
     # ROUND 3 (user, 2026-10-16): "test the full 8 mortise/tenons and the full 36.4mm length" --
     # SEAM_K stations a side on a floor one tenon length long, the rail still the mini's stub
     Coupon("r3_seam_tenon", ["chassis_1"],
-           [(STUB_TEN_X0, _, _, RAIL_MY, _, MINI_TOP), (SEAM_X0, _, _, SEAM_Y1, _, R3_FLOOR)],
+           [(STUB_TEN_X0, _, _, RAIL_MY, _, MINI_TOP), (SEAM_X0, _, _, SEAM_Y1, _, FLOOR)],
            UP_Z, "seam tenon, short, + 4 lever mortises, full tenon length"),
     Coupon("r3_seam_mortise", ["chassis_0"],
-           [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, _, R3_FLOOR)],
+           [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
            UP_Z, "seam mortise, short, + 4 lever mortises, full tenon length"),
     Coupon("r3_lever", ["knee_housing"], R3_HOUS,
            UP_Z, "all 8 housing tenons, full 36.4"),
@@ -353,7 +352,7 @@ COUPONS = [
     # PRINTED RIDGES UP, as the housing's tenons are: the ridge takes the lever's standing
     # layer/layer profile, which the real adapter's DOWN_Y would make nozzle-wise (open)
     Coupon("corner_adapter", ["body_adapter_1"],
-           [(-17.7 - 2 * MIN_WALL, 8.7 + 2 * MIN_WALL, _, _, -82.0 - 2 * MIN_WALL, _)],
+           [(-17.7 - 2 * MIN_WALL, 8.7 + 2 * MIN_WALL, _, _, Z_BOT - 0.15 - 2 * MIN_WALL, _)],
            UP_Z, "adapter ridges (octagon, slide in along Y): into A's floor mortises"),
 
     # C. chassis <-> keyhead endplate, -Y corner: the same joint printed the other way
@@ -387,7 +386,7 @@ COUPONS = [
              -104.0, -24.0, _, FLOOR)],
            UP_Z, "eight floor mortises: the housing's station and its lead-in"),
     Coupon("lever_housing", ["knee_housing"],
-           [(_, _, _, -49.7, -86.4, _)],
+           [(_, _, _, -49.7, HOUS_Z1_W - 4.55, _)],
            UP_Z, "the housing's eight tenons on its own top deck"),
 
     # F. nut slide inserts <-> keyhead: the slots of strings 7-10 and the four inserts

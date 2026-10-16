@@ -878,11 +878,43 @@ LEVER_MORT_W = XBAR - 2 * MIN_WALL_2P        # 7.2 across the octagon mortise (t
 # left on each side. The pitch is then XBAR on the nose -- each mortise gets back the full
 # rib section the joint was sized against, and consecutive ribs simply touch.
 LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4
-# THE BOTTOM PRISM'S THICKNESS is NOT the same number (user, 2026-09-16). The octagon mortise
-# reaches 8.9 up from the bed, so a floor of XBAR left only 1.5 of cap over each slot -- under
-# the two-bead rule, and the joint itself is already bottomed out at 1.6, so the cap is where
-# the tenth of a millimetre has to come from. chassis asserts the cap against the real solids.
-BOTTOM_T     = XBAR + 0.1                        # 10.5
+# THE LEVER MOUNT JOINT: the fit-tested standing pair (user, 2026-10-16). knee_lever builds it;
+# it is defined here because the bottom prism below is sized from it.
+# Both halves print -Z->+Z with the slide (+Y, the knee-DEPTH adjustment) across the layers:
+# joinery step 1's LAYER/LAYER STANDING pair, sized up to this site (plate 8 A: neck 3.2, head
+# 5.6, straight sides 1.6, the tip cut flat 1.2 under the peak, a root chamfer, end relief in
+# the socket only). Plate 8 A1, 0.20: no wobble, slight friction -- picked because a set of
+# them that still slides at full length is the strongest mount; A2 (0.25) is the fallback the
+# full-length coupon decides on. One joint SIZE, two LENGTHS: short TENONS on the housing (its
+# own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
+# ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
+# until step 4 moves it into cadkit.
+LEVER_MORT_CLR = 0.275                   # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
+                                    # already too tight on the mini seam plate, user 2026-10-16);
+                                    # MINI ROUND 2: 0.25 "still a touch tight" -> half a step
+LEVER_FIT = {"neck": 4 * BEAD, "head": 7 * BEAD, "side": 2 * BEAD, "root": True,
+             "trunc": 1.2}
+# THE BOTTOM PRISM'S THICKNESS: the mount mortise's roof plus a two-bead cap (user,
+# 2026-10-16: "set it based on the mortise ceiling plus 1.6", not a constant). It was XBAR + 0.1
+# (10.5), sized for the old octagon mortise's 8.9; the fit-tested joint's roof is lower and
+# nothing re-derived the floor -- the user measured 2.889 of cap. Read off the BUILT joint (its
+# cavity's top, end relief and all), so a joint change moves the floor with it. Not rounded to
+# a grid: it is a depth the joint dictates, not a wall (check_beads exempts it), and any
+# rounding up is cap the user just asked to lose. A module __getattr__,
+# because fit_plate2 imports this module: computed on first use, after both are loaded.
+# chassis asserts the cap against the real solids.
+_DERIVED = {}
+
+
+def __getattr__(name):
+    if name == "BOTTOM_T":
+        if name not in _DERIVED:
+            from src.test import fit_plate2 as _FIT
+            _ten, _cav, _S = _FIT.halves("up", "up", LEVER_MORT_CLR, 12.0, 0.0, LEVER_MORT_W,
+                                         size=LEVER_FIT)
+            _DERIVED[name] = _cav.val().BoundingBox().zmax + MIN_WALL_2P
+        return _DERIVED[name]
+    raise AttributeError("module %r has no attribute %r" % (__name__, name))
 
 
 
