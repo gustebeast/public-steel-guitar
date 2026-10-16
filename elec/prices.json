@@ -173,14 +173,14 @@
       "order": "2 x $12.70 (pack of 50) = $25.40 for 100 needed",
       "what": "O2 x 4 dowel pin, 52100 -- the nut break pins"
     },
-    "guide_rod_o2_5": {
-      "usd": 0.44,
-      "verified": "m",
+    "guide_rod_o3_5": {
+      "usd": 1.37,
+      "verified": "v",
       "per_instrument": 10,
-      "vendor": "McMaster-Carr",
-      "sku": "91595A370",
-      "order": "4 x $11.00 (pack of 25) = $44.00 for 100 needed",
-      "what": "O2.5 x 30 hardened dowel pin (m6) -- the guide rod, used as bought. Replaces the O3.5 drill blank that had to be cut in two. An m6 pin is 2.502-2.508: check it slides in the nut's ear before pressing ten in."
+      "vendor": "123bearing (INA)",
+      "sku": "NRB 3.50x29.80-G2",
+      "order": "10 x $1.37 = $13.70, 8-10 days",
+      "what": "O3.5 x 29.8 needle roller, INA NRB 3.5x29.8-G2 (DIN 5402-3 form B, 100Cr6, 3.490-3.500) -- the guide rod, used as bought. Slides in the nut ear reamed 9/64in (0.072-0.086 clearance, 0.63-0.75 cent); press in the endplate. Replaces the O2.5 dowel (the ear measured 3.5, 2026-10-16)."
     },
     "shaft_o8": {
       "usd": 10.18,

@@ -644,8 +644,8 @@ STRIP_GROW_MX = 0.0   # was 10.0 = 2.5 measured lane + 6.0 ADC column + 1.5 of C
 # if a rod moves: whichever of the deck band or the rod support binds first, wins.
 ROD_SUPPORT = D.MIN_WALL_2P                                   # 1.6, the ring's own wall
 # THE BOARD WAS ROUTED AGAINST A Ø3.5 ROD and its edge stays where that put it. The rod is
-# a Ø2.5 pin now, which leaves the ring 2.1 rather than 1.6; taking the 0.5 back for the
-# board is a re-layout, not a consequence to let through here.
+# Ø3.5 again (the ear measured 3.5, 2026-10-16), so the ring is the 1.6 it was routed for;
+# a larger rod would be a re-layout, not a consequence to let through here.
 ROD_D_ROUTED = 3.5
 assert D.GUIDE_ROD_D <= ROD_D_ROUTED, "the guide rod outgrew the ring this board leaves it"
 _ROD_CAP = min(D.guide_rod_x(i) for i in range(D.N_STRINGS)

@@ -472,7 +472,7 @@ BED = 250.0                        # usable of the 256 bed
 PLATES = {
     # as drawn, then with SEAM_COMP (user: "print one as is, then one with the compensation")
     "seam_lever_mini": [["mini_seam_tenon", "mini_seam_mortise", "mini_lever"],
-                        ["mini_seam_tenon_comp", "mini_seam_mortise_comp", "mini_lever"]],
+                        ["mini_seam_tenon_comp", "mini_seam_mortise_comp"]],   # one lever tests both
     "full_length_1": [
         ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_adapter"],
         ["corner_keyhead_chassis", ("corner_bridge_endplate", "corner_keyhead_endplate")],

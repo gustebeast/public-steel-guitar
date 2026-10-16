@@ -252,8 +252,11 @@ NUT_FLANGE_T    = 4.0
 NUT_BOSS_D      = 10.2
 NUT_BOSS_L      = 11.0      # 15 overall - 4 flange
 NUT_H           = NUT_FLANGE_T + NUT_BOSS_L                            # 15.0
-NUT_HOLE_D      = 2.5       # the ears' through-holes, per the listing (user, 2026-10-07:
-                            # trust it and design to a stock dowel pin; unmeasured)
+NUT_HOLE_D      = 3.5       # the ears' through-holes, MEASURED (user, 2026-10-16, calipers,
+                            # every nut of the order: "It does say 2.5 but unfortunately they
+                            # all measure 3.5"). The listing's 2.5 (trusted 2026-10-07) was
+                            # wrong; the seller's drawing had said 3.5 all along. Calipers
+                            # read a 3.5 bore to +-0.02 at best -- see GUIDE_EAR_D.
 NUT_HOLE_DX     = 8.0       # ± from the axis (16 mm hole pitch)
 # MOUNTING — FLANGE UP, BOSS DOWN, and nothing bolts to anything.
 # Flange up puts the EARS at the top of the nut, which is what keeps the string's
@@ -359,14 +362,28 @@ SCREW_TOP_Z     = CHANGER_CEIL_Z - SCREW_END_GAP        # -4.80
 # 0.004 mm under the 11 N anti-rotation load carried at both ends, 0.011 mm as a pure
 # cantilever from the slab. What matters is the bore -- any clearance there is amplified
 # over the rod's reach, so it is a PRESS fit.
-# A STOCK DOWEL PIN, USED AS BOUGHT (user, 2026-10-07). The listing gives the ear hole as
-# Ø2.5, and a hardened Ø2.5 dowel pin is an off-the-shelf part in the lengths this needs,
-# so nothing is cut.
-# FIRST CHECK WHEN A NUT ARRIVES: the ear hole is unmeasured, and an m6 pin is 2.502-2.508,
-# so it will not slide in a true 2.50 hole. Ream the ear to 2.6 or accept what the hole
-# really is.
-GUIDE_ROD_D     = NUT_HOLE_D  # 2.5 — slide fit in the nut's ear, press in the endplate
-GUIDE_ROD_L     = 30.0      # the STOCK length (McMaster 91595A370). The endplate takes
+# A STOCK PIN, USED AS BOUGHT (user, 2026-10-07) -- and since the ear MEASURED Ø3.5
+# (2026-10-16) it is a Ø3.5 x 29.8 NEEDLE ROLLER (INA NRB 3.5x29.8-G2, DIN 5402-3 form B:
+# through-hardened 100Cr6, ground, Ø3.490-3.500, flat ends). There is no stock Ø3.5 dowel
+# with a sliding tolerance: Misumi's h7/g6 straight dowels skip 3.5, and the m6 kind is
+# 3.502-3.510, an interference in a true 3.50 hole.
+# A SLIDING FIT, NEVER LINE-TO-LINE (user, 2026-10-16: "wouldn't there be no clearance and a
+# lot of friction?"). Diametral clearance c in the ear lets the nut turn c/8 rad about the
+# screw (the ear is NUT_HOLE_DX out), which the 2 mm lead turns into c*2/(2*pi*8) = 0.040c of
+# lost travel on every load reversal; at ~4.6 um per cent that is 0.43 cent at c 0.05 and
+# 0.87 cent at c 0.10 (the old Ø2.5 pin in this ear: ~1 mm, ~9 cents). Binding or stick-slip
+# is worse than that backlash (firmware can take backlash out), so the band is 0.05-0.10.
+# THE EAR IS THE KNOB: every ear is REAMED 9/64" (McMaster 2995A116, HSS, cuts 3.572-3.576;
+# metric stock reamers go 3.5 -> 3.78 with nothing between). Both ears of every nut, so no
+# nut can go in the wrong way round, and a larger string ear only helps the rim the heavy
+# strings bear on. Clearance 0.072-0.086 -> 0.63-0.75 cent. As bought the ear reads 3.5 on
+# calipers, i.e. anywhere 3.48-3.52 -- line-to-line or tighter on this roller, so not optional.
+GUIDE_ROD_D     = NUT_HOLE_D  # 3.5 nominal (3.490-3.500) — press in the endplate
+GUIDE_EAR_D     = 0.1406 * 25.4                                 # 3.571, the reamed ear
+GUIDE_RUN_CLR   = GUIDE_EAR_D - GUIDE_ROD_D                     # 0.071 nominal, 0.072-0.086
+assert 0.05 - 1e-9 <= GUIDE_RUN_CLR <= 0.10 + 1e-9, (
+    "the guide rod's running clearance in the ear is %.3f, outside 0.05-0.10" % GUIDE_RUN_CLR)
+GUIDE_ROD_L     = 29.8      # the STOCK length (INA NRB 3.5x29.8-G2). The endplate takes
                             # 25.2-35.4: see bridge_endplate.GUIDE_ROD_TOP
 GUIDE_ROD_FIT   = 0.05      # SNUG PRESS. Not zero: at zero the socket is drawn the
                             # rod's own Ø, which is not a hole you can install into,

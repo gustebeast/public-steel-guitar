@@ -157,15 +157,18 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   bores before the optical board is fitted.
 - **Why:** the board is an O rather than a C -- its sensing strip runs +X across the
   endplate block to give the digital nets a path that does not cross the analog strip --
-  and that band passes straight over the near-row bores. The rods are 30 mm stock pins
-  and stand 5.5 mm short of the board when seated (z 6.65 against 12.20). Press every
-  rod down until it stops on its socket floor, then drop one printed ROD PLUG (Ø2.4 x
-  5.4) down each bore on top of it -- all ten bores, both rows. The plug fills the bore
+  and that band passes straight over the near-row bores. The rods are Ø3.5 x 29.8 stock
+  needle rollers and stand 5.75 mm short of the board when seated (z 6.45 against 12.20).
+  Press every rod down until it stops on its socket floor, then drop one printed ROD PLUG
+  (Ø3.2 x 5.6) down each bore on top of it -- all ten bores, both rows. The plug fills the bore
   to 0.15 under the board, so the board is what holds the rod down. A plug that stands
   proud of the endplate means its rod is not home: the board will not seat on it.
-- **Check the fit before pressing any:** try one pin through a nut's ear. It must slide
-  freely. The pin is 2.502-2.508 and the ear hole is unmeasured; if it binds, ream the
-  ears to 2.6 before assembly.
+- **Ream the nut ears first:** run a 9/64" reamer (McMaster 2995A116) through BOTH ears of
+  all ten H-nuts, by hand in a tap wrench, and blow the brass out. As bought the ears are
+  Ø3.5 (measured 2026-10-16) -- line-to-line on a 3.490-3.500 roller, i.e. it binds or
+  stick-slips. Reamed (3.572-3.576) the roller must slide through under its own weight
+  with no felt play; that 0.07-0.09 clearance is 0.6-0.75 cent of backlash, which the
+  firmware can take out. Ream both ears so no nut can go in the wrong way round.
 - **The alternative was measured and is worse.** Ø3.9 access holes in the band let the
   rods go in afterwards, and they neck it to 1.40 mm at five points -- about three traces
   past each rod. Fitting the rods first buys the band its full 5.35 mm for its whole

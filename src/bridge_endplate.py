@@ -348,23 +348,23 @@ assert GUIDE_SOCKET_H >= D.BEAD - 1e-9, (
     f"leave {GUIDE_FLOOR_T} under the rod and still locate it")
 # THE ROD IS A STOCK PIN (user, 2026-10-07), so its top is wherever D.GUIDE_ROD_L puts it
 # and the two limits above became a WINDOW it has to fit rather than its two ends. Seated
-# on the socket floor the 30 mm pin tops out at 6.65, 5.4 short of the board, and a pin
+# on the socket floor the 29.8 mm pin tops out at 6.45, 5.4 short of the board, and a pin
 # with that much room over it is not held: only its press fit keeps it on the socket
 # floor. So the rest of the bore is filled by a printed PLUG (user, 2026-10-07) that
 # stands on the pin and stops GUIDE_PCB_CLR under the board, which makes the board the
 # pin's lid again exactly as it was for the full-length rod.
-GUIDE_ROD_TOP  = GUIDE_SOCKET_Z + D.GUIDE_ROD_L # 6.65, seated
-GUIDE_GRIP_MIN = 2 * D.GUIDE_ROD_D              # 5.0 of slab bore round the pin, at least
+GUIDE_ROD_TOP  = GUIDE_SOCKET_Z + D.GUIDE_ROD_L # 6.45, seated
+GUIDE_GRIP_MIN = 2 * D.GUIDE_ROD_D              # 7.0 of slab bore round the pin, at least
 assert GUIDE_ROD_TOP <= GUIDE_ROD_CEIL + 1e-9, (
     f"a {D.GUIDE_ROD_L} guide rod stands to {GUIDE_ROD_TOP:.2f}, past {GUIDE_ROD_CEIL:.2f} "
     f"under the optical board: buy the next stock length down")
 assert GUIDE_ROD_TOP - ROOM_Z1 >= GUIDE_GRIP_MIN - 1e-9, (
     f"only {GUIDE_ROD_TOP - ROOM_Z1:.2f} of the guide rod is in the slab's bore "
     f"(wants {GUIDE_GRIP_MIN}): buy the next stock length up")
-# THE PLUG. A plain round pin, three beads across, so it drops down the Ø2.55 bore under
+# THE PLUG. A plain round pin, four beads across, so it drops down the Ø3.55 bore under
 # its own weight and comes out again with the rod. It carries nothing: it is a spacer in
 # compression, and only if a rod tries to climb. Printed standing on its end.
-ROD_PLUG_D     = 3 * D.BEAD                     # 2.4 in the 2.55 bore
+ROD_PLUG_D     = 4 * D.BEAD                     # 3.2 in the 3.55 bore
 ROD_PLUG_L     = GUIDE_ROD_CEIL - GUIDE_ROD_TOP # 5.4, pin top -> GUIDE_PCB_CLR under the board
 ROD_PLUG_UP    = (0.0, 0.0, 1.0)
 assert ROD_PLUG_D < D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, "the rod plug does not fit its bore"
