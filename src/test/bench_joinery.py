@@ -140,6 +140,10 @@ DOWN_Y = (0.0, -1.0, 0.0)
 
 EP_TOP = -5.5               # an endplate coupon's top: the upper socket's far end (-7.1) and a
                             # two-bead wall past it -- the endplate above that is not joint (user)
+# ...and its inboard side: the rail's inner face. The sockets span y 57.6..64 (bridge) and
+# -139.5..-134 (keyhead), so this leaves 2+ of wall; inboard of it is the leg screw and the
+# endplate's body, not joint (user, 2026-10-16)
+EP_BR_Y0, EP_KH_Y1 = 55.5, -131.5
 FLOOR = -71.3               # just under the floor's top face: "the floor and nothing above"
 RAIL_PY, RAIL_MY = 55.0, -131.0     # inboard of each rail's inner face (55.55 / -131.55)
 
@@ -159,7 +163,22 @@ SEAM_X1 = SEAM_X + (GRID_P / 2.0 + (SEAM_K - 1) * GRID_P) + GRID_WEB
 # two beads. The housing slides in from the cut end.
 SEAM_TEN_L = 36.4
 SEAM_Y1 = -141.95 + SEAM_TEN_L + 2 * 0.8
-SEAM_FIN_RUN = SEAM_Y1 - (-131.55) - 1.0       # the fin stops a millimetre short of the cut
+SEAM_FIN_MAX = SEAM_Y1 - (-131.55) - 1.0       # the fin stops a millimetre short of the cut
+
+# THE MINI (user, 2026-10-16: test chassis-to-chassis-to-lever small first -- the seam is
+# likely to open a little, and a housing spanning it tolerates only its tenons' 2 x 0.20).
+# Two stations a side; the rail cut ten beads above the seam relief's 45 (its bottom 8.8
+# of tenon is wedge, not head); floor and housing tenons MINI_L long.
+MINI_K, MINI_L = 2, 15 * 0.8
+MINI_TOP = FLOOR + 8.8 + 10 * 0.8
+MINI_X0 = SEAM_X - (GRID_P / 2.0 + (MINI_K - 1) * GRID_P) - GRID_WEB
+MINI_X1 = SEAM_X + (GRID_P / 2.0 + (MINI_K - 1) * GRID_P) + GRID_WEB
+MINI_Y1 = -141.95 + MINI_L + 2 * 0.8
+# the knee housing's tenons sit on stations -566.1 .. -493.3; the mini keeps the first four
+# (2 + 2 across the seam) and MINI_L of their length from the deck's -Y edge
+HOUS_TEN_Y0, HOUS_S0 = -86.15, -566.1
+MINI_HOUS = (HOUS_S0 - GRID_WEB, HOUS_S0 + 3 * GRID_P + GRID_WEB,
+             _, HOUS_TEN_Y0 + MINI_L, -86.4, _)
 MIN_WALL = 0.8
 
 DECK_UNDER = -10.4          # the rail strip: the groove (5.46 deep) on 4.9 of solid rail
@@ -182,7 +201,11 @@ def _fix_rail_ties(comps):
     return bars[0].fuse(*bars[1:])
 
 
-Z_BOT, FIN_TOP, FIN_RUN, FIN_T = -81.85, -8.0, 40.0, 4.8
+# the fin only has to stop a rail swaying under the nozzle (user: "we wouldn't need much
+# material to keep the object upright"): a two-bead web, braced along its whole edge by the
+# rail, to two thirds of the height
+Z_BOT = -81.85
+FIN_TOP, FIN_RUN, FIN_T = Z_BOT + 2.0 / 3.0 * 81.85, 25.0, 2 * 0.8
 
 
 def _fix_fin(x0, y_face, inboard, z0=Z_BOT, run=FIN_RUN):
@@ -199,6 +222,33 @@ def _fix_fin(x0, y_face, inboard, z0=Z_BOT, run=FIN_RUN):
     return fin
 
 
+RAIL_MY_C = (-141.95 + -131.55) / 2.0       # the -Y rail's centre line
+
+
+def _fix_stub_fins(x_far, outward, top_z=FIN_TOP):
+    """Two fins for a rail cut down to a STUB at the seam (user: the rail away from the joint
+    is not needed) -- it can sway both ways now, so one fin across it on its inner face and
+    one along it, off the stub's far end (`x_far`, the floor running on `outward` = -1/+1 in
+    X). Both stand on the floor's top, clear of the mortises under it."""
+    def fins(_comps):
+        across = _fix_fin(x_far if outward < 0 else x_far - FIN_T, -131.55, +1, FLOOR,
+                          min(FIN_RUN, SEAM_FIN_MAX))(_comps)
+        far = SEAM_X0 if outward < 0 else SEAM_X1
+        run = min(FIN_RUN, abs(far - x_far) - 1.0)
+        x0 = x_far - outward * 1.0
+        pts = [(x0, FLOOR), (x_far + outward * run, FLOOR), (x0, top_z)]
+        along = (cq.Workplane("XZ").polyline(pts).close().extrude(FIN_T)
+                 .translate((0, RAIL_MY_C + FIN_T / 2.0, 0)).val())
+        return across.fuse(along)
+    return fins
+
+
+# the rail kept round the seam: four beads behind the tenon's root (the tenon stands wholly
+# past the seam, in the neighbour), two past the far end of the mortise (_SEG_JD, 10.4)
+STUB_TEN_X0 = SEAM_X - 4 * 0.8
+STUB_MORT_X1 = SEAM_X + 13 * 0.8 + 2 * 0.8
+
+
 COUPONS = [
     # A. chassis section <-> chassis section AND the lever grid across it (user, 2026-10-16:
     #    "use two pieces both to test the chassis to chassis joint and the knee to chassis"
@@ -208,15 +258,26 @@ COUPONS = [
     #    the floor under it is the lever grid, SEAM_K stations a side, one tenon length
     #    (SEAM_Y1) long. A knee housing slides in along Y across the seam, and a body
     #    adapter's three ridges in any three of the same mortises. The floor is the foot;
-    #    the rail's fin stands on the floor's top, clear of the mortises under it.
+    #    the rail is only a stub round the seam joint, finned both ways.
     Coupon("seam_tenon", ["chassis_1"],
-           [(SEAM_X0, _, _, RAIL_MY, _, _), (SEAM_X0, _, _, SEAM_Y1, _, FLOOR)],
+           [(STUB_TEN_X0, _, _, RAIL_MY, _, _), (SEAM_X0, _, _, SEAM_Y1, _, FLOOR)],
            UP_Z, "section seam (tee tenon, drop-in) + SEAM_K lever mortises",
-           fix=_fix_fin(SEAM_X0, -131.55, +1, FLOOR, SEAM_FIN_RUN)),
+           fix=_fix_stub_fins(STUB_TEN_X0, -1)),
     Coupon("seam_mortise", ["chassis_0"],
-           [(_, SEAM_X1, _, RAIL_MY, _, _), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
+           [(_, STUB_MORT_X1, _, RAIL_MY, _, _), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
            UP_Z, "section seam (tee mortise), the deck groove across it, SEAM_K lever mortises",
-           fix=_fix_fin(SEAM_X1 - FIN_T, -131.55, +1, FLOOR, SEAM_FIN_RUN)),
+           fix=_fix_stub_fins(STUB_MORT_X1, +1)),
+
+    # A-mini: the same three parts, short -- does a housing still go on across the seam?
+    # (27 tall: the stub needs no fin)
+    Coupon("mini_seam_tenon", ["chassis_1"],
+           [(STUB_TEN_X0, _, _, RAIL_MY, _, MINI_TOP), (MINI_X0, _, _, MINI_Y1, _, FLOOR)],
+           UP_Z, "seam tenon, short, + 2 lever mortises"),
+    Coupon("mini_seam_mortise", ["chassis_0"],
+           [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, MINI_X1, _, MINI_Y1, _, FLOOR)],
+           UP_Z, "seam mortise, short, + 2 lever mortises"),
+    Coupon("mini_lever", ["knee_housing"], [MINI_HOUS],
+           UP_Z, "4 housing tenons (2 each side of the seam), MINI_L long"),
 
     # B. chassis <-> bridge endplate, +Y corner: the two stacked mushroom tenons the
     #    endplate drops over and the leg screw through the end wall. (The three floor
@@ -226,8 +287,8 @@ COUPONS = [
            UP_Z, "endplate tenons (upper + lower), leg screw",
            fix=_fix_fin(-38.0, 55.55, -1)),
     Coupon("corner_bridge_endplate", ["bridge_endplate"],
-           [(_, _, 45.0, _, _, EP_TOP)],
-           DOWN_X, "endplate sockets for both tenons, leg-screw recess + insert pocket"),
+           [(_, _, EP_BR_Y0, _, _, EP_TOP)],
+           DOWN_X, "endplate sockets for both tenons"),
     # the adapter's three ridges (x -17.7..8.7, z -82..-75) on a two-bead slab of its plate:
     # the rest of the plate (12 thick, and 16 past the last ridge) is the leg's half.
     # PRINTED RIDGES UP, as the housing's tenons are: the ridge takes the lever's standing
@@ -242,7 +303,7 @@ COUPONS = [
            [(_, -588.0, _, RAIL_MY, _, _)],
            UP_Z, "endplate tenons (upper + lower)", fix=_fix_fin(-588.0 - FIN_T, -131.55, +1)),
     Coupon("corner_keyhead_endplate", ["keyhead_endplate"],
-           [(_, _, _, -120.0, _, EP_TOP)],
+           [(_, _, _, EP_KH_Y1, _, EP_TOP)],
            UP_X, "endplate sockets for both tenons"),
 
     # D. deck panel <-> rail tops: BOTH grooves of the longest section at its whole
@@ -376,6 +437,7 @@ BED = 250.0                        # usable of the 256 bed
 
 # step 3 (user's joinery sequence): the PETG-GF joints at full length, rows by depth
 PLATES = {
+    "seam_lever_mini": [["mini_seam_tenon", "mini_seam_mortise", "mini_lever"]],
     "full_length_1": [
         ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_adapter"],
         ["corner_keyhead_chassis", ("corner_bridge_endplate", "corner_keyhead_endplate")],
