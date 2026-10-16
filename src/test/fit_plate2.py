@@ -361,7 +361,8 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both", L=N
         # runs -- so the mouth corner is still the fillet's true offset, and the rest of the
         # face comes down to g
         n_root = None
-        if g < c - 1e-9:
+        bed_pocket = g < c - 1e-9 and socket == "up" and S.get("root")
+        if g < c - 1e-9 and not bed_pocket:
             n_root = S["n"] + S["root"] + rt[1] + 0.05   # a hair past the fillet (and any root
                                                          # chamfer it runs off): room for the full arc
             cell = cell.cut(F._box(-1.0, L + 1.0, -n_root, n_root, -1.0, c - g))
@@ -386,6 +387,20 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both", L=N
                 cell = _lead(cell, hw, 0.0 if socket == "up" else -0.3, top,
                              (-1.0, top - 1e-3) if socket == "up" else (-1.0, S["tip"] + c - g - 1e-3),
                              S["lead"], None if socket == "up" else (S["n"] + c + rs[0] + 0.05, 0.3), L=L)
+        if bed_pocket:
+            # ON THE BED the pocket is a 45 degree CHAMFER, not a box (user, 2026-10-16: the
+            # box's flat roof and the round off it hung the second layer ~1.3 over air at the
+            # print bed). It holds the same c off the tenon's root fillet: the fillet's offset
+            # arc runs from (fn, c) -- fn where the fillet leaves the host face -- to its
+            # tangent on the root chamfer at z_t, and every point of it lies under the 45 line
+            # y + z = fn + c. Up that line from the bed to z_t, then in, flat, to the root
+            # chamfer: one ledge of fn + c - z_t - (the chamfer's own line there), ~0.33. Cut
+            # after the rounding, so its corners stay sharp. Nothing above z_t changes.
+            fn = S["n"] + S["root"] + _arc(rt[1], 45.0)
+            z_t = rt[1] - (rt[1] - c) * math.sqrt(0.5)
+            k = fn + c
+            cell = cell.cut(_prism([(k + 1.0, -1.0), (k - z_t, z_t), (-(k - z_t), z_t),
+                                    (-(k + 1.0), -1.0)], -1.0, L + 1.0).translate((0, 0, -g)))
         seated = cell.translate((0, 0, g))
         gp = gaps(token, seated, x=L / 2.0)
         if not S.get("root") or gp[0] >= min(c, g) - 0.005 or d > 1.0:
