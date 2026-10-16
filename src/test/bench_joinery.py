@@ -234,6 +234,21 @@ TIE_Z = (DECK_UNDER, DECK_UNDER + 3.2)      # top 1.7 under the grooves' floor
 TIE_W = 8.0
 
 
+def _fix_deck(box):
+    """A housing coupon's deck as a plain SLAB: the deck box over the housing's own footprint
+    (user, 2026-10-16: the 1.6 deck cut through a bore's crown flat inside the housing and
+    printed it as a bridge). The coupon's deck only has to hold the tenons; what the housing
+    carries behind it is not under test."""
+    def fix(comps):
+        hb = comps["knee_housing"].BoundingBox()
+        x0, x1, y0, y1, z0, z1 = box
+        lo = lambda a, b: b if a is None else max(a, b)     # None: to the housing's edge
+        hi = lambda a, b: b if a is None else min(a, b)
+        return _box((lo(x0, hb.xmin), hi(x1, hb.xmax), lo(y0, hb.ymin), hi(y1, hb.ymax),
+                     z0, HOUS_Z1_W))
+    return fix
+
+
 def _fix_rail_ties(comps):
     """THE DUMMY CHASSIS the two rail strips stand in (user): two grooves only test a
     panel if they are held at the rails' real spacing, square, the whole length -- the
@@ -333,7 +348,7 @@ COUPONS = [
            [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
            UP_Z, "seam mortise, short, + 4 lever mortises, full tenon length"),
     Coupon("r3_lever", ["knee_housing"], R3_HOUS,
-           UP_Z, "all 8 housing tenons, full 36.4"),
+           UP_Z, "all 8 housing tenons, full 36.4", fix=_fix_deck(R3_HOUS[0])),
     Coupon("mini_lever", ["knee_housing"], MINI_HOUS,
            UP_Z, "4 housing tenons (2 each side of the seam), MINI_L long"),
 
