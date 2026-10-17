@@ -1949,9 +1949,11 @@ def _hub_bay():
     """THE BAY OVER THE LEVER, +X of the axle teardrop (user, 2026-10-16): a prism from the
     -X edge of the teardrop's dulled flat to the housing's +X face, between the cartridge
     pockets' outer walls (one 2.35 wall in from each cheek face), from the teardrop's
-    bottom up to its flat."""
+    bottom up through the top of the part -- the mount tenons' heads included, or the one
+    standing over the bay would leave its cap floating."""
     rb = BRG_SEAT_D / 2.0
-    x0, z1 = -0.4, rb * math.sqrt(2.0) - 0.4      # printable_bore's flat: nozzle 0.8
+    x0 = -0.4                                      # printable_bore's flat: nozzle 0.8
+    z1 = _top_tenon(TEN_X[0]).val().BoundingBox().zmax
     yw = HS_YC + hs_pocket_hw()                    # the pockets' outer walls
     return box_at(HOUS_X1 - x0, 2 * yw, z1 + rb,
                   x=(x0 + HOUS_X1) / 2, y=0.0, z=(z1 - rb) / 2)
