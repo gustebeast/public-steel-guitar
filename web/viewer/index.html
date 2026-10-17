@@ -1362,14 +1362,21 @@
       scene.background = own ? BACKDROP : null;
       renderer.setClearColor(0x000000, own ? 1 : 0);
       if (own) renderer.setClearColor(BACKDROP, 1);
+      // (the canvas still holds the last picture the page drew: the marks-only frame must clear it, not skip
+      // itself as nothing-new -- left, it covered the tracer's picture and the view looked frozen)
+      nat.blank = false; nat.marks = null;
     }
     if (manual) autoQuality = false;
-    const sh = quality >= 1;
+    // THE DESKTOP'S PATH TRACED LEVEL DRAWS NO MODEL: no shadow maps for it, no occlusion composer. Built for it,
+    // the composer (a 4x-sampled half-float target the window's size, and its shaders) stalled the page for
+    // seconds at 1907x2041 on the first switch to it, and at every start (2026-10-16).
+    const shellPic = NATIVE && quality === 3;
+    const sh = quality >= 1 && !shellPic;
     if (renderer.shadowMap.enabled !== sh) {
       renderer.shadowMap.enabled = sh; key.castShadow = sh;
       for (const m of [...matCache.values(), vcMat]) m.needsUpdate = true;
     }
-    if (quality >= 2 && !composer) {
+    if (quality >= 2 && !shellPic && !composer) {
       const pr = renderer.getPixelRatio();
       composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(
         innerWidth * pr, innerHeight * pr, { samples: 4, type: THREE.HalfFloatType }));
