@@ -443,7 +443,7 @@ impl App {
         json!({
             "tabs": tabs, "list": s.list, "title": g.window.title(), "client": [g.config.width, g.config.height], "top": s.top, "picture": [g.r.size().0, g.r.size().1],
             "renders": g.r.n_renders, "dispatches": g.r.n_dispatches, "presents": self.presents, "status_lines": self.stat_sent,
-            "spp": g.r.n, "cap": gpu::MAX_SPP, "model": g.r.has_scene(), "loading": self.loading, "quiet": self.quiet(),
+            "spp": g.r.n, "cap": gpu::MAX_SPP, "auto_up": g.r.moving_upscale().name(), "moving_size": g.r.moving_size().map(|(w, h)| [w, h]), "model": g.r.has_scene(), "loading": self.loading, "quiet": self.quiet(),
             "hidden": hid, "posed": posed, "sel": sel, "clip": g.r.look.clip, "eye": self.view.cam.map(|c| c.eye.to_array()),
             "foreground": cap::foreground() == g.hwnd, "minimized": g.window.is_minimized(), "last_switch": s.last_switch, "backend": g.backend,
         })
