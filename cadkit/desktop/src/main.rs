@@ -125,6 +125,8 @@ struct Gfx {
     dlss_why: &'static str,
     /// a moving frame's time on the card, ms, when the settings leave it to the display's refresh
     budget_auto: f32,
+    /// prefs `range`, for `screen_range`
+    range: String,
 }
 
 /// Vulkan on an HDR Windows screen: the picture is decoded with a plain 2.4 power there, so the renderer
@@ -138,6 +140,9 @@ screen: HDR, so the picture is encoded for a plain 2.4 power (Vulkan)";
     if g.config.format == wgpu::TextureFormat::Rgba16Float {
         said += &format!("
 float surface: linear x {:.3} (the screen's SDR white, 1.0 = 80 nits)", g.r.white);
+        if g.r.hdr {
+            said += &format!("; HDR up to {:.0} nits", g.r.peak * 80.0);
+        }
     }
     (g, said)
 }
@@ -151,6 +156,7 @@ fn screen_curve(g: &mut Gfx) -> bool {
     let was = (g.r.power_out, g.r.white);
     if g.config.format == wgpu::TextureFormat::Rgba16Float {
         g.r.set_white(hdr::sdr_white(g.hwnd).unwrap_or(1.0));
+        screen_range(g);
     } else {
         let on = match std::env::var("DESK_POWER_OUT").as_deref() {
             Ok("1") => true,
@@ -160,6 +166,16 @@ fn screen_curve(g: &mut Gfx) -> bool {
         g.r.set_power_out(on);
     }
     was != (g.r.power_out, g.r.white)
+}
+
+/// HDR when it is wanted (prefs `range`, kept in `g.range`), the surface is float and the window's screen is in
+/// HDR mode; up to that screen's peak (a screen that does not say: 1000 nits). True when that changed.
+fn screen_range(g: &mut Gfx) -> bool {
+    let on = g.range == "hdr" && g.config.format == wgpu::TextureFormat::Rgba16Float && hdr::on_hdr(g.hwnd);
+    let peak = if on { hdr::peak_nits(g.hwnd).unwrap_or(1000.0) / 80.0 } else { g.r.peak };
+    let was = (g.r.hdr, g.r.peak);
+    g.r.set_hdr(on, peak);
+    was != (g.r.hdr, g.r.peak)
 }
 
 /// The webview covers the whole client area (DESK_WV_FRAC=0.8 leaves the right fifth bare: a control for captures).
@@ -589,11 +605,13 @@ fn try_backend(window: &Arc<Window>, which: &str, args: &Args, size: PhysicalSiz
     };
     let caps = surface.get_capabilities(&adapter);
     let mut config = surface.get_default_config(&adapter, size.width.max(1), size.height.max(1)).ok_or("no surface configuration")?;
-    // values go to the surface already sRGB-encoded, so: a format that does not encode them again. Except
-    // Vulkan, which gets a FLOAT surface (linear, scaled by the screen's SDR white: screen_curve): Windows shows
+    // A FLOAT surface where there is one (linear, scaled by the screen's SDR white: screen_curve): Windows shows
     // an 8-bit Vulkan picture on an HDR desktop with a ~2.2 curve at ~0.63 of its white (measured 2026-10-16),
-    // which no 8-bit encoding can undo. (DESK_SURFACE=srgb|float|8bit picks one, for finding out.)
-    let want = if surface_want == "auto" { if which == "vulkan" { "float" } else { "" } } else { surface_want };
+    // which no 8-bit encoding can undo, and only a float one can be HDR (prefs `range`). Else values go to the
+    // surface already sRGB-encoded: a format that does not encode them again. (DESK_SURFACE=srgb|float|8bit
+    // picks one, for finding out.)
+    let _ = which;
+    let want = if surface_want == "auto" { "float" } else { surface_want };
     config.format = match want {
         "srgb" => caps.formats.iter().copied().find(|f| f.is_srgb()),
         "float" => caps.formats.iter().copied().find(|f| *f == wgpu::TextureFormat::Rgba16Float),
@@ -691,6 +709,7 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, prefs: &Prefs, proxy: Eve
     // (--backend, else the settings window's choice, else Vulkan then DX12)
     let pick = args.backend.clone().or_else(|| (prefs.backend != "auto").then(|| prefs.backend.clone()));
     let surface_want = std::env::var("DESK_SURFACE").unwrap_or_else(|_| prefs.surface.clone());
+    let range = prefs.range.clone();
     let order: Vec<&str> = match pick.as_deref() {
         Some("dx12") => vec!["dx12"],
         Some(_) => vec!["vulkan"],
@@ -746,7 +765,7 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, prefs: &Prefs, proxy: Eve
             let _ = strip.focus();
         }
         let hold = Duration::from_secs_f32(2.5 / hz.max(1.0));
-        return with_curve(Gfx { webview: None, strip: Some(strip), ctx, surface, config, r, window, hwnd, backend, hold, monitor: None, info, dlss_why, budget_auto }, said);
+        return with_curve(Gfx { webview: None, strip: Some(strip), ctx, surface, config, r, window, hwnd, backend, hold, monitor: None, info, dlss_why, budget_auto, range: range.clone() }, said);
     }
     let mut init = String::from("window.cadkitNative = true;\n");
     if args.selftest {
@@ -782,7 +801,7 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, prefs: &Prefs, proxy: Eve
         let _ = webview.focus();
     }
     let hold = Duration::from_secs_f32(2.5 / hz.max(1.0));
-    with_curve(Gfx { webview: Some(webview), strip: None, ctx, surface, config, r, window, hwnd, backend, hold, monitor: None, info, dlss_why, budget_auto }, said)
+    with_curve(Gfx { webview: Some(webview), strip: None, ctx, surface, config, r, window, hwnd, backend, hold, monitor: None, info, dlss_why, budget_auto, range }, said)
 }
 
 /// A message's kind, for the trace.
@@ -1172,12 +1191,20 @@ impl App {
             g.r.invalidate();
         }
         g.r.settings.budget_ms = g.budget_auto;
+        g.range = p.range.clone();
+        screen_range(g);
         g.window.request_redraw();
         self.touch(false);
     }
 
     /// The settings window is told what this program and this card can do, what is set, and what is in use.
     fn push_gfx(&mut self) {
+        // (the screen may have been put into or out of HDR mode since: asked again whenever the window asks)
+        if let Some(g) = self.gfx.as_mut() {
+            if screen_range(g) {
+                g.window.request_redraw();
+            }
+        }
         let Some(g) = self.gfx.as_ref() else { return };
         let s = json!({
             "prefs": self.prefs.to_json(),
@@ -1189,6 +1216,10 @@ impl App {
             "size": [g.r.size().0, g.r.size().1],
             "moving": g.r.moving_size().map(|(w, h)| [w, h]),
             "auto_up": g.r.moving_upscale().name(),
+            "range": if g.r.hdr { "hdr" } else { "sdr" },
+            "hdr_screen": hdr::on_hdr(g.hwnd),
+            "peak_nits": hdr::peak_nits(g.hwnd),
+            "white_nits": g.r.white * 80.0,
         });
         self.eval(&format!("window.viewer&&viewer.native&&viewer.native.gfx&&viewer.native.gfx({s})"));
     }

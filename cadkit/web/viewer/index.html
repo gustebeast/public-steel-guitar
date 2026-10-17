@@ -1467,11 +1467,15 @@
     if (!NATIVE) apis.unshift(['webgl', 'WebGL (this browser)', '']);
     row('graphics API', 'backend', apis, NATIVE ? (p ? p.backend : 'auto') : 'webgl',
         i ? `in use: ${names[i.backend] || i.backend} on ${escH(i.adapter)}` + next(api, i.backend) : '');
-    const srf = p && (p.surface === 'auto' ? (api === 'vulkan' ? 'float' : '8bit') : p.surface);
-    const outs = [['auto', 'auto', deskWhy], ['float', 'float (exact on HDR)', deskWhy], ['8bit', '8-bit', deskWhy]];
-    if (!NATIVE) outs.unshift(['browser', 'the browser\'s', '']);
-    row('output', 'surface', outs, NATIVE ? (p ? p.surface : 'auto') : 'browser',
-        i ? `in use: ${i.surface === 'float' ? 'float' : '8-bit'}` + next(srf, i.surface) : '');
+    // dynamic range: SDR for an SDR screen, HDR for an HDR one (all of its range: highlights up to its peak).
+    // SDR on an HDR screen is the choice for someone who wants nothing brighter than the desktop's white.
+    const hdrWhy = !NATIVE ? 'only in the desktop app' : !i ? deskWhy
+      : !i.hdr_screen ? 'this screen is not in HDR mode (Windows: Settings > System > Display > Use HDR)'
+      : i.surface !== 'float' ? 'needs the float output, which this graphics API does not offer here' : '';
+    const nits = n => `${Math.round(n)} nits`;
+    row('dynamic range', 'range', [['sdr', 'SDR', ''], ['hdr', 'HDR', hdrWhy]], NATIVE && i ? i.range : 'sdr',
+        !NATIVE || !i ? '' : i.range === 'hdr' ? `white at ${nits(i.white_nits)} (the desktop's), highlights up to ${i.peak_nits ? nits(i.peak_nits) : 'the screen\'s peak'}`
+        : i.hdr_screen ? `nothing brighter than the desktop's white (${nits(i.white_nits)})` : '');
     $('gfxPanel').innerHTML = out.join('');
   }
   function gfxToggle(open = !gfx.open) {
