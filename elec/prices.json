@@ -164,6 +164,15 @@
       "what": "18-8 M4 washer, 4.3 ID x 9.0 OD -- one under each knee/pedal axle screw. Page read 2026-10-01; it IS the 9.0 OD part, not a fender.",
       "order": "2 x $3.93 (pack of 100) = $7.86 for 110 needed"
     },
+    "shim_8x10_bearing": {
+      "usd": 0.5085,
+      "verified": "v",
+      "per_instrument": 22,
+      "vendor": "McMaster-Carr",
+      "sku": "99432A343",
+      "order": "9 x $12.43 (pack of 25) = $111.87 for 220 needed",
+      "what": "18-8 shim, 8 ID x 10 OD x 0.5, Rockwell C40 (sold as a die shim) -- the lever/pedal THRUST FACES: one each side of the lever between its face and the 688ZZ INNER race, 2 per sensed control x 11 (user, 2026-10-16: bought if under $20 a set). OD 10 (-0.3/0) stays on the inner race, clear of the outer race and shield. ID tolerance -0.18/+0.07: the bore can come in at 7.82, under the O8 axle -- the journal it rides on may need a relief. Page read 2026-10-16: $12.43 a pack of 25, one pack per instrument."
+    },
     "break_dowel": {
       "usd": 0.254,
       "verified": "v",
