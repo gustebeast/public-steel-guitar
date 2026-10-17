@@ -6300,3 +6300,4 @@ geometry and texture/color/material. Then use the same model for the first flash
 - `swindle` (RP2040) is real and maintained but has no released firmware: second choice, not built.
 
 - 2026-10-17 viewer: 24 fps moving floor (cadkit bdf944d): DLSS upscaling steps up automatically when a 1 spp moving frame would exceed 1/24 s; "detail while moving" row removed; upscaling off = "auto (keeps 24 fps)". DESK_FLOOR_FPS test override. Lead asked to propagate b2538a8 + bdf944d. Open: HDR decision (user).
+- 2026-10-17 viewer: HDR (cadkit 6d40bf2): "output" row -> "dynamic range" SDR/HDR; HDR = unclipped scRGB, SDR white at the desktop's, highlights rolled off to DXGI MaxLuminance; float surface on DX12 too. Proven with a 4x-exposure throwaway build (469 nits vs 499 peak); at the real lighting nothing exceeds SDR white. Test affordances: DESK_FLOOR_FPS, shot over_white. Lead asked to propagate.
