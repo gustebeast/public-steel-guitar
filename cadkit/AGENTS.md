@@ -634,6 +634,21 @@ editing anything:
      stays AS YOU BUILT IT (your own cache wins over the lead's copy, by name) while
      you iterate on the second. To rebuild several every run, claim them together:
      `scope --set src.a,part:b`.
+   - **Iterating on ONE part's own geometry? `view --solo`, and a LIGHT scope.** A view
+     costs (scope import + build) + (the page's hooks) + (the export), and on a big
+     model the first two dwarf the part. Measured on the steel guitar, one knee housing:
+     15 s to build; `src.build` 160 s just to IMPORT (it builds at import time); the
+     project's `shown` hook 116 s (it imports the whole build to pose the belts) and the
+     rig 14 s on EVERY view; meshing + glb 0.1 s. So:
+     1. **Scope a small module of your own** (`src/<part>_scratch.py`) whose
+        `components()` imports only the part's module and places it -- never the
+        project's build module. Copy any placement it needs (a station's x/y) in as a
+        constant and say where it came from; it is a scratch aid, never used by the build.
+     2. **`view --solo`** draws the live set and nothing else, and skips the `shown` and
+        rig hooks: ~15 s a turn instead of minutes. Drop `--solo` (a normal `view`) to
+        see the part in place before you call it done, and for the end-of-turn render.
+     The run's first line already prices the scope (`live set: N part(s) imported and
+     built in T s`) -- if T is far above the part's own build, the scope imports too much.
    - **Your change moves what OTHER parts read** (a shared dimension, a datum)?
      `view --own` builds everything here once (minutes) into your own cache.
    - **`view --lead`** forgets your own cache — after your work is merged and built,
