@@ -92,6 +92,9 @@ impl App {
     /// The keyboard goes to what is shown: the active tab's page, or the list.
     pub fn focus_ui(&self) {
         let (Some(g), Some(s)) = (self.gfx.as_ref(), self.shell.as_ref()) else { return };
+        if self.args.unseen {
+            return; // (a test nobody sees: giving a webview the keyboard can make the window the active one)
+        }
         let _ = match page_of(g, &self.shell).filter(|_| !s.list) {
             Some(wv) => wv.focus(),
             None => g.strip.as_ref().map(|w| w.focus()).unwrap_or(Ok(())),
@@ -302,6 +305,9 @@ impl App {
 
     pub fn come_forward(&self) {
         let Some(g) = self.gfx.as_ref() else { return };
+        if self.args.unseen {
+            return; // (a test nobody is to see)
+        }
         if g.window.is_minimized() == Some(true) {
             g.window.set_minimized(false);
         }

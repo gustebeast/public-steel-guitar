@@ -145,7 +145,7 @@
   // ── the parts of the selftest (desk.exe --selftest=keys,rows runs those alone) ───────────────────────────
   const only = (window.__tOnly || '').split(',').filter(Boolean);
   const want = name => !only.length || only.includes(name);
-  const VK = { x: 0x58, u: 0x55, i: 0x49, z: 0x5A, y: 0x59, c: 0x43, m: 0x4D, p: 0x50, a: 0x41, s: 0x53, t: 0x54, r: 0x52, w: 0x57, e: 0x45, l: 0x4C, 1: 0x31, space: 0x20, esc: 0x1B, ctrl: 0x11, shift: 0x10,
+  const VK = { x: 0x58, g: 0x47, u: 0x55, i: 0x49, z: 0x5A, y: 0x59, c: 0x43, m: 0x4D, p: 0x50, a: 0x41, s: 0x53, t: 0x54, r: 0x52, w: 0x57, e: 0x45, l: 0x4C, 1: 0x31, space: 0x20, esc: 0x1B, ctrl: 0x11, shift: 0x10,
                left: 0x25, up: 0x26, right: 0x27, down: 0x28 };
   // a real key, down and up: where 0 = to the window that has the keyboard in the webview, 1 = to the shell's
   // own window, 2 = typed through the desktop's input queue
