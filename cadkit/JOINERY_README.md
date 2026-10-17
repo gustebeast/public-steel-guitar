@@ -4,6 +4,43 @@ Shared, project-agnostic joint generators, in the spirit of `threads.py`: the
 geometry rules live here once, projects import and place. Read this before
 adding variants.
 
+## Print-fitted joints (`fitted_joint.py`) — start here for NEW straight joints
+
+`fitted_joint.py` holds the newer rules, learned from the steel guitar's fit plates
+1–8 (2026-10). Its numbers were measured on PETG-GF with a 0.8 nozzle and 0.4
+layers. It is **provisional**: minimum-size coupons and the real sections as short
+coupons are done, but no full-length coupons have been printed yet. The full rule
+set, with the reasons, is in the module docstring.
+
+```python
+from cadkit import fitted_joint as FJ
+c = FJ.clearance("N", "N", "long")          # measured per-side c for the print pair
+tenon, cavity, S = FJ.halves("N", "N", c, length, seat, host_w, size=None)
+# joint frame: X slide 0..length, Y across, Z from the mating plane to the head.
+# union `tenon` into one host, cut `cavity` from the other, same transform for both.
+```
+
+- **Print modes per half:** `"N"` is nozzle-made (the profile lies in the layers).
+  `"up"` is layer-made with the head toward the nozzle; as a socket, its mouth is
+  on the bed. `"down"` is a layer-made socket with its mouth up.
+- **Measured clearances** (per side, for a long joint): N/N 0.35, N/up 0.30,
+  N/down 0.30, up/N 0.30, up/down 0.25, up/up 0.20. Use `MOUTH_UP_SIZE` with
+  up/down and `STANDING_SIZE` with up/up. All are far above `joint()`'s 0.15
+  default. Short friction-held joints run 0.05 tighter (`length="short"`).
+  Prints vary, so **err loose**.
+- **Corners are drawn at what prints:** nozzle-made at 2.0, layer-made at 0.8. The
+  socket is the tenon's even offset by c, with matched radii and the seat c off the
+  host. `halves()` asserts that the gap measured on the section is c.
+- **Layer/layer pairs** get an end relief on the socket (`LEAD`) for the hourglass
+  they print, straight head sides, and a cut-flat tip under a bridged roof.
+- **Seam joints** (two sections pulled together by an N/N joint) seat c·√2 apart.
+  Move each seam face in by `seam_face_trim(c)`.
+- **Other materials and nozzles are unmeasured.** Print a bracket of c values
+  before relying on any of them.
+
+`joint()` below is the older optimizer family. Use it for its other installs:
+crossing, T-slot, hook, octagon.
+
 ## One entrypoint: `joint` — the only way in
 
 **Names name the halves, never the shape.** The public API is `joint`, and a

@@ -42,6 +42,12 @@ Two layers of reusable capability back a cadkit project:
     (+Y build) mating a mortise printed flat (−Z→+Z) is `ramp=True, hook_h=…`
     (print-validated); plain 45°-everywhere profiles cam apart along the up-ramp
     diagonal — don't reinvent this joint, call the library.
+  - `cadkit.fitted_joint` — **print-fitted straight slide joints, for NEW work**.
+    `halves(tenon, socket, c, …)` with `clearance(tenon_mode, socket_mode)` uses
+    clearances measured per print pair (0.20–0.35 in PETG-GF with a 0.8 nozzle;
+    `joint()`'s 0.15 default is too tight). Corners are drawn at what prints and
+    clearance is even all round. Provisional until full-length coupons are printed;
+    see the JOINERY_README section.
   - `cadkit.board_geom` / `cadkit.board_check` / `cadkit/kicad_geom.py` /
     `cadkit/kicad_silk.py` — **circuit boards shared between KiCad and the CAD**; read
     **`cadkit/PCB_README.md`** before designing or modelling any PCB. The board in the
