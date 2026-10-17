@@ -267,6 +267,7 @@ class ScratchView:
         # these: they read the model.
         self.shown = shown
         self._live_memo = None          # the live set is built ONCE per run
+        self._solo = None               # render(solo=True): the only names files() returns
 
     # ── the live set ────────────────────────────────────────────────────────
     def live_parts(self):
@@ -337,13 +338,15 @@ class ScratchView:
                     out[f.stem] = f
         for f in sorted(self.cache.glob("*.brep")):
             out[f.stem] = f
+        if self._solo is not None:
+            out = {n: f for n, f in out.items() if n in self._solo}
         return out
 
     def shown_files(self) -> dict:
         """{part name: BREP file} of what `shown` draws for the page, kept in a folder of
         its own beside your cache (a file whose solid has not changed is left alone, so
         its mesh stays good)."""
-        if self.shown is None:
+        if self.shown is None or self._solo is not None:      # solo draws the live set only
             return {}
         out = self.cache / "shown"
         try:
@@ -446,22 +449,33 @@ class ScratchView:
         return 1 if bad else 0
 
     # ── render ──────────────────────────────────────────────────────────────
-    def render(self, live=True, rig=False):
+    def render(self, live=True, rig=False, solo=False):
         """The page (cadkit.web). An open page reloads itself. live=False builds
         nothing. The animation rig is rewritten whenever parts were built (it is read
         off the same source, and a rig left from an older build moves the wrong parts
-        on the wrong keys); rig=True rewrites it for a cache-only view too."""
+        on the wrong keys); rig=True rewrites it for a cache-only view too.
+
+        solo=True draws the LIVE SET AND NOTHING ELSE, and skips the page's own hooks: the
+        `shown` parts and the rig rewrite. Those hooks run on EVERY view whatever was
+        rebuilt, and a project's can cost far more than the part -- measured on the steel
+        guitar: one housing 15 s to build, its view 2.5 min, of which `shown` (it imports
+        the whole build to pose the belts) was 116 s and the rig 14 s; meshing and the glb
+        were 0.1 s. Solo is for iterating on one part's own geometry; drop it to see the
+        part in place before you call it done."""
         from cadkit.web import scratch_show
         mine = []
         if live:
             parts = self.live_parts()
             self.keep(parts)
             mine = [n for n, _ in parts]
+        if solo:
+            self._solo = set(mine) if live else set(self._own().get("parts", {}))
+            print("SOLO: drawing %d part(s) and nothing around them" % len(self._solo))
         if self._nothing():
             return 1
         d = self.describe(mine)
         self._banner("SCRATCH VIEW", d)
-        scratch_show(self, describe=d, refresh_rig=rig or bool(live), **self.web)
+        scratch_show(self, describe=d, refresh_rig=rig or (bool(live) and not solo), **self.web)
         return 0
 
 
@@ -479,6 +493,9 @@ def main(view: ScratchView, argv=None) -> int:
                     help="build EVERYTHING here into your own cache (minutes), then render")
     ap.add_argument("--lead", action="store_true",
                     help="forget your own cache: the lead's build for all but the live part")
+    ap.add_argument("--solo", action="store_true",
+                    help="draw ONLY the live set (seconds on a big model, where the page "
+                         "export of every cached part is most of a view's time)")
     a = ap.parse_args(argv)
 
     if a.lead:
@@ -488,4 +505,4 @@ def main(view: ScratchView, argv=None) -> int:
         view.build_own()
     if a.gate:
         return view.check()
-    return view.render(live=not a.cache_only, rig=a.rig)
+    return view.render(live=not a.cache_only, rig=a.rig, solo=a.solo)
