@@ -103,6 +103,7 @@ PARTS = {
     "rod_plug":        (lambda: __import__("src.bridge_endplate", fromlist=["e"]).rod_plug(), "pctg/rod_plug.step", "PCTG — guide-rod plug (x10): a Ø2.4 x 5.4 round spacer dropped down each guide-rod bore on top of the 30 mm pin, filling the bore to 0.15 under the optical board so the board holds the pin down. Print standing on end, ten at once"),
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness); the +Y axle journal + magnet stub print INTEGRAL (stand off the lying -Y bed face)"),
     "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø8 journals, D-FLAT key through the hub, flange land seating on the +Y inner race (= the air-gap datum), threaded magnet pocket, M4 thread-forming bore in the −Y tip for the retention screw + washer. Prints STANDING, POCKET-DOWN, with a brim"),
+    "kl_spacer": (lambda: __import__("src.knee_lever", fromlist=["e"]).spacer(), "pctg/kl_spacer.step", "PCTG — axle SPACER ×2 per lever (×2 per pedal): Ø10 ring between the lever's flat face and each bearing's INNER race, through the seat's printed shoulder. Part of the clamped rotating stack (land, races, spacers, lever, washer), which is what locks the lever in Y. Slip it over the axle as the axle goes through. Prints FLAT"),
     "kl_magnet_cap": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_magnet_cap, "pctg/kl_magnet_cap.step", "PCTG — magnet CAP ×1: female-threaded HEX nut (9.35 across flats, for a 3/8-inch driver) screwing over the axle's pocket collar to clamp the Ø6 diametric disc; centre stays open so nothing intrudes on the air gap. Fit it BEFORE the sensor board. Prints APERTURE-DOWN"),
     # THE BOARD SHIMS: one sensor board fits every lever, and a plain plate one board thick
     # takes up what is left of each cradle above it. Three heights, so three parts; each
@@ -563,6 +564,8 @@ def _declared():
         (["kl_magnet_cap"], _KLX.MAGNET_CAP_UP,
          "knee_lever.MAGNET_CAP_UP — APERTURE-DOWN, same construction as "
          "the axle: the flange face is the bed (its +Y end, 55.2 mm2)"),
+        (["kl_spacer"], _KLX.SPACER_UP,
+         "knee_lever.SPACER_UP — a flat ring, either face on the bed"),
         (["cart_piston"], _KLX.PISTON_UP,
          "knee_lever.PISTON_UP — stands on its +X SPRING-SEAT face, the one "
          "flat 10x10 end, so body, follower tongue and nose all grow ALONG "
@@ -2215,6 +2218,7 @@ _COLORS = {
     "kv_axle_screw":   (0.55, 0.55, 0.58),
     "kv_axle_washer":  (0.72, 0.72, 0.75),
     "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer
+    "kl_spacer":       (0.30, 0.54, 0.68),   # PCTG axle spacers (the axle's blue)
     # the rest of the sensor board's real population (knee_lever.SENSOR_BOM). The
     # kv_/pedal{i}_ instances inherit these by the prefix rules in _color_for.
     "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ

@@ -1179,6 +1179,8 @@ AXLE_UP = (0.0, -1.0, 0.0)
 # THE MAGNET CAP the same way and for the same reason: APERTURE-DOWN, drawn along +Z and
 # rotated onto the lever's +Y axis, so the flange face is the bed.
 MAGNET_CAP_UP = (0.0, -1.0, 0.0)
+# THE SPACERS lie flat: a ring drawn along +Y, either face down (it is symmetric).
+SPACER_UP = (0.0, 1.0, 0.0)
 # THE PISTON builds -X: it stands on its +X SPRING-SEAT face, the one flat 10 x 10 end,
 # and everything after it -- body, follower tongue, rounded nose -- grows along the build
 # rather than out of a side. Printed +Z with the cartridge it would lay its tongue out
@@ -1976,9 +1978,17 @@ def cut_axle_stack(w, through=False):
                        (-_seat_out, _seat_out - BRG_Y0)):
             w = w.cut(printable_bore(BRG_SEAT_D, ln, (0.0, y0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
         return w
+    # THE SHOULDERS here too (KV, the pedals): each seat stops at BRG_Y0, and the band between
+    # the room's face and the seat is the room crown's teardrop, so the outer race lands on a
+    # printed stop and the clamped stack is held in Y exactly as on LKL (see BRG_SHOULDER_T).
+    r_sh, y_sh = HUB_D / 2 + HS_CLR, BRG_Y0 - BRG_SHOULDER_T
+    assert abs(_seat_in - y_sh) < 1e-6, "the room's face is no longer the shoulder's face"
     for sgn in (1.0, -1.0):
-        y0 = sgn * _seat_in if sgn > 0 else -_seat_out
-        w = w.cut(printable_bore(BRG_SEAT_D, _seat_out - _seat_in, (0.0, y0, 0.0),
+        y0 = BRG_Y0 if sgn > 0 else -_seat_out
+        w = w.cut(printable_bore(BRG_SEAT_D, _seat_out - BRG_Y0, (0.0, y0, 0.0),
+                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+        w = w.cut(printable_bore(2 * r_sh, BRG_SHOULDER_T + 0.01,
+                                 (0.0, y_sh - 0.005 if sgn > 0 else -BRG_Y0 - 0.005, 0.0),
                                  (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     # (no contact rib and no separate axle way: the seats run out through BOTH faces at the
     # full Ø16.1, and the axle's own land seats on the +Y bearing's inner race -- see AXLE_LAND_D)

@@ -194,6 +194,7 @@ DECLARED_UP = {
     "kv_lever":          ("src.knee_lever_vert", "LEVER_UP"),
     "pedal_lever":       ("src.foot_pedal", "LEVER_UP"),
     "kl_axle":           ("src.knee_lever", "AXLE_UP"),
+    "kl_spacer":         ("src.knee_lever", "SPACER_UP"),
     "nut_slide_insert_a": ("src.nut_block", "INSERT_UP"),
     "nut_slide_insert_b": ("src.nut_block", "INSERT_UP"),
     "nut_slide_insert_c": ("src.nut_block", "INSERT_UP"),

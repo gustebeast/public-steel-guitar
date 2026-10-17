@@ -66,21 +66,30 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   cartridge wall to its head down on the cartridge. Stop when the head lands; forcing
   it further only strips the insert.
 
-### KL-4 — The axle's end screw: seat it on the AXLE, and hold the lever while you do
+### KL-4 — The axle stack: bearings to their shoulders, spacers in, screw clamps the races
 
-- **Where:** `kl_axle_screw` / `kl_axle_washer` (and `kv_`, and each pedal's), in the
-  −Y end of the printed axle. One M4 × 10 button head and one **Ø9** M4 washer.
-- **Do:** after the axle is slid through bearing / lever / bearing and its flange is
-  home on the +Y bearing, put the washer on the screw and drive it into the bore in
-  the axle's −Y tip. **Hold the lever arm**, not the magnet cap, to take the torque.
-  The first fit forms the thread in the plastic: firm, steady turns, and stop when the
-  washer is tight on the axle's end.
-- **Check:** the washer should NOT be clamped on the bearing. The axle's tip stands
-  0.2 mm past the bearing's inner race, so a correctly seated washer leaves the axle
-  about that much end float, and the lever still swings freely. If the lever stiffens
-  as the screw comes tight, the axle is not fully home at the +Y end.
-- **Why:** this is the only thing that stops the axle sliding back out the way it
-  went in. It replaces the M2 grub that used to go through the lever's hub.
+- **Where:** LKL (the vertical lever and pedals are still the old stack). `kl_bearing_0/1`,
+  the two printed `kl_spacer`s, `kl_axle`, and the M4 × 10 button + **Ø9** washer in the
+  axle's −Y tip.
+- **Do:**
+  1. Press each 688 in from the housing's OUTSIDE face until its outer race stops on the
+     printed shoulder inside the seat. The shoulder only holds the outer race; the inner
+     race must still turn with a finger.
+  2. Put the lever in its room. Hold a spacer against each of its flat faces, centred
+     on the axle hole (they sit inside the shoulder openings, against the inner races).
+  3. Slide the axle in from +Y, through the +Y bearing, spacer, lever, spacer and −Y
+     bearing, until its land is home on the +Y inner race.
+  4. Washer on the screw, drive it into the axle's −Y tip. **Hold the lever arm**, not
+     the magnet cap, to take the torque. The first fit forms the thread: firm, steady
+     turns, and stop when the washer is tight on the −Y inner race.
+- **Check:** the lever swings freely (the races turn, nothing rubs) and has no Y play
+  you can feel. If it stiffens as the screw comes tight, a spacer is off-centre or a
+  bearing is not home on its shoulder.
+- **Why:** the screw clamps land, inner races, spacers and lever into one turning unit,
+  and the two shoulders hold that unit in Y, so neither the lever nor a bearing can walk
+  (and the magnet can't reach the board). The housing is not in the clamp, so a tight
+  screw cannot preload the bearings. It replaces the M2 grub that used to go through
+  the lever's hub.
 - **Don't** substitute a larger washer: anything over Ø9.6 reaches the bearing's
   shield and rubs.
 
