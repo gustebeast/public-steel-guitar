@@ -1110,11 +1110,22 @@ def feel_place(s):
 HOUS_X1 = max(ARM_TX / 2, BRG_SEAT_D / 2 + BRG_WALL_X)   # +11.25 (was +5.0, then 8.1: the Ø13
 #           race needs 6.5 of radius plus its wall, where the arm wanted 5.0)
 HOUS_X0 = -(HS_POCKET_BX + HS_REAR_T)                    # was -78.1 with the Ø6 coil
-HOUS_HW = max(abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL,
-              LEVER_HW + HS_CLR + BRG_W)                 # 17.45 — the cartridge pocket wall
-#           sets it now (17.45 vs the seats' 17.4). There is NO outboard skin beyond the
-#           bearings any more (user, 2026-09-21): the seats already ran out through the
-#           face, so the old 1.0 "skin" was only an empty recess over each bearing.
+# TWO PRISMS, NOT ONE (user, 2026-10-16: "to save material ... split the initial prism into
+# two. One sized for the cartridges which only gives them 1.6mm wall thickness ... and one
+# sized for the bearings which gives enough wall thickness to fully seat the bearings").
+# The single prism was set by the seats and left each race only 2.35 of its 5 held all
+# round -- the inner 2.65 stood beside the cartridge pocket. Now:
+#   CART_HW  the cartridge prism: the pockets' outer walls + one 1.6 wall      (17.45)
+#   BRG_Y0   the bearings' INNER faces ON those pocket walls, so each race is plastic
+#            all round over its full width                                     (15.85)
+#   HOUS_HW  the bearing block's faces, flush with the bearings' outer faces   (20.85)
+# HOUS_HW keeps its old meaning -- the +Y face the axle, sensor cradle and seats key off --
+# it is just no longer the whole housing's width.
+CART_HW = abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL
+BRG_Y0 = abs(HS_YC) + HS_CART_WY / 2 + HS_CLR
+HOUS_HW = BRG_Y0 + BRG_W
+BRG_BLOCK_X0 = -(BRG_SEAT_D / 2 + BRG_WALL)   # the block: the seat + its wall -X (HOUS_X1 is +X)
+BRG_BLOCK_Z0 = -(BRG_SEAT_D / 2 + BRG_WALL)   # ...and below, chamfered 45 back to CART_HW
 HOUS_Z1 = HOUS_TOP_Z                                     # +12.0, the seat roof (was 9.6; flush: BODY_Z
 #           = HUB_TOP + 2.4 — the designed 2.4 stands between lever and body)
 # PRINT ORIENTATION (the record, declared once per part) -- the housing goes on the bed
@@ -1165,10 +1176,6 @@ HOUS_Z0 = min((HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL,   # 
               (CHIP_DROP - PCB_WZ) - 4 * D.NOZZLE_D)                      # the board + its floor
 #           ^ = HS_FLOOR_Z placed, or PCB_Z0 - CR_FLOOR_T (both defined below). The cartridges
 #           bind (-16.5); the board would need -15.1.
-BRG_Y0 = HOUS_HW - BRG_W            # bearing INNER faces at ±12.45: the bearings sit FLUSH
-                                    # with the housing's outer faces (user, 2026-09-21: full
-                                    # seat engagement right to the face, nothing recessed).
-                                    # That leaves 0.45 to the ±12 hub ends.
 assert BRG_Y0 >= LEVER_HW + HS_CLR - 1e-9, "the flush bearings would bite the lever hub"
 # ── MOUNT TENON STATIONS (user: "4 sets"). The chassis rib comb is a uniform
 # RIB_PITCH/2 = 23 mm and the lever is posed ON a rib (MOUNT_X = -501 IS a rib X), so
@@ -1218,7 +1225,7 @@ assert abs((min(TEN_X) - _J_STEM / 2.0) - HOUS_X0) < 1e-9, (
 # so all that survives of it is a stub on top of each ±Y cheek wall. That is by
 # construction, not by special-casing: the tenons are unioned BEFORE the lever-room
 # cut, so the same sweep that clears the lever trims the tenon.
-TEN_Y0, TEN_Y1 = -HOUS_HW, HOUS_HW
+TEN_Y0, TEN_Y1 = -CART_HW, CART_HW      # on the cartridge prism's top
 TEN_ROOT = D.MIN_WALL               # 0.8 root below the mating face — volumetric fuse into the
                                     # prism, never a coplanar touch (cadkit joinery rule)
 # SENSOR-SIDE Y (re-anchored here — see the note up in the layout block): the
@@ -1945,6 +1952,20 @@ def cut_axle_stack(w, through=False):
     return w
 
 
+def _bearing_block():
+    """THE BEARING BLOCK: the seats' own prism, +-HOUS_HW across the cartridge prism's
+    +-CART_HW, from the seat's -X wall to the +X face and from below the seat's wall to the
+    top. Its underside steps out over the cartridge prism's faces, so that step is a 45
+    chamfer, not a ledge."""
+    d = HOUS_HW - CART_HW
+    prof = [(-HOUS_HW, HOUS_Z1), (-HOUS_HW, BRG_BLOCK_Z0), (-CART_HW, BRG_BLOCK_Z0 - d),
+            (CART_HW, BRG_BLOCK_Z0 - d), (HOUS_HW, BRG_BLOCK_Z0), (HOUS_HW, HOUS_Z1)]
+    f = cq.Workplane("YZ").polyline(prof).close()
+    return cq.Workplane("XY").add(cq.Solid.extrudeLinear(
+        cq.Face.makeFromWires(f.wire().val()).translate((BRG_BLOCK_X0, 0, 0)),
+        cq.Vector(HOUS_X1 - BRG_BLOCK_X0, 0, 0)))
+
+
 def _hub_bay():
     """THE BAY OVER THE LEVER, +X of the axle teardrop (user, 2026-10-16): a prism from the
     -X edge of the teardrop's dulled flat to the housing's +X face, between the cartridge
@@ -2587,8 +2608,9 @@ def _housing(right=False) -> cq.Workplane:
     there is one board design -- so its cradle and its knee relief are drawn for that
     board turned over about the axle (see _turned). The board then sits 1.7 higher in
     it, long end up, and needs no shim."""
-    w = box_at(HOUS_X1 - HOUS_X0, 2 * HOUS_HW, HOUS_Z1 - HOUS_Z0,
+    w = box_at(HOUS_X1 - HOUS_X0, 2 * CART_HW, HOUS_Z1 - HOUS_Z0,
                x=(HOUS_X0 + HOUS_X1) / 2, y=0.0, z=(HOUS_Z0 + HOUS_Z1) / 2)
+    w = w.union(_bearing_block())
     # MOUNT TENONS (user), unioned onto the raw prism BEFORE anything is cut — that
     # ordering is what makes the +X-most station come out "minimal" on its own: the
     # lever-room sweep below runs the full tenon height now, so it takes that tenon's
@@ -2609,7 +2631,8 @@ def _housing(right=False) -> cq.Workplane:
     w = w.cut(_hub_bay())          # ...and the bay +X of its flat, wall to wall
     w = cut_feel_pockets(w, feel_place)
     w = _cradle(w, right=right)                                     # the MT6701 board cradle (user)
-    w = w.union(cable_keeper())     # ...and the bus-B keeper on the cheek
+    w = w.union(cable_keeper(CART_HW))   # ...and the bus-B keeper on the cheek (-X end: the
+    #                                      cartridge prism's face, not the bearing block's)
     w = _stop_skirt(w)              # ...the bed dropped to make room for the travel stop
     w = w.cut(_room)            # ...and again, after the skirt re-added material
     w = w.cut(_knee_relief(right))  # ...the bottom +X corner off at 45, for the knee
