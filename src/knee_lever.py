@@ -1905,7 +1905,7 @@ def cut_axle_bore(body, hw=None):
         x=0.0, y=0.0, z=(zhi + zlo) / 2)))
 
 
-def cut_axle_stack(w):
+def cut_axle_stack(w, through=False):
     """The housing's whole Y stack: both BEARING SEATS, the CONTACT RIB on the
     outer face, and the axle way out through it. Identical in every pose, because
     nothing about the sensor stack depends on which way the lever swings.
@@ -1928,6 +1928,14 @@ def cut_axle_stack(w):
     # sit 0.05 outboard of that wall, and starting the seat at the bearing left a 0.05 sliver of
     # housing across the axle's path.
     _seat_out, _seat_in = HOUS_HW + 1.0, LEVER_HW + HS_CLR
+    if through:
+        # ONE TEARDROP THE FULL AXLE LENGTH (user, 2026-10-16: "instead of having one circle
+        # cut and one teardrop cut lets just use a teardrop that spans the full axle length").
+        # Through the lever room too, so the room's round crown over the hub becomes this
+        # teardrop's 45s and the crown needs no closure. The seats were already open to the
+        # room with nothing inboard -- the bearings are located by their press fit alone.
+        return w.cut(printable_bore(BRG_SEAT_D, 2 * _seat_out, (0.0, -_seat_out, 0.0),
+                                    (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
     for sgn in (1.0, -1.0):
         y0 = sgn * _seat_in if sgn > 0 else -_seat_out
         w = w.cut(printable_bore(BRG_SEAT_D, _seat_out - _seat_in, (0.0, y0, 0.0),
@@ -1935,6 +1943,18 @@ def cut_axle_stack(w):
     # (no contact rib and no separate axle way: the seats run out through BOTH faces at the
     # full Ø16.1, and the axle's own land seats on the +Y bearing's inner race -- see AXLE_LAND_D)
     return w
+
+
+def _hub_bay():
+    """THE BAY OVER THE LEVER, +X of the axle teardrop (user, 2026-10-16): a prism from the
+    -X edge of the teardrop's dulled flat to the housing's +X face, between the cartridge
+    pockets' outer walls (one 2.35 wall in from each cheek face), from the teardrop's
+    bottom up to its flat."""
+    rb = BRG_SEAT_D / 2.0
+    x0, z1 = -0.4, rb * math.sqrt(2.0) - 0.4      # printable_bore's flat: nozzle 0.8
+    yw = HS_YC + hs_pocket_hw()                    # the pockets' outer walls
+    return box_at(HOUS_X1 - x0, 2 * yw, z1 + rb,
+                  x=(x0 + HOUS_X1) / 2, y=0.0, z=(z1 - rb) / 2)
 
 
 def cut_feel_pockets(w, place, x_front=None):
@@ -2571,22 +2591,8 @@ def _housing(right=False) -> cq.Workplane:
     # ordering is what makes the +X-most station come out "minimal" on its own: the
     # lever-room sweep below runs the full tenon height now, so it takes that tenon's
     # middle with it and leaves only the two cheek-wall stubs.
-    # ...and a tenon the roof closure would undercut gives up that whole stretch of itself
-    # (user, 2026-10-16: "we need to cut out the tenon"): the 45 deg cut meeting the
-    # tenon's own flares leaves a downward V, an island that starts in mid air -- 11.9 mm
-    # of it along the +X station. Taken square across the tenon over every Y the cut
-    # reaches it, so what stays is the cheek stubs, standing on solid prism.
-    _roof = roof_cut().val()
-    _over = _roof.intersect(box_at(800.0, 800.0, 100.0, z=HOUS_Z1 + 50.0).val())   # above the
-    # mating plane only: the root slab below it is buried in the prism and cut like it
     for _tx in TEN_X:
-        _t = _top_tenon(_tx)
-        _hit = _t.val().intersect(_over)
-        if _hit.Volume() > 1e-6:
-            _hb, _tb = _hit.BoundingBox(), _t.val().BoundingBox()
-            _t = _t.cut(box_at(_tb.xlen + 2.0, _hb.ylen, _tb.zlen + 2.0,
-                               x=_tb.center.x, y=_hb.center.y, z=_tb.center.z))
-        w = w.union(_t)
+        w = w.union(_top_tenon(_tx))
     _room = lever_room()        # built once: 31 unions is not free
     w = w.cut(_room)            # the lever's own sweep, and nothing else
     # BEARING SEATS (user): Ø8.1 pockets for the MR85ZZ pair, opening
@@ -2597,7 +2603,8 @@ def _housing(right=False) -> cq.Workplane:
     # (the axle continues to the magnet/sensor cluster); the -Y axle end
     # stops INSIDE its pocket (AXLE_Y0 -13.1). Horizontal round bores in
     # the -Z→+Z print — teardrop/roundness refinement rides the axle round.
-    w = cut_axle_stack(w)          # bearing seats + contact rib + axle way
+    w = cut_axle_stack(w, through=True)   # one teardrop, seat to seat
+    w = w.cut(_hub_bay())          # ...and the bay +X of its flat, wall to wall
     w = cut_feel_pockets(w, feel_place)
     w = _cradle(w, right=right)                                     # the MT6701 board cradle (user)
     w = w.union(cable_keeper())     # ...and the bus-B keeper on the cheek
@@ -2615,7 +2622,9 @@ def _housing(right=False) -> cq.Workplane:
     w = cut_insert_bore(M4, w, (STOP_ANCHOR_X, 0.0, STOP_Z), (1.0, 0.0, 0.0),
                         STOP_BORE_END - (STOP_ANCHOR_X + M4.insert_depth),
                         reason="knee lever travel stop", print_up=PRINT_UP)
-    w = heal(w.cut(_roof))
+    # NO ROOF CLOSURE for now (user, 2026-10-16: "go back to just the house shape cuts and
+    # the lever travel cut"): the closure over the room is being re-derived on LKL alone.
+    # roof_cut() and roof_close() are kept as the candidates, applied by nothing.
     return w.mirror("YZ") if right else w
 
 
