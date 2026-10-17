@@ -176,6 +176,15 @@ pub fn foreground() -> isize {
     unsafe { GetForegroundWindow() as isize }
 }
 
+/// The window is never made the active one, by a click or by a webview taking the keyboard (WS_EX_NOACTIVATE):
+/// a test nobody sees must not take the user's keys.
+pub fn never_active(h: isize) {
+    unsafe {
+        let ex = GetWindowLongPtrW(h as HWND, GWL_EXSTYLE);
+        SetWindowLongPtrW(h as HWND, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE as isize);
+    }
+}
+
 pub fn post(h: isize, msg: u32, wparam: usize, lparam: isize) {
     unsafe { PostMessageW(hwnd(h), msg, wparam, lparam) };
 }

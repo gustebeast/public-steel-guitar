@@ -288,6 +288,8 @@ pub struct Renderer {
     upscale: Upscale,
     /// the last frame was traced smaller than the picture: it cannot be added to
     small: bool,
+    /// what is on the screen is DLSS's picture of this view (held at rest: see `render`)
+    dlss_shown: bool,
 }
 
 fn shader(device: &wgpu::Device, name: &str, src: &str) -> wgpu::ShaderModule {
@@ -298,7 +300,8 @@ fn shader(device: &wgpu::Device, name: &str, src: &str) -> wgpu::ShaderModule {
 fn e_buf(binding: u32, ty: wgpu::BufferBindingType, vis: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry { binding, visibility: vis, ty: wgpu::BindingType::Buffer { ty, has_dynamic_offset: false, min_binding_size: None }, count: None }
 }
-/// with DLSS on, a picture at rest is DLSS's until it has this many samples a pixel; then it is the tracer's own
+/// with DLSS on, a picture at rest shows DLSS's last moving picture until it has this many samples a pixel;
+/// then it is the tracer's own
 #[cfg(feature = "dlss")]
 const DLSS_UNTIL: u32 = 256;
 
@@ -429,6 +432,7 @@ impl Renderer {
             dlss_on: true,
             upscale: Upscale::Off,
             small: false,
+            dlss_shown: false,
         }
     }
 
@@ -679,6 +683,7 @@ impl Renderer {
     pub fn invalidate(&mut self) {
         self.n = 0;
         self.prev_cam = None;
+        self.dlss_shown = false;
     }
 
     pub fn size(&self) -> (u32, u32) {
@@ -806,9 +811,18 @@ impl Renderer {
         let temporal = s.temporal && s.denoise;
         // DLSS, if it is there and wanted: while the picture moves, and for a picture's first samples at rest
         #[cfg(feature = "dlss")]
-        let use_dlss = self.dlss_on && self.n <= DLSS_UNTIL && self.dlss.as_ref().is_some_and(|d| d.per.is_some());
+        let dlss_can = self.dlss_on && self.dlss.as_ref().is_some_and(|d| d.per.is_some());
+        // DLSS CLEANS THE MOVING PICTURE ONLY. At rest its last picture stays on the screen while the tracer
+        // gathers samples under it at full speed (`hold`: nothing is resolved or shown anew) until there are
+        // DLSS_UNTIL a pixel, and then the tracer's own picture is shown. (Run on every frame at rest it cost a
+        // 1907x2041 window 25-70 ms a frame, a sample a frame at 12 fps: the picture took 20-70 s to settle and
+        // the window waited on every frame. 2026-10-16.)
+        #[cfg(feature = "dlss")]
+        let use_dlss = dlss_can && changed;
+        #[cfg(feature = "dlss")]
+        let hold = dlss_can && !changed && self.dlss_shown && self.n <= DLSS_UNTIL;
         #[cfg(not(feature = "dlss"))]
-        let use_dlss = false;
+        let (use_dlss, hold) = (false, false);
         // the size traced: the picture's own, or DLSS's smaller one for it
         #[allow(unused_mut)]
         let mut rs = (t.w, t.h);
@@ -931,8 +945,8 @@ impl Renderer {
                 cp.set_bind_group(0, &dl.per.as_ref().unwrap().bg_in[p], &[]);
                 cp.dispatch_workgroups(gx, gy, 1);
             }
-            if use_dlss {
-                // (its own denoise and its own finishing are DLSS's this frame)
+            if use_dlss || hold {
+                // (its own denoise and its own finishing are DLSS's this frame; held: no picture is made)
             } else if s.denoise {
                 cp.set_pipeline(&self.p_pre);
                 cp.set_bind_group(0, &t.bg_pre[p], &[]);
@@ -944,7 +958,7 @@ impl Renderer {
                 }
                 self.n_dispatches += 1 + ATROUS_PASSES as u64;
             }
-            if !use_dlss {
+            if !use_dlss && !hold {
                 cp.set_pipeline(&self.p_resolve);
                 cp.set_bind_group(0, &t.bg_resolve[p], &[]);
                 cp.dispatch_workgroups(gx, gy, 1);
@@ -1004,6 +1018,7 @@ impl Renderer {
                         self.blit(&mut after, view, true);
                     }
                     self.prev_cam = Some(*cam);
+                    self.dlss_shown = true;
                     return Some(self.queue.submit([enc.finish(), cmd, after.finish()]));
                 }
                 Err(e) => {
@@ -1013,12 +1028,14 @@ impl Renderer {
                 }
             }
         }
+        // (held, DLSS's history is still of this view: the next movement goes on from it)
         #[cfg(feature = "dlss")]
-        if !use_dlss {
+        if !use_dlss && !hold {
             if let Some(dl) = self.dlss.as_mut() {
                 dl.run = 0;
             }
         }
+        self.dlss_shown &= hold;
         if let Some((view, _, _)) = surface {
             self.blit(&mut enc, view, true);
         }

@@ -189,6 +189,9 @@ struct Args {
     /// app: /test/... is answered through the door, and the window stays above others (for captures)
     probe: bool,
     selftest: bool,
+    /// a test run (--selftest, --probe) nobody is to see: off every screen, no taskbar button, never brought
+    /// forward (DESK_SHOW=1: seen). The window capture sees it all the same.
+    unseen: bool,
     /// the parts of the selftest to run (empty: all)
     only: String,
     out: PathBuf,
@@ -667,8 +670,19 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, prefs: &Prefs, proxy: Eve
             attrs = attrs.with_window_level(top);
         }
     }
+    // TESTS ARE NOT SEEN (user, 2026-10-16): put past the right edge of the desktop, without a taskbar
+    // button, and not made the active window. Windows still composes it, so Windows Graphics Capture takes
+    // it as it would on a screen; only what needs the window in front (typed keys, a drag by the pointer
+    // itself) is withheld, and the tests say so.
+    if args.unseen {
+        let right = event_loop.available_monitors().map(|m| m.position().x + m.size().width as i32).max().unwrap_or(0);
+        attrs = attrs.with_position(PhysicalPosition::new(right + 200, 0)).with_skip_taskbar(true).with_active(false).with_window_level(WindowLevel::Normal);
+    }
     let window = Arc::new(event_loop.create_window(attrs).unwrap());
     let hwnd = hwnd_of(&window);
+    if args.unseen {
+        cap::never_active(hwnd);
+    }
     let size = window.inner_size();
     // Vulkan first (user, 2026-10-16): the one backend on every platform, and NVIDIA's DLSS through it. On an
     // HDR Windows desktop its picture is encoded to suit (screen_curve); DX12 is the fallback.
@@ -726,7 +740,9 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, prefs: &Prefs, proxy: Eve
                 Ok(s) | Err(s) => said += &format!("\n{s}"),
             }
         }
-        let _ = strip.focus();
+        if !args.unseen {
+            let _ = strip.focus();
+        }
         let hold = Duration::from_secs_f32(2.5 / hz.max(1.0));
         return with_curve(Gfx { webview: None, strip: Some(strip), ctx, surface, config, r, window, hwnd, backend, hold, monitor: None, info, dlss_why, budget_auto }, said);
     }
@@ -758,8 +774,11 @@ fn init_gfx(event_loop: &ActiveEventLoop, args: &Args, prefs: &Prefs, proxy: Eve
             Ok(s) | Err(s) => said += &format!("\n{s}"),
         }
     }
-    // the keys are the page's: it has the keyboard from the start
-    let _ = webview.focus();
+    // the keys are the page's: it has the keyboard from the start (a test nobody sees is not given it: giving
+    // a webview the keyboard can make its window the active one)
+    if !args.unseen {
+        let _ = webview.focus();
+    }
     let hold = Duration::from_secs_f32(2.5 / hz.max(1.0));
     with_curve(Gfx { webview: Some(webview), strip: None, ctx, surface, config, r, window, hwnd, backend, hold, monitor: None, info, dlss_why, budget_auto }, said)
 }
@@ -1953,7 +1972,7 @@ fn hand_over(args: &Args, port: u16) -> bool {
 fn main() {
     cap::attach_console();
     let mut a = std::env::args().skip(1);
-    let mut args = Args { url: None, open: None, data_root: None, page: None, probe: false, selftest: false, only: String::new(), out: PathBuf::from("out"), backend: None, dxc: None, state: None, data: None, recopy: None };
+    let mut args = Args { url: None, open: None, data_root: None, page: None, probe: false, selftest: false, only: String::new(), out: PathBuf::from("out"), backend: None, dxc: None, state: None, data: None, recopy: None, unseen: false };
     while let Some(x) = a.next() {
         match x.as_str() {
             "--selftest" => args.selftest = true,
@@ -1978,6 +1997,7 @@ fn main() {
             _ => args.url = Some(x),
         }
     }
+    args.unseen = (args.selftest || args.probe) && std::env::var("DESK_SHOW").map_or(true, |v| v != "1");
     if args.selftest && args.url.is_none() {
         args.url = Some("http://127.0.0.1:8161/".into());
     }
