@@ -565,7 +565,7 @@ impl App {
                 let _ = std::fs::create_dir_all(&self.args.out);
                 let f = self.args.out.join(format!("{name}.png"));
                 save_png(&f, w, h, &px);
-                json!({"file": f.to_string_lossy(), "size": [w, h], "spp": g.r.n, "timed_out": timed_out, "foreground": cap::foreground() == g.hwnd})
+                json!({"file": f.to_string_lossy(), "size": [w, h], "spp": g.r.n, "timed_out": timed_out, "foreground": cap::foreground() == g.hwnd, "over_white": crate::wgc::OVER_WHITE.lock().map(|o| json!({"px": o.0, "max_nits": o.1})).unwrap_or_default()})
             }
             Err(e) => json!({"error": e}),
         };

@@ -13,7 +13,7 @@ struct Globals {
   reset: u32,
   mode: u32,        // pre pass: 0 plain, 1 temporal reprojection, 2 still with history prior
   spf: u32,
-  flags: u32,       // bit0: resolve raw (no denoise), bit1: section cut on, bit3: the surface wants linear values, bit4: the screen decodes a plain 2.4 power, bit5: DLSS
+  flags: u32,       // bit0: resolve raw (no denoise), bit1: section cut on, bit3: the surface wants linear values, bit4: the screen decodes a plain 2.4 power, bit5: DLSS, bit6: HDR
   denoise: f32,     // 1 = fully denoised, 0 = raw accumulation
   hist_w: f32,
   max_hist: f32,
@@ -25,7 +25,7 @@ struct Globals {
   clip: vec4f,      // section plane: kept where dot(xyz, p) + w >= 0
   off: vec2u,       // where on the surface the picture's first pixel is (the tabbed app: below its tab strip)
   white: f32,       // a float surface: its 1.0 is 80 nits (scRGB), so linear values x the screen's SDR white
-  pad: u32,
+  peak: f32,        // HDR (flags bit 6): the screen's brightest, in the same scRGB units as `white`
   jit: vec2f,       // DLSS (flags bit 5) while the picture moves: where in the pixel this frame's rays leave
   out: vec2u,       // the picture's own size: `size` is what is traced, smaller while DLSS enlarges it (gpu.rs `Upscale`)
 }
@@ -59,6 +59,21 @@ fn oct_dec(e: u32) -> vec3f {
   return normalize(n);
 }
 fn lum(c: vec3f) -> f32 { return dot(c, vec3f(0.2126, 0.7152, 0.0722)); }
+
+// HDR (flags bit 6): linear light (1.0 the white an SDR picture stops at) to scRGB for a float surface. Up to
+// the knee it is the SDR picture exactly, its white as bright as the desktop's (`white`); everything brighter,
+// which SDR clips, goes on up the screen's range, rolled off so it meets the screen's peak and never passes it
+// (slope 1 at the knee: no seam). The brightest channel is rolled off and the others scaled with it: no hue shift.
+fn hdr_out(lin: vec3f, white: f32, peak: f32) -> vec3f {
+  let v = max(lin, vec3f(0.0)) * white;
+  let m = max(v.r, max(v.g, v.b));
+  let k = min(white, 0.75 * peak);
+  if (m <= k) { return v; }
+  let room = max(peak - k, 1e-3);
+  return v * ((k + room * (1.0 - exp(-(m - k) / room))) / m);
+}
+// what the window is handed in HDR: scRGB as three halves
+fn pack_hdr(v: vec3f) -> vec2u { return vec2u(pack2x16float(v.rg), pack2x16float(vec2f(v.b, 1.0))); }
 
 fn ray_dir(px: vec2f, size: vec2f, r: vec4f, u: vec4f, f: vec4f, tany: f32) -> vec3f {
   let ndc = vec2f(px.x / size.x * 2.0 - 1.0, 1.0 - px.y / size.y * 2.0);

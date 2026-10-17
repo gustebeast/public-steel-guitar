@@ -137,7 +137,7 @@ struct Globals {
     clip: [f32; 4],
     off: [u32; 2],
     white: f32,
-    pad: u32,
+    peak: f32,
     jit: [f32; 2],
     out: [u32; 2],
 }
@@ -294,6 +294,10 @@ pub struct Renderer {
     pub power_out: bool,
     /// linear_out to a FLOAT surface (scRGB, 1.0 = 80 nits): the screen's SDR white in those units (hdr.rs)
     pub white: f32,
+    /// a float surface on an HDR screen, HDR wanted: the light above the SDR white goes on up to the screen's
+    /// `peak` (scRGB units) instead of being clipped (common.wgsl `hdr_out`; `set_hdr`)
+    pub hdr: bool,
+    pub peak: f32,
     /// rows of the surface ABOVE the picture (the tabbed app's tab strip): the picture is shown below them
     pub top: u32,
     pub n: u32,
@@ -452,6 +456,8 @@ impl Renderer {
             linear_out: surface_format.is_srgb(),
             power_out: false,
             white: 1.0,
+            hdr: false,
+            peak: 1.0,
             top: 0,
             n: 0,
             frame: 0,
@@ -727,6 +733,14 @@ impl Renderer {
         }
     }
 
+    /// HDR out (see `hdr`), up to `peak` (scRGB units); the picture is resolved again.
+    pub fn set_hdr(&mut self, on: bool, peak: f32) {
+        if (self.hdr, self.peak) != (on, peak) {
+            (self.hdr, self.peak) = (on, peak);
+            self.invalidate();
+        }
+    }
+
     pub fn set_white(&mut self, w: f32) {
         if self.white != w {
             self.white = w;
@@ -766,8 +780,9 @@ impl Renderer {
         let fa = sto("fa", 16, none);
         let fb = sto("fb", 16, none);
         let out_px = sto("out", 4, wgpu::BufferUsages::COPY_SRC);
-        // what the window is handed (resolve.wgsl): out_px, or out_px encoded for a plain-2.4 screen
-        let shown_px = sto("shown", 4, none);
+        // what the window is handed (resolve.wgsl): out_px, or out_px encoded for a plain-2.4 screen (.x of 8
+        // bytes), or HDR halves (all 8)
+        let shown_px = sto("shown", 8, none);
         let stg = |size: u64| d.create_buffer(&wgpu::BufferDescriptor { label: Some("staging"), size, usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST, mapped_at_creation: false });
         let (staging, guide_staging) = (stg(px * 4), stg(px * 16));
         let g = self.globals.as_entire_binding();
@@ -929,7 +944,7 @@ impl Renderer {
             reset: reset as u32,
             mode,
             spf,
-            flags: if l.clip.is_some() { 2 } else { 0 } | if s.denoise { 0 } else { 1 } | if self.linear_out { 8 } else { 0 } | if self.power_out { 16 } else { 0 } | if use_dlss { 32 } else { 0 },
+            flags: if l.clip.is_some() { 2 } else { 0 } | if s.denoise { 0 } else { 1 } | if self.linear_out { 8 } else { 0 } | if self.power_out { 16 } else { 0 } | if use_dlss { 32 } else { 0 } | if self.hdr { 64 } else { 0 },
             denoise: if s.denoise { 1.0 } else { 0.0 },
             hist_w,
             max_hist: s.max_hist,
@@ -942,7 +957,7 @@ impl Renderer {
             clip: l.clip.unwrap_or([0.0; 4]),
             off: [0, self.top.min(sh.saturating_sub(1))],
             white: self.white,
-            pad: 0,
+            peak: self.peak,
             jit: jitter,
             out: [t.w, t.h],
         };
