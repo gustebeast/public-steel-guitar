@@ -489,7 +489,7 @@ def _lead(body, hw, z0, z1, zlim, stations, L, keep=None):
     return cq.Workplane("XY").newObject([out])
 
 
-def _seat_ease(S, c, g, tv, smin, L):
+def _seat_ease(S, c, g, tv, smin, L, hw):
     """The air a socket seated CLOSER than c (g < c, faces meeting) needs at its mouth, as
     a cutter in the SEATED frame: the mouth is the tenon root fillet's true offset (radius
     tv - c about the fillet's centre) down to where the fillet runs out (z = c), then
@@ -497,10 +497,19 @@ def _seat_ease(S, c, g, tv, smin, L):
     at the socket's own printable radius (smin), tangent all the way. It replaces a box
     pocket, whose sharp step a nozzle-made socket can't print as drawn (tiramisu, 2026-10-17): past
     the fillet's tail the only tenon face near is the host face the seat meets by design,
-    so the ease can start there without losing c anywhere on the joint."""
+    so the ease can start there without losing c anywhere on the joint. It must land on
+    the seat face inside the host (hw): where the printable radii need more run than the
+    host has, both shrink together to fit (any shape there faces only the meeting faces;
+    a cut-off S would leave a step at the host's edge instead). Returns (cutter, radii)."""
     rv, rc = smin
     y0, r = S["n"] + tv, tv - c                       # the fillet's centre (y0, tv); its offset
-    th = math.acos(1.0 - (c - g) / (rc + rv))         # each arc's turn: their drops sum to c - g
+    d = c - g
+    room = hw - 0.05 - y0
+    assert room > 0.0, "host_w %.2f leaves no room to ease the seat past the root fillet" % (2 * hw)
+    if math.sqrt(2.0 * (rc + rv) * d - d * d) > room:    # the S's run, R sin(th), at these radii
+        k = (room * room + d * d) / (2.0 * d) / (rc + rv)
+        rv, rc = rv * k, rc * k
+    th = math.acos(1.0 - d / (rc + rv))               # each arc's turn: their drops sum to c - g
     sn, cs = math.sin(th), math.cos(th)
     B = (y0, c)                                       # the offset arc's foot
     D = (y0, c - rc)                                  # the concave arc's centre (in the air)
@@ -516,7 +525,7 @@ def _seat_ease(S, c, g, tv, smin, L):
             .threePointArc(pol(D, rc, 90.0 - math.degrees(th) / 2.0), B)
             .threePointArc(pol((y0, tv), r, -135.0), (S["n"] + c, tv))
             .lineTo(0.0, tv).close().extrude(L + 2.0).translate((-1.0, 0.0, 0.0)))
-    return half.union(half.mirror("XZ")), G[0]
+    return half.union(half.mirror("XZ")), (rv, rc)
 
 
 def make_pair(name, tenon, socket, c, S, host_w, top, L, g=None, relief="both"):
@@ -569,7 +578,7 @@ def make_pair(name, tenon, socket, c, S, host_w, top, L, g=None, relief="both"):
                              (-1.0, top - 1e-3) if socket == "up" else (-1.0, S["tip"] + c - g - 1e-3),
                              S["lead"], L, None if socket == "up" else (S["n"] + c + rs[0] + 0.05, 0.3))
         if ease:                         # after the end relief: it offsets the outline as drawn
-            cutter, _yg = _seat_ease(S, c, g, rt[1], MIN[_kind(socket)], L)
+            cutter, ease_r = _seat_ease(S, c, g, rt[1], MIN[_kind(socket)], L, hw)
             cell = cell.cut(cutter.translate((0, 0, -g)))
         seated = cell.translate((0, 0, g))
         gp = gaps(token, seated, x=L / 2.0)
@@ -591,7 +600,7 @@ def make_pair(name, tenon, socket, c, S, host_w, top, L, g=None, relief="both"):
            for _u, _v, kind, used in log
            if kind and (used is None or used < mn[0 if kind == "convex" else 1] - 1e-6)]
     rep = dict(c=c, tenon_r=rt, socket_r=rs, gap=(gj[0] if g < c - 1e-9 else gp[0], gj[-1]), mouth_air=gp[-1], corners_off=off,
-               root_step=d,
+               root_step=d, seat_ease=ease_r if ease else None,
                tenon_overhang=(None, 0.0) if tenon == "N" else overhang(token, DOWN[tenon], L),
                socket_overhang=(None, 0.0) if socket == "N" else overhang(cell, DOWN[socket], L))
     return token, cell, rep
