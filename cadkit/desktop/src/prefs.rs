@@ -1,14 +1,11 @@
 //! THE GRAPHICS SETTINGS: what the page's settings window sets (viewer.native.gfx), kept between runs in a
 //! file of their own (the app: graphics.json in its data folder; one page of a server: desk-graphics.json
 //! beside the program; the selftest: none, it runs on the defaults). DLSS, its enlarging, the tracer's own
-//! denoiser, a moving frame's time and the light level (the page's) are changed at once; the graphics API and the surface when the
+//! denoiser and the light level (the page's) are changed at once; the graphics API and the surface when the
 //! program is next started (DESK_SURFACE and --backend still override them).
 use crate::gpu::Upscale;
 use serde_json::{Value, json};
 use std::path::PathBuf;
-
-/// what a moving frame may take of the card, ms (None: worked out from the display's refresh)
-pub const BUDGETS: [f32; 4] = [1.5, 3.0, 6.0, 12.0];
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Prefs {
@@ -17,7 +14,6 @@ pub struct Prefs {
     pub upscale: Upscale,
     /// the tracer's own denoiser (when DLSS is not cleaning the picture)
     pub denoise: bool,
-    pub budget_ms: Option<f32>,
     /// "auto" (Vulkan, else DX12), "vulkan" or "dx12": at the next start
     pub backend: String,
     /// "auto" (Vulkan: float, so it is shown exactly on an HDR desktop), "float" or "8bit": at the next start
@@ -28,7 +24,7 @@ pub struct Prefs {
 
 impl Default for Prefs {
     fn default() -> Self {
-        Prefs { dlss: true, upscale: Upscale::Off, denoise: true, budget_ms: None, backend: "auto".into(), surface: "auto".into(), light: 3 }
+        Prefs { dlss: true, upscale: Upscale::Off, denoise: true, backend: "auto".into(), surface: "auto".into(), light: 3 }
     }
 }
 
@@ -50,14 +46,6 @@ impl Prefs {
         if let Some(b) = v["denoise"].as_bool() {
             p.denoise = b;
         }
-        match &v["budget_ms"] {
-            Value::String(s) if s == "auto" => p.budget_ms = None,
-            x => {
-                if let Some(ms) = x.as_f64().map(|m| m as f32).filter(|m| BUDGETS.contains(m)) {
-                    p.budget_ms = Some(ms);
-                }
-            }
-        }
         if let Some(s) = v["backend"].as_str().filter(|s| ["auto", "vulkan", "dx12"].contains(s)) {
             p.backend = s.into();
         }
@@ -73,7 +61,7 @@ impl Prefs {
     pub fn to_json(&self) -> Value {
         json!({
             "dlss": self.dlss, "upscale": self.upscale.name(), "denoise": self.denoise,
-            "budget_ms": self.budget_ms.map_or(json!("auto"), |m| json!(m)), "backend": self.backend, "surface": self.surface, "light": self.light,
+            "backend": self.backend, "surface": self.surface, "light": self.light,
         })
     }
 

@@ -29,6 +29,8 @@
 //! DLSS (on unless DESK_DLSS=0): NVIDIA's Ray Reconstruction cleans the picture while it moves, on Vulkan with an RTX card,
 //! if this was built with it (cargo feature `dlss`: cadkit/web/desktop.py turns it on when NVIDIA's SDK is on
 //! the machine). It costs ~3.5 ms a frame (RTX 5090, 1280x800, 2026-10-16: 218 -> 147 fps at rest).
+//! With it a moving frame never falls under 24 fps: it is traced smaller and enlarged when it would
+//! (gpu.rs `note_frame`; DESK_FLOOR_FPS=n tries another floor, to see that on a card too fast to need it).
 //!
 //! What the page sends (window.ipc.postMessage, JSON, at most one a frame, only what changed):
 //!   {t:"view", cam:[16], fov, near, far, w, h,      the page camera's matrixWorld; the size it projects onto
@@ -1169,7 +1171,7 @@ impl App {
             g.r.settings.denoise = p.denoise;
             g.r.invalidate();
         }
-        g.r.settings.budget_ms = p.budget_ms.unwrap_or(g.budget_auto);
+        g.r.settings.budget_ms = g.budget_auto;
         g.window.request_redraw();
         self.touch(false);
     }
@@ -1186,8 +1188,7 @@ impl App {
             "dlss": g.dlss_why,
             "size": [g.r.size().0, g.r.size().1],
             "moving": g.r.moving_size().map(|(w, h)| [w, h]),
-            "budget_auto": g.budget_auto,
-            "budgets": prefs::BUDGETS,
+            "auto_up": g.r.moving_upscale().name(),
         });
         self.eval(&format!("window.viewer&&viewer.native&&viewer.native.gfx&&viewer.native.gfx({s})"));
     }
@@ -1636,7 +1637,7 @@ impl App {
             "minimized": g.window.is_minimized(), "maximized": g.window.is_maximized(),
             "renders": g.r.n_renders, "dispatches": g.r.n_dispatches, "presents": self.presents, "status_lines": self.stat_sent, "resizes": self.resizes,
             "foreground": cap::foreground() == g.hwnd, "focus_class": cap::class_name(focus), "focus_is_shell": focus == g.hwnd,
-            "backend": g.backend, "spf_moving": g.r.settings.spf_moving, "spf_still": g.r.settings.spf_still, "budget_ms": g.r.settings.budget_ms, "upscale": g.r.upscale().name(), "moving_size": g.r.moving_size().map(|(w, h)| [w, h]),
+            "backend": g.backend, "spf_moving": g.r.settings.spf_moving, "spf_still": g.r.settings.spf_still, "budget_ms": g.r.settings.budget_ms, "upscale": g.r.upscale().name(), "auto_up": g.r.moving_upscale().name(), "moving_size": g.r.moving_size().map(|(w, h)| [w, h]),
             "spp": g.r.n, "cap": gpu::MAX_SPP,
         })
     }

@@ -11,13 +11,20 @@ pub const MAX_SPP: u32 = 1024;
 /// The most samples a pixel is given in one frame.
 pub const MAX_SPF: u32 = 64;
 const STILL_MS: f64 = 12.0;     // the card's time in one frame of a picture at rest
+/// a moving frame takes no longer than this (24 fps): see `note_frame`. DESK_FLOOR_FPS: another floor, to
+/// see the stepping on a card too fast to need it (a debugging aid)
+#[cfg(feature = "dlss")]
+fn floor_ms() -> f64 {
+    static F: std::sync::OnceLock<f64> = std::sync::OnceLock::new();
+    *F.get_or_init(|| 1000.0 / std::env::var("DESK_FLOOR_FPS").ok().and_then(|v| v.parse::<f64>().ok()).filter(|f| *f > 0.0).unwrap_or(24.0))
+}
 pub const ATROUS_PASSES: usize = 5;
 pub const IDENT: [f32; 12] = [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0];
 
 /// DLSS ENLARGING THE PICTURE WHILE IT MOVES (the settings window): the picture is traced smaller, by
 /// DLSS's own ratio for the mode, and DLSS makes it the window's size. At rest it is traced at its own size
 /// as ever, so the picture it settles to is the same. Off: DLSS cleans the picture at its own size (DLAA).
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
 pub enum Upscale {
     #[default]
     Off,
@@ -42,6 +49,22 @@ impl Upscale {
 
     pub fn parse(s: &str) -> Option<Upscale> {
         Upscale::ALL.into_iter().find(|u| u.name() == s)
+    }
+
+    /// the share of the picture's pixels traced (DLSS's ratios: 1/1.5, 1/1.72, 1/2, 1/3 a side)
+    #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
+    fn frac(self) -> f64 {
+        [1.0, 0.444, 0.338, 0.25, 0.111][self as usize]
+    }
+
+    #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
+    fn up(self) -> Upscale {
+        Upscale::ALL[(self as usize + 1).min(4)]
+    }
+
+    #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
+    fn down(self) -> Upscale {
+        Upscale::ALL[(self as usize).saturating_sub(1)]
     }
 
     #[cfg(feature = "dlss")]
@@ -212,10 +235,10 @@ struct Dlss {
 struct DlssPer {
     /// at the picture's own size (DLAA): at rest, and while moving with `Upscale::Off`
     ctx: dlss_wgpu::ray_reconstruction::DlssRayReconstruction,
-    /// enlarging a smaller picture to it: while moving, with an `Upscale` mode
-    up: Option<dlss_wgpu::ray_reconstruction::DlssRayReconstruction>,
-    /// the last frame was the enlarging one's (the other has no history of it: it starts afresh)
-    was_up: bool,
+    /// enlarging a smaller picture to it while moving, one for each `Upscale` mode, made when first wanted
+    up: [Option<dlss_wgpu::ray_reconstruction::DlssRayReconstruction>; 5],
+    /// whose the last frame was (None: `ctx`'s): another has no history of it, so it starts afresh
+    last: Option<Upscale>,
     /// colour, diffuse, specular, normal + roughness, depth, motion, DLSS's picture
     views: [wgpu::TextureView; 7],
     bg_in: [wgpu::BindGroup; 2],
@@ -283,9 +306,17 @@ pub struct Renderer {
     /// DLSS is wanted (made unless DESK_DLSS=0, on a card that has it: see `enable_dlss`)
     #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
     pub dlss_on: bool,
-    /// DLSS enlarges the picture while it moves (see `Upscale`; `set_upscale`)
+    /// DLSS enlarges the picture while it moves (see `Upscale`; `set_upscale`): at least this much...
     #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
     upscale: Upscale,
+    /// ...and more if a moving frame would otherwise take longer than floor_ms() (`note_frame`)
+    #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
+    auto_up: Upscale,
+    /// moving frames in a row over the floor / well under it at the next mode down
+    #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
+    slow: u32,
+    #[cfg_attr(not(feature = "dlss"), allow(dead_code))]
+    fast: u32,
     /// the last frame was traced smaller than the picture: it cannot be added to
     small: bool,
     /// what is on the screen is DLSS's picture of this view (held at rest: see `render`)
@@ -431,6 +462,9 @@ impl Renderer {
             dlss: None,
             dlss_on: true,
             upscale: Upscale::Off,
+            auto_up: Upscale::Off,
+            slow: 0,
+            fast: 0,
             small: false,
             dlss_shown: false,
         }
@@ -633,11 +667,36 @@ impl Renderer {
     /// The size a moving picture is traced at, if DLSS enlarges it (None: at its own size).
     pub fn moving_size(&self) -> Option<(u32, u32)> {
         #[cfg(feature = "dlss")]
-        if let Some(up) = self.dlss.as_ref().and_then(|d| d.per.as_ref()).and_then(|p| p.up.as_ref()) {
+        if let Some(up) = self.dlss.as_ref().and_then(|d| d.per.as_ref()).and_then(|p| p.up[self.moving_upscale() as usize].as_ref()) {
             let r = up.render_resolution();
             return Some((r[0], r[1]));
         }
         None
+    }
+
+    /// The enlarging a moving frame gets now: what is set, or more to keep floor_ms().
+    pub fn moving_upscale(&self) -> Upscale {
+        self.upscale.max(self.auto_up)
+    }
+
+    /// DLSS's enlarging to the picture's size in `mode`, made now if it has not been. False: it cannot be.
+    #[cfg(feature = "dlss")]
+    fn want_up(&mut self, mode: Upscale) -> bool {
+        use dlss_wgpu::ray_reconstruction::{DlssRayReconstruction, DlssRayReconstructionDepthMode, DlssRayReconstructionRoughnessMode};
+        let (Some(dl), Some(m)) = (self.dlss.as_mut(), mode.mode()) else { return false };
+        let Some(per) = dl.per.as_mut() else { return false };
+        if per.up[mode as usize].is_none() {
+            let (w, h) = self.size;
+            let flags = dlss_wgpu::DlssFeatureFlags::HighDynamicRange | dlss_wgpu::DlssFeatureFlags::LowResolutionMotionVectors;
+            match DlssRayReconstruction::new([w, h], m, flags, DlssRayReconstructionRoughnessMode::Packed, DlssRayReconstructionDepthMode::Linear, dl.sdk.clone(), &self.device, &self.queue) {
+                Ok(c) => per.up[mode as usize] = Some(c),
+                Err(e) => {
+                    eprintln!("DLSS: no {} enlarging at {w}x{h}: {e}", mode.name());
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     pub fn upscale(&self) -> Upscale {
@@ -645,15 +704,10 @@ impl Renderer {
     }
 
     /// DLSS's enlarging, made again for the picture's size; the picture starts again.
+    /// (each mode's enlarging is made when it is first wanted, and kept: see `want_up`)
     pub fn set_upscale(&mut self, u: Upscale) {
         if self.upscale != u {
             self.upscale = u;
-            #[cfg(feature = "dlss")]
-            if self.dlss.is_some() {
-                let size = self.size;
-                self.size = (0, 0);
-                self.resize(size.0, size.1);
-            }
             self.invalidate();
         }
     }
@@ -734,10 +788,8 @@ impl Renderer {
             dl.run = 0;
             let flags = dlss_wgpu::DlssFeatureFlags::HighDynamicRange | dlss_wgpu::DlssFeatureFlags::LowResolutionMotionVectors;
             // (the textures are the picture's size; a smaller picture uses their top left: partial_texture_size)
-            let make = |m| DlssRayReconstruction::new([w, h], m, flags, DlssRayReconstructionRoughnessMode::Packed, DlssRayReconstructionDepthMode::Linear, dl.sdk.clone(), d, &self.queue);
-            // (and the one that enlarges a smaller picture to this size, while it moves: `Upscale`)
-            let up = self.upscale.mode().and_then(|m| make(m).map_err(|e| eprintln!("DLSS: no {} enlarging at {w}x{h}: {e}", self.upscale.name())).ok());
-            match make(dlss_wgpu::DlssPerfQualityMode::Dlaa) {
+            // (the ones that enlarge a smaller picture to this size while it moves are made when first wanted)
+            match DlssRayReconstruction::new([w, h], dlss_wgpu::DlssPerfQualityMode::Dlaa, flags, DlssRayReconstructionRoughnessMode::Packed, DlssRayReconstructionDepthMode::Linear, dl.sdk.clone(), d, &self.queue) {
                 Ok(ctx) => {
                     let tex = |label: &str, format: wgpu::TextureFormat| {
                         d.create_texture(&wgpu::TextureDescriptor {
@@ -761,7 +813,7 @@ impl Renderer {
                     };
                     let bg_in = [mk_in(0), mk_in(1)];
                     let bg_out = bind(d, &dl.l_out, &[g.clone(), wgpu::BindingResource::TextureView(&views[6]), out_px.as_entire_binding(), shown_px.as_entire_binding()]);
-                    dl.per = Some(DlssPer { ctx, up, was_up: false, views, bg_in, bg_out });
+                    dl.per = Some(DlssPer { ctx, up: Default::default(), last: None, views, bg_in, bg_out });
                 }
                 Err(e) => eprintln!("DLSS: not used at {w}x{h}: {e}"),
             }
@@ -792,7 +844,9 @@ impl Renderer {
         // TRACED SMALLER WHILE IT MOVES, DLSS making it the window's size (`Upscale`). At rest it is traced at
         // its own size; samples of a smaller picture cannot be added to, so rest starts again from nothing.
         #[cfg(feature = "dlss")]
-        let small = changed && self.dlss_on && self.dlss.as_ref().and_then(|d| d.per.as_ref()).is_some_and(|p| p.up.is_some());
+        let up_mode = self.moving_upscale();
+        #[cfg(feature = "dlss")]
+        let small = changed && self.dlss_on && up_mode != Upscale::Off && self.want_up(up_mode);
         #[cfg(not(feature = "dlss"))]
         let small = false;
         let reset = changed || self.n == 0 || self.small;
@@ -830,7 +884,7 @@ impl Renderer {
         let mut jitter = [0.0f32; 2];
         #[cfg(feature = "dlss")]
         if let Some(per) = self.dlss.as_ref().and_then(|d| d.per.as_ref()) {
-            let ctx = if small { per.up.as_ref().unwrap() } else { &per.ctx };
+            let ctx = if small { per.up[up_mode as usize].as_ref().unwrap() } else { &per.ctx };
             if small {
                 let r = ctx.render_resolution();
                 rs = (r[0].clamp(1, t.w), r[1].clamp(1, t.h));
@@ -975,8 +1029,9 @@ impl Renderer {
             dl.run += 1;
             let per = dl.per.as_mut().unwrap();
             // (the other one has seen none of the frames before this: it starts afresh)
-            first |= per.was_up != small;
-            per.was_up = small;
+            let now = small.then_some(up_mode);
+            first |= per.last != now;
+            per.last = now;
             let v = &per.views;
             let params = DlssRayReconstructionRenderParameters {
                 diffuse_albedo: &v[1],
@@ -1002,7 +1057,7 @@ impl Renderer {
                 partial_texture_size: small.then_some([rs.0, rs.1]),
                 motion_vector_scale: None,
             };
-            let ctx = if small { per.up.as_mut().unwrap() } else { &mut per.ctx };
+            let ctx = if small { per.up[up_mode as usize].as_mut().unwrap() } else { &mut per.ctx };
             match ctx.render(params, &mut enc, &adapter) {
                 Ok(cmd) => {
                     let dl = self.dlss.as_ref().unwrap();
@@ -1112,6 +1167,31 @@ impl Renderer {
         };
         if changed && b > 0.0 {
             self.settings.spf_moving = step(self.settings.spf_moving, gpu_ms, b, 4.0);
+        }
+        // NEVER UNDER 24 FPS WHILE MOVING (user, 2026-10-17): a moving frame that takes longer than floor_ms() at
+        // one sample a pixel is traced smaller, DLSS enlarging it a mode more; back down a mode once the frame
+        // would be well inside it there. A few frames in a row each way: one slow frame is not a slow card.
+        #[cfg(feature = "dlss")]
+        if changed && self.dlss_on && self.dlss_ready() {
+            let now = self.moving_upscale();
+            let lower = self.upscale.max(self.auto_up.down());
+            if gpu_ms > 0.9 * floor_ms() && self.settings.spf_moving <= 1 && now != Upscale::Ultra {
+                self.fast = 0;
+                self.slow += 1;
+                if self.slow >= 3 {
+                    self.auto_up = now.up();
+                    self.slow = 0;
+                }
+            } else if lower < now && gpu_ms * lower.frac() / now.frac() < 0.6 * floor_ms() {
+                self.slow = 0;
+                self.fast += 1;
+                if self.fast >= 30 {
+                    self.auto_up = self.auto_up.down();
+                    self.fast = 0;
+                }
+            } else {
+                (self.slow, self.fast) = (0, 0);
+            }
         }
         // AT REST THE PICTURE IS GATHERED IN LONG FRAMES, whatever the display's rate: nothing is moving,
         // so nobody needs 240 of them a second, and every frame shown costs its denoise and its present.
