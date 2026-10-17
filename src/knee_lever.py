@@ -232,7 +232,8 @@ HUB_D   = 17 * D.BEAD               # 13.6 (was 10.4 on the Ø5 axle): the Ø8.2
                                     # as the hub is wide for a solid root.
 ARM_LEN = 100.0                     # hub centre -> arm tip (knee reach, -Z)
 ARM_TX  = HUB_D                     # arm depth in X (bending axis: knee pushes X) = the hub OD
-ARM_WY  = 32 * D.BEAD               # 25.6 arm width in Y -- the face the player's leg bears on (no paddle).
+LANE_W  = 32 * D.BEAD               # 25.6 -- WAS the arm width (ARM_WY, now set beside the bearings);
+                                    #   kept as what the cartridge lanes are laid out from.
                                     #   24 -> 25.6 (user, 2026-09-21): the wall outboard of each lobe
                                     #   recess was 0.8 (one bead); +0.8 a side makes it 1.6 while the
                                     #   cartridge lanes (HS_YC) stay exactly where they are.
@@ -241,8 +242,10 @@ ARM_WY  = 32 * D.BEAD               # 25.6 arm width in Y -- the face the player
                                     #   cocks a 3.2-long piston). The lobes are placed inward from this
                                     #   edge (HS_YC), so widening the lever IS what spreads the cartridges
                                     #   apart -- Y is the cheap axis here (user); X is not.
-LEVER_HW = ARM_WY / 2               # UNIFORM lever half-width: hub, lobe and arm are all ±LEVER_HW (one
-                                    #   clean section).
+LANE_HW = LANE_W / 2                # 12.8: the half-width the cartridge LANES are set from (HS_YC).
+                                    #   It WAS the lever's half-width; the lever is now as wide as the
+                                    #   bearings allow (LEVER_HW, set beside them) while the lanes, the
+                                    #   cartridges and their pockets stay exactly where they were.
 PIVOT_CLR = 0.2                     # hub-face to thrust-boss running clearance
 THROW   = 30.0                      # neutral -> full throw (deg, +theta about +Y). 30° is the useful max
 # ...and the OTHER way, for STORAGE (user, 2026-09-28: "for the LKL we want a storage
@@ -439,8 +442,8 @@ HS_POCKET_HW = HS_CART_WY / 2 + HS_CLR        # cartridge pocket (slot) half-wid
 # the wider head) is what frees the width. The two cartridges nearly meet at the centre (the old dead wall
 # between them is gone); the wall-side gaps to the bearing walls are the leftover slack.
 _ARM_LOBE_WALL = D.MIN_WALL_2P       # 1.6 wall outboard of each lobe recess (was 0.8, user)
-HS_YC   =  (LEVER_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # +Y lobe/cartridge centre (arm-outboard-wall limited)
-MAIN_YC = -(LEVER_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # -Y
+HS_YC   =  (LANE_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # +Y lobe/cartridge centre (arm-outboard-wall limited)
+MAIN_YC = -(LANE_HW - _ARM_LOBE_WALL - (LOBE_WY + 1) / 2)   # -Y
 
 # CENTRE DIVIDER — the wall BETWEEN the two cartridge pockets (user-caught in a render).
 # At LOBE_WY 6.0 this was -0.20: the pockets OVERLAPPED, so the two 45° gable roofs met in
@@ -742,6 +745,8 @@ def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None, axle=Tru
     so the shim has to stop at the groove floor and let the LID do the pressing."""
     out = [(f"{prefix}_bearing_{i}", place(_bearing().translate((0, by, 0))))
            for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0))]   # inner faces at ±BRG_Y0
+    out += [(f"{prefix}_spacer_{i}", place(spacer().translate((0, sy, 0))))
+            for i, sy in enumerate((-LEVER_HW - SPACER_T, LEVER_HW))]     # lever face -> race
     out.append((f"{prefix}_magnet", place(cyl_y(MAG_D, MAG_T, y0=MAG_Y0))))
     # the axle's END SCREW + washer, on the -Y tip (axisymmetric, so they need no swing)
     out.append((f"{prefix}_axle_washer", place(
@@ -1124,6 +1129,26 @@ HOUS_X0 = -(HS_POCKET_BX + HS_REAR_T)                    # was -78.1 with the Ø
 CART_HW = abs(HS_YC) + HS_CART_WY / 2 + HS_CLR + HS_HOUS_WALL
 BRG_Y0 = abs(HS_YC) + HS_CART_WY / 2 + HS_CLR
 HOUS_HW = BRG_Y0 + BRG_W
+# THE LEVER FILLS THE GAP BETWEEN THE BEARINGS, AND THE STACK IS LOCKED IN Y (user,
+# 2026-10-16: "move the bearings out, widen the lever"; "once the axle screw is tightened
+# the lever locks into position and cannot move along Y"; one bearing everywhere, so no
+# flanged 688). Each seat stops at a printed SHOULDER, BRG_SHOULDER_T deep, on the outer
+# race's inboard face (its hole is the room crown's teardrop, r 7.2: outer race only).
+# The lever stops HS_CLR short of the shoulders, and a printed SPACER each side (Ø10, so
+# inner race only) fills lever face -> inner race. The end screw clamps land -> +Y inner
+# race -> spacer -> lever -> spacer -> -Y inner race -> washer: ONE rotating unit and the
+# housing is not in that loop, so the key cannot preload the bearings. The unit is held
+# by the two shoulders, each outer race stopped inboard and the other side's shoulder
+# stopping it outboard through the clamped unit. CLAMP_LONG makes the clamped length
+# deliberately LONGER than the shoulders' spacing: long only lets the races sit that far
+# off their shoulders (float), where short would pull each inner race past its seated
+# outer race (preload, by however hard the screw went in).
+BRG_SHOULDER_T = D.MIN_WALL_2P      # 1.6: two beads
+CLAMP_LONG = 0.1                    # clamped length over the shoulders' spacing = the float
+LEVER_HW = BRG_Y0 - BRG_SHOULDER_T - HS_CLR
+SPACER_T = BRG_Y0 - LEVER_HW + CLAMP_LONG / 2
+SPACER_OD, SPACER_ID = 10.0, AXLE_D + 0.2
+ARM_WY = 2 * LEVER_HW               # the arm is the lever's uniform section (was 25.6)
 BRG_BLOCK_X0 = -(BRG_SEAT_D / 2 + BRG_WALL)   # the block: the seat + its wall -X (HOUS_X1 is +X)
 BRG_BLOCK_Z0 = -(BRG_SEAT_D / 2 + BRG_WALL)   # ...and below, chamfered 45 back to CART_HW
 HOUS_Z1 = HOUS_TOP_Z                                     # +12.0, the seat roof (was 9.6; flush: BODY_Z
@@ -1176,7 +1201,7 @@ HOUS_Z0 = min((HS_Z - HS_PISTON_WZ / 2) + _FEEL_DZ - HS_CLR - HS_HOUS_WALL,   # 
               (CHIP_DROP - PCB_WZ) - 4 * D.NOZZLE_D)                      # the board + its floor
 #           ^ = HS_FLOOR_Z placed, or PCB_Z0 - CR_FLOOR_T (both defined below). The cartridges
 #           bind (-16.5); the board would need -15.1.
-assert BRG_Y0 >= LEVER_HW + HS_CLR - 1e-9, "the flush bearings would bite the lever hub"
+assert SPACER_T > BRG_SHOULDER_T + HS_CLR, "the spacer no longer reaches through the shoulder"
 # ── MOUNT TENON STATIONS (user: "4 sets"). The chassis rib comb is a uniform
 # RIB_PITCH/2 = 23 mm and the lever is posed ON a rib (MOUNT_X = -501 IS a rib X), so
 # the stations are just k·23 walking -X from the axle, kept while the whole 6-wide
@@ -1330,15 +1355,19 @@ AXLE_BORE_D = AXLE_D + 0.2                      # lever's through D-bore (slip f
 # bore and narrower than the inner ring (the same shaft-abutment band the flange's land uses at
 # the other end), so it laps the -Y INNER RACE and nothing else, and it turns with the axle —
 # nothing rubs.
-# THE TIP STANDS AXLE_END_PROUD OF THE RACE, so the screw tightens against the AXLE'S OWN END and
-# clamps nothing between the two bearings: the washer hangs that far off the race as running
-# clearance. Tightened onto the race instead it would preload both bearings against each other
-# through the housing, and how hard would depend on the hand holding the key.
+# THE TIP STOPS 0.3 INSIDE THE RACE (2026-10-16; it stood 0.2 PROUD before), so the washer clamps
+# the -Y inner race and the whole rotating unit is one clamped stack -- that is what locks the
+# lever in Y. The old worry, that clamping the race would preload both bearings through the
+# housing by however hard the key went, is answered by the loop: the clamp runs land -> races ->
+# spacers -> lever -> washer and never through the housing, and the stack is sized LONG over the
+# shoulders' spacing (CLAMP_LONG), so tightening cannot pull an inner race past its outer race.
 # IT FORMS ITS OWN THREAD in the printed axle. An insert is Ø6 in a Ø8 shaft — a 1.0 wall — and
 # the load is the axle's own gram or two: the screw stops a slide, it never carries the pivot
 # (that is the journal in the bearing, which the steel core only stiffens). The axle prints
 # standing, so the bore runs up the build and the wall round it is whole perimeters.
-AXLE_END_PROUD = 0.2
+AXLE_END_PROUD = -0.3               # NEGATIVE now: the tip stops INSIDE the -Y inner race, so the
+                                    # washer clamps the race (see BRG_SHOULDER_T -- the clamp loop
+                                    # is the rotating unit only, so it cannot preload the bearings)
 AXLE_SCREW_L = M4_SCREW_L                       # M4 x 10 button — the cartridges' SKU
 AXLE_WASHER_OD, AXLE_WASHER_ID, AXLE_WASHER_T = 9.0, 4.3, 0.8      # ISO 7089 M4
 AXLE_TAP_L = AXLE_SCREW_L - AXLE_WASHER_T + 2 * D.BEAD            # 10.8: the screw's reach + a
@@ -1936,13 +1965,17 @@ def cut_axle_stack(w, through=False):
     # housing across the axle's path.
     _seat_out, _seat_in = HOUS_HW + 1.0, LEVER_HW + HS_CLR
     if through:
-        # ONE TEARDROP THE FULL AXLE LENGTH (user, 2026-10-16: "instead of having one circle
-        # cut and one teardrop cut lets just use a teardrop that spans the full axle length").
-        # Through the lever room too, so the room's round crown over the hub becomes this
-        # teardrop's 45s and the crown needs no closure. The seats were already open to the
-        # room with nothing inboard -- the bearings are located by their press fit alone.
-        return w.cut(printable_bore(BRG_SEAT_D, 2 * _seat_out, (0.0, -_seat_out, 0.0),
-                                    (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+        # ONE TEARDROP THE FULL AXLE LENGTH (user, 2026-10-16), at the seat's Ø over the lever
+        # band and out through each seat -- but NOT across the SHOULDERS: there it is the room
+        # crown's teardrop, so each outer race lands on a printed stop (see BRG_SHOULDER_T).
+        r_sh = HUB_D / 2 + HS_CLR
+        w = w.cut(printable_bore(2 * r_sh, 2 * _seat_out, (0.0, -_seat_out, 0.0),
+                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+        y_sh = BRG_Y0 - BRG_SHOULDER_T
+        for y0, ln in ((-y_sh, 2 * y_sh), (BRG_Y0, _seat_out - BRG_Y0),
+                       (-_seat_out, _seat_out - BRG_Y0)):
+            w = w.cut(printable_bore(BRG_SEAT_D, ln, (0.0, y0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+        return w
     for sgn in (1.0, -1.0):
         y0 = sgn * _seat_in if sgn > 0 else -_seat_out
         w = w.cut(printable_bore(BRG_SEAT_D, _seat_out - _seat_in, (0.0, y0, 0.0),
@@ -1950,6 +1983,13 @@ def cut_axle_stack(w, through=False):
     # (no contact rib and no separate axle way: the seats run out through BOTH faces at the
     # full Ø16.1, and the axle's own land seats on the +Y bearing's inner race -- see AXLE_LAND_D)
     return w
+
+
+def spacer():
+    """PRINTED SPACER x2 per lever: lever face -> inner race (see BRG_SHOULDER_T). Ø10 so
+    it laps the inner race only; prints flat."""
+    return (cyl_y(SPACER_OD, SPACER_T, y0=0.0)
+            .cut(cyl_y(SPACER_ID, SPACER_T + 2.0, y0=-1.0)))
 
 
 def _bearing_block():
@@ -1975,7 +2015,8 @@ def _hub_bay():
     rb = BRG_SEAT_D / 2.0
     x0 = -0.4                                      # printable_bore's flat: nozzle 0.8
     z1 = _top_tenon(TEN_X[0]).val().BoundingBox().zmax
-    yw = HS_YC + hs_pocket_hw()                    # the pockets' outer walls
+    yw = BRG_Y0 - BRG_SHOULDER_T                   # the shoulders' faces (was the pockets' walls:
+    #                                              that took the shoulders' tops away)
     return box_at(HOUS_X1 - x0, 2 * yw, z1 + rb,
                   x=(x0 + HOUS_X1) / 2, y=0.0, z=(z1 - rb) / 2)
 
