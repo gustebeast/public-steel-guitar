@@ -181,10 +181,9 @@ LCSC = {
                                     # DigiKey's listing for the same part is 0 in stock
                                     # at $9.22 and describes it as "non-continuous",
                                     # which is wrong -- see the note in BOM.md.
-    "KH-2.54PH180-1X20P-L11.5": "C2905493",   # 1x20 male, insulation 2.5 / mating pin
-                                    # 6.0 / tail 3.0, all three read from the listing
-                                    # because src/ui_panel.py's Z stack is built on
-                                    # them. 1,131 in stock.
+    "AFA07-S20FCA-00": "C262724",   # JUSHUO 20-way 1.0 mm FFC socket, bottom contact,
+                                    # 2.5 high: the display's ribbon (2026-10-19, in
+                                    # place of the 1x20 header C2905493). 9,681 in stock.
 }
 # ── EVERY PASSIVE, BY (VALUE, FOOTPRINT) ──────────────────────────────────────────────
 # These rows used to go to the fab with no part number -- "a generic passive, chosen at

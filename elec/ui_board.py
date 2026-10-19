@@ -9,6 +9,11 @@ and the display is a bought MODULE (Newhaven NHD-2.7-12864WDW3: white on black a
 combination is not sold as a bare panel). So this board carries the CONTROL, the
 module's connector, and the single cable that leaves the station.
 
+THE DISPLAY IS ON A RIBBON (user, 2026-10-19), and the module is the -M: the same panel
+with a 20-way 1.0 mm FFC socket on its back instead of twenty bare holes. J1 is its mate,
+a JLC-placed FFC socket on this board's +Y edge, and a stock 50 mm cable joins the two.
+No solder anywhere on the bought module.
+
 THE CONTROL IS ONE PART. Alps RKJXT1F42001 (LCSC C160841): a 15-pulse / 30-detent
 incremental encoder that turns for ever either way, a 4-direction stick, and a centre
 push, all on one 17 x 17 shaft. Stepped, clicky, infinite, plus N/E/S/W in a single
@@ -27,11 +32,12 @@ from it, and after routing src/board_geom.py reads the finished .kicad_pcb back 
 CAD draws THAT. Nothing is typed twice, and nothing downstream can drift from what was
 actually fabbed -- which is the failure elec/export_geom.py exists to have ended.
 
--- WHY THE HEADERS ARE THE HEADERS THEY ARE ---------------------------------
-J1 is a MALE 1x20 and the module gets the female. Newhaven ships the module with plated
-holes and no header at all, so both halves are ours to choose. Socket on our board and
-the module needs a long-pin header to reach down through it; socket on the module and
-both halves are stock parts with 6 mm of engagement. See src/ui_panel.py.
+-- WHY THE CONNECTORS ARE THE CONNECTORS THEY ARE ---------------------------
+J1 is a JUSHUO AFA07-S20FCA-00: 20 ways at 1.0, 2.5 high, BOTTOM contact, slide lock,
+its mouth flush with the +Y edge and facing the module. Bottom contact because the cable
+arrives contacts-down: it leaves the module's socket contacts-up against that board and
+loops round under it without turning over (src/ui_panel.ffc_path). It was a 1x20 2.54
+header the module plugged onto, which needed a socket SOLDERED onto the bought module.
 
 J2 is a RIGHT-ANGLE 2x7 IDC box header, and every word of that was forced:
   * IDC, because fourteen crimps is fourteen chances to get one wrong and a ribbon is
@@ -77,7 +83,7 @@ from src import ui_panel as UI                       # noqa: E402
 P = Pin.types.PASSIVE
 
 ENC_FP = "Steel:Alps_RKJXT1F42001"
-DISP_FP = "Connector_PinHeader_2.54mm:PinHeader_1x20_P2.54mm_Vertical"
+DISP_FP = "Connector_FFC-FPC:JUSHUO_AFA07-S20FCA-00_1x20-1MP_P1.0mm_Horizontal"
 # ⚠ THE SAME HEADER AS THE PI CAP'S END (user, 2026-10-02: "both ends of the connection are
 # our custom PCB so we can pick whatever connector we want"). This was a 2.54 mm IDC box
 # header, which takes 1.27 ribbon; the cap's end is a 1.27 mm header, which takes 0.635.
@@ -93,7 +99,8 @@ PWR_FP = "Steel:Legion_PB-22E85"
 PULLUP = "10k"
 
 # -- J1: the display module, 4-wire SPI -------------------------------------
-# Newhaven's pin table (datasheet p.4, Serial Interface) read 2026-09-25. Everything
+# Newhaven's pin table (datasheet p.4, Serial Interface) read 2026-09-25, and the -M's
+# drawing carries the same table (read 2026-10-19). Everything
 # not listed is VSS on their own table, so it is wired to GND rather than left open --
 # a floating pin on a 20-way header is an antenna and a probing hazard both.
 #
@@ -113,6 +120,13 @@ DISP_PINS = {
     13: "GND", 14: "GND", 15: "NC_VCC", 16: "RES_N", 17: "CS_N", 18: "+3V3",
     19: "GND", 20: "GND",
 }
+# WAY n OF J1 IS MODULE PIN n, and that is geometry, not a choice. The ribbon only bends
+# about its width, so each conductor keeps its X from one socket to the other: the
+# module's pin 1 is at +X (ui_panel.MOD_FFC_PIN1_DIR) and J1, turned 180 so its mouth
+# faces +Y, has its pad 1 at +X too. If the module's pin 1 were ever found at -X, every
+# way here would reverse -- VDD would land on BS1 -- so it is asserted, not assumed.
+assert UI.MOD_FFC_PIN1_DIR == +1 and UI.MOD_FFC_N == len(DISP_PINS), (
+    "the module's FFC pin 1 is not at +X: J1's ways would be module pins 21 - n")
 
 # -- J2: the ribbon to the Pi -----------------------------------------------
 # ⚠ THE FAR END OF THIS CONNECTOR IS NOT DECIDED, so this order is provisional (user
@@ -223,9 +237,10 @@ def ui_board():
     for pin, net in ENC_PINS.items():
         nets[net] += sw1[pin]
 
-    j1 = Part(name="PinHeader_1x20", ref_prefix="J", ref="J1", tag="J1",
-              dest="NETLIST", tool="skidl", value="KH-2.54PH180-1X20P-L11.5",
-              description="1x20 2.54 male: the NHD-2.7-12864WDW3 plugs onto this",
+    j1 = Part(name="AFA07-S20FCA-00", ref_prefix="J", ref="J1", tag="J1",
+              dest="NETLIST", tool="skidl", value="AFA07-S20FCA-00",
+              description="JUSHUO 20-way 1.0 mm FFC socket, bottom contact (LCSC C262724): "
+                          "the NHD-2.7-12864WDW3-M's ribbon",
               footprint=DISP_FP,
               pins=[Pin(num=k, name=v, func=P) for k, v in DISP_PINS.items()])
     for pin, net in DISP_PINS.items():
@@ -258,7 +273,7 @@ def ui_board():
     # panel's 15 V. Newhaven's table (datasheet p.6, default jumpers): 345 mA typical,
     # 375 mA maximum at 3.3 V with every pixel lit. A white-on-black screen lights a
     # fraction of them, but the copper here is sized for the table.
-    c1 = _c("C1", "100nF", "3V3 decoupling at the display header's VDD pin")
+    c1 = _c("C1", "100nF", "3V3 decoupling at the display socket's VDD way")
     c2 = _c("C2", "10uF/25V", "3V3 bulk at the display's VDD pin: its boost converter "
             "draws up to 375 mA", pkg="Capacitor_SMD:C_0805_2012Metric")
     for c in (c1, c2):
@@ -272,10 +287,23 @@ def ui_board():
 BOARD_W, BOARD_L = UI.BOARD_W, UI.BOARD_L
 _HW, _HL = BOARD_W / 2.0, BOARD_L / 2.0
 
-# J1's pad row IS the module's header row: the module plugs straight down onto it, so
-# placing this places the display. Rotated 90 so the row runs along X, which is the way
-# the module's own row runs.
-_J1_X, _J1_Y = UI.board_local(UI.ui_x(), UI.header_row_y())
+# J1, THE DISPLAY'S FFC SOCKET: on the module's centreline in X, so the ribbon runs
+# straight from the module's socket to this one (it may only bend about its width), and
+# rotated 180 so its mouth faces +Y, toward the module. Its COURTYARD is flush with the
+# +Y edge, which leaves the mouth 0.5 inside it -- the cable's stiffener lies over that.
+# KiCad's JUSHUO_AFA07-S20FCA-00 from the PAD CENTROID (twenty contacts and the two
+# mounting lands): the fab body runs 0.703 to 7.653 ahead of it, the courtyard -1.602 to
+# 8.158 and +-14.0 across, once turned 180.
+_J1_FAB = (0.703, 7.653)
+_J1_CRTYD = (-1.602, 8.158, 14.0)
+_J1_X = UI.board_local(UI.ui_x(), 0.0)[0]
+_J1_Y = _HL - _J1_CRTYD[1]
+
+
+def _j1_box(margin=0.0):
+    """J1's courtyard in board coordinates: (x0, x1, y0, y1)."""
+    return (_J1_X - _J1_CRTYD[2] - margin, _J1_X + _J1_CRTYD[2] + margin,
+            _J1_Y + _J1_CRTYD[0] - margin, _J1_Y + _J1_CRTYD[1] + margin)
 # SW1's SHAFT sits under the knob, whose X is its own rule -- the same gap to the deck
 # panel's +X seam that the Y layout gives it to everything else (user, 2026-09-28). It
 # used to share the display's X centre, which left it equally spaced in Y and 45 mm from
@@ -329,20 +357,28 @@ _SCREW_X, _SCREW_Y = UI.SCREW_XY
 _BOSS_D = 8.0              # the deck-side boss the screw threads into (cadkit M4)
 _ENC_CRTYD = UI.ENC_SQ / 2.0 + 0.25
 
-# The pull-ups run in a ROW along the top, not a column. A column of seven at 3 mm pitch
-# is a picket fence across the middle of the board, and all seven switch nets have to
-# cross it to reach J2 at the -X edge: the router left SW_PUSH 0.42 mm short on the far
-# side of it. A row turns the same seven parts into a +3V3 rail with the pull-ups hanging
-# off it and an empty lane underneath for the signals. It routed clean. The two
-# decoupling parts sit beside J1's VDD pin, which is the one place on this board where
-# position IS the value.
-# ⚠ PIN 2, AT THE ROW'S -X END (manual quality pass, 2026-10-05). They stood at the +X end
-# beside pin 18, which is /SHDN -- tied to +3V3, drawing nothing -- 40 mm of 0.25 mm track
-# from the pin the module's whole 345 mA goes in at.
-_R_Y = 10.0
-_R_X0, _R_DX = -20.0, 4.0
-assert _R_X0 + 6 * _R_DX + 0.5 <= _SW_BODY_X - _ENC_CRTYD - 1.0,     "the pull-up row laps the encoder"
-assert _R_X0 - 0.5 >= _J2_X + _J2_FAB_BACK + 1.0,     "the pull-up row laps the ribbon header"
+# THE PULL-UPS ARE A ROW OF SEVEN BESIDE J1, standing on end: the strip between J1's
+# courtyard and the +X spigot is the one clear patch left on the +Y half. A row, not a
+# column -- a column of seven at 3 mm pitch was a picket fence across the middle of the
+# board that every switch net had to cross to reach J2, and the router left SW_PUSH 0.42
+# short on the far side of it. Here the +3V3 ends of all seven are along the top and the
+# switch ends along the bottom, facing the encoder they come from.
+# Until the ribbon (2026-10-19) they ran along y 10 from x -20, which is where J1's lands
+# are now.
+_R_Y = 13.0
+_R_X0, _R_DX = 15.6, 1.6
+_R_HALF = (0.48, 0.98)              # an 0402 stood on end: its courtyard, half x and y
+_ROW = (_R_X0 - _R_HALF[0], _R_X0 + 6 * _R_DX + _R_HALF[0], _R_Y - _R_HALF[1], _R_Y + _R_HALF[1])
+assert _ROW[0] >= _j1_box()[1] + 0.3, "the pull-up row laps J1's courtyard"
+assert _ROW[2] >= _SW_BODY_Y + _ENC_CRTYD + 1.0, "the pull-up row laps the encoder"
+assert _ROW[3] <= _HL - 1.0, "the pull-up row is within 1.0 of the +Y edge"
+# THE TWO DECOUPLING PARTS ARE UNDER J1's VDD WAY, which is the one place on this board
+# where position IS the value: way 2, at x +8.5 with J1 turned round. C1's two lands sit
+# straight under ways 2 (+3V3) and 1 (GND); C2 under C1. Before the ribbon they stood at
+# the old header's pin 2, 2.7 and 5.4 mm from it.
+_C1_XY = (_J1_X + 9.0, 6.3)
+_C2_XY = (_J1_X + 9.0, 4.2)
+assert _C1_XY[1] + 0.48 <= _j1_box()[2] - 0.3, "C1 laps J1's courtyard"
 
 # EVERY HOLE IN THE BOARD HAS TO LAND ON BARE BOARD -- the M4 with its deck-side boss
 # round it, and the two spigots with their own O4 posts. The spigots are the ones worth
@@ -350,30 +386,38 @@ assert _R_X0 - 0.5 >= _J2_X + _J2_FAB_BACK + 1.0,     "the pull-up row laps the 
 # them toward the parts.
 _HOLES = ([(UI.SCREW_XY[0], UI.SCREW_XY[1], _BOSS_D, "screw boss")]
           + [(x, y, UI.SPIGOT_D + 2.0, "spigot") for x, y in UI.SPIGOTS])
+
+
+def _laps(hx, hy, rad, box):
+    x0, x1, y0, y1 = box
+    return hx + rad > x0 and hx - rad < x1 and hy + rad > y0 and hy - rad < y1
+
+
 # ...and _rad, not _r: _r is the resistor helper above, and shadowing it here turned
 # every pull-up into a TypeError halfway through the netlist.
 for _hx, _hy, _d, _what in _HOLES:
     _rad = _d / 2.0
-    assert (_hy + _rad <= _R_Y - 0.82 or _hx - _rad > _R_X0 + 6 * _R_DX + 0.5
-            or _hx + _rad < _R_X0 - 0.5),         "the %s at (%+.1f, %+.1f) laps the pull-up row" % (_what, _hx, _hy)
+    for _box, _part in ((_ROW, "the pull-up row"), (_j1_box(), "the display socket"),
+                        ((_C2_XY[0] - 1.68, _C1_XY[0] + 1.68, _C2_XY[1] - 0.95,
+                          _C1_XY[1] + 0.48), "the decoupling pair")):
+        assert not _laps(_hx, _hy, _rad, _box), (
+            "the %s at (%+.1f, %+.1f) laps %s" % (_what, _hx, _hy, _part))
     assert (abs(_hx - _SW_BODY_X) > _ENC_CRTYD + _rad
             or abs(_hy - _SW_BODY_Y) > _ENC_CRTYD + _rad),         "the %s at (%+.1f, %+.1f) laps the encoder" % (_what, _hx, _hy)
     assert _hx - _rad > _J2_X + _J2_FAB_BACK or abs(_hy - _J2_Y) > _J2_FAB_HALF + _rad,         "the %s at (%+.1f, %+.1f) laps the ribbon header" % (_what, _hx, _hy)
     assert (abs(_hx - _PWR_X) > _PWR_HALF + 0.25 + _rad
-            or abs(_hy - _PWR_Y) > _PWR_HALF + 0.25 + _rad), \
-        "the %s at (%+.1f, %+.1f) laps the power switch" % (_what, _hx, _hy)
-    assert abs(_hy - _J1_Y) > 1.32 + _rad,         "the %s at (%+.1f, %+.1f) laps the display header" % (_what, _hx, _hy)
+            or abs(_hy - _PWR_Y) > _PWR_HALF + 0.25 + _rad),         "the %s at (%+.1f, %+.1f) laps the power switch" % (_what, _hx, _hy)
 
 PLACEMENTS = {
-    "J1": (round(_J1_X, 3), round(_J1_Y, 3), 90.0),
+    "J1": (round(_J1_X, 3), round(_J1_Y, 3), 180.0),
     "J2": (round(_J2_X, 3), round(_J2_Y, 3), 180.0),
     "SW1": (round(_SW_X, 3), round(_SW_Y, 3), 0.0),
     "SW2": (round(_PWR_X, 3), round(_PWR_Y, 3), 0.0),
-    "C1": (-23.5, 10.5, 0.0),
-    "C2": (-27.0, 10.5, 0.0),
+    "C1": (round(_C1_XY[0], 3), _C1_XY[1], 0.0),
+    "C2": (round(_C2_XY[0], 3), _C2_XY[1], 0.0),
 }
 for _i in range(7):
-    PLACEMENTS["R%d" % (_i + 1)] = (round(_R_X0 + _i * _R_DX, 3), _R_Y, 0.0)
+    PLACEMENTS["R%d" % (_i + 1)] = (round(_R_X0 + _i * _R_DX, 3), _R_Y, 90.0)
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
@@ -400,11 +444,11 @@ BOARD_NOTES = {
             "*": {"v": 3.40, "why": "a logic line driven from, or pulled up to, +3V3"},
         },
         "pin_volts": {
-            "KH-2.54PH180-1X20P-L11.5": {
-                "max": 3.5, "src": "Newhaven NHD-2.7-12864WDW3 specification, electrical "
+            "AFA07-S20FCA-00": {
+                "max": 3.5, "src": "Newhaven NHD-2.7-12864WDW3-M specification, electrical "
                                    "characteristics: VDD 3.0 to 3.5 V",
-                "why": "the header is brass in a housing; what limits these pins is "
-                       "the display module that plugs onto them"},
+                "why": "JUSHUO publish no voltage for the socket; what limits these ways "
+                       "is the display module at the far end of the ribbon"},
             "PZ1.27-2x8P": {"max": 500.0, "src": "hanxia HX PZ1.27-2x8P WZ, JLCPCB "
                                                  "listing C22438114: 500 V"},
             "RKJXT1F42001": {"max": 5.0, "src": "Alps RKJXT1F series sheet: maximum "
@@ -421,8 +465,9 @@ BOARD_NOTES = {
         # a switch's two throws, each shorted to GND or open: signal, not supply
         "not_power": ["PWR_SW_UP", "PWR_SW_DN"],
         "pinouts": {
-            "J1": "Newhaven NHD-2.7-12864WDW3 datasheet p.4, Serial Interface pin table; "
-                  "header pin n is module pin n",
+            "J1": "Newhaven NHD-2.7-12864WDW3-M datasheet, Serial Interface pin table; "
+                  "way n is ribbon conductor n is module pin n (a same-side cable that "
+                  "never turns over; see the assertion at DISP_PINS)",
             "J2": "way n is header pin n is IDC conductor n, both ends the same family "
                   "(HX PZ1.27-2xNP WZ); the order is harness.UI_RIBBON",
             "SW1": "Alps RKJXT1F42001 product drawing (terminal names A-D, 5-10) and "
@@ -436,6 +481,7 @@ BOARD_NOTES = {
             "J1.3": "Newhaven pin 3, NC (BC_VDD): no connect by default (p.4)",
             "J1.9": "Newhaven pin 9, NC in the serial interface (p.4)",
             "J1.15": "Newhaven pin 15, NC (VCC): no connect by default (p.4)",
+            "J1.MP": "the socket's two mounting lands: solder only",
         },
         "net_groups": [
             {"name": "display: D/C, SCLK, SDIN, /RES, /CS, one net each",
@@ -463,17 +509,15 @@ BOARD_NOTES = {
                                 "the deck); on the front SW2 and its POWER label take the "
                                 "14 mm round the header. Way 1 is marked on the front"},
         },
-        "waive": {"A17:J1 ways": "20 ways in one row: a block is 21 lines, 34 mm at the "
-                                 "legible 1.0 mm, the whole height of this 72 x 34 board, "
-                                 "and the row itself lies under the display module. "
-                                 "Nothing is crimped to it: the mate is the Newhaven "
-                                 "module's own socket strip, which goes on one way only "
-                                 "(turned round, the module lies off the board). Ways 1 "
-                                 "and 20 are numbered; the order is Newhaven's table, "
-                                 "datasheet p.4, kept in DISP_PINS above and in "
-                                 "quality.pinouts",
+        "waive": {"A17:J1 ways": "20 ways at 1.0 mm: a block is 21 lines, 34 mm at the "
+                                 "legible 1.0 mm, the whole height of this 72 x 34 board. "
+                                 "Nothing is crimped to it: the mate is a stock FFC, "
+                                 "which goes in one way only (contacts down, into a "
+                                 "bottom-contact socket). Ways 1 and 20 are numbered; the "
+                                 "order is Newhaven's table, kept in DISP_PINS above and "
+                                 "in quality.pinouts",
                   "A2:J2": "J2 is where +3V3 arrives off the ribbon, not a load; the "
-                           "bulk and the 100n are at the display header, which is"},
+                           "bulk and the 100n are at the display socket, which is"},
         # Signed 2026-10-05 against the routed board and the makers' sheets. M12 stays
         # open on purpose: what is left of it can only be done on the day of the order.
         "manual": {
@@ -485,52 +529,59 @@ BOARD_NOTES = {
                   "harness.UI_RIBBON, asserted in both generators. A straight-through "
                   "16-way 1.27 mm IDC lead. The header has no shroud: pin 1 is marked in "
                   "silk and INSTALL_NOTES has the stripe-to-pin-1 step. J1 to the display "
-                  "module: header pin n is module pin n (1 GND, 2 VDD, 4 D/C, 7 SCLK, 8 "
-                  "SDIN, 16 /RES, 17 /CS, 18 /SHDN, 19 BS1, 20 BS0), Newhaven's table p.4; "
-                  "the module sits in its deck pocket, so the row cannot go on reversed "
-                  "or one pin along",
+                  "module: a 20-way 1.0 mm same-side FFC (JUSHUO JS10A-20P-050-4-8), way n "
+                  "to module pin n (1 GND, 2 VDD, 4 D/C, 7 SCLK, 8 SDIN, 16 /RES, 17 /CS, "
+                  "18 /SHDN, 19 BS1, 20 BS0), Newhaven's table; both sockets bottom "
+                  "contact and both centred on the module's centreline, so the cable "
+                  "cannot go in reversed or one way along",
             "M3": "decision: no plane (the note at silk_labels says why). +3V3 and GND "
-                  "are routed at the same 0.40 mm from J2 to J1 pins 2 and 1, each with "
+                  "are routed at the same 0.40 mm from J2 to J1 ways 2 and 1, each with "
                   "10.4 mm of 0.15 in J2's edge fan and one 0.6 / 0.3 via; the return "
                   "is as wide as the supply everywhere and necks nowhere the supply does "
                   "not. About 0.1 V there and back at 375 mA",
             "M4": "no regulator. C2 10 uF / 25 V 0805 (Samsung CL21A106KAYNNNE, C15850: "
-                  "barely derated at 3.3 V) and C1 100 nF, 5.4 and 2.7 mm from J1's VDD "
-                  "pin, for a module that carries its own boost converter and its own "
-                  "capacitors",
+                  "barely derated at 3.3 V) and C1 100 nF, straight under J1's VDD way "
+                  "(C1's lands under ways 2 and 1), for a module that carries its own "
+                  "boost converter and its own capacitors",
             "M5": "+3V3: capacitors 25 V and 16 V or more, 0402 resistors 50 V, the module "
-                  "3.0 to 3.5 V. J2's contacts are 1 A and J1's 3 A against 0.375 A. "
+                  "3.0 to 3.5 V. J2's contacts are 1 A against 0.375 A. J1's are NOT "
+                  "RATED by JUSHUO; 1.0 mm FPC sockets of this class are sold at 0.5 A "
+                  "(the module's own Molex 52271 is 0.5 A, 30 cycles) and the module puts "
+                  "its whole 375 mA through its one VDD way, so ours is no worse than "
+                  "theirs. Tin contacts, as the cable's and the Molex's are. "
                   "Encoder and stick contacts: 10 mA at 5 V DC maximum (Alps), carrying "
                   "0.33 mA from a 10k pull-up to 3.3 V. Power switch: 12 V 0.3 A (Legion), "
                   "seeing the output board's 10 V zener (9.4 to 10.6 V) open and 2.55 mA "
                   "closed -- output_panel.py, at D8",
-            "M9": "no MCU, nothing to program. Every net is on a through-hole pin of J1, "
-                  "J2, SW1 or SW2, all open to a probe from the back of the board; "
-                  "ground is on J1 pins 1, 5, 6, 10 to 14, 19 and 20",
+            "M9": "no MCU, nothing to program. Every net is on a through-hole pin of J2, "
+                  "SW1 or SW2, all open to a probe from the back of the board: J2 carries "
+                  "all five display signals, +3V3 and GND, and the switch nets are on SW1. "
+                  "J1 is surface mount and its ways are 1.0 apart",
             "M10": "decision: no clamp here. A hand reaches two things, both printed "
                    "plastic: the knob on the encoder's shaft and the power button's cap. "
                    "The encoder's metal frame is on GND through its lug (pin 10), so a "
                    "strike that gets past the knob lands on ground, not on a contact. "
                    "The ribbon is inside the instrument, to our own board; the 3.3 V it "
                    "brings is limited at the Pi cap. Nothing here can back-feed a rail",
-            "M11": "elec/cad_geom_check.py ui_board, 2026-10-05: 13 of 13 routed parts "
+            "M11": "elec/cad_geom_check.py ui_board, 2026-10-19: 13 of 13 routed parts "
                    "present in the CAD, the three cut-outs match (49.1 mm2), the switch "
                    "is on the deck's spacing rule and the cradle's posts stand on bare "
                    "board. The M4 hole and the two spigot holes are unplated with no "
                    "copper at them, and the generator asserts no part stands under the "
                    "deck boss or a spigot. The ribbon leaves over the -X edge with the "
-                   "socket hanging past the laminate. All four through-hole parts have "
-                   "LCSC codes; none is left for hand fitting",
+                   "socket hanging past the laminate. All three through-hole parts and "
+                   "J1 have LCSC codes; none is left for hand fitting",
             "M16": "decision: no added damping, and none is needed. The only supply is "
                    "3.3 V over the ribbon: about 0.4 uH and 0.34 ohm of AWG 30 pair "
                    "into 10 uF is a characteristic impedance of 0.2 ohm against 0.34 "
                    "ohm in series plus the cap's switch -- overdamped, no overshoot. The "
                    "source is a current-limited switch on the Pi cap",
             "M28": "Alps RKJXT1F42001 (C160841), Legion PB-22E85-S-5.7C-C-W (C22462024), "
-                   "hanxia HX PZ1.27-2x8P WZ (C22438114), Kinghelm "
-                   "KH-2.54PH180-1X20P-L11.5 (C2905493): each listing read 2026-10-05 and "
-                   "each pinout above taken from that maker's own drawing. No transistor, "
-                   "regulator or IC on the board",
+                   "hanxia HX PZ1.27-2x8P WZ (C22438114): each listing read 2026-10-05. "
+                   "JUSHUO AFA07-S20FCA-00 (C262724): listing and drawing read 2026-10-19, "
+                   "and KiCad's footprint of it is the one placed. Each pinout above is "
+                   "taken from that maker's own drawing. No transistor, regulator or IC on "
+                   "the board",
             "M29": "two layers, 1.6 mm, 1 oz, inside JLCPCB's standard table (cadkit "
                    "quality FAB, capabilities page read 2026-10-04; A12 measured 15 "
                    "things against it). No pour on either layer, so every 0402 and the "
@@ -538,8 +589,9 @@ BOARD_NOTES = {
             "M30": "JLCPCB's assembly capabilities page, read 2026-10-05: Economic PCBA "
                    "takes single-sided SMT and through-hole on 2 layers at 1.6 mm, a "
                    "single board from 10 x 10 mm, 0402 and larger. This board is 72 x "
-                   "34, all parts on one face, nine 0402 / 0805 passives and four "
-                   "through-hole parts. Standard PCBA starts at 70 x 70 and would need "
+                   "34, all parts on one face, nine 0402 / 0805 passives, one SMT FFC "
+                   "socket and three through-hole parts. Standard PCBA starts at 70 x 70 "
+                   "and would need "
                    "rails. Seven BOM lines: three basic passives and four extended "
                    "parts. 'Confirm Production File' and 'Confirm Parts Placement' are "
                    "in the package's ORDER.txt",
@@ -547,12 +599,13 @@ BOARD_NOTES = {
                    "designator at 1.0 mm. "
                    "J1's and J2's pin-1 marks are the footprints', outside the bodies. "
                    "Decision: no pin names at J2 or J1 -- sixteen ways at 1.27 mm and "
-                   "twenty at 2.54 leave no room at a legible size, neither is wired by "
+                   "twenty at 1.0 leave no room at a legible size, neither is wired by "
                    "hand, and the order is in harness.UI_RIBBON and Newhaven's table",
-            "M32": "pitches read off the KiCad footprints: J2 1.27 x 1.27, J1 2.54. J2 is "
+            "M32": "pitches read off the KiCad footprints: J2 1.27 x 1.27, J1 1.0. J2 is "
                    "the 0.635 mm-ribbon IDC family the Pi cap's J5 is (1 A a contact, "
-                   "0.375 A on the one supply way and the one ground way); J1 is a "
-                   "plain 2.54 header for the module's own row, 3 A. The ribbon carries "
+                   "0.375 A on the one supply way and the one ground way); J1 is the "
+                   "FFC socket matching the module's own (M5 has its current). The "
+                   "ribbon carries "
                    "a ground with its single-ended signals (way 8, beside SCLK)",
             "M33": "one rail. +3V3: the display module, 345 mA typical and 375 mA maximum "
                    "with every pixel lit (Newhaven p.6, default jumpers), plus seven 10k "
@@ -581,9 +634,10 @@ BOARD_NOTES = {
                    "knob, the button and the display all face the player; the ribbon "
                    "plugs from the open -X edge",
             "M40": "10k, 100 nF and 10 uF are stock values. The encoder, the power "
-                   "switch and both headers carry their part numbers as their values; "
-                   "the generator says at each why it is that part (the header heights "
-                   "and the switch's 12 V limit are the ones that must not change)",
+                   "switch, the ribbon header and the FFC socket carry their part numbers "
+                   "as their values; the generator says at each why it is that part (the "
+                   "header's height, the socket's bottom contact and the switch's 12 V "
+                   "limit are the ones that must not change)",
             "M41": "decision, stated in the module docstring: the seven encoder and "
                    "stick contacts are debounced in the Pi's software, with no capacitor "
                    "across them (the contact is rated 10 mA and a capacitor's charge "
@@ -591,39 +645,44 @@ BOARD_NOTES = {
                    "resets anything. The power switch latches mechanically and is "
                    "filtered where it is read: R35 / C50, 1 ms, on the output board",
             "M42": "stock at JLCPCB on 2026-10-05: encoder 7,310, power switch 2,537, "
-                   "ribbon header 2,050, display header 1,131, all three passives basic "
-                   "parts in the millions. The display module is bought, not placed. "
-                   "Single-maker parts: the Alps encoder has no drop-in alternate (the "
-                   "footprint is its own); the switch and both headers are generic "
-                   "outlines other makers fill. Three passive values, none odd",
+                   "ribbon header 2,050, all three passives basic parts in the millions; "
+                   "on 2026-10-19 the FFC socket 9,681 (C262724). The display module and "
+                   "its ribbon are bought, not placed. Single-maker parts: the Alps "
+                   "encoder has no drop-in alternate (the footprint is its own); the "
+                   "switch, the header and the 1.0 mm FPC socket are generic outlines "
+                   "other makers fill. Three passive values, none odd",
         },
     },
     "ref_pos": {
         # past the row's +X end: under the row it printed on top of R3's own
-        "J1": (round(_J1_X + 28.5, 3), round(_J1_Y, 3)),
+        # left of the socket's courtyard, clear of the -X spigot below it
+        "J1": (round(_J1_X - _J1_CRTYD[2] - 2.5, 3), round(_J1_Y + 4.0, 3)),
         "J2": (round(_J2_X + 3.0, 3), round(_J2_Y - 6.4, 3)),
         "SW1": (round(_SW_X, 3), round(_SW_Y - 10.4, 3)),
         "SW2": (round(_PWR_X, 3), round(_PWR_Y - 5.8, 3)),
-        "C1": (-23.5, 8.2), "C2": (-27.0, 8.2),
-        **{"R%d" % (i + 1): (round(_R_X0 + i * _R_DX, 3), _R_Y + 1.6) for i in range(7)},
+        "C1": (round(_C1_XY[0] + 3.0, 3), _C1_XY[1]), "C2": (round(_C2_XY[0] + 3.6, 3), _C2_XY[1]),
+        # seven designators over a 1.6 mm row do not fit side by side, so they alternate
+        # above and below it
+        **{"R%d" % (i + 1): (round(_R_X0 + i * _R_DX, 3),
+                             round(_R_Y + (2.3 if i % 2 == 0 else -2.2), 3)) for i in range(7)},
     },
     # NO GROUND POUR, and it was tried. A B.Cu pour is the obvious thing to want here --
     # the clock runs the length of the board from J2 to J1 and a plane under it is a
     # clean return. On two layers it cannot be had: leave B.Cu open to the router and it
     # lays signals across the pour, which came back as TWO GND islands and an unconnected
     # board; close B.Cu to the router and the only remaining layer has to carry five SPI
-    # signals from the -X edge to a 20-way row that +3V3 already crosses. And the plane
-    # would be perforated anyway, by twenty through-hole pins at 2.54 leaving 0.7 mm webs
-    # straight across it. So GND is a routed net like every other one, which on a 72 mm
+    # signals from the -X edge to a 20-way row that +3V3 already crosses. (That was the
+    # 2.54 header; the FFC socket's lands are surface mount, which has not been retried.)
+    # So GND is a routed net like every other one, which on a 72 mm
     # board with a metre of ribbon either side is what it was always going to be worth.
     # a part's word, and (for J2's block) a net's: the block is as wide as its longest
     # name, and at the nets' own names it only went down at 0.8 mm, under the legible size
     "silk_labels": dict({"SW2": "POWER", "SW1": "NAV"}, **RIBBON_WORDS),
     # A designator beside every part that has a site: this is the board a hand probes
-    # (two switches, a display header and a ribbon, all through-hole).
+    # (two switches and a ribbon header through-hole, and the display's FFC socket).
     "silk_refs": True,
     # THE TWO HEADERS ARE OVER THE LABELLER'S EIGHT-WAY LIMIT, so neither gets a word per
-    # way: the ribbon's sixteen are at 1.27 and the display's twenty sit under the module.
+    # way: the ribbon's sixteen are at 1.27 and the display's twenty at 1.0.
     # J2 gets its pinout as a block instead and J1 its first and last way numbered. Its
     # words are RIBBON_WORDS.
     "silk_pinout": ["J2"],
@@ -650,7 +709,9 @@ def _check_against_cad():
     # (centre x, centre y, half-extent x, half-extent y, margin x, margin y). The
     # centre is the BODY's, which for SW1 is not its placement -- see _ENC_OFF.
     extents = {
-        "J1": (_J1_X, _J1_Y, UI.HDR_PITCH * (UI.HDR_N - 1) / 2.0 + 1.32, 1.32, 1.0, 1.0),
+        # the courtyard, flush with the +Y edge on purpose: the mouth faces the module
+        "J1": ((_j1_box()[0] + _j1_box()[1]) / 2.0, (_j1_box()[2] + _j1_box()[3]) / 2.0,
+               _J1_CRTYD[2], (_J1_CRTYD[1] - _J1_CRTYD[0]) / 2.0, 1.0, 0.0),
         "SW1": (_SW_BODY_X, _SW_BODY_Y, UI.ENC_SQ / 2.0, UI.ENC_SQ / 2.0, 1.0, 1.0),
         "SW2": (_PWR_X, _PWR_Y, _PWR_HALF, _PWR_HALF, 1.0, 1.0),
         "J2": (_J2_X - (_J2_FAB_AHEAD - _J2_FAB_BACK) / 2.0, _J2_Y,
@@ -700,6 +761,6 @@ if __name__ == "__main__":
     netcheck.no_orphan_pins(os.path.join(OUT_DIR, "ui_board.net"))
     with open(os.path.join(OUT_DIR, "ui_board.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
-    print("board %.1f x %.1f at world (%.2f, %.2f), display header row y %.2f"
+    print("board %.1f x %.1f at world (%.2f, %.2f), display socket mouth y %.2f"
           % (BOARD_W, BOARD_L, UI.board_centre()[0], UI.board_centre()[1],
-             UI.header_row_y()))
+             UI.board_centre()[1] + _J1_Y + _J1_FAB[1]))

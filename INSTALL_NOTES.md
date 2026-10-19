@@ -860,3 +860,32 @@ the station's underside sweeps.
   The keyhead panel is still off, so the Pi is open from above.
 * Coming apart is the reverse: both USB-A plugs and the ribbon out, leads laid down, then
   slide the panel off.
+
+## The display's ribbon: into the module first, and check pin 1 before power (2026-10-19)
+
+The display (NHD-2.7-12864WDW3-M) joins the UI board by a 50 mm, 20-way flat cable
+between two sockets: the Molex on the module's back and J1 on the board's +Y edge. Both
+are slide-lock sockets: pull the dark actuator out about 1 mm, slide the cable in fully,
+push the actuator home. Build the station with the mid panel upside down on the bench.
+
+1. **Cable into the module first**, before the module goes into its pocket. The bare
+   contacts face the MODULE's board (it is a bottom-contact socket), and the blue stiffener
+   faces away from it.
+2. **Module face-down into the deck's pocket.** The cable now leaves its socket toward
+   the module's centre.
+3. **Other end into J1.** Hold the UI board near its posts, contacts DOWN toward the UI
+   board (also bottom contact). It is a same-side cable, so it goes in this way without
+   twisting. If the contacts face up at this end, the cable is a reverse (type B) one:
+   it is the wrong cable.
+4. **Board onto its posts and spigots**, and let the slack form a loop under the
+   module's centre, away from the board. Do not fold it flat or crease it.
+5. **Clamp on.** Its two arms go either side of the loop, not across it. Then the screw.
+6. **Before the first power-up, check pin 1 with a meter.** The module's socket has its
+   pin 1 marked on the module's board. It must ring through to GND on the UI board, which
+   is way 8 of J2, the Pi ribbon header. If it rings to +3V3 (way 10) instead, the cable
+   is reversed end to end and would put 3.3 V on the module's mode pins: stop. The
+   model's pin-1 side is read off Newhaven's rear-view drawing, not checked on a part.
+
+Coming apart: clamp off, board off its posts, then release J1's actuator before pulling
+the cable. Molex rate the module's socket for 30 insertions, so take the cable out of
+the module only when the module itself is being replaced.
