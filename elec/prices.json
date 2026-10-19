@@ -174,12 +174,12 @@
       "what": "O2 x 4 dowel pin, 52100 -- the nut break pins"
     },
     "guide_rod_o3_5": {
-      "usd": 1.37,
+      "usd": 1.13,
       "verified": "v",
       "per_instrument": 10,
       "vendor": "123bearing (INA)",
       "sku": "NRB 3.50x29.80-G2",
-      "order": "10 x $1.37 = $13.70, 8-10 days",
+      "order": "10 x $1.13 = $11.30 (1-49 break), read 2026-10-19 -- ONLY 4 IN STOCK that day; the basket took 10. One 123bearing parcel with all 42 bearings: products $73.68 + delivery from $27.97 = $101.65 before any US tariff (checkout needs a login, not read). Three-vendor alternative measured the same day: ~$142",
       "what": "O3.5 x 29.8 needle roller, INA NRB 3.5x29.8-G2 (DIN 5402-3 form B, 100Cr6, 3.490-3.500) -- the guide rod, used as bought. Slides in the nut ear reamed 9/64in (0.072-0.086 clearance, 0.63-0.75 cent); press in the endplate. Replaces the O2.5 dowel (the ear measured 3.5, 2026-10-16)."
     },
     "shaft_o8": {
