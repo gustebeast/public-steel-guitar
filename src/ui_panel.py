@@ -154,8 +154,9 @@ MOD_FFC_MOUTH  = 10.5              # actuator front, from the header edge
 MOD_FFC_H      = 3.00
 MOD_FFC_SLOT   = 1.2               # ESTIMATE: the cable's centre under the module's PCB
 # PIN 1 IS AT +X, seen from the front. The rear view shows it at the LEFT, and a rear view
-# is the module turned over: its left is the front's right. (The through-hole version's
-# drawing shows its row the same way round.)
+# is the module turned over: its left is the front's right. CONFIRMED on the part
+# (2026-10-19): Newhaven's product photo of the -M's back, its silkscreen reading the
+# right way round, marks CN1 "1" at the left end and "20" at the right.
 MOD_FFC_PIN1_DIR = +1
 # THE PANEL'S OWN ZIF on the module's back, which the ribbon's top run passes under.
 # SCALED OFF the rear view: ~20 wide, 19 to 26 below the header edge, and the drawing's
