@@ -67,6 +67,7 @@ A part that is not in this file is not on a board, whatever another document say
 | `7k68 1%` | C25919 | 1 | fret_led_key |
 | `9k09 1%` | C274897 | 1 | optical |
 | `AD8402ARZ10` | C578716 | 1 | output_panel |
+| `AFA07-S20FCA-00` | C262724 | 1 | ui_board |
 | `AO3400A` | C20917 | 2 | output_panel, optical |
 | `AP2112K-3.3TRG1` | C51118 | 12 | lever_sensor, output_panel |
 | `AP2114H-3.3TRG1` | C150716 | 1 | optical |
@@ -90,7 +91,6 @@ A part that is not in this file is not on a board, whatever another document say
 | `JFC1206-1200FS` | C136345 | 2 | fret_led_key, foot_led_a |
 | `JFC1206-1300FS` | C136347 | 1 | motor_ctrl |
 | `JFC1206-1400FS` | C136349 | 1 | motor_ctrl |
-| `KH-2.54PH180-1X20P-L11.5` | C2905493 | 1 | ui_board |
 | `KPJX-4S-S` | C2875467 | 1 | output_panel |
 | `LESD5L5.0CT1G` | C5274293 | 4 | motor_ctrl, output_panel |
 | `LMR16006XDDCR` | C87080 | 2 | motor_ctrl, output_panel |
@@ -376,7 +376,7 @@ A part that is not in this file is not on a board, whatever another document say
 |--:|---|---|---|---|
 | 1 | C1 | `100nF` | C_0402_1005Metric | C307331 |
 | 1 | C2 | `10uF/25V` | C_0805_2012Metric | C15850 |
-| 1 | J1 | `KH-2.54PH180-1X20P-L11.5` | PinHeader_1x20_P2.54mm_Vertical | C2905493 |
+| 1 | J1 | `AFA07-S20FCA-00` | JUSHUO_AFA07-S20FCA-00_1x20-1MP_P1.0mm_Horizontal | C262724 |
 | 1 | J2 | `PZ1.27-2x8P` | PinHeader_2x08_P1.27mm_Horizontal | C22438114 |
 | 7 | R1-R7 | `10k` | R_0402_1005Metric | C25744 |
 | 1 | SW1 | `RKJXT1F42001` | Alps_RKJXT1F42001 | C160841 |

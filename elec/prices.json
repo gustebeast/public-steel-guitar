@@ -1469,9 +1469,9 @@
       "what": "USBLC6-2SC6 C7519 -- JLCPCB parts API at qty 10"
     },
     "ui_board:J1": {
-      "usd": 0.1648,
+      "usd": 0.1248,
       "verified": "v",
-      "what": "KH-2.54PH180-1X20P-L11.5 C2905493 -- JLCPCB parts API at qty 10"
+      "what": "AFA07-S20FCA-00 C262724 -- JLCPCB parts API at qty 1-49, 2026-10-19"
     },
     "motor_ctrl:J2": {
       "usd": 0.3066,
@@ -4920,11 +4920,17 @@
       "this file had it at $9.22 from DigiKey, where the listing shows 0 in stock. JLCPCB",
       "has the same Alps RKJXT1F42001 at $4.52 with 7,341 on the shelf."
     ],
-    "oled_2_42": {
-      "usd": 17.0,
-      "verified": "m",
+    "oled_nhd_2_7_m": {
+      "usd": 39.08,
+      "verified": "v",
       "per_instrument": 1,
-      "what": "2.42in 128x64 SSD1309"
+      "what": "Newhaven NHD-2.7-12864WDW3-M, 2.7in 128x64 SSD1322 white OLED with a 20-way 1.0 mm FFC socket -- newhavendisplay.com $39.08 IN STOCK 2026-10-19 (DigiKey $39.08 and Mouser $44.66 both 0 in stock that day, restocking Nov 2026). Replaces the 2.42in SSD1309 line, $17 from memory, which was the display before 2026-09-25"
+    },
+    "ffc_display_20p_50mm": {
+      "usd": 0.0907,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "JUSHUO JS10A-20P-050-4-8 C2857604, 20-way 1.0 mm same-side FFC, 50 mm: the display's ribbon -- JLCPCB parts API at qty 1-49, 2026-10-19, 683 in stock"
     },
     "pickup": {
       "usd": 147.0,
