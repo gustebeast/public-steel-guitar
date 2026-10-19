@@ -2,7 +2,7 @@
 
 cadkit.web.boards swaps a footprint's box for KiCad's part model. Some parts have no
 model file in KiCad's library (the USB-C receptacle, the TRS jack, the side-entry SMD
-JSTs, the power inlet, the LEDs, the spring pins ...). The fab house's viewer shows them, but those models
+JSTs, the power inlet, the LEDs, the spring pins, the FFC sockets ...). The fab house's viewer shows them, but those models
 are the fab house's, and its terms keep them out of a public repository. So these are
 DRAWN HERE, from what is already this project's own and from the makers' published
 drawings:
@@ -397,6 +397,33 @@ def push_latch(W, D, H, **_):
     return [(case, BLACK), (strap, STEEL), (shoulder, WHITE)]
 
 
+def ffc_socket(W, D, H, n=20, pitch=1.0, **_):
+    """A right-angle ZIF socket for flat cable, slide-lock, to JUSHUO's drawing of the
+    AFA07-S**F**-00 (1.0 mm pitch, 2.5 high, lower contact): the natural housing, the
+    black actuator across its mouth with the cable's slot in it, a tinned tail per way
+    out of its back, and a fitting nail at each end. The drawing dimensions it by way
+    count: actuator n + 7.0 wide (the F.Fab body), housing n + 5.05, slot n + 1.1."""
+    act_d = min(1.2, 0.18 * D)                 # the actuator, at the mouth
+    act_h = 0.88 * H
+    house_w = min(W, n * pitch + 5.05)
+    slot_w = min(house_w - 1.0, n * pitch + 1.1)
+    slot_z, slot_t = 0.32 * H, 0.16 * H        # the cable's slot, near the board (lower
+                                               # contact)
+    housing = _box(house_w, D - act_d, H, y=act_d)
+    actuator = (_box(W, act_d, act_h)
+                .cut(_box(slot_w, act_d + 0.02, slot_t, y=-0.01, z=slot_z)))
+    housing = housing.cut(_box(slot_w, 0.6 * D, slot_t, y=act_d - 0.01, z=slot_z))
+    tails = None
+    for x in _ways(n, pitch):
+        t = _box(0.25, 1.8, 0.15, x=x, y=D - 0.2)        # the length of its land
+        tails = t if tails is None else tails.union(t)
+    nails = None
+    for sx in (-1, 1):
+        nl_ = _box(0.3, 0.45 * D, 0.6 * H, x=sx * (house_w / 2.0 + 0.15), y=0.45 * D)
+        nails = nl_ if nails is None else nails.union(nl_)
+    return [(housing, CREAM), (actuator, BLACK), (tails, TIN), (nails, TIN)]
+
+
 # footprint name -> (generator, facts read from the name)
 _RULES = [
     (r"^JST_(ZH|PH|XH)_S(\d+)B.*(Horizontal|TightCourtyard|MouthOnEdge)", jst_side),
@@ -414,6 +441,7 @@ _RULES = [
     (r"DSHP01", dip_switch),
     (r"RKJXT1F", stick),
     (r"PB-22E", push_latch),
+    (r"^JUSHUO_AFA07-S\d+[EF]CA-00_1x(\d+)-1MP_P1\.0mm", ffc_socket),
 ]
 _PITCH = {"ZH": 1.5, "PH": 2.0, "XH": 2.5}
 # a spring pin fires out of its mouth: which way, in the footprint's OWN frame (KiCad's,
@@ -427,6 +455,8 @@ def _facts(gen, m):
                 "smt": "-SM" in m.string}
     if gen is terminal_block:
         return {"n": int(m.group(1)), "pitch": float(m.group(2))}
+    if gen is ffc_socket:
+        return {"n": int(m.group(1))}
     if gen in (pogo, pogo_header, pogo_target):
         return {"n": int(m.group(1))}
     return {}
