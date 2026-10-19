@@ -36,7 +36,18 @@ names one that is not on the PATH), OUTSIDE the project and any synced folder, i
     data/                   what it remembers: its tabs, its projects, the window's place
 It is built again when its source (or the page) is newer, and installed over the old
 one: a running app is asked to quit, replaced, and started again with its tabs.
+A BUILD KEEPS IT CURRENT (`refresh`, from `notify`'s caller): when this project's copy
+of the source differs from what the installed program was built from, and is not an
+older copy (another project's cadkit not yet brought up to date), a detached
+`--update` rebuilds and reinstalls it. A running app is quit and started again (it
+comes back with its tabs); one that is not running is not started. Nobody is asked.
 Windows only so far: the window layering is Windows'.
+
+NVIDIA's DLSS Ray Reconstruction is built in when NVIDIA's DLSS SDK is on this machine
+(`dlss_sdk()`: `CADKIT_DLSS_SDK`, else `sdk/` beside the build, else the new_codes
+tracer's), and its two DLLs are put beside the program. It is used unless
+DESK_DLSS=0, on an RTX card. NVIDIA's SDK licence applies to those DLLs: they are
+never put in a repository.
 """
 
 from __future__ import annotations
@@ -155,6 +166,106 @@ def stale():
     return not exe.exists() or exe.stat().st_mtime < _newest_source()
 
 
+# ── kept current by the builds ────────────────────────────────────────────────────
+def _sources():
+    return sorted([SRC / "Cargo.toml", SRC / "Cargo.lock", SRC / "build.rs", SRC / "icon.ico", PAGE,
+                   *(f for f in (SRC / "src").iterdir() if f.is_file())])
+
+
+def _source_hash():
+    import hashlib
+    h = hashlib.sha256()
+    for f in _sources():
+        h.update(f.name.encode() + b"\0" + f.read_bytes().replace(b"\r\n", b"\n") + b"\0")
+    return h.hexdigest()
+
+
+def _source_time():
+    """When this copy of the source was last committed (git: a project's vendored copy
+    carries the time it was brought up to date, so an older copy reads older whatever
+    its files' dates), else its newest file's date."""
+    try:
+        r = subprocess.run(["git", "log", "-1", "--format=%ct", "--", *map(str, _sources())], cwd=str(SRC),
+                           capture_output=True, text=True, timeout=10)
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", *map(str, _sources())], cwd=str(SRC),
+                               capture_output=True, text=True, timeout=10)
+        if r.returncode == 0 and r.stdout.strip() and dirty.returncode == 0 and not dirty.stdout.strip():
+            return int(r.stdout.strip())
+    except Exception:
+        pass
+    return int(_newest_source())
+
+
+def _stamp_path():
+    return program().parent / "source.json"
+
+
+def _stamp():
+    try:
+        return json.loads(_stamp_path().read_text())
+    except Exception:
+        return {}
+
+
+def wants_update():
+    """The installed program was built from other source than this copy's. False when
+    it is not installed (nothing to keep current) or cargo is missing."""
+    if os.name != "nt" or not program().exists() or find_cargo()[0] is None:
+        return False
+    return _stamp().get("hash") != _source_hash()
+
+
+def refresh():
+    """Called by a build: if the program wants updating, a detached `--update` does it
+    (a cargo build takes minutes; the build that asked does not wait). Never raises."""
+    try:
+        if not wants_update():
+            return False
+        home().mkdir(parents=True, exist_ok=True)
+        log = open(home() / "update.log", "ab")
+        flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW             if os.name == "nt" else 0
+        subprocess.Popen([sys.executable, "-m", "cadkit.web.desktop", "--update"], cwd=str(SRC.parents[1]),
+                         stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, creationflags=flags,
+                         close_fds=True)
+        return True
+    except Exception:
+        return False
+
+
+def update():
+    """Build and install this copy of the source if the program wants it, WITHOUT
+    starting an app that was not running: a running one is quit, replaced and started
+    again (it comes back with its tabs). An older copy than the installed one's is let
+    be. One update at a time (a lock beside the program)."""
+    if not wants_update():
+        return
+    when, stamp = _source_time(), _stamp()
+    if when < stamp.get("time", 0):
+        print("cadkit desktop: this copy of the source is older than the installed one's; let be")
+        return
+    lock = home() / "update.lock"
+    try:
+        if lock.exists() and time.time() - lock.stat().st_mtime > 3600:
+            lock.unlink()                             # (one left by an update that died)
+        fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        print("cadkit desktop: another update is running")
+        return
+    try:
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+        print("cadkit desktop: %s: updating from %s" % (time.strftime("%Y-%m-%d %H:%M:%S"), SRC))
+        sys.stdout.flush()
+        build()
+        _, was_running = install()
+        _stamp_path().write_text(json.dumps({"hash": _source_hash(), "time": when, "src": str(SRC)}))
+        if was_running and not start_surely():
+            raise SystemExit("cadkit desktop: %s was started again and never answered" % program())
+        print("cadkit desktop: up to date%s" % (", and started again" if was_running else ""))
+    finally:
+        lock.unlink(missing_ok=True)
+
+
 def find_cargo():
     """(cargo, extra environment), or (None, {})."""
     env = os.environ.get("CADKIT_CARGO")
@@ -175,6 +286,38 @@ def find_cargo():
     return None, {}
 
 
+# the DLLs DLSS Ray Reconstruction needs beside the program (both: without the second NGX says "not supported")
+DLSS_DLLS = ("nvngx_dlssd.dll", "nvngx_dlss.dll")
+
+
+def dlss_sdk():
+    """(the DLSS DLLs' folder, extra environment for cargo) when NVIDIA's DLSS SDK is on this
+    machine, else None. A folder holding DLSS/ (NVIDIA's SDK), Vulkan-Headers/ (Khronos', named
+    as VULKAN_SDK) and clang/ (any folder below it with libclang.dll, e.g. the PyPI wheel's)."""
+    if os.name != "nt":
+        return None
+    roots = [os.environ.get("CADKIT_DLSS_SDK"), str(home() / "sdk")]
+    if os.environ.get("LOCALAPPDATA"):
+        roots.append(str(pathlib.Path(os.environ["LOCALAPPDATA"]) / "new_codes-tracer" / "sdk"))
+    for root in filter(None, roots):
+        root = pathlib.Path(root)
+        dlls = root / "DLSS" / "lib" / "Windows_x86_64" / "rel"
+        if not all((dlls / d).is_file() for d in DLSS_DLLS) or not (root / "Vulkan-Headers" / "include").is_dir():
+            continue
+        clang = next((f.parent for f in (root / "clang").rglob("libclang.dll")), None) if (root / "clang").is_dir() else None
+        if clang is None:
+            continue
+        return dlls, {"DLSS_SDK": str(root / "DLSS"), "VULKAN_SDK": str(root / "Vulkan-Headers"), "LIBCLANG_PATH": str(clang)}
+    return None
+
+
+def _put_dlls(src_dir, dst_dir):
+    for d in DLSS_DLLS:
+        a, b = src_dir / d, dst_dir / d
+        if a.is_file() and not (b.is_file() and b.stat().st_size == a.stat().st_size):
+            shutil.copy2(a, b)
+
+
 def build():
     cargo, extra = find_cargo()
     if cargo is None:
@@ -183,10 +326,16 @@ def build():
     home().mkdir(parents=True, exist_ok=True)
     print("cadkit desktop: building (the first build takes a few minutes)")
     sys.stdout.flush()
+    dlss = dlss_sdk()
+    if dlss:
+        print("cadkit desktop: with DLSS Ray Reconstruction (NVIDIA's SDK found; DESK_DLSS=0 turns it off)")
     r = subprocess.run([cargo, "build", "--release", "--manifest-path", str(SRC / "Cargo.toml"),
-                        "--target-dir", str(home() / "target")], env={**os.environ, **extra})
+                        "--target-dir", str(home() / "target")] + (["--features", "dlss"] if dlss else []),
+                       env={**os.environ, **extra, **(dlss[1] if dlss else {})})
     if r.returncode != 0:
         raise SystemExit("cadkit desktop: the build failed")
+    if dlss:
+        _put_dlls(dlss[0], built().parent)
 
 
 def quit_app(wait=10.0):
@@ -207,6 +356,8 @@ def install():
     there is not it. A running app is in the way of that (a running file cannot be
     replaced): it is asked to quit first. Returns (installed anew, an app was quit)."""
     src, dst = built(), program()
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    _put_dlls(src.parent, dst.parent)
     if dst.exists() and (dst.stat().st_size, int(dst.stat().st_mtime)) == (src.stat().st_size, int(src.stat().st_mtime)):
         return False, False
     was = ping() is not None
@@ -274,12 +425,20 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="the cadkit viewer as a desktop app")
     ap.add_argument("--dir", default=None, help="the model folder (default: ./.webview)")
     ap.add_argument("--build", action="store_true", help="build the program even if it is current")
+    ap.add_argument("--update", action="store_true",
+                    help="only bring the program up to date (a running app comes back on it; none is started)")
     a = ap.parse_args(argv)
     if os.name != "nt":
         raise SystemExit("cadkit desktop: Windows only so far")
+    if a.update:
+        return update()
     if a.build or stale():
         build()
     anew, was_running = install()
+    try:                                              # (what it was built from: a build's refresh lets it be)
+        _stamp_path().write_text(json.dumps({"hash": _source_hash(), "time": _source_time(), "src": str(SRC)}))
+    except Exception:
+        pass
     folder = pathlib.Path(a.dir) if a.dir else pathlib.Path(os.getcwd()) / ".webview"
     has_model = (folder / "assembly.glb").exists()
     if not has_model:

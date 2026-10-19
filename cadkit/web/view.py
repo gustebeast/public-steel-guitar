@@ -464,6 +464,7 @@ def _desktop(out, launch=False):
     the app only under CADKIT_VIEWER=desktop. True: the app has it. Never raises."""
     try:
         from . import desktop
+        desktop.refresh()                             # (the program kept current: a detached rebuild if it is not)
         if _viewer() in ("browser", "none"):
             desktop.notify(out)
             return False

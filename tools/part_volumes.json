@@ -27,23 +27,23 @@
   },
   "body_adapter": {
    "material": "petg-gf",
-   "volume_mm3": 84084.5
+   "volume_mm3": 83416.2
   },
   "body_adapter_mx_my": {
    "material": "petg-gf",
-   "volume_mm3": 85245.8
+   "volume_mm3": 84549.8
   },
   "body_adapter_px_my": {
    "material": "petg-gf",
-   "volume_mm3": 85843.5
+   "volume_mm3": 85026.8
   },
   "body_adapter_px_py": {
    "material": "petg-gf",
-   "volume_mm3": 83944.0
+   "volume_mm3": 83481.8
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 376113.5
+   "volume_mm3": 374215.8
   },
   "cart_base": {
    "material": "pctg",
@@ -55,7 +55,7 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 629024.4
+   "volume_mm3": 662815.7
   },
   "chassis_0_light": {
    "material": "pctg",
@@ -63,7 +63,7 @@
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 692513.4
+   "volume_mm3": 728534.0
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -71,7 +71,7 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 635132.9
+   "volume_mm3": 665930.8
   },
   "chassis_2_light": {
    "material": "pctg",
@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 280942.7
+   "volume_mm3": 280151.3
   },
   "kl_axle": {
    "material": "pctg",
@@ -111,11 +111,11 @@
   },
   "knee_housing": {
    "material": "petg-gf",
-   "volume_mm3": 71885.5
+   "volume_mm3": 69494.9
   },
   "knee_housing_r": {
    "material": "petg-gf",
-   "volume_mm3": 72314.5
+   "volume_mm3": 69924.0
   },
   "knee_lever": {
    "material": "pctg",
@@ -123,7 +123,7 @@
   },
   "kv_housing": {
    "material": "petg-gf",
-   "volume_mm3": 97774.8
+   "volume_mm3": 95830.9
   },
   "kv_lever": {
    "material": "pctg",
@@ -211,7 +211,7 @@
   },
   "rod_plug": {
    "material": "pctg",
-   "volume_mm3": 24.4
+   "volume_mm3": 45.0
   },
   "screw_pulley_hi": {
    "material": "pctg",
@@ -247,7 +247,7 @@
   },
   "top_plate_0": {
    "material": "pctg",
-   "volume_mm3": 70379.0
+   "volume_mm3": 71459.4
   },
   "top_plate_0_color": {
    "material": "pctg",
@@ -255,7 +255,7 @@
   },
   "top_plate_1": {
    "material": "pctg",
-   "volume_mm3": 20772.8
+   "volume_mm3": 21042.3
   },
   "top_plate_1_color": {
    "material": "pctg",
@@ -263,7 +263,7 @@
   },
   "top_plate_2": {
    "material": "pctg",
-   "volume_mm3": 20772.8
+   "volume_mm3": 21042.3
   },
   "top_plate_2_color": {
    "material": "pctg",
@@ -271,7 +271,7 @@
   },
   "top_plate_3": {
    "material": "pctg",
-   "volume_mm3": 200160.5
+   "volume_mm3": 203069.2
   },
   "top_plate_3_color": {
    "material": "pctg",
@@ -279,7 +279,7 @@
   },
   "top_plate_4": {
    "material": "pctg",
-   "volume_mm3": 259153.7
+   "volume_mm3": 262518.1
   },
   "top_plate_4_color": {
    "material": "pctg",

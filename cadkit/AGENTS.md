@@ -42,6 +42,12 @@ Two layers of reusable capability back a cadkit project:
     (+Y build) mating a mortise printed flat (−Z→+Z) is `ramp=True, hook_h=…`
     (print-validated); plain 45°-everywhere profiles cam apart along the up-ramp
     diagonal — don't reinvent this joint, call the library.
+  - `cadkit.fitted_joint` — **print-fitted straight slide joints, for NEW work**.
+    `halves(tenon, socket, c, …)` with `clearance(tenon_mode, socket_mode)` uses
+    clearances measured per print pair (0.20–0.35 in PETG-GF with a 0.8 nozzle;
+    `joint()`'s 0.15 default is too tight). Corners are drawn at what prints and
+    clearance is even all round. Provisional until full-length coupons are printed;
+    see the JOINERY_README section.
   - `cadkit.board_geom` / `cadkit.board_check` / `cadkit/kicad_geom.py` /
     `cadkit/kicad_silk.py` — **circuit boards shared between KiCad and the CAD**; read
     **`cadkit/PCB_README.md`** before designing or modelling any PCB. The board in the
@@ -634,6 +640,21 @@ editing anything:
      stays AS YOU BUILT IT (your own cache wins over the lead's copy, by name) while
      you iterate on the second. To rebuild several every run, claim them together:
      `scope --set src.a,part:b`.
+   - **Iterating on ONE part's own geometry? `view --solo`, and a LIGHT scope.** A view
+     costs (scope import + build) + (the page's hooks) + (the export), and on a big
+     model the first two dwarf the part. Measured on the steel guitar, one knee housing:
+     15 s to build; `src.build` 160 s just to IMPORT (it builds at import time); the
+     project's `shown` hook 116 s (it imports the whole build to pose the belts) and the
+     rig 14 s on EVERY view; meshing + glb 0.1 s. So:
+     1. **Scope a small module of your own** (`src/<part>_scratch.py`) whose
+        `components()` imports only the part's module and places it -- never the
+        project's build module. Copy any placement it needs (a station's x/y) in as a
+        constant and say where it came from; it is a scratch aid, never used by the build.
+     2. **`view --solo`** draws the live set and nothing else, and skips the `shown` and
+        rig hooks: ~15 s a turn instead of minutes. Drop `--solo` (a normal `view`) to
+        see the part in place before you call it done, and for the end-of-turn render.
+     The run's first line already prices the scope (`live set: N part(s) imported and
+     built in T s`) -- if T is far above the part's own build, the scope imports too much.
    - **Your change moves what OTHER parts read** (a shared dimension, a datum)?
      `view --own` builds everything here once (minutes) into your own cache.
    - **`view --lead`** forgets your own cache — after your work is merged and built,
