@@ -884,7 +884,8 @@ push the actuator home. Build the station with the mid panel upside down on the 
    pin 1 marked on the module's board. It must ring through to GND on the UI board, which
    is way 8 of J2, the Pi ribbon header. If it rings to +3V3 (way 10) instead, the cable
    is reversed end to end and would put 3.3 V on the module's mode pins: stop. The
-   model's pin-1 side is read off Newhaven's rear-view drawing, not checked on a part.
+   module's pin-1 side is confirmed (Newhaven's drawing and their photo of the -M's
+   back agree), so a wrong reading here means a wrong cable, not a wrong design.
 
 Coming apart: clamp off, board off its posts, then release J1's actuator before pulling
 the cable. Molex rate the module's socket for 30 insertions, so take the cable out of
