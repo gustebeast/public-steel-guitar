@@ -73,7 +73,8 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in (
     (r"^belt$", "rubber"),
     (r"^pickup$", "aluminium"),
     (r"^motor$", "painted"),
-    (r"_ph_(top|bottom)$|_plug_|^ui_pwr_stem$", "nylon"),
+    (r"_ph_(top|bottom)$|_plug_|^ui_pwr_stem$|^ui_disp_ffc_socket$", "nylon"),
+    (r"^ui_ffc$", "pvc"),                         # the display's flat cable: a film
     (r"^ui_screen$", "screen"),
     (r"^ui_screen_lit$", "ink"),                  # light, not a surface: flat and bright
     (r"^pi4_(shells|lids|sd)$", "steel"),            # the Pi's parts (src/pi4b.py GROUPS)
