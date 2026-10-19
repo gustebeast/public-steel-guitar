@@ -65,14 +65,14 @@
       "what": "Mean Well GST160A24-R7B sealed DESKTOP adapter, 24 V 6.67 A 160 W, IEC C14 in, 4-pin locking DIN out (mates the Kycon KPJX-4S-S on output_panel). USER'S CHOICE 2026-10-01, replacing the open-frame LRS-150-24 ($20.69 landed). $47.70 at 10, 891 in stock, page read by bronner. BEFORE shipping and tax. OnlineComponents' cart adds a $16.72 tariff line at qty 1 ($52.40 + $16.72 = $69.12 landed before shipping, read 2026-10-07); the per-10 tariff has not been read. The listing calls it 'no longer manufactured'; see BOM.md."
     },
     "bearing_688zz_screw": {
-      "usd": 3.48,
+      "usd": 3.23,
       "verified": "v",
       "per_instrument": 10,
-      "vendor": "123bearing (ZEN)",
-      "sku": "688-ZZ-ZEN",
-      "url": "https://www.123bearing.com/bearing-housing/deep-groove-bearing/single-row/688-zz-zen",
+      "vendor": "123bearing (EZO)",
+      "sku": "688-ZZ-EZO",
+      "url": "https://www.123bearing.com/bearing-housing/deep-groove-bearing/single-row/688-2z-ezo",
       "date": "2026-10-19",
-      "what": "688ZZ O8xO16x5, ZEN brand -- THE TEN SCREW THRUST BEARINGS ONLY, the one seat where the rating is the margin: 147 N axial against half the static rating. The listing publishes 592 N static (1252 N dynamic; the page says kN), 2.0x, the same margin as the AMPEC part it replaces. $3.48 each at 1-19, 50+ in stock, page read 2026-10-19. MOVED FROM Bearings Direct (AMPEC, 587 N, $3.72 at 50) on 2026-10-19 so that one 123bearing parcel carries both bearing groups and the guide-rod needle rollers: 123bearing's delivery (from $27.90, ships from France) was the only reason it lost on 2026-10-06, and the rollers pay it now. EZO 688-ZZ there ($3.23) publishes no rating on the listing."
+      "what": "688ZZ O8xO16x5, EZO brand (Sapporo Precision, Japan) -- THE TEN SCREW THRUST BEARINGS ONLY, the one seat where the rating is the margin: 147 N axial against half the static rating. EZO's catalogue gives 590 N static (recorded 2026-10-06), 2.0x; the 123bearing listing prints no rating. $3.23 each at 1-19, 50+ in stock, page read 2026-10-19. USER'S CHOICE 2026-10-19 over ZEN 688-ZZ ($3.48, 592 N printed on the listing). Moved from Bearings Direct (AMPEC, 587 N, $3.72) so one 123bearing parcel carries both bearing groups and the guide-rod needle rollers: 123bearing's delivery (from $27.90, ships from France) was the only reason it lost on 2026-10-06, and the rollers pay it now."
     },
     "bearing_688zz": {
       "usd": 0.94,
@@ -277,7 +277,7 @@
         "$16.60 -- JLCPCB prices a batch, not a board, and the minimum is per ORDER.",
         "The error was worst exactly where the instrument has most boards.",
         "",
-        "\u26a0 Re-measure before ordering. Quotes move, and these are one day's numbers."
+        "⚠ Re-measure before ordering. Quotes move, and these are one day's numbers."
       ],
       "measured": [
         {
@@ -5189,7 +5189,7 @@
       "$109 -> $146 on this one number. Walls dominate a part like the chassis, so it",
       "packs denser than sparse-infill intuition suggests.",
       "",
-      "\u26a0 ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
+      "⚠ ONE PART, and the biggest one. A small fiddly part is nearly all perimeter and",
       "will run HIGHER than 0.60; a large hollow one lower. Slicing a second part -- a",
       "knee housing, say -- would show whether one factor is honest for the whole set."
     ]
