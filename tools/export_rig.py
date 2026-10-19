@@ -182,7 +182,7 @@ def _levers() -> dict:
         pre = "" if name == "lkl" else f"{name}_"
         if kind == "kl":
             mz, axis, throw, rc = KL.MOUNT_Z, [0, 1, 0], KL.THROW, KL.LOBE_RC
-            swing_nodes = [f"{pre}knee_lever", f"{pre}kl_axle",
+            swing_nodes = [f"{pre}knee_lever", f"{pre}kl_axle", f"{pre}kl_axle_sprung",
                            f"{pre}kl_magnet_cap", f"{pre}kl_magnet"]
             pistons = [f"{pre}main_cart_piston", f"{pre}half_stop_cart_piston"]
         else:

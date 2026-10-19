@@ -66,9 +66,46 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   cartridge wall to its head down on the cartridge. Stop when the head lands; forcing
   it further only strips the insert.
 
-### KL-4 — The axle stack: bearings to their shoulders, spacers in, screw clamps the races
+### KL-4 — The axle stack: +Y bearing pressed, spring and −Y bearing slid in, screw fully tight
 
-- **Where:** LKL (the vertical lever and pedals are still the old stack). `kl_bearing_0/1`,
+- **Where:** the horizontal knee levers (LKL, LKR, RKL, RKR; the vertical lever and the pedals
+  are still the old stack: KL-4b). `kl_bearing_0/1`, the
+  **preload spring** (McMaster 9714K29 wave disc spring, Ø11.7 × Ø15.4, the thin wavy steel
+  ring), the two printed spacers — **`kl_spacer_sprung_n` (3.6 thick) on −Y,
+  `kl_spacer_sprung` (2.0) on +Y** — `kl_axle_sprung`, and the M4 × 10 button + **Ø9**
+  washer in the axle's −Y tip.
+- **Do:**
+  1. Press the **+Y** 688 in from the housing's +Y face until its outer race stops on the
+     printed shoulder inside the seat (a light press). The inner race must still turn with
+     a finger.
+  2. Drop the **spring** into the **−Y** seat, flat against the shoulder at its bottom.
+  3. Slide the **−Y** 688 in after it, by hand, until it rests on the spring. This seat is a
+     SLIDING fit on purpose — do not press it home; the spring has to be able to move it.
+  4. Put the lever in its room. Hold the 3.6 spacer against its −Y face and the 2.0 spacer
+     against its +Y face, centred on the axle hole.
+  5. Slide the axle in from +Y, through the +Y bearing, spacer, lever, spacer and −Y
+     bearing, until its land is home on the +Y inner race.
+  6. Washer on the screw, drive it into the axle's −Y tip, **holding the lever arm**, not
+     the magnet cap. The first fit forms the thread. **Tighten it fully** (firm with the
+     2.5 key held by its short arm): as it comes tight it pulls the −Y bearing in against
+     the spring, and that is all it does to the bearings.
+- **Check:** the lever swings freely with **no Y play at all** — push it ±Y and it should
+  not move. The −Y bearing ends flush with the housing's −Y face, give or take the stack's
+  print error.
+- **Why:** the screw clamps land, inner races, spacers and lever into one turning unit. The
+  spring pushes the −Y outer race outboard, which holds that unit hard against the +Y
+  shoulder: zero play, at about 9 N of preload the spring sets — however tight the screw is.
+  Print error in the stack (±0.15) only changes how far the spring is squeezed. The +Y
+  bearing is the hard stop, so the magnet's air gap does not depend on the print. A hard
+  +Y shove on the lever can squeeze the spring and move the lever toward the board by at
+  most 0.6 (the air gap is 1.5); it springs straight back.
+- **Don't** swap the two spacers (they only fit one way round anyway: the 3.6 one reaches
+  through two shoulders), leave the spring out (the lever then floats ~0.8 in Y), or use a
+  larger washer: anything over Ø9.6 reaches the bearing's shield and rubs.
+
+### KL-4b — The OLD axle stack (vertical lever and pedals): bearings to their shoulders, spacers in, screw clamps the races
+
+- **Where:** the vertical lever and the pedals, until they take KL-4's spring. `kl_bearing_0/1`,
   the two printed `kl_spacer`s, `kl_axle`, and the M4 × 10 button + **Ø9** washer in the
   axle's −Y tip.
 - **Do:**

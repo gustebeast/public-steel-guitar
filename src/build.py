@@ -104,6 +104,9 @@ PARTS = {
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness); the +Y axle journal + magnet stub print INTEGRAL (stand off the lying -Y bed face)"),
     "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø8 journals, D-FLAT key through the hub, flange land seating on the +Y inner race (= the air-gap datum), threaded magnet pocket, M4 thread-forming bore in the −Y tip for the retention screw + washer. Prints STANDING, POCKET-DOWN, with a brim"),
     "kl_spacer": (lambda: __import__("src.knee_lever", fromlist=["e"]).spacer(), "pctg/kl_spacer.step", "PCTG — axle SPACER ×2 per lever (×2 per pedal): Ø10 ring between the lever's flat face and each bearing's INNER race, through the seat's printed shoulder. Part of the clamped rotating stack (land, races, spacers, lever, washer), which is what locks the lever in Y. Slip it over the axle as the axle goes through. Prints FLAT"),
+    "kl_spacer_sprung": (lambda: __import__("src.knee_lever", fromlist=["e"]).spacer(__import__("src.knee_lever", fromlist=["e"]).SPRUNG_SPACER_T), "pctg/kl_spacer_sprung.step", "PCTG — LKL axle SPACER, +Y (the stack with the PRELOAD SPRING): the same Ø10 ring as kl_spacer but EXACT, lever face -> +Y inner race (2.00, not 2.05) -- the spring takes up the print error instead of a sized-long clamp. Prints FLAT"),
+    "kl_spacer_sprung_n": (lambda: __import__("src.knee_lever", fromlist=["e"]).spacer(__import__("src.knee_lever", fromlist=["e"]).SPRUNG_SPACER_T_N), "pctg/kl_spacer_sprung_n.step", "PCTG — LKL axle SPACER, -Y (3.59): lever face -> the -Y inner race, through both -Y shoulders (the -Y bearing sits out past the preload spring). Prints FLAT"),
+    "kl_axle_sprung": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle_sprung, "pctg/kl_axle_sprung.step", "PCTG — the LKL's AXLE: kl_axle 1.59 longer at the -Y end, for the -Y bearing out past the PRELOAD SPRING (McMaster 9714K29). Same journals, flat, land, magnet pocket and end screw. Prints STANDING, POCKET-DOWN, with a brim"),
     "kl_magnet_cap": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_magnet_cap, "pctg/kl_magnet_cap.step", "PCTG — magnet CAP ×1: female-threaded HEX nut (9.35 across flats, for a 3/8-inch driver) screwing over the axle's pocket collar to clamp the Ø6 diametric disc; centre stays open so nothing intrudes on the air gap. Fit it BEFORE the sensor board. Prints APERTURE-DOWN"),
     # THE BOARD SHIMS: one sensor board fits every lever, and a plain plate one board thick
     # takes up what is left of each cradle above it. Three heights, so three parts; each
@@ -556,7 +559,7 @@ def _declared():
          "knee_lever.CART_UP — builds +Z with the housing it sits in, which "
          "is what its peaked roof is drawn for: the housing pocket cut from "
          "it is then self-supporting in a -Z->+Z print"),
-        (["kl_axle"], _KLX.AXLE_UP,
+        (["kl_axle", "kl_axle_sprung"], _KLX.AXLE_UP,
          "knee_lever.AXLE_UP — STANDING, POCKET-DOWN: drawn along +Z then "
          "rotated +Z->+Y, so the collar end faces +Y and the build runs away "
          "from it. That bed face is only 14.8 mm2, which is exactly why the "
@@ -564,7 +567,7 @@ def _declared():
         (["kl_magnet_cap"], _KLX.MAGNET_CAP_UP,
          "knee_lever.MAGNET_CAP_UP — APERTURE-DOWN, same construction as "
          "the axle: the flange face is the bed (its +Y end, 55.2 mm2)"),
-        (["kl_spacer"], _KLX.SPACER_UP,
+        (["kl_spacer", "kl_spacer_sprung", "kl_spacer_sprung_n"], _KLX.SPACER_UP,
          "knee_lever.SPACER_UP — a flat ring, either face on the bed"),
         (["cart_piston"], _KLX.PISTON_UP,
          "knee_lever.PISTON_UP — stands on its +X SPRING-SEAT face, the one "
@@ -1591,7 +1594,7 @@ def _knee_lever_components():
     s_main = KL.LOBE_RC * math.sin(thr) if throw else 0.0            # MAIN follower engaged from rest
     s_hs = (KL.LOBE_RC * (math.sin(thr) - math.sin(eng)) + 1.0) if throw > KL.HS_ENGAGE_DEG else 0.0  # engages @15°
     out = [("knee_housing", KL.knee_housing), ("knee_lever", swing(KL.knee_lever)),
-           ("kl_axle", swing(KL.kl_axle)),                  # keyed on its D-flat -> turns with the lever
+           ("kl_axle_sprung", swing(KL.kl_axle_sprung)),    # keyed on its D-flat -> turns with the lever
            ("kl_magnet_cap", swing(KL.kl_magnet_cap))]      # screwed to the axle
     for nm, off, s in (("main", KL.CART_MAIN_OFFSET, s_main), ("half_stop", KL.CART_HALFSTOP_OFFSET, s_hs)):
         out.append((f"{nm}_cart_base", KL.feel_place(KL.cart_base.translate(off))))
@@ -2215,6 +2218,10 @@ _COLORS = {
     "kl_axle":         (0.30, 0.54, 0.68),   # PCTG full-length axle (near the lever blue)
     "kl_axle_screw":   (0.55, 0.55, 0.58),   # M4 x 10 button in the axle's -Y end
     "kl_axle_washer":  (0.72, 0.72, 0.75),
+    "kl_preload_spring": (0.35, 0.36, 0.40),  # McMaster 9714K29 wave disc spring (dark spring steel)
+    "kl_spacer_sprung": (0.30, 0.54, 0.68),   # the LKL's exact spacers (kl_spacer's blue)
+    "kl_spacer_sprung_n": (0.30, 0.54, 0.68),
+    "kl_axle_sprung":  (0.30, 0.54, 0.68),   # the LKL's axle (kl_axle's blue)
     "kv_axle_screw":   (0.55, 0.55, 0.58),
     "kv_axle_washer":  (0.72, 0.72, 0.75),
     "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer

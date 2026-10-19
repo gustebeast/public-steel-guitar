@@ -731,7 +731,7 @@ def cart_dummies(place, prefix="", stroke=(0.0, 0.0), hs_setback=None):
     return out
 
 
-def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None, axle=True):
+def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None, axle=True, sprung=False):
     """Bearings, magnet and the sensor stack — everything on the axle that is not
     the lever. `place` poses the whole group; z_bot/z_top size the board.
 
@@ -742,19 +742,33 @@ def axle_dummies(place, prefix, z_bot, z_top, flip=None, shim_top=None, axle=Tru
     `shim_top` overrides where the SHIM stops. It defaults to the housing ceiling,
     which is right when the thing pressing the shim is the chassis — but the foot
     pedal's ceiling is the bar's +Y face, and the lid groove is cut INTO that face,
-    so the shim has to stop at the groove floor and let the LID do the pressing."""
+    so the shim has to stop at the groove floor and let the LID do the pressing.
+
+    `sprung`: the stack with the PRELOAD SPRING (see SPRING_ID) -- the -Y bearing out at
+    SPRUNG_BRG_Y0, the spring between it and its shoulder at its installed height, exact
+    spacers, and the -Y face (washer, screw) at SPRUNG_HOUS_HW."""
+    yb = SPRUNG_BRG_Y0 if sprung else BRG_Y0                      # the -Y inner face (magnitude)
     out = [(f"{prefix}_bearing_{i}", place(_bearing().translate((0, by, 0))))
-           for i, by in enumerate((-(BRG_Y0 + BRG_W), BRG_Y0))]   # inner faces at ±BRG_Y0
-    out += [(f"{prefix}_spacer_{i}", place(spacer().translate((0, sy, 0))))
-            for i, sy in enumerate((-LEVER_HW - SPACER_T, LEVER_HW))]     # lever face -> race
+           for i, by in enumerate((-(yb + BRG_W), BRG_Y0))]
+    sn, sp = (SPRUNG_SPACER_T_N, SPRUNG_SPACER_T) if sprung else (SPACER_T, SPACER_T)
+    out += [(f"{prefix}_spacer_{i}", place(spacer(t).translate((0, sy, 0))))
+            for i, (t, sy) in enumerate(((sn, -LEVER_HW - sn), (sp, LEVER_HW)))]   # lever face -> race
+    if sprung:
+        out.append((f"{prefix}_preload_spring",
+                    place(preload_spring().translate((0, -SPRUNG_BRG_Y0, 0)))))
     out.append((f"{prefix}_magnet", place(cyl_y(MAG_D, MAG_T, y0=MAG_Y0))))
     # the axle's END SCREW + washer, on the -Y tip (axisymmetric, so they need no swing)
+    # the washer lies on whichever it meets first: the -Y inner race (the tip recessed into
+    # it, AXLE_END_PROUD < 0 -- what clamps the stack) or a proud tip. Drawn on the tip it sat
+    # 0.3 inside the race.
+    hw_n = SPRUNG_HOUS_HW if sprung else HOUS_HW
+    wy = min(AXLE_Y0 - (hw_n - HOUS_HW), -hw_n)
     out.append((f"{prefix}_axle_washer", place(
-        cyl_y(AXLE_WASHER_OD, AXLE_WASHER_T, y0=AXLE_Y0 - AXLE_WASHER_T)
-        .cut(cyl_y(AXLE_WASHER_ID, AXLE_WASHER_T + 2.0, y0=AXLE_Y0 - AXLE_WASHER_T - 1.0)))))
+        cyl_y(AXLE_WASHER_OD, AXLE_WASHER_T, y0=wy - AXLE_WASHER_T)
+        .cut(cyl_y(AXLE_WASHER_ID, AXLE_WASHER_T + 2.0, y0=wy - AXLE_WASHER_T - 1.0)))))
     out.append((f"{prefix}_axle_screw", place(
         m4_button_screw(AXLE_SCREW_L).rotate((0, 0, 0), (1, 0, 0), 90)     # shank -Z -> +Y
-        .translate((0.0, AXLE_Y0 - AXLE_WASHER_T - M4_BUTTON_HEAD_H, 0.0)))))
+        .translate((0.0, wy - AXLE_WASHER_T - M4_BUTTON_HEAD_H, 0.0)))))
     out += [(n, place(s))
             for n, s in sensor_parts(z_bot, z_top, prefix=prefix, flip=flip)]
     _sh = pcb_shim(z_bot, z_top if shim_top is None else shim_top, flip)
@@ -770,7 +784,8 @@ def demo_parts():
     """Bought-part dummies in the local frame: (name, shape). Assembly-only."""
     # (no kl_axle dummy: the axle is PRINTED now — +Y journal integral to
     #  the lever, -Y journal = the kl_axle_insert part)
-    out = axle_dummies(lambda s: s, "kl", HOUS_Z0, HOUS_Z1, axle=False)   # build adds them, swung
+    out = axle_dummies(lambda s: s, "kl", HOUS_Z0, HOUS_Z1, axle=False,   # build adds them, swung
+                       sprung=True)
     out += feel_dummies(feel_place)
     # THE TRAVEL STOP, shown at its BACKED-OUT setting = the housing's own maximum, so
     # the assembly reads as the full throw rather than a random adjustment. (This line
@@ -1148,6 +1163,55 @@ CLAMP_LONG = 0.1                    # clamped length over the shoulders' spacing
 LEVER_HW = BRG_Y0 - BRG_SHOULDER_T - HS_CLR
 SPACER_T = BRG_Y0 - LEVER_HW + CLAMP_LONG / 2
 SPACER_OD, SPACER_ID = 10.0, AXLE_D + 0.2
+# THE PRELOAD SPRING (LKL first; user, 2026-10-19: "fully tighten the axle and we don't need to
+# worry about overtightening"). A sized-long clamp still has two faults: the lever floats by
+# CLAMP_LONG, and a stack that prints SHORT lets the screw preload both bearings by however hard
+# it went in, silently. One WAVE DISC SPRING between the -Y outer race and a shoulder fixes
+# both: it pushes that race outboard (-Y), which takes the whole unit with it and puts the +Y
+# race hard on the +Y shoulder -- zero play, at a preload the SPRING sets, never the screw. The
+# screw clamps only the rotating unit (land, races, spacers, lever, washer), so it is tightened
+# fully. The stack is drawn EXACT (spacers lever face -> race, no CLAMP_LONG): print error lands
+# in the spring's travel instead.
+# WHY -Y, AND WHY OUTBOARD OF BRG_Y0: the +Y cartridge pocket's outer wall IS the BRG_Y0 plane,
+# and under the axle it takes the whole lower half of any shoulder inboard of it (the reason the
+# plain shoulders only ever bore on their upper arcs). The spring needs its whole ring, so its
+# shoulder stands OUTBOARD of that wall, in the cartridge prism's own wall, and the bearing
+# moves out by the shoulder + the spring. On -Y that costs only the -Y face (the axle screw's
+# side); the +Y bearing stays put, hard on its shoulder, so the magnet's air gap is set by that
+# shoulder and not by the stack's print error. A thrust that compresses the spring is a +Y one:
+# the unit can move toward the board by at most the spring's travel to flat (0.6, against
+# AIR_GAP 1.5) and only past the preload; a -Y thrust lands on the +Y shoulder, rigid.
+# McMaster 9714K29 (high-carbon steel, 25 for $17.97, read 2026-10-19): 0.459" ID x 0.608" OD x
+# 0.008", 0.037" free, 0.025" at its 4 lb working load; three waves (its drawing). The same
+# envelope as Hubbard's WSW-608, made for a 16 OD bearing's outer race. Its ID clears the
+# spacer, so it bears on the outer race and the shoulder only -- both stationary, nothing rubs.
+SPRING_ID, SPRING_OD, SPRING_T = 0.459 * 25.4, 0.608 * 25.4, 0.008 * 25.4   # 11.66 x 15.44 x 0.20
+SPRING_FREE_H, SPRING_WORK_H = 0.037 * 25.4, 0.025 * 25.4                 # 0.94 -> 0.64
+SPRING_WORK_N = 4.0 * 4.448                                                # 17.8 N at WORK_H
+SPRING_WAVES = 3
+SPRING_H = (SPRING_FREE_H + SPRING_WORK_H) / 2      # 0.79 installed: mid-travel, so print error
+#                                                   # either way stays inside the rated window
+SPRING_N = SPRING_WORK_N * (SPRING_FREE_H - SPRING_H) / (SPRING_FREE_H - SPRING_WORK_H)  # ~8.9 N
+SPRING_SHOULDER_T = D.MIN_WALL      # 0.8: the spring's own shoulder, outboard of BRG_Y0 (one bead;
+#                                   # the old shoulder's plate is still inboard of it)
+SPRING_HOLE_D = SPACER_OD + 2 * 0.5 # 11.0: the -Y shoulder's hole -- the spacer through it, and a
+#                                   # whole ring (r 5.83 .. 7.72) for the spring to push on
+SPRUNG_SH_Y = BRG_Y0 + SPRING_SHOULDER_T          # 16.65: the spring's shoulder face (-Y side)
+SPRUNG_BRG_Y0 = SPRUNG_SH_Y + SPRING_H            # 17.44: the -Y bearing's inner face
+SPRUNG_HOUS_HW = SPRUNG_BRG_Y0 + BRG_W            # 22.44: the -Y face (+Y stays HOUS_HW)
+# THE SPRUNG SEAT SLIDES: the spring can only take up the stack if its race can move, and
+# ~9 N will not push a pressed one -- so the -Y seat is a SLIDING fit, not BRG_SEAT_D's light
+# press. 0.15 a side, about half what the fit coupons wanted between two PRINTED halves (the
+# race is ground steel). UNMEASURED: check on the first print that the bearing slides in by
+# hand and does not rattle. Even at this clearance the spring cannot wander onto the spacer.
+SPRUNG_SEAT_D = BRG_OD + 0.3                      # 16.3
+SPRUNG_SPACER_T = BRG_Y0 - LEVER_HW               # 2.00: +Y, lever face -> race, exact
+SPRUNG_SPACER_T_N = SPRUNG_BRG_Y0 - LEVER_HW      # 3.59: -Y, the same, through both shoulders
+assert SPRING_ID / 2 - SPACER_OD / 2 >= 0.5, "the spring's ID rubs the spacer"
+assert SPRING_OD < BRG_SEAT_D, "the spring does not fit the bearing seat"
+assert SPRING_HOLE_D / 2 < SPRING_ID / 2, "the spring's shoulder has no ring under it"
+assert (SPRUNG_SEAT_D - SPRING_OD) / 2 < (SPRING_ID - SPACER_OD) / 2, (
+    "the spring can slide far enough in its seat to touch the turning spacer")
 ARM_WY = 2 * LEVER_HW               # the arm is the lever's uniform section (was 25.6)
 BRG_BLOCK_X0 = -(BRG_SEAT_D / 2 + BRG_WALL)   # the block: the seat + its wall -X (HOUS_X1 is +X)
 BRG_BLOCK_Z0 = -(BRG_SEAT_D / 2 + BRG_WALL)   # ...and below, chamfered 45 back to CART_HW
@@ -1381,6 +1445,7 @@ assert AXLE_FLAT_R - M4.selftap_d / 2 >= D.MIN_WALL - 1e-9, (
     f"the axle's wall between the end screw's bore and the D-flat is "
     f"{AXLE_FLAT_R - M4.selftap_d / 2:.2f}, under one bead")
 PCB_Y   = MAG_Y1 + AIR_GAP + CHIP_H             # board face = magnet + gap + PACKAGE
+SPRUNG_AXLE_Y0 = -SPRUNG_HOUS_HW - AXLE_END_PROUD    # the sprung stack's (LKL): its -Y face
 AXLE_Y0 = -HOUS_HW - AXLE_END_PROUD                   # axle: the -Y journal runs the full
                                                 # bearing width (user, 2026-09-21) and its tip
                                                 # stands AXLE_END_PROUD past the race for the
@@ -1970,13 +2035,18 @@ def cut_axle_stack(w, through=False):
         # ONE TEARDROP THE FULL AXLE LENGTH (user, 2026-10-16), at the seat's Ø over the lever
         # band and out through each seat -- but NOT across the SHOULDERS: there it is the room
         # crown's teardrop, so each outer race lands on a printed stop (see BRG_SHOULDER_T).
+        # The -Y side carries the PRELOAD SPRING (see SPRING_ID): one shoulder plate from the
+        # lever room's face out to SPRUNG_SH_Y, holed SPRING_HOLE_D so the spring has a whole
+        # ring to push on, then the seat out through the -Y face -- spring, then bearing.
         r_sh = HUB_D / 2 + HS_CLR
-        w = w.cut(printable_bore(2 * r_sh, 2 * _seat_out, (0.0, -_seat_out, 0.0),
-                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
-        y_sh = BRG_Y0 - BRG_SHOULDER_T
-        for y0, ln in ((-y_sh, 2 * y_sh), (BRG_Y0, _seat_out - BRG_Y0),
-                       (-_seat_out, _seat_out - BRG_Y0)):
-            w = w.cut(printable_bore(BRG_SEAT_D, ln, (0.0, y0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+        y_sh = BRG_Y0 - BRG_SHOULDER_T                 # the shoulders' room faces
+        out_n = SPRUNG_HOUS_HW + 1.0
+        for d, y0, ln in ((2 * r_sh, y_sh - 0.005, BRG_SHOULDER_T + 0.01),            # +Y shoulder
+                          (SPRING_HOLE_D, -SPRUNG_SH_Y - 0.005, SPRUNG_SH_Y - y_sh + 0.01),  # -Y
+                          (BRG_SEAT_D, -y_sh, 2 * y_sh),                              # the lever band
+                          (BRG_SEAT_D, BRG_Y0, _seat_out - BRG_Y0),                   # +Y bearing
+                          (SPRUNG_SEAT_D, -out_n, out_n - SPRUNG_SH_Y)):              # -Y spring+bearing
+            w = w.cut(printable_bore(d, ln, (0.0, y0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
         return w
     # THE SHOULDERS here too (KV, the pedals): each seat stops at BRG_Y0, and the band between
     # the room's face and the seat is the room crown's teardrop, so the outer race lands on a
@@ -1995,11 +2065,35 @@ def cut_axle_stack(w, through=False):
     return w
 
 
-def spacer():
+def spacer(t=SPACER_T):
     """PRINTED SPACER x2 per lever: lever face -> inner race (see BRG_SHOULDER_T). Ø10 so
-    it laps the inner race only; prints flat."""
-    return (cyl_y(SPACER_OD, SPACER_T, y0=0.0)
-            .cut(cyl_y(SPACER_ID, SPACER_T + 2.0, y0=-1.0)))
+    it laps the inner race only; prints flat. `t`: SPACER_T (sized long by CLAMP_LONG), or
+    SPRUNG_SPACER_T (exact) on a stack with the preload spring."""
+    return (cyl_y(SPACER_OD, t, y0=0.0)
+            .cut(cyl_y(SPACER_ID, t + 2.0, y0=-1.0)))
+
+
+def preload_spring(h=SPRING_H):
+    """THE PRELOAD SPRING (McMaster 9714K29; see SPRING_ID) as it sits, compressed to `h`:
+    axis +Y, from y = 0 to h. Three sine waves round the ring; the steel's own thickness is
+    taken along Y (at these slopes, under 0.1 deg, the same as along the normal). Its crests
+    touch the outer race on one face and the shoulder on the other."""
+    import math as _m
+    a, n = (h - SPRING_T) / 2.0, 96
+
+    def ring(r, dy):
+        return cq.Edge.makeSpline(
+            [cq.Vector(r * _m.cos(t), h / 2 + a * _m.cos(SPRING_WAVES * t) + dy, r * _m.sin(t))
+             for t in (2 * _m.pi * k / n for k in range(n))], periodic=True)
+
+    bi, bo = ring(SPRING_ID / 2, -SPRING_T / 2), ring(SPRING_OD / 2, -SPRING_T / 2)
+    ti, to = ring(SPRING_ID / 2, SPRING_T / 2), ring(SPRING_OD / 2, SPRING_T / 2)
+    s = cq.Solid.makeSolid(cq.Shell.makeShell([cq.Face.makeRuledSurface(*e) for e in
+                                               ((bi, bo), (ti, to), (bi, ti), (bo, to))]))
+    if s.Volume() < 0:
+        s = cq.Solid(s.wrapped.Reversed())
+    assert s.isValid(), "the preload spring did not close"
+    return cq.Workplane("XY").add(s)
 
 
 def _bearing_block():
@@ -2007,8 +2101,9 @@ def _bearing_block():
     +-CART_HW, from the seat's -X wall to the +X face and from below the seat's wall to the
     top. Its underside steps out over the cartridge prism's faces, so that step is a 45
     chamfer, not a ledge."""
-    d = HOUS_HW - CART_HW
-    prof = [(-HOUS_HW, HOUS_Z1), (-HOUS_HW, BRG_BLOCK_Z0), (-CART_HW, BRG_BLOCK_Z0 - d),
+    # -Y is SPRUNG_HOUS_HW: that seat also holds the preload spring and its shoulder
+    d, dn = HOUS_HW - CART_HW, SPRUNG_HOUS_HW - CART_HW
+    prof = [(-SPRUNG_HOUS_HW, HOUS_Z1), (-SPRUNG_HOUS_HW, BRG_BLOCK_Z0), (-CART_HW, BRG_BLOCK_Z0 - dn),
             (CART_HW, BRG_BLOCK_Z0 - d), (HOUS_HW, BRG_BLOCK_Z0), (HOUS_HW, HOUS_Z1)]
     f = cq.Workplane("YZ").polyline(prof).close()
     return cq.Workplane("XY").add(cq.Solid.extrudeLinear(
@@ -2576,7 +2671,7 @@ def _knee_relief(right=False):
     """
     z0 = STOP_FLOOR_Z - 1.0
     xo = HOUS_X1 + 1.0
-    y0, y1 = -HOUS_HW, CR_Y1 + D.MIN_WALL_2P
+    y0, y1 = -SPRUNG_HOUS_HW, CR_Y1 + D.MIN_WALL_2P
     pts = [(z0 + KNEE_CHAM_C, z0), (xo, z0), (xo, xo - KNEE_CHAM_C)]
     f = cq.Face.makeFromWires(cq.Wire.makePolygon(
         [cq.Vector(x, y0, z) for x, z in pts] + [cq.Vector(pts[0][0], y0, pts[0][1])]))
@@ -2928,7 +3023,7 @@ def _lever() -> cq.Workplane:
     return heal(body)
 
 
-def kl_axle() -> cq.Workplane:
+def kl_axle(y0=None) -> cq.Workplane:
     """PCTG AXLE ×1 per lever — ONE full-length printed part (user: the old
     integral-stub + glued-insert pair could not physically be assembled).
     Fitted LAST and slid +Y -> -Y through the +Y bearing, the lever hub and
@@ -2952,8 +3047,11 @@ def kl_axle() -> cq.Workplane:
     bore is a plain hole down from the top. Use a brim —
     the bed footprint is only the collar's annulus under a ~31 mm column.
     Built along +Z, threaded, then rotated onto the lever's +Y axis; the flat
-    is milled AFTER the thread (cadkit thread rule) and it is NEVER healed."""
+    is milled AFTER the thread (cadkit thread rule) and it is NEVER healed.
+
+    `y0`: the -Y tip (default AXLE_Y0); the LKL's sprung stack puts it at SPRUNG_AXLE_Y0."""
     from cadkit.threads import cut_thread
+    AXLE_Y0 = globals()["AXLE_Y0"] if y0 is None else y0
     r = AXLE_D / 2
     # smooth blank along +Z: journal shaft, then the flange/collar barrel
     b = cq.Workplane("XY").add(cq.Solid.makeCylinder(
@@ -3035,6 +3133,7 @@ def kl_magnet_cap() -> cq.Workplane:
 knee_housing = lazy(_housing)
 knee_housing_r = lazy(_housing, right=True)    # the right-hand lever's (LKR, RKR)
 knee_lever = lazy(_lever)
+kl_axle_sprung = lazy(kl_axle, SPRUNG_AXLE_Y0)   # the LKL's: 1.59 longer at -Y
 kl_axle = lazy(kl_axle)                        # printed: full-length PCTG axle
 kl_magnet_cap = lazy(kl_magnet_cap)            # printed: screw-on magnet retainer
 # ONE shared cartridge (printed twice: MAIN + HALF-STOP). Built canonically (MAIN placement: follower
