@@ -92,6 +92,9 @@ impl App {
     /// The keyboard goes to what is shown: the active tab's page, or the list.
     pub fn focus_ui(&self) {
         let (Some(g), Some(s)) = (self.gfx.as_ref(), self.shell.as_ref()) else { return };
+        if self.args.unseen {
+            return; // (a test nobody sees: giving a webview the keyboard can make the window the active one)
+        }
         let _ = match page_of(g, &self.shell).filter(|_| !s.list) {
             Some(wv) => wv.focus(),
             None => g.strip.as_ref().map(|w| w.focus()).unwrap_or(Ok(())),
@@ -302,6 +305,9 @@ impl App {
 
     pub fn come_forward(&self) {
         let Some(g) = self.gfx.as_ref() else { return };
+        if self.args.unseen {
+            return; // (a test nobody is to see)
+        }
         if g.window.is_minimized() == Some(true) {
             g.window.set_minimized(false);
         }
@@ -437,7 +443,7 @@ impl App {
         json!({
             "tabs": tabs, "list": s.list, "title": g.window.title(), "client": [g.config.width, g.config.height], "top": s.top, "picture": [g.r.size().0, g.r.size().1],
             "renders": g.r.n_renders, "dispatches": g.r.n_dispatches, "presents": self.presents, "status_lines": self.stat_sent,
-            "spp": g.r.n, "cap": gpu::MAX_SPP, "model": g.r.has_scene(), "loading": self.loading, "quiet": self.quiet(),
+            "spp": g.r.n, "cap": gpu::MAX_SPP, "auto_up": g.r.moving_upscale().name(), "moving_size": g.r.moving_size().map(|(w, h)| [w, h]), "model": g.r.has_scene(), "loading": self.loading, "quiet": self.quiet(),
             "hidden": hid, "posed": posed, "sel": sel, "clip": g.r.look.clip, "eye": self.view.cam.map(|c| c.eye.to_array()),
             "foreground": cap::foreground() == g.hwnd, "minimized": g.window.is_minimized(), "last_switch": s.last_switch, "backend": g.backend,
         })
@@ -559,7 +565,7 @@ impl App {
                 let _ = std::fs::create_dir_all(&self.args.out);
                 let f = self.args.out.join(format!("{name}.png"));
                 save_png(&f, w, h, &px);
-                json!({"file": f.to_string_lossy(), "size": [w, h], "spp": g.r.n, "timed_out": timed_out, "foreground": cap::foreground() == g.hwnd})
+                json!({"file": f.to_string_lossy(), "size": [w, h], "spp": g.r.n, "timed_out": timed_out, "foreground": cap::foreground() == g.hwnd, "over_white": crate::wgc::OVER_WHITE.lock().map(|o| json!({"px": o.0, "max_nits": o.1})).unwrap_or_default()})
             }
             Err(e) => json!({"error": e}),
         };

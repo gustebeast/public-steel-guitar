@@ -1,7 +1,8 @@
 //!include common
 // The picture: the guide's samples (smoothed, their colour put back) and the others (as they came), each
 // by its share of the pixel; linear -> sRGB, no tone curve (as the reference: Standard view); packed rgba8.
-// Twice: `outp` is the picture (captures, the page's comparisons), `shown` is what the window is handed.
+// Twice: `outp` is the picture (captures, the page's comparisons), `shown` is what the window is handed:
+// the same 8 bits in .x, or (HDR, flags bit 6) the light unclipped, as scRGB halves (common.wgsl `hdr_out`).
 
 @group(0) @binding(0) var<uniform> G: Globals;
 @group(0) @binding(1) var<storage, read> guide: array<Guide>;
@@ -11,7 +12,7 @@
 @group(0) @binding(5) var<storage, read> acc_b: array<vec4f>;
 @group(0) @binding(6) var<storage, read> acc_c: array<vec4f>;
 @group(0) @binding(7) var<storage, read> other_id: array<u32>;
-@group(0) @binding(8) var<storage, read_write> shown: array<u32>;
+@group(0) @binding(8) var<storage, read_write> shown: array<vec2u>;
 
 // THE EDGE OF A MOVING PICTURE. A pixel on an edge has a few samples of the thing next door (the "other"
 // heap): the right share of the pixel, but few and so grainy while the picture moves. What they met is
@@ -69,11 +70,13 @@ fn main(@builtin(global_invocation_id) gid: vec3u) {
       c += a.rgb;
     }
   }
-  let lin = clamp(c / f32(G.n), vec3f(0.0), vec3f(1.0));
+  let raw = c / f32(G.n);
+  let lin = clamp(raw, vec3f(0.0), vec3f(1.0));
   let pic = pack4x8unorm(vec4f(srgb(lin), 1.0));
   outp[idx] = pic;
+  if ((G.flags & 64u) != 0u) { shown[idx] = pack_hdr(hdr_out(raw, G.white, G.peak)); return; }
   // A screen that decodes with a plain 2.4 power (flags bit 4: Vulkan on an HDR Windows desktop) is handed
   // the picture encoded for THAT, here, before the 8 bits: re-encoding the 8-bit sRGB in the blit merged 13
   // of the 256 levels and skipped steps in the shadows.
-  shown[idx] = select(pic, pack4x8unorm(vec4f(pow(lin, vec3f(1.0 / 2.4)), 1.0)), (G.flags & 16u) != 0u);
+  shown[idx] = vec2u(select(pic, pack4x8unorm(vec4f(pow(lin, vec3f(1.0 / 2.4)), 1.0)), (G.flags & 16u) != 0u), 0u);
 }

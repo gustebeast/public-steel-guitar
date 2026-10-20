@@ -91,6 +91,10 @@ fn newest(w: &mut Wgc, since: i64, wait: Duration) -> Option<Direct3D11CaptureFr
     }
 }
 
+/// What the last capture held brighter than the SDR white (an HDR picture's highlights, which the 8-bit
+/// capture clips): pixels whose brightest channel is over 1.02x it, and the brightest, in nits.
+pub static OVER_WHITE: std::sync::Mutex<(u64, f32)> = std::sync::Mutex::new((0, 0.0));
+
 /// `green`: client rect of an opaque rgb(0,255,0) element, used to calibrate the SDR white level (as dda.rs).
 pub fn capture(h: isize, green: Option<[f64; 4]>) -> Result<(u32, u32, Vec<u8>), String> {
     let (cw, ch) = client_size(h);
@@ -143,10 +147,14 @@ pub fn capture(h: isize, green: Option<[f64; 4]>) -> Result<(u32, u32, Vec<u8>),
             }
         }
         let mut buf = vec![0u8; (cw * ch * 4) as usize];
+        let (mut over, mut top) = (0u64, 0.0f32);
         for y in 0..ch as i32 {
             for x in 0..cw as i32 {
                 let Some(p) = px(x, y) else { continue };
                 let t = ((y as u32 * cw + x as u32) * 4) as usize;
+                let m = h16(p, 0).max(h16(p, 1)).max(h16(p, 2));
+                top = top.max(m);
+                over += (m > 1.02 * w.scale) as u64;
                 for k in 0..3 {
                     buf[t + k] = srgb(h16(p, k) / w.scale);
                 }
@@ -154,6 +162,7 @@ pub fn capture(h: isize, green: Option<[f64; 4]>) -> Result<(u32, u32, Vec<u8>),
             }
         }
         w.ctx.Unmap(&st, 0);
+        *OVER_WHITE.lock().unwrap() = (over, top * 80.0);
         Ok((cw, ch, buf))
     })
 }

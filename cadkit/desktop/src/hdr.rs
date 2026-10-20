@@ -6,29 +6,38 @@ use windows::Win32::Graphics::Dxgi::Common::DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE
 use windows::Win32::Graphics::Dxgi::*;
 use windows::core::Interface;
 
-/// The output holding the centre of the window's client area is in HDR mode. False when it cannot be told.
+/// The screen the window is on is in HDR mode. False when it cannot be told.
 pub fn on_hdr(hwnd: isize) -> bool {
-    let (w, h) = crate::cap::client_size(hwnd);
-    let (x, y) = crate::cap::client_to_screen(hwnd, 0, 0);
-    let (cx, cy) = (x + w as i32 / 2, y + h as i32 / 2);
+    desc1(hwnd).is_some_and(|d1| d1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)
+}
+
+/// The brightest that screen shows, nits (what Windows has for it: its own figure, or the HDR calibration
+/// app's). None when it cannot be told.
+pub fn peak_nits(hwnd: isize) -> Option<f32> {
+    desc1(hwnd).map(|d1| d1.MaxLuminance).filter(|n| *n > 1.0)
+}
+
+/// (the screen Windows itself says the window is on: the one it overlaps most, else the nearest, as a window
+/// kept off every screen is)
+fn desc1(hwnd: isize) -> Option<DXGI_OUTPUT_DESC1> {
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Gdi::{MONITOR_DEFAULTTONEAREST, MonitorFromWindow};
     unsafe {
-        let Ok(f) = CreateDXGIFactory1::<IDXGIFactory1>() else { return false };
+        let mon = MonitorFromWindow(HWND(hwnd as _), MONITOR_DEFAULTTONEAREST);
+        let f = CreateDXGIFactory1::<IDXGIFactory1>().ok()?;
         let mut a = 0;
         while let Ok(adapter) = f.EnumAdapters1(a) {
             let mut o = 0;
             while let Ok(out) = adapter.EnumOutputs(o) {
-                if let Ok(d) = out.GetDesc() {
-                    let r = d.DesktopCoordinates;
-                    if cx >= r.left && cx < r.right && cy >= r.top && cy < r.bottom {
-                        return out.cast::<IDXGIOutput6>().ok().and_then(|o6| o6.GetDesc1().ok()).is_some_and(|d1| d1.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020);
-                    }
+                if out.GetDesc().is_ok_and(|d| d.Monitor == mon) {
+                    return out.cast::<IDXGIOutput6>().ok().and_then(|o6| o6.GetDesc1().ok());
                 }
                 o += 1;
             }
             a += 1;
         }
     }
-    false
+    None
 }
 
 /// The SDR white level of the screen the window is on, in scRGB units (1.0 = 80 nits): what Windows' "SDR

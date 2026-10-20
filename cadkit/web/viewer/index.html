@@ -1261,7 +1261,9 @@
       return;
     }
     if (e.key === 'Escape') { mode === 'measure' ? clearMeasure() : clearSelection(); return; }
-    if (!e.repeat && !e.ctrlKey && !e.metaKey) switch (e.key) {
+    // (letters either case: caps lock on is not a reason for a key to do nothing)
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (!e.repeat && !e.ctrlKey && !e.metaKey) switch (k) {
       // the left hand's rows: tools on top, what is done to the selection under them,
       // undo and redo under those. Every one is written on its button.
       case 'q': setMode('select'); return;
@@ -1277,11 +1279,11 @@
       case 't': showAll(); return;
       case 'g': gfxToggle(); return;
     }
-    const p = keyToPedal[e.key]; if (!p || e.repeat) return;
+    const p = keyToPedal[k]; if (!p || e.repeat) return;
     held.add(p); syncUI();
   });
   addEventListener('keyup', e => {
-    const p = keyToPedal[e.key]; if (!p) return;
+    const p = keyToPedal[e.key.toLowerCase()]; if (!p) return;
     held.delete(p); syncUI();
   });
   $('bSelect').onclick = () => setMode('select');
@@ -1362,14 +1364,21 @@
       scene.background = own ? BACKDROP : null;
       renderer.setClearColor(0x000000, own ? 1 : 0);
       if (own) renderer.setClearColor(BACKDROP, 1);
+      // (the canvas still holds the last picture the page drew: the marks-only frame must clear it, not skip
+      // itself as nothing-new -- left, it covered the tracer's picture and the view looked frozen)
+      nat.blank = false; nat.marks = null;
     }
     if (manual) autoQuality = false;
-    const sh = quality >= 1;
+    // THE DESKTOP'S PATH TRACED LEVEL DRAWS NO MODEL: no shadow maps for it, no occlusion composer. Built for it,
+    // the composer (a 4x-sampled half-float target the window's size, and its shaders) stalled the page for
+    // seconds at 1907x2041 on the first switch to it, and at every start (2026-10-16).
+    const shellPic = NATIVE && quality === 3;
+    const sh = quality >= 1 && !shellPic;
     if (renderer.shadowMap.enabled !== sh) {
       renderer.shadowMap.enabled = sh; key.castShadow = sh;
       for (const m of [...matCache.values(), vcMat]) m.needsUpdate = true;
     }
-    if (quality >= 2 && !composer) {
+    if (quality >= 2 && !shellPic && !composer) {
       const pr = renderer.getPixelRatio();
       composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(
         innerWidth * pr, innerHeight * pr, { samples: 4, type: THREE.HalfFloatType }));
@@ -1400,9 +1409,21 @@
   // through the shell (viewer.native.gfx; desktop/src/prefs.rs keeps them between runs).
   // What this client cannot do is greyed, and says why when pointed at.
   const gfx = { open: false, info: null };
-  const UPSCALE = [['off', 'off (full size)'], ['quality', 'quality (1.5x)'], ['balanced', 'balanced (1.7x)'],
+  const UPSCALE = [['off', 'auto (keeps 24 fps)'], ['quality', 'quality (1.5x)'], ['balanced', 'balanced (1.7x)'],
                    ['performance', 'performance (2x)'], ['ultra', 'ultra performance (3x)']];
   const escH = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  // a reason, short enough to stand in an option's text
+  function whyShort(why) {
+    if (/asking/.test(why)) return '…';
+    if (/desktop app/.test(why)) return 'needs the desktop app';
+    if (/NVIDIA RTX/.test(why)) return 'needs an NVIDIA RTX card';
+    if (/built without/.test(why)) return 'not in this build';
+    if (/runs on Vulkan/.test(why)) return 'needs Vulkan';
+    if (/DESK_DLSS/.test(why)) return 'off for this run';
+    if (/driver/.test(why)) return 'not offered by the driver';
+    if (/denoising/.test(why)) return 'needs DLSS denoising';
+    return why;
+  }
   function dlssWhy(i) {
     if (!NATIVE) return 'only in the desktop app';
     if (!i) return 'asking the desktop app…';
@@ -1423,11 +1444,12 @@
     const deskWhy = NATIVE ? (i ? '' : 'asking the desktop app…') : 'only in the desktop app';
     const row = (label, k, opts, val, note) => out.push(
       `<div class="gr"><span>${label}</span><select data-k="${k}">` +
+      // (a greyed option says why in its own text too: a browser does not show the tooltip of one in the list)
       opts.map(([v, t, why]) => `<option value="${v}"${String(v) === String(val) ? ' selected' : ''}` +
-                                (why ? ` disabled title="${escH(why)}"` : '') + `>${t}</option>`).join('') +
+                                (why ? ` disabled title="${escH(why)}"` : '') + `>${t}${why ? ' — ' + escH(whyShort(why)) : ''}</option>`).join('') +
       '</select></div>' + (note ? `<div class="gnote">${note}</div>` : ''));
     // lighting: the browser's own levels anywhere; the top one is a tracer, the shell's or the server's
-    const traceWhy = NATIVE || rt.ok ? '' : 'no tracer behind this page';
+    const traceWhy = NATIVE || rt.ok ? '' : "ray tracing needs the desktop app (or cadkit's local server): there is no tracer behind this page";
     row('lighting', 'light', [...LIGHT.slice(0, 3).map((t, k) => [k, t, '']), [3, NATIVE ? 'path traced' : LIGHT[3], traceWhy]], quality,
         NATIVE && quality < 3 ? 'drawn by the page, as in a browser: the path tracer rests' : '');
     // the denoiser of the traced picture: DLSS while it moves (where the card has it), or the tracer's own, or none
@@ -1436,10 +1458,10 @@
         NATIVE && dw && i ? 'DLSS: ' + escH(dw) : '');
     // DLSS's enlarging while the picture moves
     const uw = dw || (den !== 'dlss' ? 'upscaling is done by DLSS: choose DLSS ray reconstruction for denoising' : '');
-    row('upscaling', 'upscale', UPSCALE.map(([v, t]) => [v, t, v === 'off' ? '' : uw]), p && !uw ? p.upscale : 'off',
-        !uw && i.moving && p.upscale !== 'off' ? `traced at ${i.moving[0]}×${i.moving[1]} while moving, ${i.size[0]}×${i.size[1]} at rest` : '');
-    const bud = [['auto', i ? `auto (${i.budget_auto.toFixed(1)} ms)` : 'auto', ''], ...(i ? i.budgets : [1.5, 3, 6, 12]).map(m => [m, m + ' ms', deskWhy])];
-    row('card time a moving frame', 'budget_ms', bud, p ? p.budget_ms : 'auto');
+    // ("auto" traces a moving frame smaller only when it would otherwise fall under 24 fps; without DLSS, never)
+    row('upscaling', 'upscale', UPSCALE.map(([v, t]) => [v, v === 'off' && uw ? 'off' : t, v === 'off' ? '' : uw]), p && !uw ? p.upscale : 'off',
+        !NATIVE || !i ? '' : uw ? 'no 24 fps floor without DLSS' :
+        i.moving ? `traced at ${i.moving[0]}×${i.moving[1]} while moving, ${i.size[0]}×${i.size[1]} at rest` : `traced at full size while moving (${i.size[0]}×${i.size[1]})`);
     // the two that take effect when the app is next started
     const next = (want, now) => want !== now ? ' · changes when the app is next started' : '';
     const api = p && (p.backend === 'auto' ? 'vulkan' : p.backend), names = { vulkan: 'Vulkan', dx12: 'DX12' };
@@ -1447,11 +1469,15 @@
     if (!NATIVE) apis.unshift(['webgl', 'WebGL (this browser)', '']);
     row('graphics API', 'backend', apis, NATIVE ? (p ? p.backend : 'auto') : 'webgl',
         i ? `in use: ${names[i.backend] || i.backend} on ${escH(i.adapter)}` + next(api, i.backend) : '');
-    const srf = p && (p.surface === 'auto' ? (api === 'vulkan' ? 'float' : '8bit') : p.surface);
-    const outs = [['auto', 'auto', deskWhy], ['float', 'float (exact on HDR)', deskWhy], ['8bit', '8-bit', deskWhy]];
-    if (!NATIVE) outs.unshift(['browser', 'the browser\'s', '']);
-    row('output', 'surface', outs, NATIVE ? (p ? p.surface : 'auto') : 'browser',
-        i ? `in use: ${i.surface === 'float' ? 'float' : '8-bit'}` + next(srf, i.surface) : '');
+    // dynamic range: SDR for an SDR screen, HDR for an HDR one (all of its range: highlights up to its peak).
+    // SDR on an HDR screen is the choice for someone who wants nothing brighter than the desktop's white.
+    const hdrWhy = !NATIVE ? 'only in the desktop app' : !i ? deskWhy
+      : !i.hdr_screen ? 'this screen is not in HDR mode (Windows: Settings > System > Display > Use HDR)'
+      : i.surface !== 'float' ? 'needs the float output, which this graphics API does not offer here' : '';
+    const nits = n => `${Math.round(n)} nits`;
+    row('dynamic range', 'range', [['sdr', 'SDR', ''], ['hdr', 'HDR', hdrWhy]], NATIVE && i ? i.range : 'sdr',
+        !NATIVE || !i ? '' : i.range === 'hdr' ? `white at ${nits(i.white_nits)} (the desktop's), highlights up to ${i.peak_nits ? nits(i.peak_nits) : 'the screen\'s peak'}`
+        : i.hdr_screen ? `nothing brighter than the desktop's white (${nits(i.white_nits)})` : '');
     $('gfxPanel').innerHTML = out.join('');
   }
   function gfxToggle(open = !gfx.open) {
@@ -1778,7 +1804,7 @@
       return;
     }
     if (!NATIVE) return;                                 // (in a browser the rest has the one choice it can have)
-    const v = k === 'budget_ms' && el.value !== 'auto' ? +el.value : el.value;
+    const v = el.value;
     // (the denoiser is two of the shell's settings: DLSS while moving, the tracer's own at rest)
     const set = k === 'denoiser' ? { dlss: v === 'dlss', denoise: v !== 'none' } : { [k]: v };
     window.ipc.postMessage(JSON.stringify({ t: 'gfx', set }));   // the shell answers with all of it
@@ -1825,7 +1851,7 @@
     rig = await fetchJSON('rig.json?v=' + Date.now());
     strings = rig ? rig.strings : [];
     for (const k of Object.keys(keyToPedal)) delete keyToPedal[k];
-    if (rig) for (const p of rig.copedent) keyToPedal[p.key] = p.name;
+    if (rig) for (const p of rig.copedent) keyToPedal[String(p.key).toLowerCase()] = p.name;
     M.key = stamp ? String(stamp.t) : rig ? String(rig.build) : String(Date.now());
     $('status').textContent = stamp && stamp.scratch
       ? ['scratch view',
