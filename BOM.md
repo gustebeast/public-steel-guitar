@@ -1327,11 +1327,11 @@ board aside) is crimped from **two gauges** of one product line, McMaster **8054
 | spool | 8054T | strands | OD | for | in stock |
 |---|---|---|---|---|---|
 | 22 AWG black | 8054T13, 25 ft | 7/30 | 0.06 in (1.52 mm) | 24 V return on XH | bought 2026-10-07 |
-| 22 AWG **red** | 8054T13, 25 ft, $3.91 | 7/30 | 1.52 mm | +24 V on XH | in the McMaster order 2026-10-20, not placed |
+| 22 AWG **red** | 8054T13, 25 ft, $3.91 | 7/30 | 1.52 mm | +24 V on XH | ordered 2026-10-20 (McMaster) |
 | 26 AWG black | 8054T11, 25 ft | 7/34 | 0.05 in (1.27 mm) | 5 V and the optical feed's return | bought 2026-10-07 |
-| 26 AWG **red** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | +5 V (Pi), +24 V (optical feed) | in the order, not placed |
-| 26 AWG **yellow** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_H | in the order, not placed |
-| 26 AWG **green** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_L | in the order, not placed |
+| 26 AWG **red** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | +5 V (Pi), +24 V (optical feed) | ordered 2026-10-20 |
+| 26 AWG **yellow** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_H | ordered 2026-10-20 |
+| 26 AWG **green** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_L | ordered 2026-10-20 |
 
 **THE RULE: 22 AWG for 24 V power on XH; 26 AWG for everything else.** One gauge cannot do
 it: the 24 V feeds want 22, and the PH contact does not take 22. Colours are the CAN
@@ -1364,6 +1364,9 @@ conductors bundle to d (1 + sqrt 2) = 2.414 d: at 28 AWG's 0.9 mm that is 2.17 a
 at 26 AWG's 1.27 mm it is **3.07 and does not**. So the legs stay 28 AWG (8054T-class
 28 AWG, black / red / yellow / green, about 5.5 m modelled) unless the leg channel is
 opened to O3.1+ -- branner's geometry and the user's call, not decided here.
+**NOT BOUGHT YET:** the 2026-10-20 McMaster order was the 22 and 26 AWG spools only; the four
+28 AWG leg colours (one 25 ft spool each covers the ~5.5 m) are still to order, or drop if
+the channel opens to 26 AWG.
 
 **When the LED boards come in:** the lights lead (motor_ctrl J7 to pi_cap J4) is fused at
 3 A (F3) and full white is 1.7 A, so its +24 V and GND are 22 AWG, not the thin wire the
@@ -3055,8 +3058,8 @@ pros/cons when weighing approaches** (project policy).
 | **2.5 mm hex key** | ball-end L-key (or a 2.5 mm bit in a driver) | commodity | THE ONE DRIVER the instrument is converging on: every M4 button head and the M3 motor socket caps take it. Not yet sufficient on its own — the two bus-B tees' M2s are the last to migrate; ball end for the angled reach to the pickup's -Y retention screw |
 | **Hardened nozzle ≥0.4 (ideally 0.6)** | PETG-GF (vendor recommendation) | ~$15–30 | glass fiber eats brass nozzles |
 | **Wire strippers 20–30 AWG** | all harness work | — | presumed owned |
-| **9/64" reamer (HSS, straight flute)** | the Tr8×2 nuts' ear holes: BOTH ears of all ten, before assembly, so the Ø3.5 guide rod slides | $27.58 | [McMaster 2995A116](https://www.mcmaster.com/2995A116) — cuts 3.572–3.576 mm (0 to +0.0002"). Metric stock reamers jump 3.5 → 3.78; 9/64" is the stock size that lands the 0.05–0.10 running clearance on a 3.490–3.500 roller. Brass reams by hand in a tap wrench; 4 mm of ear, a few turns each |
-| **Hex-shank keyless drill chuck** (1/4" hex, impact rated) | holds the 9/64" reamer in a 1/4" hex driver: a ratcheting screwdriver turns it by hand (ratchet set to tighten: every stroke turns it clockwise, the return freewheels, so it is never reversed, also on the way out). Doubles as round-shank bits in an impact driver | $58.14 | [McMaster 28055A72](https://www.mcmaster.com/28055A72) (Jacobs 31248, steel jaws, 1.5–10 mm, ratchet lock against impact vibration, power screwdrivers and impact drivers) [v 2026-10-16]. Alternative: T-handle tap wrench 2546A23 ($30.63, jaws 0.11–0.191"). The reamer is a MACHINE reamer (McMaster: short chamfer, 4 flutes, 1" flute, 4" overall), not a hand reamer with a long taper: start it square by eye in the existing Ø3.5 hole, light pressure, nut in a soft-jawed vise. Brass reams cleanly dry or with a drop of light oil |
+| **9/64" reamer (HSS, straight flute)** | the Tr8×2 nuts' ear holes: BOTH ears of all ten, before assembly, so the Ø3.5 guide rod slides | $27.58, **ordered 2026-10-20** | [McMaster 2995A116](https://www.mcmaster.com/2995A116) — cuts 3.572–3.576 mm (0 to +0.0002"). Metric stock reamers jump 3.5 → 3.78; 9/64" is the stock size that lands the 0.05–0.10 running clearance on a 3.490–3.500 roller. Brass reams by hand in a tap wrench; 4 mm of ear, a few turns each |
+| **Hex-shank keyless drill chuck** (1/4" hex, impact rated) | holds the 9/64" reamer in a 1/4" hex driver: a ratcheting screwdriver turns it by hand (ratchet set to tighten: every stroke turns it clockwise, the return freewheels, so it is never reversed, also on the way out). Doubles as round-shank bits in an impact driver | $58.14, **ordered 2026-10-20** | [McMaster 28055A72](https://www.mcmaster.com/28055A72) (Jacobs 31248, steel jaws, 1.5–10 mm, ratchet lock against impact vibration, power screwdrivers and impact drivers) [v 2026-10-16]. Alternative: T-handle tap wrench 2546A23 ($30.63, jaws 0.11–0.191"). The reamer is a MACHINE reamer (McMaster: short chamfer, 4 flutes, 1" flute, 4" overall), not a hand reamer with a long taper: start it square by eye in the existing Ø3.5 hole, light pressure, nut in a soft-jawed vise. Brass reams cleanly dry or with a drop of light oil |
 | **Current-limited bench supply** (≥24 V, adjustable current limit) — **OPTIONAL, the safer way** | first power on a first-article board with a fault held to a reading | ~$50–80 *(unverified)* | **not needed (user, 2026-10-13):** the boards are first powered from the instrument's own brick, down its own leads, with power-off meter checks in place of a current limit. What that risks is stated in `docs/bench-order.md`, "Power without a bench supply" |
 | **WCH-LinkE** | flashing + debugging every CH32V board (motor_ctrl, output_panel, 11 lever sensors) | ~$5–10 *(unverified)* | the ONLY probe that talks to CH32V parts — an ST-Link or J-Link will not. Also a USB-serial port |
 | **USB-CAN adapter** (CANable-class, works with `candump`) | seeing either CAN bus from outside the instrument | ~$15–30 *(unverified)* | motor_ctrl heads both buses and the Pi is on neither, so if motor_ctrl is the broken thing nothing in the instrument can see the bus |
