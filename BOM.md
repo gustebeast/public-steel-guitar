@@ -1357,6 +1357,14 @@ The motors' current is still the unmeasured number (0.8 A per moving motor is de
 if it is higher, the XH contact gives out before the 22 AWG does, so a clamp-meter
 reading on the bench decides it, not more copper.
 
+**THE LEG HARNESS IS THE ONE EXCEPTION: 28 AWG, a third gauge, legs only** (outside the
+scope above: it is below the floor). Its four conductors are laid up as a 4-core in a
+O2.4 channel (`src/leg_pogo.py` HARNESS_D, the bores and the coil mandrel). Four round
+conductors bundle to d (1 + sqrt 2) = 2.414 d: at 28 AWG's 0.9 mm that is 2.17 and fits;
+at 26 AWG's 1.27 mm it is **3.07 and does not**. So the legs stay 28 AWG (8054T-class
+28 AWG, black / red / yellow / green, about 5.5 m modelled) unless the leg channel is
+opened to O3.1+ -- branner's geometry and the user's call, not decided here.
+
 **When the LED boards come in:** the lights lead (motor_ctrl J7 to pi_cap J4) is fused at
 3 A (F3) and full white is 1.7 A, so its +24 V and GND are 22 AWG, not the thin wire the
 CAD draws; its two power-button throws stay 26.
