@@ -2499,18 +2499,27 @@ def connector_labels(ctx):
     # ...measured to each pad's COPPER, not its centre: a side-entry header's land is
     # 3.5 mm long, and a "1" 1 mm off its end is 2.8 mm from its centre -- further than a
     # test pad standing 2.3 mm away diagonally, which then took the mark for its own.
+    # ...AND ONLY A PAD ON THE INK'S OWN FACE CAN CLAIM IT. An SMD test pad on the front
+    # names nothing from the back: a connector's through-hole row, worded on the back
+    # beside a front-only TP, lost all four words to it (lever_sensor J1, 2026-10-19).
     def _land(q):
         bb = q.GetBoundingBox()
-        return (MM(bb.GetLeft()), MM(bb.GetTop()), MM(bb.GetRight()), MM(bb.GetBottom()))
+        return ((MM(bb.GetLeft()), MM(bb.GetTop()), MM(bb.GetRight()), MM(bb.GetBottom())),
+                q.IsOnLayer(pcbnew.F_Cu), q.IsOnLayer(pcbnew.B_Cu))
+
+    def _on(lands, back):
+        return [box for box, front_cu, back_cu in lands if (back_cu if back else front_cu)]
 
     probes = [_land(q) for r, f in ctx.fps.items() if _prefix(r) == "TP" for q in f.Pads()]
 
-    def probe_label(centre):
-        if not probes or not allpads:
+    def probe_label(centre, back):
+        """True when the ink at `centre`, on the back face or not, is a test pad's."""
+        tps, pads = _on(probes, back), _on(allpads, back)
+        if not tps or not pads:
             return False
         at = (centre[0], centre[1], centre[0], centre[1])
-        d = min(_box_gap(at, q) for q in probes)
-        return d <= min(_box_gap(at, q) for q in allpads)
+        d = min(_box_gap(at, q) for q in tps)
+        return d <= min(_box_gap(at, q) for q in pads)
 
     allpads = [_land(q) for _r, (f, ws, _b) in conns.items() for q in f.Pads()
                if q.GetNumber().isdigit() and int(q.GetNumber()) in ws]
@@ -2557,7 +2566,7 @@ def connector_labels(ctx):
         for s, c, box in mine["texts"]:
             if "\n" in s:
                 continue
-            if _box_gap(box, _body) > LABEL_REACH or probe_label(c):
+            if _box_gap(box, _body) > LABEL_REACH or probe_label(c, back):
                 continue
             k = min(ways, key=lambda n: math.dist(c, ways[n]))
             word = token.sub("", s).strip()         # "J1 GND": the designator rides on a word
@@ -2587,7 +2596,7 @@ def connector_labels(ctx):
             # also right read by position (A20), and it counts as the pinout there
             far = {}
             for s, c, box in other["texts"]:
-                if "\n" in s or _box_gap(box, _body) > LABEL_REACH or probe_label(c):
+                if "\n" in s or _box_gap(box, _body) > LABEL_REACH or probe_label(c, not back):
                     continue
                 k = min(ways, key=lambda n: math.dist(c, ways[n]))
                 m = re.match(r"^%d\s+(\S.*)$" % k, s.strip())
