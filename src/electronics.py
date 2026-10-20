@@ -1446,8 +1446,23 @@ OP_PANEL_REFS = ("J5", "J1", "J6")          # 1/4 in jack, USB-C, 24 V inlet
 def output_panel_pcb() -> cq.Workplane:
     """The output + panel board in its OWN frame: centred on the origin in XY, underside
     at z = 0, parts rising +Z, the panel connectors facing +X -- built from the routed
-    board, not from a table of what it was meant to be."""
-    return BG.solid("output_panel")
+    board, not from a table of what it was meant to be. J8, the pickup's screw terminal,
+    is left out: src/screw_terminal.py draws it as the part (output_panel_term)."""
+    return BG.solid("output_panel", skip=("J8",))
+
+
+def output_panel_term() -> dict:
+    """J8 posed with the board: {"housing", "metal"} (src/screw_terminal.py)."""
+    from . import screw_terminal as ST
+    return {k: v.translate(op_origin()) for k, v in ST.parts("output_panel", "J8").items()}
+
+
+def op_term_ways():
+    """World [(point, exit direction)] of J8's two wire holes, way 1 first: where the
+    pickup's two conductors end, 3 mm into each hole."""
+    from . import screw_terminal as ST
+    cx, cy, cz = op_origin()
+    return [((x + cx, y + cy, z + cz), d) for (x, y, z), d in ST.way_points("output_panel", "J8")]
 
 
 # ⚠ ONE ORIGIN FOR THE BOARD, because two copies of it drifted apart and put a 24 V

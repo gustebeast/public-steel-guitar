@@ -98,6 +98,7 @@ WIRE_OD = {
     # the pickup end is whatever the pickup shipped with. No connector at either end, so
     # there is no plug body to model.
     "wire_pickup": 2.4,
+    "wire_pickup_core": 1.0,     # the core / the twisted braid, stripped back to J8's holes
     # CAN signal pairs, split into CAN-H / CAN-L discrete conductors
     "wire_canh": 1.3, "wire_canl": 1.3,       # bus A (motors)
     "wire_canbh": 1.3, "wire_canbl": 1.3,     # bus B (inputs)
@@ -1537,13 +1538,21 @@ def build_wires():
     # ...and THROUGH THE HEIGHT PLATE'S LEAD SLOT: the pickup rests on that plate, so a lead
     # off its underside went straight through 2.4 mm of plastic (11.5 mm3) until the slot.
     _pk_x, _pk_y = _TP.PICKUP_X_NOM, _TP.LEAD_SLOT_Y    # coil underside, -Y end
-    _j8 = EL.op_pt("J8")
+    # INTO THE TWO WIRE HOLES, not at the terminal's face (2026-10-20): the jacket stops
+    # 10 mm out and the core and the braid go one to each hole, 3 mm in -- J8 is drawn as
+    # the part now (src/screw_terminal.py), holes and all.
+    _ways = EL.op_term_ways()
+    _jz = _ways[0][0][2]
+    _jx = (_ways[0][0][0] + _ways[-1][0][0]) / 2.0
+    _jy = _ways[0][0][1] + 3.0 + 10.0                # 10 mm off the entry face
     out.append(("wire_pickup", _wire([
         (_pk_x, _pk_y, _PM.PK_BOT),        # leaves the coil's underside
-        (_pk_x, _pk_y, _j8[2]),            # straight down, clear of the plate
-        (_pk_x, _j8[1] + 10.0, _j8[2]),    # -Y in its own X column
-        (_j8[0], _j8[1] + 10.0, _j8[2]),   # +X to the terminal's column
-        _j8], WIRE_OD["wire_pickup"])))
+        (_pk_x, _pk_y, _jz),               # straight down, clear of the plate
+        (_pk_x, _jy, _jz),                 # -Y in its own X column
+        (_jx, _jy, _jz)], WIRE_OD["wire_pickup"])))   # +X to the terminal's column
+    _split_jacket(out, "wire_pickup", (_jx, _jy, _jz),
+                  [(p, d, net) for (p, d), net in zip(_ways, ("PICKUP_HOT", "AGND"))],
+                  WIRE_OD["wire_pickup_core"], lead=4.0)
 
     check_cables([k for k in _CABLES if not k.startswith("bus B")])
     return out
@@ -1575,7 +1584,7 @@ _POGO_ENDS = {"pogo_%s_%s_%s" % (side, body, end)
               for end in ("top", "bottom")}
 WIRE_OK = {
     # the two bodies it terminates on, and nothing else: it crosses the bay in open air
-    "wire_pickup":    {"pickup", "output_panel"},
+    "wire_pickup":    {"pickup", "output_panel", "output_panel_term"},
     "wire_canh":      {"motor_ctrl", "tee_pcb"},
     "wire_canl":      {"motor_ctrl", "tee_pcb"},
     # (wire_canbh/l are no longer drawn -- see bus B in trunk(). WIRE_OD still carries
