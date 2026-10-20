@@ -6298,3 +6298,8 @@ geometry and texture/color/material. Then use the same model for the first flash
 
 - WCH evaluation-board reference V1.9 p13 confirms the ROM loader on PA11/PA12 or PB6/PB7 (USB) and PA9/PA10 (serial). `wchisp` 0.3.0 built and installed on psg-pi with a udev rule; `make isp` in firmware/motor_ctrl. Written up in docs/bench-order.md. Nothing tried on a chip.
 - `swindle` (RP2040) is real and maintained but has no released firmware: second choice, not built.
+
+- 2026-10-17 viewer: 24 fps moving floor (cadkit bdf944d): DLSS upscaling steps up automatically when a 1 spp moving frame would exceed 1/24 s; "detail while moving" row removed; upscaling off = "auto (keeps 24 fps)". DESK_FLOOR_FPS test override. Lead asked to propagate b2538a8 + bdf944d. Open: HDR decision (user).
+- 2026-10-17 viewer: HDR (cadkit 6d40bf2): "output" row -> "dynamic range" SDR/HDR; HDR = unclipped scRGB, SDR white at the desktop's, highlights rolled off to DXGI MaxLuminance; float surface on DX12 too. Proven with a 4x-exposure throwaway build (469 nits vs 499 peak); at the real lighting nothing exceeds SDR white. Test affordances: DESK_FLOOR_FPS, shot over_white. Lead asked to propagate.
+- 2026-10-17 ST-LINK/V2 ready on the Pi: V2J46S7, no-sudo access via stock udev rules; make probe/flash/rescue dry-run to "no target"; optical firmware rebuilt clean (31 kB). Waiting on PCBs.
+- 2026-10-20 wire: two-gauge rule (22 AWG 24 V on XH, 26 AWG everything else) written into BOM.md with per-run checks; 20 AWG Pi 5 V note fixed in src/wiring.py; prices.json wire note. McMaster order holds red 22, red/yellow/green 26 (25 ft, $13.57), not placed.

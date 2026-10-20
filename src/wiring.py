@@ -103,9 +103,11 @@ WIRE_OD = {
     "wire_canbh": 1.3, "wire_canbl": 1.3,     # bus B (inputs)
 
     "wire_pwr_hot": 1.8, "wire_pwr_gnd": 1.8,
-    # 5 V to the Pi's GPIO header. 20 AWG PAIR, not signal wire: the Pi's
-    # undervoltage trip is 4.63 V against a 5.00 nominal, so the whole budget is
-    # 0.37 V and the cable may not eat it. Over this run 20 AWG spends 0.03.
+    # 5 V to the Pi's GPIO header: 26 AWG, TWO conductors per rail (PI_5V_LINK). The Pi's
+    # undervoltage trip is 4.63 V against a 5.00 nominal, so the whole budget is 0.37 V;
+    # over this run the wire spends ~0.07 V at the Pi's worst 3.3 A and the eight PH
+    # contacts up to ~0.13. (This said 20 AWG until 2026-10-20: PH takes 24-30 AWG, so
+    # 20 could not be crimped. BOM.md, "Hook-up wire: two gauges".)
     "wire_5v": 1.8,
     # the 24 V link's four power conductors, and its two power-button throws: signal wire,
     # a few milliamps into a pull-up

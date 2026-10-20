@@ -4,7 +4,11 @@
 # (the bench Pi has one at ~/src/tinyusb).
 #
 #   make            build/optical.elf
+#   make probe      the ST-LINK and the board through it, nothing written: the probe's
+#                   firmware, the board's 3V3 as the probe reads it on TP5, the chip's ID
 #   make flash      write it with openocd through the ST-LINK
+#   make rescue     the same, holding the chip in reset (TP3) while connecting: for a
+#                   chip whose firmware turns the debug pins off or sleeps
 TUSB  ?= $(HOME)/src/tinyusb
 HAL   := $(TUSB)/hw/mcu/st/stm32h7xx_hal_driver
 DEV   := $(TUSB)/hw/mcu/st/cmsis_device_h7
@@ -50,10 +54,21 @@ $(B)/startup.o: $(DEV)/Source/Templates/gcc/startup_stm32h743xx.s $(B)/stm32h7xx
 $(B)/optical.elf: $(OBJ)
 	$(CROSS)gcc $(CFLAGS) $(OBJ) $(LDFLAGS) -o $@
 
+# (the ST-LINK/V2 on the bench Pi, firmware V2J46S7, runs SWD directly: `transport select`
+# says so rather than leaving openocd to guess and warn)
+OCD := openocd -f interface/stlink.cfg -c "transport select swd" -f target/stm32h7x.cfg
+
+probe:
+	st-info --probe
+	$(OCD) -c "init; targets; exit"
+
 flash: $(B)/optical.elf
-	openocd -f interface/stlink.cfg -f target/stm32h7x.cfg -c "program $< verify reset exit"
+	$(OCD) -c "program $< verify reset exit"
+
+rescue: $(B)/optical.elf
+	$(OCD) -c "reset_config srst_only srst_nogate connect_assert_srst" -c "program $< verify reset exit"
 
 clean:
 	rm -rf $(B)
 
-.PHONY: all flash clean
+.PHONY: all probe flash rescue clean
