@@ -29,15 +29,42 @@ USB port on the panel (endplate room + user confusion). Behaves like a phone / O
   500 mA needs a bigger buck.
 - Use: MIDI out to hardware synths over USB (direct or via a USB-to-5-pin cable); USB MIDI pedals
   and controllers in; flash-drive preset backup.
-- Robustness constraints (user, 2026-10-20):
+- Robustness constraints (user, 2026-10-20; items 4-5 CORRECTED the same day -- no Pi wires):
   1. STANDALONE HARDWARE role detection, no I2C/PD stack: works at power-on with no Pi or firmware.
   2. PREFER SINK (Try.SNK or equivalent): a dual-role laptop / tablet / phone makes us the device.
   3. Never source VBUS onto a VBUS already present (vSafe0V check + reverse-blocking switch) --
      covers non-compliant synths that backfeed 5 V.
-  4. The load switch's FAULT and the detected role go to Pi GPIOs (UI: "overcurrent", "host / device").
-  5. A Pi-GPIO "force host" override, so a cable missing its Rd still works from a UI setting.
+  4. NO NEW WIRES TO THE Pi. The load switch's FAULT, the detected role and the mode select go to
+     spare **U1 (CH32V307) GPIOs**; U1 already talks to the Pi over USB through the hub and reports /
+     takes them there (UI: "overcurrent", "host / device").
+     **U1 has the pins:** QFN68, and the netlist (elec/output_panel.py, the u1[...] block) uses about
+     25 of them; M39 records "unused GPIO open". Needed: FAULT in, ROLE in (1-2: TUSB320 ATTACH/ID
+     style outputs), MODE out (1). 3-4 pins, pick them at layout from the open run nearest the new
+     parts (not PB2, which is BOOT1 and tied to PB1's net).
+  5. UI SETTING auto / host / device, mapped to the role-detect chip's mode pin (TUSB320-class PORT:
+     NC = DRP, L = UFP-only, H = DFP-only). AUTO is the default whenever U1 is unpowered, in reset or
+     unprogrammed: the pin's own bias (or a divider, if the chosen part has no internal one) holds it
+     at DRP and U1 only ever drives it high or low when told; a GPIO in reset is a floating input.
+     "Force host" for a cable missing its Rd = the host setting PLUS U1 allowed to throw the mux and
+     ask for VBUS without an attach -- still through the hardware gates of item 7.
   6. Low-capacitance HS mux; verify 480 Mbps enumeration through it in both positions. The panel
      clamps (M10) stay on the connector side.
+  7. SAFETY DOES NOT DEPEND ON THE SETTING. Hardware, unconditional, no GPIO can override:
+     never source VBUS onto a present VBUS (vSafe0V comparator gates the switch's EN), the
+     reverse-blocking switch, the current limit (~300 mA), J2 VBUS dead. A wrong setting may only
+     make the port do nothing; recovery = unplug, fix the setting or the cable, replug.
+
+  The nine combinations (far end x setting), as the design has to come out:
+
+  | far end | auto (DRP, Try.SNK) | host (DFP only) | device (UFP only) |
+  |---|---|---|---|
+  | computer (Rp, sources VBUS) | **works**: we sink, J1 -> J2 -> Pi gadget | **inert, no damage**: Rp meets Rp, no attach, no VBUS either way (a computer that sources anyway is stopped by the vSafe0V gate) | **works** |
+  | device (Rd: synth, UM-ONE on OTG) | **works**: we source ~300 mA, mux to CH334F port 3 | **works** | **inert, no damage**: Rd meets Rd, no attach; a synth that backfeeds 5 V reaches only J1's isolated VBUS |
+  | dual-role phone / laptop | **works**: Try.SNK makes us the device | **works**: we host the phone (as a USB/MIDI device), ~300 mA limit | **works**: it hosts us |
+
+  Check at design time that the chosen controller's DRP+Try.SNK really is the strap default and that
+  its DFP-only mode never applies VBUS before vSafe0V (TUSB320 does this in hardware; confirm on the
+  sheet before committing to it).
 
 ## OPEN, 2026-10-06 night (after the pre-order batch merged)
 
