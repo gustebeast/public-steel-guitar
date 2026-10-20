@@ -1,5 +1,44 @@
 # bronner — open work items (2026-09-30)
 
+## R2 BACKLOG, output_panel (user via the lead, 2026-10-20) -- NOT the current rev, which fabs as is
+
+**R2-1. Ethernet pass-through, the J1 -> J2 USB pattern.** Two RJ45s on the output board: one on the
+-X edge fed from the Pi's built-in GbE by a short stock Cat6 patch (~0.2-0.3 m), one in the panel,
+traces between. For Dante via Inferno on the Pi (github.com/teodly/inferno; Pi 4 tested, software
+PTP timestamps) and RTP-MIDI (rtpmidid) to LAN computers, alongside USB, no mode switching.
+- Plain shielded THT 8P8C, NO integrated magnetics (the Pi's own are the only ones in the link).
+  Assembly-house THT, no hand solder.
+- Gigabit: all 4 pairs, 100R differential, intra-pair matched; clear of the U5 buck and the +Y
+  analog chain. Shields to GND like the USB shells.
+- Jacks ~16 x 21 footprint, ~13.5 tall: board growth + enclosure headroom to check; tell branner
+  the panel cutout once it is real.
+- Rejected: the Pi USB-C as host for a dongle (switched VBUS + CC Rp/Rd swap; VBUS is dead on
+  purpose, Pi 4 USB-C VBUS = GPIO 5 V). Parts ~$5-10.
+
+**R2-2. Panel USB-C J1 becomes DUAL-ROLE, auto-detected, still ONE port.** User rule: no second
+USB port on the panel (endplate room + user confusion). Behaves like a phone / OP-1 field / Deluge:
+- Computer attached (cable presents Rp): today's path, J1 data -> J2 -> Pi gadget port, J1 VBUS off.
+- Device attached (Rd: a synth's device port via a C-to-B cable, or an A-to-C OTG adapter with a
+  USB-to-5-pin MIDI cable such as a UM-ONE): a USB 2.0 HS analog switch moves J1's pair to the
+  CH334F's spare downstream port 3, and a current-limited (~300 mA), reverse-blocking VBUS from the
+  board's own 5 V turns on. The Pi's role never changes: no reboot, no dwc2 role switching.
+- Parts ~$2-4: a role-detect controller (TUSB320-class in GPIO mode, or a TPS2581x source controller
+  plus Rd -- my pick, open), a HS mux (TS3USB221-class), the VBUS load switch.
+- J2's VBUS stays dead exactly as now (Pi 4 USB-C VBUS = GPIO 5 V).
+- Budget: the 5 V buck is ~600 mA with a 257 mA worst case today; ~300 mA for J1 fits, a full
+  500 mA needs a bigger buck.
+- Use: MIDI out to hardware synths over USB (direct or via a USB-to-5-pin cable); USB MIDI pedals
+  and controllers in; flash-drive preset backup.
+- Robustness constraints (user, 2026-10-20):
+  1. STANDALONE HARDWARE role detection, no I2C/PD stack: works at power-on with no Pi or firmware.
+  2. PREFER SINK (Try.SNK or equivalent): a dual-role laptop / tablet / phone makes us the device.
+  3. Never source VBUS onto a VBUS already present (vSafe0V check + reverse-blocking switch) --
+     covers non-compliant synths that backfeed 5 V.
+  4. The load switch's FAULT and the detected role go to Pi GPIOs (UI: "overcurrent", "host / device").
+  5. A Pi-GPIO "force host" override, so a cable missing its Rd still works from a UI setting.
+  6. Low-capacitance HS mux; verify 480 Mbps enumeration through it in both positions. The panel
+     clamps (M10) stay on the connector side.
+
 ## OPEN, 2026-10-06 night (after the pre-order batch merged)
 
 0. ~~DONE~~ **Re-review S1 / S2 (lead).** S1: every fab package re-exported after the last board
