@@ -8,13 +8,14 @@ routed board. That report is the handoff, not a regression.
 ## Summary (user decisions, 2026-09-21)
 
 1. **The lever bus runs at 5 V**, not 24 V. The board can lose its 24 V buck.
-2. **J1 is PH, not XH: S8B-PH-SM4-TB** (LCSC C265121), SMT side-entry, 8-way. Using a
-   different family from the 24 V XH motor tees means **no harness can put 24 V on a lever
-   board**. Stock is deep too: 19,469, against S8B-XH-A's 105. brenner's leg wiring uses PH as
-   well.
-3. **Single-sided**, like every board on the shared panel (`elec/fab.py`). J1 goes on the
-   magnet face. The PH stands 5.5, so it fits the existing 6.4 gap to the housing with 0.9
-   to spare: it never cuts the housing wall, and the magnet stack didn't have to move.
+2. **The bus connectors are PH, not XH.** Using a different family from the 24 V XH motor
+   tees means **no harness can put 24 V on a lever board**. brenner's leg wiring uses PH as
+   well. ⚠ **2026-10-19 (user): J1 + J2, two S4B-PH-K-S** (LCSC C157926, 4-way THT
+   side-entry, 39,976 in stock), not one S8B-PH-SM4-TB — see "Two 4-ways" below.
+3. **Single-sided**, like every board on the shared panel (`elec/fab.py`). J1 and J2 go on
+   the magnet face. They stand 4.85 (the SMT 8-way stood 5.5), inside the existing 6.4 gap
+   to the housing: they never cut the housing wall, and the magnet stack didn't have to
+   move. Their pins come through to the back, where the cradle has no wall.
 4. **Trim the top**, not the bottom. The foot pedal installs the board **turned over** so J1
    points down into the bar (the wiring hides in the trough). That puts the board's top edge
    toward the player-side face, where there's 10.15 of room.
@@ -32,11 +33,11 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
 |---|---|---|---|
 | +X edge | +6.0 | **+4.025** | the groove grips CR_ENG (1.85) of this edge and U4's courtyard reaches +2.175, so the edge is the part plus the grip. Was +3.0, set against the 1.0 component-to-edge rule instead, which put the groove 0.87 inside the sensor's courtyard and 0.35 inside its bare body — the board fouled the slot on the way in |
 | Top edge | +14.6 | **+10.1** | the turned-over pedal board's top faces the player: 10.15 of room |
-| Bottom edge | −13.4 | **−11.8** | J1's 19.9 on end + the 1.0 edge rule at both ends |
+| Bottom edge | −13.4 | **−11.8** | J1 + J2's 19.9 on end + the 1.0 edge rule at both ends |
 | −X edge | −28.0 | **−29.0** | the terminator switch (the motor tee's, 8.89 over its lands) lies between the transceiver and the +X groove band; everything −X of it stands 1.0 further out |
 | **Outline** | 34.0 × 28.0 | **33.025 × 21.9** | the +X edge moved out 1.025 and the −X edge 1.0; both Z edges are unchanged |
-| **J1** | S8B-XH-A (THT) | **S8B-PH-SM4-TB** (SMT), on the **magnet face**, standing **on end** (length along Z, spec z −10.8 … +9.1), **mouth facing −X**, mouth face at x −25.95 (3.05 in from the −X edge) | |
-| J1 pinout | `harness.xh_trunk_pins()` | the same four nets, **in on 1–4, out on 5–8**; +V is the **5 V** lever bus | |
+| **J1, J2** | S8B-PH-SM4-TB (SMT, until 2026-10-19) | **2 × S4B-PH-K-S** (THT), on the **magnet face**, standing **on end, end to end, 0.1 apart** (J1 spec z −0.8 … +9.1, J2 −10.8 … −0.9), **mouths facing −X**, mouth faces at x −25.95 (3.05 in from the −X edge), pin rows 6.25 behind them at x −19.7 | |
+| J1 / J2 pinout | the 8-way's ways 1–4 / 5–8 | each `harness.PH_PINOUT` on ways 1–4 (5 V, GND, CAN_H, CAN_L): J1 the bus in, J2 the bus out, the same four nets; +V is the **5 V** lever bus | |
 | Sides | single | **single** | shared panel settings |
 
 ## Parts the outline displaces (routed layout)
@@ -54,21 +55,41 @@ axle axis and isn't negotiable. **+X** points toward the lever (the knee side), 
 1. **Edge groove bands:** the outermost **1.85** of the ±X edges. No parts except the MT6701.
    The magnet face is seated by these grooves only; the cradle's front plinth is relieved
    over the whole interior.
-2. **Part height:** **≤ 1.75** anywhere except J1.
+2. **Part height:** **≤ 1.75** anywhere except J1 and J2.
 3. **Magnet-cap sweep:** any part taller than 1.5 keeps its whole footprint more than **5.66**
    from the origin.
-4. **J1's zone:** its body, its 2.6 solder tabs, and the mated plug's 3.6 run past the mouth
-   (x −28.55 … −16.35 over J1's z span) stay clear of other parts.
+4. **J1 + J2's zone:** their 7.6-deep bodies and the mated plugs' 2.65 run past the mouths
+   (x −28.6 … −18.35 over the pair's z span, −10.8 … +9.1) stay clear of other parts.
 
 ## Please check
 
-- **J1's dimensions** are from JST's ePH datasheet, **side-entry** sections: p.4 (19.9 long,
-  5.5 tall, 6.0 deep + 2.6 tabs), p.2 (mated 9.6 × 5.5), p.3 (PHR-8: 6.85 × 4.5). Note that
-  B4B-PH-SM4-TB (6.6 tall, 5.0 deep) is the *top-entry* part on the same page, not this one.
-- **Harness side:** PHR-8 housings, SPH-002T-P0.5S contacts and a PH crimp tool. Stock read
-  2026-10-06 (JLCPCB parts API): header C265121 19,232; PHR-8 C157950 99,670; contacts
-  C111515 1.3 million. Eleven headers and housings and 88 contacts an instrument, so none
-  of the three limits anything.
+- **J1 / J2's dimensions** are KiCad's model of S4B-PH-K (generated from JST's ePH drawing,
+  which refuses a scripted fetch): 9.9 long, 7.6 deep, 4.85 tall, pins 6.25 behind the mouth
+  and 3.4 below the board's top face. The plug's 2.65 run is PHR-4's 6.85 (ePH p.3) less the
+  header's 4.2 pocket. `cadkit.pcb.jst_ph_side_header(smt=False)` carries them.
+- **Harness side:** PHR-4 housings, SPH-002T-P0.5S contacts and a PH crimp tool. Stock read
+  2026-10-19 (JLCPCB parts API): header C157926 39,976; PHR-4 C111514 77,731. 22 headers an
+  instrument, 20 housings at the boards, so nothing limits.
+
+## Two 4-ways, not one 8-way (user, 2026-10-19)
+
+With in and out in one PHR-8 housing, each hop's cable was crimped into the same housing as
+the cable after it: moving or pulling one lever meant re-making the harness either side of
+it. Two 4-ways make each hop its own straight PHR-4 jumper (INSTALL_NOTES KL-5).
+
+**Why through-hole.** The board's height is capped by the foot pedal (its housing is clipped
+to the bar, and the board stands in it turned over), which leaves 19.9 for connectors on
+end. Two SMT S4B-PH-SM4-TB are 23.8 end to end; two S4B-PH-K-S are 19.8, so they take the
+8-way's place exactly and **no outline, tunnel or housing changed**. Lying one along the
+bottom edge instead would have sent its plug out through the cradle floor toward the
+player's knee. The THT pins come through to the back face 1.8 proud: the cradle is open
+behind the board between its two webs, and the board's install stroke runs them down the
+open slot (checked by sweeping them, not just at rest).
+
+**Re-routed 2026-10-19**: the +5 V pass-through J1.1 → J2.1 is a declared 0.5 mm F.Cu
+track (the router had put it on In2.Cu at 0.4, an inner layer that needs 0.72 for 0.57 A),
+and the two courtyards' 0.9 overlap is declared in `elec/pcb_declared.py` (bodies 0.1
+apart, copper 4.0).
 
 ## The +X edge is a MECHANICAL keep-out, not a fabrication one (2026-09-29)
 

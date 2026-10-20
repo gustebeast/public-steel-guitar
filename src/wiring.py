@@ -1833,9 +1833,9 @@ def lever_bus(nodes):
                 c0 = lp.startPoint().toTuple()
             c1 = lp.endPoint().toTuple()
         # EACH CONDUCTOR ON ITS OWN WAY, so the model reads as a wiring reference (user).
-        # The trunk passes THROUGH a board: this cable leaves the upstream lever on its
-        # OUT half (ways 5-8) and lands on the downstream lever's IN half (1-4): the in
-        # half in harness.PH_PINOUT order, the out half its mirror (way 8 to way 1).
+        # The trunk passes THROUGH a board: this cable leaves the upstream lever's J2 (bus
+        # OUT, ways 5-8 here) and lands on the downstream lever's J1 (IN, 1-4): both in
+        # harness.PH_PINOUT order, so it is a straight PHR-4 jumper, way n to way n.
         seg = 0.0
         # the lateral offsets CANB_NETS carried are gone: a conductor now starts and
         # ends on its OWN contact, so the bundle's spread is the connector's pitch

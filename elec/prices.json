@@ -1180,9 +1180,14 @@
       "what": "RKJXT1F42001 C160841 -- JLCPCB parts API at qty 10"
     },
     "lever_sensor:J1": {
-      "usd": 0.2862,
+      "usd": 0.059,
       "verified": "v",
-      "what": "S8B-PH-SM4-TB C265121 -- JLCPCB parts API at qty 110"
+      "what": "S4B-PH-K-S C157926 -- JLCPCB parts API at qty 220"
+    },
+    "lever_sensor:J2": {
+      "usd": 0.059,
+      "verified": "v",
+      "what": "S4B-PH-K-S C157926 -- JLCPCB parts API at qty 220"
     },
     "optical:U7": {
       "usd": 1.2664,
@@ -5242,12 +5247,6 @@
       "per_instrument": 10.0,
       "what": "XHP-8 -- JLCPCB parts API at qty 100"
     },
-    "C157950": {
-      "usd": 0.0288,
-      "verified": "v",
-      "per_instrument": 11.0,
-      "what": "PHR-8 -- JLCPCB parts API at qty 110"
-    },
     "C144405": {
       "usd": 0.0278,
       "verified": "v",
@@ -5255,10 +5254,10 @@
       "what": "XHP-6 -- JLCPCB parts API at qty 20"
     },
     "C111514": {
-      "usd": 0.0166,
+      "usd": 0.0167,
       "verified": "v",
-      "per_instrument": 3.0,
-      "what": "PHR-4 -- JLCPCB parts API at qty 30"
+      "per_instrument": 25.0,
+      "what": "PHR-4 -- JLCPCB parts API at qty 250"
     },
     "C157952": {
       "usd": 0.0202,

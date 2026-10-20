@@ -2050,6 +2050,13 @@
    "mpn": "S8B-PH-SM4-TB(LF)(SN)",
    "src": "JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
   },
+  "C157926": {
+   "kind": "conn",
+   "v": 100,
+   "i": 2.0,
+   "mpn": "S4B-PH-K-S(LF)(SN)",
+   "src": "JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V' (the series rating, as every PH here)"
+  },
   "C485354": {
    "kind": "conn",
    "v": 50,

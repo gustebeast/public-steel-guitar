@@ -47,7 +47,9 @@ LCSC = {
     "B4B-PH-K-S": "C131334",        # B4B-PH-K-S(LF)(SN) -- motor_ctrl J4, the USB lead; 110k stock
     "S6B-PH-SM4-TB": "C265405",     # S6B-PH-SM4-TB(LF)(SN) -- pi_cap J2, the Pi's 5 V in; 5,510 stock
     "S4B-XH-A": "C157925",          # S4B-XH-A(LF)(SN), through-hole side entry -- pi_cap J6 (foot drop)
-    "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
+    "S4B-PH-K-S": "C157926",        # S4B-PH-K-S(LF)(SN), 4-way THT side-entry PH: the 11
+                                    # lever/pedal J1 + J2 (bus in / out; were one S8B-PH-SM4-TB,
+                                    # C265121, until 2026-10-19). 39,976 in stock that day.
     "S4B-PH-SM4-TB": "C265102",     # 4-way side-entry PH: motor_ctrl J2/J6 (bus B,
                                     # split so each half unplugs from under the
                                     # instrument). Same family as the 8-way above.

@@ -1898,8 +1898,8 @@ def lever_bus_nodes():
 
     Each node is (name, plug, keeper, plug_dir, keeper_axis, pin_axis, pins, standoff,
     cheek_axis, cheek_bypass, guide),
-    where `pins` is {way: point} for all CONN_N ways of that lever's J1 -- so the model
-    shows which conductor belongs in which slot (user).
+    where `pins` is {way: point} for all CONN_WAYS ways of that lever's J1 (1-4, bus in)
+    and J2 (5-8, bus out) -- so the model shows which conductor belongs in which slot (user).
 
     """
     from . import knee_lever as KL
@@ -1936,7 +1936,8 @@ def lever_bus_nodes():
             # HORIZONTAL lever's, and since the winding is measured DOWN from the top,
             # LKV's coil hung 19.6 below its own column (user).
             lace = KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P, KV.HOUS_Z1)
-        plug = pin((KL.CONN_N + 1) / 2.0)
+        _a, _b = pin(1), pin(KL.CONN_WAYS)          # the middle of the J1 + J2 pair
+        plug = tuple((_a[m] + _b[m]) / 2.0 for m in range(3))
         # the plug's wires leave along local -X (the mouth faces -X), posed the same way
         p = _pose(kind, sx, sy, mirrored and not turned, plug)
         l = _pose(kind, sx, sy, mirrored, lace)
@@ -1947,7 +1948,7 @@ def lever_bus_nodes():
             pa = (pa[0], pa[1], -pa[2])
         ca = _pose(kind, sx, sy, mirrored, KL.cheek_axis(), vector=True)
         pins = {w: _pose(kind, sx, sy, mirrored and not turned, pin(w))
-                for w in range(1, KL.CONN_N + 1)}
+                for w in range(1, KL.CONN_WAYS + 1)}
         # WHERE THE ARRIVING CABLE TURNS, on the one lever whose plug the bus cannot
         # reach in a straight line: the vertical one, whose body lies along its plug's
         # axis, so the cable has to come round the +Y end before it can run back to the

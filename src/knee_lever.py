@@ -51,7 +51,7 @@ from cadkit.fasteners import (M4_SHAFT_CLR_D, M4_INSERT_D, M4_BUTTON_HEAD_D,
                        M4_INSERT_L, M4_SCREW_L, M4, cut_insert_bore,
                        cut_selftap, seated_m4_insert)
 from cadkit.pcb import (PCB_T as _PCB_T, jst_ph_side_header, ph_side_length,
-                        PH_SIDE_H, PH_SIDE_D, PH_TAB_D, PH_PLUG_RUN, PH_PITCH)
+                        PH_SIDE_H, PH_PITCH, PH_THT_SIDE_D, PH_THT_PLUG_RUN)
 
 from cadkit.supports import printable_bore
 from cadkit.lazy import lazy
@@ -134,8 +134,9 @@ AIR_GAP = 1.5                       # magnet face -> the IC's OWN TOP SURFACE. T
                                     # 2.5 — EXACTLY ours, so this is the nominal
                                     # configuration the part was characterised in.
 # ── THE SENSOR BOARD AS SPECIFIED FOR ITS RE-SPIN (user, 2026-09-21; docs/lever-sensor-respin.md).
-# SINGLE-SIDED, like every board on the shared panel (elec/fab.py). J1 is an S8B-PH-SM4-TB,
-# SMT side-entry, on the MAGNET face at the -X edge, standing on end (user, 2026-09-21: the
+# SINGLE-SIDED, like every board on the shared panel (elec/fab.py). The bus connector was an
+# S8B-PH-SM4-TB -- since 2026-10-19 it is J1 + J2, two S4B-PH-K-S end to end (see CONN_N) --
+# side-entry, on the MAGNET face at the -X edge, standing on end (user, 2026-09-21: the
 # lever bus goes to 5 V, and a PH connector keys it apart from the 24 V XH motor tees so no
 # harness can put 24 V on a lever board; PH is also 19,469 deep at LCSC against XH's 105).
 # What changes from the routed board is the
@@ -819,17 +820,20 @@ def sensor_board():
 
 
 def sensor_connector():
-    """J1 as SPECIFIED (docs/lever-sensor-respin.md): S8B-PH-SM4-TB, 8-way SMT side-entry
-    PH, on the MAGNET face (single-sided, like every board on the shared panel). SMT, so no
-    post tails. It stands on end at the -X edge, mouth facing -X, MATED so the plug's run
-    is reserved. cadkit builds it row along X,
-    mouth at y=0 with the body +Y and the plug -Y, height +Z off the board: this maps its
-    X to -Z (length vertical), Y to +X (mouth -> -X) and Z to -Y (off the magnet face)."""
-    c = jst_ph_side_header(CONN_N, mated=True)
-    c = c.rotate((0, 0, 0), (0, 0, 1), 90)       # X->Y, Y->-X
-    c = c.rotate((0, 0, 0), (1, 0, 0), -90)      # Y->-Z, Z->Y ... (checked by the bbox below)
-    c = c.rotate((0, 0, 0), (0, 0, 1), 180)
-    return c.translate((CONN_MOUTH_X, PCB_Y, CONN_ZC))
+    """J1 AND J2 as SPECIFIED (docs/lever-sensor-respin.md): two S4B-PH-K-S, 4-way THT
+    side-entry PH, on the MAGNET face, standing END TO END on the -X edge with their mouths
+    facing -X, MATED so each plug's run is reserved -- and with their pins, which come
+    through to the back face. cadkit builds one row along X, mouth at y=0 with the body +Y
+    and the plug -Y, height +Z off the board: this maps its X to -Z (length vertical), Y to
+    +X (mouth -> -X) and Z to -Y (off the magnet face)."""
+    out = []
+    for zc in conn_centres():
+        c = jst_ph_side_header(CONN_N, smt=False, mated=True)
+        c = c.rotate((0, 0, 0), (0, 0, 1), 90)       # X->Y, Y->-X
+        c = c.rotate((0, 0, 0), (1, 0, 0), -90)      # Y->-Z, Z->Y ... (checked by the bbox below)
+        c = c.rotate((0, 0, 0), (0, 0, 1), 180)
+        out.append(c.translate((CONN_MOUTH_X, PCB_Y, zc)).val())
+    return cq.Workplane("XY").add(cq.Compound.makeCompound(out))   # two parts, 0.1 apart
 
 
 def _install(s, z_bot, z_top, flip=None):
@@ -848,8 +852,11 @@ def sensor_pcba():
     Fused in ONE multi-fuse and checked by volume (a fuse can hand back a valid solid with
     material missing). The parts stand ON the board face and beside each other, so the
     whole is exactly the sum of its pieces."""
-    board = sensor_board()
-    parts = [s for _n, s in sensor_hardware()] + [sensor_connector()]
+    conn = sensor_connector()
+    # J1 / J2's pins pass THROUGH the laminate: drill them out of it first, or the pieces
+    # overlap and a glued fuse (which assumes they only touch) loses material
+    board = sensor_board().cut(conn)
+    parts = [s for _n, s in sensor_hardware()] + [conn]
     solid = board.val().fuse(*[s.val() for s in parts], glue=True).clean()
     want = board.val().Volume() + sum(s.val().Volume() for s in parts)
     assert abs(solid.Volume() - want) < 1e-3 * want, (
@@ -1006,7 +1013,7 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False):
     w = w.cut(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (z_top + 2.0) - pcb_z0,
                      x=(slot0 + slot1) / 2, y=(CR_SLOT_Y0 + CR_SLOT_Y1) / 2,
                      z=(pcb_z0 + z_top + 2.0) / 2))
-    # ── THE PLUG'S TUNNEL. J1 lives on the magnet face and its plug runs -X in the gap
+    # ── THE PLUGS' TUNNEL. J1 and J2 live on the magnet face and their plugs run -X in the gap
     # between the board and the housing, so the -X web needs a way through, open out the
     # TOP (the board is lowered in, and a lid over it would be a flat overhang). It stops
     # at the housing's +Y face: the magnet stand-off (AXLE_LAND_T) makes that gap
@@ -1015,7 +1022,7 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False):
     _cy0 = plug_tunnel_y()[0]
     _cz0 = conn_zc - CONN_L / 2 - CONN_POCKET
     _cx0 = conn_mx - _sx * CONN_UNPLUG                 # the plug's full unplug stroke
-    _cx1 = conn_mx + _sx * (PH_SIDE_D + CONN_POCKET)
+    _cx1 = conn_mx + _sx * (PH_THT_SIDE_D + CONN_POCKET)
     _cz1 = z_top + 1.0
     w = w.cut(box_at(abs(_cx1 - _cx0), PCB_Y - _cy0, _cz1 - _cz0,
                      x=(_cx0 + _cx1) / 2, y=(_cy0 + PCB_Y) / 2,
@@ -1592,7 +1599,7 @@ PCB_Z0 = PCB_Z1 - PCB_WZ                        # -12.0
 #   the HEIGHT is not in a KiCad board at all, so it stays in board_geom.HEIGHT, keyed by
 #     FOOTPRINT rather than by ref -- a property of the part, not of this board.
 _SENSOR_BOARD = "lever_sensor"
-_BOM_SKIP = ("J1",)                 # cadkit models the real connector: sensor_connector
+_BOM_SKIP = ("J1", "J2")           # cadkit models the real connectors: sensor_connector
 
 
 def _sensor_bom():
@@ -1745,28 +1752,48 @@ CR_X1_MAX = HOUS_X1                 # NOTHING in the cradle may stand +X of the 
 # FOUR circuits because that is what CAN costs us: black GND / red 24 V / yellow H
 # / green L. One connector, not two — the bus is daisy-chained by the TEE boards
 # and every device hangs off its tee by one short drop.
-# ── J1, the lever-bus connector (re-spin spec) ────────────────────────────────────────────
-# S8B-PH-SM4-TB, SMT side entry, on the MAGNET face: the board stays SINGLE-SIDED like every
-# other board on the shared panel (user, 2026-09-21 -- a back-face J1 was withdrawn for that).
-# PH, not XH (user, same day): the lever bus runs at 5 V, and a different family means no
-# harness can put the motor tees' 24 V on a lever board. It stands on end at the -X edge,
-# mouth -X; its plug runs -X in the gap between the board and the housing, through a tunnel in
-# the -X web. That gap is PH_SIDE_H + CONN_GAP (AXLE_LAND_T buys it), so the tunnel never
-# reaches the housing's cheek. SMT: no post tails at all.
-CONN_N       = 8
-CONN_L       = ph_side_length(CONN_N)                 # 19.9, vertical (JST B)
-CONN_MOUTH_X = PCB_X0 + 3.05                          # the PH-era layout's mouth: its courtyard
-                                                      #   (10.29 deep) sits clear of the groove band
-CONN_ZC      = (PCB_Z0 + PCB_Z1) / 2                  # centred on the board's height
+# ── J1 + J2, the lever-bus connectors (re-spin spec) ─────────────────────────────────────
+# TWO 4-WAY S4B-PH-K-S, through-hole side entry, standing END TO END on the -X edge with their
+# mouths -X: J1 (bus IN) above, J2 (bus OUT) below, each in harness.PH_PINOUT order (user,
+# 2026-10-19: one 8-way made every hop one harness, so moving or pulling a single lever meant
+# re-making the cables either side of it; two 4-ways make every hop its own straight PHR-4
+# jumper). THROUGH-HOLE because that is what fits: two of the SMT S4B-PH-SM4-TB are 23.8 end
+# to end against the 19.9 the board's height leaves (the pedal caps it), and two S4B-PH-K-S
+# are 19.8 -- the length of the one S8B-PH-SM4-TB they replace, so the OUTLINE, the tunnel and
+# every housing stay as they were. Still single-sided (every part on the magnet face); the
+# pins come through to the back, 1.8 proud of it, where the cradle has no back wall.
+# PH, not XH (user, 2026-09-21): the lever bus runs at 5 V, and a different family means no
+# harness can put the motor tees' 24 V on a lever board. Each plug runs -X in the gap between
+# the board and the housing, through a tunnel in the -X web. That gap is PH_SIDE_H + CONN_GAP
+# (AXLE_LAND_T buys it), so the tunnel never reaches the housing's cheek.
+CONN_N       = 4                                      # ways per connector
+CONN_COUNT   = 2                                      # J1 (in) above J2 (out)
+CONN_WAYS    = CONN_N * CONN_COUNT                    # 8: plug_pin's ways, J1's 1-4 then J2's
+CONN_EACH_L  = ph_side_length(CONN_N, smt=False)      # 9.9 each [KiCad, cadkit.pcb]
+CONN_SPLIT   = 0.1                  # between the two bodies: all the 19.9 window leaves, and
+                                    # enough that two housings at their tolerance do not
+                                    # butt (at 0.0 the second would not seat in its holes)
+CONN_L       = CONN_COUNT * CONN_EACH_L + CONN_SPLIT  # 19.9, the pair end to end, vertical
+CONN_MOUTH_X = PCB_X0 + 3.05                          # the PH-era layout's mouth, kept: the
+                                                      #   tunnel and the plug's run stay put
+CONN_ZC      = (PCB_Z0 + PCB_Z1) / 2                  # the PAIR centred on the board's height
 CONN_POCKET  = 0.3                  # clearance around it in the web tunnel
-CONN_PLUG_RUN = PH_PLUG_RUN         # 3.6: mated PHR reach past the mouth (JST's drawing)
-CONN_UNPLUG = 2 * CONN_PLUG_RUN + 4 * D.BEAD   # the plug's full WITHDRAWAL. _cradle
+CONN_PLUG_RUN = PH_THT_PLUG_RUN     # 2.65: mated PHR reach past the mouth (cadkit.pcb)
+CONN_UNPLUG = max(2 * CONN_PLUG_RUN + 4 * D.BEAD,     # the plug's full WITHDRAWAL. _cradle
+                  (CONN_MOUTH_X - PCB_X0) + CR_CLR + CR_WEB_T + D.BEAD)
                                     # tunnels the web this far so the plug can be drawn off
-                                    # without lifting the board out, and the lace loop has to
-                                    # start past it (it used to be a 3.0 literal in _cradle,
-                                    # which is also what put the loop off the bead grid).
-assert PCB_Z0 + CONN_EDGE <= CONN_ZC - CONN_L / 2 and CONN_ZC + CONN_L / 2 <= PCB_Z1 - CONN_EDGE, (
-    "J1 standing on end does not fit the board's height with the 1.0 edge rule")
+                                    # without lifting the board out -- and never less than
+                                    # THROUGH the -X web, which is the cable's way out (the
+                                    # THT plug's 6.9 alone stopped 0.3 short of its face).
+assert (PCB_Z0 + CONN_EDGE <= CONN_ZC - CONN_L / 2 + 1e-6
+        and CONN_ZC + CONN_L / 2 <= PCB_Z1 - CONN_EDGE + 1e-6), (
+    "J1 and J2 standing end to end do not fit the board's height with the 1.0 edge rule")
+
+
+def conn_centres():
+    """Board-frame Z of J1's and J2's centres, J1 (bus IN) first: the upper one."""
+    return tuple(CONN_ZC + (CONN_COUNT - 1 - 2 * j) * (CONN_EACH_L + CONN_SPLIT) / 2
+                 for j in range(CONN_COUNT))
 assert PCB_Y - PH_SIDE_H - CONN_POCKET >= HOUS_HW - 1e-6, (
     "J1's tunnel would cut the housing's +Y cheek -- the magnet stand-off is too small")
 CR_PLINTH_Z1 = -SOCK_R              # -7.0: front plinth top = the driver bore's floor
@@ -1783,7 +1810,7 @@ def _conn_keepout():
     """(x0, x1, z0, z1) J1 forbids on the magnet face: its body AND the mated plug's run.
     Parts of the pre-route SENSOR_BOM layout that land in it are a handoff item
     (CONN_PAD_CONFLICTS), not an error here: that table predates the routed board."""
-    return (CONN_MOUTH_X - CONN_PLUG_RUN, CONN_MOUTH_X + PH_SIDE_D + PH_TAB_D,   # + the solder tabs
+    return (CONN_MOUTH_X - CONN_PLUG_RUN, CONN_MOUTH_X + PH_THT_SIDE_D,
             CONN_ZC - CONN_L / 2, CONN_ZC + CONN_L / 2)
 
 
@@ -2387,22 +2414,22 @@ def cable_keeper(y_face=None, z_bed=None, x_back=None, z_top=None, hung=False):
 
 
 def plug_pin(way, z_bot=None, z_top=None, flip=None):
-    """Where ONE conductor leaves J1, by WAY NUMBER (1..CONN_N) -- the plug's cable end,
-    on that contact's own line.
+    """Where ONE conductor leaves its plug, by WAY NUMBER (1..CONN_WAYS: J1's ways 1-4,
+    then J2's as 5-8) -- the plug's cable end, on that contact's own line.
 
     THIS IS MEANT TO BE READ OFF THE MODEL (user, 2026-09-23: "can you make the wires
     enter the JST in accurate placement so we can use it as a reference when deciding
     which slot to put each wire into?"). So the way numbers here are the harness's, not
-    a drawing convenience: harness.ph_trunk_pins() is the bus IN on ways 1-4 and OUT on
-    5-8: 1-4 in PH_PINOUT order (+5 V, GND, CAN_H, CAN_L), 5-8 its mirror. A lever's ARRIVING
-    cable lands on 1-4 and its DEPARTING cable leaves from 5-8, which is what makes the
-    board pass the trunk through itself.
+    a drawing convenience: harness.ph_trunk_pins() is the bus IN on ways 1-4 (J1) and OUT
+    on 5-8 (J2's 1-4), both in PH_PINOUT order (+5 V, GND, CAN_H, CAN_L). A lever's ARRIVING
+    cable lands on J1 and its DEPARTING cable leaves from J2, which is what makes the board
+    pass the trunk through itself.
 
-    WAY 1 IS AT THE +Z END of the connector on a board installed as drawn, and at the -Z
-    end on one turned over (the pedal's): that is where the ROUTED board has pad 1
-    (elec/geom/lever_sensor.geom.json: J1 at rot -90, pad 1 at geom +y, and geom +y is
-    this frame's +Z -- the frame SENSOR_BOM places every other part in). The turn-over
-    is a rotation about the axle, so it carries the row end for end with the board.
+    WAY 1 OF EACH IS AT ITS +Z END on a board installed as drawn, and at the -Z end on one
+    turned over (the pedal's): that is where the ROUTED board has pad 1
+    (elec/geom/lever_sensor.geom.json, geom +y = this frame's +Z -- the frame SENSOR_BOM
+    places every other part in). The turn-over is a rotation about the axle, so it carries
+    the rows end for end with the board, and J1 to the bottom.
 
     HOW FAR OFF THE BOARD THE CONTACTS ARE is the plug's own figure (cadkit's record of
     the seated PHR housing, the one the viewer draws the plug from), not half the
@@ -2410,22 +2437,27 @@ def plug_pin(way, z_bot=None, z_top=None, flip=None):
     """
     axis = BG.BOARDS.plug("lever_sensor", "J1")["o"][2] - _PCB_T
     turned = z_bot is not None and board_flip(z_bot, z_top, flip)
-    zc = -CONN_ZC if turned else CONN_ZC
     mx = -CONN_MOUTH_X if turned else CONN_MOUTH_X
     sx = -1.0 if mx <= 0 else 1.0
-    up = -1.0 if turned else 1.0                       # way 1's end of the row
-    return (mx + sx * CONN_PLUG_RUN, PCB_Y - axis,
-            zc + up * ((CONN_N - 1) / 2.0 - (way - 1)) * PH_PITCH)
+    up = -1.0 if turned else 1.0                       # the turn-over negates board Z
+    j, k = divmod(way - 1, CONN_N)                     # which connector, which of its ways
+    zb = conn_centres()[int(j)] + ((CONN_N - 1) / 2.0 - k) * PH_PITCH
+    return (mx + sx * CONN_PLUG_RUN, PCB_Y - axis, up * zb)
 
 
-def plug_point(z_bot=None, z_top=None, flip=None):
-    """The plug's cable end on the connector's axis -- the middle of the pin row."""
-    return plug_pin((CONN_N + 1) / 2.0, z_bot, z_top, flip)
+def plug_point(z_bot=None, z_top=None, flip=None, which=None):
+    """A plug's cable end on its own axis -- the middle of its pin row: J1's (which=0, the
+    bus IN), J2's (which=1, OUT), or with which=None the middle of the PAIR, between them."""
+    if which is None:
+        a, b = (plug_point(z_bot, z_top, flip, j) for j in (0, CONN_COUNT - 1))
+        return tuple((a[m] + b[m]) / 2.0 for m in range(3))
+    return plug_pin(which * CONN_N + (CONN_N + 1) / 2.0, z_bot, z_top, flip)
 
 
 def pin_axis():
-    """The direction the pin row runs, in the lever's LOCAL frame, on a board installed
-    as drawn: J1 stands on end and its ways count DOWN, way 1 at the top (plug_pin)."""
+    """The direction the pin rows run, in the lever's LOCAL frame, on a board installed
+    as drawn: J1 and J2 stand on end and their ways count DOWN, way 1 at the top
+    (plug_pin)."""
     return (0.0, 0.0, -1.0)
 
 

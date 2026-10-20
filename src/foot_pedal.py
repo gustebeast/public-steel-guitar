@@ -601,9 +601,9 @@ def cut_wire_ways(piece, x0: float, x1: float):
 # on the finished paths, not on this argument).
 BUS_WAYS = EH.ph_trunk_pins()
 BUS_NETS = tuple(EH.ph_drop_pins())
-assert len(BUS_WAYS) == KL.CONN_N, (
-    "elec.harness's trunk is %d ways and the sensor board's J1 is %d"
-    % (len(BUS_WAYS), KL.CONN_N))
+assert len(BUS_WAYS) == KL.CONN_WAYS, (
+    "elec.harness's trunk is %d ways and the sensor board's J1 + J2 are %d"
+    % (len(BUS_WAYS), KL.CONN_WAYS))
 BUS_AIR = 0.2                               # a conductor off a wall, a layer off a layer
 BUS_KEEP = 0.1                              # ...and off another conductor in its own layer
 BUS_FAN = 12.0                              # the run the stub's 2 x 2 bundle takes to open
@@ -613,7 +613,8 @@ BUS_RIBBON = 1.5                            # ...into a flat ribbon at this pitc
 
 
 def bus_way(net, side):
-    """The 1-based way of J1 that `net` uses on the bus's "IN" or "OUT" side."""
+    """The 1-based way (knee_lever.plug_pin's: J1 1-4, J2 5-8) that `net` uses on the
+    bus's "IN" or "OUT" side."""
     return BUS_WAYS.index("%s_%s" % (net, side)) + 1
 
 

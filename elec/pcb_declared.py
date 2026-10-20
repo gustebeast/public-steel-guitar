@@ -79,9 +79,21 @@ def foot_seam_declared(board, vtype, refs):
     return False
 
 
+def lever_declared(vtype, refs):
+    """The lever sensor board's two bus connectors, J1 (in) above J2 (out), END TO END.
+
+    Two S4B-PH-K-S in the 19.9 mm the board's height leaves (knee_lever.CONN_L): the
+    bodies stand 0.1 apart and KiCad's courtyards, 0.5 round each body, overlap by 0.9.
+    The parts clear and their copper clears by far more -- J1.4 and J2.1 are 4.0 apart
+    centre to centre, two pin pitches. A courtyard and only this pair."""
+    return vtype == "courtyards_overlap" and set(refs) == {"J1", "J2"}
+
+
 def declared(board, vtype, refs):
     if foot_seam_declared(board, vtype, refs):
         return True
+    if board.endswith("lever_sensor"):
+        return lever_declared(vtype, refs)
     if board.endswith("foot_led_a"):
         return foot_a_declared(vtype, refs)
     return "optical" in board and optical_declared(vtype, refs)

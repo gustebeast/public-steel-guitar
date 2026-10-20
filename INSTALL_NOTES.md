@@ -579,8 +579,8 @@ place each module says which way round it is.
 
 ## Knee lever wiring (bus B)
 
-Bus B daisy-chains through every lever board: in on J1 ways 1–4, out on 5–8. A lever
-is **not** at a fixed station — its tenons drop into the chassis bottom's mortise grid
+Bus B daisy-chains through every lever board: in on **J1**, out on **J2** — two 4-way PH
+on the board's end, J1 the upper (see KL-5). A lever is **not** at a fixed station — its tenons drop into the chassis bottom's mortise grid
 (`D.LEVER_PITCH`, 10.4 mm) so it steps along X, and the rib mortise lets it slide to
 any knee depth over 197.5 mm in Y.
 
@@ -616,19 +616,37 @@ any knee depth over 197.5 mm in Y.
   way round; it does not fit the other way.
 - **No shim** in a right-hand housing: turned over, the board's top edge already stands
   0.4 mm under the chassis. Left-hand and vertical levers keep theirs.
-- **Way 1 changes ends with the board.** On LKL, VKL and RKL way 1 (5 V in) is the TOP
-  contact of J1 and way 8 the bottom; on LKR and RKR way 1 is the BOTTOM contact. The
-  crimped harness is the same either way — a PH housing only plugs in one way round — so
-  this matters only when probing J1 with a meter.
+- **Everything changes ends with the board.** On LKL, VKL and RKL, J1 (bus in) is the
+  UPPER connector and way 1 (5 V) is the top contact of each; on LKR and RKR, J1 is the
+  LOWER one and way 1 is each one's bottom contact. The crimped harness is the same either
+  way — a PH housing only plugs in one way round — so this matters only when probing with
+  a meter, or when telling in from out (and in and out may be swapped without effect:
+  both are the same four nets on the board).
+
+### KL-5 — Every hop is its own straight 4-way jumper (2026-10-19)
+
+- **What:** each board carries **J1 (bus in)** and **J2 (bus out)**, two 4-way PH
+  (`S4B-PH-K-S`) standing end to end, mouths toward the plug tunnel. The cable from one
+  board's J2 to the next one's J1 is a **PHR-4 at each end, way 1 to way 1, 2 to 2, 3 to
+  3, 4 to 4** — no crossover, the same for every hop. Crimp `5V, GND, CAN_H, CAN_L` on
+  ways 1–4 at both ends.
+- **Pulling one lever:** unplug its J1 and J2 and lift it out; nothing else moves. To run
+  the instrument without it, replace the two cables either side with one jumper long
+  enough for the gap (any straight PHR-4 lead works).
+- **Moving one lever further than the keeper's slack** (KL-2): re-make only the one or
+  two cables that touch it. With one 8-way housing both cables were crimped into the same
+  PHR-8, so either neighbour's cable had to be re-made with it.
+- **The last board** in each chain (the far pedal, the far lever) has J2 empty; its
+  terminator switch is ON (PB-0).
 
 ---
 
 ## Pedal bar wiring (bus B)
 
 The bar's wiring trough carries bus B from the −X (wired) leg tower to the five
-pedal sensor boards, daisy-chained: leg → pedal 1 → … → pedal 5. Each board's J1 is
-an 8-way PH, bus **in** on ways 1–4 and **out** on 5–8, so the chain runs through
-the board. Pedal 5 is the far end of the bus: it is the one pedal whose terminator
+pedal sensor boards, daisy-chained: leg → pedal 1 → … → pedal 5. Each board has the bus
+**in** on J1 and **out** on J2, two 4-way PH (KL-5), so the chain runs through the
+board; every segment is a straight PHR-4 jumper. Pedal 5 is the far end of the bus: it is the one pedal whose terminator
 switch is ON.
 
 ### PB-0 — Set the terminator switch BEFORE the board goes into its housing
@@ -648,8 +666,9 @@ the power off, any board reads 60 ohm when exactly two are ON.
 
 - **Where:** the spur at each pedal station — the short passage from the board bay up
   into the bar's wiring trough (`foot_pedal.cut_wire_ways`).
-- **What:** plug the segment onto J1 in the bay, bring the wire up through the spur into
-  the trough, and run it along to the next station.
+- **What:** plug the arriving segment onto J1 and the departing one onto J2 in the bay,
+  bring the wire up through the spur into the trough, and run it along to the next
+  station.
 - **Why:** the bay is a closed pocket otherwise. The 2026-09-21 board re-spin moved J1,
   and the bay follows the posed hardware, so it stopped reaching the trough and left each
   plug sealed in. Nothing caught it — a cavity that doesn't reach another cavity isn't an
@@ -658,7 +677,7 @@ the power off, any board reads 60 ohm when exactly two are ON.
   bar, so nothing about it moves. Cut these segments to fit.
 - **Order:** wire the trough **before** the lid slides in. The lid is a full-length sliding
   dovetail entering from the −X end; once it's on, nothing in the trough is reachable.
-- **Leave the last one out:** pedal 5 has no onward segment. Its J1 out-half is the bus end.
+- **Leave the last one out:** pedal 5 has no onward segment. Its J2 stays empty: the bus end.
 
 ### PB-2 — The trough is closed at every pedal except along its floor
 
@@ -670,11 +689,12 @@ the power off, any board reads 60 ohm when exactly two are ON.
 - **Order:** board in, plugs on, wires laid on the floor past the station, **then** the
   shim down its grooves over them, then the lid. A shim that will not seat is sitting on
   a wire.
-- **At the plug:** J1 points down into the bay and there is 2.5 mm under it. The wires
-  turn out of the plug along the floor inside the plug tunnel (6 mm wide) — arriving
-  four on the −X side of the pin row, departing four on the +X side.
-- **Way 1** (GND in) is the contact nearest the **player-side face** of the bar (−Y);
-  way 8 is nearest the lid.
+- **At the plugs:** J1 and J2 point down into the bay and there is 2.5 mm under them. The
+  wires turn out of the plugs along the floor inside the plug tunnel (6 mm wide) — the
+  arriving four (J1) on the −X side, the departing four (J2) on the +X side.
+- **Way 1** (5 V) of each is its contact nearest the **player-side face** of the bar (−Y),
+  way 4 the one nearest the lid; the board is turned over here, so J1 is the connector
+  nearer the lid.
 - **From the leg:** the four wires out of the bar's blind-mate board (ZH plug) come
   along the chamber at mid-height and drop to the floor once they are over the trough.
 
@@ -700,7 +720,7 @@ the lever chain's plug can come out without moving it.
 
 ### BB-3 — The lever chain's head
 
-Four conductors from **J6** (4-way PH, 16 mm +Y of J2) to **LKL's J1 ways 1–4** — the end
+Four conductors from **J6** (4-way PH, 16 mm +Y of J2) to **LKL's J1** (its bus in) — the end
 of the lever chain the controller feeds. A flat four-way: out of LKL along its plug's
 axis, level under the floor to below J6, and up into it. Way 1 at the lever is way 1 at
 the controller, like every other lead.
@@ -777,17 +797,18 @@ The rule (user, 2026-10-07; the tuples are in `elec/harness.py`):
 * **Ways are always `power, GND, data, data`.** A lead with no data leaves ways 3 and 4
   empty.
 * **A wider housing adds the same four mirrored.** A 6-way is `power, GND, data, data, GND,
-  power`; an 8-way trunk is `power, GND, H, L, L, H, GND, power`. Either reads the same
-  from both ends, and its power ways are the two outside ones.
+  power`; the motor tees' 8-way trunk is `power, GND, H, L, L, H, GND, power`. Either reads
+  the same from both ends, and its power ways are the two outside ones.
 * **Why ground is second.** In every housing the way next to a power way is ground or
   empty, never a data way. The two faults that put neighbours together -- a strand of wire
   between two crimps, a contact pushed into the next cavity -- then blow a fuse instead of
   putting 24 V on a 3.3 V pin.
 * A 4-way or 6-way lead is straight: way 1 at one end is way 1 at the other.
-* **A trunk hop is not.** It leaves one board on ways 5 to 8 (the out half) and arrives at
-  the next on ways 1 to 4 (the in half): **way 8 to way 1, 7 to 2, 6 to 3, 5 to 4.** In a
-  housing wider than four, count each half from its own end of the housing and the two
-  halves read the same: power outermost, then ground, then CAN_H, then CAN_L.
+* **A motor-tee trunk hop is not.** It leaves one tee on ways 5 to 8 (the out half) and
+  arrives at the next on ways 1 to 4 (the in half): **way 8 to way 1, 7 to 2, 6 to 3, 5
+  to 4.** Count each half from its own end of the housing and the two halves read the
+  same: power outermost, then ground, then CAN_H, then CAN_L. (The lever and pedal boards'
+  hops are straight: their in and out are two 4-way connectors since 2026-10-19, KL-5.)
 
 | lead | family, ways | from | to | ways |
 |---|---|---|---|---|
@@ -802,7 +823,7 @@ The rule (user, 2026-10-07; the tuples are in `elec/harness.py`):
 | Pi 5 V | PH 6 | motor board J5 | Pi cap J2 | `5V, GND, -, -, GND, 5V` |
 | USB to the Pi | PH 4 | motor board J4 | Pi USB-A | `VBUS (unused), GND, D-, D+` |
 | bus B drops | PH 4 | motor board J2 / J6, leg boards | pedal and lever chains | `5V, GND, CAN_H, CAN_L` |
-| lever / pedal trunk | PH 8 | sensor board J1 | next sensor board | `5V, GND, CAN_H, CAN_L` in on 1-4, its mirror out on 5-8 |
+| lever / pedal hop | PH 4 | sensor board J2 (out) | next sensor board J1 (in) | `5V, GND, CAN_H, CAN_L`, straight |
 
 **The optical feed has a different housing at each end**: a 2-way XH at the output panel
 (J9), a 4-way XH at the optical board (J2) with ways 3 and 4 left empty. Way 1 is 24 V at
@@ -868,7 +889,7 @@ else.
 | USB lead | a bus-B drop | The Pi's USB 5 V meets the bus's 5 V (the bus side is behind a 0.5 A limited switch); CAN_H / CAN_L, 0 to 3.3 V, meet the Pi's D- / D+. No damage; neither link works. |
 | bus-B drop | motor board J4 (USB) | Way 1, the bus's 5 V, is not connected on the board; the CAN pair meets the MCU's USB pins at 0 to 3.3 V. No damage. |
 
-**6-way PH**: only the Pi's 5 V lead. **8-way** XH and PH: only the two trunks.
+**6-way PH**: only the Pi's 5 V lead. **8-way** XH: only the motor-tee trunk.
 
 The one row worth a label is the second: a motor drop or the bus-A head plugged into a light
 drop on the Pi cap. Mark the two light-drop leads at the Pi cap end.
