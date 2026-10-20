@@ -1318,6 +1318,9 @@ def _electronics_components():
     out = [*EL.pi4_parts(), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
+           # J8, the pickup's screw terminal, as the part: green housing, steel screws and pins
+           *(("output_panel_term" + ("" if k == "housing" else "_metal"), v)
+             for k, v in EL.output_panel_term().items()),
            # each board's LETTERING is its own part: white ink the viewer can hide
            ("pi_cap_silk", EL.pi_cap_silk()),
            ("motor_ctrl_silk", EL.motor_ctrl_silk()),
@@ -2275,6 +2278,8 @@ _COLORS = {
     "pi_cap_silk":     (0.95, 0.95, 0.93),
     "motor_ctrl_silk": (0.95, 0.95, 0.93),
     "output_panel_silk": (0.95, 0.95, 0.93),
+    "output_panel_term": (0.16, 0.55, 0.32),        # J8: MX126 terminal block, green PA66
+    "output_panel_term_metal": (0.72, 0.74, 0.78),  # its M2.5 screws and tinned pins
     "optical_guard":   (0.18, 0.18, 0.20),   # the hand guard over the board -- print it
                                              # DARK: it is the one surface facing the
                                              # detectors, so a light one would bounce IR
