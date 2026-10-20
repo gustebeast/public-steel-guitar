@@ -812,6 +812,9 @@ fn kind(body: &str) -> String {
     body.chars().take(24).collect()
 }
 
+/// How soon a frame the surface would not give is asked for again (about one display frame).
+const SKIP_RETRY: Duration = Duration::from_millis(16);
+
 fn acquire(g: &Gfx) -> Option<wgpu::SurfaceTexture> {
     match g.surface.get_current_texture() {
         wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => Some(t),
@@ -819,10 +822,16 @@ fn acquire(g: &Gfx) -> Option<wgpu::SurfaceTexture> {
             g.surface.configure(&g.r.device, &g.config);
             match g.surface.get_current_texture() {
                 wgpu::CurrentSurfaceTexture::Success(t) | wgpu::CurrentSurfaceTexture::Suboptimal(t) => Some(t),
-                _ => None,
+                other => {
+                    tr(|| format!("no frame from the surface: {other:?}"));
+                    None
+                }
             }
         }
-        _ => None,
+        other => {
+            tr(|| format!("no frame from the surface: {other:?}"));
+            None
+        }
     }
 }
 
@@ -953,7 +962,11 @@ impl App {
         let s = format!("model: {} parts, {} triangles; fetched and read in {ms:.0} ms, uploaded in {up:.0} ms, BLAS built in {blas:.0} ms", sc.parts.len(), sc.indices.len() / 3);
         self.say(s);
         self.touch(false);
-        self.redraw();
+        // asked for, not drawn here: drawn inside this message, a frame the surface was not ready to give
+        // was lost with nothing to ask for it again (see redraw)
+        if let Some(g) = self.gfx.as_ref() {
+            g.window.request_redraw();
+        }
     }
 
     /// The picture is no longer what is on screen. `rigid`: it is still a picture of the same things in the
@@ -1055,7 +1068,11 @@ impl App {
         let Some(cam) = self.view.cam.filter(|_| g.r.has_scene()) else {
             // nothing to trace yet: the backdrop
             if changed || self.stat_frames == 0 {
-                if let Some(frame) = acquire(g) {
+                let Some(frame) = acquire(g) else {
+                    self.refine_at = Some(Instant::now() + SKIP_RETRY);
+                    return;
+                };
+                {
                     g.r.clear(&frame.texture.create_view(&Default::default()));
                     g.r.queue.present(frame);
                     self.stat_frames += 1;
@@ -1081,7 +1098,13 @@ impl App {
             return;
         }
         let t0 = Instant::now();
-        let Some(frame) = acquire(g) else { return };
+        // A FRAME THE SURFACE WOULD NOT GIVE IS TRIED AGAIN, not dropped. It was dropped: the picture
+        // stayed whatever it was (black, on a tab just shown) until something else asked for a frame --
+        // the mouse, a key -- which is how a tab came up black for seconds and then at a touch.
+        let Some(frame) = acquire(g) else {
+            self.refine_at = Some(Instant::now() + SKIP_RETRY);
+            return;
+        };
         let view = frame.texture.create_view(&Default::default());
         let spf = if changed { g.r.settings.spf_moving } else { g.r.settings.spf_still };
         let Some(idx) = g.r.render(&cam, changed, self.rigid, Some((&view, g.config.width, g.config.height))) else { return };
