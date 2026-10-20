@@ -40,9 +40,10 @@ fit the endplate. Out is the reverse.
 ONE CLAMP PLATE AND TWO M4s HOLD IT. Plastic takes every direction but the one it
 installs along: the display's pocket walls and the window ledge, the board's cradle wall
 and four bearings. The clamp plate lies against the board's underside and its two screws
-pull the whole sandwich up into the deck's own bosses -- and an arm off it reaches under
-the display to press the module's far end into the ledge, which is the screen's only
-positive retention. Undo two screws and the station comes away as one piece.
+pull the whole sandwich up into the deck's own bosses -- and four columns off it press
+the module's PCB into the ledge at its four mounting holes, which is the screen's only
+positive retention (the display's ribbon carries nothing). Undo the clamp and the station
+comes away as one piece; release the ribbon from J1 to part the board from the display.
 
 WHAT IS ACTUALLY UNDER IT, measured rather than assumed. An earlier probe of mine
 reported 57.5 mm of clear air under the whole station and was WRONG -- it filtered out
@@ -77,37 +78,39 @@ board's lowest tail at -16.10, but the lead is 1.05 further -Y, inside the troug
 1.72 mm, and it is the same at every point of the slide. wire_usb, lower, is 4.42 off.
 
 -- DOES THE SCREEN SIT LEVEL? (user, 2026-09-28) ------------------------------
-Its face lies on the window ledge, which is a flat, so level means only: can the face
-REACH that flat, and does anything hold it there.
+Its face lies on the window ledge, which is a flat, so level means only: does anything
+hold it there. Nothing else touches the module now -- the ribbon below carries no load --
+so the face reaches the flat by construction and the clamp is the whole answer.
 
-REACH is the tolerance question, and it is why MOD_PRELOAD exists. If the socket bottoms
-out on the header before the face touches, the module hangs on twenty pins at whatever
-angle they give it, and no amount of clamping recovers that. So the header is made to
-stand proud: with the face on the ledge the socket is 0.60 from bottoming, which is more
-than the realistic stack (RSS 0.50 of the module's own +-0.3 and four printed +-0.2s).
+HOLDING it there is the clamp: four columns, one at each of the module's mounting holes,
+reaching its PCB's back face. The far two stand on the arm's crossbar and the near two
+beside the board's ends. Until the ribbon (2026-10-19) the near end hung on the 1x20
+header's own pins and only the far end had posts.
 
-HOLDING it there is the clamp's arm: two posts on the module's far mounting-hole row,
-reaching exactly its back, so the far end cannot droop. The near end is the header's own
-20 pins, 2.5 mm from the module's edge. Droop at the far end is bounded by the print
-tolerance on those posts -- 0.2 short is 0.27 deg over the 43 mm hole pitch, which is
-0.16 mm from one end of the window to the other.
+-- THE DISPLAY'S CONNECTION IS A RIBBON (user, 2026-10-19) ---------------------
+"Solderless" ruled out the through-hole module: Newhaven ship it with twenty bare plated
+holes, so any header on it is a hand-soldered joint on a bought part. Its sibling,
+NHD-2.7-12864WDW3-M, is the same panel, outline, bezel and pin table with a 20-way
+1.0 mm FFC socket (Molex 52271-2079, bottom contact, 3.0 high) on its back. So the joint
+is now three bought parts and no solder at all: that socket, a stock 50 mm same-side FFC
+(JUSHUO JS10A-20P-050-4-8), and a JLC-placed JUSHUO AFA07-S20FCA-00 on our board's +Y
+edge, its mouth facing the module. See ffc_path() for the cable's route.
 
 -- THE STACK, TOP DOWN -------------------------------------------------------
     deck top            +6.4   the player's surface
     window ledge        1.6    two beads of deck left over the module: the bezel
     module face         +4.8   the glass, sunk in a pocket cut UP from the underside
-    module back         -0.7   5.5 of module, so it hangs 0.7 below the deck
-    socket + header     11.04  a 1x20 female on the MODULE over a 1x20 male on ours
-    UI board top        -11.74
-    UI board bottom     -13.34
+    module PCB back     +1.4   2.4 of glass and bezel, 1.0 of PCB (Newhaven's side view)
+    module rear         -0.7   its own parts on that back reach 5.5 from the face
+    module's FFC socket -1.6   3.0 under the PCB: the -M's 6.40 overall
+    ribbon loop                down from that socket and back into ours, in free air
+    UI board top        -11.1
+    UI board bottom     -12.7
 
-MALE ON OUR BOARD, FEMALE ON THE MODULE, and it is not arbitrary. Newhaven ships the
-module with plated holes and no header ("Recommended Pin Header: 1x20pin 2.54mm pitch",
-note 5 on their drawing), so we choose both halves. Put the SOCKET on our board and the
-module needs a header whose pins reach 8.5 mm down through it -- a long-pin part, not a
-stock one. Put the socket on the MODULE and both halves are ordinary catalogue parts: a
-6.0 mm pin engages 6.0 mm of contact. The cost is 2.5 mm more stack, which buys the
-right-angle ribbon header underneath the room it needs.
+THE BOARD'S Z IS NOT THE DISPLAY'S ANY MORE. It was set by the header stack under the
+module, and it stays where that put it because two other things pin it to the tenth:
+the encoder's collar clears the deck's underside by 0.9 above it, and the board passes
+0.30 over the cable trough's lip below it. BOARD_GAP keeps that number.
 """
 from __future__ import annotations
 
@@ -121,18 +124,44 @@ from .helpers import box_at, cyl
 from cadkit.fasteners import (M4, M4_BUTTON_HEAD_H, cut_insert_bore, m4_button_screw,
                               seated_insert)
 
-# -- THE DISPLAY, off Newhaven's own mechanical drawing (NHD-2.7-12864WDW3, rev
-#    08/18/2023, read 2026-09-25) --------------------------------------------------
-# Frame: the module's PCB, +Y toward the HEADER edge, origin at the PCB's centre.
+# -- THE DISPLAY, off Newhaven's own mechanical drawings (NHD-2.7-12864WDW3, rev
+#    08/18/2023, read 2026-09-25; NHD-2.7-12864WDW3-M, 11/21/2022, read 2026-10-19) --
+# Frame: the module's PCB, +Y toward the HEADER edge, origin at the PCB's centre. The
+# "header edge" is the one the through-hole version's 1x20 row is on; the -M's FFC socket
+# sits on the same edge.
 MOD_W, MOD_L = 82.00, 47.50        # the module PCB, X x Y
-MOD_T        = 5.50                # PCB back face to bezel front face
+MOD_T        = 5.50                # face to the rear of the parts on its back (the
+                                   # drawing's 5.50; the -M adds its FFC socket below)
+MOD_GLASS_T  = 2.40                # face to the PCB's FRONT: the side view's 2.40
 MOD_PCB_T    = 1.00
-HDR_EDGE_DY  = 2.50                # header row below the header edge; the two mounting
-                                   # holes on that side share the row
-HDR_N        = 20
-HDR_PITCH    = 2.54                # 19 x 2.54 = 48.26, centred in X
+# ...SO THE PCB'S BACK IS 3.40 UNDER THE FACE, NOT 5.50. The 5.50 was read as PCB-back
+# to face until 2026-10-19, which left the clamp's posts 2.1 short of the board they were
+# drawn pressing on. The side view puts 2.40 from the face to the PCB and the remaining
+# 2.10 is the parts on its back, which is what MOD_T still bounds.
+HDR_EDGE_DY  = 2.50                # the near mounting-hole row, below the header edge
 MOD_HOLE_DX  = 36.70               # +-, from the module centre
 MOD_HOLE_DY  = 43.00               # between the two hole rows
+# THE -M's FFC SOCKET, Molex 52271-2079: 20 ways at 1.00, pins 1..20 centred in X (31.50
+# from each end of the rear view), 3.00 above its board ("Height Above Board", Molex via
+# DigiKey). Its Y extent is SCALED OFF the rear view, not dimensioned: the tails start
+# 1.6 below the header edge, the housing 3.8, and the actuator's front -- the mouth, which
+# faces the module's centre -- is 10.5 in. 27.2 across the actuator.
+MOD_FFC_N      = 20
+MOD_FFC_PITCH  = 1.00
+MOD_FFC_W      = 27.2
+MOD_FFC_Y0     = 3.8               # housing, from the header edge
+MOD_FFC_MOUTH  = 10.5              # actuator front, from the header edge
+MOD_FFC_H      = 3.00
+MOD_FFC_SLOT   = 1.2               # ESTIMATE: the cable's centre under the module's PCB
+# PIN 1 IS AT +X, seen from the front. The rear view shows it at the LEFT, and a rear view
+# is the module turned over: its left is the front's right. CONFIRMED on the part
+# (2026-10-19): Newhaven's product photo of the -M's back, its silkscreen reading the
+# right way round, marks CN1 "1" at the left end and "20" at the right.
+MOD_FFC_PIN1_DIR = +1
+# THE PANEL'S OWN ZIF on the module's back, which the ribbon's top run passes under.
+# SCALED OFF the rear view: ~20 wide, 19 to 26 below the header edge, and the drawing's
+# MOD_T is the deepest anything on that back goes.
+MOD_ZIF_W, MOD_ZIF_Y0, MOD_ZIF_Y1 = 20.0, 19.0, 26.0
 BEZEL_W, BEZEL_L = 74.20, 42.50    # the metal bezel
 BEZEL_EDGE_DY    = 4.50            # bezel top below the header edge
 OPEN_W, OPEN_L   = 66.00, 33.00    # bezel OPENING -- what actually limits the view
@@ -212,41 +241,37 @@ PWR_CAP_UP = (0.0, 0.0, -1.0)
 CLAMP_UP = (0.0, 0.0, 1.0)
 
 # -- THE BOARD --------------------------------------------------------------
-# 72 x 34, and both numbers are set by parts rather than chosen: the 1x20 header is
-# 50.9 long and the right-angle ribbon header is 25.5, so the board is as wide as the
-# header plus margin and as deep as the span from that header's row to the encoder's.
-# It stays inside the display module's own 82 x 47.5 shadow in X, which is what keeps
-# the whole station clear of the swappable band region (see the module docstring).
+# 72 x 34. The 72 was the old 1x20 header's 50.9 plus margin and is now the room the
+# encoder, the power switch and the ribbon header need across it; the 34 is the span
+# from the FFC socket's mouth on the +Y edge down past the encoder. It stays inside the
+# display module's own 82 x 47.5 shadow in X, which is what keeps the whole station
+# clear of the swappable band region (see the module docstring).
 BOARD_W, BOARD_L = 72.0, 34.0
 BOARD_T = 1.6
-# Both halves READ, not assumed (LCSC, 2026-09-25): our male header is Kinghelm
-# KH-2.54PH180-1X20P-L11.5 -- insulation height 2.5, mating pin 6.0, tail 3.0 -- and the
-# module gets KH-2.54FH-1X20P-H8.5, an 8.5 socket. The module's PCB lands on the male
-# insulator, so the stack is 2.5 + 8.5, with the full 6.0 of pin engaged in the socket.
-SOCKET_H = 2.5 + 8.5
-# ...AND THE STACK IS DELIBERATELY 1.0 TOO LONG, which is what keeps the SCREEN LEVEL.
-# The module's face has to lie flat on the window ledge, and the only thing that can stop
-# it getting there is its socket bottoming out on the header first -- which would leave
-# the module hanging on twenty pins at whatever angle they happened to hold it. So the
-# socket must never reach the bottom: the header is made to stand proud by more than the
-# whole stack-up can swallow.
-#
-# The stack-up it has to swallow: the module's own 5.5 at the drawing's +-0.3, the
-# printed pocket at +-0.2, the printed bearing posts at +-0.2, the socket's 8.5 and the
-# header's 2.5 at +-0.2 each. Root-sum-square that and it is 0.50; add them all up the
-# same way and it is 1.10.
-#
-# 0.6, WHICH IS THE RSS AND NOT THE SUM, and the reason is that it is not free: every
-# 0.1 of preload lifts the BOARD 0.1 and takes 0.1 off the headroom under the deck, where
-# the right-angle ribbon header stands. At 1.0 the assertion in elec/ui_board.py fired --
-# 0.70 of margin against that header's (estimated) 10.0 -- which is the two constraints
-# meeting. At 0.6 there is 1.10.
-#
-# What gives in the arithmetic worst case is the module's header end sitting a couple of
-# tenths off the ledge, which the clamp's arm counteracts at the far end. What must NOT
-# happen is the socket bottoming first, and 0.6 covers every realistic stack for that.
-# The cost in engagement is 6.0 of pin down to 5.4.
-MOD_PRELOAD = 0.6
+# MODULE REAR TO BOARD TOP. It was the header stack (an 8.5 socket on a 2.5 insulator,
+# 0.6 of it held back so the socket could never bottom before the face met the ledge).
+# The headers are gone and the number is kept, because the board cannot move: see "THE
+# BOARD'S Z" in the module docstring.
+BOARD_GAP = 10.4
+
+# -- THE DISPLAY'S RIBBON (user, 2026-10-19) -----------------------------------------
+# JUSHUO JS10A-20P-050-4-8 (LCSC C2857604): 20 ways at 1.0, 50 mm overall, SAME-SIDE
+# contacts, each end 4 mm of bare contacts under an 8 mm blue stiffener (its drawing).
+# Same-side because the path below never turns the cable over: it leaves the module's
+# socket with its contacts up against that board and arrives at ours with the same face
+# down against this one, which is bottom contact at both ends.
+FFC_L = 50.0
+FFC_W = (MOD_FFC_N + 1) * MOD_FFC_PITCH   # 21.0, the drawing's (N+1) x 1.0
+FFC_T = 0.30
+FFC_STIFF = 8.0                    # the rigid end, measured from the cut
+FFC_INSERT = 4.0                   # ...of which this much goes into a socket: the bare
+                                   # contacts, which is what both sockets are drawn for
+# Our end: JUSHUO AFA07-S20FCA-00 (LCSC C262724), 2.5 high, 1.0 pitch, bottom contact.
+# The slot's height over our board is an ESTIMATE off its section A-A.
+J1_H = 2.5
+J1_SLOT = 1.0
+FFC_R_MIN = 1.2                    # the tightest bend drawn: four times its thickness
+FFC_TOP_Z = -2.5                   # the run under the module, clear of its rear parts
 # ONE M4, AND IT ONLY HAS TO HOLD Z (user, 2026-09-28). There were two, because one
 # screw through a 72 mm board is a hinge -- but the answer to a hinge is not a second
 # screw, it is plastic. X, Y and rotation are taken by two SPIGOTS that come down off
@@ -347,11 +372,20 @@ POST_SQ    = 4.0                   # the deck's bearing posts. 4.0, not 5.0: the
 # simpler than pads and grips the whole board rather than four spots.
 CLAMP_T    = 4 * D.BEAD
 # 0.4, grown round each through-hole footprint. It is a CEILING, not a fit: the fab box
-# already bounds the tails, so the relief only has to exist -- and J1's and J2's boxes
-# pass within 2.43 of each other, so anything over 0.415 leaves a web under the two-bead
-# floor between them. check_thin is what found that, at 1.43.
+# already bounds the tails, so the relief only has to exist -- and the old 1x20 header's
+# box and J2's passed within 2.43 of each other, so anything over 0.415 left a web under
+# the two-bead floor between them. check_thin is what found that, at 1.43. (J1 is surface
+# mount since the ribbon; J2 and SW2 keep a 2-bead web between theirs, ui_board asserts.)
 CLAMP_RELIEF = 0.4
-CLAMP_RIB_W = 6.0                  # the arm that reaches under the display
+CLAMP_RIB_W = 6.0                  # the arms that reach under the display
+# TWO ARMS, NOT ONE, and the ribbon is why: it hangs under the module's centre, 21 wide,
+# exactly where the single arm ran. They stand either side of it with 2.5 to spare.
+CLAMP_ARM_DX = 16.0
+CLAMP_POST_SQ = 4.0                # the near columns, beside the board's ends
+# THE FAR POSTS are O4 for the last stretch up, inside the deck's pocket: the hole is 2.5
+# from the module's edge, so a O6 reached 0.5 past it and into the pocket's wall
+# (POCKET_CLR is 0.3). The arm's own O6 carries on below the deck.
+CLAMP_TIP_D = 2.0 * (HDR_EDGE_DY - 0.5)
 CLAMP_ARM_Z = -8.0                 # the arm's TOP, once it has stepped up past the
                                    # board. Its UNDERSIDE then sits at -14.0, 5.65 clear
                                    # of the highest thing under the display (the tee
@@ -461,12 +495,18 @@ def _tp():
 # -- Z: every face in the stack, derived downward from the deck's own top ----
 @lru_cache(maxsize=None)
 def z_stack():
-    """(deck_top, deck_bot, mod_face, mod_back, board_top, board_bot)."""
+    """(deck_top, deck_bot, mod_face, mod_back, board_top, board_bot). mod_back is the
+    rear of the parts on the module's back; its PCB's back face is mod_pcb_back()."""
     TP = _tp()
     mod_face = TP.TZ - LEDGE_T
     mod_back = mod_face - MOD_T
-    board_top = mod_back - SOCKET_H + MOD_PRELOAD
+    board_top = mod_back - BOARD_GAP
     return (TP.TZ, TP.BZ, mod_face, mod_back, board_top, board_top - BOARD_T)
+
+
+def mod_pcb_back():
+    """Z of the module PCB's back face: what the clamp's columns bear on."""
+    return z_stack()[2] - MOD_GLASS_T - MOD_PCB_T
 
 
 def collar_clears_deck():
@@ -570,19 +610,41 @@ def module_centre():
     return ui_x(), y_layout()[2] - VIEW_OFF_Y
 
 
-def header_row_y():
-    """World Y of the module's 1x20 row -- and so of our board's header.
+def header_edge_y():
+    """World Y of the module's header edge, the one its FFC socket is on. It faces -Y,
+    toward the knob, because our board is on that side."""
+    return module_centre()[1] - MOD_L / 2.0
 
-    -Y of the module's centre, because the header edge faces the knob: our board is on
-    that side and nothing else could reach the row."""
-    return module_centre()[1] - (MOD_L / 2.0 - HDR_EDGE_DY)
+
+def header_row_y():
+    """World Y of the module's near mounting-hole row (the through-hole version's 1x20
+    row shared it)."""
+    return header_edge_y() + HDR_EDGE_DY
+
+
+def mod_ffc_mouth():
+    """(x, y, z) where the cable leaves the module's socket: the middle of the actuator's
+    front face, at the slot's height."""
+    return (module_centre()[0], header_edge_y() + MOD_FFC_MOUTH,
+            mod_pcb_back() - MOD_FFC_SLOT)
+
+
+def j1_mouth_y():
+    """World Y of our FFC socket's mouth, off the ROUTED board: the end of its F.Fab body
+    away from its contacts (it faces +Y, toward the module, and sits 0.5 inside the edge)."""
+    f = _bg().footprint("ui_board", "J1")
+    pads = list(f["pads"].values())
+    pad_y = sum(q[1] for q in pads) / len(pads)
+    mouth = max(f["fab"][2:], key=lambda v: abs(v - pad_y))
+    assert mouth > pad_y, "the routed J1's mouth does not face +Y, toward the module"
+    return board_centre()[1] + mouth
 
 
 def board_centre():
     """(x, y) of the UI board's centre.
 
     X is the station's. Y puts the encoder 4.263 below the centre, which is what makes
-    the board reach from under the module's header row down past the encoder and stop
+    the board reach from 5.5 under the module's header edge down past the encoder and stop
     clear of the -Y rail's inner face -- see the assertions in elec/ui_board.py, which
     are the ones that would fail if a part grew.
 
@@ -606,9 +668,11 @@ def board_local(x, y):
 # THE CAD, BUILT FROM THE ROUTED BOARD
 # ============================================================================
 # Everything below asks src/board_geom.py where KiCad actually put a part, and draws
-# what it says. The display's position is the routed J1's; the knob's is the routed
-# SW1's. Nothing here repeats a placement out of elec/ui_board.py, so nothing here can
-# disagree with the board that gets fabbed.
+# what it says. The knob's position is the routed SW1's and the ribbon's lower end the
+# routed J1's. Nothing here repeats a placement out of elec/ui_board.py, so nothing here
+# can disagree with the board that gets fabbed. The DISPLAY is the one exception, and
+# rightly: it was hung off the routed 1x20 header that carried it, and since the ribbon
+# nothing on the board holds it -- the deck's pocket does, so it is placed by the rule.
 #
 # The import is LOCAL to each function on purpose: board_geom reads
 # elec/geom/ui_board.geom.json, which does not exist until the board has been routed
@@ -642,25 +706,102 @@ def ui_silk():
 
 
 def display_module():
-    """The Newhaven module, hung off the routed J1.
+    """The Newhaven NHD-2.7-12864WDW3-M, where the deck's pocket holds it.
 
-    The module's own 1x20 row plugs onto that header, so the header IS the module's
-    datum: its row centre fixes the module in X and Y, and the deck's pocket fixes it
-    in Z. The female socket on the module's back is NOT drawn -- it is exactly the
-    SOCKET_H gap between our board's top face and the module's, and drawing it would
-    put a solid through the very header it mates with."""
-    hx, hy = routed("J1")
-    mx = hx
-    my = hy + (MOD_L / 2.0 - HDR_EDGE_DY)          # the header edge faces -Y
+    PCB, glass and bezel, the panel's own ZIF on its back (the deepest thing there, so it
+    stands for all of them), and the FFC socket the ribbon plugs into -- which is drawn
+    as its own part, module_ffc_socket(), because it is a different thing in the hand."""
+    mx, my = module_centre()
     _tz, _bz, face, back, _bt, _bb = z_stack()
-    pcb = box_at(MOD_W, MOD_L, MOD_PCB_T, x=mx, y=my, z=back + MOD_PCB_T / 2.0)
+    pcb_back = mod_pcb_back()
+    pcb = box_at(MOD_W, MOD_L, MOD_PCB_T, x=mx, y=my, z=pcb_back + MOD_PCB_T / 2.0)
     bez_y = my + VIEW_OFF_Y                         # the bezel is centred on the optics
-    bez_z0 = back + MOD_PCB_T
+    bez_z0 = pcb_back + MOD_PCB_T
     bezel = box_at(BEZEL_W, BEZEL_L, face - bez_z0,
                    x=mx, y=bez_y, z=(bez_z0 + face) / 2.0)
+    e = header_edge_y()
+    zif = box_at(MOD_ZIF_W, MOD_ZIF_Y1 - MOD_ZIF_Y0, pcb_back - back,
+                 x=mx, y=e + (MOD_ZIF_Y0 + MOD_ZIF_Y1) / 2.0, z=(pcb_back + back) / 2.0)
     # the lit area is its own part (see screen()), so take its skin out of the bezel
     # rather than letting the two share a volume
-    return pcb.union(bezel).cut(box_at(ACT_W, ACT_L, 0.4, x=mx, y=bez_y, z=face - 0.1))
+    return (pcb.union(bezel).union(zif)
+            .cut(box_at(ACT_W, ACT_L, 0.4, x=mx, y=bez_y, z=face - 0.1)))
+
+
+def module_ffc_socket():
+    """The Molex 52271 on the module's back: housing and actuator as one block, from its
+    tails' end to its mouth, hanging MOD_FFC_H under the PCB."""
+    mx, _my = module_centre()
+    e = header_edge_y()
+    z1 = mod_pcb_back()
+    return box_at(MOD_FFC_W, MOD_FFC_MOUTH - MOD_FFC_Y0, MOD_FFC_H,
+                  x=mx, y=e + (MOD_FFC_Y0 + MOD_FFC_MOUTH) / 2.0, z=z1 - MOD_FFC_H / 2.0)
+
+
+def _arc(cy, cz, r, a0, a1, n):
+    """Points on a circle in the YZ plane, a0 to a1 degrees (0 = +Y, 90 = +Z)."""
+    return [(cy + r * math.cos(math.radians(a0 + (a1 - a0) * k / n)),
+             cz + r * math.sin(math.radians(a0 + (a1 - a0) * k / n))) for k in range(1, n + 1)]
+
+
+@lru_cache(maxsize=None)
+def ffc_path():
+    """[(x, y, z)] the ribbon's centreline, mouth to mouth: FFC_L less what is in the
+    two sockets.
+
+    THE SHAPE IS WHAT A 50 mm CABLE DOES BETWEEN THESE TWO MOUTHS, and the length is the
+    constraint: 50 is the shortest 20-way same-side cable stocked, and the mouths are
+    only ~21 apart. So the slack goes where there is room for it -- a hairpin under the
+    module's centre, in the free air between its back and the clamp's plate:
+
+      * out of the module's socket heading +Y (toward the module's centre), straight for
+        the stiffener;
+      * an S down to FFC_TOP_Z, under every part on the module's back -- the panel's own
+        ZIF is the lowest, and the run passes 1.65 under it;
+      * on +Y, then a half turn down to the height of our socket's slot;
+      * back -Y, between the clamp's two arms, straight for the stiffener into our socket.
+
+    Every turn is about the cable's width (X), so it is never folded or twisted. The top
+    run's length is solved for, so the drawn cable is the bought one's length."""
+    x, ym, zm = mod_ffc_mouth()
+    hx, _hy = routed("J1")
+    assert abs(hx - x) < 0.3, (
+        "our FFC socket is at x %.2f and the module's at %.2f: a ribbon only bends about "
+        "its width, so the two have to share a centreline" % (hx, x))
+    yb = j1_mouth_y()
+    zb = z_stack()[4] + J1_SLOT
+    out_ = FFC_STIFF - FFC_INSERT
+    r1 = (zm - FFC_TOP_Z) / 2.0                     # each quarter of the S
+    r2 = (FFC_TOP_Z - zb) / 2.0                     # the hairpin
+    assert r1 >= FFC_R_MIN - 1e-9 and r2 >= FFC_R_MIN, (
+        "the ribbon's bends are r %.2f and %.2f against a %.2f minimum" % (r1, r2, FFC_R_MIN))
+    y_s = ym + out_                                 # end of the module's stiffener
+    y_t = y_s + 2.0 * r1                            # start of the top run
+    y_e = yb + out_                                 # start of our stiffener
+    fixed = 2.0 * FFC_STIFF + math.pi * r1 + math.pi * r2
+    # top run (y_c - y_t) + bottom run (y_c - y_e) is what the length has left
+    y_c = (FFC_L - fixed + y_t + y_e) / 2.0
+    assert y_c >= y_t and y_c >= y_e, (
+        "the ribbon is too short for these mouths: its hairpin would be at y %.2f" % y_c)
+    # DRAWN MOUTH TO MOUTH: the FFC_INSERT at each end is inside a socket's body and is
+    # counted in the length above, not drawn through the socket
+    yz = [(ym, zm), (y_s, zm)]
+    yz += _arc(y_s, zm - r1, r1, 90, 0, 4)          # down...
+    yz += _arc(y_s + 2.0 * r1, FFC_TOP_Z + r1, r1, 180, 270, 4)    # ...and level again
+    yz += [(y_c, FFC_TOP_Z)]
+    yz += _arc(y_c, FFC_TOP_Z - r2, r2, 90, -90, 10)               # the hairpin
+    yz += [(y_e, zb), (yb, zb)]
+    return [(x, y, z) for y, z in yz]
+
+
+def ffc_cable():
+    """The display's ribbon, one prism along ffc_path(); it may not fold. It is drawn
+    between the two sockets' mouths, so it is FFC_L less two FFC_INSERTs long."""
+    from cadkit.cables import flat_bends, flat_cable
+    pts = ffc_path()
+    folds = [b for b in flat_bends(pts, across=(1.0, 0.0, 0.0)) if b[1] == "fold"]
+    assert not folds, "the display's ribbon folds: %r" % folds
+    return flat_cable(pts, FFC_W, FFC_T, across=(1.0, 0.0, 0.0))
 
 
 def screen():
@@ -683,10 +824,9 @@ SCREEN_FILL = 0.75                 # of the lit area's width, and no more of its
 
 
 def _screen_box():
-    hx, hy = routed("J1")
-    my = hy + (MOD_L / 2.0 - HDR_EDGE_DY)
+    mx, my = module_centre()
     face = z_stack()[2]
-    return box_at(ACT_W, ACT_L, SCREEN_T, x=hx, y=my + VIEW_OFF_Y, z=face - SCREEN_T / 2.0)
+    return box_at(ACT_W, ACT_L, SCREEN_T, x=mx, y=my + VIEW_OFF_Y, z=face - SCREEN_T / 2.0)
 
 
 @lru_cache(maxsize=1)
@@ -833,8 +973,7 @@ def deck_cutter():
     """Everything the UI takes out of its deck panel: the module's pocket, the window
     through the ledge over it, the knob's hole and the power button's."""
     tz, bz, face, _back, _bt, _bb = z_stack()
-    hx, hy = routed("J1")
-    mx, my = hx, hy + (MOD_L / 2.0 - HDR_EDGE_DY)
+    mx, my = module_centre()
     c = POCKET_CLR
     # the pocket: open at the underside, its ceiling the face the module presses on
     out = box_at(MOD_W + 2 * c, MOD_L + 2 * c, face - bz + 1.0,
@@ -919,8 +1058,8 @@ def deck_mount():
     -Y rail's inner face, and a two-bead wall with a fit gap either side is 2.2 -- it
     would not go, and squeezing it to fit would put a printed fin a quarter of a
     millimetre off a printed rail that the whole deck panel slides -X past. There is no
-    +Y wall either, because the display module hangs over that entire edge; the module's
-    own 20-way socket ties the board that way once it is assembled.
+    +Y wall either, because the display module hangs over that entire edge; the two
+    spigots hold the board that way.
     """
     _tz, bz, _face, _back, board_top, board_bot = z_stack()
     cx, cy = board_centre()
@@ -989,25 +1128,26 @@ def clamp():
       * it SQUEEZES the board rather than hinging it. Its whole top face bears, against
         four bearing faces on the deck -- two posts and the two bosses' own ends -- so
         the board is gripped between opposed surfaces instead of pinched at one point.
-      * it REACHES THE SCREEN. An arm steps up past the board and runs +Y under the
-        display to its far mounting-hole row, where two posts press the module's back up
-        into the window ledge. Until this the module's 47.5 mm was carried at one edge by
-        its own 20-way header and nothing else -- the "lackluster" the user was looking
-        at.
+      * it HOLDS THE SCREEN. Four columns press the module's PCB up into the window
+        ledge, one at each mounting hole: the far two off a crossbar that two arms carry
+        +Y under the display, the near two off tabs beside the board's ends. The ribbon
+        carries nothing, so these are the module's whole retention.
       * and it is the ONE PART you undo.
 
 A RELIEF UNDER THE THROUGH-HOLE FOOTPRINTS ONLY, from board_geom.TAIL. Relieving
     every footprint was tried and is worse: the 0402s do not need it, and two of their
     reliefs left a 1.38 mm web between them -- under the two-bead floor.
 
-    THE ARM BEARS ON THE MOUNTING-HOLE PADS, x +-36.70 at the module's far hole row,
-    because that is the one region of a module's back guaranteed to be clear of
-    components. CONFIRM IT against the real part before printing: Newhaven's rear view
-    shows parts, and their drawing does not dimension them."""
+    THE COLUMNS BEAR ON THE MOUNTING-HOLE PADS, x +-36.70 on both hole rows, because
+    that is the one region of a module's back guaranteed to be clear of components. The
+    near two stand just outside the board's ends, so they bear 1.7 further out than the
+    hole: still on the pad's ring and the plain board round it. CONFIRM IT against the
+    real part before printing: Newhaven's rear view shows parts, and their drawing does
+    not dimension them."""
     cx, cy = board_centre()
     top, bot = clamp_z()
     hl = BOARD_L / 2.0
-    _tz, _bz, _face, mod_back, _board_top, _board_bot = z_stack()
+    pcb_back = mod_pcb_back()
     from . import chassis as CH
     # ...AND ITS -Y EDGE STOPS CLEAR OF THE CABLE TROUGH, for the same reason the deck's
     # wall does: the panel is slid on and off with the whole station bolted to it, and
@@ -1029,8 +1169,9 @@ A RELIEF UNDER THE THROUGH-HOLE FOOTPRINTS ONLY, from board_geom.TAIL. Relieving
         s = s.cut(box_at(x1 - x0 + 2 * CLAMP_RELIEF, fy1 - fy0 + 2 * CLAMP_RELIEF,
                          CLAMP_T + 2.0, x=cx + (x0 + x1) / 2.0, y=cy + (fy0 + fy1) / 2.0,
                          z=(top + bot) / 2.0))
-    # the arm to the display: up past the board, +Y to the far mounting-hole row, a
-    # crossbar there, and two posts to the module's back
+    # the arms to the display: up past the board, +Y to the far mounting-hole row, a
+    # crossbar there, and two posts to the module's back -- one arm each side of the
+    # ribbon, which hangs under the module's centre (see CLAMP_ARM_DX)
     # ...AND THE ARM IS A FIN OFF THE BED, not a beam in mid-air. Drawn as a 6 mm bar
     # at the arm's height it was a 35 mm bridge over nothing -- 650 mm2 of unsupported
     # ceiling, on a part whose whole point is stiffness. Taken down to the plate's own
@@ -1039,13 +1180,28 @@ A RELIEF UNDER THE THROUGH-HOLE FOOTPRINTS ONLY, from board_geom.TAIL. Relieving
     mx, _my = module_centre()
     far_y = header_row_y() + MOD_HOLE_DY
     fin_y0 = y1 - CLAMP_RIB_W
-    s = s.union(box_at(CLAMP_RIB_W, far_y - fin_y0, CLAMP_ARM_Z - bot, x=mx,
-                       y=(fin_y0 + far_y) / 2.0, z=(bot + CLAMP_ARM_Z) / 2.0))
+    for sx in (-1, 1):
+        s = s.union(box_at(CLAMP_RIB_W, far_y - fin_y0, CLAMP_ARM_Z - bot,
+                           x=mx + sx * CLAMP_ARM_DX, y=(fin_y0 + far_y) / 2.0,
+                           z=(bot + CLAMP_ARM_Z) / 2.0))
     s = s.union(box_at(2 * MOD_HOLE_DX + CLAMP_RIB_W, CLAMP_RIB_W, CLAMP_ARM_Z - bot,
                        x=mx, y=far_y, z=(bot + CLAMP_ARM_Z) / 2.0))
+    bz = z_stack()[1]
     for sx in (-1, 1):
-        s = s.union(cyl(CLAMP_RIB_W, mod_back - CLAMP_ARM_Z, z=CLAMP_ARM_Z)
+        s = s.union(cyl(CLAMP_RIB_W, bz - 0.5 - CLAMP_ARM_Z, z=CLAMP_ARM_Z)
                     .translate((mx + sx * MOD_HOLE_DX, far_y, 0)))
+        s = s.union(cyl(CLAMP_TIP_D, pcb_back - (bz - 0.6), z=bz - 0.6)
+                    .translate((mx + sx * MOD_HOLE_DX, far_y, 0)))
+    # ...and the NEAR row's two, on tabs off the plate's ends: the board is under that
+    # row, so they stand just outside it, as close to the holes as its edge allows
+    near_y = header_row_y()
+    px = BOARD_W / 2.0 + CLAMP_RELIEF + CLAMP_POST_SQ / 2.0
+    t0, t1 = BOARD_W / 2.0 - 1.0, px + CLAMP_POST_SQ / 2.0       # the tab, from inside
+    for sx in (-1, 1):                                              # the plate's end out
+        s = s.union(box_at(t1 - t0, CLAMP_POST_SQ, CLAMP_T, x=cx + sx * (t0 + t1) / 2.0,
+                           y=near_y, z=(top + bot) / 2.0))
+        s = s.union(box_at(CLAMP_POST_SQ, CLAMP_POST_SQ, pcb_back - bot,
+                           x=cx + sx * px, y=near_y, z=(bot + pcb_back) / 2.0))
     # the spigot sockets: blind, so the plate keeps a floor under them -- a through
     # hole would leave two O4.6 windows in the one part that is here for stiffness
     for px, py in SPIGOTS:
@@ -1077,6 +1233,7 @@ def hardware():
 def parts():
     """[(name, solid)] everything the assembly shows for the UI station."""
     return ([("ui_pcb", ui_pcb()), ("ui_display", display_module()),
+             ("ui_disp_ffc_socket", module_ffc_socket()), ("ui_ffc", ffc_cable()),
              ("ui_screen", screen()), ("ui_screen_lit", screen_lit()), ("ui_clamp", clamp()),
              ("ui_shaft", encoder_shaft()), ("ui_knob", knob()),
              ("ui_pwr_stem", power_stem()), ("ui_pwr_cap", power_cap())]

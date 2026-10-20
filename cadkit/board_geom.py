@@ -102,6 +102,7 @@ HEIGHT = {
     "JST_PH_S4B-PH-SM4-TB_1x04-1MP_P2.00mm_Horizontal": 5.5,   # cadkit.pcb PH_SIDE_H
     "JST_PH_S6B-PH-SM4-TB_1x06-1MP_P2.00mm_Horizontal": 5.5,
     "JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal": 5.5,
+    "JST_PH_S4B-PH-K_1x04_P2.00mm_Horizontal": 4.85,           # cadkit.pcb PH_THT_SIDE_H
     "JST_XH_S4B-XH-SM4-TB_1x04-1MP_P2.50mm_Horizontal": 6.0,   # JST eXH p.6 (was 5.75,
                                                                # the TOP-entry part's depth)
     "JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal": 6.1,            # JST eXH p.5, side entry THT
@@ -153,6 +154,7 @@ TAIL = {
     # through-hole JST posts stand 3.4 mm below the seating plane, top or side entry
     "JST_PH_B4B-PH-K_1x04_P2.00mm_Vertical": 3.4, "JST_PH_B6B-PH-K_1x06_P2.00mm_Vertical": 3.4,
     "JST_XH_S4B-XH-A_1x04_P2.50mm_Horizontal": 3.4,
+    "JST_PH_S4B-PH-K_1x04_P2.00mm_Horizontal": 3.4,            # cadkit.pcb PH_THT_TAIL
     "JST_SH_SM04B-SRSS-TB_1x04-1MP_P1.00mm_Horizontal": 0.0,
     "Xinyangze_YZF0002-38080-02": 0.0,
 }
@@ -222,7 +224,8 @@ PH_MATED_H = 8.0          # ESTIMATE: 6.0 body + the PHR's reach; confirm off JS
 THT_TAIL = _pcb.XH_POST_TAIL                  # 3.4
 # A SIDE-ENTRY connector's plug leaves through the board edge: how far the mated pair
 # reaches past the socket body, by footprint-name prefix.
-SIDE_PLUG_RUN = {"JST_PH_": _pcb.PH_PLUG_RUN, "JST_XH_": 7.5}
+SIDE_PLUG_RUN = {"JST_PH_": _pcb.PH_PLUG_RUN, "JST_XH_": 7.5,
+                 "JST_PH_S4B-PH-K_": _pcb.PH_THT_PLUG_RUN}   # THT side: the longest prefix wins
 
 SILK_T = 0.02            # ink stands this far off the laminate, so its faces are not
                          # coplanar with the board's and a viewer does not fight over them
@@ -562,6 +565,14 @@ class Boards:
                              "the mouth cannot be read from the geometry" % (board, f["ref"]))
         return ax, lo, hi, o, (hi - o > o - lo)
 
+
+    def _side_run(self, name):
+        """The mated plug's run past the mouth for footprint `name`, by the LONGEST
+        registered prefix (a footprint-specific key beats the series'), or None."""
+        for key in sorted(self.side_plug_run, key=len, reverse=True):
+            if name.startswith(key):
+                return self.side_plug_run[key]
+        return None
     def lead_exit(self, board: str, ref: str):
         """Where a LEAD LEAVES connector `ref`, in the board frame -- the point a cable
         should be drawn from.
@@ -598,11 +609,7 @@ class Boards:
         # be 7 characters long, so the slice worked by coincidence and silently stopped
         # working for any key of another length -- and the failure was a wrong number
         # rather than a miss, see the warning above.
-        run = None
-        for key in sorted(self.side_plug_run, key=len, reverse=True):
-            if name.startswith(key):
-                run = self.side_plug_run[key]
-                break
+        run = self._side_run(name)
         if run is None:
             raise KeyError(
                 "%s %s: %s says Horizontal, so its plug leaves through the board EDGE, "
@@ -839,7 +846,7 @@ class Boards:
                                      z=-self.tht_tail / 2.0))
             x0, x1, y0, y1 = f["fab"]
             # a side-entry part grows ALONG the board when mated, not upward
-            run = self.side_plug_run.get(name[:7]) if (
+            run = self._side_run(name) if (
                 mated and "Horizontal" in f["fpid"]) else None
             if run:
                 ax, _lo, _hi, _o, towards_hi = self._side_mouth(board, f)

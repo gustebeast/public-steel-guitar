@@ -254,26 +254,47 @@ PH_SIDE_H     = 5.5       # height above the board (JST p.4; the mated pair too,
 PH_ROW_OFF    = 0.40      # pad row back from the mouth face (KiCad footprint)
 PH_PLUG_RUN   = 9.6 - PH_SIDE_D   # 3.6: the mated plug past the mouth (JST p.2)
 
+# THROUGH-HOLE side entry, S<n>B-PH-K-S. JST's PDF refuses scripted fetches, so these
+# are [KiCad]: its library model JST_PH_S4B-PH-K_1x04_P2.00mm_Horizontal (generated from
+# JST's drawing), measured 2026-10-19. SHORTER than the SMT part on every axis -- which is
+# why it is the one to reach for when two connectors have to stand end to end: two
+# S4B-PH-K-S take 19.8, the length of ONE S8B-PH-SM4-TB.
+PH_THT_SIDE_D   = 7.6       # body depth along the mating axis, mouth to back
+PH_THT_SIDE_H   = 4.85      # height above the board
+PH_THT_ROW_D    = 6.25      # the pin row, back from the mouth
+PH_THT_TAIL     = 3.4       # pins below the board's top face (as every JST THT post here)
+PH_THT_PLUG_RUN = 6.85 - 4.2   # 2.65: PHR-n's length [JST ePH p.3] less the THT header's
+                               # pocket [KiCad] -- the SMT part's 3.6 found the same way
 
-def ph_side_length(n):
-    """Overall body length (mm) of an n-circuit S<n>B-PH-SM4-TB."""
-    return PH_PITCH * (n - 1) + 5.9     # JST p.4, dimension B
+
+def ph_side_length(n, *, smt=True):
+    """Overall body length (mm) of an n-circuit side-entry PH header:
+    S<n>B-PH-SM4-TB (JST p.4, dimension B) or, smt=False, S<n>B-PH-K-S [KiCad]."""
+    return PH_PITCH * (n - 1) + (5.9 if smt else 3.9)
 
 
-def jst_ph_side_header(n, *, mated=False, plug_run=PH_PLUG_RUN):
-    """Dummy side-entry SMT PH header (S<n>B-PH-SM4-TB).
+def jst_ph_side_header(n, *, smt=True, mated=False, plug_run=None, tails=True):
+    """Dummy side-entry PH header: S<n>B-PH-SM4-TB, or S<n>B-PH-K-S with smt=False.
 
     Frame matches jst_xh_side_header so the two are interchangeable at a call
     site: the board's top face is z=0 and the connector rises +Z; the MOUTH FACE
     is y=0 with the body extending +Y, so the plug arrives travelling +Y and
     `mated=True` adds its envelope on -y. Centred on x=0 along the row.
 
-    SMT, so there are NO post tails below the board -- which is usually the
-    reason this part is chosen over a through-hole side-entry XH."""
-    L = ph_side_length(n)
-    body = _block(L, PH_SIDE_D, PH_SIDE_H, 0.0, PH_SIDE_D / 2, 0.0)
+    SMT has NO post tails below the board -- usually the reason to choose it.
+    The THT part's pins stand PH_THT_TAIL below the top face at PH_THT_ROW_D
+    behind the mouth (`tails=False` leaves them off); on a board that slides in
+    past something, sweep them along the install stroke, not just at rest."""
+    L = ph_side_length(n, smt=smt)
+    d, h = (PH_SIDE_D, PH_SIDE_H) if smt else (PH_THT_SIDE_D, PH_THT_SIDE_H)
+    run = (PH_PLUG_RUN if smt else PH_THT_PLUG_RUN) if plug_run is None else plug_run
+    body = _block(L, d, h, 0.0, d / 2, 0.0)
     if mated:
-        body = body.union(_block(L, plug_run, PH_SIDE_H, 0.0, -plug_run / 2, 0.0))
+        body = body.union(_block(L, run, h, 0.0, -run / 2, 0.0))
+    if not smt and tails:
+        for i in range(n):
+            x = (i - (n - 1) / 2.0) * PH_PITCH
+            body = body.union(_block(0.5, 0.5, PH_THT_TAIL, x, PH_THT_ROW_D, -PH_THT_TAIL))
     return body
 
 
@@ -319,8 +340,9 @@ def jst_ph_side_header(n, *, mated=False, plug_run=PH_PLUG_RUN):
 #             same distance below the TOP as the THT part (XH 6.0 - 2.35, PH 5.5 - 1.75);
 #             ZH [est] mid-pocket of a 3.7 body.
 #     proud   the mated housing past the mouth. PH SMT 3.6 [JST ePH p.2: 9.6 - 6.0];
-#             ZH 2.0 [JST eZR p.2: 7 - 5.0]; XH 2.8 and PH THT 2.0 [est]: the top-entry
-#             figure (mated - header), on the grounds that pocket and housing are the same.
+#             ZH 2.0 [JST eZR p.2: 7 - 5.0]; PH THT 2.65 = PHR's 6.85 [JST ePH p.3] less
+#             the THT pocket below [KiCad] (it was 2.0 [est], the top-entry figure, until a
+#             board used the part); XH 2.8 [est]: the top-entry figure (mated - header).
 #     pocket  pocket depth of the header AS DRAWN BY cadkit.web.parts (SMT only; a THT
 #             header is KiCad's model and its pocket is `pocket` above). PH SMT 3.25 =
 #             PHR's 6.85 [JST ePH p.3] less the 3.6 proud; XH = the THT pocket; ZH [est].
@@ -336,7 +358,7 @@ JST_SERIES = {
     "PH": dict(housing="PHR-%d", pitch=PH_PITCH, near=1.1, far=2.3, pocket_over=2.9,
                overall=None, pocket=4.2, cavity=1.5, post=0.5, rails="notch",
                top=(6.0, 8.0),
-               side={False: (3.1, 2.0, 4.2, None),
+               side={False: (3.1, PH_THT_PLUG_RUN, 4.2, None),
                      # ⚠ THE SMT PART'S CONTACT AXIS IS HALF ITS HEIGHT, AND THAT IS UNREAD.
                      # JST's drawing (ePH p.4) has it; nobody has taken it off the page.
                      # Projects have laid cables out round "the middle of the header"

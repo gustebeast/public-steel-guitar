@@ -65,24 +65,24 @@
       "what": "Mean Well GST160A24-R7B sealed DESKTOP adapter, 24 V 6.67 A 160 W, IEC C14 in, 4-pin locking DIN out (mates the Kycon KPJX-4S-S on output_panel). USER'S CHOICE 2026-10-01, replacing the open-frame LRS-150-24 ($20.69 landed). $47.70 at 10, 891 in stock, page read by bronner. BEFORE shipping and tax. OnlineComponents' cart adds a $16.72 tariff line at qty 1 ($52.40 + $16.72 = $69.12 landed before shipping, read 2026-10-07); the per-10 tariff has not been read. The listing calls it 'no longer manufactured'; see BOM.md."
     },
     "bearing_688zz_screw": {
-      "usd": 3.72,
+      "usd": 3.23,
       "verified": "v",
       "per_instrument": 10,
-      "vendor": "Bearings Direct",
-      "sku": "688-ZZ",
-      "url": "https://bearingsdirect.com/688-zz-mini-ball-bearing-8x16x5-shielded-mr688zz/",
-      "date": "2026-10-06",
-      "what": "688ZZ O8xO16x5, AMPEC brand -- THE TEN SCREW THRUST BEARINGS ONLY (user, 2026-10-06: over $100 of bearings is too much). This is the one seat where the rating is the margin: 147 N axial against half the static rating, and the listing publishes 132 lbf = 587 N, so 2.0x. $4.38 each, 5% off at 10 ($4.16 for one instrument), 15% at 50 ($3.72, the ten-instrument price used here); 489 in stock, page read 2026-10-06. CARTS READ 2026-10-06, shipping to Berkeley CA, nothing ordered: ten of these $41.60 + $8.55 USPS Ground Advantage = $50.15 before tax. The alternative that is cheaper per piece is not cheaper landed: EZO 688-ZZ at 123bearing, $3.22 each (EZO catalogue 590 N static, the same margin), ten for $32.20 but delivery from $27.90 = $60.10. ZEN 688-ZZ there is $1.97 at 100 with 592 N on the listing, worth a look for a ten-instrument buy. VXB kit859, 10 for $29.99, lists 710 N under a house brand."
+      "vendor": "123bearing (EZO)",
+      "sku": "688-ZZ-EZO",
+      "url": "https://www.123bearing.com/bearing-housing/deep-groove-bearing/single-row/688-2z-ezo",
+      "date": "2026-10-19",
+      "what": "688ZZ O8xO16x5, EZO brand (Sapporo Precision, Japan) -- THE TEN SCREW THRUST BEARINGS ONLY, the one seat where the rating is the margin: 147 N axial against half the static rating. EZO's catalogue gives 590 N static (recorded 2026-10-06), 2.0x; the 123bearing listing prints no rating. $3.23 each at 1-19, 50+ in stock, page read 2026-10-19. USER'S CHOICE 2026-10-19 over ZEN 688-ZZ ($3.48, 592 N printed on the listing). Moved from Bearings Direct (AMPEC, 587 N, $3.72) so one 123bearing parcel carries both bearing groups and the guide-rod needle rollers: 123bearing's delivery (from $27.90, ships from France) was the only reason it lost on 2026-10-06, and the rollers pay it now."
     },
     "bearing_688zz": {
-      "usd": 0.99,
+      "usd": 0.94,
       "verified": "v",
       "per_instrument": 32,
-      "vendor": "Fast Eddy Bearings",
-      "sku": "TFE234",
-      "url": "https://www.fasteddybearings.com/products/10-units-8x16x5-metal-shielded-bearing-688-zz",
-      "date": "2026-10-06",
-      "what": "688ZZ O8xO16x5 chrome steel, metal shields -- 10 bridge axle + 2 per sensed control x 11 = 32 (the model draws 30 of them: it has ten controls). The cheapest stocked listing found outside Amazon and AliExpress (user, 2026-10-06): TFE234, 10 for $10.99; TFE480, 100 for $98.99 ($0.99, the ten-instrument price used here); TFE5, singles at $1.25. All three in stock, read off the shop's own product feed. NO LOAD RATING IS PUBLISHED, which is why the ten screw seats keep the rated part: here the bridge load is radial, 208 N against the lowest rating any maker publishes for a 688 (474 N, 2.3x), and the lever and pedal axles carry almost nothing. Cart read 2026-10-06: one pack $10.99 + $4.90 USPS first class to Berkeley = $15.89. Also looked at: VXB $3.00 each in tens, Bearings Direct $4.38."
+      "vendor": "123bearing (generic)",
+      "sku": "688-ZZ",
+      "url": "https://www.123bearing.com/bearing-housing/deep-groove-bearing/single-row/688-zz",
+      "date": "2026-10-19",
+      "what": "688ZZ O8xO16x5, 123bearing's generic brand, metal shields -- 10 bridge axle + 2 per sensed control x 11 = 32. $0.94 each at 25-49 ($0.69 at 50+), 50+ in stock, page read 2026-10-19. NO LOAD RATING IS PUBLISHED, which is why the ten screw seats keep the rated part: the bridge load is radial, 208 N against the lowest rating any maker publishes for a 688 (474 N, 2.3x), and the lever and pedal axles carry almost nothing. MOVED FROM Fast Eddy TFE234 ($0.99) on 2026-10-19 to ship in the same 123bearing parcel as the rated ten and the needle rollers."
     },
     "preload_spring_9714k29": {
       "usd": 0.8985,
@@ -185,12 +185,12 @@
       "what": "O2 x 4 dowel pin, 52100 -- the nut break pins"
     },
     "guide_rod_o3_5": {
-      "usd": 1.37,
+      "usd": 1.13,
       "verified": "v",
       "per_instrument": 10,
       "vendor": "123bearing (INA)",
       "sku": "NRB 3.50x29.80-G2",
-      "order": "10 x $1.37 = $13.70, 8-10 days",
+      "order": "10 x $1.13 = $11.30 (1-49 break), read 2026-10-19 -- ONLY 4 IN STOCK that day; the basket took 10. One 123bearing parcel with all 42 bearings: products $73.68 + delivery from $27.97 = $101.65 before any US tariff (checkout needs a login, not read). Three-vendor alternative measured the same day: ~$142",
       "what": "O3.5 x 29.8 needle roller, INA NRB 3.5x29.8-G2 (DIN 5402-3 form B, 100Cr6, 3.490-3.500) -- the guide rod, used as bought. Slides in the nut ear reamed 9/64in (0.072-0.086 clearance, 0.63-0.75 cent); press in the endplate. Replaces the O2.5 dowel (the ear measured 3.5, 2026-10-16)."
     },
     "shaft_o8": {
@@ -1480,9 +1480,9 @@
       "what": "USBLC6-2SC6 C7519 -- JLCPCB parts API at qty 10"
     },
     "ui_board:J1": {
-      "usd": 0.1648,
+      "usd": 0.1248,
       "verified": "v",
-      "what": "KH-2.54PH180-1X20P-L11.5 C2905493 -- JLCPCB parts API at qty 10"
+      "what": "AFA07-S20FCA-00 C262724 -- JLCPCB parts API at qty 1-49, 2026-10-19"
     },
     "motor_ctrl:J2": {
       "usd": 0.3066,
@@ -4931,11 +4931,17 @@
       "this file had it at $9.22 from DigiKey, where the listing shows 0 in stock. JLCPCB",
       "has the same Alps RKJXT1F42001 at $4.52 with 7,341 on the shelf."
     ],
-    "oled_2_42": {
-      "usd": 17.0,
-      "verified": "m",
+    "oled_nhd_2_7_m": {
+      "usd": 39.08,
+      "verified": "v",
       "per_instrument": 1,
-      "what": "2.42in 128x64 SSD1309"
+      "what": "Newhaven NHD-2.7-12864WDW3-M, 2.7in 128x64 SSD1322 white OLED with a 20-way 1.0 mm FFC socket -- newhavendisplay.com $39.08 IN STOCK 2026-10-19 (DigiKey $39.08 and Mouser $44.66 both 0 in stock that day, restocking Nov 2026). Replaces the 2.42in SSD1309 line, $17 from memory, which was the display before 2026-09-25"
+    },
+    "ffc_display_20p_50mm": {
+      "usd": 0.0907,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "JUSHUO JS10A-20P-050-4-8 C2857604, 20-way 1.0 mm same-side FFC, 50 mm: the display's ribbon -- JLCPCB parts API at qty 1-49, 2026-10-19, 683 in stock"
     },
     "pickup": {
       "usd": 147.0,
