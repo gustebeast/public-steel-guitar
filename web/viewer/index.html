@@ -1261,7 +1261,9 @@
       return;
     }
     if (e.key === 'Escape') { mode === 'measure' ? clearMeasure() : clearSelection(); return; }
-    if (!e.repeat && !e.ctrlKey && !e.metaKey) switch (e.key) {
+    // (letters either case: caps lock on is not a reason for a key to do nothing)
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (!e.repeat && !e.ctrlKey && !e.metaKey) switch (k) {
       // the left hand's rows: tools on top, what is done to the selection under them,
       // undo and redo under those. Every one is written on its button.
       case 'q': setMode('select'); return;
@@ -1277,11 +1279,11 @@
       case 't': showAll(); return;
       case 'g': gfxToggle(); return;
     }
-    const p = keyToPedal[e.key]; if (!p || e.repeat) return;
+    const p = keyToPedal[k]; if (!p || e.repeat) return;
     held.add(p); syncUI();
   });
   addEventListener('keyup', e => {
-    const p = keyToPedal[e.key]; if (!p) return;
+    const p = keyToPedal[e.key.toLowerCase()]; if (!p) return;
     held.delete(p); syncUI();
   });
   $('bSelect').onclick = () => setMode('select');
@@ -1849,7 +1851,7 @@
     rig = await fetchJSON('rig.json?v=' + Date.now());
     strings = rig ? rig.strings : [];
     for (const k of Object.keys(keyToPedal)) delete keyToPedal[k];
-    if (rig) for (const p of rig.copedent) keyToPedal[p.key] = p.name;
+    if (rig) for (const p of rig.copedent) keyToPedal[String(p.key).toLowerCase()] = p.name;
     M.key = stamp ? String(stamp.t) : rig ? String(rig.build) : String(Date.now());
     $('status').textContent = stamp && stamp.scratch
       ? ['scratch view',
