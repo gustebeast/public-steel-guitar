@@ -1083,15 +1083,16 @@ def _build() -> cq.Workplane:
                         .translate((_bx0 - 0.5, _ry, _rz)))
         # THE COUNTERBORE'S FLOOR FACES THE BED (this face prints down), so a flat ring from
         # the socket's O15.6 in to the O11.8 hole was a 1.9 mm ceiling (user, 2026-10-20).
-        # It is a one-bead LAND at the wall (a ledge, which prints) and then a 45 deg cone
-        # down to the hole. The nut's hex bears on the cone at its corners (A/F/cos 30), and
-        # the land is lifted by exactly the cone's run to them, so the corners land where
-        # the flat floor was: head flush, clamp still 4.0. The socket reaches the land.
+        # It is a FULL 45 deg cone from the counterbore wall down to the hole, no flat at all
+        # (user, 2026-10-20: a one-bead land still printed as an overhang; accept the smaller
+        # bearing). The nut's hex bears on the cone at its corners (A/F/cos 30), and the cone
+        # starts higher by exactly its run to them, so the corners land where the flat floor
+        # was: head flush, clamp still 4.0. The socket reaches the cone's top edge.
         _ht = _sp["nut"][1]
-        _r0 = _sp["cbore_d"] / 2.0 - D.BEAD                 # the land's inner edge
+        _r0 = _sp["cbore_d"] / 2.0                          # the cone starts at the wall
         _rk = _sp["nut"][0] / math.sqrt(3.0)                # the hex's corner radius
         _rh = _sp["opening"][1] / 2.0
-        _xf = JACK_TIP - _ht + (_r0 - _rk)                  # the land
+        _xf = JACK_TIP - _ht + (_r0 - _rk)                  # where the cone starts
         body = body.cut(cq.Workplane("YZ").circle(_sp["cbore_d"] / 2.0)
                         .extrude(JACK_TIP + 1.0 - _xf).translate((_xf, _ry, _rz)))
         body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
