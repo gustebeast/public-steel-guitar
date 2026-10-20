@@ -333,8 +333,12 @@ assert (D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T) <= _slot_edge - D.MIN_WALL + 1e-9, 
 # bottom prism would be, and the motor sits on the bed inside it. Everything over BUMP_H is
 # what low_walls() takes off the chassis anyway, so up to there this IS the chassis. Prints
 # like the chassis, +Z.
+# MATERIAL (user, 2026-10-20): the faceplate wall's 6.4, the +X post and the 3.2 back stop
+# carry load in the chassis and test nothing here, so the bay is trimmed OUTSIDE to a
+# COUPON_WALL ring round the motor's fit. Every face the motor touches is untouched.
 COUPON_MOTOR = 4
 COUPON_UP = (0.0, 0.0, 1.0)
+COUPON_WALL = D.MIN_WALL_2P      # 1.6, the shared side walls' own thickness
 
 
 def bay_coupon() -> cq.Workplane:
@@ -342,10 +346,10 @@ def bay_coupon() -> cq.Workplane:
     bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
     mx, my, _ = D.motor_pos(i)
     bay = plates[i]
-    b = bay.val().BoundingBox()
+    fit = lift_prism(i).val().BoundingBox()            # the motor's fit: the cavity
     z1 = bz0 + term_wall_h()
-    clip = box_at(b.xlen + 2.0, b.ylen + 2.0, z1 - FLOOR_TOP, x=b.center.x, y=b.center.y,
-                  z=(FLOOR_TOP + z1) / 2)
+    clip = box_at(fit.xlen + 2 * COUPON_WALL, fit.ylen + 2 * COUPON_WALL, z1 - FLOOR_TOP,
+                  x=fit.center.x, y=fit.center.y, z=(FLOOR_TOP + z1) / 2)
     out = bay.intersect(clip).translate((-mx, -(by0 + by1) / 2, -FLOOR_TOP))
     assert abs(out.val().BoundingBox().zmin) < 1e-6, "the coupon does not stand on the bed"
     return out

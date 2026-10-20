@@ -452,9 +452,9 @@ PARTS["test_belt_tensioner"] = (
 PARTS["test_motor_bay"] = (
     lambda: heal(__import__("src.motor_bank", fromlist=["e"]).bay_coupon()),
     "test_motor_bay.step",
-    "TEST COUPON — one motor's bay (string 5's: shared 1.6 side walls, BACK_T back stop, "
-    "the faceplate wall with its boss slot), the chassis' own pocket cut off at the 11.2 "
-    "low-wall height, NO floor. Prints +Z like the chassis; set it on the bench and drop "
+    "TEST COUPON — one motor's bay (string 5's), the chassis' own pocket cut off at the 11.2 "
+    "low-wall height and trimmed outside to a 1.6 ring round the motor's fit (the boss slot "
+    "kept), NO floor. Prints +Z like the chassis; set it on the bench and drop "
     "a SERVO42D in, faceplate to the wall")
 
 
