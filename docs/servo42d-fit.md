@@ -1,5 +1,13 @@
 # The real SERVO42D in the bay we drew for it (2026-10-01)
 
+> **2026-10-20: a unit has been MEASURED.** 53.4 faceplate to back, 42.4 square, 51.1 tall
+> with the coil lead's loop on top, shaft 19.4, boss 22 x 2. `src/servo42d.py` is rebuilt from
+> those numbers and the user's video, and the BUILD now draws every motor with it
+> (`D.MOTOR_BODY_L` 53.4). The video corrected two things below: the buttons are on the
+> driver's BACK face, inside the square (nothing hangs under it), and the terminals' screws
+> are turned from the back while their wires still enter from the sides -- so the side-wall
+> access finding stands. The tables below are the 2026-10-01 study, kept as written.
+
 **Status: a finding and a proposal. Nothing in the build has changed.** The motor bank and
 the chassis are the lead's; `src/servo42d.py` is a standalone model, not in `src.build`.
 

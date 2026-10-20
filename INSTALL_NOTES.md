@@ -222,6 +222,21 @@ turns on the 2.5 mm hex key. See `BOM.md` and
 - **Not an issue for the far row** (strings 2, 4, 6, 8, 10, at x +20.0): the board does
   not reach them.
 
+## Motors: wire the screw terminals on the bench, with a 2.0 mm flat blade (2026-10-20)
+
+The SERVO42D's power and CAN go into its OWN screw terminals, not a plug: the green 6-way on
+one side of the driver (V+, GND) and the green 5-way on the other (CANH, CANL). Wires enter
+from the SIDE of each block and the slotted screws are turned from the BACK. A 2.0 x 0.4 mm
+flat blade fits the screw wells; a wider blade does not reach the screw. This is the one job
+on the instrument the 2.5 mm key does not do (see BOM, Tools).
+
+* Ferrule every stripped end before it goes in, and tug each one after tightening.
+* The blue 4-way on the top edge carries the motor's own coil lead and comes wired from the
+  factory: leave it alone. If it has been undone, the order from -X to +X (from behind,
+  left to right) is red, black, blue, green.
+* Wire the motor on the bench, before it drops into its bay: in the bay the side wire
+  entries face the bay's walls (docs/servo42d-fit.md).
+
 ## Motor tees: ONE switch ON, nine OFF
 
 Every motor tee carries a 120 ohm terminator behind a small slide switch marked TERM

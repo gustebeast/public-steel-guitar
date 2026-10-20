@@ -982,7 +982,10 @@ def _string_components(i):
     # nut's own hole pitch), so the seat and the rod occupied the same space. The
     # overlap gate caught it. Deleting the bearing is what resolves that, not a fit.
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
-    out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
+    # THE MEASURED SERVO42D (src/servo42d.py), one solid per material: motor_{i} is the can,
+    # motor_<suffix>_{i} its face, laminations, shaft, driver, terminals, screws and coil lead
+    for _k, _wp, _rgb, _fin in C.motor_parts():
+        out.append((f"motor_{_k}_{i}" if _k else f"motor_{i}", _wp.translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().rotate((0, 0, 0), (0, 1, 0), mp_deg)
                 .translate((mx, my, mz))))
     # The body length the pockets are built from is checked here, where the motor is built
@@ -2128,7 +2131,6 @@ _COLORS = {
     "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
     "guide_rod":       (0.35, 0.35, 0.38),
     "rod_plug":        (0.85, 0.45, 0.15),
-    "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),
@@ -2363,6 +2365,9 @@ _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/"
 
 # the two lighting leads, a conductor a part: black GND, red 24 V, white SCK, blue SDT
 from . import led_leads as _LL                                   # noqa: E402
+# the SERVO42D's parts take the colours it was measured in (src/servo42d.py LOOK)
+from . import servo42d as _SV
+_COLORS.update({("motor_" + _k) if _k else "motor": _rgb for _k, (_rgb, _) in _SV.LOOK.items()})
 _COLORS.update({"wire_%s_led_%s" % (_lead, _w.lower()): _LL.COLORS[_w]
                 for _lead in ("foot", "fret") for _w in _LL.WAYS})
 _COLORS.update({

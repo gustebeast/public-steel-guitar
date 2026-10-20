@@ -170,7 +170,12 @@ assert set(TRUNK_PIN) == set(TRUNK_OFF), (
 # RUN is 0.8 under the mouth, no lower: the bays' side walls stand to -25.45 (SEAT_TOP).
 # (-0.6 since the ways are read from the routed board: the contact line is 0.45 lower
 #  than the hand-counted one was, and RUN came up by as much as keeps it off the bay walls.)
-TRUNK_Z_RUN = -0.6
+# ...AND OVER THE MOTOR'S OWN COIL PLUG (2026-10-20). The measured SERVO42D carries a white
+# plug standing 5.7 on its rear cap, its front 31 behind the faceplate, and the ground lane
+# (the -Y-most, 30.7 back) ran 0.85 into it on every hop. RUN lifts the four over its top
+# by 0.3 instead of dipping under the mouth; still under the tee plugs' own tops, which
+# stay the harness's real +Z extent.
+TRUNK_Z_RUN = 0.8
 _XH_PITCH = 2.5
 PWR_OFF = 1.0         # 24 V hot/gnd separation. In X on the bank hops (see _seg) and in Z
                       # along the -Y corridor, where the pair rides one lane each. 2.0 apart
@@ -975,16 +980,27 @@ def build_wires():
     # than at the connector's pitch, which keeps the last one clear of the 24 V link.
     _HEAD_RISE = 2.8                  # J1's plug top to the first riser
     _HEAD_LANES = (0.0, 2.0, 3.8, 5.4)       # GND, 24 V (O1.8), CAN_H, CAN_L (O1.3)
-    _HEAD_TURN_Y = MB.body_box(0)[2] + 5.0      # the first -X step, 5 in over string 1's motor
+    # STRING 1's MOTOR HAS ITS COIL LEAD ON TOP (the measured SERVO42D, 2026-10-20): a white
+    # plug on the rear cap and four wires looping 8.7 over the motor back into the driver's
+    # blue block, all within +-6.2 of the motor's centreline. The head used to run +Y up that
+    # centreline at mouth height, straight through the loop. It now climbs +X of the plug
+    # and makes its -X step IN FRONT of the plug, between it and the tee.
+    from . import servo42d as _SV
+    _m0x = D.motor_pos(0)[0]
+    _HEAD_X0 = max(conn_end("motor_ctrl", "J1")[0][0][0] + _HEAD_RISE,
+                   _m0x + _SV.PLUG_W / 2 + WIRE_OD["wire_pwr_gnd"] / 2 + 0.6)
+    _HEAD_TURN_Y = MB.body_box(0)[3] + _SV.PLUG_Y1 + WIRE_OD["wire_pwr_gnd"] / 2 + 0.6
     _SEG = {"GND": 11, "V24": 11, "CAN_H": 0, "CAN_L": 0}       # the names these have always had
     _ja = conn_end("motor_ctrl", "J1")
     for k in _cable("bus A head", _ja, _tin[west[0]]):
         (pa, _, net), (pb, _, _) = _ja[k], _tin[west[0]][k]
-        xr = pa[0] + _HEAD_RISE + _HEAD_LANES[k]
+        xu = pa[0] + _HEAD_RISE + _HEAD_LANES[k]     # the riser, beside the board
+        xr = _HEAD_X0 + _HEAD_LANES[k]               # the +Y run, +X of the coil plug
         yj = _HEAD_TURN_Y + k * _XH_PITCH
         assert pb[0] < xr, "bus A's head: way %d's riser is not +X of its tee pin" % (k + 1)
+        # up first, THEN across: a step +X at J1's height ran over the Pi cap
         _run(out, "%s_%d" % (_NAME[net], _SEG[net]),
-             [pa, (xr, pa[1], pa[2]), (xr, pa[1], pb[2]), (xr, yj, pb[2]),
+             [pa, (xu, pa[1], pa[2]), (xu, pa[1], pb[2]), (xr, pa[1], pb[2]), (xr, yj, pb[2]),
               (pb[0], yj, pb[2]), pb], WIRE_OD[_NAME[net]], "bus A head", k)
 
     # ── THE HOPS: tee k's OUT half -> tee k+1's IN half, four conductors each ────────────

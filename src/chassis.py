@@ -65,8 +65,8 @@ Y_HI     = D.BRIDGE_AXLE_Y + 4 * D.BEAD + T / 2   # +Y rail (inner face = axle_Y
 # motor like the other nine (wiring: 0.9 off the motor's back, 0.5 off the rail), and the wall
 # stays whole. The body is 2.8 wider for it.
 RAIL_GAP = 6 * D.BEAD
-Y_LO     = (D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
-            - D.MOTOR_PCB_LEN - RAIL_GAP) - T / 2   # −Y rail off the −Y-most string (last index)
+Y_LO     = (D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.BODY_MOTOR_RESERVE
+            - RAIL_GAP) - T / 2   # −Y rail off the −Y-most string (last index)
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = D.XBAR                      # cross-rib X-width = XBAR (square XBAR×XBAR section)
 # Top-plate retention grooves (top_plate.py rides these): a slot in each rail

@@ -681,20 +681,19 @@ TEE_WALL_OVER   = 1.2       # seat walls stand this far over the board's top fac
 # its placements against these, so the CAD draws the parts where the fab places them).
 TEE_TERM_R      = (-10.5, 6.2, 1.6, 0.8, 0.55)
 TEE_TERM_SW     = (1.0, 6.3, 5.4, 2.88, 2.5)    # DSHP01TSGER: body 5.4 x 2.88, 2.30 +0.20 tall
-# ⚠⚠ DEFERRED -- THIS 70 IS NOT THE PART, AND A GREEN GATE DOES NOT MEAN THE MOTOR FITS OR
-# WIRES (2026-10-01; owner: LEAD; blocked on ONE MEASURED MOTOR). The SERVO42D MT we buy is
-# a 40 mm motor (makerbase3d listing) with a ~11 mm driver behind it: ~51, not 70. It also
-# has things the box below does not -- a coil plug ~5 mm proud of one side, and power and
-# CAN on SCREW TERMINALS on two opposite edges, which in the only rotation that drops into
-# a bay face the bay's side walls with 0.05 mm. Every driver dimension is scaled off
-# photographs (+-2 mm), so nothing here or in motor_bank / chassis changes until a unit is
-# measured. The study and the candidate arrangement: docs/servo42d-fit.md; the detailed
-# standalone model: src/servo42d.py (not in the build).
-MOTOR_BODY_L    = 70.0      # faceplate -> back of the driver box (the SERVO42D's 42.3 motor
-                            # plus its driver stack). The pocket and the CAN pigtail's exit
-                            # both hang off it; asserted against components.motor in build.py
-MOTOR_BODY_LEN  = 48.0      # body + PCB run ≈ 70 mm along Y (toward −Y)
-MOTOR_PCB_LEN   = 22.0
+# THE MOTOR, MEASURED (user, 2026-10-20, a delivered SERVO42D): 53.4 faceplate to the back of
+# its driver, 42.4 across the flats, 51.1 tall counting the coil lead's loop over the top.
+# The detailed model and where each of its numbers comes from: src/servo42d.py (the build
+# draws every motor with it). It replaced a 70 mm placeholder; the bays, the motor board
+# behind string 1 (MCTRL_Y1) and the CAN pigtails' exits all hang off MOTOR_BODY_L.
+MOTOR_BODY_L    = 53.4      # faceplate -> back of the driver (its corner screw heads)
+MOTOR_SQ_MEASURED = 42.4    # across the flats; MOTOR_SQ stays the 42.3 nominal the bank's
+                            # pitch is built on, so the bay's MOTOR_CLR is 0.35 round the part
+MOTOR_HEIGHT_MEASURED = 51.1    # bottom flat -> top of the coil lead's loop (+Z)
+# THE BODY'S -Y DEPTH IS NOT THE MOTOR'S ANY MORE. The -Y rail (chassis.Y_LO) was set off a
+# 70 mm motor; the measured one is 16.6 shorter, and that depth is the lead's to take back or
+# keep -- legs, deck and leg stations all hang off the rail. Until then it stays put.
+BODY_MOTOR_RESERVE = 70.0
 MOTOR_SHAFT_D   = 5.0
 NEMA17_BOLT_SQ  = 31.0
 NEMA17_PILOT_D  = 22.0
@@ -737,10 +736,9 @@ MOTOR_END_CLR   = MIN_WALL_2P + 2 * MOTOR_CLR   # 2.4 from the endplate's face t
 MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
                    - (N_STRINGS - 1) * MOTOR_X_STEP)   # 181.95: the nearest motor's -X offset
 # THE STANDING MOTOR BOARD'S PLACE IN THE FLOOR, pinned here because three modules that
-# cannot import electronics need it: the chassis (its mortises keep off the board's floor
-# port), motor_bank (string 1's back stop IS the board's +Y wall) and leg_stack (the -X/-Y
-# body adapter is relieved under the board's bottom edge). build.py asserts all of it
-# against the placed board.
+# cannot import electronics need it: the chassis (the board's floor port), motor_bank (string
+# 1's back stop IS the board's +Y wall) and wiring. build.py asserts all of it against the
+# placed board.
 #   Y1  the board's +Y edge: string 1's motor back, less its fit, ONE two-bead wall and the
 #       board's own fit. That wall is the motor's back stop and the board's locating wall.
 #   Y0  ...less the board's routed length.
@@ -748,9 +746,9 @@ MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
 #   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
 #       reached from outside), before the plugs.
 MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
-MCTRL_Y1        = string_y(0) - 14.0 - MOTOR_BODY_L - MOTOR_CLR - MIN_WALL_2P - MCTRL_FIT   # -43.55
+MCTRL_Y1        = string_y(0) - 14.0 - MOTOR_BODY_L - MOTOR_CLR - MIN_WALL_2P - MCTRL_FIT   # -26.95
 MCTRL_L         = 55.0           # routed outline, along Y
-MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -98.55
+MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -81.95
 MCTRL_X         = (-606.5, -591.7)
 MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
 MCTRL_DIP       = 2.0
@@ -1037,12 +1035,9 @@ def floor_block_y(station_x: float) -> tuple:
     if hys:
         lo.append(min(hys) - hs_half)
         hi.append(max(hys) + hs_half)
-    # ...and a THIRD at the keyhead end: the standing motor board's floor port (MCTRL_*). The
-    # board passes through the floor on its own two-bead-walled port, so a mortise in its X
-    # band stops a wall short of it.
-    if MCTRL_X[0] - LEVER_MORT_W / 2 < station_x < MCTRL_X[1] + LEVER_MORT_W / 2:
-        lo.append(MCTRL_Y0 - MCTRL_PORT_CLR - MIN_WALL_2P)
-        hi.append(MCTRL_Y1 + MCTRL_PORT_CLR + MIN_WALL_2P)
+    # (The standing motor board's floor port was a third family while a 70 mm motor pushed
+    # the board out over the -Y foot. The measured 53.4 one put it 15 clear of the feet, and
+    # the mortises only run over the feet there: the family stopped changing any run, 2026-10-20.)
     return (min(lo), max(hi)) if lo else None
 MORT_FULL_Y1 = RAIL_HI_INNER_Y + WALL_THICKNESS + 1.0     # out past the +Y rail's outer face
 
