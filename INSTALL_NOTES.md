@@ -234,8 +234,12 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
 * The blue 4-way on the top edge carries the motor's own coil lead and comes wired from the
   factory: leave it alone. If it has been undone, the order from -X to +X (from behind,
   left to right) is red, black, blue, green.
-* Wire the motor on the bench, before it drops into its bay: in the bay the side wire
-  entries face the bay's walls (docs/servo42d-fit.md).
+* Fold each wire flat against the block at a right angle, right where its insulation ends
+  (bare wire in the terminal, the bend at the insulation), so nothing stands past the motor's
+  square. 22 AWG folds this way cleanly (user, 2026-10-20).
+* Wire the motor on the bench, then lower it into its bay with the wires on. Beside each
+  green block the bay's side wall is cut down below the block -- both sides and the back
+  wall stand 11.2 -- so the folded wires clear it (docs/servo42d-fit.md).
 
 ## Motor tees: ONE switch ON, nine OFF
 

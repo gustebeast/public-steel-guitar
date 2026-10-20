@@ -15,8 +15,10 @@ three buttons sit on the BACK face along the -Z edge.
 WHERE EVERY NUMBER COMES FROM:
   MEASURED (user's calipers, 2026-10-20)
     * TOTAL_L 53.4  faceplate to the back of the driver (the corner screw heads)
-    * SQ 42.4       across the flats (NEMA17 nominal 42.3: the bank keeps 42.3 for its
-                    pitch, so the bay's 0.4 slip fit is 0.35 round the real part)
+    * SQ 42.0       the can across its flats, and DRV_SQ 42.5 the driver's cover, the
+                    widest part (NEMA17 nominal 42.3: the bank keeps 42.3 for its pitch, so
+                    the bay's 0.4 slip fit is 0.55 round the can and 0.30 round the cover).
+                    Every height below "over the motor's bottom" is off the CAN's flat.
     * HEIGHT 51.1   bottom flat to the top of the coil lead's loop -> LOOP_TOP 29.9
     * SHAFT_L 19.4  the shaft ("rotor"), taken from the FACEPLATE. It may be from the boss
                     (then 21.4); the shorter reading is the safe one for the pulley, which
@@ -42,9 +44,12 @@ from . import dimensions as D
 from .helpers import box_at, cyl_y
 
 # -- measured --------------------------------------------------------------------------
-SQ = D.MOTOR_SQ_MEASURED       # 42.4 across the flats
+SQ = D.MOTOR_SQ_MEASURED       # 42.0: the can across its flats
+DRV_SQ = D.MOTOR_DRIVER_SQ_MEASURED    # 42.5: the driver's cover
+DRV_HALF = DRV_SQ / 2
 TOTAL_L = D.MOTOR_BODY_L       # 53.4 faceplate -> back of the driver
-LOOP_TOP = D.MOTOR_HEIGHT_MEASURED - SQ / 2      # 29.9: the coil lead's loop, over the axis
+LOOP_TOP = D.MOTOR_HEIGHT_MEASURED - DRV_SQ / 2  # 29.85: the loop, over the axis (the
+                                                 # height was taken off the cover's flat)
 SHAFT_L = 19.4                 # from the faceplate (see the docstring)
 PILOT_D, PILOT_H = D.NEMA17_PILOT_D, 2.0
 HALF = SQ / 2
@@ -73,8 +78,12 @@ RIB_T = 1.0
 TERM_PITCH = 2.5                # MEASURED (user, 2026-10-20): 6-way inside span 14.47, one cell
                                # 1.95-2.00 -> (14.47 - cell)/5 = 2.49-2.50; 2.54 would need 1.77
 TERM_W = 5.0                   # green block, across X (it stands in a notch in the side)
+TERM_INSET = 1.3               # MEASURED (user, 2026-10-20): the 6-way's wire face stands this
+                               # far in from the can's side flat, in a notch open to the side
+# MEASURED (user, 2026-10-20, roughly -- treat as +-1): each green block's bottom over the
+# motor's bottom flat. The 6-way (+X) sits lower than the 5-way (-X).
+TERM_BOTTOM = {6: 13.1, 5: 16.7}      # keyed by way count (TERM_6_N, TERM_5_N below)
 TERM_Y0 = -44.4                # its front (motor-side) face; it runs back to -TOTAL_L
-TERM_ZC = 1.0                  # both green blocks centre a little above the axis
 TERM_5_N, TERM_6_N, TERM_4_N = 5, 6, 4
 TERM_HOLE = 1.8                # wire entry, square
 TERM_HOLE_D = 3.0
@@ -100,9 +109,9 @@ def _square(length, y_far, size=SQ):
             .translate((0, y_far, 0)))
 
 
-def _band(y0, y1):
+def _band(y0, y1, size=SQ):
     """The chamfered square between y0 > y1, as a clip for anything near the corners."""
-    return _square(y0 - y1, y1)
+    return _square(y0 - y1, y1, size)
 
 
 def _bolt_xz():
@@ -115,10 +124,52 @@ def _terminals():
     tl = TOTAL_L + TERM_Y0
     out = {}
     for side, n in ((1, TERM_6_N), (-1, TERM_5_N)):
-        out[side] = box_at(TERM_W, tl, n * TERM_PITCH, x=side * (HALF - TERM_W / 2), y=ty,
-                           z=TERM_ZC)
-    out[0] = box_at(TERM_4_N * TERM_PITCH, tl, BLUE_H, x=0.0, y=ty, z=HALF - BLUE_H / 2)
+        out[side] = box_at(TERM_W, tl, n * TERM_PITCH, x=side * _term_xc(), y=ty,
+                           z=_term_zc(n))
+    out[0] = box_at(TERM_4_N * TERM_PITCH, tl, BLUE_H, x=0.0, y=ty, z=DRV_HALF - BLUE_H / 2)
     return out
+
+
+def _term_xc():
+    """|x| of a green block's centre: its wire face TERM_INSET inside the side flat."""
+    return HALF - TERM_INSET - TERM_W / 2
+
+
+def _term_zc(n):
+    return TERM_BOTTOM[n] - SQ / 2 + n * TERM_PITCH / 2
+
+
+def _notches():
+    """The housing's side notches: each green block's envelope run out through the side flat,
+    so the wire entries stay open to the side."""
+    t = _terminals()
+    out = []
+    for side, n in ((1, TERM_6_N), (-1, TERM_5_N)):
+        b = t[side].val().BoundingBox()
+        out.append(box_at(DRV_HALF - (HALF - TERM_INSET) + 0.1, b.ylen, b.zlen,
+                          x=side * (DRV_HALF + HALF - TERM_INSET + 0.1) / 2,
+                          y=(b.ymin + b.ymax) / 2,
+                          z=(b.zmin + b.zmax) / 2))
+    return out
+
+
+# WHAT EACH GREEN WAY CARRIES (Makerbase schematic MKS SERVO42D_CAN V1.0_003), way 1 first.
+SIX_WAY = ("V+", "GND", "COM", "EN", "STP", "DIR")     # +X block: power and step/dir
+FIVE_WAY = ("5V", "GND", "IN1", "CANH", "CANL")        # -X block: CAN
+# ⚠ ASSUMED, not seen: way 1 is each block's TOP (+Z) end. The silkscreen beside the blocks
+# settles it; if it is the bottom, flip this and the drop leads re-route themselves.
+WAY1_TOP = True
+
+
+def terminal_way(block, net):
+    """(x, y, z) in the motor frame where the wire for `net` enters its block -- on the
+    block's wire face, at its hole -- and the exit direction (+-1, 0, 0). `block` is 6 or 5."""
+    names = SIX_WAY if block == TERM_6_N else FIVE_WAY
+    side = 1 if block == TERM_6_N else -1
+    k = names.index(net)                            # 0-based way
+    j = (block - 1 - k) if WAY1_TOP else k          # index into _ways, which runs bottom-up
+    return ((side * (HALF - TERM_INSET), TERM_HOLE_Y, _term_zc(block) + _ways(block)[j]),
+            (float(side), 0.0, 0.0))
 
 
 def _ways(n):
@@ -182,19 +233,20 @@ def coil_plug() -> cq.Workplane:
 def driver() -> cq.Workplane:
     """The black housing: its body, the ribs and logo on its back, the raised lower band
     with the button slot, the screw bosses -- notched for the three terminal blocks."""
-    d = _square(DRV_Y0 - DRV_BACK, DRV_BACK)
+    d = _square(DRV_Y0 - DRV_BACK, DRV_BACK, DRV_SQ)
     yr = DRV_BACK - RIB_H / 2
     feats = []
     for z in (18.5, 16.5, 14.5):                    # the two rib stacks beside the blue block
         for sx in (1, -1):
             feats.append(box_at(6.2, RIB_H, RIB_T, x=sx * 8.9, y=yr, z=z))
-    feats.append(box_at(SQ, RIB_H, 1.6, y=yr, z=10.6))           # the bar under them
+    feats.append(box_at(DRV_SQ, RIB_H, 1.6, y=yr, z=10.6))       # the bar under them
     for z in (2.6, 0.2):                                         # middle ribs
         feats.append(box_at(24.0, RIB_H, RIB_T, y=yr, z=z))
     for z in (-2.5, -4.8):                                       # side columns
         for sx in (1, -1):
             feats.append(box_at(5.0, RIB_H, RIB_T, x=sx * 10.5, y=yr, z=z))
-    feats.append(box_at(SQ, RIB_H, HALF + BAND_Z1, y=yr, z=(BAND_Z1 - HALF) / 2))  # band
+    feats.append(box_at(DRV_SQ, RIB_H, DRV_HALF + BAND_Z1, y=yr,
+                        z=(BAND_Z1 - DRV_HALF) / 2))                    # the lower band
     for x, z in _bolt_xz():
         if z > 0:
             feats.append(cyl_y(SCREW_BOSS_D, RIB_H - SCREW_HEAD_H, y0=-TOTAL_L + SCREW_HEAD_H,
@@ -205,13 +257,13 @@ def driver() -> cq.Workplane:
                                     kind="bold")
             .translate((-1.0, DRV_BACK, LOGO_ZC)))
     d = d.union(logo)
-    d = d.intersect(_band(DRV_Y0, -TOTAL_L))                     # nothing past the corners
+    d = d.intersect(_band(DRV_Y0, -TOTAL_L, DRV_SQ))             # nothing past the corners
     bx, bz, bd = BTN_SLOT
     d = d.cut(box_at(bx, bd + 0.1, bz, y=-TOTAL_L + (bd - 0.1) / 2, z=BTN_ZC))
     for x, z in _bolt_xz():                                      # the lower heads sit in wells
         if z < 0:
             d = d.cut(cyl_y(SCREW_BOSS_D - 0.6, SCREW_HEAD_H + 0.1, y0=-TOTAL_L - 0.1, x=x, z=z))
-    for t in _terminals().values():
+    for t in list(_terminals().values()) + _notches():
         d = d.cut(t)
     return d
 
@@ -223,15 +275,16 @@ def terminals() -> dict:
     for side, n in ((1, TERM_6_N), (-1, TERM_5_N)):
         for dz in _ways(n):
             green = green.cut(box_at(TERM_HOLE_D * 2, TERM_HOLE, TERM_HOLE,
-                                     x=side * HALF, y=TERM_HOLE_Y, z=TERM_ZC + dz))
+                                     x=side * (HALF - TERM_INSET), y=TERM_HOLE_Y,
+                                     z=_term_zc(n) + dz))
             green = green.cut(cyl_y(TSCREW_D, TSCREW_DEPTH + 0.1, y0=-TOTAL_L - 0.1,
-                                    x=side * (HALF - TERM_W / 2), z=TERM_ZC + dz))
+                                    x=side * _term_xc(), z=_term_zc(n) + dz))
     blue = t[0]
     for dx in _ways(TERM_4_N):
         blue = blue.cut(box_at(TERM_HOLE, TERM_HOLE, TERM_HOLE_D * 2, x=dx, y=BLUE_HOLE_Y,
-                               z=HALF))
+                               z=DRV_HALF))
         blue = blue.cut(cyl_y(TSCREW_D, TSCREW_DEPTH + 0.1, y0=-TOTAL_L - 0.1, x=dx,
-                              z=HALF - BLUE_H / 2))
+                              z=DRV_HALF - BLUE_H / 2))
     return {"green": green, "blue": blue}
 
 
@@ -252,8 +305,8 @@ def screws() -> dict:
         corner = h if corner is None else corner.union(h)
     term = []
     for side, n in ((1, TERM_6_N), (-1, TERM_5_N)):
-        term += [_slotted(side * (HALF - TERM_W / 2), TERM_ZC + dz) for dz in _ways(n)]
-    term += [_slotted(dx, HALF - BLUE_H / 2) for dx in _ways(TERM_4_N)]
+        term += [_slotted(side * _term_xc(), _term_zc(n) + dz) for dz in _ways(n)]
+    term += [_slotted(dx, DRV_HALF - BLUE_H / 2) for dx in _ways(TERM_4_N)]
     ts = term[0]
     for s in term[1:]:
         ts = ts.union(s)
@@ -284,7 +337,7 @@ def coil_lead() -> dict:
                                     [(k - 1.5) * PLUG_PITCH for k in range(4)]):
             pts = [(xp, yp, zp), (xp, yp, zt - 1.6), (xp, yp - 1.6, zt),
                    (xt, BLUE_HOLE_Y + 1.6, zt), (xt, BLUE_HOLE_Y, zt - 1.6),
-                   (xt, BLUE_HOLE_Y, HALF - 2.0)]
+                   (xt, BLUE_HOLE_Y, DRV_HALF - 2.0)]
             out[colour] = oct_cable(pts, WIRE_D)
         return out
 

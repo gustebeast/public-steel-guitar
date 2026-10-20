@@ -231,6 +231,7 @@ DECLARED_UP = {
     "test_cover_seat":      ("src.joint_coupon", "COVER_UP"),
     "test_cover_plate":     ("src.joint_coupon", "COVER_UP"),
     "test_belt_tensioner":  ("src.belt_tensioner", "COUPON_UP"),
+    "test_motor_bay":       ("src.motor_bank", "COUPON_UP"),
 }
 # THE OTHER THREE BODY ADAPTERS ARE THE SAME DIRECTION, and the note that used to stand
 # here saying otherwise was simply wrong: leg_stack poses the corner variants by a PURE

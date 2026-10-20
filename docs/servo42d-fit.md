@@ -7,6 +7,19 @@
 > driver's BACK face, inside the square (nothing hangs under it), and the terminals' screws
 > are turned from the back while their wires still enter from the sides -- so the side-wall
 > access finding stands. The tables below are the 2026-10-01 study, kept as written.
+>
+> **Same day, the side-wall finding is answered.** The green blocks sit 1.3 inside the flats
+> (6-way bottom 13.1 over the motor's bottom, 5-way 16.7, both rough), and a 22 AWG clamped in
+> folds flat at the insulation, so a wired motor stays inside its square. That was too close to
+> a full-height wall (user), so beside each block the bay's side wall now stops at least 1.6
+> under it, in whole beads: 11.2 on both sides and the back wall alike
+> (`motor_bank.low_walls`, cut from the fused chassis). The driver keeps its factory
+> rotation; the quarter-turn proposal below is not needed.
+>
+> **To check the footprint before printing chassis:** `test_motor_bay.step` is string 5's
+> real bay (`motor_bank.bay_coupon`, cut from the same pocket the chassis fuses), up to the
+> 11.2 low-wall height with no floor. Drop a SERVO42D in, faceplate to the wall: it should
+> slide in with even slip all round, the boss in its slot, and the green blocks above the walls.
 
 **Status: a finding and a proposal. Nothing in the build has changed.** The motor bank and
 the chassis are the lead's; `src/servo42d.py` is a standalone model, not in `src.build`.

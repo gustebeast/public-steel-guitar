@@ -43,11 +43,11 @@ BOSS_CLR   = 0.4                 # round the O22 pilot boss in its drop-in slot
 POST_T     = 12 * D.BEAD         # 9.6 side post (X). Capped by the NEIGHBOUR's boss slot,
                                  # which the post has to keep a wall off -- asserted below
 NEIGH_CLR  = D.MIN_WALL          # 0.8 air to the diagonal neighbour's body, at the band end
-WIRE_LANE_W = 6.0                # a back stop leaves this much clear on the motor's centreline
-                                 # for its CAN pigtail to climb
 BACK_T     = 4 * D.BEAD          # 3.2 back wall: nothing pushes the motor -Y, so it is a stop,
-BUMP_H     = 16 * D.BEAD         # 12.8 tall -- above it the DRIVE's connector and cable want the
-                                 # bay open, and the motor goes in with them attached
+BUMP_H     = 14 * D.BEAD         # 11.2 tall: the ONE low-wall height (user, 2026-10-20) -- the
+                                 # back wall and both side walls beside the green terminals stop
+                                 # here, under the 6-way's measured bottom less TERM_RELIEF_CLR.
+                                 # Staggered bays share walls, so one height means no steps.
 STAGGER    = D.STRING_PITCH      # 9.5, one string pitch: the band's depth
 # THE POCKET'S -Y LIMIT. The bank is staggered, so the -Y-most motors' backs run right down to
 # the -Y rail -- and that strip is the HARNESS CORRIDOR: the tee boards on their cradles and the
@@ -164,6 +164,51 @@ def body_box(i):
             mz - D.MOTOR_SQ / 2, mz + D.MOTOR_SQ / 2)
 
 
+# THE SIDE TERMINALS' RELIEF (user, 2026-10-20). The SERVO42D takes 24 V and CAN on green
+# screw terminals whose wires enter from the SIDES, 1.3 inside the can's flats -- and a bay wall
+# standing the full height put a wall 0.35 off every wire end. Wired and bent flat it does
+# fit inside the square, but too close (user), so beside each block the bay's side wall stops
+# BELOW the block. The block heights were measured roughly (user: give it extra clearance), so
+# the wall stops at least TERM_RELIEF_CLR under the LOWER block (the 6-way, bottom 13.1; the
+# 5-way's is 16.7), and both sides and the back wall share that one height, BUMP_H 11.2: the
+# staggered bays share walls, and three heights left steps and tabs where they met (user).
+# It runs from a fit in front of the block to past the back. Cut from the FUSED chassis (like lift_prism): the wall between two
+# motors is in both bays' prisms.
+TERM_RELIEF_CLR = 2 * D.BEAD      # 1.6 at least, wall top to the block's measured bottom
+TERM_RELIEF_FIT = 2 * D.BEAD      # 1.6 of relief in front of the block's motor-side face
+
+
+def term_wall_h():
+    """The wall height left beside both green blocks: BUMP_H, checked under the lower block."""
+    from . import servo42d as SV
+    assert BUMP_H <= min(SV.TERM_BOTTOM.values()) - TERM_RELIEF_CLR + 1e-9, \
+        "the low walls reach within TERM_RELIEF_CLR of a terminal block"
+    return BUMP_H
+
+
+def back_wall_y0(i):
+    """-Y face of motor i's back wall: string 1's is the two-bead stop off the motor board."""
+    by0 = body_box(i)[2]
+    return by0 - (D.MIN_WALL_2P + MOTOR_CLR if i == 0 else BACK_T)
+
+
+def low_walls(i):
+    """ONE cut per motor: everything over BUMP_H from in front of its green terminals back past
+    its back wall, across the whole bay. That is both side walls beside the blocks AND the back
+    wall (the driver's connector and the motor's coil lead want the upper back open). Inside
+    the motor's fit there is nothing left for it to take -- lift_prism has emptied it -- so one
+    box does what three did. It reaches 1.0 past the bay each way, into air: the neighbours'
+    fits, or (string 10) open air. Cut from the FUSED chassis, after lift_prism: the wall
+    between two motors is in both bays' prisms and a per-bay cut would be refilled."""
+    from . import servo42d as SV
+    bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
+    ya = by1 + SV.TERM_Y0 + TERM_RELIEF_FIT          # by1 is the faceplate
+    yb = back_wall_y0(i) - 1.0
+    x0, x1 = bx0 - side_room(i, -1) - 1.0, bx1 + side_room(i, 1) + 1.0
+    z0, z1 = bz0 + term_wall_h(), SEAT_TOP + 1.0
+    return box_at(x1 - x0, ya - yb, z1 - z0, x=(x0 + x1) / 2, y=(ya + yb) / 2, z=(z0 + z1) / 2)
+
+
 def back_y(i):
     """Y of motor i's back face -- where its CAN pigtail leaves it (wiring reads this)."""
     return body_box(i)[2]
@@ -214,10 +259,9 @@ def pocket(i) -> cq.Workplane:
                (side_room), so ONE 1.6 wall separates two motors, from the bottom prism's top
                up past the tee seat plane.
     THE CUTS   the motor + MOTOR_CLR swept +Z, which is both the pocket and the way IN; the
-               DRIVE's room at the back (its connector and cable leave that face and the motor
-               goes in with them attached, so the back wall stops at BUMP_H and keeps a lane on
-               the centreline); the tee board's seat; and the boss's drop-in slot. (The -Y
-               rail's harness corridor is cut by chassis.py.)
+               tee board's seat; and the boss's drop-in slot. (The low walls -- back and
+               sides over BUMP_H -- are low_walls(), and the -Y rail's harness corridor,
+               both cut from the fused chassis by chassis.py.)
 
     Exposed PER MOTOR so the chassis can fuse each housing WHOLE into the print segment that
     owns its motor -- a housing straddling a segment boundary is never sliced; it just overhangs
@@ -229,7 +273,7 @@ def pocket(i) -> cq.Workplane:
     # STRING 1'S BACK STOP IS THE MOTOR BOARD'S +Y WALL (user, 2026-10-02): the board stands
     # directly behind this motor, a two-bead wall off its back face, so the stop is that wall
     # and no thicker -- 3.2 here would stand in the board.
-    y0, y1 = by0 - (D.MIN_WALL_2P + MOTOR_CLR if i == 0 else BACK_T), by1 + PLATE_T
+    y0, y1 = back_wall_y0(i), by1 + PLATE_T
     # FROM THE BOTTOM PRISM'S TOP FACE UP (user, 2026-09-16). It reached the BED for a while,
     # because the cross-ribs it used to stand on were a comb and a bay wall bridged every gap
     # between them. The bottom is one solid XBAR-tall prism now, so there is nothing to bridge:
@@ -237,18 +281,9 @@ def pocket(i) -> cq.Workplane:
     body = body.union(box_at(x1 - x0, y1 - y0, SEAT_TOP - FLOOR_TOP,
                              x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(FLOOR_TOP + SEAT_TOP) / 2))
 
-
-    # THE DRIVE: the back wall stands BUMP_H and no further, so the driver's connector and its
-    # cable have the whole upper back open
-    _yb0, _yb1 = y0 - 1.0, by0 - MOTOR_CLR
-    _top = SEAT_TOP + 1.0                               # the PRISM's top, not the seat plane: cut
-    body = body.cut(box_at((x1 - x0) + 2.0, _yb1 - _yb0,  # short, the back wall bridged the bay
-                           _top - (bz0 + BUMP_H),
-                           x=(x0 + x1) / 2, y=(_yb0 + _yb1) / 2,
-                           z=((bz0 + BUMP_H) + _top) / 2))
-    # ...and a lane through what is left of it, for the pigtail to climb
-    body = body.cut(box_at(WIRE_LANE_W, _yb1 - _yb0, BUMP_H + 2.0,
-                           x=(bx0 + bx1) / 2, y=(_yb0 + _yb1) / 2, z=bz0 + BUMP_H / 2))
+    # (THE BACK WALL stands only BUMP_H: low_walls() takes it down, with the side walls, from
+    #  the fused chassis. It once had a 6 mm lane on the centreline for the grey pigtail; the
+    #  drops leave from the side terminals now -- wiring, wire_drop_* -- so it is whole.)
 
     # (the -Y rail's HARNESS CORRIDOR is cut from the fused chassis, not from here: whether a
     #  bay may reach the rail depends on where the trunk runs, and across the +X-most motor the
@@ -288,3 +323,29 @@ _slot_edge = D.MOTOR_X_STEP - (D.NEMA17_PILOT_D + 2 * BOSS_CLR) / 2
 assert (D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T) <= _slot_edge - D.MIN_WALL + 1e-9, (
     "the side post reaches within %.2f of the neighbour's boss slot"
     % (_slot_edge - (D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T)))
+
+
+# ── THE BAY FIT COUPON (user, 2026-10-20) ─────────────────────────────────────────────────
+# Proves the measured motor drops into its bay before ten bays go into chassis prints: the
+# REAL pocket of one motor (a middle one, so both side walls are the shared 1.6 and its back
+# is the BACK_T stop), cut off at the low-wall height. Four walls -- faceplate wall with its
+# boss slot, both sides, the back -- and NO floor: it stands on the bed where the chassis'
+# bottom prism would be, and the motor sits on the bed inside it. Everything over BUMP_H is
+# what low_walls() takes off the chassis anyway, so up to there this IS the chassis. Prints
+# like the chassis, +Z.
+COUPON_MOTOR = 4
+COUPON_UP = (0.0, 0.0, 1.0)
+
+
+def bay_coupon() -> cq.Workplane:
+    i = COUPON_MOTOR
+    bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
+    mx, my, _ = D.motor_pos(i)
+    bay = plates[i]
+    b = bay.val().BoundingBox()
+    z1 = bz0 + term_wall_h()
+    clip = box_at(b.xlen + 2.0, b.ylen + 2.0, z1 - FLOOR_TOP, x=b.center.x, y=b.center.y,
+                  z=(FLOOR_TOP + z1) / 2)
+    out = bay.intersect(clip).translate((-mx, -(by0 + by1) / 2, -FLOOR_TOP))
+    assert abs(out.val().BoundingBox().zmin) < 1e-6, "the coupon does not stand on the bed"
+    return out

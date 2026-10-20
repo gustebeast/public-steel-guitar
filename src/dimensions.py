@@ -682,14 +682,17 @@ TEE_WALL_OVER   = 1.2       # seat walls stand this far over the board's top fac
 TEE_TERM_R      = (-10.5, 6.2, 1.6, 0.8, 0.55)
 TEE_TERM_SW     = (1.0, 6.3, 5.4, 2.88, 2.5)    # DSHP01TSGER: body 5.4 x 2.88, 2.30 +0.20 tall
 # THE MOTOR, MEASURED (user, 2026-10-20, a delivered SERVO42D): 53.4 faceplate to the back of
-# its driver, 42.4 across the flats, 51.1 tall counting the coil lead's loop over the top.
+# its driver, the can 42.0 square and the driver's cover 42.5, 51.1 tall counting the coil
+# lead's loop over the top.
 # The detailed model and where each of its numbers comes from: src/servo42d.py (the build
 # draws every motor with it). It replaced a 70 mm placeholder; the bays, the motor board
 # behind string 1 (MCTRL_Y1) and the CAN pigtails' exits all hang off MOTOR_BODY_L.
 MOTOR_BODY_L    = 53.4      # faceplate -> back of the driver (its corner screw heads)
-MOTOR_SQ_MEASURED = 42.4    # across the flats; MOTOR_SQ stays the 42.3 nominal the bank's
-                            # pitch is built on, so the bay's MOTOR_CLR is 0.35 round the part
-MOTOR_HEIGHT_MEASURED = 51.1    # bottom flat -> top of the coil lead's loop (+Z)
+MOTOR_SQ_MEASURED = 42.0    # the CAN across its flats (user, 2026-10-20)
+MOTOR_DRIVER_SQ_MEASURED = 42.5   # the MKS driver cover behind it, 0.5 bigger: the widest part.
+                            # MOTOR_SQ stays the 42.3 nominal the bank's pitch is built on, so
+                            # the bay's MOTOR_CLR is 0.55 round the can and 0.30 round the cover
+MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil lead's loop
 # THE BODY'S -Y DEPTH IS NOT THE MOTOR'S ANY MORE. The -Y rail (chassis.Y_LO) was set off a
 # 70 mm motor; the measured one is 16.6 shorter, and that depth is the lead's to take back or
 # keep -- legs, deck and leg stations all hang off the rail. Until then it stays put.

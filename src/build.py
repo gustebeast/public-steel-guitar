@@ -447,6 +447,15 @@ PARTS["test_belt_tensioner"] = (
     "TEST COUPON — belt-tension clamp: half A (head) and half B (insert), each lying on its "
     "closed side face, 0.4 nozzle. Push a GT2 end sideways into each slot, drop the M3 insert "
     "into B, run the M3×12 in with the ball end of the 2.5 key, and pull on the belt")
+# Motor bay coupon (user, 2026-10-20): the real bay of one motor, cut off at the low-wall
+# height, no floor -- drop the measured SERVO42D in before printing ten bays of chassis.
+PARTS["test_motor_bay"] = (
+    lambda: heal(__import__("src.motor_bank", fromlist=["e"]).bay_coupon()),
+    "test_motor_bay.step",
+    "TEST COUPON — one motor's bay (string 5's: shared 1.6 side walls, BACK_T back stop, "
+    "the faceplate wall with its boss slot), the chassis' own pocket cut off at the 11.2 "
+    "low-wall height, NO floor. Prints +Z like the chassis; set it on the bench and drop "
+    "a SERVO42D in, faceplate to the wall")
 
 
 # Anchor ALL outputs to the project folder (never the cwd)
@@ -536,6 +545,7 @@ def _declared():
     from . import legs as _LG
     from . import lever_jig as _LJ
     from . import belt_tensioner as _BT
+    from . import motor_bank as _MB
     from . import coil_mandrel as _CM
     from . import electronics as _ELX
 
@@ -627,6 +637,8 @@ def _declared():
         (["lever_prog_jig_base"], _LJ.BASE_UP,
          "lever_jig.BASE_UP — upside down: the screw head's counterbore "
          "opens upward"),
+        (["test_motor_bay"], _MB.COUPON_UP,
+         "motor_bank.COUPON_UP — +Z, like the chassis it is cut from"),
         (["test_belt_tensioner"], _BT.COUPON_UP,
          "belt_tensioner.COUPON_UP — each half already lies on its closed "
          "side face in the model"),
@@ -1824,6 +1836,11 @@ def body_work_components():
     out += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     out += _leg_components()
     out += _pickup_mount_components()
+    # the bay coupon, parked in front of the -Y rail opposite its own motor, on the bed plane
+    from . import motor_bank as _MB, chassis as _CH
+    _mx = D.motor_pos(_MB.COUPON_MOTOR)[0]
+    out.append(("test_motor_bay", _MB.bay_coupon().translate((_mx, _CH.Y_LO - 60.0,
+                                                               _MB.FLOOR_TOP))))
     return out
 
 
@@ -2115,6 +2132,7 @@ _COLORS = {
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     # belt-tension clamp: two printed halves (0.4 nozzle), steel M3, brass insert
     "belt_tensioner_half_a": (0.95, 0.55, 0.15),    # head half    printed
+    "test_motor_bay":        (0.20, 0.70, 0.35),    # the bay coupon: green, a test piece
     "belt_tensioner_half_b": (0.95, 0.70, 0.25),    # insert half  printed
     "belt_tensioner_screw":  (0.55, 0.55, 0.58),   # steel M3 socket head
     "belt_tensioner_insert": (0.72, 0.60, 0.30),   # brass M3 insert (dropped in behind a shoulder)
@@ -2325,7 +2343,11 @@ _COLORS = {
     "wire_canb_coil":  (0.45, 0.45, 0.48),   # grey        - the slack, drawn as a bundle
     "wire_canbh":      (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H
     "wire_canbl":      (0.13, 0.72, 0.20),   # green       - bus B CAN-L
-    "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
+    # the motor drops, tee to motor screw terminals: the CAN scheme
+    "wire_drop_v24":   (0.85, 0.12, 0.10),   # red
+    "wire_drop_gnd":   (0.05, 0.05, 0.05),   # black
+    "wire_drop_canh":  (0.95, 0.85, 0.10),   # yellow
+    "wire_drop_canl":  (0.13, 0.72, 0.20),   # green
                                              #   XH pigtail (factory jacket)
     "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
                                              #   shielded lead, coil underside -> the

@@ -1141,6 +1141,7 @@ def _segments():
         # every motor's way IN clear, whatever gets built over the bank.
         for _mi in range(D.N_STRINGS):
             seg = seg.cut(MB.lift_prism(_mi))
+            seg = seg.cut(MB.low_walls(_mi))  # back + side walls stop at BUMP_H, under its terminals
             seg = seg.cut(MB.tee_pocket(_mi))     # ...and its tee board's, which reaches into
                                                   # the neighbouring bay (40 board, 42.3 motor)
         # THE HARNESS CORRIDOR is the wiring's, the whole length of the bank: the trunk rides it
