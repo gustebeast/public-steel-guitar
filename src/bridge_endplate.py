@@ -1085,14 +1085,17 @@ def _build() -> cq.Workplane:
         # the socket's O15.6 in to the O11.8 hole was a 1.9 mm ceiling (user, 2026-10-20).
         # It is a FULL 45 deg cone from the counterbore wall down to the hole, no flat at all
         # (user, 2026-10-20: a one-bead land still printed as an overhang; accept the smaller
-        # bearing). The nut's hex bears on the cone at its corners (A/F/cos 30), and the cone
-        # starts higher by exactly its run to them, so the corners land where the flat floor
-        # was: head flush, clamp still 4.0. The socket reaches the cone's top edge.
+        # bearing). The nut's hex bears on the cone at its corners (A/F/cos 30). The cone is
+        # set so that, with the head flush, its corners still clear it by OP_PANEL_CLR: they
+        # were made to land on it exactly, a zero-clearance fit the faceted view drew as
+        # plastic through the nut and a print would have made a proud nut (user, 2026-10-20).
+        # Tightened, the nut runs that 0.3 further in: head 0.3 under flush, clamp 3.7 of
+        # Neutrik's 3.0..4.7. The socket reaches the cone's top edge.
         _ht = _sp["nut"][1]
         _r0 = _sp["cbore_d"] / 2.0                          # the cone starts at the wall
         _rk = _sp["nut"][0] / math.sqrt(3.0)                # the hex's corner radius
         _rh = _sp["opening"][1] / 2.0
-        _xf = JACK_TIP - _ht + (_r0 - _rk)                  # where the cone starts
+        _xf = JACK_TIP - _ht + (_r0 - _rk - OP_PANEL_CLR)   # where the cone starts
         body = body.cut(cq.Workplane("YZ").circle(_sp["cbore_d"] / 2.0)
                         .extrude(JACK_TIP + 1.0 - _xf).translate((_xf, _ry, _rz)))
         body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
