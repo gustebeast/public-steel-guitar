@@ -426,6 +426,15 @@ def _rect_wire(x0, x1, y0, y1, z):
     return cq.Wire.makePolygon(pts)
 
 
+def _tee_board_world(i, t_layout):
+    """Tee i's bare substrate where tee_components puts the real board."""
+    from . import wiring as W, electronics as EL
+    x, y, d = W.tee_stations()[i]
+    _bw, _bl, cx, cy, _o, _he, _ha = W.tee_hold(i, x, y, d)
+    return EL.tee_substrate(cx, cy - EL.TEE_YSHIFT, t_layout).translate(
+        (0, 0, W.tee_z(i) - EL.FLOOR_Z))
+
+
 def _coupon_world():
     """(bay, dummy) in WORLD position on motor COUPON_MOTOR, the dummy seated."""
     from . import wiring as W, electronics as EL
@@ -466,6 +475,25 @@ def _coupon_world():
     corbel = cq.Solid.makeLoft([_rect_wire(fx0 - w, fx1, sy0, fy1, zb - step),
                                 _rect_wire(fx0 - w, sx1, sy0, sy1, zb)], True)
     keep = keep.union(cq.Workplane(obj=corbel))
+    # THE +X NEIGHBOUR'S BOARD, where it lies on this post (user, 2026-10-20: "the neighboring
+    # pcb serves as retention here"). Its +Y edge stands NEIGH_CLR in front of the ear's -Y
+    # edge, so on the instrument it is what stops the ear going -Y. Its real outline, 1.6, on
+    # its own seat, fused into the bay print: the coupon's stand-in for a board it doesn't have.
+    # Under it, the post: filled up through the neighbour's tail relief (it has no tails here)
+    # and grown -Y at 45 deg near the top to carry the patch's last NEIGH_CLR + past the
+    # post's end (user: "grow the wall with a 45 near the top").
+    if i + 1 < D.N_STRINGS:
+        nb = _tee_board_world(i + 1, D.TEE_BOARD_T).intersect(keep).val().BoundingBox()
+        py0 = sy1 - ((STAGGER - NEIGH_CLR) + PLATE_T)          # the post's -Y face
+        bay = bay.union(box_at(nb.xlen, nb.ymax - py0, D.TEE_TAIL_DROP + 3.0,
+                               x=nb.center.x, y=(nb.ymax + py0) / 2,
+                               z=Z_HI - (D.TEE_TAIL_DROP + 3.0) / 2))
+        g = py0 - nb.ymin
+        if g > 0:
+            bay = bay.union(cq.Workplane(obj=cq.Solid.makeLoft(
+                [_rect_wire(nb.xmin, nb.xmax, py0, nb.ymax, Z_HI - 1.2 * g),
+                 _rect_wire(nb.xmin, nb.xmax, nb.ymin, nb.ymax, Z_HI)], True)))
+        bay = bay.union(_tee_board_world(i + 1, D.TEE_BOARD_T))
     bay = bay.intersect(keep)
     # the floor: a rim the motor stands on, open in the middle
     zf = FLOOR_TOP - COUPON_FLOOR_T
@@ -476,10 +504,7 @@ def _coupon_world():
     bay = bay.union(floor)
 
     # the dummy board, placed exactly as tee_components places the real one
-    x, y, d = W.tee_stations()[i]
-    _bw, _bl, cx, cy, _o, _he, _ha = W.tee_hold(i, x, y, d)
-    dummy = EL.tee_substrate(cx, cy - EL.TEE_YSHIFT, TEE_DUMMY_T).translate(
-        (0, 0, W.tee_z(i) - EL.FLOOR_Z))
+    dummy = _tee_board_world(i, TEE_DUMMY_T)
     sx0_, sx1_, sy0_, sy1_, sz_ = tee_board_box(i)
     # ...back to the real 1.6 along its -X edge, where it goes under the lip
     dummy = dummy.cut(box_at(TEE_DUMMY_LIP_W + 1.0, sy1_ - sy0_ + 2.0, 10.0,
