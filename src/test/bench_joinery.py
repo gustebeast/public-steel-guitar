@@ -195,6 +195,12 @@ SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.13 a face
 COMP_SPLIT_Z = -72.5    # under the seam cavity (0.4 under the floor top), over the lever mortises (-73.86)
 
 
+# the seam coupons that also export a SEAM_COMP twin (`test_<name>_comp.step`): which
+# section each is (-1 the tenon's, +1 the mortise's). They were written by hand before.
+COMP_SIDE = {"seam_tenon": -1, "seam_mortise": +1, "mini_seam_tenon": -1,
+             "mini_seam_mortise": +1, "r3_seam_tenon": -1, "r3_seam_mortise": +1}
+
+
 def compensate(shape, side, e=SEAM_COMP):
     """A seam coupon (world frame) with its seam face moved in by e, its half of the joint
     with it. side -1: the -X section (the tenon stands past the face at SEAM_X; it moves -e).
@@ -457,6 +463,10 @@ def report(comps, where, export=False):
             "; ".join(notes)))
         if export:
             export_print(wp, po, str(HERE / ("test_%s.step" % c.name)))
+            side = COMP_SIDE.get(c.name)
+            if side is not None:                # ...and its compensated twin, cut here too
+                cw = cq.Workplane(obj=compensate(wp.val(), side))
+                export_print(cw, po, str(HERE / ("test_%s_comp.step" % c.name)))
     print("%-28s %-8s %6.1f" % ("TOTAL", "", total))
 
 
@@ -518,10 +528,11 @@ PLATES = {
     "seam_lever_mini_2": [["mini_seam_tenon_comp", "mini_seam_mortise_comp", "mini_lever"]],
     # round 3: seam 0.375, lever 0.275
     "seam_lever_mini_3": [["r3_seam_tenon_comp", "r3_seam_mortise_comp", "r3_lever"]],
+    # the seam pair COMPENSATED as round 3 (it is what the chassis is meant to get); no lever
+    # housing of its own -- seam_lever_mini_3's 8-tenon r3_lever fits these floors too
     "full_length_1": [
-        ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_adapter"],
+        ["seam_tenon_comp", "seam_mortise_comp", "corner_bridge_chassis", "corner_adapter"],
         ["corner_keyhead_chassis", ("corner_bridge_endplate", "corner_keyhead_endplate")],
-        ["lever_housing"],
     ],
 }
 
