@@ -342,21 +342,23 @@ RIBBON_W = RIBBON_N * RIBBON_PITCH  # 10.16, the cable's own width. Every way's 
                                     # wide as the ways it has -- which is also the width
                                     # the CAD sweeps, as ONE prism rather than sixteen
 # ...AND ITS TWO ENDS, the 2x8 1.27 IDC sockets pressed onto it (user, 2026-10-21: the
-# cable ended in the air at the Pi). Drawn off CnC Tech's 3230-16-0102-00 (the 16-way of
-# their 3230-XX-0102-00 drawing, 05-Feb-2020): a BODY 14.35 along the rows ("Dim.B" for
-# 16), 4.00 across them and 3.20 deep from its mating face, and a COVER 3.05 across and
-# 1.90 deep pressed over the cable onto the body's back. The ribbon lies between the two,
-# across the rows -- square to the mating axis -- and leaves past one side. Any 16-way
-# 1.27 x 1.27 IDC socket is this shape; the BOM does not name a maker.
-IDC_B = 14.35
-IDC_BODY_R, IDC_BODY_M = 4.00, 3.20
-IDC_COVER_R, IDC_COVER_M = 3.05, 1.90
+# cable ended in the air at the Pi). BOUGHT AS ONE LEAD, Samtec FFSD-08-D-20.00-01-N, and
+# drawn off Samtec's own print (FFSD-XX-X-XX.XX-01-X-X-XXX, rev AW) and catalogue page
+# (F-226): each socket 14.35 along the rows ("No of pos x 1.27 + 4.19"), 3.05 across them,
+# 5.08 overall from its mating face, the last 1.02 of that a cover pressed over the cable
+# onto the body's back. The ribbon lies between the two, across the rows -- square to the
+# mating axis -- and ends flush with the socket's far side.
+IDC_B = 8 * 1.27 + 4.19            # 14.35
+IDC_BODY_R = IDC_COVER_R = 3.05
+IDC_COVER_M = 1.02
 IDC_GAP = RIBBON_T + 0.05          # the ribbon's slot between the two
+IDC_BODY_M = 5.08 - IDC_COVER_M - IDC_GAP
 IDC_CABLE_M = IDC_BODY_M + IDC_GAP / 2.0   # the ribbon's centre, out from the mating face
 # WHERE IT STOPS ON THE PINS. The header (HX PZ1.27-2x8P WZ, its drawing 2022-04-24) puts
 # 4.00 of pin out past its plastic, and this body is only 3.20 deep, so the socket bottoms
-# on the pin tips and stands off the plastic -- it never reaches it. ESTIMATE: 3.00 of pin
-# inside the body; the board solid draws the pins as a block to their tips, and the
+# on the pin tips and stands off the plastic -- it never reaches it. 3.00 of pin inside
+# the body: Samtec give its insertion depth as 2.64 to 3.17. The board solid draws the
+# pins as a block to their tips, and the
 # socket's last IDC_PIN_IN of it is the designed mate (tools/check_overlaps.py).
 HDR_PIN_OUT = 4.00
 IDC_PIN_IN = 3.00
