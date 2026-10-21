@@ -553,7 +553,9 @@ impl App {
     }
 
     pub fn probe_tick(&mut self) {
-        let due = self.shell.as_ref().and_then(|s| s.pshot.as_ref()).is_some_and(|p| self.quiet() || p.2.elapsed() > Duration::from_secs(25));
+        // (now=1: the window as it is this moment, not once it has come to rest -- what a tab looks like
+        //  just after it is switched to)
+        let due = self.shell.as_ref().and_then(|s| s.pshot.as_ref()).is_some_and(|p| p.1.get("now").is_some() || self.quiet() || p.2.elapsed() > Duration::from_secs(25));
         if !due {
             return;
         }
