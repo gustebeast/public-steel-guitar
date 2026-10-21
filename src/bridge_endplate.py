@@ -1096,11 +1096,13 @@ def _build() -> cq.Workplane:
         _rk = _sp["nut"][0] / math.sqrt(3.0)                # the hex's corner radius
         _rh = _sp["opening"][1] / 2.0
         _xf = JACK_TIP - _ht + (_r0 - _rk - OP_PANEL_CLR)   # where the cone starts
-        body = body.cut(cq.Workplane("YZ").circle(_sp["cbore_d"] / 2.0)
-                        .extrude(JACK_TIP + 1.0 - _xf).translate((_xf, _ry, _rz)))
-        body = body.cut(cq.Workplane("XY").add(cq.Solid.makeCone(
-            _r0 + 0.01, _rh, _r0 + 0.01 - _rh, cq.Vector(_xf + 0.01, _ry, _rz),
-            cq.Vector(-1.0, 0.0, 0.0))))
+        # ONE cutter, bore and cone fused at the same radius: cut separately with an overlap,
+        # the cone's 0.01 mm of extra radius left a 0.01-wide ring the view drew as a disc
+        _cb = cq.Solid.makeCylinder(_r0, JACK_TIP + 1.0 - _xf, cq.Vector(_xf, _ry, _rz),
+                                    cq.Vector(1.0, 0.0, 0.0))
+        _cn = cq.Solid.makeCone(_r0, _rh, _r0 - _rh, cq.Vector(_xf, _ry, _rz),
+                                cq.Vector(-1.0, 0.0, 0.0))
+        body = body.cut(cq.Workplane("XY").add(_cb.fuse(_cn).clean()))
     # +Z RETENTION LIP: protrudes -X under the deck in the -Y bay (see the LIP_* block);
     # the installed deck panels trap it, blocking the endplate from lifting +Z. Its +X face
     # is the endplate -X face (XLO); top is the deck-bottom plane (z0) so the deck rides it.
