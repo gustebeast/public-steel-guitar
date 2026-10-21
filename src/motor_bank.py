@@ -417,6 +417,7 @@ COUPON_GAP = 6.0                 # bay to dummy board on the plate
 E_FR4, E_PETG_GF = 20.0, 3.3
 TEE_DUMMY_T = 3.0
 TEE_DUMMY_LIP_W = 4 * D.BEAD     # 3.2 of 1.6-thick edge under the lip (it reaches 1.1 in)
+EMU_D = 2 * D.BEAD               # 1.6 of the -X neighbour's ear kept, from its -Y edge in
 assert abs(TEE_DUMMY_T - D.TEE_BOARD_T * (E_FR4 / E_PETG_GF) ** (1 / 3)) < 0.1
 
 
@@ -475,25 +476,25 @@ def _coupon_world():
     corbel = cq.Solid.makeLoft([_rect_wire(fx0 - w, fx1, sy0, fy1, zb - step),
                                 _rect_wire(fx0 - w, sx1, sy0, sy1, zb)], True)
     keep = keep.union(cq.Workplane(obj=corbel))
-    # THE +X NEIGHBOUR'S BOARD, where it lies on this post (user, 2026-10-20: "the neighboring
-    # pcb serves as retention here"). Its +Y edge stands NEIGH_CLR in front of the ear's -Y
-    # edge, so on the instrument it is what stops the ear going -Y. Its real outline, 1.6, on
-    # its own seat, fused into the bay print: the coupon's stand-in for a board it doesn't have.
-    # Under it, the post: filled up through the neighbour's tail relief (it has no tails here)
-    # and grown -Y at 45 deg near the top to carry the patch's last NEIGH_CLR + past the
-    # post's end (user: "grow the wall with a 45 near the top").
-    if i + 1 < D.N_STRINGS:
-        nb = _tee_board_world(i + 1, D.TEE_BOARD_T).intersect(keep).val().BoundingBox()
-        py0 = sy1 - ((STAGGER - NEIGH_CLR) + PLATE_T)          # the post's -Y face
-        bay = bay.union(box_at(nb.xlen, nb.ymax - py0, D.TEE_TAIL_DROP + 3.0,
-                               x=nb.center.x, y=(nb.ymax + py0) / 2,
-                               z=Z_HI - (D.TEE_TAIL_DROP + 3.0) / 2))
-        g = py0 - nb.ymin
-        if g > 0:
-            bay = bay.union(cq.Workplane(obj=cq.Solid.makeLoft(
-                [_rect_wire(nb.xmin, nb.xmax, py0, nb.ymax, Z_HI - 1.2 * g),
-                 _rect_wire(nb.xmin, nb.xmax, nb.ymin, nb.ymax, Z_HI)], True)))
-        bay = bay.union(_tee_board_world(i + 1, D.TEE_BOARD_T))
+    # THE -X NEIGHBOUR'S EAR, in front of this board's FAR end (user, 2026-10-20: "the
+    # neighboring pcb serves as retention here ... the one on the far end"). String i-1's tee
+    # ear stands NEIGH_CLR-ish in front of this board's +Y edge over its -X end, on its own
+    # post just past this bay's faceplate wall -- on the instrument it is what stops that end
+    # going +Y. The coupon keeps an EMU_D strip of that post, carried off the faceplate wall
+    # on a 45 deg shelf (user: "grow the wall with a 45 near the top"), and the ear's real
+    # outline, 1.6, on top -- fused into the bay print.
+    if i > 0:
+        from . import wiring as W
+        ex0, ex1, ey0, ey1 = tee_ear_box(i - 1)
+        x0_, x1_ = max(ex0, fx0 - w), ex1
+        bore = W.tee_hold_negatives()[i - 1][1][0].val().BoundingBox().ymin   # the anchor (not the head notch)
+        y1_ = min(ey0 + EMU_D, bore)                        # ...short of its own M4's bore
+        d_ = y1_ - sy1
+        shelf = (cq.Workplane("YZ").polyline([(sy1, Z_HI - 1.2 * d_), (y1_, Z_HI),
+                                              (y1_, z_top), (sy1, z_top)]).close()
+                 .extrude(x1_ - x0_).translate((x0_, 0, 0)))
+        keep = keep.union(shelf)
+        bay = bay.union(_tee_board_world(i - 1, D.TEE_BOARD_T).intersect(shelf))
     bay = bay.intersect(keep)
     # the floor: a rim the motor stands on, open in the middle
     zf = FLOOR_TOP - COUPON_FLOOR_T
