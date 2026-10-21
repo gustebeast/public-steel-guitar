@@ -1319,6 +1319,65 @@ Chosen spools:
 
 ## Wire
 
+### Hook-up wire: TWO GAUGES, SIX SPOOLS (user, 2026-10-20)
+
+Everything above the chassis floor (knee levers, body adapters, the LED boards and the UI
+board aside) is crimped from **two gauges** of one product line, McMaster **8054T**
+(stranded tinned copper, PVC, UL 1007/1569, 300 V, -40 to 105 C):
+
+| spool | 8054T | strands | OD | for | in stock |
+|---|---|---|---|---|---|
+| 22 AWG black | 8054T13, 25 ft | 7/30 | 0.06 in (1.52 mm) | 24 V return on XH | bought 2026-10-07 |
+| 22 AWG **red** | 8054T13, 25 ft, $3.91 | 7/30 | 1.52 mm | +24 V on XH | ordered 2026-10-20 (McMaster) |
+| 26 AWG black | 8054T11, 25 ft | 7/34 | 0.05 in (1.27 mm) | 5 V and the optical feed's return | bought 2026-10-07 |
+| 26 AWG **red** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | +5 V (Pi), +24 V (optical feed) | ordered 2026-10-20 |
+| 26 AWG **yellow** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_H | ordered 2026-10-20 |
+| 26 AWG **green** | 8054T11, 25 ft, $3.22 | 7/34 | 1.27 mm | CAN_L | ordered 2026-10-20 |
+
+**THE RULE: 22 AWG for 24 V power on XH; 26 AWG for everything else.** One gauge cannot do
+it: the 24 V feeds want 22, and the PH contact does not take 22. Colours are the CAN
+scheme (black GND, red rail, yellow H, green L) on both gauges.
+
+**Both gauges fit both crimps** (distributors' copies of JST's tables, 2026-10-20):
+SXH-001T-P0.6 (XH) takes AWG 28-22, insulation 0.9-1.9 mm; SPH-002T-P0.5S (PH) takes
+AWG 30-24, insulation to 1.5 mm (0.8 or 0.9 minimum; sources differ). So 22 AWG at
+1.52 mm goes in XH only, **never in a PH lead**; 26 AWG at 1.27 mm goes in either.
+
+**Checked against each run's worst case (2026-10-20):**
+
+| run | conductors | worst current per conductor | drop | verdict |
+|---|---|---|---|---|
+| east 24 V feed (panel J7 to the chain) | 1 x 22 per rail | ~2.5 A (54 % of the motors' ~4.6 A) | ~0.1 V | wire fine; the 3 A XH contact is the limit |
+| power link J10 to J3, ~0.75 m | 2 x 22 per rail | ~1.1 A | ~0.08 V | fine |
+| bus A head and trunk hops | 1 x 22 per rail | <= 2.5 A | small; the contacts dominate | fine |
+| Pi 5 V lead (PH, J5 to the cap's J2), ~0.14 m | 2 x 26 per rail | ~1.7 A (Pi worst ~3.3 A) | ~0.07 V wire + up to ~0.13 V in eight PH contacts, of the Pi's 0.37 V | fine; 24 AWG would save 0.02 V |
+| optical feed, ~0.16 m | 1 x 26 per rail | 0.12 A | ~5 mV | fine |
+| CAN pair, ~0.7 m | 26, twisted | mA | n/a | fine |
+
+The motors' current is still the unmeasured number (0.8 A per moving motor is derived):
+if it is higher, the XH contact gives out before the 22 AWG does, so a clamp-meter
+reading on the bench decides it, not more copper.
+
+**THE LEG HARNESS IS THE ONE EXCEPTION: 28 AWG, a third gauge, legs only** (outside the
+scope above: it is below the floor). Its four conductors are laid up as a 4-core in a
+O2.4 channel (`src/leg_pogo.py` HARNESS_D, the bores and the coil mandrel). Four round
+conductors bundle to d (1 + sqrt 2) = 2.414 d: at 28 AWG's 0.9 mm that is 2.17 and fits;
+at 26 AWG's 1.27 mm it is **3.07 and does not**. So the legs stay 28 AWG (8054T-class
+28 AWG, black / red / yellow / green, about 5.5 m modelled) unless the leg channel is
+opened to O3.1+ -- branner's geometry and the user's call, not decided here.
+**NOT BOUGHT YET:** the 2026-10-20 McMaster order was the 22 and 26 AWG spools only; the four
+28 AWG leg colours (one 25 ft spool each covers the ~5.5 m) are still to order, or drop if
+the channel opens to 26 AWG.
+
+**When the LED boards come in:** the lights lead (motor_ctrl J7 to pi_cap J4) is fused at
+3 A (F3) and full white is 1.7 A, so its +24 V and GND are 22 AWG, not the thin wire the
+CAD draws; its two power-button throws stay 26.
+
+**Superseded here:** the 20 AWG figure for the Pi's 5 V pair (`src/wiring.py`; 20 AWG
+cannot be crimped into PH) and "silicone" for the 24 V bus.
+
+### The harness as modelled (older notes)
+
 Modeled internal harness ≈ 5.2 m of single-conductor runs; physically ~10 m once
 power/CAN are pairs and audio is shielded. Gauges (the SERVO42D driver rides the
 motor, so there are **no stepper phase leads** — noise defence is shielding +
@@ -1326,7 +1385,7 @@ twisting + the bridge-side AFE buffer, not conductor size):
 
 | Net | Cable | OD |
 |---|---|---|
-| 24 V bus | **2 × 22 AWG per rail** silicone, twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) ⚠ **was 20 AWG — see the note below** | ~2.4 |
+| 24 V bus | **2 × 22 AWG per rail** (PVC 8054T13, see the two-gauge rule above), twisted/flat (fleet slew staggered <5 A; ~0.3 V drop over the run) ⚠ **was 20 AWG — see the note below** | ~2.4 |
 
 > ⚠ **AND NEITHER IS THE PCB COPPER — the third link in the same chain, audited
 > 2026-09-18.** The wire was raised to 2 × 22 AWG for <5 A and the XH contacts were
@@ -1467,7 +1526,8 @@ twisting + the bridge-side AFE buffer, not conductor size):
 > has never had one. This is the same bottleneck as the single-contact J1/J2
 > above, seen from the cable end rather than the connector end — and both have to
 > be answered by the same decision about how bus A carries its current.
-| CAN | 26 AWG twisted pair, 120 Ω terminated — ⚠ **this is the H/L pair only; the same cable's 24 V and GND conductors have no gauge** | ~2.2 |
+| CAN | 26 AWG twisted pair, 120 Ω terminated; the same cable's 24 V and GND conductors are **22 AWG** (two-gauge rule above, 2026-10-20) | ~2.2 |
+| Pi 5 V (motor_ctrl J5 to pi_cap J2, 6-way PH) | **2 × 26 AWG per rail**, ~140 mm (two-gauge rule above; NOT 20 AWG, which PH cannot take) | ~1.3 each |
 | 24 V → optical board | **2 × 26 AWG**, ~150 mm — panel **J9** (XHP-2) to optical **J2** (XHP-4, ways 3 and 4 EMPTY): **way 1 = +24 V, way 2 = GND** at both ends (`elec/harness.py` POWER_PAIR; this row said `1=GND 2=+24V 3=+24V 4=GND` on four wires until 2026-10-13, the order before 2026-10-07). ⚠ **Was missing entirely:** the connector exists at both ends and this row did not, found 2026-09-18. 26 AWG is ample here — the board draws **79 mA at 24 V** typical (324 mA on its 5 V rail through an 85 % buck), ~122 mA at the worst case in `elec/optical.py`'s budget, against XH's applicable #30–#22. It runs beside the ~150 mm USB cable between the same two boards | ~2.2 |
 | **bus B, pedal segments** | **4 × 26 AWG** twisted (+5 V / GND / CAN_H / CAN_L), **~100 mm each, ×5**, **PHR-4 both ends, straight** (way n to way n): one board's J2 (bus out) to the next one's J1 (bus in) — two 4-way connectors per board since 2026-10-19, so each segment is its own jumper (INSTALL_NOTES KL-5). Cut to fit: a pedal's station is printed into the bar, so these lengths are fixed. Each runs from its board's bay up through the **spur** into the trough (INSTALL_NOTES PB-1). The **levers** are the adjustable ones and they get the slack scheme instead — see `knee_lever.lace_loop` | ~2.5 bundled |
 | pickup / audio / DAC / out | 28 AWG **shielded** pair (mA signals — the shield is the spec) | ~2.0 |
@@ -3000,8 +3060,8 @@ pros/cons when weighing approaches** (project policy).
 | **2.0 mm flat-blade precision screwdriver** | the SERVO42D's own screw terminals: the green 5-way and 6-way (24 V and CAN, from the back of each motor's driver) and the blue 4-way the coil lead is clamped in | commodity, ~$7 | **The one exception to the single-tool rule (user, 2026-10-20)**: the terminals are the bought motor's own hardware (2.54 mm pitch, slotted screws in Ø2.2 wells), so no printed part can choose their drive. A 2.0 × 0.4 blade (e.g. Wera Kraftform Micro 2035) fits the wells; a wider one does not reach the screw. It is a BENCH tool, used when a motor is wired or swapped, not stowed on the instrument beside the 2.5 mm key |
 | **Hardened nozzle ≥0.4 (ideally 0.6)** | PETG-GF (vendor recommendation) | ~$15–30 | glass fiber eats brass nozzles |
 | **Wire strippers 20–30 AWG** | all harness work | — | presumed owned |
-| **9/64" reamer (HSS, straight flute)** | the Tr8×2 nuts' ear holes: BOTH ears of all ten, before assembly, so the Ø3.5 guide rod slides | $27.58 | [McMaster 2995A116](https://www.mcmaster.com/2995A116) — cuts 3.572–3.576 mm (0 to +0.0002"). Metric stock reamers jump 3.5 → 3.78; 9/64" is the stock size that lands the 0.05–0.10 running clearance on a 3.490–3.500 roller. Brass reams by hand in a tap wrench; 4 mm of ear, a few turns each |
-| **Hex-shank keyless drill chuck** (1/4" hex, impact rated) | holds the 9/64" reamer in a 1/4" hex driver: a ratcheting screwdriver turns it by hand (ratchet set to tighten: every stroke turns it clockwise, the return freewheels, so it is never reversed, also on the way out). Doubles as round-shank bits in an impact driver | $58.14 | [McMaster 28055A72](https://www.mcmaster.com/28055A72) (Jacobs 31248, steel jaws, 1.5–10 mm, ratchet lock against impact vibration, power screwdrivers and impact drivers) [v 2026-10-16]. Alternative: T-handle tap wrench 2546A23 ($30.63, jaws 0.11–0.191"). The reamer is a MACHINE reamer (McMaster: short chamfer, 4 flutes, 1" flute, 4" overall), not a hand reamer with a long taper: start it square by eye in the existing Ø3.5 hole, light pressure, nut in a soft-jawed vise. Brass reams cleanly dry or with a drop of light oil |
+| **9/64" reamer (HSS, straight flute)** | the Tr8×2 nuts' ear holes: BOTH ears of all ten, before assembly, so the Ø3.5 guide rod slides | $27.58, **ordered 2026-10-20** | [McMaster 2995A116](https://www.mcmaster.com/2995A116) — cuts 3.572–3.576 mm (0 to +0.0002"). Metric stock reamers jump 3.5 → 3.78; 9/64" is the stock size that lands the 0.05–0.10 running clearance on a 3.490–3.500 roller. Brass reams by hand in a tap wrench; 4 mm of ear, a few turns each |
+| **Hex-shank keyless drill chuck** (1/4" hex, impact rated) | holds the 9/64" reamer in a 1/4" hex driver: a ratcheting screwdriver turns it by hand (ratchet set to tighten: every stroke turns it clockwise, the return freewheels, so it is never reversed, also on the way out). Doubles as round-shank bits in an impact driver | $58.14, **ordered 2026-10-20** | [McMaster 28055A72](https://www.mcmaster.com/28055A72) (Jacobs 31248, steel jaws, 1.5–10 mm, ratchet lock against impact vibration, power screwdrivers and impact drivers) [v 2026-10-16]. Alternative: T-handle tap wrench 2546A23 ($30.63, jaws 0.11–0.191"). The reamer is a MACHINE reamer (McMaster: short chamfer, 4 flutes, 1" flute, 4" overall), not a hand reamer with a long taper: start it square by eye in the existing Ø3.5 hole, light pressure, nut in a soft-jawed vise. Brass reams cleanly dry or with a drop of light oil |
 | **Current-limited bench supply** (≥24 V, adjustable current limit) — **OPTIONAL, the safer way** | first power on a first-article board with a fault held to a reading | ~$50–80 *(unverified)* | **not needed (user, 2026-10-13):** the boards are first powered from the instrument's own brick, down its own leads, with power-off meter checks in place of a current limit. What that risks is stated in `docs/bench-order.md`, "Power without a bench supply" |
 | **WCH-LinkE** | flashing + debugging every CH32V board (motor_ctrl, output_panel, 11 lever sensors) | ~$5–10 *(unverified)* | the ONLY probe that talks to CH32V parts — an ST-Link or J-Link will not. Also a USB-serial port |
 | **USB-CAN adapter** (CANable-class, works with `candump`) | seeing either CAN bus from outside the instrument | ~$15–30 *(unverified)* | motor_ctrl heads both buses and the Pi is on neither, so if motor_ctrl is the broken thing nothing in the instrument can see the bus |

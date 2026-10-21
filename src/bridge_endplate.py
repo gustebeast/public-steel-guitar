@@ -1081,9 +1081,28 @@ def _build() -> cq.Workplane:
         body = body.cut(cq.Workplane("YZ").circle(_sp["opening"][1] / 2.0)
                         .extrude(JACK_TIP + 1.0 - (_bx0 - 0.5))
                         .translate((_bx0 - 0.5, _ry, _rz)))
+        # THE COUNTERBORE'S FLOOR FACES THE BED (this face prints down), so a flat ring from
+        # the socket's O15.6 in to the O11.8 hole was a 1.9 mm ceiling (user, 2026-10-20).
+        # It is a FULL 45 deg cone from the counterbore wall down to the hole, no flat at all
+        # (user, 2026-10-20: a one-bead land still printed as an overhang; accept the smaller
+        # bearing). The nut's hex bears on the cone at its corners (A/F/cos 30). The cone is
+        # set so that, with the head flush, its corners still clear it by OP_PANEL_CLR: they
+        # were made to land on it exactly, a zero-clearance fit the faceted view drew as
+        # plastic through the nut and a print would have made a proud nut (user, 2026-10-20).
+        # Tightened, the nut runs that 0.3 further in: head 0.3 under flush, clamp 3.7 of
+        # Neutrik's 3.0..4.7. The socket reaches the cone's top edge.
         _ht = _sp["nut"][1]
-        body = body.cut(cq.Workplane("YZ").circle(_sp["cbore_d"] / 2.0).extrude(_ht + 1.0)
-                        .translate((JACK_TIP - _ht, _ry, _rz)))
+        _r0 = _sp["cbore_d"] / 2.0                          # the cone starts at the wall
+        _rk = _sp["nut"][0] / math.sqrt(3.0)                # the hex's corner radius
+        _rh = _sp["opening"][1] / 2.0
+        _xf = JACK_TIP - _ht + (_r0 - _rk - OP_PANEL_CLR)   # where the cone starts
+        # ONE cutter, bore and cone fused at the same radius: cut separately with an overlap,
+        # the cone's 0.01 mm of extra radius left a 0.01-wide ring the view drew as a disc
+        _cb = cq.Solid.makeCylinder(_r0, JACK_TIP + 1.0 - _xf, cq.Vector(_xf, _ry, _rz),
+                                    cq.Vector(1.0, 0.0, 0.0))
+        _cn = cq.Solid.makeCone(_r0, _rh, _r0 - _rh, cq.Vector(_xf, _ry, _rz),
+                                cq.Vector(-1.0, 0.0, 0.0))
+        body = body.cut(cq.Workplane("XY").add(_cb.fuse(_cn).clean()))
     # +Z RETENTION LIP: protrudes -X under the deck in the -Y bay (see the LIP_* block);
     # the installed deck panels trap it, blocking the endplate from lifting +Z. Its +X face
     # is the endplate -X face (XLO); top is the deck-bottom plane (z0) so the deck rides it.
@@ -1183,9 +1202,14 @@ def op_cradle():
     _rx1 = max(p[0] for p in _poly)
     rw, rcx = _rx1 - _rx0, (_rx0 + _rx1) / 2.0        # rectangle width and centre (geom frame)
     hx -= rcx                                         # the cradle is built about the rectangle
+    # THE PLATE IS THREE BEADS (user, 2026-10-20: "somewhat arbitrarily thick"). It was
+    # pcb_cradle's default, sized so the M4 anchor fits under the board -- 4.24 under the
+    # whole 66 mm board for the sake of one screw. Only the BOSS needs that depth now: it
+    # hangs below the plate as a column, the plate is 2.4.
+    _plate_t = 3 * D.BEAD
     cr = pcb_cradle(rw, OP_BOARD_Y, screw_xy=(hx, hy), spec=M4, open_edge="-x",
-                    standoff=standoff, clr=OP_PANEL_CLR)
-    _base_t = max(D.MIN_WALL_2P, M4.anchor_min_wall - standoff)
+                    standoff=standoff, clr=OP_PANEL_CLR, base_t=_plate_t)
+    _base_t = max(_plate_t, M4.anchor_min_wall - standoff)    # the boss column's depth
     cr = cr.union(cq.Workplane("XY").add(cq.Solid.makeCylinder(
         M4.boss_od / 2.0, _base_t + standoff, cq.Vector(hx, hy, -_base_t))))
     # THE BOSS IS A HORIZONTAL BARREL IN THIS PRINT (the part builds -X; the boss's axis is
@@ -1198,6 +1222,16 @@ def op_cradle():
     cr = cr.union(cq.Workplane("XZ").polyline([(hx + _br, 0.0), (hx + _br + standoff, 0.0),
                                                (hx + _br, standoff)]).close()
                   .extrude(_br, both=True).translate((0.0, hy, 0.0)))
+    # ...and the same below the thinned plate, where the column hangs under it: squared
+    # off on the bed side and ramped back up to the plate's underside at 45 deg.
+    _hang = _base_t - _plate_t
+    if _hang > 1e-6:
+        cr = cr.union(box_at(_br, 2 * _br, _hang, x=hx + _br / 2.0, y=hy,
+                             z=-_plate_t - _hang / 2.0))
+        cr = cr.union(cq.Workplane("XZ").polyline([(hx + _br, -_plate_t),
+                                                   (hx + _br + _hang, -_plate_t),
+                                                   (hx + _br, -_base_t)]).close()
+                      .extrude(_br, both=True).translate((0.0, hy, 0.0)))
     # (the cradle is only ever translated into place, so the endplate's PRINT_UP is its
     #  own: this bore lies sideways in the print too, and takes the teardrop)
     cr = cut_anchor(M4, cr, (hx, hy, standoff), (0, 0, -1), M4.anchor_min_wall,
@@ -1208,6 +1242,13 @@ def op_cradle():
     # above the board's edge exactly where the three connectors overhang it.
     cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
                        x=rw / 2 + OP_PANEL_CLR + 10.0, y=0.0, z=0.0))
+    # THE +X PADS RUN ON TO THE PANEL. They stopped at the board's edge, OP_PANEL_CLR short
+    # of it, so each one's bed-facing end was a 3.2 mm ceiling 1.9 off the bed
+    # (check_ceilings, 2026-10-20). Under the board there is nothing the gap was for.
+    for _sy in (-1.0, 1.0):
+        cr = cr.union(box_at(OP_PANEL_CLR + 0.02, 4 * D.BEAD, standoff,
+                             x=rw / 2 + OP_PANEL_CLR / 2.0, y=_sy * (OP_BOARD_Y / 2.0 - 2 * D.BEAD),
+                             z=standoff / 2.0))
     # THE +Y/-X CORNER PAD MOVES OFF J2. That corner is under the USB-A (GCT USB1046, its
     # courtyard to x -31.75, y 31.3), whose THT shell legs come through the board there; the
     # pad would stand on them. It goes to the clear strip past J2 along the same +Y edge

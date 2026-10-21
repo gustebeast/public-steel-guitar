@@ -550,10 +550,18 @@ def _lip(bx0, bx1, y_wall, sgn):
             .extrude(bx1 - bx0))
 
 
+# THE FAR M4 STAYS WHERE THE BOARDS HAVE IT. It was placed off M4.boss_od, live, and the boards
+# were laid out (and made) with that at 9.2 -- a 6.0 pocket inside two 2-bead walls. When cadkit's
+# M4 pocket went to 6.1 (cadkit 1627f14, user, 2026-10-20) the boss grew to 9.3 and moved the far
+# hole, the ear, and through ear_h() THE WHOLE BOARD's placement 0.025 into the deck: 8.0 mm3
+# against top_plate_color_3/4 along every board's +Y edge. The boss itself is still M4.boss_od
+# (m4_boss); only where it stands is pinned. A respin that moves the hole moves this with it.
+FAR_BOSS_OD_LAID_OUT = 6.0 + 2 * D.MIN_WALL_2P
+
+
 def far_y():
-    """World Y of the far M4: its boss just outboard of the reflector wedge."""
-    from cadkit.fasteners import M4
-    return half_len() + M4.boss_od / 2.0 - M4_FAR_FUSE
+    """World Y of the far M4: its boss just outboard of the reflector wedge, as the boards are made."""
+    return half_len() + FAR_BOSS_OD_LAID_OUT / 2.0 - M4_FAR_FUSE
 
 
 def ear_span(panel):

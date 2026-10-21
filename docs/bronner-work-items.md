@@ -1,5 +1,73 @@
 # bronner — open work items (2026-09-30)
 
+## R2 BACKLOG, output_panel (user via the lead, 2026-10-20) -- NOT the current rev, which fabs as is
+
+**R2-1. Ethernet pass-through, the J1 -> J2 USB pattern.** Two RJ45s on the output board: one on the
+-X edge fed from the Pi's built-in GbE by a short stock Cat6 patch (~0.2-0.3 m), one in the panel,
+traces between. For Dante via Inferno on the Pi (github.com/teodly/inferno; Pi 4 tested, software
+PTP timestamps) and RTP-MIDI (rtpmidid) to LAN computers, alongside USB, no mode switching.
+- Plain shielded THT 8P8C, NO integrated magnetics (the Pi's own are the only ones in the link).
+  Assembly-house THT, no hand solder.
+- Gigabit: all 4 pairs, 100R differential, intra-pair matched; clear of the U5 buck and the +Y
+  analog chain. Shields to GND like the USB shells.
+- Jacks ~16 x 21 footprint, ~13.5 tall: board growth + enclosure headroom to check; tell branner
+  the panel cutout once it is real.
+- Rejected: the Pi USB-C as host for a dongle (switched VBUS + CC Rp/Rd swap; VBUS is dead on
+  purpose, Pi 4 USB-C VBUS = GPIO 5 V). Parts ~$5-10.
+
+**R2-3. J8 (the pickup's screw terminal) takes the SLOTTED screw: one screwdriver for the instrument.** Rev 1 is MX126-5.0-02P-GN01-Cu-**S**-A, M2.5 cross head; the SERVO42D motor terminals are slotted (2.0-2.5 mm flat blade). The same MX126 body is ordered with a slotted screw by the code letter **Y** (maker's ordering code: Y slotted, S cross, PS flat cross), so R2 orders MX126-5.0-02P-GN01-Cu-**Y**-A and one 2.5 x 0.4 mm flat blade drives both. Check before committing: that exact Y part is stocked at LCSC (the MX127 Y variant was, C-number not yet confirmed for MX126), and the same footprint and drawing. Confirm on the rev 1 boards that J8's head really is cross. src/screw_terminal.py SCREW changes with it (user, 2026-10-20).
+
+**R2-2. Panel USB-C J1 becomes DUAL-ROLE, auto-detected, still ONE port.** User rule: no second
+USB port on the panel (endplate room + user confusion). Behaves like a phone / OP-1 field / Deluge:
+- Computer attached (cable presents Rp): today's path, J1 data -> J2 -> Pi gadget port, J1 VBUS off.
+- Device attached (Rd: a synth's device port via a C-to-B cable, or an A-to-C OTG adapter with a
+  USB-to-5-pin MIDI cable such as a UM-ONE): a USB 2.0 HS analog switch moves J1's pair to the
+  CH334F's spare downstream port 3, and a current-limited (~300 mA), reverse-blocking VBUS from the
+  board's own 5 V turns on. The Pi's role never changes: no reboot, no dwc2 role switching.
+- Parts ~$2-4: a role-detect controller (TUSB320-class in GPIO mode, or a TPS2581x source controller
+  plus Rd -- my pick, open), a HS mux (TS3USB221-class), the VBUS load switch.
+- J2's VBUS stays dead exactly as now (Pi 4 USB-C VBUS = GPIO 5 V).
+- Budget: the 5 V buck is ~600 mA with a 257 mA worst case today; ~300 mA for J1 fits, a full
+  500 mA needs a bigger buck.
+- Use: MIDI out to hardware synths over USB (direct or via a USB-to-5-pin cable); USB MIDI pedals
+  and controllers in; flash-drive preset backup.
+- Robustness constraints (user, 2026-10-20; items 4-5 CORRECTED the same day -- no Pi wires):
+  1. STANDALONE HARDWARE role detection, no I2C/PD stack: works at power-on with no Pi or firmware.
+  2. PREFER SINK (Try.SNK or equivalent): a dual-role laptop / tablet / phone makes us the device.
+  3. Never source VBUS onto a VBUS already present (vSafe0V check + reverse-blocking switch) --
+     covers non-compliant synths that backfeed 5 V.
+  4. NO NEW WIRES TO THE Pi. The load switch's FAULT, the detected role and the mode select go to
+     spare **U1 (CH32V307) GPIOs**; U1 already talks to the Pi over USB through the hub and reports /
+     takes them there (UI: "overcurrent", "host / device").
+     **U1 has the pins:** QFN68, and the netlist (elec/output_panel.py, the u1[...] block) uses about
+     25 of them; M39 records "unused GPIO open". Needed: FAULT in, ROLE in (1-2: TUSB320 ATTACH/ID
+     style outputs), MODE out (1). 3-4 pins, pick them at layout from the open run nearest the new
+     parts (not PB2, which is BOOT1 and tied to PB1's net).
+  5. UI SETTING auto / host / device, mapped to the role-detect chip's mode pin (TUSB320-class PORT:
+     NC = DRP, L = UFP-only, H = DFP-only). AUTO is the default whenever U1 is unpowered, in reset or
+     unprogrammed: the pin's own bias (or a divider, if the chosen part has no internal one) holds it
+     at DRP and U1 only ever drives it high or low when told; a GPIO in reset is a floating input.
+     "Force host" for a cable missing its Rd = the host setting PLUS U1 allowed to throw the mux and
+     ask for VBUS without an attach -- still through the hardware gates of item 7.
+  6. Low-capacitance HS mux; verify 480 Mbps enumeration through it in both positions. The panel
+     clamps (M10) stay on the connector side.
+  7. SAFETY DOES NOT DEPEND ON THE SETTING. Hardware, unconditional, no GPIO can override:
+     never source VBUS onto a present VBUS (vSafe0V comparator gates the switch's EN), the
+     reverse-blocking switch, the current limit (~300 mA), J2 VBUS dead. A wrong setting may only
+     make the port do nothing; recovery = unplug, fix the setting or the cable, replug.
+
+  The nine combinations (far end x setting), as the design has to come out:
+
+  | far end | auto (DRP, Try.SNK) | host (DFP only) | device (UFP only) |
+  |---|---|---|---|
+  | computer (Rp, sources VBUS) | **works**: we sink, J1 -> J2 -> Pi gadget | **inert, no damage**: Rp meets Rp, no attach, no VBUS either way (a computer that sources anyway is stopped by the vSafe0V gate) | **works** |
+  | device (Rd: synth, UM-ONE on OTG) | **works**: we source ~300 mA, mux to CH334F port 3 | **works** | **inert, no damage**: Rd meets Rd, no attach; a synth that backfeeds 5 V reaches only J1's isolated VBUS |
+  | dual-role phone / laptop | **works**: Try.SNK makes us the device | **works**: we host the phone (as a USB/MIDI device), ~300 mA limit | **works**: it hosts us |
+
+  Check at design time that the chosen controller's DRP+Try.SNK really is the strap default and that
+  its DFP-only mode never applies VBUS before vSafe0V (TUSB320 does this in hardware; confirm on the
+  sheet before committing to it).
+
 ## OPEN, 2026-10-06 night (after the pre-order batch merged)
 
 0. ~~DONE~~ **Re-review S1 / S2 (lead).** S1: every fab package re-exported after the last board
@@ -6298,3 +6366,8 @@ geometry and texture/color/material. Then use the same model for the first flash
 
 - WCH evaluation-board reference V1.9 p13 confirms the ROM loader on PA11/PA12 or PB6/PB7 (USB) and PA9/PA10 (serial). `wchisp` 0.3.0 built and installed on psg-pi with a udev rule; `make isp` in firmware/motor_ctrl. Written up in docs/bench-order.md. Nothing tried on a chip.
 - `swindle` (RP2040) is real and maintained but has no released firmware: second choice, not built.
+
+- 2026-10-17 viewer: 24 fps moving floor (cadkit bdf944d): DLSS upscaling steps up automatically when a 1 spp moving frame would exceed 1/24 s; "detail while moving" row removed; upscaling off = "auto (keeps 24 fps)". DESK_FLOOR_FPS test override. Lead asked to propagate b2538a8 + bdf944d. Open: HDR decision (user).
+- 2026-10-17 viewer: HDR (cadkit 6d40bf2): "output" row -> "dynamic range" SDR/HDR; HDR = unclipped scRGB, SDR white at the desktop's, highlights rolled off to DXGI MaxLuminance; float surface on DX12 too. Proven with a 4x-exposure throwaway build (469 nits vs 499 peak); at the real lighting nothing exceeds SDR white. Test affordances: DESK_FLOOR_FPS, shot over_white. Lead asked to propagate.
+- 2026-10-17 ST-LINK/V2 ready on the Pi: V2J46S7, no-sudo access via stock udev rules; make probe/flash/rescue dry-run to "no target"; optical firmware rebuilt clean (31 kB). Waiting on PCBs.
+- 2026-10-20 wire: two-gauge rule (22 AWG 24 V on XH, 26 AWG everything else) written into BOM.md with per-run checks; 20 AWG Pi 5 V note fixed in src/wiring.py; prices.json wire note. McMaster order holds red 22, red/yellow/green 26 (25 ft, $13.57), not placed.
