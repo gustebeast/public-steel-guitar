@@ -14,7 +14,9 @@ three buttons sit on the BACK face along the -Z edge.
 
 WHERE EVERY NUMBER COMES FROM:
   MEASURED (user's calipers, 2026-10-20)
-    * TOTAL_L 53.4  faceplate to the back of the driver (the corner screw heads)
+    * TOTAL_L 53.2  faceplate to the back of the driver's ribs (first read 53.4)
+    * LOWER_L 51.6  ...and below the ribs, to the two lower back-plate screw heads: the
+                    extent over the lower section, which is what the bay's back wall stops
     * SQ 42.0       the can across its flats, and DRV_SQ 42.5 the driver's cover, the
                     widest part (NEMA17 nominal 42.3: the bank keeps 42.3 for its pitch, so
                     the bay's 0.4 slip fit is 0.55 round the can and 0.30 round the cover).
@@ -47,7 +49,8 @@ from .helpers import box_at, cyl_y
 SQ = D.MOTOR_SQ_MEASURED       # 42.0: the can across its flats
 DRV_SQ = D.MOTOR_DRIVER_SQ_MEASURED    # 42.5: the driver's cover
 DRV_HALF = DRV_SQ / 2
-TOTAL_L = D.MOTOR_BODY_L       # 53.4 faceplate -> back of the driver
+TOTAL_L = D.MOTOR_BODY_L       # 53.2 faceplate -> back of the driver's ribs
+LOWER_L = D.MOTOR_LOWER_L_MEASURED   # 51.6 ...to the lower screw heads, under the ribs
 LOOP_TOP = D.MOTOR_HEIGHT_MEASURED - DRV_SQ / 2  # 29.85: the loop, over the axis (the
                                                  # height was taken off the cover's flat)
 SHAFT_L = 19.4                 # from the faceplate (see the docstring)
@@ -73,7 +76,7 @@ PLUG_PITCH = 2.5
 # -- the driver (SERVO42D) ---------------------------------------------------------------
 DRV_Y0 = -BODY_L               # its face against the can
 DRV_BACK = -50.4               # its housing's back face; ribs and screw heads stand off it
-RIB_H = TOTAL_L - (-DRV_BACK)  # 3.0
+RIB_H = TOTAL_L - (-DRV_BACK)  # 2.8
 RIB_T = 1.0
 TERM_PITCH = 2.5                # MEASURED (user, 2026-10-20): 6-way inside span 14.47, one cell
                                # 1.95-2.00 -> (14.47 - cell)/5 = 2.49-2.50; 2.54 would need 1.77
@@ -94,7 +97,8 @@ BLUE_H = 4.8                   # blue 4-way, down from the top flat
 BLUE_HOLE_Y = -46.0
 SCREW_HEAD_D, SCREW_HEAD_H = 4.6, 1.4    # corner pan heads (Phillips)
 SCREW_BOSS_D = 6.0
-BAND_Z1 = -6.5                 # the raised lower band, from here to the bottom flat
+BAND_Z1 = -6.5                 # the ribs stand off the back only ABOVE this; under it the
+                               # back is the housing and the two lower screw heads (LOWER_L)
 BTN_SLOT = (19.0, 6.0, 2.0)    # x, z, depth of the button slot in the band
 BTN_ZC, BTN_PITCH, BTN_SQ, BTN_H = -15.6, 5.8, 2.8, 1.6
 LOGO, LOGO_H, LOGO_ZC = "MKS", 6.0, 6.5
@@ -245,8 +249,8 @@ def driver() -> cq.Workplane:
     for z in (-2.5, -4.8):                                       # side columns
         for sx in (1, -1):
             feats.append(box_at(5.0, RIB_H, RIB_T, x=sx * 10.5, y=yr, z=z))
-    feats.append(box_at(DRV_SQ, RIB_H, DRV_HALF + BAND_Z1, y=yr,
-                        z=(BAND_Z1 - DRV_HALF) / 2))                    # the lower band
+    # (NO raised lower band to the ribs' line: under the ribs the back is the housing itself,
+    #  and only the two lower screw heads stand off it, to LOWER_L -- user, 2026-10-20)
     for x, z in _bolt_xz():
         if z > 0:
             feats.append(cyl_y(SCREW_BOSS_D, RIB_H - SCREW_HEAD_H, y0=-TOTAL_L + SCREW_HEAD_H,
@@ -259,10 +263,7 @@ def driver() -> cq.Workplane:
     d = d.union(logo)
     d = d.intersect(_band(DRV_Y0, -TOTAL_L, DRV_SQ))             # nothing past the corners
     bx, bz, bd = BTN_SLOT
-    d = d.cut(box_at(bx, bd + 0.1, bz, y=-TOTAL_L + (bd - 0.1) / 2, z=BTN_ZC))
-    for x, z in _bolt_xz():                                      # the lower heads sit in wells
-        if z < 0:
-            d = d.cut(cyl_y(SCREW_BOSS_D - 0.6, SCREW_HEAD_H + 0.1, y0=-TOTAL_L - 0.1, x=x, z=z))
+    d = d.cut(box_at(bx, bd + 0.1, bz, y=DRV_BACK + (bd - 0.1) / 2, z=BTN_ZC))
     for t in list(_terminals().values()) + _notches():
         d = d.cut(t)
     return d
@@ -299,9 +300,11 @@ def screws() -> dict:
     """{"corner": the four pan heads, "terminal": the fifteen slotted terminal screws}."""
     corner = None
     for x, z in _bolt_xz():
-        h = cyl_y(SCREW_HEAD_D, SCREW_HEAD_H, y0=-TOTAL_L, x=x, z=z)
+        yb = -TOTAL_L if z > 0 else -LOWER_L                     # upper on bosses, lower bare
+        hh = SCREW_HEAD_H if z > 0 else DRV_BACK + LOWER_L       # a lower head ends on the housing
+        h = cyl_y(SCREW_HEAD_D, hh, y0=yb, x=x, z=z)
         for w, t in ((2.6, 0.6), (0.6, 2.6)):                    # the Phillips cross
-            h = h.cut(box_at(w, 1.2, t, x=x, y=-TOTAL_L + 0.5, z=z))
+            h = h.cut(box_at(w, 1.2, t, x=x, y=yb + 0.5, z=z))
         corner = h if corner is None else corner.union(h)
     term = []
     for side, n in ((1, TERM_6_N), (-1, TERM_5_N)):
@@ -315,7 +318,7 @@ def screws() -> dict:
 
 def buttons() -> cq.Workplane:
     _, _, bd = BTN_SLOT
-    y0 = -TOTAL_L + bd
+    y0 = DRV_BACK + bd
     out = None
     for i in (-1, 0, 1):
         b = box_at(BTN_SQ, BTN_H, BTN_SQ, x=i * BTN_PITCH, y=y0 - BTN_H / 2, z=BTN_ZC)

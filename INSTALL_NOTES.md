@@ -240,6 +240,10 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
 * Wire the motor on the bench, then lower it into its bay with the wires on. Beside each
   green block the bay's side wall is cut down below the block -- both sides and the back
   wall stand 11.2 -- so the folded wires clear it (docs/servo42d-fit.md).
+* Then its tee: the seat has a 45 deg lip over the board's FAR end (the end away from the
+  ear). Tilt the board, slide that edge under the lip, lay the ear down onto the post and run
+  the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
+  The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
 
 ## Motor tees: ONE switch ON, nine OFF
 

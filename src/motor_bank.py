@@ -40,6 +40,13 @@ SEAT_HALF_W = 21.9               # the faceplate wall's -X reach: the tee's -X l
                                  # is at MOTOR_SQ/2 + MOTOR_GAP (wiring asserts the board still fits)
 MOTOR_CLR  = D.MOTOR_CLR         # slip fit round a PURCHASED body (the gap is sized from it)
 BOSS_CLR   = 0.4                 # round the O22 pilot boss in its drop-in slot
+# THE SIDE FIT, PER SECTION (coupon round 2, user 2026-10-20). MOTOR_CLR round the 42.3
+# nominal is 0.3 a side round the real 42.5 driver cover -- "good" -- and 0.55 round the 42.0
+# can -- "loose ... it can wobble". The can gets the cover's 0.3 too, from CAN_NARROW_LEAD in
+# front of the cover/can transition forward (lift_prism).
+SIDE_FIT   = (D.MOTOR_SQ + 2 * D.MOTOR_CLR - D.MOTOR_DRIVER_SQ_MEASURED) / 2      # 0.3
+CAN_NARROW_LEAD = 3 * D.BEAD     # 2.4: the narrowing starts this far in front of the cover
+BACK_STEP_H = 16 * D.BEAD        # 12.8: the low back stop's height in the pocket (over BUMP_H)
 POST_T     = 12 * D.BEAD         # 9.6 side post (X). Capped by the NEIGHBOUR's boss slot,
                                  # which the post has to keep a wall off -- asserted below
 NEIGH_CLR  = D.MIN_WALL          # 0.8 air to the diagonal neighbour's body, at the band end
@@ -107,11 +114,41 @@ def tee_ear_box(i):
     return sx1 - D.TEE_EAR_X, sx1, sy1 - D.TEE_EAR_Y, sy1
 
 
+# THE FAR-END LIP (coupon round 2, user 2026-10-20: the board "is lifting away from the motor
+# at the far end away from the screw ... add a 45 lip to the far side so when installing the
+# tee you slide it under that lip"). The board's -X edge stands TEE_FIT off the seat's -X
+# locating wall (the faceplate wall's strip beside it); a 45 deg lip off that wall laps the
+# board's top edge. Its underside meets the board's top corner TEE_LIP_AIR over it, and it runs
+# up to the seat top, TEE_LIP_REACH in over the board. The tee goes in -X edge first, tilted,
+# under the lip; then the ear drops onto the post and the M4 closes it.
+TEE_LIP_AIR = 0.1
+
+
+def tee_lip(i):
+    """The lip's wedge over tee i's -X edge: kept OUT of tee_pocket so the seat keeps it."""
+    sx0, sx1, sy0, sy1, sz = tee_board_box(i)
+    top = sz + D.TEE_BOARD_T
+    xw = sx0 - D.TEE_FIT - 1.0                       # into the locating wall
+    z_hi = SEAT_TOP + 1.0
+    z_lo = top + TEE_LIP_AIR + (xw - sx0)            # the 45 deg underside, through the corner
+    x_hi = sx0 + (z_hi - top - TEE_LIP_AIR)
+    prof = (cq.Workplane("XZ").polyline([(xw, z_lo), (x_hi, z_hi), (xw, z_hi)]).close()
+            .extrude(-(sy1 - sy0 + 2 * D.TEE_FIT)))
+    return prof.translate((0, sy0 - D.TEE_FIT, 0))
+
+
+TEE_LIP_REACH = SEAT_TOP - (Z_HI + D.TEE_BOARD_T) - TEE_LIP_AIR   # 1.1 over the board at the top
+
+
 def tee_pocket(i):
     """The tee board's space: its profile plus a fit, open upward so it drops in, together with
     the relief the THT tails need under its +Y band. ONE cutter, because the board is 40 across
     a 42.3 motor and so reaches 1.5 into the NEIGHBOUR's bay -- the chassis subtracts every bay's
-    from the fused result, exactly as it does every motor's lift path."""
+    from the fused result, exactly as it does every motor's lift path. Less tee_lip(i)."""
+    return _tee_pocket(i).cut(tee_lip(i))
+
+
+def _tee_pocket(i):
     sx0, sx1, sy0, sy1, sz = tee_board_box(i)
     _h = (SEAT_TOP - sz) + 2.0
     # (its +X face is the motor's fit line: the board's edge stands D.TEE_EDGE_BACK inside it,
@@ -148,10 +185,32 @@ def lift_prism(i):
     motor's footprint down through the ribs the motor rests on: FLOOR_TOP is the rib tops.
     A motor slides in from +Z, so its swept volume starts at its own underside and nothing
     below that line is in its way."""
+    from . import servo42d as SV
     bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
+    mx = (bx0 + bx1) / 2
     z0, z1 = bz0, bz1 + 300.0
-    return box_at(bx1 - bx0 + 2 * MOTOR_CLR, by1 - by0 + 2 * MOTOR_CLR, z1 - z0,
-                  x=(bx0 + bx1) / 2, y=(by0 + by1) / 2, z=(z0 + z1) / 2)
+    # TWO WIDTHS (coupon round 2, user 2026-10-20): the driver's cover is 42.5 and the can
+    # 42.0, and one fit round both left the can loose ("it can wobble a bit") while the cover's
+    # 0.3 a side was good. So the can gets the cover's fit: the pocket narrows by their
+    # difference CAN_NARROW_LEAD in front of the transition (user: "a little after").
+    ym = by1 + SV.DRV_Y0 + CAN_NARROW_LEAD
+    rear = box_at(bx1 - bx0 + 2 * MOTOR_CLR, ym - (by0 - MOTOR_CLR), z1 - z0,
+                  x=mx, y=(ym + by0 - MOTOR_CLR) / 2, z=(z0 + z1) / 2)
+    # ...AND TWO LENGTHS (coupon round 2, user: "slides 2mm forward/back"). The driver's ribs
+    # reach 53.2 back, but only above SV.BAND_Z1; under them the back is the two lower screw
+    # heads at 51.6, and that is all the BUMP_H back wall ever meets. So up to BACK_STEP_Z the
+    # pocket stops LOWER_L + MOTOR_CLR behind the faceplate. A motor drops in from +Z, so its
+    # ribs never come lower than they sit, and the step cannot catch them.
+    zs = bz0 + BACK_STEP_H
+    rib_z = D.motor_pos(i)[2] + SV.BAND_Z1                 # the ribs' lowest line, seated
+    assert zs < rib_z - SV.RIB_T, "the back step reaches the ribs' height"
+    rear = rear.cut(box_at(bx1 - bx0 + 4.0, SV.TOTAL_L - SV.LOWER_L, zs - z0 + 1.0,
+                           x=mx, y=by1 - (SV.TOTAL_L + SV.LOWER_L) / 2 - MOTOR_CLR,
+                           z=(z0 - 1.0 + zs) / 2))
+    yf = by1 + MOTOR_CLR
+    front = box_at(SV.SQ + 2 * SIDE_FIT, yf - ym + 0.01, z1 - z0,
+                   x=mx, y=(yf + ym - 0.01) / 2, z=(z0 + z1) / 2)
+    return rear.union(front)
 
 
 def body_box(i):
@@ -357,6 +416,7 @@ COUPON_GAP = 6.0                 # bay to dummy board on the plate
 # what it clamps on the instrument.
 E_FR4, E_PETG_GF = 20.0, 3.3
 TEE_DUMMY_T = 3.0
+TEE_DUMMY_LIP_W = 4 * D.BEAD     # 3.2 of 1.6-thick edge under the lip (it reaches 1.1 in)
 assert abs(TEE_DUMMY_T - D.TEE_BOARD_T * (E_FR4 / E_PETG_GF) ** (1 / 3)) < 0.1
 
 
@@ -420,8 +480,12 @@ def _coupon_world():
     _bw, _bl, cx, cy, _o, _he, _ha = W.tee_hold(i, x, y, d)
     dummy = EL.tee_substrate(cx, cy - EL.TEE_YSHIFT, TEE_DUMMY_T).translate(
         (0, 0, W.tee_z(i) - EL.FLOOR_Z))
-    db = dummy.val().BoundingBox()
     sx0_, sx1_, sy0_, sy1_, sz_ = tee_board_box(i)
+    # ...back to the real 1.6 along its -X edge, where it goes under the lip
+    dummy = dummy.cut(box_at(TEE_DUMMY_LIP_W + 1.0, sy1_ - sy0_ + 2.0, 10.0,
+                             x=sx0_ + (TEE_DUMMY_LIP_W - 1.0) / 2, y=(sy0_ + sy1_) / 2,
+                             z=sz_ + D.TEE_BOARD_T + 5.0))
+    db = dummy.val().BoundingBox()
     assert abs(db.zmin - sz_) < 1e-6 and abs(db.xmax - sx1_) < 1e-6 and abs(db.ymax - sy1_) < 1e-6, \
         "the dummy board is not where the seat expects the tee"
     return bay, dummy

@@ -687,7 +687,10 @@ TEE_TERM_SW     = (1.0, 6.3, 5.4, 2.88, 2.5)    # DSHP01TSGER: body 5.4 x 2.88, 
 # The detailed model and where each of its numbers comes from: src/servo42d.py (the build
 # draws every motor with it). It replaced a 70 mm placeholder; the bays, the motor board
 # behind string 1 (MCTRL_Y1) and the CAN pigtails' exits all hang off MOTOR_BODY_L.
-MOTOR_BODY_L    = 53.4      # faceplate -> back of the driver (its corner screw heads)
+MOTOR_BODY_L    = 53.2      # faceplate -> back of the driver's RIBS, the longest line (user,
+                            # 2026-10-20, re-measured: the first 53.4 was this, read roughly)
+MOTOR_LOWER_L_MEASURED = 51.6   # ...but BELOW the ribs the back is only the two lower back-plate
+                            # screw heads, 51.6 -- which is all the bay's low back wall sees
 MOTOR_SQ_MEASURED = 42.0    # the CAN across its flats (user, 2026-10-20)
 MOTOR_DRIVER_SQ_MEASURED = 42.5   # the MKS driver cover behind it, 0.5 bigger: the widest part.
                             # MOTOR_SQ stays the 42.3 nominal the bank's pitch is built on, so

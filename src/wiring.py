@@ -1064,7 +1064,8 @@ def build_wires():
     _LEAD = 2.0                 # straight along the contact before the plug
     _r = {k: v / 2.0 for k, v in DROP_OD.items()}
     _cover_top = _SV.DRV_SQ / 2                    # over the motor's axis
-    _bay = D.MOTOR_SQ / 2 + MB.MOTOR_CLR           # the pocket's side faces, off the axis
+    _bay = _SV.SQ / 2 + MB.SIDE_FIT                # the pocket's side faces over the CAN, off the
+                                                   # axis (the lanes run forward along them)
     _lvl_can = _cover_top + _r["CAN_H"] + 0.15
     _lvl_pwr = _lvl_can + _r["CAN_H"] + _r["V24"] + 0.1
 
