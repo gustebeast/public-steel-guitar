@@ -295,6 +295,17 @@ def R5_LEVER2(comps):
              HOUS_Z1_W + TEN_ROOT_CH, _)]
 
 
+def R6_FLOOR8(comps):
+    """ROUND 6 (user, 2026-10-21: fit_plate9 at full length -- 0.275 too tight, 0.35 just right,
+    0.45 a bit loose; "print both 2 and 3 with the full set of 8"). The floor under the
+    housing's own eight stations, no seam, the seat shaved this build's c: cut by lever_c_round6 from an
+    instrument built at each clearance, against that build's r3_lever."""
+    from src import dimensions as D           # the seat shaved by THIS build's clearance
+    y0, y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _R3_S7 + GRID_WEB, y0 - 2 * 0.8, y1 + 2 * 0.8,
+             HOUS_Z1_W + D.LEVER_MORT_CLR, FLOOR)]
+
+
 def _fix_stub_brim(outward):
     """A stub with no floor stands 20.8 tall on its rail's end (the tenon piece on 3.2 x 10.4):
     a BRIM_W, BRIM_T brim round its foot, on its own side of the seam only."""
@@ -446,6 +457,8 @@ COUPONS = [
     Coupon("r4_seam_mortise", ["chassis_0"],
            [(_, STUB_MORT_X1, _, RAIL_MY, R4_Z0, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, R4_Z0, FLOOR)],
            UP_Z, "round 3's seam mortise + 4 lever mortises, the lever seat shaved c off the bed"),
+    Coupon("r6_floor8", ["chassis_2"], R6_FLOOR8,
+           UP_Z, "the housing's eight floor mortises, no seam, seat shaved c"),
     Coupon("r5_lever2", ["knee_housing"], R5_LEVER2,
            UP_Z, "two housing tenons, full length", fix=_fix_deck(R5_LEVER2)),
     Coupon("r5_floor2", ["chassis_2"], R5_FLOOR2,
@@ -629,6 +642,11 @@ PLATES = {
     "seam_lever_mini_3": [["r3_seam_tenon_comp", "r3_seam_mortise_comp", "r3_lever"]],
     # round 4: seam 0.40, the lever seat at c; the 8-tenon lever unchanged from round 3
     "seam_lever_4": [["r4_seam_tenon_comp", "r4_seam_mortise_comp", "r3_lever"]],
+    # round 6: the 8-tenon lever + its floor at 0.35 and 0.45 (lever_c_round6), and the seam
+    # swept at its full drop (fit_plate10: 0.40 control, 0.45, 0.50, 0.55)
+    "lever_seam_6": [["r6_lever8_c035", "r6_floor8_c035"],
+                     ["r6_lever8_c045", "r6_floor8_c045"],
+                     ["plate10_petg_gf"]],
     # round 5, diagnosis: one variable a piece, the real-geometry pieces twice (print scatter)
     "diag_5": [["plate9_petg_gf"],
                ["r5_lever2", "r5_floor2", "r5_lever2", "r5_floor2"],
