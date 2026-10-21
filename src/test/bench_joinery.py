@@ -206,7 +206,8 @@ COMP_SPLIT_Z = -72.5    # under the seam cavity (0.4 under the floor top), over 
 # section each is (-1 the tenon's, +1 the mortise's). They were written by hand before.
 COMP_SIDE = {"seam_tenon": -1, "seam_mortise": +1, "mini_seam_tenon": -1,
              "mini_seam_mortise": +1, "r3_seam_tenon": -1, "r3_seam_mortise": +1,
-             "r4_seam_tenon": -1, "r4_seam_mortise": +1}
+             "r4_seam_tenon": -1, "r4_seam_mortise": +1,
+             "r5_seam_tenon": -1, "r5_seam_mortise": +1}
 
 
 def compensate(shape, side, e=SEAM_COMP):
@@ -275,6 +276,38 @@ TIE_W = 8.0
 # mortises joined by the seam) so shaved; the printed r3_lever is the other half.
 LEVER_SEAT_TRY = 0.275
 R4_Z0 = HOUS_Z1_W + LEVER_SEAT_TRY
+
+
+# ROUND 5, DIAGNOSIS (user, 2026-10-21: round 4 still "much too tight" both ways; one
+# lubricated lever tenon slides, two bind at once; the seam binds on its own, no lever in).
+# Each piece varies ONE thing against round 4 (the seam joint itself is round 2's to the
+# vertex at every height; what grew is the floor): the lever at TWO stations of the real
+# housing and floor, no seam (pitch, against fit_plate9's single tenons at full length), and
+# the seam pair cut to its RAIL STUBS only, standing on the floor's top (the 38-deep floors
+# whose faces meet across the seam left out).
+_R5_S1 = HOUS_S0 + GRID_P
+
+
+def R5_LEVER2(comps):
+    y0, y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _R5_S1 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
+            (HOUS_S0 - GRID_WEB, _R5_S1 + 5.6 / 2.0 + 0.5, y0 - 0.05, y1 + 0.05,
+             HOUS_Z1_W + TEN_ROOT_CH, _)]
+
+
+def _fix_stub_brim(outward):
+    """A stub with no floor stands 20.8 tall on its rail's end (the tenon piece on 3.2 x 10.4):
+    a BRIM_W, BRIM_T brim round its foot, on its own side of the seam only."""
+    def brim(_comps):
+        w = BRIM_W
+        x = (STUB_TEN_X0 - w, SEAM_X) if outward < 0 else (SEAM_X, STUB_MORT_X1 + w)
+        return _box(x + (-141.95 - w, RAIL_MY + w, FLOOR, FLOOR + BRIM_T))
+    return brim
+
+
+def R5_FLOOR2(comps):
+    y0, y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _R5_S1 + GRID_WEB, y0 - 2 * 0.8, y1 + 2 * 0.8, R4_Z0, FLOOR)]
 
 
 def _fix_deck(box):
@@ -413,6 +446,14 @@ COUPONS = [
     Coupon("r4_seam_mortise", ["chassis_0"],
            [(_, STUB_MORT_X1, _, RAIL_MY, R4_Z0, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, R4_Z0, FLOOR)],
            UP_Z, "round 3's seam mortise + 4 lever mortises, the lever seat shaved c off the bed"),
+    Coupon("r5_lever2", ["knee_housing"], R5_LEVER2,
+           UP_Z, "two housing tenons, full length", fix=_fix_deck(R5_LEVER2)),
+    Coupon("r5_floor2", ["chassis_2"], R5_FLOOR2,
+           UP_Z, "two floor mortises under the housing, no seam, seat shaved c"),
+    Coupon("r5_seam_tenon", ["chassis_1"], [(STUB_TEN_X0, _, _, RAIL_MY, FLOOR, MINI_TOP)],
+           UP_Z, "round 4's seam tenon, the rail stub only (no floor)", fix=_fix_stub_brim(-1)),
+    Coupon("r5_seam_mortise", ["chassis_0"], [(_, STUB_MORT_X1, _, RAIL_MY, FLOOR, MINI_TOP)],
+           UP_Z, "round 4's seam mortise, the rail stub only (no floor)", fix=_fix_stub_brim(+1)),
     Coupon("mini_lever", ["knee_housing"], MINI_HOUS,
            UP_Z, "4 housing tenons (2 each side of the seam), MINI_L long"),
 
@@ -588,6 +629,11 @@ PLATES = {
     "seam_lever_mini_3": [["r3_seam_tenon_comp", "r3_seam_mortise_comp", "r3_lever"]],
     # round 4: seam 0.40, the lever seat at c; the 8-tenon lever unchanged from round 3
     "seam_lever_4": [["r4_seam_tenon_comp", "r4_seam_mortise_comp", "r3_lever"]],
+    # round 5, diagnosis: one variable a piece, the real-geometry pieces twice (print scatter)
+    "diag_5": [["plate9_petg_gf"],
+               ["r5_lever2", "r5_floor2", "r5_lever2", "r5_floor2"],
+               ["r5_seam_tenon_comp", "r5_seam_mortise_comp", "r5_seam_tenon_comp",
+                "r5_seam_mortise_comp"]],
     # the seam pair COMPENSATED as round 3 (it is what the chassis is meant to get); no lever
     # housing of its own -- seam_lever_mini_3's 8-tenon r3_lever fits these floors too
     "full_length_1": [
