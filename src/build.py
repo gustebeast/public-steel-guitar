@@ -2344,6 +2344,7 @@ _COLORS = {
     "pogo_male_silk":  (0.95, 0.95, 0.93),
     "pogo_female_silk": (0.95, 0.95, 0.93),
     "wire_ui":         (0.55, 0.56, 0.58),
+    "ui_ribbon_socket": (0.10, 0.10, 0.11),  # its two 1.27 IDC sockets, black PBT
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - output panel J2 -> the Pi's USB-C
     "wire_hub":        (0.38, 0.32, 0.85),   # indigo      - output panel J3 (the hub) -> a Pi USB-A
     "wire_usb_plug":   (0.03, 0.03, 0.035),  # the leads' moulded plugs, black as bought

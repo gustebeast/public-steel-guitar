@@ -1466,9 +1466,19 @@ def build_wires():
     #    hides the only thing about it that constrains anything: its WIDTH, and which way
     #    that width is turned. (user asked what the thick wire was, 2026-09-28)
     ux, _uy = UI.board_centre()
-    umz = UI.z_stack()[4] + 4.5                  # the ribbon's axis out of the shroud
+    umz = UI.z_stack()[4] + 4.5                  # the ribbon's run under the deck
     uy = UI.routed("J2")[1]                      # the header's own row, as routed
-    ex = ux - UI.BOARD_W / 2.0 - 2.0
+    #    ITS SOCKET at J2, pushed onto the pins until it bottoms on their tips (the
+    #    header's plastic is flush with the board's -X edge, its pins HDR_PIN_OUT past
+    #    it), centred on the header's height; the ribbon leaves it upward (across the
+    #    rows, which are stacked in Z) and turns -X over the socket's cover.
+    _j2h = BG.HEIGHT[BG.fp_name(BG.footprint("ui_board", "J2")["fpid"])]
+    _j2m = (ux - UI.BOARD_W / 2.0 - UI.HDR_PIN_OUT + UI.IDC_PIN_IN, uy,
+            UI.z_stack()[4] + _j2h / 2.0)
+    out.append(("ui_ribbon_socket_0", UI.idc_socket(_j2m, (-1, 0, 0), (0, 0, 1), (0, 1, 0))))
+    ex = _j2m[0] - UI.IDC_CABLE_M
+    assert umz - UI.RIBBON_T / 2.0 > _j2m[2] + UI.IDC_BODY_R / 2.0, (
+        "the UI ribbon's run under the deck is lower than its socket's top")
     #    THE WIDTH LIES ALONG Y, which is what lets it make the one turn it has to. The
     #    run goes -X under the deck and then straight down the bay column; a ribbon whose
     #    width is perpendicular to both sweeps that corner as fourteen concentric arcs,
@@ -1495,10 +1505,16 @@ def build_wires():
                    EL._CAP_T + _j5h / 2.0)
     assert abs(_a5[1][1]) > 0.99 and abs(_j5f["fab"][3] - _j5f["fab"][2]) < abs(
         _j5f["fab"][1] - _j5f["fab"][0]), "pi_cap J5's row no longer runs along world X"
-    _J5_SOCKET = 3.0                # the IDC socket's ribbon slot, out from the header's mouth
-    _ry = _j5c[1] + _J5_SOCKET * (1.0 if _a5[1][1] * (_mouth_y - _pad_y) > 0 else -1.0)
-    centre = [(ex, uy, umz), (ex - 12.0, uy, umz), (_j5c[0], uy, umz),
-              (_j5c[0], _ry, umz), (_j5c[0], _ry, _j5c[2])]
+    #    ITS SOCKET at J5, the same part, the same way: on the pins to IDC_PIN_IN short of
+    #    their tips (the end of J5's fab box away from its pads), the ribbon coming down
+    #    into it and ending at its lower side, as an IDC cable's end does.
+    _sy = 1.0 if _a5[1][1] * (_mouth_y - _pad_y) > 0 else -1.0
+    _j5s = (_j5c[0], _j5c[1] - _sy * UI.IDC_PIN_IN, _j5c[2])
+    out.append(("ui_ribbon_socket_1", UI.idc_socket(_j5s, (0, _sy, 0), (0, 0, 1), (1, 0, 0))))
+    _ry = _j5s[1] + _sy * UI.IDC_CABLE_M
+    centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz),
+              (_j5c[0], uy, umz), (_j5c[0], _ry, umz),
+              (_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
     #    ...AND IT IS ONE PRISM, NOT FOURTEEN SWEEPS (user, 2026-09-28). It was drawn
     #    as fourteen conductors from bundle_paths, one octagonal solid each, which is the
     #    truth about a ribbon and the wrong model of it: nothing inside a ribbon can move
