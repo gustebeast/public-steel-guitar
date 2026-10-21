@@ -341,6 +341,41 @@ RIBBON_W = RIBBON_N * RIBBON_PITCH  # 10.16, the cable's own width. Every way's 
                                     # touches its neighbour's, so the ribbon is exactly as
                                     # wide as the ways it has -- which is also the width
                                     # the CAD sweeps, as ONE prism rather than sixteen
+# ...AND ITS TWO ENDS, the 2x8 1.27 IDC sockets pressed onto it (user, 2026-10-21: the
+# cable ended in the air at the Pi). Drawn off CnC Tech's 3230-16-0102-00 (the 16-way of
+# their 3230-XX-0102-00 drawing, 05-Feb-2020): a BODY 14.35 along the rows ("Dim.B" for
+# 16), 4.00 across them and 3.20 deep from its mating face, and a COVER 3.05 across and
+# 1.90 deep pressed over the cable onto the body's back. The ribbon lies between the two,
+# across the rows -- square to the mating axis -- and leaves past one side. Any 16-way
+# 1.27 x 1.27 IDC socket is this shape; the BOM does not name a maker.
+IDC_B = 14.35
+IDC_BODY_R, IDC_BODY_M = 4.00, 3.20
+IDC_COVER_R, IDC_COVER_M = 3.05, 1.90
+IDC_GAP = RIBBON_T + 0.05          # the ribbon's slot between the two
+IDC_CABLE_M = IDC_BODY_M + IDC_GAP / 2.0   # the ribbon's centre, out from the mating face
+# WHERE IT STOPS ON THE PINS. The header (HX PZ1.27-2x8P WZ, its drawing 2022-04-24) puts
+# 4.00 of pin out past its plastic, and this body is only 3.20 deep, so the socket bottoms
+# on the pin tips and stands off the plastic -- it never reaches it. ESTIMATE: 3.00 of pin
+# inside the body; the board solid draws the pins as a block to their tips, and the
+# socket's last IDC_PIN_IN of it is the designed mate (tools/check_overlaps.py).
+HDR_PIN_OUT = 4.00
+IDC_PIN_IN = 3.00
+
+
+def idc_socket(mouth, m, r, w):
+    """A 2x8 1.27 IDC socket: `mouth` the centre of its mating face, `m` the unit axis
+    out of it (away from the header), `r` across the rows -- the way the ribbon leaves
+    -- and `w` along them, all world axes. Body and cover as one solid with the ribbon's
+    slot left open between them."""
+    def box(dm0, dm1, dr, dw):
+        ext = [abs(m[k]) * (dm1 - dm0) + abs(r[k]) * dr + abs(w[k]) * dw for k in range(3)]
+        c = [mouth[k] + m[k] * (dm0 + dm1) / 2.0 for k in range(3)]
+        return box_at(*ext, x=c[0], y=c[1], z=c[2])
+    m0 = IDC_BODY_M + IDC_GAP
+    return (box(0.0, IDC_BODY_M, IDC_BODY_R, IDC_B)
+            .union(box(m0, m0 + IDC_COVER_M, IDC_COVER_R, IDC_B)))
+
+
 SCREW_CLR_D = 4.5                  # its clearance hole in the board
 
 # -- THE DECK ---------------------------------------------------------------
