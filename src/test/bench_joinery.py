@@ -258,6 +258,23 @@ TIE_Z = (DECK_UNDER, DECK_UNDER + 3.2)      # top 1.7 under the grooves' floor
 TIE_W = 8.0
 
 
+# ROUND 4, THE SEAT (user, 2026-10-21: the 8-tenon round bound; "the floor of the mortise
+# presses into the floor of the tenon too hard"). The lever pair is built with its seat at 0
+# (halves(..., g=0.0)): the chassis underside sits flush on the housing deck, and the root's
+# clearance closes from c to 0 over the bottom 0.3 at the mouth. A seat at c -- every face a
+# clearance apart, seat included -- is exactly this floor with c shaved off its bed face: the
+# cavity stays where it is round the tenon, the floor's underside moves up off the deck, and
+# the mouth's 45 deg chamfer opens to the full c. No seam: the floor under the housing's own
+# eight stations, so the r3_lever already printed is the other half.
+LEVER_SEAT_TRY = 0.275
+
+
+def R4_FLOOR(comps):
+    y0, y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _R3_S7 + GRID_WEB, y0 - 2 * 0.8, y1 + 2 * 0.8,
+             HOUS_Z1_W + LEVER_SEAT_TRY, FLOOR)]
+
+
 def _fix_deck(box):
     """A housing coupon's deck as a plain SLAB: the deck box over the housing's own footprint
     (user, 2026-10-16: the 1.6 deck cut through a bore's crown flat inside the housing and
@@ -388,6 +405,8 @@ COUPONS = [
            UP_Z, "seam mortise, short, + 4 lever mortises, full tenon length"),
     Coupon("r3_lever", ["knee_housing"], R3_HOUS,
            UP_Z, "all 8 housing tenons, full length", fix=_fix_deck(R3_HOUS)),
+    Coupon("r4_lever_seat", ["chassis_2"], R4_FLOOR,
+           UP_Z, "the housing's eight floor mortises, the seat shaved c off the bed face"),
     Coupon("mini_lever", ["knee_housing"], MINI_HOUS,
            UP_Z, "4 housing tenons (2 each side of the seam), MINI_L long"),
 
@@ -561,6 +580,8 @@ PLATES = {
     "seam_lever_mini_2": [["mini_seam_tenon_comp", "mini_seam_mortise_comp", "mini_lever"]],
     # round 3: seam 0.375, lever 0.275
     "seam_lever_mini_3": [["r3_seam_tenon_comp", "r3_seam_mortise_comp", "r3_lever"]],
+    # round 4: the lever seat at c (r3_lever reused)
+    "lever_seat_4": [["r4_lever_seat"]],
     # the seam pair COMPENSATED as round 3 (it is what the chassis is meant to get); no lever
     # housing of its own -- seam_lever_mini_3's 8-tenon r3_lever fits these floors too
     "full_length_1": [
