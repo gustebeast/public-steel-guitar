@@ -4926,6 +4926,12 @@
       "per_instrument": 1,
       "what": "Newhaven NHD-2.7-12864WDW3-M, 2.7in 128x64 SSD1322 white OLED with a 20-way 1.0 mm FFC socket -- newhavendisplay.com $39.08 IN STOCK 2026-10-19 (DigiKey $39.08 and Mouser $44.66 both 0 in stock that day, restocking Nov 2026). Replaces the 2.42in SSD1309 line, $17 from memory, which was the display before 2026-09-25"
     },
+    "ui_ribbon_lead_16p_508mm": {
+      "usd": 15.04,
+      "verified": "v",
+      "per_instrument": 1,
+      "what": "Samtec FFSD-08-D-20.00-01-N, 16-way 1.27 x 1.27 IDC socket-to-socket ribbon lead, 508 mm (20.00 in), gold, polarizing notch: the UI board <-> Pi cap ribbon -- DigiKey SAM9356-ND $15.04, 64 in stock, 2026-10-21. Replaces buying 500 mm of 0.635 ribbon and two loose 2x8 IDC sockets (~$2.20, never priced here) and pressing them on"
+    },
     "ffc_display_20p_50mm": {
       "usd": 0.0907,
       "verified": "v",
