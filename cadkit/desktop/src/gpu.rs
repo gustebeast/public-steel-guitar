@@ -228,6 +228,8 @@ struct Dlss {
     per: Option<DlssPer>,
     /// frames it has been given in a row
     run: u32,
+    /// frames since its history last started again (`seed`)
+    since: u32,
 }
 
 /// ... what of it is made for one size of picture
@@ -239,6 +241,8 @@ struct DlssPer {
     up: [Option<dlss_wgpu::ray_reconstruction::DlssRayReconstruction>; 5],
     /// whose the last frame was (None: `ctx`'s): another has no history of it, so it starts afresh
     last: Option<Upscale>,
+    /// the picture's size they were made for
+    size: (u32, u32),
     /// colour, diffuse, specular, normal + roughness, depth, motion, DLSS's picture
     views: [wgpu::TextureView; 7],
     bg_in: [wgpu::BindGroup; 2],
@@ -339,6 +343,10 @@ fn e_buf(binding: u32, ty: wgpu::BufferBindingType, vis: wgpu::ShaderStages) -> 
 /// then it is the tracer's own
 #[cfg(feature = "dlss")]
 const DLSS_UNTIL: u32 = 256;
+/// DLSS's frames with less history than this are not shown (see `seed` in render): measured black for the
+/// first and still black a frame or two later (2026-10-20)
+#[cfg(feature = "dlss")]
+const DLSS_WARM: u32 = 4;
 
 const UNI: wgpu::BufferBindingType = wgpu::BufferBindingType::Uniform;
 const RO: wgpu::BufferBindingType = wgpu::BufferBindingType::Storage { read_only: true };
@@ -653,7 +661,7 @@ impl Renderer {
         let l_out = layout(&self.device, "dlss_out", &[e_buf(0, UNI, c), tex, e_buf(2, RW, c), e_buf(3, RW, c)]);
         let p_in = compute_pipeline(&self.device, "dlss_in", &l_in, &shader(&self.device, "dlss_in", include_str!("dlss_in.wgsl")));
         let p_out = compute_pipeline(&self.device, "dlss_out", &l_out, &shader(&self.device, "dlss_out", include_str!("dlss_out.wgsl")));
-        self.dlss = Some(Dlss { sdk, adapter: adapter.clone(), l_in, l_out, p_in, p_out, per: None, run: 0 });
+        self.dlss = Some(Dlss { sdk, adapter: adapter.clone(), l_in, l_out, p_in, p_out, per: None, run: 0, since: 0 });
         // (made for the picture's size at the next resize)
         let size = self.size;
         self.size = (0, 0);
@@ -799,13 +807,21 @@ impl Renderer {
         #[cfg(feature = "dlss")]
         if let Some(dl) = self.dlss.as_mut() {
             use dlss_wgpu::ray_reconstruction::{DlssRayReconstruction, DlssRayReconstructionDepthMode, DlssRayReconstructionRoughnessMode};
-            dl.per = None;
             dl.run = 0;
             let flags = dlss_wgpu::DlssFeatureFlags::HighDynamicRange | dlss_wgpu::DlssFeatureFlags::LowResolutionMotionVectors;
             // (the textures are the picture's size; a smaller picture uses their top left: partial_texture_size)
             // (the ones that enlarge a smaller picture to this size while it moves are made when first wanted)
-            match DlssRayReconstruction::new([w, h], dlss_wgpu::DlssPerfQualityMode::Dlaa, flags, DlssRayReconstructionRoughnessMode::Packed, DlssRayReconstructionDepthMode::Linear, dl.sdk.clone(), d, &self.queue) {
-                Ok(ctx) => {
+            // THE CONTEXTS ARE KEPT WHEN THE SIZE IS: a tab shown again (unpark) remakes the buffers, which name
+            // its model, but DLSS's contexts belong to the size alone. Made afresh on every change of tab, a new
+            // context's first pictures were black, and that black was then HELD on screen (see `hold`) until
+            // the still picture reached DLSS_UNTIL samples: seconds of black on a large window (user, 2026-10-20).
+            let kept = dl.per.take().filter(|o| o.size == (w, h)).map(|o| (o.ctx, o.up));
+            let made = match kept {
+                Some(k) => Ok(k),
+                None => DlssRayReconstruction::new([w, h], dlss_wgpu::DlssPerfQualityMode::Dlaa, flags, DlssRayReconstructionRoughnessMode::Packed, DlssRayReconstructionDepthMode::Linear, dl.sdk.clone(), d, &self.queue).map(|c| (c, Default::default())),
+            };
+            match made {
+                Ok((ctx, up)) => {
                     let tex = |label: &str, format: wgpu::TextureFormat| {
                         d.create_texture(&wgpu::TextureDescriptor {
                             label: Some(label),
@@ -828,7 +844,7 @@ impl Renderer {
                     };
                     let bg_in = [mk_in(0), mk_in(1)];
                     let bg_out = bind(d, &dl.l_out, &[g.clone(), wgpu::BindingResource::TextureView(&views[6]), out_px.as_entire_binding(), shown_px.as_entire_binding()]);
-                    dl.per = Some(DlssPer { ctx, up: Default::default(), last: None, views, bg_in, bg_out });
+                    dl.per = Some(DlssPer { ctx, up, last: None, size: (w, h), views, bg_in, bg_out });
                 }
                 Err(e) => eprintln!("DLSS: not used at {w}x{h}: {e}"),
             }
@@ -890,8 +906,23 @@ impl Renderer {
         let use_dlss = dlss_can && changed;
         #[cfg(feature = "dlss")]
         let hold = dlss_can && !changed && self.dlss_shown && self.n <= DLSS_UNTIL;
+        // A DLSS FRAME WITH (ALMOST) NO HISTORY IS NOT SHOWN. Its picture came out black (the first frames
+        // after a change of tab, a new model, a resize), and `hold` then kept that black on screen until the
+        // still picture reached DLSS_UNTIL samples -- seconds on a large window, gone at the first touch, which
+        // gave DLSS a history (user, 2026-10-20). Such a frame still goes to DLSS, which builds its history from
+        // it, but what is shown is the tracer's own picture; and it is never the one held. DLSS_WARM frames on,
+        // DLSS's picture is shown as before.
+        // (traced smaller, the tracer's picture is not the window's: then it is only not held)
+        #[cfg(feature = "dlss")]
+        let seed = use_dlss && {
+            let dl = self.dlss.as_ref().unwrap();
+            let restart = dl.run == 0 || self.prev_cam.is_none() || dl.per.as_ref().unwrap().last != small.then_some(up_mode);
+            restart || dl.since + 1 < DLSS_WARM
+        };
+        #[cfg(feature = "dlss")]
+        let own = !use_dlss || (seed && !small);
         #[cfg(not(feature = "dlss"))]
-        let (use_dlss, hold) = (false, false);
+        let (use_dlss, hold, own) = (false, false, true);
         // the size traced: the picture's own, or DLSS's smaller one for it
         #[allow(unused_mut)]
         let mut rs = (t.w, t.h);
@@ -1014,7 +1045,7 @@ impl Renderer {
                 cp.set_bind_group(0, &dl.per.as_ref().unwrap().bg_in[p], &[]);
                 cp.dispatch_workgroups(gx, gy, 1);
             }
-            if use_dlss || hold {
+            if !own || hold {
                 // (its own denoise and its own finishing are DLSS's this frame; held: no picture is made)
             } else if s.denoise {
                 cp.set_pipeline(&self.p_pre);
@@ -1027,7 +1058,7 @@ impl Renderer {
                 }
                 self.n_dispatches += 1 + ATROUS_PASSES as u64;
             }
-            if !use_dlss && !hold {
+            if own && !hold {
                 cp.set_pipeline(&self.p_resolve);
                 cp.set_bind_group(0, &t.bg_resolve[p], &[]);
                 cp.dispatch_workgroups(gx, gy, 1);
@@ -1047,6 +1078,7 @@ impl Renderer {
             let now = small.then_some(up_mode);
             first |= per.last != now;
             per.last = now;
+            dl.since = if first { 0 } else { dl.since + 1 };
             let v = &per.views;
             let params = DlssRayReconstructionRenderParameters {
                 diffuse_albedo: &v[1],
@@ -1077,7 +1109,7 @@ impl Renderer {
                 Ok(cmd) => {
                     let dl = self.dlss.as_ref().unwrap();
                     let mut after = self.device.create_command_encoder(&Default::default());
-                    {
+                    if !own {
                         let mut cp = after.begin_compute_pass(&Default::default());
                         cp.set_pipeline(&dl.p_out);
                         cp.set_bind_group(0, &dl.per.as_ref().unwrap().bg_out, &[]);
@@ -1088,7 +1120,7 @@ impl Renderer {
                         self.blit(&mut after, view, true);
                     }
                     self.prev_cam = Some(*cam);
-                    self.dlss_shown = true;
+                    self.dlss_shown = !seed;
                     return Some(self.queue.submit([enc.finish(), cmd, after.finish()]));
                 }
                 Err(e) => {
