@@ -137,14 +137,17 @@ M2 = FastenerSpec(
     head_recess_d=4.1, head_recess_h=2.0,
 )
 
-# M4 set screw + heat-set insert. Headless (a set screw has no cap head), and its
-# pocket is bored EXACTLY the insert size (melt fit, no margin): insert_depth ==
-# insert_l. A set screw must NEVER self-tap — it holds position under load — so
-# M4 holes legitimately use cut_insert_bore(reason=...), the sanctioned deviation.
+# M4 set screw + heat-set insert. Headless (a set screw has no cap head);
+# insert_depth == insert_l. A set screw must NEVER self-tap — it holds position under
+# load — so M4 holes legitimately use cut_insert_bore(reason=...), the sanctioned
+# deviation.
+# THE POCKET IS 6.1, NOT 6.0 (user, 2026-10-20: "the fitted insert just doesn't slide
+# into its pilot hole"). 6.0 was the insert's own size, no margin, and a printed hole
+# comes out under its drawn size; the insert has to drop in before it is melted home.
 M4 = FastenerSpec(
     name="M4", screw_d=4.0, pitch=0.7,
     selftap_d=4.2, shaft_clr_d=4.4,
-    insert_pilot_d=6.0, insert_depth=5.0, insert_l=5.0, insert_bore_d=4.4,
+    insert_pilot_d=6.1, insert_depth=5.0, insert_l=5.0, insert_bore_d=4.4,
     boss_prot=6.0,
     head_recess_d=None, head_recess_h=None, screw_l=10.0,
 )
