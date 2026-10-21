@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import sys
 
+import cadquery as cq
+
 from src import chassis as CH
 from . import fit_plate2 as P2
 from . import fit_plate9 as P9
@@ -24,19 +26,59 @@ PAIRS = [
 ]
 
 
+# THE BRIM (user, 2026-10-21: "we need a brim for the tall skinny ones"): every piece stands
+# 64 tall -- the tokens on a ~9 x 12 base -- so each gets BRIM_W of two-layer brim round its
+# whole footprint. It is at the bed end only: insert a token TOP end first and the brim
+# trails, stopping at the cell's top with the whole 64 engaged.
+BRIM_W, BRIM_T = 6 * P2.BEAD, 2 * 0.2
+_plate = P2.plate
+
+
+def _brimmed(pairs=None, tag=TAG):
+    out = []
+    for n, sh in _plate(pairs, tag):
+        bb = sh.BoundingBox()
+        brim = cq.Solid.makeBox(bb.xlen + 2 * BRIM_W, bb.ylen + 2 * BRIM_W, BRIM_T,
+                                cq.Vector(bb.xmin - BRIM_W, bb.ymin - BRIM_W, bb.zmin))
+        out.append((n, sh.fuse(brim).clean()))
+    return _spread(out)                 # the finder spaced bare pieces: brims would touch
+
+
+def _spread(pieces):
+    """Lay the brimmed pieces out again with a gap between brims (the finder's own layout
+    was spaced for bare pieces)."""
+    out, x = [], 0.0
+    cells = [p for p in pieces if "_token_" not in p[0]]
+    toks = sorted([p for p in pieces if "_token_" in p[0]],
+                  key=lambda p: -p[1].BoundingBox().ymin)          # step 1 at the top (+Y)
+    for n, sh in cells:
+        bb = sh.BoundingBox()
+        out.append((n, sh.translate(cq.Vector(x - bb.xmin, -bb.ymin, 0))))
+        x += bb.xlen + GAP
+    y = 0.0
+    for n, sh in reversed(toks):                                     # bottom row first
+        bb = sh.BoundingBox()
+        out.append((n, sh.translate(cq.Vector(x - bb.xmin, y - bb.ymin, 0))))
+        y += bb.ylen + GAP
+    return out
+
+
+GAP = 2.0
+
+
 def _full_length(fn):
     def run(*a, **k):
-        keep, P9.L_FULL = P9.L_FULL, L_FULL
+        keep, P9.L_FULL, P2.plate = P9.L_FULL, L_FULL, _brimmed
         try:
             return P9._full_length(fn)(*a, **k)
         finally:
-            P9.L_FULL = keep
+            P9.L_FULL, P2.plate = keep, _plate
     return run
 
 
 @_full_length
 def plate():
-    return P2.plate(PAIRS, TAG)
+    return _brimmed(PAIRS, TAG)
 
 
 @_full_length
