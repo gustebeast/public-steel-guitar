@@ -72,14 +72,16 @@ class Coupon(object):
     them, `up` the build direction of the real part, `fix` optional fixture geometry."""
 
     def __init__(self, name, sources, boxes, up, joint, fix=None, note=""):
-        self.name, self.sources, self.boxes = name, tuple(sources), tuple(boxes)
+        self.name, self.sources = name, tuple(sources)
+        self.boxes = boxes if callable(boxes) else tuple(boxes)    # or boxes(comps)
         self.up, self.joint, self.fix, self.note = up, joint, fix, note
 
     def build(self, comps):
         kept, crumbs = [], []
+        boxes = self.boxes(comps) if callable(self.boxes) else self.boxes
         for s in self.sources:
             shape = comps[s]
-            for b in self.boxes:
+            for b in boxes:
                 c = shape.intersect(_box(b))
                 kept += [x for x in c.Solids()]
         if not kept:
@@ -177,8 +179,8 @@ MINI_X0 = SEAM_X - (GRID_P / 2.0 + (MINI_K - 1) * GRID_P) - GRID_WEB
 MINI_X1 = SEAM_X + (GRID_P / 2.0 + (MINI_K - 1) * GRID_P) + GRID_WEB
 MINI_Y1 = -141.95 + MINI_L + 2 * 0.8
 # the knee housing's tenons sit on stations -566.1 .. -493.3; the mini keeps the first four
-# (2 + 2 across the seam) and MINI_L of their length from the deck's -Y edge
-HOUS_TEN_Y0, HOUS_S0 = -86.15, -566.1
+# (2 + 2 across the seam) and MINI_L of their length from the tenons' -Y end
+HOUS_S0 = -566.1
 # SEAM COMPENSATION (user, 2026-10-16: "predict the amount of extra space the joint might add
 # and compensate ... slightly under our 1.6 wall"). Measured on fit_plate2's seam halves (N/N,
 # c 0.45, seat 0): the tenon pulls back 0.637 (c x sqrt 2 -- its catch is a 45 deg flank)
@@ -226,13 +228,28 @@ _R3_S7 = HOUS_S0 + 7 * GRID_P
 # ROUND 3 IS TWO BEADS EACH SIDE OF THE JOINT (user, 2026-10-16: "only 1.6mm of material on
 # top of the mortises and below the tenons"): the housing's deck MIN_WALL_2P under the mating
 # plane; the floor needs no cut of its own -- D.BOTTOM_T now IS the mortise roof plus 1.6.
-R3_HOUS = [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, _, HOUS_TEN_Y0 + 36.4 + 0.05,
-            HOUS_Z1_W - 2 * 0.8, _),
-           (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, _, HOUS_TEN_Y0 + 36.4 + 0.05,
-            HOUS_Z1_W + TEN_ROOT_CH, _)]
-MINI_HOUS = [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, HOUS_TEN_Y0 + MINI_L, HOUS_Z1_W - 4.55, _),
-             (HOUS_S0 - GRID_WEB, _MINI_S3 + 5.6 / 2.0 + 0.5, _, HOUS_TEN_Y0 + MINI_L,
-              HOUS_Z1_W + TEN_ROOT_CH, _)]
+# THE TENONS' Y SPAN IS MEASURED OFF THE PART, not written down (user, 2026-10-21: the r3
+# lever lost 2.7 off every tenon's +Y end and all but 0.5 of the +X station's +Y stub -- the
+# housing rework deepened the housing, the lever plane moved +Y, and a hard-coded -86.15
+# start stayed put). A slice through the tenons above their root chamfer gives both ends.
+def _tenon_span(comps):
+    h = comps["knee_housing"]
+    z = HOUS_Z1_W + TEN_ROOT_CH + 2.0
+    sec = h.intersect(_box((_, _, _, _, z, z + 0.05))).BoundingBox()
+    return sec.ymin, sec.ymax
+
+
+def R3_HOUS(comps):
+    y0, y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, _, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
+            (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, _, y1 + 0.05, HOUS_Z1_W + TEN_ROOT_CH, _)]
+
+
+def MINI_HOUS(comps):
+    y0, _y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, y0 + MINI_L, HOUS_Z1_W - 4.55, _),
+            (HOUS_S0 - GRID_WEB, _MINI_S3 + 5.6 / 2.0 + 0.5, _, y0 + MINI_L,
+             HOUS_Z1_W + TEN_ROOT_CH, _)]
 MIN_WALL = 0.8
 
 DECK_UNDER = -10.4          # the rail strip: the groove (5.46 deep) on 4.9 of solid rail
@@ -247,7 +264,7 @@ def _fix_deck(box):
     carries behind it is not under test."""
     def fix(comps):
         hb = comps["knee_housing"].BoundingBox()
-        x0, x1, y0, y1, z0, z1 = box
+        x0, x1, y0, y1, z0, z1 = box(comps)[0] if callable(box) else box
         lo = lambda a, b: b if a is None else max(a, b)     # None: to the housing's edge
         hi = lambda a, b: b if a is None else min(a, b)
         return _box((lo(x0, hb.xmin), hi(x1, hb.xmax), lo(y0, hb.ymin), hi(y1, hb.ymax),
@@ -354,7 +371,7 @@ COUPONS = [
            [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
            UP_Z, "seam mortise, short, + 4 lever mortises, full tenon length"),
     Coupon("r3_lever", ["knee_housing"], R3_HOUS,
-           UP_Z, "all 8 housing tenons, full 36.4", fix=_fix_deck(R3_HOUS[0])),
+           UP_Z, "all 8 housing tenons, full length", fix=_fix_deck(R3_HOUS)),
     Coupon("mini_lever", ["knee_housing"], MINI_HOUS,
            UP_Z, "4 housing tenons (2 each side of the seam), MINI_L long"),
 
