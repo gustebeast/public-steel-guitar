@@ -167,7 +167,6 @@ SEAM_X1 = SEAM_X + (GRID_P / 2.0 + (SEAM_K - 1) * GRID_P) + GRID_WEB
 # two beads. The housing slides in from the cut end.
 SEAM_TEN_L = 36.4
 SEAM_Y1 = -141.95 + SEAM_TEN_L + 2 * 0.8
-SEAM_FIN_MAX = SEAM_Y1 - (-131.55) - 1.0       # the fin stops a millimetre short of the cut
 
 # THE MINI (user, 2026-10-16: test chassis-to-chassis-to-lever small first -- the seam is
 # likely to open a little, and a housing spanning it tolerates only its tenons' 2 x 0.20).
@@ -313,20 +312,27 @@ def _fix_fin(x0, y_face, inboard, z0=Z_BOT, run=FIN_RUN):
 RAIL_MY_C = (-141.95 + -131.55) / 2.0       # the -Y rail's centre line
 
 
-def _fix_stub_fins(x_far, outward, far, top_z=FIN_TOP):
+def _fix_stub_fins(x_far, outward, top_z=FIN_TOP):
     """Two fins for a rail cut down to a STUB at the seam (user: the rail away from the joint
     is not needed) -- it can sway both ways now, so one fin across it on its inner face and
-    one along it, off the stub's far end (`x_far`, the floor running on `outward` = -1/+1 in
-    X; `far` its end). Both stand on the floor's top, clear of the mortises under it."""
+    one along it, off the stub's far end (`x_far`, running on `outward` = -1/+1 in X). Both
+    stand on the bed (FOOT_Z0), each on a BRIM round its footprint, kept to the piece's own
+    side of the seam so the neighbour still drops in."""
     def fins(_comps):
-        across = _fix_fin(x_far if outward < 0 else x_far - FIN_T, -131.55, +1, FLOOR,
-                          min(FIN_RUN, SEAM_FIN_MAX))(_comps)
-        run = min(FIN_RUN, abs(far - x_far) - 1.0)
+        xa = x_far if outward < 0 else x_far - FIN_T
+        across = _fix_fin(xa, -131.55, +1, FOOT_Z0, FIN_RUN)(_comps)
         x0 = x_far - outward * 1.0
-        pts = [(x0, FLOOR), (x_far + outward * run, FLOOR), (x0, top_z)]
+        x1 = x_far + outward * FIN_RUN
+        pts = [(x0, FOOT_Z0), (x1, FOOT_Z0), (x0, top_z)]
         along = (cq.Workplane("XZ").polyline(pts).close().extrude(FIN_T)
                  .translate((0, RAIL_MY_C + FIN_T / 2.0, 0)).val())
-        return across.fuse(along)
+        w, zb = BRIM_W, (FOOT_Z0, FOOT_Z0 + BRIM_T)
+        brims = [_box((xa - w, xa + FIN_T + w, -131.55 - 1.0 - w, -131.55 + FIN_RUN + w) + zb),
+                 _box((min(x0, x1) - w, max(x0, x1) + w,
+                       RAIL_MY_C - FIN_T / 2.0 - w, RAIL_MY_C + FIN_T / 2.0 + w) + zb)]
+        side = (SEAM_X - 500.0, SEAM_X) if outward < 0 else (SEAM_X, SEAM_X + 500.0)
+        own = _box(side + (-300.0, 300.0) + zb)
+        return across.fuse(along, *[b.intersect(own) for b in brims])
     return fins
 
 
@@ -337,14 +343,12 @@ STUB_MORT_X1 = SEAM_X + 13 * 0.8 + 2 * 0.8
 
 # THE FULL-LENGTH SEAM PAIR TESTS THE SEAM ONLY (user, 2026-10-21: "we are already testing
 # the lever joint fully" -- the r3 pair carries the grid). Its tenon stands z -69.35 .. -7.2,
-# wholly above the floor's top, so the floor is no part of it: what stays is a FOOT, the
-# floor's solid skin between its top and the lever mortises, one fin run plus two beads out
-# from the stub each way -- just what the two fins stand on. The mortises' teardrop apexes
-# reach -73.1 (sliced: the floor is whole from -73.0 up, 89 % at -73.2), not their -73.86 roof.
+# wholly above the floor's top, so the floor is no part of it: the rail stub stands on the
+# bed on the floor's solid skin under it (the lever mortises' teardrop apexes reach -73.1;
+# sliced, the floor is whole from -73.0 up), and the fins on a brim each (user: "a brim
+# around the 45 angled supports ... a flat square foot ... is overkill").
 FOOT_Z0 = -73.0
-FOOT_X0 = STUB_TEN_X0 - FIN_RUN - 2 * 0.8
-FOOT_X1 = STUB_MORT_X1 + FIN_RUN + 2 * 0.8
-FOOT_Y1 = -131.55 + FIN_RUN + 2 * 0.8
+BRIM_W, BRIM_T = 4 * 0.8, 2 * 0.2           # four beads out, two 0.2 layers
 
 
 COUPONS = [
@@ -358,13 +362,13 @@ COUPONS = [
     #    adapter's three ridges in any three of the same mortises. The floor is the foot;
     #    the rail is only a stub round the seam joint, finned both ways.
     Coupon("seam_tenon", ["chassis_1"],
-           [(STUB_TEN_X0, _, _, RAIL_MY, FOOT_Z0, _), (FOOT_X0, _, _, FOOT_Y1, FOOT_Z0, FLOOR)],
-           UP_Z, "section seam (tee tenon, drop-in), full height, on a solid foot",
-           fix=_fix_stub_fins(STUB_TEN_X0, -1, FOOT_X0)),
+           [(STUB_TEN_X0, _, _, RAIL_MY, FOOT_Z0, _)],
+           UP_Z, "section seam (tee tenon, drop-in), full height, fins on brims",
+           fix=_fix_stub_fins(STUB_TEN_X0, -1)),
     Coupon("seam_mortise", ["chassis_0"],
-           [(_, STUB_MORT_X1, _, RAIL_MY, FOOT_Z0, _), (_, FOOT_X1, _, FOOT_Y1, FOOT_Z0, FLOOR)],
-           UP_Z, "section seam (tee mortise), the deck groove across it, full height, on a solid foot",
-           fix=_fix_stub_fins(STUB_MORT_X1, +1, FOOT_X1)),
+           [(_, STUB_MORT_X1, _, RAIL_MY, FOOT_Z0, _)],
+           UP_Z, "section seam (tee mortise), the deck groove across it, full height, fins on brims",
+           fix=_fix_stub_fins(STUB_MORT_X1, +1)),
 
     # A-mini: the same three parts, short -- does a housing still go on across the seam?
     # (27 tall: the stub needs no fin)
