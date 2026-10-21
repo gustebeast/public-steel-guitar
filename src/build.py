@@ -452,10 +452,12 @@ PARTS["test_belt_tensioner"] = (
 PARTS["test_motor_bay"] = (
     lambda: heal(__import__("src.motor_bank", fromlist=["e"]).bay_coupon()),
     "test_motor_bay.step",
-    "TEST COUPON — one motor's bay (string 5's), the chassis' own pocket cut off at the 11.2 "
-    "low-wall height and trimmed outside to a 1.6 ring round the motor's fit (the boss slot "
-    "kept), NO floor. Prints +Z like the chassis; set it on the bench and drop "
-    "a SERVO42D in, faceplate to the wall")
+    "TEST COUPON — one motor's WHOLE bay (string 5's: by the chassis' own fuse-and-cut recipe, "
+    "up through the tee seat and the M4 insert's bore), trimmed outside to a 1.6 ring with the "
+    "seat's faceplate-wall top and +X post kept on a 45 deg corbel, on a 1.6 floor rim. Beside "
+    "it, a printed TEE DUMMY: the real board outline, layout region 3.0 thick to bend like 1.6 "
+    "FR-4, ear 1.6 for the M4x10. Both print flat, +Z. Heat-set the M4 insert, drop the motor "
+    "in, seat the dummy and screw it down: the dummy should clamp the motor")
 
 
 # Anchor ALL outputs to the project folder (never the cwd)

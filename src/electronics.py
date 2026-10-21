@@ -2002,6 +2002,26 @@ def tee_silk(x: float, y: float):
     return _TEE_INK[0].translate((x, y, 0.0))
 
 
+def tee_substrate(x: float, y: float, t_layout: float = 1.6) -> cq.Workplane:
+    """The tee board's bare substrate, underside at FLOOR_Z: tee_pcb's board, and the printed
+    dummy that stands in for it on the motor bay coupon (motor_bank.tee_dummy), which thickens
+    the layout region to t_layout and leaves the ear at 1.6 for the M4 to clamp."""
+    cy = tee_board_cy(y)
+    # `x` is the OUTLINE centre. Bronner's 40 mm layout region is the -X part of it; off its
+    # +X end is a bare EAR, D.TEE_EAR_X by D.TEE_EAR_Y at the +Y corner, with the retaining M4's
+    # clearance hole through it. An L, not a rectangle -- see D.TEE_EAR_Y.
+    xl = x - D.TEE_EAR_X / 2                         # the layout region's own centre
+    ey = cy + (TEE_BOARD_Y - D.TEE_EAR_Y) / 2        # the ear's own centre Y
+    # (below the ear the board's +X edge stands D.TEE_EDGE_BACK inside the region's line)
+    b = box_at(TEE_BOARD_X - D.TEE_EDGE_BACK, TEE_BOARD_Y, t_layout,
+               x=xl - D.TEE_EDGE_BACK / 2, y=cy, z=FLOOR_Z + t_layout / 2)
+    # ...so the ear reaches back that much further to meet it
+    b = b.union(box_at(D.TEE_EAR_X + D.TEE_EDGE_BACK, D.TEE_EAR_Y, 1.6,
+                       x=x + TEE_BOARD_X / 2 - D.TEE_EDGE_BACK / 2, y=ey, z=FLOOR_Z + 0.8))
+    return b.cut(cq.Workplane(obj=cq.Solid.makeCylinder(
+        2.25, 3.6, cq.Vector(x + TEE_BOARD_X / 2, ey, FLOOR_Z - 1.0))))   # M4 clearance
+
+
 def tee_pcb(x: float, y: float, drop: int = 1) -> cq.Workplane:
     """CAN bus TEE PCB dummy. ONE ROW of side-entry XH, drawn MATED (cadkit
     jst_xh_side_header): the 8-way trunk J1 (in on ways 1-4, out on 5-8) and beside it
@@ -2012,19 +2032,8 @@ def tee_pcb(x: float, y: float, drop: int = 1) -> cq.Workplane:
     (wiring.tee_hold)."""
     top = FLOOR_Z + 1.6                              # board top face; connectors rise +Z from here
     cy = tee_board_cy(y)
-    # `x` is the OUTLINE centre. Bronner's 40 mm layout region is the -X part of it; off its
-    # +X end is a bare EAR, D.TEE_EAR_X by D.TEE_EAR_Y at the +Y corner, with the retaining M4's
-    # clearance hole through it. An L, not a rectangle -- see D.TEE_EAR_Y.
     xl = x - D.TEE_EAR_X / 2                         # the layout region's own centre
-    ey = cy + (TEE_BOARD_Y - D.TEE_EAR_Y) / 2        # the ear's own centre Y
-    # (below the ear the board's +X edge stands D.TEE_EDGE_BACK inside the region's line)
-    b = box_at(TEE_BOARD_X - D.TEE_EDGE_BACK, TEE_BOARD_Y, 1.6,
-               x=xl - D.TEE_EDGE_BACK / 2, y=cy, z=FLOOR_Z + 0.8)
-    # ...so the ear reaches back that much further to meet it
-    b = b.union(box_at(D.TEE_EAR_X + D.TEE_EDGE_BACK, D.TEE_EAR_Y, 1.6,
-                       x=x + TEE_BOARD_X / 2 - D.TEE_EDGE_BACK / 2, y=ey, z=FLOOR_Z + 0.8))
-    b = b.cut(cq.Workplane(obj=cq.Solid.makeCylinder(
-        2.25, 3.6, cq.Vector(x + TEE_BOARD_X / 2, ey, FLOOR_Z - 1.0))))   # M4 clearance
+    b = tee_substrate(x, y)
     # ONE row along X: the 8-way trunk, then the 4-way drop beside it. Pin rows collinear, so
     # the tail band is ~1.5 deep instead of 7.5 and clears the faceplate wall's strip.
     for n, dx in ((TEE_TRUNK_N, tee_conn_dx("trunk")), (TEE_CONN_N, tee_conn_dx("drop"))):

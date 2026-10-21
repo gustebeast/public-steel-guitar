@@ -16,10 +16,13 @@
 > (`motor_bank.low_walls`, cut from the fused chassis). The driver keeps its factory
 > rotation; the quarter-turn proposal below is not needed.
 >
-> **To check the footprint before printing chassis:** `test_motor_bay.step` is string 5's
-> real bay (`motor_bank.bay_coupon`, cut from the same pocket the chassis fuses), up to the
-> 11.2 low-wall height with no floor. Drop a SERVO42D in, faceplate to the wall: it should
-> slide in with even slip all round, the boss in its slot, and the green blocks above the walls.
+> **To check the fit and the clamp before printing chassis:** `test_motor_bay.step`
+> (`motor_bank.bay_coupon`) is string 5's whole bay, made by the chassis' own fuse-and-cut
+> recipe up through the tee seat and the M4 insert's bore, on a floor rim, plus a printed tee
+> dummy 3.0 thick over its layout region (FR-4's bending stiffness in PETG-GF; ear 1.6). Heat-set
+> the insert, drop a SERVO42D in faceplate to the wall, seat the dummy, run the M4x10 in: the
+> motor should slide in with even slip, and the dummy should stop it lifting. (Round 1, the
+> low walls alone, felt "a touch loose" -- user, 2026-10-20.)
 
 **Status: a finding and a proposal. Nothing in the build has changed.** The motor bank and
 the chassis are the lead's; `src/servo42d.py` is a standalone model, not in `src.build`.

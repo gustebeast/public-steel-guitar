@@ -326,30 +326,120 @@ assert (D.MOTOR_SQ / 2 + MOTOR_CLR + POST_T) <= _slot_edge - D.MIN_WALL + 1e-9, 
 
 
 # ── THE BAY FIT COUPON (user, 2026-10-20) ─────────────────────────────────────────────────
-# Proves the measured motor drops into its bay before ten bays go into chassis prints: the
-# REAL pocket of one motor (a middle one, so both side walls are the shared 1.6 and its back
-# is the BACK_T stop), cut off at the low-wall height. Four walls -- faceplate wall with its
-# boss slot, both sides, the back -- and NO floor: it stands on the bed where the chassis'
-# bottom prism would be, and the motor sits on the bed inside it. Everything over BUMP_H is
-# what low_walls() takes off the chassis anyway, so up to there this IS the chassis. Prints
-# like the chassis, +Z.
-# MATERIAL (user, 2026-10-20): the faceplate wall's 6.4, the +X post and the 3.2 back stop
-# carry load in the chassis and test nothing here, so the bay is trimmed OUTSIDE to a
-# COUPON_WALL ring round the motor's fit. Every face the motor touches is untouched.
+# Proves the measured motor fits its bay AND that the tee board clamps it, before ten bays go
+# into chassis prints. Round 1 was the low walls alone; round 2 (user: "the full contact area
+# on the motor ... and a way to test the top clamp ... I do want a floor") is the WHOLE bay of
+# one motor, up through the tee seat, plus a printed stand-in for the tee board.
+#
+# THE REAL GEOMETRY, BY THE CHASSIS' OWN RECIPE: string 5's plate fused with both neighbours'
+# (the shared walls and the post are in two plates), then every one of the three motors' lift
+# path, low walls and tee pocket out of the fused result, then the M4 hold-down re-bored --
+# chassis.py and build.py in that order. Nothing here re-models a face the motor or the board
+# touches.
+#
+# ...THEN TRIMMED FOR MATERIAL. Outside a COUPON_WALL ring round the motor's fit everything
+# goes, except under the board's seat: there the faceplate wall's top (the board's +Y band
+# rests on it) and the +X post (the ear and its M4 insert) stay whole down to the anchor's
+# floor, and below that a 45 deg corbel steps them back to the ring, so nothing hangs. The
+# floor is the motor's rest plane at COUPON_FLOOR_T, a RIM round the footprint with the middle
+# open: the motor's height under the board is what it sets, and a rim sets it.
 COUPON_MOTOR = 4
 COUPON_UP = (0.0, 0.0, 1.0)
 COUPON_WALL = D.MIN_WALL_2P      # 1.6, the shared side walls' own thickness
+COUPON_FLOOR_T = 2 * D.BEAD      # 1.6
+COUPON_RIM = 10 * D.BEAD         # 8.0 of floor inside the fit, all round
+COUPON_GAP = 6.0                 # bay to dummy board on the plate
+# THE DUMMY BOARD has to BEND like the real one, because the clamp is the board lapping the
+# motor's top. FR-4 flexes at ~20 GPa, printed PETG-GF at ~3.3 (Elegoo TDS, material-strategy);
+# bending stiffness goes as E t^3, so the 1.6 board becomes 1.6 * (20/3.3)^(1/3) = 2.92 ->
+# 3.0, whole 0.2 layers. Thickened UPWARD over the layout region only: its underside is the
+# real board's (it sits on the real seat) and the ear stays 1.6 so the M4x10 clamps exactly
+# what it clamps on the instrument.
+E_FR4, E_PETG_GF = 20.0, 3.3
+TEE_DUMMY_T = 3.0
+assert abs(TEE_DUMMY_T - D.TEE_BOARD_T * (E_FR4 / E_PETG_GF) ** (1 / 3)) < 0.1
+
+
+def _rect_wire(x0, x1, y0, y1, z):
+    pts = [cq.Vector(x0, y0, z), cq.Vector(x1, y0, z), cq.Vector(x1, y1, z),
+           cq.Vector(x0, y1, z), cq.Vector(x0, y0, z)]
+    return cq.Wire.makePolygon(pts)
+
+
+def _coupon_world():
+    """(bay, dummy) in WORLD position on motor COUPON_MOTOR, the dummy seated."""
+    from . import wiring as W, electronics as EL
+    i = COUPON_MOTOR
+    near = [j for j in (i - 1, i, i + 1) if 0 <= j < D.N_STRINGS]
+    bay = plates[near[0]]
+    for j in near[1:]:
+        bay = bay.union(plates[j])
+    for j in near:
+        bay = bay.cut(lift_prism(j)).cut(low_walls(j)).cut(tee_pocket(j))
+    holds = W.tee_hold_negatives()
+    for j in near:
+        for c in holds[j][1]:
+            bay = bay.cut(c)
+
+    bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
+    fit = lift_prism(i).val().BoundingBox()
+    fx0, fx1, fy0, fy1 = fit.xmin, fit.xmax, fit.ymin, fit.ymax
+    w = COUPON_WALL
+    z_top = SEAT_TOP + 1.0
+    keep = box_at(fx1 - fx0 + 2 * w, fy1 - fy0 + 2 * w, z_top - FLOOR_TOP,
+                  x=(fx0 + fx1) / 2, y=(fy0 + fy1) / 2, z=(FLOOR_TOP + z_top) / 2)
+    # the seat block: the faceplate wall's top and the post, down past the M4 anchor...
+    from cadkit.fasteners import M4
+    sx1 = bx1 + MOTOR_CLR + POST_T                      # the post's +X face
+    sy0 = by1 + PLATE_T - ((STAGGER - NEIGH_CLR) + PLATE_T) - 1.0   # past the post's -Y end
+    sy1 = by1 + PLATE_T                                 # the faceplate wall's +Y face
+    zb = Z_HI - M4.anchor_min_wall - COUPON_WALL
+    keep = keep.union(box_at(sx1 - (fx0 - w), sy1 - sy0, z_top - zb,
+                             x=(sx1 + fx0 - w) / 2, y=(sy0 + sy1) / 2, z=(zb + z_top) / 2))
+    # ...and its corbel down to the ring. Its +X and +Y faces step back by different amounts,
+    # so the CORNER edge between them is the steepest line: its height is that diagonal's
+    # run, which would hold the corner at exactly 45 deg; 1.2 of it keeps it under, margin.
+    # It starts from the ring's INNER face, so the corner edge leaves through the ring wall's
+    # solid rather than from its bare outside corner (the cavity is cut by the bay anyway)
+    import math
+    step = 1.2 * math.hypot(sx1 - fx1, sy1 - fy1)
+    corbel = cq.Solid.makeLoft([_rect_wire(fx0 - w, fx1, sy0, fy1, zb - step),
+                                _rect_wire(fx0 - w, sx1, sy0, sy1, zb)], True)
+    keep = keep.union(cq.Workplane(obj=corbel))
+    bay = bay.intersect(keep)
+    # the floor: a rim the motor stands on, open in the middle
+    zf = FLOOR_TOP - COUPON_FLOOR_T
+    floor = box_at(fx1 - fx0 + 2 * w, fy1 - fy0 + 2 * w, COUPON_FLOOR_T,
+                   x=(fx0 + fx1) / 2, y=(fy0 + fy1) / 2, z=zf + COUPON_FLOOR_T / 2)
+    floor = floor.cut(box_at(fx1 - fx0 - 2 * COUPON_RIM, fy1 - fy0 - 2 * COUPON_RIM, 10.0,
+                             x=(fx0 + fx1) / 2, y=(fy0 + fy1) / 2, z=zf))
+    bay = bay.union(floor)
+
+    # the dummy board, placed exactly as tee_components places the real one
+    x, y, d = W.tee_stations()[i]
+    _bw, _bl, cx, cy, _o, _he, _ha = W.tee_hold(i, x, y, d)
+    dummy = EL.tee_substrate(cx, cy - EL.TEE_YSHIFT, TEE_DUMMY_T).translate(
+        (0, 0, W.tee_z(i) - EL.FLOOR_Z))
+    db = dummy.val().BoundingBox()
+    sx0_, sx1_, sy0_, sy1_, sz_ = tee_board_box(i)
+    assert abs(db.zmin - sz_) < 1e-6 and abs(db.xmax - sx1_) < 1e-6 and abs(db.ymax - sy1_) < 1e-6, \
+        "the dummy board is not where the seat expects the tee"
+    return bay, dummy
 
 
 def bay_coupon() -> cq.Workplane:
+    """The print plate: the bay on its floor, the dummy board flat beside it (+X)."""
     i = COUPON_MOTOR
-    bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
-    mx, my, _ = D.motor_pos(i)
-    bay = plates[i]
-    fit = lift_prism(i).val().BoundingBox()            # the motor's fit: the cavity
-    z1 = bz0 + term_wall_h()
-    clip = box_at(fit.xlen + 2 * COUPON_WALL, fit.ylen + 2 * COUPON_WALL, z1 - FLOOR_TOP,
-                  x=fit.center.x, y=fit.center.y, z=(FLOOR_TOP + z1) / 2)
-    out = bay.intersect(clip).translate((-mx, -(by0 + by1) / 2, -FLOOR_TOP))
-    assert abs(out.val().BoundingBox().zmin) < 1e-6, "the coupon does not stand on the bed"
+    bay, dummy = _coupon_world()
+    mx = D.motor_pos(i)[0]
+    by0, by1 = body_box(i)[2:4]
+    zf = FLOOR_TOP - COUPON_FLOOR_T
+    bay = bay.translate((-mx, -(by0 + by1) / 2, -zf))
+    bb, db = bay.val().BoundingBox(), dummy.val().BoundingBox()
+    dummy = dummy.translate((bb.xmax + COUPON_GAP - db.xmin, -db.center.y, -db.zmin))
+    # TWO PRINTS, TWO OBJECTS in the one STEP, so the slicer can drop either (user, 2026-10-20;
+    # a re-imported STEP shows both -- a reload of the old one did not)
+    out = cq.Workplane().add(bay.vals() + dummy.vals())
+    assert len(out.solids().vals()) == 2, "the plate is not the bay and the dummy"
+    assert abs(min(v.BoundingBox().zmin for v in out.vals())) < 1e-6, "not on the bed"
     return out
