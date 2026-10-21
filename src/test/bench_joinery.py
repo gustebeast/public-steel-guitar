@@ -586,8 +586,8 @@ PLATES = {
     "seam_lever_mini_2": [["mini_seam_tenon_comp", "mini_seam_mortise_comp", "mini_lever"]],
     # round 3: seam 0.375, lever 0.275
     "seam_lever_mini_3": [["r3_seam_tenon_comp", "r3_seam_mortise_comp", "r3_lever"]],
-    # round 4: seam 0.40, the lever seat at c (the printed r3_lever reused)
-    "seam_lever_4": [["r4_seam_tenon_comp", "r4_seam_mortise_comp"]],
+    # round 4: seam 0.40, the lever seat at c; the 8-tenon lever unchanged from round 3
+    "seam_lever_4": [["r4_seam_tenon_comp", "r4_seam_mortise_comp", "r3_lever"]],
     # the seam pair COMPENSATED as round 3 (it is what the chassis is meant to get); no lever
     # housing of its own -- seam_lever_mini_3's 8-tenon r3_lever fits these floors too
     "full_length_1": [
