@@ -2292,8 +2292,10 @@ _COLORS = {
     "ui_screen":       (0.004, 0.004, 0.005),   # an OLED is black where it is not lit
     "ui_screen_lit":   (0.93, 0.96, 1.0),    # ...and this module (WDW) lights white
     "ui_disp_ffc_socket": (0.90, 0.86, 0.72),  # the module's Molex FFC socket, natural nylon
-    "ui_ffc":          (0.80, 0.62, 0.30),   # the display's flat cable, tinned copper in
-                                             # amber film
+    "ui_ffc":          (0.93, 0.93, 0.90),   # the display's flat cable: white PET film
+                                             # (JUSHUO's drawing: "white" under-layer)
+    "ui_ffc_contacts": (0.78, 0.79, 0.80),   # ...its bared tinned conductors at each end
+    "ui_ffc_stiffener": (0.12, 0.35, 0.80),  # ...and its blue PET stiffeners
     "ui_clamp":        (0.36, 0.30, 0.42),   # the printed clamp plate under the board
     "ui_insert":       (0.72, 0.60, 0.38),   # brass heat-set
     "ui_screw":        (0.62, 0.64, 0.67),
