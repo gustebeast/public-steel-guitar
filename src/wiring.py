@@ -180,7 +180,10 @@ assert set(TRUNK_PIN) == set(TRUNK_OFF), (
 # (the -Y-most, 30.7 back) ran 0.85 into it on every hop. RUN lifts the four over its top
 # by 0.3 instead of dipping under the mouth; still under the tee plugs' own tops, which
 # stay the harness's real +Z extent.
-TRUNK_Z_RUN = 0.8
+# ...AND UP AGAIN BY THE SEAT'S DROP (2026-10-21): the tee seat came down 0.85 onto the can's
+# real top (motor_bank.BOARD_AIR 0), and the mouth with it, while the coil plug stayed put.
+# 1.65 is the same 0.3 over the plug; the assert under the run keeps it so.
+TRUNK_Z_RUN = 1.65
 _XH_PITCH = 2.5
 PWR_OFF = 1.0         # 24 V hot/gnd separation. In X on the bank hops (see _seg) and in Z
                       # along the -Y corridor, where the pair rides one lane each. 2.0 apart
@@ -968,6 +971,10 @@ def build_wires():
 
     assert _w0[2] + TRUNK_Z_RUN - WIRE_OD["wire_pwr_gnd"] / 2 > MB.SEAT_TOP + 0.3, (
         "the trunk's run level has come down into the bay walls (SEAT_TOP)")
+    from . import servo42d as _SVp
+    _plug_top = D.motor_pos(0)[2] + _SVp.SQ / 2 + _SVp.PLUG_H
+    assert _w0[2] + TRUNK_Z_RUN - WIRE_OD["wire_pwr_gnd"] / 2 >= _plug_top + 0.3 - 1e-6, (
+        "the trunk's run level has come down onto the motors' coil plugs (raise TRUNK_Z_RUN)")
 
     # ── THE HEAD IS ONE FOUR-WAY LEAD: motor_ctrl J1 -> the first tee's IN half ──────────
     # GND, 24 V, CAN_H, CAN_L on J1's ways 1-4 to the tee's ways 1-4 (harness.XH_PINOUT at

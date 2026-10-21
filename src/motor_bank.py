@@ -33,7 +33,11 @@ from .components import MOTOR_PULLEY_STANDOFF
 
 PLATE_T      = 8 * D.BEAD        # 6.4 faceplate wall
 
-BOARD_AIR  = D.MIN_WALL          # 0.8: the tee board's underside over the motor's top face --
+BOARD_AIR  = 0.0                 # the tee board's underside ON the CAN's real top (user, coupon
+                                 # round 2, 2026-10-20: 0.8 over the nominal 42.3 left the real
+                                 # motor ~1 mm of up/down -- it rests on its 42.5 cover, so the
+                                 # 42.0 can's top stood 0.85 under the board, plus the print;
+                                 # 0.2 proposed, user chose 0: the board just touches) --
                                  # the lap that retains it, and the motor's lift before it bites
 SEAT_HALF_W = 21.9               # the faceplate wall's -X reach: the tee's -X locating wall needs
                                  # board/2 + wall + fit outside the board, and the neighbour's body
@@ -81,8 +85,10 @@ _zc = D.MOTOR_BELT_Z
 FLOOR_TOP = _zc - D.MOTOR_SQ / 2            # motors rest here (= wall bottom / chassis rib top)
 BED_Z = FLOOR_TOP - D.BOTTOM_T                  # print bed = the chassis bottom prism's
                                                 # underside; FLOOR_TOP is that prism's top
-Z_HI = _zc + D.MOTOR_SQ / 2 + BOARD_AIR            # the TEE SEAT PLANE: the board rests here and
-                                                   # laps the motor by BOARD_AIR of air
+# THE TEE SEAT PLANE: the board rests here and laps the motor by BOARD_AIR of air -- off the
+# REAL can: the motor stands on its driver's cover (the lowest flat), so the can's top is
+# FLOOR_TOP + cover/2 + can/2, not FLOOR_TOP + the 42.3 nominal
+Z_HI = (FLOOR_TOP + (D.MOTOR_DRIVER_SQ_MEASURED + D.MOTOR_SQ_MEASURED) / 2 + BOARD_AIR)
 SEAT_TOP = Z_HI + D.TEE_BOARD_T + D.TEE_WALL_OVER  # ...and the bay runs this far over it, so the
                                                    # seat's walls are just the bay, cut for the board
 
