@@ -1841,12 +1841,7 @@ def body_work_components():
     out += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     out += _leg_components()
     out += _pickup_mount_components()
-    # the bay coupon, parked in front of the -Y rail opposite its own motor, on the bed plane
-    from . import motor_bank as _MB, chassis as _CH
-    _mx = D.motor_pos(_MB.COUPON_MOTOR)[0]
-    out.append(("test_motor_bay", _MB.bay_coupon().translate((_mx, _CH.Y_LO - 60.0,
-                                                               _MB.FLOOR_TOP))))
-    return out
+    return out          # test coupons are STEP exports only (PARTS), never in the scene
 
 
 def lever_components():
@@ -2137,7 +2132,6 @@ _COLORS = {
     "keyhead_endplate": (0.42, 0.50, 0.62),   # PETG-GF — keyhead endplate + nut block (merged)
     # belt-tension clamp: two printed halves (0.4 nozzle), steel M3, brass insert
     "belt_tensioner_half_a": (0.95, 0.55, 0.15),    # head half    printed
-    "test_motor_bay":        (0.20, 0.70, 0.35),    # the bay coupon: green, a test piece
     "belt_tensioner_half_b": (0.95, 0.70, 0.25),    # insert half  printed
     "belt_tensioner_screw":  (0.55, 0.55, 0.58),   # steel M3 socket head
     "belt_tensioner_insert": (0.72, 0.60, 0.30),   # brass M3 insert (dropped in behind a shoulder)
