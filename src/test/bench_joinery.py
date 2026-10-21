@@ -241,8 +241,10 @@ def _tenon_span(comps):
 
 def R3_HOUS(comps):
     y0, y1 = _tenon_span(comps)
-    return [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, _, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
-            (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, _, y1 + 0.05, HOUS_Z1_W + TEN_ROOT_CH, _)]
+    # deck kept to the tenons' own span: past their -Y ends it is a strip that tests nothing
+    return [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
+            (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, y0 - 0.05, y1 + 0.05,
+             HOUS_Z1_W + TEN_ROOT_CH, _)]
 
 
 def MINI_HOUS(comps):
