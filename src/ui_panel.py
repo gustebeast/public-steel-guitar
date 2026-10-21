@@ -262,10 +262,24 @@ BOARD_GAP = 10.4
 # down against this one, which is bottom contact at both ends.
 FFC_L = 50.0
 FFC_W = (MOD_FFC_N + 1) * MOD_FFC_PITCH   # 21.0, the drawing's (N+1) x 1.0
-FFC_T = 0.30
+FFC_T = 0.30                       # the PLUG: "terminal thickness" T1/T2 0.3 +-0.05
 FFC_STIFF = 8.0                    # the rigid end, measured from the cut
 FFC_INSERT = 4.0                   # ...of which this much goes into a socket: the bare
                                    # contacts, which is what both sockets are drawn for
+# THE LAYERS, off the same drawing. The film is three: 0.043 PET under, the 0.035 x 0.65
+# tinned conductors, 0.043 PET over -- 0.121 in all ("thickness insulation"). At each
+# end the OVER layer stops FFC_INSERT short of the cut, baring the conductors, and a
+# 0.225 blue PET stiffener is laminated to the UNDER layer for FFC_STIFF. Under + copper
+# + stiffener is the 0.30 that goes in a socket.
+FFC_FILM_T = 0.121
+FFC_INS_T = 0.043                  # each PET insulation layer
+FFC_CU_T, FFC_CU_W = 0.035, 0.65
+FFC_STIFF_T = 0.225
+# the film's centre sits this far to the CONTACT side of the plug's centre, which is the
+# slot's centre: about the film's centre the plug runs from +FFC_CU_T/2 (bare copper) to
+# -(FFC_CU_T/2 + under + stiffener), so its middle is half of under + stiffener behind
+FFC_FILM_OFF = (FFC_INS_T + FFC_STIFF_T) / 2.0
+FFC_SLOT_H = 0.50                  # both sockets' mouths, drawn: the plug and some air
 # Our end: JUSHUO AFA07-S20FCA-00 (LCSC C262724), 2.5 high, 1.0 pitch, bottom contact.
 # The slot's height over our board is an ESTIMATE off its section A-A.
 J1_H = 2.5
@@ -693,9 +707,15 @@ def routed(ref):
 
 
 def ui_pcb():
-    """The UI board and every part on it, as routed."""
+    """The UI board and every part on it, as routed -- with J1's mouth opened, so the
+    ribbon's plug goes into it rather than through a block."""
     cx, cy = board_centre()
-    return _bg().solid("ui_board").translate((cx, cy, board_z0()))
+    f = _bg().footprint("ui_board", "J1")
+    depth = max(f["fab"][2:]) - min(f["fab"][2:])
+    assert FFC_INSERT + 0.2 < depth, (
+        "J1's body is %.2f deep and the plug goes %.2f in" % (depth, FFC_INSERT + 0.2))
+    return (_bg().solid("ui_board").translate((cx, cy, board_z0()))
+            .cut(ffc_slot(ffc_ends()[1])))
 
 
 def ui_silk():
@@ -730,12 +750,13 @@ def display_module():
 
 def module_ffc_socket():
     """The Molex 52271 on the module's back: housing and actuator as one block, from its
-    tails' end to its mouth, hanging MOD_FFC_H under the PCB."""
+    tails' end to its mouth, hanging MOD_FFC_H under the PCB, with the plug's slot open."""
     mx, _my = module_centre()
     e = header_edge_y()
     z1 = mod_pcb_back()
-    return box_at(MOD_FFC_W, MOD_FFC_MOUTH - MOD_FFC_Y0, MOD_FFC_H,
-                  x=mx, y=e + (MOD_FFC_Y0 + MOD_FFC_MOUTH) / 2.0, z=z1 - MOD_FFC_H / 2.0)
+    return (box_at(MOD_FFC_W, MOD_FFC_MOUTH - MOD_FFC_Y0, MOD_FFC_H,
+                   x=mx, y=e + (MOD_FFC_Y0 + MOD_FFC_MOUTH) / 2.0, z=z1 - MOD_FFC_H / 2.0)
+            .cut(ffc_slot(ffc_ends()[0])))
 
 
 def _arc(cy, cz, r, a0, a1, n):
@@ -746,8 +767,8 @@ def _arc(cy, cz, r, a0, a1, n):
 
 @lru_cache(maxsize=None)
 def ffc_path():
-    """[(x, y, z)] the ribbon's centreline, mouth to mouth: FFC_L less what is in the
-    two sockets.
+    """[(x, y, z)] the ribbon film's centreline, mouth to mouth: FFC_L less what is in
+    the two sockets.
 
     THE SHAPE IS WHAT A 50 mm CABLE DOES BETWEEN THESE TWO MOUTHS, and the length is the
     constraint: 50 is the shortest 20-way same-side cable stocked, and the mouths are
@@ -763,13 +784,15 @@ def ffc_path():
 
     Every turn is about the cable's width (X), so it is never folded or twisted. The top
     run's length is solved for, so the drawn cable is the bought one's length."""
-    x, ym, zm = mod_ffc_mouth()
+    x, _y, _z = mod_ffc_mouth()
     hx, _hy = routed("J1")
     assert abs(hx - x) < 0.3, (
         "our FFC socket is at x %.2f and the module's at %.2f: a ribbon only bends about "
         "its width, so the two have to share a centreline" % (hx, x))
-    yb = j1_mouth_y()
-    zb = z_stack()[4] + J1_SLOT
+    (ym, zm_slot, nm), (yb, zb_slot, nb) = ffc_ends()
+    # the path is the FILM's centreline, which is off the slot's centre toward the contacts
+    zm = zm_slot + nm * FFC_FILM_OFF
+    zb = zb_slot + nb * FFC_FILM_OFF
     out_ = FFC_STIFF - FFC_INSERT
     r1 = (zm - FFC_TOP_Z) / 2.0                     # each quarter of the S
     r2 = (FFC_TOP_Z - zb) / 2.0                     # the hairpin
@@ -783,8 +806,8 @@ def ffc_path():
     y_c = (FFC_L - fixed + y_t + y_e) / 2.0
     assert y_c >= y_t and y_c >= y_e, (
         "the ribbon is too short for these mouths: its hairpin would be at y %.2f" % y_c)
-    # DRAWN MOUTH TO MOUTH: the FFC_INSERT at each end is inside a socket's body and is
-    # counted in the length above, not drawn through the socket
+    # THE FILM IS DRAWN MOUTH TO MOUTH: the FFC_INSERT at each end is the bared plug,
+    # which ffc_plugs() draws inside the sockets' slots; it is counted in the length above
     yz = [(ym, zm), (y_s, zm)]
     yz += _arc(y_s, zm - r1, r1, 90, 0, 4)          # down...
     yz += _arc(y_s + 2.0 * r1, FFC_TOP_Z + r1, r1, 180, 270, 4)    # ...and level again
@@ -794,14 +817,71 @@ def ffc_path():
     return [(x, y, z) for y, z in yz]
 
 
+def ffc_ends():
+    """[(mouth y, slot centre z, contact side), ...] the module's end, then ours. Both
+    mouths face +Y, so at both a plug goes in heading -Y. The contacts face the module's
+    board at its end (+Z) and ours at ours (-Z): a same-side cable that has turned over
+    once, round the hairpin."""
+    x, ym, zm = mod_ffc_mouth()
+    return ((ym, zm, +1.0), (j1_mouth_y(), z_stack()[4] + J1_SLOT, -1.0))
+
+
 def ffc_cable():
-    """The display's ribbon, one prism along ffc_path(); it may not fold. It is drawn
-    between the two sockets' mouths, so it is FFC_L less two FFC_INSERTs long."""
+    """The display's ribbon film, one FFC_FILM_T prism along ffc_path(), mouth to mouth;
+    it may not fold. Each end's bared FFC_INSERT -- its under-layer, since the over-layer
+    is stripped there -- is added here; the copper and stiffeners are ffc_plugs()."""
     from cadkit.cables import flat_bends, flat_cable
     pts = ffc_path()
     folds = [b for b in flat_bends(pts, across=(1.0, 0.0, 0.0)) if b[1] == "fold"]
     assert not folds, "the display's ribbon folds: %r" % folds
-    return flat_cable(pts, FFC_W, FFC_T, across=(1.0, 0.0, 0.0))
+    film = flat_cable(pts, FFC_W, FFC_FILM_T, across=(1.0, 0.0, 0.0))
+    under = (-FFC_FILM_T / 2.0, -FFC_FILM_T / 2.0 + FFC_INS_T)
+    for end in ffc_ends():
+        film = film.union(_plug_layer(end, 0.0, FFC_INSERT, under))
+    return film
+
+
+def _plug_layer(end, y0, y1, u, x=None, w=FFC_W):
+    """A box of the plug at `end` (an ffc_ends() row): from y0 to y1 into the socket
+    from the mouth (negative = out of it, along the stiffener), u = (u0, u1) across the
+    film from its centre, positive toward the contacts; w wide, centred on x."""
+    ym, zs, n = end
+    zf = zs + n * FFC_FILM_OFF
+    za, zb = sorted((zf + n * u[0], zf + n * u[1]))
+    cx = mod_ffc_mouth()[0] if x is None else x
+    return box_at(w, y1 - y0, zb - za, x=cx, y=ym - (y0 + y1) / 2.0, z=(za + zb) / 2.0)
+
+
+def ffc_contacts():
+    """The bared conductors at both ends: FFC_INSERT of each of the 20, 0.65 wide at
+    1.0, lying on the under-layer where the over-layer is stripped off."""
+    cx = mod_ffc_mouth()[0]
+    u = (-FFC_CU_T / 2.0, FFC_CU_T / 2.0)
+    out = None
+    for end in ffc_ends():
+        for k in range(MOD_FFC_N):
+            x = cx + (k - (MOD_FFC_N - 1) / 2.0) * MOD_FFC_PITCH
+            b = _plug_layer(end, 0.0, FFC_INSERT, u, x=x, w=FFC_CU_W)
+            out = b if out is None else out.union(b)
+    return out
+
+
+def ffc_stiffeners():
+    """The two blue PET stiffeners, FFC_STIFF from each cut on the side away from the
+    contacts: FFC_INSERT of each inside its socket, the rest in the air at the mouth."""
+    u = (-FFC_FILM_T / 2.0 - FFC_STIFF_T, -FFC_FILM_T / 2.0)
+    ends = ffc_ends()
+    out = _plug_layer(ends[0], FFC_INSERT - FFC_STIFF, FFC_INSERT, u)
+    return out.union(_plug_layer(ends[1], FFC_INSERT - FFC_STIFF, FFC_INSERT, u))
+
+
+def ffc_slot(end):
+    """The cutter for a socket's mouth: FFC_SLOT_H tall about the slot's centre, the
+    plug's width and a little, FFC_INSERT + 0.2 deep."""
+    ym, zs, _n = end
+    d = FFC_INSERT + 0.2
+    return box_at(FFC_W + 0.4, d + 0.2, FFC_SLOT_H,
+                  x=mod_ffc_mouth()[0], y=ym - (d - 0.2) / 2.0, z=zs)
 
 
 def screen():
@@ -1234,6 +1314,7 @@ def parts():
     """[(name, solid)] everything the assembly shows for the UI station."""
     return ([("ui_pcb", ui_pcb()), ("ui_display", display_module()),
              ("ui_disp_ffc_socket", module_ffc_socket()), ("ui_ffc", ffc_cable()),
+             ("ui_ffc_contacts", ffc_contacts()), ("ui_ffc_stiffener", ffc_stiffeners()),
              ("ui_screen", screen()), ("ui_screen_lit", screen_lit()), ("ui_clamp", clamp()),
              ("ui_shaft", encoder_shaft()), ("ui_knob", knob()),
              ("ui_pwr_stem", power_stem()), ("ui_pwr_cap", power_cap())]
