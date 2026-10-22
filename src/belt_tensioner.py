@@ -148,6 +148,11 @@ _TEAR = max(SCR_CLR / 2 * math.sqrt(2.0) - TIP / 2, SCR_CLR / 2)   # bore axis -
 assert MOUTH_B - (SCREW_Y + _TEAR) >= 2 * B - 1e-9, (
     "B's screw-bore teardrop leaves %.2f under its +y face, under two beads"
     % (MOUTH_B - (SCREW_Y + _TEAR)))
+# B's rail chamfer against the web's joint to its +z flange, measured square to the chamfer
+# from the joint's inside corner (y = web + RAIL_T, z = the flange's underside)
+_RAIL_JOINT = ((HT - (HT - FLANGE_T)) + RAIL_T - EDGE_CH) / math.sqrt(2.0)
+assert _RAIL_JOINT >= 2 * B - 1e-6, (
+    "B's rail chamfer leaves %.2f where the web meets its flange, under two beads" % _RAIL_JOINT)
 INS_POCKET = INS_D + INS_SLIP                # 4.8 the pocket's bore and the side slot's height
 assert (BODY_T - INS_POCKET) / 2 >= B * 2 - 1e-9, (
     "the insert's pocket leaves %.2f over and under it, under two beads of %.1f"
@@ -262,7 +267,14 @@ def half_b() -> cq.Workplane:
     lip0 = MOUTH_B - FLANGE
     body = body.cut(_lips(-1.0, LEN_B + 1.0, lip0, +1))
     body = body.cut(box_at(il, 3.0, BODY_T + 2.0, x=ix0 + il / 2, y=lip0 + 1.5))   # no skin left there
-    return body.union(_rail(-RAIL_B_L, 0.0, -HW - RAIL_STEP, +1))
+    body = body.union(_rail(-RAIL_B_L, 0.0, -HW - RAIL_STEP, +1))
+    # the rail web's outer edge on the TOOTH side (+z, inside the loop) is chamfered EDGE_CH:
+    # at a twist error of +20 deg it is what met the other run of string 10's own belt (tools/
+    # clamp_range). One bead, so the web's joint to its flange keeps two (asserted below).
+    yw = -HW - RAIL_STEP
+    tri = [(yw - 0.1, HT - EDGE_CH - 0.1), (yw - 0.1, HT + 0.1), (yw + EDGE_CH + 0.1, HT + 0.1)]
+    return body.cut(cq.Workplane("YZ").polyline(tri).close()
+                    .extrude(RAIL_B_L + 2.0).translate((-RAIL_B_L - 1.0, 0.0, 0.0)))
 
 
 def screw_dummy() -> cq.Workplane:
