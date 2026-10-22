@@ -49,31 +49,39 @@ def _same(p, q):
     return len(p) == len(q) and all(math.dist(u, v) <= TOL for u, v in zip(p, q))
 
 
-def _key(a, b, r, gates):
+def _key(a, b, r, gates, moved=()):
     return {"a": [float(v) for v in a], "b": [float(v) for v in b], "r": float(r),
-            "gates": [[[float(v) for v in c] for c in g] for g in gates]}
+            "gates": [[[float(v) for v in c] for c in g] for g in gates],
+            "moved": [[rx, [float(v) for v in d]] for rx, d in moved]}
 
 
-def matches(entry, a, b, r, gates):
-    """Was `entry` solved for these ends, this radius and these gates?"""
-    k = _key(a, b, r, gates)
+def matches(entry, a, b, r, gates, moved=()):
+    """Was `entry` solved for these ends, radius, gates and moved parts?"""
+    k = _key(a, b, r, gates, moved)
     return (_same([entry["a"], entry["b"]], [k["a"], k["b"]])
             and abs(entry["r"] - k["r"]) <= 1e-6
             and len(entry["gates"]) == len(k["gates"])
-            and all(_same(g, h) for g, h in zip(entry["gates"], k["gates"])))
+            and all(_same(g, h) for g, h in zip(entry["gates"], k["gates"]))
+            and [m[0] for m in entry.get("moved", [])] == [m[0] for m in k["moved"]]
+            and _same([m[1] for m in entry.get("moved", [])], [m[1] for m in k["moved"]]))
 
 
-def taut(name, a, b, r, legacy, gates=()):
+def taut(name, a, b, r, legacy, gates=(), moved=()):
     """The cable `name`'s centreline from a to b: its cached taut route, or `legacy`.
 
     a and b are where the cable is FREE to take its own line -- the end of each
     connector's straight lead, not the pin -- and `legacy` must run between the same two
     points. `r` is the clearance it keeps from every solid (its own radius and a little).
+    `moved` is [(regex, (dx, dy, dz))]: parts whose names match are routed against as if
+    moved by that much -- a route for a pose the build does not draw, such as a leg slid
+    out for restringing.
     """
     gates = [tuple(tuple(c) for c in g) for g in gates]
-    REQUESTS[name] = dict(_key(a, b, r, gates), legacy=[list(map(float, p)) for p in legacy])
+    moved = [(rx, tuple(d)) for rx, d in moved]
+    REQUESTS[name] = dict(_key(a, b, r, gates, moved),
+                          legacy=[list(map(float, p)) for p in legacy])
     e = _load().get(name)
-    if e is not None and matches(e, a, b, r, gates):
+    if e is not None and matches(e, a, b, r, gates, moved):
         return [tuple(p) for p in e["pts"]]
     if name not in STALE:
         STALE.append(name)

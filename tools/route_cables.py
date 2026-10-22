@@ -44,6 +44,55 @@ from tools.cable_route import Obstacles, Router, length          # noqa: E402
 NOT_OBSTACLE = re.compile(r"^(wire_|pogo_wire_)|_cable(_|$)|_coil(_|$)|_silk|__pads|_lead_")
 REACH = np.array([25.0, 25.0, 25.0])            # the box round a cable's ends, each way
 BBOX_CACHE = ROOT / ".route-bbox.json"           # part -> (sha, bbox): skip far parts unread
+MEM_LIMIT_MB = 1500                              # stop rather than eat the machine (user)
+
+
+def rss_mb():
+    """This process's working set, MB (Windows; 0 elsewhere)."""
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class PMC(ctypes.Structure):
+            _fields_ = [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD),
+                        ("PeakWorkingSetSize", ctypes.c_size_t),
+                        ("WorkingSetSize", ctypes.c_size_t),
+                        ("QuotaPeakPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaPeakNonPagedPoolUsage", ctypes.c_size_t),
+                        ("QuotaNonPagedPoolUsage", ctypes.c_size_t),
+                        ("PagefileUsage", ctypes.c_size_t),
+                        ("PeakPagefileUsage", ctypes.c_size_t)]
+        c = PMC()
+        c.cb = ctypes.sizeof(c)
+        k32 = ctypes.WinDLL("kernel32")
+        k32.GetCurrentProcess.restype = wintypes.HANDLE
+        ps = ctypes.WinDLL("psapi")
+        ps.GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.POINTER(PMC), wintypes.DWORD]
+        ps.GetProcessMemoryInfo.restype = wintypes.BOOL
+        if not ps.GetProcessMemoryInfo(k32.GetCurrentProcess(), ctypes.byref(c), c.cb):
+            return 0.0
+        return c.WorkingSetSize / 1e6
+    except Exception:
+        return 0.0
+
+
+def guard():
+    """Raise once this process passes MEM_LIMIT_MB."""
+    mb = rss_mb()
+    if mb > MEM_LIMIT_MB:
+        raise MemoryError("route_cables stopped itself at %.0f MB (limit %d): shrink REACH "
+                          "or raise MEM_LIMIT_MB" % (mb, MEM_LIMIT_MB))
+
+
+def be_nice():
+    """Below-normal priority, so a route never makes the machine sluggish."""
+    try:
+        import ctypes
+        ctypes.windll.kernel32.SetPriorityClass(
+            ctypes.windll.kernel32.GetCurrentProcess(), 0x00004000)   # BELOW_NORMAL
+    except Exception:
+        pass
 
 
 def draw_wires():
@@ -70,18 +119,17 @@ class Parts:
             self.bbox = json.loads(BBOX_CACHE.read_text())
         except (FileNotFoundError, ValueError):
             self.bbox = {}
-        self._shape = {}
-
     def shape(self, name):
-        if name not in self._shape:
-            from cadkit.scratch import read_brep
-            self._shape[name] = read_brep(self.dir / (name + ".brep"))
-        return self._shape[name]
+        """Parsed on every call and NOT kept: a few parts are near any one route, and
+        holding all of them is what used to fill memory."""
+        from cadkit.scratch import read_brep
+        return read_brep(self.dir / (name + ".brep"))
 
     def box(self, name):
         e = self.bbox.get(name)
         if e is None or e[0] != self.sha[name]:
             s = self.shape(name)
+            guard()
             try:
                 bb = s.BoundingBox()
                 e = [self.sha[name], [bb.xmin, bb.ymin, bb.zmin, bb.xmax, bb.ymax, bb.zmax]]
@@ -90,22 +138,33 @@ class Parts:
             self.bbox[name] = e
         return e[1]
 
-    def near(self, lo, hi):
-        """[(name, shape)] of the obstacle parts whose boxes reach (lo, hi)."""
-        out = []
+    def near(self, lo, hi, moved=()):
+        """[(name, shape)] of the obstacle parts whose boxes reach (lo, hi), parsed one at
+        a time as the caller asks for them. `moved` [(regex, offset)] shifts the parts
+        it names, for a route in a pose the build does not draw."""
+        moved = [(re.compile(rx), np.asarray(d, float)) for rx, d in moved]
         for n in self.sha:
             if NOT_OBSTACLE.search(n):
                 continue
             b = self.box(n)
             if b is None:
                 continue
-            if np.any(np.array(b[3:]) < lo) or np.any(np.array(b[:3]) > hi):
+            d = next((off for rx, off in moved if rx.search(n)), None)
+            b = np.array(b, float)
+            if d is not None:
+                b = b + np.concatenate([d, d])
+            if np.any(b[3:] < lo) or np.any(b[:3] > hi):
                 continue
-            out.append((n, self.shape(n)))
-        return out
+            s = self.shape(n)
+            yield n, (s if d is None else s.translate(cq_vec(d)))
 
     def save(self):
         BBOX_CACHE.write_text(json.dumps(self.bbox))
+
+
+def cq_vec(d):
+    import cadquery as cq
+    return cq.Vector(*map(float, d))
 
 
 def region(req):
@@ -118,8 +177,8 @@ def solve(name, req, parts, log=print):
     """Route one request; return its cache entry."""
     t0 = time.time()
     lo, hi = region(req)
-    near = parts.near(lo, hi)
-    ob = Obstacles(near, (lo, hi))
+    near = parts.near(lo, hi, req.get("moved", ()))
+    ob = Obstacles(near, (lo, hi), guard=guard)
     r = Router(ob, req["r"])
     pts = r.route(req["a"], req["b"], gates=[tuple(map(tuple, g)) for g in req["gates"]])
     drawn = length(req["legacy"])
@@ -127,6 +186,7 @@ def solve(name, req, parts, log=print):
     log("  %-28s taut %7.1f  hand-drawn %7.1f  (%+.1f)  %d bends, %d parts near, %.0fs"
         % (name, taut, drawn, taut - drawn, len(pts) - 2, len(ob.names), time.time() - t0))
     return {"a": req["a"], "b": req["b"], "r": req["r"], "gates": req["gates"],
+            "moved": req.get("moved", []),
             "pts": [[round(v, 4) for v in p] for p in pts], "length": round(taut, 2),
             "parts": {n: parts.sha[n] for n in ob.names}, "build": parts.build,
             "routed": time.strftime("%Y-%m-%d")}
@@ -161,7 +221,7 @@ def audit(WR, parts, every=False):
         req = {"a": list(a), "b": list(b), "gates": [], "r": d / 2.0 + 0.2, "legacy": pts[1:-1]}
         try:
             lo, hi = region(req)
-            ob = Obstacles(parts.near(lo, hi), (lo, hi))
+            ob = Obstacles(parts.near(lo, hi), (lo, hi), guard=guard)
             taut = length(Router(ob, req["r"]).route(a, b))
         except Exception as ex:
             taut = None
@@ -182,9 +242,11 @@ def main(argv=None):
     ap.add_argument("--audit", action="store_true")
     ap.add_argument("--all", action="store_true", help="audit: route every conductor")
     a = ap.parse_args(argv)
+    be_nice()
     CR, WR = draw_wires()
     parts = Parts()
-    print("obstacles: the shared part cache, build %s (%d parts)" % (parts.build, len(parts.sha)))
+    print("obstacles: the shared part cache, build %s (%d parts); %.0f MB in use"
+          % (parts.build, len(parts.sha), rss_mb()))
     try:
         if a.check:
             return 1 if check(CR, parts) else 0

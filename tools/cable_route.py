@@ -53,26 +53,35 @@ def mesh_of(shape, tol=0.1, ang=0.3):
 class Obstacles:
     """The solids a cable must stay clear of, as a CLEARANCE FIELD over a box.
 
-    `parts` is [(name, cq.Shape)]; `box` is (lo, hi), the region routes will use. The
-    solids are tessellated, their surfaces sampled finer than the grid and marked, their
-    interiors filled, and one Euclidean distance transform turns that into the distance
-    from every free cell to the nearest solid. A query is then a lookup, so a route can
-    ask millions of times. (The exact closest-point query this replaced ran out of memory
-    on the chassis: a 300-million-triangle candidate set for one batch of points.)
+    `parts` is [(name, cq.Shape)]; `box` is (lo, hi), the region routes will use. Each
+    solid is first CLIPPED to the box (so a chassis costs only the corner of it a route
+    can reach), tessellated, its surface sampled finer than the grid and marked, and its
+    interior filled; one Euclidean distance transform then gives the distance from every
+    free cell to the nearest solid. A query is a lookup.
 
-    The field is good to about h/2; `h` defaults to 0.5 and grows if the box would
-    exceed `max_cells`."""
+    MEMORY IS BOUNDED ON PURPOSE (user, 2026-10-22: the first version ate the machine):
+    the grid is capped at `max_cells` (h grows to fit), the field is float32, and each
+    part's mesh is dropped as soon as it is marked. `guard`, if given, is called after
+    every part and may raise to stop a run that is growing too big.
 
-    def __init__(self, parts, box, h=0.5, tol=0.1, max_cells=40e6):
+    The field is good to about h/2, and reads conservative by that much."""
+
+    def __init__(self, parts, box, h=0.5, tol=0.1, max_cells=6e6, guard=None):
+        import cadquery as cq
         from scipy import ndimage
         lo, hi = np.asarray(box[0], float), np.asarray(box[1], float)
-        while np.prod((hi - lo) / h + 1) > max_cells:
+        while np.prod((hi - lo) / h + 5) > max_cells:
             h *= 1.25
-        self.lo, self.h = lo, h
-        self.shape = tuple(np.ceil((hi - lo) / h).astype(int) + 1)
+        pad = 2.0 * h                   # clipped caps sit inside the grid, so shells close
+        self.lo, self.h = lo - pad, h
+        self.shape = tuple(int(v) for v in np.ceil((hi - lo + 2 * pad) / h).astype(int) + 1)
+        top = self.lo + h * (np.array(self.shape) - 1)
+        clip = cq.Solid.makeBox(*(hi - lo), pnt=cq.Vector(*lo))
         occ = np.zeros(self.shape, dtype=bool)
-        self.names = []
+        self.names, self.times = [], {}
+        import time as _t
         for name, shape in parts:
+            t0 = _t.perf_counter()
             try:
                 if not shape.Solids():
                     continue                # bare faces (lettering) take no room
@@ -81,43 +90,43 @@ class Obstacles:
                 continue
             b0 = np.array([bb.xmin, bb.ymin, bb.zmin])
             b1 = np.array([bb.xmax, bb.ymax, bb.zmax])
-            if np.any(b1 < lo - h) or np.any(b0 > hi + h):
+            if np.any(b1 < lo) or np.any(b0 > hi):
                 continue
-            m = mesh_of(shape, tol)
+            piece = shape
+            if np.any(b0 < lo) or np.any(b1 > hi):
+                try:
+                    piece = shape.intersect(clip)
+                    if not piece.Solids() or piece.Volume() < 1e-6:
+                        continue
+                except Exception:
+                    piece = shape
+            m = mesh_of(piece, tol)
             if m is None:
                 continue
-            part = np.zeros(self.shape, dtype=bool)
-            pts = _surface_points(m, lo - h, hi + h, h / 2.0)
+            pts = _surface_points(m, self.lo, top, 0.6 * h)
+            del m, piece
             if not len(pts):
-                # wholly round the box with no surface inside it: the box is inside it
-                if np.all(b0 <= lo) and np.all(b1 >= hi) and m.contains([(lo + hi) / 2.0])[0]:
-                    occ[:] = True
-                    self.names.append(name)
                 continue
-            idx = np.round((pts - lo) / h).astype(int)
+            idx = np.round((pts - self.lo) / h).astype(int)
             ok = np.all((idx >= 0) & (idx < np.array(self.shape)), axis=1)
+            part = np.zeros(self.shape, dtype=bool)
             part[tuple(idx[ok].T)] = True
-            # the interior: cells enclosed by this part's own shell. A part cut by the
-            # box's faces is not closed there, so its cells on the box faces are seeded
-            # from an inside test instead.
-            filled = ndimage.binary_fill_holes(part)
-            edge = _box_face_cells(self.shape)
-            cand = edge & ~part
-            cand &= _cells_in_bbox(self.shape, lo, h, b0, b1)
-            if cand.any():
-                ci = np.argwhere(cand)
-                inside = m.contains(lo + ci * h) if m.is_watertight else np.zeros(len(ci), bool)
-                if inside.any():
-                    seed = np.zeros(self.shape, dtype=bool)
-                    seed[tuple(ci[inside].T)] = True
-                    grown = ndimage.binary_propagation(seed, mask=~part) | part
-                    filled |= ndimage.binary_fill_holes(grown)
-            occ |= filled
+            del pts, idx
+            occ |= ndimage.binary_fill_holes(part)
+            del part
             self.names.append(name)
+            self.times[name] = _t.perf_counter() - t0
+            if guard is not None:
+                guard()
+        h32 = np.float32(h)
+        field = ndimage.distance_transform_edt(~occ, return_indices=False).astype(np.float32)
+        field *= h32
+        inside = ndimage.distance_transform_edt(occ, return_indices=False).astype(np.float32)
+        field[occ] = -inside[occ] * h32
+        del inside
+        field -= np.float32(h / 2.0)    # conservative by half a cell
+        self.field = field
         self.occ = occ
-        free_d = ndimage.distance_transform_edt(~occ) * h
-        in_d = ndimage.distance_transform_edt(occ) * h
-        self.field = np.where(occ, -in_d, free_d) - h / 2.0     # conservative by half a cell
 
     def clearance(self, pts):
         """Distance from each point to the nearest solid (negative inside one), from the
@@ -136,33 +145,28 @@ class Obstacles:
 
 
 def _surface_points(m, lo, hi, spacing):
-    """Points on the mesh's surface inside (lo, hi), no further apart than `spacing`."""
+    """Points on the mesh's surface inside (lo, hi), no further apart than `spacing`:
+    each triangle filled with a barycentric lattice of its own density, built for every
+    triangle of the same density at once. (trimesh's subdivide_to_size did this by
+    halving edges, iteratively, and spent five minutes on one clipped chassis.)"""
     tri = m.triangles
     t0, t1 = tri.min(axis=1), tri.max(axis=1)
-    keep = np.all((t1 >= lo) & (t0 <= hi), axis=1)
-    if not keep.any():
+    tri = tri[np.all((t1 >= lo) & (t0 <= hi), axis=1)]
+    if not len(tri):
         return np.zeros((0, 3))
-    v, f = trimesh.remesh.subdivide_to_size(m.vertices, m.faces[keep], max_edge=spacing,
-                                            max_iter=30)
-    pts = np.vstack([v, v[f].mean(axis=1)])
-    ok = np.all((pts >= lo) & (pts <= hi), axis=1)
-    return pts[ok]
-
-
-def _box_face_cells(shape):
-    e = np.zeros(shape, dtype=bool)
-    e[0, :, :] = e[-1, :, :] = True
-    e[:, 0, :] = e[:, -1, :] = True
-    e[:, :, 0] = e[:, :, -1] = True
-    return e
-
-
-def _cells_in_bbox(shape, lo, h, b0, b1):
-    i0 = np.clip(np.floor((b0 - lo) / h).astype(int), 0, np.array(shape) - 1)
-    i1 = np.clip(np.ceil((b1 - lo) / h).astype(int), 0, np.array(shape) - 1)
-    m = np.zeros(shape, dtype=bool)
-    m[i0[0]:i1[0] + 1, i0[1]:i1[1] + 1, i0[2]:i1[2] + 1] = True
-    return m
+    edge = np.max(np.linalg.norm(tri - np.roll(tri, 1, axis=1), axis=2), axis=1)
+    k = np.maximum(1, np.ceil(edge / spacing).astype(int))
+    out = []
+    for kk in np.unique(k):
+        t = tri[k == kk]
+        i, j = np.meshgrid(np.arange(kk + 1), np.arange(kk + 1), indexing="ij")
+        keep = (i + j) <= kk
+        u = (i[keep] / kk)[None, :, None]
+        v = (j[keep] / kk)[None, :, None]
+        p = t[:, None, 0] + u * (t[:, None, 1] - t[:, None, 0]) + v * (t[:, None, 2] - t[:, None, 0])
+        p = p.reshape(-1, 3)
+        out.append(p[np.all((p >= lo) & (p <= hi), axis=1)])
+    return np.vstack(out)
 
 
 # ── the route ────────────────────────────────────────────────────────────────
