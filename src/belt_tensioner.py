@@ -120,17 +120,13 @@ HEAD_CLR = 0.15                              # head to the window's side walls
 # of it in z, each two beads. They were rails across y -- a floor and a 6.4 bridge in A's print.
 # The head needs 2 * WIN_HZ of the body's BODY_T, so along the window A stands HZ each side.
 WIN_HZ   = HEAD_D / 2 + HEAD_CLR             # 2.9 the window's half-width in z
-# THE HEAD'S KEEPER (user): a lip on the seat face over the head, on the slot's open side. Belt
-# tension holds the head on the seat; to leave the slot it would have to ride the lip's 45 deg
-# face, away from the seat by KEEP_H -- stretching the belt that much. Slack, at assembly, the
-# head is just nudged back over it (the window is HEAD_ZONE long against a HEAD_H head). The
-# 45 deg face is also the lip's underside in A's print.
-KEEP_H   = 2 * B                             # 0.8 the lip's reach off the seat face (and up it)
+# NO KEEPER over the head (user, 2026-10-22, after the r5 print): B's rail covers the seat slot
+# once the halves are slid together, and that is what keeps the screw in. The 45 deg lip that
+# was here did the same job twice.
 HZ       = WIN_HZ + 2 * B                    # 3.7 A's half-thickness, seat wall to end wall (0.5 proud)
 IN_HW    = BW / 2 + EDGE_CLR + 2 * B         # 3.5 belt centre to the +y face, the side that
                                              # meets the neighbouring clamp: A's rail web alone
 SCREW_Y  = (IN_HW - HW) / 2                  # -0.3 the screw, midway across half A
-KEEP_Y0  = SCREW_Y - HEAD_D / 2 - HEAD_CLR   # -3.2 where the head's keeper starts, clear over the head
 EDGE_CH  = B                                 # 0.4 chamfer on A's two +y edges
 KEY_DEG  = 25.0                              # ball-end key off the screw's axis
 KEY_FLANK = 48.0                             # the key bore's teardrop flanks off flat: the rim
@@ -153,12 +149,22 @@ FLANGE   = 2 * B                             # 0.8 each flange's reach over a li
 FLANGE_T = 0.75                              # flange through z; the lip is cut back for it
 LIP_CLR  = 0.1                               # flange to lip: all the slot can open by
 LIP_HT   = HT - FLANGE_T - LIP_CLR           # 2.35 half-thickness of a lip under a flange
+# THE RAILS ARE DOVETAILS (user, 2026-10-22, r5 print: "the joinery doesn't prevent them from
+# lifting off, and they do under load"). r5's flanges met the lips on flat z faces, which hold
+# the slot shut but let the halves part SIDEWAYS (y) -- nothing hooked in y. Each flange now
+# thickens toward its tip by DOVE, its inner face sloped, and the lip under it necks to match:
+# the halves come apart only by sliding back out along x. DOVE is as deep as the lip can take
+# with two beads left over the belt's slot, and the slope it makes is printable both ways
+# (the flange's face and the lip's are each an overhang of DOVE_DEG in their own half's print).
+DOVE     = LIP_HT - SLOT_H / 2 - 2 * B       # 0.75 the flange's tip over its root, in z
+DOVE_DEG = math.degrees(math.atan2(DOVE, FLANGE))   # 43.2 off the build direction
 RAIL_STEP = RAIL_T + RAIL_CLR                # 0.95 B's rail stood off A's −y face
 MOUTH_B  = IN_HW - RAIL_STEP                 # 2.55 B's slot mouth, under A's rail
 RAIL_A_L = LEN_B                             # A's rail: flush with B's outer end, halves closed
 RAIL_B_L = LEN_A                             # B's rail: likewise over A
 
 assert RUNOUT >= 0, "the screw is too long for half B at the closed position"
+assert DOVE > 0 and DOVE_DEG <= 45.0, "the rails' dovetail is %.2f deep at %.1f deg" % (DOVE, DOVE_DEG)
 _TEAR = max(SCR_CLR / 2 * math.sqrt(2.0) - TIP / 2, SCR_CLR / 2)   # bore axis -> teardrop flat
 assert MOUTH_B - (SCREW_Y + _TEAR) >= 2 * B - 1e-9, (
     "B's screw-bore teardrop leaves %.2f under its +y face, under two beads"
@@ -175,7 +181,6 @@ assert _KEY_RIM >= 45.0, "the key bore's rim is %.1f deg off flat, past 45" % _K
 _KEY_LIG = (SCREW_Y - (KEY_W / 2 / math.cos(math.radians(KEY_FLANK)) - TIP / 2)) - (-HW + FLANGE)
 assert _KEY_LIG >= 2 * B - 1e-6, (
     "the key bore leaves %.2f under the lips' face, under two beads" % _KEY_LIG)
-assert KEEP_Y0 - KEEP_H >= -HW - 1e-6, "the head's keeper does not fit under A's top face"
 INS_POCKET = INS_D + INS_SLIP                # 4.8 the pocket's bore and the side slot's height
 assert (BODY_T - INS_POCKET) / 2 >= B * 2 - 1e-9, (
     "the insert's pocket leaves %.2f over and under it, under two beads of %.1f"
@@ -195,17 +200,22 @@ BELT_END_A = LEN_A - GRIP                    # 9.6 half A's inner face to its en
 BELT_END_B = INNER_B + END_WALL              # 10.8 half B's, likewise
 BELT_TOOTH_IN = B / 2                        # 0.2 an end wall to the nearest tooth's centre:
                                              # _ribs stands its first rib BP/2 past that
+SHOULDER_Z = SLOT_H / 2 - BTH + SLOT_CLR     # 0.15 where r5's ribs ended (its trapezoid)
+RIB_TIP  = -SLOT_H / 2 + (BT - BTH)          # -0.15 the valley floor, belt back on the far face
 
 
 def _ribs(x0: float, y0: float, y1: float) -> cq.Workplane:
     """N_TEETH ribs hanging from the slot's +z face into the belt's valleys, the first
-    centred BP/2 past x0. Trapezoid: BP/2 wide at the root, one bead at the tip, and
-    SLOT_CLR short of the valley floor."""
-    top, tip = SLOT_H / 2, SLOT_H / 2 - BTH + SLOT_CLR
+    centred BP/2 past x0. Trapezoid: BP/2 wide at the root, one bead at SHOULDER_Z (the shape
+    the r5 belt's teeth filled exactly, user), then a one-bead NUB on down to the valley floor
+    with the belt lying on the slot's far face (RIB_TIP): the r5 ribs stopped SLOT_CLR short of
+    it by the model and further in print at 0.4, and the belt crept on them under tension."""
+    top = SLOT_H / 2
     out = None
     for k in range(N_TEETH):
         xc = x0 + B / 2 + BP * (k + 0.5)
-        pts = [(xc - BP / 4, top), (xc + BP / 4, top), (xc + B / 2, tip), (xc - B / 2, tip)]
+        pts = [(xc - BP / 4, top), (xc + BP / 4, top), (xc + B / 2, SHOULDER_Z),
+               (xc + B / 2, RIB_TIP), (xc - B / 2, RIB_TIP), (xc - B / 2, SHOULDER_Z)]
         r = (cq.Workplane("XZ").polyline(pts).close().extrude(-(y1 - y0))
              .translate((0.0, y0, 0.0)))
         out = r if out is None else out.union(r)
@@ -221,25 +231,40 @@ def _belt_slot(x0: float, x1: float, open_y: int) -> tuple:
     return cut, (ya, yb)
 
 
+def _yz(pts, x0: float, x1: float) -> cq.Workplane:
+    """A (y, z) section run along x over [x0, x1]."""
+    return cq.Workplane("YZ").polyline(pts).close().extrude(x1 - x0).translate((x0, 0.0, 0.0))
+
+
 def _rail(x0: float, x1: float, y_web: float, toward: int) -> cq.Workplane:
     """A channel rail over [x0, x1]: the web's outer face on y_web, its flanges reaching
-    `toward` (±1, in y) over the lips of the half it covers."""
+    `toward` (±1, in y) over the lips of the half it covers, each FLANGE_T thick at the web
+    and FLANGE_T + DOVE at its tip (the dovetail)."""
     L, xc = x1 - x0, (x0 + x1) / 2
     out = box_at(L, RAIL_T, BODY_T, x=xc, y=y_web + toward * RAIL_T / 2)
+    y_in, y_tip = y_web + toward * RAIL_T, y_web + toward * (RAIL_T + FLANGE)
     for sz in (1, -1):
-        out = out.union(box_at(L, FLANGE, FLANGE_T, x=xc,
-                               y=y_web + toward * (RAIL_T + FLANGE / 2),
-                               z=sz * (HT - FLANGE_T / 2)))
+        out = out.union(_yz([(y_web, sz * HT), (y_tip, sz * HT),
+                             (y_tip, sz * (HT - FLANGE_T - DOVE)),
+                             (y_in, sz * (HT - FLANGE_T)), (y_web, sz * (HT - FLANGE_T))],
+                            x0, x1))
     return out
 
 
 def _lips(x0: float, x1: float, y_from: float, toward: int) -> cq.Workplane:
-    """Cutter that thins a half's two lips to LIP_HT from y_from outward (`toward` ±1),
-    so a rail's flanges pass over them."""
-    L, xc, d = x1 - x0, (x0 + x1) / 2, 3.0
+    """Cutter that necks a half's two lips from y_from outward (`toward` ±1) to take a
+    rail's dovetailed flanges: LIP_HT - DOVE under the flange's tip, LIP_HT under its root,
+    and LIP_CLR off the flange square to every face, the slope included."""
+    th = math.atan2(DOVE, FLANGE)
+    dw = LIP_CLR * (1.0 / math.cos(th) - 1.0) / math.tan(th)   # the slope's offset, along y
+    w = [0.0, RAIL_CLR + dw, RAIL_CLR + FLANGE + dw, 3.0]
     out = None
     for sz in (1, -1):
-        c = box_at(L, d, HT, x=xc, y=y_from + toward * d / 2, z=sz * (LIP_HT + HT / 2))
+        pts = [(y_from + toward * w[0], sz * (LIP_HT - DOVE)),
+               (y_from + toward * w[1], sz * (LIP_HT - DOVE)),
+               (y_from + toward * w[2], sz * LIP_HT), (y_from + toward * w[3], sz * LIP_HT),
+               (y_from + toward * w[3], sz * 2 * HT), (y_from + toward * w[0], sz * 2 * HT)]
+        c = _yz(pts, x0, x1)
         out = c if out is None else out.union(c)
     return out
 
@@ -282,19 +307,13 @@ def half_a() -> cq.Workplane:
     body = body.cut(cut).union(_ribs(gx0, -HW, yb))
     body = body.cut(box_at(HEAD_ZONE, IN_HW + HW + 2.0, 2 * WIN_HZ, x=(wx0 + wx1) / 2,
                            y=(IN_HW - HW) / 2))                    # through, bed face to top
-    keep = [(-SEAT_T + 0.1, KEEP_Y0), (-SEAT_T, KEEP_Y0), (-SEAT_T - KEEP_H, KEEP_Y0 - KEEP_H),
-            (-SEAT_T - KEEP_H, -HW), (-SEAT_T + 0.1, -HW)]
-    body = body.union(cq.Workplane("XY").polyline(keep).close().extrude(2 * WIN_HZ)
-                      .translate((0.0, 0.0, -WIN_HZ)))
     # the screw's way through the seat is a SLOT open to A's top face (-y): the screw is 15
     # long and the window 6.4, so it cannot be fed in along its axis; it drops in sideways, head
     # in the window, shank in the slot, and B's rail covers the slot once the halves are slid
     # together. Open upward in A's print, so its round end is a floor, not a roof.
     body = body.cut(cyl_x(SCR_CLR, SEAT_T + 0.2, -SEAT_T - 0.1, y=SCREW_Y))
-    # (on through the head's keeper: backed off the seat, the shank lies under the keeper too,
-    # so the keeper only catches the head's rim either side of it)
-    body = body.cut(box_at(SEAT_T + KEEP_H + 0.2, SCREW_Y + HW + 1.0, SCR_CLR,
-                           x=-(SEAT_T + KEEP_H) / 2, y=(SCREW_Y - HW - 1.0) / 2))
+    body = body.cut(box_at(SEAT_T + 0.2, SCREW_Y + HW + 1.0, SCR_CLR,
+                           x=-SEAT_T / 2, y=(SCREW_Y - HW - 1.0) / 2))
     # key channel: from the socket, down and outward through the back (−z) -- a BORE on the
     # key's own axis (the ball end turns about it), teardropped for A's print direction, its
     # flanks at KEY_FLANK so the rims it leaves where it crosses the faces at KEY_DEG print
@@ -303,6 +322,10 @@ def half_a() -> cq.Workplane:
     # all -- any tilt toward +y meets the belt in the grip.
     body = body.cut(_key_bore())
     body = body.cut(_lips(-LEN_A - 1.0, 1.0, -HW + FLANGE, -1))
+    # over the seat's screw slot the lips' neck leaves only two islands either side of it,
+    # cut off from the seat wall: clear them (the head bears 0.25 inside where they start)
+    body = body.cut(box_at(SEAT_T + 0.2, 1.0 + FLANGE, 2 * LIP_HT,
+                           x=-SEAT_T / 2, y=-HW + FLANGE - (1.0 + FLANGE) / 2))
     body = body.union(_rail(0.0, RAIL_A_L, IN_HW, -1))
     for x0, x1, h in ((-LEN_A - 1.0, xa - step, HT), (xa, 0.0, HZ), (0.0, RAIL_A_L + 1.0, HT)):
         for sz in (1, -1):                                         # the two +y edges
