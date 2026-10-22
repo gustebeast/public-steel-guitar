@@ -159,6 +159,9 @@ GLOBAL_OK = {
     # exactly this situation, one paragraph down.
     frozenset({"chassis", "pi4"}),
     frozenset({"pi4_pins", "pi_cap"}),      # the Pi's 40 pins, in the cap's socket
+    # the UI ribbon's two IDC sockets on their 2x8 headers' pins (ui_panel.IDC_PIN_IN):
+    # the boards draw those pins as a block out to their tips
+    frozenset({"ui_ribbon_socket", "ui_pcb"}), frozenset({"ui_ribbon_socket", "pi_cap"}),
     frozenset({"chassis", "motor_ctrl"}),   # teensy_ifc is deleted; the
                                             # merged controller took its place
     # (tee_pcb <-> motor is GONE, 2026-09-14: it was written for a corner graze and had grown

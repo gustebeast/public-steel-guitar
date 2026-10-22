@@ -583,12 +583,19 @@ def show_exported(folder, root=None, open_browser=True, port=PORT):
 
 
 # ── the scratch loop: one part fresh, the rest from the cache ─────────────────────
-def _colors(out, names, resolver):
+def _colors(out, names, resolver, src=None):
     """{name: (r, g, b, a)}, remembered between runs: a project's colour resolver can
     cost its whole build module's import, so only an unknown name pays for it.
-    `resolver` is name -> colour, or a zero-argument function returning one."""
+    `resolver` is name -> colour, or a zero-argument function returning one. `src`: the
+    file the colours are written in; newer than what was remembered, it is all forgotten.
+
+    ⚠ IT USED TO BE REMEMBERED FOR GOOD. A name once resolved kept that colour whatever the
+    project's table said later: the lever springs stayed the purple of an old table in a
+    worktree's view long after build.py had them painted blue (user, 2026-10-21)."""
     path = out / "colors.json"
     known = json.loads(path.read_text()) if path.exists() else {}
+    if known and src is not None and src.exists() and src.stat().st_mtime > path.stat().st_mtime:
+        known = {}
     missing = [n for n in names if n not in known]
     if missing and resolver is not None:
         try:
@@ -607,6 +614,14 @@ def _colors(out, names, resolver):
                 known[n] = [0.8, 0.8, 0.8, 1.0]
         path.write_text(json.dumps(known))
     return {n: tuple(known.get(n, (0.8, 0.8, 0.8, 1.0))) for n in names}
+
+
+def _color_src(root):
+    """The file a cadkit project writes its colours in (its build module), if it has one."""
+    for f in (root / "src" / "build.py", root / "build.py"):
+        if f.exists():
+            return f
+    return None
 
 
 def _cached_mesh(brep, taken, whole):
@@ -671,7 +686,8 @@ def scratch_export(view, describe=None, colors=None, rig=None, refresh_rig=False
         for n, m in _cached_mesh(f, taken, whole):
             meshed[n], base[n] = m, part
             solids[n] = (lambda p=f, k=n: _piece(p, k, taken, whole))
-    cols = _colors(out, sorted(set(base.values())), colors if colors is not None else view.colors)
+    cols = _colors(out, sorted(set(base.values())), colors if colors is not None else view.colors,
+                   src=_color_src(pathlib.Path(view.root)) if view.root else None)
     export_kw.setdefault("cache_dir", out / "boards")
     export([(n, solids[n], cols[base[n]]) for n in meshed], out, meshed=meshed, whole=whole,
            parents={n: p for n, p in base.items() if n != p}, **export_kw)
