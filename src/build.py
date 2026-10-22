@@ -414,6 +414,15 @@ PARTS["lever_prog_jig_base"] = (
     lambda: heal(__import__("src.lever_jig", fromlist=["e"]).base()),
     "tools/lever_prog_jig_base.step",
     "TOOL — the jig's base plate: the flat the four pins stand on, screwed to the nest's ear with one M4 x 10 button screw whose head is sunk in the underside. PETG, printed UPSIDE DOWN (the counterbore opens upward)")
+# LEADSCREW SAW JIG -- a SHOP TOOL (lead, 2026-10-21): exported, never in the assembly.
+PARTS["saw_jig"] = (
+    lambda: heal(__import__("src.saw_jig", fromlist=["e"]).body()),
+    "tools/saw_jig.step",
+    "TOOL — hacksaw jig for cutting the ten Tr8x2 leadscrews to SCREW_LEN by hand with one Quick-Grip and no vise: the rod rests on two crests in a 90 deg V tunnel, the saw slot (1.3, McMaster 6927A16) sits 5.6 past the clamped support, and the piece overhangs an OPEN fork to a fixed end stop at SCREW_LEN + 0.4, then drops out. The table-edge notch goes on the table edge so a slipped blade hits the jig. PETG, printed as drawn")
+PARTS["saw_jig_cap"] = (
+    lambda: heal(__import__("src.saw_jig", fromlist=["e"]).cap()),
+    "tools/saw_jig_cap.step",
+    "TOOL — the saw jig's cap: a plunger down the clamp channel whose 45 deg notch seats on the rod's upper crests, with a rimmed pocket on top for the Quick-Grip pad. The clamp squeezes cap, rod, jig and table in one stack. PETG, printed as drawn (notch on the bed)")
 
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
@@ -549,6 +558,7 @@ def _declared():
     from . import belt_tensioner as _BT
     from . import motor_bank as _MB
     from . import coil_mandrel as _CM
+    from . import saw_jig as _SJG
     from . import electronics as _ELX
 
     _plate = [n for n in PARTS if n.startswith("top_plate_")]
@@ -652,6 +662,12 @@ def _declared():
         (["pi_spacer"], _ELX.PI_SPACER_UP,
          "electronics.PI_SPACER_UP — top face down: one flat face on the "
          "bed, nothing overhangs"),
+        (["saw_jig"], _SJG.BODY_UP,
+         "saw_jig.BODY_UP — as drawn, table face on the bed: the V and roof "
+         "of the rod tunnel and the fork's arch are all 45 deg"),
+        (["saw_jig_cap"], _SJG.CAP_UP,
+         "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise "
+         "off the bed, the pad pocket opens up"),
         (["coil_mandrel"], _CM.MANDREL_UP,
          "coil_mandrel.MANDREL_UP — flange-down on its O27.8 base, as "
          "drawn"),

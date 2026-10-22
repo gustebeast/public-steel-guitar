@@ -220,6 +220,8 @@ DECLARED_UP = {
     "pi_spacer":         ("src.electronics", "PI_SPACER_UP"),
     "lever_prog_jig":    ("src.lever_jig", "JIG_UP"),
     "lever_prog_jig_base": ("src.lever_jig", "BASE_UP"),
+    "saw_jig":           ("src.saw_jig", "BODY_UP"),
+    "saw_jig_cap":       ("src.saw_jig", "CAP_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
     "ui_pwr_cap":        ("src.ui_panel", "PWR_CAP_UP"),
