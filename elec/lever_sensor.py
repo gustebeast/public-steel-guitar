@@ -6,20 +6,24 @@ ONE BOARD FOR EVERY CONTROL: five knee levers and three foot pedals. It reads th
 pivot angle off a diametric magnet on the axle and puts it on CAN bus B.
 
 IT ABSORBS THE BUS-B TEE (user). Earlier rounds hung each lever off a trunk tee by
-a single 4-way drop; the trunk now passes THROUGH the board, in on one half of an
-8-way connector and out on the other. That deletes eight tee boards and eight
-cradles. THE COST, stated once because it is real: a daisy chain means unplugging
-one lever breaks the bus for everything downstream of it, which is exactly the
-property the trunk-and-drop topology was chosen to have.
+a single 4-way drop; the trunk now passes THROUGH the board, in on J1 and out on J2.
+That deletes eight tee boards and eight cradles. THE COST, stated once because it is
+real: a daisy chain means unplugging one lever breaks the bus for everything
+downstream of it, which is exactly the property the trunk-and-drop topology was
+chosen to have.
 
-WHY AN 8-WAY PH AND NOT TWO 4-WAY XH. Two S4B-XH-SM4-TB need 31.0 mm of board
-height stacked (the window is 26.10) or 27.2 of the 28 mm width laid in line,
-which leaves nothing for the circuit. The 8-way XH fits on paper at 25.0 but LCSC
-stocks only the 4-way. S8B-PH-SM4-TB is 19.9 long, 20,215 in stock, takes the
-trunk's existing 26 AWG mid-range (30-24), and keeps a same-family fallback --
-S8B-PH-K-S, the THT right-angle PH -- that would cost a footprint change and NO
-harness change at all. PHD 2x4 is smaller still and was rejected on sourcing:
-niche dual-row contacts against PH's commodity ones.
+TWO 4-WAY PH, NOT ONE 8-WAY (user, 2026-10-19). With in and out in one PHR-8 housing,
+every hop's cable was crimped into the next board's housing alongside the cable after
+it, so moving or pulling one lever meant re-making the harness either side of it. Two
+4-ways make each hop its own straight PHR-4 jumper (way n to way n, both connectors in
+harness.PH_PINOUT order): a lever comes out by its two plugs, and a hop that changes
+length is one new cable. THROUGH-HOLE, S4B-PH-K-S (LCSC C157926, ~40k stock), because
+it is what fits: two SMT S4B-PH-SM4-TB stand 23.8 end to end against the 19.9 the
+board's height leaves (the foot pedal caps it), and two S4B-PH-K-S stand 19.8 -- the
+length of the S8B-PH-SM4-TB they replace, so the outline and every housing are
+unchanged. The pins come through to the back face; the cradle has no back wall there.
+(History: two S4B-XH-SM4-TB needed 31.0 of height; the 8-way XH was not stocked; PHD
+2x4 was rejected on sourcing.)
 
 THE CHIP'S POSITION IS NOT NEGOTIABLE. MT6701 sensing centre = package geometric
 centre, and it must sit on the axle axis. Everything else is placed around it.
@@ -30,7 +34,7 @@ per-part notes. Getting one wrong is the failure this file exists to prevent.
 ⚠ RE-SPUN 2026-09-21 TO branner's SPEC (docs/lever-sensor-respin.md), user decisions:
   * the lever bus runs at 5 V -- the 24 V buck (U1 LMR16006, L1, D1, C1-C3, R1/R2) is
     gone, and a 5 V -> 3V3 LDO (AP2112K) takes its place
-  * J1 is PH again: S8B-PH-SM4-TB (LCSC C265121), SMT side entry, on the magnet face, on
+  * J1 is PH again (2026-10-19: J1 + J2, two S4B-PH-K-S, see above), on the magnet face, on
     end with its mouth -X -- a different family from the 24 V XH tees, so no harness can
     put 24 V on a lever board
   * the outline is the spec's 31.0 x 21.9, trimmed at +X and at the top
@@ -89,7 +93,7 @@ CHIP_XY = (BOARD_W / 2 - SPEC_X1, BOARD_L / 2 - SPEC_Z1)
 # the cap. Only the connector and the transceiver (SOIC-8, 1.75) qualify now that the
 # inductor went with the buck; every passive here is under 1.5, the LDO is 1.45.
 CAP_SWEEP_R = 5.66
-TALL_PARTS = ("J1", "U2", "SW1")
+TALL_PARTS = ("J1", "J2", "U2", "SW1")
 SW1_XY = (-2.5500, -7.3000)       # the terminator switch's centre, chip frame
 
 
@@ -120,26 +124,26 @@ def lever_sensor():
     for n in (gnd, v5, v33, can_h, can_l):
         n.drive = Pin.drives.POWER
 
-    # ── the trunk, in and out of one connector ───────────────────────────────
-    # Ways 1-4 are the incoming cable in the instrument's one order (harness.PH_PINOUT:
-    # 5 V, GND, CAN_H, CAN_L) and ways 5-8 the outgoing one in its MIRROR (CAN_L, CAN_H,
-    # GND, 5 V), which is how the motor tees' 8-way trunk reads too: the two 5 V ways are
-    # the outside ones, each with ground next to it, and the housing reads the same from
-    # either end. The two halves are the same four nets -- a pass-through, not a switch.
-    # PH, SMT side entry (user, 2026-09-21): the power way is the 5 V LEVER bus, which is
-    # why the family differs from the 24 V tees -- a lever harness physically cannot mate
-    # a motor tee. The footprint's two MP tabs are mechanical and carry no net.
-    j1 = Part(name="S8B-PH-SM4-TB", ref_prefix="J", ref="J1", tag="J1", dest="NETLIST",
-              tool="skidl", value="S8B-PH-SM4-TB",
-              description="lever bus in (1-4) and out (5-8), 5 V, LCSC C265121",
-              footprint="Connector_JST:JST_PH_S8B-PH-SM4-TB_1x08-1MP_P2.00mm_Horizontal",
-              pins=[Pin(num=i + 1, name=n, func=P)
-                    for i, n in enumerate(harness.ph_trunk_pins())])
-    _trunk = tuple(n.rsplit("_", 1)[0] for n in harness.ph_trunk_pins())
-    harness.check_ways(_trunk, ("V5",), where="J1")
+    # ── the trunk, in on J1 and out on J2 ────────────────────────────────────
+    # Two 4-way PH, each in the instrument's one order (harness.PH_PINOUT: 5 V, GND,
+    # CAN_H, CAN_L), so the cable between two boards is a STRAIGHT jumper, way n to way n.
+    # The two are the same four nets -- a pass-through, not a switch -- so in and out may
+    # be swapped without effect. PH, THT side entry (user, 2026-10-19; see the header):
+    # the power way is the 5 V LEVER bus, which is why the family differs from the 24 V
+    # tees -- a lever harness physically cannot mate a motor tee.
+    _trunk = harness.ph_trunk_pins()
     _rail = {"GND": gnd, "V5": v5, "CAN_H": can_h, "CAN_L": can_l}
-    for i, n in enumerate(_trunk):
-        _rail[n] += j1[i + 1]
+    for j, (ref, side) in enumerate((("J1", "in"), ("J2", "out"))):
+        names = _trunk[4 * j:4 * j + 4]
+        jx = Part(name="S4B-PH-K-S", ref_prefix="J", ref=ref, tag=ref, dest="NETLIST",
+                  tool="skidl", value="S4B-PH-K-S",
+                  description="lever bus %s, 5 V, LCSC C157926" % side,
+                  footprint="Connector_JST:JST_PH_S4B-PH-K_1x04_P2.00mm_Horizontal",
+                  pins=[Pin(num=i + 1, name=n, func=P) for i, n in enumerate(names)])
+        ways = tuple(n.rsplit("_", 1)[0] for n in names)
+        harness.check_ways(ways, ("V5",), where=ref)
+        for i, n in enumerate(ways):
+            _rail[n] += jx[i + 1]
 
     # ── 5 V -> 3V3, AP2112K-3.3TRG1 (LCSC C51118) ─────────────────────────────
     # Replaces the 24 V buck. SOT-23-5 (Diodes Inc DS33549): 1 IN, 2 GND, 3 EN, 4 NC,
@@ -163,7 +167,7 @@ def lever_sensor():
     # with a damping ratio near 0.2: it rings to about 7.6 V, and the AP2112's input is
     # 6.5 V absolute maximum. With 2.2 ohm in the branch the ratio is about 0.9 and there
     # is no overshoot to speak of. It costs 0.18 V at 80 mA, against 1.2 V of headroom,
-    # and it is in the branch only: the bus itself passes J1 untouched.
+    # and it is in the branch only: the bus itself passes J1 -> J2 untouched.
     # The bus keeps a 100 nF of its own at the connector (the regulator's capacitor is on
     # the far side of the resistor now). It rings on a hot plug like any bare ceramic and
     # does not mind: nothing else is on this net but the connector and the resistor.
@@ -508,12 +512,15 @@ _PLACE_CHIP = {
         "TP2": (-2.4000, 7.1000, 0.0),     # SWCLK
         "TP3": (0.0000, 7.1000, 0.0),      # GND
         "TP4": (-15.1100, 8.0500, 0.0),    # NRST
-        # J1 on end, mouth -X, 3.05 in from the -X edge (the spec's figure).
-        # Placements anchor on the PAD CENTROID: the footprint's mouth is its local +y 4.4,
-        # its pad centroid local y -1.70 (eight pins at -2.85, two tabs at +2.90), and rot
-        # 270 turns +y to -X -- so the centroid sits 6.10 +X of the mouth. Read back off
-        # the routed geom, not assumed: -8.05 put the mouth at -14.15.
-        "J1": (-19.8500, -0.8500, 270.0),
+        # J1 (in) and J2 (out) on end, END TO END, mouths -X, 3.05 in from the -X edge
+        # (the spec's figure, unchanged from the 8-way they replace). Placements anchor on
+        # the PAD CENTROID: S4B-PH-K's pins are its local y 0, its mouth local +y 6.25, and
+        # rot 270 turns +y to -X -- so the pin row sits 6.25 +X of the mouth. Along Z each
+        # body is 9.9 (pins 1.95 from either end), the two 0.1 apart (knee_lever.CONN_SPLIT:
+        # all the 19.9 window leaves), the pair centred on the board's height, -0.85: J1's
+        # pins 7.15..1.15, J2's -2.85..-8.85, way 1 of each at its top.
+        "J1": (-19.7000, 4.1500, 270.0),
+        "J2": (-19.7000, -5.8500, 270.0),
         "U1": (-9.5000, 7.1500, 0.0),
         # 0.55 toward the regulator (courtyards 0.03 apart), which leaves 3.10 mm between
         # J1 and these two for the reset pad's name at 1.0 mm: RST is 3.07 wide and only
@@ -656,7 +663,14 @@ BOARD_NOTES = {
     # SCL leaving pin 27 north-eastward that shut SDA -- pin 28, the corner pin between
     # them -- in a 1 mm pocket with no exit: 1 unconnected on every run since J1's
     # ways were re-ordered (2026-10-07). 0.7 mm of copper to the land frees the corner.
-    "tracks": [("GND", "F.Cu", 0.2, [(11.80, 2.00), (11.80, 1.45)]),
+    # ⚠ AND THE PASS-THROUGH'S 5 V IS LAID, J1.1 -> J2.1, ON F.Cu (quality A1). Left to the
+    # router it went down to In2.Cu at 0.40, and an inner layer needs 0.72 for 0.57 A at a
+    # 10 C rise. The two pins share a column with J1's other three between them, so the
+    # track steps 1.9 toward the mouth, under J1's own body (nothing else may stand there:
+    # the connector zone), runs down, and steps back. 0.725 clear of every pad's edge.
+    "tracks": [("+5V", "F.Cu", 0.5, [(-7.2125, 8.00), (-9.1125, 8.00), (-9.1125, -2.00),
+                                     (-7.2125, -2.00)]),
+               ("GND", "F.Cu", 0.2, [(11.80, 2.00), (11.80, 1.45)]),
                ("GND", "F.Cu", 0.15, [(-0.45, 4.20), (0.10, 4.20), (0.50, 3.80)])],
     # ⚠ NO local_nets ON THIS BOARD, AND THE MEASUREMENT SAYS SO. Pre-laying every
     # short net here took it from 4 unconnected to 7. The generator is not better than
@@ -710,7 +724,7 @@ BOARD_NOTES = {
     #     checks was failing a house default and not a fab limit -- it is manufacturable
     #     too. 0.50/0.25 is used because it needs no rule relaxed to prove it.
     "via_mm": (0.50, 0.25),
-    # the lever bus passes THROUGH this board (J1 1-4 in, 5-8 out), so the first board of
+    # the lever bus passes THROUGH this board (J1 in, J2 out), so the first board of
     # a chain carries every later board supply: up to bus B limit, 0.57 A
     "net_widths": {"+5V": 0.4},
     # the words the silkscreen uses. A legend is as wide as its longest line and this
@@ -749,16 +763,17 @@ BOARD_NOTES = {
     # part allowed in, its position being fixed on the axle), and the connector's
     # mated plug forbids a strip -- board-local, converted from the chip frame.
     "groove_keepout_x": 1.85,
-    "groove_exempt": ["U4", "J1"],
-    # J1's zone (spec rule 4): its body, its solder tabs and the mated plug's 3.6 run past
-    # the mouth, over J1's length -- x -16.05..-3.85 here, clipped to the board.
-    "conn_keepout": {"box": [-15.5, -9.95, -3.85, 9.95], "exempt": ["J1", "U4"]},
+    "groove_exempt": ["U4", "J1", "J2"],
+    # J1 + J2's zone (spec rule 4): their bodies (7.6 deep) and the mated plugs' run past
+    # the mouths, over the pair's 19.8 -- x ..-5.86 here, clipped to the board as before.
+    "conn_keepout": {"box": [-15.5, -9.9, -5.86, 9.9], "exempt": ["J1", "J2", "U4"]},
     # ── the quality pass (cadkit/PCB_QUALITY.md) ─────────────────────────────
     "quality": {
         # A17 (cadkit/PCB_QUALITY.md): a connector whose pinout block is on the OTHER face,
         # and why. Way 1 is marked on the connector's own side in every case.
         "connector_labels": {
-            "J1": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its nine-line block at 1.0 mm within 14 mm of the part, flat or turned (run 2026-10-07); the block is on the back, behind it"},
+            "J1": {"back_only": "the labeller finds no free site on the front for a word at each way (run 2026-10-19): -X of the pins is the connector's own body and its plug's run, +X of them the parts that sit against it. The pins come through, so each gets its word on the back, in line with it"},
+            "J2": {"back_only": "as J1, the connector below it: no front site for its words (run 2026-10-19), a word at each pin on the back where the pins come through"},
         },
         # A8 asks for a via in every exposed pad; the sensor's has none, deliberately (the
         # note at stitch_exceptions). A8's own exception: a part that needs no heat path,
@@ -771,7 +786,7 @@ BOARD_NOTES = {
         "power_paths": [
             # the bus passes through: the first board of a chain carries the rest, up to
             # the 565 mA maximum of motor_ctrl's TPS2553 at 49.9 k
-            {"net": "+5V", "from": "J1.1", "to": ["J1.8"], "amps": 0.57},
+            {"net": "+5V", "from": "J1.1", "to": ["J2.1"], "amps": 0.57},
             # this board: MCU ~10 mA at 48 MHz, sensor 10 mA, transceiver 17 mA dominant
             # plus ~35 mA into the bus while it drives -- 80 mA with margin
             {"net": "+5V", "from": "J1.1", "to": ["R8.1"], "amps": 0.08},
@@ -782,7 +797,6 @@ BOARD_NOTES = {
         # A13 (cadkit/PCB_QUALITY.md): what the DESIGN leaves open, and how many nets each
         # repeated structure is on. The pass fails on any difference from the routed board.
         "unconnected": {
-            "J1.MP": "JST reinforcement tab: soldered, on no net",
             "U1.4": "the maker's NC pin",
             "U2.5": "SN65HVD230 Vref output: nothing here uses the reference",
             "U3": {
@@ -798,7 +812,7 @@ BOARD_NOTES = {
             {
                 "name": "bus B in and out are the same four ways",
                 "pins": [
-                    "J1.[1-8]"
+                    "J[12].[1-4]"
                 ],
                 "nets": 4,
                 "each": 2
@@ -827,11 +841,11 @@ BOARD_NOTES = {
             }
         ],
         "pinouts": {
-            "S8B-PH-SM4-TB": "JST ePH.pdf p.4, SMT side entry: looking into the mouth with "
-                             "the board below, No. 1 circuit is on the left. KiCad "
-                             "JST_PH_S8B-PH-SM4-TB: mouth +Y, pad 1 at -X -- the same end. "
-                             "Ways 1-4 are harness.PH_PINOUT (5 V, GND, CAN_H, CAN_L) and "
-                             "5-8 its mirror; the two MP tabs carry no net. Read 2026-10-04",
+            "S4B-PH-K-S": "KiCad JST_PH_S4B-PH-K_1x04_P2.00mm_Horizontal (generated from "
+                          "JST's ePH drawing, which refuses a scripted fetch): pins 1-4 on "
+                          "local x 0..6, mouth +y 6.25. J1 and J2 are each "
+                          "harness.PH_PINOUT (5 V, GND, CAN_H, CAN_L) on ways 1-4, no "
+                          "mounting pegs or tabs. Read 2026-10-19",
             "AP2112K-3.3TRG1": "Diodes DS39724 p.1-2, Pin Descriptions, SOT25 column: 1 VIN, "
                                "2 GND, 3 EN (high = on), 4 NC, 5 VOUT. Board: 1 +5V_LDO, 2 GND, "
                                "3 +5V_LDO, 4 open, 5 +3V3. Read 2026-10-04",
@@ -864,17 +878,17 @@ BOARD_NOTES = {
         "manual": {
             "M35": "read 2026-10-05. " + 'WCH publishes no errata sheet: its product page lists the datasheet and the reference manual (CH32FV2x_V3xRM) and nothing else, read 2026-10-05. ' + "(CH32V203: same "
                    "manual.) The other parts were not searched for errata sheets",
-            "M1": "one PHR-8 housing carries both cables (INSTALL_NOTES, 'one PHR-8 "
-                  "housing'): ways 1-4 are the bus in, in harness.PH_PINOUT order (5 V, "
-                  "GND, CAN_H, CAN_L), and 5-8 the bus out in its mirror -- the list motor_ctrl "
-                  "J2 / J6 and the leg boards are built from. Both halves are the same "
-                  "four nets on this board, so in and out may be swapped without effect. "
+            "M1": "each hop is a straight PHR-4 jumper (INSTALL_NOTES, KL-6): J1 the bus "
+                  "in and J2 the bus out, both in harness.PH_PINOUT order (5 V, GND, CAN_H, "
+                  "CAN_L), the list motor_ctrl J2 / J6 and the leg boards are built from. "
+                  "J1 and J2 are the same four nets on this board, so in and out may be "
+                  "swapped without effect. "
                   "The housing is polarised and a PH cannot enter an XH, so a lever lead "
                   "cannot reach a 24 V motor tee",
             "M2": "no polarised two-pad part: D2 / D3 are bidirectional, every capacitor "
                   "is ceramic",
             "M3": "In1 is an unbroken GND plane under the whole board and B.Cu carries a "
-                  "second GND pour. The pass-through's return (up to 0.57 A) goes J1.7 -> "
+                  "second GND pour. The pass-through's return (up to 0.57 A) goes J2.2 -> "
                   "plane -> J1.2, 10 mm, directly under its own +5V track. No slot, no "
                   "split; the regulator and every IC ground drop into the plane on their "
                   "own vias",
@@ -962,13 +976,13 @@ BOARD_NOTES = {
                    "the SOIC-8. Each read against the footprint "
                    "the board places (quality.pinouts)",
             "M31": "no polarised two-pad part to mark. Each IC's pin-1 mark is the KiCad "
-                   "footprint's own silk, outside the body; J1 and the four SWD pads are "
+                   "footprint's own silk, outside the body; J1, J2 and the four SWD pads are "
                    "named in silk at 1.0 mm; the terminator switch says TERM; the pinout "
                    "legend and the board name are on the back",
             "M41": "SW1 is not read by anything: it puts R4 across the pair or does not, "
                    "and is set once, on the bench, before the board goes into its "
                    "housing. Nothing to debounce",
-            "M32": "J1 is JST PH, 2.0 mm, the family the lever harness is crimped in "
+            "M32": "J1 and J2 are JST PH, 2.0 mm, the family the lever harness is crimped in "
                    "(harness.PH_PINOUT). PH contacts are rated 2 A; the most this bus can "
                    "deliver is 0.57 A",
             "M33": "5 V in: MCU about 10 mA, sensor 10 mA, transceiver 17 mA dominant "
@@ -978,13 +992,14 @@ BOARD_NOTES = {
                    "limit",
             "M34": "CAN_TX / CAN_RX, I2C and SWD are all 3.3 V at both ends. The sensor "
                    "runs from 3.3 V, so its outputs cannot exceed the MCU's rail",
-            "M36": "the pass-through on ways 5-8 is the bus itself: limited upstream to "
+            "M36": "the pass-through J1 -> J2 is the bus itself: limited upstream to "
                    "0.52 A by motor_ctrl's U6, carried here on 0.4 mm copper and 2 A "
                    "contacts. This board adds no source",
             "M38": "the board is held by printed grooves on its two long edges; every "
                    "part stands at least 1.85 mm in from them (groove_keepout_x). J1 "
-                   "takes plug force on its two soldered tabs. Every part and pad is on "
-                   "the magnet face (single_sided)",
+                   "and J2 take plug force on their four through-hole joints each. Every "
+                   "part is on the magnet face (single_sided); J1 / J2's pins come "
+                   "through to the back, where the cradle has no wall",
             "M39": "MCU: unused GPIO are left open and set by firmware to pulled inputs; "
                    "PB8 is grounded with BOOT0. U4: PUSH, OUT, U / V / W are outputs, left "
                    "open; its NC pins are open. U2 Vref: an output, open. U1 pin 4: NC",

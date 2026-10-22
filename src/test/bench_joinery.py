@@ -47,6 +47,8 @@ import sys
 
 import cadquery as cq
 
+from src import motor_bank as _MB    # the bed: every coupon z under the floor top hangs off it
+
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
 
@@ -70,14 +72,16 @@ class Coupon(object):
     them, `up` the build direction of the real part, `fix` optional fixture geometry."""
 
     def __init__(self, name, sources, boxes, up, joint, fix=None, note=""):
-        self.name, self.sources, self.boxes = name, tuple(sources), tuple(boxes)
+        self.name, self.sources = name, tuple(sources)
+        self.boxes = boxes if callable(boxes) else tuple(boxes)    # or boxes(comps)
         self.up, self.joint, self.fix, self.note = up, joint, fix, note
 
     def build(self, comps):
         kept, crumbs = [], []
+        boxes = self.boxes(comps) if callable(self.boxes) else self.boxes
         for s in self.sources:
             shape = comps[s]
-            for b in self.boxes:
+            for b in boxes:
                 c = shape.intersect(_box(b))
                 kept += [x for x in c.Solids()]
         if not kept:
@@ -100,6 +104,9 @@ class Coupon(object):
 def components(live=False, own=False):
     """{name: shape} and a line saying where it came from: the lead's build, this worktree's
     last `scratch_view --own` build (`own`), or a build run here now (`live`)."""
+    from src import chassis as _CH
+    assert abs(_CH._SEG_CLR - SEAM_C) < 1e-9, "SEAM_C %.3f is not the chassis seam's %.3f" % (
+        SEAM_C, _CH._SEG_CLR)
     if live:
         from src import build as B
         return ({n: (w.val() if hasattr(w, "val") else w) for n, w in
@@ -163,7 +170,6 @@ SEAM_X1 = SEAM_X + (GRID_P / 2.0 + (SEAM_K - 1) * GRID_P) + GRID_WEB
 # two beads. The housing slides in from the cut end.
 SEAM_TEN_L = 36.4
 SEAM_Y1 = -141.95 + SEAM_TEN_L + 2 * 0.8
-SEAM_FIN_MAX = SEAM_Y1 - (-131.55) - 1.0       # the fin stops a millimetre short of the cut
 
 # THE MINI (user, 2026-10-16: test chassis-to-chassis-to-lever small first -- the seam is
 # likely to open a little, and a housing spanning it tolerates only its tenons' 2 x 0.20).
@@ -175,8 +181,8 @@ MINI_X0 = SEAM_X - (GRID_P / 2.0 + (MINI_K - 1) * GRID_P) - GRID_WEB
 MINI_X1 = SEAM_X + (GRID_P / 2.0 + (MINI_K - 1) * GRID_P) + GRID_WEB
 MINI_Y1 = -141.95 + MINI_L + 2 * 0.8
 # the knee housing's tenons sit on stations -566.1 .. -493.3; the mini keeps the first four
-# (2 + 2 across the seam) and MINI_L of their length from the deck's -Y edge
-HOUS_TEN_Y0, HOUS_S0 = -86.15, -566.1
+# (2 + 2 across the seam) and MINI_L of their length from the tenons' -Y end
+HOUS_S0 = -566.1
 # SEAM COMPENSATION (user, 2026-10-16: "predict the amount of extra space the joint might add
 # and compensate ... slightly under our 1.6 wall"). Measured on fit_plate2's seam halves (N/N,
 # c 0.45, seat 0): the tenon pulls back 0.637 (c x sqrt 2 -- its catch is a 45 deg flank)
@@ -186,9 +192,22 @@ HOUS_TEN_Y0, HOUS_S0 = -86.15, -566.1
 # MINI PLATE 1 (user, 2026-10-16), the UNcompensated set at c 0.45: the web across the seam read
 # 7.0 against 6.7 between any other two mortises -- 0.3 open, the centre of 0..0.637, so the
 # prediction held. The seam is now c 0.40 (it wobbled): it opens 0..0.566, centred by 0.14 a face.
-SEAM_OPEN = round(0.40 * 2 ** 0.5, 3)       # 0.566: c x sqrt 2 (the catch is a 45 deg flank)
+# Round 2 (seam 0.40, lever 0.25): "the lever joints are still a touch tight and the chassis
+# joints a touch loose" -> half a step each: seam 0.375 (opens 0..0.530), lever 0.275.
+# Round 3 (seam 0.375, lever 0.275, 8 tenons full length): BOTH "quite tight" (user,
+# 2026-10-21) -> round 4: seam back to 0.40, and the lever's seat at c (see LEVER_SEAT_TRY).
+SEAM_C = 0.40                               # = chassis._SEG_CLR, asserted in components()
+SEAM_OPEN = round(SEAM_C * 2 ** 0.5, 3)     # 0.566: c x sqrt 2 (the catch is a 45 deg flank)
 SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.14 a face
 COMP_SPLIT_Z = -72.5    # under the seam cavity (0.4 under the floor top), over the lever mortises (-73.86)
+
+
+# the seam coupons that also export a SEAM_COMP twin (`test_<name>_comp.step`): which
+# section each is (-1 the tenon's, +1 the mortise's). They were written by hand before.
+COMP_SIDE = {"seam_tenon": -1, "seam_mortise": +1, "mini_seam_tenon": -1,
+             "mini_seam_mortise": +1, "r3_seam_tenon": -1, "r3_seam_mortise": +1,
+             "r4_seam_tenon": -1, "r4_seam_mortise": +1,
+             "r5_seam_tenon": -1, "r5_seam_mortise": +1}
 
 
 def compensate(shape, side, e=SEAM_COMP):
@@ -210,16 +229,111 @@ def compensate(shape, side, e=SEAM_COMP):
 # +X end cut as the housing's real -X edge is (user: no deck past the joint): the deck stops
 # at the fourth tenon's STEM face; above its root chamfer (0.8, knee_lever.clip_tenon_root)
 # the tenon carries on whole to its head's edge
-HOUS_Z1_W, TEN_ROOT_CH = -81.85, 0.8         # the mating plane: the chassis underside
+HOUS_Z1_W, TEN_ROOT_CH = _MB.BED_Z, 0.8      # the mating plane: the chassis underside
 _MINI_S3 = HOUS_S0 + 3 * GRID_P
-MINI_HOUS = [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, HOUS_TEN_Y0 + MINI_L, -86.4, _),
-             (HOUS_S0 - GRID_WEB, _MINI_S3 + 5.6 / 2.0 + 0.5, _, HOUS_TEN_Y0 + MINI_L,
-              HOUS_Z1_W + TEN_ROOT_CH, _)]
+_R3_S7 = HOUS_S0 + 7 * GRID_P
+# ROUND 3 IS TWO BEADS EACH SIDE OF THE JOINT (user, 2026-10-16: "only 1.6mm of material on
+# top of the mortises and below the tenons"): the housing's deck MIN_WALL_2P under the mating
+# plane; the floor needs no cut of its own -- D.BOTTOM_T now IS the mortise roof plus 1.6.
+# THE TENONS' Y SPAN IS MEASURED OFF THE PART, not written down (user, 2026-10-21: the r3
+# lever lost 2.7 off every tenon's +Y end and all but 0.5 of the +X station's +Y stub -- the
+# housing rework deepened the housing, the lever plane moved +Y, and a hard-coded -86.15
+# start stayed put). A slice through the tenons above their root chamfer gives both ends.
+def _tenon_span(comps):
+    h = comps["knee_housing"]
+    z = HOUS_Z1_W + TEN_ROOT_CH + 2.0
+    sec = h.intersect(_box((_, _, _, _, z, z + 0.05))).BoundingBox()
+    return sec.ymin, sec.ymax
+
+
+def R3_HOUS(comps):
+    y0, y1 = _tenon_span(comps)
+    # deck kept to the tenons' own span: past their -Y ends it is a strip that tests nothing
+    return [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
+            (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, y0 - 0.05, y1 + 0.05,
+             HOUS_Z1_W + TEN_ROOT_CH, _)]
+
+
+def MINI_HOUS(comps):
+    y0, _y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, y0 + MINI_L, HOUS_Z1_W - 4.55, _),
+            (HOUS_S0 - GRID_WEB, _MINI_S3 + 5.6 / 2.0 + 0.5, _, y0 + MINI_L,
+             HOUS_Z1_W + TEN_ROOT_CH, _)]
 MIN_WALL = 0.8
 
 DECK_UNDER = -10.4          # the rail strip: the groove (5.46 deep) on 4.9 of solid rail
 TIE_Z = (DECK_UNDER, DECK_UNDER + 3.2)      # top 1.7 under the grooves' floor
 TIE_W = 8.0
+
+
+# ROUND 4, THE SEAT (user, 2026-10-21: the 8-tenon round bound; "the floor of the mortise
+# presses into the floor of the tenon too hard"). The lever pair is built with its seat at 0
+# (halves(..., g=0.0)): the chassis underside sits flush on the housing deck, and the root's
+# clearance closes from c to 0 over the bottom 0.3 at the mouth. A seat at c -- every face a
+# clearance apart, seat included -- is exactly the floor with c shaved off its bed face: the
+# cavity stays where it is round the tenon, the floor's underside moves up off the deck, and
+# the mouth's 45 deg chamfer opens to the full c. Round 4 is round 3's seam pair (split
+# mortises joined by the seam) so shaved; the printed r3_lever is the other half.
+LEVER_SEAT_TRY = 0.275
+R4_Z0 = HOUS_Z1_W + LEVER_SEAT_TRY
+
+
+# ROUND 5, DIAGNOSIS (user, 2026-10-21: round 4 still "much too tight" both ways; one
+# lubricated lever tenon slides, two bind at once; the seam binds on its own, no lever in).
+# Each piece varies ONE thing against round 4 (the seam joint itself is round 2's to the
+# vertex at every height; what grew is the floor): the lever at TWO stations of the real
+# housing and floor, no seam (pitch, against fit_plate9's single tenons at full length), and
+# the seam pair cut to its RAIL STUBS only, standing on the floor's top (the 38-deep floors
+# whose faces meet across the seam left out).
+_R5_S1 = HOUS_S0 + GRID_P
+
+
+def R5_LEVER2(comps):
+    y0, y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _R5_S1 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
+            (HOUS_S0 - GRID_WEB, _R5_S1 + 5.6 / 2.0 + 0.5, y0 - 0.05, y1 + 0.05,
+             HOUS_Z1_W + TEN_ROOT_CH, _)]
+
+
+def R6_FLOOR8(comps):
+    """ROUND 6 (user, 2026-10-21: fit_plate9 at full length -- 0.275 too tight, 0.35 just right,
+    0.45 a bit loose; "print both 2 and 3 with the full set of 8"). The floor under the
+    housing's own eight stations, no seam, the seat shaved this build's c: cut by lever_c_round6 from an
+    instrument built at each clearance, against that build's r3_lever."""
+    from src import dimensions as D           # the seat shaved by THIS build's clearance
+    y0, y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _R3_S7 + GRID_WEB, y0 - 2 * 0.8, y1 + 2 * 0.8,
+             HOUS_Z1_W + D.LEVER_MORT_CLR, FLOOR)]
+
+
+def _fix_stub_brim(outward):
+    """A stub with no floor stands 20.8 tall on its rail's end (the tenon piece on 3.2 x 10.4):
+    a BRIM_W, BRIM_T brim round its foot, on its own side of the seam only."""
+    def brim(_comps):
+        w = BRIM_W
+        x = (STUB_TEN_X0 - w, SEAM_X) if outward < 0 else (SEAM_X, STUB_MORT_X1 + w)
+        return _box(x + (-141.95 - w, RAIL_MY + w, FLOOR, FLOOR + BRIM_T))
+    return brim
+
+
+def R5_FLOOR2(comps):
+    y0, y1 = _tenon_span(comps)
+    return [(HOUS_S0 - GRID_WEB, _R5_S1 + GRID_WEB, y0 - 2 * 0.8, y1 + 2 * 0.8, R4_Z0, FLOOR)]
+
+
+def _fix_deck(box):
+    """A housing coupon's deck as a plain SLAB: the deck box over the housing's own footprint
+    (user, 2026-10-16: the 1.6 deck cut through a bore's crown flat inside the housing and
+    printed it as a bridge). The coupon's deck only has to hold the tenons; what the housing
+    carries behind it is not under test."""
+    def fix(comps):
+        hb = comps["knee_housing"].BoundingBox()
+        x0, x1, y0, y1, z0, z1 = box(comps)[0] if callable(box) else box
+        lo = lambda a, b: b if a is None else max(a, b)     # None: to the housing's edge
+        hi = lambda a, b: b if a is None else min(a, b)
+        return _box((lo(x0, hb.xmin), hi(x1, hb.xmax), lo(y0, hb.ymin), hi(y1, hb.ymax),
+                     z0, HOUS_Z1_W))
+    return fix
 
 
 def _fix_rail_ties(comps):
@@ -240,7 +354,7 @@ def _fix_rail_ties(comps):
 # the fin only has to stop a rail swaying under the nozzle (user: "we wouldn't need much
 # material to keep the object upright"): a two-bead web, braced along its whole edge by the
 # rail, to two thirds of the height
-Z_BOT = -81.85
+Z_BOT = _MB.BED_Z
 FIN_TOP, FIN_RUN, FIN_T = Z_BOT + 2.0 / 3.0 * 81.85, 25.0, 2 * 0.8
 
 
@@ -264,18 +378,24 @@ RAIL_MY_C = (-141.95 + -131.55) / 2.0       # the -Y rail's centre line
 def _fix_stub_fins(x_far, outward, top_z=FIN_TOP):
     """Two fins for a rail cut down to a STUB at the seam (user: the rail away from the joint
     is not needed) -- it can sway both ways now, so one fin across it on its inner face and
-    one along it, off the stub's far end (`x_far`, the floor running on `outward` = -1/+1 in
-    X). Both stand on the floor's top, clear of the mortises under it."""
+    one along it, off the stub's far end (`x_far`, running on `outward` = -1/+1 in X). Both
+    stand on the bed (FOOT_Z0), each on a BRIM round its footprint, kept to the piece's own
+    side of the seam so the neighbour still drops in."""
     def fins(_comps):
-        across = _fix_fin(x_far if outward < 0 else x_far - FIN_T, -131.55, +1, FLOOR,
-                          min(FIN_RUN, SEAM_FIN_MAX))(_comps)
-        far = SEAM_X0 if outward < 0 else SEAM_X1
-        run = min(FIN_RUN, abs(far - x_far) - 1.0)
+        xa = x_far if outward < 0 else x_far - FIN_T
+        across = _fix_fin(xa, -131.55, +1, FOOT_Z0, FIN_RUN)(_comps)
         x0 = x_far - outward * 1.0
-        pts = [(x0, FLOOR), (x_far + outward * run, FLOOR), (x0, top_z)]
+        x1 = x_far + outward * FIN_RUN
+        pts = [(x0, FOOT_Z0), (x1, FOOT_Z0), (x0, top_z)]
         along = (cq.Workplane("XZ").polyline(pts).close().extrude(FIN_T)
                  .translate((0, RAIL_MY_C + FIN_T / 2.0, 0)).val())
-        return across.fuse(along)
+        w, zb = BRIM_W, (FOOT_Z0, FOOT_Z0 + BRIM_T)
+        brims = [_box((xa - w, xa + FIN_T + w, -131.55 - 1.0 - w, -131.55 + FIN_RUN + w) + zb),
+                 _box((min(x0, x1) - w, max(x0, x1) + w,
+                       RAIL_MY_C - FIN_T / 2.0 - w, RAIL_MY_C + FIN_T / 2.0 + w) + zb)]
+        side = (SEAM_X - 500.0, SEAM_X) if outward < 0 else (SEAM_X, SEAM_X + 500.0)
+        own = _box(side + (-300.0, 300.0) + zb)
+        return across.fuse(along, *[b.intersect(own) for b in brims])
     return fins
 
 
@@ -283,6 +403,15 @@ def _fix_stub_fins(x_far, outward, top_z=FIN_TOP):
 # past the seam, in the neighbour), two past the far end of the mortise (_SEG_JD, 10.4)
 STUB_TEN_X0 = SEAM_X - 4 * 0.8
 STUB_MORT_X1 = SEAM_X + 13 * 0.8 + 2 * 0.8
+
+# THE FULL-LENGTH SEAM PAIR TESTS THE SEAM ONLY (user, 2026-10-21: "we are already testing
+# the lever joint fully" -- the r3 pair carries the grid). Its tenon stands z -69.35 .. -7.2,
+# wholly above the floor's top, so the floor is no part of it: the rail stub stands on the
+# bed on the floor's solid skin under it (the lever mortises' teardrop apexes reach -73.1;
+# sliced, the floor is whole from -73.0 up), and the fins on a brim each (user: "a brim
+# around the 45 angled supports ... a flat square foot ... is overkill").
+FOOT_Z0 = -73.0
+BRIM_W, BRIM_T = 4 * 0.8, 2 * 0.2           # four beads out, two 0.2 layers
 
 
 COUPONS = [
@@ -296,12 +425,12 @@ COUPONS = [
     #    adapter's three ridges in any three of the same mortises. The floor is the foot;
     #    the rail is only a stub round the seam joint, finned both ways.
     Coupon("seam_tenon", ["chassis_1"],
-           [(STUB_TEN_X0, _, _, RAIL_MY, _, _), (SEAM_X0, _, _, SEAM_Y1, _, FLOOR)],
-           UP_Z, "section seam (tee tenon, drop-in) + SEAM_K lever mortises",
+           [(STUB_TEN_X0, _, _, RAIL_MY, FOOT_Z0, _)],
+           UP_Z, "section seam (tee tenon, drop-in), full height, fins on brims",
            fix=_fix_stub_fins(STUB_TEN_X0, -1)),
     Coupon("seam_mortise", ["chassis_0"],
-           [(_, STUB_MORT_X1, _, RAIL_MY, _, _), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
-           UP_Z, "section seam (tee mortise), the deck groove across it, SEAM_K lever mortises",
+           [(_, STUB_MORT_X1, _, RAIL_MY, FOOT_Z0, _)],
+           UP_Z, "section seam (tee mortise), the deck groove across it, full height, fins on brims",
            fix=_fix_stub_fins(STUB_MORT_X1, +1)),
 
     # A-mini: the same three parts, short -- does a housing still go on across the seam?
@@ -312,6 +441,32 @@ COUPONS = [
     Coupon("mini_seam_mortise", ["chassis_0"],
            [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, MINI_X1, _, MINI_Y1, _, FLOOR)],
            UP_Z, "seam mortise, short, + 2 lever mortises"),
+    # ROUND 3 (user, 2026-10-16): "test the full 8 mortise/tenons and the full 36.4mm length" --
+    # SEAM_K stations a side on a floor one tenon length long, the rail still the mini's stub
+    Coupon("r3_seam_tenon", ["chassis_1"],
+           [(STUB_TEN_X0, _, _, RAIL_MY, _, MINI_TOP), (SEAM_X0, _, _, SEAM_Y1, _, FLOOR)],
+           UP_Z, "seam tenon, short, + 4 lever mortises, full tenon length"),
+    Coupon("r3_seam_mortise", ["chassis_0"],
+           [(_, STUB_MORT_X1, _, RAIL_MY, _, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, _, FLOOR)],
+           UP_Z, "seam mortise, short, + 4 lever mortises, full tenon length"),
+    Coupon("r3_lever", ["knee_housing"], R3_HOUS,
+           UP_Z, "all 8 housing tenons, full length", fix=_fix_deck(R3_HOUS)),
+    Coupon("r4_seam_tenon", ["chassis_1"],
+           [(STUB_TEN_X0, _, _, RAIL_MY, R4_Z0, MINI_TOP), (SEAM_X0, _, _, SEAM_Y1, R4_Z0, FLOOR)],
+           UP_Z, "round 3's seam tenon + 4 lever mortises, the lever seat shaved c off the bed"),
+    Coupon("r4_seam_mortise", ["chassis_0"],
+           [(_, STUB_MORT_X1, _, RAIL_MY, R4_Z0, MINI_TOP), (_, SEAM_X1, _, SEAM_Y1, R4_Z0, FLOOR)],
+           UP_Z, "round 3's seam mortise + 4 lever mortises, the lever seat shaved c off the bed"),
+    Coupon("r6_floor8", ["chassis_2"], R6_FLOOR8,
+           UP_Z, "the housing's eight floor mortises, no seam, seat shaved c"),
+    Coupon("r5_lever2", ["knee_housing"], R5_LEVER2,
+           UP_Z, "two housing tenons, full length", fix=_fix_deck(R5_LEVER2)),
+    Coupon("r5_floor2", ["chassis_2"], R5_FLOOR2,
+           UP_Z, "two floor mortises under the housing, no seam, seat shaved c"),
+    Coupon("r5_seam_tenon", ["chassis_1"], [(STUB_TEN_X0, _, _, RAIL_MY, FLOOR, MINI_TOP)],
+           UP_Z, "round 4's seam tenon, the rail stub only (no floor)", fix=_fix_stub_brim(-1)),
+    Coupon("r5_seam_mortise", ["chassis_0"], [(_, STUB_MORT_X1, _, RAIL_MY, FLOOR, MINI_TOP)],
+           UP_Z, "round 4's seam mortise, the rail stub only (no floor)", fix=_fix_stub_brim(+1)),
     Coupon("mini_lever", ["knee_housing"], MINI_HOUS,
            UP_Z, "4 housing tenons (2 each side of the seam), MINI_L long"),
 
@@ -330,7 +485,7 @@ COUPONS = [
     # PRINTED RIDGES UP, as the housing's tenons are: the ridge takes the lever's standing
     # layer/layer profile, which the real adapter's DOWN_Y would make nozzle-wise (open)
     Coupon("corner_adapter", ["body_adapter_1"],
-           [(-17.7 - 2 * MIN_WALL, 8.7 + 2 * MIN_WALL, _, _, -82.0 - 2 * MIN_WALL, _)],
+           [(-17.7 - 2 * MIN_WALL, 8.7 + 2 * MIN_WALL, _, _, Z_BOT - 0.15 - 2 * MIN_WALL, _)],
            UP_Z, "adapter ridges (octagon, slide in along Y): into A's floor mortises"),
 
     # C. chassis <-> keyhead endplate, -Y corner: the same joint printed the other way
@@ -364,7 +519,7 @@ COUPONS = [
              -104.0, -24.0, _, FLOOR)],
            UP_Z, "eight floor mortises: the housing's station and its lead-in"),
     Coupon("lever_housing", ["knee_housing"],
-           [(_, _, _, -49.7, -86.4, _)],
+           [(_, _, _, -49.7, HOUS_Z1_W - 4.55, _)],
            UP_Z, "the housing's eight tenons on its own top deck"),
 
     # F. nut slide inserts <-> keyhead: the slots of strings 7-10 and the four inserts
@@ -420,6 +575,10 @@ def report(comps, where, export=False):
             "; ".join(notes)))
         if export:
             export_print(wp, po, str(HERE / ("test_%s.step" % c.name)))
+            side = COMP_SIDE.get(c.name)
+            if side is not None:                # ...and its compensated twin, cut here too
+                cw = cq.Workplane(obj=compensate(wp.val(), side))
+                export_print(cw, po, str(HERE / ("test_%s_comp.step" % c.name)))
     print("%-28s %-8s %6.1f" % ("TOTAL", "", total))
 
 
@@ -479,10 +638,25 @@ PLATES = {
     # round 2: seam c 0.40, lever c 0.25 -- the compensated pair only (round 1 measured the
     # uncompensated one) and its lever
     "seam_lever_mini_2": [["mini_seam_tenon_comp", "mini_seam_mortise_comp", "mini_lever"]],
+    # round 3: seam 0.375, lever 0.275
+    "seam_lever_mini_3": [["r3_seam_tenon_comp", "r3_seam_mortise_comp", "r3_lever"]],
+    # round 4: seam 0.40, the lever seat at c; the 8-tenon lever unchanged from round 3
+    "seam_lever_4": [["r4_seam_tenon_comp", "r4_seam_mortise_comp", "r3_lever"]],
+    # round 6: the 8-tenon lever + its floor at 0.35 and 0.45 (lever_c_round6), and the seam
+    # swept at its full drop (fit_plate10: 0.40 control, 0.45, 0.50, 0.55)
+    "lever_seam_6": [["r6_lever8_c035", "r6_floor8_c035"],
+                     ["r6_lever8_c045", "r6_floor8_c045"],
+                     ["plate10_petg_gf"]],
+    # round 5, diagnosis: one variable a piece, the real-geometry pieces twice (print scatter)
+    "diag_5": [["plate9_petg_gf"],
+               ["r5_lever2", "r5_floor2", "r5_lever2", "r5_floor2"],
+               ["r5_seam_tenon_comp", "r5_seam_mortise_comp", "r5_seam_tenon_comp",
+                "r5_seam_mortise_comp"]],
+    # the seam pair COMPENSATED as round 3 (it is what the chassis is meant to get); no lever
+    # housing of its own -- seam_lever_mini_3's 8-tenon r3_lever fits these floors too
     "full_length_1": [
-        ["seam_tenon", "seam_mortise", "corner_bridge_chassis", "corner_adapter"],
+        ["seam_tenon_comp", "seam_mortise_comp", "corner_bridge_chassis", "corner_adapter"],
         ["corner_keyhead_chassis", ("corner_bridge_endplate", "corner_keyhead_endplate")],
-        ["lever_housing"],
     ],
 }
 

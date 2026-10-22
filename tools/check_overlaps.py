@@ -53,7 +53,15 @@ def base(name: str) -> str:
     # microSD CARD, which stands past the board's edge where the cradle's wall is.
     if name.startswith("pi4_") and name not in ("pi4_pins", "pi4_card"):
         return "pi4"
+    # SO IS THE MOTOR (src/servo42d.py: one solid per material). Whatever may touch the
+    # motor -- its pulley on the shaft, the bank's faceplate walls -- may touch any of it.
+    if _MOTOR_PART.match(name):
+        return "motor"
     return name
+
+
+_MOTOR_PART = re.compile(r"^motor_(?:face|stack|shaft|coil_plug|driver|terminal|coil_terminal"
+                         r"|screws|term_screws|buttons|lead_[a-z]+)$")
 
 
 def idx(name: str):
@@ -241,8 +249,11 @@ PEDAL_FAMILY = {"pedal_bar_a", "pedal_bar_b", "pedal_bar_c",
 # magnet, sensor board, springs, set screws, housing and lever are ALL designed to
 # touch/run on each other. Whitelist any pair WITHIN the family (this never masks a
 # housing<->chassis / housing<->motor clash, since those involve a non-family part).
-_CORE = {"bearing", "magnet", "pcb", "chip", "pcb_shim", "axle",
-         "magnet_cap", "axle_screw", "axle_washer"}
+# The axle stack's SPACERS bear on the inner races (the plain stacks' spacers are drawn
+# CLAMP_LONG/2 into each race -- the float, drawn as interference); the LKL's sprung stack
+# adds the PRELOAD SPRING and its own axle, which screws into the magnet cap as kl_axle does.
+_CORE = {"bearing", "magnet", "pcb", "chip", "pcb_shim", "axle", "axle_sprung",
+         "magnet_cap", "axle_screw", "axle_washer", "spacer", "preload_spring"}
 # the two feel lanes, each with the same hardware
 _LANE = {f"{lane}_{part}"
          for lane in ("main", "half_stop")

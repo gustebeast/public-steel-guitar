@@ -65,8 +65,8 @@ Y_HI     = D.BRIDGE_AXLE_Y + 4 * D.BEAD + T / 2   # +Y rail (inner face = axle_Y
 # motor like the other nine (wiring: 0.9 off the motor's back, 0.5 off the rail), and the wall
 # stays whole. The body is 2.8 wider for it.
 RAIL_GAP = 6 * D.BEAD
-Y_LO     = (D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_LEN
-            - D.MOTOR_PCB_LEN - RAIL_GAP) - T / 2   # −Y rail off the −Y-most string (last index)
+Y_LO     = (D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.BODY_MOTOR_RESERVE
+            - RAIL_GAP) - T / 2   # −Y rail off the −Y-most string (last index)
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = D.XBAR                      # cross-rib X-width = XBAR (square XBAR×XBAR section)
 # Top-plate retention grooves (top_plate.py rides these): a slot in each rail
@@ -254,6 +254,9 @@ _SEG_CLR  = 0.40                       # plate 8 D3 (user, 2026-10-16): 0.35 and
                                        # to slide easily (some wobble -- the full-length test decides)
                                        # MINI SEAM PLATE (user, 2026-10-16): 0.45 "slides easily but it
                                        # still wobbles" and length will not cure it -- down a notch
+                                       # MINI ROUND 2 (user): 0.40 "a touch loose" -> half a step
+                                       # ROUND 3, 8 TENONS (user, 2026-10-21): 0.375 "quite tight"
+                                       # -> back to 0.40, the last that slid (round 4 decides)
 _SEG_HOST_W = 10 * D.BEAD              # 8.0: the tenon's host slab across Y, inside the rail
 _SEG_JD   = 13 * D.BEAD                # 10.4 room into the +X segment for the fit-tested
                                        # nozzle/nozzle joint (4.8 head, 2.0 corners): it
@@ -1140,6 +1143,7 @@ def _segments():
         # every motor's way IN clear, whatever gets built over the bank.
         for _mi in range(D.N_STRINGS):
             seg = seg.cut(MB.lift_prism(_mi))
+            seg = seg.cut(MB.low_walls(_mi))  # back + side walls stop at BUMP_H, under its terminals
             seg = seg.cut(MB.tee_pocket(_mi))     # ...and its tee board's, which reaches into
                                                   # the neighbouring bay (40 board, 42.3 motor)
         # THE HARNESS CORRIDOR is the wiring's, the whole length of the bank: the trunk rides it

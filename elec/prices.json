@@ -84,6 +84,17 @@
       "date": "2026-10-19",
       "what": "688ZZ O8xO16x5, 123bearing's generic brand, metal shields -- 10 bridge axle + 2 per sensed control x 11 = 32. $0.94 each at 25-49 ($0.69 at 50+), 50+ in stock, page read 2026-10-19. NO LOAD RATING IS PUBLISHED, which is why the ten screw seats keep the rated part: the bridge load is radial, 208 N against the lowest rating any maker publishes for a 688 (474 N, 2.3x), and the lever and pedal axles carry almost nothing. MOVED FROM Fast Eddy TFE234 ($0.99) on 2026-10-19 to ship in the same 123bearing parcel as the rated ten and the needle rollers."
     },
+    "preload_spring_9714k29": {
+      "usd": 0.8985,
+      "verified": "v",
+      "per_instrument": 4,
+      "vendor": "McMaster-Carr",
+      "sku": "9714K29",
+      "url": "https://www.mcmaster.com/9714K29/",
+      "date": "2026-10-19",
+      "order": "2 x $17.97 (pack of 25) = $35.94 for 40 needed",
+      "what": "Wave disc spring, high-carbon steel, 0.459 in ID x 0.608 in OD x 0.008 in, 0.037 in free, 4 lb at 0.025 in -- the axle stack's PRELOAD spring, one per lever between the -Y outer race and its shoulder (knee_lever.SPRING_ID). Fixes the lever in Y at ~9 N preload whatever the screw torque. The horizontal knee levers only for now (4 in the model); 11 once the vertical lever and the pedals take the same stack. Read off the product page 2026-10-19, delivers next day. The purpose-made part (Hubbard WSW-608, the same envelope) is quote-only with an 8-10 week lead."
+    },
     "m4_button_8": {
       "usd": 0.5555,
       "verified": "v",
@@ -1169,9 +1180,14 @@
       "what": "RKJXT1F42001 C160841 -- JLCPCB parts API at qty 10"
     },
     "lever_sensor:J1": {
-      "usd": 0.2862,
+      "usd": 0.059,
       "verified": "v",
-      "what": "S8B-PH-SM4-TB C265121 -- JLCPCB parts API at qty 110"
+      "what": "S4B-PH-K-S C157926 -- JLCPCB parts API at qty 220"
+    },
+    "lever_sensor:J2": {
+      "usd": 0.059,
+      "verified": "v",
+      "what": "S4B-PH-K-S C157926 -- JLCPCB parts API at qty 220"
     },
     "optical:U7": {
       "usd": 1.2664,
@@ -5237,12 +5253,6 @@
       "per_instrument": 10.0,
       "what": "XHP-8 -- JLCPCB parts API at qty 100"
     },
-    "C157950": {
-      "usd": 0.0288,
-      "verified": "v",
-      "per_instrument": 11.0,
-      "what": "PHR-8 -- JLCPCB parts API at qty 110"
-    },
     "C144405": {
       "usd": 0.0278,
       "verified": "v",
@@ -5250,10 +5260,10 @@
       "what": "XHP-6 -- JLCPCB parts API at qty 20"
     },
     "C111514": {
-      "usd": 0.0166,
+      "usd": 0.0167,
       "verified": "v",
-      "per_instrument": 3.0,
-      "what": "PHR-4 -- JLCPCB parts API at qty 30"
+      "per_instrument": 25.0,
+      "what": "PHR-4 -- JLCPCB parts API at qty 250"
     },
     "C157952": {
       "usd": 0.0202,

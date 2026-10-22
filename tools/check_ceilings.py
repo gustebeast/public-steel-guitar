@@ -194,6 +194,10 @@ DECLARED_UP = {
     "kv_lever":          ("src.knee_lever_vert", "LEVER_UP"),
     "pedal_lever":       ("src.foot_pedal", "LEVER_UP"),
     "kl_axle":           ("src.knee_lever", "AXLE_UP"),
+    "kl_spacer":         ("src.knee_lever", "SPACER_UP"),
+    "kl_spacer_sprung":  ("src.knee_lever", "SPACER_UP"),
+    "kl_spacer_sprung_n": ("src.knee_lever", "SPACER_UP"),
+    "kl_axle_sprung":    ("src.knee_lever", "AXLE_UP"),
     "nut_slide_insert_a": ("src.nut_block", "INSERT_UP"),
     "nut_slide_insert_b": ("src.nut_block", "INSERT_UP"),
     "nut_slide_insert_c": ("src.nut_block", "INSERT_UP"),
@@ -216,6 +220,8 @@ DECLARED_UP = {
     "pi_spacer":         ("src.electronics", "PI_SPACER_UP"),
     "lever_prog_jig":    ("src.lever_jig", "JIG_UP"),
     "lever_prog_jig_base": ("src.lever_jig", "BASE_UP"),
+    "saw_jig":           ("src.saw_jig", "BODY_UP"),
+    "saw_jig_cap":       ("src.saw_jig", "CAP_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
     "ui_pwr_cap":        ("src.ui_panel", "PWR_CAP_UP"),
@@ -227,6 +233,7 @@ DECLARED_UP = {
     "test_cover_seat":      ("src.joint_coupon", "COVER_UP"),
     "test_cover_plate":     ("src.joint_coupon", "COVER_UP"),
     "test_belt_tensioner":  ("src.belt_tensioner", "COUPON_UP"),
+    "test_motor_bay":       ("src.motor_bank", "COUPON_UP"),
 }
 # THE OTHER THREE BODY ADAPTERS ARE THE SAME DIRECTION, and the note that used to stand
 # here saying otherwise was simply wrong: leg_stack poses the corner variants by a PURE

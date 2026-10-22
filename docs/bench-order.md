@@ -525,12 +525,12 @@ bought, printed or made until then. It is kept here so it is not lost.
 | Tool | For | Notes |
 |---|---|---|
 | Lever jig: two prints, four pogo pins (Adafruit 2430, pack of 10, $4.95), one M4 x 10 button screw and one M4 brass insert from the instrument's own stock | flashing the eleven `lever_sensor` boards | `tools/lever_prog_jig.step` + `tools/lever_prog_jig_base.step` (`src/lever_jig.py`). **No glue:** each pin stands on the base plate and is held by its own soldered lead, nipped under the ear by the screw. The pin's figures are Adafruit's published ones (body 1 mm, head 0.7 mm, 16 mm long, 13 mm compressed); **measure the pins and one jumper lead's insulation on arrival, before printing** (`POGO_L`, `LEAD_OD`) |
-| The bus B drop from `motor_ctrl` J6 (the instrument's own lead, PHR-4 to PHR-8 ways 1 to 4) | powering a `lever_sensor` board in the jig | 5 V from `motor_ctrl`'s bus B switch, limited to 0.52 A. Not a bench lead: "Power without a bench supply", below |
+| The bus B drop from `motor_ctrl` J6 (the instrument's own lead, PHR-4 to PHR-4) | powering a `lever_sensor` board in the jig | 5 V from `motor_ctrl`'s bus B switch, limited to 0.52 A. Not a bench lead: "Power without a bench supply", below |
 | 4 jumper leads, 2.54 mm female, one end cut off | the jig's four pins to the WCH-LinkE | from the same 20-pack as the first flash's thirteen; each is soldered to a pin's foot, once |
 
 | Lead | From | To | Ways |
 |---|---|---|---|
-| one bus B drop | `motor_ctrl` **J6** (PHR-4) | `lever_sensor` **J1** ways 1 to 4 (PHR-8) | 5 V, GND, CAN_H, CAN_L |
+| one bus B drop | `motor_ctrl` **J6** (PHR-4) | `lever_sensor` **J1** (PHR-4, bus in) | 5 V, GND, CAN_H, CAN_L |
 
 The bus B drop is the J6 lead to the first lever (LKL), the instrument's own; it reaches
 the jig through its end window.

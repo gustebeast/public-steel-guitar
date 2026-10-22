@@ -639,10 +639,13 @@ LEAD_FLY   = 12.0                   # above the motor's top, and what sets it is
                                     # out 9.35 above it: the lead crosses 1.0 over the board.
                                     # (At 6.0 it cleared the chassis rib and ran straight
                                     # through the tee, 130 mm3 -- the gate found it.)
-LEAD_COL_X = -595.5                 # the column it crosses in. 2.5 further -X it meets the
-                                    # motor board's corner post (x -599.7..-598.3, up to
-                                    # z -21.95); 1.5 further +X it grazes the 24 V trunk's
-                                    # drop into the motor board (3.5 mm3)
+LEAD_COL_X = -590.8                 # the column it crosses in: +X of everything on the
+                                    # motor board's face (to x -591.7) by its own radius and
+                                    # 0.25. It was -595.5, beside the board's corner post, until
+                                    # the measured motor (2026-10-20) moved the board 16.6 +Y
+                                    # and put a socket where the lead comes down (15 mm3).
+                                    # Bus A's head no longer rises here (wiring: it climbs
+                                    # +X of string 1's coil plug), so the column is free.
 # (Where it comes back down is no longer a number here: led_leads drops each conductor
 #  a plug length and 1.0 out of the Pi cap's J6, which puts the four at y -54.5 to -49.7
 #  -- between the motor's -Y face at -41.25 and the cap's +Y edge at -59.2.)
