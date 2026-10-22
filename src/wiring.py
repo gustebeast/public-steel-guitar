@@ -2109,21 +2109,25 @@ def ctrl_bus_b(lkl):
     farc = tuple(sum(q[m] for q in far) / n for m in range(3))
     assert abs(d[0] + 1.0) < 1e-6 and abs(far[0][0] - far[-1][0]) < 1e-6 and abs(
         far[0][1] - far[-1][1]) < 1e-6, "LKL's plug no longer faces -X with its row along Z"
-    up = far[0][2] < far[-1][2]                        # way 1 at the row's low end
-    offs2 = [(0.0, (k - (n - 1) / 2.0) * CTRL_PITCH * (1.0 if up else -1.0)) for k in range(n)]
+    # ⚠ A TAUT BUNDLE, NOT A FLAT RUN ROUND J6's END (user, 2026-10-22: "the wires
+    # aren't taking a straight shot"). It was a flat four-way that came the long way
+    # round J6 whenever way 1 sat at the top of LKL's row, so as not to land the row
+    # reversed: 105 mm of conductor for 73 mm of distance. Four loose PHR-4 conductors
+    # do not care -- they lie as a bundle, pulled straight between the two plugs (routed
+    # by tools/route_cables.py; the hand path below stands in until it is), and spread
+    # onto their own ways over a CTRL_FAN run square out of each plug, the pedal cable's
+    # arrangement. Pairs stay adjacent in the bundle: rail with return, H with L.
+    _lead0 = CANB_LEAD          # the crimp's own length: the route, not a standoff, clears the cradle
+    _fa = tuple(farc[m] + d[m] * (_lead0 + CTRL_FAN) for m in range(3))
+    _fb = tuple(j6c[m] + _dn[m] * (CANB_LEAD + CTRL_FAN) for m in range(3))
     x6, zc = j6c[0], farc[2]
-    if up:          # way 1 lowest: arrive travelling -Y, the lowest lands furthest -Y
-        centre = [farc, (x6, farc[1], zc), (x6, j6c[1], zc), j6c]
-    else:           # way 1 highest: round the -Y end of J6 and arrive travelling +Y
-        _xa, _yb = x6 + 9 * D.BEAD, j6[0][1] - 6 * D.BEAD
-        centre = [farc, (_xa, farc[1], zc), (_xa, _yb, zc), (x6, _yb, zc), (x6, j6c[1], zc), j6c]
+    _hand = [_fa, (x6, _fa[1], zc), (x6, _fb[1], zc), _fb]
+    _s = CANB_WIRE_OD / 2.0 + 0.02
+    offs2 = [(-_s, -_s), (_s, -_s), (-_s, _s), (_s, _s)]   # PH_PINOUT: V5, GND | H, L
+    centre = ([farc] + _CR.taut("bus B lever head", _fa, _fb, CANB_WIRE_OD + 0.3, _hand)
+              + [j6c])
     legs2 = bundle_paths(centre, offs2, across=(0.0, 0.0, 1.0))
-    for k, q in enumerate(legs2):
-        for end, pin in ((q[0], far[k]), (q[-1], j6[k])):
-            assert max(abs(end[m] - pin[m]) for m in range(3)) < 0.05, (
-                "the lever head's ribbon does not land way %d on its pin: %r against %r"
-                % (k + 1, end, pin))
-    legs2 = _fan(_fan(legs2, 0, far, d, max(CANB_LEAD, _so)), -1, j6, _dn, CANB_LEAD)
+    legs2 = _fan(_fan(legs2, 0, far, d, _lead0), -1, j6, _dn, CANB_LEAD)
     _cable("bus B lever head", [(far[k], tuple(d), _j6e[k][2]) for k in range(n)], _j6e)
     for k, _hn in enumerate(EH.PH_PINOUT):          # conductor k lands on way k + 1
         nm = {"GND": "gnd", "V5": "v5", "CAN_H": "h", "CAN_L": "l"}[_hn]
