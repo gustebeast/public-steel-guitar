@@ -11,7 +11,8 @@ side, and a screw beside it falls short of the travel on three strings. A stand-
 this section cleared all ten.
 
   • HALF A — the HEAD half. The belt's end lies in a ribbed slot; the screw's head bears on
-    the seat wall at the inner end; between the two is an open window the head turns in.
+    the seat wall at the inner end; between the two is a window the head turns in, open
+    through A's bed face and top, with a two-bead wall either side of the head in z (WIN_HZ).
   • HALF B — the INSERT half. Same slot; the screw threads a brass insert that sits in a
     side-entry pocket BEHIND a shoulder, so belt tension presses the insert onto solid
     plastic. It is dropped in, not melted in: the pocket only has to stop it turning.
@@ -30,9 +31,8 @@ an even string's clamp on its lower run and the next odd string's on its upper r
 8.8 apart near the screws, each presenting its +y side to the other. So +y is kept as
 thin as it can be: A's rail there IS the slot's side wall, 3.5 from the belt's centre, with
 its two outer edges chamfered. Everything that needs room is on −y, which faces away:
-B's rail runs OUTSIDE A on that side (A's head window needs both its side rails to carry
-tension past the head), and the screw sits 0.3 toward −y so those two rails are equal.
-8.55 across in all.
+B's rail runs OUTSIDE A on that side, and the screw sits 0.3 toward −y (it centred the
+head window's old y rails; the window's walls are in z now). 8.55 across in all.
 
 THE KEY: the head faces the belt, so a straight key cannot reach it. A channel runs from
 the socket out through the back of half A at KEY_DEG, for the BALL END of the instrument's
@@ -114,12 +114,20 @@ END_WALL_A = 7 * B                           # 2.8 half A's: the key bore runs d
                                              # and stands two beads off the grip (asserted)
 GAP      = 2 * BP                            # 4.0 between the halves, fully loose = tension travel (2 teeth)
 SEAT_T   = 6 * B                             # 2.4 the wall the head bears on
-HEAD_CLR = 0.15                              # head to the window's side rails
+HEAD_CLR = 0.15                              # head to the window's side walls
+# THE HEAD WINDOW is a hole straight through A in y, its BED face to its top (user,
+# 2026-10-22): the two pieces that carry the belt's tension past the head are WALLS either side
+# of it in z, each two beads. They were rails across y -- a floor and a 6.4 bridge in A's print.
+# The head needs 2 * WIN_HZ of the body's BODY_T, so along the window A stands HZ each side.
+WIN_HZ   = HEAD_D / 2 + HEAD_CLR             # 2.9 the window's half-width in z
+HZ       = WIN_HZ + 2 * B                    # 3.7 A's half-thickness along the window (0.5 proud)
 IN_HW    = BW / 2 + EDGE_CLR + 2 * B         # 3.5 belt centre to the +y face, the side that
                                              # meets the neighbouring clamp: A's rail web alone
 SCREW_Y  = (IN_HW - HW) / 2                  # -0.3 the screw, midway across half A
 EDGE_CH  = B                                 # 0.4 chamfer on A's two +y edges
 KEY_DEG  = 25.0                              # ball-end key off the screw's axis
+KEY_FLANK = 48.0                             # the key bore's teardrop flanks off flat: the rim
+                                             # a face at KEY_DEG leaves is then inside 45 deg
 KEY_W    = 8 * B                             # 3.2 channel for the 2.5 key (2.9 over its corners)
 SOCKET_IN = HEAD_H / 2                       # the ball's centre below the head's top
 HEAD_ZONE = 16 * B                           # 6.4 window: the head, then room for the key to
@@ -153,6 +161,13 @@ assert MOUTH_B - (SCREW_Y + _TEAR) >= 2 * B - 1e-9, (
 _RAIL_JOINT = ((HT - (HT - FLANGE_T)) + RAIL_T - EDGE_CH) / math.sqrt(2.0)
 assert _RAIL_JOINT >= 2 * B - 1e-6, (
     "B's rail chamfer leaves %.2f where the web meets its flange, under two beads" % _RAIL_JOINT)
+_KEY_RIM = math.degrees(math.atan(math.cos(math.radians(KEY_DEG))
+                                  * math.tan(math.radians(KEY_FLANK))))
+assert _KEY_RIM >= 45.0, "the key bore's rim is %.1f deg off flat, past 45" % _KEY_RIM
+# the key bore's flat under the lips' face (y = -HW + FLANGE), which is all A has over it
+_KEY_LIG = (SCREW_Y - (KEY_W / 2 / math.cos(math.radians(KEY_FLANK)) - TIP / 2)) - (-HW + FLANGE)
+assert _KEY_LIG >= 2 * B - 1e-6, (
+    "the key bore leaves %.2f under the lips' face, under two beads" % _KEY_LIG)
 INS_POCKET = INS_D + INS_SLIP                # 4.8 the pocket's bore and the side slot's height
 assert (BODY_T - INS_POCKET) / 2 >= B * 2 - 1e-9, (
     "the insert's pocket leaves %.2f over and under it, under two beads of %.1f"
@@ -221,6 +236,26 @@ def _lips(x0: float, x1: float, y_from: float, toward: int) -> cq.Workplane:
     return out
 
 
+def _key_bore() -> cq.Workplane:
+    """The key's bore, from the ball's centre in the socket out through the back: a teardrop
+    whose apex points up A's print direction (UP_A), its flanks KEY_FLANK off flat and its tip
+    dulled to TIP. Not cadkit's printable_bore: its 45 deg flanks, crossed by a face at KEY_DEG,
+    leave a rim 48 deg off vertical (the edge's slope is atan(cos KEY_DEG * tan flank))."""
+    a = math.radians(KEY_DEG)
+    d = cq.Vector(-math.cos(a), 0.0, -math.sin(a))
+    up = cq.Vector(*UP_A)
+    r, f = KEY_W / 2, math.radians(KEY_FLANK)
+    apex = r / math.cos(f)
+    flat = apex - TIP / 2
+    w = (apex - flat) / math.tan(f)
+    pl = cq.Plane(origin=(-SEAT_T - SOCKET_IN, SCREW_Y, 0.0), xDir=up.cross(d), normal=d)
+    L = 2 * BODY_T / math.sin(a)
+    tear = [(-r * math.sin(f), r * math.cos(f)), (r * math.sin(f), r * math.cos(f)),
+            (w, flat), (-w, flat)]
+    return (cq.Workplane(pl).circle(r).extrude(L)
+            .union(cq.Workplane(pl).polyline(tear).close().extrude(L)))
+
+
 def half_a() -> cq.Workplane:
     """The HEAD half, inner face on x = 0, body toward −x. Slot opens −y, where its lips
     are thinned for B's rail; its own rail is on +y and reaches over B."""
@@ -228,25 +263,28 @@ def half_a() -> cq.Workplane:
     gx0, gx1 = -LEN_A, -LEN_A + GRIP                              # grip: outer end .. end wall
     cut, (ya, yb) = _belt_slot(gx0 - 1.0, gx1, -1)
     body = body.cut(cut).union(_ribs(gx0, -HW, yb))
-    wx1 = -SEAT_T                                                  # head window
-    body = body.cut(box_at(HEAD_ZONE, HEAD_D + 2 * HEAD_CLR, BODY_T + 2.0,
-                           x=wx1 - HEAD_ZONE / 2, y=SCREW_Y))
+    wx0, wx1 = -SEAT_T - HEAD_ZONE, -SEAT_T                        # head window
+    body = body.union(box_at(HEAD_ZONE, IN_HW + HW, 2 * HZ, x=(wx0 + wx1) / 2,
+                             y=(IN_HW - HW) / 2))                  # its two walls' room
+    body = body.cut(box_at(HEAD_ZONE, IN_HW + HW + 2.0, 2 * WIN_HZ, x=(wx0 + wx1) / 2,
+                           y=(IN_HW - HW) / 2))                    # through, bed face to top
     body = body.cut(printable_bore(SCR_CLR, SEAT_T + 0.2, (-SEAT_T - 0.1, SCREW_Y, 0.0),
                                    (1.0, 0.0, 0.0), UP_A, nozzle=TIP))  # screw clearance
     # key channel: from the socket, down and outward through the back (−z) -- a BORE on the
-    # key's own axis (the ball end turns about it), teardropped for A's print direction: it
-    # used to be everything under the bore's upper edge, whose flat side was a ceiling
-    a = math.radians(KEY_DEG)
-    px = -SEAT_T - SOCKET_IN
-    body = body.cut(printable_bore(KEY_W, 2 * BODY_T / math.sin(a), (px, SCREW_Y, 0.0),
-                                   (-math.cos(a), 0.0, -math.sin(a)), UP_A, nozzle=TIP))
+    # key's own axis (the ball end turns about it), teardropped for A's print direction, its
+    # flanks at KEY_FLANK so the rims it leaves where it crosses the faces at KEY_DEG print
+    # (see _key_bore). It crosses the head window's -z wall, so it stays a bore: opened to the
+    # bed face it would leave that wall a strip, and it cannot come in from the bed side at
+    # all -- any tilt toward +y meets the belt in the grip.
+    body = body.cut(_key_bore())
     body = body.cut(_lips(-LEN_A - 1.0, 1.0, -HW + FLANGE, -1))
     body = body.union(_rail(0.0, RAIL_A_L, IN_HW, -1))
-    for sz in (1, -1):                                             # the two +y edges
-        tri = [(IN_HW + 0.1, sz * (HT - EDGE_CH - 0.1)), (IN_HW + 0.1, sz * (HT + 0.1)),
-               (IN_HW - EDGE_CH - 0.1, sz * (HT + 0.1))]
-        body = body.cut(cq.Workplane("YZ").polyline(tri).close()
-                        .extrude(LEN_A + RAIL_A_L + 2.0).translate((-LEN_A - 1.0, 0.0, 0.0)))
+    for x0, x1, h in ((-LEN_A - 1.0, wx0, HT), (wx0, wx1, HZ), (wx1, RAIL_A_L + 1.0, HT)):
+        for sz in (1, -1):                                         # the two +y edges
+            tri = [(IN_HW + 0.1, sz * (h - EDGE_CH - 0.1)), (IN_HW + 0.1, sz * (h + 0.1)),
+                   (IN_HW - EDGE_CH - 0.1, sz * (h + 0.1))]
+            body = body.cut(cq.Workplane("YZ").polyline(tri).close()
+                            .extrude(x1 - x0).translate((x0, 0.0, 0.0)))
     return body
 
 
