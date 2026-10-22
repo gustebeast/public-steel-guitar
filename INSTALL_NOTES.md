@@ -743,6 +743,15 @@ at the adapter's face**, so the run is continuous; the only exposed length is th
 underside crossing. It passes J6 on the endplate side of it (5 mm toward the keyhead), so
 the lever chain's plug can come out without moving it.
 
+**Cut it long enough for restringing: 178 mm, ZR to PH** (`wiring.pedal_cable_cut`,
+2026-10-22). Strings change with **no JST unplugged**: the leg's adapter slides 25.6 mm
+outboard (legs.SERVICE_SLIDE) with this cable still in both plugs. Pulled taut, the
+underside run is 91.8 mm with the leg home and 116.1 mm with it slid out
+(`tools/route_cables.py`). The cable is cut for the slid-out pose, plus its run inside
+the adapter, the drop into J2 and 15 mm for the crimps. So **with the leg home it
+carries about 24 mm of slack**. Let that slack lie as a loose bow under the body; don't
+pull it tight or tie it down short, or the leg will drag the plugs when it slides.
+
 ### BB-3 — The lever chain's head
 
 Four conductors from **J6** (4-way PH, 16 mm +Y of J2) to **LKL's J1** (its bus in) — the end
