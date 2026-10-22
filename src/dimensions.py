@@ -802,7 +802,7 @@ def motor_pos(i: int):
 # stopped by the nut long before the clamp -- but one travel is one number in the
 # firmware, one plate height, and the same range on every string.
 BELT_PER_MM     = PULLEY_TEETH * BELT_PITCH / SCREW_PITCH      # 14 of belt per mm of nut
-BELT_CLAMP_L    = 49.2      # the clamp along the belt, fully loose. MEASURED off
+BELT_CLAMP_L    = 51.2      # the clamp along the belt, fully loose. MEASURED off
                             # belt_tensioner's solids; build.py asserts it still is.
 CLAMP_END_CLR   = 5.0       # belt left between the clamp and each pulley flange
 BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
@@ -814,7 +814,7 @@ BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
 # docs/belt-clamp-travel.md). The in-line M3 clamp (belt_tensioner, 2026-10-05) is that
 # slim: measured there, every string's span is limited by the ends of its run alone.
 # ...AND NO MORE THAN IS WANTED. With the bank against the endplate the shortest run is
-# 194.0 and this sum allows 9.53; the nut does not get travel it has no use for.
+# 194.0 and this sum allows 8.70; the nut does not get travel it has no use for.
 CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
                                     - 2 * CLAMP_END_CLR) / BELT_PER_MM)   # 8.35
 NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -26.17, the FLOOR: the
