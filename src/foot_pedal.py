@@ -74,10 +74,11 @@ WHERE THE HOUSINGS LAND. Five pedals on the 62.4 pitch span 277.6 (10.93 in) and
 the cluster crosses a splice, so pedal_bar_a takes 2 housings and pedal_bar_b takes
 3 (c takes none). THE SPLICES ARE DERIVED FROM THE STATIONS for exactly this reason
 — see pedal_bar, where the layout now lives: a flat BAR_X0 + 215 put XS1 at -417.20,
-inside the -413.20 pedal, cutting it in half. XS1 now sits in a pedal GAP at -426.60,
-31.2 clear of the nearest pedal centre. Pieces come out 205.6 / 215.6 / 215.6 long,
-293.1 / 305.0 / 187.4 cm3; bed lying on the -Y face 211.2 x 111.4, 221.2 x 111.4 and
-215.6 x 89.0, all inside 255, print height 35.6. The first pad sits 62.4 — one whole
+inside the -413.20 pedal, cutting it in half. XS1 now sits in a pedal GAP, between the
+-X pedal's keep and the +X pedal's BOARD BAY less a mortise and a wall (2026-10-21: at the
+gap's midpoint the bay had grown past the splice and the harness ran through the tenon):
+-436.94, 20.9 off pedal 1 and 41.5 off pedal 2. Pieces come out ~205 / 229 / 229 long,
+all inside 255, print height 35.6. The first pad sits 62.4 — one whole
 pitch, the empty slot 1 — off the keyhead leg's INBOARD FACE.
 
 DEFERRED (this is the first round):
@@ -419,7 +420,8 @@ assert KL.board_z(CRADLE_Z0, HOUS_Z1, BOARD_FLIP)[0] >= HOUS_Z0 - 1e-6, (
 CRADLE_X_MAX = -KL.PCB_X0                          # 29.0
 # Everything that has to live inside the beam: the board's lower half, the mated
 # connector and the plug's reach past the mouth.
-BAY_CLR = 0.6                                      # printed clearance around the bay
+BAY_CLR = PB.BAY_CLR                               # printed clearance around the bay (the
+                                                   # bar's: it places the splices clear of it)
 # WHERE THE SHIM STOPS. The knee lever's shim runs to the housing ceiling and the
 # chassis underside presses it. The pedal's ceiling IS the bar's +Y face — and that
 # face carries the lid groove, so a full-height shim runs straight into the lid (the
@@ -464,6 +466,10 @@ def board_bay_cutter():
     x0, x1 = HOUS_X1 - 20.0, max(max(p.val().BoundingBox().xmax for p in parts) + BAY_CLR,
                                  CRADLE_X_MAX + BAY_CLR,
                                  BAR_TOP_Z - PB.TROUGH_Z0)    # -20: run out through the top
+    # the bar placed its splices off this bay's +Y (guitar -X) reach, read as the cradle's
+    assert y1 <= PB.BAY_REACH + 1e-6, (
+        "the board bay reaches %.2f -X of its station, past pedal_bar.BAY_REACH %.2f: the "
+        "splices were placed against a bay smaller than this one" % (y1, PB.BAY_REACH))
     return box_at(x1 - x0, y1 - y0, z1 - z0,
                   x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(z0 + z1) / 2)
 
