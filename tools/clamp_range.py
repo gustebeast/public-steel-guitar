@@ -8,8 +8,12 @@ Belts, pulleys and clamps ONLY (user, 2026-10-05); the chassis, endplates, board
 wiring are tools.clamp_study's and the overlap gate's business.
 
 Each clamp is taken as its BOUNDING BOX in its own frame, which is what makes this cheap
-enough to do exhaustively and errs on the safe side. Clamp against clamp is then settled
-on the REAL solids wherever two boxes meet, so a chamfer or a relief counts. It is stepped from one end of its
+enough to do exhaustively and errs on the safe side. Every question is then settled on
+the REAL solids wherever a box meets something, so a chamfer or a relief counts (until
+2026-10-22 only clamp against clamp was; own belt and static went on the box). Steps are
+tried COARSE first, CLAMP_COARSE (default 4) to a box stretched and widened to hold all of
+them; only a chunk whose box meets something is tried step by step. CLAMP_COARSE=1 tries
+every step alone: same verdicts, checked identical, ~2.6x the time. It is stepped from one end of its
 run to the other -- CLAMP_END_CLR off each pulley flange, further than the nut's travel
 ever carries it -- on the run it is installed on, turned with the belt, and at every step
 it is tried at the nominal twist and twist_err either side. Three questions per step:
@@ -39,11 +43,14 @@ V = cq.Vector
 KIN = C                 # main() has a local C (the posed boxes)
 N = D.N_STRINGS
 R = C.BELT_R
-REACH_MARGIN = D.CLAMP_END_CLR   # mm of belt past the far end of the travel: a clamp spliced
-                                 # off its mark by as much as its whole end clearance
+REACH_MARGIN = 2 * D.BELT_PITCH  # 4.0 mm of belt past the far end of the travel: a clamp
+                                 # spliced up to two teeth off its mark (INSTALL_NOTES; it was
+                                 # the whole end clearance, 5.0, until the clamp grew to 51.2
+                                 # and string 10 came out 0.1 short of that)
 STEP = float(sys.argv[1]) if len(sys.argv) > 1 else 4.0
 ERR = float(sys.argv[2]) if len(sys.argv) > 2 else 20.0
 OUT = sys.argv[3] if len(sys.argv) > 3 else None
+COARSE = int(os.environ.get("CLAMP_COARSE", "4"))   # steps per coarse chunk; 1 = every step alone
 
 _bbs = [s.val().BoundingBox() for _n, s in BTn.clamp_components()]
 X0, X1 = min(b.xmin for b in _bbs), max(b.xmax for b in _bbs)
@@ -77,6 +84,11 @@ def posed(i, p, da):
     m, s = _ends(i)
     o, xd, n = C.clamp_frame(m, s, upper(i), p, X0, X1, da)
     return cq.Location(cq.Plane(origin=o, xDir=xd, normal=n))
+
+
+def C_frame(i, p, da):
+    m, s = _ends(i)
+    return C.clamp_frame(m, s, upper(i), p, X0, X1, da)
 
 
 def steps(i):
@@ -138,37 +150,84 @@ def main():
             _real[(i, k, t)] = REAL.moved(LOC[i][k][t])
         return _real[(i, k, t)]
     CB = {i: [[c.BoundingBox() for c in row] for row in C[i]] for i in range(N)}
+    # COARSE, THEN FINE. COARSE consecutive steps are one CHUNK, tried first as one box that
+    # holds every one of them: the clamp box stretched along the belt by half the chunk's
+    # length each way, and widened across it by what the belt's turn over the chunk can
+    # swing a corner (R * half the turn, the clamp turning about the belt's own line). Where
+    # a chunk's box meets nothing, none of its steps can; only where it does are the steps
+    # tried one by one -- box first, then the REAL clamp wherever a box meets something, so a
+    # chamfer or a relief counts here as it does clamp against clamp.
+    R = math.hypot(max(abs(Y0), abs(Y1)), max(abs(Z0), abs(Z1)))
+    CH = {i: [list(range(k, min(k + COARSE, len(P[i])))) for k in range(0, len(P[i]), COARSE)]
+          for i in range(N)}
+
+    def chunk_box(i, ks, t):
+        m, sc = _ends(i)
+        p0, p1 = P[i][ks[0]], P[i][ks[-1]]
+        nm = C_frame(i, (p0 + p1) / 2.0, DAS[t])[2]
+
+        def ang(p):
+            n = C_frame(i, p, DAS[t])[2]
+            return math.acos(max(-1.0, min(1.0, sum(a * b for a, b in zip(n, nm)))))
+        turn = max(ang(P[i][k]) for k in ks)          # the furthest any step turns off the middle
+        h, e = (p1 - p0) / 2.0, 2.0 * R * math.sin(turn / 2.0) + 1e-3   # a corner's chord
+        box = (cq.Workplane("XY").box(X1 - X0 + 2 * h, Y1 - Y0 + 2 * e, Z1 - Z0 + 2 * e,
+                                      centered=False)
+               .translate((X0 - h, Y0 - e, Z0 - e)).val())
+        return box.moved(posed(i, (p0 + p1) / 2.0, DAS[t]))
+    CHB = {i: [[chunk_box(i, ks, t) for t in range(len(DAS))] for ks in CH[i]] for i in range(N)}
+    CHBB = {i: [[b.BoundingBox() for b in row] for row in CHB[i]] for i in range(N)}
+
+    def meets(c, cb, s, sb):
+        return not far(cb, sb) and vol(c, s) > 1e-3
+
     res = {i: [dict(p=round(p, 1), own=0.0, static={}, clamps={}) for p in P[i]] for i in range(N)}
+    fine = 0
     for i in range(N):
         ob, obb = own[i]
-        for k in range(len(P[i])):
-            for c, cb in zip(C[i][k], CB[i][k]):
-                if not far(cb, obb):
-                    res[i][k]["own"] = max(res[i][k]["own"], round(vol(c, ob), 3))
-                for nm, (j, s, sb) in static.items():
-                    if j == i or far(cb, sb):
-                        continue
-                    v = vol(c, s)
-                    if v > 1e-3:
-                        res[i][k]["static"][nm] = max(res[i][k]["static"].get(nm, 0.0), round(v, 3))
+        others = [(nm, s, sb) for nm, (j, s, sb) in static.items() if j != i]
+        for q, ks in enumerate(CH[i]):
+            for t in range(len(DAS)):
+                hb, hbb = CHB[i][q][t], CHBB[i][q][t]
+                own_hit = meets(hb, hbb, ob, obb)
+                near = [(nm, s, sb) for nm, s, sb in others if meets(hb, hbb, s, sb)]
+                if not own_hit and not near:
+                    continue
+                for k in ks:
+                    c, cb = C[i][k][t], CB[i][k][t]
+                    fine += 1
+                    if own_hit and meets(c, cb, ob, obb):
+                        res[i][k]["own"] = max(res[i][k]["own"], round(vol(real(i, k, t), ob), 3))
+                    for nm, s, sb in near:
+                        if meets(c, cb, s, sb):
+                            v = vol(real(i, k, t), s)
+                            if v > 1e-3:
+                                res[i][k]["static"][nm] = max(res[i][k]["static"].get(nm, 0.0),
+                                                              round(v, 3))
         print("string %2d own/static done (%d steps, %.0fs)" % (i + 1, len(P[i]), time.time() - t0),
               flush=True)
     for i in range(N):
         for j in range(i + 1, N):
             worst = 0.0
-            for k in range(len(P[i])):
-                for m in range(len(P[j])):
-                    v = 0.0
-                    for t, (c, cb) in enumerate(zip(C[i][k], CB[i][k])):
-                        for u, (e, eb) in enumerate(zip(C[j][m], CB[j][m])):
-                            if not far(cb, eb) and vol(c, e) > 1e-3:
-                                v = max(v, vol(real(i, k, t), real(j, m, u)))
-                    if v > 1e-3:
-                        res[i][k]["clamps"].setdefault(str(j + 1), []).append(round(P[j][m], 1))
-                        res[j][m]["clamps"].setdefault(str(i + 1), []).append(round(P[i][k], 1))
-                        worst = max(worst, v)
+            for q, ks in enumerate(CH[i]):
+                for r, ms in enumerate(CH[j]):
+                    if not any(meets(CHB[i][q][t], CHBB[i][q][t], CHB[j][r][u], CHBB[j][r][u])
+                               for t in range(len(DAS)) for u in range(len(DAS))):
+                        continue
+                    for k in ks:
+                        for m in ms:
+                            v = 0.0
+                            for t, (c, cb) in enumerate(zip(C[i][k], CB[i][k])):
+                                for u, (e, eb) in enumerate(zip(C[j][m], CB[j][m])):
+                                    if meets(c, cb, e, eb):
+                                        v = max(v, vol(real(i, k, t), real(j, m, u)))
+                            if v > 1e-3:
+                                res[i][k]["clamps"].setdefault(str(j + 1), []).append(round(P[j][m], 1))
+                                res[j][m]["clamps"].setdefault(str(i + 1), []).append(round(P[i][k], 1))
+                                worst = max(worst, v)
             if worst > 0:
                 print("clamp %d x clamp %d: worst %.2f mm3" % (i + 1, j + 1, worst), flush=True)
+    print("fine steps tried: %d of %d" % (fine, sum(len(P[i]) for i in range(N)) * len(DAS)))
     print("pairs done %.0fs" % (time.time() - t0), flush=True)
     need = D.CARRIAGE_TRAVEL * D.BELT_PER_MM
     win = {}

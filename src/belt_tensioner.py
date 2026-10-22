@@ -63,6 +63,7 @@ import cadquery as cq
 from . import dimensions as D
 from .helpers import box_at, cyl_x
 from cadkit.fasteners import FastenerSpec, headed_screw, seated_insert
+from cadkit.supports import printable_bore
 
 NOZZLE_D = 0.4                    # this part prints 0.4 (GT2 ribs)
 B = NOZZLE_D
@@ -71,6 +72,12 @@ BW  = D.BELT_W            # 5.0  belt width (y)
 BT  = D.BELT_T            # 1.4  belt through its teeth (z)
 BTH = D.BELT_TOOTH_H      # 0.75 tooth height
 BP  = D.BELT_PITCH        # 2.0  pitch
+
+# each half prints lying on a closed side face (see PRINT), so every bore along x is SIDEWAYS
+UP_A = (0.0, -1.0, 0.0)           # A on its +y face, building -y
+UP_B = (0.0, 1.0, 0.0)            # B on its -y face, building +y
+TIP = 2 * B                       # a teardrop's tip dulled to a two-bead flat: the widest
+                                  # flat ceiling allowed, and it keeps B's skin (asserted)
 
 # ── the screw: M3 socket head cap (ISO 4762), the 2.5 mm key ─────────────────────────────
 HEAD_D   = 5.5
@@ -103,6 +110,8 @@ HW, HT   = BODY_W / 2, BODY_T / 2
 N_TEETH  = 6                                 # ribs per grip (~the belt's full rating)
 GRIP     = N_TEETH * BP + B                  # 12.4 slot length
 END_WALL = 2 * B                             # 0.8 the wall the belt's cut end stops on
+END_WALL_A = 7 * B                           # 2.8 half A's: the key bore runs down through it
+                                             # and stands two beads off the grip (asserted)
 GAP      = 2 * BP                            # 4.0 between the halves, fully loose = tension travel (2 teeth)
 SEAT_T   = 6 * B                             # 2.4 the wall the head bears on
 HEAD_CLR = 0.15                              # head to the window's side rails
@@ -115,7 +124,7 @@ KEY_W    = 8 * B                             # 3.2 channel for the 2.5 key (2.9 
 SOCKET_IN = HEAD_H / 2                       # the ball's centre below the head's top
 HEAD_ZONE = 16 * B                           # 6.4 window: the head, then room for the key to
                                              # rise clear of the belt's back before the grip
-LEN_A    = SEAT_T + HEAD_ZONE + END_WALL + GRIP          # 22.0
+LEN_A    = SEAT_T + HEAD_ZONE + END_WALL_A + GRIP        # 24.0
 
 SHOULDER = 4 * B                             # 1.6 the wall the insert is pulled against
 INS_FIT  = 0.2                               # insert pocket over the insert, along the screw
@@ -135,17 +144,23 @@ RAIL_A_L = LEN_B                             # A's rail: flush with B's outer en
 RAIL_B_L = LEN_A                             # B's rail: likewise over A
 
 assert RUNOUT >= 0, "the screw is too long for half B at the closed position"
+_TEAR = max(SCR_CLR / 2 * math.sqrt(2.0) - TIP / 2, SCR_CLR / 2)   # bore axis -> teardrop flat
+assert MOUTH_B - (SCREW_Y + _TEAR) >= 2 * B - 1e-9, (
+    "B's screw-bore teardrop leaves %.2f under its +y face, under two beads"
+    % (MOUTH_B - (SCREW_Y + _TEAR)))
 INS_POCKET = INS_D + INS_SLIP                # 4.8 the pocket's bore and the side slot's height
 assert (BODY_T - INS_POCKET) / 2 >= B * 2 - 1e-9, (
     "the insert's pocket leaves %.2f over and under it, under two beads of %.1f"
     % ((BODY_T - INS_POCKET) / 2, B))
-# the key's channel must be clear of the belt's back where the grip begins
-_KEY_RUN = SEAT_T + HEAD_ZONE + END_WALL - (SEAT_T + SOCKET_IN)
+# the key's bore must stand two beads off the belt's back where the grip begins
+_KEY_RUN = SEAT_T + HEAD_ZONE + END_WALL_A - (SEAT_T + SOCKET_IN)
 _KEY_Z   = (-_KEY_RUN * math.tan(math.radians(KEY_DEG))
             + (KEY_W / 2) / math.cos(math.radians(KEY_DEG)))
-assert _KEY_Z <= -SLOT_H / 2 + 1e-6, (
-    "the key channel reaches z %.2f at the grip, into the belt's slot (%.2f): lengthen "
-    "HEAD_ZONE or steepen KEY_DEG" % (_KEY_Z, -SLOT_H / 2))
+# ...measured SQUARE to the bore: the nearest point is the slot's corner at the grip's start
+_KEY_WALL = (-SLOT_H / 2 - _KEY_Z) * math.cos(math.radians(KEY_DEG))
+assert _KEY_WALL >= 2 * B - 1e-6, (
+    "the key bore stands %.2f off the belt's slot at the grip, under two beads: lengthen "
+    "END_WALL_A (a 25 deg ball end cannot go steeper)" % _KEY_WALL)
 
 # ── where the belt's two cut ends are ─────────────────────────────────────────────────────
 BELT_END_A = LEN_A - GRIP                    # 9.6 half A's inner face to its end wall
@@ -211,16 +226,15 @@ def half_a() -> cq.Workplane:
     wx1 = -SEAT_T                                                  # head window
     body = body.cut(box_at(HEAD_ZONE, HEAD_D + 2 * HEAD_CLR, BODY_T + 2.0,
                            x=wx1 - HEAD_ZONE / 2, y=SCREW_Y))
-    body = body.cut(cyl_x(SCR_CLR, SEAT_T + 0.2, -SEAT_T - 0.1, y=SCREW_Y))   # screw clearance
-    # key channel: from the socket, down and outward through the back (−z)
+    body = body.cut(printable_bore(SCR_CLR, SEAT_T + 0.2, (-SEAT_T - 0.1, SCREW_Y, 0.0),
+                                   (1.0, 0.0, 0.0), UP_A, nozzle=TIP))  # screw clearance
+    # key channel: from the socket, down and outward through the back (−z) -- a BORE on the
+    # key's own axis (the ball end turns about it), teardropped for A's print direction: it
+    # used to be everything under the bore's upper edge, whose flat side was a ceiling
     a = math.radians(KEY_DEG)
     px = -SEAT_T - SOCKET_IN
-    ex, ez = px - 40.0 * math.cos(a), -40.0 * math.sin(a)
-    nx, nz = -math.sin(a) * KEY_W / 2, math.cos(a) * KEY_W / 2
-    pts = [(px + nx, nz), (ex + nx, ez + nz), (ex, -40.0), (px, -40.0)]
-    key = (cq.Workplane("XZ").polyline(pts).close().extrude(KEY_W / 2, both=True)
-           .translate((0.0, SCREW_Y, 0.0)))
-    body = body.cut(key)
+    body = body.cut(printable_bore(KEY_W, 2 * BODY_T / math.sin(a), (px, SCREW_Y, 0.0),
+                                   (-math.cos(a), 0.0, -math.sin(a)), UP_A, nozzle=TIP))
     body = body.cut(_lips(-LEN_A - 1.0, 1.0, -HW + FLANGE, -1))
     body = body.union(_rail(0.0, RAIL_A_L, IN_HW, -1))
     for sz in (1, -1):                                             # the two +y edges
@@ -237,7 +251,8 @@ def half_b() -> cq.Workplane:
     on −y, stood RAIL_STEP off half A so it passes OUTSIDE it."""
     y0, y1 = -HW - RAIL_STEP, MOUTH_B
     body = box_at(LEN_B, y1 - y0, BODY_T, x=LEN_B / 2, y=(y0 + y1) / 2)
-    body = body.cut(cyl_x(SCR_CLR, INNER_B - B + 0.1, -0.1, y=SCREW_Y))       # clearance + runout
+    body = body.cut(printable_bore(SCR_CLR, INNER_B - B + 0.1, (-0.1, SCREW_Y, 0.0),
+                                   (1.0, 0.0, 0.0), UP_B, nozzle=TIP))  # clearance + runout
     ix0, il = SHOULDER, INS_L + INS_FIT                            # insert pocket, side entry
     body = body.cut(cyl_x(INS_POCKET, il, ix0, y=SCREW_Y))
     body = body.cut(box_at(il, 6.0, INS_POCKET, x=ix0 + il / 2, y=SCREW_Y + 3.0))
@@ -258,8 +273,8 @@ def screw_dummy() -> cq.Workplane:
 
 # ── coupon: the two halves in their print poses ───────────────────────────────────────────
 COUPON_UP = (0.0, 0.0, 1.0)     # the plate's direction; each half is turned onto its bed face
-HALF_A_UP = (0.0, -1.0, 0.0)    # each half on its own: A lies on its closed +y face,
-HALF_B_UP = (0.0, 1.0, 0.0)     # B on its closed -y face, both slots opening upward
+HALF_A_UP = UP_A                # each half on its own: A lies on its closed +y face,
+HALF_B_UP = UP_B                # B on its closed -y face, both slots opening upward
 
 
 def tensioner_coupon() -> cq.Workplane:
