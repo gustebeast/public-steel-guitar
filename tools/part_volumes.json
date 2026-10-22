@@ -19,11 +19,11 @@
   },
   "belt_tensioner_half_a": {
    "material": "pctg",
-   "volume_mm3": 779.2
+   "volume_mm3": 877.5
   },
   "belt_tensioner_half_b": {
    "material": "pctg",
-   "volume_mm3": 997.9
+   "volume_mm3": 1008.2
   },
   "body_adapter": {
    "material": "petg-gf",
@@ -251,7 +251,7 @@
   },
   "test_belt_tensioner": {
    "material": null,
-   "volume_mm3": 1777.1
+   "volume_mm3": 1885.7
   },
   "test_cover_plate": {
    "material": null,
