@@ -43,8 +43,10 @@ V = cq.Vector
 KIN = C                 # main() has a local C (the posed boxes)
 N = D.N_STRINGS
 R = C.BELT_R
-REACH_MARGIN = D.CLAMP_END_CLR   # mm of belt past the far end of the travel: a clamp spliced
-                                 # off its mark by as much as its whole end clearance
+REACH_MARGIN = 2 * D.BELT_PITCH  # 4.0 mm of belt past the far end of the travel: a clamp
+                                 # spliced up to two teeth off its mark (INSTALL_NOTES; it was
+                                 # the whole end clearance, 5.0, until the clamp grew to 51.2
+                                 # and string 10 came out 0.1 short of that)
 STEP = float(sys.argv[1]) if len(sys.argv) > 1 else 4.0
 ERR = float(sys.argv[2]) if len(sys.argv) > 2 else 20.0
 OUT = sys.argv[3] if len(sys.argv) > 3 else None

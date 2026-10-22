@@ -135,11 +135,13 @@ turns on the 2.5 mm hex key. See `BOM.md` and
 - **Where:** every string's belt-tension clamp (`belt_tensioner_*`), all ten belts.
 - **Do:** run the string's nut UP until it stops against the endplate ceiling (the hard top
   stop, and the restringing position). Then splice the clamp onto the belt **5 mm from the
-  pulley it has just been travelling toward**. From there the nut's whole travel carries the
+  pulley it has just been travelling toward**, and within **two teeth (4 mm)** of that
+  mark: the belt is cut to a tooth count, so count teeth rather than measure. From there the nut's whole travel carries the
   clamp away from that pulley and stops it about 5 mm short of the other one on string 10.
 - **Why:** the clamp is part of the belt and moves 14 mm for every 1 mm of nut travel. The
   nut's travel (8.35 mm, ceiling to floor) has the clamp on the SHORTEST belt (string 10)
-  use 116.9 of the 133.8 mm it has between pulleys. The 5 mm gap at this end is yours to set, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
+  use 116.9 of the 131.8 mm it has between pulleys (the clamp is 51.2 long). A clamp
+  spliced two teeth past its mark still ends 6 mm short of the far pulley on string 10. The 5 mm gap at this end is yours to set, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
   with the nut somewhere in mid-travel, and it reaches a pulley before the nut reaches its stop.
 - **Strings 1-8 are forgiving** (their belts are longer; string 9 has about 15 mm per end),
   but use the same rule everywhere so there is one procedure.
