@@ -48,10 +48,11 @@ builds −y → +y. That is why the slots open on opposite faces: A's rail is on
 and the lips it hooks on B are on B's top face, and in the assembly those are the same
 side; likewise B's rail and A's lips.
 
-⚠ NOT YET PROVEN, in the order a coupon should answer them: the side-entry grip under a
-twisting belt; the dropped-in insert staying still while the screw is turned; the ball
-end reaching the socket at KEY_DEG; the M3 insert's real size (INS_D / INS_L are
-McMaster 94459A130's DRAWING numbers -- measure one before printing).
+PROVEN ON THE BENCH (user, 2026-10-22, r6 on string 10's belt, cut to 195 teeth: "works
+perfect, we can lock in this design"): the side-entry grip under tension, the dropped-in
+insert holding still while the screw turns, the ball end reaching the socket at KEY_DEG,
+and the dovetail rails keeping the halves together under load. LOCKED: change it only for
+a reason found on the instrument. Still the drawing's: INS_D / INS_L (McMaster 94459A130).
 """
 
 from __future__ import annotations
