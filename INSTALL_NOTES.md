@@ -130,6 +130,19 @@ turns on the 2.5 mm hex key. See `BOM.md` and
 - **Don't** substitute a larger washer: anything over Ø9.6 reaches the bearing's
   shield and rubs.
 
+## Belt clamps: put each one together insert, screw, then B
+
+- **Where:** every belt-tension clamp (`belt_tensioner_half_a` / `_b`), before it goes on a belt.
+- **Do:** 1. drop the M3 insert into half B's side pocket (the U in its +y face), from the side,
+  by hand -- it is not heat-set. 2. Drop the M3 x 12 socket head into half A from A's TOP face:
+  head into the window, shank into the seat's slot, the head pushed past the small lip over
+  it. 3. Slide B onto A along the rails until the screw's tip meets B's bore, and start the
+  thread with the 2.5 ball end through the key bore.
+- **Why:** the screw is 15 long and A's window 6.4, so it cannot be fed in along its axis; it
+  drops in sideways. Once B is on, B's rail covers the slot and A's rail covers the insert's
+  pocket. Under belt tension the lip keeps the head too: to leave the slot it would have to
+  back 0.85 off the seat, which means stretching the belt.
+
 ## Belt clamps: splice each one with the nut ON THE CEILING, 5 mm off the pulley
 
 - **Where:** every string's belt-tension clamp (`belt_tensioner_*`), all ten belts.
