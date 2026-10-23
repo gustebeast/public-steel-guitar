@@ -112,7 +112,7 @@ PARTS = {
     # takes up what is left of each cradle above it. Three heights, so three parts; each
     # is knee_lever.pcb_shim called with that cradle's own extents, in the lever's frame.
     "kl_pcb_shim":     (lambda: (lambda KL: KL.pcb_shim(KL.HOUS_Z0, KL.HOUS_Z1))(__import__("src.knee_lever", fromlist=["e"])), "pctg/kl_pcb_shim.step", "PCTG — sensor-board shim, LEFT-HAND knee levers (x2: LKL, RKL): a 33.0 x 1.55 strip one board thick that drops down the cradle grooves on top of the board, so the chassis underside presses the board through it. The right-hand housings need none. Prints FLAT, on a big face"),
-    "kv_pcb_shim":     (lambda: (lambda KL, KV: KL.pcb_shim(KV.HOUS_Z0, KV.HOUS_Z1))(__import__("src.knee_lever", fromlist=["e"]), __import__("src.knee_lever_vert", fromlist=["e"])), "pctg/kv_pcb_shim.step", "PCTG — sensor-board shim, VERTICAL knee lever (x1): the same plate 20.95 tall, filling the taller housing's cradle above the one board. Prints FLAT, on a big face"),
+    "kv_pcb_shim":     (lambda: __import__("src.knee_lever_vert", fromlist=["e"]).kv_pcb_shim, "pctg/kv_pcb_shim.step", "PCTG — sensor-board shim, VERTICAL knee lever (x1): the same plate 20.95 tall, filling the taller housing's cradle above the one board. Prints FLAT, on a big face"),
     "pedal_pcb_shim":  (lambda: (lambda KL, FP: KL.pcb_shim(FP.CRADLE_Z0, FP.SHIM_TOP, FP.BOARD_FLIP))(__import__("src.knee_lever", fromlist=["e"]), __import__("src.foot_pedal", fromlist=["e"])), "pctg/pedal_pcb_shim.step", "PCTG — sensor-board shim, FOOT PEDALS (x5): the same plate 24.70 tall, standing from the board's edge to the bar's lid groove; the LID presses it. Prints FLAT, on a big face"),
     # THE NUT'S SLIDING INSERTS: ten in the instrument, THREE parts (nut_block.sku_gauge_max:
     # every insert of a SKU is one part). Each row builds its SKU's first string.
@@ -597,9 +597,12 @@ def _declared():
          "the build. Printed +Z with the cartridge it would lay its tongue "
          "out sideways as a flat cantilever over air"),
         (["kv_lever"], _KVX.LEVER_UP,
-         "knee_lever_vert.LEVER_UP — the same one fact as the LKL arm, read "
-         "through this lever own pose (pose_dir(POSE_ROT, KL.LEVER_UP))"),
-        (["kl_pcb_shim", "kv_pcb_shim", "pedal_pcb_shim"], _KLX.SHIM_UP,
+         "knee_lever_vert.LEVER_UP — the same one fact as the LKL arm, on "
+         "this lever's axle (X): it lies on its -X face"),
+        (["kv_pcb_shim"], _KVX.SHIM_UP,
+         "knee_lever_vert.SHIM_UP — the same flat plate as the LKL shim, standing in this "
+         "lever's board plane (across X): it lies on its -X face"),
+        (["kl_pcb_shim", "pedal_pcb_shim"], _KLX.SHIM_UP,
          "knee_lever.SHIM_UP — flat on a big face, building through its "
          "own 1.6 thickness: a plain plate, nothing overhangs"),
         (["nut_slide_insert_a", "nut_slide_insert_b", "nut_slide_insert_c"],
@@ -1539,7 +1542,7 @@ def _vkl_station() -> float:
     """
     from . import knee_lever_vert as KV
     mid = _LKL_X + _KNEE_GAP_L / 2.0
-    # its tenons sit at KV.TEN_Y in the guitar's X once posed; _lever_station returns the MOUNT
+    # its tenons sit at KV.TEN_X along the instrument; _lever_station returns the MOUNT
     # that puts them all on real stations, so there is nothing left to subtract here (there used
     # to be, when it returned a station and this had to undo the offset by hand).
     #
@@ -1549,10 +1552,10 @@ def _vkl_station() -> float:
     # Stepped by a whole PITCH, so the three tenons stay in slots that exist -- re-checked below
     # rather than assumed, because a lever over solid floor is 1-2.5 cm3 of interference and the
     # gate is the only other thing that would notice.
-    m = _lever_station(mid, KV.TEN_Y) - D.LEVER_PITCH
+    m = _lever_station(mid, KV.TEN_X) - D.LEVER_PITCH
     from . import chassis as CH_V
     _have = set(round(x, 3) for x in CH_V._MORT_X)
-    _off = [round(m + t, 3) for t in KV.TEN_Y if round(m + t, 3) not in _have]
+    _off = [round(m + t, 3) for t in KV.TEN_X if round(m + t, 3) not in _have]
     assert not _off, ("the -X step puts VKL's tenons at %s, which are not mortise stations -- "
                       "the station one pitch -X of %.2f is dropped" % (_off, m + D.LEVER_PITCH))
     return m
@@ -1606,10 +1609,10 @@ LEVER_STATIONS = (
 
 
 def _knee_vert_components():
-    """LKV, posed by its own 90°-about-Z mount (see knee_lever_vert.place). Drawn at
-    REST; the throw would lift the arm. The rib mortises chassis.py already cuts take
+    """LKV, drawn in the instrument's own axes about its axle (see knee_lever_vert). Drawn
+    at REST; the throw would lift the arm. The rib mortises chassis.py already cuts take
     these tenons unchanged — same joint, same width, same mating plane, same slide
-    direction once posed — so nothing in the chassis had to move for it."""
+    direction — so nothing in the chassis has a feature of its own for it."""
     from . import knee_lever_vert as KV
     out = [("kv_housing", KV.kv_housing), ("kv_lever", KV.kv_lever)]
     out += KV.demo_parts()
@@ -1655,8 +1658,7 @@ def assert_storage_angle(tol=0.5):
 
     vk = [st for st in LEVER_STATIONS if st[1] != "kl"][0]
     vy = _vkl_mount_y() if vk[3] is None else vk[3]
-    arm = (KV.kv_lever.rotate((0, 0, 0), (0, 0, 1), -90)
-           .translate((vk[2], vy, KV.MOUNT_Z)).val())
+    arm = KV.kv_lever.translate((vk[2], vy, KV.MOUNT_Z)).val()
     worst = None
     for name, kind, sx, sy, mirrored in LEVER_STATIONS:
         if kind != "kl":
@@ -1687,9 +1689,9 @@ def _lever_stations_components():
     this table, so the sensor panel is unaffected -- but anything that sizes hardware
     from LEVER_STATIONS is sizing for five.
 
-    Both source modules build their parts in a LOCAL frame and hand them to a
-    module-level pose, so a station is just that pose with x/y replaced — the Z
-    (housing top flush with the chassis underside) is the design's and stays put.
+    Both source modules build their parts about their own axle, in the instrument's axes,
+    so a station is a translation to its x/y — the Z (housing top flush with the chassis
+    underside) is the design's and stays put.
 
     NAMING: the LKL station keeps the bare part names the colour map, the export
     registry and the overlap gate's KNEE_FAMILY already know. The five new stations
@@ -1715,10 +1717,9 @@ def _lever_stations_components():
             sy = _vkl_mount_y()
         if kind == "kl":
             parts, mz = kl_parts, KL.MOUNT_Z
-        else:                                   # KV carries its own -90° about Z
+        else:                                   # KV is drawn in the instrument's axes
             assert not mirrored, "there is no right-hand vertical lever"
-            parts = [(n, s.rotate((0, 0, 0), (0, 0, 1), -90)) for n, s in kv_parts]
-            mz = KV.MOUNT_Z
+            parts, mz = kv_parts, KV.MOUNT_Z
         if mirrored:
             parts = ([("knee_housing", KL.knee_housing_r)]
                      # local +X -> -X: the opposite throw
@@ -1943,8 +1944,6 @@ def lever_bus_nodes():
 
     def _pose(kind, sx, sy, mirrored, p, vector=False):
         x, y, z = p
-        if kind != "kl":
-            x, y = y, -x                    # the -90 about Z that KV parts carry
         if mirrored:
             x = -x                          # mirror YZ: local +X -> -X
         if vector:
@@ -1966,23 +1965,27 @@ def lever_bus_nodes():
             pin = KL.plug_pin
             lace = KL.keeper_point()
         else:
-            def pin(w, _K=KV):
-                return KL.plug_pin(w, _K.HOUS_Z0, _K.HOUS_Z1)
-            # ...WITH ITS OWN HOUSING TOP. Left off, keeper_point fell back to the
+            pin = KV.plug_pin
+            # ...WITH ITS OWN HOUSING TOP. Left off, keeper_point falls back to the
             # HORIZONTAL lever's, and since the winding is measured DOWN from the top,
-            # LKV's coil hung 19.6 below its own column (user).
-            lace = KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P, KV.HOUS_Z1)
+            # LKV's coil would hang 19.6 below its own column (user).
+            lace = KV.keeper_point()
         _a, _b = pin(1), pin(KL.CONN_WAYS)          # the middle of the J1 + J2 pair
         plug = tuple((_a[m] + _b[m]) / 2.0 for m in range(3))
-        # the plug's wires leave along local -X (the mouth faces -X), posed the same way
+        # the plug's wires leave along the lever's -X on a horizontal lever (the mouth faces
+        # -X), along +Y on the vertical one -- each module states its own
+        if kind == "kl":
+            vd, vk, vp, vc = (-1.0, 0.0, 0.0), KL.keeper_axis(), KL.pin_axis(), KL.cheek_axis()
+        else:
+            vd, vk, vp, vc = KV.PLUG_DIR, KV.KEEPER_AXIS, KV.PIN_AXIS, KV.CHEEK_AXIS
         p = _pose(kind, sx, sy, mirrored and not turned, plug)
         l = _pose(kind, sx, sy, mirrored, lace)
-        d = _pose(kind, sx, sy, mirrored, (-1.0, 0.0, 0.0), vector=True)
-        ka = _pose(kind, sx, sy, mirrored, KL.keeper_axis(), vector=True)
-        pa = _pose(kind, sx, sy, mirrored, KL.pin_axis(), vector=True)
+        d = _pose(kind, sx, sy, mirrored, vd, vector=True)
+        ka = _pose(kind, sx, sy, mirrored, vk, vector=True)
+        pa = _pose(kind, sx, sy, mirrored, vp, vector=True)
         if turned:
             pa = (pa[0], pa[1], -pa[2])
-        ca = _pose(kind, sx, sy, mirrored, KL.cheek_axis(), vector=True)
+        ca = _pose(kind, sx, sy, mirrored, vc, vector=True)
         pins = {w: _pose(kind, sx, sy, mirrored and not turned, pin(w))
                 for w in range(1, KL.CONN_WAYS + 1)}
         # WHERE THE ARRIVING CABLE TURNS, on the one lever whose plug the bus cannot
@@ -2000,10 +2003,8 @@ def lever_bus_nodes():
         # goes straight on. Off it, the cable drops in Z to round the corner and climbs
         # back for the connector, for no reason a part gives it (user).
         _off = KL.CANB_BUNDLE_OD / 2.0 + D.MIN_WALL
-        guide = (_pose(kind, sx, sy, mirrored,
-                       (KV.HOUS_X0 - _off, -KV.HOUS_HW_N - _off,
-                        KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P,
-                                        KV.HOUS_Z1)[2]))
+        guide = (_pose(kind, sx, sy, mirrored,               # off the back (+Y), -X corner
+                       (KV.HOUS_X0 - _off, KV.HOUS_Y1 + _off, KV.keeper_point()[2]))
                  if kind != "kl" else None)
         out.append((name, p, l, d, ka, pa, pins, KL.plug_standoff(),
                     ca, KL.cheek_bypass(), guide))
@@ -2509,6 +2510,7 @@ def _export_assembly(publish=True, gate=True, gate_full=True):
                           ("gate: sweep", lambda: _report_sweep(comps)),
                           ("gate: travel", lambda: _report_travel(comps)),
                           ("gate: carriage travel", lambda: _report_carriage_travel(comps)),
+                          ("gate: world pose", lambda: _report_world_pose(comps)),
                           ("gate: dead code", _report_dead)):
             with _stage(label):
                 rc |= fn()
@@ -2550,6 +2552,19 @@ def _report_overlaps(comps, full=False) -> int:
     print(f"OVERLAP GATE: green — {n} unintended pair(s), "
           f"accepted baseline {OVERLAP_BASELINE}", flush=True)
     return 0
+
+
+def _report_world_pose(comps) -> int:
+    """A printed part drawn ONCE must be authored where it sits, not rotated or mirrored into
+    place (user, 2026-10-22) -- tools/check_world_pose. The PARTS solids are the ones the
+    export above already built, so this costs the vertex fits only."""
+    try:
+        from tools.check_world_pose import gate
+        parts = {n: (lambda s: s.val() if hasattr(s, "val") else s)(PARTS[n][0]()) for n in PARTS}
+        return 1 if gate(parts, [(name, wp.val()) for name, wp in comps]) else 0
+    except Exception as e:               # noqa: BLE001 — a gate crash must not eat the geometry
+        print(f"world-pose gate: SKIPPED ({type(e).__name__}: {e})", flush=True)
+        return 0
 
 
 def _report_sweep(comps) -> int:

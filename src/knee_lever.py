@@ -910,7 +910,7 @@ def pcb_shim(z_bot, z_top, flip=None, right=False):
                   z=board_z(z_bot, z_top, flip, right)[1] + CR_CLR + (gap - CR_CLR) / 2)
 
 
-def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False):
+def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False, place=None):
     """Add the MT6701 board cradle to the housing (user). Everything here grows UP
     off the same bed as the housing and has no ceiling anywhere, so it needs no
     supports; see the constant block for the retention scheme and the socket cone.
@@ -918,7 +918,11 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False):
     Built as: two side webs + a front plinth + a floor, then ONE slot cut through
     them for the board — that slot IS both grooves. Cutting it after the webs is
     what makes them: the web material outboard of the slot survives as each
-    groove's outer wall."""
+    groove's outer wall.
+
+    `place` maps the cutters into a housing that carries the core differently (the
+    vertical lever's axle runs along X) -- as cut_feel_pockets' `place` does."""
+    P = place or (lambda s: s)
     z_bot = HOUS_Z0 if z_bot is None else z_bot
     z_top = HOUS_Z1 if z_top is None else z_top
     pcb_z0, pcb_z1 = board_z(z_bot, z_top, flip, right)
@@ -987,14 +991,14 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False):
     # eaten 8.35 mm of a 1.35 mm shim's worth of groove. The near web earns its full
     # height from the leg beside the socket instead.
     for a, b in (_far, _near):
-        w = w.union(box_at(abs(b - a), CR_Y1 - CR_Y0, z_top - z_bot,
+        w = w.union(P(box_at(abs(b - a), CR_Y1 - CR_Y0, z_top - z_bot,
                            x=(a + b) / 2, y=(CR_Y0 + CR_Y1) / 2,
-                           z=(z_bot + z_top) / 2))
+                           z=(z_bot + z_top) / 2)))
     # front plinth: the slab the board's -Y face seats on, and the body the screw
     # boss lives in. Its top IS the socket cone's floor.
-    w = w.union(box_at(outer1 - outer0, CR_SLOT_Y0 - CR_Y0, CR_PLINTH_Z1 - z_bot,
+    w = w.union(P(box_at(outer1 - outer0, CR_SLOT_Y0 - CR_Y0, CR_PLINTH_Z1 - z_bot,
                        x=(outer0 + outer1) / 2, y=(CR_Y0 + CR_SLOT_Y0) / 2,
-                       z=(z_bot + CR_PLINTH_Z1) / 2))
+                       z=(z_bot + CR_PLINTH_Z1) / 2)))
     # ...RELIEVED over the board's interior (2026-09-21). As a full-width slab it met the
     # magnet face wherever parts sit low on it -- the long-deferred board-parts-vs-housing
     # overlaps. The magnet face is now seated by the two edge grooves' front flanks alone
@@ -1006,18 +1010,18 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False):
     _ix0, _ix1 = _ix0 + CR_EDGE_KEEP, _ix1 - CR_EDGE_KEEP
     _deep = max(r[4] for r in SENSOR_BOM) + CR_CLR + 0.3
     _rz0 = pcb_z0
-    w = w.cut(box_at(_ix1 - _ix0, _deep + 1.0, (CR_PLINTH_Z1 + 1.0) - _rz0,
+    w = w.cut(P(box_at(_ix1 - _ix0, _deep + 1.0, (CR_PLINTH_Z1 + 1.0) - _rz0,
                      x=(_ix0 + _ix1) / 2, y=CR_SLOT_Y0 - _deep / 2 + 0.5,
-                     z=(_rz0 + CR_PLINTH_Z1 + 1.0) / 2))
+                     z=(_rz0 + CR_PLINTH_Z1 + 1.0) / 2)))
     # floor under the board + the tie between the two webs behind it
-    w = w.union(box_at(outer1 - outer0, CR_Y1 - CR_SLOT_Y0, pcb_z0 - z_bot,
+    w = w.union(P(box_at(outer1 - outer0, CR_Y1 - CR_SLOT_Y0, pcb_z0 - z_bot,
                        x=(outer0 + outer1) / 2, y=(CR_SLOT_Y0 + CR_Y1) / 2,
-                       z=(z_bot + pcb_z0) / 2))
+                       z=(z_bot + pcb_z0) / 2)))
     # THE BOARD SLOT (both grooves in one cut): open at +Z — the install axis —
     # and bottoming on the floor at pcb_z0, which is the board's -Z seat.
-    w = w.cut(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (z_top + 2.0) - pcb_z0,
+    w = w.cut(P(box_at(slot1 - slot0, CR_SLOT_Y1 - CR_SLOT_Y0, (z_top + 2.0) - pcb_z0,
                      x=(slot0 + slot1) / 2, y=(CR_SLOT_Y0 + CR_SLOT_Y1) / 2,
-                     z=(pcb_z0 + z_top + 2.0) / 2))
+                     z=(pcb_z0 + z_top + 2.0) / 2)))
     # ── THE PLUGS' TUNNEL. J1 and J2 live on the magnet face and their plugs run -X in the gap
     # between the board and the housing, so the -X web needs a way through, open out the
     # TOP (the board is lowered in, and a lid over it would be a flat overhang). It stops
@@ -1029,9 +1033,9 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False):
     _cx0 = conn_mx - _sx * CONN_UNPLUG                 # the plug's full unplug stroke
     _cx1 = conn_mx + _sx * (PH_THT_SIDE_D + CONN_POCKET)
     _cz1 = z_top + 1.0
-    w = w.cut(box_at(abs(_cx1 - _cx0), PCB_Y - _cy0, _cz1 - _cz0,
+    w = w.cut(P(box_at(abs(_cx1 - _cx0), PCB_Y - _cy0, _cz1 - _cz0,
                      x=(_cx0 + _cx1) / 2, y=(_cy0 + PCB_Y) / 2,
-                     z=(_cz0 + _cz1) / 2))
+                     z=(_cz0 + _cz1) / 2)))
     # SOCKET CONE — reserved so kl_magnet_cap can be driven with the cradle in
     # place. Cut rather than merely avoided: it is a guarantee, not an intention,
     # and anything a later round adds in this zone now gets removed instead of
@@ -1051,8 +1055,8 @@ def _cradle(w, z_bot=None, z_top=None, x_max=None, flip=None, right=False):
     # allow-listed as a designed contact (user, 2026-09-29: "this wall is clipping the
     # axel"). Ø14 clears Ø12.8 with 0.6 all round.
     _sock_y0 = min(MAG_Y0, CR_Y0)
-    w = w.cut(printable_bore(SOCK_D, (CR_Y1 + 1.0) - _sock_y0, (0.0, _sock_y0, 0.0),
-                             (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+    w = w.cut(P(printable_bore(SOCK_D, (CR_Y1 + 1.0) - _sock_y0, (0.0, _sock_y0, 0.0),
+                             (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))))
     return w
 
 
@@ -2023,24 +2027,28 @@ def _hs_pocket(yc, x0, x1):
 # no-glue sweep missed it precisely because the block was pasted rather than
 # called. A copy that can drift, does.
 # ════════════════════════════════════════════════════════════════════════════
-def cut_axle_bore(body, hw=None):
+def cut_axle_bore(body, hw=None, place=None):
     """The lever's axle interface: the D-BORE through the hub. The flat is the
     key; what holds the axle in axially is the screw in its own -Y end (see
     AXLE_END_PROUD), so the hub carries no fastener at all.
 
     cadkit picks the bore shape from print_up: a lever prints lying on its -Y
     face, so this bore runs ALONG the build direction and correctly comes back a
-    PLAIN cylinder where the same call hands the housing a teardrop."""
+    PLAIN cylinder where the same call hands the housing a teardrop.
+
+    `place` maps the cutters into a housing that carries the core differently (the
+    vertical lever's axle runs along X) -- as cut_feel_pockets' `place` does."""
+    P = place or (lambda s: s)
     hw = LEVER_HW if hw is None else hw
     bore = printable_bore(AXLE_BORE_D, 2 * hw, (0.0, -hw, 0.0),
                           (0.0, 1.0, 0.0), LEVER_UP, overshoot=1.0)
     zhi, zlo = AXLE_FLAT_R + 0.1, -(AXLE_BORE_D / 2 + 1.0)
-    return body.cut(bore.intersect(box_at(       # flatten the +Z side -> D
+    return body.cut(P(bore.intersect(box_at(       # flatten the +Z side -> D
         AXLE_BORE_D + 2.0, 2 * hw + 4.0, zhi - zlo,
-        x=0.0, y=0.0, z=(zhi + zlo) / 2)))
+        x=0.0, y=0.0, z=(zhi + zlo) / 2))))
 
 
-def cut_axle_stack(w, through=False):
+def cut_axle_stack(w, through=False, place=None):
     """The housing's whole Y stack: both BEARING SEATS, the CONTACT RIB on the
     outer face, and the axle way out through it. Identical in every pose, because
     nothing about the sensor stack depends on which way the lever swings.
@@ -2052,7 +2060,11 @@ def cut_axle_stack(w, through=False):
         property a press fit needs. The load helps: the lever's weight presses
         the axle DOWN onto round metal, so the opened top carries nothing.
       * (the printed contact rib and its axle way are gone: the bearings sit
-        FLUSH with the faces and the axle's land seats on the +Y inner race.)"""
+        FLUSH with the faces and the axle's land seats on the +Y inner race.)
+
+    `place` maps the cutters into a housing that carries the core differently (the
+    vertical lever's axle runs along X) -- as cut_feel_pockets' `place` does."""
+    P = place or (lambda s: s)
     # The seats run OUT THROUGH THE OUTER FACE — the bearing is open to the air (user).
     # There used to be a thin skin behind each one, and it was never real: at 0.70 (now
     # 0.50) it is under one 0.8 bead, so the slicer puts NOTHING there. The bearing was
@@ -2078,7 +2090,7 @@ def cut_axle_stack(w, through=False):
                           (BRG_SEAT_D, -y_sh, 2 * y_sh),                              # the lever band
                           (BRG_SEAT_D, BRG_Y0, _seat_out - BRG_Y0),                   # +Y bearing
                           (SPRUNG_SEAT_D, -out_n, out_n - SPRUNG_SH_Y)):              # -Y spring+bearing
-            w = w.cut(printable_bore(d, ln, (0.0, y0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+            w = w.cut(P(printable_bore(d, ln, (0.0, y0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))))
         return w
     # THE SHOULDERS here too (KV, the pedals): each seat stops at BRG_Y0, and the band between
     # the room's face and the seat is the room crown's teardrop, so the outer race lands on a
@@ -2087,11 +2099,11 @@ def cut_axle_stack(w, through=False):
     assert abs(_seat_in - y_sh) < 1e-6, "the room's face is no longer the shoulder's face"
     for sgn in (1.0, -1.0):
         y0 = BRG_Y0 if sgn > 0 else -_seat_out
-        w = w.cut(printable_bore(BRG_SEAT_D, _seat_out - BRG_Y0, (0.0, y0, 0.0),
-                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
-        w = w.cut(printable_bore(2 * r_sh, BRG_SHOULDER_T + 0.01,
+        w = w.cut(P(printable_bore(BRG_SEAT_D, _seat_out - BRG_Y0, (0.0, y0, 0.0),
+                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))))
+        w = w.cut(P(printable_bore(2 * r_sh, BRG_SHOULDER_T + 0.01,
                                  (0.0, y_sh - 0.005 if sgn > 0 else -BRG_Y0 - 0.005, 0.0),
-                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)))
+                                 (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))))
     # (no contact rib and no separate axle way: the seats run out through BOTH faces at the
     # full Ø16.1, and the axle's own land seats on the +Y bearing's inner race -- see AXLE_LAND_D)
     return w

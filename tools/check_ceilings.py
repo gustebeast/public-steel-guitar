@@ -203,7 +203,7 @@ DECLARED_UP = {
     "belt_tensioner_half_a": ("src.belt_tensioner", "HALF_A_UP"),
     "belt_tensioner_half_b": ("src.belt_tensioner", "HALF_B_UP"),
     "kl_pcb_shim":       ("src.knee_lever", "SHIM_UP"),
-    "kv_pcb_shim":       ("src.knee_lever", "SHIM_UP"),
+    "kv_pcb_shim":       ("src.knee_lever_vert", "SHIM_UP"),
     "pedal_pcb_shim":    ("src.knee_lever", "SHIM_UP"),
     "kl_magnet_cap":     ("src.knee_lever", "MAGNET_CAP_UP"),
     "cart_base":         ("src.knee_lever", "CART_UP"),

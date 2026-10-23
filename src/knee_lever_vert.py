@@ -4,22 +4,33 @@ Same job as knee_lever.py (a pure POSITION SENSOR: magnet on the axle, MT6701
 reading it, springs for feel) and the same bought parts, but the player's knee
 pushes UP instead of sideways.
 
-WHAT ACTUALLY CHANGES, and it is less than it looks:
+WORLD FRAME, about the axle. Everything in this module is written in the
+instrument's own axes, origin on the axle; src.build only translates it to its
+station. The AXLE runs along X (the instrument's length); the ARM leaves the
+housing through its -Y face and reaches out at the player; the throw lifts it, a
+rotation about +X (swing). The sensor side is +X.
 
-  * THE ARM MOVES, NOT THE AXLE. In this part's LOCAL frame the axle still runs
-    along +Y and the throw is still a rotation about it. The arm, instead of
-    hanging -Z and swinging laterally, extends +X HORIZONTALLY and swings up in
-    Z. What makes the whole thing a "vertical" lever is the MOUNT: the assembly
-    is posed rotated 90° about Z, so local +Y lands on the guitar's X and local
-    +X points -Y at the player. That is the sense in which the axis runs along
-    the instrument's length.
+THE LEVER CORE IS SHARED. The axle stack (bearings, magnet, board, cradle), the
+two feel cartridges and the follower recesses are ONE design, drawn in
+knee_lever's own frame (axle along Y, arm +X) and placed into each housing of the
+family. Every horizontal station takes it as drawn; this lever takes it with its
+axle along X (core, the placement every shared cutter and dummy here goes
+through -- the same `place` argument cut_feel_pockets has always taken).
+Everything that is this lever's own -- the arm, the housing prism, its tenons,
+its lever room, install stroke, roof closure and knee relief -- is drawn here,
+natively.
 
-  * THE FEEL BLOCK MOVES UP, IT DOES NOT MIRROR. For a +X-pushing piston to
-    resist an UPWARD push on a +X arm, the contact has to sit ABOVE the axle:
-    force +X at height h gives +Y torque, which drives the arm back down. So the
-    lobe and both cartridges translate from -LOBE_RC to +LOBE_RC_V. NOT a Z
-    mirror — the cartridge pocket's 45° gable has to stay on TOP whatever the
-    lever does, because that is a printability constraint, not a lever one.
+WHAT IS DIFFERENT FROM THE HORIZONTAL LEVER, and it is less than it looks:
+
+  * THE ARM MOVES, NOT THE AXLE. The arm, instead of hanging -Z and swinging
+    laterally, extends HORIZONTALLY (-Y) and swings up in Z, about the same axle.
+
+  * THE FEEL BLOCK MOVES UP, IT DOES NOT MIRROR. For a piston pushing toward the
+    arm to resist an UPWARD push on the arm, the contact has to sit ABOVE the
+    axle: the piston's force at height h gives a torque that drives the arm back
+    down. So the lobe and both cartridges translate from -LOBE_RC to +LOBE_RC_V.
+    NOT a Z mirror — the cartridge pocket's 45° gable has to stay on TOP whatever
+    the lever does, because that is a printability constraint, not a lever one.
     Mirroring would put a flat ceiling over both pockets.
 
   * THE AXLE SITS LOWER. That is forced, not chosen: the cartridges have to stay
@@ -34,13 +45,10 @@ WHAT ACTUALLY CHANGES, and it is less than it looks:
     and no new part. The web behind the lobe recess scales with LOBE_RC too, so
     this is the SAFE direction for it (~6.8 of web where 9.0 gave 2.6).
 
-  * TENONS RUN ALONG LOCAL X. cadkit's octagon slides along its extrude axis, so
-    where the horizontal lever rotates it 90° to slide in Y, this one uses it
-    as-is. After the mount's 90° pose that lands the slide on the guitar's Y,
-    which is what the rib mortises accept. The stations then space out along
-    local Y (= the guitar's X, the 23 mm rib comb), and only ~2 fit across the
-    housing's 27.8 — so this lever mounts on FEWER but LONGER tenons than LKL's
-    four short rails.
+  * TENONS SLIDE ALONG Y, like every lever's, into the same rib mortises; with
+    the axle along X they lie ALONG the housing's length here, so the stations
+    space out across it in X (the rib comb) and only a few fit — this lever
+    mounts on FEWER but LONGER tenons than LKL's four short rails.
 
 Everything else is imported from knee_lever and used unchanged: the cartridges,
 their pistons, die springs, tension and position screws; the axle, magnet,
@@ -49,7 +57,6 @@ magnet cap, bearings and the MT6701 board.
 DEFERRED (this round is the basic geometry, per the user):
   * the REST STOP. Gravity and the springs both pull this arm down, so unlike
     LKL there is no spring-defined rest angle — it needs a hard stop to land on.
-  * the global MOUNT POSE (which bay, and how far inboard).
   * (DONE 2026-09-21) the follower recesses are knee_lever's swept tongue envelopes.
 """
 
@@ -63,8 +70,22 @@ from . import knee_lever as KL
 from .motor_bank import BED_Z as _BED_Z     # the chassis print-bed datum (= chassis.Z_BOT;
                                             # imported from motor_bank to stay out of the
                                             # chassis import cycle)
-from .helpers import box_at, cyl_y, heal, pose_dir
+from .helpers import box_at, cyl_x, heal
 from cadkit.lazy import lazy
+
+
+# ── the shared lever core, placed with its axle along X ──────────────────────
+def core(s):
+    """A solid of the SHARED lever core (knee_lever's frame: axle along +Y, arm +X), placed
+    into this lever: its axle on +X, its arm side on -Y. Shapes and Workplanes alike."""
+    return s.rotate((0, 0, 0), (0, 0, 1), -90)
+
+
+def core_pt(p):
+    """A POINT or direction of the shared core (knee_lever's frame), placed as core places
+    solids."""
+    x, y, z = p
+    return (y + 0.0, -x + 0.0, z + 0.0)
 
 
 # ── throw + the lobe that keeps the feel identical ───────────────────────────
@@ -76,12 +97,12 @@ _STROKE     = LOBE_RC_V * math.sin(math.radians(THROW_V))
 _FEEL_DZ_V  = LOBE_RC_V + KL.LOBE_RC        # +22.2: how far the whole feel block rises
 
 # ── the lever ────────────────────────────────────────────────────────────────
-# The two stations sit as far apart as the -Y wall was widened to allow, rounded DOWN to a
-# whole number of bottom-grid pitches so both land in slots. On the old 22.35 comb that span was
-# exactly one pitch; on the 8.8 grid it is two (17.6). Taking one pitch instead would put the
-# inboard stem within 0.05 of the housing centre, straight over the arm slot -- the roof-height
-# assert below catches that, which is how this was found.
-TEN_SPAN    = KL.RIB_PITCH / 2.0    # the span the -Y wall was built to host (22.35)
+# The two outer stations sit as far apart as the -X wall was widened to allow, rounded DOWN to
+# a whole number of bottom-grid pitches so both land in slots. On the old 22.35 comb that span
+# was exactly one pitch; on the 8.8 grid it is two (17.6). Taking one pitch instead would put
+# the inboard stem within 0.05 of the housing centre, straight over the arm slot -- the
+# roof-height assert below catches that, which is how this was found.
+TEN_SPAN    = KL.RIB_PITCH / 2.0    # the span the -X wall was built to host (22.35)
 TEN_PITCH   = KL.D.LEVER_PITCH * int(TEN_SPAN // KL.D.LEVER_PITCH)      # 17.6
 ARM_LEN_V   = 80.0                  # axle -> paddle end (user; was 50). 80 gives 27.4 of
                                     # paddle lift at 20° instead of 17.1 — a bigger knee
@@ -98,7 +119,8 @@ ARM_LEN_V   = 80.0                  # axle -> paddle end (user; was 50). 80 give
 ARM_TZ      = 8.0                   # arm thickness in Z (it is the arm's bending depth now)
 LEG_TOP     = LOBE_RC_V + 4 * KL.D.BEAD     # leg reaches 3.2 past the lobe station
 HUB_D       = KL.HUB_D              # Ø10 hub on the axle — unchanged
-LEVER_HW    = KL.LEVER_HW           # ±12 in Y -- LKL's, so every bearing/sensor Y holds
+LEVER_HW    = KL.LEVER_HW           # ±12 along the axle -- LKL's, so every bearing/sensor
+                                    # station on the axle holds
 # The arm SAGS past rest (gravity and both springs pull it down) until its rest stop, which is
 # still deferred -- so the recess covers REST_SAG_V of travel that way with the follower at rest.
 REST_SAG_V  = 10.0
@@ -113,60 +135,62 @@ HS_SETBACK_V = KL.HS_SETBACK + 0.373
 
 def _lever() -> cq.Workplane:
     """The L. Hub on the axle, a LEG rising +Z to carry the return lobe, and the
-    ARM running +X to the knee. The lobe is a full-width ridge at LOBE_RC_V, on
-    the leg's -X face, reached through one local recess per follower — same
+    ARM running -Y to the knee. The lobe is a full-width ridge at LOBE_RC_V, on
+    the leg's +Y face, reached through one local recess per follower — same
     scheme as the horizontal lever (the ridge is a single primitive buried in
     solid material except where the pistons need to touch it)."""
-    hub = cyl_y(HUB_D, 2 * LEVER_HW, y0=-LEVER_HW)
-    leg = box_at(KL.ARM_TX, 2 * LEVER_HW, LEG_TOP, x=0.0, y=0.0, z=LEG_TOP / 2)
-    arm = box_at(ARM_LEN_V, 2 * LEVER_HW, ARM_TZ, x=ARM_LEN_V / 2, y=0.0, z=0.0)
+    hub = cyl_x(HUB_D, 2 * LEVER_HW, x0=-LEVER_HW)
+    leg = box_at(2 * LEVER_HW, KL.ARM_TX, LEG_TOP, x=0.0, y=0.0, z=LEG_TOP / 2)
+    arm = box_at(2 * LEVER_HW, ARM_LEN_V, ARM_TZ, x=0.0, y=-ARM_LEN_V / 2, z=0.0)
     body = hub.union(leg).union(arm)
     # follower recesses: knee_lever's SWEPT tongue envelope, one per lane, so the leg keeps its
     # material right behind the lobe (they were plain notches sized to the CARTRIDGE -- 14.8
     # wide each on a 24 leg once the Ø10 cartridges arrived -- which left the lobe standing on
-    # a sliver). This lever throws the arm UP, i.e. -a about +Y, hence sense=-1.
-    for yc in (KL.MAIN_YC, KL.HS_YC):
-        body = body.cut(KL.recess_swept(yc, LOBE_RC_V, THROW_V, LOBE_RC_V + KL.FOLL_DZ,
-                                        sense=-1, rest_span=REST_SAG_V))
-    body = body.union(cyl_y(2 * KL.LOBE_R, 2 * LEVER_HW, y0=-LEVER_HW)
-                      .translate((0.0, 0.0, LOBE_RC_V)))
-    body = KL.cut_axle_bore(body)
+    # a sliver). In the core's own terms this lever's working throw is -a about its axle,
+    # hence sense=-1.
+    for lane in (KL.MAIN_YC, KL.HS_YC):
+        body = body.cut(core(KL.recess_swept(lane, LOBE_RC_V, THROW_V, LOBE_RC_V + KL.FOLL_DZ,
+                                             sense=-1, rest_span=REST_SAG_V)))
+    body = body.union(cyl_x(2 * KL.LOBE_R, 2 * LEVER_HW, x0=-LEVER_HW, z=LOBE_RC_V))
+    body = KL.cut_axle_bore(body, place=core)
     return heal(body)
 
 
 # ── housing envelope, derived the same way LKL's is ──────────────────────────
 def vplace(s):
     """knee_lever's feel-block placement, lifted so the contact lands at
-    +LOBE_RC_V. A pure translation — see the module docstring on why this must
-    not be a mirror."""
-    return KL.feel_place(s).translate((0.0, 0.0, _FEEL_DZ_V))
+    +LOBE_RC_V, then placed with the core. The lift is a pure translation — see
+    the module docstring on why this must not be a mirror."""
+    return core(KL.feel_place(s).translate((0.0, 0.0, _FEEL_DZ_V)))
 
 
-HOUS_X0 = KL.HOUS_X0                # cartridge back + the rear (KL.cut_feel_rear) — unchanged
-HOUS_X1 = max(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL,  # the arm exits through here...
-              KL.BRG_SEAT_D / 2 + KL.BRG_WALL_X)        # ...or the seat + its +X wall, whichever is
-              # bigger — same rule as knee_lever's housing. With the Ø16 688ZZ the race wins
-              # (11.25); sizing off the hub alone let it poke 0.8 out of the +X face.
-# Y IS ASYMMETRIC, and only one side moved. +Y is the SENSOR side: HOUS_HW is the
-# datum the contact rib, the axle flange, the magnet, the cap and the whole board
-# cradle cascade off, so touching it would lengthen the axle and grow the magnet's
-# cantilever off the bearing. -Y carries nothing but wall, so that is where the room
-# for a SECOND TENON gets bought (user asked what it would cost): the rib comb is
-# 23 and a tenon is 6 wide, so two stations need 23 + 6 + margin of Y. At 0.5 of
-# margin either side of each tenon that is 30.0 of span against the 27.8 we had —
-# 2.2, ALL of it on -Y. (Bare minimum, tenons flush with the faces, is 1.2.)
-HOUS_HW_P = KL.HOUS_HW              # +13.9 — the sensor side, untouched on purpose
+# -Y IS THE ARM'S FACE: the arm exits through it, so it stands far enough out for the hub to
+# pass -- or for the bearing seat and its wall, whichever is bigger; same rule as knee_lever's
+# housing. With the Ø16 688ZZ the race wins (11.25); sizing off the hub alone let it poke 0.8
+# out of the face.
+ARM_FACE = max(HUB_D / 2 + KL.HS_CLR + KL.HS_HOUS_WALL,
+               KL.BRG_SEAT_D / 2 + KL.BRG_WALL_X)
+HOUS_Y0 = -ARM_FACE
+HOUS_Y1 = -KL.HOUS_X0               # +Y: the cartridges' backs + their rear (KL.cut_feel_rear)
+# X IS ASYMMETRIC, and only one side moved. +X is the SENSOR side: KL.HOUS_HW is the
+# datum the axle flange, the magnet, the cap and the whole board cradle cascade off,
+# so touching it would lengthen the axle and grow the magnet's cantilever off the
+# bearing. -X carries nothing but wall, so that is where the room for the OUTER TENON
+# PAIR gets bought (user asked what it would cost): the rib comb is 23 and a tenon is
+# 6 wide, so two stations need 23 + 6 + margin of X. At 0.5 of margin either side of
+# each tenon that is 30.0 of span against the 27.8 a symmetric housing has — 2.2, ALL
+# of it on -X. (Bare minimum, tenons flush with the faces, is 1.2.)
+HOUS_X1 = KL.HOUS_HW                # +13.9 — the sensor side, untouched on purpose
 TEN_MARGIN = KL.D.MIN_WALL          # 0.8 (one bead) of material outboard of each tenon's edge
-HOUS_HW_N = max((TEN_PITCH + 2 * KL._JHW + 2 * TEN_MARGIN) - HOUS_HW_P,
-                # ...and never inside the -Y cartridge pocket's own wall. The tenon sum
-                # alone went UNDER it once the Ø10 die-spring cartridges spread the
-                # pockets to ±8.45 (2026-09-21): the -Y pocket would have broken out.
-                abs(KL.MAIN_YC) + KL.hs_pocket_hw() + KL.HS_HOUS_WALL,
-                # ...and the -Y BEARING, which sits flush with the face (KL.BRG_Y0 + BRG_W =
-                # KL.HOUS_HW): the tenon/pocket terms alone left it 0.75 proud once the
-                # lever went to 25.6 (2026-09-21)
-                KL.BRG_Y0 + KL.BRG_W)
-HOUS_HW = HOUS_HW_P                 # the sensor-side alias the Y stack reads
+HOUS_X0 = -max((TEN_PITCH + 2 * KL._JHW + 2 * TEN_MARGIN) - HOUS_X1,
+               # ...and never inside the -X cartridge pocket's own wall. The tenon sum
+               # alone went UNDER it once the Ø10 die-spring cartridges spread the
+               # pockets to ±8.45 (2026-09-21): the -X pocket would have broken out.
+               abs(KL.MAIN_YC) + KL.hs_pocket_hw() + KL.HS_HOUS_WALL,
+               # ...and the -X BEARING, which sits flush with the face (KL.BRG_Y0 + BRG_W =
+               # KL.HOUS_HW): the tenon/pocket terms alone left it 0.75 proud once the
+               # lever went to 25.6 (2026-09-21)
+               KL.BRG_Y0 + KL.BRG_W)
 # +Z comes from the RAISED POCKET's own measured extent, not from the piston: the
 # cartridge block stands 6.6 above its centre where the piston stands 3.0, and using
 # the piston's figure put the housing lid 3.6 BELOW the cartridge it is meant to
@@ -178,9 +202,8 @@ HOUS_Z1 = (vplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val()
 # SENSOR BOARD its floor. The board is one fixed design (user), and WHICH WAY UP it
 # goes is not a free choice about fit alone — it also decides WHICH END THE CAN PLUG
 # EXITS, because the only orientation freedom is a 180 deg turn about the axle axis
-# and that swaps left-for-right together with top-for-bottom. The user wants the plug
-# to face +Y in the guitar frame; local X maps to guitar -Y here (place() turns -90
-# about Z), so +Y means the connector at local -X, which is the board AS DRAWN.
+# and that swaps front-for-back together with top-for-bottom. The user wants the plug
+# to face +Y, the housing's back end, which is where the board AS DRAWN puts it.
 # So this floor is sized for the AS-DRAWN board (bottom edge PCB_Z0), not the
 # turned-over one (-PCB_Z1). That is the entire price of the connector side: 5.0 mm
 # of extra housing depth, -9.80 -> -14.80. The hub alone would allow -7.80.
@@ -190,22 +213,20 @@ assert not KL.board_flip(HOUS_Z0, HOUS_Z1), (
     "LKV wants the board AS DRAWN so its CAN plug exits +Y, but this housing only "
     "fits it turned over — the floor must reach PCB_Z0 - CR_FLOOR_T")
 # PRINT ORIENTATION (the record, declared once per part) -- the housing goes on the bed
-# on its FLOOR and builds +Z, in world coordinates. It is written here rather than
-# transcribed into a checker because it is a design fact: every 45 in the horizontal lever is
-# drawn self-supporting AGAINST THIS, the keeper's foot is sized "on the bed" at
-# HOUS_Z0, and the buttress "grows up from the print bed". A part that is ever
-# re-oriented brings this declaration along with it, and tools.check_ceilings reads it
-# by name (src.leg_stack's SLEEVE_UP and friends set the pattern).
+# on its FLOOR and builds +Z. It is written here rather than transcribed into a checker
+# because it is a design fact: every 45 in the lever family is drawn self-supporting
+# AGAINST THIS, the keeper's foot is sized "on the bed" at HOUS_Z0, and the buttress
+# "grows up from the print bed". tools.check_ceilings reads it by name (src.leg_stack's
+# SLEEVE_UP and friends set the pattern).
 PRINT_UP = (0.0, 0.0, 1.0)
 
 AXLE_DROP = HOUS_Z1 - KL.HOUS_Z1    # how much lower the axle sits than LKL's (+11.0..15.2)
 
-# ── mount tenons: slide along LOCAL X (see the docstring) ────────────────────
-TEN_X0, TEN_X1 = HOUS_X0 + 2.0, HOUS_X1     # the slide span available
-# Two stations, pushed as far apart as the span allows. Their absolute Y is free —
-# the phase is set by where we pose the lever in the guitar's X, since after the
-# mount's 90° rotation the rib comb runs along local Y. So the housing does not
-# chase the ribs; the pose does.
+# ── mount tenons: slide along Y, stations along X ────────────────────────────
+TEN_Y0, TEN_Y1 = HOUS_Y0, HOUS_Y1 - 2.0     # the slide span available
+# The stations' phase in X is free: it is set by where src.build puts the lever along the
+# instrument, since the rib comb runs in X. So the housing does not chase the ribs; the
+# station does.
 # CENTRED on the housing, not pushed against the sensor wall. With the spacing free, hard
 # against that wall was the way to get them furthest apart; with the spacing locked to the grid
 # the phase is the only freedom left, and centring is what maximises the distance from the
@@ -213,26 +234,26 @@ TEN_X0, TEN_X1 = HOUS_X0 + 2.0, HOUS_X1     # the slide span available
 # in _housing). Anchored at the wall, the inboard stem came 3.5 from the centre and the roof
 # had to drop under the arm's reach.
 # THREE, with the MIDDLE ONE ON THE LEVER'S CENTRELINE (user, 2026-09-18). The outer pair is
-# where it was -- TEN_PITCH apart, so the housing's own width (HOUS_HW_N) does not move -- and
-# the middle station is the grid station between them, free room that was being left empty.
-# It is INTERRUPTED over the arm slot's X span, by construction and not by special-casing: the
+# TEN_PITCH apart, so the housing's own width (HOUS_X0) does not move, and the middle station
+# is the grid station between them, free room that would otherwise be left empty.
+# It is INTERRUPTED over the arm slot's Y span, by construction and not by special-casing: the
 # slot is cut after the tenons, so the same sweep that clears the arm trims this one, exactly
-# as LKL's over-the-lever station is trimmed by its lever room. What survives is the -X run,
+# as LKL's over-the-lever station is trimmed by its lever room. What survives is the +Y run,
 # about 60 of it, which is where this lever's engagement lives anyway.
-TEN_Y = (-TEN_PITCH / 2.0, 0.0, TEN_PITCH / 2.0)
+TEN_X = (-TEN_PITCH / 2.0, 0.0, TEN_PITCH / 2.0)
 
 
-def _top_tenon(ty):
-    """One fused mount tenon at local y=ty. The joint already slides along +X with
-    its head +Z, which is exactly what this lever wants — no rotation, unlike LKL's.
-    Its root slab and root chamfer are clipped to the housing's Y, so an outer station's
-    stays inside; the stem and flare above are left whole (KL.clip_tenon_root)."""
-    t = (KL._lever_joint(TEN_X1 - TEN_X0).tenon(root=KL.TEN_ROOT)
-         .translate((TEN_X0, ty, HOUS_Z1)))
-    return KL.clip_tenon_root(t, TEN_X1 - TEN_X0, HOUS_Z1,
-                              ((HOUS_X0 + HOUS_X1) / 2 - 2 * (HOUS_X1 - HOUS_X0),
-                               (HOUS_X0 + HOUS_X1) / 2 + 2 * (HOUS_X1 - HOUS_X0),
-                               -HOUS_HW_N, HOUS_HW_P))
+def _top_tenon(tx):
+    """One fused mount tenon at x=tx: the joint (slides +X, head +Z) turned to slide -Y,
+    its mouth end at the housing's back. Its root slab and root chamfer are clipped to the
+    housing's X, so an outer station's stays inside; the stem and flare above are left
+    whole (KL.clip_tenon_root)."""
+    t = (KL._lever_joint(TEN_Y1 - TEN_Y0).tenon(root=KL.TEN_ROOT)
+         .rotate((0, 0, 0), (0, 0, 1), -90)                   # slide axis X -> -Y (head stays +Z)
+         .translate((tx, TEN_Y1, HOUS_Z1)))
+    yc, ly = (HOUS_Y0 + HOUS_Y1) / 2, HOUS_Y1 - HOUS_Y0
+    return KL.clip_tenon_root(t, TEN_Y1 - TEN_Y0, HOUS_Z1,
+                              (HOUS_X0, HOUS_X1, yc - 2 * ly, yc + 2 * ly))
 
 
 def _lever_envelope() -> cq.Workplane:
@@ -240,11 +261,11 @@ def _lever_envelope() -> cq.Workplane:
     the lever room. Built from the same primitives as _lever rather than offset
     from it, so a change to one is visibly a change to the other."""
     c = KL.HS_CLR
-    hub = cyl_y(HUB_D + 2 * c, 2 * (LEVER_HW + c), y0=-(LEVER_HW + c))
-    leg = box_at(KL.ARM_TX + 2 * c, 2 * (LEVER_HW + c), LEG_TOP + c,
+    hub = cyl_x(HUB_D + 2 * c, 2 * (LEVER_HW + c), x0=-(LEVER_HW + c))
+    leg = box_at(2 * (LEVER_HW + c), KL.ARM_TX + 2 * c, LEG_TOP + c,
                  x=0.0, y=0.0, z=(LEG_TOP + c) / 2)
-    arm = box_at(ARM_LEN_V + 2.0, 2 * (LEVER_HW + c), ARM_TZ + 2 * c,
-                 x=(ARM_LEN_V + 2.0) / 2, y=0.0, z=0.0)
+    arm = box_at(2 * (LEVER_HW + c), ARM_LEN_V + 2.0, ARM_TZ + 2 * c,
+                 x=0.0, y=-(ARM_LEN_V + 2.0) / 2, z=0.0)
     return heal(hub.union(leg).union(arm))
 
 
@@ -256,19 +277,17 @@ def _lever_envelope() -> cq.Workplane:
 #
 # THE CHASSIS IS HOUS_Z1. This housing's top is mounted FLUSH with the instrument's
 # underside -- that is what MOUNT_Z is -- so "the lever tip touches the chassis" is
-# "the lever reaches local z HOUS_Z1", and it needs no chassis import to say so. The tip
+# "the lever reaches z HOUS_Z1", and it needs no chassis import to say so. The tip
 # starts HOUS_Z1 - the envelope's own zmax below it, which measures 14.8 at the lever's
 # leg and 27.6 out at the tip the user read off the model; either way the angle falls out
 # of the same sweep rather than being typed.
 #
-# IT IS ABOUT 20 DEG, NOT 63, AND I HAD IT WRONG (user: "the lever will never sweep that
-# far, it will hit the chassis well before that"). I derived 63 from a probe that posed
-# the lever with KV.place -- MOUNT_POSE, y -130 -- while src.build poses this station at
-# sy -31.35. Ninety-nine millimetres of Y put the tip outboard of the chassis's -Y edge,
-# where of course nothing stopped it until 62.6. Re-measured through build's own pose the
-# gap closes at 20-21, which is THROW_V, as a sensibly-designed lever should be. The same
-# class of error as posing a cutter with the wrong transform, and the fix is the same:
-# derive it here, where the housing's own datum already says it.
+# IT IS ABOUT 20 DEG, NOT 63 (user: "the lever will never sweep that far, it will hit the
+# chassis well before that"). 63 is what a probe reads with the lever posed 99 mm too far
+# -Y, where the tip is outboard of the chassis's -Y edge and nothing stops it until 62.6.
+# Measured through build's own station the gap closes at 20-21, which is THROW_V, as a
+# sensibly-designed lever should be. It is derived here, where the housing's own datum
+# already says it, so no pose can get between the sweep and the answer.
 def _throw_max():
     """Sweep until the lever reaches the instrument's underside; that angle is the limit."""
     for i in range(1, 181):
@@ -283,36 +302,33 @@ def _throw_max():
 def _housing() -> cq.Workplane:
     """The prism, derived from the lever + the raised cartridges exactly as LKL's
     is, minus the lever room, the two house pockets and the drag recesses, plus
-    the bearing seats, the sensor-side contact rib and the mount tenons."""
-    w = box_at(HOUS_X1 - HOUS_X0, HOUS_HW_P + HOUS_HW_N, HOUS_Z1 - HOUS_Z0,
-               x=(HOUS_X0 + HOUS_X1) / 2, y=(HOUS_HW_P - HOUS_HW_N) / 2,
+    the bearing seats, the sensor cradle and the mount tenons."""
+    w = box_at(HOUS_X1 - HOUS_X0, HOUS_Y1 - HOUS_Y0, HOUS_Z1 - HOUS_Z0,
+               x=(HOUS_X0 + HOUS_X1) / 2, y=(HOUS_Y0 + HOUS_Y1) / 2,
                z=(HOUS_Z0 + HOUS_Z1) / 2)
-    for ty in TEN_Y:
-        w = w.union(_top_tenon(ty))
+    for tx in TEN_X:
+        w = w.union(_top_tenon(tx))
     # LEVER ROOM = the lever's OWN SWEPT ENVELOPE, as a union of clearance copies
-    # through the throw. The first attempt was one planar polygon from the hub to
-    # the arm tip, and it was wrong in a way worth recording: its lower edge ran
-    # from the hub straight out to the tip's FULL-THROW position, so it sloped up
-    # above the arm's own rest underside and the lever fouled from 3° on. Sweeping
+    # through the throw. A single planar polygon from the hub to the arm tip is the
+    # obvious shortcut and it is wrong in a way worth recording: its lower edge runs
+    # from the hub straight out to the tip's FULL-THROW position, so it slopes up
+    # above the arm's own rest underside and the lever fouls from 3° on. Sweeping
     # the real shape cannot make that mistake. 1° steps leave scallops well under
     # one nozzle; a closed-form polygon is the tidy-up, not a correctness fix.
     # ...AND IT SWEEPS TO THE CHASSIS, not to THROW_V (user, 2026-09-25: "LKV will have
     # shorter travel, we just need to ensure it isn't blocked until the lever tip touches
     # the chassis. The chassis sets the limit"). THROW_V is how far the lever is DRIVEN;
-    # it is not how far it can go, and carving only the driven range left the housing
-    # stopping the arm 40 deg before anything physical did. The arm rises until it meets
-    # the instrument's underside, which is HOUS_Z1 -- measured at 62.6 deg, where the tip
-    # closes the 15.2 mm it starts with.
+    # it is not how far it can go, and carving only the driven range would leave the housing
+    # stopping the arm 40 deg before anything physical does. The arm rises until it meets
+    # the instrument's underside, which is HOUS_Z1.
     _hw = LEVER_HW + KL.HS_CLR
-    # THE MOUNT GETS THE LAST WORD. The arm leaves through a slot in the +X face whose roof
+    # THE MOUNT GETS THE LAST WORD. The arm leaves through a slot in the -Y face whose roof
     # may not rise past a tenon stem's root, and the arm's reach inside that span climbs
-    # steeply once it is past ~44 deg: 17.95 at 44, 26.03 at 56, 33.73 at 63. So the room is
-    # swept as far as the roots allow and no further -- measured at 56 deg, against the
-    # chassis's 62.6. The last 6.6 deg would cost a tenon root, and the lever is DRIVEN 20.
-    _stem = min(abs(ty) - KL._J_STEM / 2 for ty in TEN_Y if abs(ty) > 1e-9)
-    _x0 = -(KL.ARM_TX / 2 + KL.HS_CLR)
-    _x1 = HOUS_X1 + 1.0
-    _span = box_at(_x1 - _x0, 2 * _hw + 2.0, 400.0, x=(_x0 + _x1) / 2, y=0.0, z=0.0)
+    # steeply once it is past ~44 deg: 17.95 at 44, 26.03 at 56, 33.73 at 63.
+    _stem = min(abs(tx) - KL._J_STEM / 2 for tx in TEN_X if abs(tx) > 1e-9)
+    _y0 = HOUS_Y0 - 1.0
+    _y1 = KL.ARM_TX / 2 + KL.HS_CLR
+    _span = box_at(2 * _hw + 2.0, _y1 - _y0, 400.0, x=0.0, y=(_y0 + _y1) / 2, z=0.0)
     # THE SLOT IS SIZED BY THE LEVER'S OWN SECTION, not by where the lever GETS TO (user,
     # 2026-09-25: "I'm confused why the lever would need to be that far +z during
     # installation. It seems like it could slide in purely along Y and not need to go up in
@@ -320,13 +336,13 @@ def _housing() -> cq.Workplane:
     # section in this span is z -6.80..16.40 and it stays that for the whole withdrawal --
     # a constant section, because sliding a part out does not move it in Z.
     #
-    # Sized against the swept envelope's reach instead, the wall stood at 26.35: ten mm of
-    # opening nothing passes through, with a 45 deg roof adding another 13.2 above THAT. And
-    # it was self-defeating, because the roof then had to stay under a mount tenon's root,
-    # which is what capped the room's sweep at 56 deg. Proven by A/B, not argued: with the
-    # slot deleted entirely the lever still clears the housing at every angle to 63, and
-    # WITH it the lever slides straight out +X with zero contact. The envelope carries the
-    # sweep; the slot carries the INSTALL STROKE. They were conflated.
+    # Sized against the swept envelope's reach instead, the wall would stand at 26.35: ten
+    # mm of opening nothing passes through, with a 45 deg roof adding another 13.2 above THAT.
+    # And it would be self-defeating, because the roof then has to stay under a mount tenon's
+    # root, which caps the room's sweep at 56 deg. Proven by A/B, not argued: with no slot
+    # at all the lever still clears the housing at every angle to 63, and WITH it the lever
+    # slides straight out -Y with zero contact. The envelope carries the sweep; the slot
+    # carries the INSTALL STROKE. They are different things.
     _zw = _lever_envelope().val().intersect(_span.val()).BoundingBox().zmax
     _root = HOUS_Z1 - KL.TEN_ROOT - max(0.0, _hw - _stem)
     assert _zw <= _root + 1e-6, (
@@ -337,8 +353,8 @@ def _housing() -> cq.Workplane:
         _env = c if _env is None else _env.union(c)
     # ...CAPPED AT THE HOUSING TOP (user, 2026-09-10). The top is flush with the instrument's
     # underside, so the arm cannot swing above it: past ~15 deg it meets the body, not air.
-    # Sweeping the full envelope up through it hollowed out the inner halves of both mount
-    # tenons, which left the rib mortises half empty.
+    # Sweeping the full envelope up through it would hollow out the inner halves of the
+    # mount tenons and leave the rib mortises half empty.
     _env = _env.intersect(box_at(400.0, 400.0, HOUS_Z1 - (HOUS_Z0 - 50.0),
                                  x=0.0, y=0.0, z=(HOUS_Z1 + HOUS_Z0 - 50.0) / 2))
     w = w.cut(_env)
@@ -347,34 +363,34 @@ def _housing() -> cq.Workplane:
     # moving the lever up just enough to clear the small indent it has in the floor below it
     # and then sweeping it out towards -y").
     #
-    # WHAT WAS THERE was a house-profile slot 26.4 wide running the full height, and it was
-    # a guess at the motion rather than the motion. Two faults followed from that, both
-    # found by the user in the viewer and neither visible to any check here:
-    #   its height was taken from the swept envelope's REACH, ten mm above anything that
-    #     passes through it, and since the roof then had to duck a mount tenon's root it
-    #     was what capped the lever's own sweep six degrees short of the chassis;
-    #   its inboard end was a vertical wall at _x0 standing on a 17 mm void -- 44.47 mm2
-    #     of face with nothing under it, and everything above it unsupported.
+    # A house-profile slot running the full height is a guess at the motion rather than the
+    # motion, and both of its faults were found by the user in the viewer, invisible to any
+    # check here:
+    #   its height comes from the swept envelope's REACH, ten mm above anything that
+    #     passes through it, and since the roof then has to duck a mount tenon's root it
+    #     caps the lever's own sweep six degrees short of the chassis;
+    #   its inboard end is a vertical wall standing on a 17 mm void -- 44.47 mm2 of face
+    #     with nothing under it, and everything above it unsupported.
     # A cut shaped like the motion cannot have either: it is bounded by the lever's own
     # section, and it ENDS at the lever's rest pose, which is inside the room already.
     #
     # THE LIFT IS THE SEAT'S OWN DEPTH, read off the envelope rather than typed: the room
     # follows the lever, so the dip the hub sits in IS the envelope's own dip, 2.78 here.
-    _at = lambda x: (_lever_envelope().val()
-                     .intersect(box_at(1.0, 400.0, 400.0, x=x, y=0.0, z=0.0).val())
+    _at = lambda y: (_lever_envelope().val()
+                     .intersect(box_at(400.0, 1.0, 400.0, x=0.0, y=y, z=0.0).val())
                      .BoundingBox().zmin)
-    _lift = _at(0.0) * -1 + _at(HUB_D / 2 + 2.0)      # seat bottom -> the floor outside it
-    _draw = (HOUS_X1 + 2.0) - _lever_envelope().val().BoundingBox().xmin
+    _lift = _at(0.0) * -1 + _at(-(HUB_D / 2 + 2.0))   # seat bottom -> the floor outside it
+    _draw = _lever_envelope().val().BoundingBox().ymax - (HOUS_Y0 - 2.0)
     _ins = None
     for dz in [j * 0.5 for j in range(0, int(_lift / 0.5) + 2)]:
         c = _lever_envelope().translate((0.0, 0.0, min(dz, _lift)))
         _ins = c if _ins is None else _ins.union(c)
     _top = _lever_envelope().translate((0.0, 0.0, _lift))
-    for dx in [j * 2.0 for j in range(1, int(_draw / 2.0) + 2)]:
-        _ins = _ins.union(_top.translate((min(dx, _draw), 0.0, 0.0)))
+    for dy in [j * 2.0 for j in range(1, int(_draw / 2.0) + 2)]:
+        _ins = _ins.union(_top.translate((0.0, -min(dy, _draw), 0.0)))
     # ...AND IT GETS A ROOF OF ITS OWN. The install stroke is the lever's own section
     # swept, so its top is the lever's FLAT top, and a flat-topped hole is a ceiling: 7.2
-    # mm of it here, 38.7 mm2, the biggest on this part. helpers.corbel_close will trim
+    # mm of it here, 38.7 mm2, the biggest on this part. helpers.corbel_close would trim
     # that back to a 45, but only to within one of its courses -- it credits a course
     # with a whole step of 45 growth at the course's own floor, and this jump happens AT
     # a floor, so a lip exactly one step wide survives. 0.82 at a bead, 0.43 at half a
@@ -388,23 +404,26 @@ def _housing() -> cq.Workplane:
     # have been printed anyway.
     _ins = _ins.union(_gable_up(_ins))
     w = w.cut(_ins)
-    w = KL.cut_axle_stack(w)       # bearing seats + contact rib + axle way
-    w = KL.cut_feel_pockets(w, vplace, HOUS_X1)
+    w = KL.cut_axle_stack(w, place=core)          # bearing seats + the axle way
+    # the pockets run out through the arm's face: ARM_FACE is that face in the core's terms
+    w = KL.cut_feel_pockets(w, vplace, ARM_FACE)
     # SENSOR CRADLE — knee_lever's, parameterised by this housing's Z extents
     # (user: draw it once and reuse it). Everything about the sensor stack is
     # identical between the levers except how tall the board is, and that falls
     # out of z_bot/z_top.
-    w = KL._cradle(w, HOUS_Z0, HOUS_Z1, x_max=HOUS_X1)
+    w = KL._cradle(w, HOUS_Z0, HOUS_Z1, x_max=ARM_FACE, place=core)
     # HUNG, not stood on the bed: this housing is 46.6 deep, so a post from its floor
     # would run the whole depth of the lever and put its coil 18 below the horizontal
     # levers'. Hung at KL.KEEP_DROP on a 45 deg buttress, every coil is at one height.
-    w = w.union(KL.cable_keeper(HOUS_HW_P, HOUS_Z0, HOUS_X0, HOUS_Z1, hung=True))
+    # (The keeper is the core's: its cheek is this housing's sensor face, its back this
+    # housing's back, in the core's own coordinates.)
+    w = w.union(core(KL.cable_keeper(HOUS_X1, HOUS_Z0, -HOUS_Y1, HOUS_Z1, hung=True)))
     # NO SECOND POST HERE (user, 2026-09-23: "you added an extra winding post to the
     # LKV but it's unnecessary"). Right -- this lever already has a column, and the
-    # arriving cable can turn round THAT. A turn post was added when the approach was
-    # coming round the front, into the arm's sweep; once it comes round the +Y back end
-    # instead, the keeper is already sitting at that end and does the job.
-    # ...AND THE SAME 45 DEG KNEE RELIEF LKL GOT (user, 2026-09-25: "I would recommend
+    # arriving cable can turn round THAT. A turn post belongs to an approach round the
+    # front, into the arm's sweep; the cable comes round the +Y back end instead, where
+    # the keeper is already sitting and does the job.
+    # ...AND THE SAME 45 DEG KNEE RELIEF LKL HAS (user, 2026-09-25: "I would recommend
     # adding the same 45 cut we added to the LKL yesterday to the LKV so we can get a bit
     # more space for the knee"). Same construction, same constant: a plane TANGENT to a
     # circle of bearing seat + KNEE_BRG_WALL about the axle, so the material that takes the
@@ -424,37 +443,36 @@ def roof_cut(env, ins) -> cq.Workplane:
     once). Here the walls are simpler than LKL's, and every number is read off the voids:
 
       * OVER THE INSTALL STROKE. Its top is a flat (the lever's own top, lifted) that the
-        middle mount tenon crosses. Held from -X at 45 off the flat's -X edge, and from each
+        middle mount tenon crosses. Held from +Y at 45 off the flat's +Y edge, and from each
         side at 45 off the cartridge pockets' gable flats (their outer edge, where the pocket's
-        outer wall carries them). The +X face is the arm's exit: nothing there.
-      * UNDER THE WEB BETWEEN THE POCKETS, over the arm's sweep. The sweep's -X flank leaves
-        the wall at its leftmost point and climbs at ~24 deg; the web over it is held only from
-        that corner, so it is trimmed to 45 off it, as far as the install stroke's -X wall."""
-    s2 = math.sqrt(2.0)
+        outer wall carries them). The -Y face is the arm's exit: nothing there.
+      * UNDER THE WEB BETWEEN THE POCKETS, over the arm's sweep. The sweep's +Y flank leaves
+        the wall at its +Y-most point and climbs at ~24 deg; the web over it is held only from
+        that corner, so it is trimmed to 45 off it, as far as the install stroke's +Y wall."""
     ib = ins.val().BoundingBox()
     zr = ib.zmax                                               # the stroke's top flat...
-    xr = min(f.BoundingBox().xmin for f in ins.val().Faces()   # ...and its -X edge
+    yr = max(f.BoundingBox().ymax for f in ins.val().Faces()   # ...and its +Y edge
              if f.geomType() == "PLANE" and f.normalAt(f.Center()).z > 0.99
              and abs(f.Center().z - zr) < 1e-6)
     pk = vplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val().BoundingBox().zmax
-    yw = KL.HS_YC + KL.ROOF_FLAT / 2.0                         # the gable flat's outer edge
-    xe, top = HOUS_X1 + 1.0, HOUS_Z1 + 2 * KL._J_HOST_W        # past the tenons' tips
+    xw = KL.HS_YC + KL.ROOF_FLAT / 2.0                         # the gable flat's outer edge
+    ye, top = HOUS_Y0 - 1.0, HOUS_Z1 + 2 * KL._J_HOST_W       # past the tenons' tips
     lo = zr - 1.0
-    a = cq.Workplane("XZ").polyline([(xr - 1.0, lo), (xe, lo), (xe, top),
-                                     (xr + (top - zr), top)]).close().extrude(yw + 1.0, both=True)
-    b = (cq.Workplane("YZ").polyline([(-yw, lo), (yw, lo), (yw, pk), (0.0, pk + yw), (-yw, pk)])
-         .close().extrude(xe - xr + 3.0).translate((xr - 2.0, 0, 0)))
+    a = cq.Workplane("YZ").polyline([(yr + 1.0, lo), (ye, lo), (ye, top),
+                                     (yr - (top - zr), top)]).close().extrude(xw + 1.0, both=True)
+    b = (cq.Workplane("XZ").polyline([(-xw, lo), (xw, lo), (xw, pk), (0.0, pk + xw), (-xw, pk)])
+         .close().extrude(yr - ye + 3.0).translate((0, yr + 2.0, 0)))
     cut = a.val().intersect(b.val())
-    # the web: its corner is the sweep's leftmost point in the web's plane (y = 0)
-    sec = env.val().intersect(box_at(400.0, 0.02, 400.0, x=0.0, y=0.0, z=0.0).val())
+    # the web: its corner is the sweep's +Y-most point in the web's plane (x = 0)
+    sec = env.val().intersect(box_at(0.02, 400.0, 400.0, x=0.0, y=0.0, z=0.0).val())
     pts = [e.positionAt(i / 200.0) for e in sec.Edges() for i in range(201)]
-    c = min(pts, key=lambda q: q.x)
-    xc, zc = c.x, c.z
-    xw = ib.xmin                                               # the install stroke's -X wall
-    yi = KL.HS_YC - KL.hs_pocket_hw()                          # the web: between the pockets
-    assert xc < xw and yi > 0.0, "the sweep's corner / the web are not where this assumes"
-    wedge = (cq.Workplane("XZ").polyline([(xc, zc), (xw, zc), (xw, zc + (xw - xc))]).close()
-             .extrude(yi + 0.5, both=True))
+    c = max(pts, key=lambda q: q.y)
+    yc, zc = c.y, c.z
+    yw = ib.ymax                                               # the install stroke's +Y wall
+    xi = KL.HS_YC - KL.hs_pocket_hw()                          # the web: between the pockets
+    assert yc > yw and xi > 0.0, "the sweep's corner / the web are not where this assumes"
+    wedge = (cq.Workplane("YZ").polyline([(yc, zc), (yw, zc), (yw, zc + (yc - yw))]).close()
+             .extrude(xi + 0.5, both=True))
     return cq.Workplane("XY").add(cut.fuse(wedge.val()))
 
 
@@ -468,7 +486,7 @@ def _gable_up(v):
     something the bounding box knows."""
     # HEALED FIRST. The install stroke is a union of forty-odd translated copies, so its
     # roof arrives as forty-odd coplanar shards; drafting each one and fusing the results
-    # handed back a NULL shape. Merged into whole faces there is one roof to gable.
+    # hands back a NULL shape. Merged into whole faces there is one roof to gable.
     v = KL.heal(v)
     out = []
     for f in v.val().Faces():
@@ -487,7 +505,12 @@ def _gable_up(v):
             try:
                 g = cq.Solid.extrudeLinear(f.outerWire(), list(f.innerWires()),
                                            cq.Vector(0, 0, h), taper=45)
-                ok = g.isValid() and g.Volume() > 1e-6
+                # ...and it must FUSE with the cutter it stands on. A draft run right to
+                # the footprint's closing height can come back "valid" and still be
+                # degenerate at its ridge, and every boolean after it returns a null shape;
+                # tried here, on the spot, it is just one more refusal.
+                ok = (g.isValid() and g.Volume() > 1e-6
+                      and v.val().fuse(g).Volume() > v.val().Volume())
             except Exception:
                 ok = False                # ...and a REFUSAL is not the only failure:
             if ok:                        #   OCC also hands back a null shape, which
@@ -508,94 +531,105 @@ def _gable_up(v):
 
 
 def _knee_relief():
-    """The 45 deg corner off the bottom +X end, across this housing's own width.
+    """The 45 deg corner off the bottom of the arm's face, across this housing's own width.
 
-    BOUNDED TO THE HOUSING, like LKL's, so the sensor cradle outboard of +HOUS_HW_P keeps
-    the board's grooves; and guarded around the board itself for the same reason as there
-    -- the arithmetic is about one pose of a board that has been turned over before."""
+    BOUNDED TO THE HOUSING, like LKL's, so the sensor cradle beyond the +X face keeps the
+    board's grooves; and guarded around the board itself for the same reason as there --
+    the arithmetic is about one pose of a board that can be installed turned over."""
     z0 = HOUS_Z0 - 1.0
-    xo = HOUS_X1 + 1.0
+    yo = HOUS_Y0 - 1.0
     # ...AND IT RUNS OVER THE CRADLE, as LKL's does (user, 2026-09-25: "the 45 cut doesn't
-    # cut the PCB like you have it for the LKL"). Bounded at HOUS_HW_P it stopped at the
-    # cheek and left the cradle's corner standing proud of the relief on the very side the
-    # knee comes from. The board is guarded instead -- by ITS OWN installed height here,
+    # cut the PCB like you have it for the LKL"). Bounded at the sensor face it would stop at
+    # the cheek and leave the cradle's corner standing proud of the relief on the very side
+    # the knee comes from. The board is guarded instead -- by ITS OWN installed height here,
     # not LKL's, which is what KL.board_guard exists to get right.
-    y0, y1 = -HOUS_HW_N, KL.CR_Y1 + KL.D.MIN_WALL_2P
-    pts = [(z0 + KL.KNEE_CHAM_C, z0), (xo, z0), (xo, xo - KL.KNEE_CHAM_C)]
+    x0, x1 = HOUS_X0, KL.CR_Y1 + KL.D.MIN_WALL_2P
+    pts = [(-(z0 + KL.KNEE_CHAM_C), z0), (yo, z0), (yo, -yo - KL.KNEE_CHAM_C)]
     f = cq.Face.makeFromWires(cq.Wire.makePolygon(
-        [cq.Vector(x, y0, z) for x, z in pts] + [cq.Vector(pts[0][0], y0, pts[0][1])]))
-    wedge = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(0, y1 - y0, 0)))
-    return wedge.cut(KL.board_guard(HOUS_Z0, HOUS_Z1))
+        [cq.Vector(x0, y, z) for y, z in pts] + [cq.Vector(x0, pts[0][0], pts[0][1])]))
+    wedge = cq.Workplane("XY").add(cq.Solid.extrudeLinear(f, cq.Vector(x1 - x0, 0, 0)))
+    return wedge.cut(core(KL.board_guard(HOUS_Z0, HOUS_Z1)))
 
 
 def swing(s, throw=0.0):
-    """Pose a lever-frame solid at a given throw. +throw pushes the +X arm UP."""
-    return s.rotate((0, 0, 0), (0, 1, 0), -throw)
+    """Pose a lever solid at a given throw, about the axle. +throw lifts the arm."""
+    return s.rotate((0, 0, 0), (1, 0, 0), -throw)
 
 
 THROW_MAX = _throw_max()
 
 kv_lever = lazy(_lever)                 # built when first used: see knee_lever
 kv_housing = lazy(_housing)
+# the board's SHIM: the core's one shim design, cut to this housing's slack. It is a plate in
+# the board's plane, and the board stands across the axle, so here it lies on its -X face.
+kv_pcb_shim = lazy(lambda: core(KL.pcb_shim(HOUS_Z0, HOUS_Z1)))
+SHIM_UP = core_pt(KL.SHIM_UP)
+assert SHIM_UP == (1.0, 0.0, 0.0), SHIM_UP
 
 
 def demo_parts():
-    """Bought/printed dummies in the local frame, for the assembly."""
-    out = KL.axle_dummies(lambda s: s, "kv", HOUS_Z0, HOUS_Z1)
+    """Bought/printed dummies, placed in this lever's frame, for the assembly."""
+    out = KL.axle_dummies(core, "kv", HOUS_Z0, HOUS_Z1)
     out += KL.cart_dummies(vplace, "kv", hs_setback=HS_SETBACK_V)
-    # the springs, tension screws, inserts and back-stops were MISSING here — this
-    # lever was drawn with cartridge bodies and no feel system inside them
+    # the springs, tension screws, inserts and back-stops too -- without them the lever
+    # reads as cartridge bodies with no feel system inside them
     out += KL.feel_dummies(vplace, "kv", hs_setback=HS_SETBACK_V)
     return out
+
+
+# ── the board's plug and cable keeper, for the harness ───────────────────────
+def plug_pin(way):
+    """KL.plug_pin for this housing's board, in this lever's frame."""
+    return core_pt(KL.plug_pin(way, HOUS_Z0, HOUS_Z1))
+
+
+def keeper_point():
+    """KL.keeper_point for this housing's keeper (see _housing), in this lever's frame."""
+    return core_pt(KL.keeper_point(HOUS_Z0, -HOUS_Y1, HOUS_X1, HOUS_Z1))
+
+
+PLUG_DIR = core_pt((-1.0, 0.0, 0.0))        # the plug's wires leave along the core's -X: +Y
+KEEPER_AXIS = core_pt(KL.keeper_axis())
+PIN_AXIS = core_pt(KL.pin_axis())
+CHEEK_AXIS = core_pt(KL.cheek_axis())       # the connector cheek's outward normal: +X
 
 
 if __name__ == "__main__":
     print(f"THROW_V   {THROW_V}   LOBE_RC_V {LOBE_RC_V}   stroke {_STROKE:.2f} "
           f"(horizontal: {KL.LOBE_RC * math.sin(math.radians(KL.THROW)):.2f})")
-    print(f"housing   x {HOUS_X0:.2f}..{HOUS_X1:.2f}  y ±{HOUS_HW}  z {HOUS_Z0:.2f}..{HOUS_Z1:.2f}")
+    print(f"housing   x {HOUS_X0:.2f}..{HOUS_X1:.2f}  y {HOUS_Y0:.2f}..{HOUS_Y1:.2f}  "
+          f"z {HOUS_Z0:.2f}..{HOUS_Z1:.2f}")
     print(f"axle sits {AXLE_DROP:.2f} lower than the horizontal lever's")
-    print(f"tenons at local y {TEN_Y}, sliding local x {TEN_X0:.2f}..{TEN_X1:.2f}")
+    print(f"tenons at x {TEN_X}, sliding y {TEN_Y0:.2f}..{TEN_Y1:.2f}")
 
 
-# ── GLOBAL POSE ──────────────────────────────────────────────────────────────
-# The 90° that makes this a "vertical" lever. Local +X -> global -Y (the arm reaches
-# out at the player), local +Y -> global +X (the sensor cluster runs toward the
-# bridge). Z is untouched, so the housing top still lands flush on the chassis
-# underside and the tenons still rise into the rib mortises from the same plane —
-# which is why chassis.py needs NO new feature: rib_mortise is already an octagon
-# slot of this width running along global Y in every rib, so it accepts these
-# tenons as they are. What has to line up is X: the two stations sit at local
-# y -12.60 / +10.40, so MOUNT_X is chosen to land them on two real ribs.
+# ── STATION ──────────────────────────────────────────────────────────────────
+# Z is the design's: the housing top lands flush on the chassis underside and the tenons
+# rise into the rib mortises from the same plane -- which is why chassis.py needs NO
+# feature of its own for this lever: rib_mortise is already an octagon slot of this width
+# running along Y in every rib, so it accepts these tenons as they are. What has to line
+# up is X: MOUNT_X lands the stations on real ribs.
 _Z_BOT = _BED_Z                     # -74.95 chassis underside (= chassis.Z_BOT, via
                                     # motor_bank.BED_Z — the spelled -75.15 it replaces had
                                     # gone stale when the bed datum snapped to the grid)
-MOUNT_X = -455.0 - TEN_Y[1]         # -465.40 -> stations at ribs -478.0 and -455.0
+MOUNT_X = -455.0 - TEN_X[1]         # a rib-comb X: the stations land on ribs
 MOUNT_Y = -130.0                    # axle 3.75 inboard of the -Y rail, so the housing
                                     # runs inboard under the body and the arm reaches out
 MOUNT_Z = _Z_BOT - HOUS_Z1 - KL.MORT_SEAT   # housing top c under the chassis underside (seat at c)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 
 
-POSE_ROT = (((0, 0, 1), -90),)      # ...the rotation half of it, on its own
-
-
 def place(s):
-    """Local frame -> guitar frame."""
-    s = _rot(s)
+    """This lever at its default station: a translation, nothing else."""
     return s.translate(MOUNT_POSE)
 
 
-def _rot(s):
-    for ax, deg in POSE_ROT:
-        s = s.rotate((0, 0, 0), ax, deg)
-    return s
-
-
 # PRINT ORIENTATION (the record, declared once per part) -- the ARM is the horizontal
-# lever's arm, so it prints the way that one does; it just arrives in the guitar frame
-# turned. Derived through this module's OWN pose rather than written out as +X, so a
-# change to `place` carries it: local +Y -> world +X.
-LEVER_UP = pose_dir(POSE_ROT, KL.LEVER_UP)
+# lever's arm on this lever's axle, so it prints the way that one does: lying on the face
+# its axle bore leaves through, building ALONG the axle, so cadkit's bore along it is a
+# plain cylinder. The axle runs along X here: the arm lies on its -X face.
+LEVER_UP = core_pt(KL.LEVER_UP)
+assert LEVER_UP == (1.0, 0.0, 0.0), LEVER_UP
 
 
 # ── the boards must be ONE design (user) ────────────────────────────────────
