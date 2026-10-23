@@ -61,13 +61,13 @@ A part that is not in this file is not on a board, whatever another document say
 | `470R` | C25117 | 2 | output_panel |
 | `49k9 1%` | C25897 | 2 | motor_ctrl, pi_cap |
 | `4k7` | C25900 | 26 | lever_sensor, output_panel, optical |
+| `52271-2079` | C588186 | 1 | ui_board |
 | `56k` | C25796 | 2 | output_panel |
 | `5k1` | C25905 | 6 | output_panel, optical |
 | `68R` | C163455 | 4 | pi_cap |
 | `7k68 1%` | C25919 | 1 | fret_led_key |
 | `9k09 1%` | C274897 | 1 | optical |
 | `AD8402ARZ10` | C578716 | 1 | output_panel |
-| `52271-2079` | C588186 | 1 | ui_board |
 | `AO3400A` | C20917 | 2 | output_panel, optical |
 | `AP2112K-3.3TRG1` | C51118 | 12 | lever_sensor, output_panel |
 | `AP2114H-3.3TRG1` | C150716 | 1 | optical |
