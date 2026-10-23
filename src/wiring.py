@@ -666,6 +666,17 @@ def tee_components():
 from .chassis import PORT_W, port_y
 from .chassis import Z_BOT as _CH_Z_BOT
 from . import leg_pogo as _PG
+from . import legs as _LG
+from . import cable_routes as _CR
+# THE PARTS THAT SLIDE WITH THE -X/+Y LEG when it moves out to its service position
+# (legs.SERVICE_SLIDE): its body adapter, the leg stack hung from it, and the top pogo
+# joint's two boards. The lock pin's screw and insert stay in the endplate.
+LEG_SLIDES = (r"^(body_adapter_0|fixed_(sleeve|tenon)|adjust_(sleeve|tenon)|leg_latch_\w+"
+              r"|bar_latch_\w+)$|^pogo_(male|female)_\w+_top$")
+PEDAL_ROUTES = {}       # "home" / "service": the pedal cable's bundle centreline, each pose
+# what the pedal cable is cut to: its longer pose's route, the two straight leads into the
+# ZR and the PH, and this much over for the crimps and for not working it at full stretch
+PEDAL_CUT_SPARE = 15.0
 from cadkit.pcb import PH_PITCH as _PH_PITCH
 
 
@@ -2049,8 +2060,25 @@ def ctrl_bus_b(lkl):
     _stub_c = _PG.chan_ends()[1]
     _px = j2c[0] + _PEDAL_DX
     _py = port_y()[0] + PORT_W / 2.0 + 3.2             # where it has always come down
-    centre = [_stub_c, (_px, _py, _CH_Z_BOT - 4.0), (_px, _py, _pedal_z),
-              (_px, j2c[1] + CTRL_FAN, _pedal_z), j2c]
+    # ⚠ TAUT, NOT SQUARED (user, 2026-10-22): pulled between the adapter's face and J2
+    # the cable lies straight wherever it can, and the hand path's square turns (kept
+    # below as the stand-in until tools/route_cables.py has been run) hid ~25 mm of slack
+    # that is really there. It is routed to a point straight under J2, where the plug's
+    # own lead takes over.
+    _j2_free = (j2c[0], j2c[1], _pedal_z)
+    _hand = [_stub_c, (_px, _py, _CH_Z_BOT - 4.0), (_px, _py, _pedal_z), _j2_free]
+    _rr = _PG.HARNESS_D / 2.0 + 0.3
+    centre = _CR.taut("bus B pedal cable", _stub_c, _j2_free, _rr, _hand) + [j2c]
+    # ...AND WITH THE LEG SLID OUT FOR RESTRINGING, still plugged in at both ends (user,
+    # 2026-10-22: strings change with no JST unplugged). That pose is never drawn; its
+    # route is what the cable's cut length has to reach (pedal_cable_cut).
+    _syg = 1.0 if _stub_c[1] > 0.0 else -1.0
+    _slid = (0.0, _syg * _LG.SERVICE_SLIDE, 0.0)
+    _stub_s = tuple(_stub_c[m] + _slid[m] for m in range(3))
+    PEDAL_ROUTES["home"] = centre[:-1]
+    PEDAL_ROUTES["service"] = _CR.taut(
+        "bus B pedal cable, leg slid out", _stub_s, _j2_free, _rr, [_stub_s] + _hand[1:],
+        moved=[(LEG_SLIDES, _slid)])
     legs = bundle_paths(centre, offs, across=(0.0, 0.0, 1.0))
     for k, q in enumerate(legs):
         step = max(abs(q[0][m] - ends[k][m]) for m in range(3))
@@ -2081,27 +2109,50 @@ def ctrl_bus_b(lkl):
     farc = tuple(sum(q[m] for q in far) / n for m in range(3))
     assert abs(d[0] + 1.0) < 1e-6 and abs(far[0][0] - far[-1][0]) < 1e-6 and abs(
         far[0][1] - far[-1][1]) < 1e-6, "LKL's plug no longer faces -X with its row along Z"
-    up = far[0][2] < far[-1][2]                        # way 1 at the row's low end
-    offs2 = [(0.0, (k - (n - 1) / 2.0) * CTRL_PITCH * (1.0 if up else -1.0)) for k in range(n)]
+    # ⚠ A TAUT BUNDLE, NOT A FLAT RUN ROUND J6's END (user, 2026-10-22: "the wires
+    # aren't taking a straight shot"). It was a flat four-way that came the long way
+    # round J6 whenever way 1 sat at the top of LKL's row, so as not to land the row
+    # reversed: 105 mm of conductor for 73 mm of distance. Four loose PHR-4 conductors
+    # do not care -- they lie as a bundle, pulled straight between the two plugs (routed
+    # by tools/route_cables.py; the hand path below stands in until it is), and spread
+    # onto their own ways over a CTRL_FAN run square out of each plug, the pedal cable's
+    # arrangement. Pairs stay adjacent in the bundle: rail with return, H with L.
+    _lead0 = CANB_LEAD          # the crimp's own length: the route, not a standoff, clears the cradle
+    _fa = tuple(farc[m] + d[m] * (_lead0 + CTRL_FAN) for m in range(3))
+    _fb = tuple(j6c[m] + _dn[m] * (CANB_LEAD + CTRL_FAN) for m in range(3))
     x6, zc = j6c[0], farc[2]
-    if up:          # way 1 lowest: arrive travelling -Y, the lowest lands furthest -Y
-        centre = [farc, (x6, farc[1], zc), (x6, j6c[1], zc), j6c]
-    else:           # way 1 highest: round the -Y end of J6 and arrive travelling +Y
-        _xa, _yb = x6 + 9 * D.BEAD, j6[0][1] - 6 * D.BEAD
-        centre = [farc, (_xa, farc[1], zc), (_xa, _yb, zc), (x6, _yb, zc), (x6, j6c[1], zc), j6c]
+    _hand = [_fa, (x6, _fa[1], zc), (x6, _fb[1], zc), _fb]
+    _s = CANB_WIRE_OD / 2.0 + 0.02
+    offs2 = [(-_s, -_s), (_s, -_s), (-_s, _s), (_s, _s)]   # PH_PINOUT: V5, GND | H, L
+    centre = ([farc] + _CR.taut("bus B lever head", _fa, _fb, CANB_WIRE_OD + 0.3, _hand)
+              + [j6c])
     legs2 = bundle_paths(centre, offs2, across=(0.0, 0.0, 1.0))
-    for k, q in enumerate(legs2):
-        for end, pin in ((q[0], far[k]), (q[-1], j6[k])):
-            assert max(abs(end[m] - pin[m]) for m in range(3)) < 0.05, (
-                "the lever head's ribbon does not land way %d on its pin: %r against %r"
-                % (k + 1, end, pin))
-    legs2 = _fan(_fan(legs2, 0, far, d, max(CANB_LEAD, _so)), -1, j6, _dn, CANB_LEAD)
+    legs2 = _fan(_fan(legs2, 0, far, d, _lead0), -1, j6, _dn, CANB_LEAD)
     _cable("bus B lever head", [(far[k], tuple(d), _j6e[k][2]) for k in range(n)], _j6e)
     for k, _hn in enumerate(EH.PH_PINOUT):          # conductor k lands on way k + 1
         nm = {"GND": "gnd", "V5": "v5", "CAN_H": "h", "CAN_L": "l"}[_hn]
         _run(out, "wire_canb_%s_lkl_0" % nm, legs2[k], CANB_WIRE_OD, "bus B lever head", k)
     check_cables(["bus B pedal cable", "bus B lever head"])
+    _rep = _CR.report()
+    if _rep:
+        print(_rep)
     return out
+
+
+def pedal_cable_cut():
+    """(cut length, home run, service run) of the pedal cable, mm, after ctrl_bus_b().
+
+    Cut to reach the LONGER of its two poses -- leg home, and leg slid out for
+    restringing with the cable still plugged in -- plus its run inside the leg's adapter
+    (leg_pogo.body_path), the drop into J2 and PEDAL_CUT_SPARE. In the home pose the
+    difference is slack the cable carries."""
+    from cadkit.cables import path_length
+    home = path_length(PEDAL_ROUTES["home"])
+    service = path_length(PEDAL_ROUTES["service"])
+    inside = path_length(_PG.body_path())
+    j2c = PATHS["pogo_wire_v5_5"][0][-1]
+    drop = abs(PEDAL_ROUTES["home"][-1][2] - j2c[2])
+    return max(home, service) + inside + drop + PEDAL_CUT_SPARE, home, service
 
 
 def lever_bus_cut_list(nodes):
