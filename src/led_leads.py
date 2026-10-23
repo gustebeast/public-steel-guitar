@@ -144,12 +144,14 @@ def _foot_ends():
 
 def foot_paths():
     """The foot strip's lead: board A's J1, up the endplate, over string 1's motor and its
-    CAN tee, down between that motor and the Pi, into the cap's J6. foot_light holds the
+    CAN tee (low, under the keyhead panel's sweep), down between that motor and the Pi,
+    into the cap's J6. foot_light holds the
     numbers and why each is what it is."""
     from . import foot_light as FOOT
     (pa, oa), (pb, ob) = _foot_ends()
     assert oa == (-1, 0, 0) and ob == (0, 1, 0), (oa, ob)
     fly = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + FOOT.LEAD_FLY
+    low = fly + FOOT.LEAD_LOW
     xs = pa[0][0] - FOOT.LEAD_STUB
 
     def build(r1, r2):
@@ -159,7 +161,8 @@ def foot_paths():
             cx = FOOT.LEAD_COL_X + r1[i] * WIRE_LANE
             dy = b[1] + PLUG_L + FOOT_DROP_CLR + r2[i] * WIRE_LANE
             out.append([a, (xs, a[1], a[2]), (xs, a[1], fly), (cx, a[1], fly),
-                        (cx, dy, fly), (cx, dy, b[2]), (b[0], dy, b[2]), b])
+                        (cx, FOOT.LEAD_DIP_Y, fly), (cx, FOOT.LEAD_DIP_Y, low),
+                        (cx, dy, low), (cx, dy, b[2]), (b[0], dy, b[2]), b])
         return out
     return _solve(build)
 
