@@ -249,7 +249,7 @@ for _s in SPLIT_X:
 # the hand-rolled sliding dovetail, which cadkit retired: at a 0.8 nozzle the
 # dovetail's acute plan corners round DOWN on the tenon and UP in the mortise, so
 # the halves collide at the corners before the faces seat.
-_SEG_CLR  = 0.40                       # plate 8 D3 (user, 2026-10-16): 0.35 and 0.40 fit but the
+_SEG_CLR  = 0.55                       # plate 8 D3 (user, 2026-10-16): 0.35 and 0.40 fit but the
                                        # layer lines across the slide made them drag; 0.45 the first
                                        # to slide easily (some wobble -- the full-length test decides)
                                        # MINI SEAM PLATE (user, 2026-10-16): 0.45 "slides easily but it
@@ -257,6 +257,9 @@ _SEG_CLR  = 0.40                       # plate 8 D3 (user, 2026-10-16): 0.35 and
                                        # MINI ROUND 2 (user): 0.40 "a touch loose" -> half a step
                                        # ROUND 3, 8 TENONS (user, 2026-10-21): 0.375 "quite tight"
                                        # -> back to 0.40, the last that slid (round 4 decides)
+                                       # FULL DROP (fit_plate10, user 2026-10-22): 0.40 / 0.45 /
+                                       # 0.50 / 0.55 -- the loosest, 0.55, the winner -- LOCKED
+                                       # (user, 2026-10-22: "we can lock that in as well")
 _SEG_HOST_W = 10 * D.BEAD              # 8.0: the tenon's host slab across Y, inside the rail
 _SEG_JD   = 13 * D.BEAD                # 10.4 room into the +X segment for the fit-tested
                                        # nozzle/nozzle joint (4.8 head, 2.0 corners): it
@@ -317,6 +320,13 @@ _SEG_RELIEF_CLR = 0.4                   # the gap under the tenon: the cavity's 
                                         # ramp this far below the tenon's, so the tenon lands on
                                         # neither -- one number, both faces
 _SEG_MZ0  = MB.FLOOR_TOP - _SEG_RELIEF_CLR
+# THE RELIEF RISES sqrt(2) PER 1 IN X, NOT 1 (round 7, 2026-10-22). A 45 deg ramp is printable
+# as a face, but it crosses the head's flanks, which run 45 deg in plan, and where a plane at
+# angle a meets them the edge left in the solid climbs at atan(tan(a) / sqrt2): 35.3 deg off flat
+# for a 45 deg ramp -- the "support at 55 deg" check_floating reported on every seam tenon.
+# At tan(a) = sqrt2 (54.7 deg) that edge is 45. It costs the head 3.6 more of engagement at its
+# foot, out of 64.
+_SEG_RELIEF_RISE = math.sqrt(2.0)
 _SEG_JX1  = _seg_halves(1.0)[0].val().BoundingBox().zmax   # the tenon's +X reach past the seam
 # guard: the seam JOINT (X-footprint s−ROOT .. s+reach, at the RAILS) must not overlap
 # a rib -- the rib runs to the rails there, so an overlap would slice it.
@@ -844,7 +854,8 @@ def _seg_relief(s, yr, dz=0.0):
     is no longer there. Same `reach`, same angle, same line of code: change one and both move."""
     reach = _SEG_JX1
     return (cq.Workplane("XZ")
-            .polyline([(s, _SEG_JZ0), (s + reach, _SEG_JZ0), (s + reach, _SEG_JZ0 + reach)])
+            .polyline([(s, _SEG_JZ0), (s + reach, _SEG_JZ0),
+                       (s + reach, _SEG_JZ0 + reach * _SEG_RELIEF_RISE)])
             .close().extrude(T + 4.0)
             .translate((0.0, yr + (T + 4.0) / 2.0, dz)))
 
@@ -855,7 +866,7 @@ def _relieved(solid, s, yr, dz, what):
     notice, so make the cut prove it took the corner it was aimed at."""
     out = solid.cut(_seg_relief(s, yr, dz))
     assert out.val().Volume() < solid.val().Volume() - 1.0, (
-        "the 45 deg relief took %.2f mm3 off the seam %s at x %.2f -- it is missing the corner"
+        "the seam relief took %.2f mm3 off the seam %s at x %.2f -- it is missing the corner"
         % (solid.val().Volume() - out.val().Volume(), what, s))
     return out
 
@@ -865,8 +876,8 @@ def _seg_tenon(s, yr):
     profile prism standing from the BOTTOM PRISM'S TOP FACE up to the deck-groove floor (see
     _SEG_JZ0 -- below that is the lever-mortise grid, and this may not stand in it). (The bridge/keyhead END
     joints are a different site — they use the low _br_tongue/_kh_tongue dovetails.)"""
-    # the 45 deg underside is _seg_relief -- self-supporting back to this segment's own floor,
-    # at a cost to the head of its bottom _SEG_JX1 (8.8) of engagement
+    # the underside is _seg_relief (54.7 deg, _SEG_RELIEF_RISE) -- self-supporting back to this segment's own floor,
+    # at a cost to the head of its bottom 12.4 (_SEG_JX1 * _SEG_RELIEF_RISE) of engagement
     ten = _to_world(_seg_halves(_SEG_JZ1 - _SEG_JZ0)[0], +1)
     return _relieved(ten.translate((s, yr, _SEG_JZ0)), s, yr, 0.0, "tenon")
 
@@ -883,7 +894,9 @@ def _seg_mortise(s, yr):
     which segment goes down last deleted the need for it outright (see the SEGMENT JOINT block):
     nothing sweeps the floor any more, so the cavity stops at the floor."""
     cav = _to_world(_seg_halves((TP_GZ0 + 2.0) - _SEG_MZ0)[1], +1).translate((s, yr, _SEG_MZ0))
-    return _relieved(cav, s, yr, -_SEG_RELIEF_CLR, "cavity")
+    # lowered so the ramp stands _SEG_RELIEF_CLR off the tenon's SQUARE to it, not just in Z
+    dz = _SEG_RELIEF_CLR * math.sqrt(1.0 + _SEG_RELIEF_RISE ** 2)
+    return _relieved(cav, s, yr, -dz, "cavity")
 
 
 def _end_dt(x_face, into, yc, z0, z1, socket=False, top_clr=KH_DT_SEAT):

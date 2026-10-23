@@ -893,9 +893,13 @@ LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4
 # own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
 # ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
 # until step 4 moves it into cadkit.
-LEVER_MORT_CLR = 0.275                   # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
+LEVER_MORT_CLR = 0.45                    # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
                                     # already too tight on the mini seam plate, user 2026-10-16);
-                                    # MINI ROUND 2: 0.25 "still a touch tight" -> half a step
+                                    # MINI ROUND 2: 0.25 "still a touch tight" -> half a step;
+                                    # FULL LENGTH (fit_plate9, user 2026-10-21): 0.275 too tight,
+                                    # 0.35 right, 0.45 a bit loose; ROUND 6, all EIGHT tenons with
+                                    # the seat at c (user, 2026-10-22): 0.45 the winner -- LOCKED
+                                    # ("the looser of the two plate 6 was great")
 LEVER_FIT = {"neck": 4 * BEAD, "head": 7 * BEAD, "side": 2 * BEAD, "root": True,
              "trunc": 1.2}
 # THE BOTTOM PRISM'S THICKNESS: the mount mortise's roof plus a two-bead cap (user,

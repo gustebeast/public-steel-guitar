@@ -540,6 +540,11 @@ BODY_Z    = HUB_TOP + 3 * D.BEAD    # body underside in local Z: the hub top (5.
 # LEVER_MORT_CLR), because the chassis floor's thickness is read off it (D.BOTTOM_T) and the
 # floor sets the bed this module poses the lever from. Built by src/test/fit_plate2.halves.
 MORT_CLR  = D.LEVER_MORT_CLR
+# THE SEAT IS AT c TOO (user's round 6: "even c all round, seat included"). A lever housing's top
+# hangs MORT_SEAT under the chassis underside, and the rib mortise is cut from MORT_SEAT up its
+# mouth -- so the mortise stays put in the chassis and the gap opens at the seat. The 8-tenon
+# rounds 3-5 bound with the seat at 0; round 6 shaved the floor's bed face by c and slid.
+MORT_SEAT = MORT_CLR
 LEVER_FIT = D.LEVER_FIT
 _JW       = LEVER_FIT["head"]       # 5.6 across the head (the joint's widest)
 _JHW      = _JW / 2.0
@@ -558,14 +563,14 @@ class _FitJoint(object):
     def tenon(self, root=None):
         return _lever_halves(self.length)[0]
 
-    def mortise(self, drop=0.0):
-        return _lever_halves(self.length, drop)[1]
+    def mortise(self, drop=0.0, seat=None):
+        return _lever_halves(self.length, drop, MORT_SEAT if seat is None else seat)[1]
 
 
 @functools.lru_cache(maxsize=None)
-def _lever_halves(length, drop=0.0):
+def _lever_halves(length, drop=0.0, seat=0.0):
     from .test import fit_plate2 as FIT
-    ten, cav, _S = FIT.halves("up", "up", MORT_CLR, length, 0.0, _J_HOST_W, size=LEVER_FIT,
+    ten, cav, _S = FIT.halves("up", "up", MORT_CLR, length, seat, _J_HOST_W, size=LEVER_FIT,
                               drop=drop)
     # the WEB between two mortises is one printed wall, both halves of it: XBAR - the cavity's
     # width (3.16 at c 0.25). Only at a chassis seam is it split, into two 1.58 halves that the
@@ -617,7 +622,7 @@ HOUS_TOP_Z = max(BODY_Z, BRG_OD / 2 + BRG_WALL, _SEAT_ROOF_Z,
 # phase now. This first value is the nominal; nothing between here and there reads it but
 # MOUNT_POSE, which is rebuilt with it.
 MOUNT_X = D.rib_comb_x(-501.0)
-MOUNT_Y, MOUNT_Z = -148.75, MB.BED_Z - HOUS_TOP_Z
+MOUNT_Y, MOUNT_Z = -148.75, MB.BED_Z - HOUS_TOP_Z - MORT_SEAT   # the top hangs c under the ribs
 # (MOUNT_Z read the bed as a spelled -75.15, which went stale when SCREW_TOP_Z /
 #  SCREW_PULLEY_Z / XBAR snapped to the grid — the live bed is MB.BED_Z = -74.95.)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)

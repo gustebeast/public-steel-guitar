@@ -196,7 +196,7 @@ HOUS_S0 = -566.1
 # joints a touch loose" -> half a step each: seam 0.375 (opens 0..0.530), lever 0.275.
 # Round 3 (seam 0.375, lever 0.275, 8 tenons full length): BOTH "quite tight" (user,
 # 2026-10-21) -> round 4: seam back to 0.40, and the lever's seat at c (see LEVER_SEAT_TRY).
-SEAM_C = 0.40                               # = chassis._SEG_CLR, asserted in components()
+SEAM_C = 0.55                               # = chassis._SEG_CLR, asserted in components()
 SEAM_OPEN = round(SEAM_C * 2 ** 0.5, 3)     # 0.566: c x sqrt 2 (the catch is a 45 deg flank)
 SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.14 a face
 COMP_SPLIT_Z = -72.5    # under the seam cavity (0.4 under the floor top), over the lever mortises (-73.86)
@@ -239,9 +239,17 @@ _R3_S7 = HOUS_S0 + 7 * GRID_P
 # lever lost 2.7 off every tenon's +Y end and all but 0.5 of the +X station's +Y stub -- the
 # housing rework deepened the housing, the lever plane moved +Y, and a hard-coded -86.15
 # start stayed put). A slice through the tenons above their root chamfer gives both ends.
+def _hous_top():
+    """The housing's top face in the instrument: the mating plane less the seat the instrument
+    now carries (knee_lever.MORT_SEAT, c since round 7 -- the housing hangs c under the ribs).
+    Every housing coupon is cut off this, so its deck stays 1.6 whatever the seat."""
+    from src import knee_lever as KL
+    return HOUS_Z1_W - KL.MORT_SEAT
+
+
 def _tenon_span(comps):
     h = comps["knee_housing"]
-    z = HOUS_Z1_W + TEN_ROOT_CH + 2.0
+    z = _hous_top() + TEN_ROOT_CH + 2.0
     sec = h.intersect(_box((_, _, _, _, z, z + 0.05))).BoundingBox()
     return sec.ymin, sec.ymax
 
@@ -249,16 +257,16 @@ def _tenon_span(comps):
 def R3_HOUS(comps):
     y0, y1 = _tenon_span(comps)
     # deck kept to the tenons' own span: past their -Y ends it is a strip that tests nothing
-    return [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
+    return [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, _hous_top() - 2 * 0.8, _),
             (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, y0 - 0.05, y1 + 0.05,
-             HOUS_Z1_W + TEN_ROOT_CH, _)]
+             _hous_top() + TEN_ROOT_CH, _)]
 
 
 def MINI_HOUS(comps):
     y0, _y1 = _tenon_span(comps)
-    return [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, y0 + MINI_L, HOUS_Z1_W - 4.55, _),
+    return [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, y0 + MINI_L, _hous_top() - 4.55, _),
             (HOUS_S0 - GRID_WEB, _MINI_S3 + 5.6 / 2.0 + 0.5, _, y0 + MINI_L,
-             HOUS_Z1_W + TEN_ROOT_CH, _)]
+             _hous_top() + TEN_ROOT_CH, _)]
 MIN_WALL = 0.8
 
 DECK_UNDER = -10.4          # the rail strip: the groove (5.46 deep) on 4.9 of solid rail
@@ -290,9 +298,9 @@ _R5_S1 = HOUS_S0 + GRID_P
 
 def R5_LEVER2(comps):
     y0, y1 = _tenon_span(comps)
-    return [(HOUS_S0 - GRID_WEB, _R5_S1 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
+    return [(HOUS_S0 - GRID_WEB, _R5_S1 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, _hous_top() - 2 * 0.8, _),
             (HOUS_S0 - GRID_WEB, _R5_S1 + 5.6 / 2.0 + 0.5, y0 - 0.05, y1 + 0.05,
-             HOUS_Z1_W + TEN_ROOT_CH, _)]
+             _hous_top() + TEN_ROOT_CH, _)]
 
 
 def R6_FLOOR8(comps):
@@ -300,10 +308,11 @@ def R6_FLOOR8(comps):
     0.45 a bit loose; "print both 2 and 3 with the full set of 8"). The floor under the
     housing's own eight stations, no seam, the seat shaved this build's c: cut by lever_c_round6 from an
     instrument built at each clearance, against that build's r3_lever."""
-    from src import dimensions as D           # the seat shaved by THIS build's clearance
+    from src import dimensions as D           # the seat shaved by THIS build's clearance...
+    from src import knee_lever as KL          # ...less what the instrument already carries
     y0, y1 = _tenon_span(comps)
     return [(HOUS_S0 - GRID_WEB, _R3_S7 + GRID_WEB, y0 - 2 * 0.8, y1 + 2 * 0.8,
-             HOUS_Z1_W + D.LEVER_MORT_CLR, FLOOR)]
+             HOUS_Z1_W + D.LEVER_MORT_CLR - KL.MORT_SEAT, FLOOR)]
 
 
 def _fix_stub_brim(outward):
@@ -332,7 +341,7 @@ def _fix_deck(box):
         lo = lambda a, b: b if a is None else max(a, b)     # None: to the housing's edge
         hi = lambda a, b: b if a is None else min(a, b)
         return _box((lo(x0, hb.xmin), hi(x1, hb.xmax), lo(y0, hb.ymin), hi(y1, hb.ymax),
-                     z0, HOUS_Z1_W))
+                     z0, _hous_top()))
     return fix
 
 
@@ -519,7 +528,7 @@ COUPONS = [
              -104.0, -24.0, _, FLOOR)],
            UP_Z, "eight floor mortises: the housing's station and its lead-in"),
     Coupon("lever_housing", ["knee_housing"],
-           [(_, _, _, -49.7, HOUS_Z1_W - 4.55, _)],
+           [(_, _, _, -49.7, _hous_top() - 4.55, _)],
            UP_Z, "the housing's eight tenons on its own top deck"),
 
     # F. nut slide inserts <-> keyhead: the slots of strings 7-10 and the four inserts
@@ -647,6 +656,13 @@ PLATES = {
     "lever_seam_6": [["r6_lever8_c035", "r6_floor8_c035"],
                      ["r6_lever8_c045", "r6_floor8_c045"],
                      ["plate10_petg_gf"]],
+    # ENDPLATE ROUND (src/test/endplate_round, user 2026-10-22: "what is left is testing the
+    # chassis to endplate joints"): the bridge end's four tenons on one chassis coupon, and an
+    # endplate coupon per socket clearance -- 0.30 (step 1's pick, the control), 0.40, 0.50.
+    # Each piece is 208 across the rails, so they stand side by side in one row, left to right
+    # in step order; the third does not fit beside them and goes on a plate of its own.
+    "endplate_a": [["ep_chassis", "ep_socket_c030", "ep_socket_c040"]],
+    "endplate_b": [["ep_socket_c050"]],
     # round 5, diagnosis: one variable a piece, the real-geometry pieces twice (print scatter)
     "diag_5": [["plate9_petg_gf"],
                ["r5_lever2", "r5_floor2", "r5_lever2", "r5_floor2"],

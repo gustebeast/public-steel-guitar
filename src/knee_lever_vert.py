@@ -572,7 +572,7 @@ _Z_BOT = _BED_Z                     # -74.95 chassis underside (= chassis.Z_BOT,
 MOUNT_X = -455.0 - TEN_Y[1]         # -465.40 -> stations at ribs -478.0 and -455.0
 MOUNT_Y = -130.0                    # axle 3.75 inboard of the -Y rail, so the housing
                                     # runs inboard under the body and the arm reaches out
-MOUNT_Z = _Z_BOT - HOUS_Z1          # housing top flush with the chassis underside
+MOUNT_Z = _Z_BOT - HOUS_Z1 - KL.MORT_SEAT   # housing top c under the chassis underside (seat at c)
 MOUNT_POSE = (MOUNT_X, MOUNT_Y, MOUNT_Z)
 
 

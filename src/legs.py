@@ -249,7 +249,9 @@ def _groove(length: float) -> cq.Workplane:
     DOWNWARD at its base plane (its mouth carried 2.1 below it -- over the sliding plane
     that is air). Callers translate it to (ridge x, y0, Z_BOT)."""
     from . import knee_lever as _KL
-    return _KL._lever_joint(length).mortise(drop=2.1).rotate((0, 0, 0), (0, 0, 1), 90)
+    # the legs' ridges keep the seat at 0: round 6 tested the seat at c on the levers only, and
+    # moving it here lowers every leg stub against the chassis (latch, pogo, TRRS)
+    return _KL._lever_joint(length).mortise(drop=2.1, seat=0.0).rotate((0, 0, 0), (0, 0, 1), 90)
 
 
 # SERVICE POSITION (user, restored 2026-09-17 on the decoupled foot). To reach what sits over a
