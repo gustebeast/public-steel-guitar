@@ -183,9 +183,10 @@ LCSC = {
                                     # DigiKey's listing for the same part is 0 in stock
                                     # at $9.22 and describes it as "non-continuous",
                                     # which is wrong -- see the note in BOM.md.
-    "AFA07-S20FCA-00": "C262724",   # JUSHUO 20-way 1.0 mm FFC socket, bottom contact,
-                                    # 2.5 high: the display's ribbon (2026-10-19, in
-                                    # place of the 1x20 header C2905493). 9,681 in stock.
+    "52271-2079": "C588186",        # Molex 20-way 1.0 mm FFC socket, bottom contact,
+                                    # 3.0 high: the display's ribbon (2026-10-23, in place
+                                    # of JUSHUO AFA07-S20FCA-00 C262724, which has no
+                                    # published current rating). 5,590 in stock.
 }
 # ── EVERY PASSIVE, BY (VALUE, FOOTPRINT) ──────────────────────────────────────────────
 # These rows used to go to the fab with no part number -- "a generic passive, chosen at

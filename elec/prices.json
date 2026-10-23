@@ -1485,9 +1485,9 @@
       "what": "USBLC6-2SC6 C7519 -- JLCPCB parts API at qty 10"
     },
     "ui_board:J1": {
-      "usd": 0.1248,
+      "usd": 0.6378,
       "verified": "v",
-      "what": "AFA07-S20FCA-00 C262724 -- JLCPCB parts API at qty 1-49, 2026-10-19"
+      "what": "52271-2079 C588186 -- JLCPCB parts API, 2026-10-23"
     },
     "motor_ctrl:J2": {
       "usd": 0.3066,
