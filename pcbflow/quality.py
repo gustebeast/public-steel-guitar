@@ -1425,12 +1425,15 @@ def fab_capability(ctx):
     # silent about the board, and at a size of 1.2 the same face would have inked
     # 0.12 mm with this check still reading 0.30 and still passing.
     #
-    # The stroke measurement therefore applies to STROKE-FONT text only. For outline
-    # text the ink has to have been measured by whoever chose the face and DECLARED,
-    # per size, in the board's `silk_ink` note: {size_mm: measured thinnest ink mm}.
-    # An undeclared size FAILS rather than noting, because a note here is a figure
-    # nobody read: the measurement is cheap, one-off, and the alternative is a board
-    # whose lettering may not print.
+    # The stroke measurement therefore applies to STROKE-FONT text only. Outline text
+    # is MEASURED HERE (2026-10-23; it used to have to be declared per size in a
+    # `silk_ink` note, which no board ever did, so every lettered board FAILED A12):
+    # each glyph is drawn on its own in the text's face, size and style and its ink
+    # eroded until its shape changes (a piece splits off or vanishes, a counter opens):
+    # twice that radius is the glyph's thinnest ink (_glyph_ink). Per glyph, not per
+    # text: two letters that touch make a neck between them that is not ink anyone
+    # needs to print ("R3" on ui_board pinched at 0.042 while its thinnest stroke was
+    # 0.15). A `silk_ink` note {size_mm: thinnest ink mm} still overrides a size.
     def _outline(t):
         try:
             return bool((t.GetFontName() or "").strip())
@@ -1445,34 +1448,40 @@ def fab_capability(ctx):
     if outlined:
         decl = ctx.notes.get("silk_ink") or {}
         decl = {round(float(k), 3): float(v) for k, v in decl.items()}
-        sizes = {}
+        ink, cache = {}, {}             # size -> (thinnest ink mm, glyph, text, how)
         for t, n in outlined:
-            sizes.setdefault(round(MM(t.GetTextHeight()), 3), []).append(n)
-        undeclared = sorted(s for s in sizes if s not in decl)
-        thin = sorted(s for s in sizes if s in decl
-                      and decl[s] < fab["silk_stroke"] - 1e-6)
-        if undeclared:
+            size = round(MM(t.GetTextHeight()), 3)
+            if size in decl:
+                ink[size] = (decl[size], "", n, "declared")
+                continue
+            w, g = _glyph_ink(pcbnew, b, t, cache)
+            if w is not None and (size not in ink or w < ink[size][0]):
+                ink[size] = (w, g, n, "measured")
+            ink.setdefault(size, None)
+        unread = sorted(s for s, v in ink.items() if v is None)
+        thin = sorted(s for s, v in ink.items()
+                      if v is not None and v[0] < fab["silk_stroke"] - 1e-6)
+        if unread:
             out.append(("silk outline-font ink", False,
-                        "%d outline-font silk text(s) in %d size(s); no measured ink "
-                        "declared for %s mm (e.g. %s). GetTextThickness is NOT the ink "
-                        "of an outline face -- measure the thinnest glyph at that size "
-                        "(pcbnew TransformTextToPolySet) and declare it in the board's "
-                        "`silk_ink` note"
-                        % (len(outlined), len(sizes),
-                           ", ".join("%.3f" % s for s in undeclared),
-                           sizes[undeclared[0]][0])))
+                        "%d outline-font silk text(s); the ink at %s mm could not be "
+                        "measured (no glyph polygon from this KiCad) and no `silk_ink` "
+                        "note declares it" % (len(outlined),
+                                              ", ".join("%.3f" % s for s in unread))))
         elif thin:
+            w, g, n, how = ink[thin[0]]
             out.append(("silk outline-font ink", False,
-                        "declared ink %.4f mm at size %.3f is under the fab's %.2f mm "
-                        "minimum (%d size(s)): the lettering may print broken or not "
-                        "at all" % (decl[thin[0]], thin[0], fab["silk_stroke"],
-                                    len(thin))))
+                        "%s ink %.4f mm at size %.3f (glyph %r in %s) is under the fab's "
+                        "%.2f mm minimum (%d size(s)): the lettering may print broken or "
+                        "not at all. Ink scales with size: %.3f mm would clear it"
+                        % (how, w, thin[0], g, n, fab["silk_stroke"], len(thin),
+                           thin[0] * fab["silk_stroke"] / w)))
         else:
             out.append(("silk outline-font ink", True,
-                        "%d outline-font silk text(s); declared thinnest ink %s mm "
-                        "against the fab's %.2f minimum"
+                        "%d outline-font silk text(s); thinnest ink %s against the "
+                        "fab's %.2f minimum"
                         % (len(outlined),
-                           ", ".join("%.4f@%.3f" % (decl[s], s) for s in sorted(sizes)),
+                           ", ".join("%.4f@%.3f (%s %r)" % (ink[s][0], s, ink[s][3], ink[s][1])
+                                     for s in sorted(ink)),
                            fab["silk_stroke"])))
 
     # silk GRAPHICS -- outlines, polarity bands, pin-1 marks. Never measured before,
@@ -2168,6 +2177,67 @@ def _names_net(word, net, aliases):
         if all(ch in it for ch in w):
             return True
     return False
+
+
+def _glyph_ink(pcbnew, board, t, cache):
+    """(thinnest ink mm, its glyph) of outline-font text `t`, or (None, None).
+
+    Each distinct glyph is drawn alone in t's face, size and style, its ink taken as a
+    polygon, and eroded (round corners) in a binary search for the smallest radius at
+    which the polygon's shape changes -- an outline more or fewer, a hole more or fewer.
+    The thinnest ink is twice that. `cache` is shared across the board's texts, keyed on
+    everything that shapes a glyph."""
+    err = pcbnew.FromMM(0.002)
+
+    def topo(ps):
+        return ps.OutlineCount(), sum(ps.HoleCount(i) for i in range(ps.OutlineCount()))
+
+    def eroded(ps, r):
+        c = pcbnew.SHAPE_POLY_SET(ps)
+        c.Inflate(-r, pcbnew.CORNER_STRATEGY_ROUND_ALL_CORNERS, err)
+        return c
+
+    def thinnest(ps):
+        base = topo(ps)
+        if not base[0]:
+            return None
+        lo, hi = 0, pcbnew.FromMM(0.5)
+        if topo(eroded(ps, hi)) == base:
+            return None
+        while hi - lo > pcbnew.FromMM(0.0005):
+            mid = (lo + hi) // 2
+            if topo(eroded(ps, mid)) == base:
+                lo = mid
+            else:
+                hi = mid
+        return 2.0 * pcbnew.ToMM(lo)
+
+    try:
+        text = t.GetShownText(False)
+    except Exception:                   # noqa: BLE001
+        text = t.GetText() or ""
+    best = (None, None)
+    for ch in sorted(set(text)):
+        if ch.isspace():
+            continue
+        key = (t.GetFontName(), t.GetTextWidth(), t.GetTextHeight(), t.IsBold(),
+               t.IsItalic(), ch)
+        if key not in cache:
+            try:
+                g = pcbnew.PCB_TEXT(board)
+                g.SetAttributes(t)
+                g.SetText(ch)
+                g.SetLayer(pcbnew.F_SilkS)
+                ps = pcbnew.SHAPE_POLY_SET()
+                g.TransformTextToPolySet(ps, 0, err, pcbnew.ERROR_INSIDE)
+                ps.Simplify()
+                cache[key] = thinnest(ps)
+            except Exception:           # noqa: BLE001
+                cache[key] = None
+        w = cache[key]
+        if w is not None and (best[0] is None or w < best[0]):
+            best = (w, ch)
+    return best
 
 
 def _silk_ink(ctx):
