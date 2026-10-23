@@ -95,13 +95,67 @@ def be_nice():
         pass
 
 
+# cables the audit leaves out: the pedal bar (WIP, user 2026-10-22: pogo harness run 3 is
+# the bar's stub), the coils (slack on purpose) and the servo's own coil lead (bought on
+# the motor, not cut by us)
+AUDIT_SKIP = re.compile(r"^pogo_wire_\w+_3$|_coil(_|$)|^motor_lead_")
+
+
+def capture_paths():
+    """Draw EVERY cable once with the cable builders wrapped, and return
+    {name: (pts, across, thick)} -- the centreline each was drawn on, whichever module
+    drew it. Most draw through cadkit.cables and only wiring.PATHS remembered its paths;
+    this hooks the builders instead, so nothing in src has to register anything."""
+    import sys as _sys
+    import cadkit.cables as CC
+    from src import build as B
+    from src import leg_pogo as PG
+    from src import led_leads as LL
+    from src import wiring as WR
+    from src import optical_pickup as OP
+    seen = {}
+    orig_oct, orig_flat = CC.oct_cable, CC.flat_cable
+
+    def oct_(pts, d):
+        s = orig_oct(pts, d)
+        seen[id(s)] = ([tuple(map(float, q)) for q in pts], float(d), float(d))
+        return s
+
+    def flat_(pts, w, t, across=None):
+        s = orig_flat(pts, w, t, across=across)
+        seen[id(s)] = ([tuple(map(float, q)) for q in pts], float(w), float(t))
+        return s
+
+    swaps = []
+    for m in list(_sys.modules.values()):
+        for attr, new, old in (("oct_cable", oct_, orig_oct), ("flat_cable", flat_, orig_flat)):
+            if getattr(m, attr, None) is old:
+                swaps.append((m, attr, old))
+                setattr(m, attr, new)
+    try:
+        comps = (list(WR.build_wires()) + list(B._ctrl_bus_components())
+                 + list(B._lever_bus_components()) + list(LL.parts()) + list(PG.harness())
+                 + list(WR.optical_feed()) + [("optical_cable_usb", OP.opt_cables("usb"))])
+    finally:
+        for m, attr, old in swaps:
+            setattr(m, attr, old)
+    out = {}
+    for c in comps:
+        name, shape = c[0], c[1]
+        if id(shape) in seen and not AUDIT_SKIP.search(name):
+            out[name] = seen[id(shape)]
+    return out
+
+
 def draw_wires():
     """Draw every cable once, so src.cable_routes.REQUESTS and src.wiring.PATHS fill."""
     from src import build as B
     from src import wiring as WR
+    from src import led_leads as LL
     WR.build_wires()
     B._ctrl_bus_components()
     B._lever_bus_components()
+    LL.fret_routes()
     from src import cable_routes as CR
     return CR, WR
 
@@ -205,33 +259,39 @@ def check(CR, parts):
     return bad
 
 
-def audit(WR, parts, every=False):
+def audit(paths, parts, every=False):
     """Every drawn conductor: its drawn length against a straight line and against its
-    own taut route (r = its radius) between the ends of its straight leads."""
+    own taut route between the ends of its straight leads. A flat ribbon is routed by its
+    THICKNESS (it can turn edge-on through a slot) -- so its taut length is a floor, and
+    whether it really fits flat is the overlap gate's job, not this."""
     rows = []
-    for name, (pts, d) in sorted(WR.PATHS.items()):
+    for name, (pts, across, thick) in sorted(paths.items()):
         if len(pts) < 3:
             continue
         a, b = np.array(pts[1], float), np.array(pts[-2], float)     # past each lead
         drawn = length(pts[1:-1])
         chord = math.dist(a, b)
         if not every and drawn - chord < 2.0:
-            rows.append((name, drawn, chord, None))
+            rows.append((name, drawn, chord, None, across != thick))
             continue
-        req = {"a": list(a), "b": list(b), "gates": [], "r": d / 2.0 + 0.2, "legacy": pts[1:-1]}
+        req = {"a": list(a), "b": list(b), "gates": [], "r": min(across, thick) / 2.0 + 0.2,
+               "legacy": pts[1:-1]}
         try:
             lo, hi = region(req)
             ob = Obstacles(parts.near(lo, hi), (lo, hi), guard=guard)
             taut = length(Router(ob, req["r"]).route(a, b))
+        except MemoryError:
+            raise
         except Exception as ex:
             taut = None
             print("  %s: %s" % (name, ex))
-        rows.append((name, drawn, chord, taut))
+        rows.append((name, drawn, chord, taut, across != thick))
     print("\n%-34s %8s %8s %8s %8s" % ("conductor", "drawn", "straight", "taut", "excess"))
-    for name, drawn, chord, taut in rows:
+    for name, drawn, chord, taut, flat in rows:
         ref = chord if taut is None else taut
-        print("%-34s %8.1f %8.1f %8s %+8.1f" % (name, drawn, chord,
-                                              "-" if taut is None else "%.1f" % taut, drawn - ref))
+        print("%-34s %8.1f %8.1f %8s %+8.1f%s" % (name, drawn, chord,
+                                                "-" if taut is None else "%.1f" % taut,
+                                                drawn - ref, "  (flat)" if flat else ""))
     return rows
 
 
@@ -251,7 +311,7 @@ def main(argv=None):
         if a.check:
             return 1 if check(CR, parts) else 0
         if a.audit:
-            audit(WR, parts, a.all)
+            audit(capture_paths(), parts, a.all)
             return 0
         names = a.names or list(CR.STALE)
         unknown = [n for n in names if n not in CR.REQUESTS]
