@@ -663,6 +663,12 @@ PLATES = {
     # in step order; the third does not fit beside them and goes on a plate of its own.
     "endplate_a": [["ep_chassis", "ep_socket_c030", "ep_socket_c040"]],
     "endplate_b": [["ep_socket_c050"]],
+    # ENDPLATE CORNERS (user, 2026-10-27: "do that plate [full_length_1] but skip the lever to
+    # chassis and chassis to chassis joints"): both endplate corners at the instrument's own c,
+    # each chassis corner held up by its fin. The adapter goes too: its ridges' mortises are
+    # the lever floor's.
+    "endplate_corners": [["corner_bridge_chassis", "corner_keyhead_chassis",
+                          ("corner_bridge_endplate", "corner_keyhead_endplate")]],
     # round 5, diagnosis: one variable a piece, the real-geometry pieces twice (print scatter)
     "diag_5": [["plate9_petg_gf"],
                ["r5_lever2", "r5_floor2", "r5_lever2", "r5_floor2"],
