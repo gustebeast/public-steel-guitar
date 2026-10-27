@@ -375,9 +375,16 @@ def _fix_fin(x0, y_face, inboard, z0=Z_BOT, run=FIN_RUN):
     joint, so the walls round the joint flex exactly as the real ones."""
     def fin(_comps):
         y0 = y_face - inboard * 1.0                       # a millimetre into the rail
-        pts = [(y0, z0), (y_face + inboard * run, z0), (y0, FIN_TOP)]
-        return (cq.Workplane("YZ").polyline(pts).close().extrude(FIN_T)
-                .translate((x0, 0, 0)).val())
+        y1 = y_face + inboard * run
+        pts = [(y0, z0), (y1, z0), (y0, FIN_TOP)]
+        fin = (cq.Workplane("YZ").polyline(pts).close().extrude(FIN_T)
+               .translate((x0, 0, 0)).val())
+        # on a brim, as the stub fins (user, 2026-10-27: "a small brim to the 45 angled support
+        # so it can stick to the build plate") -- off the rail's face only: under the rail it
+        # would fill the leg mortises in its foot ("it shouldn't touch the mortises")
+        ya, yb = sorted((y_face, y1 + inboard * BRIM_W))
+        brim = _box((x0 - BRIM_W, x0 + FIN_T + BRIM_W, ya, yb, z0, z0 + BRIM_T))
+        return fin.fuse(brim)
     return fin
 
 
