@@ -325,16 +325,21 @@ SCREW_PITCH     = 2.0       # Tr8x2: 2 mm pitch, single start => 2 mm LEAD
 # RH is the stock part (BOM). ⚠ The direction is derived, not yet seen on a bench.
 SCREW_HAND      = "RH"
 assert SCREW_HAND in ("RH", "LH")
-FORM_MINOR      = 6.2       # printed ridge Ø (Tr8x2 root is Ø5.5; 0.35 radial clear)
-FORM_MAJOR      = 7.8       # printed groove Ø (0.1 radial under the Ø8 crest)
-                            # Depth (7.8-6.2)/2 = 0.80, NOT the pitch/2 = 1.0 ceiling.
-                            # cadkit.threads measures the valley AT THE OVERSHOOT:
-                            # valley = 2*depth + 0.2, and it must stay UNDER the 2.0
-                            # turn spacing or adjacent turns merge into an invalid
-                            # cutter that silently no-ops. Depth 1.0 gave 2.10 and 0.90
-                            # gave exactly 2.00 — both rejected. 0.80 leaves 1.80.
-                            # Engagement is 0.80 of the rod's 1.25 radial full form,
-                            # ~64%, reached by displacement rather than by hoping.
+# THE RIDGE IS 45 DEG, THE ROD'S GROOVE IS 30 DEG INCLUDED (user, 2026-10-28: the screw pulley
+# "is too tight and won't thread onto the screw"). The printed ridge (cadkit's 45 deg valley)
+# is 1 - depth wide at its tip and 1 + depth at its base; the Tr groove is P/2 = 1.0 on the
+# pitch diameter and widens only tan 15 deg per side going out. So the ridge fits the groove
+# near its tip and overfills it toward its base by
+#     i(base) = depth - 0.536 * major_r + 1.876      (axial, both flanks together)
+# At 6.2/7.8 that was 0.59 -- half a millimetre of PCTG to swage per turn, down 5.7 turns. The
+# crest's 0.1 "forming allowance" was the only interference anyone had counted.
+# Now: the groove floor ON the rod's crest (Ø8.0; a nozzle-drawn hole prints a little under,
+# which is the crest's grip) and depth 0.45, so i = 0.18 -- ~0.09 a flank, the same order as
+# the crest allowance that was meant. The ridge is shallower (0.45 radial of the rod's 1.25),
+# which is plenty for 147 N: ~70 mm2 of flank in contact over 5.7 turns is ~2 MPa.
+# The column's wall round the groove is (PULLEY_COL_D - 8.0) / 2 = 0.80 = MIN_WALL.
+FORM_MINOR      = 7.1       # printed ridge Ø (Tr8x2 root is Ø5.5: the ridge never reaches it)
+FORM_MAJOR      = 8.0       # printed groove Ø = the rod's crest
 SCREW_END_GAP   = 2 * BEAD                          # 1.6 from the screw's top to the ceiling
 # TOP RADIAL BEARING. The screw runs on past the nut into one MR85 up in the endplate's
 # slab, and this is not a refinement — it is what makes anchoring the string off-axis
@@ -488,7 +493,7 @@ PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own 
 # the face that suits them.
 #
 # THE SKUs ARE ENDCAPS (user, 2026-09-10). Neither passes the screw through its teeth
-# any more. A Tr8 bore CANNOT pass through a 14T band at all: the Ø7.8 pilot groove is
+# any more. A Tr8 bore CANNOT pass through a 14T band at all: the Ø8.0 pilot groove is
 # wider than the ~Ø6.9 tooth root, so the old through-bored pulley was not thin, it was
 # impossible. Growing the teeth to clear it would have been a gear reduction and more
 # belt circulation, and 18T+ fouls the guide rod. So the rod ENDS in a blind socket
@@ -506,8 +511,8 @@ PULLEY_CONE     = (PULLEY_FLANGE_OD - PULLEY_OD) / 2        # 1.3, top flange, 4
 # up through the bearing and the pulley's flange face would have landed on the SHIELD
 # instead. That would have broken the screw's entire retention path, which is exactly
 # this jam. 12*BEAD = 9.6 sits inside the inner ring's ~Ø8..10.2 with margin either side.
-# Boss wall over the Ø7.8 pilot bore is 0.9 -- one bead, and it is pure COMPRESSION
-# (147 N over 24.6 mm^2 = 6.0 MPa).
+# Boss wall over the Ø8.0 pilot bore is 0.8 -- one bead, and it is pure COMPRESSION
+# (147 N over 22.1 mm^2 = 6.7 MPa).
 # ⚠ Ring diameters are the usual d + 0.28*(D-d) rule, not read values. CONFIRM against
 # the datasheet of whichever 688 is actually bought -- same gate the BOM already carries.
 PULLEY_BOSS_D   = 12 * BEAD         # 9.6 pilot on top: lands on the bearings' INNER
@@ -518,7 +523,7 @@ PULLEY_BOSS_H   = 1 * BEAD          # 0.8
 # COLUMN = BOSS Ø. It was Ø7.2 because it had to slip past the NEIGHBOUR's Ø11 flange at
 # the 9.5 string pitch. In two rows the in-row pitch is 19.0, so that ceiling is ~Ø27 and
 # the column can be as fat as the boss — which it must be: at Ø7.2 it could not even
-# contain the Ø7.8 socket.
+# contain the Ø8.0 socket.
 PULLEY_COL_D    = PULLEY_BOSS_D                                         # 9.6
 # (The COLUMN heights, and with them the socket's depth, are down with the thrust stack:
 # they are whatever is left between the band planes and the bearing -- see PULLEY_COL_HI.)
@@ -711,6 +716,12 @@ MOTOR_SHAFT_D   = 5.0
 MOTOR_SHAFT_FLAT = 4.5          # across the flat (the D's short dimension)
 MOTOR_SHAFT_PROUD = 19.5        # out of the pilot boss
 MOTOR_SHAFT_FLAT_L = 15.0       # ASSUMED, from the tip
+# THE SHAFT IS CUT TO 16.0 PROUD (2026-10-28). At 19.5 its tip reaches 2.0 into the NEXT
+# string's belt tensioner (motors 2,4,6,8; the shaft has 19.45 from the faceplate before it
+# touches one, and the bought one is 21.5). Cut, it ends flush with its pulley's +Y face,
+# 1.45 clear. The flat is where it was -- measured from the BOUGHT tip -- and the pulley seats
+# where the flat begins, so the cut moves nothing else. INSTALL_NOTES.md says how.
+MOTOR_SHAFT_CUT = 16.0          # proud of the pilot boss, as installed
 NEMA17_BOLT_SQ  = 31.0
 NEMA17_PILOT_D  = 22.0
 
@@ -863,10 +874,10 @@ assert PULLEY_COL_HI >= 3 * BEAD - 1e-9, (
     f"the HIGH pulley's column is {PULLEY_COL_HI:.2f}: under three beads the socket is too "
     f"shallow to grip the screw. The nut's floor has come down onto the pulley plane.")
 # BLIND SOCKET, bored down from the top. Its floor stops above the band's top, inside the
-# upper cone: that cone flares 45° from the band's Ø8.4, so the wall over the Ø7.8 groove is
-# 0.3 at the band and grows 1:1 going up — 0.4 above it gives 0.7, three-and-a-half traces
-# of the 0.2 nozzle it was sized for; at the 0.4 the pulleys print with now (2026-10-28) it is
-# 1.75 -- over the one-bead floor, under two. Left as it is ON PURPOSE: a thicker floor
+# upper cone: that cone flares 45° from the band's Ø8.4, so the wall over the Ø8.0 groove is
+# 0.2 at the band and grows 1:1 going up — 0.4 above it gives 0.6 (0.7 at the old Ø7.8), at
+# the socket's bottom corner only: 1.5 traces of the 0.4 nozzle the pulleys print with now
+# (2026-10-28), and a bead by 0.2 higher. Left as it is ON PURPOSE: a thicker floor
 # shortens SCREW_LEN, which the saw jig's stop is set from. Identical on both SKUs.
 PULLEY_SOCKET_FLOOR_CLR = 2 * 0.2                                       # 0.4, 0.2-nozzle part
 PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 11.53

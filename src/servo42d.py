@@ -55,6 +55,7 @@ LOOP_TOP = D.MOTOR_HEIGHT_MEASURED - DRV_SQ / 2  # 29.85: the loop, over the axi
                                                  # height was taken off the cover's flat)
 PILOT_D, PILOT_H = D.NEMA17_PILOT_D, 2.0
 SHAFT_L = PILOT_H + D.MOTOR_SHAFT_PROUD   # 21.5 from the faceplate (see the docstring)
+SHAFT_CUT_L = PILOT_H + D.MOTOR_SHAFT_CUT  # 18.0: as installed, cut (dimensions.MOTOR_SHAFT_CUT)
 HALF = SQ / 2
 
 # -- the can (scaled off the video) -----------------------------------------------------
@@ -218,13 +219,14 @@ def stack() -> cq.Workplane:
 
 
 def shaft() -> cq.Workplane:
-    """Ground steel, from the face to SHAFT_L out, its D flat (MOTOR_SHAFT_FLAT across, the
-    last MOTOR_SHAFT_FLAT_L of it) facing +Z. The part inside the can is not drawn."""
+    """Ground steel, from the face to SHAFT_CUT_L out (cut down from the bought SHAFT_L), its
+    D flat (MOTOR_SHAFT_FLAT across, the last MOTOR_SHAFT_FLAT_L of the BOUGHT shaft) facing +Z.
+    The part inside the can is not drawn."""
     r = D.MOTOR_SHAFT_D / 2.0
     z0 = D.MOTOR_SHAFT_FLAT - r                      # the flat's height over the axis
     flat = box_at(2 * r + 1.0, D.MOTOR_SHAFT_FLAT_L + 1.0, r + 1.0 - z0,
                   y=SHAFT_L - (D.MOTOR_SHAFT_FLAT_L - 1.0) / 2.0, z=(z0 + r + 1.0) / 2.0)
-    return cyl_y(D.MOTOR_SHAFT_D, SHAFT_L, y0=0.0).cut(flat)
+    return cyl_y(D.MOTOR_SHAFT_D, SHAFT_CUT_L, y0=0.0).cut(flat)
 
 
 def coil_plug() -> cq.Workplane:

@@ -24,7 +24,7 @@ from cadkit.fasteners import set_screw, m4_insert                # the ONE dummi
 # 0.4 (user, 2026-10-28; the belt clamp's GT2 ridges proved PCTG at 0.4): both print axis-up,
 # so the teeth are drawn in plane -- ~0.9 lands, two 0.4 lines -- and the screw pulley's
 # pilot thread is LAYER-made, its 45 deg flanks stacked by layers, 0.8 deep radially since
-# Tr8 (Ø6.2 ridge, Ø7.8 groove). It was 0.2 for the Tr5 thread's 0.3 groove, now gone.
+# Tr8 (Ø7.1 ridge, Ø8.0 groove). It was 0.2 for the Tr5 thread's 0.3 groove, now gone.
 NOZZLE_D = 0.4
 
 MOTOR_PULLEY_STANDOFF = 14.0   # pulley sits this far +Y of the motor faceplate
@@ -156,37 +156,58 @@ def _cone(r1, r2, h, pnt, d):
     return cq.Workplane("XY").add(cq.Solid.makeCone(r1, r2, h, pnt, d))
 
 
-# GT2 14-tooth pulley grooves: 14 rounded valleys at 2 mm pitch on the pitch circle
-# (PD = 14·2/π = 8.91 mm), BELT_TOOTH_H deep, cut into the toothed band between the
-# flanges. The cutter cylinders sit on a radius that puts the valley floor at
-# OD/2 − tooth height with a GT2-ish rounded bottom (radius _GROOVE_R).
-_N_TEETH  = 14
-_GROOVE_R = 0.55
-_GROOVE_RC = D.PULLEY_OD / 2 - D.BELT_TOOTH_H + _GROOVE_R
+# GT2 14-tooth pulley grooves: 14 valleys at 2 mm pitch on the pitch circle (PD = 14·2/π =
+# 8.91 mm), cut into the toothed band between the flanges. Each is the GT2 groove's shape: a
+# round bottom the belt tooth's R0.555 tip sits in, and straight flanks tangent to it that open
+# to GROOVE_MOUTH at the OD.
+# THE MOUTH IS WHAT SEATS THE TOOTH (user, 2026-10-28: the belt skipped by hand, "the valleys
+# may not be deep enough to fit the whole teeth"). The grooves used to be a bare R0.55 circle
+# centred 0.2 inside the OD -- 0.75 deep, but only 1.02 across at the rim, narrower than the
+# 1.11 tooth tip itself, so the tooth rode on the rim's edges and never reached the bottom.
+# Every size below carries GROOVE_CLR: a concave feature drawn by a 0.4 nozzle prints small.
+_N_TEETH = 14
+GROOVE_CLR = 0.05                                    # radial, all round the groove
+GROOVE_DEPTH = D.BELT_TOOTH_H + GROOVE_CLR           # 0.80 below the OD
+GROOVE_MOUTH = 1.40 + 2 * GROOVE_CLR                 # 1.50 across at the OD (the tooth's
+                                                     # base, R0.15 fillets and all, ~1.4)
+_GROOVE_R = 0.555 + GROOVE_CLR                       # the bottom's radius
+_GROOVE_RC = D.PULLEY_OD / 2 - GROOVE_DEPTH + _GROOVE_R   # its centre's radius
+
+
+def _groove(lo: float, length: float) -> cq.Workplane:
+    """One groove cutter on +X, axis Z from z=lo for `length`, its far (+Z) end closed by a
+    45° cone so the groove's end is no ceiling in a flange-down print."""
+    ro, over = D.PULLEY_OD / 2, 0.3
+    # flank: tangent from the mouth's corner (ro, GROOVE_MOUTH/2) to the bottom circle
+    px, py = ro - _GROOVE_RC, GROOVE_MOUTH / 2
+    d = math.hypot(px, py)
+    ang = math.atan2(py, px) + math.acos(_GROOVE_R / d)
+    tx, ty = _GROOVE_RC + _GROOVE_R * math.cos(ang), _GROOVE_R * math.sin(ang)
+    qx = ro + over
+    qy = ty + (qx - tx) * (GROOVE_MOUTH / 2 - ty) / (ro - tx)        # the flank, run on out
+    prof = (cq.Workplane("XY").moveTo(tx, -ty)
+            .threePointArc((_GROOVE_RC - _GROOVE_R, 0.0), (tx, ty))
+            .lineTo(qx, qy).lineTo(qx, -qy).close())
+    cap = math.hypot(qx - _GROOVE_RC, qy)                            # the cone's base radius
+    g = prof.extrude(length + cap + 0.1).translate((0, 0, lo))
+    roof = _cone(cap, 0.0, cap, cq.Vector(_GROOVE_RC, 0, lo + length), cq.Vector(0, 0, 1))
+    keep = box_at(qx + 1.0, 4 * cap, length, x=(qx + 1.0) / 2, y=0.0, z=lo + length / 2)
+    return g.intersect(keep.union(roof))
 
 
 def _tooth_cutter(axis: str, lo: float = None, length: float = None):
-    """Union of the 14 groove-cutting cylinders, axis 'Z' (screw) or 'Y' (motor),
-    spanning the toothed band between the two flanges."""
+    """Union of the 14 groove cutters, axis 'Z' (screw) or 'Y' (motor), spanning the
+    toothed band between the two flanges; each closes at 45° at its +axis end."""
     if lo is None:
         lo = -D.PULLEY_W / 2 + D.PULLEY_FLANGE_T
     if length is None:
         length = D.PULLEY_W - D.PULLEY_FLANGE_T - _CHAMFER
+    g = _groove(lo, length)
     tool = None
     for k in range(_N_TEETH):
-        a = 2 * math.pi * k / _N_TEETH
-        u, v = _GROOVE_RC * math.cos(a), _GROOVE_RC * math.sin(a)
-        g = (cyl(2 * _GROOVE_R, length, z=lo).translate((u, v, 0)) if axis == "Z"
-             else cyl_y(2 * _GROOVE_R, length, y0=lo, x=u, z=v))
-        # CAP THE FAR END AT 45°. A plain cylinder leaves the groove ending in a flat
-        # ceiling — 14 little 0.68 mm² lids per pulley, unsupported in a flange-down
-        # print. Tapering the cutter to a point closes each groove at 45° instead, and
-        # costs nothing: the belt only ever engages the parallel part below.
-        if axis == "Z":
-            g = g.union(_cone(_GROOVE_R, 0.0, _GROOVE_R,
-                              cq.Vector(u, v, lo + length), cq.Vector(0, 0, 1)))
-        tool = g if tool is None else tool.union(g)
-    return tool
+        t = g.rotate((0, 0, 0), (0, 0, 1), 360.0 * k / _N_TEETH)
+        tool = t if tool is None else tool.union(t)
+    return tool if axis == "Z" else tool.rotate((0, 0, 0), (1, 0, 0), -90.0)   # Z -> +Y
 
 
 # ── Screw drive pulley (axis Z) ──────────────────────────────────────────
@@ -204,7 +225,7 @@ def screw_pulley(high: bool = False) -> cq.Workplane:
     """Screw drive pulley, origin at the TOOTHED BAND'S CENTRE. An ENDCAP, in TWO SKUs.
 
     The rod ends in a BLIND pilot-thread socket in the column above the band; the band's
-    core is solid. A through-bore is impossible at Tr8 — the Ø7.8 pilot groove is wider
+    core is solid. A through-bore is impossible at Tr8 — the Ø8.0 pilot groove is wider
     than a 14T band's tooth root — and the endcap is what lets the pulley stay 14T.
 
     This part is still the retaining collar: the socket's formed thread grips the rod and
@@ -247,32 +268,29 @@ def screw_pulley(high: bool = False) -> cq.Workplane:
 
 
 # ── Motor pulley (axis Y) ────────────────────────────────────────────────
-# THE MOTOR PULLEY GRIPS THE WHOLE SHAFT (user, 2026-10-28: "the motor pulley has a round bore
-# which doesn't make sense, how will it grip to the motor shaft?" ... "use the full length for
-# grip even if the pulley part doesn't span that full length"). A HUB runs the shaft's length:
-# from HUB_CLR off the pilot boss to past the tip, where a 45 deg cone roof closes the bore --
-# the shaft's tip bottoming in it is what sets the pulley's place on the shaft. The bore is the
-# shaft's own D: keyed over the flat's span (no angular play, which the pitch servo would see as
-# backlash), round below it. Drawn at the shaft's own sizes: a nozzle-drawn round hole prints
-# under (cadkit's M4 pocket needed +0.1 to let a 6.0 insert drop in), so this is a push fit
-# that grips -- open MOTOR_BORE_CLR if it will not go on.
-HUB_CLR = 0.4                   # the hub's -Y face off the pilot boss
+# THE MOTOR PULLEY GRIPS THE SHAFT'S FLAT, ALL OF IT, AND NOTHING PAST ITS OWN FLANGE (user,
+# 2026-10-28: "a round bore ... how will it grip to the motor shaft?"; "use the full length for
+# grip"; then "open sounds good so it doesn't take up more space than needed" and the D should
+# run "all the way" so it shows which way it goes on). The bore is the shaft's D end to end,
+# open at both ends. Its -Y face is where the shaft's flat begins: the D key stops on the
+# round shaft there, and THAT sets the pulley's place -- so the flat's length (dimensions.
+# MOTOR_SHAFT_FLAT_L, assumed) sets it, and must be measured. Its +Y end is the +Y flange: the
+# hub no longer runs on past the tip, which reached into the next string's belt plane.
+# Drawn at the shaft's own sizes: a nozzle-drawn round hole prints under (cadkit's M4 pocket
+# needed +0.1 to let a 6.0 insert drop in), so this is a push fit that grips -- open
+# MOTOR_BORE_CLR if it will not go on.
 MOTOR_BORE_CLR = 0.0            # on the bore's radius and its flat
-HUB_ROOF_T = 1.0                # material over the bore roof's apex
 
 
 def motor_pulley(flat_deg: float = 0.0) -> cq.Workplane:
     """Flanged GT2 pulley on the motor shaft, axis Y, centred at y=0 (the motor's faceplate at
-    y = -MOTOR_PULLEY_STANDOFF). 45 deg flanges both sides, a hub the shaft's length, a D-bore
-    whose flat faces +Z -- turned by `flat_deg` about Y, so the build can keep it on the shaft's
-    flat when it turns the pulley to mesh the belt."""
-    from .servo42d import PILOT_H, SHAFT_L
+    y = -MOTOR_PULLEY_STANDOFF). 45 deg flanges both sides, a hub down to where the shaft's
+    flat begins, an open D-bore whose flat faces +Z -- turned by `flat_deg` about Y, so the
+    build can keep it on the shaft's flat when it turns the pulley to mesh the belt."""
+    from .servo42d import SHAFT_L
     w, ft = D.PULLEY_W, D.PULLEY_FLANGE_T
-    y_face = -MOTOR_PULLEY_STANDOFF
-    y0 = y_face + PILOT_H + HUB_CLR                                  # the hub's -Y face
-    y_tip = y_face + SHAFT_L                                         # the shaft's end
-    r = D.MOTOR_SHAFT_D / 2.0 + MOTOR_BORE_CLR
-    y1 = y_tip + r + HUB_ROOF_T                                      # over the roof's apex
+    y0 = -MOTOR_PULLEY_STANDOFF + SHAFT_L - D.MOTOR_SHAFT_FLAT_L     # the flat's start
+    y1 = w / 2                                                       # the +Y flange's face
     out = (cyl_y(D.PULLEY_OD, y1 - y0, y0=y0)                        # hub + toothed band
            .union(cyl_y(D.PULLEY_FLANGE_OD, ft, y0=-w / 2))          # -Y flange, belt face flat
            .union(_cone(D.PULLEY_FLANGE_OD / 2, D.PULLEY_OD / 2, _CHAMFER,      # ...on a 45 deg
@@ -280,11 +298,11 @@ def motor_pulley(flat_deg: float = 0.0) -> cq.Workplane:
            .union(_cone(D.PULLEY_OD / 2, D.PULLEY_FLANGE_OD / 2, _CHAMFER,
                         cq.Vector(0, w / 2 - _CHAMFER, 0), cq.Vector(0, 1, 0))))   # 45° +Y
     out = out.cut(_tooth_cutter("Y"))                                # 14 GT2 grooves
+    r = D.MOTOR_SHAFT_D / 2.0 + MOTOR_BORE_CLR
     z_flat = D.MOTOR_SHAFT_FLAT - D.MOTOR_SHAFT_D / 2.0 + MOTOR_BORE_CLR
-    key = box_at(2 * r + 1.0, D.MOTOR_SHAFT_FLAT_L, r + 1.0 - z_flat,
-                 y=y_tip - D.MOTOR_SHAFT_FLAT_L / 2.0, z=(z_flat + r + 1.0) / 2.0)
-    bore = (cyl_y(2 * r, y_tip - y0 + 1.0, y0=y0 - 1.0).cut(key)
-            .union(_cone(r, 0.0, r, cq.Vector(0, y_tip, 0), cq.Vector(0, 1, 0))))   # 45° roof
+    bore = (cyl_y(2 * r, y1 - y0 + 2.0, y0=y0 - 1.0)
+            .cut(box_at(2 * r + 1.0, y1 - y0 + 4.0, r + 1.0 - z_flat,
+                        y=(y0 + y1) / 2, z=(z_flat + r + 1.0) / 2.0)))      # the D, end to end
     return out.cut(bore.rotate((0, 0, 0), (0, 1, 0), flat_deg))
 
 

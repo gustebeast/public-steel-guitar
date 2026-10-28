@@ -258,6 +258,21 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
   the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
   The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
 
+## Motors: cut each shaft to 16.0 mm, then push the pulley on to the end of the flat (2026-10-28)
+
+The SERVO42D's shaft stands 19.5 mm proud of its pilot boss. Left that long, motors 2, 4, 6 and
+8 reach into the next string's belt tensioner. Cut all ten the same, so any motor fits any bay.
+
+* Cut each shaft to 16.0 mm proud of the boss (3.5 mm off the tip), on the bench, before the
+  pulley goes on. Wrap the motor's face in tape first so no filings get into the bearing.
+  Deburr the cut end.
+* The pulley's bore is a D the whole way through: line its flat up with the shaft's flat and
+  push it on until it stops. It stops where the shaft's flat ends and the round part starts,
+  and that is its place -- no shim, no gauge. The shaft's cut end is then flush with the
+  pulley's outer face.
+* If it stops short, the flat on your motors is shorter than the 15 mm assumed
+  (dimensions.MOTOR_SHAFT_FLAT_L): measure it and the pulley gets re-drawn.
+
 ## Motor tees: ONE switch ON, nine OFF
 
 Every motor tee carries a 120 ohm terminator behind a small slide switch marked TERM
