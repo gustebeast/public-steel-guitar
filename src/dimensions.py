@@ -701,6 +701,14 @@ MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil l
 # keep -- legs, deck and leg stations all hang off the rail. Until then it stays put.
 BODY_MOTOR_RESERVE = 70.0
 MOTOR_SHAFT_D   = 5.0
+# THE SHAFT IS A D (user, 2026-10-28): 4.5 across the flat, and 19.5 of it stands proud of
+# the pilot boss (the old 19.4 "from the faceplate" was this, read off the wrong datum --
+# the model drew 17.4 of it in the open). The flat's LENGTH is not measured yet: 15 from the
+# tip is the common NEMA17 D-cut, and the pulley keys only over that span, so a longer flat
+# costs nothing and a shorter one would stop the pulley short of its seat -- MEASURE IT.
+MOTOR_SHAFT_FLAT = 4.5          # across the flat (the D's short dimension)
+MOTOR_SHAFT_PROUD = 19.5        # out of the pilot boss
+MOTOR_SHAFT_FLAT_L = 15.0       # ASSUMED, from the tip
 NEMA17_BOLT_SQ  = 31.0
 NEMA17_PILOT_D  = 22.0
 

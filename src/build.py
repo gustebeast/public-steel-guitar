@@ -1030,7 +1030,8 @@ def _string_components(i):
     # motor_<suffix>_{i} its face, laminations, shaft, driver, terminals, screws and coil lead
     for _k, _wp, _rgb, _fin in C.motor_parts():
         out.append((f"motor_{_k}_{i}" if _k else f"motor_{i}", _wp.translate((mx, my, mz))))
-    out.append((f"motor_pulley_{i}", C.motor_pulley().rotate((0, 0, 0), (0, 1, 0), mp_deg)
+    # (its bore turned back by mp_deg, so the D stays on the shaft's flat while the teeth mesh)
+    out.append((f"motor_pulley_{i}", C.motor_pulley(-mp_deg).rotate((0, 0, 0), (0, 1, 0), mp_deg)
                 .translate((mx, my, mz))))
     # The body length the pockets are built from is checked here, where the motor is built
     # anyway. (No retaining screw: each motor is held by its own CAN tee -- wiring.on_motor.)
