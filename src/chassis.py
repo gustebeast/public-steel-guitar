@@ -163,6 +163,10 @@ KH_DT_Z0       = -29 * D.BEAD           # -23.2 foot line; also the LOWER/UPPER 
                                        # grid, so the snap replaces a dead formula.)
 KH_DT_CLR      = 0.30                   # socket clearance: the step-1 LONG-joint pick for a
                                        # nozzle tenon in a layer socket (fit plates 2-7)
+                                       # FULL LENGTH (endplate_corners plate, both corners,
+                                       # user 2026-10-27): "Joint slides great, let's lock
+                                       # that in" -- LOCKED. It also keeps the endplate's
+                                       # outer wall at 1.63 across the socket's corner
 # ── THE ENDPLATE JOINT IS THE FIT-TESTED PROFILE (user, 2026-10-16) ───────────────────────
 # Joinery step 1 (src/test/fit_plate2..7, printed and fitted by the user) settled one profile
 # per print-orientation pair. This site is a NOZZLE tenon (the chassis builds +Z, along the
