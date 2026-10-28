@@ -563,14 +563,19 @@ CRADLE_L  = INS_LOBE_W                          # the trough is the DOWEL LOBE's
 # than INS_CLR -- it is a flat sliding on a flat in Z only, the easiest fit there is, and
 # every 0.1 of it lands as string-spacing error at the dowel. At 0.1 the worst a single
 # dowel can sit off its lane is 0.3 mm even if the whole stack piles one way.
+# 0.1 -> 0.30 (user, 2026-10-28): the full-height coupon would not take B + B + C at 0.1 --
+# "not enough space to slide in" -- while A, at INS_CLR, "fits perfectly". 0.30 is what the
+# stack finder (fit_finder.StackFinder, round 1, 2026-10-13) had picked: "0.20 tight / 0.30
+# good / 0.40 slightly loose"; it was never carried here. Measured as printed: B + B 12.55,
+# B + C 14.6, B + B + C 20.89 (drawn 12.8 / 14.8 / 21.2 at 0.1).
 #
 # BOTH ITS LOBES ARE FULL WIDTH, which is the part that stops the debris coming back. A
 # narrow dowel lobe would leave 2.2 mm of block standing between each pair of bass
 # inserts, and in a shared bay that material has a trough under it, a sky over it and a
 # pocket either side -- exactly the floating fragment this whole change is removing. Full
 # width, they abut, and there is nothing left between them to come loose.
-STACK_CLR = 0.1                                 # total Y slip in the shared slot
-BASS_W    = D.NUT_PITCH - STACK_CLR             # 6.4: they touch
+STACK_CLR = 0.30                                # total Y slip in the shared slot
+BASS_W    = D.NUT_PITCH - STACK_CLR             # 6.2: they touch
 BASS_CLR  = STACK_CLR / 2 + 0.01                # per side; the +0.01 makes neighbouring
                                                 # pockets OVERLAP rather than share a
                                                 # face, so their union is one clean

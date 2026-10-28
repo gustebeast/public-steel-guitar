@@ -82,7 +82,7 @@ class Coupon(object):
         for s in self.sources:
             shape = comps[s]
             for b in boxes:
-                c = shape.intersect(_box(b))
+                c = shape.intersect(b if isinstance(b, cq.Shape) else _box(b))
                 kept += [x for x in c.Solids()]
         if not kept:
             raise ValueError("%s: nothing of %s lies in its boxes" % (self.name, self.sources))
@@ -546,18 +546,40 @@ COUPONS = [
     Coupon("insert_slots", ["keyhead_endplate"],
            [(_, _, -46.0, -3.0, -63.0, _)],
            UP_X, "the insert slots of strings 7-10"),
-    # ...and the same strip at the endplate's FULL height (user, 2026-10-28: "a full length
+    # ...and the same slots at the endplate's FULL height (user, 2026-10-28: "a full length
     # coupon" for one A, two B and one C printed at full size): the slots' whole run, the
-    # height screws' seats under them and all
-    Coupon("insert_slots_full", ["keyhead_endplate"],
-           [(_, _, -46.0, -3.0, _, _)],
-           UP_X, "the insert slots of strings 7-10, full height"),
+    # height screws' seats under them and all -- but only SLOT_RIM round the slots in plan
+    # (user: "we just need a 1.6mm border around the inserts"; the first cut kept the strip
+    # to -46..-3 and the endplate's full X, and was trimmed by hand in the slicer)
+    Coupon("insert_slots_full", ["keyhead_endplate"], lambda comps: [_slot_rim()],
+           UP_X, "the insert slots of strings 7-10, full height, SLOT_RIM round them"),
     Coupon("insert_a", ["nut_slide_insert_6"], [(_,) * 6], DOWN_X, "slide insert, SKU A"),
     Coupon("insert_b", ["nut_slide_insert_7"], [(_,) * 6], DOWN_X, "slide insert, SKU B"),
     Coupon("insert_b2", ["nut_slide_insert_8"], [(_,) * 6], DOWN_X,
            "slide insert, SKU B again: string 9, between a B and the C"),
     Coupon("insert_c", ["nut_slide_insert_9"], [(_,) * 6], DOWN_X, "slide insert, SKU C"),
 ]
+
+
+SLOT_RIM = 2 * 0.8          # the wall kept round the insert slots, in plan
+SLOT_STRINGS = range(6, 10)  # strings 7-10: SKU A, B, B, C
+
+
+def _slot_rim():
+    """The plan of the slots of SLOT_STRINGS, each insert's outline grown by its own fit and
+    SLOT_RIM, through the endplate's whole height, placed where the endplate's nut block is."""
+    from src import nut_block as NB, dimensions as D
+    keep = None
+    for i in SLOT_STRINGS:
+        k = (NB._plan_wire(i).offset2D(NB._clr(i) + SLOT_RIM, kind="intersection")
+             .extrude(2 * FAR).translate((D.NUT_BLOCK_X, 0.0, -FAR)))
+        keep = k if keep is None else keep.union(k)
+    # ...and the bed ONE plane: the slots' -X ends are not all at one X to the hundredth, so
+    # the rim's -X faces are cut back to the innermost of them
+    x0 = max(s.BoundingBox().xmin for s in keep.val().Solids()) if len(keep.val().Solids()) > 1         else keep.val().BoundingBox().xmin
+    x0 = max(x0, *(NB._plan_wire(i).offset2D(NB._clr(i) + SLOT_RIM, kind="intersection")
+                   .extrude(1.0).val().BoundingBox().xmin + D.NUT_BLOCK_X for i in SLOT_STRINGS))
+    return keep.val().intersect(_box((x0, None, None, None, None, None)))
 
 
 def report(comps, where, export=False):
