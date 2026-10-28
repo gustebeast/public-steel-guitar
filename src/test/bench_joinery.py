@@ -546,6 +546,12 @@ COUPONS = [
     Coupon("insert_slots", ["keyhead_endplate"],
            [(_, _, -46.0, -3.0, -63.0, _)],
            UP_X, "the insert slots of strings 7-10"),
+    # ...and the same strip at the endplate's FULL height (user, 2026-10-28: "a full length
+    # coupon" for one A, two B and one C printed at full size): the slots' whole run, the
+    # height screws' seats under them and all
+    Coupon("insert_slots_full", ["keyhead_endplate"],
+           [(_, _, -46.0, -3.0, _, _)],
+           UP_X, "the insert slots of strings 7-10, full height"),
     Coupon("insert_a", ["nut_slide_insert_6"], [(_,) * 6], DOWN_X, "slide insert, SKU A"),
     Coupon("insert_b", ["nut_slide_insert_7"], [(_,) * 6], DOWN_X, "slide insert, SKU B"),
     Coupon("insert_b2", ["nut_slide_insert_8"], [(_,) * 6], DOWN_X,
