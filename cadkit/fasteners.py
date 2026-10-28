@@ -483,10 +483,14 @@ def cut_boss_insert_bore(spec, w, pt, direction, clr_len, reason=None, print_up=
 # DUMMIES — fit-check only. They go in the assembly, never in a part STEP.
 # ════════════════════════════════════════════════════════════════════════════
 def insert(spec):
-    """Dummy heat-set insert: Ø insert_pilot_d × insert_l TUBE (Ø insert_bore_d
-    bore), axis +Z, top at z=0 (extends -Z). Drawn at the POCKET Ø — the envelope
-    it occupies once melted in, which is what a fit-check wants to see."""
-    body = cq.Workplane(obj=_cyl(spec.insert_pilot_d, spec.insert_l,
+    """Dummy heat-set insert: a TUBE (Ø insert_bore_d bore) × insert_l, axis +Z, top at
+    z=0 (extends -Z). Drawn at the SMALLER of the spec's two pocket Ø (round and
+    teardropped, see pilot_d), so it fits whichever pocket it is seated in -- a dummy at
+    the round 6.1 overlapped every teardropped 6.0 pocket by the same 3.7 mm^3 (2026-10-28).
+    The dummy does not know its pocket's print direction, and needs not: it is the
+    insert's envelope, which the smaller pocket is sized to."""
+    od = min(spec.insert_pilot_d, spec.insert_pilot_td_d or spec.insert_pilot_d)
+    body = cq.Workplane(obj=_cyl(od, spec.insert_l,
                                  (0, 0, -spec.insert_l), (0, 0, 1)))
     bore = cq.Workplane(obj=_cyl(spec.insert_bore_d, spec.insert_l + 2,
                                  (0, 0, -spec.insert_l - 1), (0, 0, 1)))
