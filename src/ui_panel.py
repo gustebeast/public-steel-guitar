@@ -93,7 +93,7 @@ holes, so any header on it is a hand-soldered joint on a bought part. Its siblin
 NHD-2.7-12864WDW3-M, is the same panel, outline, bezel and pin table with a 20-way
 1.0 mm FFC socket (Molex 52271-2079, bottom contact, 3.0 high) on its back. So the joint
 is now three bought parts and no solder at all: that socket, a stock 50 mm same-side FFC
-(JUSHUO JS10A-20P-050-4-8), and a JLC-placed JUSHUO AFA07-S20FCA-00 on our board's +Y
+(JUSHUO JS10A-20P-050-4-8), and a JLC-placed Molex 52271-2079 on our board's +Y
 edge, its mouth facing the module. See ffc_path() for the cable's route.
 
 -- THE STACK, TOP DOWN -------------------------------------------------------
@@ -280,9 +280,9 @@ FFC_STIFF_T = 0.225
 # -(FFC_CU_T/2 + under + stiffener), so its middle is half of under + stiffener behind
 FFC_FILM_OFF = (FFC_INS_T + FFC_STIFF_T) / 2.0
 FFC_SLOT_H = 0.50                  # both sockets' mouths, drawn: the plug and some air
-# Our end: JUSHUO AFA07-S20FCA-00 (LCSC C262724), 2.5 high, 1.0 pitch, bottom contact.
-# The slot's height over our board is an ESTIMATE off its section A-A.
-J1_H = 2.5
+# Our end: Molex 52271-2079 (LCSC C588186), 3.0 high, 1.0 pitch, bottom contact.
+# The slot's height over our board is an ESTIMATE off its section D-D.
+J1_H = 3.0
 J1_SLOT = 1.0
 FFC_R_MIN = 1.2                    # the tightest bend drawn: four times its thickness
 FFC_TOP_Z = -2.5                   # the run under the module, clear of its rear parts
@@ -682,7 +682,7 @@ def mod_ffc_mouth():
 
 def j1_mouth_y():
     """World Y of our FFC socket's mouth, off the ROUTED board: the end of its F.Fab body
-    away from its contacts (it faces +Y, toward the module, and sits 0.5 inside the edge)."""
+    away from its contacts (it faces +Y, toward the module, and sits 1.62 inside the edge)."""
     f = _bg().footprint("ui_board", "J1")
     pads = list(f["pads"].values())
     pad_y = sum(q[1] for q in pads) / len(pads)

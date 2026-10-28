@@ -144,12 +144,14 @@ def _foot_ends():
 
 def foot_paths():
     """The foot strip's lead: board A's J1, up the endplate, over string 1's motor and its
-    CAN tee, down between that motor and the Pi, into the cap's J6. foot_light holds the
+    CAN tee (low, under the keyhead panel's sweep), down between that motor and the Pi,
+    into the cap's J6. foot_light holds the
     numbers and why each is what it is."""
     from . import foot_light as FOOT
     (pa, oa), (pb, ob) = _foot_ends()
     assert oa == (-1, 0, 0) and ob == (0, 1, 0), (oa, ob)
     fly = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + FOOT.LEAD_FLY
+    low = fly + FOOT.LEAD_LOW
     xs = pa[0][0] - FOOT.LEAD_STUB
 
     def build(r1, r2):
@@ -159,7 +161,8 @@ def foot_paths():
             cx = FOOT.LEAD_COL_X + r1[i] * WIRE_LANE
             dy = b[1] + PLUG_L + FOOT_DROP_CLR + r2[i] * WIRE_LANE
             out.append([a, (xs, a[1], a[2]), (xs, a[1], fly), (cx, a[1], fly),
-                        (cx, dy, fly), (cx, dy, b[2]), (b[0], dy, b[2]), b])
+                        (cx, FOOT.LEAD_DIP_Y, fly), (cx, FOOT.LEAD_DIP_Y, low),
+                        (cx, dy, low), (cx, dy, b[2]), (b[0], dy, b[2]), b])
         return out
     return _solve(build)
 
@@ -195,10 +198,66 @@ def fret_paths():
     return _solve(build)
 
 
+# ── THE FRET LEAD IS PLUGGED IN BEFORE ITS PANEL IS HOME (user, 2026-10-23) ──────────
+# The keyhead panel carries the fret board, and once it is home the cap's J3 is under it.
+# So both ends go in with the panel held out -X just far enough to reach J3 -- its +X edge
+# FRET_HAND_ROOM short of the socket -- and the panel then slides home with the lead on.
+# The lead is cut for THAT pose; at home the difference lies loose in the bay. Before the
+# panel the keyhead endplate is not on yet, nor the strings, so they are not in the way.
+FRET_HAND_ROOM = 40.0            # fingers and the XHP-4 housing, past the panel's edge
+FRET_CUT_SPARE = 15.0            # strip and crimp, both ends
+_NOT_ON_YET = (r"^(keyhead_endplate|nut_slide_insert_\d+|break_dowel_\d+|nut_wrap_rod"
+               r"|string_\w+)$")
+
+
+def _bundle(pins, out):
+    c = tuple(sum(p[m] for p in pins) / len(pins) for m in range(3))
+    return c, tuple(c[m] + out[m] * PLUG_L for m in range(3))
+
+
+def fret_plug_slide():
+    """How far out -X the keyhead panel is when the fret lead is plugged in."""
+    from . import top_plate as TP
+    (_pa, _oa), (pb, _ob) = _fret_ends()
+    return TP.KEY_X0 - (min(p[0] for p in pb) - FRET_HAND_ROOM)
+
+
+def fret_routes():
+    """{"home": pts, "plugging": pts}: the fret lead's centreline between its two plugs'
+    free ends, taut, at home and with the keyhead panel out at fret_plug_slide()."""
+    from . import cable_routes as CR
+    from . import top_plate as TP
+    (pa, oa), (pb, ob) = _fret_ends()
+    _ac, a = _bundle(pa, oa)
+    _bc, b = _bundle(pb, ob)
+    r = WIRE_OD + 0.3                            # the four bunch into a 2 x 2 once loose
+    hand = [a, (FRET_COL_X, a[1], a[2]), (FRET_COL_X, b[1], a[2]),
+            (FRET_COL_X, b[1], b[2]), b]
+    s = fret_plug_slide()
+    a_s = (a[0] - s, a[1], a[2])
+    panel = (r"^(top_plate(_color)?_%d|fret_pcb_key|fret_m4(_insert)?_key_\d+)$"
+             % (len(TP.segments) - 1))
+    return {"home": CR.taut("fret LED lead", a, b, r, hand),
+            "plugging": CR.taut("fret LED lead, keyhead panel out", a_s, b, r,
+                                [a_s] + hand[1:],
+                                moved=[(panel, (-s, 0.0, 0.0)),
+                                       (_NOT_ON_YET, (0.0, 0.0, 1e4))])}   # far away: off
+
+
+def fret_lead_cut():
+    """(cut length, home, plugging): the fret lead's conductors are cut to the plugging
+    pose's taut length, plus each plug's straight lead and the crimp spare."""
+    from cadkit.cables import path_length
+    rt = fret_routes()
+    home, plug = path_length(rt["home"]), path_length(rt["plugging"])
+    return max(home, plug) + 2.0 * PLUG_L + FRET_CUT_SPARE, home, plug
+
+
 def parts():
     """[(name, solid)] -- eight conductors."""
     out = []
     for lead, paths in (("foot", foot_paths()), ("fret", fret_paths())):
         for way, pts in zip(WAYS, paths):
             out.append(("wire_%s_led_%s" % (lead, way.lower()), oct_cable(pts, WIRE_OD)))
+    fret_routes()                                # the cut-length requests: drawn as above
     return out

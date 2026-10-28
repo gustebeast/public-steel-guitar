@@ -33,7 +33,7 @@ CAD draws THAT. Nothing is typed twice, and nothing downstream can drift from wh
 actually fabbed -- which is the failure elec/export_geom.py exists to have ended.
 
 -- WHY THE CONNECTORS ARE THE CONNECTORS THEY ARE ---------------------------
-J1 is a JUSHUO AFA07-S20FCA-00: 20 ways at 1.0, 2.5 high, BOTTOM contact, slide lock,
+J1 is a Molex 52271-2079: 20 ways at 1.0, 3.0 high, BOTTOM contact, flip-lock actuator,
 its mouth flush with the +Y edge and facing the module. Bottom contact because the cable
 arrives contacts-down: it leaves the module's socket contacts-up against that board and
 loops round under it without turning over (src/ui_panel.ffc_path). It was a 1x20 2.54
@@ -83,7 +83,13 @@ from src import ui_panel as UI                       # noqa: E402
 P = Pin.types.PASSIVE
 
 ENC_FP = "Steel:Alps_RKJXT1F42001"
-DISP_FP = "Connector_FFC-FPC:JUSHUO_AFA07-S20FCA-00_1x20-1MP_P1.0mm_Horizontal"
+# ⚠ MOLEX, NOT JUSHUO (2026-10-23). It was JUSHUO's AFA07-S20FCA-00 (C262724), which has no
+# published current rating: LCSC said its 0.5 A is the "general industry theoretical
+# maximum" for the pitch and would not stand behind 375 mA on one way. The module has ONE
+# VDD way, so splitting the rail is not possible; a rated part is. 52271 is the module's own
+# socket's series and Molex rate it 0.5 A (PS-52271-053). KiCad has no footprint for it, so
+# Steel.pretty's is drawn off Molex's sales drawing SD-52271-036.
+DISP_FP = "Steel:Molex_52271-2079_1x20-1MP_P1.0mm_Horizontal"
 # ⚠ THE SAME HEADER AS THE PI CAP'S END (user, 2026-10-02: "both ends of the connection are
 # our custom PCB so we can pick whatever connector we want"). This was a 2.54 mm IDC box
 # header, which takes 1.27 ribbon; the cap's end is a 1.27 mm header, which takes 0.635.
@@ -237,9 +243,9 @@ def ui_board():
     for pin, net in ENC_PINS.items():
         nets[net] += sw1[pin]
 
-    j1 = Part(name="AFA07-S20FCA-00", ref_prefix="J", ref="J1", tag="J1",
-              dest="NETLIST", tool="skidl", value="AFA07-S20FCA-00",
-              description="JUSHUO 20-way 1.0 mm FFC socket, bottom contact (LCSC C262724): "
+    j1 = Part(name="52271-2079", ref_prefix="J", ref="J1", tag="J1",
+              dest="NETLIST", tool="skidl", value="52271-2079",
+              description="Molex 20-way 1.0 mm FFC socket, bottom contact (LCSC C588186): "
                           "the NHD-2.7-12864WDW3-M's ribbon",
               footprint=DISP_FP,
               pins=[Pin(num=k, name=v, func=P) for k, v in DISP_PINS.items()])
@@ -289,15 +295,23 @@ _HW, _HL = BOARD_W / 2.0, BOARD_L / 2.0
 
 # J1, THE DISPLAY'S FFC SOCKET: on the module's centreline in X, so the ribbon runs
 # straight from the module's socket to this one (it may only bend about its width), and
-# rotated 180 so its mouth faces +Y, toward the module. Its COURTYARD is flush with the
-# +Y edge, which leaves the mouth 0.5 inside it -- the cable's stiffener lies over that.
-# KiCad's JUSHUO_AFA07-S20FCA-00 from the PAD CENTROID (twenty contacts and the two
-# mounting lands): the fab body runs 0.703 to 7.653 ahead of it, the courtyard -1.602 to
-# 8.158 and +-14.0 across, once turned 180.
-_J1_FAB = (0.703, 7.653)
-_J1_CRTYD = (-1.602, 8.158, 14.0)
+# rotated 180 so its mouth faces +Y, toward the module, its mouth 1.62 inside the +Y edge
+# (see _J1_ROW_SHIFT) -- the cable's stiffener lies over that.
+# Steel:Molex_52271-2079 from the PAD CENTROID (twenty contacts and the two fitting-nail
+# lands): the fab body runs 1.136 to 6.536 ahead of it, the courtyard -1.414 to 7.036 and
+# +-13.95 across, once turned 180. The actuator OPENED stands 1.75 further out (7.15 deep
+# against 5.4) and 4.45 high: over the edge, in the 11.74 of air under the deck.
+_J1_FAB = (1.136, 6.536)
+_J1_CRTYD = (-1.414, 7.036, 13.95)
 _J1_X = UI.board_local(UI.ui_x(), 0.0)[0]
-_J1_Y = _HL - _J1_CRTYD[1]
+# ⚠ ITS CONTACT ROW STAYS WHERE THE JUSHUO'S WAS, not its courtyard on the edge. The Molex
+# is 1.122 shallower from its contact row to its courtyard front, and placed courtyard-on-
+# the-edge its row came 1.122 nearer the edge: the router then left SW_C with no way into
+# J2's inner row (1 unconnected at 10 passes and at 20). Back at the old row it routes clean
+# on pass 1. The mouth sits 1.62 inside the edge (was 0.5) and the stiffener lies over the
+# difference; the actuator, OPENED, reaches 0.13 past the edge.
+_J1_ROW_SHIFT = 1.122
+_J1_Y = _HL - _J1_CRTYD[1] - _J1_ROW_SHIFT
 
 
 def _j1_box(margin=0.0):
@@ -444,10 +458,10 @@ BOARD_NOTES = {
             "*": {"v": 3.40, "why": "a logic line driven from, or pulled up to, +3V3"},
         },
         "pin_volts": {
-            "AFA07-S20FCA-00": {
+            "52271-2079": {
                 "max": 3.5, "src": "Newhaven NHD-2.7-12864WDW3-M specification, electrical "
                                    "characteristics: VDD 3.0 to 3.5 V",
-                "why": "JUSHUO publish no voltage for the socket; what limits these ways "
+                "why": "the socket is 50 V (Molex PS-52271-053); what limits these ways "
                        "is the display module at the far end of the ribbon"},
             "PZ1.27-2x8P": {"max": 500.0, "src": "hanxia HX PZ1.27-2x8P WZ, JLCPCB "
                                                  "listing C22438114: 500 V"},
@@ -509,7 +523,12 @@ BOARD_NOTES = {
                                 "the deck); on the front SW2 and its POWER label take the "
                                 "14 mm round the header. Way 1 is marked on the front"},
         },
-        "waive": {"A17:J1 ways": "20 ways at 1.0 mm: a block is 21 lines, 34 mm at the "
+        "waive": {"A22:J1": "the display's FFC, not a crimped lead: way 17 (/CS) beside way 18 "
+                            "(+3V3) is the NHD-2.7-12864WDW3-M's own pinout, fixed at the "
+                            "module (Newhaven's table, DISP_PINS). The rule picks J1 up by "
+                            "its maker's name (Molex since 2026-10-23); a laminated flat "
+                            "cable has no loose strand or misplaced crimp to bridge them",
+                  "A17:J1 ways": "20 ways at 1.0 mm: a block is 21 lines, 34 mm at the "
                                  "legible 1.0 mm, the whole height of this 72 x 34 board. "
                                  "Nothing is crimped to it: the mate is a stock FFC, "
                                  "which goes in one way only (contacts down, into a "
@@ -544,12 +563,15 @@ BOARD_NOTES = {
                   "(C1's lands under ways 2 and 1), for a module that carries its own "
                   "boost converter and its own capacitors",
             "M5": "+3V3: capacitors 25 V and 16 V or more, 0402 resistors 50 V, the module "
-                  "3.0 to 3.5 V. J2's contacts are 1 A against 0.375 A. J1: no rating on "
-                  "its own listing or on JUSHUO's drawing; LCSC list 500 mA / 50 V for "
-                  "the same series' 12-way AFA07-S12FCA-00 (C262718, read 2026-10-19), "
-                  "against 375 mA through its one VDD way. The module's own Molex 52271 "
-                  "is 0.5 A. Asked LCSC to confirm the 20-way's figure with JUSHUO "
-                  "(2026-10-19). Tin contacts, as the cable's and the Molex's are. "
+                  "3.0 to 3.5 V. J2's contacts are 1 A against 0.375 A. J1, Molex "
+                  "52271-2079: 0.5 A per contact, 50 V, -40 to +85 C including the "
+                  "terminals' own rise, 20 milliohm max (Molex PS-52271-053 rev D, read "
+                  "2026-10-23), against 375 mA through the module's one VDD way: 75 % of "
+                  "a published rating, about 2.8 mW in the contact. No separate rise "
+                  "curve is published. The module's own socket is the same series, so "
+                  "the whole chain stands on one maker's rating. (It was JUSHUO's "
+                  "AFA07-S20FCA-00, whose 0.5 A LCSC called a theoretical figure for the "
+                  "pitch, 2026-10-23.) Tin contacts, as the cable's are. "
                   "Encoder and stick contacts: 10 mA at 5 V DC maximum (Alps), carrying "
                   "0.33 mA from a 10k pull-up to 3.3 V. Power switch: 12 V 0.3 A (Legion), "
                   "seeing the output board's 10 V zener (9.4 to 10.6 V) open and 2.55 mA "
@@ -579,8 +601,9 @@ BOARD_NOTES = {
                    "source is a current-limited switch on the Pi cap",
             "M28": "Alps RKJXT1F42001 (C160841), Legion PB-22E85-S-5.7C-C-W (C22462024), "
                    "hanxia HX PZ1.27-2x8P WZ (C22438114): each listing read 2026-10-05. "
-                   "JUSHUO AFA07-S20FCA-00 (C262724): listing and drawing read 2026-10-19, "
-                   "and KiCad's footprint of it is the one placed. Each pinout above is "
+                   "Molex 52271-2079 (C588186): sales drawing SD-52271-036 rev F and spec "
+                   "PS-52271-053 read 2026-10-23; KiCad has no footprint for it, so the "
+                   "one placed is Steel.pretty's, drawn off that drawing's pattern. Each pinout above is "
                    "taken from that maker's own drawing. No transistor, regulator or IC on "
                    "the board",
             "M29": "two layers, 1.6 mm, 1 oz, inside JLCPCB's standard table (cadkit "
@@ -647,7 +670,7 @@ BOARD_NOTES = {
                    "filtered where it is read: R35 / C50, 1 ms, on the output board",
             "M42": "stock at JLCPCB on 2026-10-05: encoder 7,310, power switch 2,537, "
                    "ribbon header 2,050, all three passives basic parts in the millions; "
-                   "on 2026-10-19 the FFC socket 9,681 (C262724). The display module and "
+                   "on 2026-10-23 the FFC socket 5,590 (C588186, extended). The display module and "
                    "its ribbon are bought, not placed. Single-maker parts: the Alps "
                    "encoder has no drop-in alternate (the footprint is its own); the "
                    "switch, the header and the 1.0 mm FPC socket are generic outlines "
