@@ -98,7 +98,7 @@ class FastenerSpec:
     pitch:          float            # thread pitch — sets min_bite
     selftap_d:      float            # modelled self-tap hole
     shaft_clr_d:    float            # clearance hole (screw spins free)
-    insert_pilot_d: float            # heat-set insert pocket Ø
+    insert_pilot_d: float            # heat-set insert pocket Ø, printed ROUND (along print_up)
     insert_depth:   float            # pocket DEPTH (>= insert_l)
     insert_l:       float            # physical insert LENGTH
     insert_bore_d:  float            # the dummy insert's through-bore Ø
@@ -109,6 +109,12 @@ class FastenerSpec:
                                      # broke the rule). 1.0 was neither tier -- over the
                                      # one-bead floor, under the two-bead quality size
                                      # every other printed wall in the library targets.
+    # THE POCKET TAKES A DIFFERENT Ø WHEN IT IS TEARDROPPED (user, 2026-10-28). A pocket along
+    # the build prints round and comes out UNDER its drawn Ø (M4 had to go 6.0 -> 6.1 to let the
+    # insert drop in); a pocket sideways to the build prints as a teardrop, whose layer-made
+    # sides come out OVER, and at 6.1 the keyhead's height-screw inserts dropped in loose. None:
+    # the same Ø both ways. Use pilot_d() to pick.
+    insert_pilot_td_d: Optional[float] = None
     head_recess_d:  Optional[float] = None   # cap-head counterbore (None = headless)
     head_recess_h:  Optional[float] = None
     screw_l:        Optional[float] = None   # dummy screw length, if modelled
@@ -127,6 +133,15 @@ class FastenerSpec:
     def boss_od(self) -> float:
         return self.insert_pilot_d + 2.0 * self.boss_wall
 
+    def pilot_d(self, direction=None, print_up=None) -> float:
+        """The insert pocket's Ø for a hole along `direction` in a part printing along
+        `print_up`: insert_pilot_d when it prints round (along the build, or print_up None),
+        insert_pilot_td_d when it is teardropped (see that field)."""
+        if self.insert_pilot_td_d is None or print_up is None or direction is None:
+            return self.insert_pilot_d
+        a, u = _unit(direction), _unit(print_up)
+        return self.insert_pilot_d if abs(a.dot(u)) > 1.0 - 1e-9 else self.insert_pilot_td_d
+
 
 # M2 cap screw + McMaster 94459A110 heat-set insert.
 M2 = FastenerSpec(
@@ -144,11 +159,13 @@ M2 = FastenerSpec(
 # THE POCKET IS 6.1, NOT 6.0 (user, 2026-10-20: "the fitted insert just doesn't slide
 # into its pilot hole"). 6.0 was the insert's own size, no margin, and a printed hole
 # comes out under its drawn size; the insert has to drop in before it is melted home.
+# ...BUT ONLY ROUND: TEARDROPPED IT IS 6.0 AGAIN (user, 2026-10-28: the keyhead's height-screw
+# inserts, pockets sideways to the build, "go in too loose" at 6.1).
 M4 = FastenerSpec(
     name="M4", screw_d=4.0, pitch=0.7,
     selftap_d=4.2, shaft_clr_d=4.4,
     insert_pilot_d=6.1, insert_depth=5.0, insert_l=5.0, insert_bore_d=4.4,
-    boss_prot=6.0,
+    boss_prot=6.0, insert_pilot_td_d=6.0,
     head_recess_d=None, head_recess_h=None, screw_l=10.0,
 )
 
@@ -250,8 +267,8 @@ def _oriented(s, axis, deg, pt):
 def pocket_cutter(spec, pnt, direction, overshoot=0.0, print_up=None):
     """The heat-set insert pocket alone: Ø insert_pilot_d × insert_depth."""
     mouth = _back(pnt, direction, overshoot)
-    return cq.Workplane(obj=_bore(spec.insert_pilot_d, spec.insert_depth + overshoot,
-                                  mouth, direction, print_up))
+    return cq.Workplane(obj=_bore(spec.pilot_d(direction, print_up),
+                                  spec.insert_depth + overshoot, mouth, direction, print_up))
 
 
 def selftap_cutter(spec, pnt, direction, length, overshoot=0.0, print_up=None):
@@ -351,9 +368,9 @@ def anchor_cutter(spec, pnt, direction, depth, pocket=True, overshoot=0.0,
 
     mouth = _back(pnt, direction, overshoot)
     bore = _bore(spec.selftap_d, depth + overshoot, mouth, direction, print_up)
-    bore = bore.fuse(_bore(spec.insert_pilot_d, spec.insert_depth + overshoot,
-                           mouth, direction, print_up))
-    bore = _with_step(bore, spec.insert_pilot_d, spec.selftap_d,
+    pd = spec.pilot_d(direction, print_up)
+    bore = bore.fuse(_bore(pd, spec.insert_depth + overshoot, mouth, direction, print_up))
+    bore = _with_step(bore, pd, spec.selftap_d,
                       _fwd(pnt, direction, spec.insert_depth), direction, print_up)
     return cq.Workplane(obj=bore)
 
@@ -376,10 +393,10 @@ def insert_bore_cutter(spec, pnt, direction, clr_len, overshoot=0.0, reason=None
             "or 'only 3.6 mm of wall')." % spec.name)
     mouth = _back(pnt, direction, overshoot)
     inner = _fwd(pnt, direction, spec.insert_depth)
-    pocket = _bore(spec.insert_pilot_d, spec.insert_depth + overshoot, mouth, direction,
-                   print_up)
+    pd = spec.pilot_d(direction, print_up)
+    pocket = _bore(pd, spec.insert_depth + overshoot, mouth, direction, print_up)
     clr = _bore(spec.shaft_clr_d, clr_len, inner, direction, print_up)
-    cut = _with_step(pocket.fuse(clr), spec.insert_pilot_d, spec.shaft_clr_d, inner,
+    cut = _with_step(pocket.fuse(clr), pd, spec.shaft_clr_d, inner,
                      direction, print_up)
     return cq.Workplane(obj=cut)
 
@@ -810,13 +827,14 @@ class ScrewJoint:
             cut = cut.fuse(_bore(big, self.recess + overshoot, start, d, print_up))
             cut = _with_step(cut, big, sp.shaft_clr_d, self.at(self.recess), d, print_up)
         mouth = self.at(self.insert_at)
-        cut = cut.fuse(_bore(sp.insert_pilot_d, sp.insert_depth, mouth, d, print_up))
+        pd = sp.pilot_d(d, print_up)
+        cut = cut.fuse(_bore(pd, sp.insert_depth, mouth, d, print_up))
         # the pocket's floor steps down to the clearance beyond (a ceiling drilled INTO the
         # build) and its mouth steps up from the clearance before it (a ceiling drilled
         # AGAINST the build): _step cones whichever faces down
-        cut = _with_step(cut, sp.insert_pilot_d, sp.shaft_clr_d,
+        cut = _with_step(cut, pd, sp.shaft_clr_d,
                          self.at(self.insert_at + sp.insert_depth), d, print_up)
-        cut = _with_step(cut, sp.insert_pilot_d, sp.shaft_clr_d, mouth,
+        cut = _with_step(cut, pd, sp.shaft_clr_d, mouth,
                          tuple(-c for c in d), print_up)
         return cq.Workplane(obj=cut)
 
