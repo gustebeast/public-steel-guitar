@@ -424,6 +424,12 @@ PARTS["saw_jig_cap"] = (
     "tools/saw_jig_cap.step",
     "TOOL — the saw jig's cap: a plunger down the clamp channel whose 45 deg notch seats on the rod's upper crests, with a rimmed pocket on top for the Quick-Grip pad. The clamp squeezes cap, rod, jig and table in one stack. PETG, printed as drawn (notch on the bed)")
 
+# NUT REAMING JIG -- a SHOP TOOL (user, 2026-10-27): exported, never in the assembly.
+PARTS["ream_jig"] = (
+    lambda: heal(__import__("src.ream_jig", fromlist=["e"]).jig()),
+    "tools/ream_jig.step",
+    "TOOL — reaming jig for one ear of the Tr8x2 H-flange nut (9/64\" reamer, McMaster 2995A116): the nut slides in from the side BOSS DOWN, its flats on the slot walls so it cannot turn, the ear on the floor; a 44.6 channel over the ear holds the reamer vertical. Every ceiling is a 45 deg gable. PETG-GF, printed as drawn (table face on the bed)")
+
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
     "test_section_tenon.step",
@@ -559,6 +565,7 @@ def _declared():
     from . import motor_bank as _MB
     from . import coil_mandrel as _CM
     from . import saw_jig as _SJG
+    from . import ream_jig as _RJG
     from . import electronics as _ELX
 
     _plate = [n for n in PARTS if n.startswith("top_plate_")]
@@ -668,6 +675,10 @@ def _declared():
         (["saw_jig"], _SJG.BODY_UP,
          "saw_jig.BODY_UP — as drawn, table face on the bed: the V and roof "
          "of the rod tunnel and the fork's arch are all 45 deg"),
+        (["ream_jig"], _RJG.PRINT_UP,
+         "ream_jig.PRINT_UP — standing as it is used, table face on the bed: "
+         "the nut slot and the reamer channel both print round their own axis, "
+         "and every ceiling over the nut is a 45 deg gable"),
         (["saw_jig_cap"], _SJG.CAP_UP,
          "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise "
          "off the bed, the pad pocket opens up"),
