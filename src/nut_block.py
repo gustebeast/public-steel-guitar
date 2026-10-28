@@ -563,19 +563,17 @@ CRADLE_L  = INS_LOBE_W                          # the trough is the DOWEL LOBE's
 # than INS_CLR -- it is a flat sliding on a flat in Z only, the easiest fit there is, and
 # every 0.1 of it lands as string-spacing error at the dowel. At 0.1 the worst a single
 # dowel can sit off its lane is 0.3 mm even if the whole stack piles one way.
-# 0.1 -> 0.30 (user, 2026-10-28): the full-height coupon would not take B + B + C at 0.1 --
-# "not enough space to slide in" -- while A, at INS_CLR, "fits perfectly". 0.30 is what the
-# stack finder (fit_finder.StackFinder, round 1, 2026-10-13) had picked: "0.20 tight / 0.30
-# good / 0.40 slightly loose"; it was never carried here. Measured as printed: B + B 12.55,
-# B + C 14.6, B + B + C 20.89 (drawn 12.8 / 14.8 / 21.2 at 0.1).
 #
+# STACK_CLR IS THE SLOT'S GEOMETRY; BASS_FIT IS THE PARTS' (see below). Changing STACK_CLR
+# moves the slot's walls as well as the inserts, which is the wrong lever for a fit: the
+# slot prints true (below), the stack does not.
 # BOTH ITS LOBES ARE FULL WIDTH, which is the part that stops the debris coming back. A
 # narrow dowel lobe would leave 2.2 mm of block standing between each pair of bass
 # inserts, and in a shared bay that material has a trough under it, a sky over it and a
 # pocket either side -- exactly the floating fragment this whole change is removing. Full
 # width, they abut, and there is nothing left between them to come loose.
-STACK_CLR = 0.30                                # total Y slip in the shared slot
-BASS_W    = D.NUT_PITCH - STACK_CLR             # 6.2: they touch
+STACK_CLR = 0.1                                 # total Y slip in the shared slot
+BASS_W    = D.NUT_PITCH - STACK_CLR             # 6.4: they touch
 BASS_CLR  = STACK_CLR / 2 + 0.01                # per side; the +0.01 makes neighbouring
                                                 # pockets OVERLAP rather than share a
                                                 # face, so their union is one clean
@@ -584,6 +582,19 @@ BASS_CLR  = STACK_CLR / 2 + 0.01                # per side; the +0.01 makes neig
 BASS_OFF  = 0.4                                 # the clamp lobe's +Y edge above nut_y:
                                                 # low enough to cover the deepest bass
                                                 # coil, high enough to abut the neighbour
+
+# THE BASS INSERTS ARE PRINTED SMALLER THAN THEIR PLAN, BY BASS_FIT ALL ROUND (user,
+# 2026-10-28). On the full-height coupon (bench_joinery insert_slots_full) at STACK_CLR 0.1
+# every insert went in ALONE, A "fits perfectly", and all three bass together went in only
+# with "a lot of friction since they are pushed tight together". The PETG-GF slot printed
+# TRUE -- 21.56 across against 21.52 drawn -- and the stack read 20.89 on calipers against
+# 21.2 drawn, so the bind is where three printed parts meet (their steps and faces), not
+# their width or the slot's. So the fix is on the PCTG parts only: the pocket is still cut
+# from the unshrunk plan, and only the part shrinks. 0.10 a face is the stack finder's pick
+# (fit_finder.StackFinder, round 1, 2026-10-13: slot fixed, tokens shrunk all round,
+# "0.20 tight / 0.30 good / 0.40 slightly loose" -- its step 0.30 = STACK_CLR + 2 x 0.10).
+# SKU A is untouched: it fits.
+BASS_FIT = (0.30 - STACK_CLR) / 2.0             # 0.10, off every face of a bass insert
 
 
 # SKU B's -Y STEP: how far its dowel lobe's -Y edge stands inward (+Y) of its clamp lobe's. The
@@ -772,6 +783,14 @@ def _plan_wire(i: int):
     return cq.Workplane("XY").polyline(_plan(i)).close()
 
 
+def _part_wire(i: int):
+    """The plan the INSERT is made from: _plan_wire, less BASS_FIT all round on the bass
+    stack. The pocket is cut from _plan_wire itself."""
+    if i < N_FINGERED:
+        return _plan_wire(i)
+    return _plan_wire(i).offset2D(-BASS_FIT, kind="arc")
+
+
 NECK_CLR_X = 0.4                                # air +X of the coil, before the neck
 
 
@@ -834,12 +853,12 @@ def slide_insert(i: int) -> cq.Workplane:
     # the wrap far below the dowel now, so the insert has to carry the dowel back up; the
     # neck stops AT the cradle centre, which is a dowel-radius under the crown and so
     # still below the string plane -- nothing of the insert can foul the bar either.
-    body = _plan_wire(i).extrude(INS_H).translate((0, 0, fz - INS_H))
+    body = _part_wire(i).extrude(INS_H).translate((0, 0, fz - INS_H))
     # THE HEIGHT-ADJUST EXTENSION (user): a tall foot down to the screw that pushes the insert up --
     # the insert's OWN PLAN carried all the way down (user), so the -Y shoulder that stops it walking
     # +X runs the whole height, and there is no transition to fit. Its +X face is the dowel lobe's:
     # one flat plane, which is what the part prints on.
-    body = body.union(_plan_wire(i).extrude(INS_EXT_H + 0.01)
+    body = body.union(_part_wire(i).extrude(INS_EXT_H + 0.01)
                       .translate((0, 0, fz - INS_H - INS_EXT_H)))
     # THE NECK STARTS CLEAR OF THE COIL, not at the lobe's step. The wrap reaches
     # ROD_X + ROD_D/2 + g on its +X side, and a neck beginning further -X than that drives
@@ -860,7 +879,7 @@ def slide_insert(i: int) -> cq.Workplane:
     # reaches ROD_X + ROD_D/2 + g on its +X side, and anything -X of that drives through
     # the winding (10 mm^3 of it on the .070 when this was a plain box). So the neck starts
     # from the COIL's own extent, per string, and moves with the gauge.
-    neck = (_plan_wire(i).extrude(DIVOT_OFF).translate((0, 0, fz))
+    neck = (_part_wire(i).extrude(DIVOT_OFF).translate((0, 0, fz))
             .intersect(box_at((INS_X1 + 1.0) - nx0, 4000.0, DIVOT_OFF + 2.0,
                               x=(nx0 + INS_X1 + 1.0) / 2, y=0.0, z=fz + DIVOT_OFF / 2)))
     body = body.union(neck)
@@ -898,7 +917,7 @@ def slide_insert(i: int) -> cq.Workplane:
     # they are material rather than air. See RAMP_END and RAMP_NECK.
     #
     # Clipped to the plan, so neither can escape the silhouette the socket is cut from.
-    keep = (_plan_wire(i).extrude(DIVOT_OFF + INS_H + 2.0)
+    keep = (_part_wire(i).extrude(DIVOT_OFF + INS_H + 2.0)
             .translate((0, 0, fz - INS_H - 1.0)))
     for x0, run in ((INS_X0, +RAMP_END), (nx0, -RAMP_NECK)):
         ramp = (cq.Workplane("XZ")
