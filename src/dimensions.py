@@ -313,6 +313,8 @@ SCREW_OD        = 8.0       # Tr8x2: Ø8, SINGLE-start, 2 mm lead.
 # print. It does NOT resolve on the project's 0.8 nozzle (0.3 radial is under half a
 # bead) — both parts are 0.2-NOZZLE prints and therefore unfilled, the same call
 # belt_clamp already makes for GT2 ridges. At 0.2 the groove is a 1.5-bead feature.
+# (THAT WAS TR5. At Tr8 the groove is 0.8 deep -- FORM_MINOR/MAJOR below -- and the pulleys
+# print at 0.4: components.NOZZLE_D.)
 SCREW_PITCH     = 2.0       # Tr8x2: 2 mm pitch, single start => 2 mm LEAD
 # THE THREAD'S HAND IS A DESIGN INPUT, NOT A DETAIL OF THE PART (2026-10-05). It decides
 # which way each belt runs as a nut rises, and so which END of its run each belt clamp is
@@ -863,7 +865,9 @@ assert PULLEY_COL_HI >= 3 * BEAD - 1e-9, (
 # BLIND SOCKET, bored down from the top. Its floor stops above the band's top, inside the
 # upper cone: that cone flares 45° from the band's Ø8.4, so the wall over the Ø7.8 groove is
 # 0.3 at the band and grows 1:1 going up — 0.4 above it gives 0.7, three-and-a-half traces
-# of this part's 0.2 nozzle. Identical on both SKUs.
+# of the 0.2 nozzle it was sized for; at the 0.4 the pulleys print with now (2026-10-28) it is
+# 1.75 -- over the one-bead floor, under two. Left as it is ON PURPOSE: a thicker floor
+# shortens SCREW_LEN, which the saw jig's stop is set from. Identical on both SKUs.
 PULLEY_SOCKET_FLOOR_CLR = 2 * 0.2                                       # 0.4, 0.2-nozzle part
 PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 11.53
 # BOTTOM of the rod: it ends in the socket a hair short of the floor, so it never bottoms and

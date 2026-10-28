@@ -20,10 +20,12 @@ from cadkit.fasteners import set_screw, m4_insert                # the ONE dummi
 # re-exported here so C.set_screw() / C.m4_insert() keep working across the project
 
 # PER-PART NOZZLE. The two GT2 pulleys are the only PRINTED parts in this module of
-# dummies, and they need the fine nozzle twice over: 2 mm tooth pitch, and a 0.3 mm
-# pilot-thread groove that 0.8 would smear into a smooth bore. (screw_collar used to
-# carry this declaration for the pair of them; it is gone, so it lives here now.)
-NOZZLE_D = 0.2
+# dummies, and they need a finer nozzle than the project's 0.8 for their 2 mm tooth pitch.
+# 0.4 (user, 2026-10-28; the belt clamp's GT2 ridges proved PCTG at 0.4): both print axis-up,
+# so the teeth are drawn in plane -- ~0.9 lands, two 0.4 lines -- and the screw pulley's
+# pilot thread is LAYER-made, its 45 deg flanks stacked by layers, 0.8 deep radially since
+# Tr8 (Ø6.2 ridge, Ø7.8 groove). It was 0.2 for the Tr5 thread's 0.3 groove, now gone.
+NOZZLE_D = 0.4
 
 MOTOR_PULLEY_STANDOFF = 14.0   # pulley sits this far +Y of the motor faceplate
 
