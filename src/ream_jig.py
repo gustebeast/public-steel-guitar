@@ -60,8 +60,9 @@ TOP_CLR = 0.3                      # air over the stub in the window
 DROP_CLR = 0.4                     # the boss's foot over the rim, sliding in
 FLOOR_LIFT = 2 * 0.2               # the boss's foot over the table: the FLOOR carries the nut
 REAMER_D = D.GUIDE_EAR_D           # 3.572
-CH_CLR = 0.15                      # the reamer's flutes in the channel, each side
-CH_D = REAMER_D + 2 * CH_CLR       # 3.87
+CH_CLR = 0.3                       # the reamer's flutes in the channel, each side (0.15 printed
+                                   # too tight to pass it: user, 2026-10-27)
+CH_D = REAMER_D + 2 * CH_CLR       # 4.17
 
 # ── the block ───────────────────────────────────────────────────────────────
 WALL = 4 * B                       # 3.2: every wall round the nut
@@ -84,7 +85,7 @@ ROOF_APEX = WIN_APEX + ROOF_T * math.sqrt(2.0)
 ROOF_WALL = ROOF_APEX - HW         # the block's sides stand to here
 
 # ── the tower ───────────────────────────────────────────────────────────────
-TUBE_R = CH_D / 2.0 + WALL         # 5.135: the channel's tube
+TUBE_R = CH_D / 2.0 + WALL         # 5.285: the channel's tube
 TOP_Z = 88 * B                     # 70.4: the reamer reaches TOP_Z - FLOOR_Z = 60 out of the chuck
 CH_L = TOP_Z - WIN_APEX            # 37.05 of channel over the window
 WINDOW_GAP = WIN_APEX - (FLOOR_Z + FL_T)        # 19.75: unguided, ridge to the ear's top
