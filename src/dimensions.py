@@ -1141,7 +1141,8 @@ assert BRIDGE_ARM_Y - BRIDGE_ARM_W / 2 > STRING_FIELD_W / 2, (
 # tidiness here: ENDPLATE_W is computed from NUT_INSERT_D, so BOTH endplates' width (and
 # with it the bridge's whole X datum chain) hangs off a heat-set insert's diameter. If
 # cadkit ever re-specs M4, that should follow by itself instead of silently not.
-NUT_INSERT_D    = M4.insert_pilot_d     # 6.0  — heat-set insert install Ø
+NUT_INSERT_D    = M4.insert_pilot_d     # 6.1  — heat-set insert install Ø, the ROUND pocket's: a
+                                        # width budget, so the larger of cadkit's two (pilot_d)
 NUT_INSERT_L    = M4.insert_l           # 5.0
 NUT_SCREW_D     = M4.shaft_clr_d        # 4.4  — set-screw shaft clearance
 NUT_SCREW_L     = M4.screw_l            # 10.0. The boss is NOT one screw tall: the

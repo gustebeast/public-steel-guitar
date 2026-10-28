@@ -1441,7 +1441,10 @@ def height_screw_negatives(i: int):
     def bore(d, z0, z1):
         return teardrop_hole(d, z1 - z0, axis_point=(x, y, z0), axis_dir=(0.0, 0.0, 1.0),
                              print_up=PRINT_UP)
-    return [bore(M4.insert_pilot_d, HS_PRISM_BOT - 1.0, HS_PRISM_BOT + M4.insert_depth),
+    # the pocket's Ø for a TEARDROP (cadkit: a sideways pocket prints loose at the round one's
+    # 6.1 -- user, 2026-10-28: these inserts "go in too loose")
+    return [bore(M4.pilot_d((0.0, 0.0, 1.0), PRINT_UP), HS_PRISM_BOT - 1.0,
+                 HS_PRISM_BOT + M4.insert_depth),
             bore(M4.shaft_clr_d, HS_PRISM_BOT + M4.insert_depth - 0.01, HS_FLOOR + HS_REACH_MAX + 1.0)]
 
 
