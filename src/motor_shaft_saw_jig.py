@@ -129,7 +129,8 @@ def body() -> cq.Workplane:
     # the cheeks are ONE block, motor-side cheek to +Y cheek; the saw slot is cut into it from
     # SLOT_UNDER under the shaft upward, so below that it is solid wall to wall (user, 2026-10-29:
     # "the slit only needs to run as low as the shaft ... the saw blade never goes there")
-    blk = blk.union(box_at(2 * hw, Y1 - cy0, Z_TOP, y=(cy0 + Y1) / 2.0, z=Z_TOP / 2.0))
+    yc1 = CUT_L + SLOT_W + CHEEK_T                   # the +Y cheek's outer face; past it, only the
+    blk = blk.union(box_at(2 * hw, yc1 - cy0, Z_TOP, y=(cy0 + yc1) / 2.0, z=Z_TOP / 2.0))  # cradle
     # the struts: a side rail at each outer face, lip to cheek, then a 45 deg gusset off its
     # top up the cheek's back -- as high as the run allows, never past the cheek's top
     rise = min(cy0, Z_TOP - BED_Z)
