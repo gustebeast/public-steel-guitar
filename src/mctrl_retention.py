@@ -40,6 +40,7 @@ from __future__ import annotations
 import cadquery as cq
 
 from . import dimensions as D
+from . import chassis as CH
 from . import electronics as EL
 from . import motor_bank as MB
 from .helpers import box_at
@@ -82,7 +83,12 @@ def _top_under_parts(face, ya, yb, zmax):
 def _boxes():
     """The guides as (x0, x1, y0, y1, z0, z1) -- boxes so the stroke sweep is exact."""
     x0, x1, y0, y1, zb, zt = _laminate()
-    zf = MB.FLOOR_TOP
+    # ROOTED ON THE BED, not on the floor top: the floor port clears the laminate by
+    # MCTRL_PORT_CLR (0.5) and a guide by FIT (0.3), so a guide standing on the floor top
+    # overhangs the port by 0.2 -- four ledges in print_check. Down to the bed, each guide
+    # fills its side of the port to FIT and is a wall from layer one.
+    zf = CH.Z_BOT
+    zg = MB.FLOOR_TOP                                # the +Y posts' height is off the floor
     nx0, nx1 = x0 - FIT - CHEEK_T, x0 - FIT          # the -X cheeks
     px0, px1 = x1 + FIT, x1 + FIT + CHEEK_T          # the +X cheeks
     out = []
@@ -94,9 +100,9 @@ def _boxes():
     # ── the +Y GUIDE: two low cheeks off the floor, inside the board's +Y edge ──
     # Not past it: string 1's motor is MOTOR_CLR beyond that edge, the whole bottom of it.
     out.append((nx0, nx1, y1 - GUIDE_E_NEG, y1, zf,
-                _top_under_parts(-1, y1 - GUIDE_E_NEG, y1, zf + GUIDE_H)))
+                _top_under_parts(-1, y1 - GUIDE_E_NEG, y1, zg + GUIDE_H)))
     out.append((px0, px1, y1 - GUIDE_E_POS, y1, zf,
-                _top_under_parts(+1, y1 - GUIDE_E_POS, y1, zf + GUIDE_H)))
+                _top_under_parts(+1, y1 - GUIDE_E_POS, y1, zg + GUIDE_H)))
     for bx in out:
         assert bx[5] - bx[4] >= 4 * B, (
             "a motor-controller guide (x %.2f..%.2f, y %.2f..%.2f) is only %.2f tall: a part "
