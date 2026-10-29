@@ -7,6 +7,7 @@ local frame; build.py translates copies into each string's position.
 
 from __future__ import annotations
 
+import functools
 import math
 
 import cadquery as cq
@@ -266,18 +267,26 @@ def support_bearing() -> cq.Workplane:
 
 
 # ── Motor: MKS SERVO42D, lies flat, shaft +Y ─────────────────────────────
+def motor_parts() -> list:
+    """[(suffix, solid, rgb, finish)] of the MEASURED SERVO42D (src/servo42d.py), one solid
+    per material, shaft along +Y. Reference = the pulley plane (y=0): faceplate at
+    y=−STANDOFF, the can and its driver extend −Y (toward the player). Centred on X=Z=0.
+    The build names them motor_<i> (suffix "") and motor_<suffix>_<i>."""
+    return [(k, wp.translate((0, -MOTOR_PULLEY_STANDOFF, 0)), rgb, fin)
+            for k, wp, rgb, fin in _servo42d_parts()]
+
+
+@functools.lru_cache(maxsize=1)
+def _servo42d_parts():
+    """Built once per process: ten motors are ten moves of the same solids."""
+    from . import servo42d as SV
+    return SV.parts()
+
+
 def motor() -> cq.Workplane:
-    """SERVO42D, shaft along +Y. Reference = the pulley plane (y=0): faceplate at
-    y=−STANDOFF, motor body + PCB extend −Y (toward the player); the 5 mm shaft +
-    Ø22 pilot poke +Y. Centred on X=Z=0."""
-    s = MOTOR_PULLEY_STANDOFF
-    body = box_at(D.MOTOR_SQ, D.MOTOR_BODY_LEN, D.MOTOR_SQ,
-                  x=0, y=-s - D.MOTOR_BODY_LEN / 2, z=0)
-    pcb = box_at(D.MOTOR_SQ - 6, D.MOTOR_PCB_LEN, D.MOTOR_SQ - 6,
-                 x=0, y=-s - D.MOTOR_BODY_LEN - D.MOTOR_PCB_LEN / 2, z=0)
-    pilot = cyl_y(D.NEMA17_PILOT_D, 2.0, y0=-s)                 # boss at faceplate
-    shaft = cyl_y(D.MOTOR_SHAFT_D, s + 4.0, y0=-s)             # shaft to past pulley
-    return body.union(pcb).union(pilot).union(shaft)
+    """The whole SERVO42D as one compound, placed as motor_parts()."""
+    return cq.Workplane("XY").add(cq.Compound.makeCompound(
+        [v for _, wp, _, _ in motor_parts() for v in wp.vals()]))
 
 
 # ── Guide rod (axis Z) ───────────────────────────────────────────────────

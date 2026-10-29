@@ -154,27 +154,27 @@
   },
   "J1.1": {
    "max": 100.0,
-   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+   "src": "rated V -- S4B-PH-K-S(LF)(SN) (C157926): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V' (the series rating, as every PH here)"
   },
   "J1.3": {
    "max": 100.0,
-   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+   "src": "rated V -- S4B-PH-K-S(LF)(SN) (C157926): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V' (the series rating, as every PH here)"
   },
   "J1.4": {
    "max": 100.0,
-   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+   "src": "rated V -- S4B-PH-K-S(LF)(SN) (C157926): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V' (the series rating, as every PH here)"
   },
-  "J1.5": {
+  "J2.1": {
    "max": 100.0,
-   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+   "src": "rated V -- S4B-PH-K-S(LF)(SN) (C157926): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V' (the series rating, as every PH here)"
   },
-  "J1.6": {
+  "J2.3": {
    "max": 100.0,
-   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+   "src": "rated V -- S4B-PH-K-S(LF)(SN) (C157926): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V' (the series rating, as every PH here)"
   },
-  "J1.8": {
+  "J2.4": {
    "max": 100.0,
-   "src": "rated V -- S8B-PH-SM4-TB(LF)(SN) (C265121): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V'"
+   "src": "rated V -- S4B-PH-K-S(LF)(SN) (C157926): JST PH series datasheet p.1: 'Current rating: 2 A AC, DC (AWG #24); Voltage rating: 100 V' (the series rating, as every PH here)"
   },
   "R3.1": {
    "max": 50.0,

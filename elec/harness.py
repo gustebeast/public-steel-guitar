@@ -134,7 +134,11 @@ def xh_trunk_pins():
 
 
 def ph_trunk_pins():
-    """Pin names for bus B's 8-way PH trunk: bus in on 1-4, bus out on 5-8 mirrored."""
+    """Pin names for bus B through a lever/pedal sensor board, way by way: the bus IN on
+    J1's ways 1-4 and OUT on J2's, listed after them as 5-8. NOT MIRRORED, unlike the XH
+    trunk: since 2026-10-19 the two halves are two 4-way PH connectors (user: so one lever
+    can be pulled or moved by its own two cables), each in PH_PINOUT order, and every hop
+    between boards is a STRAIGHT PHR-4 jumper, way n to way n -- any cable fits any hop."""
     return (tuple(x + "_IN" for x in PH_PINOUT)
-            + tuple(x + "_OUT" for x in reversed(PH_PINOUT)))
+            + tuple(x + "_OUT" for x in PH_PINOUT))
 

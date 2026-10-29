@@ -112,12 +112,11 @@ PARTS = {}
 #                              the deck at the bottom of the plate's travel. The insert
 #                              is melted in, which forgives the roof.
 #     kv_lever                 two O3.2 cross holes, chord 2.2.
-#     test_belt_tensioner      the clamp's M3 bores, chords 1.6-2.4, in a coupon.
-#     belt_tensioner_half_a/_b the same M3 bores on the halves' own rows (chords 1.6-2.4).
-#                              Half A also has two FLAT ceilings: the head window's far
-#                              wall, a 6.4 bridge (41 mm2) landing on the window's two end
-#                              walls, and 2.1 over the key channel. Both are in the plate
-#                              coupon as well; that print is what judges them.
+#     belt_tensioner_half_a    (and test_belt_tensioner, the same halves on one plate) the
+#                              head window's far wall, a 6.4 bridge (41 mm2) landing on the
+#                              window's two end walls. The coupon print judges it. The M3
+#                              bores and the key's bore are cadkit teardrops now (2026-10-22),
+#                              two beads all round; what is left of them is their 0.8 tips.
 #     nut_slide_insert_a/b/c   the dowel cradle's lip, 0.78 of span (3.7 mm2): under a bead.
 #     knee_housing(_r)         three slivers at 53.6 deg, under one bead of span.
 #     kl_magnet_cap            a 0.23-tall lead-in cone at 58.6 deg, 6.3 mm2.
@@ -194,6 +193,10 @@ DECLARED_UP = {
     "kv_lever":          ("src.knee_lever_vert", "LEVER_UP"),
     "pedal_lever":       ("src.foot_pedal", "LEVER_UP"),
     "kl_axle":           ("src.knee_lever", "AXLE_UP"),
+    "kl_spacer":         ("src.knee_lever", "SPACER_UP"),
+    "kl_spacer_sprung":  ("src.knee_lever", "SPACER_UP"),
+    "kl_spacer_sprung_n": ("src.knee_lever", "SPACER_UP"),
+    "kl_axle_sprung":    ("src.knee_lever", "AXLE_UP"),
     "nut_slide_insert_a": ("src.nut_block", "INSERT_UP"),
     "nut_slide_insert_b": ("src.nut_block", "INSERT_UP"),
     "nut_slide_insert_c": ("src.nut_block", "INSERT_UP"),
@@ -216,6 +219,8 @@ DECLARED_UP = {
     "pi_spacer":         ("src.electronics", "PI_SPACER_UP"),
     "lever_prog_jig":    ("src.lever_jig", "JIG_UP"),
     "lever_prog_jig_base": ("src.lever_jig", "BASE_UP"),
+    "saw_jig":           ("src.saw_jig", "BODY_UP"),
+    "saw_jig_cap":       ("src.saw_jig", "CAP_UP"),
     "leg_foot":          ("src.legs", "FOOT_UP"),
     "ui_knob":           ("src.ui_panel", "KNOB_UP"),
     "ui_pwr_cap":        ("src.ui_panel", "PWR_CAP_UP"),
@@ -227,6 +232,7 @@ DECLARED_UP = {
     "test_cover_seat":      ("src.joint_coupon", "COVER_UP"),
     "test_cover_plate":     ("src.joint_coupon", "COVER_UP"),
     "test_belt_tensioner":  ("src.belt_tensioner", "COUPON_UP"),
+    "test_motor_bay":       ("src.motor_bank", "COUPON_UP"),
 }
 # THE OTHER THREE BODY ADAPTERS ARE THE SAME DIRECTION, and the note that used to stand
 # here saying otherwise was simply wrong: leg_stack poses the corner variants by a PURE

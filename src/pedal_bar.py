@@ -66,6 +66,7 @@ from .leg_stack import (ENGAGE as LS_ENGAGE, mortise_cutter as LS_mortise,
 from . import bar_latch as BL
 from . import legs as LG
 from . import bar_trrs as BT
+from . import knee_lever as KL      # the station's board bay reach (no cycle: KL never reads the bar)
 
 YC = LEG_Y[0]                          # FLUSH round: the bar rides the +Y
                                        # legs' centreline, 17 inboard of the
@@ -211,15 +212,34 @@ PEDAL_X     = tuple(SLOT1_X + PEDAL_PITCH * n + PEDAL_W / 2.0
 BED = 255.0
 _SPLICE_KEEP = (PEDAL_W + 2 * 6.4) / 2.0    # a splice must clear a pedal's centre by
                                             # half its width plus room for the joint
+# ...AND ON A STATION'S -X SIDE, ITS BOARD BAY. The bay (foot_pedal.board_bay_cutter) is
+# cut only into the piece its station is in, and it reaches -X of the pedal by the
+# cradle's far edge, local +Y -> guitar -X: KL.CR_Y1 + BAY_CLR, 31.35 -- further than
+# _SPLICE_KEEP. A splice that sits in it leaves the -X piece's tenon standing in the next
+# station's bay, where the plug's wires run (the bearings moved out 2026-10-16 and took the
+# board, and the bay, 2.65 further -X: the pedal-2 harness ran through the tenon, and the
+# bay crossed XS1 itself). So the +X piece's mortise, SPLICE_D deep, keeps MIN_WALL_2P of
+# bar between it and that bay. foot_pedal asserts BAY_REACH against the cut bay.
+BAY_CLR = 0.6                               # printed clearance round a station's board bay
+BAY_REACH = KL.CR_Y1 + BAY_CLR              # how far -X of its station a bay reaches
+SPLICE_D = 8.0                              # the mortise's room into the +X piece (world X)
+
 
 def _clears_pedals(x):
-    return all(abs(x - px) >= _SPLICE_KEEP for px in PEDAL_X)
+    return all(abs(x - px) >= _SPLICE_KEEP
+               and not (px - BAY_REACH - D.MIN_WALL_2P - SPLICE_D < x < px)
+               for px in PEDAL_X)
 
 # XS1 goes in a GAP BETWEEN NEIGHBOURING PEDALS; XS2 then halves what is left. Pick
 # the gap that minimises the longest piece, so no piece is near the bed by accident.
+# In a gap the splice may stand from the -X pedal's keep to the +X pedal's bay less a
+# mortise and a wall; it goes mid-way between the two.
 _best = None
 for _i in range(len(PEDAL_X) - 1):
-    _g = (PEDAL_X[_i] + PEDAL_X[_i + 1]) / 2.0      # gap midpoint (pitch is uniform)
+    _g = (PEDAL_X[_i] + _SPLICE_KEEP
+          + PEDAL_X[_i + 1] - BAY_REACH - D.MIN_WALL_2P - SPLICE_D) / 2.0
+    if not _clears_pedals(_g):
+        continue
     _h = (_g + BAR_X1) / 2.0                        # halve the remainder
     if not _clears_pedals(_h):
         continue
@@ -233,7 +253,8 @@ assert max(_PIECE_L) <= BED, (
 for _x, _n in ((XS1, "XS1"), (XS2, "XS2")):
     assert _clears_pedals(_x), (
         f"{_n} at {_x:.2f} lands within {_SPLICE_KEEP:.2f} of a pedal centre "
-        f"{PEDAL_X} — a splice may not cut a pedal in half")
+        f"{PEDAL_X}, or its mortise in a station's board bay -- a splice may not cut "
+        f"a pedal in half")
 # LID BUTT-SPLICE. What it has to do is BRIDGE a bar joint with each piece -- the
 # lid is the bar splice's Z lock (the install axis the joint leaves free), not just
 # a roof -- so anywhere between the two bar splices will do, and the assert below is
@@ -538,7 +559,7 @@ SPLICE_ZC = (TROUGH_Z0 + 3.5, TROUGH_Z1 - 3.5)  # 7.45 / 16.95 — INSIDE the tr
 SPLICE_W  = 8 * D.BEAD                          # 6.4 across, world Z
 SPLICE_L  = _BACK_WALL - D.MIN_WALL_2P          # 30.4 engagement along world Y,
                                                 # leaving a 1.6 stop floor at -Y
-SPLICE_D  = 8.0                                 # room into the +X piece (world X)
+# SPLICE_D: with the stations above -- the splice's place is chosen by it
 SPLICE_J  = tuple(joint(width=SPLICE_W, length=SPLICE_L, depth=SPLICE_D,
                         tenon=_UP, mortise=_UP, install="-z")
                   for _ in SPLICE_ZC)

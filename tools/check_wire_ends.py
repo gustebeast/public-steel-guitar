@@ -58,8 +58,7 @@ WIRE = re.compile(r"^wire_|pigtail|_cable_")
 
 # how many of a wire's ends are JST ways, and why not two
 ENDS = (
-    (r"^motor_pigtail_\d+$", 0),            # the jacket: motor terminals to where it splits
-    (r"^motor_pigtail_\d+_\d+$", 1),        # ...and each conductor from there into the tee's drop
+    (r"^wire_drop_\w+_\d+$", 1),            # a motor drop: the motor's SCREW terminal, then the tee
     (r"^wire_link$", 0),                    # the jacket: the Pi's USB-A to where it splits
     (r"^wire_link_\d+$", 1),
     (r"^wire_canb_coil_", 0),               # the coiled middle of a lever-to-lever lead

@@ -412,10 +412,50 @@ def _housing() -> cq.Workplane:
     # printing minimum. This housing is 46.6 deep, so the corner it gives back is bigger
     # than LKL's.
     w = w.cut(_knee_relief())
-    # ...AND THE 45 DEG CLOSURE OVER BOTH VOIDS, last, on the finished solid. Same call and
-    # same reasons as LKL's (see KL.roof_close); this housing has two of them, the sweep
-    # and the install stroke, and the roof that has to be held up spans both.
-    return heal(KL.roof_close(w, _env, _ins, align=HOUS_Z1))
+    # ...AND THE 45 DEG CLOSURE OVER BOTH VOIDS, last, on the finished solid -- as clean cuts
+    # (user, 2026-10-16), not the layer sweep. KL.roof_close stays as the TOOL that found
+    # them: it took 739 mm3 here, these take 726 in two prisms and a wedge.
+    return heal(w.cut(roof_cut(_env, _ins)))
+
+
+def roof_cut(env, ins) -> cq.Workplane:
+    """The closure over this housing's voids, as a few clean cuts (see KL.roof_cut for the rule:
+    a point stays if ANY wall reaches it at 45, so the cut sits under every wall's surface at
+    once). Here the walls are simpler than LKL's, and every number is read off the voids:
+
+      * OVER THE INSTALL STROKE. Its top is a flat (the lever's own top, lifted) that the
+        middle mount tenon crosses. Held from -X at 45 off the flat's -X edge, and from each
+        side at 45 off the cartridge pockets' gable flats (their outer edge, where the pocket's
+        outer wall carries them). The +X face is the arm's exit: nothing there.
+      * UNDER THE WEB BETWEEN THE POCKETS, over the arm's sweep. The sweep's -X flank leaves
+        the wall at its leftmost point and climbs at ~24 deg; the web over it is held only from
+        that corner, so it is trimmed to 45 off it, as far as the install stroke's -X wall."""
+    s2 = math.sqrt(2.0)
+    ib = ins.val().BoundingBox()
+    zr = ib.zmax                                               # the stroke's top flat...
+    xr = min(f.BoundingBox().xmin for f in ins.val().Faces()   # ...and its -X edge
+             if f.geomType() == "PLANE" and f.normalAt(f.Center()).z > 0.99
+             and abs(f.Center().z - zr) < 1e-6)
+    pk = vplace(KL._hs_pocket(KL.HS_YC, -20.0, KL.HS_BACK_X)).val().BoundingBox().zmax
+    yw = KL.HS_YC + KL.ROOF_FLAT / 2.0                         # the gable flat's outer edge
+    xe, top = HOUS_X1 + 1.0, HOUS_Z1 + 2 * KL._J_HOST_W        # past the tenons' tips
+    lo = zr - 1.0
+    a = cq.Workplane("XZ").polyline([(xr - 1.0, lo), (xe, lo), (xe, top),
+                                     (xr + (top - zr), top)]).close().extrude(yw + 1.0, both=True)
+    b = (cq.Workplane("YZ").polyline([(-yw, lo), (yw, lo), (yw, pk), (0.0, pk + yw), (-yw, pk)])
+         .close().extrude(xe - xr + 3.0).translate((xr - 2.0, 0, 0)))
+    cut = a.val().intersect(b.val())
+    # the web: its corner is the sweep's leftmost point in the web's plane (y = 0)
+    sec = env.val().intersect(box_at(400.0, 0.02, 400.0, x=0.0, y=0.0, z=0.0).val())
+    pts = [e.positionAt(i / 200.0) for e in sec.Edges() for i in range(201)]
+    c = min(pts, key=lambda q: q.x)
+    xc, zc = c.x, c.z
+    xw = ib.xmin                                               # the install stroke's -X wall
+    yi = KL.HS_YC - KL.hs_pocket_hw()                          # the web: between the pockets
+    assert xc < xw and yi > 0.0, "the sweep's corner / the web are not where this assumes"
+    wedge = (cq.Workplane("XZ").polyline([(xc, zc), (xw, zc), (xw, zc + (xw - xc))]).close()
+             .extrude(yi + 0.5, both=True))
+    return cq.Workplane("XY").add(cut.fuse(wedge.val()))
 
 
 def _gable_up(v):

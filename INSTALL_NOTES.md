@@ -66,34 +66,93 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   cartridge wall to its head down on the cartridge. Stop when the head lands; forcing
   it further only strips the insert.
 
-### KL-4 — The axle's end screw: seat it on the AXLE, and hold the lever while you do
+### KL-4 — The axle stack: +Y bearing pressed, spring and −Y bearing slid in, screw fully tight
 
-- **Where:** `kl_axle_screw` / `kl_axle_washer` (and `kv_`, and each pedal's), in the
-  −Y end of the printed axle. One M4 × 10 button head and one **Ø9** M4 washer.
-- **Do:** after the axle is slid through bearing / lever / bearing and its flange is
-  home on the +Y bearing, put the washer on the screw and drive it into the bore in
-  the axle's −Y tip. **Hold the lever arm**, not the magnet cap, to take the torque.
-  The first fit forms the thread in the plastic: firm, steady turns, and stop when the
-  washer is tight on the axle's end.
-- **Check:** the washer should NOT be clamped on the bearing. The axle's tip stands
-  0.2 mm past the bearing's inner race, so a correctly seated washer leaves the axle
-  about that much end float, and the lever still swings freely. If the lever stiffens
-  as the screw comes tight, the axle is not fully home at the +Y end.
-- **Why:** this is the only thing that stops the axle sliding back out the way it
-  went in. It replaces the M2 grub that used to go through the lever's hub.
+- **Where:** the horizontal knee levers (LKL, LKR, RKL, RKR; the vertical lever and the pedals
+  are still the old stack: KL-4b). `kl_bearing_0/1`, the
+  **preload spring** (McMaster 9714K29 wave disc spring, Ø11.7 × Ø15.4, the thin wavy steel
+  ring), the two printed spacers — **`kl_spacer_sprung_n` (3.6 thick) on −Y,
+  `kl_spacer_sprung` (2.0) on +Y** — `kl_axle_sprung`, and the M4 × 10 button + **Ø9**
+  washer in the axle's −Y tip.
+- **Do:**
+  1. Press the **+Y** 688 in from the housing's +Y face until its outer race stops on the
+     printed shoulder inside the seat (a light press). The inner race must still turn with
+     a finger.
+  2. Drop the **spring** into the **−Y** seat, flat against the shoulder at its bottom.
+  3. Slide the **−Y** 688 in after it, by hand, until it rests on the spring. This seat is a
+     SLIDING fit on purpose — do not press it home; the spring has to be able to move it.
+  4. Put the lever in its room. Hold the 3.6 spacer against its −Y face and the 2.0 spacer
+     against its +Y face, centred on the axle hole.
+  5. Slide the axle in from +Y, through the +Y bearing, spacer, lever, spacer and −Y
+     bearing, until its land is home on the +Y inner race.
+  6. Washer on the screw, drive it into the axle's −Y tip, **holding the lever arm**, not
+     the magnet cap. The first fit forms the thread. **Tighten it fully** (firm with the
+     2.5 key held by its short arm): as it comes tight it pulls the −Y bearing in against
+     the spring, and that is all it does to the bearings.
+- **Check:** the lever swings freely with **no Y play at all** — push it ±Y and it should
+  not move. The −Y bearing ends flush with the housing's −Y face, give or take the stack's
+  print error.
+- **Why:** the screw clamps land, inner races, spacers and lever into one turning unit. The
+  spring pushes the −Y outer race outboard, which holds that unit hard against the +Y
+  shoulder: zero play, at about 9 N of preload the spring sets — however tight the screw is.
+  Print error in the stack (±0.15) only changes how far the spring is squeezed. The +Y
+  bearing is the hard stop, so the magnet's air gap does not depend on the print. A hard
+  +Y shove on the lever can squeeze the spring and move the lever toward the board by at
+  most 0.6 (the air gap is 1.5); it springs straight back.
+- **Don't** swap the two spacers (they only fit one way round anyway: the 3.6 one reaches
+  through two shoulders), leave the spring out (the lever then floats ~0.8 in Y), or use a
+  larger washer: anything over Ø9.6 reaches the bearing's shield and rubs.
+
+### KL-4b — The OLD axle stack (vertical lever and pedals): bearings to their shoulders, spacers in, screw clamps the races
+
+- **Where:** the vertical lever and the pedals, until they take KL-4's spring. `kl_bearing_0/1`,
+  the two printed `kl_spacer`s, `kl_axle`, and the M4 × 10 button + **Ø9** washer in the
+  axle's −Y tip.
+- **Do:**
+  1. Press each 688 in from the housing's OUTSIDE face until its outer race stops on the
+     printed shoulder inside the seat. The shoulder only holds the outer race; the inner
+     race must still turn with a finger.
+  2. Put the lever in its room. Hold a spacer against each of its flat faces, centred
+     on the axle hole (they sit inside the shoulder openings, against the inner races).
+  3. Slide the axle in from +Y, through the +Y bearing, spacer, lever, spacer and −Y
+     bearing, until its land is home on the +Y inner race.
+  4. Washer on the screw, drive it into the axle's −Y tip. **Hold the lever arm**, not
+     the magnet cap, to take the torque. The first fit forms the thread: firm, steady
+     turns, and stop when the washer is tight on the −Y inner race.
+- **Check:** the lever swings freely (the races turn, nothing rubs) and has no Y play
+  you can feel. If it stiffens as the screw comes tight, a spacer is off-centre or a
+  bearing is not home on its shoulder.
+- **Why:** the screw clamps land, inner races, spacers and lever into one turning unit,
+  and the two shoulders hold that unit in Y, so neither the lever nor a bearing can walk
+  (and the magnet can't reach the board). The housing is not in the clamp, so a tight
+  screw cannot preload the bearings. It replaces the M2 grub that used to go through
+  the lever's hub.
 - **Don't** substitute a larger washer: anything over Ø9.6 reaches the bearing's
   shield and rubs.
+
+## Belt clamps: put each one together insert, screw, then B
+
+- **Where:** every belt-tension clamp (`belt_tensioner_half_a` / `_b`), before it goes on a belt.
+- **Do:** 1. drop the M3 insert into half B's side pocket (the U in its +y face), from the side,
+  by hand -- it is not heat-set. 2. Drop the M3 x 12 socket head into half A from A's TOP face:
+  head into the window, shank into the seat's slot. 3. Slide B onto A along the rails until the screw's tip meets B's bore, and start the
+  thread with the 2.5 ball end through the key bore.
+- **Why:** the screw is 15 long and A's window 6.4, so it cannot be fed in along its axis; it
+  drops in sideways. Once B is on, B's rail covers the slot and A's rail covers the insert's
+  pocket, so each half's rail is what keeps the other's part in.
 
 ## Belt clamps: splice each one with the nut ON THE CEILING, 5 mm off the pulley
 
 - **Where:** every string's belt-tension clamp (`belt_tensioner_*`), all ten belts.
 - **Do:** run the string's nut UP until it stops against the endplate ceiling (the hard top
   stop, and the restringing position). Then splice the clamp onto the belt **5 mm from the
-  pulley it has just been travelling toward**. From there the nut's whole travel carries the
+  pulley it has just been travelling toward**, and within **two teeth (4 mm)** of that
+  mark: the belt is cut to a tooth count, so count teeth rather than measure. From there the nut's whole travel carries the
   clamp away from that pulley and stops it about 5 mm short of the other one on string 10.
 - **Why:** the clamp is part of the belt and moves 14 mm for every 1 mm of nut travel. The
   nut's travel (8.35 mm, ceiling to floor) has the clamp on the SHORTEST belt (string 10)
-  use 116.9 of the 133.8 mm it has between pulleys. The 5 mm gap at this end is yours to set, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
+  use 116.9 of the 131.8 mm it has between pulleys (the clamp is 51.2 long). A clamp
+  spliced two teeth past its mark still ends 6 mm short of the far pulley on string 10. The 5 mm gap at this end is yours to set, and where the clamp sits is set here, by hand. Splice it at the wrong end, or
   with the nut somewhere in mid-travel, and it reaches a pulley before the nut reaches its stop.
 - **Strings 1-8 are forgiving** (their belts are longer; string 9 has about 15 mm per end),
   but use the same rule everywhere so there is one procedure.
@@ -131,8 +190,8 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   4 mm apart and each turn closes them 0.5 mm. If they meet before the belt is tight,
   move one end of the belt one tooth (2 mm) further into its slot and start again.
 - **Cut length:** each belt is cut to a TOOTH COUNT, and the build prints the ten counts
-  (`src.build.geometry_report`, from `belt_tensioner.belt_fit`): 574, 554, 485, 464, 396,
-  375, 306, 286, 217, 196 teeth for strings 1 to 10. Both ends are cut 0.2 mm past a
+  (`src.build.geometry_report`, from `belt_tensioner.belt_fit`): 573, 553, 484, 463, 395,
+  374, 305, 285, 216, 195 teeth for strings 1 to 10 (390.4 mm for string 10). Both ends are cut 0.2 mm past a
   tooth's centre, so the cut is that many pitches plus 0.4 mm, and each end goes through a
   tooth. At that count the halves stand 2 to 4 mm apart with the belt tight, which leaves
   the screw at least 2 mm more to close. ⚠ The counts are the model's: neither the pitch
@@ -175,6 +234,29 @@ turns on the 2.5 mm hex key. See `BOM.md` and
   length, which is most of the reason the band exists.
 - **Not an issue for the far row** (strings 2, 4, 6, 8, 10, at x +20.0): the board does
   not reach them.
+
+## Motors: wire the screw terminals on the bench, with a 2.0 mm flat blade (2026-10-20)
+
+The SERVO42D's power and CAN go into its OWN screw terminals, not a plug: the green 6-way on
+one side of the driver (V+, GND) and the green 5-way on the other (CANH, CANL). Wires enter
+from the SIDE of each block and the slotted screws are turned from the BACK. A 2.0 x 0.4 mm
+flat blade fits the screw wells; a wider blade does not reach the screw. This is the one job
+on the instrument the 2.5 mm key does not do (see BOM, Tools).
+
+* Ferrule every stripped end before it goes in, and tug each one after tightening.
+* The blue 4-way on the top edge carries the motor's own coil lead and comes wired from the
+  factory: leave it alone. If it has been undone, the order from -X to +X (from behind,
+  left to right) is red, black, blue, green.
+* Fold each wire flat against the block at a right angle, right where its insulation ends
+  (bare wire in the terminal, the bend at the insulation), so nothing stands past the motor's
+  square. 22 AWG folds this way cleanly (user, 2026-10-20).
+* Wire the motor on the bench, then lower it into its bay with the wires on. Beside each
+  green block the bay's side wall is cut down below the block -- both sides and the back
+  wall stand 11.2 -- so the folded wires clear it (docs/servo42d-fit.md).
+* Then its tee: the seat has a 45 deg lip over the board's FAR end (the end away from the
+  ear). Tilt the board, slide that edge under the lip, lay the ear down onto the post and run
+  the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
+  The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
 
 ## Motor tees: ONE switch ON, nine OFF
 
@@ -533,8 +615,8 @@ place each module says which way round it is.
 
 ## Knee lever wiring (bus B)
 
-Bus B daisy-chains through every lever board: in on J1 ways 1–4, out on 5–8. A lever
-is **not** at a fixed station — its tenons drop into the chassis bottom's mortise grid
+Bus B daisy-chains through every lever board: in on **J1**, out on **J2** — two 4-way PH
+on the board's end, J1 the upper (see KL-5). A lever is **not** at a fixed station — its tenons drop into the chassis bottom's mortise grid
 (`D.LEVER_PITCH`, 10.4 mm) so it steps along X, and the rib mortise lets it slide to
 any knee depth over 197.5 mm in Y.
 
@@ -570,19 +652,37 @@ any knee depth over 197.5 mm in Y.
   way round; it does not fit the other way.
 - **No shim** in a right-hand housing: turned over, the board's top edge already stands
   0.4 mm under the chassis. Left-hand and vertical levers keep theirs.
-- **Way 1 changes ends with the board.** On LKL, VKL and RKL way 1 (5 V in) is the TOP
-  contact of J1 and way 8 the bottom; on LKR and RKR way 1 is the BOTTOM contact. The
-  crimped harness is the same either way — a PH housing only plugs in one way round — so
-  this matters only when probing J1 with a meter.
+- **Everything changes ends with the board.** On LKL, VKL and RKL, J1 (bus in) is the
+  UPPER connector and way 1 (5 V) is the top contact of each; on LKR and RKR, J1 is the
+  LOWER one and way 1 is each one's bottom contact. The crimped harness is the same either
+  way — a PH housing only plugs in one way round — so this matters only when probing with
+  a meter, or when telling in from out (and in and out may be swapped without effect:
+  both are the same four nets on the board).
+
+### KL-5 — Every hop is its own straight 4-way jumper (2026-10-19)
+
+- **What:** each board carries **J1 (bus in)** and **J2 (bus out)**, two 4-way PH
+  (`S4B-PH-K-S`) standing end to end, mouths toward the plug tunnel. The cable from one
+  board's J2 to the next one's J1 is a **PHR-4 at each end, way 1 to way 1, 2 to 2, 3 to
+  3, 4 to 4** — no crossover, the same for every hop. Crimp `5V, GND, CAN_H, CAN_L` on
+  ways 1–4 at both ends.
+- **Pulling one lever:** unplug its J1 and J2 and lift it out; nothing else moves. To run
+  the instrument without it, replace the two cables either side with one jumper long
+  enough for the gap (any straight PHR-4 lead works).
+- **Moving one lever further than the keeper's slack** (KL-2): re-make only the one or
+  two cables that touch it. With one 8-way housing both cables were crimped into the same
+  PHR-8, so either neighbour's cable had to be re-made with it.
+- **The last board** in each chain (the far pedal, the far lever) has J2 empty; its
+  terminator switch is ON (PB-0).
 
 ---
 
 ## Pedal bar wiring (bus B)
 
 The bar's wiring trough carries bus B from the −X (wired) leg tower to the five
-pedal sensor boards, daisy-chained: leg → pedal 1 → … → pedal 5. Each board's J1 is
-an 8-way PH, bus **in** on ways 1–4 and **out** on 5–8, so the chain runs through
-the board. Pedal 5 is the far end of the bus: it is the one pedal whose terminator
+pedal sensor boards, daisy-chained: leg → pedal 1 → … → pedal 5. Each board has the bus
+**in** on J1 and **out** on J2, two 4-way PH (KL-5), so the chain runs through the
+board; every segment is a straight PHR-4 jumper. Pedal 5 is the far end of the bus: it is the one pedal whose terminator
 switch is ON.
 
 ### PB-0 — Set the terminator switch BEFORE the board goes into its housing
@@ -602,8 +702,9 @@ the power off, any board reads 60 ohm when exactly two are ON.
 
 - **Where:** the spur at each pedal station — the short passage from the board bay up
   into the bar's wiring trough (`foot_pedal.cut_wire_ways`).
-- **What:** plug the segment onto J1 in the bay, bring the wire up through the spur into
-  the trough, and run it along to the next station.
+- **What:** plug the arriving segment onto J1 and the departing one onto J2 in the bay,
+  bring the wire up through the spur into the trough, and run it along to the next
+  station.
 - **Why:** the bay is a closed pocket otherwise. The 2026-09-21 board re-spin moved J1,
   and the bay follows the posed hardware, so it stopped reaching the trough and left each
   plug sealed in. Nothing caught it — a cavity that doesn't reach another cavity isn't an
@@ -612,7 +713,7 @@ the power off, any board reads 60 ohm when exactly two are ON.
   bar, so nothing about it moves. Cut these segments to fit.
 - **Order:** wire the trough **before** the lid slides in. The lid is a full-length sliding
   dovetail entering from the −X end; once it's on, nothing in the trough is reachable.
-- **Leave the last one out:** pedal 5 has no onward segment. Its J1 out-half is the bus end.
+- **Leave the last one out:** pedal 5 has no onward segment. Its J2 stays empty: the bus end.
 
 ### PB-2 — The trough is closed at every pedal except along its floor
 
@@ -624,11 +725,12 @@ the power off, any board reads 60 ohm when exactly two are ON.
 - **Order:** board in, plugs on, wires laid on the floor past the station, **then** the
   shim down its grooves over them, then the lid. A shim that will not seat is sitting on
   a wire.
-- **At the plug:** J1 points down into the bay and there is 2.5 mm under it. The wires
-  turn out of the plug along the floor inside the plug tunnel (6 mm wide) — arriving
-  four on the −X side of the pin row, departing four on the +X side.
-- **Way 1** (GND in) is the contact nearest the **player-side face** of the bar (−Y);
-  way 8 is nearest the lid.
+- **At the plugs:** J1 and J2 point down into the bay and there is 2.5 mm under them. The
+  wires turn out of the plugs along the floor inside the plug tunnel (6 mm wide) — the
+  arriving four (J1) on the −X side, the departing four (J2) on the +X side.
+- **Way 1** (5 V) of each is its contact nearest the **player-side face** of the bar (−Y),
+  way 4 the one nearest the lid; the board is turned over here, so J1 is the connector
+  nearer the lid.
 - **From the leg:** the four wires out of the bar's blind-mate board (ZH plug) come
   along the chamber at mid-height and drop to the floor once they are over the trough.
 
@@ -652,9 +754,18 @@ at the adapter's face**, so the run is continuous; the only exposed length is th
 underside crossing. It passes J6 on the endplate side of it (5 mm toward the keyhead), so
 the lever chain's plug can come out without moving it.
 
+**Cut it long enough for restringing: 178 mm, ZR to PH** (`wiring.pedal_cable_cut`,
+2026-10-22). Strings change with **no JST unplugged**: the leg's adapter slides 25.6 mm
+outboard (legs.SERVICE_SLIDE) with this cable still in both plugs. Pulled taut, the
+underside run is 91.8 mm with the leg home and 116.1 mm with it slid out
+(`tools/route_cables.py`). The cable is cut for the slid-out pose, plus its run inside
+the adapter, the drop into J2 and 15 mm for the crimps. So **with the leg home it
+carries about 24 mm of slack**. Let that slack lie as a loose bow under the body; don't
+pull it tight or tie it down short, or the leg will drag the plugs when it slides.
+
 ### BB-3 — The lever chain's head
 
-Four conductors from **J6** (4-way PH, 16 mm +Y of J2) to **LKL's J1 ways 1–4** — the end
+Four conductors from **J6** (4-way PH, 16 mm +Y of J2) to **LKL's J1** (its bus in) — the end
 of the lever chain the controller feeds. A flat four-way: out of LKL along its plug's
 axis, level under the floor to below J6, and up into it. Way 1 at the lever is way 1 at
 the controller, like every other lead.
@@ -731,17 +842,18 @@ The rule (user, 2026-10-07; the tuples are in `elec/harness.py`):
 * **Ways are always `power, GND, data, data`.** A lead with no data leaves ways 3 and 4
   empty.
 * **A wider housing adds the same four mirrored.** A 6-way is `power, GND, data, data, GND,
-  power`; an 8-way trunk is `power, GND, H, L, L, H, GND, power`. Either reads the same
-  from both ends, and its power ways are the two outside ones.
+  power`; the motor tees' 8-way trunk is `power, GND, H, L, L, H, GND, power`. Either reads
+  the same from both ends, and its power ways are the two outside ones.
 * **Why ground is second.** In every housing the way next to a power way is ground or
   empty, never a data way. The two faults that put neighbours together -- a strand of wire
   between two crimps, a contact pushed into the next cavity -- then blow a fuse instead of
   putting 24 V on a 3.3 V pin.
 * A 4-way or 6-way lead is straight: way 1 at one end is way 1 at the other.
-* **A trunk hop is not.** It leaves one board on ways 5 to 8 (the out half) and arrives at
-  the next on ways 1 to 4 (the in half): **way 8 to way 1, 7 to 2, 6 to 3, 5 to 4.** In a
-  housing wider than four, count each half from its own end of the housing and the two
-  halves read the same: power outermost, then ground, then CAN_H, then CAN_L.
+* **A motor-tee trunk hop is not.** It leaves one tee on ways 5 to 8 (the out half) and
+  arrives at the next on ways 1 to 4 (the in half): **way 8 to way 1, 7 to 2, 6 to 3, 5
+  to 4.** Count each half from its own end of the housing and the two halves read the
+  same: power outermost, then ground, then CAN_H, then CAN_L. (The lever and pedal boards'
+  hops are straight: their in and out are two 4-way connectors since 2026-10-19, KL-5.)
 
 | lead | family, ways | from | to | ways |
 |---|---|---|---|---|
@@ -756,7 +868,7 @@ The rule (user, 2026-10-07; the tuples are in `elec/harness.py`):
 | Pi 5 V | PH 6 | motor board J5 | Pi cap J2 | `5V, GND, -, -, GND, 5V` |
 | USB to the Pi | PH 4 | motor board J4 | Pi USB-A | `VBUS (unused), GND, D-, D+` |
 | bus B drops | PH 4 | motor board J2 / J6, leg boards | pedal and lever chains | `5V, GND, CAN_H, CAN_L` |
-| lever / pedal trunk | PH 8 | sensor board J1 | next sensor board | `5V, GND, CAN_H, CAN_L` in on 1-4, its mirror out on 5-8 |
+| lever / pedal hop | PH 4 | sensor board J2 (out) | next sensor board J1 (in) | `5V, GND, CAN_H, CAN_L`, straight |
 
 **The optical feed has a different housing at each end**: a 2-way XH at the output panel
 (J9), a 4-way XH at the optical board (J2) with ways 3 and 4 left empty. Way 1 is 24 V at
@@ -822,7 +934,7 @@ else.
 | USB lead | a bus-B drop | The Pi's USB 5 V meets the bus's 5 V (the bus side is behind a 0.5 A limited switch); CAN_H / CAN_L, 0 to 3.3 V, meet the Pi's D- / D+. No damage; neither link works. |
 | bus-B drop | motor board J4 (USB) | Way 1, the bus's 5 V, is not connected on the board; the CAN pair meets the MCU's USB pins at 0 to 3.3 V. No damage. |
 
-**6-way PH**: only the Pi's 5 V lead. **8-way** XH and PH: only the two trunks.
+**6-way PH**: only the Pi's 5 V lead. **8-way** XH: only the motor-tee trunk.
 
 The one row worth a label is the second: a motor drop or the bus-A head plugged into a light
 drop on the Pi cap. Mark the two light-drop leads at the Pi cap end.
@@ -840,12 +952,27 @@ drop on the Pi cap. Mark the two light-drop leads at the Pi cap end.
   mid and keyhead panels come off, and both lie at the height of the pickup's plate
   (6-16 mm under the deck). Push them down against the chassis floor, or lift them out
   over the rail, before the pickup piece moves.
-- **Order out:** strings, nut block and keyhead endplate, keyhead panel (unplug the fret
-  lead), mid panel with the UI station on it (unplug the ribbon), then the bands and the
+- **Order out:** strings, nut block and keyhead endplate, keyhead panel (slide it about
+  253 mm out, then unplug the fret lead at the Pi cap; see below), mid panel with the UI station on it (unplug the ribbon), then the bands and the
   pickup piece (unplug the pickup lead). In is the reverse.
 - **Tight spots on the way** (as drawn, plate at the bottom of its travel): the jack
   screws' tips pass 0.3-0.4 mm over the foot-light lead, and the deck's -Y edge passes
   0.3 mm from the optical board's USB cable. Dress both flat.
+
+## The fret-light lead is plugged in before the keyhead panel slides home
+
+The keyhead panel carries the fret board, and once it is home the Pi cap's J3 is under it.
+So the lead goes in with the panel partway on (`src/led_leads.py`, fret_plug_slide):
+
+1. The mid panel is home and the UI ribbon is already in the Pi cap's J5.
+2. Slide the keyhead panel on until its +X edge stops about **253 mm short of home**: 40 mm
+   -X of J3, enough for fingers and the XHP-4 housing.
+3. Plug the lead into the fret board's J1 (the panel's underside, -X end) and the cap's J3.
+4. Slide the panel home. The lead is cut 312 for step 3, so about 174 mm of it is spare at
+   home: lay it down flat in the bay as the panel goes, below the panel's underside
+   (z -18.8; nothing higher than the cable trough's lip).
+
+Out is the reverse: slide the panel 253 mm out, then unplug J3.
 
 ## The Pi's USB-A plugs go in after the mid deck panel is on
 

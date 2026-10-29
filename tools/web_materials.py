@@ -60,7 +60,13 @@ def _table():
 
 # WHAT A BOUGHT PART IS, FROM ITS NAME. First match wins; searched in the name with its
 # index groups off (lkr_main_spring_tension_screw, wire_canb_gnd_lkl, kl_bearing).
-_FINISH = [(re.compile(rx), finish) for rx, finish in (
+def _motor_rules():
+    """The SERVO42D's parts, each its own material (src/servo42d.py LOOK says which)."""
+    from src.servo42d import LOOK
+    return tuple((r"^motor_%s$" % k, fin) for k, (_, fin) in LOOK.items() if k)
+
+
+_FINISH = [(re.compile(rx), finish) for rx, finish in _motor_rules() + (
     (r"_shim$", None),                   # printed, though named after the board it packs
     (r"(^|_)wire_|_pigtail$|_cable_", "pvc"),
     (r"_silk(_|$)", "ink"),
@@ -76,7 +82,9 @@ _FINISH = [(re.compile(rx), finish) for rx, finish in (
     (r"^pickup$", "aluminium"),
     (r"^motor$", "painted"),
     (r"_ph_(top|bottom)$|_plug_|^ui_pwr_stem$|^ui_disp_ffc_socket$", "nylon"),
-    (r"^ui_ffc$", "pvc"),                         # the display's flat cable: a film
+    (r"^ui_ffc(_stiffener)?$", "pvc"),            # the display's flat cable: films
+    (r"^ui_ffc_contacts$", "steel"),              # ...and its bared tinned conductors
+    (r"^ui_ribbon_socket$", "nylon"),             # the Pi ribbon's IDC sockets (PBT)
     (r"^ui_screen$", "screen"),
     (r"^ui_screen_lit$", "ink"),                  # light, not a surface: flat and bright
     (r"^pi4_(shells|lids|sd)$", "steel"),            # the Pi's parts (src/pi4b.py GROUPS)
@@ -100,9 +108,13 @@ def finish_of(base: str):
 # and what it shows), so the viewer hides, selects and lists them as one
 # (cadkit.web.export units=).
 _ONE_PRINT = ((re.compile(r"^top_plate_color_(\d+)$"), r"top_plate_\1"),
+              # one bought motor, drawn one solid per material (src/servo42d.py)
+              (re.compile(r"^motor_(?:face|stack|shaft|coil_plug|driver|terminal|coil_terminal"
+                          r"|screws|term_screws|buttons|lead_[a-z]+)_(\d+)$"), r"motor_\1"),
               (re.compile(r"^pi4_[a-z0-9]+$"), "pi4"),            # one bought board
               (re.compile(r"^chassis_light_(\d+)$"), r"chassis_\1"),
-              (re.compile(r"^ui_screen_lit$"), "ui_screen"))     # what the screen shows
+              (re.compile(r"^ui_screen_lit$"), "ui_screen"),     # what the screen shows
+              (re.compile(r"^ui_ffc_(contacts|stiffener)$"), "ui_ffc"))   # one cable
 
 
 def unit_of(name: str):

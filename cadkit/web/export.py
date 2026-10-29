@@ -175,6 +175,7 @@ def mesh_shape(shape, tolerance=TOLERANCE, angular=ANGULAR, face_colors=None, co
            "fe": [[edge ids] per face]}.  Triangles are sorted by face; r[i]..r[i+1] is
     face i's run. Returns None for a shape with nothing to draw."""
     from OCP.BRepMesh import BRepMesh_IncrementalMesh
+    from OCP.Aspect import Aspect_TOD_ABSOLUTE
     from OCP.IVtkOCC import IVtkOCC_Shape, IVtkOCC_ShapeMesher
     from OCP.IVtkVTK import IVtkVTK_ShapeData
     from OCP.TopAbs import TopAbs_FACE, TopAbs_EDGE
@@ -190,6 +191,19 @@ def mesh_shape(shape, tolerance=TOLERANCE, angular=ANGULAR, face_colors=None, co
         shape = BRepBuilderAPI_Copy(shape, True, False).Shape()     # geometry yes, mesh no
     BRepMesh_IncrementalMesh(shape, tolerance, False, angular, True)
     vs, sd = IVtkOCC_Shape(shape), IVtkVTK_ShapeData()
+    # ⚠ AND TELL THE MESHER THE SAME NUMBERS, AS ABSOLUTES. IVtkOCC_ShapeMesher meshes again
+    # by its own drawer, whose default is RELATIVE deflection: 0.001 of the part's size at
+    # 20 degrees. The BRepMesh call above never reached the triangles -- 0.1 / 0.3 and
+    # 0.01 / 0.1 gave the same counts to the triangle. So a long thin part was meshed to
+    # its LENGTH: a 600 mm string got ~0.6 mm of chord, more than its own 0.38 mm
+    # diameter, and its wound coil came out a ragged polygon under a polished finish,
+    # while a short coil of the same wire looked round (public-steel-guitar, 2026-10-28;
+    # neighbouring-normal kink on string 1, median 30 deg -> 5). Whole model there:
+    # 1.14 M -> 1.55 M triangles (x1.35), the growth all in thin sweeps; no part coarser.
+    _at = vs.Attributes()
+    _at.SetTypeOfDeflection(Aspect_TOD_ABSOLUTE)
+    _at.SetMaximalChordialDeviation(tolerance)
+    _at.SetDeviationAngle(angular)
     IVtkOCC_ShapeMesher().Build(vs, sd)
     pd = sd.getVtkPolyData()
     npoly = pd.GetNumberOfPolys()

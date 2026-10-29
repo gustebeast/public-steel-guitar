@@ -1,5 +1,29 @@
 # The real SERVO42D in the bay we drew for it (2026-10-01)
 
+> **2026-10-20: a unit has been MEASURED.** 53.4 faceplate to back, 42.4 square, 51.1 tall
+> with the coil lead's loop on top, shaft 19.4, boss 22 x 2. `src/servo42d.py` is rebuilt from
+> those numbers and the user's video, and the BUILD now draws every motor with it
+> (`D.MOTOR_BODY_L` 53.4). The video corrected two things below: the buttons are on the
+> driver's BACK face, inside the square (nothing hangs under it), and the terminals' screws
+> are turned from the back while their wires still enter from the sides -- so the side-wall
+> access finding stands. The tables below are the 2026-10-01 study, kept as written.
+>
+> **Same day, the side-wall finding is answered.** The green blocks sit 1.3 inside the flats
+> (6-way bottom 13.1 over the motor's bottom, 5-way 16.7, both rough), and a 22 AWG clamped in
+> folds flat at the insulation, so a wired motor stays inside its square. That was too close to
+> a full-height wall (user), so beside each block the bay's side wall now stops at least 1.6
+> under it, in whole beads: 11.2 on both sides and the back wall alike
+> (`motor_bank.low_walls`, cut from the fused chassis). The driver keeps its factory
+> rotation; the quarter-turn proposal below is not needed.
+>
+> **To check the fit and the clamp before printing chassis:** `test_motor_bay.step`
+> (`motor_bank.bay_coupon`) is string 5's whole bay, made by the chassis' own fuse-and-cut
+> recipe up through the tee seat and the M4 insert's bore, on a floor rim, plus a printed tee
+> dummy 3.0 thick over its layout region (FR-4's bending stiffness in PETG-GF; ear 1.6). Heat-set
+> the insert, drop a SERVO42D in faceplate to the wall, seat the dummy, run the M4x10 in: the
+> motor should slide in with even slip, and the dummy should stop it lifting. (Round 1, the
+> low walls alone, felt "a touch loose" -- user, 2026-10-20.)
+
 **Status: a finding and a proposal. Nothing in the build has changed.** The motor bank and
 the chassis are the lead's; `src/servo42d.py` is a standalone model, not in `src.build`.
 

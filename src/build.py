@@ -103,6 +103,10 @@ PARTS = {
     "rod_plug":        (lambda: __import__("src.bridge_endplate", fromlist=["e"]).rod_plug(), "pctg/rod_plug.step", "PCTG — guide-rod plug (x10): a Ø2.4 x 5.4 round spacer dropped down each guide-rod bore on top of the 30 mm pin, filling the bore to 0.15 under the optical board so the board holds the pin down. Print standing on end, ten at once"),
     "knee_lever":      (lambda: __import__("src.knee_lever", fromlist=["e"]).knee_lever,   "pctg/knee_lever.step",   "PCTG — knee-lever (LKL) arm + knee paddle (takes knee strikes: toughness over stiffness); the +Y axle journal + magnet stub print INTEGRAL (stand off the lying -Y bed face)"),
     "kl_axle": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle, "pctg/kl_axle.step", "PCTG — knee-lever AXLE ×1: ONE full-length part fitted LAST, slid +Y→−Y through bearing/lever/bearing (the old integral stub could never enter its bearing). Ø8 journals, D-FLAT key through the hub, flange land seating on the +Y inner race (= the air-gap datum), threaded magnet pocket, M4 thread-forming bore in the −Y tip for the retention screw + washer. Prints STANDING, POCKET-DOWN, with a brim"),
+    "kl_spacer": (lambda: __import__("src.knee_lever", fromlist=["e"]).spacer(), "pctg/kl_spacer.step", "PCTG — axle SPACER ×2 per lever (×2 per pedal): Ø10 ring between the lever's flat face and each bearing's INNER race, through the seat's printed shoulder. Part of the clamped rotating stack (land, races, spacers, lever, washer), which is what locks the lever in Y. Slip it over the axle as the axle goes through. Prints FLAT"),
+    "kl_spacer_sprung": (lambda: __import__("src.knee_lever", fromlist=["e"]).spacer(__import__("src.knee_lever", fromlist=["e"]).SPRUNG_SPACER_T), "pctg/kl_spacer_sprung.step", "PCTG — LKL axle SPACER, +Y (the stack with the PRELOAD SPRING): the same Ø10 ring as kl_spacer but EXACT, lever face -> +Y inner race (2.00, not 2.05) -- the spring takes up the print error instead of a sized-long clamp. Prints FLAT"),
+    "kl_spacer_sprung_n": (lambda: __import__("src.knee_lever", fromlist=["e"]).spacer(__import__("src.knee_lever", fromlist=["e"]).SPRUNG_SPACER_T_N), "pctg/kl_spacer_sprung_n.step", "PCTG — LKL axle SPACER, -Y (3.59): lever face -> the -Y inner race, through both -Y shoulders (the -Y bearing sits out past the preload spring). Prints FLAT"),
+    "kl_axle_sprung": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_axle_sprung, "pctg/kl_axle_sprung.step", "PCTG — the LKL's AXLE: kl_axle 1.59 longer at the -Y end, for the -Y bearing out past the PRELOAD SPRING (McMaster 9714K29). Same journals, flat, land, magnet pocket and end screw. Prints STANDING, POCKET-DOWN, with a brim"),
     "kl_magnet_cap": (lambda: __import__("src.knee_lever", fromlist=["e"]).kl_magnet_cap, "pctg/kl_magnet_cap.step", "PCTG — magnet CAP ×1: female-threaded HEX nut (9.35 across flats, for a 3/8-inch driver) screwing over the axle's pocket collar to clamp the Ø6 diametric disc; centre stays open so nothing intrudes on the air gap. Fit it BEFORE the sensor board. Prints APERTURE-DOWN"),
     # THE BOARD SHIMS: one sensor board fits every lever, and a plain plate one board thick
     # takes up what is left of each cradle above it. Three heights, so three parts; each
@@ -169,9 +173,9 @@ PARTS = {
     # pedal bar (the per-foot latches are gone — the towers are passive
     # is validated). The bar itself is a DEMO prism (longer than the bed —
     # it gets segmented for printing once the pedals land on it).
-    "pedal_bar_a":     (lambda: _PB_bar("pedal_bar_a"), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (35.6 wide, flush with the slimmed leg blocks; fused WIRED tower; trough + lid groove; splice tenons at +X). ~219 long: prints STRAIGHT; _b drops onto the tenons, the LID locks the stack — no glue"),
-    "pedal_bar_b":     (lambda: _PB_bar("pedal_bar_b"), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 cavities -X, XS2 tenons +X). ~219 long: straight print; slides straight down onto _a's tenons (the lid is the Z lock — no glue)"),
-    "pedal_bar_c":     (lambda: _PB_bar("pedal_bar_c"), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (35.6 wide, flush with the slimmed leg blocks; fused PLAIN tower; splice cavities at -X). ~215 long: straight print; slides straight down onto _b's tenons (the lid is the Z lock — no glue)"),
+    "pedal_bar_a":     (lambda: _PB_bar("pedal_bar_a"), "petg-gf/pedal_bar_a.step", "PETG-GF — pedal bar, -X piece (35.6 wide, flush with the slimmed leg blocks; fused WIRED tower; trough + lid groove; splice tenons at +X). ~205 long: prints STRAIGHT; _b drops onto the tenons, the LID locks the stack — no glue"),
+    "pedal_bar_b":     (lambda: _PB_bar("pedal_bar_b"), "petg-gf/pedal_bar_b.step", "PETG-GF — pedal bar, MID piece (trough only; XS1 cavities -X, XS2 tenons +X). ~229 long: straight print; slides straight down onto _a's tenons (the lid is the Z lock — no glue)"),
+    "pedal_bar_c":     (lambda: _PB_bar("pedal_bar_c"), "petg-gf/pedal_bar_c.step", "PETG-GF — pedal bar, +X piece (35.6 wide, flush with the slimmed leg blocks; fused PLAIN tower; splice cavities at -X). ~229 long: straight print; slides straight down onto _b's tenons (the lid is the Z lock — no glue)"),
     "pedal_lid_a":     (lambda: heal(_PB("pedal_lid_a")), "petg-gf/pedal_lid_a.step", "PETG-GF — sliding dovetail lid, -X piece (covers the TRRS latch; bridges bar splice XS1; carries the lock dimple). Goes in SECOND, and its -X end finishes FLUSH with the bar. 318 long: diagonal, TOP-FACE DOWN (45-deg flanks)"),
     "pedal_lid_b":     (lambda: heal(_PB("pedal_lid_b")), "petg-gf/pedal_lid_b.step", "PETG-GF — sliding dovetail lid, +X piece (covers the plain latch; bridges XS2). INSTALL BOTH FROM THE -X END: B first, run it the whole bar until it butts the 1.6 end wall, then A behind it — A's dimple clicks the nub and pins the stack. 317 long: diagonal, TOP-FACE DOWN"),
     # (pedal_bolt / pedal_bolt_trrs / pedal_latch_finger exports RETIRED by
@@ -410,6 +414,15 @@ PARTS["lever_prog_jig_base"] = (
     lambda: heal(__import__("src.lever_jig", fromlist=["e"]).base()),
     "tools/lever_prog_jig_base.step",
     "TOOL — the jig's base plate: the flat the four pins stand on, screwed to the nest's ear with one M4 x 10 button screw whose head is sunk in the underside. PETG, printed UPSIDE DOWN (the counterbore opens upward)")
+# LEADSCREW SAW JIG -- a SHOP TOOL (lead, 2026-10-21): exported, never in the assembly.
+PARTS["saw_jig"] = (
+    lambda: heal(__import__("src.saw_jig", fromlist=["e"]).body()),
+    "tools/saw_jig.step",
+    "TOOL — hacksaw jig for cutting the ten Tr8x2 leadscrews to SCREW_LEN by hand with one Quick-Grip and no vise: the rod rests on two crests in a 90 deg V tunnel, the saw slot (1.3, McMaster 6927A16) sits 5.6 past the clamped support, and the piece overhangs an OPEN fork to a fixed end stop at SCREW_LEN + 0.4, then drops out. The table-edge notch goes on the table edge so a slipped blade hits the jig. PETG, printed as drawn")
+PARTS["saw_jig_cap"] = (
+    lambda: heal(__import__("src.saw_jig", fromlist=["e"]).cap()),
+    "tools/saw_jig_cap.step",
+    "TOOL — the saw jig's cap: a plunger down the clamp channel whose 45 deg notch seats on the rod's upper crests, with a rimmed pocket on top for the Quick-Grip pad. The clamp squeezes cap, rod, jig and table in one stack. PETG, printed as drawn (notch on the bed)")
 
 PARTS["test_section_tenon"] = (
     lambda: heal(__import__("src.joint_coupon", fromlist=["e"]).section_tenon_coupon()),
@@ -443,6 +456,17 @@ PARTS["test_belt_tensioner"] = (
     "TEST COUPON — belt-tension clamp: half A (head) and half B (insert), each lying on its "
     "closed side face, 0.4 nozzle. Push a GT2 end sideways into each slot, drop the M3 insert "
     "into B, run the M3×12 in with the ball end of the 2.5 key, and pull on the belt")
+# Motor bay coupon (user, 2026-10-20): the real bay of one motor, cut off at the low-wall
+# height, no floor -- drop the measured SERVO42D in before printing ten bays of chassis.
+PARTS["test_motor_bay"] = (
+    lambda: heal(__import__("src.motor_bank", fromlist=["e"]).bay_coupon()),
+    "test_motor_bay.step",
+    "TEST COUPON — one motor's WHOLE bay (string 5's: by the chassis' own fuse-and-cut recipe, "
+    "up through the tee seat and the M4 insert's bore), trimmed outside to a 1.6 ring with the "
+    "seat's faceplate-wall top and +X post kept on a 45 deg corbel, on a 1.6 floor rim. Beside "
+    "it, a printed TEE DUMMY: the real board outline, layout region 3.0 thick to bend like 1.6 "
+    "FR-4, ear 1.6 for the M4x10. Both print flat, +Z. Heat-set the M4 insert, drop the motor "
+    "in, seat the dummy and screw it down: the dummy should clamp the motor")
 
 
 # Anchor ALL outputs to the project folder (never the cwd)
@@ -532,7 +556,9 @@ def _declared():
     from . import legs as _LG
     from . import lever_jig as _LJ
     from . import belt_tensioner as _BT
+    from . import motor_bank as _MB
     from . import coil_mandrel as _CM
+    from . import saw_jig as _SJG
     from . import electronics as _ELX
 
     _plate = [n for n in PARTS if n.startswith("top_plate_")]
@@ -555,7 +581,7 @@ def _declared():
          "knee_lever.CART_UP — builds +Z with the housing it sits in, which "
          "is what its peaked roof is drawn for: the housing pocket cut from "
          "it is then self-supporting in a -Z->+Z print"),
-        (["kl_axle"], _KLX.AXLE_UP,
+        (["kl_axle", "kl_axle_sprung"], _KLX.AXLE_UP,
          "knee_lever.AXLE_UP — STANDING, POCKET-DOWN: drawn along +Z then "
          "rotated +Z->+Y, so the collar end faces +Y and the build runs away "
          "from it. That bed face is only 14.8 mm2, which is exactly why the "
@@ -563,6 +589,8 @@ def _declared():
         (["kl_magnet_cap"], _KLX.MAGNET_CAP_UP,
          "knee_lever.MAGNET_CAP_UP — APERTURE-DOWN, same construction as "
          "the axle: the flange face is the bed (its +Y end, 55.2 mm2)"),
+        (["kl_spacer", "kl_spacer_sprung", "kl_spacer_sprung_n"], _KLX.SPACER_UP,
+         "knee_lever.SPACER_UP — a flat ring, either face on the bed"),
         (["cart_piston"], _KLX.PISTON_UP,
          "knee_lever.PISTON_UP — stands on its +X SPRING-SEAT face, the one "
          "flat 10x10 end, so body, follower tongue and nose all grow ALONG "
@@ -621,6 +649,8 @@ def _declared():
         (["lever_prog_jig_base"], _LJ.BASE_UP,
          "lever_jig.BASE_UP — upside down: the screw head's counterbore "
          "opens upward"),
+        (["test_motor_bay"], _MB.COUPON_UP,
+         "motor_bank.COUPON_UP — +Z, like the chassis it is cut from"),
         (["test_belt_tensioner"], _BT.COUPON_UP,
          "belt_tensioner.COUPON_UP — each half already lies on its closed "
          "side face in the model"),
@@ -632,6 +662,12 @@ def _declared():
         (["pi_spacer"], _ELX.PI_SPACER_UP,
          "electronics.PI_SPACER_UP — top face down: one flat face on the "
          "bed, nothing overhangs"),
+        (["saw_jig"], _SJG.BODY_UP,
+         "saw_jig.BODY_UP — as drawn, table face on the bed: the V and roof "
+         "of the rod tunnel and the fork's arch are all 45 deg"),
+        (["saw_jig_cap"], _SJG.CAP_UP,
+         "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise "
+         "off the bed, the pad pocket opens up"),
         (["coil_mandrel"], _CM.MANDREL_UP,
          "coil_mandrel.MANDREL_UP — flange-down on its O27.8 base, as "
          "drawn"),
@@ -976,7 +1012,10 @@ def _string_components(i):
     # nut's own hole pitch), so the seat and the rod occupied the same space. The
     # overlap gate caught it. Deleting the bearing is what resolves that, not a fit.
     # motor (shaft +Y, body −Y toward player) + its pulley + twisted belt
-    out.append((f"motor_{i}", C.motor().translate((mx, my, mz))))
+    # THE MEASURED SERVO42D (src/servo42d.py), one solid per material: motor_{i} is the can,
+    # motor_<suffix>_{i} its face, laminations, shaft, driver, terminals, screws and coil lead
+    for _k, _wp, _rgb, _fin in C.motor_parts():
+        out.append((f"motor_{_k}_{i}" if _k else f"motor_{i}", _wp.translate((mx, my, mz))))
     out.append((f"motor_pulley_{i}", C.motor_pulley().rotate((0, 0, 0), (0, 1, 0), mp_deg)
                 .translate((mx, my, mz))))
     # The body length the pockets are built from is checked here, where the motor is built
@@ -1591,7 +1630,7 @@ def _knee_lever_components():
     s_main = KL.LOBE_RC * math.sin(thr) if throw else 0.0            # MAIN follower engaged from rest
     s_hs = (KL.LOBE_RC * (math.sin(thr) - math.sin(eng)) + 1.0) if throw > KL.HS_ENGAGE_DEG else 0.0  # engages @15°
     out = [("knee_housing", KL.knee_housing), ("knee_lever", swing(KL.knee_lever)),
-           ("kl_axle", swing(KL.kl_axle)),                  # keyed on its D-flat -> turns with the lever
+           ("kl_axle_sprung", swing(KL.kl_axle_sprung)),    # keyed on its D-flat -> turns with the lever
            ("kl_magnet_cap", swing(KL.kl_magnet_cap))]      # screwed to the axle
     for nm, off, s in (("main", KL.CART_MAIN_OFFSET, s_main), ("half_stop", KL.CART_HALFSTOP_OFFSET, s_hs)):
         out.append((f"{nm}_cart_base", KL.feel_place(KL.cart_base.translate(off))))
@@ -1818,7 +1857,7 @@ def body_work_components():
     out += [(f"chassis_light_{i}", lt) for i, lt in enumerate(chassis_light)]
     out += _leg_components()
     out += _pickup_mount_components()
-    return out
+    return out          # test coupons are STEP exports only (PARTS), never in the scene
 
 
 def lever_components():
@@ -1895,8 +1934,8 @@ def lever_bus_nodes():
 
     Each node is (name, plug, keeper, plug_dir, keeper_axis, pin_axis, pins, standoff,
     cheek_axis, cheek_bypass, guide),
-    where `pins` is {way: point} for all CONN_N ways of that lever's J1 -- so the model
-    shows which conductor belongs in which slot (user).
+    where `pins` is {way: point} for all CONN_WAYS ways of that lever's J1 (1-4, bus in)
+    and J2 (5-8, bus out) -- so the model shows which conductor belongs in which slot (user).
 
     """
     from . import knee_lever as KL
@@ -1933,7 +1972,8 @@ def lever_bus_nodes():
             # HORIZONTAL lever's, and since the winding is measured DOWN from the top,
             # LKV's coil hung 19.6 below its own column (user).
             lace = KL.keeper_point(KV.HOUS_Z0, KV.HOUS_X0, KV.HOUS_HW_P, KV.HOUS_Z1)
-        plug = pin((KL.CONN_N + 1) / 2.0)
+        _a, _b = pin(1), pin(KL.CONN_WAYS)          # the middle of the J1 + J2 pair
+        plug = tuple((_a[m] + _b[m]) / 2.0 for m in range(3))
         # the plug's wires leave along local -X (the mouth faces -X), posed the same way
         p = _pose(kind, sx, sy, mirrored and not turned, plug)
         l = _pose(kind, sx, sy, mirrored, lace)
@@ -1944,7 +1984,7 @@ def lever_bus_nodes():
             pa = (pa[0], pa[1], -pa[2])
         ca = _pose(kind, sx, sy, mirrored, KL.cheek_axis(), vector=True)
         pins = {w: _pose(kind, sx, sy, mirrored and not turned, pin(w))
-                for w in range(1, KL.CONN_N + 1)}
+                for w in range(1, KL.CONN_WAYS + 1)}
         # WHERE THE ARRIVING CABLE TURNS, on the one lever whose plug the bus cannot
         # reach in a straight line: the vertical one, whose body lies along its plug's
         # axis, so the cable has to come round the +Y end before it can run back to the
@@ -2124,7 +2164,6 @@ _COLORS = {
     "string_nut":      (0.82, 0.60, 0.20),   # brass string-end fitting (demo)
     "guide_rod":       (0.35, 0.35, 0.38),
     "rod_plug":        (0.85, 0.45, 0.15),
-    "motor":           (0.22, 0.25, 0.27),   # charcoal
     "belt":            (0.13, 0.13, 0.13),   # GT2 black
     "string":          (0.85, 0.85, 0.85),
     "break_dowel":     (0.75, 0.75, 0.78),
@@ -2215,9 +2254,14 @@ _COLORS = {
     "kl_axle":         (0.30, 0.54, 0.68),   # PCTG full-length axle (near the lever blue)
     "kl_axle_screw":   (0.55, 0.55, 0.58),   # M4 x 10 button in the axle's -Y end
     "kl_axle_washer":  (0.72, 0.72, 0.75),
+    "kl_preload_spring": (0.35, 0.36, 0.40),  # McMaster 9714K29 wave disc spring (dark spring steel)
+    "kl_spacer_sprung": (0.30, 0.54, 0.68),   # the LKL's exact spacers (kl_spacer's blue)
+    "kl_spacer_sprung_n": (0.30, 0.54, 0.68),
+    "kl_axle_sprung":  (0.30, 0.54, 0.68),   # the LKL's axle (kl_axle's blue)
     "kv_axle_screw":   (0.55, 0.55, 0.58),
     "kv_axle_washer":  (0.72, 0.72, 0.75),
     "kl_magnet_cap":   (0.24, 0.44, 0.56),   # PCTG magnet retainer
+    "kl_spacer":       (0.30, 0.54, 0.68),   # PCTG axle spacers (the axle's blue)
     # the rest of the sensor board's real population (knee_lever.SENSOR_BOM). The
     # kv_/pedal{i}_ instances inherit these by the prefix rules in _color_for.
     "kl_bearing":      (0.69, 0.77, 0.87),   # MR85ZZ
@@ -2292,8 +2336,10 @@ _COLORS = {
     "ui_screen":       (0.004, 0.004, 0.005),   # an OLED is black where it is not lit
     "ui_screen_lit":   (0.93, 0.96, 1.0),    # ...and this module (WDW) lights white
     "ui_disp_ffc_socket": (0.90, 0.86, 0.72),  # the module's Molex FFC socket, natural nylon
-    "ui_ffc":          (0.80, 0.62, 0.30),   # the display's flat cable, tinned copper in
-                                             # amber film
+    "ui_ffc":          (0.93, 0.93, 0.90),   # the display's flat cable: white PET film
+                                             # (JUSHUO's drawing: "white" under-layer)
+    "ui_ffc_contacts": (0.78, 0.79, 0.80),   # ...its bared tinned conductors at each end
+    "ui_ffc_stiffener": (0.12, 0.35, 0.80),  # ...and its blue PET stiffeners
     "ui_clamp":        (0.36, 0.30, 0.42),   # the printed clamp plate under the board
     "ui_insert":       (0.72, 0.60, 0.38),   # brass heat-set
     "ui_screw":        (0.62, 0.64, 0.67),
@@ -2316,7 +2362,11 @@ _COLORS = {
     "wire_canb_coil":  (0.45, 0.45, 0.48),   # grey        - the slack, drawn as a bundle
     "wire_canbh":      (0.95, 0.85, 0.10),   # yellow      - bus B CAN-H
     "wire_canbl":      (0.13, 0.72, 0.20),   # green       - bus B CAN-L
-    "motor_pigtail":   (0.45, 0.45, 0.48),   # grey        - SERVO42D's own 6-pin
+    # the motor drops, tee to motor screw terminals: the CAN scheme
+    "wire_drop_v24":   (0.85, 0.12, 0.10),   # red
+    "wire_drop_gnd":   (0.05, 0.05, 0.05),   # black
+    "wire_drop_canh":  (0.95, 0.85, 0.10),   # yellow
+    "wire_drop_canl":  (0.13, 0.72, 0.20),   # green
                                              #   XH pigtail (factory jacket)
     "wire_pickup":     (0.55, 0.85, 0.55),   # lightest green - the magnetic pickup's
                                              #   shielded lead, coil underside -> the
@@ -2342,6 +2392,7 @@ _COLORS = {
     "pogo_male_silk":  (0.95, 0.95, 0.93),
     "pogo_female_silk": (0.95, 0.95, 0.93),
     "wire_ui":         (0.55, 0.56, 0.58),
+    "ui_ribbon_socket": (0.10, 0.10, 0.11),  # its two 1.27 IDC sockets, black PBT
     "wire_usb":        (0.55, 0.25, 0.75),   # violet      - output panel J2 -> the Pi's USB-C
     "wire_hub":        (0.38, 0.32, 0.85),   # indigo      - output panel J3 (the hub) -> a Pi USB-A
     "wire_usb_plug":   (0.03, 0.03, 0.035),  # the leads' moulded plugs, black as bought
@@ -2356,6 +2407,9 @@ _TPU_BASES = tuple(sorted((k for k, v in PARTS.items() if v[1].startswith("tpu/"
 
 # the two lighting leads, a conductor a part: black GND, red 24 V, white SCK, blue SDT
 from . import led_leads as _LL                                   # noqa: E402
+# the SERVO42D's parts take the colours it was measured in (src/servo42d.py LOOK)
+from . import servo42d as _SV
+_COLORS.update({("motor_" + _k) if _k else "motor": _rgb for _k, (_rgb, _) in _SV.LOOK.items()})
 _COLORS.update({"wire_%s_led_%s" % (_lead, _w.lower()): _LL.COLORS[_w]
                 for _lead in ("foot", "fret") for _w in _LL.WAYS})
 _COLORS.update({

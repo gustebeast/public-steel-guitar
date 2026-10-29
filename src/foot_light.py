@@ -634,15 +634,26 @@ LEAD_STUB  = 4.0                    # straight out of the mouth before the first
 # that motor and the Pi is -Y of it; the motor is a 42 mm square from the bay floor up, its
 # back 2.4 from the endplate's wall and its side 2.4 from the next motor. Measured on
 # sections of the built parts, 2026-10-04.
-LEAD_FLY   = 12.0                   # above the motor's top, and what sets it is string 1's
-                                    # CAN tee, which lies ON that motor at y 18..35 and tops
-                                    # out 9.35 above it: the lead crosses 1.0 over the board.
-                                    # (At 6.0 it cleared the chassis rib and ran straight
-                                    # through the tee, 130 mm3 -- the gate found it.)
-LEAD_COL_X = -595.5                 # the column it crosses in. 2.5 further -X it meets the
-                                    # motor board's corner post (x -599.7..-598.3, up to
-                                    # z -21.95); 1.5 further +X it grazes the 24 V trunk's
-                                    # drop into the motor board (3.5 mm3)
+# ⚠ AND THE KEYHEAD PANEL SLIDES ON OVER IT, PLUGGED IN (2026-10-23). The lead is in the
+# Pi cap before that panel goes on, so it has to clear the panel's whole SWEPT section --
+# the panel's YZ silhouette, every x -- not just where the panel parks. That silhouette
+# comes down to -17.95 at the fret board's two M4s (y 27.5-35.5 and 40-46.5) and to -18.75
+# at the motor-board capture rib (y -56 to -39), -18.15 just +Y of it; everywhere else over the lead it is -15.75
+# or higher (raster of the built parts, 0.1 mm). The lead used to fly at -17.05 and the
+# panel ran through it. So it now crosses LOW, in the one column where string 1's CAN tee
+# is low too, and drops lower still before the rib:
+LEAD_FLY   = 9.45                   # -19.60: 0.95 under the M4s' tips, 0.95 over the
+                                    # highest thing under it in the column (-21.25 at y -4
+                                    # to 4); the tee there is at -25.25
+LEAD_COL_X = -563.0                 # the first lane; the four take x -563.0 to -558.2. In
+                                    # x -564 to -557 the tee stands no higher than -25.25 over
+                                    # y 17-36 -- either side of it its connectors reach -20.50,
+                                    # which no height between them and the M4s clears with room
+LEAD_DIP_Y = -32.0                  # step down here, before the panel's -18.15 band (y -38.5
+                                    # to -33.5) and the rib's beyond it
+LEAD_LOW   = 4.95 - LEAD_FLY        # to -24.10 there: the rib's -18.75 is 4.65 over the top
+                                    # of the lead, and nothing fixed in the column above -27.5
+                                    # from y -32 down to the drop
 # (Where it comes back down is no longer a number here: led_leads drops each conductor
 #  a plug length and 1.0 out of the Pi cap's J6, which puts the four at y -54.5 to -49.7
 #  -- between the motor's -Y face at -41.25 and the cap's +Y edge at -59.2.)

@@ -9,8 +9,9 @@ by ONE drop, so unplugging a device never breaks a bus. 120 Ω termination
 lives on the boards (motor_ctrl's is permanent; bus A's LAST tee has its switch ON).
 
   bus A (motors): motor_ctrl -> tee 9..0 (one per motor; LAST = tee 0,
-        easternmost — its jumper is closed). Drop = the SERVO42D's own
-        6-pin XH pigtail (motor_pigtail_N, grey). The 24 V pair rides the
+        easternmost — its jumper is closed). Drop = four loose wires from the
+        tee's 4-way into the SERVO42D's screw terminals (wire_drop_*_N: 22 AWG
+        red/black power into the 6-way, 26 AWG yellow/green CAN into the 5-way). The 24 V pair rides the
         same tees and is fed from BOTH ends of the chain: the motor
         controller's J1 at the west one (with CAN), the output board's J7
         at the east one (24 V only).
@@ -49,7 +50,7 @@ HUE = gauge bucket, SHADE = the specific wire within the bucket:
   AMBER = 28 AWG logic    (light -> dark) wire_link (motor controller <-> Pi),
                           wire_ui (the UI board's 14-way ribbon, ONE flat prism)
   VIOLET = shielded USB-2 wire_usb: output panel J2 -> the Pi's USB-C (wire_hub, indigo: J3 -> a Pi USB-A)
-  GREY = factory jackets  motor_pigtail_N
+  RED/BLACK/YELLOW/GREEN = the motor drops  wire_drop_{v24,gnd,canh,canl}_N
 
 Analog architecture: NONE OF IT IS HERE. The AFE board is deleted and no audio
 crosses this harness -- the optical pickup board carries the magnetic pickup's
@@ -122,7 +123,8 @@ WIRE_OD = {
     # the gate's colour and allow-list tables are keyed off the same names. It is drawn
     # by flat_cable from RIBBON_W x RIBBON_T; 0.9 is its thickness.
     "wire_ui": UI.RIBBON_T,
-    "motor_pigtail": 3.4,
+    # the motor drops (tee -> motor screw terminals): 22 AWG power pair, 26 AWG CAN pair
+    "wire_drop_v24": 1.52, "wire_drop_gnd": 1.52, "wire_drop_canh": 1.27, "wire_drop_canl": 1.27,
 }
 # (_KNEE_B is gone with the two-conductor bus-B head it served -- a landing 20 mm short
 #  of LKL's board, waiting on a chassis follow-up. That follow-up is the wiring port, and
@@ -173,7 +175,15 @@ assert set(TRUNK_PIN) == set(TRUNK_OFF), (
 # RUN is 0.8 under the mouth, no lower: the bays' side walls stand to -25.45 (SEAT_TOP).
 # (-0.6 since the ways are read from the routed board: the contact line is 0.45 lower
 #  than the hand-counted one was, and RUN came up by as much as keeps it off the bay walls.)
-TRUNK_Z_RUN = -0.6
+# ...AND OVER THE MOTOR'S OWN COIL PLUG (2026-10-20). The measured SERVO42D carries a white
+# plug standing 5.7 on its rear cap, its front 31 behind the faceplate, and the ground lane
+# (the -Y-most, 30.7 back) ran 0.85 into it on every hop. RUN lifts the four over its top
+# by 0.3 instead of dipping under the mouth; still under the tee plugs' own tops, which
+# stay the harness's real +Z extent.
+# ...AND UP AGAIN BY THE SEAT'S DROP (2026-10-21): the tee seat came down 0.85 onto the can's
+# real top (motor_bank.BOARD_AIR 0), and the mouth with it, while the coil plug stayed put.
+# 1.65 is the same 0.3 over the plug; the assert under the run keeps it so.
+TRUNK_Z_RUN = 1.65
 _XH_PITCH = 2.5
 PWR_OFF = 1.0         # 24 V hot/gnd separation. In X on the bank hops (see _seg) and in Z
                       # along the -Y corridor, where the pair rides one lane each. 2.0 apart
@@ -236,7 +246,7 @@ LANE_PWR   = CH_WT_ZF + 10.8     # -15.6: the 24 V head (J7 -> the east tee), ho
 LANE_CTRL  = -42.0               # CAN bus B: keyhead-local, on the old floor corridor
 LANE_CAN   = -48.0               # CAN bus A: bank hops only (never on the corridor)
 TEE_Z = _RIB_TOP + 4 * D.BEAD                            # 3.2 of printed cradle on the rib tops
-_TRUNK_OD = max(od for nm, od in WIRE_OD.items() if nm != 'motor_pigtail')
+_TRUNK_OD = max(od for nm, od in WIRE_OD.items() if not nm.startswith('wire_drop_'))
 # the trough's own guarantees, asserted where the lanes are chosen:
 _TOP_OF_MOTORS = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2          # -29.05
 assert CH_WT_ZF > _TOP_OF_MOTORS, "the trough's floor has come down to the motor tops"
@@ -656,6 +666,17 @@ def tee_components():
 from .chassis import PORT_W, port_y
 from .chassis import Z_BOT as _CH_Z_BOT
 from . import leg_pogo as _PG
+from . import legs as _LG
+from . import cable_routes as _CR
+# THE PARTS THAT SLIDE WITH THE -X/+Y LEG when it moves out to its service position
+# (legs.SERVICE_SLIDE): its body adapter, the leg stack hung from it, and the top pogo
+# joint's two boards. The lock pin's screw and insert stay in the endplate.
+LEG_SLIDES = (r"^(body_adapter_0|fixed_(sleeve|tenon)|adjust_(sleeve|tenon)|leg_latch_\w+"
+              r"|bar_latch_\w+)$|^pogo_(male|female)_\w+_top$")
+PEDAL_ROUTES = {}       # "home" / "service": the pedal cable's bundle centreline, each pose
+# what the pedal cable is cut to: its longer pose's route, the two straight leads into the
+# ZR and the PH, and this much over for the crimps and for not working it at full stretch
+PEDAL_CUT_SPARE = 15.0
 from cadkit.pcb import PH_PITCH as _PH_PITCH
 
 
@@ -961,6 +982,10 @@ def build_wires():
 
     assert _w0[2] + TRUNK_Z_RUN - WIRE_OD["wire_pwr_gnd"] / 2 > MB.SEAT_TOP + 0.3, (
         "the trunk's run level has come down into the bay walls (SEAT_TOP)")
+    from . import servo42d as _SVp
+    _plug_top = D.motor_pos(0)[2] + _SVp.SQ / 2 + _SVp.PLUG_H
+    assert _w0[2] + TRUNK_Z_RUN - WIRE_OD["wire_pwr_gnd"] / 2 >= _plug_top + 0.3 - 1e-6, (
+        "the trunk's run level has come down onto the motors' coil plugs (raise TRUNK_Z_RUN)")
 
     # ── THE HEAD IS ONE FOUR-WAY LEAD: motor_ctrl J1 -> the first tee's IN half ──────────
     # GND, 24 V, CAN_H, CAN_L on J1's ways 1-4 to the tee's ways 1-4 (harness.XH_PINOUT at
@@ -978,16 +1003,27 @@ def build_wires():
     # than at the connector's pitch, which keeps the last one clear of the 24 V link.
     _HEAD_RISE = 2.8                  # J1's plug top to the first riser
     _HEAD_LANES = (0.0, 2.0, 3.8, 5.4)       # GND, 24 V (O1.8), CAN_H, CAN_L (O1.3)
-    _HEAD_TURN_Y = MB.body_box(0)[2] + 5.0      # the first -X step, 5 in over string 1's motor
+    # STRING 1's MOTOR HAS ITS COIL LEAD ON TOP (the measured SERVO42D, 2026-10-20): a white
+    # plug on the rear cap and four wires looping 8.7 over the motor back into the driver's
+    # blue block, all within +-6.2 of the motor's centreline. The head used to run +Y up that
+    # centreline at mouth height, straight through the loop. It now climbs +X of the plug
+    # and makes its -X step IN FRONT of the plug, between it and the tee.
+    from . import servo42d as _SV
+    _m0x = D.motor_pos(0)[0]
+    _HEAD_X0 = max(conn_end("motor_ctrl", "J1")[0][0][0] + _HEAD_RISE,
+                   _m0x + _SV.PLUG_W / 2 + WIRE_OD["wire_pwr_gnd"] / 2 + 0.6)
+    _HEAD_TURN_Y = MB.body_box(0)[3] + _SV.PLUG_Y1 + WIRE_OD["wire_pwr_gnd"] / 2 + 0.6
     _SEG = {"GND": 11, "V24": 11, "CAN_H": 0, "CAN_L": 0}       # the names these have always had
     _ja = conn_end("motor_ctrl", "J1")
     for k in _cable("bus A head", _ja, _tin[west[0]]):
         (pa, _, net), (pb, _, _) = _ja[k], _tin[west[0]][k]
-        xr = pa[0] + _HEAD_RISE + _HEAD_LANES[k]
+        xu = pa[0] + _HEAD_RISE + _HEAD_LANES[k]     # the riser, beside the board
+        xr = _HEAD_X0 + _HEAD_LANES[k]               # the +Y run, +X of the coil plug
         yj = _HEAD_TURN_Y + k * _XH_PITCH
         assert pb[0] < xr, "bus A's head: way %d's riser is not +X of its tee pin" % (k + 1)
+        # up first, THEN across: a step +X at J1's height ran over the Pi cap
         _run(out, "%s_%d" % (_NAME[net], _SEG[net]),
-             [pa, (xr, pa[1], pa[2]), (xr, pa[1], pb[2]), (xr, yj, pb[2]),
+             [pa, (xu, pa[1], pa[2]), (xu, pa[1], pb[2]), (xr, pa[1], pb[2]), (xr, yj, pb[2]),
               (pb[0], yj, pb[2]), pb], WIRE_OD[_NAME[net]], "bus A head", k)
 
     # ── THE HOPS: tee k's OUT half -> tee k+1's IN half, four conductors each ────────────
@@ -1017,73 +1053,90 @@ def build_wires():
                  _hop(_a[j][0], _b[j][0], TRUNK_OFF[_CAD_NAME[net]]),
                  WIRE_OD[_NAME[net]], _key, j)
 
-    # bus A drops: each motor's factory 4-pin XH pigtail (grey), from its -Y-facing PCB to its
-    # OWN tee. For the nine tees on motors that is a short climb up behind the motor and over
-    # its top; string 10's tee is still on the rail, so that one keeps the old reach along the
-    # corridor. The climb stands off the back bumper where there is one.
     def _lane(x0, x1, z):
         """The trough's line from x0 west to x1 at lane height z. Straight: a motor's
         pigtail that climbs under it is crossed square, not lifted over."""
         return [(x0, CHAN_Y, z), (x1, CHAN_Y, z)]
 
-    # THE JACKET STOPS SHORT OF THE PLUG AND ITS FOUR CONDUCTORS GO IN TO THEIR OWN WAYS
-    # (motor_pigtail_<motor>_<way>, see _split_jacket).
-    _FAN = 10.0                 # the jacket's end, back from the plug's wire face
+    # ── THE MOTOR DROPS: FOUR LOOSE WIRES, MOTOR SCREW TERMINALS -> THE TEE'S 4-WAY ─────────
+    # (user, 2026-10-20: gauge- and colour-accurate, terminal to terminal.) The SERVO42D has no
+    # plug: V+ and GND go into its green 6-way on +X, CAN-H and CAN-L into the 5-way on -X,
+    # each wire in from the SIDE (src/servo42d.py terminal_way). By the two-gauge rule the
+    # power pair is 22 AWG and the CAN pair 26 AWG; colours are the CAN scheme.
+    # Each wire leaves its terminal sideways, folds straight up just outside the driver's
+    # cover -- the bay's side wall is cut down there for it (motor_bank.low_walls) --
+    # turns in over the motor's top, runs forward in its own lane and turns across to its own
+    # way of the tee's drop, rising into it along the contact.
+    #   * THE TWO PAIRS MUST CROSS: the CAN pair comes from -X but its ways are +X of the
+    #     power ways. So they cross at two heights: CAN on the lower level, power over it,
+    #     both under the trunk's lanes and bus A's head.
+    #   * WITHIN A SIDE THEY DO NOT CROSS: the wire bound for the farther way jogs back in the
+    #     block's notch, climbs behind its partner and takes the INNER lane, and turns first.
+    #   * THE CAN PAIR TURNS ACROSS IN FRONT OF THE COIL PLUG, which stands on the motor's
+    #     centreline (servo42d.PLUG_Y1).
+    from . import servo42d as _SV
+    DROP_OD = {"V24": 1.52, "GND": 1.52, "CAN_H": 1.27, "CAN_L": 1.27}   # 22 / 26 AWG PVC
+    DROP_NAME = {"V24": "wire_drop_v24", "GND": "wire_drop_gnd",
+                 "CAN_H": "wire_drop_canh", "CAN_L": "wire_drop_canl"}
+    _TERM = {"V24": (_SV.TERM_6_N, "V+"), "GND": (_SV.TERM_6_N, "GND"),
+             "CAN_H": (_SV.TERM_5_N, "CANH"), "CAN_L": (_SV.TERM_5_N, "CANL")}
+    _IN = 2.0                   # into the terminal's wire entry
+    _JOG = 1.7                  # the farther-bound wire's step back in the notch
+    _LEAD = 2.0                 # straight along the contact before the plug
+    _r = {k: v / 2.0 for k, v in DROP_OD.items()}
+    _cover_top = _SV.DRV_SQ / 2                    # over the motor's axis
+    _bay = _SV.SQ / 2 + MB.SIDE_FIT                # the pocket's side faces over the CAN, off the
+                                                   # axis (the lanes run forward along them)
+    _lvl_can = _cover_top + _r["CAN_H"] + 0.15
+    _lvl_pwr = _lvl_can + _r["CAN_H"] + _r["V24"] + 0.1
+
+    def _drop_leads(i):
+        mx, _, mz = D.motor_pos(i)
+        f = MB.body_box(i)[3]                      # the faceplate
+        tend = _drop[i]                            # the tee's drop, ways 1-4 (XH_PINOUT)
+        motor_end = []
+        for (_p, _d, net) in tend:
+            (x, y, z), d = _SV.terminal_way(*_TERM[net])
+            motor_end.append(((mx + x, f + y, mz + z), d, net))
+        key = "motor drop %d" % (i + 1)
+        _cable(key, motor_end, tend)
+        for side, nets, lvl, turns in ((1, ("V24", "GND"), _lvl_pwr, (-25.5, -23.5)),
+                                       (-1, ("CAN_L", "CAN_H"), _lvl_can, (-29.5, -27.5))):
+            # nets[0] is bound for the way FARTHER from this side: it takes the inner lane
+            k_far = [k for k, e in enumerate(tend) if e[2] == nets[0]][0]
+            k_near = [k for k, e in enumerate(tend) if e[2] == nets[1]][0]
+            far_x = tend[k_far][0][0]
+            near_x = tend[k_near][0][0]
+            assert side * (near_x - far_x) > 0, "motor %d: the drop's ways are not in order" % i
+            for k, inner in ((k_far, True), (k_near, False)):
+                net = tend[k][2]
+                r = _r[net]
+                (hx, hy, hz), _d, _n = motor_end[k]
+                pin = tend[k][0]
+                x_face = hx
+                x_out = mx + side * (_SV.DRV_SQ / 2 + r + 0.1)
+                lane_out = mx + side * (_bay - r - 0.15)
+                lane = lane_out - side * (DROP_OD["V24"] + 0.15) if inner else lane_out
+                yc = hy - _JOG if inner else hy
+                zl = mz + lvl
+                y_turn = f + turns[0 if inner else 1]
+                pts = [(x_face - side * _IN, hy, hz)]
+                if inner:
+                    pts += [(x_face + side * (r + 0.02), hy, hz), (x_face + side * (r + 0.02), yc, hz)]
+                pts += [(x_out, yc, hz), (x_out, yc, zl), (lane, yc, zl), (lane, y_turn, zl),
+                        (pin[0], y_turn, zl), (pin[0], pin[1] - _LEAD, zl),
+                        (pin[0], pin[1] - _LEAD, pin[2]), pin]
+                _run(out, "%s_%d" % (DROP_NAME[net], i), pts, DROP_OD[net], key, k)
+        # the CAN pair crosses the centreline in front of the coil plug
+        assert f - 29.5 - _r["CAN_L"] > f + _SV.PLUG_Y1 + 0.3, "the CAN pair meets the coil plug"
+        # ...and both levels pass UNDER the trunk's lanes, which cross every motor at the mouths
+        assert mz + _lvl_pwr + _r["V24"] < tend[0][0][2] + TRUNK_Z_RUN - WIRE_OD["wire_pwr_gnd"] / 2, (
+            "motor %d: the drop's power level reaches the trunk's lanes" % i)
+
     _drop = {i: tee_end(i, tees[i][0], tees[i][1], "drop") for i in range(10)}
-
-    def _fan_in(i, jacket_end):
-        _split_jacket(out, "motor_pigtail_%d" % i, jacket_end, _drop[i], WIRE_OD["wire_canh"])
-
     for i in range(10):
-        mx, sy, mz = D.motor_pos(i)
-        back = _motor_back(i)
-        if on_motor(i):
-            dx, dy, dz = dropA[i]
-            room = back - RAIL_INNER_Y                 # from the motor's back face to the rail
-            stand = MB.BACK_T + MB.MOTOR_CLR + 2.0     # clear of the bay's back wall
-            # STRING 10's bay has no back wall -- the harness corridor takes it, and the rail
-            # is right there -- so its pigtail climbs hugging the motor's back instead, in the
-            # chassis.RAIL_GAP left for exactly this: 0.5 off the rail. (It used to lie in a
-            # notch cut into the rail and run east round the motor; the user had the body
-            # widened so the wall could stay whole.)
-            _od = WIRE_OD["motor_pigtail"]
-            stand = min(stand, room - _od / 2.0 - 0.5)
-            assert stand >= MB.MOTOR_CLR + _od / 2.0, (
-                "motor %d: %.2f between its back and the -Y rail -- no room for its Ø%.1f "
-                "pigtail to climb (chassis.RAIL_GAP)" % (i, room, _od))
-            _yc = back - stand
-            if _yc - _od / 2.0 < CHAN_Y + 2.5:
-                # ...and it climbs RIGHT UNDER THE TROUGH'S LANES, which carry on over this
-                # motor at CHAN_Y where the trough is left out. Its tee's mouth is at the 24 V link's
-                # height, so rising to it and turning east ran 21 mm along inside that cable.
-                # So it crosses onto the motor at the motor's own top, UNDER the lanes, and
-                # only rises to the mouth once it is +Y of them.
-                # (The lanes above cross it square where they meet it: see _lane.)
-                _zc = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + _od / 2.0 + 0.15
-                _yi = CHAN_Y + 2.5 + _od / 2.0 + 1.0
-                # ...and it stays at the motor's top to its tee, like the other nine: the
-                # 24 V head comes in to the same tee at the mouth's height, across this run
-                _run(out, f"motor_pigtail_{i}", [
-                    (mx, back, mz), (mx, _yc, mz), (mx, _yc, _zc), (mx, _yi, _zc),
-                    (dx, _yi, _zc), (dx, dy - _FAN, _zc)], _od)
-                _fan_in(i, (dx, dy - _FAN, _zc))
-                continue
-            # OVER THE MOTOR AT THE MOTOR'S OWN TOP, not at the mouth's height: the trunk's
-            # lanes and bus A's head cross this run at the mouth's height, and a jacket
-            # drawn there too is drawn through them. It comes up to the mouth over the
-            # last few millimetres and goes in along the contact axis.
-            _zf = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2 + _od / 2.0 + 0.15
-            _run(out, f"motor_pigtail_{i}", [
-                (mx, back, mz), (mx, back - stand, mz), (mx, back - stand, _zf),
-                (dx, back - stand, _zf), (dx, dy - _FAN, _zf)], _od)
-            _fan_in(i, (dx, dy - _FAN, _zf))
-            continue
-        tx = tees[i][0]
-        cy = min(TEE_Y, back - 3.0)
-        out.append((f"motor_pigtail_{i}", _wire([
-            (mx, back, mz), (mx, back, -52.0), (mx, cy, -52.0),
-            (tx, cy, -52.0), (tx, TEE_Y + 4.5, -52.0), (tx, TEE_Y + 4.5, HDR_Z)],
-            WIRE_OD["motor_pigtail"])))
+        assert on_motor(i), "motor %d's tee is not on its motor: no drop route for it" % i
+        _drop_leads(i)
 
     # 24 V pair (2 × 22 AWG per rail): panel J7 -> tee 9 ... tee 0 -> motor controller.
     # hot/gnd offset ±PWR_OFF.
@@ -1466,9 +1519,19 @@ def build_wires():
     #    hides the only thing about it that constrains anything: its WIDTH, and which way
     #    that width is turned. (user asked what the thick wire was, 2026-09-28)
     ux, _uy = UI.board_centre()
-    umz = UI.z_stack()[4] + 4.5                  # the ribbon's axis out of the shroud
+    umz = UI.z_stack()[4] + 4.5                  # the ribbon's run under the deck
     uy = UI.routed("J2")[1]                      # the header's own row, as routed
-    ex = ux - UI.BOARD_W / 2.0 - 2.0
+    #    ITS SOCKET at J2, pushed onto the pins until it bottoms on their tips (the
+    #    header's plastic is flush with the board's -X edge, its pins HDR_PIN_OUT past
+    #    it), centred on the header's height; the ribbon leaves it upward (across the
+    #    rows, which are stacked in Z) and turns -X over the socket's cover.
+    _j2h = BG.HEIGHT[BG.fp_name(BG.footprint("ui_board", "J2")["fpid"])]
+    _j2m = (ux - UI.BOARD_W / 2.0 - UI.HDR_PIN_OUT + UI.IDC_PIN_IN, uy,
+            UI.z_stack()[4] + _j2h / 2.0)
+    out.append(("ui_ribbon_socket_0", UI.idc_socket(_j2m, (-1, 0, 0), (0, 0, 1), (0, 1, 0))))
+    ex = _j2m[0] - UI.IDC_CABLE_M
+    assert umz - UI.RIBBON_T / 2.0 > _j2m[2] + UI.IDC_BODY_R / 2.0, (
+        "the UI ribbon's run under the deck is lower than its socket's top")
     #    THE WIDTH LIES ALONG Y, which is what lets it make the one turn it has to. The
     #    run goes -X under the deck and then straight down the bay column; a ribbon whose
     #    width is perpendicular to both sweeps that corner as fourteen concentric arcs,
@@ -1495,10 +1558,16 @@ def build_wires():
                    EL._CAP_T + _j5h / 2.0)
     assert abs(_a5[1][1]) > 0.99 and abs(_j5f["fab"][3] - _j5f["fab"][2]) < abs(
         _j5f["fab"][1] - _j5f["fab"][0]), "pi_cap J5's row no longer runs along world X"
-    _J5_SOCKET = 3.0                # the IDC socket's ribbon slot, out from the header's mouth
-    _ry = _j5c[1] + _J5_SOCKET * (1.0 if _a5[1][1] * (_mouth_y - _pad_y) > 0 else -1.0)
-    centre = [(ex, uy, umz), (ex - 12.0, uy, umz), (_j5c[0], uy, umz),
-              (_j5c[0], _ry, umz), (_j5c[0], _ry, _j5c[2])]
+    #    ITS SOCKET at J5, the same part, the same way: on the pins to IDC_PIN_IN short of
+    #    their tips (the end of J5's fab box away from its pads), the ribbon coming down
+    #    into it and ending at its lower side, as an IDC cable's end does.
+    _sy = 1.0 if _a5[1][1] * (_mouth_y - _pad_y) > 0 else -1.0
+    _j5s = (_j5c[0], _j5c[1] - _sy * UI.IDC_PIN_IN, _j5c[2])
+    out.append(("ui_ribbon_socket_1", UI.idc_socket(_j5s, (0, _sy, 0), (0, 0, 1), (1, 0, 0))))
+    _ry = _j5s[1] + _sy * UI.IDC_CABLE_M
+    centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz),
+              (_j5c[0], uy, umz), (_j5c[0], _ry, umz),
+              (_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
     #    ...AND IT IS ONE PRISM, NOT FOURTEEN SWEEPS (user, 2026-09-28). It was drawn
     #    as fourteen conductors from bundle_paths, one octagonal solid each, which is the
     #    truth about a ribbon and the wrong model of it: nothing inside a ribbon can move
@@ -1599,7 +1668,9 @@ WIRE_OK = {
     "wire_canb_coil":  _LEVER_BODIES,
     # ...the four conductors are added below, where CANB_NETS is defined (this table
     # is read at import by tools.check_overlaps, so it only has to be complete by then)
-    "motor_pigtail":  {"tee_pcb", "motor"},
+    # the motor drops: into the motor's own terminals at one end, the tee's drop at the other
+    "wire_drop_v24":  {"tee_pcb", "motor"}, "wire_drop_gnd":  {"tee_pcb", "motor"},
+    "wire_drop_canh": {"tee_pcb", "motor"}, "wire_drop_canl": {"tee_pcb", "motor"},
     # leg↔body TRRS: the chassis jack's factory cable (tenon channel ->
     # bus-B socket tee) and the column CA-354S inside the leg stack
     # (it used to land on tee 12; that tee is deleted and the TRRS ADAPTER BOARD
@@ -1844,9 +1915,9 @@ def lever_bus(nodes):
                 c0 = lp.startPoint().toTuple()
             c1 = lp.endPoint().toTuple()
         # EACH CONDUCTOR ON ITS OWN WAY, so the model reads as a wiring reference (user).
-        # The trunk passes THROUGH a board: this cable leaves the upstream lever on its
-        # OUT half (ways 5-8) and lands on the downstream lever's IN half (1-4): the in
-        # half in harness.PH_PINOUT order, the out half its mirror (way 8 to way 1).
+        # The trunk passes THROUGH a board: this cable leaves the upstream lever's J2 (bus
+        # OUT, ways 5-8 here) and lands on the downstream lever's J1 (IN, 1-4): both in
+        # harness.PH_PINOUT order, so it is a straight PHR-4 jumper, way n to way n.
         seg = 0.0
         # the lateral offsets CANB_NETS carried are gone: a conductor now starts and
         # ends on its OWN contact, so the bundle's spread is the connector's pitch
@@ -1989,8 +2060,25 @@ def ctrl_bus_b(lkl):
     _stub_c = _PG.chan_ends()[1]
     _px = j2c[0] + _PEDAL_DX
     _py = port_y()[0] + PORT_W / 2.0 + 3.2             # where it has always come down
-    centre = [_stub_c, (_px, _py, _CH_Z_BOT - 4.0), (_px, _py, _pedal_z),
-              (_px, j2c[1] + CTRL_FAN, _pedal_z), j2c]
+    # ⚠ TAUT, NOT SQUARED (user, 2026-10-22): pulled between the adapter's face and J2
+    # the cable lies straight wherever it can, and the hand path's square turns (kept
+    # below as the stand-in until tools/route_cables.py has been run) hid ~25 mm of slack
+    # that is really there. It is routed to a point straight under J2, where the plug's
+    # own lead takes over.
+    _j2_free = (j2c[0], j2c[1], _pedal_z)
+    _hand = [_stub_c, (_px, _py, _CH_Z_BOT - 4.0), (_px, _py, _pedal_z), _j2_free]
+    _rr = _PG.HARNESS_D / 2.0 + 0.3
+    centre = _CR.taut("bus B pedal cable", _stub_c, _j2_free, _rr, _hand) + [j2c]
+    # ...AND WITH THE LEG SLID OUT FOR RESTRINGING, still plugged in at both ends (user,
+    # 2026-10-22: strings change with no JST unplugged). That pose is never drawn; its
+    # route is what the cable's cut length has to reach (pedal_cable_cut).
+    _syg = 1.0 if _stub_c[1] > 0.0 else -1.0
+    _slid = (0.0, _syg * _LG.SERVICE_SLIDE, 0.0)
+    _stub_s = tuple(_stub_c[m] + _slid[m] for m in range(3))
+    PEDAL_ROUTES["home"] = centre[:-1]
+    PEDAL_ROUTES["service"] = _CR.taut(
+        "bus B pedal cable, leg slid out", _stub_s, _j2_free, _rr, [_stub_s] + _hand[1:],
+        moved=[(LEG_SLIDES, _slid)])
     legs = bundle_paths(centre, offs, across=(0.0, 0.0, 1.0))
     for k, q in enumerate(legs):
         step = max(abs(q[0][m] - ends[k][m]) for m in range(3))
@@ -2021,27 +2109,50 @@ def ctrl_bus_b(lkl):
     farc = tuple(sum(q[m] for q in far) / n for m in range(3))
     assert abs(d[0] + 1.0) < 1e-6 and abs(far[0][0] - far[-1][0]) < 1e-6 and abs(
         far[0][1] - far[-1][1]) < 1e-6, "LKL's plug no longer faces -X with its row along Z"
-    up = far[0][2] < far[-1][2]                        # way 1 at the row's low end
-    offs2 = [(0.0, (k - (n - 1) / 2.0) * CTRL_PITCH * (1.0 if up else -1.0)) for k in range(n)]
+    # ⚠ A TAUT BUNDLE, NOT A FLAT RUN ROUND J6's END (user, 2026-10-22: "the wires
+    # aren't taking a straight shot"). It was a flat four-way that came the long way
+    # round J6 whenever way 1 sat at the top of LKL's row, so as not to land the row
+    # reversed: 105 mm of conductor for 73 mm of distance. Four loose PHR-4 conductors
+    # do not care -- they lie as a bundle, pulled straight between the two plugs (routed
+    # by tools/route_cables.py; the hand path below stands in until it is), and spread
+    # onto their own ways over a CTRL_FAN run square out of each plug, the pedal cable's
+    # arrangement. Pairs stay adjacent in the bundle: rail with return, H with L.
+    _lead0 = CANB_LEAD          # the crimp's own length: the route, not a standoff, clears the cradle
+    _fa = tuple(farc[m] + d[m] * (_lead0 + CTRL_FAN) for m in range(3))
+    _fb = tuple(j6c[m] + _dn[m] * (CANB_LEAD + CTRL_FAN) for m in range(3))
     x6, zc = j6c[0], farc[2]
-    if up:          # way 1 lowest: arrive travelling -Y, the lowest lands furthest -Y
-        centre = [farc, (x6, farc[1], zc), (x6, j6c[1], zc), j6c]
-    else:           # way 1 highest: round the -Y end of J6 and arrive travelling +Y
-        _xa, _yb = x6 + 9 * D.BEAD, j6[0][1] - 6 * D.BEAD
-        centre = [farc, (_xa, farc[1], zc), (_xa, _yb, zc), (x6, _yb, zc), (x6, j6c[1], zc), j6c]
+    _hand = [_fa, (x6, _fa[1], zc), (x6, _fb[1], zc), _fb]
+    _s = CANB_WIRE_OD / 2.0 + 0.02
+    offs2 = [(-_s, -_s), (_s, -_s), (-_s, _s), (_s, _s)]   # PH_PINOUT: V5, GND | H, L
+    centre = ([farc] + _CR.taut("bus B lever head", _fa, _fb, CANB_WIRE_OD + 0.3, _hand)
+              + [j6c])
     legs2 = bundle_paths(centre, offs2, across=(0.0, 0.0, 1.0))
-    for k, q in enumerate(legs2):
-        for end, pin in ((q[0], far[k]), (q[-1], j6[k])):
-            assert max(abs(end[m] - pin[m]) for m in range(3)) < 0.05, (
-                "the lever head's ribbon does not land way %d on its pin: %r against %r"
-                % (k + 1, end, pin))
-    legs2 = _fan(_fan(legs2, 0, far, d, max(CANB_LEAD, _so)), -1, j6, _dn, CANB_LEAD)
+    legs2 = _fan(_fan(legs2, 0, far, d, _lead0), -1, j6, _dn, CANB_LEAD)
     _cable("bus B lever head", [(far[k], tuple(d), _j6e[k][2]) for k in range(n)], _j6e)
     for k, _hn in enumerate(EH.PH_PINOUT):          # conductor k lands on way k + 1
         nm = {"GND": "gnd", "V5": "v5", "CAN_H": "h", "CAN_L": "l"}[_hn]
         _run(out, "wire_canb_%s_lkl_0" % nm, legs2[k], CANB_WIRE_OD, "bus B lever head", k)
     check_cables(["bus B pedal cable", "bus B lever head"])
+    _rep = _CR.report()
+    if _rep:
+        print(_rep)
     return out
+
+
+def pedal_cable_cut():
+    """(cut length, home run, service run) of the pedal cable, mm, after ctrl_bus_b().
+
+    Cut to reach the LONGER of its two poses -- leg home, and leg slid out for
+    restringing with the cable still plugged in -- plus its run inside the leg's adapter
+    (leg_pogo.body_path), the drop into J2 and PEDAL_CUT_SPARE. In the home pose the
+    difference is slack the cable carries."""
+    from cadkit.cables import path_length
+    home = path_length(PEDAL_ROUTES["home"])
+    service = path_length(PEDAL_ROUTES["service"])
+    inside = path_length(_PG.body_path())
+    j2c = PATHS["pogo_wire_v5_5"][0][-1]
+    drop = abs(PEDAL_ROUTES["home"][-1][2] - j2c[2])
+    return max(home, service) + inside + drop + PEDAL_CUT_SPARE, home, service
 
 
 def lever_bus_cut_list(nodes):

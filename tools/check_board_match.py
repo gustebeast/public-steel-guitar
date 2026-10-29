@@ -40,8 +40,8 @@ import sys
 
 TOL = 0.005                     # mm: below this the two are the same number
 # no BODY to clear, so the CAD carries none of them: the connector is modelled properly
-# by cadkit, and the rest are bare copper (board_geom.HEIGHT has them at 0).
-NO_BODY = ("J1", "TP1", "TP2", "TP3", "TP4", "JP1")
+# by cadkit (both of them since 2026-10-19), and the rest are bare copper (board_geom.HEIGHT has them at 0).
+NO_BODY = ("J1", "J2", "TP1", "TP2", "TP3", "TP4", "JP1")
 
 
 def _elec():

@@ -61,13 +61,13 @@ A part that is not in this file is not on a board, whatever another document say
 | `470R` | C25117 | 2 | output_panel |
 | `49k9 1%` | C25897 | 2 | motor_ctrl, pi_cap |
 | `4k7` | C25900 | 26 | lever_sensor, output_panel, optical |
+| `52271-2079` | C588186 | 1 | ui_board |
 | `56k` | C25796 | 2 | output_panel |
 | `5k1` | C25905 | 6 | output_panel, optical |
 | `68R` | C163455 | 4 | pi_cap |
 | `7k68 1%` | C25919 | 1 | fret_led_key |
 | `9k09 1%` | C274897 | 1 | optical |
 | `AD8402ARZ10` | C578716 | 1 | output_panel |
-| `AFA07-S20FCA-00` | C262724 | 1 | ui_board |
 | `AO3400A` | C20917 | 2 | output_panel, optical |
 | `AP2112K-3.3TRG1` | C51118 | 12 | lever_sensor, output_panel |
 | `AP2114H-3.3TRG1` | C150716 | 1 | optical |
@@ -376,7 +376,7 @@ A part that is not in this file is not on a board, whatever another document say
 |--:|---|---|---|---|
 | 1 | C1 | `100nF` | C_0402_1005Metric | C307331 |
 | 1 | C2 | `10uF/25V` | C_0805_2012Metric | C15850 |
-| 1 | J1 | `AFA07-S20FCA-00` | JUSHUO_AFA07-S20FCA-00_1x20-1MP_P1.0mm_Horizontal | C262724 |
+| 1 | J1 | `52271-2079` | Molex_52271-2079_1x20-1MP_P1.0mm_Horizontal | C588186 |
 | 1 | J2 | `PZ1.27-2x8P` | PinHeader_2x08_P1.27mm_Horizontal | C22438114 |
 | 7 | R1-R7 | `10k` | R_0402_1005Metric | C25744 |
 | 1 | SW1 | `RKJXT1F42001` | Alps_RKJXT1F42001 | C160841 |

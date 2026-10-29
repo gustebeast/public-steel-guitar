@@ -47,7 +47,9 @@ LCSC = {
     "B4B-PH-K-S": "C131334",        # B4B-PH-K-S(LF)(SN) -- motor_ctrl J4, the USB lead; 110k stock
     "S6B-PH-SM4-TB": "C265405",     # S6B-PH-SM4-TB(LF)(SN) -- pi_cap J2, the Pi's 5 V in; 5,510 stock
     "S4B-XH-A": "C157925",          # S4B-XH-A(LF)(SN), through-hole side entry -- pi_cap J6 (foot drop)
-    "S8B-PH-SM4-TB": "C265121",     # 8-way side-entry PH, the 11 lever/pedal J1
+    "S4B-PH-K-S": "C157926",        # S4B-PH-K-S(LF)(SN), 4-way THT side-entry PH: the 11
+                                    # lever/pedal J1 + J2 (bus in / out; were one S8B-PH-SM4-TB,
+                                    # C265121, until 2026-10-19). 39,976 in stock that day.
     "S4B-PH-SM4-TB": "C265102",     # 4-way side-entry PH: motor_ctrl J2/J6 (bus B,
                                     # split so each half unplugs from under the
                                     # instrument). Same family as the 8-way above.
@@ -181,9 +183,10 @@ LCSC = {
                                     # DigiKey's listing for the same part is 0 in stock
                                     # at $9.22 and describes it as "non-continuous",
                                     # which is wrong -- see the note in BOM.md.
-    "AFA07-S20FCA-00": "C262724",   # JUSHUO 20-way 1.0 mm FFC socket, bottom contact,
-                                    # 2.5 high: the display's ribbon (2026-10-19, in
-                                    # place of the 1x20 header C2905493). 9,681 in stock.
+    "52271-2079": "C588186",        # Molex 20-way 1.0 mm FFC socket, bottom contact,
+                                    # 3.0 high: the display's ribbon (2026-10-23, in place
+                                    # of JUSHUO AFA07-S20FCA-00 C262724, which has no
+                                    # published current rating). 5,590 in stock.
 }
 # ── EVERY PASSIVE, BY (VALUE, FOOTPRINT) ──────────────────────────────────────────────
 # These rows used to go to the fab with no part number -- "a generic passive, chosen at

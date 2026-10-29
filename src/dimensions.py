@@ -681,20 +681,25 @@ TEE_WALL_OVER   = 1.2       # seat walls stand this far over the board's top fac
 # its placements against these, so the CAD draws the parts where the fab places them).
 TEE_TERM_R      = (-10.5, 6.2, 1.6, 0.8, 0.55)
 TEE_TERM_SW     = (1.0, 6.3, 5.4, 2.88, 2.5)    # DSHP01TSGER: body 5.4 x 2.88, 2.30 +0.20 tall
-# ⚠⚠ DEFERRED -- THIS 70 IS NOT THE PART, AND A GREEN GATE DOES NOT MEAN THE MOTOR FITS OR
-# WIRES (2026-10-01; owner: LEAD; blocked on ONE MEASURED MOTOR). The SERVO42D MT we buy is
-# a 40 mm motor (makerbase3d listing) with a ~11 mm driver behind it: ~51, not 70. It also
-# has things the box below does not -- a coil plug ~5 mm proud of one side, and power and
-# CAN on SCREW TERMINALS on two opposite edges, which in the only rotation that drops into
-# a bay face the bay's side walls with 0.05 mm. Every driver dimension is scaled off
-# photographs (+-2 mm), so nothing here or in motor_bank / chassis changes until a unit is
-# measured. The study and the candidate arrangement: docs/servo42d-fit.md; the detailed
-# standalone model: src/servo42d.py (not in the build).
-MOTOR_BODY_L    = 70.0      # faceplate -> back of the driver box (the SERVO42D's 42.3 motor
-                            # plus its driver stack). The pocket and the CAN pigtail's exit
-                            # both hang off it; asserted against components.motor in build.py
-MOTOR_BODY_LEN  = 48.0      # body + PCB run ≈ 70 mm along Y (toward −Y)
-MOTOR_PCB_LEN   = 22.0
+# THE MOTOR, MEASURED (user, 2026-10-20, a delivered SERVO42D): 53.4 faceplate to the back of
+# its driver, the can 42.0 square and the driver's cover 42.5, 51.1 tall counting the coil
+# lead's loop over the top.
+# The detailed model and where each of its numbers comes from: src/servo42d.py (the build
+# draws every motor with it). It replaced a 70 mm placeholder; the bays, the motor board
+# behind string 1 (MCTRL_Y1) and the CAN pigtails' exits all hang off MOTOR_BODY_L.
+MOTOR_BODY_L    = 53.2      # faceplate -> back of the driver's RIBS, the longest line (user,
+                            # 2026-10-20, re-measured: the first 53.4 was this, read roughly)
+MOTOR_LOWER_L_MEASURED = 51.6   # ...but BELOW the ribs the back is only the two lower back-plate
+                            # screw heads, 51.6 -- which is all the bay's low back wall sees
+MOTOR_SQ_MEASURED = 42.0    # the CAN across its flats (user, 2026-10-20)
+MOTOR_DRIVER_SQ_MEASURED = 42.5   # the MKS driver cover behind it, 0.5 bigger: the widest part.
+                            # MOTOR_SQ stays the 42.3 nominal the bank's pitch is built on, so
+                            # the bay's MOTOR_CLR is 0.55 round the can and 0.30 round the cover
+MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil lead's loop
+# THE BODY'S -Y DEPTH IS NOT THE MOTOR'S ANY MORE. The -Y rail (chassis.Y_LO) was set off a
+# 70 mm motor; the measured one is 16.6 shorter, and that depth is the lead's to take back or
+# keep -- legs, deck and leg stations all hang off the rail. Until then it stays put.
+BODY_MOTOR_RESERVE = 70.0
 MOTOR_SHAFT_D   = 5.0
 NEMA17_BOLT_SQ  = 31.0
 NEMA17_PILOT_D  = 22.0
@@ -737,10 +742,9 @@ MOTOR_END_CLR   = MIN_WALL_2P + 2 * MOTOR_CLR   # 2.4 from the endplate's face t
 MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
                    - (N_STRINGS - 1) * MOTOR_X_STEP)   # 181.95: the nearest motor's -X offset
 # THE STANDING MOTOR BOARD'S PLACE IN THE FLOOR, pinned here because three modules that
-# cannot import electronics need it: the chassis (its mortises keep off the board's floor
-# port), motor_bank (string 1's back stop IS the board's +Y wall) and leg_stack (the -X/-Y
-# body adapter is relieved under the board's bottom edge). build.py asserts all of it
-# against the placed board.
+# cannot import electronics need it: the chassis (the board's floor port), motor_bank (string
+# 1's back stop IS the board's +Y wall) and wiring. build.py asserts all of it against the
+# placed board.
 #   Y1  the board's +Y edge: string 1's motor back, less its fit, ONE two-bead wall and the
 #       board's own fit. That wall is the motor's back stop and the board's locating wall.
 #   Y0  ...less the board's routed length.
@@ -748,9 +752,9 @@ MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
 #   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
 #       reached from outside), before the plugs.
 MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
-MCTRL_Y1        = string_y(0) - 14.0 - MOTOR_BODY_L - MOTOR_CLR - MIN_WALL_2P - MCTRL_FIT   # -43.55
+MCTRL_Y1        = string_y(0) - 14.0 - MOTOR_BODY_L - MOTOR_CLR - MIN_WALL_2P - MCTRL_FIT   # -26.95
 MCTRL_L         = 55.0           # routed outline, along Y
-MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -98.55
+MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -81.95
 MCTRL_X         = (-606.5, -591.7)
 MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
 MCTRL_DIP       = 2.0
@@ -798,7 +802,7 @@ def motor_pos(i: int):
 # stopped by the nut long before the clamp -- but one travel is one number in the
 # firmware, one plate height, and the same range on every string.
 BELT_PER_MM     = PULLEY_TEETH * BELT_PITCH / SCREW_PITCH      # 14 of belt per mm of nut
-BELT_CLAMP_L    = 49.2      # the clamp along the belt, fully loose. MEASURED off
+BELT_CLAMP_L    = 51.2      # the clamp along the belt, fully loose. MEASURED off
                             # belt_tensioner's solids; build.py asserts it still is.
 CLAMP_END_CLR   = 5.0       # belt left between the clamp and each pulley flange
 BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
@@ -810,7 +814,7 @@ BELT_RUN_MIN    = min(math.hypot(motor_pos(i)[0] - screw_x(i),
 # docs/belt-clamp-travel.md). The in-line M3 clamp (belt_tensioner, 2026-10-05) is that
 # slim: measured there, every string's span is limited by the ends of its run alone.
 # ...AND NO MORE THAN IS WANTED. With the bank against the endplate the shortest run is
-# 194.0 and this sum allows 9.53; the nut does not get travel it has no use for.
+# 194.0 and this sum allows 8.70; the nut does not get travel it has no use for.
 CARRIAGE_TRAVEL = min(TRAVEL_WANT, (BELT_RUN_MIN - BELT_CLAMP_L - PULLEY_FLANGE_OD
                                     - 2 * CLAMP_END_CLR) / BELT_PER_MM)   # 8.35
 NUT_BOT_MIN     = NUT_TOP_Z - CARRIAGE_TRAVEL - NUT_H          # -26.17, the FLOOR: the
@@ -878,11 +882,43 @@ LEVER_MORT_W = XBAR - 2 * MIN_WALL_2P        # 7.2 across the octagon mortise (t
 # left on each side. The pitch is then XBAR on the nose -- each mortise gets back the full
 # rib section the joint was sized against, and consecutive ribs simply touch.
 LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4
-# THE BOTTOM PRISM'S THICKNESS is NOT the same number (user, 2026-09-16). The octagon mortise
-# reaches 8.9 up from the bed, so a floor of XBAR left only 1.5 of cap over each slot -- under
-# the two-bead rule, and the joint itself is already bottomed out at 1.6, so the cap is where
-# the tenth of a millimetre has to come from. chassis asserts the cap against the real solids.
-BOTTOM_T     = XBAR + 0.1                        # 10.5
+# THE LEVER MOUNT JOINT: the fit-tested standing pair (user, 2026-10-16). knee_lever builds it;
+# it is defined here because the bottom prism below is sized from it.
+# Both halves print -Z->+Z with the slide (+Y, the knee-DEPTH adjustment) across the layers:
+# joinery step 1's LAYER/LAYER STANDING pair, sized up to this site (plate 8 A: neck 3.2, head
+# 5.6, straight sides 1.6, the tip cut flat 1.2 under the peak, a root chamfer, end relief in
+# the socket only). Plate 8 A1, 0.20: no wobble, slight friction -- picked because a set of
+# them that still slides at full length is the strongest mount; A2 (0.25) is the fallback the
+# full-length coupon decides on. One joint SIZE, two LENGTHS: short TENONS on the housing (its
+# own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
+# ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
+# until step 4 moves it into cadkit.
+LEVER_MORT_CLR = 0.275                   # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
+                                    # already too tight on the mini seam plate, user 2026-10-16);
+                                    # MINI ROUND 2: 0.25 "still a touch tight" -> half a step
+LEVER_FIT = {"neck": 4 * BEAD, "head": 7 * BEAD, "side": 2 * BEAD, "root": True,
+             "trunc": 1.2}
+# THE BOTTOM PRISM'S THICKNESS: the mount mortise's roof plus a two-bead cap (user,
+# 2026-10-16: "set it based on the mortise ceiling plus 1.6", not a constant). It was XBAR + 0.1
+# (10.5), sized for the old octagon mortise's 8.9; the fit-tested joint's roof is lower and
+# nothing re-derived the floor -- the user measured 2.889 of cap. Read off the BUILT joint (its
+# cavity's top, end relief and all), so a joint change moves the floor with it. Not rounded to
+# a grid: it is a depth the joint dictates, not a wall (check_beads exempts it), and any
+# rounding up is cap the user just asked to lose. A module __getattr__,
+# because fit_plate2 imports this module: computed on first use, after both are loaded.
+# chassis asserts the cap against the real solids.
+_DERIVED = {}
+
+
+def __getattr__(name):
+    if name == "BOTTOM_T":
+        if name not in _DERIVED:
+            from src.test import fit_plate2 as _FIT
+            _ten, _cav, _S = _FIT.halves("up", "up", LEVER_MORT_CLR, 12.0, 0.0, LEVER_MORT_W,
+                                         size=LEVER_FIT)
+            _DERIVED[name] = _cav.val().BoundingBox().zmax + MIN_WALL_2P
+        return _DERIVED[name]
+    raise AttributeError("module %r has no attribute %r" % (__name__, name))
 
 
 
@@ -1005,12 +1041,9 @@ def floor_block_y(station_x: float) -> tuple:
     if hys:
         lo.append(min(hys) - hs_half)
         hi.append(max(hys) + hs_half)
-    # ...and a THIRD at the keyhead end: the standing motor board's floor port (MCTRL_*). The
-    # board passes through the floor on its own two-bead-walled port, so a mortise in its X
-    # band stops a wall short of it.
-    if MCTRL_X[0] - LEVER_MORT_W / 2 < station_x < MCTRL_X[1] + LEVER_MORT_W / 2:
-        lo.append(MCTRL_Y0 - MCTRL_PORT_CLR - MIN_WALL_2P)
-        hi.append(MCTRL_Y1 + MCTRL_PORT_CLR + MIN_WALL_2P)
+    # (The standing motor board's floor port was a third family while a 70 mm motor pushed
+    # the board out over the -Y foot. The measured 53.4 one put it 15 clear of the feet, and
+    # the mortises only run over the feet there: the family stopped changing any run, 2026-10-20.)
     return (min(lo), max(hi)) if lo else None
 MORT_FULL_Y1 = RAIL_HI_INNER_Y + WALL_THICKNESS + 1.0     # out past the +Y rail's outer face
 

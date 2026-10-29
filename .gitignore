@@ -24,3 +24,4 @@ skidl_REPL.*
 elec/fonts/
 .webview/
 *.3mf
+.route-bbox.json

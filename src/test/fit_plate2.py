@@ -361,7 +361,15 @@ def make_pair(name, tenon, socket, c, S, host_w, top, g=None, relief="both", L=N
         # runs -- so the mouth corner is still the fillet's true offset, and the rest of the
         # face comes down to g
         n_root = None
-        if g < c - 1e-9:
+        # NO POCKET ON THE BED (user, 2026-10-16: it printed as a true overhang at the bed --
+        # a box pocket hung the second layer ~1.3 over air, and no chamfered one can avoid a
+        # flat: the fillet's c-offset lies 0.33 outside the root chamfer's 45 line, parallel to
+        # it). A mouth-up socket with a root chamfer runs that chamfer's face straight to the
+        # bed instead, 45 degrees all the way. Off the tenon's root fillet that leaves c from
+        # the fillet's tangent (z ~0.5) up, closing to 0 only ON the bed line, where the seat
+        # faces meet flush anyway.
+        bed_pocket = g < c - 1e-9 and socket == "up" and S.get("root")
+        if g < c - 1e-9 and not bed_pocket:
             n_root = S["n"] + S["root"] + rt[1] + 0.05   # a hair past the fillet (and any root
                                                          # chamfer it runs off): room for the full arc
             cell = cell.cut(F._box(-1.0, L + 1.0, -n_root, n_root, -1.0, c - g))
