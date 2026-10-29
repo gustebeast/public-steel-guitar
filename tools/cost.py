@@ -369,6 +369,10 @@ def main(argv=None):
                      p_each * in_order, fab, asm, fees))
     per_order_asm = (setup + stencil) * designs
     boards_total = (parts_usd + fab_usd + asm_usd + per_order_asm + fees_usd) / ORDER_INSTRUMENTS
+    # Import tariff on the boards: the one tariff actually billed (boards.tariff_note).
+    tariff_pct = float(prices["boards"].get("tariff_pct", 0.0))
+    boards_tariff = boards_total * tariff_pct / 100.0
+    boards_total += boards_tariff
     notes.append("QUOTED FEES are $%.2f of the PCB line: extended-part fees, the Standard "
                  "assembly tier on three boards, one via charge -- boards.order_fees. "
                  "Boards with no entry there (%s) have not had theirs entered."
@@ -381,8 +385,10 @@ def main(argv=None):
                  "cliff on small boards at high quantity -- see boards.rails_note, it is "
                  "worth more than this whole line on can_tee and lever_sensor."
                  % ((asm_usd + per_order_asm) / ORDER_INSTRUMENTS, boards_total))
-    groups.append(("PCBs: parts + fab + assembly (%d instruments / %d)"
-                   % (ORDER_INSTRUMENTS, ORDER_INSTRUMENTS), boards_total))
+    groups.append(("PCBs: parts + fab + assembly + %.1f%% tariff (%d instruments / %d)"
+                   % (tariff_pct, ORDER_INSTRUMENTS, ORDER_INSTRUMENTS), boards_total))
+    notes.append("PCB TARIFF is $%.2f of the PCB line: %.1f%% on parts + fab + assembly + "
+                 "fees -- boards.tariff_note." % (boards_tariff, tariff_pct))
 
     # ---- purchased ----------------------------------------------------------
     for label, key in (("Mechanical hardware", "mechanical"),
@@ -421,22 +427,13 @@ def main(argv=None):
             landed_partial.append(vend)
         landed_usd += sum(v for v in got if v is not None)
         landed_seen.append(vend)
-    # Duty that a vendor does NOT collect at checkout is real money and an unknown
-    # amount of it. It is kept OUT of the total -- a bound is not a measurement --
-    # and printed as its own worst case underneath, so it cannot be quietly forgotten.
-    exposure = sum(float(e["tariff_unpriced_upper_usd"])
-                   for k, e in prices.get("landed", {}).items()
-                   if not k.startswith("_") and e.get("tariff_unpriced_upper_usd"))
-    exposure /= ORDER_INSTRUMENTS
     landed_usd /= ORDER_INSTRUMENTS
     groups.append(("Shipping + sales tax + duty (%d vendor%s measured)"
                    % (len(landed_seen), "" if len(landed_seen) == 1 else "s"), landed_usd))
     notes.append("The LANDED line is %d measured vendor checkout(s): %s. It is a FLOOR. "
                  "Nobody has measured freight or tax on the PCTG and TPU filament or on the listing-priced "
                  "mechanical hardware (~$213/instrument), most of which records no vendor "
-                 "at all. The duty on the China-shipped motors is not in it either: it is "
-                 "a BOUND, printed as the worst-case line under the total -- see "
-                 "landed.makerbase_motors and missing.landed_gaps.%s"
+                 "at all -- see missing.landed_gaps.%s"
                  % (len(landed_seen), ", ".join(landed_seen),
                     ("  PARTIAL: " + ", ".join(landed_partial)) if landed_partial else ""))
 
@@ -450,10 +447,6 @@ def main(argv=None):
     print("-" * (width + 12))
     total = sum(u for _, u in groups)
     print("%-*s  $%8.2f" % (width, "TOTAL", total))
-    if exposure:
-        print("%-*s  $%8.2f" % (width, "  + worst-case uncollected duty (a BOUND, see below)",
-                                exposure))
-        print("%-*s  $%8.2f" % (width, "TOTAL, worst case", total + exposure))
 
     if unpriced_all:
         n = sum(len(u) for _, u in unpriced_all)
