@@ -122,11 +122,11 @@ def access_blocked(i: int) -> bool:
                 return True
     return False
 
-# The block spans D.BRIDGE_BASE_X0..X1, +-BRIDGE_BASE_HALF (25.06) about BRIDGE_X: wide
+# The block spans D.BRIDGE_BASE_X0..X1 (-25.06..+23.43; the +X side has no teardrop apex): wide
 # enough for both screw rows. The arms, the fill band and the L-foot all span XLO..XHI.
 # XLO sits EP_TOP_CLR (0.4) +X of the rail end (CH.TP_EP_GX, derived as XLO - EP_TOP_CLR):
 # the consistent top-joint X-gap to the housing; the dovetail's locking foot stays captured.
-XHI  = D.BRIDGE_BASE_X1            # +X outer face (+25.06)
+XHI  = D.BRIDGE_BASE_X1            # +X outer face (+23.43)
 XLO  = D.BRIDGE_BASE_X0            # -X inboard face (-25.06)
 X1   = XHI                         # +X tip -- alias for the mechanism references
 ARM_X = XLO                        # arms span the FULL block in X: symmetric edge webs

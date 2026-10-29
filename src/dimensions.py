@@ -1235,6 +1235,14 @@ BRIDGE_BASE_HALF = (SCREW_ROW_DX
                     + max(_BRG_TEARDROP, NUT_HOLE_DX + _ROD_TEARDROP)
                     + MIN_WALL_2P)                             # 25.06
 BRIDGE_BASE_X0 = BRIDGE_X - BRIDGE_BASE_HALF        # -25.06  (-X face)
+# THE +X FACE IS NOT THE MIRROR OF THE -X ONE (user, 2026-10-29: "set the +x edge based on
+# 1.6mm beyond the holes we cut for the guide rods"). The part builds -X up, so every teardrop
+# APEX points -X: it is the near row's seat apex that sets the -X face above. On the +X side
+# every bore is a plain circle, and the furthest one out is the far row's guide-rod bore at
+# SCREW_ROW_DX + NUT_HOLE_DX + its radius (21.83; the far seat stops at 20.10). Two beads past it.
+_RIM_PX = max(SCREW_ROW_DX + NUT_HOLE_DX + (GUIDE_ROD_D + GUIDE_ROD_FIT) / 2,
+              SCREW_ROW_DX + (SUPPORT_BRG_OD + 0.2) / 2)
+BRIDGE_HALF_PX = _RIM_PX + MIN_WALL_2P                         # 23.43
 
 
 # THE BOTTOM'S OWN SPAN: the chassis floor runs END TO END of the chassis -- the two KEPT-SHELL
@@ -1291,7 +1299,7 @@ def lever_wall_x(x_target: float) -> float:
     x0 = lever_grid_x()[0] + LEVER_PITCH / 2
     return x0 + round((x_target - x0) / LEVER_PITCH) * LEVER_PITCH
 
-BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_BASE_HALF        # +23.1  (+X face)
+BRIDGE_BASE_X1 = BRIDGE_X + BRIDGE_HALF_PX          # +23.43  (+X face)
 
 
 # ─────────────────────────────────────────────────────────────────────────

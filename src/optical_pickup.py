@@ -733,7 +733,7 @@ Y_TAIL   = -(D.BRIDGE_ARM_OUT + WRAP_CLR)
 # MIN_WALL_2P inset was there to keep a printed wall outboard of the board; there is no
 # wall there -- the endplate simply ends -- so the inset bought nothing and cost 1.60 mm
 # of the +X band, which is now where the op-amps and their feedback grids live.
-TAIL_X1 = D.BRIDGE_BASE_X1                                    # 25.06, flush
+TAIL_X1 = D.BRIDGE_BASE_X1                                    # 23.43, flush
 # -X edge runs out to the STRIP's own -X edge. Sized off the LQFP144 instead (-18.40) the
 # two sections overlapped by just 1.60 in X, so the whole board hung on a 1.6 mm waist:
 # brittle, and hopeless for routing -- 20 analog channels + 10 LED drives + power all have
@@ -3516,7 +3516,7 @@ CONDUIT_XC = (BAND_X0 + D.BRIDGE_BASE_X1) / 2                 # centred in the e
 # would run out through XLO before it got there. Running the void out through the -X face
 # instead means material never resumes at all, every layer is a simple notch rooted on the
 # one below, and the cable arrives directly in the chassis interior where it needs to be.
-CONDUIT_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                 # 23.46, +X wall kept
+CONDUIT_X1 = D.BRIDGE_BASE_X1 - D.MIN_WALL_2P                 # 21.83, +X wall kept
 RUN_Z      = DECK_TOP - 16.0                                  # harness plane in the box
 CONDUIT_Z0 = RUN_Z - 4.75                                     # floor, half a bundle below
 
