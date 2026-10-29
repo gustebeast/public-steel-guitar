@@ -1642,16 +1642,17 @@ def output_panel():
 #      the instrument, not out the panel, and want cable room behind them.
 # ── REV (2026-10-29). R1 IS THE COPPER IN HAND (ordered as of 1c4fd301, 2026-10-13) and stays
 # buildable: OUTPUT_PANEL_REV=1 reproduces it exactly -- 66 deep, every part where it was,
-# the R1 snapshot of the THRU pair. R2 (the default) is 4.0 shallower, lost off the +Y edge
-# (lead, 2026-10-29: the narrowed body's -Y rail is set by this board's +Y edge staying
-# D.OP_PULLEY_CLR off string 10's screw pulley; 62 lets the rail in a further bead-plus).
+# the R1 snapshot of the THRU pair. R2 (the default) is 5.6 shallower, lost off the +Y edge
+# (lead + user, 2026-10-29: every side goes to its true limit; at standoff 12 the -Y rail is
+# string 10's motor back + MOTOR_INSTALL_CLR, -109.55, and from there to string 10's screw
+# pulley flange less OP_PULLEY_CLR leaves 60.5 -- so this board must not be what sets it).
 # The -Y edge is the rail fit and keeps every part's distance to it; the parts that lived
 # in the lost band move by R2_MOVES (authored frame), and the frame re-centres in y at the
 # bottom of this file the same way GROW_X re-centred x.
 REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
 assert REV in (1, 2), "OUTPUT_PANEL_REV is 1 (the board in hand) or 2"
 BOARD_L_R1 = 66.0
-BOARD_W, BOARD_L = 74.0, (BOARD_L_R1 if REV == 1 else 62.0)
+BOARD_W, BOARD_L = 74.0, (BOARD_L_R1 if REV == 1 else 60.4)
 SHRINK_Y = BOARD_L_R1 - BOARD_L         # 0 on R1; off the +Y edge on R2
 # ── -X GROWTH (2026-09-30). The audio section ran out of room: twenty-one TRS/gain parts
 # went in, every sweep ordering placed them legally, and every ordering left one part
@@ -2748,26 +2749,30 @@ BOARD_NOTES["tracks"] += [
 # frame (edges +-33). R2_MOVES are real moves in that frame, for the parts the lost band
 # held; then every y takes +SHRINK_Y/2, because the -Y edge (the rail fit) is the datum and
 # the laminate's centre moved -SHRINK_Y/2 with its +Y edge.
-# J5 AND J1 MOVE TOGETHER (lead, 2026-10-29): with J5 alone -3 a Neutrik NP2X (O14.5) at J5
-# cleared a 15 x 8 USB-C overmould at J1 by 0.18, and a O16 plug hit it; moved as a pair
-# the plug-to-plug gaps are R1's (2.31 worst), and J1's overmould still clears J6's plug.
-# THE REST WAS SEARCHED, NOT CHOSEN (2026-10-29): each group kept rigid -- so every bypass
-# stays where it was against its pin -- and moved by the smallest shift that clears every
-# courtyard by 0.25 (layout's air) and the rim by 0.5, groups in this order, against
-# courtyards read from the footprints placed exactly as layout.py places them.
-#   the ANALOG BAND goes down with J8; its -4.4 is set by the rim (C19 stood 0.14 off it
-#     on R1), not by a neighbour.
-#   the RELAY and its driver drop into the column J8's old K1 overlap left.
-#   J5's ROW (U7 -> R9 -> C1 -> J5 tip, D5 and R10 on that node) re-sat under the jack:
-#     C1 above U7, D5 and R10 beside C41; R9 0.9 down.
-#   C56 1.5 -X off J1's new corner. J2 1.0 down off the new +Y edge (its mouth rides -X).
+# J5 AND J1 GO DOWN TOGETHER (lead, 2026-10-29), so the plugs a player fits still clear each
+# other: J5 alone -3 left a Neutrik NP2X (O14.5) 0.18 from a 15 x 8 USB-C overmould at J1,
+# and a O16 plug hit it. At 60.4 J5 has to go -4.6 (the rim), and J1 can only go -3.5: at
+# -4.6 it lands 0.76 into J10, whose declared 24 V copper is pinned to it. -4.6 / -3.5
+# leaves the plugs 1.24 apart at the worst (O16 against a 15 x 8 overmould), 3.48 for an
+# NP2X and a 12.35 x 6.5 one; R1 had 2.31 / 4.53.
+# THE REST WAS SEARCHED, NOT CHOSEN: each group kept rigid -- so every bypass stays where it
+# was against its pin -- and moved by the smallest shift that clears every courtyard by 0.25
+# (layout's air) and the rim by 0.3, groups in this order, against courtyards read from
+# the footprints placed exactly as layout.py places them (J5, J1 and J2 keep their x: the
+# panel and the -X edge set it).
+#   J5's neighbours: the pot's reset network (R38, C62) and C41 step out from under it.
+#   J8 and the ANALOG BAND go down the 5.6 together (the band 0.2 more: the rim at C19).
+#   the RELAY and its driver drop into the column J8's old corner left.
+#   J5's output chain (U7 -> R9 -> C1 -> J5 tip, D5 and R10 on that node) re-sits round U7.
+#   C56 1.5 -X off J1's corner. J2 2.3 down off the +Y edge (its mouth rides -X).
 _ANALOG = "U8 U2 C19 C59 C24 R8 C13 C22 C37 C20 C21 C23 C38".split()
 _RELAY = "K1 Q1 D4 R5 R36 R28 R15".split()
 R2_MOVES = {} if REV == 1 else dict(
-    {"J8": (0.0, -4.0), "J5": (0.0, -3.0), "J1": (0.0, -3.0)},
-    **{_r: (-0.2, -4.4) for _r in _ANALOG}, **{_r: (-1.6, -2.7) for _r in _RELAY},
-    C1=(-6.9, 3.7), D5=(0.0, -4.7), R9=(0.0, -0.9), R10=(0.0, -0.5),
-    C56=(-1.5, 0.0), J2=(0.0, -1.0))
+    {"J5": (0.0, -4.6), "J1": (0.0, -3.5), "J8": (0.0, -5.6)},
+    **{_r: (-0.2, -5.8) for _r in _ANALOG}, **{_r: (-3.5, -4.1) for _r in _RELAY},
+    R38=(0.0, -2.2), C62=(1.2, -4.6), C41=(0.9, -0.6),
+    C1=(-6.9, 3.7), D5=(-6.0, -4.6), R9=(-4.4, -5.8), R10=(-2.2, -3.4),
+    C56=(-1.5, 0.0), J2=(0.0, -2.3))
 for _ref, (_dx, _dy) in R2_MOVES.items():
     _x, _y, _rot = BOARD_NOTES["placements"][_ref]
     BOARD_NOTES["placements"][_ref] = (_x + _dx, _y + _dy, _rot)

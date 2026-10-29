@@ -65,17 +65,21 @@ cutting into the chassis. For R2 we should add an action item to move J7 +z and 
 
 ## R2 BACKLOG, output_panel (user via the lead, 2026-10-20) -- NOT the current rev, which fabs as is
 
-**R2-0. 66 -> 62 deep, off the +Y edge (lead, 2026-10-29) -- IN PROGRESS.** `OUTPUT_PANEL_REV`
-(default 2) in `elec/output_panel.py`; `OUTPUT_PANEL_REV=1` rebuilds the board in hand exactly
-(checked: board.json identical but for quality-note text), and `elec/rev1/` keeps its geometry.
-- Plug check first: J5 alone -3 left a Neutrik NP2X (O14.5) 0.18 from a 15 x 8 USB-C overmould at
-  J1, and a O16 plug hit it. So J5 and J1 both go -3 and the plug gaps stay R1's (2.31 worst).
-- R2_MOVES: J8 -4, J5 -3, J1 -3, and searched rigid-group shifts for the rest (analog band
-  -0.2/-4.4, relay group -1.6/-2.7, C1, D5, R9, R10, C56, J2 -1.0). Courtyard oracle
-  (placed as layout.py places them): nothing new under 0.25. Layout runs clean.
-- THRU (J1 -> J2) is out of R2's frozen copper: re-freeze it with `elec/freeze_pairs.py`
-  from a board that passes verify.py.
-- Route profiled on a copy (scratchpad, `cadkit/pcbflow/finish.py` called directly).
+**R2-0. 66 -> 60.4 deep, off the +Y edge (lead + user, 2026-10-29) -- IN PROGRESS.** Every side
+to its true limit: at standoff 12 the -Y rail is string 10's motor back (-107.95) + MOTOR_INSTALL_CLR
+= -109.55 (the Pi's Xilaghy plug, -101.19, is 6.4 inside it and never binds), and rail + 0.3 to
+string 10's pulley flange - 0.5 (-48.75) is 60.5. 62 would have held the rail 2 beads out.
+`OUTPUT_PANEL_REV` (default 2) in `elec/output_panel.py`; `OUTPUT_PANEL_REV=1` rebuilds the board
+in hand exactly (board.json identical but for quality-note text), and `elec/rev1/` keeps its geometry.
+- Plugs: J5 -4.6 (the rim), J1 -3.5 (at -4.6 it lands 0.76 in J10, whose 24 V copper is pinned).
+  Worst plug gap (O16 vs a 15 x 8 overmould) 1.24, NP2X vs a normal C plug 3.48 (R1: 2.31 / 4.53).
+- R2_MOVES: searched rigid-group shifts (scratch solver on courtyards placed as layout.py does):
+  J8 + analog band -5.6/-5.8, relay group -3.5/-4.1, R38, C62, C41 out from under J5, the
+  output chain round U7, C56, J2 -2.3. Nothing new under 0.25.
+- `elec/output_panel.frozen.r2.json` = R1's HUB pairs; THRU re-frozen from the first passing
+  60.4 board (`OUTPUT_PANEL_REV=2 kicad-python elec/freeze_pairs.py <board>`, y offset 2.8).
+- Profile: the 62 trial routed 1/0 and 2/0 on a copy, 14-17 min a route.
+- Submit only after branner's standoff 12 lands on main, rebased onto it (lead).
 - ⚠ R2-1 below (two RJ45s, ~16 x 21 each) wants MORE board; it was written before the
   shrink. Decide it against the 62 before placing anything.
 
