@@ -218,13 +218,17 @@ def stack() -> cq.Workplane:
 
 
 def shaft() -> cq.Workplane:
-    """Ground steel, from the face to SHAFT_L out, its D flat (MOTOR_SHAFT_FLAT across, the
-    last MOTOR_SHAFT_FLAT_L of it) facing +Z. The part inside the can is not drawn."""
+    """Ground steel, from the face to components.MOTOR_SHAFT_CUT_L out -- AS CUT (user,
+    2026-10-29); it is bought SHAFT_L long -- its D flat (MOTOR_SHAFT_FLAT across, starting
+    SHAFT_L - MOTOR_SHAFT_FLAT_L off the face, the bought shaft's last MOTOR_SHAFT_FLAT_L)
+    facing +Z. The part inside the can is not drawn."""
+    from .components import MOTOR_SHAFT_CUT_L as cut_l
     r = D.MOTOR_SHAFT_D / 2.0
     z0 = D.MOTOR_SHAFT_FLAT - r                      # the flat's height over the axis
-    flat = box_at(2 * r + 1.0, D.MOTOR_SHAFT_FLAT_L + 1.0, r + 1.0 - z0,
-                  y=SHAFT_L - (D.MOTOR_SHAFT_FLAT_L - 1.0) / 2.0, z=(z0 + r + 1.0) / 2.0)
-    return cyl_y(D.MOTOR_SHAFT_D, SHAFT_L, y0=0.0).cut(flat)
+    f0 = SHAFT_L - D.MOTOR_SHAFT_FLAT_L              # where the flat starts
+    flat = box_at(2 * r + 1.0, cut_l - f0 + 1.0, r + 1.0 - z0,
+                  y=(f0 + cut_l + 1.0) / 2.0, z=(z0 + r + 1.0) / 2.0)
+    return cyl_y(D.MOTOR_SHAFT_D, cut_l, y0=0.0).cut(flat)
 
 
 def coil_plug() -> cq.Workplane:

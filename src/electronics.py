@@ -134,7 +134,7 @@ BD_T = 1.6
 # board to -503), so the board's +Y edge stops D.PI_MOTOR_CLR off that motor's driver,
 # standing high enough to pass over the bay's back wall (PI_STANDOFF). String 2's back wall,
 # over the rest of the edge, is 6.8 further +Y. The pose follows the motors wherever
-# MOTOR_SETBACK puts them, and the -Y rail follows the plug (dimensions.PI_PLUG_Y0) -- the
+# MOTOR_PULLEY_STANDOFF puts them, and the -Y rail follows the plug (dimensions.PI_PLUG_Y0) -- the
 # user will not have the rail cut for it.
 from . import motor_bank as _MB_POSE                                    # noqa: E402
 PI_MOTOR_I = D.PI_MOTOR_I
@@ -418,7 +418,7 @@ JACK_TIP = D.BRIDGE_BASE_X1                          # the endplate's +X outer f
 # Fit clearance between the board and the plastic it registers against -- used both for
 # the board's setback behind the panel and for the recess the endplate cuts around it.
 # 0.3 is this project's usual printed-to-rigid fit (see pcb_cradle's clr default).
-OP_PANEL_CLR = 0.3
+OP_PANEL_CLR = D.OP_PANEL_CLR             # (in dimensions: motor_bank's rail reads it)
 # THE PANEL IN FRONT OF THE OUTPUT BOARD IS 1.6, NOT 4.0 (user, 2026-09-21: "the board is
 # also 4mm recessed from the endplate +x wall ... make the endplate thinner there so it's
 # closer to flush"). The board's placements are built to the same two numbers --
@@ -881,8 +881,9 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # chassis' build direction is a wall that stops and starts again in mid-air: an overhang,
     # for a cable that does not go that way -- this board's plugs are on its face and its
     # bottom edge. The -Y wall is one column now, like the +Y one.
-    cr = _frame(bw, bl, None, slide_in_x=True, harness_w=0.0,
-                post_h=MCTRL_POST_H, open_down=True, root_d=4 * D.BEAD)
+    # ⚠⚠ THE MOTOR CONTROLLER'S FRAME IS GONE (user, 2026-10-29) -- src/mctrl_retention.py
+    # holds that board now: edge guides it slides down, no 45 deg leans, every guide clear of
+    # the whole drop. Fused by build.py beside these. The notes below are its history.
     # ⚠ AND THE HEAD NEEDS ITS OWN HOLE, exactly as the Pi's does 50 lines below. The boss
     # stands BESIDE the board, and the locating wall rises past the board's top face at
     # that same y -- so the button head, which seats on the board top and laps its edge,
@@ -900,7 +901,6 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # touches is chassis structure, not the cradle. y -48.30..-48.10 is a 0.2 mm sliver on
     # one side of the screw's circle, i.e. a flat face it just crosses. Not chased further
     # for 0.72 mm3; see docs/bronner-work-items.md. Cutting this frame cannot fix it.
-    mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
     # ⚠⚠ THE PI'S CRADLE IS GONE, AND IT IS NOT A REGRESSION -- THE PI LEFT THE TRAY
     # (2026-09-29). What stood here was a tray `_frame` with a root into the 3 mm plate,
@@ -918,9 +918,7 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # the two fasteners were never in the same solid. With no Pi cradle in the bay there is
     # nothing for it to bury itself in, so the `_mtx`/`_mty` clearance cut that compensated
     # for it is gone too.
-    if not standing:
-        return mc
-    out = stand(mc)
+    out = None
     # ⚠ NOTHING MAY LEAN INTO A BOARD'S COMPONENTS (user, 2026-09-29: "on the +y side of
     # the pi the retention is clipping into the pi's components"). They were right, and
     # NOTHING IN THE PROJECT COULD SEE IT: cradle-to-board contact is a designed contact,
@@ -937,7 +935,6 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # ⚠ The cut is EXACT, so the cradle and the board now TOUCH rather than interfere. The
     # boards are held by their M4 -- head lapping the edge, clamping to the boss -- plus
     # the single install direction; the lean adds what it can where the envelope allows.
-    out = out.cut(motor_ctrl())
     # ⚠ THE FLAT PI'S CRADLE JOINS HERE, AFTER THE POSE, AND THAT IS THE POINT. Everything
     # above is authored in the tray frame and stood up by stand(); pi_cradle() is authored in
     # the WORLD frame because the helper it uses is already flat. Unioning it after stand()
@@ -951,7 +948,9 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # mm3 at every position on every edge. Debug-only; it never changes a built part.
     import os as _os
     if not _os.environ.get("PI_NO_CRADLE"):
-        out = out.union(pi_cradle())
+        out = pi_cradle()
+    if out is None:
+        return None
     # ⚠ AND IT GETS THE SAME SUBTRACTION THE MOTOR BOARD DOES, for the reason the user gave
     # about the +Y side: cradle-to-board contact is a DESIGNED contact, so check_overlaps is
     # blind to it and the render is the only place it shows. pi_cap's underside sits exactly

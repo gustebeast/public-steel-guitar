@@ -20,7 +20,7 @@ run by finish.py). The comparison itself is cadkit's (`cadkit/board_check.py`): 
 routed part's body must land on CAD material, the board must not be mirrored, and the
 plate's cutouts must match the routed board's. It finds each board's pose for itself, so
 the only thing this file has to know is WHICH solid the assembly draws for each board --
-_cad() below -- plus the one check that is ours alone (the UI deck's spacing rule).
+_cad() below -- plus the one check that is ours alone (the UI deck's placement rule).
 """
 import os
 import sys
@@ -94,21 +94,21 @@ BOARDS = ("output_panel", "motor_ctrl", "optical", "lever_sensor", "can_tee",
 
 
 def _ui_rule_check():
-    """Does the UI board's routed switch land where the deck's spacing rule says?
+    """Does the UI board's routed switch land where the deck's placement rule says?
 
-    src/ui_panel.py owns the rule -- equal gaps between the deck's -Y edge, the knob,
-    the display's window and the fretboard border, and the same gap again to the panel's
-    +X seam -- and elec/ui_board.py places SW1 from it. Nothing downstream compares the
+    src/ui_panel.py owns the rule -- the inputs on the board's -Y edge, the board just off
+    the -Y rail (2026-10-29), the knob's +X edge level with the window's -- and
+    elec/ui_board.py places SW1 from it. Nothing downstream compares the
     two: the CAD draws the ROUTED switch, so if the placement drifted the deck's hole
     would drift with it, silently and consistently. This is the one check that reads
     both. It lives here rather than in ui_panel because ui_panel is on the generator's
     own import path, and an assertion there deadlocks the pipeline it is checking."""
     from src import ui_panel as UIP
     kx, ky = UIP.routed("SW1")
-    wx, wy = UIP.knob_x(), UIP.y_layout()[1]
+    wx, wy = UIP.knob_x(), UIP.input_y()
     off = max(abs(kx - wx), abs(ky - wy))
     if off > 0.05:
-        print("   ui_board: the routed switch is at (%.3f, %.3f) and the spacing rule "
+        print("   ui_board: the routed switch is at (%.3f, %.3f) and the placement rule "
               "wants (%.3f, %.3f) -- %.3f off" % (kx, ky, wx, wy, off))
         return 1
     # ...and the power button's: its cap's -X edge on the window's, its centre on the
@@ -125,7 +125,7 @@ def _ui_rule_check():
         bad += 1
     if bad:
         return bad
-    print("   ui_board: the routed switch is on the spacing rule (%.3f off), and the "
+    print("   ui_board: the routed switch is on the placement rule (%.3f off), and the "
           "cradle's four posts stand on bare board" % off)
     return 0
 

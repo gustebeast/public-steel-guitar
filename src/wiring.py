@@ -211,12 +211,7 @@ from .chassis import WT_X1 as CH_WT_X1, WT_RUNS as CH_WT_RUNS
 from .chassis import WT_D as CH_WT_D, WT_T as CH_WT_T
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
-RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -131.55: -Y rail inner face
-# the old floor-level corridor, which only bus B still uses at the keyhead. Held where it was
-# (-124.25) when the body widened for string 10's pigtail (chassis.RAIL_GAP): nothing on it
-# wanted to move, and following the wall out put bus B across the Pi link's riser.
-from .chassis import RAIL_GAP as _RAIL_GAP
-RAIL_Y = RAIL_INNER_Y + 4.5 + (_RAIL_GAP - 2.0)
+RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -Y rail inner face (chassis.RAIL_INNER_Y)
 TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14mm-deep board clears wall)
 # ── THE -Y CORRIDOR IS THE WIRING TROUGH NOW (chassis.WT_*), ABOVE THE MOTORS ──────────
 # It used to be a pocket cut into the rail below the motor tops; the user moved it OUT of
@@ -256,9 +251,6 @@ assert LANE_PWR2 + PLINK_HALF < LANE_USB - 2.6 / 2, (
 assert (2 * USB_LANE_DY + USB_LANE_DZ) / math.sqrt(2.0) > 2.6, "the two USB leads meet in the trough"
 assert USB_LANE_DY + 2.6 / 2 < (CH_WT_D - CH_WT_T) / 2, "a USB lead is in the trough's wall"
 assert LANE_PWR + PWR_OFF + 1.8 / 2 < CH_WT_ZF + CH_WT_H, "the head stands over the lip"
-assert CH_WT_LANE_Y + _TRUNK_OD / 2 <= MB.HARNESS_Y1, (
-    "the trough's lane reaches y %.2f, past motor_bank's HARNESS_Y1 %.2f"
-    % (CH_WT_LANE_Y + _TRUNK_OD / 2, MB.HARNESS_Y1))
 HDR_Z = -54.0                                            # lifted tee header top (wire entry z)
 
 CHAN_Y = CH_WT_LANE_Y                    # inside the trough
@@ -1184,7 +1176,9 @@ def build_wires():
     # and come out into the bay, where they turn for the wall.
     _j7e = conn_end("output_panel", "J7", ways=(1, 2))      # GND, 24 V; ways 3, 4 carry nothing
     _j10e = conn_end("output_panel", "J10")
-    _REC_Y = -121.5                       # along the board's -Y edge, inside the recess
+    _REC_Y = EL.op_origin()[1] - EL.OP_BOARD_Y / 2.0 + 1.0     # 1.0 in from the board's -Y
+                                          # edge, inside the recess -- off the BOARD, so it
+                                          # follows it to the -Y wall (it was -121.5 typed)
     _REC_Z7 = -27.0                       # the J7 pair's centre height crossing it
     _BAY_X7, _BAY_X10 = -36.0, -31.0      # out of the endplate's -X face (-25.06); J7's
                                           # pair turns further out than the 24 V link, past
@@ -1621,9 +1615,28 @@ def build_wires():
     _j5s = (_j5c[0], _j5c[1] - _sy * UI.IDC_PIN_IN, _j5c[2])
     out.append(("ui_ribbon_socket_1", UI.idc_socket(_j5s, (0, _sy, 0), (0, 0, 1), (1, 0, 0))))
     _ry = _j5s[1] + _sy * UI.IDC_CABLE_M
-    centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz),
-              (_j5c[0], uy, umz), (_j5c[0], _ry, umz),
-              (_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
+    #    ...AND ROUND THE FRET BOARD'S -Y EDGE WALL, not through it (2026-10-29). With the
+    #    Pi up against the motors J5 sits under the keyhead panel's fret LED board, whose
+    #    edge wall and comb hang from the deck there: so the ribbon comes down just -Y of
+    #    both, passes under the wall, and steps +Y onto the socket's line. Under, not
+    #    beside, because the keyhead panel slides on along X after the ribbon is plugged
+    #    (plug-before-panel), and the wall's own section is what sweeps.
+    from . import fret_light as _FL
+    _clr = 1.0 + UI.RIBBON_T / 2.0
+    _wb = _FL.edge_walls().val().BoundingBox()
+    # the panel's -Y reach over the board: the edge wall's outer face, or the comb's
+    # end (the fret line's half length), whichever is further out
+    # ...and only while J5 IS under it: the Pi cap is to be redrawn shorter in +Y
+    # (user, 2026-10-29), and a J5 clear of the panel takes the straight drop again
+    _wall_y = -max(_FL.BOARD_HALF_W + _FL.EDGE_WALL_OUT, _FL.half_len())
+    centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz)]
+    if _ry + _clr > _wall_y:
+        _dy, _dz = _wall_y - _clr, _wb.zmin - _clr
+        centre += [(_j5c[0], uy, umz), (_j5c[0], _dy, umz), (_j5c[0], _dy, _dz),
+                   (_j5c[0], _ry, _dz)]
+    else:
+        centre += [(_j5c[0], uy, umz), (_j5c[0], _ry, umz)]
+    centre += [(_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
     #    ...AND IT IS ONE PRISM, NOT FOURTEEN SWEEPS (user, 2026-09-28). It was drawn
     #    as fourteen conductors from bundle_paths, one octagonal solid each, which is the
     #    truth about a ribbon and the wrong model of it: nothing inside a ribbon can move

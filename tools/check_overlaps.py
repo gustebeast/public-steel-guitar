@@ -415,6 +415,15 @@ DEFERRED_RULES = (
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
+    # THE BODY NARROWED 16.8 / 15.2 (branner's -Y rail move, 2026-10-29). Two things were
+    # cleared by the user to clip the new wall until they are relocated, and nothing else:
+    # the UI board and the optical board's cables. The UI station has since been relocated
+    # inside the wall (brenner, 2026-10-29), so only the optical cables are left. OWNER
+    # bronner (optical cables).
+    (re.compile(r"^(wire_opt_\w+|optical_cable_usb)$"),
+     re.compile(r"^(chassis_\d+|top_plate(_color)?_\d+|wire_\w+)$"),
+     "user 2026-10-29: allowed to clip until relocated (optical board cables vs the "
+     "narrowed body)"),
     # CABLE ON CABLE (user, 2026-10-29: "Cables colliding with other cables is fine, not
     # worth sacrificing instrument width over"). Wires already pass each other above; this
     # takes in the cable-end BODIES too -- the UI ribbon's IDC sockets, the optical USB lead
