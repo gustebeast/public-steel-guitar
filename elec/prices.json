@@ -273,6 +273,8 @@
       "6": 0.17
     },
     "fab_min_usd": 2.0,
+    "tariff_pct": 30.5,
+    "tariff_note": "IMPORT TARIFF on every PCB line (parts + fab + assembly + fees), user 2026-10-29: the one tariff ever billed, $345.37 by DHL on the combined JLCPCB + LCSC bench shipment, = 30.5% of its $1,133.19 merchandise (landed.jlcpcb_boards). cost.py multiplies the PCB line by (1 + tariff_pct/100).",
     "assembly_setup_usd": 8.24,
     "assembly_per_joint_usd": 0.0017,
     "assembly_note": "setup and feeder are PER ORDER (so per ten instruments); joints are per board",
@@ -4973,10 +4975,9 @@
     ],
     "psu": "PRICED: Mean Well GST160A24-R7B at $47.70, see mechanical.psu_24v_160w. Its shipping, tax and tariff are NOT measured. The design question stands: one motor's slew current is unmeasured, and the firmware mover cap is set from it (bring-up item).",
     "wire": "PRICED PER SPOOL 2026-10-20, NOT PER INSTRUMENT: two gauges, six 25 ft spools of McMaster 8054T (22 AWG 8054T13 $3.91, 26 AWG 8054T11 $3.22; BOM.md, Hook-up wire: two gauges) cover one instrument above the floor. LENGTH IS MEASURED, tools/wire_total.py totals the drawn harness at 15.26 m per instrument over 115 runs (152.6 m for a ten-instrument order), which is the figure BOM.md never had. Its ~$35 estimate implies $2.29/m, far above hookup-wire rates -- almost certainly because you buy SPOOLS, not metres. Needs one product page and a spool-count, not another estimate.",
-    "tariff_uncollected": "The motors are the exposure. Makerbase ships them from China collecting no tax and no duty at checkout, so $339.90 of an order is NOT landed cost. JLCPCB by contrast ships DHL DDP, duty included. See boards/landed.",
     "pogo": "PRICED NOW: the four leg pogo boards (elec/leg_pogo.py) are in the PCB line -- fab, assembly and their spring-pin parts. What they do not have is a measured JLCPCB quote; at 10 x 17.6 and 13 x 19.3 mm they are well under the 70 mm rail threshold, so expect the same edge-rail penalty as can_tee if ordered by the hundred.",
     "pi_ram": "DECIDED, with a risk attached. The user chose the 1GB at $35 because it is the only Pi 4 that can actually be bought ten at a time (the 2GB is capped at one per customer across the trade). What is NOT settled is whether Dexed + USB gadget + USB host fits 1GB headless -- a design question with bronner. If it does not, the fallback is the 4GB at $100, +$65/instrument on today's line.",
-    "landed_gaps": "SHIPPING AND TAX ARE MEASURED FOR FIVE VENDORS, NOT FOR THE BOM. Measured: Lace, JLCPCB, Makerbase, PiShop, Tinmorry, plus Jameco's tariff. UNMEASURED and therefore missing from the landed line: every listing-priced mechanical item (~$213/instrument of screws, bearings, belts, springs, shaft -- no vendor is even recorded for most of them, so there is nothing to check), the PCTG and TPU filament, and the uncollected duty on the $339.90 of motors. Expect the landed line to grow, not shrink."
+    "landed_gaps": "SHIPPING AND TAX ARE MEASURED FOR FIVE VENDORS, NOT FOR THE BOM. Measured: Lace, JLCPCB, Makerbase, PiShop, Tinmorry, plus Jameco's tariff. UNMEASURED and therefore missing from the landed line: every listing-priced mechanical item (~$213/instrument of screws, bearings, belts, springs, shaft -- no vendor is even recorded for most of them, so there is nothing to check), the PCTG and TPU filament. Expect the landed line to grow, not shrink."
   },
   "parts_by_footprint_substring": {
     "_note": [
@@ -5290,11 +5291,7 @@
       "use that line: it was COMBINED with an LCSC parts order and shipped as one LCSC",
       "DHL Express parcel (not DDP), and DHL billed a $345.37 TARIFF after delivery",
       "(user, 2026-10-29) -- about 30.5% of the $1,133 combined merchandise. See",
-      "landed.jlcpcb_boards. Makerbase",
-      "ships the motors from Liwan District on 'free shipping' and collects no US tax and",
-      "no duty at checkout, so that one is NOT landed cost: whatever duty applies arrives",
-      "later, from the carrier. That is an exposure this file can name but cannot price,",
-      "because the rate is policy and changes.",
+      "landed.jlcpcb_boards; the 30.5% is applied to the PCB line as boards.tariff_pct.",
       "",
       "SALES TAX IS NOT ONE NUMBER. Lace's checkout computed 8.00% on $1,470; PiShop's",
       "computed 10.25% on $350, which IS the Berkeley headline rate. Same address, same",
@@ -5326,10 +5323,8 @@
       "tax_pct": 0.0,
       "ddp": false,
       "verified": "v",
-      "what": "100 x SERVO42D CAN MT (10 per instrument) = $3,399.00 -- free shipping (10-16 d); paid options 4PX $8.99, DHL/UPS $22.80, standard $3.99. NO tax and NO duty collected at checkout, so this is NOT landed cost. tariff_unpriced_upper_usd is a BOUND, not a measurement: 21.0% -- the one rate anybody has actually seen itemised, on Jameco's power supplies -- applied to the motor order, giving $713.79 an order or $71.38 an instrument. THE RATE IS BORROWED FROM THE WRONG COMMODITY CODE (8504.40 is power supplies; a driver-plus-motor is 8501.10 territory) and duty rates are policy, so treat it as an order of magnitude and the worst case, not a forecast. SEARCHED FOR A US-STOCKED ALTERNATIVE AND THERE IS NONE: the Amazon listings for this part are dropships -- 'SERVO42D CAN MB' at $53.71 is the DRIVER ALONE, no motor, ships in 6-7 days with delivery quoted three to four weeks out, i.e. from China anyway. So there is no way to buy this part with the duty already paid, and Makerbase direct stays the cheapest route even at the full borrowed rate ($41.13 landed worst case vs $53.71 for less hardware).",
-      "counted_in_unit_price": false,
-      "tariff_unpriced_upper_usd": 713.79,
-      "tariff_observed": "User, 2026-10-29: the bench motors bought from Makerbase arrived with NO separate tariff bill -- the only tariff the user has ever been billed separately is the combined JLCPCB+LCSC PCB shipment (landed.jlcpcb_boards, ~30.5%). So the 713.79 above stays a worst-case BOUND; the observed figure on a small order was $0. A full 100-motor order is a larger declared value and may still be assessed."
+      "what": "100 x SERVO42D CAN MT (10 per instrument) = $3,399.00 -- free shipping (10-16 d); paid options 4PX $8.99, DHL/UPS $22.80, standard $3.99. No tax collected at checkout.",
+      "counted_in_unit_price": false
     },
     "jlcpcb_boards": {
       "vendor": "JLCPCB",
