@@ -329,27 +329,29 @@ USBA_PLUG, USBA_TONGUE = (16.0, 8.0, 22.0), (12.0, 4.5, 11.75)
 USBA_GAP = 0.25                 # a USB-A's shell stands this far out of a seated socket
 
 
-PI_USBC_BOOT = (6.0, 4.0)        # the angled head's strain relief: length, OD (ASSUMED)
-PI_USBC_BEND = 3.0               # where the lead turns down, past the boot
 USBC_SHELL_T = 0.3               # a plug shell's wall: its inside takes the socket's tongue
 
 
-def _usbc_angle_plug():
-    """The Pi lead's angled plug (electronics.pi_usbc_head): head, boot and the shell in the
-    socket, as one solid, and the point its cable leaves the boot from (-X).
-    The shell is a TUBE, as a plug's is: the socket's tongue and contacts go inside it."""
+def _pi_usb_lead():
+    """The Pi's Xilaghy flat lead (electronics.PI_USBC_*, PI_USB_*): (head solid, ribbon
+    solid, joint solid, the point the straight lead leaves the joint's plug from, +X).
+    The head's shell is a TUBE, as a plug's is: the socket's tongue goes inside it."""
     x0, x1, y0, y1, z0, z1 = EL.pi_usbc_head()
     mx, my, mz = EL.pi_usb_c_mouth()
     tw, tt, tl = USBC_TONGUE
-    yc = (y0 + y1) / 2.0
-    s = (cq.Workplane("XY").box(x1 - x0, y1 - y0, z1 - z0).edges("|Y").fillet(1.5)
-         .translate(((x0 + x1) / 2.0, yc, mz)))
+    head = (cq.Workplane("XY").box(x1 - x0, y1 - y0, z1 - z0).edges("|Y").fillet(1.0)
+            .translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, mz)))
     shell = (cq.Workplane("XY").box(tw, tl, tt)
              .cut(cq.Workplane("XY").box(tw - 2 * USBC_SHELL_T, tl + 1.0, tt - 2 * USBC_SHELL_T)))
-    s = s.union(shell.translate((mx, my + tl / 2.0, mz)))
-    bl, bd = PI_USBC_BOOT
-    s = s.union(cq.Workplane("YZ").circle(bd / 2.0).extrude(-(bl + 0.5)).translate((x0 + 0.5, yc, mz)))
-    return s, (x0 - bl, yc, mz)
+    head = head.union(shell.translate((mx, my + tl / 2.0, mz)))
+    rw, rt = EL.PI_USB_RIBBON
+    ribbon = flat_cable(EL.pi_usb_ribbon_path(), rw, rt, across=(1.0, 0.0, 0.0))
+    fx0, px1, jy, jz = EL.pi_usb_joint()
+    fl, ft, fw = EL.PI_USB_FEMALE
+    pl, pt, pw = EL.PI_USB_PLUG
+    joint = (cq.Workplane("XY").box(fl, ft, fw).translate((fx0 + fl / 2.0, jy, jz))
+             .union(cq.Workplane("XY").box(pl, pt, pw).translate((px1 - pl / 2.0, jy, jz))))
+    return head, ribbon, joint, (px1, jy, jz)
 
 
 def _usb_plug(mouth, sx, body, tongue, gap=0.0):
@@ -1388,16 +1390,19 @@ def build_wires():
     _USB_FLY = BAYFLY - 3.0               # ...and its height over the Pi, under the Pi link's
     _USB_X = _c_usb[0] - 3.0              # wire_usb's riser, just behind its plug
     _ym, _yh = CHAN_Y - USB_LANE_DY, CHAN_Y + USB_LANE_DY
-    _mc = EL.pi_usb_c_mouth()
-    _pp, _pe = _usbc_angle_plug()
-    out.append(("wire_usb_plug_pi", _pp))
-    # ...along the trough past its end, down the rail's face just -X of the plug's boot,
-    # then in along the head's axis.
-    _USBC_DROP = _pe[0] - PI_USBC_BEND
+    # ⚠ THE Pi END IS A FLAT EXTENSION NOW (2026-10-29): electronics.PI_USB_* -- the Xilaghy's
+    # angled head in the socket, its ribbon along the Pi's -Y edge, and the joint (its inline
+    # female with this lead's straight plug in it) in the saddle just +X of the Pi. So this
+    # lead is an ordinary straight C-to-C: along the trough past its -X end, down the column
+    # there beside the rail, back +X along the rail's face, round the saddle's end and in.
+    _hp, _rb, _jt, _pe = _pi_usb_lead()
+    out += [("wire_usb_plug_pi", _hp), ("wire_usb_ribbon", _rb), ("wire_usb_joint", _jt)]
+    _USB_COL_X = CH_WT_RUNS[0][0] - 3.0            # just -X of the trough's end
+    _USB_TURN_X = _pe[0] + EL.PI_CRADLE_WALL + EL.PI_USB_SADDLE_FIT + WIRE_OD["wire_usb"] / 2.0 + 0.5
     _run(out, "wire_usb",
          [_c_usb, (_USB_X, _c_usb[1], _c_usb[2]), (_USB_X, _c_usb[1], LANE_USB),
-          (_USB_X, _ym, LANE_USB), (_USBC_DROP, _ym, LANE_USB), (_USBC_DROP, _ym, _pe[2]),
-          (_USBC_DROP, _pe[1], _pe[2]), _pe],
+          (_USB_X, _ym, LANE_USB), (_USB_COL_X, _ym, LANE_USB), (_USB_COL_X, _ym, _pe[2]),
+          (_USB_TURN_X, _ym, _pe[2]), (_USB_TURN_X, _pe[1], _pe[2]), _pe],
          WIRE_OD["wire_usb"])
     # THE HUB'S LEAD STAYS OUT OF THE TROUGH'S FIRST PIECE: the 24 V head has the lanes over
     # wire_usb there. It crosses the bay at its own lane's height instead, at J3's y, and

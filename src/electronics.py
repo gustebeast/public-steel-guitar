@@ -600,8 +600,10 @@ def pi_cradle() -> cq.Workplane:
     # ...and notched right down to the plug for the USB-C lead's angled head (pi_usbc_head),
     # which lies across the wall's line 1.24 off the board's edge: the socket stands that
     # far proud of it. Open at the top, so the notch prints with nothing over it.
+    # ...down to the floor, since the Xilaghy's ribbon leaves the head's bottom edge and
+    # steps -Y through the wall's line (pi_usb_ribbon_path).
     _h = pi_usbc_head()
-    _nz0 = _h[4] - PI_USBC_FIT
+    _nz0 = _MB_FLOOR.FLOOR_TOP
     cr = cr.cut(box_at(_h[1] - _h[0] + 2 * PI_USBC_FIT, 4.0, 20.0, (_h[0] + _h[1]) / 2.0,
                        PI_FP[2] - CRADLE_CLR - 2.0, _nz0 + 10.0))
     (_cx0, _cx1), (_cy0, _cy1) = _P4.SD_CARD
@@ -613,7 +615,7 @@ def pi_cradle() -> cq.Workplane:
     x0, x1 = PI_PLINK_CUT
     cr = cr.cut(box_at(x1 - x0, 12.0, PI_Z + 5.0 - _MB_FLOOR.FLOOR_TOP, (x0 + x1) / 2.0,
                        PI_FP[3] + 0.15 + 6.0, (PI_Z + 5.0 + _MB_FLOOR.FLOOR_TOP) / 2.0))
-    return cr.cut(pi_hold_bore())
+    return cr.cut(pi_hold_bore()).union(pi_usb_saddle())
 
 
 PI_PLINK_CUT = (PI_FP[0] - 5.0, PI_FP[0] + 4.0)   # x: J3's link columns, + a wire and a fit
@@ -1095,40 +1097,94 @@ def pi_usb_c_mouth():
     return (PI_FP[0] + x, PI_FP[2] + y, PI_Z + z)
 
 
-# THE PLUG IN IT: StarTech USB2CC1MR, 1 m USB 2.0 C to C, one end angled LEFT/RIGHT -- the
-# cable leaves along the socket's long side, which here is X, so the head lies flat in the
-# gap between the Pi's -Y edge and the rail. It leaves -X, past the SD card end: +X along
-# the rail is the cable trough's floor (z -31.8..-26.4, to x -575), and the only clear
-# column down from the trough is -X of where the 24 V link turns out of its end (DigiKey 5214-USB2CC1MR-ND, $20.39, 2026-10-28).
-# StarTech's datasheet gives the head as "width 11.0, height 6.0": 11.0 is the head's short
-# side in its own plane -- the depth from the mating face, the one number this gap is sized
-# by -- and 6.0 its thickness. The length along the cable is NOT published.
-# ⚠ ASSUMED, MEASURE WHEN THE LEAD IS IN HAND: PI_USBC_HEAD_L 20.0 (off the product photo,
-# about twice the depth) and PI_USBC_AXIS 5.5 (the shell's half width 4.13 plus a lip).
-# Why this lead: an up/down-angle head is deeper. Newnex's drawing for its angled C
-# (U4S5C01CD6, the one stocked 1 m up/down with a dimensioned drawing) is 18.50 deep, which
-# needs the Pi 2.1 mm further +Y than the moved motor bays leave.
-PI_USBC_HEAD_D = D.PI_USBC_HEAD_D  # mating face -> back of the head (datasheet)
-PI_USBC_HEAD_T = 6.0               # thickness, centred on the socket (datasheet)
-PI_USBC_HEAD_L = 20.0              # along the cable (ASSUMED)
-PI_USBC_AXIS = 5.5                 # the shell's axis from the head's closed end (ASSUMED)
+# THE LEAD IN IT (2026-10-29, the user's pick via the lead): a Xilaghy right-angle USB-C
+# FLAT EXTENSION, male to female, 100 mm (Amazon B0G3F9RX38): an FPC ribbon, USB 2.0, five
+# conductors (VBUS, GND, D+, D-, CC -- what the Pi's gadget port uses; J2's VBUS is dead,
+# output_panel VBUS_PI_NC). Its angled male is a thin plate parallel to the Pi's edge, so
+# the plug's -Y reach drops from the StarTech's 11.0 to 2.0 and the rail no longer
+# follows it. The ribbon leaves the head's BOTTOM edge, steps off the cradle's wall, folds
+# +X and runs along the Pi's -Y edge, low, to the inline female; a straight C-to-C lead
+# plugs into that and goes back to the panel's J2 (wiring.wire_usb). The joint lies in
+# a printed saddle on the floor just +X of the Pi (pi_usb_saddle).
+# ⚠ ASSUMED, OFF THE SELLER'S DRAWING ONLY -- RE-READ EVERY ONE WITH THE PART IN HAND: the
+# head 12.5 along X x 7.0 tall x 2.0 behind the mating face, centred on the socket; the
+# ribbon 5.6 x 0.6, leaving the head's bottom edge at its middle; the inline female 18.0
+# long x 5.0 thick x 12.5 wide with the ribbon entering its end at the middle.
+PI_USBC_HEAD_D = D.PI_USBC_HEAD_D  # mating face -> back of the head
+PI_USBC_HEAD_T = 7.0               # along Z, centred on the socket
+PI_USBC_HEAD_L = 12.5              # along X, centred on the socket
 PI_USBC_FIT = 0.5                  # what the cradle wall's notch leaves round the head
+PI_USB_RIBBON = (5.6, 0.6)         # width, thickness
+PI_USB_RIBBON_L = 100.0            # head to female, as sold
+PI_USB_FEMALE = (18.0, 5.0, 12.5)  # along X, Y, Z
+PI_USB_PLUG = (20.0, 6.5, 12.35)   # the straight lead's overmould (wiring.USBC_PLUG, the
+                                   # largest the USB-IF allows in section): along, thick, wide
+PI_USB_LEAD_SLOT = 4.0             # the saddle's slot for that lead: a USB 2.0 C-C lead is
+                                   # 3-4 across; the overmould (6.5) cannot follow it through
+PI_USB_RIBBON_CLR = 0.3            # ribbon off the cradle wall's -Y face
+PI_USB_SADDLE_FIT = 0.3
+PI_CRADLE_WALL = 2 * D.BEAD       # cadkit.pcb.pcb_cradle's default wall_t, which pi_cradle takes
 
 
 def pi_usbc_head():
-    """(x0, x1, y0, y1, z0, z1) WORLD of the angled plug's head seated in the Pi's USB-C,
-    its cable leaving the -X end."""
+    """(x0, x1, y0, y1, z0, z1) WORLD of the angled plug's head seated in the Pi's USB-C."""
     mx, my, mz = pi_usb_c_mouth()
-    return (mx + PI_USBC_AXIS - PI_USBC_HEAD_L, mx + PI_USBC_AXIS,
+    return (mx - PI_USBC_HEAD_L / 2.0, mx + PI_USBC_HEAD_L / 2.0,
             my - PI_USBC_HEAD_D, my, mz - PI_USBC_HEAD_T / 2.0, mz + PI_USBC_HEAD_T / 2.0)
+
+
+def pi_usb_ribbon_path():
+    """The Xilaghy's ribbon centreline, WORLD: down off the head's bottom edge, a bend -Y off
+    the cradle's wall, down to its run height, one FOLD to +X, and along the Pi's -Y edge for
+    the rest of its 100 mm to the inline female's end."""
+    mx, _my, _mz = pi_usb_c_mouth()
+    h = pi_usbc_head()
+    w, t = PI_USB_RIBBON
+    yh = (h[2] + h[3]) / 2.0
+    y_run = PI_FP[2] - CRADLE_CLR - PI_CRADLE_WALL - PI_USB_RIBBON_CLR - t / 2.0
+    zj = h[4] - 1.0
+    z_run = zj - w / 2.0 - 1.0
+    pts = [(mx, yh, h[4]), (mx, yh, zj), (mx, y_run, zj), (mx, y_run, z_run)]
+    used = sum(abs(a[m] - b[m]) for a, b in zip(pts, pts[1:]) for m in range(3))
+    pts.append((mx + PI_USB_RIBBON_L - used, y_run, z_run))
+    return pts
+
+
+def pi_usb_joint():
+    """(x_female_w, x_plug_e, y, z): the inline female and the straight lead's plug in it,
+    end to end along +X on the ribbon's run, WORLD."""
+    x0, y, z = pi_usb_ribbon_path()[-1]
+    return x0, x0 + PI_USB_FEMALE[0] + PI_USB_PLUG[0], y, z
+
+
+def pi_usb_saddle():
+    """The printed U the joint drops into, fused to the floor: open at the top, a wall each
+    side, and an END WALL EACH WAY with a slot only the cable fits through -- the ribbon's
+    at -X, the lead's at +X -- so a pull on either side bears the joint against a wall
+    instead of on its contacts (no glue, no snap)."""
+    x0, x1, y, z = pi_usb_joint()
+    hw = PI_USB_PLUG[1] / 2.0 + PI_USB_SADDLE_FIT
+    wt = PI_CRADLE_WALL
+    z_seat = z - PI_USB_PLUG[2] / 2.0 - PI_USB_SADDLE_FIT
+    zb, zt = _MB_FLOOR.FLOOR_TOP - D.BEAD, z + 2 * D.BEAD
+    xa, xb = x0 - PI_USB_SADDLE_FIT - wt, x1 + PI_USB_SADDLE_FIT + wt
+    s = box_at(xb - xa, 2 * (hw + wt), zt - zb, (xa + xb) / 2.0, y, (zb + zt) / 2.0)
+    s = s.cut(box_at(xb - xa - 2 * wt, 2 * hw, zt - z_seat + 1.0, (xa + xb) / 2.0, y,
+                     (z_seat + zt + 1.0) / 2.0))
+    rw, rt = PI_USB_RIBBON
+    zr = z - rw / 2.0 - PI_USB_SADDLE_FIT
+    s = s.cut(box_at(wt + 2.0, rt + 2 * PI_USB_SADDLE_FIT, zt - zr + 1.0, xa + wt / 2.0, y,
+                     (zr + zt + 1.0) / 2.0))
+    zl = z - PI_USB_LEAD_SLOT / 2.0
+    s = s.cut(box_at(wt + 2.0, PI_USB_LEAD_SLOT, zt - zl + 1.0, xb - wt / 2.0, y,
+                     (zl + zt + 1.0) / 2.0))
+    return s
 
 
 def _check_plug_y0():
     """dimensions.PI_PLUG_Y0 -- what the -Y rail is set off -- is this plug's -Y face."""
-    from . import wiring as _W
     _h = pi_usbc_head()
-    boot_y0 = (_h[2] + _h[3]) / 2.0 - _W.PI_USBC_BOOT[1] / 2.0
-    y0 = min(_h[2], boot_y0)
+    y0 = min(_h[2], min(p[1] for p in pi_usb_ribbon_path()) - PI_USB_RIBBON[1] / 2.0)
     assert abs(y0 - D.PI_PLUG_Y0) < 1e-6, (
         "the USB-C plug's -Y face is %.3f but dimensions.PI_PLUG_Y0 (the rail's datum) "
         "says %.3f" % (y0, D.PI_PLUG_Y0))

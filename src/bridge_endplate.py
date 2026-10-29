@@ -1281,6 +1281,15 @@ def op_cradle():
                       .extrude(_pad / 2.0, both=True).translate((0.0, _y, 0.0)))
     # (The 24 V lane cut that used to take the -Y wall away is gone with the lane: the 24 V
     #  runs cross ABOVE the board now, in the recess, and nothing rides y -120.75 at z -52.)
+    # +Y WALL CLEARS STRING 10'S SCREW PULLEY. The board's +Y edge is held D.OP_PULLEY_CLR
+    # off that pulley's swept flange (motor_bank._OP_EDGE_LIM), but the wall stands
+    # clr + wall beyond the edge and sat inside the swept circle (check_sweep, 2026-10-29,
+    # with the rail in 3 beads). The same clearance, round the pulley's axis, comes out.
+    # (one bead = branner's D.OP_PULLEY_CLR; read that name once both branches are in)
+    _i, _clr = D.N_STRINGS - 1, getattr(D, "OP_PULLEY_CLR", D.BEAD)
+    cr = cr.cut(cq.Workplane("XY").add(cq.Solid.makeCylinder(
+        D.PULLEY_FLANGE_OD / 2.0 + _clr, 100.0,
+        cq.Vector(D.screw_x(_i) - (cx + rcx), D.string_y(_i) - cy, -50.0))))
     return cr.translate((cx + rcx, cy, cz - standoff))
 
 
