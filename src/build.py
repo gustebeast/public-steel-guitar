@@ -1028,29 +1028,38 @@ def clamp_location(i, down=0.0, da=0.0, p=None):
     return cq.Location(cq.Plane(origin=o, xDir=xd, normal=n))
 
 
+def belt_cut(i):
+    """(teeth, gap): the tooth count string i's belt is cut to, and the gap its clamp
+    stands at with that belt in it (belt_tensioner.belt_fit)."""
+    return BTn.belt_fit(C.belt_loop(*_belt_ends(i)))
+
+
 # ⚠ THE BELT CLAMPS' TRAVEL IS CUT OUT OF THE BRIDGE ENDPLATE, and it is cut HERE because
 # this is where a clamp's pose is known (bridge_endplate cannot import build). As the -Y rail
-# came in (user, 2026-10-29: narrower body, shafts cut, motors 5.2 toward their belts), the
-# output board's cradle -- which keys off the rail's inner face -- carried its +Y wall into
-# string 10's clamp lane: 193 mm3 of clamp half A in the endplate from 4.17 mm down (build
-# #968, check_carriage_travel). The board itself stays clear of the lane, and the wall
-# still locates it either side of the cut, so the lane comes out of the endplate rather than
-# width going back into the body. Each relief is the box the clamp actually shares with the
-# endplate at one travel station, grown CLAMP_RELIEF_CLR -- read off the solids, so a clamp
+# came in (user, 2026-10-29: a narrower body), the output board's cradle -- which keys off the
+# rail's inner face -- carried its +Y wall into string 10's clamp lane: 193 mm3 of clamp half
+# A in the endplate from 4.17 mm down (build #968, check_carriage_travel). The board itself
+# stays clear of the lane (motor_bank.RAIL_BACK_CLR's output-board term), so the lane comes
+# out of the endplate rather than width going back into the body, and the wall survives only
+# past the clamps' reach (see the trim below). Each relief is the box the clamp actually shares with the
+# endplate over its whole travel, grown CLAMP_RELIEF_CLR -- read off the solids, so a clamp
 # or cradle that moves takes its relief with it, and an empty one cuts nothing.
 CLAMP_RELIEF_CLR = 0.5
 CLAMP_RELIEF_STATIONS = 80
 
 
 def _clamp_relief(ep):
-    """Boxes round every belt clamp's travel where it meets the endplate solid `ep`."""
-    halves = [BTn.half_a().val(), BTn.half_b().val()]
+    """Boxes round every belt clamp's travel where it meets the endplate solid `ep` -- the
+    clamp AS BUILT (belt_tensioner.clamp_components at that string's belt gap: both halves,
+    the screw and the insert)."""
     eb = ep.val().BoundingBox()
     out, g = None, CLAMP_RELIEF_CLR
     for i in range(D.N_STRINGS):
-        for k in range(CLAMP_RELIEF_STATIONS + 1):
+        parts = [w.val() for _n, w in BTn.clamp_components(belt_cut(i)[1])]
+        lo, hi = None, None              # ONE box per string over every station: a union of
+        for k in range(CLAMP_RELIEF_STATIONS + 1):   # per-station boxes leaves 0.01 mm2 stairs
             loc = clamp_location(i, D.CARRIAGE_TRAVEL * k / CLAMP_RELIEF_STATIONS)
-            for h in halves:
+            for h in parts:
                 hb = h.moved(loc)
                 bb = hb.BoundingBox()
                 if (bb.xmax < eb.xmin or bb.xmin > eb.xmax or bb.ymax < eb.ymin
@@ -1060,26 +1069,38 @@ def _clamp_relief(ep):
                 if x.Volume() < 1e-6:
                     continue
                 xb = x.BoundingBox()
-                bx = box_at(xb.xlen + 2 * g, xb.ylen + 2 * g, xb.zlen + 2 * g,
-                            x=(xb.xmin + xb.xmax) / 2, y=(xb.ymin + xb.ymax) / 2,
-                            z=(xb.zmin + xb.zmax) / 2)
-                out = bx if out is None else out.union(bx)
+                p0, p1 = (xb.xmin, xb.ymin, xb.zmin), (xb.xmax, xb.ymax, xb.zmax)
+                lo = p0 if lo is None else tuple(map(min, lo, p0))
+                hi = p1 if hi is None else tuple(map(max, hi, p1))
+        if lo is None:
+            continue
+        bx = box_at(*(h - l + 2 * g for l, h in zip(lo, hi)),
+                    *((l + h) / 2 for l, h in zip(lo, hi)))
+        out = bx if out is None else out.union(bx)
     return out
 
 
 _ep_relief = _clamp_relief(bridge_endplate)
 if _ep_relief is not None:
     bridge_endplate = bridge_endplate.cut(_ep_relief)
+    # THE OUTPUT BOARD'S +Y WALL STAYS ONLY AT THE FAR +X END (user, 2026-10-29: keep the
+    # wall, "but only at the far +X end, where the belt doesn't go"). Everything of the cradle
+    # past the board's +Y edge and over the recess floor, -X of the clamps' reach plus
+    # CLAMP_RELIEF_CLR, comes out -- not a stair of relief boxes along the wall's length.
+    from . import electronics as _EL_OP
+    _opc = BE.op_cradle().val().BoundingBox()
+    _op_y1 = _EL_OP.op_origin()[1] + _EL_OP.OP_BOARD_Y / 2.0          # the board's +Y edge
+    _op_zf = _EL_OP.JACK_Z - BE.JACK_RECESS_DZ                         # the recess floor
+    _xr = _ep_relief.val().BoundingBox().xmax + CLAMP_RELIEF_CLR
+    if _xr > _opc.xmin:
+        _trim = box_at(_xr - (_opc.xmin - 1.0), _opc.ymax + 1.0 - _op_y1, _opc.zmax + 1.0 - _op_zf,
+                       x=(_xr + _opc.xmin - 1.0) / 2, y=(_op_y1 + _opc.ymax + 1.0) / 2,
+                       z=(_op_zf + _opc.zmax + 1.0) / 2).intersect(BE.op_cradle())
+        bridge_endplate = bridge_endplate.cut(_trim)
     assert len(bridge_endplate.val().Solids()) == 1, (
         "the belt clamps' travel relief cut the bridge endplate in two")
     BE.bridge_endplate = bridge_endplate
     PARTS["bridge_endplate"] = (partial(heal, bridge_endplate), *PARTS["bridge_endplate"][1:])
-
-
-def belt_cut(i):
-    """(teeth, gap): the tooth count string i's belt is cut to, and the gap its clamp
-    stands at with that belt in it (belt_tensioner.belt_fit)."""
-    return BTn.belt_fit(C.belt_loop(*_belt_ends(i)))
 
 
 def belts_as_played():

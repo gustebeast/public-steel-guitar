@@ -733,7 +733,7 @@ PI_PLUG_CLR = 0.5                              # plug -> wall
 # It stays OP_PULLEY_CLR off that pulley's swept flange (lead, 2026-10-29) -- the third need in
 # motor_bank.RAIL_BACK_CLR. Both live here for the same reason as PI_PLUG_CLR.
 OP_PANEL_CLR = 0.3                             # board -> the plastic it registers on
-OP_PULLEY_CLR = BEAD                           # 0.8 board's +Y edge -> string 10's screw pulley
+OP_PULLEY_CLR = 0.5                            # board's +Y edge -> string 10's screw pulley (lead + bronner)
 # THE Pi's USB-C PLUG, whose -Y face the -Y rail clears (motor_bank.RAIL_BACK_CLR; user,
 # 2026-10-29: "a continuous wall going the full instrument length. The pi USB needs to
 # clear the wall"). The Pi stops PI_MOTOR_CLR off motor PI_MOTOR_I's driver (it stands
