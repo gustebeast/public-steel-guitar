@@ -24,6 +24,8 @@ has no 42 mm tall, 1.6 mm thin fin in it anywhere (the user's warping worry).
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 
@@ -72,7 +74,18 @@ STAGGER    = D.STRING_PITCH      # 9.5, one string pitch: the band's depth
 # here is the trunk WIRES: RAIL_Y -124.25 plus the fattest trunk conductor's radius, -122.95.
 # Pulling the keep-out back to -122.4 hands 14 mm of Y to the bays, which is what lets the
 # -Y-most ones have a back wall like everyone else instead of being a special case (user).
-HARNESS_Y1 = -122.4               # +Y edge of the corridor: the trunk lanes' own edge
+# THE CORRIDOR IS GONE (user, 2026-10-29: the body narrowed to D.MOTOR_INSTALL_CLR behind
+# string 10's motor). The trunk rides the trough over the motor tops, and nothing runs at floor
+# level along the bank's -Y edge any more, so the keep-out is the rail's own inner face: the
+# bays reach the rail (string 10's back wall merges into it) and the corridor cut is empty.
+M10_BACK_Y = D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_L   # -113.15
+# THE -Y RAIL'S INNER FACE, off string 10's motor back by the LARGER of the two needs (lead,
+# 2026-10-29), each in whole beads: the motor's install room (D.MOTOR_INSTALL_CLR) and the
+# Pi's USB-C plug, PI_PLUG_CLR off its -Y extent (rounded OUT to a bead, never a pocket).
+_PI_PLUG_NEED = math.ceil((M10_BACK_Y - (D.PI_PLUG_Y0 - D.PI_PLUG_CLR)) / D.BEAD - 1e-9) * D.BEAD
+RAIL_BACK_CLR = max(D.MOTOR_INSTALL_CLR, _PI_PLUG_NEED)
+RAIL_INNER_Y = M10_BACK_Y - RAIL_BACK_CLR
+HARNESS_Y1 = RAIL_INNER_Y         # +Y edge of the (now empty) corridor
 HARNESS_Z1 = -40.0                # ...and its top: just over the highest trunk lane
 
 # Per-motor faceplate wall CENTRE Y. The motor faceplate (component) is at
@@ -268,7 +281,7 @@ def low_walls(i):
     from . import servo42d as SV
     bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
     ya = by1 + SV.TERM_Y0 + TERM_RELIEF_FIT          # by1 is the faceplate
-    yb = back_wall_y0(i) - 1.0
+    yb = max(back_wall_y0(i) - 1.0, RAIL_INNER_Y)   # never into the -Y rail (string 10's)
     x0, x1 = bx0 - side_room(i, -1) - 1.0, bx1 + side_room(i, 1) + 1.0
     z0, z1 = bz0 + term_wall_h(), SEAT_TOP + 1.0
     return box_at(x1 - x0, ya - yb, z1 - z0, x=(x0 + x1) / 2, y=(ya + yb) / 2, z=(z0 + z1) / 2)

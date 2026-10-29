@@ -402,6 +402,16 @@ DEFERRED_RULES = (
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
+    # THE BODY NARROWED 16.8 / 15.2 (branner's -Y rail move, 2026-10-29). Two things were
+    # cleared by the user to clip the new wall until they are relocated, and nothing else:
+    # the UI board (brenner is redoing the station) and the optical board's cables (no
+    # cable-management room yet). OWNERS brenner (ui_*) and bronner (optical cables).
+    (re.compile(r"^ui_"), re.compile(r"^chassis_\d+$"),
+     "user 2026-10-29: allowed to clip until relocated (UI board vs the narrowed -Y rail)"),
+    (re.compile(r"^(wire_opt_\w+|optical_cable_usb)$"),
+     re.compile(r"^(chassis_\d+|top_plate(_color)?_\d+|wire_\w+)$"),
+     "user 2026-10-29: allowed to clip until relocated (optical board cables vs the "
+     "narrowed body)"),
     # (the old "lever board parts vs their knee/lever housing" class is RESOLVED, 2026-09-21:
     #  the cradle's plinth is relieved over the board's interior and J1 moved off the magnet
     #  face -- branner. It left the gate on its own, as the contract says.)
