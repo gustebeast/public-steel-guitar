@@ -167,7 +167,7 @@
   },
   "motor_pulley": {
    "material": "pctg",
-   "volume_mm3": 544.1
+   "volume_mm3": 640.7
   },
   "nut_slide_insert_a": {
    "material": "pctg",
