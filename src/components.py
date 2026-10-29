@@ -277,9 +277,10 @@ def screw_pulley(high: bool = False) -> cq.Workplane:
 # MOTOR_SHAFT_FLAT_L, assumed) sets it, and must be measured. Its +Y end is the +Y flange (the
 # shaft stands 0.3 past it): the hub no longer runs on past the tip, toward the next belt.
 # Drawn at the shaft's own sizes: a nozzle-drawn round hole prints under (cadkit's M4 pocket
-# needed +0.1 to let a 6.0 insert drop in), so this is a push fit that grips -- open
-# MOTOR_BORE_CLR if it will not go on.
-MOTOR_BORE_CLR = 0.0            # on the bore's radius and its flat
+# needed +0.1 to let a 6.0 insert drop in). At 0.0 it went on but would not come off without
+# breaking it (user, 2026-10-28: "a touch too tight"), so 0.05 a side: still a grip, now a
+# removable one. Open it another 0.05 if it is still too tight; close it if the pulley slips.
+MOTOR_BORE_CLR = 0.05           # on the bore's radius and its flat
 
 
 def motor_pulley(flat_deg: float = 0.0) -> cq.Workplane:
