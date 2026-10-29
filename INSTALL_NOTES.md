@@ -258,10 +258,15 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
   the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
   The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
 
-## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29)
+## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29) -- HELD, DO NOT CUT YET
+
+**HELD (lead, 2026-10-29).** The motors still stand at the 17.2 standoff, where the shaft as bought fits
+and nothing needs cutting. The 15.6 cut belongs to the 12.0 standoff (branch `branner-standoff12`),
+which waits on the foot-LED boards and the output board being re-placed. Cutting a shaft is
+irreversible: do not cut until that lands and this note loses its HELD mark.
 
 The SERVO42D's shaft comes 21.5 mm long off the faceplate. The instrument uses it only to the
-pulley's outer face (`components.MOTOR_SHAFT_CUT_L`, 15.6), and the motors sit closer to their
+pulley's outer face (`components.MOTOR_SHAFT_CUT_L`: 15.6 at the 12.0 standoff), and the motors sit closer to their
 belts for it. Cut every motor once, on the bench, with the two-part printed jig
 (`tools/motor_shaft_saw_jig.step` and `tools/motor_shaft_saw_jig_cap.step`), one Quick-Grip and
 the 6927A16 hacksaw blade. It works like the leadscrew saw jig, and nothing screws into the motor.
@@ -282,7 +287,7 @@ the 6927A16 hacksaw blade. It works like the leadscrew saw jig, and nothing scre
    The cap closes the boss slot and the shaft channel, so this is the moment the bearing and
    the magnet gap are covered.
 9. Undo the clamp, lift the cap, lift the motor out.
-10. File the cut end back to 15.6 and square, then add a small 45° chamfer all round, so the
+10. File the cut end back to `MOTOR_SHAFT_CUT_L` and square, then add a small 45° chamfer all round, so the
     pulley's bore starts on it without shaving plastic. Wipe the stub and check the faceplate
     round the boss for filings.
 11. Drop in the next motor (step 2). The jig stays where it is; only the clamp comes off.

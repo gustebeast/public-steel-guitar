@@ -55,7 +55,7 @@ FLAT_Z = D.MOTOR_SHAFT_FLAT - SHAFT_R              # 2.0: the D's flat over the 
 FLAT_Y0 = SV.SHAFT_L - D.MOTOR_SHAFT_FLAT_L        # 3.5: where the flat starts off the face
 BOSS_W = D.NEMA17_PILOT_D + 2 * MB.BOSS_CLR        # 22.8: the bay's boss slot
 BOSS_D = SV.PILOT_H + B / 2.0                      # 2.4 deep off the face
-CUT_L = C.MOTOR_SHAFT_CUT_L                        # 15.6
+CUT_L = C.MOTOR_SHAFT_CUT_L                        # 20.8 at the held 17.2 standoff (15.6 at 12.0)
 
 # ── the saw: the leadscrew jig's blade and slot ─────────────────────────────
 SLOT_W = SJ.SLOT_W                                 # 1.3, McMaster 6927A16
