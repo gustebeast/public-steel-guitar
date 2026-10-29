@@ -1596,12 +1596,17 @@ def build_wires():
     _wb = _FL.edge_walls().val().BoundingBox()
     # the panel's -Y reach over the board: the edge wall's outer face, or the comb's
     # end (the fret line's half length), whichever is further out
+    # ...and only while J5 IS under it: the Pi cap is to be redrawn shorter in +Y
+    # (user, 2026-10-29), and a J5 clear of the panel takes the straight drop again
     _wall_y = -max(_FL.BOARD_HALF_W + _FL.EDGE_WALL_OUT, _FL.half_len())
-    assert _ry > _wall_y, "J5's ribbon line is no longer +Y of the fret board's -Y wall"
-    _dy, _dz = _wall_y - _clr, _wb.zmin - _clr
-    centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz),
-              (_j5c[0], uy, umz), (_j5c[0], _dy, umz), (_j5c[0], _dy, _dz),
-              (_j5c[0], _ry, _dz), (_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
+    centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz)]
+    if _ry + _clr > _wall_y:
+        _dy, _dz = _wall_y - _clr, _wb.zmin - _clr
+        centre += [(_j5c[0], uy, umz), (_j5c[0], _dy, umz), (_j5c[0], _dy, _dz),
+                   (_j5c[0], _ry, _dz)]
+    else:
+        centre += [(_j5c[0], uy, umz), (_j5c[0], _ry, umz)]
+    centre += [(_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
     #    ...AND IT IS ONE PRISM, NOT FOURTEEN SWEEPS (user, 2026-09-28). It was drawn
     #    as fourteen conductors from bundle_paths, one octagonal solid each, which is the
     #    truth about a ribbon and the wrong model of it: nothing inside a ribbon can move
