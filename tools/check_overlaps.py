@@ -404,14 +404,22 @@ DEFERRED_RULES = (
      "to be redesigned around the boards later"),
     # THE BODY NARROWED 16.8 / 15.2 (branner's -Y rail move, 2026-10-29). Two things were
     # cleared by the user to clip the new wall until they are relocated, and nothing else:
-    # the UI board (brenner is redoing the station) and the optical board's cables (no
-    # cable-management room yet). OWNERS brenner (ui_*) and bronner (optical cables).
-    (re.compile(r"^ui_"), re.compile(r"^chassis_\d+$"),
-     "user 2026-10-29: allowed to clip until relocated (UI board vs the narrowed -Y rail)"),
+    # the UI board and the optical board's cables. The UI station has since been relocated
+    # inside the wall (brenner, 2026-10-29), so only the optical cables are left. OWNER
+    # bronner (optical cables).
     (re.compile(r"^(wire_opt_\w+|optical_cable_usb)$"),
      re.compile(r"^(chassis_\d+|top_plate(_color)?_\d+|wire_\w+)$"),
      "user 2026-10-29: allowed to clip until relocated (optical board cables vs the "
      "narrowed body)"),
+    # CABLE ON CABLE (user, 2026-10-29: "Cables colliding with other cables is fine, not
+    # worth sacrificing instrument width over"). Wires already pass each other above; this
+    # takes in the cable-end BODIES too -- the UI ribbon's IDC sockets, the optical USB lead
+    # -- against wires. Cable on cable only: a cable into a board, a printed part or a
+    # motor is still a fault. (Wire on wire stays with the doctrine below, silently; this
+    # rule is for the bodies, so it says so each time one touches.)
+    (re.compile(r"^(ui_ribbon_socket_\d+|optical_cable_\w+)$"),
+     re.compile(r"^(wire_\w+|ui_ribbon_socket_\d+|optical_cable_\w+)$"),
+     "user 2026-10-29: cables may collide with other cables, not worth width"),
     # (the old "lever board parts vs their knee/lever housing" class is RESOLVED, 2026-09-21:
     #  the cradle's plinth is relieved over the board's interior and J1 moved off the magnet
     #  face -- branner. It left the gate on its own, as the contract says.)
@@ -453,6 +461,13 @@ def intended(na, nb) -> bool:
     # the floating tenon slides up into the rib mortise (its designed seat)
     if frozenset({base(na), base(nb)}) in (frozenset({"retention_setscrew", "chassis"}),
                                            frozenset({"floating_tenon", "chassis"})):
+        return True
+    # THE Pi's HOLD-DOWN IS A FORCED THREAD, BY NAME AND ONLY THAT ONE: the belt clamps' M3
+    # x 12 goes through the Pi's own 2.7 mm hole with force (user, 2026-10-29, on the bench:
+    # "It's tight but I was able to force the belt clamp screw into one of the pi mount
+    # holes"), so the 3.0 shank is 0.15 into the hole's wall all round -- 2.1 mm3 through the
+    # laminate. Exact names: no other board screw may touch the Pi.
+    if frozenset({na, nb}) == frozenset({"board_screw_2", "pi4"}):
         return True
     # wires are insulated cables: crossing/touching ANOTHER wire is physically
     # fine (and not worth fighting in the model). A wire may otherwise only clip

@@ -541,39 +541,45 @@ the Pi's 3V3 rail. Look for a bare header pin at either end and along either sid
 must be none. Then meter: cap tail 6 to the Pi's USB shell reads 0 ohm; cap tail 1 to
 tail 2 does not.
 
-## The flat Pi: seat it, then clamp it with the spacer (2026-09-29)
+## The flat Pi: lead in first, drop it in, one M3 through its own hole (2026-10-29)
 
-The Pi is **not** held by a screw head on its laminate any more. It is held by a printed
-**spacer** (`pi_spacer`) that bridges from the board's edge out to a screw 12.50 mm away,
-because no position beside the board had room for that screw's anchor below the floor — the
-levers' mortise/tenon joinery is under it.
+The Pi is held by **one M3 × 12 socket head through its own mounting hole** (the +X, −Y one:
+the hole nearest the USB/Ethernet end on the HDMI side), into a heat-set M3 insert in the
+chassis boss under it. It is the belt clamps' screw, insert and key (2.5 mm hex): no new
+SKU. The printed spacer bar that used to bridge out to an M4 beside the board is gone.
 
-1. **Drop the Pi into its cradle, straight down.** The four corner pads carry it; its
-   underside never touches the floor slab (it has solder tails and SMD parts on the back).
-   The walls locate it in plane; the **+X end is open** — that is the I/O end, and it is also
-   the only way the board goes in or out.
-2. **Lay the spacer across the board's +Y edge.** It is stepped, and the step tells you which
-   way round it goes: the **thin end (2.40 mm) lies on the board's top face**, the **thick end
-   (4.00 mm) sits outboard on the chassis boss**. The step's vertical face butts the board's
-   edge — if it will not sit flat, it is on backwards or the board is not fully down.
-3. **One M4 × 10 button head, 2.5 mm hex**, through the spacer into the insert in the boss.
-   Same screw and same key as everywhere else; no new SKU and no second length.
-4. **Do not overtighten.** The spacer clamps 50 mm² of the laminate's edge (against the
-   1.30 mm arc a bare head used to reach), so it does not need much to hold — and what it is
-   resisting is the board lifting, not sliding: the walls already stop that.
+1. **Heat-set the M3 insert into the boss first**, from the top, before anything else is in
+   the bay (McMaster 94459A130; its pocket is 4.8, so it drops in before it is melted home).
+   Flush with the boss's top: the Pi's underside rests on it.
+2. **Plug the USB-C lead into the Pi on the bench** (see below). It cannot be plugged in
+   afterwards: the angled head and its shell need 17.65 mm in front of the socket to go in,
+   and the rail is about 12 mm away.
+3. **Lower the Pi straight down into its cradle, the lead's head going down the −Y wall's
+   notch with it.** The corner pads and the boss carry it, 13.6 mm off the floor: its +X
+   end stands over motor 3's bay back wall and 0.5 off that motor's driver, so it goes in
+   **before string 3's motor** if that motor is in the way of your hands, or with it in
+   place if not — nothing of the Pi touches it.
+4. **Put the printed ring (`pi_spacer`, Ø6 × 3.2) on the hole and drive the M3 × 12
+   through it and the Pi's hole into the insert.** The Pi's hole is 2.7 mm and the screw is
+   M3: **it is a forced thread and tight by design — do not ream the hole.** The crests cut
+   about 0.15 mm into the hole's plated barrel (user, on the bench, 2026-10-29). The ring is
+   what makes the 12 mm screw the right length: without it the screw bottoms out.
+5. Do not overtighten: the ring bears on the Pi's own Ø6 keep-out pad round the hole.
 
-⚠ **Removal order:** the spacer comes off before the Pi, and the Pi comes out along **+X**.
+⚠ **Removal order:** the screw, then the Pi straight up with its lead, then unplug the lead.
 
-### The Pi's USB-C lead: angled plug, cable toward +X (2026-10-28)
+### The Pi's USB-C lead: angled plug, cable toward −X (2026-10-28, order changed 2026-10-29)
 
 The lead from `output_panel` J2 is a StarTech USB2CC1MR, and its **angled** end goes in the Pi.
-The head lies flat in the gap between the Pi's −Y edge and the rail, in a notch in the cradle
-wall, with about 1 mm to spare. **Turn the plug so its cable leaves toward the Pi's SD-card
-end (−X)**, then take the cable up the rail past that end of the board, into the cable trough. USB-C is reversible, so either way up plugs in; only
-one way round sends the cable where the route has room.
+The head lies flat between the Pi's −Y edge and the rail, in a notch in the cradle wall, with
+0.5 mm to the rail — the rail is set off this plug (`dimensions.PI_PLUG_Y0`), and it is not
+cut for it. **Turn the plug so its cable leaves toward the Pi's SD-card end (−X)**, then
+take the cable up the rail past that end of the board, into the cable trough. USB-C is
+reversible, so either way up plugs in; only one way round sends the cable where the route
+has room.
 
-Plug it in **after** the Pi is seated and clamped: the head sits below the top of the board's
-edge, so the Pi cannot drop past a plug that is already in.
+**Plug it in BEFORE the Pi goes in** (step 2 above), on the bench: there is no room in front
+of the socket to push a plug in once the Pi is seated.
 
 ## Leg blind-mate boards (src/leg_pogo.py) — ORDER MATTERS
 

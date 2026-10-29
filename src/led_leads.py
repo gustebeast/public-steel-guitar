@@ -125,10 +125,15 @@ def _solve(build):
     raise AssertionError("no lane order keeps the four conductors apart")
 
 
-FOOT_DROP_CLR = 1.0              # the foot lead comes down this much further from the cap
-                                 # than a plug length: at a plug length exactly, its
-                                 # first lane clipped the motor board's 24 V socket
-                                 # (2.8 mm3, y -57..-61 -- the gate found it)
+# ⚠ THE FOOT LEAD LEAVES J6 STRAIGHT AND RISES ON ITS OWN WAY'S LINE (2026-10-29). The Pi
+# went up against the motors, and J6's mouth is now 7.75 short of string 1's motor driver
+# (its -Y face, y -27.65): no room for four lanes turning sideways at the plug's height,
+# which is how it used to come in. Each conductor now stands straight up a plug length out
+# of its own way -- the ways are an XH pitch apart, so the four columns never meet -- to
+# its own height lane over the drivers' tops, and turns +X there. Lanes FOOT_ZLANE apart
+# from the low run up, the top one at the fly height; a conductor that crosses another's
+# column has to be over it, and _solve finds the order that is.
+FOOT_ZLANE = 1.5
 
 
 def _foot_ends():
@@ -150,6 +155,9 @@ def foot_paths():
     from . import foot_light as FOOT
     (pa, oa), (pb, ob) = _foot_ends()
     assert oa == (-1, 0, 0) and ob == (0, 1, 0), (oa, ob)
+    assert abs(D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + FOOT.LEAD_FLY
+               - (D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + FOOT.LEAD_FLY + FOOT.LEAD_LOW
+                  + 3 * FOOT_ZLANE)) < 1e-6, "the foot lead's top lane is not the fly height"
     fly = D.MOTOR_BELT_Z + D.MOTOR_SQ / 2.0 + FOOT.LEAD_FLY
     low = fly + FOOT.LEAD_LOW
     xs = pa[0][0] - FOOT.LEAD_STUB
@@ -159,10 +167,11 @@ def foot_paths():
         for i in range(4):
             a, b = pa[i], pb[i]
             cx = FOOT.LEAD_COL_X + r1[i] * WIRE_LANE
-            dy = b[1] + PLUG_L + FOOT_DROP_CLR + r2[i] * WIRE_LANE
+            z = low + r2[i] * FOOT_ZLANE
+            dy = b[1] + PLUG_L
             out.append([a, (xs, a[1], a[2]), (xs, a[1], fly), (cx, a[1], fly),
-                        (cx, FOOT.LEAD_DIP_Y, fly), (cx, FOOT.LEAD_DIP_Y, low),
-                        (cx, dy, low), (cx, dy, b[2]), (b[0], dy, b[2]), b])
+                        (cx, FOOT.LEAD_DIP_Y, fly), (cx, FOOT.LEAD_DIP_Y, z),
+                        (cx, dy, z), (b[0], dy, z), (b[0], dy, b[2]), b])
         return out
     return _solve(build)
 

@@ -101,6 +101,26 @@ P = Pin.types.PASSIVE
 # moved +4.0 in y with it so nothing shifted relative to the socket, and
 # electronics._cap_place's j1_y moved with them.
 BOARD_W, BOARD_L = 56.0, 34.0
+# ⚠ THE RIBBON BAND MOVED WEST, SO THE Pi CAN GO RIGHT UP TO THE MOTORS (user, 2026-10-29).
+# The cap's -Y edge stands 9.0 past the Pi's +Y edge, which is now 0.5 off string 3's motor
+# driver (electronics.PI_FP) -- so string 2's driver is 10.0 off the Pi's edge across world
+# x -560.8..-518.3, board x -5.3..+37.2. The edge itself clears it; the ribbon header's pins
+# and their IDC socket (15.1 past the Pi's edge) do not, and the foot drop's body is 11.8.
+# West of that span string 1's driver is 19.5 off, so both go there: J5 to board x -14.7
+# (its socket ends 2.2 short of string 2's driver in x; at -13.3 UI_SW_D had no path past it to
+# J1), J6 9.7 further west onto
+# CAP_EXT_X of laminate past the board's old -X edge (over the Pi's cradle wall, 1.2 off
+# motor_ctrl), and U1's group off J1's -X end (U1_XY). (A notch under a header pulled in
+# was tried first: J5 then sat on J1 -- courtyards overlapping, five ribbon nets unroutable.)
+J5_DX = -17.865
+J6_DX = -9.7
+# U1's group (the ribbon's 3V3 switch): off the header's -X end, on CAP_EXT_X's laminate west
+# of J3 -- 6.7 mm from header pin 1 (its supply) and clear of the fan J5's fourteen ways take to
+# J1 (2026-10-29: in the band 4.5 east its C6 GND via landed on three ribbon tracks; 22 east it
+# stood in the east pins' way and 37 mm from pin 1, past A2's 25 mm for its bypass; across J1 at
+# x -14 it sat in J3's courtyard and on the declared 24 V bar).
+U1_XY = (-29.0, 1.50)
+CAP_EXT_X = 7.0
 
 # ⚠ THE UI RIBBON IS A PLAIN HEADER, NOT A SHROUDED ONE, AND THAT IS A SOURCING FACT RATHER
 # THAN A PREFERENCE. LCSC stocks no shrouded 1.27 mm 2x7; the nearest shrouded part is
@@ -447,11 +467,17 @@ _BAR_Y = 10.5      # the lighting bus bar, in the strip above the connector land
 _X24_J4 = _way_x("J4", _H.LIGHTS_LINK, "V24", 2.5)
 _X24_J3 = _way_x("J3", _H.LED_DROP, "V24", 2.5)
 # J6 is placed by its post row, way 1 at the -X end (rot 0): x -22.50 + 2.50 per way
-_X24_J6 = -22.50 + 2.5 * _H.LED_DROP.index("V24")
+_X24_J6 = -22.50 + J6_DX + 2.5 * _H.LED_DROP.index("V24")
 _X5 = (_way_x("J2", _H.PI_5V_LINK, "V5", 2.0, 0), _way_x("J2", _H.PI_5V_LINK, "V5", 2.0, 1))
+
+_POUR = [(-BOARD_W / 2 - CAP_EXT_X + 0.3, -BOARD_L / 2 + 0.3), (BOARD_W / 2 - 0.3, -BOARD_L / 2 + 0.3),
+         (BOARD_W / 2 - 0.3, BOARD_L / 2 - 0.3), (-BOARD_W / 2 - CAP_EXT_X + 0.3, BOARD_L / 2 - 0.3)]
 
 BOARD_NOTES = {
     "outline_mm": (BOARD_W, BOARD_L),
+    # the rectangle grown CAP_EXT_X west for J6 (see J5_DX); outline_mm stays the pour region
+    "outline_poly": [(-BOARD_W / 2 - CAP_EXT_X, -BOARD_L / 2), (BOARD_W / 2, -BOARD_L / 2),
+                     (BOARD_W / 2, BOARD_L / 2), (-BOARD_W / 2 - CAP_EXT_X, BOARD_L / 2)],
     "layers": 4,
     "thickness_mm": 1.6,
     "placements": {
@@ -487,7 +513,7 @@ BOARD_NOTES = {
         # stood in the slot the trunk's ground and feed-2 conductors drop through onto
         # motor_ctrl J3 -- 3.5 mm3 into each. The gate could not see it: a plug is not a
         # built solid.)
-        "J6": (-18.75, -10.50, 0.0),
+        "J6": (-18.75 + J6_DX, -10.50, 0.0),
         # (and its two series resistors 2 mm in with it, out of its courtyard)
         "R3": (-10.50, -9.00, 180.0),
         "R4": (-10.50, -11.00, 180.0),
@@ -512,15 +538,16 @@ BOARD_NOTES = {
         # placed by its pad centroid, and one more pin pair moves the centroid half a pitch;
         # left at 3.80 every one of the fourteen routed ways shifted 0.635 and the first
         # route came back with UI_DC and UI_RES_N open. The new pair lands at x -1.28.
-        "J5": (3.80 - 0.635, -BOARD_L / 2.0 + 2.135, 270.0),
+        # ⚠ AND J5_DX WEST, out of string 2's motor driver's span (see J5_DX).
+        "J5": (3.80 - 0.635 + J5_DX, -BOARD_L / 2.0 + 2.135, 270.0),
         # the ribbon's 3V3 switch, off the header's -X end, unturned so IN / EN (the
         # Pi's side) face the socket's pin 1 and OUT / ILIM face the ribbon; its output
         # capacitor and limit resistor on the ribbon side, its input bypass on the other,
         # each with its live pad toward the pin it serves
-        "U1": (-8.00, -13.50, 0.0),
-        "C5": (-4.90, -14.30, 0.0),
-        "R5": (-4.90, -12.60, 0.0),
-        "C6": (-11.00, -14.30, 180.0),
+        "U1": (U1_XY[0], U1_XY[1], 0.0),
+        "C5": (U1_XY[0] + 3.10, U1_XY[1] - 0.80, 0.0),
+        "R5": (U1_XY[0] + 3.10, U1_XY[1] + 0.90, 0.0),
+        "C6": (U1_XY[0] - 3.00, U1_XY[1] - 0.80, 180.0),
     },
     # ⚠ THE SOCKET'S GROUND PADS TAKE NO STITCHING VIA, AND DO NOT NEED ONE. The check
     # exists because an SMD pad touching only a pour can be orphaned when routing carves
@@ -534,7 +561,10 @@ BOARD_NOTES = {
                           + ("J5.8",)),
     # GND pour on both layers: this board carries up to 3 A to the Pi and 1.6 A to the
     # strip, and the return for both shares it.
-    "zones": [("GND", "F.Cu", 0.3), ("GND", "In2.Cu", 0.3), ("GND", "B.Cu", 0.3)],
+    # Each pour is the OUTLINE less 0.3, not outline_mm's centred rectangle: that stops at the
+    # old -X edge, and U1's group stands on CAP_EXT_X past it (its GND via had no plane).
+    "zones": [{"net": "GND", "layer": _ly, "poly": _POUR}
+              for _ly in ("F.Cu", "In2.Cu", "B.Cu")],
     # a pour the router is not told about is copper it routes signals through (motor_ctrl)
     # In2, the inner layer next to the bare face: the Pi's 5 V lane runs on B.Cu, right over it
     "plane_layers": ("In2.Cu",),
@@ -558,7 +588,7 @@ BOARD_NOTES = {
     # cannot reach it and neither could the stitcher (2026-10-05, a 1.0 x 0.3 island and
     # the pin open). It goes inward, to a via under the middle of the package, 0.31 from
     # the ILIM pad opposite and 0.33 from the pads either side.
-    "tracks": [("GND", "F.Cu", 0.3, [(-9.14, -13.50), (-8.00, -13.50)]),
+    "tracks": [("GND", "F.Cu", 0.3, [(U1_XY[0] - 1.14, U1_XY[1]), U1_XY]),
                ("+24V_LED", "F.Cu", 1.0, [(_X24_J4, 7.13), (_X24_J4, _BAR_Y), (_X24_J3, _BAR_Y)]),
                ("+24V_LED", "F.Cu", 0.8, [(_X24_J3, _BAR_Y), (_X24_J3, 7.13)]),
                # the foot branch: 0.77 A at 0.4 mm, from J3's 24 V land down the board's
@@ -609,9 +639,10 @@ BOARD_NOTES = {
     # bridge has to be a point that is in cluster A on one layer and MAIN on the other, and
     # (16.62, -10.91) is exactly that -- B island 0, over the F main pour, 3.739 mm of
     # clearance headroom. One via, not a fifth guess.
-    "vias": [("GND", -8.00, -13.50), ("GND", 21.50, -11.00), ("GND", 11.75, -7.00),
-             ("GND", 20.00, -15.50), ("GND", -14.00, -15.50),
-             ("GND", 16.62, -10.91),
+    "vias": [("GND", U1_XY[0], U1_XY[1]), ("GND", 11.75, -7.00),
+             ("GND", 20.00, -15.50), ("GND", 6.00, -15.50),
+             # (the bridge at (16.62, -10.91) and the via at (21.50, -11.00) went when U1's group
+             #  moved onto that ground, 2026-10-29; the band's clusters are not the same ones)
              # ⚠ AND ONE ON THE WEST SIDE, FOR THE SAME REASON AS THE BRIDGE ABOVE (2026-09-30).
              # The foot drop's fan (R3/R4 -> J6) and its declared 24 V branch down x -20.25 cut
              # a second cluster off west of the socket: F island x -19.6..-6.5, y -5.1..3.0 and
@@ -619,7 +650,7 @@ BOARD_NOTES = {
              # Five bar/branch variants all left it open, which is what a missing bridge looks
              # like -- not router luck. This point is in the F cluster and the B main pour.
              ("GND", -12.50, 1.20)],
-    "router_passes": 12,
+    "router_passes": 20,           # 12 left UI_SW_D open after the 2026-10-29 band move
     # ⚠ EVERY PART IS ON ONE FACE, THE ONE TOWARD THE PI, and the socket is why: its body
     # is the standoff the cap hangs off the Pi's header by, so it has to be between the two
     # boards. On the far face it would be a bump with nothing holding the board on.
@@ -676,7 +707,6 @@ BOARD_NOTES = {
         "connector_labels": {
             "J1": {"standard": "the Raspberry Pi 40-pin header: its mate is the Pi itself, "
                                "which this board sits on"},
-            "J4": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned, that is not along another connector's pins (run 2026-10-07, after the lead order change); the block is on the back, behind it"},
             "J6": {"back_only": "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned (run 2026-10-07, after the font change); the block is on the back, behind it"},
         },
         "waive": {
@@ -772,6 +802,18 @@ BOARD_NOTES = {
             "UI_SW_A": {"mm": 6.10,
                         "why": "one contact of the UI's rotary switch: open or closed, "
                                "read as a level at human speed. Same cut, the socket's row"},
+            "UI_ENC_B": {"mm": 6.89,
+                         "why": "one channel of the UI's rotary encoder: a mechanical contact "
+                                "read at human speed. Same cut, the socket's row (2026-10-29, "
+                                "the ribbon band's move west)"},
+            "UI_SW_B": {"mm": 6.81,
+                        "why": "the rotary switch's other contact, as UI_SW_A. Same cut, "
+                               "the socket's row (2026-10-29)"},
+            "UI_SDIN": {"mm": 5.90,
+                        "why": "the display's SPI data at a few MHz: 0.9 over the limit, "
+                               "across the socket's own row like the others, on a run "
+                               "that ends at the ribbon a few mm on. The only clocked "
+                               "line here; its clock (UI_SCLK) is under 5.0 (2026-10-29)"},
             "PWR_SW_UP": {"mm": 5.34,
                           "why": "one leg of the power button: a contact that is open or "
                                  "closed, read as a level. Same cut, the socket's row"},
