@@ -23,11 +23,11 @@ from cadkit.fasteners import set_screw, m4_insert                # the ONE dummi
 # dummies, and they need a finer nozzle than the project's 0.8 for their 2 mm tooth pitch.
 # 0.4 (user, 2026-10-28; the belt clamp's GT2 ridges proved PCTG at 0.4): both print axis-up,
 # so the teeth are drawn in plane -- ~0.9 lands, two 0.4 lines -- and the screw pulley's
-# pilot thread is LAYER-made, its 45 deg flanks stacked by layers, 0.8 deep radially since
+# pilot thread is LAYER-made, its 45 deg flanks stacked by layers, 0.45 deep radially at
 # Tr8 (Ø7.1 ridge, Ø8.0 groove). It was 0.2 for the Tr5 thread's 0.3 groove, now gone.
 NOZZLE_D = 0.4
 
-MOTOR_PULLEY_STANDOFF = 14.0   # pulley sits this far +Y of the motor faceplate
+MOTOR_PULLEY_STANDOFF = 14.0 + D.MOTOR_SETBACK   # 17.2: pulley this far +Y of the motor faceplate
 
 
 # ── Vertical leadscrew (axis Z) ──────────────────────────────────────────
@@ -274,8 +274,8 @@ def screw_pulley(high: bool = False) -> cq.Workplane:
 # run "all the way" so it shows which way it goes on). The bore is the shaft's D end to end,
 # open at both ends. Its -Y face is where the shaft's flat begins: the D key stops on the
 # round shaft there, and THAT sets the pulley's place -- so the flat's length (dimensions.
-# MOTOR_SHAFT_FLAT_L, assumed) sets it, and must be measured. Its +Y end is the +Y flange: the
-# hub no longer runs on past the tip, which reached into the next string's belt plane.
+# MOTOR_SHAFT_FLAT_L, assumed) sets it, and must be measured. Its +Y end is the +Y flange (the
+# shaft stands 0.3 past it): the hub no longer runs on past the tip, toward the next belt.
 # Drawn at the shaft's own sizes: a nozzle-drawn round hole prints under (cadkit's M4 pocket
 # needed +0.1 to let a 6.0 insert drop in), so this is a push fit that grips -- open
 # MOTOR_BORE_CLR if it will not go on.
