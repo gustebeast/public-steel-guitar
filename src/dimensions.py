@@ -809,20 +809,26 @@ MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
 # cannot import electronics need it: the chassis (the board's floor port), motor_bank (string
 # 1's back stop IS the board's +Y wall) and wiring. build.py asserts all of it against the
 # placed board.
-#   Y1  the board's +Y edge: string 1's motor back less MOTOR_CLR -- NO WALL BETWEEN THEM any
-#       more (user, 2026-10-29: "drop that and move the board so it sits flush against the
-#       motor"). It bought the bus-B plugs 1.9 more room from the -X/-Y leg. String 1's motor
-#       is stopped by a short back wall +X of the board instead (motor_bank.back_wall_x0), so
-#       the PCB is never the stop.
+#   Y1  the board's +Y edge: string 1's motor back less MOTOR_CLR, a MCTRL_STOP_T printed
+#       stop and its fit. The user's 2026-10-29 "move the board so it sits flush against the
+#       motor" held while the standoff was 17.2; the shaft cut (12.0) took the motors 5.2 +Y
+#       and the board with them, but the -Y rail -- the output board's term -- only 0.4, so
+#       the -X/-Y body adapter, the board's ONLY -Z stop, ended up 3.0 -Y of the laminate.
+#       Backing the board off by a wall + fit puts its -Y end 1.4 over the adapter again
+#       (main had 1.9 over it, so the bus-B plugs still have 0.5 MORE room from the leg than
+#       the flush board had), and the gap it opens is the board's +Y stop
+#       (mctrl_retention). String 1's motor is still stopped by its short back wall +X of
+#       the board (motor_bank.back_wall_x0), so the PCB is never the stop.
 #   Y0  ...less the board's routed length.
 #   X   the standing board with its mated plugs, in world X.
 #   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
 #       reached from outside), before the plugs.
 MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
+MCTRL_STOP_T    = 5 * BEAD       # 4.0: the printed +Y stop between the board and string 1's motor
 MCTRL_Y1        = (string_y(0) - MOTOR_PULLEY_STANDOFF - MOTOR_BODY_L
-                   - MOTOR_CLR)   # -28.05: behind string 1's motor
+                   - MOTOR_CLR - MCTRL_STOP_T - MCTRL_FIT)   # -27.15: behind string 1's motor
 MCTRL_L         = 55.0           # routed outline, along Y
-MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -83.05
+MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -82.15
 MCTRL_X         = (-606.5, -591.7)
 MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
 MCTRL_DIP       = 2.0

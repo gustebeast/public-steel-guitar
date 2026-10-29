@@ -278,10 +278,11 @@ def back_wall_y0(i):
 
 
 # STRING 1'S BACK WALL STOPS SHORT OF THE MOTOR BOARD (user, 2026-10-29). The board stands
-# directly behind that motor, MOTOR_CLR off its back (D.MCTRL_Y1), with no wall between: the
-# wall it used to share bought the board's bus-B plugs nothing and cost them 1.9 of room from
-# the -X/-Y leg. So the motor's back stop is the part of its back wall +X of the board (and the
-# board's fit), and the PCB never takes the motor's load (user's PCB-mounting rule).
+# behind that motor (D.MCTRL_Y1), with only the board's own low +Y stop between them
+# (mctrl_retention), not the motor's back wall: the wall it used to share bought the board's
+# bus-B plugs nothing and cost them room from the -X/-Y leg. So the motor's back stop is the
+# part of its back wall +X of the board (and the board's fit), and the PCB never takes the
+# motor's load (user's PCB-mounting rule).
 def back_wall_x0(i):
     """-X end of motor i's back wall: string 1's starts past the motor board."""
     return D.MCTRL_X[1] + D.MCTRL_FIT if i == 0 else None

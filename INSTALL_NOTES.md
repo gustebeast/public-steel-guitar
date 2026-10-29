@@ -1078,7 +1078,7 @@ the module only when the module itself is being replaced.
 The motor board slides straight down (+Z to -Z) into its guides behind string 1's motor:
 - a channel takes its -Y edge (the edge away from the motor);
 - two short posts on the floor take its +Y edge;
-- its face sits flush on string 1's motor.
+- a low wall between it and string 1's motor stops its +Y edge (it no longer sits flush on the motor).
 
 Nothing is screwed. The keyhead deck panel's rib, 0.3 above the board's top edge, stops it
 lifting, so **seat the board before that panel goes on**. Sight down both faces as it drops:

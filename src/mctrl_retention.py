@@ -12,8 +12,8 @@ needs to clear the support material along that range of motion."
 
 WHAT HOLDS EACH AXIS, read off the board as it stands (electronics.motor_ctrl(), mated):
   -Y     the -Y EDGE CHANNEL's back wall, MCTRL_FIT off the laminate's -Y edge.
-  +Y     string 1's motor: the board sits flush on its back face, MOTOR_CLR off (the bay's back
-         wall was dropped for it, motor_bank.back_wall_x0).
+  +Y     the +Y STOP: a low wall across the board's +Y edge, MCTRL_STOP_T thick, between it and
+         string 1's motor (dimensions.MCTRL_Y1 says why the board no longer sits flush on it).
   X      the channel's two cheeks over the -Y edge, the +Y GUIDE's two cheeks over the +Y edge,
          and the floor port along the bottom edge. Three lines round the board, so it cannot
          swing about the channel (a lone edge slot is a hinge) or rock about its bottom edge.
@@ -98,11 +98,13 @@ def _boxes():
     out.append((nx0, nx1, cy0, cy1, zf, _top_under_parts(-1, cy0, cy1, zt)))
     out.append((px0, px1, cy0, cy1, zf, _top_under_parts(+1, cy0, cy1, zt)))
     # ── the +Y GUIDE: two low cheeks off the floor, inside the board's +Y edge ──
-    # Not past it: string 1's motor is MOTOR_CLR beyond that edge, the whole bottom of it.
+    # Not past it: past the edge is the +Y stop, and then string 1's motor.
     out.append((nx0, nx1, y1 - GUIDE_E_NEG, y1, zf,
                 _top_under_parts(-1, y1 - GUIDE_E_NEG, y1, zg + GUIDE_H)))
     out.append((px0, px1, y1 - GUIDE_E_POS, y1, zf,
                 _top_under_parts(+1, y1 - GUIDE_E_POS, y1, zg + GUIDE_H)))
+    # ── the +Y STOP: one low wall across the +Y edge, up to string 1's bay ──
+    out.append((nx0, px1, y1 + FIT, y1 + FIT + D.MCTRL_STOP_T, zf, zg + GUIDE_H))
     for bx in out:
         assert bx[5] - bx[4] >= 4 * B, (
             "a motor-controller guide (x %.2f..%.2f, y %.2f..%.2f) is only %.2f tall: a part "
