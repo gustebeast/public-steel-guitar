@@ -733,7 +733,14 @@ Y_TAIL   = -(D.BRIDGE_ARM_OUT + WRAP_CLR)
 # MIN_WALL_2P inset was there to keep a printed wall outboard of the board; there is no
 # wall there -- the endplate simply ends -- so the inset bought nothing and cost 1.60 mm
 # of the +X band, which is now where the op-amps and their feedback grids live.
-TAIL_X1 = D.BRIDGE_BASE_X1                                    # 23.43, flush
+# ⚠ FROZEN AT THE R1 BOARD (user, 2026-10-29: "avoid changes to the optical board and leave
+# it at the R1 definition. It's fine if it spills over the edge"). The endplate's +X face
+# moved in to 23.43 (D.BRIDGE_HALF_PX); this board is fabricated copper, and its parts are
+# placed off this edge, so following the face would re-place the board. The tail now
+# overhangs the face by D.BRIDGE_BASE_X1 - 25.056 = -1.63. Rev 2: re-derive from the face.
+TAIL_X1_R1 = 25.05583
+TAIL_X1 = TAIL_X1_R1
+assert TAIL_X1 >= D.BRIDGE_BASE_X1 - 1e-9, "the R1 tail now stops short of the endplate face"
 # -X edge runs out to the STRIP's own -X edge. Sized off the LQFP144 instead (-18.40) the
 # two sections overlapped by just 1.60 in X, so the whole board hung on a 1.6 mm waist:
 # brittle, and hopeless for routing -- 20 analog channels + 10 LED drives + power all have
@@ -3882,10 +3889,10 @@ def _assert_field_clear():
             f"{_m[1][1]:.2f}. They are the board's Y datum; asymmetry there means one of "
             f"them moved alone.")
     for _mx, _my in _m:
-        if not (PLINTH_X0 + D.MIN_WALL_2P <= _mx <= TAIL_X1 - D.MIN_WALL_2P):
+        if not (PLINTH_X0 + D.MIN_WALL_2P <= _mx <= D.BRIDGE_BASE_X1 - D.MIN_WALL_2P):
             raise AssertionError(
                 f"optical strip: M4 grip at x {_mx:.2f} is outside the wrap plinth "
-                f"({PLINTH_X0:.2f}..{TAIL_X1:.2f}) with its {D.MIN_WALL_2P} wall -- it has "
+                f"({PLINTH_X0:.2f}..{D.BRIDGE_BASE_X1:.2f}) with its {D.MIN_WALL_2P} wall -- it has "
                 f"nothing to screw into.")
     # 1. the whole sensing strip must sit inside the deck band, or it fouls the magnetic
     # pickup's cavity (-X) or the endplate (+X). Both edges are read from top_plate, so
