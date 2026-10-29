@@ -325,7 +325,7 @@ def _j1_box(margin=0.0):
 # The placement names the pad centroid and the switch's terminals are not symmetric
 # about its shaft, so the offset between the two is added here -- see
 # ui_panel.enc_anchor_offset(), which reads it out of the footprint file.
-_SW_BODY_X, _SW_BODY_Y = UI.board_local(UI.knob_x(), UI.y_layout()[1])
+_SW_BODY_X, _SW_BODY_Y = UI.board_local(UI.knob_x(), UI.input_y())
 _ENC_OFF = UI.enc_anchor_offset()
 _SW_X, _SW_Y = _SW_BODY_X + _ENC_OFF[0], _SW_BODY_Y + _ENC_OFF[1]
 
@@ -342,7 +342,9 @@ _J2_X = -_HW + _J2_FAB_AHEAD
 # ...and its +Y end has to stay clear of the display module hanging over the board.
 # The module's -Y edge, in board coordinates:
 _MOD_EDGE_Y = UI.board_local(0.0, UI.module_centre()[1] - UI.MOD_L / 2.0)[1]
-_J2_Y = -2.5
+# level with the knob and the button: the strip below the module is all there is
+# (2026-10-29), and J2's 10.16 sits in it with room either way
+_J2_Y = UI.board_local(0.0, UI.input_y())[1]
 assert _J2_Y + _J2_FAB_HALF <= _MOD_EDGE_Y - 1.0, (
     "J2's shroud reaches y %+.2f and the display module's edge is at %+.2f -- the "
     "ribbon header would stand under the module"
@@ -353,7 +355,7 @@ assert _J2_Y - _J2_FAB_HALF >= -_HL + 1.0, (
 # SW2, the power button: its cap's -X edge on the window's -X edge and its centre on the
 # knob's Y (user's sketch, 2026-10-04) -- ui_panel.power_x() is the rule. The footprint is
 # symmetric about its centre, so the placement IS the body's.
-_PWR_X, _PWR_Y = UI.board_local(UI.power_x(), UI.y_layout()[1])
+_PWR_X, _PWR_Y = UI.board_local(UI.power_x(), UI.input_y())
 _PWR_HALF = 4.25
 # ...and that X is what the cap's diameter was chosen for: the clamp plate under this
 # board takes a relief round each through-hole part, and the web left between this one's
@@ -371,8 +373,8 @@ _SCREW_X, _SCREW_Y = UI.SCREW_XY
 _BOSS_D = 8.0              # the deck-side boss the screw threads into (cadkit M4)
 _ENC_CRTYD = UI.ENC_SQ / 2.0 + 0.25
 
-# THE PULL-UPS ARE A ROW OF SEVEN BESIDE J1, standing on end: the strip between J1's
-# courtyard and the +X spigot is the one clear patch left on the +Y half. A row, not a
+# THE PULL-UPS ARE A ROW OF SEVEN BESIDE J1, standing on end, under the display module
+# +X of J1's courtyard. A row, not a
 # column -- a column of seven at 3 mm pitch was a picket fence across the middle of the
 # board that every switch net had to cross to reach J2, and the router left SW_PUSH 0.42
 # short on the far side of it. Here the +3V3 ends of all seven are along the top and the
@@ -682,7 +684,8 @@ BOARD_NOTES = {
         # left of the socket's courtyard, clear of the -X spigot below it
         "J1": (round(_J1_X - _J1_CRTYD[2] - 2.5, 3), round(_J1_Y + 4.0, 3)),
         "J2": (round(_J2_X + 3.0, 3), round(_J2_Y - 6.4, 3)),
-        "SW1": (round(_SW_X, 3), round(_SW_Y - 10.4, 3)),
+        # above the switch: below it is the board's -Y edge since the inputs moved there
+        "SW1": (round(_SW_X, 3), round(_SW_Y + 10.0, 3)),
         "SW2": (round(_PWR_X, 3), round(_PWR_Y - 5.8, 3)),
         "C1": (round(_C1_XY[0] + 3.0, 3), _C1_XY[1]), "C2": (round(_C2_XY[0] + 3.6, 3), _C2_XY[1]),
         # seven designators over a 1.6 mm row do not fit side by side, so they alternate
@@ -757,7 +760,7 @@ def _check_against_cad():
         <= TP.REGION_X1 + 1e-9, (
             "the display pocket's +X wall is inside the band region's seam")
     # 3. the board clears the -Y rail's inner face
-    assert by - _HL >= TP.YL + 1.0, (
+    assert by - _HL >= TP.YL + UI.BOARD_WALL_CLR - 1e-9, (
         "the UI board reaches y %.2f and the -Y rail's inner face is %.2f"
         % (by - _HL, TP.YL))
     # 4. the ribbon header fits under the deck
