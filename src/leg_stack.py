@@ -528,11 +528,30 @@ def body_adapter(sx: float = LEG_X, ly: float = LEG_Y):
     _cx0, _cx1 = (sx + _PG.CHAN_X - _PG.CHAN_W / 2.0,
                   sx + _PG.CHAN_X + _PG.CHAN_W / 2.0)
     _rb = LG._stub_ridge(1.0).val().BoundingBox()       # the ridge's own section, measured
+    from . import knee_lever as KL_
     for st, y0, y1 in CH.foot_tenon_runs(sx, ly, syg):
         # (keeping off the height-screw heads and the string access channels is the MORTISE's
         #  business, not the tenon's: chassis.mort_segments shortens the run and this follows it.
         #  It was duplicated here, which is two places to get the same rule wrong.)
-        b = b.union(LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP)))
+        # CLIPPED TO THE MORTISE IT RIDES. The chassis cuts the LEVER's mortise (its seat at c,
+        # knee_lever.MORT_SEAT) and the ridge keeps its seat at 0 (legs._groove), so the root
+        # fillet's tail stood 0.006 proud of the bed face into the mortise mouth's edges, 0.12
+        # wide along each flank (lead, build #964: 0.054 mm3 per adapter). Only that tail comes
+        # off; the flanks, head and c are the fit-tested joint's.
+        # ...AND c SHORT OF THE MORTISE'S CLOSED ENDS. A run that stops where its mortise stops
+        # (the +Y feet's runs start at the wall past the height screws; the -Y feet's end at the
+        # foot's +Y face, where the floor between the feet closes the slot) put the ridge's end
+        # face ON the mortise's end wall: zero clearance where the joint has c everywhere else.
+        # The open, outboard ends are never reached, so trimming both ends of the segment is
+        # safe.
+        _seg = next(q for q in CH.mort_segments(st) if q[0] < y1 and q[1] > y0)
+        _c = KL_.MORT_CLR
+        _ridge = LG._stub_ridge(y1 - y0).translate((st, y0, Z_TOP))
+        _ends = box_at(LEG_W, _seg[1] - _seg[0] - 2.0 * _c, 40.0,
+                       x=st, y=(_seg[0] + _seg[1]) / 2.0, z=Z_TOP)
+        b = b.union(_ridge.intersect(_ends).intersect(
+            KL_.rib_mortise(st, _seg[0], _seg[1])
+            .union(box_at(LEG_W, LEG_W + 2.0, 20.0, x=st, y=(y0 + y1) / 2.0, z=Z_TOP - 10.0))))
         assert not is_signal_corner(sx, ly) or \
             st + _rb.xmax + D.MIN_WALL_2P <= _cx1 or \
             _cx0 <= st + _rb.xmin - D.MIN_WALL_2P, (
