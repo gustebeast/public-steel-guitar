@@ -402,6 +402,15 @@ DEFERRED_RULES = (
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),
+    # CABLE ON CABLE (user, 2026-10-29: "Cables colliding with other cables is fine, not
+    # worth sacrificing instrument width over"). Wires already pass each other above; this
+    # takes in the cable-end BODIES too -- the UI ribbon's IDC sockets, the optical USB lead
+    # -- against wires. Cable on cable only: a cable into a board, a printed part or a
+    # motor is still a fault. (Wire on wire stays with the doctrine below, silently; this
+    # rule is for the bodies, so it says so each time one touches.)
+    (re.compile(r"^(ui_ribbon_socket_\d+|optical_cable_\w+)$"),
+     re.compile(r"^(wire_\w+|ui_ribbon_socket_\d+|optical_cable_\w+)$"),
+     "user 2026-10-29: cables may collide with other cables, not worth width"),
     # (the old "lever board parts vs their knee/lever housing" class is RESOLVED, 2026-09-21:
     #  the cradle's plinth is relieved over the board's interior and J1 moved off the magnet
     #  face -- branner. It left the gate on its own, as the contract says.)
