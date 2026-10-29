@@ -309,6 +309,14 @@ _mcr_bb = _mcr.val().BoundingBox()
 _mcr_mc = _kh_mort_cutters(_mcr_bb.xmin - 1.0, _mcr_bb.xmax + 1.0)
 if _mcr_mc is not None:
     _mcr = _mcr.cut(_mcr_mc)
+# ...and out of the -X/-Y adapter's way: its body tenons rise into the floor under the
+# channel's foot (4.0 mm3), and it slides in along Y, so its whole Y run is cleared, grown by
+# its slide fit.
+_mcr_ad = _LS_PLUG.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1]).val().BoundingBox()
+_mcr_f = _LS_PLUG.FIT
+_mcr = _mcr.cut(box_at(_mcr_ad.xlen + 2 * _mcr_f, 400.0, _mcr_ad.zmax + _mcr_f - (CH.Z_BOT - 1.0),
+                       x=(_mcr_ad.xmin + _mcr_ad.xmax) / 2, y=0.0,
+                       z=(_mcr_ad.zmax + _mcr_f + CH.Z_BOT - 1.0) / 2))
 _mcr_seg = [i for i, cs in enumerate(chassis_segments)
             if cs.val().BoundingBox().xmin <= _mcr_bb.xmin
             and _mcr_bb.xmax <= cs.val().BoundingBox().xmax + 1e-6]
@@ -1018,6 +1026,54 @@ def clamp_location(i, down=0.0, da=0.0, p=None):
         p = C.clamp_p(m, s, clamp_upper(i), x0, x1, down)
     o, xd, n = C.clamp_frame(m, s, clamp_upper(i), p, x0, x1, da)
     return cq.Location(cq.Plane(origin=o, xDir=xd, normal=n))
+
+
+# ⚠ THE BELT CLAMPS' TRAVEL IS CUT OUT OF THE BRIDGE ENDPLATE, and it is cut HERE because
+# this is where a clamp's pose is known (bridge_endplate cannot import build). As the -Y rail
+# came in (user, 2026-10-29: narrower body, shafts cut, motors 5.2 toward their belts), the
+# output board's cradle -- which keys off the rail's inner face -- carried its +Y wall into
+# string 10's clamp lane: 193 mm3 of clamp half A in the endplate from 4.17 mm down (build
+# #968, check_carriage_travel). The board itself stays clear of the lane, and the wall
+# still locates it either side of the cut, so the lane comes out of the endplate rather than
+# width going back into the body. Each relief is the box the clamp actually shares with the
+# endplate at one travel station, grown CLAMP_RELIEF_CLR -- read off the solids, so a clamp
+# or cradle that moves takes its relief with it, and an empty one cuts nothing.
+CLAMP_RELIEF_CLR = 0.5
+CLAMP_RELIEF_STATIONS = 80
+
+
+def _clamp_relief(ep):
+    """Boxes round every belt clamp's travel where it meets the endplate solid `ep`."""
+    halves = [BTn.half_a().val(), BTn.half_b().val()]
+    eb = ep.val().BoundingBox()
+    out, g = None, CLAMP_RELIEF_CLR
+    for i in range(D.N_STRINGS):
+        for k in range(CLAMP_RELIEF_STATIONS + 1):
+            loc = clamp_location(i, D.CARRIAGE_TRAVEL * k / CLAMP_RELIEF_STATIONS)
+            for h in halves:
+                hb = h.moved(loc)
+                bb = hb.BoundingBox()
+                if (bb.xmax < eb.xmin or bb.xmin > eb.xmax or bb.ymax < eb.ymin
+                        or bb.ymin > eb.ymax or bb.zmax < eb.zmin or bb.zmin > eb.zmax):
+                    continue
+                x = hb.intersect(ep.val())
+                if x.Volume() < 1e-6:
+                    continue
+                xb = x.BoundingBox()
+                bx = box_at(xb.xlen + 2 * g, xb.ylen + 2 * g, xb.zlen + 2 * g,
+                            x=(xb.xmin + xb.xmax) / 2, y=(xb.ymin + xb.ymax) / 2,
+                            z=(xb.zmin + xb.zmax) / 2)
+                out = bx if out is None else out.union(bx)
+    return out
+
+
+_ep_relief = _clamp_relief(bridge_endplate)
+if _ep_relief is not None:
+    bridge_endplate = bridge_endplate.cut(_ep_relief)
+    assert len(bridge_endplate.val().Solids()) == 1, (
+        "the belt clamps' travel relief cut the bridge endplate in two")
+    BE.bridge_endplate = bridge_endplate
+    PARTS["bridge_endplate"] = (partial(heal, bridge_endplate), *PARTS["bridge_endplate"][1:])
 
 
 def belt_cut(i):

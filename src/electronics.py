@@ -134,7 +134,7 @@ BD_T = 1.6
 # board to -503), so the board's +Y edge stops D.PI_MOTOR_CLR off that motor's driver,
 # standing high enough to pass over the bay's back wall (PI_STANDOFF). String 2's back wall,
 # over the rest of the edge, is 6.8 further +Y. The pose follows the motors wherever
-# MOTOR_SETBACK puts them, and the -Y rail follows the plug (dimensions.PI_PLUG_Y0) -- the
+# MOTOR_PULLEY_STANDOFF puts them, and the -Y rail follows the plug (dimensions.PI_PLUG_Y0) -- the
 # user will not have the rail cut for it.
 from . import motor_bank as _MB_POSE                                    # noqa: E402
 PI_MOTOR_I = D.PI_MOTOR_I
@@ -418,7 +418,7 @@ JACK_TIP = D.BRIDGE_BASE_X1                          # the endplate's +X outer f
 # Fit clearance between the board and the plastic it registers against -- used both for
 # the board's setback behind the panel and for the recess the endplate cuts around it.
 # 0.3 is this project's usual printed-to-rigid fit (see pcb_cradle's clr default).
-OP_PANEL_CLR = 0.3
+OP_PANEL_CLR = D.OP_PANEL_CLR             # (in dimensions: motor_bank's rail reads it)
 # THE PANEL IN FRONT OF THE OUTPUT BOARD IS 1.6, NOT 4.0 (user, 2026-09-21: "the board is
 # also 4mm recessed from the endplate +x wall ... make the endplate thinner there so it's
 # closer to flush"). The board's placements are built to the same two numbers --
