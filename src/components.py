@@ -274,7 +274,7 @@ def screw_pulley(high: bool = False) -> cq.Workplane:
 # run "all the way" so it shows which way it goes on). The bore is the shaft's D end to end,
 # open at both ends. Its -Y face is where the shaft's flat begins: the D key stops on the
 # round shaft there, and THAT sets the pulley's place -- so the flat's length (dimensions.
-# MOTOR_SHAFT_FLAT_L, assumed) sets it, and must be measured. Its +Y end is the +Y flange (the
+# MOTOR_SHAFT_FLAT_L, measured 18) sets it. Its +Y end is the +Y flange (the
 # shaft stands 0.3 past it): the hub no longer runs on past the tip, toward the next belt.
 # Drawn at the shaft's own sizes: a nozzle-drawn round hole prints under (cadkit's M4 pocket
 # needed +0.1 to let a 6.0 insert drop in). At 0.0 it went on but would not come off without
