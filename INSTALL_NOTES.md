@@ -278,8 +278,9 @@ and the 6927A16 hacksaw blade:
 * With the guide STILL ON, pick every filing off the stub, the tower face and the saw cut with a
   magnet, and wipe the stub. The guide is what covers the motor's face and bearing; only then
   take the screws out and lift it off. Check the faceplate round the boss for filings anyway.
-* ⚠ Before printing ten guides: the faceplate's M3 holes must take 4 mm of thread (most NEMA17s
-  are tapped 4.5). If a screw bottoms before the guide is flat, the guide needs a thicker plate.
+* The screws reach only 2.4 mm into the motor (five threads) -- enough to hold the guide, and
+  shallower than any NEMA17's tapped holes. If one does bottom before the guide is flat, stop:
+  the guide needs a thicker plate.
 
 ## Motors: push each pulley on to the end of the shaft's flat (2026-10-28)
 

@@ -11,7 +11,7 @@ ONE PRINTED PART, FOUR SCREWS THE INSTRUMENT ALREADY BUYS. Shaft axis along +X, 
 faceplate at x = 0, the table at z = 0 -- the motor lies on its side on the table, as it is
 used:
 
-  PLATE  a square the size of the faceplate, 10 beads thick, bolted FLAT to it by four M3 x 12
+  PLATE  a square the size of the faceplate, 12 beads thick, bolted FLAT to it by four M3 x 12
          socket heads (the belt clamps' draw screws, BOM m3_shcs_12, 2.5 mm key) in the NEMA17
          holes at 31 square. Its back carries a pocket that takes the pilot boss on BOSS_CLR, so
          the guide is concentric with the shaft without measuring, and the pocket's roof closes
@@ -34,9 +34,12 @@ to the floor, not onto the table under the motor. Then the steps in INSTALL_NOTE
 chamfer, and pick the filings off the stub and the tower with a magnet BEFORE the jig comes
 off -- the motor's own magnet is under the plate, and this is the moment it is covered.
 
-⚠ ASSUMED, MEASURE ON ONE MOTOR BEFORE PRINTING TEN: the faceplate's M3 holes are tapped at
-least SCREW_ENGAGE + 0.5 deep (common NEMA17 practice is 4.5). If they are shallower the
-screws bottom before the plate is tight -- add a bead to PLATE_T.
+THE SCREWS ENGAGE ONLY SCREW_ENGAGE (2.4, five M3 threads). Nothing else on the instrument
+screws into a motor -- the bays drop them in and the tee board holds them -- so there is no
+proven hole depth to lean on, and the SERVO42D's drawing does not give one (searched
+2026-10-29). Five threads hold a hand-saw guide, and every NEMA17 faceplate seen is tapped
+deeper (3.5-4.5), so the plate is sized to the shallowest plausible hole instead of to a
+guess at this one.
 """
 from __future__ import annotations
 
@@ -62,8 +65,8 @@ POCKET_D = SV.PILOT_H + B / 2.0                      # 2.4: the plate stands on 
 
 # ── the screws: the belt clamps' M3 x 12 (one SKU, the one key) ─────────────
 SCREW_L = 12.0
-SCREW_ENGAGE = 4.0                                   # thread in the motor (⚠ see the docstring)
-PLATE_T = SCREW_L - SCREW_ENGAGE                     # 8.0 = 10 beads: the heads seat on its +X face
+PLATE_T = 12 * B                                     # 9.6: the heads seat on its +X face
+SCREW_ENGAGE = SCREW_L - PLATE_T                     # 2.4 in the motor: five threads (see docstring)
 assert abs(PLATE_T / B - round(PLATE_T / B)) < 1e-9, "the plate is off the bead grid"
 CLEAR_R = 3.4 / 2.0                                  # M3 clearance
 HEAD_R = 5.5 / 2.0                                   # ISO 4762 M3 head
