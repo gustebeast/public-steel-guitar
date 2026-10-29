@@ -1585,9 +1585,23 @@ def build_wires():
     _j5s = (_j5c[0], _j5c[1] - _sy * UI.IDC_PIN_IN, _j5c[2])
     out.append(("ui_ribbon_socket_1", UI.idc_socket(_j5s, (0, _sy, 0), (0, 0, 1), (1, 0, 0))))
     _ry = _j5s[1] + _sy * UI.IDC_CABLE_M
+    #    ...AND ROUND THE FRET BOARD'S -Y EDGE WALL, not through it (2026-10-29). With the
+    #    Pi up against the motors J5 sits under the keyhead panel's fret LED board, whose
+    #    edge wall and comb hang from the deck there: so the ribbon comes down just -Y of
+    #    both, passes under the wall, and steps +Y onto the socket's line. Under, not
+    #    beside, because the keyhead panel slides on along X after the ribbon is plugged
+    #    (plug-before-panel), and the wall's own section is what sweeps.
+    from . import fret_light as _FL
+    _clr = 1.0 + UI.RIBBON_T / 2.0
+    _wb = _FL.edge_walls().val().BoundingBox()
+    # the panel's -Y reach over the board: the edge wall's outer face, or the comb's
+    # end (the fret line's half length), whichever is further out
+    _wall_y = -max(_FL.BOARD_HALF_W + _FL.EDGE_WALL_OUT, _FL.half_len())
+    assert _ry > _wall_y, "J5's ribbon line is no longer +Y of the fret board's -Y wall"
+    _dy, _dz = _wall_y - _clr, _wb.zmin - _clr
     centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz),
-              (_j5c[0], uy, umz), (_j5c[0], _ry, umz),
-              (_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
+              (_j5c[0], uy, umz), (_j5c[0], _dy, umz), (_j5c[0], _dy, _dz),
+              (_j5c[0], _ry, _dz), (_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
     #    ...AND IT IS ONE PRISM, NOT FOURTEEN SWEEPS (user, 2026-09-28). It was drawn
     #    as fourteen conductors from bundle_paths, one octagonal solid each, which is the
     #    truth about a ribbon and the wrong model of it: nothing inside a ribbon can move

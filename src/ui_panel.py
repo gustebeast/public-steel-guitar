@@ -597,7 +597,8 @@ def board_centre():
     the motor tops along the wall; the encoder's -Y terminals stand over it. Their z is
     reported to the chassis's owner, who moves the trunk -- the board is placed for the
     display and the inputs, not to dodge it (lead, 2026-10-29)."""
-    return ui_x(), _tp().YL + BOARD_WALL_CLR + BOARD_L / 2.0
+    from . import chassis as CH
+    return ui_x(), CH.RAIL_INNER_Y + BOARD_WALL_CLR + BOARD_L / 2.0
 
 
 def input_y():
