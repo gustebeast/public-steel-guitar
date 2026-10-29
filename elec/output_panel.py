@@ -64,7 +64,10 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
+# OUTPUT_PANEL_OUT points a trial layout/route at a COPY (profile on a copy, never mid-run
+# over elec/out -- see REV below)
+OUT_DIR = (os.environ.get("OUTPUT_PANEL_OUT")
+           or os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 os.makedirs(OUT_DIR, exist_ok=True)
 os.chdir(OUT_DIR)
 
@@ -1637,7 +1640,19 @@ def output_panel():
 #   2. THERE ARE NOW TWO USB-A SHELLS ON THE -X EDGE (J2 to the Pi's gadget port,
 #      J4 to the optical board) plus a USB-C (J3, hub upstream). Those face INTO
 #      the instrument, not out the panel, and want cable room behind them.
-BOARD_W, BOARD_L = 74.0, 66.0
+# ── REV (2026-10-29). R1 IS THE COPPER IN HAND (ordered as of 1c4fd301, 2026-10-13) and stays
+# buildable: OUTPUT_PANEL_REV=1 reproduces it exactly -- 66 deep, every part where it was,
+# the R1 snapshot of the THRU pair. R2 (the default) is 4.0 shallower, lost off the +Y edge
+# (lead, 2026-10-29: the narrowed body's -Y rail is set by this board's +Y edge staying
+# D.OP_PULLEY_CLR off string 10's screw pulley; 62 lets the rail in a further bead-plus).
+# The -Y edge is the rail fit and keeps every part's distance to it; the parts that lived
+# in the lost band move by R2_MOVES (authored frame), and the frame re-centres in y at the
+# bottom of this file the same way GROW_X re-centred x.
+REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
+assert REV in (1, 2), "OUTPUT_PANEL_REV is 1 (the board in hand) or 2"
+BOARD_L_R1 = 66.0
+BOARD_W, BOARD_L = 74.0, (BOARD_L_R1 if REV == 1 else 62.0)
+SHRINK_Y = BOARD_L_R1 - BOARD_L         # 0 on R1; off the +Y edge on R2
 # ── -X GROWTH (2026-09-30). The audio section ran out of room: twenty-one TRS/gain parts
 # went in, every sweep ordering placed them legally, and every ordering left one part
 # 5-9 mm from where it belongs. The +X edge IS the panel and cannot move, so the growth
@@ -2500,7 +2515,11 @@ for _ref, (_x, _y, _rot) in BOARD_NOTES["placements"].items():
 # re-extract it with elec/freeze_pairs.py from a board that passes verify.py (see
 # docs/bronner-work-items.md) rather than editing the json by hand.
 import json as _json
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "output_panel.frozen.json"), encoding="utf-8") as _fh:
+# R2 has its own snapshot (J1 moved, so R1's THRU copper no longer meets its pads); it is
+# kept in this same authored frame and was lifted from the first rev-2 board that passed
+# verify.py (THRU skew 0.22 mm over 101.6), 2026-10-29.
+_FROZEN = "output_panel.frozen.json" if REV == 1 else "output_panel.frozen.r2.json"
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), _FROZEN), encoding="utf-8") as _fh:
     _frozen = _json.load(_fh)
 # HUB_DN1 (U4 -> U1) is no longer in the snapshot's care: U1 turned (see its placement) and
 # the pair is drawn by hand below, 5 mm long, where the lifted copy wandered over two
@@ -2723,6 +2742,48 @@ BOARD_NOTES["tracks"] += [
     ("I2S_CK", "F.Cu", 0.15, [(-8.938 + _g, -7.20), (-9.55 + _g, -7.20), (-9.90 + _g, -6.85)]),
     ("I2S_SDI", "F.Cu", 0.15, [(-8.938 + _g, -8.00), (-9.55 + _g, -8.00), (-9.80 + _g, -7.75),
                                (-9.90 + _g, -7.75)])]
+
+# ── R2: THE +Y BAND COMES DOWN, THEN THE FRAME RE-CENTRES IN Y (see REV) ─────────────
+# Everything above -- placements, hand copper, the frozen pairs -- is authored in R1's y
+# frame (edges +-33). R2_MOVES are real moves in that frame, for the parts the lost band
+# held; then every y takes +SHRINK_Y/2, because the -Y edge (the rail fit) is the datum and
+# the laminate's centre moved -SHRINK_Y/2 with its +Y edge.
+# J5 AND J1 MOVE TOGETHER (lead, 2026-10-29): with J5 alone -3 a Neutrik NP2X (O14.5) at J5
+# cleared a 15 x 8 USB-C overmould at J1 by 0.18, and a O16 plug hit it; moved as a pair
+# the plug-to-plug gaps are R1's (2.31 worst), and J1's overmould still clears J6's plug.
+# THE REST WAS SEARCHED, NOT CHOSEN (2026-10-29): each group kept rigid -- so every bypass
+# stays where it was against its pin -- and moved by the smallest shift that clears every
+# courtyard by 0.25 (layout's air) and the rim by 0.5, groups in this order, against
+# courtyards read from the footprints placed exactly as layout.py places them.
+#   the ANALOG BAND goes down with J8; its -4.4 is set by the rim (C19 stood 0.14 off it
+#     on R1), not by a neighbour.
+#   the RELAY and its driver drop into the column J8's old K1 overlap left.
+#   J5's ROW (U7 -> R9 -> C1 -> J5 tip, D5 and R10 on that node) re-sat under the jack:
+#     C1 above U7, D5 and R10 beside C41; R9 0.9 down.
+#   C56 1.5 -X off J1's new corner. J2 1.0 down off the new +Y edge (its mouth rides -X).
+_ANALOG = "U8 U2 C19 C59 C24 R8 C13 C22 C37 C20 C21 C23 C38".split()
+_RELAY = "K1 Q1 D4 R5 R36 R28 R15".split()
+R2_MOVES = {} if REV == 1 else dict(
+    {"J8": (0.0, -4.0), "J5": (0.0, -3.0), "J1": (0.0, -3.0)},
+    **{_r: (-0.2, -4.4) for _r in _ANALOG}, **{_r: (-1.6, -2.7) for _r in _RELAY},
+    C1=(-6.9, 3.7), D5=(0.0, -4.7), R9=(0.0, -0.9), R10=(0.0, -0.5),
+    C56=(-1.5, 0.0), J2=(0.0, -1.0))
+for _ref, (_dx, _dy) in R2_MOVES.items():
+    _x, _y, _rot = BOARD_NOTES["placements"][_ref]
+    BOARD_NOTES["placements"][_ref] = (_x + _dx, _y + _dy, _rot)
+_sy = SHRINK_Y / 2.0
+BOARD_NOTES["placements"] = {
+    _ref: (_x, _y + _sy, _rot) for _ref, (_x, _y, _rot) in BOARD_NOTES["placements"].items()}
+BOARD_NOTES["vias"] = [(_v[0], _v[1], _v[2] + _sy) + tuple(_v[3:]) for _v in BOARD_NOTES["vias"]]
+BOARD_NOTES["tracks"] = [(_n, _l, _w, [(_x, _y + _sy) for _x, _y in _pts])
+                         for _n, _l, _w, _pts in BOARD_NOTES["tracks"]]
+BOARD_NOTES["repair_tracks"] = [(_n, _l, _w, [(_x, _y + _sy) for _x, _y in _pts])
+                                for _n, _l, _w, _pts in BOARD_NOTES["repair_tracks"]]
+BOARD_NOTES["repair_vias"] = [(_n, _x, _y + _sy) for _n, _x, _y in BOARD_NOTES["repair_vias"]]
+# the invariant, as for GROW_X: an unmoved part keeps its distance to the -Y edge
+for _ref, (_x, _y, _rot) in BOARD_NOTES["placements"].items():
+    _dy = R2_MOVES.get(_ref, (0.0, 0.0))[1]
+    assert abs((_y + BOARD_L / 2) - (_authored[_ref][1] + _dy + BOARD_L_R1 / 2)) < 1e-9, _ref
 
 BOARD_NOTES["quality"] = {
     "decoupling": {"exempt": {

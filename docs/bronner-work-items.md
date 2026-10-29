@@ -65,6 +65,20 @@ cutting into the chassis. For R2 we should add an action item to move J7 +z and 
 
 ## R2 BACKLOG, output_panel (user via the lead, 2026-10-20) -- NOT the current rev, which fabs as is
 
+**R2-0. 66 -> 62 deep, off the +Y edge (lead, 2026-10-29) -- IN PROGRESS.** `OUTPUT_PANEL_REV`
+(default 2) in `elec/output_panel.py`; `OUTPUT_PANEL_REV=1` rebuilds the board in hand exactly
+(checked: board.json identical but for quality-note text), and `elec/rev1/` keeps its geometry.
+- Plug check first: J5 alone -3 left a Neutrik NP2X (O14.5) 0.18 from a 15 x 8 USB-C overmould at
+  J1, and a O16 plug hit it. So J5 and J1 both go -3 and the plug gaps stay R1's (2.31 worst).
+- R2_MOVES: J8 -4, J5 -3, J1 -3, and searched rigid-group shifts for the rest (analog band
+  -0.2/-4.4, relay group -1.6/-2.7, C1, D5, R9, R10, C56, J2 -1.0). Courtyard oracle
+  (placed as layout.py places them): nothing new under 0.25. Layout runs clean.
+- THRU (J1 -> J2) is out of R2's frozen copper: re-freeze it with `elec/freeze_pairs.py`
+  from a board that passes verify.py.
+- Route profiled on a copy (scratchpad, `cadkit/pcbflow/finish.py` called directly).
+- ⚠ R2-1 below (two RJ45s, ~16 x 21 each) wants MORE board; it was written before the
+  shrink. Decide it against the 62 before placing anything.
+
 **R2-1. Ethernet pass-through, the J1 -> J2 USB pattern.** Two RJ45s on the output board: one on the
 -X edge fed from the Pi's built-in GbE by a short stock Cat6 patch (~0.2-0.3 m), one in the panel,
 traces between. For Dante via Inferno on the Pi (github.com/teodly/inferno; Pi 4 tested, software
