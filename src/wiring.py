@@ -486,10 +486,6 @@ _NET_SHORT = {"GND": "gnd", "V24": "v24", "V5": "v5", "PWR_SW_UP": "up", "PWR_SW
 
 
 # ── tee stations (all on the -Y rail corridor) ────────────────────────────
-def _motor_back(i):
-    return MB.back_y(i)                      # -Y-most face of motor i (PCB back)
-
-
 def tee_stations():
     """[(x, y, drop_sign)] tee-PCB anchors, all on the -Y rail (TEE_Y) so the CAN trunk
     stays on the rail and never crosses a rib. 0..9 bus A, ONE PER MOTOR AND NOTHING
