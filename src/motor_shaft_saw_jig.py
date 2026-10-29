@@ -1,37 +1,35 @@
 # -*- coding: utf-8 -*-
 """A PRINTED HACKSAW JIG for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L.
 
-SHOP TOOL, not a part of the instrument. The leadscrew saw jig's sibling (src/saw_jig.py),
-and it works the same way (user, 2026-10-29): "the same design but using the shape we have
-in the chassis that holds the motor in place. Like the lead screw I'd expect a lid that you
-clamp down on to lock the motor onto a table. Also expecting a channel for the saw so it
-cuts evenly." And: "The screws are cumbersome when you want to cut 10 motors in a row." So
-nothing screws into the motor: undo the clamp, lift the lid, swap the motor, re-clamp.
+SHOP TOOL, not a part of the instrument. The leadscrew saw jig's sibling (src/saw_jig.py):
+"the same design but using the shape we have in the chassis that holds the motor in place"
+(user, 2026-10-29). Nothing screws into the motor -- "the screws are cumbersome when you
+want to cut 10 motors in a row".
 
-TWO PRINTED PARTS, NOTHING BOUGHT. Shaft along +Y, the motor's faceplate at y = 0, the table
-at z = 0. The motor lies as it does in the instrument, on its driver's cover.
+ONE PRINTED PART, NO CAP (user, 2026-10-29: "we don't need the cap at all, I can just clamp
+the motor directly since the clamp has a soft pad on it"). The leadscrew needed its cap
+because it is round; the motor is a 42 mm square in a bay of its own shape, so the Quick-Grip
+goes straight onto the driver's cover and squeezes motor -> jig -> table. Undo it, lift the
+motor out, drop the next one in, re-clamp.
 
-  BODY   the chassis' own motor bay, as a block: motor_bank.lift_prism (the bay's two widths,
-         its fits and its back step) and motor_bank.low_walls (the bay's relief beside the
-         green terminals, so a wired motor goes in too) cut out of it, and the bay's faceplate
-         wall with its boss slot (motor_bank.BOSS_CLR) -- none of it redrawn here. The motor is
-         pushed home on that wall, which the cut is measured from.
-         The wall runs on CUT_L to the SAW SLOT (SLOT_W, the leadscrew jig's blade), open
-         across the whole width, and a +Y CHEEK past it: the blade has a wall on both sides.
-         The shaft lies in a U channel through both, open at the top for the drop-in.
-  CAP    a plunger down the bay's opening onto the driver's cover, the way saw_jig's cap goes
-         down its channel. The Quick-Grip's pad goes on its flat top (see CAP_UP for why no
-         rimmed pocket), so the clamp squeezes cap -> motor -> base -> table in one stack. An ARM over the faceplate wall
-         carries a TONGUE down the shaft channel to just over the shaft's D FLAT: the shaft
-         cannot turn under the blade, and the channel is closed between the saw and the
-         motor. Its relief over the coil plug and its leads is read off the motor's model.
-
-CHIPS. The cap closes the boss slot and the shaft channel from the faceplate to the slot's
-face, so the only way from the saw to the bearing seal and the magnet gap is along the shaft
-inside a closed channel. INSTALL_NOTES: magnet the filings off before the cap comes up.
+LEAN (user, 2026-10-29). Shaft along +Y, the motor's faceplate at y = 0, the table at z = 0.
+  FLOOR   MIN_WALL_2P under everything.
+  BAY     the chassis' own motor bay (motor_bank.lift_prism, and low_walls' relief beside the
+          green terminals) in MIN_WALL_2P walls, standing only to the SHAFT'S AXIS: enough to
+          seat the can and to give the shaft a solid bed, no higher.
+  LIP     a MIN_WALL_2P stop the faceplate is pushed home on, with the bay's boss slot
+          through it. It replaces the solid block that ran from the faceplate to the cut.
+  CRADLE  a solid rib under the WHOLE shaft, faceplate to past its tip, a half-round trough
+          to the axis.
+  CHEEKS  the saw slot (SLOT_W, the leadscrew jig's blade) with a CHEEK_T wall each side,
+          full height -- they take the blade's side load.
+  GUSSETS the motor-side cheek lost the block behind it, so two 45 deg gussets (CHEEK_T
+          thick, on CHEEK_T side rails at the bay's outer faces) tie it back to the lip.
 
 THE CUT. The slot's motor-side face is at CUT_L, so the blade cannot cut the stub short. It
 comes out between CUT_L and CUT_L + (SLOT_W - kerf), and the file takes it to CUT_L.
+THE SHAFT IS FREE TO TURN (the cap's tongue on the D flat went with the cap); the motor's
+detent holds it, or a finger on the stub past the saw.
 """
 from __future__ import annotations
 
@@ -47,12 +45,10 @@ from .helpers import box_at
 B = D.BEAD
 
 # ── the motor, in the jig frame (faceplate y = 0, shaft +Y, table z = 0) ────
-FLOOR_T = 4 * B                                    # 3.2 under the cover
-AXIS_Z = FLOOR_T + SV.DRV_HALF                     # 24.45: the motor on its 42.5 cover
+FLOOR_T = D.MIN_WALL_2P                            # 1.6 under the cover
+AXIS_Z = FLOOR_T + SV.DRV_HALF                     # 22.85: the motor on its 42.5 cover
 COVER_TOP = AXIS_Z + SV.DRV_HALF                   # 45.7: what the cap bears on
 SHAFT_R = D.MOTOR_SHAFT_D / 2.0                    # 2.5
-FLAT_Z = D.MOTOR_SHAFT_FLAT - SHAFT_R              # 2.0: the D's flat over the axis
-FLAT_Y0 = SV.SHAFT_L - D.MOTOR_SHAFT_FLAT_L        # 3.5: where the flat starts off the face
 BOSS_W = D.NEMA17_PILOT_D + 2 * MB.BOSS_CLR        # 22.8: the bay's boss slot
 BOSS_D = SV.PILOT_H + B / 2.0                      # 2.4 deep off the face
 CUT_L = C.MOTOR_SHAFT_CUT_L                        # 20.8 at the held 17.2 standoff (15.6 at 12.0)
@@ -66,25 +62,15 @@ CH_CLR = 0.1                                       # the shaft channel round the
 CH_HW = SHAFT_R + CH_CLR
 
 # ── the body ────────────────────────────────────────────────────────────────
-WALL = 4 * B                                       # 3.2 round the bay
-LID_ENGAGE = 6 * B                                 # 4.8: the bay's walls over the cover
-Z_TOP = COVER_TOP + LID_ENGAGE
-Y1 = CUT_L + SLOT_W + CHEEK_T                      # the +Y cheek's outer face
+WALL = D.MIN_WALL_2P                               # 1.6: bay walls and lip
+LIP_T = D.MIN_WALL_2P                              # the faceplate's stop, along Y
+RIB_W = 2 * (CH_HW + D.MIN_WALL_2P)                # the shaft's cradle rib, across
+BED_Z = AXIS_Z                                     # bay, lip and cradle stop at the shaft's axis
+LID_ENGAGE = 6 * B                                 # the cheeks' reach over the cover (as before)
+Z_TOP = COVER_TOP + LID_ENGAGE                     # the cheeks' top
+SHAFT_TIP_Y = SV.SHAFT_L                           # the uncut shaft's tip off the faceplate
+Y1 = max(CUT_L + SLOT_W + CHEEK_T, SHAFT_TIP_Y + D.MIN_WALL_2P)   # the +Y cheek's outer face
 BODY_UP = (0.0, 0.0, 1.0)                          # as drawn, table face on the bed
-
-# ── the cap ─────────────────────────────────────────────────────────────────
-CAP_CLR = SJ.CAP_CLR                               # 0.3, its slide in the bay
-TONGUE_CLR = 0.1                                   # the tongue over the flat
-ARM_GAP = SJ.CAP_CLR                               # the arm's underside over the wall's top
-ARM_T = 12 * B                                     # 9.6
-CAP_TOP = Z_TOP + ARM_GAP + ARM_T
-RELIEF_CLR = 2 * B                                 # round the coil plug and its leads
-# PRINT ORIENTATION: upside down, its flat top on the bed -- the plunger, the arm, the boss plug
-# and the tongue all stand up off it and every face is a wall or a floor. That is why the top
-# is FLAT, with no rimmed pad pocket like saw_jig's cap: upside down the pocket's floor would be
-# a 27 x 20 bridge, and standing on an end instead makes the tongue's and the plug's ends 10 mm
-# ceilings. The Quick-Grip's pad goes anywhere on the 42 x 53 top; all of it is over the cover.
-CAP_UP = (0.0, 0.0, -1.0)
 
 
 def _local_to_jig(wp):
@@ -118,67 +104,46 @@ def _back_y():
     return -(D.MOTOR_BODY_L + 2 * MB.MOTOR_CLR)       # the bay's rear fit, from the wall face
 
 
+def _gusset(x0, x1, y0, y1, z0):
+    """A 45 deg gusset in YZ, x0..x1 thick: rises from (y0, z0) to (y1, z0 + y1 - y0)."""
+    h = y1 - y0
+    return (cq.Workplane("YZ").polyline([(y0, z0), (y1, z0), (y1, z0 + h)]).close()
+            .extrude(x1 - x0).translate((x0, 0, 0)))
+
+
 def body() -> cq.Workplane:
     hw = _bay_hw() + WALL
-    y0 = _back_y() - MB.BACK_T
-    blk = box_at(2 * hw, Y1 - y0, Z_TOP, y=(Y1 + y0) / 2.0, z=Z_TOP / 2.0)
+    y0 = _back_y() - WALL
+    cy0 = CUT_L - CHEEK_T                             # the motor-side cheek's back face
+    assert cy0 - LIP_T >= 2 * B, "no room between the lip and the motor-side cheek"
+    # the bay: floor + walls to the axis, the motor's prism cut out
+    blk = box_at(2 * hw, -y0, BED_Z, y=y0 / 2.0, z=BED_Z / 2.0)
     blk = blk.cut(_bay_to_jig(MB.lift_prism(MB.COUPON_MOTOR)))
-    # the terminal relief: the bay's own box, run on up through the jig's top (in the chassis
-    # it stops at the tee seat, which here would leave a 1.25 shelf hanging over it)
     lw = _bay_to_jig(MB.low_walls(MB.COUPON_MOTOR)).val().BoundingBox()
     blk = blk.cut(box_at(lw.xlen, lw.ylen, Z_TOP + 1.0 - lw.zmin, x=(lw.xmin + lw.xmax) / 2.0,
                          y=(lw.ymin + lw.ymax) / 2.0, z=(lw.zmin + Z_TOP + 1.0) / 2.0))
+    # forward of the faceplate: floor, lip, cradle rib, the two cheeks
+    blk = blk.union(box_at(2 * hw, Y1, FLOOR_T, y=Y1 / 2.0, z=FLOOR_T / 2.0))
+    blk = blk.union(box_at(2 * hw, LIP_T, BED_Z, y=LIP_T / 2.0, z=BED_Z / 2.0))
+    blk = blk.union(box_at(RIB_W, Y1, BED_Z, y=Y1 / 2.0, z=BED_Z / 2.0))
+    blk = blk.union(box_at(2 * hw, CHEEK_T, Z_TOP, y=cy0 + CHEEK_T / 2.0, z=Z_TOP / 2.0))
+    y2 = CUT_L + SLOT_W
+    blk = blk.union(box_at(2 * hw, Y1 - y2, Z_TOP, y=(y2 + Y1) / 2.0, z=Z_TOP / 2.0))
+    # the struts: a side rail at each outer face, lip to cheek, then a 45 deg gusset off its
+    # top up the cheek's back -- as high as the run allows, never past the cheek's top
+    rise = min(cy0, Z_TOP - BED_Z)
+    for sx in (-1.0, 1.0):
+        x0, x1 = (hw - CHEEK_T, hw) if sx > 0 else (-hw, -hw + CHEEK_T)
+        blk = blk.union(box_at(CHEEK_T, cy0, BED_Z, x=(x0 + x1) / 2.0, y=cy0 / 2.0,
+                               z=BED_Z / 2.0))
+        blk = blk.union(_gusset(x0, x1, cy0 - rise, cy0 + 0.01, BED_Z - 0.01))
     blk = blk.cut(_u(BOSS_W / 2.0, -1.0, BOSS_D, AXIS_Z))           # the boss slot
     blk = blk.cut(_u(CH_HW, BOSS_D - 0.5, Y1 + 1.0, AXIS_Z))        # the shaft channel
     blk = blk.cut(box_at(2 * hw + 2.0, SLOT_W, Z_TOP - SLOT_FLOOR_Z + 1.0,
                          y=CUT_L + SLOT_W / 2.0, z=(SLOT_FLOOR_Z + Z_TOP + 1.0) / 2.0))
+    vals = blk.solids().vals()
+    assert len(vals) == 1, f"the jig fell apart into {len(vals)} solids"
     return blk
-
-
-def _relief():
-    """What of the motor stands over its cover (coil socket, plug, lead loop), grown by
-    RELIEF_CLR, as a box -- read off the model, not typed."""
-    parts = None
-    for _k, wp, _rgb, _fin in C.motor_parts():
-        parts = wp if parts is None else parts.union(wp)
-    over = _local_to_jig(parts).intersect(box_at(200, 200, 100, z=COVER_TOP + 0.01 + 50.0))
-    b = over.val().BoundingBox()
-    return (b.xmin - RELIEF_CLR, b.xmax + RELIEF_CLR, b.ymin - RELIEF_CLR, b.ymax + RELIEF_CLR,
-            b.zmax + RELIEF_CLR)
-
-
-def cap() -> cq.Workplane:
-    # the plunger: the bay's NARROW section (the can's), less CAP_CLR a side, so one width
-    # slides the whole bay; from the back fit to the faceplate wall
-    pw = SV.SQ + 2 * MB.SIDE_FIT - 2 * CAP_CLR
-    py0, py1 = _back_y() + CAP_CLR, -CAP_CLR
-    c = box_at(pw, py1 - py0, CAP_TOP - COVER_TOP, y=(py0 + py1) / 2.0,
-               z=(COVER_TOP + CAP_TOP) / 2.0)
-    # the arm over the faceplate wall, to the slot's face
-    za = Z_TOP + ARM_GAP
-    c = c.union(box_at(pw, CUT_L - py1, CAP_TOP - za, y=(py1 + CUT_L) / 2.0,
-                       z=(za + CAP_TOP) / 2.0))
-    # the boss slot's plug, down to over the boss -- CAP_CLR off the wall's face, where the
-    # motor's faceplate stands
-    zb = AXIS_Z + D.NEMA17_PILOT_D / 2.0 + TONGUE_CLR
-    by0, by1 = CAP_CLR, BOSS_D - CAP_CLR
-    c = c.union(box_at(BOSS_W - 2 * CAP_CLR, by1 - by0, za - zb + 0.01,
-                       y=(by0 + by1) / 2.0, z=(zb + za) / 2.0))
-    # the TONGUE down the shaft channel, TONGUE_CLR over the shaft's round part and then over
-    # its D FLAT, so the shaft cannot turn under the blade
-    tw = 2 * (CH_HW - TONGUE_CLR)
-    zf = AXIS_Z + FLAT_Z + TONGUE_CLR
-    zr = AXIS_Z + SHAFT_R + TONGUE_CLR
-    yf = FLAT_Y0 + 2 * B                               # on the flat past its runout
-    assert CUT_L - yf >= 4 * B, "under four beads of tongue on the flat"
-    c = c.union(box_at(tw, CUT_L - by1, za - zr + 0.01, y=(by1 + CUT_L) / 2.0, z=(zr + za) / 2.0))
-    c = c.union(box_at(tw, CUT_L - yf, zr - zf + 0.01, y=(yf + CUT_L) / 2.0, z=(zf + zr) / 2.0))
-    # the relief over the coil plug and its leads
-    rx0, rx1, ry0, ry1, rz1 = _relief()
-    assert rz1 + 4 * B <= CAP_TOP, "the cap is too thin over the coil lead's loop"
-    c = c.cut(box_at(rx1 - rx0, ry1 - ry0, rz1 - COVER_TOP + 1.0,
-                     x=(rx0 + rx1) / 2.0, y=(ry0 + ry1) / 2.0, z=(COVER_TOP - 1.0 + rz1) / 2.0))
-    return c
 
 
 def motor() -> cq.Workplane:

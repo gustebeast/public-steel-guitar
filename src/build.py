@@ -491,11 +491,7 @@ PARTS["saw_jig"] = (
 PARTS["motor_shaft_saw_jig"] = (
     lambda: heal(__import__("src.motor_shaft_saw_jig", fromlist=["e"]).body()),
     "tools/motor_shaft_saw_jig.step",
-    "TOOL — the leadscrew saw jig's sibling for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L, no screws: the motor drops into the chassis' own bay (motor_bank.lift_prism + low_walls, the bay's boss slot), faceplate pushed home on the wall, shaft in a U channel to a 1.3 saw slot (McMaster 6927A16) at the cut plane with a cheek on each side of the blade. PETG-GF on the 0.8, printed as drawn")
-PARTS["motor_shaft_saw_jig_cap"] = (
-    lambda: heal(__import__("src.motor_shaft_saw_jig", fromlist=["e"]).cap()),
-    "tools/motor_shaft_saw_jig_cap.step",
-    "TOOL — the motor shaft saw jig's cap: a plunger down the bay onto the driver's cover with a relief over the coil plug, an arm over the faceplate wall plugging the boss slot, and a tongue down the shaft channel onto the D flat. The Quick-Grip squeezes cap, motor, jig and table in one stack. PETG-GF on the 0.8, printed upside down (flat top on the bed)")
+    "TOOL — the leadscrew saw jig's sibling for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L, no screws: the motor drops into the chassis' own bay (motor_bank.lift_prism + low_walls, the bay's boss slot), faceplate pushed home on a 1.6 lip, shaft on a cradle rib its full length to a 1.3 saw slot (McMaster 6927A16) at the cut plane with a 3.2 cheek each side, the motor-side cheek braced by two 45 deg gussets; 1.6 floor and bay walls to the shaft axis. NO CAP: the Quick-Grip pad goes straight on the motor. PETG-GF on the 0.8, printed as drawn")
 PARTS["saw_jig_cap"] = (
     lambda: heal(__import__("src.saw_jig", fromlist=["e"]).cap()),
     "tools/saw_jig_cap.step",
@@ -758,10 +754,7 @@ def _declared():
          "and every ceiling over the nut is a 45 deg gable"),
         (["motor_shaft_saw_jig"], _MSJ.BODY_UP,
          "motor_shaft_saw_jig.BODY_UP — as drawn, table face on the bed: the bay, "
-         "the boss slot, the shaft channel and the saw slot all open upward"),
-        (["motor_shaft_saw_jig_cap"], _MSJ.CAP_UP,
-         "motor_shaft_saw_jig.CAP_UP — upside down, flat top on the bed: the "
-         "plunger, arm, boss plug and tongue all stand up off it"),
+         "the boss slot, the shaft channel and the saw slot all open upward; the gussets rise at 45 deg"),
         (["saw_jig_cap"], _SJG.CAP_UP,
          "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise "
          "off the bed, the pad pocket opens up"),

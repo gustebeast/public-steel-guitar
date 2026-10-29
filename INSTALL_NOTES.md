@@ -267,30 +267,29 @@ irreversible: do not cut until that lands and this note loses its HELD mark.
 
 The SERVO42D's shaft comes 21.5 mm long off the faceplate. The instrument uses it only to the
 pulley's outer face (`components.MOTOR_SHAFT_CUT_L`: 15.6 at the 12.0 standoff), and the motors sit closer to their
-belts for it. Cut every motor once, on the bench, with the two-part printed jig
-(`tools/motor_shaft_saw_jig.step` and `tools/motor_shaft_saw_jig_cap.step`), one Quick-Grip and
-the 6927A16 hacksaw blade. It works like the leadscrew saw jig, and nothing screws into the motor.
+belts for it. Cut every motor once, on the bench, with the printed jig
+(`tools/motor_shaft_saw_jig.step`), one Quick-Grip and the 6927A16 hacksaw blade. It works like
+the leadscrew saw jig, with no cap: the motor is square, so the clamp's soft pad goes straight on
+it. Nothing screws into the motor.
 
 1. Set the jig on the table near the edge, so the clamp's lower jaw reaches under it.
-2. Turn the shaft by hand until its D FLAT faces straight up.
-3. Drop the motor into the jig's bay: driver cover down, shaft into the U channel. It is the
+2. Drop the motor into the jig's bay: driver cover down, shaft onto the cradle. It is the
    chassis bay's own shape, so it goes in only one way.
-4. Push the motor forward until its faceplate sits on the wall. The cut is measured from that
-   wall.
-5. Drop the cap in. Its tongue lands on the flat; if it won't seat, the flat isn't up. Turn the
-   shaft and try again.
-6. Clamp the Quick-Grip on the cap's flat top and under the table, and squeeze. The stack is
-   cap, motor, jig, table.
-7. Saw down the slot. It has a wall on both sides of the blade, and its motor-side face is the
-   cut line, so the stub can only come out long, never short. The offcut stays in the channel.
-8. **With the cap still on**, pick every filing off the slot and the stub's end with a magnet.
-   The cap closes the boss slot and the shaft channel, so this is the moment the bearing and
-   the magnet gap are covered.
-9. Undo the clamp, lift the cap, lift the motor out.
-10. File the cut end back to `MOTOR_SHAFT_CUT_L` and square, then add a small 45° chamfer all round, so the
-    pulley's bore starts on it without shaving plastic. Wipe the stub and check the faceplate
-    round the boss for filings.
-11. Drop in the next motor (step 2). The jig stays where it is; only the clamp comes off.
+3. Push the motor forward until its faceplate sits on the lip. The cut is measured from that
+   lip.
+4. Clamp the Quick-Grip's pad on the motor's top (the driver's cover) and its other jaw under the
+   table, and squeeze. The stack is motor, jig, table.
+5. Saw down the slot. It has a wall on both sides of the blade, and its motor-side face is the
+   cut line, so the stub can only come out long, never short. Nothing holds the shaft from
+   turning but the motor's detent: if it turns under the blade, hold the offcut end past the
+   slot with a finger.
+6. Before unclamping, pick every filing off the slot, the cradle and the stub's end with a
+   magnet, and off the faceplate round the boss -- the jig no longer covers it.
+7. Undo the clamp, lift the motor out.
+8. File the cut end back to `MOTOR_SHAFT_CUT_L` and square, then add a small 45° chamfer all round, so the
+   pulley's bore starts on it without shaving plastic. Wipe the stub and check the faceplate
+   round the boss for filings.
+9. Drop in the next motor (step 2). The jig stays where it is; only the clamp comes off.
 
 ## Motors: push each pulley on to the end of the shaft's flat (2026-10-28)
 
