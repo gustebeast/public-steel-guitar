@@ -7,8 +7,8 @@ measure the finished solid), so every seat, lip, teardrop and bore is exactly wh
 instrument prints -- nothing is redrawn here.
 
 The slice is string 6 (index 5): a far-row screw at x +12, its rod at x +20, mid-field
-so both Y cut faces land half-way across the in-row webs. X runs from just -X of the
-bearing seat to the endplate's +X face, which stays the bed: the coupon prints exactly
+so both Y cut faces land half-way across the in-row webs. X runs from the edge of the near
+row's bearing seats, past the nut's -X ear, to the endplate's +X face, which stays the bed: the coupon prints exactly
 as the endplate does (bridge_endplate.PRINT_UP, flat on +X, building -X).
 
   py -3.12 -m src.test.endplate_slice      -> coupons/test_endplate_slice.step (print pose)
@@ -25,7 +25,9 @@ from .. import screw_rail as SR
 from cadkit.step_export import export_step
 
 STRING_I = 5                                   # string 6
-X0 = D.screw_x(STRING_I) - D.SUPPORT_BRG_OD / 2 - 2 * D.MIN_WALL_2P   # 0.8 clear of the seat + web
+# -X edge: as far as the NEAR row's bearing seats allow (user, 2026-10-29: "a bit more
+# towards -x"). Past this the neighbours' Ø16.2 seats would open half-bores on the Y faces.
+X0 = -(D.SCREW_ROW_DX - (D.SUPPORT_BRG_OD + 0.2) / 2)        # -3.9: the nut's -X ear (+1.0) clears by 4.9
 X1 = D.BRIDGE_BASE_X1 + 1.0                    # past the +X face: the bed stays whole
 Y_HALF = D.STRING_PITCH                        # half the in-row pitch: mid-web both sides
 Z0 = D.SCREW_BOT_Z - 3.0                       # under the screw's foot: the pulley's ascent
