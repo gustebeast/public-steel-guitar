@@ -41,7 +41,7 @@ except Exception:                       # a profiling hook must NEVER break a bu
 
 from . import dimensions as D
 from elec import harness as _EH           # the PCB's pin order, single-sourced
-from .helpers import heal
+from .helpers import box_at, heal
 from . import components as C
 from . import chassis as CH
 from .components import MOTOR_PULLEY_STANDOFF
@@ -271,6 +271,26 @@ assert _kh_n == 1, (
     "(board bottom edge z -80.85 against a floor top of -71.35) and the Pi's two legs should "
     "reach it with one bead of overlap. Check electronics.keyhead_cradles's root_d/foot "
     "against motor_bank.FLOOR_TOP." % _kh_n)
+# ⚠ THE BUS-B PLUGS (J2, J6) COME OUT DOWNWARD, BESIDE THE -X/-Y LEG (user, 2026-10-29). As
+# the -Y rail comes in, that corner's body adapter -- and the leg under it -- moves +Y with
+# chassis.Y_LO toward them. Each plug is pulled straight down past the body's underside and
+# squeezed from below, so the column under it, MCTRL_PLUG_FINGER wider each way, must stay
+# out of the adapter's footprint. Read off the solids (the board's parts below Z_BOT and the
+# adapter as placed), so neither side can close on the other without the build saying so.
+MCTRL_PLUG_FINGER = 6 * D.BEAD          # 4.8 of finger room round a plug, past its body
+from . import leg_stack as _LS_PLUG
+_adb = _LS_PLUG.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1]).val().BoundingBox()
+_plugs = _EL_ports.motor_ctrl().intersect(
+    box_at(1600.0, 1600.0, 40.0, x=-300.0, y=0.0, z=CH.Z_BOT - 20.0)).val().Solids()
+assert _plugs, "no part of the motor controller stands below the body: where are J2/J6?"
+for _pl in _plugs:
+    _pb = _pl.BoundingBox()
+    _gx = max(_adb.xmin - _pb.xmax, _pb.xmin - _adb.xmax)
+    _gy = max(_adb.ymin - _pb.ymax, _pb.ymin - _adb.ymax)
+    assert max(_gx, _gy) >= MCTRL_PLUG_FINGER, (
+        "a bus-B plug on the motor controller (x %.1f..%.1f, y %.1f..%.1f) has %.2f to the "
+        "-X/-Y body adapter -- under the %.1f a hand needs to pull it down past the leg"
+        % (_pb.xmin, _pb.xmax, _pb.ymin, _pb.ymax, max(_gx, _gy), MCTRL_PLUG_FINGER))
 for _mp in _EL_ports.mctrl_floor_ports():
     for _csi in range(len(chassis_segments)):
         chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
