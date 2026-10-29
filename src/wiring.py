@@ -1361,7 +1361,7 @@ def build_wires():
     # and ride the trough to the keyhead, staggered (see LANE_USB).
     #
     # wire_usb ENDS IN A RIGHT-ANGLE PLUG AT THE Pi (2026-10-28). It had none: the Pi's USB-C
-    # faced the -Y rail 3.31 mm away. The Pi moved +Y (electronics.PI_USBC_SHIFT) and the
+    # faced the -Y rail 3.31 mm away. The Pi moved +Y (electronics.PI_FP, now right up to the motors) and the
     # lead is a left/right-angle one, StarTech USB2CC1MR (electronics.PI_USBC_*): its head
     # lies flat between the board's edge and the rail with the cable leaving -X, and the
     # lead comes down the rail just past it -- -X of where the 24 V link turns out of the

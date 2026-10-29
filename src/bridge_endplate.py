@@ -1242,6 +1242,12 @@ def op_cradle():
     # above the board's edge exactly where the three connectors overhang it.
     cr = cr.cut(box_at(20.0, OP_BOARD_Y + 40.0, 60.0,
                        x=rw / 2 + OP_PANEL_CLR + 10.0, y=0.0, z=0.0))
+    # -Y: NO WALL AT ALL (user, 2026-10-29: the output board "needs no wall on its -Y side;
+    # it may sit directly against the chassis inner wall"). The board's -Y edge is a fit off
+    # the rail's inner face (electronics.op_origin), so the rail locates it there, and every
+    # bit of cradle past that fit -- wall, plate, pads -- would be in the rail.
+    cr = cr.cut(box_at(rw + 60.0, 40.0, 80.0, x=0.0,
+                       y=-(OP_BOARD_Y / 2.0 + OP_PANEL_CLR) - 20.0, z=0.0))
     # THE +X PADS RUN ON TO THE PANEL. They stopped at the board's edge, OP_PANEL_CLR short
     # of it, so each one's bed-facing end was a 3.2 mm ceiling 1.9 off the bed
     # (check_ceilings, 2026-10-20). Under the board there is nothing the gap was for.
