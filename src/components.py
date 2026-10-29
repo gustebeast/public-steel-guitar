@@ -28,6 +28,11 @@ from cadkit.fasteners import set_screw, m4_insert                # the ONE dummi
 NOZZLE_D = 0.4
 
 MOTOR_PULLEY_STANDOFF = 14.0 + D.MOTOR_SETBACK   # 17.2: pulley this far +Y of the motor faceplate
+# THE SHAFT IS CUT (user, 2026-10-29): the pulley needs it only to its own +Y face, so each
+# motor's shaft is sawn to this off its faceplate (src/motor_shaft_saw_jig.py, INSTALL_NOTES)
+# -- B/2 short of that face, so a blade that drifts away from the guide still leaves the stub
+# inside the bore.
+MOTOR_SHAFT_CUT_L = MOTOR_PULLEY_STANDOFF + D.PULLEY_W / 2.0 - D.BEAD / 2.0
 
 
 # ── Vertical leadscrew (axis Z) ──────────────────────────────────────────

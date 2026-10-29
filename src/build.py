@@ -419,6 +419,11 @@ PARTS["saw_jig"] = (
     lambda: heal(__import__("src.saw_jig", fromlist=["e"]).body()),
     "tools/saw_jig.step",
     "TOOL — hacksaw jig for cutting the ten Tr8x2 leadscrews to SCREW_LEN by hand with one Quick-Grip and no vise: the rod rests on two crests in a 90 deg V tunnel, the saw slot (1.3, McMaster 6927A16) sits 5.6 past the clamped support, and the piece overhangs an OPEN fork to a fixed end stop at SCREW_LEN + 0.4, then drops out. The table-edge notch goes on the table edge so a slipped blade hits the jig. PETG, printed as drawn")
+# MOTOR SHAFT SAW JIG -- a SHOP TOOL (lead, 2026-10-29): exported, never in the assembly.
+PARTS["motor_shaft_saw_jig"] = (
+    lambda: heal(__import__("src.motor_shaft_saw_jig", fromlist=["e"]).jig()),
+    "tools/motor_shaft_saw_jig.step",
+    "TOOL — hacksaw guide for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L: bolted flat to the faceplate by four of the belt clamps' M3 x 12 (2.5 mm key), the pilot boss in a cone-roofed pocket so the whole face is covered, a snug D bore to a guide face at the cut plane; the blade lies on that face. PETG-GF on the 0.8, printed faceplate face down")
 PARTS["saw_jig_cap"] = (
     lambda: heal(__import__("src.saw_jig", fromlist=["e"]).cap()),
     "tools/saw_jig_cap.step",
@@ -565,6 +570,7 @@ def _declared():
     from . import motor_bank as _MB
     from . import coil_mandrel as _CM
     from . import saw_jig as _SJG
+    from . import motor_shaft_saw_jig as _MSJ
     from . import ream_jig as _RJG
     from . import electronics as _ELX
 
@@ -679,6 +685,10 @@ def _declared():
          "ream_jig.PRINT_UP — standing as it is used, table face on the bed: "
          "the nut slot and the reamer channel both print round their own axis, "
          "and every ceiling over the nut is a 45 deg gable"),
+        (["motor_shaft_saw_jig"], _MSJ.PRINT_UP,
+         "motor_shaft_saw_jig.PRINT_UP — faceplate face down: the D bore and "
+         "the four screw holes print round about their own axes, and the boss "
+         "pocket's roof is a 45 deg cone"),
         (["saw_jig_cap"], _SJG.CAP_UP,
          "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise "
          "off the bed, the pad pocket opens up"),

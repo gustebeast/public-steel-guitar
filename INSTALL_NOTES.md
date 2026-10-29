@@ -258,14 +258,37 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
   the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
   The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
 
+## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29)
+
+The SERVO42D's shaft comes 21.5 mm long off the faceplate; the instrument uses it only to the
+pulley's outer face (`components.MOTOR_SHAFT_CUT_L`), and the motors sit closer to their belts
+for it. Every motor, once, on the bench, with the printed guide (`tools/motor_shaft_saw_jig.step`)
+and the 6927A16 hacksaw blade:
+
+* Bolt the guide FLAT on the faceplate with four of the belt clamps' M3 x 12 socket heads (2.5 mm
+  key) -- the pilot boss drops into its pocket and the shaft's flat keys into the guide's D bore,
+  so it only goes on one way. Snug, not tight: they are going back into the clamps after.
+* Lay the motor on its side on the table with the guide's EDGE MARK (the V down both sides) on
+  the table edge, so the guide's tower and the shaft stand out past it. Hold the motor down with
+  the Quick-Grip on its can (not the driver cover) if it moves.
+* Saw with the blade's flat lying on the tower's face, down past the shaft. A drifting blade only
+  ever leaves the stub longer; it is never shorter than the face.
+* File the cut end flat back to the tower face, then a small 45 deg chamfer all round, so the
+  pulley's bore starts on it without shaving plastic.
+* With the guide STILL ON, pick every filing off the stub, the tower face and the saw cut with a
+  magnet, and wipe the stub. The guide is what covers the motor's face and bearing; only then
+  take the screws out and lift it off. Check the faceplate round the boss for filings anyway.
+* ⚠ Before printing ten guides: the faceplate's M3 holes must take 4 mm of thread (most NEMA17s
+  are tapped 4.5). If a screw bottoms before the guide is flat, the guide needs a thicker plate.
+
 ## Motors: push each pulley on to the end of the shaft's flat (2026-10-28)
 
 * The pulley's bore is a D the whole way through: line its flat up with the shaft's flat and
   push it on until it stops. It stops where the shaft's flat ends and the round part starts,
-  and that is its place -- no shim, no gauge. The shaft's end then stands 0.3 past the
-  pulley's outer face.
-* It goes 18 mm down the shaft (the flat's measured length, dimensions.MOTOR_SHAFT_FLAT_L),
-  stopping 1.5 short of the motor's boss. If a motor's flat differs, the pulley's place moves
+  and that is its place -- no shim, no gauge. The cut shaft's end then sits about 0.4 inside
+  the pulley's outer face.
+* It seats where the flat starts, 3.5 mm off the faceplate (the bought shaft's flat is 18 mm
+  of its 21.5, dimensions.MOTOR_SHAFT_FLAT_L), 1.5 short of the motor's boss. If a motor's flat differs, the pulley's place moves
   with it: measure it and the pulley gets re-drawn.
 
 ## Motor tees: ONE switch ON, nine OFF
