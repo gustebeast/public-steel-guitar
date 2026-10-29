@@ -65,7 +65,7 @@ Way order is `elec/harness.py`; every JST lead is crimped 1:1, way n to way n. X
 | Motor drop | `can_tee` J2, XH 4 | the motor's screw terminals | see below |
 | Motor board USB | `motor_ctrl` J4, PH 4 | a Pi USB-A host port | VBUS (not connected at the board), GND, D-, D+ |
 | Hub upstream | `output_panel` J3, USB-C | a Pi USB-A host port | stock A-to-C lead |
-| Pi gadget port | `output_panel` J2, USB-C | the Pi's USB-C | stock C-to-C lead, about 1 m on the bench. ⚠ In the instrument the Pi's USB-C faces the -Y rail about 4.5 mm away: no plug goes in there as the Pi is placed today (open design item) |
+| Pi gadget port | `output_panel` J2, USB-C | the Pi's USB-C | stock C-to-C lead, about 1 m on the bench. In the instrument: StarTech USB2CC1MR (1 m, USB 2.0, LEFT/RIGHT-angle plug at the Pi, its cable leaving toward the Pi's SD-card end), the lead the Pi was moved +Y for (2026-10-28) |
 | Optical USB | `output_panel` J4, USB-C | `optical` J1, USB-C | [Amazon B0FKYR7V34](https://www.amazon.com/dp/B0FKYR7V34), $9.99: **0.3 m, USB 2.0, the same up/down-angle plug at both ends** (user, 2026-10-07). The optical end's limits are overmould 12 mm deep at most, 22 mm at most from the plug's axis to the cable; this one is 5.2 and about 14 (seller's photo). On the bench any C-to-C lead does; the angle is for the endplate |
 | Pickup | magnetic pickup | `output_panel` J8 | two screw terminals, hot and ground, marked on the silk |
 

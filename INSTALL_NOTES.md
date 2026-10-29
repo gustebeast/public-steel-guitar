@@ -525,6 +525,17 @@ levers' mortise/tenon joinery is under it.
 
 ⚠ **Removal order:** the spacer comes off before the Pi, and the Pi comes out along **+X**.
 
+### The Pi's USB-C lead: angled plug, cable toward +X (2026-10-28)
+
+The lead from `output_panel` J2 is a StarTech USB2CC1MR, and its **angled** end goes in the Pi.
+The head lies flat in the gap between the Pi's −Y edge and the rail, in a notch in the cradle
+wall, with about 1 mm to spare. **Turn the plug so its cable leaves toward the Pi's SD-card
+end (−X)**, then take the cable up the rail past that end of the board, into the cable trough. USB-C is reversible, so either way up plugs in; only
+one way round sends the cable where the route has room.
+
+Plug it in **after** the Pi is seated and clamped: the head sits below the top of the board's
+edge, so the Pi cannot drop past a plug that is already in.
+
 ## Leg blind-mate boards (src/leg_pogo.py) — ORDER MATTERS
 
 The male board goes into the tenon's end **as a unit, from the mating face, and it

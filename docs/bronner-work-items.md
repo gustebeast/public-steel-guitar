@@ -1,5 +1,24 @@
 # bronner — open work items (2026-09-30)
 
+## Pi +Y for the USB-C plug (user, 2026-10-28) -- BUILT, gate pending
+
+"Now that we have the real motor spec can you move the pi so it can fit a right angle USB C
+and then model the USB C cable plug accurately", and branner's motors go 3.2 further -Y (their
+shafts are longer than drawn). Measured off build #963 (scratchpad piroom2.py, per 4 mm of x),
+first foreign material +Y of the Pi stack:
+
+    x -590..-566   stack -59.25 (cap)       first foe -26.45   gap 32.80
+    x -562..-546   stack -55.87 (ribbon)    first foe -37.15   gap 18.72
+    x -538..-518   stack -54.50 (spacer)    first foe -37.15   gap 17.35   <- binds
+    x -518..-498   stack -69.10 (cradle)    first foe -46.65   gap 22.45
+
+-37.15 and -46.65 are bay back walls, so the motor move takes 3.2 off: 14.15 left at the
+spacer. Moved the Pi 11 beads (+8.80, `PI_USBC_SHIFT`): 5.35 left after both moves.
+Lead: StarTech USB2CC1MR (left/right angle, head 11.0 deep x 6.0 thick per datasheet; length
+20.0 and shell offset 5.5 ASSUMED). Newnex U4S5C01CD6 (up/down, drawn) is 18.50 deep: no fit.
+The head sits in a notch in the cradle's -Y wall; the cable leaves -X (first try +X hit the trough
+floor, 26.5 mm3) and climbs the rail where the old drop was.
+
 ## R2 BACKLOG, output_panel (user via the lead, 2026-10-20) -- NOT the current rev, which fabs as is
 
 **R2-1. Ethernet pass-through, the J1 -> J2 USB pattern.** Two RJ45s on the output board: one on the

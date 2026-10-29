@@ -337,6 +337,29 @@ USBA_PLUG, USBA_TONGUE = (16.0, 8.0, 22.0), (12.0, 4.5, 11.75)
 USBA_GAP = 0.25                 # a USB-A's shell stands this far out of a seated socket
 
 
+PI_USBC_BOOT = (6.0, 4.0)        # the angled head's strain relief: length, OD (ASSUMED)
+PI_USBC_BEND = 3.0               # where the lead turns down, past the boot
+USBC_SHELL_T = 0.3               # a plug shell's wall: its inside takes the socket's tongue
+
+
+def _usbc_angle_plug():
+    """The Pi lead's angled plug (electronics.pi_usbc_head): head, boot and the shell in the
+    socket, as one solid, and the point its cable leaves the boot from (-X).
+    The shell is a TUBE, as a plug's is: the socket's tongue and contacts go inside it."""
+    x0, x1, y0, y1, z0, z1 = EL.pi_usbc_head()
+    mx, my, mz = EL.pi_usb_c_mouth()
+    tw, tt, tl = USBC_TONGUE
+    yc = (y0 + y1) / 2.0
+    s = (cq.Workplane("XY").box(x1 - x0, y1 - y0, z1 - z0).edges("|Y").fillet(1.5)
+         .translate(((x0 + x1) / 2.0, yc, mz)))
+    shell = (cq.Workplane("XY").box(tw, tl, tt)
+             .cut(cq.Workplane("XY").box(tw - 2 * USBC_SHELL_T, tl + 1.0, tt - 2 * USBC_SHELL_T)))
+    s = s.union(shell.translate((mx, my + tl / 2.0, mz)))
+    bl, bd = PI_USBC_BOOT
+    s = s.union(cq.Workplane("YZ").circle(bd / 2.0).extrude(-(bl + 0.5)).translate((x0 + 0.5, yc, mz)))
+    return s, (x0 - bl, yc, mz)
+
+
 def _usb_plug(mouth, sx, body, tongue, gap=0.0):
     """A straight USB plug seated in a socket whose `mouth` faces sx along X (+1 or -1) with
     its long side along Y: (solid, the point its cable leaves from)."""
@@ -1343,11 +1366,12 @@ def build_wires():
     # The two from the panel leave its -X edge through straight USB-C plugs, climb in the bay
     # and ride the trough to the keyhead, staggered (see LANE_USB).
     #
-    # ⚠ wire_usb HAS NO PLUG AT THE Pi, AND THAT IS THE DRAWING BEING HONEST (user,
-    # 2026-10-13). The Pi's USB-C faces the -Y rail 3.7 mm away and no plug fits: the room
-    # depends on how far the Pi can move +Y, which waits on a motor's measured length. Until
-    # then the lead is drawn to the socket's mouth -- down the gap from the trough's end and
-    # in -- so the route and its length are right and the missing plug is plain to see.
+    # wire_usb ENDS IN A RIGHT-ANGLE PLUG AT THE Pi (2026-10-28). It had none: the Pi's USB-C
+    # faced the -Y rail 3.31 mm away. The Pi moved +Y (electronics.PI_USBC_SHIFT) and the
+    # lead is a left/right-angle one, StarTech USB2CC1MR (electronics.PI_USBC_*): its head
+    # lies flat between the board's edge and the rail with the cable leaving -X, and the
+    # lead comes down the rail just past it -- -X of where the 24 V link turns out of the
+    # trough's end, the one clear column (the trough's floor runs on +X of x -575).
     #
     # The USB-A plugs enter the Pi's +X end, the one side of it that is open.
     _pc_usb, _c_usb = _usb_plug(EL.op_mouth("J2"), -1.0, USBC_PLUG, USBC_TONGUE)
@@ -1361,13 +1385,15 @@ def build_wires():
     _USB_X = _c_usb[0] - 3.0              # wire_usb's riser, just behind its plug
     _ym, _yh = CHAN_Y - USB_LANE_DY, CHAN_Y + USB_LANE_DY
     _mc = EL.pi_usb_c_mouth()
-    # ...and it comes down the gap -X of where the 24 V link turns out of the trough's end
-    # for the motor board: that link's two columns fill the gap right over the socket.
-    _USBC_DROP = _mc[0] - 4.6
+    _pp, _pe = _usbc_angle_plug()
+    out.append(("wire_usb_plug_pi", _pp))
+    # ...along the trough past its end, down the rail's face just -X of the plug's boot,
+    # then in along the head's axis.
+    _USBC_DROP = _pe[0] - PI_USBC_BEND
     _run(out, "wire_usb",
          [_c_usb, (_USB_X, _c_usb[1], _c_usb[2]), (_USB_X, _c_usb[1], LANE_USB),
-          (_USB_X, _ym, LANE_USB), (_USBC_DROP, _ym, LANE_USB), (_USBC_DROP, _ym, _mc[2]),
-          (_mc[0], _ym, _mc[2]), (_mc[0], _mc[1] + 1.0, _mc[2])],
+          (_USB_X, _ym, LANE_USB), (_USBC_DROP, _ym, LANE_USB), (_USBC_DROP, _ym, _pe[2]),
+          (_USBC_DROP, _pe[1], _pe[2]), _pe],
          WIRE_OD["wire_usb"])
     # THE HUB'S LEAD STAYS OUT OF THE TROUGH'S FIRST PIECE: the 24 V head has the lanes over
     # wire_usb there. It crosses the bay at its own lane's height instead, at J3's y, and
