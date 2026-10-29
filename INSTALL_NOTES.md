@@ -261,8 +261,8 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
 ## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29)
 
 The SERVO42D's shaft comes 21.5 mm long off the faceplate. The instrument uses it only to the
-pulley's outer face (`components.MOTOR_SHAFT_CUT_L`, 15.6), and the motors sit closer to their
-belts for it. Cut every motor once, on the bench, with the printed jig
+pulley's outer face (`components.MOTOR_SHAFT_CUT_L`, 11.5: the end of the flat plus the 8 mm
+pulley), and the motors sit closer to their belts for it. Cut every motor once, on the bench, with the printed jig
 (`tools/motor_shaft_saw_jig.step`), one Quick-Grip and the 6927A16 hacksaw blade. It works like
 the leadscrew saw jig, with no cap: the motor is square, so the clamp's soft pad goes straight on
 it. Nothing screws into the motor.
@@ -281,7 +281,8 @@ it. Nothing screws into the motor.
 6. Before unclamping, pick every filing off the slot, the cradle and the stub's end with a
    magnet, and off the faceplate round the boss -- the jig no longer covers it.
 7. Undo the clamp, lift the motor out.
-8. File the cut end back to `MOTOR_SHAFT_CUT_L` and square, then add a small 45° chamfer all round, so the
+8. File the cut end back to `MOTOR_SHAFT_CUT_L` (11.5) and square -- once the pulley is on, the end is
+   flush with the pulley's outer face -- then add a small 45° chamfer all round, so the
    pulley's bore starts on it without shaving plastic. Wipe the stub and check the faceplate
    round the boss for filings.
 9. Drop in the next motor (step 2). The jig stays where it is; only the clamp comes off.
@@ -290,10 +291,12 @@ it. Nothing screws into the motor.
 
 * The pulley's bore is a D the whole way through: line its flat up with the shaft's flat and
   push it on until it stops. It stops where the shaft's flat ends and the round part starts,
-  and that is its place -- no shim, no gauge. The cut shaft's end then sits about 0.4 inside
-  the pulley's outer face.
+  and that is its place -- no shim, no gauge. The cut shaft's end is then flush with the
+  pulley's outer face; if it stands proud, file it flush.
+* The pulley is symmetric (a sharp 45° flange each side, no hub), so it goes on either way
+  round -- only the D has to line up.
 * It seats where the flat starts, 3.5 mm off the faceplate (the bought shaft's flat is 18 mm
-  of its 21.5, dimensions.MOTOR_SHAFT_FLAT_L), 1.5 short of the motor's boss. If a motor's flat differs, the pulley's place moves
+  of its 21.5, dimensions.MOTOR_SHAFT_FLAT_L), its sharp flange edge 1.5 off the motor's boss. If a motor's flat differs, the pulley's place moves
   with it: measure it and the pulley gets re-drawn.
 
 ## Motor tees: ONE switch ON, nine OFF
