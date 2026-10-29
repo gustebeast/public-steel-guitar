@@ -361,10 +361,10 @@ assert GUIDE_ROD_TOP <= GUIDE_ROD_CEIL + 1e-9, (
 assert GUIDE_ROD_TOP - ROOM_Z1 >= GUIDE_GRIP_MIN - 1e-9, (
     f"only {GUIDE_ROD_TOP - ROOM_Z1:.2f} of the guide rod is in the slab's bore "
     f"(wants {GUIDE_GRIP_MIN}): buy the next stock length up")
-# THE PLUG. A plain round pin, four beads across, so it drops down the Ø3.55 bore under
+# THE PLUG. A plain round pin, four beads across, so it drops down the Ø3.65 bore under
 # its own weight and comes out again with the rod. It carries nothing: it is a spacer in
 # compression, and only if a rod tries to climb. Printed standing on its end.
-ROD_PLUG_D     = 4 * D.BEAD                     # 3.2 in the 3.55 bore
+ROD_PLUG_D     = 4 * D.BEAD                     # 3.2 in the 3.65 bore
 ROD_PLUG_L     = GUIDE_ROD_CEIL - GUIDE_ROD_TOP # 5.4, pin top -> GUIDE_PCB_CLR under the board
 ROD_PLUG_UP    = (0.0, 0.0, 1.0)
 assert ROD_PLUG_D < D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, "the rod plug does not fit its bore"

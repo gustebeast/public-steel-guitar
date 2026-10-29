@@ -392,10 +392,11 @@ assert 0.05 - 1e-9 <= GUIDE_RUN_CLR <= 0.10 + 1e-9, (
     "the guide rod's running clearance in the ear is %.3f, outside 0.05-0.10" % GUIDE_RUN_CLR)
 GUIDE_ROD_L     = 29.8      # the STOCK length (INA NRB 3.5x29.8-G2). The endplate takes
                             # 25.2-35.4: see bridge_endplate.GUIDE_ROD_TOP
-GUIDE_ROD_FIT   = 0.05      # SNUG PRESS. Not zero: at zero the socket is drawn the
+GUIDE_ROD_FIT   = 0.15      # PRESS. 0.05 printed "a touch small" on the +X endplate
+                            # slice coupon (user, 2026-10-29), so +0.1 to a Ø3.65
+                            # teardrop. Not zero: at zero the socket is drawn the
                             # rod's own Ø, which is not a hole you can install into,
-                            # and coincident cylinders make the boolean unreliable
-                            # too. 0.05 is the same snug the old rod sockets used.
+                            # and coincident cylinders make the boolean unreliable.
 
 # The bridge / string anchor sits at X=0; the screw can't occupy that spot, so
 # it is offset −X by ANCHOR_DX and the carriage reaches over to the anchor.
