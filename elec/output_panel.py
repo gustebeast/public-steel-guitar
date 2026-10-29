@@ -1642,17 +1642,18 @@ def output_panel():
 #      the instrument, not out the panel, and want cable room behind them.
 # ── REV (2026-10-29). R1 IS THE COPPER IN HAND (ordered as of 1c4fd301, 2026-10-13) and stays
 # buildable: OUTPUT_PANEL_REV=1 reproduces it exactly -- 66 deep, every part where it was,
-# the R1 snapshot of the THRU pair. R2 (the default) is 5.6 shallower, lost off the +Y edge
-# (lead + user, 2026-10-29: every side goes to its true limit; at standoff 12 the -Y rail is
-# string 10's motor back + MOTOR_INSTALL_CLR, -109.55, and from there to string 10's screw
-# pulley flange less OP_PULLEY_CLR leaves 60.5 -- so this board must not be what sets it).
+# the R1 snapshot of the THRU pair. R2 (the default) is 10.0 shallower, lost off the +Y edge
+# (lead + user, 2026-10-29: every side goes to its true limit; at motor standoff 7.5 the -Y
+# rail is string 10's motor back - MOTOR_INSTALL_CLR, -105.05, and from rail + OP_PANEL_CLR to
+# string 10's screw pulley flange less OP_PULLEY_CLR is 56.00 -- so this board must not be
+# what sets it). The area comes back off the -X edge: GROW_X is 24 on R2 (see GROW_X).
 # The -Y edge is the rail fit and keeps every part's distance to it; the parts that lived
 # in the lost band move by R2_MOVES (authored frame), and the frame re-centres in y at the
 # bottom of this file the same way GROW_X re-centred x.
 REV = int(os.environ.get("OUTPUT_PANEL_REV", "2"))
 assert REV in (1, 2), "OUTPUT_PANEL_REV is 1 (the board in hand) or 2"
 BOARD_L_R1 = 66.0
-BOARD_W, BOARD_L = 74.0, (BOARD_L_R1 if REV == 1 else 60.4)
+BOARD_W, BOARD_L = 74.0, (BOARD_L_R1 if REV == 1 else 56.0)
 SHRINK_Y = BOARD_L_R1 - BOARD_L         # 0 on R1; off the +Y edge on R2
 # ── -X GROWTH (2026-09-30). The audio section ran out of room: twenty-one TRS/gain parts
 # went in, every sweep ordering placed them legally, and every ordering left one part
@@ -1688,11 +1689,19 @@ SHRINK_Y = BOARD_L_R1 - BOARD_L         # 0 on R1; off the +Y edge on R2
 # panel expressions J5/J1/J6 (`BOARD_W / 2 + PANEL_OVERHANG`), are authored in the OLD
 # frame and re-centred in one pass at the bottom of this dict. Read a coordinate here as
 # "distance from the panel edge, as it always was".
-GROW_X = 12.0
+# R2 grows a further 12 -X (2026-10-29): the board lost 10 of depth to the rail (REV), 860 mm2
+# off a board already full, and the 30 mm -X of it is clear but for the J2/J3 leads, which
+# ride that edge and move with it (probed on the build cache). Same re-centring as before.
+GROW_X = 12.0 if REV == 1 else 24.0
 # J10's pad row. -9.15 since it became a 6-way turned 180 (2026-10-04): the body now stands
 # on the +Y side of its pads, and this is the y that puts its courtyard between C28 (moved
 # 0.3 down for it) and D3 with 0.2 to spare on each side.
 _J10_Y = -9.15
+# R2 (56 deep): J1 has to drop under J5 and lands where J10 stood, so J10 moves 15.4 -X into
+# the strip the pot network vacated. It moves HERE, not in R2_MOVES, because the declared
+# 24 V copper below is built from its pads.
+_J10_D = (0.0, 0.0) if REV == 1 else (-15.4, 0.4)
+_J10_Y += _J10_D[1]
 # The USB mouths stand PROUD of the -X edge rather than 0.5 mm inboard of it: a plug's
 # overmold is wider than the shell and its lower half sits below the board top (USB-A axis
 # 3.3 mm up, 8 mm overmold; USB-C worse at 1.63 mm up), so with the mouth inboard the
@@ -2368,7 +2377,7 @@ BOARD_NOTES = {
         #
         # Sited by searching the whole board against every real courtyard, preferring a
         # board edge so the cable can leave: +X edge, hard against it.
-        "J10": (27.20, _J10_Y, 180.0),
+        "J10": (27.20 + _J10_D[0], _J10_Y, 180.0),
         # ── THE POWER SWITCH (2026-10-04) ──
         # Q2 stands where J9 stood, hard against the inlet jack: source lead 4 mm from
         # the jack's +24 V pin, tab toward J7 so the switched rail leaves it westward on
@@ -2573,7 +2582,7 @@ _LANE_Y, _ROW_Y = -31.0, -28.0
 #            (the same net), and from that land 3.6 mm straight north into way 2.
 _QS = (19.90, -26.22)          # Q2 source pad;  tab spans x 10.40..16.80, y -31.4..-25.6
 # ways 1..6 with the part turned 180: 24 V, GND, switch, switch, GND, 24 V
-_J10_PADS = (33.45, 30.95, 28.45, 25.95, 23.45, 20.95)
+_J10_PADS = tuple(_x + _J10_D[0] for _x in (33.45, 30.95, 28.45, 25.95, 23.45, 20.95))
 _J10_V = tuple(_J10_PADS[i] for i, w in enumerate(harness.PWR_LINK) if w == "V24")
 _J10_G = tuple(_J10_PADS[i] for i, w in enumerate(harness.PWR_LINK) if w == "GND")
 # J7 (rot 0, centred on x 0): way n at x -3.75 + 2.5 (n - 1)
@@ -2610,9 +2619,11 @@ BOARD_NOTES["tracks"] += [
         # (2.6 mm under the tab, to take both rows of vias; 0.35 mm above the PWR_GND lane)
         ("+24V", "B.Cu", 2.6, [(11.3, -28.35), (19.9, -28.35)]),
         ("+24V", "B.Cu", 2.0, [(19.9, -28.35), (19.9, -12.9), (20.9, -11.9),
-                               (_J10_V[0], -11.9)]),
-        ("+24V", "B.Cu", 1.2, [(_J10_V[0], -11.9), (_J10_V[0], _J10_Y)]),
-        ("+24V", "B.Cu", 1.2, [(_J10_V[1], -11.9), (_J10_V[1], _J10_Y)]),
+                               (_J10_V[0], -11.9)] if REV == 1 else
+                              [(19.9, -28.35), (19.9, -12.9), (18.9, -11.9 + _J10_D[1]),
+                               (_J10_V[1], -11.9 + _J10_D[1])]),
+        ("+24V", "B.Cu", 1.2, [(_J10_V[0], -11.9 + _J10_D[1]), (_J10_V[0], _J10_Y)]),
+        ("+24V", "B.Cu", 1.2, [(_J10_V[1], -11.9 + _J10_D[1]), (_J10_V[1], _J10_Y)]),
         # PWR_GND on B.Cu: the inlet's pin 3 -> the lane -> x 6.0, 0.65 mm east of J7's
         # empty way 4 ...
         ("PWR_GND", "B.Cu", 2.0, [(6.000, _LANE_Y), (_p3[0], _LANE_Y), _p3]),
@@ -2626,14 +2637,24 @@ BOARD_NOTES["tracks"] += [
         # land (same net), and out of that land's north side into way 2
         ("PWR_GND", "F.Cu", 2.0, [_p3, (30.400, -23.000), (33.750, -23.000),
                                   (33.750, -15.200), (31.400, -15.200)]),
+        # (R2: J10 is 15.4 -X, past U3's pin column and C28 / C30, and D3 followed J1 down
+        #  into the F.Cu gap above them -- no F.Cu way through. The return goes on B.Cu
+        #  from the front shell leg's land: up x 29.0 (1.17 clear of J1's west shell leg),
+        #  west at -5.4 ABOVE J10's pad row (1.5 clear), and down into both ground ways.
+        #  The +24V bar is under the row's SOUTH side, so the two never meet.)
         ("PWR_GND", "F.Cu", 1.5, [(31.400, -15.200), (_J10_G[0], -14.000),
-                                  (_J10_G[0], _J10_Y)]),
+                                  (_J10_G[0], _J10_Y)]) if REV == 1 else
+        ("PWR_GND", "B.Cu", 2.0, [(31.400, -15.200), (29.000, -12.800), (29.000, -5.400),
+                                  (_J10_G[1], -5.400)]),
         # ...and on from way 2 to way 5 round the NORTH of the two switch ways, 1.0 mm
         # (half the return, 1.9 A). Not along the south: the 24 V bar is under there on
         # B.Cu and C28's ground via has its one site beside way 6.
         ("PWR_GND", "F.Cu", 1.0, [(_J10_G[0], _J10_Y), (_J10_G[0], -6.9),
-                                  (_J10_G[1], -6.9), (_J10_G[1], _J10_Y)]),
-    ]]
+                                  (_J10_G[1], -6.9), (_J10_G[1], _J10_Y)]) if REV == 1 else
+        ("PWR_GND", "B.Cu", 1.5, [(_J10_G[0], -5.400), (_J10_G[0], _J10_Y)]),
+    ] + ([] if REV == 1 else [
+        ("PWR_GND", "B.Cu", 1.5, [(_J10_G[1], -5.400), (_J10_G[1], _J10_Y)]),
+    ])]
 
 # ── THE BUCK'S CORNER, DECLARED TOO (2026-10-01) ─────────────────────────────────────────
 # Three things were wrong west of J7, all found by tracing the 0.2 mm tracks the retry laid:
@@ -2744,35 +2765,59 @@ BOARD_NOTES["tracks"] += [
     ("I2S_SDI", "F.Cu", 0.15, [(-8.938 + _g, -8.00), (-9.55 + _g, -8.00), (-9.80 + _g, -7.75),
                                (-9.90 + _g, -7.75)])]
 
+# -- R2: DAC_LDOO IS LAID, AS R1 ROUTED IT. C31 (the LDO's 10 uF) sits 6 mm south of its pin
+# and in every rev-2 route the I2S fan-out took the strip east of U3 first: the net came back
+# open four times out of four, and "not placeable" by the retry. R1's own copper (this corner
+# did not move; authored frame) goes down before the router, so it routes round it.
+if REV != 1:
+    BOARD_NOTES["tracks"] += [("DAC_LDOO", "F.Cu", 0.2, [
+        (_x - 6.0 + _g, _y) for _x, _y in (    # R1's board x had R1's +6.0 re-centring in it
+        (26.73, -20.50), (26.86, -20.375), (26.86, -20.225), (27.91, -19.175),
+        (28.01, -19.075), (28.01, -17.175), (25.76, -14.925), (25.01, -14.825),
+        (24.862, -14.675))])]
+
 # ── R2: THE +Y BAND COMES DOWN, THEN THE FRAME RE-CENTRES IN Y (see REV) ─────────────
 # Everything above -- placements, hand copper, the frozen pairs -- is authored in R1's y
 # frame (edges +-33). R2_MOVES are real moves in that frame, for the parts the lost band
 # held; then every y takes +SHRINK_Y/2, because the -Y edge (the rail fit) is the datum and
 # the laminate's centre moved -SHRINK_Y/2 with its +Y edge.
-# J5 AND J1 GO DOWN TOGETHER (lead, 2026-10-29), so the plugs a player fits still clear each
-# other: J5 alone -3 left a Neutrik NP2X (O14.5) 0.18 from a 15 x 8 USB-C overmould at J1,
-# and a O16 plug hit it. At 60.4 J5 has to go -4.6 (the rim), and J1 can only go -3.5: at
-# -4.6 it lands 0.76 into J10, whose declared 24 V copper is pinned to it. -4.6 / -3.5
-# leaves the plugs 1.24 apart at the worst (O16 against a 15 x 8 overmould), 3.48 for an
-# NP2X and a 12.35 x 6.5 one; R1 had 2.31 / 4.53.
-# THE REST WAS SEARCHED, NOT CHOSEN: each group kept rigid -- so every bypass stays where it
-# was against its pin -- and moved by the smallest shift that clears every courtyard by 0.25
-# (layout's air) and the rim by 0.3, groups in this order, against courtyards read from
-# the footprints placed exactly as layout.py places them (J5, J1 and J2 keep their x: the
-# panel and the -X edge set it).
-#   J5's neighbours: the pot's reset network (R38, C62) and C41 step out from under it.
-#   J8 and the ANALOG BAND go down the 5.6 together (the band 0.2 more: the rim at C19).
-#   the RELAY and its driver drop into the column J8's old corner left.
-#   J5's output chain (U7 -> R9 -> C1 -> J5 tip, D5 and R10 on that node) re-sits round U7.
-#   C56 1.5 -X off J1's corner. J2 2.3 down off the +Y edge (its mouth rides -X).
-_ANALOG = "U8 U2 C19 C59 C24 R8 C13 C22 C37 C20 C21 C23 C38".split()
-_RELAY = "K1 Q1 D4 R5 R36 R28 R15".split()
+# 56 DEEP (lead + user, 2026-10-29). J5 drops 9.0 (the rim); J1 sits halfway between J5 and
+# J6 (below); J10, which stood in J1's way, leaves the panel edge (its own block). Plug
+# bodies at the panel, centred: J1 is 17.75 from each, and a O16 plug clears a 15 x 8
+# USB-C overmould by 2.55 (J5 side) / 2.35 (J6 side) -- R1 had 2.31 -- so no plug limit.
+# THE REST WAS SEARCHED, NOT CHOSEN: rigid groups -- each bypass stays where it was against
+# its pin -- moved by the smallest shift that clears every courtyard by 0.25 and the rim by
+# 0.3, in this order, against courtyards placed exactly as layout.py places them, with the
+# 24 mm the board grew -X as the room (scratch solver, 2026-10-29):
+#   the -X USB sockets J2/J3/J4 step down the edge with it (x kept: the edge sets it);
+#   the INPUT chain (J8, buffer, ADC and supports) and the RELAY move -X into the new room;
+#   the POT network takes the top-middle they vacated, U6 (3V3) beside it;
+#   U7's buffer and network sit under the top edge between the pot and J5;
+#   the jack's protection (C1, D5, R10) and the ring inverter U9 step -X off J5's new place;
+#   J1's ESD/CC parts (D2, D3, R1, R2) and C56 follow J1 down.
 R2_MOVES = {} if REV == 1 else dict(
-    {"J5": (0.0, -4.6), "J1": (0.0, -3.5), "J8": (0.0, -5.6)},
-    **{_r: (-0.2, -5.8) for _r in _ANALOG}, **{_r: (-3.5, -4.1) for _r in _RELAY},
-    R38=(0.0, -2.2), C62=(1.2, -4.6), C41=(0.9, -0.6),
-    C1=(-6.9, 3.7), D5=(-6.0, -4.6), R9=(-4.4, -5.8), R10=(-2.2, -3.4),
-    C56=(-1.5, 0.0), J2=(0.0, -2.3))
+    **{_r: (0.0, -9.0) for _r in "J5".split()},   # J5
+    **{_r: (0.0, -7.0) for _r in "J2".split()},   # J2
+    **{_r: (0.0, -5.0) for _r in "J3".split()},   # J3
+    **{_r: (0.0, -3.0) for _r in "J4".split()},   # J4
+    **{_r: (0.0, -9.05) for _r in "D2 D3 R1 R2".split()},   # j1esd
+    **{_r: (-30.0, -10.2) for _r in "J8 U8 U2 C19 C59 C24 R8 C13 C22 C37 C20 C21 C23 C38".split()},   # input
+    **{_r: (-22.0, -12.4) for _r in "K1 Q1 D4 R5 R36 R28 R15".split()},   # relay
+    **{_r: (-26.0, 12.0) for _r in "U10 C44 R21 R39 R40 R38 C62 C41 D7 U12 C47 R22 C42 C9".split()},   # pot
+    **{_r: (-6.2, 13.6) for _r in "U6 C58".split()},   # u6
+    **{_r: (-1.4, 10.2) for _r in "U7 R16 R17 R18 C39 C60 R9 R20 C8 C43 C7 C40".split()},   # u7
+    **{_r: (-6.0, -9.0) for _r in "C1 D5 R10".split()},   # jackprot
+    **{_r: (-4.8, -14.2) for _r in "U9".split()},   # u9
+    **{_r: (0.0, -9.25) for _r in "C56".split()},   # C56
+)
+if REV != 1:
+    # J1 HALFWAY BETWEEN J5 AND J6 (user, 2026-10-29: "the USB C spaced halfway between the
+    # TRS and power ports so it looks nicer from the outside"), centre to centre in y,
+    # DERIVED: each body's centre is its placement's y (R1 geometry, all three). Z cannot
+    # follow on a flat board -- the receptacle's mouth is 6 mm under the other two.
+    _pl = BOARD_NOTES["placements"]
+    R2_MOVES["J1"] = (0.0, (_pl["J5"][1] + R2_MOVES["J5"][1] + _pl["J6"][1]
+                            + R2_MOVES.get("J6", (0.0, 0.0))[1]) / 2.0 - _pl["J1"][1])
 for _ref, (_dx, _dy) in R2_MOVES.items():
     _x, _y, _rot = BOARD_NOTES["placements"][_ref]
     BOARD_NOTES["placements"][_ref] = (_x + _dx, _y + _dy, _rot)
