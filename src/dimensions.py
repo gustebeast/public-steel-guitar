@@ -731,6 +731,11 @@ PI_PLUG_CLR = 0.5                              # plug -> wall
 # nothing imported, because the rail is: electronics asserts it against pi_usbc_head()
 # and the boot. The 14.0 is components.MOTOR_PULLEY_STANDOFF's base, as in MCTRL_Y1.
 PI_MOTOR_I     = 2
+# 0.5, the driver's own need (0.82 true gap: the driver stands 0.65 over the laminate). It
+# was 2.0 for an hour, to keep the cap's ribbon socket off string 2's motor drop riser
+# (wire_drop_canl_1); the user ruled that out (2026-10-29: "Cables colliding with other
+# cables is fine, not worth sacrificing instrument width over"), so the socket sits
+# against that riser and check_overlaps parks cable-on-cable.
 PI_MOTOR_CLR   = 0.5
 PI_BOARD_L     = 56.0                 # a Pi 4B's short side, along Y
 PI_USBC_PROUD  = 1.24

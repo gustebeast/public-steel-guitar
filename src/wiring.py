@@ -1032,7 +1032,10 @@ def build_wires():
     _ja = conn_end("motor_ctrl", "J1")
     for k in _cable("bus A head", _ja, _tin[west[0]]):
         (pa, _, net), (pb, _, _) = _ja[k], _tin[west[0]][k]
-        xu = pa[0] + _HEAD_RISE + _HEAD_LANES[k]     # the riser, beside the board
+        # ⚠ ALL FOUR RISERS ON ONE x NOW (2026-10-29): the cap reaches x -587.0 since its
+        # ribbon band moved west, 4.7 off J1's plug, so lanes of x no longer fit beside
+        # the board. J1's ways are an XH pitch apart in y, so the risers need none.
+        xu = pa[0] + _HEAD_RISE                      # the riser, beside the board
         xr = _HEAD_X0 + _HEAD_LANES[k]               # the +Y run, +X of the coil plug
         yj = _HEAD_TURN_Y + k * _XH_PITCH
         assert pb[0] < xr, "bus A's head: way %d's riser is not +X of its tee pin" % (k + 1)
@@ -1288,8 +1291,15 @@ def build_wires():
     # (The other side of J3 is the foot lead's; and with the lanes the other way round a
     # row's two conductors cross each other leaving J10.)
     _j3e = conn_end("motor_ctrl", "J3")
-    _PL_LEAD = 1.25                    # straight out of the plug before anything turns: the
-                                       # far column is then 0.4 off the cap's J6
+    # ⚠ ONE LINE OF SIX COLUMNS NOW, ON J3's OWN x, RUNNING +Y (2026-10-29). The Pi went up
+    # against the motors and its -X/+Y corner is now right in front of J3: the cap's -X edge
+    # is 4.7 off the plug and the board, its cradle and the old -Y column line all stand
+    # where the 3 x 2 block came down. So the six stand in one row along +Y from J3's line,
+    # a column pitch apart: the nearest take the top ways and end first, as before, so each
+    # lower conductor's run back to J3's line passes under the columns already gone in; and
+    # at the run's level the -X lane takes the nearer row, so a pair never shares a line.
+    # electronics.pi_cradle gives up its corner here (PI_PLINK_CUT) for the lower ways.
+    _PL_LEAD = 1.25                    # straight out of the plug before anything turns
     _PL_STEP = WIRE_OD["wire_plink"] + 0.1       # column to column
     _PL_PX, _PL_PY = _j3e[0][0][0] + _PL_LEAD, _j3e[0][0][1]
     _jc = [sum(e[0][m] for e in _j10e) / len(_j10e) for m in range(3)]
@@ -1310,8 +1320,8 @@ def build_wires():
     _slot = {}
     for _lvl in range(3):
         _inner, _outer = _by_z[2 * _lvl], _by_z[2 * _lvl + 1]       # -X lane, +X lane
-        _slot[2 * _lvl + 1] = _outer           # the even way (2, 4, 6): J3's own line
-        _slot[2 * _lvl] = _inner               # the odd way (1, 3, 5): the line -Y of it
+        _slot[2 * _lvl + 1] = _outer           # the even way (2, 4, 6): the farther row
+        _slot[2 * _lvl] = _inner               # the odd way (1, 3, 5): the nearer row
     # ...and at J10 the two conductors of a row have to leave it in their pins' own order,
     # or they cross on the way into the bundle
     assert all((_j10e[k][0][0] - _j10e[m][0][0])
@@ -1325,8 +1335,8 @@ def build_wires():
         (pa, _, net), (pb, _, _) = _j10e[k], _j3e[k]
         leg = _legs[_slot[k]]
         lx, lz = leg[-1][0], leg[-1][2]
-        sx = _PL_PX + (2 - k // 2) * _PL_STEP          # ways 5, 6 nearest the plug
-        sy = _PL_PY - (0.0 if k % 2 else _PL_STEP)
+        sx = _PL_PX
+        sy = _PL_PY + (2 * (2 - k // 2) + (0 if k % 2 == 0 else 1)) * _PL_STEP
         pts = [pa, (pa[0], pa[1], leg[0][2])] + list(leg[:-1]) + [
             (lx, sy, lz), (sx, sy, lz), (sx, sy, pb[2])]
         if sy != _PL_PY:
@@ -1469,21 +1479,36 @@ def build_wires():
     _LT_WALL_X = -562.70
     _LT_XC = min(min(e[0][0] for e in _ltb) - 2.0,
                  _LT_WALL_X - WIRE_OD["wire_lights"])
+    # ⚠ THEY CLIMB WEST OF THE CAP NOW, NOT ACROSS ITS +Y EDGE (2026-10-29). The cap's ribbon
+    # band moved west, and its +Y edge from x -587 to -559.5 is J6, J5's header and the
+    # ribbon socket, standing out over the edge: the old columns at x -569..-564 went up
+    # through J5's body (hidden from the gate -- these wires may touch pi_cap, for J4). So
+    # the four run +X from J7 only to _LT_CLIMB_X, between the 24 V link's columns and the
+    # cap's -X edge, each on its own y lane (ways 1 and 4 step out to theirs short of it, at
+    # their own heights), climb there side by side, and fly +X over the cap to their old
+    # lanes -- the +Y-most to the +X-most lane, so no -Y run crosses another's fly.
+    _LT_CLIMB_X = _capbb.xmin - WIRE_OD["wire_lights"] / 2.0 - 0.2
+    _LT_YS = (1.62, 0.0, EL.MCTRL_J7_SIDE, EL.MCTRL_J7_SIDE - 1.65)    # off J7's line, by way
     _lt_live = _cable("LIGHTS_LINK", _lta, _ltb)
     for n, k in enumerate(_lt_live):
         (pa, _, net), (pb, _, _) = _lta[k], _ltb[k]
         # ways 1, 2 on J7's own line at their own heights; 3, 4 beside them at the same two
         row, lvl = n // 2, n % 2
         y, z = pa[1] + row * EL.MCTRL_J7_SIDE, _lta[_lt_live[lvl]][0][2]
-        # on each line the upper conductor climbs first, so the lower passes under its column
-        xc = _LT_XC - (3 - (2 * row + lvl)) * _LT_PITCH
+        yc = _lta[_lt_live[0]][0][1] + _LT_YS[n]
+        xc = _LT_XC - n * _LT_PITCH
         yl = _LT_YL - (3 - n) * _LT_PITCH
         pts = [pa]
         if row:
             xs = pa[0] + EL.MCTRL_J7_LEAD + lvl * _LT_PITCH
             pts += [(xs, pa[1], pa[2]), (xs, y, pa[2]), (xs, y, z)]
-        pts += [(xc, y, z), (xc, y, _LT_FLY), (xc, yl, _LT_FLY), (xc, yl, pb[2]),
-                (pb[0], yl, pb[2]), pb]
+        if abs(yc - y) > 1e-9:
+            xj = _LT_CLIMB_X - (_LT_PITCH if n == 0 else 0.0)   # way 1 steps out before
+            pts += [(xj, y, z), (xj, yc, z)]                    # way 2's column
+        if pts[-1] != (_LT_CLIMB_X, yc, z):
+            pts.append((_LT_CLIMB_X, yc, z))
+        pts += [(_LT_CLIMB_X, yc, _LT_FLY), (xc, yc, _LT_FLY),
+                (xc, yl, _LT_FLY), (xc, yl, pb[2]), (pb[0], yl, pb[2]), pb]
         _run(out, "wire_lights_%s_%d" % (_PL_SHORT[net], k + 1), pts,
              WIRE_OD["wire_lights"], "LIGHTS_LINK", k)
 
