@@ -43,7 +43,7 @@
   },
   "bridge_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 362788.0
+   "volume_mm3": 348383.7
   },
   "cart_base": {
    "material": "pctg",
@@ -55,15 +55,15 @@
   },
   "chassis_0": {
    "material": "petg-gf",
-   "volume_mm3": 627004.6
+   "volume_mm3": 624529.6
   },
   "chassis_0_light": {
    "material": "pctg",
-   "volume_mm3": 14762.6
+   "volume_mm3": 14690.6
   },
   "chassis_1": {
    "material": "petg-gf",
-   "volume_mm3": 688625.1
+   "volume_mm3": 688660.3
   },
   "chassis_1_light": {
    "material": "pctg",
@@ -71,11 +71,11 @@
   },
   "chassis_2": {
    "material": "petg-gf",
-   "volume_mm3": 631324.0
+   "volume_mm3": 628276.4
   },
   "chassis_2_light": {
    "material": "pctg",
-   "volume_mm3": 13125.5
+   "volume_mm3": 13053.4
   },
   "coil_mandrel": {
    "material": null,
@@ -95,7 +95,7 @@
   },
   "keyhead_endplate": {
    "material": "petg-gf",
-   "volume_mm3": 278806.9
+   "volume_mm3": 276771.7
   },
   "kl_axle": {
    "material": "pctg",
@@ -191,11 +191,11 @@
   },
   "pedal_bar_b": {
    "material": "petg-gf",
-   "volume_mm3": 482207.9
+   "volume_mm3": 481211.9
   },
   "pedal_bar_c": {
    "material": "petg-gf",
-   "volume_mm3": 304763.2
+   "volume_mm3": 303767.2
   },
   "pedal_detent_nub": {
    "material": "tpu",
@@ -207,11 +207,11 @@
   },
   "pedal_lid_a": {
    "material": "petg-gf",
-   "volume_mm3": 28353.6
+   "volume_mm3": 28275.0
   },
   "pedal_lid_b": {
    "material": "petg-gf",
-   "volume_mm3": 28367.3
+   "volume_mm3": 28288.7
   },
   "pedal_pcb_shim": {
    "material": "pctg",
