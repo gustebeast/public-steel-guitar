@@ -264,8 +264,9 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
   push it on until it stops. It stops where the shaft's flat ends and the round part starts,
   and that is its place -- no shim, no gauge. The shaft's end then stands 0.3 past the
   pulley's outer face.
-* If it stops short, the flat on your motors is shorter than the 15 mm assumed
-  (dimensions.MOTOR_SHAFT_FLAT_L): measure it and the pulley gets re-drawn.
+* It goes 18 mm down the shaft (the flat's measured length, dimensions.MOTOR_SHAFT_FLAT_L),
+  stopping 1.5 short of the motor's boss. If a motor's flat differs, the pulley's place moves
+  with it: measure it and the pulley gets re-drawn.
 
 ## Motor tees: ONE switch ON, nine OFF
 

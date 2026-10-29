@@ -716,12 +716,12 @@ BODY_MOTOR_RESERVE = 70.0 - MOTOR_SETBACK      # 66.8: Y_LO unchanged
 MOTOR_SHAFT_D   = 5.0
 # THE SHAFT IS A D (user, 2026-10-28): 4.5 across the flat, and 19.5 of it stands proud of
 # the pilot boss (the old 19.4 "from the faceplate" was this, read off the wrong datum --
-# the model drew 17.4 of it in the open). The flat's LENGTH is not measured yet: 15 from the
-# tip is the common NEMA17 D-cut, and the pulley keys only over that span, so a longer flat
-# costs nothing and a shorter one would stop the pulley short of its seat -- MEASURE IT.
+# the model drew 17.4 of it in the open). The flat runs 18 from the tip before the shaft goes
+# round (user, measured 2026-10-28; 15 had been assumed) -- 1.5 short of the boss. The
+# pulley's D stops where it ends, so this length IS the pulley's seat.
 MOTOR_SHAFT_FLAT = 4.5          # across the flat (the D's short dimension)
 MOTOR_SHAFT_PROUD = 19.5        # out of the pilot boss
-MOTOR_SHAFT_FLAT_L = 15.0       # ASSUMED, from the tip
+MOTOR_SHAFT_FLAT_L = 18.0       # measured, from the tip
 NEMA17_BOLT_SQ  = 31.0
 NEMA17_PILOT_D  = 22.0
 
