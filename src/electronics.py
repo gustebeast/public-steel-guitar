@@ -414,7 +414,7 @@ def stand_pt(x: float, y: float, z: float):
 # So the ports were not merely missing a cutout: the cutout existed and was being made
 # somewhere else. Read the endplate's face from the same constant the endplate uses
 # (bridge_endplate.XHI = D.BRIDGE_BASE_X1) and both land together.
-JACK_TIP = D.BRIDGE_BASE_X1                          # the endplate's +X outer face (25.06)
+JACK_TIP = D.BRIDGE_BASE_X1                          # the endplate's +X outer face (23.43)
 # Fit clearance between the board and the plastic it registers against -- used both for
 # the board's setback behind the panel and for the recess the endplate cuts around it.
 # 0.3 is this project's usual printed-to-rigid fit (see pcb_cradle's clr default).

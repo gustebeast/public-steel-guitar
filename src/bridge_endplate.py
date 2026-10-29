@@ -122,11 +122,11 @@ def access_blocked(i: int) -> bool:
                 return True
     return False
 
-# The block spans D.BRIDGE_BASE_X0..X1, +-BRIDGE_BASE_HALF (25.06) about BRIDGE_X: wide
+# The block spans D.BRIDGE_BASE_X0..X1 (-25.06..+23.43; the +X side has no teardrop apex): wide
 # enough for both screw rows. The arms, the fill band and the L-foot all span XLO..XHI.
 # XLO sits EP_TOP_CLR (0.4) +X of the rail end (CH.TP_EP_GX, derived as XLO - EP_TOP_CLR):
 # the consistent top-joint X-gap to the housing; the dovetail's locking foot stays captured.
-XHI  = D.BRIDGE_BASE_X1            # +X outer face (+25.06)
+XHI  = D.BRIDGE_BASE_X1            # +X outer face (+23.43)
 XLO  = D.BRIDGE_BASE_X0            # -X inboard face (-25.06)
 X1   = XHI                         # +X tip -- alias for the mechanism references
 ARM_X = XLO                        # arms span the FULL block in X: symmetric edge webs
@@ -361,10 +361,10 @@ assert GUIDE_ROD_TOP <= GUIDE_ROD_CEIL + 1e-9, (
 assert GUIDE_ROD_TOP - ROOM_Z1 >= GUIDE_GRIP_MIN - 1e-9, (
     f"only {GUIDE_ROD_TOP - ROOM_Z1:.2f} of the guide rod is in the slab's bore "
     f"(wants {GUIDE_GRIP_MIN}): buy the next stock length up")
-# THE PLUG. A plain round pin, four beads across, so it drops down the Ø3.55 bore under
+# THE PLUG. A plain round pin, four beads across, so it drops down the Ø3.65 bore under
 # its own weight and comes out again with the rod. It carries nothing: it is a spacer in
 # compression, and only if a rod tries to climb. Printed standing on its end.
-ROD_PLUG_D     = 4 * D.BEAD                     # 3.2 in the 3.55 bore
+ROD_PLUG_D     = 4 * D.BEAD                     # 3.2 in the 3.65 bore
 ROD_PLUG_L     = GUIDE_ROD_CEIL - GUIDE_ROD_TOP # 5.4, pin top -> GUIDE_PCB_CLR under the board
 ROD_PLUG_UP    = (0.0, 0.0, 1.0)
 assert ROD_PLUG_D < D.GUIDE_ROD_D + D.GUIDE_ROD_FIT, "the rod plug does not fit its bore"
