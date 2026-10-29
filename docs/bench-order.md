@@ -65,7 +65,7 @@ Way order is `elec/harness.py`; every JST lead is crimped 1:1, way n to way n. X
 | Motor drop | `can_tee` J2, XH 4 | the motor's screw terminals | see below |
 | Motor board USB | `motor_ctrl` J4, PH 4 | a Pi USB-A host port | VBUS (not connected at the board), GND, D-, D+ |
 | Hub upstream | `output_panel` J3, USB-C | a Pi USB-A host port | stock A-to-C lead |
-| Pi gadget port | `output_panel` J2, USB-C | the Pi's USB-C | stock C-to-C lead, about 1 m on the bench. ⚠ In the instrument the Pi's USB-C faces the -Y rail about 4.5 mm away: no plug goes in there as the Pi is placed today (open design item) |
+| Pi gadget port | `output_panel` J2, USB-C | the Pi's USB-C | stock C-to-C lead, about 1 m on the bench. In the instrument: StarTech USB2CC1MR (1 m, USB 2.0, LEFT/RIGHT-angle plug at the Pi, its cable leaving toward the Pi's SD-card end), the lead the Pi was moved +Y for (2026-10-28) |
 | Optical USB | `output_panel` J4, USB-C | `optical` J1, USB-C | [Amazon B0FKYR7V34](https://www.amazon.com/dp/B0FKYR7V34), $9.99: **0.3 m, USB 2.0, the same up/down-angle plug at both ends** (user, 2026-10-07). The optical end's limits are overmould 12 mm deep at most, 22 mm at most from the plug's axis to the cable; this one is 5.2 and about 14 (seller's photo). On the bench any C-to-C lead does; the angle is for the endplate |
 | Pickup | magnetic pickup | `output_panel` J8 | two screw terminals, hot and ground, marked on the silk |
 
@@ -214,10 +214,16 @@ Kept current (user, 2026-10-13): every package is at the distribution's latest (
 **`wlink` 0.1.2, its newest release, is on it, built there from source** (`~/src/wlink`
 at tag v0.1.2, installed as `/usr/local/bin/wlink`): its releases carry no Linux build
 for 64-bit ARM. Its README lists the CH32V203 and CH32V307 with the WCH-LinkE. A udev
-rule lets the `gus` user reach the probe without sudo. **It starts and lists its commands; it has NOT talked to a probe or a chip
-yet**: that is the first thing to check when the LinkE arrives (`wlink list`, then
-`wlink status` on a board). If it fails there, the CH32V boards are flashed from a
-Windows PC with the same probe and leads (`wlink` for Windows, or WCH-LinkUtility).
+rule lets the `gus` user reach the probe without sudo. **The LinkE ARRIVED 2026-10-28 and
+`wlink` talks to it, as `gus`, no sudo:** `wlink list` finds it as 1a86:8010 in RV mode
+(serial 20B78F06A656), and `wlink status` connects to "WCH-Link v2.20(v40)
+(WCH-LinkE-CH32V305)" and then stops at protocol error 0x55 -- no target on the leads,
+which is what it should say with no board. Not yet tried: talking to a CH32V chip, which
+waits for the boards (`wlink status` with a board on the leads is the first step). The
+motor_ctrl bench image builds clean on the Pi the same day (`~/psg/firmware/motor_ctrl`,
+identical to the repo's, `make` -> 11,460-byte .bin), so `make flash` is one command once a
+board is wired. If the probe ever fails there, the CH32V boards are flashed from a Windows
+PC with the same probe and leads (`wlink` for Windows, or WCH-LinkUtility).
 
 **Not drawn, because not tried: no probe at all for the optical board.** `openocd` can
 bit-bang SWD from a Pi 4's own header pins, and that is a real, documented way to flash an
