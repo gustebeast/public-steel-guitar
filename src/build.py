@@ -404,7 +404,7 @@ PARTS["coil_mandrel_sleeve"] = (
 PARTS["pi_spacer"] = (
     lambda: heal(__import__("src.electronics", fromlist=["e"]).pi_spacer()),
     "petg-gf/pi_spacer.step",
-    "PETG-GF — the Raspberry Pi's clamp: a stepped bar that laps 2.5 mm over the board's +Y edge beside the 40-pin header and is held by one M4 x 10 button screw into the chassis boss beside the board. Prints TOP FACE DOWN: the top is one flat face, so nothing overhangs")
+    "PETG-GF — the ring under the Raspberry Pi's hold-down screw: Ø6.0 x 3.2, so the belt clamps' M3 x 12 socket head through the Pi's own mounting hole reaches exactly the bottom of its insert's bore. Prints flat, either face down")
 # LEVER PROGRAMMING JIG -- a SHOP TOOL like the mandrel: exported, never in the assembly.
 PARTS["lever_prog_jig"] = (
     lambda: heal(__import__("src.lever_jig", fromlist=["e"]).jig()),
@@ -670,8 +670,7 @@ def _declared():
          "slots open at the bed and their 0.8 roofs bridge. That is "
          "SLEEVE_UP, which is what a print-fit coupon is required to match"),
         (["pi_spacer"], _ELX.PI_SPACER_UP,
-         "electronics.PI_SPACER_UP — top face down: one flat face on the "
-         "bed, nothing overhangs"),
+         "electronics.PI_SPACER_UP — a flat ring, either face on the bed"),
         (["saw_jig"], _SJG.BODY_UP,
          "saw_jig.BODY_UP — as drawn, table face on the bed: the V and roof "
          "of the rod tunnel and the fork's arch are all 45 deg"),
@@ -1366,9 +1365,8 @@ def _electronics_components():
     # The endplate has to come off with the boards left in place (user), which is the whole
     # reason they moved. One less printed part, and the boards gained retention they never
     # had on the tray's bare posts.
-    # pi_spacer is the flat Pi's RETENTION -- a printed piece, not a dummy. It replaces the
-    # button head that used to clamp the laminate directly: no position beside the board had
-    # room for that screw's anchor below the floor (electronics.PI_SPACER_XY).
+    # pi_spacer is the ring under the Pi's M3 (electronics.pi_hold_pt) -- a printed piece,
+    # not a dummy: it is what lets the belt clamps' M3 x 12 serve there too.
     out = [*EL.pi4_parts(), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
@@ -1833,7 +1831,7 @@ def optical_work_components():
     _KE = __import__("src.keyhead_endplate", fromlist=["e"])
     # ⚠ AND THE FLAT PI WITH ITS SPACER, FOR THE SAME REASON THE MOTOR BOARD IS HERE. The
     # retention work crossed into the Pi's bay (its hold-down had to leave the board's edge
-    # entirely -- electronics.PI_SPACER_XY), and a scope that hides the part being designed is
+    # entirely, and now goes through its own hole -- electronics.pi_hold_pt), and a scope that hides the part being designed is
     # how the user came to report "the pi disappeared from your tab". The spacer is the point of
     # the change, so it has to be visible in the view that reviews it.
     out = [("optical_pcb", OP.opt_pcb()),

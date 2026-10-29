@@ -1,5 +1,29 @@
 # bronner — open work items (2026-09-30)
 
+## Narrower body: Pi up to the motors, M3 through its own hole, output board on the rail (2026-10-29)
+
+User asks, relayed by the lead: the -Y rail comes in (branner), the Pi "mounts with one screw
+through one of its mount holes, then moves right up to the nearby motors", the cap stays in
+the Pi's footprint, the output board rides the rail with no -Y wall, and the side wall is
+continuous and uncut ("The pi USB needs to clear the wall, we can't cut the wall").
+
+| what | value | where |
+|---|---|---|
+| Pi retention | belt clamps' M3 x 12 forced through hole (61.5, 3.5), heat-set M3 insert in an Ø8.0 boss, printed ring Ø6 x 3.2 under the head | `electronics.pi_hold_pt`, `PI_M3`, `pi_spacer` |
+| Pi standoff | 13.6 (17 beads) = motor bay BUMP_H 11.2 + 2.0 assumed THT tails + 0.4 | `PI_STANDOFF` |
+| Pi +Y edge | string 3's motor driver (index 2) face - 0.5 = -47.15 | `PI_FP`, `D.PI_MOTOR_*` |
+| plug -Y face | -115.39 (head back); boot -111.89 | `D.PI_PLUG_Y0`, asserted by `electronics._check_plug_y0` |
+| rail inner face | -116.35: 4 beads behind string 10's motor, the smallest whole bead count clearing the plug by 0.5 | branner, `motor_bank.RAIL_BACK_CLR` |
+| output board | -Y edge OP_PANEL_CLR off the rail's inner face; +Y 0.89 off string 10's belt clamp (max +8.64 from build #967) | `electronics.op_origin`, `bridge_endplate` cradle cut |
+| pi_cap | the ribbon band (J5, J6) moved WEST out of string 2's motor-driver span (J5_DX -17.865, J6_DX -9.7); the board grows 7.0 at -X (CAP_EXT_X) and U1 goes there at (-29.0, 1.5); the GND pours are polygons so they reach it. Re-routed 0 unconnected / 0 violations. The notch-over-the-driver idea was tried and abandoned (J5's courtyard overlapped J1, 6 nets open) | `elec/pi_cap.py` J5_DX, J6_DX, U1_XY, CAP_EXT_X |
+
+Rejected, measured: a pocket in the rail for the head (user: no wall cuts); 11.2 standoff (the
++X end's tails would sit on the back wall); USB-C edge facing +-X (85 along Y against 74.4
+between rail and motor 2's back wall); the Pi turned 180 (the cap's header-side overhang goes
+into the rail). A cap wholly inside the Pi's footprint does not fit one-sided assembly: every
+connector is side-entry on the face toward the Pi, so all of them need the one edge over the
+Pi -- ~80 mm of connectors against ~62 mm of edge.
+
 ## Pi +Y for the USB-C plug (user, 2026-10-28) -- BUILT, gate pending
 
 "Now that we have the real motor spec can you move the pi so it can fit a right angle USB C

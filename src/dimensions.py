@@ -713,6 +713,20 @@ MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil l
 # it: 1.15 clear of the tensioner. The reserve gives the same 3.2 back, so the rail stays put.
 MOTOR_SETBACK = 4 * BEAD                       # 3.2
 BODY_MOTOR_RESERVE = 70.0 - MOTOR_SETBACK      # 66.8: Y_LO unchanged
+# THE Pi's USB-C PLUG, whose -Y face the -Y rail clears (motor_bank.RAIL_BACK_CLR; user,
+# 2026-10-29: "a continuous wall going the full instrument length. The pi USB needs to
+# clear the wall"). The Pi stops PI_MOTOR_CLR off motor PI_MOTOR_I's driver (it stands
+# over that bay's back wall: electronics.PI_STANDOFF); the plug's head is 11.0 deep from
+# the mating face, the socket 1.24 proud of the board (src/pi4b.py). Written here, with
+# nothing imported, because the rail is: electronics asserts it against pi_usbc_head()
+# and the boot. The 14.0 is components.MOTOR_PULLEY_STANDOFF's base, as in MCTRL_Y1.
+PI_MOTOR_I     = 2
+PI_MOTOR_CLR   = 0.5
+PI_BOARD_L     = 56.0                 # a Pi 4B's short side, along Y
+PI_USBC_PROUD  = 1.24
+PI_USBC_HEAD_D = 11.0                 # StarTech USB2CC1MR datasheet
+PI_PLUG_Y0 = (string_y(PI_MOTOR_I) - 14.0 - MOTOR_SETBACK - MOTOR_BODY_L - PI_MOTOR_CLR
+              - PI_BOARD_L - PI_USBC_PROUD - PI_USBC_HEAD_D)          # -115.39
 MOTOR_SHAFT_D   = 5.0
 # THE SHAFT IS A D (user, 2026-10-28): 4.5 across the flat, and 19.5 of it stands proud of
 # the pilot boss (the old 19.4 "from the faceplate" was this, read off the wrong datum --
