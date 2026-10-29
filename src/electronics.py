@@ -127,8 +127,23 @@ BD_T = 1.6
 # of the Pi stack is string 1's bay back wall at -37.15 in front of the spacer bar (-54.50):
 # 17.35, 14.15 once the bays move, 5.35 after this. Everywhere else is wider (tools note in
 # docs/bronner-work-items.md, "Pi +Y for the USB-C plug").
-PI_USBC_SHIFT = 11 * D.BEAD                    # 8.80
-PI_FP     = (-588.0, -503.0, -127.0 + PI_USBC_SHIFT, -71.0 + PI_USBC_SHIFT)   # WORLD x0,x1,y0,y1: 85 on X, 56 on Y;
+# ⚠⚠ ALL OF THAT IS NOW A DERIVATION, NOT A SHIFT: THE Pi SITS RIGHT UP AGAINST THE MOTORS
+# (user, 2026-10-29: the body gets narrower and the -Y rail comes in; "the pi mounts with
+# one screw through one of its mount holes, then moves right up to the nearby motors, with
+# only the clearance the parts need"). Its +X end reaches string 3's motor bay (motor_bank index 2, x -518..-472, the
+# board to -503), so the board's +Y edge stops D.PI_MOTOR_CLR off that motor's driver,
+# standing high enough to pass over the bay's back wall (PI_STANDOFF). String 2's back wall,
+# over the rest of the edge, is 6.8 further +Y. The pose follows the motors wherever
+# MOTOR_PULLEY_STANDOFF puts them, and the -Y rail follows the plug (dimensions.PI_PLUG_Y0) -- the
+# user will not have the rail cut for it.
+from . import motor_bank as _MB_POSE                                    # noqa: E402
+PI_MOTOR_I = D.PI_MOTOR_I
+_PI_Y1 = _MB_POSE.body_box(PI_MOTOR_I)[2] - D.PI_MOTOR_CLR
+PI_FP     = (-588.0, -503.0, _PI_Y1 - D.PI_BOARD_L, _PI_Y1)   # WORLD x0,x1,y0,y1: 85 on X, 56 on Y;
+assert _MB_POSE.body_box(PI_MOTOR_I)[0] < PI_FP[1], \
+    "the Pi's +X end no longer reaches motor %d: re-derive its +Y stop" % PI_MOTOR_I
+assert _MB_POSE.back_wall_y0(PI_MOTOR_I - 1) > PI_FP[3] + 2.0, \
+    "motor %d's back wall is now the nearer +Y stop" % (PI_MOTOR_I - 1)
 # ⚠ THE -Y EDGE IS FLUSH WITH THE BAY WALL, AND THAT IS THE WHOLE POINT (user,
 # 2026-09-29: "the pi is too far -y and requires cutting into the chassis wall which
 # reduces its strength"). That wall runs y -141.95..-131.55 -- 10.40, exactly CH.T --
@@ -322,8 +337,18 @@ from . import motor_bank as _MB_FLOOR                      # noqa: E402
 # ⚠ MEASURED, NOT PICKED: tools/_probe_pi_cradle.py raises the whole board-plus-lid envelope
 # off the floor in steps and intersects it with the assembly. Foreign-clear at every step
 # from 0.0 to 6.0 mm, so 2.4 is free and there is 3.6 mm of headroom left over it.
-PI_STANDOFF = 3 * D.BEAD               # 2.4, the cradle's corner pads
-PI_Z = _MB_FLOOR.FLOOR_TOP + PI_STANDOFF   # -68.95, the laminate's underside
+# ⚠ 17 BEADS NOW, AND MOTOR 2's BAY SETS IT (2026-10-29). The user's insert first asked for
+# 7.2 (an M3 heat-set under the board needs its whole 6.80 anchor ABOVE the floor: the slab
+# is only 1.6 over the levers' mortises). Then the Pi went right up to the motors (PI_FP),
+# and its +X end now stands over motor 2's bay back wall, which motor_bank.low_walls leaves
+# BUMP_H tall: the board's underside clears it by the through-hole tails of the USB and
+# Ethernet jacks over it (PI_TAILS, ASSUMED and generous: clipped tails run ~1.5) plus 0.4.
+# Swept with the stack at +11.20 z (build #967): clear of everything that stays put, the cap
+# apart -- its ribbon header is what pi_cap's re-layout pulls in.
+PI_TAILS = 2.0
+PI_STANDOFF = 17 * D.BEAD              # 13.6, the cradle's corner pads and the insert's boss
+assert PI_STANDOFF >= _MB_FLOOR.BUMP_H + PI_TAILS + 0.4 - 1e-9, PI_STANDOFF
+PI_Z = _MB_FLOOR.FLOOR_TOP + PI_STANDOFF   # -57.75, the laminate's underside
 MCTRL_BOARD_Z = TRAY_Z1 + MCTRL_POST_H   # ...except the motor controller, 1.5 lower
 
 # ── THE STANDING FRAME (user, 2026-09-11) ────────────────────────────────────
@@ -393,7 +418,7 @@ JACK_TIP = D.BRIDGE_BASE_X1                          # the endplate's +X outer f
 # Fit clearance between the board and the plastic it registers against -- used both for
 # the board's setback behind the panel and for the recess the endplate cuts around it.
 # 0.3 is this project's usual printed-to-rigid fit (see pcb_cradle's clr default).
-OP_PANEL_CLR = 0.3
+OP_PANEL_CLR = D.OP_PANEL_CLR             # (in dimensions: motor_bank's rail reads it)
 # THE PANEL IN FRONT OF THE OUTPUT BOARD IS 1.6, NOT 4.0 (user, 2026-09-21: "the board is
 # also 4mm recessed from the endplate +x wall ... make the endplate thinner there so it's
 # closer to flush"). The board's placements are built to the same two numbers --
@@ -413,11 +438,13 @@ JACK_Z = -51 * D.BEAD                  # -40.8 jack row centre height
 # and the overlap gate found the wires passing through the PCB. At -118 it is 10 mm
 # clear of the board, 10.75 from the -Y rail's inner face, and 50 mm from the audio
 # jack, which is the separation that matters.
-TS_Y = -68.0                           # THE ONE PANEL INPUT. Every other panel hole
-                                       # is now an OUTPUT of the output+panel board
-                                       # (see op_panel_openings) -- put all three
-                                       # jacks on one PCB and the ROUTED board, not
-                                       # this file, decides where the holes go.
+# ⚠ THE BOARD RIDES THE -Y RAIL NOW, AND TS_Y IS GONE (user, 2026-10-29: the body narrows
+# and the output board "needs no wall on its -Y side; it may sit directly against the
+# chassis inner wall"). It was the one panel input -- the TS jack's axis at y -68.0 -- and
+# it put the board's -Y edge 9.05 off the rail. The board's -Y edge is now a fit off the
+# rail's inner face (op_origin), so it follows wherever the rail is set, and every panel
+# hole still follows the routed board. +Y it has 0.89 to string 10's belt clamp at the
+# rail branner set on 2026-10-29 (-116.35); it must not touch that clamp (the gate sees it).
 
 # ---- UI: the deck station ----
 # THE WHOLE OF IT MOVED TO src/ui_panel.py (2026-09-25), and the reason is that it
@@ -499,31 +526,27 @@ def pi_hold_pt():
     """(x, y) of the flat Pi's one hold-down screw, WORLD frame -- computed in exactly one
     place. The cradle's boss, the anchor bore build.py takes out of the chassis, and the
     drawn fastener in board_screws() all read it, so none of the three can drift from the
-    other two (the motor board's ear/cradle pair is in this file precisely because they did)."""
-    # ⚠ NO LONGER pcb_hold_xy. That helper answers "where beside this edge", and the whole
-    # finding recorded at PI_SPACER_XY is that NO position beside the board has room for the
-    # anchor below the floor. The site is 12.50 mm out from the edge and a printed spacer
-    # covers the distance, so PI_SPACER_XY is the single source for it.
-    return PI_SPACER_XY
+    other two.
+
+    ⚠ THROUGH THE Pi's OWN HOLE NOW (user, 2026-10-29: "I was able to force the belt clamp
+    screw into one of the pi mount holes. We can use that instead of the plastic insert").
+    The 2.7 mm hole takes the belt clamps' M3 x 12 socket head with force, so the screw no
+    longer has to stand beside the board and the spacer bar that bridged out to it is gone.
+    The hole at (61.5, 3.5): the board's +X (I/O) end, which takes the plugs' insertion
+    force, and the -Y side, where the key's column is clear once the deck is off (the two
+    +Y holes are under pi_cap)."""
+    x, y = _P4.HOLES[1]
+    return (PI_FP[0] + x, PI_FP[2] + y)
 
 
 def pi_hold_bore():
     """The Pi hold-down's anchor as a CUTTER, for build.py to take out of the chassis AFTER
-    the cradle is fused in.
-
-    ⚠⚠ WITHOUT THIS THE BORE IS SILENTLY REFILLED, and the gate caught it: 43.9 mm3 of
-    board_screw_2 and 37.5 of board_insert_2 inside chassis_2. pcb_cradle bores its own boss,
-    but this cradle's base plate is EMBEDDED 6.1 mm in the floor slab -- it has to be, because
-    the M4's anchor needs anchor_min_wall below the board's underside -- so the floor's own
-    material occupies the same space and the union puts it straight back. Cut before union
-    refills features; this project has recorded that four times in bridge_endplate alone, and
-    a fastener is the one place it is invisible, because the plastic looks right and only the
-    screw solid shows the interference.
-    Cut from the chassis in build.py alongside mctrl_floor_ports(), which is there for the
-    same ordering reason."""
-    from cadkit.fasteners import M4 as _M4, anchor_cutter
+    the cradle is fused in: cut before union is silently refilled (43.9 mm3 of screw inside
+    chassis_2 the first time). An M3 insert pocket from the board's underside, the bore
+    PI_BORE_D deep -- the M3 x 12's reach -- in the boss, which stands on the floor."""
+    from cadkit.fasteners import anchor_cutter
     hx, hy = pi_hold_pt()
-    return anchor_cutter(_M4, (hx, hy, pi_boss_top()), (0, 0, -1), _M4.anchor_min_wall)
+    return anchor_cutter(PI_M3, (hx, hy, PI_Z), (0, 0, -1), PI_BORE_D)
 
 
 def pi_cradle() -> cq.Workplane:
@@ -536,60 +559,29 @@ def pi_cradle() -> cq.Workplane:
     the project's orientation rule is to re-author natively rather than bolt a mapping on the
     end, and here the helper's native frame already IS the Pi's.
 
-    Retention is NOT a screw beside the board any more (see PI_SPACER_XY) -- a Pi is a
-    PURCHASED board whose
-    own mounting holes are 2.7 mm and this project has one screw diameter. The head lands on
-    the laminate's top face and laps its edge, clamping it down onto the boss -- the same
-    arrangement and the same SKU as the motor controller's and the CAN tee's. pcb_cradle
-    refuses a head that laps by less than 1.0 mm, so the clamp is checked rather than assumed.
+    Retention is ONE M3 through the board's own hole (pi_hold_pt) into an insert in the
+    boss under it, with a printed ring (pi_spacer) under the head so the belt clamps' M3 x 12
+    serves.
 
     The four corner pads ARE the standoff, which is why PI_Z reads PI_STANDOFF: a Pi's
     underside carries SMD parts and solder tails, so the laminate must not rest on the slab.
 
-    The base plate lands INSIDE the floor slab and simply merges with it -- base_t defaults to
-    anchor_min_wall - standoff = 6.1, reaching world z -77.45 against a floor that runs
-    -71.35..-81.85, so the M4's anchor has 4.4 mm of material to spare below it.
+    The base plate lands INSIDE the floor slab and simply merges with it (1.6, the helper's
+    floor: the anchor is wholly in the standoff above it).
     """
     from cadkit.pcb import pcb_cradle
     from cadkit.fasteners import M4 as _M4
     cx, cy = _ctr(PI_FP)
-    hx, hy = PI_SPACER_XY
-    # ⚠ THE RETENTION LEAVES THE HELPER, AND THE HELPER IS STILL USED AS WRITTEN. pcb_cradle
-    # offers exactly two retentions -- `hold_edge` (a screw BESIDE an edge) and `screw_xy` (a
-    # screw through a board hole) -- and this board can use neither: no position beside it has
-    # room for the anchor below the floor (see PI_SPACER_XY), and a Pi's own holes are 2.7 mm
-    # against this project's single M4. So the cradle is asked for what it is good at -- the
-    # locating walls, the corner pads that ARE the standoff, and the base plate that merges
-    # into the floor slab -- and the retention is expressed where it actually lives: a chassis
-    # boss plus pi_spacer().
-    # `screw_xy` names a point 12.50 mm OUTSIDE the base plate, so the helper's own stub boss
-    # there is removed by its own anchor cut (an M4 insert bore is wider than the pad+1.5
-    # column) and nothing else of the cradle is touched. The assert is what keeps that a no-op
-    # BY CONSTRUCTION rather than by hope: if a future cadkit makes screw_xy build more, this
-    # fails loudly instead of quietly stacking a second boss on pi_spacer_boss().
+    hx, hy = pi_hold_pt()
+    # The helper's own boss under a hole is pad+1.5 = 4.7 across, which an M3 insert (4.8
+    # pocket) would split; the boss is widened here to the spec's (two beads round the
+    # pocket), and the anchor cut again after it, since the union refills it.
     cr = pcb_cradle(PI_FP[1] - PI_FP[0], PI_FP[3] - PI_FP[2],
                     screw_xy=(hx - cx, hy - cy),
                     board_t=BD_T, standoff=PI_STANDOFF, clr=CRADLE_CLR,
-                    open_edge="+x", spec=_M4).translate((cx, cy, _MB_FLOOR.FLOOR_TOP))
-    _probe = cyl(_M4.boss_od + 2.0, 8.0, PI_Z - 4.0).translate((hx, hy, 0.0))
-    _left = cr.intersect(_probe)
-    _v = _left.val().Volume() if _left.val().Solids() else 0.0
-    assert _v < 0.5, ("pcb_cradle left %.1f mm3 at the spacer's screw. screw_xy is passed "
-                      "there only to satisfy the helper's one-retention rule and is meant to "
-                      "build nothing, the point being outside the base plate. Give the Pi a "
-                      "local cradle rather than let two bosses stack." % _v)
-    # ...and the +Y wall is notched for the spacer's shank to cross the board's edge. The wall
-    # stands 0.80 above the laminate's top face and the shank's underside is a board thickness
-    # BELOW that face, so without this the two interfere across the spacer's whole width. It is
-    # the same arrangement pcb_cradle makes when it notches a wall for a head; the only
-    # difference is that this head is further out.
-    # ⚠ CENTRED ON THE BAR, NOT ON THE SCREW. Written with `hx` while the bar was still
-    # centred on its screw, this notch stayed put when the bar moved to PI_SPACER_CX and went
-    # 20.0 long: the notch spanned x -520.3..-499.7 and the bar -524.0..-504.0, so its outboard
-    # 3.7 mm still crossed an un-notched wall -- 14.2 mm3, which the gate reported the moment
-    # the scope stopped drowning it in phantom self-overlaps.
-    cr = cr.cut(box_at(PI_SPACER_W + 2 * CRADLE_CLR, PI_SPACER_NOTCH, 8.0,
-                       PI_SPACER_CX, PI_FP[3] + 1.0, PI_Z + 4.0))
+                    open_edge="+x", spec=PI_M3).translate((cx, cy, _MB_FLOOR.FLOOR_TOP))
+    z0 = _MB_FLOOR.FLOOR_TOP - D.BEAD      # a bead into the slab, so the column is attached
+    cr = cr.union(cyl(PI_M3.boss_od, PI_Z - z0, z0).translate((hx, hy, 0.0)))
     # ...and the -X wall is open where the microSD card stands 2.27 past the board's edge
     # (src/pi4b.py SD_CARD), a fit each side and for the wall's whole height: the Pi drops
     # in with its card fitted, and the card can be drawn out with the Pi in place.
@@ -600,6 +592,11 @@ def pi_cradle() -> cq.Workplane:
     _wy = PI_FP[2] - CRADLE_CLR - 0.8
     cr = cr.cut(box_at(PI_FP[1] - PI_FP[0] + 8.0, 2.0, 6.0, (PI_FP[0] + PI_FP[1]) / 2.0, _wy,
                        PI_Z + BD_T + 3.0))
+    # ...and the +Y wall stops where motor PI_MOTOR_I's bay begins: the board's +X end stands
+    # over that bay's back wall, D.PI_MOTOR_CLR off the driver, and a wall there would be in
+    # the driver. The rest of the +Y wall still locates the edge.
+    _bx0 = _MB_POSE.body_box(PI_MOTOR_I)[0] - _MB_POSE.side_room(PI_MOTOR_I, -1) - 1.0
+    cr = cr.cut(box_at(40.0, 8.0, 40.0, _bx0 + 20.0, PI_FP[3] + 3.0, PI_Z))
     # ...and notched right down to the plug for the USB-C lead's angled head (pi_usbc_head),
     # which lies across the wall's line 1.24 off the board's edge: the socket stands that
     # far proud of it. Open at the top, so the notch prints with nothing over it.
@@ -610,172 +607,54 @@ def pi_cradle() -> cq.Workplane:
     (_cx0, _cx1), (_cy0, _cy1) = _P4.SD_CARD
     cr = cr.cut(box_at(8.0, _cy1 - _cy0 + 2 * PI_SD_FIT, 20.0, PI_FP[0],
                        PI_FP[2] + (_cy0 + _cy1) / 2.0, _MB_FLOOR.FLOOR_TOP + 10.0))
-    return cr.union(pi_spacer_boss())
+    # ...and its -X/+Y corner gives way to the 24 V link's conductors leaving motor_ctrl's
+    # J3, which is right in front of it now (wiring: the six columns on J3's x). The Pi's
+    # +Y fit is the rest of that wall; nothing under the laminate is taken.
+    x0, x1 = PI_PLINK_CUT
+    cr = cr.cut(box_at(x1 - x0, 12.0, PI_Z + 5.0 - _MB_FLOOR.FLOOR_TOP, (x0 + x1) / 2.0,
+                       PI_FP[3] + 0.15 + 6.0, (PI_Z + 5.0 + _MB_FLOOR.FLOOR_TOP) / 2.0))
+    return cr.cut(pi_hold_bore())
 
 
-# -- the Pi's retention: a PRINTED SPACER, not a screw head ------------------------------
-# ⚠ THE USER'S PROPOSAL, AND IT IS NOT A PREFERENCE -- NO POSITION BESIDE THE BOARD WORKS.
-# "The screw for the pi retention doesn't have room since it needs to avoid interfering with
-# the mortise/tenon system for the levers and not create any sub 1.6mm material down there. I
-# propose adding a printed spacer which covers the distance between the screw head and the
-# PCB. The spacer can be designed to give better retention than the screw head anyway"
-#
-# The cheap fix was tried first and is provably dead. tools/_probe_pi_anchor_sweep sweeps the
-# hold along the +Y edge and scores each site by what the ANCHOR hits BELOW the floor -- the
-# question no earlier probe asked, because pi_hold_bore was written to stop the floor
-# REFILLING the bore, and the bore was never treated as something that has to FIT:
-#     span  2.50   5 sites clear below   driver blocked 39.9 mm3
-#     span  3.50   5 sites clear below   driver blocked 31.7
-#     span  4.50   5 sites clear below   driver blocked 13.9
-#     span  5.50     clear below         driver blocked 10.5
-#     span 10.50+    clear below         driver CLEAR
-# Where the bore is safe a 2.5 mm key cannot reach the head; where the key is free the bore is
-# in the knee housing. `knee_housing` puts 66 mm3 inside the 1.6 mm shell around the bore at
-# the old hold, spanning z -79.45..-73.25 against an anchor of -77.45..-68.95.
-# ⚠ AND THE OVERLAP GATE READS CLEAN THERE AND ALWAYS WILL: a thin wall is not an
-# interpenetration -- two solids 0.2 mm apart interpenetrate by nothing. The user found from a
-# render what no gate in this project can report.
-#
-# The spacer breaks the deadlock because the screw no longer has to sit beside the board, so
-# "span" becomes free to spend. Chosen site, re-checked at the bore height the part actually
-# needs (tools/_probe_pi_spacer): driver column CLEAR, nothing foreign in the 1.6 mm shell,
-# 7 mm from the board's +X (open, I/O) end -- the end that takes cable insertion force, which
-# is the same reasoning that put the old hold at +30.
-# ⚠ TWO MORTISE PITCHES -X OF WHERE THAT SEARCH PUT IT (2026-10-02). The motor bank moved up
-# to the keyhead endplate, which stood string 3's motor over the old site (x -510). Behind
-# string 2's motor the same conditions hold -- its bay's back wall is the y -53.95 the tail
-# was sized against -- and stepping by whole pitches keeps the anchor's place in the mortise
-# grid, which is what the search was about. It is now 27.8 from the board's +X end, not 7.
-_PI_SPACER_DX  = -2 * D.LEVER_PITCH
-PI_SPACER_XY   = (-510.0 + _PI_SPACER_DX, -58.50 + PI_USBC_SHIFT)  # WORLD x,y of the anchor -- 12.50 mm out from the +Y edge
-PI_SPACER_T    = 3 * D.BEAD        # 2.40 over the laminate. 1.2 was rejected as under the
-                                   # quality bar for retention; this is the same 3-bead
-                                   # thickness the rest of this file uses for it.
-# ⚠ 13.8, AND THE NEW SITE IS WHAT SETS IT (2026-10-02). Behind string 2's motor the bar has
-# the Pi cap on its -X side -- the cap overhangs the Pi's +Y edge out to y -63.08 and ends at
-# x -532.37 -- and string 3's bay wall on its +X side (x -518.0). 13.8 is what stands between
-# them with a fit each end: 34.5 mm2 of laminate held, still over four times a head's arc.
-PI_SPACER_W    = 13.8              # along X -- the run of edge it clamps
-# ⚠ AND THE BAR IS NOT CENTRED ON ITS SCREW, WHICH IS WHAT MAKES THE RUN AFFORDABLE. Centred,
-# a bar this long reaches x -504..-524 -- fine -- but every wider option ran to x -498 and hit
-# chassis_2 there (50.9 mm3 at W 24 against 23.0 at W 16, i.e. the wall that limits it sits off
-# to ONE SIDE in X, so a wider bar changes WHICH obstacle binds, not just how much).
-# It also cannot overhang x -503: that is the board's +X edge AND `open_edge`, the direction the
-# board slides out, so plastic past it laps air and blocks the one install direction. Offset -4
-# buys 20.0 mm of run inside both limits -- 50.0 mm2 of laminate held, against a O7.6 head's
-# 1.30 mm on one arc -- with the head 2.2 mm inside the +X end, so it bears on plastic all round.
-# Swept as ONE STEPPED SOLID over five (centre, W) pairs: tools/_probe_pi_spacer_bar.
-PI_SPACER_CX   = -525.1            # WORLD x of the BAR's centre: x -532.0..-518.2. The screw
-                                   # (-530.8) is near its -X end, so the head gets a PAD of its
-                                   # own outboard of the cap's y (see pi_spacer)
-# ⚠ THE LAP IS SET BY THE PI'S OWN I/O BLOCK, NOT CHOSEN. pi4() models the USB/ethernet
-# block as box_at(18, 50, 14) reaching y -74.00 and standing 14 mm off the laminate, so the
-# clear laminate between it and the board's +Y edge (-71.00) is 3.00 mm and that is the whole
-# budget. The first draft said 6.0 and drove the lap 3 mm into a 14 mm tall block -- 108.0 mm3,
-# and 108/(15*3*2.4) = 1.00, so that box was SOLID, not grazed (tools/_probe_pi_spacer_env).
-# 2.50 keeps 0.50 off the block's face and still laps nearly twice what the head it replaces
-# did. Clamp quality here is LAP x W, so what the block costs in reach is bought back in run.
-PI_SPACER_LAP  = 2.5               # how far it reaches IN over the laminate
-# ⚠ AND THE TAIL BY A CHASSIS WALL at y >= -53.95: 5.0 put 23.0 mm3 into chassis_2. 4.00
-# clears it by 0.55 and still stands 0.20 proud of the head's edge (-54.70), so the head bears
-# on plastic all the way round rather than half over air.
-PI_SPACER_TAIL = 4.0               # how far it runs on past the screw
-PI_SPACER_NOTCH = 4.0              # the notch in the cradle's +Y wall, along Y, centred 1.0
-                                   # outboard of the board's edge
-PI_SPACER_KEY = 1.0 + PI_SPACER_NOTCH / 2.0 - CRADLE_CLR   # the key's run out from the edge
+PI_PLINK_CUT = (PI_FP[0] - 5.0, PI_FP[0] + 4.0)   # x: J3's link columns, + a wire and a fit
+
+
+# -- the Pi's retention: the belt clamps' M3, through the board's own hole ---------------
+# The printed spacer bar that bridged from the board's +Y edge to an M4 boss 12.50 out is
+# GONE (2026-10-29): a Pi hole takes an M3 with force (user, bench), so the screw goes
+# where a Pi's screw goes. The bar's history -- no site beside the board had room for an M4
+# anchor over the levers' mortises -- is in docs/bronner-work-items.md.
+# THE SAME SCREW AND INSERT AS THE BELT CLAMPS (belt_tensioner.M3, McMaster 91292A114 and
+# 94459A130), so the BOM gains a count, not a line. Here the insert is heat-set from the
+# boss's top, so its pocket takes the M4's 0.1 over the insert's own OD (cadkit M4: a
+# printed hole comes out under size and the insert has to drop in before it is melted).
+from dataclasses import replace as _dc_replace                     # noqa: E402
+from . import belt_tensioner as _BT                                # noqa: E402
+PI_M3 = _dc_replace(_BT.M3, insert_pilot_d=_BT.INS_D + 0.1)        # 4.8 pocket, boss 8.0
+PI_SCREW_L = _BT.SCREW_L                                           # 12.0
+# ...and the ring under its head is what lets that one length serve: through the ring and
+# the laminate the M3 x 12 reaches PI_BORE_D under the board, the insert plus its bite.
+PI_SPACER_T = 4 * D.BEAD                                           # 3.20
+PI_BORE_D = PI_SCREW_L - BD_T - PI_SPACER_T                        # 7.20
+PI_SPACER_OD = 6.0                 # the Pi's own keep-out pad round the hole; the 5.5 head
+                                   # bears on it all round. 1.30 wall, over MIN_WALL
+PI_SPACER_UP = (0.0, 0.0, 1.0)     # a flat ring: either face down
+assert PI_M3.anchor_min_wall - 1e-9 <= PI_BORE_D <= PI_STANDOFF, (PI_BORE_D, PI_STANDOFF)
 
 
 PI_SD_FIT = 2 * D.BEAD             # each side of the card, in the cradle wall's opening
 PI_SPACER_UP = (0.0, 0.0, -1.0)    # prints TOP FACE DOWN (see pi_spacer)
 
 
-def pi_boss_top() -> float:
-    """World z of the top of the boss the Pi's clamp screws into.
-
-    ⚠ THE WHOLE ANCHOR STANDS ABOVE THE FLOOR, NONE OF IT IN IT (user, 2026-10-13: "the
-    insert clips into the mortise which the levers need. We need to find a way to move the
-    insert further +z"). The floor slab under this site is the levers' mortise: measured
-    off chassis_2, its void comes up to z -72.95 beside the bore and to within 0.10 of the
-    floor of a bore sunk from the board's underside. FLOOR_TOP is -71.35, so an anchor that
-    ends AT the floor's top keeps the 1.60 over the mortise that the slab itself has, and
-    takes nothing from it. The boss is therefore exactly one anchor tall."""
-    from cadkit.fasteners import M4 as _M4
-    return _MB_FLOOR.FLOOR_TOP + _M4.anchor_min_wall
-
-
-def pi_spacer_boss() -> cq.Workplane:
-    """The chassis boss under the clamp's screw: a column from the floor up to
-    pi_boss_top(), holding the whole anchor above the floor (see pi_boss_top).
-
-    build.py takes the anchor out with pi_hold_bore() AFTER the fuse: cut-before-union is
-    silently refilled, and a fastener is the one place that is invisible, because the
-    plastic looks right and only the screw solid shows the interference."""
-    from cadkit.fasteners import M4 as _M4
-    hx, hy = PI_SPACER_XY
-    # ⚠ A BEAD INTO THE SLAB AND A RIB BACK TO THE CRADLE, BECAUSE A COLUMN STANDING ON A
-    # COINCIDENT PLANE IS NOT ATTACHED. Built flush at FLOOR_TOP and free of the cradle, this
-    # came out as a SECOND SOLID -- pi_cradle() returned 2 -- which is exactly the failure
-    # build.py's one-solid assert exists for, and the overlap gate cannot see it either,
-    # because two solids that never touch do not interpenetrate.
-    # The rib also gives the boss its lateral strength: 12.50 mm out from the cradle, a bare
-    # O9.2 column carrying the board's whole lift restraint is a cantilever on the floor.
-    # It stops at the board's underside: the clamp's key comes down onto it there.
-    z0 = _MB_FLOOR.FLOOR_TOP - D.BEAD
-    boss = cyl(_M4.boss_od, pi_boss_top() - z0, z0).translate((hx, hy, 0.0))
-    y_web = PI_FP[3] + CRADLE_CLR + 1.6 - D.BEAD     # a bead INTO the cradle's +Y wall foot
-    rib = box_at(_M4.boss_od, hy - y_web, PI_Z - z0,
-                 hx, (y_web + hy) / 2.0, (z0 + PI_Z) / 2.0)
-    return boss.union(rib)
-
-
 def pi_spacer() -> cq.Workplane:
-    """The printed piece that clamps the flat Pi down -- the user's spacer.
-
-    A BRIDGE WITH TWO FEET. Its top is one flat bar from over the board's edge out to the
-    screw. At the board it comes down in a LAP that rests on the laminate's top face, and
-    just outboard of the edge in a KEY that drops through the cradle wall's notch to the
-    laminate's underside: the key's face REGISTERS ON THE BOARD'S EDGE, so the bar cannot
-    turn about its one screw. At the screw it sits on `pi_spacer_boss`, which stands a
-    whole anchor above the floor (pi_boss_top) so the insert stays out of the levers'
-    mortise.
-
-    Why this beats the button head it replaces -- the user's "better retention than the screw
-    head anyway", in numbers:
-      * a O7.6 head laps the laminate by pcb_hold_overlap() = 1.30 mm on ONE SMALL ARC. This
-        laps PI_SPACER_LAP = 2.50 mm over the run of edge beside the header, and the lap is
-        capped by the Pi's own I/O block rather than by anything this design chose.
-      * its thickness is chosen for strength (3 beads), not inherited from a fastener.
-      * the clamp load spreads along the edge instead of concentrating where the arc touches.
-
-    ⚠ PRINTS TOP FACE DOWN (PI_SPACER_UP). The top is one flat face, and the lap, the key
-    and the bar all grow straight up from it, so nothing overhangs:
-    `check_ceilings --only pi_spacer` reads 0 ceilings.
-    """
-    from cadkit.fasteners import M4 as _M4
-    hx, hy = PI_SPACER_XY
-    y_edge = PI_FP[3]                              # the board's +Y edge
-    z_boss = pi_boss_top()
-    z_top = z_boss + PI_SPACER_T
-    z_face = PI_Z + BD_T                           # the laminate's top face
-    x0, x_end = PI_SPACER_CX - PI_SPACER_W / 2.0, PI_SPACER_CX + PI_SPACER_W / 2.0
-
-    def block(xa, xb, ya, yb, za, zb):             # box_at is CENTRED on all three axes
-        return box_at(xb - xa, yb - ya, zb - za, (xa + xb) / 2.0, (ya + yb) / 2.0, (za + zb) / 2.0)
-    # ⚠ THE LAP STARTS PAST THE END OF THE Pi's 40-PIN HEADER, which stands on this same
-    # edge of the laminate (its plastic ends at x -530.10, 1.00 in from the edge): the bar
-    # itself runs on -X of that, outboard of the board, where nothing is in its way.
-    x_lap = max(x0, PI_HDR_X + 20 * _P4.PITCH / 2.0 + CRADLE_CLR)
-    lap = block(x_lap, x_end, y_edge - PI_SPACER_LAP, y_edge, z_face, z_top)
-    # the key: down through the notch pi_cradle cuts in the +Y wall, a fit short of its far side
-    key = block(x0, x_end, y_edge, y_edge + PI_SPACER_KEY, PI_Z, z_top)
-    y_out = hy + PI_SPACER_TAIL
-    bar = block(x0, x_end, y_edge, y_out, z_boss, z_top)
-    # THE HEAD'S PAD. The bar's -X end is 1.2 past the screw, so half the head would bear
-    # on air: the bar widens round the screw to carry the head all the way round.
-    from cadkit.fasteners import M4_BUTTON_HEAD_D as _HD
-    pad = block(hx - _HD / 2.0 - 0.2, x0 + 0.01, hy - _HD / 2.0 - 0.2, y_out, z_boss, z_top)
-    return lap.union(key).union(bar).union(pad).cut(
-        cyl(_M4.shaft_clr_d, PI_SPACER_T + 2.0, z_boss - 1.0).translate((hx, hy, 0.0)))
+    """The ring under the Pi screw's head: PI_SPACER_T thick, so the belt clamps' M3 x 12
+    is the right length here too (user, 2026-10-29: "print a spacer so we can use the same
+    screw as the belt instead of getting another shorter screw in the BOM")."""
+    hx, hy = pi_hold_pt()
+    z = PI_Z + BD_T
+    return (cyl(PI_SPACER_OD, PI_SPACER_T, z)
+            .cut(cyl(PI_M3.shaft_clr_d, PI_SPACER_T + 2.0, z - 1.0))
+            .translate((hx, hy, 0.0)))
 
 
 def keyhead_cradles(standing: bool = True) -> cq.Workplane:
@@ -1000,8 +879,9 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # chassis' build direction is a wall that stops and starts again in mid-air: an overhang,
     # for a cable that does not go that way -- this board's plugs are on its face and its
     # bottom edge. The -Y wall is one column now, like the +Y one.
-    cr = _frame(bw, bl, None, slide_in_x=True, harness_w=0.0,
-                post_h=MCTRL_POST_H, open_down=True, root_d=4 * D.BEAD)
+    # ⚠⚠ THE MOTOR CONTROLLER'S FRAME IS GONE (user, 2026-10-29) -- src/mctrl_retention.py
+    # holds that board now: edge guides it slides down, no 45 deg leans, every guide clear of
+    # the whole drop. Fused by build.py beside these. The notes below are its history.
     # ⚠ AND THE HEAD NEEDS ITS OWN HOLE, exactly as the Pi's does 50 lines below. The boss
     # stands BESIDE the board, and the locating wall rises past the board's top face at
     # that same y -- so the button head, which seats on the board top and laps its edge,
@@ -1019,7 +899,6 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # touches is chassis structure, not the cradle. y -48.30..-48.10 is a 0.2 mm sliver on
     # one side of the screw's circle, i.e. a flat face it just crosses. Not chased further
     # for 0.72 mm3; see docs/bronner-work-items.md. Cutting this frame cannot fix it.
-    mc = cr.translate(((x0 + x1) / 2.0, (y0 + y1) / 2.0, TRAY_Z1))
 
     # ⚠⚠ THE PI'S CRADLE IS GONE, AND IT IS NOT A REGRESSION -- THE PI LEFT THE TRAY
     # (2026-09-29). What stood here was a tray `_frame` with a root into the 3 mm plate,
@@ -1037,9 +916,7 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # the two fasteners were never in the same solid. With no Pi cradle in the bay there is
     # nothing for it to bury itself in, so the `_mtx`/`_mty` clearance cut that compensated
     # for it is gone too.
-    if not standing:
-        return mc
-    out = stand(mc)
+    out = None
     # ⚠ NOTHING MAY LEAN INTO A BOARD'S COMPONENTS (user, 2026-09-29: "on the +y side of
     # the pi the retention is clipping into the pi's components"). They were right, and
     # NOTHING IN THE PROJECT COULD SEE IT: cradle-to-board contact is a designed contact,
@@ -1056,7 +933,6 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # ⚠ The cut is EXACT, so the cradle and the board now TOUCH rather than interfere. The
     # boards are held by their M4 -- head lapping the edge, clamping to the boss -- plus
     # the single install direction; the lean adds what it can where the envelope allows.
-    out = out.cut(motor_ctrl())
     # ⚠ THE FLAT PI'S CRADLE JOINS HERE, AFTER THE POSE, AND THAT IS THE POINT. Everything
     # above is authored in the tray frame and stood up by stand(); pi_cradle() is authored in
     # the WORLD frame because the helper it uses is already flat. Unioning it after stand()
@@ -1070,7 +946,9 @@ def keyhead_cradles(standing: bool = True) -> cq.Workplane:
     # mm3 at every position on every edge. Debug-only; it never changes a built part.
     import os as _os
     if not _os.environ.get("PI_NO_CRADLE"):
-        out = out.union(pi_cradle())
+        out = pi_cradle()
+    if out is None:
+        return None
     # ⚠ AND IT GETS THE SAME SUBTRACTION THE MOTOR BOARD DOES, for the reason the user gave
     # about the +Y side: cradle-to-board contact is a DESIGNED contact, so check_overlaps is
     # blind to it and the render is the only place it shows. pi_cap's underside sits exactly
@@ -1153,32 +1031,15 @@ def board_screws():
     out.append(("board_screw_1", m4_button_screw(L).translate(
         (ox + hx, oy + hy, oz + _PCB_T + M4_BUTTON_HEAD_H))))
 
-    # ⚠ THE PI'S M4 IS DRAWN NOW TOO (user: "the M4 isn't using the cadkit screw helper
-    # which draws a fitted insert and screw"). electronics_bay() has always BORED its
-    # anchor -- _cut_anchor at (phx, phy, POST_H) -- but nothing ever drew the fastener
-    # that goes in it, so the render showed a bare boss and the overlap gate had no screw
-    # to check against the plastic around it.
-    #
-    # BESIDE the board, not through it, because the Pi is a PURCHASED board and its own
-    # holes are too small for M4 -- the same arrangement, and the same SKU, as the CAN tee
-    # hold-downs: the head lands on the board's top face and laps its edge, clamping it to
-    # the cradle boss. The seat plane is therefore the board top, exactly as it is for the
-    # two boards above, and the assert at the top of this function covers it unchanged.
-    # ⚠ THE PI'S M4 IS BACK, BECAUSE THERE IS NOW A BOSS BEHIND IT (2026-09-29). It was
-    # removed when the Pi went flat: its boss lived on the tray frame, and drawing a fastener
-    # with nothing to thread into is this project's own named fault -- "a hole designed for an
-    # M4 screw that isn't being used", a fastening point that cannot be fastened. pi_cradle()
-    # supplies the boss and bores the anchor, so the screw has somewhere to go.
-    # WORLD frame and no stand(), like the cradle it threads into; read from the SAME
-    # PI_SPACER_XY the cradle's boss and build.py's anchor bore read, so the three cannot
-    # drift apart.
+    # THE Pi's M3, through its own hole (pi_hold_pt): the insert seated in the boss under
+    # the board, the belt clamps' M3 x 12 socket head on PI_SPACER_T of ring.
+    from cadkit.fasteners import headed_screw
     _px, _py = pi_hold_pt()
-    out.append(("board_insert_2", seated_insert(_M4, (_px, _py, pi_boss_top()), (0, 0, -1))))
-    # ⚠ THE HEAD SEATS ON THE SPACER, PI_SPACER_T ABOVE THE BOSS -- it does not touch the
-    # board at all. An M4x10 through the 2.40 bar reaches 7.60 into an anchor 8.50 deep.
-    assert L - PI_SPACER_T <= _M4.anchor_min_wall + 1e-9
-    out.append(("board_screw_2", m4_button_screw(L).translate(
-        (_px, _py, pi_boss_top() + PI_SPACER_T + M4_BUTTON_HEAD_H))))
+    out.append(("board_insert_2", seated_insert(PI_M3, (_px, _py, PI_Z), (0, 0, -1))))
+    _z_head = PI_Z + BD_T + PI_SPACER_T
+    out.append(("board_screw_2", headed_screw(PI_M3, PI_SCREW_L, head_d=_BT.HEAD_D,
+                                              head_h=_BT.HEAD_H, socket_af=2.5)
+                .translate((_px, _py, _z_head + _BT.HEAD_H))))
     return out
 
 
@@ -1247,7 +1108,7 @@ def pi_usb_c_mouth():
 # Why this lead: an up/down-angle head is deeper. Newnex's drawing for its angled C
 # (U4S5C01CD6, the one stocked 1 m up/down with a dimensioned drawing) is 18.50 deep, which
 # needs the Pi 2.1 mm further +Y than the moved motor bays leave.
-PI_USBC_HEAD_D = 11.0              # mating face -> back of the head (datasheet)
+PI_USBC_HEAD_D = D.PI_USBC_HEAD_D  # mating face -> back of the head (datasheet)
 PI_USBC_HEAD_T = 6.0               # thickness, centred on the socket (datasheet)
 PI_USBC_HEAD_L = 20.0              # along the cable (ASSUMED)
 PI_USBC_AXIS = 5.5                 # the shell's axis from the head's closed end (ASSUMED)
@@ -1262,7 +1123,20 @@ def pi_usbc_head():
             my - PI_USBC_HEAD_D, my, mz - PI_USBC_HEAD_T / 2.0, mz + PI_USBC_HEAD_T / 2.0)
 
 
+def _check_plug_y0():
+    """dimensions.PI_PLUG_Y0 -- what the -Y rail is set off -- is this plug's -Y face."""
+    from . import wiring as _W
+    _h = pi_usbc_head()
+    boot_y0 = (_h[2] + _h[3]) / 2.0 - _W.PI_USBC_BOOT[1] / 2.0
+    y0 = min(_h[2], boot_y0)
+    assert abs(y0 - D.PI_PLUG_Y0) < 1e-6, (
+        "the USB-C plug's -Y face is %.3f but dimensions.PI_PLUG_Y0 (the rail's datum) "
+        "says %.3f" % (y0, D.PI_PLUG_Y0))
+    assert abs(PI_FP[2] - pi_usb_c_mouth()[1] - D.PI_USBC_PROUD) < 1e-6
+
+
 def pi4_parts():
+    _check_plug_y0()
     """[(name, solid)]: the Raspberry Pi 4B AS IT IS DRAWN, where it lies -- src/pi4b.py's
     parts (laminate, shells, pins, chips, small parts), one per colour. The drawing's
     frame is ours turned no way at all: x along the 85 mm side toward the USB end (+X),
@@ -1523,13 +1397,14 @@ def op_origin():
     its underside in z.
 
     X: the board's +X edge sits OP_PANEL_CLR behind the panel's inner face.
-    Y: the TS jack's axis lands on TS_Y.
+    Y: the board's -Y edge sits OP_PANEL_CLR off the -Y rail's inner face.
     Z: from the TS jack's BORE, not the board -- it is the part whose hole a player has
        to hit with a plug, so it owns the row height and the board hangs where that puts
        it. (The other two holes are wherever the board then puts THEIR axes; they used
        to share this one Z, which is how the USB-C hole ended up 7.85 mm too high.)"""
     ts = BG.mouth("output_panel", "J5")
-    return (JACK_WALL_X - OP_PANEL_CLR - OP_BOARD_X / 2, TS_Y - ts["across"],
+    return (JACK_WALL_X - OP_PANEL_CLR - OP_BOARD_X / 2,
+            CH.Y_LO + CH.T / 2.0 + OP_PANEL_CLR + OP_BOARD_Y / 2.0,
             JACK_Z - _OP_T - ts["axis_h"])
 
 

@@ -211,12 +211,7 @@ from .chassis import WT_X1 as CH_WT_X1, WT_RUNS as CH_WT_RUNS
 from .chassis import WT_D as CH_WT_D, WT_T as CH_WT_T
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
-RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -131.55: -Y rail inner face
-# the old floor-level corridor, which only bus B still uses at the keyhead. Held where it was
-# (-124.25) when the body widened for string 10's pigtail (chassis.RAIL_GAP): nothing on it
-# wanted to move, and following the wall out put bus B across the Pi link's riser.
-from .chassis import RAIL_GAP as _RAIL_GAP
-RAIL_Y = RAIL_INNER_Y + 4.5 + (_RAIL_GAP - 2.0)
+RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -Y rail inner face (chassis.RAIL_INNER_Y)
 TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14mm-deep board clears wall)
 # ── THE -Y CORRIDOR IS THE WIRING TROUGH NOW (chassis.WT_*), ABOVE THE MOTORS ──────────
 # It used to be a pocket cut into the rail below the motor tops; the user moved it OUT of
@@ -256,9 +251,6 @@ assert LANE_PWR2 + PLINK_HALF < LANE_USB - 2.6 / 2, (
 assert (2 * USB_LANE_DY + USB_LANE_DZ) / math.sqrt(2.0) > 2.6, "the two USB leads meet in the trough"
 assert USB_LANE_DY + 2.6 / 2 < (CH_WT_D - CH_WT_T) / 2, "a USB lead is in the trough's wall"
 assert LANE_PWR + PWR_OFF + 1.8 / 2 < CH_WT_ZF + CH_WT_H, "the head stands over the lip"
-assert CH_WT_LANE_Y + _TRUNK_OD / 2 <= MB.HARNESS_Y1, (
-    "the trough's lane reaches y %.2f, past motor_bank's HARNESS_Y1 %.2f"
-    % (CH_WT_LANE_Y + _TRUNK_OD / 2, MB.HARNESS_Y1))
 HDR_Z = -54.0                                            # lifted tee header top (wire entry z)
 
 CHAN_Y = CH_WT_LANE_Y                    # inside the trough
@@ -1040,7 +1032,10 @@ def build_wires():
     _ja = conn_end("motor_ctrl", "J1")
     for k in _cable("bus A head", _ja, _tin[west[0]]):
         (pa, _, net), (pb, _, _) = _ja[k], _tin[west[0]][k]
-        xu = pa[0] + _HEAD_RISE + _HEAD_LANES[k]     # the riser, beside the board
+        # ⚠ ALL FOUR RISERS ON ONE x NOW (2026-10-29): the cap reaches x -587.0 since its
+        # ribbon band moved west, 4.7 off J1's plug, so lanes of x no longer fit beside
+        # the board. J1's ways are an XH pitch apart in y, so the risers need none.
+        xu = pa[0] + _HEAD_RISE                      # the riser, beside the board
         xr = _HEAD_X0 + _HEAD_LANES[k]               # the +Y run, +X of the coil plug
         yj = _HEAD_TURN_Y + k * _XH_PITCH
         assert pb[0] < xr, "bus A's head: way %d's riser is not +X of its tee pin" % (k + 1)
@@ -1179,7 +1174,9 @@ def build_wires():
     # and come out into the bay, where they turn for the wall.
     _j7e = conn_end("output_panel", "J7", ways=(1, 2))      # GND, 24 V; ways 3, 4 carry nothing
     _j10e = conn_end("output_panel", "J10")
-    _REC_Y = -121.5                       # along the board's -Y edge, inside the recess
+    _REC_Y = EL.op_origin()[1] - EL.OP_BOARD_Y / 2.0 + 1.0     # 1.0 in from the board's -Y
+                                          # edge, inside the recess -- off the BOARD, so it
+                                          # follows it to the -Y wall (it was -121.5 typed)
     _REC_Z7 = -27.0                       # the J7 pair's centre height crossing it
     _BAY_X7, _BAY_X10 = -36.0, -31.0      # out of the endplate's -X face (-25.06); J7's
                                           # pair turns further out than the 24 V link, past
@@ -1294,8 +1291,15 @@ def build_wires():
     # (The other side of J3 is the foot lead's; and with the lanes the other way round a
     # row's two conductors cross each other leaving J10.)
     _j3e = conn_end("motor_ctrl", "J3")
-    _PL_LEAD = 1.25                    # straight out of the plug before anything turns: the
-                                       # far column is then 0.4 off the cap's J6
+    # ⚠ ONE LINE OF SIX COLUMNS NOW, ON J3's OWN x, RUNNING +Y (2026-10-29). The Pi went up
+    # against the motors and its -X/+Y corner is now right in front of J3: the cap's -X edge
+    # is 4.7 off the plug and the board, its cradle and the old -Y column line all stand
+    # where the 3 x 2 block came down. So the six stand in one row along +Y from J3's line,
+    # a column pitch apart: the nearest take the top ways and end first, as before, so each
+    # lower conductor's run back to J3's line passes under the columns already gone in; and
+    # at the run's level the -X lane takes the nearer row, so a pair never shares a line.
+    # electronics.pi_cradle gives up its corner here (PI_PLINK_CUT) for the lower ways.
+    _PL_LEAD = 1.25                    # straight out of the plug before anything turns
     _PL_STEP = WIRE_OD["wire_plink"] + 0.1       # column to column
     _PL_PX, _PL_PY = _j3e[0][0][0] + _PL_LEAD, _j3e[0][0][1]
     _jc = [sum(e[0][m] for e in _j10e) / len(_j10e) for m in range(3)]
@@ -1316,8 +1320,8 @@ def build_wires():
     _slot = {}
     for _lvl in range(3):
         _inner, _outer = _by_z[2 * _lvl], _by_z[2 * _lvl + 1]       # -X lane, +X lane
-        _slot[2 * _lvl + 1] = _outer           # the even way (2, 4, 6): J3's own line
-        _slot[2 * _lvl] = _inner               # the odd way (1, 3, 5): the line -Y of it
+        _slot[2 * _lvl + 1] = _outer           # the even way (2, 4, 6): the farther row
+        _slot[2 * _lvl] = _inner               # the odd way (1, 3, 5): the nearer row
     # ...and at J10 the two conductors of a row have to leave it in their pins' own order,
     # or they cross on the way into the bundle
     assert all((_j10e[k][0][0] - _j10e[m][0][0])
@@ -1331,8 +1335,8 @@ def build_wires():
         (pa, _, net), (pb, _, _) = _j10e[k], _j3e[k]
         leg = _legs[_slot[k]]
         lx, lz = leg[-1][0], leg[-1][2]
-        sx = _PL_PX + (2 - k // 2) * _PL_STEP          # ways 5, 6 nearest the plug
-        sy = _PL_PY - (0.0 if k % 2 else _PL_STEP)
+        sx = _PL_PX
+        sy = _PL_PY + (2 * (2 - k // 2) + (0 if k % 2 == 0 else 1)) * _PL_STEP
         pts = [pa, (pa[0], pa[1], leg[0][2])] + list(leg[:-1]) + [
             (lx, sy, lz), (sx, sy, lz), (sx, sy, pb[2])]
         if sy != _PL_PY:
@@ -1367,7 +1371,7 @@ def build_wires():
     # and ride the trough to the keyhead, staggered (see LANE_USB).
     #
     # wire_usb ENDS IN A RIGHT-ANGLE PLUG AT THE Pi (2026-10-28). It had none: the Pi's USB-C
-    # faced the -Y rail 3.31 mm away. The Pi moved +Y (electronics.PI_USBC_SHIFT) and the
+    # faced the -Y rail 3.31 mm away. The Pi moved +Y (electronics.PI_FP, now right up to the motors) and the
     # lead is a left/right-angle one, StarTech USB2CC1MR (electronics.PI_USBC_*): its head
     # lies flat between the board's edge and the rail with the cable leaving -X, and the
     # lead comes down the rail just past it -- -X of where the 24 V link turns out of the
@@ -1475,21 +1479,36 @@ def build_wires():
     _LT_WALL_X = -562.70
     _LT_XC = min(min(e[0][0] for e in _ltb) - 2.0,
                  _LT_WALL_X - WIRE_OD["wire_lights"])
+    # ⚠ THEY CLIMB WEST OF THE CAP NOW, NOT ACROSS ITS +Y EDGE (2026-10-29). The cap's ribbon
+    # band moved west, and its +Y edge from x -587 to -559.5 is J6, J5's header and the
+    # ribbon socket, standing out over the edge: the old columns at x -569..-564 went up
+    # through J5's body (hidden from the gate -- these wires may touch pi_cap, for J4). So
+    # the four run +X from J7 only to _LT_CLIMB_X, between the 24 V link's columns and the
+    # cap's -X edge, each on its own y lane (ways 1 and 4 step out to theirs short of it, at
+    # their own heights), climb there side by side, and fly +X over the cap to their old
+    # lanes -- the +Y-most to the +X-most lane, so no -Y run crosses another's fly.
+    _LT_CLIMB_X = _capbb.xmin - WIRE_OD["wire_lights"] / 2.0 - 0.2
+    _LT_YS = (1.62, 0.0, EL.MCTRL_J7_SIDE, EL.MCTRL_J7_SIDE - 1.65)    # off J7's line, by way
     _lt_live = _cable("LIGHTS_LINK", _lta, _ltb)
     for n, k in enumerate(_lt_live):
         (pa, _, net), (pb, _, _) = _lta[k], _ltb[k]
         # ways 1, 2 on J7's own line at their own heights; 3, 4 beside them at the same two
         row, lvl = n // 2, n % 2
         y, z = pa[1] + row * EL.MCTRL_J7_SIDE, _lta[_lt_live[lvl]][0][2]
-        # on each line the upper conductor climbs first, so the lower passes under its column
-        xc = _LT_XC - (3 - (2 * row + lvl)) * _LT_PITCH
+        yc = _lta[_lt_live[0]][0][1] + _LT_YS[n]
+        xc = _LT_XC - n * _LT_PITCH
         yl = _LT_YL - (3 - n) * _LT_PITCH
         pts = [pa]
         if row:
             xs = pa[0] + EL.MCTRL_J7_LEAD + lvl * _LT_PITCH
             pts += [(xs, pa[1], pa[2]), (xs, y, pa[2]), (xs, y, z)]
-        pts += [(xc, y, z), (xc, y, _LT_FLY), (xc, yl, _LT_FLY), (xc, yl, pb[2]),
-                (pb[0], yl, pb[2]), pb]
+        if abs(yc - y) > 1e-9:
+            xj = _LT_CLIMB_X - (_LT_PITCH if n == 0 else 0.0)   # way 1 steps out before
+            pts += [(xj, y, z), (xj, yc, z)]                    # way 2's column
+        if pts[-1] != (_LT_CLIMB_X, yc, z):
+            pts.append((_LT_CLIMB_X, yc, z))
+        pts += [(_LT_CLIMB_X, yc, _LT_FLY), (xc, yc, _LT_FLY),
+                (xc, yl, _LT_FLY), (xc, yl, pb[2]), (pb[0], yl, pb[2]), pb]
         _run(out, "wire_lights_%s_%d" % (_PL_SHORT[net], k + 1), pts,
              WIRE_OD["wire_lights"], "LIGHTS_LINK", k)
 
@@ -1591,9 +1610,28 @@ def build_wires():
     _j5s = (_j5c[0], _j5c[1] - _sy * UI.IDC_PIN_IN, _j5c[2])
     out.append(("ui_ribbon_socket_1", UI.idc_socket(_j5s, (0, _sy, 0), (0, 0, 1), (1, 0, 0))))
     _ry = _j5s[1] + _sy * UI.IDC_CABLE_M
-    centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz),
-              (_j5c[0], uy, umz), (_j5c[0], _ry, umz),
-              (_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
+    #    ...AND ROUND THE FRET BOARD'S -Y EDGE WALL, not through it (2026-10-29). With the
+    #    Pi up against the motors J5 sits under the keyhead panel's fret LED board, whose
+    #    edge wall and comb hang from the deck there: so the ribbon comes down just -Y of
+    #    both, passes under the wall, and steps +Y onto the socket's line. Under, not
+    #    beside, because the keyhead panel slides on along X after the ribbon is plugged
+    #    (plug-before-panel), and the wall's own section is what sweeps.
+    from . import fret_light as _FL
+    _clr = 1.0 + UI.RIBBON_T / 2.0
+    _wb = _FL.edge_walls().val().BoundingBox()
+    # the panel's -Y reach over the board: the edge wall's outer face, or the comb's
+    # end (the fret line's half length), whichever is further out
+    # ...and only while J5 IS under it: the Pi cap is to be redrawn shorter in +Y
+    # (user, 2026-10-29), and a J5 clear of the panel takes the straight drop again
+    _wall_y = -max(_FL.BOARD_HALF_W + _FL.EDGE_WALL_OUT, _FL.half_len())
+    centre = [(ex, uy, _j2m[2] - UI.IDC_BODY_R / 2.0), (ex, uy, umz), (ex - 12.0, uy, umz)]
+    if _ry + _clr > _wall_y:
+        _dy, _dz = _wall_y - _clr, _wb.zmin - _clr
+        centre += [(_j5c[0], uy, umz), (_j5c[0], _dy, umz), (_j5c[0], _dy, _dz),
+                   (_j5c[0], _ry, _dz)]
+    else:
+        centre += [(_j5c[0], uy, umz), (_j5c[0], _ry, umz)]
+    centre += [(_j5c[0], _ry, _j5c[2] - UI.IDC_BODY_R / 2.0)]
     #    ...AND IT IS ONE PRISM, NOT FOURTEEN SWEEPS (user, 2026-09-28). It was drawn
     #    as fourteen conductors from bundle_paths, one octagonal solid each, which is the
     #    truth about a ribbon and the wrong model of it: nothing inside a ribbon can move

@@ -41,7 +41,7 @@ except Exception:                       # a profiling hook must NEVER break a bu
 
 from . import dimensions as D
 from elec import harness as _EH           # the PCB's pin order, single-sourced
-from .helpers import heal
+from .helpers import box_at, heal
 from . import components as C
 from . import chassis as CH
 from .components import MOTOR_PULLEY_STANDOFF
@@ -236,6 +236,9 @@ from . import electronics as _EL_ports
 # y -114.9 and -49.1 against a port spanning -113..-51), so cutting afterwards cannot take
 # anything load-bearing away, and it guarantees the ports stay open whatever the frames do.
 _kh_cr = _EL_ports.keyhead_cradles()
+from . import mctrl_retention as _MCR
+if _kh_cr is None:          # PI_NO_CRADLE (debug): the motor board's guides stand in, so the
+    _kh_cr = _MCR.retention()   # segment checks below still have something to look at
 _kh_bb = _kh_cr.val().BoundingBox()
 # ⚠ THE CRADLES REFILLED THE LEVER MORTISES, and the knee housing's tenons live in them.
 # chassis.py cuts a mortise into every rib, then this union laid the cradles' feet back over
@@ -271,9 +274,74 @@ assert _kh_n == 1, (
     "(board bottom edge z -80.85 against a floor top of -71.35) and the Pi's two legs should "
     "reach it with one bead of overlap. Check electronics.keyhead_cradles's root_d/foot "
     "against motor_bank.FLOOR_TOP." % _kh_n)
+# ⚠ THE BUS-B PLUGS (J2, J6) COME OUT DOWNWARD, BESIDE THE -X/-Y LEG (user, 2026-10-29). As
+# the -Y rail comes in, that corner's body adapter -- and the leg under it -- moves +Y with
+# chassis.Y_LO toward them. Each plug is pulled straight down past the body's underside and
+# squeezed from below, so the column under it, MCTRL_PLUG_FINGER wider each way, must stay
+# out of the adapter's footprint. Read off the solids (the board's parts below Z_BOT and the
+# adapter as placed), so neither side can close on the other without the build saying so.
+# 4.8 STAYS (user, 2026-10-29, on J6's tight spot: "worst case you could just grip the plug
+# with some pliers") -- the J2/J6 re-place that would have bought 10 was cancelled for it.
+MCTRL_PLUG_FINGER = 6 * D.BEAD          # 4.8 of room round a plug, past its body: pliers
+from . import leg_stack as _LS_PLUG
+_adb = _LS_PLUG.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1]).val().BoundingBox()
+_plugs = _EL_ports.motor_ctrl().intersect(
+    box_at(1600.0, 1600.0, 40.0, x=-300.0, y=0.0, z=CH.Z_BOT - 20.0)).val().Solids()
+assert _plugs, "no part of the motor controller stands below the body: where are J2/J6?"
+for _pl in _plugs:
+    _pb = _pl.BoundingBox()
+    _gx = max(_adb.xmin - _pb.xmax, _pb.xmin - _adb.xmax)
+    _gy = max(_adb.ymin - _pb.ymax, _pb.ymin - _adb.ymax)
+    assert max(_gx, _gy) >= MCTRL_PLUG_FINGER, (
+        "a bus-B plug on the motor controller (x %.1f..%.1f, y %.1f..%.1f) has %.2f to the "
+        "-X/-Y body adapter -- under the %.1f a hand needs to pull it down past the leg"
+        % (_pb.xmin, _pb.xmax, _pb.ymin, _pb.ymax, max(_gx, _gy), MCTRL_PLUG_FINGER))
 for _mp in _EL_ports.mctrl_floor_ports():
     for _csi in range(len(chassis_segments)):
         chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
+# THE MOTOR CONTROLLER'S GUIDES (src/mctrl_retention.py), fused AFTER the floor ports: their
+# cheeks stand MCTRL_FIT off the laminate and the ports clear it by MCTRL_PORT_CLR, so cutting
+# afterwards would notch each cheek's foot -- a 0.2 step that prints as a ledge.
+_mcr = _MCR.retention()
+_mcr_bb = _mcr.val().BoundingBox()
+# ...through the lever/leg mortises too, as the cradles above are: the guides root on the bed,
+# and the -Y channel's foot stands over the -X/-Y adapter's tenon run (4.0 mm3 refilled).
+_mcr_mc = _kh_mort_cutters(_mcr_bb.xmin - 1.0, _mcr_bb.xmax + 1.0)
+if _mcr_mc is not None:
+    _mcr = _mcr.cut(_mcr_mc)
+# ...and out of the -X/-Y adapter's way: its body tenons rise into the floor under the
+# channel's foot (4.0 mm3), and it slides in along Y, so its whole Y run is cleared, grown by
+# its slide fit.
+_mcr_ad = _LS_PLUG.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1]).val().BoundingBox()
+_mcr_f = _LS_PLUG.FIT
+_mcr = _mcr.cut(box_at(_mcr_ad.xlen + 2 * _mcr_f, 400.0, _mcr_ad.zmax + _mcr_f - (CH.Z_BOT - 1.0),
+                       x=(_mcr_ad.xmin + _mcr_ad.xmax) / 2, y=0.0,
+                       z=(_mcr_ad.zmax + _mcr_f + CH.Z_BOT - 1.0) / 2))
+_mcr_seg = [i for i, cs in enumerate(chassis_segments)
+            if cs.val().BoundingBox().xmin <= _mcr_bb.xmin
+            and _mcr_bb.xmax <= cs.val().BoundingBox().xmax + 1e-6]
+assert len(_mcr_seg) == 1, "the motor controller's guides straddle a chassis split"
+chassis_segments[_mcr_seg[0]] = chassis_segments[_mcr_seg[0]].union(_mcr)
+assert len(chassis_segments[_mcr_seg[0]].val().Solids()) == 1, (
+    "a motor-controller guide is not touching the chassis floor -- it prints as a loose post")
+# ...and the board clears them over its WHOLE DROP, not only where it seats (user: "the
+# hardware needs to clear the support material along that range of motion").
+_mcr_hit = _MCR.swept_clear()
+assert _mcr_hit < 1e-3, (
+    "%.3f mm3 of the motor controller passes through its own guides on the way in" % _mcr_hit)
+# ⚠ ITS -Z STOP IS THE -X/-Y BODY ADAPTER (see mctrl_retention): the laminate's bottom edge
+# is 0.34 over the underside, too little for a ledge, and the adapter's top face lies under
+# its -Y end. Probe the ADAPTER'S SOLID there, not its bbox -- a chamfer would read as a stop.
+_mcl = _EL_ports.mctrl_capture_target()
+_mc_zb = _mcl[4] - _EL_ports.MCTRL_BOARD_X
+_mc_probe = box_at(_mcl[1] - _mcl[0], _mcl[3] - _mcl[2], 0.5,
+                   x=(_mcl[0] + _mcl[1]) / 2.0, y=(_mcl[2] + _mcl[3]) / 2.0,
+                   z=CH.Z_BOT - 0.25)
+_mc_under = _LS_PLUG.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1]).intersect(_mc_probe)
+_mc_stop = _mc_under.val().BoundingBox().ylen if _mc_under.solids().size() else 0.0
+assert _mc_stop >= D.MIN_WALL and _mc_zb - CH.Z_BOT <= 2 * D.MCTRL_FIT, (
+    "the motor controller has no -Z stop: the -X/-Y body adapter lies under %.2f of its "
+    "laminate (want >= %.2f) at %.2f below it" % (_mc_stop, D.MIN_WALL, _mc_zb - CH.Z_BOT))
 # ⚠ AND THE FLAT PI'S ANCHOR, WHICH MUST BE CUT HERE AND NOT IN THE CRADLE. pcb_cradle bores
 # its own boss, but that boss is EMBEDDED in the floor slab -- the M4 needs anchor_min_wall
 # below the board's underside, which is deeper than the standoff -- so the floor's own
@@ -404,7 +472,7 @@ PARTS["coil_mandrel_sleeve"] = (
 PARTS["pi_spacer"] = (
     lambda: heal(__import__("src.electronics", fromlist=["e"]).pi_spacer()),
     "petg-gf/pi_spacer.step",
-    "PETG-GF — the Raspberry Pi's clamp: a stepped bar that laps 2.5 mm over the board's +Y edge beside the 40-pin header and is held by one M4 x 10 button screw into the chassis boss beside the board. Prints TOP FACE DOWN: the top is one flat face, so nothing overhangs")
+    "PETG-GF — the ring under the Raspberry Pi's hold-down screw: Ø6.0 x 3.2, so the belt clamps' M3 x 12 socket head through the Pi's own mounting hole reaches exactly the bottom of its insert's bore. Prints flat, either face down")
 # LEVER PROGRAMMING JIG -- a SHOP TOOL like the mandrel: exported, never in the assembly.
 PARTS["lever_prog_jig"] = (
     lambda: heal(__import__("src.lever_jig", fromlist=["e"]).jig()),
@@ -419,6 +487,11 @@ PARTS["saw_jig"] = (
     lambda: heal(__import__("src.saw_jig", fromlist=["e"]).body()),
     "tools/saw_jig.step",
     "TOOL — hacksaw jig for cutting the ten Tr8x2 leadscrews to SCREW_LEN by hand with one Quick-Grip and no vise: the rod rests on two crests in a 90 deg V tunnel, the saw slot (1.3, McMaster 6927A16) sits 5.6 past the clamped support, and the piece overhangs an OPEN fork to a fixed end stop at SCREW_LEN + 0.4, then drops out. The table-edge notch goes on the table edge so a slipped blade hits the jig. PETG, printed as drawn")
+# MOTOR SHAFT SAW JIG -- a SHOP TOOL (lead, 2026-10-29): exported, never in the assembly.
+PARTS["motor_shaft_saw_jig"] = (
+    lambda: heal(__import__("src.motor_shaft_saw_jig", fromlist=["e"]).body()),
+    "tools/motor_shaft_saw_jig.step",
+    "TOOL — the leadscrew saw jig's sibling for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L, no screws: the motor drops into the chassis' own bay (motor_bank.lift_prism + low_walls, the bay's boss slot), faceplate pushed home on a 1.6 lip, shaft on a cradle rib its full length to a 1.3 saw slot (McMaster 6927A16) at the cut plane with a 3.2 cheek each side, the motor-side cheek braced by two 45 deg gussets; 1.6 floor and bay walls to the shaft axis. NO CAP: the Quick-Grip pad goes straight on the motor. PETG-GF on the 0.8, printed as drawn")
 PARTS["saw_jig_cap"] = (
     lambda: heal(__import__("src.saw_jig", fromlist=["e"]).cap()),
     "tools/saw_jig_cap.step",
@@ -565,6 +638,7 @@ def _declared():
     from . import motor_bank as _MB
     from . import coil_mandrel as _CM
     from . import saw_jig as _SJG
+    from . import motor_shaft_saw_jig as _MSJ
     from . import ream_jig as _RJG
     from . import electronics as _ELX
 
@@ -670,8 +744,7 @@ def _declared():
          "slots open at the bed and their 0.8 roofs bridge. That is "
          "SLEEVE_UP, which is what a print-fit coupon is required to match"),
         (["pi_spacer"], _ELX.PI_SPACER_UP,
-         "electronics.PI_SPACER_UP — top face down: one flat face on the "
-         "bed, nothing overhangs"),
+         "electronics.PI_SPACER_UP — a flat ring, either face on the bed"),
         (["saw_jig"], _SJG.BODY_UP,
          "saw_jig.BODY_UP — as drawn, table face on the bed: the V and roof "
          "of the rod tunnel and the fork's arch are all 45 deg"),
@@ -679,6 +752,9 @@ def _declared():
          "ream_jig.PRINT_UP — standing as it is used, table face on the bed: "
          "the nut slot and the reamer channel both print round their own axis, "
          "and every ceiling over the nut is a 45 deg gable"),
+        (["motor_shaft_saw_jig"], _MSJ.BODY_UP,
+         "motor_shaft_saw_jig.BODY_UP — as drawn, table face on the bed: the bay, "
+         "the boss slot, the shaft channel and the saw slot all open upward; the gussets rise at 45 deg"),
         (["saw_jig_cap"], _SJG.CAP_UP,
          "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise "
          "off the bed, the pad pocket opens up"),
@@ -949,6 +1025,75 @@ def belt_cut(i):
     """(teeth, gap): the tooth count string i's belt is cut to, and the gap its clamp
     stands at with that belt in it (belt_tensioner.belt_fit)."""
     return BTn.belt_fit(C.belt_loop(*_belt_ends(i)))
+
+
+# ⚠ THE BELT CLAMPS' TRAVEL IS CUT OUT OF THE BRIDGE ENDPLATE, and it is cut HERE because
+# this is where a clamp's pose is known (bridge_endplate cannot import build). As the -Y rail
+# came in (user, 2026-10-29: a narrower body), the output board's cradle -- which keys off the
+# rail's inner face -- carried its +Y wall into string 10's clamp lane: 193 mm3 of clamp half
+# A in the endplate from 4.17 mm down (build #968, check_carriage_travel). The board itself
+# stays clear of the lane (motor_bank.RAIL_BACK_CLR's output-board term), so the lane comes
+# out of the endplate rather than width going back into the body, and the wall survives only
+# past the clamps' reach (see the trim below). Each relief is the box the clamp actually shares with the
+# endplate over its whole travel, grown CLAMP_RELIEF_CLR -- read off the solids, so a clamp
+# or cradle that moves takes its relief with it, and an empty one cuts nothing.
+CLAMP_RELIEF_CLR = 0.5
+CLAMP_RELIEF_STATIONS = 80
+
+
+def _clamp_relief(ep):
+    """Boxes round every belt clamp's travel where it meets the endplate solid `ep` -- the
+    clamp AS BUILT (belt_tensioner.clamp_components at that string's belt gap: both halves,
+    the screw and the insert)."""
+    eb = ep.val().BoundingBox()
+    out, g = None, CLAMP_RELIEF_CLR
+    for i in range(D.N_STRINGS):
+        parts = [w.val() for _n, w in BTn.clamp_components(belt_cut(i)[1])]
+        lo, hi = None, None              # ONE box per string over every station: a union of
+        for k in range(CLAMP_RELIEF_STATIONS + 1):   # per-station boxes leaves 0.01 mm2 stairs
+            loc = clamp_location(i, D.CARRIAGE_TRAVEL * k / CLAMP_RELIEF_STATIONS)
+            for h in parts:
+                hb = h.moved(loc)
+                bb = hb.BoundingBox()
+                if (bb.xmax < eb.xmin or bb.xmin > eb.xmax or bb.ymax < eb.ymin
+                        or bb.ymin > eb.ymax or bb.zmax < eb.zmin or bb.zmin > eb.zmax):
+                    continue
+                x = hb.intersect(ep.val())
+                if x.Volume() < 1e-6:
+                    continue
+                xb = x.BoundingBox()
+                p0, p1 = (xb.xmin, xb.ymin, xb.zmin), (xb.xmax, xb.ymax, xb.zmax)
+                lo = p0 if lo is None else tuple(map(min, lo, p0))
+                hi = p1 if hi is None else tuple(map(max, hi, p1))
+        if lo is None:
+            continue
+        bx = box_at(*(h - l + 2 * g for l, h in zip(lo, hi)),
+                    *((l + h) / 2 for l, h in zip(lo, hi)))
+        out = bx if out is None else out.union(bx)
+    return out
+
+
+_ep_relief = _clamp_relief(bridge_endplate)
+if _ep_relief is not None:
+    bridge_endplate = bridge_endplate.cut(_ep_relief)
+    # THE OUTPUT BOARD'S +Y WALL STAYS ONLY AT THE FAR +X END (user, 2026-10-29: keep the
+    # wall, "but only at the far +X end, where the belt doesn't go"). Everything of the cradle
+    # past the board's +Y edge and over the recess floor, -X of the clamps' reach plus
+    # CLAMP_RELIEF_CLR, comes out -- not a stair of relief boxes along the wall's length.
+    from . import electronics as _EL_OP
+    _opc = BE.op_cradle().val().BoundingBox()
+    _op_y1 = _EL_OP.op_origin()[1] + _EL_OP.OP_BOARD_Y / 2.0          # the board's +Y edge
+    _op_zf = _EL_OP.JACK_Z - BE.JACK_RECESS_DZ                         # the recess floor
+    _xr = _ep_relief.val().BoundingBox().xmax + CLAMP_RELIEF_CLR
+    if _xr > _opc.xmin:
+        _trim = box_at(_xr - (_opc.xmin - 1.0), _opc.ymax + 1.0 - _op_y1, _opc.zmax + 1.0 - _op_zf,
+                       x=(_xr + _opc.xmin - 1.0) / 2, y=(_op_y1 + _opc.ymax + 1.0) / 2,
+                       z=(_op_zf + _opc.zmax + 1.0) / 2).intersect(BE.op_cradle())
+        bridge_endplate = bridge_endplate.cut(_trim)
+    assert len(bridge_endplate.val().Solids()) == 1, (
+        "the belt clamps' travel relief cut the bridge endplate in two")
+    BE.bridge_endplate = bridge_endplate
+    PARTS["bridge_endplate"] = (partial(heal, bridge_endplate), *PARTS["bridge_endplate"][1:])
 
 
 def belts_as_played():
@@ -1366,9 +1511,8 @@ def _electronics_components():
     # The endplate has to come off with the boards left in place (user), which is the whole
     # reason they moved. One less printed part, and the boards gained retention they never
     # had on the tray's bare posts.
-    # pi_spacer is the flat Pi's RETENTION -- a printed piece, not a dummy. It replaces the
-    # button head that used to clamp the laminate directly: no position beside the board had
-    # room for that screw's anchor below the floor (electronics.PI_SPACER_XY).
+    # pi_spacer is the ring under the Pi's M3 (electronics.pi_hold_pt) -- a printed piece,
+    # not a dummy: it is what lets the belt clamps' M3 x 12 serve there too.
     out = [*EL.pi4_parts(), ("pi_cap", EL.pi_cap()), ("pi_spacer", EL.pi_spacer()),
            ("motor_ctrl", EL.motor_ctrl()),
            ("output_panel", EL.output_panel()),
@@ -1436,7 +1580,7 @@ def _electronics_components():
 # player face all the way to MID_Y, so the Y placement below is a slide along slots
 # that already exist. Nothing in the chassis changes for any of this.
 _LEVER_PADDLE_D = 20.0                       # KL paddle depth in Y
-_ILKL_Y = CH.Y_LO + _LEVER_PADDLE_D / 2      # -123.95: paddle -Y face on the body edge
+_ILKL_Y = CH.Y_LO + _LEVER_PADDLE_D / 2      # paddle -Y face on the body edge
 
 
 def _lever_plane_y() -> float:
@@ -1833,7 +1977,7 @@ def optical_work_components():
     _KE = __import__("src.keyhead_endplate", fromlist=["e"])
     # ⚠ AND THE FLAT PI WITH ITS SPACER, FOR THE SAME REASON THE MOTOR BOARD IS HERE. The
     # retention work crossed into the Pi's bay (its hold-down had to leave the board's edge
-    # entirely -- electronics.PI_SPACER_XY), and a scope that hides the part being designed is
+    # entirely, and now goes through its own hole -- electronics.pi_hold_pt), and a scope that hides the part being designed is
     # how the user came to report "the pi disappeared from your tab". The spacer is the point of
     # the change, so it has to be visible in the view that reviews it.
     out = [("optical_pcb", OP.opt_pcb()),
@@ -2120,9 +2264,15 @@ def collect_components():
         % (_mcb.xmin, _mcb.xmax, D.MCTRL_X))
     assert _mcb.ymin >= D.MCTRL_Y0 - 1e-6 and _mcb.ymax <= D.MCTRL_Y1 + 1e-6, (
         "the motor board's parts overhang its laminate in y: %.2f..%.2f" % (_mcb.ymin, _mcb.ymax))
-    assert D.MCTRL_Y1 + D.MCTRL_FIT + D.MIN_WALL_2P + D.MOTOR_CLR <= MB.back_y(0) + 1e-6, (
-        "the motor board (+Y edge %.2f) no longer leaves a wall behind string 1's motor "
-        "(back %.2f)" % (D.MCTRL_Y1, MB.back_y(0)))
+    assert D.MCTRL_Y1 + D.MOTOR_CLR <= MB.back_y(0) + 1e-6, (
+        "the motor board (+Y edge %.2f) is into string 1's motor (back %.2f)"
+        % (D.MCTRL_Y1, MB.back_y(0)))
+    # ...and string 1's motor still has a back stop, +X of the board, so the PCB never takes it
+    assert MB.back_wall_x0(0) >= _mcb.xmax + D.MCTRL_FIT - 1e-6, (
+        "string 1's back wall starts at x %.2f, over the motor board (+X edge %.2f)"
+        % (MB.back_wall_x0(0), _mcb.xmax))
+    assert MB.body_box(0)[1] - MB.back_wall_x0(0) >= 20.0, (
+        "string 1's back stop is under 20 mm long: the motor can rock past it")
     comps = [
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),

@@ -258,14 +258,47 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
   the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
   The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
 
+## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29) -- HELD, DO NOT CUT YET
+
+**HELD (lead, 2026-10-29).** The motors still stand at the 17.2 standoff, where the shaft as bought fits
+and nothing needs cutting. The 15.6 cut belongs to the 12.0 standoff (branch `branner-standoff12`),
+which waits on the foot-LED boards and the output board being re-placed. Cutting a shaft is
+irreversible: do not cut until that lands and this note loses its HELD mark.
+
+The SERVO42D's shaft comes 21.5 mm long off the faceplate. The instrument uses it only to the
+pulley's outer face (`components.MOTOR_SHAFT_CUT_L`: 15.6 at the 12.0 standoff), and the motors sit closer to their
+belts for it. Cut every motor once, on the bench, with the printed jig
+(`tools/motor_shaft_saw_jig.step`), one Quick-Grip and the 6927A16 hacksaw blade. It works like
+the leadscrew saw jig, with no cap: the motor is square, so the clamp's soft pad goes straight on
+it. Nothing screws into the motor.
+
+1. Set the jig on the table near the edge, so the clamp's lower jaw reaches under it.
+2. Drop the motor into the jig's bay: driver cover down, shaft onto the cradle. It is the
+   chassis bay's own shape, so it goes in only one way.
+3. Push the motor forward until its faceplate sits on the lip. The cut is measured from that
+   lip.
+4. Clamp the Quick-Grip's pad on the motor's top (the driver's cover) and its other jaw under the
+   table, and squeeze. The stack is motor, jig, table.
+5. Saw down the slot. It has a wall on both sides of the blade, and its motor-side face is the
+   cut line, so the stub can only come out long, never short. Nothing holds the shaft from
+   turning but the motor's detent: if it turns under the blade, hold the offcut end past the
+   slot with a finger.
+6. Before unclamping, pick every filing off the slot, the cradle and the stub's end with a
+   magnet, and off the faceplate round the boss -- the jig no longer covers it.
+7. Undo the clamp, lift the motor out.
+8. File the cut end back to `MOTOR_SHAFT_CUT_L` and square, then add a small 45° chamfer all round, so the
+   pulley's bore starts on it without shaving plastic. Wipe the stub and check the faceplate
+   round the boss for filings.
+9. Drop in the next motor (step 2). The jig stays where it is; only the clamp comes off.
+
 ## Motors: push each pulley on to the end of the shaft's flat (2026-10-28)
 
 * The pulley's bore is a D the whole way through: line its flat up with the shaft's flat and
   push it on until it stops. It stops where the shaft's flat ends and the round part starts,
-  and that is its place -- no shim, no gauge. The shaft's end then stands 0.3 past the
-  pulley's outer face.
-* It goes 18 mm down the shaft (the flat's measured length, dimensions.MOTOR_SHAFT_FLAT_L),
-  stopping 1.5 short of the motor's boss. If a motor's flat differs, the pulley's place moves
+  and that is its place -- no shim, no gauge. The cut shaft's end then sits about 0.4 inside
+  the pulley's outer face.
+* It seats where the flat starts, 3.5 mm off the faceplate (the bought shaft's flat is 18 mm
+  of its 21.5, dimensions.MOTOR_SHAFT_FLAT_L), 1.5 short of the motor's boss. If a motor's flat differs, the pulley's place moves
   with it: measure it and the pulley gets re-drawn.
 
 ## Motor tees: ONE switch ON, nine OFF
@@ -512,39 +545,45 @@ the Pi's 3V3 rail. Look for a bare header pin at either end and along either sid
 must be none. Then meter: cap tail 6 to the Pi's USB shell reads 0 ohm; cap tail 1 to
 tail 2 does not.
 
-## The flat Pi: seat it, then clamp it with the spacer (2026-09-29)
+## The flat Pi: lead in first, drop it in, one M3 through its own hole (2026-10-29)
 
-The Pi is **not** held by a screw head on its laminate any more. It is held by a printed
-**spacer** (`pi_spacer`) that bridges from the board's edge out to a screw 12.50 mm away,
-because no position beside the board had room for that screw's anchor below the floor — the
-levers' mortise/tenon joinery is under it.
+The Pi is held by **one M3 × 12 socket head through its own mounting hole** (the +X, −Y one:
+the hole nearest the USB/Ethernet end on the HDMI side), into a heat-set M3 insert in the
+chassis boss under it. It is the belt clamps' screw, insert and key (2.5 mm hex): no new
+SKU. The printed spacer bar that used to bridge out to an M4 beside the board is gone.
 
-1. **Drop the Pi into its cradle, straight down.** The four corner pads carry it; its
-   underside never touches the floor slab (it has solder tails and SMD parts on the back).
-   The walls locate it in plane; the **+X end is open** — that is the I/O end, and it is also
-   the only way the board goes in or out.
-2. **Lay the spacer across the board's +Y edge.** It is stepped, and the step tells you which
-   way round it goes: the **thin end (2.40 mm) lies on the board's top face**, the **thick end
-   (4.00 mm) sits outboard on the chassis boss**. The step's vertical face butts the board's
-   edge — if it will not sit flat, it is on backwards or the board is not fully down.
-3. **One M4 × 10 button head, 2.5 mm hex**, through the spacer into the insert in the boss.
-   Same screw and same key as everywhere else; no new SKU and no second length.
-4. **Do not overtighten.** The spacer clamps 50 mm² of the laminate's edge (against the
-   1.30 mm arc a bare head used to reach), so it does not need much to hold — and what it is
-   resisting is the board lifting, not sliding: the walls already stop that.
+1. **Heat-set the M3 insert into the boss first**, from the top, before anything else is in
+   the bay (McMaster 94459A130; its pocket is 4.8, so it drops in before it is melted home).
+   Flush with the boss's top: the Pi's underside rests on it.
+2. **Plug the USB-C lead into the Pi on the bench** (see below). It cannot be plugged in
+   afterwards: the angled head and its shell need 17.65 mm in front of the socket to go in,
+   and the rail is about 12 mm away.
+3. **Lower the Pi straight down into its cradle, the lead's head going down the −Y wall's
+   notch with it.** The corner pads and the boss carry it, 13.6 mm off the floor: its +X
+   end stands over motor 3's bay back wall and 0.5 off that motor's driver, so it goes in
+   **before string 3's motor** if that motor is in the way of your hands, or with it in
+   place if not — nothing of the Pi touches it.
+4. **Put the printed ring (`pi_spacer`, Ø6 × 3.2) on the hole and drive the M3 × 12
+   through it and the Pi's hole into the insert.** The Pi's hole is 2.7 mm and the screw is
+   M3: **it is a forced thread and tight by design — do not ream the hole.** The crests cut
+   about 0.15 mm into the hole's plated barrel (user, on the bench, 2026-10-29). The ring is
+   what makes the 12 mm screw the right length: without it the screw bottoms out.
+5. Do not overtighten: the ring bears on the Pi's own Ø6 keep-out pad round the hole.
 
-⚠ **Removal order:** the spacer comes off before the Pi, and the Pi comes out along **+X**.
+⚠ **Removal order:** the screw, then the Pi straight up with its lead, then unplug the lead.
 
-### The Pi's USB-C lead: angled plug, cable toward +X (2026-10-28)
+### The Pi's USB-C lead: angled plug, cable toward −X (2026-10-28, order changed 2026-10-29)
 
 The lead from `output_panel` J2 is a StarTech USB2CC1MR, and its **angled** end goes in the Pi.
-The head lies flat in the gap between the Pi's −Y edge and the rail, in a notch in the cradle
-wall, with about 1 mm to spare. **Turn the plug so its cable leaves toward the Pi's SD-card
-end (−X)**, then take the cable up the rail past that end of the board, into the cable trough. USB-C is reversible, so either way up plugs in; only
-one way round sends the cable where the route has room.
+The head lies flat between the Pi's −Y edge and the rail, in a notch in the cradle wall, with
+0.5 mm to the rail — the rail is set off this plug (`dimensions.PI_PLUG_Y0`), and it is not
+cut for it. **Turn the plug so its cable leaves toward the Pi's SD-card end (−X)**, then
+take the cable up the rail past that end of the board, into the cable trough. USB-C is
+reversible, so either way up plugs in; only one way round sends the cable where the route
+has room.
 
-Plug it in **after** the Pi is seated and clamped: the head sits below the top of the board's
-edge, so the Pi cannot drop past a plug that is already in.
+**Plug it in BEFORE the Pi goes in** (step 2 above), on the bench: there is no room in front
+of the socket to push a plug in once the Pi is seated.
 
 ## Leg blind-mate boards (src/leg_pogo.py) — ORDER MATTERS
 
@@ -1038,3 +1077,22 @@ push the actuator home. Build the station with the mid panel upside down on the 
 Coming apart: clamp off, board off its posts, then release J1's actuator before pulling
 the cable. Molex rate the module's socket for 30 insertions, so take the cable out of
 the module only when the module itself is being replaced.
+
+## The motor controller drops in from above; the -X/-Y leg is its floor (2026-10-29)
+
+The motor board slides straight down (+Z to -Z) into its guides behind string 1's motor:
+- a channel takes its -Y edge (the edge away from the motor);
+- two short posts on the floor take its +Y edge;
+- its face sits flush on string 1's motor.
+
+Nothing is screwed. The keyhead deck panel's rib, 0.3 above the board's top edge, stops it
+lifting, so **seat the board before that panel goes on**. Sight down both faces as it drops:
+nothing on the board should touch a guide on the way in.
+
+**Its -Z stop is the -X/-Y leg's body adapter, not the chassis.** The board's bottom edge sits
+0.34 above the underside (so J2/J6 can be squeezed from below), and with that leg fitted, the
+adapter's top face is what it rests on. With the leg off, nothing stops the board from dropping
+toward the floor port except its cables and the plugs resting on the table. So:
+- **fit the -X/-Y leg before standing the instrument upright with the deck on**;
+- **never carry it legs-off with the deck on** unless the controller is unplugged and secured
+  (tape it to the guides, or lift it out).

@@ -1,5 +1,29 @@
 # bronner — open work items (2026-09-30)
 
+## Narrower body: Pi up to the motors, M3 through its own hole, output board on the rail (2026-10-29)
+
+User asks, relayed by the lead: the -Y rail comes in (branner), the Pi "mounts with one screw
+through one of its mount holes, then moves right up to the nearby motors", the cap stays in
+the Pi's footprint, the output board rides the rail with no -Y wall, and the side wall is
+continuous and uncut ("The pi USB needs to clear the wall, we can't cut the wall").
+
+| what | value | where |
+|---|---|---|
+| Pi retention | belt clamps' M3 x 12 forced through hole (61.5, 3.5), heat-set M3 insert in an Ø8.0 boss, printed ring Ø6 x 3.2 under the head | `electronics.pi_hold_pt`, `PI_M3`, `pi_spacer` |
+| Pi standoff | 13.6 (17 beads) = motor bay BUMP_H 11.2 + 2.0 assumed THT tails + 0.4 | `PI_STANDOFF` |
+| Pi +Y edge | string 3's motor driver (motor_driver_2) face - 0.5 = -47.15 (0.82 true gap, the driver standing 0.65 over the laminate). The cap's ribbon socket then sits against string 2's motor drop riser (wire_drop_canl_1): cable on cable, allowed (user 2026-10-29) | `PI_FP`, `D.PI_MOTOR_*` |
+| plug -Y face | -115.39 (head back); boot -111.89 | `D.PI_PLUG_Y0`, asserted by `electronics._check_plug_y0` |
+| rail inner face | -116.35: 4 beads behind string 10's motor, the smallest whole bead count clearing the plug by 0.5 (the Xilaghy follow-up takes the plug off the wall's list) | branner, `motor_bank.RAIL_BACK_CLR` |
+| output board | -Y edge OP_PANEL_CLR off the rail's inner face; +Y 0.89 off string 10's belt clamp (max +8.64 from build #967) | `electronics.op_origin`, `bridge_endplate` cradle cut |
+| pi_cap | the ribbon band (J5, J6) moved WEST out of string 2's motor-driver span (J5_DX -17.865, J6_DX -9.7); the board grows 7.0 at -X (CAP_EXT_X) and U1 goes there at (-29.0, 1.5); the GND pours are polygons so they reach it. Re-routed 0 unconnected / 0 violations. The notch-over-the-driver idea was tried and abandoned (J5's courtyard overlapped J1, 6 nets open) | `elec/pi_cap.py` J5_DX, J6_DX, U1_XY, CAP_EXT_X |
+
+Rejected, measured: a pocket in the rail for the head (user: no wall cuts); 11.2 standoff (the
++X end's tails would sit on the back wall); USB-C edge facing +-X (85 along Y against 74.4
+between rail and motor 2's back wall); the Pi turned 180 (the cap's header-side overhang goes
+into the rail). A cap wholly inside the Pi's footprint does not fit one-sided assembly: every
+connector is side-entry on the face toward the Pi, so all of them need the one edge over the
+Pi -- ~80 mm of connectors against ~62 mm of edge.
+
 ## Pi +Y for the USB-C plug (user, 2026-10-28) -- BUILT, gate pending
 
 "Now that we have the real motor spec can you move the pi so it can fit a right angle USB C
@@ -18,6 +42,26 @@ Lead: StarTech USB2CC1MR (left/right angle, head 11.0 deep x 6.0 thick per datas
 20.0 and shell offset 5.5 ASSUMED). Newnex U4S5C01CD6 (up/down, drawn) is 18.50 deep: no fit.
 The head sits in a notch in the cradle's -Y wall; the cable leaves -X (first try +X hit the trough
 floor, 26.5 mm3) and climbs the rail where the old drop was.
+
+## R2 BACKLOG, motor_ctrl (user via the lead, 2026-10-29) -- NOT the current rev, which stays as made
+
+User: "I do like the idea of moving the ports for R2. J7 is already placed poorly and requires
+cutting into the chassis. For R2 we should add an action item to move J7 +z and J2/6 +y."
+
+1. **J7 (lights link, vertical XH) +Z** so its lower ways stop sitting under the floor's top.
+   Retires the chassis cut, the floor ports and the riser detour (MCTRL_J7_LEAD / PITCH / SIDE
+   in src/electronics.py, about line 1941).
+2. **J2 and J6 (bus B, side-entry, under the body) about +14 along the bottom edge**, toward
+   y -28.05 (the board's +Y edge once branner drops the wall and the board sits flush on string
+   1's motor). Measured finger room to the -X/-Y body adapter: J6 about 7.3 at the narrowed body
+   (22.2 before the narrowing); about 21 after the move. The edge out to there is free in the
+   CAD. Then branner's MCTRL_PLUG_FINGER assert can go to 10. The current rev keeps 7.3 (user:
+   "worst case you could just grip the plug with some pliers").
+3. **A shoulder in the outline** (lead, 2026-10-29): a step or notch of bare laminate at
+   mid-height on the -Y and/or +Y edge, so branner's chassis guide channel can carry a printed
+   ledge under it and give the board a real -Z stop. Today the laminate's bottom edge is only
+   0.34 above the body's underside, so no ledge fits under it, and this rev's stop is the
+   -X/-Y body adapter, which only works with the leg fitted.
 
 ## R2 BACKLOG, output_panel (user via the lead, 2026-10-20) -- NOT the current rev, which fabs as is
 

@@ -55,6 +55,16 @@ def _map(A, B):
     a0, b0 = A - A.mean(0), B - B.mean(0)
     U, _, Vt = np.linalg.svd(a0.T @ b0)
     R = (U @ Vt).T
+    # ⚠ A PROPER ROTATION FIRST (Kabsch's sign fix). When the vertices are coplanar -- a
+    # plain ring has one seam vertex per circle, all four on one plane -- the singular
+    # vector across that plane has an arbitrary sign, and pi_spacer, drawn where it sits,
+    # read "MIRRORED" against its own PARTS solid (build #968). A mirror is only what no
+    # rotation fits.
+    if np.linalg.det(R) < 0:
+        D = np.diag([1.0, 1.0, -1.0])
+        Rp = (U @ D @ Vt).T
+        if np.abs(a0 @ Rp.T - b0).max() / max(1.0, np.abs(a0).max()) <= FIT_TOL:
+            R = Rp
     err = np.abs(a0 @ R.T - b0).max() / max(1.0, np.abs(a0).max())
     return R, err
 

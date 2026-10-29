@@ -21,11 +21,10 @@ a pickup position. The station therefore stops at the -X end of that region, and
 a full 1.6 mm short of it, because the display's pocket wall is what stands there and
 1.6 is two beads -- the thinnest wall this project will print.
 
-Y: "instrument edge, joystick, display, fret marker border with equal space between each"
-(user). Measured between the VISIBLE things, which is what that sentence is about: the
-deck's own -Y edge, the knob's O17 cap, the display's 63.41 x 32.69 VIEWING area, and the
--Y edge of the fretboard's border frame. Three equal gaps fall out of those four; nothing
-here is typed.
+Y: up from the -Y wall (user, 2026-10-29, replacing 2026-09-25's equal gaps): the board
+stands just off the -Y rail, the knob and the power button sit on its -Y edge, and the
+display is only as far +Y as their deck holes need -- so the board runs on under it.
+See board_centre() and header_edge_y().
 
 ...and the KNOB's X is its own rule, because the X above places the DISPLAY. The cap's
 +X edge is level with the window's +X edge, so the two stand the same 9.90 off the seam.
@@ -243,7 +242,8 @@ CLAMP_UP = (0.0, 0.0, 1.0)
 # -- THE BOARD --------------------------------------------------------------
 # 72 x 34. The 72 was the old 1x20 header's 50.9 plus margin and is now the room the
 # encoder, the power switch and the ribbon header need across it; the 34 is the span
-# from the FFC socket's mouth on the +Y edge down past the encoder. It stays inside the
+# from the FFC socket's mouth on the +Y edge down past the encoder, and since 2026-10-29
+# all but the -Y 19.3 of it is under the display module. It stays inside the
 # display module's own 82 x 47.5 shadow in X, which is what keeps the whole station
 # clear of the swappable band region (see the module docstring).
 BOARD_W, BOARD_L = 72.0, 34.0
@@ -293,22 +293,19 @@ FFC_TOP_Z = -2.5                   # the run under the module, clear of its rear
 # plate. That is the project's own rule: plastic captures every direction but the one
 # you install along, and one M4 takes that one.
 #
-# Central, because that is what a Z-only fastener wants and nothing else competes for
-# the position now. It is also 16 mm clear of the encoder's -X edge: at 5.7 a clearance
-# hole stood in the throat every switch net escapes through and the router left SW_PUSH
-# and SW_B short.
-SCREW_XY = (0.0, 0.0)
+# Central in X, because that is what a Z-only fastener wants, and on the inputs' line in
+# Y: since the board went under the display (2026-10-29) everything the deck reaches down
+# to -- this boss, the posts, the spigots -- has to stand in the strip below the module,
+# between the power button's hole and the knob's.
+SCREW_XY = (0.0, -7.5)
 
-# THE TWO SPIGOTS, in board coordinates: as far apart as the routed board allows, which
-# is what makes them a rotation stop rather than a pair of pivots. Both land on bare
-# board -- (29.5, 9.0) in the gap between the encoder's courtyard and J1's row (at
-# 8.0 its socket left a 1.03 mm web to the encoder's own relief in the clamp), and
-# (-18.0, -9.0) in the clear block between the ribbon header and the encoder.
-# ...and BOTH in the +Y half, which is not an accident: the -Y half of this board is one
-# uninterrupted lane for the seven switch nets, and a O4.6 hole at (-18, -9) stood in it
-# and left ENC_B unroutable. Two pins locate a plane wherever they sit, so the pair went
-# where the copper has nothing to lose.
-SPIGOTS = ((29.5, 9.0), (-18.0, 6.0))
+# THE TWO SPIGOTS, in board coordinates: on a diagonal of the strip below the display,
+# which is the only place the deck can reach the board (2026-10-29), so as far apart as
+# that strip allows -- x +-12 keeps their O6.6 keep-outs off the encoder's courtyard and
+# the power switch's, and the deck's holes for the two stand 1.6 clear of the posts'
+# faces. The switch nets that used to own the -Y half have the board under the module to
+# cross in now.
+SPIGOTS = ((-12.0, -13.0), (12.0, -2.0))
 SPIGOT_D = 4.0
 SPIGOT_CLR = 0.3                   # per side, in the board's hole and the clamp's socket
 # 1.6, not 2.4: the socket is BLIND and the plate is only 3.2, so the depth and the
@@ -575,22 +572,52 @@ def board_z0():
     return z_stack()[5]
 
 
-# -- Y: the four visible things, equally spaced -----------------------------
-@lru_cache(maxsize=None)
-def y_layout():
-    """(gap, knob_y, view_y) from the user's rule, derived, nothing typed.
+# -- Y: the board on the -Y wall, the inputs on its edge, the display just past them --
+# THE EQUAL GAPS ARE GONE (user, 2026-10-29): "move the inputs to the board edge and put
+# the board under the display as much as possible, only clearing it enough to fit the
+# input components. We can drop the placement rules about being equal spacing between
+# neighboring geometry." The body got 16.8 narrower that day and the spacing rule, which
+# hung everything off the deck's -Y edge, walked the board into the new wall. So the
+# chain now runs the other way, from the wall up, and nothing in it is a gap typed for
+# looks:
+#   * the board's -Y edge stands BOARD_WALL_CLR off the -Y rail's inner face;
+#   * the knob and the power button sit on that edge, INPUT_EDGE of bare board below them;
+#   * the display's header edge is the wider of their two deck holes, a two-bead wall and
+#     the pocket's fit clearance past them -- so the board runs on under the module.
+BOARD_WALL_CLR = 1.0               # board -Y edge to the -Y rail's inner face
+INPUT_EDGE = 1.0                   # bare board below the input bodies: ui_board's margin
 
-    Between the deck's -Y edge and the -Y edge of the fretboard border sit the knob's
-    cap and the display's VIEWING area, with three equal gaps. The knob is measured on
-    its cap and the display on its window, because those are the two things the rule is
-    about -- the module's 47.5 PCB is under the deck and nobody sees it."""
-    TP = _tp()
-    y0, y1 = TP.BY0, -TP.BORDER_HY          # deck -Y edge .. fretboard border
-    gap = (y1 - y0 - KNOB_D - VIEW_L) / 3.0
-    knob_y = y0 + gap + KNOB_D / 2.0
-    view_y = knob_y + KNOB_D / 2.0 + gap + VIEW_L / 2.0
-    assert abs(y1 - (view_y + VIEW_L / 2.0) - gap) < 1e-9, "the three gaps are not equal"
-    return gap, knob_y, view_y
+
+def board_centre():
+    """(x, y) of the UI board's centre: X the station's, the -Y edge BOARD_WALL_CLR off the
+    -Y rail's inner face.
+
+    THE BOARD OVERHANGS THE LOOSE TRUNK by the rail. There is no trough over this X
+    (chassis.WT_SKIP clears it for strings 9 and 10's motors) and the trunk lies loose on
+    the motor tops along the wall; the encoder's -Y terminals stand over it. Their z is
+    reported to the chassis's owner, who moves the trunk -- the board is placed for the
+    display and the inputs, not to dodge it (lead, 2026-10-29)."""
+    from . import chassis as CH
+    return ui_x(), CH.RAIL_INNER_Y + BOARD_WALL_CLR + BOARD_L / 2.0
+
+
+def input_y():
+    """World Y of the knob's and the power button's centres: on the board's -Y edge, the
+    encoder's 17 body INPUT_EDGE inside it. The button shares the knob's Y (user's sketch,
+    2026-10-04); its 8.5 body is the smaller of the two, so the encoder sets it."""
+    return board_centre()[1] - BOARD_L / 2.0 + INPUT_EDGE + ENC_SQ / 2.0
+
+
+def _input_hole_r():
+    """The larger of the two deck holes' radii, the knob's and the power button's."""
+    return max(knob_geometry()[3], PWR_CAP_D + 2 * PWR_HOLE_CLR) / 2.0
+
+
+def header_edge_y():
+    """World Y of the module's header edge, the one its FFC socket is on. It faces -Y,
+    toward the inputs: the deck keeps a two-bead wall between their holes and the
+    module's pocket, and that is all the display is held off them."""
+    return input_y() + _input_hole_r() + D.MIN_WALL_2P + POCKET_CLR
 
 
 @lru_cache(maxsize=None)
@@ -629,7 +656,7 @@ def knob_x():
 def power_x():
     """THE RULE for the power button's X: its cap's -X edge is level with the WINDOW's
     -X edge, as the knob's +X edge is with the window's +X (user's sketch, 2026-10-04).
-    Its Y is the knob's, y_layout()[1]."""
+    Its Y is the knob's, input_y()."""
     return ui_x() - OPEN_W / 2.0 + PWR_CAP_D / 2.0
 
 
@@ -642,7 +669,7 @@ def power_centre():
 def knob_centre():
     """Where the knob ACTUALLY is: the routed switch's body centre.
 
-    knob_x() and y_layout() are the RULE; this is what KiCad did with it, and the cap,
+    knob_x() and input_y() are the RULE; this is what KiCad did with it, and the cap,
     its bore and the deck's hole are all cut from this one so they cannot disagree with
     the board that gets fabbed.
 
@@ -658,13 +685,12 @@ def module_centre():
     """(x, y) of the display module's PCB centre. Its optical centre is VIEW_OFF_Y away
     from it, on the side AWAY from the header -- and the header faces -Y, toward the
     knob, because that is the side our board is on."""
-    return ui_x(), y_layout()[2] - VIEW_OFF_Y
+    return ui_x(), header_edge_y() + MOD_L / 2.0
 
 
-def header_edge_y():
-    """World Y of the module's header edge, the one its FFC socket is on. It faces -Y,
-    toward the knob, because our board is on that side."""
-    return module_centre()[1] - MOD_L / 2.0
+def view_y():
+    """World Y of the display's optical centre."""
+    return module_centre()[1] + VIEW_OFF_Y
 
 
 def header_row_y():
@@ -689,24 +715,6 @@ def j1_mouth_y():
     mouth = max(f["fab"][2:], key=lambda v: abs(v - pad_y))
     assert mouth > pad_y, "the routed J1's mouth does not face +Y, toward the module"
     return board_centre()[1] + mouth
-
-
-def board_centre():
-    """(x, y) of the UI board's centre.
-
-    X is the station's. Y puts the encoder 4.263 below the centre, which is what makes
-    the board reach from 5.5 under the module's header edge down past the encoder and stop
-    clear of the -Y rail's inner face -- see the assertions in elec/ui_board.py, which
-    are the ones that would fail if a part grew.
-
-    THE BOARD OVERHANGS THE CABLE TROUGH, and it has to. The knob's Y is fixed by the
-    spacing rule and the switch body is 17 across, so the board must reach into the
-    band the chassis's -Y cable trough occupies; it passes 0.30 above that trough's
-    lip. Fine standing still, not enough to slide 400 mm over -- and it never has to,
-    because the assembly comes out before the panel moves either way. See the service
-    order in the module docstring; deck_mount's own assertion holds everything that
-    DOES slide clear of that trough."""
-    return ui_x(), y_layout()[1] + 4.263
 
 
 def board_local(x, y):
@@ -1125,9 +1133,9 @@ FOUR, spread as widely as the routed board allows, because the single M4 no long
     the overlap gate -- it caught two of these at 0.8 mm3 when the pull-ups moved into a
     row -- but as an anonymous solid-on-solid finding, and what you want to be told is
     WHICH post and WHICH part."""
-    # (-16, -13) was (-18, -9) until the power button: its hole in the deck took the
-    # corner off a column there, so the column moved to the board's -Y edge.
-    return [(29.5, 9.0), (-16.0, -13.0), (-18.0, 6.0), (10.0, -9.0)]
+    # the four corners of the deck's ground between the power button's hole and the
+    # knob's, below the display's pocket (2026-10-29); the first two carry the spigots
+    return [SPIGOTS[0], SPIGOTS[1], (-12.0, -2.0), (12.0, -13.0)]
 
 
 def bearings():
@@ -1171,8 +1179,8 @@ def deck_mount():
     the wall has to do is stop it turning about that screw, which it does from 48 mm
     away. The columns set Z and the screw pulls the board up onto them from below.
 
-    THERE IS NO -Y WALL, and the rail is why. The board's -Y edge sits 2.05 from the
-    -Y rail's inner face, and a two-bead wall with a fit gap either side is 2.2 -- it
+    THERE IS NO -Y WALL, and the rail is why. The board's -Y edge sits BOARD_WALL_CLR
+    (1.0) from the -Y rail's inner face, and a two-bead wall with a fit gap either side is 2.2 -- it
     would not go, and squeezing it to fit would put a printed fin a quarter of a
     millimetre off a printed rail that the whole deck panel slides -X past. There is no
     +Y wall either, because the display module hangs over that entire edge; the two

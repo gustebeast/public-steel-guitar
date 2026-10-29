@@ -24,6 +24,8 @@ has no 42 mm tall, 1.6 mm thin fin in it anywhere (the user's warping worry).
 
 from __future__ import annotations
 
+import math
+
 import cadquery as cq
 
 
@@ -72,7 +74,26 @@ STAGGER    = D.STRING_PITCH      # 9.5, one string pitch: the band's depth
 # here is the trunk WIRES: RAIL_Y -124.25 plus the fattest trunk conductor's radius, -122.95.
 # Pulling the keep-out back to -122.4 hands 14 mm of Y to the bays, which is what lets the
 # -Y-most ones have a back wall like everyone else instead of being a special case (user).
-HARNESS_Y1 = -122.4               # +Y edge of the corridor: the trunk lanes' own edge
+# THE CORRIDOR IS GONE (user, 2026-10-29: the body narrowed to D.MOTOR_INSTALL_CLR behind
+# string 10's motor). The trunk rides the trough over the motor tops, and nothing runs at floor
+# level along the bank's -Y edge any more, so the keep-out is the rail's own inner face: the
+# bays reach the rail (string 10's back wall merges into it) and the corridor cut is empty.
+M10_BACK_Y = D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.MOTOR_BODY_L   # -113.15
+# THE -Y RAIL'S INNER FACE, off string 10's motor back by the LARGER of the two needs (lead,
+# 2026-10-29), each in whole beads: the motor's install room (D.MOTOR_INSTALL_CLR) and the
+# Pi's USB-C plug, PI_PLUG_CLR off its -Y extent (rounded OUT to a bead, never a pocket).
+_PI_PLUG_NEED = math.ceil((M10_BACK_Y - (D.PI_PLUG_Y0 - D.PI_PLUG_CLR)) / D.BEAD - 1e-9) * D.BEAD
+# ...and the OUTPUT BOARD's +Y edge (it stands on this rail, so it comes in with it): it must
+# stay D.OP_PULLEY_CLR off string 10's screw pulley's swept flange (lead, 2026-10-29), so the
+# rail can never push the board into that pulley without the build saying so. The board's
+# width is the ROUTED outline's.
+from . import board_geom as _BG
+_OP_W = _BG.load("output_panel")["outline_mm"][1]
+_OP_EDGE_LIM = D.string_y(D.N_STRINGS - 1) - D.PULLEY_FLANGE_OD / 2 - D.OP_PULLEY_CLR
+_OP_NEED = math.ceil((M10_BACK_Y - (_OP_EDGE_LIM - _OP_W - D.OP_PANEL_CLR)) / D.BEAD - 1e-9) * D.BEAD
+RAIL_BACK_CLR = max(D.MOTOR_INSTALL_CLR, _PI_PLUG_NEED, _OP_NEED)
+RAIL_INNER_Y = M10_BACK_Y - RAIL_BACK_CLR
+HARNESS_Y1 = RAIL_INNER_Y         # +Y edge of the (now empty) corridor
 HARNESS_Z1 = -40.0                # ...and its top: just over the highest trunk lane
 
 # Per-motor faceplate wall CENTRE Y. The motor faceplate (component) is at
@@ -252,9 +273,18 @@ def term_wall_h():
 
 
 def back_wall_y0(i):
-    """-Y face of motor i's back wall: string 1's is the two-bead stop off the motor board."""
-    by0 = body_box(i)[2]
-    return by0 - (D.MIN_WALL_2P + MOTOR_CLR if i == 0 else BACK_T)
+    """-Y face of motor i's back wall."""
+    return body_box(i)[2] - BACK_T
+
+
+# STRING 1'S BACK WALL STOPS SHORT OF THE MOTOR BOARD (user, 2026-10-29). The board stands
+# directly behind that motor, MOTOR_CLR off its back (D.MCTRL_Y1), with no wall between: the
+# wall it used to share bought the board's bus-B plugs nothing and cost them 1.9 of room from
+# the -X/-Y leg. So the motor's back stop is the part of its back wall +X of the board (and the
+# board's fit), and the PCB never takes the motor's load (user's PCB-mounting rule).
+def back_wall_x0(i):
+    """-X end of motor i's back wall: string 1's starts past the motor board."""
+    return D.MCTRL_X[1] + D.MCTRL_FIT if i == 0 else None
 
 
 def low_walls(i):
@@ -268,7 +298,7 @@ def low_walls(i):
     from . import servo42d as SV
     bx0, bx1, by0, by1, bz0, bz1 = body_box(i)
     ya = by1 + SV.TERM_Y0 + TERM_RELIEF_FIT          # by1 is the faceplate
-    yb = back_wall_y0(i) - 1.0
+    yb = max(back_wall_y0(i) - 1.0, RAIL_INNER_Y)   # never into the -Y rail (string 10's)
     x0, x1 = bx0 - side_room(i, -1) - 1.0, bx1 + side_room(i, 1) + 1.0
     z0, z1 = bz0 + term_wall_h(), SEAT_TOP + 1.0
     return box_at(x1 - x0, ya - yb, z1 - z0, x=(x0 + x1) / 2, y=(ya + yb) / 2, z=(z0 + z1) / 2)
@@ -345,6 +375,11 @@ def pocket(i) -> cq.Workplane:
     # the bay starts where that prism ends and the motor rests on it.
     body = body.union(box_at(x1 - x0, y1 - y0, SEAT_TOP - FLOOR_TOP,
                              x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(FLOOR_TOP + SEAT_TOP) / 2))
+    if back_wall_x0(i) is not None:                # string 1: no wall over the motor board
+        _wx = back_wall_x0(i)
+        body = body.cut(box_at(_wx - (x0 - 1.0), by0 - (y0 - 1.0), SEAT_TOP - FLOOR_TOP + 2.0,
+                               x=(_wx + x0 - 1.0) / 2, y=(by0 + y0 - 1.0) / 2,
+                               z=(FLOOR_TOP + SEAT_TOP) / 2))
 
     # (THE BACK WALL stands only BUMP_H: low_walls() takes it down, with the side walls, from
     #  the fused chassis. It once had a 6 mm lane on the centreline for the grey pigtail; the

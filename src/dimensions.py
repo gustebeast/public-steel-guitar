@@ -704,16 +704,56 @@ MOTOR_DRIVER_SQ_MEASURED = 42.5   # the MKS driver cover behind it, 0.5 bigger: 
                             # MOTOR_SQ stays the 42.3 nominal the bank's pitch is built on, so
                             # the bay's MOTOR_CLR is 0.55 round the can and 0.30 round the cover
 MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil lead's loop
-# THE BODY'S -Y DEPTH IS NOT THE MOTOR'S ANY MORE. The -Y rail (chassis.Y_LO) was set off a
-# 70 mm motor; the measured one is 16.6 shorter, and that depth is the lead's to take back or
-# keep -- legs, deck and leg stations all hang off the rail. Until then it stays put.
-# MOTORS SET BACK 3.2 (user, 2026-10-28: "go ahead and move the motors"). The shaft as bought
-# stands 21.5 off the faceplate; the next string's belt tensioner comes to 19.45 of it (string
-# 9's shaft, string 8's tensioner, nut on the ceiling) and its belt to 20.0. The pulleys stay
-# in their belt planes and the motors go back -Y, so components.MOTOR_PULLEY_STANDOFF grows by
-# it: 1.15 clear of the tensioner. The reserve gives the same 3.2 back, so the rail stays put.
-MOTOR_SETBACK = 4 * BEAD                       # 3.2
-BODY_MOTOR_RESERVE = 70.0 - MOTOR_SETBACK      # 66.8: Y_LO unchanged
+# THE PULLEY'S STANDOFF OFF THE MOTOR FACEPLATE, and the motors' Y with it (each motor's
+# faceplate sits this far -Y of its belt plane's pulley). The single source: components,
+# motor_bank, MCTRL_Y1 and PI_PLUG_Y0 all read it.
+# 14.0 + 3.2: the motors stand 4 beads back (user, 2026-10-28: "go ahead and move the
+# motors"), because the shaft as bought stands 21.5 off the face and the next string's belt
+# clamp comes to 19.45 of it over full travel. Cutting the shaft and bringing them to 12.0
+# (branch branner-standoff12, with the saw jig) is HELD (lead, 2026-10-29): 5.2 further +Y
+# drives string 1's faceplate wall into the routed foot-LED boards (foot_light, 24.15 wide
+# between it and the +Y rail) and, on the -Y side, the output board into string 10's screw
+# pulley. It needs those boards re-placed first.
+MOTOR_PULLEY_STANDOFF = 14.0 + 4 * BEAD        # 17.2
+# THE -Y RAIL'S INNER FACE IS STRING 10's MOTOR BACK LESS TWO BEADS (user, 2026-10-29: make
+# the instrument narrower; "leave a little clearance at the motor for installing it, but we
+# don't need much"). It was a 70 mm motor reserve plus a 4.8 gap for string 10's pigtail to
+# climb behind its motor -- 18.4 of air behind the real one, measured. The pigtail leaves
+# inside the motor's own footprint now (its drop wires stop at -109.4, the back is -113.15),
+# and a motor drops in from +Z, so the install stroke wants no Y room past the bay's own
+# 0.4 fit: the two beads are the user's "a little" -- the MOTOR's need. The wall also has to
+# clear the Pi's angled USB-C plug (pinned +Y by string 3's driver, it faces -Y), and it is
+# never cut to make room (user, 2026-10-29): motor_bank.RAIL_BACK_CLR takes the larger of the
+# two, in whole beads, so the wall moves on its own when either does.
+MOTOR_INSTALL_CLR = 2 * BEAD                   # 1.6 string 10's motor back -> rail inner face
+# The plug's -Y extent, D.PI_PLUG_Y0, is bronner's (the Pi pose block): it lives in this file
+# because electronics imports chassis, so chassis cannot read electronics.
+PI_PLUG_CLR = 0.5                              # plug -> wall
+# THE OUTPUT BOARD stands on the -Y rail (electronics.op_origin: its -Y edge OP_PANEL_CLR off the
+# rail's inner face), so as the rail comes in its +Y edge rides toward string 10's screw pulley.
+# It stays OP_PULLEY_CLR off that pulley's swept flange (lead, 2026-10-29) -- the third need in
+# motor_bank.RAIL_BACK_CLR. Both live here for the same reason as PI_PLUG_CLR.
+OP_PANEL_CLR = 0.3                             # board -> the plastic it registers on
+OP_PULLEY_CLR = 0.5                            # board's +Y edge -> string 10's screw pulley (lead + bronner)
+# THE Pi's USB-C PLUG, whose -Y face the -Y rail clears (motor_bank.RAIL_BACK_CLR; user,
+# 2026-10-29: "a continuous wall going the full instrument length. The pi USB needs to
+# clear the wall"). The Pi stops PI_MOTOR_CLR off motor PI_MOTOR_I's driver (it stands
+# over that bay's back wall: electronics.PI_STANDOFF); the plug's head is 11.0 deep from
+# the mating face, the socket 1.24 proud of the board (src/pi4b.py). Written here, with
+# nothing imported, because the rail is: electronics asserts it against pi_usbc_head()
+# and the boot. The 14.0 is components.MOTOR_PULLEY_STANDOFF's base, as in MCTRL_Y1.
+PI_MOTOR_I     = 2
+# 0.5, the driver's own need (0.82 true gap: the driver stands 0.65 over the laminate). It
+# was 2.0 for an hour, to keep the cap's ribbon socket off string 2's motor drop riser
+# (wire_drop_canl_1); the user ruled that out (2026-10-29: "Cables colliding with other
+# cables is fine, not worth sacrificing instrument width over"), so the socket sits
+# against that riser and check_overlaps parks cable-on-cable.
+PI_MOTOR_CLR   = 0.5
+PI_BOARD_L     = 56.0                 # a Pi 4B's short side, along Y
+PI_USBC_PROUD  = 1.24
+PI_USBC_HEAD_D = 11.0                 # StarTech USB2CC1MR datasheet
+PI_PLUG_Y0 = (string_y(PI_MOTOR_I) - MOTOR_PULLEY_STANDOFF - MOTOR_BODY_L - PI_MOTOR_CLR
+              - PI_BOARD_L - PI_USBC_PROUD - PI_USBC_HEAD_D)          # -115.39
 MOTOR_SHAFT_D   = 5.0
 # THE SHAFT IS A D (user, 2026-10-28): 4.5 across the flat, and 19.5 of it stands proud of
 # the pilot boss (the old 19.4 "from the faceplate" was this, read off the wrong datum --
@@ -767,17 +807,20 @@ MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
 # cannot import electronics need it: the chassis (the board's floor port), motor_bank (string
 # 1's back stop IS the board's +Y wall) and wiring. build.py asserts all of it against the
 # placed board.
-#   Y1  the board's +Y edge: string 1's motor back, less its fit, ONE two-bead wall and the
-#       board's own fit. That wall is the motor's back stop and the board's locating wall.
+#   Y1  the board's +Y edge: string 1's motor back less MOTOR_CLR -- NO WALL BETWEEN THEM any
+#       more (user, 2026-10-29: "drop that and move the board so it sits flush against the
+#       motor"). It bought the bus-B plugs 1.9 more room from the -X/-Y leg. String 1's motor
+#       is stopped by a short back wall +X of the board instead (motor_bank.back_wall_x0), so
+#       the PCB is never the stop.
 #   Y0  ...less the board's routed length.
 #   X   the standing board with its mated plugs, in world X.
 #   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
 #       reached from outside), before the plugs.
 MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
-MCTRL_Y1        = (string_y(0) - 14.0 - MOTOR_SETBACK - MOTOR_BODY_L - MOTOR_CLR - MIN_WALL_2P
-                   - MCTRL_FIT)   # -29.95: behind string 1's motor (14.0 + MOTOR_SETBACK = the standoff)
+MCTRL_Y1        = (string_y(0) - MOTOR_PULLEY_STANDOFF - MOTOR_BODY_L
+                   - MOTOR_CLR)   # -28.05: behind string 1's motor
 MCTRL_L         = 55.0           # routed outline, along Y
-MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -84.95
+MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -83.05
 MCTRL_X         = (-606.5, -591.7)
 MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
 MCTRL_DIP       = 2.0
