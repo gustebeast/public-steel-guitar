@@ -58,15 +58,14 @@ PRINT_UP = (0.0, 0.0, 1.0)
 # Rail CENTRES, defined so the INNER faces stay fixed as the wall T changes (the wall
 # grows outward): +Y inner clears the bearing arm, -Y inner clears the motor PCBs.
 Y_HI     = D.BRIDGE_AXLE_Y + 4 * D.BEAD + T / 2   # +Y rail (inner face = axle_Y + 3.2)
-# THE GAP BEHIND STRING 10's MOTOR is its pigtail's (user, 2026-09-21: "extend the instrument
-# body -y until there is enough room to fit that wiring, ensuring we don't need to cut away the
-# chassis wall"). It was 2.0 -- motor PCB to rail -- and the pigtail had nowhere to go but a
-# 4 mm notch cut INTO the side wall. At 4.8 the Ø3.4 cable climbs straight up behind its own
-# motor like the other nine (wiring: 0.9 off the motor's back, 0.5 off the rail), and the wall
-# stays whole. The body is 2.8 wider for it.
-RAIL_GAP = 6 * D.BEAD
-Y_LO     = (D.string_y(D.N_STRINGS - 1) - MOTOR_PULLEY_STANDOFF - D.BODY_MOTOR_RESERVE
-            - RAIL_GAP) - T / 2   # −Y rail off the −Y-most string (last index)
+# THE -Y RAIL'S INNER FACE is motor_bank.RAIL_INNER_Y: string 10's motor back less the larger
+# of what that motor and the Pi's USB-C plug need (MB.RAIL_BACK_CLR). Nothing climbs behind the
+# motor any more -- its CAN drop leaves inside its own footprint -- so the old 4.8 pigtail gap
+# (RAIL_GAP) is gone (user, 2026-10-29). The wall is continuous and UNCUT the full length of the
+# instrument (user, 2026-10-29: "we can't cut the wall to make it fit"): anything that would
+# reach past it moves the wall, never a pocket in it.
+RAIL_INNER_Y = MB.RAIL_INNER_Y
+Y_LO     = RAIL_INNER_Y - T / 2        # the rail's centre
 _XC, _ZC = (X_BRIDGE + X_NUT) / 2, (Z_TOP + Z_BOT) / 2
 _RIB_W   = D.XBAR                      # cross-rib X-width = XBAR (square XBAR×XBAR section)
 # Top-plate retention grooves (top_plate.py rides these): a slot in each rail
@@ -346,8 +345,8 @@ _SEG_JX1  = _seg_halves(1.0)[0].val().BoundingBox().zmax   # the tenon's +X reac
 # is needed anywhere and why a seam screw would be redundant hardware. So the seam
 # joint does exactly its own job — X and Y by shape — and nothing more.
 
-# (the motor-9 cable NOTCH in the -Y rail is gone: RAIL_GAP makes room for that cable inside
-#  the wall instead of in it)
+# (the motor-9 cable NOTCH in the -Y rail is gone: that motor's drop leaves inside its own
+#  footprint)
 
 
 def _rail(y):
@@ -457,7 +456,12 @@ def _raceway(cy, z0, x, thick):
 # WHY THIS HEIGHT. The motors fan across the body -- only string 10's (back 2.0 off the
 # wall) and string 9's (11.5 off) come near it -- and every motor top is at z -29.05
 # (MOTOR_BELT_Z + MOTOR_SQ/2). The deck's retention groove owns the wall from z -6.4 up. The
-# trough lives in the band between: floor at -26.4, lip top at -13.6.
+# trough lives in the band between: floor at -28.0, lip top at -15.2.
+# TWO BEADS LOWER THAN IT WAS (user, 2026-10-29: "the cable channel also may be able to move
+# -z if its colliding with the UI board"). The UI board sits 1.0 off the narrowed wall and
+# its encoder's tails reach z -16.2 over the trunk (brenner); the trunk's top was -16.2. Every
+# lane is set off this floor, so all of it comes down 1.6 together: the top 1.6 under the
+# tails, the floor still 1.05 over the motor tops (asserted in wiring).
 #
 # SECTION (Y-Z, extruded along X), and why each face is the angle it is -- the chassis
 # prints +Z, so every face that looks down must be 45 or steeper:
@@ -466,13 +470,13 @@ def _raceway(cy, z0, x, thick):
 #   * a vertical outer LIP, a printed wall like any other;
 #   * a small NUB at the lip's top, reaching back toward the wall with a 45 deg underside,
 #     so the mouth is narrower than the trough and a stuffed-in cable stays put.
-WT_Y0 = Y_LO + T / 2                     # -128.75: the rail's inner face
-WT_D = 8 * D.BEAD                        # 6.4 out from the wall (outer lip face -122.35)
+WT_Y0 = Y_LO + T / 2                     # the rail's inner face (-116.35 at 10-29)
+WT_D = 8 * D.BEAD                        # 6.4 out from the wall (outer lip face 6.4 in)
 WT_T = 2 * D.BEAD                        # 1.6 lip
-WT_ZF = -33 * D.BEAD                     # -26.4 floor top (gusset root at -32.8)
-WT_H = 16 * D.BEAD                       # 12.8 lip height above the floor (top -13.6)
+WT_ZF = -35 * D.BEAD                     # -28.0 floor top (gusset root at -34.4)
+WT_H = 16 * D.BEAD                       # 12.8 lip height above the floor (top -15.2)
 WT_NUB = 3 * D.BEAD / 2                  # 1.2 the nub's reach back toward the wall
-WT_LANE_Y = WT_Y0 + (WT_D - WT_T) / 2    # -126.35: the centreline of the space inside
+WT_LANE_Y = WT_Y0 + (WT_D - WT_T) / 2    # the centreline of the space inside
 WT_X0, WT_X1 = -575.0, -88.0             # -X: short of the keyhead bay, where the wires
                                          # leave it in three columns (-585, -582, -579 --
                                          # the last grazed a -578 end). +X: short of the bay the output
@@ -696,8 +700,11 @@ def _build_full() -> cq.Workplane:
     #     well tracks the stub's relocated jack way
     for _n in _floor_negatives():
         body = body.cut(_n)
-    body = body.cut(box_at(4.0, 17.0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
-                           x=-34.5, y=-108.0,
+    # (a 4 x 17 floor slot at x -34.5, y -116.5..-99.5 -- stopped at the -Y rail's inner
+    #  face: the narrowed wall (2026-10-29) came to -116.35, and the side walls are never cut)
+    _fs_y0 = max(-116.5, RAIL_INNER_Y)
+    body = body.cut(box_at(4.0, -99.5 - _fs_y0, (MB.FLOOR_TOP - Z_BOT) + 2.0,
+                           x=-34.5, y=(_fs_y0 - 99.5) / 2,
                            z=(MB.FLOOR_TOP + Z_BOT) / 2))
     # ── Y-INSTALL BODY-STUB JOINERY (user: the stubs print on their side,
     # so they SLIDE IN ALONG Y; cut LAST — the shells above host the wall
@@ -1179,10 +1186,11 @@ def _segments():
         # trunk rides it at HARNESS_Z1, nothing needs the 30 mm below FLOOR_TOP, and leaving the
         # bottom whole is the whole point of sealing it.
         _cy0 = Y_LO + T / 2.0
-        seg = seg.cut(box_at((a - b) + 40.0, MB.HARNESS_Y1 - _cy0,
-                             MB.HARNESS_Z1 - MB.FLOOR_TOP,
-                             x=(a + b) / 2, y=(_cy0 + MB.HARNESS_Y1) / 2,
-                             z=(MB.FLOOR_TOP + MB.HARNESS_Z1) / 2))
+        if MB.HARNESS_Y1 - _cy0 > 1e-6:       # empty since the 10-29 narrowing: no corridor
+            seg = seg.cut(box_at((a - b) + 40.0, MB.HARNESS_Y1 - _cy0,
+                                 MB.HARNESS_Z1 - MB.FLOOR_TOP,
+                                 x=(a + b) / 2, y=(_cy0 + MB.HARNESS_Y1) / 2,
+                                 z=(MB.FLOOR_TOP + MB.HARNESS_Z1) / 2))
         # RISE PAST THE PRISM'S TOP, not past the seat plane. The wedge is a triangle, so its
         # own top edge is FLAT: anything the bay puts above that edge survives with a flat
         # underside. Sized to Z_HI it topped out at -27.25 and left 1.8 of each side wall
@@ -1202,7 +1210,8 @@ def _segments():
             return (cq.Workplane("YZ").workplane(offset=x0)
                     .polyline(_prof).close().extrude(x1 - x0))
 
-        seg = seg.cut(_relief(_cy0, b - 20.0, a + 20.0))
+        if MB.HARNESS_Y1 - _cy0 > 1e-6:
+            seg = seg.cut(_relief(_cy0, b - 20.0, a + 20.0))
         # THE LEVER MORTISES, RE-CUT AFTER THE BAYS (user, 2026-09-15). _build_full cuts a
         # christmas-tree into every rib, but the housings fuse in above it -- and each faceplate
         # wall runs all the way down to the BED, so it crosses the ribs and fills those mortises

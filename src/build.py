@@ -1436,7 +1436,7 @@ def _electronics_components():
 # player face all the way to MID_Y, so the Y placement below is a slide along slots
 # that already exist. Nothing in the chassis changes for any of this.
 _LEVER_PADDLE_D = 20.0                       # KL paddle depth in Y
-_ILKL_Y = CH.Y_LO + _LEVER_PADDLE_D / 2      # -123.95: paddle -Y face on the body edge
+_ILKL_Y = CH.Y_LO + _LEVER_PADDLE_D / 2      # paddle -Y face on the body edge
 
 
 def _lever_plane_y() -> float:

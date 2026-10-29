@@ -45,7 +45,7 @@ from . import ui_panel as UIP
 from .helpers import box_at, cyl, heal
 from cadkit.fasteners import M4, M4_BUTTON_HEAD_H, cut_counterbore, cut_insert_bore
 
-YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face (-128.75)
+YL = CH.Y_LO + CH.T / 2                 # -Y rail inner face
 YH = CH.Y_HI - CH.T / 2                 # +Y rail inner face (+54.75)
 BY0 = CH.Y_LO - CH.T / 2                # deck cap -Y edge (-Y rail OUTER face)
 BY1 = CH.Y_HI + CH.T / 2                # deck cap +Y edge (+Y rail OUTER face)

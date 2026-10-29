@@ -703,16 +703,26 @@ MOTOR_DRIVER_SQ_MEASURED = 42.5   # the MKS driver cover behind it, 0.5 bigger: 
                             # MOTOR_SQ stays the 42.3 nominal the bank's pitch is built on, so
                             # the bay's MOTOR_CLR is 0.55 round the can and 0.30 round the cover
 MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil lead's loop
-# THE BODY'S -Y DEPTH IS NOT THE MOTOR'S ANY MORE. The -Y rail (chassis.Y_LO) was set off a
-# 70 mm motor; the measured one is 16.6 shorter, and that depth is the lead's to take back or
-# keep -- legs, deck and leg stations all hang off the rail. Until then it stays put.
 # MOTORS SET BACK 3.2 (user, 2026-10-28: "go ahead and move the motors"). The shaft as bought
 # stands 21.5 off the faceplate; the next string's belt tensioner comes to 19.45 of it (string
 # 9's shaft, string 8's tensioner, nut on the ceiling) and its belt to 20.0. The pulleys stay
 # in their belt planes and the motors go back -Y, so components.MOTOR_PULLEY_STANDOFF grows by
-# it: 1.15 clear of the tensioner. The reserve gives the same 3.2 back, so the rail stays put.
+# it: 1.15 clear of the tensioner.
 MOTOR_SETBACK = 4 * BEAD                       # 3.2
-BODY_MOTOR_RESERVE = 70.0 - MOTOR_SETBACK      # 66.8: Y_LO unchanged
+# THE -Y RAIL'S INNER FACE IS STRING 10's MOTOR BACK LESS TWO BEADS (user, 2026-10-29: make
+# the instrument narrower; "leave a little clearance at the motor for installing it, but we
+# don't need much"). It was a 70 mm motor reserve plus a 4.8 gap for string 10's pigtail to
+# climb behind its motor -- 18.4 of air behind the real one, measured. The pigtail leaves
+# inside the motor's own footprint now (its drop wires stop at -109.4, the back is -113.15),
+# and a motor drops in from +Z, so the install stroke wants no Y room past the bay's own
+# 0.4 fit: the two beads are the user's "a little" -- the MOTOR's need. The wall also has to
+# clear the Pi's angled USB-C plug (pinned +Y by string 3's driver, it faces -Y), and it is
+# never cut to make room (user, 2026-10-29): motor_bank.RAIL_BACK_CLR takes the larger of the
+# two, in whole beads, so the wall moves on its own when either does.
+MOTOR_INSTALL_CLR = 2 * BEAD                   # 1.6 string 10's motor back -> rail inner face
+# The plug's -Y extent, D.PI_PLUG_Y0, is bronner's (the Pi pose block): it lives in this file
+# because electronics imports chassis, so chassis cannot read electronics.
+PI_PLUG_CLR = 0.5                              # plug -> wall
 MOTOR_SHAFT_D   = 5.0
 # THE SHAFT IS A D (user, 2026-10-28): 4.5 across the flat, and 19.5 of it stands proud of
 # the pilot boss (the old 19.4 "from the faceplate" was this, read off the wrong datum --

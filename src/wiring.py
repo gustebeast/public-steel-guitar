@@ -211,12 +211,7 @@ from .chassis import WT_X1 as CH_WT_X1, WT_RUNS as CH_WT_RUNS
 from .chassis import WT_D as CH_WT_D, WT_T as CH_WT_T
 from . import motor_bank as MB                          # back_y: where each motor's pigtail leaves
 from .motor_bank import FLOOR_TOP as _RIB_TOP           # -65.15 (rib tops = above = rib-free)
-RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -131.55: -Y rail inner face
-# the old floor-level corridor, which only bus B still uses at the keyhead. Held where it was
-# (-124.25) when the body widened for string 10's pigtail (chassis.RAIL_GAP): nothing on it
-# wanted to move, and following the wall out put bus B across the Pi link's riser.
-from .chassis import RAIL_GAP as _RAIL_GAP
-RAIL_Y = RAIL_INNER_Y + 4.5 + (_RAIL_GAP - 2.0)
+RAIL_INNER_Y = _Y_LO + _RAIL_T / 2                       # -Y rail inner face (chassis.RAIL_INNER_Y)
 TEE_Y  = RAIL_INNER_Y + 8.0                              # tee-board centre (14mm-deep board clears wall)
 # ── THE -Y CORRIDOR IS THE WIRING TROUGH NOW (chassis.WT_*), ABOVE THE MOTORS ──────────
 # It used to be a pocket cut into the rail below the motor tops; the user moved it OUT of
@@ -256,9 +251,6 @@ assert LANE_PWR2 + PLINK_HALF < LANE_USB - 2.6 / 2, (
 assert (2 * USB_LANE_DY + USB_LANE_DZ) / math.sqrt(2.0) > 2.6, "the two USB leads meet in the trough"
 assert USB_LANE_DY + 2.6 / 2 < (CH_WT_D - CH_WT_T) / 2, "a USB lead is in the trough's wall"
 assert LANE_PWR + PWR_OFF + 1.8 / 2 < CH_WT_ZF + CH_WT_H, "the head stands over the lip"
-assert CH_WT_LANE_Y + _TRUNK_OD / 2 <= MB.HARNESS_Y1, (
-    "the trough's lane reaches y %.2f, past motor_bank's HARNESS_Y1 %.2f"
-    % (CH_WT_LANE_Y + _TRUNK_OD / 2, MB.HARNESS_Y1))
 HDR_Z = -54.0                                            # lifted tee header top (wire entry z)
 
 CHAN_Y = CH_WT_LANE_Y                    # inside the trough
@@ -1179,7 +1171,9 @@ def build_wires():
     # and come out into the bay, where they turn for the wall.
     _j7e = conn_end("output_panel", "J7", ways=(1, 2))      # GND, 24 V; ways 3, 4 carry nothing
     _j10e = conn_end("output_panel", "J10")
-    _REC_Y = -121.5                       # along the board's -Y edge, inside the recess
+    _REC_Y = EL.op_origin()[1] - EL.OP_BOARD_Y / 2.0 + 1.0     # 1.0 in from the board's -Y
+                                          # edge, inside the recess -- off the BOARD, so it
+                                          # follows it to the -Y wall (it was -121.5 typed)
     _REC_Z7 = -27.0                       # the J7 pair's centre height crossing it
     _BAY_X7, _BAY_X10 = -36.0, -31.0      # out of the endplate's -X face (-25.06); J7's
                                           # pair turns further out than the 24 V link, past
