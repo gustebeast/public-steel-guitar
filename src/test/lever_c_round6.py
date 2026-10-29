@@ -3,6 +3,11 @@ lever clearance (D.LEVER_MORT_CLR), so the floor's depth (D.BOTTOM_T) and every 
 follow it as they would in the instrument.
 
     py -3.12 -m src.test.lever_c_round6 0.35     # -> src/test/test_r6_lever8_c035.step + floor
+    py -3.12 -m src.test.lever_c_round6 0.50 7   # round 7: test_r7_lever8_c050 + test_r7_floor8_c050
+
+Round 7 on, the instrument carries the seat itself (knee_lever.MORT_SEAT = c: the housing hangs c
+under the ribs), so the floor is no longer shaved -- R6_FLOOR8 shaves only what it lacks -- and
+the pair is the same shape round 6 printed: c all round, seat included.
 
 The clearance is patched before anything reads it: run one clearance per process.
 """
@@ -14,7 +19,9 @@ from src import dimensions as D
 
 
 def main(argv=None):
-    c = float((argv or sys.argv[1:])[0])
+    args = argv or sys.argv[1:]
+    c = float(args[0])
+    rnd = int(args[1]) if len(args) > 1 else 6
     D.LEVER_MORT_CLR = c
     from src.test import bench_joinery as BJ
     from src import knee_lever as KL
@@ -23,7 +30,7 @@ def main(argv=None):
     from cadkit.step_export import export_print
     comps, where = BJ.components(live=True)
     tag = "c%03d" % round(c * 100)
-    for name, out in (("r3_lever", "r6_lever8"), ("r6_floor8", "r6_floor8")):
+    for name, out in (("r3_lever", "r%d_lever8" % rnd), ("r6_floor8", "r%d_floor8" % rnd)):
         cp = next(k for k in BJ.COUPONS if k.name == name)
         wp, n, _crumbs, _fx = cp.build(comps)
         assert n == 1, "%s: %d solids" % (name, n)

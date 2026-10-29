@@ -313,6 +313,8 @@ SCREW_OD        = 8.0       # Tr8x2: Ø8, SINGLE-start, 2 mm lead.
 # print. It does NOT resolve on the project's 0.8 nozzle (0.3 radial is under half a
 # bead) — both parts are 0.2-NOZZLE prints and therefore unfilled, the same call
 # belt_clamp already makes for GT2 ridges. At 0.2 the groove is a 1.5-bead feature.
+# (THAT WAS TR5. At Tr8 the groove is 0.8 deep -- FORM_MINOR/MAJOR below -- and the pulleys
+# print at 0.4: components.NOZZLE_D.)
 SCREW_PITCH     = 2.0       # Tr8x2: 2 mm pitch, single start => 2 mm LEAD
 # THE THREAD'S HAND IS A DESIGN INPUT, NOT A DETAIL OF THE PART (2026-10-05). It decides
 # which way each belt runs as a nut rises, and so which END of its run each belt clamp is
@@ -323,16 +325,21 @@ SCREW_PITCH     = 2.0       # Tr8x2: 2 mm pitch, single start => 2 mm LEAD
 # RH is the stock part (BOM). ⚠ The direction is derived, not yet seen on a bench.
 SCREW_HAND      = "RH"
 assert SCREW_HAND in ("RH", "LH")
-FORM_MINOR      = 6.2       # printed ridge Ø (Tr8x2 root is Ø5.5; 0.35 radial clear)
-FORM_MAJOR      = 7.8       # printed groove Ø (0.1 radial under the Ø8 crest)
-                            # Depth (7.8-6.2)/2 = 0.80, NOT the pitch/2 = 1.0 ceiling.
-                            # cadkit.threads measures the valley AT THE OVERSHOOT:
-                            # valley = 2*depth + 0.2, and it must stay UNDER the 2.0
-                            # turn spacing or adjacent turns merge into an invalid
-                            # cutter that silently no-ops. Depth 1.0 gave 2.10 and 0.90
-                            # gave exactly 2.00 — both rejected. 0.80 leaves 1.80.
-                            # Engagement is 0.80 of the rod's 1.25 radial full form,
-                            # ~64%, reached by displacement rather than by hoping.
+# THE RIDGE IS 45 DEG, THE ROD'S GROOVE IS 30 DEG INCLUDED (user, 2026-10-28: the screw pulley
+# "is too tight and won't thread onto the screw"). The printed ridge (cadkit's 45 deg valley)
+# is 1 - depth wide at its tip and 1 + depth at its base; the Tr groove is P/2 = 1.0 on the
+# pitch diameter and widens only tan 15 deg per side going out. So the ridge fits the groove
+# near its tip and overfills it toward its base by
+#     i(base) = depth - 0.536 * major_r + 1.876      (axial, both flanks together)
+# At 6.2/7.8 that was 0.59 -- half a millimetre of PCTG to swage per turn, down 5.7 turns. The
+# crest's 0.1 "forming allowance" was the only interference anyone had counted.
+# Now: the groove floor ON the rod's crest (Ø8.0; a nozzle-drawn hole prints a little under,
+# which is the crest's grip) and depth 0.45, so i = 0.18 -- ~0.09 a flank, the same order as
+# the crest allowance that was meant. The ridge is shallower (0.45 radial of the rod's 1.25),
+# which is plenty for 147 N: ~70 mm2 of flank in contact over 5.7 turns is ~2 MPa.
+# The column's wall round the groove is (PULLEY_COL_D - 8.0) / 2 = 0.80 = MIN_WALL.
+FORM_MINOR      = 7.1       # printed ridge Ø (Tr8x2 root is Ø5.5: the ridge never reaches it)
+FORM_MAJOR      = 8.0       # printed groove Ø = the rod's crest
 SCREW_END_GAP   = 2 * BEAD                          # 1.6 from the screw's top to the ceiling
 # TOP RADIAL BEARING. The screw runs on past the nut into one MR85 up in the endplate's
 # slab, and this is not a refinement — it is what makes anchoring the string off-axis
@@ -486,7 +493,7 @@ PULLEY_BORE_MOTOR = 5.0     # = MOTOR_SHAFT_D (declared below); the motor's own 
 # the face that suits them.
 #
 # THE SKUs ARE ENDCAPS (user, 2026-09-10). Neither passes the screw through its teeth
-# any more. A Tr8 bore CANNOT pass through a 14T band at all: the Ø7.8 pilot groove is
+# any more. A Tr8 bore CANNOT pass through a 14T band at all: the Ø8.0 pilot groove is
 # wider than the ~Ø6.9 tooth root, so the old through-bored pulley was not thin, it was
 # impossible. Growing the teeth to clear it would have been a gear reduction and more
 # belt circulation, and 18T+ fouls the guide rod. So the rod ENDS in a blind socket
@@ -504,8 +511,8 @@ PULLEY_CONE     = (PULLEY_FLANGE_OD - PULLEY_OD) / 2        # 1.3, top flange, 4
 # up through the bearing and the pulley's flange face would have landed on the SHIELD
 # instead. That would have broken the screw's entire retention path, which is exactly
 # this jam. 12*BEAD = 9.6 sits inside the inner ring's ~Ø8..10.2 with margin either side.
-# Boss wall over the Ø7.8 pilot bore is 0.9 -- one bead, and it is pure COMPRESSION
-# (147 N over 24.6 mm^2 = 6.0 MPa).
+# Boss wall over the Ø8.0 pilot bore is 0.8 -- one bead, and it is pure COMPRESSION
+# (147 N over 22.1 mm^2 = 6.7 MPa).
 # ⚠ Ring diameters are the usual d + 0.28*(D-d) rule, not read values. CONFIRM against
 # the datasheet of whichever 688 is actually bought -- same gate the BOM already carries.
 PULLEY_BOSS_D   = 12 * BEAD         # 9.6 pilot on top: lands on the bearings' INNER
@@ -516,7 +523,7 @@ PULLEY_BOSS_H   = 1 * BEAD          # 0.8
 # COLUMN = BOSS Ø. It was Ø7.2 because it had to slip past the NEIGHBOUR's Ø11 flange at
 # the 9.5 string pitch. In two rows the in-row pitch is 19.0, so that ceiling is ~Ø27 and
 # the column can be as fat as the boss — which it must be: at Ø7.2 it could not even
-# contain the Ø7.8 socket.
+# contain the Ø8.0 socket.
 PULLEY_COL_D    = PULLEY_BOSS_D                                         # 9.6
 # (The COLUMN heights, and with them the socket's depth, are down with the thrust stack:
 # they are whatever is left between the band planes and the bearing -- see PULLEY_COL_HI.)
@@ -699,8 +706,22 @@ MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil l
 # THE BODY'S -Y DEPTH IS NOT THE MOTOR'S ANY MORE. The -Y rail (chassis.Y_LO) was set off a
 # 70 mm motor; the measured one is 16.6 shorter, and that depth is the lead's to take back or
 # keep -- legs, deck and leg stations all hang off the rail. Until then it stays put.
-BODY_MOTOR_RESERVE = 70.0
+# MOTORS SET BACK 3.2 (user, 2026-10-28: "go ahead and move the motors"). The shaft as bought
+# stands 21.5 off the faceplate; the next string's belt tensioner comes to 19.45 of it (string
+# 9's shaft, string 8's tensioner, nut on the ceiling) and its belt to 20.0. The pulleys stay
+# in their belt planes and the motors go back -Y, so components.MOTOR_PULLEY_STANDOFF grows by
+# it: 1.15 clear of the tensioner. The reserve gives the same 3.2 back, so the rail stays put.
+MOTOR_SETBACK = 4 * BEAD                       # 3.2
+BODY_MOTOR_RESERVE = 70.0 - MOTOR_SETBACK      # 66.8: Y_LO unchanged
 MOTOR_SHAFT_D   = 5.0
+# THE SHAFT IS A D (user, 2026-10-28): 4.5 across the flat, and 19.5 of it stands proud of
+# the pilot boss (the old 19.4 "from the faceplate" was this, read off the wrong datum --
+# the model drew 17.4 of it in the open). The flat's LENGTH is not measured yet: 15 from the
+# tip is the common NEMA17 D-cut, and the pulley keys only over that span, so a longer flat
+# costs nothing and a shorter one would stop the pulley short of its seat -- MEASURE IT.
+MOTOR_SHAFT_FLAT = 4.5          # across the flat (the D's short dimension)
+MOTOR_SHAFT_PROUD = 19.5        # out of the pilot boss
+MOTOR_SHAFT_FLAT_L = 15.0       # ASSUMED, from the tip
 NEMA17_BOLT_SQ  = 31.0
 NEMA17_PILOT_D  = 22.0
 
@@ -752,9 +773,10 @@ MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
 #   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
 #       reached from outside), before the plugs.
 MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
-MCTRL_Y1        = string_y(0) - 14.0 - MOTOR_BODY_L - MOTOR_CLR - MIN_WALL_2P - MCTRL_FIT   # -26.95
+MCTRL_Y1        = (string_y(0) - 14.0 - MOTOR_SETBACK - MOTOR_BODY_L - MOTOR_CLR - MIN_WALL_2P
+                   - MCTRL_FIT)   # -29.95: behind string 1's motor (14.0 + MOTOR_SETBACK = the standoff)
 MCTRL_L         = 55.0           # routed outline, along Y
-MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -81.95
+MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -84.95
 MCTRL_X         = (-606.5, -591.7)
 MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
 MCTRL_DIP       = 2.0
@@ -853,9 +875,11 @@ assert PULLEY_COL_HI >= 3 * BEAD - 1e-9, (
     f"the HIGH pulley's column is {PULLEY_COL_HI:.2f}: under three beads the socket is too "
     f"shallow to grip the screw. The nut's floor has come down onto the pulley plane.")
 # BLIND SOCKET, bored down from the top. Its floor stops above the band's top, inside the
-# upper cone: that cone flares 45° from the band's Ø8.4, so the wall over the Ø7.8 groove is
-# 0.3 at the band and grows 1:1 going up — 0.4 above it gives 0.7, three-and-a-half traces
-# of this part's 0.2 nozzle. Identical on both SKUs.
+# upper cone: that cone flares 45° from the band's Ø8.4, so the wall over the Ø8.0 groove is
+# 0.2 at the band and grows 1:1 going up — 0.4 above it gives 0.6 (0.7 at the old Ø7.8), at
+# the socket's bottom corner only: 1.5 traces of the 0.4 nozzle the pulleys print with now
+# (2026-10-28), and a bead by 0.2 higher. Left as it is ON PURPOSE: a thicker floor
+# shortens SCREW_LEN, which the saw jig's stop is set from. Identical on both SKUs.
 PULLEY_SOCKET_FLOOR_CLR = 2 * 0.2                                       # 0.4, 0.2-nozzle part
 PULLEY_SOCKET_L = PULLEY_END_A - PULLEY_GAP / 2 - PULLEY_SOCKET_FLOOR_CLR  # 11.53
 # BOTTOM of the rod: it ends in the socket a hair short of the floor, so it never bottoms and
@@ -893,9 +917,13 @@ LEVER_PITCH  = LEVER_MORT_W + 2 * MIN_WALL_2P    # 10.4
 # own Y span) and a long RIB MORTISE (the whole knee-depth range). The body adapter's ridges
 # ride the same mortises, so they are this joint too. Built by src/test/fit_plate2.halves
 # until step 4 moves it into cadkit.
-LEVER_MORT_CLR = 0.275                   # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
+LEVER_MORT_CLR = 0.45                    # plate 8 A2 (A1 0.20: two tenons in one mortise piece were
                                     # already too tight on the mini seam plate, user 2026-10-16);
-                                    # MINI ROUND 2: 0.25 "still a touch tight" -> half a step
+                                    # MINI ROUND 2: 0.25 "still a touch tight" -> half a step;
+                                    # FULL LENGTH (fit_plate9, user 2026-10-21): 0.275 too tight,
+                                    # 0.35 right, 0.45 a bit loose; ROUND 6, all EIGHT tenons with
+                                    # the seat at c (user, 2026-10-22): 0.45 the winner -- LOCKED
+                                    # ("the looser of the two plate 6 was great")
 LEVER_FIT = {"neck": 4 * BEAD, "head": 7 * BEAD, "side": 2 * BEAD, "root": True,
              "trunc": 1.2}
 # THE BOTTOM PRISM'S THICKNESS: the mount mortise's roof plus a two-bead cap (user,
@@ -1137,7 +1165,8 @@ assert BRIDGE_ARM_Y - BRIDGE_ARM_W / 2 > STRING_FIELD_W / 2, (
 # tidiness here: ENDPLATE_W is computed from NUT_INSERT_D, so BOTH endplates' width (and
 # with it the bridge's whole X datum chain) hangs off a heat-set insert's diameter. If
 # cadkit ever re-specs M4, that should follow by itself instead of silently not.
-NUT_INSERT_D    = M4.insert_pilot_d     # 6.0  — heat-set insert install Ø
+NUT_INSERT_D    = M4.insert_pilot_d     # 6.1  — heat-set insert install Ø, the ROUND pocket's: a
+                                        # width budget, so the larger of cadkit's two (pilot_d)
 NUT_INSERT_L    = M4.insert_l           # 5.0
 NUT_SCREW_D     = M4.shaft_clr_d        # 4.4  — set-screw shaft clearance
 NUT_SCREW_L     = M4.screw_l            # 10.0. The boss is NOT one screw tall: the

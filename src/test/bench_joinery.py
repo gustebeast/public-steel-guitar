@@ -82,7 +82,7 @@ class Coupon(object):
         for s in self.sources:
             shape = comps[s]
             for b in boxes:
-                c = shape.intersect(_box(b))
+                c = shape.intersect(b if isinstance(b, cq.Shape) else _box(b))
                 kept += [x for x in c.Solids()]
         if not kept:
             raise ValueError("%s: nothing of %s lies in its boxes" % (self.name, self.sources))
@@ -196,7 +196,7 @@ HOUS_S0 = -566.1
 # joints a touch loose" -> half a step each: seam 0.375 (opens 0..0.530), lever 0.275.
 # Round 3 (seam 0.375, lever 0.275, 8 tenons full length): BOTH "quite tight" (user,
 # 2026-10-21) -> round 4: seam back to 0.40, and the lever's seat at c (see LEVER_SEAT_TRY).
-SEAM_C = 0.40                               # = chassis._SEG_CLR, asserted in components()
+SEAM_C = 0.55                               # = chassis._SEG_CLR, asserted in components()
 SEAM_OPEN = round(SEAM_C * 2 ** 0.5, 3)     # 0.566: c x sqrt 2 (the catch is a 45 deg flank)
 SEAM_COMP = round(SEAM_OPEN / 4.0, 2)       # 0.14 a face
 COMP_SPLIT_Z = -72.5    # under the seam cavity (0.4 under the floor top), over the lever mortises (-73.86)
@@ -239,9 +239,17 @@ _R3_S7 = HOUS_S0 + 7 * GRID_P
 # lever lost 2.7 off every tenon's +Y end and all but 0.5 of the +X station's +Y stub -- the
 # housing rework deepened the housing, the lever plane moved +Y, and a hard-coded -86.15
 # start stayed put). A slice through the tenons above their root chamfer gives both ends.
+def _hous_top():
+    """The housing's top face in the instrument: the mating plane less the seat the instrument
+    now carries (knee_lever.MORT_SEAT, c since round 7 -- the housing hangs c under the ribs).
+    Every housing coupon is cut off this, so its deck stays 1.6 whatever the seat."""
+    from src import knee_lever as KL
+    return HOUS_Z1_W - KL.MORT_SEAT
+
+
 def _tenon_span(comps):
     h = comps["knee_housing"]
-    z = HOUS_Z1_W + TEN_ROOT_CH + 2.0
+    z = _hous_top() + TEN_ROOT_CH + 2.0
     sec = h.intersect(_box((_, _, _, _, z, z + 0.05))).BoundingBox()
     return sec.ymin, sec.ymax
 
@@ -249,16 +257,16 @@ def _tenon_span(comps):
 def R3_HOUS(comps):
     y0, y1 = _tenon_span(comps)
     # deck kept to the tenons' own span: past their -Y ends it is a strip that tests nothing
-    return [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
+    return [(HOUS_S0 - GRID_WEB, _R3_S7 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, _hous_top() - 2 * 0.8, _),
             (HOUS_S0 - GRID_WEB, _R3_S7 + 5.6 / 2.0 + 0.5, y0 - 0.05, y1 + 0.05,
-             HOUS_Z1_W + TEN_ROOT_CH, _)]
+             _hous_top() + TEN_ROOT_CH, _)]
 
 
 def MINI_HOUS(comps):
     y0, _y1 = _tenon_span(comps)
-    return [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, y0 + MINI_L, HOUS_Z1_W - 4.55, _),
+    return [(HOUS_S0 - GRID_WEB, _MINI_S3 + 3.2 / 2.0, _, y0 + MINI_L, _hous_top() - 4.55, _),
             (HOUS_S0 - GRID_WEB, _MINI_S3 + 5.6 / 2.0 + 0.5, _, y0 + MINI_L,
-             HOUS_Z1_W + TEN_ROOT_CH, _)]
+             _hous_top() + TEN_ROOT_CH, _)]
 MIN_WALL = 0.8
 
 DECK_UNDER = -10.4          # the rail strip: the groove (5.46 deep) on 4.9 of solid rail
@@ -290,9 +298,9 @@ _R5_S1 = HOUS_S0 + GRID_P
 
 def R5_LEVER2(comps):
     y0, y1 = _tenon_span(comps)
-    return [(HOUS_S0 - GRID_WEB, _R5_S1 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, HOUS_Z1_W - 2 * 0.8, _),
+    return [(HOUS_S0 - GRID_WEB, _R5_S1 + 3.2 / 2.0, y0 - 0.05, y1 + 0.05, _hous_top() - 2 * 0.8, _),
             (HOUS_S0 - GRID_WEB, _R5_S1 + 5.6 / 2.0 + 0.5, y0 - 0.05, y1 + 0.05,
-             HOUS_Z1_W + TEN_ROOT_CH, _)]
+             _hous_top() + TEN_ROOT_CH, _)]
 
 
 def R6_FLOOR8(comps):
@@ -300,10 +308,11 @@ def R6_FLOOR8(comps):
     0.45 a bit loose; "print both 2 and 3 with the full set of 8"). The floor under the
     housing's own eight stations, no seam, the seat shaved this build's c: cut by lever_c_round6 from an
     instrument built at each clearance, against that build's r3_lever."""
-    from src import dimensions as D           # the seat shaved by THIS build's clearance
+    from src import dimensions as D           # the seat shaved by THIS build's clearance...
+    from src import knee_lever as KL          # ...less what the instrument already carries
     y0, y1 = _tenon_span(comps)
     return [(HOUS_S0 - GRID_WEB, _R3_S7 + GRID_WEB, y0 - 2 * 0.8, y1 + 2 * 0.8,
-             HOUS_Z1_W + D.LEVER_MORT_CLR, FLOOR)]
+             HOUS_Z1_W + D.LEVER_MORT_CLR - KL.MORT_SEAT, FLOOR)]
 
 
 def _fix_stub_brim(outward):
@@ -332,7 +341,7 @@ def _fix_deck(box):
         lo = lambda a, b: b if a is None else max(a, b)     # None: to the housing's edge
         hi = lambda a, b: b if a is None else min(a, b)
         return _box((lo(x0, hb.xmin), hi(x1, hb.xmax), lo(y0, hb.ymin), hi(y1, hb.ymax),
-                     z0, HOUS_Z1_W))
+                     z0, _hous_top()))
     return fix
 
 
@@ -366,9 +375,16 @@ def _fix_fin(x0, y_face, inboard, z0=Z_BOT, run=FIN_RUN):
     joint, so the walls round the joint flex exactly as the real ones."""
     def fin(_comps):
         y0 = y_face - inboard * 1.0                       # a millimetre into the rail
-        pts = [(y0, z0), (y_face + inboard * run, z0), (y0, FIN_TOP)]
-        return (cq.Workplane("YZ").polyline(pts).close().extrude(FIN_T)
-                .translate((x0, 0, 0)).val())
+        y1 = y_face + inboard * run
+        pts = [(y0, z0), (y1, z0), (y0, FIN_TOP)]
+        fin = (cq.Workplane("YZ").polyline(pts).close().extrude(FIN_T)
+               .translate((x0, 0, 0)).val())
+        # on a brim, as the stub fins (user, 2026-10-27: "a small brim to the 45 angled support
+        # so it can stick to the build plate") -- off the rail's face only: under the rail it
+        # would fill the leg mortises in its foot ("it shouldn't touch the mortises")
+        ya, yb = sorted((y_face, y1 + inboard * BRIM_W))
+        brim = _box((x0 - BRIM_W, x0 + FIN_T + BRIM_W, ya, yb, z0, z0 + BRIM_T))
+        return fin.fuse(brim)
     return fin
 
 
@@ -519,7 +535,7 @@ COUPONS = [
              -104.0, -24.0, _, FLOOR)],
            UP_Z, "eight floor mortises: the housing's station and its lead-in"),
     Coupon("lever_housing", ["knee_housing"],
-           [(_, _, _, -49.7, HOUS_Z1_W - 4.55, _)],
+           [(_, _, _, -49.7, _hous_top() - 4.55, _)],
            UP_Z, "the housing's eight tenons on its own top deck"),
 
     # F. nut slide inserts <-> keyhead: the slots of strings 7-10 and the four inserts
@@ -530,12 +546,40 @@ COUPONS = [
     Coupon("insert_slots", ["keyhead_endplate"],
            [(_, _, -46.0, -3.0, -63.0, _)],
            UP_X, "the insert slots of strings 7-10"),
+    # ...and the same slots at the endplate's FULL height (user, 2026-10-28: "a full length
+    # coupon" for one A, two B and one C printed at full size): the slots' whole run, the
+    # height screws' seats under them and all -- but only SLOT_RIM round the slots in plan
+    # (user: "we just need a 1.6mm border around the inserts"; the first cut kept the strip
+    # to -46..-3 and the endplate's full X, and was trimmed by hand in the slicer)
+    Coupon("insert_slots_full", ["keyhead_endplate"], lambda comps: [_slot_rim()],
+           UP_X, "the insert slots of strings 7-10, full height, SLOT_RIM round them"),
     Coupon("insert_a", ["nut_slide_insert_6"], [(_,) * 6], DOWN_X, "slide insert, SKU A"),
     Coupon("insert_b", ["nut_slide_insert_7"], [(_,) * 6], DOWN_X, "slide insert, SKU B"),
     Coupon("insert_b2", ["nut_slide_insert_8"], [(_,) * 6], DOWN_X,
            "slide insert, SKU B again: string 9, between a B and the C"),
     Coupon("insert_c", ["nut_slide_insert_9"], [(_,) * 6], DOWN_X, "slide insert, SKU C"),
 ]
+
+
+SLOT_RIM = 2 * 0.8          # the wall kept round the insert slots, in plan
+SLOT_STRINGS = range(6, 10)  # strings 7-10: SKU A, B, B, C
+
+
+def _slot_rim():
+    """The plan of the slots of SLOT_STRINGS, each insert's outline grown by its own fit and
+    SLOT_RIM, through the endplate's whole height, placed where the endplate's nut block is."""
+    from src import nut_block as NB, dimensions as D
+    keep = None
+    for i in SLOT_STRINGS:
+        k = (NB._plan_wire(i).offset2D(NB._clr(i) + SLOT_RIM, kind="intersection")
+             .extrude(2 * FAR).translate((D.NUT_BLOCK_X, 0.0, -FAR)))
+        keep = k if keep is None else keep.union(k)
+    # ...and the bed ONE plane: the slots' -X ends are not all at one X to the hundredth, so
+    # the rim's -X faces are cut back to the innermost of them
+    x0 = max(s.BoundingBox().xmin for s in keep.val().Solids()) if len(keep.val().Solids()) > 1         else keep.val().BoundingBox().xmin
+    x0 = max(x0, *(NB._plan_wire(i).offset2D(NB._clr(i) + SLOT_RIM, kind="intersection")
+                   .extrude(1.0).val().BoundingBox().xmin + D.NUT_BLOCK_X for i in SLOT_STRINGS))
+    return keep.val().intersect(_box((x0, None, None, None, None, None)))
 
 
 def report(comps, where, export=False):
@@ -647,6 +691,19 @@ PLATES = {
     "lever_seam_6": [["r6_lever8_c035", "r6_floor8_c035"],
                      ["r6_lever8_c045", "r6_floor8_c045"],
                      ["plate10_petg_gf"]],
+    # ENDPLATE ROUND (src/test/endplate_round, user 2026-10-22: "what is left is testing the
+    # chassis to endplate joints"): the bridge end's four tenons on one chassis coupon, and an
+    # endplate coupon per socket clearance -- 0.30 (step 1's pick, the control), 0.40, 0.50.
+    # Each piece is 208 across the rails, so they stand side by side in one row, left to right
+    # in step order; the third does not fit beside them and goes on a plate of its own.
+    "endplate_a": [["ep_chassis", "ep_socket_c030", "ep_socket_c040"]],
+    "endplate_b": [["ep_socket_c050"]],
+    # ENDPLATE CORNERS (user, 2026-10-27: "do that plate [full_length_1] but skip the lever to
+    # chassis and chassis to chassis joints"): both endplate corners at the instrument's own c,
+    # each chassis corner held up by its fin. The adapter goes too: its ridges' mortises are
+    # the lever floor's.
+    "endplate_corners": [["corner_bridge_chassis", "corner_keyhead_chassis",
+                          ("corner_bridge_endplate", "corner_keyhead_endplate")]],
     # round 5, diagnosis: one variable a piece, the real-geometry pieces twice (print scatter)
     "diag_5": [["plate9_petg_gf"],
                ["r5_lever2", "r5_floor2", "r5_lever2", "r5_floor2"],

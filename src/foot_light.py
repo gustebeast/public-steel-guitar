@@ -17,7 +17,7 @@ sits ON TOP of that band and shines into it; the 10.50 of PCTG is the diffuser.
 
 ⚠ EVERYTHING ABOVE IT IS EMPTY, AND THAT IS WHY THIS IS EASY. A box swept the whole run
 at 15 mm wide and 5.85 tall (a one-off probe, since retired; the board has since grown
--Y to y 31.05): **clear end to end**, with the
+-Y to y 27.85): **clear end to end**, with the
 belt tensioners' lowest feature at z -65.22 and the +Y rail's inner face at y 55.55 the
 only two things anywhere near. That was measured before the strip and its slot were
 built; re-run 2026-10-14, the same probe finds only the strip itself and the slot's own
@@ -174,15 +174,15 @@ BOARD_Y1   = 55.20                  # board's +Y edge: 0.35 of play against the 
 # sliding fit further out. Everywhere else along the run the same 1.60 stands alone as
 # the channel's own wall.
 WALL_T     = D.MIN_WALL_2P          # 1.60
-# ⚠ THE WALL'S FACE, NOT THE MOTOR'S. The motor's faceplate is at 28.75 and the pocket is
+# ⚠ THE WALL'S FACE, NOT THE MOTOR'S. The motor's faceplate is at 25.55 and the pocket is
 # cut D.MOTOR_CLR larger all round (motor_bank.lift_prism), so the plastic starts at
-# 29.15. Measuring the 1.60 from the motor itself left 1.20 of wall in the mouth and, in
+# 25.95. Measuring the 1.60 from the motor itself left 1.20 of wall in the mouth and, in
 # the run, a channel wall unioned back INTO the motor's fit -- found by sampling the
 # finished chassis (tools/_probe_foot_mouth.py), not by the gate: the motor's body ends
-# at 28.75 and never touched it.
-MOTOR_FACE = D.motor_pos(0)[1] - MOTOR_PULLEY_STANDOFF + D.MOTOR_CLR   # 29.15
+# at 25.55 and never touched it.
+MOTOR_FACE = D.motor_pos(0)[1] - MOTOR_PULLEY_STANDOFF + D.MOTOR_CLR   # 25.95
 WALL_Y0    = MOTOR_FACE             # the -Y wall's outer face IS the pocket's own face
-BOARD_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 31.05
+BOARD_Y0   = MOTOR_FACE + WALL_T + SLOT_PLAY              # 27.85
 # The component lane's centre is where it was: drivers, the buck and the supply row sit
 # on it, spaced along X. The 6.45 gained on the -Y side belongs to the pogos' first two.
 DRV_Y      = 42.55
