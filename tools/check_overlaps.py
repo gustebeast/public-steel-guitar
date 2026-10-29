@@ -444,6 +444,13 @@ def intended(na, nb) -> bool:
     if frozenset({base(na), base(nb)}) in (frozenset({"retention_setscrew", "chassis"}),
                                            frozenset({"floating_tenon", "chassis"})):
         return True
+    # THE Pi's HOLD-DOWN IS A FORCED THREAD, BY NAME AND ONLY THAT ONE: the belt clamps' M3
+    # x 12 goes through the Pi's own 2.7 mm hole with force (user, 2026-10-29, on the bench:
+    # "It's tight but I was able to force the belt clamp screw into one of the pi mount
+    # holes"), so the 3.0 shank is 0.15 into the hole's wall all round -- 2.1 mm3 through the
+    # laminate. Exact names: no other board screw may touch the Pi.
+    if frozenset({na, nb}) == frozenset({"board_screw_2", "pi4"}):
+        return True
     # wires are insulated cables: crossing/touching ANOTHER wire is physically
     # fine (and not worth fighting in the model). A wire may otherwise only clip
     # its declared source/destination bodies; clipping any OTHER solid (a motor,

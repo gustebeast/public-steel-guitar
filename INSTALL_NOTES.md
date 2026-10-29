@@ -527,7 +527,7 @@ SKU. The printed spacer bar that used to bridge out to an M4 beside the board is
    and the rail is about 12 mm away.
 3. **Lower the Pi straight down into its cradle, the lead's head going down the −Y wall's
    notch with it.** The corner pads and the boss carry it, 13.6 mm off the floor: its +X
-   end stands over motor 3's bay back wall and 0.5 off that motor's driver, so it goes in
+   end stands over motor 3's bay back wall and 2.0 off that motor's driver, so it goes in
    **before string 3's motor** if that motor is in the way of your hands, or with it in
    place if not — nothing of the Pi touches it.
 4. **Put the printed ring (`pi_spacer`, Ø6 × 3.2) on the hole and drive the M3 × 12

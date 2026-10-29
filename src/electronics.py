@@ -607,7 +607,16 @@ def pi_cradle() -> cq.Workplane:
     (_cx0, _cx1), (_cy0, _cy1) = _P4.SD_CARD
     cr = cr.cut(box_at(8.0, _cy1 - _cy0 + 2 * PI_SD_FIT, 20.0, PI_FP[0],
                        PI_FP[2] + (_cy0 + _cy1) / 2.0, _MB_FLOOR.FLOOR_TOP + 10.0))
+    # ...and its -X/+Y corner gives way to the 24 V link's conductors leaving motor_ctrl's
+    # J3, which is right in front of it now (wiring: the six columns on J3's x). The Pi's
+    # +Y fit is the rest of that wall; nothing under the laminate is taken.
+    x0, x1 = PI_PLINK_CUT
+    cr = cr.cut(box_at(x1 - x0, 12.0, PI_Z + 5.0 - _MB_FLOOR.FLOOR_TOP, (x0 + x1) / 2.0,
+                       PI_FP[3] + 0.15 + 6.0, (PI_Z + 5.0 + _MB_FLOOR.FLOOR_TOP) / 2.0))
     return cr.cut(pi_hold_bore())
+
+
+PI_PLINK_CUT = (PI_FP[0] - 5.0, PI_FP[0] + 4.0)   # x: J3's link columns, + a wire and a fit
 
 
 # -- the Pi's retention: the belt clamps' M3, through the board's own hole ---------------

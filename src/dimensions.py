@@ -721,12 +721,16 @@ BODY_MOTOR_RESERVE = 70.0 - MOTOR_SETBACK      # 66.8: Y_LO unchanged
 # nothing imported, because the rail is: electronics asserts it against pi_usbc_head()
 # and the boot. The 14.0 is components.MOTOR_PULLEY_STANDOFF's base, as in MCTRL_Y1.
 PI_MOTOR_I     = 2
-PI_MOTOR_CLR   = 0.5
+# 2.0, NOT THE 0.5 THE DRIVER ALONE WANTS (2026-10-29): the cap's ribbon socket (on J5, at
+# the cap's +Y edge) has to clear string 2's motor drop -- its CAN_L riser stands at y
+# -32.65 just -X of that motor's driver, pinned there by the terminal block and the notch
+# -- and J5 cannot go west (J6) or east (the driver). 1.5 more puts the socket 0.23 off it.
+PI_MOTOR_CLR   = 2.0
 PI_BOARD_L     = 56.0                 # a Pi 4B's short side, along Y
 PI_USBC_PROUD  = 1.24
 PI_USBC_HEAD_D = 11.0                 # StarTech USB2CC1MR datasheet
 PI_PLUG_Y0 = (string_y(PI_MOTOR_I) - 14.0 - MOTOR_SETBACK - MOTOR_BODY_L - PI_MOTOR_CLR
-              - PI_BOARD_L - PI_USBC_PROUD - PI_USBC_HEAD_D)          # -115.39
+              - PI_BOARD_L - PI_USBC_PROUD - PI_USBC_HEAD_D)          # -116.89
 MOTOR_SHAFT_D   = 5.0
 # THE SHAFT IS A D (user, 2026-10-28): 4.5 across the flat, and 19.5 of it stands proud of
 # the pilot boss (the old 19.4 "from the faceplate" was this, read off the wrong datum --
