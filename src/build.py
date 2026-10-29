@@ -2150,9 +2150,15 @@ def collect_components():
         % (_mcb.xmin, _mcb.xmax, D.MCTRL_X))
     assert _mcb.ymin >= D.MCTRL_Y0 - 1e-6 and _mcb.ymax <= D.MCTRL_Y1 + 1e-6, (
         "the motor board's parts overhang its laminate in y: %.2f..%.2f" % (_mcb.ymin, _mcb.ymax))
-    assert D.MCTRL_Y1 + D.MCTRL_FIT + D.MIN_WALL_2P + D.MOTOR_CLR <= MB.back_y(0) + 1e-6, (
-        "the motor board (+Y edge %.2f) no longer leaves a wall behind string 1's motor "
-        "(back %.2f)" % (D.MCTRL_Y1, MB.back_y(0)))
+    assert D.MCTRL_Y1 + D.MOTOR_CLR <= MB.back_y(0) + 1e-6, (
+        "the motor board (+Y edge %.2f) is into string 1's motor (back %.2f)"
+        % (D.MCTRL_Y1, MB.back_y(0)))
+    # ...and string 1's motor still has a back stop, +X of the board, so the PCB never takes it
+    assert MB.back_wall_x0(0) >= _mcb.xmax + D.MCTRL_FIT - 1e-6, (
+        "string 1's back wall starts at x %.2f, over the motor board (+X edge %.2f)"
+        % (MB.back_wall_x0(0), _mcb.xmax))
+    assert MB.body_box(0)[1] - MB.back_wall_x0(0) >= 20.0, (
+        "string 1's back stop is under 20 mm long: the motor can rock past it")
     comps = [
         ("bridge_endplate", bridge_endplate),
         ("bridge_bearings", C.bridge_bearings()),

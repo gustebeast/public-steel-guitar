@@ -265,9 +265,18 @@ def term_wall_h():
 
 
 def back_wall_y0(i):
-    """-Y face of motor i's back wall: string 1's is the two-bead stop off the motor board."""
-    by0 = body_box(i)[2]
-    return by0 - (D.MIN_WALL_2P + MOTOR_CLR if i == 0 else BACK_T)
+    """-Y face of motor i's back wall."""
+    return body_box(i)[2] - BACK_T
+
+
+# STRING 1'S BACK WALL STOPS SHORT OF THE MOTOR BOARD (user, 2026-10-29). The board stands
+# directly behind that motor, MOTOR_CLR off its back (D.MCTRL_Y1), with no wall between: the
+# wall it used to share bought the board's bus-B plugs nothing and cost them 1.9 of room from
+# the -X/-Y leg. So the motor's back stop is the part of its back wall +X of the board (and the
+# board's fit), and the PCB never takes the motor's load (user's PCB-mounting rule).
+def back_wall_x0(i):
+    """-X end of motor i's back wall: string 1's starts past the motor board."""
+    return D.MCTRL_X[1] + D.MCTRL_FIT if i == 0 else None
 
 
 def low_walls(i):
@@ -358,6 +367,11 @@ def pocket(i) -> cq.Workplane:
     # the bay starts where that prism ends and the motor rests on it.
     body = body.union(box_at(x1 - x0, y1 - y0, SEAT_TOP - FLOOR_TOP,
                              x=(x0 + x1) / 2, y=(y0 + y1) / 2, z=(FLOOR_TOP + SEAT_TOP) / 2))
+    if back_wall_x0(i) is not None:                # string 1: no wall over the motor board
+        _wx = back_wall_x0(i)
+        body = body.cut(box_at(_wx - (x0 - 1.0), by0 - (y0 - 1.0), SEAT_TOP - FLOOR_TOP + 2.0,
+                               x=(_wx + x0 - 1.0) / 2, y=(by0 + y0 - 1.0) / 2,
+                               z=(FLOOR_TOP + SEAT_TOP) / 2))
 
     # (THE BACK WALL stands only BUMP_H: low_walls() takes it down, with the side walls, from
     #  the fused chassis. It once had a 6 mm lane on the centreline for the grey pigtail; the

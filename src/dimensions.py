@@ -776,17 +776,20 @@ MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
 # cannot import electronics need it: the chassis (the board's floor port), motor_bank (string
 # 1's back stop IS the board's +Y wall) and wiring. build.py asserts all of it against the
 # placed board.
-#   Y1  the board's +Y edge: string 1's motor back, less its fit, ONE two-bead wall and the
-#       board's own fit. That wall is the motor's back stop and the board's locating wall.
+#   Y1  the board's +Y edge: string 1's motor back less MOTOR_CLR -- NO WALL BETWEEN THEM any
+#       more (user, 2026-10-29: "drop that and move the board so it sits flush against the
+#       motor"). It bought the bus-B plugs 1.9 more room from the -X/-Y leg. String 1's motor
+#       is stopped by a short back wall +X of the board instead (motor_bank.back_wall_x0), so
+#       the PCB is never the stop.
 #   Y0  ...less the board's routed length.
 #   X   the standing board with its mated plugs, in world X.
 #   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
 #       reached from outside), before the plugs.
 MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
-MCTRL_Y1        = (string_y(0) - 14.0 - MOTOR_SETBACK - MOTOR_BODY_L - MOTOR_CLR - MIN_WALL_2P
-                   - MCTRL_FIT)   # -29.95: behind string 1's motor (14.0 + MOTOR_SETBACK = the standoff)
+MCTRL_Y1        = (string_y(0) - 14.0 - MOTOR_SETBACK - MOTOR_BODY_L
+                   - MOTOR_CLR)   # -28.05: behind string 1's motor (14.0 + MOTOR_SETBACK = the standoff)
 MCTRL_L         = 55.0           # routed outline, along Y
-MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -84.95
+MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -83.05
 MCTRL_X         = (-606.5, -591.7)
 MCTRL_PORT_CLR  = 0.5            # round whatever of the board enters the floor
 MCTRL_DIP       = 2.0
