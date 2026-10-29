@@ -258,15 +258,10 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
   the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
   The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
 
-## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29) -- HELD, DO NOT CUT YET
-
-**HELD (lead, 2026-10-29).** The motors still stand at the 17.2 standoff, where the shaft as bought fits
-and nothing needs cutting. The 15.6 cut belongs to the 12.0 standoff (branch `branner-standoff12`),
-which waits on the foot-LED boards and the output board being re-placed. Cutting a shaft is
-irreversible: do not cut until that lands and this note loses its HELD mark.
+## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29)
 
 The SERVO42D's shaft comes 21.5 mm long off the faceplate. The instrument uses it only to the
-pulley's outer face (`components.MOTOR_SHAFT_CUT_L`: 15.6 at the 12.0 standoff), and the motors sit closer to their
+pulley's outer face (`components.MOTOR_SHAFT_CUT_L`, 15.6), and the motors sit closer to their
 belts for it. Cut every motor once, on the bench, with the printed jig
 (`tools/motor_shaft_saw_jig.step`), one Quick-Grip and the 6927A16 hacksaw blade. It works like
 the leadscrew saw jig, with no cap: the motor is square, so the clamp's soft pad goes straight on

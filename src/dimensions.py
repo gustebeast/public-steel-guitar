@@ -706,14 +706,16 @@ MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil l
 # THE PULLEY'S STANDOFF OFF THE MOTOR FACEPLATE, and the motors' Y with it (each motor's
 # faceplate sits this far -Y of its belt plane's pulley). The single source: components,
 # motor_bank, MCTRL_Y1 and PI_PLUG_Y0 all read it.
-# 14.0 + 3.2: the motors stand 4 beads back (user, 2026-10-28: "go ahead and move the
-# motors"), because the shaft as bought stands 21.5 off the face and the next string's belt
-# clamp comes to 19.45 of it over full travel. Cutting the shaft and bringing them to 12.0
-# (branch branner-standoff12, with the saw jig) is HELD (lead, 2026-10-29): 5.2 further +Y
-# drives string 1's faceplate wall into the routed foot-LED boards (foot_light, 24.15 wide
-# between it and the +Y rail) and, on the -Y side, the output board into string 10's screw
-# pulley. It needs those boards re-placed first.
-MOTOR_PULLEY_STANDOFF = 14.0 + 4 * BEAD        # 17.2
+# 15 beads, 12.0 (lead, 2026-10-29). It was 14.0 + a 3.2 SETBACK = 17.2, which existed only
+# because the shaft as bought stands 21.5 off the face and reached the next string's belt
+# clamp over full travel. The shaft is CUT now (user: "set the length such that it gets the
+# pulley into the right position without causing a collision between the belt and the
+# motor... the belt could sit much closer"), to components.MOTOR_SHAFT_CUT_L with the saw jig,
+# so the motors come 5.2 toward their belts. 12.0 leaves the faceplate 1.6 off the pulley's
+# flange. The R1 foot-LED boards this squeezes against the +Y rail are DEFERRED (user,
+# tools/check_overlaps DEFERRED_RULES; rev-2 boards narrower); the output board is not, so
+# motor_bank.RAIL_BACK_CLR's output-board term holds the -Y rail where that board allows.
+MOTOR_PULLEY_STANDOFF = 15 * BEAD              # 12.0
 # THE -Y RAIL'S INNER FACE IS STRING 10's MOTOR BACK LESS TWO BEADS (user, 2026-10-29: make
 # the instrument narrower; "leave a little clearance at the motor for installing it, but we
 # don't need much"). It was a 70 mm motor reserve plus a 4.8 gap for string 10's pigtail to
