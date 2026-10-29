@@ -399,6 +399,19 @@ DEFERRED_RULES = (
     #  So: not declared away, RECLASSIFIED -- by the tool that owns the distinction. If these
     #  conductors ever start to RUN through each other, check_cable_pairs fails on it with a
     #  length, which is a better signal than this rule ever gave.)
+    # THE INSTRUMENT SHORTENING vs THE R1 FOOT-LED BOARDS (USER DEFERRED 2026-10-29: "push the
+    #  endplate changes anyway and add a comment to the overlap"). The +X endplate face came in
+    #  25.06 -> 23.43 and the keyhead 0.2 thinner, so the leg-to-leg light run is ~1.8 shorter;
+    #  foot_light derives pitch = run_len / N_LED, but the R1 boards are fabricated copper. They
+    #  now overlap each other at the seam (~35 mm3), the chassis (4.4) and the seam pogos (3.2
+    #  each). OWNER brenner: the rev-2 foot boards (the width re-place) are derived on the short
+    #  run and retire this. Exact names, so nothing else of the family hides behind it.
+    (re.compile(r"^foot_pcb_[ab]$"), re.compile(r"^(foot_pcb_[ab]|foot_pogo_pins|chassis_0)$"),
+     "R1 foot-LED boards vs the shortened light run (OWNER brenner, rev-2 foot boards)"),
+    # Same change, OWNER bronner: the output board moved -X 1.63 with the face and its J2 -> Pi
+    #  USB lead now clips chassis_0 (4.4 mm3). Re-routed in the Xilaghy follow-up.
+    (re.compile(r"^wire_usb$"), re.compile(r"^chassis_0$"),
+     "output J2 -> Pi USB lead vs the chassis after the +X face move (OWNER bronner, Xilaghy follow-up)"),
     (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
      "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
      "to be redesigned around the boards later"),

@@ -1189,8 +1189,14 @@ def wrap_radius(i: int) -> float:
 # intersected with the prism.
 STOW_Z_END = -40.0                              # well past the block's base
 STOW_KEEP = D.MIN_WALL_2P                       # wall between the channel's tip and the socket
-STOW_APEX = STOW_D / 2.0 * _APEX                # the teardrop's real +X reach
-STOW_X = INS_X0 - STOW_KEEP - STOW_APEX
+# ⚠ BOTH ENDS OF THAT WALL WERE MEASURED OFF THE WRONG FACE, and the two errors summed to the
+# 1.80 the user measured instead of 1.60 (2026-10-29). The socket is the insert's plan GROWN
+# by its fit (_clr, 0.2 on the fingered strings), so its wall stands -X of INS_X0; and
+# cadkit's teardrop_hole DULLS the apex to a nozzle-wide flat, nozzle/2 short of r*sqrt(2).
+# Measured off the cut faces, both of them.
+STOW_POCKET_X0 = INS_X0 - max(INS_CLR, BASS_CLR)  # the socket's -X wall, as cut
+STOW_APEX = max(STOW_D / 2.0 * _APEX - D.NOZZLE_D / 2.0, STOW_D / 2.0)   # the flat's +X reach
+STOW_X = STOW_POCKET_X0 - STOW_KEEP - STOW_APEX
 # THE BORES LEAN -Y AS THEY DESCEND (user). Straight down, strings 1 and 2 came out inside the +Y
 # leg's body stub at the keyhead corner (its -Y face ~y 21.1, its top ~9 above the endplate floor),
 # so their tails could not be reached from under the instrument. ONE tilt for all ten keeps them
