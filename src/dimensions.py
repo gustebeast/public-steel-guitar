@@ -729,9 +729,12 @@ PI_MOTOR_I     = 2
 PI_MOTOR_CLR   = 0.5
 PI_BOARD_L     = 56.0                 # a Pi 4B's short side, along Y
 PI_USBC_PROUD  = 1.24
-PI_USBC_HEAD_D = 11.0                 # StarTech USB2CC1MR datasheet
+# 2.0, NOT THE STARTECH'S 11.0 (2026-10-29, user's pick via the lead): the Pi's lead is a
+# Xilaghy flat FPC extension, angled male to inline female, whose head is a 2 mm plate
+# behind the mating face (ASSUMED, off the seller's drawing). The wall no longer follows it.
+PI_USBC_HEAD_D = 2.0
 PI_PLUG_Y0 = (string_y(PI_MOTOR_I) - 14.0 - MOTOR_SETBACK - MOTOR_BODY_L - PI_MOTOR_CLR
-              - PI_BOARD_L - PI_USBC_PROUD - PI_USBC_HEAD_D)          # -115.39
+              - PI_BOARD_L - PI_USBC_PROUD - PI_USBC_HEAD_D)          # -106.39
 MOTOR_SHAFT_D   = 5.0
 # THE SHAFT IS A D (user, 2026-10-28): 4.5 across the flat, and 19.5 of it stands proud of
 # the pilot boss (the old 19.4 "from the faceplate" was this, read off the wrong datum --

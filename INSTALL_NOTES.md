@@ -522,11 +522,7 @@ SKU. The printed spacer bar that used to bridge out to an M4 beside the board is
 1. **Heat-set the M3 insert into the boss first**, from the top, before anything else is in
    the bay (McMaster 94459A130; its pocket is 4.8, so it drops in before it is melted home).
    Flush with the boss's top: the Pi's underside rests on it.
-2. **Plug the USB-C lead into the Pi on the bench** (see below). It cannot be plugged in
-   afterwards: the angled head and its shell need 17.65 mm in front of the socket to go in,
-   and the rail is about 12 mm away.
-3. **Lower the Pi straight down into its cradle, the lead's head going down the −Y wall's
-   notch with it.** The corner pads and the boss carry it, 13.6 mm off the floor: its +X
+2. **Lower the Pi straight down into its cradle.** The corner pads and the boss carry it, 13.6 mm off the floor: its +X
    end stands over motor 3's bay back wall and 0.5 off that motor's driver, so it goes in
    **before string 3's motor** if that motor is in the way of your hands, or with it in
    place if not — nothing of the Pi touches it.
@@ -536,21 +532,37 @@ SKU. The printed spacer bar that used to bridge out to an M4 beside the board is
    about 0.15 mm into the hole's plated barrel (user, on the bench, 2026-10-29). The ring is
    what makes the 12 mm screw the right length: without it the screw bottoms out.
 5. Do not overtighten: the ring bears on the Pi's own Ø6 keep-out pad round the hole.
+6. **Then plug the USB-C lead in** (below). It goes in with the Pi seated: its head is a
+   2 mm plate, and with its tongue it needs 8.65 mm in front of the socket, which the gap to
+   the rail leaves.
 
-⚠ **Removal order:** the screw, then the Pi straight up with its lead, then unplug the lead.
+⚠ **Removal order:** unplug the lead, then the screw, then the Pi straight up.
 
-### The Pi's USB-C lead: angled plug, cable toward −X (2026-10-28, order changed 2026-10-29)
+### The Pi's USB-C lead: a flat extension and a straight lead, joined in a saddle (2026-10-29)
 
-The lead from `output_panel` J2 is a StarTech USB2CC1MR, and its **angled** end goes in the Pi.
-The head lies flat between the Pi's −Y edge and the rail, in a notch in the cradle wall, with
-0.5 mm to the rail — the rail is set off this plug (`dimensions.PI_PLUG_Y0`), and it is not
-cut for it. **Turn the plug so its cable leaves toward the Pi's SD-card end (−X)**, then
-take the cable up the rail past that end of the board, into the cable trough. USB-C is
-reversible, so either way up plugs in; only one way round sends the cable where the route
-has room.
+Two parts: a **Xilaghy right-angle USB-C flat extension** (100 mm FPC ribbon, angled male to
+inline female) at the Pi, and a **straight C-to-C lead** (StarTech USB2CC1MNC, 1 m) from its
+female to `output_panel` J2.
 
-**Plug it in BEFORE the Pi goes in** (step 2 above), on the bench: there is no room in front
-of the socket to push a plug in once the Pi is seated.
+1. **On the bench first: check the Pi enumerates through the joint.** Plug the extension's
+   male into the Pi, the straight lead into the extension's female and a computer on the
+   lead's other end, and see the Pi's gadget come up. A flat lead and a joint are two more
+   contacts than a plain cable; find out before they are buried.
+2. **The extension's male into the Pi with the ribbon leaving the head DOWNWARD**, then
+   step the ribbon off the cradle wall (−Y) and fold it once, flat, to run toward the Pi's
+   USB/Ethernet end (+X) along the board's −Y edge, low. USB-C is reversible, so either way
+   up plugs in; only ribbon-down sends it where the route is.
+3. **Drop the joint into the saddle on the floor just past the Pi's +X end:** the female's
+   end goes against the saddle's −X wall with the ribbon down its slot, the straight plug
+   in the female, and the lead out of the +X wall's slot. The two walls take a pull on
+   either cable; the contacts take none. No glue.
+4. The straight lead turns back along the rail's face toward the keyhead, climbs just past
+   the cable trough's −X end and rides the trough to the panel's J2.
+
+⚠ **Unplug the Pi's lead (at the joint or the Pi) before the deck slides,** and plug it back
+after. ⚠ The extension's head and female dimensions are off the seller's drawing
+(`electronics.PI_USB_*`, ASSUMED): check the joint drops into the saddle before relying on
+it, and the straight lead's overmould is 20 mm or less along the cable.
 
 ## Leg blind-mate boards (src/leg_pogo.py) — ORDER MATTERS
 
