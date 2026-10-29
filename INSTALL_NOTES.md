@@ -1062,3 +1062,22 @@ push the actuator home. Build the station with the mid panel upside down on the 
 Coming apart: clamp off, board off its posts, then release J1's actuator before pulling
 the cable. Molex rate the module's socket for 30 insertions, so take the cable out of
 the module only when the module itself is being replaced.
+
+## The motor controller drops in from above; the -X/-Y leg is its floor (2026-10-29)
+
+The motor board slides straight down (+Z to -Z) into its guides behind string 1's motor:
+- a channel takes its -Y edge (the edge away from the motor);
+- two short posts on the floor take its +Y edge;
+- its face sits flush on string 1's motor.
+
+Nothing is screwed. The keyhead deck panel's rib, 0.3 above the board's top edge, stops it
+lifting, so **seat the board before that panel goes on**. Sight down both faces as it drops:
+nothing on the board should touch a guide on the way in.
+
+**Its -Z stop is the -X/-Y leg's body adapter, not the chassis.** The board's bottom edge sits
+0.34 above the underside (so J2/J6 can be squeezed from below), and with that leg fitted, the
+adapter's top face is what it rests on. With the leg off, nothing stops the board from dropping
+toward the floor port except its cables and the plugs resting on the table. So:
+- **fit the -X/-Y leg before standing the instrument upright with the deck on**;
+- **never carry it legs-off with the deck on** unless the controller is unplugged and secured
+  (tape it to the guides, or lift it out).

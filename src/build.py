@@ -236,6 +236,9 @@ from . import electronics as _EL_ports
 # y -114.9 and -49.1 against a port spanning -113..-51), so cutting afterwards cannot take
 # anything load-bearing away, and it guarantees the ports stay open whatever the frames do.
 _kh_cr = _EL_ports.keyhead_cradles()
+from . import mctrl_retention as _MCR
+if _kh_cr is None:          # PI_NO_CRADLE (debug): the motor board's guides stand in, so the
+    _kh_cr = _MCR.retention()   # segment checks below still have something to look at
 _kh_bb = _kh_cr.val().BoundingBox()
 # ⚠ THE CRADLES REFILLED THE LEVER MORTISES, and the knee housing's tenons live in them.
 # chassis.py cuts a mortise into every rib, then this union laid the cradles' feet back over
@@ -277,7 +280,9 @@ assert _kh_n == 1, (
 # squeezed from below, so the column under it, MCTRL_PLUG_FINGER wider each way, must stay
 # out of the adapter's footprint. Read off the solids (the board's parts below Z_BOT and the
 # adapter as placed), so neither side can close on the other without the build saying so.
-MCTRL_PLUG_FINGER = 6 * D.BEAD          # 4.8 of finger room round a plug, past its body
+# 4.8 STAYS (user, 2026-10-29, on J6's tight spot: "worst case you could just grip the plug
+# with some pliers") -- the J2/J6 re-place that would have bought 10 was cancelled for it.
+MCTRL_PLUG_FINGER = 6 * D.BEAD          # 4.8 of room round a plug, past its body: pliers
 from . import leg_stack as _LS_PLUG
 _adb = _LS_PLUG.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1]).val().BoundingBox()
 _plugs = _EL_ports.motor_ctrl().intersect(
@@ -294,6 +299,36 @@ for _pl in _plugs:
 for _mp in _EL_ports.mctrl_floor_ports():
     for _csi in range(len(chassis_segments)):
         chassis_segments[_csi] = chassis_segments[_csi].cut(_mp)
+# THE MOTOR CONTROLLER'S GUIDES (src/mctrl_retention.py), fused AFTER the floor ports: their
+# cheeks stand MCTRL_FIT off the laminate and the ports clear it by MCTRL_PORT_CLR, so cutting
+# afterwards would notch each cheek's foot -- a 0.2 step that prints as a ledge.
+_mcr = _MCR.retention()
+_mcr_bb = _mcr.val().BoundingBox()
+_mcr_seg = [i for i, cs in enumerate(chassis_segments)
+            if cs.val().BoundingBox().xmin <= _mcr_bb.xmin
+            and _mcr_bb.xmax <= cs.val().BoundingBox().xmax + 1e-6]
+assert len(_mcr_seg) == 1, "the motor controller's guides straddle a chassis split"
+chassis_segments[_mcr_seg[0]] = chassis_segments[_mcr_seg[0]].union(_mcr)
+assert len(chassis_segments[_mcr_seg[0]].val().Solids()) == 1, (
+    "a motor-controller guide is not touching the chassis floor -- it prints as a loose post")
+# ...and the board clears them over its WHOLE DROP, not only where it seats (user: "the
+# hardware needs to clear the support material along that range of motion").
+_mcr_hit = _MCR.swept_clear()
+assert _mcr_hit < 1e-3, (
+    "%.3f mm3 of the motor controller passes through its own guides on the way in" % _mcr_hit)
+# ⚠ ITS -Z STOP IS THE -X/-Y BODY ADAPTER (see mctrl_retention): the laminate's bottom edge
+# is 0.34 over the underside, too little for a ledge, and the adapter's top face lies under
+# its -Y end. Probe the ADAPTER'S SOLID there, not its bbox -- a chamfer would read as a stop.
+_mcl = _EL_ports.mctrl_capture_target()
+_mc_zb = _mcl[4] - _EL_ports.MCTRL_BOARD_X
+_mc_probe = box_at(_mcl[1] - _mcl[0], _mcl[3] - _mcl[2], 0.5,
+                   x=(_mcl[0] + _mcl[1]) / 2.0, y=(_mcl[2] + _mcl[3]) / 2.0,
+                   z=CH.Z_BOT - 0.25)
+_mc_under = _LS_PLUG.body_adapter(CH.LEG_STATIONS_X[1], CH.LEG_Y[1]).intersect(_mc_probe)
+_mc_stop = _mc_under.val().BoundingBox().ylen if _mc_under.solids().size() else 0.0
+assert _mc_stop >= D.MIN_WALL and _mc_zb - CH.Z_BOT <= 2 * D.MCTRL_FIT, (
+    "the motor controller has no -Z stop: the -X/-Y body adapter lies under %.2f of its "
+    "laminate (want >= %.2f) at %.2f below it" % (_mc_stop, D.MIN_WALL, _mc_zb - CH.Z_BOT))
 # ⚠ AND THE FLAT PI'S ANCHOR, WHICH MUST BE CUT HERE AND NOT IN THE CRADLE. pcb_cradle bores
 # its own boss, but that boss is EMBEDDED in the floor slab -- the M4 needs anchor_min_wall
 # below the board's underside, which is deeper than the standoff -- so the floor's own
