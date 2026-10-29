@@ -481,9 +481,13 @@ PARTS["saw_jig"] = (
     "TOOL — hacksaw jig for cutting the ten Tr8x2 leadscrews to SCREW_LEN by hand with one Quick-Grip and no vise: the rod rests on two crests in a 90 deg V tunnel, the saw slot (1.3, McMaster 6927A16) sits 5.6 past the clamped support, and the piece overhangs an OPEN fork to a fixed end stop at SCREW_LEN + 0.4, then drops out. The table-edge notch goes on the table edge so a slipped blade hits the jig. PETG, printed as drawn")
 # MOTOR SHAFT SAW JIG -- a SHOP TOOL (lead, 2026-10-29): exported, never in the assembly.
 PARTS["motor_shaft_saw_jig"] = (
-    lambda: heal(__import__("src.motor_shaft_saw_jig", fromlist=["e"]).jig()),
+    lambda: heal(__import__("src.motor_shaft_saw_jig", fromlist=["e"]).body()),
     "tools/motor_shaft_saw_jig.step",
-    "TOOL — hacksaw guide for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L: bolted flat to the faceplate by four of the belt clamps' M3 x 12 (2.5 mm key), the pilot boss in a cone-roofed pocket so the whole face is covered, a snug D bore to a guide face at the cut plane; the blade lies on that face. PETG-GF on the 0.8, printed faceplate face down")
+    "TOOL — the leadscrew saw jig's sibling for cutting each SERVO42D's shaft to components.MOTOR_SHAFT_CUT_L, no screws: the motor drops into the chassis' own bay (motor_bank.lift_prism + low_walls, the bay's boss slot), faceplate pushed home on the wall, shaft in a U channel to a 1.3 saw slot (McMaster 6927A16) at the cut plane with a cheek on each side of the blade. PETG-GF on the 0.8, printed as drawn")
+PARTS["motor_shaft_saw_jig_cap"] = (
+    lambda: heal(__import__("src.motor_shaft_saw_jig", fromlist=["e"]).cap()),
+    "tools/motor_shaft_saw_jig_cap.step",
+    "TOOL — the motor shaft saw jig's cap: a plunger down the bay onto the driver's cover with a relief over the coil plug, an arm over the faceplate wall plugging the boss slot, and a tongue down the shaft channel onto the D flat. The Quick-Grip squeezes cap, motor, jig and table in one stack. PETG-GF on the 0.8, printed upside down (flat top on the bed)")
 PARTS["saw_jig_cap"] = (
     lambda: heal(__import__("src.saw_jig", fromlist=["e"]).cap()),
     "tools/saw_jig_cap.step",
@@ -745,10 +749,12 @@ def _declared():
          "ream_jig.PRINT_UP — standing as it is used, table face on the bed: "
          "the nut slot and the reamer channel both print round their own axis, "
          "and every ceiling over the nut is a 45 deg gable"),
-        (["motor_shaft_saw_jig"], _MSJ.PRINT_UP,
-         "motor_shaft_saw_jig.PRINT_UP — faceplate face down: the D bore and "
-         "the four screw holes print round about their own axes, and the boss "
-         "pocket's roof is a 45 deg cone"),
+        (["motor_shaft_saw_jig"], _MSJ.BODY_UP,
+         "motor_shaft_saw_jig.BODY_UP — as drawn, table face on the bed: the bay, "
+         "the boss slot, the shaft channel and the saw slot all open upward"),
+        (["motor_shaft_saw_jig_cap"], _MSJ.CAP_UP,
+         "motor_shaft_saw_jig.CAP_UP — upside down, flat top on the bed: the "
+         "plunger, arm, boss plug and tongue all stand up off it"),
         (["saw_jig_cap"], _SJG.CAP_UP,
          "saw_jig.CAP_UP — as drawn: the rod notch's two 45 deg faces rise "
          "off the bed, the pad pocket opens up"),

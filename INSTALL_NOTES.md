@@ -260,27 +260,32 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
 
 ## Motors: cut each shaft to length BEFORE its pulley goes on (2026-10-29)
 
-The SERVO42D's shaft comes 21.5 mm long off the faceplate; the instrument uses it only to the
-pulley's outer face (`components.MOTOR_SHAFT_CUT_L`), and the motors sit closer to their belts
-for it. Every motor, once, on the bench, with the printed guide (`tools/motor_shaft_saw_jig.step`)
-and the 6927A16 hacksaw blade:
+The SERVO42D's shaft comes 21.5 mm long off the faceplate. The instrument uses it only to the
+pulley's outer face (`components.MOTOR_SHAFT_CUT_L`, 15.6), and the motors sit closer to their
+belts for it. Cut every motor once, on the bench, with the two-part printed jig
+(`tools/motor_shaft_saw_jig.step` and `tools/motor_shaft_saw_jig_cap.step`), one Quick-Grip and
+the 6927A16 hacksaw blade. It works like the leadscrew saw jig, and nothing screws into the motor.
 
-* Bolt the guide FLAT on the faceplate with four of the belt clamps' M3 x 12 socket heads (2.5 mm
-  key) -- the pilot boss drops into its pocket and the shaft's flat keys into the guide's D bore,
-  so it only goes on one way. Snug, not tight: they are going back into the clamps after.
-* Lay the motor on its side on the table with the guide's EDGE MARK (the V down both sides) on
-  the table edge, so the guide's tower and the shaft stand out past it. Hold the motor down with
-  the Quick-Grip on its can (not the driver cover) if it moves.
-* Saw with the blade's flat lying on the tower's face, down past the shaft. A drifting blade only
-  ever leaves the stub longer; it is never shorter than the face.
-* File the cut end flat back to the tower face, then a small 45 deg chamfer all round, so the
-  pulley's bore starts on it without shaving plastic.
-* With the guide STILL ON, pick every filing off the stub, the tower face and the saw cut with a
-  magnet, and wipe the stub. The guide is what covers the motor's face and bearing; only then
-  take the screws out and lift it off. Check the faceplate round the boss for filings anyway.
-* The screws reach only 2.4 mm into the motor (five threads) -- enough to hold the guide, and
-  shallower than any NEMA17's tapped holes. If one does bottom before the guide is flat, stop:
-  the guide needs a thicker plate.
+1. Set the jig on the table near the edge, so the clamp's lower jaw reaches under it.
+2. Turn the shaft by hand until its D FLAT faces straight up.
+3. Drop the motor into the jig's bay: driver cover down, shaft into the U channel. It is the
+   chassis bay's own shape, so it goes in only one way.
+4. Push the motor forward until its faceplate sits on the wall. The cut is measured from that
+   wall.
+5. Drop the cap in. Its tongue lands on the flat; if it won't seat, the flat isn't up. Turn the
+   shaft and try again.
+6. Clamp the Quick-Grip on the cap's flat top and under the table, and squeeze. The stack is
+   cap, motor, jig, table.
+7. Saw down the slot. It has a wall on both sides of the blade, and its motor-side face is the
+   cut line, so the stub can only come out long, never short. The offcut stays in the channel.
+8. **With the cap still on**, pick every filing off the slot and the stub's end with a magnet.
+   The cap closes the boss slot and the shaft channel, so this is the moment the bearing and
+   the magnet gap are covered.
+9. Undo the clamp, lift the cap, lift the motor out.
+10. File the cut end back to 15.6 and square, then add a small 45° chamfer all round, so the
+    pulley's bore starts on it without shaving plastic. Wipe the stub and check the faceplate
+    round the boss for filings.
+11. Drop in the next motor (step 2). The jig stays where it is; only the clamp comes off.
 
 ## Motors: push each pulley on to the end of the shaft's flat (2026-10-28)
 
