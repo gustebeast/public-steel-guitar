@@ -359,8 +359,8 @@ def pose_dir(rots, v):
     """A DIRECTION carried through the same rotations a pose applies to a SHAPE.
 
     A part's print orientation is a fact about the part, but tools.check_ceilings wants it
-    in WORLD coordinates, and several parts are rotated on their way there -- the vertical
-    lever turns -90 about Z, the foot pedal takes three turns. Writing the rotated vector
+    in WORLD coordinates, and some parts are rotated on their way there -- the foot pedal
+    takes three turns. Writing the rotated vector
     out by hand is exactly the transcription that checker's own docstring warns about:
     nothing would compare the two if a pose ever changed. So the pose hands its rotation
     list to this, which folds the SAME rotations over a vector.

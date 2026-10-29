@@ -258,6 +258,15 @@ on the instrument the 2.5 mm key does not do (see BOM, Tools).
   the M4 x 10 in through the ear. Dropped in flat it will not go; out, it comes ear-first.
   The lip is what stops the board's far end lifting off the motor (coupon, user 2026-10-20).
 
+## Motors: push each pulley on to the end of the shaft's flat (2026-10-28)
+
+* The pulley's bore is a D the whole way through: line its flat up with the shaft's flat and
+  push it on until it stops. It stops where the shaft's flat ends and the round part starts,
+  and that is its place -- no shim, no gauge. The shaft's end then stands 0.3 past the
+  pulley's outer face.
+* If it stops short, the flat on your motors is shorter than the 15 mm assumed
+  (dimensions.MOTOR_SHAFT_FLAT_L): measure it and the pulley gets re-drawn.
+
 ## Motor tees: ONE switch ON, nine OFF
 
 Every motor tee carries a 120 ohm terminator behind a small slide switch marked TERM

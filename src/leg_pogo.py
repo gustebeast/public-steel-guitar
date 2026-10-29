@@ -670,7 +670,8 @@ def host_negatives(j, up=None, deep=F_DEEP):
     # check_thin reported it as a 0.01 wall -- the thinnest in the part by a factor of
     # forty -- and it would have printed as a torn membrane over the insert's mouth.
     # Cavities that are meant to be ONE cavity must OVERLAP; touching is not enough.
-    out = out.union(j.bore_d(M4.insert_pilot_d, F_HOLE_T, F_HOLE_S,
+    # (the pocket's TEARDROP Ø when it runs sideways to the host's build -- cadkit pilot_d)
+    out = out.union(j.bore_d(M4.pilot_d((0.0, 0.0, j.dz), up), F_HOLE_T, F_HOLE_S,
                              F_BOT - 0.01, 0.5, up))
     return out.union(female_screw(j).cutter(up))
 

@@ -22,9 +22,9 @@ WHERE EVERY NUMBER COMES FROM:
                     the bay's 0.4 slip fit is 0.55 round the can and 0.30 round the cover).
                     Every height below "over the motor's bottom" is off the CAN's flat.
     * HEIGHT 51.1   bottom flat to the top of the coil lead's loop -> LOOP_TOP 29.9
-    * SHAFT_L 19.4  the shaft ("rotor"), taken from the FACEPLATE. It may be from the boss
-                    (then 21.4); the shorter reading is the safe one for the pulley, which
-                    centres 14 out.
+    * SHAFT_L 21.5  the shaft ("rotor") from the FACEPLATE: 19.5 proud of the 2.0 pilot
+                    boss (user, 2026-10-28; the 19.4 it was had been read from the boss and
+                    drawn from the face). A D: 4.5 across its flat, the flat facing +Z.
     * BOSS 22 x 2   the pilot
   SCALED off the user's video of it (PXL_20261020_163421716), against the measured 53.4
   and 42.4 (side-on frame ~13.3 px/mm, back-on ~13.8 px/mm), +-0.5:
@@ -53,8 +53,8 @@ TOTAL_L = D.MOTOR_BODY_L       # 53.2 faceplate -> back of the driver's ribs
 LOWER_L = D.MOTOR_LOWER_L_MEASURED   # 51.6 ...to the lower screw heads, under the ribs
 LOOP_TOP = D.MOTOR_HEIGHT_MEASURED - DRV_SQ / 2  # 29.85: the loop, over the axis (the
                                                  # height was taken off the cover's flat)
-SHAFT_L = 19.4                 # from the faceplate (see the docstring)
 PILOT_D, PILOT_H = D.NEMA17_PILOT_D, 2.0
+SHAFT_L = PILOT_H + D.MOTOR_SHAFT_PROUD   # 21.5 from the faceplate (see the docstring)
 HALF = SQ / 2
 
 # -- the can (scaled off the video) -----------------------------------------------------
@@ -218,8 +218,13 @@ def stack() -> cq.Workplane:
 
 
 def shaft() -> cq.Workplane:
-    """Ground steel, from the face to SHAFT_L out. The part inside the can is not drawn."""
-    return cyl_y(D.MOTOR_SHAFT_D, SHAFT_L, y0=0.0)
+    """Ground steel, from the face to SHAFT_L out, its D flat (MOTOR_SHAFT_FLAT across, the
+    last MOTOR_SHAFT_FLAT_L of it) facing +Z. The part inside the can is not drawn."""
+    r = D.MOTOR_SHAFT_D / 2.0
+    z0 = D.MOTOR_SHAFT_FLAT - r                      # the flat's height over the axis
+    flat = box_at(2 * r + 1.0, D.MOTOR_SHAFT_FLAT_L + 1.0, r + 1.0 - z0,
+                  y=SHAFT_L - (D.MOTOR_SHAFT_FLAT_L - 1.0) / 2.0, z=(z0 + r + 1.0) / 2.0)
+    return cyl_y(D.MOTOR_SHAFT_D, SHAFT_L, y0=0.0).cut(flat)
 
 
 def coil_plug() -> cq.Workplane:

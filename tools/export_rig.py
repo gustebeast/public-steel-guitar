@@ -137,11 +137,10 @@ def _levers() -> dict:
 
     Same shape as _pedals(), read from build.LEVER_STATIONS rather than restated:
 
-      * centre — the station pose. Both designs build in a local frame whose ORIGIN
-                 is the axle, so the pose IS the pivot.
-      * axis   — a KL station's axle is local +Y and the station applies no rotation,
-                 so it stays guitar +Y. A KV station is posed with -90° about Z,
-                 which carries +Y to +X.
+      * centre — the station pose. Both designs are drawn about their axle, so the
+                 pose IS the pivot.
+      * axis   — a KL station's axle is +Y and a KV station's is +X, each as drawn;
+                 a station only translates.
       * throw  — KL +30°, KV **-20°**, both PROBED (see _verify_levers), because the
                  designs disagree about which way positive goes: +30 swings a KL
                  paddle -X, which is what an "…L" lever does, but +20 drives the KV
@@ -162,7 +161,7 @@ def _levers() -> dict:
     # Measured off the placed solids rather than copied from cart_dummies' own
     # `translate((-s, 0, 0))`: that line is written in the KNEE lever's frame and is
     # applied AFTER the pose, so it is only correct for the design it was authored
-    # for. Deriving it here makes the mirror and the KV rotation come out right for
+    # for. Deriving it here makes the mirror and the KV axle along X come out right for
     # free, and never silently disagrees with the geometry.
     placed = dict(B._lever_stations_components())
 
@@ -237,9 +236,8 @@ def _verify_levers(levers) -> None:
             local, mz = KL.knee_lever, KL.MOUNT_Z
             swung = local.rotate((0, 0, 0), (0, 1, 0), th)
         else:
-            local, mz = KV.kv_lever.rotate((0, 0, 0), (0, 0, 1), -90), KV.MOUNT_Z
-            swung = (KV.kv_lever.rotate((0, 0, 0), (0, 1, 0), th)
-                     .rotate((0, 0, 0), (0, 0, 1), -90))
+            local, mz = KV.kv_lever, KV.MOUNT_Z
+            swung = KV.kv_lever.rotate((0, 0, 0), (1, 0, 0), th)   # about its axle, X
 
         def _pose(s):
             return (s.mirror("YZ") if mirrored else s).translate((sx, sy, mz))
