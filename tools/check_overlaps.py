@@ -404,13 +404,23 @@ DEFERRED_RULES = (
     #  run and retire this. Exact names, so nothing else of the family hides behind it.
     (re.compile(r"^foot_pcb_[ab]$"), re.compile(r"^(foot_pcb_[ab]|foot_pogo_pins|chassis_0)$"),
      "R1 foot-LED boards vs the shortened light run (OWNER brenner, rev-2 foot boards)"),
+    # THE SHAFT CUT vs THE SAME BOARDS (USER DEFERRED 2026-10-29, via the lead: "the foot-LED
+    #  collisions are deferred, so the shaft cut goes ahead"). Standoff 17.2 -> 12.0 takes the
+    #  motors 5.2 +Y, and string 1's faceplate wall (chassis_1, chassis_2) with them, into the
+    #  R1 boards between the motor face and the +Y rail: ~870 mm3 over three pairs. Same owner,
+    #  same retirement -- the rev-2 boards are placed on the 12.0 layout.
+    (re.compile(r"^foot_pcb_[ab]$"), re.compile(r"^chassis_[12]$"),
+     "R1 foot-LED boards vs string 1's faceplate wall at standoff 12 (OWNER brenner, rev-2 "
+     "foot boards)"),
     # Same change, OWNER bronner: the output board moved -X 1.63 with the face and its J2 -> Pi
     #  USB lead now clips chassis_0 (4.4 mm3). Re-routed in the Xilaghy follow-up.
     (re.compile(r"^wire_usb$"), re.compile(r"^chassis_0$"),
      "output J2 -> Pi USB lead vs the chassis after the +X face move (OWNER bronner, Xilaghy follow-up)"),
-    (re.compile(r"^pedal\d+_[A-Z]+\d+$"), re.compile(r"^pedal_bar_[abc]$"),
-     "pedal board parts vs the pedal bar (30 pairs, ~195 mm3). USER DEFERRED: the bar is "
-     "to be redesigned around the boards later"),
+    # The pedal-board-components-vs-bar rule (2026-09-15) is RETIRED (2026-10-29): the boards
+    # are single pedalN_pcb solids now, so its pedalN_<REF> pattern matched nothing, and
+    # neither the board nor its silk touches the bar. What the knee-family whitelist was
+    # hiding instead -- each pcb_shim 241 mm3 into solid bar -- is cut
+    # (foot_pedal.shim_slot).
     # THE BODY NARROWED 16.8 / 15.2 (branner's -Y rail move, 2026-10-29). Two things were
     # cleared by the user to clip the new wall until they are relocated, and nothing else:
     # the UI board and the optical board's cables. The UI station has since been relocated

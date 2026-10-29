@@ -1265,6 +1265,7 @@ def build_wires():
     # the middle row. cadkit.bundle_paths carries that section round every corner.
     _PL_COL, _PL_ROW, _PL_HALF = PLINK_COL, PLINK_ROW, PLINK_HALF
     assert WIRE_OD["wire_plink"] == 1.8 and WIRE_OD["wire_usb"] == 2.6       # PLINK_HALF, LANE_PWR2
+    assert WIRE_OD["wire_plink"] / 2.0 == EL.PI_PLINK_HALF, "electronics.PI_PLINK_HALF is stale"
     _PL_OFFS = [(a * _PL_COL, b * _PL_ROW) for b in (-1, 0, 1) for a in (-1, 1)]
     _PL_ZREC = -35.3 + 0.2 + _PL_HALF          # the recess: 0.2 over J7's and J9's plug tops
     _PL_ZTR = LANE_PWR2                        # the trough: on its floor, under the USB lead
