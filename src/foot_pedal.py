@@ -508,13 +508,31 @@ def fuse_into_bar(piece, x0, x1):
     tell was the piece falling into 3 and 4 disconnected solids as each far web was
     severed from its housing. A solid count is a good check on a cut you cannot
     see."""
-    bay, room = board_bay_cutter(), lever_room()
+    bay, room, slot = board_bay_cutter(), lever_room(), shim_slot()
     for x in PEDAL_X:
         if x0 <= x < x1:
             piece = (piece.cut(place(bay, x))
                           .cut(place(room, x))
-                          .union(place(_housing(), x)))
+                          .union(place(_housing(), x))
+                          .cut(place(slot, x)))
     return piece
+
+
+def shim_slot():
+    """The board's GROOVE carried on up through the bar to the lid channel, in the pedal's
+    LOCAL frame. The housing's own slot stops at HOUS_Z1 and the bay at the board's top
+    edge, but the shim stands on to SHIM_TOP -- and the part of it that hangs down into the
+    bar ran 241 mm3 through solid bar at every station. The knee-family whitelist read it as
+    housing-on-housing, so the gate never said (found 2026-10-29 retiring the stale
+    'pedal board parts vs the pedal bar' deferral). The same slot as the cradle's: the
+    shim's groove walls, now bar on both sides, and it breaks into the lid channel, which
+    is where the shim goes in from. Cut AFTER the housing union, so nothing refills it."""
+    bx0, bx1 = KL.board_x(CRADLE_Z0, HOUS_Z1, BOARD_FLIP)
+    s0, s1 = sorted((KL._cr_faces(bx0)[1], KL._cr_faces(bx1)[1]))
+    z0 = KL.board_z(CRADLE_Z0, HOUS_Z1, BOARD_FLIP)[0]
+    z1 = SHIM_TOP + 1.0                              # into the lid channel
+    return box_at(s1 - s0, KL.CR_SLOT_Y1 - KL.CR_SLOT_Y0, z1 - z0,
+                  x=(s0 + s1) / 2, y=(KL.CR_SLOT_Y0 + KL.CR_SLOT_Y1) / 2, z=(z0 + z1) / 2)
 
 
 # How far past the housing's own rear the access holes run. The housing stands UP off the bar
