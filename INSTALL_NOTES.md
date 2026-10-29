@@ -1108,3 +1108,23 @@ toward the floor port except its cables and the plugs resting on the table. So:
 - **fit the -X/-Y leg before standing the instrument upright with the deck on**;
 - **never carry it legs-off with the deck on** unless the controller is unplugged and secured
   (tape it to the guides, or lift it out).
+
+## R1 stop-gap: the output board in hand, in an R2 instrument (2026-10-29)
+
+The R2 output board is 60.4 deep with its panel connectors moved (J5 -4.6, J1 -3.5); the R1
+board in hand is 66 deep. In an R2 body the R1 board's +Y band would sit in string 10's screw
+pulley and belt, and its jack, USB-C and inlet would not line up with the R2 panel's holes. So
+until R2 boards arrive, **the R1 board does not go in the cradle**:
+- Lay it loose outside the instrument, next to the +X end. Use a non-conductive pad under it;
+  its back has exposed copper.
+- Run its inside leads out to it: the 24 V trunk (J7), the motor-controller link (J10), the
+  optical feed (J9) and the three USB-C leads (J2 to the Pi, J3 hub upstream, J4 to the optical
+  board). Take them through the empty panel openings, or under the open deck. The leads in
+  the BOM are long enough for this on the bench, not in a case.
+- Play and power it from the board's own connectors (J5 jack, J1 USB-C, J6 inlet), not
+  through the panel.
+- Nothing in the instrument depends on the board being in its cradle. The R2 board drops in
+  later with no other change.
+
+To rebuild R1's design files (they match the copper in hand): `OUTPUT_PANEL_REV=1 py -3.12
+elec/output_panel.py`. Its geometry as made is `elec/rev1/output_panel.geom.json`.
