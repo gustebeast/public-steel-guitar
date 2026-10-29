@@ -703,12 +703,15 @@ MOTOR_DRIVER_SQ_MEASURED = 42.5   # the MKS driver cover behind it, 0.5 bigger: 
                             # MOTOR_SQ stays the 42.3 nominal the bank's pitch is built on, so
                             # the bay's MOTOR_CLR is 0.55 round the can and 0.30 round the cover
 MOTOR_HEIGHT_MEASURED = 51.1    # lowest flat (the cover's) -> top of the coil lead's loop
-# MOTORS SET BACK 3.2 (user, 2026-10-28: "go ahead and move the motors"). The shaft as bought
-# stands 21.5 off the faceplate; the next string's belt tensioner comes to 19.45 of it (string
-# 9's shaft, string 8's tensioner, nut on the ceiling) and its belt to 20.0. The pulleys stay
-# in their belt planes and the motors go back -Y, so components.MOTOR_PULLEY_STANDOFF grows by
-# it: 1.15 clear of the tensioner.
-MOTOR_SETBACK = 4 * BEAD                       # 3.2
+# THE PULLEY'S STANDOFF OFF THE MOTOR FACEPLATE, and the motors' Y with it (each motor's
+# faceplate sits this far -Y of its belt plane's pulley). 15 beads, 12.0 (lead, 2026-10-29).
+# It was 14.0 + a 3.2 SETBACK = 17.2, and the setback existed only because the shaft as
+# bought stands 21.5 off the face and reached the next string's belt tensioner. The shaft is
+# CUT now (user: "set the length such that it gets the pulley into the right position
+# without causing a collision between the belt and the motor... the belt could sit much
+# closer"), to components.MOTOR_SHAFT_CUT_L, so the setback is gone and the motors come 5.2
+# toward their belts. 12.0 leaves the faceplate 1.6 off the pulley's flange.
+MOTOR_PULLEY_STANDOFF = 15 * BEAD              # 12.0
 # THE -Y RAIL'S INNER FACE IS STRING 10's MOTOR BACK LESS TWO BEADS (user, 2026-10-29: make
 # the instrument narrower; "leave a little clearance at the motor for installing it, but we
 # don't need much"). It was a 70 mm motor reserve plus a 4.8 gap for string 10's pigtail to
@@ -786,8 +789,8 @@ MOTOR_X0        = (-(KEYHEAD_INBOARD_X + MOTOR_END_CLR + MOTOR_SQ / 2)
 #   DIP how far its bottom edge hangs below the floor's underside (its bus-B plugs are
 #       reached from outside), before the plugs.
 MCTRL_FIT       = 0.3            # board to printed pocket (electronics.CRADLE_CLR)
-MCTRL_Y1        = (string_y(0) - 14.0 - MOTOR_SETBACK - MOTOR_BODY_L
-                   - MOTOR_CLR)   # -28.05: behind string 1's motor (14.0 + MOTOR_SETBACK = the standoff)
+MCTRL_Y1        = (string_y(0) - MOTOR_PULLEY_STANDOFF - MOTOR_BODY_L
+                   - MOTOR_CLR)   # -22.85: behind string 1's motor
 MCTRL_L         = 55.0           # routed outline, along Y
 MCTRL_Y0        = MCTRL_Y1 - MCTRL_L                                                         # -83.05
 MCTRL_X         = (-606.5, -591.7)

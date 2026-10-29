@@ -304,6 +304,11 @@ for _mp in _EL_ports.mctrl_floor_ports():
 # afterwards would notch each cheek's foot -- a 0.2 step that prints as a ledge.
 _mcr = _MCR.retention()
 _mcr_bb = _mcr.val().BoundingBox()
+# ...through the lever/leg mortises too, as the cradles above are: the guides root on the bed,
+# and the -Y channel's foot stands over the -X/-Y adapter's tenon run (4.0 mm3 refilled).
+_mcr_mc = _kh_mort_cutters(_mcr_bb.xmin - 1.0, _mcr_bb.xmax + 1.0)
+if _mcr_mc is not None:
+    _mcr = _mcr.cut(_mcr_mc)
 _mcr_seg = [i for i, cs in enumerate(chassis_segments)
             if cs.val().BoundingBox().xmin <= _mcr_bb.xmin
             and _mcr_bb.xmax <= cs.val().BoundingBox().xmax + 1e-6]
