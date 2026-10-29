@@ -116,7 +116,19 @@ BD_T = 1.6
 # -Y past it -- the two moves are a package and neither works alone. The +3 buys wall for the
 # floor retention on the -Y side, which the sweep found had ZERO room (the Pi sat hard against
 # chassis_2; +5 hit it). Sweep says +X is clear to 80 and +Y to 20, so both are cheap.
-PI_FP     = (-588.0, -503.0, -127.0, -71.0)   # WORLD x0,x1,y0,y1: 85 on X, 56 on Y;
+# ⚠ +8.80 IN Y FOR A RIGHT-ANGLE USB-C PLUG (user, 2026-10-28: "now that we have the real
+# motor spec can you move the pi so it can fit a right angle USB C"). The USB-C mouth faced
+# the -Y rail (inner face -131.55) 3.31 mm away, so no plug went in at all and wire_usb ended
+# at the mouth. The lead is StarTech USB2CC1MR (wiring.PI_USBC_*): its angled head is 11.0
+# deep from the mating face, so the mouth needs 11.0 plus a fit to the rail. 11 beads puts
+# it 12.11 off the rail, 1.11 clear of the head.
+# THE ROOM IS +Y AND IT WAS MEASURED, with branner's motors already 3.2 further -Y (user,
+# same day: the shafts are longer than drawn). Off build #963, the first foreign material +Y
+# of the Pi stack is string 1's bay back wall at -37.15 in front of the spacer bar (-54.50):
+# 17.35, 14.15 once the bays move, 5.35 after this. Everywhere else is wider (tools note in
+# docs/bronner-work-items.md, "Pi +Y for the USB-C plug").
+PI_USBC_SHIFT = 11 * D.BEAD                    # 8.80
+PI_FP     = (-588.0, -503.0, -127.0 + PI_USBC_SHIFT, -71.0 + PI_USBC_SHIFT)   # WORLD x0,x1,y0,y1: 85 on X, 56 on Y;
 # ⚠ THE -Y EDGE IS FLUSH WITH THE BAY WALL, AND THAT IS THE WHOLE POINT (user,
 # 2026-09-29: "the pi is too far -y and requires cutting into the chassis wall which
 # reduces its strength"). That wall runs y -141.95..-131.55 -- 10.40, exactly CH.T --
@@ -588,6 +600,13 @@ def pi_cradle() -> cq.Workplane:
     _wy = PI_FP[2] - CRADLE_CLR - 0.8
     cr = cr.cut(box_at(PI_FP[1] - PI_FP[0] + 8.0, 2.0, 6.0, (PI_FP[0] + PI_FP[1]) / 2.0, _wy,
                        PI_Z + BD_T + 3.0))
+    # ...and notched right down to the plug for the USB-C lead's angled head (pi_usbc_head),
+    # which lies across the wall's line 1.24 off the board's edge: the socket stands that
+    # far proud of it. Open at the top, so the notch prints with nothing over it.
+    _h = pi_usbc_head()
+    _nz0 = _h[4] - PI_USBC_FIT
+    cr = cr.cut(box_at(_h[1] - _h[0] + 2 * PI_USBC_FIT, 4.0, 20.0, (_h[0] + _h[1]) / 2.0,
+                       PI_FP[2] - CRADLE_CLR - 2.0, _nz0 + 10.0))
     (_cx0, _cx1), (_cy0, _cy1) = _P4.SD_CARD
     cr = cr.cut(box_at(8.0, _cy1 - _cy0 + 2 * PI_SD_FIT, 20.0, PI_FP[0],
                        PI_FP[2] + (_cy0 + _cy1) / 2.0, _MB_FLOOR.FLOOR_TOP + 10.0))
@@ -628,7 +647,7 @@ def pi_cradle() -> cq.Workplane:
 # was sized against -- and stepping by whole pitches keeps the anchor's place in the mortise
 # grid, which is what the search was about. It is now 27.8 from the board's +X end, not 7.
 _PI_SPACER_DX  = -2 * D.LEVER_PITCH
-PI_SPACER_XY   = (-510.0 + _PI_SPACER_DX, -58.50)  # WORLD x,y of the anchor -- 12.50 mm out from the +Y edge
+PI_SPACER_XY   = (-510.0 + _PI_SPACER_DX, -58.50 + PI_USBC_SHIFT)  # WORLD x,y of the anchor -- 12.50 mm out from the +Y edge
 PI_SPACER_T    = 3 * D.BEAD        # 2.40 over the laminate. 1.2 was rejected as under the
                                    # quality bar for retention; this is the same 3-bead
                                    # thickness the rest of this file uses for it.
@@ -1213,6 +1232,34 @@ def pi_usb_c_mouth():
     along +Y."""
     x, y, z = _P4.usb_c_mouth()
     return (PI_FP[0] + x, PI_FP[2] + y, PI_Z + z)
+
+
+# THE PLUG IN IT: StarTech USB2CC1MR, 1 m USB 2.0 C to C, one end angled LEFT/RIGHT -- the
+# cable leaves along the socket's long side, which here is X, so the head lies flat in the
+# gap between the Pi's -Y edge and the rail. It leaves -X, past the SD card end: +X along
+# the rail is the cable trough's floor (z -31.8..-26.4, to x -575), and the only clear
+# column down from the trough is -X of where the 24 V link turns out of its end (DigiKey 5214-USB2CC1MR-ND, $20.39, 2026-10-28).
+# StarTech's datasheet gives the head as "width 11.0, height 6.0": 11.0 is the head's short
+# side in its own plane -- the depth from the mating face, the one number this gap is sized
+# by -- and 6.0 its thickness. The length along the cable is NOT published.
+# ⚠ ASSUMED, MEASURE WHEN THE LEAD IS IN HAND: PI_USBC_HEAD_L 20.0 (off the product photo,
+# about twice the depth) and PI_USBC_AXIS 5.5 (the shell's half width 4.13 plus a lip).
+# Why this lead: an up/down-angle head is deeper. Newnex's drawing for its angled C
+# (U4S5C01CD6, the one stocked 1 m up/down with a dimensioned drawing) is 18.50 deep, which
+# needs the Pi 2.1 mm further +Y than the moved motor bays leave.
+PI_USBC_HEAD_D = 11.0              # mating face -> back of the head (datasheet)
+PI_USBC_HEAD_T = 6.0               # thickness, centred on the socket (datasheet)
+PI_USBC_HEAD_L = 20.0              # along the cable (ASSUMED)
+PI_USBC_AXIS = 5.5                 # the shell's axis from the head's closed end (ASSUMED)
+PI_USBC_FIT = 0.5                  # what the cradle wall's notch leaves round the head
+
+
+def pi_usbc_head():
+    """(x0, x1, y0, y1, z0, z1) WORLD of the angled plug's head seated in the Pi's USB-C,
+    its cable leaving the -X end."""
+    mx, my, mz = pi_usb_c_mouth()
+    return (mx + PI_USBC_AXIS - PI_USBC_HEAD_L, mx + PI_USBC_AXIS,
+            my - PI_USBC_HEAD_D, my, mz - PI_USBC_HEAD_T / 2.0, mz + PI_USBC_HEAD_T / 2.0)
 
 
 def pi4_parts():
