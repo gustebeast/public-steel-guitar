@@ -1083,7 +1083,11 @@ if _ep_relief is not None:
     from . import electronics as _EL_OP
     _opc = BE.op_cradle().val().BoundingBox()
     _op_y1 = _EL_OP.op_origin()[1] + _EL_OP.OP_BOARD_Y / 2.0          # the board's +Y edge
-    _op_zf = _EL_OP.JACK_Z - BE.JACK_RECESS_DZ                         # the recess floor
+    # the recess floor -- or lower, to under string 10's belt: below the floor the wall still
+    # stood in the belt's -Y run past the board's +Y edge (0.5 mm3, z -57.1..-54.8, 2026-10-29).
+    # Only what is +Y of the board's edge comes out, so the board's own support is untouched.
+    _op_zf = min(_EL_OP.JACK_Z - BE.JACK_RECESS_DZ,
+                 D.screw_pulley_z(D.N_STRINGS - 1) - D.PULLEY_FLANGE_OD / 2.0 - CLAMP_RELIEF_CLR)
     # ...AND -X OF STRING 10'S BELT, which wraps its screw pulley out to the flange's +X edge:
     # trimmed to the clamps alone, a 1.3 mm stub of wall between their reach and the pulley
     # cut stood in the belt's -Y run (5.5 mm3, build 2026-10-29). "where the belt doesn't go"
