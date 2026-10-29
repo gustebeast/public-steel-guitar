@@ -1084,7 +1084,11 @@ if _ep_relief is not None:
     _opc = BE.op_cradle().val().BoundingBox()
     _op_y1 = _EL_OP.op_origin()[1] + _EL_OP.OP_BOARD_Y / 2.0          # the board's +Y edge
     _op_zf = _EL_OP.JACK_Z - BE.JACK_RECESS_DZ                         # the recess floor
-    _xr = _ep_relief.val().BoundingBox().xmax + CLAMP_RELIEF_CLR
+    # ...AND -X OF STRING 10'S BELT, which wraps its screw pulley out to the flange's +X edge:
+    # trimmed to the clamps alone, a 1.3 mm stub of wall between their reach and the pulley
+    # cut stood in the belt's -Y run (5.5 mm3, build 2026-10-29). "where the belt doesn't go"
+    _xr = max(_ep_relief.val().BoundingBox().xmax,
+              D.screw_x(D.N_STRINGS - 1) + D.PULLEY_FLANGE_OD / 2.0) + CLAMP_RELIEF_CLR
     if _xr > _opc.xmin:
         _trim = box_at(_xr - (_opc.xmin - 1.0), _opc.ymax + 1.0 - _op_y1, _opc.zmax + 1.0 - _op_zf,
                        x=(_xr + _opc.xmin - 1.0) / 2, y=(_op_y1 + _opc.ymax + 1.0) / 2,
