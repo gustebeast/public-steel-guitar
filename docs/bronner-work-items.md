@@ -164,10 +164,13 @@ in hand exactly (board.json identical but for quality-note text), and `elec/rev1
 - Profile: 12-15 min a route on a copy.
 - Submit only after branner's standoff 7.5 lands on main, merged onto it (lead).
 - Then: re-route the J2 -> Pi `wire_usb` lead and retire its chassis_0 rule.
-- ⚠ R2-1 below (two RJ45s, ~16 x 21 each) wants MORE board; it was written before the
-  shrink. Decide it against the 56 before placing anything.
+- R2-1 (two RJ45s) DROPPED, see below: nothing on this board reserves room for it.
 
-**R2-1. Ethernet pass-through, the J1 -> J2 USB pattern.** Two RJ45s on the output board: one on the
+**R2-1 DROPPED (user, 2026-10-30): no room at the endplate after the shrink. No RJ45 goes on the
+board. If Ethernet is wanted: an F-M adapter above the optical board, or a USB Ethernet dongle
+(user to try it for Dante). The text below is kept as the record only.**
+
+~~R2-1~~. Ethernet pass-through, the J1 -> J2 USB pattern. Two RJ45s on the output board: one on the
 -X edge fed from the Pi's built-in GbE by a short stock Cat6 patch (~0.2-0.3 m), one in the panel,
 traces between. For Dante via Inferno on the Pi (github.com/teodly/inferno; Pi 4 tested, software
 PTP timestamps) and RTP-MIDI (rtpmidid) to LAN computers, alongside USB, no mode switching.
