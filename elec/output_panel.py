@@ -2809,13 +2809,18 @@ R2_MOVES = {} if REV == 1 else dict(
     **{_r: (0.0, -9.25) for _r in "D2 D3 R1 R2".split()},   # j1esd: rigid with J1, so R1's THRU copper between them carries over
     **{_r: (-30.0, -10.2) for _r in "J8 U8 U2 C19 C59 C24 R8 C13 C22 C37 C20 C21 C23 C38".split()},   # input
     **{_r: (-22.0, -12.4) for _r in "K1 Q1 D4 R5 R36 R28 R15".split()},   # relay
-    **{_r: (-26.0, 12.0) for _r in "U10 C44 R21 R39 R40 R38 C62 C41 D7 U12 C47 R22 C42 C9".split()},   # pot
-    **{_r: (-6.2, 13.6) for _r in "U6 C58".split()},   # u6
-    **{_r: (-1.4, 10.2) for _r in "U7 R16 R17 R18 C39 C60 R9 R20 C8 C43 C7 C40".split()},   # u7
+    **{_r: (-26.0, 12.0) for _r in "U10 C44 R21 R39 R40 R38 C62 C41 D7 U12 C47 R22 C42".split()},   # pot
+    **{_r: (-6.2, 13.6) for _r in "U6 C58 C9".split()},   # u6 + its 3V3 bulk
+    **{_r: (-1.4, 10.2) for _r in "U7 R16 R17 R18 C39 C60 R9 R20 C8 C7 C40".split()},   # u7
     **{_r: (-6.0, -9.0) for _r in "C1 D5 R10".split()},   # jackprot
     **{_r: (-4.8, -14.2) for _r in "U9".split()},   # u9
+    C43=(-2.0, -15.8),   # U9's bypass: east of pin 5 (+5V), 2.3 mm; U9's own shift lands it in J10
 )
 if REV != 1:
+    # V5_PRE AT 0.4 (R2). L1 -> FB1 is ~47 mm across the board at 0.3 A, and the 56-deep
+    # route took it thinner and longer than R1 did: 185 mOhm, 56 mV against quality A1's
+    # 50 (R1: 100 mOhm, 30 mV). Width is the cheap lever; the path is the buck's layout.
+    BOARD_NOTES["net_widths"]["V5_PRE"] = 0.4
     # J1 HALFWAY BETWEEN J5 AND J6 (user, 2026-10-29: "the USB C spaced halfway between the
     # TRS and power ports so it looks nicer from the outside"), centre to centre in y,
     # DERIVED: each body's centre is its placement's y (R1 geometry, all three). Z cannot
