@@ -62,7 +62,7 @@ def silk(stem):
             notes = json.load(fh)
     except OSError:
         notes = {}
-    return kicad_silk.silk(stem, REV, tuple(notes.get("strip_silk", ())),
+    return kicad_silk.silk(stem, notes.get("silk_rev", REV), tuple(notes.get("strip_silk", ())),
                            face=notes.get("silk_font", SILK_FACE),
                            reach=notes.get("silk_pinout_reach", PINOUT_REACH))
 
