@@ -1047,28 +1047,43 @@ def _clamp_relief(ep, roofed=False):
     `roofed` is for a solid that prints +Z and stands -Y of the clamp (the chassis' faceplate
     walls): each box runs on +Y out past the clamp's own swept reach, so it leaves no sliver
     between, and a 45 deg roof on it rising +Y, so the wall left over it prints."""
-    eb = ep.val().BoundingBox()
     out, g = None, CLAMP_RELIEF_CLR
     for i in range(D.N_STRINGS):
-        parts = [w.val() for _n, w in BTn.clamp_components(belt_cut(i)[1])]
-        lo, hi = None, None              # ONE box per string over every station: a union of
-        reach_y = None                   # per-station boxes leaves 0.01 mm2 stairs
+        # at this string's own belt gap AND at the default one, which is how
+        # check_carriage_travel poses it -- the relief must satisfy the gate that checks it
+        parts = ([w.val() for _n, w in BTn.clamp_components(belt_cut(i)[1])]
+                 + ([w.val() for _n, w in BTn.clamp_components()] if roofed else []))
+        # SPEED: pose everything first (no booleans), then clip the solid to the clamp's whole
+        # swept box ONCE, and intersect each posed part with that small clip, not with the
+        # whole solid -- 81 stations x 8 parts against a chassis segment took the lead build
+        # past 80 minutes (2026-10-29).
+        posed = []
         for k in range(CLAMP_RELIEF_STATIONS + 1):
             loc = clamp_location(i, D.CARRIAGE_TRAVEL * k / CLAMP_RELIEF_STATIONS)
-            for h in parts:
-                hb = h.moved(loc)
-                bb = hb.BoundingBox()
-                reach_y = bb.ymax if reach_y is None else max(reach_y, bb.ymax)
-                if (bb.xmax < eb.xmin or bb.xmin > eb.xmax or bb.ymax < eb.ymin
-                        or bb.ymin > eb.ymax or bb.zmax < eb.zmin or bb.zmin > eb.zmax):
-                    continue
-                x = hb.intersect(ep.val())
-                if x.Volume() < 1e-6:
-                    continue
-                xb = x.BoundingBox()
-                p0, p1 = (xb.xmin, xb.ymin, xb.zmin), (xb.xmax, xb.ymax, xb.zmax)
-                lo = p0 if lo is None else tuple(map(min, lo, p0))
-                hi = p1 if hi is None else tuple(map(max, hi, p1))
+            posed += [h.moved(loc) for h in parts]
+        bbs = [hb.BoundingBox() for hb in posed]
+        sb = [min(b.xmin for b in bbs), max(b.xmax for b in bbs), min(b.ymin for b in bbs),
+              max(b.ymax for b in bbs), min(b.zmin for b in bbs), max(b.zmax for b in bbs)]
+        reach_y = sb[3]
+        clip = ep.intersect(box_at(sb[1] - sb[0] + 0.2, sb[3] - sb[2] + 0.2, sb[5] - sb[4] + 0.2,
+                                   x=(sb[0] + sb[1]) / 2, y=(sb[2] + sb[3]) / 2,
+                                   z=(sb[4] + sb[5]) / 2))
+        if not clip.solids().size() or clip.val().Volume() < 1e-6:
+            continue
+        clip = clip.val()
+        cb = clip.BoundingBox()
+        lo, hi = None, None              # ONE box per string over every station: a union of
+        for hb, bb in zip(posed, bbs):   # per-station boxes leaves 0.01 mm2 stairs
+            if (bb.xmax < cb.xmin or bb.xmin > cb.xmax or bb.ymax < cb.ymin
+                    or bb.ymin > cb.ymax or bb.zmax < cb.zmin or bb.zmin > cb.zmax):
+                continue
+            x = hb.intersect(clip)
+            if x.Volume() < 1e-6:
+                continue
+            xb = x.BoundingBox()
+            p0, p1 = (xb.xmin, xb.ymin, xb.zmin), (xb.xmax, xb.ymax, xb.zmax)
+            lo = p0 if lo is None else tuple(map(min, lo, p0))
+            hi = p1 if hi is None else tuple(map(max, hi, p1))
         if lo is None:
             continue
         if roofed:
