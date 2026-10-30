@@ -1268,7 +1268,10 @@ def op_cradle():
     # on 2026-09-21. The -X growth moved J2 12 mm relative to everything else (its mouth
     # rides the -X edge), so the literal would have silently re-described an empty patch of
     # board. Derived, it stays "the clear strip past J2" whatever the outline does.
-    _PY_X0 = _BG.footprint("output_panel", "J2")["fab"][1] + 0.34 - rcx
+    # ⚠ THE BODY OR THE LEGS, WHICHEVER REACHES FURTHER (2026-10-29): R2's J2 is a USB-C
+    # whose THT shell legs stand 0.48 past its fab body, and the pad sat 1 mm3 into them.
+    _j2 = _BG.footprint("output_panel", "J2")
+    _PY_X0 = max(_j2["fab"][1], (_j2.get("tht") or _j2["fab"])[1]) + 0.34 - rcx
     cr = cr.union(box_at(_pad, _pad, standoff, x=_PY_X0 + _pad / 2.0, y=_pyc,
                          z=standoff / 2.0))
     # 45 DEG GUSSETS under the -X pads. This part builds -X off a bed at the panel face, so
