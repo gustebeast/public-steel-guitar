@@ -4018,10 +4018,8 @@ if OP.OPTICAL_REV != 1:
     # (silk_edge_clearance, both corners). The outline goes to F.Fab with the others --
     # the plug's own body says where the socket is.
     BOARD_NOTES["strip_silk"] = BOARD_NOTES["strip_silk"] + ("J1",)
-    # ULPI_D6 (U7.18): R2 put the PHY 12.7 mm under the MCU pin where R1 had 25.5, and D6 is
-    # the one ULPI line whose escape the router then never finds (two routes, no copper at
-    # all; close_last: no path). R1 took it straight down to In2 at the pin -- that via, laid.
-    BOARD_NOTES["pin_escapes"] = tuple(BOARD_NOTES["pin_escapes"]) + ("U7.18",)
+    # (ULPI_D6: a pin escape at U7.18, R1's via, was tried 2026-10-30 and LOST: 4 unconnected
+    #  after close_last against 1 without it, same keepouts. Left to the router + close_last.)
     # NO VIA UNDER U10's BODY. The pair's two pass-through links run under it 1.9 apart
     # (pins 1-6, 3-4), and the router stood a VBUS via between them at 0.106 mm from D-.
     _ux, _uy, _ = _placements(CX, CY)["U10"]
