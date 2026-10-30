@@ -81,7 +81,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
+OUT_DIR = (os.environ.get("PI_CAP_OUT")   # a trial or R1 rebuild goes to a COPY, never mid-run
+           or os.path.join(os.path.dirname(os.path.abspath(__file__)), "out"))
 os.makedirs(OUT_DIR, exist_ok=True)
 os.chdir(OUT_DIR)
 
@@ -112,15 +113,18 @@ BOARD_W, BOARD_L = 56.0, 34.0
 # CAP_EXT_X of laminate past the board's old -X edge (over the Pi's cradle wall, 1.2 off
 # motor_ctrl), and U1's group off J1's -X end (U1_XY). (A notch under a header pulled in
 # was tried first: J5 then sat on J1 -- courtyards overlapping, five ribbon nets unroutable.)
-J5_DX = -17.865
-J6_DX = -9.7
+# R1 (the board as ordered, PI_CAP_REV=1) keeps its parts: see the REV block under BOARD_NOTES.
+REV = int(os.environ.get("PI_CAP_REV", "2"))
+assert REV in (1, 2), "PI_CAP_REV is 1 (the board in hand) or 2"
+J5_DX = -17.865 if REV != 1 else 0.0
+J6_DX = -9.7 if REV != 1 else 0.0
 # U1's group (the ribbon's 3V3 switch): off the header's -X end, on CAP_EXT_X's laminate west
 # of J3 -- 6.7 mm from header pin 1 (its supply) and clear of the fan J5's fourteen ways take to
 # J1 (2026-10-29: in the band 4.5 east its C6 GND via landed on three ribbon tracks; 22 east it
 # stood in the east pins' way and 37 mm from pin 1, past A2's 25 mm for its bypass; across J1 at
 # x -14 it sat in J3's courtyard and on the declared 24 V bar).
-U1_XY = (-29.0, 1.50)
-CAP_EXT_X = 7.0
+U1_XY = (-29.0, 1.50) if REV != 1 else (-8.00, -13.50)
+CAP_EXT_X = 7.0 if REV != 1 else 0.0
 
 # ⚠ THE UI RIBBON IS A PLAIN HEADER, NOT A SHROUDED ONE, AND THAT IS A SOURCING FACT RATHER
 # THAN A PREFERENCE. LCSC stocks no shrouded 1.27 mm 2x7; the nearest shrouded part is
@@ -991,6 +995,19 @@ BOARD_NOTES = {
         },
     },
 }
+if REV == 1:
+    # R1, AS ORDERED: what the 2026-10-29 band move changed, put back (the offsets above
+    # are zero). `OUT_DIR` is PI_CAP_OUT for a trial; the geom as made is elec/rev1.
+    BOARD_NOTES.pop("outline_poly")
+    BOARD_NOTES["zones"] = [("GND", "F.Cu", 0.3), ("GND", "In2.Cu", 0.3), ("GND", "B.Cu", 0.3)]
+    _v = BOARD_NOTES["vias"]
+    assert _v[3] == ("GND", 6.00, -15.50)
+    BOARD_NOTES["vias"] = (_v[:1] + [("GND", 21.50, -11.00)] + _v[1:3]
+                           + [("GND", -14.00, -15.50), ("GND", 16.62, -10.91)] + _v[4:])
+    BOARD_NOTES["router_passes"] = 12
+    BOARD_NOTES["quality"]["connector_labels"]["J4"] = {'back_only': "the labeller tries the connector's own side first and finds no free site there for its five-line block at 1.5 mm in the board's face within 40 mm of the part, flat or turned, that is not along another connector's pins (run 2026-10-07, after the lead order change); the block is on the back, behind it"}
+    for _n in ("UI_ENC_B", "UI_SW_B", "UI_SDIN"):
+        del BOARD_NOTES["quality"]["return_slot_ok"][_n]
 
 
 # ── THE PI'S 5 V, DECLARED (2026-10-01) ──────────────────────────────────────────────────
@@ -1054,6 +1071,10 @@ if __name__ == "__main__":
     netcheck.grounds_meet(os.path.join(OUT_DIR, "pi_cap.net"))
     import volts_decl                   # A16: generated, see volts_decl.py
     volts_decl.into(BOARD_NOTES, "pi_cap")
+    BOARD_NOTES["silk_rev"] = "r%d" % REV  # the printed rev IS the switch (cad_geom_check)
+    import r1_silk                        # ordered R1: silk as sent
+    if REV == 1:
+        r1_silk.as_ordered(BOARD_NOTES)
     with open(os.path.join(OUT_DIR, "pi_cap.board.json"), "w") as f:
         json.dump(BOARD_NOTES, f, indent=2)
     # ⚠ THE UI WAYS COUNT TOO. This line kept its own copy of the used-pin set and did not
