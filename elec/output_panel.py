@@ -591,8 +591,16 @@ def output_panel():
               value="MX126-5.0-02P", description="magnetic pickup in, screw terminals",
               footprint=TERM_FP,
               pins=[Pin(num=1, name="HOT", func=P), Pin(num=2, name="RET", func=P)])
-    pk_hot += j8[1]
-    agnd += j8[2]             # the coil's return IS the analog reference
+    # R2 TURNS J8 180 DEGREES (lead, 2026-10-29): on the dropped board its +Y entry sat in
+    # string 10's clamp sweep, so the wires come in from -Y, over the board. Turned about
+    # its pad row, pin 1 lands in pin 2's hole and pin 2 in pin 1's, so the two NETS swap
+    # pins and every track stays where it was routed. Either screw takes either core.
+    if REV == 1:
+        pk_hot += j8[1]
+        agnd += j8[2]         # the coil's return IS the analog reference
+    else:
+        pk_hot += j8[2]
+        agnd += j8[1]
 
     # ⚠ CREATED AFTER J8 ON PURPOSE -- DO NOT MOVE THIS BLOCK UP. SKiDL assigns
     # reference designators by CREATION ORDER and ignores `tag` for that. Written above
@@ -2816,6 +2824,11 @@ R2_MOVES = {} if REV == 1 else dict(
     **{_r: (-4.8, -14.2) for _r in "U9".split()},   # u9
     C43=(-2.0, -15.8),   # U9's bypass: east of pin 5 (+5V), 2.3 mm; U9's own shift lands it in J10
 )
+if REV != 1:
+    # J8 TURNED 180 (see the netlist): pin 1 is the footprint's origin, so the turn about the
+    # pad row is the origin moved onto pin 2 (one pitch, +x) and the part rotated
+    _x8, _y8, _r8 = BOARD_NOTES["placements"]["J8"]
+    BOARD_NOTES["placements"]["J8"] = (_x8 + 5.0, _y8, (_r8 + 180.0) % 360.0)
 if REV != 1:
     # V5_PRE AT 0.4 (R2). L1 -> FB1 is ~47 mm across the board at 0.3 A, and the 56-deep
     # route took it thinner and longer than R1 did: 185 mOhm, 56 mV against quality A1's

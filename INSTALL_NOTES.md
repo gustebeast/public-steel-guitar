@@ -1106,6 +1106,21 @@ J3's lead can be plugged in before the board goes down or after. It holds with t
 off. (It used to rest on the -X/-Y leg's adapter; the 7.5 pulley standoff moved the
 board off it.)
 
+## Pickup lead into J8, output board R2: from -Y, over the board (2026-10-29)
+
+On the R2 output board the pickup's screw terminal (J8) is **turned to face -Y**, into the
+board. With the board down on the chassis floor, a +Y entry would sit inside string 10's
+belt-clamp travel. So:
+- Bring the pickup lead down beside J8 and over the top of its housing. Drop it in front of the
+  terminal's -Y face, on the board side, and push the two stripped cores (6-7 mm) straight in.
+- **The braid (shield) goes to the GND way, the core to HOT.** Read them off the silk pinout,
+  not off R1: the turn SWAPPED the two screws, so on R2 GND is the +X screw, the one nearer
+  the board's centre.
+- Tighten the M2.5 screws from above (0.4 N m). Keep the lead's jacket over the board, not
+  hanging off the +Y edge: that side is the clamp's travel.
+
+The R1 board in hand keeps its +Y entry, see the stop-gap note below.
+
 ## R1 stop-gap: the output board in hand, in an R2 instrument (2026-10-29)
 
 The R2 output board is 56 deep and 98 wide with its panel connectors moved (J5 -9, J1 centred

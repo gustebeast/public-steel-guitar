@@ -130,7 +130,7 @@ import os
 # rail, and stays reproducible with OPTICAL_REV=1. R2 (the default) is the same strip --
 # aligned to the strings and bearings exactly as R1 -- with the compute section re-packed
 # inside today's -X edge so the -Y edge clears the rail (see R2_MOVES).
-OPTICAL_REV = int(os.environ.get("OPTICAL_REV", "2"))
+from .board_geom import OPTICAL_REV  # noqa: E402  (the env switch: src/board_geom)
 
 import cadquery as cq
 from cadquery.selectors import NearestToPointSelector
@@ -3768,7 +3768,7 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
         zc = PCB_TOP + PKG[p["pkg"]][2] / 2                   # cable/plug centre height
         if ref == "J1":
             # the DOWN-ANGLE plug: overmould and boot here, its ribbon with J4's below
-            yd = PCB_YM - USBC_ANG_D / 2.0
+            yd = usb_face_y() - USBC_ANG_D / 2.0
             # as the part looks (the seller's photo): a moulded block with its edges eased,
             # and a relief of USBC_RIBS ribs -- both inside the boxes they were drawn as
             add(box_at(USBC_ANG_W, USBC_ANG_D, USBC_ANG_BODY, x=p["x"], y=yd, z=zc)
@@ -3855,6 +3855,10 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
         _path["J2"] += [(xd, PWR_Y, PWR_Z_TURN), (xd, PWR_Y, PWR_Z_REC),
                         (PWR_X_RISE, PWR_Y, PWR_Z_REC), (PWR_X_RISE, PWR_Y, PWR_Z_BAY),
                         (j9[0], PWR_Y, PWR_Z_BAY), (j9[0], j9[1], PWR_Z_BAY), j9]
+        # R2 drops at the notch's own x and y (pwr_col_x, PWR_Y), so its first downstream
+        # point repeats the last one: a zero-length leg turns the pair's frame over
+        _path["J2"] = [q for k, q in enumerate(_path["J2"])
+                       if k == 0 or max(abs(q[m] - _path["J2"][k - 1][m]) for m in range(3)) > 1e-6]
         if which == "pwr_path":
             return _path["J2"]
     if "J1" not in _WANT:
@@ -3873,7 +3877,7 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
     zr = RIBBON_Z
     p1 = part("J1")
     zb1 = (PCB_TOP + PKG[p1["pkg"]][2] / 2) - USBC_ANG_BODY / 2.0 - USBC_ANG_BOOT
-    yd = PCB_YM - USBC_ANG_D / 2.0                      # the drop's layer
+    yd = usb_face_y() - USBC_ANG_D / 2.0                      # the drop's layer
     yr = yd - t_                                        # the run's: the fold's other side
     xa, xb = p1["x"] - w_ / 2.0, p1["x"] + w_ / 2.0
     assert zb1 > zr + w_ / 2.0, "J1's boot ends below the ribbon's fold"
@@ -3931,6 +3935,12 @@ PWR_COL_DX = 7.5                        # the 24 V pair's drop, +X of J2's centr
                                         # side of this line -- 0.5 clear of the tip
 PWR_Y = -126.4                          # the 24 V lead's y in the conduit's open mouth
                                         # strip (y -128.75..-124.58, the rail on one side)
+if OPTICAL_REV != 1:
+    # R2: the pair comes down the notch at its mid-Y (opt_cables), into the conduit and on
+    # down through the slot, so its y never changes: the notch's centre line
+    PWR_Y = (usb_notch()[2] + usb_notch()[3]) / 2.0
+    assert PWR_Y - 2.2 >= CONDUIT_Y0 - 1e-9, (
+        f"R2 24 V slot at y {PWR_Y - 2.2:.2f} reaches the rail's wall {CONDUIT_Y0:.2f}")
 PWR_Z_REC = -25.5                       # the 24 V lead crossing into the board recess,
                                         # 0.3 under its roof at FOOT_Z
 PWR_X_RISE = -27.5                      # the 24 V lead's riser: its skin 0.44 off the
@@ -3950,6 +3960,15 @@ XH_OD = 4.0                             # the 24 V lead (6x 26 AWG), as opt_cabl
 USBC_NOTCH_CLR = 0.5
 
 
+def usb_face_y() -> float:
+    """y of J1's down-angle plug's MATING FACE. R1: the board's -Y edge, where J1's mouth
+    sits. R2: J1 stands back in its notch, so the face is under the notch's +Y edge: the
+    mouth 0.5 proud of it and the plug 0.45 off the mouth (as the conduit's assert has it)."""
+    if OPTICAL_REV == 1:
+        return PCB_YM
+    return usb_notch()[3] - 0.5 - 0.45
+
+
 def opt_usb_notch() -> cq.Workplane:
     """The endplate cut J1's down-angle plug and its ribbon drop through: the 2 mm ledge
     between the board's -Y edge and the conduit, taken away under the plug, down to the
@@ -3963,6 +3982,18 @@ def opt_usb_notch() -> cq.Workplane:
     end would be a 2 mm shelf starting in mid-air."""
     p = part("J1")
     c = USBC_NOTCH_CLR
+    if OPTICAL_REV != 1:
+        # R2: the conduit is UNDER the board's -Y band and the notch is over it, so the
+        # whole notch (J1's plug and, at its -X end, J2's pair) opens straight down into
+        # it, from the conduit's top up past the plinth. Its -X end ramps at 45 degrees
+        # across the notch's Y for the same reason as R1's: no wall starting in mid-air.
+        nx0, nx1, ny0, ny1 = usb_notch()
+        x0, x1 = nx0 - c, nx1 + c
+        z0, z1 = DECK_TOP, PLINTH_TOP + 0.5
+        w = ny1 - ny0
+        return (cq.Workplane("XY").workplane(offset=z0)
+                .polyline([(x1, ny0 - c), (x1, ny1), (x0, ny1), (x0 - w - c, ny0 - c)]).close()
+                .extrude(z1 - z0))
     x1 = p["x"] + USBC_ANG_W / 2.0 + c
     x0 = p["x"] - USBC_ANG_W / 2.0 - c
     ya, yb = PCB_YM, CONDUIT_Y1 - 0.1               # into the conduit, so no skin is left
@@ -3981,6 +4012,10 @@ def opt_pwr_slot() -> cq.Workplane:
     is at +X, which the print meets as a floor."""
     x0, x1 = BAND_X0 - 1.0, pwr_col_x() + 5.0                      # the pair drops behind J2
     y0, y1 = PWR_Y - 2.2, -120.8        # into the recess, which starts at -122.8
+    if OPTICAL_REV != 1:
+        # R2: the conduit is OVER the output board's recess (y -103.45..-94.70, the board's
+        # -Y band under it), so the slot is just the pair's own column, straight down
+        y0, y1 = PWR_Y - 2.2, PWR_Y + 2.2
     # up past the lead's own turn: it crosses the conduit's +Y wall at PWR_Z_TURN, above the
     # conduit's floor, so a slot that stopped at the floor left 2.8 mm3 of wall in the lead
     z0, z1 = PWR_Z_REC - 2.1, PWR_Z_TURN + XH_OD / 2 + 0.5
@@ -3991,6 +4026,8 @@ def opt_pwr_slot() -> cq.Workplane:
     # 1.1 mm more than the conduit's floor left under it. Open to the -X face like the slot.
     zt = PWR_Z_TURN - 1.9 - 0.5
     assert zt < CONDUIT_Z0
+    if OPTICAL_REV != 1:
+        return slot                     # R2: the pair drops where it crosses (PWR_Y), no trench
     return slot.union(box_at(x1 - x0, y0 - CONDUIT_Y0, CONDUIT_Z0 + 0.1 - zt,
                              x=(x0 + x1) / 2, y=(y0 + CONDUIT_Y0) / 2,
                              z=(zt + CONDUIT_Z0 + 0.1) / 2))

@@ -4027,7 +4027,7 @@ if OP.OPTICAL_REV != 1:
     _ux, _uy, _ = _placements(CX, CY)["U10"]
     _u10_ko = [_ux - 0.60, _uy - 1.30, _ux + 0.60, _uy + 1.30]
     BOARD_NOTES["via_keepouts"] = list(BOARD_NOTES["via_keepouts"]) + [_u10_ko]
-    # BOARD_NOTES["router_via_keepouts"] = [_u10_ko]   # A/B 10-29: with it, 30 unconnected + Y1 clearance
+    BOARD_NOTES["router_via_keepouts"] = [_u10_ko]          # cadkit route.py: the router too
 
 
 # ── the quality pass (cadkit/PCB_QUALITY.md) ──────────────────────────────────────────────
