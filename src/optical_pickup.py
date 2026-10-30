@@ -3778,7 +3778,7 @@ def opt_cables(which: str = "usb") -> cq.Workplane:
         return out
     # USB: A FLAT RIBBON, AND A RIBBON ONLY BENDS ONE WAY. It leaves J1's boot going down, flat
     # in the shaft at the plug's own layer; one 45 degree FOLD in the board recess turns it -X,
-    # standing on edge under the recess's roof. It runs out into the bay on edge, turns back
+    # standing on edge under the chassis. It runs out into the bay on edge, turns back
     # toward the output board, and a second fold lays it flat against J4's plug, which points
     # UP (pointing down it meets the endplate).
     #
@@ -3852,8 +3852,9 @@ PWR_X_RISE = -27.5                      # the 24 V lead's riser: its skin 0.44 o
 PWR_Z_BAY = -18.5                       # ...and its height over the bay: 1.0 over the J7
                                         # pair's loop where the two cross (loop top -21.5)
 FOOT_ROOF_Z = CH.KH_DT_Z0                # the board recess's roof, which the cable hole opens into
-# The USB ribbon's run, on edge in the recess, 0.3 under that roof.
-RIBBON_Z = FOOT_ROOF_Z - 0.3 - RIBBON_W / 2.0              # -28.9
+# The USB ribbon's run, on edge: its slack runs -X past the bay under chassis_0, whose band starts
+# at z -29.85 over x -134.8..-88, so the ribbon's top edge stays 0.35 under that, not the recess's roof.
+RIBBON_Z = -29.85 - 0.35 - RIBBON_W / 2.0                  # -35.6
 USBC_MATE_L = 6.65                      # the plug's stroke: a USB-C tongue's length
 USB_J4_JOG = 5.0                        # the ribbon's step -X over J4's boot, to rise
                                         # outside the J7 pair's loop
