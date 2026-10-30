@@ -43,9 +43,10 @@ WHAT THE DRAWING CALLS CAN'T SEE. A cut or a union leaves thin material where tw
 meet, so thin_sites() reads the finished solid, and tools run it on the mesh they already have.
 
 THE WIDTH CHECK slices the part every layer and finds two things. A POINT is material narrower
-than a bead: the model claims what no bead can lay, so the model is wrong and should show what
-prints, a bead-wide strip on whole layers. A SINGLE is a bead up to SOFT_WIDTH, 1.6: it prints
-as one line, which is not an error, and it is reported so the designer can see and accept it
+than a bead. The real slicer (slicer_check: 0.8 nozzle, 0.40 layers, Arachne, 2026-10-30) drops it
+outright under 0.30 and lays one 0.69 bead from 0.30 to 0.69, so it prints FATTER than drawn; from
+0.70 one bead is the drawn width, and from 1.20 two. These are hints: slicer_check is the measure.
+A SINGLE is a bead up to SOFT_WIDTH, 1.6: it prints as one line, which is not an error, and it is reported so the designer can see and accept it
 (user, 2026-10-30). It pairs points
 on the slice's outline whose faces oppose across material, which is a morphological opening's
 answer at a fraction of the cost of rastering. A square shelf and a wall ending in a flat are
@@ -91,6 +92,8 @@ LENGTH_MIN = 1.0         # ...along at least this many beads
 LAYER_EDGE = 10.0        # an edge within this of the layer plane has no corner in a layer (deg)
 SOFT_WIDTH = 1.6         # the two-bead wall: the width check's softer tier
 OPPOSED = -0.17          # two faces oppose when their normals' dot is under this: 80 degrees
+SLICER_DROP = 0.30      # measured, 0.8 nozzle: narrower than this the slicer lays nothing
+SLICER_BEAD = 0.69      # ...up to this it lays one bead this wide, fatter than the model
 RESIDUE = 0.05           # a whole site narrower than this is a boolean's leftover, not a feature
 SAMPLE = 0.4             # outline sample spacing, in beads
 TESS = 0.05
@@ -432,11 +435,13 @@ def thin_sites(V, F, FN, ev, turn, convex, nozzle_d=MEASURED_NOZZLE, layer=None,
         if hard.any() and float(W[k].max()) < RESIDUE:
             kind = "RESIDUE"
         at = tuple(p[np.argmin(W[k]), :3])
+        scale = nozzle_d / MEASURED_NOZZLE
+        band = "dropped" if w < SLICER_DROP * scale else "fat" if w < SLICER_BEAD * scale else None
         out.append(dict(kind=kind, tier={"POINT": 0, "SINGLE": 1, "RESIDUE": 2}[kind], width=w, volume=vol,
                         length=float(np.hypot(*(hi - lo)[:2])), z=(float(lo[2]), float(hi[2])), at=at,
-                        angle=0.0, hint="a boolean's leftover: no slicer lays it" if kind == "RESIDUE"
-                        else ("the model claims material no bead can lay: draw what prints, a bead-wide strip on "
-                                         "whole layers" if hard.any() else
+                        angle=0.0, band=band if hard.any() else None, hint="a boolean's leftover: no slicer lays it" if kind == "RESIDUE"
+                        else ("under a bead: under 0.30 the slicer drops it, from there it prints a 0.69 bead, "
+                                         "fatter than drawn; check it with slicer_check" if hard.any() else
                                          "single-bead material: fine if you meant it, it prints as one line")))
     out.sort(key=lambda s: (s["tier"], -s["volume"]))
     return out
@@ -582,6 +587,8 @@ def _test():
         cq.Workplane().box(30, 20, 5).translate((0, 0, 2.5))).val()
     assert [q["kind"] for q in part_thin_sites(lip, (0, 0, 1)) if q["kind"] != "SINGLE"] == [], part_thin_sites(lip, (0, 0, 1))
     assert [q["kind"] for q in part_thin_sites(cq.Workplane().box(30, 0.6, 10).val(), up)] == ["POINT"]
+    assert [q["band"] for q in part_thin_sites(cq.Workplane().box(30, 0.6, 10).val(), up)] == ["fat"]
+    assert [q["band"] for q in part_thin_sites(cq.Workplane().box(30, 0.25, 10).val(), up)] == ["dropped"]
     assert [q["kind"] for q in part_thin_sites(cq.Workplane().box(30, 1.2, 10).val(), up)] == ["SINGLE"]
     # under one layer: a very shallow wedge, and a sheet on a block
     low = cq.Workplane("XZ").polyline([(0, 0), (30, 0), (30, 2.0)]).close().extrude(10).val()
